@@ -83,12 +83,12 @@ static int parse_x509_cert(sc_context_t *ctx, const u8 *buf, size_t buflen, stru
 	obj = sc_asn1_verify_tag(ctx, buf, buflen, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS,
 				 &objlen);
 	if (obj == NULL) {
-		sc_debug(ctx, "X.509 certificate not found\n");
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "X.509 certificate not found\n");
 		return SC_ERROR_INVALID_ASN1_OBJECT;
 	}
 	cert->data_len = objlen + (obj - buf);
 	r = sc_asn1_decode(ctx, asn1_cert, obj, objlen, NULL, NULL);
-	SC_TEST_RET(ctx, r, "ASN.1 parsing of certificate failed");
+	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "ASN.1 parsing of certificate failed");
 
 	cert->version++;
 
@@ -115,7 +115,7 @@ int sc_pkcs15_read_certificate(struct sc_pkcs15_card *p15card,
 	size_t len;
 	
 	assert(p15card != NULL && info != NULL && cert_out != NULL);
-	SC_FUNC_CALLED(p15card->card->ctx, 1);
+	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	if (info->path.len) {
 		r = sc_pkcs15_read_file(p15card, &info->path, &data, &len, NULL);
@@ -220,14 +220,14 @@ int sc_pkcs15_decode_cdf_entry(struct sc_pkcs15_card *p15card,
 		free(der->value);
 	if (r == SC_ERROR_ASN1_END_OF_CONTENTS)
 		return r;
-	SC_TEST_RET(ctx, r, "ASN.1 decoding failed");
+	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "ASN.1 decoding failed");
 	r = sc_pkcs15_make_absolute_path(&p15card->file_app->path, &info.path);
 	if (r < 0)
 		return r;
 	obj->type = SC_PKCS15_TYPE_CERT_X509;
 	obj->data = malloc(sizeof(info));
 	if (obj->data == NULL)
-		SC_FUNC_RETURN(ctx, 0, SC_ERROR_OUT_OF_MEMORY);
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
 	memcpy(obj->data, &info, sizeof(info));
 
 	return 0;

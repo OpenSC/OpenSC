@@ -486,7 +486,8 @@ int main(int argc, char* argv[])
 			sc_strerror(r));
 		return -1;
 	}
-		ctx->debug = opt_debug;
+
+	ctx->debug = opt_debug;
 
 	if (util_connect_card(ctx, &card, opt_reader, opt_wait, opt_debug) != 0)
 		err = -1;

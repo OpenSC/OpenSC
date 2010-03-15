@@ -285,7 +285,7 @@ static char *pp_msg_pin_mismatch[] = {
 	"Die von Ihnen eingegebenen PINs unterscheiden sich.\n\nErneut versuchen oder abbrechen?"
 };
 
-#define PCSC_ERROR(ctx, desc, rv) sc_debug(ctx, desc ": %lx\n", rv);
+#define PCSC_ERROR(ctx, desc, rv) sc_debug(ctx, SC_LOG_DEBUG_NORMAL, desc ": %lx\n", rv);
 
 #endif	/* BELPIC_PIN_PAD */
 
@@ -672,7 +672,7 @@ static int str2lang(sc_context_t *ctx, char *lang)
 		return LNG_FRENCH;
 	else if (memcmp(lang, "de", 2) == 0)
 		return LNG_GERMAN;
-	sc_debug(ctx, "Unknown/unsupported language code: %c%c\n", lang[0], lang[1]);
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Unknown/unsupported language code: %c%c\n", lang[0], lang[1]);
 	return -1;
 }
 
@@ -760,13 +760,13 @@ static int get_language(sc_card_t *card)
 
 	r = sc_transmit_apdu(card, &apdu);
 	if (r < 0) {
-		sc_debug(card->ctx, "Select_File[prefs_file] command failed: %d\n", r);
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Select_File[prefs_file] command failed: %d\n", r);
 		sc_unlock(card);
 		goto prefs_error;
 	}
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	if (r < 0) {
-		sc_debug(card->ctx, "Select_File[prefs_file]: card returned %d\n", r);
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Select_File[prefs_file]: card returned %d\n", r);
 		sc_unlock(card);
 		goto prefs_error;
 	}
@@ -774,7 +774,7 @@ static int get_language(sc_card_t *card)
 	r = iso_ops->read_binary(card, 0, prefs, sizeof(prefs), 0);
 	sc_unlock(card);
 	if (r <= 0) {
-		sc_debug(card->ctx, "Read_Binary[prefs_file] returned %d\n", r);
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Read_Binary[prefs_file] returned %d\n", r);
 		goto prefs_error;
 	}
 #if 0
@@ -782,7 +782,7 @@ static int get_language(sc_card_t *card)
 #endif
 	i = get_pref(prefs, r, "[gen]", "lg", &len);
 	if (i <= 0 || len < 2) {
-		sc_debug(card->ctx, "Couldn't find language in prefs file: %d\n", i);
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Couldn't find language in prefs file: %d\n", i);
 		goto prefs_error;
 	}
 	lg_value = prefs + i;	/* language code(s) found, starts here */
@@ -865,7 +865,7 @@ static int belpic_load_pin_pad_lib(sc_card_t *card, struct belpic_priv_data *pri
 	priv_data->scr_change_pin = (FARPROC) SCR_SCardChangePIN;
 
 	if (priv_data->scr_init == NULL || priv_data->scr_verify_pin == NULL) {
-		sc_debug(card->ctx, "Function not found in \"%s\" err = 0x%0x\n",
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Function not found in \"%s\" err = 0x%0x\n",
 			 pp_reader_lib, GetLastError());
 		load_pin_pad_err(reader_name, pp_reader_lib,
 				 "unsufficient functionality found in library");
@@ -874,12 +874,12 @@ static int belpic_load_pin_pad_lib(sc_card_t *card, struct belpic_priv_data *pri
 
 	r = priv_data->scr_init(pp_reader_lib, reader_name, 1, &supported);
 	if (r != SCARD_S_SUCCESS) {
-		sc_debug(card->ctx, "SCR_Init() returned 0x%0x\n", r);
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "SCR_Init() returned 0x%0x\n", r);
 		load_pin_pad_err(reader_name, pp_reader_lib, "Initialization of library failed");
 		return SC_ERROR_READER;
 	}
 	if (supported) {
-		sc_debug(card->ctx, "SCR_init() returned not supported code 0x%0x\n", supported);
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "SCR_init() returned not supported code 0x%0x\n", supported);
 		load_pin_pad_err(reader_name, pp_reader_lib,
 				 "Initialization of library returned UNSUPPORTED");
 		return SC_ERROR_READER;
@@ -887,10 +887,10 @@ static int belpic_load_pin_pad_lib(sc_card_t *card, struct belpic_priv_data *pri
 #if 0
 	HINSTANCE dll = LoadLibrary(pp_reader_lib);
 
-	sc_debug(card->ctx, "Pin pad reader \"%s\" found, now loading corresponding lib \"%s\"\n",
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Pin pad reader \"%s\" found, now loading corresponding lib \"%s\"\n",
 		 reader_name, pp_reader_lib);
 	if (dll == NULL) {
-		sc_debug(card->ctx, "Unable to load library \"%s\", err = 0x%0x\n",
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Unable to load library \"%s\", err = 0x%0x\n",
 			 pp_reader_lib, GetLastError());
 		load_pin_pad_err(reader_name, pp_reader_lib,
 				 "library not found or unable to load it");
@@ -900,7 +900,7 @@ static int belpic_load_pin_pad_lib(sc_card_t *card, struct belpic_priv_data *pri
 	priv_data->scr_verify_pin = GetProcAddress(dll, "SCR_VerifyPIN");
 	priv_data->scr_change_pin = GetProcAddress(dll, "SCR_ChangePIN");
 	if (priv_data->scr_init == NULL || priv_data->scr_verify_pin == NULL) {
-		sc_debug(card->ctx, "Function not found in \"%s\" err = 0x%0x\n",
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Function not found in \"%s\" err = 0x%0x\n",
 			 pp_reader_lib, GetLastError());
 		load_pin_pad_err(reader_name, pp_reader_lib,
 				 "unsufficient functionality found in library");
@@ -908,12 +908,12 @@ static int belpic_load_pin_pad_lib(sc_card_t *card, struct belpic_priv_data *pri
 	}
 	r = priv_data->scr_init(reader_name, 1, &supported);
 	if (r != SCARD_S_SUCCESS) {
-		sc_debug(card->ctx, "SCR_Init() returned 0x%0x\n", r);
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "SCR_Init() returned 0x%0x\n", r);
 		load_pin_pad_err(reader_name, pp_reader_lib, "Initialization of library failed");
 		return SC_ERROR_READER;
 	}
 	if (supported) {
-		sc_debug(card->ctx, "SCR_init() returned not supported code 0x%0x\n", supported);
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "SCR_init() returned not supported code 0x%0x\n", supported);
 		load_pin_pad_err(reader_name, pp_reader_lib,
 				 "Initialization of library returned UNSUPPORTED");
 		return SC_ERROR_READER;
@@ -984,14 +984,14 @@ static int belpic_init(sc_card_t *card)
 	int r;
 #endif
 
-	sc_debug(card->ctx, "Belpic V%s", BELPIC_VERSION);
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Belpic V%s", BELPIC_VERSION);
 #ifdef HAVE_GUI
-	sc_debug(card->ctx, " with GUI support");
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, " with GUI support");
 #endif
 #ifdef BELPIC_PIN_PAD
-	sc_debug(card->ctx, " with support for pin pad reader libs");
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, " with support for pin pad reader libs");
 #endif
-	sc_debug(card->ctx, "\n");
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "\n");
 
 	if (card->type < 0)
 		card->type = SC_CARD_TYPE_BELPIC_EID;	/* Unknown card: assume it's the Belpic Card */
@@ -1034,7 +1034,7 @@ static int belpic_init(sc_card_t *card)
 #ifdef HAVE_GUI
 	r = scgui_init();
 	if (r != 0)
-		sc_debug(card->ctx, "scgui_init() returned error %d\n", i);
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "scgui_init() returned error %d\n", i);
 #endif
 
 #ifdef BELPIC_PIN_PAD
@@ -1085,11 +1085,11 @@ static int belpic_select_file(sc_card_t *card,
 
 	r = sc_transmit_apdu(card, &apdu);
 
-	SC_TEST_RET(card->ctx, r, "Select File APDU transmit failed");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Select File APDU transmit failed");
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	if (r)
-		SC_FUNC_RETURN(card->ctx, 2, r);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 
 	next_idx = (size_t)-1;		/* reset */
 
@@ -1208,7 +1208,7 @@ static int belpic_pp_verify(sc_card_t *card, SCR_Card * scr_card,
 				if (r1 == SCGUI_CANCEL)
 					return r;
 				else if (r1 != SCGUI_OK) {
-					sc_debug(card->ctx, "scgui_ask_message returned %d\n", r1);
+					sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "scgui_ask_message returned %d\n", r1);
 					return SC_ERROR_INTERNAL;
 				}
 			} else
@@ -1229,7 +1229,7 @@ static int belpic_pp_verify(sc_card_t *card, SCR_Card * scr_card,
 		if (mesg_on_screen)
 			scgui_remove_message(hDlg);
 
-		sc_debug(card->ctx, "SCR_Verify_PIN(): res = 0x%0x, status = %2X %2X\n",
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "SCR_Verify_PIN(): res = 0x%0x, status = %2X %2X\n",
 			 r, card_status[0], card_status[1]);
 		r = belpic_pp_test_res(card, r, card_status, tries_left);
 	}
@@ -1271,7 +1271,7 @@ static int belpic_pp_change(sc_card_t *card, SCR_Card * scr_card,
 			if (r1 == SCGUI_CANCEL)
 				return r;
 			else if (r1 != SCGUI_OK) {
-				sc_debug(card->ctx, "scgui_ask_message returned %d\n", r1);
+				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "scgui_ask_message returned %d\n", r1);
 				return SC_ERROR_INTERNAL;
 			}
 		}
@@ -1283,7 +1283,7 @@ static int belpic_pp_change(sc_card_t *card, SCR_Card * scr_card,
 					 &scr_app_belpic, card_status);
 		scgui_remove_message(hDlg);
 
-		sc_debug(card->ctx, "SCR_Change_PIN(): res = 0x%0x, status = %2X %2X\n",
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "SCR_Change_PIN(): res = 0x%0x, status = %2X %2X\n",
 			 r, card_status[0], card_status[1]);
 		r = belpic_pp_test_res(card, r, card_status, tries_left);
 	}
@@ -1416,7 +1416,7 @@ static int belpic_askpin_verify(sc_card_t *card, int pin_usage)
 		if (r1 == SCGUI_CANCEL)
 			return r;
 		else if (r1 != SCGUI_OK) {
-			sc_debug(card->ctx, "scgui_ask_message returned %d\n", r1);
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "scgui_ask_message returned %d\n", r1);
 			return SC_ERROR_INTERNAL;
 		}
 
@@ -1451,7 +1451,7 @@ static int belpic_set_security_env(sc_card_t *card,
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	int r;
 
-	sc_debug(card->ctx, "belpic_set_security_env(), keyRef = 0x%0x, algo = 0x%0x\n",
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "belpic_set_security_env(), keyRef = 0x%0x, algo = 0x%0x\n",
 		 *env->key_ref, env->algorithm_flags);
 
 	assert(card != NULL && env != NULL);
@@ -1469,7 +1469,7 @@ static int belpic_set_security_env(sc_card_t *card,
 		else if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_MD5)
 			sbuf[2] = 0x04;
 		else {
-			sc_debug(card->ctx, "Set Sec Env: unsupported algo 0X%0X\n",
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Set Sec Env: unsupported algo 0X%0X\n",
 				 env->algorithm_flags);
 			return SC_ERROR_INVALID_ARGUMENTS;
 		}
@@ -1486,10 +1486,10 @@ static int belpic_set_security_env(sc_card_t *card,
 	apdu.resplen = 0;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, r, "Set Security Env APDU transmit failed");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Set Security Env APDU transmit failed");
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, r, "Card's Set Security Env command returned error");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card's Set Security Env command returned error");
 
 	/* If a NonRep signature will be done, ask to enter a PIN. It would be more
 	 * logical to put the code below into the compute signature function because
@@ -1505,11 +1505,11 @@ static int belpic_set_security_env(sc_card_t *card,
 #ifdef HAVE_GUI
 		r = belpic_askpin_verify(card, SCR_USAGE_SIGN);
 		if (r != 0 && r != SC_ERROR_KEYPAD_CANCELLED)
-			sc_debug(card->ctx, "Verify PIN in SET command returned %d\n", r);
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Verify PIN in SET command returned %d\n", r);
 		else
-			sc_debug(card->ctx, "Verify PIN in SET command returned %d\n", r);
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Verify PIN in SET command returned %d\n", r);
 #else
-		sc_debug(card->ctx, "No GUI for NonRep key present, signature cancelled\n");
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "No GUI for NonRep key present, signature cancelled\n");
 		return SC_ERROR_NOT_SUPPORTED;
 #endif
 	}
@@ -1564,12 +1564,12 @@ static int belpic_logout(sc_card_t *card)
 	apdu.cla = 0x80;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, r, "LOGOFF: APDU transmit failed");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "LOGOFF: APDU transmit failed");
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, r, "LOGOFF returned error");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "LOGOFF returned error");
 
-	SC_FUNC_RETURN(card->ctx, 1, r);
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 }
 #endif
 

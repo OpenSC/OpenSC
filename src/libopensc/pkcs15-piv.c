@@ -100,7 +100,7 @@ static int piv_detect_card(sc_pkcs15_card_t *p15card)
 {
 	sc_card_t *card = p15card->card;
 
-	SC_FUNC_CALLED(card->ctx, 1);
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	if (card->type < SC_CARD_TYPE_PIV_II_GENERIC
 		|| card->type >= SC_CARD_TYPE_PIV_II_GENERIC+1000)
 		return SC_ERROR_INVALID_CARD;
@@ -236,7 +236,7 @@ const objdata objects[] = {
 	sc_serial_number_t serial;
 	char buf[SC_MAX_SERIALNR * 2 + 1];
 
-	SC_FUNC_CALLED(card->ctx, 1);
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	/* could read this off card if needed */
 
@@ -253,14 +253,14 @@ const objdata objects[] = {
 
 	r = sc_card_ctl(card, SC_CARDCTL_GET_SERIALNR, &serial);
 	if (r < 0) {
-		sc_debug(card->ctx,"sc_card_ctl rc=%d",r);
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"sc_card_ctl rc=%d",r);
 		p15card->serial_number = strdup("00000000");
 	} else {
 		sc_bin_to_hex(serial.value, serial.len, buf, sizeof(buf), 0);
 		p15card->serial_number = strdup(buf);
 	}
 
-	sc_debug(card->ctx, "PIV-II adding objects...");
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "PIV-II adding objects...");
 
 	/* set other objects */
 	for (i = 0; objects[i].label; i++) {
@@ -292,7 +292,7 @@ const objdata objects[] = {
 		r = sc_pkcs15emu_object_add(p15card, SC_PKCS15_TYPE_DATA_OBJECT, 
 			&obj_obj, &obj_info); 
 		if (r < 0)
-			SC_FUNC_RETURN(card->ctx, 1, r);
+			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 	}
 
 	/*
@@ -306,7 +306,7 @@ const objdata objects[] = {
  
 	 */
 	/* set certs */
-	sc_debug(card->ctx, "PIV-II adding certs...");
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "PIV-II adding certs...");
 	for (i = 0; certs[i].label; i++) {
 		struct sc_pkcs15_cert_info cert_info;
 		struct sc_pkcs15_object    cert_obj;
@@ -337,7 +337,7 @@ const objdata objects[] = {
 		}
 
 		if (r) { 
-			sc_debug(card->ctx, "No cert found,i=%d", i);
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "No cert found,i=%d", i);
 			continue;
 		}
 
@@ -352,7 +352,7 @@ const objdata objects[] = {
 		/* following will find the cached cert in cert_info */
 		r =  sc_pkcs15_read_certificate(p15card, &cert_info, &cert_out);
 		if (r < 0) {
-			sc_debug(card->ctx, "Failed to read/parse the certificate r=%d",r);
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Failed to read/parse the certificate r=%d",r);
 			continue;
 		}
 		/* TODO support DSA keys */
@@ -365,13 +365,13 @@ const objdata objects[] = {
 
 		r = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
 		if (r < 0) {
-			sc_debug(card->ctx, " Failed to add cert obj r=%d",r);
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, " Failed to add cert obj r=%d",r);
 			continue;
 		}
 	}
 
 	/* set pins */
-	sc_debug(card->ctx, "PIV-II adding pins...");
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "PIV-II adding pins...");
 	for (i = 0; pins[i].label; i++) {
 		struct sc_pkcs15_pin_info pin_info;
 		struct sc_pkcs15_object   pin_obj;
@@ -395,7 +395,7 @@ const objdata objects[] = {
 
 		r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
 		if (r < 0)
-			SC_FUNC_RETURN(card->ctx, 1, r);
+			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 	}
 
 
@@ -405,7 +405,7 @@ const objdata objects[] = {
 	 * gets the pubkey, but it can not be read from the card 
 	 * at a later time. The piv-tool can stach in file 
 	 */ 
-	sc_debug(card->ctx, "PIV-II adding pub keys...");
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "PIV-II adding pub keys...");
 	for (i = 0; pubkeys[i].label; i++) {
 		struct sc_pkcs15_pubkey_info pubkey_info;
 		struct sc_pkcs15_object     pubkey_obj;
@@ -434,13 +434,13 @@ const objdata objects[] = {
 			sc_pkcs15_format_id(pubkeys[i].auth_id, &pubkey_obj.auth_id);
 
 		if (certs[i].found == 0) { /*  no cert found */
-			sc_debug(card->ctx,"No cert for this pub key i=%d",i);
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"No cert for this pub key i=%d",i);
 			/* TODO DSA */
 			pubkey_obj.type = SC_PKCS15_TYPE_PUBKEY_RSA;
 			pubkey_obj.data = &pubkey_info;
 			r = sc_pkcs15_read_pubkey(p15card, &pubkey_obj, &p15_key);
 				pubkey_obj.data = NULL;
-				sc_debug(card->ctx," READING PUB KEY r=%d",r);
+				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL," READING PUB KEY r=%d",r);
 			if (r < 0 ) {
 				continue;
 			}
@@ -462,14 +462,14 @@ const objdata objects[] = {
 		/* TODO DSA keys */
 		r = sc_pkcs15emu_add_rsa_pubkey(p15card, &pubkey_obj, &pubkey_info);
 		if (r < 0)
-			SC_FUNC_RETURN(card->ctx, 1, r); /* should not fail */
+			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r); /* should not fail */
 
 		pubkeys[i].found = 1;
 	}
 
 
 	/* set private keys */
-	sc_debug(card->ctx, "PIV-II adding private keys...");
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "PIV-II adding private keys...");
 	for (i = 0; prkeys[i].label; i++) {
 		struct sc_pkcs15_prkey_info prkey_info;
 		struct sc_pkcs15_object     prkey_obj;
@@ -501,10 +501,10 @@ const objdata objects[] = {
 
 		r = sc_pkcs15emu_add_rsa_prkey(p15card, &prkey_obj, &prkey_info);
 		if (r < 0)
-			SC_FUNC_RETURN(card->ctx, 1, r);
+			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 	}
 
-	SC_FUNC_RETURN(card->ctx, 1, SC_SUCCESS);
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
 }
 
 int sc_pkcs15emu_piv_init_ex(sc_pkcs15_card_t *p15card,
@@ -513,7 +513,7 @@ int sc_pkcs15emu_piv_init_ex(sc_pkcs15_card_t *p15card,
 	sc_card_t   *card = p15card->card;
 	sc_context_t    *ctx = card->ctx;
 
-	SC_FUNC_CALLED(ctx, 1);
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 
 	if (opts && opts->flags & SC_PKCS15EMU_FLAGS_NO_CHECK)
 		return sc_pkcs15emu_piv_init(p15card);

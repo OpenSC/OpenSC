@@ -218,7 +218,7 @@ static int tcos_create_file(sc_card_t *card, sc_file_t *file)
 
 	len = SC_MAX_APDU_BUFFER_SIZE;
 	r = tcos_construct_fci(file, sbuf, &len);
-	SC_TEST_RET(card->ctx, r, "tcos_construct_fci() failed");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "tcos_construct_fci() failed");
 	
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xE0, 0x00, 0x00);
         apdu.cla |= 0x80;  /* this is an proprietary extension */
@@ -227,7 +227,7 @@ static int tcos_create_file(sc_card_t *card, sc_file_t *file)
 	apdu.data = sbuf;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 	return sc_check_sw(card, apdu.sw1, apdu.sw2);
 }
 
@@ -306,7 +306,7 @@ static void parse_sec_attr(sc_card_t *card,
                         op = map_operations (buf[0]);
                         if (op == (unsigned int)-1)
                         {
-                                sc_debug (card->ctx,
+                                sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
                                        "Unknown security command byte %02x\n",
                                        buf[0]);
                                 continue;
@@ -369,7 +369,7 @@ static int tcos_select_file(sc_card_t *card,
 		pathlen = 0;
 		break;
 	default:
-		SC_FUNC_RETURN(ctx, 2, SC_ERROR_INVALID_ARGUMENTS);
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
 	}
 	if( pathlen == 0 ) apdu.cse = SC_APDU_CASE_2_SHORT;
 
@@ -389,17 +389,17 @@ static int tcos_select_file(sc_card_t *card,
 	}
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(ctx, r, "APDU transmit failed");
+	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	if (r || file_out == NULL) SC_FUNC_RETURN(ctx, 2, r);
+	if (r || file_out == NULL) SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, r);
 
 	if (apdu.resplen < 1 || apdu.resp[0] != 0x62){
-		sc_debug(ctx, "received invalid template %02X\n", apdu.resp[0]);
-		SC_FUNC_RETURN(ctx, 2, SC_ERROR_UNKNOWN_DATA_RECEIVED);
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "received invalid template %02X\n", apdu.resp[0]);
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_UNKNOWN_DATA_RECEIVED);
 	}
 
 	file = sc_file_new();
-	if (file == NULL) SC_FUNC_RETURN(ctx, 0, SC_ERROR_OUT_OF_MEMORY);
+	if (file == NULL) SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
 	file->path = *in_path;
 
 	for(i=2; i+1<apdu.resplen && i+1+apdu.resp[i+1]<apdu.resplen; i+=2+apdu.resp[i+1]){
@@ -419,8 +419,8 @@ static int tcos_select_file(sc_card_t *card,
 			case 0: file->type = SC_FILE_TYPE_WORKING_EF; break;
 			case 7: file->type = SC_FILE_TYPE_DF; break;
 			default:
-				sc_debug(ctx, "invalid file type %02X in file descriptor\n", d[0]);
-				SC_FUNC_RETURN(ctx, 2, SC_ERROR_UNKNOWN_DATA_RECEIVED);
+				sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "invalid file type %02X in file descriptor\n", d[0]);
+				SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_UNKNOWN_DATA_RECEIVED);
 			}
 			break;
 		case 0x83:
@@ -463,12 +463,14 @@ static int tcos_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 		apdu.resplen = sizeof(rbuf);
 		apdu.le = 256;
 		r = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(ctx, r, "APDU transmit failed");
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 		if (apdu.sw1==0x6A && (apdu.sw2==0x82 || apdu.sw2==0x88)) continue;
 		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-		SC_TEST_RET(ctx, r, "List Dir failed");
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "List Dir failed");
 		if (apdu.resplen > buflen) return SC_ERROR_BUFFER_TOO_SMALL;
-		if(ctx->debug >= 3) sc_debug(ctx, "got %d %s-FileIDs\n", apdu.resplen/2, p1==1 ? "DF" : "EF");
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
+			"got %d %s-FileIDs\n", apdu.resplen/2,
+			p1==1 ? "DF" : "EF");
 
 		memcpy(buf, apdu.resp, apdu.resplen);
 		buf += apdu.resplen;
@@ -485,10 +487,10 @@ static int tcos_delete_file(sc_card_t *card, const sc_path_t *path)
 	u8 sbuf[2];
 	sc_apdu_t apdu;
 
-	SC_FUNC_CALLED(card->ctx, 1);
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	if (path->type != SC_PATH_TYPE_FILE_ID && path->len != 2) {
-		sc_debug(card->ctx, "File type has to be SC_PATH_TYPE_FILE_ID\n");
-		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "File type has to be SC_PATH_TYPE_FILE_ID\n");
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
 	}
 	sbuf[0] = path->value[0];
 	sbuf[1] = path->value[1];
@@ -499,7 +501,7 @@ static int tcos_delete_file(sc_card_t *card, const sc_path_t *path)
 	apdu.data = sbuf;
 	
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 	return sc_check_sw(card, apdu.sw1, apdu.sw2);
 }
 
@@ -518,17 +520,20 @@ static int tcos_set_security_env(sc_card_t *card, const sc_security_env_t *env, 
 	data=(tcos_data *)card->drv_data;
 
         if (se_num || (env->operation!=SC_SEC_OPERATION_DECIPHER && env->operation!=SC_SEC_OPERATION_SIGN)){
-		SC_FUNC_RETURN(ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
 	}
-	if(ctx->debug >= 3){
-		if(!(env->flags & SC_SEC_ENV_KEY_REF_PRESENT)) sc_debug(ctx, "No Key-Reference in SecEnvironment\n");
-		else sc_debug(ctx, "Key-Reference %02X (len=%d)\n", env->key_ref[0], env->key_ref_len);
-	}
+	if(!(env->flags & SC_SEC_ENV_KEY_REF_PRESENT))
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
+			"No Key-Reference in SecEnvironment\n");
+	else
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
+			"Key-Reference %02X (len=%d)\n",
+			env->key_ref[0], env->key_ref_len);
 	/* Key-Reference 0x80 ?? */
 	default_key= !(env->flags & SC_SEC_ENV_KEY_REF_PRESENT) || (env->key_ref_len==1 && env->key_ref[0]==0x80);
-	if(ctx->debug>=3){
-		sc_debug(ctx, "TCOS3:%d PKCS1:%d\n", tcos3, !!(env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1));
-	}
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
+		"TCOS3:%d PKCS1:%d\n", tcos3,
+		!!(env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1));
 
 	data->pad_flags = env->algorithm_flags;
 	data->next_sign = default_key;
@@ -545,15 +550,18 @@ static int tcos_set_security_env(sc_card_t *card, const sc_security_env_t *env, 
 	apdu.data = sbuf;
 	apdu.lc = apdu.datalen = (p - sbuf);
 
-	if ((r=sc_transmit_apdu(card, &apdu))) {
-		sc_perror(ctx, r, "APDU transmit failed");
+	r=sc_transmit_apdu(card, &apdu);
+	if (r) {
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
+			"%s: APDU transmit failed", sc_strerror(r));
 		return r;
 	}
 	if (apdu.sw1==0x6A && (apdu.sw2==0x81 || apdu.sw2==0x88)) {
-		if (ctx->debug >= 3) sc_debug(ctx, "Detected Signature-Only key\n");
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
+			"Detected Signature-Only key\n");
 		if (env->operation==SC_SEC_OPERATION_SIGN && default_key) return SC_SUCCESS;
 	}
-	SC_FUNC_RETURN(ctx, 2, sc_check_sw(card, apdu.sw1, apdu.sw2));
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
 
 
@@ -574,12 +582,12 @@ static int tcos_compute_signature(sc_card_t *card, const u8 * data, size_t datal
 	assert(card != NULL && data != NULL && out != NULL);
 	tcos3=(card->type==SC_CARD_TYPE_TCOS_V3);
 
-	if (datalen > 255) SC_FUNC_RETURN(card->ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
+	if (datalen > 255) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
 
 	if(((tcos_data *)card->drv_data)->next_sign){
 		if(datalen>48){
-			sc_debug(card->ctx, "Data to be signed is too long (TCOS supports max. 48 bytes)\n");
-			SC_FUNC_RETURN(card->ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Data to be signed is too long (TCOS supports max. 48 bytes)\n");
+			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
 		}
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x9E, 0x9A);
 		memcpy(sbuf, data, datalen);
@@ -599,7 +607,7 @@ static int tcos_compute_signature(sc_card_t *card, const u8 * data, size_t datal
 	apdu.lc = apdu.datalen = dlen;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 	if (tcos3 && apdu.p1==0x80 && apdu.sw1==0x6A && apdu.sw2==0x87) {
 		int keylen=128;
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A,0x80,0x86);
@@ -614,14 +622,14 @@ static int tcos_compute_signature(sc_card_t *card, const u8 * data, size_t datal
 		apdu.data = sbuf;
 		apdu.lc = apdu.datalen = dlen;
 		r = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 	}
 	if (apdu.sw1==0x90 && apdu.sw2==0x00) {
 		size_t len = apdu.resplen>outlen ? outlen : apdu.resplen;
 		memcpy(out, apdu.resp, len);
-		SC_FUNC_RETURN(card->ctx, 4, len);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, len);
 	}
-	SC_FUNC_RETURN(card->ctx, 4, sc_check_sw(card, apdu.sw1, apdu.sw2));
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
 
 
@@ -639,8 +647,10 @@ static int tcos_decipher(sc_card_t *card, const u8 * crgram, size_t crgram_len, 
 	tcos3=(card->type==SC_CARD_TYPE_TCOS_V3);
 	data=(tcos_data *)card->drv_data;
 
-	SC_FUNC_CALLED(ctx, 2);
-	if(ctx->debug>=3) sc_debug(ctx, "TCOS3:%d PKCS1:%d\n",tcos3,!!(data->pad_flags & SC_ALGORITHM_RSA_PAD_PKCS1));
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
+		"TCOS3:%d PKCS1:%d\n",tcos3,
+		!!(data->pad_flags & SC_ALGORITHM_RSA_PAD_PKCS1));
 
 	sc_format_apdu(card, &apdu, crgram_len>255 ? SC_APDU_CASE_4_EXT : SC_APDU_CASE_4_SHORT, 0x2A, 0x80, 0x86);
 	apdu.resp = rbuf;
@@ -653,7 +663,7 @@ static int tcos_decipher(sc_card_t *card, const u8 * crgram, size_t crgram_len, 
 	memcpy(sbuf+1, crgram, crgram_len);
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 
 	if (apdu.sw1==0x90 && apdu.sw2==0x00) {
 		size_t len= (apdu.resplen>outlen) ? outlen : apdu.resplen;
@@ -663,9 +673,9 @@ static int tcos_decipher(sc_card_t *card, const u8 * crgram, size_t crgram_len, 
 			offset=(offset<len-1) ? offset+1 : 0;
 		}
 		memcpy(out, apdu.resp+offset, len-offset);
-		SC_FUNC_RETURN(card->ctx, 2, len-offset);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, len-offset);
 	}
-	SC_FUNC_RETURN(card->ctx, 2, sc_check_sw(card, apdu.sw1, apdu.sw2));
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
 
 
@@ -677,7 +687,7 @@ static int tcos_setperm(sc_card_t *card, int enable_nullpin)
 	int r;
 	sc_apdu_t apdu;
 
-	SC_FUNC_CALLED(card->ctx, 1);
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0xEE, 0x00, 0x00);
         apdu.cla |= 0x80;
 	apdu.lc = 0;
@@ -685,7 +695,7 @@ static int tcos_setperm(sc_card_t *card, int enable_nullpin)
 	apdu.data = NULL;
 	
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 	return sc_check_sw(card, apdu.sw1, apdu.sw2);
 }
 

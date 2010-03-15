@@ -48,7 +48,7 @@ CK_RV C_OpenSession(CK_SLOT_ID slotID,	/* the slot's ID */
 	if (rv != CKR_OK)
 		return rv;
 
-	sc_debug(context, "C_OpenSession(0x%lx)", slotID);
+	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_OpenSession(0x%lx)", slotID);
 
 	if (!(flags & CKF_SERIAL_SESSION)) {
 		rv = CKR_SESSION_PARALLEL_NOT_SUPPORTED;
@@ -84,10 +84,10 @@ CK_RV C_OpenSession(CK_SLOT_ID slotID,	/* the slot's ID */
 	session->handle = (CK_SESSION_HANDLE) session;	// cast a pointer to long
 	list_append(&sessions, session);
 	*phSession = session->handle;
-	sc_debug(context, "C_OpenSession handle: 0x%lx", session->handle);
+	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_OpenSession handle: 0x%lx", session->handle);
 
 out:
-	sc_debug(context, "C_OpenSession() = %s", lookup_enum(RV_T, rv));
+	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_OpenSession() = %s", lookup_enum(RV_T, rv));
 	sc_pkcs11_unlock();
 	return rv;
 }
@@ -99,7 +99,7 @@ static CK_RV sc_pkcs11_close_session(CK_SESSION_HANDLE hSession)
 	struct sc_pkcs11_slot *slot;
 	struct sc_pkcs11_session *session;
 
-	sc_debug(context, "real C_CloseSession(0x%lx)", hSession);
+	sc_debug(context, SC_LOG_DEBUG_NORMAL, "real C_CloseSession(0x%lx)", hSession);
 
 	session = list_seek(&sessions, &hSession);
 	if (!session)
@@ -115,7 +115,7 @@ static CK_RV sc_pkcs11_close_session(CK_SESSION_HANDLE hSession)
 	}
 
 	if (list_delete(&sessions, session) != 0)
-		sc_debug(context, "Could not delete session from list!");
+		sc_debug(context, SC_LOG_DEBUG_NORMAL, "Could not delete session from list!");
 	free(session);
 	return CKR_OK;
 }
@@ -127,7 +127,7 @@ CK_RV sc_pkcs11_close_all_sessions(CK_SLOT_ID slotID)
 	struct sc_pkcs11_session *session;
 	CK_RV rv = CKR_OK;
 	unsigned int i;
-	sc_debug(context, "real C_CloseAllSessions(0x%lx) %d", slotID, list_size(&sessions));
+	sc_debug(context, SC_LOG_DEBUG_NORMAL, "real C_CloseAllSessions(0x%lx) %d", slotID, list_size(&sessions));
 	for (i = 0; i < list_size(&sessions); i++) {
 		session = list_get_at(&sessions, i);
 		if (session->slot->id == slotID)
@@ -141,7 +141,7 @@ CK_RV C_CloseSession(CK_SESSION_HANDLE hSession)
 {				/* the session's handle */
 	int rv;
 
-	sc_debug(context, "C_CloseSession(0x%lx)\n", hSession);
+	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_CloseSession(0x%lx)\n", hSession);
 
 	rv = sc_pkcs11_lock();
 	if (rv == CKR_OK)
@@ -155,7 +155,7 @@ CK_RV C_CloseAllSessions(CK_SLOT_ID slotID)
 	struct sc_pkcs11_slot *slot;
 	int rv;
 
-	sc_debug(context, "C_CloseAllSessions(0x%lx)\n", slotID);
+	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_CloseAllSessions(0x%lx)\n", slotID);
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
 		return rv;
@@ -177,7 +177,7 @@ CK_RV C_GetSessionInfo(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	struct sc_pkcs11_slot *slot;
 	int rv;
 
-	sc_debug(context, "C_GetSessionInfo(0x%lx)", hSession);
+	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_GetSessionInfo(0x%lx)", hSession);
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
 		return rv;
@@ -193,7 +193,7 @@ CK_RV C_GetSessionInfo(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		goto out;
 	}
 
-	sc_debug(context, "C_GetSessionInfo(slot 0x%lx).", session->slot->id);
+	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_GetSessionInfo(slot 0x%lx).", session->slot->id);
 	pInfo->slotID = session->slot->id;
 	pInfo->flags = session->flags;
 	pInfo->ulDeviceError = 0;
@@ -210,7 +210,7 @@ CK_RV C_GetSessionInfo(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	}
 
       out:
-	sc_debug(context, "C_GetSessionInfo(0x%lx) = %s", hSession, lookup_enum(RV_T, rv));
+	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_GetSessionInfo(0x%lx) = %s", hSession, lookup_enum(RV_T, rv));
 	sc_pkcs11_unlock();
 	return rv;
 }
@@ -259,7 +259,7 @@ CK_RV C_Login(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		goto out;
 	}
 
-	sc_debug(context, "C_Login(0x%lx, %d)", hSession, userType);
+	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_Login(0x%lx, %d)", hSession, userType);
 
 	slot = session->slot;
 
@@ -310,7 +310,7 @@ CK_RV C_Logout(CK_SESSION_HANDLE hSession)
 		goto out;
 	}
 
-	sc_debug(context, "C_Logout(0x%lx)", hSession);
+	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_Logout(0x%lx)", hSession);
 
 	slot = session->slot;
 
@@ -386,7 +386,7 @@ CK_RV C_SetPIN(CK_SESSION_HANDLE hSession,
 		goto out;
 	}
 
-	sc_debug(context, "Changing PIN (session 0x%lx; login user %d)\n", hSession,
+	sc_debug(context, SC_LOG_DEBUG_NORMAL, "Changing PIN (session 0x%lx; login user %d)\n", hSession,
 		 slot->login_user);
 	slot = session->slot;
 

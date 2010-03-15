@@ -42,31 +42,10 @@
 
 #include "internal.h"
 
-/* Although not used, we need this for consistent exports */
-void _sc_debug(sc_context_t *ctx, const char *format, ...)
+void sc_do_log(sc_context_t *ctx, int level, const char *file, int line, const char *func, const char *format, ...)
 {
 	va_list ap;
 
-	va_start(ap, format);
-	sc_do_log_va(ctx, SC_LOG_TYPE_DEBUG, NULL, 0, NULL, format, ap);
-	va_end(ap);
-}
-
-void sc_do_log(sc_context_t *ctx, int type, const char *file, int line, const char *func, const char *format, ...)
-{
-	va_list ap;
-
-	va_start(ap, format);
-	sc_do_log_va(ctx, type, file, line, func, format, ap);
-	va_end(ap);
-}
-
-/*
- * Default debug/error message output
- */
-
-void sc_do_log_va(sc_context_t *ctx, int type, const char *file, int line, const char *func, const char *format, va_list args)
-{
 	char	buf[1836], *p;
 	int	r;
 	size_t	left;
@@ -80,13 +59,12 @@ void sc_do_log_va(sc_context_t *ctx, int type, const char *file, int line, const
 	FILE		*outf = NULL;
 	int		n;
 
-
 	assert(ctx != NULL);
 
-	if (type != SC_LOG_TYPE_DEBUG) 
+	if (ctx->debug < level)
 		return;
-	if (ctx->debug == 0)
-		return;
+
+	va_start(ap, format);
 
 	p = buf;
 	left = sizeof(buf);
@@ -117,7 +95,7 @@ void sc_do_log_va(sc_context_t *ctx, int type, const char *file, int line, const
 	p += r;
 	left -= r;
 
-	r = vsnprintf(p, left, format, args);
+	r = vsnprintf(p, left, format, ap);
 	if (r < 0)
 		return;
 	p += r;
@@ -132,13 +110,21 @@ void sc_do_log_va(sc_context_t *ctx, int type, const char *file, int line, const
 	if (n == 0 || buf[n-1] != '\n')
 		fprintf(outf, "\n");
 	fflush(outf);
+
+	va_end(ap);
+
 	return;
 }
 
-void sc_hex_dump(sc_context_t *ctx, const u8 * in, size_t count, char *buf, size_t len)
+void sc_hex_dump(sc_context_t *ctx, int level, const u8 * in, size_t count, char *buf, size_t len)
 {
 	char *p = buf;
 	int lines = 0;
+
+	assert(ctx != NULL);
+
+	if (ctx->debug < level)
+		return;
 
 	assert(buf != NULL && in != NULL);
 	buf[0] = 0;

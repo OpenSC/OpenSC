@@ -86,10 +86,9 @@ static int westcos_get_default_key(sc_card_t * card,
 				   struct sc_cardctl_default_key *data)
 {
 	const char *default_key;
-	if (card->ctx->debug >= 1)
-		sc_debug(card->ctx,
-			 "westcos_get_default_key:data->method=%d, data->key_ref=%d\n",
-			 data->method, data->key_ref);
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+		 "westcos_get_default_key:data->method=%d, data->key_ref=%d\n",
+		 data->method, data->key_ref);
 	if (data->method != SC_AC_AUT || data->key_ref != 0)
 		return SC_ERROR_NO_DEFAULT_KEY;
 	default_key =
@@ -294,29 +293,26 @@ static int westcos_process_fci(sc_card_t * card, sc_file_t * file,
 	sc_context_t *ctx = card->ctx;
 	size_t taglen, len = buflen;
 	const u8 *tag = NULL, *p = buf;
-	if (card->ctx->debug >= 5)
-		sc_debug(card->ctx, "processing FCI bytes\n");
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "processing FCI bytes\n");
 	tag = sc_asn1_find_tag(ctx, p, len, 0x83, &taglen);
 	if (tag != NULL && taglen == 2) {
 		file->id = (tag[0] << 8) | tag[1];
-		if (card->ctx->debug >= 5)
-			sc_debug(card->ctx, "  file identifier: 0x%02X%02X\n",
-				 tag[0], tag[1]);
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+			"  file identifier: 0x%02X%02X\n", tag[0], tag[1]);
 	}
 	tag = sc_asn1_find_tag(ctx, p, len, 0x80, &taglen);
 	if (tag != NULL && taglen >= 2) {
 		int bytes = (tag[0] << 8) + tag[1];
-		if (card->ctx->debug >= 5)
-			sc_debug(card->ctx, "  bytes in file: %d\n", bytes);
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+			"  bytes in file: %d\n", bytes);
 		file->size = bytes;
 	}
 	if (tag == NULL) {
 		tag = sc_asn1_find_tag(ctx, p, len, 0x81, &taglen);
 		if (tag != NULL && taglen >= 2) {
 			int bytes = (tag[0] << 8) + tag[1];
-			if (card->ctx->debug >= 5)
-				sc_debug(card->ctx, "  bytes in file: %d\n",
-					 bytes);
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+				"  bytes in file: %d\n", bytes);
 			file->size = bytes;
 		}
 	}
@@ -326,9 +322,9 @@ static int westcos_process_fci(sc_card_t * card, sc_file_t * file,
 			unsigned char byte = tag[0];
 			const char *type;
 			file->shareable = 0;
-			if (card->ctx->debug >= 5)
-				sc_debug(card->ctx, "  shareable: %s\n",
-					 (file->shareable) ? "yes" : "no");
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+				"  shareable: %s\n",
+				 (file->shareable) ? "yes" : "no");
 			file->ef_structure = SC_FILE_EF_UNKNOWN;
 			switch (byte) {
 			case 0x38:
@@ -353,22 +349,22 @@ static int westcos_process_fci(sc_card_t * card, sc_file_t * file,
 			default:
 				type = "unknow";
 			}
-			if (card->ctx->debug >= 5)
-				sc_debug(card->ctx, "  type: %s\n", type);
-			if (card->ctx->debug >= 5)
-				sc_debug(card->ctx, "  EF structure: %d\n",
-					 file->ef_structure);
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+				"  type: %s\n", type);
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+				"  EF structure: %d\n", file->ef_structure);
 		}
 	}
 	tag = sc_asn1_find_tag(ctx, p, len, 0x84, &taglen);
 	if (tag != NULL && taglen > 0 && taglen <= 16) {
 		memcpy(file->name, tag, taglen);
 		file->namelen = taglen;
-		if (card->ctx->debug >= 5) {
+		{
 			char tbuf[128];
-			sc_hex_dump(ctx, file->name, file->namelen, tbuf,
-				    sizeof(tbuf));
-			sc_debug(card->ctx, "  File name: %s\n", tbuf);
+			sc_hex_dump(ctx, SC_LOG_DEBUG_NORMAL,
+				file->name, file->namelen, tbuf, sizeof(tbuf));
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+				"  File name: %s\n", tbuf);
 		}
 	}
 	if (file->type == SC_FILE_TYPE_DF) {
@@ -515,8 +511,7 @@ static int westcos_create_file(sc_card_t *card, struct sc_file *file)
 	int buflen;
 	if (card == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
-	if (card->ctx->debug >= 1)
-		sc_debug(card->ctx, "westcos_create_file\n");
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "westcos_create_file\n");
 	memset(buf, 0, sizeof(buf));
 
 	/* transport key */
@@ -601,9 +596,9 @@ static int westcos_create_file(sc_card_t *card, struct sc_file *file)
 		p1 = (file->id) / 256;
 		p2 = (file->id) % 256;
 	}
-	if (card->ctx->debug >= 3)
-		sc_debug(card->ctx, "create file %s, id %X size %d\n",
-			 file->path.value, file->id, file->size);
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+		"create file %s, id %X size %d\n",
+		 file->path.value, file->id, file->size);
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xE0, p1, p2);
 	apdu.cla = 0x80;
 	apdu.lc = buflen;
@@ -622,8 +617,7 @@ static int westcos_delete_file(sc_card_t * card, const sc_path_t * path_in)
 	sc_apdu_t apdu;
 	if (card == NULL || path_in == NULL || path_in->len < 2)
 		return SC_ERROR_INVALID_ARGUMENTS;
-	if (card->ctx->debug >= 1)
-		sc_debug(card->ctx, "westcos_delete_file\n");
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "westcos_delete_file\n");
 	if (path_in->len > 2) {
 		r = sc_select_file(card, path_in, NULL);
 		if (r)
@@ -648,8 +642,7 @@ static int westcos_list_files(sc_card_t * card, u8 * buf, size_t buflen)
 	sc_apdu_t apdu;
 	if (card == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
-	if (card->ctx->debug >= 1)
-		sc_debug(card->ctx, "westcos_list_files\n");
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "westcos_list_files\n");
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0x34, 0x00, 0x00);
 	apdu.cla = 0x80;
 	apdu.le = buflen;
@@ -698,10 +691,9 @@ static int westcos_pin_cmd(sc_card_t * card, struct sc_pin_cmd_data *data,
 	int pad = 0, use_pin_pad = 0, ins, p1 = 0;
 	if (card == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
-	if (card->ctx->debug >= 1)
-		sc_debug(card->ctx,
-			 "westcos_pin_cmd:data->pin_type=%X, data->cmd=%X\n",
-			 data->pin_type, data->cmd);
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+		 "westcos_pin_cmd:data->pin_type=%X, data->cmd=%X\n",
+		 data->pin_type, data->cmd);
 	if (tries_left)
 		*tries_left = -1;
 	switch (data->pin_type) {
@@ -870,8 +862,8 @@ static int westcos_card_ctl(sc_card_t * card, unsigned long cmd, void *ptr)
 	priv_data_t *priv_data = NULL;
 	if (card == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
-	if (card->ctx->debug >= 1)
-		sc_debug(card->ctx, "westcos_card_ctl cmd = %X\n", cmd);
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+		"westcos_card_ctl cmd = %X\n", cmd);
 	priv_data = (priv_data_t *) card->drv_data;
 	switch (cmd) {
 	case SC_CARDCTL_GET_DEFAULT_KEY:
@@ -1055,8 +1047,8 @@ static int westcos_set_security_env(sc_card_t *card,
 	priv_data_t *priv_data = NULL;
 	if (card == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
-	if (card->ctx->debug >= 1)
-		sc_debug(card->ctx, "westcos_set_security_env\n");
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+		"westcos_set_security_env\n");
 	priv_data = (priv_data_t *) card->drv_data;
 	priv_data->env = *env;
 	
@@ -1097,8 +1089,8 @@ static int westcos_restore_security_env(sc_card_t *card, int se_num)
 {
 	if (card == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
-	if (card->ctx->debug >= 1)
-		sc_debug(card->ctx, "westcos_restore_security_env\n");
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+		"westcos_restore_security_env\n");
 	return 0;
 }
 
@@ -1119,8 +1111,8 @@ static int westcos_sign_decipher(int mode, sc_card_t *card,
 
 	if (card == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
-	if (card->ctx->debug >= 1)
-		sc_debug(card->ctx, "westcos_sign_decipher outlen=%d\n", outlen);
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+		"westcos_sign_decipher outlen=%d\n", outlen);
 	priv_data = (priv_data_t *) card->drv_data;
 
 	if(priv_data->flags & RSA_CRYPTO_COMPONENT)
@@ -1173,8 +1165,8 @@ static int westcos_sign_decipher(int mode, sc_card_t *card,
 		alire = min(((keyfile->size) - idx), sizeof(buf));
 		if (alire <= 0)
 			break;
-		if (card->ctx->debug >= 5)
-			sc_debug(card->ctx, "idx = %d, alire=%d\n", idx, alire);
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+			"idx = %d, alire=%d\n", idx, alire);
 		r = sc_read_binary(card, idx, buf, alire, 0);
 		if (r < 0)
 			goto out;
@@ -1183,9 +1175,8 @@ static int westcos_sign_decipher(int mode, sc_card_t *card,
 	} while (1);
 	BIO_set_mem_eof_return(mem, -1);
 	if (!d2i_RSAPrivateKey_bio(mem, &rsa)) {
-		if (card->ctx->debug >= 5)
-			sc_debug(card->ctx, "RSA key invalid, %d\n",
-				 ERR_get_error());
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+			"RSA key invalid, %d\n", ERR_get_error());
 		r = SC_ERROR_UNKNOWN;
 		goto out;
 	}
@@ -1193,8 +1184,7 @@ static int westcos_sign_decipher(int mode, sc_card_t *card,
 	/* pkcs11 reset openssl functions */
 	rsa->meth = RSA_PKCS1_SSLeay();
 	if (RSA_size(rsa) > outlen) {
-		if (card->ctx->debug >= 5)
-			sc_debug(card->ctx, "Buffer too small\n");
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Buffer too small\n");
 		r = SC_ERROR_OUT_OF_MEMORY;
 		goto out;
 	}
@@ -1207,9 +1197,8 @@ static int westcos_sign_decipher(int mode, sc_card_t *card,
 			print_openssl_error();
 
 #endif
-			if (card->ctx->debug >= 5)
-				sc_debug(card->ctx, "Decipher error %d\n",
-					 ERR_get_error());
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+				"Decipher error %d\n", ERR_get_error());
 			r = SC_ERROR_UNKNOWN;
 			goto out;
 		}
@@ -1224,9 +1213,8 @@ static int westcos_sign_decipher(int mode, sc_card_t *card,
 			print_openssl_error();
 
 #endif
-			if (card->ctx->debug >= 5)
-				sc_debug(card->ctx, "Signature error %d\n",
-					 ERR_get_error());
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+				"Signature error %d\n", ERR_get_error());
 			r = SC_ERROR_UNKNOWN;
 			goto out;
 		}
@@ -1234,9 +1222,8 @@ static int westcos_sign_decipher(int mode, sc_card_t *card,
 
 #else
 	if (RSA_sign(nid, data, data_len, out, &outlen, rsa) != 1) {
-		if (card->ctx->debug >= 5)
-			sc_debug(card->ctx, "RSA_sign error %d \n",
-				 ERR_get_error());
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+			"RSA_sign error %d \n", ERR_get_error());
 		r = SC_ERROR_UNKNOWN;
 		goto out;
 	}

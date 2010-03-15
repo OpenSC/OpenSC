@@ -215,7 +215,7 @@ sc_pkcs11_gen_keypair_soft(CK_KEY_TYPE keytype, CK_ULONG keybits,
 		rsa = RSA_generate_key(keybits, 0x10001, NULL, err);
 		BIO_free(err);
 		if (rsa == NULL) {
-			sc_debug(context, "RSA_generate_key() failed\n");
+			sc_debug(context, SC_LOG_DEBUG_NORMAL, "RSA_generate_key() failed\n");
 			return CKR_FUNCTION_FAILED;
 		}
 
@@ -226,7 +226,7 @@ sc_pkcs11_gen_keypair_soft(CK_KEY_TYPE keytype, CK_ULONG keybits,
 		 || !do_convert_bignum(&sc_priv->d, rsa->d)
 		 || !do_convert_bignum(&sc_priv->p, rsa->p)
 		 || !do_convert_bignum(&sc_priv->q, rsa->q)) {
-		 	sc_debug(context, "do_convert_bignum() failed\n");
+		 	sc_debug(context, SC_LOG_DEBUG_NORMAL, "do_convert_bignum() failed\n");
 		 	RSA_free(rsa);
 			return CKR_FUNCTION_FAILED;
 		}
@@ -238,7 +238,7 @@ sc_pkcs11_gen_keypair_soft(CK_KEY_TYPE keytype, CK_ULONG keybits,
 
 		if (!do_convert_bignum(&sc_pub->modulus, rsa->n)
 		 || !do_convert_bignum(&sc_pub->exponent, rsa->e)) {
-		 	sc_debug(context, "do_convert_bignum() failed\n");
+		 	sc_debug(context, SC_LOG_DEBUG_NORMAL, "do_convert_bignum() failed\n");
 		 	RSA_free(rsa);
 			return CKR_FUNCTION_FAILED;
 		}
@@ -381,7 +381,7 @@ CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, int pubkey_len,
 		else if (res == 0)
 			return CKR_SIGNATURE_INVALID;
 		else {
-			sc_debug(context, "EVP_VerifyFinal() returned %d\n", res);
+			sc_debug(context, SC_LOG_DEBUG_NORMAL, "EVP_VerifyFinal() returned %d\n", res);
 			return CKR_GENERAL_ERROR;
 		}
 	}
@@ -417,7 +417,7 @@ CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, int pubkey_len,
 		RSA_free(rsa);
 		if(rsa_outlen <= 0) {
 			free(rsa_out);
-			sc_debug(context, "RSA_public_decrypt() returned %d\n", rsa_outlen);
+			sc_debug(context, SC_LOG_DEBUG_NORMAL, "RSA_public_decrypt() returned %d\n", rsa_outlen);
 			return CKR_GENERAL_ERROR;
 		}
 

@@ -172,22 +172,22 @@ muscle_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	int		r;
 	
 	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
-		sc_debug(ctx, "Muscle supports RSA keys only.");
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Muscle supports RSA keys only.");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 	/* Verification stuff */
 	/* Used for verification AND for obtaining private key acls */
 	r = sc_profile_get_file_by_path(profile, &key_info->path, &prkf);
-	if(!prkf) SC_FUNC_RETURN(ctx, 2,SC_ERROR_NOT_SUPPORTED);
+	if(!prkf) SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE,SC_ERROR_NOT_SUPPORTED);
 	r = sc_pkcs15init_authenticate(profile, p15card, prkf, SC_AC_OP_CRYPTO);
 	if (r < 0) {
 		sc_file_free(prkf);
-		SC_FUNC_RETURN(ctx, 2,SC_ERROR_NOT_SUPPORTED);
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE,SC_ERROR_NOT_SUPPORTED);
 	}
 	sc_file_free(prkf);
 	r = muscle_select_key_reference(profile, p15card, key_info);
 	if (r < 0) {
-		SC_FUNC_RETURN(ctx, 2,r);
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE,r);
 	}
 	rsa = &key->u.rsa;
 	
@@ -210,8 +210,8 @@ muscle_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	
 	r = sc_card_ctl(p15card->card, SC_CARDCTL_MUSCLE_IMPORT_KEY, &info);
 	if (r < 0) {
-		sc_debug(ctx, "Unable to import key");
-		SC_FUNC_RETURN(ctx, 2,r);
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Unable to import key");
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE,r);
 	}
 	return r;
 }
@@ -230,23 +230,23 @@ muscle_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	int		r;
 	
 	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
-		sc_debug(card->ctx, "Muscle supports only RSA keys (for now).");
-		SC_FUNC_RETURN(card->ctx, 2,SC_ERROR_NOT_SUPPORTED);
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Muscle supports only RSA keys (for now).");
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,SC_ERROR_NOT_SUPPORTED);
 	}
 	keybits = key_info->modulus_length & ~7UL;
 	if (keybits > 2048) {
-		sc_debug(card->ctx, "Unable to generate key, max size is %d",
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Unable to generate key, max size is %d",
 				2048);
-		SC_FUNC_RETURN(card->ctx, 2,SC_ERROR_INVALID_ARGUMENTS);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,SC_ERROR_INVALID_ARGUMENTS);
 	}
 	/* Verification stuff */
 	/* Used for verification AND for obtaining private key acls */
 	r = sc_profile_get_file_by_path(profile, &key_info->path, &prkf);
-	if(!prkf) SC_FUNC_RETURN(card->ctx, 2,SC_ERROR_NOT_SUPPORTED);
+	if(!prkf) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,SC_ERROR_NOT_SUPPORTED);
 	r = sc_pkcs15init_authenticate(profile, p15card, prkf, SC_AC_OP_CRYPTO);
 	if (r < 0) {
 		sc_file_free(prkf);
-		SC_FUNC_RETURN(card->ctx, 2,SC_ERROR_NOT_SUPPORTED);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,SC_ERROR_NOT_SUPPORTED);
 	}
 	sc_file_free(prkf);
 	
@@ -263,8 +263,8 @@ muscle_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	
 	r = sc_card_ctl(card, SC_CARDCTL_MUSCLE_GENERATE_KEY, &args);
 	if (r < 0) {
-		sc_debug(card->ctx, "Unable to generate key");
-		SC_FUNC_RETURN(card->ctx, 2,r);
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Unable to generate key");
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,r);
 	}
 	
 	memset(&extArgs, 0, sizeof(extArgs));
@@ -274,8 +274,8 @@ muscle_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	extArgs.keyLocation = args.publicKeyLocation;
 	r = sc_card_ctl(card, SC_CARDCTL_MUSCLE_EXTRACT_KEY, &extArgs);
 	if (r < 0) {
-		sc_debug(card->ctx, "Unable to extract the public key");
-		SC_FUNC_RETURN(card->ctx, 2,r);
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Unable to extract the public key");
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,r);
 	}
 	
 	pubkey->algorithm = SC_ALGORITHM_RSA;

@@ -69,7 +69,7 @@ openct_reader_init(sc_context_t *ctx, void **priv_data)
 	unsigned int	i,max_virtual;
 	scconf_block *conf_block;
 
-	SC_FUNC_CALLED(ctx, 1);
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 
 	max_virtual = 2;
 	conf_block = sc_get_conf_block(ctx, "reader_driver", "openct", 1);
@@ -95,7 +95,7 @@ openct_add_reader(sc_context_t *ctx, unsigned int num, ct_info_t *info)
 {
 	sc_reader_t	*reader;
 	struct driver_data *data;
-	int		rc, i;
+	int		rc;
 
 	if (!(reader = calloc(1, sizeof(*reader)))
 	 || !(data = (calloc(1, sizeof(*data))))) {
@@ -137,7 +137,7 @@ openct_add_reader(sc_context_t *ctx, unsigned int num, ct_info_t *info)
  */
 static int openct_reader_finish(sc_context_t *ctx, void *priv_data)
 {
-	SC_FUNC_CALLED(ctx, 1);
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 	return SC_NO_ERROR;
 }
 
@@ -149,9 +149,8 @@ static int openct_reader_finish(sc_context_t *ctx, void *priv_data)
 static int openct_reader_release(sc_reader_t *reader)
 {
 	struct driver_data *data = (struct driver_data *) reader->drv_data;
-	int i;
 
-	SC_FUNC_CALLED(reader->ctx, 1);
+	SC_FUNC_CALLED(reader->ctx, SC_LOG_DEBUG_VERBOSE);
 	if (data) {
 		if (data->h)
 			ct_reader_disconnect(data->h);
@@ -171,7 +170,7 @@ static int openct_reader_detect_card_presence(sc_reader_t *reader)
 	struct driver_data *data = (struct driver_data *) reader->drv_data;
 	int rc, status;
 
-	SC_FUNC_CALLED(reader->ctx, 1);
+	SC_FUNC_CALLED(reader->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	reader->flags = 0;
 	if (!data->h && !(data->h = ct_reader_connect(data->num)))
@@ -194,27 +193,27 @@ openct_reader_connect(sc_reader_t *reader)
 	struct driver_data *data = (struct driver_data *) reader->drv_data;
 	int rc;
 
-	SC_FUNC_CALLED(reader->ctx, 1);
+	SC_FUNC_CALLED(reader->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	if (data->h)
 		ct_reader_disconnect(data->h);
 
 	if (!(data->h = ct_reader_connect(data->num))) {
-		sc_debug(reader->ctx, "ct_reader_connect socket failed\n");
+		sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "ct_reader_connect socket failed\n");
 		return SC_ERROR_CARD_NOT_PRESENT;
 	}
 
 	rc = ct_card_request(data->h, data->slot, 0, NULL,
 				reader->atr, sizeof(reader->atr));
 	if (rc < 0) {
-		sc_debug(reader->ctx,
+		sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL,
 				"openct_reader_connect read failed: %s\n",
 				ct_strerror(rc));
 		return SC_ERROR_CARD_NOT_PRESENT;
 	}
 
 	if (rc == 0) {
-		sc_debug(reader->ctx, "openct_reader_connect recved no data\n");
+		sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "openct_reader_connect recved no data\n");
 		return SC_ERROR_READER;
 	}
 
@@ -240,7 +239,7 @@ static int openct_reader_disconnect(sc_reader_t *reader)
 {
 	struct driver_data *data = (struct driver_data *) reader->drv_data;
 
-	SC_FUNC_CALLED(reader->ctx, 1);
+	SC_FUNC_CALLED(reader->ctx, SC_LOG_DEBUG_VERBOSE);
 	if (data->h)
 		ct_reader_disconnect(data->h);
 	data->h = NULL;
@@ -291,17 +290,15 @@ static int openct_reader_transmit(sc_reader_t *reader, sc_apdu_t *apdu)
 	r = sc_apdu_get_octets(reader->ctx, apdu, &sbuf, &ssize, SC_PROTO_RAW);
 	if (r != SC_SUCCESS)
 		goto out;
-	if (reader->ctx->debug >= 6)
-		sc_apdu_log(reader->ctx, sbuf, ssize, 1);
+	sc_apdu_log(reader->ctx, SC_LOG_DEBUG_NORMAL, sbuf, ssize, 1);
 	r = openct_reader_internal_transmit(reader, sbuf, ssize,
 				rbuf, &rsize, apdu->control);
 	if (r < 0) {
 		/* unable to transmit ... most likely a reader problem */
-		sc_debug(reader->ctx, "unable to transmit");
+		sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "unable to transmit");
 		goto out;
 	}
-	if (reader->ctx->debug >= 6)
-		sc_apdu_log(reader->ctx, rbuf, rsize, 0);
+	sc_apdu_log(reader->ctx, SC_LOG_DEBUG_NORMAL, rbuf, rsize, 0);
 	/* set response */
 	r = sc_apdu_set_resp(reader->ctx, apdu, rbuf, rsize);
 out:
@@ -381,7 +378,7 @@ static int openct_reader_lock(sc_reader_t *reader)
 	struct driver_data *data = (struct driver_data *) reader->drv_data;
 	int rc;
 
-	SC_FUNC_CALLED(reader->ctx, 1);
+	SC_FUNC_CALLED(reader->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	/* Hotplug check */
 	if ((rc = openct_reader_reconnect(reader)) < 0)
@@ -407,7 +404,7 @@ static int openct_reader_unlock(sc_reader_t *reader)
 	struct driver_data *data = (struct driver_data *) reader->drv_data;
 	int rc;
 
-	SC_FUNC_CALLED(reader->ctx, 1);
+	SC_FUNC_CALLED(reader->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	/* Not connected */
 	if (data->h == NULL)

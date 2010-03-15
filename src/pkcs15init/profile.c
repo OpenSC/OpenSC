@@ -319,7 +319,7 @@ sc_profile_load(struct sc_profile *profile, const char *filename)
 		profile_dir = SC_PKCS15_PROFILE_DIRECTORY;
 	}
 
-	sc_debug(ctx, "Using profile directory '%s'.", profile_dir);
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Using profile directory '%s'.", profile_dir);
 
 #ifdef _WIN32
 	snprintf(path, sizeof(path), "%s\\%s.%s",
@@ -329,18 +329,14 @@ sc_profile_load(struct sc_profile *profile, const char *filename)
 		profile_dir, filename, SC_PKCS15_PROFILE_SUFFIX);
 #endif /* _WIN32 */
 
-	if (profile->card->ctx->debug >= 2) {
-		sc_debug(profile->card->ctx,
-			"Trying profile file %s", path);
-	}
+	sc_debug(profile->card->ctx, SC_LOG_DEBUG_NORMAL,
+		"Trying profile file %s", path);
 
 	conf = scconf_new(path);
 	res = scconf_parse(conf);
 
-	if (res > 0 && profile->card->ctx->debug >= 2) {
-		sc_debug(profile->card->ctx,
-			"profile %s loaded ok", path);
-	}
+	sc_debug(profile->card->ctx, SC_LOG_DEBUG_NORMAL,
+		"profile %s loaded ok", path);
 
 	if (res < 0)
 		return SC_ERROR_FILE_NOT_FOUND;
@@ -389,7 +385,7 @@ sc_profile_finish(struct sc_profile *profile)
 	}
 	return 0;
 
-whine:	sc_debug(profile->card->ctx, "%s", reason);
+whine:	sc_debug(profile->card->ctx, SC_LOG_DEBUG_NORMAL, "%s", reason);
 	return SC_ERROR_INCONSISTENT_PROFILE;
 }
 
@@ -602,7 +598,7 @@ sc_profile_instantiate_template(sc_profile_t *profile,
 		if (!strcmp(info->name, template_name))
 			break;
 	if (info == NULL)   {
-		sc_debug(card->ctx, "Template %s not found", template_name);
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Template %s not found", template_name);
 		return SC_ERROR_TEMPLATE_NOT_FOUND;
 	}
 
@@ -621,12 +617,12 @@ sc_profile_instantiate_template(sc_profile_t *profile,
 	}
 
 	if (card->ctx->debug >= 2)
-		sc_debug(card->ctx,
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
 			"Instantiating template %s at %s", template_name, sc_print_path(base_path));
 
 	base_file = sc_profile_find_file_by_path(profile, base_path);
 	if (base_file == NULL) {
-		sc_debug(card->ctx, "Directory %s not defined in profile", sc_print_path(base_path));
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Directory %s not defined in profile", sc_print_path(base_path));
 		return SC_ERROR_OBJECT_NOT_FOUND;
 	}
 
@@ -657,7 +653,7 @@ sc_profile_instantiate_template(sc_profile_t *profile,
 	}
 
 	if (match == NULL) {
-		sc_debug(card->ctx, "No file named \"%s\" in template \"%s\"",
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "No file named \"%s\" in template \"%s\"",
 				file_name, template_name);
 		return SC_ERROR_OBJECT_NOT_FOUND;
 	}
@@ -706,8 +702,8 @@ sc_profile_instantiate_file(sc_profile_t *profile, file_info *ft,
 	ft->instance = fi;
 
 	if (card->ctx->debug >= 2) {
-		sc_debug(card->ctx, "Instantiated %s at %s", ft->ident, sc_print_path(&fi->file->path));
-		sc_debug(card->ctx, "  parent=%s@%s", parent->ident, sc_print_path(&parent->file->path));
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Instantiated %s at %s", ft->ident, sc_print_path(&fi->file->path));
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "  parent=%s@%s", parent->ident, sc_print_path(&parent->file->path));
 	}
 
 	return fi;
@@ -1851,11 +1847,11 @@ sc_profile_find_file_by_path(struct sc_profile *pro, const sc_path_t *path)
 	struct sc_file	*fp;
 
 #ifdef DEBUG_PROFILE
-	sc_debug(pro->card->ctx, "profile's EF list:");
+	sc_debug(pro->card->ctx, SC_LOG_DEBUG_NORMAL, "profile's EF list:");
 	for (fi = pro->ef_list; fi; fi = fi->next)
-		sc_debug(pro->card->ctx, "check fi (%s:path:%s)", fi->ident, sc_print_path(&fi->file->path));
+		sc_debug(pro->card->ctx, SC_LOG_DEBUG_NORMAL, "check fi (%s:path:%s)", fi->ident, sc_print_path(&fi->file->path));
 
-	sc_debug(pro->card->ctx, "find profile file by path:%s", sc_print_path(path));
+	sc_debug(pro->card->ctx, SC_LOG_DEBUG_NORMAL, "find profile file by path:%s", sc_print_path(path));
 #endif
 	for (fi = pro->ef_list; fi; fi = fi->next) {
 		fp = fi->file;
@@ -1865,7 +1861,7 @@ sc_profile_find_file_by_path(struct sc_profile *pro, const sc_path_t *path)
 	}
 
 #ifdef DEBUG_PROFILE
-	sc_debug(pro->card->ctx, "returns (%s)", out ? out->ident: "<null>");
+	sc_debug(pro->card->ctx, SC_LOG_DEBUG_NORMAL, "returns (%s)", out ? out->ident: "<null>");
 #endif
 	return out;
 }
@@ -2196,7 +2192,7 @@ parse_error(struct state *cur, const char *fmt, ...)
 		*sp = '\0';
 
 	if (cur->profile->card && cur->profile->card->ctx)
-		sc_debug(cur->profile->card->ctx, "%s: %s", cur->filename, buffer);
+		sc_debug(cur->profile->card->ctx, SC_LOG_DEBUG_NORMAL, "%s: %s", cur->filename, buffer);
 	else
 		fprintf(stdout, "%s: %s\n", cur->filename, buffer);
 }

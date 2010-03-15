@@ -221,9 +221,8 @@ static int parse_EF_CardInfo(sc_pkcs15_card_t *p15card)
 	/* get the number of private keys */
 	key_num = info1[info1_len-1] | (info1[info1_len-2] << 8) |
 		  (info1[info1_len-3] << 16) | (info1[info1_len-4] << 24);
-	if (ctx->debug >= 4) {
-		sc_debug(ctx, "found %d private keys\n", (int)key_num);
-	}
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
+		"found %d private keys\n", (int)key_num);
 	/* set p1 to the address of the first key descriptor */
 	p1 = info1 + (info1_len - 4 - key_num * 2);
 	p2 = info2;

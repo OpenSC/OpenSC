@@ -122,7 +122,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 	if ((r = read_file(card, "006E007300C4", buffer, sizeof(buffer))) < 0)
 		goto failed;
 	if (r != 7) {
-		sc_debug(ctx,
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
 			"CHV status bytes have unexpected length "
 			"(expected 7, got %d)\n", r);
 		return SC_ERROR_OBJECT_NOT_VALID;
@@ -232,7 +232,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 
 	return 0;
 
-failed:	sc_debug(card->ctx, "Failed to initialize OpenPGP emulation: %s\n",
+failed:	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Failed to initialize OpenPGP emulation: %s\n",
 			sc_strerror(r));
 	return r;
 }

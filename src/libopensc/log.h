@@ -29,9 +29,15 @@ extern "C" {
 #include <stdarg.h>
 #include "libopensc/opensc.h"
 
-#define SC_LOG_TYPE_ERROR	0
-#define SC_LOG_TYPE_VERBOSE	1
-#define SC_LOG_TYPE_DEBUG	2
+enum {
+	SC_LOG_DEBUG_VERBOSE_TOOL = 1,	/* tools only: verbose */
+	SC_LOG_DEBUG_VERBOSE,		/* helps users */
+	SC_LOG_DEBUG_NORMAL,		/* helps developers */
+	SC_LOG_DEBUG_RFU1,		/* RFU */
+	SC_LOG_DEBUG_RFU2,		/* RFU */
+	SC_LOG_DEBUG_ASN1,		/* asn1.c only */
+	SC_LOG_DEBUG_MATCH,		/* card matching only */
+};
 
 /* You can't do #ifndef __FUNCTION__ */
 #if !defined(__GNUC__) && !defined(__IBMC__) && !(defined(_MSC_VER) && (_MSC_VER >= 1300))
@@ -40,43 +46,34 @@ extern "C" {
 
 #if defined(__GNUC__)
 
-#define sc_debug(ctx, format, args...)	sc_do_log(ctx, SC_LOG_TYPE_DEBUG, __FILE__, __LINE__, __FUNCTION__, format , ## args)
+#define sc_debug(ctx, level, format, args...)	sc_do_log(ctx, level, __FILE__, __LINE__, __FUNCTION__, format , ## args)
 
 #else
-#define sc_debug _sc_debug
+#define sc_debug(ctx, SC_LOG_DEBUG_NORMAL, level, format, args...)	sc_do_log(ctx, level, NULL, 0, NULL, format , ## args)
 #endif
 
-void _sc_debug(struct sc_context *ctx, const char *format, ...);
-void sc_do_log(struct sc_context *ctx, int type, const char *file, int line, const char *func, const char *format, ...);
-void sc_do_log_va(struct sc_context *ctx, int type, const char *file, int line, const char *func, const char *format, va_list args);
+void sc_do_log(struct sc_context *ctx, int level, const char *file, int line, const char *func, const char *format, ...);
 
-void sc_hex_dump(struct sc_context *ctx, const u8 * buf, size_t len, char *out, size_t outlen);
+void sc_hex_dump(struct sc_context *ctx, int level, const u8 * buf, size_t len, char *out, size_t outlen);
 char * sc_dump_hex(const u8 * in, size_t count);
 
 #define SC_FUNC_CALLED(ctx, level) do { \
-	if (ctx->debug >= level) \
-		 sc_do_log(ctx, SC_LOG_TYPE_DEBUG, __FILE__, __LINE__, __FUNCTION__, "called\n"); \
+	 sc_do_log(ctx, level, __FILE__, __LINE__, __FUNCTION__, "called\n"); \
 } while (0)
 
 #define SC_FUNC_RETURN(ctx, level, r) do { \
 	int _ret = r; \
-	if (ctx->debug >= level) { \
-		sc_do_log(ctx, SC_LOG_TYPE_DEBUG, __FILE__, __LINE__, __FUNCTION__, "returning with: %d\n", _ret); \
-	} \
+	sc_do_log(ctx, level, __FILE__, __LINE__, __FUNCTION__, "returning with: %d\n", _ret); \
 	return _ret; \
 } while(0)
 
-#define SC_TEST_RET(ctx, r, text) do { \
+#define SC_TEST_RET(ctx, level, r, text) do { \
 	int _ret = (r); \
 	if (_ret < 0) { \
-		sc_do_log(ctx, SC_LOG_TYPE_DEBUG, __FILE__, __LINE__, __FUNCTION__, "%s: %s\n", (text), sc_strerror(_ret)); \
+		sc_do_log(ctx, level, __FILE__, __LINE__, __FUNCTION__, "%s: %s\n", (text), sc_strerror(_ret)); \
 		return _ret; \
 	} \
 } while(0)
-
-#define sc_perror(ctx, errno, str) { \
-	sc_do_log(ctx, SC_LOG_TYPE_DEBUG, __FILE__, __LINE__, __FUNCTION__, "%s: %s\n", str, sc_strerror(errno)); \
-}
 
 #ifdef __cplusplus
 }

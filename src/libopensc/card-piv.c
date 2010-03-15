@@ -245,9 +245,9 @@ static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 	size_t bodylen;
 
 
-	SC_FUNC_CALLED(card->ctx,1);
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	
-	sc_debug(card->ctx, "%02x %02x %02x %d : %d %d\n",
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "%02x %02x %02x %d : %d %d\n",
 		 ins, p1, p2, sendbuflen , card->max_send_size, card->max_recv_size);
 
 	rbuf = rbufinitbuf;
@@ -261,7 +261,7 @@ static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 
 	r = sc_lock(card);
 	if (r != SC_SUCCESS)
-		SC_FUNC_RETURN(card->ctx, 1, r);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 		
 	sc_format_apdu(card, &apdu, 
 			recvbuf ? SC_APDU_CASE_4_SHORT: SC_APDU_CASE_3_SHORT, 
@@ -282,16 +282,16 @@ static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 		 apdu.resplen = 0;
 	}
 
-	sc_debug(card->ctx,"calling sc_transmit_apdu flags=%x le=%d, resplen=%d, resp=%p", 
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"calling sc_transmit_apdu flags=%x le=%d, resplen=%d, resp=%p", 
 		apdu.flags, apdu.le, apdu.resplen, apdu.resp);
 
 	/* with new adpu.c and chaining, this actually reads the whole object */
 	r = sc_transmit_apdu(card, &apdu);
 
-	sc_debug(card->ctx,"DEE r=%d apdu.resplen=%d sw1=%02x sw2=%02x", 
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"DEE r=%d apdu.resplen=%d sw1=%02x sw2=%02x", 
 			r, apdu.resplen, apdu.sw1, apdu.sw2);
 	if (r < 0) {
-		sc_debug(card->ctx,"Transmit failed");
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"Transmit failed");
 		goto err;
 	}
 			
@@ -300,7 +300,7 @@ static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 /*TODO may be 6c nn if reading only the length */
 /* TODO look later at tag vs size read too */
 	if (r < 0) {
-		sc_debug(card->ctx, "Card returned error ");
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Card returned error ");
 		goto err;
 	}
 
@@ -319,7 +319,7 @@ static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 		body = rbuf;
 		if (sc_asn1_read_tag(&body, 0xffff, &cla_out, &tag_out, &bodylen) !=  SC_SUCCESS) 		{
 			/* only early beta cards had this problem */
-			sc_debug(card->ctx, "***** received buffer tag MISSING ");
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "***** received buffer tag MISSING ");
 			body = rbuf;
 			/* some readers/cards might return 6c 00 */ 
 			if (apdu.sw1 == 0x61  || apdu.sw2 == 0x6c ) 
@@ -333,7 +333,7 @@ static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 		/* if using internal buffer, alloc new one */
 		if (rbuf == rbufinitbuf) {
 			*recvbuf = (u8 *)malloc(rbuflen); 
-				sc_debug(card->ctx, "DEE got buffer %p len %d",*recvbuf,  rbuflen);
+				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "DEE got buffer %p len %d",*recvbuf,  rbuflen);
 			if (*recvbuf == NULL) {
 				r = SC_ERROR_OUT_OF_MEMORY;
 				goto err;
@@ -350,7 +350,7 @@ static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 
 err:
 	sc_unlock(card);
-	SC_FUNC_RETURN(card->ctx, 1, r);
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 }
 
 /* Add the PIV-II operations */
@@ -373,7 +373,7 @@ static int piv_generate_key(sc_card_t *card,
 	size_t in_len;
 	unsigned int cla_out, tag_out;
 	
-	SC_FUNC_CALLED(card->ctx, 1);
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	keydata->exponent = 0;
 	keydata->pubkey = NULL;
@@ -388,7 +388,7 @@ static int piv_generate_key(sc_card_t *card,
 		case 2048: outdata[2] = 0x07; break;
 		case 3072: outdata[2] = 0x05; break;
 		default:
-			SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INVALID_ARGUMENTS);
+			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
 	}
 
 	p = tagbuf;
@@ -416,7 +416,7 @@ static int piv_generate_key(sc_card_t *card,
 
 		r = sc_asn1_read_tag(&cp, rbuflen, &cla_out, &tag_out, &in_len);
 		if (r != SC_SUCCESS) {
-			sc_debug(card->ctx,"Tag buffer not found");
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"Tag buffer not found");
 			goto err;
 		}
 		
@@ -432,7 +432,7 @@ static int piv_generate_key(sc_card_t *card,
 		if (tag != NULL && taglen > 0) {
 			keydata->pubkey = malloc(taglen);
 			if (keydata->pubkey == NULL)
-				SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_OUT_OF_MEMORY);
+				SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
 			keydata->pubkey_len = taglen;
 			memcpy (keydata->pubkey, tag, taglen);
 		}
@@ -443,7 +443,7 @@ static int piv_generate_key(sc_card_t *card,
 err:
 	if (rbuf)
 		free(rbuf);
-	SC_FUNC_RETURN(card->ctx, 1, r);
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 }
 
 
@@ -452,9 +452,10 @@ static int piv_select_aid(sc_card_t* card, u8* aid, size_t aidlen, u8* response,
 	sc_apdu_t apdu;
 	int r;
 
-	SC_FUNC_CALLED(card->ctx,4);
-	if (card->ctx->debug >= 5)
-		sc_debug(card->ctx, "Got args: aid=%x, aidlen=%d, response=%x, responselen=%d\n", aid, aidlen, response, *responselen);
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+		"Got args: aid=%x, aidlen=%d, response=%x, responselen=%d\n",
+		aid, aidlen, response, *responselen);
 
 	sc_format_apdu(card, &apdu, 
 		response == NULL ? SC_APDU_CASE_3_SHORT : SC_APDU_CASE_4_SHORT, 0xA4, 0x04, 0x00);
@@ -467,8 +468,8 @@ static int piv_select_aid(sc_card_t* card, u8* aid, size_t aidlen, u8* response,
 
 	r = sc_transmit_apdu(card, &apdu);
 	*responselen = apdu.resplen;
-	SC_TEST_RET(card->ctx, 4,  r);
-	SC_FUNC_RETURN(card->ctx, 4,  sc_check_sw(card, apdu.sw1, apdu.sw2));
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, 4,  r);
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,  sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
 
 /* find the PIV AID on the card. If card->type already filled in,
@@ -487,14 +488,14 @@ static int piv_find_aid(sc_card_t * card, sc_file_t *aid_file)
 	size_t pixlen;
 	size_t resplen = sizeof(rbuf);
 
-	SC_FUNC_CALLED(card->ctx,1);
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	/* first  see if the default applcation will return a template
 	 * that we know about. 
 	 */
 
 	if (card->type == SC_CARD_TYPE_PIV_II_GENERIC) 
-		SC_FUNC_RETURN(card->ctx, 1, 0);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, 0);
 
 	r = piv_select_aid(card, piv_aids[0].value, piv_aids[0].len_short, rbuf, &resplen);
 	if (r >= 0 && resplen > 2 ) {
@@ -502,7 +503,7 @@ static int piv_find_aid(sc_card_t * card, sc_file_t *aid_file)
 		if (tag != NULL) {
 			pix = (u8 *) sc_asn1_find_tag(card->ctx, tag, taglen, 0x4F, &pixlen);
 			if (pix != NULL ) { 
-				sc_debug(card->ctx,"found PIX");
+				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"found PIX");
 		 
 				/* early cards returned full AID, rather then just the pix */
 				for (i = 0; piv_aids[i].len_long != 0; i++) {
@@ -514,9 +515,9 @@ static int piv_find_aid(sc_card_t * card, sc_file_t *aid_file)
 						if (card->type > SC_CARD_TYPE_PIV_II_BASE &&
 							card->type < SC_CARD_TYPE_PIV_II_BASE+1000 &&
 							card->type == piv_aids[i].enumtag) {
-							SC_FUNC_RETURN(card->ctx, 1, i);
+							SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, i);
 						} else {
-							SC_FUNC_RETURN(card->ctx, 1, i);
+							SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, i);
 						}
 					}
 				}
@@ -543,14 +544,14 @@ static int piv_find_aid(sc_card_t * card, sc_file_t *aid_file)
 		apdu.le = 256;
 
 		r = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 
 		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	
 
 		if (r)  {
 			if (card->type != 0 && card->type == piv_aids[i].enumtag) {
-				SC_FUNC_RETURN(card->ctx, 1, i);
+				SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, i);
 			}
 			continue; 
 		}
@@ -561,16 +562,16 @@ static int piv_find_aid(sc_card_t * card, sc_file_t *aid_file)
 		}
 
 		if (apdu.resp[0] != 0x6f || apdu.resp[1] > apdu.resplen - 2 ) 
-			SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_NO_CARD_SUPPORT);
+			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_NO_CARD_SUPPORT);
 	
 		card->ops->process_fci(card, aid_file, apdu.resp+2, apdu.resp[1]);
 		if (aid_file->name == NULL) 
-			SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_NO_CARD_SUPPORT);
+			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NO_CARD_SUPPORT);
 
-		SC_FUNC_RETURN(card->ctx, 1, i);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, i);
 	}
 	
-	SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_NO_CARD_SUPPORT);
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NO_CARD_SUPPORT);
 }
 
 
@@ -584,8 +585,8 @@ static int piv_get_data(sc_card_t * card, int enumtag,
 	size_t tag_len;
 	char * keyenvname = NULL;
 	
-	SC_FUNC_CALLED(card->ctx,1);
-	sc_debug(card->ctx, "#%d \n", enumtag);
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "#%d \n", enumtag);
 
 	//assert(enumtag >= 0 && enumtag < PIV_OBJ_LAST_ENUM);
 	
@@ -636,7 +637,7 @@ static int piv_get_data(sc_card_t * card, int enumtag,
 			r = SC_ERROR_FILE_NOT_FOUND;
 			goto err;
 		}
-		sc_debug(card->ctx, "USING PUB KEY FROM FILE %s",keyfilename);
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "USING PUB KEY FROM FILE %s",keyfilename);
 
 		bp = BIO_new(BIO_s_file());
 		if (bp == NULL) {
@@ -651,7 +652,7 @@ static int piv_get_data(sc_card_t * card, int enumtag,
 		rsa = PEM_read_bio_RSAPublicKey(bp, &rsa, NULL, NULL);
 		BIO_free(bp);
 		if (!rsa) {
-			sc_debug(card->ctx,"Unable to load the public key");
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"Unable to load the public key");
 			r =  SC_ERROR_DATA_OBJECT_NOT_FOUND; 
 			goto err;
         	}
@@ -692,7 +693,7 @@ static int piv_get_data(sc_card_t * card, int enumtag,
 			unsigned int cla_out, tag_out;
 			const u8 *body;
 
-			sc_debug(card->ctx,"get len of #%d", enumtag);
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"get len of #%d", enumtag);
 			rbuf = rbufinitbuf;
 			rbuflen = sizeof(rbufinitbuf);
 			r = piv_general_io(card, 0xCB, 0x3F, 0xFF, tagbuf,  p - tagbuf,
@@ -700,7 +701,7 @@ static int piv_get_data(sc_card_t * card, int enumtag,
 			if (r > 0) {
 				body = rbuf;
 				if (sc_asn1_read_tag(&body, 0xffff, &cla_out, &tag_out, &bodylen) !=  SC_SUCCESS) {
-					sc_debug(card->ctx, "***** received buffer tag MISSING ");
+					sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "***** received buffer tag MISSING ");
 					r = SC_ERROR_FILE_NOT_FOUND;
 					goto err;
 				}
@@ -712,7 +713,7 @@ static int piv_get_data(sc_card_t * card, int enumtag,
 				goto err;
 			}
 		}
-sc_debug(card->ctx,"get buffer for #%d len %d", enumtag, *buf_len);
+sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"get buffer for #%d len %d", enumtag, *buf_len);
 		if (*buf == NULL && *buf_len > 0) {
 			*buf = (u8*)malloc(*buf_len);
 			if (*buf == NULL ) {
@@ -727,7 +728,7 @@ sc_debug(card->ctx,"get buffer for #%d len %d", enumtag, *buf_len);
 
 err:
 
-	SC_FUNC_RETURN(card->ctx, 1, r);
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 }
 
 static int piv_get_cached_data(sc_card_t * card, int enumtag,
@@ -739,15 +740,15 @@ static int piv_get_cached_data(sc_card_t * card, int enumtag,
 	u8 *rbuf = NULL;
 	size_t rbuflen;
 	
-	SC_FUNC_CALLED(card->ctx,1);
-	sc_debug(card->ctx, "#%d", enumtag);
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "#%d", enumtag);
 
 	assert(enumtag >= 0 && enumtag < PIV_OBJ_LAST_ENUM);
 
 	/* see if we have it cached */
 	if (priv->obj_cache[enumtag].flags & PIV_OBJ_CACHE_VALID) {
 
-		sc_debug(card->ctx,"found #%d %p:%d %p:%d",
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"found #%d %p:%d %p:%d",
 				enumtag,
 				priv->obj_cache[enumtag].obj_data,
 				priv->obj_cache[enumtag].obj_len,
@@ -757,7 +758,7 @@ static int piv_get_cached_data(sc_card_t * card, int enumtag,
 		
 		if (priv->obj_cache[enumtag].obj_len == 0) {
 			r = SC_ERROR_FILE_NOT_FOUND;
-			sc_debug(card->ctx,"#%d found but len=0",
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"#%d found but len=0",
 					enumtag);
 			goto err;
 		}
@@ -768,7 +769,7 @@ static int piv_get_cached_data(sc_card_t * card, int enumtag,
 	}
 
 	/* not cached get it, piv_get_data will allocate a buf */ 
-sc_debug(card->ctx,"get #%d",  enumtag);
+sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"get #%d",  enumtag);
 	rbuflen = 1; 
 	r = piv_get_data(card, enumtag, &rbuf, &rbuflen);
 	if (r > 0) {
@@ -778,7 +779,7 @@ sc_debug(card->ctx,"get #%d",  enumtag);
 		*buf = rbuf;
 		*buf_len = r;
 
-		sc_debug(card->ctx,"added #%d  %p:%d %p:%d",
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"added #%d  %p:%d %p:%d",
 				enumtag,
 				priv->obj_cache[enumtag].obj_data,
 				priv->obj_cache[enumtag].obj_len,
@@ -796,7 +797,7 @@ ok:
 
 err:
 
-	SC_FUNC_RETURN(card->ctx, 1, r);
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 }
 
 static int piv_cache_internal_data(sc_card_t *card, int enumtag)
@@ -810,10 +811,10 @@ static int piv_cache_internal_data(sc_card_t *card, int enumtag)
 
 	/* if already cached */
 	if (priv->obj_cache[enumtag].internal_obj_data && priv->obj_cache[enumtag].internal_obj_len) {
-		sc_debug(card->ctx,"#%d found internal %p:%d", enumtag, 
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"#%d found internal %p:%d", enumtag, 
 				priv->obj_cache[enumtag].internal_obj_data, 
 				priv->obj_cache[enumtag].internal_obj_len);
-		SC_FUNC_RETURN(card->ctx, 1, 0);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, 0);
 	}	
 
 	body = (u8 *) sc_asn1_find_tag(card->ctx, 
@@ -822,7 +823,7 @@ static int piv_cache_internal_data(sc_card_t *card, int enumtag)
 			0x53, &bodylen);
 
 	if (body == NULL) 
-		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_OBJECT_NOT_VALID);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OBJECT_NOT_VALID);
 	
 	/* get the certificate out */
 	 if (piv_objects[enumtag].flags & PIV_OBJECT_TYPE_CERT) { 
@@ -834,27 +835,27 @@ static int piv_cache_internal_data(sc_card_t *card, int enumtag)
 		}
 		tag = (u8 *) sc_asn1_find_tag(card->ctx, body, bodylen, 0x70, &taglen);
 		if (tag == NULL) 
-		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_OBJECT_NOT_VALID);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OBJECT_NOT_VALID);
 		
 		if (taglen == 0)
-			SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_FILE_NOT_FOUND);
+			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_FILE_NOT_FOUND);
 	
 			if(compressed) {
 #ifdef ENABLE_ZLIB
 			size_t len;
 			u8* newBuf = NULL;
 			if(SC_SUCCESS != sc_decompress_alloc(&newBuf, &len, tag, taglen, COMPRESSION_AUTO)) {
-				SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_OBJECT_NOT_VALID);
+				SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OBJECT_NOT_VALID);
 			}      
 			priv->obj_cache[enumtag].internal_obj_data = newBuf;
 			priv->obj_cache[enumtag].internal_obj_len = len;
 #else
-			sc_debug(card->ctx,"PIV compression not supported, no zlib");
-			SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_NOT_SUPPORTED);
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"PIV compression not supported, no zlib");
+			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED);
 #endif
 		} else {
 			if (!(priv->obj_cache[enumtag].internal_obj_data = (u8*)malloc(taglen)))
-				SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_OUT_OF_MEMORY);
+				SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
 
 			memcpy(priv->obj_cache[enumtag].internal_obj_data, tag, taglen);
 			priv->obj_cache[enumtag].internal_obj_len = taglen;
@@ -865,25 +866,25 @@ static int piv_cache_internal_data(sc_card_t *card, int enumtag)
 
 		tag = (u8 *) sc_asn1_find_tag(card->ctx, body, bodylen, *body, &taglen);
 		if (tag == NULL)
-			SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_OBJECT_NOT_VALID);
+			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OBJECT_NOT_VALID);
 
 		if (taglen == 0)
-			SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_FILE_NOT_FOUND);
+			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_FILE_NOT_FOUND);
 
 		if (!(priv->obj_cache[enumtag].internal_obj_data = (u8*)malloc(taglen)))
-			SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_OUT_OF_MEMORY);
+			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
 
 		memcpy(priv->obj_cache[enumtag].internal_obj_data, tag, taglen);
 		priv->obj_cache[enumtag].internal_obj_len = taglen;
 	} else {
-		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INTERNAL);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INTERNAL);
 	}
 				
-	sc_debug(card->ctx,"added #%d internal %p:%d", enumtag, 
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"added #%d internal %p:%d", enumtag, 
 		priv->obj_cache[enumtag].internal_obj_data,
 		priv->obj_cache[enumtag].internal_obj_len);
 	
-	SC_FUNC_RETURN(card->ctx, 1, 0);
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, 0);
 }
 
 
@@ -903,9 +904,9 @@ static int piv_read_binary(sc_card_t *card, unsigned int idx,
 	u8 *body;
 	size_t bodylen;
 
-	SC_FUNC_CALLED(card->ctx,1);
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	if (priv->selected_obj < 0) 
-		 SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INTERNAL);
+		 SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INTERNAL);
 	enumtag = piv_objects[priv->selected_obj].enumtag;
 
 	if (priv->rwb_state == 1) {
@@ -921,17 +922,17 @@ static int piv_read_binary(sc_card_t *card, unsigned int idx,
 				r = SC_ERROR_FILE_NOT_FOUND;
 				goto err;
 			}
-			sc_debug(card->ctx, "DEE rbuf=%p,rbuflen=%d,",rbuf, rbuflen);
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "DEE rbuf=%p,rbuflen=%d,",rbuf, rbuflen);
 			body = (u8 *) sc_asn1_find_tag(card->ctx, rbuf, rbuflen, 0x53, &bodylen);
 			if (body == NULL) {
 				/* if missing, assume its the body */
 				/* DEE bug in the beta card */
-				sc_debug(card->ctx," ***** tag 0x53 MISSING \n");
+				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL," ***** tag 0x53 MISSING \n");
 				r = SC_ERROR_INVALID_DATA;
 				goto err;
 			}
 			if (bodylen > body - rbuf + rbuflen) {
-				sc_debug(card->ctx," ***** tag length > then data: %d>%d+%d",
+				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL," ***** tag length > then data: %d>%d+%d",
 					bodylen , body - rbuf, rbuflen);
 				r = SC_ERROR_INVALID_DATA;
 				goto err;
@@ -966,7 +967,7 @@ static int piv_read_binary(sc_card_t *card, unsigned int idx,
 			r = count;
 		}
 err:
-		SC_FUNC_RETURN(card->ctx, 1, r);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 }
 
   
@@ -984,12 +985,12 @@ static int piv_put_data(sc_card_t *card, int tag,
 	u8 * p;
 	size_t tag_len;
 
-	SC_FUNC_CALLED(card->ctx,1);
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	tag_len = piv_objects[tag].tag_len;
 	sbuflen = put_tag_and_len(0x5c, tag_len, NULL) + buf_len;
 	if (!(sbuf = (u8 *) malloc(sbuflen))) 
-		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_OUT_OF_MEMORY);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
 
 	p = sbuf;
 	put_tag_and_len(0x5c, tag_len, &p);
@@ -1005,7 +1006,7 @@ static int piv_put_data(sc_card_t *card, int tag,
 	/* TODO add to cache */
 	if (sbuf)
 		free(sbuf);
-	SC_FUNC_RETURN(card->ctx, 1, r);
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 }
 
 
@@ -1020,7 +1021,7 @@ static int piv_write_certificate(sc_card_t *card,
 	size_t sbuflen;
 	size_t taglen;
 
-	sc_debug(card->ctx,"DEE cert len=%d",count);
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"DEE cert len=%d",count);
 	taglen = put_tag_and_len(0x70, count, NULL)
 		+ put_tag_and_len(0x71, 1, NULL)
 		+ put_tag_and_len(0xFE, 0, NULL);
@@ -1029,7 +1030,7 @@ static int piv_write_certificate(sc_card_t *card,
 
 	sbuf = (u8*) malloc(sbuflen);
 	if (sbuf == NULL) 
-		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_OUT_OF_MEMORY);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
 	p = sbuf;
 	put_tag_and_len(0x53, taglen, &p);
 
@@ -1040,14 +1041,14 @@ static int piv_write_certificate(sc_card_t *card,
 	*p++ = (flags)? 0x80:0x00; /* certinfo, i.e. gziped? */
 	put_tag_and_len(0xFE,0,&p); /* LRC tag */
 
-	sc_debug(card->ctx,"DEE buf %p len %d %d", sbuf, p -sbuf, sbuflen);
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"DEE buf %p len %d %d", sbuf, p -sbuf, sbuflen);
 
 	enumtag = piv_objects[priv->selected_obj].enumtag;
 	r = piv_put_data(card, enumtag, sbuf, sbuflen);
 	if (sbuf)
 		free(sbuf);
 
-	SC_FUNC_RETURN(card->ctx, 1, r);
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 }
 
 /* 
@@ -1071,15 +1072,15 @@ static int piv_write_binary(sc_card_t *card, unsigned int idx,
 	int r;
 	int enumtag;
 
-	SC_FUNC_CALLED(card->ctx,1);
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	if (priv->selected_obj < 0)
-		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INTERNAL);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INTERNAL);
 
 	enumtag = piv_objects[priv->selected_obj].enumtag;
 
 	if (priv->rwb_state == 1)  /* trying to write at end */
-		SC_FUNC_RETURN(card->ctx, 1, 0);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, 0);
 
 	if (priv->rwb_state == -1) {
 
@@ -1099,11 +1100,11 @@ static int piv_write_binary(sc_card_t *card, unsigned int idx,
 		}
 
 		if (idx != 0)
-			SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_NO_CARD_SUPPORT);
+			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NO_CARD_SUPPORT);
 
 		priv->w_buf_len = flags>>8;  
 		if (priv->w_buf_len == 0)
-			SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_INTERNAL);
+			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INTERNAL);
 
 		priv->w_buf = (u8 *)malloc(priv->w_buf_len);
 		priv-> rwb_state = 0;
@@ -1111,16 +1112,16 @@ static int piv_write_binary(sc_card_t *card, unsigned int idx,
 
 	/* on each pass make sure we have w_buf */
 	if (priv->w_buf == NULL)
-			SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_OUT_OF_MEMORY);
+			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
 
 	if (idx + count > priv->w_buf_len)
-		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_OBJECT_NOT_VALID);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OBJECT_NOT_VALID);
 
 	memcpy(priv->w_buf + idx, buf, count); /* copy one chunk */
 
 	/* if this was not the last chunk, return to get rest */
 	if (idx + count < priv->w_buf_len)
-		SC_FUNC_RETURN(card->ctx, 1, count);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, count);
 
 	priv-> rwb_state = 1; /* at end of object */
 	
@@ -1141,7 +1142,7 @@ static int piv_write_binary(sc_card_t *card, unsigned int idx,
 	}
 	priv->w_buf = NULL;
 	priv->w_buf_len = 0;
-	SC_FUNC_RETURN(card->ctx, 1, (r < 0)? r : count); 
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, (r < 0)? r : count); 
 }
 
 /*
@@ -1161,23 +1162,23 @@ static int piv_get_3des_key(sc_card_t *card, u8 *key)
 	char * keyfilename = NULL;
 	size_t outlen;
 
-	SC_FUNC_CALLED(card->ctx,1);
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	keyfilename = (char *)getenv("PIV_EXT_AUTH_KEY");
 
 	if (keyfilename == NULL) {
-		sc_debug(card->ctx,
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
 			"Unable to get PIV_EXT_AUTH_KEY=filename for general_external_authenticate\n");
 		r = SC_ERROR_FILE_NOT_FOUND;
 		goto err;
 	}
 	if ((f = open(keyfilename, O_RDONLY)) < 0) {
-		sc_debug(card->ctx," Unable to load 3des key for general_external_authenticate\n");
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL," Unable to load 3des key for general_external_authenticate\n");
 		r = SC_ERROR_FILE_NOT_FOUND;
 		goto err;
 	}
 	if (read(f, keybuf, 71) != 71) {
-		sc_debug(card->ctx," Unable to read 3des key for general_external_authenticate\n");
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL," Unable to read 3des key for general_external_authenticate\n");
 		r = SC_ERROR_WRONG_LENGTH;  
 		goto err;
 	}
@@ -1198,7 +1199,7 @@ err:
 	if (f >=0)
 		close(f);
 	
-	SC_FUNC_RETURN(card->ctx, 1, r);
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 }
 
 /*
@@ -1222,7 +1223,7 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 	EVP_CIPHER_CTX ctx;
 	const EVP_CIPHER *cipher;
 
-	SC_FUNC_CALLED(card->ctx,1);
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	EVP_CIPHER_CTX_init(&ctx);
 
@@ -1335,7 +1336,7 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 	}
 	
 	if (outl+outl2 != sizeof(nonce) || memcmp(nonce, p, sizeof(nonce)) != 0) {
-		sc_debug(card->ctx, "mutual authentication failed, card returned wrong value");
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "mutual authentication failed, card returned wrong value");
 		r = SC_ERROR_DECRYPT_FAILED;
 		goto err;
 	}
@@ -1348,7 +1349,7 @@ err:
 	if (rbuf)
 		free(rbuf);
 
-	SC_FUNC_RETURN(card->ctx, 1, r);
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 }
 
 static int piv_general_external_authenticate(sc_card_t *card, 
@@ -1365,7 +1366,7 @@ static int piv_general_external_authenticate(sc_card_t *card,
 	EVP_CIPHER_CTX ctx;
 	const EVP_CIPHER *cipher;
 	
-	SC_FUNC_CALLED(card->ctx,1);
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	EVP_CIPHER_CTX_init(&ctx);
 
@@ -1444,7 +1445,7 @@ err:
 	if (rbuf)
 		free(rbuf);
 
-	SC_FUNC_RETURN(card->ctx, 1, r);
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 }
 
 static int piv_get_serial_nr_from_CHUI(sc_card_t* card, sc_serial_number_t* serial)
@@ -1458,7 +1459,7 @@ static int piv_get_serial_nr_from_CHUI(sc_card_t* card, sc_serial_number_t* seri
 	u8 temp[2000];
 	size_t templen = sizeof(temp);
 
-	SC_FUNC_CALLED(card->ctx, 1);
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	/* ensure we've got the PIV selected, and nothing else is in process */
 	/* This fixes several problems due to previous incomplete APDUs during card detection */
@@ -1471,7 +1472,7 @@ static int piv_get_serial_nr_from_CHUI(sc_card_t* card, sc_serial_number_t* seri
 	piv_select_aid(card, piv_aids[0].value, piv_aids[0].len_short, temp, &templen);
 
 	r = piv_get_cached_data(card, PIV_OBJ_CHUI, &rbuf, &rbuflen);
-	SC_TEST_RET(card->ctx, r, "Failure retrieving CHUI");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Failure retrieving CHUI");
 
 	r = SC_ERROR_INTERNAL;
 	if (rbuflen != 0) {
@@ -1486,7 +1487,7 @@ static int piv_get_serial_nr_from_CHUI(sc_card_t* card, sc_serial_number_t* seri
 					gbits = gbits | guid[i]; /* if all are zero, gbits will be zero */
 				}
 			}  
-			sc_debug(card->ctx,"fascn=%p,fascnlen=%d,guid=%p,guidlen=%d,gbits=%2.2x\n",
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"fascn=%p,fascnlen=%d,guid=%p,guidlen=%d,gbits=%2.2x\n",
 					fascn, fascnlen, guid, guidlen, gbits);
 
 			if (fascn && fascnlen == 25) {
@@ -1507,7 +1508,7 @@ static int piv_get_serial_nr_from_CHUI(sc_card_t* card, sc_serial_number_t* seri
 		}
 	}
       
-	SC_FUNC_RETURN(card->ctx, 1, r);
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 }
 
 static int piv_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
@@ -1549,9 +1550,9 @@ static int piv_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 	u8 *p, *q;
 	int r;
 
-	SC_FUNC_CALLED(card->ctx,1);
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	
-	sc_debug(card->ctx,"challenge len=%d",len);
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"challenge len=%d",len);
 
 	sc_lock(card); 
 
@@ -1570,7 +1571,7 @@ static int piv_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 				&rbuf, &rbuflen); 
  		if (r < 0) { 
 			sc_unlock(card);
-			SC_FUNC_RETURN(card->ctx, 1, r);
+			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 		}
 		q = rbuf;
 		if ( (*q++ != 0x7C)
@@ -1579,7 +1580,7 @@ static int piv_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 			|| (*q++ != rbuflen - 4)) {
 			r =  SC_ERROR_INVALID_DATA;
 			sc_unlock(card);
-			SC_FUNC_RETURN(card->ctx, 1, r);
+			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 		}
 		memcpy(rnd, q, n);
 		len -= n;
@@ -1590,7 +1591,7 @@ static int piv_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 
 	sc_unlock(card); 
 
-	SC_FUNC_RETURN(card->ctx, 1, 0);
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, 0);
 
 }
 
@@ -1600,27 +1601,27 @@ static int piv_set_security_env(sc_card_t *card,
 {
 	piv_private_data_t * priv = PIV_DATA(card);
 	
-	SC_FUNC_CALLED(card->ctx,1);
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	sc_debug(card->ctx,"flags=%08x op=%d alg=%d algf=%08x algr=%08x kr0=%02x, krfl=%d\n",
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"flags=%08x op=%d alg=%d algf=%08x algr=%08x kr0=%02x, krfl=%d\n",
 			env->flags, env->operation, env->algorithm, env->algorithm_flags, 
 			env->algorithm_ref, env->key_ref[0], env->key_ref_len);
 
 	if (env->algorithm == SC_ALGORITHM_RSA) 
 		priv->alg_id = 0x06; /* Say it is RSA, set 5, 6, 7 later */
 	else
-		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_NO_CARD_SUPPORT);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_NO_CARD_SUPPORT);
 	priv->key_ref = env->key_ref[0];
 
-	SC_FUNC_RETURN(card->ctx, 2, 0);
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, 0);
 }
 
 
 static int piv_restore_security_env(sc_card_t *card, int se_num)
 {
-	SC_FUNC_CALLED(card->ctx,1);
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	SC_FUNC_RETURN(card->ctx, 1, 0);
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, 0);
 }
 
 
@@ -1641,7 +1642,7 @@ static int piv_validate_general_authentication(sc_card_t *card,
 	u8 *rbuf = NULL;
 	size_t rbuflen;
 	
-	SC_FUNC_CALLED(card->ctx,1);
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	/* should assume large send data */
 	p = sbuf;
@@ -1666,7 +1667,7 @@ static int piv_validate_general_authentication(sc_card_t *card,
 			case 256: real_alg_id = 0x07; break;
 			case 384: real_alg_id = 0x05; break;
 			default:
-				SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_NO_CARD_SUPPORT);
+				SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_NO_CARD_SUPPORT);
 		}
 	} 
 
@@ -1689,24 +1690,24 @@ static int piv_validate_general_authentication(sc_card_t *card,
 	if (rbuf)
 		free(rbuf);
 
-	SC_FUNC_RETURN(card->ctx, 1, r);
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 }
 
 static int piv_compute_signature(sc_card_t *card, 
 					const u8 * data, size_t datalen,
 					u8 * out, size_t outlen)
 {
-	SC_FUNC_CALLED(card->ctx,4);
-	SC_FUNC_RETURN(card->ctx, 4, piv_validate_general_authentication(card, data, datalen, out, outlen));
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, piv_validate_general_authentication(card, data, datalen, out, outlen));
 }
 
 static int piv_decipher(sc_card_t *card,
 					 const u8 * data, size_t datalen,
 					 u8 * out, size_t outlen)
 {
-	SC_FUNC_CALLED(card->ctx,4);
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	SC_FUNC_RETURN(card->ctx, 4, piv_validate_general_authentication(card, data, datalen, out, outlen));
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, piv_validate_general_authentication(card, data, datalen, out, outlen));
 }
 
 
@@ -1714,15 +1715,15 @@ static int piv_find_obj_by_containerid(sc_card_t *card, const u8 * str)
 {
 	int i;
 
-	SC_FUNC_CALLED(card->ctx,4);
-	sc_debug(card->ctx, "str=0x%02X%02X\n", str[0], str[1]);
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "str=0x%02X%02X\n", str[0], str[1]);
 
 	for (i = 0; piv_objects[i].enumtag < PIV_OBJ_LAST_ENUM; i++) {
 		if ( str[0] == piv_objects[i].containerid[0] 
 			&& str[1] == piv_objects[i].containerid[1])
-			SC_FUNC_RETURN(card->ctx, 4, i);
+			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, i);
 	}
-	SC_FUNC_RETURN(card->ctx, 4, -1);
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, -1);
 }
 
 
@@ -1748,7 +1749,7 @@ static int piv_select_file(sc_card_t *card, const sc_path_t *in_path,
 	u8 * rbuf = NULL;
 	size_t rbuflen = 0;
 	
-	SC_FUNC_CALLED(card->ctx,1);
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	path = in_path->value;
 	pathlen = in_path->len;
@@ -1763,7 +1764,7 @@ static int piv_select_file(sc_card_t *card, const sc_path_t *in_path,
 	i = piv_find_obj_by_containerid(card, path);
 
 	if (i < 0)
-		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_FILE_NOT_FOUND); 
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_FILE_NOT_FOUND); 
 	
 	/*
 	 * pkcs15 will use a 2 byte path or a 4 byte path 
@@ -1783,18 +1784,18 @@ static int piv_select_file(sc_card_t *card, const sc_path_t *in_path,
 		r = piv_get_cached_data(card, i, &rbuf, &rbuflen); 
 	
 		if (r < 0)
-			SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_FILE_NOT_FOUND);
+			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_FILE_NOT_FOUND);
 
 		/* get the cert or the pub key out and into the cache too */
 		if (priv->return_only_cert || piv_objects[i].flags & PIV_OBJECT_TYPE_PUBKEY) { 
 			r = piv_cache_internal_data(card, i);
 			if (r < 0)
-				SC_FUNC_RETURN(card->ctx, 1, r);
+				SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 		}
 			
 		file = sc_file_new();
 		if (file == NULL)
-			SC_FUNC_RETURN(card->ctx, 0, SC_ERROR_OUT_OF_MEMORY);
+			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
 
 		file->path = *in_path;
 		/* this could be like the FCI */
@@ -1811,7 +1812,7 @@ static int piv_select_file(sc_card_t *card, const sc_path_t *in_path,
 		*file_out = file;
 	}
 
-	SC_FUNC_RETURN(card->ctx, 1, 0);
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, 0);
 
 }
 
@@ -1821,14 +1822,14 @@ static int piv_finish(sc_card_t *card)
  	piv_private_data_t * priv = PIV_DATA(card);
 	int i; 
 
-	SC_FUNC_CALLED(card->ctx,1);
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	if (priv) {
 		if (priv->aid_file)
 			sc_file_free(priv->aid_file);
 		if (priv->w_buf)
 			free(priv->w_buf);
 		for (i = 0; i < PIV_OBJ_LAST_ENUM - 1; i++) {
-sc_debug(card->ctx,"DEE freeing #%d, %p:%d %p:%d", i, 
+sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"DEE freeing #%d, %p:%d %p:%d", i, 
 				priv->obj_cache[i].obj_data, priv->obj_cache[i].obj_len,
 				priv->obj_cache[i].internal_obj_data, priv->obj_cache[i].internal_obj_len);
 			if (priv->obj_cache[i].obj_data)
@@ -1847,7 +1848,7 @@ static int piv_match_card(sc_card_t *card)
 {
 	int i;
 	sc_file_t aidfile;
-	SC_FUNC_CALLED(card->ctx,1);
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	/* Since we send an APDU, the card's logout function may be called...
 	 * however it may be in dirty memory */
 	card->ops->logout = NULL;
@@ -1864,18 +1865,18 @@ static int piv_init(sc_card_t *card)
 	unsigned long flags;
 	piv_private_data_t *priv;
 
-	SC_FUNC_CALLED(card->ctx,1);
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	priv = (piv_private_data_t *) calloc(1, sizeof(piv_private_data_t));
 
 	if (!priv)
-		SC_FUNC_RETURN(card->ctx, 1, SC_ERROR_OUT_OF_MEMORY);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
 	priv->aid_file = sc_file_new();
 	priv->selected_obj = -1;
 	/* priv->max_recv_size = 256; */
 	/* priv->max_recv_size = card->max_recv_size; */
 	/* priv->max_send_size = card->max_send_size; */
 	
-	sc_debug(card->ctx, "Max send = %d recv = %d\n", 
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Max send = %d recv = %d\n", 
 			card->max_send_size, card->max_recv_size);
 	card->drv_data = priv;
 	card->cla = 0x00;
@@ -1883,8 +1884,8 @@ static int piv_init(sc_card_t *card)
 
 	r = piv_find_aid(card, priv->aid_file);
 	if (r < 0) {
-		 sc_debug(card->ctx, "Failed to initialize %s\n", card->name);
-		SC_FUNC_RETURN(card->ctx, 1, r);
+		 sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Failed to initialize %s\n", card->name);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 	}
 	priv->enumtag = piv_aids[r].enumtag;
 	card->type = piv_aids[r].enumtag;
@@ -1899,7 +1900,7 @@ static int piv_init(sc_card_t *card)
 
 	if (r > 0)
 		r = 0;
-	SC_FUNC_RETURN(card->ctx, 1, r);
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 }
 
 

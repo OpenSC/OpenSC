@@ -1168,8 +1168,9 @@ int main(int argc, char * const argv[])
 		fprintf(stderr, "Failed to establish context: %s\n", sc_strerror(r));
 		return 1;
 	}
-	if (verbose > 1)
-		ctx->debug = verbose-1;
+
+	ctx->debug = verbose;
+
 	if (opt_reader >= (int)sc_ctx_get_reader_count(ctx) || opt_reader < 0) {
 		fprintf(stderr, "Illegal reader number. Only %d reader(s) configured.\n", sc_ctx_get_reader_count(ctx));
 		err = 1;

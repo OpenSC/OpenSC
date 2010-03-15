@@ -393,7 +393,7 @@ sc_asn1_encode_algorithm_id(sc_context_t *ctx,
 
 	alg_info = sc_asn1_get_algorithm_info(id);
 	if (alg_info == NULL) {
-		sc_debug(ctx, "Cannot encode unknown algorithm %u.\n",
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Cannot encode unknown algorithm %u.\n",
 				id->algorithm);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}

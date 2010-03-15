@@ -96,11 +96,11 @@ static int ctapi_reset(sc_reader_t *reader)
 
 	rv = priv->funcs.CT_data(priv->ctn, &dad, &sad, 5, cmd, &lr, rbuf);
 	if (rv || (lr < 2)) {
-		sc_debug(reader->ctx, "Error getting status of terminal: %d, using defaults\n", rv);
+		sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "Error getting status of terminal: %d, using defaults\n", rv);
 		return SC_ERROR_TRANSMIT_FAILED;
 	}
 	if (rbuf[lr-2] != 0x90) {
-		sc_debug(reader->ctx, "SW1/SW2: 0x%x/0x%x\n", rbuf[lr-2], rbuf[lr-1]);
+		sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "SW1/SW2: 0x%x/0x%x\n", rbuf[lr-2], rbuf[lr-1]);
 		return SC_ERROR_TRANSMIT_FAILED;
 	}
 	return 0;
@@ -127,7 +127,7 @@ static int refresh_attributes(sc_reader_t *reader)
 
 	rv = priv->funcs.CT_data(priv->ctn, &dad, &sad, 5, cmd, &lr, rbuf);
 	if (rv || (lr < 3) || (rbuf[lr-2] != 0x90)) {
-		sc_debug(reader->ctx, "Error getting status of terminal: %d/%d/0x%x\n", rv, lr, rbuf[lr-2]);
+		sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "Error getting status of terminal: %d/%d/0x%x\n", rv, lr, rbuf[lr-2]);
 		return SC_ERROR_TRANSMIT_FAILED;
 	}
 	if (lr < 4) {
@@ -136,11 +136,11 @@ static int refresh_attributes(sc_reader_t *reader)
 	} else {
 		if (rbuf[0] != CTBCS_P2_STATUS_ICC) {
 			/* Should we be more tolerant here? I do not think so... */
-			sc_debug(reader->ctx, "Invalid data object returnd on CTBCS_P2_STATUS_ICC: 0x%x\n", rbuf[0]);
+			sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "Invalid data object returnd on CTBCS_P2_STATUS_ICC: 0x%x\n", rbuf[0]);
 		return SC_ERROR_TRANSMIT_FAILED;
 		}
 		/* Fixme - should not be reached */
-		sc_debug(reader->ctx, "Returned status for  %d slots\n", rbuf[1]);
+		sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "Returned status for  %d slots\n", rbuf[1]);
 		reader->flags = SC_READER_CARD_PRESENT;
 	}
 
@@ -167,7 +167,7 @@ static int ctapi_internal_transmit(sc_reader_t *reader,
 	
 	rv = priv->funcs.CT_data(priv->ctn, &dad, &sad, (unsigned short)sendsize, (u8 *) sendbuf, &lr, recvbuf);
 	if (rv != 0) {
-		sc_debug(reader->ctx, "Error transmitting APDU: %d\n", rv);
+		sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "Error transmitting APDU: %d\n", rv);
 		return SC_ERROR_TRANSMIT_FAILED;
 	}
 	*recvsize = lr;
@@ -191,13 +191,12 @@ static int ctapi_transmit(sc_reader_t *reader, sc_apdu_t *apdu)
 	r = sc_apdu_get_octets(reader->ctx, apdu, &sbuf, &ssize, SC_PROTO_RAW);
 	if (r != SC_SUCCESS)
 		goto out;
-	if (reader->ctx->debug >= 6)
-		sc_apdu_log(reader->ctx, sbuf, ssize, 1);
+	sc_apdu_log(reader->ctx, SC_LOG_DEBUG_NORMAL, sbuf, ssize, 1);
 	r = ctapi_internal_transmit(reader, sbuf, ssize,
 					rbuf, &rsize, apdu->control);
 	if (r < 0) {
 		/* unable to transmit ... most likely a reader problem */
-		sc_debug(reader->ctx, "unable to transmit");
+		sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "unable to transmit");
 		goto out;
 	}
 	if (reader->ctx->debug >= 6)
@@ -246,11 +245,11 @@ static int ctapi_connect(sc_reader_t *reader)
 
 	rv = priv->funcs.CT_data(priv->ctn, &dad, &sad, 5, cmd, &lr, rbuf);
 	if (rv || rbuf[lr-2] != 0x90) {
-		sc_debug(reader->ctx, "Error activating card: %d\n", rv);
+		sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "Error activating card: %d\n", rv);
 		return SC_ERROR_TRANSMIT_FAILED;
 	}
 	if (lr < 2)
-		SC_FUNC_RETURN(reader->ctx, 0, SC_ERROR_INTERNAL);
+		SC_FUNC_RETURN(reader->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INTERNAL);
 	lr -= 2;
 	if (lr > SC_MAX_ATR_SIZE)
 		lr = SC_MAX_ATR_SIZE;
@@ -273,7 +272,7 @@ static int ctapi_connect(sc_reader_t *reader)
 
 		rv = priv->funcs.CT_data(priv->ctn, &dad, &sad, 9, cmd, &lr, rbuf);
 		if (rv) {
-			sc_debug(reader->ctx, "Error negotiating PPS: %d\n", rv);
+			sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "Error negotiating PPS: %d\n", rv);
 			return SC_ERROR_TRANSMIT_FAILED;
 		}
 	}
@@ -348,14 +347,14 @@ static int ctapi_load_module(sc_context_t *ctx,
 	
 	list = scconf_find_list(conf, "ports");
 	if (list == NULL) {
-		sc_debug(ctx, "No ports configured.\n");
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "No ports configured.\n");
 		return -1;
 	}
 
 	val = conf->name->data;
 	dlh = lt_dlopen(val);
 	if (!dlh) {
-		sc_debug(ctx, "Unable to open shared library '%s': %s\n", val, lt_dlerror());
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Unable to open shared library '%s': %s\n", val, lt_dlerror());
 		return -1;
 	}
 
@@ -378,12 +377,12 @@ static int ctapi_load_module(sc_context_t *ctx,
 		struct ctapi_private_data *priv;
 		
 		if (sscanf(list->data, "%d", &port) != 1) {
-			sc_debug(ctx, "Port '%s' is not a number.\n", list->data);
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Port '%s' is not a number.\n", list->data);
 			continue;
 		}
 		rv = funcs.CT_init((unsigned short)mod->ctn_count, (unsigned short)port);
 		if (rv) {
-			sc_debug(ctx, "CT_init() failed with %d\n", rv);
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "CT_init() failed with %d\n", rv);
 			continue;
 		}
 		
@@ -400,16 +399,16 @@ static int ctapi_load_module(sc_context_t *ctx,
 		
 		rv = priv->funcs.CT_data(priv->ctn, &dad, &sad, 5, cmd, &lr, rbuf);
 		if (rv || (lr < 4) || (rbuf[lr-2] != 0x90)) {
-			sc_debug(reader->ctx, "Error getting status of terminal: %d, using defaults\n", rv);
+			sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "Error getting status of terminal: %d, using defaults\n", rv);
 		}
 		if (rbuf[0] != CTBCS_P2_STATUS_TFU) {
 			/* Number of slots might also detected by using CTBCS_P2_STATUS_ICC.
 			   If you think that's important please do it... ;) */
-			sc_debug(reader->ctx, "Invalid data object returnd on CTBCS_P2_STATUS_TFU: 0x%x\n", rbuf[0]);
+			sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "Invalid data object returnd on CTBCS_P2_STATUS_TFU: 0x%x\n", rbuf[0]);
 		}
 		NumUnits = rbuf[1];
 		if (NumUnits + 4 > lr) {
-			sc_debug(reader->ctx, "Invalid data returnd: %d functional units, size %d\n", NumUnits, rv);
+			sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "Invalid data returnd: %d functional units, size %d\n", NumUnits, rv);
 		}
 		
 		for(i = 0; i < NumUnits; i++) {
@@ -431,22 +430,22 @@ static int ctapi_load_module(sc_context_t *ctx,
 				/* Maybe a weak point here if multiple interfaces are present and not returned
 				   in the "canonical" order. This is not forbidden by the specs, but why should
 				   anyone want to do that? */
-					sc_debug(reader->ctx, "Found slot id 0x%x\n", rbuf[i+2]);
+					sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "Found slot id 0x%x\n", rbuf[i+2]);
 					break;
 
 				case CTBCS_P1_DISPLAY:
 					priv->ctapi_functional_units |= CTAPI_FU_DISPLAY;
-					sc_debug(reader->ctx, "Display detected\n");
+					sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "Display detected\n");
 					break;
 
 				case CTBCS_P1_KEYPAD:
 					priv->ctapi_functional_units |= CTAPI_FU_KEYBOARD;
-					sc_debug(reader->ctx, "Keypad detected\n");
+					sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "Keypad detected\n");
 					break;
 
 				case CTBCS_P1_PRINTER:
 					priv->ctapi_functional_units |= CTAPI_FU_PRINTER;
-					sc_debug(reader->ctx, "Printer detected\n");
+					sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "Printer detected\n");
 					break;
 
 				case CTBCS_P1_FINGERPRINT:
@@ -455,11 +454,11 @@ static int ctapi_load_module(sc_context_t *ctx,
 				case CTBCS_P1_FACE_RECOGNITION:
 				case CTBCS_P1_IRISSCAN:
 					priv->ctapi_functional_units |= CTAPI_FU_BIOMETRIC;
-					sc_debug(reader->ctx, "Biometric sensor detected\n");
+					sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "Biometric sensor detected\n");
 					break;
 
 				default:
-					sc_debug(reader->ctx, "Unknown functional unit 0x%x\n", rbuf[i+2]);
+					sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "Unknown functional unit 0x%x\n", rbuf[i+2]);
 			}
 		}
 	/* CT-BCS does not define Keyboard/Display for each slot, so I assume
@@ -503,7 +502,7 @@ static int ctapi_load_module(sc_context_t *ctx,
 	}
 	return 0;
 symerr:
-	sc_debug(ctx, "Unable to resolve CT-API symbols.\n");
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Unable to resolve CT-API symbols.\n");
 	lt_dlclose(dlh);
 	return -1;
 }

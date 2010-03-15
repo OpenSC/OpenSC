@@ -50,7 +50,7 @@ int sc_pkcs15_read_data_object(struct sc_pkcs15_card *p15card,
 	
 	if (p15card == NULL || info == NULL || data_object_out == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
-	SC_FUNC_CALLED(p15card->card->ctx, 1);
+	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	r = sc_pkcs15_read_file(p15card, &info->path, &data, &len, NULL);
 	if (r)
@@ -112,14 +112,14 @@ int sc_pkcs15_decode_dodf_entry(struct sc_pkcs15_card *p15card,
 	r = sc_asn1_decode(ctx, asn1_data, *buf, *buflen, buf, buflen);
 	if (r == SC_ERROR_ASN1_END_OF_CONTENTS)
 		return r;
-	SC_TEST_RET(ctx, r, "ASN.1 decoding failed");
+	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "ASN.1 decoding failed");
 	r = sc_pkcs15_make_absolute_path(&p15card->file_app->path, &info.path);
 	if (r < 0)
 		return r;
 	obj->type = SC_PKCS15_TYPE_DATA_OBJECT;
 	obj->data = malloc(sizeof(info));
 	if (obj->data == NULL)
-		SC_FUNC_RETURN(ctx, 0, SC_ERROR_OUT_OF_MEMORY);
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
 	memcpy(obj->data, &info, sizeof(info));
 
 	return 0;

@@ -115,7 +115,7 @@ sc_pkcs15_bind_synthetic(sc_pkcs15_card_t *p15card)
 	sc_pkcs15emu_opt_t	opts;
 	int			i, r = SC_ERROR_WRONG_CARD;
 
-	SC_FUNC_CALLED(ctx, 1);
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 	memset(&opts, 0, sizeof(opts));
 	conf_block = NULL;
 
@@ -123,9 +123,9 @@ sc_pkcs15_bind_synthetic(sc_pkcs15_card_t *p15card)
 
 	if (!conf_block) {
 		/* no conf file found => try bultin drivers  */
-		sc_debug(ctx, "no conf file (or section), trying all builtin emulators\n");
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "no conf file (or section), trying all builtin emulators\n");
 		for (i = 0; builtin_emulators[i].name; i++) {
-			sc_debug(ctx, "trying %s\n", builtin_emulators[i].name);
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "trying %s\n", builtin_emulators[i].name);
 			r = builtin_emulators[i].handler(p15card, &opts);
 			if (r == SC_SUCCESS)
 				/* we got a hit */
@@ -145,7 +145,7 @@ sc_pkcs15_bind_synthetic(sc_pkcs15_card_t *p15card)
 				/* go through the list of builtin drivers */
 				const char *name = item->data;
 
-				sc_debug(ctx, "trying %s\n", name);
+				sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "trying %s\n", name);
 				for (i = 0; builtin_emulators[i].name; i++)
 					if (!strcmp(builtin_emulators[i].name, name)) {
 						r = builtin_emulators[i].handler(p15card, &opts);
@@ -156,9 +156,9 @@ sc_pkcs15_bind_synthetic(sc_pkcs15_card_t *p15card)
 			}	
 		}
 		else if (builtin_enabled) {
-			sc_debug(ctx, "no emulator list in config file, trying all builtin emulators\n");
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "no emulator list in config file, trying all builtin emulators\n");
 			for (i = 0; builtin_emulators[i].name; i++) {
-				sc_debug(ctx, "trying %s\n", builtin_emulators[i].name);
+				sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "trying %s\n", builtin_emulators[i].name);
 				r = builtin_emulators[i].handler(p15card, &opts);
 				if (r == SC_SUCCESS)
 					/* we got a hit */
@@ -167,11 +167,11 @@ sc_pkcs15_bind_synthetic(sc_pkcs15_card_t *p15card)
 		}
 
 		/* search for 'emulate foo { ... }' entries in the conf file */
-		sc_debug(ctx, "searching for 'emulate foo { ... }' blocks\n");
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "searching for 'emulate foo { ... }' blocks\n");
 		blocks = scconf_find_blocks(ctx->conf, conf_block, "emulate", NULL);
 		for (i = 0; blocks && (blk = blocks[i]) != NULL; i++) {
 			const char *name = blk->name->data;
-			sc_debug(ctx, "trying %s\n", name);
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "trying %s\n", name);
 			r = parse_emu_block(p15card, blk);
 			if (r == SC_SUCCESS) {
 				free(blocks);
@@ -189,7 +189,7 @@ out:	if (r == SC_SUCCESS) {
 		p15card->magic  = SC_PKCS15_CARD_MAGIC;
 		p15card->flags |= SC_PKCS15_CARD_FLAG_EMULATED;
 	} else if (r != SC_ERROR_WRONG_CARD) {
-		sc_debug(ctx, "Failed to load card emulator: %s\n",
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Failed to load card emulator: %s\n",
 				sc_strerror(r));
 	}
 
@@ -235,12 +235,12 @@ static int parse_emu_block(sc_pkcs15_card_t *p15card, scconf_block *conf)
 		const char *name = NULL;
 		void	*address;
 
-		sc_debug(ctx, "Loading %s\n", module_name);
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Loading %s\n", module_name);
 		
 		/* try to open dynamic library */
 		handle = lt_dlopen(module_name);
 		if (!handle) {
-			sc_debug(ctx, "unable to open dynamic library '%s': %s\n",
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "unable to open dynamic library '%s': %s\n",
 			         module_name, lt_dlerror());
 			return SC_ERROR_INTERNAL;
 		}
@@ -273,11 +273,11 @@ static int parse_emu_block(sc_pkcs15_card_t *p15card, scconf_block *conf)
 		r = SC_ERROR_WRONG_CARD;
 
 	if (r >= 0) {
-		sc_debug(card->ctx, "%s succeeded, card bound\n",
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "%s succeeded, card bound\n",
 				module_name);
 		p15card->dll_handle = handle;
-	} else if (ctx->debug >= 4) {
-		sc_debug(card->ctx, "%s failed: %s\n",
+	} else {
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "%s failed: %s\n",
 				module_name, sc_strerror(r));
 		/* clear pkcs15 card */
 		sc_pkcs15_card_clear(p15card);
@@ -400,7 +400,7 @@ int sc_pkcs15emu_object_add(sc_pkcs15_card_t *p15card, unsigned int type,
 		data_len = sizeof(struct sc_pkcs15_data_info);
 		break;
 	default:
-		sc_debug(p15card->card->ctx,
+		sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL,
 			"Unknown PKCS15 object type %d\n", type);
 		free(obj);
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -427,26 +427,26 @@ sc_pkcs15emu_postponed_load(sc_pkcs15_card_t *p15card, unsigned long *loaded_mas
 	sc_pkcs15_df_t	*df;
 	int r;
 
-	SC_FUNC_CALLED(ctx, 1);
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 
 	if (loaded_mask)
 		*loaded_mask = 0;
 
 	for (df = p15card->df_list; df; df = df->next)   {
-		sc_debug(ctx, "Type:%X,enumerated:%i", df->type, df->enumerated);
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Type:%X,enumerated:%i", df->type, df->enumerated);
 		if (df->enumerated)
 			continue;
 		if (!p15card->ops.parse_df)
 			continue;
 		r = p15card->ops.parse_df(p15card, df);
-		SC_TEST_RET(ctx, r, "DF parse error");
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "DF parse error");
 
 		if (loaded_mask)
 			*loaded_mask |= (1 << df->type);
 	}
 
 	if (loaded_mask)
-		sc_debug(ctx, "Loaded mask 0x%lX", *loaded_mask);
-	SC_FUNC_RETURN(ctx, 1, SC_SUCCESS);
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Loaded mask 0x%lX", *loaded_mask);
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
 }
 

@@ -309,7 +309,7 @@ pgp_enumerate_blob(sc_card_t *card, struct blob *blob)
 
 	return 0;
 
-eoc:	sc_debug(card->ctx, "Unexpected end of contents\n");
+eoc:	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Unexpected end of contents\n");
 	return SC_ERROR_OBJECT_NOT_VALID;
 }
 
@@ -442,7 +442,7 @@ pgp_get_pubkey(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 	u8		idbuf[2];
 	int		r;
 
-	sc_debug(card->ctx, "called, tag=%04x\n", tag);
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "called, tag=%04x\n", tag);
 
 	idbuf[0] = tag >> 8;
 	idbuf[1] = tag;
@@ -456,9 +456,9 @@ pgp_get_pubkey(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 	apdu.resplen = buf_len;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, r, "Card returned error");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
 
 	return apdu.resplen;
 }
@@ -473,7 +473,7 @@ pgp_get_pubkey_pem(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 	size_t		len;
 	int		r;
 
-	sc_debug(card->ctx, "called, tag=%04x\n", tag);
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "called, tag=%04x\n", tag);
 	
 	if ((r = pgp_get_blob(card, &priv->mf, tag & 0xFFFE, &blob)) < 0
 	 || (r = pgp_get_blob(card, blob, 0x7F49, &blob)) < 0
@@ -513,9 +513,9 @@ pgp_get_data(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 	apdu.resplen = buf_len;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, r, "Card returned error");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
 
 	return apdu.resplen;
 }
@@ -557,7 +557,7 @@ pgp_set_security_env(sc_card_t *card,
 	case SC_SEC_OPERATION_SIGN:
 		if (env->key_ref[0] != 0x00
 		 && env->key_ref[0] != 0x02) {
-		 	sc_debug(card->ctx,
+		 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
 				"Key reference not compatible with "
 				"requested usage\n");
 			return SC_ERROR_NOT_SUPPORTED;
@@ -565,7 +565,7 @@ pgp_set_security_env(sc_card_t *card,
 		break;
 	case SC_SEC_OPERATION_DECIPHER:
 		if (env->key_ref[0] != 0x01) {
-		 	sc_debug(card->ctx,
+		 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
 				"Key reference not compatible with "
 				"requested usage\n");
 			return SC_ERROR_NOT_SUPPORTED;
@@ -603,11 +603,11 @@ pgp_compute_signature(sc_card_t *card, const u8 *data,
 				0x88, 0, 0);
 		break;
 	case 0x01:
-		sc_debug(card->ctx,
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
 			"Invalid key reference (decipher only key)\n");
 		return SC_ERROR_INVALID_ARGUMENTS;
 	default:
-		sc_debug(card->ctx, "Invalid key reference 0x%02x\n",
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Invalid key reference 0x%02x\n",
 				env->key_ref[0]);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
@@ -620,9 +620,9 @@ pgp_compute_signature(sc_card_t *card, const u8 *data,
 	apdu.resplen = outlen;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, r, "Card returned error");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
 
 	return apdu.resplen;
 }
@@ -659,12 +659,12 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 		break;
 	case 0x00: /* signature key */
 	case 0x02: /* authentication key */
-		sc_debug(card->ctx,
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
 			"Invalid key reference (signature only key)\n");
 		free(temp);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	default:
-		sc_debug(card->ctx, "Invalid key reference 0x%02x\n",
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Invalid key reference 0x%02x\n",
 				env->key_ref[0]);
 		free(temp);
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -680,9 +680,9 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 	r = sc_transmit_apdu(card, &apdu);
 	free(temp);
 
-	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, r, "Card returned error");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
 
 	return apdu.resplen;
 }

@@ -182,12 +182,12 @@ int sc_compare_oid(const struct sc_object_id *oid1, const struct sc_object_id *o
 int sc_detect_card_presence(sc_reader_t *reader)
 {
 	int r;
-	SC_FUNC_CALLED(reader->ctx, 1);
+	SC_FUNC_CALLED(reader->ctx, SC_LOG_DEBUG_VERBOSE);
 	if (reader->ops->detect_card_presence == NULL)
-		SC_FUNC_RETURN(reader->ctx, 0, SC_ERROR_NOT_SUPPORTED);
+		SC_FUNC_RETURN(reader->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED);
 
 	r = reader->ops->detect_card_presence(reader);
-	SC_FUNC_RETURN(reader->ctx, 1, r);
+	SC_FUNC_RETURN(reader->ctx, SC_LOG_DEBUG_NORMAL, r);
 }
 
 int sc_path_set(sc_path_t *path, int type, const u8 *id, size_t id_len, 
@@ -618,12 +618,12 @@ int _sc_parse_atr(sc_reader_t *reader)
 	reader->atr_info.hist_bytes = NULL;
 
 	if (atr_len == 0) {
-		sc_debug(reader->ctx, "empty ATR - card not present?\n");
+		sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "empty ATR - card not present?\n");
 		return SC_ERROR_INTERNAL;
 	}
 
 	if (p[0] != 0x3B && p[0] != 0x3F) {
-		sc_debug(reader->ctx, "invalid sync byte in ATR: 0x%02X\n", p[0]);
+		sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "invalid sync byte in ATR: 0x%02X\n", p[0]);
 		return SC_ERROR_INTERNAL;
 	}
 	n_hist = p[1] & 0x0F;

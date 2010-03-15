@@ -1622,8 +1622,7 @@ int main(int argc, char * const argv[])
 		fprintf(stderr, "Failed to establish context: %s\n", sc_strerror(r));
 		return 1;
 	}
-	if (verbose > 1 )
-		ctx->debug = verbose-1;
+	ctx->debug = verbose;
 
 	err = util_connect_card(ctx, &card, opt_reader, opt_wait, verbose);
 	if (err)

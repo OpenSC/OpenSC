@@ -30,7 +30,7 @@
 struct fmap {
 	CK_ULONG	value;
 	const char *	name;
-	const char *	(*print)(struct fmap *, void *, size_t);
+	const char *	(*print)(int level, struct fmap *, void *, size_t);
 	struct fmap *	map;
 };
 
@@ -43,14 +43,19 @@ struct fmap {
 #define b(x)		{ (x), #x, sc_pkcs11_print_bool, NULL }
 #define s(x)		{ (x), #x, sc_pkcs11_print_string, NULL }
 
-static void		sc_pkcs11_print_attr(const char *, unsigned int,
-				const char *, const char *,
+static void		sc_pkcs11_print_attr(int level, const char *,
+				unsigned int, const char *, const char *,
 				CK_ATTRIBUTE_PTR);
-static const char *	sc_pkcs11_print_value(struct fmap *, void *, size_t);
-static struct fmap *	sc_pkcs11_map_ulong(struct fmap *, CK_ULONG);
-static const char *	sc_pkcs11_print_ulong(struct fmap *, void *, size_t);
-static const char *	sc_pkcs11_print_bool(struct fmap *, void *, size_t);
-static const char *	sc_pkcs11_print_string(struct fmap *, void *, size_t);
+static const char *	sc_pkcs11_print_value(int level, struct fmap *,
+				void *, size_t);
+static struct fmap *	sc_pkcs11_map_ulong(int level, struct fmap *,
+				CK_ULONG);
+static const char *	sc_pkcs11_print_ulong(int level, struct fmap *,
+				void *, size_t);
+static const char *	sc_pkcs11_print_bool(int level, struct fmap *,
+				void *, size_t);
+static const char *	sc_pkcs11_print_string(int level, struct fmap *,
+				void *, size_t);
 
 static struct fmap	map_CKA_CLASS[] = {
 	_(CKO_DATA),
@@ -156,18 +161,13 @@ static struct fmap	p11_attr_names[] = {
 	{ 0, NULL, NULL, NULL }
 };
 
-void sc_pkcs11_print_attrs(const char *file, unsigned int line,
+void sc_pkcs11_print_attrs(int level, const char *file, unsigned int line,
 			const char *function,
 			const char *info,
 			CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount)
 {
-	/* Don't bother with looking at this in detail if debugging
-	 * is off */
-	if (!context->debug)
-		return;
-
 	if (ulCount == 0) {
-		sc_do_log(context, SC_LOG_TYPE_DEBUG,
+		sc_do_log(context, level,
 			file, line, function,
 			"%s: empty template\n",
 			info);
@@ -175,41 +175,41 @@ void sc_pkcs11_print_attrs(const char *file, unsigned int line,
 	}
 
 	while (ulCount--)
-		sc_pkcs11_print_attr(file, line, function,
+		sc_pkcs11_print_attr(level, file, line, function,
 				info, pTemplate++);
 
 }
 
-static void sc_pkcs11_print_attr(const char *file, unsigned int line,
+static void sc_pkcs11_print_attr(int level, const char *file, unsigned int line,
 			const char *function,
 			const char *info, CK_ATTRIBUTE_PTR attr)
 {
 	struct fmap	*fm;
 	const char *	value;
 
-	fm = sc_pkcs11_map_ulong(p11_attr_names, attr->type);
+	fm = sc_pkcs11_map_ulong(level, p11_attr_names, attr->type);
 
 	if (attr->pValue == NULL) {
 		value = "<size inquiry>";
 	} else {
-		value = sc_pkcs11_print_value(fm,
+		value = sc_pkcs11_print_value(level, fm,
 			attr->pValue, attr->ulValueLen);
 	}
 
 	if (fm == NULL) {
-		sc_do_log(context, SC_LOG_TYPE_DEBUG,
+		sc_do_log(context, level,
 				file, line, function,
 				"%s: Attribute 0x%x = %s\n",
 				info, attr->type, value);
 	} else {
-		sc_do_log(context, SC_LOG_TYPE_DEBUG,
+		sc_do_log(context, level,
 				file, line, function,
 				"%s: %s = %s\n",
 				info, fm->name, value);
 	}
 }
 
-static const char *sc_pkcs11_print_value(struct fmap *fm,
+static const char *sc_pkcs11_print_value(int level, struct fmap *fm,
 			void *ptr, size_t count)
 {
 	static char buffer[4 * DUMP_TEMPLATE_MAX + 1] = "";
@@ -229,10 +229,10 @@ static const char *sc_pkcs11_print_value(struct fmap *fm,
 		return buffer;
 	}
 
-	return fm->print(fm, ptr, count);
+	return fm->print(level, fm, ptr, count);
 }
 
-static const char *sc_pkcs11_print_ulong(struct fmap *fm,
+static const char *sc_pkcs11_print_ulong(int level, struct fmap *fm,
 		void *ptr, size_t count)
 {
 	static char	buffer[64];
@@ -240,17 +240,17 @@ static const char *sc_pkcs11_print_ulong(struct fmap *fm,
 
 	if (count == sizeof(CK_ULONG)) {
 		memcpy(&value, ptr, count);
-		if ((fm = sc_pkcs11_map_ulong(fm->map, value)) != NULL)
+		if ((fm = sc_pkcs11_map_ulong(level, fm->map, value)) != NULL)
 			return fm->name;
 		sprintf(buffer, "0x%lx", (unsigned long) value);
 		return buffer;
 	}
 
-	return sc_pkcs11_print_value(NULL, ptr, count);
+	return sc_pkcs11_print_value(level, NULL, ptr, count);
 }
 
-static const char *sc_pkcs11_print_bool(struct fmap *fm, void *ptr,
-		size_t count)
+static const char *sc_pkcs11_print_bool(int level, struct fmap *fm,
+		void *ptr, size_t count)
 {
 	CK_BBOOL	value;
 
@@ -261,10 +261,10 @@ static const char *sc_pkcs11_print_bool(struct fmap *fm, void *ptr,
 		return "FALSE";
 	}
 
-	return sc_pkcs11_print_value(NULL, ptr, count);
+	return sc_pkcs11_print_value(level, NULL, ptr, count);
 }
 
-static const char *sc_pkcs11_print_string(struct fmap *fm,
+static const char *sc_pkcs11_print_string(int level, struct fmap *fm,
 		void *ptr, size_t count)
 {
 	static char	buffer[128];
@@ -276,7 +276,7 @@ static const char *sc_pkcs11_print_string(struct fmap *fm,
 	return buffer;
 }
 
-static struct fmap *sc_pkcs11_map_ulong(struct fmap *fm, CK_ULONG value)
+static struct fmap *sc_pkcs11_map_ulong(int level, struct fmap *fm, CK_ULONG value)
 {
 	for (; fm && fm->name; fm++) {
 		if (fm->value == value)

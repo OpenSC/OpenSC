@@ -91,8 +91,7 @@ static void logprintf(PCARD_DATA pCardData, int level, const char* format, ...)
 		vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
 		if(vs != NULL && vs->ctx != NULL)
 		{
-			if (vs->ctx->debug >= level)
-				sc_do_log_va(vs->ctx, SC_LOG_TYPE_DEBUG, NULL, 0, NULL, format, arg);
+			sc_debug(vs->ctx, SC_LOG_DEBUG_NORMAL, level, format, arg);
 		}
 	}
 	va_end(arg);

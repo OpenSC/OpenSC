@@ -76,14 +76,14 @@ static int cardos_match_card(sc_card_t *card)
 			return 0;
 		/* get the os version using GET DATA and compare it with
 		 * version in the ATR */
-		sc_debug(card->ctx, "checking cardos version ...");
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "checking cardos version ...");
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xca, 0x01, 0x82);
 		apdu.resp = rbuf;
 		apdu.resplen = sizeof(rbuf);
 		apdu.le = 256;
 		apdu.lc = 0;
 		rv = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, rv, "APDU transmit failed");
+		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, rv, "APDU transmit failed");
 		if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
 			return 0;
 		if (apdu.resp[0] != card->atr[10] ||
@@ -91,19 +91,19 @@ static int cardos_match_card(sc_card_t *card)
 			/* version mismatch */
 			return 0;
 		if (card->atr[11] <= 0x04) {
-			sc_debug(card->ctx, "found cardos m4.01");
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "found cardos m4.01");
 			card->type = SC_CARD_TYPE_CARDOS_M4_01;
 		} else if (card->atr[11] == 0x08) {
-			sc_debug(card->ctx, "found cardos v4.3b");
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "found cardos v4.3b");
 			card->type = SC_CARD_TYPE_CARDOS_M4_3;
 		} else if (card->atr[11] == 0x09) {
-			sc_debug(card->ctx, "found cardos v4.2b");
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "found cardos v4.2b");
 			card->type = SC_CARD_TYPE_CARDOS_M4_2B;
                 } else if (card->atr[11] >= 0x0B) {
-                        sc_debug(card->ctx, "found cardos v4.2c or higher");
+                        sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "found cardos v4.2c or higher");
                         card->type = SC_CARD_TYPE_CARDOS_M4_2C;
 		} else {
-			sc_debug(card->ctx, "found cardos m4.2");
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "found cardos m4.2");
 		}
 	}
 	return 1;
@@ -123,7 +123,7 @@ static int cardos_have_2048bit_package(sc_card_t *card)
 	apdu.lc = 0;
 	apdu.le = 256;
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 
 	if ((len = apdu.resplen) == 0)
 		/* looks like no package has been installed  */
@@ -255,13 +255,13 @@ static int cardos_check_sw(sc_card_t *card, unsigned int sw1, unsigned int sw2)
 	for (i = 0; i < err_count; i++) {
 		if (cardos_errors[i].SWs == ((sw1 << 8) | sw2)) {
 			if ( cardos_errors[i].errorstr ) 
-				sc_debug(card->ctx, "%s\n",
+				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "%s\n",
 				 	cardos_errors[i].errorstr);
 			return cardos_errors[i].errorno;
 		}
 	}
 
-        sc_debug(card->ctx, "Unknown SWs; SW1=%02X, SW2=%02X\n", sw1, sw2);
+        sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Unknown SWs; SW1=%02X, SW2=%02X\n", sw1, sw2);
 	return SC_ERROR_CARD_CMD_FAILED;
 }
 
@@ -273,7 +273,7 @@ static int cardos_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 	int       r;
 	size_t    fids = 0, len;
 
-	SC_FUNC_CALLED(card->ctx, 1);
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	/* 0x16: DIRECTORY */
 	/* 0x02: list both DF and EF */
@@ -286,12 +286,12 @@ get_next_part:
 	apdu.resp = rbuf;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, r, "DIRECTORY command returned error");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "DIRECTORY command returned error");
 
 	if (apdu.resplen > 256) {
-		sc_debug(card->ctx, "directory listing > 256 bytes, cutting");
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "directory listing > 256 bytes, cutting");
 		r = 256;
 	}
 
@@ -301,7 +301,7 @@ get_next_part:
 		/* is there a file informatin block (0x6f) ? */
 		p = sc_asn1_find_tag(card->ctx, p, len, 0x6f, &tlen);
 		if (p == NULL) {
-			sc_debug(card->ctx, "directory tag missing");
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "directory tag missing");
 			return SC_ERROR_INTERNAL;
 		}
 		if (tlen == 0)
@@ -309,7 +309,7 @@ get_next_part:
 			break;
 		q = sc_asn1_find_tag(card->ctx, p, tlen, 0x86, &ilen);
 		if (q == NULL || ilen != 2) {
-			sc_debug(card->ctx, "error parsing file id TLV object");
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "error parsing file id TLV object");
 			return SC_ERROR_INTERNAL;
 		}
 		/* put file id in buf */
@@ -333,7 +333,7 @@ get_next_part:
 
 	r = fids;
 
-	SC_FUNC_RETURN(card->ctx, 1, r);
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 }
 
 static void add_acl_entry(sc_file_t *file, int op, u8 byte)
@@ -428,11 +428,11 @@ static int cardos_select_file(sc_card_t *card,
 {
 	int r;
 	
-	SC_FUNC_CALLED(card->ctx, 1);
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	r = iso_ops->select_file(card, in_path, file);
 	if (r >= 0 && file)
 		parse_sec_attr((*file), (*file)->sec_attr, (*file)->sec_attr_len);
-	SC_FUNC_RETURN(card->ctx, 1, r);
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 }
 
 static int cardos_acl_to_bytes(sc_card_t *card, const sc_file_t *file,
@@ -451,7 +451,7 @@ static int cardos_acl_to_bytes(sc_card_t *card, const sc_file_t *file,
 		else
 			byte = acl_to_byte(sc_file_get_acl_entry(file, idx[i]));
 		if (byte < 0) {
-			sc_debug(card->ctx, "Invalid ACL\n");
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Invalid ACL\n");
 			return SC_ERROR_INVALID_ARGUMENTS;
 		}
 		buf[i] = byte;
@@ -535,7 +535,7 @@ static int cardos_construct_fcp(sc_card_t *card, const sc_file_t *file,
 	size_t inlen = *outlen, len;
 	int    r;
 
-	SC_FUNC_CALLED(card->ctx, 2);
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
 
 	if (out == NULL || inlen < 64)
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -581,7 +581,7 @@ static int cardos_construct_fcp(sc_card_t *card, const sc_file_t *file,
 			buf[4] |= (u8) file->record_count;
 			break;
 		default:
-			sc_debug(card->ctx, "unknown EF type: %u", file->type);
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "unknown EF type: %u", file->type);
 			return SC_ERROR_INVALID_ARGUMENTS;
 		}
 		if (file->ef_structure == SC_FILE_EF_CYCLIC ||
@@ -639,7 +639,7 @@ static int cardos_create_file(sc_card_t *card, sc_file_t *file)
 {
 	int       r;
 
-	SC_FUNC_CALLED(card->ctx, 1);
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	if (card->type == SC_CARD_TYPE_CARDOS_GENERIC ||
 	    card->type == SC_CARD_TYPE_CARDOS_M4_01) {
@@ -657,7 +657,7 @@ static int cardos_create_file(sc_card_t *card, sc_file_t *file)
 
 		r = cardos_construct_fcp(card, file, sbuf, &len);
 		if (r < 0) {
-			sc_debug(card->ctx, "unable to create FCP");
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "unable to create FCP");
 			return r;
 		}
 	
@@ -667,7 +667,7 @@ static int cardos_create_file(sc_card_t *card, sc_file_t *file)
 		apdu.data    = sbuf;
 
 		r = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 
 		return sc_check_sw(card, apdu.sw1, apdu.sw2);
 	} else
@@ -683,18 +683,18 @@ cardos_restore_security_env(sc_card_t *card, int se_num)
 	sc_apdu_t apdu;
 	int	r;
 
-	SC_FUNC_CALLED(card->ctx, 1);
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x22, 0, se_num);
 	apdu.p1 = (card->type == SC_CARD_TYPE_CARDOS_CIE_V1 ? 0xF3 : 0x03);
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, r, "Card returned error");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
 
-	SC_FUNC_RETURN(card->ctx, 1, r);
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 }
 
 /*
@@ -720,7 +720,7 @@ cardos_set_security_env(sc_card_t *card,
 
 	if (!(env->flags & SC_SEC_ENV_KEY_REF_PRESENT)
 	 || env->key_ref_len != 1) {
-		sc_debug(card->ctx, "No or invalid key reference\n");
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "No or invalid key reference\n");
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	key_id = env->key_ref[0];
@@ -750,12 +750,12 @@ cardos_set_security_env(sc_card_t *card,
 	apdu.data = data;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, r, "Card returned error");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
 
-	SC_FUNC_RETURN(card->ctx, 1, r);
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 }
 
 /*
@@ -782,12 +782,12 @@ do_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 	apdu.lc      = datalen;
 	apdu.datalen = datalen;
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
-		SC_FUNC_RETURN(card->ctx, 4, apdu.resplen);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, apdu.resplen);
 	else
-		SC_FUNC_RETURN(card->ctx, 4, sc_check_sw(card, apdu.sw1, apdu.sw2));
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
 
 static int
@@ -801,12 +801,12 @@ cardos_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 
 	assert(card != NULL && data != NULL && out != NULL);	
 	ctx = card->ctx;
-	SC_FUNC_CALLED(ctx, 1);
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 
 	if (datalen > SC_MAX_APDU_BUFFER_SIZE)
-		SC_FUNC_RETURN(card->ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
 	if (outlen < datalen)
-		SC_FUNC_RETURN(card->ctx, 4, SC_ERROR_BUFFER_TOO_SMALL);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_BUFFER_TOO_SMALL);
 	outlen = datalen;
 
 	/* XXX As we don't know what operations are allowed with a
@@ -818,23 +818,19 @@ cardos_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 	 * invalid signatures with duplicated hash prefixes with some cards
 	 */
 
-    if (ctx->debug >= 3) {	 
         if (card->caps & SC_CARD_CAP_ONLY_RAW_HASH_STRIPPED)
-            sc_debug(ctx, "Forcing RAW_HASH_STRIPPED\n");        	 
+            sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Forcing RAW_HASH_STRIPPED\n");        	 
         if (card->caps & SC_CARD_CAP_ONLY_RAW_HASH)
-            sc_debug(ctx, "Forcing RAW_HASH\n");
-    }
+            sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Forcing RAW_HASH\n");
 
 	if (!(card->caps & (SC_CARD_CAP_ONLY_RAW_HASH_STRIPPED | SC_CARD_CAP_ONLY_RAW_HASH))) {
-		if (ctx->debug >= 3)
-			sc_debug(ctx, "trying RSA_PURE_SIG (padded DigestInfo)\n");
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "trying RSA_PURE_SIG (padded DigestInfo)\n");
 		r = do_compute_signature(card, data, datalen, out, outlen);
 		if (r >= SC_SUCCESS)
-			SC_FUNC_RETURN(ctx, 4, r);
+			SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, r);
 	}		
 		
-	if (ctx->debug >= 3)
-		sc_debug(ctx, "trying RSA_SIG (just the DigestInfo)\n");
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "trying RSA_SIG (just the DigestInfo)\n");
 	/* remove padding: first try pkcs1 bt01 padding */
 	r = sc_pkcs1_strip_01_padding(data, datalen, buf, &tmp_len);
 	if (r != SC_SUCCESS) {
@@ -851,23 +847,21 @@ cardos_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 	}
 
 	if (!(card->caps & (SC_CARD_CAP_ONLY_RAW_HASH_STRIPPED | SC_CARD_CAP_ONLY_RAW_HASH)) || card->caps & SC_CARD_CAP_ONLY_RAW_HASH ) {
-		if (ctx->debug >= 3)
-			sc_debug(ctx, "trying to sign raw hash value with prefix\n");	
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "trying to sign raw hash value with prefix\n");	
 		r = do_compute_signature(card, buf, tmp_len, out, outlen);
 		if (r >= SC_SUCCESS)	
-			SC_FUNC_RETURN(ctx, 4, r);
+			SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, r);
 	}
 
 	if (card->caps & SC_CARD_CAP_ONLY_RAW_HASH) {
-	    sc_debug(ctx, "Failed to sign raw hash value with prefix when forcing\n");
-	    SC_FUNC_RETURN(ctx, 4, SC_ERROR_INVALID_ARGUMENTS);
+	    sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Failed to sign raw hash value with prefix when forcing\n");
+	    SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
 	}
 	   
-	if (ctx->debug >= 3)
-		sc_debug(ctx, "trying to sign stripped raw hash value (card is responsible for prefix)\n");
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "trying to sign stripped raw hash value (card is responsible for prefix)\n");
 	r = sc_pkcs1_strip_digest_info_prefix(NULL,buf,tmp_len,buf,&buf_len);
 	if (r != SC_SUCCESS)
-		SC_FUNC_RETURN(ctx, 4, r);
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, r);
 	return do_compute_signature(card, buf, buf_len, out, outlen);
 }
 
@@ -878,7 +872,7 @@ cardos_lifecycle_get(sc_card_t *card, int *mode)
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	int		r;
 
-	SC_FUNC_CALLED(card->ctx, 1);
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xca, 0x01, 0x83);
 	apdu.cla = 0x00;
@@ -887,13 +881,13 @@ cardos_lifecycle_get(sc_card_t *card, int *mode)
 	apdu.resp = rbuf;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, r, "Card returned error");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
 
 	if (apdu.resplen < 1) {
-		SC_TEST_RET(card->ctx, r, "Lifecycle byte not in response");
+		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Lifecycle byte not in response");
 	}
 
 	r = SC_SUCCESS;
@@ -908,11 +902,11 @@ cardos_lifecycle_get(sc_card_t *card, int *mode)
 		*mode = SC_CARDCTRL_LIFECYCLE_OTHER;
 		break;
 	default:
-		sc_debug(card->ctx, "Unknown lifecycle byte %d", rbuf[0]);
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Unknown lifecycle byte %d", rbuf[0]);
 		r = SC_ERROR_INTERNAL;
 	}
 
-	SC_FUNC_RETURN(card->ctx, 1, r);
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 }
 
 static int
@@ -924,7 +918,7 @@ cardos_lifecycle_set(sc_card_t *card, int *mode)
 	int current;
 	int target;
 
-	SC_FUNC_CALLED(card->ctx, 1);
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	target = *mode;
 
@@ -943,12 +937,12 @@ cardos_lifecycle_set(sc_card_t *card, int *mode)
 	apdu.resp = NULL;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, r, "Card returned error");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
 
-	SC_FUNC_RETURN(card->ctx, 1, r);
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 }
 
 static int
@@ -958,7 +952,7 @@ cardos_put_data_oci(sc_card_t *card,
 	sc_apdu_t	apdu;
 	int		r;
 
-	SC_FUNC_CALLED(card->ctx, 1);
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	memset(&apdu, 0, sizeof(apdu));
 	apdu.cse = SC_APDU_CASE_3_SHORT;
@@ -971,12 +965,12 @@ cardos_put_data_oci(sc_card_t *card,
 	apdu.datalen = args->len;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, r, "Card returned error");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
 
-	SC_FUNC_RETURN(card->ctx, 1, r);
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 }
 
 static int
@@ -997,10 +991,10 @@ cardos_put_data_seci(sc_card_t *card,
 	apdu.datalen = args->len;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, r, "Card returned error");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
 
 	return r;
 }
@@ -1032,9 +1026,9 @@ cardos_generate_key(sc_card_t *card,
 	apdu.datalen = apdu.lc = sizeof(data);
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, r, "GENERATE_KEY failed");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "GENERATE_KEY failed");
 
 	return r;
 }
@@ -1050,11 +1044,11 @@ static int cardos_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 	apdu.resplen = sizeof(rbuf);
 	apdu.le   = 256;
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, r,  "APDU transmit failed");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r,  "APDU transmit failed");
 	if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
 		return SC_ERROR_INTERNAL;
 	if (apdu.resplen != 32) {
-		sc_debug(card->ctx, "unexpected response to GET DATA serial"
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "unexpected response to GET DATA serial"
 				" number\n");
 		return SC_ERROR_INTERNAL;
 	}
@@ -1130,7 +1124,7 @@ static int cardos_logout(sc_card_t *card)
 		apdu.cla = 0x80;
 
 		r = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 
 		return sc_check_sw(card, apdu.sw1, apdu.sw2);
 	} else
@@ -1142,7 +1136,7 @@ static int cardos_get_data(struct sc_card *card, unsigned int tag,  u8 *buf, siz
 	int                             r;
 	struct sc_apdu                  apdu;
 
-	SC_FUNC_CALLED(card->ctx, 1);
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xCA,
 			(tag >> 8) & 0xff, tag & 0xff);
@@ -1152,17 +1146,17 @@ static int cardos_get_data(struct sc_card *card, unsigned int tag,  u8 *buf, siz
 	apdu.resp = buf;
 	apdu.resplen = len;
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, r, "GET_DATA returned error");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "GET_DATA returned error");
 
 	if (apdu.resplen > len)
 		r = SC_ERROR_WRONG_LENGTH;
 	else
 		r = apdu.resplen;
 
-	SC_FUNC_RETURN(card->ctx, 1, r);
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 }
 
 

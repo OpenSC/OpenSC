@@ -55,7 +55,7 @@ select_esteid_df (sc_card_t * card)
 	sc_format_path ("3F00EEEE", &tmppath);
 	tmppath.type = SC_PATH_TYPE_PATH;
 	r = sc_select_file (card, &tmppath, NULL);
-	SC_TEST_RET (card->ctx, r, "esteid select DF failed");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "esteid select DF failed");
 	return r;
 }
 
@@ -81,11 +81,11 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 	sc_format_path ("3f00eeee5044", &tmppath);
 	tmppath.type = SC_PATH_TYPE_PATH;
 	r = sc_select_file (card, &tmppath, NULL);
-	SC_TEST_RET (card->ctx, r, "select esteid PD failed");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "select esteid PD failed");
 
 	/* read the serial (document number) */	
 	r = sc_read_record (card, SC_ESTEID_PD_DOCUMENT_NR, buff, sizeof(buff), SC_RECORD_BY_REC_NR);
-	SC_TEST_RET (card->ctx, r, "read document number failed");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "read document number failed");
 	buff[r] = '\0';
 	set_string (&p15card->serial_number, (const char *) buff);
 
@@ -96,7 +96,7 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 		return SC_ERROR_INTERNAL;
 	
 	r = sc_read_record (card, SC_ESTEID_PD_GIVEN_NAMES1, buff, sizeof(buff), SC_RECORD_BY_REC_NR);
-	SC_TEST_RET (card->ctx, r, "read name1 failed");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "read name1 failed");
 	inptr = (char *) buff;
 	outptr = name1;
 	inbytes = r;
@@ -107,7 +107,7 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 	*outptr = '\0';
 	
 	r = sc_read_record (card, SC_ESTEID_PD_SURNAME, buff, sizeof(buff), SC_RECORD_BY_REC_NR);
-	SC_TEST_RET (card->ctx, r, "read name2 failed");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "read name2 failed");
 	inptr = (char *) buff;
 	outptr = name2;
 	inbytes = r;

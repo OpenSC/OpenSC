@@ -61,7 +61,7 @@ static u8 process_acl_entry(sc_file_t *in, unsigned int method, unsigned int in_
 
 static int entersafe_erase_card(struct sc_profile *profile, sc_pkcs15_card_t *p15card)
 {
-	SC_FUNC_CALLED(p15card->card->ctx, 1);
+	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	if (sc_select_file(p15card->card, sc_get_mf_path(), NULL) < 0)
 		return SC_SUCCESS;
@@ -78,10 +78,10 @@ static int entersafe_init_card(sc_profile_t *profile, sc_pkcs15_card_t *p15card)
 		 sc_file_t *mf_file;
 		 sc_entersafe_create_data mf_data;
 
-		 SC_FUNC_CALLED(card->ctx, 1);
+		 SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 		 ret = sc_profile_get_file(profile, "MF", &mf_file);
-		 SC_TEST_RET(card->ctx,ret,"Get MF info failed");
+		 SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL,ret,"Get MF info failed");
 
 		 mf_data.type = SC_ENTERSAFE_MF_DATA;
 		 mf_data.data.df.file_id[0]=0x3F;
@@ -97,7 +97,7 @@ static int entersafe_init_card(sc_profile_t *profile, sc_pkcs15_card_t *p15card)
 		 sc_file_free(mf_file);
 		 
 		 ret = sc_card_ctl(card, SC_CARDCTL_ENTERSAFE_CREATE_FILE, &mf_data);
-		 SC_TEST_RET(card->ctx,ret,"Create MF failed");
+		 SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL,ret,"Create MF failed");
 	}
 
 	{/* EF(DIR) */
@@ -108,7 +108,7 @@ static int entersafe_init_card(sc_profile_t *profile, sc_pkcs15_card_t *p15card)
 
 		 /* get dir profile */
 		 ret = sc_profile_get_file(profile, "dir", &dir_file);
-		 SC_TEST_RET(card->ctx,ret,"Get EF(DIR) info failed");
+		 SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL,ret,"Get EF(DIR) info failed");
 		 fid=dir_file->id;
 		 size=dir_file->size;
 		 sc_file_free(dir_file);
@@ -125,21 +125,21 @@ static int entersafe_init_card(sc_profile_t *profile, sc_pkcs15_card_t *p15card)
 		 memset(ef_data.data.ef.sm,0x00,sizeof(ef_data.data.ef.sm));
 		 
 		 ret = sc_card_ctl(card, SC_CARDCTL_ENTERSAFE_CREATE_FILE, &ef_data);
-		 SC_TEST_RET(card->ctx,ret,"Create EF(DIR) failed");
+		 SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL,ret,"Create EF(DIR) failed");
 		 
 
 		 /* fill file by 0 */
 		 buff = calloc(1,size);
 		 if(!buff)
-			  SC_FUNC_RETURN(card->ctx,4,SC_SUCCESS);
+			  SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,SC_SUCCESS);
 		 memset(buff,0,size);
 		 
 		 ret = sc_update_binary(card,0,buff,size,0);
 		 free(buff);
-		 SC_TEST_RET(card->ctx,ret,"Initialize EF(DIR) failed");
+		 SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL,ret,"Initialize EF(DIR) failed");
 	}
 
-	SC_FUNC_RETURN(card->ctx,4,SC_SUCCESS);
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,SC_SUCCESS);
 
 }
 
@@ -149,7 +149,7 @@ static int entersafe_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 	struct sc_card *card = p15card->card;
 	int             ret;
 
-	SC_FUNC_CALLED(card->ctx, 1);
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	{/* df */
 		 sc_entersafe_create_data df_data;
@@ -167,7 +167,7 @@ static int entersafe_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 		 memcpy(df_data.data.df.aid,df->name,df->namelen);
 
 		 ret = sc_card_ctl(card, SC_CARDCTL_ENTERSAFE_CREATE_FILE, &df_data);
-		 SC_TEST_RET(card->ctx,ret,"Crate DF failed");
+		 SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL,ret,"Crate DF failed");
 	}
 
 	{/* GPKF */
@@ -176,7 +176,7 @@ static int entersafe_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 
 		 /* get p15_gpkf profile */
 		 ret = sc_profile_get_file(profile, "p15_gpkf", &gpkf_file);
-		 SC_TEST_RET(card->ctx,ret,"Get GPKF info failed");
+		 SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL,ret,"Get GPKF info failed");
 
 		 ef_data.type=SC_ENTERSAFE_EF_DATA;
 		 ef_data.data.ef.file_id[0]=(gpkf_file->id>>8)&0xFF;
@@ -192,7 +192,7 @@ static int entersafe_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 		 sc_file_free(gpkf_file);
 		 
 		 ret = sc_card_ctl(card, SC_CARDCTL_ENTERSAFE_CREATE_FILE, &ef_data);
-		 SC_TEST_RET(card->ctx,ret,"Create GPKF failed");
+		 SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL,ret,"Create GPKF failed");
 	}
 
 	{/* p15 efs */
@@ -213,8 +213,8 @@ static int entersafe_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 		 
 		 for(i = 0; create_efs[i]; ++i)   {
 			  if (sc_profile_get_file(profile, create_efs[i], &file))   {
-				   sc_debug(card->ctx, "Inconsistent profile: cannot find %s", create_efs[i]);
-				   SC_FUNC_RETURN(card->ctx,4,SC_ERROR_INCONSISTENT_PROFILE);
+				   sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Inconsistent profile: cannot find %s", create_efs[i]);
+				   SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,SC_ERROR_INCONSISTENT_PROFILE);
 			  }
 
 			  tmp.type=SC_ENTERSAFE_EF_DATA;
@@ -233,28 +233,28 @@ static int entersafe_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 			  sc_file_free(file);
 
 			  ret = sc_card_ctl(card, SC_CARDCTL_ENTERSAFE_CREATE_FILE, &tmp);
-			  SC_TEST_RET(card->ctx,ret,"Create pkcs15 file failed");
+			  SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL,ret,"Create pkcs15 file failed");
 		 }
 	}
 
 	{/* Preinstall keys */
 		 ret = sc_card_ctl(card, SC_CARDCTL_ENTERSAFE_PREINSTALL_KEYS, 0);
-		 SC_TEST_RET(card->ctx,ret,"Preinstall keys failed");
+		 SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL,ret,"Preinstall keys failed");
 	}
 
-	SC_FUNC_RETURN(card->ctx,4,ret);
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,ret);
 }
 
 static int entersafe_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 								   sc_pkcs15_pin_info_t *pin_info)
 {
-	SC_FUNC_CALLED(p15card->card->ctx, 1);
+	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	if (pin_info->reference < ENTERSAFE_USER_PIN_ID)
 		 pin_info->reference = ENTERSAFE_USER_PIN_ID;
 	if(pin_info->reference>ENTERSAFE_USER_PIN_ID)
 		 return SC_ERROR_TOO_MANY_OBJECTS;
-	SC_FUNC_RETURN(p15card->card->ctx,4,SC_SUCCESS);
+	SC_FUNC_RETURN(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE,SC_SUCCESS);
 }
 
 static int entersafe_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
@@ -266,7 +266,7 @@ static int entersafe_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 	int	r;
 	sc_pkcs15_pin_info_t *pin_info = (sc_pkcs15_pin_info_t *) pin_obj->data;
 
-	SC_FUNC_CALLED(card->ctx, 1);
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	{/*pin*/
 		 sc_entersafe_wkey_data  data;
@@ -305,25 +305,25 @@ static int entersafe_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 	}
 
 
-	SC_FUNC_RETURN(card->ctx,4,r);
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,r);
 }
 
 static int entersafe_key_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 								   sc_pkcs15_prkey_info_t *prkey)
 {
-	SC_FUNC_CALLED(p15card->card->ctx, 1);
+	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
 	if (prkey->key_reference < ENTERSAFE_MIN_KEY_ID)
 		prkey->key_reference = ENTERSAFE_MIN_KEY_ID;
 	if (prkey->key_reference > ENTERSAFE_MAX_KEY_ID)
 		return SC_ERROR_TOO_MANY_OBJECTS;
-	SC_FUNC_RETURN(p15card->card->ctx,4,SC_SUCCESS);
+	SC_FUNC_RETURN(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE,SC_SUCCESS);
 }
 
 static int entersafe_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 								sc_pkcs15_object_t *obj)
 {
-	SC_FUNC_CALLED(p15card->card->ctx, 1);
-	SC_FUNC_RETURN(p15card->card->ctx,4,SC_SUCCESS);
+	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
+	SC_FUNC_RETURN(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE,SC_SUCCESS);
 }
 
 static int entersafe_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
@@ -336,11 +336,11 @@ static int entersafe_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	const sc_acl_entry_t   *acl_entry;
 	int r;
 
-	SC_FUNC_CALLED(card->ctx, 1);
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	if (key->algorithm != SC_ALGORITHM_RSA)
 		 /* ignore DSA keys */
-		 SC_FUNC_RETURN(card->ctx,4,SC_ERROR_INVALID_ARGUMENTS);
+		 SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,SC_ERROR_INVALID_ARGUMENTS);
 
 	r = sc_profile_get_file(profile, "PKCS15-AODF", &tfile);
 	if (r < 0)
@@ -352,7 +352,7 @@ static int entersafe_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 			  r = SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
 	}
 	sc_file_free(tfile);
-	SC_TEST_RET(card->ctx, r, "cant verify pin");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "cant verify pin");
 
 	data.key_id = (u8) kinfo->key_reference;
 	data.usage=0x22;
@@ -370,7 +370,7 @@ static int entersafe_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15ca
 	sc_file_t              *tfile;
 	const sc_acl_entry_t   *acl_entry;
 
-	SC_FUNC_CALLED(card->ctx, 1);
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA)
 		return SC_ERROR_NOT_SUPPORTED;
@@ -385,14 +385,14 @@ static int entersafe_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15ca
 			  r = SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
 	}
 	sc_file_free(tfile);
-	SC_TEST_RET(card->ctx, r, "cant verify pin");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "cant verify pin");
 
 	/* generate key pair */
 	gendat.key_id     = (u8) kinfo->key_reference;
 	gendat.key_length = (size_t) kinfo->modulus_length;
 	gendat.modulus    = NULL;
 	r = sc_card_ctl(card, SC_CARDCTL_ENTERSAFE_GENERATE_KEY, &gendat);
-	SC_TEST_RET(card->ctx, r, "EnterSafe generate RSA key pair failed");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "EnterSafe generate RSA key pair failed");
 
 	/* get the modulus via READ PUBLIC KEY */
 	if (pubkey) {
@@ -416,7 +416,7 @@ static int entersafe_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15ca
 		/* free public key */
 		free(gendat.modulus);
 
-	SC_FUNC_RETURN(card->ctx,4,SC_SUCCESS);
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,SC_SUCCESS);
 }
 
 static struct sc_pkcs15init_operations sc_pkcs15init_entersafe_operations = {

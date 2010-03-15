@@ -96,12 +96,12 @@ int sc_pkcs15_decode_aodf_entry(struct sc_pkcs15_card *p15card,
 	r = sc_asn1_decode(ctx, asn1_pin, *buf, *buflen, buf, buflen);
 	if (r == SC_ERROR_ASN1_END_OF_CONTENTS)
 		return r;
-	SC_TEST_RET(ctx, r, "ASN.1 decoding failed");
+	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "ASN.1 decoding failed");
 	info.magic = SC_PKCS15_PIN_MAGIC;
 	obj->type = SC_PKCS15_TYPE_AUTH_PIN;
 	obj->data = malloc(sizeof(info));
 	if (obj->data == NULL)
-		SC_FUNC_RETURN(ctx, 0, SC_ERROR_OUT_OF_MEMORY);
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
 	if (info.max_length == 0) {
 		if (p15card->card->max_pin_len != 0)
 			info.max_length = p15card->card->max_pin_len;
@@ -215,15 +215,15 @@ int sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card,
 	sc_card_t *card;
 	struct sc_pin_cmd_data data;
 
-	SC_FUNC_CALLED(ctx, 2);
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 
 	r = _validate_pin(p15card, pin_info, pinlen);
-	SC_TEST_RET(ctx, r, "PIN value do not conforms the PIN policy");
+	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "PIN value do not conforms the PIN policy");
 
 	card = p15card->card;
 
 	r = sc_lock(card);
-	SC_TEST_RET(ctx, r, "sc_lock() failed");
+	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "sc_lock() failed");
 	/* the path in the pin object is optional */
 	if (pin_info->path.len > 0) {
 		r = sc_select_file(card, &pin_info->path, NULL);
@@ -295,7 +295,7 @@ int sc_pkcs15_change_pin(struct sc_pkcs15_card *p15card,
 
 	card = p15card->card;
 	r = sc_lock(card);
-	SC_TEST_RET(card->ctx, r, "sc_lock() failed");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "sc_lock() failed");
 	/* the path in the pin object is optional */
 	if (pin_info->path.len > 0) {
 		r = sc_select_file(card, &pin_info->path, NULL);
@@ -387,7 +387,7 @@ int sc_pkcs15_unblock_pin(struct sc_pkcs15_card *p15card,
 		puk_info = (struct sc_pkcs15_pin_info *)puk_obj->data;
 	}
 	if (!puk_info) {
-		sc_debug(card->ctx, "Unable to get puk object, using pin object instead!\n");
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Unable to get puk object, using pin object instead!\n");
 		puk_info = pin_info;
 	}
 	
@@ -396,7 +396,7 @@ int sc_pkcs15_unblock_pin(struct sc_pkcs15_card *p15card,
 		return r;
 
 	r = sc_lock(card);
-	SC_TEST_RET(card->ctx, r, "sc_lock() failed");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "sc_lock() failed");
 	/* the path in the pin object is optional */
 	if (pin_info->path.len > 0) {
 		r = sc_select_file(card, &pin_info->path, NULL);
@@ -476,27 +476,27 @@ void sc_pkcs15_pincache_add(struct sc_pkcs15_card *p15card, struct sc_pkcs15_obj
 	struct sc_context *ctx = p15card->card->ctx;
 	int r;
 
-	SC_FUNC_CALLED(ctx, 2);
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 
 	if (!p15card->opts.use_pin_cache)   {
-		sc_debug(ctx, "No PIN cache allowed");
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "No PIN cache allowed");
 		return;
 	}
 
 	/* Is it a user consent protecting PIN ? */
 	if (pin_obj->user_consent) {
-		sc_debug(ctx, "Not caching a PIN requiring user consent");
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Not caching a PIN requiring user consent");
 		return;
 	}
 
 	r = sc_pkcs15_allocate_object_content(pin_obj, pin, pinlen);
 	if (r != SC_SUCCESS)   {
-		sc_debug(ctx, "Failed to allocate object content");
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Failed to allocate object content");
 		return;
 	} 
 
 	pin_obj->usage_counter = 0;
-	sc_debug(ctx, "PIN(%s) cached", pin_obj->label);
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "PIN(%s) cached", pin_obj->label);
 }
 
 /* Validate the PIN code associated with an object */
@@ -506,7 +506,7 @@ int sc_pkcs15_pincache_revalidate(struct sc_pkcs15_card *p15card, sc_pkcs15_obje
 	sc_pkcs15_object_t *pin_obj;
 	int r;
 
-	SC_FUNC_CALLED(ctx, 2);
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 
 	if (!p15card->opts.use_pin_cache)
 		return SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
@@ -519,7 +519,7 @@ int sc_pkcs15_pincache_revalidate(struct sc_pkcs15_card *p15card, sc_pkcs15_obje
 
 	r = sc_pkcs15_find_pin_by_auth_id(p15card, &obj->auth_id, &pin_obj);
 	if (r != SC_SUCCESS) {
-		sc_debug(ctx, "Could not find pin object for auth_id %s", sc_pkcs15_print_id(&obj->auth_id));
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Could not find pin object for auth_id %s", sc_pkcs15_print_id(&obj->auth_id));
 		return SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
 	}
 	
@@ -536,11 +536,11 @@ int sc_pkcs15_pincache_revalidate(struct sc_pkcs15_card *p15card, sc_pkcs15_obje
 
 	r = sc_pkcs15_verify_pin(p15card, pin_obj, pin_obj->content.value, pin_obj->content.len);
 	if (r != SC_SUCCESS) {
-		sc_debug(ctx, "Verify PIN error %i", r);
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Verify PIN error %i", r);
 		return SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
 	}
 
-	SC_FUNC_RETURN(ctx, 2, SC_SUCCESS);
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
 }
 
 void sc_pkcs15_pincache_clear(struct sc_pkcs15_card *p15card)
@@ -548,7 +548,7 @@ void sc_pkcs15_pincache_clear(struct sc_pkcs15_card *p15card)
 	struct sc_pkcs15_object *objs[32];
 	int i, r;
 
-	SC_FUNC_CALLED(p15card->card->ctx, 2);
+	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_NORMAL);
 	r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_AUTH_PIN, objs, 32);
 	for (i = 0; i < r; i++)
 		sc_pkcs15_free_object_content(objs[i]);

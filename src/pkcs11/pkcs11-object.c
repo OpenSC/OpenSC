@@ -60,13 +60,13 @@ CK_RV C_CreateObject(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
 		return rv;
-	SC_FUNC_CALLED(context, 4);
+	SC_FUNC_CALLED(context, SC_LOG_DEBUG_VERBOSE);
 
 	if (pTemplate == NULL_PTR || ulCount == 0) {
 		rv = CKR_ARGUMENTS_BAD;
 		goto out;
 	}
-	dump_template("C_CreateObject()", pTemplate, ulCount);
+	dump_template(SC_LOG_DEBUG_NORMAL, "C_CreateObject()", pTemplate, ulCount);
 
 	session = list_seek(&sessions, &hSession);
 	if (!session) {
@@ -110,7 +110,7 @@ CK_RV C_DestroyObject(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	if (rv != CKR_OK)
 		return rv;
 
-	sc_debug(context, "C_DestroyObject(hSession=0x%lx, hObject=0x%lx)", hSession, hObject);
+	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_DestroyObject(hSession=0x%lx, hObject=0x%lx)", hSession, hObject);
 
 	rv = get_object_from_session(hSession, hObject, &session, &object);
 	if (rv != CKR_OK)
@@ -178,7 +178,7 @@ CK_RV C_GetAttributeValue(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		if (res != CKR_OK)
 			pTemplate[i].ulValueLen = (CK_ULONG) - 1;
 
-		dump_template(object_name, &pTemplate[i], 1);
+		dump_template(SC_LOG_DEBUG_NORMAL, object_name, &pTemplate[i], 1);
 
 		/* the pkcs11 spec has complicated rules on
 		 * what errors take precedence:
@@ -199,7 +199,7 @@ CK_RV C_GetAttributeValue(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		}
 	}
 
-out:	sc_debug(context, "C_GetAttributeValue(hSession=0x%lx, hObject=0x%lx) = %s",
+out:	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_GetAttributeValue(hSession=0x%lx, hObject=0x%lx) = %s",
 			hSession, hObject, lookup_enum ( RV_T, rv ));
 	sc_pkcs11_unlock();
 	return rv;
@@ -223,7 +223,7 @@ CK_RV C_SetAttributeValue(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		rv = CKR_ARGUMENTS_BAD;
 		goto out;
 	}
-	dump_template("C_SetAttributeValue", pTemplate, ulCount);
+	dump_template(SC_LOG_DEBUG_NORMAL, "C_SetAttributeValue", pTemplate, ulCount);
 
 	rv = get_object_from_session(hSession, hObject, &session, &object);
 	if (rv != CKR_OK)
@@ -275,8 +275,8 @@ CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	if (rv != CKR_OK)
 		goto out;
 
-	sc_debug(context, "C_FindObjectsInit(slot = %d)\n", session->slot->id);
-	dump_template("C_FindObjectsInit()", pTemplate, ulCount);
+	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_FindObjectsInit(slot = %d)\n", session->slot->id);
+	dump_template(SC_LOG_DEBUG_NORMAL, "C_FindObjectsInit()", pTemplate, ulCount);
 
 	rv = session_start_operation(session, SC_PKCS11_OPERATION_FIND,
 				     &find_mechanism, (struct sc_pkcs11_operation **)&operation);
@@ -295,14 +295,14 @@ CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	/* For each object in token do */
 	for (i=0; i<list_size(&slot->objects); i++) {
 		object = (struct sc_pkcs11_object *)list_get_at(&slot->objects, i);
-		sc_debug(context, "Object with handle 0x%lx", object->handle);
+		sc_debug(context, SC_LOG_DEBUG_NORMAL, "Object with handle 0x%lx", object->handle);
 
 		/* User not logged in and private object? */ 
 		if (hide_private) {
 			if (object->ops->get_attribute(session, object, &private_attribute) != CKR_OK)
 			        continue;
 			if (is_private) {
-				sc_debug(context,
+				sc_debug(context, SC_LOG_DEBUG_NORMAL,
 					 "Object %d/%d: Private object and not logged in.\n",
 					 slot->id, object->handle);
 				continue;
@@ -314,26 +314,24 @@ CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		for (j = 0; j < ulCount; j++) {
 			rv = object->ops->cmp_attribute(session, object, &pTemplate[j]);
 			if (rv == 0) {
-				if (context->debug >= 4) {
-					sc_debug(context,
-						 "Object %d/%d: Attribute 0x%x does NOT match.\n",
-						 slot->id, object->handle, pTemplate[j].type);
-				}
+				sc_debug(context, SC_LOG_DEBUG_NORMAL,
+					 "Object %d/%d: Attribute 0x%x does NOT match.\n",
+					 slot->id, object->handle, pTemplate[j].type);
 				match = 0;
 				break;
 			}
 
 			if (context->debug >= 4) {
-				sc_debug(context, "Object %d/%d: Attribute 0x%x matches.\n",
+				sc_debug(context, SC_LOG_DEBUG_NORMAL, "Object %d/%d: Attribute 0x%x matches.\n",
 					 slot->id, object->handle, pTemplate[j].type);
 			}
 		}
 
 		if (match) {
-			sc_debug(context, "Object %d/%d matches\n", slot->id, object->handle);
+			sc_debug(context, SC_LOG_DEBUG_NORMAL, "Object %d/%d matches\n", slot->id, object->handle);
 			/* Avoid buffer overflow --okir */ 
 			if (operation->num_handles >= SC_PKCS11_FIND_MAX_HANDLES) {
-				sc_debug(context, "Too many matching objects\n");
+				sc_debug(context, SC_LOG_DEBUG_NORMAL, "Too many matching objects\n");
 				break;
 			}
 			operation->handles[operation->num_handles++] = object->handle;
@@ -341,7 +339,7 @@ CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	}
 	rv = CKR_OK;
 
-	sc_debug(context, "%d matching objects\n", operation->num_handles);
+	sc_debug(context, SC_LOG_DEBUG_NORMAL, "%d matching objects\n", operation->num_handles);
 
 out:	sc_pkcs11_unlock();
 	return rv;
@@ -432,12 +430,12 @@ CK_RV C_DigestInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		goto out;
 	}
 
-	sc_debug(context, "C_DigestInit(hSession=0x%lx)", hSession);
+	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_DigestInit(hSession=0x%lx)", hSession);
 	rv = get_session(hSession, &session);
 	if (rv == CKR_OK)
 		rv = sc_pkcs11_md_init(session, pMechanism);
 
-out:	sc_debug(context, "C_DigestInit() = %s", lookup_enum ( RV_T, rv ));
+out:	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_DigestInit() = %s", lookup_enum ( RV_T, rv ));
 	sc_pkcs11_unlock();
 	return rv;
 }
@@ -452,7 +450,7 @@ CK_RV C_Digest(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	struct sc_pkcs11_session *session;
 
 	rv = sc_pkcs11_lock();
-	sc_debug(context, "C_Digest(hSession=0x%lx)", hSession);
+	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_Digest(hSession=0x%lx)", hSession);
 	if (rv != CKR_OK)
 		return rv;
 
@@ -464,7 +462,7 @@ CK_RV C_Digest(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	if (rv == CKR_OK)
 		rv = sc_pkcs11_md_final(session, pDigest, pulDigestLen);
 
-out:	sc_debug(context, "C_Digest() = %s", lookup_enum ( RV_T, rv ));
+out:	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_Digest() = %s", lookup_enum ( RV_T, rv ));
 	sc_pkcs11_unlock();
 	return rv;
 }
@@ -484,7 +482,7 @@ CK_RV C_DigestUpdate(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	if (rv == CKR_OK)
 		rv = sc_pkcs11_md_update(session, pPart, ulPartLen);
 
-	sc_debug(context, "C_DigestUpdate() == %s", lookup_enum ( RV_T, rv ));
+	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_DigestUpdate() == %s", lookup_enum ( RV_T, rv ));
 	sc_pkcs11_unlock();
 	return rv;
 }
@@ -510,7 +508,7 @@ CK_RV C_DigestFinal(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	if (rv == CKR_OK)
 		rv = sc_pkcs11_md_final(session, pDigest, pulDigestLen);
 
-	sc_debug(context, "C_DigestFinal() = %s", lookup_enum ( RV_T, rv ));
+	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_DigestFinal() = %s", lookup_enum ( RV_T, rv ));
 	sc_pkcs11_unlock();
 	return rv;
 }
@@ -561,7 +559,7 @@ CK_RV C_SignInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 
 	rv = sc_pkcs11_sign_init(session, pMechanism, object, key_type);
 
-out:	sc_debug(context, "C_SignInit() = %s", lookup_enum ( RV_T, rv ));
+out:	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_SignInit() = %s", lookup_enum ( RV_T, rv ));
 	sc_pkcs11_unlock();
 	return rv;
 }
@@ -602,7 +600,7 @@ CK_RV C_Sign(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	if (rv == CKR_OK)
 		rv = sc_pkcs11_sign_final(session, pSignature, pulSignatureLen);
 
-out:	sc_debug(context, "C_Sign() = %s", lookup_enum ( RV_T, rv ));
+out:	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_Sign() = %s", lookup_enum ( RV_T, rv ));
 	sc_pkcs11_unlock();
 	return rv;
 }
@@ -622,7 +620,7 @@ CK_RV C_SignUpdate(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	if (rv == CKR_OK)
 		rv = sc_pkcs11_sign_update(session, pPart, ulPartLen);
 
-	sc_debug(context, "C_SignUpdate() = %s", lookup_enum ( RV_T, rv ));
+	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_SignUpdate() = %s", lookup_enum ( RV_T, rv ));
 	sc_pkcs11_unlock();
 	return rv;
 }
@@ -658,7 +656,7 @@ CK_RV C_SignFinal(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		rv = sc_pkcs11_sign_final(session, pSignature, pulSignatureLen);
 	}
 
-out:	sc_debug(context, "C_SignFinal() = %s", lookup_enum ( RV_T, rv ));
+out:	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_SignFinal() = %s", lookup_enum ( RV_T, rv ));
 	sc_pkcs11_unlock();
 	return rv;
 }
@@ -712,11 +710,11 @@ CK_RV C_SignRecoverInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 
 	/* XXX: need to tell the signature algorithm that we want
 	 * to recover the signature */
-	sc_debug(context, "SignRecover operation initialized\n");
+	sc_debug(context, SC_LOG_DEBUG_NORMAL, "SignRecover operation initialized\n");
 
 	rv = sc_pkcs11_sign_init(session, pMechanism, object, key_type);
 
-out:	sc_debug(context, "C_SignRecoverInit() = %sn", lookup_enum ( RV_T, rv ));
+out:	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_SignRecoverInit() = %sn", lookup_enum ( RV_T, rv ));
 	sc_pkcs11_unlock();
 	return rv;
 }
@@ -808,7 +806,7 @@ CK_RV C_DecryptInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 
 	rv = sc_pkcs11_decr_init(session, pMechanism, object, key_type);
 
-out:	sc_debug(context, "C_DecryptInit() = %s", lookup_enum ( RV_T, rv ));
+out:	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_DecryptInit() = %s", lookup_enum ( RV_T, rv ));
 	sc_pkcs11_unlock();
 	return rv;
 }
@@ -831,7 +829,7 @@ CK_RV C_Decrypt(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		rv = sc_pkcs11_decr(session, pEncryptedData, ulEncryptedDataLen,
 				pData, pulDataLen);
 
-	sc_debug(context, "C_Decrypt() = %s", lookup_enum ( RV_T, rv ));
+	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_Decrypt() = %s", lookup_enum ( RV_T, rv ));
 	sc_pkcs11_unlock();
 	return rv;
 }
@@ -920,8 +918,8 @@ CK_RV C_GenerateKeyPair(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		rv = CKR_ARGUMENTS_BAD;
 		goto out;
 	}
-	dump_template("C_CreateObject(), PrivKey attrs", pPrivateKeyTemplate, ulPrivateKeyAttributeCount);
-	dump_template("C_CreateObject(), PubKey attrs", pPublicKeyTemplate, ulPublicKeyAttributeCount);
+	dump_template(SC_LOG_DEBUG_NORMAL, "C_CreateObject(), PrivKey attrs", pPrivateKeyTemplate, ulPrivateKeyAttributeCount);
+	dump_template(SC_LOG_DEBUG_NORMAL, "C_CreateObject(), PubKey attrs", pPublicKeyTemplate, ulPublicKeyAttributeCount);
 
 	rv = get_session(hSession, &session);
 	if (rv != CKR_OK)
@@ -1001,7 +999,7 @@ CK_RV C_UnwrapKey(CK_SESSION_HANDLE hSession,	/* the session's handle */
 				     pWrappedKey, ulWrappedKeyLen,
 				     pTemplate, ulAttributeCount, (void **)&result);
 
-	sc_debug(context, "C_UnwrapKey() = %s", lookup_enum ( RV_T, rv ));
+	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_UnwrapKey() = %s", lookup_enum ( RV_T, rv ));
 
 	if (rv == CKR_OK) {
 		result->handle = (long)result;
@@ -1133,7 +1131,7 @@ CK_RV C_VerifyInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 
 	rv = sc_pkcs11_verif_init(session, pMechanism, object, key_type);
 
-out:	sc_debug(context, "C_VerifyInit() = %s", lookup_enum ( RV_T, rv ));
+out:	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_VerifyInit() = %s", lookup_enum ( RV_T, rv ));
 	sc_pkcs11_unlock();
 	return rv;
 #endif
@@ -1163,7 +1161,7 @@ CK_RV C_Verify(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	if (rv == CKR_OK)
 		rv = sc_pkcs11_verif_final(session, pSignature, ulSignatureLen);
 
-out:	sc_debug(context, "C_Verify() = %s", lookup_enum ( RV_T, rv ));
+out:	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_Verify() = %s", lookup_enum ( RV_T, rv ));
 	sc_pkcs11_unlock();
 	return rv;
 #endif
@@ -1187,7 +1185,7 @@ CK_RV C_VerifyUpdate(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	if (rv == CKR_OK)
 		rv = sc_pkcs11_verif_update(session, pPart, ulPartLen);
 
-	sc_debug(context, "C_VerifyUpdate() = %s", lookup_enum ( RV_T, rv ));
+	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_VerifyUpdate() = %s", lookup_enum ( RV_T, rv ));
 	sc_pkcs11_unlock();
 	return rv;
 #endif
@@ -1211,7 +1209,7 @@ CK_RV C_VerifyFinal(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	if (rv == CKR_OK)
 		rv = sc_pkcs11_verif_final(session, pSignature, ulSignatureLen);
 
-	sc_debug(context, "C_VerifyFinal() = %s", lookup_enum ( RV_T, rv ));
+	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_VerifyFinal() = %s", lookup_enum ( RV_T, rv ));
 	sc_pkcs11_unlock();
 	return rv;
 #endif
@@ -1274,7 +1272,7 @@ int sc_pkcs11_any_cmp_attribute(struct sc_pkcs11_session *session, void *ptr, CK
 		char foo[64];
 
 		snprintf(foo, sizeof(foo), "Object %p (slot 0x%lx)", object, session->slot->id);
-		dump_template(foo, &temp_attr, 1);
+		dump_template(SC_LOG_DEBUG_NORMAL, foo, &temp_attr, 1);
 	}
 #endif
 	res = temp_attr.ulValueLen == attr->ulValueLen

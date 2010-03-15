@@ -238,18 +238,18 @@ sc_oberthur_read_file(struct sc_pkcs15_card *p15card, const char *in_path,
 	size_t sz;
 	int rv;
 
-	SC_FUNC_CALLED(ctx, 1);
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 	if (!in_path || !out || !out_len)
-		SC_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Cannot read oberthur file");
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS, "Cannot read oberthur file");
 		
-	sc_debug(ctx, "read file '%s'; verify_pin:%i", in_path, verify_pin);
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "read file '%s'; verify_pin:%i", in_path, verify_pin);
 	
 	*out = NULL;
 	*out_len = 0;
 	
 	sc_format_path(in_path, &path);
 	rv = sc_select_file(card, &path, &file);
-	SC_TEST_RET(card->ctx, rv, "Cannot select oberthur file to read");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, rv, "Cannot select oberthur file to read");
 
 	if (file->ef_structure == SC_FILE_EF_TRANSPARENT)
 		sz = file->size;
@@ -258,7 +258,7 @@ sc_oberthur_read_file(struct sc_pkcs15_card *p15card, const char *in_path,
 	
 	*out = calloc(sz, 1);
 	if (*out == NULL)
-		SC_TEST_RET(card->ctx, SC_ERROR_MEMORY_FAILURE, "Cannot read oberthur file");
+		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_MEMORY_FAILURE, "Cannot read oberthur file");
 
 	if (file->ef_structure == SC_FILE_EF_TRANSPARENT)   {
 		rv = sc_read_binary(card, 0, *out, sz, 0);
@@ -289,7 +289,7 @@ sc_oberthur_read_file(struct sc_pkcs15_card *p15card, const char *in_path,
 		sz = offs;
 	}
 
-	sc_debug(ctx, "read oberthur file result %i", rv);
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "read oberthur file result %i", rv);
 	if (verify_pin && rv == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED)   {
 		struct sc_pkcs15_object *objs[0x10], *pin_obj = NULL;
 		const struct sc_acl_entry *acl = sc_file_get_acl_entry(file, SC_AC_OP_READ);
@@ -297,11 +297,11 @@ sc_oberthur_read_file(struct sc_pkcs15_card *p15card, const char *in_path,
 		int ii;
 
 		rv = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_AUTH_PIN, objs, 0x10);
-		SC_TEST_RET(card->ctx, rv, "Cannot read oberthur file: get AUTH objects error");
+		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, rv, "Cannot read oberthur file: get AUTH objects error");
 
 		for (ii=0; ii<rv; ii++)   {
 			pinfo = (struct sc_pkcs15_pin_info *) objs[ii]->data;
-			sc_debug(ctx, "compare PIN/ACL refs:%i/%i, method:%i/%i", 
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "compare PIN/ACL refs:%i/%i, method:%i/%i", 
 					pinfo->reference, acl->key_ref, pinfo->auth_method, acl->method);
 			if (pinfo->reference == acl->key_ref 
 					&& pinfo->auth_method == acl->method)   {
@@ -330,7 +330,7 @@ sc_oberthur_read_file(struct sc_pkcs15_card *p15card, const char *in_path,
 
 	*out_len = sz;
 
-	SC_FUNC_RETURN(card->ctx, 1, rv);
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, rv);
 }
 
 
@@ -343,9 +343,9 @@ sc_oberthur_parse_tokeninfo (struct sc_pkcs15_card *p15card,
 	unsigned flags;
 	int ii;
 
-	SC_FUNC_CALLED(ctx, 1);
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 	if (!buff || len < 0x24)
-		SC_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Cannot parse token info");
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS, "Cannot parse token info");
 
 	memset(label, 0, sizeof(label));
 	if (len > sizeof(label) - 1)
@@ -374,10 +374,10 @@ sc_oberthur_parse_tokeninfo (struct sc_pkcs15_card *p15card,
 	if (flags & 0x0400)
 		p15card->flags |= SC_PKCS15_CARD_FLAG_TOKEN_INITIALIZED;
 
-	sc_debug(ctx, "label %s", p15card->label);
-	sc_debug(ctx, "manufacturer_id %s", p15card->manufacturer_id);
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "label %s", p15card->label);
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "manufacturer_id %s", p15card->manufacturer_id);
 	
-	SC_FUNC_RETURN(ctx, 1, SC_SUCCESS);
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
 }
 
 
@@ -388,7 +388,7 @@ sc_oberthur_parse_containers (struct sc_pkcs15_card *p15card,
 	struct sc_context *ctx = p15card->card->ctx;
 	size_t offs;
 	
-	SC_FUNC_CALLED(ctx, 1);
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 
 	while (Containers)   {
 		struct container *next = Containers->next;
@@ -401,7 +401,7 @@ sc_oberthur_parse_containers (struct sc_pkcs15_card *p15card,
 		struct container *cont;
 		unsigned char *ptr =  buff + offs + 2;
 		
-		sc_debug(ctx, "parse contaniers offs:%i, len:%i", offs, len);
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "parse contaniers offs:%i, len:%i", offs, len);
 		if (*(buff + offs) != 'R')
 			return SC_ERROR_INVALID_DATA;
 		
@@ -418,7 +418,7 @@ sc_oberthur_parse_containers (struct sc_pkcs15_card *p15card,
 		cont->sign.id_cert = *ptr * 0x100 + *(ptr + 1); ptr += 2;
 		
 		memcpy(cont->uuid, ptr + 2, 36);
-		sc_debug(ctx, "UUID: %s; 0x%X, 0x%X, 0x%X", cont->uuid, 
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "UUID: %s; 0x%X, 0x%X, 0x%X", cont->uuid, 
 				cont->exchange.id_pub, cont->exchange.id_prv, cont->exchange.id_cert);
 		
 		if (!Containers)  {
@@ -433,7 +433,7 @@ sc_oberthur_parse_containers (struct sc_pkcs15_card *p15card,
 		offs += *(buff + offs + 1) + 2;
 	}
 
-	SC_FUNC_RETURN(ctx, 1, SC_SUCCESS);
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
 }
 
 
@@ -445,7 +445,7 @@ sc_oberthur_parse_publicinfo (struct sc_pkcs15_card *p15card,
 	size_t ii;
 	int rv;
 
-	SC_FUNC_CALLED(p15card->card->ctx, 1);
+	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
 	for (ii=0; ii<len; ii+=5)   {
 		unsigned int file_id, size;
 		
@@ -454,29 +454,29 @@ sc_oberthur_parse_publicinfo (struct sc_pkcs15_card *p15card,
 		
 		file_id = 0x100 * *(buff+ii + 1) + *(buff+ii + 2);
 		size = 0x100 * *(buff+ii + 3) + *(buff+ii + 4);
-		sc_debug(p15card->card->ctx, "add public object(file-id:%04X,size:%X)", file_id, size);
+		sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "add public object(file-id:%04X,size:%X)", file_id, size);
 
 		switch (*(buff+ii + 1))   {
 		case BASE_ID_PUB_RSA :
 			rv = sc_pkcs15emu_oberthur_add_pubkey(p15card, file_id, size);
-			SC_TEST_RET(ctx, rv, "Cannot parse public key info");
+			SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Cannot parse public key info");
 			break;
 		case BASE_ID_CERT :
 			rv = sc_pkcs15emu_oberthur_add_cert(p15card, file_id);
-			SC_TEST_RET(ctx, rv, "Cannot parse certificate info");
+			SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Cannot parse certificate info");
 			break;
 		case BASE_ID_PUB_DES :
 			break;
 		case BASE_ID_PUB_DATA :
 			rv = sc_pkcs15emu_oberthur_add_data(p15card, file_id, size, 0);
-			SC_TEST_RET(ctx, rv, "Cannot parse data info");
+			SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Cannot parse data info");
 			break;
 		default:
-			SC_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Public object parse error");
+			SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Public object parse error");
 		}
 	}
 
-	SC_FUNC_RETURN(ctx, 1, SC_SUCCESS);
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
 }
 
 
@@ -489,7 +489,7 @@ sc_oberthur_parse_privateinfo (struct sc_pkcs15_card *p15card,
 	int rv;
 	int no_more_private_keys = 0;
 
-	SC_FUNC_CALLED(ctx, 1);
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 
 	for (ii=0; ii<len; ii+=5)   {
 		unsigned int file_id, size;
@@ -499,7 +499,7 @@ sc_oberthur_parse_privateinfo (struct sc_pkcs15_card *p15card,
 		
 		file_id = 0x100 * *(buff+ii + 1) + *(buff+ii + 2);
 		size = 0x100 * *(buff+ii + 3) + *(buff+ii + 4);
-		sc_debug(ctx, "add private object (file-id:%04X,size:%X)", file_id, size);
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "add private object (file-id:%04X,size:%X)", file_id, size);
 
 		switch (*(buff+ii + 1))   {
 		case BASE_ID_PRV_RSA :
@@ -513,24 +513,24 @@ sc_oberthur_parse_privateinfo (struct sc_pkcs15_card *p15card,
 			if (rv == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED && postpone_allowed)   {
 				struct sc_path path;
 
-				sc_debug(ctx, "postpone adding of the private keys");
+				sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "postpone adding of the private keys");
 				sc_format_path("5011A5A5", &path);
 				rv = sc_pkcs15_add_df(p15card, SC_PKCS15_PRKDF, &path, NULL);
-				SC_TEST_RET(ctx, rv, "Add PrkDF error");
+				SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Add PrkDF error");
 				no_more_private_keys = 1;
 			}
-			SC_TEST_RET(ctx, rv, "Cannot parse private key info");
+			SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Cannot parse private key info");
 			break;
 		case BASE_ID_PRV_DES :
 			break;
 		case BASE_ID_PRV_DATA :
 			break;
 		default:
-			SC_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Private object parse error");
+			SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Private object parse error");
 		}
 	}
 
-	SC_FUNC_RETURN(ctx, 1, SC_SUCCESS);
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
 }
 
 
@@ -555,29 +555,29 @@ sc_pkcs15emu_oberthur_add_pubkey(struct sc_pkcs15_card *p15card,
 	unsigned flags;
 	int rv;
 
-	SC_FUNC_CALLED(ctx, 1);
-	sc_debug(ctx, "public key(file-id:%04X,size:%X)", file_id, size);
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "public key(file-id:%04X,size:%X)", file_id, size);
 
 	memset(&key_info, 0, sizeof(key_info));
 	memset(&key_obj, 0, sizeof(key_obj));
 	
 	snprintf(ch_tmp, sizeof(ch_tmp), "%s%04X", AWP_OBJECTS_DF_PUB, file_id | 0x100);
 	rv = sc_oberthur_read_file(p15card, ch_tmp, &info_blob, &info_len, 1); 
-	SC_TEST_RET(ctx, rv, "Failed to add public key: read oberthur file error");
+	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Failed to add public key: read oberthur file error");
 
 	/* Flags */
 	offs = 2;
 	if (offs > info_len) 
-		SC_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add public key: no 'tag'");
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add public key: no 'tag'");
 	flags = *(info_blob + 0) * 0x100 + *(info_blob + 1);
 	key_info.usage = sc_oberthur_decode_usage(flags);
 	if (flags & OBERTHUR_ATTR_MODIFIABLE)
 		key_obj.flags = SC_PKCS15_CO_FLAG_MODIFIABLE;
-	sc_debug(ctx, "Public key key-usage:%04X", key_info.usage);
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Public key key-usage:%04X", key_info.usage);
 
 	/* Label */
 	if (offs + 2 > info_len) 
-		SC_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add public key: no 'Label'");
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add public key: no 'Label'");
 	len = *(info_blob + offs + 1) + *(info_blob + offs) * 0x100;
 	if (len)   {
 		sz = len > sizeof(key_obj.label) - 1 ? sizeof(key_obj.label) - 1 : len;
@@ -587,10 +587,10 @@ sc_pkcs15emu_oberthur_add_pubkey(struct sc_pkcs15_card *p15card,
 	
 	/* ID */
 	if (offs > info_len) 
-		SC_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add public key: no 'ID'");
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add public key: no 'ID'");
 	len = *(info_blob + offs + 1) + *(info_blob + offs) * 0x100;
 	if (!len || len > sizeof(key_info.id.value))
-		SC_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Failed to add public key: invalie 'ID' length");
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_DATA, "Failed to add public key: invalie 'ID' length");
 	memcpy(key_info.id.value, info_blob + offs + 2, len);
 	key_info.id.len = len;
 	
@@ -605,7 +605,7 @@ sc_pkcs15emu_oberthur_add_pubkey(struct sc_pkcs15_card *p15card,
 
 	rv = sc_pkcs15emu_add_rsa_pubkey(p15card, &key_obj, &key_info);
 
-	SC_FUNC_RETURN(ctx, 1, rv);
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, rv);
 }
 
 
@@ -629,24 +629,24 @@ sc_pkcs15emu_oberthur_add_cert(struct sc_pkcs15_card *p15card, unsigned int file
 	int rv;
 	char ch_tmp[0x20];
 
-	SC_FUNC_CALLED(ctx, 1);
-	sc_debug(ctx, "add certificate(file-id:%04X)", file_id);
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "add certificate(file-id:%04X)", file_id);
 
 	memset(&cinfo, 0, sizeof(cinfo));
 	memset(&cobj, 0, sizeof(cobj));
 	
 	snprintf(ch_tmp, sizeof(ch_tmp), "%s%04X", AWP_OBJECTS_DF_PUB, file_id | 0x100);
 	rv = sc_oberthur_read_file(p15card, ch_tmp, &info_blob, &info_len, 1); 
-	SC_TEST_RET(ctx, rv, "Failed to add certificate: read oberthur file error");
+	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Failed to add certificate: read oberthur file error");
 
 	if (info_len < 2) 
-		SC_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add certificate: no 'tag'");
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add certificate: no 'tag'");
 	flags = *(info_blob + 0) * 0x100 + *(info_blob + 1);
 	offs = 2;
 
 	/* Label */
 	if (offs + 2 > info_len) 
-		SC_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add certificate: no 'CN'");
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add certificate: no 'CN'");
 	len = *(info_blob + offs + 1) + *(info_blob + offs) * 0x100;
 	if (len)   {
 		sz = len > sizeof(cobj.label) - 1 ? sizeof(cobj.label) - 1 : len;
@@ -656,10 +656,10 @@ sc_pkcs15emu_oberthur_add_cert(struct sc_pkcs15_card *p15card, unsigned int file
 	
 	/* ID */
 	if (offs > info_len) 
-		SC_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add certificate: no 'ID'");
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add certificate: no 'ID'");
 	len = *(info_blob + offs + 1) + *(info_blob + offs) * 0x100;
 	if (len > sizeof(cinfo.id.value))
-		SC_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Failed to add certificate: invalie 'ID' length");
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_DATA, "Failed to add certificate: invalie 'ID' length");
 	memcpy(cinfo.id.value, info_blob + offs + 2, len);
 	cinfo.id.len = len;
 	offs += 2 + len;
@@ -669,20 +669,20 @@ sc_pkcs15emu_oberthur_add_cert(struct sc_pkcs15_card *p15card, unsigned int file
 	snprintf(ch_tmp, sizeof(ch_tmp), "%s%04X", AWP_OBJECTS_DF_PUB, file_id);
 	sc_format_path(ch_tmp, &cinfo.path);
 	rv = sc_oberthur_read_file(p15card, ch_tmp, &cert_blob, &cert_len, 1); 
-	SC_TEST_RET(ctx, rv, "Failed to add certificate: read certificate error");
+	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Failed to add certificate: read certificate error");
 	
 	cinfo.value.value = cert_blob;
 	cinfo.value.len = cert_len;
 
 	rv = sc_oberthur_get_certificate_authority(&cinfo.value, &cinfo.authority);
-	SC_TEST_RET(ctx, rv, "Failed to add certificate: get certificate attributes error");
+	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Failed to add certificate: get certificate attributes error");
 
 	if (flags & OBERTHUR_ATTR_MODIFIABLE)
 		cobj.flags |= SC_PKCS15_CO_FLAG_MODIFIABLE;
 
 	rv = sc_pkcs15emu_add_x509_cert(p15card, &cobj, &cinfo);
 
-	SC_FUNC_RETURN(p15card->card->ctx, 1, rv);
+	SC_FUNC_RETURN(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, rv);
 }
 
 
@@ -711,23 +711,23 @@ sc_pkcs15emu_oberthur_add_prvkey(struct sc_pkcs15_card *p15card,
 	char ch_tmp[0x100];
 	int rv;
 
-	SC_FUNC_CALLED(ctx, 1);
-	sc_debug(ctx, "add private key(file-id:%04X,size:%04X)", file_id, size);
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "add private key(file-id:%04X,size:%04X)", file_id, size);
 	
 	memset(&kinfo, 0, sizeof(kinfo));
 	memset(&kobj, 0, sizeof(kobj));
 	memset(&ccont, 0, sizeof(ccont));
 	
 	rv = sc_oberthur_get_friends (file_id, &ccont);
-	SC_TEST_RET(ctx, rv, "Failed to add private key: get friends error");
+	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Failed to add private key: get friends error");
 
 	if (ccont.id_cert)   {
 		struct sc_pkcs15_object *objs[32];
 		int ii;
 		
-		sc_debug(ctx, "friend certificate %04X", ccont.id_cert);
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "friend certificate %04X", ccont.id_cert);
 		rv = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_CERT_X509, objs, 32);
-		SC_TEST_RET(ctx, rv, "Failed to add private key: get certificates error");
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Failed to add private key: get certificates error");
 
 		for (ii=0; ii<rv; ii++) {
 			struct sc_pkcs15_cert_info *cert = (struct sc_pkcs15_cert_info *)objs[ii]->data;
@@ -741,21 +741,21 @@ sc_pkcs15emu_oberthur_add_prvkey(struct sc_pkcs15_card *p15card,
 		}
 
 		if (ii == rv) 
-			SC_TEST_RET(ctx, SC_ERROR_INCONSISTENT_PROFILE, "Failed to add private key: friend not found");
+			SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INCONSISTENT_PROFILE, "Failed to add private key: friend not found");
 	}
 
 	snprintf(ch_tmp, sizeof(ch_tmp), "%s%04X", AWP_OBJECTS_DF_PRV, file_id | 0x100);
 	rv = sc_oberthur_read_file(p15card, ch_tmp, &info_blob, &info_len, 1); 
-	SC_TEST_RET(ctx, rv, "Failed to add private key: read oberthur file error");
+	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Failed to add private key: read oberthur file error");
 
 	if (info_len < 2)
-		SC_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add private key: no 'tag'");
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add private key: no 'tag'");
 	flags = *(info_blob + 0) * 0x100 + *(info_blob + 1);
 	offs = 2;
 
 	/* CN */
 	if (offs > info_len) 
-		SC_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add private key: no 'CN'");
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add private key: no 'CN'");
 	len = *(info_blob + offs + 1) + *(info_blob + offs) * 0x100;
 	if (len && !strlen(kobj.label))   {
 		if (len > sizeof(kobj.label) - 1) 
@@ -766,12 +766,12 @@ sc_pkcs15emu_oberthur_add_prvkey(struct sc_pkcs15_card *p15card,
 		
 	/* ID */
 	if (offs > info_len) 
-		SC_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add private key: no 'ID'");
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add private key: no 'ID'");
 	len = *(info_blob + offs + 1) + *(info_blob + offs) * 0x100;
 	if (!len)
-		SC_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add private key: zero length ID");
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add private key: zero length ID");
 	else if (len > sizeof(kinfo.id.value))
-		SC_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Failed to add private key: invalid ID length");
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_DATA, "Failed to add private key: invalid ID length");
 	memcpy(kinfo.id.value, info_blob + offs + 2, len);
 	kinfo.id.len = len;
 	offs += 2 + len;
@@ -786,7 +786,7 @@ sc_pkcs15emu_oberthur_add_prvkey(struct sc_pkcs15_card *p15card,
 	if (len)   {
 		kinfo.subject = malloc(len);
 		if (!kinfo.subject)
-			SC_TEST_RET(ctx, SC_ERROR_MEMORY_FAILURE, "Failed to add private key: memory allocation error");
+			SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_MEMORY_FAILURE, "Failed to add private key: memory allocation error");
 		kinfo.subject_len = len;
 		memcpy(kinfo.subject, info_blob + offs + 2, len);
 	}
@@ -795,7 +795,7 @@ sc_pkcs15emu_oberthur_add_prvkey(struct sc_pkcs15_card *p15card,
 
 	snprintf(ch_tmp, sizeof(ch_tmp), "%s%04X", AWP_OBJECTS_DF_PRV, file_id);
 	sc_format_path(ch_tmp, &kinfo.path);
-	sc_debug(ctx, "Private key info path %s", ch_tmp);
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Private key info path %s", ch_tmp);
 
 	kinfo.modulus_length	= size;
 	kinfo.native		= 1;
@@ -814,10 +814,10 @@ sc_pkcs15emu_oberthur_add_prvkey(struct sc_pkcs15_card *p15card,
 			? sizeof(kobj.auth_id.value) : sizeof(PinDomainID);
 	memcpy(kobj.auth_id.value, PinDomainID, kobj.auth_id.len);
 
-	sc_debug(ctx, "Parsed private key(reference:%i,usage:%X,flags:%X)", kinfo.key_reference, kinfo.usage, kobj.flags);
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Parsed private key(reference:%i,usage:%X,flags:%X)", kinfo.key_reference, kinfo.usage, kobj.flags);
 
 	rv = sc_pkcs15emu_add_rsa_prkey(p15card, &kobj, &kinfo);
-	SC_FUNC_RETURN(ctx, 1, rv);
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, rv);
 }
 
 
@@ -835,27 +835,27 @@ sc_pkcs15emu_oberthur_add_data(struct sc_pkcs15_card *p15card,
 	char ch_tmp[0x100];
 	int rv;
 
-	SC_FUNC_CALLED(ctx, 1);
-	sc_debug(ctx, "Add data(file-id:%04X,size:%i,is-private:%i)", file_id, size, private);
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Add data(file-id:%04X,size:%i,is-private:%i)", file_id, size, private);
 	memset(&dinfo, 0, sizeof(dinfo));
 	memset(&dobj, 0, sizeof(dobj));
 
 	if (private)
-		SC_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Failed to add data: 'private' attribut not supported");
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED, "Failed to add data: 'private' attribut not supported");
 	else
 		snprintf(ch_tmp, sizeof(ch_tmp), "%s%04X", AWP_OBJECTS_DF_PUB, file_id | 0x100);
 		
 	rv = sc_oberthur_read_file(p15card, ch_tmp, &info_blob, &info_len, 1);
-	SC_TEST_RET(ctx, rv, "Failed to add data: read oberthur file error");
+	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Failed to add data: read oberthur file error");
 
 	if (info_len < 2) 
-		SC_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add certificate: no 'tag'");
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add certificate: no 'tag'");
 	flags = *(info_blob + 0) * 0x100 + *(info_blob + 1);
 	offs = 2;
 
 	/* Label */
 	if (offs > info_len) 
-		SC_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add data: no 'label'");
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add data: no 'label'");
 	label = info_blob + offs + 2;
 	label_len = *(info_blob + offs + 1) + *(info_blob + offs) * 0x100;
 	if (label_len > sizeof(dobj.label) - 1)
@@ -864,7 +864,7 @@ sc_pkcs15emu_oberthur_add_data(struct sc_pkcs15_card *p15card,
 	
 	/* Application */
 	if (offs > info_len) 
-		SC_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add data: no 'application'");
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add data: no 'application'");
 	app = info_blob + offs + 2;
 	app_len = *(info_blob + offs + 1) + *(info_blob + offs) * 0x100;
 	if (app_len > sizeof(dinfo.app_label) - 1)
@@ -873,12 +873,12 @@ sc_pkcs15emu_oberthur_add_data(struct sc_pkcs15_card *p15card,
 	
 	/* OID encode like DER(ASN.1(oid)) */
 	if (offs > info_len) 
-		SC_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add data: no 'OID'");
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add data: no 'OID'");
 	oid_len = *(info_blob + offs + 1) + *(info_blob + offs) * 0x100;
 	if (oid_len)   {
 		oid = info_blob + offs + 2;
 		if (*oid != 0x06 || (*(oid + 1) != oid_len - 2))
-			SC_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add data: invalid 'OID' format");
+			SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add data: invalid 'OID' format");
 		oid += 2;
 		oid_len -= 2;
 	}
@@ -896,7 +896,7 @@ sc_pkcs15emu_oberthur_add_data(struct sc_pkcs15_card *p15card,
 
 	rv = sc_pkcs15emu_add_data_object(p15card, &dobj, &dinfo);
 
-	SC_FUNC_RETURN(p15card->card->ctx, 1, rv);
+	SC_FUNC_RETURN(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, rv);
 }
 
 
@@ -912,17 +912,17 @@ sc_pkcs15emu_oberthur_init(struct sc_pkcs15_card * p15card)
 	char serial[0x10];
 	unsigned char sopin_reference = 0x04;
 	
-	SC_FUNC_CALLED(card->ctx, 1);
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	sc_bin_to_hex(card->serialnr.value, card->serialnr.len, serial, sizeof(serial), 0);
 	p15card->serial_number = strdup(serial);
 
 	p15card->ops.parse_df = 	sc_awp_parse_df;
 	
-	sc_debug(ctx, "Oberthur init: serial %s", p15card->serial_number);
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Oberthur init: serial %s", p15card->serial_number);
 
 	sc_format_path(AWP_PIN_DF, &path);
 	rv = sc_select_file(card, &path, NULL);
-	SC_TEST_RET(ctx, rv, "Oberthur init failed: cannot select PIN dir");
+	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Oberthur init failed: cannot select PIN dir");
 	
 	tries_left = -1;
 	rv = sc_verify(card, SC_AC_CHV, sopin_reference, (unsigned char *)"", 0, &tries_left);
@@ -931,7 +931,7 @@ sc_pkcs15emu_oberthur_init(struct sc_pkcs15_card * p15card)
 		rv = sc_verify(card, SC_AC_CHV, sopin_reference, (unsigned char *)"", 0, &tries_left);
 	}
 	if (rv && rv != SC_ERROR_PIN_CODE_INCORRECT)
-		SC_TEST_RET(ctx, rv, "Invalid state of SO-PIN");
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Invalid state of SO-PIN");
 
 	/* add PIN */
 	memset(&info, 0, sizeof(info));
@@ -956,10 +956,10 @@ sc_pkcs15emu_oberthur_init(struct sc_pkcs15_card * p15card)
 	strncpy(obj.label, "SO PIN", SC_PKCS15_MAX_LABEL_SIZE-1);
 	obj.flags = SC_PKCS15_CO_FLAG_MODIFIABLE | SC_PKCS15_CO_FLAG_PRIVATE;
 	
-	sc_debug(ctx, "Add PIN(%s,auth_id:%s,reference:%i)", obj.label, 
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Add PIN(%s,auth_id:%s,reference:%i)", obj.label, 
 			sc_pkcs15_print_id(&info.auth_id), info.reference);
 	rv = sc_pkcs15emu_add_pin_obj(p15card, &obj, &info);
-	SC_TEST_RET(ctx, rv, "Oberthur init failed: cannot add PIN object");
+	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Oberthur init failed: cannot add PIN object");
 
 	tries_left = -1;
 	rv = sc_verify(card, SC_AC_CHV, 0x81, (unsigned char *)"", 0, &tries_left);
@@ -992,30 +992,30 @@ sc_pkcs15emu_oberthur_init(struct sc_pkcs15_card * p15card)
 		sc_format_path(AWP_PIN_DF, &info.path); 
 		info.path.type = SC_PATH_TYPE_PATH;
 	
-		sc_debug(ctx, "Add PIN(%s,auth_id:%s,reference:%i)", obj.label, 
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Add PIN(%s,auth_id:%s,reference:%i)", obj.label, 
 				sc_pkcs15_print_id(&info.auth_id), info.reference);
 		rv = sc_pkcs15emu_add_pin_obj(p15card, &obj, &info);
-		SC_TEST_RET(ctx, rv, "Oberthur init failed: cannot add PIN object");
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Oberthur init failed: cannot add PIN object");
 	
 		p15card->flags |= SC_PKCS15_CARD_FLAG_USER_PIN_INITIALIZED;
 	}
 	else if (rv != SC_ERROR_DATA_OBJECT_NOT_FOUND)    {
-		SC_TEST_RET(ctx, rv, "Oberthur init failed: cannot verify PIN");
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Oberthur init failed: cannot verify PIN");
 	}
 
 	for (ii=0; oberthur_infos[ii].name; ii++)   {
-		sc_debug(ctx, "Oberthur init: read %s file", oberthur_infos[ii].name);
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Oberthur init: read %s file", oberthur_infos[ii].name);
 		rv = sc_oberthur_read_file(p15card, oberthur_infos[ii].path,
 				&oberthur_infos[ii].content, &oberthur_infos[ii].len, 1);
-		SC_TEST_RET(ctx, rv, "Oberthur init failed: read oberthur file error");
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Oberthur init failed: read oberthur file error");
 		
-		sc_debug(ctx, "Oberthur init: parse %s file, content length %i", oberthur_infos[ii].name, oberthur_infos[ii].len);
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Oberthur init: parse %s file, content length %i", oberthur_infos[ii].name, oberthur_infos[ii].len);
 		rv = oberthur_infos[ii].parser(p15card, oberthur_infos[ii].content, oberthur_infos[ii].len, 
 				oberthur_infos[ii].postpone_allowed);
-		SC_TEST_RET(ctx, rv, "Oberthur init failed: parse error");
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Oberthur init failed: parse error");
 	}
 
-	SC_FUNC_RETURN(ctx, 1, SC_SUCCESS);
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
 }
 
 
@@ -1024,10 +1024,10 @@ oberthur_detect_card(struct sc_pkcs15_card * p15card)
 {
 	struct sc_card *card = p15card->card;
 
-	SC_FUNC_CALLED(card->ctx, 1);
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	if (p15card->card->type != SC_CARD_TYPE_OBERTHUR_64K)
-		SC_FUNC_RETURN(p15card->card->ctx, 1, SC_ERROR_WRONG_CARD);
-	SC_FUNC_RETURN(p15card->card->ctx, 1, SC_SUCCESS);
+		SC_FUNC_RETURN(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_WRONG_CARD);
+	SC_FUNC_RETURN(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
 }
 
 
@@ -1037,7 +1037,7 @@ sc_pkcs15emu_oberthur_init_ex(struct sc_pkcs15_card * p15card,
 {
 	int rv; 
 	
-	SC_FUNC_CALLED(p15card->card->ctx, 1);
+	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
 	if (opts && opts->flags & SC_PKCS15EMU_FLAGS_NO_CHECK)   {
 		rv = sc_pkcs15emu_oberthur_init(p15card);
 	}
@@ -1047,7 +1047,7 @@ sc_pkcs15emu_oberthur_init_ex(struct sc_pkcs15_card * p15card,
 			rv = sc_pkcs15emu_oberthur_init(p15card);
 	}
 	
-	SC_FUNC_RETURN(p15card->card->ctx, 1, rv);
+	SC_FUNC_RETURN(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, rv);
 }
 
 
@@ -1059,15 +1059,15 @@ sc_awp_parse_df(struct sc_pkcs15_card *p15card, struct sc_pkcs15_df *df)
 	size_t buf_len;
 	int rv;
 
-	SC_FUNC_CALLED(ctx, 1);
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 	if (df->type != SC_PKCS15_PRKDF)
-		SC_FUNC_RETURN(ctx, 1, SC_ERROR_NOT_SUPPORTED);
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED);
 
 	if (df->enumerated)
-		SC_FUNC_RETURN(ctx, 1, SC_SUCCESS);
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
 
 	rv = sc_oberthur_read_file(p15card, AWP_OBJECTS_LIST_PRV, &buf, &buf_len, 1);
-	SC_TEST_RET(ctx, rv, "Parse DF: read pribate objects info failed");
+	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Parse DF: read pribate objects info failed");
 
 	rv = sc_oberthur_parse_privateinfo(p15card, buf, buf_len, 0);
 
@@ -1075,10 +1075,10 @@ sc_awp_parse_df(struct sc_pkcs15_card *p15card, struct sc_pkcs15_df *df)
 		free(buf);
 
 	if (rv == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED)
-		SC_FUNC_RETURN(ctx, 1, SC_SUCCESS);
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
 
-	SC_TEST_RET(ctx, rv, "Parse DF: private info parse error");
+	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Parse DF: private info parse error");
 	df->enumerated = 1;
 
-	SC_FUNC_RETURN(ctx, 1, rv);
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, rv);
 }

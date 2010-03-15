@@ -69,7 +69,7 @@ static int ias_select_applet(sc_card_t *card, const u8 *aid, size_t aid_len)
 	memcpy(tpath.value, aid, aid_len);
 	r = iso_ops->select_file(card, &tpath, NULL);
 	if (r != SC_SUCCESS) {
-		sc_debug(card->ctx, "unable to select applet");
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "unable to select applet");
 		return r;
 	}
 
@@ -82,7 +82,7 @@ static int ias_init(sc_card_t *card)
 
 	assert(card != NULL);
 
-	SC_FUNC_CALLED(card->ctx, 1);
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	card->name = "IAS";
 	card->cla = 0x00;
 
@@ -208,7 +208,7 @@ static int ias_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 	int 		r;
 	sc_apdu_t 	local_apdu;
 
-	SC_FUNC_CALLED(card->ctx, 1);
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	/* Check if a PIN change operation is being requested,
 	 * as it requires sending two separate APDUs
@@ -244,7 +244,7 @@ static int ias_set_security_env(sc_card_t *card,
 	sc_apdu_t 	apdu;
 	u8 			sbuf[SC_MAX_APDU_BUFFER_SIZE];
 
-	sc_debug(card->ctx, "ias_set_security_env, keyRef = 0x%0x, algo = 0x%0x\n",
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "ias_set_security_env, keyRef = 0x%0x, algo = 0x%0x\n",
 			*env->key_ref, env->algorithm_flags);
 
 	assert(card != NULL && env != NULL);
@@ -264,7 +264,7 @@ static int ias_set_security_env(sc_card_t *card,
 		if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1)
 			sbuf[8] = 0x1A; /* RSA PKCS#1 with no data formatting */
 		else {
-			sc_debug(card->ctx, "Set Sec Env: unsupported algo 0X%0X\n",
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Set Sec Env: unsupported algo 0X%0X\n",
 					env->algorithm_flags);
 			return SC_ERROR_INVALID_ARGUMENTS;
 		}
@@ -284,7 +284,7 @@ static int ias_set_security_env(sc_card_t *card,
 		if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1)
 			sbuf[8] = 0x02; /* RSA PKCS#1 with no data formatting */
 		else {
-			sc_debug(card->ctx, "Set Sec Env: unsupported algo 0X%0X\n",
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Set Sec Env: unsupported algo 0X%0X\n",
 					env->algorithm_flags);
 			return SC_ERROR_INVALID_ARGUMENTS;
 		}
@@ -299,10 +299,10 @@ static int ias_set_security_env(sc_card_t *card,
 	apdu.resplen = 0;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, r, "Set Security Env APDU transmit failed");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Set Security Env APDU transmit failed");
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, r, "Card's Set Security Env command returned error");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card's Set Security Env command returned error");
 
 	return r;
 }
@@ -316,10 +316,10 @@ static int ias_compute_signature(sc_card_t *card, const u8 * data,
 	u8 				sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	sc_context_t 	*ctx = card->ctx;
 
-	SC_FUNC_CALLED(ctx, 1);
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 
 	if (data_len > 64) {
-		sc_debug(ctx, "error: input data too long: %lu bytes\n", data_len);
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "error: input data too long: %lu bytes\n", data_len);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
@@ -331,19 +331,19 @@ static int ias_compute_signature(sc_card_t *card, const u8 * data,
 	apdu.datalen = data_len;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 
 	/* Get the result */
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 		len = card->type == SC_CARD_TYPE_IAS_PTEID ? PTEID_RSA_KEYSIZE : outlen;
 		r = iso_ops->get_response(card, &len, out);
 		if (r == 0)
-			SC_FUNC_RETURN(card->ctx, 2, len);
+			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, len);
 		else
-			SC_FUNC_RETURN(card->ctx, 2, r);
+			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 	}
 
-	SC_FUNC_RETURN(card->ctx, 2, sc_check_sw(card, apdu.sw1, apdu.sw2));
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
 
 static int ias_select_file(sc_card_t *card, const sc_path_t *in_path,
@@ -419,7 +419,7 @@ static int ias_select_file(sc_card_t *card, const sc_path_t *in_path,
 		apdu.cse = SC_APDU_CASE_2_SHORT;
 		break;
 	default:
-		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_INVALID_ARGUMENTS);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
 	}
 
 	apdu.lc = pathlen;
@@ -436,11 +436,11 @@ static int ias_select_file(sc_card_t *card, const sc_path_t *in_path,
 	}
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 	if (file_out == NULL) {
 		if (apdu.sw1 == 0x61)
-			SC_FUNC_RETURN(card->ctx, 2, 0);
-		SC_FUNC_RETURN(card->ctx, 2, sc_check_sw(card, apdu.sw1, apdu.sw2));
+			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, 0);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 	}
 
 	/* A "file not found" error was received, this can mean two things:
@@ -464,7 +464,7 @@ static int ias_select_file(sc_card_t *card, const sc_path_t *in_path,
 
 		/* Go up in the hierarchy to the correct DF */
 		r = ias_select_file(card, &tpath, NULL);
-		SC_TEST_RET(card->ctx, r, "Error selecting parent.");
+		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Error selecting parent.");
 
 		/* We're now in the right place, reconstruct the APDU and retry */
 		path += 2;
@@ -477,38 +477,38 @@ static int ias_select_file(sc_card_t *card, const sc_path_t *in_path,
 			apdu.resplen = sizeof(buf);
 
 		r = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, r, "APDU transmit failed");
+		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 		if (file_out == NULL) {
 			if (apdu.sw1 == 0x61)
-				SC_FUNC_RETURN(card->ctx, 2, 0);
-			SC_FUNC_RETURN(card->ctx, 2, sc_check_sw(card, apdu.sw1, apdu.sw2));
+				SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, 0);
+			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 		}
 	}
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	if (r)
-		SC_FUNC_RETURN(card->ctx, 2, r);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 
 	if (apdu.resplen < 2)
-		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_UNKNOWN_DATA_RECEIVED);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_UNKNOWN_DATA_RECEIVED);
 	switch (apdu.resp[0]) {
 	case 0x6F:
 		file = sc_file_new();
 		if (file == NULL)
-			SC_FUNC_RETURN(card->ctx, 0, SC_ERROR_OUT_OF_MEMORY);
+			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
 		file->path = *in_path;
 		if (card->ops->process_fci == NULL) {
 			sc_file_free(file);
-			SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_NOT_SUPPORTED);
+			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_NOT_SUPPORTED);
 		}
 		if ((size_t)apdu.resp[1] + 2 <= apdu.resplen)
 			card->ops->process_fci(card, file, apdu.resp+2, apdu.resp[1]);
 		*file_out = file;
 		break;
 	case 0x00:	/* proprietary coding */
-		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_UNKNOWN_DATA_RECEIVED);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_UNKNOWN_DATA_RECEIVED);
 	default:
-		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_UNKNOWN_DATA_RECEIVED);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_UNKNOWN_DATA_RECEIVED);
 	}
 
 	return SC_SUCCESS;

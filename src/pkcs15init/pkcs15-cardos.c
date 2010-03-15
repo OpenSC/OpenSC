@@ -255,26 +255,26 @@ cardos_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	int		algorithm = 0, r;
 
 	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
-		sc_debug(ctx, "CardOS supports RSA keys only.");
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "CardOS supports RSA keys only.");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
 	if (cardos_key_algorithm(key_info->usage, key_info->modulus_length, &algorithm) < 0) {
-		sc_debug(ctx, "CardOS does not support keys "
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "CardOS does not support keys "
 			       "that can both sign _and_ decrypt.");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
 	r = sc_select_file(p15card->card, &key_info->path, &file);
 	if (r)   {
-		sc_debug(ctx, "Failed to store key: cannot select parent DF");
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Failed to store key: cannot select parent DF");
 		return r;
 	}
 
 	r = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_UPDATE);
 	sc_file_free(file);
 	if (r)   {
-		sc_debug(ctx, "Failed to store key: 'UPDATE' authentication failed");
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Failed to store key: 'UPDATE' authentication failed");
 		return r;
 	}
 
@@ -329,7 +329,7 @@ cardos_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	rsa_max_size = (p15card->card->caps & SC_CARD_CAP_RSA_2048) ? 2048 : 1024;
 	keybits = key_info->modulus_length & ~7UL;
 	if (keybits > rsa_max_size) {
-		sc_debug(ctx, "Unable to generate key, max size is %lu",
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Unable to generate key, max size is %lu",
 			(unsigned long) rsa_max_size);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
@@ -338,13 +338,13 @@ cardos_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		use_ext_rsa = 1;
 
 	if (cardos_key_algorithm(key_info->usage, keybits, &algorithm) < 0) {
-		sc_debug(ctx, "CardOS does not support keys "
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "CardOS does not support keys "
 			       "that can both sign _and_ decrypt.");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
 	if (sc_profile_get_file(profile, "tempfile", &temp) < 0) {
-		sc_debug(ctx, "Profile doesn't define temporary file "
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Profile doesn't define temporary file "
 				"for key generation.");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
@@ -414,7 +414,7 @@ cardos_store_pin(sc_profile_t *profile, sc_card_t *card,
 	 * "no padding required". */
 	maxlen = MIN(profile->pin_maxlen, sizeof(pinpadded));
 	if (pin_len > maxlen) {
-		sc_debug(card->ctx, "invalid pin length: %u (max %u)\n",
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "invalid pin length: %u (max %u)\n",
 		         pin_len, maxlen);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
@@ -693,13 +693,13 @@ static int parse_ext_pubkey_file(sc_card_t *card, const u8 *data, size_t len,
 		return SC_ERROR_INVALID_ARGUMENTS;
 	data = sc_asn1_find_tag(card->ctx, data, len, 0x7f49, &ilen);
 	if (data == NULL) {
-		sc_debug(card->ctx, "invalid public key data: missing tag");
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "invalid public key data: missing tag");
 		return SC_ERROR_INTERNAL;
 	}
 
 	p = sc_asn1_find_tag(card->ctx, data, ilen, 0x81, &tlen);
 	if (p == NULL) {
-		sc_debug(card->ctx, "invalid public key data: missing modulus");
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "invalid public key data: missing modulus");
 		return SC_ERROR_INTERNAL;
 	}
 	pubkey->u.rsa.modulus.len  = tlen;
@@ -710,7 +710,7 @@ static int parse_ext_pubkey_file(sc_card_t *card, const u8 *data, size_t len,
 
 	p = sc_asn1_find_tag(card->ctx, data, ilen, 0x82, &tlen);
 	if (p == NULL) {
-		sc_debug(card->ctx, "invalid public key data: missing exponent");
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "invalid public key data: missing exponent");
 		return SC_ERROR_INTERNAL;
 	}
 	pubkey->u.rsa.exponent.len  = tlen;
