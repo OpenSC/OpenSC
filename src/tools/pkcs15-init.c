@@ -449,7 +449,7 @@ main(int argc, char **argv)
 			r = sc_pkcs15_bind(card, &p15card);
 			if (r) {
 				fprintf(stderr,
-					"PKCS#15 initialization failed: %s\n",
+					"PKCS#15 binding failed: %s\n",
 					sc_strerror(r));
 				break;
 			}
