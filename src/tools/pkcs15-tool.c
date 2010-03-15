@@ -883,6 +883,7 @@ static int verify_pin(void)
 {
 	struct sc_pkcs15_object	*pin_obj = NULL;
 	unsigned char		*pin;
+	int r;
 	
 	if (!opt_auth_id)   {
 	        struct sc_pkcs15_object *objs[32];
@@ -920,7 +921,11 @@ static int verify_pin(void)
 	else
 		pin = get_pin("Please enter PIN", pin_obj);
 
-	return sc_pkcs15_verify_pin(p15card, pin_obj, pin, pin ? strlen((char *) pin) : 0);
+	r = sc_pkcs15_verify_pin(p15card, pin_obj, pin, pin ? strlen((char *) pin) : 0);
+	if (r < 0)
+		fprintf(stderr, "Operation failed: %s\n", sc_strerror(r));
+
+	return r;
 }
 
 static int authenticate(sc_pkcs15_object_t *obj)
