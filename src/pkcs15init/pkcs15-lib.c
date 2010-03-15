@@ -702,8 +702,10 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 	/* Perform card-specific initialization */
 	if (profile->ops->init_card)   {
 		r = profile->ops->init_card(profile, p15card);
-		if (r < 0 && pin_obj)
+		if (r < 0 && pin_obj)   {
+			sc_pkcs15_remove_object(p15card, pin_obj);
 			sc_pkcs15_free_object(pin_obj);
+		}
 		SC_TEST_RET(ctx, r, "Card specific init failed");
 	}
 
