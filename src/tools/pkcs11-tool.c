@@ -1299,30 +1299,47 @@ static void	parse_rsa_private_key(struct rsakey_info *rsa,
 	RSA_GET_BN(exponent_2, r->dmq1);
 	RSA_GET_BN(coefficient, r->iqmp);
 }
+
+static void	parse_rsa_public_key(struct rsakey_info *rsa,
+		unsigned char *data, int len)
+{
+	RSA *r = NULL;
+	const unsigned char *p;
+
+	p = data;
+	r = d2i_RSA_PUBKEY(NULL, &p, len);
+
+	if (!r) {
+		r = d2i_RSAPublicKey(NULL, &p, len);
+	}
+
+	if (!r) {
+		/* ERR_print_errors_fp(stderr); */
+		util_fatal("OpenSSL error during RSA public key parsing");
+	}
+	RSA_GET_BN(modulus, r->n);
+	RSA_GET_BN(public_exponent, r->e);
+}
 #endif
 
 #define MAX_OBJECT_SIZE	5000
 
-/* Currently only for certificates (-type cert),
-   private keys (-type privkey) and data objetcs (-type data).
+/* Currently for certificates (-type cert), private keys (-type privkey),
+   public keys (-type pubkey) and data objects (-type data).
    Note: only RSA private keys are supported. */
 static int write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 {
 	CK_BBOOL _true = TRUE;
+	CK_BBOOL _false = FALSE;
 	unsigned char contents[MAX_OBJECT_SIZE];
 	int contents_len = 0;
 	unsigned char certdata[MAX_OBJECT_SIZE];
 	int certdata_len = 0;
 	FILE *f;
-	CK_OBJECT_HANDLE cert_obj, privkey_obj, data_obj;
-	CK_ATTRIBUTE cert_templ[20], privkey_templ[20], data_templ[20];
-	int n_cert_attr = 0, n_privkey_attr = 0, n_data_attr = 0;
+	CK_OBJECT_HANDLE cert_obj, privkey_obj, pubkey_obj, data_obj;
+	CK_ATTRIBUTE cert_templ[20], privkey_templ[20], pubkey_templ[20], data_templ[20];
+	int n_cert_attr = 0, n_privkey_attr = 0, n_pubkey_attr = 0, n_data_attr = 0;
 	struct sc_object_id oid;
-#if 0 
-	CK_ATTRIBUTE pubkey_templ[20];
-	CK_OBJECT_HANDLE pubkey_obj;
-	int n_pubkey_attr = 0;
-#endif
 	CK_RV rv;
 	int need_to_parse_certdata = 0;
 #ifdef ENABLE_OPENSSL
@@ -1368,6 +1385,13 @@ static int write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		parse_rsa_private_key(&rsa, contents, contents_len);
 #else
 		util_fatal("No OpenSSL support, cannot parse RSA private key\n");
+#endif
+	}
+	if (opt_object_class == CKO_PUBLIC_KEY) {
+#ifdef ENABLE_OPENSSL
+		parse_rsa_public_key(&rsa, contents, contents_len);
+#else
+		util_fatal("No OpenSSL support, cannot parse RSA public key\n");
 #endif
 	}
 
@@ -1459,6 +1483,50 @@ static int write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 #endif
 	}
 	else
+	if (opt_object_class == CKO_PUBLIC_KEY) {
+		CK_OBJECT_CLASS clazz = CKO_PUBLIC_KEY;
+		CK_KEY_TYPE type = CKK_RSA;
+		CK_ULONG modulus_bits = rsa.modulus_len * 8;
+
+		FILL_ATTR(pubkey_templ[0], CKA_CLASS, &clazz, sizeof(clazz));
+		FILL_ATTR(pubkey_templ[1], CKA_KEY_TYPE, &type, sizeof(type));
+		FILL_ATTR(pubkey_templ[2], CKA_TOKEN, &_true, sizeof(_true));
+		n_pubkey_attr = 3;
+
+		if (opt_is_private != 0) {
+			FILL_ATTR(data_templ[n_data_attr], CKA_PRIVATE,
+				&_true, sizeof(_true));
+			n_data_attr++;
+		}
+
+		if (opt_object_label != NULL) {
+			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_LABEL,
+				opt_object_label, strlen(opt_object_label));
+			n_pubkey_attr++;
+		}
+		if (opt_object_id_len != 0) {
+			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_ID,
+				opt_object_id, opt_object_id_len);
+			n_pubkey_attr++;
+		}
+#ifdef ENABLE_OPENSSL
+		if (cert.subject_len != 0) {
+			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_SUBJECT,
+				cert.subject, cert.subject_len);
+			n_pubkey_attr++;
+		}
+		FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_MODULUS,
+			rsa.modulus, rsa.modulus_len);
+		n_pubkey_attr++;
+		FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_MODULUS_BITS,
+			&modulus_bits, sizeof (modulus_bits));
+		n_pubkey_attr++;
+		FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_PUBLIC_EXPONENT,
+			rsa.public_exponent, rsa.public_exponent_len);
+		n_pubkey_attr++;
+#endif
+	}
+	else
 	if (opt_object_class == CKO_DATA) {
 		CK_OBJECT_CLASS clazz = CKO_DATA;
 		FILL_ATTR(data_templ[0], CKA_CLASS, &clazz, sizeof(clazz));
@@ -1513,7 +1581,6 @@ static int write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		show_object(session, cert_obj);
 	}
 
-#if 0
 	if (n_pubkey_attr) {
 		rv = p11->C_CreateObject(session, pubkey_templ, n_pubkey_attr, &pubkey_obj);
 		if (rv != CKR_OK)
@@ -1522,7 +1589,6 @@ static int write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		printf("Generated public key:\n");
 		show_object(session, pubkey_obj);
 	}
-#endif
 
 	if (n_privkey_attr) {
 		rv = p11->C_CreateObject(session, privkey_templ, n_privkey_attr, &privkey_obj);
