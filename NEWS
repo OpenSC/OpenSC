@@ -6,10 +6,24 @@ http://www.opensc-project.org/opensc/wiki/WhatsNew
 Also see the svn changelog using svn command
 or doc/nonpersistent/ChangeLog.
 
-New in 0.??.==; 200?-??-??; ??
+New in 0.12.??; 2010-??-??; ??
 * New westcos driver by François Leblanc
 * Modify Rutoken S binary interfaces by Aktiv Co.
 * Support GOST R 34.10-2001 and GOST R 34.11-94 by Aktiv Co.
+* CardOS driver now emulates sign on rsa keys with sign+decrypt usage
+  with padding and decrypt(). This is compatible with old cards and
+  card initialized by Siemens software. Removed "--split-key" option,
+  as it is no longer needed.
+* Improved debugging support: debug level 3 will show everything
+  except of ASN1 and card matching debugging (usualy not needed).
+* Massive changes to libopensc. This library is now internal, only
+  used by opensc-pkcs11.so and command line tools. Header files are
+  no longer installed, library should not be used by other applications.
+  Please use generic PKCS#11 interface instead.
+* #include file statements cleaned up: first include "config.h", then
+  system headers, then additional libraries, then headers in opensc
+  (but from other directories), then header files from same directory.
+  Fix path to reference headers, remove src/include/ directory.
 
 New in 0.11.12; 2009-12-18; Andreas Jellinghaus
 * Document integer problem in OpenSC and implement workaround

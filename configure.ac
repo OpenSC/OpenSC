@@ -21,8 +21,8 @@ OPENSC_VERSION_FIX="PACKAGE_VERSION_FIX"
 #   (Code changed:                      REVISION++)
 #   (Oldest interface removed:          OLDEST++)
 #   (Interfaces added:                  CURRENT++, REVISION=0)
-OPENSC_LT_CURRENT="2"
-OPENSC_LT_OLDEST="2"
+OPENSC_LT_CURRENT="3"
+OPENSC_LT_OLDEST="3"
 OPENSC_LT_REVISION="0"
 OPENSC_LT_AGE="0"
 OPENSC_LT_AGE="$((${OPENSC_LT_CURRENT}-${OPENSC_LT_OLDEST}))"
