@@ -543,7 +543,7 @@ int main(int argc, char * argv[])
 		opt_slot = slot;
 	}
 
-	if (opt_slot == NO_SLOT) {
+	if ((opt_slot == NO_SLOT) && (action_count > do_list_slots)) {
 		fprintf(stderr, "You must specify a slot ID\n");
 		err = 1;
 		goto end;
