@@ -161,7 +161,7 @@ filesystem {
 				structure	= linear-variable;
 				size 		= 20;
 				record-length 	= 141; 
-				ACL = WRITE=NONE, UPDATE=NONE, READ=NONE, ERASE=CHV5;
+				ACL = WRITE=NONE, UPDATE=NONE, READ=NONE, ERASE=NONE;
 			}
 			
 			EF OberthurAWP-public-list {
