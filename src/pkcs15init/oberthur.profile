@@ -11,6 +11,11 @@ cardinfo {
 	pin-pad-char	= 0xFF;
 }
 
+pkcs15 {
+    # Have a lastUpdate field in the EF(TokenInfo)?
+    do-last-update      = no;
+}
+
 # Define reasonable limits for PINs and PUK
 # Note that we do not set a file path or reference
 # here; that is done dynamically.
@@ -140,35 +145,35 @@ filesystem {
 			}
 
 			EF OberthurAWP-token-info {
-				file-id 	= 1000;
+				file-id	= 1000;
 				size	= 36;
-				ACL	 = WRITE=CHV4, UPDATE=CHV4, READ=NONE, ERASE=NEVER;
+				ACL	= WRITE=CHV4, UPDATE=CHV4, READ=NONE, ERASE=NEVER;
 			}
 			
 			EF OberthurAWP-puk-file {
-				file-id 	= 2000;
+				file-id	= 2000;
 				size	= 16;
-				ACL	 = WRITE=NEVER, UPDATE=CHV4, READ=NONE, ERASE=NEVER;
+				ACL	= WRITE=NEVER, UPDATE=CHV4, READ=NONE, ERASE=NEVER;
 			}
 			
 			EF OberthurAWP-container-list {
 				file-id 	= 3000;
 				structure	= linear-variable;
 				size 		= 20;
-				record-length = 141; 
+				record-length 	= 141; 
 				ACL = WRITE=NONE, UPDATE=NONE, READ=NONE, ERASE=CHV5;
 			}
 			
 			EF OberthurAWP-public-list {
-				file-id 	= 4000;
+				file-id	= 4000;
 				size	= 250;
-				ACL	 = *=NONE, ERASE=NEVER;
+				ACL	= *=NONE, ERASE=NEVER;
 			}
 			
 			EF OberthurAWP-private-list {
-				file-id 	= 5000;
+				file-id	= 5000;
 				size	= 125;
-				ACL	 = WRITE=CHV1, UPDATE=CHV1, READ=NONE, ERASE=NEVER;
+				ACL	= WRITE=CHV1, UPDATE=CHV1, READ=NONE, ERASE=NEVER;
 			}
 		}
 		
