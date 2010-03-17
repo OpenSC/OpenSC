@@ -115,6 +115,7 @@ static int	do_read_certificate(const char *, const char *, X509 **);
 static void	parse_commandline(int argc, char **argv);
 static void	read_options_file(const char *);
 static void	ossl_print_errors(void);
+static int	verify_pin(struct sc_pkcs15_card *, char *);
 
 enum {
 	OPT_OPTIONS = 0x100,
@@ -132,6 +133,7 @@ enum {
 	OPT_APPLICATION_ID,
 	OPT_PUK_ID,
 	OPT_PUK_LABEL,
+	OPT_VERIFY_PIN,
 
 	OPT_PIN1     = 0x10000,	/* don't touch these values */
 	OPT_PUK1     = 0x10001,
@@ -164,6 +166,7 @@ const struct option	options[] = {
 	{ "serial",		required_argument, NULL,	OPT_SERIAL },
 	{ "auth-id",		required_argument, NULL,	'a' },
 	{ "puk-id",		required_argument, NULL,	OPT_PUK_ID },
+	{ "verify-pin",         no_argument,	   NULL,	OPT_VERIFY_PIN },
 	{ "id",			required_argument, NULL,	'i' },
 	{ "label",		required_argument, NULL,	'l' },
 	{ "puk-label",		required_argument, NULL,	OPT_PUK_LABEL },
@@ -220,6 +223,7 @@ static const char *		option_help[] = {
 	"Specify ID of PIN to use/create",
 	"Specify ID of PUK to use/create",
 	"Specify ID of key/certificate",
+	"Verify PIN after card binding (use with --auth-id)",
 	"Specify label of PIN/key",
 	"Specify label of PUK",
 	"Specify public key label (use with --generate-key)",
@@ -315,7 +319,8 @@ static int			opt_extractable = 0,
 				opt_no_prompt = 0,
 				opt_no_sopin = 0,
 				opt_use_defkeys = 0,
-				opt_wait = 0;
+				opt_wait = 0,
+				opt_verify_pin = 0;
 static const char *		opt_profile = "pkcs15";
 static char *			opt_card_profile = NULL;
 static char *			opt_infile = NULL;
@@ -461,6 +466,15 @@ main(int argc, char **argv)
 				printf("Found %s\n", p15card->label);
 
 			sc_pkcs15init_set_p15card(profile, p15card);
+
+			if (opt_verify_pin)   {
+				r = verify_pin(p15card, opt_authid);
+				if (r)   {
+					fprintf(stderr, "Failed to verify User PIN : %s\n",
+						sc_strerror(r));
+					break;
+				}
+			}
 		}
 
 		if (verbose && action != ACTION_ASSERT_PRISTINE)
@@ -550,6 +564,7 @@ open_reader_and_card(char *reader)
 		return 0;
 	}
 	ctx->debug = verbose;
+
 	if (verbose > 1) {
 		ctx->debug_file = stderr;
 	}
@@ -2600,6 +2615,9 @@ handle_option(const struct option *opt)
 	case OPT_CERT_LABEL:
 		opt_cert_label = optarg;
 		break;
+	case OPT_VERIFY_PIN:
+		opt_verify_pin = 1;
+		break;
 	default:
 		util_print_usage_and_die(app_name, options, option_help);
 	}
@@ -2840,3 +2858,75 @@ int get_pin(sc_ui_hints_t *hints, char **out)
 
 	return 0;
 }
+
+static int verify_pin(struct sc_pkcs15_card *p15card, char *auth_id_str)
+{
+	struct sc_pkcs15_object	*pin_obj = NULL;
+	char *pin;
+	int r;
+
+	if (!auth_id_str)   {
+	        struct sc_pkcs15_object *objs[32];
+        	int r, ii;
+		
+		r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_AUTH_PIN, objs, 32);
+		if (r < 0) {
+                        fprintf(stderr, "PIN code enumeration failed: %s\n", sc_strerror(r));
+                        return -1;
+		}
+
+		for (ii=0;ii<r;ii++)   {
+			struct sc_pkcs15_pin_info *pin_info = (struct sc_pkcs15_pin_info *) objs[ii]->data;
+
+                	if (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN)
+				continue;
+			if (pin_info->flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN)
+				continue;
+
+			pin_obj = objs[ii];
+			break;
+		}
+	}
+	else   {
+		struct sc_pkcs15_id auth_id;
+
+		sc_pkcs15_hex_string_to_id(auth_id_str, &auth_id);
+		r = sc_pkcs15_find_pin_by_auth_id(p15card, &auth_id, &pin_obj);
+		if (r) {
+			fprintf(stderr, "Unable to find PIN code: %s\n", sc_strerror(r));
+			return r;
+		}
+	}
+
+	if (!pin_obj)   {
+		fprintf(stderr, "PIN object '%s' not found\n", auth_id_str);
+		return -1;
+	}
+
+	if (opt_pins[0] != NULL)   {
+		pin = opt_pins[0];
+	}
+	else   {
+		sc_ui_hints_t   hints;
+
+                if (opt_no_prompt)
+			return SC_ERROR_OBJECT_NOT_FOUND;
+
+                memset(&hints, 0, sizeof(hints));
+                hints.dialog_name = "pkcs15init.get_pin";
+                hints.prompt    = "User PIN required";
+                hints.obj_label = "User PIN";
+                hints.usage     = SC_UI_USAGE_OTHER;
+                hints.card      = card;
+                hints.p15card   = p15card;
+
+        	get_pin(&hints, &pin);
+	}
+
+	r = sc_pkcs15_verify_pin(p15card, pin_obj, (unsigned char *)pin, pin ? strlen((char *) pin) : 0);
+	if (r < 0)
+		fprintf(stderr, "Operation failed: %s\n", sc_strerror(r));
+
+	return r;
+}
+
