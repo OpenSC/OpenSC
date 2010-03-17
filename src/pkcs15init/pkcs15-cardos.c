@@ -352,7 +352,7 @@ cardos_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	pin_id = sc_pkcs15init_get_pin_reference(p15card, profile, 
 			SC_AC_SYMBOLIC, SC_PKCS15INIT_USER_PIN);
 	if (pin_id >= 0) {
-		r = sc_pkcs15init_verify_key(profile, p15card, NULL, SC_AC_CHV, pin_id);
+		r = sc_pkcs15init_verify_secret(profile, p15card, NULL, SC_AC_CHV, pin_id);
 		if (r < 0)
 			return r;
 	}

@@ -329,14 +329,8 @@ extern int	sc_pkcs15init_get_serial(struct sc_profile *, const char **);
 extern int	sc_pkcs15init_set_serial(struct sc_profile *, const char *);
 extern int	sc_pkcs15init_get_label(struct sc_profile *, const char **);
 
-#if 0
-extern void	sc_pkcs15init_set_secret(struct sc_profile *,
-				int, int, u8 *, size_t);
-extern int	sc_pkcs15init_set_pin_data(struct sc_profile *, int,
-				const u8 *, size_t);
-#endif
-extern int	sc_pkcs15init_verify_key(struct sc_profile *, struct sc_pkcs15_card *,
-				sc_file_t *,  unsigned int, unsigned int);
+extern int	sc_pkcs15init_verify_secret(struct sc_profile *, struct sc_pkcs15_card *,
+				sc_file_t *,  unsigned int, int);
 extern int	sc_pkcs15init_delete_by_path(struct sc_profile *,
 				struct sc_pkcs15_card *, const sc_path_t *path);
 extern int  sc_pkcs15init_update_any_df(sc_pkcs15_card_t *, sc_profile_t *, 

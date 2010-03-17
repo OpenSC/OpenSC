@@ -833,7 +833,7 @@ gpk_pkfile_update_private(struct sc_profile *profile,
 		/* We must set a secure messaging key before each
 		 * Load Private Key command. Any key will do...
 		 * The GPK _is_ weird. */
-		r = sc_pkcs15init_verify_key(profile, p15card, NULL, SC_AC_PRO, 1);
+		r = sc_pkcs15init_verify_secret(profile, p15card, NULL, SC_AC_PRO, 1);
 		if (r < 0)
 			break;
 

@@ -2859,11 +2859,9 @@ sc_pkcs15init_get_transport_key(struct sc_profile *profile, struct sc_pkcs15_car
 /*
  * PIN verification
  */
-static int
-do_get_and_verify_secret(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
-		struct sc_file *file, int type, int reference,
-		unsigned char *pinbuf, size_t *pinsize,
-		int verify)
+int
+sc_pkcs15init_verify_secret(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
+		struct sc_file *file, unsigned int type, int reference)
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15_object *pin_obj = NULL;
@@ -2871,28 +2869,30 @@ do_get_and_verify_secret(struct sc_profile *profile, struct sc_pkcs15_card *p15c
 	struct sc_path	*path;
 	int		r, use_pinpad = 0, pin_id = -1;
 	const char	*ident, *label = NULL;
+	unsigned char	pinbuf[0x100];
+	size_t		pinsize = sizeof(pinbuf);
+
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 	path = file? &file->path : NULL;
 
 	ident = get_pin_ident_name(type, reference);
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "get and verify PIN(name:%s,type:0x%X,reference:0x%X)\n", ident, type, reference);
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "get and verify PIN('%s',type:0x%X,reference:0x%X)\n", ident, type, reference);
 
 	memset(&pin_info, 0, sizeof(pin_info));
 	pin_info.auth_method = type;
 	pin_info.reference = reference;
 
 	pin_id = sc_pkcs15init_get_pin_reference(p15card, profile, type, reference);
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "sc_pkcs15init_get_pin_reference(type:%X,reference:%X) pin_id:%i\n", type, reference, pin_id);
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "found PIN reference %i\n", pin_id);
 	if (type == SC_AC_SYMBOLIC) {
 		if (pin_id == -1)
 			SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
 		reference = pin_id;
 		type = SC_AC_CHV;
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Symbolic PIN resolved to PIN(type:CHV,reference:%i)\n", type, reference);
 	}
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "get and verify PIN(id:0x%X, type:0x%X, reference:0x%X); p15card:%p\n", pin_id, type, reference, p15card);
 
-	//if (type == SC_AC_CHV && p15card) {
 	if (p15card) {
 		if (path && path->len)   {
 			struct sc_path tmp_path = *path;
@@ -2917,8 +2917,10 @@ do_get_and_verify_secret(struct sc_profile *profile, struct sc_pkcs15_card *p15c
 	if (pin_obj)   {
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "PIN object '%s'; pin_obj->content.len:%i\n", pin_obj->label, pin_obj->content.len);
 		if (pin_obj->content.value && pin_obj->content.len)   {
-			pinbuf = pin_obj->content.value;
-	        	*pinsize = pin_obj->content.len;
+			if (pin_obj->content.len > pinsize)
+				SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_BUFFER_TOO_SMALL, "PIN buffer is too small");
+			memcpy(pinbuf, pin_obj->content.value, pin_obj->content.len);
+	        	pinsize = pin_obj->content.len;
 			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "'ve got '%s' value from cache\n", ident);
 			goto found;
 		}
@@ -2930,12 +2932,12 @@ do_get_and_verify_secret(struct sc_profile *profile, struct sc_pkcs15_card *p15c
 	switch (type) {
 	case SC_AC_CHV:
 		if (callbacks.get_pin)   {
-			r = callbacks.get_pin(profile, pin_id, &pin_info, label, pinbuf, pinsize);
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "'get_pin' callback returned %i; pinsize:%i\n", r, *pinsize);
+			r = callbacks.get_pin(profile, pin_id, &pin_info, label, pinbuf, &pinsize);
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "'get_pin' callback returned %i; pinsize:%i\n", r, pinsize);
 		}
 		break;
 	default:
-		r = sc_pkcs15init_get_transport_key(profile, p15card, type, reference, pinbuf, pinsize); 
+		r = sc_pkcs15init_get_transport_key(profile, p15card, type, reference, pinbuf, &pinsize);
 		break;
 	}
 
@@ -2948,19 +2950,9 @@ do_get_and_verify_secret(struct sc_profile *profile, struct sc_pkcs15_card *p15c
 
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Failed to get secret");
 
-found: 	/* If it's a PIN, pad it out */
-	if (type == SC_AC_CHV && pin_info.flags & SC_PKCS15_PIN_FLAG_NEEDS_PADDING) {
-		int left = profile->pin_maxlen - *pinsize;
-
-		if (left > 0) {
-			memset(pinbuf + *pinsize, profile->pin_pad_char, left);
-			*pinsize = profile->pin_maxlen;
-		}
-	}
-
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "get and verify PIN; pinbuf(%p:%i)\n", pinbuf, *pinsize);
-	if (pin_obj && verify)   {
-		r = sc_pkcs15_verify_pin(p15card, pin_obj, pinbuf, *pinsize);
+found: 	
+	if (pin_obj)   {
+		r = sc_pkcs15_verify_pin(p15card, pin_obj, pinbuf, pinsize);
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Cannot validate pkcs15 PIN");
 	}
 
@@ -2969,7 +2961,7 @@ found: 	/* If it's a PIN, pad it out */
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Failed to select PIN path");
 	}
 
-	if (!pin_obj && verify) {
+	if (!pin_obj) {
 		struct sc_pin_cmd_data pin_cmd;
 
 		memset(&pin_cmd, 0, sizeof(pin_cmd));
@@ -2977,7 +2969,7 @@ found: 	/* If it's a PIN, pad it out */
 		pin_cmd.pin_type = type;
 		pin_cmd.pin_reference = reference;
 		pin_cmd.pin1.data = use_pinpad ? NULL : pinbuf;
-		pin_cmd.pin1.len = use_pinpad ? 0: *pinsize;
+		pin_cmd.pin1.len = use_pinpad ? 0: pinsize;
 	
 		r = sc_pin_cmd(p15card->card, &pin_cmd, NULL);
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "'VERIFY' pin cmd failed");
@@ -2986,32 +2978,6 @@ found: 	/* If it's a PIN, pad it out */
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, r);
 }
 
-
-static int
-do_verify_pin(struct sc_profile *profile, struct sc_pkcs15_card *p15card, 
-		struct sc_file *file, unsigned int type, unsigned int reference)
-{
-	size_t		pinsize;
-	unsigned char	pinbuf[0x100];
-
-	pinsize = sizeof(pinbuf);
-	return do_get_and_verify_secret(profile, p15card, file, type, reference,
-			pinbuf, &pinsize, 1);
-}
-
-
-int
-sc_pkcs15init_verify_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
-		struct sc_file *file,  unsigned int type, 
-		unsigned int reference)
-{
-	size_t		keysize;
-	unsigned char	keybuf[64];
-
-	keysize = sizeof(keybuf);
-	return do_get_and_verify_secret(profile, p15card, file, type, reference,
-			keybuf, &keysize, 1);
-}
 
 /*
  * Present any authentication info as required by the file.
@@ -3057,7 +3023,8 @@ sc_pkcs15init_authenticate(struct sc_profile *profile, struct sc_pkcs15_card *p1
 
 	for (; r == 0 && acl; acl = acl->next) {
 		if (acl->method == SC_AC_NEVER)   {
-			SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_SECURITY_STATUS_NOT_SATISFIED, "Authentication failed: never allowed");
+			SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_SECURITY_STATUS_NOT_SATISFIED, 
+					"Authentication failed: never allowed");
 		}
 		else if (acl->method == SC_AC_NONE)   {
 			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "always allowed");
@@ -3068,7 +3035,7 @@ sc_pkcs15init_authenticate(struct sc_profile *profile, struct sc_pkcs15_card *p1
 			break;
 		}
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "verify acl(method:%i,reference:%i)\n", acl->method, acl->key_ref);
-		r = do_verify_pin(profile, p15card, file_tmp ? file_tmp : file, acl->method, acl->key_ref);
+		r = sc_pkcs15init_verify_secret(profile, p15card, file_tmp ? file_tmp : file, acl->method, acl->key_ref);
 	}
 
 	if (file_tmp)
@@ -3076,6 +3043,7 @@ sc_pkcs15init_authenticate(struct sc_profile *profile, struct sc_pkcs15_card *p1
 
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, r);
 }
+
 
 static int 
 do_select_parent(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
