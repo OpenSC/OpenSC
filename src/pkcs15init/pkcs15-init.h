@@ -126,6 +126,18 @@ struct sc_pkcs15init_operations {
 	 */
 	int (*delete_object)(struct sc_profile *, struct sc_pkcs15_card *,
 			unsigned int type, const void *data, const sc_path_t *path);
+
+	/*
+	 * Support of pkcs15init emulation
+	 */
+	int (*emu_update_dir) (struct sc_pkcs15_card *, struct sc_profile *,
+			struct sc_app_info *);
+	int (*emu_update_any_df) (struct sc_pkcs15_card *, struct sc_profile *,
+			unsigned, struct sc_pkcs15_object *);
+	int (*emu_update_tokeninfo) (struct sc_pkcs15_card *,
+			struct sc_profile *, struct sc_pkcs15_tokeninfo *);
+	int (*emu_write_info)(struct sc_pkcs15_card *, struct sc_profile *,
+		struct sc_pkcs15_object *);
 };
 
 /* Do not change these or reorder these */

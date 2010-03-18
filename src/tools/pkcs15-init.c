@@ -1210,7 +1210,7 @@ done:
  * reached that certified other remaining certs on the card.
  */
 static int do_delete_crypto_objects(sc_pkcs15_card_t *myp15card,
-				sc_profile_t *profile,
+				struct sc_profile *profile,
 				const sc_pkcs15_id_t id,
 				unsigned int which)
 {

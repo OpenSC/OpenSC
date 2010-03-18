@@ -2286,6 +2286,11 @@ sc_pkcs15init_update_dir(struct sc_pkcs15_card *p15card,
 	int r, retry = 1;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
+	if (profile->ops->emu_update_dir)   {
+		r = profile->ops->emu_update_dir(p15card, profile, app);
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, r);
+	}
+
 	do {
 		struct sc_file	*dir_file;
 		struct sc_path	path;
@@ -2509,7 +2514,11 @@ sc_pkcs15init_add_object(struct sc_pkcs15_card *p15card,
 		assert(object->df == df);
 	}
 
-	r = sc_pkcs15init_update_any_df(p15card, profile, df, is_new);
+	if (profile->ops->emu_update_any_df)
+		r = profile->ops->emu_update_any_df(p15card, profile, SC_AC_OP_CREATE, object);
+	else
+		r = sc_pkcs15init_update_any_df(p15card, profile, df, is_new);
+
 	if (r < 0 && object_added)
 		sc_pkcs15_remove_object(p15card, object);
 
@@ -2684,6 +2693,11 @@ sc_pkcs15init_delete_object(struct sc_pkcs15_card *p15card, struct sc_profile *p
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Card specific delete object failed");
 	} 
 	
+	if (profile->ops->emu_update_any_df)   {
+		r = profile->ops->emu_update_any_df(p15card, profile, SC_AC_OP_ERASE, obj);
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "'ERASE' update DF failed");
+	}
+
 	/* Get the DF we're part of. If there's no DF, fine, we haven't been added yet. */
 	df = obj->df;
 	if (df)   {
@@ -2692,7 +2706,8 @@ sc_pkcs15init_delete_object(struct sc_pkcs15_card *p15card, struct sc_profile *p
 		sc_pkcs15_free_object(obj);
 	}
 
-	r = sc_pkcs15init_update_any_df(p15card, profile, df, 0);
+	if (!profile->ops->emu_update_any_df)
+		r = sc_pkcs15init_update_any_df(p15card, profile, df, 0);
 
 	/* mark card as dirty */
 	profile->dirty = 1;
@@ -3531,6 +3546,9 @@ sc_pkcs15init_write_info(struct sc_pkcs15_card *p15card,
 	unsigned int	method;
 	unsigned long	key_ref;
 	int		n, r;
+
+	if (profile->ops->emu_write_info)
+		return profile->ops->emu_write_info(p15card, profile, pin_obj);
 
 	memset(buffer, 0, sizeof(buffer));
 
