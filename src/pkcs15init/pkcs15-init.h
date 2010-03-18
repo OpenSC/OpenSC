@@ -21,7 +21,7 @@ extern "C" {
 #define SC_PKCS15INIT_X509_KEY_CERT_SIGN         0x0004UL
 #define SC_PKCS15INIT_X509_CRL_SIGN              0x0002UL
 
-struct sc_profile; 
+typedef struct sc_profile sc_profile_t; /* opaque type */
 
 struct sc_pkcs15init_operations {
 	/*
