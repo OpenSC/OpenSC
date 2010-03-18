@@ -34,6 +34,7 @@ libpkcs15init_la_SOURCES = \
 	pkcs15-westcos.c \
 	pkcs15-gpk.c pkcs15-miocos.c pkcs15-cflex.c \
 	pkcs15-cardos.c pkcs15-jcop.c pkcs15-starcos.c \
-	pkcs15-oberthur.c pkcs15-setcos.c pkcs15-incrypto34.c \
-	pkcs15-muscle.c pkcs15-asepcos.c pkcs15-rutoken.c \
-	pkcs15-entersafe.c pkcs15-rtecp.c pkcs15-myeid.c
+	pkcs15-setcos.c pkcs15-incrypto34.c pkcs15-muscle.c \
+	pkcs15-asepcos.c pkcs15-rutoken.c pkcs15-entersafe.c \
+	pkcs15-rtecp.c pkcs15-myeid.c \
+	pkcs15-oberthur.c pkcs15-oberthur-awp.c

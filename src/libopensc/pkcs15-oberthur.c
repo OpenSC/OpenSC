@@ -101,7 +101,7 @@ static int sc_oberthur_parse_privateinfo (struct sc_pkcs15_card *, unsigned char
 static int sc_awp_parse_df(struct sc_pkcs15_card *, struct sc_pkcs15_df *);
 
 struct crypto_container {
-	unsigned int id_pub;
+	unsigned  id_pub;
 	unsigned  id_prv;
 	unsigned  id_cert;
 };

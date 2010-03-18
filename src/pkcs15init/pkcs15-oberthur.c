@@ -20,23 +20,20 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "config.h"
-
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
 #include <ctype.h>
-#ifdef ENABLE_OPENSSL
-#include <openssl/sha.h>
-#endif
 
+#include "config.h"
 #include "libopensc/opensc.h"
 #include "libopensc/cardctl.h"
 #include "libopensc/log.h"
-#include "pkcs15-init.h"
 #include "profile.h"
+#include "pkcs15-init.h"
+#include "pkcs15-oberthur.h"
 
 #define COSM_TITLE "OberthurAWP"
 
@@ -265,10 +262,11 @@ cosm_create_dir(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	};
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
-		        
+
+#if 0	
 	rv = sc_pkcs15init_create_file(profile, p15card, df);
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Failed to create DIR DF");
-
+#endif
 	/* Oberthur AWP file system is expected.*/
 	/* Create private objects DF */
 	for (ii = 0; create_dfs[ii]; ii++)   {
@@ -785,6 +783,98 @@ cosm_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 }
 
 
+static int
+cosm_emu_update_dir (struct sc_pkcs15_card *p15card,
+		struct sc_profile *profile, struct sc_app_info *info)
+{
+	SC_FUNC_CALLED(p15card->card->ctx, 1);
+	/* No DIR file in the native Oberthur card */
+	SC_FUNC_RETURN(p15card->card->ctx, 1, SC_SUCCESS);
+}
+
+
+static int
+cosm_emu_update_any_df(struct sc_pkcs15_card *p15card, struct sc_profile *profile, 
+		unsigned op, struct sc_pkcs15_object *object)
+{
+	struct sc_context *ctx = p15card->card->ctx;
+	int rv = SC_ERROR_NOT_SUPPORTED;
+
+	SC_FUNC_CALLED(ctx, 1);
+	switch(op)   {
+	case SC_AC_OP_ERASE:
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Update DF; erase object('%s',type:%X)", object->label, object->type);
+		rv = awp_update_df_delete(p15card, profile, object);
+		break;
+	case SC_AC_OP_CREATE:
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Update DF; create object('%s',type:%X)", object->label, object->type);
+		rv = awp_update_df_create(p15card, profile, object);
+		break;
+	}
+
+	SC_FUNC_RETURN(ctx, 1, rv);
+}
+
+
+static int 
+cosm_emu_update_tokeninfo(struct sc_pkcs15_card *p15card, struct sc_profile *profile, 
+		struct sc_pkcs15_tokeninfo *tinfo)
+{
+	struct sc_context *ctx = p15card->card->ctx;
+	struct sc_file *file = NULL;
+	int rv, flags = 0, label_len;
+	unsigned char *buf = NULL;
+
+	SC_FUNC_CALLED(ctx, 1);
+	
+	if (sc_profile_get_file(profile, COSM_TITLE"-token-info", &file))
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INCONSISTENT_PROFILE, "cannot find "COSM_TITLE"-token-info");
+	
+	buf = calloc(1, file->size);
+	if (!buf)
+		SC_FUNC_RETURN(ctx, 1, SC_ERROR_MEMORY_FAILURE);
+	
+	label_len = strlen(tinfo->label) > (file->size - 4) ? (file->size - 4) : strlen(tinfo->label);
+	memcpy(buf, tinfo->label, label_len);
+	memset(buf  + label_len, ' ', file->size - 4 - label_len);
+
+	if (p15card->flags & SC_PKCS15_CARD_FLAG_PRN_GENERATION)
+		flags |= 0x01;
+	
+	if (p15card->flags & SC_PKCS15_CARD_FLAG_LOGIN_REQUIRED)
+		flags |= 0x04;
+	
+	if (p15card->flags & SC_PKCS15_CARD_FLAG_USER_PIN_INITIALIZED)
+		flags |= 0x08;
+	
+	if (p15card->flags & SC_PKCS15_CARD_FLAG_TOKEN_INITIALIZED)
+		flags |= 0x0400;
+
+	memset(buf + file->size - 4, 0, 4);
+	*(buf + file->size - 1) = flags % 0x100;
+	*(buf + file->size - 2) = (flags % 0x10000) / 0x100;
+
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Update token info (label:'%s',flags:%X,p15card->flags:%X)", buf, flags, p15card->flags);
+	rv = sc_pkcs15init_update_file(profile, p15card, file, buf, file->size);
+	free(buf);
+
+	if (rv > 0)
+		rv = 0;
+
+	SC_FUNC_RETURN(ctx, 1, rv);
+}
+
+
+static int
+cosm_emu_write_info(struct sc_pkcs15_card *p15card,
+		struct sc_profile *profile, struct sc_pkcs15_object *pin_obj)
+{
+	SC_FUNC_CALLED(p15card->card->ctx, 1);
+	/* No OpenSC Info file in the native Oberthur card */
+	SC_FUNC_RETURN(p15card->card->ctx, 1, SC_SUCCESS);
+}
+
+
 static struct sc_pkcs15init_operations 
 sc_pkcs15init_oberthur_operations = {
 	cosm_erase_card,
@@ -800,7 +890,15 @@ sc_pkcs15init_oberthur_operations = {
 	NULL, 
 	NULL,				/* encode private/public key */
 	NULL,				/* finalize_card */
-	NULL				/* delete_object */	
+	NULL,				/* delete_object */
+#ifdef ENABLE_OPENSSL
+	cosm_emu_update_dir,
+	cosm_emu_update_any_df,
+	cosm_emu_update_tokeninfo,
+	cosm_emu_write_info
+#else
+	NULL, NULL, NULL, NULL
+#endif
 };
 
 struct sc_pkcs15init_operations *
