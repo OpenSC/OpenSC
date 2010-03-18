@@ -2,7 +2,7 @@
  * Oberthur AWP extention for PKCS #15 initialization
  *
  * Copyright (C) 2010  Viktor Tarasov <viktor.tarasov@opentrust.com>
- * Copyright (C) 2002  Juha Yrj�l� <juha.yrjola@iki.fi>
+ * Copyright (C) 2002  Juha Yrjola <juha.yrjola@iki.fi>
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -90,7 +90,7 @@ awp_new_file(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 	struct sc_file	*ifile=NULL, *ofile=NULL;
 	char	name[NAME_MAX_LEN], *itag=NULL, *desc=NULL, *otag=NULL;
 
-	SC_FUNC_CALLED(ctx, 1);
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "type 0x%X; num %i; info %p; obj %p\n", type, num, info_out, obj_out);
 	switch (type) {
 	case SC_PKCS15_TYPE_CERT_X509:
@@ -186,7 +186,7 @@ awp_new_file(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 			sc_file_free(ofile);	
 	}
 
-	SC_FUNC_RETURN(ctx, 1, SC_SUCCESS);
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
 }
 
 
@@ -197,7 +197,7 @@ awp_update_blob(struct sc_context *ctx,
 {
 	unsigned char *pp;
 
-	SC_FUNC_CALLED(ctx, 1);
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 	switch (type)  {
 	case TLV_TYPE_LLV :
 		if (!(pp = realloc(*blob, *blob_size + 2 + lv->len)))
@@ -227,7 +227,7 @@ awp_update_blob(struct sc_context *ctx,
 	
 	*blob = pp;
 	
-	SC_FUNC_RETURN(ctx, 1, SC_SUCCESS);
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
 }
 
 
@@ -239,7 +239,7 @@ awp_new_container_entry(struct sc_pkcs15_card *p15card, unsigned char *buff, int
 	int marks[5] = {4,6,8,10,0};
 	unsigned char rand[0x10];
 
-	SC_FUNC_CALLED(ctx, 1);
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 	if (len<0x34) 
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INCORRECT_PARAMETERS, "Invalid container update size");
 
@@ -257,7 +257,7 @@ awp_new_container_entry(struct sc_pkcs15_card *p15card, unsigned char *buff, int
 	}
 	*(buff + 14 + ii*2 + mm) = (unsigned char)'}';
 
-	SC_FUNC_RETURN(ctx, 1, rv);
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, rv);
 }
 
 
@@ -269,13 +269,13 @@ awp_create_container_record (struct sc_pkcs15_card *p15card, struct sc_profile *
 	int rv;
 	unsigned char *buff = NULL;
 	
-	SC_FUNC_CALLED(ctx, 1);
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "container file(file-id:%X,rlen:%i,rcount:%i)\n", 
 			list_file->id, list_file->record_length, list_file->record_count);
 
 	buff = malloc(list_file->record_length);
 	if (!buff)
-		SC_FUNC_RETURN(ctx, 1, SC_ERROR_MEMORY_FAILURE);
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_MEMORY_FAILURE);
 	
 	memset(buff, 0, list_file->record_length);
 	
@@ -307,7 +307,7 @@ awp_create_container_record (struct sc_pkcs15_card *p15card, struct sc_profile *
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "return after failure");
 
 	rv = 0;
-	SC_FUNC_RETURN(ctx, 1, rv);
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, rv);
 }
 
 
@@ -320,7 +320,7 @@ awp_create_container(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 	int rv = 0, rec_offs;
 	unsigned char *list = NULL;
 	  
-	SC_FUNC_CALLED(ctx, 1);
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "create container(%X:%X:%X)\n", acc->prkey_id, acc->cert_id, acc->pubkey_id);
 
 	rv = awp_new_file(p15card, profile, COSM_CONTAINER_LIST, 0, &clist, NULL);
@@ -344,7 +344,7 @@ awp_create_container(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 	if (list)
 		free(list);
 	
-	SC_FUNC_RETURN(ctx, 1, rv);
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, rv);
 }
 
 
@@ -357,14 +357,14 @@ awp_update_container_entry (struct sc_pkcs15_card *p15card, struct sc_profile *p
 	int rv;
 	unsigned char *buff = NULL;
 	
-	SC_FUNC_CALLED(ctx, 1);
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "update container entry(type:%X,len:%i,count %i,rec %i,offs %i\n", type, file_id, rec, offs);
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "container file(file-id:%X,rlen:%i,rcount:%i)\n", 
 			list_file->id, list_file->record_length, list_file->record_count);
 
 	buff = malloc(list_file->record_length);
 	if (!buff)
-		SC_FUNC_RETURN(ctx, 1, SC_ERROR_MEMORY_FAILURE);
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_MEMORY_FAILURE);
 	
 	memset(buff, 0, list_file->record_length);
 	
@@ -423,7 +423,7 @@ awp_update_container_entry (struct sc_pkcs15_card *p15card, struct sc_profile *p
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "return after failure");
 
 	rv = 0;
-	SC_FUNC_RETURN(ctx, 1, rv);
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, rv);
 }
 
 
@@ -437,7 +437,7 @@ awp_remove_container_entry (struct sc_pkcs15_card *p15card, struct sc_profile *p
 	unsigned rec, rec_len;
 	unsigned char *buff=NULL, id[2];
 
-	SC_FUNC_CALLED(ctx, 1);
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "file_id %X\n", file_id);
 
 	rv = awp_new_file(p15card, profile, COSM_CONTAINER_LIST, 0, &clist, NULL);
@@ -505,7 +505,7 @@ done:
 	if (file)		sc_file_free(file);
 	if (clist)		sc_file_free(clist);
 
-	SC_FUNC_RETURN(ctx, 1, rv);
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, rv);
 }
 
 
@@ -519,7 +519,7 @@ awp_update_container(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 	int rv = 0, rec, rec_offs;
 	unsigned char *list = NULL;
 	  
-	SC_FUNC_CALLED(ctx, 1);
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "update container(type:%X,obj_id:%X)\n", type, obj_id);
 
 	if (prkey_id)
@@ -634,7 +634,7 @@ done:
 	if (file)	sc_file_free(file);
 	if (list)  free(list);
 	
-	SC_FUNC_RETURN(ctx, 1, rv);
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, rv);
 }
 
 
@@ -659,7 +659,7 @@ awp_set_certificate_info (struct sc_pkcs15_card *p15card,
 	unsigned char *blob;
 	const char *default_cert_label = "Certificate";
 	
-	SC_FUNC_CALLED(ctx, 1);
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 	blob_size = 2;
 	if (!(blob = malloc(blob_size)))   {
 		r = SC_ERROR_MEMORY_FAILURE;
@@ -718,7 +718,7 @@ done:
 	if (blob) 	
 		free(blob);
 	
-	SC_FUNC_RETURN(ctx, 1, r);
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, r);
 }
 
 
@@ -733,7 +733,7 @@ awp_update_object_list(struct sc_pkcs15_card *p15card, struct sc_profile *profil
 	unsigned char *buff = NULL;
 	int rv, ii;
 
-	SC_FUNC_CALLED(ctx, 1);
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "type %i, num %i\n", type, num);
 	switch (type)   {
 	case SC_PKCS15_TYPE_CERT_X509:
@@ -849,7 +849,7 @@ done:
 	sc_file_free(obj_file);
 	sc_file_free(file);
 
-	SC_FUNC_RETURN(ctx, 1, rv);
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, rv);
 }
 
 
@@ -861,7 +861,7 @@ awp_encode_key_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *obj
 	struct sc_pkcs15_prkey_info *key_info;
 	int r = 0;
 
-	SC_FUNC_CALLED(ctx, 1);
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 	ERR_load_ERR_strings();
 	ERR_load_crypto_strings();
 
@@ -920,7 +920,7 @@ awp_encode_key_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *obj
 done:
 	ERR_load_ERR_strings();
 	ERR_load_crypto_strings();
-	SC_FUNC_RETURN(ctx, 1, r);
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, r);
 }
 
 
@@ -944,7 +944,7 @@ awp_set_key_info (struct sc_pkcs15_card *p15card, struct sc_profile *profile, st
 	int r = 0, blob_size;
 	unsigned char *blob;
 
-	SC_FUNC_CALLED(ctx, 1);
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "file:%p,kinfo:%p,cinfo:%p\n", file, ki, ci);
 	blob_size = 2;
 	blob = malloc(blob_size);
@@ -1017,7 +1017,7 @@ done:
 	if (blob) 	
 		free(blob);
 	
-	SC_FUNC_RETURN(ctx, 1, r);
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, r);
 }
 
 
@@ -1033,7 +1033,7 @@ awp_encode_cert_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *ob
 	BIO *mem = NULL;
 	X509 *x = NULL;
 
-	SC_FUNC_CALLED(ctx, 1);
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 
 	ERR_load_ERR_strings();
 	ERR_load_crypto_strings();
@@ -1145,7 +1145,7 @@ done:
 	if (mem)	BIO_free(mem);
 	if (buff)	OPENSSL_free(buff);
 
-	SC_FUNC_RETURN(ctx, 1, r);
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, r);
 }
 
 
@@ -1212,12 +1212,12 @@ awp_parse_key_info(struct sc_context *ctx, unsigned char *buf, size_t buf_len,
 	size_t offs;
 	int len;
 
-	SC_FUNC_CALLED(ctx, 1);
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 	offs = 0;
 
 	/* Flags */
 	if (buf_len - offs < 2)
-		SC_FUNC_RETURN(ctx, 1, SC_SUCCESS);
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
 	ikey->flags = *(buf + offs) * 0x100 + *(buf + offs + 1);
 	offs += 2;
 
@@ -1225,14 +1225,14 @@ awp_parse_key_info(struct sc_context *ctx, unsigned char *buf, size_t buf_len,
 	len = awp_get_lv(ctx, buf, buf_len, offs, 2, &ikey->label);
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, len, "AWP parse key info failed: label");
 	if (!len)
-		SC_FUNC_RETURN(ctx, 1, SC_SUCCESS);
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
 	offs += len;
 
 	/* Ignore Key ID */
 	len = awp_get_lv(ctx, buf, buf_len, offs, 2, &ikey->id);
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, len, "AWP parse key info failed: ID");
 	if (!len)
-		SC_FUNC_RETURN(ctx, 1, SC_SUCCESS);
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
 	offs += len;
 
 	while (*(buf + offs) == '0')
@@ -1242,7 +1242,7 @@ awp_parse_key_info(struct sc_context *ctx, unsigned char *buf, size_t buf_len,
 	len = awp_get_lv(ctx, buf, buf_len, offs, 2, &ikey->subject);
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, len, "AWP parse key info failed: subject");
 	if (!len)
-		SC_FUNC_RETURN(ctx, 1, SC_SUCCESS);
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
 	offs += len;
 
 	/* Modulus */
@@ -1254,17 +1254,17 @@ awp_parse_key_info(struct sc_context *ctx, unsigned char *buf, size_t buf_len,
 		len = awp_get_lv(ctx, buf, buf_len, offs, 256, &ikey->modulus);
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, len, "AWP parse key info failed: modulus");
 	if (!len)
-		SC_FUNC_RETURN(ctx, 1, SC_SUCCESS);
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
 	offs += len;
 
 	/* Exponent */
 	len = awp_get_lv(ctx, buf, buf_len, offs, 1, &ikey->exponent);
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, len, "AWP parse key info failed: exponent");
 	if (!len)
-		SC_FUNC_RETURN(ctx, 1, SC_SUCCESS);
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
 	offs += len;
 
-	SC_FUNC_RETURN(ctx, 1, SC_SUCCESS);
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
 }
 
 
@@ -1279,7 +1279,7 @@ awp_update_key_info(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 	unsigned char *buf;
 	size_t buf_len;
 	
-	SC_FUNC_CALLED(ctx, 1);
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 
     	rv = awp_new_file(p15card, profile, SC_PKCS15_TYPE_PRKEY_RSA, prvkey_id & 0xFF, &info_file, &key_file);
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "AWP update key info failed: instantiation error");
@@ -1323,7 +1323,7 @@ done:
 	sc_file_free(key_file);
 	sc_file_free(info_file);
 	
-	SC_FUNC_RETURN(ctx, 1, rv);
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, rv);
 }
 
 
@@ -1339,7 +1339,7 @@ awp_update_df_create_cert(struct sc_pkcs15_card *p15card, struct sc_profile *pro
 	unsigned prvkey_id, obj_id;
 	int rv;
 
-	SC_FUNC_CALLED(ctx, 1);
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 
 	der = obj->content;
 	path = ((struct sc_pkcs15_cert_info *)obj->data)->path;
@@ -1375,7 +1375,7 @@ awp_update_df_create_cert(struct sc_pkcs15_card *p15card, struct sc_profile *pro
 	if (obj_file)
 		sc_file_free(obj_file);
 		
-	SC_FUNC_RETURN(ctx, 1, rv);
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, rv);
 }
 
 
@@ -1395,7 +1395,7 @@ awp_update_df_create_prvkey(struct sc_pkcs15_card *p15card, struct sc_profile *p
 	struct awp_crypto_container cc;
 	int rv;
 
-	SC_FUNC_CALLED(ctx, 1);
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
                 
 	key_info = (struct sc_pkcs15_prkey_info *)key_obj->data;
 	der = key_obj->content;
@@ -1455,7 +1455,7 @@ awp_update_df_create_prvkey(struct sc_pkcs15_card *p15card, struct sc_profile *p
 		awp_free_cert_info(&icert);
 
 	awp_free_key_info(&ikey);
-	SC_FUNC_RETURN(ctx, 1, rv);
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, rv);
 }
 
 
@@ -1472,7 +1472,7 @@ awp_update_df_create_pubkey(struct sc_pkcs15_card *p15card, struct sc_profile *p
 	unsigned obj_id;
 	int index, rv;
 
-	SC_FUNC_CALLED(ctx, 1);
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
                 
 	path = ((struct sc_pkcs15_pubkey_info *)obj->data)->path;
 	der = obj->content;
@@ -1501,7 +1501,7 @@ awp_update_df_create_pubkey(struct sc_pkcs15_card *p15card, struct sc_profile *p
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "AWP 'update public key' DF failed: update container error");
 
 	awp_free_key_info(&ikey);
-	SC_FUNC_RETURN(ctx, 1, rv);
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, rv);
 }
 
 
@@ -1512,8 +1512,8 @@ awp_update_df_create_data(struct sc_pkcs15_card *p15card, struct sc_profile *pro
 	struct sc_context *ctx = p15card->card->ctx;
 	int rv = SC_ERROR_NOT_SUPPORTED; 
 
-	SC_FUNC_CALLED(ctx, 1);
-	SC_FUNC_RETURN(ctx, 1, rv);
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, rv);
 }
 
 
@@ -1524,9 +1524,9 @@ awp_update_df_create(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 	struct sc_context *ctx = p15card->card->ctx;
 	int rv;
 
-	SC_FUNC_CALLED(ctx, 1);
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 	if (!object) 
-		SC_FUNC_RETURN(ctx, 1, SC_SUCCESS);
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
 
 	switch (object->type)   {
 	case SC_PKCS15_TYPE_AUTH_PIN:
@@ -1548,7 +1548,7 @@ awp_update_df_create(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS, "'Create' update DF failed: unsupported object type");
 	}
 
-	SC_FUNC_RETURN(ctx, 1, rv);
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, rv);
 }
 
 
@@ -1562,7 +1562,7 @@ awp_delete_from_container(struct sc_pkcs15_card *p15card,
 	int rv = 0, ii;
 	unsigned char *buff=NULL;
 
-	SC_FUNC_CALLED(ctx, 1);
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "update container entry (type:%X,file-id:%X)\n", type, file_id);
 
 	rv = awp_new_file(p15card, profile, COSM_CONTAINER_LIST, 0, &clist, NULL);
@@ -1629,7 +1629,7 @@ awp_delete_from_container(struct sc_pkcs15_card *p15card,
 	if (file)		sc_file_free(file);
 	if (clist)		sc_file_free(clist);
 
-	SC_FUNC_RETURN(ctx, 1, rv);
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, rv);
 }
 
 
@@ -1719,7 +1719,7 @@ awp_update_df_delete_cert(struct sc_pkcs15_card *p15card, struct sc_profile *pro
 	int rv = SC_ERROR_NOT_SUPPORTED; 
 	unsigned file_id;
 
-	SC_FUNC_CALLED(ctx, 1);
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 	
 	path = ((struct sc_pkcs15_cert_info *) obj->data)->path;
 	file_id = path.value[path.len-2] * 0x100 + path.value[path.len-1];
@@ -1753,7 +1753,7 @@ awp_update_df_delete_prvkey(struct sc_pkcs15_card *p15card, struct sc_profile *p
 	int rv = SC_ERROR_NOT_SUPPORTED; 
 	unsigned file_id;
 
-	SC_FUNC_CALLED(ctx, 1);
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 	
 	path = ((struct sc_pkcs15_prkey_info *) obj->data)->path;
 	file_id = path.value[path.len-2] * 0x100 + path.value[path.len-1];
@@ -1773,7 +1773,7 @@ awp_update_df_delete_prvkey(struct sc_pkcs15_card *p15card, struct sc_profile *p
 	rv = awp_remove_from_object_list(p15card, profile, obj->type, file_id);
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "AWP 'delete prkey' update DF failed: cannot remove object");
 
-	SC_FUNC_RETURN(ctx, 1, rv);
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, rv);
 }
 
 
@@ -1787,7 +1787,7 @@ awp_update_df_delete_pubkey(struct sc_pkcs15_card *p15card, struct sc_profile *p
 	int rv = SC_ERROR_NOT_SUPPORTED; 
 	unsigned file_id;
 
-	SC_FUNC_CALLED(ctx, 1);
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 	
 	path = ((struct sc_pkcs15_pubkey_info *) obj->data)->path;
 	file_id = path.value[path.len-2] * 0x100 + path.value[path.len-1];
@@ -1807,7 +1807,7 @@ awp_update_df_delete_pubkey(struct sc_pkcs15_card *p15card, struct sc_profile *p
 	rv = awp_remove_from_object_list(p15card, profile, obj->type, file_id);
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "AWP 'delete pubkey' update DF failed: cannot remove object");
 
-	SC_FUNC_RETURN(ctx, 1, rv);
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, rv);
 }
 
 
@@ -1818,8 +1818,8 @@ awp_update_df_delete_data(struct sc_pkcs15_card *p15card, struct sc_profile *pro
 	struct sc_context *ctx = p15card->card->ctx;
 	int rv = SC_ERROR_NOT_SUPPORTED; 
 
-	SC_FUNC_CALLED(ctx, 1);
-	SC_FUNC_RETURN(ctx, 1, rv);
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, rv);
 }
 
 int
@@ -1829,9 +1829,9 @@ awp_update_df_delete(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 	struct sc_context *ctx = p15card->card->ctx;
 	int rv;
 
-	SC_FUNC_CALLED(ctx, 1);
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 	if (!object) 
-		SC_FUNC_RETURN(ctx, 1, SC_SUCCESS);
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
 
 	switch (object->type)   {
 	case SC_PKCS15_TYPE_CERT_X509:
