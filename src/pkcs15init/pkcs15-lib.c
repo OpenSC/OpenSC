@@ -2384,6 +2384,9 @@ sc_pkcs15init_update_tokeninfo(struct sc_pkcs15_card *p15card,
 	tokeninfo.last_update = p15card->last_update;
 	tokeninfo.preferred_language = p15card->preferred_language;
 
+	if (profile->ops->emu_update_tokeninfo)
+		return profile->ops->emu_update_tokeninfo(p15card, profile, &tokeninfo);
+
 	r = sc_pkcs15_encode_tokeninfo(card->ctx, &tokeninfo, &buf, &size);
 	if (r >= 0)
 		r = sc_pkcs15init_update_file(profile, p15card, 
