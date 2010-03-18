@@ -1486,7 +1486,9 @@ static int write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	if (opt_object_class == CKO_PUBLIC_KEY) {
 		CK_OBJECT_CLASS clazz = CKO_PUBLIC_KEY;
 		CK_KEY_TYPE type = CKK_RSA;
+#ifdef ENABLE_OPENSSL
 		CK_ULONG modulus_bits = rsa.modulus_len * 8;
+#endif
 
 		FILL_ATTR(pubkey_templ[0], CKA_CLASS, &clazz, sizeof(clazz));
 		FILL_ATTR(pubkey_templ[1], CKA_KEY_TYPE, &type, sizeof(type));
