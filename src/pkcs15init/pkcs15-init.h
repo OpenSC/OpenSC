@@ -108,10 +108,10 @@ struct sc_pkcs15init_operations {
 	 */
 	int	(*encode_private_key)(struct sc_profile *, struct sc_card *,
 			struct sc_pkcs15_prkey_rsa *,
-			unsigned char *buf, size_t *bufsize, int key_ref);
+			unsigned char *, size_t *, int);
 	int	(*encode_public_key)(struct sc_profile *, struct sc_card *,
 			struct sc_pkcs15_prkey_rsa *,
-			unsigned char *buf, size_t *bufsize, int key_ref);
+			unsigned char *, size_t *, int);
 
 	/*
 	 * Finalize card
@@ -162,9 +162,9 @@ struct sc_pkcs15init_callbacks {
 	/*
 	 * Get a transport/secure messaging key from the front-end.
 	 */
-	int	(*get_key)(struct sc_profile *, int method, int reference,
-				const unsigned char *def_key, size_t def_size,
-				unsigned char *key_buf, size_t *key_size);
+	int	(*get_key)(struct sc_profile *, int, int,
+				const unsigned char *, size_t,
+				unsigned char *, size_t *);
 };
 
 struct sc_pkcs15init_initargs {
@@ -341,7 +341,7 @@ extern int	sc_pkcs15init_get_label(struct sc_profile *, const char **);
 extern int	sc_pkcs15init_verify_secret(struct sc_profile *, struct sc_pkcs15_card *,
 				sc_file_t *,  unsigned int, int);
 extern int	sc_pkcs15init_delete_by_path(struct sc_profile *,
-				struct sc_pkcs15_card *, const struct sc_path *path);
+				struct sc_pkcs15_card *, const struct sc_path *);
 extern int	sc_pkcs15init_update_any_df(struct sc_pkcs15_card *, struct sc_profile *, 
 			struct sc_pkcs15_df *, int);
 
@@ -349,7 +349,7 @@ extern int	sc_pkcs15init_update_any_df(struct sc_pkcs15_card *, struct sc_profil
 extern int	sc_pkcs15init_erase_card_recursively(struct sc_pkcs15_card *,
 				struct sc_profile *);
 extern int	sc_pkcs15init_rmdir(struct sc_pkcs15_card *, struct sc_profile *,
-				struct sc_file *df);
+				struct sc_file *);
 
 /* Helper function for CardOS */
 extern int	sc_pkcs15init_requires_restrictive_usage(
