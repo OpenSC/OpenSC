@@ -331,7 +331,8 @@ sc_pkcs15init_bind(struct sc_card *card, const char *name,
 		}
 	}
 
-	if ((r = sc_pkcs15init_read_info(card, profile)) < 0) {
+	r = sc_pkcs15init_read_info(card, profile);
+	if (r < 0) {
 		sc_profile_free(profile);
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Read info error");
 	}
@@ -1226,6 +1227,7 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
 	struct sc_pkcs15_object *object;
 	struct sc_pkcs15_prkey_info *key_info;
 	struct sc_pkcs15_prkey key;
+	struct sc_pkcs15_pubkey pubkey;
 	int keybits, idx, r = 0;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
@@ -1259,6 +1261,13 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
 	r = sc_pkcs15init_init_prkdf(p15card, profile, keyargs, &key, keybits, &object);
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Failed to initialize private key object");
 	key_info = (struct sc_pkcs15_prkey_info *) object->data;
+
+	pubkey.algorithm = key.algorithm;
+	pubkey.u.rsa.modulus = key.u.rsa.modulus;
+	pubkey.u.rsa.exponent = key.u.rsa.exponent;
+
+	r = sc_pkcs15_encode_pubkey(ctx, &pubkey, &object->content.value, &object->content.len);
+	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Failed to encode private key");
 
 	/* Get the number of private keys already on this card */
 	idx = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PRKEY, NULL, 0);
@@ -1302,8 +1311,7 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
 	}
 
 	/* Now update the PrKDF */
-	r = sc_pkcs15init_add_object(p15card, profile,
-			SC_PKCS15_PRKDF, object);
+	r = sc_pkcs15init_add_object(p15card, profile, SC_PKCS15_PRKDF, object);
 
 	if (r >= 0 && res_obj)
 		*res_obj = object;
@@ -1316,8 +1324,6 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
 
 /*
  * Store a public key
- *
- * TODO: set public key reference
  */
 int
 sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
@@ -1330,7 +1336,6 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
 	struct sc_pkcs15_pubkey_info *key_info;
 	struct sc_pkcs15_keyinfo_gostparams *keyinfo_gostparams;
 	struct sc_pkcs15_pubkey key;
-	struct sc_pkcs15_der	der_encoded;
 	struct sc_path 	*path;
 	const char	*label;
 	unsigned int	keybits, type, usage;
@@ -1364,7 +1369,8 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
 		if (keyargs->x509_usage)
 			usage = sc_pkcs15init_map_usage(keyargs->x509_usage, 0);
 	}
-	if ((label = keyargs->label) == NULL)
+	label = keyargs->label;
+	if (!label)
 		label = "Public Key";
 
 	/* Set up the pkcs15 object. */
@@ -1401,12 +1407,11 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
 	key_info->id = keyargs->id;
 
 	/* DER encode public key components */
-	r = sc_pkcs15_encode_pubkey(p15card->card->ctx, &key,
-			&der_encoded.value, &der_encoded.len);
+	r = sc_pkcs15_encode_pubkey(p15card->card->ctx, &key, &object->content.value, &object->content.len);
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Encode public key error");
 
 	/* Now create key file and store key */
-	r = sc_pkcs15init_store_data(p15card, profile, object, &der_encoded, &key_info->path);
+	r = sc_pkcs15init_store_data(p15card, profile, object, &object->content, &key_info->path);
 
 	path = &key_info->path;
 	if (path->count == 0) {
@@ -1416,14 +1421,10 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
 
 	/* Update the PuKDF */
 	if (r >= 0)
-		r = sc_pkcs15init_add_object(p15card, profile,
-			SC_PKCS15_PUKDF, object);
+		r = sc_pkcs15init_add_object(p15card, profile, SC_PKCS15_PUKDF, object);
 
 	if (r >= 0 && res_obj)
 		*res_obj = object;
-
-	if (der_encoded.value)
-		free(der_encoded.value);
 
 	profile->dirty = 1;
 
@@ -1448,11 +1449,15 @@ sc_pkcs15init_store_certificate(struct sc_pkcs15_card *p15card,
 	int		r;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
+
 	usage = SC_PKCS15_PRKEY_USAGE_SIGN;
 	if (args->x509_usage)
 		usage = sc_pkcs15init_map_usage(args->x509_usage, 0);
-	if ((label = args->label) == NULL)
+
+	label = args->label;
+	if (!label)
 		label = "Certificate";
+
 	r = select_intrinsic_id(p15card, profile, SC_PKCS15_TYPE_CERT_X509, &args->id, &args->der_encoded);
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Get certificate 'intrinsic ID' error");
 
@@ -1467,7 +1472,10 @@ sc_pkcs15init_store_certificate(struct sc_pkcs15_card *p15card,
 	cert_info = (struct sc_pkcs15_cert_info *) object->data;
 	cert_info->id = args->id;
 	cert_info->authority = args->authority;
+	sc_der_copy(&object->content, &args->der_encoded);
 
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Store cert(%s,ID:%s,der(%p,%i))", object->label, 
+			sc_pkcs15_print_id(&cert_info->id), args->der_encoded.value, args->der_encoded.len);
 	if (profile->pkcs15.direct_certificates)
 		sc_der_copy(&cert_info->value, &args->der_encoded);
 	else
@@ -2396,8 +2404,7 @@ sc_pkcs15init_update_tokeninfo(struct sc_pkcs15_card *p15card,
 
 	r = sc_pkcs15_encode_tokeninfo(card->ctx, &tokeninfo, &buf, &size);
 	if (r >= 0)
-		r = sc_pkcs15init_update_file(profile, p15card, 
-				p15card->file_tokeninfo, buf, size);
+		r = sc_pkcs15init_update_file(profile, p15card, p15card->file_tokeninfo, buf, size);
 	if (buf)
 		free(buf);
 	return r;
