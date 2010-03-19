@@ -58,6 +58,12 @@
 			The PUK can be used to overwrite or unlock a PIN if too many incorrect values
 			have been entered in a row.
 		</para>
+		<para>
+			For some cards that use the PKCS#15 emulation, the attributes of private objects 
+			are protected and cannot be parsed without authentication (usually with User PIN).
+			This authentication need to be done immediately after the card binding.
+			In such cases <option>--verify-pin</option> has to be used.
+		</para>
 	</refsect1>
 	
 	<refsect1>
