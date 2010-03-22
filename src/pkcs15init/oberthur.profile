@@ -135,10 +135,10 @@ filesystem {
 				 }
 			
 				# Public data
-				EF OberthurAWP-public-data-info   {
+				EF OberthurAWP-data-info   {
 					ACL = WRITE=NONE, UPDATE=NONE, READ=NONE, ERASE=NONE;
 				}
-				EF  template-public-data {
+				EF  template-data {
 					file-id	 = 5000;
 					ACL = *=NONE;
 				}

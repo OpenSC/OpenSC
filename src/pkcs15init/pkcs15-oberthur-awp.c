@@ -112,8 +112,8 @@ awp_new_file(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 		break;
 	case SC_PKCS15_TYPE_DATA_OBJECT:
 		desc = "Oberthur AWP data object info";
-		itag = "public-data-info";
-		otag = "template-public-data";
+		itag = "data-info";
+		otag = "template-data";
 		break;
 	case SC_PKCS15_TYPE_AUTH_PIN:
 	case COSM_TOKENINFO : 
@@ -665,7 +665,8 @@ awp_set_certificate_info (struct sc_pkcs15_card *p15card,
 		r = SC_ERROR_MEMORY_FAILURE;
         	goto done;
 	}
-	
+
+	/* TODO: cert flags */	
 	*blob       = (COSM_TAG_CERT >> 8) & 0xFF;
 	*(blob + 1) = COSM_TAG_CERT & 0xFF;
 
@@ -748,7 +749,7 @@ awp_update_object_list(struct sc_pkcs15_card *p15card, struct sc_profile *profil
 				COSM_TITLE);
 		break;
 	case SC_PKCS15_TYPE_DATA_OBJECT:
-		snprintf(obj_name, NAME_MAX_LEN, "template-public-data");
+		snprintf(obj_name, NAME_MAX_LEN, "template-data");
 		snprintf(lst_name, NAME_MAX_LEN,"%s-public-list", 
 				COSM_TITLE);
 		break;
@@ -1171,6 +1172,122 @@ awp_free_cert_info(struct awp_cert_info *ci)
 }
 
 
+static int 
+awp_encode_data_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *obj,
+		struct awp_data_info *di)
+{
+	struct sc_context *ctx = p15card->card->ctx;
+	struct sc_pkcs15_data_info *data_info;
+	int r = 0;
+	unsigned char *buf = NULL;
+	size_t buflen;
+
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
+
+	if (!obj || !di)
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS, "AWP encode data failed: invalid parameters");
+
+	data_info = (struct sc_pkcs15_data_info *)obj->data;
+
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Encode data(%s,id:%s,der(%p,%i))\n", obj->label,
+			sc_pkcs15_print_id(&data_info->id), obj->content.value, obj->content.len);
+
+	di->flags = 0x0000; 
+
+	if (obj->label)   {
+		di->label.value = (unsigned char *)strdup(obj->label);
+		di->label.len = strlen(obj->label);
+	}
+
+	di->app.len = strlen(data_info->app_label);
+	if (di->app.len)   {
+		di->app.value = strdup(data_info->app_label);
+		if (!di->app.value) 
+			SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_MEMORY_FAILURE, 
+					"AWP encode data failed: cannot allocate App.Label");
+	}
+
+	r = sc_asn1_encode_object_id(&buf, &buflen, &data_info->app_oid);
+	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "AWP encode data failed: cannot encode OID");
+	
+	di->oid.len = buflen + 2;
+	di->oid.value = malloc(di->oid.len);
+	if (!di->oid.value)   
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_MEMORY_FAILURE, "AWP encode data failed: cannot allocate OID");
+	
+	*(di->oid.value + 0) = 0x06;
+	*(di->oid.value + 1) = buflen;	
+	memcpy(di->oid.value + 2, buf, buflen);
+
+	free(buf);
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, r);
+}
+
+
+static void 
+awp_free_data_info(struct awp_data_info *di)
+{
+	if (di->label.len && di->label.value)
+		free(di->label.value);
+	
+	if (di->app.len && di->app.value)
+		free(di->app.value);
+	
+	if (di->oid.len && di->oid.value)
+		free(di->oid.value);
+	
+	memset(di, 0, sizeof(struct awp_data_info));
+}
+
+
+int 
+awp_set_data_info (struct sc_pkcs15_card *p15card, struct sc_profile *profile,
+		struct sc_file *file, struct awp_data_info *di)
+{
+	struct sc_context *ctx = p15card->card->ctx;
+	int r = 0, blob_size;
+	unsigned char *blob;
+	
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
+	sc_debug (ctx, SC_LOG_DEBUG_NORMAL, "Set 'DATA' info %p\n", di);
+	blob_size = 2;
+	if (!(blob = malloc(blob_size)))   {
+		r = SC_ERROR_MEMORY_FAILURE;
+        	goto done;
+	}
+	*blob       = (di->flags >> 8) & 0xFF;
+	*(blob + 1) = di->flags & 0xFF;
+	
+	r = awp_update_blob(ctx, &blob, &blob_size, &di->label, TLV_TYPE_LLV);
+	if (r)
+		goto done;
+	
+	r = awp_update_blob(ctx, &blob, &blob_size, &di->app, TLV_TYPE_LLV);
+	if (r)
+		goto done;
+	
+	r = awp_update_blob(ctx, &blob, &blob_size, &di->oid, TLV_TYPE_LLV);
+	if (r)
+		goto done;
+	
+	file->size = blob_size;	
+	r = sc_pkcs15init_create_file(profile, p15card, file);
+	if (r)
+		goto done;
+
+	r = sc_pkcs15init_update_file(profile, p15card, file, blob, blob_size);
+	if (r < 0)
+		goto done;
+	
+	r = 0;
+done:	
+	if (blob) 	
+		free(blob);
+	
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, r);
+}
+
+
 static int
 awp_get_lv(struct sc_context *ctx, unsigned char *buf, size_t buf_len, 
 		size_t offs, int len_len, 
@@ -1510,9 +1627,40 @@ awp_update_df_create_data(struct sc_pkcs15_card *p15card, struct sc_profile *pro
 		struct sc_pkcs15_object *obj)
 {
 	struct sc_context *ctx = p15card->card->ctx;
-	int rv = SC_ERROR_NOT_SUPPORTED; 
+	struct sc_file *info_file=NULL, *obj_file=NULL;
+	struct awp_data_info idata;
+	struct sc_pkcs15_der der;
+	struct sc_path path;
+	unsigned obj_id;
+	int rv;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
+
+	der = obj->content;
+	path = ((struct sc_pkcs15_data_info *)obj->data)->path;
+	obj_id = (path.value[path.len-1] & 0xFF) + (path.value[path.len-2] & 0xFF) * 0x100;
+
+	rv = awp_new_file(p15card, profile, obj->type, obj_id & 0xFF, &info_file, &obj_file);
+	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "COSM new file error");
+		
+	memset(&idata, 0, sizeof(idata));
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Data Der(%p,%i)", der.value, der.len);
+	rv = awp_encode_data_info(p15card, obj, &idata);
+	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "'Create Data' update DF failed: cannot encode info");
+
+	rv = awp_set_data_info(p15card, profile, info_file, &idata);
+	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "'Create Data' update DF failed: cannot set info");
+		
+	rv = awp_update_object_list(p15card, profile, obj->type, obj_id & 0xFF);
+	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "'Create Data' update DF failed: cannot update list");
+		
+	awp_free_data_info(&idata);
+	
+	if (info_file)
+		sc_file_free(info_file);
+	if (obj_file)
+		sc_file_free(obj_file);
+		
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, rv);
 }
 
@@ -1816,11 +1964,31 @@ awp_update_df_delete_data(struct sc_pkcs15_card *p15card, struct sc_profile *pro
 		struct sc_pkcs15_object *obj)
 {
 	struct sc_context *ctx = p15card->card->ctx;
+	struct sc_file *info_file = NULL;
+	struct sc_path path;
 	int rv = SC_ERROR_NOT_SUPPORTED; 
+	unsigned file_id;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
+	
+	path = ((struct sc_pkcs15_data_info *) obj->data)->path;
+	file_id = path.value[path.len-2] * 0x100 + path.value[path.len-1];
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "file-id:%X\n", file_id);
+
+	rv = awp_new_file(p15card, profile, obj->type, file_id & 0xFF, &info_file, NULL);
+	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "AWP 'delete DATA' update DF failed: cannt get allocate new AWP file");
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "info file-id:%X\n", info_file->id);
+	
+	rv = cosm_delete_file(p15card, profile, info_file);
+	if (rv != SC_ERROR_FILE_NOT_FOUND)
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "AWP 'delete DATA' update DF failed: delete info file error");
+
+	rv = awp_remove_from_object_list(p15card, profile, obj->type, file_id);
+	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "AWP 'delete DATA' update DF failed: cannot remove object");
+
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, rv);
 }
+
 
 int
 awp_update_df_delete(struct sc_pkcs15_card *p15card, struct sc_profile *profile, 

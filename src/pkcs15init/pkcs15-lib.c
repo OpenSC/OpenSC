@@ -1506,6 +1506,7 @@ sc_pkcs15init_store_data_object(struct sc_pkcs15_card *p15card,
 		struct sc_pkcs15init_dataargs *args,
 		struct sc_pkcs15_object **res_obj)
 {
+	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15_data_info *data_object_info;
 	struct sc_pkcs15_object *object;
 	struct sc_pkcs15_object *objs[32];
@@ -1513,6 +1514,7 @@ sc_pkcs15init_store_data_object(struct sc_pkcs15_card *p15card,
 	int		r, i;
 	unsigned int    tid = 0x01;
 
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 	label = args->label;
 
 	if (!args->id.len) {
@@ -1521,12 +1523,11 @@ sc_pkcs15init_store_data_object(struct sc_pkcs15_card *p15card,
 		 * have a pkcs15 id we need one here to create a unique 
 		 * file id from the data file template */
 		r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_DATA_OBJECT, objs, 32);
-		if (r < 0)
-			return r;
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Get 'DATA' objects error");
+
 		for (i = 0; i < r; i++) {
-			u8 cid;
-			struct sc_pkcs15_data_info *cinfo;
-			cinfo = (struct sc_pkcs15_data_info *) objs[i]->data;
+			unsigned char cid;
+			struct sc_pkcs15_data_info *cinfo = (struct sc_pkcs15_data_info *) objs[i]->data;
 			if (!cinfo->path.len)
 				continue;
 			cid = cinfo->path.value[cinfo->path.len - 1];
@@ -1558,20 +1559,19 @@ sc_pkcs15init_store_data_object(struct sc_pkcs15_card *p15card,
 	}
 	data_object_info->app_oid = args->app_oid;
 
-	r = sc_pkcs15init_store_data(p15card, profile, object, &args->der_encoded, 
-			&data_object_info->path);
+	r = sc_pkcs15init_store_data(p15card, profile, object, &args->der_encoded, &data_object_info->path);
+	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Store 'DATA' object error");
 
 	/* Now update the DDF */
-	if (r >= 0)
-		r = sc_pkcs15init_add_object(p15card, profile,
-				SC_PKCS15_DODF, object);
+	r = sc_pkcs15init_add_object(p15card, profile, SC_PKCS15_DODF, object);
+	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "'DODF' update error");
 
 	if (r >= 0 && res_obj)
 		*res_obj = object;
 
 	profile->dirty = 1;
 
-	return r;
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, r);
 }
 
 

@@ -85,16 +85,14 @@ struct awp_cert_info {
 	X509 *x509;
 };
 
+struct awp_data_info {
+	unsigned flags;
+	struct awp_lv label, app, oid;
+};
+
 extern int cosm_delete_file(struct sc_pkcs15_card *, struct sc_profile *, struct sc_file *);
 extern int awp_update_df_create(struct sc_pkcs15_card *, struct sc_profile *, struct sc_pkcs15_object *);
 extern int awp_update_df_delete(struct sc_pkcs15_card *, struct sc_profile *, struct sc_pkcs15_object *);
-
-#if 0
-struct cosm_data_info {
-	unsigned int tag;
-	struct cosm_tlv label, app, oid;
-};
-#endif
 
 #endif /* #ifdef ENABLE_OPENSSL */
 #endif /* #ifndef pkcs15_oberthur_h*/
