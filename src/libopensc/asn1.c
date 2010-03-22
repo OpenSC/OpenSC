@@ -638,7 +638,7 @@ int sc_asn1_decode_object_id(const u8 * inbuf, size_t inlen,
 	return 0;
 }
 
-static int sc_asn1_encode_object_id(u8 **buf, size_t *buflen,
+int sc_asn1_encode_object_id(u8 **buf, size_t *buflen,
 			     const struct sc_object_id *id)
 {
 	u8 temp[SC_MAX_OBJECT_ID_OCTETS*5], *p = temp;

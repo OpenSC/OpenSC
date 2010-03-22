@@ -1009,7 +1009,8 @@ sc_pkcs15emu_oberthur_init(struct sc_pkcs15_card * p15card)
 				&oberthur_infos[ii].content, &oberthur_infos[ii].len, 1);
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Oberthur init failed: read oberthur file error");
 		
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Oberthur init: parse %s file, content length %i", oberthur_infos[ii].name, oberthur_infos[ii].len);
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Oberthur init: parse %s file, content length %i", 
+				oberthur_infos[ii].name, oberthur_infos[ii].len);
 		rv = oberthur_infos[ii].parser(p15card, oberthur_infos[ii].content, oberthur_infos[ii].len, 
 				oberthur_infos[ii].postpone_allowed);
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Oberthur init failed: parse error");
