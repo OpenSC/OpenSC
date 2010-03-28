@@ -77,7 +77,7 @@ static void scconf_parse_warning_expect(scconf_parser * parser, const char *toke
 		parser->line, token);
 }
 
-static scconf_item *scconf_item_find(scconf_parser * parser, const char *key)
+static scconf_item *scconf_item_find(scconf_parser * parser)
 {
 	scconf_item *item;
 
@@ -96,7 +96,7 @@ static scconf_item *scconf_item_add_internal(scconf_parser * parser, int type)
 
 	if (type == SCCONF_ITEM_TYPE_VALUE) {
 		/* if item with same key already exists, use it */
-		item = scconf_item_find(parser, parser->key);
+		item = scconf_item_find(parser);
 		if (item) {
 			if (parser->key) {
 				free(parser->key);
