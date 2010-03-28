@@ -231,7 +231,7 @@ CK_RV card_detect(sc_reader_t *reader)
 	return CKR_OK;
 }
 
-CK_RV card_detect_all() {
+CK_RV card_detect_all(void) {
          unsigned int i;
 
          /* Detect cards in all initialized readers */
