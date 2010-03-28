@@ -1851,7 +1851,8 @@ static void show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj, int pub)
 	CK_KEY_TYPE	key_type = getKEY_TYPE(sess, obj);
 	CK_ULONG	size;
 	unsigned char	*id, *oid;
-	char		*label, *sepa;
+	char		*label;
+	const char *sepa;
 
 	printf("%s Key Object", pub? "Public" : "Private");
 	switch (key_type) {
