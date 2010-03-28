@@ -723,7 +723,7 @@ done:
 }
 
 
-int 
+static int 
 awp_update_object_list(struct sc_pkcs15_card *p15card, struct sc_profile *profile, 
 		unsigned int type, int num)
 {
