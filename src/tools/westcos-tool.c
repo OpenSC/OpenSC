@@ -575,6 +575,7 @@ int main(int argc, char *argv[])
 		{
 			sc_changekey_t ck;
 			struct sc_pin_cmd_pin pin_cmd;
+			int ret;
 
 			memset(&pin_cmd, 0, sizeof(pin_cmd));
 			memset(&ck, 0, sizeof(ck));
@@ -586,11 +587,12 @@ int main(int argc, char *argv[])
 			pin_cmd.data = (u8*)pin;
 			pin_cmd.max_length = 8;
 
-			ck.new_key.key_len = sc_build_pin(ck.new_key.key_value, 
+			ret = sc_build_pin(ck.new_key.key_value, 
 				sizeof(ck.new_key.key_value), &pin_cmd, 1); 
-			if(ck.new_key.key_len<0)
+			if(ret < 0)
 				goto out;
 
+			ck.new_key.key_len = ret;
 			r = sc_card_ctl(card, SC_CARDCTL_WESTCOS_CHANGE_KEY, &ck);
 			if(r) goto out;
 		}
@@ -599,6 +601,7 @@ int main(int argc, char *argv[])
 		{
 			sc_changekey_t ck;
 			struct sc_pin_cmd_pin puk_cmd;
+			int ret;
 
 			memset(&puk_cmd, 0, sizeof(puk_cmd));
 			memset(&ck, 0, sizeof(ck));
@@ -610,11 +613,12 @@ int main(int argc, char *argv[])
 			puk_cmd.data = (u8*)puk;
 			puk_cmd.max_length = 8;
 
-			ck.new_key.key_len = sc_build_pin(ck.new_key.key_value, 
+			ret = sc_build_pin(ck.new_key.key_value, 
 				sizeof(ck.new_key.key_value), &puk_cmd, 1); 
-			if(ck.new_key.key_len<0)
+			if(ret < 0)
 				goto out;
 
+			ck.new_key.key_len = ret;
 			r = sc_card_ctl(card, SC_CARDCTL_WESTCOS_CHANGE_KEY, &ck);
 			if(r) goto out;
 		}
