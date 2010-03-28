@@ -58,7 +58,6 @@ static int cosm_create_reference_data(struct sc_profile *, struct sc_pkcs15_card
 static int cosm_update_pin(struct sc_profile *, struct sc_pkcs15_card *,
 		struct sc_pkcs15_pin_info *, const unsigned char *, size_t,
 		const unsigned char *, size_t);
-int cosm_delete_file(struct sc_pkcs15_card *, struct sc_profile *, struct sc_file *);
 
 static int 
 cosm_write_tokeninfo (struct sc_pkcs15_card *p15card, struct sc_profile *profile, 
