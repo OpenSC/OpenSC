@@ -1332,7 +1332,7 @@ SIMCLIST_NUMBER_COMPARATOR(double);
 int list_comparator_string(const void *a, const void *b) { return strcmp((const char *)b, (const char *)a); }
 
 /* ready-made metric functions */
-#define SIMCLIST_METER(type)        size_t list_meter_##type(const void *el) { return sizeof(type); }
+#define SIMCLIST_METER(type)        size_t list_meter_##type(const void *el) { (void)el; return sizeof(type); }
 
 SIMCLIST_METER(int8_t);
 SIMCLIST_METER(int16_t);
