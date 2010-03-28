@@ -81,6 +81,8 @@ static scconf_item *scconf_item_find(scconf_parser * parser, const char *key)
 {
 	scconf_item *item;
 
+	(void)key;
+
 	for (item = parser->block->items; item; item = item->next) {
 		if (item->type == SCCONF_ITEM_TYPE_VALUE &&
 		    strcasecmp(item->key, parser->key) == 0) {
