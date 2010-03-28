@@ -1134,7 +1134,8 @@ static struct sc_pkcs15init_operations sc_pkcs15init_gpk_operations = {
 	gpk_generate_key,
 	NULL, NULL,			/* encode private/public key */
 	NULL,				/* finalize_card */
-	NULL 				/* delete_object */
+	NULL, 				/* delete_object */
+	NULL, NULL, NULL, NULL  /* pkcs15init emulation */
 };
 
 struct sc_pkcs15init_operations *sc_pkcs15init_get_gpk_ops(void)
