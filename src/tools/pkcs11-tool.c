@@ -2912,6 +2912,7 @@ static int wrap_unwrap(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	int		ciphered_len, cleartext_len, len;
 	CK_MECHANISM	mech;
 	CK_ULONG	key_type = CKM_DES_CBC;
+	CK_ULONG key_len_ul;
 	CK_ATTRIBUTE	key_template = { CKA_KEY_TYPE, &key_type, sizeof(key_type) };
 
 	pkey = get_public_key(session, privKeyObject);
@@ -2952,7 +2953,8 @@ static int wrap_unwrap(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	}
 
 	/* Try to decrypt */
-	key = getVALUE(session, cipherKeyObject, (unsigned long *) &key_len);
+	key = getVALUE(session, cipherKeyObject, &key_len_ul);
+	key_len = key_len_ul;
 	if (key == NULL) {
 		printf("Could not get unwrapped key\n");
 		return 1;
