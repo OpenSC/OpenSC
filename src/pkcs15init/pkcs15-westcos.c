@@ -38,8 +38,6 @@
 #include "pkcs15-init.h"
 #include "profile.h"
 
-extern int sc_check_sw(sc_card_t *card, unsigned int sw1, unsigned int sw2);
-
 static int westcos_pkcs15init_init_card(sc_profile_t *profile, 
 						sc_pkcs15_card_t *p15card)
 {
