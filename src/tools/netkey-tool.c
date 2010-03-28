@@ -36,9 +36,9 @@
 #include "libopensc/opensc.h"
 
 static struct {
-	char *path;
+	const char *path;
 	int   readonly;
-	char *label;
+	const char *label;
 } certlist[]={
 	{"DF01C000", 1, "Telesec Signatur Zertifikat"},
 	{"DF014331", 0, "User Signatur Zertifikat1"},
@@ -52,9 +52,9 @@ static struct {
 };
 
 static struct {
-	char *path;
-	char *name;
-	char *label;
+	const char *path;
+	const char *name;
+	const char *label;
 	int   p1, p2;
 	int   tries;
 	int   len;
