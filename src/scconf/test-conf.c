@@ -31,6 +31,8 @@
 
 static int ldap_cb(const scconf_context * config, const scconf_block * block, scconf_entry * entry, int depth)
 {
+	(void)depth;
+
 	scconf_entry ldap_entry[] =
 	{
 		{"ldaphost", SCCONF_STRING, SCCONF_VERBOSE, NULL, NULL},
@@ -59,6 +61,9 @@ static int ldap_cb(const scconf_context * config, const scconf_block * block, sc
 
 static int card_cb(const scconf_context * config, const scconf_block * block, scconf_entry * entry, int depth)
 {
+	(void)depth;
+	(void)entry;
+
 	char *str = scconf_list_strdup(block->name, " ");
 	scconf_entry card_entry[] =
 	{
@@ -80,6 +85,8 @@ static int card_cb(const scconf_context * config, const scconf_block * block, sc
 
 static int write_cb(scconf_context * config, scconf_block * block, scconf_entry * entry, int depth)
 {
+	(void)depth;
+
 	scconf_put_str(block, entry->name, "inside write_cb();");
 	scconf_item_add(config, block, NULL, SCCONF_ITEM_TYPE_COMMENT, NULL, "# commentN");
 	return 0;		/* 0 for ok, 1 for error */
