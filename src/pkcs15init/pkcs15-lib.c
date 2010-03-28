@@ -792,7 +792,7 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 /*
  * Store a PIN/PUK pair
  */
-int
+static int
 sc_pkcs15init_store_puk(struct sc_pkcs15_card *p15card,
 			struct sc_profile *profile,
 			struct sc_pkcs15init_pinargs *args)
@@ -2809,7 +2809,7 @@ done:
 }
 
 
-char *
+static char *
 get_pin_ident_name(int type, int reference)
 {
 	switch (type)   {
