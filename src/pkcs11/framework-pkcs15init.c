@@ -112,7 +112,7 @@ pkcs15init_logout(struct sc_pkcs11_card *p11card, void *ptr)
 }
 
 static CK_RV
-pkcs15init_change_pin(struct sc_pkcs11_card *p11card, void *ptr,
+pkcs15init_change_pin(struct sc_pkcs11_card *p11card, void *ptr, int login_user,
 			CK_CHAR_PTR oldPin, CK_ULONG oldPinLength,
 			CK_CHAR_PTR newPin, CK_ULONG newPinLength)
 {
