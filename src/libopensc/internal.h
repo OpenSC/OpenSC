@@ -54,12 +54,12 @@ extern "C" {
 struct sc_atr_table {
 	/* The atr fields are required to
 	 * be in aa:bb:cc hex format. */
-	char *atr;
+	const char *atr;
 	/* The atrmask is logically AND'd with an
 	 * card atr prior to comparison with the
 	 * atr reference value above. */
-	char *atrmask;
-	char *name;
+	const char *atrmask;
+	const char *name;
 	int type;
 	unsigned long flags;
 	/* Reference to card_atr configuration block,

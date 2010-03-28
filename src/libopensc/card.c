@@ -882,11 +882,11 @@ int _sc_free_atr(sc_context_t *ctx, struct sc_card_driver *driver)
 		struct sc_atr_table *src = &driver->atr_map[i];
 
 		if (src->atr)
-			free(src->atr);
+			free((void *)src->atr);
 		if (src->atrmask)
-			free(src->atrmask);
+			free((void *)src->atrmask);
 		if (src->name)
-			free(src->name);
+			free((void *)src->name);
 		src->card_atr = NULL;
 		src = NULL;
 	}
