@@ -318,7 +318,7 @@ out:
 	return r;
 }
 
-void usage(void)
+static void usage(void)
 {
 printf("Tools for westcos card.\n");
 printf("version %s.\n\n", version);
