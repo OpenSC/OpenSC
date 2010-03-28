@@ -38,9 +38,9 @@
 #include "libopensc/pkcs15.h"
 #include "libopensc/cardctl.h"
 
-static char *version ="0.0.6";
+static const char *version ="0.0.6";
 
-static char *nom_card = "WESTCOS";
+static const char *nom_card = "WESTCOS";
 
 static int finalise = 0;
 static int verbose = 0;
