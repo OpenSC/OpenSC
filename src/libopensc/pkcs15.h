@@ -496,6 +496,10 @@ int sc_pkcs15_decode_pubkey_dsa(struct sc_context *,
 			const u8 *, size_t);
 int sc_pkcs15_encode_pubkey_dsa(struct sc_context *,
 			struct sc_pkcs15_pubkey_dsa *, u8 **, size_t *);
+int sc_pkcs15_decode_pubkey_gostr3410(sc_context_t *,
+		struct sc_pkcs15_pubkey_gostr3410 *, const u8 *, size_t);
+int sc_pkcs15_encode_pubkey_gostr3410(sc_context_t *,
+		struct sc_pkcs15_pubkey_gostr3410 *, u8 **, size_t *);
 int sc_pkcs15_decode_pubkey(struct sc_context *,
 	       		struct sc_pkcs15_pubkey *, const u8 *, size_t);
 int sc_pkcs15_encode_pubkey(struct sc_context *,
