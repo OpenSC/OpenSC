@@ -148,7 +148,7 @@ CK_RV card_removed(sc_reader_t * reader)
 
 CK_RV card_detect(sc_reader_t *reader)
 {
-	struct sc_pkcs11_card *p11card;
+	struct sc_pkcs11_card *p11card = NULL;
 	int rc, rv;
 	unsigned int i;
 
