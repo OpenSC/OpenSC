@@ -88,7 +88,8 @@ awp_new_file(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_file	*ifile=NULL, *ofile=NULL;
-	char	name[NAME_MAX_LEN], *itag=NULL, *desc=NULL, *otag=NULL;
+	char	name[NAME_MAX_LEN];
+	const char *itag=NULL, *desc=NULL, *otag=NULL;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "type 0x%X; num %i; info %p; obj %p\n", type, num, info_out, obj_out);
