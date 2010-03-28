@@ -1240,7 +1240,7 @@ awp_free_data_info(struct awp_data_info *di)
 }
 
 
-int 
+static int 
 awp_set_data_info (struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 		struct sc_file *file, struct awp_data_info *di)
 {
