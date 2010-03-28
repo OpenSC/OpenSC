@@ -97,7 +97,6 @@ static int westcos_pkcs15_create_pin(sc_profile_t *profile,
 {
 	int r;
 	sc_file_t *pinfile = NULL;
-	sc_path_t path;
 
 	if(pin_len>9 || puk_len>9)
 		return SC_ERROR_INVALID_ARGUMENTS;

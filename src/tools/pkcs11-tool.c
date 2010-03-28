@@ -1330,7 +1330,6 @@ static void	parse_rsa_public_key(struct rsakey_info *rsa,
 static int write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 {
 	CK_BBOOL _true = TRUE;
-	CK_BBOOL _false = FALSE;
 	unsigned char contents[MAX_OBJECT_SIZE];
 	int contents_len = 0;
 	unsigned char certdata[MAX_OBJECT_SIZE];

@@ -234,7 +234,6 @@ static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 	const u8 * sendbuf, size_t sendbuflen, u8 ** recvbuf,
 	size_t * recvbuflen)
 {
-	piv_private_data_t * priv = PIV_DATA(card);
 	int r;
 	sc_apdu_t apdu;
 	u8 rbufinitbuf[4096]; 

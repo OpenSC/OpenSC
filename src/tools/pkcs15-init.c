@@ -1220,7 +1220,6 @@ static int do_delete_crypto_objects(sc_pkcs15_card_t *myp15card,
 
 	if (which & SC_PKCS15INIT_TYPE_PRKEY) {
 		sc_pkcs15_object_t *key_objs[0x10];
-		struct sc_pkcs15_prkey_info *prkey_info = NULL;
 
 		r = sc_pkcs15_get_objects(myp15card, SC_PKCS15_TYPE_PRKEY, key_objs, 0x10);
 		if (r < 0) {
@@ -2768,7 +2767,6 @@ ossl_print_errors(void)
  */
 int get_pin(sc_ui_hints_t *hints, char **out)
 {
-	sc_context_t	*ctx = hints->card->ctx;
 	sc_pkcs15_pin_info_t *pin_info;
 	const char	*label;
 	int		flags = hints->flags;

@@ -1056,7 +1056,6 @@ static int westcos_set_security_env(sc_card_t *card,
 	{
 		sc_apdu_t apdu;
 		unsigned char mode = 0;
-		size_t buflen;
 		u8 buf[128];
 
 		if ((priv_data->env.flags) & SC_ALGORITHM_RSA_PAD_PKCS1)
