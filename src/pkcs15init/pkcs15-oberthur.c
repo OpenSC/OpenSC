@@ -90,9 +90,9 @@ cosm_write_tokeninfo (struct sc_pkcs15_card *p15card, struct sc_profile *profile
 	if (label)   
 		strncpy(buffer, label, file->size - 4);
 	else if (p15card->label)
-		snprintf(buffer, file->size - 4, p15card->label);
+		snprintf(buffer, file->size - 4, "%s", p15card->label);
 	else if (profile->p15_spec && profile->p15_spec->label)
-		snprintf(buffer, file->size - 4, profile->p15_spec->label);
+		snprintf(buffer, file->size - 4, "%s", profile->p15_spec->label);
 	else
 		snprintf(buffer, file->size - 4, "OpenSC-Token");
 
