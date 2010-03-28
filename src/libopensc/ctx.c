@@ -46,7 +46,7 @@ int _sc_add_reader(sc_context_t *ctx, sc_reader_t *reader)
 }
 
 struct _sc_driver_entry {
-	char *name;
+	const char *name;
 	void *(*func)(void);
 };
 
@@ -147,7 +147,7 @@ static void del_drvs(struct _sc_ctx_options *opts, int type)
 		cp = &opts->ccount;
 	}
 	for (i = 0; i < *cp; i++) {
-		free(lst[i].name);
+		free((void *)lst[i].name);
 	}
 	*cp = 0;
 }
