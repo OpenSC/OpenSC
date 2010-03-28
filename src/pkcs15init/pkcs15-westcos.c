@@ -119,6 +119,7 @@ static int westcos_pkcs15_create_pin(sc_profile_t *profile,
 	{
 		sc_changekey_t ck;
 		struct sc_pin_cmd_pin pin_cmd;
+		int ret;
 
 		memset(&pin_cmd, 0, sizeof(pin_cmd));
 		memset(&ck, 0, sizeof(ck));
@@ -130,11 +131,12 @@ static int westcos_pkcs15_create_pin(sc_profile_t *profile,
 		pin_cmd.data = pin;
 		pin_cmd.max_length = 8;
 
-		ck.new_key.key_len = sc_build_pin(ck.new_key.key_value, 
+		ret = sc_build_pin(ck.new_key.key_value, 
 			sizeof(ck.new_key.key_value), &pin_cmd, 1); 
-		if(ck.new_key.key_len<0)
+		if(ret < 0)
 			return SC_ERROR_CARD_CMD_FAILED;
 
+		ck.new_key.key_len = ret;
 		r = sc_card_ctl(p15card->card, SC_CARDCTL_WESTCOS_CHANGE_KEY, &ck);
 		if(r) return r;
 	}
@@ -143,6 +145,7 @@ static int westcos_pkcs15_create_pin(sc_profile_t *profile,
 	{
 		sc_changekey_t ck;
 		struct sc_pin_cmd_pin puk_cmd;
+		int ret;
 
 		memset(&puk_cmd, 0, sizeof(puk_cmd));
 		memset(&ck, 0, sizeof(ck));
@@ -154,11 +157,12 @@ static int westcos_pkcs15_create_pin(sc_profile_t *profile,
 		puk_cmd.data = puk;
 		puk_cmd.max_length = 8;
 
-		ck.new_key.key_len = sc_build_pin(ck.new_key.key_value, 
+		ret = sc_build_pin(ck.new_key.key_value, 
 			sizeof(ck.new_key.key_value), &puk_cmd, 1); 
-		if(ck.new_key.key_len<0)
+		if(ret < 0)
 			return SC_ERROR_CARD_CMD_FAILED;
 
+		ck.new_key.key_len = ret;
 		r = sc_card_ctl(p15card->card, SC_CARDCTL_WESTCOS_CHANGE_KEY, &ck);
 		if(r) return r;
 	}
