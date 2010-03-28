@@ -27,6 +27,8 @@
 
 #define MANU_ID		"entersafe"
 
+int sc_pkcs15emu_entersafe_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
+
 static int entersafe_detect_card( sc_pkcs15_card_t *p15card)
 {
 	sc_card_t *card = p15card->card;
