@@ -325,7 +325,7 @@ void sc_pkcs11_print_attrs(int level, const char *file, unsigned int line, const
 
 /* Slot and card handling functions */
 CK_RV card_removed(sc_reader_t *reader);
-CK_RV card_detect_all();
+CK_RV card_detect_all(void);
 CK_RV create_slot(sc_reader_t *reader);
 CK_RV initialize_reader(sc_reader_t *reader);
 CK_RV card_detect(sc_reader_t *reader);
