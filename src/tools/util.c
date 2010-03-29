@@ -8,7 +8,7 @@
 #include "util.h"
 
 int util_connect_card(sc_context_t *ctx, sc_card_t **cardp,
-		 char *reader_id, int wait, int verbose)
+		 const char *reader_id, int wait, int verbose)
 {
 	sc_reader_t *reader, *found;
 	sc_card_t *card;
