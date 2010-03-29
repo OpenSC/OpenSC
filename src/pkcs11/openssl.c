@@ -173,9 +173,9 @@ static CK_RV sc_pkcs11_openssl_md_final(sc_pkcs11_operation_t *op,
 				CK_BYTE_PTR pDigest, CK_ULONG_PTR pulDigestLen)
 {
 	EVP_MD_CTX	*md_ctx = DIGEST_CTX(op);
-	CK_ULONG	len = *pulDigestLen;
+	unsigned int len = *pulDigestLen;
 
-	if (len < (CK_ULONG)EVP_MD_CTX_size(md_ctx)) {
+	if (len < EVP_MD_CTX_size(md_ctx)) {
 		*pulDigestLen = EVP_MD_CTX_size(md_ctx);
 		return CKR_BUFFER_TOO_SMALL;
 	}
