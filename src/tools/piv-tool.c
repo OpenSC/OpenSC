@@ -213,7 +213,7 @@ static int load_cert(const char * cert_id, const char * cert_file,
 	}
 	/* we pass length  and  8 bits of flag to card-piv.c write_binary */
 	/* pass in its a cert and if needs compress */
-	r = sc_write_binary(card, 0, der, derlen, derlen<<8 | compress<1 | 1); 
+	r = sc_write_binary(card, 0, der, derlen, (derlen<<8) | (compress<1) | 1); 
 	
 	return r;
 
