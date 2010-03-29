@@ -38,7 +38,8 @@ static sc_pkcs11_mechanism_type_t openssl_sha1_mech = {
 	sc_pkcs11_openssl_md_release,
 	sc_pkcs11_openssl_md_init,
 	sc_pkcs11_openssl_md_update,
-	sc_pkcs11_openssl_md_final
+	sc_pkcs11_openssl_md_final,
+	NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
 };
 
 #if OPENSSL_VERSION_NUMBER >= 0x00908000L
@@ -49,7 +50,8 @@ static sc_pkcs11_mechanism_type_t openssl_sha256_mech = {
 	sc_pkcs11_openssl_md_release,
 	sc_pkcs11_openssl_md_init,
 	sc_pkcs11_openssl_md_update,
-	sc_pkcs11_openssl_md_final
+	sc_pkcs11_openssl_md_final,
+	NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
 };
 
 static sc_pkcs11_mechanism_type_t openssl_sha384_mech = {
@@ -59,7 +61,8 @@ static sc_pkcs11_mechanism_type_t openssl_sha384_mech = {
 	sc_pkcs11_openssl_md_release,
 	sc_pkcs11_openssl_md_init,
 	sc_pkcs11_openssl_md_update,
-	sc_pkcs11_openssl_md_final
+	sc_pkcs11_openssl_md_final,
+	NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
 };
 
 static sc_pkcs11_mechanism_type_t openssl_sha512_mech = {
@@ -69,7 +72,8 @@ static sc_pkcs11_mechanism_type_t openssl_sha512_mech = {
 	sc_pkcs11_openssl_md_release,
 	sc_pkcs11_openssl_md_init,
 	sc_pkcs11_openssl_md_update,
-	sc_pkcs11_openssl_md_final
+	sc_pkcs11_openssl_md_final,
+	NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
 };
 #endif
 
@@ -81,7 +85,8 @@ static sc_pkcs11_mechanism_type_t openssl_gostr3411_mech = {
 	sc_pkcs11_openssl_md_release,
 	sc_pkcs11_openssl_md_init,
 	sc_pkcs11_openssl_md_update,
-	sc_pkcs11_openssl_md_final
+	sc_pkcs11_openssl_md_final,
+	NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
 };
 #endif
 
@@ -92,7 +97,8 @@ static sc_pkcs11_mechanism_type_t openssl_md5_mech = {
 	sc_pkcs11_openssl_md_release,
 	sc_pkcs11_openssl_md_init,
 	sc_pkcs11_openssl_md_update,
-	sc_pkcs11_openssl_md_final
+	sc_pkcs11_openssl_md_final,
+	NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
 };
 
 static sc_pkcs11_mechanism_type_t openssl_ripemd160_mech = {
@@ -102,7 +108,8 @@ static sc_pkcs11_mechanism_type_t openssl_ripemd160_mech = {
 	sc_pkcs11_openssl_md_release,
 	sc_pkcs11_openssl_md_init,
 	sc_pkcs11_openssl_md_update,
-	sc_pkcs11_openssl_md_final
+	sc_pkcs11_openssl_md_final,
+	NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
 };
 
 void
