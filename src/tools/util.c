@@ -8,13 +8,13 @@
 #include "util.h"
 
 int util_connect_card(sc_context_t *ctx, sc_card_t **cardp,
-		 const char *reader_id, int wait, int verbose)
+		 const char *reader_id, int do_wait, int verbose)
 {
 	sc_reader_t *reader, *found;
 	sc_card_t *card;
 	int r, tmp_reader_num;
 
-	if (wait) {
+	if (do_wait) {
 		unsigned int event;
 
 		if (sc_ctx_get_reader_count(ctx) == 0) {
