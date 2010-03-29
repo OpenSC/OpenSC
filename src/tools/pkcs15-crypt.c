@@ -267,6 +267,7 @@ static int sign_ext(struct sc_pkcs15_object *obj,
 {
 	EVP_PKEY *pkey = NULL;
 	int	r, nid = -1;
+	unsigned int out_int = out_len;
 
 	r = extract_key(obj, &pkey);
 	if (r < 0)
@@ -290,20 +291,18 @@ static int sign_ext(struct sc_pkcs15_object *obj,
 				return SC_ERROR_INVALID_ARGUMENTS;
 			}
 		}
-		r = RSA_sign(nid, data, len, out, (unsigned int *) &out_len,
-				pkey->pkey.rsa);
+		r = RSA_sign(nid, data, len, out, &out_int, pkey->pkey.rsa);
 		if (r <= 0)
 			r = SC_ERROR_INTERNAL;
 		break;
 	case SC_PKCS15_TYPE_PRKEY_DSA:
-		r = DSA_sign(NID_sha1, data, len, out, (unsigned int *) &out_len,
-				pkey->pkey.dsa);
+		r = DSA_sign(NID_sha1, data, len, out, &out_int, pkey->pkey.dsa);
 		if (r <= 0)
 			r = SC_ERROR_INTERNAL;
 		break;
 	}
 	if (r >= 0)
-		r = out_len;
+		r = out_int;
 	EVP_PKEY_free(pkey);
 	return r;
 }
