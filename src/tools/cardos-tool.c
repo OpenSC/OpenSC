@@ -418,20 +418,20 @@ static int cardos_sm4h(const unsigned char *in, size_t inlen, unsigned char
 
 	/* first block: XOR with IV and encrypt with key A IV is 8 bytes 00 */
 	for (i=0; i < 8; i++) des_in[i] = mac_input[i]^00;
-	DES_ecb_encrypt(des_in, des_out, &ks_a, 1);
+	DES_ecb_encrypt(&des_in, &des_out, &ks_a, 1);
 
 	/* all other blocks: XOR with prev. result and encrypt with key A */
 	for (j=1; j < (mac_input_len / 8); j++) {
 		for (i=0; i < 8; i++) des_in[i] = mac_input[i+j*8]^des_out[i];
-		DES_ecb_encrypt(des_in, des_out, &ks_a, 1);
+		DES_ecb_encrypt(&des_in, &des_out, &ks_a, 1);
 	}
 
 	/* now decrypt with key B and encrypt with key A again */
 	/* (a noop if key A and B are the same, e.g. 8 bytes ff */
 	for (i=0; i < 8; i++) des_in[i] = des_out[i];
-	DES_ecb_encrypt(des_in, des_out, &ks_b, 0);
+	DES_ecb_encrypt(&des_in, &des_out, &ks_b, 0);
 	for (i=0; i < 8; i++) des_in[i] = des_out[i];
-	DES_ecb_encrypt(des_in, des_out, &ks_a, 1);
+	DES_ecb_encrypt(&des_in, &des_out, &ks_a, 1);
 
 	/* now we want to enc:
  	 * orig APDU data plus mac (8 bytes) plus iso padding (1-8 bytes) */
@@ -469,7 +469,7 @@ static int cardos_sm4h(const unsigned char *in, size_t inlen, unsigned char
 	for (i=0; i < 8; i++) des_in[i] = enc_input[i] ^ 00;
 	
 	/* encrypt with des2 (tripple des, but using keys A-B-A) */
-	DES_ecb2_encrypt(des_in, des_out, &ks_a, &ks_b, 1);
+	DES_ecb2_encrypt(&des_in, &des_out, &ks_a, &ks_b, 1);
 
 	/* copy encrypted bytes into output */
 	for (i=0; i < 8; i++) out[5+i] = des_out[i];
@@ -480,7 +480,7 @@ static int cardos_sm4h(const unsigned char *in, size_t inlen, unsigned char
 		for (i=0; i < 8; i++) des_in[i] = enc_input[i+j*8] ^ des_out[i];
 	
 		/* encrypt with des2 (tripple des, but using keys A-B-A) */
-		DES_ecb2_encrypt(des_in, des_out, &ks_a, &ks_b, 1);
+		DES_ecb2_encrypt(&des_in, &des_out, &ks_a, &ks_b, 1);
 
 		/* copy encrypted bytes into output */
 		for (i=0; i < 8; i++) out[5+8*j+i] = des_out[i];
