@@ -134,7 +134,8 @@ static void print_dn(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK
   print_generic(f, type, value, size, arg);
   if(size && value) {
     X509_NAME *name;
-    name = d2i_X509_NAME(NULL, (const unsigned char **)&value, size);
+    const unsigned char *tmp = value;
+    name = d2i_X509_NAME(NULL, &tmp, size);
     if(name) {
       BIO *bio = BIO_new(BIO_s_file());
       BIO_set_fp(bio, f, 0);
