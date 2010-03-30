@@ -20,7 +20,7 @@ OPENSC_PKCS11_LIBS = $(OPTIONAL_OPENSSL_LIBS) $(PTHREAD_LIBS) \
 	$(top_builddir)/src/libopensc/libopensc.la
 
 libpkcs11_la_SOURCES = libpkcs11.c
-libpkcs11_la_LDFLAGS = $(LTLIB_LIBS)
+libpkcs11_la_LIBADD = $(LTLIB_LIBS)
 
 opensc_pkcs11_la_SOURCES = $(OPENSC_PKCS11_SRC) $(OPENSC_PKCS11_INC) hack-disabled.c
 opensc_pkcs11_la_LIBADD = $(OPENSC_PKCS11_LIBS)
