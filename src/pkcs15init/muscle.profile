@@ -59,7 +59,7 @@ filesystem {
 	    type	= EF;
 	    file-id	= 2F00;
 	    size	= 128;
-	    acl		= *=$PIN;
+	    acl		= *=NONE;
 	}
 
 	# Here comes the application DF
