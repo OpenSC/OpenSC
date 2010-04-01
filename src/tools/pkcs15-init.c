@@ -235,7 +235,6 @@ static const char *		option_help[] = {
 	"Specify passphrase for unlocking secret key",
 	"Mark certificate as a CA certificate",
 	"Specify X.509 key usage (use \"--key-usage help\" for more information)",
-	"Automatically create two keys with same ID and different usage (sign vs decipher)",
 	"Finish initialization phase of the smart card",
 
 	"Private key stored as an extractable key",
