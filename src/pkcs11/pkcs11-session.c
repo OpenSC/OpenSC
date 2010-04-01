@@ -386,9 +386,9 @@ CK_RV C_SetPIN(CK_SESSION_HANDLE hSession,
 		goto out;
 	}
 
+	slot = session->slot;
 	sc_debug(context, SC_LOG_DEBUG_NORMAL, "Changing PIN (session 0x%lx; login user %d)\n", hSession,
 		 slot->login_user);
-	slot = session->slot;
 
 	if (!(session->flags & CKF_RW_SESSION)) {
 		rv = CKR_SESSION_READ_ONLY;
