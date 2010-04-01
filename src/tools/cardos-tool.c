@@ -499,7 +499,7 @@ static int cardos_sm4h(const unsigned char *in, size_t inlen, unsigned char
 #endif
 
 #ifdef ENABLE_OPENSSL
-static int cardos_format()
+static int cardos_format(const char *opt_startkey)
 {
 	unsigned const char startkey[] = {
 		0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
@@ -507,6 +507,15 @@ static int cardos_format()
 	sc_apdu_t apdu;
 	u8 rbuf[256];
 	int r;
+
+	if (opt_startkey) {
+		fprintf(stderr, "startkey option not implemented yet, aborting!\n");
+		return 1;
+		/* TODO: instead validate/parse opt_startkey into startkey */
+		/* format would be ii:vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv */
+		/* with "ii" the startkey index as hex number and */
+		/* "vv" the 16 byte value in hex (32 chars) */
+	}
 	
 	if (verbose)	{
 		printf ("StartKey:\n");
@@ -840,7 +849,7 @@ erase_state:
 	return 0;
 }
 # else /* ENABLE_OPENSSL */
-static int cardos_format()
+static int cardos_format(const char *opt_startkey)
 {
 	printf("this code needs to be compiled with openssl support enabled.\n");
 	printf("aborting\n");
