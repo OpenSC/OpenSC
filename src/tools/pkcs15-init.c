@@ -1397,6 +1397,7 @@ do_generate_key(struct sc_profile *profile, const char *spec)
 
 	if ((r = init_keyargs(&keygen_args.prkey_args)) < 0)
 		return r;
+        keygen_args.prkey_args.access_flags |= SC_PKCS15_PRKEY_ACCESS_SENSITIVE|SC_PKCS15_PRKEY_ACCESS_ALWAYSSENSITIVE|SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE|SC_PKCS15_PRKEY_ACCESS_LOCAL;
 
 	/* Parse the key spec given on the command line */
 	if (!strncasecmp(spec, "rsa", 3)) {
@@ -1473,7 +1474,7 @@ static int init_keyargs(struct sc_pkcs15init_prkeyargs *args)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	if (opt_extractable) {
-		args->flags |= SC_PKCS15INIT_EXTRACTABLE;
+		args->access_flags |= SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE;
 		if (opt_passphrase) {
 			args->passphrase = opt_passphrase;
 		} else {

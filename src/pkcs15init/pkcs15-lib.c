@@ -71,7 +71,6 @@
 /* Default ID for new key/pin */
 #define DEFAULT_ID			0x45
 #define DEFAULT_PIN_FLAGS		0x03
-#define DEFAULT_PRKEY_ACCESS_FLAGS	0x1d
 #define DEFAULT_PRKEY_FLAGS		0x03
 #define DEFAULT_PUBKEY_FLAGS		0x02
 #define DEFAULT_CERT_FLAGS		0x02
@@ -1063,11 +1062,10 @@ sc_pkcs15init_init_prkdf(struct sc_pkcs15_card *p15card,
 	key_info->native = 1;
 	key_info->key_reference = 0;
 	key_info->modulus_length = keybits;
-	key_info->access_flags = DEFAULT_PRKEY_ACCESS_FLAGS;
+	key_info->access_flags = keyargs->access_flags;
 	/* Path is selected below */
 
-	if (keyargs->flags & SC_PKCS15INIT_EXTRACTABLE) {
-		key_info->access_flags |= SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE;
+	if (keyargs->access_flags & SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE) {
 		key_info->access_flags &= ~SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE;
 		key_info->native = 0;
 	}
@@ -1245,7 +1243,7 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
 			keyargs->x509_usage, keybits, 0)) {
 		/* Make sure the caller explicitly tells us to store
 		 * the key non-natively. */
-		if (!(keyargs->flags & SC_PKCS15INIT_EXTRACTABLE))
+		if (!(keyargs->access_flags & SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE))		                        
 			SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INCOMPATIBLE_KEY, "Card does not support this key.");
 
 		if (!keyargs->passphrase
@@ -1271,7 +1269,7 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
 
 	/* Get the number of private keys already on this card */
 	idx = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PRKEY, NULL, 0);
-	if (!(keyargs->flags & SC_PKCS15INIT_EXTRACTABLE)) {
+	if (!(keyargs->access_flags & SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE)) {
 		r = profile->ops->create_key(profile, p15card, object);
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Card specific 'create key' failed");
 

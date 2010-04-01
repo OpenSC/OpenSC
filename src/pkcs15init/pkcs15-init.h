@@ -200,6 +200,7 @@ struct sc_pkcs15init_prkeyargs {
 	unsigned long		usage;
 	unsigned long		x509_usage;
 	unsigned int		flags;
+	unsigned int		access_flags;
 	struct sc_pkcs15init_keyarg_gost_params gost_params;
 
 	struct sc_pkcs15_prkey	key;
@@ -213,7 +214,6 @@ struct sc_pkcs15init_keygen_args {
 	const char *                   pubkey_label;
 };
 
-#define SC_PKCS15INIT_EXTRACTABLE	0x0001
 #define SC_PKCS15INIT_NO_PASSPHRASE	0x0002
 #define SC_PKCS15INIT_SPLIT_KEY		0x0004
 
