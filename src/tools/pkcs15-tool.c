@@ -55,7 +55,7 @@ static u8 * opt_newpin = NULL;
 static u8 * opt_pin = NULL;
 static u8 * opt_puk = NULL;
 
-static int	verbose = 0;
+static int	verbose = -1;
 
 enum {
 	OPT_CHANGE_PIN = 0x100,
@@ -1602,7 +1602,7 @@ int main(int argc, char * const argv[])
 			opt_outfile = optarg;
 			break;
 		case 'v':
-			verbose++;
+			verbose += (verbose == -1) ? 2 : 1;
 			break;
 		case 'a':
 			opt_auth_id = optarg;
@@ -1627,7 +1627,10 @@ int main(int argc, char * const argv[])
 		fprintf(stderr, "Failed to establish context: %s\n", sc_strerror(r));
 		return 1;
 	}
-	ctx->debug = verbose;
+	if (verbose > -1)
+		ctx->debug = verbose;
+	else
+		verbose = 0;
 
 	err = util_connect_card(ctx, &card, opt_reader, opt_wait, verbose);
 	if (err)
