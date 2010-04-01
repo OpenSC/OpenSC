@@ -1234,19 +1234,19 @@ static int do_delete_crypto_objects(sc_pkcs15_card_t *myp15card,
 				objs[count++] = key_objs[i];
 
 		if (!count)
-			sc_debug(myctx, SC_LOG_DEBUG_NORMAL, "NOTE: couldn't find privkey %s to delete\n", sc_pkcs15_print_id(&id));
+			fprintf(stderr, "NOTE: couldn't find privkey %s to delete\n", sc_pkcs15_print_id(&id));
 	}
 
 	if (which & SC_PKCS15INIT_TYPE_PUBKEY) {
 	    if (sc_pkcs15_find_pubkey_by_id(myp15card, &id, &objs[count]) != 0)
-			sc_debug(myctx, SC_LOG_DEBUG_NORMAL, "NOTE: couldn't find pubkey %s to delete\n", sc_pkcs15_print_id(&id));
+			fprintf(stderr, "NOTE: couldn't find pubkey %s to delete\n", sc_pkcs15_print_id(&id));
 		else
 			count++;
 	}
 
 	if (which & SC_PKCS15INIT_TYPE_CERT) {
 	    if (sc_pkcs15_find_cert_by_id(myp15card, &id, &objs[count]) != 0)
-			sc_debug(myctx, SC_LOG_DEBUG_NORMAL, "NOTE: couldn't find cert %s to delete\n", sc_pkcs15_print_id(&id));
+			fprintf(stderr, "NOTE: couldn't find cert %s to delete\n", sc_pkcs15_print_id(&id));
 		else {
 			count++;
 			del_cert = 1;
@@ -1263,7 +1263,7 @@ static int do_delete_crypto_objects(sc_pkcs15_card_t *myp15card,
 			if (r < 0)
 				fprintf(stderr, "get_cert_info() failed: %s\n", sc_strerror(r));
 			else if (has_sibling)
-				sc_debug(myctx, SC_LOG_DEBUG_NORMAL, "Chain deletion stops with cert %s\n", sc_pkcs15_print_id(
+				fprintf(stderr, "Chain deletion stops with cert %s\n", sc_pkcs15_print_id(
 					&((sc_pkcs15_cert_info_t *) objs[count - 1]->data)->id));
 			else if (stop && (objs[count] != NULL))
 				count++;
