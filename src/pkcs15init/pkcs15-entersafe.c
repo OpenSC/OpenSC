@@ -196,7 +196,7 @@ static int entersafe_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 	}
 
 	{/* p15 efs */
-		 char* create_efs[]={
+		 const char * create_efs[]={
 			  "PKCS15-ODF",
 			  "PKCS15-TokenInfo",
 			  "PKCS15-UnusedSpace",
