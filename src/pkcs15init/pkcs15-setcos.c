@@ -433,7 +433,8 @@ setcos_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	struct sc_cardctl_setcos_gen_store_key_info args;
 	struct sc_cardctl_setcos_data_obj data_obj;
 	struct sc_pkcs15_prkey_info *key_info = (struct sc_pkcs15_prkey_info *)object->data;
-	int r, keybits = key_info->modulus_length;
+	int r;
+	size_t keybits = key_info->modulus_length;
 	unsigned char raw_pubkey[256];
 	struct sc_file *file = NULL;
 
