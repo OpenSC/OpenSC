@@ -344,7 +344,7 @@ static unsigned int		opt_type = 0;
 static int			ignore_cmdline_pins = 0;
 static struct secret		opt_secrets[MAX_SECRETS];
 static unsigned int		opt_secret_count;
-static int			verbose = -1;
+static int			verbose = 0;
 
 static struct sc_pkcs15init_callbacks callbacks = {
 	get_pin_callback,	/* get_pin() */
@@ -562,10 +562,7 @@ open_reader_and_card(char *reader)
 		util_error("Failed to establish context: %s\n", sc_strerror(r));
 		return 0;
 	}
-	if (verbose > -1)
-		ctx->debug = verbose;
-	else
-		verbose = 0;
+	ctx->debug = verbose;
 
 	if (verbose > 1) {
 		ctx->debug_file = stderr;
@@ -2520,7 +2517,7 @@ handle_option(const struct option *opt)
 		opt_type = parse_objects(optarg, ACTION_CHANGE_ATTRIBUTES);
 		break;
 	case 'v':
-		verbose += (verbose == -1 ) ? 2 : 1;
+		verbose++;
 		break;
 	case 'f':
 		opt_format = optarg;
