@@ -69,7 +69,8 @@ cosm_write_tokeninfo (struct sc_pkcs15_card *p15card, struct sc_profile *profile
 		| SC_PKCS15_CARD_FLAG_LOGIN_REQUIRED 
 		| SC_PKCS15_CARD_FLAG_USER_PIN_INITIALIZED 
 		| SC_PKCS15_CARD_FLAG_TOKEN_INITIALIZED;
-	int rv, sz, flags = 0;
+	int rv, flags = 0;
+	size_t sz;
 	char *buffer = NULL;
 
 	if (!p15card || !profile)
