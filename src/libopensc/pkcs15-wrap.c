@@ -138,7 +138,8 @@ do_cipher(EVP_CIPHER_CTX *cipher_ctx, const u8 *in, size_t in_len,
 {
 	const u8 *end;
 	u8	*p;
-	size_t	bl, done, left, total;
+	size_t	bl, left, total;
+	int done;
 
 	*out = p = (u8 *) malloc(in_len + EVP_CIPHER_CTX_key_length(cipher_ctx));
 	*out_len = total = 0;
@@ -149,14 +150,14 @@ do_cipher(EVP_CIPHER_CTX *cipher_ctx, const u8 *in, size_t in_len,
 		if ((left = end - in) > bl)
 			left = bl;
 		if (!EVP_CipherUpdate(cipher_ctx,
-					p + total, (int *) &done,
+					p + total, &done,
 					(u8 *) in, (int)left))
 			goto fail;
 		total += done;
 		in += left;
 	}
 	if (1 || total < in_len) {
-		if (!EVP_CipherFinal(cipher_ctx, p + total, (int *) &done))
+		if (!EVP_CipherFinal(cipher_ctx, p + total, &done))
 			goto fail;
 		total += done;
 	}
