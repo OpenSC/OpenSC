@@ -853,7 +853,7 @@ static int pcsc_detect_readers(sc_context_t *ctx, void *prv_data)
 						sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Inconsistent TLV from reader!");
 					}
 					else {
-						char *log_disabled = "but it's disabled in configuration file";
+						const char *log_disabled = "but it's disabled in configuration file";
 						/* get the number of elements instead of the complete size */
 						feature_len /= sizeof(PCSC_TLV_STRUCTURE);
 
@@ -881,7 +881,7 @@ static int pcsc_detect_readers(sc_context_t *ctx, void *prv_data)
 
 						/* Set reader capabilities based on detected IOCTLs */
 						if (priv->verify_ioctl || (priv->verify_ioctl_start && priv->verify_ioctl_finish)) {
-							char *log_text = "Reader supports pinpad PIN verification";
+							const char *log_text = "Reader supports pinpad PIN verification";
 							if (priv->gpriv->enable_pinpad) {
 								sc_debug(ctx, SC_LOG_DEBUG_NORMAL, log_text);
 								reader->capabilities |= SC_READER_CAP_PIN_PAD;
@@ -891,7 +891,7 @@ static int pcsc_detect_readers(sc_context_t *ctx, void *prv_data)
 						}
 
 						if (priv->modify_ioctl || (priv->modify_ioctl_start && priv->modify_ioctl_finish)) {
-							char *log_text = "Reader supports pinpad PIN modification";
+							const char *log_text = "Reader supports pinpad PIN modification";
 							if (priv->gpriv->enable_pinpad) {
 								sc_debug(ctx, SC_LOG_DEBUG_NORMAL, log_text);
 								reader->capabilities |= SC_READER_CAP_PIN_PAD;
