@@ -238,23 +238,23 @@ awp_new_container_entry(struct sc_pkcs15_card *p15card, unsigned char *buff, int
 	struct sc_context *ctx = p15card->card->ctx;
 	int ii, mm, rv = 0;
 	int marks[5] = {4,6,8,10,0};
-	unsigned char rand[0x10];
+	unsigned char rand_buf[0x10];
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 	if (len<0x34) 
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INCORRECT_PARAMETERS, "Invalid container update size");
 
-	rv = sc_get_challenge(p15card->card, rand, sizeof(rand));
+	rv = sc_get_challenge(p15card->card, rand_buf, sizeof(rand_buf));
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Cannot get challenge");
 
 	*(buff + 12) = 0x26;
 	*(buff + 13) = '{';
-	for (ii=0, mm = 0; ii<sizeof(rand); ii++)   {
+	for (ii=0, mm = 0; ii<sizeof(rand_buf); ii++)   {
 		if (ii==marks[mm])   {
 			*(buff + 14 + ii*2 + mm) = '-';
 			mm++;
 		}
-		sprintf((char *)(buff + 14 + ii*2 + mm),"%02X", rand[ii]);
+		sprintf((char *)(buff + 14 + ii*2 + mm),"%02X", rand_buf[ii]);
 	}
 	*(buff + 14 + ii*2 + mm) = (unsigned char)'}';
 
