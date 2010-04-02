@@ -625,7 +625,8 @@ myeid_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	struct sc_pkcs15_prkey_info *key_info = (struct sc_pkcs15_prkey_info *)object->data;
 	struct sc_cardctl_myeid_gen_store_key_info args;
 	struct sc_file *file = NULL;
-	int r, keybits = key_info->modulus_length;
+	int r;
+	size_t keybits = key_info->modulus_length;
 	unsigned char raw_pubkey[256];
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
