@@ -170,6 +170,7 @@ static int entersafe_cipher_apdu(sc_card_t *card, sc_apdu_t *apdu,
 {
 	 EVP_CIPHER_CTX ctx;
 	 u8 iv[8]={0};
+	 int len;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -194,10 +195,12 @@ static int entersafe_cipher_apdu(sc_card_t *card, sc_apdu_t *apdu,
 	 else
 		  SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INTERNAL);
 	 
-	 if(!EVP_EncryptUpdate(&ctx,buff,&apdu->lc,buff,buffsize)){
+	 len = apdu->lc;
+	 if(!EVP_EncryptUpdate(&ctx, buff, &len, buff, buffsize)){
 		  sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "entersafe encryption error.");
 		  SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INTERNAL);
 	 }
+	 apdu->lc = len;
 
 	 if (!EVP_CIPHER_CTX_cleanup(&ctx)){
 		  sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "entersafe encryption error.");
@@ -223,7 +226,8 @@ static int entersafe_mac_apdu(sc_card_t *card, sc_apdu_t *apdu,
 	 int r;
 	 u8 iv[8];
 	 u8 *tmp=0,*tmp_rounded=NULL;
-	 size_t tmpsize=0,tmpsize_rounded=0,outl=0;
+	 size_t tmpsize=0,tmpsize_rounded=0;
+	 int outl=0;
 	 EVP_CIPHER_CTX ctx;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
