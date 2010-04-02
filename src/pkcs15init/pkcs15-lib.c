@@ -2144,7 +2144,7 @@ select_id(struct sc_pkcs15_card *p15card, int type, struct sc_pkcs15_id *id)
  *  	look for a file corresponding to the type of object we
  *  	wish to create ("private-key", "public-key" etc).
  */
-static char *
+static const char *
 get_template_name_from_object (struct sc_pkcs15_object *obj)
 {
 	switch (obj->type & SC_PKCS15_TYPE_CLASS_MASK) {
@@ -2807,7 +2807,7 @@ done:
 }
 
 
-static char *
+static const char *
 get_pin_ident_name(int type, int reference)
 {
 	switch (type)   {
