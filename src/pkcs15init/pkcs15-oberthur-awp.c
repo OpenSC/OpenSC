@@ -33,6 +33,7 @@
 #include "profile.h"
 #include "pkcs15-init.h"
 #include "pkcs15-oberthur.h"
+#include "libopensc/asn1.h"
 
 #ifdef ENABLE_OPENSSL
 
