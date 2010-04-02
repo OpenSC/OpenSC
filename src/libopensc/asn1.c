@@ -976,7 +976,7 @@ static int asn1_decode_entry(sc_context_t *ctx,struct sc_asn1_entry *entry,
 	size_t *len = (size_t *) entry->arg;
 	int r = 0;
 
-	*(void **)(&callback_func) = parm;
+	callback_func = parm;
 
 	sc_debug(ctx, SC_LOG_DEBUG_ASN1, "%*.*sdecoding '%s'\n", depth, depth, "", entry->name);
 
@@ -1260,7 +1260,7 @@ static int asn1_encode_entry(sc_context_t *ctx, const struct sc_asn1_entry *entr
 	u8 * buf = NULL;
 	size_t buflen = 0;
 
-	*(void **)(&callback_func) = parm;
+	callback_func = parm;
 
 	sc_debug(ctx, SC_LOG_DEBUG_ASN1, "%*.*sencoding '%s'%s\n",
 	       	depth, depth, "", entry->name,
