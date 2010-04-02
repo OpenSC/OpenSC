@@ -256,7 +256,8 @@ setcos_new_file(sc_profile_t *profile, sc_card_t *card,
 {
 	sc_file_t *file;
 	sc_path_t *p;
-	char name[64], *tag;
+	char name[64];
+	const char *tag;
 	int r;
 
 	if (type == SC_PKCS15_TYPE_PRKEY_RSA)
