@@ -141,11 +141,10 @@ int msc_zero_object(sc_card_t *card, msc_id objectId, size_t dataLength)
 	return 0;
 }
 
-int msc_create_object(sc_card_t *card, msc_id objectId, size_t objectSize, unsigned short read, unsigned short write, unsigned short deletion)
+int msc_create_object(sc_card_t *card, msc_id objectId, size_t objectSize, unsigned short readAcl, unsigned short writeAcl, unsigned short deleteAcl)
 {
 	u8 buffer[14];
 	sc_apdu_t apdu;
-	unsigned short readAcl = read, writeAcl = write, deleteAcl = deletion;
 	int r;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x5A, 0x00, 0x00);
@@ -938,8 +937,8 @@ int msc_import_key(sc_card_t *card,
 	int keyLocation,
 	sc_cardctl_muscle_key_info_t *data)
 {
-	unsigned short read = 0xFFFF,
-		write = 0x0002,
+	unsigned short readAcl = 0xFFFF,
+		writeAcl = 0x0002,
 		use = 0x0002,
 		keySize = data->keySize;
 	int bufferSize = 0;
@@ -1015,8 +1014,8 @@ int msc_import_key(sc_card_t *card,
 	apdu.data = apduBuffer;
 	apdu.datalen = 6;
 	p = apduBuffer;
-	ushort2bebytes(p, read); p+=2;
-	ushort2bebytes(p, write); p+=2;
+	ushort2bebytes(p, readAcl); p+=2;
+	ushort2bebytes(p, writeAcl); p+=2;
 	ushort2bebytes(p, use); p+=2;	
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
