@@ -1,6 +1,6 @@
 TOPDIR = ..\..
 
-HEADERS = pkcs15-init.h profile.h keycache.h pkcs15-oberthur.h
+HEADERS = pkcs15-init.h profile.h pkcs15-oberthur.h
 HEADERSDIR = $(TOPDIR)\src\include\opensc
 TARGET = pkcs15init.lib
 OBJECTS = pkcs15-lib.obj profile.obj \
