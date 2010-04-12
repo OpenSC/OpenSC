@@ -7,7 +7,7 @@ HEADERS			= \
 HEADERSDIR		= $(TOPDIR)\src\include\opensc
 TARGET                  = opensc.dll opensc_a.lib
 OBJECTS			= \
-	sc.obj ctx.obj ui.obj log.obj errors.obj \
+	sc.obj ctx.obj log.obj errors.obj \
 	asn1.obj base64.obj sec.obj card.obj iso7816.obj dir.obj padding.obj apdu.obj \
 	\
 	pkcs15.obj pkcs15-cert.obj pkcs15-data.obj pkcs15-pin.obj \
