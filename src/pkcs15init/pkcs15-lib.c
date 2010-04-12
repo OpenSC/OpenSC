@@ -1196,7 +1196,7 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card,
 	}
 
         r = sc_pkcs15_encode_pubkey(ctx, &pubkey_args.key, &object->content.value, &object->content.len);
-        SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Failed to encode private key");
+        SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Failed to encode public key");
 
 	r = sc_pkcs15init_add_object(p15card, profile, SC_PKCS15_PRKDF, object);
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Failed to add generated private key object");
@@ -1268,7 +1268,7 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
 	pubkey.u.rsa.exponent = key.u.rsa.exponent;
 
 	r = sc_pkcs15_encode_pubkey(ctx, &pubkey, &object->content.value, &object->content.len);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Failed to encode private key");
+	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Failed to encode public key");
 
 	/* Get the number of private keys already on this card */
 	idx = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PRKEY, NULL, 0);
