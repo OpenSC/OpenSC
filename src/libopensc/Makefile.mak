@@ -2,7 +2,7 @@ TOPDIR = ..\..
 
 HEADERS			= \
 	asn1.h cardctl.h cards.h errors.h \
-	log.h opensc.h pkcs15.h types.h ui.h
+	log.h opensc.h pkcs15.h types.h
 
 HEADERSDIR		= $(TOPDIR)\src\include\opensc
 TARGET                  = opensc.dll opensc_a.lib
