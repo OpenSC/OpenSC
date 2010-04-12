@@ -1195,6 +1195,9 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card,
 		}
 	}
 
+        r = sc_pkcs15_encode_pubkey(ctx, &pubkey_args.key, &object->content.value, &object->content.len);
+        SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Failed to encode private key");
+
 	r = sc_pkcs15init_add_object(p15card, profile, SC_PKCS15_PRKDF, object);
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Failed to add generated private key object");
 
