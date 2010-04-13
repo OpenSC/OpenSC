@@ -846,63 +846,6 @@ static int store_key(void)
 	return 0;	
 }                              
 
-#if 0
-static int create_file(sc_file_t *file)
-{
-	sc_path_t path;
-	int r;
-	
-	path = file->path;
-	if (path.len < 2)
-		return SC_ERROR_INVALID_ARGUMENTS;
-	r = sc_select_file(card, &path, NULL);
-	if (r == 0)
-		return 0;	/* File already exists */
-	path.len -= 2;
-	r = sc_select_file(card, &path, NULL);
-	if (r) {
-		fprintf(stderr, "Unable to select parent DF: %s", sc_strerror(r));
-		return r;
-	}
-	file->id = (path.value[path.len] << 8) | (path.value[path.len+1] & 0xFF);
-	r = sc_create_file(card, file);
-	if (r)
-		return r;
-	r = sc_select_file(card, &file->path, NULL);
-	if (r) {
-		fprintf(stderr, "Unable to select created file: %s\n", sc_strerror(r));
-		return r;
-	}
-        return 0;
-}
-#endif
-
-#if 0
-static int create_app_df(sc_path_t *path, size_t size)
-{
-	sc_file_t *file;
-	int i;
-	
-	file = sc_file_new();
-
-	file->type = SC_FILE_TYPE_DF;
-	file->size = size;
-	file->path = *path;
-
-	sc_file_add_acl_entry(file, SC_AC_OP_LIST_FILES, SC_AC_NONE, SC_AC_KEY_REF_NONE);
-	sc_file_add_acl_entry(file, SC_AC_OP_CREATE, SC_AC_CHV, 2);
-	sc_file_add_acl_entry(file, SC_AC_OP_DELETE, SC_AC_CHV, 2);
-	sc_file_add_acl_entry(file, SC_AC_OP_INVALIDATE, SC_AC_CHV, 2);
-	sc_file_add_acl_entry(file, SC_AC_OP_REHABILITATE, SC_AC_CHV, 2);
-
-	file->status = SC_FILE_STATUS_ACTIVATED;
-
-	i = create_file(file);
-	sc_file_free(file);
-	return i;
-}
-#endif
-
 static int create_pin_file(const sc_path_t *inpath, int chv, const char *key_id)
 {
 	char prompt[40], *pin, *puk;
@@ -927,52 +870,19 @@ static int create_pin_file(const sc_path_t *inpath, int chv, const char *key_id)
 	r = sc_select_file(card, &file_id, NULL);
 	if (r == 0)
 		return 0;
-	for (;;) {
-#if 0
-		char *tmp = NULL;
-#endif
-		sprintf(prompt, "Please enter CHV%d%s: ", chv, key_id);
-		pin = getpin(prompt);
-		if (pin == NULL)
-			return -1;
-#if 0
-		sprintf(prompt, "Please enter CHV%d%s again: ", chv, key_id);
-		tmp = getpin(prompt);
-		if (tmp == NULL)
-			return -1;
-		if (memcmp(pin, tmp, 8) != 0) {
-			free(pin);
-			free(tmp);		
-			continue;
-		}
-		free(tmp);
-#endif
-		break;
+
+	sprintf(prompt, "Please enter CHV%d%s: ", chv, key_id);
+	pin = getpin(prompt);
+	if (pin == NULL)
+		return -1;
+	
+	sprintf(prompt, "Please enter PUK for CHV%d%s: ", chv, key_id);
+	puk = getpin(prompt);
+	if (puk == NULL) {
+		free(pin);
+		return -1;
 	}
-	for (;;) {
-#if 0
-		char *tmp = NULL;
-#endif
-		sprintf(prompt, "Please enter PUK for CHV%d%s: ", chv, key_id);
-		puk = getpin(prompt);
-		if (puk == NULL) {
-			free(pin);
-			return -1;
-		}
-#if 0
-		sprintf(prompt, "Please enter PUK for CHV%d%s again: ", chv, key_id);
-		tmp = getpin(prompt);
-		if (tmp == NULL)
-			return -1;
-		if (memcmp(puk, tmp, 8) != 0) {
-			free(puk);
-			free(tmp);
-			continue;
-		}
-		free(tmp);
-#endif
-		break;
-	}
+
 	memset(p, 0xFF, 3);
 	p += 3;
 	memcpy(p, pin, 8);
