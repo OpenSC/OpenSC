@@ -128,7 +128,7 @@ static const char *option_help[] = {
 #endif
 	"Test if the card needs a security update",
 	"Update the card with a security update",
-	"Uses reader number <arg>",
+	"Uses reader <arg>",
 	"Specify PIN",
 	"Specify New PIN (when changing or unblocking)",
 	"Specify Unblock PIN",
