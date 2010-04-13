@@ -1016,7 +1016,6 @@ static int dump(void)
 	};
 
 	int i, count = 0;
-	sc_lock(card);
 
 	printf("PKCS#15 Card [%s]:\n", p15card->label);
 	printf("\tVersion        : %d\n", p15card->version);
@@ -1043,7 +1042,6 @@ static int dump(void)
 	list_certificates();
 	list_data_objects();
 
-	sc_unlock(card);
 	return 0;
 }
 
