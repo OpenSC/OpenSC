@@ -92,7 +92,6 @@ enum {
 	 * JCOP specific calls
 	 */
 	SC_CARDCTL_JCOP_BASE = _CTL_PREFIX('J', 'C', 'P'),
-	SC_CARDCTL_JCOP_LOCK,
 	SC_CARDCTL_JCOP_GENERATE_KEY,
 
 	/*

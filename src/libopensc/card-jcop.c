@@ -914,9 +914,6 @@ static int jcop_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
         case SC_CARDCTL_GET_DEFAULT_KEY:
                 return jcop_get_default_key(card,
                                 (struct sc_cardctl_default_key *) ptr);
-        case SC_CARDCTL_JCOP_LOCK:
-	     /* XXX implement me */
-	     return SC_ERROR_NOT_SUPPORTED;
         case SC_CARDCTL_JCOP_GENERATE_KEY:
                 return jcop_generate_key(card,
                                 (struct sc_cardctl_jcop_genkey *) ptr);
