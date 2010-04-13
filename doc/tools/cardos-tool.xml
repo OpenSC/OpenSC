@@ -51,13 +51,13 @@ smart cards and similar security tokens based on Siemens Card/OS M4.
 				</varlistentry>
 				<varlistentry>
 					<term><option>--wait, -w</option></term>
-					<listitem><para>Causes <command>cardos-info</command> to wait for the token
+					<listitem><para>Causes <command>cardos-tool</command> to wait for the token
 					to be inserted into reader.</para>
 					</listitem>
 				</varlistentry>
 				<varlistentry>
 					<term><option>--verbose, -v</option></term>
-					<listitem><para>Causes <command>cardos-info</command> to be more verbose. Specify this flag several times
+					<listitem><para>Causes <command>cardos-tool</command> to be more verbose. Specify this flag several times
 to enable debug output in the opensc library.</para></listitem>
 				</varlistentry>
 			</variablelist>
