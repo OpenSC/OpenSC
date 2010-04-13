@@ -32,7 +32,8 @@
 
 static const char *app_name = "cryptoflex-tool";
 
-static int opt_reader = 0;
+static char * opt_reader = NULL;
+static int opt_wait = 0;
 static int opt_key_num = 1, opt_pin_num = -1;
 static int verbose = 0;
 static int opt_exponent = 3;
@@ -58,6 +59,7 @@ static const struct option options[] = {
 	{ "exponent",		1, NULL,		'e' },
 	{ "modulus-length",	1, NULL,		'm' },
 	{ "reader",		1, NULL,		'r' },
+	{ "wait",		0, NULL,		'w' },
 	{ "verbose",		0, NULL,		'v' },
 	{ NULL, 0, NULL, 0 }
 };
@@ -75,7 +77,8 @@ static const char *option_help[] = {
 	"Public key file",
 	"The RSA exponent to use in key generation [3]",
 	"Modulus length to use in key generation [1024]",
-	"Uses reader number <arg> [0]",
+	"Uses reader <arg>",
+	"Wait for card insertion",
 	"Verbose operation. Use several times to enable debug output.",
 };
 
@@ -1087,11 +1090,10 @@ int main(int argc, char * const argv[])
 	int do_list_keys = 0;
 	int do_store_key = 0;
 	int do_create_pin_file = 0;
-	sc_reader_t *screader= NULL;
 	sc_context_param_t ctx_param;
 
 	while (1) {
-		c = getopt_long(argc, argv, "P:Vslgc:Rk:r:p:u:e:m:va:", options, &long_optind);
+		c = getopt_long(argc, argv, "P:Vslgc:Rk:r:p:u:e:m:vwa:", options, &long_optind);
 		if (c == -1)
 			break;
 		if (c == '?')
@@ -1146,10 +1148,13 @@ int main(int argc, char * const argv[])
 			opt_pubkeyf = optarg;
 			break;
 		case 'r':
-			opt_reader = atoi(optarg);
+			opt_reader = optarg;
 			break;
 		case 'v':
 			verbose++;
+			break;
+		case 'w':
+			opt_wait = 1;
 			break;
 		case 'a':
 			opt_appdf = optarg;
@@ -1171,36 +1176,9 @@ int main(int argc, char * const argv[])
 
 	ctx->debug = verbose;
 
-	if (opt_reader >= (int)sc_ctx_get_reader_count(ctx) || opt_reader < 0) {
-		fprintf(stderr, "Illegal reader number. Only %d reader(s) configured.\n", sc_ctx_get_reader_count(ctx));
-		err = 1;
-		goto end;
-	}
-	screader = sc_ctx_get_reader(ctx, opt_reader);
-	if (screader == NULL) {
-		err = 1;
-		goto end;
-	}
-	if (sc_detect_card_presence(screader) <= 0) {
-		fprintf(stderr, "Card not present.\n");
-		err = 3;
-		goto end;
-	}
-	if (verbose)
-		fprintf(stderr, "Connecting to card in reader %s...\n", screader->name);
-	r = sc_connect_card(screader, &card);
-	if (r) {
-		fprintf(stderr, "Failed to connect to card: %s\n", sc_strerror(r));
-		err = 1;
-		goto end;
-	}
+	err = util_connect_card(ctx, &card, opt_reader, opt_wait, verbose);
 	printf("Using card driver: %s\n", card->driver->name);
-	r = sc_lock(card);
-	if (r) {
-		fprintf(stderr, "Unable to lock card: %s\n", sc_strerror(r));
-		err = 1;
-		goto end;
-	}
+
 	if (do_create_pin_file) {
 		if ((err = create_pin()) != 0)
 			goto end;
