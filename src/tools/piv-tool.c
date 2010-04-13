@@ -63,7 +63,6 @@ static const struct option options[] = {
 	{ "object",		1, NULL,		'O' },
 	{ "cert",		1, NULL,		'C' },
 	{ "compresscert", 1, NULL,		'Z' },
-	{ "req",		0, NULL, 		'R' },
 	{ "out",	1, NULL, 		'o' },
 	{ "in",		1, NULL, 		'i' },
 	{ "send-apdu",		1, NULL,		's' },
@@ -83,8 +82,7 @@ static const char *option_help[] = {
 	"Load an object <containerID> containerID as defined in 800-73 without leading 0x",
 	"Load a cert <ref> where <ref> is 9A,9B,9C or 9D",
 	"Load a cert that has been gziped <ref>",
-	"Generate a cert req",
-	"Output file for cert or key or req",
+	"Output file for cert or key",
 	"Inout file for cert",
 	"Sends an APDU in format AA:BB:CC:DD:EE:FF...",
 	"Uses reader number <arg> [0]",
@@ -243,15 +241,6 @@ static int admin_mode(const char* admin_info)
 		fprintf(stderr, " admin_mode failed %d\n", r);
 	return r;
 }
-
-#if 0
-/* generate a req using xxx as subject */
-static int req()
-{
-	fprintf(stderr, "Not Implemented yet\n");
-	return -1;
-}
-#endif
 
 /* generate a new key pair, and save public key in newkey */
 static int gen_key(const char * key_info)
@@ -414,7 +403,6 @@ int main(int argc, char * const argv[])
 	int do_load_cert = 0;
 	int do_load_object = 0;
 	int compress_cert = 0;
-	int do_req = 0;
 	int do_print_serial = 0;
 	int do_print_name = 0;
 	int action_count = 0;
@@ -430,7 +418,7 @@ int main(int argc, char * const argv[])
 	setbuf(stdout, NULL);
 
 	while (1) {
-		c = getopt_long(argc, argv, "nA:G:O:Z:C:Ri:o:fvs:c:w", options, &long_optind);
+		c = getopt_long(argc, argv, "nA:G:O:Z:C:i:o:fvs:c:w", options, &long_optind);
 		if (c == -1)
 			break;
 		if (c == '?')
@@ -473,10 +461,6 @@ int main(int argc, char * const argv[])
 		case 'C':
 			do_load_cert = 1;
 			cert_id = optarg;
-			action_count++;
-			break;
-		case 'R':
-			do_req = 1;
 			action_count++;
 			break;
 		case 'i':
