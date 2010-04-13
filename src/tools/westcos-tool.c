@@ -1,5 +1,5 @@
 /*
- * westcos-tool.exe: tool for westcos card
+ * westcos-tool.c: tool for westcos card
  *
  * Copyright (C) 2009 francois.leblanc@cev-sa.com 
  *
