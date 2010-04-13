@@ -2040,45 +2040,6 @@ do_read_public_key(const char *name, const char *format, EVP_PKEY **out)
 	return 0;
 }
 
-#if 0
-/*
- * Write a PEM encoded public key
- */
-static int
-do_write_pem_public_key(const char *filename, EVP_PKEY *pk)
-{
-	BIO	*bio;
-	int	r;
-
-	bio = BIO_new(BIO_s_file());
-	if (BIO_write_filename(bio, (char *) filename) < 0)
-		util_fatal("Unable to open %s: %m", filename);
-	r = PEM_write_bio_PUBKEY(bio, pk);
-	BIO_free(bio);
-	if (r == 0) {
-		ossl_print_errors();
-		return -1;
-	}
-	return 0;
-}
-
-static int
-do_write_public_key(const char *filename, const char *format, EVP_PKEY *pk)
-{
-	int	r;
-
-	if (!format || !strcasecmp(format, "pem")) {
-		r = do_write_pem_public_key(filename, pk);
-	} else {
-		error("Error when writing public key. "
-		      "Key file format \"%s\" not supported.\n",
-		      format);
-		r = SC_ERROR_NOT_SUPPORTED;
-	}
-	return r;
-}
-#endif
-
 /*
  * Read a certificate
  */
