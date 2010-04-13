@@ -1,11 +1,6 @@
 /*
  * Netkey-Tool for Telesec Netkey E4 cards.
  *
- * compile with:
- *   gcc -I<opensc-path>/include -I<openssl-path>/include \
- *       -L<opensc-path>/lib -L<openssl-path>/lib \
- *       -o netkey-tool netkey-tool.c -lopensc -lcrypto
- *
  * Copyright (C) 2005, Peter Koch <pk_opensc@web.de>
  *
  * This library is free software; you can redistribute it and/or
