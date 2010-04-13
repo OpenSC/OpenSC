@@ -1,4 +1,0 @@
-#!/bin/sh
-
-echo "Running cardos-tool --info $*"
-exec "$(dirname "$0")"/cardos-tool --info $*

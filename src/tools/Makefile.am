@@ -9,10 +9,6 @@ bin_PROGRAMS = opensc-tool opensc-explorer pkcs15-tool pkcs15-crypt \
 if ENABLE_OPENSSL
 bin_PROGRAMS += cryptoflex-tool pkcs15-init netkey-tool piv-tool westcos-tool
 endif
-dist_bin_SCRIPTS = cardos-info
-if WIN32
-dist_bin_SCRIPTS += cardos-info.bat
-endif
 
 # compile with $(PTHREAD_CFLAGS) to allow debugging with gdb
 AM_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(OPTIONAL_READLINE_CFLAGS) $(PTHREAD_CFLAGS)
