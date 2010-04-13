@@ -26,7 +26,7 @@ OBJECTS			= \
 	card-incrypto34.obj card-piv.obj card-muscle.obj card-acos5.obj \
 	card-asepcos.obj card-akis.obj card-gemsafeV1.obj card-rutoken.obj \
 	card-rtecp.obj card-westcos.obj card-myeid.obj card-ias.obj \
-	card-javacard.c \
+	card-javacard.obj \
 	\
 	p15emu-westcos.obj \
 	pkcs15-openpgp.obj pkcs15-infocamere.obj pkcs15-starcert.obj \
