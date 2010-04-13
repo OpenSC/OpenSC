@@ -403,12 +403,6 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	r = sc_lock(card);
-	if (r) {
-		fprintf(stderr, "Failed to lock card: %s\n", sc_strerror(r));
-		return 1;
-	}
-
 	/* Check card type */
 	if (card->type == SC_CARD_TYPE_MCRD_ESTEID)
 		do_esteid(card);
