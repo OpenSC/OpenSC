@@ -621,44 +621,6 @@ incrypto34_lifecycle_get(sc_card_t *card, int *mode)
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 }
 
-#if 0
-static int
-incrypto34_lifecycle_set(sc_card_t *card, int *mode)
-{
-	sc_apdu_t	apdu;
-	int		r;
-
-	int current;
-	int target;
-
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-
-	target = *mode;
-
-	r = incrypto34_lifecycle_get(card, &current);
-
-	if (r != SC_SUCCESS)
-		return r;
-
-	if (current == target || current == SC_CARDCTRL_LIFECYCLE_OTHER)
-		return SC_SUCCESS;
-
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x10, 0, 0);
-	apdu.cla = 0x80;
-	apdu.le = 0;
-	apdu.resplen = 0;
-	apdu.resp = NULL;
-
-	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
-
-	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
-
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
-}
-#endif
-
 static int
 incrypto34_put_data_oci(sc_card_t *card,
 			struct sc_cardctl_incrypto34_obj_info *args)
