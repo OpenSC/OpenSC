@@ -193,41 +193,6 @@ static int bn2cf(const BIGNUM *num, u8 *buf)
 	return r;
 }
 
-#if 0
-
-int mont(RSA *rsa, u8 *j0)
-{
-	BIGNUM Ri, RR, Ni;
-	BN_CTX *bn_ctx = BN_CTX_new();
-	int num_bits = BN_num_bits(rsa->n);
-	u8 tmp[512];
-
-        BN_init(&Ri);
-	BN_init(&RR);
-	BN_init(&Ni);
-	BN_zero(&RR);
-	BN_set_bit(&RR, num_bits);
-	if ((BN_mod_inverse(&Ri, &RR, rsa->n, bn_ctx)) == NULL) {
-		fprintf(stderr, "BN_mod_inverse() failed.\n");
-		return -1;
-	}
-	BN_lshift(&Ri, &Ri, num_bits);
-	BN_sub_word(&Ri, 1);
-	BN_div(&Ni, NULL, &Ri, rsa->n, bn_ctx);
-
-	bn2cf(&Ni, tmp);
-	memcpy(j0, tmp, BN_num_bytes(&Ni)/2);
-	printf("Ni from SSL:\n");
-	util_hex_dump_asc(stdout, tmp, BN_num_bytes(&Ni), -1);
-
-	BN_free(&Ri);
-	BN_free(&RR);
-	BN_free(&Ni);
-	return 0;
-}
-
-#endif
-
 static int parse_public_key(const u8 *key, size_t keysize, RSA *rsa)
 {
 	const u8 *p = key;
@@ -784,11 +749,7 @@ static int encode_public_key(RSA *rsa, u8 *key, size_t *keysize)
 	memcpy(p, bnbuf, 2*base);
 	p += 2*base;
 
-#if 0
-	mont(rsa, p);	/* j0 */
-#else
 	memset(p, 0, base);
-#endif
 	p += base;
 
 	memset(bnbuf, 0, 2*base);
