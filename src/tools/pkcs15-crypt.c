@@ -603,9 +603,7 @@ end:
 	if (p15card)
 		sc_pkcs15_unbind(p15card);
 	if (card) {
-#if 1
 		sc_unlock(card);
-#endif
 		sc_disconnect_card(card);
 	}
 	if (ctx)
