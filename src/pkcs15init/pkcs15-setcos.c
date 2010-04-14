@@ -572,24 +572,24 @@ setcos_create_pin_internal(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 
 
 static struct sc_pkcs15init_operations sc_pkcs15init_setcos_operations = {
-	.erase_card = setcos_erase_card,
-	.init_card = setcos_init_card,		/* init_card     */
-	.create_dir = setcos_create_dir,	/* create_dir    */
-	.create_domain = NULL,				/* create_domain */
-	.select_pin_reference = setcos_select_pin_reference,
-	.create_pin = setcos_create_pin,
-	.select_key_reference = NULL, 		/* select_key_reference */
-	.create_key = setcos_create_key,	/* create_key */
-	.store_key = setcos_store_key,		/* store_key  */
-	.generate_key = setcos_generate_key,	/* generate_key */
-	.encode_private_key = setcos_encode_private_key,
-	.encode_public_key = setcos_encode_public_key,
-	.finalize_card = NULL,				/* finalize_card */
-	.delete_object = setcos_delete_object,
-	.emu_update_dir = NULL,
-	.emu_update_any_df = NULL,
-	.emu_update_tokeninfo = NULL,
-	.emu_write_info = NULL
+	setcos_erase_card,		/* erase_card */
+	setcos_init_card,		/* init_card     */
+	setcos_create_dir,		/* create_dir    */
+	NULL,				/* create_domain */
+	setcos_select_pin_reference,	/* select_pin_reference */
+	setcos_create_pin,		/* create_pin */
+	NULL, 				/* select_key_reference */
+	setcos_create_key,		/* create_key */
+	setcos_store_key,		/* store_key  */
+	setcos_generate_key,		/* generate_key */
+	setcos_encode_private_key, 	/* encode_private_key  */ 
+	setcos_encode_public_key, 	/* encode_public_key */
+	NULL,				/* finalize_card */
+	setcos_delete_object,		/* setcos_delete_object */
+	NULL,				/* emu_update_dir */
+	NULL, 				/* emu_update_any_df */
+	NULL, 				/* emu_update_tokeninfo */
+	NULL 				/* emu_write_info */
 };
 
 struct sc_pkcs15init_operations *

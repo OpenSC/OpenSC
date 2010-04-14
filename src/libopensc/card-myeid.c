@@ -38,12 +38,12 @@
 
 static struct sc_card_operations myeid_ops;
 static struct sc_card_driver myeid_drv = {
-     .name = "MyEID cards with PKCS#15 applet",
-     .short_name = "myeid",
-     .ops = &myeid_ops,
-	 .atr_map = NULL,
-	 .natrs = 0,
-	 .dll = NULL
+	"MyEID cards with PKCS#15 applet",
+	"myeid",
+	&myeid_ops,
+	NULL,
+	0,
+	NULL
 };
 
 static const char *myeid_atrs[] = {
