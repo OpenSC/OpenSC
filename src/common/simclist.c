@@ -29,9 +29,13 @@
 #include <fcntl.h>      /* for open() etc */
 #include <arpa/inet.h>  /* for htons() */
 #endif
+#if !defined(_WIN32)
 #include <unistd.h>
+#endif
 #include <time.h>       /* for time() for random seed */
+#ifdef HAVE_SYS_TIME_H
 #include <sys/time.h>   /* for gettimeofday() */
+#endif
 #include <sys/stat.h>   /* for open()'s access modes S_IRUSR etc */
 #include <limits.h>
 #include <stdint.h>
