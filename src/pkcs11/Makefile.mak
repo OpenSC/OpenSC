@@ -1,6 +1,6 @@
 TOPDIR = ..\..
 
-HEADERS			= pkcs11-opensc.h pkcs11.h sc-pkcs11.h
+HEADERS			= pkcs11-opensc.h pkcs11.h sc-pkcs11.h pkcs11-display.h
 
 HEADERSDIR		= $(TOPDIR)\src\include\opensc
 
@@ -11,7 +11,7 @@ TARGET3			= pkcs11-spy.dll
 
 OBJECTS			= pkcs11-global.obj pkcs11-session.obj pkcs11-object.obj misc.obj slot.obj \
 			  mechanism.obj openssl.obj secretkey.obj framework-pkcs15.obj \
-			  framework-pkcs15init.obj debug.obj \
+			  framework-pkcs15init.obj debug.obj pkcs11-display.obj \
 			  versioninfo.res
 OBJECTS2		= libpkcs11.obj versioninfo.res
 OBJECTS3		= pkcs11-spy.obj pkcs11-display.obj libpkcs11.obj versioninfo.res
