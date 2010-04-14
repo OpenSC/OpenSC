@@ -46,6 +46,13 @@ void sc_do_log(sc_context_t *ctx, int level, const char *file, int line, const c
 {
 	va_list ap;
 
+	va_start(ap, format);
+	sc_do_log_va(ctx, level, file, line, func, format, ap);
+	va_end(ap);
+}
+
+void sc_do_log_va(sc_context_t *ctx, int level, const char *file, int line, const char *func, const char *format, va_list args)
+{
 	char	buf[1836], *p;
 	int	r;
 	size_t	left;
@@ -63,8 +70,6 @@ void sc_do_log(sc_context_t *ctx, int level, const char *file, int line, const c
 
 	if (ctx->debug < level)
 		return;
-
-	va_start(ap, format);
 
 	p = buf;
 	left = sizeof(buf);
@@ -95,7 +100,7 @@ void sc_do_log(sc_context_t *ctx, int level, const char *file, int line, const c
 	p += r;
 	left -= r;
 
-	r = vsnprintf(p, left, format, ap);
+	r = vsnprintf(p, left, format, args);
 	if (r < 0)
 		return;
 	p += r;
@@ -111,12 +116,21 @@ void sc_do_log(sc_context_t *ctx, int level, const char *file, int line, const c
 		fprintf(outf, "\n");
 	fflush(outf);
 
-	va_end(ap);
-
 	return;
 }
 
-void sc_hex_dump(sc_context_t *ctx, int level, const u8 * in, size_t count, char *buf, size_t len)
+void _sc_debug(struct sc_context *ctx, int level, const char *format, ...)
+{	
+	va_list ap;
+
+        va_start(ap, format);
+        sc_do_log_va(ctx, level, NULL, 0, NULL, format, ap);
+        va_end(ap);
+}
+
+
+/* Although not used, we need this for consistent exports */
+void sc_hex_dump(struct sc_context *ctx, int level, const u8 * in, size_t count, char *buf, size_t len)
 {
 	char *p = buf;
 	int lines = 0;
