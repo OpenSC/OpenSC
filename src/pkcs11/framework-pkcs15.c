@@ -227,6 +227,21 @@ static void pkcs15_init_token_info(struct sc_pkcs15_card *p15card, CK_TOKEN_INFO
 	pToken->firmwareVersion.minor = 0;
 }
 
+static char *
+set_cka_label(CK_ATTRIBUTE_PTR attr, char *label) 
+{ 
+	char *l = (char *)attr->pValue; 
+	int len = attr->ulValueLen; 
+
+	if (l[len] == '\0') 
+		return l; 
+	if (len >= SC_PKCS15_MAX_LABEL_SIZE) 
+		len = SC_PKCS15_MAX_LABEL_SIZE-1; 
+	memcpy(label, l, len); 
+	label[len] = '\0'; 
+	return label; 
+} 
+
 static int
 __pkcs15_create_object(struct pkcs15_fw_data *fw_data,
 		       struct pkcs15_any_object **result,
@@ -1235,6 +1250,7 @@ static CK_RV pkcs15_create_private_key(struct sc_pkcs11_card *p11card,
 	CK_KEY_TYPE		key_type;
 	struct sc_pkcs15_prkey_rsa *rsa;
 	int			rc, rv;
+	char label[SC_PKCS15_MAX_LABEL_SIZE];
 
 	memset(&args, 0, sizeof(args));
 
@@ -1265,7 +1281,7 @@ static CK_RV pkcs15_create_private_key(struct sc_pkcs11_card *p11card,
 		case CKA_PRIVATE:
 			break;
 		case CKA_LABEL:
-			args.label = (char *) attr->pValue;
+			args.label = set_cka_label(attr, label);
 			break;
 		case CKA_ID:
 			args.id.len = sizeof(args.id.value);
@@ -1331,6 +1347,7 @@ static CK_RV pkcs15_create_public_key(struct sc_pkcs11_card *p11card,
 	CK_KEY_TYPE	key_type;
 	struct sc_pkcs15_pubkey_rsa *rsa;
 	int rc, rv;
+	char label[SC_PKCS15_MAX_LABEL_SIZE];
 
 	memset(&args, 0, sizeof(args));
 
@@ -1361,7 +1378,7 @@ static CK_RV pkcs15_create_public_key(struct sc_pkcs11_card *p11card,
 		case CKA_PRIVATE:
 			break;
 		case CKA_LABEL:
-			args.label = (char *) attr->pValue;
+			args.label = set_cka_label(attr, label);
 			break;
 		case CKA_ID:
 			args.id.len = sizeof(args.id.value);
@@ -1419,6 +1436,7 @@ static CK_RV pkcs15_create_certificate(struct sc_pkcs11_card *p11card,
 	CK_CERTIFICATE_TYPE	cert_type;
 	CK_BBOOL		bValue;
 	int			rc, rv;
+	char label[SC_PKCS15_MAX_LABEL_SIZE];
 
 	memset(&args, 0, sizeof(args));
 
@@ -1446,7 +1464,7 @@ static CK_RV pkcs15_create_certificate(struct sc_pkcs11_card *p11card,
 			}
 			break;
 		case CKA_LABEL:
-			args.label = (char *) attr->pValue;
+			args.label = set_cka_label(attr, label);
 			break;
 		case CKA_ID:
 			args.id.len = sizeof(args.id.value);
@@ -1496,6 +1514,7 @@ static CK_RV pkcs15_create_data(struct sc_pkcs11_card *p11card,
 	struct sc_pkcs15_pin_info *pin;
 	CK_BBOOL		bValue;
 	int			rc, rv;
+	char label[SC_PKCS15_MAX_LABEL_SIZE];
 
 	memset(&args, 0, sizeof(args));
 	args.app_oid.value[0] = -1;
@@ -1520,7 +1539,7 @@ static CK_RV pkcs15_create_data(struct sc_pkcs11_card *p11card,
 			}
 			break;
 		case CKA_LABEL:
-			args.label = (char *) attr->pValue;
+			args.label = set_cka_label(attr, label);
 			break;
 		case CKA_ID:
 			args.id.len = sizeof(args.id.value);
