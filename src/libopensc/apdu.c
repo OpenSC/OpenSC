@@ -296,10 +296,11 @@ static int sc_check_apdu(sc_card_t *card, const sc_apdu_t *apdu)
 		if (apdu->datalen != 0 || apdu->lc != 0)
 			goto error;
 		/* data is expected       */
-		if (apdu->le == 0 || apdu->resplen == 0 || apdu->resp == NULL)
+		if (apdu->resplen == 0 || apdu->resp == NULL)
 			goto error;
 		/* return buffer to small */
-		if (apdu->resplen < apdu->le)
+		if ((apdu->le == 0 && apdu->resplen < SC_MAX_APDU_BUFFER_SIZE-2) 
+				|| (apdu->resplen < apdu->le))
 			goto error;
 		break;
 	case SC_APDU_CASE_3_SHORT:
@@ -318,10 +319,11 @@ static int sc_check_apdu(sc_card_t *card, const sc_apdu_t *apdu)
 		if (apdu->datalen == 0 || apdu->data == NULL || apdu->lc == 0)
 			goto error;
 		/* data is expected       */
-		if (apdu->le == 0 || apdu->resplen == 0 || apdu->resp == NULL)
+		if (apdu->resplen == 0 || apdu->resp == NULL)
 			goto error;
 		/* return buffer to small */
-		if (apdu->resplen < apdu->le)
+		if ((apdu->le == 0 && apdu->resplen < SC_MAX_APDU_BUFFER_SIZE-2)
+				|| (apdu->resplen < apdu->le))
 			goto error;
 		/* inconsistent datalen   */
 		if (apdu->datalen != apdu->lc)
