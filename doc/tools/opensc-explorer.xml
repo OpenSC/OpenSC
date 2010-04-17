@@ -91,8 +91,10 @@
 			</varlistentry>
 
 			<varlistentry>
-				<term><option>cat</option></term>
-				<listitem><para>print the contents of the currently selected EF</para></listitem>
+				<term><option>cat</option> [<varname>file-id</varname>]</term>
+				<listitem><para>print the contents of the currently selected EF or the contents of a file
+                                        specified by <varname>file-id</varname>.
+                                </para></listitem>
 			</varlistentry>
 
 			<varlistentry>
@@ -115,12 +117,20 @@
 			</varlistentry>
 
 			<varlistentry>
+				<term><option>rm</option> <varname>file-id</varname></term>
+				<listitem><para>remove the EF or DF specified by <varname>file-id</varname></para></listitem>
+			</varlistentry>
+
+			<varlistentry>
 				<term><option>verify</option> <varname>key-type</varname><varname>key-id</varname>
 				[<varname>key</varname>]</term>
 				<listitem><para>present a PIN or key to the card. Where <varname>key-type</varname>
 				can be one of CHV, KEY or PRO. <varname>key-id</varname> is a number representing the
-				key or PIN number. <varname>key</varname> is the key or PIN to be verified in hex.
+				key or PIN reference. <varname>key</varname> is the key or PIN to be verified in hex.
 				</para>
+                                <para>
+                                If <varname>key</varname> is omitted, PIN will be verified with PIN-Pad.
+                                </para>
 				<para>
 					Example: verify CHV0 31:32:33:34:00:00:00:00
 				</para>
@@ -128,16 +138,25 @@
 			</varlistentry>
 
 			<varlistentry>
-				<term><option>change CHV</option><varname>id [old-pin] new-pin</varname></term>
+				<term><option>change CHV</option><varname>id [[old-pin] new-pin]</varname></term>
 				<listitem><para>change a PIN</para>
 				<para>
-					Example: change CHV0 31:32:33:34:00:00:00:00 'secret'
+                                        Examples:
+                                </para>
+				<para>
+                                        Change PIN: change CHV2 00:00:00:00:00:00 "foobar"
+                                </para>
+				<para>
+                                        Set PIN: change CHV2 "foobar"
+                                </para>
+				<para>
+                                        Change PIN with pinpad: change CHV2
 				</para>
 				</listitem>
 			</varlistentry>
 
 			<varlistentry>
-				<term><option>put</option> <varname>file-id</varname> [<varname>input</varname>]</term>
+				<term><option>put</option> <varname>file-id</varname> <varname>input</varname></term>
 				<listitem><para>copy a local file to the card. The local file is specified
 				by <varname>input</varname> while the card file is specified by <varname>file-id</varname>
 				</para></listitem>
@@ -145,9 +164,39 @@
 
 			<varlistentry>
 				<term><option>get</option> <varname>file-id</varname> [<varname>output</varname>]</term>
-				<listitem><para>copy an EF to a local file. The local file is specified
-				by <varname>output</varname> while the card file is specified by <varname>file-id</varname>.
-				</para></listitem>
+				<listitem>
+                                        <para>copy an EF to a local file. The local file is specified
+				        by <varname>output</varname> while the card file is specified by <varname>file-id</varname>.
+                                        </para>
+                                        <para>
+                                        If <varname>output</varname> is ommited, the name of the output file will be 
+                                        derivated from the full card path to <varname>file-id</varname>.
+                                        </para>
+                                </listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><option>do_put</option> <varname>hex-tag</varname> <varname>input</varname></term>
+				<listitem>
+                                        <para>update internal card's 'tagged' data. </para>
+                                        <para><varname>hex-tag</varname> is the tag of the card's data. 
+                                        <varname>input</varname> is the filename of the source file or the literal data.
+				        </para>
+                                </listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><option>do_get</option> <varname>hex-tag</varname> [<varname>output</varname>]</term>
+				<listitem>
+                                        <para>copy the internal card's 'tagged' data into the local file.</para>
+                                        <para>The local file is specified by <varname>output</varname> while the tag of 
+                                        the card's data is specified by <varname>hex-tag</varname>.
+                                        </para>
+                                        <para>
+                                        If <varname>output</varname> is ommited, the name of the output file will be 
+                                        derivated from <varname>hex-tag</varname>.
+                                        </para>
+                                </listitem>
 			</varlistentry>
 
 			<varlistentry>
@@ -159,6 +208,60 @@
 			<varlistentry>
 				<term><option>erase</option></term>
 				<listitem><para>erase the card, if the card supports it.</para></listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><option>random</option> <varname>count</varname></term>
+				<listitem>
+                                        <para>generate random sequence of <varname>count</varname> bytes.</para>
+                                </listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><option>update_record</option> <varname>file-id</varname> <varname>rec_nr</varname>
+                                        <varname>rec_offs</varname> <varname>data</varname></term>
+				<listitem>
+                                        <para>update record specified by <varname>rec_nr</varname> of the file 
+                                        specified by <varname>file-id</varname> with the literal data 
+                                        <varname>data</varname> starting from offset specified by 
+                                        <varname>rec_offs</varname>.</para>
+                                        <para><varname>data</varname> can be supplied as a sequence of the hex values or 
+                                        as a '"' encolsed string. </para>
+                                </listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><option>update_binary</option> <varname>file-id</varname> <varname>offs</varname> 
+                                        <varname>data</varname></term>
+				<listitem>
+                                        <para>binary update of the file specified by <varname>file-id</varname> with the literal data 
+                                        <varname>data</varname> starting from offset specified by <varname>offs</varname>.</para>
+                                        <para><varname>data</varname> can be supplied as a sequence of the hex values or 
+                                        as a '"' encolsed string. </para>
+                                </listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><option>debug</option> [<varname>level</varname>]</term>
+				<listitem>
+                                        <para>set OpenSC debug level to <varname>level</varname>.</para>
+                                        <para>If <varname>level</varname> is ommited the current debug level will be shown.</para>
+                                </listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><option>apdu</option> <varname>hex_data</varname></term>
+				<listitem>
+                                        <para>send a custom APDU command <varname>hex_data</varname>.</para>
+                                </listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><option>asn1</option> <varname>file-id</varname></term>
+				<listitem>
+                                        <para>parse and print the ASN1 encoded content of the file specified by 
+                                                <varname>file-id</varname>.</para>
+                                </listitem>
 			</varlistentry>
 
 			<varlistentry>
