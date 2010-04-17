@@ -233,8 +233,6 @@ set_cka_label(CK_ATTRIBUTE_PTR attr, char *label)
 	char *l = (char *)attr->pValue; 
 	int len = attr->ulValueLen; 
 
-	if (l[len] == '\0') 
-		return l; 
 	if (len >= SC_PKCS15_MAX_LABEL_SIZE) 
 		len = SC_PKCS15_MAX_LABEL_SIZE-1; 
 	memcpy(label, l, len); 
