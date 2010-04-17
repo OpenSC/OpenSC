@@ -2576,6 +2576,11 @@ static int test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 			printf(" -- can't be used for signature, skipping\n");
 			continue;
 		}
+		modLenBytes = (get_private_key_length(sess, privKeyObject) + 7) / 8;
+		if(!modLenBytes) {
+			printf(" -- can't be used for signature, skipping: can't obtain modulus\n");
+			continue;
+		}
 		printf("\n");
 		break;
 	}
@@ -2736,8 +2741,13 @@ static int test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 			printf(" -- can't be used to sign/verify, skipping\n");
 			continue;
 		}
-		else
+                else if (!modLenBytes)   {
+			printf(" -- can't be used to sign/verify, skipping: can't obtain modulus\n");
+			continue;
+		}
+                else   {
 			printf("\n");
+		}
 
 		errors += sign_verify_openssl(slot, sess, &ck_mech, privKeyObject,
 			datas[i], dataLens[i], verifyData, sizeof(verifyData),
@@ -2890,6 +2900,10 @@ static int test_verify(CK_SLOT_ID slot, CK_SESSION_HANDLE sess)
 		}
 
 		key_len = (get_private_key_length(sess, priv_key) + 7) / 8;
+		if(!key_len) {
+			printf(" -- can't get the modulus length, skipping\n");
+			continue;
+		}
 
 		errors += sign_verify(slot, sess, priv_key, key_len, pub_key, i != 0);
 	}
