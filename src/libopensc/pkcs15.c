@@ -424,6 +424,10 @@ void sc_pkcs15_card_free(struct sc_pkcs15_card *p15card)
 	if (p15card == NULL)
 		return;
 	assert(p15card->magic == SC_PKCS15_CARD_MAGIC);
+
+	if (p15card->ops.clear)
+		p15card->ops.clear(p15card);
+
 	while (p15card->obj_list)   {
 		struct sc_pkcs15_object *obj = p15card->obj_list;
 
@@ -466,6 +470,10 @@ void sc_pkcs15_card_clear(sc_pkcs15_card_t *p15card)
 {
 	if (p15card == NULL)
 		return;
+
+	if (p15card->ops.clear)
+		p15card->ops.clear(p15card);
+
 	p15card->version = 0;
 	p15card->flags   = 0;
 	while (p15card->obj_list)   {

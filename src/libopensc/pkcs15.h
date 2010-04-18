@@ -401,6 +401,7 @@ typedef struct sc_pkcs15_tokeninfo {
 
 struct sc_pkcs15_operations   {
 	int (*parse_df)(struct sc_pkcs15_card *, struct sc_pkcs15_df *);
+	void (*clear)(struct sc_pkcs15_card *);
 };
 
 typedef struct sc_pkcs15_card {

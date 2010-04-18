@@ -99,6 +99,7 @@ static int sc_oberthur_parse_publicinfo (struct sc_pkcs15_card *, unsigned char 
 static int sc_oberthur_parse_privateinfo (struct sc_pkcs15_card *, unsigned char *, size_t, int);
 
 static int sc_awp_parse_df(struct sc_pkcs15_card *, struct sc_pkcs15_df *);
+static void sc_awp_clear(struct sc_pkcs15_card *);
 
 struct crypto_container {
 	unsigned  id_pub;
@@ -939,7 +940,8 @@ sc_pkcs15emu_oberthur_init(struct sc_pkcs15_card * p15card)
 	sc_bin_to_hex(card->serialnr.value, card->serialnr.len, serial, sizeof(serial), 0);
 	p15card->serial_number = strdup(serial);
 
-	p15card->ops.parse_df = 	sc_awp_parse_df;
+	p15card->ops.parse_df = sc_awp_parse_df;
+	p15card->ops.clear = sc_awp_clear;
 	
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Oberthur init: serial %s", p15card->serial_number);
 
@@ -1105,4 +1107,11 @@ sc_awp_parse_df(struct sc_pkcs15_card *p15card, struct sc_pkcs15_df *df)
 	df->enumerated = 1;
 
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, rv);
+}
+
+
+static void
+sc_awp_clear(struct sc_pkcs15_card *p15card)
+{
+	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
 }
