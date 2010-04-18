@@ -30,7 +30,6 @@
 
 #include "pkcs11/pkcs11.h"
 #include "pkcs11/pkcs11-opensc.h"
-#include "common/compat_getpass.h"
 #include "util.h"
 
 extern void *C_LoadModule(const char *name, CK_FUNCTION_LIST_PTR_PTR);
@@ -848,6 +847,8 @@ static void list_objects(CK_SESSION_HANDLE sess)
 static int login(CK_SESSION_HANDLE session, int login_type)
 {
 	char		*pin = NULL;
+	size_t		len;
+	int		pin_allocated = 0, r;
 	CK_TOKEN_INFO	info;
 	CK_RV		rv;
 
@@ -867,12 +868,16 @@ static int login(CK_SESSION_HANDLE session, int login_type)
 
 	if (!pin && (info.flags & CKF_LOGIN_REQUIRED) 
 			&& !(info.flags & CKF_PROTECTED_AUTHENTICATION_PATH))   {
-		if (login_type == CKU_SO)
-			pin = getpass("Please enter SO PIN: ");
+		if (login_type == CKU_SO) 
+			printf("Please enter SO PIN: ");
 		else if (login_type == CKU_USER)
-			pin = getpass("Please enter User PIN: ");
+			printf("Please enter User PIN: ");
 		else if (login_type == CKU_CONTEXT_SPECIFIC)
-			pin = getpass("Please enter Specific Context Secret Code: ");
+			printf("Please enter Specific Context Secret Code: ");
+		r = util_getpass(&pin,&len,stdin);
+		if (r < 0)
+			util_fatal("No PIN entered, exiting!\n");
+		pin_allocated = 1;
 	}
 	
 	if (!(info.flags & CKF_PROTECTED_AUTHENTICATION_PATH)
@@ -884,6 +889,8 @@ static int login(CK_SESSION_HANDLE session, int login_type)
 			(CK_UTF8CHAR *) pin, pin == NULL ? 0 : strlen(pin));
 	if (rv != CKR_OK)
 		p11_fatal("C_Login", rv);
+	if (pin_allocated)
+		free(pin);
 
 	return 0;
 }
@@ -892,6 +899,8 @@ static void init_token(CK_SLOT_ID slot)
 {
 	unsigned char token_label[33];
 	char new_buf[21], *new_pin = NULL;
+	size_t len;
+	int pin_allocated = 0, r;
 	CK_TOKEN_INFO	info;
 	CK_RV rv;
 
@@ -903,15 +912,22 @@ static void init_token(CK_SLOT_ID slot)
 	get_token_info(slot, &info);
 	if (!(info.flags & CKF_PROTECTED_AUTHENTICATION_PATH)) {
 		if (opt_so_pin == NULL) {
-			new_pin = getpass("Please enter the new SO PIN: ");
+			printf("Please enter the new SO PIN: ");
+			r = util_getpass(&new_pin,&len,stdin);
+			if (r < 0)
+				util_fatal("No PIN entered, exiting\n");
 			if (!new_pin || !*new_pin || strlen(new_pin) > 20)
 				util_fatal("Invalid SO PIN\n");
 			strcpy(new_buf, new_pin);
-			new_pin = getpass("Please enter the new SO PIN "
-					"(again): ");
+			free(new_pin); new_pin = NULL;
+			printf("Please enter the new SO PIN (again): ");
+			r = util_getpass(&new_pin,&len,stdin);
+			if (r < 0)
+				util_fatal("No PIN entered, exiting\n");
 			if (!new_pin || !*new_pin ||
 					strcmp(new_buf, new_pin) != 0)
 				util_fatal("Different new SO PINs, exiting\n");
+			pin_allocated = 1;
 		} else {
 			new_pin = opt_so_pin;
 		}
@@ -924,33 +940,56 @@ static void init_token(CK_SLOT_ID slot)
 	if (rv != CKR_OK)
 		p11_fatal("C_InitToken", rv);
 	printf("Token successfully initialized\n");
+
+	if (pin_allocated)
+		free(new_pin);
 }
 
 static void init_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess)
 {
-	char new_buf[21], *new_pin = NULL;
+	char *pin;
+	char *new_pin1 = NULL;
+	char *new_pin2 = NULL;
+	size_t len1, len2;
+	int r;
 	CK_TOKEN_INFO	info;
 	CK_RV rv;
 
 	get_token_info(slot, &info);
 
-	new_pin = opt_pin ? opt_pin : opt_new_pin;
-
 	if (!(info.flags & CKF_PROTECTED_AUTHENTICATION_PATH)) {
-		if (new_pin == NULL) {
-			new_pin = getpass("Please enter the new PIN: ");
-			if (!new_pin || !*new_pin || strlen(new_pin) > 20)
+		if (! opt_pin && !opt_new_pin) {
+			printf("Please enter the new PIN: ");
+			r = util_getpass(&new_pin1,&len1,stdin);
+			if (r < 0) 
+				util_fatal("No PIN entered, aborting.\n");
+			if (!new_pin1 || !*new_pin1 || strlen(new_pin1) > 20)
 				util_fatal("Invalid User PIN\n");
-			strcpy(new_buf, new_pin);
-			new_pin = getpass("Please enter the new PIN again: ");
-			if (!new_pin || !*new_pin ||
-					strcmp(new_buf, new_pin) != 0)
+			printf("Please enter the new PIN again: ");
+			r = util_getpass(&new_pin2,&len2,stdin);
+			if (r < 0) 
+				util_fatal("No PIN entered, aborting.\n");
+			if (!new_pin2 || !*new_pin2 ||
+					strcmp(new_pin1, new_pin2) != 0)
 				util_fatal("Different new User PINs, exiting\n");
 		}
 	}
+	
+	pin = opt_pin; 
+	if (!pin) pin = opt_new_pin;
+	if (!pin) pin = new_pin1;
 
-	rv = p11->C_InitPIN(sess,
-		(CK_UTF8CHAR *) new_pin, new_pin == NULL ? 0 : strlen(new_pin));
+	rv = p11->C_InitPIN(sess, (CK_UTF8CHAR *) pin, pin == NULL ? 0 : strlen(pin));
+
+	if (new_pin1) {
+		memset(new_pin1, 0, len1);
+		free(new_pin1);
+	}
+	if (new_pin2) {
+		memset(new_pin2,0, len2);
+		free(new_pin2);
+	}
+
 	if (rv != CKR_OK)
 		p11_fatal("C_InitPIN", rv);
 	printf("User PIN successfully initialized\n");
@@ -962,24 +1001,35 @@ static int change_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess)
 	char new_buf[21], *new_pin = NULL;
 	CK_TOKEN_INFO	info;
 	CK_RV rv;
+	int r;
+	size_t		len;
 
 	get_token_info(slot, &info);
 
 	if (!(info.flags & CKF_PROTECTED_AUTHENTICATION_PATH)) {
-		old_pin = getpass("Please enter the current PIN: ");
+		printf("Please enter the current PIN: ");
+		r = util_getpass(&old_pin, &len, stdin);
+		if (r < 0)
+			return 1;
 		if (!old_pin || !*old_pin || strlen(old_pin) > 20)
 			return 1;
 		strcpy(old_buf, old_pin);
 		old_pin = old_buf;
-		new_pin = getpass("Please enter the new PIN: ");
+
+		printf("Please enter the new PIN: ");
+		r = util_getpass(&new_pin, &len, stdin);
+		if (r < 0)
+			return 1;
 		if (!new_pin || !*new_pin || strlen(new_pin) > 20)
 			return 1;
 		strcpy(new_buf, new_pin);
-		new_pin = getpass("Please enter the new PIN again: ");
-		if (!new_pin || !*new_pin || strcmp(new_buf, new_pin) != 0) {
-			printf("  different new PINs, exiting\n");
-			return -1;
-		}
+
+		printf("Please enter the new PIN again: ");
+		r = util_getpass(&new_pin, &len, stdin);
+		if (r < 0)
+			return 1;
+		if (!new_pin || !*new_pin || strcmp(new_buf, new_pin) != 0)
+			return 1;
 	}
 
 	rv = p11->C_SetPIN(sess,
@@ -999,6 +1049,8 @@ static int unlock_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess, int login_type)
 	char new_buf[21], *new_pin = NULL;
 	CK_TOKEN_INFO info;
 	CK_RV rv;
+	int r;
+	size_t len;
 
 	get_token_info(slot, &info);
 
@@ -1011,10 +1063,13 @@ static int unlock_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess, int login_type)
 
 	if (!(info.flags & CKF_PROTECTED_AUTHENTICATION_PATH) && !unlock_code)   {
 		if (login_type == CKU_CONTEXT_SPECIFIC)
-			unlock_code = getpass("Please enter the 'Change PIN' context secret code: ");
+			printf("Please enter the 'Change PIN' context secret code: ");
 		else if (login_type == -1)
-			unlock_code = getpass("Please enter unblock code for User PIN: ");
+			printf("Please enter unblock code for User PIN: ");
 
+		r = util_getpass(&unlock_code,&len,stdin);
+		if (r < 0)
+			return 1;
 		if (!unlock_code || !*unlock_code || strlen(unlock_code) > 20)
 			return 1;
 
@@ -1024,9 +1079,16 @@ static int unlock_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess, int login_type)
 
 	new_pin = opt_new_pin;
 	if (!(info.flags & CKF_PROTECTED_AUTHENTICATION_PATH) && !new_pin)   {
-		new_pin = getpass("Please enter the new PIN: ");
+		printf("Please enter the new PIN: ");
+		r = util_getpass(&new_pin, &len, stdin);
+		if (r < 0)
+			return 1;
 		strcpy(new_buf, new_pin);
-		new_pin = getpass("Please enter the new PIN again: ");
+
+		printf("Please enter the new PIN again: ");
+		r = util_getpass(&new_pin, &len, stdin);
+		if (r < 0)
+			return 1;
 		if (!new_pin || !*new_pin || strcmp(new_buf, new_pin) != 0) {
 			printf("  different new PINs, exiting\n");
 			return -1;
@@ -2572,10 +2634,12 @@ static int test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 			printf("(%s) ", label);
 			free(label);
 		}
+
 		if (!getSIGN(sess, privKeyObject)) {
 			printf(" -- can't be used for signature, skipping\n");
 			continue;
 		}
+		               
 		modLenBytes = (get_private_key_length(sess, privKeyObject) + 7) / 8;
 		if(!modLenBytes) {
 			printf(" -- can't be used for signature, skipping: can't obtain modulus\n");
@@ -2740,11 +2804,11 @@ static int test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 			printf(" -- can't be used to sign/verify, skipping\n");
 			continue;
 		}
-                else if (!modLenBytes)   {
-			printf(" -- can't be used to sign/verify, skipping: can't obtain modulus\n");
+		else if (!modLenBytes)   {
+			printf(" -- can't be used to sign/verify, skipping: can't obtain modulus\n"); 
 			continue;
 		}
-                else   {
+		else   {
 			printf("\n");
 		}
 
