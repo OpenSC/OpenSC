@@ -1,7 +1,7 @@
 /*
  * PKCS15 emulation layer for TCOS based preformatted cards
  *
- * Copyright (C) 2007, Peter Koch <Koch@smartcard-auth.de>
+ * Copyright (C) 2010, Peter Koch <pk@opensc-project.org>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -324,7 +324,7 @@ static int detect_netkey(
 		SC_PKCS15_PIN_FLAG_INITIALIZED
 	);
 
-	/* SigG-Applikation ? */
+	/* SigG-Applikation */
 	p.len=7; p.type=SC_PATH_TYPE_DF_NAME;
 	memcpy(p.value, "\xD2\x76\x00\x00\x66\x01", p.len=6);
 	if (sc_select_file(card,&p,&f)==SC_SUCCESS){
@@ -341,12 +341,12 @@ static int detect_netkey(
 			insert_key(p15card, dirpath(dir,"5331"), 0x49, 0x80, 1024, 5, "SigG Schluessel");
 		}
 
-		insert_pin(p15card, dirpath(dir,"5081"), 6, 0, 0x81, 6, "SigG PIN",
+		insert_pin(p15card, dirpath(dir,"5081"), 5, 0, 0x81, 6, "SigG PIN",
 			SC_PKCS15_PIN_FLAG_CASE_SENSITIVE | SC_PKCS15_PIN_FLAG_LOCAL |
 			SC_PKCS15_PIN_FLAG_INITIALIZED
 		);
 		if(card->type==SC_CARD_TYPE_TCOS_V3){
-			insert_pin(p15card, dirpath(dir,"0000"), 7, 0, 0x83, 8, "SigG PIN2",
+			insert_pin(p15card, dirpath(dir,"0000"), 6, 0, 0x83, 8, "SigG PIN2",
 				SC_PKCS15_PIN_FLAG_CASE_SENSITIVE | SC_PKCS15_PIN_FLAG_LOCAL |
 				SC_PKCS15_PIN_FLAG_INITIALIZED
 			);
