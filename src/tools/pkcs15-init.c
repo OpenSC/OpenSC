@@ -59,7 +59,6 @@
 #endif /* OPENSSL_VERSION_NUMBER >= 0x10000000L */
 
 #include "common/compat_strlcpy.h"
-#include "common/compat_getpass.h"
 #include "libopensc/cardctl.h"
 #include "libopensc/pkcs15.h"
 #include "libopensc/log.h"
@@ -1214,7 +1213,6 @@ static int do_delete_crypto_objects(sc_pkcs15_card_t *myp15card,
 				unsigned int which)
 {
 	sc_pkcs15_object_t *objs[10]; /* 1 priv + 1 pub + chain of at most 8 certs, should be enough */
-	sc_context_t *myctx = myp15card->card->ctx;
 	int i, r = 0, count = 0, del_cert = 0;
 
 	if (which & SC_PKCS15INIT_TYPE_PRKEY) {
@@ -1394,7 +1392,11 @@ do_generate_key(struct sc_profile *profile, const char *spec)
 
 	if ((r = init_keyargs(&keygen_args.prkey_args)) < 0)
 		return r;
-        keygen_args.prkey_args.access_flags |= SC_PKCS15_PRKEY_ACCESS_SENSITIVE|SC_PKCS15_PRKEY_ACCESS_ALWAYSSENSITIVE|SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE|SC_PKCS15_PRKEY_ACCESS_LOCAL;
+        keygen_args.prkey_args.access_flags |= 
+		  SC_PKCS15_PRKEY_ACCESS_SENSITIVE 
+		| SC_PKCS15_PRKEY_ACCESS_ALWAYSSENSITIVE 
+		| SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE
+		| SC_PKCS15_PRKEY_ACCESS_LOCAL;
 
 	/* Parse the key spec given on the command line */
 	if (!strncasecmp(spec, "rsa", 3)) {
@@ -1729,15 +1731,16 @@ get_pin_callback(struct sc_profile *profile,
 	return 0;
 }
 
-static int get_key_callback(struct sc_profile *profile,
+
+static int 
+get_key_callback(struct sc_profile *profile,
 			int method, int reference,
 			const u8 *def_key, size_t def_key_size,
 			u8 *key_buf, size_t *buf_size)
 {
-	const char	*kind, *prompt, *key;
+	const char	*kind, *prompt, *key = NULL;
 
 	if (def_key_size && opt_use_defkeys) {
-use_default_key:
 		if (*buf_size < def_key_size)
 			return SC_ERROR_BUFFER_TOO_SMALL;
 		memcpy(key_buf, def_key, def_key_size);
@@ -1794,12 +1797,19 @@ use_default_key:
 			prompt = buffer;
 		}
 
-#ifdef GET_KEY_ECHO_OFF
-		/* Read key with echo off - will users really manage? */
-		key = getpass(prompt);
-#else
 		printf("%s: ", prompt);
 		fflush(stdout);
+#ifdef GET_KEY_ECHO_OFF
+		do {
+			size_t len = 0;
+			int r;
+
+			/* Read key with echo off - will users really manage? */
+			r = util_getpass(&key, &len, stdin);
+			if (r < 0 || !key)
+				return SC_ERROR_INTERNAL;
+		} while(0);
+#else
 		key = fgets(buffer, sizeof(buffer), stdin);
 		if (key)
 			buffer[strcspn(buffer, "\r\n")] = '\0';
@@ -1807,8 +1817,13 @@ use_default_key:
 		if (key == NULL)
 			return SC_ERROR_INTERNAL;
 
-		if (key[0] == '\0' && def_key_size)
-			goto use_default_key;
+		if (key[0] == '\0' && def_key_size)   {
+			if (*buf_size < def_key_size)
+				return SC_ERROR_BUFFER_TOO_SMALL;
+			memcpy(key_buf, def_key, def_key_size);
+			*buf_size = def_key_size;
+			return 0;
+		}
 
 		if (sc_hex_to_bin(key, key_buf, buf_size) >= 0)
 			return 0;
@@ -1860,15 +1875,18 @@ static int do_generate_key_soft(int algorithm, unsigned int bits,
  */
 static int pass_cb(char *buf, int len, int flags, void *d)
 {
-	int  plen;
-	char *pass;
-	if (d)
-		pass = (char *)d;
-	else
-		pass = getpass("Please enter passphrase "
-				"to unlock secret key: ");
-	if (!pass)
-		return 0;
+	size_t pass_len = 0;
+	int  plen, r;
+	char *pass = (char *)d;
+
+	if (!pass)   {
+		printf("Please enter passphrase to unlock secret key: ");
+		r = util_getpass(&pass, &pass_len, stdin);
+		printf("\n");
+		if (r < 0 || !pass)
+			return 0;
+	}
+
 	plen = strlen(pass);
 	if (plen <= 0)
 		return 0;
@@ -1951,6 +1969,7 @@ static int
 do_read_private_key(const char *filename, const char *format,
 			EVP_PKEY **pk, X509 **certs, unsigned int max_certs)
 {
+	size_t len = 0;
 	char	*passphrase = NULL;
 	int	r;
 
@@ -1971,8 +1990,11 @@ do_read_private_key(const char *filename, const char *format,
 			 * the PEM interface
 			 * see OpenSSL: crypto/pkcs12/p12_kiss.c
 			 */
-			passphrase = getpass("Please enter passphrase "
-					     "to unlock secret key: ");
+			printf("Please enter passphrase to unlock secret key: ");
+			r = util_getpass(&passphrase, &len, stdin);
+			printf("\n");
+			if (r < 0 || !passphrase)
+				return SC_ERROR_INTERNAL;
  			r = do_read_pkcs12_private_key(filename,
  					passphrase, pk, certs, max_certs);
 		}
@@ -2756,28 +2778,28 @@ int get_pin(sc_ui_hints_t *hints, char **out)
 
 	*out = NULL;
 	while (1) {
-		char	buffer[64], *pin;
-		size_t	len;
+		char	*pin = NULL;
+		size_t	len = 0;
+		int r;
 
-		snprintf(buffer, sizeof(buffer),
-				"Please enter %s: ", label);
-		
-		if ((pin = getpass(buffer)) == NULL)
+		printf("Please enter %s: ", label);
+		r = util_getpass(&pin, &len, stdin);
+		printf("\n");
+		if (r < 0 || !pin)
 			return SC_ERROR_INTERNAL;
 
-		len = strlen(pin);
-		if (len == 0 && (flags & SC_UI_PIN_OPTIONAL))
+		if (!strlen(pin) && (flags & SC_UI_PIN_OPTIONAL))
 			return 0;
 
 		if (pin_info && (flags & SC_UI_PIN_CHECK_LENGTH)) {
-			if (len < pin_info->min_length) {
+			if (strlen(pin) < pin_info->min_length) {
 				fprintf(stderr,
 					"PIN too short (min %lu characters)\n",
 					(unsigned long) pin_info->min_length);
 				continue;
 			}
 			if (pin_info->max_length
-			 && len > pin_info->max_length) {
+			 && strlen(pin) > pin_info->max_length) {
 				fprintf(stderr,
 					"PIN too long (max %lu characters)\n",
 					(unsigned long) pin_info->max_length);
@@ -2791,7 +2813,11 @@ int get_pin(sc_ui_hints_t *hints, char **out)
 		if (!(flags & SC_UI_PIN_RETYPE))
 			break;
 
-		pin = getpass("Please type again to verify: ");
+		printf("Please type again to verify: ");
+		r = util_getpass(&pin, &len, stdin);
+		printf("\n");
+		if (r < 0 || !pin)
+			return SC_ERROR_INTERNAL;
 		if (!strcmp(*out, pin)) {
 			sc_mem_clear(pin, len);
 			break;

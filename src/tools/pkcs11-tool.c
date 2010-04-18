@@ -847,7 +847,7 @@ static void list_objects(CK_SESSION_HANDLE sess)
 static int login(CK_SESSION_HANDLE session, int login_type)
 {
 	char		*pin = NULL;
-	size_t		len;
+	size_t		len = 0;
 	int		pin_allocated = 0, r;
 	CK_TOKEN_INFO	info;
 	CK_RV		rv;
@@ -874,7 +874,7 @@ static int login(CK_SESSION_HANDLE session, int login_type)
 			printf("Please enter User PIN: ");
 		else if (login_type == CKU_CONTEXT_SPECIFIC)
 			printf("Please enter Specific Context Secret Code: ");
-		r = util_getpass(&pin,&len,stdin);
+		r = util_getpass(&pin, &len, stdin);
 		if (r < 0)
 			util_fatal("No PIN entered, exiting!\n");
 		pin_allocated = 1;
@@ -899,7 +899,7 @@ static void init_token(CK_SLOT_ID slot)
 {
 	unsigned char token_label[33];
 	char new_buf[21], *new_pin = NULL;
-	size_t len;
+	size_t len = 0;
 	int pin_allocated = 0, r;
 	CK_TOKEN_INFO	info;
 	CK_RV rv;
@@ -913,7 +913,7 @@ static void init_token(CK_SLOT_ID slot)
 	if (!(info.flags & CKF_PROTECTED_AUTHENTICATION_PATH)) {
 		if (opt_so_pin == NULL) {
 			printf("Please enter the new SO PIN: ");
-			r = util_getpass(&new_pin,&len,stdin);
+			r = util_getpass(&new_pin, &len, stdin);
 			if (r < 0)
 				util_fatal("No PIN entered, exiting\n");
 			if (!new_pin || !*new_pin || strlen(new_pin) > 20)
@@ -921,7 +921,7 @@ static void init_token(CK_SLOT_ID slot)
 			strcpy(new_buf, new_pin);
 			free(new_pin); new_pin = NULL;
 			printf("Please enter the new SO PIN (again): ");
-			r = util_getpass(&new_pin,&len,stdin);
+			r = util_getpass(&new_pin, &len, stdin);
 			if (r < 0)
 				util_fatal("No PIN entered, exiting\n");
 			if (!new_pin || !*new_pin ||
@@ -948,9 +948,8 @@ static void init_token(CK_SLOT_ID slot)
 static void init_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess)
 {
 	char *pin;
-	char *new_pin1 = NULL;
-	char *new_pin2 = NULL;
-	size_t len1, len2;
+	char *new_pin1 = NULL, *new_pin2 = NULL;
+	size_t len1 = 0, len2 = 0;
 	int r;
 	CK_TOKEN_INFO	info;
 	CK_RV rv;
@@ -966,7 +965,7 @@ static void init_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess)
 			if (!new_pin1 || !*new_pin1 || strlen(new_pin1) > 20)
 				util_fatal("Invalid User PIN\n");
 			printf("Please enter the new PIN again: ");
-			r = util_getpass(&new_pin2,&len2,stdin);
+			r = util_getpass(&new_pin2, &len2, stdin);
 			if (r < 0) 
 				util_fatal("No PIN entered, aborting.\n");
 			if (!new_pin2 || !*new_pin2 ||
@@ -1002,7 +1001,7 @@ static int change_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess)
 	CK_TOKEN_INFO	info;
 	CK_RV rv;
 	int r;
-	size_t		len;
+	size_t		len = 0;
 
 	get_token_info(slot, &info);
 
@@ -1050,7 +1049,7 @@ static int unlock_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess, int login_type)
 	CK_TOKEN_INFO info;
 	CK_RV rv;
 	int r;
-	size_t len;
+	size_t len = 0;
 
 	get_token_info(slot, &info);
 
@@ -1067,7 +1066,7 @@ static int unlock_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess, int login_type)
 		else if (login_type == -1)
 			printf("Please enter unblock code for User PIN: ");
 
-		r = util_getpass(&unlock_code,&len,stdin);
+		r = util_getpass(&unlock_code, &len, stdin);
 		if (r < 0)
 			return 1;
 		if (!unlock_code || !*unlock_code || strlen(unlock_code) > 20)
@@ -2572,7 +2571,7 @@ static int test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	CK_SESSION_INFO sessionInfo;
 	CK_ULONG        i, j;
 	unsigned char   data[256];
-	CK_ULONG        modLenBytes;
+	CK_ULONG        modLenBytes = 0;
 	CK_ULONG        dataLen;
 	unsigned char   sig1[1024], sig2[1024];
 	CK_ULONG        sigLen1, sigLen2;
