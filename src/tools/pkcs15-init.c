@@ -1618,7 +1618,7 @@ get_pin_callback(struct sc_profile *profile,
 {
 	char	namebuf[64];
 	char	*secret = NULL;
-	const char *name;
+	const char *name = NULL;
 	size_t	len = 0;
 	int	allocated = 0;
 
@@ -1629,7 +1629,6 @@ get_pin_callback(struct sc_profile *profile,
 			"Unspecified PIN [reference %u]",
 			info->reference);
 	}
-	name = namebuf;
 
 	if (!ignore_cmdline_pins) {
 		if (info->auth_method == SC_AC_SYMBOLIC)   {
@@ -1677,6 +1676,13 @@ get_pin_callback(struct sc_profile *profile,
 		if (secret)
 			len = strlen(secret);
 	}
+
+	if (name && label)
+		snprintf(namebuf, sizeof(namebuf), "%s [%s]", name, label);
+	else if (name)
+		snprintf(namebuf, sizeof(namebuf), "%s", name);
+
+	name = namebuf;
 
 	/* See if we were given --secret @ID=.... */
 	if (!secret) {
@@ -2847,6 +2853,7 @@ int get_pin(sc_ui_hints_t *hints, char **out)
 static int verify_pin(struct sc_pkcs15_card *p15card, char *auth_id_str)
 {
 	struct sc_pkcs15_object	*pin_obj = NULL;
+	char pin_label[64];
 	char *pin;
 	int r;
 
@@ -2897,10 +2904,14 @@ static int verify_pin(struct sc_pkcs15_card *p15card, char *auth_id_str)
                 if (opt_no_prompt)
 			return SC_ERROR_OBJECT_NOT_FOUND;
 
+		if (pin_obj->label)
+			snprintf(pin_label, sizeof(pin_label), "User PIN [%s]", pin_obj->label);
+		else 
+			snprintf(pin_label, sizeof(pin_label), "User PIN");
                 memset(&hints, 0, sizeof(hints));
                 hints.dialog_name = "pkcs15init.get_pin";
                 hints.prompt    = "User PIN required";
-                hints.obj_label = "User PIN";
+                hints.obj_label = pin_label;
                 hints.usage     = SC_UI_USAGE_OTHER;
                 hints.card      = card;
                 hints.p15card   = p15card;
