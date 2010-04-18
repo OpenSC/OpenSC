@@ -89,10 +89,10 @@ filesystem {
 				}
 			
 				# Private data
-				EF OberthurAWP-private-data-info   {
+				EF OberthurAWP-privdata-info   {
 					ACL = WRITE=CHV1, UPDATE=CHV1, READ=CHV1;
 				}
-				EF  template-private-data {
+				EF  template-privdata {
 					file-id	 = 6000;
 					ACL = WRITE=CHV1, UPDATE=CHV1, READ=CHV1;
 				}

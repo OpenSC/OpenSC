@@ -487,7 +487,7 @@ sc_oberthur_parse_privateinfo (struct sc_pkcs15_card *p15card,
 	struct sc_context *ctx = p15card->card->ctx;
 	size_t ii;
 	int rv;
-	int no_more_private_keys = 0;
+	int no_more_private_keys = 0, no_more_private_data = 0;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -499,7 +499,7 @@ sc_oberthur_parse_privateinfo (struct sc_pkcs15_card *p15card,
 		
 		file_id = 0x100 * *(buff+ii + 1) + *(buff+ii + 2);
 		size = 0x100 * *(buff+ii + 3) + *(buff+ii + 4);
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "add private object (file-id:%04X,size:%X)", file_id, size);
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "add private object (file-id:%04X, size:%X)", file_id, size);
 
 		switch (*(buff+ii + 1))   {
 		case BASE_ID_PRV_RSA :
@@ -524,6 +524,24 @@ sc_oberthur_parse_privateinfo (struct sc_pkcs15_card *p15card,
 		case BASE_ID_PRV_DES :
 			break;
 		case BASE_ID_PRV_DATA :
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "*(buff+ii + 1):%X", *(buff+ii + 1));
+			if (no_more_private_data)
+				break;
+
+			/* There are private data objects, so set LOGIN_REQUIRED flag */
+			p15card->flags |= SC_PKCS15_CARD_FLAG_LOGIN_REQUIRED;
+
+			rv = sc_pkcs15emu_oberthur_add_data(p15card, file_id, size, 1);
+			if (rv == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED && postpone_allowed)   {
+				struct sc_path path;
+
+				sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "postpone adding of the private data");
+				sc_format_path("5011A6A6", &path);
+				rv = sc_pkcs15_add_df(p15card, SC_PKCS15_DODF, &path, NULL);
+				SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Add DODF error");
+				no_more_private_data = 1;
+			}
+			SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Cannot parse private data info");
 			break;
 		default:
 			SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Private object parse error");
@@ -830,8 +848,7 @@ sc_pkcs15emu_oberthur_add_data(struct sc_pkcs15_card *p15card,
 	struct sc_pkcs15_object dobj;
 	unsigned flags;
 	unsigned char *info_blob = NULL, *label = NULL, *app = NULL, *oid = NULL;
-	size_t info_len, label_len, app_len, oid_len;
-	size_t offs;
+	size_t info_len, label_len, app_len, oid_len, offs;
 	char ch_tmp[0x100];
 	int rv;
 
@@ -840,10 +857,7 @@ sc_pkcs15emu_oberthur_add_data(struct sc_pkcs15_card *p15card,
 	memset(&dinfo, 0, sizeof(dinfo));
 	memset(&dobj, 0, sizeof(dobj));
 
-	if (private)
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED, "Failed to add data: 'private' attribut not supported");
-	else
-		snprintf(ch_tmp, sizeof(ch_tmp), "%s%04X", AWP_OBJECTS_DF_PUB, file_id | 0x100);
+	snprintf(ch_tmp, sizeof(ch_tmp), "%s%04X", private ? AWP_OBJECTS_DF_PRV : AWP_OBJECTS_DF_PUB, file_id | 0x100);
 		
 	rv = sc_oberthur_read_file(p15card, ch_tmp, &info_blob, &info_len, 1);
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Failed to add data: read oberthur file error");
@@ -883,7 +897,8 @@ sc_pkcs15emu_oberthur_add_data(struct sc_pkcs15_card *p15card,
 		oid_len -= 2;
 	}
 	
-	snprintf(ch_tmp, sizeof(ch_tmp), "%s%04X", AWP_OBJECTS_DF_PUB, file_id);
+	snprintf(ch_tmp, sizeof(ch_tmp), "%s%04X", private ? AWP_OBJECTS_DF_PRV : AWP_OBJECTS_DF_PUB, file_id);
+
 	sc_format_path(ch_tmp, &dinfo.path);
 	
 	memcpy(dobj.label, label, label_len);
@@ -893,6 +908,14 @@ sc_pkcs15emu_oberthur_add_data(struct sc_pkcs15_card *p15card,
 
 	if (flags & OBERTHUR_ATTR_MODIFIABLE)
 		dobj.flags |= SC_PKCS15_CO_FLAG_MODIFIABLE;
+
+	if (private)   {
+		dobj.auth_id.len = sizeof(PinDomainID) > sizeof(dobj.auth_id.value)
+		                        ? sizeof(dobj.auth_id.value) : sizeof(PinDomainID);
+		memcpy(dobj.auth_id.value, PinDomainID, dobj.auth_id.len);
+
+		dobj.flags |= SC_PKCS15_CO_FLAG_PRIVATE;
+	}
 
 	rv = sc_pkcs15emu_add_data_object(p15card, &dobj, &dinfo);
 
@@ -1061,7 +1084,7 @@ sc_awp_parse_df(struct sc_pkcs15_card *p15card, struct sc_pkcs15_df *df)
 	int rv;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
-	if (df->type != SC_PKCS15_PRKDF)
+	if (df->type != SC_PKCS15_PRKDF && df->type != SC_PKCS15_DODF)
 		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED);
 
 	if (df->enumerated)

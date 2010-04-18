@@ -82,6 +82,7 @@ awp_get_commonName(X509 *x)
 	return ret;
 }
 
+
 static int
 awp_new_file(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 		unsigned int type, unsigned int num,
@@ -116,6 +117,11 @@ awp_new_file(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 		desc = "Oberthur AWP data object info";
 		itag = "data-info";
 		otag = "template-data";
+		break;
+	case COSM_TYPE_PRIVDATA_OBJECT:
+		desc = "Oberthur AWP private data object info";
+		itag = "privdata-info";
+		otag = "template-privdata";
 		break;
 	case SC_PKCS15_TYPE_AUTH_PIN:
 	case COSM_TOKENINFO : 
@@ -741,25 +747,25 @@ awp_update_object_list(struct sc_pkcs15_card *p15card, struct sc_profile *profil
 	switch (type)   {
 	case SC_PKCS15_TYPE_CERT_X509:
 		snprintf(obj_name, NAME_MAX_LEN, "template-certificate");
-		snprintf(lst_name, NAME_MAX_LEN,"%s-public-list", 
-				COSM_TITLE);
+		snprintf(lst_name, NAME_MAX_LEN,"%s-public-list", COSM_TITLE);
 		break;
 	case SC_PKCS15_TYPE_PUBKEY_RSA:
 	case COSM_TYPE_PUBKEY_RSA:
 		snprintf(obj_name, NAME_MAX_LEN, "template-public-key");
-		snprintf(lst_name, NAME_MAX_LEN,"%s-public-list", 
-				COSM_TITLE);
+		snprintf(lst_name, NAME_MAX_LEN,"%s-public-list", COSM_TITLE);
 		break;
 	case SC_PKCS15_TYPE_DATA_OBJECT:
 		snprintf(obj_name, NAME_MAX_LEN, "template-data");
-		snprintf(lst_name, NAME_MAX_LEN,"%s-public-list", 
-				COSM_TITLE);
+		snprintf(lst_name, NAME_MAX_LEN,"%s-public-list", COSM_TITLE);
+		break;
+	case COSM_TYPE_PRIVDATA_OBJECT:
+		snprintf(obj_name, NAME_MAX_LEN, "template-privdata");
+		snprintf(lst_name, NAME_MAX_LEN,"%s-private-list", COSM_TITLE);
 		break;
 	case SC_PKCS15_TYPE_PRKEY_RSA:
 	case COSM_TYPE_PRKEY_RSA:
 		snprintf(obj_name, NAME_MAX_LEN,"template-private-key");
-		snprintf(lst_name, NAME_MAX_LEN,"%s-private-list", 
-				COSM_TITLE);
+		snprintf(lst_name, NAME_MAX_LEN,"%s-private-list", COSM_TITLE);
 		break;
 	default:
         sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Not supported file type %X", type);
@@ -1633,7 +1639,7 @@ awp_update_df_create_data(struct sc_pkcs15_card *p15card, struct sc_profile *pro
 	struct awp_data_info idata;
 	struct sc_pkcs15_der der;
 	struct sc_path path;
-	unsigned obj_id;
+	unsigned obj_id, obj_type = obj->auth_id.len ? COSM_TYPE_PRIVDATA_OBJECT : SC_PKCS15_TYPE_DATA_OBJECT;
 	int rv;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
@@ -1642,7 +1648,7 @@ awp_update_df_create_data(struct sc_pkcs15_card *p15card, struct sc_profile *pro
 	path = ((struct sc_pkcs15_data_info *)obj->data)->path;
 	obj_id = (path.value[path.len-1] & 0xFF) + (path.value[path.len-2] & 0xFF) * 0x100;
 
-	rv = awp_new_file(p15card, profile, obj->type, obj_id & 0xFF, &info_file, &obj_file);
+	rv = awp_new_file(p15card, profile, obj_type, obj_id & 0xFF, &info_file, &obj_file);
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "COSM new file error");
 		
 	memset(&idata, 0, sizeof(idata));
@@ -1653,7 +1659,7 @@ awp_update_df_create_data(struct sc_pkcs15_card *p15card, struct sc_profile *pro
 	rv = awp_set_data_info(p15card, profile, info_file, &idata);
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "'Create Data' update DF failed: cannot set info");
 		
-	rv = awp_update_object_list(p15card, profile, obj->type, obj_id & 0xFF);
+	rv = awp_update_object_list(p15card, profile, obj_type, obj_id & 0xFF);
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "'Create Data' update DF failed: cannot update list");
 		
 	awp_free_data_info(&idata);
