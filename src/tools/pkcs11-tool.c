@@ -2591,7 +2591,6 @@ static int test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 
 	data[0] = 0;
 	data[1] = 1;
-	modLenBytes = (get_private_key_length(sess, privKeyObject) + 7) / 8;
 
 	/* 1st test */
 
