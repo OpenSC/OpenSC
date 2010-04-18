@@ -3,8 +3,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#ifndef _WIN32
+#include <termios.h>
+#endif
 #include <ctype.h>
-
 #include "util.h"
 
 int util_connect_card(sc_context_t *ctx, sc_card_t **cardp,
@@ -279,5 +281,68 @@ util_warn(const char *fmt, ...)
 	vfprintf(stderr, fmt, ap);
 	fprintf(stderr, "\n");
 	va_end(ap);
+}
+
+int util_getpass (char **lineptr, size_t *len, FILE *stream)
+{
+#ifdef _WIN32
+#define MAX_PASS_SIZE	128
+	char *buf;
+	int i;
+
+	buf = calloc(1, MAX_PASS_SIZE);
+	if (!buf)
+		return -1;
+
+	for (i = 0; i < MAX_PASS_SIZE - 1; i++) {
+		buf[i] = _getch();
+		if (buf[i] == 0 || buf[i] == 3)
+			return -1;
+		if (buf[i] == '\n' || buf[i] == '\r')
+			break;
+	}
+	buf[i] = 0;
+
+	if (*lineptr) {
+		if (*len < i+1) {
+			free(*lineptr);
+			*lineptr=buf;
+			*len = MAX_PASS_SIZE;
+		} else {
+			memcpy(*lineptr,buf,i+1);
+			memset(buf, 0, MAX_PASS_SIZE);
+			free(buf);
+		}
+	} else {
+		*lineptr = buf;
+		if (len)
+			*len = MAX_PASS_SIZE;
+	}
+	return i;
+#else
+	struct termios old, new;
+	int nread;
+
+	/* Turn echoing off and fail if we can't. */
+	if (tcgetattr (fileno (stream), &old) != 0)
+		return -1;
+	new = old;
+	new.c_lflag &= ~ECHO;
+	if (tcsetattr (fileno (stream), TCSAFLUSH, &new) != 0)
+		return -1;
+
+	/* Read the password. */
+	nread = getline (lineptr, len, stream);
+	if (nread < 0)
+		return -1;
+
+	/* Remove trailing CR */
+	if (*(*lineptr + nread - 1) == '\n' || *(*lineptr + nread - 1) == '\r')
+		*(*lineptr + --nread) = '\0';
+
+	/* Restore terminal. */
+	(void) tcsetattr (fileno (stream), TCSAFLUSH, &old);
+	return nread;
+#endif
 }
 

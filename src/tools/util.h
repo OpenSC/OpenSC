@@ -35,6 +35,8 @@ void util_fatal(const char *fmt, ...);
 /* All singing all dancing card connect routine */
 int util_connect_card(struct sc_context *, struct sc_card **, const char *reader_id, int wait, int verbose);
 
+int util_getpass (char **lineptr, size_t *n, FILE *stream);
+
 #ifdef __cplusplus
 }
 #endif
