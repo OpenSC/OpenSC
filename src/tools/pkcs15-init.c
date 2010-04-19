@@ -133,6 +133,7 @@ enum {
 	OPT_PUK_ID,
 	OPT_PUK_LABEL,
 	OPT_VERIFY_PIN,
+	OPT_USE_DEFAULT_VERBOSE,
 
 	OPT_PIN1     = 0x10000,	/* don't touch these values */
 	OPT_PUK1     = 0x10001,
@@ -193,6 +194,7 @@ const struct option	options[] = {
 	{ "wait",		no_argument, NULL,		'w' },
 	{ "help",		no_argument, NULL,		'h' },
 	{ "verbose",		no_argument, NULL,		'v' },
+	{ "use-default-debug-settings",no_argument, NULL, 	OPT_USE_DEFAULT_VERBOSE},
 
 	/* Hidden options for testing */
 	{ "assert-pristine",	no_argument, NULL,		OPT_ASSERT_PRISTINE },
@@ -248,6 +250,7 @@ static const char *		option_help[] = {
 	"Wait for card insertion",
 	"Display this message",
 	"Verbose operation. Use several times to enable debug output.",
+	"Use default debug settings, defined in OpenSC config file",
 
 	NULL,
 	NULL,
@@ -318,7 +321,8 @@ static int			opt_extractable = 0,
 				opt_no_sopin = 0,
 				opt_use_defkeys = 0,
 				opt_wait = 0,
-				opt_verify_pin = 0;
+				opt_verify_pin = 0,
+				opt_use_default_verbose = 0;
 static const char *		opt_profile = "pkcs15";
 static char *			opt_card_profile = NULL;
 static char *			opt_infile = NULL;
@@ -561,10 +565,11 @@ open_reader_and_card(char *reader)
 		util_error("Failed to establish context: %s\n", sc_strerror(r));
 		return 0;
 	}
-	ctx->debug = verbose;
 
-	if (verbose > 1) {
-		ctx->debug_file = stderr;
+	if (!opt_use_default_verbose)   {
+		ctx->debug = verbose;
+		if (verbose > 1)
+			ctx->debug_file = stderr;
 	}
 
 	if (util_connect_card(ctx, &card, reader, opt_wait, verbose))
@@ -2605,6 +2610,9 @@ handle_option(const struct option *opt)
 		break;
 	case OPT_VERIFY_PIN:
 		opt_verify_pin = 1;
+		break;
+	case OPT_USE_DEFAULT_VERBOSE:
+		opt_use_default_verbose = 1;
 		break;
 	default:
 		util_print_usage_and_die(app_name, options, option_help);
