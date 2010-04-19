@@ -138,8 +138,9 @@
 			</varlistentry>
 
 			<varlistentry>
-				<term><option>change CHV</option><varname>id [[old-pin] new-pin]</varname></term>
-				<listitem><para>change a PIN</para>
+				<term><option>change CHV</option><varname>id</varname> 
+                                        [[<varname>old-pin</varname>] <varname>new-pin</varname>]</term>
+				<listitem><para>change a PIN, where <varname>id</varname> is the PIN reference</para>
 				<para>
                                         Examples:
                                 </para>
@@ -158,7 +159,7 @@
 			<varlistentry>
 				<term><option>put</option> <varname>file-id</varname> <varname>input</varname></term>
 				<listitem><para>copy a local file to the card. The local file is specified
-				by <varname>input</varname> while the card file is specified by <varname>file-id</varname>
+				by <varname>input</varname> while the card file is specified by <varname>file-id</varname>.
 				</para></listitem>
 			</varlistentry>
 
@@ -180,7 +181,8 @@
 				<listitem>
                                         <para>update internal card's 'tagged' data. </para>
                                         <para><varname>hex-tag</varname> is the tag of the card's data. 
-                                        <varname>input</varname> is the filename of the source file or the literal data.
+                                        <varname>input</varname> is the filename of the source file or the literal data presented as
+                                        a sequence of hexadecimal values or '"' enclosed string.
 				        </para>
                                 </listitem>
 			</varlistentry>
@@ -266,7 +268,7 @@
 
 			<varlistentry>
 				<term><option>quit</option></term>
-				<listitem><para>exit the program</para></listitem>
+				<listitem><para>exit the program.</para></listitem>
 			</varlistentry>
 
 		</variablelist>
