@@ -46,7 +46,7 @@ static int	cflex_create_empty_pin_file(sc_profile_t *, sc_pkcs15_card_t *,
 static int	cflex_get_keyfiles(sc_profile_t *, sc_card_t *,
 			const sc_path_t *, sc_file_t **, sc_file_t **);
 
-unsigned char	dummy_pin_value[4] = {0x30, 0x30, 0x30, 0x30};
+unsigned char	dummy_pin_value[6] = {0x30, 0x30, 0x30, 0x30, 0x30, 0x30};
 
 static int
 cflex_delete_file(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *df)
@@ -82,9 +82,11 @@ cflex_delete_file(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *d
  */
 static int cflex_erase_card(struct sc_profile *profile, sc_pkcs15_card_t *p15card)
 {
+	struct sc_context *ctx = p15card->card->ctx;
 	sc_file_t  *df = profile->df_info->file, *dir, *userpinfile = NULL;
 	int             r;
 
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 	/* Delete EF(DIR). This may not be very nice
          * against other applications that use this file, but
          * extremely useful for testing :)
@@ -118,7 +120,8 @@ out:	/* Forget all cached keys, the pin files on card are all gone. */
         sc_free_apps(p15card->card);
         if (r == SC_ERROR_FILE_NOT_FOUND)
                 r=0;
-        return r;
+
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, r);
 }
 
 /*
