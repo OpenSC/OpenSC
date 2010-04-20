@@ -1911,6 +1911,46 @@ kpgen_done:
 }
 #endif
 
+static CK_RV pkcs15_any_destroy(struct sc_pkcs11_session *session, void *object)
+{
+	struct pkcs15_data_object *obj = (struct pkcs15_data_object*) object;
+	struct pkcs15_any_object *any_obj = (struct pkcs15_any_object*) object;
+	struct sc_pkcs11_card *card = session->slot->card;
+	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) card->fw_data;
+	struct sc_profile *profile = NULL;
+	int rv;
+
+	rv = sc_lock(card->card);
+	if (rv < 0)
+		return sc_to_cryptoki_error(rv);
+
+	/* Bind the profile */
+	rv = sc_pkcs15init_bind(card->card, "pkcs15", NULL, &profile);
+	if (rv < 0) {
+		sc_unlock(card->card);
+		return sc_to_cryptoki_error(rv);
+	}
+
+	/* Delete object in smartcard */
+	rv = sc_pkcs15init_delete_object(fw_data->p15_card, profile, obj->base.p15_object);
+	if (rv >= 0) {
+		/* Oppose to pkcs15_add_object */
+		--any_obj->refcount; /* correct refcont */
+		list_delete(&session->slot->objects, any_obj);
+		/* Delete object in pkcs15 */
+		rv = __pkcs15_delete_object(fw_data, any_obj);
+	}
+
+	sc_pkcs15init_unbind(profile);
+	sc_unlock(card->card);
+
+	if (rv < 0)
+		return sc_to_cryptoki_error(rv);
+
+	return CKR_OK;
+}
+
+
 static CK_RV pkcs15_get_random(struct sc_pkcs11_card *p11card,
 				CK_BYTE_PTR p, CK_ULONG len)
 {
@@ -2158,7 +2198,7 @@ struct sc_pkcs11_object_ops pkcs15_cert_ops = {
 	pkcs15_cert_set_attribute,
 	pkcs15_cert_get_attribute,
 	pkcs15_cert_cmp_attribute,
-	NULL,
+	pkcs15_any_destroy,
 	NULL,
 	NULL,
 	NULL,
@@ -2510,7 +2550,7 @@ struct sc_pkcs11_object_ops pkcs15_prkey_ops = {
 	pkcs15_prkey_set_attribute,
 	pkcs15_prkey_get_attribute,
 	sc_pkcs11_any_cmp_attribute,
-	NULL,
+	pkcs15_any_destroy,
 	NULL,
 	pkcs15_prkey_sign,
 	pkcs15_prkey_unwrap,
@@ -2676,7 +2716,7 @@ struct sc_pkcs11_object_ops pkcs15_pubkey_ops = {
 	pkcs15_pubkey_set_attribute,
 	pkcs15_pubkey_get_attribute,
 	sc_pkcs11_any_cmp_attribute,
-	NULL,
+	pkcs15_any_destroy,
 	NULL,
 	NULL,
 	NULL,
@@ -2811,51 +2851,12 @@ static CK_RV pkcs15_dobj_get_attribute(struct sc_pkcs11_session *session,
 	return CKR_OK;
 }
 
-static CK_RV pkcs15_dobj_destroy(struct sc_pkcs11_session *session, void *object)
-{
-	struct pkcs15_data_object *obj = (struct pkcs15_data_object*) object;
-	struct pkcs15_any_object *any_obj = (struct pkcs15_any_object*) object;
-	struct sc_pkcs11_card *card = session->slot->card;
-	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) card->fw_data;
-	struct sc_profile *profile = NULL;
-	int rv;
-
-	rv = sc_lock(card->card);
-	if (rv < 0)
-		return sc_to_cryptoki_error(rv);
-
-	/* Bind the profile */
-	rv = sc_pkcs15init_bind(card->card, "pkcs15", NULL, &profile);
-	if (rv < 0) {
-		sc_unlock(card->card);
-		return sc_to_cryptoki_error(rv);
-	}
-
-	/* Delete object in smartcard */
-	rv = sc_pkcs15init_delete_object(fw_data->p15_card, profile, obj->base.p15_object);
-	if (rv >= 0) {
-		/* Oppose to pkcs15_add_object */
-		--any_obj->refcount; /* correct refcont */
-		list_delete(&session->slot->objects, any_obj);
-		/* Delete object in pkcs15 */
-		rv = __pkcs15_delete_object(fw_data, any_obj);
-	}
-
-	sc_pkcs15init_unbind(profile);
-	sc_unlock(card->card);
-
-	if (rv < 0)
-		return sc_to_cryptoki_error(rv);
-
-	return CKR_OK;
-}
-
 struct sc_pkcs11_object_ops pkcs15_dobj_ops = {
 	pkcs15_dobj_release,
 	pkcs15_dobj_set_attribute,
 	pkcs15_dobj_get_attribute,
 	sc_pkcs11_any_cmp_attribute,
-	pkcs15_dobj_destroy,
+	pkcs15_any_destroy,
 	NULL,
 	NULL,
 	NULL,
