@@ -345,10 +345,27 @@ sc_pkcs15init_bind(struct sc_card *card, const char *name,
 		strlcpy(card_profile, profile_option, sizeof(card_profile));
 	}
 
-	if ((r = sc_profile_load(profile, profile->name)) < 0
-	 || (r = sc_profile_load(profile, card_profile)) < 0
-	 || (r = sc_profile_finish(profile)) < 0) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Failed to load profile: %s\n", sc_strerror(r));
+	do   {
+		r = sc_profile_load(profile, profile->name);
+		if (r < 0)   {
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Failed to load profile '%s': %s\n", 
+					profile->name, sc_strerror(r));
+			break;
+		}
+
+		r = sc_profile_load(profile, card_profile);
+		if (r < 0)   {
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Failed to load profile '%s': %s\n", 
+					card_profile, sc_strerror(r));
+			break;
+		}
+
+	 	r = sc_profile_finish(profile);
+		if (r < 0)
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Failed to finalize profile: %s\n", sc_strerror(r));
+	}  while (0);
+
+	if (r < 0)   {
 		sc_profile_free(profile);
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Load profile error");
 	}
