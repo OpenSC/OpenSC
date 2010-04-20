@@ -44,6 +44,7 @@ static int	verbose = 0;
 
 enum {
 	OPT_SERIAL = 0x100,
+	OPT_LIST_ALG,
 };
 
 static const struct option options[] = {
@@ -60,6 +61,7 @@ static const struct option options[] = {
 	{ "send-apdu",		1, NULL,		's' },
 	{ "reader",		1, NULL,		'r' },
 	{ "card-driver",	1, NULL,		'c' },
+	{ "list-algorithms",    0, NULL,	OPT_LIST_ALG }, 
 	{ "wait",		0, NULL,		'w' },
 	{ "verbose",		0, NULL,		'v' },
 	{ NULL, 0, NULL, 0 }
@@ -79,6 +81,7 @@ static const char *option_help[] = {
 	"Sends an APDU in format AA:BB:CC:DD:EE:FF...",
 	"Uses reader number <arg> [0]",
 	"Forces the use of driver <arg> [auto-detect]",
+	"Lists algorithms supported by card",
 	"Wait for a card to be inserted",
 	"Verbose operation. Use several times to enable debug output.",
 };
@@ -221,7 +224,7 @@ static int opensc_set_conf_entry(const char *config)
 			scconf_list *list;
 
 			if ((item->type != SCCONF_ITEM_TYPE_VALUE)
-			    || (strcmp(item->key, key) != 0))
+			   || (strcmp(item->key, key) != 0))
 				continue;
 			list = item->value.list;
 			scconf_list_destroy(list);
@@ -262,8 +265,8 @@ static int list_readers(void)
 	for (i = 0; i < rcount; i++) {
 		sc_reader_t *screader = sc_ctx_get_reader(ctx, i);
 		printf("%-7d%-11s%-10s%s\n", i, screader->driver->short_name,
-		       screader->capabilities & SC_READER_CAP_PIN_PAD ? "PINpad":"",
-		       screader->name);
+		      screader->capabilities & SC_READER_CAP_PIN_PAD ? "PINpad":"",
+		      screader->name);
 	}
 	return 0;
 }
@@ -279,7 +282,7 @@ static int list_reader_drivers(void)
 	printf("Configured reader drivers:\n");
 	for (i = 0; ctx->reader_drivers[i] != NULL; i++) {
 		printf("  %-16s %s\n", ctx->reader_drivers[i]->short_name,
-		       ctx->reader_drivers[i]->name);
+		      ctx->reader_drivers[i]->name);
 	}
 	return 0;
 }
@@ -295,7 +298,7 @@ static int list_drivers(void)
 	printf("Configured card drivers:\n");
 	for (i = 0; ctx->card_drivers[i] != NULL; i++) {
 		printf("  %-16s %s\n", ctx->card_drivers[i]->short_name,
-		       ctx->card_drivers[i]->name);
+		      ctx->card_drivers[i]->name);
 	}
 	return 0;
 }
@@ -359,11 +362,11 @@ static int print_file(sc_card_t *in_card, const sc_file_t *file,
 	if (file->sec_attr_len) {
 		printf("sec: ");
 		/* Octets are as follows:
-		 *   DF: select, lock, delete, create, rehab, inval
-		 *   EF: read, update, write, erase, rehab, inval
-		 * 4 MSB's of the octet mean:			 
-		 *  0 = ALW, 1 = PIN1, 2 = PIN2, 4 = SYS,
-		 * 15 = NEV */
+		*   DF: select, lock, delete, create, rehab, inval
+		*   EF: read, update, write, erase, rehab, inval
+		* 4 MSB's of the octet mean:			
+		*  0 = ALW, 1 = PIN1, 2 = PIN2, 4 = SYS,
+		* 15 = NEV */
 		util_hex_dump(stdout, file->sec_attr, file->sec_attr_len, ":");
 	}
 	if (file->prop_attr_len) {
@@ -455,7 +458,7 @@ static int send_apdu(void)
 {
 	sc_apdu_t apdu;
 	u8 buf[SC_MAX_APDU_BUFFER_SIZE], sbuf[SC_MAX_APDU_BUFFER_SIZE],
-	   rbuf[SC_MAX_APDU_BUFFER_SIZE], *p;
+	  rbuf[SC_MAX_APDU_BUFFER_SIZE], *p;
 	size_t len, len0, r;
 	int c;
 
@@ -520,7 +523,7 @@ static int send_apdu(void)
 			return 1;
 		}
 		printf("Received (SW1=0x%02X, SW2=0x%02X)%s\n", apdu.sw1, apdu.sw2,
-		       apdu.resplen ? ":" : "");
+		      apdu.resplen ? ":" : "");
 		if (apdu.resplen)
 			util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
 	}
@@ -539,6 +542,96 @@ static void print_serial(sc_card_t *in_card)
 		util_hex_dump_asc(stdout, serial.value, serial.len, -1);
 }
 
+static int list_algorithms(void) 
+{
+	int i; 
+	const char *aname; 
+
+	if (verbose)
+		printf("Card supports %d algorithm(s)\n\n",card->algorithm_count); 
+  
+	for (i=0; i < card->algorithm_count; i++) { 
+		switch (card->algorithms[i].algorithm) { 
+		case SC_ALGORITHM_RSA: 
+			aname = "rsa"; 
+			break; 
+		case SC_ALGORITHM_DSA: 
+			aname = "dsa"; 
+			aname = "ec"; 
+			break; 
+		case SC_ALGORITHM_DES: 
+			aname = "des"; 
+			break; 
+		case SC_ALGORITHM_3DES: 
+			aname = "3des"; 
+			break; 
+		case SC_ALGORITHM_MD5: 
+			aname = "md5"; 
+			break; 
+		case SC_ALGORITHM_SHA1: 
+			aname = "sha1"; 
+			break; 
+		case SC_ALGORITHM_PBKDF2: 
+			aname = "pbkdf2"; 
+			break; 
+		case SC_ALGORITHM_PBES2: 
+			aname = "pbes2"; 
+			break; 
+		default: 
+			aname = "unknown"; 
+			break; 
+		} 
+  
+		printf("Algorithm: %s\n", aname); 
+		printf("Key length: %d\n", card->algorithms[i].key_length); 
+		printf("Flags:"); 
+		if (card->algorithms[i].flags & SC_ALGORITHM_ONBOARD_KEY_GEN) 
+			printf(" onboard key generation"); 
+		if (card->algorithms[i].flags & SC_ALGORITHM_NEED_USAGE) 
+			printf(" needs usage"); 
+		if ( card->algorithms[i].algorithm == SC_ALGORITHM_RSA) { 
+			int padding = card->algorithms[i].flags 
+					& SC_ALGORITHM_RSA_PADS; 
+			int hashes =  card->algorithms[i].flags 
+					& SC_ALGORITHM_RSA_HASHES; 
+					 
+			printf(" padding ("); 
+			if (padding == SC_ALGORITHM_RSA_PAD_NONE)  
+				printf(" none"); 
+			if (padding & SC_ALGORITHM_RSA_PAD_PKCS1) 
+				printf(" pkcs1"); 
+			if (padding & SC_ALGORITHM_RSA_PAD_ANSI) 
+				printf(" ansi"); 
+			if (padding & SC_ALGORITHM_RSA_PAD_ISO9796) 
+				printf(" iso9796"); 
+  
+			printf(" ) "); 
+			printf("hashes ("); 
+			if (hashes & SC_ALGORITHM_RSA_HASH_NONE) 
+				printf(" none"); 
+			if (hashes & SC_ALGORITHM_RSA_HASH_SHA1) 
+				printf(" sha1"); 
+			if (hashes & SC_ALGORITHM_RSA_HASH_MD5) 
+				printf(" MD5"); 
+			if (hashes & SC_ALGORITHM_RSA_HASH_MD5_SHA1) 
+				printf(" md5-sha1"); 
+			if (hashes & SC_ALGORITHM_RSA_HASH_RIPEMD160) 
+				printf(" ripemd160"); 
+			printf(" )"); 
+		} 
+		printf("\n"); 
+		if (card->algorithms[i].algorithm == SC_ALGORITHM_RSA  
+			&& card->algorithms[i].u._rsa.exponent) { 
+			printf("RSA public exponent: %lu\n", (unsigned long) 
+				card->algorithms[i].u._rsa.exponent);
+		} 
+  
+		if (i < card->algorithm_count) 
+			printf("\n"); 
+	} 
+	return 0; 
+} 
+
 int main(int argc, char * const argv[])
 {
 	int err = 0, r, c, long_optind = 0;
@@ -553,6 +646,7 @@ int main(int argc, char * const argv[])
 	int do_print_atr = 0;
 	int do_print_serial = 0;
 	int do_print_name = 0;
+	int do_list_algorithms = 0;
 	int action_count = 0;
 	const char *opt_driver = NULL;
 	const char *opt_conf_entry = NULL;
@@ -630,6 +724,10 @@ int main(int argc, char * const argv[])
 		case OPT_SERIAL:
 			do_print_serial = 1;
 			action_count++;
+			break;
+		case OPT_LIST_ALG:
+			do_list_algorithms = 1; 
+			action_count++; 
 			break;
 		}
 	}
@@ -726,6 +824,12 @@ int main(int argc, char * const argv[])
 			goto end;
 		action_count--;
 	}
+
+	if (do_list_algorithms) { 
+		if ((err = list_algorithms())) 
+			goto end;
+		action_count--; 
+	} 
 end:
 	if (card) {
 		sc_unlock(card);
