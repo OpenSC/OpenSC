@@ -659,7 +659,7 @@ again:
 
 	if (r != SC_SUCCESS) {
 		sc_debug(context, SC_LOG_DEBUG_NORMAL, "sc_wait_for_event() returned %d\n",  r);
-		rv = sc_to_cryptoki_error(r);
+		rv = sc_to_cryptoki_error(r, "C_WaitForSlotEvent");
 		goto out;
 	}
 

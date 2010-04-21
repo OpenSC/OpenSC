@@ -27,6 +27,18 @@
 
 #define DUMP_TEMPLATE_MAX	32
 
+struct sc_to_cryptoki_error_conversion  {
+	const char *context;
+	int sc_error;
+	CK_RV ck_error;
+};
+
+static struct sc_to_cryptoki_error_conversion sc_to_cryptoki_error_map[]  = {
+	{ "C_GenerateKeyPair", SC_ERROR_INVALID_PIN_LENGTH, CKR_GENERAL_ERROR },
+	{NULL, 0, 0}
+};
+
+
 void strcpy_bp(u8 * dst, const char *src, size_t dstsize)
 {
 	size_t c;
@@ -41,7 +53,8 @@ void strcpy_bp(u8 * dst, const char *src, size_t dstsize)
 	memcpy((char *)dst, src, c);
 }
 
-CK_RV sc_to_cryptoki_error(int rc)
+
+static CK_RV sc_to_cryptoki_error_common(int rc)
 {
 	sc_debug(context, SC_LOG_DEBUG_NORMAL, "opensc error: %s (%d)\n", sc_strerror(rc), rc);
 	switch (rc) {
@@ -91,6 +104,23 @@ CK_RV sc_to_cryptoki_error(int rc)
 	}
 	return CKR_GENERAL_ERROR;
 }
+
+
+CK_RV sc_to_cryptoki_error(int rc, const char *ctx)
+{
+	CK_RV rv;
+	int ii;
+
+	for (ii = 0; ctx && sc_to_cryptoki_error_map[ii].context; ii++)   {
+		if (sc_to_cryptoki_error_map[ii].sc_error != rc)
+			continue;
+		if (strcmp(sc_to_cryptoki_error_map[ii].context, ctx))
+			continue;
+		return sc_to_cryptoki_error_map[ii].ck_error;
+	}
+	return sc_to_cryptoki_error_common(rc);
+}
+
 
 /* Session manipulation */
 CK_RV session_start_operation(struct sc_pkcs11_session * session,

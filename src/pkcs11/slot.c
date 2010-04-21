@@ -159,7 +159,7 @@ CK_RV card_detect(sc_reader_t *reader)
       again:rc = sc_detect_card_presence(reader);
 	if (rc < 0) {
 		sc_debug(context, SC_LOG_DEBUG_NORMAL, "%s: failed, %s\n", reader->name, sc_strerror(rc));
-		return sc_to_cryptoki_error(rc);
+		return sc_to_cryptoki_error(rc, NULL);
 	}
 	if (rc == 0) {
 		sc_debug(context, SC_LOG_DEBUG_NORMAL, "%s: card absent\n", reader->name);
@@ -201,7 +201,7 @@ CK_RV card_detect(sc_reader_t *reader)
 		sc_debug(context, SC_LOG_DEBUG_NORMAL, "%s: Connecting ... ", reader->name);
 		rc = sc_connect_card(reader, &p11card->card);
 		if (rc != SC_SUCCESS)
-			return sc_to_cryptoki_error(rc);
+			return sc_to_cryptoki_error(rc, NULL);
 	}
 
 	/* Detect the framework */

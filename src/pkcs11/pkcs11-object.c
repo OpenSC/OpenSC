@@ -918,8 +918,8 @@ CK_RV C_GenerateKeyPair(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		rv = CKR_ARGUMENTS_BAD;
 		goto out;
 	}
-	dump_template(SC_LOG_DEBUG_NORMAL, "C_CreateObject(), PrivKey attrs", pPrivateKeyTemplate, ulPrivateKeyAttributeCount);
-	dump_template(SC_LOG_DEBUG_NORMAL, "C_CreateObject(), PubKey attrs", pPublicKeyTemplate, ulPublicKeyAttributeCount);
+	dump_template(SC_LOG_DEBUG_NORMAL, "C_GenerateKeyPair(), PrivKey attrs", pPrivateKeyTemplate, ulPrivateKeyAttributeCount);
+	dump_template(SC_LOG_DEBUG_NORMAL, "C_GenerateKeyPair(), PubKey attrs", pPublicKeyTemplate, ulPublicKeyAttributeCount);
 
 	rv = get_session(hSession, &session);
 	if (rv != CKR_OK)
