@@ -52,6 +52,8 @@ static struct sc_atr_table cardos_atrs[] = {
 	{ "3b:f4:98:00:ff:c1:10:31:fe:55:4d:34:63:76:b4", NULL, NULL, SC_CARD_TYPE_CARDOS_GENERIC, 0, NULL},
 	/* cardos m4.2 and above */
 	{ "3b:f2:18:00:ff:c1:0a:31:fe:55:c8:06:8a", "ff:ff:0f:ff:00:ff:00:ff:ff:00:00:00:00", NULL, SC_CARD_TYPE_CARDOS_M4_2, 0, NULL },
+	/* CardOS 4.4 */
+	{ "3b:d2:18:02:c1:0a:31:fe:58:c8:0d:51", NULL, NULL, SC_CARD_TYPE_CARDOS_M4_4, 0, NULL},
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
@@ -64,6 +66,8 @@ static int cardos_match_card(sc_card_t *card)
 		return 0;
 	/* Do not change card type for CIE! */
 	if (card->type == SC_CARD_TYPE_CARDOS_CIE_V1)
+		return 1;
+	if (card->type == SC_CARD_TYPE_CARDOS_M4_4)
 		return 1;
 	if (card->type == SC_CARD_TYPE_CARDOS_M4_2) {
 		int rv;
@@ -171,7 +175,8 @@ static int cardos_init(sc_card_t *card)
 		card->caps |= SC_CARD_CAP_APDU_EXT;
 	} else if (card->type == SC_CARD_TYPE_CARDOS_M4_3 
 		|| card->type == SC_CARD_TYPE_CARDOS_M4_2B
-		|| card->type == SC_CARD_TYPE_CARDOS_M4_2C) {
+		|| card->type == SC_CARD_TYPE_CARDOS_M4_2C
+		|| card->type == SC_CARD_TYPE_CARDOS_M4_4) {
 		card->caps |= SC_CARD_CAP_RSA_2048;
 		card->caps |= SC_CARD_CAP_APDU_EXT;
 	}
@@ -650,7 +655,8 @@ static int cardos_create_file(sc_card_t *card, sc_file_t *file)
 	} else if (card->type == SC_CARD_TYPE_CARDOS_M4_2 ||
 	           card->type == SC_CARD_TYPE_CARDOS_M4_3 ||
 		   card->type == SC_CARD_TYPE_CARDOS_M4_2B ||
-	           card->type == SC_CARD_TYPE_CARDOS_M4_2C) {
+	           card->type == SC_CARD_TYPE_CARDOS_M4_2C ||
+		   card->type == SC_CARD_TYPE_CARDOS_M4_4) {
 		u8        sbuf[SC_MAX_APDU_BUFFER_SIZE];
 		size_t    len = sizeof(sbuf);
 		sc_apdu_t apdu;

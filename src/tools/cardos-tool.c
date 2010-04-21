@@ -170,6 +170,8 @@ static int cardos_info(void)
 		printf(" (that's CardOS M4.2B)\n");
 	} else if (apdu.resp[0] == 0xc8 && apdu.resp[1] == 0x0B) {
 		printf(" (that's CardOS M4.2C)\n");	
+	} else if (apdu.resp[0] == 0xc8 && apdu.resp[1] == 0x0D) {
+		printf(" (that's CardOS M4.4)\n");	
 	} else {
 		printf(" (unknown Version)\n");
 	}
@@ -555,8 +557,9 @@ static int cardos_format(const char *opt_startkey)
 	}
 	if ((rbuf[0] != 0xc8 || rbuf[1] != 0x09) &&	/* M4.2B */
 		(rbuf[0] != 0xc8 || rbuf[1] != 0x08) && /* M4.3B */
-		(rbuf[0] != 0xc8 || rbuf[1] != 0x0B)) { /* M4.2C */
-		printf("currently only CardOS M4.2B, M4.2C and M4.3B are supported, aborting\n");
+		(rbuf[0] != 0xc8 || rbuf[1] != 0x0B) && /* M4.2C */
+		(rbuf[0] != 0xc8 || rbuf[1] != 0x0D)) { /* M4.4 */
+		printf("currently only CardOS M4.2B, M4.2C, M4.3B and M4.4 are supported, aborting\n");
 		return 1;
 	}
 
