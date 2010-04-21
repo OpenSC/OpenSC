@@ -108,15 +108,17 @@ static CK_RV sc_to_cryptoki_error_common(int rc)
 
 CK_RV sc_to_cryptoki_error(int rc, const char *ctx)
 {
-	CK_RV rv;
-	int ii;
+	if (ctx)
+	{
+		int ii;
 
-	for (ii = 0; ctx && sc_to_cryptoki_error_map[ii].context; ii++)   {
-		if (sc_to_cryptoki_error_map[ii].sc_error != rc)
-			continue;
-		if (strcmp(sc_to_cryptoki_error_map[ii].context, ctx))
-			continue;
-		return sc_to_cryptoki_error_map[ii].ck_error;
+		for (ii = 0; sc_to_cryptoki_error_map[ii].context; ii++) {
+			if (sc_to_cryptoki_error_map[ii].sc_error != rc)
+				continue;
+			if (strcmp(sc_to_cryptoki_error_map[ii].context, ctx))
+				continue;
+			return sc_to_cryptoki_error_map[ii].ck_error;
+		}
 	}
 	return sc_to_cryptoki_error_common(rc);
 }
