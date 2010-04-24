@@ -2693,6 +2693,7 @@ sc_pkcs15init_delete_object(struct sc_pkcs15_card *p15card, struct sc_profile *p
 	struct sc_pkcs15_df *df;
 	int r, stored_in_ef = 0;
 
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 	switch(obj->type & SC_PKCS15_TYPE_CLASS_MASK)   {
 	case SC_PKCS15_TYPE_PUBKEY:
 		path = ((struct sc_pkcs15_pubkey_info *)obj->data)->path;
@@ -2748,7 +2749,7 @@ sc_pkcs15init_delete_object(struct sc_pkcs15_card *p15card, struct sc_profile *p
 	/* mark card as dirty */
 	profile->dirty = 1;
 
-	return r;
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, r);
 }
 
 
@@ -2757,38 +2758,82 @@ sc_pkcs15init_update_certificate(struct sc_pkcs15_card *p15card,
 	struct sc_profile *profile, struct sc_pkcs15_object *obj,
 	const unsigned char *rawcert, size_t certlen)
 {
-	struct sc_file *file = NULL, *parent = NULL;
+	struct sc_context *ctx = p15card->card->ctx;
+	struct sc_file *file = NULL;
 	struct sc_path *path = &((struct sc_pkcs15_cert_info *)obj->data)->path;
 	int r;
 
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 	r = sc_select_file(p15card->card, path, &file);
-	if (r < 0)
-		return r;
+	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Failed to select cert file");
 
 	/* If the new cert doesn't fit in the EF, delete it and make the same, but bigger EF */
 	if (file->size < certlen) {
-		if ((r = sc_pkcs15init_delete_by_path(profile, p15card, path)) < 0)
+		struct sc_file *parent = NULL;
+
+		r = sc_pkcs15init_delete_by_path(profile, p15card, path);
+		if (r < 0)
 			goto done;
 
 		file->size = certlen;
 
-		if ((r = do_select_parent(profile, p15card, file, &parent)) < 0
-			|| (r = sc_pkcs15init_authenticate(profile, p15card, parent, SC_AC_OP_CREATE)) < 0)
-					goto done;
+		r = do_select_parent(profile, p15card, file, &parent);
+		if (r < 0)
+			goto done;
+
+		r = sc_pkcs15init_authenticate(profile, p15card, parent, SC_AC_OP_CREATE);
+		sc_file_free(parent);
+		if (r < 0)   {
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "'CREATE' authentication failed");
+			goto done;
+		}
+
 		/* ensure we are in the correct lifecycle */
 		r = sc_pkcs15init_set_lifecycle(p15card->card, SC_CARDCTRL_LIFECYCLE_ADMIN);
 		if (r < 0 && r != SC_ERROR_NOT_SUPPORTED)
-			return r;
- 		if ((r = sc_create_file(p15card->card, file)) < 0)
 			goto done;
+
+ 		r = sc_create_file(p15card->card, file);
+ 		if (r < 0)   {
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Cannot create cert file");
+			goto done;
+		}
+	}
+
+	if (!sc_file_get_acl_entry(file, SC_AC_OP_UPDATE))   {
+		struct sc_path tmp_path;
+
+		/* FCI of selected cert file do not contains ACLs.
+		 * For the 'UPDATE' authentication use instead sc_file 
+		 * 	instantiated from card profile with default ACLs. */
+		sc_file_free(file);
+
+		r = select_object_path(p15card, profile, obj, &tmp_path);
+		if (r < 0)   {
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Select object path error");
+			goto done;
+		}
+
+		r = sc_profile_get_file_by_path(profile, path, &file);
+		if (r < 0)   {
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Cannot instantiate cert file");
+			goto done;
+		}
 	}
 
 	/* Write the new cert */
-	if ((r = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_UPDATE)) < 0)
+	r = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_UPDATE);
+	if (r < 0)   {
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "'UPDATE' authentication failed");
 		goto done;
-	if ((r = sc_select_file(p15card->card, path, NULL)) < 0)
+	}
+
+	r = sc_select_file(p15card->card, path, NULL);
+	if (r < 0)
 		goto done;
-	if ((r = sc_update_binary(p15card->card, 0, rawcert, certlen, 0)) < 0)
+
+	r = sc_update_binary(p15card->card, 0, rawcert, certlen, 0);
+	if (r < 0)
 		goto done;
 
 	/* Fill the remaining space in the EF (if any) with zeros */
@@ -2800,6 +2845,8 @@ sc_pkcs15init_update_certificate(struct sc_pkcs15_card *p15card,
 		}
 		r = sc_update_binary(p15card->card, certlen, tmp, file->size - certlen, 0);
 		free(tmp);
+		if (r < 0)
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Update cert file error");
 	}
 
 	if (r >= 0) {
@@ -2812,6 +2859,8 @@ sc_pkcs15init_update_certificate(struct sc_pkcs15_card *p15card,
 		else
 			path->count = -1;
 		r = sc_pkcs15init_update_any_df(p15card, profile, obj->df, 0);
+		if (r < 0)
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Failed to update CDF");
 	}
 
 	/* mark card as dirty */
@@ -2820,10 +2869,8 @@ sc_pkcs15init_update_certificate(struct sc_pkcs15_card *p15card,
 done:
 	if (file)
 		sc_file_free(file);
-	if (parent)
-		sc_file_free(parent);
 
-	return r;
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, r);
 }
 
 
