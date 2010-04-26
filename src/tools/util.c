@@ -285,7 +285,7 @@ util_warn(const char *fmt, ...)
 
 int util_getpass (char **lineptr, size_t *len, FILE *stream)
 {
-#ifdef _WIN32
+#ifndef HAVE_GETLINE
 #define MAX_PASS_SIZE	128
 	char *buf;
 	int i;
@@ -295,7 +295,8 @@ int util_getpass (char **lineptr, size_t *len, FILE *stream)
 		return -1;
 
 	for (i = 0; i < MAX_PASS_SIZE - 1; i++) {
-		buf[i] = _getch();
+		/* buf[i] = _getch(); */
+		buf[i] = getchar();
 		if (buf[i] == 0 || buf[i] == 3)
 			return -1;
 		if (buf[i] == '\n' || buf[i] == '\r')

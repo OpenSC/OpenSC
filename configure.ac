@@ -17,6 +17,8 @@ OPENSC_VERSION_MAJOR="PACKAGE_VERSION_MAJOR"
 OPENSC_VERSION_MINOR="PACKAGE_VERSION_MINOR"
 OPENSC_VERSION_FIX="PACKAGE_VERSION_FIX"
 
+AC_CHECK_FUNCS([getline])
+
 # LT Version numbers, remember to change them just *before* a release.
 #   (Code changed:                      REVISION++)
 #   (Oldest interface removed:          OLDEST++)
