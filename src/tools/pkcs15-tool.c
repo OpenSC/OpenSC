@@ -38,7 +38,6 @@ typedef unsigned __int32 uint32_t;
 
 #include "libopensc/pkcs15.h"
 #include "libopensc/asn1.h"
-#include "common/compat_getpass.h"
 #include "util.h"
 
 static const char *app_name = "pkcs15-tool";
@@ -128,7 +127,7 @@ static const char *option_help[] = {
 #endif
 	"Test if the card needs a security update",
 	"Update the card with a security update",
-	"Uses reader <arg>",
+	"Uses reader number <arg>",
 	"Specify PIN",
 	"Specify New PIN (when changing or unblocking)",
 	"Specify Unblock PIN",
@@ -859,13 +858,16 @@ get_pin_info(void)
 static u8 * get_pin(const char *prompt, sc_pkcs15_object_t *pin_obj)
 {
 	sc_pkcs15_pin_info_t *pinfo = (sc_pkcs15_pin_info_t *) pin_obj->data;
-	char buf[80];
-	char *pincode;
+	char *pincode = NULL;
+	size_t len = 0;
+	int r;
 	
-	sprintf(buf, "%s [%s]: ", prompt, pin_obj->label);
+	printf("%s [%s]: ", prompt, pin_obj->label);
 	while (1) {
-		pincode = getpass(buf);
-		if (strlen(pincode) == 0)
+		r = util_getpass(&pincode, &len, stdin);
+		if (r < 0)
+			return NULL;
+		if (!pincode || strlen(pincode) == 0)
 			return NULL;
 		if (strlen(pincode) < pinfo->min_length) {
 			printf("PIN code too short, try again.\n");
@@ -922,10 +924,12 @@ static int verify_pin(void)
 		pin = get_pin("Please enter PIN", pin_obj);
 
 	r = sc_pkcs15_verify_pin(p15card, pin_obj, pin, pin ? strlen((char *) pin) : 0);
-	if (r < 0)
+	if (r < 0)   {
 		fprintf(stderr, "Operation failed: %s\n", sc_strerror(r));
+		return -1;
+	}
 
-	return r;
+	return 0;
 }
 
 static int authenticate(sc_pkcs15_object_t *obj)
@@ -1719,7 +1723,7 @@ int main(int argc, char * const argv[])
  		err = test_update(card);
 		action_count--;
 		if (err == 2) { /* problem */
-			err =1;
+			err = 1;
 			goto end;
 		}
 		if (do_update && err == 1) { /* card vulnerable */
