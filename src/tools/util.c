@@ -295,8 +295,7 @@ int util_getpass (char **lineptr, size_t *len, FILE *stream)
 		return -1;
 
 	for (i = 0; i < MAX_PASS_SIZE - 1; i++) {
-		/* buf[i] = _getch(); */
-		buf[i] = getchar();
+		buf[i] = _getch();
 		if (buf[i] == 0 || buf[i] == 3)
 			return -1;
 		if (buf[i] == '\n' || buf[i] == '\r')
