@@ -3253,8 +3253,11 @@ sc_pkcs15init_update_file(struct sc_profile *profile,
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Failed to create file");
 		
 		r = sc_select_file(p15card->card, &file->path, &selected_file);
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Failed to select newly created file");
+	}
+	else   {
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Failed to select file");
-	} 
+	}	
 
 	if (selected_file->size < datalen) {
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "File %s too small (require %u, have %u)", 
