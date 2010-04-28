@@ -1893,7 +1893,6 @@ static int pass_cb(char *buf, int len, int flags, void *d)
 	if (!pass)   {
 		printf("Please enter passphrase to unlock secret key: ");
 		r = util_getpass(&pass, &pass_len, stdin);
-		printf("\n");
 		if (r < 0 || !pass)
 			return 0;
 	}
@@ -2003,7 +2002,6 @@ do_read_private_key(const char *filename, const char *format,
 			 */
 			printf("Please enter passphrase to unlock secret key: ");
 			r = util_getpass(&passphrase, &len, stdin);
-			printf("\n");
 			if (r < 0 || !passphrase)
 				return SC_ERROR_INTERNAL;
  			r = do_read_pkcs12_private_key(filename,
@@ -2798,7 +2796,6 @@ int get_pin(sc_ui_hints_t *hints, char **out)
 
 		printf("Please enter %s: ", label);
 		r = util_getpass(&pin, &len, stdin);
-		printf("\n");
 		if (r < 0 || !pin)
 			return SC_ERROR_INTERNAL;
 
@@ -2829,7 +2826,6 @@ int get_pin(sc_ui_hints_t *hints, char **out)
 
 		printf("Please type again to verify: ");
 		r = util_getpass(&pin, &len, stdin);
-		printf("\n");
 		if (r < 0 || !pin)
 			return SC_ERROR_INTERNAL;
 		if (!strcmp(*out, pin)) {
