@@ -5,6 +5,8 @@
 #include <stdarg.h>
 #ifndef _WIN32
 #include <termios.h>
+#else
+#include <conio.h>
 #endif
 #include <ctype.h>
 #include "util.h"
@@ -283,66 +285,64 @@ util_warn(const char *fmt, ...)
 	va_end(ap);
 }
 
-int util_getpass (char **lineptr, size_t *len, FILE *stream)
+int 
+util_getpass (char **lineptr, size_t *len, FILE *stream)
 {
-#ifndef HAVE_GETLINE
 #define MAX_PASS_SIZE	128
 	char *buf;
 	int i;
+#ifndef _WIN32
+	struct termios old, new;
+
+	fflush(stdout);
+	if (tcgetattr (fileno (stdout), &old) != 0)
+		return -1;
+	new = old;
+	new.c_lflag &= ~ECHO;
+	if (tcsetattr (fileno (stdout), TCSAFLUSH, &new) != 0)
+		return -1;
+#endif
 
 	buf = calloc(1, MAX_PASS_SIZE);
 	if (!buf)
 		return -1;
 
 	for (i = 0; i < MAX_PASS_SIZE - 1; i++) {
+#ifndef _WIN32
+		buf[i] = getchar();
+#else
 		buf[i] = _getch();
+#endif
 		if (buf[i] == 0 || buf[i] == 3)
-			return -1;
+			break;
 		if (buf[i] == '\n' || buf[i] == '\r')
 			break;
 	}
+#ifndef _WIN32
+	tcsetattr (fileno (stdout), TCSAFLUSH, &old);
+	fputs("\n", stdout);
+#endif
+	if (buf[i] == 0 || buf[i] == 3)   {
+		free(buf);
+		return -1;
+	}
+
 	buf[i] = 0;
 
+	if (*lineptr && (!len || *len < i+1))   {
+		free(*lineptr);
+		*lineptr = NULL;
+	}
+
 	if (*lineptr) {
-		if (*len < i+1) {
-			free(*lineptr);
-			*lineptr=buf;
-			*len = MAX_PASS_SIZE;
-		} else {
-			memcpy(*lineptr,buf,i+1);
-			memset(buf, 0, MAX_PASS_SIZE);
-			free(buf);
-		}
+		memcpy(*lineptr,buf,i+1);
+		memset(buf, 0, MAX_PASS_SIZE);
+		free(buf);
 	} else {
 		*lineptr = buf;
 		if (len)
 			*len = MAX_PASS_SIZE;
 	}
 	return i;
-#else
-	struct termios old, new;
-	int nread;
-
-	/* Turn echoing off and fail if we can't. */
-	if (tcgetattr (fileno (stream), &old) != 0)
-		return -1;
-	new = old;
-	new.c_lflag &= ~ECHO;
-	if (tcsetattr (fileno (stream), TCSAFLUSH, &new) != 0)
-		return -1;
-
-	/* Read the password. */
-	nread = getline (lineptr, len, stream);
-	if (nread < 0)
-		return -1;
-
-	/* Remove trailing CR */
-	if (*(*lineptr + nread - 1) == '\n' || *(*lineptr + nread - 1) == '\r')
-		*(*lineptr + --nread) = '\0';
-
-	/* Restore terminal. */
-	(void) tcsetattr (fileno (stream), TCSAFLUSH, &old);
-	return nread;
-#endif
 }
 
