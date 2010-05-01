@@ -1,4 +1,3 @@
-
 TOPDIR = ..\..
 
 !INCLUDE $(TOPDIR)\win32\Make.rules.mak
@@ -8,9 +7,9 @@ TARGETS = opensc-tool.exe opensc-explorer.exe pkcs15-tool.exe pkcs15-crypt.exe \
 		netkey-tool.exe westcos-tool.exe \
 		$(PROGRAMS_OPENSSL)
 
-all: $(TARGETS)
+$(TARGETS): $(TOPDIR)\win32\versioninfo.res util.obj 
 
-$(TARGETS):  versioninfo.res util.obj 
+all: $(TARGETS)
 
 .c.obj:
 	cl $(COPTS) /c $<
@@ -20,5 +19,5 @@ $(TARGETS):  versioninfo.res util.obj
 	link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj util.obj \
         ..\common\common.lib ..\scconf\scconf.lib ..\libopensc\opensc.lib \
         ..\pkcs15init\pkcs15init.lib ..\pkcs11\libpkcs11.lib \
-        versioninfo.res $(OPENSSL_LIB) $(LIBLTDL) gdi32.lib
+        $(TOPDIR)\win32\versioninfo.res $(OPENSSL_LIB) $(LIBLTDL) gdi32.lib
 		if EXIST $@.manifest mt -manifest $@.manifest -outputresource:$@;1

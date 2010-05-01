@@ -1,7 +1,5 @@
 TOPDIR = ..\..
 
-HEADERS = pkcs15-init.h profile.h pkcs15-oberthur.h
-HEADERSDIR = $(TOPDIR)\src\include\opensc
 TARGET = pkcs15init.lib
 OBJECTS = pkcs15-lib.obj profile.obj \
           pkcs15-gpk.obj pkcs15-miocos.obj pkcs15-cflex.obj \
@@ -10,10 +8,9 @@ OBJECTS = pkcs15-lib.obj profile.obj \
           pkcs15-setcos.obj pkcs15-incrypto34.obj \
           pkcs15-muscle.obj pkcs15-asepcos.obj pkcs15-rutoken.obj \
           pkcs15-entersafe.obj pkcs15-rtecp.obj pkcs15-westcos.obj \
-	  pkcs15-myeid.obj \
-          versioninfo.res
+	  pkcs15-myeid.obj
 
-all: install-headers $(TARGET) 
+all: $(TARGET) 
 
 $(TARGET): $(OBJECTS)
 	lib /nologo /machine:ix86 /out:$(TARGET) $(OBJECTS)

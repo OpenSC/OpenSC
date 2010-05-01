@@ -1,10 +1,5 @@
 TOPDIR = ..\..
 
-HEADERS			= \
-	asn1.h cardctl.h cards.h errors.h \
-	log.h opensc.h pkcs15.h types.h
-
-HEADERSDIR		= $(TOPDIR)\src\include\opensc
 TARGET                  = opensc.dll opensc_a.lib
 OBJECTS			= \
 	sc.obj ctx.obj log.obj errors.obj \
@@ -34,9 +29,9 @@ OBJECTS			= \
 	pkcs15-actalis.obj pkcs15-atrust-acos.obj pkcs15-tccardos.obj pkcs15-piv.obj \
 	pkcs15-esinit.obj pkcs15-pteid.obj pkcs15-oberthur.obj \
 	compression.obj p15card-helper.obj \
-	versioninfo.res
+	$(TOPDIR)\win32\versioninfo.res
 
-all: versioninfo.res install-headers $(TARGET)
+all: $(TOPDIR)\win32\versioninfo.res $(TARGET)
 
 !INCLUDE $(TOPDIR)\win32\Make.rules.mak
 

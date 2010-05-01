@@ -48,17 +48,15 @@ ICONV_LIB = C:\build\iconv\lib\iconv.lib
 OPENSC_FEATURES = $(OPENSC_FEATURES) iconv
 !ENDIF
 
-COPTS = /D_CRT_SECURE_NO_DEPRECATE /Zi /MD /nologo /DHAVE_CONFIG_H /I$(TOPDIR)\src\include /I$(TOPDIR)\src\include\opensc /I$(TOPDIR)\src\common $(OPENSSL_INCL_DIR) $(ZLIB_INCL_DIR) $(LIBLTDL_INCL) $(ICONV_INCL_DIR) /D_WIN32_WINNT=0x0400 /DWIN32_LEAN_AND_MEAN $(OPENSSL_DEF) $(ZLIB_DEF) $(ICONV_DEF) /DOPENSC_FEATURES="\"$(OPENSC_FEATURES)\""
+# No choice for DUMPRESTORE: it has to be desabled
+SIMCLIST_NO_DUMPRESTORE_DEF = /DSIMCLIST_NO_DUMPRESTORE
+
+# Mandatory path to 'ISO C9x compliant stdint.h and inttypes.h for Microsoft Visual Studio'
+# http://msinttypes.googlecode.com/files/msinttypes-r26.zip
+INTTYPES_INCL_DIR =  /IC:\opensc\dependencies\msys\local
+
+COPTS = /D_CRT_SECURE_NO_DEPRECATE /Zi /MD /nologo /DHAVE_CONFIG_H /I$(TOPDIR)\win32 /I$(TOPDIR)\src $(OPENSSL_INCL_DIR) $(ZLIB_INCL_DIR) $(LIBLTDL_INCL) $(ICONV_INCL_DIR) $(INTTYPES_INCL_DIR) /D_WIN32_WINNT=0x0400 /DWIN32_LEAN_AND_MEAN $(OPENSSL_DEF) $(ZLIB_DEF) $(ICONV_DEF) $(SIMCLIST_NO_DUMPRESTORE_DEF) /DOPENSC_FEATURES="\"$(OPENSC_FEATURES)\""
 LINKFLAGS = /DEBUG /NOLOGO /INCREMENTAL:NO /MACHINE:IX86
-
-
-install-headers:
-	@for %i in ( $(HEADERS) ) do \
-		@xcopy /d /q /y %i $(HEADERSDIR) > nul
-
-install-headers-dir:
-	@for %i in ( $(HEADERSDIRFROM2) ) do \
-		@xcopy /d /q /y %i\*.h $(HEADERSDIR2)\*.h > nul
 
 .c.obj::
 	cl $(COPTS) /c $<

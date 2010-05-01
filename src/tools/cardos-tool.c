@@ -863,8 +863,17 @@ static int cardos_format(const char *opt_startkey)
 #ifdef ENABLE_OPENSSL
 static int cardos_change_startkey(const char *change_startkey_apdu)
 {
+	#define MAX_APDU 60
 	unsigned char cardos_version[2];
+	unsigned char apdu_bin[MAX_APDU];
+	size_t apdu_len=MAX_APDU;
+	unsigned char checksum[SHA256_DIGEST_LENGTH];
 
+	static const unsigned char cardos_43b_checksum[SHA256_DIGEST_LENGTH] =
+		{  0xA5, 0x17, 0x9A, 0x88, 0xC8, 0x78, 0x50, 0x0C, 
+		   0x43, 0x3B, 0xD5, 0xD1, 0x3E, 0x34, 0x65, 0x3D,
+		   0x74, 0x7A, 0xDA, 0x19, 0x07, 0x5B, 0xCA, 0xC3, 
+		   0xF0, 0xD3, 0xDC, 0x8B, 0xB7, 0xFB, 0xC5, 0xB4 };
 	sc_apdu_t apdu;
 	u8 rbuf[256];
 	int r;
@@ -961,17 +970,6 @@ static int cardos_change_startkey(const char *change_startkey_apdu)
 	}	
 
 	/* now check if the correct APDU was passed */
-	static int MAX_APDU=60;
-	unsigned char apdu_bin[MAX_APDU];
-	size_t apdu_len=MAX_APDU;
-	unsigned char checksum[SHA256_DIGEST_LENGTH];
-
-	static const unsigned char cardos_43b_checksum[SHA256_DIGEST_LENGTH] =
-		{  0xA5, 0x17, 0x9A, 0x88, 0xC8, 0x78, 0x50, 0x0C, 
-		   0x43, 0x3B, 0xD5, 0xD1, 0x3E, 0x34, 0x65, 0x3D,
-		   0x74, 0x7A, 0xDA, 0x19, 0x07, 0x5B, 0xCA, 0xC3, 
-		   0xF0, 0xD3, 0xDC, 0x8B, 0xB7, 0xFB, 0xC5, 0xB4 };
-
 	if (sc_hex_to_bin(change_startkey_apdu, apdu_bin, &apdu_len) != 0) {
 		printf("can't convert startkey apdu to binary format: aborting\n");
 		return 1;
