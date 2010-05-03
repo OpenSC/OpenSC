@@ -759,8 +759,7 @@ static int match_atr_table(sc_context_t *ctx, struct sc_atr_table *table, u8 *at
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "ATR try : %s\n", tatr);
 
 		if (tatr_len != fix_hex_len) {
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
-				"ignored - wrong length\n", tatr);
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "ignored - wrong length\n");
 			continue;
 		}
 		if (matr != NULL) {
