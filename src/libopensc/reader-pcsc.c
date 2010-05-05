@@ -1640,9 +1640,6 @@ static int cardmod_detect_readers(sc_context_t *ctx, void *prv_data)
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Unable to open registry key Opensc");
 	}
 
-	//gpriv->pcsc_ctx = pcsc_ctx;
-	//card_handle = pcsc_card;
-	
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "gpriv->pcsc_ctx = %X, card_handle = %X", gpriv->pcsc_ctx, card_handle);
 	
 	if(gpriv->SCardGetAttrib(card_handle, SCARD_ATTR_DEVICE_SYSTEM_NAME_A, \
@@ -1650,6 +1647,8 @@ static int cardmod_detect_readers(sc_context_t *ctx, void *prv_data)
 	{
 		sc_reader_t *reader = NULL;
 		struct pcsc_private_data *priv = NULL;
+		DWORD readers_len = 0, state, prot, atr_len = SC_MAX_ATR_SIZE;
+		unsigned char atr[SC_MAX_ATR_SIZE];
 
 		if(1)
 		{
@@ -1675,7 +1674,19 @@ static int cardmod_detect_readers(sc_context_t *ctx, void *prv_data)
 			goto err1;
 		}
 		priv->gpriv = gpriv;
-		reader->active_protocol = pcsc_proto_to_opensc(SCARD_PROTOCOL_T0); /* FIXME: detecte or set active protocol ??? */
+		
+		// attempt to detect protocol in use T0/T1/RAW
+		rv = priv->gpriv->SCardStatus(card_handle, NULL, &readers_len,
+				&state, &prot, atr, &atr_len);
+		if (rv != SCARD_S_SUCCESS) 
+		{
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "SCardStatus failed %08x", rv);
+			prot = SCARD_PROTOCOL_T0;
+		}
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Set protocole to %s", \
+			(prot==SCARD_PROTOCOL_T0)?"T0":((prot==SCARD_PROTOCOL_T1)?"T1":"RAW"));
+		reader->active_protocol = pcsc_proto_to_opensc(prot);
+		
 		if (_sc_add_reader(ctx, reader)) {
 			ret = SC_SUCCESS;	/* silent ignore */
 			goto err1;
