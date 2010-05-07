@@ -123,6 +123,7 @@ static int sc_pkcs15emu_westcos_init(sc_pkcs15_card_t * p15card)
 	}
 	else
 	{
+		// certificat file
 		struct sc_pkcs15_cert_info cert_info;
 		struct sc_pkcs15_object cert_obj;
 		struct sc_pkcs15_pubkey_info pubkey_info;
@@ -148,44 +149,52 @@ static int sc_pkcs15emu_westcos_init(sc_pkcs15_card_t * p15card)
 			if (r)
 				goto out;
 			pkey = &cert->key;
-		}
-		memset(&pubkey_info, 0, sizeof(pubkey_info));
-		memset(&pubkey_obj, 0, sizeof(pubkey_obj));
-		pubkey_info.id.len = 1;
-		pubkey_info.id.value[0] = 0x45;
-		pubkey_info.modulus_length = modulus_length;
-		pubkey_info.key_reference = 1;
-		pubkey_info.native = 1;
-		pubkey_info.usage =
-		    SC_PKCS15_PRKEY_USAGE_VERIFY |
-		    SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER |
-		    SC_PKCS15_PRKEY_USAGE_ENCRYPT |
-		    SC_PKCS15_PRKEY_USAGE_WRAP;
-		pubkey_info.path = path;
-		strlcpy(pubkey_obj.label, "Public Key",
-			sizeof(pubkey_obj.label));
-		pubkey_obj.auth_id.len = 1;
-		pubkey_obj.auth_id.value[0] = 1;
-		pubkey_obj.flags = SC_PKCS15_CO_FLAG_PRIVATE;
-		pubkey_obj.type = SC_PKCS15_TYPE_PUBKEY_RSA;
-		if (pkey == NULL) {
-			pubkey_obj.data = &pubkey_info;
-			r = sc_pkcs15_read_pubkey(p15card, &pubkey_obj, &pkey);
-			if (r)
-				goto out;
+			
+			if (pkey->algorithm == SC_ALGORITHM_RSA) {
+				modulus_length = (int)(pkey->u.rsa.modulus.len * 8);
+			}
 
-			//force rechargement clef et maj infos lors de sc_pkcs15emu_add_rsa_pubkey (sinon modulus = 0)
-			pubkey_obj.flags = 0;
 		}
-		if (pkey->algorithm == SC_ALGORITHM_RSA) {
-			modulus_length = (int)(pkey->u.rsa.modulus.len * 8);
+		else
+		{
+			// or public key
+			memset(&pubkey_info, 0, sizeof(pubkey_info));
+			memset(&pubkey_obj, 0, sizeof(pubkey_obj));
+			pubkey_info.id.len = 1;
+			pubkey_info.id.value[0] = 0x45;
+			pubkey_info.modulus_length = modulus_length;
+			pubkey_info.key_reference = 1;
+			pubkey_info.native = 1;
+			pubkey_info.usage =
+			    SC_PKCS15_PRKEY_USAGE_VERIFY |
+			    SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER |
+			    SC_PKCS15_PRKEY_USAGE_ENCRYPT |
+			    SC_PKCS15_PRKEY_USAGE_WRAP;
+			pubkey_info.path = path;
+			strlcpy(pubkey_obj.label, "Public Key",
+				sizeof(pubkey_obj.label));
+			pubkey_obj.auth_id.len = 1;
+			pubkey_obj.auth_id.value[0] = 1;
+			pubkey_obj.flags = SC_PKCS15_CO_FLAG_PRIVATE;
+			pubkey_obj.type = SC_PKCS15_TYPE_PUBKEY_RSA;
+			if (pkey == NULL) {
+				pubkey_obj.data = &pubkey_info;
+				r = sc_pkcs15_read_pubkey(p15card, &pubkey_obj, &pkey);
+				if (r)
+					goto out;
+				// not sure if necessary
+				pubkey_obj.flags = 0;
+			}
+			if (pkey->algorithm == SC_ALGORITHM_RSA) {
+				modulus_length = (int)(pkey->u.rsa.modulus.len * 8);
+			}
+			pubkey_info.modulus_length = modulus_length;
+			pubkey_obj.data = pkey;
+			r = sc_pkcs15emu_add_rsa_pubkey(p15card, &pubkey_obj,
+							&pubkey_info);
+			if (r < 0)
+				goto out;
 		}
-		pubkey_info.modulus_length = modulus_length;
-		pubkey_obj.data = pkey;
-		r = sc_pkcs15emu_add_rsa_pubkey(p15card, &pubkey_obj,
-						&pubkey_info);
-		if (r < 0)
-			goto out;
 	}
 	if (!usage) {
 		usage =
