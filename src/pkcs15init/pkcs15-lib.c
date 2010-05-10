@@ -1500,8 +1500,10 @@ sc_pkcs15init_store_certificate(struct sc_pkcs15_card *p15card,
 		r = sc_pkcs15init_store_data(p15card, profile, object, &args->der_encoded, &cert_info->path);
 
 	/* Now update the CDF */
-	if (r >= 0)
+	if (r >= 0)   {
 		r = sc_pkcs15init_add_object(p15card, profile, SC_PKCS15_CDF, object);
+		/* TODO: update private key PKCS#15 object with the certificate's attributes */
+	}
 	
 	if (r < 0)
 		sc_pkcs15_free_object(object);
