@@ -39,7 +39,7 @@ netkey_tool_SOURCES = netkey-tool.c
 netkey_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
 rutoken_tool_SOURCES = rutoken-tool.c util.c
 rutoken_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
-westcos_tool_SOURCES = westcos-tool.c 
+westcos_tool_SOURCES = westcos-tool.c util.c
 westcos_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
 
 if WIN32
