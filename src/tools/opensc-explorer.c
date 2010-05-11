@@ -50,7 +50,7 @@ static sc_card_t *card = NULL;
 static const struct option options[] = {
 	{ "reader",		1, NULL, 'r' },
 	{ "card-driver",	1, NULL, 'c' },
-	{ "wait",		1, NULL, 'w' },
+	{ "wait",		0, NULL, 'w' },
 	{ "verbose",		0, NULL, 'v' },
 	{ NULL, 0, NULL, 0 }
 };
