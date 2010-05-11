@@ -34,56 +34,89 @@
 		<para>
 			<variablelist>
 				<varlistentry>
-					<term><option>-G</option></term>
+					<term>
+						<option>--reader</option> num,
+						<option>-r</option> num
+					</term>
+					<listitem><para>
+					Use the given reader number. The default
+					is 0, the first reader in the system.
+					</para></listitem>
+				</varlistentry>
+				
+				<varlistentry>
+					<term><option>--wait, -w</option></term>
+					<listitem><para>Wait for a card to be inserted</para></listitem>
+				</varlistentry>
+				
+				<varlistentry>
+					<term><option>--generate-key, -g</option></term>
 					<listitem><para>Generate a private key on smart card. The smart card must be
 					not finalized and pin installed (ig. file for pin must be created, see option
 					-i). By default key length is 1536 bits. User authentication is required for 
 					this operation. </para></listitem>
 				</varlistentry>
-
+				
 				<varlistentry>
-					<term><option>-L</option> <varname>length</varname></term>
-					<listitem><para>Change the length of private key, use with <option>-G</option>.
+					<term><option>--overwrite-key, -o</option></term>
+					<listitem><para>Otherwrite key if they are already a key on card.</para></listitem>
+				</varlistentry>
+				
+				<varlistentry>
+					<term>
+						<option>--key-length</option> length,
+						<option>-l</option> length
+					</term>
+					<listitem><para>Change the length of private key, use with <option>-g</option>.
 						</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
-					<term><option>-i</option></term>
+					<term><option>--install-pin, -i</option></term>
 					<listitem><para>Install pin file in token, you must provide pin value 
-					with <option>-pin</option>.</para></listitem>
+					with <option>-x</option>.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
-					<term><option>-pin</option> <varname>value</varname></term>
+					<term>
+						<option>--pin-value</option> value,
+						<option>-x</option> value
+					</term>
 					<listitem><para>set value of pin.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
-					<term><option>-puk</option> <varname>value</varname></term>
+					<term>
+						<option>--puk-value</option> value,
+						<option>-y</option> value
+					</term>
 					<listitem><para>set value of puk (or value of new pin for change pin
 					command see <option>-n</option>).</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
-					<term><option>-n</option></term>
+					<term><option>--change-pin, -n</option></term>
 					<listitem><para>Changes a PIN stored on the token. User authentication
 					is required for this operation.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
-					<term><option>-u</option></term>
+					<term><option>--unblock-pin, -u</option></term>
 					<listitem><para>Unblocks a PIN stored on the token. Knowledge of the Pin 
 					Unblock Key (PUK) is required for this operation.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
-					<term><option>-cert</option> <varname>file</varname> </term>
-					<listitem><para>Write certificate <varname>file</varname> in pem format on the 
+					<term>
+						<option>--certificat</option> file,
+						<option>-t</option> file 
+					</term>
+					<listitem><para>Write certificate file in pem format on the 
 					card. User authentication is required for this operation.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
-					<term><option>-F</option></term>
+					<term><option>--finalize, -f</option></term>
 					<listitem><para>Finalize the card, once finalize default key is invalidate so pin and puk
 					can'be changed anymore without user authentification. Warning, smart cards not finalized are
 					unsecure because pin can be changed without user authentification (knowledge of default key
@@ -91,23 +124,28 @@
 				</varlistentry>
 
 				<varlistentry>
-					<term><option>-r</option> <varname>n</varname></term>
-					<listitem><para>Forces <command>westcos-tool</command> to use reader
-					number <varname>n</varname> for operations.</para></listitem>
-				</varlistentry>
-
-				<varlistentry>
-					<term><option>-gf</option> <varname>path</varname></term>
-					<listitem><para>Get the file <varname>path</varname> the file is written 
-					on disk with <varname>path</varname> name. User authentication
+					<term>
+						<option>--read-file</option> path,
+						<option>-j</option> path
+					</term>
+					<listitem><para>Get the file path the file is written 
+					on disk with path name. User authentication
 					is required for this operation.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
-					<term><option>-pf</option> <varname>path</varname></term>
-					<listitem><para>Put the file with name <varname>path</varname> from disk
-					to card the file is written in <varname>path</varname>. User authentication
+					<term>
+						<option>--write-file</option> path,
+						<option>-k</option> path
+					</term>
+					<listitem><para>Put the file with name path from disk
+					to card the file is written in path. User authentication
 					is required for this operation.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>--help, -h</option></term>
+					<listitem><para>Print help message on screen.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -115,11 +153,6 @@
 					<listitem><para>Causes <command>westcos-tool</command> to be more
 					verbose. Specify this flag several times to enable debug output
 					in the OpenSC library.</para></listitem>
-				</varlistentry>
-
-				<varlistentry>
-					<term><option>-h</option></term>
-					<listitem><para>Print help message on screen.</para></listitem>
 				</varlistentry>
 
 			</variablelist>
