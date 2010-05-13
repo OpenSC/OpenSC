@@ -289,7 +289,7 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t * ctx)
 	conf->max_virtual_slots = 16;
 	conf->slots_per_card = 4;
 	conf->hide_empty_tokens = 1;
-	conf->lock_login = 0;
+	conf->lock_login = 1;
 	conf->soft_keygen_allowed = 0;
 	conf->pin_unblock_style = SC_PKCS11_PIN_UNBLOCK_NOT_ALLOWED;
 	conf->create_puk_slot = 0;
