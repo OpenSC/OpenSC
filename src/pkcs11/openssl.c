@@ -15,10 +15,13 @@
 #include <openssl/opensslv.h>
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L
 #include <openssl/conf.h>
-#include <openssl/opensslconf.h> /* for OPENSSL_NO_EC */
+#include <openssl/opensslconf.h> /* for OPENSSL_NO_* */
 #ifndef OPENSSL_NO_EC
 #include <openssl/ec.h>
 #endif /* OPENSSL_NO_EC */
+#ifndef OPENSSL_NO_ENGINE
+#include <openssl/engine.h>
+#endif /* OPENSSL_NO_ENGINE */
 #include <openssl/asn1.h>
 #endif /* OPENSSL_VERSION_NUMBER >= 0x10000000L */
 
@@ -185,10 +188,28 @@ static sc_pkcs11_mechanism_type_t openssl_ripemd160_mech = {
 void
 sc_pkcs11_register_openssl_mechanisms(struct sc_pkcs11_card *card)
 {
-#if OPENSSL_VERSION_NUMBER >= 0x10000000L
-	/* FIXME: see openssl-1.0.0-beta3/engines/ccgost/README.gost */
-	OPENSSL_config(NULL);
-#endif
+#if OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_ENGINE)
+	ENGINE *e = NULL;
+
+#if !defined(OPENSSL_NO_STATIC_ENGINE) && !defined(OPENSSL_NO_GOST)
+	ENGINE_load_gost();
+	e = ENGINE_by_id("gost");
+#else
+	/* try to load dynamic gost engine */
+	ENGINE_load_dynamic();
+	e = ENGINE_by_id("dynamic");
+	if (e && (!ENGINE_ctrl_cmd_string(e, "SO_PATH", "gost", 0) ||
+				!ENGINE_ctrl_cmd_string(e, "LOAD", NULL, 0))) {
+		ENGINE_free(e);
+		e = NULL;
+	}
+#endif /* !OPENSSL_NO_STATIC_ENGINE && !OPENSSL_NO_GOST */
+	if (e) {
+		ENGINE_set_default(e, ENGINE_METHOD_ALL);
+		ENGINE_free(e);
+	}
+#endif /* OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_ENGINE) */
+
 	openssl_sha1_mech.mech_data = EVP_sha1();
 	sc_pkcs11_register_mechanism(card, &openssl_sha1_mech);
 #if OPENSSL_VERSION_NUMBER >= 0x00908000L
