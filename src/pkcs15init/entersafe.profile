@@ -30,7 +30,7 @@ option default {
 
 option onepin {
 	macros {
-		pin-flags		 = initialized, needs-padding;
+		pin-flags		 = local, initialized, needs-padding;
 		df_acl			 = *=$PIN;
 		protected		 = *=$PIN,READ=NONE;
 		dir-size		 = 128;
