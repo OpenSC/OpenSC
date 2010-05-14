@@ -71,16 +71,16 @@ static u8 muscleAppletId[] = { 0xA0, 0x00,0x00,0x00, 0x01, 0x01 };
 
 static int muscle_match_card(sc_card_t *card)
 {
-	/* Use SELECT APPLET, since its a more deterministic way of detection */
 	int i;
 	/* Since we send an APDU, the card's logout function may be called...
 	 * however it's not always properly nulled out... */
 	card->ops->logout = NULL;
 
-	i = msc_select_applet(card, muscleAppletId, 5);
-	/* Mark the card for muscle_init */
-	card->drv_data = (void*)0xFFFFFFFF;
-	return i;
+	if (msc_select_applet(card, muscleAppletId, 5)) {
+		card->type = SC_CARD_TYPE_MUSCLE_GENERIC;
+		return 1;
+	}
+	return 0;
 }
 
 /* Since Musclecard has a different ACL system then PKCS15
@@ -440,18 +440,7 @@ static int muscle_init(sc_card_t *card)
 	int r = 0;
 	muscle_private_t *priv;
 	
-	/* drv_data is set to (void*)0xFFFFFFFF in muscle_detect,
-	 * If drv_data doesn't equal that, then we need to detect... */
-	if(card->drv_data != (void*)0xFFFFFFFF) {
-		card->drv_data = NULL;
-		if(!muscle_match_card(card))
-			return SC_ERROR_INVALID_CARD;
-	}
-
-	r = sc_get_default_driver()->ops->init(card);
-	if(r) return r;
-
-	card->name = "Muscle Card";
+	card->name = "MuscleApplet";
 	card->drv_data = malloc(sizeof(muscle_private_t));
 	if(!card->drv_data) {
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
@@ -485,7 +474,7 @@ static int muscle_init(sc_card_t *card)
 	}
 
 
-		/* FIXME: Card type detection */
+	/* FIXME: Card type detection */
 	if (1) {
 		unsigned long flags;
 		
