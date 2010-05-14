@@ -32,7 +32,7 @@
 
 static struct sc_card_operations muscle_ops;
 static struct sc_card_driver muscle_drv = {
-	"Muscle Card Driver",
+	"MuscleApplet",
 	"muscle",
 	&muscle_ops,
 	NULL, 0, NULL
