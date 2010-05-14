@@ -31,6 +31,8 @@
 #include "opensc.h"
 
 static struct sc_card_operations muscle_ops;
+static const struct sc_card_operations *iso_ops = NULL;
+
 static struct sc_card_driver muscle_drv = {
 	"MuscleApplet",
 	"muscle",
@@ -39,13 +41,13 @@ static struct sc_card_driver muscle_drv = {
 };
 
 static struct sc_atr_table muscle_atrs[] = {
-        /* Aladdin eToken PRO USB 72K Java */
-        { "3b:d5:18:00:81:31:3a:7d:80:73:c8:21:10:30", NULL, NULL, SC_CARD_TYPE_MUSCLE_ETOKEN_72K, 0, NULL },
+	/* Aladdin eToken PRO USB 72K Java */
+	{ "3b:d5:18:00:81:31:3a:7d:80:73:c8:21:10:30", NULL, NULL, SC_CARD_TYPE_MUSCLE_ETOKEN_72K, 0, NULL },
 	/* JCOP31 v2.4.1 contact interface */
 	{ "3b:f8:13:00:00:81:31:fe:45:4a:43:4f:50:76:32:34:31:b7", NULL, NULL, SC_CARD_TYPE_MUSCLE_JCOP241, 0, NULL },
 	/* JCOP31 v2.4.1 RF interface */
 	{ "3b:88:80:01:4a:43:4f:50:76:32:34:31:5e", NULL, NULL, SC_CARD_TYPE_MUSCLE_JCOP241, 0, NULL },
-        { NULL, NULL, NULL, 0, 0, NULL }
+	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
 #define MUSCLE_DATA(card) ( (muscle_private_t*)card->drv_data )
@@ -71,12 +73,11 @@ static u8 muscleAppletId[] = { 0xA0, 0x00,0x00,0x00, 0x01, 0x01 };
 
 static int muscle_match_card(sc_card_t *card)
 {
-	int i;
 	/* Since we send an APDU, the card's logout function may be called...
 	 * however it's not always properly nulled out... */
 	card->ops->logout = NULL;
 
-	if (msc_select_applet(card, muscleAppletId, 5)) {
+	if (msc_select_applet(card, muscleAppletId, 5) == 1) {
 		card->type = SC_CARD_TYPE_MUSCLE_GENERIC;
 		return 1;
 	}
@@ -517,9 +518,6 @@ static int muscle_list_files(sc_card_t *card, u8 *buf, size_t bufLen)
 	return count;
 }
 
-static int (*iso_pin_cmd)(struct sc_card *, struct sc_pin_cmd_data *,
-				int *tries_left);
-
 static int muscle_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *cmd,
 				int *tries_left)
 {
@@ -535,7 +533,7 @@ static int muscle_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *cmd,
 			msc_verify_pin_apdu(card, &apdu, buffer, bufferLength, cmd->pin_reference, cmd->pin1.data, cmd->pin1.len);
 			cmd->apdu = &apdu;
 			cmd->pin1.offset = 5;
-			r = iso_pin_cmd(card, cmd, tries_left);
+			r = iso_ops->pin_cmd(card, cmd, tries_left);
 			if(r >= 0)
 				priv->verifiedPins |= (1 << cmd->pin_reference);
 			return r;
@@ -554,7 +552,7 @@ static int muscle_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *cmd,
 			sc_apdu_t apdu;
 			msc_change_pin_apdu(card, &apdu, buffer, bufferLength, cmd->pin_reference, cmd->pin1.data, cmd->pin1.len, cmd->pin2.data, cmd->pin2.len);
 			cmd->apdu = &apdu;
-			return iso_pin_cmd(card, cmd, tries_left);
+			return iso_ops->pin_cmd(card, cmd, tries_left);
 		}
 		case SC_AC_TERM:
 		case SC_AC_PRO:
@@ -570,7 +568,7 @@ static int muscle_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *cmd,
 			sc_apdu_t apdu;
 			msc_unblock_pin_apdu(card, &apdu, buffer, bufferLength, cmd->pin_reference, cmd->pin1.data, cmd->pin1.len);
 			cmd->apdu = &apdu;
-			return iso_pin_cmd(card, cmd, tries_left);
+			return iso_ops->pin_cmd(card, cmd, tries_left);
 		}
 		case SC_AC_TERM:
 		case SC_AC_PRO:
@@ -763,16 +761,48 @@ static int muscle_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 	return msc_get_challenge(card, len, 0, NULL, rnd);
 }
 
+static int muscle_check_sw(sc_card_t * card, unsigned int sw1, unsigned int sw2) {
+	if(sw1 == 0x9C) {
+		switch(sw2) {
+			case 0x01: /* SW_NO_MEMORY_LEFT */
+				return SC_ERROR_NOT_ENOUGH_MEMORY;
+			case 0x02: /* SW_AUTH_FAILED */
+				return SC_ERROR_PIN_CODE_INCORRECT;
+			case 0x03: /* SW_OPERATION_NOT_ALLOWED */
+				return SC_ERROR_NOT_ALLOWED;
+			case 0x05: /* SW_UNSUPPORTED_FEATURE */
+				return SC_ERROR_NO_CARD_SUPPORT;
+			case 0x06: /* SW_UNAUTHORIZED */
+				return SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
+			case 0x07: /* SW_OBJECT_NOT_FOUND */
+				return SC_ERROR_FILE_NOT_FOUND;
+			case 0x08: /* SW_OBJECT_EXISTS */
+				return SC_ERROR_FILE_ALREADY_EXISTS;
+			case 0x09: /* SW_INCORRECT_ALG */
+				return SC_ERROR_INCORRECT_PARAMETERS;
+			case 0x0B: /* SW_SIGNATURE_INVALID */
+				return SC_ERROR_CARD_CMD_FAILED;
+			case 0x0C: /* SW_IDENTITY_BLOCKED */
+				return SC_ERROR_AUTH_METHOD_BLOCKED;
+			case 0x0F: /* SW_INVALID_PARAMETER */
+			case 0x10: /* SW_INCORRECT_P1 */
+			case 0x11: /* SW_INCORRECT_P2 */
+				return SC_ERROR_INCORRECT_PARAMETERS;
+		}
+	}
+	return iso_ops->check_sw(card, sw1, sw2);
+}
+
 
 static struct sc_card_driver * sc_get_driver(void)
 {
 	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
+	if (iso_ops == NULL)
+		iso_ops = iso_drv->ops;
 
 	muscle_ops = *iso_drv->ops;
-	iso_pin_cmd = iso_drv->ops->pin_cmd;
-	muscle_ops.check_sw = iso_drv->ops->check_sw;
+	muscle_ops.check_sw = muscle_check_sw;
 	muscle_ops.pin_cmd = muscle_pin_cmd;
-	muscle_ops.get_response = iso_drv->ops->get_response;
 	muscle_ops.match_card = muscle_match_card;
 	muscle_ops.init = muscle_init;
 	muscle_ops.finish = muscle_finish;
@@ -794,9 +824,7 @@ static struct sc_card_driver * sc_get_driver(void)
 	return &muscle_drv;
 }
 
-#if 1
 struct sc_card_driver * sc_get_muscle_driver(void)
 {
 	return sc_get_driver();
 }
-#endif

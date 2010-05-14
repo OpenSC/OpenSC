@@ -1039,19 +1039,3 @@ int msc_import_key(sc_card_t *card,
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_CARD_CMD_FAILED);
 }
 #undef CPYVAL
-
-/* For future implementation of check_sw */
-/*
-switch(apdu.sw1) {
-	case 0x9C:
-	switch(apdu.sw2) {
-		case 0x03: // Operation not allowed
-		case 0x05: // Unsupported
-		case 0x06: // Unauthorized
-		case 0x11: // Bad private key num
-		case 0x12: // Bad public key num
-		case 0x0E:
-		case 0x0F: // Invalid parameters...
-	}
-}
-*/
