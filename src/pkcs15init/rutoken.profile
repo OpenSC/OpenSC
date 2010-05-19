@@ -99,6 +99,7 @@ filesystem {
         DF PKCS15-AppDF {
             type    = DF;
             file-id = 5015;
+            size    = 0;
             acl     = *=NEVER, SELECT=NONE, DELETE=CHV2, CREATE=CHV2, READ=NONE;
 
             EF PKCS15-ODF {
