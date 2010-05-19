@@ -953,11 +953,9 @@ out:
 
 /* Wait for an event to occur.
  */
-static int pcsc_wait_for_event(sc_context_t *ctx,
-			       void *reader_data,
-                               unsigned int event_mask,
-                               sc_reader_t **event_reader,
-			       unsigned int *event, int timeout)
+static int pcsc_wait_for_event(sc_context_t *ctx, void *reader_data,
+                               unsigned int event_mask, sc_reader_t **event_reader, unsigned int *event, 
+			       int timeout, void **reader_states)
 {
 	struct pcsc_global_private_data *gpriv = (struct pcsc_global_private_data *)reader_data;
 	LONG rv;
@@ -968,26 +966,40 @@ static int pcsc_wait_for_event(sc_context_t *ctx,
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 
-	rgReaderStates = (SCARD_READERSTATE_A *) calloc(sc_ctx_get_reader_count(ctx) + 1, sizeof(SCARD_READERSTATE_A));
-	if (!rgReaderStates)
-		return SC_ERROR_OUT_OF_MEMORY;
+	if (!event_reader && !event && reader_states)   {
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "free allocated reader states");
+		free(*reader_states);
+		*reader_states = NULL;
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
+	}
 
-	/* Find out the current status */
-	num_watch = sc_ctx_get_reader_count(ctx);
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Trying to watch %d readers", num_watch);
-	for (i = 0; i < num_watch; i++) {
-		rgReaderStates[i].szReader = sc_ctx_get_reader(ctx, i)->name;
-		rgReaderStates[i].dwCurrentState = SCARD_STATE_UNAWARE;
-		rgReaderStates[i].dwEventState = SCARD_STATE_UNAWARE;
-	}
+	if (reader_states == NULL || *reader_states == NULL) {
+		rgReaderStates = (SCARD_READERSTATE_A *) calloc(sc_ctx_get_reader_count(ctx) + 2, sizeof(SCARD_READERSTATE_A));
+		if (!rgReaderStates)
+			SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+
+		/* Find out the current status */
+		num_watch = sc_ctx_get_reader_count(ctx);
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Trying to watch %d readers", num_watch);
+		for (i = 0; i < num_watch; i++) {
+			rgReaderStates[i].szReader = sc_ctx_get_reader(ctx, i)->name;
+			rgReaderStates[i].dwCurrentState = SCARD_STATE_UNAWARE;
+			rgReaderStates[i].dwEventState = SCARD_STATE_UNAWARE;
+		}
 #ifndef __APPLE__ /* OS X 10.6.2 does not support PnP notification */
-	if (event_mask & SC_EVENT_READER_ATTACHED) {
-		rgReaderStates[i].szReader = "\\\\?PnP?\\Notification";
-		rgReaderStates[i].dwCurrentState = SCARD_STATE_UNAWARE;
-		rgReaderStates[i].dwEventState = SCARD_STATE_UNAWARE;
-		num_watch++;
-	}
+		if (event_mask & SC_EVENT_READER_ATTACHED) {
+			rgReaderStates[i].szReader = "\\\\?PnP?\\Notification";
+			rgReaderStates[i].dwCurrentState = SCARD_STATE_UNAWARE;
+			rgReaderStates[i].dwEventState = SCARD_STATE_UNAWARE;
+			num_watch++;
+		}
 #endif
+	}
+	else {
+		rgReaderStates = (SCARD_READERSTATE_A *)(*reader_states);
+		for (num_watch = 0; rgReaderStates[num_watch].szReader; num_watch++)
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "re-use reader '%s'", rgReaderStates[num_watch].szReader);
+	}
 #ifndef _WIN32
 	/* Establish a new context, assuming that it is called from a different thread with pcsc-lite */
 	if (gpriv->pcsc_wait_ctx == -1) {
@@ -1028,9 +1040,11 @@ static int pcsc_wait_for_event(sc_context_t *ctx,
 		*event = 0;
 		for (i = 0, rsp = rgReaderStates; i < num_watch; i++, rsp++) {
 			unsigned long state, prev_state;
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "%s before=0x%04X now=0x%04X", rsp->szReader, rsp->dwCurrentState, rsp->dwEventState);
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "'%s' before=0x%04X now=0x%04X", rsp->szReader, 
+					rsp->dwCurrentState, rsp->dwEventState);
 			prev_state = rsp->dwCurrentState;
 			state = rsp->dwEventState;
+			rsp->dwCurrentState = rsp->dwEventState;
 			if (state & SCARD_STATE_CHANGED) {
 
 				/* check for hotplug events  */
@@ -1065,14 +1079,13 @@ static int pcsc_wait_for_event(sc_context_t *ctx,
 					*event_reader = sc_ctx_get_reader_by_name(ctx, rsp->szReader);
 					r = SC_SUCCESS;
 					goto out;
-					SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
 				}
 				
 			}
 
 			/* No match - copy the state so pcscd knows
 			 * what to watch out for */
-			rsp->dwCurrentState = rsp->dwEventState;
+			//rsp->dwCurrentState = rsp->dwEventState;
 		}
 
 		if (timeout == 0) {
@@ -1085,7 +1098,6 @@ static int pcsc_wait_for_event(sc_context_t *ctx,
 			timeout = INFINITE;
 		}
 
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Sleeping call, timeout 0x%lx", timeout);
 		rv = gpriv->SCardGetStatusChange(gpriv->pcsc_wait_ctx, timeout, rgReaderStates, num_watch);
 
 		if (rv == (LONG) SCARD_E_CANCELLED) {
@@ -1106,7 +1118,14 @@ static int pcsc_wait_for_event(sc_context_t *ctx,
 		}
 	}
 out:
-	free(rgReaderStates);
+	if (!reader_states)   {
+		free(rgReaderStates);
+	}
+	else if (*reader_states == NULL)   {
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "return allocated 'reader states'");
+		*reader_states = rgReaderStates;
+	}
+
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, r);
 }
 

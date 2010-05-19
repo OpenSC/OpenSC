@@ -396,7 +396,9 @@ struct sc_reader_operations {
 	int (*perform_verify)(struct sc_reader *, struct sc_pin_cmd_data *);
 
 	/* Wait for an event */
-	int (*wait_for_event)(struct sc_context *ctx, void *priv_data, unsigned int event_mask, sc_reader_t **event_reader, unsigned int *event, int timeout);
+	int (*wait_for_event)(struct sc_context *ctx, void *priv_data, 
+			unsigned int event_mask, sc_reader_t **event_reader, unsigned int *event, 
+			int timeout, void **reader_states);
 	/* Reset a reader */
 	int (*reset)(struct sc_reader *);
 };
@@ -819,7 +821,8 @@ int sc_detect_card_presence(sc_reader_t *reader);
  * @retval = 1 if the timeout occured
  */
 int sc_wait_for_event(sc_context_t *ctx, unsigned int event_mask,
-                      sc_reader_t **event_reader, unsigned int *event, int timeout);
+                      sc_reader_t **event_reader, unsigned int *event, 
+		      int timeout, void **reader_states);
 
 /**
  * Resets the card.

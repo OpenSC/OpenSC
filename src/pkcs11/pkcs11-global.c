@@ -608,13 +608,14 @@ CK_RV C_WaitForSlotEvent(CK_FLAGS flags,   /* blocking/nonblocking flag */
 			 CK_VOID_PTR pReserved) /* reserved.  Should be NULL_PTR */
 {
 	sc_reader_t *found;
-	int r;
 	unsigned int mask, events;
+	void *reader_states = NULL;
+	CK_SLOT_ID slot_id;
 	CK_RV rv;
+	int ii, r;
 	
-	if (pReserved != NULL_PTR) {
+	if (pReserved != NULL_PTR)
 		return  CKR_ARGUMENTS_BAD;
-	}
 
 	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_WaitForSlotEvent(block=%d)", !(flags & CKF_DONT_BLOCK));
 #if 0
@@ -633,21 +634,25 @@ CK_RV C_WaitForSlotEvent(CK_FLAGS flags,   /* blocking/nonblocking flag */
 		mask |= SC_EVENT_READER_EVENTS;
 	}
 
-	if ((rv = slot_find_changed(pSlot, mask)) == CKR_OK
-	 || (flags & CKF_DONT_BLOCK))
+	rv = slot_find_changed(&slot_id, mask);
+	if ((rv == CKR_OK) || (flags & CKF_DONT_BLOCK))
 		goto out;
 
 again:
+	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_WaitForSlotEvent() reader_states:%p", reader_states);
 	sc_pkcs11_unlock();
-	r = sc_wait_for_event(context, mask, &found, &events, -1);
-
+	r = sc_wait_for_event(context, mask, &found, &events, -1, &reader_states);
 	if (sc_pkcs11_conf.plug_and_play && events & SC_EVENT_READER_ATTACHED) {
 		/* NSS/Firefox Triggers a C_GetSlotList(NULL) only if a slot ID is returned that it does not know yet
 		   Change the first hotplug slot id on every call to make this happen.
 		*/
 		sc_pkcs11_slot_t *hotplug_slot = list_get_at(&virtual_slots, 0);
 		*pSlot= hotplug_slot->id -1;
-		rv = CKR_OK;
+	
+		rv = sc_pkcs11_lock();
+		if (rv != CKR_OK)
+			return rv;
+
 		goto out;
 	}
 	/* Was C_Finalize called ? */
@@ -665,10 +670,21 @@ again:
 
 	/* If no changed slot was found (maybe an unsupported card
 	 * was inserted/removed) then go waiting again */
-	if ((rv = slot_find_changed(pSlot, mask)) != CKR_OK)
+	rv = slot_find_changed(&slot_id, mask);
+	if (rv != CKR_OK)
 		goto again;
 
-out:	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_WaitForSlotEvent() = %s, event in 0x%lx", lookup_enum (RV_T, rv), *pSlot);
+out:	
+	if (pSlot)
+		*pSlot = slot_id;
+
+	/* Free allocated readers states holder */
+	if (reader_states)   {
+		sc_debug(context, SC_LOG_DEBUG_NORMAL, "free reader states");
+		sc_wait_for_event(context, 0, NULL, NULL, -1, &reader_states);
+	}
+
+	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_WaitForSlotEvent() = %s, event in 0x%lx", lookup_enum (RV_T, rv), *pSlot);
 	sc_pkcs11_unlock();
 	return rv;
 }

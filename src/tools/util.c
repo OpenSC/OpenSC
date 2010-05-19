@@ -23,7 +23,7 @@ int util_connect_card(sc_context_t *ctx, sc_card_t **cardp,
 
 		if (sc_ctx_get_reader_count(ctx) == 0) {
 			fprintf(stderr, "Waiting for a reader to be attached...\n");
-			r = sc_wait_for_event(ctx, SC_EVENT_READER_ATTACHED, &found, &event, -1);
+			r = sc_wait_for_event(ctx, SC_EVENT_READER_ATTACHED, &found, &event, -1, NULL);
 			if (r < 0) {
 				fprintf(stderr, "Error while waiting for a reader: %s\n", sc_strerror(r));
 				return 3;
@@ -35,7 +35,7 @@ int util_connect_card(sc_context_t *ctx, sc_card_t **cardp,
 			}
 		}
 		fprintf(stderr, "Waiting for a card to be inserted...\n");
-		r = sc_wait_for_event(ctx, SC_EVENT_CARD_INSERTED, &found, &event, -1);
+		r = sc_wait_for_event(ctx, SC_EVENT_CARD_INSERTED, &found, &event, -1, NULL);
 		if (r < 0) {
 			fprintf(stderr, "Error while waiting for a card: %s\n", sc_strerror(r));
 			return 3;

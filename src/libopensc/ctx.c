@@ -781,16 +781,18 @@ int sc_cancel(sc_context_t *ctx)
 }
 
 
-int sc_wait_for_event(sc_context_t *ctx, unsigned int event_mask, sc_reader_t **event_reader, unsigned int *event, int timeout)
+int sc_wait_for_event(sc_context_t *ctx, unsigned int event_mask, sc_reader_t **event_reader, unsigned int *event, int timeout,
+		void **reader_states)
 {
         int i;
         const struct sc_reader_driver *driver;
         SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
         for (i = 0; ctx->reader_drivers[i] != NULL; i++) {
-                sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "trying %s", ctx->reader_drivers[i]->short_name);
+                sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "trying to wait event from %s", ctx->reader_drivers[i]->short_name);
                 driver = ctx->reader_drivers[i];
                 if (driver->ops->wait_for_event != NULL)                                        		
-		        return driver->ops->wait_for_event(ctx, ctx->reader_drv_data[i], event_mask, event_reader, event, timeout);
+		        return driver->ops->wait_for_event(ctx, ctx->reader_drv_data[i], event_mask, event_reader, event, timeout,
+					reader_states);
         }
         return SC_ERROR_NOT_SUPPORTED;
 }
