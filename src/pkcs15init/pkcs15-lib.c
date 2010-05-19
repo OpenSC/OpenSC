@@ -3052,7 +3052,7 @@ sc_pkcs15init_verify_secret(struct sc_profile *profile, struct sc_pkcs15_card *p
 
 found: 	
 	if (pin_obj)   {
-		r = sc_pkcs15_verify_pin(p15card, pin_obj, pinbuf, pinsize);
+		r = sc_pkcs15_verify_pin(p15card, pin_obj, pinsize ? pinbuf : NULL, pinsize);
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Cannot validate pkcs15 PIN");
 	}
 
