@@ -30,6 +30,10 @@
 #include "internal.h"
 #include "asn1.h"
 
+/*
+#define INVALIDATE_CARD_CACHE_IN_UNLOCK
+*/
+
 int sc_check_sw(sc_card_t *card, unsigned int sw1, unsigned int sw2)
 {
 	if (card == NULL)
@@ -171,7 +175,7 @@ int sc_connect_card(sc_reader_t *reader, sc_card_t **card_out)
 		if (card->ops->init != NULL) {
 			r = card->ops->init(card);
 			if (r) {
-				sc_debug(ctx, SC_LOG_DEBUG_MATCH,							"driver '%s' init() failed: %s\n",
+				sc_debug(ctx, SC_LOG_DEBUG_MATCH, "driver '%s' init() failed: %s\n",
 					card->driver->name, sc_strerror(r));
 				goto err;
 			}
@@ -326,9 +330,12 @@ int sc_unlock(sc_card_t *card)
 		return r;
 	assert(card->lock_count >= 1);
 	if (--card->lock_count == 0) {
+#ifdef INVALIDATE_CARD_CACHE_IN_UNLOCK
 		/* invalidate cache */
 		memset(&card->cache, 0, sizeof(card->cache));
 		card->cache_valid = 0;
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "cache invalidated");
+#endif
 		/* release reader lock */
 		if (card->reader->ops->unlock != NULL)
 			r = card->reader->ops->unlock(card->reader);
