@@ -216,6 +216,7 @@ int sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card,
 	struct sc_pin_cmd_data data;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "PIN(%p;len:%i)", pincode, pinlen);
 
 	r = _validate_pin(p15card, pin_info, pinlen);
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "PIN value do not conforms the PIN policy");
@@ -259,7 +260,8 @@ int sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card,
 	}
 
 	if(p15card->card->reader->capabilities & SC_READER_CAP_PIN_PAD) {
-		data.flags |= SC_PIN_CMD_USE_PINPAD;
+		if (!pincode && !pinlen)
+			data.flags |= SC_PIN_CMD_USE_PINPAD;
 		if (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN)
 			data.pin1.prompt = "Please enter SO PIN";
 		else
