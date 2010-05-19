@@ -341,30 +341,32 @@ app opensc-pkcs11 {
 		# Default: true
 		# hide_empty_tokens = false;
 
- 		# By default, the OpenSC PKCS#11 module will lock your card
- 		# once you authenticate to the card via C_Login.
- 		# This is to prevent other users or other applications
+ 		# By default, the OpenSC PKCS#11 module will not lock your card
+		# once you authenticate to the card via C_Login.
+		#
+ 		# Thus the other users or other applications is not prevented
  		# from connecting to the card and perform crypto operations
  		# (which may be possible because you have already authenticated
- 		# with the card). Thus this setting is very secure.
+ 		# with the card). This setting is not very secure.
 		#
-		# This behavior is a known violation of PKCS#11 specification,
-		# and is forced due to limitation of the OpenSC framework.
+		# Also, if your card is not locked, you can enconter problems 
+		# due to limitation of the OpenSC framework, that still is not 
+		# thoroughly tested in the multi threads environment.
  		#
- 		# However now once one application has started using your
- 		# card with C_Login, no other application can use it, until
- 		# the first is done and calls C_Logout or C_Finalize.
- 		# In the case of many PKCS#11 application this does not happen
-		# until you exit the application.  
+		# Your settings will be more secure if you choose to lock your 
+		# card. Nevertheless this behavior is a known violation of PKCS#11 
+		# specification. Now once one application has started using your 
+		# card with C_Login, no other application can use it, until 
+		# the first is done and calls C_Logout or C_Finalize. In the case 
+		# of many PKCS#11 application this does not happen until you exit 
+		# the application.  
+ 		# Thus it is impossible to use several smart card aware applications 
+		# at the same time, e.g. you cannot run both Firefox and Thunderbird at 
+		# the same time, if both are configured to use your smart card.
  		#
- 		# Thus it is impossible to use several smart card aware
- 		# applications at the same time, e.g. you cannot run both
- 		# Firefox and Thunderbird at the same time, if both are
- 		# configured to use your smart card.
- 		#
-		# Default: true
-		# lock_login = false;
-		#
+		# Default: false
+		# lock_login = true;
+
 		# Set this value to true if you want to allow off-card
 		# keypair generation (in software on your pc)
 		#
