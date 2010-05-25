@@ -145,13 +145,23 @@ static struct sc_pkcs15_card *p15card = NULL;
 
 static void print_cert_info(const struct sc_pkcs15_object *obj)
 {
-	struct sc_pkcs15_cert_info *cert = (struct sc_pkcs15_cert_info *) obj->data;
+	struct sc_pkcs15_cert_info *cert_info = (struct sc_pkcs15_cert_info *) obj->data;
+	struct sc_pkcs15_cert *cert_parsed = NULL;
+	int rv;
 
 	printf("X.509 Certificate [%s]\n", obj->label);
 	printf("\tFlags    : %d\n", obj->flags);
-	printf("\tAuthority: %s\n", cert->authority ? "yes" : "no");
-	printf("\tPath     : %s\n", sc_print_path(&cert->path));
-	printf("\tID       : %s\n", sc_pkcs15_print_id(&cert->id));
+	printf("\tAuthority: %s\n", cert_info->authority ? "yes" : "no");
+	printf("\tPath     : %s\n", sc_print_path(&cert_info->path));
+	printf("\tID       : %s\n", sc_pkcs15_print_id(&cert_info->id));
+
+        rv = sc_pkcs15_read_certificate(p15card, cert_info, &cert_parsed);
+	if (rv >= 0 && cert_parsed)   {
+		printf("\tEncoded serial: %02X %02X ", *(cert_parsed->serial), *(cert_parsed->serial + 1));
+		util_hex_dump(stdout, cert_parsed->serial + 2, cert_parsed->serial_len - 2, "");
+		printf("\n");
+		free(cert_parsed);
+	}
 }
 
 

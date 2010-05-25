@@ -38,6 +38,8 @@ static int parse_x509_cert(sc_context_t *ctx, const u8 *buf, size_t buflen, stru
 	int r;
 	struct sc_algorithm_id pk_alg, sig_alg;
 	sc_pkcs15_der_t pk = { NULL, 0 };
+	u8 *serial = NULL;
+	size_t serial_len = 0;
 	struct sc_asn1_entry asn1_version[] = {
 		{ "version", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, 0, &cert->version, NULL },
 		{ NULL, 0, 0, 0, NULL, NULL }
@@ -61,7 +63,7 @@ static int parse_x509_cert(sc_context_t *ctx, const u8 *buf, size_t buflen, stru
 	};
 	struct sc_asn1_entry asn1_tbscert[] = {
 		{ "version",		SC_ASN1_STRUCT,    SC_ASN1_CTX | 0 | SC_ASN1_CONS, SC_ASN1_OPTIONAL, asn1_version, NULL },
-		{ "serialNumber",	SC_ASN1_OCTET_STRING, SC_ASN1_TAG_INTEGER, SC_ASN1_ALLOC, &cert->serial, &cert->serial_len },
+		{ "serialNumber",	SC_ASN1_OCTET_STRING, SC_ASN1_TAG_INTEGER, SC_ASN1_ALLOC, &serial, &serial_len },
 		{ "signature",		SC_ASN1_STRUCT,    SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
 		{ "issuer",		SC_ASN1_OCTET_STRING, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_ALLOC, &cert->issuer, &cert->issuer_len },
 		{ "validity",		SC_ASN1_STRUCT,    SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
@@ -74,6 +76,10 @@ static int parse_x509_cert(sc_context_t *ctx, const u8 *buf, size_t buflen, stru
 		{ "tbsCertificate",	SC_ASN1_STRUCT,    SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, asn1_tbscert, NULL },
 		{ "signatureAlgorithm",	SC_ASN1_ALGORITHM_ID, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, &sig_alg, NULL },
 		{ "signatureValue",	SC_ASN1_BIT_STRING, SC_ASN1_TAG_BIT_STRING, 0, NULL, NULL },
+		{ NULL, 0, 0, 0, NULL, NULL }
+	};
+	struct sc_asn1_entry asn1_serial_number[] = {
+		{ "serialNumber", SC_ASN1_OCTET_STRING, SC_ASN1_TAG_OCTET_STRING, SC_ASN1_ALLOC, NULL, NULL },
 		{ NULL, 0, 0, 0, NULL, NULL }
 	};
 	const u8 *obj;
@@ -101,6 +107,12 @@ static int parse_x509_cert(sc_context_t *ctx, const u8 *buf, size_t buflen, stru
 		free(pk.value);
 	sc_asn1_clear_algorithm_id(&pk_alg);
 	sc_asn1_clear_algorithm_id(&sig_alg);
+
+	if (serial && serial_len)   {
+		sc_format_asn1_entry(asn1_serial_number + 0, serial, &serial_len, 1);
+		r = sc_asn1_encode(ctx, asn1_serial_number, &cert->serial, &cert->serial_len);
+		free(serial);
+	}
 
 	return r;
 }
