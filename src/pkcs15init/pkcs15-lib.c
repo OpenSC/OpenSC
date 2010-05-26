@@ -1694,8 +1694,12 @@ sc_pkcs15init_store_data(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 		file->path.index = 0;
 		file->path.count = -1;
 	}
-	r = sc_pkcs15init_update_file(profile, p15card, file, 
-			data->value, data->len);
+
+	r = sc_pkcs15init_delete_by_path(profile, p15card, &file->path);
+	if (r && r != SC_ERROR_FILE_NOT_FOUND)
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Cannot delete file");
+
+	r = sc_pkcs15init_update_file(profile, p15card, file, data->value, data->len);
 	
 	*path = file->path;
 
@@ -2770,7 +2774,7 @@ sc_pkcs15init_update_certificate(struct sc_pkcs15_card *p15card,
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Failed to select cert file");
 
 	/* If the new cert doesn't fit in the EF, delete it and make the same, but bigger EF */
-	if (file->size < certlen) {
+	if (file->size != certlen) {
 		struct sc_file *parent = NULL;
 
 		r = sc_pkcs15init_delete_by_path(profile, p15card, path);
@@ -3237,7 +3241,7 @@ sc_pkcs15init_update_file(struct sc_profile *profile,
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_file	*selected_file = NULL;
 	void		*copy = NULL;
-	int		r, need_to_zap = 0;
+	int		r;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "path:%s; datalen:%i\n", sc_print_path(&file->path), datalen);
