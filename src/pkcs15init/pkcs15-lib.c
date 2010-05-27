@@ -3241,7 +3241,7 @@ sc_pkcs15init_update_file(struct sc_profile *profile,
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_file	*selected_file = NULL;
 	void		*copy = NULL;
-	int		r;
+	int		r, need_to_zap = 0;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "path:%s; datalen:%i\n", sc_print_path(&file->path), datalen);
