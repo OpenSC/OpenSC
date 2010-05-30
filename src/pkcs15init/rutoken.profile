@@ -99,6 +99,7 @@ filesystem {
         DF PKCS15-AppDF {
             type    = DF;
             file-id = 5015;
+            aid     = A0:00:00:00:63:50:4B:43:53:2D:31:35;
             size    = 0;
             acl     = *=NEVER, SELECT=NONE, DELETE=CHV2, CREATE=CHV2, READ=NONE;
 
