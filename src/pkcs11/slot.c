@@ -303,7 +303,6 @@ CK_RV slot_get_token(CK_SLOT_ID id, struct sc_pkcs11_slot ** slot)
 CK_RV slot_token_removed(CK_SLOT_ID id)
 {
 	int rv, token_was_present;
-	unsigned int i;
 	struct sc_pkcs11_slot *slot;
 	struct sc_pkcs11_object *object;
 
@@ -317,12 +316,10 @@ CK_RV slot_token_removed(CK_SLOT_ID id)
 	/* Terminate active sessions */
 	sc_pkcs11_close_all_sessions(id);
 
-	for (i=0; i<list_size(&slot->objects); i++) {
-	        object = (struct sc_pkcs11_object *)list_get_at(&slot->objects, i);
+	while ((object = list_fetch(&slot->objects))) {
 		if (object->ops->release)
 			object->ops->release(object);
-                list_delete(&slot->objects, object);
-	} 
+	}
 
 	/* Release framework stuff */
 	if (slot->card != NULL) {
