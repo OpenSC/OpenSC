@@ -272,6 +272,8 @@ out:
 CK_RV C_Finalize(CK_VOID_PTR pReserved)
 {
 	int i;
+	void *p;
+	sc_pkcs11_slot_t *slot;
 	CK_RV rv;
 
 	if (context == NULL)
@@ -296,9 +298,16 @@ CK_RV C_Finalize(CK_VOID_PTR pReserved)
 	for (i=0; i < (int)sc_ctx_get_reader_count(context); i++)
 		card_removed(sc_ctx_get_reader(context, i));
 
+	while ((p = list_fetch(&sessions)))
+		free(p);
 	list_destroy(&sessions);
+
+	while ((slot = list_fetch(&virtual_slots))) {
+		list_destroy(&slot->objects);
+		free(slot);
+	}
 	list_destroy(&virtual_slots);
-	
+
 	sc_release_context(context);
 	context = NULL;
 
