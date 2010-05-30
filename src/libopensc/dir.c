@@ -302,8 +302,6 @@ static int update_transparent(sc_card_t *card, sc_file_t *file)
 	for (i = 0; i < card->app_count; i++) {
 		r = encode_dir_record(card->ctx, card->app[i], &rec, &rec_size);
 		if (r) {
-			if (rec)
-				free(rec);
 			if (buf)
 				free(buf);
 			return r;
