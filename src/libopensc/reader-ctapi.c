@@ -199,8 +199,7 @@ static int ctapi_transmit(sc_reader_t *reader, sc_apdu_t *apdu)
 		sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "unable to transmit");
 		goto out;
 	}
-	if (reader->ctx->debug >= 6)
-		sc_apdu_log(reader->ctx, rbuf, rsize, 0);
+	sc_apdu_log(reader->ctx, SC_LOG_DEBUG_NORMAL, rbuf, rsize, 0);
 	/* set response */
 	r = sc_apdu_set_resp(reader->ctx, apdu, rbuf, rsize);
 out:
@@ -339,7 +338,6 @@ static int ctapi_load_module(sc_context_t *ctx,
 	const scconf_list *list;
 	void *dlh;
 	int r, i, NumUnits;
-	char rv;
 	u8 cmd[5], rbuf[256], sad, dad;
 	unsigned short lr;
 
@@ -386,8 +384,28 @@ static int ctapi_load_module(sc_context_t *ctx,
 			continue;
 		}
 		
+		reader = (sc_reader_t *) calloc(1, sizeof(sc_reader_t));
+		priv = (struct ctapi_private_data *) calloc(1, sizeof(struct ctapi_private_data));
+		if (!priv)
+			return SC_ERROR_OUT_OF_MEMORY;
+		reader->drv_data = priv;
+		reader->ops = &ctapi_ops;
+		reader->driver = &ctapi_drv;
+		snprintf(namebuf, sizeof(namebuf), "CT-API %s, port %d", mod->name, port);
+		reader->name = strdup(namebuf);
+		priv->funcs = funcs;
+		priv->ctn = mod->ctn_count;
+		r = _sc_add_reader(ctx, reader);
+		if (r) {
+			funcs.CT_close((unsigned short)mod->ctn_count);
+			free(priv);
+			free(reader->name);
+			free(reader);
+			break;
+		}
+		
 		/* Detect functional units of the reader according to CT-BCS spec version 1.0 
-			(14.04.2004, http://www.teletrust.de/down/mct1-0_t4.zip) */	
+		(14.04.2004, http://www.teletrust.de/down/mct1-0_t4.zip) */	
 		cmd[0] = CTBCS_CLA;
 		cmd[1] = CTBCS_INS_STATUS;
 		cmd[2] = CTBCS_P1_CT_KERNEL;
@@ -410,7 +428,7 @@ static int ctapi_load_module(sc_context_t *ctx,
 		if (NumUnits + 4 > lr) {
 			sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "Invalid data returnd: %d functional units, size %d\n", NumUnits, rv);
 		}
-		
+		priv->ctapi_functional_units = 0;
 		for(i = 0; i < NumUnits; i++) {
 			switch(rbuf[i+2]) {
 				case CTBCS_P1_INTERFACE1:
@@ -461,42 +479,16 @@ static int ctapi_load_module(sc_context_t *ctx,
 					sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "Unknown functional unit 0x%x\n", rbuf[i+2]);
 			}
 		}
-	/* CT-BCS does not define Keyboard/Display for each slot, so I assume
-	   those additional units can be used for each slot */
-	if (priv->ctapi_functional_units) {
-		if (priv->ctapi_functional_units & CTAPI_FU_KEYBOARD)
-			reader->capabilities |= SC_READER_CAP_PIN_PAD;
-		if (priv->ctapi_functional_units & CTAPI_FU_DISPLAY)
-			reader->capabilities |= SC_READER_CAP_DISPLAY;
-	}
-}
-
-		
-		
-		
-		
-		reader = (sc_reader_t *) calloc(1, sizeof(sc_reader_t));
-		priv = (struct ctapi_private_data *) calloc(1, sizeof(struct ctapi_private_data));
-		if (!priv) return SC_ERROR_OUT_OF_MEMORY;
-		reader->drv_data = priv;
-		reader->ops = &ctapi_ops;
-		reader->driver = &ctapi_drv;
-		snprintf(namebuf, sizeof(namebuf), "CT-API %s, port %d", mod->name, port);
-		reader->name = strdup(namebuf);
-		priv->funcs = funcs;
-		priv->ctn = mod->ctn_count;
-		r = _sc_add_reader(ctx, reader);
-		if (r) {
-			funcs.CT_close((unsigned short)mod->ctn_count);
-			free(priv);
-			free(reader->name);
-			free(reader);
-			break;
+		/* CT-BCS does not define Keyboard/Display for each slot, so I assume
+		those additional units can be used for each slot */
+		if (priv->ctapi_functional_units) {
+			if (priv->ctapi_functional_units & CTAPI_FU_KEYBOARD)
+				reader->capabilities |= SC_READER_CAP_PIN_PAD;
+			if (priv->ctapi_functional_units & CTAPI_FU_DISPLAY)
+				reader->capabilities |= SC_READER_CAP_DISPLAY;
 		}
-		/* slot count and properties are set in detect_functional_units */
-		detect_functional_units(reader);
 		
-		ctapi_reset(reader, NULL);
+		ctapi_reset(reader);
 		refresh_attributes(reader);
 		mod->ctn_count++;
 	}
