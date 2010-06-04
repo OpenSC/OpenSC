@@ -189,21 +189,27 @@ void
 sc_pkcs11_register_openssl_mechanisms(struct sc_pkcs11_card *card)
 {
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_ENGINE)
-	ENGINE *e = NULL;
+	ENGINE *e = ENGINE_by_id("gost");
 
+	if (!e)
+	{
 #if !defined(OPENSSL_NO_STATIC_ENGINE) && !defined(OPENSSL_NO_GOST)
-	ENGINE_load_gost();
-	e = ENGINE_by_id("gost");
+		ENGINE_load_gost();
+		e = ENGINE_by_id("gost");
 #else
-	/* try to load dynamic gost engine */
-	ENGINE_load_dynamic();
-	e = ENGINE_by_id("dynamic");
-	if (e && (!ENGINE_ctrl_cmd_string(e, "SO_PATH", "gost", 0) ||
-				!ENGINE_ctrl_cmd_string(e, "LOAD", NULL, 0))) {
-		ENGINE_free(e);
-		e = NULL;
-	}
+		/* try to load dynamic gost engine */
+		e = ENGINE_by_id("dynamic");
+		if (!e) {
+			ENGINE_load_dynamic();
+			e = ENGINE_by_id("dynamic");
+		}
+		if (e && (!ENGINE_ctrl_cmd_string(e, "SO_PATH", "gost", 0) ||
+					!ENGINE_ctrl_cmd_string(e, "LOAD", NULL, 0))) {
+			ENGINE_free(e);
+			e = NULL;
+		}
 #endif /* !OPENSSL_NO_STATIC_ENGINE && !OPENSSL_NO_GOST */
+	}
 	if (e) {
 		ENGINE_set_default(e, ENGINE_METHOD_ALL);
 		ENGINE_free(e);
