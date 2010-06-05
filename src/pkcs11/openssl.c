@@ -23,6 +23,7 @@
 #include <openssl/engine.h>
 #endif /* OPENSSL_NO_ENGINE */
 #include <openssl/asn1.h>
+#include <openssl/crypto.h>
 #endif /* OPENSSL_VERSION_NUMBER >= 0x10000000L */
 
 #include "sc-pkcs11.h"
@@ -189,8 +190,14 @@ void
 sc_pkcs11_register_openssl_mechanisms(struct sc_pkcs11_card *card)
 {
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_ENGINE)
-	ENGINE *e = ENGINE_by_id("gost");
+	void (*locking_cb)(int, int, const char *, int);
+	ENGINE *e;
 
+	locking_cb = CRYPTO_get_locking_callback();
+	if (locking_cb)
+		CRYPTO_set_locking_callback(NULL);
+
+	e = ENGINE_by_id("gost");
 	if (!e)
 	{
 #if !defined(OPENSSL_NO_STATIC_ENGINE) && !defined(OPENSSL_NO_GOST)
@@ -214,6 +221,9 @@ sc_pkcs11_register_openssl_mechanisms(struct sc_pkcs11_card *card)
 		ENGINE_set_default(e, ENGINE_METHOD_ALL);
 		ENGINE_free(e);
 	}
+
+	if (locking_cb)
+		CRYPTO_set_locking_callback(locking_cb);
 #endif /* OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_ENGINE) */
 
 	openssl_sha1_mech.mech_data = EVP_sha1();
