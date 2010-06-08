@@ -854,13 +854,13 @@ erase_state:
 # else /* ENABLE_OPENSSL */
 static int cardos_format(const char *opt_startkey)
 {
-	printf("this code needs to be compiled with openssl support enabled.\n");
-	printf("aborting\n");
+	printf("Formatting CardOS cards requires OpenSC built with OpenSSL.\n");
+	printf("Aborting\n");
 	return 1;
 }
 #endif /* ENABLE_OPENSSL */
 
-#ifdef ENABLE_OPENSSL
+#if defined(ENABLE_OPENSSL) && OPENSSL_VERSION_NUMBER >= 0x0090800fL
 static int cardos_change_startkey(const char *change_startkey_apdu)
 {
 	#define MAX_APDU 60
@@ -1064,8 +1064,8 @@ change_startkey:
 }
 # else /* ENABLE_OPENSSL */
 static int cardos_change_startkey(const char *change_startkey_apdu)   {
-	printf("this code needs to be compiled with openssl support enabled.\n");
-	printf("aborting\n");
+	fprintf(stderr, "Changing the startkey requires OpenSC built with OpenSSL 0.9.8+.\n");
+	fprintf(stderr, "Aborting\n");
 	return 1;
 }
 #endif
