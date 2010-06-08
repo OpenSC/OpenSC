@@ -860,20 +860,19 @@ static int cardos_format(const char *opt_startkey)
 }
 #endif /* ENABLE_OPENSSL */
 
-#if defined(ENABLE_OPENSSL) && OPENSSL_VERSION_NUMBER >= 0x0090800fL
+#ifdef ENABLE_OPENSSL
 static int cardos_change_startkey(const char *change_startkey_apdu)
 {
 	#define MAX_APDU 60
 	unsigned char cardos_version[2];
 	unsigned char apdu_bin[MAX_APDU];
 	size_t apdu_len=MAX_APDU;
-	unsigned char checksum[SHA256_DIGEST_LENGTH];
+	unsigned char checksum[SHA_DIGEST_LENGTH];
 
-	static const unsigned char cardos_43b_checksum[SHA256_DIGEST_LENGTH] =
-		{  0xA5, 0x17, 0x9A, 0x88, 0xC8, 0x78, 0x50, 0x0C, 
-		   0x43, 0x3B, 0xD5, 0xD1, 0x3E, 0x34, 0x65, 0x3D,
-		   0x74, 0x7A, 0xDA, 0x19, 0x07, 0x5B, 0xCA, 0xC3, 
-		   0xF0, 0xD3, 0xDC, 0x8B, 0xB7, 0xFB, 0xC5, 0xB4 };
+	static const unsigned char cardos_43b_checksum[SHA_DIGEST_LENGTH] =
+		{  0x5C, 0xD6, 0x8C, 0x2C, 0x24, 0x77, 0x3C, 0xDC,
+		   0x93, 0x73, 0xD8, 0x4B, 0x47, 0x29, 0x19, 0x70,
+		   0x9F, 0xA2, 0x42, 0xB4  };
 	sc_apdu_t apdu;
 	u8 rbuf[256];
 	int r;
@@ -974,13 +973,13 @@ static int cardos_change_startkey(const char *change_startkey_apdu)
 		printf("can't convert startkey apdu to binary format: aborting\n");
 		return 1;
 	}
-	SHA256(apdu_bin, apdu_len, checksum);
+	SHA1(apdu_bin, apdu_len, checksum);
 
 	if (cardos_version[0] == 0xc8 && cardos_version[1] == 0x08) {
-		if (memcmp(checksum, cardos_43b_checksum, SHA256_DIGEST_LENGTH) != 0) {
+		if (memcmp(checksum, cardos_43b_checksum, SHA_DIGEST_LENGTH) != 0) {
 			printf("change startkey apdu is wrong, checksum doesn't match\n");
-			util_hex_dump_asc(stdout, checksum, SHA256_DIGEST_LENGTH, -1);  
-			util_hex_dump_asc(stdout, cardos_43b_checksum, SHA256_DIGEST_LENGTH, -1);  
+			util_hex_dump_asc(stdout, checksum, SHA_DIGEST_LENGTH, -1);  
+			util_hex_dump_asc(stdout, cardos_43b_checksum, SHA_DIGEST_LENGTH, -1);  
 			printf("aborting\n");
 			return 1;
 		}
@@ -1064,7 +1063,7 @@ change_startkey:
 }
 # else /* ENABLE_OPENSSL */
 static int cardos_change_startkey(const char *change_startkey_apdu)   {
-	fprintf(stderr, "Changing the startkey requires OpenSC built with OpenSSL 0.9.8+.\n");
+	fprintf(stderr, "Changing the startkey requires OpenSC built with OpenSSL.\n");
 	fprintf(stderr, "Aborting\n");
 	return 1;
 }
