@@ -11,7 +11,7 @@ cardinfo {
 
 option default {
 	macros {
-		pin-flags		 = initialized, needs-padding;
+		pin-flags		 = local, initialized, needs-padding;
 		min-pin-length	 = 4;
 		df_acl			 = *=NEVER;
 		protected		 = *=$PIN,READ=NONE;
