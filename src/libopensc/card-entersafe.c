@@ -675,12 +675,12 @@ static int entersafe_create_mf(sc_card_t *card, sc_entersafe_create_data * data)
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	memcpy(data->data.mf.init_key, init_key, sizeof(init_key));
+	memcpy(data->data.df.init_key, init_key, sizeof(init_key));
 
 	sc_format_apdu(card,&apdu,SC_APDU_CASE_3_SHORT,0xE0,0x00,0x00);
 	apdu.cla=0x84;
-	apdu.data=(u8*)&data->data.mf;
-	apdu.datalen=apdu.lc=sizeof(data->data.mf);
+	apdu.data=(u8*)&data->data.df;
+	apdu.datalen=apdu.lc=sizeof(data->data.df);
 
 	switch(card->type)
 	{

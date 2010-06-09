@@ -639,17 +639,6 @@ typedef struct sc_entersafe_create_data_st {
 			   u8 lock_ac;
 			   u8 aid[16];
 			   u8 init_key[16];
-		  } mf;
-		  struct {
-			   u8 file_id[2];
-			   u8 file_count;
-			   u8 flag;
-			   u8 ikf_size[2];
-			   u8 create_ac;
-			   u8 append_ac;
-			   u8 lock_ac;
-			   u8 aid[16];
-			   u8 init_key[16];
 		  } df;
 		  struct {
 			   u8 file_id[2];	
