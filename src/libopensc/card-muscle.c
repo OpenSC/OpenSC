@@ -383,8 +383,6 @@ static int select_item(sc_card_t *card, const sc_path_t *path_in, sc_file_t ** f
 		file->path = *path_in;
 		file->size = file_data->size;
 		file->id = (oid[2] << 8) | oid[3];
-		memcpy(file->name, path, pathlen);
-		file->namelen = pathlen;
 		if(!file_data->ef) {
 			file->type = SC_FILE_TYPE_DF;
 		} else {
