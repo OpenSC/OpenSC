@@ -1,5 +1,5 @@
 /*
- * card-muscle.c: Support for MuscleCard Applet from musclecard.com 
+ * card-muscle.c: Support for MuscleCard Applet from musclecard.com
  *
  * Copyright (C) 2006, Identity Alliance, Thomas Harning <support@identityalliance.com>
  *
@@ -73,13 +73,25 @@ static u8 muscleAppletId[] = { 0xA0, 0x00,0x00,0x00, 0x01, 0x01 };
 
 static int muscle_match_card(sc_card_t *card)
 {
+	sc_apdu_t apdu;
+	u8 response[64];
+	int r;
+	
 	/* Since we send an APDU, the card's logout function may be called...
 	 * however it's not always properly nulled out... */
 	card->ops->logout = NULL;
 
 	if (msc_select_applet(card, muscleAppletId, 5) == 1) {
-		card->type = SC_CARD_TYPE_MUSCLE_GENERIC;
-		return 1;
+		/* Muscle applet is present, check the protocol version to be sure */		
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_2, 0x3C, 0x00, 0x00);
+		apdu.le = 00;
+		apdu.resplen = 64;
+		apdu.resp = response;
+		r = sc_transmit_apdu(card, &apdu);
+		if (r == SC_SUCCESS && response[0] == 0x01) {
+				card->type = SC_CARD_TYPE_MUSCLE_V1;
+				return 1;
+		}
 	}
 	return 0;
 }
@@ -117,7 +129,7 @@ static unsigned short muscle_parse_singleAcl(const sc_acl_entry_t* acl)
 	return acl_entry;
 }
 
-static void muscle_parse_acls(const sc_file_t* file, unsigned short* read_perm, unsigned short* write_perm, unsigned short* delete_perm) 
+static void muscle_parse_acls(const sc_file_t* file, unsigned short* read_perm, unsigned short* write_perm, unsigned short* delete_perm)
 {
 	assert(read_perm && write_perm && delete_perm);
 	*read_perm =  muscle_parse_singleAcl(sc_file_get_acl_entry(file, SC_AC_OP_READ));
@@ -230,7 +242,7 @@ static int muscle_update_binary(sc_card_t *card, unsigned int idx, const u8* buf
 		if(r < 0) goto update_bin_free_buffer;
 		r = msc_create_object(card, objectId, newFileSize, 0,0,0);
 		if(r < 0) goto update_bin_free_buffer;
-		memcpy(buffer + idx, buf, count); 
+		memcpy(buffer + idx, buf, count);
 		r = msc_update_object(card, objectId, 0, buffer, newFileSize);
 		if(r < 0) goto update_bin_free_buffer;
 		file->size = newFileSize;
@@ -292,7 +304,7 @@ static int muscle_delete_mscfs_file(sc_card_t *card, mscfs_file_t *file_data)
 
 	if(r < 0) {
 		printf("ID: %02X%02X%02X%02X\n",
-					oid[0],oid[1],oid[2],oid[3]); 
+					oid[0],oid[1],oid[2],oid[3]);
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,r);
 	}
 	return 0;
@@ -348,7 +360,6 @@ static int select_item(sc_card_t *card, const sc_path_t *path_in, sc_file_t ** f
 {
 	mscfs_t *fs = MUSCLE_FS(card);
 	mscfs_file_t *file_data = NULL;
-	const u8 *path = path_in->value;
 	int pathlen = path_in->len;
 	int r = 0;
 	int objectIndex;
@@ -436,7 +447,6 @@ static int _listFile(mscfs_file_t *file, int reset, void *udata)
 
 static int muscle_init(sc_card_t *card)
 {
-	int r = 0;
 	muscle_private_t *priv;
 	
 	card->name = "MuscleApplet";
@@ -481,14 +491,12 @@ static int muscle_init(sc_card_t *card)
 		flags |= SC_ALGORITHM_RSA_HASH_NONE;
 		flags |= SC_ALGORITHM_ONBOARD_KEY_GEN;
 
-		_sc_card_add_rsa_alg(card, 512, flags, 0);
-		_sc_card_add_rsa_alg(card, 768, flags, 0);
 		_sc_card_add_rsa_alg(card, 1024, flags, 0);
 		_sc_card_add_rsa_alg(card, 2048, flags, 0);
 	}
 	card->max_recv_size = 1024 * 64;
 	card->max_send_size = 1024 * 64;
-	return 0;
+	return SC_SUCCESS;
 }
 
 static int muscle_list_files(sc_card_t *card, u8 *buf, size_t bufLen)
@@ -589,9 +597,9 @@ static int muscle_card_extract_key(sc_card_t *card, sc_cardctl_muscle_key_info_t
 	/* CURRENTLY DONT SUPPOT EXTRACTING PRIVATE KEYS... */
 	switch(info->keyType) {
 	case 1: /* RSA */
-		return msc_extract_rsa_public_key(card, 
-			info->keyLocation, 
-			&info->modLength, 
+		return msc_extract_rsa_public_key(card,
+			info->keyLocation,
+			&info->modLength,
 			&info->modValue,
 			&info->expLength,
 			&info->expValue);
@@ -606,8 +614,8 @@ static int muscle_card_import_key(sc_card_t *card, sc_cardctl_muscle_key_info_t 
 	switch(info->keyType) {
 	case 0x02: /* RSA_PRIVATE */
 	case 0x03: /* RSA_PRIVATE_CRT */
-		return msc_import_key(card, 
-			info->keyLocation, 
+		return msc_import_key(card,
+			info->keyLocation,
 			info);
 	default:
 		return SC_ERROR_NOT_SUPPORTED;
@@ -616,8 +624,8 @@ static int muscle_card_import_key(sc_card_t *card, sc_cardctl_muscle_key_info_t 
 
 static int muscle_card_generate_key(sc_card_t *card, sc_cardctl_muscle_gen_key_info_t *info)
 {
-	return msc_generate_keypair(card, 
-		info->privateKeyLocation, 
+	return msc_generate_keypair(card,
+		info->privateKeyLocation,
 		info->publicKeyLocation,
 		info->keyType,
 		info->keySize,
@@ -648,7 +656,7 @@ static int muscle_card_ctl(sc_card_t *card, unsigned long request, void *data)
 
 static int muscle_set_security_env(sc_card_t *card,
 				 const sc_security_env_t *env,
-				 int se_num)   
+				 int se_num)
 {
 	muscle_private_t* priv = MUSCLE_DATA(card);
 
