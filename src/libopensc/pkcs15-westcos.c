@@ -1,8 +1,8 @@
 /*
- * p15emu-westcos.c: pkcs15 emulation for westcos card
+ * pkcs15-westcos.c: pkcs15 emulation for westcos card
  *
-  * Copyright (C) 2009 francois.leblanc@cev-sa.com 
-*
+ * Copyright (C) 2009 francois.leblanc@cev-sa.com 
+ *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
