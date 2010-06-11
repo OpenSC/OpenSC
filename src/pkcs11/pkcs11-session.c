@@ -81,7 +81,7 @@ CK_RV C_OpenSession(CK_SLOT_ID slotID,	/* the slot's ID */
 	session->notify_data = pApplication;
 	session->flags = flags;
 	slot->nsessions++;
-	session->handle = (CK_SESSION_HANDLE) session;	// cast a pointer to long
+	session->handle = (CK_SESSION_HANDLE) session;	/* cast a pointer to long */
 	list_append(&sessions, session);
 	*phSession = session->handle;
 	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_OpenSession handle: 0x%lx", session->handle);

@@ -500,7 +500,7 @@ int main(int argc, char *argv[])
 			r = sc_file_add_acl_entry(file, SC_AC_OP_ERASE, SC_AC_NONE, 0);
 			if(r) goto out;
 
-			//sc_format_path("3F00AAAA", &(file->path));
+			/* sc_format_path("3F00AAAA", &(file->path)); */
 			file->path = path;
 			r = sc_create_file(card, file);
 			if(r) goto out;

@@ -123,7 +123,7 @@ static int sc_pkcs15emu_westcos_init(sc_pkcs15_card_t * p15card)
 	}
 	else
 	{
-		// certificat file
+		/* certificat file */
 		struct sc_pkcs15_cert_info cert_info;
 		struct sc_pkcs15_object cert_obj;
 		struct sc_pkcs15_pubkey_info pubkey_info;
@@ -157,7 +157,7 @@ static int sc_pkcs15emu_westcos_init(sc_pkcs15_card_t * p15card)
 		}
 		else
 		{
-			// or public key
+			/* or public key */
 			memset(&pubkey_info, 0, sizeof(pubkey_info));
 			memset(&pubkey_obj, 0, sizeof(pubkey_obj));
 			pubkey_info.id.len = 1;
@@ -182,7 +182,7 @@ static int sc_pkcs15emu_westcos_init(sc_pkcs15_card_t * p15card)
 				r = sc_pkcs15_read_pubkey(p15card, &pubkey_obj, &pkey);
 				if (r)
 					goto out;
-				// not sure if necessary
+				/* not sure if necessary */
 				pubkey_obj.flags = 0;
 			}
 			if (pkey->algorithm == SC_ALGORITHM_RSA) {

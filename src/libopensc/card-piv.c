@@ -587,7 +587,7 @@ static int piv_get_data(sc_card_t * card, int enumtag,
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "#%d \n", enumtag);
 
-	//assert(enumtag >= 0 && enumtag < PIV_OBJ_LAST_ENUM);
+	/* assert(enumtag >= 0 && enumtag < PIV_OBJ_LAST_ENUM); */
 	
 	tag_len = piv_objects[enumtag].tag_len;
 

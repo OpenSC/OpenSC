@@ -229,7 +229,7 @@ static void show_card(sc_card_t    *card)
 	printf("%X\n\n", buf[11]>>4);
 
 	for(i=0;i<4;++i) show_pin(card, i);
-	// printf("%s: %u tries left, %u tries max, %s\n", pinlist[i].label, pinlist[i].tries, max, status);
+	/* printf("%s: %u tries left, %u tries max, %s\n", pinlist[i].label, pinlist[i].tries, max, status); */
 
 	if(pinlist[0].len) show_initial_puk(card);
 }

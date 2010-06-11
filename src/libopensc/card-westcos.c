@@ -121,10 +121,10 @@ static void westcos_compute_aetb_crc(int CRCType,
 	unsigned short wCrc;
 	switch (CRCType) {
 	case CRC_A:
-		wCrc = 0x6363;	// ITU-V.41
+		wCrc = 0x6363;	/* ITU-V.41 */
 		break;
 	case CRC_B:
-		wCrc = 0xFFFF;	// ISO 3309
+		wCrc = 0xFFFF;	/* ISO 3309 */
 		break;
 	default:
 		return;
@@ -135,7 +135,7 @@ static void westcos_compute_aetb_crc(int CRCType,
 		westcos_update_crc(chBlock, &wCrc);
 	} while (--Length);
 	if (CRCType == CRC_B)
-		wCrc = ~wCrc;	// ISO 3309
+		wCrc = ~wCrc;	/* ISO 3309 */
 	*TransmitFirst = (unsigned char) (wCrc & 0xFF);
 	*TransmitSecond = (unsigned char) ((wCrc >> 8) & 0xFF);
 	return;

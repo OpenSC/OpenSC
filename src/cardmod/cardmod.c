@@ -551,8 +551,8 @@ DWORD WINAPI CardReadFile(__in PCARD_DATA pCardData,
 					swprintf(p->wszGuid, L"%0*.*d", MAX_CONTAINER_NAME_LEN, \
 						MAX_CONTAINER_NAME_LEN, i /*rand()%1000*/);
 				
-					//{D4C246CC-423D-4BDC-BD9E-1089B8DEB823}
-					//swprintf(p->wszGuid, L"{D4C246CC-423D-4BDC-BD9E-1089B8DEB8%02.2d}", i);
+					/*{D4C246CC-423D-4BDC-BD9E-1089B8DEB823}
+					swprintf(p->wszGuid, L"{D4C246CC-423D-4BDC-BD9E-1089B8DEB8%02.2d}", i); */
 					p->bFlags += CONTAINER_MAP_VALID_CONTAINER;
 					if(i == 0)
 					{
@@ -791,7 +791,7 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData,
 		opt_crypt_flags += SC_ALGORITHM_RSA_PAD_PKCS1;
 		if (!pinf->pszAlgId) 
 		{
-			//hashAlg = CALG_SSL3_SHAMD5;
+			/* hashAlg = CALG_SSL3_SHAMD5; */
 			logprintf(pCardData, 0, "unsupported hashAlg\n");
 		}
 		else 
@@ -1188,7 +1188,7 @@ DWORD WINAPI CardGetProperty(__in PCARD_DATA pCardData,
 		BOOL *p = (BOOL*)pbData;
 		if (pdwDataLen) *pdwDataLen = sizeof(*p);
 		if (cbData < sizeof(*p)) return SCARD_E_NO_MEMORY;
-		*p = TRUE; //HACK
+		*p = TRUE; /* XXX HACK */
 		return SCARD_S_SUCCESS;
 	}
 	if (wcscmp(CP_CARD_CACHE_MODE,wszProperty) == 0)
@@ -1353,7 +1353,7 @@ DWORD WINAPI CardAcquireContext(IN PCARD_DATA pCardData, __in DWORD dwFlags)
 	
 	suppliedVersion = pCardData->dwVersion;
 
-	//VENDOR SPECIFIC
+	/* VENDOR SPECIFIC */
 	vs = pCardData->pvVendorSpecific = \
 		pCardData->pfnCspAlloc(sizeof(VENDOR_SPECIFIC));
 	memset(vs, 0, sizeof(VENDOR_SPECIFIC));
@@ -1366,7 +1366,7 @@ DWORD WINAPI CardAcquireContext(IN PCARD_DATA pCardData, __in DWORD dwFlags)
 			NULLWSTR(pCardData->pwszCardName),pCardData->hScard, \
 			pCardData->hSCardCtx);
 	
-	// The lowest supported version is 4.
+	/* The lowest supported version is 4. */
 	if (pCardData->dwVersion < MINIMUM_VERSION_SUPPORTED)
 	{
 		return (DWORD) ERROR_REVISION_MISMATCH;
@@ -1579,7 +1579,7 @@ DWORD WINAPI CardAcquireContext(IN PCARD_DATA pCardData, __in DWORD dwFlags)
 	pCardData->pfnCardAuthenticateChallenge = CardAuthenticateChallenge;
 	pCardData->pfnCardUnblockPin = CardUnblockPin;
 	pCardData->pfnCardChangeAuthenticator = CardChangeAuthenticator;
-	pCardData->pfnCardDeauthenticate = CardDeauthenticate; //NULL
+	pCardData->pfnCardDeauthenticate = CardDeauthenticate; /* NULL */
 	pCardData->pfnCardCreateDirectory = CardCreateDirectory;
 	pCardData->pfnCardDeleteDirectory = CardDeleteDirectory;
 	pCardData->pvUnused3 = NULL;

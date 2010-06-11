@@ -284,7 +284,7 @@ CK_RV slot_get_slot(CK_SLOT_ID id, struct sc_pkcs11_slot ** slot)
 	if (context == NULL)
 		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
-	*slot = list_seek(&virtual_slots, &id);	// FIXME: check for null?
+	*slot = list_seek(&virtual_slots, &id);	/* FIXME: check for null? */
 	if (!*slot)
 		return CKR_SLOT_ID_INVALID;
 	return CKR_OK;

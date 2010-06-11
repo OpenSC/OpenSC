@@ -1085,7 +1085,7 @@ static int pcsc_wait_for_event(sc_context_t *ctx, void *reader_data,
 
 			/* No match - copy the state so pcscd knows
 			 * what to watch out for */
-			//rsp->dwCurrentState = rsp->dwEventState;
+			/* rsp->dwCurrentState = rsp->dwEventState; */
 		}
 
 		if (timeout == 0) {
@@ -1563,7 +1563,7 @@ static int cardmod_init(sc_context_t *ctx, void **reader_data)
 		}
 	}
 	else {
-		//gpriv->SCardControlOLD = (SCardControlOLD_t)lt_dlsym(gpriv->dlhandle, "SCardControl");
+		/* gpriv->SCardControlOLD = (SCardControlOLD_t)lt_dlsym(gpriv->dlhandle, "SCardControl"); */
 	}
 
 	if (
@@ -1694,7 +1694,7 @@ static int cardmod_detect_readers(sc_context_t *ctx, void *prv_data)
 		}
 		priv->gpriv = gpriv;
 		
-		// attempt to detect protocol in use T0/T1/RAW
+		/* attempt to detect protocol in use T0/T1/RAW */
 		rv = priv->gpriv->SCardStatus(card_handle, NULL, &readers_len,
 				&state, &prot, atr, &atr_len);
 		if (rv != SCARD_S_SUCCESS) 
@@ -1854,14 +1854,14 @@ struct sc_reader_driver * sc_get_cardmod_driver(void)
 	cardmod_ops.init = cardmod_init;
 	cardmod_ops.finish = cardmod_finish;
 	cardmod_ops.detect_readers = cardmod_detect_readers;
-	//cardmod_ops.transmit = ;
+	/* cardmod_ops.transmit = ; */
 	cardmod_ops.detect_card_presence = NULL; 
 	cardmod_ops.lock = NULL;
 	cardmod_ops.unlock = NULL;
 	cardmod_ops.release = NULL; 
 	cardmod_ops.connect = cardmod_connect;
 	cardmod_ops.disconnect = cardmod_disconnect;
-	//cardmod_ops.perform_verify = ; 
+	/* cardmod_ops.perform_verify = ; */
 	cardmod_ops.wait_for_event = NULL; 
 	cardmod_ops.reset = NULL; 
 
