@@ -398,7 +398,7 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 	}
 
 	numMatches = 0;
-	for (i=0; i<list_size(&virtual_slots) && i<sc_pkcs11_conf.max_virtual_slots; i++) {
+	for (i=0; i<list_size(&virtual_slots); i++) {
 	        slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, i);
 	        if (!tokenPresent || (slot->slot_info.flags & CKF_TOKEN_PRESENT))
 			found[numMatches++] = slot->id;
@@ -653,8 +653,7 @@ again:
 	r = sc_wait_for_event(context, mask, &found, &events, -1, &reader_states);
 	if (sc_pkcs11_conf.plug_and_play && events & SC_EVENT_READER_ATTACHED) {
 		/* NSS/Firefox Triggers a C_GetSlotList(NULL) only if a slot ID is returned that it does not know yet
-		   Change the first hotplug slot id on every call to make this happen.
-		*/
+		   Change the first hotplug slot id on every call to make this happen. */
 		sc_pkcs11_slot_t *hotplug_slot = list_get_at(&virtual_slots, 0);
 		*pSlot= hotplug_slot->id -1;
 	

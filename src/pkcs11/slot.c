@@ -77,10 +77,13 @@ CK_RV create_slot(sc_reader_t *reader)
 {
 	struct sc_pkcs11_slot *slot;
 
+	if (list_size(&virtual_slots) >= sc_pkcs11_conf.max_virtual_slots)
+		return CKR_FUNCTION_FAILED;
+
 	slot = (struct sc_pkcs11_slot *)calloc(1, sizeof(struct sc_pkcs11_slot));
 	if (!slot)
 		return CKR_HOST_MEMORY;
-	
+
 	list_append(&virtual_slots, slot);
 	slot->login_user = -1;
 	slot->id = (CK_SLOT_ID) list_locate(&virtual_slots, slot);
