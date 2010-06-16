@@ -487,7 +487,7 @@ typedef struct sc_cardctl_asepcos_activate_file {
 
 typedef struct {
 	int key_reference;
-	size_t key_len; //8, 16 or 24
+	size_t key_len; /* 8, 16 or 24 */
 	u8 key_value[24];
 }sc_autkey_t;
 

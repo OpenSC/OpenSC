@@ -24,7 +24,7 @@
 #define TLV_TYPE_LV	1
 #define TLV_TYPE_LLV	2
 
-// Should be greater then SC_PKCS15_TYPE_CLASS_MASK
+/* Should be greater then SC_PKCS15_TYPE_CLASS_MASK */
 #define SC_DEVICE_SPECIFIC_TYPE	 0x1000
 
 #define COSM_PUBLIC_LIST	(SC_DEVICE_SPECIFIC_TYPE | 0x02)
