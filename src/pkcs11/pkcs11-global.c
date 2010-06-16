@@ -621,7 +621,7 @@ CK_RV C_WaitForSlotEvent(CK_FLAGS flags,   /* blocking/nonblocking flag */
 	void *reader_states = NULL;
 	CK_SLOT_ID slot_id;
 	CK_RV rv;
-	int ii, r;
+	int r;
 	
 	if (pReserved != NULL_PTR)
 		return  CKR_ARGUMENTS_BAD;
