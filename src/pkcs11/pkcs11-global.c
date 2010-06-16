@@ -377,16 +377,8 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 		goto out;
 	}
 
-	if (
-		(found = (CK_SLOT_ID_PTR)malloc (
-			sizeof (*found) * sc_pkcs11_conf.max_virtual_slots
-		)) == NULL
-	) {
-		rv = CKR_HOST_MEMORY;
-		goto out;
-	}
-
-	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_GetSlotList(token=%d, %s)", tokenPresent, (pSlotList==NULL_PTR && sc_pkcs11_conf.plug_and_play)? "plug-n-play":"refresh");
+	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_GetSlotList(token=%d, %s)", tokenPresent,
+		 (pSlotList==NULL_PTR && sc_pkcs11_conf.plug_and_play)? "plug-n-play":"refresh");
 
 	/* Slot list can only change in v2.20 */
 	if (pSlotList == NULL_PTR && sc_pkcs11_conf.plug_and_play) {
@@ -394,12 +386,19 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 		sc_pkcs11_slot_t *hotplug_slot = list_get_at(&virtual_slots, 0);
 		hotplug_slot->id--;
 		sc_ctx_detect_readers(context); 
-		
 	}
+
 	card_detect_all();
 
+	found = (CK_SLOT_ID_PTR) malloc(list_size(&virtual_slots) * sizeof(CK_SLOT_ID));
+
+	if (found == NULL) {
+		rv = CKR_HOST_MEMORY;
+		goto out;
+	}
+
 	numMatches = 0;
-	for (i=0; i<list_size(&virtual_slots); i++) {
+	for (i=0; i<list_size(&virtual_slots) && i<sc_pkcs11_conf.max_virtual_slots; i++) {
 	        slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, i);
 	        if (!tokenPresent || (slot->slot_info.flags & CKF_TOKEN_PRESENT))
 			found[numMatches++] = slot->id;
