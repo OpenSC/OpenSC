@@ -40,10 +40,6 @@
 
 #include "util.h"
 
-static const char *version ="0.0.7";
-
-static const char *nom_card = "WESTCOS";
-
 static const char *app_name = "westcos-tool";
 
 static const struct option options[] = {
@@ -99,8 +95,6 @@ static char *puk = NULL;
 static char *cert = NULL;
 
 static int keylen = 0;
-
-static int no_lecteur = -1;
 
 static int new_pin = 0;
 static int unlock = 0;
@@ -368,11 +362,7 @@ out:
 int main(int argc, char *argv[])
 {
 	int r, c, long_optind = 0;
-	int i = 1;
-	char *p;
-	int card_presente = 0;
 	sc_context_param_t ctx_param;
-	sc_reader_t *lecteur = NULL;
 	sc_card_t *card = NULL;
 	sc_context_t *ctx = NULL;
 	sc_file_t *file = NULL;
