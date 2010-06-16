@@ -198,6 +198,12 @@ static void set_defaults(sc_context_t *ctx, struct _sc_ctx_options *opts)
 	if (ctx->debug_file && (ctx->debug_file != stderr && ctx->debug_file != stdout))
 		fclose(ctx->debug_file);
 	ctx->debug_file = stderr;
+#ifdef __APPLE__
+	/* Override the default debug log for OpenSC.tokend to be different from PKCS#11.
+	 * TODO: Could be moved to OpenSC.tokend */
+	if (!strcmp(ctx->app_name, "tokend"))
+		ctx->debug_file = fopen("/tmp/opensc-tokend.log", "a");
+#endif
 	ctx->forced_driver = NULL;
 	add_internal_drvs(opts, 0);
 	add_internal_drvs(opts, 1);
@@ -716,7 +722,6 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 	if (ctx == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 	memset(&opts, 0, sizeof(opts));
-	set_defaults(ctx, &opts);
 
 	/* set the application name if set in the parameter options */
 	if (parm != NULL && parm->app_name != NULL)
@@ -727,7 +732,8 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 		sc_release_context(ctx);
 		return SC_ERROR_OUT_OF_MEMORY;
 	}
-
+	
+	set_defaults(ctx, &opts);
 	list_init(&ctx->readers);
 	list_attributes_seeker(&ctx->readers, reader_list_seeker);
 	/* set thread context and create mutex object (if specified) */
