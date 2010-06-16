@@ -561,9 +561,9 @@ open_reader_and_card(char *reader)
 		util_error("Failed to establish context: %s\n", sc_strerror(r));
 		return 0;
 	}
-	ctx->debug = verbose;
 
 	if (verbose > 1) {
+		ctx->debug = verbose;
 		ctx->debug_file = stderr;
 	}
 
