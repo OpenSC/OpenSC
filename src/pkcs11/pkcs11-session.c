@@ -40,9 +40,9 @@ CK_RV C_OpenSession(CK_SLOT_ID slotID,	/* the slot's ID */
 		    CK_NOTIFY Notify,	/* notification callback function */
 		    CK_SESSION_HANDLE_PTR phSession)
 {				/* receives new session handle */
+	CK_RV rv;
 	struct sc_pkcs11_slot *slot;
 	struct sc_pkcs11_session *session;
-	int rv;
 
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
@@ -124,8 +124,8 @@ static CK_RV sc_pkcs11_close_session(CK_SESSION_HANDLE hSession)
  * the global lock held */
 CK_RV sc_pkcs11_close_all_sessions(CK_SLOT_ID slotID)
 {
-	struct sc_pkcs11_session *session;
 	CK_RV rv = CKR_OK;
+	struct sc_pkcs11_session *session;
 	unsigned int i;
 	sc_debug(context, SC_LOG_DEBUG_NORMAL, "real C_CloseAllSessions(0x%lx) %d", slotID, list_size(&sessions));
 	for (i = 0; i < list_size(&sessions); i++) {
@@ -139,7 +139,7 @@ CK_RV sc_pkcs11_close_all_sessions(CK_SLOT_ID slotID)
 
 CK_RV C_CloseSession(CK_SESSION_HANDLE hSession)
 {				/* the session's handle */
-	int rv;
+	CK_RV rv;
 
 	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_CloseSession(0x%lx)\n", hSession);
 
@@ -152,8 +152,8 @@ CK_RV C_CloseSession(CK_SESSION_HANDLE hSession)
 
 CK_RV C_CloseAllSessions(CK_SLOT_ID slotID)
 {				/* the token's slot */
+	CK_RV rv;
 	struct sc_pkcs11_slot *slot;
-	int rv;
 
 	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_CloseAllSessions(0x%lx)\n", slotID);
 	rv = sc_pkcs11_lock();
@@ -173,9 +173,9 @@ CK_RV C_CloseAllSessions(CK_SLOT_ID slotID)
 CK_RV C_GetSessionInfo(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		       CK_SESSION_INFO_PTR pInfo)
 {				/* receives session information */
+	CK_RV rv;
 	struct sc_pkcs11_session *session;
 	struct sc_pkcs11_slot *slot;
-	int rv;
 
 	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_GetSessionInfo(0x%lx)", hSession);
 	rv = sc_pkcs11_lock();
@@ -236,7 +236,7 @@ CK_RV C_Login(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	      CK_CHAR_PTR pPin,	/* the user's PIN */
 	      CK_ULONG ulPinLen)
 {				/* the length of the PIN */
-	int rv;
+	CK_RV rv;
 	struct sc_pkcs11_session *session;
 	struct sc_pkcs11_slot *slot;
 
@@ -296,7 +296,7 @@ CK_RV C_Login(CK_SESSION_HANDLE hSession,	/* the session's handle */
 
 CK_RV C_Logout(CK_SESSION_HANDLE hSession)
 {				/* the session's handle */
-	int rv;
+	CK_RV rv;
 	struct sc_pkcs11_session *session;
 	struct sc_pkcs11_slot *slot;
 
@@ -326,9 +326,9 @@ CK_RV C_Logout(CK_SESSION_HANDLE hSession)
 
 CK_RV C_InitPIN(CK_SESSION_HANDLE hSession, CK_CHAR_PTR pPin, CK_ULONG ulPinLen)
 {
+	CK_RV rv;
 	struct sc_pkcs11_session *session;
 	struct sc_pkcs11_slot *slot;
-	int rv;
 
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
@@ -366,7 +366,7 @@ CK_RV C_InitPIN(CK_SESSION_HANDLE hSession, CK_CHAR_PTR pPin, CK_ULONG ulPinLen)
 CK_RV C_SetPIN(CK_SESSION_HANDLE hSession,
 	       CK_CHAR_PTR pOldPin, CK_ULONG ulOldLen, CK_CHAR_PTR pNewPin, CK_ULONG ulNewLen)
 {
-	int rv;
+	CK_RV rv;
 	struct sc_pkcs11_session *session;
 	struct sc_pkcs11_slot *slot;
 

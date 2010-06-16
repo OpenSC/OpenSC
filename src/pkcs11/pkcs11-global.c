@@ -190,10 +190,11 @@ static int slot_list_seeker(const void *el, const void *key) {
 
 CK_RV C_Initialize(CK_VOID_PTR pInitArgs)
 {
+	CK_RV rv;
 #if !defined(_WIN32)
 	pid_t current_pid = getpid();
 #endif
-	int rc, rv;
+	int rc;
 	unsigned int i;
 	sc_context_param_t ctx_opts;
 
@@ -705,7 +706,7 @@ out:
 CK_RV
 sc_pkcs11_init_lock(CK_C_INITIALIZE_ARGS_PTR args)
 {
-	int rv = CKR_OK;
+	CK_RV rv = CKR_OK;
 
 	int applock = 0;
 	int oslock = 0;
