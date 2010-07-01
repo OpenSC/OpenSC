@@ -1293,15 +1293,19 @@ static int do_apdu(int argc, char **argv)
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	u8 *p;
-	size_t len, len0, r;
+	size_t len, len0, r, ii;
 
-	if (argc == 0 || argc > 1) {
+	if (argc < 1) {
 		puts("Usage: apdu [apdu:hex:codes:...]");
 		return -1;
 	}
 
-	len = strlen(argv[0]);
-	sc_hex_to_bin(argv[0], buf, &len);
+	for (ii = 0, len = 0; ii < argc; ii++)   {
+		len0 = strlen(argv[ii]);
+		sc_hex_to_bin(argv[ii], buf + len, &len0);
+		len += len0;
+	}
+
 	if (len < 4) {
 		puts("APDU too short (must be at least 4 bytes)");
 		return 1;
@@ -1555,7 +1559,7 @@ int main(int argc, char * const argv[])
 	int r, c, long_optind = 0, err = 0;
 	char *line;
 	int cargc;
-	char *cargv[20];
+	char *cargv[260];
 	sc_context_param_t ctx_param;
 
 	printf("OpenSC Explorer version %s\n", sc_get_version());
