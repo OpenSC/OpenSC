@@ -2327,7 +2327,7 @@ sc_pkcs15init_update_dir(struct sc_pkcs15_card *p15card,
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 	if (profile->ops->emu_update_dir)   {
-		r = profile->ops->emu_update_dir(p15card, profile, app);
+		r = profile->ops->emu_update_dir(profile, p15card, app);
 		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, r);
 	}
 
@@ -2425,7 +2425,7 @@ sc_pkcs15init_update_tokeninfo(struct sc_pkcs15_card *p15card,
 	tokeninfo.preferred_language = p15card->preferred_language;
 
 	if (profile->ops->emu_update_tokeninfo)
-		return profile->ops->emu_update_tokeninfo(p15card, profile, &tokeninfo);
+		return profile->ops->emu_update_tokeninfo(profile, p15card, &tokeninfo);
 
 	r = sc_pkcs15_encode_tokeninfo(card->ctx, &tokeninfo, &buf, &size);
 	if (r >= 0)
@@ -2557,7 +2557,7 @@ sc_pkcs15init_add_object(struct sc_pkcs15_card *p15card,
 	}
 
 	if (profile->ops->emu_update_any_df)
-		r = profile->ops->emu_update_any_df(p15card, profile, SC_AC_OP_CREATE, object);
+		r = profile->ops->emu_update_any_df(profile, p15card, SC_AC_OP_CREATE, object);
 	else
 		r = sc_pkcs15init_update_any_df(p15card, profile, df, is_new);
 
@@ -2737,7 +2737,7 @@ sc_pkcs15init_delete_object(struct sc_pkcs15_card *p15card, struct sc_profile *p
 	} 
 	
 	if (profile->ops->emu_update_any_df)   {
-		r = profile->ops->emu_update_any_df(p15card, profile, SC_AC_OP_ERASE, obj);
+		r = profile->ops->emu_update_any_df(profile, p15card, SC_AC_OP_ERASE, obj);
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "'ERASE' update DF failed");
 	}
 
@@ -3640,7 +3640,7 @@ sc_pkcs15init_write_info(struct sc_pkcs15_card *p15card,
 	int		n, r;
 
 	if (profile->ops->emu_write_info)
-		return profile->ops->emu_write_info(p15card, profile, pin_obj);
+		return profile->ops->emu_write_info(profile, p15card, pin_obj);
 
 	memset(buffer, 0, sizeof(buffer));
 

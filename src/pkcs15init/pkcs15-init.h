@@ -130,13 +130,13 @@ struct sc_pkcs15init_operations {
 	/*
 	 * Support of pkcs15init emulation
 	 */
-	int (*emu_update_dir) (struct sc_pkcs15_card *, struct sc_profile *,
+	int (*emu_update_dir) (struct sc_profile *, struct sc_pkcs15_card *,
 			struct sc_app_info *);
-	int (*emu_update_any_df) (struct sc_pkcs15_card *, struct sc_profile *,
+	int (*emu_update_any_df) (struct sc_profile *, struct sc_pkcs15_card *,
 			unsigned, struct sc_pkcs15_object *);
-	int (*emu_update_tokeninfo) (struct sc_pkcs15_card *,
-			struct sc_profile *, struct sc_pkcs15_tokeninfo *);
-	int (*emu_write_info)(struct sc_pkcs15_card *, struct sc_profile *,
+	int (*emu_update_tokeninfo) (struct sc_profile *, struct sc_pkcs15_card *,
+			struct sc_pkcs15_tokeninfo *);
+	int (*emu_write_info)(struct sc_profile *, struct sc_pkcs15_card *,
 		struct sc_pkcs15_object *);
 };
 

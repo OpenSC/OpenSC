@@ -784,8 +784,8 @@ cosm_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 
 
 static int
-cosm_emu_update_dir (struct sc_pkcs15_card *p15card,
-		struct sc_profile *profile, struct sc_app_info *info)
+cosm_emu_update_dir (struct sc_profile *profile, struct sc_pkcs15_card *p15card,
+		struct sc_app_info *info)
 {
 	SC_FUNC_CALLED(p15card->card->ctx, 1);
 	/* No DIR file in the native Oberthur card */
@@ -794,7 +794,7 @@ cosm_emu_update_dir (struct sc_pkcs15_card *p15card,
 
 
 static int
-cosm_emu_update_any_df(struct sc_pkcs15_card *p15card, struct sc_profile *profile, 
+cosm_emu_update_any_df(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 		unsigned op, struct sc_pkcs15_object *object)
 {
 	struct sc_context *ctx = p15card->card->ctx;
@@ -818,7 +818,7 @@ cosm_emu_update_any_df(struct sc_pkcs15_card *p15card, struct sc_profile *profil
 
 
 static int 
-cosm_emu_update_tokeninfo(struct sc_pkcs15_card *p15card, struct sc_profile *profile, 
+cosm_emu_update_tokeninfo(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 		struct sc_pkcs15_tokeninfo *tinfo)
 {
 	struct sc_context *ctx = p15card->card->ctx;
@@ -867,8 +867,8 @@ cosm_emu_update_tokeninfo(struct sc_pkcs15_card *p15card, struct sc_profile *pro
 
 
 static int
-cosm_emu_write_info(struct sc_pkcs15_card *p15card,
-		struct sc_profile *profile, struct sc_pkcs15_object *pin_obj)
+cosm_emu_write_info(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
+		struct sc_pkcs15_object *pin_obj)
 {
 	SC_FUNC_CALLED(p15card->card->ctx, 1);
 	/* No OpenSC Info file in the native Oberthur card */
