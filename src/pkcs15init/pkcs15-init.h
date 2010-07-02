@@ -138,6 +138,8 @@ struct sc_pkcs15init_operations {
 			struct sc_pkcs15_tokeninfo *);
 	int (*emu_write_info)(struct sc_profile *, struct sc_pkcs15_card *,
 		struct sc_pkcs15_object *);
+
+	int (*sanity_check)(struct sc_profile *, struct sc_pkcs15_card *);
 };
 
 /* Do not change these or reorder these */
@@ -362,6 +364,8 @@ extern int	sc_pkcs15_create_pin_domain(struct sc_profile *, struct sc_pkcs15_car
 
 extern int	sc_pkcs15init_get_pin_reference(struct sc_pkcs15_card *, 
 				struct sc_profile *, unsigned, int);
+
+extern int 	sc_pkcs15init_sanity_check(struct sc_pkcs15_card *, struct sc_profile *);
 
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_gpk_ops(void);
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_miocos_ops(void);

@@ -95,6 +95,7 @@ static int	do_finalize_card(sc_card_t *, struct sc_profile *);
 
 static int	do_read_data_object(const char *name, u8 **out, size_t *outlen);
 static int	do_store_data_object(struct sc_profile *profile);
+static int	do_sanity_check(struct sc_profile *profile);
 
 static int	init_keyargs(struct sc_pkcs15init_prkeyargs *);
 static void	init_gost_params(struct sc_pkcs15init_keyarg_gost_params *, EVP_PKEY *);
@@ -133,6 +134,7 @@ enum {
 	OPT_PUK_ID,
 	OPT_PUK_LABEL,
 	OPT_VERIFY_PIN,
+	OPT_SANITY_CHECK,
 
 	OPT_PIN1     = 0x10000,	/* don't touch these values */
 	OPT_PUK1     = 0x10001,
@@ -155,6 +157,7 @@ const struct option	options[] = {
 	{ "store-data",		required_argument, NULL,	'W' },
 	{ "delete-objects",	required_argument, NULL,	'D' },
 	{ "change-attributes",	required_argument, NULL,	'A' },
+	{ "sanity-check",	no_argument, NULL,		OPT_SANITY_CHECK},
 
 	{ "reader",		required_argument, NULL,	'r' },
 	{ "pin",		required_argument, NULL,	OPT_PIN1 },
@@ -211,6 +214,7 @@ static const char *		option_help[] = {
 	"Store a data object",
 	"Delete object(s) (use \"help\" for more information)",
 	"Change attribute(s) (use \"help\" for more information)",
+	"Card specific sanity check and possibly update procedure",
 
 	"Specify which reader to use",
 	"Specify PIN",
@@ -268,6 +272,7 @@ enum {
 	ACTION_FINALIZE_CARD,
 	ACTION_DELETE_OBJECTS,
 	ACTION_CHANGE_ATTRIBUTES,
+	ACTION_SANITY_CHECK,
 
 	ACTION_MAX
 };
@@ -286,6 +291,7 @@ static const char *action_names[] = {
 	"finalizing card",
 	"delete object(s)",
 	"change attribute(s)",
+	"check card's sanity",
 };
 
 #define MAX_CERTS		4
@@ -519,6 +525,9 @@ main(int argc, char **argv)
 			break;
 		case ACTION_FINALIZE_CARD:
 			r = do_finalize_card(card, profile);
+			break;
+		case ACTION_SANITY_CHECK:
+			r = do_sanity_check(profile);
 			break;
 		default:
 			util_fatal("Action not yet implemented\n");
@@ -1137,6 +1146,15 @@ do_store_data_object(struct sc_profile *profile)
 	}
 
 	return r;
+}
+
+/*
+ * Run card specific sanity check procedure
+ */
+static int
+do_sanity_check(struct sc_profile *profile)
+{
+	return sc_pkcs15init_sanity_check(p15card, profile);
 }
 
 static int cert_is_root(sc_pkcs15_cert_t *c)
@@ -2603,6 +2621,9 @@ handle_option(const struct option *opt)
 		break;
 	case OPT_VERIFY_PIN:
 		opt_verify_pin = 1;
+		break;
+	case OPT_SANITY_CHECK:
+		this_action = ACTION_SANITY_CHECK;
 		break;
 	default:
 		util_print_usage_and_die(app_name, options, option_help);

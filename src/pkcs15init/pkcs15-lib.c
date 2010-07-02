@@ -1021,7 +1021,8 @@ sc_pkcs15_create_pin_domain(struct sc_profile *profile,
 	struct sc_file *df = profile->df_info->file;
 	int	r;
 
-	sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "create PIN domain (path:%s,ID:%s)", sc_print_path(&df->path), sc_pkcs15_print_id(id));
+	sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "create PIN domain (path:%s,ID:%s)", 
+			sc_print_path(&df->path), sc_pkcs15_print_id(id));
 	/* Instantiate PIN directory just below the application DF */
 	r = sc_profile_instantiate_template(profile, "pin-domain", &df->path, "pin-dir", id, ret);
 	if (r >= 0)   {
@@ -3472,6 +3473,23 @@ sc_pkcs15init_get_label(struct sc_profile *profile, const char **res)
 {
 	*res = profile->p15_spec->label;
 	return 0;
+}
+
+
+/*
+ * Card specific sanity check procedure. 
+ */
+int
+sc_pkcs15init_sanity_check(struct sc_pkcs15_card *p15card, struct sc_profile *profile)
+{
+	struct sc_context *ctx = p15card->card->ctx;
+	int rv = SC_ERROR_NOT_SUPPORTED;
+
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
+	if (profile->ops->sanity_check)
+		rv = profile->ops->sanity_check(profile, p15card);
+
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, rv);
 }
 
 
