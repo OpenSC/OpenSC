@@ -41,109 +41,6 @@ extern "C" {
 #include "libopensc/errors.h"
 #include "libopensc/types.h"
 
-/* Different APDU cases */
-#define SC_APDU_CASE_NONE		0x00
-#define SC_APDU_CASE_1			0x01
-#define SC_APDU_CASE_2_SHORT		0x02
-#define SC_APDU_CASE_3_SHORT		0x03
-#define SC_APDU_CASE_4_SHORT		0x04
-#define SC_APDU_SHORT_MASK		0x0f
-#define SC_APDU_EXT			0x10
-#define SC_APDU_CASE_2_EXT		SC_APDU_CASE_2_SHORT | SC_APDU_EXT
-#define SC_APDU_CASE_3_EXT		SC_APDU_CASE_3_SHORT | SC_APDU_EXT
-#define SC_APDU_CASE_4_EXT		SC_APDU_CASE_4_SHORT | SC_APDU_EXT
-/* the following types let OpenSC decides whether to use 
- * short or extended APDUs */
-#define SC_APDU_CASE_2			0x22
-#define SC_APDU_CASE_3			0x23
-#define SC_APDU_CASE_4			0x24
-
-/* File types */
-#define SC_FILE_TYPE_DF			0x04
-#define SC_FILE_TYPE_INTERNAL_EF	0x03
-#define SC_FILE_TYPE_WORKING_EF		0x01
-#define SC_FILE_TYPE_BSO		0x10
-
-/* EF structures */
-#define SC_FILE_EF_UNKNOWN		0x00
-#define SC_FILE_EF_TRANSPARENT		0x01
-#define SC_FILE_EF_LINEAR_FIXED		0x02
-#define SC_FILE_EF_LINEAR_FIXED_TLV	0x03
-#define SC_FILE_EF_LINEAR_VARIABLE	0x04
-#define SC_FILE_EF_LINEAR_VARIABLE_TLV	0x05
-#define SC_FILE_EF_CYCLIC		0x06
-#define SC_FILE_EF_CYCLIC_TLV		0x07
-
-/* File status flags */
-#define SC_FILE_STATUS_ACTIVATED	0x00
-#define SC_FILE_STATUS_INVALIDATED	0x01
-#define SC_FILE_STATUS_CREATION		0x02 /* Full access in this state,
-						(at least for SetCOS 4.4 */
-
-/* Access Control flags */
-#define SC_AC_NONE			0x00000000
-#define SC_AC_CHV			0x00000001 /* Card Holder Verif. */
-#define SC_AC_TERM			0x00000002 /* Terminal auth. */
-#define SC_AC_PRO			0x00000004 /* Secure Messaging */
-#define SC_AC_AUT			0x00000008 /* Key auth. */
-
-#define SC_AC_SYMBOLIC			0x00000010 /* internal use only */
-#define SC_AC_UNKNOWN			0xFFFFFFFE
-#define SC_AC_NEVER			0xFFFFFFFF
-
-/* Operations relating to access control */
-#define SC_AC_OP_SELECT			0
-#define SC_AC_OP_LOCK			1
-#define SC_AC_OP_DELETE			2
-#define SC_AC_OP_CREATE			3
-#define SC_AC_OP_REHABILITATE		4
-#define SC_AC_OP_INVALIDATE		5
-#define SC_AC_OP_LIST_FILES		6
-#define SC_AC_OP_CRYPTO			7
-#define SC_AC_OP_DELETE_SELF		8
-#define SC_AC_OP_PSO_DECRYPT		9
-#define SC_AC_OP_PSO_ENCRYPT		10
-#define SC_AC_OP_PSO_COMPUTE_SIGNATURE	11
-#define SC_AC_OP_PSO_VERIFY_SIGNATURE	12
-#define SC_AC_OP_PSO_COMPUTE_CHECKSUM	13
-#define SC_AC_OP_PSO_VERIFY_CHECKSUM	14
-#define SC_AC_OP_INTERNAL_AUTHENTICATE	15
-#define SC_AC_OP_EXTERNAL_AUTHENTICATE	16
-#define SC_AC_OP_PIN_DEFINE		17
-#define SC_AC_OP_PIN_CHANGE		18
-#define SC_AC_OP_PIN_RESET		19
-	
-/* If you add more OPs here, make sure you increase
- * SC_MAX_AC_OPS in types.h */
-
-/* In case of EF re-use the OPs related to DF */
-#define SC_AC_OP_READ			0
-#define SC_AC_OP_UPDATE			1
-#define SC_AC_OP_WRITE			3
-
-/* the use of SC_AC_OP_ERASE is deprecated, SC_AC_OP_DELETE should be used
- * instead  */
-#define SC_AC_OP_ERASE			SC_AC_OP_DELETE
-
-/* various maximum values */
-#define SC_MAX_READER_DRIVERS		6
-#define SC_MAX_READERS			16
-#define SC_MAX_CARD_DRIVERS		32
-#define SC_MAX_CARD_DRIVER_SNAME_SIZE	16
-#define SC_MAX_CARD_APPS		8
-#define SC_MAX_APDU_BUFFER_SIZE		258
-#define SC_MAX_EXT_APDU_BUFFER_SIZE	65538
-#define SC_MAX_PIN_SIZE			256 /* OpenPGP card has 254 max */
-#define SC_MAX_ATR_SIZE			33
-#define SC_MAX_AID_SIZE			16
-
-/* default max_send_size/max_recv_size */
-/* GPK rounds down to a multiple of 4, other driver have their own limits */
-#define SC_DEFAULT_MAX_SEND_SIZE	255
-#define SC_DEFAULT_MAX_RECV_SIZE	256
-
-#define SC_AC_KEY_REF_NONE	0xFFFFFFFF
-
 #define SC_SEC_OPERATION_DECIPHER	0x0001
 #define SC_SEC_OPERATION_SIGN		0x0002
 #define SC_SEC_OPERATION_AUTHENTICATE	0x0003
@@ -344,7 +241,7 @@ struct sc_pin_cmd_pin {
 	unsigned int encoding;	/* ASCII-numeric, BCD, etc */
 	size_t pad_length;	/* filled in by the card driver */
 	u8 pad_char;
-	size_t offset;          /* PIN offset in the APDU */
+	size_t offset;		/* PIN offset in the APDU */
 	size_t length_offset;	/* Effective PIN length offset in the APDU */
 };
 
@@ -451,8 +348,8 @@ struct sc_reader_operations {
 #define SC_CARD_CAP_RSA_2048		0x00000020
 
 /* D-TRUST CardOS cards special flags */
-#define SC_CARD_CAP_ONLY_RAW_HASH        0x00000040
-#define SC_CARD_CAP_ONLY_RAW_HASH_STRIPPED      0x00000080
+#define SC_CARD_CAP_ONLY_RAW_HASH		0x00000040
+#define SC_CARD_CAP_ONLY_RAW_HASH_STRIPPED	0x00000080
 
 typedef struct sc_card {
 	struct sc_context *ctx;
@@ -510,9 +407,9 @@ struct sc_card_operations {
 	/* ISO 7816-4 functions */
 
 	int (*read_binary)(struct sc_card *card, unsigned int idx,
-			   u8 * buf, size_t count, unsigned long flags);
+			u8 * buf, size_t count, unsigned long flags);
 	int (*write_binary)(struct sc_card *card, unsigned int idx,
-			    const u8 * buf, size_t count, unsigned long flags);
+				const u8 * buf, size_t count, unsigned long flags);
 	int (*update_binary)(struct sc_card *card, unsigned int idx,
 			     const u8 * buf, size_t count, unsigned long flags);
 	int (*erase_binary)(struct sc_card *card, unsigned int idx,
