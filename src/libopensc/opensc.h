@@ -115,6 +115,14 @@ extern "C" {
 #define SC_EVENT_READER_DETACHED	0x0008
 #define SC_EVENT_READER_EVENTS		SC_EVENT_READER_ATTACHED|SC_EVENT_READER_DETACHED
 
+struct sc_supported_algo_info {
+	unsigned int reference;
+	unsigned int mechanism;
+	unsigned int operations;
+	struct sc_object_id algo_id;
+	unsigned int algo_ref;
+};
+
 typedef struct sc_security_env {
 	unsigned long flags;
 	int operation;
@@ -124,6 +132,8 @@ typedef struct sc_security_env {
 	struct sc_path file_ref;
 	u8 key_ref[8];
 	size_t key_ref_len;
+
+	struct sc_supported_algo_info supported_algos[SC_MAX_SUPPORTED_ALGORITHMS];
 } sc_security_env_t;
 
 struct sc_algorithm_id {

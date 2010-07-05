@@ -41,10 +41,18 @@ typedef unsigned char u8;
 #define SC_MAX_OBJECT_ID_OCTETS		16
 #define SC_MAX_PATH_SIZE		16
 #define SC_MAX_PATH_STRING_SIZE		(SC_MAX_PATH_SIZE * 2 + 1)
+
 /* default max_send_size/max_recv_size */
 /* GPK rounds down to a multiple of 4, other driver have their own limits */
 #define SC_DEFAULT_MAX_SEND_SIZE	255
 #define SC_DEFAULT_MAX_RECV_SIZE	256
+
+/* When changing this value, pay attention to the initialization of the ASN1 
+ * static variables that use this macro, like, for example, 
+ * 'c_asn1_supported_algorithms' in
+ * src/libopensc/pkcs15.c, src/libopensc/pkcs15-prkey.c, ... 
+ */
+#define SC_MAX_SUPPORTED_ALGORITHMS     8
 
 
 struct sc_object_id {

@@ -91,11 +91,6 @@ typedef struct sc_pkcs15_pin_info sc_pkcs15_pin_info_t;
 #define SC_PKCS15_ALGO_OP_HASH			0x40
 #define SC_PKCS15_ALGO_OP_GENERATE_KEY		0x80
 
-struct sc_pkcs15_algorithm_info {
-	int reference;
-	int algorithm, supported_operations;
-};
-
 /* A large integer, big endian notation */
 struct sc_pkcs15_bignum {
 	u8 *		data;
@@ -397,6 +392,8 @@ typedef struct sc_pkcs15_tokeninfo {
 	char *preferred_language;
 	sc_pkcs15_sec_env_info_t **seInfo;
 	size_t num_seInfo;
+
+	struct sc_supported_algo_info supported_algos[SC_MAX_SUPPORTED_ALGORITHMS];
 } sc_pkcs15_tokeninfo_t;
 
 struct sc_pkcs15_operations   {
@@ -412,7 +409,8 @@ typedef struct sc_pkcs15_card {
 	char *serial_number, *manufacturer_id;
 	char *last_update;
 	unsigned int flags;
-	struct sc_pkcs15_algorithm_info alg_info[1];
+
+	struct sc_supported_algo_info supported_algos[SC_MAX_SUPPORTED_ALGORITHMS];
 
 	sc_file_t *file_app;
 	sc_file_t *file_tokeninfo, *file_odf, *file_unusedspace;
