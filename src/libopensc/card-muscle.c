@@ -84,7 +84,8 @@ static int muscle_match_card(sc_card_t *card)
 	if (msc_select_applet(card, muscleAppletId, 5) == 1) {
 		/* Muscle applet is present, check the protocol version to be sure */		
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_2, 0x3C, 0x00, 0x00);
-		apdu.le = 00;
+		apdu.cla = 0xB0;
+		apdu.le = 64;
 		apdu.resplen = 64;
 		apdu.resp = response;
 		r = sc_transmit_apdu(card, &apdu);
