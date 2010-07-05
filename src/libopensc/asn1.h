@@ -124,6 +124,7 @@ void sc_asn1_clear_algorithm_id(struct sc_algorithm_id *);
 #define SC_ASN1_OPTIONAL		0x00000002
 #define SC_ASN1_ALLOC			0x00000004
 #define SC_ASN1_UNSIGNED		0x00000008
+#define SC_ASN1_EMPTY_ALLOWED           0x00000010
 
 #define SC_ASN1_BOOLEAN                 1
 #define SC_ASN1_INTEGER                 2

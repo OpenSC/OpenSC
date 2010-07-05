@@ -733,8 +733,8 @@ void sc_pkcs15_free_pubkey(struct sc_pkcs15_pubkey *key)
 
 void sc_pkcs15_free_pubkey_info(sc_pkcs15_pubkey_info_t *key)
 {
-	if (key->subject)
-		free(key->subject);
+	if (key->subject.value)
+		free(key->subject.value);
 	if (key->params)
 		free(key->params);
 	free(key);

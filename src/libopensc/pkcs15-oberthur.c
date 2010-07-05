@@ -803,11 +803,11 @@ sc_pkcs15emu_oberthur_add_prvkey(struct sc_pkcs15_card *p15card,
 		return SC_ERROR_UNKNOWN_DATA_RECEIVED;
 	len = *(info_blob + offs + 1) + *(info_blob + offs) * 0x100;
 	if (len)   {
-		kinfo.subject = malloc(len);
-		if (!kinfo.subject)
+		kinfo.subject.value = malloc(len);
+		if (!kinfo.subject.value)
 			SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_MEMORY_FAILURE, "Failed to add private key: memory allocation error");
-		kinfo.subject_len = len;
-		memcpy(kinfo.subject, info_blob + offs + 2, len);
+		kinfo.subject.len = len;
+		memcpy(kinfo.subject.value, info_blob + offs + 2, len);
 	}
 
 	/* Modulus and exponent are ignored */

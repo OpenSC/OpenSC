@@ -39,7 +39,7 @@ static const struct sc_asn1_entry c_asn1_com_key_attr[] = {
 };
 
 static const struct sc_asn1_entry c_asn1_com_prkey_attr[] = {
-        /* FIXME */
+	{ "subjectName", SC_ASN1_OCTET_STRING, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_EMPTY_ALLOWED | SC_ASN1_ALLOC, NULL, NULL },
 	{ NULL, 0, 0, 0, NULL, NULL }
 };
 
@@ -106,7 +106,7 @@ int sc_pkcs15_decode_prkdf_entry(struct sc_pkcs15_card *p15card,
 	struct sc_pkcs15_keyinfo_gostparams *keyinfo_gostparams;
 	size_t usage_len = sizeof(info.usage);
 	size_t af_len = sizeof(info.access_flags);
-	struct sc_asn1_entry asn1_com_key_attr[6], asn1_com_prkey_attr[1];
+	struct sc_asn1_entry asn1_com_key_attr[6], asn1_com_prkey_attr[2];
 	struct sc_asn1_entry asn1_rsakey_attr[4], asn1_prk_rsa_attr[2];
 	struct sc_asn1_entry asn1_dsakey_attr[2], asn1_prk_dsa_attr[2],
 			asn1_dsakey_i_p_attr[2],
@@ -161,6 +161,8 @@ int sc_pkcs15_decode_prkdf_entry(struct sc_pkcs15_card *p15card,
 	sc_format_asn1_entry(asn1_com_key_attr + 2, &info.native, NULL, 0);
 	sc_format_asn1_entry(asn1_com_key_attr + 3, &info.access_flags, &af_len, 0);
 	sc_format_asn1_entry(asn1_com_key_attr + 4, &info.key_reference, NULL, 0);
+
+	sc_format_asn1_entry(asn1_com_prkey_attr + 0, &info.subject.value, &info.subject.len, 0);
 
         /* Fill in defaults */
         memset(&info, 0, sizeof(info));
@@ -228,7 +230,7 @@ int sc_pkcs15_encode_prkdf_entry(sc_context_t *ctx,
 				 const struct sc_pkcs15_object *obj,
 				 u8 **buf, size_t *buflen)
 {
-	struct sc_asn1_entry asn1_com_key_attr[6], asn1_com_prkey_attr[1];
+	struct sc_asn1_entry asn1_com_key_attr[6], asn1_com_prkey_attr[2];
 	struct sc_asn1_entry asn1_rsakey_attr[4], asn1_prk_rsa_attr[2];
 	struct sc_asn1_entry asn1_dsakey_attr[2], asn1_prk_dsa_attr[2],
 			asn1_dsakey_value_attr[3],
@@ -315,6 +317,9 @@ int sc_pkcs15_encode_prkdf_entry(sc_context_t *ctx,
 	}
 	if (prkey->key_reference >= 0)
 		sc_format_asn1_entry(asn1_com_key_attr + 4, &prkey->key_reference, NULL, 1);
+
+	sc_format_asn1_entry(asn1_com_prkey_attr + 0, prkey->subject.value, &prkey->subject.len, prkey->subject.len != 0);
+
 	r = sc_asn1_encode(ctx, asn1_prkey, buf, buflen);
 
 	return r;
@@ -504,8 +509,8 @@ sc_pkcs15_free_prkey(struct sc_pkcs15_prkey *key)
 
 void sc_pkcs15_free_prkey_info(sc_pkcs15_prkey_info_t *key)
 {
-	if (key->subject)
-		free(key->subject);
+	if (key->subject.value)
+		free(key->subject.value);
 	if (key->params)
 		free(key->params);
 	free(key);
