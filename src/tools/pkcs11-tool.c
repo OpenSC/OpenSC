@@ -799,6 +799,15 @@ static void list_mechs(CK_SLOT_ID slot)
 		printf("  %s", p11_mechanism_to_name(mechs[n]));
 		rv = p11->C_GetMechanismInfo(slot, mechs[n], &info);
 		if (rv == CKR_OK) {
+			if (info.ulMinKeySize || info.ulMaxKeySize)   {
+				printf(", keySize={");
+				if (info.ulMinKeySize)
+					printf("%li", info.ulMinKeySize);
+				printf(",");
+				if (info.ulMaxKeySize)
+					printf("%li", info.ulMaxKeySize);
+				printf("}");
+			}
 			if (info.flags & CKF_DIGEST)
 				printf(", digest");
 			if (info.flags & CKF_SIGN)
