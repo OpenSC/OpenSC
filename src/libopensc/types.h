@@ -49,8 +49,7 @@ typedef unsigned char u8;
 
 /* When changing this value, pay attention to the initialization of the ASN1 
  * static variables that use this macro, like, for example, 
- * 'c_asn1_supported_algorithms' in
- * src/libopensc/pkcs15.c, src/libopensc/pkcs15-prkey.c, ... 
+ * 'c_asn1_supported_algorithms' in src/libopensc/pkcs15.c 
  */
 #define SC_MAX_SUPPORTED_ALGORITHMS     8
 
