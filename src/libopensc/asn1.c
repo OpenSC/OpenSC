@@ -891,6 +891,28 @@ err:
 	return ret;	
 }
 
+
+static const struct sc_asn1_entry c_asn1_access_control_rule[3] = {
+	{ "accessMode", SC_ASN1_BIT_FIELD, SC_ASN1_TAG_BIT_STRING, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "securityCondition", SC_ASN1_PKCS15_ID, SC_ASN1_TAG_OCTET_STRING, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ NULL, 0, 0, 0, NULL, NULL }
+};
+
+/*
+ * in src/libopensc/pkcs15.h SC_PKCS15_MAX_ACCESS_RULES  defined as 8
+ */
+static const struct sc_asn1_entry c_asn1_access_control_rules[SC_PKCS15_MAX_ACCESS_RULES + 1] = {
+	{ "accessControlRule", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "accessControlRule", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "accessControlRule", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "accessControlRule", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "accessControlRule", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "accessControlRule", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "accessControlRule", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "accessControlRule", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ NULL, 0, 0, 0, NULL, NULL }
+};
+
 static const struct sc_asn1_entry c_asn1_com_obj_attr[6] = {
 	{ "label", SC_ASN1_UTF8STRING, SC_ASN1_TAG_UTF8STRING, SC_ASN1_OPTIONAL, NULL, NULL },
 	{ "flags", SC_ASN1_BIT_FIELD, SC_ASN1_TAG_BIT_STRING, SC_ASN1_OPTIONAL, NULL, NULL },
@@ -912,11 +934,18 @@ static int asn1_decode_p15_object(sc_context_t *ctx, const u8 *in,
 				  size_t len, struct sc_asn1_pkcs15_object *obj,
 				  int depth)
 {
-	int r;
 	struct sc_pkcs15_object *p15_obj = obj->p15_obj;
 	struct sc_asn1_entry asn1_c_attr[6], asn1_p15_obj[5];
+	struct sc_asn1_entry asn1_ac_rules[SC_PKCS15_MAX_ACCESS_RULES + 1], asn1_ac_rule[SC_PKCS15_MAX_ACCESS_RULES][3];
 	size_t flags_len = sizeof(p15_obj->flags);
 	size_t label_len = sizeof(p15_obj->label);
+	size_t access_mode_len = sizeof(p15_obj->access_rules[0].access_mode);
+	int r, ii;
+
+	for (ii=0; ii<SC_PKCS15_MAX_ACCESS_RULES; ii++)
+		sc_copy_asn1_entry(c_asn1_access_control_rule, asn1_ac_rule[ii]);
+	sc_copy_asn1_entry(c_asn1_access_control_rules, asn1_ac_rules);
+
 
 	sc_copy_asn1_entry(c_asn1_com_obj_attr, asn1_c_attr);
 	sc_copy_asn1_entry(c_asn1_p15_obj, asn1_p15_obj);
@@ -924,8 +953,14 @@ static int asn1_decode_p15_object(sc_context_t *ctx, const u8 *in,
 	sc_format_asn1_entry(asn1_c_attr + 1, &p15_obj->flags, &flags_len, 0);
 	sc_format_asn1_entry(asn1_c_attr + 2, &p15_obj->auth_id, NULL, 0);
 	sc_format_asn1_entry(asn1_c_attr + 3, &p15_obj->user_consent, NULL, 0);
-	/* FIXME: encode accessControlRules */
-	sc_format_asn1_entry(asn1_c_attr + 4, NULL, NULL, 0);
+
+	for (ii=0; ii<SC_PKCS15_MAX_ACCESS_RULES; ii++)   {
+		sc_format_asn1_entry(asn1_ac_rule[ii] + 0, &p15_obj->access_rules[ii].access_mode, &access_mode_len, 0);
+		sc_format_asn1_entry(asn1_ac_rule[ii] + 1, &p15_obj->access_rules[ii].auth_id, NULL, 0);
+		sc_format_asn1_entry(asn1_ac_rules + ii, asn1_ac_rule[ii], NULL, 0);
+	}
+	sc_format_asn1_entry(asn1_c_attr + 4, asn1_ac_rules, NULL, 0);
+	
 	sc_format_asn1_entry(asn1_p15_obj + 0, asn1_c_attr, NULL, 0);
 	sc_format_asn1_entry(asn1_p15_obj + 1, obj->asn1_class_attr, NULL, 0);
 	sc_format_asn1_entry(asn1_p15_obj + 2, obj->asn1_subclass_attr, NULL, 0);
@@ -938,11 +973,25 @@ static int asn1_decode_p15_object(sc_context_t *ctx, const u8 *in,
 static int asn1_encode_p15_object(sc_context_t *ctx, const struct sc_asn1_pkcs15_object *obj,
 				  u8 **buf, size_t *bufsize, int depth)
 {
-	int r;
 	struct sc_pkcs15_object p15_obj = *obj->p15_obj;
 	struct sc_asn1_entry    asn1_c_attr[6], asn1_p15_obj[5];
+	struct sc_asn1_entry asn1_ac_rules[SC_PKCS15_MAX_ACCESS_RULES + 1], asn1_ac_rule[SC_PKCS15_MAX_ACCESS_RULES][3];
 	size_t label_len = strlen(p15_obj.label);
 	size_t flags_len;
+	size_t access_mode_len;
+	int r, ii;
+
+	sc_debug(ctx, SC_LOG_DEBUG_ASN1, "encode p15 obj(type:0x%X,access_mode:0x%X)", p15_obj.type, p15_obj.access_rules[0].access_mode);
+	if (p15_obj.access_rules[0].access_mode)   {
+		for (ii=0; ii<SC_PKCS15_MAX_ACCESS_RULES; ii++)   {
+			sc_copy_asn1_entry(c_asn1_access_control_rule, asn1_ac_rule[ii]);
+			if (p15_obj.access_rules[ii].auth_id.len == 0)   {
+				asn1_ac_rule[ii][1].type = SC_ASN1_NULL;
+				asn1_ac_rule[ii][1].tag = SC_ASN1_TAG_NULL;
+			}
+		}
+		sc_copy_asn1_entry(c_asn1_access_control_rules, asn1_ac_rules);
+	}
 
 	sc_copy_asn1_entry(c_asn1_com_obj_attr, asn1_c_attr);
 	sc_copy_asn1_entry(c_asn1_p15_obj, asn1_p15_obj);
@@ -956,7 +1005,17 @@ static int asn1_encode_p15_object(sc_context_t *ctx, const struct sc_asn1_pkcs15
 		sc_format_asn1_entry(asn1_c_attr + 2, (void *) &p15_obj.auth_id, NULL, 1);
 	if (p15_obj.user_consent)
 		sc_format_asn1_entry(asn1_c_attr + 3, (void *) &p15_obj.user_consent, NULL, 1);
-	/* FIXME: decode accessControlRules */
+
+	if (p15_obj.access_rules[0].access_mode)   {
+		for (ii=0; p15_obj.access_rules[ii].access_mode; ii++)   {
+			access_mode_len = sizeof(p15_obj.access_rules[ii].access_mode);
+			sc_format_asn1_entry(asn1_ac_rule[ii] + 0, (void *) &p15_obj.access_rules[ii].access_mode, &access_mode_len, 1);
+			sc_format_asn1_entry(asn1_ac_rule[ii] + 1, (void *) &p15_obj.access_rules[ii].auth_id, NULL, 1);
+			sc_format_asn1_entry(asn1_ac_rules + ii, asn1_ac_rule[ii], NULL, 1);
+		}
+		sc_format_asn1_entry(asn1_c_attr + 4, asn1_ac_rules, NULL, 1);
+	}
+
 	sc_format_asn1_entry(asn1_p15_obj + 0, asn1_c_attr, NULL, 1);
 	sc_format_asn1_entry(asn1_p15_obj + 1, obj->asn1_class_attr, NULL, 1);
 	if (obj->asn1_subclass_attr != NULL)
@@ -1001,7 +1060,8 @@ static int asn1_decode_entry(sc_context_t *ctx,struct sc_asn1_entry *entry,
 	case SC_ASN1_ENUMERATED:
 		if (parm != NULL) {
 			r = sc_asn1_decode_integer(obj, objlen, (int *) entry->parm);
-			sc_debug(ctx, SC_LOG_DEBUG_ASN1, "%*.*sdecoding '%s' returned %d\n", depth, depth, "", entry->name, *((int *) entry->parm));
+			sc_debug(ctx, SC_LOG_DEBUG_ASN1, "%*.*sdecoding '%s' returned %d\n", depth, depth, "", 
+					entry->name, *((int *) entry->parm));
 		}
 		break;
 	case SC_ASN1_BIT_STRING_NI:

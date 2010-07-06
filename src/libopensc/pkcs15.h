@@ -34,6 +34,12 @@ extern "C" {
 #define SC_PKCS15_MAX_LABEL_SIZE	255
 #define SC_PKCS15_MAX_ID_SIZE		255
 
+/* When changing this value, change also initialisation of the 
+ * static ASN1 variables, that use this macro,
+ * like for example, 'c_asn1_access_control_rules' 
+ * in src/libopensc/asn1.c */
+#define SC_PKCS15_MAX_ACCESS_RULES      8
+
 struct sc_pkcs15_id {
 	u8 value[SC_PKCS15_MAX_ID_SIZE];
 	size_t len;
@@ -264,6 +270,27 @@ struct sc_pkcs15_keyinfo_gostparams
 	unsigned int gostr3410, gostr3411, gost28147;
 };
 
+/* AccessMode bit definitions specified in PKCS#15 v1.1
+ * and extended by IAS/ECC v1.0.1 specification. */
+#define SC_PKCS15_ACCESS_RULE_MODE_READ         0x01
+#define SC_PKCS15_ACCESS_RULE_MODE_UPDATE       0x02
+#define SC_PKCS15_ACCESS_RULE_MODE_EXECUTE      0x04
+#define SC_PKCS15_ACCESS_RULE_MODE_DELETE       0x08
+#define SC_PKCS15_ACCESS_RULE_MODE_ATTRIBUTE    0x10
+#define SC_PKCS15_ACCESS_RULE_MODE_PSO_CDS      0x20
+#define SC_PKCS15_ACCESS_RULE_MODE_PSO_VERIFY   0x40
+#define SC_PKCS15_ACCESS_RULE_MODE_PSO_DECRYPT  0x80
+#define SC_PKCS15_ACCESS_RULE_MODE_PSO_ENCRYPT  0x100
+#define SC_PKCS15_ACCESS_RULE_MODE_INT_AUTH     0x200
+#define SC_PKCS15_ACCESS_RULE_MODE_EXT_AUTH     0x400
+
+struct sc_pkcs15_accessrule {
+	unsigned access_mode;
+	struct sc_pkcs15_id auth_id;
+};
+typedef struct sc_pkcs15_accessrule sc_pkcs15_accessrule_t;
+
+
 struct sc_pkcs15_prkey_info {
 	struct sc_pkcs15_id id;	/* correlates to public certificate id */
 	unsigned int usage, access_flags;
@@ -330,6 +357,8 @@ struct sc_pkcs15_object {
 
 	int usage_counter;
 	int user_consent;
+
+	struct sc_pkcs15_accessrule access_rules[SC_PKCS15_MAX_ACCESS_RULES];
 
 	/* Object type specific data */
 	void *data;

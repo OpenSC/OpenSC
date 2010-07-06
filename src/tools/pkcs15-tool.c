@@ -143,6 +143,52 @@ static sc_context_t *ctx = NULL;
 static sc_card_t *card = NULL;
 static struct sc_pkcs15_card *p15card = NULL;
 
+struct _access_rule_text {
+	unsigned flag;
+	char *label;
+} _access_rules_text[] = {
+	{SC_PKCS15_ACCESS_RULE_MODE_READ, "read"},
+	{SC_PKCS15_ACCESS_RULE_MODE_UPDATE, "update"},
+	{SC_PKCS15_ACCESS_RULE_MODE_EXECUTE, "execute"},
+	{SC_PKCS15_ACCESS_RULE_MODE_DELETE, "delete"},
+	{SC_PKCS15_ACCESS_RULE_MODE_ATTRIBUTE, "attribute"},
+	{SC_PKCS15_ACCESS_RULE_MODE_PSO_CDS, "pso_cds"},
+	{SC_PKCS15_ACCESS_RULE_MODE_PSO_VERIFY, "pso_verify"},
+	{SC_PKCS15_ACCESS_RULE_MODE_PSO_DECRYPT, "pso_decrypt"},
+	{SC_PKCS15_ACCESS_RULE_MODE_PSO_ENCRYPT, "pso_encrypt"},
+	{SC_PKCS15_ACCESS_RULE_MODE_INT_AUTH, "int_auth"},
+	{SC_PKCS15_ACCESS_RULE_MODE_EXT_AUTH, "ext_auth"},
+	{0, NULL},
+};
+
+static void 
+print_access_rules(const struct sc_pkcs15_accessrule *rules, int num)
+{
+	int i, j;
+
+	if (!rules->access_mode)
+		return;
+
+	printf("\tAccess Rules:\t");
+	for (i = 0; i < num; i++)   {
+		int next_coma = 0;
+
+		if (!(rules + i)->access_mode)
+			break;
+		printf(" ");
+
+		for (j = 0; _access_rules_text[j].label;j++)   {
+			if ((rules + i)->access_mode & (_access_rules_text[j].flag))   {
+				printf("%s%s", next_coma ? "," : "", _access_rules_text[j].label);
+				next_coma = 1;
+			}
+		}
+
+		printf(":%s;", (rules + i)->auth_id.len ? sc_pkcs15_print_id(&(rules + i)->auth_id) : "<always>");
+	}
+	printf("\n");
+}
+
 static void print_cert_info(const struct sc_pkcs15_object *obj)
 {
 	struct sc_pkcs15_cert_info *cert_info = (struct sc_pkcs15_cert_info *) obj->data;
@@ -154,6 +200,8 @@ static void print_cert_info(const struct sc_pkcs15_object *obj)
 	printf("\tAuthority: %s\n", cert_info->authority ? "yes" : "no");
 	printf("\tPath     : %s\n", sc_print_path(&cert_info->path));
 	printf("\tID       : %s\n", sc_pkcs15_print_id(&cert_info->id));
+
+	print_access_rules(obj->access_rules, SC_PKCS15_MAX_ACCESS_RULES);
 
         rv = sc_pkcs15_read_certificate(p15card, cert_info, &cert_parsed);
 	if (rv >= 0 && cert_parsed)   {
@@ -439,11 +487,16 @@ static void print_prkey_info(const struct sc_pkcs15_object *obj)
 			printf(", %s", usages[i]);
 		}
 	printf("\n");
+
 	printf("\tAccess Flags: [0x%X]", prkey->access_flags);
-	for (i = 0; i < af_count; i++)
+	for (i = 0; i < af_count; i++)   {
 		if (prkey->access_flags & (1 << i)) {
 			printf(", %s", access_flags[i]);   
 		}
+	}
+
+	print_access_rules(obj->access_rules, SC_PKCS15_MAX_ACCESS_RULES);
+
 	printf("\n");
 	printf("\tModLength   : %lu\n", (unsigned long)prkey->modulus_length);
 	printf("\tKey ref     : %d\n", prkey->key_reference);
@@ -498,11 +551,16 @@ static void print_pubkey_info(const struct sc_pkcs15_object *obj)
 			printf(", %s", usages[i]);
 	}
 	printf("\n");
+
 	printf("\tAccess Flags: [0x%X]", pubkey->access_flags);
-	for (i = 0; i < af_count; i++)
+	for (i = 0; i < af_count; i++)   {
 		if (pubkey->access_flags & (1 << i)) {
 			printf(", %s", access_flags[i]);   
 		}
+	}
+
+	print_access_rules(obj->access_rules, SC_PKCS15_MAX_ACCESS_RULES);
+
 	printf("\n");
 	printf("\tModLength   : %lu\n", (unsigned long)pubkey->modulus_length);
 	printf("\tKey ref     : %d\n", pubkey->key_reference);
