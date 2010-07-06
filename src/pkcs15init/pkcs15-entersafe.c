@@ -423,6 +423,49 @@ static int entersafe_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15ca
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,SC_SUCCESS);
 }
 
+
+static int entersafe_sanity_check(sc_profile_t *profile, sc_pkcs15_card_t *p15card)
+{
+	struct sc_context *ctx = p15card->card->ctx;
+	struct sc_pkcs15_pin_info profile_pin;
+	struct sc_pkcs15_object *objs[32];
+	int rv, nn, ii, update_df = 0;
+
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
+
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Check and if needed update PinFlags");
+	rv = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_AUTH_PIN, objs, 32);
+	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Failed to get PINs");
+	nn = rv;
+
+	sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PIN, &profile_pin);
+	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Failed to get PIN info");
+
+	for (ii=0; ii<nn; ii++) {
+		struct sc_pkcs15_pin_info *pinfo = (struct sc_pkcs15_pin_info *) objs[ii]->data;
+
+		if (pinfo->reference == profile_pin.reference && pinfo->flags != profile_pin.flags)   {
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Set flags of '%s'(flags:%X,ref:%i,id:%s) to %X", objs[ii]->label, 
+					pinfo->flags, pinfo->reference, sc_pkcs15_print_id(&pinfo->auth_id), 
+					profile_pin.flags);
+			pinfo->flags = profile_pin.flags;
+			update_df = 1;
+		}
+	}
+	if (update_df)   {
+		struct sc_pkcs15_df *df = p15card->df_list;
+
+		while (df != NULL && df->type != SC_PKCS15_AODF)
+			df = df->next;
+		if (!df)
+			SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OBJECT_NOT_FOUND, "Cannot find AODF");
+		rv = sc_pkcs15init_update_any_df(p15card, profile, df, 0);
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Update AODF error");
+	}
+
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, rv);
+}
+
 static struct sc_pkcs15init_operations sc_pkcs15init_entersafe_operations = {
 	entersafe_erase_card,
 	entersafe_init_card,
@@ -437,7 +480,8 @@ static struct sc_pkcs15init_operations sc_pkcs15init_entersafe_operations = {
 	NULL, NULL,			/* encode private/public key */
 	NULL,	  			/* finalize */
 	NULL, 				/* delete_object */
-	NULL, NULL, NULL, NULL  /* pkcs15init emulation */
+	NULL, NULL, NULL, NULL,  /* pkcs15init emulation */
+	entersafe_sanity_check,
 };
 
 struct sc_pkcs15init_operations *sc_pkcs15init_get_entersafe_ops(void)
