@@ -1487,8 +1487,7 @@ no_object:
 		*objlen = 0;
 		r = asn1_write_element(ctx, entry->tag, buf, buflen, obj, objlen);
 		if (r)
-			sc_debug(ctx, SC_LOG_DEBUG_ASN1, "error writing ASN.1 tag and length: %s\n", sc_strerror(r));
-					        
+			sc_debug(ctx, SC_LOG_DEBUG_ASN1, "error writing ASN.1 tag and length: %s\n", sc_strerror(r)); 
 	} else if (buflen || entry->type == SC_ASN1_NULL ||
 	           entry->tag & SC_ASN1_CONS) {
 		r = asn1_write_element(ctx, entry->tag,

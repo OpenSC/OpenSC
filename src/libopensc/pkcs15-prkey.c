@@ -39,7 +39,8 @@ static const struct sc_asn1_entry c_asn1_com_key_attr[] = {
 };
 
 static const struct sc_asn1_entry c_asn1_com_prkey_attr[] = {
-	{ "subjectName", SC_ASN1_OCTET_STRING, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_EMPTY_ALLOWED | SC_ASN1_ALLOC, NULL, NULL },
+	{ "subjectName", SC_ASN1_OCTET_STRING, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 
+		SC_ASN1_EMPTY_ALLOWED | SC_ASN1_ALLOC | SC_ASN1_OPTIONAL, NULL, NULL },
 	{ NULL, 0, 0, 0, NULL, NULL }
 };
 
