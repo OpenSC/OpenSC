@@ -1509,10 +1509,10 @@ DWORD WINAPI CardAcquireContext(IN PCARD_DATA pCardData, __in DWORD dwFlags)
 		for(i = 0; i < vs->prkey_count; i++)
 		{
 			prkey_info = (sc_pkcs15_prkey_info_t*)(vs->prkey_objs[i]->data);
-			sc_bin_to_hex(prkey_info->subject, prkey_info->subject_len, \
+			sc_bin_to_hex(prkey_info->subject.value, prkey_info->subject.len, \
 				texte, sizeof(texte)-5, ':');
 			logprintf(pCardData, 5, "prkey_info->subject %d (subject_len=%d) = %s," \
-				"modulus_length=%d\n", i, prkey_info->subject_len, \
+				"modulus_length=%d\n", i, prkey_info->subject.len, \
 				texte, prkey_info->modulus_length);
 		}
 		
