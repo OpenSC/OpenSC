@@ -1642,7 +1642,7 @@ static int write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		if (rv != CKR_OK)
 			p11_fatal("C_CreateObject", rv);
 		
-		printf("Generated Data Object:\n");
+		printf("Created Data Object:\n");
 		show_dobj(session, data_obj);
 	}
 	if (n_cert_attr) {
@@ -1650,7 +1650,7 @@ static int write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		if (rv != CKR_OK)
 			p11_fatal("C_CreateObject", rv);
 		
-		printf("Generated certificate:\n");
+		printf("Created certificate:\n");
 		show_object(session, cert_obj);
 	}
 
@@ -1659,7 +1659,7 @@ static int write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		if (rv != CKR_OK)
 			p11_fatal("C_CreateObject", rv);
 		
-		printf("Generated public key:\n");
+		printf("Created public key:\n");
 		show_object(session, pubkey_obj);
 	}
 
@@ -1668,7 +1668,7 @@ static int write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		if (rv != CKR_OK)
 			p11_fatal("C_CreateObject", rv);
 		
-		printf("Generated private key:\n");
+		printf("Created private key:\n");
 		show_object(session, privkey_obj);
 	}
 
