@@ -43,11 +43,12 @@
 
 static const char *app_name = "cardos-tool";
 
-static int opt_debug = 0, opt_wait = 0;
+static int opt_wait = 0;
 static int verbose = 0;
 static char *opt_reader = NULL;
 
 static const struct option options[] = {
+	{"help",	0, NULL, 'h'},
 	{"info",	0, NULL, 'i'},
 	{"format",	0, NULL, 'f'},
 	{"startkey",	1, NULL, 's'},
@@ -56,11 +57,11 @@ static const struct option options[] = {
 	{"card-driver", 1, NULL, 'c'},
 	{"wait",	0, NULL, 'w'},
 	{"verbose",	0, NULL, 'v'},
-	{"debug",	0, NULL, 'd'},
 	{NULL, 0, NULL, 0}
 };
 
 static const char *option_help[] = {
+	"Print this help message",
 	"Print information about this card",
 	"Format this card erasing all content",
 	"Specify startkey for format",
@@ -105,7 +106,7 @@ static int cardos_info(void)
 			sc_strerror(r));
 		return 1;
 	}
-	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || opt_debug) {
+	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || verbose) {
 		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
 			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
 		if (apdu.resplen)
@@ -122,7 +123,7 @@ static int cardos_info(void)
 			sc_strerror(r));
 		return 1;
 	}
-	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || opt_debug) {
+	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || verbose) {
 		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
 			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
 		if (apdu.resplen)
@@ -146,7 +147,7 @@ static int cardos_info(void)
 			sc_strerror(r));
 		return 1;
 	}
-	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || opt_debug) {
+	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || verbose) {
 		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
 			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
 		if (apdu.resplen)
@@ -184,7 +185,7 @@ static int cardos_info(void)
 			sc_strerror(r));
 		return 1;
 	}
-	if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00 || opt_debug) {
+	if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00 || verbose) {
 		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
 			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
 		if (apdu.resplen)
@@ -218,7 +219,7 @@ static int cardos_info(void)
 			sc_strerror(r));
 		return 1;
 	}
-	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || opt_debug) {
+	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || verbose) {
 		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
 			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
 		if (apdu.resplen)
@@ -237,7 +238,7 @@ static int cardos_info(void)
 			sc_strerror(r));
 		return 1;
 	}
-	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || opt_debug) {
+	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || verbose) {
 		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
 			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
 		if (apdu.resplen)
@@ -255,7 +256,7 @@ static int cardos_info(void)
 			sc_strerror(r));
 		return 1;
 	}
-	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || opt_debug) {
+	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || verbose) {
 		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
 			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
 		if (apdu.resplen)
@@ -279,7 +280,7 @@ static int cardos_info(void)
 			sc_strerror(r));
 		return 1;
 	}
-	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || opt_debug) {
+	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || verbose) {
 		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
 			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
 		if (apdu.resplen)
@@ -298,7 +299,7 @@ static int cardos_info(void)
 			sc_strerror(r));
 		return 1;
 	}
-	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || opt_debug) {
+	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || verbose) {
 		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
 			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
 		if (apdu.resplen)
@@ -317,7 +318,7 @@ static int cardos_info(void)
 			sc_strerror(r));
 		return 1;
 	}
-	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || opt_debug) {
+	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || verbose) {
 		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
 			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
 		if (apdu.resplen)
@@ -335,7 +336,7 @@ static int cardos_info(void)
 			sc_strerror(r));
 		return 1;
 	}
-	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || opt_debug) {
+	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || verbose) {
 		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
 			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
 		if (apdu.resplen)
@@ -356,7 +357,7 @@ static int cardos_info(void)
 			sc_strerror(r));
 		return 1;
 	}
-	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || opt_debug) {
+	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || verbose) {
 		fprintf(stderr, "Unable to determine current DF:\n");
 		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
 			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
@@ -544,7 +545,7 @@ static int cardos_format(const char *opt_startkey)
 			sc_strerror(r));
 		return 1;
 	}
-	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || opt_debug) {
+	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || verbose) {
 		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
 			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
 		if (apdu.resplen)
@@ -583,7 +584,7 @@ static int cardos_format(const char *opt_startkey)
 			sc_strerror(r));
 		return 1;
 	}
-	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || opt_debug) {
+	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || verbose) {
 		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
 			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
 		if (apdu.resplen)
@@ -629,7 +630,7 @@ static int cardos_format(const char *opt_startkey)
 			sc_strerror(r));
 		return 1;
 	}
-	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || opt_debug) {
+	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || verbose) {
 		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
 			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
 		if (apdu.resplen)
@@ -680,7 +681,7 @@ static int cardos_format(const char *opt_startkey)
 			sc_strerror(r));
 		return 1;
 	}
-	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || opt_debug) {
+	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || verbose) {
 		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
 			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
 		if (apdu.resplen)
@@ -706,7 +707,7 @@ static int cardos_format(const char *opt_startkey)
 			sc_strerror(r));
 		return 1;
 	}
-	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || opt_debug) {
+	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || verbose) {
 		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
 			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
 		if (apdu.resplen)
@@ -743,7 +744,7 @@ admin_state:
 			sc_strerror(r));
 		return 1;
 	}
-	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || opt_debug) {
+	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || verbose) {
 		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
 			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
 		if (apdu.resplen)
@@ -787,7 +788,7 @@ admin_state:
 				sc_strerror(r));
 			return 1;
 		}
-		if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || opt_debug) {
+		if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || verbose) {
 			fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
 				apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
 			if (apdu.resplen)
@@ -841,7 +842,7 @@ erase_state:
 				sc_strerror(r));
 			return 1;
 		}
-		if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || opt_debug) {
+		if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || verbose) {
 			fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
 				apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
 			if (apdu.resplen)
@@ -903,7 +904,7 @@ static int cardos_change_startkey(const char *change_startkey_apdu)
 			sc_strerror(r));
 		return 1;
 	}
-	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || opt_debug) {
+	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || verbose) {
 		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
 			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
 		if (apdu.resplen)
@@ -944,7 +945,7 @@ static int cardos_change_startkey(const char *change_startkey_apdu)
 			sc_strerror(r));
 		return 1;
 	}
-	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || opt_debug) {
+	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || verbose) {
 		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
 			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
 		if (apdu.resplen)
@@ -1009,7 +1010,7 @@ change_startkey:
 			sc_strerror(r));
 		return 1;
 	}
-	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || opt_debug) {
+	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || verbose) {
 		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
 			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
 		if (apdu.resplen)
@@ -1039,7 +1040,7 @@ change_startkey:
 			sc_strerror(r));
 		return 1;
 	}
-	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || opt_debug) {
+	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || verbose) {
 		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
 			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
 		if (apdu.resplen)
@@ -1082,13 +1083,13 @@ int main(int argc, char *const argv[])
 	sc_context_param_t ctx_param;
 
 	while (1) {
-		c = getopt_long(argc, argv, "ifs:r:vdc:wS:", options,
+		c = getopt_long(argc, argv, "hifs:r:vdc:wS:", options,
 				&long_optind);
 		if (c == -1)
 			break;
 		switch (c) {
 		case 'h':
-		case '?':
+			printf("NB! This tool is only for Siemens CardOS based cards!\n\n");
 			util_print_usage_and_die(app_name, options, option_help);
 		case 'i':
 			do_info = 1;
@@ -1112,9 +1113,6 @@ int main(int argc, char *const argv[])
 		case 'v':
 			verbose++;
 			break;
-		case 'd':
-			opt_debug++;
-			break;
 		case 'c':
 			opt_driver = optarg;
 			break;
@@ -1134,8 +1132,9 @@ int main(int argc, char *const argv[])
 			sc_strerror(r));
 		return 1;
 	}
-	if (opt_debug)
-		ctx->debug = opt_debug;
+	if (verbose > 0)
+		ctx->debug = verbose;
+
 	if (opt_driver != NULL) {
 		err = sc_set_card_driver(ctx, opt_driver);
 		if (err) {
