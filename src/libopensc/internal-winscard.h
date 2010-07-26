@@ -23,8 +23,6 @@ typedef unsigned __int8 uint8_t;
 #else
 /* mingw32 does not have winscard.h */
 
-#define MAX_ATR_SIZE			33	/**< Maximum ATR size */
-
 #define SCARD_PROTOCOL_T0		0x0001	/**< T=0 active protocol. */
 #define SCARD_PROTOCOL_T1		0x0002	/**< T=1 active protocol. */
 #define SCARD_PROTOCOL_RAW		0x0004	/**< Raw active protocol. */
@@ -166,13 +164,15 @@ typedef LONG (PCSC_API *SCardGetAttrib_t)(SCARDHANDLE hCard, DWORD dwAttrId,\
 #define FEATURE_WRITE_DISPLAY            0x0F
 #define FEATURE_GET_KEY                  0x10
 #define FEATURE_IFD_DISPLAY_PROPERTIES   0x11
+#define FEATURE_GET_TLV_PROPERTIES       0x12
+#define FEATURE_CCID_ESC_COMMAND         0x13
 
-/* structures used (but not defined) in PCSC Part 10 revision 2.01.02:
+/* structures used (but not defined) in PCSC Part 10:
  * "IFDs with Secure Pin Entry Capabilities" */
 
 /* Set structure elements aligment on bytes
  * http://gcc.gnu.org/onlinedocs/gcc/Structure_002dPacking-Pragmas.html */
-#ifdef __APPLE__
+#if defined(__APPLE__) | defined(sun)
 #pragma pack(1)
 #else
 #pragma pack(push, 1)
@@ -249,16 +249,26 @@ typedef struct
 	uint8_t abData[1]; /**< Data to send to the ICC */
 } PIN_MODIFY_STRUCTURE;
 
+/* PIN_PROPERTIES as defined (in/up to?) PC/SC 2.02.05 */
+/* This only makes sense with old Windows drivers. To be removed some time in the future. */
+#define PIN_PROPERTIES_v5
 typedef struct {
 	uint16_t wLcdLayout; /**< display characteristics */
 	uint16_t wLcdMaxCharacters;
 	uint16_t wLcdMaxLines;
 	uint8_t bEntryValidationCondition;
 	uint8_t bTimeOut2;
+} PIN_PROPERTIES_STRUCTURE_v5;
+
+/* PIN_PROPERTIES as defined in PC/SC 2.02.06 and later */
+typedef struct {
+	uint16_t wLcdLayout; /**< display characteristics */
+	uint8_t bEntryValidationCondition;
+	uint8_t bTimeOut2;
 } PIN_PROPERTIES_STRUCTURE;
 
 /* restore default structure elements alignment */
-#ifdef __APPLE__
+#if defined(__APPLE__) | defined(sun)
 #pragma pack()
 #else
 #pragma pack(pop)

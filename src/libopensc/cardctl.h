@@ -556,7 +556,11 @@ typedef struct {
 #define SC_RUTOKEN_DO_CHV_MAX_ID_V2       SC_RUTOKEN_DEF_ID_GCHV_USER	/*  MAX ID value of CHV-objects  */
 #define SC_RUTOKEN_DO_NOCHV_MAX_ID_V2     SC_RUTOKEN_DO_NOCHV_MAX_ID	/*  MAX ID value of All Other DOs  */
 
+#if defined(__APPLE__) || defined(sun)
+#pragma pack(1)
+#else
 #pragma pack(push, 1)
+#endif
 typedef u8 sc_SecAttrV2_t[40];
 
 typedef struct sc_ObjectTypeID{
@@ -671,7 +675,11 @@ typedef struct sc_entersafe_gen_key_data_st {
 	u8	*modulus;
 } sc_entersafe_gen_key_data;
 
+#if defined(__APPLE__) || defined(sun)
+#pragma pack()
+#else
 #pragma pack(pop)
+#endif
 
 /*
  * Rutoken ECP stuff

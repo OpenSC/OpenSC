@@ -87,6 +87,9 @@ struct pcsc_private_data {
 	DWORD modify_ioctl;
 	DWORD modify_ioctl_start;
 	DWORD modify_ioctl_finish;
+
+	DWORD pin_properties_ioctl;
+
 	int locked;
 };
 
@@ -713,7 +716,7 @@ static int pcsc_detect_readers(sc_context_t *ctx, void *prv_data)
 	PCSC_TLV_STRUCTURE *pcsc_tlv;
 	struct pcsc_global_private_data *gpriv = (struct pcsc_global_private_data *) prv_data;
 	LONG rv;
-	DWORD reader_buf_size, rcount, feature_len, display_ioctl = 0x0;
+	DWORD reader_buf_size, rcount, feature_len;
 	char *reader_buf = NULL, *reader_name;
 	const char *mszGroups = NULL;
 	int ret = SC_ERROR_INTERNAL;
@@ -873,7 +876,7 @@ static int pcsc_detect_readers(sc_context_t *ctx, void *prv_data)
 							} else if (pcsc_tlv[i].tag == FEATURE_MODIFY_PIN_FINISH) {
 								priv->modify_ioctl_finish = ntohl(pcsc_tlv[i].value);
 							} else if (pcsc_tlv[i].tag == FEATURE_IFD_PIN_PROPERTIES) {
-								display_ioctl = ntohl(pcsc_tlv[i].value);
+								priv->pin_properties_ioctl = ntohl(pcsc_tlv[i].value);
 							} else {
 								sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Reader feature %02x is not supported", pcsc_tlv[i].tag);
 							}
@@ -900,10 +903,21 @@ static int pcsc_detect_readers(sc_context_t *ctx, void *prv_data)
 							}
 						}
 
-						if (display_ioctl) {
+						/* Detect display */
+						if (priv->pin_properties_ioctl) {
 							rcount = sizeof(rbuf);
-							rv = gpriv->SCardControl(card_handle, display_ioctl, NULL, 0, rbuf, sizeof(rbuf), &rcount);
+							rv = gpriv->SCardControl(card_handle, priv->pin_properties_ioctl, NULL, 0, rbuf, sizeof(rbuf), &rcount);
 							if (rv == SCARD_S_SUCCESS) {
+#ifdef PIN_PROPERTIES_v5							
+								if (rcount == sizeof(PIN_PROPERTIES_STRUCTURE_v5)) {
+									PIN_PROPERTIES_STRUCTURE_v5 *caps = (PIN_PROPERTIES_STRUCTURE_v5 *)rbuf;
+									if (caps->wLcdLayout > 0) {
+										sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Reader has a display: %04X", caps->wLcdLayout);
+										reader->capabilities |= SC_READER_CAP_DISPLAY;
+									} else
+										sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Reader does not have a display.");
+								}
+#endif
 								if (rcount == sizeof(PIN_PROPERTIES_STRUCTURE)) {
 									PIN_PROPERTIES_STRUCTURE *caps = (PIN_PROPERTIES_STRUCTURE *)rbuf;
 									if (caps->wLcdLayout > 0) {
