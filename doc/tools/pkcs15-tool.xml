@@ -135,7 +135,7 @@
 				</varlistentry>
 
 				<varlistentry>
-					<term><option>--pin-id</option> <varname>pin</varname>,
+					<term><option>--auth-id</option> <varname>pin</varname>,
 					<option>-a</option> <varname>pin</varname></term>
 					<listitem><para>Specifies the auth id of the PIN to use for the
 					operation. This is useful with the --change-pin operation.</para></listitem>
