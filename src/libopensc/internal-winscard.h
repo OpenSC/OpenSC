@@ -172,7 +172,7 @@ typedef LONG (PCSC_API *SCardGetAttrib_t)(SCARDHANDLE hCard, DWORD dwAttrId,\
 
 /* Set structure elements aligment on bytes
  * http://gcc.gnu.org/onlinedocs/gcc/Structure_002dPacking-Pragmas.html */
-#if defined(__APPLE__) | defined(sun)
+#if defined(__APPLE__) || defined(sun)
 #pragma pack(1)
 #else
 #pragma pack(push, 1)
@@ -268,7 +268,7 @@ typedef struct {
 } PIN_PROPERTIES_STRUCTURE;
 
 /* restore default structure elements alignment */
-#if defined(__APPLE__) | defined(sun)
+#if defined(__APPLE__) || defined(sun)
 #pragma pack()
 #else
 #pragma pack(pop)
