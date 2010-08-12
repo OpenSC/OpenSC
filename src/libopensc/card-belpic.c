@@ -1337,7 +1337,7 @@ static int belpic_pin_cmd_usage(sc_card_t *card, struct sc_pin_cmd_data *data,
 	data->pin1.encoding = data->pin2.encoding = BELPIC_PIN_ENCODING;
 	data->pin1.pad_char = data->pin2.pad_char = BELPIC_PAD_CHAR;
 	data->pin1.min_length = data->pin2.min_length = BELPIC_MIN_USER_PIN_LEN;
-	data->pin1.max_length = data->pin1.max_length = BELPIC_MAX_USER_PIN_LEN;
+	data->pin1.max_length = data->pin2.max_length = BELPIC_MAX_USER_PIN_LEN;
 	data->apdu = NULL;
 
 	return iso_ops->pin_cmd(card, data, tries_left);
