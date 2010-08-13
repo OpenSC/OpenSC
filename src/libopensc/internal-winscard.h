@@ -23,6 +23,8 @@ typedef unsigned __int8 uint8_t;
 #else
 /* mingw32 does not have winscard.h */
 
+#define MAX_ATR_SIZE                   33      /**< Maximum ATR size */
+
 #define SCARD_PROTOCOL_T0		0x0001	/**< T=0 active protocol. */
 #define SCARD_PROTOCOL_T1		0x0002	/**< T=1 active protocol. */
 #define SCARD_PROTOCOL_RAW		0x0004	/**< Raw active protocol. */
