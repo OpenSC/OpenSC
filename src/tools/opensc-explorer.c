@@ -453,16 +453,25 @@ static int do_info(int argc, char **argv)
 			"Linear fixed, SIMPLE-TLV", "Linear variable",
 			"Linear variable TLV", "Cyclic, SIMPLE-TLV",
 		};
-		const char *ops[] = {
-			"READ", "UPDATE", "DELETE", "WRITE", "REHABILITATE",
-			"INVALIDATE", "LIST_FILES", "CRYPTO",
+		const struct {
+			const char * label;
+			int op;
+		} ops[] = {
+			{ "READ", SC_AC_OP_READ },
+			{ "UPDATE", SC_AC_OP_UPDATE },
+			{ "DELETE", SC_AC_OP_DELETE },
+			{ "WRITE", SC_AC_OP_WRITE },
+			{ "REHABILITATE", SC_AC_OP_REHABILITATE },
+			{ "INVALIDATE", SC_AC_OP_INVALIDATE },
+			{ "LIST_FILES", SC_AC_OP_LIST_FILES },
+			{ "CRYPTO", SC_AC_OP_CRYPTO },
 		};
 		printf("%-15s%s\n", "EF structure:", structs[file->ef_structure]);
 		for (i = 0; i < sizeof(ops)/sizeof(ops[0]); i++) {
 			char buf[80];
 			
-			sprintf(buf, "ACL for %s:", ops[i]);
-			printf("%-25s%s\n", buf, util_acl_to_str(sc_file_get_acl_entry(file, i)));
+			sprintf(buf, "ACL for %s:", ops[i].label);
+			printf("%-25s%s\n", buf, util_acl_to_str(sc_file_get_acl_entry(file, ops[i].op)));
 		}
 	}	
 	if (file->prop_attr_len) {
