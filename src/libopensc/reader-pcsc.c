@@ -79,7 +79,7 @@ struct pcsc_global_private_data {
 struct pcsc_private_data {
 	struct pcsc_global_private_data *gpriv;
 	SCARDHANDLE pcsc_card;
-	SCARD_READERSTATE_A reader_state;
+	SCARD_READERSTATE reader_state;
 	DWORD verify_ioctl;
 	DWORD verify_ioctl_start;
 	DWORD verify_ioctl_finish;
@@ -973,7 +973,7 @@ static int pcsc_wait_for_event(sc_context_t *ctx, void *reader_data,
 {
 	struct pcsc_global_private_data *gpriv = (struct pcsc_global_private_data *)reader_data;
 	LONG rv;
-	SCARD_READERSTATE_A *rgReaderStates;
+	SCARD_READERSTATE *rgReaderStates;
 	size_t i;
 	unsigned int num_watch;
 	int r = SC_ERROR_INTERNAL;
@@ -988,7 +988,7 @@ static int pcsc_wait_for_event(sc_context_t *ctx, void *reader_data,
 	}
 
 	if (reader_states == NULL || *reader_states == NULL) {
-		rgReaderStates = (SCARD_READERSTATE_A *) calloc(sc_ctx_get_reader_count(ctx) + 2, sizeof(SCARD_READERSTATE_A));
+		rgReaderStates = (SCARD_READERSTATE *) calloc(sc_ctx_get_reader_count(ctx) + 2, sizeof(SCARD_READERSTATE));
 		if (!rgReaderStates)
 			SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
 
@@ -1010,7 +1010,7 @@ static int pcsc_wait_for_event(sc_context_t *ctx, void *reader_data,
 #endif
 	}
 	else {
-		rgReaderStates = (SCARD_READERSTATE_A *)(*reader_states);
+		rgReaderStates = (SCARD_READERSTATE *)(*reader_states);
 		for (num_watch = 0; rgReaderStates[num_watch].szReader; num_watch++)
 			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "re-use reader '%s'", rgReaderStates[num_watch].szReader);
 	}
@@ -1046,7 +1046,7 @@ static int pcsc_wait_for_event(sc_context_t *ctx, void *reader_data,
 	/* Wait for a status change
 	 */
 	for( ; ; ) {
-		SCARD_READERSTATE_A *rsp;
+		SCARD_READERSTATE *rsp;
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Looping...");
 
 		/* Scan the current state of all readers to see if they

@@ -82,7 +82,7 @@ typedef struct
 	unsigned long cbAtr;
 	unsigned char rgbAtr[MAX_ATR_SIZE];
 }
-SCARD_READERSTATE_A;
+SCARD_READERSTATE;
 
 typedef struct _SCARD_IO_REQUEST
 {
@@ -92,8 +92,8 @@ typedef struct _SCARD_IO_REQUEST
 SCARD_IO_REQUEST, *PSCARD_IO_REQUEST, *LPSCARD_IO_REQUEST;
 
 typedef const SCARD_IO_REQUEST *LPCSCARD_IO_REQUEST;
-typedef SCARD_READERSTATE_A SCARD_READERSTATE, *PSCARD_READERSTATE_A,
-	*LPSCARD_READERSTATE_A;
+typedef SCARD_READERSTATE SCARD_READERSTATE, *PSCARD_READERSTATE,
+	*LPSCARD_READERSTATE;
 
 #endif	/* HAVE_SCARD_H */
 
@@ -118,7 +118,7 @@ typedef LONG (PCSC_API *SCardEndTransaction_t)(SCARDHANDLE hCard, DWORD dwDispos
 typedef LONG (PCSC_API *SCardStatus_t)(SCARDHANDLE hCard, LPSTR mszReaderNames, LPDWORD pcchReaderLen,
 	LPDWORD pdwState, LPDWORD pdwProtocol, LPBYTE pbAtr, LPDWORD pcbAtrLen);
 typedef LONG (PCSC_API *SCardGetStatusChange_t)(SCARDCONTEXT hContext, DWORD dwTimeout,
-	LPSCARD_READERSTATE_A rgReaderStates, DWORD cReaders);
+	LPSCARD_READERSTATE rgReaderStates, DWORD cReaders);
 typedef LONG (PCSC_API *SCardCancel_t)(SCARDCONTEXT hContext);
 typedef LONG (PCSC_API *SCardControlOLD_t)(SCARDHANDLE hCard, LPCVOID pbSendBuffer, DWORD cbSendLength,
 	LPVOID pbRecvBuffer, LPDWORD lpBytesReturned);
