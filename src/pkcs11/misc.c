@@ -302,8 +302,6 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t * ctx)
 	/* contains the defaults, if there is a "pkcs11" config block */
 	conf->plug_and_play = scconf_get_bool(conf_block, "plug_and_play", conf->plug_and_play);
 	conf->max_virtual_slots = scconf_get_int(conf_block, "max_virtual_slots", conf->max_virtual_slots);
-	/*XXX: rename the option in 0.12+ */
-	conf->slots_per_card = scconf_get_int(conf_block, "num_slots", conf->slots_per_card);
 	conf->slots_per_card = scconf_get_int(conf_block, "slots_per_card", conf->slots_per_card);
 	conf->hide_empty_tokens = scconf_get_bool(conf_block, "hide_empty_tokens", conf->hide_empty_tokens);
 	conf->lock_login = scconf_get_bool(conf_block, "lock_login", conf->lock_login);
