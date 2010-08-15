@@ -107,6 +107,21 @@ CK_RV initialize_reader(sc_reader_t *reader)
 	unsigned int i;
 	CK_RV rv;
 
+	scconf_block *conf_block = NULL;
+	const scconf_list *list = NULL;
+
+	conf_block = sc_get_conf_block(context, "pkcs11", NULL, 1);
+	if (conf_block != NULL) {
+		list = scconf_find_list(conf_block, "ignored_readers");
+		while (list != NULL) {
+			if (strcasestr(reader->name, list->data) != NULL) {
+				sc_debug(context, SC_LOG_DEBUG_NORMAL, "Ignoring reader \'%s\' because of \'%s\'\n", reader->name, list->data);
+				return CKR_OK;
+			}
+			list = list->next;
+		}
+	}
+
 	for (i = 0; i < sc_pkcs11_conf.slots_per_card; i++) {
 		rv = create_slot(reader);
 		if (rv != CKR_OK)
@@ -371,7 +386,7 @@ CK_RV slot_find_changed(CK_SLOT_ID_PTR idp, int mask)
 			slot->events &= ~SC_EVENT_CARD_INSERTED;
 		}
 		sc_debug(context, SC_LOG_DEBUG_NORMAL, "mask: 0x%02X events: 0x%02X result: %d", mask, slot->events, (slot->events & mask));
-										    
+
 		if (slot->events & mask) {
 			slot->events &= ~mask;
 			*idp = slot->id;
