@@ -520,6 +520,23 @@ static int iso7816_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 	return 0;
 }
 
+/* This belongs to ETSI TS 101 206-3, not to ISO 7816. */
+static int iso7816_give_random(sc_card_t *card, u8 *rnd, size_t len)
+{
+	int r;
+	sc_apdu_t apdu;
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT,
+		       0x86, 0x00, 0x00);
+	apdu.cla = 0x80;
+	apdu.data = rnd;
+	apdu.lc = apdu.datalen = len;
+
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	return sc_check_sw(card, apdu.sw1, apdu.sw2);
+}
+
 static int iso7816_construct_fci(sc_card_t *card, const sc_file_t *file,
 	u8 *out, size_t *outlen)
 {
@@ -1001,6 +1018,7 @@ static struct sc_card_operations iso_ops = {
 	iso7816_select_file,
 	iso7816_get_response,
 	iso7816_get_challenge,
+	iso7816_give_random,
 	NULL,			/* verify */
 	NULL,			/* logout */
 	iso7816_restore_security_env,

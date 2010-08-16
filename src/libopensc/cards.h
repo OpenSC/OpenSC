@@ -164,9 +164,17 @@ enum {
 	SC_CARD_TYPE_IAS_BASE = 22000,
 	SC_CARD_TYPE_IAS_PTEID,
 	
+	/* Italian CNS cards */
+	SC_CARD_TYPE_ITACNS_BASE = 23000,
+	SC_CARD_TYPE_ITACNS_GENERIC,
+	SC_CARD_TYPE_ITACNS_CNS,
+	SC_CARD_TYPE_ITACNS_CIE_V2,
+	SC_CARD_TYPE_ITACNS_CIE_V1,
+
 	/* Generic JavaCards without supported applet */
-	SC_CARD_TYPE_JAVACARD_BASE = 23000,
+	SC_CARD_TYPE_JAVACARD_BASE = 24000,
 	SC_CARD_TYPE_JAVACARD,
+
 };
 
 extern sc_card_driver_t *sc_get_default_driver(void);
@@ -198,6 +206,7 @@ extern sc_card_driver_t *sc_get_westcos_driver(void);
 extern sc_card_driver_t *sc_get_myeid_driver(void);
 extern sc_card_driver_t *sc_get_ias_driver(void);
 extern sc_card_driver_t *sc_get_javacard_driver(void);
+extern sc_card_driver_t *sc_get_itacns_driver(void);
 
 #ifdef __cplusplus
 }

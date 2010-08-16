@@ -93,7 +93,7 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 #endif
 	/* javacard without supported applet - last before default */
 	{ "javacard",	(void *(*)(void)) sc_get_javacard_driver },
-
+	{ "itacns",	(void *(*)(void)) sc_get_itacns_driver },
 	/* The default driver should be last, as it handles all the
 	 * unrecognized cards. */
 	{ "default",	(void *(*)(void)) sc_get_default_driver },

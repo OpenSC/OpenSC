@@ -30,6 +30,8 @@
 #include "asn1.h"
 #include "cardctl.h"
 
+#define MAX_LE 240
+
 static const struct sc_card_operations *iso_ops = NULL;
 
 static struct sc_card_operations cardos_ops;
@@ -813,7 +815,9 @@ cardos_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
 	if (outlen < datalen)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_BUFFER_TOO_SMALL);
-	outlen = datalen;
+
+	if (outlen > MAX_LE)
+		outlen = MAX_LE;
 
 	/* XXX As we don't know what operations are allowed with a
 	 * certain key, let's try RSA_PURE etc. and see which operation

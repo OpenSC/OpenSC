@@ -55,13 +55,16 @@ extern int sc_pkcs15emu_actalis_init_ex(sc_pkcs15_card_t *p15card,
 					sc_pkcs15emu_opt_t *opts);
 extern int sc_pkcs15emu_atrust_acos_init_ex(sc_pkcs15_card_t *p15card,
 					sc_pkcs15emu_opt_t *opts);
-extern int sc_pkcs15emu_tccardos_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
-
-extern int sc_pkcs15emu_entersafe_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
-
-extern int sc_pkcs15emu_pteid_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
-
-extern int sc_pkcs15emu_oberthur_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
+extern int sc_pkcs15emu_tccardos_init_ex(sc_pkcs15_card_t *,
+					sc_pkcs15emu_opt_t *);
+extern int sc_pkcs15emu_entersafe_init_ex(sc_pkcs15_card_t *,
+					sc_pkcs15emu_opt_t *);
+extern int sc_pkcs15emu_pteid_init_ex(sc_pkcs15_card_t *,
+					sc_pkcs15emu_opt_t *);
+extern int sc_pkcs15emu_oberthur_init_ex(sc_pkcs15_card_t *,
+					sc_pkcs15emu_opt_t *);
+extern int sc_pkcs15emu_itacns_init_ex(sc_pkcs15_card_t *,
+					sc_pkcs15emu_opt_t *);
 
 static struct {
 	const char *		name;
@@ -73,6 +76,7 @@ static struct {
 	{ "starcert",	sc_pkcs15emu_starcert_init_ex	},
 	{ "tcos",	sc_pkcs15emu_tcos_init_ex	},
 	{ "esteid",	sc_pkcs15emu_esteid_init_ex	},
+	{ "itacns",	sc_pkcs15emu_itacns_init_ex	},
 	{ "postecert",	sc_pkcs15emu_postecert_init_ex  },
 	{ "PIV-II",     sc_pkcs15emu_piv_init_ex        },
 	{ "gemsafeGPK",	sc_pkcs15emu_gemsafeGPK_init_ex	},
