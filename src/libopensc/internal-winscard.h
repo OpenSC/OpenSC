@@ -82,7 +82,7 @@ typedef struct
 	unsigned long cbAtr;
 	unsigned char rgbAtr[MAX_ATR_SIZE];
 }
-SCARD_READERSTATE;
+SCARD_READERSTATE, *LPSCARD_READERSTATE;
 
 typedef struct _SCARD_IO_REQUEST
 {
@@ -92,8 +92,6 @@ typedef struct _SCARD_IO_REQUEST
 SCARD_IO_REQUEST, *PSCARD_IO_REQUEST, *LPSCARD_IO_REQUEST;
 
 typedef const SCARD_IO_REQUEST *LPCSCARD_IO_REQUEST;
-typedef SCARD_READERSTATE SCARD_READERSTATE, *PSCARD_READERSTATE,
-	*LPSCARD_READERSTATE;
 
 #endif	/* HAVE_SCARD_H */
 
@@ -103,6 +101,11 @@ typedef SCARD_READERSTATE SCARD_READERSTATE, *PSCARD_READERSTATE,
 #define PCSC_API __stdcall
 #else
 #define PCSC_API
+#endif
+
+/* OS X 10.6.4 does not have pcsc-lite >= 1.6.4 */
+#if defined(__APPLE__)
+#define LPSCARD_READERSTATE LPSCARD_READERSTATE_A
 #endif
 
 typedef LONG (PCSC_API *SCardEstablishContext_t)(DWORD dwScope, LPCVOID pvReserved1,
