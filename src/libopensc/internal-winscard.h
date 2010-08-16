@@ -103,11 +103,6 @@ typedef const SCARD_IO_REQUEST *LPCSCARD_IO_REQUEST;
 #define PCSC_API
 #endif
 
-/* OS X 10.6.4 does not have pcsc-lite >= 1.6.4 */
-#if defined(__APPLE__)
-#define LPSCARD_READERSTATE LPSCARD_READERSTATE_A
-#endif
-
 typedef LONG (PCSC_API *SCardEstablishContext_t)(DWORD dwScope, LPCVOID pvReserved1,
 	LPCVOID pvReserved2, LPSCARDCONTEXT phContext);
 typedef LONG (PCSC_API *SCardReleaseContext_t)(SCARDCONTEXT hContext);
@@ -121,7 +116,7 @@ typedef LONG (PCSC_API *SCardEndTransaction_t)(SCARDHANDLE hCard, DWORD dwDispos
 typedef LONG (PCSC_API *SCardStatus_t)(SCARDHANDLE hCard, LPSTR mszReaderNames, LPDWORD pcchReaderLen,
 	LPDWORD pdwState, LPDWORD pdwProtocol, LPBYTE pbAtr, LPDWORD pcbAtrLen);
 typedef LONG (PCSC_API *SCardGetStatusChange_t)(SCARDCONTEXT hContext, DWORD dwTimeout,
-	LPSCARD_READERSTATE rgReaderStates, DWORD cReaders);
+	SCARD_READERSTATE *rgReaderStates, DWORD cReaders);
 typedef LONG (PCSC_API *SCardCancel_t)(SCARDCONTEXT hContext);
 typedef LONG (PCSC_API *SCardControlOLD_t)(SCARDHANDLE hCard, LPCVOID pbSendBuffer, DWORD cbSendLength,
 	LPVOID pbRecvBuffer, LPDWORD lpBytesReturned);
