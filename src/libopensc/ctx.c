@@ -81,7 +81,7 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 	{ "rutoken",	(void *(*)(void)) sc_get_rutoken_driver }, 
 	{ "rutoken_ecp",(void *(*)(void)) sc_get_rtecp_driver },
 	{ "westcos",	(void *(*)(void)) sc_get_westcos_driver },
-        { "myeid",      (void *(*)(void)) sc_get_myeid_driver },
+	{ "myeid",      (void *(*)(void)) sc_get_myeid_driver },
 
 /* Here should be placed drivers that need some APDU transactions to 
  * recognise its cards. */
@@ -91,9 +91,9 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 #ifdef ENABLE_OPENSSL
 	{ "PIV-II",	(void *(*)(void)) sc_get_piv_driver },
 #endif
+	{ "itacns",	(void *(*)(void)) sc_get_itacns_driver },
 	/* javacard without supported applet - last before default */
 	{ "javacard",	(void *(*)(void)) sc_get_javacard_driver },
-	{ "itacns",	(void *(*)(void)) sc_get_itacns_driver },
 	/* The default driver should be last, as it handles all the
 	 * unrecognized cards. */
 	{ "default",	(void *(*)(void)) sc_get_default_driver },

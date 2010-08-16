@@ -9,7 +9,7 @@ noinst_HEADERS = cards.h ctbcs.h internal.h esteid.h muscle.h muscle-filesystem.
 	internal-winscard.h p15card-helper.h \
 	opensc.h pkcs15.h \
 	cardctl.h asn1.h log.h \
-	errors.h types.h compression.h
+	errors.h types.h compression.h itacns.h
 
 AM_CPPFLAGS = -DOPENSC_CONF_PATH=\"$(sysconfdir)/opensc.conf\"
 AM_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(OPTIONAL_OPENCT_CFLAGS) \
