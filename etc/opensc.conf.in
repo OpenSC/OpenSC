@@ -406,11 +406,11 @@ app opensc-pkcs11 {
 		# zero_ckaid_for_ca_certs = true;
 
 		# List of readers to ignore
-		# If any of the strings listed below is matched (case ignored) in a reader name,
+		# If any of the strings listed below is matched (case sensitive) in a reader name,
 		# the reader is ignored by the PKCS#11 module.
 		#
 		# Default: empty
-		# ignored_readers = "cardman 1021", "SPR 532";
+		# ignored_readers = "CardMan 1021", "SPR 532";
 	}
 }
 

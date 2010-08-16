@@ -114,7 +114,7 @@ CK_RV initialize_reader(sc_reader_t *reader)
 	if (conf_block != NULL) {
 		list = scconf_find_list(conf_block, "ignored_readers");
 		while (list != NULL) {
-			if (strcasestr(reader->name, list->data) != NULL) {
+			if (strstr(reader->name, list->data) != NULL) {
 				sc_debug(context, SC_LOG_DEBUG_NORMAL, "Ignoring reader \'%s\' because of \'%s\'\n", reader->name, list->data);
 				return CKR_OK;
 			}
