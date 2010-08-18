@@ -38,6 +38,7 @@
 #include <string.h>
 #include <stdio.h>
 #include "common/compat_strlcpy.h"
+#include "common/compat_strlcat.h"
 
 #ifdef ENABLE_OPENSSL
 #include <openssl/x509v3.h>
@@ -536,25 +537,20 @@ static int itacns_add_keyset(sc_pkcs15_card_t *p15card,
 
 	/* PIN and PUK */
 	char pinlabel[16];
-	{
-		const char PIN[] = "PIN ";
-		strcpy(pinlabel, PIN);
-		strncat(pinlabel, label, sizeof(pinlabel)-sizeof(PIN)-1);
-	}
+	strlcpy(pinlabel, "PIN ", sizeof(pinlabel));
+	strlcat(pinlabel, label, sizeof(pinlabel));
+
 	/* We are making up ID 0x90+ to link the PIN and the PUK. */
 	int fake_puk_authid = 0x90 + pin_ref;
 	int pin_flags = SC_PKCS15_PIN_FLAG_CASE_SENSITIVE
 		| SC_PKCS15_PIN_FLAG_INITIALIZED;
-
 	r = itacns_add_pin(p15card, pinlabel, sec_env, fake_puk_authid, pin_ref,
 	    private_path, pin_flags);
 	SC_TEST_RET(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, r,
 		"Could not add PIN");
-	{
-		const char PUK[] = "PUK ";
-		strcpy(pinlabel, PUK);
-		strncat(pinlabel, label, sizeof(pinlabel)-sizeof(PUK)-1);
-	}
+
+	strlcpy(pinlabel, "PUK ", sizeof(pinlabel));
+	strlcat(pinlabel, label, sizeof(pinlabel));
 	/*
 	 * Looking at pkcs15-tcos.c and pkcs15-framework.c, it seems that the
 	 * right thing to do here is to define a PUK as a SO PIN. Can anybody
