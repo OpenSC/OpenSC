@@ -312,7 +312,7 @@ AC_CHECK_FUNCS([ \
 	getpass gettimeofday memset mkdir \
 	strdup strerror setutent vsyslog \
 	setlocale getopt_long \
-	strlcpy
+	strlcpy strlcat
 ])
 AC_CHECK_SIZEOF(void *)
 if test "${ac_cv_sizeof_void_p}" = 8; then

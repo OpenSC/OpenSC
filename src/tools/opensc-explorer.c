@@ -41,6 +41,7 @@ static const char *app_name = "opensc-explorer";
 static int opt_wait = 0, verbose = 0;
 static const char *opt_driver = NULL;
 static const char *opt_reader = NULL;
+static const char *opt_startfile = NULL;
 
 static sc_file_t *current_file = NULL;
 static sc_path_t current_path;
@@ -1574,7 +1575,7 @@ int main(int argc, char * const argv[])
 	printf("OpenSC Explorer version %s\n", sc_get_version());
 
 	while (1) {
-		c = getopt_long(argc, argv, "r:c:vw", options, &long_optind);
+		c = getopt_long(argc, argv, "r:c:vwf:", options, &long_optind);
 		if (c == -1)
 			break;
 		if (c == '?')
@@ -1591,6 +1592,9 @@ int main(int argc, char * const argv[])
 			break;
 		case 'v':
 			verbose++;
+			break;
+		case 'f':
+			opt_startfile = optarg;
 			break;
 		}
 	}
@@ -1620,11 +1624,20 @@ int main(int argc, char * const argv[])
 	if (err)
 		goto end;
 
-	sc_format_path("3F00", &current_path);
-	r = sc_select_file(card, &current_path, &current_file);
-	if (r) {
-		printf("unable to select MF: %s\n", sc_strerror(r));
-		return 1;
+	if (opt_startfile) {
+		if(strlen(opt_startfile)) {
+			const char *argv[] = { opt_startfile };
+			r = do_cd(1, argv);
+			if (r)
+				return -1;
+		}
+	} else {
+		sc_format_path("3F00", &current_path);
+		r = sc_select_file(card, &current_path, &current_file);
+		if (r) {
+			printf("unable to select MF: %s\n", sc_strerror(r));
+			return 1;
+		}
 	}
 	{
 		int lcycle = SC_CARDCTRL_LIFECYCLE_ADMIN;
