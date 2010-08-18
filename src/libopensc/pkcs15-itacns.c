@@ -536,8 +536,11 @@ static int itacns_add_keyset(sc_pkcs15_card_t *p15card,
 
 	/* PIN and PUK */
 	char pinlabel[16];
-	strncpy(pinlabel, "PIN ", sizeof(pinlabel));
-	strncat(pinlabel, label, sizeof(pinlabel));
+	{
+		const char PIN[] = "PIN ";
+		strcpy(pinlabel, PIN);
+		strncat(pinlabel, label, sizeof(pinlabel)-sizeof(PIN)-1);
+	}
 	/* We are making up ID 0x90+ to link the PIN and the PUK. */
 	int fake_puk_authid = 0x90 + pin_ref;
 	int pin_flags = SC_PKCS15_PIN_FLAG_CASE_SENSITIVE
@@ -547,9 +550,11 @@ static int itacns_add_keyset(sc_pkcs15_card_t *p15card,
 	    private_path, pin_flags);
 	SC_TEST_RET(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, r,
 		"Could not add PIN");
-
-	strncpy(pinlabel, "PUK ", sizeof(pinlabel));
-	strncat(pinlabel, label, sizeof(pinlabel));
+	{
+		const char PUK[] = "PUK ";
+		strcpy(pinlabel, PUK);
+		strncat(pinlabel, label, sizeof(pinlabel)-sizeof(PUK)-1);
+	}
 	/*
 	 * Looking at pkcs15-tcos.c and pkcs15-framework.c, it seems that the
 	 * right thing to do here is to define a PUK as a SO PIN. Can anybody
