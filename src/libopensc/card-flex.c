@@ -169,7 +169,7 @@ static int flex_init(sc_card_t *card)
 {
 	struct flex_private_data *data;
 
-	if (!(data = (struct flex_private_data *) malloc(sizeof(*data))))
+	if (!(data = malloc(sizeof(*data))))
 		return SC_ERROR_OUT_OF_MEMORY;
 	card->drv_data = data;
 

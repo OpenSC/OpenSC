@@ -331,7 +331,7 @@ static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 
 		/* if using internal buffer, alloc new one */
 		if (rbuf == rbufinitbuf) {
-			*recvbuf = (u8 *)malloc(rbuflen); 
+			*recvbuf = malloc(rbuflen); 
 				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "DEE got buffer %p len %d",*recvbuf,  rbuflen);
 			if (*recvbuf == NULL) {
 				r = SC_ERROR_OUT_OF_MEMORY;
@@ -665,7 +665,7 @@ static int piv_get_data(sc_card_t * card, int enumtag,
 		taglen = put_tag_and_len(0x99, derlen, NULL);
 		*buf_len = put_tag_and_len(0x53, taglen, NULL);
 
-		*buf = (u8*) malloc(*buf_len);
+		*buf = malloc(*buf_len);
 		if (*buf  == NULL) {
 			r = SC_ERROR_OUT_OF_MEMORY;
 			goto err;
@@ -714,7 +714,7 @@ static int piv_get_data(sc_card_t * card, int enumtag,
 		}
 sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"get buffer for #%d len %d", enumtag, *buf_len);
 		if (*buf == NULL && *buf_len > 0) {
-			*buf = (u8*)malloc(*buf_len);
+			*buf = malloc(*buf_len);
 			if (*buf == NULL ) {
 				r = SC_ERROR_OUT_OF_MEMORY;
 				goto err;
@@ -853,7 +853,7 @@ static int piv_cache_internal_data(sc_card_t *card, int enumtag)
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED);
 #endif
 		} else {
-			if (!(priv->obj_cache[enumtag].internal_obj_data = (u8*)malloc(taglen)))
+			if (!(priv->obj_cache[enumtag].internal_obj_data = malloc(taglen)))
 				SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
 
 			memcpy(priv->obj_cache[enumtag].internal_obj_data, tag, taglen);
@@ -870,7 +870,7 @@ static int piv_cache_internal_data(sc_card_t *card, int enumtag)
 		if (taglen == 0)
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_FILE_NOT_FOUND);
 
-		if (!(priv->obj_cache[enumtag].internal_obj_data = (u8*)malloc(taglen)))
+		if (!(priv->obj_cache[enumtag].internal_obj_data = malloc(taglen)))
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
 
 		memcpy(priv->obj_cache[enumtag].internal_obj_data, tag, taglen);
@@ -988,7 +988,7 @@ static int piv_put_data(sc_card_t *card, int tag,
 
 	tag_len = piv_objects[tag].tag_len;
 	sbuflen = put_tag_and_len(0x5c, tag_len, NULL) + buf_len;
-	if (!(sbuf = (u8 *) malloc(sbuflen))) 
+	if (!(sbuf = malloc(sbuflen))) 
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
 
 	p = sbuf;
@@ -1027,7 +1027,7 @@ static int piv_write_certificate(sc_card_t *card,
 
 	sbuflen =  put_tag_and_len(0x53, taglen, NULL);
 
-	sbuf = (u8*) malloc(sbuflen);
+	sbuf = malloc(sbuflen);
 	if (sbuf == NULL) 
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
 	p = sbuf;
@@ -1105,7 +1105,7 @@ static int piv_write_binary(sc_card_t *card, unsigned int idx,
 		if (priv->w_buf_len == 0)
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INTERNAL);
 
-		priv->w_buf = (u8 *)malloc(priv->w_buf_len);
+		priv->w_buf = malloc(priv->w_buf_len);
 		priv-> rwb_state = 0;
 	}
 
@@ -1865,7 +1865,7 @@ static int piv_init(sc_card_t *card)
 	piv_private_data_t *priv;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	priv = (piv_private_data_t *) calloc(1, sizeof(piv_private_data_t));
+	priv = calloc(1, sizeof(piv_private_data_t));
 
 	if (!priv)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);

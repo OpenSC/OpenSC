@@ -376,7 +376,7 @@ int sc_pkcs15emu_object_add(sc_pkcs15_card_t *p15card, unsigned int type,
 	unsigned int	df_type;
 	size_t		data_len;
 
-	obj = (sc_pkcs15_object_t *) calloc(1, sizeof(*obj));
+	obj = calloc(1, sizeof(*obj));
 	if (!obj)
 		return SC_ERROR_OUT_OF_MEMORY;
 	memcpy(obj, in_obj, sizeof(*obj));

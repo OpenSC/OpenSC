@@ -660,7 +660,7 @@ static int starcos_write_pukey(sc_profile_t *profile, sc_card_t *card,
 		return r;
 	len = tfile->size;
 	sc_file_free(tfile);
-	buf = (u8 *) malloc(len);
+	buf = malloc(len);
 	if (!buf)
 		return SC_ERROR_OUT_OF_MEMORY;
 	/* read the complete IPF */
@@ -867,7 +867,7 @@ static int starcos_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 		rsa->modulus.data = gendat.modulus;
 		rsa->modulus.len  = kinfo->modulus_length >> 3;
 		/* set the exponent (always 0x10001) */
-		buf = (u8 *) malloc(3);
+		buf = malloc(3);
 		if (!buf)
 			return SC_ERROR_OUT_OF_MEMORY;
 		buf[0] = 0x01;

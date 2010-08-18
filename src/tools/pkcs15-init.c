@@ -2157,7 +2157,7 @@ do_read_data_object(const char *name, u8 **out, size_t *outlen)
 	size_t filesize = determine_filesize(name);
 	int c;
 
-	*out = (u8 *) malloc(filesize);
+	*out = malloc(filesize);
 	if (*out == NULL) {
 		return SC_ERROR_OUT_OF_MEMORY;
 	}
@@ -2184,7 +2184,7 @@ do_convert_bignum(sc_pkcs15_bignum_t *dst, const BIGNUM *src)
 	if (src == 0)
 		return 0;
 	dst->len = BN_num_bytes(src);
-	dst->data = (u8 *) malloc(dst->len);
+	dst->data = malloc(dst->len);
 	BN_bn2bin(src, dst->data);
 	return 1;
 }
@@ -2333,7 +2333,7 @@ static int do_convert_cert(sc_pkcs15_der_t *der, X509 *cert)
 	u8	*p;
 
 	der->len = i2d_X509(cert, NULL);
-	der->value = p = (u8 *) malloc(der->len);
+	der->value = p = malloc(der->len);
 	i2d_X509(cert, &p);
 	return 0;
 }

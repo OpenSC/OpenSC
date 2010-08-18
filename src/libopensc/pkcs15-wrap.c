@@ -141,7 +141,7 @@ do_cipher(EVP_CIPHER_CTX *cipher_ctx, const u8 *in, size_t in_len,
 	size_t	bl, left, total;
 	int done;
 
-	*out = p = (u8 *) malloc(in_len + EVP_CIPHER_CTX_key_length(cipher_ctx));
+	*out = p = malloc(in_len + EVP_CIPHER_CTX_key_length(cipher_ctx));
 	*out_len = total = 0;
 
 	bl = EVP_CIPHER_CTX_block_size(cipher_ctx);

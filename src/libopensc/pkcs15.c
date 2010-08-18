@@ -148,7 +148,7 @@ int sc_pkcs15_parse_tokeninfo(sc_context_t *ctx,
 		return r;
 	}
 	ti->version += 1;
-	ti->serial_number = (char *) malloc(serial_len * 2 + 1);
+	ti->serial_number = malloc(serial_len * 2 + 1);
 	if (ti->serial_number == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 	ti->serial_number[0] = 0;
@@ -413,12 +413,12 @@ int sc_pkcs15_encode_odf(sc_context_t *ctx,
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "No DF's found.\n");
 		return SC_ERROR_OBJECT_NOT_FOUND;
 	}
-	asn1_odf = (struct sc_asn1_entry *) malloc(sizeof(struct sc_asn1_entry) * (df_count + 1));
+	asn1_odf = malloc(sizeof(struct sc_asn1_entry) * (df_count + 1));
 	if (asn1_odf == NULL) {
 		r = SC_ERROR_OUT_OF_MEMORY;
 		goto err;
 	}
-	asn1_paths = (struct sc_asn1_entry *) malloc(sizeof(struct sc_asn1_entry) * (df_count * 2));
+	asn1_paths = malloc(sizeof(struct sc_asn1_entry) * (df_count * 2));
 	if (asn1_paths == NULL) {
 		r = SC_ERROR_OUT_OF_MEMORY;
 		goto err;
@@ -455,7 +455,7 @@ struct sc_pkcs15_card * sc_pkcs15_card_new(void)
 {
 	struct sc_pkcs15_card *p15card;
 	
-	p15card = (struct sc_pkcs15_card *) calloc(1, sizeof(struct sc_pkcs15_card));
+	p15card = calloc(1, sizeof(struct sc_pkcs15_card));
 	if (p15card == NULL)
 		return NULL;
 	p15card->magic = SC_PKCS15_CARD_MAGIC;
@@ -1415,7 +1415,7 @@ int sc_pkcs15_add_df(struct sc_pkcs15_card *p15card,
 		if (p->type == type)
 			return 0;
 
-	newdf = (struct sc_pkcs15_df *) calloc(1, sizeof(struct sc_pkcs15_df));
+	newdf = calloc(1, sizeof(struct sc_pkcs15_df));
 	if (newdf == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 	newdf->path = *path;
@@ -1571,7 +1571,7 @@ int sc_pkcs15_parse_df(struct sc_pkcs15_card *p15card,
 		const u8 *oldp;
 		size_t obj_len;
 		
-		obj = (struct sc_pkcs15_object *) calloc(1, sizeof(struct sc_pkcs15_object));
+		obj = calloc(1, sizeof(struct sc_pkcs15_object));
 		if (obj == NULL) {
 			r = SC_ERROR_OUT_OF_MEMORY;
 			goto ret;
@@ -1627,7 +1627,7 @@ int sc_pkcs15_add_unusedspace(struct sc_pkcs15_card *p15card,
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
-	new_unusedspace = (sc_pkcs15_unusedspace_t *) calloc(1, sizeof(sc_pkcs15_unusedspace_t));
+	new_unusedspace = calloc(1, sizeof(sc_pkcs15_unusedspace_t));
 	if (new_unusedspace == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 	new_unusedspace->path = *path;
@@ -1832,7 +1832,7 @@ int sc_pkcs15_read_file(struct sc_pkcs15_card *p15card,
 				goto fail_unlock;
 			}
 		}
-		data = (u8 *) malloc(len);
+		data = malloc(len);
 		if (data == NULL) {
 			r = SC_ERROR_OUT_OF_MEMORY;
 			goto fail_unlock;

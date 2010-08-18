@@ -44,7 +44,7 @@ static void buf_init(BUFHAN * bp, FILE * fp, const char *saved_string)
 {
 	bp->fp = fp;
 	bp->saved_char = 0;
-	bp->buf = (char *) malloc(256);
+	bp->buf = malloc(256);
 	bp->bufmax = 256;
 	bp->bufcur = 0;
 	bp->buf[0] = '\0';

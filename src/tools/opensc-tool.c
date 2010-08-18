@@ -384,7 +384,7 @@ static int print_file(sc_card_t *in_card, const sc_file_t *file,
 	if (file->ef_structure == SC_FILE_EF_TRANSPARENT) {
 		unsigned char *buf;
 		
-		if (!(buf = (unsigned char *) malloc(file->size))) {
+		if (!(buf = malloc(file->size))) {
 			fprintf(stderr, "out of memory");
 			return 1;
 		}

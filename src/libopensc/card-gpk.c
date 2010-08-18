@@ -154,7 +154,7 @@ gpk_init(sc_card_t *card)
 	unsigned long	exponent, flags, kg;
 	unsigned char info[13];
 
-	card->drv_data = priv = (struct gpk_private_data *) calloc(1, sizeof(*priv));
+	card->drv_data = priv = calloc(1, sizeof(*priv));
 	if (card->drv_data == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 

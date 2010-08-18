@@ -1319,7 +1319,7 @@ static int entersafe_gen_key(sc_card_t *card, sc_entersafe_gen_key_data *data)
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, sc_check_sw(card,apdu.sw1,apdu.sw2),"EnterSafe get pukey failed");
 
-	data->modulus = (u8 *) malloc(len);
+	data->modulus = malloc(len);
 	if (!data->modulus)
 		 SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,SC_ERROR_OUT_OF_MEMORY);
 

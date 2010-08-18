@@ -106,7 +106,7 @@ static int do_convert_bignum(sc_pkcs15_bignum_t *dst, BIGNUM *src)
 {
 	if (src == 0) return 0;
 	dst->len = BN_num_bytes(src);
-	dst->data = (u8 *) malloc(dst->len);
+	dst->data = malloc(dst->len);
 	BN_bn2bin(src, dst->data);
 	return 1;
 }
@@ -297,7 +297,7 @@ static int cert2der(X509 *cert, u8 **value)
 	int len;
 	u8 *p;
 	len = i2d_X509(cert, NULL);
-	p = *value = (u8*)malloc(len);
+	p = *value = malloc(len);
 	i2d_X509(cert, &p);
 	return len;
 }
@@ -798,7 +798,7 @@ int main(int argc, char *argv[])
 				goto out;
 		}
 
-		b = (u8*)malloc(file->size);
+		b = malloc(file->size);
 		if(b == NULL)
 		{
 				printf("Not enougth memory.\n");
@@ -848,7 +848,7 @@ int main(int argc, char *argv[])
 				goto out;
 		}
 
-		b = (u8*)malloc(file->size);
+		b = malloc(file->size);
 		if(b == NULL)
 		{
 				printf("Not enougth memory.\n");

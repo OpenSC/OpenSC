@@ -737,7 +737,7 @@ do_cardos_extract_pubkey(sc_card_t *card, int nr, u8 tag,
 	    || buf[2] != count + 1 || buf[3] != 0)
 		return SC_ERROR_INTERNAL;
 	bn->len = count;
-	bn->data = (u8 *) malloc(count);
+	bn->data = malloc(count);
 	if (bn->data == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 	memcpy(bn->data, buf + 4, count);

@@ -123,7 +123,7 @@ sc_pkcs11_new_operation(sc_pkcs11_session_t *session,
 {
 	sc_pkcs11_operation_t *res;
 
-	res = (sc_pkcs11_operation_t *) calloc(1, type->obj_size);
+	res = calloc(1, type->obj_size);
 	if (res) {
 		res->session = session;
 		res->type = type;
@@ -349,7 +349,7 @@ sc_pkcs11_signature_init(sc_pkcs11_operation_t *operation,
 	struct signature_data *data;
 	int rv;
 
-	if (!(data = (struct signature_data *) calloc(1, sizeof(*data))))
+	if (!(data = calloc(1, sizeof(*data))))
 		return CKR_HOST_MEMORY;
 
 	data->info = NULL;
@@ -566,7 +566,7 @@ sc_pkcs11_verify_init(sc_pkcs11_operation_t *operation,
 	struct signature_data *data;
 	int rv;
 
-	if (!(data = (struct signature_data *) calloc(1, sizeof(*data))))
+	if (!(data = calloc(1, sizeof(*data))))
 		return CKR_HOST_MEMORY;
 
 	data->info = NULL;
@@ -639,7 +639,7 @@ sc_pkcs11_verify_final(sc_pkcs11_operation_t *operation,
 	rv = key->ops->get_attribute(operation->session, key, &attr);
 	if (rv != CKR_OK)
 		return rv;
-	pubkey_value = (unsigned char *) malloc(attr.ulValueLen);
+	pubkey_value = malloc(attr.ulValueLen);
 	attr.pValue = pubkey_value;
 	rv = key->ops->get_attribute(operation->session, key, &attr);
 	if (rv != CKR_OK)
@@ -735,7 +735,7 @@ sc_pkcs11_decrypt_init(sc_pkcs11_operation_t *operation,
 {
 	struct signature_data *data;
 
-	if (!(data = (struct signature_data *) calloc(1, sizeof(*data))))
+	if (!(data = calloc(1, sizeof(*data))))
 		return CKR_HOST_MEMORY;
 
 	data->key = key;
@@ -773,7 +773,7 @@ sc_pkcs11_new_fw_mechanism(CK_MECHANISM_TYPE mech,
 {
 	sc_pkcs11_mechanism_type_t *mt;
 
-	mt = (sc_pkcs11_mechanism_type_t *) calloc(1, sizeof(*mt));
+	mt = calloc(1, sizeof(*mt));
 	if (mt == NULL)
 		return mt;
 	mt->mech = mech;
@@ -839,7 +839,7 @@ sc_pkcs11_register_sign_and_hash_mechanism(struct sc_pkcs11_card *p11card,
 	/* These hash-based mechs can only be used for sign/verify */
 	mech_info.flags &= (CKF_SIGN | CKF_SIGN_RECOVER | CKF_VERIFY | CKF_VERIFY_RECOVER);
 
-	info = (struct hash_signature_info *) calloc(1, sizeof(*info));
+	info = calloc(1, sizeof(*info));
 	info->mech = mech;
 	info->sign_type = sign_type;
 	info->hash_type = hash_type;

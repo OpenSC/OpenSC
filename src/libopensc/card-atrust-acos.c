@@ -105,7 +105,7 @@ static int atrust_acos_init(struct sc_card *card)
 	unsigned int flags;
 	atrust_acos_ex_data *ex_data;
 
-	ex_data = (atrust_acos_ex_data *) calloc(1, sizeof(atrust_acos_ex_data));
+	ex_data = calloc(1, sizeof(atrust_acos_ex_data));
 	if (ex_data == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 

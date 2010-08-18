@@ -60,8 +60,7 @@ static CK_RV init_spy(void)
 #endif
 
   /* Allocates and initializes the pkcs11_spy structure */
-  pkcs11_spy =
-    (CK_FUNCTION_LIST_PTR) malloc(sizeof(CK_FUNCTION_LIST));
+  pkcs11_spy = malloc(sizeof(CK_FUNCTION_LIST));
   if (pkcs11_spy) {
 	/* with our own pkcs11.h we need to maintain this ourself */
 	pkcs11_spy->version.major = 2;

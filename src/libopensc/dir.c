@@ -109,7 +109,7 @@ static int parse_dir_record(sc_card_t *card, u8 ** buf, size_t *buflen,
 		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "AID is too long.\n");
 		return SC_ERROR_INVALID_ASN1_OBJECT;
 	}
-	app = (sc_app_info_t *) malloc(sizeof(sc_app_info_t));
+	app = malloc(sizeof(sc_app_info_t));
 	if (app == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 	
@@ -135,7 +135,7 @@ static int parse_dir_record(sc_card_t *card, u8 ** buf, size_t *buflen,
 	} else
 		app->path.len = 0;
 	if (asn1_dirrecord[3].flags & SC_ASN1_PRESENT) {
-		app->ddo = (u8 *) malloc(ddo_len);
+		app->ddo = malloc(ddo_len);
 		if (app->ddo == NULL) {
 			free(app);
 			return SC_ERROR_OUT_OF_MEMORY;
@@ -189,7 +189,7 @@ int sc_enum_apps(sc_card_t *card)
 		u8 *buf = NULL, *p;
 		size_t bufsize;
 		
-		buf = (u8 *) malloc(file_size);
+		buf = malloc(file_size);
 		if (buf == NULL)
 			return SC_ERROR_OUT_OF_MEMORY;
 		p = buf;

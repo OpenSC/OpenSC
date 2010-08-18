@@ -130,7 +130,7 @@ pgp_init(sc_card_t *card)
 	struct do_info	*info;
 	int		r;
 
-	priv = (struct pgp_priv_data *) calloc (1, sizeof *priv);
+	priv = calloc (1, sizeof *priv);
 	if (!priv)
 		return SC_ERROR_OUT_OF_MEMORY;
 	card->name = "OpenPGP";
@@ -195,7 +195,7 @@ pgp_set_blob(struct blob *blob, const u8 *data, size_t len)
 		free(blob->data);
 	blob->len    = len;
 	blob->status = 0;
-	blob->data   = (unsigned char *) malloc(len);
+	blob->data   = malloc(len);
 	memcpy(blob->data, data, len);
 
 	blob->file->size = len;
@@ -209,7 +209,7 @@ pgp_new_blob(struct blob *parent, unsigned int file_id,
 	sc_file_t	*file = sc_file_new();
 	struct blob	*blob, **p;
 
-	blob = (struct blob *) calloc(1, sizeof(*blob));
+	blob = calloc(1, sizeof(*blob));
 	blob->parent = parent;
 	blob->id     = file_id;
 	blob->file   = file;
@@ -639,7 +639,7 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 
 	/* There's some funny padding indicator that must be
 	 * prepended... hmm. */
-	if (!(temp = (u8 *) malloc(inlen + 1)))
+	if (!(temp = malloc(inlen + 1)))
 		return SC_ERROR_OUT_OF_MEMORY;
 	temp[0] = '\0';
 	memcpy(temp + 1, in, inlen);

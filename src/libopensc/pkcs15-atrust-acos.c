@@ -175,7 +175,7 @@ static int sc_pkcs15emu_atrust_acos_init(sc_pkcs15_card_t *p15card)
 		return SC_ERROR_INTERNAL;
 	if (p15card->serial_number)
 		free(p15card->serial_number);
-	p15card->serial_number = (char *) malloc(strlen(buf2) + 1);
+	p15card->serial_number = malloc(strlen(buf2) + 1);
 	if (!p15card->serial_number)
 		return SC_ERROR_INTERNAL;
 	strcpy(p15card->serial_number, buf2);
@@ -186,7 +186,7 @@ static int sc_pkcs15emu_atrust_acos_init(sc_pkcs15_card_t *p15card)
 	/* manufacturer ID */
 	if (p15card->manufacturer_id)
 		free(p15card->manufacturer_id);
-	p15card->manufacturer_id = (char *) malloc(strlen(MANU_ID) + 1);
+	p15card->manufacturer_id = malloc(strlen(MANU_ID) + 1);
 	if (!p15card->manufacturer_id)
 		return SC_ERROR_INTERNAL;
 	strcpy(p15card->manufacturer_id, MANU_ID);
@@ -194,7 +194,7 @@ static int sc_pkcs15emu_atrust_acos_init(sc_pkcs15_card_t *p15card)
 	/* card label */
 	if (p15card->label)
 		free(p15card->label);
-	p15card->label = (char *) malloc(strlen(CARD_LABEL) + 1);
+	p15card->label = malloc(strlen(CARD_LABEL) + 1);
 	if (!p15card->label)
 		return SC_ERROR_INTERNAL;
 	strcpy(p15card->label, CARD_LABEL);

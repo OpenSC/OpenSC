@@ -713,7 +713,7 @@ static void list_slots(int tokens, int refresh, int print)
 		rv = p11->C_GetSlotList(tokens, NULL, &p11_num_slots);
 		if (rv != CKR_OK)
 			p11_fatal("C_GetSlotList(NULL)", rv);
-		p11_slots = (CK_SLOT_ID *) calloc(p11_num_slots, sizeof(CK_SLOT_ID));
+		p11_slots = calloc(p11_num_slots, sizeof(CK_SLOT_ID));
 		if (p11_slots == NULL) {
 			perror("calloc failed");
 			return;
@@ -2109,7 +2109,7 @@ static CK_ULONG get_mechanisms(CK_SLOT_ID slot, CK_MECHANISM_TYPE_PTR *pList,
 	CK_RV		rv;
 
 	rv = p11->C_GetMechanismList(slot, *pList, &ulCount);
-	*pList = (CK_MECHANISM_TYPE *) calloc(ulCount, sizeof(*pList));
+	*pList = calloc(ulCount, sizeof(*pList));
 	if (*pList == NULL)
 		util_fatal("calloc failed: %m");
 

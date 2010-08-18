@@ -55,7 +55,7 @@ int sc_pkcs15_read_data_object(struct sc_pkcs15_card *p15card,
 	r = sc_pkcs15_read_file(p15card, &info->path, &data, &len, NULL);
 	if (r)
 		return r;
-	data_object = (struct sc_pkcs15_data *) malloc(sizeof(struct sc_pkcs15_data));
+	data_object = malloc(sizeof(struct sc_pkcs15_data));
 	if (data_object == NULL) {
 		free(data);
 		return SC_ERROR_OUT_OF_MEMORY;

@@ -101,7 +101,7 @@ static int jcop_init(sc_card_t *card)
      sc_file_t *f;
      int flags;
      
-     drvdata=(struct jcop_private_data *) malloc(sizeof(struct jcop_private_data));
+     drvdata=malloc(sizeof(struct jcop_private_data));
      if (!drvdata)
 	  return SC_ERROR_OUT_OF_MEMORY;
      memset(drvdata, 0, sizeof(struct jcop_private_data));
@@ -472,7 +472,7 @@ static int jcop_process_fci(sc_card_t *card, sc_file_t *file,
 	       u8 *filelist;
 	       nfiles=file->prop_attr[4];
 	       if (nfiles) {
-		    filelist=(u8 *) malloc(2*nfiles);
+		    filelist=malloc(2*nfiles);
 		    if (!filelist)
 			 return SC_ERROR_OUT_OF_MEMORY;
 		    memcpy(filelist, &file->prop_attr[5], 2*nfiles);

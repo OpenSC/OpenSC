@@ -68,10 +68,10 @@ sc_pkcs11_create_secret_key(struct sc_pkcs11_session *session,
 	CK_ATTRIBUTE_PTR attr;
 	int		n, rv;
 
-	key = (struct pkcs11_secret_key *) calloc(1, sizeof(*key));
+	key = calloc(1, sizeof(*key));
 	if (!key)
 		return CKR_HOST_MEMORY;
-	key->value = (CK_BYTE *) malloc(value_len);
+	key->value = malloc(value_len);
 	if (!key->value) {
 		pkcs11_secret_key_ops.release(key);
 		return CKR_HOST_MEMORY; /* XXX correct? */
@@ -154,7 +154,7 @@ sc_pkcs11_secret_key_set_attribute(struct sc_pkcs11_session *session,
 	case CKA_VALUE:
 		if (key->value)
 			free(key->value);
-		key->value = (CK_BYTE *) malloc(attr->ulValueLen);
+		key->value = malloc(attr->ulValueLen);
 		if (key->value == NULL)
 			return CKR_HOST_MEMORY;
 		key->value_len = attr->ulValueLen;

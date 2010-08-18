@@ -35,7 +35,7 @@ C_LoadModule(const char *mspec, CK_FUNCTION_LIST_PTR_PTR funcs)
 
 	lt_dlinit();
 
-	mod = (sc_pkcs11_module_t *) calloc(1, sizeof(*mod));
+	mod = calloc(1, sizeof(*mod));
 	mod->_magic = MAGIC;
 
 	if (mspec == NULL)

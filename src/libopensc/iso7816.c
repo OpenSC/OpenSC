@@ -829,7 +829,7 @@ static int iso7816_decipher(sc_card_t *card,
 	assert(card != NULL && crgram != NULL && out != NULL);
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
 
-	sbuf = (u8 *)malloc(crgram_len + 1);
+	sbuf = malloc(crgram_len + 1);
 	if (sbuf == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 

@@ -204,7 +204,7 @@ static int sc_pkcs15emu_postecert_init(sc_pkcs15_card_t * p15card)
 	if (count < 256)
 		return SC_ERROR_INTERNAL;
 
-	certi = (unsigned char *) malloc(count);
+	certi = malloc(count);
 
 	if (!certi)
 		return SC_ERROR_OUT_OF_MEMORY;

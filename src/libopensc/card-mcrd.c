@@ -125,7 +125,7 @@ static struct df_info_s *get_df_info(sc_card_t * card)
 			return dfi;
 	}
 	/* Not found, create it. */
-	dfi = (struct df_info_s *)calloc(1, sizeof *dfi);
+	dfi = calloc(1, sizeof *dfi);
 	if (!dfi) {
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "out of memory while allocating df_info\n");
 		return NULL;
@@ -280,7 +280,7 @@ static int mcrd_init(sc_card_t * card)
 	struct mcrd_priv_data *priv;
 	sc_path_t tmppath;
 
-	priv = (struct mcrd_priv_data *)calloc(1, sizeof *priv);
+	priv = calloc(1, sizeof *priv);
 	if (!priv)
 		return SC_ERROR_OUT_OF_MEMORY;
 	card->name = "MICARDO 2.1";
@@ -359,7 +359,7 @@ static int load_special_files(sc_card_t * card)
 		else if (r < 0) {
 			SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, r);
 		} else {
-			rule = (struct rule_record_s *)malloc(sizeof *rule + r);
+			rule = malloc(sizeof *rule + r);
 			if (!rule)
 				SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
 			rule->recno = recno;
@@ -390,7 +390,7 @@ static int load_special_files(sc_card_t * card)
 		else if (r < 0) {
 			SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, r);
 		} else {
-			keyd = (struct keyd_record_s *)malloc(sizeof *keyd + r);
+			keyd = malloc(sizeof *keyd + r);
 			if (!keyd)
 				SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
 			keyd->recno = recno;

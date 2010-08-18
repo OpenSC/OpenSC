@@ -141,7 +141,7 @@ static void scconf_write_items(scconf_writer * writer, const scconf_block * bloc
 			/* header */
 			name = scconf_list_get_string(subblock->name);
 			datalen = strlen(item->key) + strlen(name) + 6;
-			data = (char *) malloc(datalen);
+			data = malloc(datalen);
 			if (!data) {
 				free(name);
 				continue;
@@ -162,7 +162,7 @@ static void scconf_write_items(scconf_writer * writer, const scconf_block * bloc
 		case SCCONF_ITEM_TYPE_VALUE:
 			name = scconf_list_get_string(item->value.list);
 			datalen = strlen(item->key) + strlen(name) + 6;
-			data = (char *) malloc(datalen);
+			data = malloc(datalen);
 			if (!data) {
 				free(name);
 				continue;

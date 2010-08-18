@@ -514,10 +514,9 @@ static int loadCertificate(sc_pkcs15_card_t * p15card, int i,
 	sc_read_binary(card, 2, size, 2, 0);
 
 	compLen = (size[0] << 8) + size[1];
-	compCert =
-	    (unsigned char *) malloc(compLen * sizeof(unsigned char));
+	compCert = malloc(compLen * sizeof(unsigned char));
 	len = 4 * compLen;	/*Approximation of the uncompressed size */
-	cert = (unsigned char *) malloc(len * sizeof(unsigned char));
+	cert = malloc(len * sizeof(unsigned char));
 
 	sc_read_binary(card, 4, compCert, compLen, 0);
 

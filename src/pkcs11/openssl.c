@@ -262,7 +262,7 @@ static CK_RV sc_pkcs11_openssl_md_init(sc_pkcs11_operation_t *op)
 	if (!op || !(mt = op->type) || !(md = (EVP_MD *) mt->mech_data))
 		return CKR_ARGUMENTS_BAD;
 
-	if (!(md_ctx = (EVP_MD_CTX *) calloc(1, sizeof(*md_ctx))))
+	if (!(md_ctx = calloc(1, sizeof(*md_ctx))))
 		return CKR_HOST_MEMORY;
 	EVP_DigestInit(md_ctx, md);
 	op->priv_data = md_ctx;
@@ -307,7 +307,7 @@ do_convert_bignum(sc_pkcs15_bignum_t *dst, BIGNUM *src)
 	if (src == 0)
 		return 0;
 	dst->len = BN_num_bytes(src);
-	dst->data = (u8 *) malloc(dst->len);
+	dst->data = malloc(dst->len);
 	if (dst->data == NULL)
 		return 0;
 	BN_bn2bin(src, dst->data);
@@ -521,7 +521,7 @@ CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, int pubkey_len,
 		if (rsa == NULL)
 			return CKR_DEVICE_MEMORY;
 
-		rsa_out = (unsigned char *) malloc(RSA_size(rsa));
+		rsa_out = malloc(RSA_size(rsa));
 		if (rsa_out == NULL) {
 			RSA_free(rsa);
 			return CKR_DEVICE_MEMORY;

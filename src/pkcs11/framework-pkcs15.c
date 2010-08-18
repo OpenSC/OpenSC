@@ -156,7 +156,7 @@ static CK_RV pkcs15_bind(struct sc_pkcs11_card *p11card)
 	struct pkcs15_fw_data *fw_data;
 	int rc;
 
-	if (!(fw_data = (struct pkcs15_fw_data *) calloc(1, sizeof(*fw_data))))
+	if (!(fw_data = calloc(1, sizeof(*fw_data))))
 		return CKR_HOST_MEMORY;
 	p11card->fw_data = fw_data;
 
@@ -252,7 +252,7 @@ __pkcs15_create_object(struct pkcs15_fw_data *fw_data,
 	if (fw_data->num_objects >= MAX_OBJECTS)
 		return SC_ERROR_TOO_MANY_OBJECTS;
 
-	if (!(obj = (struct pkcs15_any_object *) calloc(1, size)))
+	if (!(obj = calloc(1, size)))
 		return SC_ERROR_OUT_OF_MEMORY;
 
 	fw_data->objects[fw_data->num_objects++] = obj;
@@ -724,7 +724,7 @@ static void pkcs15_init_slot(struct sc_pkcs15_card *p15card,
 	}
 	if (p15card->card->caps & SC_CARD_CAP_RNG)
 		slot->token_info.flags |= CKF_RNG;
-	slot->fw_data = fw_data = (struct pkcs15_slot_data *) calloc(1, sizeof(*fw_data));
+	slot->fw_data = fw_data = calloc(1, sizeof(*fw_data));
 	fw_data->auth_obj = auth;
 
 	if (auth != NULL) {

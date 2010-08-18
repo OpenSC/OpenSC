@@ -545,7 +545,7 @@ sc_pkcs15_read_pubkey(struct sc_pkcs15_card *p15card,
 		return r;
 	}
 
-	pubkey = (struct sc_pkcs15_pubkey *) calloc(1, sizeof(struct sc_pkcs15_pubkey));
+	pubkey = calloc(1, sizeof(struct sc_pkcs15_pubkey));
 	if (pubkey == NULL) {
 		free(data);
 		return SC_ERROR_OUT_OF_MEMORY;
@@ -588,7 +588,7 @@ sc_pkcs15_pubkey_from_prvkey(struct sc_context *ctx,
 	assert(prvkey && out);
 
 	*out = NULL;
-	pubkey = (struct sc_pkcs15_pubkey *) calloc(1, sizeof(struct sc_pkcs15_pubkey));
+	pubkey = calloc(1, sizeof(struct sc_pkcs15_pubkey));
 	if (!pubkey)
 		return SC_ERROR_OUT_OF_MEMORY;
 
@@ -639,7 +639,7 @@ sc_pkcs15_pubkey_from_cert(struct sc_context *ctx,
 
 	assert(cert_blob && out);
 
-	pubkey = (struct sc_pkcs15_pubkey *) calloc(1, sizeof(struct sc_pkcs15_pubkey));
+	pubkey = calloc(1, sizeof(struct sc_pkcs15_pubkey));
 	if (!pubkey)
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate pubkey");
 

@@ -2576,7 +2576,7 @@ sc_pkcs15init_new_object(int type,
 	struct sc_pkcs15_object	*object;
 	unsigned int data_size = 0;
 
-	object = (struct sc_pkcs15_object *) calloc(1, sizeof(*object));
+	object = calloc(1, sizeof(*object));
 	if (object == NULL)
 		return NULL;
 	object->type = type;
@@ -2845,7 +2845,7 @@ sc_pkcs15init_update_certificate(struct sc_pkcs15_card *p15card,
 
 	/* Fill the remaining space in the EF (if any) with zeros */
 	if (certlen < file->size) {
-		unsigned char *tmp = (unsigned char *) calloc(file->size - certlen, 1);
+		unsigned char *tmp = calloc(file->size - certlen, 1);
 		if (tmp == NULL) {
 			r = SC_ERROR_OUT_OF_MEMORY;
 			goto done;
@@ -3531,7 +3531,7 @@ sc_pkcs15init_read_info(struct sc_card *card, struct sc_profile *profile)
 		len = file->size;
 		sc_file_free(file);
 		r = SC_ERROR_OUT_OF_MEMORY;
-		if ((mem = (u8 *) malloc(len)) != NULL) {
+		if ((mem = malloc(len)) != NULL) {
 			r = sc_read_binary(card, 0, mem, len, 0);
 		}
 	} else {
@@ -3551,7 +3551,7 @@ set_info_string(char **strp, const u8 *p, size_t len)
 {
 	char	*s;
 
-	if (!(s = (char *) malloc(len+1)))
+	if (!(s = malloc(len+1)))
 		return SC_ERROR_OUT_OF_MEMORY;
 	memcpy(s, p, len);
 	s[len] = '\0';

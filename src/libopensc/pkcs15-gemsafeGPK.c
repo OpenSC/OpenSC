@@ -321,7 +321,7 @@ static int sc_pkcs15emu_gemsafeGPK_init(sc_pkcs15_card_t *p15card)
 	/* For performance reasons we will only */
 	/* read part of the file , as it is about 6100 bytes */
 
-	gsdata = (unsigned char *) malloc(file->size);
+	gsdata = malloc(file->size);
 
 	if (!gsdata)
 		return SC_ERROR_OUT_OF_MEMORY;

@@ -652,7 +652,7 @@ cosm_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	args.exponent = 0x10001;
 	args.key_bits = key_info->modulus_length;
 	args.pubkey_len = key_info->modulus_length / 8;
-	args.pubkey = (unsigned char *) malloc(key_info->modulus_length / 8);
+	args.pubkey = malloc(key_info->modulus_length / 8);
 	if (!args.pubkey)
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY, "cosm_generate_key() cannot allocate pubkey");
 	
@@ -662,13 +662,13 @@ cosm_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	/* extract public key */
 	pubkey->algorithm = SC_ALGORITHM_RSA;
 	pubkey->u.rsa.modulus.len   = key_info->modulus_length / 8;
-	pubkey->u.rsa.modulus.data  = (unsigned char *) malloc(key_info->modulus_length / 8);
+	pubkey->u.rsa.modulus.data  = malloc(key_info->modulus_length / 8);
 	if (!pubkey->u.rsa.modulus.data)
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY, "cosm_generate_key() cannot allocate modulus buf");
 	
 	/* FIXME and if the exponent length is not 3? */
 	pubkey->u.rsa.exponent.len  = 3;
-	pubkey->u.rsa.exponent.data = (unsigned char *) malloc(3);
+	pubkey->u.rsa.exponent.data = malloc(3);
 	if (!pubkey->u.rsa.exponent.data) 
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY, "cosm_generate_key() cannot allocate exponent buf");
 	memcpy(pubkey->u.rsa.exponent.data, "\x01\x00\x01", 3);

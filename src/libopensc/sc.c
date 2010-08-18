@@ -364,7 +364,7 @@ int sc_file_add_acl_entry(sc_file_t *file, unsigned int operation,
 			return 0;
 	}
 
-	_new = (sc_acl_entry_t *) malloc(sizeof(sc_acl_entry_t));
+	_new = malloc(sizeof(sc_acl_entry_t));
 	if (_new == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 	_new->method = method;

@@ -310,7 +310,7 @@ jcop_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
      args.exponent = 0x10001;
      sc_append_file_id(&args.pub_file_ref, temppubfile->id);
      sc_append_file_id(&args.pri_file_ref, keyfile->id);
-     keybuf=(unsigned char *) malloc(keybits / 8);
+     keybuf = malloc(keybits / 8);
      if (!keybuf) {
 	  r=SC_ERROR_OUT_OF_MEMORY;
 	  goto out;
@@ -327,7 +327,7 @@ jcop_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
      pubkey->u.rsa.modulus.len   = keybits / 8;
      pubkey->u.rsa.modulus.data  = keybuf;
      pubkey->u.rsa.exponent.len  = 3;
-     pubkey->u.rsa.exponent.data = (u8 *) malloc(3);
+     pubkey->u.rsa.exponent.data = malloc(3);
      if (!pubkey->u.rsa.exponent.data) {
 	  pubkey->u.rsa.modulus.data = NULL;
 	  r=SC_ERROR_OUT_OF_MEMORY;

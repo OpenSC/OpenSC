@@ -269,7 +269,7 @@ sc_profile_new(void)
 	struct sc_pkcs15_card *p15card;
 	struct sc_profile *pro;
 
-	pro = (struct sc_profile *) calloc(1, sizeof(*pro));
+	pro = calloc(1, sizeof(*pro));
 	if (pro == NULL)
 		return NULL;
 	pro->p15_spec = p15card = sc_pkcs15_card_new();
@@ -673,7 +673,7 @@ sc_profile_instantiate_file(sc_profile_t *profile, file_info *ft,
 	struct file_info *fi;
 	sc_card_t	*card = profile->card;
 
-	fi = (file_info *) calloc(1, sizeof(*fi));
+	fi = calloc(1, sizeof(*fi));
 	if (fi == NULL)
 		return NULL;
 	fi->instance = fi;
@@ -874,7 +874,7 @@ new_key(struct sc_profile *profile, unsigned int type, unsigned int ref)
 			return ai;
 	}
 
-	ai = (struct auth_info *) calloc(1, sizeof(*ai));
+	ai = calloc(1, sizeof(*ai));
 	if (ai == NULL)
 		return NULL;
 	ai->type = type;
@@ -1018,13 +1018,13 @@ process_tmpl(struct state *cur, struct block *info,
 		return 1;
 	}
 
-	templ = (sc_profile_t *) calloc(1, sizeof(*templ));
+	templ = calloc(1, sizeof(*templ));
 	if (templ == NULL) {
 		parse_error(cur, "memory allocation failed");
 		return 1;
 	}
 		
-	tinfo = (sc_template_t *) calloc(1, sizeof(*tinfo));
+	tinfo = calloc(1, sizeof(*tinfo));
 	if (tinfo == NULL) {
 		parse_error(cur, "memory allocation failed");
 		free(templ);
@@ -1074,7 +1074,7 @@ add_file(sc_profile_t *profile, const char *name,
 {
 	file_info	*info;
 
-	info = (struct file_info *) calloc(1, sizeof(*info));
+	info = calloc(1, sizeof(*info));
 	if (info == NULL)
 		return NULL;
 	info->instance = info;
@@ -1371,7 +1371,7 @@ new_pin(struct sc_profile *profile, int id)
 	 * are usually created before we've read the card specific
 	 * profile
 	 */
-	pi = (struct pin_info *) calloc(1, sizeof(*pi));
+	pi = calloc(1, sizeof(*pi));
 	if (pi == NULL)
 		return NULL;
 	pi->id = id;
@@ -1539,7 +1539,7 @@ new_macro(sc_profile_t *profile, const char *name, scconf_list *value)
 	sc_macro_t	*mac;
 
 	if ((mac = find_macro(profile, name)) == NULL) {
-		mac = (sc_macro_t *) calloc(1, sizeof(*mac));
+		mac = calloc(1, sizeof(*mac));
 		if (mac == NULL)
 			return;
 		mac->name = strdup(name);

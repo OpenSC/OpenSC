@@ -188,7 +188,7 @@ static int load_cert(const char * cert_id, const char * cert_file,
     	}
 
 		derlen = i2d_X509(cert, NULL);
-		der = (u8 *) malloc(derlen);
+		der = malloc(derlen);
 		p = der;
 		i2d_X509(cert, &p);
 	}

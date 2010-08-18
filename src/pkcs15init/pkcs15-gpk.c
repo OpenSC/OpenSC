@@ -915,7 +915,7 @@ gpk_add_bignum(struct pkpart *part, unsigned int tag,
 	memset(comp, 0, sizeof(*comp));
 	comp->tag  = tag;
 	comp->size = size + 1;
-	comp->data = (u8 *) malloc(size + 1);
+	comp->data = malloc(size + 1);
 
 	/* Add the tag */
 	comp->data[0] = tag;
@@ -970,7 +970,7 @@ static int gpk_encode_rsa_key(sc_profile_t *profile, sc_card_t *card,
 		unsigned int	K = p->bytes / 2;
 		u8		*crtbuf;
 
-		crtbuf = (u8 *) malloc(5 * K + 1);
+		crtbuf = malloc(5 * K + 1);
 
 		crtbuf[0] = 0x05;
 		gpk_bn2bin(crtbuf + 1 + 0 * K, &rsa->p, K);
@@ -1113,7 +1113,7 @@ gpk_read_rsa_key(sc_card_t *card, struct sc_pkcs15_pubkey_rsa *rsa)
 		else
 			continue;
 		bn->len  = r - 1;
-		bn->data = (u8 *) malloc(bn->len);
+		bn->data = malloc(bn->len);
 		for (m = 0; m < bn->len; m++)
 			bn->data[m] = buffer[bn->len - m];
 	}

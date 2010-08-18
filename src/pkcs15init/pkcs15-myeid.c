@@ -667,9 +667,9 @@ myeid_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 
 		pubkey->algorithm		= SC_ALGORITHM_RSA;
 		pubkey->u.rsa.modulus.len	= (keybits + 7) / 8;
-		pubkey->u.rsa.modulus.data	= (u8 *) malloc(pubkey->u.rsa.modulus.len);
+		pubkey->u.rsa.modulus.data	= malloc(pubkey->u.rsa.modulus.len);
 		pubkey->u.rsa.exponent.len	= MYEID_DEFAULT_PUBKEY_LEN;
-		pubkey->u.rsa.exponent.data	= (u8 *) malloc(MYEID_DEFAULT_PUBKEY_LEN);
+		pubkey->u.rsa.exponent.data	= malloc(MYEID_DEFAULT_PUBKEY_LEN);
 		memcpy(pubkey->u.rsa.exponent.data, MYEID_DEFAULT_PUBKEY, MYEID_DEFAULT_PUBKEY_LEN);
 
 		/* Get public key modulus */

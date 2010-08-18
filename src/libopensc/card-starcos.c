@@ -86,7 +86,7 @@ static int starcos_init(sc_card_t *card)
 	unsigned int flags;
 	starcos_ex_data *ex_data;
 
-	ex_data = (starcos_ex_data *) calloc(1, sizeof(starcos_ex_data));
+	ex_data = calloc(1, sizeof(starcos_ex_data));
 	if (ex_data == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 
@@ -985,7 +985,7 @@ static int starcos_gen_key(sc_card_t *card, sc_starcos_gen_key_data *data)
 	if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
 		return sc_check_sw(card, apdu.sw1, apdu.sw2);
 
-	data->modulus = (u8 *) malloc(len);
+	data->modulus = malloc(len);
 	if (!data->modulus)
 		return SC_ERROR_OUT_OF_MEMORY;
 	p = data->modulus;

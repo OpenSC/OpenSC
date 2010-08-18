@@ -384,8 +384,8 @@ static int ctapi_load_module(sc_context_t *ctx,
 			continue;
 		}
 		
-		reader = (sc_reader_t *) calloc(1, sizeof(sc_reader_t));
-		priv = (struct ctapi_private_data *) calloc(1, sizeof(struct ctapi_private_data));
+		reader = calloc(1, sizeof(sc_reader_t));
+		priv = calloc(1, sizeof(struct ctapi_private_data));
 		if (!priv)
 			return SC_ERROR_OUT_OF_MEMORY;
 		reader->drv_data = priv;
@@ -505,7 +505,7 @@ static int ctapi_init(sc_context_t *ctx, void **reader_data)
 	struct ctapi_global_private_data *gpriv;
 	scconf_block **blocks = NULL, *conf_block = NULL;
 
-	gpriv = (struct ctapi_global_private_data *) calloc(1, sizeof(struct ctapi_global_private_data));
+	gpriv = calloc(1, sizeof(struct ctapi_global_private_data));
 	if (gpriv == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 	*reader_data = gpriv;

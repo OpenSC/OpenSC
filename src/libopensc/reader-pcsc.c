@@ -587,7 +587,7 @@ static int pcsc_init(sc_context_t *ctx, void **reader_data)
 
 	*reader_data = NULL;
 
-	gpriv = (struct pcsc_global_private_data *) calloc(1, sizeof(struct pcsc_global_private_data));
+	gpriv = calloc(1, sizeof(struct pcsc_global_private_data));
 	if (gpriv == NULL) {
 		ret = SC_ERROR_OUT_OF_MEMORY;
 		goto out;
@@ -764,7 +764,7 @@ static int pcsc_detect_readers(sc_context_t *ctx, void *prv_data)
 		}
 	} while (rv != SCARD_S_SUCCESS);
 
-	reader_buf = (char *) malloc(sizeof(char) * reader_buf_size);
+	reader_buf = malloc(sizeof(char) * reader_buf_size);
 	if (!reader_buf) {
 		ret = SC_ERROR_OUT_OF_MEMORY;
 		goto out;
@@ -800,11 +800,11 @@ static int pcsc_detect_readers(sc_context_t *ctx, void *prv_data)
 
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Found new pcsc reader '%s'", reader_name);
 
-		if ((reader = (sc_reader_t *) calloc(1, sizeof(sc_reader_t))) == NULL) {
+		if ((reader = calloc(1, sizeof(sc_reader_t))) == NULL) {
 			ret = SC_ERROR_OUT_OF_MEMORY;
 			goto err1;
 		}
-			if ((priv = (struct pcsc_private_data *) calloc(1, sizeof(struct pcsc_private_data))) == NULL) {
+			if ((priv = calloc(1, sizeof(struct pcsc_private_data))) == NULL) {
 			ret = SC_ERROR_OUT_OF_MEMORY;
 			goto err1;
 		}
@@ -988,7 +988,7 @@ static int pcsc_wait_for_event(sc_context_t *ctx, void *reader_data,
 	}
 
 	if (reader_states == NULL || *reader_states == NULL) {
-		rgReaderStates = (SCARD_READERSTATE *) calloc(sc_ctx_get_reader_count(ctx) + 2, sizeof(SCARD_READERSTATE));
+		rgReaderStates = calloc(sc_ctx_get_reader_count(ctx) + 2, sizeof(SCARD_READERSTATE));
 		if (!rgReaderStates)
 			SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
 
@@ -1538,7 +1538,7 @@ static int cardmod_init(sc_context_t *ctx, void **reader_data)
 
 	*reader_data = NULL;
 
-	gpriv = (struct pcsc_global_private_data *) calloc(1, sizeof(struct pcsc_global_private_data));
+	gpriv = calloc(1, sizeof(struct pcsc_global_private_data));
 	if (gpriv == NULL) {
 		ret = SC_ERROR_OUT_OF_MEMORY;
 		goto out;
@@ -1690,11 +1690,11 @@ static int cardmod_detect_readers(sc_context_t *ctx, void *prv_data)
 			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "lecteur name = %s\n%s\n", reader_name,texte);
 		}
 	
-		if ((reader = (sc_reader_t *) calloc(1, sizeof(sc_reader_t))) == NULL) {
+		if ((reader = calloc(1, sizeof(sc_reader_t))) == NULL) {
 			ret = SC_ERROR_OUT_OF_MEMORY;
 			goto err1;
 		}
-		if ((priv = (struct pcsc_private_data *) malloc(sizeof(struct pcsc_private_data))) == NULL) {
+		if ((priv = malloc(sizeof(struct pcsc_private_data))) == NULL) {
 			ret = SC_ERROR_OUT_OF_MEMORY;
 			goto err1;
 		}

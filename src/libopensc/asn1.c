@@ -454,7 +454,7 @@ static int encode_bit_string(const u8 * inbuf, size_t bits_left, u8 **outbuf,
 	int skipped = 0;
 	
 	bytes = (bits_left + 7)/8 + 1;
-	*outbuf = out = (u8 *) malloc(bytes);
+	*outbuf = out = malloc(bytes);
 	if (out == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 	*outlen = bytes;
@@ -561,7 +561,7 @@ static int asn1_encode_integer(int in, u8 ** obj, size_t * objsize)
 		skip_sign = 0;
 		skip_zero= 1;
 	}
-	*obj = p = (u8 *) malloc(sizeof(in)+1);
+	*obj = p = malloc(sizeof(in)+1);
 	if (*obj == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 	do {
@@ -677,7 +677,7 @@ int sc_asn1_encode_object_id(u8 **buf, size_t *buflen,
 		/* an OID must have at least two components */
 		return SC_ERROR_INVALID_ARGUMENTS;
 	*buflen = count = p - temp;
-	*buf = (u8 *) malloc(count);
+	*buf = malloc(count);
 	if (!*buf)
 		return SC_ERROR_OUT_OF_MEMORY;
 	memcpy(*buf, temp, count);
@@ -750,7 +750,7 @@ static int asn1_write_element(sc_context_t *ctx, unsigned int tag,
 			c++;
 	}
 	*outlen = 2 + c + datalen;
-	buf = (u8 *) malloc(*outlen);
+	buf = malloc(*outlen);
 	if (buf == NULL)
 		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_ASN1, SC_ERROR_OUT_OF_MEMORY);
 	*out = p = buf;
@@ -1075,7 +1075,7 @@ static int asn1_decode_entry(sc_context_t *ctx,struct sc_asn1_entry *entry,
 			}
 			if (entry->flags & SC_ASN1_ALLOC) {
 				u8 **buf = (u8 **) parm;
-				*buf = (u8 *) malloc(objlen-1);
+				*buf = malloc(objlen-1);
 				if (*buf == NULL) {
 					r = SC_ERROR_OUT_OF_MEMORY;
 					break;
@@ -1109,7 +1109,7 @@ static int asn1_decode_entry(sc_context_t *ctx,struct sc_asn1_entry *entry,
 			/* Allocate buffer if needed */
 			if (entry->flags & SC_ASN1_ALLOC) {
 				u8 **buf = (u8 **) parm;
-				*buf = (u8 *) malloc(objlen);
+				*buf = malloc(objlen);
 				if (*buf == NULL) {
 					r = SC_ERROR_OUT_OF_MEMORY;
 					break;
@@ -1129,7 +1129,7 @@ static int asn1_decode_entry(sc_context_t *ctx,struct sc_asn1_entry *entry,
 			assert(len != NULL);
 			if (entry->flags & SC_ASN1_ALLOC) {
 				u8 **buf = (u8 **) parm;
-				*buf = (u8 *) malloc(objlen);
+				*buf = malloc(objlen);
 				if (*buf == NULL) {
 					r = SC_ERROR_OUT_OF_MEMORY;
 					break;
@@ -1153,7 +1153,7 @@ static int asn1_decode_entry(sc_context_t *ctx,struct sc_asn1_entry *entry,
 			assert(len != NULL);
 			if (entry->flags & SC_ASN1_ALLOC) {
 				u8 **buf = (u8 **) parm;
-				*buf = (u8 *) malloc(objlen+1);
+				*buf = malloc(objlen+1);
 				if (*buf == NULL) {
 					r = SC_ERROR_OUT_OF_MEMORY;
 					break;
@@ -1371,7 +1371,7 @@ static int asn1_encode_entry(sc_context_t *ctx, const struct sc_asn1_entry *entr
 		buflen = 0;
 		break;
 	case SC_ASN1_BOOLEAN:
-		buf = (u8 *) malloc(1);
+		buf = malloc(1);
 		if (buf == NULL) {
 			r = SC_ERROR_OUT_OF_MEMORY;
 			break;
@@ -1399,7 +1399,7 @@ static int asn1_encode_entry(sc_context_t *ctx, const struct sc_asn1_entry *entr
 	case SC_ASN1_OCTET_STRING:
 	case SC_ASN1_UTF8STRING:
 		assert(len != NULL);
-		buf = (u8 *) malloc(*len + 1);
+		buf = malloc(*len + 1);
 		if (buf == NULL) {
 			r = SC_ERROR_OUT_OF_MEMORY;
 			break;
@@ -1416,7 +1416,7 @@ static int asn1_encode_entry(sc_context_t *ctx, const struct sc_asn1_entry *entr
 		break;
 	case SC_ASN1_GENERALIZEDTIME:
 		assert(len != NULL);
-		buf = (u8 *) malloc(*len);
+		buf = malloc(*len);
 		if (buf == NULL) {
 			r = SC_ERROR_OUT_OF_MEMORY;
 			break;
@@ -1434,7 +1434,7 @@ static int asn1_encode_entry(sc_context_t *ctx, const struct sc_asn1_entry *entr
 		{
 			const struct sc_pkcs15_id *id = (const struct sc_pkcs15_id *) parm;
 
-			buf = (u8 *) malloc(id->len);
+			buf = malloc(id->len);
 			if (buf == NULL) {
 				r = SC_ERROR_OUT_OF_MEMORY;
 				break;
@@ -1573,7 +1573,7 @@ sc_der_copy(sc_pkcs15_der_t *dst, const sc_pkcs15_der_t *src)
 {
 	memset(dst, 0, sizeof(*dst));
 	if (src->len) {
-		dst->value = (u8 *) malloc(src->len);
+		dst->value = malloc(src->len);
 		if (!dst->value)
 			return;
 		dst->len = src->len;

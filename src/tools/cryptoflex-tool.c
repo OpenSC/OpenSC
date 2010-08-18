@@ -99,7 +99,7 @@ static char *getpin(const char *prompt)
 			pass[i] = 0;
 	if (strlen(pass) == 0)
 		return NULL;
-	buf = (char *) malloc(8);
+	buf = malloc(8);
 	if (buf == NULL)
 		return NULL;
 	if (strlen(pass) > 8) {

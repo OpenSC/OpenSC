@@ -1257,7 +1257,7 @@ int sc_pkcs11_any_cmp_attribute(struct sc_pkcs11_session *session, void *ptr, CK
 	if (temp_attr.ulValueLen <= sizeof(temp1))
 		temp_attr.pValue = temp1;
 	else {
-		temp2 = (u8 *) malloc(temp_attr.ulValueLen);
+		temp2 = malloc(temp_attr.ulValueLen);
 		if (temp2 == NULL)
 			return 0;
 		temp_attr.pValue = temp2;

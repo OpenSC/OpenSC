@@ -996,7 +996,7 @@ static int belpic_init(sc_card_t *card)
 	if (card->type < 0)
 		card->type = SC_CARD_TYPE_BELPIC_EID;	/* Unknown card: assume it's the Belpic Card */
 
-	priv = (struct belpic_priv_data *) calloc(1, sizeof(struct belpic_priv_data));
+	priv = calloc(1, sizeof(struct belpic_priv_data));
 	if (priv == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 	card->drv_data = priv;

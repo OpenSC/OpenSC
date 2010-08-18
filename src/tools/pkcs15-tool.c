@@ -247,7 +247,7 @@ print_pem_object(const char *kind, const u8*data, size_t data_len)
 	buf_len += 2 * (buf_len / 64 + 2); /* certain platforms use CRLF */
 	buf_len += 64;			   /* slack for checksum etc */
 
-	if (!(buf = (unsigned char *) malloc(buf_len))) {
+	if (!(buf = malloc(buf_len))) {
 		perror("print_pem_object");
 		return 1;
 	}

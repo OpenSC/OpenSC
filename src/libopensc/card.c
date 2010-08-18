@@ -62,10 +62,10 @@ static sc_card_t * sc_card_new(sc_context_t *ctx)
 	if (ctx == NULL)
 		return NULL;
 
-	card = (sc_card_t *) calloc(1, sizeof(struct sc_card));
+	card = calloc(1, sizeof(struct sc_card));
 	if (card == NULL)
 		return NULL;
-	card->ops = (struct sc_card_operations *) malloc(sizeof(struct sc_card_operations));
+	card->ops = malloc(sizeof(struct sc_card_operations));
 	if (card->ops == NULL) {
 		free(card);
 		return NULL;

@@ -35,13 +35,13 @@ scconf_context *scconf_new(const char *filename)
 {
 	scconf_context *config;
 
-	config = (scconf_context *) malloc(sizeof(scconf_context));
+	config = malloc(sizeof(scconf_context));
 	if (!config) {
 		return NULL;
 	}
 	memset(config, 0, sizeof(scconf_context));
 	config->filename = filename ? strdup(filename) : NULL;
-	config->root = (scconf_block *) malloc(sizeof(scconf_block));
+	config->root = malloc(sizeof(scconf_block));
 	if (!config->root) {
 		if (config->filename) {
 			free(config->filename);
@@ -178,7 +178,7 @@ int scconf_put_int(scconf_block * block, const char *option, int value)
 {
 	char *str;
 
-	str = (char *) malloc(64);
+	str = malloc(64);
 	if (!str) {
 		return value;
 	}
@@ -200,7 +200,7 @@ scconf_item *scconf_item_copy(const scconf_item * src, scconf_item ** dst)
 {
 	scconf_item *ptr, *_dst = NULL, *next = NULL;
 
-	next = (scconf_item *) malloc(sizeof(scconf_item));
+	next = malloc(sizeof(scconf_item));
 	if (!next) {
 		return NULL;
 	}
@@ -209,7 +209,7 @@ scconf_item *scconf_item_copy(const scconf_item * src, scconf_item ** dst)
 	_dst = next;
 	while (src) {
 		if (!next) {
-			next = (scconf_item *) malloc(sizeof(scconf_item));
+			next = malloc(sizeof(scconf_item));
 			if (!next) {
 				scconf_item_destroy(ptr);
 				return NULL;
@@ -274,7 +274,7 @@ scconf_block *scconf_block_copy(const scconf_block * src, scconf_block ** dst)
 	if (src) {
 		scconf_block *_dst = NULL;
 
-		_dst = (scconf_block *) malloc(sizeof(scconf_block));
+		_dst = malloc(sizeof(scconf_block));
 		if (!_dst) {
 			return NULL;
 		}
@@ -304,7 +304,7 @@ scconf_list *scconf_list_add(scconf_list ** list, const char *value)
 {
 	scconf_list *rec, **tmp;
 
-	rec = (scconf_list *) malloc(sizeof(scconf_list));
+	rec = malloc(sizeof(scconf_list));
 	if (!rec) {
 		return NULL;
 	}
@@ -378,7 +378,7 @@ const char **scconf_list_toarray(const scconf_list * list)
 		len++;
 		lp = lp->next;
 	}
-	tp = (const char **)malloc(sizeof(char *) * (len + 1));
+	tp = malloc(sizeof(char *) * (len + 1));
 	if (!tp)
 		return tp;
 	lp = list;
@@ -404,7 +404,7 @@ char *scconf_list_strdup(const scconf_list * list, const char *filler)
 	if (filler) {
 		len += scconf_list_array_length(list) * (strlen(filler) + 1);
 	}
-	buf = (char *) malloc(len);
+	buf = malloc(len);
 	if (!buf) {
 		return NULL;
 	}
@@ -542,7 +542,7 @@ static int parse_type(const scconf_context * config, const scconf_block * block,
 			if (parm) {
 				if (entry->flags & SCCONF_ALLOC) {
 					char **buf = (char **) parm;
-					*buf = (char *) malloc(vallen + 1);
+					*buf = malloc(vallen + 1);
 					if (*buf == NULL) {
 						r = 1;
 						break;

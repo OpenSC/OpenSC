@@ -654,7 +654,7 @@ incrypto34_extract_pubkey(sc_card_t *card, int nr, u8 tag,
 	 || buf[2] != count + 1 || buf[3] != 0)
 		return SC_ERROR_INTERNAL;
 	bn->len = count;
-	bn->data = (u8 *) malloc(count);
+	bn->data = malloc(count);
 	memcpy(bn->data, buf + 4, count);
 	return 0;
 }
