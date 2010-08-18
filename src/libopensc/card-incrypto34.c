@@ -46,8 +46,6 @@ static struct sc_card_driver incrypto34_drv = {
 };
 
 static struct sc_atr_table incrypto34_atrs[] = {
-	/* Italian CNS (similar to a eID) card*/
-	{ "3b:ff:18:00:ff:81:31:fe:55:00:6b:02:09:02:00:01:01:01:43:4e:53:10:31:80:9f", NULL, NULL, SC_CARD_TYPE_INCRYPTO34_GENERIC, 0, NULL },
 	{ "3b:ff:18:00:ff:81:31:fe:55:00:6b:02:09:02:00:01:01:01:44:53:44:10:31:80:92", NULL, NULL, SC_CARD_TYPE_INCRYPTO34_GENERIC, 0, NULL },
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
