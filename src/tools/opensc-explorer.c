@@ -85,6 +85,17 @@ static void die(int ret)
 	exit(ret);
 }
 
+static void select_current_path_or_die()
+{
+	if (current_path.type || current_path.len) {
+		int r = sc_select_file(card, &current_path, NULL);
+		if (r) {
+			printf("unable to select parent DF: %s\n", sc_strerror(r));
+			die(1);
+		}
+	}
+}
+
 static struct command *
 ambiguous_match(struct command *table, const char *cmd)
 {
@@ -224,11 +235,7 @@ static int do_ls(int argc, char **argv)
 		}
 		cur += 2;
 		count -= 2;
-		r = sc_select_file(card, &current_path, NULL);
-		if (r) {
-			printf("unable to select parent DF: %s\n", sc_strerror(r));
-			die(1);
-		}
+		select_current_path_or_die();
 	}
 	return 0;
 usage:
@@ -272,11 +279,7 @@ static int do_cd(int argc, char **argv)
 	if ((file->type != SC_FILE_TYPE_DF) && !(card->caps & SC_CARD_CAP_NO_FCI)) {
 		printf("Error: file is not a DF.\n");
 		sc_file_free(file);
-		r = sc_select_file(card, &current_path, NULL);
-		if (r) {
-			printf("unable to select parent file: %s\n", sc_strerror(r));
-			die(1);
-		}
+		select_current_path_or_die();
 		return -1;
 	}
 	current_path = path;
@@ -375,11 +378,7 @@ err:
 		if (file != NULL) {
 			sc_file_free(file);
 		}
-		r = sc_select_file(card, &current_path, NULL);
-		if (r) {
-			printf("unable to select parent file: %s\n", sc_strerror(r));
-			die(1);
-		}
+		select_current_path_or_die();
 	}
 
 	return -err;
@@ -492,11 +491,7 @@ static int do_info(int argc, char **argv)
 	printf("\n");
 	if (not_current) {
 		sc_file_free(file);
-		r = sc_select_file(card, &current_path, NULL);
-		if (r) {
-			printf("unable to select parent file: %s\n", sc_strerror(r));
-			die(1);
-		}
+		select_current_path_or_die();
 	}
 	return 0;
 
@@ -516,11 +511,7 @@ static int create_file(sc_file_t *file)
 	}
 	/* Make sure we're back in the parent directory, because on some cards
 	 * CREATE FILE also selects the newly created file. */
-	r = sc_select_file(card, &current_path, NULL);
-	if (r) {
-		printf("unable to select parent file: %s\n", sc_strerror(r));
-		die(1);
-	}
+	select_current_path_or_die();
 	return 0;
 }
 
@@ -928,11 +919,7 @@ err:
 		sc_file_free(file);
 	if (outf)
 		fclose(outf);
-	r = sc_select_file(card, &current_path, NULL);
-	if (r) {
-		printf("unable to select parent file: %s\n", sc_strerror(r));
-		die(1);
-	}
+	select_current_path_or_die();
 	return -err;
 usage:
 	printf("Usage: get <file id> [output file]\n");
@@ -1026,12 +1013,7 @@ static int do_update_binary(int argc, char **argv)
 
 err:
 	sc_file_free(file);
-	r = sc_select_file(card, &current_path, NULL);
-	if (r) {
-		printf("unable to select parent file: %s\n", sc_strerror(r));
-		die(1);
-	}
-
+	select_current_path_or_die();
 	return -err;
 usage:
 	printf("Usage: update <file id> offs <hex value> | <'\"' enclosed string>\n");
@@ -1095,12 +1077,7 @@ static int do_update_record(int argc, char **argv)
 
 err:
 	sc_file_free(file);
-	r = sc_select_file(card, &current_path, NULL);
-	if (r) {
-		printf("unable to select parent file: %s\n", sc_strerror(r));
-		die(1);
-	}
-
+	select_current_path_or_die();
 	return -err;
 usage:
 	printf("Usage: update_record <file id> rec_nr rec_offs <hex value>\n");
@@ -1172,11 +1149,7 @@ err:
 		sc_file_free(file);
 	if (outf)
 		fclose(outf);
-	r = sc_select_file(card, &current_path, NULL);
-	if (r) {
-		printf("unable to select parent file: %s\n", sc_strerror(r));
-		die(1);
-	}
+	select_current_path_or_die();
 	return -err;
 usage:
 	printf("Usage: put <file id> [input file]\n");
@@ -1452,11 +1425,7 @@ err:
 	if (not_current) {
 		if (file)
 			sc_file_free(file);
-		r = sc_select_file(card, &current_path, NULL);
-		if (r) {
-			printf("unable to select parent file: %s\n", sc_strerror(r));
-			die(1);
-		}
+		select_current_path_or_die();
 	}
 	return -err;
 }
