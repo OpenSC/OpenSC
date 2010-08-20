@@ -51,6 +51,7 @@ static sc_card_t *card = NULL;
 static const struct option options[] = {
 	{ "reader",		1, NULL, 'r' },
 	{ "card-driver",	1, NULL, 'c' },
+	{ "mf",			1, NULL, 'm' },
 	{ "wait",		0, NULL, 'w' },
 	{ "verbose",		0, NULL, 'v' },
 	{ NULL, 0, NULL, 0 }
@@ -58,6 +59,7 @@ static const struct option options[] = {
 static const char *option_help[] = {
 	"Uses reader number <arg> [0]",
 	"Forces the use of driver <arg> [auto-detect]",
+	"Selects path <arg> on start-up, or none if empty [3F00]",
 	"Wait for card insertion",
 	"Verbose operation. Use several times to enable debug output.",
 };
@@ -1575,7 +1577,7 @@ int main(int argc, char * const argv[])
 	printf("OpenSC Explorer version %s\n", sc_get_version());
 
 	while (1) {
-		c = getopt_long(argc, argv, "r:c:vwf:", options, &long_optind);
+		c = getopt_long(argc, argv, "r:c:vwm:", options, &long_optind);
 		if (c == -1)
 			break;
 		if (c == '?')
@@ -1593,7 +1595,7 @@ int main(int argc, char * const argv[])
 		case 'v':
 			verbose++;
 			break;
-		case 'f':
+		case 'm':
 			opt_startfile = optarg;
 			break;
 		}
@@ -1625,11 +1627,16 @@ int main(int argc, char * const argv[])
 		goto end;
 
 	if (opt_startfile) {
-		if(strlen(opt_startfile)) {
-			const char *argv[] = { opt_startfile };
+		if(*opt_startfile) {
+			char startpath[1024];
+			strncpy(startpath, opt_startfile, sizeof(startpath)-1);
+			char *argv[] = { startpath };
 			r = do_cd(1, argv);
-			if (r)
+			if (r) {
+				printf("unable to select file %s: %s\n",
+					opt_startfile, sc_strerror(r));
 				return -1;
+			}
 		}
 	} else {
 		sc_format_path("3F00", &current_path);

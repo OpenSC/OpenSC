@@ -59,6 +59,18 @@
 					</para></listitem>
 				</varlistentry>
 				<varlistentry>
+					<term>
+						<option>--mf</option> path,
+						<option>-m</option> path
+					</term>
+					<listitem><para>
+						Select the file referenced by the given path on
+						startup.  The default is the path to the standard master file,
+						3F00. If <varname>path</varname> is empty (e.g. <command>opensc-explorer
+						--mf ""</command>), then no file is explicitly selected.
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
 					<term><option>--wait, -w</option></term>
 					<listitem><para>Wait for a card to be inserted</para></listitem>
 				</varlistentry>
