@@ -263,7 +263,8 @@ static int do_cd(int argc, char **argv)
 			printf("unable to go up: %s\n", sc_strerror(r));
 			return -1;
 		}
-		sc_file_free(current_file);
+		if (current_file)
+			sc_file_free(current_file);
 		current_file = file;
 		current_path = path;
 		return 0;
@@ -283,7 +284,8 @@ static int do_cd(int argc, char **argv)
 		return -1;
 	}
 	current_path = path;
-	sc_file_free(current_file);
+	if (current_file)
+		sc_file_free(current_file);
 	current_file = file;
 
 	return 0;
