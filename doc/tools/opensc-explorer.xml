@@ -104,8 +104,10 @@
 
 			<varlistentry>
 				<term><option>cat</option> [<varname>file-id</varname>]</term>
+				<term><option>cat</option> sfi:<varname>sfi-id</varname></term>
 				<listitem><para>print the contents of the currently selected EF or the contents of a file
-                                        specified by <varname>file-id</varname>.
+                                        specified by <varname>file-id</varname>
+										or <varname>sfi-id</varname>.
                                 </para></listitem>
 			</varlistentry>
 

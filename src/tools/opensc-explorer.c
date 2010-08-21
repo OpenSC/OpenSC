@@ -323,13 +323,14 @@ static int read_and_util_print_binary_file(sc_file_t *file)
 	return 0;
 }
 
-static int read_and_print_record_file(sc_file_t *file)
+static int read_and_print_record_file(sc_file_t *file, unsigned long sfi)
 {
 	u8 buf[256];
 	int rec, r;
 
 	for (rec = 1; ; rec++) {
-		r = sc_read_record(card, rec, buf, sizeof(buf), SC_RECORD_BY_REC_NR);
+		r = sc_read_record(card, rec, buf, sizeof(buf),
+			SC_RECORD_BY_REC_NR | sfi);
 		if (r == SC_ERROR_RECORD_NOT_FOUND)
 			return 0;
 		if (r < 0) {
@@ -347,6 +348,8 @@ static int do_cat(int argc, char **argv)
 	sc_path_t path;
 	sc_file_t *file = NULL;
 	int not_current = 1;
+	int sfi = 0;
+	const char sfi_prefix[] = "sfi:";
 
 	if (argc > 1)
 		goto usage;
@@ -355,23 +358,40 @@ static int do_cat(int argc, char **argv)
 		file = current_file;
 		not_current = 0;
 	} else {
-		if (arg_to_path(argv[0], &path, 1) != 0) 
-			goto usage;
-
-		r = sc_select_file(card, &path, &file);
-		if (r) {
-			check_ret(r, SC_AC_OP_SELECT, "unable to select file", current_file);
-			goto err;
+		if (strncmp(argv[0], sfi_prefix, sizeof(sfi_prefix)-1)) {
+			if (arg_to_path(argv[0], &path, 1) != 0)
+				goto usage;
+			r = sc_select_file(card, &path, &file);
+			if (r) {
+				check_ret(r, SC_AC_OP_SELECT, "unable to select file",
+					current_file);
+				goto err;
+			}
+		} else {
+			if(!current_file) {
+				printf("A DF must be selected to read by SFI\n");
+				goto err;
+			}
+			path = current_path;
+			file = current_file;
+			not_current = 0;
+			const char *sfi_n = &argv[0][sizeof(sfi_prefix)-1];
+			sfi = atoi(sfi_n);
+			if ((sfi < 1) || (sfi > 30)) {
+				printf("Invalid SFI: %s\n", sfi_n);
+				goto usage;
+			}
 		}
 	}
-	if (file->type != SC_FILE_TYPE_WORKING_EF) {
+	if (file->type != SC_FILE_TYPE_WORKING_EF &&
+		!(file->type == SC_FILE_TYPE_DF && sfi)) {
 		printf("only working EFs may be read\n");
 		goto err;
 	}
-	if (file->ef_structure == SC_FILE_EF_TRANSPARENT)
+	if (file->ef_structure == SC_FILE_EF_TRANSPARENT && !sfi)
 		read_and_util_print_binary_file(file);
 	else
-		read_and_print_record_file(file);
+		read_and_print_record_file(file, sfi);
 	
 	err = 0;
 
@@ -385,7 +405,8 @@ err:
 
 	return -err;
 usage:
-	puts("Usage: cat [file_id]");
+	puts("Usage: cat [file_id] or");
+	puts("       cat sfi:<sfi_id>");
 	return -1;
 }
 
