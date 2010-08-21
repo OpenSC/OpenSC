@@ -366,6 +366,8 @@ static int iso7816_process_fci(sc_card_t *card, sc_file_t *file,
 		sc_hex_dump(ctx, SC_LOG_DEBUG_NORMAL,
 			file->name, file->namelen, tbuf, sizeof(tbuf));
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "  File name: %s\n", tbuf);
+		if (!file->type)
+			file->type = SC_FILE_TYPE_DF;
 	}
 	tag = sc_asn1_find_tag(ctx, p, len, 0x85, &taglen);
 	if (tag != NULL && taglen) {
