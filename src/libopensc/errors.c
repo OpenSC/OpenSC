@@ -31,8 +31,8 @@ const char *sc_strerror(int error)
 	const char *rdr_errors[] = {
 		"Generic reader error",
 		"No readers found",
-		"Slot not found", /* Not used */
-		"Slot already connected", /* Not used */
+		"UNUSED",
+		"UNUSED",
 		"Card not present",
 		"Card removed",
 		"Card reset",
@@ -40,7 +40,7 @@ const char *sc_strerror(int error)
 		"Timed out while waiting for user input",
 		"Input operation cancelled by user",
 		"The two PINs did not match",
-		"Message too long (keypad)", /* Not used */
+		"Message too long (keypad)",
 		"Timeout while waiting for event from card reader",
 		"Unresponsive card (correctly inserted?)",
 		"Reader detached (hotplug device?)",
@@ -71,8 +71,8 @@ const char *sc_strerror(int error)
 	const int card_base = -SC_ERROR_CARD_CMD_FAILED;
 	const char *arg_errors[] = {
 		"Invalid arguments",
-		"Command too short",
-		"Command too long",
+		"UNUSED",
+		"UNUSED",
 		"Buffer too small",
 		"Invalid PIN length",
 		"Invalid data",
@@ -99,14 +99,14 @@ const char *sc_strerror(int error)
 	};
 	const int int_base = -SC_ERROR_INTERNAL;
 	const char *p15i_errors[] = {
-		"Generic PKCS #15 initialization error",
+		"Generic PKCS#15 initialization error",
 		"Syntax error",
-		"Inconsistent or incomplete pkcs15 profile",
+		"Inconsistent or incomplete PKCS#15 profile",
 		"Key length/algorithm not supported by card",
 		"No default (transport) key available",
-		"The PKCS#15 Key/certificate ID specified is not unique",
+		"UNUSED",
 		"Unable to load key and certificate(s) from file",
-		"Object is not compatible with intended use",
+		"UNUSED",
 		"File template not found",
 		"Invalid PIN reference",
 		"File too small",
