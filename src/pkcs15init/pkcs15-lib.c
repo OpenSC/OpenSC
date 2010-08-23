@@ -1263,7 +1263,7 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
 	if (!check_key_compatibility(p15card, &key,
 			keyargs->x509_usage, keybits, 0)) {
 		/* Make sure the caller explicitly tells us to store
-		 * the key non-natively. */
+		 * the key as extractable. */
 		if (!(keyargs->access_flags & SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE))		                        
 			SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INCOMPATIBLE_KEY, "Card does not support this key.");
 

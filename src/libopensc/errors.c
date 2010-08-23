@@ -89,7 +89,7 @@ const char *sc_strerror(int error)
 		"Requested object not found",
 		"Not supported",
 		"Passphrase required",
-		"The key is extractable",
+		"UNUSED",
 		"Decryption failed",
 		"Wrong padding",
 		"Unsupported card",

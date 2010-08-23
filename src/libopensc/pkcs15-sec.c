@@ -74,10 +74,9 @@ int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 	unsigned long pad_flags = 0, sec_flags = 0;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
-	/* If the key is extractable, the caller should extract the
-	 * key and do the crypto himself */
+	/* If the key is not native, we can't operate with it. */
 	if (!prkey->native)
-		return SC_ERROR_EXTRACTABLE_KEY;
+		return SC_ERROR_NOT_SUPPORTED;
 
 	if (!(prkey->usage & (SC_PKCS15_PRKEY_USAGE_DECRYPT|SC_PKCS15_PRKEY_USAGE_UNWRAP))) {
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "This key cannot be used for decryption\n");
@@ -163,10 +162,9 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 
-	/* If the key is extractable, the caller should extract the
-	 * key and do the crypto himself */
+	/* If the key is not native, we can't operate with it. */
 	if (!prkey->native)
-		return SC_ERROR_EXTRACTABLE_KEY;
+		return SC_ERROR_NOT_SUPPORTED;
 
 	if (!(prkey->usage & (SC_PKCS15_PRKEY_USAGE_SIGN|SC_PKCS15_PRKEY_USAGE_SIGNRECOVER|
 	                      SC_PKCS15_PRKEY_USAGE_NONREPUDIATION))) {
