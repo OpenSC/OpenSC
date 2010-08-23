@@ -57,15 +57,15 @@ CK_RV C_CreateObject(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	struct sc_pkcs11_session *session;
 	struct sc_pkcs11_card *card;
 
+	if (pTemplate == NULL_PTR || ulCount == 0)
+		return CKR_ARGUMENTS_BAD;
+
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
 		return rv;
 	SC_FUNC_CALLED(context, SC_LOG_DEBUG_VERBOSE);
 
-	if (pTemplate == NULL_PTR || ulCount == 0) {
-		rv = CKR_ARGUMENTS_BAD;
-		goto out;
-	}
+
 	dump_template(SC_LOG_DEBUG_NORMAL, "C_CreateObject()", pTemplate, ulCount);
 
 	session = list_seek(&sessions, &hSession);
@@ -157,14 +157,12 @@ CK_RV C_GetAttributeValue(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	int res, res_type;
 	unsigned int i;
 
+	if (pTemplate == NULL_PTR || ulCount == 0)
+		return CKR_ARGUMENTS_BAD;
+
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
 		return rv;
-
-	if (pTemplate == NULL_PTR || ulCount == 0) {
-		rv = CKR_ARGUMENTS_BAD;
-		goto out;
-	}
 
 	rv = get_object_from_session(hSession, hObject, &session, &object);
 	if (rv != CKR_OK)
@@ -216,14 +214,13 @@ CK_RV C_SetAttributeValue(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	struct sc_pkcs11_session *session;
 	struct sc_pkcs11_object *object;
 
+	if (pTemplate == NULL_PTR || ulCount == 0)
+		return CKR_ARGUMENTS_BAD;
+
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
 		return rv;
 
-	if (pTemplate == NULL_PTR || ulCount == 0) {
-		rv = CKR_ARGUMENTS_BAD;
-		goto out;
-	}
 	dump_template(SC_LOG_DEBUG_NORMAL, "C_SetAttributeValue", pTemplate, ulCount);
 
 	rv = get_object_from_session(hSession, hObject, &session, &object);
@@ -263,14 +260,12 @@ CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	struct sc_pkcs11_find_operation *operation;
 	struct sc_pkcs11_slot *slot;
 
+	if (pTemplate == NULL_PTR && ulCount > 0)
+		return CKR_ARGUMENTS_BAD;
+
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
 		return rv;
-
-	if (pTemplate == NULL_PTR && ulCount > 0) {
-		rv = CKR_ARGUMENTS_BAD;
-		goto out;
-	}
 
 	rv = get_session(hSession, &session);
 	if (rv != CKR_OK)
@@ -356,14 +351,12 @@ CK_RV C_FindObjects(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	struct sc_pkcs11_session *session;
 	struct sc_pkcs11_find_operation *operation;
 
+	if (phObject == NULL_PTR || ulMaxObjectCount == 0 || pulObjectCount == NULL_PTR)
+		return CKR_ARGUMENTS_BAD;
+
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
 		return rv;
-
-	if (phObject == NULL_PTR || ulMaxObjectCount == 0 || pulObjectCount == NULL_PTR) {
-		rv = CKR_ARGUMENTS_BAD;
-		goto out;
-	}
 
 	rv = get_session(hSession, &session);
 	if (rv != CKR_OK)
@@ -422,14 +415,12 @@ CK_RV C_DigestInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	CK_RV rv;
 	struct sc_pkcs11_session *session;
 
+	if (pMechanism == NULL_PTR)
+		return CKR_ARGUMENTS_BAD;
+
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
 		return rv;
-
-	if (pMechanism == NULL_PTR) {
-		rv = CKR_ARGUMENTS_BAD;
-		goto out;
-	}
 
 	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_DigestInit(hSession=0x%lx)", hSession);
 	rv = get_session(hSession, &session);
@@ -526,14 +517,12 @@ CK_RV C_SignInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	struct sc_pkcs11_session *session;
 	struct sc_pkcs11_object *object;
 
+	if (pMechanism == NULL_PTR)
+		return CKR_ARGUMENTS_BAD;
+
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
 		return rv;
-
-	if (pMechanism == NULL_PTR) {
-		rv = CKR_ARGUMENTS_BAD;
-		goto out;
-	}
 
 	rv = get_object_from_session(hSession, hKey, &session, &object);
 	if (rv != CKR_OK) {
@@ -677,14 +666,12 @@ CK_RV C_SignRecoverInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	/* FIXME #47: C_SignRecover is not implemented */
 	return CKR_FUNCTION_NOT_SUPPORTED;
 
+	if (pMechanism == NULL_PTR)
+		return CKR_ARGUMENTS_BAD;
+
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
 		return rv;
-
-	if (pMechanism == NULL_PTR) {
-		rv = CKR_ARGUMENTS_BAD;
-		goto out;
-	}
 
 	rv = get_object_from_session(hSession, hKey, &session, &object);
 	if (rv != CKR_OK) {
@@ -773,14 +760,12 @@ CK_RV C_DecryptInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	struct sc_pkcs11_session *session;
 	struct sc_pkcs11_object *object;
 
+	if (pMechanism == NULL_PTR)
+		return CKR_ARGUMENTS_BAD;
+
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
 		return rv;
-
-	if (pMechanism == NULL_PTR) {
-		rv = CKR_ARGUMENTS_BAD;
-		goto out;
-	}
 
 	rv = get_object_from_session(hSession, hKey, &session, &object);
 	if (rv != CKR_OK) {
@@ -909,16 +894,15 @@ CK_RV C_GenerateKeyPair(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	struct sc_pkcs11_session *session;
 	struct sc_pkcs11_slot *slot;
 
+	if (pMechanism == NULL_PTR
+			|| (pPublicKeyTemplate == NULL_PTR && ulPublicKeyAttributeCount > 0)
+			|| (pPrivateKeyTemplate == NULL_PTR && ulPrivateKeyAttributeCount > 0))
+		return CKR_ARGUMENTS_BAD;
+
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
 		return rv;
 
-	if (pMechanism == NULL_PTR
-			|| (pPublicKeyTemplate == NULL_PTR && ulPublicKeyAttributeCount > 0)
-			|| (pPrivateKeyTemplate == NULL_PTR && ulPrivateKeyAttributeCount > 0)) {
-		rv = CKR_ARGUMENTS_BAD;
-		goto out;
-	}
 	dump_template(SC_LOG_DEBUG_NORMAL, "C_GenerateKeyPair(), PrivKey attrs", pPrivateKeyTemplate, ulPrivateKeyAttributeCount);
 	dump_template(SC_LOG_DEBUG_NORMAL, "C_GenerateKeyPair(), PubKey attrs", pPublicKeyTemplate, ulPublicKeyAttributeCount);
 
@@ -1058,14 +1042,13 @@ CK_RV C_VerifyInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	struct sc_pkcs11_session *session;
 	struct sc_pkcs11_object *object;
 
+	if (pMechanism == NULL_PTR)
+		return CKR_ARGUMENTS_BAD;
+
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
 		return rv;
 
-	if (pMechanism == NULL_PTR) {
-		rv = CKR_ARGUMENTS_BAD;
-		goto out;
-	}
 
 	rv = get_object_from_session(hSession, hKey, &session, &object);
 	if (rv != CKR_OK) {

@@ -44,21 +44,17 @@ CK_RV C_OpenSession(CK_SLOT_ID slotID,	/* the slot's ID */
 	struct sc_pkcs11_slot *slot;
 	struct sc_pkcs11_session *session;
 
+	if (!(flags & CKF_SERIAL_SESSION))
+		return CKR_SESSION_PARALLEL_NOT_SUPPORTED;
+
+	if (flags & ~(CKF_SERIAL_SESSION | CKF_RW_SESSION))
+		return CKR_ARGUMENTS_BAD;
+
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
 		return rv;
 
 	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_OpenSession(0x%lx)", slotID);
-
-	if (!(flags & CKF_SERIAL_SESSION)) {
-		rv = CKR_SESSION_PARALLEL_NOT_SUPPORTED;
-		goto out;
-	}
-
-	if (flags & ~(CKF_SERIAL_SESSION | CKF_RW_SESSION)) {
-		rv = CKR_ARGUMENTS_BAD;
-		goto out;
-	}
 
 	rv = slot_get_token(slotID, &slot);
 	if (rv != CKR_OK)
@@ -177,15 +173,14 @@ CK_RV C_GetSessionInfo(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	struct sc_pkcs11_session *session;
 	struct sc_pkcs11_slot *slot;
 
-	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_GetSessionInfo(0x%lx)", hSession);
+	if (pInfo == NULL_PTR)
+		return CKR_ARGUMENTS_BAD;	
+
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
 		return rv;
 
-	if (pInfo == NULL_PTR) {
-		rv = CKR_ARGUMENTS_BAD;
-		goto out;
-	}
+	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_GetSessionInfo(0x%lx)", hSession);
 
 	session = list_seek(&sessions, &hSession);
 	if (!session) {
@@ -240,14 +235,12 @@ CK_RV C_Login(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	struct sc_pkcs11_session *session;
 	struct sc_pkcs11_slot *slot;
 
+	if (pPin == NULL_PTR && ulPinLen > 0)
+		return CKR_ARGUMENTS_BAD;
+
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
 		return rv;
-
-	if (pPin == NULL_PTR && ulPinLen > 0) {
-		rv = CKR_ARGUMENTS_BAD;
-		goto out;
-	}
 
 	if (userType != CKU_USER && userType != CKU_SO && userType != CKU_CONTEXT_SPECIFIC) {
 		rv = CKR_USER_TYPE_INVALID;
@@ -330,14 +323,12 @@ CK_RV C_InitPIN(CK_SESSION_HANDLE hSession, CK_CHAR_PTR pPin, CK_ULONG ulPinLen)
 	struct sc_pkcs11_session *session;
 	struct sc_pkcs11_slot *slot;
 
+	if (pPin == NULL_PTR && ulPinLen > 0)
+		return CKR_ARGUMENTS_BAD;
+
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
 		return rv;
-
-	if (pPin == NULL_PTR && ulPinLen > 0) {
-		rv = CKR_ARGUMENTS_BAD;
-		goto out;
-	}
 
 	session = list_seek(&sessions, &hSession);
 	if (!session) {
@@ -370,15 +361,13 @@ CK_RV C_SetPIN(CK_SESSION_HANDLE hSession,
 	struct sc_pkcs11_session *session;
 	struct sc_pkcs11_slot *slot;
 
+	if ((pOldPin == NULL_PTR && ulOldLen > 0)
+	    || (pNewPin == NULL_PTR && ulNewLen > 0))
+		return CKR_ARGUMENTS_BAD;
+
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
 		return rv;
-
-	if ((pOldPin == NULL_PTR && ulOldLen > 0)
-	    || (pNewPin == NULL_PTR && ulNewLen > 0)) {
-		rv = CKR_ARGUMENTS_BAD;
-		goto out;
-	}
 
 	session = list_seek(&sessions, &hSession);
 	if (!session) {

@@ -277,17 +277,15 @@ CK_RV C_Finalize(CK_VOID_PTR pReserved)
 	sc_pkcs11_slot_t *slot;
 	CK_RV rv;
 
+	if (pReserved != NULL_PTR)
+		return CKR_ARGUMENTS_BAD;
+
 	if (context == NULL)
 		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
 		return rv;
-
-	if (pReserved != NULL_PTR) {
-		rv = CKR_ARGUMENTS_BAD;
-		goto out;
-	}
 
 	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_Finalize()");
 	
@@ -312,7 +310,7 @@ CK_RV C_Finalize(CK_VOID_PTR pReserved)
 	sc_release_context(context);
 	context = NULL;
 
-out:	/* Release and destroy the mutex */
+	/* Release and destroy the mutex */
 	sc_pkcs11_free_lock();
 
 	return rv;
@@ -322,14 +320,12 @@ CK_RV C_GetInfo(CK_INFO_PTR pInfo)
 {
 	CK_RV rv = CKR_OK;
 
+	if (pInfo == NULL_PTR)
+		return CKR_ARGUMENTS_BAD;
+
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
 		return rv;
-
-	if (pInfo == NULL_PTR) {
-		rv = CKR_ARGUMENTS_BAD;
-		goto out;
-	}
 
 	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_GetInfo()");
 
@@ -345,7 +341,7 @@ CK_RV C_GetInfo(CK_INFO_PTR pInfo)
 	pInfo->libraryVersion.major = 0;
 	pInfo->libraryVersion.minor = 0; /* FIXME: use 0.116 for 0.11.6 from autoconf */
 
-out:	sc_pkcs11_unlock();
+	sc_pkcs11_unlock();
 	return rv;
 }	
 
@@ -368,13 +364,11 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 	sc_pkcs11_slot_t *slot;
 	CK_RV rv;
 
+	if (pulCount == NULL_PTR)
+		return CKR_ARGUMENTS_BAD;
+
 	if ((rv = sc_pkcs11_lock()) != CKR_OK) {
 		return rv;
-	}
-
-	if (pulCount == NULL_PTR) {
-		rv = CKR_ARGUMENTS_BAD;
-		goto out;
 	}
 
 	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_GetSlotList(token=%d, %s)", tokenPresent,
@@ -466,14 +460,12 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
 	sc_timestamp_t now;
 	CK_RV rv;
 
+	if (pInfo == NULL_PTR)
+		return CKR_ARGUMENTS_BAD;
+
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
 		return rv;
-
-	if (pInfo == NULL_PTR) {
-		rv = CKR_ARGUMENTS_BAD;
-		goto out;
-	}
 
 	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_GetSlotInfo(0x%lx)", slotID);
 
@@ -497,7 +489,7 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
 	if (rv == CKR_OK)
 		memcpy(pInfo, &slot->slot_info, sizeof(CK_SLOT_INFO));
 
-out:	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_GetSlotInfo(0x%lx) = %s", slotID, lookup_enum ( RV_T, rv ));
+	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_GetSlotInfo(0x%lx) = %s", slotID, lookup_enum ( RV_T, rv ));
 	sc_pkcs11_unlock();
 	return rv;
 }
@@ -507,23 +499,22 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo)
 	struct sc_pkcs11_slot *slot;
 	CK_RV rv;
 
+	if (pInfo == NULL_PTR)
+		return CKR_ARGUMENTS_BAD;
+
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
 		return rv;
 
-	if (pInfo == NULL_PTR) {
-		rv = CKR_ARGUMENTS_BAD;
-		goto out;
-	}
-
 	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_GetTokenInfo(%lx)", slotID);
 
 	rv = slot_get_token(slotID, &slot);
+
 	/* TODO: update token flags */
 	if (rv == CKR_OK)
 		memcpy(pInfo, &slot->token_info, sizeof(CK_TOKEN_INFO));
 
-out:	sc_pkcs11_unlock();
+	sc_pkcs11_unlock();
 	return rv;
 }
 
@@ -553,19 +544,18 @@ CK_RV C_GetMechanismInfo(CK_SLOT_ID slotID,
 	struct sc_pkcs11_slot *slot;
 	CK_RV rv;
 
+	if (pInfo == NULL_PTR)
+		return CKR_ARGUMENTS_BAD;
+
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
 		return rv;
 
-	if (pInfo == NULL_PTR) {
-		rv = CKR_ARGUMENTS_BAD;
-		goto out;
-	}
 	rv = slot_get_token(slotID, &slot);
 	if (rv == CKR_OK)
 		rv = sc_pkcs11_get_mechanism_info(slot->card, type, pInfo);
 
-out:	sc_pkcs11_unlock();
+	sc_pkcs11_unlock();
 	return rv;
 }
 
