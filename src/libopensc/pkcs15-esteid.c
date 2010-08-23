@@ -53,7 +53,6 @@ select_esteid_df (sc_card_t * card)
 	int r;
 	sc_path_t tmppath;
 	sc_format_path ("3F00EEEE", &tmppath);
-	tmppath.type = SC_PATH_TYPE_PATH;
 	r = sc_select_file (card, &tmppath, NULL);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "esteid select DF failed");
 	return r;
@@ -79,7 +78,6 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 
 	/* Select application directory */
 	sc_format_path ("3f00eeee5044", &tmppath);
-	tmppath.type = SC_PATH_TYPE_PATH;
 	r = sc_select_file (card, &tmppath, NULL);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "select esteid PD failed");
 

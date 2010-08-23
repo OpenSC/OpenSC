@@ -300,7 +300,6 @@ static int mcrd_init(sc_card_t * card)
 	priv->curpathlen = 1;
 
 	sc_format_path ("3f00", &tmppath);
-	tmppath.type = SC_PATH_TYPE_PATH;
 	sc_select_file (card, &tmppath, NULL);
 	                
 	
@@ -1085,7 +1084,6 @@ static int mcrd_set_security_env(sc_card_t * card,
 
 		/* Make sure we always start from MF */
 		sc_format_path ("3f00", &tmppath);
-		tmppath.type = SC_PATH_TYPE_PATH;
 		sc_select_file (card, &tmppath, NULL);
 		/* We now know that cache is not valid */
 		select_esteid_df(card);	
