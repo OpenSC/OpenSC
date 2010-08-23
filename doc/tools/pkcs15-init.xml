@@ -133,12 +133,6 @@
 				<command>pkcs15-init</command> will also store the the public portion of the
 				key as a PKCS #15 public key object.
 			</para>
-			<para>
-				By default, <command>pkcs15-init</command> will try to use the card's
-				on-board key generation facilities, if available. If the card does not
-				support on-board key generation, <command>pkcs15-init</command> will fall
-				back to software key generation.
-			</para>
 		</refsect2>
 
 		<refsect2>

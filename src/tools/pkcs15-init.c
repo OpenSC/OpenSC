@@ -107,7 +107,6 @@ static int	get_key_callback(struct sc_profile *,
 			int method, int reference,
 			const u8 *, size_t, u8 *, size_t *);
 
-static int	do_generate_key_soft(int, unsigned int, EVP_PKEY **);
 static int	do_read_private_key(const char *, const char *,
 				EVP_PKEY **, X509 **, unsigned int);
 static int	do_read_public_key(const char *, const char *, EVP_PKEY **);
@@ -124,7 +123,6 @@ enum {
 	OPT_EXTRACTABLE,
 	OPT_UNPROTECTED,
 	OPT_AUTHORITY,
-	OPT_SOFT_KEYGEN,
 	OPT_ASSERT_PRISTINE,
 	OPT_SECRET,
 	OPT_PUBKEY_LABEL,
@@ -185,7 +183,6 @@ const struct option	options[] = {
 
 	{ "extractable",	no_argument, NULL,		OPT_EXTRACTABLE },
 	{ "insecure",		no_argument, NULL,		OPT_UNPROTECTED },
-	{ "soft",		no_argument, NULL,		OPT_SOFT_KEYGEN },
 	{ "use-default-transport-keys",
 				no_argument, NULL,		'T' },
 	{ "no-prompt",		no_argument, NULL,		OPT_NO_PROMPT },
@@ -319,7 +316,6 @@ static unsigned int		opt_actions;
 static int			opt_extractable = 0,
 				opt_unprotected = 0,
 				opt_authority = 0,
-				opt_softkeygen = 0,
 				opt_no_prompt = 0,
 				opt_no_sopin = 0,
 				opt_use_defkeys = 0,
@@ -1401,8 +1397,7 @@ static int
 do_generate_key(struct sc_profile *profile, const char *spec)
 {
 	struct sc_pkcs15init_keygen_args keygen_args;
-	unsigned int	evp_algo, keybits = 1024;
-	EVP_PKEY	*pkey;
+	unsigned int keybits = 1024;
 	int		r;
 
 	memset(&keygen_args, 0, sizeof(keygen_args));
@@ -1419,11 +1414,9 @@ do_generate_key(struct sc_profile *profile, const char *spec)
 	/* Parse the key spec given on the command line */
 	if (!strncasecmp(spec, "rsa", 3)) {
 		keygen_args.prkey_args.key.algorithm = SC_ALGORITHM_RSA;
-		evp_algo = EVP_PKEY_RSA;
 		spec += 3;
 	} else if (!strncasecmp(spec, "dsa", 3)) {
 		keygen_args.prkey_args.key.algorithm = SC_ALGORITHM_DSA;
-		evp_algo = EVP_PKEY_DSA;
 		spec += 3;
 	} else if (!strncasecmp(spec, "gost2001", strlen("gost2001"))) {
 		keygen_args.prkey_args.key.algorithm = SC_ALGORITHM_GOSTR3410;
@@ -1431,7 +1424,6 @@ do_generate_key(struct sc_profile *profile, const char *spec)
 		/* FIXME: now only SC_PKCS15_PARAMSET_GOSTR3410_A */
 		keygen_args.prkey_args.gost_params.gostr3410 =
 			SC_PKCS15_PARAMSET_GOSTR3410_A;
-		evp_algo = 0; /* FIXME */
 		spec += strlen("gost2001");
 	} else {
 		util_error("Unknown algorithm \"%s\"", spec);
@@ -1449,32 +1441,7 @@ do_generate_key(struct sc_profile *profile, const char *spec)
 			return SC_ERROR_INVALID_ARGUMENTS;
 		}
 	}
-
-	if (!opt_softkeygen) {
-		r = sc_pkcs15init_generate_key(p15card, profile, &keygen_args,
-			keybits, NULL);
-		if (r >= 0 || r != SC_ERROR_NOT_SUPPORTED)
-			return r;
-		if (verbose)
-			printf("Warning: card doesn't support on-board "
-			       "key generation.\n"
-			       "Trying software generation\n");
-	}
-
-	/* Generate the key ourselves */
-	if ((r = do_generate_key_soft(evp_algo, keybits, &pkey)) < 0
-	 || (r = do_convert_private_key(&keygen_args.prkey_args.key, pkey) ) < 0)
-		goto out;
-
-	r = sc_pkcs15init_store_private_key(p15card,
-			profile, &keygen_args.prkey_args, NULL);
-
-	/* Store public key portion on card */
-	if (r >= 0)
-		r = do_store_public_key(profile, pkey);
-
-out:
-	EVP_PKEY_free(pkey);
+	r = sc_pkcs15init_generate_key(p15card, profile, &keygen_args, keybits, NULL);
 	return r;
 }
 
@@ -1852,46 +1819,6 @@ get_key_callback(struct sc_profile *profile,
 		if (sc_hex_to_bin(key, key_buf, buf_size) >= 0)
 			return 0;
 	}
-}
-
-/*
- * Generate a private key
- */
-static int do_generate_key_soft(int algorithm, unsigned int bits,
-		EVP_PKEY **res)
-{
-	*res = EVP_PKEY_new();
-	switch (algorithm) {
-	case EVP_PKEY_RSA: {
-			RSA	*rsa;
-			BIO	*err;
-
-			err = BIO_new(BIO_s_mem());
-			rsa = RSA_generate_key(bits, 0x10001, NULL, err);
-			BIO_free(err);
-			if (rsa == 0)
-				util_fatal("RSA key generation error");
-			EVP_PKEY_assign_RSA(*res, rsa);
-			break;
-		}
-	case EVP_PKEY_DSA: {
-			DSA	*dsa;
-			int	r = 0;
-
-			dsa = DSA_generate_parameters(bits,
-					NULL, 0, NULL,
-					NULL, NULL, NULL);
-			if (dsa)
-				r = DSA_generate_key(dsa);
-			if (r == 0 || dsa == 0)
-				util_fatal("DSA key generation error");
-			EVP_PKEY_assign_DSA(*res, dsa);
-			break;
-		}
-	default:
-		util_fatal("Unable to generate key: unsupported algorithm");
-	}
-	return 0;
 }
 
 /*
@@ -2578,9 +2505,6 @@ handle_option(const struct option *opt)
 		break;
 	case OPT_AUTHORITY:
 		opt_authority = 1;
-		break;
-	case OPT_SOFT_KEYGEN:
-		opt_softkeygen = 1;
 		break;
 	case OPT_APPLICATION_NAME:
 		opt_application_name = optarg;

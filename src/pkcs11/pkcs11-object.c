@@ -966,51 +966,7 @@ CK_RV C_UnwrapKey(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		  CK_ULONG ulAttributeCount,	/* # of attributes in template */
 		  CK_OBJECT_HANDLE_PTR phKey)
 {				/* gets handle of recovered key */
-	CK_RV rv;
-	struct sc_pkcs11_session *session;
-	struct sc_pkcs11_object *object, *result;
-
-	rv = sc_pkcs11_lock();
-	if (rv != CKR_OK)
-		return rv;
-
-	if (pMechanism == NULL_PTR || (pTemplate == NULL_PTR && ulAttributeCount > 0)) {
-		rv = CKR_ARGUMENTS_BAD;
-		goto out;
-	}
-
-	rv = get_object_from_session(hSession, hUnwrappingKey, &session, &object);
-	if (rv != CKR_OK) {
-		if (rv == CKR_OBJECT_HANDLE_INVALID)
-			rv = CKR_UNWRAPPING_KEY_HANDLE_INVALID;
-		goto out;
-	}
-
-	if (!(session->flags & CKF_RW_SESSION)) {
-		rv = CKR_SESSION_READ_ONLY;
-		goto out;
-	}
-
-	if (object->ops->sign == NULL_PTR) {
-		rv = CKR_KEY_TYPE_INCONSISTENT;
-		goto out;
-	}
-
-	rv = object->ops->unwrap_key(session, object, pMechanism,
-				     pWrappedKey, ulWrappedKeyLen,
-				     pTemplate, ulAttributeCount, (void **)&result);
-
-	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_UnwrapKey() = %s", lookup_enum ( RV_T, rv ));
-
-	if (rv == CKR_OK) {
-		result->handle = (long)result;
-		list_append(&session->slot->objects, result);
-
-	}
-	*phKey = result->handle;
-
-out:	sc_pkcs11_unlock();
-	return rv;
+	return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
 CK_RV C_DeriveKey(CK_SESSION_HANDLE hSession,	/* the session's handle */

@@ -12,7 +12,7 @@ INCLUDES = -I$(top_srcdir)/src
 
 OPENSC_PKCS11_INC = sc-pkcs11.h pkcs11.h pkcs11-opensc.h
 OPENSC_PKCS11_SRC = pkcs11-global.c pkcs11-session.c pkcs11-object.c misc.c slot.c \
-	mechanism.c openssl.c secretkey.c framework-pkcs15.c \
+	mechanism.c openssl.c framework-pkcs15.c \
 	framework-pkcs15init.c debug.c opensc-pkcs11.exports \
 	pkcs11-display.c pkcs11-display.h
 OPENSC_PKCS11_LIBS = $(OPTIONAL_OPENSSL_LIBS) $(PTHREAD_LIBS) \

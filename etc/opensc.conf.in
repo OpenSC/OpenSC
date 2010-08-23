@@ -367,12 +367,6 @@ app opensc-pkcs11 {
 		# Default: false
 		# lock_login = true;
 
-		# Set this value to true if you want to allow off-card
-		# keypair generation (in software on your pc)
-		#
-		# Default: false
-		# soft_keygen_allowed = true;
-
 		# User PIN unblock style
 		#    none:  PIN unblock is not possible with PKCS#11 API;
 		#    set_pin_in_unlogged_session:  C_SetPIN() in unlogged session:

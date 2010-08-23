@@ -1727,7 +1727,6 @@ static CK_RV pkcs15_gen_keypair(struct sc_pkcs11_card *p11card,
 	struct sc_profile *profile = NULL;
 	struct sc_pkcs15_pin_info *pin;
 	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fw_data;
-	struct sc_pkcs15_card *p15card = fw_data->p15_card;
 	struct sc_pkcs15init_keygen_args keygen_args;
 	struct sc_pkcs15init_pubkeyargs pub_args;
 	struct sc_pkcs15_object	 *priv_key_obj;
@@ -1851,41 +1850,6 @@ static CK_RV pkcs15_gen_keypair(struct sc_pkcs11_card *p11card,
 		sc_debug(context, SC_LOG_DEBUG_NORMAL, "sc_pkcs15init_generate_key returned %d\n", rc);
 		rv = sc_to_cryptoki_error(rc, "C_GenerateKeyPair");
 		goto kpgen_done;
-	}
-	else {
-		/* 3.b Try key pair generation in software, if allowed */
-		
-		if (!sc_pkcs11_conf.soft_keygen_allowed) {
-			sc_debug(context, SC_LOG_DEBUG_NORMAL, "On card keypair gen not supported, software keypair gen not allowed");
-			rv = CKR_FUNCTION_FAILED;
-			goto kpgen_done;
-		}
-
-		sc_debug(context, SC_LOG_DEBUG_NORMAL, "Doing key pair generation in software\n");
-		rv = sc_pkcs11_gen_keypair_soft(keytype, keybits,
-			&keygen_args.prkey_args.key, &pub_args.key);
-		if (rv != CKR_OK) {
-			sc_debug(context, SC_LOG_DEBUG_NORMAL, "sc_pkcs11_gen_keypair_soft failed: 0x%0x\n", rv);
-			goto kpgen_done;
-		}
-
-		rc = sc_pkcs15init_store_private_key(p15card, profile, &keygen_args.prkey_args, &priv_key_obj);
-
-		if (rc >= 0) {
-			/* copy ID from private key(s) here to avoid bad link between private and public key */
-			memcpy(&pub_args.id.value, &keygen_args.prkey_args.id.value, keygen_args.prkey_args.id.len);
-			pub_args.id.len = keygen_args.prkey_args.id.len;
-			rc = sc_pkcs15init_store_public_key(p15card, profile, &pub_args, &pub_key_obj);
-		}
-
-		sc_pkcs15_erase_prkey(&keygen_args.prkey_args.key);
-		sc_pkcs15_erase_pubkey(&pub_args.key);
-
-		if (rc < 0) {
-			sc_debug(context, SC_LOG_DEBUG_NORMAL, "private/public keys not stored: %d\n", rc);
-			rv = sc_to_cryptoki_error(rc, "C_GenerateKeyPair");
-			goto kpgen_done;
-		}
 	}
 
 	/* 4. Create new pkcs11 public and private key object */
@@ -2465,9 +2429,9 @@ pkcs15_prkey_decrypt(struct sc_pkcs11_session *ses, void *obj,
 	u8	decrypted[256];
 	int	buff_too_small, rv, flags = 0;
 
-	sc_debug(context, SC_LOG_DEBUG_NORMAL, "Initiating unwrap/decryption.\n");
+	sc_debug(context, SC_LOG_DEBUG_NORMAL, "Initiating decryption.\n");
 
-	/* See which of the alternative keys supports unwrap/decrypt */
+	/* See which of the alternative keys supports decrypt */
 	prkey = (struct pkcs15_prkey_object *) obj;
 	while (prkey
 	 && !(prkey->prv_info->usage
@@ -2507,7 +2471,7 @@ pkcs15_prkey_decrypt(struct sc_pkcs11_session *ses, void *obj,
 
 	sc_unlock(ses->slot->card->card);
 
-	sc_debug(context, SC_LOG_DEBUG_NORMAL, "Key unwrap/decryption complete. Result %d.\n", rv);
+	sc_debug(context, SC_LOG_DEBUG_NORMAL, "Key decryption complete. Result %d.\n", rv);
 
 	if (rv < 0)
 		return sc_to_cryptoki_error(rv, "C_Decrypt");
@@ -2523,28 +2487,6 @@ pkcs15_prkey_decrypt(struct sc_pkcs11_session *ses, void *obj,
 	return CKR_OK;
 }
 
-static CK_RV
-pkcs15_prkey_unwrap(struct sc_pkcs11_session *ses, void *obj,
-		CK_MECHANISM_PTR pMechanism,
-		CK_BYTE_PTR pData, CK_ULONG ulDataLen,
-		CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulAttributeCount,
-		void **result)
-{
-	u8 unwrapped_key[256];
-	CK_ULONG key_len = sizeof(unwrapped_key);
-	int   rc;
-
-	rc = pkcs15_prkey_decrypt(ses, obj, pMechanism, pData, ulDataLen,
-			unwrapped_key, &key_len);
-
-	if (rc < 0)
-		return sc_to_cryptoki_error(rc, NULL);
-	return sc_pkcs11_create_secret_key(ses,
-			unwrapped_key, key_len,
-			pTemplate, ulAttributeCount,
-			(struct sc_pkcs11_object **) result);
-}
-
 struct sc_pkcs11_object_ops pkcs15_prkey_ops = {
 	pkcs15_prkey_release,
 	pkcs15_prkey_set_attribute,
@@ -2553,7 +2495,7 @@ struct sc_pkcs11_object_ops pkcs15_prkey_ops = {
 	pkcs15_any_destroy,
 	NULL,
 	pkcs15_prkey_sign,
-	pkcs15_prkey_unwrap,
+	NULL, /* unwrap */
 	pkcs15_prkey_decrypt
 };
 
