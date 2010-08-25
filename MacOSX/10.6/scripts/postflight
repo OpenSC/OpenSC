@@ -1,0 +1,24 @@
+#!/bin/bash
+
+if !([ -e "/usr/lib/opensc-pkcs11.so" ])
+then
+	ln -s /Library/OpenSC/lib/opensc-pkcs11.so /usr/lib/opensc-pkcs11.so
+fi
+if [ -e "/Library/OpenSC/etc/opensc.conf.md5" ]
+then
+	read cs_fromfile file < "/Library/OpenSC/etc/opensc.conf.md5"
+	cs_calculated=$( md5 -q "/Library/OpenSC/etc/opensc.conf")
+	if [ "$cs_fromfile" = "$cs_calculated" ]
+	then
+		mv /Library/OpenSC/etc/opensc.conf.orig /Library/OpenSC/etc/opensc.conf
+		md5 -r /Library/OpenSC/etc/opensc.conf  > /Library/OpenSC/etc/opensc.conf.md5
+	fi
+else
+	mv /Library/OpenSC/etc/opensc.conf.orig /Library/OpenSC/etc/opensc.conf
+	md5 -r /Library/OpenSC/etc/opensc.conf  > /Library/OpenSC/etc/opensc.conf.md5
+fi
+for f in /Library/OpenSC/bin/*
+do
+	ln -sf $f /usr/local/bin
+done
+exit 0

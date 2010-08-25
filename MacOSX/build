@@ -1,0 +1,145 @@
+#!/bin/bash
+set -ex
+OSX_RELEASE=${1:-10.6}
+test -x ./configure || ./bootstrap
+BUILDPATH=${PWD}
+case ${OSX_RELEASE} in
+	"10.5")
+		export CFLAGS="-isysroot /Developer/SDKs/MacOSX10.5.sdk -arch i386 -arch ppc7400 -mmacosx-version-min=10.5 -g"
+	;;
+	"10.6")
+		export CFLAGS="-isysroot /Developer/SDKs/MacOSX10.6.sdk -arch i386 -arch x86_64 -mmacosx-version-min=10.6 -g"
+	;;
+	*)
+		echo "OSX ${OSX_RELEASE} is not supported!"
+		exit 1
+	;;
+esac
+
+export SED=/usr/bin/sed
+PREFIX=/Library/OpenSC
+export PKG_CONFIG_PATH=/usr/lib/pkgconfig
+if test -d /opt/local/share/xsl/docbook-xsl; then
+	XSL_PATH=/opt/local/share/xsl/docbook-xsl
+elif test -d /sw/share/xml/xsl/docbook-xsl; then
+	XSL_PATH=/sw/share/xml/xsl/docbook-xsl
+else
+	echo "Building man pages requires the availability of docbook-xsl, either from fink (in /sw) or from macports (in /opt/local)."
+	exit 1
+fi
+./configure --prefix=$PREFIX \
+--sysconfdir=$PREFIX/etc \
+--disable-dependency-tracking \
+--disable-doc \
+--enable-man \
+--with-xsl-stylesheetsdir=$XSL_PATH \
+--enable-shared \
+--disable-static \
+--enable-iconv \
+--enable-strict \
+--enable-pcsc \
+--disable-ctapi
+
+
+# check if make install is required
+case "${OSX_RELEASE}" in
+	"10.5") required_arch="ppc7400" ;;
+	"10.6") required_arch="x86_64" ;;
+esac
+
+if !(test -e src/libopensc/.libs/libopensc.dylib && (file src/libopensc/.libs/libopensc.dylib | grep $required_arch)); then
+	make clean
+fi
+
+# compile
+make -j 2
+
+if !(test -e /Library/OpenSC/lib/libopensc.dylib && (file /Library/OpenSC/lib/libopensc.dylib | grep $required_arch)); then
+	echo "Installing OpenSC to support building OpenSC.tokend. Remove with opensc-uninstall after .dmg has been created"
+	sudo make install
+fi
+
+# copy files
+rm -rf target
+make install DESTDIR=${BUILDPATH}/target
+
+# remove garbage
+rm target/Library/OpenSC/lib/onepin-opensc-pkcs11.la
+rm target/Library/OpenSC/lib/opensc-pkcs11.la
+rm target/Library/OpenSC/lib/pkcs11-spy.la
+rm target/Library/OpenSC/lib/libopensc.la
+
+case "${OSX_RELEASE}" in
+	"10.6")
+	# Build libp11+engine_pkcs11
+	test -d libp11 || git clone git://github.com/martinpaljak/libp11.git -b martin
+	(cd libp11
+	test -x confiure || ./bootstrap
+	./configure --enable-static --disable-shared --disable-dependency-tracking --prefix=${BUILDPATH}/build && make && make install
+	cd ..
+	test -d engine_pkcs11 || git clone git://github.com/martinpaljak/engine_pkcs11.git -b martin
+	cd engine_pkcs11
+	git checkout origin/martin
+	test -x configure || ./bootstrap
+	PKG_CONFIG_PATH=${BUILDPATH}/build/lib/pkgconfig ./configure --disable-dependency-tracking --prefix=/Library/OpenSC && make
+	make install DESTDIR=${BUILDPATH}/target
+	
+	)
+	;;
+esac
+
+
+if ! test -e OpenSC.tokend; then
+	git clone git://github.com/martinpaljak/OpenSC.tokend.git
+fi
+
+case "${OSX_RELEASE}" in
+	"10.5") git --git-dir OpenSC.tokend/.git --work-tree OpenSC.tokend checkout origin/10.5; rm -rf OpenSC.tokend/build ;;
+	"10.6") git --git-dir OpenSC.tokend/.git --work-tree OpenSC.tokend checkout origin/10.6; rm -rf OpenSC.tokend/build ;;
+esac
+
+if ! test -e build-${OSX_RELEASE}.tar.gz; then
+	case ${OSX_RELEASE} in
+	"10.5")
+		curl http://martinpaljak.net/download/build-10.5.tar.gz -o build-${OSX_RELEASE}.tar.gz
+	;;
+	"10.6")
+		curl http://martinpaljak.net/download/build-10.6.tar.gz -o build-${OSX_RELEASE}.tar.gz
+	;;
+	esac	
+fi
+
+# Unpack the binary building components
+if ! test -e OpenSC.tokend/build; then
+	tar -C OpenSC.tokend -xzvf build-${OSX_RELEASE}.tar.gz
+fi
+
+# Create the symlink to OpenSC sources
+test -L OpenSC.tokend/build/opensc-src || ln -sf ${BUILDPATH}/src OpenSC.tokend/build/opensc-src
+
+# build and copy OpenSC.tokend
+xcodebuild -configuration Deployment -project OpenSC.tokend/Tokend.xcodeproj
+mkdir -p target/System/Library/Security/tokend
+mv OpenSC.tokend/build/OpenSC.tokend target/System/Library/Security/tokend
+
+# The "UnInstaller"
+mkdir -p target/usr/local/bin
+cp MacOSX/opensc-uninstall target/usr/local/bin
+
+# Build installer package
+/Developer/Applications/Utilities/PackageMaker.app/Contents/MacOS/PackageMaker \
+-r target \
+-o OpenSC-${OSX_RELEASE}.pkg \
+-t "OpenSC for Mac OS X ${OSX_RELEASE}" \
+-i org.opensc-project.mac \
+-n 0.12.0-svn \
+-g 10.4 \
+-b \
+-v \
+--no-relocate \
+-e MacOSX/${OSX_RELEASE}/resources \
+-s MacOSX/${OSX_RELEASE}/scripts
+
+# Create .dmg
+rm -f OpenSC-${OSX_RELEASE}.dmg
+hdiutil create -srcfolder OpenSC-${OSX_RELEASE}.pkg -volname "OpenSC for Mac OS X ${OSX_RELEASE}" OpenSC-${OSX_RELEASE}.dmg
