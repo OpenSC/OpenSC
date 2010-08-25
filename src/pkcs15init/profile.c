@@ -37,6 +37,11 @@
 #include <assert.h>
 #include <stdlib.h>
 
+#ifdef _WIN32  
+#include <windows.h>
+#include <winreg.h>
+#endif
+
 #include "common/compat_strlcpy.h"
 #include "scconf/scconf.h"
 #include "libopensc/log.h"
@@ -308,17 +313,42 @@ sc_profile_load(struct sc_profile *profile, const char *filename)
 	const char *profile_dir = NULL;
 	char path[PATH_MAX];
 	int             res = 0, i;
-
+#ifdef _WIN32
+	char temp_path[PATH_MAX];
+	DWORD temp_len;
+	long rc;
+	HKEY hKey;
+#endif
+                
 	for (i = 0; ctx->conf_blocks[i]; i++) {
 		profile_dir = scconf_get_str(ctx->conf_blocks[i], "profile_dir", NULL);
 		if (profile_dir)
 			break;
 	}
-
 	if (!profile_dir) {
+#ifdef _WIN32
+		rc = RegOpenKeyEx(HKEY_CURRENT_USER, "Software\\OpenSC", 0, KEY_QUERY_VALUE, &hKey);
+		if (rc == ERROR_SUCCESS) {
+			temp_len = PATH_MAX;
+			rc = RegQueryValueEx(hKey, "ProfileDir", NULL, NULL, (LPBYTE) temp_path, &temp_len);
+			if ((rc == ERROR_SUCCESS) && (temp_len < PATH_MAX))
+				profile_dir = temp_path;
+			RegCloseKey(hKey);
+		}
+		if (!profile_dir) {
+			rc = RegOpenKeyEx(HKEY_LOCAL_MACHINE, "Software\\OpenSC", 0, KEY_QUERY_VALUE, &hKey);
+			if (rc == ERROR_SUCCESS) {
+				temp_len = PATH_MAX;
+				rc = RegQueryValueEx(hKey, "ProfileDir", NULL, NULL, (LPBYTE) temp_path, &temp_len);
+				if ((rc == ERROR_SUCCESS) && (temp_len < PATH_MAX))
+					profile_dir = temp_path;
+				RegCloseKey(hKey);
+			}	
+		}                                                                                                                                                                             
+#else
 		profile_dir = SC_PKCS15_PROFILE_DIRECTORY;
+#endif
 	}
-
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Using profile directory '%s'.", profile_dir);
 
 #ifdef _WIN32
