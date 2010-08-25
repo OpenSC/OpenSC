@@ -299,7 +299,7 @@ static int refresh_attributes(sc_reader_t *reader)
 		reader->flags |= SC_READER_CARD_PRESENT;
 		reader->atr_len = priv->reader_state.cbAtr;
 		if (reader->atr_len > SC_MAX_ATR_SIZE)
-			reader->atr_len = SC_MAX_ATR_SIZE;
+			return SC_ERROR_INTERNAL;
 		memcpy(reader->atr, priv->reader_state.rgbAtr, reader->atr_len);
 
 #ifndef _WIN32

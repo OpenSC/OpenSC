@@ -251,7 +251,7 @@ static int ctapi_connect(sc_reader_t *reader)
 		SC_FUNC_RETURN(reader->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INTERNAL);
 	lr -= 2;
 	if (lr > SC_MAX_ATR_SIZE)
-		lr = SC_MAX_ATR_SIZE;
+		return SC_ERROR_INTERNAL;
 	memcpy(reader->atr, rbuf, lr);
 	reader->atr_len = lr;
 	r = _sc_parse_atr(reader);
