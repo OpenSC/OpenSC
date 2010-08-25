@@ -7,7 +7,21 @@ Also see the svn changelog using svn command
 or doc/nonpersistent/ChangeLog.
 
 New in 0.12.??; 2010-??-??; ??
-* New westcos driver by François Leblanc
+* New card driver: Italian eID (CNS) by Emanuele Pucciarelli.
+* New card driver: Portuguese eID by João Poupino.
+* New card driver: westcos by François Leblanc.
+* Support for CardOS 4.4 cards added.
+* Fature to exclude readers from OpenSC PKCS#11 via "ignored_readers"
+  configuration file entry.
+* #229: Support semi-automatic fixes to cards personalized with older and
+  broken OpenSC.
+* Software keys removed from pkcs15-init and the PKCS#11 module. OpenSC
+  can either generate keys on card or import plaintext keys to the card, but
+  will never generate plaintext key material in software by itself.
+* Updates to PC/SC driver to build with latest pcsc-lite
+* Build script for a binary Mac OS X installer for 10.5 and 10.6 systems.
+  Binary installer includes OpenSC.tokend for platform integration.
+  10.6 installer includes engine_pkcs11.
 * Modify Rutoken S binary interfaces by Aktiv Co.
 * Support GOST R 34.10-2001 and GOST R 34.11-94 by Aktiv Co.
 * CardOS driver now emulates sign on rsa keys with sign+decrypt usage
@@ -24,6 +38,7 @@ New in 0.12.??; 2010-??-??; ??
   system headers, then additional libraries, then headers in opensc
   (but from other directories), then header files from same directory.
   Fix path to reference headers, remove src/include/ directory.
+* Various source code fixes and improvements.
 
 New in 0.11.12; 2009-12-18; Andreas Jellinghaus
 * Document integer problem in OpenSC and implement workaround
