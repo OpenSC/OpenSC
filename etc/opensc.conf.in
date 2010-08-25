@@ -408,10 +408,19 @@ app opensc-pkcs11 {
 	}
 }
 
+# Used by OpenSC.tokend on Mac OS X only.
 app tokend {
-	# Score for OpenSC.tokend
+	# The file to which debug log will be written
+	# Default: /tmp/opensc-tokend.log
+	#
+	# debug_file = /Library/Logs/OpenSC.tokend.log
+
 	framework tokend {
-		score = 10;
+		# Score for OpenSC.tokend
+		# The tokend with the lowest score shall be used
+		# Default: 50
+		#
+		# score = 10;
 	}
 }
 
