@@ -43,6 +43,9 @@ static struct sc_atr_table rtecp_atrs[] = {
 	/* Rutoken ECP */
 	{ "3B:8B:01:52:75:74:6F:6B:65:6E:20:45:43:50:A0",
 		NULL, NULL, SC_CARD_TYPE_GENERIC_BASE, 0, NULL },
+	/* Rutoken ECP (DS) */
+	{ "3B:8B:01:52:75:74:6F:6B:65:6E:20:44:53:20:C1",
+		NULL, NULL, SC_CARD_TYPE_GENERIC_BASE, 0, NULL },
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
