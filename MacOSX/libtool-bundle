@@ -1,0 +1,104 @@
+#!/bin/sh
+# A shell script to create MacOS X bundles
+# from files created by GNU libtool.
+# Incomplete, but works.
+#
+# $Id: libtool-bundle 1533 2003-10-16 20:41:34Z aet $
+# <aet@cc.hut.fi>
+#
+
+set -e
+verbose=0
+
+verbose_msg ()
+{
+  if [ $verbose -ne 0 ]; then
+    echo "libtool-bundle: $@"
+  fi
+}
+
+error_msg ()
+{
+  echo 1>&2 "libtool-bundle: $@"
+}
+
+usage ()
+{
+  error_msg "Usage: $0 [-e extra XML data] [Mach-O bundle file] [destination directory] <bundle name>"
+  exit 1
+}
+
+case $1 in
+  -e) shift; if [ "$1" ]; then extradata=$1; shift; else usage; fi; ;;
+esac
+
+[ $# -le 1 -o $# -ge 4 ] && usage
+
+sofile=$1
+[ ! -f $sofile ] && error_msg "Not a file or file not found: $sofile" && exit 1
+case "$sofile" in
+*.so*)
+  # Assume it's ok
+  ;;
+*)
+  error_msg "Invalid bundle: $sofile"
+  exit 1
+  ;;
+esac
+
+destdir=$2
+[ ! -d $destdir -o ! -w $destdir ] && error_msg "Not a directory or no write access: $destdir" && exit 1
+
+name="$sofile"
+[ $# -eq 3 ] && name=$3
+name=`echo $name | sed -e "s@.*/@@" -e "s@\.so.*@@"`
+root="$destdir/${name}.bundle"
+
+verbose_msg "sofile: $sofile"
+verbose_msg "destdir: $destdir"
+verbose_msg "name: $name"
+verbose_msg "root: $root"
+
+arch=`uname`
+[ x$arch = xDarwin ] && arch=MacOS
+type="BNDL"
+creator="????"
+
+# Overwrite existing bundle
+[ -d "$root" ] && rm -rf "$root"
+
+mkdir -p "$root"/Contents/$arch
+cp "$sofile" "$root"/Contents/$arch/"$name"
+echo "$type$creator" > "$root"/Contents/PkgInfo
+
+create_info_plist ()
+{
+  echo "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+  echo "<!DOCTYPE plist PUBLIC \"-//Apple Computer//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">"
+  echo "<plist version=\"1.0\">"
+  echo "<dict>"
+  echo "	<key>CFBundleDevelopmentRegion</key>"
+  echo "	<string>English</string>"
+  echo "	<key>CFBundleExecutable</key>"
+  echo "	<string>$name</string>"
+  echo "	<key>CFBundleInfoDictionaryVersion</key>"
+  echo "	<string>6.0</string>"
+  echo "	<key>CFBundleName</key>"
+  echo "	<string>$name</string>"
+  echo "	<key>CFBundlePackageType</key>"
+  echo "	<string>$type</string>"
+  echo "	<key>CFBundleSignature</key>"
+  echo "	<string>$creator</string>"
+  echo "	<key>CFBundleVersion</key>"
+  echo "	<string>0.0.1d1</string>"
+  if [ "$extradata" ]; then
+    echo ""
+    [ -f "$extradata" ]; cat $extradata
+  fi
+  echo "</dict>"
+  echo "</plist>"
+}
+
+create_info_plist > "$root"/Contents/Info.plist
+
+echo "Installed $sofile as $root"

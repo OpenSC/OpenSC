@@ -69,6 +69,9 @@ rm target/Library/OpenSC/lib/opensc-pkcs11.la
 rm target/Library/OpenSC/lib/pkcs11-spy.la
 rm target/Library/OpenSC/lib/libopensc.la
 
+# generate .bundle (required by Adobe Acrobat)
+./MacOSX/libtool-bundle target/Library/OpenSC/lib/opensc-pkcs11.so target/Library/OpenSC/lib
+
 case "${OSX_RELEASE}" in
 	"10.6")
 	# Build libp11+engine_pkcs11
