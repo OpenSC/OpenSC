@@ -1218,13 +1218,14 @@ static int change_pin(void)
 				printf("New PIN value will be prompted with pinpad.\n");
 			break;
 		}
-		if (newpin == NULL || strlen((char *) newpin) == 0)
+		if (newpin == NULL || strlen((char *) newpin) == 0)   {
+			fprintf(stderr, "No new PIN value supplied.\n");
 			return 2;
+		}
 
 		newpin2 = get_pin("Enter new PIN again", pin_obj);
-		if (newpin2 == NULL || strlen((char *) newpin2) == 0)
-			return 2;
-		if (strcmp((char *) newpin, (char *) newpin2) == 0) {
+		if (newpin2 && strlen((char *) newpin2) && 
+				strcmp((char *) newpin, (char *) newpin2) == 0) {
 			free(newpin2);
 			break;
 		}
