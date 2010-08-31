@@ -340,6 +340,23 @@
 				</varlistentry>
 
 				<varlistentry>
+					<term><option>--update-certificate</option> <emphasis>filename</emphasis>,
+					<option>-U</option> <emphasis>filename</emphasis></term>
+					<listitem>
+						<para>
+							Tells <command>pkcs15-init</command> to update the certificate 
+							object with the ID specified via the <option>--id</option> option
+							with the certificate in <option>filename</option>.
+							The file is assumed to contain a PEM encoded certificate.
+						</para>
+						<para>Pay extra attention when updating mail decryption certificates, as 
+						missing certificates can render e-mail messages unreadable!
+						</para>
+					</listitem>
+				</varlistentry>
+
+
+				<varlistentry>
 					<term><option>--use-default-transport-keys</option>,
 					<option>-T</option></term>
 					<listitem>
