@@ -1921,8 +1921,8 @@ static CK_RV pkcs15_get_random(struct sc_pkcs11_card *p11card,
 				CK_BYTE_PTR p, CK_ULONG len)
 {
 	int rc;
-        struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fw_data;
-        struct sc_card *card = fw_data->p15_card->card;
+	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fw_data;
+	struct sc_card *card = fw_data->p15_card->card;
 
 	rc = sc_get_challenge(card, p, (size_t)len);
 	return sc_to_cryptoki_error(rc, "C_GenerateRandom");
