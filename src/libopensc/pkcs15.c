@@ -74,7 +74,7 @@ static const struct sc_asn1_entry c_asn1_toki[] = {
 	{ "issuerId",       SC_ASN1_UTF8STRING,   SC_ASN1_CTX | 3, SC_ASN1_OPTIONAL, NULL, NULL },
 	{ "holderId",       SC_ASN1_UTF8STRING,   SC_ASN1_CTX | 4, SC_ASN1_OPTIONAL, NULL, NULL },
 	{ "lastUpdate",     SC_ASN1_GENERALIZEDTIME, SC_ASN1_CTX | 5, SC_ASN1_OPTIONAL, NULL, NULL },
-	{ "preferredLanguage", SC_ASN1_PRINTABLESTRING, SC_ASN1_TAG_PRINTABLESTRING, SC_ASN1_OPTIONAL, NULL, NULL }, 
+	{ "preferredLanguage", SC_ASN1_PRINTABLESTRING, SC_ASN1_TAG_PRINTABLESTRING, SC_ASN1_OPTIONAL, NULL, NULL },
 	{ NULL, 0, 0, 0, NULL, NULL }
 };
 
@@ -791,8 +791,8 @@ int sc_pkcs15_bind(sc_card_t *card,
 		p15card->opts.use_pin_cache = scconf_get_bool(conf_block, "use_pin_caching", p15card->opts.use_pin_cache);
 		p15card->opts.pin_cache_counter = scconf_get_bool(conf_block, "pin_cache_counter", p15card->opts.pin_cache_counter);
 	}
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "PKCS#15 options: use_file_cache=%d use_pin_cache=%d pin_cache_counter=%d", 
-                 p15card->opts.use_file_cache, p15card->opts.use_pin_cache, p15card->opts.pin_cache_counter);
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "PKCS#15 options: use_file_cache=%d use_pin_cache=%d pin_cache_counter=%d",
+	         p15card->opts.use_file_cache, p15card->opts.use_pin_cache, p15card->opts.pin_cache_counter);
 
 	r = sc_lock(card);
 	if (r) {
@@ -838,7 +838,7 @@ done:
 		if (strstr(p15card->label,"D-TRUST") != NULL
 			|| strstr(p15card->label,"D-SIGN") != NULL) {
 
-			/* D-TRUST Card 2.0 2cc (standard cards, which always add 
+			/* D-TRUST Card 2.0 2cc (standard cards, which always add
 			 * SHA1 prefix itself */
 			if (strstr(p15card->label, "2cc") != NULL) {
 				p15card->card->caps |= SC_CARD_CAP_ONLY_RAW_HASH_STRIPPED;
@@ -848,14 +848,14 @@ done:
 				 */
 			}
 
-			/* D-SIGN multicard 2.0 2ca (cards working with all types of hashes 
+			/* D-SIGN multicard 2.0 2ca (cards working with all types of hashes
 			 * and no addition of prefix) */
 			else if (strstr(p15card->label, "2ca") != NULL) {
 				p15card->card->caps |= SC_CARD_CAP_ONLY_RAW_HASH;
 				sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "D-TRUST 2ca card detected\n");
 			}
 
-			/* XXX: probably there are more D-Trust card in the wild, 
+			/* XXX: probably there are more D-Trust card in the wild,
 			 *      which also need these flags to produce valid signatures
 			 */
 		}
@@ -899,7 +899,7 @@ static int
 __sc_pkcs15_search_objects(sc_pkcs15_card_t *p15card,
 			unsigned int class_mask, unsigned int type,
 			int (*func)(sc_pkcs15_object_t *, void *),
-                        void *func_arg,
+			void *func_arg,
 			sc_pkcs15_object_t **ret, size_t ret_size)
 {
 	sc_pkcs15_object_t *obj;
@@ -1151,7 +1151,7 @@ sc_pkcs15_search_objects(sc_pkcs15_card_t *p15card, sc_pkcs15_search_key_t *sk,
 
 int sc_pkcs15_get_objects_cond(struct sc_pkcs15_card *p15card, unsigned int type,
 			       int (* func)(struct sc_pkcs15_object *, void *),
-                               void *func_arg,
+			       void *func_arg,
 			       struct sc_pkcs15_object **ret, size_t ret_size)
 {
 	return __sc_pkcs15_search_objects(p15card, 0, type,
@@ -1221,7 +1221,7 @@ int sc_pkcs15_find_pin_by_reference(struct sc_pkcs15_card *p15card,
 }
 
 int sc_pkcs15_find_pin_by_type_and_reference(struct sc_pkcs15_card *p15card,
-				const sc_path_t *path, 
+				const sc_path_t *path,
 				int auth_method, int reference,
 				struct sc_pkcs15_object **out)
 {
@@ -1229,7 +1229,7 @@ int sc_pkcs15_find_pin_by_type_and_reference(struct sc_pkcs15_card *p15card,
 	struct sc_pkcs15_object *auth_objs[0x10];
 	int r, nn_objs, ii;
 
-        /* Get all existing pkcs15 AUTH objects */
+	/* Get all existing pkcs15 AUTH objects */
 	r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_AUTH_PIN, auth_objs, 0x10);
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Get PKCS#15 AUTH objects error");
 	nn_objs = r;
@@ -1251,7 +1251,7 @@ int sc_pkcs15_find_pin_by_type_and_reference(struct sc_pkcs15_card *p15card,
 		return SC_SUCCESS;
 	}
 
-	return SC_ERROR_OBJECT_NOT_FOUND; 
+	return SC_ERROR_OBJECT_NOT_FOUND;
 }
 
 int sc_pkcs15_find_data_object_by_id(struct sc_pkcs15_card *p15card,
@@ -1875,7 +1875,7 @@ int sc_pkcs15_read_file(struct sc_pkcs15_card *p15card,
 			}
 			/* sc_read_binary may return less than requested */
 			len = r;
-		} 
+		}
 		sc_unlock(p15card->card);
 
 		/* Return of release file */
