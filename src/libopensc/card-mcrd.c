@@ -697,7 +697,7 @@ do_select(sc_card_t * card, u8 kind,
 	  const u8 * buf, size_t buflen, sc_file_t ** file)
 {
 	sc_apdu_t apdu;
-	u8 resbuf[255];
+	u8 resbuf[SC_MAX_APDU_BUFFER_SIZE];
 	int r;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xA4, kind, 0x00);
@@ -706,7 +706,7 @@ do_select(sc_card_t * card, u8 kind,
 	apdu.lc = apdu.datalen;
 	apdu.resp = resbuf;
 	apdu.resplen = sizeof(resbuf);
-	apdu.le = sizeof(resbuf);
+	apdu.le = card->max_recv_size;
 
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
@@ -735,7 +735,7 @@ do_select(sc_card_t * card, u8 kind,
 	default:
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_UNKNOWN_DATA_RECEIVED);
 	}
-	return 0;
+	return SC_SUCCESS;
 }
 
 /* Wrapper around do_select to be used when multiple selects are
@@ -1285,14 +1285,14 @@ static int mcrd_decipher(sc_card_t * card,
 	sc_security_env_t *env = &priv->sec_env;
 
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
-		 "Will dechiper %d (0x%02x) bytes using key %d\n",
+		 "Will dechiper %d (0x%x) bytes using key %d\n",
 		 crgram_len, crgram_len, env->key_ref[0]);
 
-	/* saniti check */
+	/* sanity check */
 	if (env->operation != SC_SEC_OPERATION_DECIPHER)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
-	tmp_crgram[0] = '\0';
+	tmp_crgram[0] = '\0'; /* No algorithm specification */
 	memcpy(tmp_crgram + 1, crgram, crgram_len);
 	crgram_len += 1;
 
