@@ -62,8 +62,13 @@ app default {
 		# to set these values. For usb devices check the
 		# properties with lsusb -vv for dwMaxIFSD
 		#
-		# max_send_size = 252;
-		# max_recv_size = 252;
+		# These values will be used for APDU communication
+		# and are used for maximum Lc/Le calculation
+		# (will not include CLA, INS, P1, P2 or SW1, SW2).
+		#
+		# Default: send: 255, recv: 256
+		# max_send_size = 255;
+		# max_recv_size = 256;
 		
 		# Connect to reader in exclusive mode.
 		# Default: false
@@ -97,8 +102,8 @@ app default {
 		# to set these values. For usb devices check the
 		# properties with lsusb -vv for dwMaxIFSD
 		#
-		# max_send_size = 252;
-		# max_recv_size = 252;
+		# max_send_size = 255;
+		# max_recv_size = 256;
 	};
 
 	# What card drivers to load at start-up
