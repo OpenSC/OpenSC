@@ -171,8 +171,6 @@ struct sc_pkcs11_framework_ops {
 				CK_ATTRIBUTE_PTR pPubKeyTempl, CK_ULONG ulPubKeyAttrCnt,
 				CK_ATTRIBUTE_PTR pPrivKeyTempl, CK_ULONG ulPrivKeyAttrCnt,
 				CK_OBJECT_HANDLE_PTR phPubKey, CK_OBJECT_HANDLE_PTR phPrivKey);
-	CK_RV (*seed_random)(struct sc_pkcs11_card *p11card,
-				CK_BYTE_PTR, CK_ULONG);
 	CK_RV (*get_random)(struct sc_pkcs11_card *p11card,
 				CK_BYTE_PTR, CK_ULONG);
 };

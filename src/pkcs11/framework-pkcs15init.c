@@ -177,7 +177,6 @@ struct sc_pkcs11_framework_ops framework_pkcs15init = {
 	NULL, /* init_pin */
 	NULL, /* create_object */
 	NULL, /* gen_keypair */
-	NULL, /* seed_random */
 	NULL, /* get_random */
 };
 
