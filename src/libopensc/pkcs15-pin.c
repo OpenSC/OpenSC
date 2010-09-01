@@ -532,10 +532,8 @@ int sc_pkcs15_pincache_revalidate(struct sc_pkcs15_card *p15card, sc_pkcs15_obje
 
 	if (!pin_obj->content.value || !pin_obj->content.len)
 		return SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
-	/* FIXME: the usage counter should be incremented 
-	 * 	before or after (successeful ?) PIN verifying ? */
-	pin_obj->usage_counter++;
 
+	pin_obj->usage_counter++;
 	r = sc_pkcs15_verify_pin(p15card, pin_obj, pin_obj->content.value, pin_obj->content.len);
 	if (r != SC_SUCCESS) {
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Verify PIN error %i", r);
