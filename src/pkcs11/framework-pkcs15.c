@@ -2427,7 +2427,7 @@ pkcs15_prkey_decrypt(struct sc_pkcs11_session *ses, void *obj,
 {
 	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) ses->slot->card->fw_data;
 	struct pkcs15_prkey_object *prkey;
-	u8	decrypted[256];
+	u8	decrypted[256]; /* FIXME: Will not work for keys above 2048 bits */
 	int	buff_too_small, rv, flags = 0;
 
 	sc_debug(context, SC_LOG_DEBUG_NORMAL, "Initiating decryption.\n");
@@ -2472,7 +2472,7 @@ pkcs15_prkey_decrypt(struct sc_pkcs11_session *ses, void *obj,
 
 	sc_unlock(ses->slot->card->card);
 
-	sc_debug(context, SC_LOG_DEBUG_NORMAL, "Key decryption complete. Result %d.\n", rv);
+	sc_debug(context, SC_LOG_DEBUG_NORMAL, "Decryption complete. Result %d.\n", rv);
 
 	if (rv < 0)
 		return sc_to_cryptoki_error(rv, "C_Decrypt");
