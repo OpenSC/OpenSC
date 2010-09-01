@@ -825,9 +825,6 @@ int sc_pkcs15_bind(sc_card_t *card,
 			goto error;
 	}
 done:
-	/* If card driver states that it has a (P)RNG, overwrite (possibly missing) tokeninfo flags */
-	if (card->caps & SC_CARD_CAP_RNG)
-		p15card->flags |= SC_PKCS15_CARD_FLAG_PRN_GENERATION;	
 
 	/* for starcos cards only: fix asn1 integers */
 	if (strcmp(p15card->card->driver->short_name,"starcos") == 0

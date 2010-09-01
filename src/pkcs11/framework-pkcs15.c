@@ -722,8 +722,10 @@ static void pkcs15_init_slot(struct sc_pkcs15_card *p15card,
 	if (p15card->card->reader->capabilities & SC_READER_CAP_PIN_PAD) {
 		slot->token_info.flags |= CKF_PROTECTED_AUTHENTICATION_PATH;
 	}
-	if (p15card->card->caps & SC_CARD_CAP_RNG)
+
+	if (p15card->card->caps & SC_CARD_CAP_RNG && p15card->card->ops->get_challenge != NULL)
 		slot->token_info.flags |= CKF_RNG;
+
 	slot->fw_data = fw_data = calloc(1, sizeof(*fw_data));
 	fw_data->auth_obj = auth;
 
