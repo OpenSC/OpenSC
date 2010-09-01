@@ -193,7 +193,8 @@ struct sc_reader_driver {
 	const char *short_name;
 	struct sc_reader_operations *ops;
 
-	size_t max_send_size, max_recv_size;
+	size_t max_send_size; /* Max Lc supported by the reader layer */
+	size_t max_recv_size; /* Mac Le supported by the reader layer */
 	void *dll;
 };
 
@@ -367,12 +368,12 @@ typedef struct sc_card {
 
 	int type;			/* Card type, for card driver internal use */
 	unsigned long caps, flags;
-	unsigned int wait_resend_apdu;	/* Delay (msec) before responding to an SW12 = 6CXX */
+	unsigned int wait_resend_apdu;	/* Delay (msec) before responding to an SW = 6CXX */
 	int cla;
 	u8 atr[SC_MAX_ATR_SIZE];
 	size_t atr_len;
-	size_t max_send_size;
-	size_t max_recv_size;
+	size_t max_send_size; /* Max Lc supported by the card */
+	size_t max_recv_size; /* Max Le supported by the card */
 
 	struct sc_app_info *app[SC_MAX_CARD_APPS];
 	int app_count;

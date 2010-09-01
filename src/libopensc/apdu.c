@@ -274,7 +274,7 @@ static int sc_check_apdu(sc_card_t *card, const sc_apdu_t *apdu)
 		    (apdu->flags & SC_APDU_FLAGS_CHAINING) == 0))
 			goto error;
 	} else if ((apdu->cse & SC_APDU_EXT) != 0) {
-		/* check if the card support extended APDUs */
+		/* check if the card supports extended APDUs */
 		if ((card->caps & SC_CARD_CAP_APDU_EXT) == 0) {
 			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "card doesn't support extended APDUs");
 			goto error;
