@@ -323,7 +323,7 @@ static int itacns_add_pin(sc_pkcs15_card_t *p15card,
 	return sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
 }
 
-static int hextoint(unsigned char *src, int len)
+static int hextoint(char *src, unsigned int len)
 {
 	char hex[16];
 	if(len >= sizeof(hex))
@@ -346,9 +346,9 @@ static int get_name_from_EF_DatiPersonali(unsigned char *EFdata,
 	 */
 
 	const unsigned int EF_personaldata_maxlen = 400;
-	const tlv_length_size = 6;
-	unsigned char *file = &EFdata[tlv_length_size];
-	int file_size = hextoint(EFdata, tlv_length_size);
+	const unsigned int tlv_length_size = 6;
+	char *file = (char*)&EFdata[tlv_length_size];
+	int file_size = hextoint((char*)EFdata, tlv_length_size);
 	if(file_size < 0)
 		return -1;
 
@@ -356,7 +356,7 @@ static int get_name_from_EF_DatiPersonali(unsigned char *EFdata,
 	 * This shouldn't happen, but let us be protected against wrong
 	 * or malicious cards
 	 */
-	if(file_size > EF_personaldata_maxlen - tlv_length_size)
+	if(file_size > (int)EF_personaldata_maxlen - (int)tlv_length_size)
 		file_size = EF_personaldata_maxlen - tlv_length_size;
 
 	enum {
@@ -393,13 +393,13 @@ static int get_name_from_EF_DatiPersonali(unsigned char *EFdata,
 		if(i > file_size)
 			return -1;
 
-		int field_size = hextoint(&file[i], 2);
+		int field_size = hextoint((char*) &file[i], 2);
 		if((field_size < 0) || (field_size+i > file_size))
 			return -1;
 
 		i += 2;
 
-		if(field_size >= sizeof(fields[f].value))
+		if(field_size >= (int)sizeof(fields[f].value))
 			return -1;
 
 		fields[f].len = field_size;
@@ -420,7 +420,7 @@ static int itacns_add_data_files(sc_pkcs15_card_t *p15card)
 {
 	const size_t list_size =
 		sizeof(itacns_data_files)/sizeof(itacns_data_files[0]);
-	int i;
+	unsigned int i;
 	int r;
 	for(i=0; i < list_size; i++) {
 		if(itacns_data_files[i].cie_only &&
@@ -690,7 +690,7 @@ static int itacns_init(sc_pkcs15_card_t *p15card)
 
 	set_string(&p15card->label, p15card->card->name);
 	if(p15card->card->drv_data) {
-		int mask_code, ic_code;
+		unsigned int mask_code, ic_code;
 		char buffer[256];
 		itacns_drv_data_t *data =
 			(itacns_drv_data_t*) p15card->card->drv_data;
