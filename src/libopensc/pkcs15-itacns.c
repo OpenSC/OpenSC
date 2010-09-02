@@ -146,9 +146,16 @@ static int itacns_add_cert(sc_pkcs15_card_t *p15card,
 	int *ext_info_ok, int *key_usage, int *x_key_usage)
 {
 	SC_FUNC_CALLED(p15card->card->ctx, 1);
+	
+	if(type != SC_PKCS15_TYPE_CERT_X509) {
+		sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL,
+			"Cannot add a certificate of a type other than X.509");
+		return 1;
+	}
+	
 	int r;
 	*ext_info_ok = 0;
-
+	
 	/* const char *label = "Certificate"; */
 	sc_pkcs15_cert_info_t info;
 	sc_pkcs15_object_t    obj;
@@ -238,10 +245,16 @@ static int itacns_add_prkey(sc_pkcs15_card_t *p15card,
                 const sc_pkcs15_id_t *id,
                 const char *label,
                 int type, unsigned int modulus_length, int usage,
-		int algo_flags, const sc_path_t *path, int ref,
+		const sc_path_t *path, int ref,
                 const sc_pkcs15_id_t *auth_id, int obj_flags)
 {
 	SC_FUNC_CALLED(p15card->card->ctx, 1);
+
+	if(type != SC_PKCS15_TYPE_PRKEY_RSA) {
+		sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL,
+			"Cannot add a private key of a type other than RSA");
+		return 1;
+	}
 
 	sc_pkcs15_prkey_info_t info;
 	sc_pkcs15_object_t obj;
@@ -490,23 +503,13 @@ static int itacns_add_keyset(sc_pkcs15_card_t *p15card,
 	const char *label, int sec_env, sc_pkcs15_id_t *cert_id,
 	const char *pubkey_path, const char *prkey_path,
 	unsigned int pubkey_usage_flags, unsigned int prkey_usage_flags,
-	u8 pin_ref, int needs_enc)
+	u8 pin_ref)
 {
 	int r;
 	sc_path_t path;
 
 	/* This is hard-coded, for the time being. */
 	int modulus_length = 1024;
-
-	/* Access flags; these depend on whether the private keys use PSO_ENC
-	   or PSO_CDS for signing. */
-
-	const int enc_algo_flags = SC_ALGORITHM_NEED_USAGE
-			| SC_ALGORITHM_RSA_RAW
-			| SC_ALGORITHM_RSA_HASH_NONE;
-	const int cds_algo_flags = SC_ALGORITHM_NEED_USAGE
-		| SC_ALGORITHM_RSA_PAD_PKCS1
-		| SC_ALGORITHM_RSA_HASH_NONE;
 
 	/* Public key; not really needed */
 	/* FIXME: set usage according to the certificate. */
@@ -530,7 +533,6 @@ static int itacns_add_keyset(sc_pkcs15_card_t *p15card,
 	r = itacns_add_prkey(p15card, cert_id, label, SC_PKCS15_TYPE_PRKEY_RSA,
 		modulus_length,
 		prkey_usage_flags,
-		(needs_enc ? enc_algo_flags : cds_algo_flags),
 		private_path, sec_env, cert_id, SC_PKCS15_CO_FLAG_PRIVATE);
 	SC_TEST_RET(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, r,
 		"Could not add private key");
@@ -575,7 +577,7 @@ static int itacns_add_keyset(sc_pkcs15_card_t *p15card,
 static int itacns_check_and_add_keyset(sc_pkcs15_card_t *p15card,
 	const char *label, int sec_env, size_t cert_offset,
 	const char *cert_path, const char *pubkey_path, const char *prkey_path,
-	u8 pin_ref, int needs_enc, int *found_certificates)
+	u8 pin_ref, int *found_certificates)
 {
 	int r;
 	sc_path_t path;
@@ -584,17 +586,6 @@ static int itacns_check_and_add_keyset(sc_pkcs15_card_t *p15card,
 	cert_id.len = 1;
 	cert_id.value[0] = sec_env;
 	*found_certificates = 0;
-
-	/* Usage flags */
-	const int auth_pubkey_usage_flags = SC_PKCS15_PRKEY_USAGE_ENCRYPT
-		| SC_PKCS15_PRKEY_USAGE_DECRYPT
-		| SC_PKCS15_PRKEY_USAGE_WRAP
-		| SC_PKCS15_PRKEY_USAGE_VERIFY;
-	const int auth_prkey_usage_flags = SC_PKCS15_PRKEY_USAGE_DECRYPT
-		| SC_PKCS15_PRKEY_USAGE_UNWRAP
-		| SC_PKCS15_PRKEY_USAGE_SIGN;
-	const int sig_pubkey_usage_flags = SC_PKCS15_PRKEY_USAGE_VERIFY;
-	const int sig_prkey_usage_flags = SC_PKCS15_PRKEY_USAGE_NONREPUDIATION;
 
 	/* Certificate */
 	if (!cert_path) {
@@ -679,7 +670,7 @@ static int itacns_check_and_add_keyset(sc_pkcs15_card_t *p15card,
 
 	r = itacns_add_keyset(p15card, label, sec_env, &cert_id,
 		pubkey_path, prkey_path, pubkey_usage_flags, prkey_usage_flags,
-		pin_ref, needs_enc);
+		pin_ref);
 	SC_TEST_RET(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, r,
 		"Could not add keys for this certificate");
 
@@ -760,7 +751,7 @@ static int itacns_init(sc_pkcs15_card_t *p15card)
 	/* Standard CNS */
 	r = itacns_check_and_add_keyset(p15card, "CNS0", cns0_secenv,
 		0, "3F0011001101", "3F003F01", NULL,
-		0x10, !card_is_cie_v1, &found_certs);
+		0x10, &found_certs);
 	SC_TEST_RET(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, r,
 		"Could not add CNS0");
 	certificate_count += found_certs;
@@ -768,7 +759,7 @@ static int itacns_init(sc_pkcs15_card_t *p15card)
 	/* Infocamere 1204 */
 	r = itacns_check_and_add_keyset(p15card, "CNS01", 0x21,
 		5, "3F002FFF8228", NULL, "3F002FFF0000",
-		0x10, 1, &found_certs);
+		0x10, &found_certs);
 	SC_TEST_RET(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, r,
 		"Could not add CNS01");
 	certificate_count += found_certs;
@@ -776,7 +767,7 @@ static int itacns_init(sc_pkcs15_card_t *p15card)
 	/* Digital signature */
 	r = itacns_check_and_add_keyset(p15card, "CNS1", 0x10,
 		0, "3F0014009010", "3F00140081108010", "3F0014008110",
-		0x1a, 0, &found_certs);
+		0x1a, &found_certs);
 	SC_TEST_RET(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, r,
 		"Could not add CNS1");
 	certificate_count += found_certs;
