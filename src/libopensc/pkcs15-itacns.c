@@ -376,7 +376,7 @@ static int get_name_from_EF_DatiPersonali(unsigned char *EFdata,
 	int f; /* field number */
 
 	for(f=0; f<f_first_name+1; f++) {
-		// Don't read beyond the allocated buffer
+		/* Don't read beyond the allocated buffer */
 		if(i > file_size)
 			return -1;
 
@@ -441,7 +441,7 @@ static int itacns_add_data_files(sc_pkcs15_card_t *p15card)
 	memset(&dinfo, 0, sizeof(dinfo));
 	strcpy(dinfo.app_label, "EF_DatiPersonali");
 
-	// Find EF_DatiPersonali
+	/* Find EF_DatiPersonali */
 
 	struct sc_pkcs15_object *objs[32];
 	int rv = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_DATA_OBJECT,
