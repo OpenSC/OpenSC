@@ -86,7 +86,7 @@ static struct sc_atr_table itacns_atrs[] = {
 #define DRVDATA(card) ((itacns_drv_data_t *) card->drv_data)
 
 
-int itacns_match_cns_card(sc_card_t *card, int i)
+int itacns_match_cns_card(sc_card_t *card, unsigned int i)
 {
 	unsigned char *atr = card->atr;
 	sc_context_t *ctx;
@@ -121,7 +121,7 @@ int itacns_match_cns_card(sc_card_t *card, int i)
 	return 1;
 }
 
-int itacns_match_cie_card(sc_card_t *card, int i)
+int itacns_match_cie_card(sc_card_t *card, unsigned int i)
 {
 	unsigned char *atr = card->atr;
 	sc_context_t *ctx;
@@ -144,7 +144,8 @@ int itacns_match_cie_card(sc_card_t *card, int i)
 
 int itacns_match_card(sc_card_t *card)
 {
-	int i = 0, r;
+	unsigned int i = 0;
+	int r;
 	unsigned char *atr = card->atr;
 	sc_context_t *ctx;
 	ctx = card->ctx;
@@ -361,7 +362,7 @@ static int itacns_read_binary(sc_card_t *card,
 			       unsigned long flags)
 {
 	size_t already_read = 0;
-	size_t requested;
+	int requested;
 	int r;
 	while(1) {
 		requested = count - already_read;
