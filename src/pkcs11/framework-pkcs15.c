@@ -296,6 +296,36 @@ __pkcs15_delete_object(struct pkcs15_fw_data *fw_data, struct pkcs15_any_object 
 	return SC_ERROR_OBJECT_NOT_FOUND;
 }
 
+static void
+__pkcs15_update_pin_flags(struct sc_pkcs11_slot *slot, struct sc_pkcs15_object *auth,
+		int pin_verified)
+{
+	/* FIXME: should 'FINAL_TRY' be set when 'max_tries' is 1 ? */
+	struct sc_pkcs15_pin_info *pin_info;
+	CK_TOKEN_INFO *tinfo;
+
+	if (!slot || !auth || !auth->data)
+		return;
+
+	if (slot_data_auth(slot->fw_data) != auth)
+		return;
+
+	tinfo = &slot->token_info;
+	pin_info = (struct sc_pkcs15_pin_info*) auth->data;
+
+	if (pin_verified)
+		tinfo->flags &= ~(CKF_USER_PIN_FINAL_TRY | CKF_USER_PIN_LOCKED | CKF_USER_PIN_COUNT_LOW);
+	else if (pin_info->tries_left < 0)
+		return;
+	else if (pin_info->tries_left == 1)
+		tinfo->flags |= CKF_USER_PIN_FINAL_TRY;
+	else if (pin_info->tries_left == 0)
+		tinfo->flags |= CKF_USER_PIN_LOCKED;
+	else if (pin_info->max_tries && pin_info->tries_left && pin_info->tries_left < pin_info->max_tries)
+		tinfo->flags |= CKF_USER_PIN_COUNT_LOW;
+}
+
+
 static int public_key_created(struct pkcs15_fw_data *fw_data,
 			      const unsigned int num_objects,
 			      const u8 *id, 
@@ -739,15 +769,7 @@ static void pkcs15_init_slot(struct sc_pkcs15_card *p15card,
 			snprintf(tmp, sizeof(tmp), "%s", p15card->label);
 		}
 		slot->token_info.flags |= CKF_LOGIN_REQUIRED;
-                /* FIXME: update this information during runtime */
-		if (pin_info->tries_left >= 0) {
-		        if (pin_info->tries_left == 1)
-        		        slot->token_info.flags |= CKF_USER_PIN_FINAL_TRY;
-                        else if (pin_info->tries_left == 0)
-                                slot->token_info.flags |= CKF_USER_PIN_LOCKED;
-                        else if (pin_info->max_tries && pin_info->tries_left && pin_info->tries_left < pin_info->max_tries)
-                                slot->token_info.flags |= CKF_USER_PIN_COUNT_LOW;
-                }
+		__pkcs15_update_pin_flags(slot, auth, 0);
 	} else
 		snprintf(tmp, sizeof(tmp), "%s", p15card->label);
 	strcpy_bp(slot->token_info.label, tmp, 32);
@@ -994,7 +1016,7 @@ static CK_RV pkcs15_login(struct sc_pkcs11_slot *slot,
 				}
 			}
 
-			sc_debug(context, SC_LOG_DEBUG_NORMAL, "No SOPIN found; returns %d\n", rc);
+			sc_debug(context, SC_LOG_DEBUG_NORMAL, "No SOPIN found; returns %d", rc);
 			return sc_to_cryptoki_error(rc, "C_Login");
 		}
 		else if (rc < 0)   {
@@ -1017,7 +1039,7 @@ static CK_RV pkcs15_login(struct sc_pkcs11_slot *slot,
 			}
 		}
 #endif
-		sc_debug(context, SC_LOG_DEBUG_NORMAL, "context specific login returns %d\n", rc);
+		sc_debug(context, SC_LOG_DEBUG_NORMAL, "context specific login returns %d", rc);
 		return sc_to_cryptoki_error(rc, "C_Login");
 	default:
 		return CKR_USER_TYPE_INVALID;
@@ -1056,7 +1078,8 @@ static CK_RV pkcs15_login(struct sc_pkcs11_slot *slot,
 		return sc_to_cryptoki_error(rc, "C_Login");
 
 	rc = sc_pkcs15_verify_pin(p15card, auth_object, pPin, ulPinLen);
-	sc_debug(context, SC_LOG_DEBUG_NORMAL, "PKCS15 verify PIN returned %d\n", rc);
+	sc_debug(context, SC_LOG_DEBUG_NORMAL, "PKCS15 verify PIN returned %d", rc);
+	__pkcs15_update_pin_flags(slot, auth_object, (rc >= 0));
 	if (rc < 0)
 		return sc_to_cryptoki_error(rc, "C_Login");
 
@@ -1072,7 +1095,7 @@ static CK_RV pkcs15_login(struct sc_pkcs11_slot *slot,
 			unsigned ii, objs_num_before = fw_data->num_objects;
 			int rv;
 
-			sc_debug(context, SC_LOG_DEBUG_NORMAL, "PrKDF has been parsed loaded\n");
+			sc_debug(context, SC_LOG_DEBUG_NORMAL, "PrKDF has been parsed loaded");
 			rv = pkcs15_create_pkcs11_objects(fw_data, SC_PKCS15_TYPE_PRKEY_RSA,
 					"private key", __pkcs15_create_prkey_object);
 			if (rv < 0)
