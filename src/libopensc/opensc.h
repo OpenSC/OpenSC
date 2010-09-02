@@ -442,8 +442,6 @@ struct sc_card_operations {
 			   struct sc_file **file_out);
 	int (*get_response)(struct sc_card *card, size_t *count, u8 *buf);
 	int (*get_challenge)(struct sc_card *card, u8 * buf, size_t count);
-	/* This belongs to ETSI TS 101 206-3, not to ISO 7816. */
-	int (*give_random)(struct sc_card *card, u8 * buf, size_t count);
 
 	/*
 	 * ISO 7816-8 functions
