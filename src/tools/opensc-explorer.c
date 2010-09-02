@@ -323,7 +323,7 @@ static int read_and_util_print_binary_file(sc_file_t *file)
 	return 0;
 }
 
-static int read_and_print_record_file(sc_file_t *file, unsigned long sfi)
+static int read_and_print_record_file(sc_file_t *file, unsigned char sfi)
 {
 	u8 buf[256];
 	int rec, r;
