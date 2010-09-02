@@ -281,6 +281,9 @@ static int itacns_set_security_env(sc_card_t *card,
 	sc_apdu_t apdu;
 	u8	data[3];
 	int	key_id, r;
+	
+	/* Do not complain about se_num; the argument is part of the API. */
+	(void) se_num;
 
 	assert(card != NULL && env != NULL);
 
