@@ -118,7 +118,7 @@ static const char *option_help[] = {
 	"Lists PIN codes",
 	"Dump card objects",
 	"Unblock PIN code",
-	"Changes the PIN code",
+	"Change PIN or PUK code",
 	"Lists private keys",
 	"Lists public keys",
 	"Reads public key with ID <arg>",
