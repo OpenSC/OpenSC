@@ -453,7 +453,7 @@ static int iso7816_select_file(sc_card_t *card,
 	if (file_out != NULL) {
 		apdu.resp = buf;
 		apdu.resplen = sizeof(buf);
-		apdu.le = 256;
+		apdu.le = card->max_recv_size;
 	} else
 		apdu.cse = (apdu.lc == 0) ? SC_APDU_CASE_1 : SC_APDU_CASE_3_SHORT;
 
