@@ -1525,11 +1525,14 @@ int sc_pkcs15_parse_df(struct sc_pkcs15_card *p15card,
 	int (* func)(struct sc_pkcs15_card *, struct sc_pkcs15_object *,
 		     const u8 **nbuf, size_t *nbufsize) = NULL;
 
-	if (p15card->ops.parse_df)
-		return p15card->ops.parse_df(p15card, df);
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
+	if (p15card->ops.parse_df)   {
+		r = p15card->ops.parse_df(p15card, df);
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, r);
+	}
 
 	if (df->enumerated)
-		return SC_SUCCESS;
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
 
 	switch (df->type) {
 	case SC_PKCS15_PRKDF:
@@ -1552,7 +1555,7 @@ int sc_pkcs15_parse_df(struct sc_pkcs15_card *p15card,
 	}
 	if (func == NULL) {
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "unknown DF type: %d\n", df->type);
-		return SC_ERROR_INVALID_ARGUMENTS;
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
 	}
 	if (df->file != NULL)
 		r = sc_pkcs15_read_file(p15card, &df->path,
@@ -1560,8 +1563,7 @@ int sc_pkcs15_parse_df(struct sc_pkcs15_card *p15card,
 	else
 		r = sc_pkcs15_read_file(p15card, &df->path,
 					&buf, &bufsize, &df->file);
-	if (r < 0)
-		return r;
+	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "pkcs15 read file failed");
 
 	p = buf;
 	while (bufsize && *p != 0x00) {
@@ -1605,7 +1607,7 @@ ret:
 	free(buf);
 	if (!r)
 		df->enumerated = 1;
-	return r;
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, r);
 }
 
 int sc_pkcs15_add_unusedspace(struct sc_pkcs15_card *p15card,
