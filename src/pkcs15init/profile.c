@@ -120,6 +120,7 @@ static struct map		fileOpNames[] = {
         { "PIN-DEFINE", SC_AC_OP_PIN_DEFINE },
         { "PIN-CHANGE", SC_AC_OP_PIN_CHANGE },
         { "PIN-RESET",  SC_AC_OP_PIN_RESET },
+	{ "GENERATE",	SC_AC_OP_GENERATE },
 	{ NULL, 0 }
 };
 static struct map		fileTypeNames[] = {
