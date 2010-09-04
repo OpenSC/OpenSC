@@ -722,8 +722,8 @@ int _sc_card_add_rsa_alg(sc_card_t *card, unsigned int key_length,
 	return _sc_card_add_algorithm(card, &info);
 }
 
-sc_algorithm_info_t * _sc_card_find_rsa_alg(sc_card_t *card,
-						 unsigned int key_length)
+sc_algorithm_info_t * sc_card_find_rsa_alg(sc_card_t *card,
+		unsigned int key_length)
 {
 	int i;
 

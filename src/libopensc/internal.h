@@ -114,8 +114,6 @@ int _sc_check_forced_protocol(struct sc_context *ctx, u8 *atr, size_t atr_len, u
 int _sc_card_add_algorithm(struct sc_card *card, const struct sc_algorithm_info *info);
 int _sc_card_add_rsa_alg(struct sc_card *card, unsigned int key_length,
 			 unsigned long flags, unsigned long exponent);
-struct sc_algorithm_info * _sc_card_find_rsa_alg(struct sc_card *card,
-						 unsigned int key_length);
 
 int sc_asn1_read_tag(const u8 ** buf, size_t buflen, unsigned int *cla_out,
 		     unsigned int *tag_out, size_t *taglen);
