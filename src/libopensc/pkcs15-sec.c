@@ -83,7 +83,7 @@ int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 		return SC_ERROR_NOT_ALLOWED;
 	}
 
-	alg_info = _sc_card_find_rsa_alg(p15card->card, prkey->modulus_length);
+	alg_info = sc_card_find_rsa_alg(p15card->card, prkey->modulus_length);
 	if (alg_info == NULL) {
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Card does not support RSA with key length %d\n", prkey->modulus_length);
 		return SC_ERROR_NOT_SUPPORTED;
@@ -172,7 +172,7 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 		return SC_ERROR_NOT_ALLOWED;
 	}
 
-	alg_info = _sc_card_find_rsa_alg(p15card->card, prkey->modulus_length);
+	alg_info = sc_card_find_rsa_alg(p15card->card, prkey->modulus_length);
 	if (alg_info == NULL) {
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Card does not support RSA with key length %d\n", prkey->modulus_length);
 		return SC_ERROR_NOT_SUPPORTED;
