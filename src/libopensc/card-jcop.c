@@ -28,10 +28,6 @@
 
 static struct sc_atr_table jcop_atrs[] = {
 	{ "3B:E6:00:FF:81:31:FE:45:4A:43:4F:50:33:31:06", NULL, NULL, SC_CARD_TYPE_JCOP_GENERIC, 0, NULL },
-#if 0
-	/* Requires secure messaging */
-	{ "3B:E6:00:FF:81:31:FE:45:4A:43:4F:50:32:31:06", NULL, NULL, SC_CARD_TYPE_JCOP_GENERIC, 0, NULL },
-#endif
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
@@ -556,25 +552,6 @@ static int jcop_create_file(sc_card_t *card, sc_file_t *file) {
      return r;
 }
 
-/* no record oriented file services */
-static int jcop_read_record_unsupp(sc_card_t *card,
-                               unsigned int rec_nr, u8 *buf, 
-			      size_t count, unsigned long flags) {
-     return SC_ERROR_NOT_SUPPORTED;
-}
-
-static int jcop_wrupd_record_unsupp(sc_card_t *card,
-                               unsigned int rec_nr, const u8 *buf, 
-			      size_t count, unsigned long flags) {
-     return SC_ERROR_NOT_SUPPORTED;
-}
-
-static int jcop_append_record_unsupp(sc_card_t *card,
-                                 const u8 *buf, size_t count,
-                                 unsigned long flags) {
-     return SC_ERROR_NOT_SUPPORTED;
-}
-
 
 /* We need to trap these functions so that proper errors can be returned
    when one of the virtual files is selected */
@@ -922,12 +899,6 @@ static int jcop_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
         return SC_ERROR_NOT_SUPPORTED;
 }
 
-/* "The PINs are "global" in a PKCS#15 sense, meaning that they remain valid
- *  until card reset! Selecting another applet doesn't invalidate the PINs, 
- *  you need to reset the card." - javacard@zurich.ibm.com, when asked about 
- *  how to invalidate logged in pins.
- */
-
 static struct sc_card_driver * sc_get_driver(void)
 {
      struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
@@ -936,11 +907,12 @@ static struct sc_card_driver * sc_get_driver(void)
      jcop_ops.match_card = jcop_match_card;
      jcop_ops.init = jcop_init;
      jcop_ops.finish = jcop_finish;
+     /* no record oriented file services */
+     jcop_ops.read_record = NULL;
+     jcop_ops.write_record = NULL;
+     jcop_ops.append_record = NULL;
+     jcop_ops.update_record = NULL;
      jcop_ops.read_binary = jcop_read_binary;
-     jcop_ops.read_record = jcop_read_record_unsupp;
-     jcop_ops.write_record = jcop_wrupd_record_unsupp;
-     jcop_ops.append_record = jcop_append_record_unsupp;
-     jcop_ops.update_record = jcop_wrupd_record_unsupp;
      jcop_ops.write_binary = jcop_write_binary;
      jcop_ops.update_binary = jcop_update_binary;
      jcop_ops.select_file = jcop_select_file;
@@ -956,10 +928,8 @@ static struct sc_card_driver * sc_get_driver(void)
      return &jcop_drv;
 }
 
-#if 1
 struct sc_card_driver * sc_get_jcop_driver(void)
 {
      return sc_get_driver();
 }
-#endif
 
