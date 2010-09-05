@@ -296,34 +296,62 @@ __pkcs15_delete_object(struct pkcs15_fw_data *fw_data, struct pkcs15_any_object 
 	return SC_ERROR_OBJECT_NOT_FOUND;
 }
 
-static void
-__pkcs15_update_pin_flags(struct sc_pkcs11_slot *slot, struct sc_pkcs15_object *auth,
-		int pin_verified)
+CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo)
 {
+	struct sc_pkcs11_slot *slot;
+	struct sc_pkcs15_object *auth;
 	struct sc_pkcs15_pin_info *pin_info;
-	CK_TOKEN_INFO *tinfo;
+	struct sc_pin_cmd_data data;
+	int r;
+	CK_RV rv;
 
-	if (!slot || !auth || !auth->data)
-		return;
+	if (pInfo == NULL_PTR)
+		return CKR_ARGUMENTS_BAD;
 
-	if (slot_data_auth(slot->fw_data) != auth)
-		return;
+	rv = sc_pkcs11_lock();
+	if (rv != CKR_OK)
+		return rv;
 
-	tinfo = &slot->token_info;
-	pin_info = (struct sc_pkcs15_pin_info*) auth->data;
+	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_GetTokenInfo(%lx)", slotID);
 
-	if (pin_verified)
-		tinfo->flags &= ~(CKF_USER_PIN_FINAL_TRY | CKF_USER_PIN_LOCKED | CKF_USER_PIN_COUNT_LOW);
-	else if (pin_info->tries_left < 0)
-		return;
-	else if (pin_info->tries_left == 1 || pin_info->max_tries == 1)
-		tinfo->flags |= CKF_USER_PIN_FINAL_TRY;
-	else if (pin_info->tries_left == 0)
-		tinfo->flags |= CKF_USER_PIN_LOCKED;
-	else if (pin_info->max_tries && pin_info->tries_left && pin_info->tries_left < pin_info->max_tries)
-		tinfo->flags |= CKF_USER_PIN_COUNT_LOW;
+	rv = slot_get_token(slotID, &slot);
+	if (rv != CKR_OK)
+		goto out;
+
+	/* User PIN flags are cleared before re-calculation */
+	slot->token_info.flags &= ~(CKF_USER_PIN_COUNT_LOW|CKF_USER_PIN_FINAL_TRY|CKF_USER_PIN_LOCKED);
+	auth = slot_data_auth(slot->fw_data);
+	if (auth) {
+		pin_info = (struct sc_pkcs15_pin_info*) auth->data;
+
+		/* Try to update PIN info from card */
+		memset(&data, 0, sizeof(data));
+		data.cmd = SC_PIN_CMD_GET_INFO;
+		data.pin_type = SC_AC_CHV;
+		data.pin_reference = pin_info->reference;
+
+		r = sc_pin_cmd(slot->card->card, &data, NULL);
+		if (r == SC_SUCCESS) {
+			if (data.pin1.max_tries > 0)
+				pin_info->max_tries = data.pin1.max_tries;
+			/* tries_left must be supported or sc_pin_cmd should not return SC_SUCCESS */
+			pin_info->tries_left = data.pin1.tries_left;
+		}
+
+		if (pin_info->tries_left >= 0) {
+			if (pin_info->tries_left == 1 || pin_info->max_tries == 1)
+				slot->token_info.flags |= CKF_USER_PIN_FINAL_TRY;
+			else if (pin_info->tries_left == 0)
+				slot->token_info.flags |= CKF_USER_PIN_LOCKED;
+			else if (pin_info->max_tries > 1 && pin_info->tries_left < pin_info->max_tries)
+				slot->token_info.flags |= CKF_USER_PIN_COUNT_LOW;
+		}
+	}
+	memcpy(pInfo, &slot->token_info, sizeof(CK_TOKEN_INFO));
+out:
+	sc_pkcs11_unlock();
+	return rv;
 }
-
 
 static int public_key_created(struct pkcs15_fw_data *fw_data,
 			      const unsigned int num_objects,
@@ -768,7 +796,6 @@ static void pkcs15_init_slot(struct sc_pkcs15_card *p15card,
 			snprintf(tmp, sizeof(tmp), "%s", p15card->label);
 		}
 		slot->token_info.flags |= CKF_LOGIN_REQUIRED;
-		__pkcs15_update_pin_flags(slot, auth, 0);
 	} else
 		snprintf(tmp, sizeof(tmp), "%s", p15card->label);
 	strcpy_bp(slot->token_info.label, tmp, 32);
@@ -1077,9 +1104,9 @@ static CK_RV pkcs15_login(struct sc_pkcs11_slot *slot,
 		return sc_to_cryptoki_error(rc, "C_Login");
 
 	rc = sc_pkcs15_verify_pin(p15card, auth_object, pPin, ulPinLen);
-	sc_debug(context, SC_LOG_DEBUG_NORMAL, "PKCS15 verify PIN returned %d", rc);
-	__pkcs15_update_pin_flags(slot, auth_object, (rc >= 0));
-	if (rc < 0)
+	sc_debug(context, SC_LOG_DEBUG_NORMAL, "PKCS15 verify PIN returned %d", rc);	
+
+	if (rc != SC_SUCCESS)
 		return sc_to_cryptoki_error(rc, "C_Login");
 
 	if (userType == CKU_USER)   {

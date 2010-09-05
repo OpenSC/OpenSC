@@ -494,30 +494,6 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
 	return rv;
 }
 
-CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo)
-{
-	struct sc_pkcs11_slot *slot;
-	CK_RV rv;
-
-	if (pInfo == NULL_PTR)
-		return CKR_ARGUMENTS_BAD;
-
-	rv = sc_pkcs11_lock();
-	if (rv != CKR_OK)
-		return rv;
-
-	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_GetTokenInfo(%lx)", slotID);
-
-	rv = slot_get_token(slotID, &slot);
-
-	/* TODO: update token flags */
-	if (rv == CKR_OK)
-		memcpy(pInfo, &slot->token_info, sizeof(CK_TOKEN_INFO));
-
-	sc_pkcs11_unlock();
-	return rv;
-}
-
 CK_RV C_GetMechanismList(CK_SLOT_ID slotID,
 			 CK_MECHANISM_TYPE_PTR pMechanismList,
                          CK_ULONG_PTR pulCount)
