@@ -178,7 +178,7 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 		memset(&pin_obj, 0, sizeof(pin_obj));
 		
 		/* read the number of tries left for the PIN */
-		r = sc_read_record (card, i + 1, buff, 128, SC_RECORD_BY_REC_NR);
+		r = sc_read_record (card, i + 1, buff, sizeof(buff), SC_RECORD_BY_REC_NR);
 		if (r < 0)
 			return SC_ERROR_INTERNAL;
 		tries_left = buff[5];
