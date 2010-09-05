@@ -1318,11 +1318,35 @@ static int mcrd_decipher(sc_card_t * card,
 static int mcrd_pin_cmd(sc_card_t * card, struct sc_pin_cmd_data *data,
 			int *tries_left)
 {
+	int r;
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
 	data->pin1.offset = 5;
 	data->pin1.length_offset = 4;
 	data->pin2.offset = 5;
 	data->pin2.length_offset = 4;
+
+	if (card->type == SC_CARD_TYPE_MCRD_ESTEID && data->cmd == SC_PIN_CMD_GET_INFO) {
+		sc_path_t tmppath;
+		u8 buf[16];
+		int ref_to_record[] = {3,1,2};
+
+		/* the file with key pin info (tries left) 4.5 EF_PwdC */
+		sc_format_path ("3f000016", &tmppath);
+		r = sc_select_file (card, &tmppath, NULL);
+		if (r < 0)
+			return SC_ERROR_INTERNAL;
+
+		/* read the number of tries left for the PIN */
+		r = sc_read_record (card, ref_to_record[data->pin_reference], buf, sizeof(buf), SC_RECORD_BY_REC_NR);
+		if (r < 0)
+			return SC_ERROR_INTERNAL;
+		if (buf[0] != 0x80 || buf[3] != 0x90)
+			return SC_ERROR_INTERNAL;	
+		data->pin1.tries_left = buf[5];
+		data->pin1.max_tries = buf[2];
+		return SC_SUCCESS;
+	}
+
 	if (card->type == SC_CARD_TYPE_MCRD_DTRUST
 	    || card->type == SC_CARD_TYPE_MCRD_GENERIC) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "modify pin reference for D-Trust\n");
