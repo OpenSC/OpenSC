@@ -513,10 +513,9 @@ static int myeid_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 	}
 	else if(data->cmd == SC_PIN_CMD_CHANGE)
 	{
-		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "PIN change\n");
-		u8  buf[8];
-		u8  buf2[8];
+		u8  buf[8], buf2[8];
 
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "PIN change");
 		memset(buf, 0xFF, sizeof(buf));
 		memcpy(&buf[0], (u8 *)data->pin1.data, data->pin1.len);    /*copy pin1 (old PIN)*/
 		data->pin1.data = buf;
@@ -524,15 +523,14 @@ static int myeid_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 
 		memset(buf2, 0xFF, sizeof(buf));
 		memcpy(&buf2[0], (u8 *)data->pin2.data, data->pin2.len);    /*copy pin2 (new PIN)*/
-		data->pin2.data = buf;
+		data->pin2.data = buf2;
 		data->pin2.len  = 8;
 	}
 	else if(data->cmd == SC_PIN_CMD_UNBLOCK)
 	{
-		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "PIN unblock\n");
-		u8  buf[8];
-		u8  buf2[8];
+		u8  buf[8], buf2[8];
 
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "PIN unblock");
 		memset(buf, 0xFF, sizeof(buf));
 		memcpy(&buf[0], (u8 *)data->pin1.data, data->pin1.len);	    /* copy pin1 (PUK)*/
 		data->pin1.data = buf;
@@ -540,7 +538,7 @@ static int myeid_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 
 		memset(buf2, 0xFF, sizeof(buf));
 		memcpy(&buf2[0], (u8 *)data->pin2.data, data->pin2.len);   /* copy pin2, (new PIN)*/
-		data->pin2.data = buf;
+		data->pin2.data = buf2;
 		data->pin2.len  = 8;
 	}
 
