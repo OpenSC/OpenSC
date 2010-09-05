@@ -300,7 +300,6 @@ static void
 __pkcs15_update_pin_flags(struct sc_pkcs11_slot *slot, struct sc_pkcs15_object *auth,
 		int pin_verified)
 {
-	/* FIXME: should 'FINAL_TRY' be set when 'max_tries' is 1 ? */
 	struct sc_pkcs15_pin_info *pin_info;
 	CK_TOKEN_INFO *tinfo;
 
@@ -317,7 +316,7 @@ __pkcs15_update_pin_flags(struct sc_pkcs11_slot *slot, struct sc_pkcs15_object *
 		tinfo->flags &= ~(CKF_USER_PIN_FINAL_TRY | CKF_USER_PIN_LOCKED | CKF_USER_PIN_COUNT_LOW);
 	else if (pin_info->tries_left < 0)
 		return;
-	else if (pin_info->tries_left == 1)
+	else if (pin_info->tries_left == 1 || pin_info->max_tries == 1)
 		tinfo->flags |= CKF_USER_PIN_FINAL_TRY;
 	else if (pin_info->tries_left == 0)
 		tinfo->flags |= CKF_USER_PIN_LOCKED;
