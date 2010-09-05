@@ -3605,6 +3605,9 @@ static const char *p11_token_info_flags(CK_FLAGS value)
 		{ CKF_USER_PIN_INITIALIZED, "PIN initialized" },
 		{ CKF_PROTECTED_AUTHENTICATION_PATH, "PIN pad present" },
 		{ CKF_TOKEN_INITIALIZED, "token initialized" },
+		{ CKF_USER_PIN_COUNT_LOW, "user PIN count low" },
+		{ CKF_USER_PIN_FINAL_TRY, "final user PIN try" },
+		{ CKF_USER_PIN_LOCKED, "user PIN locked" },
 		{ 0, NULL }
 	};
 
