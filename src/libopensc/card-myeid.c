@@ -198,12 +198,6 @@ static int myeid_select_file(struct sc_card *card, const struct sc_path *in_path
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 }
 
-static int myeid_read_binary(struct sc_card *card, unsigned int idx,
-		u8 * buf, size_t count, unsigned long flags) 
-{ 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, iso_ops->read_binary(card, idx, buf, count, flags));
-}
 
 static int myeid_list_files(struct sc_card *card, u8 *buf, size_t buflen) 
 {
@@ -421,44 +415,6 @@ static int myeid_create_file(struct sc_card *card, struct sc_file *file)
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
-}
-
-/* no record oriented file services */
-static int myeid_read_record_unsupp(struct sc_card *card, unsigned int rec_nr, 
-		u8 *buf, size_t count, unsigned long flags) 
-{
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED);
-}
-
-static int myeid_wrupd_record_unsupp(struct sc_card *card, unsigned int rec_nr, 
-		const u8 *buf, size_t count, unsigned long flags) 
-{
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED);
-}
-
-static int myeid_append_record_unsupp(struct sc_card *card, const u8 *buf, 
-		size_t count, unsigned long flags) 
-{
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED);
-}
-
-
-static int myeid_write_binary(struct sc_card *card, unsigned int idx, 
-		const u8 *buf, size_t count, unsigned long flags) 
-{
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, iso_ops->write_binary(card, idx, buf, count, flags));
-}
-
-
-static int myeid_update_binary(struct sc_card *card, unsigned int idx, 
-		const u8 *buf, size_t count, unsigned long flags) 
-{     
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, iso_ops->update_binary(card, idx, buf, count, flags));
 }
 
 static int myeid_delete_file(struct sc_card *card, const struct sc_path *path) 
@@ -1087,17 +1043,6 @@ static int myeid_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 }
 
-/* "The PINs are "global" in a PKCS#15 sense, meaning that they remain valid
- *  until card reset! Selecting another applet doesn't invalidate the PINs, 
- *  you need to reset the card." - javacard@zurich.ibm.com, when asked about 
- *  how to invalidate logged in pins.
-*/
-static int myeid_logout(struct sc_card *card)
-{
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, 0);
-}
-
 static struct sc_card_driver * sc_get_driver(void)
 {
 	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
@@ -1107,13 +1052,12 @@ static struct sc_card_driver * sc_get_driver(void)
 	myeid_ops.init              = myeid_init;
 	if (iso_ops == NULL)
 		iso_ops = iso_drv->ops;
-	myeid_ops.read_binary       = myeid_read_binary;
-	myeid_ops.read_record       = myeid_read_record_unsupp;
-	myeid_ops.write_record      = myeid_wrupd_record_unsupp;
-	myeid_ops.append_record     = myeid_append_record_unsupp;
-	myeid_ops.update_record     = myeid_wrupd_record_unsupp;
-	myeid_ops.write_binary      = myeid_write_binary;
-	myeid_ops.update_binary     = myeid_update_binary;
+
+	/* no record oriented file services */
+	myeid_ops.read_record       = NULL;
+	myeid_ops.write_record      = NULL;
+	myeid_ops.append_record     = NULL;
+	myeid_ops.update_record     = NULL;
 	myeid_ops.select_file       = myeid_select_file;
 	myeid_ops.create_file       = myeid_create_file;
 	myeid_ops.delete_file       = myeid_delete_file;
@@ -1121,7 +1065,6 @@ static struct sc_card_driver * sc_get_driver(void)
 	myeid_ops.set_security_env  = myeid_set_security_env;
 	myeid_ops.compute_signature = myeid_compute_signature;
 	myeid_ops.decipher          = myeid_decipher;
-	myeid_ops.logout            = myeid_logout;
 	myeid_ops.process_fci       = myeid_process_fci;
 	myeid_ops.card_ctl          = myeid_card_ctl;
         myeid_ops.pin_cmd           = myeid_pin_cmd;
