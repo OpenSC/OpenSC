@@ -232,6 +232,7 @@ typedef struct sc_reader {
 #define SC_PIN_CMD_VERIFY	0
 #define SC_PIN_CMD_CHANGE	1
 #define SC_PIN_CMD_UNBLOCK	2
+#define SC_PIN_CMD_GET_INFO	3
 
 #define SC_PIN_CMD_USE_PINPAD		0x0001
 #define SC_PIN_CMD_NEED_PADDING 	0x0002
@@ -254,6 +255,9 @@ struct sc_pin_cmd_pin {
 	u8 pad_char;
 	size_t offset;		/* PIN offset in the APDU */
 	size_t length_offset;	/* Effective PIN length offset in the APDU */
+	
+	int max_tries;	/* Used for signaling back from SC_PIN_CMD_GET_INFO */
+	int tries_left;	/* Used for signaling back from SC_PIN_CMD_GET_INFO */
 };
 
 struct sc_pin_cmd_data {
