@@ -1289,7 +1289,13 @@ static int mcrd_pin_cmd(sc_card_t * card, struct sc_pin_cmd_data *data,
 		int ref_to_record[] = {3,1,2};
 
 		/* the file with key pin info (tries left) 4.5 EF_PwdC */
-		sc_format_path ("3f000016", &tmppath);
+		/* XXX: cheat the file path cache by always starting fresh from MF */
+		sc_format_path ("3f00", &tmppath);		
+		r = sc_select_file (card, &tmppath, NULL);
+		if (r < 0)
+			return SC_ERROR_INTERNAL;
+
+		sc_format_path ("3f000016", &tmppath);		
 		r = sc_select_file (card, &tmppath, NULL);
 		if (r < 0)
 			return SC_ERROR_INTERNAL;
