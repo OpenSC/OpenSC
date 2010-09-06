@@ -1272,48 +1272,6 @@ static int mcrd_compute_signature(sc_card_t * card,
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, apdu.resplen);
 }
 
-/* added by -mp */
-static int mcrd_decipher(sc_card_t * card,
-			 const u8 * crgram, size_t crgram_len, u8 * out,
-			 size_t out_len)
-{
-
-	int r;
-	sc_apdu_t apdu;
-	u8 tmp_crgram[1024];
-	struct mcrd_priv_data *priv = DRVDATA(card);
-	sc_security_env_t *env = &priv->sec_env;
-
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
-		 "Will dechiper %d (0x%x) bytes using key %d\n",
-		 crgram_len, crgram_len, env->key_ref[0]);
-
-	/* sanity check */
-	if (env->operation != SC_SEC_OPERATION_DECIPHER)
-		return SC_ERROR_INVALID_ARGUMENTS;
-
-	tmp_crgram[0] = '\0'; /* No algorithm specification */
-	memcpy(tmp_crgram + 1, crgram, crgram_len);
-	crgram_len += 1;
-
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x80, 0x86);
-
-	apdu.resp = out;
-	apdu.resplen = out_len;
-	apdu.le = apdu.resplen;
-
-	apdu.data = tmp_crgram;
-	apdu.datalen = crgram_len;
-	apdu.lc = apdu.datalen;
-
-	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
-	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
-
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, apdu.resplen);
-}
-
 /* added by -mp, to give pin information in the card driver (pkcs15emu->driver needed) */
 static int mcrd_pin_cmd(sc_card_t * card, struct sc_pin_cmd_data *data,
 			int *tries_left)
@@ -1370,7 +1328,6 @@ static struct sc_card_driver *sc_get_driver(void)
 	mcrd_ops.select_file = mcrd_select_file;
 	mcrd_ops.set_security_env = mcrd_set_security_env;
 	mcrd_ops.compute_signature = mcrd_compute_signature;
-	mcrd_ops.decipher = mcrd_decipher;
 	mcrd_ops.pin_cmd = mcrd_pin_cmd;
 
 	return &mcrd_drv;
