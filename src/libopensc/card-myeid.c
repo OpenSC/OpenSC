@@ -464,6 +464,9 @@ static int myeid_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 	if(data->pin1.len > 8 || data->pin2.len > 8)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_PIN_LENGTH);
 
+	data->pin1.pad_length = data->pin2.pad_length = 8;
+	data->pin1.pad_char = data->pin2.pad_char = 0xFF;
+
 	if (data->cmd == SC_PIN_CMD_VERIFY && priv->card_state == SC_FILE_STATUS_CREATION) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Card in creation state, no need to verify");
 		return SC_SUCCESS;
