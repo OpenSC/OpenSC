@@ -14,4 +14,12 @@ for file in /usr/lib/opensc-pkcs11.so /usr/local/bin/cryptoflex-tool /usr/local/
 done
 rm -f /usr/local/bin/opensc-uninstall
 
+# delete receipts on 10.6
+for file in /var/db/receipts/org.opensc-project.mac.bom /var/db/receipts/org.opensc-project.mac.plist; do
+	test -f $file && rm -f $file
+done
+
+# delete receipts on 10.5
+test -d /Library/Receipts/OpenSC-10.5.pkg && rm -rf /Library/Receipts/OpenSC-10.5.pkg
+
 echo "OpenSC has been removed from your system. See you again!"
