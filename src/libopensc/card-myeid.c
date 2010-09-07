@@ -38,7 +38,6 @@
 
 #define MYEID_STATE_CREATION 0x01
 #define MYEID_STATE_ACTIVATED 0x07
-static int card_state;
 
 static struct sc_card_operations myeid_ops;
 static struct sc_card_driver myeid_drv = {
@@ -55,6 +54,10 @@ static const char *myeid_atrs[] = {
 	"3B:F5:18:00:00:81:31:FE:45:4D:79:45:49:44:9A",
 	NULL
 };
+
+typedef struct myeid_private_data {
+	int card_state;
+} myeid_private_data_t;
 
 static int myeid_match_card(struct sc_card *card)
 {
@@ -83,8 +86,16 @@ static int myeid_match_card(struct sc_card *card)
 static int myeid_init(struct sc_card *card)
 {     	
 	unsigned long flags =0;
+	myeid_private_data_t *priv;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	priv = calloc(1, sizeof(myeid_private_data_t));
+	if (!priv)
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+	priv->card_state = SC_FILE_STATUS_CREATION;
+	card->drv_data = priv;
+
 	flags = SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_ONBOARD_KEY_GEN;
 	flags |= SC_ALGORITHM_RSA_HASH_NONE | SC_ALGORITHM_RSA_HASH_SHA1 | SC_ALGORITHM_ONBOARD_KEY_GEN;
 
@@ -222,9 +233,10 @@ static int myeid_list_files(struct sc_card *card, u8 *buf, size_t buflen)
 static int myeid_process_fci(struct sc_card *card, struct sc_file *file,
                  const u8 *buf, size_t buflen) 
 {     
+	myeid_private_data_t *priv = (myeid_private_data_t *) card->drv_data;
 	size_t taglen = 0;
 	const u8 *tag = NULL;
-	int r ;
+	int r;
   
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	r = iso_ops->process_fci(card, file, buf, buflen);
@@ -257,7 +269,7 @@ static int myeid_process_fci(struct sc_card *card, struct sc_file *file,
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "File id (%X) status SC_FILE_STATUS_ACTIVATED (0x%X)",
 					file->id, tag[0]);
 		}
-		card_state = file->status;
+		priv->card_state = file->status;
 	}
 
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, 0);
@@ -443,65 +455,21 @@ static int myeid_delete_file(struct sc_card *card, const struct sc_path *path)
 static int myeid_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 		         int *tries_left)
 {
-	int verify=1;
-
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+	myeid_private_data_t *priv = (myeid_private_data_t *) card->drv_data;
+
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "ref (%d), pin1 len(%d), pin2 len (%d)\n",
                       data->pin_reference, data->pin1.len, data->pin2.len);
 		
 	if(data->pin1.len > 8 || data->pin2.len > 8)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_PIN_LENGTH);
 
-	data->flags |= SC_PIN_CMD_NEED_PADDING;
-	if(data->cmd == SC_PIN_CMD_VERIFY)
-	{
-		if(card_state == SC_FILE_STATUS_CREATION) {
-			verify = 0;
-			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Card in creation state, no need to verify");
-		}
-		else {
-			u8  buf[8];
-			memset(buf, data->pin1.pad_char, sizeof(buf));
-			memcpy(&buf[0], (u8 *)data->pin1.data, data->pin1.len);   /* copy pin*/
-			data->pin1.data = buf;
-			data->pin1.len  = 8;
-		}
+	if (data->cmd == SC_PIN_CMD_VERIFY && priv->card_state == SC_FILE_STATUS_CREATION) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Card in creation state, no need to verify");
+		return SC_SUCCESS;
 	}
-	else if(data->cmd == SC_PIN_CMD_CHANGE)
-	{
-		u8  buf[8], buf2[8];
-
-		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "PIN change");
-		memset(buf, 0xFF, sizeof(buf));
-		memcpy(&buf[0], (u8 *)data->pin1.data, data->pin1.len);    /*copy pin1 (old PIN)*/
-		data->pin1.data = buf;
-		data->pin1.len  = 8;
-
-		memset(buf2, 0xFF, sizeof(buf));
-		memcpy(&buf2[0], (u8 *)data->pin2.data, data->pin2.len);    /*copy pin2 (new PIN)*/
-		data->pin2.data = buf2;
-		data->pin2.len  = 8;
-	}
-	else if(data->cmd == SC_PIN_CMD_UNBLOCK)
-	{
-		u8  buf[8], buf2[8];
-
-		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "PIN unblock");
-		memset(buf, 0xFF, sizeof(buf));
-		memcpy(&buf[0], (u8 *)data->pin1.data, data->pin1.len);	    /* copy pin1 (PUK)*/
-		data->pin1.data = buf;
-		data->pin1.len  = 8;
-
-		memset(buf2, 0xFF, sizeof(buf));
-		memcpy(&buf2[0], (u8 *)data->pin2.data, data->pin2.len);   /* copy pin2, (new PIN)*/
-		data->pin2.data = buf2;
-		data->pin2.len  = 8;
-	}
-
-	if(verify)
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, iso_ops->pin_cmd(card, data, tries_left));
-	else
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, 0);
+	
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, iso_ops->pin_cmd(card, data, tries_left));
 }
 
 static int myeid_set_security_env2(sc_card_t *card, const sc_security_env_t *env, 
@@ -1043,16 +1011,25 @@ static int myeid_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 }
 
+static int myeid_finish(sc_card_t * card)
+{
+	struct myeid_private_data *priv = (struct myeid_private_data *) card->drv_data;
+	free(priv);
+	return SC_SUCCESS;
+}
+
+
 static struct sc_card_driver * sc_get_driver(void)
 {
 	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
 
-	myeid_ops                   = *iso_drv->ops;
-	myeid_ops.match_card        = myeid_match_card;
-	myeid_ops.init              = myeid_init;
 	if (iso_ops == NULL)
 		iso_ops = iso_drv->ops;
 
+	myeid_ops                   = *iso_drv->ops;
+	myeid_ops.match_card        = myeid_match_card;
+	myeid_ops.init              = myeid_init;
+	myeid_ops.finish			= myeid_finish;
 	/* no record oriented file services */
 	myeid_ops.read_record       = NULL;
 	myeid_ops.write_record      = NULL;
@@ -1067,7 +1044,7 @@ static struct sc_card_driver * sc_get_driver(void)
 	myeid_ops.decipher          = myeid_decipher;
 	myeid_ops.process_fci       = myeid_process_fci;
 	myeid_ops.card_ctl          = myeid_card_ctl;
-        myeid_ops.pin_cmd           = myeid_pin_cmd;
+	myeid_ops.pin_cmd           = myeid_pin_cmd;
 	return &myeid_drv;
 }
 
