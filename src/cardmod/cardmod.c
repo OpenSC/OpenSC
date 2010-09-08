@@ -91,7 +91,7 @@ static void logprintf(PCARD_DATA pCardData, int level, const char* format, ...)
 		vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
 		if(vs != NULL && vs->ctx != NULL)
 		{
-			sc_debug(vs->ctx, SC_LOG_DEBUG_NORMAL, level, format, arg);
+			sc_debug(vs->ctx, level, format, arg);
 		}
 	}
 	va_end(arg);
@@ -548,7 +548,7 @@ DWORD WINAPI CardReadFile(__in PCARD_DATA pCardData,
 				pubkey = &(cert->key);
 				if(pubkey->algorithm == SC_ALGORITHM_RSA)
 				{
-					swprintf(p->wszGuid, L"%0*.*d", MAX_CONTAINER_NAME_LEN, \
+					swprintf(p->wszGuid, sizeof(p->wszGuid), L"%0*.*d", MAX_CONTAINER_NAME_LEN, \
 						MAX_CONTAINER_NAME_LEN, i /*rand()%1000*/);
 				
 					/*{D4C246CC-423D-4BDC-BD9E-1089B8DEB823}
