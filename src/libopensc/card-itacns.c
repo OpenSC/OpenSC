@@ -147,6 +147,7 @@ int itacns_match_card(sc_card_t *card)
 	unsigned int i = 0;
 	int r;
 	unsigned char *atr = card->atr;
+	int td1_idx;
 	sc_context_t *ctx;
 	ctx = card->ctx;
 
@@ -165,7 +166,7 @@ int itacns_match_card(sc_card_t *card)
 	if(atr[1] & 0x20) i++;
 	if(atr[1] & 0x10) i++;
 	/* TD1 */
-	int td1_idx = i;
+	td1_idx = i;
 	itacns_atr_mmatch(i, 0x81, 0x8f);
 	/* TA2, TB2, TC2 */
 	if(atr[td1_idx] & 0x40) i++;
@@ -199,9 +200,9 @@ int itacns_match_card(sc_card_t *card)
 
 static int itacns_init(sc_card_t *card)
 {
-	SC_FUNC_CALLED(card->ctx, 1);
-
 	unsigned long	flags;
+
+	SC_FUNC_CALLED(card->ctx, 1);
 
 	card->name = "CNS card";
 	card->cla = 0x00;
@@ -238,6 +239,7 @@ static int itacns_restore_security_env(sc_card_t *card, int se_num)
 {
 	sc_apdu_t apdu;
 	int	r;
+	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
 
 	SC_FUNC_CALLED(card->ctx, 1);
 
@@ -250,7 +252,6 @@ static int itacns_restore_security_env(sc_card_t *card, int se_num)
 	 * even though we know it will not be used (we don't even check it).
 	 */
 
-	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2, 0x22, 0xF3, se_num);
 	apdu.resp = rbuf;
 	apdu.resplen = sizeof(rbuf);

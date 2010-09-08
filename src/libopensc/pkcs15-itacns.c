@@ -125,9 +125,9 @@ static void set_string(char **strp, const char *value)
 static int loadFile(const sc_pkcs15_card_t *p15card, const sc_path_t *path,
 	u8 *buf, const size_t buflen)
 {
+	int sc_res;
 	SC_FUNC_CALLED(p15card->card->ctx, 1);
 
-	int sc_res;
 	sc_res = sc_select_file(p15card->card, path, NULL);
 	if(sc_res != SC_SUCCESS)
 		return sc_res;
@@ -145,6 +145,13 @@ static int itacns_add_cert(sc_pkcs15_card_t *p15card,
 	const sc_pkcs15_id_t *id, const char *label, int obj_flags,
 	int *ext_info_ok, int *key_usage, int *x_key_usage)
 {
+	int r;
+	/* const char *label = "Certificate"; */
+	sc_pkcs15_cert_info_t info;
+	sc_pkcs15_object_t    obj;
+	X509 *x509;
+	sc_pkcs15_cert_t *cert;
+
 	SC_FUNC_CALLED(p15card->card->ctx, 1);
 	
 	if(type != SC_PKCS15_TYPE_CERT_X509) {
@@ -153,12 +160,8 @@ static int itacns_add_cert(sc_pkcs15_card_t *p15card,
 		return 1;
 	}
 	
-	int r;
 	*ext_info_ok = 0;
 	
-	/* const char *label = "Certificate"; */
-	sc_pkcs15_cert_info_t info;
-	sc_pkcs15_object_t    obj;
 
 	memset(&info, 0, sizeof(info));
 	memset(&obj,  0, sizeof(obj));
@@ -178,15 +181,14 @@ static int itacns_add_cert(sc_pkcs15_card_t *p15card,
 	/* If we have OpenSSL, read keyUsage */
 #ifdef ENABLE_OPENSSL
 
-	X509 *x509;
-	sc_pkcs15_cert_t *cert;
-
 	r = sc_pkcs15_read_certificate(p15card, &info, &cert);
 	SC_TEST_RET(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, r,
 		"Could not read X.509 certificate");
 
-	const u8 *throwaway = cert->data;
-	x509 = d2i_X509(NULL, &throwaway, cert->data_len);
+	{
+		const u8 *throwaway = cert->data;
+		x509 = d2i_X509(NULL, &throwaway, cert->data_len);
+	}
 	sc_pkcs15_free_certificate(cert);
 	if (!x509) return SC_SUCCESS;
 	X509_check_purpose(x509, -1, 0);
@@ -211,11 +213,11 @@ static int itacns_add_pubkey(sc_pkcs15_card_t *p15card,
 	 const sc_path_t *path, const sc_pkcs15_id_t *id, const char *label,
 	int usage, int ref, int obj_flags, int *modulus_len_out)
 {
-	SC_FUNC_CALLED(p15card->card->ctx, 1);
-
 	int r;
 	sc_pkcs15_pubkey_info_t info;
 	sc_pkcs15_object_t obj;
+
+	SC_FUNC_CALLED(p15card->card->ctx, 1);
 
 	memset(&info, 0, sizeof(info));
 	memset(&obj,  0, sizeof(obj));
@@ -248,6 +250,9 @@ static int itacns_add_prkey(sc_pkcs15_card_t *p15card,
 		const sc_path_t *path, int ref,
                 const sc_pkcs15_id_t *auth_id, int obj_flags)
 {
+	sc_pkcs15_prkey_info_t info;
+	sc_pkcs15_object_t obj;
+
 	SC_FUNC_CALLED(p15card->card->ctx, 1);
 
 	if(type != SC_PKCS15_TYPE_PRKEY_RSA) {
@@ -255,9 +260,6 @@ static int itacns_add_prkey(sc_pkcs15_card_t *p15card,
 			"Cannot add a private key of a type other than RSA");
 		return 1;
 	}
-
-	sc_pkcs15_prkey_info_t info;
-	sc_pkcs15_object_t obj;
 
 	memset(&info, 0, sizeof(info));
 	memset(&obj,  0, sizeof(obj));
@@ -292,10 +294,10 @@ static int itacns_add_pin(sc_pkcs15_card_t *p15card,
 	sc_path_t *path,
 	int flags)
 {
-	SC_FUNC_CALLED(p15card->card->ctx, 1);
-
 	struct sc_pkcs15_pin_info pin_info;
 	struct sc_pkcs15_object pin_obj;
+
+	SC_FUNC_CALLED(p15card->card->ctx, 1);
 
 	memset(&pin_info, 0, sizeof(pin_info));
 	pin_info.auth_id.len = 1;
@@ -326,12 +328,14 @@ static int itacns_add_pin(sc_pkcs15_card_t *p15card,
 static int hextoint(char *src, unsigned int len)
 {
 	char hex[16];
+	char *end;
+	int res;
+
 	if(len >= sizeof(hex))
 		return -1;
 	strncpy(hex, src, len+1);
 	hex[len] = '\0';
-	char *end;
-	int res = strtol(hex, &end, 0x10);
+	res = strtol(hex, &end, 0x10);
 	if(end != (char*)&hex[len])
 		return -1;
 	return res;
@@ -349,15 +353,6 @@ static int get_name_from_EF_DatiPersonali(unsigned char *EFdata,
 	const unsigned int tlv_length_size = 6;
 	char *file = (char*)&EFdata[tlv_length_size];
 	int file_size = hextoint((char*)EFdata, tlv_length_size);
-	if(file_size < 0)
-		return -1;
-
-	/*
-	 * This shouldn't happen, but let us be protected against wrong
-	 * or malicious cards
-	 */
-	if(file_size > (int)EF_personaldata_maxlen - (int)tlv_length_size)
-		file_size = EF_personaldata_maxlen - tlv_length_size;
 
 	enum {
 		f_issuer_code = 0,
@@ -378,22 +373,34 @@ static int get_name_from_EF_DatiPersonali(unsigned char *EFdata,
 		f_expat_notes
 	};
 
+	/* Read the fields up to f_first_name */
 	struct {
 		int len;
 		char value[256];
 	} fields[f_first_name+1];
-	memset(fields, 0, sizeof(fields));
-
-	/* Read the fields up to f_first_name */
 	int i=0; /* offset inside the file */
 	int f; /* field number */
 
+	if(file_size < 0)
+		return -1;
+
+	/*
+	 * This shouldn't happen, but let us be protected against wrong
+	 * or malicious cards
+	 */
+	if(file_size > (int)EF_personaldata_maxlen - (int)tlv_length_size)
+		file_size = EF_personaldata_maxlen - tlv_length_size;
+
+
+	memset(fields, 0, sizeof(fields));
+
 	for(f=0; f<f_first_name+1; f++) {
+		int field_size;
 		/* Don't read beyond the allocated buffer */
 		if(i > file_size)
 			return -1;
 
-		int field_size = hextoint((char*) &file[i], 2);
+		field_size = hextoint((char*) &file[i], 2);
 		if((field_size < 0) || (field_size+i > file_size))
 			return -1;
 
@@ -421,17 +428,22 @@ static int itacns_add_data_files(sc_pkcs15_card_t *p15card)
 	const size_t list_size =
 		sizeof(itacns_data_files)/sizeof(itacns_data_files[0]);
 	unsigned int i;
-	int r;
+	int rv;
+	sc_pkcs15_data_t *p15_personaldata = NULL;
+	sc_pkcs15_data_info_t dinfo;
+	struct sc_pkcs15_object *objs[32];
+	struct sc_pkcs15_data_info *cinfo;
+
 	for(i=0; i < list_size; i++) {
-		if(itacns_data_files[i].cie_only &&
+		sc_path_t path;
+		sc_pkcs15_data_info_t data;
+		sc_pkcs15_object_t    obj;
+
+		if (itacns_data_files[i].cie_only &&
 			p15card->card->type != SC_CARD_TYPE_ITACNS_CIE_V2)
 			continue;
 
-		sc_path_t path;
-
 		sc_format_path(itacns_data_files[i].path, &path);
-		sc_pkcs15_data_info_t data;
-		sc_pkcs15_object_t    obj;
 
 		memset(&data, 0, sizeof(data));
 		memset(&obj, 0, sizeof(obj));
@@ -440,7 +452,7 @@ static int itacns_add_data_files(sc_pkcs15_card_t *p15card)
 		strlcpy(obj.label, itacns_data_files[i].label,
 			sizeof(obj.label));
 		data.path = path;
-		r = sc_pkcs15emu_add_data_object(p15card, &obj, &data);
+		rv = sc_pkcs15emu_add_data_object(p15card, &obj, &data);
 	}
 
 	/*
@@ -448,16 +460,12 @@ static int itacns_add_data_files(sc_pkcs15_card_t *p15card)
 	 * the user's full name. Thus we can use it to put together a
 	 * user-friendlier card name.
 	 */
-	sc_pkcs15_data_t *p15_personaldata = NULL;
-
-	sc_pkcs15_data_info_t dinfo;
 	memset(&dinfo, 0, sizeof(dinfo));
 	strcpy(dinfo.app_label, "EF_DatiPersonali");
 
 	/* Find EF_DatiPersonali */
 
-	struct sc_pkcs15_object *objs[32];
-	int rv = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_DATA_OBJECT,
+	rv = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_DATA_OBJECT,
 		objs, 32);
 	if(rv < 0) {
 		sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL,
@@ -465,7 +473,6 @@ static int itacns_add_data_files(sc_pkcs15_card_t *p15card)
 		return SC_SUCCESS;
 	}
 
-	struct sc_pkcs15_data_info *cinfo;
 	for(i=0; i<32; i++) {
 		cinfo = (struct sc_pkcs15_data_info *) objs[i]->data;
 		if(!strcmp("EF_DatiPersonali", objs[i]->label))
@@ -486,15 +493,18 @@ static int itacns_add_data_files(sc_pkcs15_card_t *p15card)
 			"keeping generic card name");
 	}
 
-	char fullname[160];
-	if(get_name_from_EF_DatiPersonali(p15_personaldata->data, fullname,
-		sizeof(fullname))) {
-		sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL,
-			"Could not parse EF_DatiPersonali: "
-			"keeping generic card name");
-		return SC_SUCCESS;
+	{
+		char fullname[160];
+		if(get_name_from_EF_DatiPersonali(p15_personaldata->data,
+			fullname, sizeof(fullname))) {
+			sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL,
+				"Could not parse EF_DatiPersonali: "
+				"keeping generic card name");
+			sc_pkcs15_free_data_object(p15_personaldata);
+			return SC_SUCCESS;
+		}
+		set_string(&p15card->label, fullname);
 	}
-	set_string(&p15card->label, fullname);
 	sc_pkcs15_free_data_object(p15_personaldata);
 	return SC_SUCCESS;
 }
@@ -507,6 +517,9 @@ static int itacns_add_keyset(sc_pkcs15_card_t *p15card,
 {
 	int r;
 	sc_path_t path;
+	sc_path_t *private_path = NULL;
+	char pinlabel[16];
+	int fake_puk_authid, pin_flags;
 
 	/* This is hard-coded, for the time being. */
 	int modulus_length = 1024;
@@ -525,7 +538,6 @@ static int itacns_add_keyset(sc_pkcs15_card_t *p15card,
 	 * FIXME: usage should be inferred from the X.509 certificate, and not
 	 * from whether the key needs Secure Messaging.
 	 */
-	sc_path_t *private_path = NULL;
 	if (prkey_path) {
 		sc_format_path(prkey_path, &path);
 		private_path = &path;
@@ -538,13 +550,12 @@ static int itacns_add_keyset(sc_pkcs15_card_t *p15card,
 		"Could not add private key");
 
 	/* PIN and PUK */
-	char pinlabel[16];
 	strlcpy(pinlabel, "PIN ", sizeof(pinlabel));
 	strlcat(pinlabel, label, sizeof(pinlabel));
 
 	/* We are making up ID 0x90+ to link the PIN and the PUK. */
-	int fake_puk_authid = 0x90 + pin_ref;
-	int pin_flags = SC_PKCS15_PIN_FLAG_CASE_SENSITIVE
+	fake_puk_authid = 0x90 + pin_ref;
+	pin_flags = SC_PKCS15_PIN_FLAG_CASE_SENSITIVE
 		| SC_PKCS15_PIN_FLAG_INITIALIZED;
 	r = itacns_add_pin(p15card, pinlabel, sec_env, fake_puk_authid, pin_ref,
 	    private_path, pin_flags);
@@ -582,6 +593,9 @@ static int itacns_check_and_add_keyset(sc_pkcs15_card_t *p15card,
 	int r;
 	sc_path_t path;
 	sc_pkcs15_id_t cert_id;
+	int ext_info_ok;
+	int ku, xku;
+	int pubkey_usage_flags = 0, prkey_usage_flags = 0;
 
 	cert_id.len = 1;
 	cert_id.value[0] = sec_env;
@@ -621,8 +635,7 @@ static int itacns_check_and_add_keyset(sc_pkcs15_card_t *p15card,
 		if (path.count == 0)
 			return 0;
 	}
-	int ext_info_ok;
-	int ku, xku;
+
 	r = itacns_add_cert(p15card, SC_PKCS15_TYPE_CERT_X509, 0,
 		&path, &cert_id, label, 0, &ext_info_ok, &ku, &xku);
 	if (r == SC_ERROR_INVALID_ASN1_OBJECT)
@@ -632,7 +645,6 @@ static int itacns_check_and_add_keyset(sc_pkcs15_card_t *p15card,
 	(*found_certificates)++;
 
 	/* Set usage flags */
-	int pubkey_usage_flags = 0, prkey_usage_flags = 0;
 	if(ext_info_ok) {
 #ifdef ENABLE_OPENSSL
 		if (ku & KU_DIGITAL_SIGNATURE) {
@@ -681,12 +693,13 @@ static int itacns_check_and_add_keyset(sc_pkcs15_card_t *p15card,
 
 static int itacns_init(sc_pkcs15_card_t *p15card)
 {
-	SC_FUNC_CALLED(p15card->card->ctx, 1);
-
 	int r;
 	sc_path_t path;
 	int certificate_count = 0;
 	int found_certs;
+	int card_is_cie_v1, cns0_secenv;
+
+	SC_FUNC_CALLED(p15card->card->ctx, 1);
 
 	set_string(&p15card->label, p15card->card->name);
 	if(p15card->card->drv_data) {
@@ -709,8 +722,8 @@ static int itacns_init(sc_pkcs15_card_t *p15card)
 	}
 
 	/* Read and set serial */
-	u8 serial[17];
 	{
+		u8 serial[17];
 		int bytes;
 		sc_format_path(path_serial, &path);
 		bytes = loadFile(p15card, &path, serial, 16);
@@ -721,10 +734,10 @@ static int itacns_init(sc_pkcs15_card_t *p15card)
 	}
 
 	/* Is the card a CIE v1? */
-	int card_is_cie_v1 =
+	card_is_cie_v1 =
 		   (p15card->card->type == SC_CARD_TYPE_ITACNS_CIE_V1)
 		|| (p15card->card->type == SC_CARD_TYPE_CARDOS_CIE_V1);
-	int cns0_secenv = (card_is_cie_v1 ? 0x31 : 0x01);
+	cns0_secenv = (card_is_cie_v1 ? 0x31 : 0x01);
 
 	/* If it's a Siemens CIE v1 card, set algo flags accordingly. */
 	if (card_is_cie_v1) {
