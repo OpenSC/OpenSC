@@ -213,10 +213,8 @@ static int sc_pkcs15emu_gemsafeGPK_init(sc_pkcs15_card_t *p15card)
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	/* need to limit to 248 */
-	if (card->max_send_size > 248)
-		card->max_send_size = 248;
-	if (card->max_recv_size > 248)
-		card->max_recv_size = 248;
+	card->max_send_size = 248;
+	card->max_recv_size = 248;
 
 
 	/* could read this off card if needed */

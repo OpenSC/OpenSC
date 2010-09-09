@@ -273,7 +273,7 @@ static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 
 	if (recvbuf) {
 		apdu.resp = rbuf;
-		apdu.le = (card->max_recv_size <= rbuflen)? card->max_recv_size : rbuflen;
+		apdu.le = (card->max_recv_size > 0 && card->max_recv_size  <= rbuflen)? card->max_recv_size : rbuflen;
 		apdu.resplen = rbuflen;
 	} else {
 		 apdu.resp =  rbuf;
@@ -1871,9 +1871,6 @@ static int piv_init(sc_card_t *card)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
 	priv->aid_file = sc_file_new();
 	priv->selected_obj = -1;
-	/* priv->max_recv_size = 256; */
-	/* priv->max_recv_size = card->max_recv_size; */
-	/* priv->max_send_size = card->max_send_size; */
 	
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Max send = %d recv = %d\n", 
 			card->max_send_size, card->max_recv_size);

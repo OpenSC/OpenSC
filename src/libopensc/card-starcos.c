@@ -111,10 +111,8 @@ static int starcos_init(sc_card_t *card)
 	card->caps = SC_CARD_CAP_RNG; 
 
 	/* we need read_binary&friends with max 128 bytes per read */
-	if (card->max_send_size > 128)
-		card->max_send_size = 128;
-	if (card->max_recv_size > 128)
-		card->max_recv_size = 128;
+	card->max_send_size = 128;
+	card->max_recv_size = 128;
 
 	return 0;
 }

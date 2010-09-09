@@ -69,10 +69,8 @@ static int miocos_init(sc_card_t *card)
 
 	/* read_binary and friends shouldn't do more than 244 bytes
 	 * per operation */
-	if (card->max_send_size > 244)
-		card->max_send_size = 244;
-	if (card->max_recv_size > 244)
-		card->max_recv_size = 244;
+	card->max_send_size = 244;
+	card->max_recv_size = 244;
 
 	return 0;
 }

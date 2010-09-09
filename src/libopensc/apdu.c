@@ -270,7 +270,7 @@ static int sc_check_apdu(sc_card_t *card, const sc_apdu_t *apdu)
 {
 	if ((apdu->cse & ~SC_APDU_SHORT_MASK) == 0) {
 		/* length check for short APDU    */
-		if (apdu->le > card->max_recv_size || (apdu->lc > card->max_send_size && 
+		if (apdu->le > 256 || (apdu->lc > 255 &&
 		    (apdu->flags & SC_APDU_FLAGS_CHAINING) == 0))
 			goto error;
 	} else if ((apdu->cse & SC_APDU_EXT) != 0) {
@@ -361,7 +361,7 @@ static void sc_detect_apdu_cse(const sc_card_t *card, sc_apdu_t *apdu)
 		 * short APDUs and the card supports extended APDUs
 		 * use extended APDUs (unless Lc is greater than
 		 * 255 and command chaining is activated) */
-		if ((apdu->le > card->max_recv_size || (apdu->lc > card->max_send_size && (apdu->flags & SC_APDU_FLAGS_CHAINING) == 0)) &&
+		if ((apdu->le > 256 || (apdu->lc > 255 && (apdu->flags & SC_APDU_FLAGS_CHAINING) == 0)) &&
 		    (card->caps & SC_CARD_CAP_APDU_EXT) != 0)
 			btype |= SC_APDU_EXT;
 		apdu->cse = btype;
@@ -407,7 +407,7 @@ static int do_single_transmit(sc_card_t *card, sc_apdu_t *apdu)
 	 *    response buffer size is larger than the new Le = SW2)
 	 */
 	if (apdu->sw1 == 0x6C && (apdu->flags & SC_APDU_FLAGS_NO_RETRY_WL) == 0) {
-		size_t nlen = apdu->sw2 != 0 ? (size_t)apdu->sw2 : card->max_recv_size;
+		size_t nlen = apdu->sw2 != 0 ? (size_t)apdu->sw2 : 256;
 		if (olen >= nlen) {
 			/* don't try again if it doesn't work this time */
 			apdu->flags  |= SC_APDU_FLAGS_NO_GET_RESP;
@@ -540,9 +540,7 @@ int sc_transmit_apdu(sc_card_t *card, sc_apdu_t *apdu)
 		 * bytes using command chaining */
 		size_t    len  = apdu->datalen;
 		const u8  *buf = apdu->data;
-	  	size_t    max_send_size = ((card->max_send_size > 0) ?
-					   card->max_send_size :
-					   card->reader->driver->max_send_size);
+		size_t    max_send_size = card->max_send_size > 0 ? card->max_send_size : 255;
 
 		while (len != 0) {
 			size_t    plen;

@@ -453,7 +453,7 @@ static int iso7816_select_file(sc_card_t *card,
 	if (file_out != NULL) {
 		apdu.resp = buf;
 		apdu.resplen = sizeof(buf);
-		apdu.le = card->max_recv_size;
+		apdu.le = card->max_recv_size > 0 ? card->max_recv_size : 256;
 	} else
 		apdu.cse = (apdu.lc == 0) ? SC_APDU_CASE_1 : SC_APDU_CASE_3_SHORT;
 
@@ -611,7 +611,7 @@ static int iso7816_get_response(sc_card_t *card, size_t *count, u8 *buf)
 	size_t rlen;
 
 	/* request at most max_recv_size bytes */
-	if (*count > card->max_recv_size)
+	if (card->max_recv_size > 0 && *count > card->max_recv_size)
 		rlen = card->max_recv_size;
 	else
 		rlen = *count;

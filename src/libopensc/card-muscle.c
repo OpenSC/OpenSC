@@ -495,8 +495,6 @@ static int muscle_init(sc_card_t *card)
 		_sc_card_add_rsa_alg(card, 1024, flags, 0);
 		_sc_card_add_rsa_alg(card, 2048, flags, 0);
 	}
-	card->max_recv_size = 1024 * 64;
-	card->max_send_size = 1024 * 64;
 	return SC_SUCCESS;
 }
 

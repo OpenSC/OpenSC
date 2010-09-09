@@ -706,7 +706,7 @@ do_select(sc_card_t * card, u8 kind,
 	apdu.lc = apdu.datalen;
 	apdu.resp = resbuf;
 	apdu.resplen = sizeof(resbuf);
-	apdu.le = card->max_recv_size;
+	apdu.le = sizeof(resbuf);
 
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");

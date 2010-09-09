@@ -127,10 +127,8 @@ static int atrust_acos_init(struct sc_card *card)
 	_sc_card_add_rsa_alg(card, 1536, flags, 0x10001);
 
 	/* we need read_binary&friends with max 128 bytes per read */
-	if (card->max_send_size > 128)
-		card->max_send_size = 128;
-	if (card->max_recv_size > 128)
-		card->max_recv_size = 128;
+	card->max_send_size = 128;
+	card->max_recv_size = 128;
 
 	return 0;
 }

@@ -134,10 +134,8 @@ static int entersafe_init(sc_card_t *card)
 	card->caps = SC_CARD_CAP_RNG; 
 
 	/* we need read_binary&friends with max 224 bytes per read */
-	if (card->max_send_size > 224)
-		card->max_send_size = 224;
-	if (card->max_recv_size > 224)
-		card->max_recv_size = 224;
+	card->max_send_size = 224;
+	card->max_recv_size = 224;
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,SC_SUCCESS);
 }
 
