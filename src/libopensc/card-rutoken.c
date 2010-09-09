@@ -1,5 +1,5 @@
 /*
- *  card-rutoken.c: Support for Rutoken cards
+ * card-rutoken.c: Support for Rutoken S cards
  *
  * Copyright (C) 2007  Pavel Mironchik <rutoken@rutoken.ru>
  * Copyright (C) 2007  Eugene Hermann <rutoken@rutoken.ru>
@@ -21,16 +21,6 @@
 
 #include "config.h"
 
-#if defined(HAVE_INTTYPES_H)
-#include <inttypes.h>
-#elif defined(HAVE_STDINT_H)
-#include <stdint.h>
-#elif defined(_MSC_VER)
-typedef unsigned __int32 uint32_t;
-typedef __int8 int8_t;
-#else
-#warning no uint32_t type available, please contact opensc-devel@opensc-project.org
-#endif
 #include <sys/types.h>
 #include <assert.h>
 #include <ctype.h>
@@ -43,14 +33,6 @@ typedef __int8 int8_t;
 #include "pkcs15.h"
 #include "asn1.h"
 #include "cardctl.h"
-
-#ifdef ENABLE_OPENSSL
-#include <openssl/evp.h>
-#include <openssl/rsa.h>
-#include <openssl/dsa.h>
-#include <openssl/x509.h>
-#include <openssl/err.h>
-#endif
 
 struct auth_senv {
 	unsigned int algorithm;
@@ -127,22 +109,13 @@ static int rutoken_match_card(sc_card_t *card)
 
 static int token_init(sc_card_t *card, const char *card_name)
 {
-	unsigned int flags;
-
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
 
 	card->name = card_name;
-	card->caps |= SC_CARD_CAP_RSA_2048 | SC_CARD_CAP_NO_FCI | SC_CARD_CAP_RNG;
+	card->caps |= SC_CARD_CAP_NO_FCI | SC_CARD_CAP_RNG;
 	card->drv_data = calloc(1, sizeof(auth_senv_t));
 	if (card->drv_data == NULL)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_OUT_OF_MEMORY);
-
-	flags = SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_PAD_PKCS1;
-	_sc_card_add_rsa_alg(card, 256, flags, 0);
-	_sc_card_add_rsa_alg(card, 512, flags, 0);
-	_sc_card_add_rsa_alg(card, 768, flags, 0);
-	_sc_card_add_rsa_alg(card, 1024, flags, 0);
-	_sc_card_add_rsa_alg(card, 2048, flags, 0);
 
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
 }
@@ -781,11 +754,8 @@ static int rutoken_set_security_env(sc_card_t *card,
 	senv = (auth_senv_t*)card->drv_data;
 	if (!senv)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INTERNAL);
-	if (env->algorithm == SC_ALGORITHM_RSA)
-	{
-		senv->algorithm = SC_ALGORITHM_RSA_RAW;
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
-	}
+	if (env->algorithm != SC_ALGORITHM_GOST)
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED);
 
 	senv->algorithm = SC_ALGORITHM_GOST;
 	if (env->key_ref_len != 1)
@@ -1120,269 +1090,6 @@ static int rutoken_compute_mac_gost(sc_card_t *card,
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, ret);
 }
 
-/*  RSA emulation  */
-
-#ifdef ENABLE_OPENSSL
-
-static int rutoken_get_prkey_from_bin(const u8 *data, size_t datalen,
-			struct sc_pkcs15_prkey **key)
-{
-	uint32_t bitlen;
-	size_t i, len;
-	struct sc_pkcs15_prkey_rsa *key_rsa;
-
-	if (!data  ||  !key  ||  *key != NULL)
-		return -1;
-
-	if (datalen < 14 + sizeof(uint32_t))
-		return -1;
-
-	/* Check header */
-	if (    data[0] != 2 || data[1] != 1
-	     || data[2] != 0x07 /* Type */
-	     || data[3] != 0x02 /* Version */
-	     /* aiKeyAlg */
-	     || data[6] != 0 || data[7] != 0xA4 || data[8] != 0 || data[9] != 0
-	     /* magic "RSA2" */
-	     || data[10] != 0x52 || data[11] != 0x53
-	     || data[12] != 0x41 || data[13] != 0x32
-	)
-		return -1;
-
-	len = 14;
-	/* bitlen */
-	bitlen = 0;
-	for (i = 0; i < sizeof(uint32_t); ++i)
-		bitlen += (uint32_t)data[len++] << i*8;
-
-	if (bitlen % 16)
-		return -1;
-	if (datalen - len  <  sizeof(uint32_t) + bitlen/8 * 2 + bitlen/16 * 5)
-		return -1;
-
-	*key = calloc(1, sizeof(struct sc_pkcs15_prkey));
-	if (!*key)
-		return -1;
-	key_rsa = &(*key)->u.rsa;
-
-	key_rsa->exponent.data = malloc(sizeof(uint32_t));
-	key_rsa->modulus.data = malloc(bitlen/8);
-	key_rsa->p.data = malloc(bitlen/16);
-	key_rsa->q.data = malloc(bitlen/16);
-	key_rsa->dmp1.data = malloc(bitlen/16);
-	key_rsa->dmq1.data = malloc(bitlen/16);
-	key_rsa->iqmp.data = malloc(bitlen/16);
-	key_rsa->d.data = malloc(bitlen/8);
-	if (!key_rsa->exponent.data || !key_rsa->modulus.data
-			|| !key_rsa->p.data || !key_rsa->q.data
-			|| !key_rsa->dmp1.data || !key_rsa->dmq1.data
-			|| !key_rsa->iqmp.data || !key_rsa->d.data
-	)
-	{
-		free(key_rsa->exponent.data);
-		free(key_rsa->modulus.data);
-		free(key_rsa->p.data);
-		free(key_rsa->q.data);
-		free(key_rsa->dmp1.data);
-		free(key_rsa->dmq1.data);
-		free(key_rsa->iqmp.data);
-		free(key_rsa->d.data);
-		memset(key_rsa, 0, sizeof(*key_rsa));
-
-		free(*key);
-		*key = NULL;
-		return -1;
-	}
-
-#define MEMCPY_KEYRSA_REVERSE_DATA(NAME, size) /* set key_rsa->NAME.len */ \
-	do { \
-		for (i = 0; i < (size); ++i) \
-			if (data[len + (size) - 1 - i] != 0) \
-				break; \
-		for (; i < (size); ++i) \
-			key_rsa->NAME.data[key_rsa->NAME.len++] = data[len + (size) - 1 - i]; \
-		len += (size); \
-	} while (0)
-
-	MEMCPY_KEYRSA_REVERSE_DATA(exponent, sizeof(uint32_t)); /* pubexp */
-	MEMCPY_KEYRSA_REVERSE_DATA(modulus, bitlen/8); /* modulus */
-	MEMCPY_KEYRSA_REVERSE_DATA(p, bitlen/16); /* prime1 */
-	MEMCPY_KEYRSA_REVERSE_DATA(q, bitlen/16); /* prime2 */
-	MEMCPY_KEYRSA_REVERSE_DATA(dmp1, bitlen/16); /* exponent1 */
-	MEMCPY_KEYRSA_REVERSE_DATA(dmq1, bitlen/16); /* exponent2 */
-	MEMCPY_KEYRSA_REVERSE_DATA(iqmp, bitlen/16); /* coefficient */
-	MEMCPY_KEYRSA_REVERSE_DATA(d, bitlen/8); /* privateExponent */
-
-	(*key)->algorithm = SC_ALGORITHM_RSA;
-	return 0;
-}
-
-static int rutoken_get_current_fileid(sc_card_t *card, u8 id[2])
-{
-	sc_apdu_t apdu;
-	int ret;
-
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xca, 0x01, 0x11);
-	apdu.resp = id;
-	apdu.resplen = 2;
-	apdu.le = 2;
-	ret = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "APDU transmit failed");
-	ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	swap_pair(id, 2);
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, ret);
-}
-
-static int rutoken_read_prkey(sc_card_t *card, struct sc_pkcs15_prkey **out)
-{
-	int r;
-	u8 id[2];
-	u8 *data;
-	sc_path_t path;
-	sc_file_t *file = NULL;
-
-	r = sc_lock(card);
-	if (r != SC_SUCCESS)
-		return r;
-
-	r = rutoken_get_current_fileid(card, id);
-	if (r == SC_SUCCESS)
-	{
-		sc_path_set(&path, SC_PATH_TYPE_FILE_ID, id, sizeof(id), 0, -1);
-		r = rutoken_select_file(card, &path, &file);
-	}
-	if (r == SC_SUCCESS  &&  file)
-	{
-		data = malloc(file->size);
-		if (data == NULL)
-			r = SC_ERROR_OUT_OF_MEMORY;
-		else
-		{
-			r = sc_read_binary(card, 0, data, file->size, 0);
-			if (r > 0  &&  (size_t)r == file->size)
-				r = rutoken_get_prkey_from_bin(data, file->size, out);
-			memset(data, 0, file->size);
-			free(data);
-		}
-	}
-	if (file)
-		sc_file_free(file);
-	sc_unlock(card);
-	return r;
-}
-
-#define GETBN(bn)	((bn)->len? BN_bin2bn((bn)->data, (bn)->len, NULL) : NULL)
-
-static int extract_key(sc_card_t *card, EVP_PKEY **pk)
-{
-	struct sc_pkcs15_prkey *key = NULL;
-	int r;
-
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
-
-	r = rutoken_read_prkey(card, &key);
-	if (r < 0)
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
-
-	if ((*pk = EVP_PKEY_new()) == NULL)
-		r = SC_ERROR_OUT_OF_MEMORY;
-	else
-	{
-		switch (key->algorithm)
-		{
-		case SC_ALGORITHM_RSA:
-		{
-			RSA *rsa = RSA_new();
-			EVP_PKEY_set1_RSA(*pk, rsa);
-			rsa->n = GETBN(&key->u.rsa.modulus);
-			rsa->e = GETBN(&key->u.rsa.exponent);
-			rsa->d = GETBN(&key->u.rsa.d);
-			rsa->p = GETBN(&key->u.rsa.p);
-			rsa->q = GETBN(&key->u.rsa.q);
-			if((rsa->n == NULL) || (rsa->e == NULL) || (rsa->d == NULL) || 
-			   (rsa->p == NULL) || (rsa->q == NULL)) 
-				r = SC_ERROR_INTERNAL;
-			RSA_free(rsa);
-			break;
-		}
-		default:
-			r = SC_ERROR_NOT_SUPPORTED;
-		}
-	}
-	if ((r < 0) && (*pk != NULL))
-	{
-		EVP_PKEY_free(*pk);
-		*pk = NULL;
-	}
-	if (key) sc_pkcs15_free_prkey(key);
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
-}
-
-static int cipher_ext(sc_card_t *card, const u8 *data, size_t len,
-			u8 *out, size_t out_len,
-			int sign /* sign==1 -> Sidn; sign==0 -> decipher */)
-{
-	char error[1024];
-	EVP_PKEY *pkey = NULL;
-	int ret, r;
-
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
-	if (out_len < len)
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
-
-	ret = extract_key(card, &pkey);
-	if (ret == SC_SUCCESS)
-	{
-		if (sign)
-			r = RSA_PKCS1_SSLeay()->rsa_priv_enc(len, data, out,
-					pkey->pkey.rsa, RSA_PKCS1_PADDING);
-		else
-		{
-			r = RSA_PKCS1_SSLeay()->rsa_priv_dec(len, data, out,
-					pkey->pkey.rsa, RSA_PKCS1_PADDING);
-			ret = r;
-		}
-		if ( r < 0)
-		{
-			ret = SC_ERROR_INTERNAL;
-			ERR_load_crypto_strings();
-			ERR_error_string(ERR_get_error(), error);
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, error);
-			ERR_free_strings();
-		}
-	}
-	if (pkey)
-		EVP_PKEY_free(pkey);
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, ret);
-}
-
-static int rutoken_decipher(sc_card_t *card, 
-			const u8 * data, size_t datalen, 
-			u8 * out, size_t outlen)
-{
-	int ret;
-	auth_senv_t *senv = (auth_senv_t *)card->drv_data;
-
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-
-	if (!senv)
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INTERNAL);
-
-	if (senv->algorithm == SC_ALGORITHM_GOST)
-	{
-		ret = rutoken_cipher_p(card, data, datalen, out, outlen, 0x80, 0x86, 1);
-	}
-	else if (senv->algorithm == SC_ALGORITHM_RSA_RAW) 
-	{
-		/* decipher */
-		ret = cipher_ext(card, data, datalen, out, outlen, 0);
-	}
-	else
-		ret = SC_ERROR_NOT_SUPPORTED;
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, ret);
-}
-
 static int rutoken_compute_signature(struct sc_card *card, 
 			const u8 * data, size_t datalen, 
 			u8 * out, size_t outlen)
@@ -1395,20 +1102,11 @@ static int rutoken_compute_signature(struct sc_card *card,
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INTERNAL);
 
 	if (senv->algorithm == SC_ALGORITHM_GOST)
-	{
 		ret = rutoken_compute_mac_gost(card, data, datalen, out, outlen);
-	}
-	else if (senv->algorithm == SC_ALGORITHM_RSA_RAW) 
-	{
-		/* sign */
-		ret = cipher_ext(card, data, datalen, out, outlen, 1);
-	}
 	else
 		ret = SC_ERROR_NOT_SUPPORTED;
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, ret);
 }
-
-#endif /* ENABLE_OPENSSL */
 
 static int rutoken_get_challenge(sc_card_t *card, u8 *rnd, size_t count)
 {
@@ -1571,13 +1269,8 @@ static struct sc_card_driver* get_rutoken_driver(void)
 	rutoken_ops.logout = rutoken_logout;
 	rutoken_ops.restore_security_env = rutoken_restore_security_env;
 	rutoken_ops.set_security_env = rutoken_set_security_env;
-#ifdef ENABLE_OPENSSL
-	rutoken_ops.decipher = rutoken_decipher;
-	rutoken_ops.compute_signature = rutoken_compute_signature;
-#else
 	rutoken_ops.decipher = NULL;
-	rutoken_ops.compute_signature = NULL;
-#endif
+	rutoken_ops.compute_signature = rutoken_compute_signature;
 	rutoken_ops.change_reference_data = rutoken_change_reference_data;
 	rutoken_ops.reset_retry_counter = rutoken_reset_retry_counter;
 	rutoken_ops.create_file = rutoken_create_file;
