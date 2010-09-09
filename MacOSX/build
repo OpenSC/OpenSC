@@ -129,6 +129,12 @@ mv OpenSC.tokend/build/OpenSC.tokend target/System/Library/Security/tokend
 mkdir -p target/usr/local/bin
 cp MacOSX/opensc-uninstall target/usr/local/bin
 
+# Copy libltdl.3.dylib, will be installed in /usr/lib by postflight script if needed
+case ${OSX_RELEASE} in
+"10.5")
+cp MacOSX/10.5/libltdl.3.dylib target/Library/OpenSC/lib/
+;;
+
 # Build installer package
 /Developer/Applications/Utilities/PackageMaker.app/Contents/MacOS/PackageMaker \
 -r target \

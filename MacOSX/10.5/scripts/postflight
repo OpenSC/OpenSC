@@ -21,4 +21,8 @@ for f in /Library/OpenSC/bin/*
 do
 	ln -sf $f /usr/local/bin
 done
+if !([ -e "/usr/lib/libltdl.3.dylib" ])
+then
+	cp /Library/OpenSC/lib/libltdl.3.dylib /usr/lib/libltdl.3.dylib
+fi
 exit 0
