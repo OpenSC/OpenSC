@@ -385,8 +385,7 @@ static int load_card_drivers(sc_context_t *ctx,
 	return SC_SUCCESS;
 }
 
-static int load_card_atrs(sc_context_t *ctx,
-			  struct _sc_ctx_options *opts)
+static int load_card_atrs(sc_context_t *ctx)
 {
 	struct sc_card_driver *driver;
 	scconf_block **blocks;
@@ -655,7 +654,7 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 	ctx->reader_driver->ops->init(ctx);
 	
 	load_card_drivers(ctx, &opts);
-	load_card_atrs(ctx, &opts);
+	load_card_atrs(ctx);
 	if (opts.forced_card_driver) {
 		/* FIXME: check return value? */
 		sc_set_card_driver(ctx, opts.forced_card_driver);
