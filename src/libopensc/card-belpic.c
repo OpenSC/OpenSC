@@ -101,7 +101,6 @@
 
 /* These defines are disabled for OpenSC */
 #if 0
-#define BELPIC_SET_LANG
 #define GET_LANG_FROM_CARD
 #define HAVE_ALLOW_SSO
 #endif
@@ -288,18 +287,6 @@ static char *pp_msg_pin_mismatch[] = {
 #define PCSC_ERROR(ctx, desc, rv) sc_debug(ctx, SC_LOG_DEBUG_NORMAL, desc ": %lx\n", rv);
 
 #endif	/* BELPIC_PIN_PAD */
-
-#ifdef BELPIC_SET_LANG
-
-#define MAX_READER_LEN	100
-typedef struct t_lang_info {
-	char reader[MAX_READER_LEN];
-	int lang;
-} t_lang_info;
-
-static t_lang_info lang_infos[SC_MAX_READERS];
-
-#endif	/* BELPIC_SET_LANG */
 
 /* Language support for the GUI messages */
 #ifdef HAVE_GUI
@@ -595,72 +582,10 @@ static int belpic_calculate_lang(sc_card_t *card)
 {
 	struct belpic_priv_data *priv = DRVDATA(card);
 	int lang = priv->lang;
-#ifdef BELPIC_SET_LANG
-	int i;
-
-	for (i = 0; i < SC_MAX_READERS; i++) {
-		if (lang_infos[i].reader[0] == '\0') {
-			if (lang_infos[i].lang != LNG_NONE)
-				lang = lang_infos[i].lang;
-			break;
-		}
-		if (strncmp(lang_infos[i].reader, card->reader->name, MAX_READER_LEN) == 0) {
-			if (lang_infos[i].lang != LNG_NONE)
-				lang = lang_infos[i].lang;
-		}
-	}
-#endif	/* BELPIC_SET_LANG */
-
 	return lang;
 }
 
 #endif	/* defined(HAVE_GUI) ||defined(BELPIC_PIN_PAD) */
-
-#ifdef BELPIC_SET_LANG
-
-/**
- * Force the language for the GUI and pinpad readers for one specific
- * or for all readers.
- * - IN reader: the PC/SC name of the reader, or NULL for all readers
- * - IN lang: 0 for English, 1 for Dutch, 2 for French, 3 for German
- *            and 0xFFFF to clear a previously selected language.
- * Returns:
- *    0 if OK,
- *   -1 if a bad language code was given,
- *   -2 if you called this function with more then MAX_READER_LEN (16)
- *        different reader names and a lang code different from 0xFF
- */
-int belpic_set_language(const char *reader, int lang)
-{
-	int i;
-
-	/* Check if language has a correct value */
-	if ((lang != LNG_NONE) && (lang < LNG_ENG || lang > LNG_GERMAN))
-		return -1;	/* Bad language */
-
-	/* Set or clear the language for the/all reader(s) */
-	for (i = 0; i < SC_MAX_READERS; i++) {
-		if (reader == NULL) {	/* For all readers */
-			lang_infos[i].lang = lang;
-			if (lang == LNG_NONE)
-				lang_infos[i].reader[0] = '\0';
-		} else {	/* For only 1 reader */
-			if (lang_infos[i].reader[0] == '\0') {	/* reader not yet present */
-				strlcpy(lang_infos[i].reader, reader, sizeof(lang_infos[i].reader));
-				lang_infos[i].lang = lang;
-				break;
-			} else if (strncmp(reader, lang_infos[i].reader, MAX_READER_LEN - 1) == 0) {
-				lang_infos[i].lang = lang;
-				break;
-			} else if (i == SC_MAX_READERS - 1)
-				return -2;	/* Too many readers (shouldn't happen) */
-		}
-	}
-
-	return 0;
-}
-
-#endif	/* BELPIC_SET_LANG */
 
 static int str2lang(sc_context_t *ctx, char *lang)
 {
