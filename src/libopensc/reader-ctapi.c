@@ -499,7 +499,7 @@ symerr:
 	return -1;
 }
 
-static int ctapi_init(sc_context_t *ctx, void **reader_data)
+static int ctapi_init(sc_context_t *ctx)
 {
 	int i;
 	struct ctapi_global_private_data *gpriv;
@@ -508,7 +508,7 @@ static int ctapi_init(sc_context_t *ctx, void **reader_data)
 	gpriv = calloc(1, sizeof(struct ctapi_global_private_data));
 	if (gpriv == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
-	*reader_data = gpriv;
+	ctx->reader_drv_data = gpriv;
 	
 	for (i = 0; ctx->conf_blocks[i] != NULL; i++) {
 		blocks = scconf_find_blocks(ctx->conf, ctx->conf_blocks[i],
@@ -529,9 +529,9 @@ static int ctapi_init(sc_context_t *ctx, void **reader_data)
 	return 0;
 }
 
-static int ctapi_finish(sc_context_t *ctx, void *prv_data)
+static int ctapi_finish(sc_context_t *ctx)
 {
-	struct ctapi_global_private_data *priv = (struct ctapi_global_private_data *) prv_data;
+	struct ctapi_global_private_data *priv = (struct ctapi_global_private_data *) ctx->reader_drv_data;
 
 	if (priv) {
 		int i;

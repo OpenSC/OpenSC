@@ -547,10 +547,10 @@ static int pcsc_reset(sc_reader_t *reader)
 }
 
 
-static int pcsc_cancel(sc_context_t *ctx, void *reader_data)
+static int pcsc_cancel(sc_context_t *ctx)
 {
 	LONG rv = SCARD_S_SUCCESS;
-	struct pcsc_global_private_data *gpriv = (struct pcsc_global_private_data *)reader_data;
+	struct pcsc_global_private_data *gpriv = (struct pcsc_global_private_data *)ctx->reader_drv_data;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 #ifndef _WIN32
@@ -579,13 +579,12 @@ static struct sc_reader_driver pcsc_drv = {
 	0, 0, NULL
 };
 
-static int pcsc_init(sc_context_t *ctx, void **reader_data)
+static int pcsc_init(sc_context_t *ctx)
 {
 	struct pcsc_global_private_data *gpriv;
 	scconf_block *conf_block = NULL;
 	int ret = SC_ERROR_INTERNAL;
 
-	*reader_data = NULL;
 
 	gpriv = calloc(1, sizeof(struct pcsc_global_private_data));
 	if (gpriv == NULL) {
@@ -677,7 +676,7 @@ static int pcsc_init(sc_context_t *ctx, void **reader_data)
 		goto out;
 	}
 
-	*reader_data = gpriv;
+	ctx->reader_drv_data = gpriv;
 	gpriv = NULL;
 	ret = SC_SUCCESS;
 
@@ -691,9 +690,9 @@ out:
 	return ret;
 }
 
-static int pcsc_finish(sc_context_t *ctx, void *prv_data)
+static int pcsc_finish(sc_context_t *ctx)
 {
-	struct pcsc_global_private_data *gpriv = (struct pcsc_global_private_data *) prv_data;
+	struct pcsc_global_private_data *gpriv = (struct pcsc_global_private_data *) ctx->reader_drv_data;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 
@@ -708,13 +707,13 @@ static int pcsc_finish(sc_context_t *ctx, void *prv_data)
 	return SC_SUCCESS;
 }
 
-static int pcsc_detect_readers(sc_context_t *ctx, void *prv_data)
+static int pcsc_detect_readers(sc_context_t *ctx)
 {
 	DWORD active_proto;
 	SCARDHANDLE card_handle;
 	u8 feature_buf[256], rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	PCSC_TLV_STRUCTURE *pcsc_tlv;
-	struct pcsc_global_private_data *gpriv = (struct pcsc_global_private_data *) prv_data;
+	struct pcsc_global_private_data *gpriv = (struct pcsc_global_private_data *) ctx->reader_drv_data;
 	LONG rv;
 	DWORD reader_buf_size, rcount, feature_len;
 	char *reader_buf = NULL, *reader_name;
@@ -724,6 +723,7 @@ static int pcsc_detect_readers(sc_context_t *ctx, void *prv_data)
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 
 	if (!gpriv) {
+		/* FIXME: this is not the correct error */
 		ret = SC_ERROR_NO_READERS_FOUND;
 		goto out;
 	}
@@ -967,11 +967,10 @@ out:
 
 /* Wait for an event to occur.
  */
-static int pcsc_wait_for_event(sc_context_t *ctx, void *reader_data,
-                               unsigned int event_mask, sc_reader_t **event_reader, unsigned int *event, 
+static int pcsc_wait_for_event(sc_context_t *ctx, unsigned int event_mask, sc_reader_t **event_reader, unsigned int *event, 
 			       int timeout, void **reader_states)
 {
-	struct pcsc_global_private_data *gpriv = (struct pcsc_global_private_data *)reader_data;
+	struct pcsc_global_private_data *gpriv = (struct pcsc_global_private_data *)ctx->reader_drv_data;
 	LONG rv;
 	SCARD_READERSTATE *rgReaderStates;
 	size_t i;

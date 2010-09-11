@@ -25,9 +25,9 @@
 #include "internal.h"
 
 /* function declarations */
-static int openct_reader_init(sc_context_t *ctx, void **priv_data);
+static int openct_reader_init(sc_context_t *ctx);
 static int openct_add_reader(sc_context_t *ctx, unsigned int num, ct_info_t *info);
-static int openct_reader_finish(sc_context_t *ctx, void *priv_data);
+static int openct_reader_finish(sc_context_t *ctx);
 static int openct_reader_release(sc_reader_t *reader);
 static int openct_reader_detect_card_presence(sc_reader_t *reader);
 static int openct_reader_connect(sc_reader_t *reader);
@@ -64,7 +64,7 @@ struct driver_data {
  * is loaded
  */
 static int
-openct_reader_init(sc_context_t *ctx, void **priv_data)
+openct_reader_init(sc_context_t *ctx)
 {
 	unsigned int	i,max_virtual;
 	scconf_block *conf_block;
@@ -135,7 +135,7 @@ openct_add_reader(sc_context_t *ctx, unsigned int num, ct_info_t *info)
  * Called when the driver is being unloaded.  finish() has to
  * deallocate the private data and any resources.
  */
-static int openct_reader_finish(sc_context_t *ctx, void *priv_data)
+static int openct_reader_finish(sc_context_t *ctx)
 {
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 	return SC_NO_ERROR;

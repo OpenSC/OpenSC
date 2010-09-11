@@ -56,7 +56,6 @@ static const struct option options[] = {
 	{ "set-conf-entry",	1, NULL,		'S' },
 	{ "list-readers",	0, NULL, 		'l' },
 	{ "list-drivers",	0, NULL,		'D' },
-	{ "list-rdrivers",	0, NULL,		'R' },
 	{ "list-files",		0, NULL,		'f' },
 	{ "send-apdu",		1, NULL,		's' },
 	{ "reader",		1, NULL,		'r' },
@@ -74,9 +73,8 @@ static const char *option_help[] = {
 	"Identify the card and print its name",
 	"Get configuration key, format: section:name:key",
 	"Set configuration key, format: section:name:key:value",
-	"Lists all configured readers",
+	"Lists readers",
 	"Lists all installed card drivers",
-	"Lists all installed reader drivers",
 	"Recursively lists files stored on card",
 	"Sends an APDU in format AA:BB:CC:DD:EE:FF...",
 	"Uses reader number <arg> [0]",
@@ -267,22 +265,6 @@ static int list_readers(void)
 		printf("%-7d%-11s%-10s%s\n", i, screader->driver->short_name,
 		      screader->capabilities & SC_READER_CAP_PIN_PAD ? "PINpad":"",
 		      screader->name);
-	}
-	return 0;
-}
-
-static int list_reader_drivers(void)
-{
-	int i;
-	
-	if (ctx->reader_drivers[0] == NULL) {
-		printf("No reader drivers installed!\n");
-		return 0;
-	}
-	printf("Configured reader drivers:\n");
-	for (i = 0; ctx->reader_drivers[i] != NULL; i++) {
-		printf("  %-16s %s\n", ctx->reader_drivers[i]->short_name,
-		      ctx->reader_drivers[i]->name);
 	}
 	return 0;
 }
@@ -640,7 +622,6 @@ int main(int argc, char * const argv[])
 	int do_set_conf_entry = 0;
 	int do_list_readers = 0;
 	int do_list_drivers = 0;
-	int do_list_rdrivers = 0;
 	int do_list_files = 0;
 	int do_send_apdu = 0;
 	int do_print_atr = 0;
@@ -656,7 +637,7 @@ int main(int argc, char * const argv[])
 	setbuf(stdout, NULL);
 
 	while (1) {
-		c = getopt_long(argc, argv, "inlG:S:fr:vs:DRc:aw", options, &long_optind);
+		c = getopt_long(argc, argv, "inlG:S:fr:vs:Dc:aw", options, &long_optind);
 		if (c == -1)
 			break;
 		if (c == '?')
@@ -682,10 +663,6 @@ int main(int argc, char * const argv[])
 			break;
 		case 'D':
 			do_list_drivers = 1;
-			action_count++;
-			break;
-		case 'R':
-			do_list_rdrivers = 1;
 			action_count++;
 			break;
 		case 'f':
@@ -756,11 +733,6 @@ int main(int argc, char * const argv[])
 	}
 	if (do_set_conf_entry) {
 		if ((err = opensc_set_conf_entry (opt_conf_entry)))
-			goto end;
-		action_count--;
-	}
-	if (do_list_rdrivers) {
-		if ((err = list_reader_drivers()))
 			goto end;
 		action_count--;
 	}

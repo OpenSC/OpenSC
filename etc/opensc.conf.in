@@ -28,18 +28,7 @@ app default {
 	#
 	# profile_dir = @pkgdatadir@;
 
-	# What reader drivers to load at start-up
-	#
-	# A special value of 'internal' will load all
-	# statically linked drivers. If an unknown (ie. not
-	# internal) driver is supplied, a separate configuration
-	# configuration block has to be written for the driver.
-	# Default: internal
-	# NOTE: if "internal" keyword is used, must be the
-	# last entry in reader_drivers list
-	#
-	# reader_drivers = openct, pcsc, ctapi;
-
+	# CT-API module configuration.
 	reader_driver ctapi {
 		# module /usr/local/towitoko/lib/libtowitoko.so {
 			# CT-API ports:
@@ -51,11 +40,7 @@ app default {
 		# }
 	}
 
-	# Define parameters specific to your readers.
-	# The following section shows definitions for PC/SC readers,
-	# but the same set of variables are applicable to ctapi and
-	# openct readers, simply by using "reader_driver ctapi" and
-	# "reader_driver openct", respectively.
+	# The following section shows definitions for PC/SC readers.
 	reader_driver pcsc {
 		# This sets the maximum send and receive sizes.
 		# Some reader drivers have limitations, so you need
@@ -431,7 +416,7 @@ app tokend {
 
 app cardmod {
 	#allow only cardmodule pcsc reader for minidriver (mandatory)
-	reader_drivers = cardmod;
+	# FIXME cardmod pcsc hack is now broken.
 
 	reader_driver cardmod {
 		# Enable pinpad if detected (PC/SC v2.0.2 Part 10)

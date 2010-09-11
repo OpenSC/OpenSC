@@ -67,10 +67,6 @@ format</para></listitem>
 					<listitem><para>Lists all installed card drivers</para></listitem>
 				</varlistentry>
 				<varlistentry>
-					<term><option>--list-rdrivers, -R</option></term>
-					<listitem><para>Lists all installed reader drivers</para></listitem>
-				</varlistentry>
-				<varlistentry>
 					<term><option>--reader</option> num, <option>-r</option> num</term>
 					<listitem><para>Use the given reader number.  The default is 0, the first reader
 in the system.</para></listitem>

@@ -205,7 +205,15 @@ AC_ARG_WITH(
 	,
 	[with_pcsc_provider="detect"]
 )
-
+dnl ./configure check
+reader_count=""
+for rdriver in "${enable_pcsc}" "${enable_openct}" "${enable_ctapi}"; do
+	test "${rdriver}" = "yes" && reader_count="${reader_count}x"
+done
+if test "${reader_count}" != "x"; then
+	AC_MSG_ERROR([Only one of --enable-pcsc, --enable-openct, --enable-ctapi can be specified!])
+fi
+	 
 dnl Checks for programs.
 AC_PROG_CPP
 AC_PROG_INSTALL

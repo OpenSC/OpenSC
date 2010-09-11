@@ -283,14 +283,14 @@ typedef struct sc_serial_number {
 struct sc_reader_operations {
 	/* Called during sc_establish_context(), when the driver
 	 * is loaded */
-	int (*init)(struct sc_context *ctx, void **priv_data);
+	int (*init)(struct sc_context *ctx);
 	/* Called when the driver is being unloaded.  finish() has to
-	 * deallocate the private data and any resources. */
-	int (*finish)(struct sc_context *ctx, void *priv_data);
+	 * release any resources. */
+	int (*finish)(struct sc_context *ctx);
 	/* Called when library wish to detect new readers
 	 * should add only new readers. */
-	int (*detect_readers)(struct sc_context *ctx, void *priv_data);
-	int (*cancel)(struct sc_context *ctx, void *priv_data);
+	int (*detect_readers)(struct sc_context *ctx);
+	int (*cancel)(struct sc_context *ctx);
 	/* Called when releasing a reader.  release() has to
 	 * deallocate the private data.  Other fields will be
 	 * freed by OpenSC. */
@@ -308,8 +308,7 @@ struct sc_reader_operations {
 	int (*perform_verify)(struct sc_reader *, struct sc_pin_cmd_data *);
 
 	/* Wait for an event */
-	int (*wait_for_event)(struct sc_context *ctx, void *priv_data, 
-			unsigned int event_mask, sc_reader_t **event_reader, unsigned int *event, 
+	int (*wait_for_event)(struct sc_context *ctx, unsigned int event_mask, sc_reader_t **event_reader, unsigned int *event, 
 			int timeout, void **reader_states);
 	/* Reset a reader */
 	int (*reset)(struct sc_reader *);
@@ -561,10 +560,10 @@ typedef struct sc_context {
 
 	list_t readers;
 	
-	const struct sc_reader_driver *reader_drivers[SC_MAX_READER_DRIVERS];
-	void *reader_drv_data[SC_MAX_READER_DRIVERS];
+	struct sc_reader_driver *reader_driver;
+	void *reader_drv_data;
 
-      	struct sc_card_driver *card_drivers[SC_MAX_CARD_DRIVERS];
+	struct sc_card_driver *card_drivers[SC_MAX_CARD_DRIVERS];
 	struct sc_card_driver *forced_driver;
 
 	sc_thread_context_t	*thread_ctx;

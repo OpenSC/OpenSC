@@ -98,21 +98,6 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 	{ NULL, NULL }
 };
 
-static const struct _sc_driver_entry internal_reader_drivers[] = {
-#ifdef ENABLE_PCSC
-	{ "pcsc",	(void *(*)(void)) sc_get_pcsc_driver },
-#endif
-#ifdef ENABLE_CTAPI
-	{ "ctapi",	(void *(*)(void)) sc_get_ctapi_driver },
-#endif
-#ifndef _WIN32
-#ifdef ENABLE_OPENCT
-	{ "openct",	(void *(*)(void)) sc_get_openct_driver },
-#endif
-#endif
-	{ NULL, NULL }
-};
-
 struct _sc_ctx_options {
 	struct _sc_driver_entry rdrv[SC_MAX_READER_DRIVERS];
 	int rcount;
@@ -132,38 +117,28 @@ static int reader_list_seeker(const void *el, const void *key) {
         return 0;
 }
                                                                 
-static void del_drvs(struct _sc_ctx_options *opts, int type)
+static void del_drvs(struct _sc_ctx_options *opts)
 {
 	struct _sc_driver_entry *lst;
 	int *cp, i;
 
-	if (type == 0) {
-		lst = opts->rdrv;
-		cp = &opts->rcount;
-	} else {
-		lst = opts->cdrv;
-		cp = &opts->ccount;
-	}
+	lst = opts->cdrv;
+	cp = &opts->ccount;
+
 	for (i = 0; i < *cp; i++) {
 		free((void *)lst[i].name);
 	}
 	*cp = 0;
 }
 
-static void add_drv(struct _sc_ctx_options *opts, int type, const char *name)
+static void add_drv(struct _sc_ctx_options *opts, const char *name)
 {
 	struct _sc_driver_entry *lst;
 	int *cp, max, i;
-
-	if (type == 0) {
-		lst = opts->rdrv;
-		cp = &opts->rcount;
-		max = SC_MAX_READER_DRIVERS;
-	} else {
-		lst = opts->cdrv;
-		cp = &opts->ccount;
-		max = SC_MAX_CARD_DRIVERS;
-	}
+	
+	lst = opts->cdrv;
+	cp = &opts->ccount;
+	max = SC_MAX_CARD_DRIVERS;
 	if (*cp == max) /* No space for more drivers... */
 		return;
 	for (i = 0; i < *cp; i++)
@@ -174,18 +149,15 @@ static void add_drv(struct _sc_ctx_options *opts, int type, const char *name)
 	*cp = *cp + 1;
 }
 
-static void add_internal_drvs(struct _sc_ctx_options *opts, int type)
+static void add_internal_drvs(struct _sc_ctx_options *opts)
 {
 	const struct _sc_driver_entry *lst;
 	int i;
 
-	if (type == 0)
-		lst = internal_reader_drivers;
-	else
-		lst = internal_card_drivers;
+	lst = internal_card_drivers;
 	i = 0;
 	while (lst[i].name != NULL) {
-		add_drv(opts, type, lst[i].name);
+		add_drv(opts, lst[i].name);
 		i++;
 	}
 }
@@ -203,8 +175,7 @@ static void set_defaults(sc_context_t *ctx, struct _sc_ctx_options *opts)
 		ctx->debug_file = fopen("/tmp/opensc-tokend.log", "a");
 #endif
 	ctx->forced_driver = NULL;
-	add_internal_drvs(opts, 0);
-	add_internal_drvs(opts, 1);
+	add_internal_drvs(opts);
 }
 
 static int load_parameters(sc_context_t *ctx, scconf_block *block,
@@ -237,58 +208,34 @@ static int load_parameters(sc_context_t *ctx, scconf_block *block,
 			free(opts->forced_card_driver);
 		opts->forced_card_driver = strdup(val);
 	}
-	list = scconf_find_list(block, "reader_drivers");
-	if (list != NULL)
-		del_drvs(opts, 0);
-	while (list != NULL) {
-		if (strcmp(list->data, s_internal) == 0)
-			add_internal_drvs(opts, 0);
-		else
-			add_drv(opts, 0, list->data);
-		list = list->next;
-	}
 
 	list = scconf_find_list(block, "card_drivers");
 	if (list != NULL)
-		del_drvs(opts, 1);
+		del_drvs(opts);
 	while (list != NULL) {
 		if (strcmp(list->data, s_internal) == 0)
-			add_internal_drvs(opts, 1);
+			add_internal_drvs(opts);
 		else
-			add_drv(opts, 1, list->data);
+			add_drv(opts, list->data);
 		list = list->next;
 	}
 
 	return err;
 }
 
-static void load_reader_driver_options(sc_context_t *ctx,
-			struct sc_reader_driver *driver)
+static void load_reader_driver_options(sc_context_t *ctx)
 {
-	const char	*name = driver->short_name;
-	scconf_block	*conf_block = NULL;
-	int		i;
-
-	for (i = 0; ctx->conf_blocks[i] != NULL; i++) {
-		scconf_block **blocks;
-
-		blocks = scconf_find_blocks(ctx->conf, ctx->conf_blocks[i],
-					    "reader_driver", name);
-		if (blocks) {
-			conf_block = blocks[0];
-			free(blocks);
-		}
-		if (conf_block != NULL)
-			break;
-	}
-
+	struct sc_reader_driver *driver = ctx->reader_driver;
+	scconf_block *conf_block = NULL;
+	
 	driver->max_send_size = SC_DEFAULT_MAX_SEND_SIZE;
 	driver->max_recv_size = SC_DEFAULT_MAX_RECV_SIZE;
+
+	conf_block = sc_get_conf_block(ctx, "reader_driver", driver->name, 1);
+	
 	if (conf_block != NULL) {
-		driver->max_send_size = scconf_get_int(conf_block,
-			"max_send_size", SC_DEFAULT_MAX_SEND_SIZE);
-		driver->max_recv_size = scconf_get_int(conf_block,
-			"max_recv_size", SC_DEFAULT_MAX_RECV_SIZE);
+		driver->max_send_size = scconf_get_int(conf_block, "max_send_size", driver->max_send_size);
+		driver->max_recv_size = scconf_get_int(conf_block, "max_recv_size", driver->max_recv_size);
 	}
 }
 
@@ -296,15 +243,14 @@ static void load_reader_driver_options(sc_context_t *ctx,
  * find library module for provided driver in configuration file
  * if not found assume library name equals to module name
  */
-static const char *find_library(sc_context_t *ctx, const char *name, int type)
+static const char *find_library(sc_context_t *ctx, const char *name)
 {
 	int          i;
 	const char   *libname = NULL;
 	scconf_block **blocks, *blk;
 
 	for (i = 0; ctx->conf_blocks[i]; i++) {
-		blocks = scconf_find_blocks(ctx->conf, ctx->conf_blocks[i],
-			(type==0) ? "reader_driver" : "card_driver", name);
+		blocks = scconf_find_blocks(ctx->conf, ctx->conf_blocks[i], "card_driver", name);
 		if (!blocks)
 			continue;
 		blk = blocks[0];
@@ -332,12 +278,8 @@ static const char *find_library(sc_context_t *ctx, const char *name, int type)
  * that returns a pointer to the function _sc_get_xxxx_driver()
  * used to initialize static modules
  * Also, an exported "char *sc_module_version" variable should exist in module
- *
- * type == 0 -> reader driver
- * type == 1 -> card driver
  */
-static void *load_dynamic_driver(sc_context_t *ctx, void **dll,
-	const char *name, int type)
+static void *load_dynamic_driver(sc_context_t *ctx, void **dll, const char *name)
 {
 	const char *version, *libname;
 	lt_dlhandle handle;
@@ -350,7 +292,7 @@ static void *load_dynamic_driver(sc_context_t *ctx, void **dll,
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL,"No module specified\n",name);
 		return NULL;
 	}
-	libname = find_library(ctx, name, type);
+	libname = find_library(ctx, name);
 	if (libname == NULL)
 		return NULL;
 	handle = lt_dlopen(libname);
@@ -376,55 +318,8 @@ static void *load_dynamic_driver(sc_context_t *ctx, void **dll,
 		return NULL;
 	}
 	*dll = handle;
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "successfully loaded %s driver '%s'\n",
-		type ? "card" : "reader", name);
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "successfully loaded card driver '%s'\n", name);
 	return modinit(name);
-}
-
-static int load_reader_drivers(sc_context_t *ctx,
-			       struct _sc_ctx_options *opts)
-{
-	const struct _sc_driver_entry *ent;
-	int drv_count;
-	int i;
-
-	for (drv_count = 0; ctx->reader_drivers[drv_count] != NULL; drv_count++);
-
-	for (i = 0; i < opts->rcount; i++) {
-		struct sc_reader_driver *driver;
-		struct sc_reader_driver *(*func)(void) = NULL;
-		struct sc_reader_driver *(**tfunc)(void) = &func;
-		int  j;
-		void *dll = NULL;
-
-		ent = &opts->rdrv[i];
-		for (j = 0; internal_reader_drivers[j].name != NULL; j++)
-			if (strcmp(ent->name, internal_reader_drivers[j].name) == 0) {
-				func = (struct sc_reader_driver *(*)(void)) internal_reader_drivers[j].func;
-				break;
-			}
-		#ifdef ENABLE_CARDMOD
-		/* carmod reader driver is subset of pcsc driver and
-		must be required on config file not set with 'internal' */
-		if (strcmp(ent->name, "cardmod") == 0) func = sc_get_cardmod_driver;
-		#endif
-		/* if not initialized assume external module */
-		if (func == NULL)
-			*(void**)(tfunc) = load_dynamic_driver(ctx, &dll, ent->name, 0);
-		/* if still null, assume driver not found */
-		if (func == NULL) {
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Unable to load '%s'.\n", ent->name);
-			continue;
-		}
-		driver = func();
-		driver->dll = dll;
-		load_reader_driver_options(ctx, driver);
-		driver->ops->init(ctx, &ctx->reader_drv_data[i]);
-
-		ctx->reader_drivers[drv_count] = driver;
-		drv_count++;
-	}
-	return SC_SUCCESS;
 }
 
 static int load_card_driver_options(sc_context_t *ctx,
@@ -473,7 +368,7 @@ static int load_card_drivers(sc_context_t *ctx,
 			}
 		/* if not initialized assume external module */
 		if (func == NULL)
-			*(void **)(tfunc) = load_dynamic_driver(ctx, &dll, ent->name, 1);
+			*(void **)(tfunc) = load_dynamic_driver(ctx, &dll, ent->name);
 		/* if still null, assume driver not found */
 		if (func == NULL) {
 			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Unable to load '%s'.\n", ent->name);
@@ -660,21 +555,17 @@ static void process_config_file(sc_context_t *ctx, struct _sc_ctx_options *opts)
 
 int sc_ctx_detect_readers(sc_context_t *ctx)
 {
-	int i;
+	int r;
+	const struct sc_reader_driver *drv = ctx->reader_driver;
 
 	sc_mutex_lock(ctx, ctx->mutex);
 
-	for (i = 0; ctx->reader_drivers[i] != NULL; i++) {
-		const struct sc_reader_driver *drv = ctx->reader_drivers[i];
-
-		if (drv->ops->detect_readers != NULL)
-			drv->ops->detect_readers(ctx, ctx->reader_drv_data[i]);
-	}
-
+	if (drv->ops->detect_readers != NULL)
+		r = drv->ops->detect_readers(ctx);
+	
 	sc_mutex_unlock(ctx, ctx->mutex);
 
-	/* XXX: Do not ignore erros? */
-	return SC_SUCCESS;
+	return r;
 }
 
 sc_reader_t *sc_ctx_get_reader(sc_context_t *ctx, unsigned int i)
@@ -747,14 +638,24 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "===================================\n"); /* first thing in the log */
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "opensc version: %s\n", sc_get_version());
 
-        /* initialize ltdl */
+	/* initialize ltdl */
 	if (lt_dlinit() != 0) {
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "lt_dlinit failed\n");
 		sc_release_context(ctx);
 		return SC_ERROR_OUT_OF_MEMORY;
 	}
 
-	load_reader_drivers(ctx, &opts);
+#ifdef ENABLE_PCSC
+	ctx->reader_driver = sc_get_pcsc_driver();
+#elif ENABLE_CTAPI 
+	ctx->reader_driver = sc_get_ctapi_driver();
+#elif ENABLE_OPENCT
+	ctx->reader_driver = sc_get_openct_driver();
+#endif
+
+	load_reader_driver_options(ctx);
+	ctx->reader_driver->ops->init(ctx);
+	
 	load_card_drivers(ctx, &opts);
 	load_card_atrs(ctx, &opts);
 	if (opts.forced_card_driver) {
@@ -762,8 +663,7 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 		sc_set_card_driver(ctx, opts.forced_card_driver);
 		free(opts.forced_card_driver);
 	}
-	del_drvs(&opts, 0);
-	del_drvs(&opts, 1);
+	del_drvs(&opts);
 	sc_ctx_detect_readers(ctx);
 	*ctx_out = ctx;
 	return SC_SUCCESS;
@@ -772,33 +672,21 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 /* Following two are only implemented with internal PC/SC and don't consume a reader object */
 int sc_cancel(sc_context_t *ctx)
 {
-        int i;
-        const struct sc_reader_driver *driver;
-        SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
-	for (i = 0; ctx->reader_drivers[i] != NULL; i++) {
-	        sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "trying %s", ctx->reader_drivers[i]->short_name);
-	        driver = ctx->reader_drivers[i];
-		if (driver->ops->cancel != NULL)
-		        return driver->ops->cancel(ctx, ctx->reader_drv_data[i]);
-        }
-        return SC_ERROR_NOT_SUPPORTED;
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
+	if (ctx->reader_driver->ops->cancel != NULL)
+		return ctx->reader_driver->ops->cancel(ctx);
+
+	return SC_ERROR_NOT_SUPPORTED;
 }
 
 
-int sc_wait_for_event(sc_context_t *ctx, unsigned int event_mask, sc_reader_t **event_reader, unsigned int *event, int timeout,
-		void **reader_states)
+int sc_wait_for_event(sc_context_t *ctx, unsigned int event_mask, sc_reader_t **event_reader, unsigned int *event, int timeout, void **reader_states)
 {
-        int i;
-        const struct sc_reader_driver *driver;
-        SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
-        for (i = 0; ctx->reader_drivers[i] != NULL; i++) {
-                sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "trying to wait event from %s", ctx->reader_drivers[i]->short_name);
-                driver = ctx->reader_drivers[i];
-                if (driver->ops->wait_for_event != NULL)                                        		
-		        return driver->ops->wait_for_event(ctx, ctx->reader_drv_data[i], event_mask, event_reader, event, timeout,
-					reader_states);
-        }
-        return SC_ERROR_NOT_SUPPORTED;
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
+	if (ctx->reader_driver->ops->wait_for_event != NULL)                                        		
+		return ctx->reader_driver->ops->wait_for_event(ctx, event_mask, event_reader, event, timeout, reader_states);
+		
+	return SC_ERROR_NOT_SUPPORTED;
 }
 
 
@@ -816,14 +704,9 @@ int sc_release_context(sc_context_t *ctx)
                 free(rdr);
 	}
 
-	for (i = 0; ctx->reader_drivers[i] != NULL; i++) {
-		const struct sc_reader_driver *drv = ctx->reader_drivers[i];
+	if (ctx->reader_driver->ops->finish != NULL)
+		ctx->reader_driver->ops->finish(ctx);
 
-		if (drv->ops->finish != NULL)
-			drv->ops->finish(ctx, ctx->reader_drv_data[i]);
-		if (drv->dll)
-			lt_dlclose(drv->dll);
-	}
 	for (i = 0; ctx->card_drivers[i]; i++) {
 		struct sc_card_driver *drv = ctx->card_drivers[i];
 
