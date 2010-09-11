@@ -99,8 +99,6 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 };
 
 struct _sc_ctx_options {
-	struct _sc_driver_entry rdrv[SC_MAX_READER_DRIVERS];
-	int rcount;
 	struct _sc_driver_entry cdrv[SC_MAX_CARD_DRIVERS];
 	int ccount;
 	char *forced_card_driver;
