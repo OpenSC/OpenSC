@@ -40,8 +40,7 @@ int _sc_add_reader(sc_context_t *ctx, sc_reader_t *reader)
 {
 	assert(reader != NULL);
 	reader->ctx = ctx;
-        list_append(&ctx->readers, reader);
-
+	list_append(&ctx->readers, reader);
 	return SC_SUCCESS;
 }
 
@@ -76,12 +75,12 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 #ifdef ENABLE_OPENSSL
 	{ "entersafe",(void *(*)(void)) sc_get_entersafe_driver },
 #endif
-	{ "rutoken",	(void *(*)(void)) sc_get_rutoken_driver }, 
+	{ "rutoken",	(void *(*)(void)) sc_get_rutoken_driver },
 	{ "rutoken_ecp",(void *(*)(void)) sc_get_rtecp_driver },
 	{ "westcos",	(void *(*)(void)) sc_get_westcos_driver },
 	{ "myeid",      (void *(*)(void)) sc_get_myeid_driver },
 
-/* Here should be placed drivers that need some APDU transactions to 
+/* Here should be placed drivers that need some APDU transactions to
  * recognise its cards. */
 	{ "setcos",	(void *(*)(void)) sc_get_setcos_driver },
 	{ "muscle",	(void *(*)(void)) sc_get_muscle_driver },
@@ -107,14 +106,14 @@ struct _sc_ctx_options {
 
 /* Simclist helper to locate readers by name */
 static int reader_list_seeker(const void *el, const void *key) {
-        const struct sc_reader *reader = (struct sc_reader *)el;
-        if ((el == NULL) || (key == NULL))
-                return 0;
-        if (strcmp(reader->name, (char*)key) == 0)
-                return 1;
-        return 0;
+	const struct sc_reader *reader = (struct sc_reader *)el;
+	if ((el == NULL) || (key == NULL))
+		return 0;
+	if (strcmp(reader->name, (char*)key) == 0)
+		return 1;
+	return 0;
 }
-                                                                
+
 static void del_drvs(struct _sc_ctx_options *opts)
 {
 	struct _sc_driver_entry *lst;
@@ -194,11 +193,11 @@ static int load_parameters(sc_context_t *ctx, scconf_block *block,
 		if (ctx->debug_file && (ctx->debug_file != stderr && ctx->debug_file != stdout))
 			fclose(ctx->debug_file);
 		if (!strcmp(val, "stdout"))
-		        ctx->debug_file = stdout;
-                else if (!strcmp(val, "stderr"))
-                        ctx->debug_file = stderr;
+			ctx->debug_file = stdout;
+		else if (!strcmp(val, "stderr"))
+			ctx->debug_file = stderr;
 		else
-		        ctx->debug_file = fopen(val, "a");
+			ctx->debug_file = fopen(val, "a");
 	}
 	val = scconf_get_str(block, "force_card_driver", NULL);
 	if (val) {
@@ -476,42 +475,38 @@ static void process_config_file(sc_context_t *ctx, struct _sc_ctx_options *opts)
 
 	memset(ctx->conf_blocks, 0, sizeof(ctx->conf_blocks));
 #ifdef _WIN32
-        conf_path = getenv("OPENSC_CONF");
+	conf_path = getenv("OPENSC_CONF");
 	if (!conf_path) {
-        	rc = RegOpenKeyEx( HKEY_CURRENT_USER, "Software\\OpenSC",
-                	0, KEY_QUERY_VALUE, &hKey );
-        	if( rc == ERROR_SUCCESS ) {
-                	temp_len = PATH_MAX;
-                	rc = RegQueryValueEx( hKey, "ConfigFile", NULL, NULL,
-                        	(LPBYTE) temp_path, &temp_len);
-                	if( (rc == ERROR_SUCCESS) && (temp_len < PATH_MAX) )
-                        	conf_path = temp_path;
-                	RegCloseKey( hKey );
-        	}
+		rc = RegOpenKeyEx(HKEY_CURRENT_USER, "Software\\OpenSC", 0, KEY_QUERY_VALUE, &hKey);
+		if (rc == ERROR_SUCCESS) {
+			temp_len = PATH_MAX;
+			rc = RegQueryValueEx( hKey, "ConfigFile", NULL, NULL, (LPBYTE) temp_path, &temp_len);
+			if ((rc == ERROR_SUCCESS) && (temp_len < PATH_MAX))
+				conf_path = temp_path;
+			RegCloseKey(hKey);
+		}
 	}
 
-        if (! conf_path) {
-                rc = RegOpenKeyEx( HKEY_LOCAL_MACHINE, "Software\\OpenSC",
-                        0, KEY_QUERY_VALUE, &hKey );
-                if( rc == ERROR_SUCCESS ) {
-                        temp_len = PATH_MAX;
-                        rc = RegQueryValueEx( hKey, "ConfigFile", NULL, NULL,
-                                (LPBYTE) temp_path, &temp_len);
-                        if( (rc == ERROR_SUCCESS) && (temp_len < PATH_MAX) )
-                                conf_path = temp_path;
-                        RegCloseKey( hKey );
-                }
-        }
+	if (!conf_path) {
+		rc = RegOpenKeyEx( HKEY_LOCAL_MACHINE, "Software\\OpenSC", 0, KEY_QUERY_VALUE, &hKey );
+		if (rc == ERROR_SUCCESS) {
+			temp_len = PATH_MAX;
+			rc = RegQueryValueEx( hKey, "ConfigFile", NULL, NULL, (LPBYTE) temp_path, &temp_len);
+			if ((rc == ERROR_SUCCESS) && (temp_len < PATH_MAX))
+				conf_path = temp_path;
+			RegCloseKey(hKey);
+		}
+	}
 
-	if (! conf_path) {
+	if (!conf_path) {
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "process_config_file doesn't find opensc config file. Please set the registry key.");
 		return;
 	}
 
 #else
-        conf_path = getenv("OPENSC_CONF");
-        if (!conf_path)
-                conf_path = OPENSC_CONF_PATH;
+	conf_path = getenv("OPENSC_CONF");
+	if (!conf_path)
+		conf_path = OPENSC_CONF_PATH;
 #endif
 	ctx->conf = scconf_new(conf_path);
 	if (ctx->conf == NULL)
@@ -567,17 +562,17 @@ int sc_ctx_detect_readers(sc_context_t *ctx)
 
 sc_reader_t *sc_ctx_get_reader(sc_context_t *ctx, unsigned int i)
 {
-        return list_get_at(&ctx->readers, i);
+	return list_get_at(&ctx->readers, i);
 }
 
 sc_reader_t *sc_ctx_get_reader_by_id(sc_context_t *ctx, unsigned int id)
 {
-        return list_get_at(&ctx->readers, id);
+	return list_get_at(&ctx->readers, id);
 }
 
 sc_reader_t *sc_ctx_get_reader_by_name(sc_context_t *ctx, const char * name)
 {
-       return list_seek(&ctx->readers, name);
+	return list_seek(&ctx->readers, name);
 }
 
 unsigned int sc_ctx_get_reader_count(sc_context_t *ctx)
@@ -644,7 +639,7 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 
 #ifdef ENABLE_PCSC
 	ctx->reader_driver = sc_get_pcsc_driver();
-#elif ENABLE_CTAPI 
+#elif ENABLE_CTAPI
 	ctx->reader_driver = sc_get_ctapi_driver();
 #elif ENABLE_OPENCT
 	ctx->reader_driver = sc_get_openct_driver();
@@ -680,7 +675,7 @@ int sc_cancel(sc_context_t *ctx)
 int sc_wait_for_event(sc_context_t *ctx, unsigned int event_mask, sc_reader_t **event_reader, unsigned int *event, int timeout, void **reader_states)
 {
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
-	if (ctx->reader_driver->ops->wait_for_event != NULL)                                        		
+	if (ctx->reader_driver->ops->wait_for_event != NULL)
 		return ctx->reader_driver->ops->wait_for_event(ctx, event_mask, event_reader, event, timeout, reader_states);
 		
 	return SC_ERROR_NOT_SUPPORTED;
@@ -694,11 +689,11 @@ int sc_release_context(sc_context_t *ctx)
 	assert(ctx != NULL);
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 	for (i=0; i<list_size(&ctx->readers); i++) {
-	        sc_reader_t *rdr = (sc_reader_t *) list_get_at(&ctx->readers, i);
-	        if (rdr->ops->release != NULL)
-	                rdr->ops->release(rdr);
-                free(rdr->name);
-                free(rdr);
+		sc_reader_t *rdr = (sc_reader_t *) list_get_at(&ctx->readers, i);
+		if (rdr->ops->release != NULL)
+			rdr->ops->release(rdr);
+		free(rdr->name);
+		free(rdr);
 	}
 
 	if (ctx->reader_driver->ops->finish != NULL)
@@ -727,7 +722,7 @@ int sc_release_context(sc_context_t *ctx)
 		fclose(ctx->debug_file);
 	if (ctx->app_name != NULL)
 		free(ctx->app_name);
-        list_destroy(&ctx->readers);
+		list_destroy(&ctx->readers);
 	sc_mem_clear(ctx, sizeof(*ctx));
 	free(ctx);
 	return SC_SUCCESS;
