@@ -453,9 +453,9 @@ static int myeid_delete_file(struct sc_card *card, const struct sc_path *path)
 static int myeid_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 		         int *tries_left)
 {
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	myeid_private_data_t *priv = (myeid_private_data_t *) card->drv_data;
 
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "ref (%d), pin1 len(%d), pin2 len (%d)\n",
                       data->pin_reference, data->pin1.len, data->pin2.len);
 		
