@@ -225,8 +225,8 @@ static void load_reader_driver_options(sc_context_t *ctx)
 	struct sc_reader_driver *driver = ctx->reader_driver;
 	scconf_block *conf_block = NULL;
 	
-	driver->max_send_size = SC_DEFAULT_MAX_SEND_SIZE;
-	driver->max_recv_size = SC_DEFAULT_MAX_RECV_SIZE;
+	driver->max_send_size = 0;
+	driver->max_recv_size = 0;
 
 	conf_block = sc_get_conf_block(ctx, "reader_driver", driver->name, 1);
 	
