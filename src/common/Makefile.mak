@@ -1,7 +1,7 @@
 TOPDIR = ..\..
 
 TARGET = common.lib
-OBJECTS = compat_getpass.obj compat_getopt.obj compat_strlcpy.obj simclist.obj
+OBJECTS = compat_getpass.obj compat_getopt.obj compat_strlcpy.obj compat_strlcat.obj simclist.obj
 
 all: $(TARGET)
 

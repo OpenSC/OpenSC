@@ -368,6 +368,8 @@ static int do_cat(int argc, char **argv)
 				goto err;
 			}
 		} else {
+			const char *sfi_n = &argv[0][sizeof(sfi_prefix)-1];
+
 			if(!current_file) {
 				printf("A DF must be selected to read by SFI\n");
 				goto err;
@@ -375,7 +377,6 @@ static int do_cat(int argc, char **argv)
 			path = current_path;
 			file = current_file;
 			not_current = 0;
-			const char *sfi_n = &argv[0][sizeof(sfi_prefix)-1];
 			sfi = atoi(sfi_n);
 			if ((sfi < 1) || (sfi > 30)) {
 				printf("Invalid SFI: %s\n", sfi_n);
@@ -1565,6 +1566,7 @@ int main(int argc, char * const argv[])
 	int cargc;
 	char *cargv[260];
 	sc_context_param_t ctx_param;
+	int lcycle = SC_CARDCTRL_LIFECYCLE_ADMIN;
 
 	printf("OpenSC Explorer version %s\n", sc_get_version());
 
@@ -1621,8 +1623,9 @@ int main(int argc, char * const argv[])
 	if (opt_startfile) {
 		if(*opt_startfile) {
 			char startpath[1024];
-			strncpy(startpath, opt_startfile, sizeof(startpath)-1);
 			char *argv[] = { startpath };
+
+			strncpy(startpath, opt_startfile, sizeof(startpath)-1);
 			r = do_cd(1, argv);
 			if (r) {
 				printf("unable to select file %s: %s\n",
@@ -1638,13 +1641,11 @@ int main(int argc, char * const argv[])
 			return 1;
 		}
 	}
-	{
-		int lcycle = SC_CARDCTRL_LIFECYCLE_ADMIN;
-		r = sc_card_ctl(card, SC_CARDCTL_LIFECYCLE_SET, &lcycle);
-		if (r && r != SC_ERROR_NOT_SUPPORTED)
-			printf("unable to change lifecycle: %s\n",
-				sc_strerror(r));
-	}
+	
+	r = sc_card_ctl(card, SC_CARDCTL_LIFECYCLE_SET, &lcycle);
+	if (r && r != SC_ERROR_NOT_SUPPORTED)
+		printf("unable to change lifecycle: %s\n", sc_strerror(r));
+
 	while (1) {
 		struct command *cmd;
 		size_t i;
