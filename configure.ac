@@ -300,6 +300,7 @@ AC_C_INLINE
 dnl Checks for header files.
 AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
+AC_HEADER_ASSERT
 AC_CHECK_HEADERS([ \
 	errno.h fcntl.h malloc.h stdlib.h \
 	inttypes.h string.h strings.h \
