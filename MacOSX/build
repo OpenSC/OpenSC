@@ -19,26 +19,16 @@ esac
 export SED=/usr/bin/sed
 PREFIX=/Library/OpenSC
 export PKG_CONFIG_PATH=/usr/lib/pkgconfig
-if test -d /opt/local/share/xsl/docbook-xsl; then
-	XSL_PATH=/opt/local/share/xsl/docbook-xsl
-elif test -d /sw/share/xml/xsl/docbook-xsl; then
-	XSL_PATH=/sw/share/xml/xsl/docbook-xsl
-else
-	echo "Building man pages requires the availability of docbook-xsl, either from fink (in /sw) or from macports (in /opt/local)."
-	exit 1
-fi
 ./configure --prefix=$PREFIX \
 --sysconfdir=$PREFIX/etc \
 --disable-dependency-tracking \
 --disable-doc \
 --enable-man \
---with-xsl-stylesheetsdir=$XSL_PATH \
 --enable-shared \
 --disable-static \
 --enable-iconv \
 --enable-strict \
---enable-pcsc \
---disable-ctapi
+--disable-assert
 
 
 # check if make install is required
