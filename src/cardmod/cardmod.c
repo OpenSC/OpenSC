@@ -313,10 +313,11 @@ DWORD WINAPI CardAuthenticatePin(__in PCARD_DATA pCardData,
 	int r;
 	sc_pkcs15_object_t *pin_obj;
 	char type[256];
-	
+	VENDOR_SPECIFIC *vs;
+
 	if(!pCardData) return SCARD_E_INVALID_PARAMETER;
 	
-	VENDOR_SPECIFIC *vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
+	vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
 
 	logprintf(pCardData, 1, "CardAuthenticatePin %S %d %d\n", NULLWSTR(pwszUserId), \
 		cbPin, vs->bPinsFreshness);
@@ -409,11 +410,13 @@ DWORD WINAPI CardDeauthenticate(__in PCARD_DATA pCardData,
 	__in LPWSTR pwszUserId,
 	__in DWORD dwFlags)
 {
+	VENDOR_SPECIFIC *vs;
+
 	logprintf(pCardData, 1, "CardDeauthenticate\n");
 
 	if(!pCardData) return SCARD_E_INVALID_PARAMETER;
 
-	VENDOR_SPECIFIC *vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
+	vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
 
 	CLEAR_PIN(vs->cardFiles.file_cardcf.bPinsFreshness, ROLE_USER);
 
