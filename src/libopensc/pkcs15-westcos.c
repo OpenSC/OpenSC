@@ -63,7 +63,6 @@ static int sc_pkcs15emu_westcos_init(sc_pkcs15_card_t * p15card)
 		free(p15card->serial_number);
 	p15card->serial_number = strdup(buf);
 	p15card->version = buf[6];
-	p15card->flags = SC_PKCS15_CARD_FLAG_LOGIN_REQUIRED;
 	sc_format_path("AAAA", &path);
 	r = sc_select_file(card, &path, &file);
 	if (r) 

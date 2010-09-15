@@ -96,9 +96,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 	set_string(&p15card->serial_number, string);
 	p15card->version = (buffer[6] << 8) | buffer[7];
 
-	p15card->flags = SC_PKCS15_CARD_FLAG_LOGIN_REQUIRED |
-			 SC_PKCS15_CARD_FLAG_PRN_GENERATION |
-			 SC_PKCS15_CARD_FLAG_EID_COMPLIANT;
+	p15card->flags = SC_PKCS15_CARD_FLAG_PRN_GENERATION | SC_PKCS15_CARD_FLAG_EID_COMPLIANT;
 
 	/* Extract preferred language */
 	r = read_file(card, "00655f2d", string, sizeof(string)-1);

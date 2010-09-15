@@ -923,7 +923,6 @@ sc_pkcs15init_store_pin(struct sc_pkcs15_card *p15card,
 
 	if (!(pin_info->flags & (SC_PKCS15_PIN_FLAG_SO_PIN | SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN)))   {
 		p15card->flags |= SC_PKCS15_CARD_FLAG_USER_PIN_INITIALIZED;
-		p15card->flags |= SC_PKCS15_CARD_FLAG_LOGIN_REQUIRED;
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Updated pkcs15 card flags %X", p15card->flags);
 	}
 
