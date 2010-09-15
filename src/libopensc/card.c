@@ -447,7 +447,7 @@ int sc_read_binary(sc_card_t *card, unsigned int idx,
 int sc_write_binary(sc_card_t *card, unsigned int idx,
 		    const u8 *buf, size_t count, unsigned long flags)
 {
-	size_t max_lc = card->max_send_size;
+	size_t max_lc = card->max_send_size > 0 ? card->max_send_size : 255;
 	int r;
 
 	assert(card != NULL && card->ops != NULL && buf != NULL);
@@ -489,7 +489,7 @@ int sc_write_binary(sc_card_t *card, unsigned int idx,
 int sc_update_binary(sc_card_t *card, unsigned int idx,
 		     const u8 *buf, size_t count, unsigned long flags)
 {
-	size_t max_lc = card->max_send_size;
+	size_t max_lc = card->max_send_size > 0 ? card->max_send_size : 255;
 	int r;
 
 	assert(card != NULL && card->ops != NULL && buf != NULL);
