@@ -189,6 +189,19 @@ print_access_rules(const struct sc_pkcs15_accessrule *rules, int num)
 	printf("\n");
 }
 
+static void print_common_flags(const struct sc_pkcs15_object *obj)
+{
+	const char *common_flags[] = {"private", "modifiable"};
+	unsigned int i;
+	printf("\tFlags       : [0x%X]", obj->flags);
+	for (i = 0; i < NELEMENTS(common_flags); i++) {
+		if (obj->flags & (1 << i)) {
+ 			printf(", %s", common_flags[i]);
+		}
+ 	}
+ 	printf("\n");
+}
+
 static void print_cert_info(const struct sc_pkcs15_object *obj)
 {
 	struct sc_pkcs15_cert_info *cert_info = (struct sc_pkcs15_cert_info *) obj->data;
@@ -480,7 +493,7 @@ static void print_prkey_info(const struct sc_pkcs15_object *obj)
 	const unsigned int af_count = NELEMENTS(access_flags);
 
 	printf("Private %s Key [%s]\n", types[3 & obj->type], obj->label);
-	printf("\tCom. Flags  : %X\n", obj->flags);
+	print_common_flags(obj);
 	printf("\tUsage       : [0x%X]", prkey->usage);
 	for (i = 0; i < usage_count; i++)
 		if (prkey->usage & (1 << i)) {
@@ -544,7 +557,7 @@ static void print_pubkey_info(const struct sc_pkcs15_object *obj)
 	const unsigned int af_count = NELEMENTS(access_flags);
 
 	printf("Public %s Key [%s]\n", types[3 & obj->type], obj->label);
-	printf("\tCom. Flags  : %X\n", obj->flags);
+	print_common_flags(obj);
 	printf("\tUsage       : [0x%X]", pubkey->usage);
 	for (i = 0; i < usage_count; i++)
 		if (pubkey->usage & (1 << i)) {
@@ -1036,7 +1049,7 @@ static void print_pin_info(const struct sc_pkcs15_object *obj)
 	size_t i;
 
 	printf("PIN [%s]\n", obj->label);
-	printf("\tCom. Flags: 0x%X\n", obj->flags);
+	print_common_flags(obj);	
 	printf("\tID        : %s\n", sc_pkcs15_print_id(&pin->auth_id));
 	printf("\tFlags     : [0x%02X]", pin->flags);
 	for (i = 0; i < pf_count; i++)
