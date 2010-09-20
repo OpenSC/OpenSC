@@ -193,7 +193,7 @@ static void print_common_flags(const struct sc_pkcs15_object *obj)
 {
 	const char *common_flags[] = {"private", "modifiable"};
 	unsigned int i;
-	printf("\tFlags       : [0x%X]", obj->flags);
+	printf("\tObject Flags   : [0x%X]", obj->flags);
 	for (i = 0; i < NELEMENTS(common_flags); i++) {
 		if (obj->flags & (1 << i)) {
  			printf(", %s", common_flags[i]);
@@ -209,16 +209,16 @@ static void print_cert_info(const struct sc_pkcs15_object *obj)
 	int rv;
 
 	printf("X.509 Certificate [%s]\n", obj->label);
-	printf("\tFlags    : %d\n", obj->flags);
-	printf("\tAuthority: %s\n", cert_info->authority ? "yes" : "no");
-	printf("\tPath     : %s\n", sc_print_path(&cert_info->path));
-	printf("\tID       : %s\n", sc_pkcs15_print_id(&cert_info->id));
+	print_common_flags(obj);
+	printf("\tAuthority      : %s\n", cert_info->authority ? "yes" : "no");
+	printf("\tPath           : %s\n", sc_print_path(&cert_info->path));
+	printf("\tID             : %s\n", sc_pkcs15_print_id(&cert_info->id));
 
 	print_access_rules(obj->access_rules, SC_PKCS15_MAX_ACCESS_RULES);
 
         rv = sc_pkcs15_read_certificate(p15card, cert_info, &cert_parsed);
 	if (rv >= 0 && cert_parsed)   {
-		printf("\tEncoded serial: %02X %02X ", *(cert_parsed->serial), *(cert_parsed->serial + 1));
+		printf("\tEncoded serial : %02X %02X ", *(cert_parsed->serial), *(cert_parsed->serial + 1));
 		util_hex_dump(stdout, cert_parsed->serial + 2, cert_parsed->serial_len - 2, "");
 		printf("\n");
 		free(cert_parsed);
@@ -486,7 +486,7 @@ static void print_prkey_info(const struct sc_pkcs15_object *obj)
 		"wrap", "unwrap", "verify", "verifyRecover",
 		"derive", "nonRepudiation"
 	};
-	const size_t usage_count = sizeof(usages)/sizeof(usages[0]);
+	const size_t usage_count = NELEMENTS(usages);
 	const char *access_flags[] = {
 		"sensitive", "extract", "alwaysSensitive",
 		"neverExtract", "local"
@@ -495,14 +495,14 @@ static void print_prkey_info(const struct sc_pkcs15_object *obj)
 
 	printf("Private %s Key [%s]\n", types[3 & obj->type], obj->label);
 	print_common_flags(obj);
-	printf("\tUsage       : [0x%X]", prkey->usage);
+	printf("\tUsage          : [0x%X]", prkey->usage);
 	for (i = 0; i < usage_count; i++)
 		if (prkey->usage & (1 << i)) {
 			printf(", %s", usages[i]);
 		}
 	printf("\n");
 
-	printf("\tAccess Flags: [0x%X]", prkey->access_flags);
+	printf("\tAccess Flags   : [0x%X]", prkey->access_flags);
 	for (i = 0; i < af_count; i++)   {
 		if (prkey->access_flags & (1 << i)) {
 			printf(", %s", access_flags[i]);   
@@ -512,13 +512,13 @@ static void print_prkey_info(const struct sc_pkcs15_object *obj)
 	print_access_rules(obj->access_rules, SC_PKCS15_MAX_ACCESS_RULES);
 
 	printf("\n");
-	printf("\tModLength   : %lu\n", (unsigned long)prkey->modulus_length);
-	printf("\tKey ref     : %d\n", prkey->key_reference);
-	printf("\tNative      : %s\n", prkey->native ? "yes" : "no");
-	printf("\tPath        : %s\n", sc_print_path(&prkey->path));
+	printf("\tModLength      : %lu\n", (unsigned long)prkey->modulus_length);
+	printf("\tKey ref        : %d\n", prkey->key_reference);
+	printf("\tNative         : %s\n", prkey->native ? "yes" : "no");
+	printf("\tPath           : %s\n", sc_print_path(&prkey->path));
 	if (obj->auth_id.len != 0)
-		printf("\tAuth ID     : %s\n", sc_pkcs15_print_id(&obj->auth_id));
-	printf("\tID          : %s\n", sc_pkcs15_print_id(&prkey->id));
+		printf("\tAuth ID        : %s\n", sc_pkcs15_print_id(&obj->auth_id));
+	printf("\tID             : %s\n", sc_pkcs15_print_id(&prkey->id));
 }
 
 
@@ -560,14 +560,14 @@ static void print_pubkey_info(const struct sc_pkcs15_object *obj)
 
 	printf("Public %s Key [%s]\n", types[3 & obj->type], obj->label);
 	print_common_flags(obj);
-	printf("\tUsage       : [0x%X]", pubkey->usage);
+	printf("\tUsage          : [0x%X]", pubkey->usage);
 	for (i = 0; i < usage_count; i++)
 		if (pubkey->usage & (1 << i)) {
 			printf(", %s", usages[i]);
 	}
 	printf("\n");
 
-	printf("\tAccess Flags: [0x%X]", pubkey->access_flags);
+	printf("\tAccess Flags   : [0x%X]", pubkey->access_flags);
 	for (i = 0; i < af_count; i++)   {
 		if (pubkey->access_flags & (1 << i)) {
 			printf(", %s", access_flags[i]);   
@@ -577,13 +577,13 @@ static void print_pubkey_info(const struct sc_pkcs15_object *obj)
 	print_access_rules(obj->access_rules, SC_PKCS15_MAX_ACCESS_RULES);
 
 	printf("\n");
-	printf("\tModLength   : %lu\n", (unsigned long)pubkey->modulus_length);
-	printf("\tKey ref     : %d\n", pubkey->key_reference);
-	printf("\tNative      : %s\n", pubkey->native ? "yes" : "no");
-	printf("\tPath        : %s\n", sc_print_path(&pubkey->path));
+	printf("\tModLength      : %lu\n", (unsigned long)pubkey->modulus_length);
+	printf("\tKey ref        : %d\n", pubkey->key_reference);
+	printf("\tNative         : %s\n", pubkey->native ? "yes" : "no");
+	printf("\tPath           : %s\n", sc_print_path(&pubkey->path));
 	if (obj->auth_id.len != 0)
-		printf("\tAuth ID     : %s\n", sc_pkcs15_print_id(&obj->auth_id));
-	printf("\tID          : %s\n", sc_pkcs15_print_id(&pubkey->id));
+		printf("\tAuth ID        : %s\n", sc_pkcs15_print_id(&obj->auth_id));
+	printf("\tID             : %s\n", sc_pkcs15_print_id(&pubkey->id));
 }
 
 static int list_public_keys(void)
@@ -1048,30 +1048,30 @@ static void print_pin_info(const struct sc_pkcs15_object *obj)
 	const char *pin_types[] = {"bcd", "ascii-numeric", "UTF-8",
 		"halfnibble bcd", "iso 9664-1"}; 
 	const struct sc_pkcs15_pin_info *pin = (const struct sc_pkcs15_pin_info *) obj->data;
-	const size_t pf_count = sizeof(pin_flags)/sizeof(pin_flags[0]);
+	const size_t pf_count = NELEMENTS(pin_flags);
 	size_t i;
 
 	printf("PIN [%s]\n", obj->label);
 	print_common_flags(obj);	
-	printf("\tID        : %s\n", sc_pkcs15_print_id(&pin->auth_id));
-	printf("\tFlags     : [0x%02X]", pin->flags);
+	printf("\tID             : %s\n", sc_pkcs15_print_id(&pin->auth_id));
+	printf("\tFlags          : [0x%02X]", pin->flags);
 	for (i = 0; i < pf_count; i++)
 		if (pin->flags & (1 << i)) {
 			printf(", %s", pin_flags[i]);
 		}
 	printf("\n");
-	printf("\tLength    : min_len:%lu, max_len:%lu, stored_len:%lu\n",
+	printf("\tLength         : min_len:%lu, max_len:%lu, stored_len:%lu\n",
 		(unsigned long)pin->min_length, (unsigned long)pin->max_length,
 		(unsigned long)pin->stored_length);
-	printf("\tPad char  : 0x%02X\n", pin->pad_char);
-	printf("\tReference : %d\n", pin->reference);
-	if (pin->type < sizeof(pin_types)/sizeof(pin_types[0]))
-		printf("\tType      : %s\n", pin_types[pin->type]);
+	printf("\tPad char       : 0x%02X\n", pin->pad_char);
+	printf("\tReference      : %d\n", pin->reference);
+	if (pin->type < NELEMENTS(pin_types))
+		printf("\tType           : %s\n", pin_types[pin->type]);
 	else
-		printf("\tType      : [encoding %d]\n", pin->type);
-	printf("\tPath      : %s\n", sc_print_path(&pin->path));
+		printf("\tType           : [encoding %d]\n", pin->type);
+	printf("\tPath           : %s\n", sc_print_path(&pin->path));
 	if (pin->tries_left >= 0)
-		printf("\tTries left: %d\n", pin->tries_left);
+		printf("\tTries left     : %d\n", pin->tries_left);
 }
 
 static int list_pins(void)
