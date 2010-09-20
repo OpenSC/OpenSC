@@ -458,7 +458,6 @@ static int list_data_objects(void)
 		} else
 			printf("NONE\n");
 		printf("Path:            %s\n", sc_print_path(&cinfo->path));
-		printf("Auth ID:         %s\n", sc_pkcs15_print_id(&objs[i]->auth_id));
 		if (objs[i]->auth_id.len == 0) {
 			struct sc_pkcs15_data *data_object;
 			r = sc_pkcs15_read_data_object(p15card, cinfo, &data_object);
@@ -470,6 +469,8 @@ static int list_data_objects(void)
 			}
 			r = list_data_object("Data Object", data_object->data, data_object->data_len);
 			sc_pkcs15_free_data_object(data_object);
+		} else {
+			printf("Auth ID:         %s\n", sc_pkcs15_print_id(&objs[i]->auth_id));
 		}
 	}
 	return 0;
@@ -515,7 +516,8 @@ static void print_prkey_info(const struct sc_pkcs15_object *obj)
 	printf("\tKey ref     : %d\n", prkey->key_reference);
 	printf("\tNative      : %s\n", prkey->native ? "yes" : "no");
 	printf("\tPath        : %s\n", sc_print_path(&prkey->path));
-	printf("\tAuth ID     : %s\n", sc_pkcs15_print_id(&obj->auth_id));
+	if (obj->auth_id.len != 0)
+		printf("\tAuth ID     : %s\n", sc_pkcs15_print_id(&obj->auth_id));
 	printf("\tID          : %s\n", sc_pkcs15_print_id(&prkey->id));
 }
 
@@ -579,7 +581,8 @@ static void print_pubkey_info(const struct sc_pkcs15_object *obj)
 	printf("\tKey ref     : %d\n", pubkey->key_reference);
 	printf("\tNative      : %s\n", pubkey->native ? "yes" : "no");
 	printf("\tPath        : %s\n", sc_print_path(&pubkey->path));
-	printf("\tAuth ID     : %s\n", sc_pkcs15_print_id(&obj->auth_id));
+	if (obj->auth_id.len != 0)
+		printf("\tAuth ID     : %s\n", sc_pkcs15_print_id(&obj->auth_id));
 	printf("\tID          : %s\n", sc_pkcs15_print_id(&pubkey->id));
 }
 
