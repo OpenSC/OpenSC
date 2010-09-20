@@ -22,7 +22,4 @@ do
 	ln -sf $f /usr/local/bin
 done
 
-# 10.5 PPC does not have libltdl.3.dylib by default.
-test -e /usr/lib/libltdl.3.dylib || mv /Library/OpenSC/lib/libltdl.3.dylib /usr/lib/libltdl.3.dylib
-
 exit 0

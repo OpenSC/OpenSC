@@ -11,7 +11,7 @@ bin_PROGRAMS += cryptoflex-tool pkcs15-init netkey-tool piv-tool westcos-tool
 endif
 
 # compile with $(PTHREAD_CFLAGS) to allow debugging with gdb
-AM_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(OPTIONAL_READLINE_CFLAGS) $(PTHREAD_CFLAGS)
+AM_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(OPTIONAL_READLINE_CFLAGS) $(PTHREAD_CFLAGS) $(LTLIB_CFLAGS)
 INCLUDES = -I$(top_srcdir)/src
 LIBS = $(top_builddir)/src/common/libcompat.la \
 	$(top_builddir)/src/libopensc/libopensc.la
@@ -24,7 +24,7 @@ opensc_explorer_LDADD = $(OPTIONAL_READLINE_LIBS)
 pkcs15_tool_SOURCES = pkcs15-tool.c util.c
 pkcs15_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
 pkcs11_tool_SOURCES = pkcs11-tool.c util.c
-pkcs11_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS) \
+pkcs11_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS) $(LTLIB_LIBS) \
 	$(top_builddir)/src/pkcs11/libpkcs11.la
 pkcs15_crypt_SOURCES = pkcs15-crypt.c util.c
 pkcs15_crypt_LDADD = $(OPTIONAL_OPENSSL_LIBS)

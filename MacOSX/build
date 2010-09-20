@@ -19,6 +19,11 @@ esac
 export SED=/usr/bin/sed
 PREFIX=/Library/OpenSC
 export PKG_CONFIG_PATH=/usr/lib/pkgconfig
+
+# In case of OSX 10.5, link against static libltdl to work around
+# missing libltdl.3.dylib in 10.5 PPC version
+test ${OSX_RELEASE} = "10.5" && export LTLIB_LIBS="/Developer/SDKs/MacOSX10.5.sdk/usr/lib/libltdl.a"
+
 ./configure --prefix=$PREFIX \
 --sysconfdir=$PREFIX/etc \
 --disable-dependency-tracking \
@@ -62,25 +67,20 @@ rm target/Library/OpenSC/lib/libopensc.la
 # generate .bundle (required by Adobe Acrobat)
 ./MacOSX/libtool-bundle target/Library/OpenSC/lib/opensc-pkcs11.so target/Library/OpenSC/lib
 
-case "${OSX_RELEASE}" in
-	"10.6")
-	# Build libp11+engine_pkcs11
+if test ${OSX_RELEASE} = "10.6"; then
+	# Build libp11+engine_pkcs11. Attention! Uses modified branches from github!
 	test -d libp11 || git clone git://github.com/martinpaljak/libp11.git -b martin
 	(cd libp11
 	test -x confiure || ./bootstrap
 	./configure --enable-static --disable-shared --disable-dependency-tracking --prefix=${BUILDPATH}/build && make && make install
-	cd ..
+	cd ..)
 	test -d engine_pkcs11 || git clone git://github.com/martinpaljak/engine_pkcs11.git -b martin
-	cd engine_pkcs11
+	(cd engine_pkcs11
 	git checkout origin/martin
 	test -x configure || ./bootstrap
 	PKG_CONFIG_PATH=${BUILDPATH}/build/lib/pkgconfig ./configure --disable-dependency-tracking --prefix=/Library/OpenSC && make
-	make install DESTDIR=${BUILDPATH}/target
-	
-	)
-	;;
-esac
-
+	make install DESTDIR=${BUILDPATH}/target)
+fi
 
 if ! test -e OpenSC.tokend; then
 	git clone git://github.com/martinpaljak/OpenSC.tokend.git
@@ -118,9 +118,6 @@ mv OpenSC.tokend/build/OpenSC.tokend target/System/Library/Security/tokend
 # The "UnInstaller"
 mkdir -p target/usr/local/bin
 cp MacOSX/opensc-uninstall target/usr/local/bin
-
-# Copy libltdl.3.dylib, will be installed in /usr/lib by postflight script if needed on 10.5
-test ${OSX_RELEASE} = "10.5" && cp MacOSX/10.5/libltdl.3.dylib target/Library/OpenSC/lib/
 
 # Build installer package
 /Developer/Applications/Utilities/PackageMaker.app/Contents/MacOS/PackageMaker \
