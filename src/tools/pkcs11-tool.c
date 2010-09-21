@@ -37,13 +37,12 @@ extern CK_RV C_UnloadModule(void *module);
 
 #define NEED_SESSION_RO	0x01
 #define NEED_SESSION_RW	0x02
-#define NO_SLOT		((CK_SLOT_ID) -1)
-#define NO_MECHANISM	((CK_MECHANISM_TYPE) -1)
 
 enum {
 	OPT_MODULE = 0x100,
 	OPT_SLOT,
 	OPT_SLOT_LABEL,
+	OPT_SLOT_INDEX,
 	OPT_APPLICATION_LABEL,
 	OPT_APPLICATION_ID,
 	OPT_SO_PIN,
@@ -92,6 +91,7 @@ static const struct option options[] = {
 	{ "label", 		1, NULL, 		'a' },
 	{ "slot",		1, NULL,		OPT_SLOT },
 	{ "slot-label",		1, NULL,		OPT_SLOT_LABEL },
+	{ "slot-index",		1, NULL,		OPT_SLOT_INDEX },
 	{ "set-id",		1, NULL, 		'e' },
 	{ "attr-from",		1, NULL, 		OPT_ATTR_FROM },
 	{ "input-file",		1, NULL,		'i' },
@@ -137,8 +137,9 @@ static const char *option_help[] = {
 	"Specify the type of object (e.g. cert, privkey, pubkey, data)",
 	"Specify the id of the object",
 	"Specify the label of the object",
-	"Specify number of the slot to use",
-	"Specify label of the slot to use",
+	"Specify the ID of the slot to use",
+	"Specify the token label of the slot to use",
+	"Specify the index of the slot to use",	
 	"Set the CKA_ID of an object, <args>= the (new) CKA_ID",
 	"Use <arg> to create some attributes when writing an object",
 	"Specify the input file",
@@ -158,9 +159,12 @@ static int		verbose = 0;
 static const char *	opt_input = NULL;
 static const char *	opt_output = NULL;
 static const char *	opt_module = NULL;
-static CK_SLOT_ID	opt_slot = NO_SLOT;
+static int		opt_slot_set = 0;
+static CK_SLOT_ID	opt_slot = 0;
 static const char *	opt_slot_label = NULL;
-static CK_MECHANISM_TYPE opt_mechanism = NO_MECHANISM;
+static CK_ULONG		opt_slot_index = 0;
+static CK_MECHANISM_TYPE opt_mechanism = 0;
+static int		opt_mechanism_used = 0;
 static const char *	opt_file_to_write = NULL;
 static const char *	opt_object_class_str = NULL;
 static CK_OBJECT_CLASS	opt_object_class = -1;
@@ -246,9 +250,8 @@ static void 		set_id_attr(CK_SLOT_ID slot, CK_SESSION_HANDLE session);
 static int		find_object(CK_SESSION_HANDLE, CK_OBJECT_CLASS,
 				CK_OBJECT_HANDLE_PTR,
 				const unsigned char *, size_t id_len, int obj_index);
-static CK_MECHANISM_TYPE find_mechanism(CK_SLOT_ID, CK_FLAGS,
-			 	int stop_if_not_found);
-static CK_SLOT_ID	find_slot_by_label(const char *);
+static int		find_mechanism(CK_SLOT_ID, CK_FLAGS, int, CK_MECHANISM_TYPE_PTR);
+static int		find_slot_by_label(const char *, CK_SLOT_ID_PTR);
 static void		get_token_info(CK_SLOT_ID, CK_TOKEN_INFO_PTR);
 static CK_ULONG		get_mechanisms(CK_SLOT_ID,
 				CK_MECHANISM_TYPE_PTR *, CK_FLAGS);
@@ -404,6 +407,7 @@ int main(int argc, char * argv[])
 			opt_login = 1;
 			break;
 		case 'm':
+			opt_mechanism_used = 1;
 			opt_mechanism = p11_name_to_mechanism(optarg);
 			break;
 		case 'o':
@@ -441,9 +445,23 @@ int main(int argc, char * argv[])
 			break;
 		case OPT_SLOT:
 			opt_slot = (CK_SLOT_ID) strtoul(optarg, NULL, 0);
+			opt_slot_set = 1;
+			if (verbose)
+				fprintf(stderr, "Using slot with ID 0x%lx\n", opt_slot);
 			break;
 		case OPT_SLOT_LABEL:
+			if (opt_slot_set) {
+				fprintf(stderr, "Error: Only one of --slot, --slot-label or --slot-index can be used\n");
+				util_print_usage_and_die(app_name, options, option_help);
+			}
 			opt_slot_label = optarg;
+			break;
+		case OPT_SLOT_INDEX:
+			if (opt_slot_set || opt_slot_label) {
+				fprintf(stderr, "Error: Only one of --slot, --slot-label or --slot-index can be used\n");
+				util_print_usage_and_die(app_name, options, option_help);
+			}
+			opt_slot_index = (CK_ULONG) strtoul(optarg, NULL, 0);
 			break;
 		case OPT_MODULE:
 			opt_module = optarg;
@@ -523,29 +541,26 @@ int main(int argc, char * argv[])
 		goto end;
 	}
 
-	if (opt_slot_label) {
-		CK_SLOT_ID slot;
-
-		slot = find_slot_by_label(opt_slot_label);
-		if (slot == NO_SLOT) {
-			fprintf(stderr,
-				"No slot named \"%s\"\n", opt_slot_label);
-			err = 1;
-			goto end;
+	if (!opt_slot_set && (action_count > do_list_slots)) {
+		if (opt_slot_label) {
+			if (!find_slot_by_label(opt_slot_label, &opt_slot)) {
+				fprintf(stderr, "No slot with a token named \"%s\" found\n", opt_slot_label);
+				err = 1;
+				goto end;
+			}
+			if (verbose)
+				fprintf(stderr, "Using slot with label \"%s\" (0x%lx)\n", opt_slot_label, opt_slot);
+		} else {
+			if (opt_slot_index < p11_num_slots) {
+				opt_slot = p11_slots[opt_slot_index];
+				fprintf(stderr, "Using slot with index %lu (0x%lx)\n", opt_slot_index, opt_slot);
+			} else {
+				fprintf(stderr, "Slot with index %lu (counting from 0) is not available\n");
+				fprintf(stderr, "You must specify a valid slot with either --slot, --slot-index or --slot-label.\n");
+				err = 1;
+				goto end;	
+			}
 		}
-		if (opt_slot != NO_SLOT && opt_slot != slot) {
-			fprintf(stderr,
-				"Conflicting slots specified\n");
-			err = 1;
-			goto end;
-		}
-		opt_slot = slot;
-	}
-
-	if ((opt_slot == NO_SLOT) && (action_count > do_list_slots)) {
-		fprintf(stderr, "You must specify a slot ID\n");
-		err = 1;
-		goto end;
 	}
 
 	if (do_list_mechs)
@@ -704,9 +719,9 @@ static void show_cryptoki_info(void)
 
 static void list_slots(int tokens, int refresh, int print)
 {
-	CK_SLOT_INFO	info;
-	CK_ULONG	n;
-	CK_RV		rv;
+	CK_SLOT_INFO info;
+	CK_ULONG n;
+	CK_RV rv;
 
 	/* Get the list of slots */
 	if (refresh) {
@@ -729,10 +744,10 @@ static void list_slots(int tokens, int refresh, int print)
 
 	printf("Available slots:\n");
 	for (n = 0; n < p11_num_slots; n++) {
-		printf("Slot %-2u          ", (unsigned int) p11_slots[n]);
+		printf("Slot %lu (0x%lx): ", n, p11_slots[n]);
 		rv = p11->C_GetSlotInfo(p11_slots[n], &info);
 		if (rv != CKR_OK) {
-			printf("(GetSlotInfo failed, error %u)\n", (unsigned int) rv);
+			printf("(GetSlotInfo failed, error 0x%lx)\n", rv);
 			continue;
 		}
 		printf("%s\n", p11_utf8_to_local(info.slotDescription,
@@ -1125,8 +1140,8 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	CK_ULONG	sig_len;
 	int		fd, r;
 
-	if (opt_mechanism == NO_MECHANISM) {
-		opt_mechanism = find_mechanism(slot, CKF_SIGN|CKF_HW, 1);
+	if (!opt_mechanism_used) {
+		opt_mechanism = find_mechanism(slot, CKF_SIGN|CKF_HW, 1, &opt_mechanism);
 		printf("Using signature algorithm %s\n",
 				p11_mechanism_to_name(opt_mechanism));
 	}
@@ -1177,8 +1192,8 @@ static void hash_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	CK_ULONG	hash_len;
 	int		fd, r;
 
-	if (opt_mechanism == NO_MECHANISM) {
-		opt_mechanism = find_mechanism(slot, CKF_DIGEST, 1);
+	if (!opt_mechanism_used) {
+		opt_mechanism = find_mechanism(slot, CKF_DIGEST, 1, &opt_mechanism);
 		printf("Using digest algorithm %s\n",
 				p11_mechanism_to_name(opt_mechanism));
 	}
@@ -1694,28 +1709,29 @@ static void set_id_attr(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	show_object(session, obj);
 }
 
-static CK_SLOT_ID find_slot_by_label(const char *label)
+static int find_slot_by_label(const char *label, CK_SLOT_ID_PTR result)
 {
 	CK_TOKEN_INFO	info;
 	CK_ULONG	n, len;
 	CK_RV		rv;
 
 	if (!p11_num_slots)
-		return NO_SLOT;
+		return 0;
 
 	len = strlen(label);
 	for (n = 0; n < p11_num_slots; n++) {
 		const char	*token_label;
 
-		rv = p11->C_GetTokenInfo(n, &info);
+		rv = p11->C_GetTokenInfo(p11_slots[n], &info);
 		if (rv != CKR_OK)
 			continue;
 		token_label = p11_utf8_to_local(info.label, sizeof(info.label));
-		if (!strncmp(label, token_label, len))
-			return n;
+		if (!strncmp(label, token_label, len)) {
+			*result = p11_slots[n];
+			return 1;
+		}
 	}
-
-	return NO_SLOT;
+	return 0;
 }
 
 static int find_object(CK_SESSION_HANDLE sess, CK_OBJECT_CLASS cls,
@@ -1799,23 +1815,22 @@ done:
 }
 
 
-static CK_MECHANISM_TYPE find_mechanism(CK_SLOT_ID slot, CK_FLAGS flags,
-		int stop_if_not_found)
+static int find_mechanism(CK_SLOT_ID slot, CK_FLAGS flags,
+		int stop_if_not_found, CK_MECHANISM_TYPE_PTR result)
 {
-	CK_MECHANISM_TYPE *mechs = NULL, result;
+	CK_MECHANISM_TYPE *mechs = NULL;
 	CK_ULONG	count = 0;
 
 	count = get_mechanisms(slot, &mechs, flags);
 	if (count == 0) {
 		if (stop_if_not_found)
 			util_fatal("No appropriate mechanism found");
-		result = NO_MECHANISM;
 	} else {
-		result = mechs[0];
+		/* X: why only first ? */
+		*result = mechs[0];
 		free(mechs);
 	}
-
-	return result;
+	return count;
 }
 
 
@@ -2312,8 +2327,8 @@ static int test_digest(CK_SLOT_ID slot)
 		20
 	};
 
-	firstMechType = find_mechanism(slot, CKF_DIGEST, 0);
-	if (firstMechType == NO_MECHANISM) {
+	
+	if (!find_mechanism(slot, CKF_DIGEST, 0, &firstMechType)) {
 		printf("Digests: not implemented\n");
 		return errors;
 	} else
@@ -2629,8 +2644,7 @@ static int test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		return errors;
 	}
 
-	firstMechType = find_mechanism(slot, CKF_SIGN | CKF_HW, 0);
-	if (firstMechType == NO_MECHANISM) {
+	if (!find_mechanism(slot, CKF_SIGN | CKF_HW, 0, &firstMechType)) {
 		printf("Signatures: not implemented\n");
 		return errors;
 	}
@@ -2929,8 +2943,7 @@ static int test_verify(CK_SLOT_ID slot, CK_SESSION_HANDLE sess)
 		return errors;
 	}
 
-	first_mech_type = find_mechanism(slot, CKF_VERIFY, 0);
-	if (first_mech_type == NO_MECHANISM) {
+	if (!find_mechanism(slot, CKF_VERIFY, 0, &first_mech_type)) {
 		printf("Verify: not implemented\n");
 		return errors;
 	}
@@ -3100,8 +3113,7 @@ static int test_unwrap(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		return errors;
 	}
 
-	firstMechType = find_mechanism(slot, CKF_UNWRAP | CKF_HW, 0);
-	if (firstMechType == NO_MECHANISM) {
+	if (!find_mechanism(slot, CKF_UNWRAP | CKF_HW, 0, &firstMechType)) {
 		printf("Unwrap: not implemented\n");
 		return errors;
 	}
@@ -3892,7 +3904,7 @@ static struct mech_info	p11_mechanisms[] = {
       { CKM_DSA_PARAMETER_GEN,	"DSA-PARAMETER-GEN", NULL },
       { CKM_DH_PKCS_PARAMETER_GEN,"DH-PKCS-PARAMETER-GEN", NULL },
       { CKM_X9_42_DH_PARAMETER_GEN,"X9-42-DH-PARAMETER-GEN", NULL },
-      { NO_MECHANISM, NULL, NULL }
+      { 0, NULL, NULL }
 };
 
 static const char *p11_mechanism_to_name(CK_MECHANISM_TYPE mech)
@@ -3918,7 +3930,7 @@ static CK_MECHANISM_TYPE p11_name_to_mechanism(const char *name)
 			return mi->mech;
 	}
 	util_fatal("Unknown PKCS11 mechanism \"%s\"\n", name);
-	return NO_MECHANISM; /* gcc food */
+	return 0; /* gcc food */
 }
 
 static const char * CKR2Str(CK_ULONG res)
