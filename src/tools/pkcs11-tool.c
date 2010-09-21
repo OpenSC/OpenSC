@@ -179,9 +179,9 @@ static char *		opt_new_pin = NULL;
 static char *		opt_application_label = NULL;
 static char *		opt_application_id = NULL;
 static char *		opt_key_type = NULL;
-static int			opt_is_private = 0;
-static int			opt_test_hotplug = 0;
-static int			opt_login_type = -1;
+static int		opt_is_private = 0;
+static int		opt_test_hotplug = 0;
+static int		opt_login_type = -1;
 
 static void *module = NULL;
 static CK_FUNCTION_LIST_PTR p11 = NULL;
@@ -518,10 +518,6 @@ int main(int argc, char * argv[])
 	if (action_count == 0)
 		util_print_usage_and_die(app_name, options, option_help);
 
-#ifdef ENABLE_OPENSSL
-	/* ERR_load_crypto_strings(); */
-#endif
-
 	module = C_LoadModule(opt_module, &p11);
 	if (module == NULL)
 		util_fatal("Failed to load pkcs11 module");
@@ -555,7 +551,7 @@ int main(int argc, char * argv[])
 				opt_slot = p11_slots[opt_slot_index];
 				fprintf(stderr, "Using slot with index %lu (0x%lx)\n", opt_slot_index, opt_slot);
 			} else {
-				fprintf(stderr, "Slot with index %lu (counting from 0) is not available\n");
+				fprintf(stderr, "Slot with index %lu (counting from 0) is not available.\n");
 				fprintf(stderr, "You must specify a valid slot with either --slot, --slot-index or --slot-label.\n");
 				err = 1;
 				goto end;	
@@ -595,7 +591,7 @@ int main(int argc, char * argv[])
 		
 		if (opt_login_type == -1)
 			opt_login_type = do_init_pin ? CKU_SO : CKU_USER;
-			        
+
 		r = login(session, opt_login_type);
 		if (r != 0)
 			return r;
@@ -624,8 +620,8 @@ int main(int argc, char * argv[])
 	}
 
 	if (do_sign) {
-		if (!find_object(session, CKO_PRIVATE_KEY, &object, 
-					opt_object_id_len ? opt_object_id : NULL, 
+		if (!find_object(session, CKO_PRIVATE_KEY, &object,
+					opt_object_id_len ? opt_object_id : NULL,
 					opt_object_id_len, 0))
 			util_fatal("Private key not found");
 	}
@@ -653,7 +649,7 @@ int main(int argc, char * argv[])
 	if (do_read_object) {
 		if (opt_object_class_str == NULL)
 			util_fatal("You should specify type of the object to read");
-		if (opt_object_id_len == 0 && opt_object_label == NULL && 
+		if (opt_object_id_len == 0 && opt_object_label == NULL &&
 				opt_application_label == NULL && opt_application_id == NULL)
 			 util_fatal("You should specify at least one of the "
 					 "object ID, object label, application label or application ID\n");
@@ -663,7 +659,7 @@ int main(int argc, char * argv[])
 	if (do_delete_object) {
 		if (opt_object_class_str == NULL)
 			util_fatal("You should specify type of the object to delete");
-		if (opt_object_id_len == 0 && opt_object_label == NULL && 
+		if (opt_object_id_len == 0 && opt_object_label == NULL &&
 				opt_application_label == NULL && opt_application_id == NULL)
 			 util_fatal("You should specify at least one of the "
 					 "object ID, object label, application label or application ID\n");
@@ -890,9 +886,9 @@ static int login(CK_SESSION_HANDLE session, int login_type)
 	else if (login_type == CKU_CONTEXT_SPECIFIC)
 		pin = opt_pin ? opt_pin : opt_puk;
 
-	if (!pin && (info.flags & CKF_LOGIN_REQUIRED) 
+	if (!pin && (info.flags & CKF_LOGIN_REQUIRED)
 			&& !(info.flags & CKF_PROTECTED_AUTHENTICATION_PATH))   {
-		if (login_type == CKU_SO) 
+		if (login_type == CKU_SO)
 			printf("Please enter SO PIN: ");
 		else if (login_type == CKU_USER)
 			printf("Please enter User PIN: ");
@@ -984,13 +980,13 @@ static void init_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess)
 		if (! opt_pin && !opt_new_pin) {
 			printf("Please enter the new PIN: ");
 			r = util_getpass(&new_pin1,&len1,stdin);
-			if (r < 0) 
+			if (r < 0)
 				util_fatal("No PIN entered, aborting.\n");
 			if (!new_pin1 || !*new_pin1 || strlen(new_pin1) > 20)
 				util_fatal("Invalid User PIN\n");
 			printf("Please enter the new PIN again: ");
 			r = util_getpass(&new_pin2, &len2, stdin);
-			if (r < 0) 
+			if (r < 0)
 				util_fatal("No PIN entered, aborting.\n");
 			if (!new_pin2 || !*new_pin2 ||
 					strcmp(new_pin1, new_pin2) != 0)
@@ -998,7 +994,7 @@ static void init_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess)
 		}
 	}
 	
-	pin = opt_pin; 
+	pin = opt_pin;
 	if (!pin) pin = opt_new_pin;
 	if (!pin) pin = new_pin1;
 
@@ -1081,7 +1077,7 @@ static int unlock_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess, int login_type)
 		unlock_code = opt_pin ? opt_pin : opt_puk;
 	else if (login_type == -1)
 		unlock_code = opt_puk;
-	else 
+	else
 		return 1;
 
 	if (!(info.flags & CKF_PROTECTED_AUTHENTICATION_PATH) && !unlock_code)   {
@@ -1329,7 +1325,6 @@ static void	parse_certificate(struct x509cert_info *cert,
 	pp = data;
 	x = d2i_X509(NULL, &pp, len);
 	if (!x) {
-		/* ERR_print_errors_fp(stderr); */
 		util_fatal("OpenSSL error during X509 certificate parsing");
 	}
 	p = cert->subject;
@@ -1374,7 +1369,6 @@ static void	parse_rsa_private_key(struct rsakey_info *rsa,
 	p = data;
 	r = d2i_RSAPrivateKey(NULL, &p, len);
 	if (!r) {
-		/* ERR_print_errors_fp(stderr); */
 		util_fatal("OpenSSL error during RSA private key parsing");
 	}
 	RSA_GET_BN(modulus, r->n);
@@ -1401,7 +1395,6 @@ static void	parse_rsa_public_key(struct rsakey_info *rsa,
 	}
 
 	if (!r) {
-		/* ERR_print_errors_fp(stderr); */
 		util_fatal("OpenSSL error during RSA public key parsing");
 	}
 	RSA_GET_BN(modulus, r->n);
@@ -1778,8 +1771,8 @@ done:	if (count == 0)
 }
 
 static CK_RV find_object_with_attributes(CK_SESSION_HANDLE session,
-			CK_OBJECT_HANDLE *out, 
-			CK_ATTRIBUTE *attrs, CK_ULONG attrsLen, 
+			CK_OBJECT_HANDLE *out,
+			CK_ATTRIBUTE *attrs, CK_ULONG attrsLen,
 			CK_ULONG obj_index)
 {
 	CK_ULONG count, ii;
@@ -1788,7 +1781,7 @@ static CK_RV find_object_with_attributes(CK_SESSION_HANDLE session,
 
 	if (!out || !attrs || !attrsLen)
 		return CKR_ARGUMENTS_BAD;
-	else 
+	else
 		*out = CK_INVALID_HANDLE;
 		
 	rv = p11->C_FindObjectsInit(session, attrs, attrsLen);
@@ -2090,7 +2083,7 @@ static void show_dobj(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 		size /= sizeof(int);
 		printf("%i", app_oid[0]);
 		if (app_oid[0] >= 0)
-			for (n = 1; (n < size) && (app_oid[n] >= 0); n++)  
+			for (n = 1; (n < size) && (app_oid[n] >= 0); n++)
 				printf(".%i", app_oid[n]);
 
 		printf("\n");
@@ -2101,9 +2094,9 @@ static void show_dobj(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 	}
 
 	printf("  flags:          ");
-	if (getMODIFIABLE(sess, obj)) 
+	if (getMODIFIABLE(sess, obj))
 		printf(" modifiable");
-	if (getPRIVATE(sess, obj)) 
+	if (getPRIVATE(sess, obj))
 		printf(" private");
 	printf ("\n");
 }
@@ -2165,25 +2158,25 @@ static int read_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	struct sc_object_id oid;
 	
 	if (opt_object_class_str != NULL)   {
-		FILL_ATTR(attrs[nn_attrs], CKA_CLASS, 
+		FILL_ATTR(attrs[nn_attrs], CKA_CLASS,
 				 &clazz, sizeof(clazz));
 		nn_attrs++;
 	}
 
 	if (opt_object_id_len != 0)  {
-		FILL_ATTR(attrs[nn_attrs], CKA_ID, 
+		FILL_ATTR(attrs[nn_attrs], CKA_ID,
 				opt_object_id, opt_object_id_len);
 		nn_attrs++;
 	}
 
 	if (opt_object_label != NULL)   {
-		FILL_ATTR(attrs[nn_attrs], CKA_LABEL, 
+		FILL_ATTR(attrs[nn_attrs], CKA_LABEL,
 				opt_object_label, strlen(opt_object_label));
 		nn_attrs++;
 	}
 
 	if (opt_application_label != NULL)   {
-		FILL_ATTR(attrs[nn_attrs], CKA_APPLICATION, 
+		FILL_ATTR(attrs[nn_attrs], CKA_APPLICATION,
 				opt_application_label, strlen(opt_application_label));
 		nn_attrs++;
 	}
@@ -2198,7 +2191,7 @@ static int read_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	rv = find_object_with_attributes(session, &obj, attrs, nn_attrs, 0);
 	if (rv != CKR_OK)
 		p11_fatal("find_object_with_attributes()", rv);
-	else if (obj==CK_INVALID_HANDLE)  
+	else if (obj==CK_INVALID_HANDLE)
 		util_fatal("object not found\n");
 
 	value = getVALUE(session, obj, &len);
@@ -2233,25 +2226,25 @@ static int delete_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	struct sc_object_id oid;
 	
 	if (opt_object_class_str != NULL)   {
-		FILL_ATTR(attrs[nn_attrs], CKA_CLASS, 
+		FILL_ATTR(attrs[nn_attrs], CKA_CLASS,
 				 &clazz, sizeof(clazz));
 		nn_attrs++;
 	}
 
 	if (opt_object_id_len != 0)  {
-		FILL_ATTR(attrs[nn_attrs], CKA_ID, 
+		FILL_ATTR(attrs[nn_attrs], CKA_ID,
 				opt_object_id, opt_object_id_len);
 		nn_attrs++;
 	}
 
 	if (opt_object_label != NULL)   {
-		FILL_ATTR(attrs[nn_attrs], CKA_LABEL, 
+		FILL_ATTR(attrs[nn_attrs], CKA_LABEL,
 				opt_object_label, strlen(opt_object_label));
 		nn_attrs++;
 	}
 
 	if (opt_application_label != NULL)   {
-		FILL_ATTR(attrs[nn_attrs], CKA_APPLICATION, 
+		FILL_ATTR(attrs[nn_attrs], CKA_APPLICATION,
 				opt_application_label, strlen(opt_application_label));
 		nn_attrs++;
 	}
@@ -2266,7 +2259,7 @@ static int delete_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	rv = find_object_with_attributes(session, &obj, attrs, nn_attrs, 0);
 	if (rv != CKR_OK)
 		p11_fatal("find_object_with_attributes()", rv);
-	else if (obj==CK_INVALID_HANDLE)  
+	else if (obj==CK_INVALID_HANDLE)
 		util_fatal("object not found\n");
 	rv = p11->C_DestroyObject(session, obj);
 	if (rv != CKR_OK)
@@ -2295,7 +2288,7 @@ static CK_ULONG	get_private_key_length(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE 
 	}
 	free(id);
 
-	return getMODULUS_BITS(sess, pubkey); 
+	return getMODULUS_BITS(sess, pubkey);
 }
 
 static int test_digest(CK_SLOT_ID slot)
@@ -2500,7 +2493,6 @@ static EVP_PKEY *get_public_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE priv
 
 	if (pkey == NULL) {
 		printf(" couldn't parse pubkey, no verification done\n");
-		/* ERR_print_errors_fp(stderr); */
 		return NULL;
 	}
 
@@ -2571,7 +2563,6 @@ static int sign_verify_openssl(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		errors++;
 	} else if (err != 1) {
 		printf("openssl error during verification: 0x%0x (%d)\n", err, err);
-		/* ERR_print_errors_fp(stderr); */
 	} else
 		printf("OK\n");
 
@@ -2661,7 +2652,7 @@ static int test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 			printf(" -- can't be used for signature, skipping\n");
 			continue;
 		}
-		               
+
 		modLenBytes = (get_private_key_length(sess, privKeyObject) + 7) / 8;
 		if(!modLenBytes) {
 			printf(" -- can't be used for signature, skipping: can't obtain modulus\n");
@@ -2827,7 +2818,7 @@ static int test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 			continue;
 		}
 		else if (!modLenBytes)   {
-			printf(" -- can't be used to sign/verify, skipping: can't obtain modulus\n"); 
+			printf(" -- can't be used to sign/verify, skipping: can't obtain modulus\n");
 			continue;
 		}
 		else   {
