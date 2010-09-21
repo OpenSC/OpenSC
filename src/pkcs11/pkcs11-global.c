@@ -501,6 +501,9 @@ CK_RV C_GetMechanismList(CK_SLOT_ID slotID,
 	struct sc_pkcs11_slot *slot;
 	CK_RV rv;
 
+	if (pulCount == NULL_PTR)
+		return CKR_ARGUMENTS_BAD;
+
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
 		return rv;

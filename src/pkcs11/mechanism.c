@@ -83,9 +83,6 @@ sc_pkcs11_get_mechanism_list(struct sc_pkcs11_card *p11card,
 	unsigned int n, count = 0;
 	int rv;
 
-	if (!pulCount)
-		return CKR_ARGUMENTS_BAD;
-
 	for (n = 0; n < p11card->nmechanisms; n++) {
 		if (!(mt = p11card->mechanisms[n]))
 			continue;
