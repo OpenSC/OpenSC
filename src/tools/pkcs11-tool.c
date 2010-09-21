@@ -531,6 +531,9 @@ int main(int argc, char * argv[])
 
 	list_slots(list_token_slots, 1, do_list_slots);
 
+	if (do_test)
+		p11_test(opt_slot, session);
+
 	if (p11_num_slots == 0) {
 		fprintf(stderr, "No slots.\n");
 		err = 1;
@@ -674,8 +677,6 @@ int main(int argc, char * argv[])
 		set_id_attr(opt_slot, session);
 	}
 
-	if (do_test)
-		p11_test(opt_slot, session);
 
 	if (do_test_kpgen_certwrite)
 		test_kpgen_certwrite(opt_slot, session);
@@ -743,7 +744,7 @@ static void list_slots(int tokens, int refresh, int print)
 		printf("Slot %lu (0x%lx): ", n, p11_slots[n]);
 		rv = p11->C_GetSlotInfo(p11_slots[n], &info);
 		if (rv != CKR_OK) {
-			printf("(GetSlotInfo failed, error 0x%lx)\n", rv);
+			printf("(GetSlotInfo failed, %s)\n", CKR2Str(rv));
 			continue;
 		}
 		printf("%s\n", p11_utf8_to_local(info.slotDescription,
