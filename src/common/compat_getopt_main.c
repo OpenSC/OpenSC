@@ -17,7 +17,7 @@
 #include <string.h>
 
 /* for my getopt() re-implementation */
-#include "getopt.h"
+#include "compat_getopt.h"
 
 /* the default verbosity level is 0 (no verbose reporting) */
 static unsigned verbose = 0;
