@@ -3,6 +3,7 @@ EXTRA_DIST = Makefile.mak
 
 AM_CFLAGS = -DSIMCLIST_NO_DUMPRESTORE
 noinst_LTLIBRARIES = libcompat.la
+noinst_PROGRAMS = compat_getopt_main
 dist_noinst_DATA = \
 	README.compat_getopt ChangeLog.compat_getopt \
 	LICENSE.compat_getopt compat_getopt.txt \
@@ -17,3 +18,5 @@ libcompat_la_SOURCES = \
 	compat_getopt.h compat_getopt.c \
 	simclist.c simclist.h
 
+compat_getopt_main_LIBS = libcompat_la
+	
