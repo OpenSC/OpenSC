@@ -554,7 +554,7 @@ int main(int argc, char * argv[])
 				opt_slot = p11_slots[opt_slot_index];
 				fprintf(stderr, "Using slot with index %lu (0x%lx)\n", opt_slot_index, opt_slot);
 			} else {
-				fprintf(stderr, "Slot with index %lu (counting from 0) is not available.\n");
+				fprintf(stderr, "Slot with index %lu (counting from 0) is not available.\n", opt_slot_index);
 				fprintf(stderr, "You must specify a valid slot with either --slot, --slot-index or --slot-label.\n");
 				err = 1;
 				goto end;	
@@ -888,13 +888,14 @@ static int login(CK_SESSION_HANDLE session, int login_type)
 		pin = opt_pin ? opt_pin : opt_puk;
 
 	if (!pin && (info.flags & CKF_LOGIN_REQUIRED)
-			&& !(info.flags & CKF_PROTECTED_AUTHENTICATION_PATH))   {
+			&& !(info.flags & CKF_PROTECTED_AUTHENTICATION_PATH)) {
+			printf("Logging in to \"%s\".\n", p11_utf8_to_local(info.label, sizeof(info.label)));
 		if (login_type == CKU_SO)
 			printf("Please enter SO PIN: ");
 		else if (login_type == CKU_USER)
 			printf("Please enter User PIN: ");
 		else if (login_type == CKU_CONTEXT_SPECIFIC)
-			printf("Please enter Specific Context Secret Code: ");
+			printf("Please enter context specific PIN: ");
 		r = util_getpass(&pin, &len, stdin);
 		if (r < 0)
 			util_fatal("No PIN entered, exiting!\n");
