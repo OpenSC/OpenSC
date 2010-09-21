@@ -45,7 +45,7 @@ option default {
 PIN user-pin {
     auth-id     = 2;
     reference   = 2;
-    attempts    = 2;
+    attempts    = 10;
     min-length  = 8;
     max-length  = 32;
     flags       = case-sensitive, initialized;
@@ -58,7 +58,7 @@ PIN user-puk {
 PIN so-pin {
     auth-id     = 1;
     reference   = 1;
-    attempts    = 2;
+    attempts    = 10;
     min-length  = 8;
     max-length  = 32;
     flags       = case-sensitive, initialized, soPin;

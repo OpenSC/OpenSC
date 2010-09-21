@@ -170,7 +170,7 @@ static int rtecp_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	sc_pkcs15_pin_info_t *pin_info;
 	sc_file_t *file;
 	/*                        GCHV min-length Flags Attempts  Reserve */
-	unsigned char prop[]  = { 0x01,       '?', 0x01,    0xFF, 0, 0 };
+	unsigned char prop[]  = { 0x01,       '?', 0x01,     '?', 0, 0 };
 	/*                  AccessMode Unblock Change             Delete */
 	unsigned char sec[15] = { 0x43,    '?',   '?', 0, 0, 0, 0,  0xFF };
 	int r;
@@ -207,8 +207,9 @@ static int rtecp_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	r = sc_file_set_sec_attr(file, sec, sizeof(sec));
 	if (r == SC_SUCCESS)
 	{
-		assert(sizeof(prop)/sizeof(prop[0]) > 1);
+		assert(sizeof(prop)/sizeof(prop[0]) > 3);
 		prop[1] = (unsigned char)pin_info->min_length;
+		prop[3] = 0x11 * (unsigned char)(pin_info->tries_left & 0x0F);
 		r = sc_file_set_prop_attr(file, prop, sizeof(prop));
 	}
 	if (r == SC_SUCCESS)
@@ -614,7 +615,7 @@ static struct sc_pkcs15init_operations sc_pkcs15init_rtecp_operations = {
 	NULL,                           /* encode_public_key */
 	rtecp_finalize,                 /* finalize_card */
 	NULL,                           /* delete_object */
-	NULL, NULL, NULL, NULL          /* pkcs15init emulation */
+	NULL, NULL, NULL, NULL, NULL    /* pkcs15init emulation */
 };
 
 struct sc_pkcs15init_operations * sc_pkcs15init_get_rtecp_ops(void)
