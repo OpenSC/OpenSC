@@ -119,8 +119,7 @@ handle(char *progname,
     {
       fprintf(stderr,
               "%s: %lu bytes copied from `%s' to `%s'\n",
-              (unsigned long) progname, bytes_copied, infilename,
-              outfilename);
+              progname, bytes_copied, infilename, outfilename);
     }
   return 0;
 }
