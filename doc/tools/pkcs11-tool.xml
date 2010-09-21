@@ -211,8 +211,10 @@
 				<varlistentry>
 					<term><option>--verbose, -v</option></term>
 					<listitem><para>Causes <command>pkcs11-tool</command> to be
-					more verbose. Specify this flag several times to enable debug
-					output in the OpenSC library.</para></listitem>
+					more verbose.</para><para>NB! This does not affect
+					OpenSC debugging level! To set OpenSC PKCS#11 module into debug
+					mode, set the OPENSC_DEBUG environment variable to a
+					non-zero number.</para></listitem>
 				</varlistentry>
 
 			</variablelist>

@@ -149,7 +149,7 @@ static const char *option_help[] = {
 	"Test (best used with the --login or --pin option)",
 	"Test hotplug capabilities (C_GetSlotList + C_WaitForSlotEvent)",
 	"Test Mozilla-like keypair gen and cert req, <arg>=certfile",
-	"Verbose operation. Use several times to enable debug output.",
+	"Verbose operation. (Set OPENSC_DEBUG to enable OpenSC specific debugging)",
 	"Set the CKA_PRIVATE attribute (object is only viewable after a login)"
 };
 
