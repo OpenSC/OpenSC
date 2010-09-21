@@ -74,8 +74,8 @@ usage(char *progname)
 /* input file handler -- returns nonzero or exit()s on failure */
 static int
 handle(char *progname,
-       FILE *infile,  char *infilename,
-       FILE *outfile, char *outfilename,
+       FILE *infile,  const char *infilename,
+       FILE *outfile, const char *outfilename,
        int rotate)
 {
   int c;
@@ -133,7 +133,7 @@ main(int argc, char * argv[])
   /* during argument parsing, opt contains the return value from getopt() */
   int opt;
   /* the output filename is initially 0 (a.k.a. stdout) */
-  char *outfilename = 0;
+  const char *outfilename = 0;
   /* the default return value is initially 0 (success) */
   int retval = 0;
   /* initially we truncate */
@@ -142,7 +142,7 @@ main(int argc, char * argv[])
   int rotate = 0;
 
   /* short options string */
-  char *shortopts = "Vho:r::v::";
+  const char *shortopts = "Vho:r::v::";
   /* long options list */
   struct option longopts[] =
   {
@@ -326,7 +326,7 @@ main(int argc, char * argv[])
       
       for (argindex = optind; argindex < argc; argindex ++)
         {
-          char *infilename = argv[argindex];
+          const char *infilename = argv[argindex];
           FILE *infile;
           
           /* we allow "-" as a synonym for stdin here */
