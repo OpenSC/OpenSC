@@ -4,9 +4,6 @@
  * This program is in the public domain.
  */
 
-#define VERSION \
-"0.3"
-
 #define COPYRIGHT \
 "This program is in the public domain."
 
@@ -18,6 +15,9 @@
 
 /* for my getopt() re-implementation */
 #include "compat_getopt.h"
+
+#undef VERSION
+#define VERSION "0.3"
 
 /* the default verbosity level is 0 (no verbose reporting) */
 static unsigned verbose = 0;
