@@ -56,13 +56,6 @@ case "${host}" in
 	*-*-solaris*)
 		CPPFLAGS="${CPPFLAGS} -I/usr/local/include"
 		LDFLAGS="${LDFLAGS} -L/usr/local/lib -R/usr/local/lib"
-		need_dash_r="1"
-	;;
-	*-*-darwin*)
-		LIBS="${LIBS} -Wl,-framework,CoreFoundation"
-		if test "${GCC}" = "yes"; then
-			CFLAGS="${CFLAGS} -no-cpp-precomp"
-		fi
 	;;
 	*-mingw*|*-winnt*)
 		WIN32="yes"
