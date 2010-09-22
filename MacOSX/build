@@ -27,11 +27,8 @@ test ${OSX_RELEASE} = "10.5" && export LTLIB_LIBS="/Developer/SDKs/MacOSX10.5.sd
 ./configure --prefix=$PREFIX \
 --sysconfdir=$PREFIX/etc \
 --disable-dependency-tracking \
---disable-doc \
---enable-man \
 --enable-shared \
 --disable-static \
---enable-iconv \
 --enable-strict \
 --disable-assert
 
