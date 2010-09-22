@@ -473,7 +473,11 @@ static int do_single_transmit(sc_card_t *card, sc_apdu_t *apdu)
 			/* 0x6100 means at least 256 more bytes to read */
 			le = apdu->sw2 != 0 ? (size_t)apdu->sw2 : 256;
 			/* we try to read at least as much as bytes as 
-			 * promised in the response bytes */
+			 * promised in the response bytes, but not more then
+			 * then requested. So now T=0 responds the same as T=1
+			 */
+			if (buflen < le) 
+				le = buflen;
 			minlen = le;
 
 			do {
@@ -491,6 +495,11 @@ static int do_single_transmit(sc_card_t *card, sc_apdu_t *apdu)
 				memcpy(buf, tbuf, le);
 				buf    += le;
 				buflen -= le;
+
+				/* we have all the data the caller requested 
+				 * even if the card has more data */
+				if (buflen == 0)
+					break;
 
 				minlen -= le;
 				if (r != 0) 
