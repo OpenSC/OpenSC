@@ -1,15 +1,15 @@
 NEWS for OpenSC -- History of user visible changes
 
-Please also see doc/WhatsNew.html or
-http://www.opensc-project.org/opensc/wiki/WhatsNew
-
-Also see the svn changelog using svn command
-or doc/nonpersistent/ChangeLog.
+Complete change history is available online:
+http://www.opensc-project.org/opensc/timeline
 
 New in 0.12.??; 2010-??-??; ??
+* OpenSC uses a single reader driver, specified at compile time.
 * New card driver: Italian eID (CNS) by Emanuele Pucciarelli.
 * New card driver: Portuguese eID by João Poupino.
 * New card driver: westcos by François Leblanc.
+* pkcs11-tool can use a slot based on ID, label or index in the slot list.
+* PIN flags are updated from supported cards when C_GetTokenInfo is called.
 * Support for CardOS 4.4 cards added.
 * Fature to exclude readers from OpenSC PKCS#11 via "ignored_readers"
   configuration file entry.
@@ -18,7 +18,7 @@ New in 0.12.??; 2010-??-??; ??
 * Software keys removed from pkcs15-init and the PKCS#11 module. OpenSC
   can either generate keys on card or import plaintext keys to the card, but
   will never generate plaintext key material in software by itself.
-* Updates to PC/SC driver to build with latest pcsc-lite
+* Updates to PC/SC driver to build with pcsc-lite >= 1.6.2
 * Build script for a binary Mac OS X installer for 10.5 and 10.6 systems.
   Binary installer includes OpenSC.tokend for platform integration.
   10.6 installer includes engine_pkcs11.
