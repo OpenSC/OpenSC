@@ -278,11 +278,11 @@ struct sc_pkcs11_operation {
 };
 
 /* Find Operation */
-#define SC_PKCS11_FIND_MAX_HANDLES	32
+#define SC_PKCS11_FIND_INC_HANDLES	32
 struct sc_pkcs11_find_operation {
 	struct sc_pkcs11_operation operation;
-	int num_handles, current_handle;
-	CK_OBJECT_HANDLE handles[SC_PKCS11_FIND_MAX_HANDLES];
+	int num_handles, current_handle, allocated_handles;
+	CK_OBJECT_HANDLE *handles;
 };
 
 /*

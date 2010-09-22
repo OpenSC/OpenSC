@@ -25,11 +25,27 @@
 
 #include "sc-pkcs11.h"
 
+static void sc_find_release(sc_pkcs11_operation_t *operation);
+
 /* Pseudo mechanism for the Find operation */
 static sc_pkcs11_mechanism_type_t find_mechanism = {
 	0, {0}, 0,
 	sizeof(struct sc_pkcs11_find_operation),
+	sc_find_release,
 };
+
+static void sc_find_release(sc_pkcs11_operation_t *operation)
+{
+	struct sc_pkcs11_find_operation *fop = 
+				(struct sc_pkcs11_find_operation *)operation;
+
+	sc_debug(context, SC_LOG_DEBUG_NORMAL,"freeing %d handles used %d  at %p", 
+			fop->allocated_handles, fop->num_handles, fop->handles);
+	if (fop->handles) {
+		free(fop->handles);
+		fop->handles = NULL;
+	}
+}
 
 static CK_RV get_object_from_session(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject,
 				     struct sc_pkcs11_session **session,
@@ -281,6 +297,8 @@ CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 
 	operation->current_handle = 0;
 	operation->num_handles = 0;
+	operation->allocated_handles = 0;
+	operation->handles = NULL;
 	slot = session->slot;
 
 	/* Check whether we should hide private objects */
@@ -325,10 +343,17 @@ CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 
 		if (match) {
 			sc_debug(context, SC_LOG_DEBUG_NORMAL, "Object %d/%d matches\n", slot->id, object->handle);
-			/* Avoid buffer overflow --okir */ 
-			if (operation->num_handles >= SC_PKCS11_FIND_MAX_HANDLES) {
-				sc_debug(context, SC_LOG_DEBUG_NORMAL, "Too many matching objects\n");
-				break;
+			/* Realloc handles - remove restriction on only 32 matching objects -dee */
+			if (operation->num_handles >= operation->allocated_handles) {
+				operation->allocated_handles += SC_PKCS11_FIND_INC_HANDLES;
+				sc_debug(context, SC_LOG_DEBUG_NORMAL, "realloc for %d handles",
+					 operation->allocated_handles);
+				operation->handles = realloc(operation->handles, 
+					sizeof(CK_OBJECT_HANDLE) * operation->allocated_handles);
+				if (operation->handles == NULL) {
+					rv = CKR_HOST_MEMORY;
+					break;
+				}
 			}
 			operation->handles[operation->num_handles++] = object->handle;
 		}
