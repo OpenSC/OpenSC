@@ -226,7 +226,7 @@ find_library(struct sc_context *ctx, const char *name)
                 break;
         }
 	if (!libname) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "unable to locate pkcs15init driver for '%s'\n", name);
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "unable to locate pkcs15init driver for '%s'", name);
 	}
 	return libname;
 }
@@ -246,7 +246,7 @@ load_dynamic_driver(struct sc_context *ctx, void **dll,
 		return NULL;
 	handle = lt_dlopen(libname);
 	if (handle == NULL) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Module %s: cannot load '%s' library: %s\n", name, libname, lt_dlerror());
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Module %s: cannot load '%s' library: %s", name, libname, lt_dlerror());
 		return NULL;
 	}
 
@@ -254,19 +254,19 @@ load_dynamic_driver(struct sc_context *ctx, void **dll,
 	modinit    = (void *(*)(const char *)) lt_dlsym(handle, "sc_module_init");
 	modversion = (const char *(*)(void)) lt_dlsym(handle, "sc_driver_version");
 	if (modinit == NULL || modversion == NULL) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "dynamic library '%s' is not a OpenSC module\n",libname);
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "dynamic library '%s' is not a OpenSC module",libname);
 		lt_dlclose(handle);
 		return NULL;
 	}
 	/* verify module version */
 	version = modversion();
 	if (version == NULL || strncmp(version, "0.9.", strlen("0.9.")) > 0) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL,"dynamic library '%s': invalid module version\n",libname);
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL,"dynamic library '%s': invalid module version",libname);
 		lt_dlclose(handle);
 		return NULL;
 	}
 	*dll = handle;
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "successfully loaded pkcs15init driver '%s'\n", name);
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "successfully loaded pkcs15init driver '%s'", name);
 
 	return modinit(name);
 }
@@ -348,21 +348,21 @@ sc_pkcs15init_bind(struct sc_card *card, const char *name,
 	do   {
 		r = sc_profile_load(profile, profile->name);
 		if (r < 0)   {
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Failed to load profile '%s': %s\n", 
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Failed to load profile '%s': %s", 
 					profile->name, sc_strerror(r));
 			break;
 		}
 
 		r = sc_profile_load(profile, card_profile);
 		if (r < 0)   {
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Failed to load profile '%s': %s\n", 
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Failed to load profile '%s': %s",
 					card_profile, sc_strerror(r));
 			break;
 		}
 
 	 	r = sc_profile_finish(profile);
 		if (r < 0)
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Failed to finalize profile: %s\n", sc_strerror(r));
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Failed to finalize profile: %s", sc_strerror(r));
 	}  while (0);
 
 	if (r < 0)   {
@@ -384,7 +384,7 @@ sc_pkcs15init_unbind(struct sc_profile *profile)
 	if (profile->dirty != 0 && profile->p15_data != NULL && profile->pkcs15.do_last_update) {
 		r = sc_pkcs15init_update_tokeninfo(profile->p15_data, profile);
 		if (r < 0)
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Failed to update TokenInfo: %s\n", sc_strerror(r));
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Failed to update TokenInfo: %s", sc_strerror(r));
 	}
 	if (profile->dll)
 		lt_dlclose(profile->dll);
@@ -562,7 +562,7 @@ sc_pkcs15init_rmdir(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 
 	if (df == NULL)
 		return SC_ERROR_INTERNAL;
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "sc_pkcs15init_rmdir(%s)\n", sc_print_path(&df->path));
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "sc_pkcs15init_rmdir(%s)", sc_print_path(&df->path));
 
 	if (df->type == SC_FILE_TYPE_DF) {
 		r = sc_pkcs15init_authenticate(profile, p15card, df, SC_AC_OP_LIST_FILES);
@@ -1965,13 +1965,13 @@ prkey_bits(struct sc_pkcs15_card *p15card, struct sc_pkcs15_prkey *key)
 	case SC_ALGORITHM_GOSTR3410:
 		if (sc_pkcs15init_keybits(&key->u.gostr3410.d)
 				> SC_PKCS15_GOSTR3410_KEYSIZE) {
-			sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "Unsupported key (keybits %u)\n",
+			sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "Unsupported key (keybits %u)",
 					sc_pkcs15init_keybits(&key->u.gostr3410.d));
 			return SC_ERROR_OBJECT_NOT_VALID;
 		}
 		return SC_PKCS15_GOSTR3410_KEYSIZE;
 	}
-	sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "Unsupported key algorithm.\n");
+	sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "Unsupported key algorithm.");
 	return SC_ERROR_NOT_SUPPORTED;
 }
 
@@ -1987,7 +1987,7 @@ prkey_pkcs15_algo(struct sc_pkcs15_card *p15card, struct sc_pkcs15_prkey *key)
 	case SC_ALGORITHM_GOSTR3410:
 		return SC_PKCS15_TYPE_PRKEY_GOSTR3410;
 	}
-	sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "Unsupported key algorithm.\n");
+	sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "Unsupported key algorithm.");
 	return SC_ERROR_NOT_SUPPORTED;
 }
 
@@ -2044,7 +2044,7 @@ select_intrinsic_id(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 		allocated = 0;
 		break;
 	default:
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Intrinsic ID is not implemented for the object type 0x%X\n", type);
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Intrinsic ID is not implemented for the object type 0x%X", type);
 		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
 	}
 
@@ -2258,7 +2258,7 @@ select_object_path(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 	if (!name)
 		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
 
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "key-domain.%s @%s (auth_id.len=%d)\n", name, sc_print_path(path), obj->auth_id.len);
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "key-domain.%s @%s (auth_id.len=%d)", name, sc_print_path(path), obj->auth_id.len);
 
 	indx_id.len = 1;
 	for (indx = TEMPLATE_INSTANTIATE_MIN_INDEX; indx <= TEMPLATE_INSTANTIATE_MAX_INDEX; indx++)   {
@@ -2376,19 +2376,19 @@ get_generalized_time(struct sc_context *ctx)
 #endif
 	tm_time = gmtime(&t);
 	if (tm_time == NULL) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "error: gmtime failed\n");
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "error: gmtime failed");
 		return NULL;
 	}
 
 	ret = calloc(1, 16);
 	if (ret == NULL) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "error: calloc failed\n");
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "error: calloc failed");
 		return NULL;
 	}
 	/* print time in generalized time format */
 	r = strftime(ret, 16, "%Y%m%d%H%M%SZ", tm_time);
 	if (r == 0) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "error: strftime failed\n");
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "error: strftime failed");
 		free(ret);
 		return NULL;
 	}
@@ -2522,7 +2522,7 @@ sc_pkcs15init_add_object(struct sc_pkcs15_card *p15card,
 	int is_new = 0, r = 0, object_added = 0;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "add object %p to DF of type %u\n", object, df_type);
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "add object %p to DF of type %u", object, df_type);
 
 	df = find_df_by_type(p15card, df_type);
 	if (df != NULL) {
@@ -2981,20 +2981,20 @@ sc_pkcs15init_verify_secret(struct sc_profile *profile, struct sc_pkcs15_card *p
 	path = file? &file->path : NULL;
 
 	ident = get_pin_ident_name(type, reference);
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "get and verify PIN('%s',type:0x%X,reference:0x%X)\n", ident, type, reference);
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "get and verify PIN('%s',type:0x%X,reference:0x%X)", ident, type, reference);
 
 	memset(&pin_info, 0, sizeof(pin_info));
 	pin_info.auth_method = type;
 	pin_info.reference = reference;
 
 	pin_id = sc_pkcs15init_get_pin_reference(p15card, profile, type, reference);
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "found PIN reference %i\n", pin_id);
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "found PIN reference %i", pin_id);
 	if (type == SC_AC_SYMBOLIC) {
 		if (pin_id == -1)
 			SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
 		reference = pin_id;
 		type = SC_AC_CHV;
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Symbolic PIN resolved to PIN(type:CHV,reference:%i)\n", type, reference);
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Symbolic PIN resolved to PIN(type:CHV,reference:%i)", type, reference);
 	}
 
 	if (p15card) {
@@ -3014,18 +3014,18 @@ sc_pkcs15init_verify_secret(struct sc_profile *profile, struct sc_pkcs15_card *p
 
 		if (!r && pin_obj)   {
 			memcpy(&pin_info, pin_obj->data, sizeof(pin_info));
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "found PIN object '%s'\n", pin_obj->label);
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "found PIN object '%s'", pin_obj->label);
 		}
 	}
 
 	if (pin_obj)   {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "PIN object '%s'; pin_obj->content.len:%i\n", pin_obj->label, pin_obj->content.len);
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "PIN object '%s'; pin_obj->content.len:%i", pin_obj->label, pin_obj->content.len);
 		if (pin_obj->content.value && pin_obj->content.len)   {
 			if (pin_obj->content.len > pinsize)
 				SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_BUFFER_TOO_SMALL, "PIN buffer is too small");
 			memcpy(pinbuf, pin_obj->content.value, pin_obj->content.len);
 	        	pinsize = pin_obj->content.len;
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "'ve got '%s' value from cache\n", ident);
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "'ve got '%s' value from cache", ident);
 			goto found;
 		}
 	}
@@ -3037,7 +3037,7 @@ sc_pkcs15init_verify_secret(struct sc_profile *profile, struct sc_pkcs15_card *p
 	case SC_AC_CHV:
 		if (callbacks.get_pin)   {
 			r = callbacks.get_pin(profile, pin_id, &pin_info, label, pinbuf, &pinsize);
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "'get_pin' callback returned %i; pinsize:%i\n", r, pinsize);
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "'get_pin' callback returned %i; pinsize:%i", r, pinsize);
 		}
 		break;
 	default:
@@ -3111,7 +3111,7 @@ sc_pkcs15init_authenticate(struct sc_profile *profile, struct sc_pkcs15_card *p1
 	if (r != SC_SUCCESS)
 		pbuf[0] = '\0';
 
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "path=%s, op=%u\n", pbuf, op);
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "path=%s, op=%u", pbuf, op);
 
 	if (p15card->card->caps & SC_CARD_CAP_USE_FCI_AC) {
 		r = sc_select_file(p15card->card, &file->path, &file_tmp);
@@ -3122,8 +3122,8 @@ sc_pkcs15init_authenticate(struct sc_profile *profile, struct sc_pkcs15_card *p1
 		acl = sc_file_get_acl_entry(file, op);
 	}
 
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "r:[0x%08x]\n",r);
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "acl:[0x%08x]\n",acl);
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "r:[0x%08x]",r);
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "acl:[0x%08x]",acl);
 
 	for (; r == 0 && acl; acl = acl->next) {
 		if (acl->method == SC_AC_NEVER)   {
@@ -3138,7 +3138,7 @@ sc_pkcs15init_authenticate(struct sc_profile *profile, struct sc_pkcs15_card *p1
 			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "unknown acl method");
 			break;
 		}
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "verify acl(method:%i,reference:%i)\n", acl->method, acl->key_ref);
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "verify acl(method:%i,reference:%i)", acl->method, acl->key_ref);
 		r = sc_pkcs15init_verify_secret(profile, p15card, file_tmp ? file_tmp : file, acl->method, acl->key_ref);
 	}
 
@@ -3207,7 +3207,7 @@ sc_pkcs15init_create_file(struct sc_profile *profile, struct sc_pkcs15_card *p15
 	int		r;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "create file '%s'\n", sc_print_path(&file->path));
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "create file '%s'", sc_print_path(&file->path));
 	/* Select parent DF and verify PINs/key as necessary */
 	r = do_select_parent(profile, p15card, file, &parent);
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Cannot create file: select parent error");
@@ -3244,7 +3244,7 @@ sc_pkcs15init_update_file(struct sc_profile *profile,
 	int		r, need_to_zap = 0;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "path:%s; datalen:%i\n", sc_print_path(&file->path), datalen);
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "path:%s; datalen:%i", sc_print_path(&file->path), datalen);
 
 	r = sc_select_file(p15card->card, &file->path, &selected_file);
 	if (!r)   {
@@ -3407,7 +3407,7 @@ sc_pkcs15init_fixup_file(struct sc_profile *profile,
 		user_acl.method = SC_AC_CHV;
 		user_acl.key_ref = pin_ref;
 	}
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "so_acl(method:%X,ref:%X), user_acl(method:%X,ref:%X)\n", 
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "so_acl(method:%X,ref:%X), user_acl(method:%X,ref:%X)", 
 			so_acl.method, so_acl.key_ref, user_acl.method, user_acl.key_ref);
 
 	rv = sc_pkcs15init_fixup_acls(p15card, file, &so_acl, &user_acl);
@@ -3605,7 +3605,7 @@ sc_pkcs15init_parse_info(struct sc_card *card,
 		case OPENSC_INFO_TAG_OPTION:
 			if (nopts >= SC_PKCS15INIT_MAX_OPTIONS - 1) {
 				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
-					"Too many options in OpenSC Info file\n");
+					"Too many options in OpenSC Info file");
 				return SC_ERROR_PKCS15INIT;
 			}
 			r = set_info_string(&profile->options[nopts], p, n);
@@ -3621,7 +3621,7 @@ sc_pkcs15init_parse_info(struct sc_card *card,
 	return 0;
 
 error:
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "OpenSC info file corrupted\n");
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "OpenSC info file corrupted");
 	return SC_ERROR_PKCS15INIT;
 }
 
