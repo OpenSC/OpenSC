@@ -273,6 +273,9 @@ static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 
 	if (recvbuf) {
 		apdu.resp = rbuf;
+		if (card->max_recv_size == 0 && rbuflen > 256)
+			apdu.le = 256;
+		else
 		apdu.le = (card->max_recv_size > 0 && card->max_recv_size  <= rbuflen)? card->max_recv_size : rbuflen;
 		apdu.resplen = rbuflen;
 	} else {
