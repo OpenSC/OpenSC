@@ -53,26 +53,10 @@ dnl Check for some target-specific stuff
 test -z "${WIN32}" && WIN32="no"
 test -z "${CYGWIN}" && CYGWIN="no"
 case "${host}" in
-	*-*-hpux*)
-		CPPFLAGS="${CPPFLAGS} -D_HPUX_SOURCE -D_XOPEN_SOURCE_EXTENDED"
-	;;
 	*-*-solaris*)
 		CPPFLAGS="${CPPFLAGS} -I/usr/local/include"
 		LDFLAGS="${LDFLAGS} -L/usr/local/lib -R/usr/local/lib"
 		need_dash_r="1"
-	;;
-	*-*-sunos4*)
-		CPPFLAGS="${CPPFLAGS} -DSUNOS4"
-	;;
-	*-*-aix*)
-		CPPFLAGS="${CPPFLAGS} -I/usr/local/include"
-		LDFLAGS="${LDFLAGS} -L/usr/local/lib"
-		if test "${LD}" != "gcc" -a -z "${blibpath}"; then
-			blibpath="/usr/lib:/lib:/usr/local/lib"
-		fi
-	;;
-	*-*-osf*)
-		CPPFLAGS="${CPPFLAGS} -D_POSIX_PII_SOCKET"
 	;;
 	*-*-darwin*)
 		LIBS="${LIBS} -Wl,-framework,CoreFoundation"
