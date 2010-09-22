@@ -337,14 +337,13 @@ static int sc_check_apdu(sc_card_t *card, const sc_apdu_t *apdu)
 error:
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Invalid Case %d %s APDU:\n"
 		"cse=%02x cla=%02x ins=%02x p1=%02x p2=%02x lc=%lu le=%lu\n"
-		"resp=%p resplen=%lu data=%p datalen=%lu max_send_size:%lu max_recv_size:%lu",
+		"resp=%p resplen=%lu data=%p datalen=%lu",
 		apdu->cse & SC_APDU_SHORT_MASK,
 		(apdu->cse & SC_APDU_EXT) != 0 ? "extended" : "short",
 		apdu->cse, apdu->cla, apdu->ins, apdu->p1, apdu->p2,
 		(unsigned long) apdu->lc, (unsigned long) apdu->le,
 		apdu->resp, (unsigned long) apdu->resplen,
-		apdu->data, (unsigned long) apdu->datalen,
-		card->max_recv_size, card->max_send_size);
+		apdu->data, (unsigned long) apdu->datalen);
 	return SC_ERROR_INVALID_ARGUMENTS;
 }
 
