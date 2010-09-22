@@ -957,7 +957,7 @@ static size_t hex2binary(u8 *out, size_t outlen, const char *in)
 	int	    s = 0;
 
 	out--;
-	while (inlen && len) {
+	while (inlen && (len || s)) {
 		char c = *p++;
 		inlen--;
 		if (!isxdigit(c))
