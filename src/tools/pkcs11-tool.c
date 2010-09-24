@@ -51,7 +51,7 @@ enum {
 	OPT_ATTR_FROM,
 	OPT_KEY_TYPE,
 	OPT_PRIVATE,
-	OPT_HOTPLUG,
+	OPT_TEST_HOTPLUG,
 	OPT_UNLOCK_PIN,
 	OPT_PUK,
 	OPT_NEW_PIN,
@@ -99,7 +99,7 @@ static const struct option options[] = {
 	{ "module",		1, NULL,		OPT_MODULE },
 
 	{ "test",		0, NULL,		't' },
-	{ "hotplug",		0, NULL,		OPT_HOTPLUG },
+	{ "test-hotplug",	0, NULL,		OPT_TEST_HOTPLUG },
 	{ "moz-cert",		1, NULL,		'z' },
 	{ "verbose",		0, NULL,		'v' },
 	{ "private",		0, NULL,		OPT_PRIVATE },
@@ -266,6 +266,7 @@ static CK_MECHANISM_TYPE p11_name_to_mechanism(const char *);
 static void		p11_perror(const char *, CK_RV);
 static const char *	CKR2Str(CK_ULONG res);
 static int		p11_test(CK_SLOT_ID slot, CK_SESSION_HANDLE session);
+static int test_card_detection(int);
 static int		hex_to_bin(const char *in, CK_BYTE *out, size_t *outlen);
 static void		test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE session);
 static CK_RV find_object_with_attributes(
@@ -508,8 +509,9 @@ int main(int argc, char * argv[])
 		case OPT_PRIVATE:
 			opt_is_private = 1;
 			break;
-		case OPT_HOTPLUG:
+		case OPT_TEST_HOTPLUG:
 			opt_test_hotplug = 1;
+			action_count++;
 			break;
 		default:
 			util_print_usage_and_die(app_name, options, option_help);
@@ -531,8 +533,10 @@ int main(int argc, char * argv[])
 
 	list_slots(list_token_slots, 1, do_list_slots);
 
-	if (do_test)
-		p11_test(opt_slot, session);
+	if (opt_test_hotplug) {
+		test_card_detection(0);
+		test_card_detection(1);
+	}
 
 	if (p11_num_slots == 0) {
 		fprintf(stderr, "No slots.\n");
@@ -677,6 +681,8 @@ int main(int argc, char * argv[])
 		set_id_attr(opt_slot, session);
 	}
 
+	if (do_test)
+		p11_test(opt_slot, session);
 
 	if (do_test_kpgen_certwrite)
 		test_kpgen_certwrite(opt_slot, session);
@@ -3371,11 +3377,6 @@ static int test_card_detection(int wait_for_event)
 static int p11_test(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 {
 	int errors = 0;
-	if (opt_test_hotplug) {
-		errors += test_card_detection(0);
-
-		errors += test_card_detection(1);
-	}
 
 	errors += test_random(slot);
 
