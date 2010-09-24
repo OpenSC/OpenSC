@@ -195,6 +195,15 @@ enum {
 	SC_CARDCTL_MYEID_GETDATA,
 	SC_CARDCTL_MYEID_GENERATE_STORE_KEY,
 	SC_CARDCTL_MYEID_ACTIVATE_CARD,
+
+	/*
+	 * PIV specific calls
+	 */
+	SC_CARDCTL_PIV_BASE = _CTL_PREFIX('P', 'I', 'V'),
+	SC_CARDCTL_PIV_AUTHENTICATE,
+	SC_CARDCTL_PIV_GENERATE_KEY,
+	SC_CARDCTL_PIV_PIN_PREFERENCE,
+	SC_CARDCTL_PIV_OBJECT_PRESENT,
 };
 
 enum {
@@ -735,6 +744,18 @@ typedef struct sc_rtecp_genkey_data {
 	unsigned int    invq_len;  
 	unsigned char  *invq;
 };
+
+/*
+ * PIV info
+ */
+typedef struct sc_cardctl_piv_genkey_info_st {
+	unsigned int	key_num;
+	unsigned int	key_algid;	/* RSA 5, 6, 7; EC 11, 14 */ 
+	unsigned int	key_bits;	/* RSA */
+	unsigned long	exponent;	/* RSA */
+	unsigned char *	pubkey;		/* RSA */
+	unsigned int	pubkey_len;	/* RSA */
+} sc_cardctl_piv_genkey_info_t;
 
 #ifdef __cplusplus
 }

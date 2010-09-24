@@ -236,7 +236,7 @@ static int admin_mode(const char* admin_info)
 		return -1;
 	}
 	
-	r = sc_card_ctl(card, SC_CARDCTL_LIFECYCLE_SET, &opts);
+	r = sc_card_ctl(card, SC_CARDCTL_PIV_AUTHENTICATE, &opts);
 	if (r)
 		fprintf(stderr, " admin_mode failed %d\n", r);
 	return r;
@@ -248,8 +248,8 @@ static int gen_key(const char * key_info)
 	int r;
 	u8 buf[2];
 	size_t buflen = 2;
-	struct sc_cardctl_cryptoflex_genkey_info 
-		keydata = { 0x9a, 1024, 0, NULL, 0};
+	sc_cardctl_piv_genkey_info_t
+		keydata = {0, 0, 0, 0, NULL, 0, NULL, 0, NULL, 0};
 	unsigned long expl;
 	u8 expc[4];
 	
@@ -271,38 +271,51 @@ static int gen_key(const char * key_info)
 	}
 
 	switch (buf[1]) {
-		case 5: keydata.key_bits = 3072; break;
-		case 6: keydata.key_bits = 1024; break;
-		case 7: keydata.key_bits = 2048; break;
+		case 0x05: keydata.key_bits = 3072; break;
+		case 0x06: keydata.key_bits = 1024; break;
+		case 0x07: keydata.key_bits = 2048; break;
 		default:
-			fprintf(stderr, "<keyref>:<algid> algid, 05, 06, 07 for 3072, 1024, 2048\n");
+			fprintf(stderr, "<keyref>:<algid> algid:05, 06, 07 for 3072, 1024, 2048\n");
 			return 2;
 	}
 
-	r = sc_card_ctl(card, SC_CARDCTL_CRYPTOFLEX_GENERATE_KEY, &keydata);
+	keydata.key_algid = buf[1];
+
+
+	r = sc_card_ctl(card, SC_CARDCTL_PIV_GENERATE_KEY, &keydata);
 	if (r) {
 		fprintf(stderr, "gen_key failed %d\n", r);
 		return r;
 	}
-	
-	newkey = RSA_new();
-	if (newkey == NULL) { 
-		fprintf(stderr, "gen_key RSA_new failed %d\n",r);
-		return -1;
-	}
-	newkey->n = BN_bin2bn(keydata.pubkey, keydata.pubkey_len, newkey->n);
-	expl = keydata.exponent;
-	expc[3] = (u8) expl & 0xff;
-	expc[2] = (u8) (expl >>8) & 0xff;
-	expc[1] = (u8) (expl >>16) & 0xff;
-	expc[0] = (u8) (expl >>24) & 0xff;
-	newkey->e =  BN_bin2bn(expc, 4,  newkey->e);
-	
-	if (verbose) 
-		RSA_print_fp(stdout, newkey,0); 
 
-	if (bp) 
-		PEM_write_bio_RSAPublicKey(bp, newkey);
+	if (keydata.key_bits > 0) { /* RSA key */
+		RSA * newkey = NULL;
+	
+		newkey = RSA_new();
+		if (newkey == NULL) { 
+			fprintf(stderr, "gen_key RSA_new failed %d\n",r);
+			return -1;
+		}
+		newkey->n = BN_bin2bn(keydata.pubkey, keydata.pubkey_len, newkey->n);
+		expl = keydata.exponent;
+		expc[3] = (u8) expl & 0xff;
+		expc[2] = (u8) (expl >>8) & 0xff;
+		expc[1] = (u8) (expl >>16) & 0xff;
+		expc[0] = (u8) (expl >>24) & 0xff;
+		newkey->e =  BN_bin2bn(expc, 4,  newkey->e);
+	
+		if (verbose) 
+			RSA_print_fp(stdout, newkey,0); 
+
+		if (bp) 
+			PEM_write_bio_RSAPublicKey(bp, newkey);
+
+	} else {
+		fprintf(stderr, "Unsuported key type\n");
+		r = SC_ERROR_UNKNOWN;
+	}
+		 
+		
 
 	return r;
 
@@ -504,8 +517,6 @@ int main(int argc, char * const argv[])
 		fprintf(stderr, "Failed to establish context: %s\n", sc_strerror(r));
 		return 1;
 	}
-
-	ctx->debug = verbose;
 
 	if (action_count <= 0)
 		goto end;

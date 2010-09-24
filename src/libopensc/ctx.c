@@ -85,9 +85,7 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 	{ "setcos",	(void *(*)(void)) sc_get_setcos_driver },
 	{ "muscle",	(void *(*)(void)) sc_get_muscle_driver },
 	{ "atrust-acos",(void *(*)(void)) sc_get_atrust_acos_driver },
-#ifdef ENABLE_OPENSSL
 	{ "PIV-II",	(void *(*)(void)) sc_get_piv_driver },
-#endif
 	{ "itacns",	(void *(*)(void)) sc_get_itacns_driver },
 	/* javacard without supported applet - last before default */
 	{ "javacard",	(void *(*)(void)) sc_get_javacard_driver },
