@@ -69,7 +69,8 @@ static int myeid_match_card(struct sc_card *card)
 		size_t len = sizeof(defatr);
 		const char *atrp = myeid_atrs[i];
 
-		if (sc_hex_to_bin(atrp, defatr, &len))			continue;
+		if (sc_hex_to_bin(atrp, defatr, &len))
+			continue;
 		if (len != card->atr_len)
 			continue;
 		if (memcmp(card->atr, defatr, len) != 0)
