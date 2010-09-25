@@ -258,7 +258,7 @@ static const char *find_library(sc_context_t *ctx, const char *name)
 #else
 		if (libname && libname[0] != '/' ) {
 #endif
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "warning: relative path to driver '%s' used\n",
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "warning: relative path to driver '%s' used",
 				 libname);
 		}
 		break;
@@ -284,7 +284,7 @@ static void *load_dynamic_driver(sc_context_t *ctx, void **dll, const char *name
 	const char *(**tmodv)(void) = &modversion;
 
 	if (name == NULL) { /* should not occurr, but... */
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL,"No module specified\n",name);
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL,"No module specified",name);
 		return NULL;
 	}
 	libname = find_library(ctx, name);
@@ -292,7 +292,7 @@ static void *load_dynamic_driver(sc_context_t *ctx, void **dll, const char *name
 		return NULL;
 	handle = lt_dlopen(libname);
 	if (handle == NULL) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Module %s: cannot load %s library: %s\n", name, libname, lt_dlerror());
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Module %s: cannot load %s library: %s", name, libname, lt_dlerror());
 		return NULL;
 	}
 
@@ -300,7 +300,7 @@ static void *load_dynamic_driver(sc_context_t *ctx, void **dll, const char *name
 	*(void **)tmodi = lt_dlsym(handle, "sc_module_init");
 	*(void **)tmodv = lt_dlsym(handle, "sc_driver_version");
 	if (modinit == NULL || modversion == NULL) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "dynamic library '%s' is not a OpenSC module\n",libname);
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "dynamic library '%s' is not a OpenSC module",libname);
 		lt_dlclose(handle);
 		return NULL;
 	}
@@ -308,12 +308,12 @@ static void *load_dynamic_driver(sc_context_t *ctx, void **dll, const char *name
 	version = modversion();
 	/* XXX: We really need to have ABI version for each interface */
 	if (version == NULL || strncmp(version, PACKAGE_VERSION, strlen(PACKAGE_VERSION)) != 0) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL,"dynamic library '%s': invalid module version\n",libname);
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL,"dynamic library '%s': invalid module version",libname);
 		lt_dlclose(handle);
 		return NULL;
 	}
 	*dll = handle;
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "successfully loaded card driver '%s'\n", name);
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "successfully loaded card driver '%s'", name);
 	return modinit(name);
 }
 
@@ -366,7 +366,7 @@ static int load_card_drivers(sc_context_t *ctx,
 			*(void **)(tfunc) = load_dynamic_driver(ctx, &dll, ent->name);
 		/* if still null, assume driver not found */
 		if (func == NULL) {
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Unable to load '%s'.\n", ent->name);
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Unable to load '%s'.", ent->name);
 			continue;
 		}
 
@@ -625,12 +625,12 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 	}
 
 	process_config_file(ctx, &opts);
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "===================================\n"); /* first thing in the log */
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "opensc version: %s\n", sc_get_version());
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "==================================="); /* first thing in the log */
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "opensc version: %s", sc_get_version());
 
 	/* initialize ltdl */
 	if (lt_dlinit() != 0) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "lt_dlinit failed\n");
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "lt_dlinit failed");
 		sc_release_context(ctx);
 		return SC_ERROR_OUT_OF_MEMORY;
 	}
@@ -710,7 +710,7 @@ int sc_release_context(sc_context_t *ctx)
 	if (ctx->mutex != NULL) {
 		int r = sc_mutex_destroy(ctx, ctx->mutex);
 		if (r != SC_SUCCESS) {
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "unable to destroy mutex\n");
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "unable to destroy mutex");
 			return r;
 		}
 	}
@@ -819,6 +819,6 @@ int sc_make_cache_dir(sc_context_t *ctx)
 	return SC_SUCCESS;
 
 	/* for lack of a better return code */
-failed:	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "failed to create cache directory\n");
+failed:	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "failed to create cache directory");
 	return SC_ERROR_INTERNAL;
 }

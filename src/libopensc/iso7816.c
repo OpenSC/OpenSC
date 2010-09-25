@@ -87,22 +87,22 @@ static int iso7816_check_sw(sc_card_t *card, unsigned int sw1, unsigned int sw2)
 	
 	/* Handle special cases here */
 	if (sw1 == 0x6C) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Wrong length; correct length is %d\n", sw2);
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Wrong length; correct length is %d", sw2);
 		return SC_ERROR_WRONG_LENGTH;
 	}
 	if (sw1 == 0x90)
 		return SC_NO_ERROR;
         if (sw1 == 0x63U && (sw2 & ~0x0fU) == 0xc0U ) {
-             sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Verification failed (remaining tries: %d)\n",
+             sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Verification failed (remaining tries: %d)",
                    (sw2 & 0x0f));
              return SC_ERROR_PIN_CODE_INCORRECT;
         }
 	for (i = 0; i < err_count; i++)
 		if (iso7816_errors[i].SWs == ((sw1 << 8) | sw2)) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "%s\n", iso7816_errors[i].errorstr);
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "%s", iso7816_errors[i].errorstr);
 			return iso7816_errors[i].errorno;
 		}
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Unknown SWs; SW1=%02X, SW2=%02X\n", sw1, sw2);
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Unknown SWs; SW1=%02X, SW2=%02X", sw1, sw2);
 	return SC_ERROR_CARD_CMD_FAILED;
 }
 
@@ -169,7 +169,7 @@ static int iso7816_write_record(sc_card_t *card, unsigned int rec_nr,
 	int r;
 
 	if (count > 256) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Trying to send too many bytes\n");
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Trying to send too many bytes");
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xD2, rec_nr, 0);
@@ -196,7 +196,7 @@ static int iso7816_append_record(sc_card_t *card,
 	int r;
 
 	if (count > 256) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Trying to send too many bytes\n");
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Trying to send too many bytes");
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xE2, 0, 0);
@@ -221,7 +221,7 @@ static int iso7816_update_record(sc_card_t *card, unsigned int rec_nr,
 	int r;
 
 	if (count > 256) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Trying to send too many bytes\n");
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Trying to send too many bytes");
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xDC, rec_nr, 0);
@@ -301,18 +301,18 @@ static int iso7816_process_fci(sc_card_t *card, sc_file_t *file,
 	size_t taglen, len = buflen;
 	const u8 *tag = NULL, *p = buf;
 
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "processing FCI bytes\n");
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "processing FCI bytes");
 	tag = sc_asn1_find_tag(ctx, p, len, 0x83, &taglen);
 	if (tag != NULL && taglen == 2) {
 		file->id = (tag[0] << 8) | tag[1];
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
-			"  file identifier: 0x%02X%02X\n", tag[0], tag[1]);
+			"  file identifier: 0x%02X%02X", tag[0], tag[1]);
 	}
 	tag = sc_asn1_find_tag(ctx, p, len, 0x80, &taglen);
 	if (tag != NULL && taglen >= 2) {
 		int bytes = (tag[0] << 8) + tag[1];
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
-			"  bytes in file: %d\n", bytes);
+			"  bytes in file: %d", bytes);
 		file->size = bytes;
 	}
 	if (tag == NULL) {
@@ -320,7 +320,7 @@ static int iso7816_process_fci(sc_card_t *card, sc_file_t *file,
 		if (tag != NULL && taglen >= 2) {
 			int bytes = (tag[0] << 8) + tag[1];
 			sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
-				"  bytes in file: %d\n", bytes);
+				"  bytes in file: %d", bytes);
 			file->size = bytes;
 		}
 	}
@@ -331,7 +331,7 @@ static int iso7816_process_fci(sc_card_t *card, sc_file_t *file,
 			const char *type;
 
 			file->shareable = byte & 0x40 ? 1 : 0;
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "  shareable: %s\n",
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "  shareable: %s",
 				       (byte & 0x40) ? "yes" : "no");
 			file->ef_structure = byte & 0x07;
 			switch ((byte >> 3) & 7) {
@@ -352,9 +352,9 @@ static int iso7816_process_fci(sc_card_t *card, sc_file_t *file,
 				break;
 			}
 			sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
-				"  type: %s\n", type);
+				"  type: %s", type);
 			sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
-				"  EF structure: %d\n", byte & 0x07);
+				"  EF structure: %d", byte & 0x07);
 		}
 	}
 	tag = sc_asn1_find_tag(ctx, p, len, 0x84, &taglen);
@@ -365,7 +365,7 @@ static int iso7816_process_fci(sc_card_t *card, sc_file_t *file,
 
 		sc_hex_dump(ctx, SC_LOG_DEBUG_NORMAL,
 			file->name, file->namelen, tbuf, sizeof(tbuf));
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "  File name: %s\n", tbuf);
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "  File name: %s", tbuf);
 		if (!file->type)
 			file->type = SC_FILE_TYPE_DF;
 	}
@@ -650,7 +650,7 @@ static int iso7816_delete_file(sc_card_t *card, const sc_path_t *path)
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	if (path->type != SC_PATH_TYPE_FILE_ID || (path->len != 0 && path->len != 2)) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "File type has to be SC_PATH_TYPE_FILE_ID\n");
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "File type has to be SC_PATH_TYPE_FILE_ID");
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
 	}
 

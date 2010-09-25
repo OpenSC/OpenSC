@@ -389,7 +389,7 @@ int sc_pkcs15_unblock_pin(struct sc_pkcs15_card *p15card,
 		puk_info = (struct sc_pkcs15_pin_info *)puk_obj->data;
 	}
 	if (!puk_info) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Unable to get puk object, using pin object instead!\n");
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Unable to get puk object, using pin object instead!");
 		puk_info = pin_info;
 	}
 	
