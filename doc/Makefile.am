@@ -1,11 +1,6 @@
 MAINTAINERCLEANFILES = $(srcdir)/Makefile.in
 
-wikidir=$(htmldir)/wiki
-
-if ENABLE_DOC
-SUBDIRS = nonpersistent
-endif
-DIST_SUBDIRS = nonpersistent
+dist_noinst_SCRIPTS = svn2cl.xsl 
 
 dist_noinst_DATA = $(srcdir)/tools/*.xml
 

@@ -24,3 +24,19 @@ dist_doc_DATA = NEWS
 # Allow detection of packaged tarball
 dist-hook:
 	echo > "$(distdir)/packaged"
+
+Generate-ChangeLog:
+	rm -f ChangeLog.tmp "$(srcdir)/ChangeLog"
+	test -n "$(SVN)" -a -n "$(XSLTPROC)"
+	if test -d "$(top_srcdir)/.svn"; then \
+		$(SVN) --verbose --xml log "$(top_srcdir)" | \
+			$(XSLTPROC) --nonet --stringparam linelen 75 \
+			--stringparam groupbyday no \
+			--stringparam include-rev no \
+			"$(top_srcdir)/doc/svn2cl.xsl" - > ChangeLog.tmp; \
+	else \
+		echo "Warning: Unable to generate ChangeLog from none svn checkout" >&2; \
+		echo > ChangeLog.tmp; \
+	fi
+	mv ChangeLog.tmp "$(srcdir)/ChangeLog"
+	( cd "$(srcdir)" && autoreconf -ivf )

@@ -214,16 +214,10 @@ ifdef(
 )
 
 dnl These required for svn checkout
-AC_ARG_VAR([XSLTPROC], [xsltproc utility])
 AC_ARG_VAR([SVN], [subversion utility])
-AC_ARG_VAR([WGET], [wget utility])
-AC_ARG_VAR([WGET_OPTS], [wget options])
-AC_ARG_VAR([TR], [tr utility])
-AC_CHECK_PROGS([XSLTPROC],[xsltproc])
+AC_ARG_VAR([XSLTPROC], [xsltproc utility])
 AC_CHECK_PROGS([SVN],[svn])
-AC_CHECK_PROGS([WGET],[wget])
-AC_CHECK_PROGS([TR],[tr])
-test -z "${WGET_OPTS}" && WGET_OPTS="-nv"
+AC_CHECK_PROGS([XSLTPROC],[xsltproc])
 
 if test "${xslstylesheetsdir}" = "detect"; then
 	AC_MSG_CHECKING([xsl-stylesheets])
@@ -257,17 +251,6 @@ if test "${svn_checkout}" = "yes"; then
 
 	if test "${enable_man}" = "yes"; then
 		test "${xslstylesheetsdir}" = "no" && AC_MSG_ERROR([xsl-stylesheets are required for svn build with man])
-	fi
-
-	AC_MSG_CHECKING([svn doc build dependencies])
-	if test -n "${SVN}" -a -n "${TR}" -a -n "${WGET}"; then
-		AC_MSG_RESULT([ok])
-	else
-		if test "${enable_doc}" = "yes"; then
-			AC_MSG_ERROR([Missing SVN, TR or WGET for svn doc build])
-		else
-			AC_MSG_WARN(["make dist" will not work])
-		fi
 	fi
 fi
 
@@ -692,7 +675,6 @@ fi
 AC_CONFIG_FILES([
 	Makefile
 	doc/Makefile
-	doc/nonpersistent/Makefile
 	etc/Makefile
 	src/Makefile
 	src/common/Makefile
