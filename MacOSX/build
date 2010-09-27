@@ -1,11 +1,16 @@
 #!/bin/bash
 set -ex
 OSX_RELEASE=${1:-10.6}
+INTEL_ONLY=${INTEL_ONLY:-no}
 test -x ./configure || ./bootstrap
 BUILDPATH=${PWD}
 case ${OSX_RELEASE} in
 	"10.5")
-		export CFLAGS="-isysroot /Developer/SDKs/MacOSX10.5.sdk -arch i386 -arch ppc7400 -mmacosx-version-min=10.5 -g"
+		if test ${INTEL_ONLY} = "yes"; then
+			export CFLAGS="-isysroot /Developer/SDKs/MacOSX10.5.sdk -arch i386 -mmacosx-version-min=10.5 -g"
+		else
+			export CFLAGS="-isysroot /Developer/SDKs/MacOSX10.5.sdk -arch i386 -arch ppc7400 -mmacosx-version-min=10.5 -g"
+		fi
 	;;
 	"10.6")
 		export CFLAGS="-isysroot /Developer/SDKs/MacOSX10.6.sdk -arch i386 -arch x86_64 -mmacosx-version-min=10.6 -g"
@@ -35,7 +40,7 @@ test ${OSX_RELEASE} = "10.5" && export LTLIB_LIBS="/Developer/SDKs/MacOSX10.5.sd
 
 # check if make install is required
 case "${OSX_RELEASE}" in
-	"10.5") required_arch="ppc7400" ;;
+	"10.5") if test ${INTEL_ONLY} = "yes"; then required_arch="i386"; else required_arch="ppc7400"; fi ;;
 	"10.6") required_arch="x86_64" ;;
 esac
 
@@ -84,8 +89,13 @@ if ! test -e OpenSC.tokend; then
 fi
 
 case "${OSX_RELEASE}" in
-	"10.5") git --git-dir OpenSC.tokend/.git --work-tree OpenSC.tokend checkout origin/10.5; rm -rf OpenSC.tokend/build ;;
-	"10.6") git --git-dir OpenSC.tokend/.git --work-tree OpenSC.tokend checkout origin/10.6; rm -rf OpenSC.tokend/build ;;
+	"10.5") git --git-dir OpenSC.tokend/.git --work-tree OpenSC.tokend checkout --force origin/10.5; rm -rf OpenSC.tokend/build
+	        if test ${INTEL_ONLY} = "yes"; then
+	        	sed -e 's/ ppc7400//g' OpenSC.tokend/Tokend.xcodeproj/project.pbxproj > project.tmp
+	        	mv project.tmp OpenSC.tokend/Tokend.xcodeproj/project.pbxproj
+	        fi
+	;;
+	"10.6") git --git-dir OpenSC.tokend/.git --work-tree OpenSC.tokend checkout --force origin/10.6; rm -rf OpenSC.tokend/build ;;
 esac
 
 if ! test -e build-${OSX_RELEASE}.tar.gz; then
