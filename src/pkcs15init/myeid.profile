@@ -53,8 +53,8 @@ PIN user-pin {
 PIN user-puk {
     min-length = 4;
     max-length = 8;
-    attempts	= 10;
-    flags       = needs-padding;
+    attempts   = 10;
+    flags      = needs-padding;
 }
 
 PIN so-pin {
@@ -80,7 +80,7 @@ filesystem {
     DF MF {
         path  = 3F00;
         type  = DF;
-        acl	  = CREATE=$SOPIN,DELETE=NONE;
+        acl	  = CREATE=$PIN, DELETE=$SOPIN;
 
     	# This is the DIR file
         EF DIR {	    
@@ -92,13 +92,13 @@ filesystem {
         DF PKCS15-AppDF {
  	        type      = DF;
 	        file-id   = 5015;
-            acl       = DELETE=NONE, CREATE=$SOPIN;
+            acl       = DELETE=$PIN, CREATE=$PIN;
 	    
             EF PKCS15-ODF {
         	    file-id   = 5031;
                 structure = transparent;
         	    size      = $odf-size;
-	            acl       = READ=NONE, UPDATE=$SOPIN, DELETE=$SOPIN;
+	            acl       = READ=NONE, UPDATE=$PIN, DELETE=$SOPIN;
         	}
 
             EF PKCS15-TokenInfo {
@@ -125,67 +125,67 @@ filesystem {
                 file-id	  = 4402;
                 structure = transparent;
                 size	  = $prkdf-size;
-                acl	      = READ=NONE, UPDATE=$PIN, DELETE=$SOPIN;
+                acl	      = *=NEVER, READ=NONE, UPDATE=$PIN, DELETE=$SOPIN;
             }
 
             EF PKCS15-PuKDF {
                 file-id	  = 4403;
                 structure = transparent;
                 size	  = $pukdf-size;
-                acl	      = READ=NONE, UPDATE=$PIN, DELETE=$SOPIN;
+                acl	      = *=NEVER, READ=NONE, UPDATE=$PIN, DELETE=$SOPIN;
             }
 
             EF PKCS15-CDF {
                 file-id	  = 4404;
                 structure = transparent;
                 size	  = $cdf-size;
-                acl	      = READ=NONE, UPDATE=$PIN, DELETE=$SOPIN;
+                acl	      = *=NEVER, READ=NONE, UPDATE=$PIN, DELETE=$SOPIN;
             }
 
             EF PKCS15-DODF {
                 file-id	  = 4405;
                 structure = transparent;
                 size	  = $dodf-size;
-                acl       = READ=NONE, UPDATE=$PIN, DELETE=$SOPIN;
+                acl       = *=NEVER, READ=NONE, UPDATE=$PIN, DELETE=$SOPIN;
             }
             
             EF template-private-key {
                 type      = internal-ef;
     	        file-id   = 4B01;	
-    	        acl       = CRYPTO=$PIN, UPDATE=$PIN, DELETE=$SOPIN, GENERATE=$PIN;
+    	        acl       = CRYPTO=$PIN, UPDATE=$PIN, DELETE=$PIN, GENERATE=$PIN;
             }
             
             EF template-public-key {
                 structure = transparent;
                 file-id	  = 5501;
-                acl	      = READ=NONE, UPDATE=$PIN, DELETE=$SOPIN, GENERATE=$PIN;
+                acl	      = READ=NONE, UPDATE=$PIN, DELETE=$PIN, GENERATE=$PIN;
             }
 
             EF template-certificate {
                 file-id   = 4301;
                 structure = transparent;
-                acl       = READ=NONE, UPDATE=$PIN, DELETE=$SOPIN;
+                acl       = READ=NONE, UPDATE=$PIN, DELETE=$PIN;
             }
 
             template key-domain {
                 # This is a dummy entry - pkcs15-init insists that
                 # this is present
                 EF private-key {
-                    file-id   = 4B00;
+                    file-id   = 4B01;
                     type      = internal-ef;
-                    acl       = READ=NONE, UPDATE=$PIN, DELETE=$SOPIN, GENERATE=$PIN;
+                    acl       = READ=NONE, UPDATE=$PIN, DELETE=$PIN, GENERATE=$PIN;
                 }
                 EF public-key {
-                    file-id	  = 5500;
+                    file-id	  = 5501;
                     structure = transparent;
-                    acl       = READ=NONE, UPDATE=$PIN, DELETE=$SOPIN, GENERATE=$PIN;
+                    acl       = READ=NONE, UPDATE=$PIN, DELETE=$PIN, GENERATE=$PIN;
                 }
 		
                 # Certificate template
                 EF certificate {
-                    file-id	  = 4300;
+                    file-id	  = 4301;
                     structure = transparent;
-                    acl       = READ=NONE, UPDATE=$PIN, DELETE=$SOPIN;
+                    acl       = READ=NONE, UPDATE=$PIN, DELETE=$PIN;
                 }
             }
 	    }

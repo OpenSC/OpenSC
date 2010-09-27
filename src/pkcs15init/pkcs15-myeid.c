@@ -31,7 +31,7 @@
 #include "pkcs15-init.h"
 #include "profile.h"
 
-#define KEEP_AC_NONE_FOR_INIT_APPLET
+#undef KEEP_AC_NONE_FOR_INIT_APPLET
 
 #define MYEID_MAX_PINS   14
 
