@@ -71,12 +71,12 @@ rm target/Library/OpenSC/lib/libopensc.la
 
 if test ${OSX_RELEASE} = "10.6"; then
 	# Build libp11+engine_pkcs11. Attention! Uses modified branches from github!
-	test -d libp11 || git clone git://github.com/martinpaljak/libp11.git -b martin
+	test -d libp11 || git clone http://github.com/martinpaljak/libp11.git -b martin
 	(cd libp11
 	test -x confiure || ./bootstrap
 	./configure --enable-static --disable-shared --disable-dependency-tracking --prefix=${BUILDPATH}/build && make && make install
 	cd ..)
-	test -d engine_pkcs11 || git clone git://github.com/martinpaljak/engine_pkcs11.git -b martin
+	test -d engine_pkcs11 || git clone http://github.com/martinpaljak/engine_pkcs11.git -b martin
 	(cd engine_pkcs11
 	git checkout origin/martin
 	test -x configure || ./bootstrap
@@ -85,7 +85,7 @@ if test ${OSX_RELEASE} = "10.6"; then
 fi
 
 if ! test -e OpenSC.tokend; then
-	git clone git://github.com/martinpaljak/OpenSC.tokend.git
+	git clone http://github.com/martinpaljak/OpenSC.tokend.git
 fi
 
 case "${OSX_RELEASE}" in
