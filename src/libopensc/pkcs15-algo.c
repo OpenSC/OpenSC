@@ -302,8 +302,8 @@ static struct sc_asn1_pkcs15_algorithm_info algorithm_table[] = {
 			asn1_decode_pbes2_params,
 			asn1_encode_pbes2_params,
 			asn1_free_pbes2_params },
-	{ -1, {{ -1 }}, NULL, NULL, NULL }
 #endif
+	{ -1, {{ -1 }}, NULL, NULL, NULL }
 };
 
 static struct sc_asn1_pkcs15_algorithm_info *
@@ -448,6 +448,8 @@ sc_asn1_clear_algorithm_id(struct sc_algorithm_id *id)
 {
 	struct sc_asn1_pkcs15_algorithm_info *aip;
 
-	if ((aip = sc_asn1_get_algorithm_info(id)) && aip->free)
-		aip->free(id);
+	if (id->params && (aip = sc_asn1_get_algorithm_info(id)) && aip->free) {
+		aip->free(id->params);
+		id->params = NULL;
+	}
 }
