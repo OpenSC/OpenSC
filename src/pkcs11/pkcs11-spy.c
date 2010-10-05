@@ -701,7 +701,7 @@ CK_RV C_FindObjects(CK_SESSION_HANDLE hSession,
     CK_ULONG          i;
     spy_dump_ulong_out("ulObjectCount", *pulObjectCount);
     for (i = 0; i < *pulObjectCount; i++) {
-      fprintf(spy_output, "Object %ld Matches\n", phObject[i]);
+      fprintf(spy_output, "Object 0x%lx matches\n", phObject[i]);
     }
   }
   return retne(rv);
