@@ -809,13 +809,10 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 
 static int pcsc_detect_readers(sc_context_t *ctx)
 {
-	DWORD active_proto;
-	SCARDHANDLE card_handle;
-	u8 feature_buf[256], rbuf[SC_MAX_APDU_BUFFER_SIZE];
-	PCSC_TLV_STRUCTURE *pcsc_tlv;
 	struct pcsc_global_private_data *gpriv = (struct pcsc_global_private_data *) ctx->reader_drv_data;
+	DWORD active_proto, reader_buf_size;
+	SCARDHANDLE card_handle;
 	LONG rv;
-	DWORD reader_buf_size, rcount, feature_len;
 	char *reader_buf = NULL, *reader_name;
 	const char *mszGroups = NULL;
 	int ret = SC_ERROR_INTERNAL;
