@@ -34,14 +34,6 @@ AC_PROG_CC
 PKG_PROG_PKG_CONFIG
 AC_C_BIGENDIAN
 
-AC_MSG_CHECKING([svn checkout])
-if test -e "${srcdir}/packaged"; then
-	svn_checkout="no"
-else
-	svn_checkout="yes"
-fi
-AC_MSG_RESULT([${svn_checkout}])
-
 AC_ARG_WITH(
 	[cygwin-native],
 	[AS_HELP_STRING([--with-cygwin-native],[compile native win32])],
@@ -153,13 +145,7 @@ AC_ARG_ENABLE(
 	[man],
 	[AS_HELP_STRING([--disable-man],[disable installation of manuals @<:@enabled for none Windows@:>@])],
 	,
-	[
-		if test "${WIN32}" = "yes"; then
-			enable_man="no"
-		else
-			enable_man="yes"
-		fi
-	]
+	[enable_man="detect"]
 )
 
 AC_ARG_ENABLE(
@@ -219,8 +205,8 @@ AC_ARG_VAR([XSLTPROC], [xsltproc utility])
 AC_CHECK_PROGS([SVN],[svn])
 AC_CHECK_PROGS([XSLTPROC],[xsltproc])
 
+AC_MSG_CHECKING([xsl-stylesheets])
 if test "${xslstylesheetsdir}" = "detect"; then
-	AC_MSG_CHECKING([xsl-stylesheets])
 	xslstylesheetsdir="no"
 	for f in \
 		/usr/share/xml/docbook/stylesheet/nwalsh \
@@ -230,29 +216,10 @@ if test "${xslstylesheetsdir}" = "detect"; then
 
 		test -e "${f}/html/docbook.xsl" && xslstylesheetsdir="${f}"
 	done
-	AC_MSG_RESULT([${xslstylesheetsdir}])
 elif test "${xslstylesheetsdir}" != "no"; then
-	AC_MSG_CHECKING([xsl-stylesheets])
 	test -e "${xslstylesheetsdir}/html/docbook.xsl" || AC_MSG_ERROR([invalid])
 fi
-
-dnl svn checkout dependencies
-if test "${svn_checkout}" = "yes"; then
-	AC_MSG_CHECKING([XSLTPROC requirement])
-	if test -n "${XSLTPROC}"; then
-		AC_MSG_RESULT([ok])
-	else
-		if test "${enable_man}" = "yes" -o "${enable_doc}" = "yes"; then
-			AC_MSG_ERROR([Missing XSLTPROC svn build with man or doc])
-		else
-			AC_MSG_WARN(["make dist" will not work])
-		fi
-	fi
-
-	if test "${enable_man}" = "yes"; then
-		test "${xslstylesheetsdir}" = "no" && AC_MSG_ERROR([xsl-stylesheets are required for svn build with man])
-	fi
-fi
+AC_MSG_RESULT([${xslstylesheetsdir}])
 
 dnl C Compiler features
 AC_C_INLINE
@@ -580,6 +547,22 @@ if test "${enable_pcsc}" = "yes"; then
 	AC_DEFINE([ENABLE_PCSC], [1], [Define if PC/SC is to be enabled])
 fi
 
+if test "${enable_man}" = "detect"; then
+	if test "${WIN32}" = "yes"; then
+		enable_man="no"
+	elif test -n "${XSLTPROC}"; then
+		enable_man="yes"
+	else
+		enable_man="no"
+	fi
+fi
+
+if test "${enable_man}" = "yes" -o "${enable_doc}" = "yes"; then
+	AC_MSG_CHECKING([XSLTPROC requirement])
+	test -n "${XSLTPROC}" || AC_MSG_ERROR([Missing XSLTPROC svn build with man or doc])
+	AC_MSG_RESULT([ok])
+fi
+
 OPENSC_FEATURES=""
 if test "${enable_zlib}" = "yes"; then
 	OPENSC_FEATURES="${OPENSC_FEATURES} zlib"
@@ -648,7 +631,6 @@ AC_SUBST([OPTIONAL_OPENCT_LIBS])
 AC_SUBST([OPTIONAL_PCSC_CFLAGS])
 AC_SUBST([LIBRARY_BITNESS])
 
-AM_CONDITIONAL([SVN_CHECKOUT], [test "${svn_checkout}" = "yes"])
 AM_CONDITIONAL([ENABLE_MAN], [test "${enable_man}" = "yes"])
 AM_CONDITIONAL([ENABLE_ZLIB], [test "${enable_zlib}" = "yes"])
 AM_CONDITIONAL([ENABLE_READLINE], [test "${enable_readline}" = "yes"])

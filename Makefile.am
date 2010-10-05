@@ -21,10 +21,6 @@ dist_noinst_DATA = README \
 	solaris/opensc.conf-dist solaris/pkginfo.in solaris/proto
 dist_doc_DATA = NEWS
 
-# Allow detection of packaged tarball
-dist-hook:
-	echo > "$(distdir)/packaged"
-
 Generate-ChangeLog:
 	rm -f ChangeLog.tmp "$(srcdir)/ChangeLog"
 	test -n "$(SVN)" -a -n "$(XSLTPROC)"
