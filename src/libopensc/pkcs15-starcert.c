@@ -171,8 +171,6 @@ static int sc_pkcs15emu_starcert_init(sc_pkcs15_card_t *p15card)
 	if (!p15card->tokeninfo->serial_number)
 		return SC_ERROR_INTERNAL;
 	strcpy(p15card->tokeninfo->serial_number, buf);
-	/* the TokenInfo version number */
-	p15card->tokeninfo->version = 0;
 	/* the manufacturer ID, in this case Giesecke & Devrient GmbH */
 	if (p15card->tokeninfo->manufacturer_id)
 		free(p15card->tokeninfo->manufacturer_id);

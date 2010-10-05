@@ -325,8 +325,6 @@ static int sc_pkcs15_tccardos_init_func(sc_pkcs15_card_t *p15card)
 	p15card->tokeninfo->serial_number = strdup(hex_buf);
 	if (p15card->tokeninfo->serial_number == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
-	/* the TokenInfo version number */
-	p15card->tokeninfo->version = 0;
 	/* select the application DF */
 	sc_format_path(TC_CARDOS_APP_DF, &path);
 	r = sc_select_file(card, &path, &file);

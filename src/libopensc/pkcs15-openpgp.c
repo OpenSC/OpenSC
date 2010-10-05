@@ -94,7 +94,6 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 		goto failed;
 	sc_bin_to_hex(buffer, (size_t)r, string, sizeof(string), 0);
 	set_string(&p15card->tokeninfo->serial_number, string);
-	p15card->tokeninfo->version = (buffer[6] << 8) | buffer[7];
 
 	p15card->tokeninfo->flags = SC_PKCS15_TOKEN_PRN_GENERATION | SC_PKCS15_TOKEN_EID_COMPLIANT;
 

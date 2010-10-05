@@ -180,9 +180,6 @@ static int sc_pkcs15emu_atrust_acos_init(sc_pkcs15_card_t *p15card)
 		return SC_ERROR_INTERNAL;
 	strcpy(p15card->tokeninfo->serial_number, buf2);
 
-	/* the TokenInfo version number */
-	p15card->tokeninfo->version = 0;
-
 	/* manufacturer ID */
 	if (p15card->tokeninfo->manufacturer_id)
 		free(p15card->tokeninfo->manufacturer_id);

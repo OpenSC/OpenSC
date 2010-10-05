@@ -719,8 +719,6 @@ static int itacns_init(sc_pkcs15_card_t *p15card)
 			iso7816_ic_manufacturers[ic_code],
 			itacns_mask_manufacturers[mask_code]);
 		set_string(&p15card->tokeninfo->manufacturer_id, buffer);
-		p15card->tokeninfo->version = (data->os_version_h << 8
-			| data->os_version_l);
 	}
 
 	/* Read and set serial */

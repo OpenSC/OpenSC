@@ -74,7 +74,6 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 
 	set_string (&p15card->tokeninfo->label, "ID-kaart");
 	set_string (&p15card->tokeninfo->manufacturer_id, "AS Sertifitseerimiskeskus");
-	p15card->tokeninfo->version = 2; /* Increases as the code changes for EstEID happen, not only in this file */
 
 	/* Select application directory */
 	sc_format_path ("3f00eeee5044", &tmppath);

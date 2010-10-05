@@ -147,7 +147,6 @@ int sc_pkcs15_parse_tokeninfo(sc_context_t *ctx,
 			sc_strerror(r));
 		return r;
 	}
-	ti->version += 1;
 	ti->serial_number = malloc(serial_len * 2 + 1);
 	if (ti->serial_number == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
@@ -194,15 +193,13 @@ int sc_pkcs15_encode_tokeninfo(sc_context_t *ctx,
 			       u8 **buf, size_t *buflen)
 {
 	int r;
-	int version = ti->version;
 	size_t serial_len, mnfid_len, label_len, flags_len, last_upd_len;
 	
 	struct sc_asn1_entry asn1_toki[14], asn1_tokeninfo[2];
 
 	sc_copy_asn1_entry(c_asn1_toki, asn1_toki);
 	sc_copy_asn1_entry(c_asn1_tokeninfo, asn1_tokeninfo);
-	version--;
-	sc_format_asn1_entry(asn1_toki + 0, &version, NULL, 1);
+	sc_format_asn1_entry(asn1_toki + 0, &ti->version, NULL, 1);
 	if (ti->serial_number != NULL) {
 		u8 serial[128];
 		serial_len = 0;

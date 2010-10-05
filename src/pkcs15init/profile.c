@@ -287,7 +287,7 @@ sc_profile_new(void)
 		p15card->tokeninfo->manufacturer_id = strdup("OpenSC Project");
 		p15card->tokeninfo->serial_number = strdup("0000");
 		p15card->tokeninfo->flags = SC_PKCS15_TOKEN_EID_COMPLIANT;
-		p15card->tokeninfo->version = 1;
+		p15card->tokeninfo->version = 0;
 
 		/* Set up EF(TokenInfo) and EF(ODF) */
 		p15card->file_tokeninfo = init_file(SC_FILE_TYPE_WORKING_EF);

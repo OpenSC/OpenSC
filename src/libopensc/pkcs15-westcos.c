@@ -62,7 +62,6 @@ static int sc_pkcs15emu_westcos_init(sc_pkcs15_card_t * p15card)
 	if (p15card->tokeninfo->serial_number != NULL)
 		free(p15card->tokeninfo->serial_number);
 	p15card->tokeninfo->serial_number = strdup(buf);
-	p15card->tokeninfo->version = buf[6];
 	sc_format_path("AAAA", &path);
 	r = sc_select_file(card, &path, &file);
 	if (r) 
