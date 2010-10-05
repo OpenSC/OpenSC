@@ -80,14 +80,12 @@ static sc_card_t * sc_card_new(sc_context_t *ctx)
 
 	card->type = -1;
 	card->app_count = -1;
-	card->magic = SC_CARD_MAGIC;
 
 	return card;
 }
 
 static void sc_card_free(sc_card_t *card)
 {
-	assert(sc_card_valid(card));
 	sc_free_apps(card);
 	if (card->ef_dir != NULL)
 		sc_file_free(card->ef_dir);
@@ -238,7 +236,6 @@ err:
 int sc_disconnect_card(sc_card_t *card)
 {
 	sc_context_t *ctx;
-	assert(sc_card_valid(card));
 	ctx = card->ctx;
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 	assert(card->lock_count == 0);
@@ -664,13 +661,6 @@ int sc_delete_record(sc_card_t *card, unsigned int rec_nr)
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 }
 
-int sc_card_valid(const sc_card_t *card) {
-#ifndef NDEBUG
-	assert(card != NULL);
-#endif
-	return card->magic == SC_CARD_MAGIC;
-}
-
 int
 sc_card_ctl(sc_card_t *card, unsigned long cmd, void *args)
 {
@@ -694,7 +684,7 @@ int _sc_card_add_algorithm(sc_card_t *card, const sc_algorithm_info_t *info)
 {
 	sc_algorithm_info_t *p;
 
-	assert(sc_card_valid(card) && info != NULL);
+	assert(info != NULL);
 	p = (sc_algorithm_info_t *) realloc(card->algorithms, (card->algorithm_count + 1) * sizeof(*info));
 	if (!p) {
 		if (card->algorithms)

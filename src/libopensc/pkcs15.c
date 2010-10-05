@@ -771,7 +771,7 @@ int sc_pkcs15_bind(sc_card_t *card,
 	scconf_block *conf_block = NULL;
 	int r, emu_first, enable_emu;
 
-	assert(sc_card_valid(card) && p15card_out != NULL);
+	assert(p15card_out != NULL);
 	ctx = card->ctx;
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 	p15card = sc_pkcs15_card_new();

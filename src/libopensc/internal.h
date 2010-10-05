@@ -41,7 +41,6 @@ extern "C" {
 #include "libopensc/cards.h"
 
 #define SC_FILE_MAGIC			0x14426950
-#define SC_CARD_MAGIC			0x27182818
 #define SC_CTX_MAGIC			0x0A550335
 
 #ifndef _WIN32

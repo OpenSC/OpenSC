@@ -694,12 +694,6 @@ int sc_connect_card(sc_reader_t *reader, sc_card_t **card);
  * @return SC_SUCCESS on success and an error code otherwise
  */
 int sc_disconnect_card(sc_card_t *card);
-/**
- * Returns 1 if the magic value of the card object is correct. Mostly
- * used internally by the library.
- * @param card The card object to check
- */
-int sc_card_valid(const sc_card_t *card);
 
 /**
  * Checks if a card is present in a reader
