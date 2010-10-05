@@ -52,6 +52,7 @@ stamp-h*
 *.gif
 *.css
 *.out
+*.tmp
 
 ChangeLog
 opensc.conf
