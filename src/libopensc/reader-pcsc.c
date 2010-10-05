@@ -262,10 +262,12 @@ out:
 static int refresh_attributes(sc_reader_t *reader)
 {
 	struct pcsc_private_data *priv = GET_PRIV_DATA(reader);
+	int old_flags = reader->flags;
+	DWORD state, prev_state;
 	LONG rv;
-
-
-	sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "%s status check", reader->name);
+	
+	sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "%s check", reader->name);
+	
 	if (priv->reader_state.szReader == NULL) {
 		priv->reader_state.szReader = reader->name;
 		priv->reader_state.dwCurrentState = SCARD_STATE_UNAWARE;
@@ -278,65 +280,63 @@ static int refresh_attributes(sc_reader_t *reader)
 
 	if (rv != SCARD_S_SUCCESS && rv != (LONG)SCARD_E_TIMEOUT) {
 		if (rv == (LONG)SCARD_E_TIMEOUT) {
-			reader->flags &= ~SCARD_STATE_CHANGED;
+			reader->flags &= ~SC_READER_CARD_CHANGED;
 			SC_FUNC_RETURN(reader->ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
 		}
 		PCSC_TRACE(reader, "SCardGetStatusChange failed", rv);
 		return pcsc_to_opensc_error(rv);
 	}
-	sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "event: 0x%04X", priv->reader_state.dwEventState);
-	sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "state: 0x%04X", priv->reader_state.dwCurrentState);
+	state = priv->reader_state.dwEventState;
+	prev_state = priv->reader_state.dwCurrentState;
 
-	if (priv->reader_state.dwEventState & SCARD_STATE_UNKNOWN) {
-		/* State means "reader unknown", but we have listed it at least once */
+	sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "current  state: 0x%04X", state);
+	sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "previous state: 0x%04X", prev_state);
+
+	if (state & SCARD_STATE_UNKNOWN) {
+		/* State means "reader unknown", but we have listed it at least once.
+		 * There can be no cards in this reader.
+		 * XXX: We'll hit it again, as no readers are removed currently.
+		 */
+		reader->flags &= ~(SC_READER_CARD_PRESENT);
 		return SC_ERROR_READER_DETACHED;
 	}
 
-	if (priv->reader_state.dwEventState & SCARD_STATE_PRESENT) {
-		int old_flags = reader->flags;
-		int maybe_changed = 0;
-		sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "card present");
-		reader->flags |= SC_READER_CARD_PRESENT;
-		reader->atr_len = priv->reader_state.cbAtr;
-		if (reader->atr_len > SC_MAX_ATR_SIZE)
-			return SC_ERROR_INTERNAL;
-		memcpy(reader->atr, priv->reader_state.rgbAtr, reader->atr_len);
+	reader->flags &= ~SC_READER_CARD_CHANGED;
 
-#ifndef _WIN32
-		/* On Linux, SCARD_STATE_CHANGED always means there was an
-		 * insert or removal. But we may miss events that way. */
-		if (priv->reader_state.dwEventState & SCARD_STATE_CHANGED) {
+	if (state & SCARD_STATE_PRESENT) {
+		reader->flags |= SC_READER_CARD_PRESENT;
+		
+		if (priv->reader_state.cbAtr > SC_MAX_ATR_SIZE)
+			return SC_ERROR_INTERNAL;
+
+		/* ATR changes => card changed */
+		if (memcmp(priv->reader_state.rgbAtr, reader->atr, priv->reader_state.cbAtr) != 0) {
+			reader->atr_len = priv->reader_state.cbAtr;	
+			memcpy(reader->atr, priv->reader_state.rgbAtr, reader->atr_len);
 			reader->flags |= SC_READER_CARD_CHANGED;
-		} else {
-			maybe_changed = 1;
 		}
-#else
-		/* On windows, SCARD_STATE_CHANGED is turned on by lots of
-		 * other events, so it gives us a lot of false positives.
-		 * But if it's off, there really was no change */
-		if (priv->reader_state.dwEventState & SCARD_STATE_CHANGED) {
-			maybe_changed = 1;
-		}
-#endif
-		/* If we aren't sure if the card state changed, check if
-		 * the card handle is still valid. If the card changed,
+
+		/* Check if the card handle is still valid. If the card changed,
 		 * the handle will be invalid. */
-		reader->flags &= ~SC_READER_CARD_CHANGED;
-		if (maybe_changed) {
-			if (old_flags & SC_READER_CARD_PRESENT) {
-				DWORD readers_len = 0, state, prot, atr_len = SC_MAX_ATR_SIZE;
-				unsigned char atr[SC_MAX_ATR_SIZE];
-				LONG rv = priv->gpriv->SCardStatus(priv->pcsc_card, NULL, &readers_len,
-					&state,	&prot, atr, &atr_len);
-				if (rv == (LONG)SCARD_W_REMOVED_CARD)
-					reader->flags |= SC_READER_CARD_CHANGED;
-			}
-			else
+		if (old_flags & SC_READER_CARD_PRESENT) {
+			DWORD readers_len = 0, state, prot, atr_len = SC_MAX_ATR_SIZE;
+			unsigned char atr[SC_MAX_ATR_SIZE];
+			LONG rv = priv->gpriv->SCardStatus(priv->pcsc_card, NULL, &readers_len, &state, &prot, atr, &atr_len);
+			if (rv == (LONG)SCARD_W_REMOVED_CARD)
 				reader->flags |= SC_READER_CARD_CHANGED;
+		} else {
+			reader->flags |= SC_READER_CARD_CHANGED;
 		}
 	} else {
-		reader->flags &= ~(SC_READER_CARD_PRESENT|SC_READER_CARD_CHANGED);
+		reader->flags &= ~SC_READER_CARD_PRESENT;
+		if (old_flags & SC_READER_CARD_PRESENT)
+			reader->flags |= SC_READER_CARD_CHANGED;
+
 	}
+	sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "card %s%s",
+	         reader->flags & SC_READER_CARD_PRESENT ? "present" : "absent",
+	         reader->flags & SC_READER_CARD_CHANGED ? ", changed": "");
+	
 	return SC_SUCCESS;
 }
 
@@ -1060,7 +1060,7 @@ static int pcsc_wait_for_event(sc_context_t *ctx, unsigned int event_mask, sc_re
 		 * match any of the events we're polling for */
 		*event = 0;
 		for (i = 0, rsp = rgReaderStates; i < num_watch; i++, rsp++) {
-			unsigned long state, prev_state;
+			DWORD state, prev_state;
 			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "'%s' before=0x%04X now=0x%04X", rsp->szReader, 
 					rsp->dwCurrentState, rsp->dwEventState);
 			prev_state = rsp->dwCurrentState;
@@ -1717,7 +1717,7 @@ static int cardmod_detect_readers(sc_context_t *ctx, void *prv_data)
 		
 		/* attempt to detect protocol in use T0/T1/RAW */
 		rv = priv->gpriv->SCardStatus(card_handle, NULL, &readers_len,
-				&state, &prot, atr, &atr_len);
+				&state, &prot, atr, &atr_len
 		if (rv != SCARD_S_SUCCESS) 
 		{
 			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "SCardStatus failed %08x", rv);
