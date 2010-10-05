@@ -72,9 +72,9 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 	int r, i, flags;
 	sc_path_t tmppath;
 
-	set_string (&p15card->label, "ID-kaart");
-	set_string (&p15card->manufacturer_id, "AS Sertifitseerimiskeskus");
-	p15card->version = 2; /* Increases as the code changes for EstEID happen, not only in this file */
+	set_string (&p15card->tokeninfo->label, "ID-kaart");
+	set_string (&p15card->tokeninfo->manufacturer_id, "AS Sertifitseerimiskeskus");
+	p15card->tokeninfo->version = 2; /* Increases as the code changes for EstEID happen, not only in this file */
 
 	/* Select application directory */
 	sc_format_path ("3f00eeee5044", &tmppath);
@@ -85,7 +85,7 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 	r = sc_read_record (card, SC_ESTEID_PD_DOCUMENT_NR, buff, sizeof(buff), SC_RECORD_BY_REC_NR);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "read document number failed");
 	buff[r] = '\0';
-	set_string (&p15card->serial_number, (const char *) buff);
+	set_string (&p15card->tokeninfo->serial_number, (const char *) buff);
 
 #ifdef ENABLE_ICONV
 	/* Read the name of the cardholder and convert it into UTF-8 */
@@ -116,11 +116,11 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 	*outptr = '\0';
 	iconv_close(iso_utf);
 	snprintf(label, sizeof(label), "%s %s", name1, name2);
-	set_string (&p15card->label, label);
+	set_string (&p15card->tokeninfo->label, label);
 #endif
-	p15card->flags = SC_PKCS15_CARD_FLAG_PRN_GENERATION
-	                 | SC_PKCS15_CARD_FLAG_EID_COMPLIANT
-	                 | SC_PKCS15_CARD_FLAG_READONLY;
+	p15card->tokeninfo->flags = SC_PKCS15_TOKEN_PRN_GENERATION
+				  | SC_PKCS15_TOKEN_EID_COMPLIANT
+				  | SC_PKCS15_TOKEN_READONLY;
 
 	/* EstEID uses 1024b RSA */
 	card->algorithm_count = 0;

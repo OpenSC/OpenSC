@@ -434,21 +434,14 @@ struct sc_pkcs15_operations   {
 
 typedef struct sc_pkcs15_card {
 	sc_card_t *card;
-	char *label;
-	/* fields from TokenInfo: */
-	int version;
-	char *serial_number, *manufacturer_id;
-	char *last_update;
 	unsigned int flags;
-
-	struct sc_supported_algo_info supported_algos[SC_MAX_SUPPORTED_ALGORITHMS];
 
 	sc_file_t *file_app;
 	sc_file_t *file_tokeninfo, *file_odf, *file_unusedspace;
 
 	struct sc_pkcs15_df *df_list;
 	struct sc_pkcs15_object *obj_list;
-	int record_lengths[SC_PKCS15_DF_TYPE_COUNT];
+	sc_pkcs15_tokeninfo_t *tokeninfo;
 	sc_pkcs15_unusedspace_t *unusedspace_list;
 	int unusedspace_read;
 
@@ -458,22 +451,22 @@ typedef struct sc_pkcs15_card {
 		int pin_cache_counter;
 	} opts;
 
-	sc_pkcs15_sec_env_info_t **seInfo;
-	size_t num_seInfo;
 
 	unsigned int magic;
 
 	void *dll_handle;		/* shared lib for emulated cards */
-	char *preferred_language;
 
 	struct sc_pkcs15_operations ops;
 
 } sc_pkcs15_card_t;
 
-#define SC_PKCS15_CARD_FLAG_READONLY			0x01
-#define SC_PKCS15_CARD_FLAG_LOGIN_REQUIRED		0x02 /* Don't use */
-#define SC_PKCS15_CARD_FLAG_PRN_GENERATION		0x04
-#define SC_PKCS15_CARD_FLAG_EID_COMPLIANT		0x08
+/* flags suitable for sc_pkcs15_tokeninfo_t */
+#define SC_PKCS15_TOKEN_READONLY			0x01
+#define SC_PKCS15_TOKEN_LOGIN_REQUIRED			0x02 /* Don't use */
+#define SC_PKCS15_TOKEN_PRN_GENERATION			0x04
+#define SC_PKCS15_TOKEN_EID_COMPLIANT			0x08
+
+/* flags suitable for sc_pkcs15_card_t */
 #define SC_PKCS15_CARD_FLAG_EMULATED			0x02000000
 #define SC_PKCS15_CARD_FLAG_FIX_INTEGERS		0x04000000
 #define SC_PKCS15_CARD_FLAG_USER_PIN_INITIALIZED	0x08000000

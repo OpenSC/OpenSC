@@ -283,11 +283,11 @@ sc_profile_new(void)
 	pro->pkcs15.do_last_update = 1;
 
 	if (p15card) {
-		p15card->label = strdup("OpenSC Card");
-		p15card->manufacturer_id = strdup("OpenSC Project");
-		p15card->serial_number = strdup("0000");
-		p15card->flags = SC_PKCS15_CARD_FLAG_EID_COMPLIANT;
-		p15card->version = 1;
+		p15card->tokeninfo->label = strdup("OpenSC Card");
+		p15card->tokeninfo->manufacturer_id = strdup("OpenSC Project");
+		p15card->tokeninfo->serial_number = strdup("0000");
+		p15card->tokeninfo->flags = SC_PKCS15_TOKEN_EID_COMPLIANT;
+		p15card->tokeninfo->version = 1;
 
 		/* Set up EF(TokenInfo) and EF(ODF) */
 		p15card->file_tokeninfo = init_file(SC_FILE_TYPE_WORKING_EF);
@@ -822,7 +822,7 @@ do_card_label(struct state *cur, int argc, char **argv)
 {
 	struct sc_pkcs15_card	*p15card = cur->profile->p15_spec;
 
-	return setstr(&p15card->label, argv[0]);
+	return setstr(&p15card->tokeninfo->label, argv[0]);
 }
 
 static int
@@ -830,7 +830,7 @@ do_card_manufacturer(struct state *cur, int argc, char **argv)
 {
 	struct sc_pkcs15_card	*p15card = cur->profile->p15_spec;
 
-	return setstr(&p15card->manufacturer_id, argv[0]);
+	return setstr(&p15card->tokeninfo->manufacturer_id, argv[0]);
 }
 
 /*

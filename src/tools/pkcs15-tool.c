@@ -1105,17 +1105,17 @@ static int dump(void)
 
 	int i, count = 0;
 
-	printf("PKCS#15 Card [%s]:\n", p15card->label);
-	printf("\tVersion        : %d\n", p15card->version);
-	printf("\tSerial number  : %s\n", p15card->serial_number);
-	printf("\tManufacturer ID: %s\n", p15card->manufacturer_id);
-	if (p15card->last_update)
-		printf("\tLast update    : %s\n", p15card->last_update);
-	if (p15card->preferred_language)
-		printf("\tLanguage       : %s\n", p15card->preferred_language);
+	printf("PKCS#15 Card [%s]:\n", p15card->tokeninfo->label);
+	printf("\tVersion        : %d\n", p15card->tokeninfo->version);
+	printf("\tSerial number  : %s\n", p15card->tokeninfo->serial_number);
+	printf("\tManufacturer ID: %s\n", p15card->tokeninfo->manufacturer_id);
+	if (p15card->tokeninfo->last_update)
+		printf("\tLast update    : %s\n", p15card->tokeninfo->last_update);
+	if (p15card->tokeninfo->preferred_language)
+		printf("\tLanguage       : %s\n", p15card->tokeninfo->preferred_language);
 	printf("\tFlags          : ");
 	for (i = 0; i < 4; i++) {
-		if ((p15card->flags >> i) & 1) {
+		if ((p15card->tokeninfo->flags >> i) & 1) {
 			if (count)
 				printf(", ");
 			printf("%s", flags[i]);
@@ -1731,7 +1731,7 @@ int main(int argc, char * const argv[])
 	if (opt_no_cache)
 		p15card->opts.use_file_cache = 0;
 	if (verbose)
-		fprintf(stderr, "Found %s!\n", p15card->label);
+		fprintf(stderr, "Found %s!\n", p15card->tokeninfo->label);
 	
 	if (do_verify_pin)
 		if ((err = verify_pin()))

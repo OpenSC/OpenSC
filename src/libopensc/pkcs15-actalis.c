@@ -191,9 +191,9 @@ static int sc_pkcs15emu_actalis_init(sc_pkcs15_card_t * p15card)
 		return SC_ERROR_WRONG_CARD;
 	
 			
-	set_string(&p15card->label, "Actalis");
-	set_string(&p15card->manufacturer_id, "Actalis");
-	set_string(&p15card->serial_number, (char *)serial);
+	set_string(&p15card->tokeninfo->label, "Actalis");
+	set_string(&p15card->tokeninfo->manufacturer_id, "Actalis");
+	set_string(&p15card->tokeninfo->serial_number, (char *)serial);
 
 #ifdef ENABLE_ZLIB
 	for (i = 0; i < 3; i++) {

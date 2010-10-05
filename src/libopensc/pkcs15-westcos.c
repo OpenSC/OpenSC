@@ -47,22 +47,22 @@ static int sc_pkcs15emu_westcos_init(sc_pkcs15_card_t * p15card)
 	if (file)
 		sc_file_free(file);
 	file = NULL;
-	if (p15card->label != NULL)
-		free(p15card->label);
-	p15card->label = strdup("westcos");
-	if (p15card->manufacturer_id != NULL)
-		free(p15card->manufacturer_id);
-	p15card->manufacturer_id = strdup("CEV");
+	if (p15card->tokeninfo->label != NULL)
+		free(p15card->tokeninfo->label);
+	p15card->tokeninfo->label = strdup("westcos");
+	if (p15card->tokeninfo->manufacturer_id != NULL)
+		free(p15card->tokeninfo->manufacturer_id);
+	p15card->tokeninfo->manufacturer_id = strdup("CEV");
 
 	/* get serial number */
 	r = sc_card_ctl(card, SC_CARDCTL_GET_SERIALNR, &serial);
 	r = sc_bin_to_hex(serial.value, serial.len, buf, sizeof(buf), 0);
 	if (r)
 		goto out;
-	if (p15card->serial_number != NULL)
-		free(p15card->serial_number);
-	p15card->serial_number = strdup(buf);
-	p15card->version = buf[6];
+	if (p15card->tokeninfo->serial_number != NULL)
+		free(p15card->tokeninfo->serial_number);
+	p15card->tokeninfo->serial_number = strdup(buf);
+	p15card->tokeninfo->version = buf[6];
 	sc_format_path("AAAA", &path);
 	r = sc_select_file(card, &path, &file);
 	if (r) 

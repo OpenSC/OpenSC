@@ -58,14 +58,14 @@ static int generate_cache_filename(struct sc_pkcs15_card *p15card,
 	}
 	for (i = 0; i < pathlen; i++)
 		sprintf(pathname + 2*i, "%02X", pathptr[i]);
-	if (p15card->serial_number != NULL) {
-		if (p15card->last_update != NULL)
+	if (p15card->tokeninfo->serial_number != NULL) {
+		if (p15card->tokeninfo->last_update != NULL)
 			r = snprintf(buf, bufsize, "%s/%s_%s_%s", dir,
-			     p15card->serial_number, p15card->last_update,
+			     p15card->tokeninfo->serial_number, p15card->tokeninfo->last_update,
 			     pathname);
 		else
 			r = snprintf(buf, bufsize, "%s/%s_DATE_%s", dir,
-			     p15card->serial_number, pathname);
+			     p15card->tokeninfo->serial_number, pathname);
 		if (r < 0)
 			return SC_ERROR_BUFFER_TOO_SMALL;
 	} else

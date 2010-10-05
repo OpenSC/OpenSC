@@ -360,14 +360,14 @@ sc_oberthur_parse_tokeninfo (struct sc_pkcs15_card *p15card,
 
 	flags = *(buff + 0x22) * 0x100 + *(buff + 0x23);
 	
-	p15card->label = strdup(label);
-	p15card->manufacturer_id = strdup("Oberthur/OpenSC");
+	p15card->tokeninfo->label = strdup(label);
+	p15card->tokeninfo->manufacturer_id = strdup("Oberthur/OpenSC");
 
 	if (flags & 0x01)
-		p15card->flags |= SC_PKCS15_CARD_FLAG_PRN_GENERATION;
+		p15card->tokeninfo->flags |= SC_PKCS15_TOKEN_PRN_GENERATION;
 
 	if (flags & 0x04)
-		p15card->flags |= SC_PKCS15_CARD_FLAG_LOGIN_REQUIRED;
+		p15card->tokeninfo->flags |= SC_PKCS15_TOKEN_LOGIN_REQUIRED;
 
 	if (flags & 0x0C)
 		p15card->flags |= SC_PKCS15_CARD_FLAG_USER_PIN_INITIALIZED;
@@ -375,8 +375,8 @@ sc_oberthur_parse_tokeninfo (struct sc_pkcs15_card *p15card,
 	if (flags & 0x0400)
 		p15card->flags |= SC_PKCS15_CARD_FLAG_TOKEN_INITIALIZED;
 
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "label %s", p15card->label);
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "manufacturer_id %s", p15card->manufacturer_id);
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "label %s", p15card->tokeninfo->label);
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "manufacturer_id %s", p15card->tokeninfo->manufacturer_id);
 	
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
 }
@@ -508,7 +508,7 @@ sc_oberthur_parse_privateinfo (struct sc_pkcs15_card *p15card,
 				break;
 
 			/* There are some private keys, so set LOGIN_REQUIRED flag */
-			p15card->flags |= SC_PKCS15_CARD_FLAG_LOGIN_REQUIRED;
+			p15card->tokeninfo->flags |= SC_PKCS15_TOKEN_LOGIN_REQUIRED;
 
 			rv = sc_pkcs15emu_oberthur_add_prvkey(p15card, file_id, size);
 			if (rv == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED && postpone_allowed)   {
@@ -530,7 +530,7 @@ sc_oberthur_parse_privateinfo (struct sc_pkcs15_card *p15card,
 				break;
 
 			/* There are private data objects, so set LOGIN_REQUIRED flag */
-			p15card->flags |= SC_PKCS15_CARD_FLAG_LOGIN_REQUIRED;
+			p15card->tokeninfo->flags |= SC_PKCS15_TOKEN_LOGIN_REQUIRED;
 
 			rv = sc_pkcs15emu_oberthur_add_data(p15card, file_id, size, 1);
 			if (rv == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED && postpone_allowed)   {
@@ -938,12 +938,12 @@ sc_pkcs15emu_oberthur_init(struct sc_pkcs15_card * p15card)
 	
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	sc_bin_to_hex(card->serialnr.value, card->serialnr.len, serial, sizeof(serial), 0);
-	p15card->serial_number = strdup(serial);
+	p15card->tokeninfo->serial_number = strdup(serial);
 
 	p15card->ops.parse_df = sc_awp_parse_df;
 	p15card->ops.clear = sc_awp_clear;
 	
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Oberthur init: serial %s", p15card->serial_number);
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Oberthur init: serial %s", p15card->tokeninfo->serial_number);
 
 	sc_format_path(AWP_PIN_DF, &path);
 	rv = sc_select_file(card, &path, NULL);

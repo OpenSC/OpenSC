@@ -458,6 +458,13 @@ struct sc_pkcs15_card * sc_pkcs15_card_new(void)
 	p15card = calloc(1, sizeof(struct sc_pkcs15_card));
 	if (p15card == NULL)
 		return NULL;
+
+	p15card->tokeninfo = calloc(1, sizeof(struct sc_pkcs15_tokeninfo));
+	if (p15card->tokeninfo == NULL) {
+		free(p15card);
+		return NULL;
+	}
+
 	p15card->magic = SC_PKCS15_CARD_MAGIC;
 	return p15card;
 }
@@ -493,21 +500,22 @@ void sc_pkcs15_card_free(struct sc_pkcs15_card *p15card)
 	if (p15card->file_unusedspace != NULL)
 		sc_file_free(p15card->file_unusedspace);
 	p15card->magic = 0;
-	if (p15card->label != NULL)
-		free(p15card->label);
-	if (p15card->serial_number != NULL)
-		free(p15card->serial_number);
-	if (p15card->manufacturer_id != NULL)
-		free(p15card->manufacturer_id);
-	if (p15card->last_update != NULL)
-		free(p15card->last_update);
-	if (p15card->preferred_language != NULL)
-		free(p15card->preferred_language);
-	if (p15card->seInfo != NULL) {
-		for (i = 0; i < p15card->num_seInfo; i++)
-			free(p15card->seInfo[i]);
-		free(p15card->seInfo);
+	if (p15card->tokeninfo->label != NULL)
+		free(p15card->tokeninfo->label);
+	if (p15card->tokeninfo->serial_number != NULL)
+		free(p15card->tokeninfo->serial_number);
+	if (p15card->tokeninfo->manufacturer_id != NULL)
+		free(p15card->tokeninfo->manufacturer_id);
+	if (p15card->tokeninfo->last_update != NULL)
+		free(p15card->tokeninfo->last_update);
+	if (p15card->tokeninfo->preferred_language != NULL)
+		free(p15card->tokeninfo->preferred_language);
+	if (p15card->tokeninfo->seInfo != NULL) {
+		for (i = 0; i < p15card->tokeninfo->num_seInfo; i++)
+			free(p15card->tokeninfo->seInfo[i]);
+		free(p15card->tokeninfo->seInfo);
 	}
+	free(p15card->tokeninfo);
 	free(p15card);
 }
 
@@ -519,8 +527,9 @@ void sc_pkcs15_card_clear(sc_pkcs15_card_t *p15card)
 	if (p15card->ops.clear)
 		p15card->ops.clear(p15card);
 
-	p15card->version = 0;
-	p15card->flags   = 0;
+	p15card->flags = 0;
+	p15card->tokeninfo->version = 0;
+	p15card->tokeninfo->flags   = 0;
 	while (p15card->obj_list)   {
 		struct sc_pkcs15_object *obj = p15card->obj_list;
 
@@ -547,40 +556,40 @@ void sc_pkcs15_card_clear(sc_pkcs15_card_t *p15card)
 		sc_file_free(p15card->file_unusedspace);
 		p15card->file_unusedspace = NULL;
 	}
-	if (p15card->label != NULL) {
-		free(p15card->label);
-		p15card->label = NULL;
+	if (p15card->tokeninfo->label != NULL) {
+		free(p15card->tokeninfo->label);
+		p15card->tokeninfo->label = NULL;
 	}
-	if (p15card->serial_number != NULL) {
-		free(p15card->serial_number);
-		p15card->serial_number = NULL;
+	if (p15card->tokeninfo->serial_number != NULL) {
+		free(p15card->tokeninfo->serial_number);
+		p15card->tokeninfo->serial_number = NULL;
 	}
-	if (p15card->manufacturer_id != NULL) {
-		free(p15card->manufacturer_id);
-		p15card->manufacturer_id = NULL;
+	if (p15card->tokeninfo->manufacturer_id != NULL) {
+		free(p15card->tokeninfo->manufacturer_id);
+		p15card->tokeninfo->manufacturer_id = NULL;
 	}
-	if (p15card->last_update != NULL) {
-		free(p15card->last_update);
-		p15card->last_update = NULL;
+	if (p15card->tokeninfo->last_update != NULL) {
+		free(p15card->tokeninfo->last_update);
+		p15card->tokeninfo->last_update = NULL;
 	}
-	if (p15card->preferred_language != NULL) {
-		free(p15card->preferred_language);
-		p15card->preferred_language = NULL;
+	if (p15card->tokeninfo->preferred_language != NULL) {
+		free(p15card->tokeninfo->preferred_language);
+		p15card->tokeninfo->preferred_language = NULL;
 	}
-	if (p15card->seInfo != NULL) {
+	if (p15card->tokeninfo->seInfo != NULL) {
 		size_t i;
-		for (i = 0; i < p15card->num_seInfo; i++)
-			free(p15card->seInfo[i]);
-		free(p15card->seInfo);
-		p15card->seInfo     = NULL;
-		p15card->num_seInfo = 0;
+		for (i = 0; i < p15card->tokeninfo->num_seInfo; i++)
+			free(p15card->tokeninfo->seInfo[i]);
+		free(p15card->tokeninfo->seInfo);
+		p15card->tokeninfo->seInfo     = NULL;
+		p15card->tokeninfo->num_seInfo = 0;
 	}
 }
 
 static int sc_pkcs15_bind_internal(sc_pkcs15_card_t *p15card)
 {
 	unsigned char *buf = NULL;
-	int    err, ii, ok = 0;
+	int    err, ok = 0;
 	size_t len;
 	sc_path_t tmppath;
 	sc_card_t    *card = p15card->card;
@@ -724,31 +733,19 @@ static int sc_pkcs15_bind_internal(sc_pkcs15_card_t *p15card)
 	err = sc_pkcs15_parse_tokeninfo(ctx, &tokeninfo, buf, (size_t)err);
 	if (err != SC_SUCCESS)
 		goto end;
-	p15card->version         = tokeninfo.version;
-	p15card->label           = tokeninfo.label;
-	p15card->serial_number   = tokeninfo.serial_number;
-	p15card->manufacturer_id = tokeninfo.manufacturer_id;
-	p15card->last_update     = tokeninfo.last_update;
-	p15card->flags           = tokeninfo.flags;
-	p15card->preferred_language = tokeninfo.preferred_language;
-	p15card->seInfo          = tokeninfo.seInfo;
-	p15card->num_seInfo      = tokeninfo.num_seInfo;
 
-	memcpy(&p15card->supported_algos, &tokeninfo.supported_algos, sizeof(p15card->supported_algos));
-	for (ii=0; ii<SC_MAX_SUPPORTED_ALGORITHMS && p15card->supported_algos[ii].reference; ii++)
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "algo[%i]: ref:0x%X;mech:0x%X;op:0x%X;algo_ref:0x%X", ii,
-				p15card->supported_algos[ii].reference, p15card->supported_algos[ii].mechanism,
-				p15card->supported_algos[ii].operations, p15card->supported_algos[ii].algo_ref);
+	*(p15card->tokeninfo) = tokeninfo;
 
-	if (!p15card->serial_number && card->serialnr.len)   {
+	if (!p15card->tokeninfo->serial_number && card->serialnr.len)   {
 		char *serial = calloc(1, card->serialnr.len*2 + 1);
 		size_t ii;
 		
 		for(ii=0;ii<card->serialnr.len;ii++)
 			sprintf(serial + ii*2, "%02X", *(card->serialnr.value + ii));
 
-		p15card->serial_number = serial;
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "p15card->serial_number %s", p15card->serial_number);
+		p15card->tokeninfo->serial_number = serial;
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "p15card->tokeninfo->serial_number %s",
+			p15card->tokeninfo->serial_number);
 	}
 
 	ok = 1;
@@ -834,12 +831,12 @@ done:
 	if (strcmp(p15card->card->driver->short_name,"cardos") == 0) {
 
 		/* D-Trust cards (D-TRUST, D-SIGN) */
-		if (strstr(p15card->label,"D-TRUST") != NULL
-			|| strstr(p15card->label,"D-SIGN") != NULL) {
+		if (strstr(p15card->tokeninfo->label,"D-TRUST") != NULL
+			|| strstr(p15card->tokeninfo->label,"D-SIGN") != NULL) {
 
 			/* D-TRUST Card 2.0 2cc (standard cards, which always add
 			 * SHA1 prefix itself */
-			if (strstr(p15card->label, "2cc") != NULL) {
+			if (strstr(p15card->tokeninfo->label, "2cc") != NULL) {
 				p15card->card->caps |= SC_CARD_CAP_ONLY_RAW_HASH_STRIPPED;
 				sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "D-TRUST 2cc card detected, only SHA1 works with this card");
 				/* XXX: add detection when other hash than SHA1 is used with
@@ -849,7 +846,7 @@ done:
 
 			/* D-SIGN multicard 2.0 2ca (cards working with all types of hashes
 			 * and no addition of prefix) */
-			else if (strstr(p15card->label, "2ca") != NULL) {
+			else if (strstr(p15card->tokeninfo->label, "2ca") != NULL) {
 				p15card->card->caps |= SC_CARD_CAP_ONLY_RAW_HASH;
 				sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "D-TRUST 2ca card detected");
 			}

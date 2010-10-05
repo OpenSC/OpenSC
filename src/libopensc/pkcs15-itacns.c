@@ -505,7 +505,7 @@ static int itacns_add_data_files(sc_pkcs15_card_t *p15card)
 			sc_pkcs15_free_data_object(p15_personaldata);
 			return SC_SUCCESS;
 		}
-		set_string(&p15card->label, fullname);
+		set_string(&p15card->tokeninfo->label, fullname);
 	}
 	sc_pkcs15_free_data_object(p15_personaldata);
 	return SC_SUCCESS;
@@ -703,7 +703,7 @@ static int itacns_init(sc_pkcs15_card_t *p15card)
 
 	SC_FUNC_CALLED(p15card->card->ctx, 1);
 
-	set_string(&p15card->label, p15card->card->name);
+	set_string(&p15card->tokeninfo->label, p15card->card->name);
 	if(p15card->card->drv_data) {
 		unsigned int mask_code, ic_code;
 		char buffer[256];
@@ -718,8 +718,8 @@ static int itacns_init(sc_pkcs15_card_t *p15card)
 		snprintf(buffer, sizeof(buffer), "IC: %s; mask: %s",
 			iso7816_ic_manufacturers[ic_code],
 			itacns_mask_manufacturers[mask_code]);
-		set_string(&p15card->manufacturer_id, buffer);
-		p15card->version = (data->os_version_h << 8
+		set_string(&p15card->tokeninfo->manufacturer_id, buffer);
+		p15card->tokeninfo->version = (data->os_version_h << 8
 			| data->os_version_l);
 	}
 
@@ -732,7 +732,7 @@ static int itacns_init(sc_pkcs15_card_t *p15card)
 		if (bytes < 0) return bytes;
 		if (bytes > 16) return -1;
 		serial[bytes] = '\0';
-		set_string(&p15card->serial_number, (char*)serial);
+		set_string(&p15card->tokeninfo->serial_number, (char*)serial);
 	}
 
 	/* Is the card a CIE v1? */

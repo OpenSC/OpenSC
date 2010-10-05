@@ -87,23 +87,23 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 	size_t		length;
 	int		r, i;
 
-	set_string(&p15card->label, "OpenPGP Card");
-	set_string(&p15card->manufacturer_id, "OpenPGP project");
+	set_string(&p15card->tokeninfo->label, "OpenPGP Card");
+	set_string(&p15card->tokeninfo->manufacturer_id, "OpenPGP project");
 
 	if ((r = read_file(card, "004f", buffer, sizeof(buffer))) < 0)
 		goto failed;
 	sc_bin_to_hex(buffer, (size_t)r, string, sizeof(string), 0);
-	set_string(&p15card->serial_number, string);
-	p15card->version = (buffer[6] << 8) | buffer[7];
+	set_string(&p15card->tokeninfo->serial_number, string);
+	p15card->tokeninfo->version = (buffer[6] << 8) | buffer[7];
 
-	p15card->flags = SC_PKCS15_CARD_FLAG_PRN_GENERATION | SC_PKCS15_CARD_FLAG_EID_COMPLIANT;
+	p15card->tokeninfo->flags = SC_PKCS15_TOKEN_PRN_GENERATION | SC_PKCS15_TOKEN_EID_COMPLIANT;
 
 	/* Extract preferred language */
 	r = read_file(card, "00655f2d", string, sizeof(string)-1);
 	if (r < 0)
 		goto failed;
 	string[r] = '\0';
-	set_string(&p15card->preferred_language, string);
+	set_string(&p15card->tokeninfo->preferred_language, string);
 
 	/* Get Application Related Data (006E) */
 	if ((r = sc_get_data(card, 0x006E, buffer, sizeof(buffer))) < 0)

@@ -25,15 +25,15 @@ void sc_test_print_card(const sc_pkcs15_card_t *mycard)
 	int i, count = 0;
 
 	assert(mycard != NULL);
-	printf("PKCS#15 Card [%s]:\n", mycard->label);
-	printf("\tVersion        : %d\n", mycard->version);
-	printf("\tSerial number  : %s\n", mycard->serial_number);
-	printf("\tManufacturer ID: %s\n", mycard->manufacturer_id);
-	if (mycard->preferred_language)
-		printf("\tLanguage       : %s\n", mycard->preferred_language);
+	printf("PKCS#15 Card [%s]:\n", mycard->tokeninfo->label);
+	printf("\tVersion        : %d\n", mycard->tokeninfo->version);
+	printf("\tSerial number  : %s\n", mycard->tokeninfo->serial_number);
+	printf("\tManufacturer ID: %s\n", mycard->tokeninfo->manufacturer_id);
+	if (mycard->tokeninfo->preferred_language)
+		printf("\tLanguage       : %s\n", mycard->tokeninfo->preferred_language);
 	printf("\tFlags          : ");
 	for (i = 0; i < 4; i++) {
-		if ((mycard->flags >> i) & 1) {
+		if ((mycard->tokeninfo->flags >> i) & 1) {
 			if (count)
 				printf(", ");
 			printf("%s", flags[i]);

@@ -193,9 +193,9 @@ static int sc_pkcs15emu_postecert_init(sc_pkcs15_card_t * p15card)
 		goto failed;
 	}
 
-	set_string(&p15card->label, "Postecert & Cnipa Card");
-	set_string(&p15card->manufacturer_id, "Postecert");
-	set_string(&p15card->serial_number, "0000");
+	set_string(&p15card->tokeninfo->label, "Postecert & Cnipa Card");
+	set_string(&p15card->tokeninfo->manufacturer_id, "Postecert");
+	set_string(&p15card->tokeninfo->serial_number, "0000");
 
 	sc_read_binary(card, 0, certlen, 2, 0);
 

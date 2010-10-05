@@ -781,11 +781,11 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 	}
 
 	if (args->label) {
-		if (p15card->label)
-			free(p15card->label);
-		p15card->label = strdup(args->label);
+		if (p15card->tokeninfo->label)
+			free(p15card->tokeninfo->label);
+		p15card->tokeninfo->label = strdup(args->label);
 	}
-	app->label = strdup(p15card->label);
+	app->label = strdup(p15card->tokeninfo->label);
 
 	/* See if we've set an SO PIN */
 	r = sc_pkcs15init_add_object(p15card, profile, SC_PKCS15_AODF, pin_obj);
@@ -2408,21 +2408,13 @@ sc_pkcs15init_update_tokeninfo(struct sc_pkcs15_card *p15card,
 	int		r;
 
 	/* set lastUpdate field */
-	if (p15card->last_update != NULL)
-		free(p15card->last_update);
-	p15card->last_update = get_generalized_time(card->ctx);
-	if (p15card->last_update == NULL)
+	if (p15card->tokeninfo->last_update != NULL)
+		free(p15card->tokeninfo->last_update);
+	p15card->tokeninfo->last_update = get_generalized_time(card->ctx);
+	if (p15card->tokeninfo->last_update == NULL)
 		return SC_ERROR_INTERNAL;
 
-	/* create a temporary tokeninfo structure */
-	tokeninfo.version = p15card->version;
-	/* ugly opensc hack, we use the some high flags internaly */
-	tokeninfo.flags = p15card->flags & 0xffffff; 
-	tokeninfo.label = p15card->label;
-	tokeninfo.serial_number = p15card->serial_number;
-	tokeninfo.manufacturer_id = p15card->manufacturer_id;
-	tokeninfo.last_update = p15card->last_update;
-	tokeninfo.preferred_language = p15card->preferred_language;
+	tokeninfo = *(p15card->tokeninfo);
 
 	if (profile->ops->emu_update_tokeninfo)
 		return profile->ops->emu_update_tokeninfo(profile, p15card, &tokeninfo);
@@ -3443,15 +3435,14 @@ sc_pkcs15init_get_pin_info(struct sc_profile *profile,
 int
 sc_pkcs15init_get_manufacturer(struct sc_profile *profile, const char **res)
 {
-	*res = profile->p15_spec->manufacturer_id;
+	*res = profile->p15_spec->tokeninfo->manufacturer_id;
 	return 0;
 }
-
 
 int
 sc_pkcs15init_get_serial(struct sc_profile *profile, const char **res)
 {
-	*res = profile->p15_spec->serial_number;
+	*res = profile->p15_spec->tokeninfo->serial_number;
 	return 0;
 }
 
@@ -3459,9 +3450,9 @@ sc_pkcs15init_get_serial(struct sc_profile *profile, const char **res)
 int
 sc_pkcs15init_set_serial(struct sc_profile *profile, const char *serial)
 {
-	if (profile->p15_spec->serial_number)
-		free(profile->p15_spec->serial_number);
-	profile->p15_spec->serial_number = strdup(serial);
+	if (profile->p15_spec->tokeninfo->serial_number)
+		free(profile->p15_spec->tokeninfo->serial_number);
+	profile->p15_spec->tokeninfo->serial_number = strdup(serial);
 
 	return 0;
 }
@@ -3470,7 +3461,7 @@ sc_pkcs15init_set_serial(struct sc_profile *profile, const char *serial)
 int
 sc_pkcs15init_get_label(struct sc_profile *profile, const char **res)
 {
-	*res = profile->p15_spec->label;
+	*res = profile->p15_spec->tokeninfo->label;
 	return 0;
 }
 

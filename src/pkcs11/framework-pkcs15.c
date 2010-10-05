@@ -192,7 +192,7 @@ static CK_RV pkcs15_unbind(struct sc_pkcs11_card *p11card)
 
 static void pkcs15_init_token_info(struct sc_pkcs15_card *p15card, CK_TOKEN_INFO_PTR pToken)
 {
-	strcpy_bp(pToken->manufacturerID, p15card->manufacturer_id, 32);
+	strcpy_bp(pToken->manufacturerID, p15card->tokeninfo->manufacturer_id, 32);
 	if (p15card->flags & SC_PKCS15_CARD_FLAG_EMULATED)
 		strcpy_bp(pToken->model, "PKCS#15 emulated", 16);
 	else
@@ -203,14 +203,12 @@ static void pkcs15_init_token_info(struct sc_pkcs15_card *p15card, CK_TOKEN_INFO
 	 * _Assuming_ that the serial number is a Big Endian counter, this
 	 * will assure that the serial within each type of card will be
 	 * unique in pkcs11 (at least for the first 8^16 cards :-) */
-	if (p15card->serial_number != NULL) {
-		int sn_start = strlen(p15card->serial_number) - 16;
+	if (p15card->tokeninfo->serial_number != NULL) {
+		int sn_start = strlen(p15card->tokeninfo->serial_number) - 16;
 
 		if (sn_start < 0)
 			sn_start = 0;
-		strcpy_bp(pToken->serialNumber,
-			p15card->serial_number + sn_start,
-			16);
+		strcpy_bp(pToken->serialNumber, p15card->tokeninfo->serial_number + sn_start, 16);
 	}
 
 	pToken->ulMaxSessionCount = CK_EFFECTIVELY_INFINITE;
@@ -791,13 +789,13 @@ static void pkcs15_init_slot(struct sc_pkcs15_card *p15card,
 
 		if (auth->label[0]) {
 			snprintf(tmp, sizeof(tmp), "%s (%s)",
-				p15card->label, auth->label);
+				p15card->tokeninfo->label, auth->label);
 		} else {
-			snprintf(tmp, sizeof(tmp), "%s", p15card->label);
+			snprintf(tmp, sizeof(tmp), "%s", p15card->tokeninfo->label);
 		}
 		slot->token_info.flags |= CKF_LOGIN_REQUIRED;
 	} else
-		snprintf(tmp, sizeof(tmp), "%s", p15card->label);
+		snprintf(tmp, sizeof(tmp), "%s", p15card->tokeninfo->label);
 	strcpy_bp(slot->token_info.label, tmp, 32);
 
 	if (pin_info && pin_info->magic == SC_PKCS15_PIN_MAGIC) {

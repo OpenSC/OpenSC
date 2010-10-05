@@ -83,15 +83,8 @@ static int sc_pkcs15emu_pteid_init(sc_pkcs15_card_t * p15card)
 	r = sc_pkcs15_parse_tokeninfo(ctx, &tokeninfo, buf, (size_t) r);
 	if (r != SC_SUCCESS)
 		goto end;
-	p15card->version         = tokeninfo.version;
-	p15card->label           = tokeninfo.label;
-	p15card->serial_number   = tokeninfo.serial_number;
-	p15card->manufacturer_id = tokeninfo.manufacturer_id;
-	p15card->last_update     = tokeninfo.last_update;
-	p15card->flags           = tokeninfo.flags;
-	p15card->preferred_language = tokeninfo.preferred_language;
-	p15card->seInfo          = tokeninfo.seInfo;
-	p15card->num_seInfo      = tokeninfo.num_seInfo;
+
+	*(p15card->tokeninfo) = tokeninfo;
 
 	/* Card type detection */
 	if (card->type == SC_CARD_TYPE_IAS_PTEID)
@@ -103,9 +96,9 @@ static int sc_pkcs15emu_pteid_init(sc_pkcs15_card_t * p15card)
 		goto end;
 	}
 
-	p15card->flags = SC_PKCS15_CARD_FLAG_PRN_GENERATION
-	                 | SC_PKCS15_CARD_FLAG_EID_COMPLIANT
-	                 | SC_PKCS15_CARD_FLAG_READONLY;
+	p15card->tokeninfo->flags = SC_PKCS15_TOKEN_PRN_GENERATION
+				  | SC_PKCS15_TOKEN_EID_COMPLIANT
+				  | SC_PKCS15_TOKEN_READONLY;
 
 	/* TODO: Use the cardholder's name?  */
 	/* TODO: Use Portuguese descriptions? */

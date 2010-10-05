@@ -583,7 +583,7 @@ int main(int argc, char * const argv[])
 		goto end;
 	}
 	if (verbose)
-		fprintf(stderr, "Found %s!\n", p15card->label);
+		fprintf(stderr, "Found %s!\n", p15card->tokeninfo->label);
 
 	if (do_decipher) {
 		if ((err = get_key(SC_PKCS15_PRKEY_USAGE_DECRYPT, &key))

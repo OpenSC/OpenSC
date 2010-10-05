@@ -287,16 +287,16 @@ static int infocamere_1200_init(sc_pkcs15_card_t * p15card)
 		return SC_ERROR_WRONG_CARD;
 	}
 
-	set_string(&p15card->serial_number, serial);
+	set_string(&p15card->tokeninfo->serial_number, serial);
 
 	if (ef_gdo[len_iccsn + 6] == 0x02)
-		set_string(&p15card->label, "Infocamere 1202 Card");
+		set_string(&p15card->tokeninfo->label, "Infocamere 1202 Card");
 	else {
-		set_string(&p15card->label, "Infocamere 1203 Card");
+		set_string(&p15card->tokeninfo->label, "Infocamere 1203 Card");
 		change_sign = 1;
 	}
 
-	set_string(&p15card->manufacturer_id, "Infocamere");
+	set_string(&p15card->tokeninfo->manufacturer_id, "Infocamere");
 
 	authority = 0;
 
@@ -599,9 +599,9 @@ static int infocamere_1400_init(sc_pkcs15_card_t * p15card)
 	sc_read_binary(card, 15, serial, 15, 0);
 	serial[15] = '\0';
 
-	set_string(&p15card->serial_number, (char *)serial);
-	set_string(&p15card->label, "Infocamere 1400 Card");
-	set_string(&p15card->manufacturer_id, "Infocamere");
+	set_string(&p15card->tokeninfo->serial_number, (char *)serial);
+	set_string(&p15card->tokeninfo->label, "Infocamere 1400 Card");
+	set_string(&p15card->tokeninfo->manufacturer_id, "Infocamere");
 
 	if ((r = loadCertificate(p15card, 0, certPath[0], certLabel[0])) !=
 	    SC_SUCCESS) {
@@ -724,9 +724,9 @@ static int infocamere_1600_init(sc_pkcs15_card_t * p15card)
 	sc_read_binary(card, 30, serial, 16, 0);
 	serial[16] = '\0';
 
-	set_string(&p15card->serial_number, (char *) serial);
-	set_string(&p15card->label, "Infocamere 1600 Card");
-	set_string(&p15card->manufacturer_id, "Infocamere");
+	set_string(&p15card->tokeninfo->serial_number, (char *) serial);
+	set_string(&p15card->tokeninfo->label, "Infocamere 1600 Card");
+	set_string(&p15card->tokeninfo->manufacturer_id, "Infocamere");
 
 	/* Adding certificates.
 	 * Certificates are stored in a ZLib compressed form with

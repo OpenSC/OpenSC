@@ -306,27 +306,27 @@ static int sc_pkcs15_tccardos_init_func(sc_pkcs15_card_t *p15card)
 	if (r != SC_SUCCESS)
 		return r;
 	/* set card label */
-	if (p15card->label != NULL)
-		free(p15card->label);
-	p15card->label = strdup(TC_CARDOS_LABEL);
-	if (p15card->label == NULL)
+	if (p15card->tokeninfo->label != NULL)
+		free(p15card->tokeninfo->label);
+	p15card->tokeninfo->label = strdup(TC_CARDOS_LABEL);
+	if (p15card->tokeninfo->label == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 	/* set the manufacturer ID */
-	if (p15card->manufacturer_id != NULL)
-		free(p15card->manufacturer_id);
-	p15card->manufacturer_id = strdup(MANU_ID);
-	if (p15card->manufacturer_id == NULL)
+	if (p15card->tokeninfo->manufacturer_id != NULL)
+		free(p15card->tokeninfo->manufacturer_id);
+	p15card->tokeninfo->manufacturer_id = strdup(MANU_ID);
+	if (p15card->tokeninfo->manufacturer_id == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 	/* set the serial number */
 	r = read_file(p15card->card, "3F002F02", gdo, &gdo_len);
 	if (r != SC_SUCCESS)
 		return SC_ERROR_INTERNAL;
 	sc_bin_to_hex(gdo + 7, 8, hex_buf, sizeof(hex_buf), 0);
-	p15card->serial_number = strdup(hex_buf);
-	if (p15card->serial_number == NULL)
+	p15card->tokeninfo->serial_number = strdup(hex_buf);
+	if (p15card->tokeninfo->serial_number == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 	/* the TokenInfo version number */
-	p15card->version = 0;
+	p15card->tokeninfo->version = 0;
 	/* select the application DF */
 	sc_format_path(TC_CARDOS_APP_DF, &path);
 	r = sc_select_file(card, &path, &file);

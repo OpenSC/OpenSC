@@ -462,7 +462,7 @@ main(int argc, char **argv)
 			 * sure we're not messing things up */
 
 			if (verbose)
-				printf("Found %s\n", p15card->label);
+				printf("Found %s\n", p15card->tokeninfo->label);
 
 			sc_pkcs15init_set_p15card(profile, p15card);
 
@@ -627,7 +627,7 @@ do_erase(sc_card_t *in_card, struct sc_profile *profile)
 
 	p15card = sc_pkcs15_card_new();
 	p15card->card = in_card;
-	p15card->label = strdup("Dummy PKCS#15 object");
+	p15card->tokeninfo->label = strdup("Dummy PKCS#15 object");
 
 	ignore_cmdline_pins++;
 	r = sc_pkcs15init_erase_card(p15card, profile);
