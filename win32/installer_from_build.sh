@@ -8,9 +8,10 @@ if ! [ -d ${build_dir} ]; then
 fi
 
 # build a fresh targzip
+rm -f opensc-*.tar.gz
 make dist
-rm -f ${build_dir}/sources/opensc*
-cp opensc-0.12.0-svn.tar.gz ${build_dir}/sources/
+rm -f ${build_dir}/sources/opensc*.tar.gz
+cp opensc-0.12.*.tar.gz ${build_dir}/sources/
 
 # use mingw to generate binaries
 (cd ${build_dir}; CHOST=i586-mingw32msvc CBUILD=i686-pc-linux-gnu ./build)
