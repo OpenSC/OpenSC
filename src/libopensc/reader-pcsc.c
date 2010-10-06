@@ -289,8 +289,8 @@ static int refresh_attributes(sc_reader_t *reader)
 	state = priv->reader_state.dwEventState;
 	prev_state = priv->reader_state.dwCurrentState;
 
-	sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "current  state: 0x%04X", state);
-	sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "previous state: 0x%04X", prev_state);
+	sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "current  state: 0x%08X", state);
+	sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "previous state: 0x%08X", prev_state);
 
 	if (state & SCARD_STATE_UNKNOWN) {
 		/* State means "reader unknown", but we have listed it at least once.
@@ -316,14 +316,20 @@ static int refresh_attributes(sc_reader_t *reader)
 			reader->flags |= SC_READER_CARD_CHANGED;
 		}
 
-		/* Check if the card handle is still valid. If the card changed,
-		 * the handle will be invalid. */
+
 		if (old_flags & SC_READER_CARD_PRESENT) {
-			DWORD readers_len = 0, state, prot, atr_len = SC_MAX_ATR_SIZE;
-			unsigned char atr[SC_MAX_ATR_SIZE];
-			LONG rv = priv->gpriv->SCardStatus(priv->pcsc_card, NULL, &readers_len, &state, &prot, atr, &atr_len);
-			if (rv == (LONG)SCARD_W_REMOVED_CARD)
+			/* Requires pcsc-lite 1.6.5+ to function properly */
+			if ((state & 0xFFFF0000) != (prev_state & 0xFFFF0000)) {
 				reader->flags |= SC_READER_CARD_CHANGED;
+			} else {
+				/* Check if the card handle is still valid. If the card changed,
+				 * the handle will be invalid. */
+				DWORD readers_len = 0, state, prot, atr_len = SC_MAX_ATR_SIZE;
+				unsigned char atr[SC_MAX_ATR_SIZE];
+				LONG rv = priv->gpriv->SCardStatus(priv->pcsc_card, NULL, &readers_len, &state, &prot, atr, &atr_len);
+				if (rv == (LONG)SCARD_W_REMOVED_CARD)
+					reader->flags |= SC_READER_CARD_CHANGED;
+			}
 		} else {
 			reader->flags |= SC_READER_CARD_CHANGED;
 		}
@@ -1058,7 +1064,7 @@ static int pcsc_wait_for_event(sc_context_t *ctx, unsigned int event_mask, sc_re
 		*event = 0;
 		for (i = 0, rsp = rgReaderStates; i < num_watch; i++, rsp++) {
 			DWORD state, prev_state;
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "'%s' before=0x%04X now=0x%04X", rsp->szReader, 
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "'%s' before=0x%08X now=0x%08X", rsp->szReader, 
 					rsp->dwCurrentState, rsp->dwEventState);
 			prev_state = rsp->dwCurrentState;
 			state = rsp->dwEventState;
