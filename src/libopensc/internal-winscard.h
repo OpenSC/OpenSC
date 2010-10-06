@@ -33,8 +33,14 @@ typedef unsigned __int8 uint8_t;
 #define SCARD_STATE_IGNORE		0x0001	/**< Ignore this reader */
 #define SCARD_STATE_CHANGED		0x0002	/**< State has changed */
 #define SCARD_STATE_UNKNOWN		0x0004	/**< Reader unknown */
+#define SCARD_STATE_UNAVAILABLE		0x0008	/**< Status unavailable */
 #define SCARD_STATE_EMPTY		0x0010	/**< Card removed */
 #define SCARD_STATE_PRESENT		0x0020	/**< Card inserted */
+#define SCARD_STATE_EXCLUSIVE		0x0080	/**< Exclusive Mode */
+#define SCARD_STATE_INUSE		0x0100	/**< Shared Mode */
+#define SCARD_STATE_MUTE		0x0200	/**< Unresponsive card */
+#define SCARD_STATE_UNPOWERED		0x0400	/**< Unpowered card */
+
 
 #define SCARD_SHARE_EXCLUSIVE		0x0001	/**< Exclusive mode only */
 #define SCARD_SHARE_SHARED		0x0002	/**< Shared mode only */
