@@ -469,8 +469,6 @@ typedef struct sc_pkcs15_card {
 /* flags suitable for sc_pkcs15_card_t */
 #define SC_PKCS15_CARD_FLAG_EMULATED			0x02000000
 #define SC_PKCS15_CARD_FLAG_FIX_INTEGERS		0x04000000
-#define SC_PKCS15_CARD_FLAG_USER_PIN_INITIALIZED	0x08000000
-#define SC_PKCS15_CARD_FLAG_TOKEN_INITIALIZED		0x10000000
 
 /* sc_pkcs15_bind:  Binds a card object to a PKCS #15 card object
  * and initializes a new PKCS #15 card object.  Will return

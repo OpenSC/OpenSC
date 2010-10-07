@@ -790,7 +790,6 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 	/* See if we've set an SO PIN */
 	r = sc_pkcs15init_add_object(p15card, profile, SC_PKCS15_AODF, pin_obj);
 	if (r >= 0) {
-		p15card->flags |= SC_PKCS15_CARD_FLAG_TOKEN_INITIALIZED;
 		r = sc_pkcs15init_update_dir(p15card, profile, app);
 		if (r >= 0)
 			r = sc_pkcs15init_update_tokeninfo(p15card, profile);
@@ -920,11 +919,6 @@ sc_pkcs15init_store_pin(struct sc_pkcs15_card *p15card,
 	if (r < 0)
 		sc_pkcs15_free_object(pin_obj);
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Failed to add PIN object");
-
-	if (!(pin_info->flags & (SC_PKCS15_PIN_FLAG_SO_PIN | SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN)))   {
-		p15card->flags |= SC_PKCS15_CARD_FLAG_USER_PIN_INITIALIZED;
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Updated pkcs15 card flags %X", p15card->flags);
-	}
 
 	if (args->puk_id.len)
 		r = sc_pkcs15init_store_puk(p15card, profile, args);

@@ -366,15 +366,6 @@ sc_oberthur_parse_tokeninfo (struct sc_pkcs15_card *p15card,
 	if (flags & 0x01)
 		p15card->tokeninfo->flags |= SC_PKCS15_TOKEN_PRN_GENERATION;
 
-	if (flags & 0x04)
-		p15card->tokeninfo->flags |= SC_PKCS15_TOKEN_LOGIN_REQUIRED;
-
-	if (flags & 0x0C)
-		p15card->flags |= SC_PKCS15_CARD_FLAG_USER_PIN_INITIALIZED;
-
-	if (flags & 0x0400)
-		p15card->flags |= SC_PKCS15_CARD_FLAG_TOKEN_INITIALIZED;
-
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "label %s", p15card->tokeninfo->label);
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "manufacturer_id %s", p15card->tokeninfo->manufacturer_id);
 	
@@ -507,9 +498,6 @@ sc_oberthur_parse_privateinfo (struct sc_pkcs15_card *p15card,
 			if (no_more_private_keys)
 				break;
 
-			/* There are some private keys, so set LOGIN_REQUIRED flag */
-			p15card->tokeninfo->flags |= SC_PKCS15_TOKEN_LOGIN_REQUIRED;
-
 			rv = sc_pkcs15emu_oberthur_add_prvkey(p15card, file_id, size);
 			if (rv == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED && postpone_allowed)   {
 				struct sc_path path;
@@ -528,9 +516,6 @@ sc_oberthur_parse_privateinfo (struct sc_pkcs15_card *p15card,
 			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "*(buff+ii + 1):%X", *(buff+ii + 1));
 			if (no_more_private_data)
 				break;
-
-			/* There are private data objects, so set LOGIN_REQUIRED flag */
-			p15card->tokeninfo->flags |= SC_PKCS15_TOKEN_LOGIN_REQUIRED;
 
 			rv = sc_pkcs15emu_oberthur_add_data(p15card, file_id, size, 1);
 			if (rv == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED && postpone_allowed)   {
@@ -1021,8 +1006,6 @@ sc_pkcs15emu_oberthur_init(struct sc_pkcs15_card * p15card)
 				sc_pkcs15_print_id(&info.auth_id), info.reference);
 		rv = sc_pkcs15emu_add_pin_obj(p15card, &obj, &info);
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Oberthur init failed: cannot add PIN object");
-	
-		p15card->flags |= SC_PKCS15_CARD_FLAG_USER_PIN_INITIALIZED;
 	}
 	else if (rv != SC_ERROR_DATA_OBJECT_NOT_FOUND)    {
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Oberthur init failed: cannot verify PIN");

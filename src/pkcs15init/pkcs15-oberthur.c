@@ -61,13 +61,11 @@ static int cosm_update_pin(struct sc_profile *, struct sc_pkcs15_card *,
 
 static int 
 cosm_write_tokeninfo (struct sc_pkcs15_card *p15card, struct sc_profile *profile, 
-		char *label, unsigned p15card_flags, unsigned tinfo_flags)
+		char *label, unsigned flags)
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_file *file = NULL;
-	unsigned int p15card_mask = SC_PKCS15_CARD_FLAG_USER_PIN_INITIALIZED | SC_PKCS15_CARD_FLAG_TOKEN_INITIALIZED;
-	unsigned int tinfo_mask = SC_PKCS15_TOKEN_PRN_GENERATION | SC_PKCS15_TOKEN_LOGIN_REQUIRED;
-	int rv, flags = 0;
+	int rv;
 	size_t sz;
 	char *buffer = NULL;
 
@@ -75,7 +73,7 @@ cosm_write_tokeninfo (struct sc_pkcs15_card *p15card, struct sc_profile *profile
 		return SC_ERROR_INVALID_ARGUMENTS;
 	
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "cosm_write_tokeninfo() label '%s'; p15card_flags 0x%X; tinfo_flags  0x%X", label, p15card_flags, tinfo_flags);
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "cosm_write_tokeninfo() label '%s'; flags 0x%X", label, flags);
 	if (sc_profile_get_file(profile, COSM_TITLE"-token-info", &file))
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INCONSISTENT_PROFILE, "Cannot find "COSM_TITLE"-token-info");
 
@@ -99,18 +97,6 @@ cosm_write_tokeninfo (struct sc_pkcs15_card *p15card, struct sc_profile *profile
 	if (sz < file->size - 4)
 		memset(buffer + sz, ' ', file->size - sz);
 
-	if (tinfo_flags & SC_PKCS15_TOKEN_PRN_GENERATION)
-		flags |= COSM_TOKEN_FLAG_PRN_GENERATION;
-	
-	if (tinfo_flags & SC_PKCS15_TOKEN_LOGIN_REQUIRED)
-		flags |= COSM_TOKEN_FLAG_LOGIN_REQUIRED;
-	
-	if (p15card_flags & SC_PKCS15_CARD_FLAG_USER_PIN_INITIALIZED)
-		flags |= COSM_TOKEN_FLAG_USER_PIN_INITIALIZED;
-	
-	if (p15card_flags & SC_PKCS15_CARD_FLAG_TOKEN_INITIALIZED)
-		flags |= COSM_TOKEN_FLAG_TOKEN_INITIALIZED;
-
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "cosm_write_tokeninfo() token label '%s'; oberthur flags 0x%X", buffer, flags);
 
 	memset(buffer + file->size - 4, 0, 4);
@@ -120,14 +106,6 @@ cosm_write_tokeninfo (struct sc_pkcs15_card *p15card, struct sc_profile *profile
 	rv = sc_pkcs15init_update_file(profile, p15card, file, buffer, file->size);
 	if (rv > 0)
 		rv = 0;
-
-	p15card->flags = (p15card->flags & ~p15card_mask) | p15card_flags;
-	p15card->tokeninfo->flags = (p15card->tokeninfo->flags & ~tinfo_mask) | tinfo_flags;
-
-	if (profile->p15_spec) {
-		profile->p15_spec->flags = (profile->p15_spec->flags & ~p15card_mask) | p15card_flags;
-		profile->p15_spec->tokeninfo->flags = (profile->p15_spec->tokeninfo->flags & ~tinfo_mask) | tinfo_flags;
-	}
 
 	free(buffer);
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, rv);
@@ -283,7 +261,7 @@ cosm_create_dir(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	}
 
 	rv = cosm_write_tokeninfo(p15card, profile, NULL,
-		SC_PKCS15_CARD_FLAG_TOKEN_INITIALIZED, SC_PKCS15_TOKEN_PRN_GENERATION);
+		COSM_TOKEN_FLAG_TOKEN_INITIALIZED | COSM_TOKEN_FLAG_PRN_GENERATION);
 
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, rv);
 }
@@ -387,8 +365,10 @@ cosm_update_pin(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "cosm_update_pin() failed to change PIN");
 
 		rv = cosm_write_tokeninfo(p15card, profile, NULL,
-			SC_PKCS15_CARD_FLAG_TOKEN_INITIALIZED | SC_PKCS15_CARD_FLAG_USER_PIN_INITIALIZED,
-			SC_PKCS15_TOKEN_PRN_GENERATION | SC_PKCS15_TOKEN_LOGIN_REQUIRED);
+			COSM_TOKEN_FLAG_TOKEN_INITIALIZED 
+			| COSM_TOKEN_FLAG_PRN_GENERATION
+			| COSM_TOKEN_FLAG_LOGIN_REQUIRED
+			| COSM_TOKEN_FLAG_USER_PIN_INITIALIZED);
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "cosm_update_pin() failed to update tokeninfo");
 	}
 
@@ -838,17 +818,13 @@ cosm_emu_update_tokeninfo(struct sc_profile *profile, struct sc_pkcs15_card *p15
 	memcpy(buf, tinfo->label, label_len);
 	memset(buf  + label_len, ' ', file->size - 4 - label_len);
 
-	if (p15card->tokeninfo->flags & SC_PKCS15_TOKEN_PRN_GENERATION)
-		flags |= 0x01;
-	
-	if (p15card->tokeninfo->flags & SC_PKCS15_TOKEN_LOGIN_REQUIRED)
-		flags |= 0x04;
-	
-	if (p15card->flags & SC_PKCS15_CARD_FLAG_USER_PIN_INITIALIZED)
-		flags |= 0x08;
-	
-	if (p15card->flags & SC_PKCS15_CARD_FLAG_TOKEN_INITIALIZED)
-		flags |= 0x0400;
+	/*  current PKCS#11 flags should be read from the token,
+	 *  but for simplicity assume that user-pin is already initialised -- Andre 2010-10-05
+	 */
+	flags = COSM_TOKEN_FLAG_TOKEN_INITIALIZED
+		| COSM_TOKEN_FLAG_USER_PIN_INITIALIZED
+		| COSM_TOKEN_FLAG_LOGIN_REQUIRED
+		| COSM_TOKEN_FLAG_PRN_GENERATION;
 
 	memset(buf + file->size - 4, 0, 4);
 	*(buf + file->size - 1) = flags % 0x100;
