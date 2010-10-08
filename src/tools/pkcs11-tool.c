@@ -802,9 +802,13 @@ static void list_slots(int tokens, int refresh, int print)
 static void show_token(CK_SLOT_ID slot)
 {
 	CK_TOKEN_INFO	info;
-
-	get_token_info(slot, &info);
-
+	CK_RV rv;
+	
+	rv = p11->C_GetTokenInfo(slot, &info);
+	if (rv == CKR_TOKEN_NOT_RECOGNIZED) {
+		printf("  (token not recognized)\n");
+		return;
+	}
 	if (!(info.flags & CKF_TOKEN_INITIALIZED) && (!verbose)) {
 		printf("  token state:   uninitialized\n");
 		return;
