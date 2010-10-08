@@ -490,7 +490,8 @@ static int do_single_transmit(sc_card_t *card, sc_apdu_t *apdu)
 					SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, r);
 
 				if (buflen < le)
-					return SC_ERROR_WRONG_LENGTH;
+				/* copy as much as will fit in requested buffer */
+					le = buflen;
 
 				memcpy(buf, tbuf, le);
 				buf    += le;
