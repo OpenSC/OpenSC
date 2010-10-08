@@ -163,6 +163,7 @@ static int		opt_slot_set = 0;
 static CK_SLOT_ID	opt_slot = 0;
 static const char *	opt_slot_label = NULL;
 static CK_ULONG		opt_slot_index = 0;
+static int		opt_slot_index_set = 0;
 static CK_MECHANISM_TYPE opt_mechanism = 0;
 static int		opt_mechanism_used = 0;
 static const char *	opt_file_to_write = NULL;
@@ -463,6 +464,7 @@ int main(int argc, char * argv[])
 				util_print_usage_and_die(app_name, options, option_help);
 			}
 			opt_slot_index = (CK_ULONG) strtoul(optarg, NULL, 0);
+			opt_slot_index_set = 1;
 			break;
 		case OPT_MODULE:
 			opt_module = optarg;
@@ -553,7 +555,7 @@ int main(int argc, char * argv[])
 			}
 			if (verbose)
 				fprintf(stderr, "Using slot with label \"%s\" (0x%lx)\n", opt_slot_label, opt_slot);
-		} else {
+		} else if (opt_slot_index_set) {
 			if (opt_slot_index < p11_num_slots) {
 				opt_slot = p11_slots[opt_slot_index];
 				fprintf(stderr, "Using slot with index %lu (0x%lx)\n", opt_slot_index, opt_slot);
@@ -563,6 +565,27 @@ int main(int argc, char * argv[])
 				err = 1;
 				goto end;	
 			}
+		} else {
+			/* use first slot with token present (or default slot on error) */
+			unsigned int i, found = 0;
+			for (i = 0; i < p11_num_slots; i++) {
+				CK_SLOT_INFO info;
+				rv = p11->C_GetSlotInfo(p11_slots[i], &info);
+				if (rv != CKR_OK)
+					p11_fatal("C_GetSlotInfo", rv);
+				if (info.flags & CKF_TOKEN_PRESENT) {
+					opt_slot = p11_slots[i];
+					fprintf(stderr, "Using slot %u with a present token (0x%lx)\n", i, opt_slot);
+					found = 1;
+					break;
+				}
+			}
+			if (!found) {
+				fprintf(stderr, "No slot with a token was found.\n");
+				err = 1;
+				goto end;
+			}
+				
 		}
 	}
 
