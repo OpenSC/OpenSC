@@ -998,8 +998,10 @@ static int piv_get_data(sc_card_t * card, int enumtag,
 
 		/* end of read pub key from file */
 #else
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"Requires OpenSSL");
-		r = SC_ERROR_NOT_SUPPORTED;
+		if (getenv(keyenvname)) 
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"Requires OpenSSL");
+		r = SC_ERROR_FILE_NOT_FOUND;
+		goto err;
 #endif /* ENABLE_OPENSSL */
 	} else {
 

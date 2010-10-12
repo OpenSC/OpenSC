@@ -408,9 +408,9 @@ static int sc_pkcs15emu_gemsafeGPK_init(sc_pkcs15_card_t *p15card)
 		}
 
 		for (j = 0; j < num_keyinfo; j++) { 
-			if (cert_out->key.u.rsa.modulus.len == kinfo[j].modulus_len &&	
-					memcmp(cert_out->key.u.rsa.modulus.data, 
-					&kinfo[j].modulus, cert_out->key.u.rsa.modulus.len) == 0) { 
+			if (cert_out->key->u.rsa.modulus.len == kinfo[j].modulus_len &&	
+					memcmp(cert_out->key->u.rsa.modulus.data, 
+					&kinfo[j].modulus, cert_out->key->u.rsa.modulus.len) == 0) { 
 			memcpy(&kinfo[j].id, &cert_info.id, sizeof(sc_pkcs15_id_t));
 			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "found match");
 			}

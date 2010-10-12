@@ -426,16 +426,14 @@ __pkcs15_create_cert_object(struct pkcs15_fw_data *fw_data,
 	  return rv;	
 	
 	if (p15_cert) {
-		obj2->pub_data = &p15_cert->key;
-		obj2->pub_data = (sc_pkcs15_pubkey_t *)calloc(1, sizeof(sc_pkcs15_pubkey_t));
-		if (!obj2->pub_data)
-			return SC_ERROR_OUT_OF_MEMORY;
-		memcpy(obj2->pub_data, &p15_cert->key, sizeof(sc_pkcs15_pubkey_t));
+		 /* we take the pubkey from the cert, as it in not needed */
+		obj2->pub_data = p15_cert->key;
 		/* invalidate public data of the cert object so that sc_pkcs15_cert_free
 		 * does not free the public key data as well (something like
 		 * sc_pkcs15_pubkey_dup would have been nice here) -- Nils
 		 */
-		memset(&p15_cert->key, 0, sizeof(sc_pkcs15_pubkey_t));
+		p15_cert->key = NULL;
+		
 	} else
 		obj2->pub_data = NULL; /* will copy from cert when cert is read */
 

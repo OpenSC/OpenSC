@@ -623,81 +623,13 @@ sc_pkcs15_pubkey_from_prvkey(struct sc_context *ctx,
 	return SC_SUCCESS;
 }
 
-
-int
-sc_pkcs15_pubkey_from_cert(struct sc_context *ctx,
-		struct sc_pkcs15_der *cert_blob, struct sc_pkcs15_pubkey **out)
-{
-#ifndef ENABLE_OPENSSL
-	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED);
-#else
-	EVP_PKEY *pkey = NULL;
-	X509 *x = NULL;
-	BIO *mem = NULL;
-	struct sc_pkcs15_pubkey *pubkey = NULL;
-	int rv = 0;
-
-	assert(cert_blob && out);
-
-	pubkey = calloc(1, sizeof(struct sc_pkcs15_pubkey));
-	if (!pubkey)
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate pubkey");
-
-	pubkey->algorithm = SC_ALGORITHM_RSA;
-	do   {	
-		rv = SC_ERROR_INVALID_DATA;
-		mem = BIO_new_mem_buf(cert_blob->value, cert_blob->len);
-		if (!mem)
-			break;
-
-		x = d2i_X509_bio(mem, NULL);
-		if (!x)
-			break;
-
-		pkey=X509_get_pubkey(x);
-		if (!pkey || pkey->type != EVP_PKEY_RSA)
-			break;
-
-		pubkey->u.rsa.modulus.len = BN_num_bytes(pkey->pkey.rsa->n);
-		pubkey->u.rsa.modulus.data = calloc(1, pubkey->u.rsa.modulus.len); 
-
-		pubkey->u.rsa.exponent.len = BN_num_bytes(pkey->pkey.rsa->e);
-		pubkey->u.rsa.exponent.data = calloc(1, pubkey->u.rsa.exponent.len); 
-
-		rv = SC_ERROR_OUT_OF_MEMORY;
-		if (!pubkey->u.rsa.modulus.data || !pubkey->u.rsa.exponent.data)
-			break;
-
-		BN_bn2bin(pkey->pkey.rsa->n, pubkey->u.rsa.modulus.data);
-		BN_bn2bin(pkey->pkey.rsa->e, pubkey->u.rsa.exponent.data);
-
-		rv = SC_SUCCESS;
-	} while (0);
-
-	if (pkey)
-		EVP_PKEY_free(pkey);
-
-	if (x)
-		X509_free(x);
-
-	if (mem)
-		BIO_free(mem);
-
-	if (rv)  {
-		sc_pkcs15_free_pubkey(pubkey);
-		pubkey = NULL;
-	}
-
-	*out = pubkey;
-
-	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, rv);
-#endif
-}
-
-
 void sc_pkcs15_erase_pubkey(struct sc_pkcs15_pubkey *key)
 {
 	assert(key != NULL);
+	if (key->alg_id) {
+		sc_asn1_clear_algorithm_id(key->alg_id);
+		free(key->alg_id);
+	}
 	switch (key->algorithm) {
 	case SC_ALGORITHM_RSA:
 		if (key->u.rsa.modulus.data)

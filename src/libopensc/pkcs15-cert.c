@@ -37,6 +37,7 @@ static int parse_x509_cert(sc_context_t *ctx, const u8 *buf, size_t buflen, stru
 {
 	int r;
 	struct sc_algorithm_id pk_alg, sig_alg;
+	struct sc_pkcs15_pubkey pubkey;
 	sc_pkcs15_der_t pk = { NULL, 0 };
 	u8 *serial = NULL;
 	size_t serial_len = 0;
@@ -86,6 +87,8 @@ static int parse_x509_cert(sc_context_t *ctx, const u8 *buf, size_t buflen, stru
 	size_t objlen;
 	
 	memset(cert, 0, sizeof(*cert));
+	memset(&pk_alg, 0, sizeof(pk_alg));
+	memset(&pubkey, 0, sizeof(pubkey));
 	obj = sc_asn1_verify_tag(ctx, buf, buflen, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS,
 				 &objlen);
 	if (obj == NULL) {
@@ -98,14 +101,23 @@ static int parse_x509_cert(sc_context_t *ctx, const u8 *buf, size_t buflen, stru
 
 	cert->version++;
 
-	cert->key.algorithm = pk_alg.algorithm;
-	pk.len >>= 3;	/* convert number of bits to bytes */
-	cert->key.data = pk;
+	cert->key = malloc(sizeof(struct sc_pkcs15_pubkey));
+	if (cert->key == NULL)
+		return SC_ERROR_OUT_OF_MEMORY;
+	memcpy(cert->key, &pubkey, sizeof(struct sc_pkcs15_pubkey));
 
-	r = sc_pkcs15_decode_pubkey(ctx, &cert->key, pk.value, pk.len);
+	cert->key->alg_id = malloc(sizeof(struct sc_algorithm_id));
+	if (cert->key->alg_id == NULL)
+		return SC_ERROR_OUT_OF_MEMORY;
+	memcpy(cert->key->alg_id, &pk_alg, sizeof(struct sc_algorithm_id));
+	cert->key->algorithm = pk_alg.algorithm;
+	pk.len >>= 3;	/* convert number of bits to bytes */
+	cert->key->data = pk;
+
+	r = sc_pkcs15_decode_pubkey(ctx, cert->key, pk.value, pk.len);
 	if (r < 0)
 		free(pk.value);
-	sc_asn1_clear_algorithm_id(&pk_alg);
+
 	sc_asn1_clear_algorithm_id(&sig_alg);
 
 	if (serial && serial_len)   {
@@ -115,6 +127,26 @@ static int parse_x509_cert(sc_context_t *ctx, const u8 *buf, size_t buflen, stru
 	}
 
 	return r;
+}
+
+int
+sc_pkcs15_pubkey_from_cert(struct sc_context *ctx,
+		struct sc_pkcs15_der *cert_blob, struct sc_pkcs15_pubkey **out)
+{
+	int rv;
+	struct sc_pkcs15_cert * cert;
+
+	cert =  calloc(1, sizeof(struct sc_pkcs15_cert));
+	if (cert == NULL)
+		return SC_ERROR_OUT_OF_MEMORY;
+	
+	rv = parse_x509_cert(ctx, cert_blob->value, cert_blob->len, cert);
+	
+	*out = cert->key;
+	cert->key = NULL;
+	sc_pkcs15_free_certificate(cert);
+
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, rv);
 }
 
 int sc_pkcs15_read_certificate(struct sc_pkcs15_card *p15card,
@@ -149,7 +181,7 @@ int sc_pkcs15_read_certificate(struct sc_pkcs15_card *p15card,
 	memset(cert, 0, sizeof(struct sc_pkcs15_cert));
 	if (parse_x509_cert(p15card->card->ctx, data, len, cert)) {
 		free(data);
-		free(cert);
+		sc_pkcs15_free_certificate(cert);
 		return SC_ERROR_INVALID_ASN1_OBJECT;
 	}
 	cert->data = data;
@@ -286,7 +318,8 @@ void sc_pkcs15_free_certificate(struct sc_pkcs15_cert *cert)
 {
 	assert(cert != NULL);
 
-	sc_pkcs15_erase_pubkey(&cert->key);
+	if (cert->key)
+		sc_pkcs15_free_pubkey(cert->key);
 	free(cert->subject);
 	free(cert->issuer);
 	free(cert->serial);

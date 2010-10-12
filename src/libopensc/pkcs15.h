@@ -160,6 +160,7 @@ struct sc_pkcs15_prkey_gostr3410 {
 
 struct sc_pkcs15_pubkey {
 	int algorithm;
+	struct sc_algorithm_id * alg_id;
 
 	/* Decoded key */
 	union {
@@ -175,6 +176,8 @@ typedef struct sc_pkcs15_pubkey sc_pkcs15_pubkey_t;
 
 struct sc_pkcs15_prkey {
 	unsigned int algorithm;
+/* TODO do we need:	struct sc_algorithm_id * alg_id; */
+
 	union {
 		struct sc_pkcs15_prkey_rsa rsa;
 		struct sc_pkcs15_prkey_dsa dsa;
@@ -207,7 +210,7 @@ struct sc_pkcs15_cert {
 	u8 *crl;
 	size_t crl_len;
 
-	struct sc_pkcs15_pubkey key;
+	struct sc_pkcs15_pubkey * key;
 	u8 *data;	/* DER encoded raw cert */
 	size_t data_len;
 };

@@ -557,14 +557,14 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 			continue;
 		}
 		/* TODO support EC keys */
-		ckis[i].key_alg = cert_out->key.algorithm;
-		if (cert_out->key.algorithm == SC_ALGORITHM_RSA) {
+		ckis[i].key_alg = cert_out->key->algorithm;
+		if (cert_out->key->algorithm == SC_ALGORITHM_RSA) {
 			/* save modulus_len for pub and priv */
-			ckis[i].modulus_len = cert_out->key.u.rsa.modulus.len * 8;
+			ckis[i].modulus_len = cert_out->key->u.rsa.modulus.len * 8;
 		} else {
 /*TODO add the SC_ALGORITHM_EC */
 
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Unsuported key.algorithm %d", cert_out->key.algorithm);
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Unsuported key.algorithm %d", cert_out->key->algorithm);
 			ckis[i].modulus_len = 1024; /* set some value for now */
 		}
 		sc_pkcs15_free_certificate(cert_out);
