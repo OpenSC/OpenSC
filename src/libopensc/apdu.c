@@ -473,11 +473,7 @@ static int do_single_transmit(sc_card_t *card, sc_apdu_t *apdu)
 			/* 0x6100 means at least 256 more bytes to read */
 			le = apdu->sw2 != 0 ? (size_t)apdu->sw2 : 256;
 			/* we try to read at least as much as bytes as 
-			 * promised in the response bytes, but not more then
-			 * then requested. So now T=0 responds the same as T=1
-			 */
-			if (buflen < le) 
-				le = buflen;
+			 * promised in the response bytes */
 			minlen = le;
 
 			do {
