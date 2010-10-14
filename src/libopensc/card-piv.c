@@ -894,6 +894,7 @@ static int piv_get_data(sc_card_t * card, int enumtag,
 			break;
 		case PIV_OBJ_HISTORY: 
 		    dataenvname = "PIV_TEST_OBJ_HISTORY";
+			break;
 
 #endif
 		/* 
@@ -930,8 +931,8 @@ static int piv_get_data(sc_card_t * card, int enumtag,
 			r = piv_read_obj_from_file(card, filename, buf, buf_len);
 			if (r == SC_ERROR_FILE_NOT_FOUND) /* ignore if not found */
 				r = 0;
+			goto err; /* return error, or length */
 		}
-		goto err; /* return error, or length */
 	}
 		
 
