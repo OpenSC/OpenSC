@@ -1718,7 +1718,7 @@ static int cardmod_detect_readers(sc_context_t *ctx)
 		
 		/* attempt to detect protocol in use T0/T1/RAW */
 		rv = priv->gpriv->SCardStatus(card_handle, NULL, &readers_len,
-				&state, &prot, atr, &atr_len
+			&state, &prot, atr, &atr_len);
 		if (rv != SCARD_S_SUCCESS) 
 		{
 			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "SCardStatus failed %08x", rv);

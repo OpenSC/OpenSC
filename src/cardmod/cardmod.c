@@ -488,14 +488,14 @@ DWORD WINAPI CardReadFile(__in PCARD_DATA pCardData,
 	{
 		if(strcmp(pszFileName, "cardid") == 0) 
 		{
-			*pcbData = strlen(vs->p15card->serial_number) + 10;
+			*pcbData = strlen(vs->p15card->tokeninfo->serial_number) + 10;
 			*ppbData = pCardData->pfnCspAlloc(*pcbData);
 			if(!*ppbData)
 			{
 				return SCARD_E_NO_MEMORY;
 			}
 			
-			strcpy(*ppbData, vs->p15card->serial_number);
+			strcpy(*ppbData, vs->p15card->tokeninfo->serial_number);
 			
 			logprintf(pCardData, 7, "return cardid\n");
 
@@ -1233,10 +1233,10 @@ DWORD WINAPI CardGetProperty(__in PCARD_DATA pCardData,
 	}
 	if (wcscmp(CP_CARD_SERIAL_NO,wszProperty) == 0)
 	{
-		if (pdwDataLen) *pdwDataLen = sizeof(vs->p15card->serial_number);
-		if (cbData < sizeof(vs->p15card->serial_number)) return SCARD_E_NO_MEMORY;
+		if (pdwDataLen) *pdwDataLen = sizeof(vs->p15card->tokeninfo->serial_number);
+		if (cbData < sizeof(vs->p15card->tokeninfo->serial_number)) return SCARD_E_NO_MEMORY;
 
-		CopyMemory(pbData,vs->p15card->serial_number,sizeof(vs->p15card->serial_number));
+		CopyMemory(pbData,vs->p15card->tokeninfo->serial_number,sizeof(vs->p15card->tokeninfo->serial_number));
 		
 		return SCARD_S_SUCCESS;
 	}
