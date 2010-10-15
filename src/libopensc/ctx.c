@@ -637,6 +637,11 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 
 #ifdef ENABLE_PCSC
 	ctx->reader_driver = sc_get_pcsc_driver();
+	#ifdef ENABLE_CARDMOD
+	if(strcmp(ctx->app_name, "cardmod") == 0) {
+		ctx->reader_driver = sc_get_cardmod_driver();
+	}
+	#endif
 #elif ENABLE_CTAPI
 	ctx->reader_driver = sc_get_ctapi_driver();
 #elif ENABLE_OPENCT

@@ -1540,13 +1540,11 @@ static struct sc_reader_driver cardmod_drv = {
 	0, 0, NULL
 };
 
-static int cardmod_init(sc_context_t *ctx, void **reader_data)
+static int cardmod_init(sc_context_t *ctx)
 {
 	struct pcsc_global_private_data *gpriv;
 	scconf_block *conf_block = NULL;
 	int ret = SC_ERROR_INTERNAL;
-
-	*reader_data = NULL;
 
 	gpriv = calloc(1, sizeof(struct pcsc_global_private_data));
 	if (gpriv == NULL) {
@@ -1600,7 +1598,7 @@ static int cardmod_init(sc_context_t *ctx, void **reader_data)
 		goto out;
 	}
 
-	*reader_data = gpriv;
+	ctx->reader_drv_data = gpriv;
 	gpriv = NULL;
 	ret = SC_SUCCESS;
 
@@ -1614,9 +1612,9 @@ out:
 	return ret;
 }
 
-static int cardmod_finish(sc_context_t *ctx, void *prv_data)
+static int cardmod_finish(sc_context_t *ctx)
 {
-	struct pcsc_global_private_data *gpriv = (struct pcsc_global_private_data *) prv_data;
+	struct pcsc_global_private_data *gpriv = (struct pcsc_global_private_data *) ctx->reader_drv_data;
 
 	if (gpriv) {
 		if (gpriv->dlhandle != NULL)
@@ -1627,12 +1625,12 @@ static int cardmod_finish(sc_context_t *ctx, void *prv_data)
 	return SC_SUCCESS;
 }
 
-static int cardmod_detect_readers(sc_context_t *ctx, void *prv_data)
+static int cardmod_detect_readers(sc_context_t *ctx)
 {
 	SCARDHANDLE card_handle;
 	u8 feature_buf[256], rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	PCSC_TLV_STRUCTURE *pcsc_tlv;
-	struct pcsc_global_private_data *gpriv = (struct pcsc_global_private_data *) prv_data;
+	struct pcsc_global_private_data *gpriv = (struct pcsc_global_private_data *) ctx->reader_drv_data;
 	LONG rv;
 	char reader_name[128];
 	DWORD rcount, feature_len, display_ioctl, reader_name_size = sizeof(reader_name);

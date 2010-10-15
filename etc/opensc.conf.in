@@ -415,8 +415,8 @@ app tokend {
 }
 
 app cardmod {
-	#allow only cardmodule pcsc reader for minidriver (mandatory)
-	# FIXME cardmod pcsc hack is now broken.
+	# cardmod app name use special pcsc reader subset 
+	# fix options for this reader driver here. 
 
 	reader_driver cardmod {
 		# Enable pinpad if detected (PC/SC v2.0.2 Part 10)
