@@ -5,7 +5,6 @@ dist_noinst_DATA = $(srcdir)/tools/*.xml api.css
 if ENABLE_DOC
 html_DATA = html.out/*
 endif
-dist_doc_DATA = README
 
 if ENABLE_MAN
 man1_MANS = man.out/*.1
