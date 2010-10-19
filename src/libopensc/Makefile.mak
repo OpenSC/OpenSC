@@ -39,7 +39,7 @@ opensc.dll: $(OBJECTS) ..\scconf\scconf.lib ..\common\common.lib ..\pkcs15init\p
 	echo LIBRARY $* > $*.def
 	echo EXPORTS >> $*.def
 	type lib$*.exports >> $*.def
-	link $(LINKFLAGS) /dll /def:$*.def /implib:$*.lib /out:opensc.dll $(OBJECTS) ..\scconf\scconf.lib ..\common\common.lib ..\pkcs15init\pkcs15init.lib winscard.lib $(OPENSSL_LIB) $(ZLIB_LIB) $(ICONV_LIB) gdi32.lib $(LIBLTDL_LIB) advapi32.lib ws2_32.lib
+	link $(LINKFLAGS) /dll /def:$*.def /implib:$*.lib /out:opensc.dll $(OBJECTS) ..\scconf\scconf.lib ..\common\common.lib ..\pkcs15init\pkcs15init.lib winscard.lib $(OPENSSL_LIB) $(ZLIB_LIB) gdi32.lib $(LIBLTDL_LIB) advapi32.lib ws2_32.lib
 	if EXIST opensc.dll.manifest mt -manifest opensc.dll.manifest -outputresource:opensc.dll;2
 
 opensc_a.lib: $(OBJECTS) ..\scconf\scconf.lib ..\common\common.lib ..\pkcs15init\pkcs15init.lib

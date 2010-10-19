@@ -40,7 +40,9 @@ New in 0.12.??; 2010-??-??; ??
   Fix path to reference headers, remove src/include/ directory.
 * Various source code fixes and improvements.
 * OpenSC now depends on xsltproc utility and docbook-xsl to build docs and man
-
+* Remove iconv dependency. EstEID driver now uses the commonName from the
+  certificate for card label.
+ 
 New in 0.11.12; 2009-12-18; Andreas Jellinghaus
 * Document integer problem in OpenSC and implement workaround
 * Improve entersafe profile to support private data objects

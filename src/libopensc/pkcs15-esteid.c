@@ -26,11 +26,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#ifdef ENABLE_ICONV
-#include <iconv.h>
+#ifdef ENABLE_OPENSSL
+#include <openssl/x509v3.h>
 #endif
 
 #include "common/compat_strlcpy.h"
+#include "common/compat_strlcat.h"
 
 #include "internal.h"
 #include "pkcs15.h"
@@ -62,12 +63,6 @@ static int
 sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 {
 	sc_card_t *card = p15card->card;
-#ifdef ENABLE_ICONV
-	iconv_t iso_utf;
-	char *inptr, *outptr;
-	size_t inbytes, outbytes, result;
-	char label[64], name1[32], name2[32];
-#endif
 	unsigned char buff[128];
 	int r, i, flags;
 	sc_path_t tmppath;
@@ -86,37 +81,6 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 	buff[r] = '\0';
 	set_string (&p15card->tokeninfo->serial_number, (const char *) buff);
 
-#ifdef ENABLE_ICONV
-	/* Read the name of the cardholder and convert it into UTF-8 */
-	iso_utf  = iconv_open ("UTF-8", "CP1252");
-	if (iso_utf == (iconv_t) -1)
-		return SC_ERROR_INTERNAL;
-	
-	r = sc_read_record (card, SC_ESTEID_PD_GIVEN_NAMES1, buff, sizeof(buff), SC_RECORD_BY_REC_NR);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "read name1 failed");
-	inptr = (char *) buff;
-	outptr = name1;
-	inbytes = r;
-	outbytes = 32;
-	result = iconv(iso_utf, &inptr, &inbytes, &outptr, &outbytes);
-	if (result == (size_t) -1)
-		return SC_ERROR_INTERNAL;	
-	*outptr = '\0';
-	
-	r = sc_read_record (card, SC_ESTEID_PD_SURNAME, buff, sizeof(buff), SC_RECORD_BY_REC_NR);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "read name2 failed");
-	inptr = (char *) buff;
-	outptr = name2;
-	inbytes = r;
-	outbytes = 32;
-	result = iconv(iso_utf, &inptr, &inbytes, &outptr, &outbytes);
-	if (result == (size_t) -1)
-		return SC_ERROR_INTERNAL;
-	*outptr = '\0';
-	iconv_close(iso_utf);
-	snprintf(label, sizeof(label), "%s %s", name1, name2);
-	set_string (&p15card->tokeninfo->label, label);
-#endif
 	p15card->tokeninfo->flags = SC_PKCS15_TOKEN_PRN_GENERATION
 				  | SC_PKCS15_TOKEN_EID_COMPLIANT
 				  | SC_PKCS15_TOKEN_READONLY;
@@ -149,6 +113,44 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 		r = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
 		if (r < 0)
 			return SC_ERROR_INTERNAL;
+#ifdef ENABLE_OPENSSL
+		if (i == 0) {
+			BIO *mem = NULL;
+			X509 *x509 = NULL;
+			sc_pkcs15_cert_t *cert;
+			char cardholder_name[64];
+			unsigned char *tmp = NULL;
+			r = sc_pkcs15_read_certificate(p15card, &cert_info, &cert);
+			if (r == SC_SUCCESS) {
+				mem = BIO_new_mem_buf(cert->data, cert->data_len);
+				if (!mem)
+					return SC_ERROR_INTERNAL;
+				x509 = d2i_X509_bio(mem, NULL);
+				if (!x509)
+					return SC_ERROR_INTERNAL;
+				r = X509_NAME_get_index_by_NID(X509_get_subject_name(x509), NID_commonName, -1);
+				if (r >= 0) {
+					X509_NAME_ENTRY *ne;
+					ASN1_STRING *a_str;
+					ne = X509_NAME_get_entry(X509_get_subject_name(x509), r);
+					if (!ne)
+						return SC_ERROR_INTERNAL;
+					a_str = X509_NAME_ENTRY_get_data(ne);
+					if (!a_str)
+						return SC_ERROR_INTERNAL;
+					r = ASN1_STRING_to_UTF8(&tmp, a_str);
+					if (r > 0) {
+						if ((unsigned)r > sizeof(cardholder_name) - 1)
+							r = sizeof(cardholder_name) -1;
+						memcpy(cardholder_name, tmp, r);
+						cardholder_name[r] = '\0';
+						set_string (&p15card->tokeninfo->label, cardholder_name);
+						OPENSSL_free(tmp);
+					}
+				}				
+			}			
+		}
+#endif	
 	}
 
 	/* the file with key pin info (tries left) */
@@ -247,6 +249,8 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 		if (r < 0)
 			return SC_ERROR_INTERNAL;
 	}
+	/* Read the certificate to get the name of the person */
+
 	return SC_SUCCESS;
 }
 

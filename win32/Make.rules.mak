@@ -36,18 +36,6 @@ ZLIB_LIB = C:\ZLIB\LIB\zlib.lib
 OPENSC_FEATURES = $(OPENSC_FEATURES) zlib
 !ENDIF
 
-# If you want support for iconv (Used for EstEID):
-# - Download iconv and build
-# - uncomment the line starting with ICONV_DEF 
-# - set the ICONV_INCL_DIR below to the iconv include lib proceeded by "/I"
-# - set the ICONV_LIB  below to your iconv lib file
-#ICONV_DEF = /DENABLE_ICONV
-!IF "$(ICONV_DEF)" == "/DENABLE_ICONV"
-ICONV_INCL_DIR = /IC:\build\iconv\include
-ICONV_LIB = C:\build\iconv\lib\iconv.lib
-OPENSC_FEATURES = $(OPENSC_FEATURES) iconv
-!ENDIF
-
 # No choice for DUMPRESTORE: it has to be desabled
 SIMCLIST_NO_DUMPRESTORE_DEF = /DSIMCLIST_NO_DUMPRESTORE
 
@@ -55,7 +43,7 @@ SIMCLIST_NO_DUMPRESTORE_DEF = /DSIMCLIST_NO_DUMPRESTORE
 # http://msinttypes.googlecode.com/files/msinttypes-r26.zip
 INTTYPES_INCL_DIR =  /IC:\opensc\dependencies\msys\local
 
-COPTS = /D_CRT_SECURE_NO_DEPRECATE /Zi /MD /nologo /DHAVE_CONFIG_H /I$(TOPDIR)\win32 /I$(TOPDIR)\src $(OPENSSL_INCL_DIR) $(ZLIB_INCL_DIR) $(LIBLTDL_INCL) $(ICONV_INCL_DIR) $(INTTYPES_INCL_DIR) /D_WIN32_WINNT=0x0400 /DWIN32_LEAN_AND_MEAN $(OPENSSL_DEF) $(ZLIB_DEF) $(ICONV_DEF) $(SIMCLIST_NO_DUMPRESTORE_DEF) /DOPENSC_FEATURES="\"$(OPENSC_FEATURES)\""
+COPTS = /D_CRT_SECURE_NO_DEPRECATE /Zi /MD /nologo /DHAVE_CONFIG_H /I$(TOPDIR)\win32 /I$(TOPDIR)\src $(OPENSSL_INCL_DIR) $(ZLIB_INCL_DIR) $(LIBLTDL_INCL) $(INTTYPES_INCL_DIR) /D_WIN32_WINNT=0x0400 /DWIN32_LEAN_AND_MEAN $(OPENSSL_DEF) $(ZLIB_DEF) $(SIMCLIST_NO_DUMPRESTORE_DEF) /DOPENSC_FEATURES="\"$(OPENSC_FEATURES)\""
 LINKFLAGS = /DEBUG /NOLOGO /INCREMENTAL:NO /MACHINE:IX86
 
 .c.obj::
