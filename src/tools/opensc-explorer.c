@@ -1192,7 +1192,7 @@ static int do_debug(int argc, char **argv)
 		printf("Debug level set to %d\n", i);
 		ctx->debug = i;
 		if (i) {
-			ctx->debug_file = stdout;
+			ctx->debug_file = stderr;
 		} else {
 			ctx->debug_file = NULL;
 		}
@@ -1604,8 +1604,11 @@ int main(int argc, char * const argv[])
 		fprintf(stderr, "Failed to establish context: %s\n", sc_strerror(r));
 		return 1;
 	}
-	if (verbose > 1)
-		ctx->debug = verbose-1;
+
+	if (verbose > 1) {
+		ctx->debug = verbose;
+		ctx->debug_file = stderr;
+        }
 
 	if (opt_driver != NULL) {
 		err = sc_set_card_driver(ctx, opt_driver);

@@ -1132,8 +1132,11 @@ int main(int argc, char *const argv[])
 			sc_strerror(r));
 		return 1;
 	}
-	if (verbose > 0)
+
+	if (verbose > 1) {
 		ctx->debug = verbose;
+		ctx->debug_file = stderr;
+	}
 
 	if (opt_driver != NULL) {
 		err = sc_set_card_driver(ctx, opt_driver);
