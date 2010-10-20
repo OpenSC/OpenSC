@@ -40,7 +40,6 @@ static struct sc_atr_table mcrd_atrs[] = {
 	  "D-Trust", SC_CARD_TYPE_MCRD_DTRUST, 0, NULL},
 	{"3b:ff:11:00:ff:80:b1:fe:45:1f:03:00:68:d2:76:00:00:28:ff:05:1e:31:80:00:90:00:a6", NULL,
 	  "D-Trust", SC_CARD_TYPE_MCRD_DTRUST, 0, NULL},
-	{"3b:fe:94:00:ff:80:b1:fa:45:1f:03:45:73:74:45:49:44:20:76:65:72:20:31:2e:30:43", NULL, "Digi-ID", SC_CARD_TYPE_MCRD_ESTEID_DIGI, 0, NULL},
 	{NULL, NULL, NULL, 0, 0, NULL}
 };
 
@@ -261,14 +260,14 @@ static int is_esteid_atr(u8 *atr, size_t atr_len) {
 
 static int mcrd_match_card(sc_card_t * card)
 {
-	if (_sc_match_atr(card, mcrd_atrs, &card->type) >= 0)
-		return 1;
-
 	if (is_esteid_atr(card->atr, card->atr_len)) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Found EstEID ver 1.0 card!");
 		card->type = SC_CARD_TYPE_MCRD_ESTEID;
 		return 1;
 	}
+
+	if (_sc_match_atr(card, mcrd_atrs, &card->type) >= 0)
+		return 1;
 
 	return 0;
 }
@@ -306,9 +305,9 @@ static int mcrd_init(sc_card_t * card)
 	if (card->type != SC_CARD_TYPE_MCRD_ESTEID)
 		load_special_files(card);
 
-	/* The MULTOS Digi-ID card is dumb and buggy and requires a reset before use. */	
-	if (card->type != SC_CARD_TYPE_MCRD_ESTEID_DIGI)
-		sc_reset(card);		
+	/* To work around broken EstEID cards that can not be identified from ATR */	
+	if (card->type == SC_CARD_TYPE_MCRD_ESTEID)
+		sc_reset(card);
 
 	return SC_SUCCESS;
 }
