@@ -440,8 +440,10 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	if (verbose > 1)
-		ctx->debug = verbose-1;
+	if (verbose > 1) {
+		ctx->debug = verbose;
+		ctx->debug_file = stderr;
+	}
 
 	if (opt_driver != NULL) 
 	{

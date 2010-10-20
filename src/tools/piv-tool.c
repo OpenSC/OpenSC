@@ -518,6 +518,11 @@ int main(int argc, char * const argv[])
 		return 1;
 	}
 
+	if (verbose > 1) {
+		ctx->debug = verbose;
+		ctx->debug_file = stderr;
+	}
+
 	if (action_count <= 0)
 		goto end;
 

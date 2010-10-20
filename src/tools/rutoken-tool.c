@@ -487,7 +487,10 @@ int main(int argc, char* argv[])
 		return -1;
 	}
 
-	ctx->debug = opt_debug;
+	if (opt_debug > 1) {
+		ctx->debug = opt_debug;
+		ctx->debug_file = stderr;
+	}
 
 	if (util_connect_card(ctx, &card, opt_reader, opt_wait, opt_debug) != 0)
 		err = -1;
