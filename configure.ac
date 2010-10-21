@@ -203,6 +203,7 @@ if test "${xslstylesheetsdir}" = "detect"; then
 	xslstylesheetsdir="no"
 	for f in \
 		/usr/share/xml/docbook/stylesheet/nwalsh \
+		/usr/share/xml/docbook/stylesheet/nwalsh/current \
 		/opt/local/share/xsl/docbook-xsl \
 		/sw/share/xml/xsl/docbook-xsl \
 		/usr/share/sgml/docbook/*; do
