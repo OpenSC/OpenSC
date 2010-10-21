@@ -493,6 +493,7 @@ fi
 if test "${enable_man}" = "yes" -o "${enable_doc}" = "yes"; then
 	AC_MSG_CHECKING([XSLTPROC requirement])
 	test -n "${XSLTPROC}" || AC_MSG_ERROR([Missing XSLTPROC svn build with man or doc])
+	test "${xslstylesheetsdir}" != "no" || AC_MSG_ERROR([Missing xslstylesheetsdir])
 	AC_MSG_RESULT([ok])
 fi
 
