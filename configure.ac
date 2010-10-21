@@ -483,7 +483,7 @@ fi
 if test "${enable_man}" = "detect"; then
 	if test "${WIN32}" = "yes"; then
 		enable_man="no"
-	elif test -n "${XSLTPROC}"; then
+	elif test -n "${XSLTPROC}" -a "${xslstylesheetsdir}" != "no"; then
 		enable_man="yes"
 	else
 		enable_man="no"
