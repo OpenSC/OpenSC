@@ -44,7 +44,7 @@ static int	verbose = 0;
 
 enum {
 	OPT_SERIAL = 0x100,
-	OPT_LIST_ALG,
+	OPT_LIST_ALG
 };
 
 static const struct option options[] = {
@@ -295,10 +295,18 @@ static int print_file(sc_card_t *in_card, const sc_file_t *file,
 		"select", "lock", "delete", "create", "rehab", "inval",
 		"list"
 	};
-	const char *ac_ops_ef[] = {
-		"read", "update", "erase", "write", "rehab", "inval"
+	struct ac_op_str {
+		unsigned int ac_op;
+		const char *str;
+	} const ac_ops_ef[] = {
+		{ SC_AC_OP_READ, "read" },
+		{ SC_AC_OP_UPDATE, "update" },
+		{ SC_AC_OP_ERASE, "erase" },
+		{ SC_AC_OP_WRITE, "write" },
+		{ SC_AC_OP_REHABILITATE, "rehab" },
+		{ SC_AC_OP_INVALIDATE, "inval" }
 	};
-	
+
 	for (r = 0; r < depth; r++)
 		printf("  ");
 	printf("%s ", sc_print_path(path));
@@ -340,7 +348,8 @@ static int print_file(sc_card_t *in_card, const sc_file_t *file,
 			printf("%s[%s] ", ac_ops_df[r], util_acl_to_str(sc_file_get_acl_entry(file, r)));
 	else
 		for (r = 0; r < (int) (sizeof(ac_ops_ef)/sizeof(ac_ops_ef[0])); r++)
-			printf("%s[%s] ", ac_ops_ef[r], util_acl_to_str(sc_file_get_acl_entry(file, r)));
+			printf("%s[%s] ", ac_ops_ef[r].str,
+					util_acl_to_str(sc_file_get_acl_entry(file, ac_ops_ef[r].ac_op)));
 
 	if (file->sec_attr_len) {
 		printf("sec: ");
