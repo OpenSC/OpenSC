@@ -271,7 +271,7 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData,
 	{
 		return SCARD_E_FILE_NOT_FOUND;
 	}
-	pubkey = &(cert->key);
+	pubkey = cert->key;
 
 	if(pubkey->algorithm == SC_ALGORITHM_RSA)
 	{
@@ -557,7 +557,7 @@ DWORD WINAPI CardReadFile(__in PCARD_DATA pCardData,
 				{
 					return SCARD_E_FILE_NOT_FOUND;
 				}
-				pubkey = &(cert->key);
+				pubkey = cert->key;
 				if(pubkey->algorithm == SC_ALGORITHM_RSA)
 				{
 					#ifdef VISUAL_STUDIO

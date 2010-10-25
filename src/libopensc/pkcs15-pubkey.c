@@ -24,10 +24,6 @@
 #include <string.h>
 #include <stdio.h>
 #include <assert.h>
-#ifdef ENABLE_OPENSSL
-#include <openssl/evp.h>
-#include <openssl/pem.h>
-#endif
 
 #include "internal.h"
 #include "asn1.h"

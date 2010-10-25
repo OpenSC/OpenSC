@@ -146,7 +146,7 @@ static int sc_pkcs15emu_westcos_init(sc_pkcs15_card_t * p15card)
 						       &cert_info);
 			if (r)
 				goto out;
-			pkey = &cert->key;
+			pkey = cert->key;
 			
 			if (pkey->algorithm == SC_ALGORITHM_RSA) {
 				modulus_length = (int)(pkey->u.rsa.modulus.len * 8);

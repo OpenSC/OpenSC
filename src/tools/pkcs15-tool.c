@@ -635,7 +635,7 @@ static int read_public_key(void)
 				&cert);
 		}
 		if (r >= 0)
-			pubkey = &cert->key;
+			pubkey = cert->key;
 	}
 
 	if (r == SC_ERROR_OBJECT_NOT_FOUND) {
@@ -710,7 +710,7 @@ static int read_ssh_key(void)
 				&cert);
 		}
 		if (r >= 0)
-			pubkey = &cert->key;
+			pubkey = cert->key;
 	}
 
 	if (r == SC_ERROR_OBJECT_NOT_FOUND) {

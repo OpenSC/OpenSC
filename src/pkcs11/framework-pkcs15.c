@@ -683,15 +683,13 @@ check_cert_data_read(struct pkcs15_fw_data *fw_data,
 	/* update the related public key object */
 	obj2 = cert->cert_pubkey;
 
-	obj2->pub_data = (sc_pkcs15_pubkey_t *)calloc(1, sizeof(sc_pkcs15_pubkey_t));
-	if (!obj2->pub_data)
-		return SC_ERROR_OUT_OF_MEMORY;
-	memcpy(obj2->pub_data, &cert->cert_data->key, sizeof(sc_pkcs15_pubkey_t));
+	obj2->pub_data = cert->cert_data->key;
+	/* We take the pub key from the cert that we will discard below */
 	/* invalidate public data of the cert object so that sc_pkcs15_cert_free
 	 * does not free the public key data as well (something like
 	 * sc_pkcs15_pubkey_dup would have been nice here) -- Nils
 	 */
-	memset(&cert->cert_data->key, 0, sizeof(sc_pkcs15_pubkey_t));
+	cert->cert_data->key = NULL;
 
 	/* now that we have the cert and pub key, lets see if we can bind anything else */
 	
