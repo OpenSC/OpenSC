@@ -40,6 +40,8 @@ static struct sc_atr_table mcrd_atrs[] = {
 	  "D-Trust", SC_CARD_TYPE_MCRD_DTRUST, 0, NULL},
 	{"3b:ff:11:00:ff:80:b1:fe:45:1f:03:00:68:d2:76:00:00:28:ff:05:1e:31:80:00:90:00:a6", NULL,
 	  "D-Trust", SC_CARD_TYPE_MCRD_DTRUST, 0, NULL},
+	/* Certain pcsc-lite versions (1.5.3 for example on Ubuntu 10.04) incorrectly trunkate the wram ATR to the length of the cold ATR  */
+	/* See opensc.conf for further information */
 	{"3B:FE:94:00:FF:80:B1:FA:45:1F:03:45:73:74:45:49:44:20", NULL, "Broken EstEID ATR", SC_CARD_TYPE_MCRD_ESTEID, 0, NULL},
 	{NULL, NULL, NULL, 0, 0, NULL}
 };
@@ -305,10 +307,6 @@ static int mcrd_init(sc_card_t * card)
 	/* The special file loading thing doesn't work for EstEID */
 	if (card->type != SC_CARD_TYPE_MCRD_ESTEID)
 		load_special_files(card);
-
-	/* To work around broken EstEID cards that can not be identified from ATR */	
-	if (card->type == SC_CARD_TYPE_MCRD_ESTEID)
-		sc_reset(card);
 
 	return SC_SUCCESS;
 }
