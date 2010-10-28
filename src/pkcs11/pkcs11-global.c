@@ -291,8 +291,9 @@ CK_RV C_Finalize(CK_VOID_PTR pReserved)
 	
 	/* cancel pending calls */
 	in_finalize = 1;
+#ifdef PCSC_CANCEL_OK
 	sc_cancel(context);
-	
+#endif	
 	/* remove all cards from readers */
 	for (i=0; i < (int)sc_ctx_get_reader_count(context); i++)
 		card_removed(sc_ctx_get_reader(context, i));
