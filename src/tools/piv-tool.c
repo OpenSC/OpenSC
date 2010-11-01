@@ -249,7 +249,7 @@ static int gen_key(const char * key_info)
 	u8 buf[2];
 	size_t buflen = 2;
 	sc_cardctl_piv_genkey_info_t
-		keydata = {0, 0, 0, 0, NULL, 0, NULL, 0, NULL, 0};
+		keydata = {0, 0, 0, 0, NULL, 0};
 	unsigned long expl;
 	u8 expc[4];
 	
