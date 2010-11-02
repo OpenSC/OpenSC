@@ -3511,12 +3511,15 @@ sc_pkcs15init_read_info(struct sc_card *card, struct sc_profile *profile)
 	int		r;
 
 	sc_format_path(OPENSC_INFO_FILEPATH, &path);
-	if ((r = sc_select_file(card, &path, &file)) >= 0) {
+	r = sc_select_file(card, &path, &file);
+	if (r >= 0) {
 		len = file->size;
 		sc_file_free(file);
-		r = SC_ERROR_OUT_OF_MEMORY;
-		if ((mem = malloc(len)) != NULL) {
+		mem = malloc(len);
+		if (mem != NULL) {
 			r = sc_read_binary(card, 0, mem, len, 0);
+		} else {
+			r = SC_ERROR_OUT_OF_MEMORY;
 		}
 	}
 
