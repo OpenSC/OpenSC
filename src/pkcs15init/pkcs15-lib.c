@@ -3518,8 +3518,6 @@ sc_pkcs15init_read_info(struct sc_card *card, struct sc_profile *profile)
 		if ((mem = malloc(len)) != NULL) {
 			r = sc_read_binary(card, 0, mem, len, 0);
 		}
-	} else {
-		r = 0;
 	}
 
 	if (r >= 0)
