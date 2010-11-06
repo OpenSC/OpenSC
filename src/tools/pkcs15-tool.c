@@ -973,7 +973,7 @@ static int verify_pin(void)
 	
 	if (!opt_auth_id)   {
 	        struct sc_pkcs15_object *objs[32];
-        	int r, ii;
+        	int ii;
 		
 		r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_AUTH_PIN, objs, 32);
 		if (r < 0) {
