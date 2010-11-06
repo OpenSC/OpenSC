@@ -36,10 +36,10 @@ int sc_pkcs15emu_tcos_init_ex(
 
 static int insert_cert(
 	sc_pkcs15_card_t *p15card,
-	char             *path,
+	const char       *path,
 	unsigned char     id,
 	int               writable,
-	char             *label
+	const char       *label
 ){
 	sc_card_t *card=p15card->card;
 	sc_context_t *ctx=p15card->card->ctx;
@@ -94,12 +94,12 @@ static int insert_cert(
 
 static int insert_key(
 	sc_pkcs15_card_t *p15card,
-	char             *path,
+	const char       *path,
 	unsigned char     id,
 	unsigned char     key_reference,
 	int               key_length,
 	unsigned char     auth_id,
-	char             *label
+	const char       *label
 ){
 	sc_card_t *card=p15card->card;
 	sc_context_t *ctx=p15card->card->ctx;
@@ -178,12 +178,12 @@ static int insert_key(
 
 static int insert_pin(
 	sc_pkcs15_card_t *p15card,
-	char             *path,
+	const char       *path,
 	unsigned char     id,
 	unsigned char     auth_id,
 	unsigned char     pin_reference,
 	int               min_length,
-	char             *label,
+	const char       *label,
 	int               pin_flags
 ){
 	sc_card_t *card=p15card->card;
@@ -256,7 +256,7 @@ static int insert_pin(
 	return 0;
 }
 
-static char *dirpath(char *dir, char *path){
+static char *dirpath(char *dir, const char *path){
 	static char buf[SC_MAX_PATH_STRING_SIZE];
 
 	strcpy(buf,dir);
@@ -270,7 +270,8 @@ static int detect_netkey(
 	sc_path_t p;
 	sc_file_t *f;
 	int keylen;
-	char dir[10], *c_auth;
+	char dir[10];
+	const char *c_auth;
 
 	/* NKS-Applikation ? */
 	p.len=7; p.type=SC_PATH_TYPE_DF_NAME;
