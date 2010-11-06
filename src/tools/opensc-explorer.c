@@ -85,7 +85,7 @@ static void die(int ret)
 	exit(ret);
 }
 
-static void select_current_path_or_die()
+static void select_current_path_or_die(void)
 {
 	if (current_path.type || current_path.len) {
 		int r = sc_select_file(card, &current_path, NULL);
