@@ -145,7 +145,7 @@ static struct sc_pkcs15_card *p15card = NULL;
 
 struct _access_rule_text {
 	unsigned flag;
-	char *label;
+	const char *label;
 } _access_rules_text[] = {
 	{SC_PKCS15_ACCESS_RULE_MODE_READ, "read"},
 	{SC_PKCS15_ACCESS_RULE_MODE_UPDATE, "update"},
