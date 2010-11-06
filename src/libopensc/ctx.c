@@ -545,7 +545,7 @@ static void process_config_file(sc_context_t *ctx, struct _sc_ctx_options *opts)
 
 int sc_ctx_detect_readers(sc_context_t *ctx)
 {
-	int r;
+	int r = 0;
 	const struct sc_reader_driver *drv = ctx->reader_driver;
 
 	sc_mutex_lock(ctx, ctx->mutex);
