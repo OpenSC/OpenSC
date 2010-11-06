@@ -94,7 +94,6 @@ static const char *option_help[] = {
 static sc_context_t *ctx = NULL;
 static sc_card_t *card = NULL;
 static BIO * bp = NULL;
-static RSA * newkey = NULL;
 
 static int load_object(const char * object_id, const char * object_file)
 {
