@@ -452,7 +452,7 @@ CK_RV C_DigestInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	if (rv == CKR_OK)
 		rv = sc_pkcs11_md_init(session, pMechanism);
 
-out:	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_DigestInit() = %s", lookup_enum ( RV_T, rv ));
+	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_DigestInit() = %s", lookup_enum ( RV_T, rv ));
 	sc_pkcs11_unlock();
 	return rv;
 }
