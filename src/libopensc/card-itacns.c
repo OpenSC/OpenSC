@@ -86,7 +86,7 @@ static struct sc_atr_table itacns_atrs[] = {
 #define DRVDATA(card) ((itacns_drv_data_t *) card->drv_data)
 
 
-int itacns_match_cns_card(sc_card_t *card, unsigned int i)
+static int itacns_match_cns_card(sc_card_t *card, unsigned int i)
 {
 	unsigned char *atr = card->atr;
 	sc_context_t *ctx;
@@ -121,7 +121,7 @@ int itacns_match_cns_card(sc_card_t *card, unsigned int i)
 	return 1;
 }
 
-int itacns_match_cie_card(sc_card_t *card, unsigned int i)
+static int itacns_match_cie_card(sc_card_t *card, unsigned int i)
 {
 	unsigned char *atr = card->atr;
 	sc_context_t *ctx;
@@ -142,7 +142,7 @@ int itacns_match_cie_card(sc_card_t *card, unsigned int i)
 	return 1;
 }
 
-int itacns_match_card(sc_card_t *card)
+static int itacns_match_card(sc_card_t *card)
 {
 	unsigned int i = 0;
 	int r;
