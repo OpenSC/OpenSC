@@ -213,7 +213,7 @@ static int insert_pin(
 
 	if(card->type==SC_CARD_TYPE_TCOS_V3){
 		unsigned char buf[256];
-		int i, r, rec_no=0;
+		int i, rec_no=0;
 		if(pin_info.path.len>=2) pin_info.path.len-=2;
 		sc_append_file_id(&pin_info.path, 0x5049);
 		if(sc_select_file(card, &pin_info.path, NULL)!=SC_SUCCESS){
