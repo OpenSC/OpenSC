@@ -51,7 +51,7 @@ static const char path_serial[] = "10001003";
 
 /* Manufacturers */
 
-char * itacns_mask_manufacturers[] = {
+const char * itacns_mask_manufacturers[] = {
 	"Unknown",
 	"Kaitech",
 	"Gemplus",
@@ -67,7 +67,7 @@ char * itacns_mask_manufacturers[] = {
 	"Athena"
 };
 
-char * iso7816_ic_manufacturers[] = {
+const char * iso7816_ic_manufacturers[] = {
 	"Unknown",
 	"Motorola",
 	"STMicroelectronics",
@@ -90,8 +90,8 @@ char * iso7816_ic_manufacturers[] = {
 /* Data files */
 
 static const struct {
-	char *label;
-	char *path;
+	const char *label;
+	const char *path;
 	int cie_only;
 } itacns_data_files[] = {
 	{ "EF_DatiProcessore", "3F0010001002", 0 },
