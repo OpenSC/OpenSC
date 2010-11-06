@@ -53,7 +53,7 @@ int sc_pkcs15emu_pteid_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
 static int sc_pkcs15emu_pteid_init(sc_pkcs15_card_t * p15card)
 {
 	int r, i, 				type;
-	unsigned char 			*buf;
+	unsigned char 			*buf = NULL;
 	size_t 					len;
 	sc_pkcs15_tokeninfo_t 	tokeninfo;
 	sc_path_t 				tmppath;
