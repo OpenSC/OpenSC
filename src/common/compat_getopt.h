@@ -34,6 +34,9 @@
 #include <getopt.h>
 #else
 
+/* Prevent mingw32 from including an incompatible getopt implementation */
+#define __GETOPT_H__
+
 #ifdef __cplusplus
 extern "C" {
 #endif
