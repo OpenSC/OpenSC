@@ -107,8 +107,6 @@ scconf_block *_sc_match_atr_block(sc_context_t *ctx, struct sc_card_driver *driv
  * be null terminated. */
 int _sc_match_atr(struct sc_card *card, struct sc_atr_table *table, int *type_out);
 
-int _sc_check_forced_protocol(struct sc_context *ctx, u8 *atr, size_t atr_len, unsigned int *protocol);
-
 int _sc_card_add_algorithm(struct sc_card *card, const struct sc_algorithm_info *info);
 int _sc_card_add_rsa_alg(struct sc_card *card, unsigned int key_length,
 			 unsigned long flags, unsigned long exponent);

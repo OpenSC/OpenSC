@@ -37,10 +37,6 @@
 #include "internal.h"
 #include "internal-winscard.h"
 
-/* Some windows specific kludge */
-#undef SCARD_PROTOCOL_ANY
-#define SCARD_PROTOCOL_ANY (SCARD_PROTOCOL_T0 | SCARD_PROTOCOL_T1)
-
 /* Logging */
 #define PCSC_TRACE(reader, desc, rv) do { sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "%s:" desc ": 0x%08lx\n", reader->name, rv); } while (0)
 #define PCSC_LOG(ctx, desc, rv) do { sc_debug(ctx, SC_LOG_DEBUG_NORMAL, desc ": 0x%08lx\n", rv); } while (0)
@@ -316,7 +312,6 @@ static int refresh_attributes(sc_reader_t *reader)
 			reader->flags |= SC_READER_CARD_CHANGED;
 		}
 
-
 		if (old_flags & SC_READER_CARD_PRESENT) {
 			/* Requires pcsc-lite 1.6.5+ to function properly */
 			if ((state & 0xFFFF0000) != (prev_state & 0xFFFF0000)) {
@@ -357,10 +352,36 @@ static int pcsc_detect_card_presence(sc_reader_t *reader)
 	SC_FUNC_RETURN(reader->ctx, SC_LOG_DEBUG_VERBOSE, reader->flags);
 }
 
+static int check_forced_protocol(sc_context_t *ctx, u8 *atr, size_t atr_len, DWORD *protocol)
+{
+	scconf_block *atrblock = NULL;
+	int ok = 0;
+
+	atrblock = _sc_match_atr_block(ctx, NULL, atr, atr_len);
+	if (atrblock != NULL) {
+		const char *forcestr;
+
+		forcestr = scconf_get_str(atrblock, "force_protocol", "unknown");
+		if (!strcmp(forcestr, "t0")) {
+			*protocol = SCARD_PROTOCOL_T0;
+			ok = 1;
+		} else if (!strcmp(forcestr, "t1")) {
+			*protocol = SCARD_PROTOCOL_T1;
+			ok = 1;
+		} else if (!strcmp(forcestr, "raw")) {
+			*protocol = SCARD_PROTOCOL_RAW;
+			ok = 1;
+		}
+		if (ok)
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "force_protocol: %s\n", forcestr);
+	}
+	return ok;
+}
+
 
 static int pcsc_reconnect(sc_reader_t * reader, int reset)
 {
-	DWORD active_proto, protocol;
+	DWORD active_proto, tmp, protocol = SCARD_PROTOCOL_T0 | SCARD_PROTOCOL_T1;
 	LONG rv;
 	struct pcsc_private_data *priv = GET_PRIV_DATA(reader);
 	int r;
@@ -374,24 +395,16 @@ static int pcsc_reconnect(sc_reader_t * reader, int reset)
 	if (!(reader->flags & SC_READER_CARD_PRESENT))
 		return SC_ERROR_CARD_NOT_PRESENT;
 
+	/* Check if we need a specific protocol. refresh_attributes above already sets the ATR */
+	if (check_forced_protocol(reader->ctx, reader->atr, reader->atr_len, &tmp))
+		protocol = tmp;
+
 	/* reconnect always unlocks transaction */
 	priv->locked = 0;
 
 	rv = priv->gpriv->SCardReconnect(priv->pcsc_card,
 			    priv->gpriv->connect_exclusive ? SCARD_SHARE_EXCLUSIVE : SCARD_SHARE_SHARED,
-			    SCARD_PROTOCOL_ANY, reset ? SCARD_UNPOWER_CARD : SCARD_LEAVE_CARD, &active_proto);
-
-	/* Check for protocol difference */
-	if (rv == SCARD_S_SUCCESS && _sc_check_forced_protocol
-	    (reader->ctx, reader->atr, reader->atr_len,
-	     (unsigned int *)&protocol)) {
-		protocol = opensc_proto_to_pcsc(protocol);
-		if (pcsc_proto_to_opensc(active_proto) != protocol) {
-		 rv = priv->gpriv->SCardReconnect(priv->pcsc_card,
-		 		     priv->gpriv->connect_exclusive ? SCARD_SHARE_EXCLUSIVE : SCARD_SHARE_SHARED,
-		 		     protocol, SCARD_UNPOWER_CARD, &active_proto);
-		}
-	}
+			    protocol, reset ? SCARD_UNPOWER_CARD : SCARD_LEAVE_CARD, &active_proto);
 
 	if (rv != SCARD_S_SUCCESS) {
 		PCSC_TRACE(reader, "SCardReconnect failed", rv);
@@ -404,7 +417,7 @@ static int pcsc_reconnect(sc_reader_t * reader, int reset)
 
 static int pcsc_connect(sc_reader_t *reader)
 {
-	DWORD active_proto, protocol;
+	DWORD active_proto, tmp, protocol = SCARD_PROTOCOL_T0 | SCARD_PROTOCOL_T1;
 	SCARDHANDLE card_handle;
 	LONG rv;
 	struct pcsc_private_data *priv = GET_PRIV_DATA(reader);
@@ -419,16 +432,19 @@ static int pcsc_connect(sc_reader_t *reader)
 	if (!(reader->flags & SC_READER_CARD_PRESENT))
 		SC_FUNC_RETURN(reader->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_CARD_NOT_PRESENT);
 
-	/* Always connect with whatever protocol possible */
+	/* Check if we need a specific protocol. refresh_attributes above already sets the ATR */
+	if (check_forced_protocol(reader->ctx, reader->atr, reader->atr_len, &tmp))
+		protocol = tmp;
+	
 	rv = priv->gpriv->SCardConnect(priv->gpriv->pcsc_ctx, reader->name,
 			  priv->gpriv->connect_exclusive ? SCARD_SHARE_EXCLUSIVE : SCARD_SHARE_SHARED,
-			  SCARD_PROTOCOL_ANY, &card_handle, &active_proto);
+			  protocol, &card_handle, &active_proto);
 #ifdef __APPLE__
 	if (rv == (LONG)SCARD_E_SHARING_VIOLATION) {
 		sleep(1); /* Try again to compete with Tokend probes */
 		rv = priv->gpriv->SCardConnect(priv->gpriv->pcsc_ctx, reader->name,
 			  priv->gpriv->connect_exclusive ? SCARD_SHARE_EXCLUSIVE : SCARD_SHARE_SHARED,
-			  SCARD_PROTOCOL_ANY, &card_handle, &active_proto);
+			  protocol, &card_handle, &active_proto);
 	}
 #endif
 	if (rv != SCARD_S_SUCCESS) {
@@ -442,20 +458,6 @@ static int pcsc_connect(sc_reader_t *reader)
 	priv->locked = 0;
 	sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "After connect protocol = %d", reader->active_protocol);
 
-	/* If we need a specific protocol, reconnect if needed */
-	if (_sc_check_forced_protocol(reader->ctx, reader->atr, reader->atr_len, (unsigned int *) &protocol)) {
-		/* If current protocol differs from the protocol we want to force */
-		if (reader->active_protocol != protocol) {
-			sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "Protocol difference, forcing protocol (%d)", protocol);
-			/* Reconnect with a reset. pcsc_reconnect figures out the right forced protocol */
-			r = pcsc_reconnect(reader, 1);
-			if (r != SC_SUCCESS) {
-				sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "pcsc_reconnect (to force protocol) failed", r);
-				return r;
-			}
-			sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "Proto after reconnect = %d", reader->active_protocol);
-		}
-	}
 	return SC_SUCCESS;
 }
 
@@ -935,13 +937,13 @@ static int pcsc_detect_readers(sc_context_t *ctx)
 			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Requesting reader features ... ");
 			
 #ifndef _WIN32	/* Apple 10.5.7 and pcsc-lite previous to v1.5.5 do not support 0 as protocol identifier */
-			rv = gpriv->SCardConnect(gpriv->pcsc_ctx, reader->name, SCARD_SHARE_DIRECT, SCARD_PROTOCOL_ANY, &card_handle, &active_proto);
+			rv = gpriv->SCardConnect(gpriv->pcsc_ctx, reader->name, SCARD_SHARE_DIRECT, SCARD_PROTOCOL_T0|SCARD_PROTOCOL_T1, &card_handle, &active_proto);
 #else
 			rv = gpriv->SCardConnect(gpriv->pcsc_ctx, reader->name, SCARD_SHARE_DIRECT, 0, &card_handle, &active_proto);
 #endif
 			PCSC_TRACE(reader, "SCardConnect(DIRECT)", rv);
 			if (rv == (LONG)SCARD_E_SHARING_VIOLATION) { /* Assume that there is a card in the reader in shared mode if direct communcation failed */
-				rv = gpriv->SCardConnect(gpriv->pcsc_ctx, reader->name, SCARD_SHARE_SHARED, SCARD_PROTOCOL_ANY, &card_handle, &active_proto);
+				rv = gpriv->SCardConnect(gpriv->pcsc_ctx, reader->name, SCARD_SHARE_SHARED, SCARD_PROTOCOL_T0|SCARD_PROTOCOL_T1, &card_handle, &active_proto);
 				PCSC_TRACE(reader, "SCardConnect(SHARED)", rv);
 			}
 			

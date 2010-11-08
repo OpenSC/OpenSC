@@ -697,7 +697,7 @@ int _sc_card_add_algorithm(sc_card_t *card, const sc_algorithm_info_t *info)
 	p += card->algorithm_count;
 	card->algorithm_count++;
 	*p = *info;
-	return 0;
+	return SC_SUCCESS;
 }
 
 int _sc_card_add_rsa_alg(sc_card_t *card, unsigned int key_length,
@@ -896,33 +896,6 @@ int _sc_free_atr(sc_context_t *ctx, struct sc_card_driver *driver)
 	return SC_SUCCESS;
 }
 
-int _sc_check_forced_protocol(sc_context_t *ctx, u8 *atr, size_t atr_len, unsigned int *protocol)
-{
-	scconf_block *atrblock = NULL;
-	int ok = 0;
-
-	if (!protocol)
-		return 0;
-	atrblock = _sc_match_atr_block(ctx, NULL, atr, atr_len);
-	if (atrblock != NULL) {
-		const char *forcestr;
-
-		forcestr = scconf_get_str(atrblock, "force_protocol", "unknown");
-		if (!strcmp(forcestr, "t0")) {
-			*protocol = SC_PROTO_T0;
-			ok = 1;
-		} else if (!strcmp(forcestr, "t1")) {
-			*protocol = SC_PROTO_T1;
-			ok = 1;
-		} else if (!strcmp(forcestr, "raw")) {
-			*protocol = SC_PROTO_RAW;
-			ok = 1;
-		}
-		if (ok)
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "force_protocol: %s\n", forcestr);
-	}
-	return ok;
-}
 
 scconf_block *sc_get_conf_block(sc_context_t *ctx, const char *name1, const char *name2, int priority)
 {
