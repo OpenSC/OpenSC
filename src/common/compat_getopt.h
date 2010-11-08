@@ -30,7 +30,7 @@
 #include "config.h"
 #endif
 
-#ifdef HAVE_GETOPT_H
+#if defined(HAVE_GETOPT_H) && defined(HAVE_GETOPT_LONG) && defined(HAVE_GETOPT_LONG_ONLY)
 #include <getopt.h>
 #else
 
@@ -83,6 +83,6 @@ extern int _my_getopt_internal(int argc, char * argv[], const char *shortopts,
 }
 #endif
 
-#endif /* HAVE_GETOPT_H */
+#endif /* HAVE_GETOPT_H && HAVE_GETOPT_LONG && HAVE_GETOPT_LONG_ONLY */
 
 #endif /* MY_GETOPT_H_INCLUDED */

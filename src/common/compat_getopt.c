@@ -25,7 +25,7 @@
 
 #include "config.h"
 
-#ifndef HAVE_GETOPT_H
+#if ! ( defined(HAVE_GETOPT_H) && defined(HAVE_GETOPT_LONG) && defined(HAVE_GETOPT_LONG_ONLY) )
 
 #include <sys/types.h>
 #include <stdlib.h>

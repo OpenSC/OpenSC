@@ -240,7 +240,7 @@ AC_FUNC_STAT
 AC_FUNC_VPRINTF
 AC_CHECK_FUNCS([ \
 	getpass gettimeofday memset mkdir \
-	strdup strerror getopt_long \
+	strdup strerror getopt_long getopt_long_only \
 	strlcpy strlcat
 ])
 AC_CHECK_SIZEOF(void *)

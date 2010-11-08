@@ -18,5 +18,5 @@ libcompat_la_SOURCES = \
 	compat_getopt.h compat_getopt.c \
 	simclist.c simclist.h
 
-compat_getopt_main_LIBS = libcompat_la
-	
+compat_getopt_main_LDADD = libcompat.la
+
