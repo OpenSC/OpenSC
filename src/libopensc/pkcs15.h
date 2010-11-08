@@ -534,6 +534,10 @@ int sc_pkcs15_pubkey_from_prvkey(struct sc_context *, struct sc_pkcs15_prkey *,
 			struct sc_pkcs15_pubkey **);
 int sc_pkcs15_pubkey_from_cert(struct sc_context *, struct sc_pkcs15_der *, 
 			struct sc_pkcs15_pubkey **);
+int sc_pkcs15_pubkey_from_spki_filename(struct sc_context *, 
+			char *, sc_pkcs15_pubkey_t ** );
+int sc_pkcs15_pubkey_from_spki(struct sc_context *,
+			sc_pkcs15_pubkey_t **, u8 *, size_t, int);
 int sc_pkcs15_read_prkey(struct sc_pkcs15_card *,
 			const struct sc_pkcs15_object *,
 			const char *passphrase,

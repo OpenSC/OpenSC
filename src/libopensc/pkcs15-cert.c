@@ -36,18 +36,12 @@
 static int parse_x509_cert(sc_context_t *ctx, const u8 *buf, size_t buflen, struct sc_pkcs15_cert *cert)
 {
 	int r;
-	struct sc_algorithm_id pk_alg, sig_alg;
-	struct sc_pkcs15_pubkey pubkey;
-	sc_pkcs15_der_t pk = { NULL, 0 };
+	struct sc_algorithm_id sig_alg;
+	struct sc_pkcs15_pubkey  * pubkey = NULL;;
 	u8 *serial = NULL;
 	size_t serial_len = 0;
 	struct sc_asn1_entry asn1_version[] = {
 		{ "version", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, 0, &cert->version, NULL },
-		{ NULL, 0, 0, 0, NULL, NULL }
-	};
-	struct sc_asn1_entry asn1_pkinfo[] = {
-		{ "algorithm",		SC_ASN1_ALGORITHM_ID,  SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, &pk_alg, NULL },
-		{ "subjectPublicKey",	SC_ASN1_BIT_STRING_NI, SC_ASN1_TAG_BIT_STRING, SC_ASN1_ALLOC, &pk.value, &pk.len },
 		{ NULL, 0, 0, 0, NULL, NULL }
 	};
 	struct sc_asn1_entry asn1_x509v3[] = {
@@ -69,7 +63,8 @@ static int parse_x509_cert(sc_context_t *ctx, const u8 *buf, size_t buflen, stru
 		{ "issuer",		SC_ASN1_OCTET_STRING, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_ALLOC, &cert->issuer, &cert->issuer_len },
 		{ "validity",		SC_ASN1_STRUCT,    SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
 		{ "subject",		SC_ASN1_OCTET_STRING, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_ALLOC, &cert->subject, &cert->subject_len },
-		{ "subjectPublicKeyInfo",SC_ASN1_STRUCT,   SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, asn1_pkinfo, NULL },
+		/* Use a callback to get the algorithm, parameters and pubkey into sc_pkcs15_pubkey */
+		{ "subjectPublicKeyInfo",SC_ASN1_CALLBACK, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, sc_pkcs15_pubkey_from_spki,  &pubkey },
 		{ "extensions",		SC_ASN1_STRUCT,    SC_ASN1_CTX | 3 | SC_ASN1_CONS, SC_ASN1_OPTIONAL, asn1_extensions, NULL },
 		{ NULL, 0, 0, 0, NULL, NULL }
 	};
@@ -87,8 +82,6 @@ static int parse_x509_cert(sc_context_t *ctx, const u8 *buf, size_t buflen, stru
 	size_t objlen;
 	
 	memset(cert, 0, sizeof(*cert));
-	memset(&pk_alg, 0, sizeof(pk_alg));
-	memset(&pubkey, 0, sizeof(pubkey));
 	obj = sc_asn1_verify_tag(ctx, buf, buflen, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS,
 				 &objlen);
 	if (obj == NULL) {
@@ -101,24 +94,16 @@ static int parse_x509_cert(sc_context_t *ctx, const u8 *buf, size_t buflen, stru
 
 	cert->version++;
 
-	cert->key = malloc(sizeof(struct sc_pkcs15_pubkey));
-	if (cert->key == NULL)
-		return SC_ERROR_OUT_OF_MEMORY;
-	memcpy(cert->key, &pubkey, sizeof(struct sc_pkcs15_pubkey));
-
-	cert->key->alg_id = malloc(sizeof(struct sc_algorithm_id));
-	if (cert->key->alg_id == NULL)
-		return SC_ERROR_OUT_OF_MEMORY;
-	memcpy(cert->key->alg_id, &pk_alg, sizeof(struct sc_algorithm_id));
-	cert->key->algorithm = pk_alg.algorithm;
-	pk.len >>= 3;	/* convert number of bits to bytes */
-	cert->key->data = pk;
-
-	r = sc_pkcs15_decode_pubkey(ctx, cert->key, pk.value, pk.len);
-	if (r < 0)
-		free(pk.value);
-
+	if (pubkey) {
+		cert->key = pubkey;
+		pubkey = NULL;
+	} else {
+		sc_debug(ctx,SC_LOG_DEBUG_VERBOSE, "Unable to decode subjectPublicKeyInfo from cert");
+		r = SC_ERROR_INVALID_ASN1_OBJECT;
+	}
 	sc_asn1_clear_algorithm_id(&sig_alg);
+	if (r < 0) 
+		return r;
 
 	if (serial && serial_len)   {
 		sc_format_asn1_entry(asn1_serial_number + 0, serial, &serial_len, 1);

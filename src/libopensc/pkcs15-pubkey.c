@@ -23,11 +23,18 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <fcntl.h>
 #include <assert.h>
 
 #include "internal.h"
 #include "asn1.h"
 #include "pkcs15.h"
+
+static const struct sc_asn1_entry c_asn1_pkinfo[] = {
+	{ "algorithm", SC_ASN1_ALGORITHM_ID,  SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
+	{ "subjectPublicKey", SC_ASN1_BIT_STRING_NI, SC_ASN1_TAG_BIT_STRING, SC_ASN1_ALLOC, NULL, NULL},
+	{ NULL, 0, 0, 0, NULL, NULL }
+};
 
 static const struct sc_asn1_entry c_asn1_com_key_attr[] = {
 	{ "iD",		 SC_ASN1_PKCS15_ID, SC_ASN1_TAG_OCTET_STRING, 0, NULL, NULL },
@@ -666,4 +673,155 @@ void sc_pkcs15_free_pubkey_info(sc_pkcs15_pubkey_info_t *key)
 	if (key->params)
 		free(key->params);
 	free(key);
+}
+
+int sc_pkcs15_read_der_file(sc_context_t *ctx, char * filename,
+		u8 ** buf, size_t * buflen)
+{
+	int r;
+	int f = -1;
+	size_t len;
+	u8 tagbuf[16]; /* enough to read in the tag and length */
+	u8 * rbuf = NULL;
+	size_t rbuflen;
+	const u8 * body;
+	size_t bodylen;
+	unsigned int cla_out, tag_out;
+	*buf = NULL;
+	
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
+	f = open(filename, O_RDONLY);
+	if (f < 0) {
+		r = SC_ERROR_FILE_NOT_FOUND;
+		goto out;
+	}
+
+	len = read(f, tagbuf, sizeof(tagbuf)); /* get tag and length */
+	if (len < 0) {
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL,"Problem with \"%s\"\n",filename);
+		r =  SC_ERROR_DATA_OBJECT_NOT_FOUND;
+		goto out;
+	}
+	body = tagbuf;
+	if (sc_asn1_read_tag(&body, 0xfffff, &cla_out,
+			&tag_out, &bodylen) != SC_SUCCESS) {
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "DER problem\n");
+		r = SC_ERROR_INVALID_ASN1_OBJECT;
+		goto out;
+	}
+
+	rbuflen = body - tagbuf + bodylen;
+	rbuf = malloc(rbuflen);
+	if (rbuf == NULL) {
+		r = SC_ERROR_OUT_OF_MEMORY;
+		goto out;
+	}
+	memcpy(rbuf, tagbuf, len); /* copy first or only part */
+	if (rbuflen > len) {
+		/* read rest of file */
+		len = read(f, rbuf + sizeof(tagbuf), rbuflen - sizeof(tagbuf)); 
+		if (len != rbuflen - sizeof(tagbuf)) {
+			r = SC_ERROR_INVALID_ASN1_OBJECT;
+			free (rbuf);
+			rbuf = NULL;
+			goto out;
+		}
+	}
+	*buflen = rbuflen;
+	*buf = rbuf;
+	rbuf = NULL;
+	r = rbuflen;
+out:
+	if (rbuf)
+		free(rbuf);
+	if (f > 0)
+		close(f);
+
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, r);
+}
+
+/* 
+ * can be used as an SC_ASN1_CALLBACK while parsing a certificate,
+ * or can be called from the sc_pkcs15_pubkey_from_spki_filename
+ */
+int sc_pkcs15_pubkey_from_spki(sc_context_t *ctx, sc_pkcs15_pubkey_t ** outpubkey, u8 *buf, size_t buflen, int depth)
+{
+
+	int r;
+	sc_pkcs15_pubkey_t * pubkey = NULL;
+	sc_pkcs15_der_t pk = { NULL, 0 };
+	struct sc_algorithm_id pk_alg;
+	struct sc_asn1_entry asn1_pkinfo[3];
+	
+	sc_debug(ctx,SC_LOG_DEBUG_NORMAL,"sc_pkcs15_pubkey_from_spki %p:%d", buf, buflen);
+
+	memset(&pk_alg, 0, sizeof(pk_alg));
+	pubkey = calloc(1, sizeof(sc_pkcs15_pubkey_t));
+	if (pubkey == NULL) {
+		r = SC_ERROR_OUT_OF_MEMORY;
+		goto err;
+	}
+
+	sc_copy_asn1_entry(c_asn1_pkinfo, asn1_pkinfo);
+	sc_format_asn1_entry(asn1_pkinfo + 0, &pk_alg, NULL, 0);
+	sc_format_asn1_entry(asn1_pkinfo + 1, &pk.value, &pk.len, 0);
+
+	r = sc_asn1_decode(ctx, asn1_pkinfo, buf, buflen, NULL, NULL);
+	if (r < 0)  
+		goto err;
+
+	pubkey->alg_id = calloc(1, sizeof(struct sc_algorithm_id));
+    if (pubkey->alg_id == NULL) {
+		r = SC_ERROR_OUT_OF_MEMORY;
+		goto err;
+	}
+	memcpy(pubkey->alg_id, &pk_alg, sizeof(struct sc_algorithm_id));
+ 	pubkey->algorithm = pk_alg.algorithm;
+
+	pk.len >>= 3;	/* convert number of bits to bytes */
+	pubkey->data = pk; /* save in publey */
+	pk.value = NULL;
+	
+	/* Now decode what every is in pk as it depends on the key algorthim */
+
+	r = sc_pkcs15_decode_pubkey(ctx, pubkey, pubkey->data.value, pubkey->data.len);
+	if (r < 0)
+		goto err;
+
+	*outpubkey = pubkey;
+	pubkey = NULL;
+	return 0;
+
+err:
+	if (pubkey)
+		free(pubkey);
+	if (pk.value)
+		free(pk.value);
+
+	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "ASN.1 parsing of  subjectPubkeyInfo failed");
+}
+	
+int sc_pkcs15_pubkey_from_spki_filename(sc_context_t *ctx, 
+		char * filename,
+		sc_pkcs15_pubkey_t ** outpubkey)
+{
+	int r;
+	u8 * buf = NULL;
+	size_t buflen;
+	sc_pkcs15_pubkey_t * pubkey = NULL;
+	struct sc_asn1_entry asn1_spki[] = {
+		{ "PublicKeyInfo",SC_ASN1_CALLBACK, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, sc_pkcs15_pubkey_from_spki, &pubkey},
+		{ NULL, 0, 0, 0, NULL, NULL } };
+
+	*outpubkey = NULL;
+	r = sc_pkcs15_read_der_file(ctx, filename, &buf, &buflen);
+	if (r < 0)
+		return r;
+
+	r = sc_asn1_decode(ctx, asn1_spki, buf, buflen, NULL, NULL);
+
+	if (buf)
+		free(buf);
+	*outpubkey = pubkey;
+	return r;
 }
