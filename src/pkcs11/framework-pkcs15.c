@@ -1104,39 +1104,52 @@ static CK_RV pkcs15_login(struct sc_pkcs11_slot *slot,
 		return sc_to_cryptoki_error(rc, "C_Login");
 
 	if (userType == CKU_USER)   {
-		unsigned long loaded_mask;
+		sc_pkcs15_object_t *p15_obj = p15card->obj_list;
+		sc_pkcs15_search_key_t sk;
 
 		sc_debug(context, SC_LOG_DEBUG_NORMAL, "Check if pkcs15 object list can be completed.");
-		rc = sc_pkcs15emu_postponed_load(p15card, &loaded_mask);
-		if (rc < 0)
-			return sc_to_cryptoki_error(rc, "C_Login");
-		
-		if (loaded_mask & (1 << SC_PKCS15_PRKDF ))   {
-			unsigned ii, objs_num_before = fw_data->num_objects;
-			int rv;
 
-			sc_debug(context, SC_LOG_DEBUG_NORMAL, "PrKDF has been parsed loaded");
-			rv = pkcs15_create_pkcs11_objects(fw_data, SC_PKCS15_TYPE_PRKEY_RSA,
-					"private key", __pkcs15_create_prkey_object);
-			if (rv < 0)
-				return sc_to_cryptoki_error(rv, NULL);
+		/* Ensure non empty list */
+		if (p15_obj == NULL)
+			return CKR_OK;
 
-			sc_debug(context, SC_LOG_DEBUG_NORMAL, "Added %i private key objects to PIN('%s',auth-id:%s)", rv,
-					auth_object->label, sc_pkcs15_print_id(&pin_info->auth_id));
-			for (ii=objs_num_before;ii<fw_data->num_objects;ii++)   {
-				struct sc_pkcs15_object *p15_object = fw_data->objects[ii]->p15_object;
+		/* Select last object in list */
+		while(p15_obj->next)
+			p15_obj = p15_obj->next;
 
-				if (!sc_pkcs15_compare_id(&pin_info->auth_id, &p15_object->auth_id))
-					continue;
+		/* Trigger enumeration of EF.XXX files */
+		memset(&sk, 0, sizeof(sk));
+		sk.class_mask = SC_PKCS15_SEARCH_CLASS_PRKEY | SC_PKCS15_SEARCH_CLASS_PUBKEY |
+				SC_PKCS15_SEARCH_CLASS_CERT  | SC_PKCS15_SEARCH_CLASS_DATA;
+		sc_pkcs15_search_objects(p15card, &sk, NULL, 0);
 
-				__pkcs15_prkey_bind_related(fw_data, (struct pkcs15_prkey_object *) fw_data->objects[ii]);
+		/* Iterate over newly discovered objects */
+		while(p15_obj->next) {
+			struct pkcs15_any_object *fw_obj;
 
-				pkcs15_add_object(slot, fw_data->objects[ii], NULL);
+			p15_obj = p15_obj->next;
+
+			if (!sc_pkcs15_compare_id(&pin_info->auth_id, &p15_obj->auth_id))
+				continue;
+
+			switch (p15_obj->type & SC_PKCS15_TYPE_CLASS_MASK) {
+			case SC_PKCS15_TYPE_PRKEY:
+				__pkcs15_create_prkey_object(fw_data, p15_obj, &fw_obj); break;
+			case SC_PKCS15_TYPE_PUBKEY:
+				__pkcs15_create_pubkey_object(fw_data, p15_obj, &fw_obj); break;
+			case SC_PKCS15_TYPE_CERT:
+				__pkcs15_create_cert_object(fw_data, p15_obj, &fw_obj); break;
+			case SC_PKCS15_TYPE_DATA_OBJECT:
+				__pkcs15_create_data_object(fw_data, p15_obj, &fw_obj); break;
+			default: continue;
 			}
+
+			sc_debug(context, SC_LOG_DEBUG_NORMAL, "new object found: type=0x%03X", p15_obj->type);
+			pkcs15_add_object(slot, fw_obj, NULL);
 		}
 	}
 
-	return sc_to_cryptoki_error(rc, "C_Login");
+	return CKR_OK;
 }
 
 static CK_RV pkcs15_logout(struct sc_pkcs11_card *p11card, void *fw_token)

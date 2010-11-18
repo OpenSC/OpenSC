@@ -423,34 +423,3 @@ int sc_pkcs15emu_object_add(sc_pkcs15_card_t *p15card, unsigned int type,
 	return SC_SUCCESS;
 }
 
-
-int 
-sc_pkcs15emu_postponed_load(sc_pkcs15_card_t *p15card, unsigned long *loaded_mask)
-{
-	sc_context_t	*ctx = p15card->card->ctx;
-	sc_pkcs15_df_t	*df;
-	int r;
-
-	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
-
-	if (loaded_mask)
-		*loaded_mask = 0;
-
-	for (df = p15card->df_list; df; df = df->next)   {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Type:%X,enumerated:%i", df->type, df->enumerated);
-		if (df->enumerated)
-			continue;
-		if (!p15card->ops.parse_df)
-			continue;
-		r = p15card->ops.parse_df(p15card, df);
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "DF parse error");
-
-		if (loaded_mask)
-			*loaded_mask |= (1 << df->type);
-	}
-
-	if (loaded_mask)
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Loaded mask 0x%lX", *loaded_mask);
-	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
-}
-

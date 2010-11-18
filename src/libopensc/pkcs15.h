@@ -795,7 +795,6 @@ int sc_pkcs15emu_add_x509_cert(sc_pkcs15_card_t *,
 	const sc_pkcs15_object_t *, const sc_pkcs15_cert_info_t *);
 int sc_pkcs15emu_add_data_object(sc_pkcs15_card_t *,
 	const sc_pkcs15_object_t *, const sc_pkcs15_data_info_t *);
-int sc_pkcs15emu_postponed_load(sc_pkcs15_card_t *, unsigned long *);
 
 #ifdef __cplusplus
 }

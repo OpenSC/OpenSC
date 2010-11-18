@@ -941,7 +941,6 @@ __sc_pkcs15_search_objects(sc_pkcs15_card_t *p15card,
 		/* Enumerate the DF's, so p15card->obj_list is
 		 * populated. */
 		r = sc_pkcs15_parse_df(p15card, df);
-		SC_TEST_RET(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, r, "DF parsing failed");
 	}
 
 	/* And now loop over all objects */
