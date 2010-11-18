@@ -901,6 +901,9 @@ __sc_pkcs15_search_objects(sc_pkcs15_card_t *p15card,
 	size_t		match_count = 0;
 	int		r = 0;
 
+	sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL,
+		"called; class=0x%02X, type=0x%03X", class_mask, type);
+
 	if (type)
 		class_mask |= SC_PKCS15_TYPE_TO_CLASS(type);
 
@@ -911,7 +914,7 @@ __sc_pkcs15_search_objects(sc_pkcs15_card_t *p15card,
 			    SC_PKCS15_SEARCH_CLASS_CERT |
 			    SC_PKCS15_SEARCH_CLASS_DATA |
 			    SC_PKCS15_SEARCH_CLASS_AUTH))) {
-		return SC_ERROR_INVALID_ARGUMENTS;
+		SC_FUNC_RETURN(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
 	}
 
 	if (class_mask & SC_PKCS15_SEARCH_CLASS_PRKEY)
@@ -962,7 +965,7 @@ __sc_pkcs15_search_objects(sc_pkcs15_card_t *p15card,
 		if (ret_size <= match_count)
 			break;
 	}
-	return match_count;
+	SC_FUNC_RETURN(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, match_count);
 }
 
 int sc_pkcs15_get_objects(struct sc_pkcs15_card *p15card, unsigned int type,
@@ -1518,7 +1521,9 @@ int sc_pkcs15_parse_df(struct sc_pkcs15_card *p15card,
 	int (* func)(struct sc_pkcs15_card *, struct sc_pkcs15_object *,
 		     const u8 **nbuf, size_t *nbufsize) = NULL;
 
-	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
+	sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL,
+		"called; path=%s, type=%d, enum=%d", sc_print_path(&df->path), df->type, df->enumerated);
+
 	if (p15card->ops.parse_df)   {
 		r = p15card->ops.parse_df(p15card, df);
 		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, r);
@@ -1787,16 +1792,8 @@ int sc_pkcs15_read_file(struct sc_pkcs15_card *p15card,
 
 	assert(p15card != NULL && in_path != NULL && buf != NULL);
 
-	if (p15card->card->ctx->debug >= 1) {
-		char pbuf[SC_MAX_PATH_STRING_SIZE];
-
-		r = sc_path_print(pbuf, sizeof(pbuf), in_path);
-		if (r != SC_SUCCESS)
-			pbuf[0] = '\0';
-
-		sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "called, path=%s, index=%u, count=%d",
-			pbuf, in_path->index, in_path->count);
-	}
+	sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "called; path=%s, index=%u, count=%d",
+			sc_print_path(in_path), in_path->index, in_path->count);
 
 	r = -1; /* file state: not in cache */
 	if (p15card->opts.use_file_cache) {
@@ -1881,13 +1878,13 @@ int sc_pkcs15_read_file(struct sc_pkcs15_card *p15card,
 	}
 	*buf = data;
 	*buflen = len;
-	return 0;
+	SC_FUNC_RETURN(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
 
 fail_unlock:
 	if (file)
 		sc_file_free(file);
 	sc_unlock(p15card->card);
-	return r;
+	SC_FUNC_RETURN(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, r);
 }
 
 int sc_pkcs15_compare_id(const struct sc_pkcs15_id *id1,
