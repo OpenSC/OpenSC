@@ -908,9 +908,6 @@ static int login(CK_SESSION_HANDLE session, int login_type)
 
 	get_token_info(opt_slot, &info);
 
-	if (!(info.flags & CKF_LOGIN_REQUIRED))
-		return 0;
-
 	/* Identify which pin to enter */
 
 	if (login_type == CKU_SO)
@@ -920,8 +917,7 @@ static int login(CK_SESSION_HANDLE session, int login_type)
 	else if (login_type == CKU_CONTEXT_SPECIFIC)
 		pin = opt_pin ? opt_pin : opt_puk;
 
-	if (!pin && (info.flags & CKF_LOGIN_REQUIRED)
-			&& !(info.flags & CKF_PROTECTED_AUTHENTICATION_PATH)) {
+	if (!pin && !(info.flags & CKF_PROTECTED_AUTHENTICATION_PATH)) {
 			printf("Logging in to \"%s\".\n", p11_utf8_to_local(info.label, sizeof(info.label)));
 		if (login_type == CKU_SO)
 			printf("Please enter SO PIN: ");
