@@ -267,7 +267,7 @@ CK_RV C_Login(CK_SESSION_HANDLE hSession,	/* the session's handle */
 			rv = CKR_OPERATION_NOT_INITIALIZED;
 			goto out;
 		} else
-			userType = slot->login_user;
+		rv = slot->card->framework->login(slot, userType, pPin, ulPinLen);
 	} else {
 		if (slot->login_user >= 0) {
 			if ((CK_USER_TYPE) slot->login_user == userType)
@@ -277,11 +277,10 @@ CK_RV C_Login(CK_SESSION_HANDLE hSession,	/* the session's handle */
 			goto out;
 		}
 
+		rv = slot->card->framework->login(slot, userType, pPin, ulPinLen);
+		if (rv == CKR_OK)
+			slot->login_user = userType;
 	}
-
-	rv = slot->card->framework->login(slot, userType, pPin, ulPinLen);
-	if (rv == CKR_OK)
-		slot->login_user = userType;
 
       out:sc_pkcs11_unlock();
 	return rv;

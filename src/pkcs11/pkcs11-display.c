@@ -520,7 +520,8 @@ static enum_specs ck_err_s[] = {
 
 static enum_specs ck_usr_s[] = { 
   { CKU_SO,   "CKU_SO" }, 
-  { CKU_USER, "CKU_USER" }
+  { CKU_USER, "CKU_USER" },
+  { CKU_CONTEXT_SPECIFIC, "CKU_CONTEXT_SPECIFIC" }
 };
 
 static enum_specs ck_sta_s[] = { 

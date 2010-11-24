@@ -1045,6 +1045,24 @@ static CK_RV pkcs15_login(struct sc_pkcs11_slot *slot,
 
 		break;
 	case CKU_CONTEXT_SPECIFIC:
+		/*
+		 * A session should already be open for user or SO 
+		 * All we need to do is authenticate to the card
+		 * using the correct auth_object. 
+		 * TODO: handle the CK_SO case
+		 */
+		sc_debug(context, SC_LOG_DEBUG_NORMAL, "context specific login %d",
+				slot->login_user);
+		if (slot->login_user == CKU_USER) {
+			auth_object = slot_data_auth(slot->fw_data);
+			if (auth_object == NULL)
+				return CKR_USER_PIN_NOT_INITIALIZED;
+			break;
+		}
+		/* TODO looks like this was never executed,
+		 * And even if it was, why the lock as a session 
+		 * should already be open and the card locked. 
+		 */
 		/* For a while, used only to unblock User PIN. */
 		rc = 0;
 		if (sc_pkcs11_conf.lock_login)
@@ -1094,8 +1112,17 @@ static CK_RV pkcs15_login(struct sc_pkcs11_slot *slot,
 	 * processes from accessing the card while we're logged in.
 	 * Otherwise an attacker could perform some crypto operation
 	 * after we've authenticated with the card */
+
+	/* Context specific login is not real login but only a
+	 * reassertion of the PIN to the card. 
+	 * And we don't want to do any extra operations to the card
+	 * that could invalidate the assertion of the pin
+	 * before the crypto operation that requires the assertion
+	 */
+	if (userType != CKU_CONTEXT_SPECIFIC) {
 	if (sc_pkcs11_conf.lock_login && (rc = lock_card(fw_data)) < 0)
 		return sc_to_cryptoki_error(rc, "C_Login");
+	}
 
 	rc = sc_pkcs15_verify_pin(p15card, auth_object, pPin, ulPinLen);
 	sc_debug(context, SC_LOG_DEBUG_NORMAL, "PKCS15 verify PIN returned %d", rc);	
