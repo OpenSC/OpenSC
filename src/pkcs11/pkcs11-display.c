@@ -84,6 +84,17 @@
 #define CKA_CERT_MD5_HASH		        (CKA_TRUST + 101)
 
 
+static char *buf_spec(CK_VOID_PTR buf_addr, CK_ULONG buf_len)
+{
+	static char ret[64];
+	if (sizeof(CK_VOID_PTR) == 4) {
+		sprintf(ret, "%08lx / %ld", buf_addr, (CK_LONG) buf_len);
+	} else {
+		sprintf(ret, "%016lx / %ld", buf_addr, (CK_LONG) buf_len);
+	}
+	return ret;
+}
+
 void print_enum(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg)
 {
   enum_spec *spec = (enum_spec*)arg;
@@ -109,7 +120,7 @@ void print_generic(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_V
 {
   CK_ULONG i;
   if(size != (CK_LONG)(-1) && value != NULL) {
-    fprintf(f, "[size : 0x%lX (%ld)]\n    ", size, size);
+    fprintf(f, "%s\n    ", buf_spec(value, size));
     for(i = 0; i < size; i++) {
       if (i != 0) {
 	if ((i % 32) == 0)
@@ -153,7 +164,7 @@ void print_print(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOI
   CK_ULONG i, j;
   CK_BYTE  c;
   if(size != (CK_LONG)(-1)) {
-    fprintf(f, "[size : 0x%lX (%ld)]\n    ", size, size);
+    fprintf(f, "%s\n    ", buf_spec(value, size));
     for(i = 0; i < size; i += j) {
       for(j = 0; ((i + j < size) && (j < 32)); j++) {
 	if (((j % 4) == 0) && (j != 0)) fprintf(f, " ");
@@ -863,20 +874,20 @@ void print_attribute_list(FILE *f, CK_ATTRIBUTE_PTR pTemplate,
 			if(ck_attribute_specs[k].type == pTemplate[j].type) {
 				found = 1;
 				fprintf(f, "    %s ", ck_attribute_specs[k].name);
-				if(pTemplate[j].pValue) {
+				if(pTemplate[j].pValue && ((CK_LONG) pTemplate[j].ulValueLen) > 0) {
 					ck_attribute_specs[k].display
 					(f, pTemplate[j].type, pTemplate[j].pValue,
 						pTemplate[j].ulValueLen,
 					ck_attribute_specs[k].arg);
 				} else {
-					fprintf(f, "has size %ld\n", pTemplate[j].ulValueLen); 
+					fprintf(f, "%s\n", buf_spec(pTemplate[j].pValue, pTemplate[j].ulValueLen));
 				}
 				k = ck_attribute_num;
 			}
 		}
 		if (!found) {
 			fprintf(f, "    CKA_? (0x%08lx)    ", pTemplate[j].type);
-			fprintf(f, "has size %ld\n", pTemplate[j].ulValueLen); 
+			fprintf(f, "%s\n", buf_spec(pTemplate[j].pValue, pTemplate[j].ulValueLen));
 		}
 	}
 }
@@ -892,13 +903,13 @@ void print_attribute_list_req(FILE *f, CK_ATTRIBUTE_PTR pTemplate,
       if(ck_attribute_specs[k].type == pTemplate[j].type) {
 	found = 1;
 	fprintf(f, "    %s ", ck_attribute_specs[k].name);
-	fprintf(f, "requested with %ld buffer\n", pTemplate[j].ulValueLen); 
+	fprintf(f, "%s\n", buf_spec(pTemplate[j].pValue, pTemplate[j].ulValueLen));
 	k = ck_attribute_num;
       }
     }
     if (!found) {
 	fprintf(f, "    CKA_? (0x%08lx)    ", pTemplate[j].type);
-	fprintf(f, "requested with %ld buffer\n", pTemplate[j].ulValueLen); 
+	fprintf(f, "%s\n", buf_spec(pTemplate[j].pValue, pTemplate[j].ulValueLen));
     }
   }
 }
