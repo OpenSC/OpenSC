@@ -429,16 +429,17 @@ int list_insert_at(list_t *restrict l, const void *data, unsigned int pos);
 /**
  * expunge the first found given element from the list.
  *
- * @warning Requires a comparator function to be set for the list.
- *
  * Inspects the given list looking for the given element; if the element
  * is found, it is removed. Only the first occurence is removed.
- * Elements are inspected comparing references if a comparator has not been
- * set. Otherwise, the comparator is used to find the element.
+ * If a comparator function was not set, elements are compared by reference.
+ * Otherwise, the comparator is used to match the element.
  *
  * @param l     list to operate
  * @param data  reference of the element to search for
  * @return      0 on success. Negative value on failure
+ *
+ * @see list_attributes_comparator()
+ * @see list_delete_at()
  */
 int list_delete(list_t *restrict l, const void *data);
 
