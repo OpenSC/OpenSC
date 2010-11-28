@@ -2758,12 +2758,10 @@ static int test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 
 	rv = p11->C_SignUpdate(sess, data, 5);
 	if (rv == CKR_FUNCTION_NOT_SUPPORTED) {
-		printf("  Note: C_SignUpdate(), SignFinal() not supported\n");
-		/* finish the digest operation */
-		sigLen2 = sizeof(sig2);
-		rv = p11->C_Sign(sess, data, dataLen, sig2, &sigLen2);
-		if (rv != CKR_OK)
-			p11_fatal("C_Sign", rv);
+		p11_warn("C_SignUpdate", rv);
+	} else if (rv != CKR_OK) {
+		p11_perror("C_SignUpdate", rv);
+		errors++;
 	} else {
 		if (rv != CKR_OK)
 			p11_fatal("C_SignUpdate", rv);
