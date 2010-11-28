@@ -853,23 +853,58 @@ static void list_mechs(CK_SLOT_ID slot)
 					printf("%li", info.ulMaxKeySize);
 				printf("}");
 			}
-			if (info.flags & CKF_DIGEST)
-				printf(", digest");
-			if (info.flags & CKF_SIGN)
-				printf(", sign");
-			if (info.flags & CKF_VERIFY)
-				printf(", verify");
-			if (info.flags & CKF_WRAP)
-				printf(", wrap");
-			if (info.flags & CKF_UNWRAP)
-				printf(", unwrap");
-			if (info.flags & CKF_ENCRYPT)
+			if (info.flags & CKF_HW) {
+				printf(", hw");
+				info.flags &= ~CKF_HW;
+			}
+			if (info.flags & CKF_ENCRYPT) {
 				printf(", encrypt");
-			if (info.flags & CKF_DECRYPT)
+				info.flags &= ~CKF_ENCRYPT;
+			}
+			if (info.flags & CKF_DECRYPT) {
 				printf(", decrypt");
-			if (info.flags & CKF_GENERATE_KEY_PAIR)
-				printf(", keypairgen");
-			info.flags &= ~(CKF_DIGEST|CKF_SIGN|CKF_VERIFY|CKF_HW|CKF_UNWRAP|CKF_ENCRYPT|CKF_DECRYPT|CKF_GENERATE_KEY_PAIR);
+				info.flags &= ~CKF_DECRYPT;
+			}
+			if (info.flags & CKF_DIGEST) {
+				printf(", digest");
+				info.flags &= ~CKF_DIGEST;
+			}
+			if (info.flags & CKF_SIGN) {
+				printf(", sign");
+				info.flags &= ~CKF_SIGN;
+			}
+			if (info.flags & CKF_SIGN_RECOVER) {
+				printf(", sign_recover");
+				info.flags &= ~CKF_SIGN_RECOVER;
+			}
+			if (info.flags & CKF_VERIFY) {
+				printf(", verify");
+				info.flags &= ~CKF_VERIFY;
+			}
+			if (info.flags & CKF_VERIFY_RECOVER) {
+				printf(", verify_recover");
+				info.flags &= ~CKF_VERIFY_RECOVER;
+			}
+			if (info.flags & CKF_GENERATE) {
+				printf(", generate");
+				info.flags &= ~CKF_GENERATE;
+			}
+			if (info.flags & CKF_GENERATE_KEY_PAIR) {
+				printf(", generate_key_pair");
+				info.flags &= ~CKF_GENERATE_KEY_PAIR;
+			}
+			if (info.flags & CKF_WRAP) {
+				printf(", wrap");
+				info.flags &= ~CKF_WRAP;
+			}
+			if (info.flags & CKF_UNWRAP) {
+				printf(", unwrap");
+				info.flags &= ~CKF_UNWRAP;
+			}
+			if (info.flags & CKF_DERIVE) {
+				printf(", derive");
+				info.flags &= ~CKF_DERIVE;
+			}
 			if (info.flags)
 				printf(", other flags=0x%x", (unsigned int) info.flags);
 		}
