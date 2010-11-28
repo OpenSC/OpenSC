@@ -1929,7 +1929,8 @@ VARATTR_METHOD(LABEL, char);
 VARATTR_METHOD(APPLICATION, char);
 VARATTR_METHOD(ID, unsigned char);
 VARATTR_METHOD(OBJECT_ID, unsigned char);
-VARATTR_METHOD(MODULUS, unsigned char);
+VARATTR_METHOD(MODULUS, CK_BYTE);
+VARATTR_METHOD(PUBLIC_EXPONENT, CK_BYTE);
 VARATTR_METHOD(VALUE, unsigned char);
 VARATTR_METHOD(GOSTR3410_PARAMS, unsigned char);
 
@@ -2490,13 +2491,14 @@ static int test_digest(CK_SLOT_ID slot)
 #ifdef ENABLE_OPENSSL
 static EVP_PKEY *get_public_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE privKeyObject)
 {
-	unsigned char  *id;
-	CK_ULONG        idLen;
+	CK_BYTE         *id, *mod, *exp;
+	CK_ULONG         idLen, modLen, expLen;
 	CK_OBJECT_HANDLE pubkeyObject;
 	unsigned char  *pubkey;
 	const unsigned char *pubkey_c;
 	CK_ULONG        pubkeyLen;
 	EVP_PKEY       *pkey;
+	RSA            *rsa;
 
 	id = NULL;
 	id = getID(session, privKeyObject, &idLen);
@@ -2511,6 +2513,39 @@ static EVP_PKEY *get_public_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE priv
 		return NULL;
 	}
 	free(id);
+
+	switch(getKEY_TYPE(session, pubkeyObject)) {
+		case CKK_RSA:
+			pkey = EVP_PKEY_new();
+			rsa = RSA_new();
+			mod = getMODULUS(session, pubkeyObject, &modLen);
+			exp = getPUBLIC_EXPONENT(session, pubkeyObject, &expLen);
+			if ( !pkey || !rsa || !mod || !exp) {
+				printf("public key not extractable\n");
+				if (pkey)
+					free(pkey);
+				if (rsa)
+					free(rsa);
+				if (mod)
+					free(mod);
+				if (exp)
+					free(exp);
+				return NULL;
+			}
+			rsa->n = BN_bin2bn(mod, modLen, NULL);
+			rsa->e = BN_bin2bn(exp, expLen, NULL);
+			EVP_PKEY_assign_RSA(pkey, rsa);
+			free(mod);
+			free(exp);
+			return pkey;
+		case CKK_DSA:
+		case CKK_ECDSA:
+		case CKK_GOSTR3410:
+			break;
+		default:
+			printf("public key of unsupported type\n");
+			return NULL;
+	}
 
 	pubkey = getVALUE(session, pubkeyObject, &pubkeyLen);
 	if (pubkey == NULL) {
