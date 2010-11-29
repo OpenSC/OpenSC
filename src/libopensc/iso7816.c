@@ -828,11 +828,14 @@ static int iso7816_decipher(sc_card_t *card,
 	 * to tell the card the we want everything available (note: we
 	 * always have Le <= crgram_len) */
 	apdu.le      = (outlen >= 256 && crgram_len < 256) ? 256 : outlen;
+	/* Use APDU chaining with 2048bit RSA keys if the card does not do extended APDU-s */
+	if ((crgram_len+1 > 255) && !(card->caps & SC_CARD_CAP_APDU_EXT))
+		apdu.flags |= SC_APDU_FLAGS_CHAINING;
 	
 	sbuf[0] = 0; /* padding indicator byte, 0x00 = No further indication */
 	memcpy(sbuf + 1, crgram, crgram_len);
 	apdu.data = sbuf;
-	apdu.lc   = crgram_len + 1;
+	apdu.lc = crgram_len + 1;
 	apdu.datalen = crgram_len + 1;
 	r = sc_transmit_apdu(card, &apdu);
 	sc_mem_clear(sbuf, crgram_len + 1);
