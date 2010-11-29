@@ -305,11 +305,10 @@ static int refresh_attributes(sc_reader_t *reader)
 		if (priv->reader_state.cbAtr > SC_MAX_ATR_SIZE)
 			return SC_ERROR_INTERNAL;
 
-		/* ATR changes => card changed */
+		/* Some cards have a different cold (after a powerup) and warm (after a reset) ATR  */
 		if (memcmp(priv->reader_state.rgbAtr, reader->atr, priv->reader_state.cbAtr) != 0) {
 			reader->atr_len = priv->reader_state.cbAtr;	
 			memcpy(reader->atr, priv->reader_state.rgbAtr, reader->atr_len);
-			reader->flags |= SC_READER_CARD_CHANGED;
 		}
 
 		if (old_flags & SC_READER_CARD_PRESENT) {
