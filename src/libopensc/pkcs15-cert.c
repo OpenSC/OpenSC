@@ -37,7 +37,7 @@ static int parse_x509_cert(sc_context_t *ctx, const u8 *buf, size_t buflen, stru
 {
 	int r;
 	struct sc_algorithm_id sig_alg;
-	struct sc_pkcs15_pubkey  * pubkey = NULL;;
+	struct sc_pkcs15_pubkey  * pubkey = NULL;
 	u8 *serial = NULL;
 	size_t serial_len = 0;
 	struct sc_asn1_entry asn1_version[] = {
