@@ -64,7 +64,7 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 {
 	sc_card_t *card = p15card->card;
 	unsigned char buff[128];
-	int r, i, flags;
+	int r, i;
 	sc_path_t tmppath;
 
 	set_string (&p15card->tokeninfo->label, "ID-kaart");
@@ -84,11 +84,6 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 	p15card->tokeninfo->flags = SC_PKCS15_TOKEN_PRN_GENERATION
 				  | SC_PKCS15_TOKEN_EID_COMPLIANT
 				  | SC_PKCS15_TOKEN_READONLY;
-
-	/* EstEID uses 1024b RSA */
-	card->algorithm_count = 0;
-	flags = SC_ALGORITHM_RSA_PAD_PKCS1;
-	_sc_card_add_rsa_alg (card, 1024, flags, 0);
 
 	/* add certificates */
 	for (i = 0; i < 2; i++) {
@@ -237,7 +232,10 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 		prkey_info.usage  = prkey_usage[i];
 		prkey_info.native = 1;
 		prkey_info.key_reference = i + 1;
-		prkey_info.modulus_length= 1024;
+		if (card->type == SC_CARD_TYPE_MCRD_ESTEID_V30)
+			prkey_info.modulus_length = 2048;
+		else
+			prkey_info.modulus_length = 1024;	
 
 		strlcpy(prkey_obj.label, prkey_name[i], sizeof(prkey_obj.label));
 		prkey_obj.auth_id.len = 1;
@@ -249,16 +247,16 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 		if (r < 0)
 			return SC_ERROR_INTERNAL;
 	}
-	/* Read the certificate to get the name of the person */
 
 	return SC_SUCCESS;
 }
 
 static int esteid_detect_card(sc_pkcs15_card_t *p15card)
 {
-	if (p15card->card->type == SC_CARD_TYPE_MCRD_ESTEID)
+	if (is_esteid_card(p15card->card))
 		return SC_SUCCESS;
-	return SC_ERROR_WRONG_CARD;
+	else		
+		return SC_ERROR_WRONG_CARD;
 }
 
 int sc_pkcs15emu_esteid_init_ex(sc_pkcs15_card_t *p15card,
