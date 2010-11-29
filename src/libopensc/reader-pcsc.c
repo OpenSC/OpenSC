@@ -383,7 +383,7 @@ static int check_forced_protocol(sc_context_t *ctx, u8 *atr, size_t atr_len, DWO
 			ok = 1;
 		}
 		if (ok)
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "force_protocol: %s\n", forcestr);
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "force_protocol: %s", forcestr);
 	}
 	return ok;
 }
@@ -442,9 +442,6 @@ static int pcsc_connect(sc_reader_t *reader)
 	if (!(reader->flags & SC_READER_CARD_PRESENT))
 		SC_FUNC_RETURN(reader->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_CARD_NOT_PRESENT);
 
-	/* Check if we need a specific protocol. refresh_attributes above already sets the ATR */
-	if (check_forced_protocol(reader->ctx, reader->atr, reader->atr_len, &tmp))
-		protocol = tmp;
 	
 	rv = priv->gpriv->SCardConnect(priv->gpriv->pcsc_ctx, reader->name,
 			  priv->gpriv->connect_exclusive ? SCARD_SHARE_EXCLUSIVE : SCARD_SHARE_SHARED,
@@ -461,12 +458,27 @@ static int pcsc_connect(sc_reader_t *reader)
 		PCSC_TRACE(reader, "SCardConnect failed", rv);
 		return pcsc_to_opensc_error(rv);
 	}
+
 	reader->active_protocol = pcsc_proto_to_opensc(active_proto);
 	priv->pcsc_card = card_handle;
+	
+	sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "Initial protocol: %s", reader->active_protocol == SC_PROTO_T1 ? "T=1" : "T=0");
 
-	/* after connect reader is not locked yet */
+	/* Check if we need a specific protocol. refresh_attributes above already sets the ATR */
+	if (check_forced_protocol(reader->ctx, reader->atr, reader->atr_len, &tmp)) {
+		if (active_proto != tmp) {
+			sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "Reconnecting to force protocol");
+			r = pcsc_reconnect(reader, SCARD_UNPOWER_CARD);
+			if (r != SC_SUCCESS) {
+				sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "pcsc_reconnect (to force protocol) failed", r);
+				return r;
+			}
+		}
+		sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "Final protocol: %s", reader->active_protocol == SC_PROTO_T1 ? "T=1" : "T=0");
+	}
+
+	/* After connect reader is not locked yet */
 	priv->locked = 0;
-	sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "After connect protocol = %d", reader->active_protocol);
 
 	return SC_SUCCESS;
 }
