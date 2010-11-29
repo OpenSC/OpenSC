@@ -43,9 +43,9 @@ DefaultGroupName=OpenSC
 
 [Files]
 Source: opensc\*.profile; DestDir: {app}\profiles
-Source: opensc\*.dll; DestDir: {sys};
-Source: opensc\*.exe; DestDir: {app};
-Source: engine_pkcs11\*.dll; DestDir: {sys}; Components: OpenSSL_engine;
+Source: opensc\*.dll; DestDir: {sys}; Flags: overwritereadonly replacesameversion ignoreversion uninsnosharedfileprompt restartreplace
+Source: opensc\*.exe; DestDir: {app}; Flags: overwritereadonly replacesameversion ignoreversion
+Source: engine_pkcs11\*.dll; DestDir: {sys}; Components: OpenSSL_engine; Flags: overwritereadonly replacesameversion ignoreversion
 Source: opensc.conf; DestDir: {app};
 ;Source: www.opensc-project.org.url; DestDir: {app}
 [Icons]
