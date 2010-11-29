@@ -424,8 +424,8 @@ app tokend {
 
 	framework tokend {
 		# Score for OpenSC.tokend
-		# The tokend with the lowest score shall be used
-		# Default: 50
+		# The tokend with the highest score shall be used.
+		# Default: 300
 		#
 		# score = 10;
 	}
