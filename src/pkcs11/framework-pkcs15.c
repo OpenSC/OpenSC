@@ -3053,8 +3053,9 @@ static int register_gost_mechanisms(struct sc_pkcs11_card *p11card, int flags)
 	sc_pkcs11_mechanism_type_t *mt;
 	int rc;
 
-	mech_info.flags = CKF_HW | CKF_SIGN | CKF_UNWRAP | CKF_DECRYPT;
+	mech_info.flags = CKF_HW | CKF_SIGN | CKF_DECRYPT;
 #ifdef ENABLE_OPENSSL
+	/* That practise definitely conflicts with CKF_HW -- andre 2010-11-28 */
 	mech_info.flags |= CKF_VERIFY;
 #endif
 	mech_info.ulMinKeySize = SC_PKCS15_GOSTR3410_KEYSIZE;
@@ -3098,8 +3099,9 @@ static int register_mechanisms(struct sc_pkcs11_card *p11card)
 	/* Register generic mechanisms */
 	sc_pkcs11_register_generic_mechanisms(p11card);
 
-	mech_info.flags = CKF_HW | CKF_SIGN | CKF_UNWRAP | CKF_DECRYPT;
+	mech_info.flags = CKF_HW | CKF_SIGN | CKF_DECRYPT;
 #ifdef ENABLE_OPENSSL
+	/* That practise definitely conflicts with CKF_HW -- andre 2010-11-28 */
 	mech_info.flags |= CKF_VERIFY;
 #endif
 	mech_info.ulMinKeySize = ~0;
