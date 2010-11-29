@@ -812,7 +812,6 @@ sc_pkcs11_register_generic_mechanisms(struct sc_pkcs11_card *p11card)
 #ifdef ENABLE_OPENSSL
 	sc_pkcs11_register_openssl_mechanisms(p11card);
 #endif
-
 	return CKR_OK;
 }
 
@@ -843,9 +842,9 @@ sc_pkcs11_register_sign_and_hash_mechanism(struct sc_pkcs11_card *p11card,
 	info->sign_mech = sign_type->mech;
 	info->hash_mech = hash_mech;
 
-	new_type = sc_pkcs11_new_fw_mechanism(mech, &mech_info,
-				sign_type->key_type, info);
-	if (new_type)
-		sc_pkcs11_register_mechanism(p11card, new_type);
-	return CKR_OK;
+	new_type = sc_pkcs11_new_fw_mechanism(mech, &mech_info, sign_type->key_type, info);
+		
+	if (!new_type)
+		return CKR_HOST_MEMORY;	
+	return sc_pkcs11_register_mechanism(p11card, new_type);
 }

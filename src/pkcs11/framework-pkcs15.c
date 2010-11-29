@@ -3114,13 +3114,13 @@ static int register_mechanisms(struct sc_pkcs11_card *p11card)
 	num = card->algorithm_count;
 	alg_info = card->algorithms;
 	while (num--) {
-		if (alg_info->algorithm == SC_ALGORITHM_RSA)   {
-		if (alg_info->key_length < mech_info.ulMinKeySize)
-			mech_info.ulMinKeySize = alg_info->key_length;
-		if (alg_info->key_length > mech_info.ulMaxKeySize)
-			mech_info.ulMaxKeySize = alg_info->key_length;
+		if (alg_info->algorithm == SC_ALGORITHM_RSA) {
+			if (alg_info->key_length < mech_info.ulMinKeySize)
+				mech_info.ulMinKeySize = alg_info->key_length;
+			if (alg_info->key_length > mech_info.ulMaxKeySize)
+				mech_info.ulMaxKeySize = alg_info->key_length;
 
-		flags |= alg_info->flags;
+			flags |= alg_info->flags;
 		}
 		if (alg_info->algorithm == SC_ALGORITHM_GOSTR3410)
 			flags |= alg_info->flags;
@@ -3139,8 +3139,7 @@ static int register_mechanisms(struct sc_pkcs11_card *p11card)
 
 	/* Check if we support raw RSA */
 	if (flags & SC_ALGORITHM_RSA_RAW) {
-		mt = sc_pkcs11_new_fw_mechanism(CKM_RSA_X_509,
-					&mech_info, CKK_RSA, NULL);
+		mt = sc_pkcs11_new_fw_mechanism(CKM_RSA_X_509, &mech_info, CKK_RSA, NULL);
 		rc = sc_pkcs11_register_mechanism(p11card, mt);
 		if (rc != CKR_OK)
 			return rc;
@@ -3149,14 +3148,12 @@ static int register_mechanisms(struct sc_pkcs11_card *p11card)
 		 * have registered everything else, too. If it didn't
 		 * we help it a little
 		 */
-		flags |= SC_ALGORITHM_RSA_PAD_PKCS1
-			|SC_ALGORITHM_RSA_HASHES;
+		flags |= SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASHES;
 	}
 
 	/* Check for PKCS1 */
 	if (flags & SC_ALGORITHM_RSA_PAD_PKCS1) {
-		mt = sc_pkcs11_new_fw_mechanism(CKM_RSA_PKCS,
-					&mech_info, CKK_RSA, NULL);
+		mt = sc_pkcs11_new_fw_mechanism(CKM_RSA_PKCS, &mech_info, CKK_RSA, NULL);
 		rc = sc_pkcs11_register_mechanism(p11card, mt);
 		if (rc != CKR_OK)
 			return rc;
@@ -3166,29 +3163,36 @@ static int register_mechanisms(struct sc_pkcs11_card *p11card)
 		if (!(flags & SC_ALGORITHM_RSA_HASHES))
 			flags |= SC_ALGORITHM_RSA_HASHES;
 
-		if (flags & SC_ALGORITHM_RSA_HASH_SHA1)
-			sc_pkcs11_register_sign_and_hash_mechanism(p11card,
-					CKM_SHA1_RSA_PKCS, CKM_SHA_1, mt);
-		if (flags & SC_ALGORITHM_RSA_HASH_MD5)
-			sc_pkcs11_register_sign_and_hash_mechanism(p11card,
-					CKM_MD5_RSA_PKCS, CKM_MD5, mt);
-		if (flags & SC_ALGORITHM_RSA_HASH_RIPEMD160)
-			sc_pkcs11_register_sign_and_hash_mechanism(p11card,
-					CKM_RIPEMD160_RSA_PKCS, CKM_RIPEMD160, mt);
-#if 0
-		/* Does this correspond to any defined CKM_XXX value? */
-		if (flags & SC_ALGORITHM_RSA_HASH_MD5_SHA1)
-			sc_pkcs11_register_sign_and_hash_mechanism(p11card,
-					CKM_XXX_RSA_PKCS, CKM_XXX, mt);
-#endif
-#ifdef ENABLE_OPENSSL
-		mech_info.flags = CKF_GENERATE_KEY_PAIR;
-		mt = sc_pkcs11_new_fw_mechanism(CKM_RSA_PKCS_KEY_PAIR_GEN,
-					&mech_info, CKK_RSA, NULL);
-		rc = sc_pkcs11_register_mechanism(p11card, mt);
-		if (rc != CKR_OK)
-			return rc;
-#endif
+		if (flags & SC_ALGORITHM_RSA_HASH_SHA1) {
+			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card, CKM_SHA1_RSA_PKCS, CKM_SHA_1, mt);
+			if (rc != CKR_OK)
+				return rc;
+		}
+		if (flags & SC_ALGORITHM_RSA_HASH_SHA256) {
+			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card, CKM_SHA256_RSA_PKCS, CKM_SHA256, mt);
+			if (rc != CKR_OK)
+				return rc;
+		}
+		if (flags & SC_ALGORITHM_RSA_HASH_MD5) {
+			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card, CKM_MD5_RSA_PKCS, CKM_MD5, mt);
+			if (rc != CKR_OK)
+				return rc;
+		}
+		if (flags & SC_ALGORITHM_RSA_HASH_RIPEMD160) {
+			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card, CKM_RIPEMD160_RSA_PKCS, CKM_RIPEMD160, mt);
+			if (rc != CKR_OK)
+				return rc;
+		}
+
+		if (flags & SC_ALGORITHM_ONBOARD_KEY_GEN) {
+			mech_info.flags = CKF_GENERATE_KEY_PAIR;
+			mt = sc_pkcs11_new_fw_mechanism(CKM_RSA_PKCS_KEY_PAIR_GEN, &mech_info, CKK_RSA, NULL);
+			if (!mt)
+				return CKR_HOST_MEMORY;
+			rc = sc_pkcs11_register_mechanism(p11card, mt);
+			if (rc != CKR_OK)
+				return rc;
+		}	
 	}
 
 	return CKR_OK;
