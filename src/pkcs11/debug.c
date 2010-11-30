@@ -157,6 +157,7 @@ static struct fmap	p11_attr_names[] = {
 	_(CKA_RESET_ON_INIT),
 	_(CKA_HAS_RESET),
 	_(CKA_VENDOR_DEFINED),
+	b(CKA_ALWAYS_AUTHENTICATE),
 
 	{ 0, NULL, NULL, NULL }
 };
