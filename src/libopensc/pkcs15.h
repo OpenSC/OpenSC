@@ -365,6 +365,8 @@ struct sc_pkcs15_object {
 
 	/* Object type specific data */
 	void *data;
+	/* emulated object pointer */
+	void *emulated;
 
 	struct sc_pkcs15_df *df; /* can be NULL, if object is 'floating' */
 	struct sc_pkcs15_object *next, *prev; /* used only internally */

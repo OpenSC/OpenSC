@@ -462,8 +462,15 @@ __pkcs15_create_pubkey_object(struct pkcs15_fw_data *fw_data,
 	if (pubkey->flags & SC_PKCS15_CO_FLAG_PRIVATE)   	/* is the key private? */
 	  p15_key = NULL; 		/* will read key when needed */
 	else {	  
-	  if ((rv = sc_pkcs15_read_pubkey(fw_data->p15_card, pubkey, &p15_key)) < 0)
-	    p15_key = NULL; 
+		/* if emulation already created pubkey use it */
+		if (pubkey->emulated && (fw_data->p15_card->flags & SC_PKCS15_CARD_FLAG_EMULATED)) {
+			p15_key = (struct sc_pkcs15_pubkey *) pubkey->emulated;
+			sc_debug(context, SC_LOG_DEBUG_NORMAL, "Using emulated pubkey %p", p15_key);
+		}
+		else {
+			if ((rv = sc_pkcs15_read_pubkey(fw_data->p15_card, pubkey, &p15_key)) < 0)
+				 p15_key = NULL;
+		}
 	}
 
 	/* Public key object */
