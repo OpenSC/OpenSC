@@ -261,7 +261,7 @@ int sc_disconnect_card(sc_card_t *card)
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, 0);
 }
 
-int sc_reset(sc_card_t *card)
+int sc_reset(sc_card_t *card, int do_cold_reset)
 {
 	int r, r2;
 
@@ -274,7 +274,7 @@ int sc_reset(sc_card_t *card)
 	if (r != SC_SUCCESS)
 		return r;
 
-	r = card->reader->ops->reset(card->reader);
+	r = card->reader->ops->reset(card->reader, do_cold_reset);
 	/* invalidate cache */
 	memset(&card->cache, 0, sizeof(card->cache));
 	card->cache_valid = 0;

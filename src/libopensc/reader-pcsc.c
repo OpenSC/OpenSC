@@ -557,13 +557,13 @@ static int pcsc_release(sc_reader_t *reader)
 	return SC_SUCCESS;
 }
 
-static int pcsc_reset(sc_reader_t *reader)
+static int pcsc_reset(sc_reader_t *reader, int do_cold_reset)
 {
 	struct pcsc_private_data *priv = GET_PRIV_DATA(reader);
 	int r;
 	int old_locked = priv->locked;
 
-	r = pcsc_reconnect(reader, SCARD_UNPOWER_CARD);
+	r = pcsc_reconnect(reader, do_cold_reset ? SCARD_UNPOWER_CARD : SCARD_RESET_CARD);
 	if(r != SC_SUCCESS)
 		return r;
 

@@ -300,7 +300,7 @@ static int mcrd_init(sc_card_t * card)
 
 		/* Reset the MULTOS card to get to a known state */
 		if (card->type == SC_CARD_TYPE_MCRD_ESTEID_V11)
-			sc_reset(card);
+			sc_reset(card, 0);
 
 		/* Select the EstEID AID to get to a known state.
 		 * For some reason a reset is required as well... */
@@ -308,7 +308,7 @@ static int mcrd_init(sc_card_t * card)
 			flags = SC_ALGORITHM_RSA_HASH_SHA1 | SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_SHA256;
 			/* EstEID v3.0 supports 2048 bit keys */
 			_sc_card_add_rsa_alg(card, 2048, flags, 0);
-			sc_reset(card);
+			sc_reset(card, 0);
 
 			sc_format_apdu(card, &apdu, SC_APDU_CASE_3, 0xA4, 0x04, 0x00);
 			apdu.lc = sizeof(EstEID_v3_AID);

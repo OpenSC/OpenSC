@@ -311,7 +311,7 @@ struct sc_reader_operations {
 	int (*wait_for_event)(struct sc_context *ctx, unsigned int event_mask, sc_reader_t **event_reader, unsigned int *event, 
 			int timeout, void **reader_states);
 	/* Reset a reader */
-	int (*reset)(struct sc_reader *);
+	int (*reset)(struct sc_reader *, int);
 };
 
 /*
@@ -733,9 +733,10 @@ int sc_wait_for_event(sc_context_t *ctx, unsigned int event_mask,
  * Resets the card.
  * NOTE: only PC/SC backend implements this function at this moment.
  * @param card The card to reset.
+ * @param do_cold_reset 0 for a warm reset, 1 for a cold reset (unpower)
  * @retval SC_SUCCESS on success
  */
-int sc_reset(sc_card_t *card);
+int sc_reset(sc_card_t *card, int do_cold_reset);
 
 /**
  * Cancel all pending PC/SC calls
