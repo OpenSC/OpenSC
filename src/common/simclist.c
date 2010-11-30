@@ -31,10 +31,10 @@
 #endif
 #if !defined(_WIN32)
 #include <arpa/inet.h>  /* for htons() */
+#include <unistd.h>
 #else
 #include <winsock2.h>
 #endif
-#include <unistd.h>
 #include <time.h>       /* for time() for random seed */
 #include <sys/time.h>   /* for gettimeofday() */
 #include <sys/stat.h>   /* for open()'s access modes S_IRUSR etc */
