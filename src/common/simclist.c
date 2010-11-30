@@ -19,15 +19,21 @@
  * SimCList library. See http://mij.oltrelinux.com/devel/simclist
  */
 
-/* SimCList implementation, version 1.5 */
+/* SimCList implementation, version 1.5, with local modifications */
 
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>      /* for setting errno */
 #include <sys/types.h>
+#ifndef SIMCLIST_NO_DUMPRESTORE
 #include <sys/uio.h>    /* for READ_ERRCHECK() and write() */
 #include <fcntl.h>      /* for open() etc */
+#endif
+#if !defined(_WIN32)
 #include <arpa/inet.h>  /* for htons() */
+#else
+#include <winsock2.h>
+#endif
 #include <unistd.h>
 #include <time.h>       /* for time() for random seed */
 #include <sys/time.h>   /* for gettimeofday() */
@@ -37,7 +43,7 @@
 
 
 /* work around lack of inttypes.h support in broken Microsoft Visual Studio compilers */
-#if !defined(WIN32) || !defined(_MSC_VER)
+#if !defined(_WIN32) || !defined(_MSC_VER)
 #   include <inttypes.h>   /* (u)int*_t */
 #else
 #   include <basetsd.h>
@@ -178,6 +184,7 @@ static void *list_get_minmax(const list_t *restrict l, int versus);
 
 static inline struct list_entry_s *list_findpos(const list_t *restrict l, int posstart);
 
+#ifndef SIMCLIST_NO_DUMPRESTORE
 /* write() decorated with error checking logic */
 #define WRITE_ERRCHECK(fd, msgbuf, msglen)      do {                                                    \
                                                     if (write(fd, msgbuf, msglen) < 0) return -1;       \
@@ -189,6 +196,7 @@ static inline struct list_entry_s *list_findpos(const list_t *restrict l, int po
                                                         return -1;                                      \
                                                     }                                                   \
                                                 } while (0);
+#endif
 
 /*
  * Random Number Generator
