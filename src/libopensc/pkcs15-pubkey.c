@@ -89,6 +89,7 @@ static const struct sc_asn1_entry c_asn1_pubkey_choice[] = {
 	{ "publicRSAKey", SC_ASN1_PKCS15_OBJECT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
 	{ "publicDSAKey", SC_ASN1_PKCS15_OBJECT, 2 | SC_ASN1_CTX | SC_ASN1_CONS, 0, NULL, NULL },
 	{ "publicGOSTR3410Key", SC_ASN1_PKCS15_OBJECT, 3 | SC_ASN1_CTX | SC_ASN1_CONS, 0, NULL, NULL },
+/*TODO: -DEE not clear EC is needed here  as look like it is for pukdf */
 	{ NULL, 0, 0, 0, NULL, NULL }
 };
 
@@ -287,6 +288,7 @@ int sc_pkcs15_encode_pukdf_entry(sc_context_t *ctx,
 		}
 		break;
 	default:
+		/* TODO: -DEE Should add ECC  but dont have PKCS15 card with ECC */
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Unsupported public key type: %X\n", obj->type);
 		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INTERNAL);
 		break;
@@ -333,6 +335,11 @@ static struct sc_asn1_entry c_asn1_dsa_pub_coefficients[5] = {
 
 static struct sc_asn1_entry c_asn1_gostr3410_pub_coefficients[2] = {
 	{ "xy", SC_ASN1_OCTET_STRING, SC_ASN1_TAG_OCTET_STRING, SC_ASN1_ALLOC, NULL, NULL },
+	{ NULL, 0, 0, 0, NULL, NULL }
+};
+
+static struct sc_asn1_entry c_asn1_ec_pointQ[2] = {
+	{ "ecpointQ", SC_ASN1_OCTET_STRING, SC_ASN1_TAG_OCTET_STRING, SC_ASN1_ALLOC, NULL, NULL },
 	{ NULL, 0, 0, 0, NULL, NULL }
 };
 
@@ -475,6 +482,64 @@ sc_pkcs15_encode_pubkey_gostr3410(sc_context_t *ctx,
 	return 0;
 }
 
+	/* 
+	 * We are storing the ec_pointQ as a octet string. 
+	 * Thus we will just copy the string. 
+	 * But to get the field length we decode it.
+	 */
+int
+sc_pkcs15_decode_pubkey_ec(sc_context_t *ctx,
+		struct sc_pkcs15_pubkey_ec *key,
+		const u8 *buf, size_t buflen)
+{
+	int r;
+	u8 * ecpoint_data;
+	size_t ecpoint_len;
+	struct sc_asn1_entry asn1_ec_pointQ[2];
+
+	sc_copy_asn1_entry(c_asn1_ec_pointQ, asn1_ec_pointQ);
+	sc_format_asn1_entry(asn1_ec_pointQ + 0, &ecpoint_data, &ecpoint_len, 1);
+	r = sc_asn1_decode(ctx, asn1_ec_pointQ, buf, buflen, NULL, NULL);
+	if (r < 0)
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "ASN.1 encoding failed");
+
+sc_debug(ctx, SC_LOG_DEBUG_NORMAL,"DEE-EC key=%p, buf=%p, buflen=%d", key, buf, buflen);
+	key->ecpointQ.value = malloc(buflen);
+	if (key->ecpointQ.value == NULL)
+		return SC_ERROR_OUT_OF_MEMORY;
+
+	key->ecpointQ.len = buflen;
+	memcpy(key->ecpointQ.value, buf, buflen);
+
+	/* An uncompressed ecpoint is of the form 04||x||y 
+	 * The 04 indicates uncompressed
+	 * x and y are same size, and field_length = sizeof(x) in bits. */
+	/* TODO: -DEE  support more then uncompressed */
+	key->field_length = (ecpoint_len - 1)/2 * 8; 
+	if (ecpoint_data);
+		free (ecpoint_data);
+
+	return r;
+}
+
+int sc_pkcs15_encode_pubkey_ec(sc_context_t *ctx,
+		struct sc_pkcs15_pubkey_ec *key,
+		u8 **buf, size_t *buflen)
+{
+	*buf = malloc(key->ecpointQ.len);
+	if (*buf == NULL)
+		return SC_ERROR_OUT_OF_MEMORY;
+
+	memcpy(*buf, key->ecpointQ.value, key->ecpointQ.len);
+	*buflen = key->ecpointQ.len;
+
+sc_debug(ctx, SC_LOG_DEBUG_NORMAL,"DEE-EC key->ecpointQ=%p:%d *buf=%p:%d",
+		key->ecpointQ.value, key->ecpointQ.len, *buf, *buflen); 
+	
+	return 0;
+}
+
+
 int
 sc_pkcs15_encode_pubkey(sc_context_t *ctx,
 		struct sc_pkcs15_pubkey *key,
@@ -487,6 +552,8 @@ sc_pkcs15_encode_pubkey(sc_context_t *ctx,
 	if (key->algorithm == SC_ALGORITHM_GOSTR3410)
 		return sc_pkcs15_encode_pubkey_gostr3410(ctx,
 				&key->u.gostr3410, buf, len);
+	if (key->algorithm == SC_ALGORITHM_EC)
+		return sc_pkcs15_encode_pubkey_ec(ctx, &key->u.ec, buf, len);
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Encoding of public key type %u not supported\n",
 			key->algorithm);
 	return SC_ERROR_NOT_SUPPORTED;
@@ -504,6 +571,8 @@ sc_pkcs15_decode_pubkey(sc_context_t *ctx,
 	if (key->algorithm == SC_ALGORITHM_GOSTR3410)
 		return sc_pkcs15_decode_pubkey_gostr3410(ctx,
 				&key->u.gostr3410, buf, len);
+	if (key->algorithm == SC_ALGORITHM_EC)
+		return sc_pkcs15_decode_pubkey_ec(ctx, &key->u.ec, buf, len);
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Decoding of public key type %u not supported\n",
 			key->algorithm);
 	return SC_ERROR_NOT_SUPPORTED;
@@ -535,6 +604,9 @@ sc_pkcs15_read_pubkey(struct sc_pkcs15_card *p15card,
 		break;
 	case SC_PKCS15_TYPE_PUBKEY_GOSTR3410:
 		algorithm = SC_ALGORITHM_GOSTR3410;
+		break;
+	case SC_PKCS15_TYPE_PUBKEY_EC:
+		algorithm = SC_ALGORITHM_EC;
 		break;
 	default:
 		sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "Unsupported public key type.");
@@ -654,6 +726,12 @@ void sc_pkcs15_erase_pubkey(struct sc_pkcs15_pubkey *key)
 		if (key->u.gostr3410.xy.data)
 			free(key->u.gostr3410.xy.data);
 		break;
+	case SC_ALGORITHM_EC:
+		if (key->u.ec.ecparameters.value)
+			free(key->u.ec.ecparameters.value);
+		if (key->u.ec.ecpointQ.value)
+			free(key->u.ec.ecpointQ.value);
+		break;
 	}
 	if (key->data.value)
 		free(key->data.value);
@@ -752,7 +830,8 @@ int sc_pkcs15_pubkey_from_spki(sc_context_t *ctx, sc_pkcs15_pubkey_t ** outpubke
 	sc_pkcs15_der_t pk = { NULL, 0 };
 	struct sc_algorithm_id pk_alg;
 	struct sc_asn1_entry asn1_pkinfo[3];
-	
+	struct sc_asn1_entry asn1_ec_pointQ[2];
+
 	sc_debug(ctx,SC_LOG_DEBUG_NORMAL,"sc_pkcs15_pubkey_from_spki %p:%d", buf, buflen);
 
 	memset(&pk_alg, 0, sizeof(pk_alg));
@@ -778,15 +857,40 @@ int sc_pkcs15_pubkey_from_spki(sc_context_t *ctx, sc_pkcs15_pubkey_t ** outpubke
 	memcpy(pubkey->alg_id, &pk_alg, sizeof(struct sc_algorithm_id));
  	pubkey->algorithm = pk_alg.algorithm;
 
-	pk.len >>= 3;	/* convert number of bits to bytes */
-	pubkey->data = pk; /* save in publey */
-	pk.value = NULL;
-	
-	/* Now decode what every is in pk as it depends on the key algorthim */
+	sc_debug(ctx,SC_LOG_DEBUG_NORMAL,"DEE pk_alg.algorithm=%d",pk_alg.algorithm);
 
-	r = sc_pkcs15_decode_pubkey(ctx, pubkey, pubkey->data.value, pubkey->data.len);
-	if (r < 0)
-		goto err;
+	/* pk.len is in bits at this point */
+	switch (pk_alg.algorithm) {
+		case SC_ALGORITHM_EC:
+			/* 
+			 * For most keys, the above ASN.1 parsing of a key works, but for EC keys,
+			 * the ec_pointQ in a certificate is stored in a bitstring, but 
+			 * in PKCS#11 it is an octet string and we just decoded its 
+			 * contents from the bitstring in the certificate. So we need to encode it 
+			 * back to an octet string so we can store it as an octet string. 
+			 */
+			pk.len >>= 3;  /* Assume it is multiple of 8 */
+//			pubkey->u.ec.field_length = (pk.len - 1)/2 * 8;
+
+			sc_copy_asn1_entry(c_asn1_ec_pointQ, asn1_ec_pointQ);
+			sc_format_asn1_entry(&asn1_ec_pointQ[0], pk.value, &pk.len, 1);
+		 	r = sc_asn1_encode(ctx, asn1_ec_pointQ, 
+					&pubkey->data.value, &pubkey->data.len);
+		sc_debug(ctx,SC_LOG_DEBUG_NORMAL,"DEE r=%d data=%p:%d",
+			r,pubkey->data.value, pubkey->data.len);
+			break;
+		default:
+			pk.len >>= 3;	/* convert number of bits to bytes */
+			pubkey->data = pk; /* save in publey */
+			pk.value = NULL;
+		break;
+	}
+	
+		/* Now decode what every is in pk as it depends on the key algorthim */
+
+		r = sc_pkcs15_decode_pubkey(ctx, pubkey, pubkey->data.value, pubkey->data.len);
+		if (r < 0)
+			goto err;
 
 	*outpubkey = pubkey;
 	pubkey = NULL;

@@ -110,6 +110,8 @@ int _sc_match_atr(struct sc_card *card, struct sc_atr_table *table, int *type_ou
 int _sc_card_add_algorithm(struct sc_card *card, const struct sc_algorithm_info *info);
 int _sc_card_add_rsa_alg(struct sc_card *card, unsigned int key_length,
 			 unsigned long flags, unsigned long exponent);
+int _sc_card_add_ec_alg(struct sc_card *card, unsigned int key_length,
+			 unsigned long flags, unsigned long ext_flags);
 
 int sc_asn1_read_tag(const u8 ** buf, size_t buflen, unsigned int *cla_out,
 		     unsigned int *tag_out, size_t *taglen);

@@ -149,6 +149,21 @@ struct sc_pkcs15_prkey_dsa {
 	sc_pkcs15_bignum_t priv;
 };
 
+	/* The ecParameters are kept in DER format
+	 * as certificates, and pkcs11 process them as DER 
+	 * If needed, they can be parsed
+	 */ 
+struct sc_pkcs15_pubkey_ec {
+	sc_pkcs15_der_t		ecparameters;
+	sc_pkcs15_der_t		ecpointQ; /* note this is der */
+	size_t 				field_length; /* in bits */
+};
+
+struct sc_pkcs15_prkey_ec {
+	sc_pkcs15_der_t     ecparameters;
+	sc_pkcs15_bignum_t	privateD; /* note this is bignum */
+};
+
 struct sc_pkcs15_pubkey_gostr3410 {
 	sc_pkcs15_bignum_t xy;
 };
@@ -166,6 +181,7 @@ struct sc_pkcs15_pubkey {
 	union {
 		struct sc_pkcs15_pubkey_rsa rsa;
 		struct sc_pkcs15_pubkey_dsa dsa;
+		struct sc_pkcs15_pubkey_ec ec;
 		struct sc_pkcs15_pubkey_gostr3410 gostr3410;
 	} u;
 
@@ -181,6 +197,7 @@ struct sc_pkcs15_prkey {
 	union {
 		struct sc_pkcs15_prkey_rsa rsa;
 		struct sc_pkcs15_prkey_dsa dsa;
+		struct sc_pkcs15_prkey_ec ec;
 		struct sc_pkcs15_prkey_gostr3410 gostr3410;
 	} u;
 };
@@ -298,7 +315,9 @@ struct sc_pkcs15_prkey_info {
 	struct sc_pkcs15_id id;	/* correlates to public certificate id */
 	unsigned int usage, access_flags;
 	int native, key_reference;
-	size_t modulus_length;
+	/* convert to union if other types are supported */
+	size_t modulus_length; /* RSA */
+	size_t field_length;   /* EC in bits */
 
 	struct sc_pkcs15_der subject;
 
@@ -313,7 +332,9 @@ struct sc_pkcs15_pubkey_info {
 	struct sc_pkcs15_id id;	/* correlates to private key id */
 	unsigned int usage, access_flags;
 	int native, key_reference;
-	size_t modulus_length;
+	/* convert to union if other types are supported */
+	size_t modulus_length; /* RSA */
+	size_t field_length;   /* EC in bits */
 
 	struct sc_pkcs15_der subject;
 
@@ -330,11 +351,13 @@ typedef struct sc_pkcs15_pubkey_info sc_pkcs15_pubkey_info_t;
 #define SC_PKCS15_TYPE_PRKEY_RSA		0x101
 #define SC_PKCS15_TYPE_PRKEY_DSA		0x102
 #define SC_PKCS15_TYPE_PRKEY_GOSTR3410		0x103
+#define SC_PKCS15_TYPE_PRKEY_EC		0x104
 
 #define SC_PKCS15_TYPE_PUBKEY			0x200
 #define SC_PKCS15_TYPE_PUBKEY_RSA		0x201
 #define SC_PKCS15_TYPE_PUBKEY_DSA		0x202
 #define SC_PKCS15_TYPE_PUBKEY_GOSTR3410		0x203
+#define SC_PKCS15_TYPE_PUBKEY_EC		0x204
 
 #define SC_PKCS15_TYPE_CERT			0x400
 #define SC_PKCS15_TYPE_CERT_X509		0x401
@@ -367,6 +390,7 @@ struct sc_pkcs15_object {
 	void *data;
 	/* emulated object pointer */
 	void *emulated;
+
 
 	struct sc_pkcs15_df *df; /* can be NULL, if object is 'floating' */
 	struct sc_pkcs15_object *next, *prev; /* used only internally */
@@ -526,6 +550,10 @@ int sc_pkcs15_decode_pubkey_gostr3410(sc_context_t *,
 		struct sc_pkcs15_pubkey_gostr3410 *, const u8 *, size_t);
 int sc_pkcs15_encode_pubkey_gostr3410(sc_context_t *,
 		struct sc_pkcs15_pubkey_gostr3410 *, u8 **, size_t *);
+int sc_pkcs15_decode_pubkey_ec(struct sc_context *,
+			struct sc_pkcs15_pubkey_ec *, const u8 *, size_t);
+int sc_pkcs15_encode_pubkey_ec(struct sc_context *,
+				struct sc_pkcs15_pubkey_ec *, u8 **, size_t *);
 int sc_pkcs15_decode_pubkey(struct sc_context *,
 	       		struct sc_pkcs15_pubkey *, const u8 *, size_t);
 int sc_pkcs15_encode_pubkey(struct sc_context *,
@@ -792,6 +820,10 @@ int sc_pkcs15emu_add_pin_obj(sc_pkcs15_card_t *,
 int sc_pkcs15emu_add_rsa_prkey(sc_pkcs15_card_t *,
 	const sc_pkcs15_object_t *, const sc_pkcs15_prkey_info_t *);
 int sc_pkcs15emu_add_rsa_pubkey(sc_pkcs15_card_t *,
+	const sc_pkcs15_object_t *, const sc_pkcs15_pubkey_info_t *);
+int sc_pkcs15emu_add_ec_prkey(sc_pkcs15_card_t *,
+	const sc_pkcs15_object_t *, const sc_pkcs15_prkey_info_t *);
+int sc_pkcs15emu_add_ec_pubkey(sc_pkcs15_card_t *,
 	const sc_pkcs15_object_t *, const sc_pkcs15_pubkey_info_t *);
 int sc_pkcs15emu_add_x509_cert(sc_pkcs15_card_t *,
 	const sc_pkcs15_object_t *, const sc_pkcs15_cert_info_t *);

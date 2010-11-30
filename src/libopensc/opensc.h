@@ -78,7 +78,7 @@ extern "C" {
 #define SC_ALGORITHM_ONBOARD_KEY_GEN	0x80000000
 /* need usage = either sign or decrypt. keys with both? decrypt, emulate sign */
 #define SC_ALGORITHM_NEED_USAGE		0x40000000
-#define SC_ALGORITHM_SPECIFIC_FLAGS	0x0000FFFF
+#define SC_ALGORITHM_SPECIFIC_FLAGS	0x0001FFFF
 
 #define SC_ALGORITHM_RSA_RAW		0x00000001
 /* If the card is willing to produce a cryptogram padded with the following
@@ -106,6 +106,36 @@ extern "C" {
 #define SC_ALGORITHM_GOSTR3410_HASH_NONE	0x00004000
 #define SC_ALGORITHM_GOSTR3410_HASH_GOSTR3411	0x00008000
 #define SC_ALGORITHM_GOSTR3410_HASHES		0x00008000
+/*TODO: -DEE Should the above be 0x0000E000 */
+/* Or should the HASH_NONE be 0x00000010  and HASHES be 0x00008010 */
+
+/* May need more bits if card can do more hashes */
+/* TODO: -DEE Will overload RSA_HASHES with EC_HASHES */ 
+/* Not clear if these need their own bits or not */
+/* The PIV card does not support and hashes */
+#define SC_ALGORITHM_ECDSA_RAW				0x00010000
+#define SC_ALGORITHM_ECDSA_HASH_NONE		SC_ALGORITHM_RSA_HASH_NONE
+#define SC_ALGORITHM_ECDSA_HASH_SHA1		SC_ALGORITHM_RSA_HASH_SHA1
+#define SC_ALGORITHM_ECDSA_HASH_SHA224		SC_ALGORITHM_RSA_HASH_SHA224
+#define SC_ALGORITHM_ECDSA_HASH_SHA256		SC_ALGORITHM_RSA_HASH_SHA256
+#define SC_ALGORITHM_ECDSA_HASH_SHA384		SC_ALGORITHM_RSA_HASH_SHA384
+#define SC_ALGORITHM_ECDSA_HASH_SHA512		SC_ALGORITHM_RSA_HASH_SHA512
+#define SC_ALGORITHM_ECDSA_HASHES			(SC_ALGORITHM_ECDSA_HASH_SHA1 | \
+												SC_ALGORITHM_ECDSA_HASH_SHA224 | \
+												SC_ALGORITHM_ECDSA_HASH_SHA256 | \
+												SC_ALGORITHM_ECDSA_HASH_SHA384 | \
+												SC_ALGORITHM_ECDSA_HASH_SHA512)
+
+/* define mask of all algorithms that can do raw */
+#define SC_ALGORITHM_RAW_MASK (SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_GOSTR3410_RAW | SC_ALGORITHM_ECDSA_RAW)
+
+/* extened algorithm bits for selected mechs */
+#define SC_ALGORITHM_EXT_EC_F_P          0x00000001
+#define SC_ALGORITHM_EXT_EC_F_2M         0x00000002
+#define SC_ALGORITHM_EXT_EC_ECPARAMETERS 0x00000004
+#define SC_ALGORITHM_EXT_EC_NAMEDCURVE   0x00000008
+#define SC_ALGORITHM_EXT_EC_UNCOMPRESES  0x00000010
+#define SC_ALGORITHM_EXT_EC_COMPRESS     0x00000020
 
 /* Event masks for sc_wait_for_event() */
 #define SC_EVENT_CARD_INSERTED		0x0001
@@ -155,6 +185,12 @@ struct sc_pbes2_params {
 	struct sc_algorithm_id key_encr_alg;
 };
 
+struct sc_ec_params {
+	int type;
+	u8 * der;
+	size_t der_len;
+};
+
 typedef struct sc_algorithm_info {
 	unsigned int algorithm;
 	unsigned int key_length;
@@ -164,6 +200,9 @@ typedef struct sc_algorithm_info {
 		struct sc_rsa_info {
 			unsigned long exponent;
 		} _rsa;
+		struct sc_ec_info {
+			unsigned ext_flags;
+		} _ec;
 	} u;
 } sc_algorithm_info_t;
 
@@ -1068,6 +1107,8 @@ int sc_update_dir(sc_card_t *card, sc_app_info_t *app);
 
 struct sc_algorithm_info * sc_card_find_rsa_alg(sc_card_t *card,
 		unsigned int key_length);
+struct sc_algorithm_info * sc_card_find_ec_alg(sc_card_t *card,
+		unsigned int field_length);
 
 
 struct sc_card_error {

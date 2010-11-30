@@ -711,6 +711,12 @@ struct ck_mechanism_info
 #define CKF_DERIVE		(1UL << 19)
 #define CKF_EXTENSION		(1UL << 31)
 
+#define CKF_EC_F_P			(1UL << 20)
+#define CKF_EC_F_2M			(1UL << 21)
+#define CKF_EC_ECPARAMETERS	(1UL << 22)
+#define CKF_EC_NAMEDCURVE	(1UL << 23)
+#define CKF_EC_UNCOMPRESES	(1UL << 24)
+#define CKF_EC_COMPRESS		(1UL << 25)
 
 /* Flags for C_WaitForSlotEvent.  */
 #define CKF_DONT_BLOCK				(1UL)
