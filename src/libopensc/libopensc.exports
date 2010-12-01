@@ -137,6 +137,7 @@ sc_pkcs15_decode_prkey
 sc_pkcs15_decode_pubkey
 sc_pkcs15_decode_pubkey_dsa
 sc_pkcs15_decode_pubkey_rsa
+sc_pkcs15_decode_pubkey_ec
 sc_pkcs15_decode_pubkey_gostr3410
 sc_pkcs15_decode_pukdf_entry
 sc_pkcs15_encode_aodf_entry
@@ -150,6 +151,7 @@ sc_pkcs15_encode_prkey
 sc_pkcs15_encode_pubkey
 sc_pkcs15_encode_pubkey_dsa
 sc_pkcs15_encode_pubkey_rsa
+sc_pkcs15_encode_pubkey_ec
 sc_pkcs15_encode_pubkey_gostr3410
 sc_pkcs15_encode_pukdf_entry
 sc_pkcs15_encode_tokeninfo
@@ -210,6 +212,8 @@ sc_pkcs15emu_add_data_object
 sc_pkcs15emu_add_pin_obj
 sc_pkcs15emu_add_rsa_prkey
 sc_pkcs15emu_add_rsa_pubkey
+sc_pkcs15emu_add_ec_prkey
+sc_pkcs15emu_add_ec_pubkey
 sc_pkcs15emu_add_x509_cert
 sc_pkcs15emu_object_add
 sc_print_path

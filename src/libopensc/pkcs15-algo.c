@@ -235,6 +235,89 @@ asn1_free_pbes2_params(void *ptr)
 	free(params);
 }
 
+static const struct sc_asn1_entry c_asn1_ec_params[] = { 
+	{ "ecParameters", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL }, 
+	{ "namedCurve", SC_ASN1_OBJECT, SC_ASN1_TAG_OBJECT, 0, NULL, NULL},
+	{ "implicityCA",  SC_ASN1_NULL, SC_ASN1_TAG_NULL, 0, NULL, NULL },
+	{ NULL, 0, 0, 0, NULL, NULL }
+};
+
+static int
+asn1_decode_ec_params(sc_context_t *ctx, void **paramp,
+	const u8 *buf, size_t buflen, int depth)
+{
+	int r;
+	struct sc_object_id curve;
+	struct sc_asn1_entry asn1_ec_params[4];
+	struct sc_ec_params * ecp;
+
+sc_debug(ctx, SC_LOG_DEBUG_ASN1, "DEE - asn1_decode_ec_params %p:%d %d", buf, buflen, depth);
+
+	memset(&curve, 0, sizeof(curve));
+	ecp = malloc(sizeof(struct sc_ec_params));
+	if (ecp == NULL)
+		return SC_ERROR_OUT_OF_MEMORY;
+	memset(ecp,9,sizeof(struct sc_ec_params));
+
+
+	/* We only want to copy the parms if they are a namedCurve 
+	 * or ecParameters  nullParam aka implicityCA is not to be 
+	 * used with PKCS#11 2.20 */
+	sc_copy_asn1_entry(c_asn1_ec_params, asn1_ec_params);
+	sc_format_asn1_entry(asn1_ec_params + 1, &curve, 0, 0);
+
+	/* Some signature algorithms will not have any data */
+	if (buflen == 0 | buf == NULL ) 
+		return 0;
+
+	r = sc_asn1_decode_choice(ctx, asn1_ec_params, buf, buflen, NULL, NULL);
+	/* r = index into asn1_ec_params */
+sc_debug(ctx, SC_LOG_DEBUG_ASN1, "DEE - asn1_decode_ec_params r=%d", r);
+	if (r < 0)
+		return r;
+	if (r <= 1) {
+		ecp->der = malloc(buflen);
+
+		if (ecp->der == NULL)
+			return SC_ERROR_OUT_OF_MEMORY;
+
+		ecp->der_len = buflen;
+
+sc_debug(ctx, SC_LOG_DEBUG_ASN1, "DEE - asn1_decode_ec_params paramp=%p %p:%d %d",
+		ecp, ecp->der, ecp->der_len, ecp->type);
+		memcpy(ecp->der, buf, buflen); /* copy der parameters */
+	} else 
+		r = 0;
+	ecp->type = r; /* but 0 = ecparams if any, 1=named curve */
+	*paramp = ecp;
+	return 0;
+};
+
+static int
+asn1_encode_ec_params(sc_context_t *ctx, void *params,
+u8 **buf, size_t *buflen, int depth) 
+{
+	int r;
+/* TODO: -DEE EC paramameters are DER so is there anything to do? */
+/* I have not needed this yet */
+sc_debug(ctx, SC_LOG_DEBUG_ASN1, "DEE - asn1_encode_ec_params");
+	r = SC_ERROR_NOT_IMPLEMENTED;
+
+	return r;
+}
+
+static void
+asn1_free_ec_params(void *params)
+{
+	struct sc_ec_params * ecp = (struct sc_ec_params *) params;
+	if (ecp) {
+		if (ecp->der)
+			free(ecp->der);
+		free(ecp);
+	}
+}
+
+
 static struct sc_asn1_pkcs15_algorithm_info algorithm_table[] = {
 #ifdef SC_ALGORITHM_SHA1
 	/* hmacWithSHA1 */
@@ -303,6 +386,33 @@ static struct sc_asn1_pkcs15_algorithm_info algorithm_table[] = {
 			asn1_encode_pbes2_params,
 			asn1_free_pbes2_params },
 #endif
+
+#ifdef SC_ALGORITHM_EC
+	{ SC_ALGORITHM_EC, {{ 1, 2, 840, 10045, 2, 1 }},
+			asn1_decode_ec_params, asn1_encode_ec_params, asn1_free_ec_params },
+#endif
+/* TODO: -DEE Not clear of we need the next five or not */
+#ifdef SC_ALGORITHM_ECDSA_SHA1
+	/* Note RFC 3279 says no ecParameters */
+	{ SC_ALGORITHM_ECDSA_SHA1, {{ 1, 2, 840, 10045, 4, 1 }}, NULL, NULL, NULL}, 
+#endif
+#ifdef SC_ALGORITHM_ECDSA_SHA224
+/* These next 4 are defined in RFC 5758 */
+	{ SC_ALGORITHM_ECDSA_SHA224, {{ 1, 2, 840, 10045, 4, 3, 1 }}, 
+			asn1_decode_ec_params, asn1_encode_ec_params, asn1_free_ec_params },
+#endif
+#ifdef SC_ALGORITHM_ECDSA_SHA256
+	{ SC_ALGORITHM_ECDSA_SHA256, {{ 1, 2, 840, 10045, 4, 3, 2 }},
+			asn1_decode_ec_params, asn1_encode_ec_params, asn1_free_ec_params },
+#endif
+#ifdef SC_ALGORITHM_ECDSA_SHA384
+	{ SC_ALGORITHM_ECDSA_SHA384, {{ 1, 2, 840, 10045, 4, 3, 3 }},
+			asn1_decode_ec_params, asn1_encode_ec_params, asn1_free_ec_params },
+#endif
+#ifdef SC_ALGORITHM_ECDSA_SHA512
+	{ SC_ALGORITHM_ECDSA_SHA512, {{ 1, 2, 840, 10045, 4, 3, 4 }},
+			asn1_decode_ec_params, asn1_encode_ec_params, asn1_free_ec_params },
+#endif
 	{ -1, {{ -1 }}, NULL, NULL, NULL }
 };
 
@@ -368,8 +478,13 @@ sc_asn1_decode_algorithm_id(sc_context_t *ctx, const u8 *in,
 	if ((alg_info = sc_asn1_get_algorithm_info(id)) != NULL) {
 		id->algorithm = alg_info->id;
 		if (alg_info->decode) {
-			if (asn1_alg_id[1].flags & SC_ASN1_PRESENT)
+/* TODO: -DEE  why the test for SC_ASN1_PRESENT? 
+ * If it looking for SC_ASN1_NULL, thats valid for EC, in some cases 
+ */
+			if (asn1_alg_id[1].flags & SC_ASN1_PRESENT) {
+				sc_debug( ctx,SC_LOG_DEBUG_NORMAL,"SC_ASN1_PRESENT was set, so invalid");
 				return SC_ERROR_INVALID_ASN1_OBJECT;
+			}
 			r = alg_info->decode(ctx, &id->params, in, len, depth);
 		}
 	}

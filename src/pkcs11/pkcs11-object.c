@@ -103,7 +103,7 @@ CK_RV C_CreateObject(CK_SESSION_HANDLE hSession,	/* the session's handle */
 				pTemplate, ulCount, phObject);
 
 out:	sc_pkcs11_unlock();
-	return rv;
+	SC_FUNC_RETURN(context, SC_LOG_DEBUG_VERBOSE, rv);
 }
 
 CK_RV C_CopyObject(CK_SESSION_HANDLE hSession,	/* the session's handle */
@@ -985,6 +985,7 @@ CK_RV C_DeriveKey(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		  CK_ULONG ulAttributeCount,	/* # of attributes in template */
 		  CK_OBJECT_HANDLE_PTR phKey)
 {				/* gets handle of derived key */
+/* TODO: -DEE ECDH with Cofactor  on PIV is an example */ 
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
 

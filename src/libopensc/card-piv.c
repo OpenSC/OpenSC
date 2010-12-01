@@ -46,7 +46,7 @@
 enum {
 	PIV_OBJ_CCC = 0,
 	PIV_OBJ_CHUI,
-	PIV_OBJ_UCHUI,  /* new with 800-73-2 */
+	/*  PIV_OBJ_UCHUI is not in new with 800-73-2 */
 	PIV_OBJ_X509_PIV_AUTH,
 	PIV_OBJ_CHF,
 	PIV_OBJ_PI,
@@ -137,6 +137,7 @@ typedef struct piv_private_data {
 	int  rwb_state; /* first time -1, 0, in middle, 1 at eof */
 	int key_ref; /* saved from set_security_env and */
 	int alg_id;  /* used in decrypt, signature */ 
+	int key_size; /*  RSA: modulus_bits EC: field_length in bits */
 	u8* w_buf;   /* write_binary buffer */
 	size_t w_buf_len; /* length of w_buff */
 	piv_obj_cache_t obj_cache[PIV_OBJ_LAST_ENUM];
@@ -173,6 +174,10 @@ static struct piv_aid piv_aids[] = {
 	{0,  9, 0, NULL }
 };
 
+/* The EC curves supported by PIV */
+static u8 oid_prime256v1[] = {"\x06\x08\x2a\x86\x48\xce\x3d\x03\x01\x07"};
+static u8 oid_secp384r1[] = {"\x06\x05\x2b\x81\x04\x00\x22"};
+
 /*
  * Flags in the piv_object:
  * PIV_OBJECT_NOT_PRESENT: the presents of the object is
@@ -199,8 +204,6 @@ static const struct piv_object piv_objects[] = {
 			"2.16.840.1.101.3.7.1.219.0", 3, "\x5F\xC1\x07", "\xDB\x00", 0},
 	{ PIV_OBJ_CHUI, "Card Holder Unique Identifier", 
 			"2.16.840.1.101.3.7.2.48.0", 3, "\x5F\xC1\x02", "\x30\x00", 0},
-	{ PIV_OBJ_UCHUI, "Unsigned Card Holder Unique Identifier", 
-			"2.16.840.1.101.3.7.2.48.1", 3, "\x5F\xC1\x04", "\x30\x10",  0}, 
 	{ PIV_OBJ_X509_PIV_AUTH, "X.509 Certificate for PIV Authentication", 
 			"2.16.840.1.101.3.7.2.1.1", 3, "\x5F\xC1\x05", "\x01\x01", PIV_OBJECT_TYPE_CERT} , 
 	{ PIV_OBJ_CHF, "Card Holder Fingerprints",
@@ -344,7 +347,6 @@ static const struct piv_object piv_objects[] = {
 			"2.16.840.1.101.3.7.2.9999.119", 2, "\x94\x06", "\x94\x06", PIV_OBJECT_TYPE_PUBKEY},
 	{ PIV_OBJ_9506, "Pub 95 key ",
 			"2.16.840.1.101.3.7.2.9999.120", 2, "\x95\x06", "\x95\x06", PIV_OBJECT_TYPE_PUBKEY},
-
 	{ PIV_OBJ_LAST_ENUM, "", "", 0, "", "", 0}
 };
 	
@@ -490,9 +492,8 @@ static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 	}
 			
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	
-/*TODO may be 6c nn if reading only the length */
-/* TODO look later at tag vs size read too */
+
+/* TODO: - DEE look later at tag vs size read too */
 	if (r < 0) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Card returned error ");
 		goto err;
@@ -549,7 +550,7 @@ err:
 
 /* Add the PIV-II operations */
 /* Should use our own keydata, actually should be common to all cards */
-/* only do RSA for now */
+/* RSA and EC are added. */
 
 static int piv_generate_key(sc_card_t *card, 
 		sc_cardctl_piv_genkey_info_t *keydata)
@@ -573,6 +574,10 @@ static int piv_generate_key(sc_card_t *card,
 	keydata->exponent = 0;
 	keydata->pubkey = NULL;
 	keydata->pubkey_len = 0;
+	keydata->ecparam = NULL; /* will show size as we only support 2 curves */
+	keydata->ecparam_len = 0;
+	keydata->ecpoint = NULL;
+	keydata->ecpoint_len = 0;
 	
 	out_len = 3;
 	outdata[0] = 0x80;
@@ -582,7 +587,15 @@ static int piv_generate_key(sc_card_t *card,
 		case 0x05: keydata->key_bits = 3072; break;
 		case 0x06: keydata->key_bits = 1024; break;
 		case 0x07: keydata->key_bits = 2048; break;
-		/* TODO for EC, also set then curve parameter as the OID */
+		/* TODO: - DEE For EC, also set the curve parameter as the OID */
+		case 0x11: keydata->key_bits = 0;
+			keydata->ecparam =0; /* we only support prime256v1 for 11 */
+			keydata->ecparam_len =0;
+			break;
+		case 0x14: keydata->key_bits = 0;
+			keydata->ecparam = 0; /* we only support secp384r1 */
+			keydata->ecparam_len = 0;
+			break;
 		default:
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
 	}
@@ -634,12 +647,19 @@ static int piv_generate_key(sc_card_t *card,
 				keydata->pubkey_len = taglen;
 				memcpy (keydata->pubkey, tag, taglen);
 			}
-		} else {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"Requires OpenSSL");
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED); 
+		} else { /* must be EC */
+			tag = sc_asn1_find_tag(card->ctx, cp, in_len, 0x86, &taglen);
+			if (tag != NULL && taglen > 0) {
+				keydata->ecpoint = malloc(taglen);
+				if (keydata->ecpoint == NULL)
+					SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+				keydata->ecpoint_len = taglen;
+				memcpy (keydata->ecpoint, tag, taglen);
+            }
 		}
 
-	/* TODO could add key to cache so could use engine to generate key, and */
+		/* TODO: -DEE Could add key to cache so could use engine to generate key,
+	 	 * and sign req in single operation */
 		r = 0;
 	}
 	
@@ -867,185 +887,45 @@ static int piv_get_data(sc_card_t * card, int enumtag,
 	memcpy(p, piv_objects[enumtag].tag_value, tag_len);
 	p += tag_len;
 
+	if (*buf_len == 1 && *buf == NULL) { /* we need to get the length */
+		u8 rbufinitbuf[8]; /* tag of 53 with 82 xx xx  will fit in 4 */
+		u8 *rbuf;
+		size_t rbuflen;
+		size_t bodylen;
+		unsigned int cla_out, tag_out;
+		const u8 *body;
 
-	/*
-	 * the PIV card will only recover the public key during a generate
-	 * key operation. If the piv-tool was used it would save this
-	 * as an OpenSSL EVP_KEY PEM using the -o parameter
-	 * we will look to see if there is a file then load it
-	 * this is ugly, and maybe the pkcs15 cache would work
-	 * but we only need it to get the OpenSSL req with engine to work.
-	 * Each of the 4 keys with certs has its own file. 
-	 * Any other request for a pub key will return not found.
-	 */
-
-	switch (piv_objects[enumtag].enumtag) {
-#ifdef PIV_TEST_WITH_OLD_CARDS
-		/*
-		 * For testing 800-73-3 History and/or Discovery objects
-		 * we can simulate reading them from a file and
-		 * test with an older card. Since the older card 
-		 * does not have the keys, we can only do partial testing.
-		 */
-		
-		/* read them from a file */
-		case PIV_OBJ_DISCOVERY:
-			dataenvname = "PIV_TEST_OBJ_DISCOVERY";
-			break;
-		case PIV_OBJ_HISTORY: 
-		    dataenvname = "PIV_TEST_OBJ_HISTORY";
-			break;
-
-#endif
-		/* 
-		 * If we used the piv-tool to generate a key,
-		 * we would have saved the public key as a file.
-		 * This code is only used while signing a request
-		 * After the certificate is loaded on the card,
-		 * the public key is extracted from the certificate.
-		 */
-
-		case PIV_OBJ_9A06:
-			keyenvname = "PIV_9A06_KEY";
-			break;
-		case PIV_OBJ_9C06:
-			keyenvname = "PIV_9C06_KEY";
-			break;
-		case PIV_OBJ_9D06:
-			keyenvname = "PIV_9D06_KEY";
-			break;
-		case PIV_OBJ_9E06:
-			keyenvname = "PIV_9E06_KEY";
-			break;
-
-		default:
-			if (piv_objects[enumtag].flags & PIV_OBJECT_TYPE_PUBKEY) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"get len of #%d", enumtag);
+		rbuf = rbufinitbuf;
+		rbuflen = sizeof(rbufinitbuf);
+		r = piv_general_io(card, 0xCB, 0x3F, 0xFF, tagbuf,  p - tagbuf,
+				&rbuf, &rbuflen);
+		if (r > 0) {
+			body = rbuf;
+			if (sc_asn1_read_tag(&body, 0xffff, &cla_out, &tag_out, &bodylen) !=  SC_SUCCESS) {
+				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "***** received buffer tag MISSING ");
 				r = SC_ERROR_FILE_NOT_FOUND;
 				goto err;
 			}
-	}
-
-	if (dataenvname) {
-		filename = (char *)getenv(dataenvname);
-		if (filename) {
-			r = piv_read_obj_from_file(card, filename, buf, buf_len);
-			if (r == SC_ERROR_FILE_NOT_FOUND) /* ignore if not found */
-				r = 0;
-			goto err; /* return error, or length */
-		}
-	}
-		
-
-	if (keyenvname)  {
-	/* This code is only used for card administration */
-#ifdef ENABLE_OPENSSL 
-		BIO * bp = NULL;
-		RSA * rsa = NULL;
-		u8 *q;
-		size_t derlen;
-		size_t taglen;
-		char * keyfilename = NULL;
-
-		keyfilename = getenv(keyenvname);
-
-		if (keyfilename == NULL) {
+		    *buf_len = r;
+		} else if ( r == 0) { 
 			r = SC_ERROR_FILE_NOT_FOUND;
 			goto err;
-		}
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "USING PUB KEY FROM FILE %s",keyfilename);
-
-		bp = BIO_new(BIO_s_file());
-		if (bp == NULL) {
-			r = SC_ERROR_INTERNAL;
+		} else { 
 			goto err;
 		}
-		if (BIO_read_filename(bp, keyfilename) <= 0) {
-			BIO_free(bp);
-			r = SC_ERROR_FILE_NOT_FOUND;
-			goto err;
-		}
-		rsa = PEM_read_bio_RSAPublicKey(bp, &rsa, NULL, NULL);
-		BIO_free(bp);
-		if (!rsa) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"Unable to load the public key");
-			r =  SC_ERROR_DATA_OBJECT_NOT_FOUND; 
-			goto err;
-        	}
-
-
-		derlen = i2d_RSAPublicKey(rsa, NULL); 
-		if (derlen <= 0) { 
-			r =  SC_ERROR_DATA_OBJECT_NOT_FOUND;
-			goto err;
-		}
-		taglen = put_tag_and_len(0x99, derlen, NULL);
-		*buf_len = put_tag_and_len(0x53, taglen, NULL);
-
+	}
+sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"get buffer for #%d len %d", enumtag, *buf_len);
+	if (*buf == NULL && *buf_len > 0) {
 		*buf = malloc(*buf_len);
-		if (*buf  == NULL) {
+		if (*buf == NULL ) {
 			r = SC_ERROR_OUT_OF_MEMORY;
 			goto err;
 		}
-		q = *buf;
-
-		put_tag_and_len(0x53, taglen, &q);
-		put_tag_and_len(0x99, derlen, &q);
-
-		i2d_RSAPublicKey(rsa, &q);
-      
-		RSA_free(rsa);
-
-		r = *buf_len;
-
-		/* end of read pub key from file */
-#else
-		if (getenv(keyenvname)) 
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"Requires OpenSSL");
-		r = SC_ERROR_FILE_NOT_FOUND;
-		goto err;
-#endif /* ENABLE_OPENSSL */
-	} else {
-
-		if (*buf_len == 1 && *buf == NULL) { /* we need to get the length */
-			u8 rbufinitbuf[8]; /* tag of 53 with 82 xx xx  will fit in 4 */
-			u8 *rbuf;
-			size_t rbuflen;
-			size_t bodylen;
-			unsigned int cla_out, tag_out;
-			const u8 *body;
-
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"get len of #%d", enumtag);
-			rbuf = rbufinitbuf;
-			rbuflen = sizeof(rbufinitbuf);
-			r = piv_general_io(card, 0xCB, 0x3F, 0xFF, tagbuf,  p - tagbuf,
-					&rbuf, &rbuflen);
-			if (r > 0) {
-				body = rbuf;
-				if (sc_asn1_read_tag(&body, 0xffff, &cla_out, &tag_out, &bodylen) !=  SC_SUCCESS) {
-					sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "***** received buffer tag MISSING ");
-					r = SC_ERROR_FILE_NOT_FOUND;
-					goto err;
-				}
-			    *buf_len = r;
-			} else if ( r == 0) { 
-				r = SC_ERROR_FILE_NOT_FOUND;
-				goto err;
-			} else { 
-				goto err;
-			}
-		}
-sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"get buffer for #%d len %d", enumtag, *buf_len);
-		if (*buf == NULL && *buf_len > 0) {
-			*buf = malloc(*buf_len);
-			if (*buf == NULL ) {
-				r = SC_ERROR_OUT_OF_MEMORY;
-				goto err;
-			}
-		}
-
-		r = piv_general_io(card, 0xCB, 0x3F, 0xFF, tagbuf,  p - tagbuf, 
-			buf, buf_len);
 	}
+
+	r = piv_general_io(card, 0xCB, 0x3F, 0xFF, tagbuf,  p - tagbuf, 
+		buf, buf_len);
 
 err:
 
@@ -1195,6 +1075,7 @@ static int piv_cache_internal_data(sc_card_t *card, int enumtag)
 		}
 
 	/* convert pub key to internal */
+/* TODO: -DEE need to fix ...  would only be used if we cache the pub key, but we don't today */ 
 	} else if (piv_objects[enumtag].flags & PIV_OBJECT_TYPE_PUBKEY) {
 
 		tag = sc_asn1_find_tag(card->ctx, body, bodylen, *body, &taglen);
@@ -1250,7 +1131,7 @@ static int piv_read_binary(sc_card_t *card, unsigned int idx,
 		r = piv_get_cached_data(card, enumtag, &rbuf, &rbuflen);
 	
 		if (r >=0) {
-			/* an object wih no data will be considered not found */
+			/* an object with no data will be considered not found */
 			/* Discovery tag = 0x73, all others are 0x53 */
 			if (!rbuf || rbuf[0] == 0x00 || ((rbuf[0]&0xDF) == 0x53 && rbuf[1] == 0x00)) {
 				r = SC_ERROR_FILE_NOT_FOUND;
@@ -1271,7 +1152,7 @@ static int piv_read_binary(sc_card_t *card, unsigned int idx,
 				r = SC_ERROR_INVALID_DATA;
 				goto err;
 			}
-			/* if chached obj has internal interesting data (cert or pub key) */
+			/* if cached obj has internal interesting data (cert or pub key) */
 			if (priv->return_only_cert || piv_objects[enumtag].flags & PIV_OBJECT_TYPE_PUBKEY) {
 				r = piv_cache_internal_data(card, enumtag);
 				if (r < 0) 
@@ -1337,7 +1218,6 @@ static int piv_put_data(sc_card_t *card, int tag,
 	r = piv_general_io(card, 0xDB, 0x3F, 0xFF, 
 			sbuf, p - sbuf, NULL, NULL);
 
-	/* TODO add to cache */
 	if (sbuf)
 		free(sbuf);
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
@@ -1389,10 +1269,16 @@ static int piv_write_certificate(sc_card_t *card,
  * For certs we need to add the 0x53 tag and other specific tags, 
  * and call the piv_put_data 
  * Note: the select file will have saved the object type for us 
- * Write is only used by piv-tool, so we will use flags:
- *  length << 8 | compress < 1 | cert 
- * to indicate we are writing a cert and if is compressed.
- * if its not a cert its an object. 
+ * Write is used by piv-tool, so we will use flags:
+ *  length << 8 | 8bits:
+ * object           xxxx0000
+ * uncompresed cert xxx00001
+ * compressed cert  xxx10001
+ * pubkey           xxxx0010
+ * 
+ * to indicate we are writing a cert and if is compressed
+ * or if we are writing a pubkey in to the cache. 
+ * if its not a cert or pubkey its an object. 
  *
  * Therefore when idx=0, we will get the length of the object
  * and allocate a buffer, so we can support partial writes.
@@ -1459,11 +1345,18 @@ static int piv_write_binary(sc_card_t *card, unsigned int idx,
 
 	priv-> rwb_state = 1; /* at end of object */
 	
-	if ( flags & 1) {
+	switch (flags & 0x0f) {
+		case 1:
 			r = piv_write_certificate(card, priv->w_buf, priv->w_buf_len,
-				flags & 0x02);
-	} else {
-		r = piv_put_data(card, enumtag, priv->w_buf, priv->w_buf_len);
+				flags & 0x10);
+			break;
+		case 2: /* pubkey to be added to cache, it should have 0x53 and 0x99 tags. */ 
+	/* TODO: -DEE this is not fully implemented and not used */
+			r = priv->w_buf_len;
+			break;
+		default:
+			r = piv_put_data(card, enumtag, priv->w_buf, priv->w_buf_len);
+			break;
 	}
 	/* if it worked, will cache it */
 	if (r >= 0 && priv->w_buf) {
@@ -1963,7 +1856,8 @@ static int piv_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 	while (len > 0) {
 		size_t n = len > 8 ? 8 : len;
 
-		r = piv_general_io(card, 0x87, 0x00, 0x00, sbuf, p - sbuf, 
+		/* NIST 800-73-3 says use 9B, previous verisons used 00 */
+		r = piv_general_io(card, 0x87, 0x00, 0x9B, sbuf, p - sbuf, 
 				&rbuf, &rbuflen); 
  		if (r < 0) { 
 			sc_unlock(card);
@@ -1996,6 +1890,7 @@ static int piv_set_security_env(sc_card_t *card,
                     int se_num)
 {
 	piv_private_data_t * priv = PIV_DATA(card);
+	int r = 0;
 	
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -2003,13 +1898,29 @@ static int piv_set_security_env(sc_card_t *card,
 			env->flags, env->operation, env->algorithm, env->algorithm_flags, 
 			env->algorithm_ref, env->key_ref[0], env->key_ref_len);
 
-	if (env->algorithm == SC_ALGORITHM_RSA) 
+	if (env->algorithm == SC_ALGORITHM_RSA) { 
 		priv->alg_id = 0x06; /* Say it is RSA, set 5, 6, 7 later */
-	else
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_NO_CARD_SUPPORT);
+	} else if (env->algorithm == SC_ALGORITHM_EC) {
+		if (env->flags & SC_SEC_ENV_ALG_REF_PRESENT) {
+			switch (env->algorithm_ref) {
+				case 256:
+					priv->alg_id = 0x11; /* Say it is EC 256 */
+					priv->key_size = 256;
+					break;
+				case 384:
+					priv->alg_id = 0x14;
+					priv->key_size = 384;
+					break;
+				default:
+					r = SC_ERROR_NO_CARD_SUPPORT;
+			}
+		} else
+			r = SC_ERROR_NO_CARD_SUPPORT;
+	} else
+		 r = SC_ERROR_NO_CARD_SUPPORT;
 	priv->key_ref = env->key_ref[0];
 
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, 0);
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 }
 
 
@@ -2065,7 +1976,8 @@ static int piv_validate_general_authentication(sc_card_t *card,
 			default:
 				SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_NO_CARD_SUPPORT);
 		}
-	} 
+	}
+	/* EC alg_id was already set */ 
 
 	r = piv_general_io(card, 0x87, real_alg_id, priv->key_ref, 
 			sbuf, p - sbuf, &rbuf, &rbuflen);  
@@ -2093,8 +2005,77 @@ static int piv_compute_signature(sc_card_t *card,
 					const u8 * data, size_t datalen,
 					u8 * out, size_t outlen)
 {
+	piv_private_data_t * priv = PIV_DATA(card); 
+	int r;
+	int i;
+	int nLen;
+	u8 * outp = out;
+	u8 rbuf[128]; /* For EC conversions  384 will fit */
+	size_t rbuflen = sizeof(rbuf);
+	const u8 * body;
+	size_t bodylen;
+	const u8 * tag;
+	size_t taglen;
+
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, piv_validate_general_authentication(card, data, datalen, out, outlen));
+
+	/* The PIV returns a DER SEQUENCE{INTEGER, INTEGER} 
+	 * Which may have leading 00 to force positive
+	 * TODO: -DEE should check if PKCS15 want the same
+	 * But PKCS11 just wants 2* filed_length in bytes
+	 * So we have to strip out the integers
+	 * if present and pad on left if too short. 
+	 */
+	
+	if (priv->alg_id == 0x11 || priv->alg_id == 0x14 ) {
+		nLen = (priv->key_size + 7) / 8;
+		if (outlen < 2*nLen) {
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL," output too small for EC signature %d < %d", outlen, 2*nLen);
+			r = SC_ERROR_INVALID_DATA;
+			goto err;
+		}
+		memset(out, 0, outlen);
+			
+		r = piv_validate_general_authentication(card, data, datalen, rbuf, rbuflen);
+		if (r < 0) 
+			goto err;
+		
+		if ( r >= 0) {
+	 		body = sc_asn1_find_tag(card->ctx, rbuf, rbuflen, 0x30, &bodylen);
+			
+			for (i = 0; i<2; i++) {
+				if (body) {
+					tag = sc_asn1_find_tag(card->ctx, body,  bodylen, 0x02, &taglen);
+					if (tag) {
+						bodylen -= taglen - (tag - body);
+						body = tag + taglen;
+						
+						if (taglen > nLen) { /* drop leading 00 if present */
+							if (*tag != 0x00) {
+								r = SC_ERROR_INVALID_DATA;
+								goto err;
+							}
+							tag++;
+							taglen--;
+						}
+						memcpy(out + nLen*i + nLen - taglen , tag, taglen);
+					} else {
+						r = SC_ERROR_INVALID_DATA;
+						goto err;
+					}
+				} else  {
+					r = SC_ERROR_INVALID_DATA;
+					goto err;
+				}
+			}
+			r = 2 * nLen;
+		}
+	} else { /* RSA is all set */
+		r = piv_validate_general_authentication(card, data, datalen, out, outlen);
+	}
+
+err:
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 }
 
 static int piv_decipher(sc_card_t *card,
@@ -2263,7 +2244,7 @@ sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"Discovery pinp flags=0x%2.2x 0x%2.2x",*
  * The history object lists what retired keys and certs are on the card
  * or listed in the offCardCertURL. The user may have read the offCardURL file,
  * ahead of time, and if so will use it for the certs listed. 
- * TODO:
+ * TODO: -DEE
  * If the offCardCertURL is not cached by the user, should we wget it here? 
  * Its may be out of scope to have OpenSC read the URL. 
  */ 
@@ -2515,7 +2496,6 @@ static int piv_finish(sc_card_t *card)
 		}
 		free(priv);
 	}
-/* TODO temp see piv_init */
 	return 0;
 }
 
@@ -2539,6 +2519,7 @@ static int piv_init(sc_card_t *card)
 {
 	int r, i;
 	unsigned long flags;
+	unsigned long ext_flags;
 	piv_private_data_t *priv;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
@@ -2575,6 +2556,12 @@ static int piv_init(sc_card_t *card)
 	_sc_card_add_rsa_alg(card, 1024, flags, 0); /* manditory */
 	_sc_card_add_rsa_alg(card, 2048, flags, 0); /* optional */
 	_sc_card_add_rsa_alg(card, 3072, flags, 0); /* optional */
+	
+	flags = SC_ALGORITHM_ECDSA_RAW | SC_ALGORITHM_ONBOARD_KEY_GEN;
+	ext_flags = SC_ALGORITHM_EXT_EC_NAMEDCURVE | SC_ALGORITHM_EXT_EC_UNCOMPRESES; 
+
+	_sc_card_add_ec_alg(card, 256, flags, ext_flags);
+	_sc_card_add_ec_alg(card, 384, flags, ext_flags);
 	
 	card->caps |= SC_CARD_CAP_RNG;
 

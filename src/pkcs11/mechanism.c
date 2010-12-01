@@ -429,22 +429,42 @@ static CK_RV
 sc_pkcs11_signature_size(sc_pkcs11_operation_t *operation, CK_ULONG_PTR pLength)
 {
 	struct sc_pkcs11_object *key;
+	CK_ULONG ec_point_size = 0;
+	CK_BYTE_PTR ec_point = NULL;
 	CK_ATTRIBUTE attr = { CKA_MODULUS_BITS, pLength, sizeof(*pLength) };
 	CK_KEY_TYPE key_type;
 	CK_ATTRIBUTE attr_key_type = { CKA_KEY_TYPE, &key_type, sizeof(key_type) };
 	CK_RV rv;
 
 	key = ((struct signature_data *) operation->priv_data)->key;
-	rv = key->ops->get_attribute(operation->session, key, &attr);
-
-	/* convert bits to bytes */
-	if (rv == CKR_OK)
-		*pLength = (*pLength + 7) / 8;
-
-	if (rv == CKR_OK) {
-		rv = key->ops->get_attribute(operation->session, key, &attr_key_type);
-		if (rv == CKR_OK && key_type == CKK_GOSTR3410)
-			*pLength *= 2;
+	/*
+	 * EC (and maybe GOSTR) do not have CKA_MODULUS_BITS attribute.
+	 * But other code in framework treats them as if they do. 
+	 * So should do switch(key_type)
+	 * and then get what ever attributes are needed. 
+	 */
+	rv = key->ops->get_attribute(operation->session, key, &attr_key_type);
+	if (rv == CKR_OK) { 
+		switch(key_type) {
+			case CKK_RSA:
+				rv = key->ops->get_attribute(operation->session, key, &attr); 
+				/* convert bits to bytes */
+				if (rv == CKR_OK)
+					*pLength = (*pLength + 7) / 8;
+				break;
+			case CKK_EC:
+				/* TODO: -DEE we should use something other then CKA_MODULUS_BITS... */
+				rv = key->ops->get_attribute(operation->session, key, &attr);
+				*pLength = ((*pLength + 7)/8) * 2 ; /* 2*nLen in bytes */ 
+				break;
+			case CKK_GOSTR3410:
+				rv = key->ops->get_attribute(operation->session, key, &attr);
+				if (rv == CKR_OK)
+					*pLength *= 2;
+				break;
+			default:
+				rv = CKR_MECHANISM_INVALID;
+		}
 	}
 
 	return rv;
@@ -794,6 +814,9 @@ sc_pkcs11_new_fw_mechanism(CK_MECHANISM_TYPE mech,
 	}
 	if (pInfo->flags & CKF_UNWRAP) {
 		/* TODO */
+	}
+	if (pInfo->flags & CKF_DERIVE) {
+		/* TODO: -DEE  CKM_ECDH1_COFACTOR_DERIVE for PIV */
 	}
 	if (pInfo->flags & CKF_DECRYPT) {
 		mt->decrypt_init = sc_pkcs11_decrypt_init;

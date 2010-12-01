@@ -31,11 +31,14 @@
 #include <ctype.h>
 #include <sys/stat.h>
 #include <openssl/rsa.h>
+#include <openssl/ec.h>
+#include <openssl/evp.h>
 #include <openssl/x509.h>
 #include <openssl/bn.h>
 #include <openssl/bio.h>
 #include <openssl/pem.h>
 #include <openssl/err.h>
+#include <openssl/obj_mac.h>
 
 #include "libopensc/opensc.h"
 #include "libopensc/cardctl.h"
@@ -94,6 +97,7 @@ static const char *option_help[] = {
 static sc_context_t *ctx = NULL;
 static sc_card_t *card = NULL;
 static BIO * bp = NULL;
+static EVP_PKEY * evpkey = NULL;
 
 static int load_object(const char * object_id, const char * object_file)
 {
@@ -211,7 +215,7 @@ static int load_cert(const char * cert_id, const char * cert_file,
 	}
 	/* we pass length  and  8 bits of flag to card-piv.c write_binary */
 	/* pass in its a cert and if needs compress */
-	r = sc_write_binary(card, 0, der, derlen, (derlen<<8) | (compress<1) | 1); 
+	r = sc_write_binary(card, 0, der, derlen, (derlen<<8) | (compress<<4) | 1); 
 	
 	return r;
 
@@ -248,9 +252,10 @@ static int gen_key(const char * key_info)
 	u8 buf[2];
 	size_t buflen = 2;
 	sc_cardctl_piv_genkey_info_t
-		keydata = {0, 0, 0, 0, NULL, 0};
+		keydata = {0, 0, 0, 0, NULL, 0, NULL, 0, NULL, 0};
 	unsigned long expl;
 	u8 expc[4];
+	int nid;
 	
 	sc_hex_to_bin(key_info, buf, &buflen);
 	if (buflen != 2) {
@@ -273,8 +278,14 @@ static int gen_key(const char * key_info)
 		case 0x05: keydata.key_bits = 3072; break;
 		case 0x06: keydata.key_bits = 1024; break;
 		case 0x07: keydata.key_bits = 2048; break;
+		case 0x11: keydata.key_bits = 0; 
+			nid = NID_X9_62_prime256v1; /* We only support one curve per algid */
+			break; 
+		case 0x14: keydata.key_bits = 0; 
+			nid = NID_secp384r1; 
+			break;
 		default:
-			fprintf(stderr, "<keyref>:<algid> algid:05, 06, 07 for 3072, 1024, 2048\n");
+			fprintf(stderr, "<keyref>:<algid> algid=RSA - 05, 06, 07 for 3072, 1024, 2048;EC - 11, 14 for 256, 384\n");
 			return 2;
 	}
 
@@ -286,6 +297,8 @@ static int gen_key(const char * key_info)
 		fprintf(stderr, "gen_key failed %d\n", r);
 		return r;
 	}
+
+		evpkey = EVP_PKEY_new();
 
 	if (keydata.key_bits > 0) { /* RSA key */
 		RSA * newkey = NULL;
@@ -306,24 +319,48 @@ static int gen_key(const char * key_info)
 		if (verbose) 
 			RSA_print_fp(stdout, newkey,0); 
 
-		if (bp) 
-			PEM_write_bio_RSAPublicKey(bp, newkey);
+		EVP_PKEY_assign_RSA(evpkey, newkey);
 
-	} else {
-		fprintf(stderr, "Unsuported key type\n");
-		r = SC_ERROR_UNKNOWN;
+	} else { /* EC key */
+		int i;
+		BIGNUM *x;
+		BIGNUM *y;
+		EC_KEY * eckey = NULL;
+		EC_GROUP * ecgroup = NULL;
+		EC_POINT * ecpoint = NULL;
+
+		ecgroup = EC_GROUP_new_by_curve_name(nid);
+		EC_GROUP_set_asn1_flag(ecgroup, OPENSSL_EC_NAMED_CURVE);
+		ecpoint = EC_POINT_new(ecgroup);
+	
+		/* PIV returns 04||x||y  and x and y are the same size */
+		i = (keydata.ecpoint_len - 1)/2;
+		x = BN_bin2bn(keydata.ecpoint + 1, i, x);
+		y = BN_bin2bn(keydata.ecpoint + 1 + i, i, y) ;
+		r = EC_POINT_set_affine_coordinates_GFp(ecgroup, ecpoint, x, y, NULL);
+		eckey = EC_KEY_new();
+		r = EC_KEY_set_group(eckey, ecgroup);
+		r = EC_KEY_set_public_key(eckey, ecpoint);
+
+		if (verbose)
+			EC_KEY_print_fp(stdout, eckey, 0);
+
+		EVP_PKEY_assign_EC_KEY(evpkey, eckey);
+
 	}
-		 
-		
+	if (bp)
+		r = i2d_PUBKEY_bio(bp, evpkey);
+
+	if (evpkey)
+		EVP_PKEY_free(evpkey);
 
 	return r;
-
 }
 
 static int send_apdu(void)
 {
 	sc_apdu_t apdu;
-	u8 buf[SC_MAX_APDU_BUFFER_SIZE], sbuf[SC_MAX_APDU_BUFFER_SIZE],
+	u8 buf[SC_MAX_APDU_BUFFER_SIZE+3], sbuf[SC_MAX_APDU_BUFFER_SIZE],
 	   rbuf[SC_MAX_APDU_BUFFER_SIZE], *p;
 	size_t len, len0, r;
 	int c;
@@ -331,6 +368,11 @@ static int send_apdu(void)
 	for (c = 0; c < opt_apdu_count; c++) {
 		len0 = sizeof(buf);
 		sc_hex_to_bin(opt_apdus[c], buf, &len0);
+		if (len0 > SC_MAX_APDU_BUFFER_SIZE+2) {
+			fprintf(stderr, "APDU too long, (must be at most %d bytes).\n",
+				SC_MAX_APDU_BUFFER_SIZE+2);
+				return 2;
+		}
 		if (len0 < 4) {
 			fprintf(stderr, "APDU too short (must be at least 4 bytes).\n");
 			return 2;
@@ -517,7 +559,8 @@ int main(int argc, char * const argv[])
 		return 1;
 	}
 
-	if (verbose > 1) {
+	/* Only change if not in opensc.conf */
+	if (verbose > 1 && ctx->debug == 0) { 
 		ctx->debug = verbose;
 		ctx->debug_file = stderr;
 	}
@@ -585,5 +628,7 @@ end:
 	}
 	if (ctx)
 		sc_release_context(ctx);
+
+	ERR_print_errors_fp(stderr);
 	return err;
 }

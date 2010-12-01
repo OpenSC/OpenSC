@@ -102,8 +102,8 @@ struct pkcs15_pubkey_object {
 #define pub_genfrom		base.related_cert
 
 #define __p15_type(obj)		(((obj) && (obj)->p15_object)? ((obj)->p15_object->type) : (unsigned int)-1)
-#define is_privkey(obj)		(__p15_type(obj) == SC_PKCS15_TYPE_PRKEY_RSA || __p15_type(obj) == SC_PKCS15_TYPE_PRKEY_GOSTR3410)
-#define is_pubkey(obj)		(__p15_type(obj) == SC_PKCS15_TYPE_PUBKEY_RSA || __p15_type(obj) == SC_PKCS15_TYPE_PUBKEY_GOSTR3410)
+#define is_privkey(obj)		((__p15_type(obj) & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_PRKEY)
+#define is_pubkey(obj)		((__p15_type(obj) & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_PUBKEY)
 #define is_cert(obj)		(__p15_type(obj) == SC_PKCS15_TYPE_CERT_X509)
 
 struct pkcs15_data_object {
@@ -145,6 +145,8 @@ static CK_RV	get_modulus_bits(struct sc_pkcs15_pubkey *,
 static CK_RV	get_usage_bit(unsigned int usage, CK_ATTRIBUTE_PTR attr);
 static CK_RV	asn1_sequence_wrapper(const u8 *, size_t, CK_ATTRIBUTE_PTR);
 static CK_RV	get_gostr3410_params(const u8 *, size_t, CK_ATTRIBUTE_PTR);
+static CK_RV	get_ec_pubkey_point(struct sc_pkcs15_pubkey *, CK_ATTRIBUTE_PTR);
+static CK_RV	get_ec_pubkey_params(struct sc_pkcs15_pubkey *, CK_ATTRIBUTE_PTR);
 static int	lock_card(struct pkcs15_fw_data *);
 static int	unlock_card(struct pkcs15_fw_data *);
 static int	reselect_app_df(sc_pkcs15_card_t *p15card);
@@ -368,6 +370,7 @@ static int public_key_created(struct pkcs15_fw_data *fw_data,
 		if ((fw_data->objects[ii]->p15_object->type != SC_PKCS15_TYPE_PUBKEY) && 
 		    (fw_data->objects[ii]->p15_object->type != SC_PKCS15_TYPE_PUBKEY_RSA) &&
 		    (fw_data->objects[ii]->p15_object->type != SC_PKCS15_TYPE_PUBKEY_DSA) &&
+		    (fw_data->objects[ii]->p15_object->type != SC_PKCS15_TYPE_PUBKEY_EC) &&
 		    (fw_data->objects[ii]->p15_object->type != SC_PKCS15_TYPE_PUBKEY_GOSTR3410)) {
 			ii++;
 			continue;
@@ -858,28 +861,43 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 
 	rv = pkcs15_create_pkcs11_objects(fw_data,
 				SC_PKCS15_TYPE_PRKEY_RSA,
-				"private key",
+				"RSA private key",
 				__pkcs15_create_prkey_object);
  	if (rv < 0)
  		return sc_to_cryptoki_error(rv, NULL);
 
  	rv = pkcs15_create_pkcs11_objects(fw_data,
 				SC_PKCS15_TYPE_PUBKEY_RSA,
-				"public key",
+				"RSA public key",
 				__pkcs15_create_pubkey_object);
  	if (rv < 0)
  		return sc_to_cryptoki_error(rv, NULL);
 
 	rv = pkcs15_create_pkcs11_objects(fw_data,
+				SC_PKCS15_TYPE_PRKEY_EC,
+				"EC private key",
+				__pkcs15_create_prkey_object);
+ 	if (rv < 0)
+ 		return sc_to_cryptoki_error(rv, NULL);
+
+ 	rv = pkcs15_create_pkcs11_objects(fw_data,
+				SC_PKCS15_TYPE_PUBKEY_EC,
+				"EC public key",
+				__pkcs15_create_pubkey_object);
+ 	if (rv < 0)
+ 		return sc_to_cryptoki_error(rv, NULL);
+
+
+	rv = pkcs15_create_pkcs11_objects(fw_data,
 				SC_PKCS15_TYPE_PRKEY_GOSTR3410,
-				"private key",
+				"GOSTR3410 private key",
 				__pkcs15_create_prkey_object);
 	if (rv < 0)
 		return sc_to_cryptoki_error(rv, NULL);
 
 	rv = pkcs15_create_pkcs11_objects(fw_data,
 				SC_PKCS15_TYPE_PUBKEY_GOSTR3410,
-				"public key",
+				"GOSTR3410 public key",
 				__pkcs15_create_pubkey_object);
 	if (rv < 0)
 		return sc_to_cryptoki_error(rv, NULL);
@@ -1115,6 +1133,7 @@ static CK_RV pkcs15_login(struct sc_pkcs11_slot *slot,
 			return CKR_PIN_INCORRECT;
 	}
 
+
 	/* By default, we make the reader resource manager keep other
 	 * processes from accessing the card while we're logged in.
 	 * Otherwise an attacker could perform some crypto operation
@@ -1339,6 +1358,7 @@ static CK_RV pkcs15_create_private_key(struct sc_pkcs11_card *p11card,
 	struct sc_pkcs15_pin_info *pin;
 	CK_KEY_TYPE		key_type;
 	struct sc_pkcs15_prkey_rsa *rsa;
+	struct sc_pkcs15_prkey_ec  *ec;
 	int			rc, rv;
 	char label[SC_PKCS15_MAX_LABEL_SIZE];
 
@@ -1353,10 +1373,20 @@ static CK_RV pkcs15_create_private_key(struct sc_pkcs11_card *p11card,
 	rv = attr_find(pTemplate, ulCount, CKA_KEY_TYPE, &key_type, NULL);
 	if (rv != CKR_OK)
 		return rv;
-	if (key_type != CKK_RSA)
-		return CKR_ATTRIBUTE_VALUE_INVALID;
-	args.key.algorithm = SC_ALGORITHM_RSA;
-	rsa = &args.key.u.rsa;
+	switch (key_type) {
+		case CKK_RSA:
+			args.key.algorithm = SC_ALGORITHM_RSA;
+			rsa = &args.key.u.rsa;
+			break;
+		case CKK_EC:
+			args.key.algorithm = SC_ALGORITHM_EC;
+			ec = &args.key.u.ec;
+			/* TODO: -DEE Do not have PKCS15 card with EC to test this */
+			/* fall through */
+		default:
+			return CKR_ATTRIBUTE_VALUE_INVALID;
+	}
+
 
 	rv = CKR_OK;
 	while (ulCount--) {
@@ -1450,10 +1480,17 @@ static CK_RV pkcs15_create_public_key(struct sc_pkcs11_card *p11card,
 	rv = attr_find(pTemplate, ulCount, CKA_KEY_TYPE, &key_type, NULL);
 	if (rv != CKR_OK)
 		return rv;
-	if (key_type != CKK_RSA)
-		return CKR_ATTRIBUTE_VALUE_INVALID;
-	args.key.algorithm = SC_ALGORITHM_RSA;
-	rsa = &args.key.u.rsa;
+	switch (key_type) {
+		case CKK_RSA:
+			args.key.algorithm = SC_ALGORITHM_RSA;
+			rsa = &args.key.u.rsa;
+			break;
+		case CKK_EC:
+			/* TODO: -DEE Do not have real pkcs15 card with EC */
+			/* fall through */
+		default:
+			return CKR_ATTRIBUTE_VALUE_INVALID;
+	}
 
 	rv = CKR_OK;
 	while (ulCount--) {
@@ -2298,9 +2335,11 @@ static CK_RV pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
 	 *       applications assume they can get that from the private
 	 *       key, something PKCS#11 doesn't guarantee.
 	 */
-	if ((attr->type == CKA_MODULUS) || (attr->type == CKA_PUBLIC_EXPONENT)) {
+	if ((attr->type == CKA_MODULUS) || (attr->type == CKA_PUBLIC_EXPONENT) ||
+		((attr->type == CKA_MODULUS_BITS) && (prkey->prv_p15obj->type == SC_PKCS15_TYPE_PRKEY_EC)) || 
+		(attr->type == CKA_ECDSA_PARAMS)) {
 		/* First see if we have a associated public key */
-		if (prkey->prv_pubkey)
+		if (prkey->prv_pubkey && prkey->prv_pubkey->pub_data)
 			key = prkey->prv_pubkey->pub_data;
 		else {
 			/* Try to find a certificate with the public key */
@@ -2357,10 +2396,19 @@ static CK_RV pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
 		break;
 	case CKA_KEY_TYPE:
 		check_attribute_buffer(attr, sizeof(CK_KEY_TYPE));
-		if (prkey->prv_p15obj->type == SC_PKCS15_TYPE_PRKEY_GOSTR3410)
-			*(CK_KEY_TYPE*)attr->pValue = CKK_GOSTR3410;
-		else
-			*(CK_KEY_TYPE*)attr->pValue = CKK_RSA;
+		switch (prkey->prv_p15obj->type) {
+			case SC_PKCS15_TYPE_PRKEY_RSA:
+				*(CK_KEY_TYPE*)attr->pValue = CKK_RSA;
+				break;
+			case SC_PKCS15_TYPE_PRKEY_GOSTR3410:
+				*(CK_KEY_TYPE*)attr->pValue = CKK_GOSTR3410;
+				break;
+			case SC_PKCS15_TYPE_PRKEY_EC:
+				*(CK_KEY_TYPE*)attr->pValue = CKK_EC;
+				break;
+			default:
+				return CKR_GENERAL_ERROR; /* Internal error*/
+		}
 		break;
 	case CKA_ID:
 		check_attribute_buffer(attr, prkey->prv_info->id.len);
@@ -2390,8 +2438,17 @@ static CK_RV pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
 	 * on this -- Nils */
 	case CKA_MODULUS_BITS:
 		check_attribute_buffer(attr, sizeof(CK_ULONG));
-		*(CK_ULONG *) attr->pValue = prkey->prv_info->modulus_length;
-		return CKR_OK;
+		switch (prkey->prv_p15obj->type) {
+			case SC_PKCS15_TYPE_PRKEY_EC:
+				if (key)
+					*(CK_ULONG *) attr->pValue = key->u.ec.field_length; 
+				else 
+					*(CK_ULONG *) attr->pValue = 384; /* TODO -DEE needs work */
+				return CKR_OK;
+			default:
+				*(CK_ULONG *) attr->pValue = prkey->prv_info->modulus_length;
+				return CKR_OK;
+		}
 	case CKA_PUBLIC_EXPONENT:
 		return get_public_exponent(key, attr);
 	case CKA_PRIVATE_EXPONENT:
@@ -2412,6 +2469,8 @@ static CK_RV pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
 					prkey->prv_info->params_len, attr);
 		else
 			return CKR_ATTRIBUTE_TYPE_INVALID;
+	case CKA_EC_PARAMS:
+		return get_ec_pubkey_params(key, attr); /* get from pubkey for now */
 	default:
 		return CKR_ATTRIBUTE_TYPE_INVALID;
 	}
@@ -2472,7 +2531,28 @@ static CK_RV pkcs15_prkey_sign(struct sc_pkcs11_session *ses, void *obj,
 	case CKM_GOSTR3410_WITH_GOSTR3411:
 		flags = SC_ALGORITHM_GOSTR3410_HASH_GOSTR3411;
 		break;
+	case CKM_ECDSA:
+		flags = SC_ALGORITHM_ECDSA_HASH_NONE;
+		break;
+	case CKM_ECDSA_SHA1:
+		flags = SC_ALGORITHM_ECDSA_HASH_SHA1;
+		break;
+#if 0
+	case CKM_ECDSA_SHA224:
+		flags = SC_ALGORITHM_ECDSA_HASH_SHA224;
+		break;
+	case CKM_ECDSA_SHA256:
+		flags = SC_ALGORITHM_ECDSA_HASH_SHA256;
+		break;
+	case CKM_ECDSA_SHA384:
+		flags = SC_ALGORITHM_ECDSA_HASH_SHA384;
+		break;
+	case CKM_ECDSA_SHA512:
+		flags = SC_ALGORITHM_ECDSA_HASH_SHA512;
+		break;
+#endif
 	default:
+		sc_debug(context, SC_LOG_DEBUG_NORMAL, "DEE - need EC for %d",pMechanism->mechanism);
 		return CKR_MECHANISM_INVALID;
 	}
 
@@ -2627,6 +2707,8 @@ static CK_RV pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session,
 		case CKA_MODULUS_BITS:
 		case CKA_VALUE:
 		case CKA_PUBLIC_EXPONENT:
+		case CKA_EC_PARAMS:
+		case CKA_EC_POINT:
 			if (pubkey->pub_data == NULL) 
 				/* FIXME: check the return value? */
 				check_cert_data_read(fw_data, cert);
@@ -2678,8 +2760,12 @@ static CK_RV pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session,
 		break;
 	case CKA_KEY_TYPE:
 		check_attribute_buffer(attr, sizeof(CK_KEY_TYPE));
+		/* TODO: -DEE why would we not have a pubkey->pub_data? */
+		/* even if we do not, we should not assume RSA */
 		if (pubkey->pub_data && pubkey->pub_data->algorithm == SC_ALGORITHM_GOSTR3410)
 			*(CK_KEY_TYPE*)attr->pValue = CKK_GOSTR3410;
+		else if (pubkey->pub_data && pubkey->pub_data->algorithm == SC_ALGORITHM_EC)
+			*(CK_KEY_TYPE*)attr->pValue = CKK_EC;
 		else
 			*(CK_KEY_TYPE*)attr->pValue = CKK_RSA;
 		break;
@@ -2723,6 +2809,10 @@ static CK_RV pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session,
 		return get_public_exponent(pubkey->pub_data, attr);
 	case CKA_VALUE:
 		if (pubkey->pub_data) {
+			/* TODO: -DEE  Not all pubkeys have CKA_VALUE attribute. RSA and EC
+		 	 * for example don't. So why is this here? 
+			 * Why checking for cert in this pkcs15_pubkey_get_attribute?
+		 	 */
 			check_attribute_buffer(attr, pubkey->pub_data->data.len);
 			memcpy(attr->pValue, pubkey->pub_data->data.value,
 					      pubkey->pub_data->data.len);
@@ -2737,6 +2827,11 @@ static CK_RV pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session,
 					pubkey->pub_info->params_len, attr);
 		else
 			return CKR_ATTRIBUTE_TYPE_INVALID;
+	case CKA_EC_PARAMS:
+		return get_ec_pubkey_params(pubkey->pub_data, attr);
+	case CKA_EC_POINT:
+		return get_ec_pubkey_point(pubkey->pub_data, attr);
+					
 	default:
 		return CKR_ATTRIBUTE_TYPE_INVALID;
 	}
@@ -2960,6 +3055,40 @@ get_public_exponent(struct sc_pkcs15_pubkey *key, CK_ATTRIBUTE_PTR attr)
 }
 
 static CK_RV
+get_ec_pubkey_params(struct sc_pkcs15_pubkey *key, CK_ATTRIBUTE_PTR attr)
+{
+		struct sc_ec_params * ecp;
+	    if (key == NULL)
+			return CKR_ATTRIBUTE_TYPE_INVALID;
+		if (key->alg_id == NULL) 
+			return CKR_ATTRIBUTE_TYPE_INVALID;
+			ecp = (struct sc_ec_params *) key->alg_id->params;
+
+		switch (key->algorithm) {
+		case SC_ALGORITHM_EC:
+			check_attribute_buffer(attr, ecp->der_len);
+			memcpy(attr->pValue, ecp->der, ecp->der_len);
+			return CKR_OK;
+		}
+		return CKR_ATTRIBUTE_TYPE_INVALID;
+}
+
+static CK_RV
+get_ec_pubkey_point(struct sc_pkcs15_pubkey *key, CK_ATTRIBUTE_PTR attr)
+{
+	    if (key == NULL)
+			return CKR_ATTRIBUTE_TYPE_INVALID;
+
+		switch (key->algorithm) {
+		case SC_ALGORITHM_EC:
+			check_attribute_buffer(attr, key->u.ec.ecpointQ.len);
+			memcpy(attr->pValue, key->u.ec.ecpointQ.value, key->u.ec.ecpointQ.len);
+			return CKR_OK;
+		}
+		return CKR_ATTRIBUTE_TYPE_INVALID;
+}
+
+static CK_RV
 get_gostr3410_params(const u8 *params, size_t params_len, CK_ATTRIBUTE_PTR attr)
 {
 	size_t i;
@@ -3089,6 +3218,60 @@ static int register_gost_mechanisms(struct sc_pkcs11_card *p11card, int flags)
 	return CKR_OK;
 }
 
+static int register_ec_mechanisms(struct sc_pkcs11_card *p11card, int flags, 
+			unsigned long ext_flags, int min_key_size, int max_key_size)
+{
+	CK_MECHANISM_INFO mech_info;
+	sc_pkcs11_mechanism_type_t *mt;
+	int rc;
+	
+	mech_info.flags = CKF_HW | CKF_SIGN; /* check for more */
+	if (ext_flags & SC_ALGORITHM_EXT_EC_F_P)
+		mech_info.flags |= CKF_EC_F_P;
+	if (ext_flags & SC_ALGORITHM_EXT_EC_F_2M)
+		mech_info.flags |= CKF_EC_F_2M;
+	if (ext_flags & SC_ALGORITHM_EXT_EC_ECPARAMETERS)
+		mech_info.flags |= CKF_EC_ECPARAMETERS;
+	if (ext_flags & SC_ALGORITHM_EXT_EC_NAMEDCURVE)
+		mech_info.flags |= CKF_EC_NAMEDCURVE;
+	if (ext_flags & SC_ALGORITHM_EXT_EC_UNCOMPRESES)
+		mech_info.flags |= CKF_EC_UNCOMPRESES;
+	if (ext_flags & SC_ALGORITHM_EXT_EC_COMPRESS)
+		mech_info.flags |= CKF_EC_COMPRESS;
+	mech_info.ulMinKeySize = min_key_size;
+	mech_info.ulMaxKeySize = max_key_size;
+	mt = sc_pkcs11_new_fw_mechanism(CKM_ECDSA,
+		&mech_info, CKK_EC, NULL);
+	if (!mt)
+		return CKR_HOST_MEMORY;
+	rc = sc_pkcs11_register_mechanism(p11card, mt);
+	if (rc != CKR_OK)
+		return rc;
+
+#if ENABLE_OPENSSL
+	mt = sc_pkcs11_new_fw_mechanism(CKM_ECDSA_SHA1,
+		&mech_info, CKK_EC, NULL);
+	if (!mt)
+		return CKR_HOST_MEMORY;
+	rc = sc_pkcs11_register_mechanism(p11card, mt);
+	if (rc != CKR_OK)
+		return rc;
+#endif
+
+#if 0
+/* TODO: -DEE Add CKM_ECDH1_COFACTOR_DERIVE  as PIV can do this */
+/* TODO: -DEE But this requires C_DeriveKey to be implemented */
+
+	mech_info.flags &= ~CKF_SIGN;
+	mech_info.flags |= CKF_DRIVE;
+
+	sc_pkcs11_new_fw_mechanism(CKM_ECDH1_COFACTOR_DERIVE,
+		CKM_ECDH1_COFACTOR_DERIVE, NULL);
+#endif
+
+	return CKR_OK;
+}
+	
 /*
  * Mechanism handling
  * FIXME: We should consult the card's algorithm list to
@@ -3099,6 +3282,8 @@ static int register_mechanisms(struct sc_pkcs11_card *p11card)
 	sc_card_t *card = p11card->card;
 	sc_algorithm_info_t *alg_info;
 	CK_MECHANISM_INFO mech_info;
+	int ec_min_key_size, ec_max_key_size;
+	unsigned long ec_ext_flags;
 	sc_pkcs11_mechanism_type_t *mt;
 	unsigned int num;
 	int rc, flags = 0;
@@ -3113,25 +3298,48 @@ static int register_mechanisms(struct sc_pkcs11_card *p11card)
 #endif
 	mech_info.ulMinKeySize = ~0;
 	mech_info.ulMaxKeySize = 0;
+	ec_min_key_size = ~0;
+	ec_max_key_size = 0;
+	ec_ext_flags = 0;
 
 	/* For now, we just OR all the algorithm specific
 	 * flags, based on the assumption that cards don't
 	 * support different modes for different key sizes
+	 * But we need to do this by type of key as
+	 * each has different min/max and different flags.  
+	 *
+	 * TODO: -DEE This code assumed RSA, but the GOST 
+	 * and EC code was forced in. There should be a 
+	 * routine for each key type.
 	 */
 	num = card->algorithm_count;
 	alg_info = card->algorithms;
 	while (num--) {
-		if (alg_info->algorithm == SC_ALGORITHM_RSA) {
-			if (alg_info->key_length < mech_info.ulMinKeySize)
-				mech_info.ulMinKeySize = alg_info->key_length;
-			if (alg_info->key_length > mech_info.ulMaxKeySize)
-				mech_info.ulMaxKeySize = alg_info->key_length;
-
-			flags |= alg_info->flags;
+		switch (alg_info->algorithm) {
+			case SC_ALGORITHM_RSA:
+				if (alg_info->key_length < mech_info.ulMinKeySize)
+					mech_info.ulMinKeySize = alg_info->key_length;
+				if (alg_info->key_length > mech_info.ulMaxKeySize)
+					mech_info.ulMaxKeySize = alg_info->key_length;
+				flags |= alg_info->flags;
+				break;
+			case SC_ALGORITHM_EC:
+				if (alg_info->key_length < ec_min_key_size)
+					ec_min_key_size = alg_info->key_length;
+				if (alg_info->key_length > ec_max_key_size)
+					ec_max_key_size = alg_info->key_length;
+				flags |= alg_info->flags;
+				ec_ext_flags |= alg_info->u._ec.ext_flags;
+				break;
+			case SC_ALGORITHM_GOSTR3410:
+				flags |= alg_info->flags;
+				break;
 		}
-		if (alg_info->algorithm == SC_ALGORITHM_GOSTR3410)
-			flags |= alg_info->flags;
 		alg_info++;
+	}
+
+	if (flags & SC_ALGORITHM_ECDSA_RAW) {
+		rc = register_ec_mechanisms(p11card, flags, ec_ext_flags, ec_min_key_size, ec_max_key_size);
 	}
 
 	if (flags & (SC_ALGORITHM_GOSTR3410_RAW

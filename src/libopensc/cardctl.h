@@ -755,6 +755,11 @@ typedef struct sc_cardctl_piv_genkey_info_st {
 	unsigned long	exponent;	/* RSA */
 	unsigned char *	pubkey;		/* RSA */
 	unsigned int	pubkey_len;	/* RSA */
+	unsigned char * ecparam;        /* EC */
+	unsigned int    ecparam_len;    /* EC */
+	unsigned char * ecpoint;        /* EC */
+	unsigned int    ecpoint_len;    /* EC */
+
 } sc_cardctl_piv_genkey_info_t;
 
 #ifdef __cplusplus

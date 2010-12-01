@@ -24,6 +24,7 @@
 #include <openssl/evp.h>
 #include <openssl/x509.h>
 #include <openssl/rsa.h>
+#include <openssl/ec.h>
 #include <openssl/bn.h>
 #include <openssl/err.h>
 #endif
@@ -1239,6 +1240,32 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		util_fatal("failed to open %s: %m", opt_output);
 	}
 
+#if ENABLE_OPENSSL
+/*
+ * PKCS11 implies the ECDSA sig is 2nLen,
+ * OpenSSL expects sequence of {integer, integer}
+ * so we will write it for OpenSSL if built with OpenSSL
+ */
+	if (opt_mechanism == CKM_ECDSA) {
+		int nLen;
+		ECDSA_SIG * ecsig = NULL;
+		unsigned char *p = NULL;
+		int der_len;
+		
+		nLen = sig_len/2;
+
+		ecsig = ECDSA_SIG_new();
+		ecsig->r = BN_bin2bn(buffer, nLen, ecsig->r);
+		ecsig->s = BN_bin2bn(buffer + nLen, nLen, ecsig->s);	
+
+		der_len = i2d_ECDSA_SIG(ecsig, &p); 
+		printf("Writing OpenSSL ECDSA_SIG\n");
+		r = write(fd, p, der_len);
+		free(p);
+		ECDSA_SIG_free(ecsig);
+
+	} else 
+#endif
 	r = write(fd, buffer, sig_len);
 	if (r < 0)
 		util_fatal("Failed to write to %s: %m", opt_output);
@@ -1953,8 +1980,8 @@ ATTR_METHOD(VERIFY_RECOVER, CK_BBOOL);
 #endif
 ATTR_METHOD(WRAP, CK_BBOOL);
 ATTR_METHOD(UNWRAP, CK_BBOOL);
-#if 0
 ATTR_METHOD(DERIVE, CK_BBOOL);
+#if 0
 ATTR_METHOD(EXTRACTABLE, CK_BBOOL);
 #endif
 ATTR_METHOD(KEY_TYPE, CK_KEY_TYPE);
@@ -1968,6 +1995,8 @@ VARATTR_METHOD(MODULUS, CK_BYTE);
 VARATTR_METHOD(PUBLIC_EXPONENT, CK_BYTE);
 VARATTR_METHOD(VALUE, unsigned char);
 VARATTR_METHOD(GOSTR3410_PARAMS, unsigned char);
+VARATTR_METHOD(EC_POINT, unsigned char);
+VARATTR_METHOD(EC_PARAMS, unsigned char);
 
 static void show_object(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 {
@@ -2022,6 +2051,51 @@ static void show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj, int pub)
 			free(oid);
 		}
 		break;
+	case CKK_EC:
+		printf("; EC");
+		if (pub) { 
+			unsigned char *bytes = NULL;
+			int ksize;
+			int n;
+			bytes = getEC_POINT(sess, obj, &size);
+			/* 
+			 * (We only support uncompressed for now) 
+			 * Uncompresed EC_POINT is DER OCTET STRING of "04||x||y"
+			 * So a "256" bit key has x and y of 32 bytes each
+			 * something like: "04 41 04||x||y"
+			 * Do simple size calculation based on DER encoding
+			 */
+			if ((size - 2) <= 127)  
+				ksize = (size - 3) * 4;
+			else if ((size - 3) <= 255)  
+				ksize = (size - 4) * 4;
+			else 
+				ksize = (size - 5) * 4;
+			
+			printf(" EC_POINT %d bits\n", ksize);
+			if (bytes) {
+				if (size > 0) { /* Will print the point here */
+					printf(" EC_POINT:  ");
+					for (n = 0; n < size; n++)
+						printf("%02x", bytes[n]);
+					printf("\n");
+				}
+				free(bytes);
+			}
+			bytes = NULL;
+			bytes = getEC_PARAMS(sess, obj, &size);
+			if (bytes){ 
+				if (size > 0) {
+					printf("  EC_PARAMS:  ");
+					for (n = 0; n < size; n++)
+						printf("%02x", bytes[n]);
+					printf("\n");
+				}
+				free(bytes);
+			}
+		} else
+			 printf("\n");
+		break;
 	default:
 		printf("; unknown key algorithm %lu\n",
 				(unsigned long) key_type);
@@ -2067,6 +2141,10 @@ static void show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj, int pub)
 	}
 	if (!pub && getUNWRAP(sess, obj)) {
 		printf("%sunwrap", sepa);
+		sepa = ", ";
+	}
+	if (!pub && getDERIVE(sess, obj)) {
+		printf("%sderive", sepa);
 		sepa = ", ";
 	}
 	if (!*sepa)
@@ -2261,6 +2339,10 @@ static int read_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	else if (obj==CK_INVALID_HANDLE)
 		util_fatal("object not found\n");
 
+/* TODO: -DEE should look at object class, and get appropriate values
+ * based on the object, and other attributes. For example EC keys do 
+ * not have a VALUE But have a EC_POINT.
+ */
 	value = getVALUE(session, obj, &len);
 	if (value == NULL)
 		util_fatal("get CKA_VALUE failed\n");

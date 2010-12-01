@@ -286,12 +286,13 @@ int sc_get_encoding_flags(sc_context_t *ctx,
 		else
 			*pflags |= SC_ALGORITHM_RSA_PAD_PKCS1;
 	} else if ((iflags & SC_ALGORITHM_RSA_PADS) == SC_ALGORITHM_RSA_PAD_NONE) {
-		if (!(caps & SC_ALGORITHM_RSA_RAW)) {
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "raw RSA is not supported");
+		
+		/* Work with RSA, EC and maybe GOSTR? */
+		if (!(caps & SC_ALGORITHM_RAW_MASK)) {
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "raw encryption is not supported");
 			return SC_ERROR_NOT_SUPPORTED;
 		}
-		*sflags |= SC_ALGORITHM_RSA_RAW;
-		/* in case of raw RSA there is nothing to pad */
+		*sflags |= (caps & SC_ALGORITHM_RAW_MASK); /* adds in the one raw type */
 		*pflags = 0;
 	} else {
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "unsupported algorithm");

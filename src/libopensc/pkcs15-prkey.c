@@ -497,6 +497,9 @@ sc_pkcs15_erase_prkey(struct sc_pkcs15_prkey *key)
 		assert(key->u.gostr3410.d.data);
 		free(key->u.gostr3410.d.data);
 		break;
+	case SC_ALGORITHM_EC:
+		/* TODO: -DEE may not need much */
+		break;
 	}
 	sc_mem_clear(key, sizeof(key));
 }
