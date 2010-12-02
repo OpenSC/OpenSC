@@ -1,7 +1,6 @@
 MAINTAINERCLEANFILES = $(srcdir)/Makefile.in
 EXTRA_DIST = Makefile.mak
 
-AM_CFLAGS = -DSIMCLIST_NO_DUMPRESTORE
 noinst_LTLIBRARIES = libcompat.la
 noinst_PROGRAMS = compat_getopt_main
 dist_noinst_DATA = \

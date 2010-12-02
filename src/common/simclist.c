@@ -25,41 +25,26 @@
 #include <string.h>
 #include <errno.h>      /* for setting errno */
 #include <sys/types.h>
-#ifndef SIMCLIST_NO_DUMPRESTORE
-#include <sys/uio.h>    /* for READ_ERRCHECK() and write() */
-#include <fcntl.h>      /* for open() etc */
-#endif
 #if !defined(_WIN32)
 #include <arpa/inet.h>  /* for htons() */
 #include <unistd.h>
+#include <sys/time.h>   /* for gettimeofday() */
+#include <stdint.h>
 #else
 #include <winsock2.h>
 #endif
+#ifdef SIMCLIST_DUMPRESTORE
+#ifndef _WIN32
+#include <sys/uio.h>    /* for READ_ERRCHECK() and write() */
+#endif
+#include <fcntl.h>      /* for open() etc */
+#endif
 #include <time.h>       /* for time() for random seed */
-#include <sys/time.h>   /* for gettimeofday() */
 #include <sys/stat.h>   /* for open()'s access modes S_IRUSR etc */
 #include <limits.h>
-#include <stdint.h>
 
 
-/* work around lack of inttypes.h support in broken Microsoft Visual Studio compilers */
-#if !defined(_WIN32) || !defined(_MSC_VER)
-#   include <inttypes.h>   /* (u)int*_t */
-#else
-#   include <basetsd.h>
-typedef UINT8   uint8_t;
-typedef UINT16  uint16_t;
-typedef ULONG32 uint32_t;
-typedef UINT64  uint64_t;
-typedef INT8    int8_t;
-typedef INT16   int16_t;
-typedef LONG32  int32_t;
-typedef INT64   int64_t;
-#endif
- 
-
-
-#ifndef SIMCLIST_NO_DUMPRESTORE
+#ifdef SIMCLIST_DUMPRESTORE
 /* convert 64bit integers from host to network format */
 #define hton64(x)       (\
         htons(1) == 1 ?                                         \
@@ -184,7 +169,7 @@ static void *list_get_minmax(const list_t *restrict l, int versus);
 
 static inline struct list_entry_s *list_findpos(const list_t *restrict l, int posstart);
 
-#ifndef SIMCLIST_NO_DUMPRESTORE
+#ifdef SIMCLIST_DUMPRESTORE
 /* write() decorated with error checking logic */
 #define WRITE_ERRCHECK(fd, msgbuf, msglen)      do {                                                    \
                                                     if (write(fd, msgbuf, msglen) < 0) return -1;       \
@@ -979,7 +964,17 @@ int list_hash(const list_t *restrict l, list_hash_t *restrict hash) {
     return 0;
 }
 
-#ifndef SIMCLIST_NO_DUMPRESTORE
+#ifdef SIMCLIST_DUMPRESTORE
+/* Workaround for a missing gettimeofday on Windows */
+#if defined(_MSC_VER) || defined(__MINGW32__)
+int gettimeofday(struct timeval* tp, void* tzp) {
+    DWORD t;
+    t = timeGetTime();
+    tp->tv_sec = t / 1000;
+    tp->tv_usec = t % 1000;
+    return 0;
+}
+#endif
 int list_dump_getinfo_filedescriptor(int fd, list_dump_info_t *restrict info) {
     int32_t terminator_head, terminator_tail;
     uint32_t elemlen;
@@ -1323,10 +1318,13 @@ int list_restore_filedescriptor(list_t *restrict l, int fd, size_t *restrict len
 }
 
 int list_dump_file(const list_t *restrict l, const char *restrict filename, size_t *restrict len) {
-    int fd;
+    int fd, mode;
     size_t sizetoret;
-
-    fd = open(filename, O_RDWR | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+    mode = O_RDWR | O_CREAT | O_TRUNC;
+#ifndef _WIN32
+    mode |= S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
+#endif
+    fd = open(filename, mode);
     if (fd < 0) return -1;
 
     sizetoret = list_dump_filedescriptor(l, fd, len);
@@ -1347,7 +1345,7 @@ int list_restore_file(list_t *restrict l, const char *restrict filename, size_t 
 
     return totdata;
 }
-#endif /* ifndef SIMCLIST_NO_DUMPRESTORE */
+#endif /* ifdef SIMCLIST_DUMPRESTORE */
 
 
 static int list_drop_elem(list_t *restrict l, struct list_entry_s *tmp, unsigned int pos) {

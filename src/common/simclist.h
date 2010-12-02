@@ -27,7 +27,20 @@
 extern "C" {
 #endif
 
-#include <inttypes.h>
+/* work around lack of inttypes.h support in broken Microsoft Visual Studio compilers */
+#if defined(_MSC_VER)
+#include <basetsd.h>
+typedef UINT8   uint8_t;
+typedef UINT16  uint16_t;
+typedef ULONG32 uint32_t;
+typedef UINT64  uint64_t;
+typedef INT8    int8_t;
+typedef INT16   int16_t;
+typedef LONG32  int32_t;
+typedef INT64   int64_t;
+#else
+#include <inttypes.h>   /* (u)int*_t */
+#endif
 #include <errno.h>
 #include <sys/types.h>
 
