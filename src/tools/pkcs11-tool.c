@@ -21,10 +21,14 @@
 #include "config.h"
 
 #ifdef ENABLE_OPENSSL
+#include <openssl/opensslconf.h>
 #include <openssl/evp.h>
 #include <openssl/x509.h>
 #include <openssl/rsa.h>
+#if !defined(OPENSSL_NO_EC) && !defined(OPENSSL_NO_ECDSA)
 #include <openssl/ec.h>
+#include <openssl/ecdsa.h>
+#endif
 #include <openssl/bn.h>
 #include <openssl/err.h>
 #endif
@@ -1240,7 +1244,7 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		util_fatal("failed to open %s: %m", opt_output);
 	}
 
-#if ENABLE_OPENSSL
+#if defined(ENABLE_OPENSSL) && !defined(OPENSSL_NO_EC) && !defined(OPENSSL_NO_EDSA)
 /*
  * PKCS11 implies the ECDSA sig is 2nLen,
  * OpenSSL expects sequence of {integer, integer}
@@ -1265,7 +1269,7 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		ECDSA_SIG_free(ecsig);
 
 	} else 
-#endif
+#endif /* ENABLE_OPENSSL  && !OPENSSL_NO_EC && !OPENSSL_NO_ECDSA */
 	r = write(fd, buffer, sig_len);
 	if (r < 0)
 		util_fatal("Failed to write to %s: %m", opt_output);

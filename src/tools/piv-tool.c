@@ -30,6 +30,9 @@
 #include <errno.h>
 #include <ctype.h>
 #include <sys/stat.h>
+
+/* Module only built if OPENSSL is enabled */
+#include <openssl/opensslconf.h>
 #include <openssl/rsa.h>
 #include <openssl/ec.h>
 #include <openssl/evp.h>
@@ -322,6 +325,7 @@ static int gen_key(const char * key_info)
 		EVP_PKEY_assign_RSA(evpkey, newkey);
 
 	} else { /* EC key */
+#ifndef OPENSSL_NO_EC
 		int i;
 		BIGNUM *x;
 		BIGNUM *y;
@@ -346,6 +350,10 @@ static int gen_key(const char * key_info)
 			EC_KEY_print_fp(stdout, eckey, 0);
 
 		EVP_PKEY_assign_EC_KEY(evpkey, eckey);
+#else
+		fprintf(stderr, "This build of OpenSSL does not support EC keys"\n);
+		r = 1; 
+#endif /* OPENSSL_NO_EC */
 
 	}
 	if (bp)
