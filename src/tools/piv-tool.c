@@ -34,7 +34,9 @@
 /* Module only built if OPENSSL is enabled */
 #include <openssl/opensslconf.h>
 #include <openssl/rsa.h>
+#ifndef OPENSSL_NO_EC
 #include <openssl/ec.h>
+#endif
 #include <openssl/evp.h>
 #include <openssl/x509.h>
 #include <openssl/bn.h>
@@ -351,7 +353,7 @@ static int gen_key(const char * key_info)
 
 		EVP_PKEY_assign_EC_KEY(evpkey, eckey);
 #else
-		fprintf(stderr, "This build of OpenSSL does not support EC keys"\n);
+		fprintf(stderr, "This build of OpenSSL does not support EC keys\n");
 		r = 1; 
 #endif /* OPENSSL_NO_EC */
 
