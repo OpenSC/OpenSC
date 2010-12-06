@@ -4,7 +4,6 @@ TOPDIR = ..\..
 
 TARGETS = opensc-tool.exe opensc-explorer.exe pkcs15-tool.exe pkcs15-crypt.exe \
 		pkcs11-tool.exe cardos-tool.exe eidenv.exe rutoken-tool.exe \
-		netkey-tool.exe westcos-tool.exe \
 		$(PROGRAMS_OPENSSL)
 
 $(TARGETS): $(TOPDIR)\win32\versioninfo.res util.obj 
