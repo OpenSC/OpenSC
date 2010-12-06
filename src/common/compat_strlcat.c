@@ -70,3 +70,4 @@ strlcat(char *dst, const char *src, size_t siz)
 	return(dlen + (s - src));	/* count does not include NUL */
 }
 #endif
+
