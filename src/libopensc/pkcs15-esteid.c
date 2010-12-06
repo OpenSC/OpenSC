@@ -220,10 +220,7 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 		static int prkey_usage[2] = {
 			SC_PKCS15_PRKEY_USAGE_ENCRYPT
 			| SC_PKCS15_PRKEY_USAGE_DECRYPT
-			| SC_PKCS15_PRKEY_USAGE_SIGN
-			| SC_PKCS15_PRKEY_USAGE_SIGNRECOVER
-			| SC_PKCS15_PRKEY_USAGE_WRAP
-			| SC_PKCS15_PRKEY_USAGE_UNWRAP,
+			| SC_PKCS15_PRKEY_USAGE_SIGN,
 			SC_PKCS15_PRKEY_USAGE_NONREPUDIATION};
 			
 		static const char *prkey_name[2] = {
