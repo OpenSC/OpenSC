@@ -60,7 +60,7 @@ typedef INT64   int64_t;
  */
 typedef int32_t list_hash_t;
 
-#ifndef SIMCLIST_NO_DUMPRESTORE
+#ifdef SIMCLIST_DUMPRESTORE
 typedef struct {
     uint16_t version;       /* dump version */
     int64_t timestamp;      /* when the list has been dumped, microseconds from UNIX epoch */
@@ -643,7 +643,7 @@ int list_iterator_stop(list_t *restrict l);
  */
 int list_hash(const list_t *restrict l, list_hash_t *restrict hash);
 
-#ifndef SIMCLIST_NO_DUMPRESTORE
+#ifdef SIMCLIST_DUMPRESTORE
 /**
  * get meta informations on a list dump on filedescriptor.
  *
