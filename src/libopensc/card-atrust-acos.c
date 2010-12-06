@@ -842,8 +842,8 @@ static int acos_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 	if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
 		return SC_ERROR_INTERNAL;
 	/* cache serial number */
-	memcpy(card->serialnr.value, apdu.resp, apdu.resplen);
-	card->serialnr.len = apdu.resplen;
+	memcpy(card->serialnr.value, apdu.resp, MIN(apdu.resplen, SC_MAX_SERIALNR));
+	card->serialnr.len = MIN(apdu.resplen, SC_MAX_SERIALNR);
 	/* copy and return serial number */
 	memcpy(serial, &card->serialnr, sizeof(*serial));
 	return SC_SUCCESS;

@@ -138,8 +138,8 @@ static int acos5_get_serialnr(sc_card_t * card, sc_serial_number_t * serial)
 	/*
 	 * Cache serial number.
 	 */
-	memcpy(card->serialnr.value, apdu.resp, apdu.resplen);
-	card->serialnr.len = apdu.resplen;
+	memcpy(card->serialnr.value, apdu.resp, MIN(apdu.resplen, SC_MAX_SERIALNR));
+	card->serialnr.len = MIN(apdu.resplen, SC_MAX_SERIALNR);
 
 	/*
 	 * Copy and return serial number.
