@@ -49,6 +49,13 @@ extern "C" {
 #define sleep(t)	Sleep((t) * 1000)
 #endif
 
+#ifndef MAX
+#define MAX(x, y) (((x) > (y)) ? (x) : (y))
+#endif
+#ifndef MIN
+#define MIN(x, y) (((x) < (y)) ? (x) : (y))
+#endif
+
 struct sc_atr_table {
 	/* The atr fields are required to
 	 * be in aa:bb:cc hex format. */

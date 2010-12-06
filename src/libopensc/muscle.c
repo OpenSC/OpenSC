@@ -31,13 +31,6 @@
 #define MSC_DSA_PUBLIC		0x04
 #define MSC_DSA_PRIVATE 	0x05
 
-#ifndef MAX
-#define MAX(x, y) (((x) > (y)) ? (x) : (y))
-#endif
-#ifndef MIN
-#define MIN(x, y) (((x) < (y)) ? (x) : (y))
-#endif
-
 static msc_id inputId = { { 0xFF, 0xFF, 0xFF, 0xFF } };
 static msc_id outputId = { { 0xFF, 0xFF, 0xFF, 0xFE } };
 
