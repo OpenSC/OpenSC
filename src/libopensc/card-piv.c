@@ -28,6 +28,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include <limits.h>
+#include <malloc.h>
 #ifdef ENABLE_OPENSSL
 	/* openssl only needed for card administration */
 #include <openssl/evp.h>
