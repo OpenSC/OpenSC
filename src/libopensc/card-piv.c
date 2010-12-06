@@ -874,9 +874,6 @@ static int piv_get_data(sc_card_t * card, int enumtag,
 	int r = 0;
 	u8 tagbuf[8];
 	size_t tag_len;
-	const char * keyenvname = NULL;
-	const char * dataenvname = NULL;
-	char * filename = NULL;
 	
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "#%d \n", enumtag);
