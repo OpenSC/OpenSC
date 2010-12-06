@@ -56,4 +56,4 @@ LINKFLAGS = /DEBUG /NOLOGO /INCREMENTAL:NO /MACHINE:IX86
 	rc /l 0x0409 /r $<
 
 clean::
-	del /Q *.obj *.dll *.exe *.pdb *.lib *.def
+	del /Q *.obj *.dll *.exe *.pdb *.lib *.def *.manifest
