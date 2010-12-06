@@ -11,6 +11,9 @@ LIBLTDL_LIB =     # E.g. C:\libtool-1.5.8-lib\lib\libltdl.lib
 
 OPENSC_FEATURES = pcsc
 
+#Include support of minidriver 'cardmon'
+MINIDRIVER_DEF = /DENABLE_MINIDRIVER
+
 # If you want support for OpenSSL (needed for a.o. pkcs15-init tool and openssl engine):
 # - download and build OpenSSL
 # - uncomment the line starting with OPENSSL_DEF
