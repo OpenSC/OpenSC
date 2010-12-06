@@ -652,7 +652,7 @@ int sc_pkcs15_find_so_pin(struct sc_pkcs15_card *card,
 void sc_pkcs15_pincache_add(struct sc_pkcs15_card *, struct sc_pkcs15_object *, 
 			const u8 *, size_t);
 int sc_pkcs15_pincache_revalidate(struct sc_pkcs15_card *p15card, 
-			sc_pkcs15_object_t *obj);
+			const sc_pkcs15_object_t *obj);
 void sc_pkcs15_pincache_clear(struct sc_pkcs15_card *p15card);
 
 int sc_pkcs15_encode_dir(struct sc_context *ctx,
