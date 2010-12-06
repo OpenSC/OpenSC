@@ -81,7 +81,7 @@
 
 #define SC_PKCS15_PROFILE_DIRECTORY "C:\\Program Files\\OpenSC\\profiles"
 
-#define PATH_MAX _MAX_PATH
+#define PATH_MAX FILENAME_MAX
 
 #ifndef PACKAGE_VERSION
 #define PACKAGE_VERSION "@PACKAGE_VERSION@"
