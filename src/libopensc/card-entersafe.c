@@ -124,8 +124,12 @@ static int entersafe_init(sc_card_t *card)
 		 | SC_ALGORITHM_RSA_RAW
 		 | SC_ALGORITHM_RSA_HASH_NONE;
 
-	
-
+	/* exponent = 35 */
+	_sc_card_add_rsa_alg(card, 512, flags, 0x23);
+	_sc_card_add_rsa_alg(card, 768, flags, 0x23);
+	_sc_card_add_rsa_alg(card,1024, flags, 0x23);
+	_sc_card_add_rsa_alg(card,2048, flags, 0x23);
+	/* exponent = 65537 */
 	_sc_card_add_rsa_alg(card, 512, flags, 0x10001);
 	_sc_card_add_rsa_alg(card, 768, flags, 0x10001);
 	_sc_card_add_rsa_alg(card,1024, flags, 0x10001);
