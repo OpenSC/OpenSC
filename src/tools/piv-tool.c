@@ -34,7 +34,7 @@
 /* Module only built if OPENSSL is enabled */
 #include <openssl/opensslconf.h>
 #include <openssl/rsa.h>
-#ifndef OPENSSL_NO_EC
+#if OPENSSL_VERSION_NUMBER >= 0x00908000L && !defined(OPENSSL_NO_EC)
 #include <openssl/ec.h>
 #endif
 #include <openssl/evp.h>
@@ -260,8 +260,9 @@ static int gen_key(const char * key_info)
 		keydata = {0, 0, 0, 0, NULL, 0, NULL, 0, NULL, 0};
 	unsigned long expl;
 	u8 expc[4];
+#if OPENSSL_VERSION_NUMBER >= 0x00908000L && !defined(OPENSSL_NO_EC)
 	int nid;
-	
+#endif	
 	sc_hex_to_bin(key_info, buf, &buflen);
 	if (buflen != 2) {
 		fprintf(stderr, "<keyref>:<algid> invalid, example: 9A:06\n");
@@ -283,12 +284,14 @@ static int gen_key(const char * key_info)
 		case 0x05: keydata.key_bits = 3072; break;
 		case 0x06: keydata.key_bits = 1024; break;
 		case 0x07: keydata.key_bits = 2048; break;
+#if OPENSSL_VERSION_NUMBER >= 0x00908000L && !defined(OPENSSL_NO_EC)		
 		case 0x11: keydata.key_bits = 0; 
 			nid = NID_X9_62_prime256v1; /* We only support one curve per algid */
 			break; 
 		case 0x14: keydata.key_bits = 0; 
 			nid = NID_secp384r1; 
 			break;
+#endif
 		default:
 			fprintf(stderr, "<keyref>:<algid> algid=RSA - 05, 06, 07 for 3072, 1024, 2048;EC - 11, 14 for 256, 384\n");
 			return 2;
@@ -327,7 +330,7 @@ static int gen_key(const char * key_info)
 		EVP_PKEY_assign_RSA(evpkey, newkey);
 
 	} else { /* EC key */
-#ifndef OPENSSL_NO_EC
+#if OPENSSL_VERSION_NUMBER >= 0x00908000L && !defined(OPENSSL_NO_EC)
 		int i;
 		BIGNUM *x;
 		BIGNUM *y;
