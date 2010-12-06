@@ -28,7 +28,9 @@
 #include <string.h>
 #include <fcntl.h>
 #include <limits.h>
+#ifndef __APPLE__
 #include <malloc.h>
+#endif
 #ifdef ENABLE_OPENSSL
 	/* openssl only needed for card administration */
 #include <openssl/evp.h>
