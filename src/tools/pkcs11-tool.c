@@ -1244,7 +1244,7 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		util_fatal("failed to open %s: %m", opt_output);
 	}
 
-#if defined(ENABLE_OPENSSL) && OPENSSL_VERSION_NUMBER >= 0x00908000L && !defined(OPENSSL_NO_EC) && !defined(OPENSSL_NO_EDSA)
+#if defined(ENABLE_OPENSSL) && OPENSSL_VERSION_NUMBER >= 0x00908000L && !defined(OPENSSL_NO_EC) && !defined(OPENSSL_NO_ECDSA)
 /*
  * PKCS11 implies the ECDSA sig is 2nLen,
  * OpenSSL expects sequence of {integer, integer}
