@@ -118,7 +118,6 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 			r = sc_pkcs15_read_certificate(p15card, &cert_info, &cert);
 			if (r == SC_SUCCESS) {
 				mem = BIO_new_mem_buf(cert->data, cert->data_len);
-				sc_pkcs15_free_certificate(cert);
 				if (!mem)
 					return SC_ERROR_INTERNAL;
 				x509 = d2i_X509_bio(mem, NULL);
@@ -130,14 +129,12 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 					X509_NAME_ENTRY *ne;
 					ASN1_STRING *a_str;
 					ne = X509_NAME_get_entry(X509_get_subject_name(x509), r);
-					if (!ne)
-					{
+					if (!ne) {
 						X509_free(x509);
 						return SC_ERROR_INTERNAL;
 					}
 					a_str = X509_NAME_ENTRY_get_data(ne);
-					if (!a_str)
-					{
+					if (!a_str) {
 						X509_free(x509);
 						return SC_ERROR_INTERNAL;
 					}
@@ -147,7 +144,7 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 							r = sizeof(cardholder_name) -1;
 						memcpy(cardholder_name, tmp, r);
 						cardholder_name[r] = '\0';
-						set_string (&p15card->tokeninfo->label, cardholder_name);
+						set_string(&p15card->tokeninfo->label, cardholder_name);
 						OPENSSL_free(tmp);
 					}
 				}
