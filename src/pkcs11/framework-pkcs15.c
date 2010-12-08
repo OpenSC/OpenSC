@@ -1208,17 +1208,25 @@ static CK_RV pkcs15_login(struct sc_pkcs11_slot *slot,
 static CK_RV pkcs15_logout(struct sc_pkcs11_card *p11card, void *fw_token)
 {
 	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fw_data;
-	int rc = 0;
+	CK_RV ret = CKR_OK;
+	int rc;
        
 	memset(fw_data->user_puk, 0, sizeof(fw_data->user_puk));
 	fw_data->user_puk_len = 0;
 
 	sc_pkcs15_pincache_clear(fw_data->p15_card);
-	sc_logout(fw_data->p15_card->card);
 
-	if (sc_pkcs11_conf.lock_login)
+	rc = sc_logout(fw_data->p15_card->card);
+	if (rc != SC_SUCCESS)
+		ret = sc_to_cryptoki_error(rc, "C_Logout");
+
+	if (sc_pkcs11_conf.lock_login) {
 		rc = unlock_card(fw_data);
-	return sc_to_cryptoki_error(rc, "C_Logout");
+		if (rc != SC_SUCCESS)
+			ret = sc_to_cryptoki_error(rc, "C_Logout");
+	}
+
+	return ret;
 }
 
 static CK_RV pkcs15_change_pin(struct sc_pkcs11_card *p11card,
