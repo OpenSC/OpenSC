@@ -1,0 +1,5 @@
+Tested with WIX version 3.6.0917.0
+
+To create MSI:
+# wix\candle.exe -dSOURCE_DIR=<path-to-opensc-compiled-sources> -dPATH_TO_LIBLTD3_DLL=<path-to-libltd3.dll> OpenSC.wxs
+# wix\light.exe  -sh -ext WixUIExtension OpenSC.wixobj
