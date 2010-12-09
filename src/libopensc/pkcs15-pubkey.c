@@ -903,6 +903,7 @@ err:
 		free(pk.value);
 
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "ASN.1 parsing of  subjectPubkeyInfo failed");
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, r);
 }
 	
 int sc_pkcs15_pubkey_from_spki_filename(sc_context_t *ctx, 
