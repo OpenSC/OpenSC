@@ -86,7 +86,8 @@ static const struct sc_asn1_entry c_asn1_tokeninfo[] = {
 int sc_pkcs15_parse_tokeninfo(sc_context_t *ctx,
 	sc_pkcs15_tokeninfo_t *ti, const u8 *buf, size_t blen)
 {
-	int r, ii;
+	int r;
+	size_t ii;
 	u8 serial[128];
 	size_t serial_len = sizeof(serial);
 	u8 mnfid[SC_PKCS15_MAX_LABEL_SIZE];
@@ -1222,7 +1223,8 @@ int sc_pkcs15_find_pin_by_type_and_reference(struct sc_pkcs15_card *p15card,
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15_object *auth_objs[0x10];
-	int r, nn_objs, ii;
+	size_t nn_objs, ii;
+	int r;
 
 	/* Get all existing pkcs15 AUTH objects */
 	r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_AUTH_PIN, auth_objs, 0x10);
