@@ -52,8 +52,8 @@ Source: opensc.conf; DestDir: {app};
 ;Name: {group}\OpenSC Project website; Filename: {app}\www.opensc-project.org.url; Comment: Go to OpenSC Project website; Components: 
 
 [Registry]
-Root: HKLM; Subkey: Software\OpenSC; ValueType: string; ValueName: ConfigFile; ValueData: {app}\opensc.conf; Flags: uninsdeletekey; Components: 
-Root: HKLM; Subkey: Software\OpenSC; ValueType: string; ValueName: ProfileDir; ValueData: {app}\profiles; Flags: uninsdeletekey; Components: 
+Root: HKLM; Subkey: Software\OpenSC Project\OpenSC; ValueType: string; ValueName: ConfigFile; ValueData: {app}\opensc.conf; Flags: uninsdeletekey; Components: 
+Root: HKLM; Subkey: Software\OpenSC Project\OpenSC; ValueType: string; ValueName: ProfileDir; ValueData: {app}\profiles; Flags: uninsdeletekey; Components: 
 [Components]
 Name: OpenSC; Description: OpenSC core library; Flags: fixed; Types: custom compact full
 Name: OpenSSL_engine; Description: OpenSSL engine for using PKCS11 modules; Types: custom full

@@ -21,7 +21,7 @@ set OPENSC_HOME_ESCAPED=%OPENSC_HOME:\=\\%
 set REG_FILE=%TEMP%\opensc-install.reg
 
 echo Windows Registry Editor Version 5.00 > %REG_FILE%
-echo [%KEY%\SOFTWARE\OpenSC] >> %REG_FILE%
+echo [%KEY%\SOFTWARE\OpenSC Project\OpenSC] >> %REG_FILE%
 echo "ConfigFile"="%OPENSC_HOME_ESCAPED%\\etc\\opensc.conf" >> %REG_FILE%
 echo [%KEY%\SOFTWARE\PKCS11-Spy] >> %REG_FILE%
 echo "Module"="%OPENSC_HOME_ESCAPED%\\bin\\opensc-pkcs11.dll" >> %REG_FILE%
