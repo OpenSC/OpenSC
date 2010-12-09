@@ -438,7 +438,7 @@ sc_pkcs11_signature_size(sc_pkcs11_operation_t *operation, CK_ULONG_PTR pLength)
 
 	key = ((struct signature_data *) operation->priv_data)->key;
 	/*
-	 * EC (and maybe GOSTR) do not have CKA_MODULUS_BITS attribute.
+	 * EC and GOSTR do not have CKA_MODULUS_BITS attribute.
 	 * But other code in framework treats them as if they do. 
 	 * So should do switch(key_type)
 	 * and then get what ever attributes are needed. 
@@ -460,7 +460,7 @@ sc_pkcs11_signature_size(sc_pkcs11_operation_t *operation, CK_ULONG_PTR pLength)
 			case CKK_GOSTR3410:
 				rv = key->ops->get_attribute(operation->session, key, &attr);
 				if (rv == CKR_OK)
-					*pLength *= 2;
+					*pLength = (*pLength + 7) / 8 * 2;
 				break;
 			default:
 				rv = CKR_MECHANISM_INVALID;
