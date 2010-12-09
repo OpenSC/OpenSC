@@ -720,21 +720,27 @@ int  _sc_card_add_ec_alg(sc_card_t *card, unsigned int key_length,
 	return _sc_card_add_algorithm(card, &info);
 }
 
-sc_algorithm_info_t * sc_card_find_ec_alg(sc_card_t *card,
-		unsigned int key_length)
+static sc_algorithm_info_t * sc_card_find_alg(sc_card_t *card,
+		unsigned int algorithm, unsigned int key_length)
 {
 	int i;
 
 	for (i = 0; i < card->algorithm_count; i++) {
 		sc_algorithm_info_t *info = &card->algorithms[i];
 
-		if (info->algorithm != SC_ALGORITHM_EC)
+		if (info->algorithm != algorithm)
 			continue;
 		if (info->key_length != key_length)
 			continue;
 		return info;
 	}
 	return NULL;
+}
+
+sc_algorithm_info_t * sc_card_find_ec_alg(sc_card_t *card,
+		unsigned int key_length)
+{
+	return sc_card_find_alg(card, SC_ALGORITHM_EC, key_length);
 }
 	
 int _sc_card_add_rsa_alg(sc_card_t *card, unsigned int key_length,
@@ -754,18 +760,13 @@ int _sc_card_add_rsa_alg(sc_card_t *card, unsigned int key_length,
 sc_algorithm_info_t * sc_card_find_rsa_alg(sc_card_t *card,
 		unsigned int key_length)
 {
-	int i;
+	return sc_card_find_alg(card, SC_ALGORITHM_RSA, key_length);
+}
 
-	for (i = 0; i < card->algorithm_count; i++) {
-		sc_algorithm_info_t *info = &card->algorithms[i];
-
-		if (info->algorithm != SC_ALGORITHM_RSA)
-			continue;
-		if (info->key_length != key_length)
-			continue;
-		return info;
-	}
-	return NULL;
+sc_algorithm_info_t * sc_card_find_gostr3410_alg(sc_card_t *card,
+		unsigned int key_length)
+{
+	return sc_card_find_alg(card, SC_ALGORITHM_GOSTR3410, key_length);
 }
 
 static int match_atr_table(sc_context_t *ctx, struct sc_atr_table *table, u8 *atr, size_t atr_len)

@@ -1109,7 +1109,8 @@ struct sc_algorithm_info * sc_card_find_rsa_alg(sc_card_t *card,
 		unsigned int key_length);
 struct sc_algorithm_info * sc_card_find_ec_alg(sc_card_t *card,
 		unsigned int field_length);
-
+struct sc_algorithm_info * sc_card_find_gostr3410_alg(sc_card_t *card,
+		unsigned int key_length);
 
 struct sc_card_error {
 	unsigned int SWs;
