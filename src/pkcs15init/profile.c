@@ -328,7 +328,7 @@ sc_profile_load(struct sc_profile *profile, const char *filename)
 	}
 	if (!profile_dir) {
 #ifdef _WIN32
-		rc = RegOpenKeyEx(HKEY_CURRENT_USER, "Software\\OpenSC", 0, KEY_QUERY_VALUE, &hKey);
+		rc = RegOpenKeyEx(HKEY_CURRENT_USER, "Software\\OpenSC Project\\OpenSC", 0, KEY_QUERY_VALUE, &hKey);
 		if (rc == ERROR_SUCCESS) {
 			temp_len = PATH_MAX;
 			rc = RegQueryValueEx(hKey, "ProfileDir", NULL, NULL, (LPBYTE) temp_path, &temp_len);
@@ -337,7 +337,7 @@ sc_profile_load(struct sc_profile *profile, const char *filename)
 			RegCloseKey(hKey);
 		}
 		if (!profile_dir) {
-			rc = RegOpenKeyEx(HKEY_LOCAL_MACHINE, "Software\\OpenSC", 0, KEY_QUERY_VALUE, &hKey);
+			rc = RegOpenKeyEx(HKEY_LOCAL_MACHINE, "Software\\OpenSC Project\\OpenSC", 0, KEY_QUERY_VALUE, &hKey);
 			if (rc == ERROR_SUCCESS) {
 				temp_len = PATH_MAX;
 				rc = RegQueryValueEx(hKey, "ProfileDir", NULL, NULL, (LPBYTE) temp_path, &temp_len);

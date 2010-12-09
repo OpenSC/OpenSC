@@ -475,7 +475,7 @@ static void process_config_file(sc_context_t *ctx, struct _sc_ctx_options *opts)
 #ifdef _WIN32
 	conf_path = getenv("OPENSC_CONF");
 	if (!conf_path) {
-		rc = RegOpenKeyEx(HKEY_CURRENT_USER, "Software\\OpenSC", 0, KEY_QUERY_VALUE, &hKey);
+		rc = RegOpenKeyEx(HKEY_CURRENT_USER, "Software\\OpenSC Project\\OpenSC", 0, KEY_QUERY_VALUE, &hKey);
 		if (rc == ERROR_SUCCESS) {
 			temp_len = PATH_MAX;
 			rc = RegQueryValueEx( hKey, "ConfigFile", NULL, NULL, (LPBYTE) temp_path, &temp_len);
@@ -486,7 +486,7 @@ static void process_config_file(sc_context_t *ctx, struct _sc_ctx_options *opts)
 	}
 
 	if (!conf_path) {
-		rc = RegOpenKeyEx( HKEY_LOCAL_MACHINE, "Software\\OpenSC", 0, KEY_QUERY_VALUE, &hKey );
+		rc = RegOpenKeyEx( HKEY_LOCAL_MACHINE, "Software\\OpenSC Project\\OpenSC", 0, KEY_QUERY_VALUE, &hKey );
 		if (rc == ERROR_SUCCESS) {
 			temp_len = PATH_MAX;
 			rc = RegQueryValueEx( hKey, "ConfigFile", NULL, NULL, (LPBYTE) temp_path, &temp_len);
