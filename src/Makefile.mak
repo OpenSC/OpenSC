@@ -9,6 +9,7 @@ SUBDIRS = $(SUBDIRS) cardmod
 !ENDIF
 
 !IF "$(WIX_MSI_DEF)" == "/DBUILD_MSI"
+SUBDIRS = $(SUBDIRS) "$(TOPDIR)\etc"
 SUBDIRS = $(SUBDIRS) "$(TOPDIR)\win32\opensc-msi"
 !ENDIF
 
