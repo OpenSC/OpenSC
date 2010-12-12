@@ -1414,7 +1414,7 @@ DWORD WINAPI CardAcquireContext(IN PCARD_DATA pCardData, __in DWORD dwFlags)
 		ctx_param.ver = 1;
 		ctx_param.app_name = "cardmod";
 
-		if (RegCreateKeyEx(HKEY_LOCAL_MACHINE, "SOFTWARE\\Opensc", 0, NULL, \
+		if (RegCreateKeyEx(HKEY_LOCAL_MACHINE, "SOFTWARE\\OpenSC Project\\Opensc", 0, NULL, \
 			REG_OPTION_NON_VOLATILE, KEY_WRITE, NULL, &key, NULL) == ERROR_SUCCESS)
 		{
 			if(RegSetValueEx(key, "pcsc_ctx", NULL, REG_DWORD, &(pCardData->hSCardCtx), \
@@ -1664,7 +1664,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 				while (isalnum(*p) || ('.' == *p) || ('_' == *p)) p--;
 				p++;
 				
-				if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, "SOFTWARE\\Opensc",\
+				if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, "SOFTWARE\\OpenSC Project\\Opensc",\
 					NULL, KEY_READ, &key)==ERROR_SUCCESS)
 				{
 					CHAR val[1024]; 

@@ -1674,7 +1674,7 @@ static int cardmod_detect_readers(sc_context_t *ctx)
 
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Probing pcsc readers");
 
-	if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, "SOFTWARE\\Opensc",\
+	if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, "SOFTWARE\\OpenSC Project\\Opensc",\
 		NULL, KEY_READ, &key)==ERROR_SUCCESS)
 	{
 		CHAR val[1024]; 
