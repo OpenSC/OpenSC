@@ -142,4 +142,5 @@ cp MacOSX/opensc-uninstall target/usr/local/bin
 
 # Create .dmg
 rm -f OpenSC-${OSX_RELEASE}.dmg
-hdiutil create -srcfolder OpenSC-${OSX_RELEASE}.pkg -volname "OpenSC for Mac OS X ${OSX_RELEASE}" OpenSC-${OSX_RELEASE}.dmg
+TIMESTAMP=$(date +%Y.%m.%d)
+hdiutil create -srcfolder OpenSC-${OSX_RELEASE}.pkg -volname "OpenSC for Mac OS X ${OSX_RELEASE} (${TIMESTAMP})" OpenSC-${OSX_RELEASE}.dmg
