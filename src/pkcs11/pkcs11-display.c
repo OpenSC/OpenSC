@@ -88,9 +88,9 @@ static char *buf_spec(CK_VOID_PTR buf_addr, CK_ULONG buf_len)
 {
 	static char ret[64];
 	if (sizeof(CK_VOID_PTR) == 4) {
-		sprintf(ret, "%08lx / %ld", buf_addr, (CK_LONG) buf_len);
+		sprintf(ret, "%08lx / %ld", (unsigned long) buf_addr, (CK_LONG) buf_len);
 	} else {
-		sprintf(ret, "%016lx / %ld", buf_addr, (CK_LONG) buf_len);
+		sprintf(ret, "%016lx / %ld", (unsigned long) buf_addr, (CK_LONG) buf_len);
 	}
 	return ret;
 }
@@ -119,7 +119,7 @@ void print_boolean(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_V
 void print_generic(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg)
 {
   CK_ULONG i;
-  if(size != (CK_LONG)(-1) && value != NULL) {
+  if((CK_LONG)size != -1 && value != NULL) {
     fprintf(f, "%s\n    ", buf_spec(value, size));
     for(i = 0; i < size; i++) {
       if (i != 0) {
@@ -163,7 +163,7 @@ void print_print(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOI
 {
   CK_ULONG i, j;
   CK_BYTE  c;
-  if(size != (CK_LONG)(-1)) {
+  if((CK_LONG)size != -1) {
     fprintf(f, "%s\n    ", buf_spec(value, size));
     for(i = 0; i < size; i += j) {
       for(j = 0; ((i + j < size) && (j < 32)); j++) {
