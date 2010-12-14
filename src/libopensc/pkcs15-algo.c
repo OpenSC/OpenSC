@@ -267,7 +267,7 @@ sc_debug(ctx, SC_LOG_DEBUG_ASN1, "DEE - asn1_decode_ec_params %p:%d %d", buf, bu
 	sc_format_asn1_entry(asn1_ec_params + 1, &curve, 0, 0);
 
 	/* Some signature algorithms will not have any data */
-	if (buflen == 0 | buf == NULL ) 
+	if (buflen == 0 || buf == NULL ) 
 		return 0;
 
 	r = sc_asn1_decode_choice(ctx, asn1_ec_params, buf, buflen, NULL, NULL);
