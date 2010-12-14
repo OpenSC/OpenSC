@@ -516,7 +516,7 @@ sc_debug(ctx, SC_LOG_DEBUG_NORMAL,"DEE-EC key=%p, buf=%p, buflen=%d", key, buf, 
 	 * x and y are same size, and field_length = sizeof(x) in bits. */
 	/* TODO: -DEE  support more then uncompressed */
 	key->field_length = (ecpoint_len - 1)/2 * 8; 
-	if (ecpoint_data);
+	if (ecpoint_data)
 		free (ecpoint_data);
 
 	return r;
@@ -774,12 +774,13 @@ int sc_pkcs15_read_der_file(sc_context_t *ctx, char * filename,
 		goto out;
 	}
 
-	len = read(f, tagbuf, sizeof(tagbuf)); /* get tag and length */
-	if (len < 0) {
+	r = read(f, tagbuf, sizeof(tagbuf)); /* get tag and length */
+	if (r < 2) {
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL,"Problem with \"%s\"\n",filename);
 		r =  SC_ERROR_DATA_OBJECT_NOT_FOUND;
 		goto out;
 	}
+	len = r;
 	body = tagbuf;
 	if (sc_asn1_read_tag(&body, 0xfffff, &cla_out,
 			&tag_out, &bodylen) != SC_SUCCESS) {
@@ -797,8 +798,8 @@ int sc_pkcs15_read_der_file(sc_context_t *ctx, char * filename,
 	memcpy(rbuf, tagbuf, len); /* copy first or only part */
 	if (rbuflen > len) {
 		/* read rest of file */
-		len = read(f, rbuf + sizeof(tagbuf), rbuflen - sizeof(tagbuf)); 
-		if (len != rbuflen - sizeof(tagbuf)) {
+		r = read(f, rbuf + len, rbuflen - len); 
+		if (r < (int)(rbuflen - len)) {
 			r = SC_ERROR_INVALID_ASN1_OBJECT;
 			free (rbuf);
 			rbuf = NULL;
