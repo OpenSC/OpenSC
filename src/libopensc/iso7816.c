@@ -309,11 +309,11 @@ static int iso7816_process_fci(sc_card_t *card, sc_file_t *file,
 			"  file identifier: 0x%02X%02X", tag[0], tag[1]);
 	}
 	tag = sc_asn1_find_tag(ctx, p, len, 0x80, &taglen);
-	if (tag != NULL && taglen >= 2) {
-		int bytes = (tag[0] << 8) + tag[1];
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
-			"  bytes in file: %d", bytes);
-		file->size = bytes;
+	if (tag != NULL && taglen > 0 && taglen < 3) {
+		file->size = tag[0];
+		if (taglen == 2)
+			file->size = (file->size << 8) + tag[1];
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "  bytes in file: %d", file->size);
 	}
 	if (tag == NULL) {
 		tag = sc_asn1_find_tag(ctx, p, len, 0x81, &taglen);
