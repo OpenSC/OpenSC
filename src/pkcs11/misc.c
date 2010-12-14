@@ -56,7 +56,7 @@ void strcpy_bp(u8 * dst, const char *src, size_t dstsize)
 
 static CK_RV sc_to_cryptoki_error_common(int rc)
 {
-	sc_debug(context, SC_LOG_DEBUG_NORMAL, "opensc error: %s (%d)\n", sc_strerror(rc), rc);
+	sc_debug(context, SC_LOG_DEBUG_NORMAL, "libopensc return value: %d (%s)\n", rc, sc_strerror(rc));
 	switch (rc) {
 	case SC_SUCCESS:
 		return CKR_OK;

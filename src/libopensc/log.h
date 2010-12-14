@@ -65,14 +65,21 @@ char * sc_dump_hex(const u8 * in, size_t count);
 
 #define SC_FUNC_RETURN(ctx, level, r) do { \
 	int _ret = r; \
-	sc_do_log(ctx, level, __FILE__, __LINE__, __FUNCTION__, "returning with: %d\n", _ret); \
+	if (_ret <= 0) { \
+		sc_do_log(ctx, level, __FILE__, __LINE__, __FUNCTION__, \
+			"returning with: %d (%s)\n", _ret, sc_strerror(_ret)); \
+	} else { \
+		sc_do_log(ctx, level, __FILE__, __LINE__, __FUNCTION__, \
+			"returning with: %d\n", _ret); \
+	} \
 	return _ret; \
 } while(0)
 
 #define SC_TEST_RET(ctx, level, r, text) do { \
 	int _ret = (r); \
 	if (_ret < 0) { \
-		sc_do_log(ctx, level, __FILE__, __LINE__, __FUNCTION__, "%s: %s\n", (text), sc_strerror(_ret)); \
+		sc_do_log(ctx, level, __FILE__, __LINE__, __FUNCTION__, \
+			"%s: %d (%s)\n", (text), _ret, sc_strerror(_ret)); \
 		return _ret; \
 	} \
 } while(0)
