@@ -43,18 +43,10 @@ app default {
 	# The following section shows definitions for PC/SC readers.
 	reader_driver pcsc {
 		# This sets the maximum send and receive sizes.
-		# Some reader drivers have limitations, so you need
-		# to set these values. For usb devices check the
-		# properties with lsusb -vv for dwMaxIFSD
-		#
-		# These values will be used for APDU communication
-		# and are used for maximum Lc/Le calculation
-		# (will not include CLA, INS, P1, P2 or SW1, SW2).
-		#
-		# Default: send: 255, recv: 256
+		# Default: n/a
 		# max_send_size = 255;
 		# max_recv_size = 256;
-		
+		#
 		# Connect to reader in exclusive mode?
 		# Default: false
 		# connect_exclusive = true;
@@ -90,12 +82,9 @@ app default {
 		# Virtual readers to allocate.
 		# Default: 2
 		# readers = 5;
-
-		# This sets the maximum send and receive sizes.
-		# Some reader drivers have limitations, so you need
-		# to set these values. For usb devices check the
-		# properties with lsusb -vv for dwMaxIFSD
 		#
+		# This sets the maximum send and receive sizes.
+		# Default: n/a
 		# max_send_size = 255;
 		# max_recv_size = 256;
 	};
