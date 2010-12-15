@@ -1218,7 +1218,7 @@ int sc_pkcs15_find_pin_by_reference(struct sc_pkcs15_card *p15card,
 
 int sc_pkcs15_find_pin_by_type_and_reference(struct sc_pkcs15_card *p15card,
 				const sc_path_t *path,
-				int auth_method, int reference,
+				unsigned auth_method, int reference,
 				struct sc_pkcs15_object **out)
 {
 	struct sc_context *ctx = p15card->card->ctx;

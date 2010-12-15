@@ -643,7 +643,7 @@ int sc_pkcs15_find_pin_by_reference(struct sc_pkcs15_card *card,
 				    const sc_path_t *path, int reference,
 				    struct sc_pkcs15_object **out);
 int sc_pkcs15_find_pin_by_type_and_reference(struct sc_pkcs15_card *card,
-				    const sc_path_t *path, int type, 
+				    const sc_path_t *path, unsigned auth_method, 
 				    int reference,
 				    struct sc_pkcs15_object **out);
 int sc_pkcs15_find_so_pin(struct sc_pkcs15_card *card,
