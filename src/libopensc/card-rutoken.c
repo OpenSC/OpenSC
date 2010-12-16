@@ -186,7 +186,7 @@ static const struct sc_card_error rutoken_errors[] = {
 	{ 0x6F85, SC_ERROR_CARD_CMD_FAILED,     "In the current folder the maximum quantity of file system objects is already created"}, 
 	{ 0x6F86, SC_ERROR_CARD_CMD_FAILED,     "Invalid access right. Already login"}, 
 
-	{ 0x9000, SC_NO_ERROR,                  NULL}
+	{ 0x9000, SC_SUCCESS,                  NULL}
 };
 
 static int rutoken_check_sw(sc_card_t *card, unsigned int sw1, unsigned int sw2)
@@ -523,7 +523,7 @@ static int set_sec_attr_from_acl(sc_card_t *card, sc_file_t *file)
 	size_t i, n_conv_attr;
 	const sc_acl_entry_t *entry;
 	sc_SecAttrV2_t attr = { 0 };
-	int ret = SC_NO_ERROR;
+	int ret = SC_SUCCESS;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
 
@@ -1002,7 +1002,7 @@ static int rutoken_cipher_p(sc_card_t *card, const u8 * crgram, size_t crgram_le
 		ret = sc_transmit_apdu(card, &apdu);
 		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "APDU transmit failed");
 		ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
-		if (ret == SC_NO_ERROR)
+		if (ret == SC_SUCCESS)
 		{
 			if (isIV)
 			{
@@ -1019,9 +1019,9 @@ static int rutoken_cipher_p(sc_card_t *card, const u8 * crgram, size_t crgram_le
 				outlen_tail -= apdu.resplen;
 			}
 		}
-	} while (ret == SC_NO_ERROR  &&  crgram_len != 0);
+	} while (ret == SC_SUCCESS  &&  crgram_len != 0);
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "len out cipher %d\n", outlen - outlen_tail);
-	if (ret == SC_NO_ERROR)
+	if (ret == SC_SUCCESS)
 		ret = (outlen_tail == 0) ? (int)outlen : SC_ERROR_WRONG_LENGTH;
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, ret);
 }
@@ -1086,7 +1086,7 @@ static int rutoken_compute_mac_gost(sc_card_t *card,
 		ret = sc_transmit_apdu(card, &apdu);
 		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "APDU transmit failed");
 		ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	} while (ret == SC_NO_ERROR  &&  ilen != 0);
+	} while (ret == SC_SUCCESS  &&  ilen != 0);
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, ret);
 }
 
@@ -1194,11 +1194,11 @@ static int rutoken_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 			/*|| cmd == SC_CARDCTL_ERASE_CARD */
 			|| cmd == SC_CARDCTL_RUTOKEN_FORMAT_INIT
 			|| cmd == SC_CARDCTL_RUTOKEN_FORMAT_END
-		) ? SC_NO_ERROR : SC_ERROR_INVALID_ARGUMENTS;
+		) ? SC_SUCCESS : SC_ERROR_INVALID_ARGUMENTS;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	if (ret == SC_NO_ERROR)
+	if (ret == SC_SUCCESS)
 	{
 		switch (cmd) 
 		{

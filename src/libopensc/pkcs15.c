@@ -631,7 +631,7 @@ static int sc_pkcs15_bind_internal(sc_pkcs15_card_t *p15card)
 	if ((err == SC_ERROR_FILE_NOT_FOUND) &&
 	    (card->app_count < 1)) {
 		sc_format_path("3F00", &p15card->file_app->path);
-		err = SC_NO_ERROR;
+		err = SC_SUCCESS;
 	}
 #endif
 	if (err < 0)

@@ -87,7 +87,7 @@ openct_reader_init(sc_context_t *ctx)
 		}
 	}
 
-	return SC_NO_ERROR;
+	return SC_SUCCESS;
 }
 
 static int
@@ -138,7 +138,7 @@ openct_add_reader(sc_context_t *ctx, unsigned int num, ct_info_t *info)
 static int openct_reader_finish(sc_context_t *ctx)
 {
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
-	return SC_NO_ERROR;
+	return SC_SUCCESS;
 }
 
 /*
@@ -159,7 +159,7 @@ static int openct_reader_release(sc_reader_t *reader)
 		free(data);
 	}
 	
-	return SC_NO_ERROR;
+	return SC_SUCCESS;
 }
 
 /*
@@ -218,7 +218,7 @@ openct_reader_connect(sc_reader_t *reader)
 	}
 
 	reader->atr_len = rc;
-	return SC_NO_ERROR;
+	return SC_SUCCESS;
 }
 
 static int
@@ -243,7 +243,7 @@ static int openct_reader_disconnect(sc_reader_t *reader)
 	if (data->h)
 		ct_reader_disconnect(data->h);
 	data->h = NULL;
-	return SC_NO_ERROR;
+	return SC_SUCCESS;
 }
 
 static int

@@ -861,13 +861,13 @@ static int entersafe_set_security_env(sc_card_t *card,
 		  SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_OUT_OF_MEMORY);
 
 	 memcpy(card->drv_data,env,sizeof(*env));
-	 SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_NO_ERROR);
+	 SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
 }
 
 static int entersafe_restore_security_env(sc_card_t *card, int se_num)
 {
 	 SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	 return SC_NO_ERROR;
+	 return SC_SUCCESS;
 }
 
 

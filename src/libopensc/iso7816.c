@@ -91,7 +91,7 @@ static int iso7816_check_sw(sc_card_t *card, unsigned int sw1, unsigned int sw2)
 		return SC_ERROR_WRONG_LENGTH;
 	}
 	if (sw1 == 0x90)
-		return SC_NO_ERROR;
+		return SC_SUCCESS;
         if (sw1 == 0x63U && (sw2 & ~0x0fU) == 0xc0U ) {
              sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Verification failed (remaining tries: %d)",
                    (sw2 & 0x0f));

@@ -802,7 +802,7 @@ static int atrust_acos_check_sw(struct sc_card *card, unsigned int sw1,
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "sw1 = 0x%02x, sw2 = 0x%02x\n", sw1, sw2);
   
 	if (sw1 == 0x90)
-		return SC_NO_ERROR;
+		return SC_SUCCESS;
 	if (sw1 == 0x63 && (sw2 & ~0x0fU) == 0xc0 )
 	{
 		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Verification failed (remaining tries: %d)\n",

@@ -247,9 +247,9 @@ static const struct sc_card_error cardos_errors[] = {
 { 0x6f00, SC_ERROR_CARD_CMD_FAILED,	"technical error (see eToken developers guide)"}, 
 
 /* no error, maybe a note */
-{ 0x9000, SC_NO_ERROR,		NULL}, 
-{ 0x9001, SC_NO_ERROR,		"success, but eeprom weakness detected"}, 
-{ 0x9850, SC_NO_ERROR,		"over/underflow useing in/decrease"}
+{ 0x9000, SC_SUCCESS,		NULL}, 
+{ 0x9001, SC_SUCCESS,		"success, but eeprom weakness detected"}, 
+{ 0x9850, SC_SUCCESS,		"over/underflow useing in/decrease"}
 };
 
 static int cardos_check_sw(sc_card_t *card, unsigned int sw1, unsigned int sw2)

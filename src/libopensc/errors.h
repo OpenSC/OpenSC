@@ -26,7 +26,6 @@ extern "C" {
 #endif
 
 #define SC_SUCCESS				0
-#define SC_NO_ERROR				0
 
 /* Errors related to reader operation */
 #define SC_ERROR_READER				-1100
