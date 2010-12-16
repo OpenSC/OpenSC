@@ -163,10 +163,18 @@ static CK_RV pkcs15_bind(struct sc_pkcs11_card *p11card)
 	p11card->fw_data = fw_data;
 
 	rc = sc_pkcs15_bind(p11card->card, &fw_data->p15_card);
-	sc_debug(context, SC_LOG_DEBUG_NORMAL, "Binding to PKCS#15, rc=%d\n", rc);
-	if (rc < 0)
+	if (rc != SC_SUCCESS) {
+		sc_debug(context, SC_LOG_DEBUG_NORMAL, "sc_pkcs15_bind failed: %d", rc);
 		return sc_to_cryptoki_error(rc, NULL);
-	return register_mechanisms(p11card);
+	}
+
+	rc = register_mechanisms(p11card);
+	if (rc != CKR_OK) {
+		sc_debug(context, SC_LOG_DEBUG_NORMAL, "register_mechanisms failed: 0x%x", rc);
+		return rc;
+	}
+
+	return CKR_OK;
 }
 
 static CK_RV pkcs15_unbind(struct sc_pkcs11_card *p11card)
