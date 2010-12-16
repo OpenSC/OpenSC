@@ -791,7 +791,7 @@ static struct sc_pkcs15init_operations sc_pkcs15init_cardos_operations = {
 	NULL, NULL, 			/* encode private/public key */
 	NULL,				/* finalize_card */
 	NULL, 				/* delete_object */
-	NULL, NULL, NULL, NULL  /* pkcs15init emulation */
+	NULL, NULL, NULL, NULL, NULL  /* pkcs15init emulation */
 };
 
 struct sc_pkcs15init_operations *

@@ -908,7 +908,7 @@ static struct sc_pkcs15init_operations sc_pkcs15init_cryptoflex_operations = {
 	cryptoflex_encode_public_key,
 	NULL,					/* finalize_card */
 	NULL, 					/* delete_object */
-	NULL, NULL, NULL, NULL  /* pkcs15init emulation */
+	NULL, NULL, NULL, NULL, NULL  /* pkcs15init emulation */
 };
 
 static struct sc_pkcs15init_operations sc_pkcs15init_cyberflex_operations = {
@@ -926,7 +926,7 @@ static struct sc_pkcs15init_operations sc_pkcs15init_cyberflex_operations = {
 	cyberflex_encode_public_key,
 	NULL,					/* finalize_card */
 	NULL, 					/* delete_object */
-	NULL, NULL, NULL, NULL  /* pkcs15init emulation */
+	NULL, NULL, NULL, NULL, NULL  /* pkcs15init emulation */
 };
 
 struct sc_pkcs15init_operations *
