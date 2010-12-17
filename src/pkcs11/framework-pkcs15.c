@@ -135,7 +135,7 @@ static const struct {
 };
 
 static int	__pkcs15_release_object(struct pkcs15_any_object *);
-static int	register_mechanisms(struct sc_pkcs11_card *p11card);
+static CK_RV	register_mechanisms(struct sc_pkcs11_card *p11card);
 static CK_RV	get_public_exponent(struct sc_pkcs15_pubkey *,
 					CK_ATTRIBUTE_PTR);
 static CK_RV	get_modulus(struct sc_pkcs15_pubkey *,
@@ -157,6 +157,7 @@ static CK_RV pkcs15_bind(struct sc_pkcs11_card *p11card)
 {
 	struct pkcs15_fw_data *fw_data;
 	int rc;
+	CK_RV rv;
 
 	if (!(fw_data = calloc(1, sizeof(*fw_data))))
 		return CKR_HOST_MEMORY;
@@ -3293,7 +3294,7 @@ static int register_ec_mechanisms(struct sc_pkcs11_card *p11card, int flags,
  * FIXME: We should consult the card's algorithm list to
  * find out what operations it supports
  */
-static int register_mechanisms(struct sc_pkcs11_card *p11card)
+static CK_RV register_mechanisms(struct sc_pkcs11_card *p11card)
 {
 	sc_card_t *card = p11card->card;
 	sc_algorithm_info_t *alg_info;
@@ -3378,8 +3379,13 @@ static int register_mechanisms(struct sc_pkcs11_card *p11card)
 		/* If the card supports RAW, it should by all means
 		 * have registered everything else, too. If it didn't
 		 * we help it a little
+		 * FIXME?  This may force us to support these in software
 		 */
-		flags |= SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASHES;
+		flags |= SC_ALGORITHM_RSA_PAD_PKCS1;
+#ifdef ENABLE_OPENSSL
+		/* all our software hashes are in OpenSSL */
+		flags |= SC_ALGORITHM_RSA_HASHES;
+#endif
 	}
 
 	/* Check for PKCS1 */
@@ -3391,9 +3397,13 @@ static int register_mechanisms(struct sc_pkcs11_card *p11card)
 
 		/* if the driver doesn't say what hashes it supports,
 		 * claim we will do all of them */
-		if (!(flags & SC_ALGORITHM_RSA_HASHES))
+		/* FIXME?  This may force us to support these in software */
+		/* FIXME?  and we only do hashes if OpenSSL is enabled */
+		if (!(flags & (SC_ALGORITHM_RSA_HASHES|SC_ALGORITHM_RSA_HASH_NONE)))
 			flags |= SC_ALGORITHM_RSA_HASHES;
 
+#ifdef ENABLE_OPENSSL
+		/* sc_pkcs11_register_sign_and_hash_mechanism expects software hash */
 		if (flags & SC_ALGORITHM_RSA_HASH_SHA1) {
 			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card, CKM_SHA1_RSA_PKCS, CKM_SHA_1, mt);
 			if (rc != CKR_OK)
@@ -3414,6 +3424,7 @@ static int register_mechanisms(struct sc_pkcs11_card *p11card)
 			if (rc != CKR_OK)
 				return rc;
 		}
+#endif
 
 		if (flags & SC_ALGORITHM_ONBOARD_KEY_GEN) {
 			mech_info.flags = CKF_GENERATE_KEY_PAIR;
