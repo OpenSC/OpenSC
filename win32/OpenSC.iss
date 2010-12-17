@@ -1,12 +1,12 @@
 [Setup]
 AppName=OpenSC
-AppVerName=OpenSC 0.12.0
+AppVerName=OpenSC 0.12.0-rc2
 AppPublisher=OpenSC project
 AppPublisherURL=http://www.opensc-project.org/
 AppSupportURL=http://www.opensc-project.org/opensc/
 AppUpdatesURL=http://www.opensc-project.org/opensc/
 DefaultDirName={pf}\OpenSC Project\OpenSC
-OutputBaseFilename=OpenSC-0.12.0
+OutputBaseFilename=OpenSC-0.12.0-rc2
 Compression=lzma/normal
 SolidCompression=true
 MinVersion=0,5.0.2195
