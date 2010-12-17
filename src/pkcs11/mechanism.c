@@ -429,8 +429,6 @@ static CK_RV
 sc_pkcs11_signature_size(sc_pkcs11_operation_t *operation, CK_ULONG_PTR pLength)
 {
 	struct sc_pkcs11_object *key;
-	CK_ULONG ec_point_size = 0;
-	CK_BYTE_PTR ec_point = NULL;
 	CK_ATTRIBUTE attr = { CKA_MODULUS_BITS, pLength, sizeof(*pLength) };
 	CK_KEY_TYPE key_type;
 	CK_ATTRIBUTE attr_key_type = { CKA_KEY_TYPE, &key_type, sizeof(key_type) };
