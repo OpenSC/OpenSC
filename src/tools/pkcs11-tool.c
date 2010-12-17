@@ -241,7 +241,7 @@ static void		init_pin(CK_SLOT_ID, CK_SESSION_HANDLE);
 static int		change_pin(CK_SLOT_ID, CK_SESSION_HANDLE);
 static int 		unlock_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess, int login_type);
 static void		show_object(CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
-static void		show_key(CK_SESSION_HANDLE, CK_OBJECT_HANDLE, int);
+static void		show_key(CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static void		show_cert(CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static void		show_dobj(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj);
 static void		sign_data(CK_SLOT_ID,
@@ -2008,10 +2008,8 @@ static void show_object(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 
 	switch (cls) {
 	case CKO_PUBLIC_KEY:
-		show_key(sess, obj, 1);
-		break;
 	case CKO_PRIVATE_KEY:
-		show_key(sess, obj, 0);
+		show_key(sess, obj);
 		break;
 	case CKO_CERTIFICATE:
 		show_cert(sess, obj);
@@ -2026,15 +2024,28 @@ static void show_object(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 	}
 }
 
-static void show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj, int pub)
+static void show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 {
 	CK_KEY_TYPE	key_type = getKEY_TYPE(sess, obj);
-	CK_ULONG	size;
+	CK_ULONG	size = 0;
 	unsigned char	*id, *oid;
+	const char      *sepa;
 	char		*label;
-	const char *sepa;
+	int		pub;
 
-	printf("%s Key Object", pub? "Public" : "Private");
+	switch(getCLASS(sess, obj)) {
+		case CKO_PRIVATE_KEY:
+			printf("Private Key Object");
+			pub = 0;
+			break;
+		case CKO_PUBLIC_KEY:
+			printf("Public Key Object");
+			pub = 1;
+			break;
+		default:
+			return;
+	}
+
 	switch (key_type) {
 	case CKK_RSA:
 		if (pub)
@@ -2059,8 +2070,8 @@ static void show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj, int pub)
 		printf("; EC");
 		if (pub) { 
 			unsigned char *bytes = NULL;
+			unsigned int n;
 			int ksize;
-			int n;
 			bytes = getEC_POINT(sess, obj, &size);
 			/* 
 			 * (We only support uncompressed for now) 
@@ -2078,7 +2089,7 @@ static void show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj, int pub)
 			
 			printf(" EC_POINT %d bits\n", ksize);
 			if (bytes) {
-				if (size > 0) { /* Will print the point here */
+				if ((CK_LONG)size > 0) { /* Will print the point here */
 					printf(" EC_POINT:  ");
 					for (n = 0; n < size; n++)
 						printf("%02x", bytes[n]);
@@ -2089,7 +2100,7 @@ static void show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj, int pub)
 			bytes = NULL;
 			bytes = getEC_PARAMS(sess, obj, &size);
 			if (bytes){ 
-				if (size > 0) {
+				if ((CK_LONG)size > 0) {
 					printf("  EC_PARAMS:  ");
 					for (n = 0; n < size; n++)
 						printf("%02x", bytes[n]);
@@ -2302,7 +2313,7 @@ static int read_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	CK_OBJECT_HANDLE obj = CK_INVALID_HANDLE;
 	int nn_attrs = 0;
 	unsigned char *value = NULL;
-	CK_ULONG len;
+	CK_ULONG len = 0;
 	FILE *out;
 	struct sc_object_id oid;
 	
