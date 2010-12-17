@@ -177,14 +177,24 @@ struct sc_pkcs11_framework_ops framework_pkcs15init = {
 	NULL, /* init_pin */
 	NULL, /* create_object */
 	NULL, /* gen_keypair */
-	NULL, /* get_random */
+	NULL  /* get_random */
 };
 
 #else /* ifdef USE_PKCS15_INIT */
 
 struct sc_pkcs11_framework_ops framework_pkcs15init = {
-	NULL,
-	NULL,
+	NULL,	/* bind */
+	NULL,	/* unbind */
+	NULL,	/* create_tokens */
+	NULL,	/* release_tokens */
+	NULL,	/* login */
+	NULL,	/* logout */
+	NULL,	/* change_pin */
+	NULL,	/* inti_token */
+	NULL,	/* init_pin */
+	NULL,	/* create_object */
+	NULL,	/* gen_keypair */
+	NULL	/* get_random */
 };
 
 #endif
