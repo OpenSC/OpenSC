@@ -169,10 +169,10 @@ static CK_RV pkcs15_bind(struct sc_pkcs11_card *p11card)
 		return sc_to_cryptoki_error(rc, NULL);
 	}
 
-	rc = register_mechanisms(p11card);
-	if (rc != CKR_OK) {
-		sc_debug(context, SC_LOG_DEBUG_NORMAL, "register_mechanisms failed: 0x%x", rc);
-		return rc;
+	rv = register_mechanisms(p11card);
+	if (rv != CKR_OK) {
+		sc_debug(context, SC_LOG_DEBUG_NORMAL, "register_mechanisms failed: 0x%x", rv);
+		return rv;
 	}
 
 	return CKR_OK;
@@ -236,6 +236,7 @@ static void pkcs15_init_token_info(struct sc_pkcs15_card *p15card, CK_TOKEN_INFO
 	pToken->firmwareVersion.minor = 0;
 }
 
+#ifdef USE_PKCS15_INIT
 static char *
 set_cka_label(CK_ATTRIBUTE_PTR attr, char *label) 
 { 
@@ -248,6 +249,7 @@ set_cka_label(CK_ATTRIBUTE_PTR attr, char *label)
 	label[len] = '\0'; 
 	return label; 
 } 
+#endif
 
 static int
 __pkcs15_create_object(struct pkcs15_fw_data *fw_data,
@@ -287,6 +289,7 @@ __pkcs15_release_object(struct pkcs15_any_object *obj)
 	return 0;
 }
 
+#ifdef USE_PKCS15_INIT
 static int
 __pkcs15_delete_object(struct pkcs15_fw_data *fw_data, struct pkcs15_any_object *obj)
 {
@@ -304,6 +307,7 @@ __pkcs15_delete_object(struct pkcs15_fw_data *fw_data, struct pkcs15_any_object 
 		}
 	return SC_ERROR_OBJECT_NOT_FOUND;
 }
+#endif
 
 CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo)
 {
@@ -2023,6 +2027,9 @@ kpgen_done:
 
 static CK_RV pkcs15_any_destroy(struct sc_pkcs11_session *session, void *object)
 {
+#ifndef USE_PKCS15_INIT
+	return CKR_FUNCTION_NOT_SUPPORTED;
+#else
 	struct pkcs15_data_object *obj = (struct pkcs15_data_object*) object;
 	struct pkcs15_any_object *any_obj = (struct pkcs15_any_object*) object;
 	struct sc_pkcs11_card *card = session->slot->card;
@@ -2058,6 +2065,7 @@ static CK_RV pkcs15_any_destroy(struct sc_pkcs11_session *session, void *object)
 		return sc_to_cryptoki_error(rv, "C_DestroyObject");
 
 	return CKR_OK;
+#endif
 }
 
 
