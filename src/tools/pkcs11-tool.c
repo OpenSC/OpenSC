@@ -2624,7 +2624,7 @@ static int test_digest(CK_SLOT_ID slot)
 static EVP_PKEY *get_public_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE privKeyObject)
 {
 	CK_BYTE         *id, *mod, *exp;
-	CK_ULONG         idLen, modLen, expLen;
+	CK_ULONG         idLen = 0, modLen = 0, expLen = 0;
 	CK_OBJECT_HANDLE pubkeyObject;
 	unsigned char  *pubkey;
 	const unsigned char *pubkey_c;
