@@ -23,7 +23,7 @@
  */
 
 #include "config.h"
- 
+
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -145,7 +145,7 @@ static int sc_pkcs15emu_actalis_init(sc_pkcs15_card_t * p15card)
 	sc_card_t *card = p15card->card;
 	sc_path_t path;
 	sc_pkcs15_id_t id, auth_id;
-	unsigned char serial[9];
+	unsigned char serial_buf[13], *serial;
 	int flags;
 	int r;
 
@@ -153,7 +153,7 @@ static int sc_pkcs15emu_actalis_init(sc_pkcs15_card_t * p15card)
 	int i;
 	const char *certLabel[] = {
 		"User Non-repudiation Certificate",	/* "User Non-repudiation Certificate" */
-		"TSCA Certificate", 
+		"TSA Certificate",
 		"CA Certificate"
 	};	
 	const char *certPath[] =
@@ -176,72 +176,79 @@ static int sc_pkcs15emu_actalis_init(sc_pkcs15_card_t * p15card)
 	/* const char *nonrepPRKEY = "Non repudiation Key"; */
 	
 	p15card->opts.use_file_cache = 1;	
-	
+
 	/* Get Serial number */
 	sc_format_path("3F0030000001", &path);
 	r = sc_select_file(card, &path, NULL);
 	if (r != SC_SUCCESS)
 		return SC_ERROR_WRONG_CARD;
 
-	sc_read_binary(card, 0xC3, serial, 8, 0);
+	sc_read_binary(card, 0xC3, serial_buf, 12, 0);
+	serial = serial_buf;
+
+	/*
+	 * The serial number is 8 characters long. Later versions of the
+	 * card have the serial number at a different offset, after 4 more
+	 * bytes.
+	 */
+	if (serial[0] != 'H') {
+		if (serial[4] == 'H')
+			serial = &serial_buf[4];
+		else
+			return SC_ERROR_WRONG_CARD;
+	}
 	serial[8] = '\0';
 
 	/* Controllo che il serial number inizi per "H" */
 	if( serial[0] != 'H' ) 
 		return SC_ERROR_WRONG_CARD;
-	
 			
 	set_string(&p15card->tokeninfo->label, "Actalis");
 	set_string(&p15card->tokeninfo->manufacturer_id, "Actalis");
 	set_string(&p15card->tokeninfo->serial_number, (char *)serial);
 
 #ifdef ENABLE_ZLIB
+	int j = 0;
 	for (i = 0; i < 3; i++) {
-		unsigned char *compCert = NULL, *cert = NULL, size[2];
-		unsigned int compLen, len;
-		sc_pkcs15_cert_info_t cert_info;
-		sc_pkcs15_object_t cert_obj;
 		sc_path_t cpath;
-
-		memset(&cert_info, 0, sizeof(cert_info));
-		memset(&cert_obj, 0, sizeof(cert_obj));
-
 		sc_format_path(certPath[i], &cpath);
 
-		if (sc_select_file(card, &cpath, NULL) != SC_SUCCESS)
-			return SC_ERROR_WRONG_CARD;
+		if (sc_select_file(card, &cpath, NULL) == SC_SUCCESS) {
+			unsigned char *compCert = NULL, *cert = NULL, size[2];
+			unsigned int compLen, len;
 
-		sc_read_binary(card, 2, size, 2, 0);
+			sc_pkcs15_cert_info_t cert_info;
+			sc_pkcs15_object_t cert_obj;
+			memset(&cert_info, 0, sizeof(cert_info));
+			memset(&cert_obj, 0, sizeof(cert_obj));
 
-		compLen = (size[0] << 8) + size[1];
-		
-		compCert = malloc(compLen * sizeof(unsigned char));
-		len = 3 * compLen;	/*Approximation of the uncompressed size */
-		cert = malloc(len * sizeof(unsigned char));
+			sc_read_binary(card, 2, size, 2, 0);
+			compLen = (size[0] << 8) + size[1];
+			compCert = malloc(compLen * sizeof(unsigned char));
+			len = 3 * compLen;	/*Approximation of the uncompressed size */
+			cert = malloc(len * sizeof(unsigned char));
 
-		sc_read_binary(card, 4, compCert, compLen, 0);
+			sc_read_binary(card, 4, compCert, compLen, 0);
 
-		if (uncompress
-		    (cert, (unsigned long int *) &len, compCert,
-		     compLen) != Z_OK)
-			return SC_ERROR_INTERNAL;
+			if (uncompress(cert, (unsigned long int *) &len,
+				compCert, compLen) != Z_OK)
+				return SC_ERROR_INTERNAL;
+			cpath.index = 0;
+			cpath.count = len;
 
-		cpath.index = 0;
-		cpath.count = len;
-		
-		sc_pkcs15_cache_file(p15card, &cpath, cert, len);
-		
-		id.value[0] = i + 1;
-		id.len = 1;
-		
-		cert_info.id = id;
-		cert_info.path = cpath;
-		cert_info.authority = (i>0);
+			sc_pkcs15_cache_file(p15card, &cpath, cert, len);
+			id.value[0] = j + 1;
+			id.len = 1;
+			cert_info.id = id;
+			cert_info.path = cpath;
+			cert_info.authority = (j>0);
 
-		strlcpy(cert_obj.label, certLabel[i], sizeof(cert_obj.label));
-		cert_obj.flags = SC_PKCS15_CO_FLAG_MODIFIABLE;
+			strlcpy(cert_obj.label, certLabel[j], sizeof(cert_obj.label));
 
-		sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
+			j++;
+			cert_obj.flags = SC_PKCS15_CO_FLAG_MODIFIABLE;
+			sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
+		}
 	}
 #endif
 	
