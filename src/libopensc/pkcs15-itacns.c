@@ -710,10 +710,12 @@ static int itacns_init(sc_pkcs15_card_t *p15card)
 		itacns_drv_data_t *data =
 			(itacns_drv_data_t*) p15card->card->drv_data;
 		mask_code = data->mask_manufacturer_code;
-		if (mask_code >= sizeof(itacns_mask_manufacturers))
+		if (mask_code >= sizeof(itacns_mask_manufacturers)
+			/sizeof(itacns_mask_manufacturers[0]))
 			mask_code = 0;
 		ic_code = data->ic_manufacturer_code;
-		if (ic_code >= sizeof(iso7816_ic_manufacturers))
+		if (ic_code >= sizeof(iso7816_ic_manufacturers)
+			/sizeof(iso7816_ic_manufacturers[0]))
 			ic_code = 0;
 		snprintf(buffer, sizeof(buffer), "IC: %s; mask: %s",
 			iso7816_ic_manufacturers[ic_code],
