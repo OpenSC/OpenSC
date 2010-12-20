@@ -150,7 +150,7 @@ static int sc_pkcs15emu_actalis_init(sc_pkcs15_card_t * p15card)
 	int r;
 
 #ifdef ENABLE_ZLIB
-	int i;
+	int i = 0, j = 0;
 	const char *certLabel[] = {
 		"User Non-repudiation Certificate",	/* "User Non-repudiation Certificate" */
 		"TSA Certificate",
@@ -208,7 +208,6 @@ static int sc_pkcs15emu_actalis_init(sc_pkcs15_card_t * p15card)
 	set_string(&p15card->tokeninfo->serial_number, (char *)serial);
 
 #ifdef ENABLE_ZLIB
-	int j = 0;
 	for (i = 0; i < 3; i++) {
 		sc_path_t cpath;
 		sc_format_path(certPath[i], &cpath);
