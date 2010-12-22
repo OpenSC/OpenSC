@@ -1,12 +1,12 @@
 [Setup]
 AppName=OpenSC
-AppVerName=OpenSC 0.12.0-rc2
-AppPublisher=OpenSC project
+AppVerName=OpenSC 0.12.0
+AppPublisher=OpenSC Project
 AppPublisherURL=http://www.opensc-project.org/
 AppSupportURL=http://www.opensc-project.org/opensc/
 AppUpdatesURL=http://www.opensc-project.org/opensc/
 DefaultDirName={pf}\OpenSC Project\OpenSC
-OutputBaseFilename=OpenSC-0.12.0-rc2
+OutputBaseFilename=OpenSC-0.12.0
 Compression=lzma/normal
 SolidCompression=true
 MinVersion=0,5.0.2195
@@ -49,11 +49,11 @@ Source: engine_pkcs11\*.dll; DestDir: {sys}; Components: OpenSSL_engine; Flags: 
 Source: opensc.conf; DestDir: {app};
 ;Source: www.opensc-project.org.url; DestDir: {app}
 [Icons]
-;Name: {group}\OpenSC Project website; Filename: {app}\www.opensc-project.org.url; Comment: Go to OpenSC Project website; Components: 
+;Name: {group}\OpenSC Project website; Filename: {app}\www.opensc-project.org.url; Comment: Go to OpenSC Project website; Components:
 
 [Registry]
-Root: HKLM; Subkey: Software\OpenSC Project\OpenSC; ValueType: string; ValueName: ConfigFile; ValueData: {app}\opensc.conf; Flags: uninsdeletekey; Components: 
-Root: HKLM; Subkey: Software\OpenSC Project\OpenSC; ValueType: string; ValueName: ProfileDir; ValueData: {app}\profiles; Flags: uninsdeletekey; Components: 
+Root: HKLM; Subkey: Software\OpenSC Project\OpenSC; ValueType: string; ValueName: ConfigFile; ValueData: {app}\opensc.conf; Flags: uninsdeletekey; Components:
+Root: HKLM; Subkey: Software\OpenSC Project\OpenSC; ValueType: string; ValueName: ProfileDir; ValueData: {app}\profiles; Flags: uninsdeletekey; Components:
 [Components]
 Name: OpenSC; Description: OpenSC core library; Flags: fixed; Types: custom compact full
 Name: OpenSSL_engine; Description: OpenSSL engine for using PKCS11 modules; Types: custom full
