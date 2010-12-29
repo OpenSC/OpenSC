@@ -1230,6 +1230,11 @@ static CK_RV pkcs15_logout(struct sc_pkcs11_card *p11card, void *fw_token)
 	sc_pkcs15_pincache_clear(fw_data->p15_card);
 
 	rc = sc_logout(fw_data->p15_card->card);
+
+	/* Ignore missing card specific logout functions. #302 */
+	if (rc == SC_ERROR_NOT_SUPPORTED)
+		rc = SC_SUCCESS;
+
 	if (rc != SC_SUCCESS)
 		ret = sc_to_cryptoki_error(rc, "C_Logout");
 
