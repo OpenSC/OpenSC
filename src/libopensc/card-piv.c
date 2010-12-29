@@ -28,7 +28,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include <limits.h>
-#ifndef __APPLE__
+#ifdef HAVE_MALLOC_H
 #include <malloc.h>
 #endif
 #ifdef ENABLE_OPENSSL
