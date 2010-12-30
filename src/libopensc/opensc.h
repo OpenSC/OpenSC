@@ -861,6 +861,17 @@ int sc_write_binary(sc_card_t *card, unsigned int idx, const u8 * buf,
 int sc_update_binary(sc_card_t *card, unsigned int idx, const u8 * buf,
 		     size_t count, unsigned long flags);
 
+/**
+ * Sets (part of) the content fo an EF to its logical erased state
+ * @param  card   sc_card_t object on which to issue the command
+ * @param  idx    index within the file for the data to be erased
+ * @param  count  number of bytes to erase
+ * @param  flags  flags for the ERASE BINARY command (currently not used)
+ * @return number of bytes writen or an error code
+ */
+int sc_erase_binary(struct sc_card *card, unsigned int idx,
+		    size_t count, unsigned long flags);
+
 #define SC_RECORD_EF_ID_MASK		0x0001FUL
 /** flags for record operations */
 /** use first record */

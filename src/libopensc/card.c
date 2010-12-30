@@ -531,6 +531,23 @@ int sc_update_binary(sc_card_t *card, unsigned int idx,
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 }
 
+
+int sc_erase_binary(struct sc_card *card, unsigned int offs, size_t count, 
+		unsigned long flags)
+{
+	int r;
+
+	assert(card != NULL && card->ops != NULL);
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "called; erase %d bytes from offset %d", count, offs);
+
+	if (card->ops->erase_binary == NULL)
+		SC_FUNC_RETURN(card->ctx, 2, SC_ERROR_NOT_SUPPORTED);
+
+	r = card->ops->erase_binary(card, offs, count, flags);
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
+}
+
+
 int sc_select_file(sc_card_t *card,
 		   const sc_path_t *in_path,
 		   sc_file_t **file)
