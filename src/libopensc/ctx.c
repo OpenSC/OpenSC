@@ -66,6 +66,7 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 	{ "jcop",	(void *(*)(void)) sc_get_jcop_driver },
 #ifdef ENABLE_OPENSSL
 	{ "oberthur",	(void *(*)(void)) sc_get_oberthur_driver },
+	{ "authentic",	(void *(*)(void)) sc_get_authentic_driver },
 #endif
 	{ "belpic",	(void *(*)(void)) sc_get_belpic_driver },
 	{ "ias",		(void *(*)(void)) sc_get_ias_driver },

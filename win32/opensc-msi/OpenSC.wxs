@@ -113,6 +113,10 @@
                   <File Id='PROFILE_OBERTHUR' Name='oberthur.profile' DiskId='1' 
 				Source='$(var.SOURCE_DIR)\src\pkcs15init\oberthur.profile' Vital='yes' KeyPath='yes' />
                 </Component>
+		<Component Id='PROFILE_PKCS15_AUTHENTIC' Guid='75AE2D59-D249-4110-93F0-65E6F323CB63'>
+                  <File Id='PROFILE_AUTHENTIC' Name='authentic.profile' DiskId='1' 
+				Source='$(var.SOURCE_DIR)\src\pkcs15init\authentic.profile' Vital='yes' KeyPath='yes' />
+                </Component>
               </Directory>
             </Directory>
             
@@ -160,6 +164,7 @@
         <ComponentRef Id='PROFILE_PKCS15_STARCOS' />
         <ComponentRef Id='PROFILE_PKCS15_WESTCOS' />
         <ComponentRef Id='PROFILE_PKCS15_OBERTHUR' />
+        <ComponentRef Id='PROFILE_PKCS15_AUTHENTIC' />
 
         <ComponentRef Id='ProgramMenuDir' />
       </Feature>

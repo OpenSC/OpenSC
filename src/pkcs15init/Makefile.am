@@ -23,7 +23,8 @@ dist_pkgdata_DATA = \
 	entersafe.profile \
 	rutoken_ecp.profile \
 	westcos.profile \
-	myeid.profile
+	myeid.profile \
+	authentic.profile
 
 AM_CPPFLAGS = -DSC_PKCS15_PROFILE_DIRECTORY=\"$(pkgdatadir)\"
 AM_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(LTLIB_CFLAGS)
@@ -37,4 +38,5 @@ libpkcs15init_la_SOURCES = \
 	pkcs15-setcos.c pkcs15-incrypto34.c pkcs15-muscle.c \
 	pkcs15-asepcos.c pkcs15-rutoken.c pkcs15-entersafe.c \
 	pkcs15-rtecp.c pkcs15-myeid.c \
-	pkcs15-oberthur.c pkcs15-oberthur-awp.c
+	pkcs15-oberthur.c pkcs15-oberthur-awp.c \
+	pkcs15-authentic.c
