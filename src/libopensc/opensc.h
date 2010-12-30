@@ -220,6 +220,11 @@ typedef struct sc_app_info {
 
 struct sc_card_cache {
 	struct sc_path current_path;
+
+        struct sc_file *current_ef;
+        struct sc_file *current_df;
+
+	int valid;
 };
 
 #define SC_PROTO_T0		0x00000001
@@ -433,7 +438,6 @@ typedef struct sc_card {
 	int max_pin_len;
 
 	struct sc_card_cache cache;
-	int cache_valid;
 
 	sc_serial_number_t serialnr;
 

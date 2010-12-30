@@ -489,7 +489,7 @@ static int entersafe_select_aid(sc_card_t *card,
 {
 	int r = 0;
 
-	if (card->cache_valid 
+	if (card->cache.valid 
 		&& card->cache.current_path.type == SC_PATH_TYPE_DF_NAME
 		&& card->cache.current_path.len == in_path->len
 		&& memcmp(card->cache.current_path.value, in_path->value, in_path->len)==0 )
@@ -557,7 +557,7 @@ static int entersafe_select_path(sc_card_t *card,
 	 }
 	
 	 /* check current working directory */
-	 if (card->cache_valid 
+	 if (card->cache.valid 
 		 && card->cache.current_path.type == SC_PATH_TYPE_PATH
 		 && card->cache.current_path.len >= 2
 		 && card->cache.current_path.len <= pathlen )
@@ -569,7 +569,7 @@ static int entersafe_select_path(sc_card_t *card,
 					bMatch += 2;
 	 }
 
-	 if ( card->cache_valid && bMatch > 2 )
+	 if ( card->cache.valid && bMatch > 2 )
 	 {
 		  if ( pathlen - bMatch == 2 )
 		  {
@@ -646,7 +646,7 @@ static int entersafe_select_file(sc_card_t *card,
 	  sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
 		"current path (%s, %s): %s (len: %u)\n",
 		   (card->cache.current_path.type==SC_PATH_TYPE_DF_NAME?"aid":"path"),
-		   (card->cache_valid?"valid":"invalid"), pbuf,
+		   (card->cache.valid?"valid":"invalid"), pbuf,
 		   card->cache.current_path.len);
 	 
 	 switch(in_path->type)
@@ -951,14 +951,25 @@ static int entersafe_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 
 	 if(data->cmd!=SC_PIN_CMD_UNBLOCK)
 	 {
+		 
+		 data->pin1.pad_length = 0x10;
+		 data->pin1.offset = 5;
+		 data->pin1.pad_char = 0x00;
+		 data->pin1.max_length = 0x08;
+		 data->pin1.min_length = 4;
+
 		  r = iso_ops->pin_cmd(card,data,tries_left);
+		  sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Verify rv:%i", r);
 	 }
 	 else
 	 {
 		  {/*verify*/
 			   sc_apdu_t apdu;
-			   u8 sbuf[0x10]={0};
-
+			   //u8 sbuf[0x10]={0};
+			   //
+			   u8 sbuf[0x40];
+			   memset(sbuf, 0xFF, sizeof(sbuf));
+			   //	   
 			   memcpy(sbuf,data->pin1.data,data->pin1.len);
 			   sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT,0x20,0x00,data->pin_reference+1);
 			   apdu.lc = apdu.datalen = sizeof(sbuf);
@@ -1005,7 +1016,7 @@ static int entersafe_erase_card(sc_card_t *card)
 	r = entersafe_transmit_apdu(card, &apdu,0,0,0,0);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 	/* invalidate cache */
-	card->cache_valid = 0;
+	card->cache.valid = 0;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xEE, 0x00, 0x00);
 	apdu.cla=0x84;

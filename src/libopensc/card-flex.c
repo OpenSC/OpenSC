@@ -961,7 +961,7 @@ static int flex_create_file(sc_card_t *card, sc_file_t *file)
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
-	if (card->cache_valid) {
+	if (card->cache.valid) {
 		u8 file_id[2];
 		
 		file_id[0] = file->id >> 8;

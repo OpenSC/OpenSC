@@ -375,7 +375,7 @@ static int starcos_select_file(sc_card_t *card,
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
 		"current path (%s, %s): %s (len: %u)\n",
 		(card->cache.current_path.type==SC_PATH_TYPE_DF_NAME?"aid":"path"),
-		(card->cache_valid?"valid":"invalid"), pbuf,
+		(card->cache.valid?"valid":"invalid"), pbuf,
 		card->cache.current_path.len);
   
 	memcpy(path, in_path->value, in_path->len);
@@ -391,7 +391,7 @@ static int starcos_select_file(sc_card_t *card,
 	else if (in_path->type == SC_PATH_TYPE_DF_NAME)
       	{	/* SELECT DF with AID */
 		/* Select with 1-16byte Application-ID */
-		if (card->cache_valid 
+		if (card->cache.valid 
 		    && card->cache.current_path.type == SC_PATH_TYPE_DF_NAME
 		    && card->cache.current_path.len == pathlen
 		    && memcmp(card->cache.current_path.value, pathbuf, pathlen) == 0 )
@@ -431,7 +431,7 @@ static int starcos_select_file(sc_card_t *card,
 		}
 	
 		/* check current working directory */
-		if (card->cache_valid 
+		if (card->cache.valid 
 		    && card->cache.current_path.type == SC_PATH_TYPE_PATH
 		    && card->cache.current_path.len >= 2
 		    && card->cache.current_path.len <= pathlen )
@@ -443,7 +443,7 @@ static int starcos_select_file(sc_card_t *card,
 					bMatch += 2;
 		}
 
-		if ( card->cache_valid && bMatch >= 0 )
+		if ( card->cache.valid && bMatch >= 0 )
 		{
 			if ( pathlen - bMatch == 2 )
 				/* we are in the rigth directory */
@@ -859,7 +859,7 @@ static int starcos_erase_card(sc_card_t *card)
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 	/* invalidate cache */
-	card->cache_valid = 0;
+	card->cache.valid = 0;
 	if (apdu.sw1 == 0x69 && apdu.sw2 == 0x85)
 		/* no MF to delete, ignore error */
 		return SC_SUCCESS;

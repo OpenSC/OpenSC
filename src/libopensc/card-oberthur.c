@@ -1618,7 +1618,7 @@ auth_pin_verify_pinpad(struct sc_card *card, int pin_reference, int *tries_left)
 	pin_cmd.pin1.offset = 5;
 	pin_cmd.pin1.data = ffs;
 	pin_cmd.pin1.len = OBERTHUR_AUTH_MAX_LENGTH_PIN;
-	pin_cmd.pin1.pad_length = 0;
+	pin_cmd.pin1.pad_length = OBERTHUR_AUTH_MAX_LENGTH_PIN;
 
 	rv = iso_drv->ops->pin_cmd(card, &pin_cmd, tries_left);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, rv, "PIN CMD 'VERIFY' with pinpad failed");
@@ -1960,19 +1960,24 @@ auth_create_reference_data (struct sc_card *card,
 		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS, "Invalid PUK options");
 		
 	len = 0;
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "len %i", len);
 	sbuf[len++] = args->pin_tries;
 	sbuf[len++] = pin_info.pad_length;
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "len %i", len);
 	memset(sbuf + len, pin_info.pad_char, pin_info.pad_length);
 	memcpy(sbuf + len, args->pin, args->pin_len);
 	len += pin_info.pad_length;
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "len %i", len);
 
 	if (args->puk && args->puk_len)   {
 		sbuf[len++] = args->puk_tries;
 		sbuf[len++] = args->puk_len / puk_info.pad_length;
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "len %i", len);
 		memcpy(sbuf + len, args->puk, args->puk_len);
 		len += args->puk_len;
 	}
 
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "len %i", len);
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x24, 1, args->ref & ~OBERTHUR_PIN_LOCAL);
 	apdu.data = sbuf;
 	apdu.datalen = len;

@@ -393,7 +393,7 @@ static int atrust_acos_select_file(struct sc_card *card,
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
 		"current path (%s, %s): %s (len: %u)\n",
 		(card->cache.current_path.type==SC_PATH_TYPE_DF_NAME?"aid":"path"),
-		(card->cache_valid?"valid":"invalid"), pbuf,
+		(card->cache.valid?"valid":"invalid"), pbuf,
 		card->cache.current_path.len);
   
 	memcpy(path, in_path->value, in_path->len);
@@ -409,7 +409,7 @@ static int atrust_acos_select_file(struct sc_card *card,
 	else if (in_path->type == SC_PATH_TYPE_DF_NAME)
       	{	/* SELECT DF with AID */
 		/* Select with 1-16byte Application-ID */
-		if (card->cache_valid 
+		if (card->cache.valid 
 		    && card->cache.current_path.type == SC_PATH_TYPE_DF_NAME
 		    && card->cache.current_path.len == pathlen
 		    && memcmp(card->cache.current_path.value, pathbuf, pathlen) == 0 )
@@ -449,7 +449,7 @@ static int atrust_acos_select_file(struct sc_card *card,
 		}
 	
 		/* check current working directory */
-		if (card->cache_valid 
+		if (card->cache.valid 
 		    && card->cache.current_path.type == SC_PATH_TYPE_PATH
 		    && card->cache.current_path.len >= 2
 		    && card->cache.current_path.len <= pathlen )
@@ -461,7 +461,7 @@ static int atrust_acos_select_file(struct sc_card *card,
 					bMatch += 2;
 		}
 
-		if ( card->cache_valid && bMatch >= 0 )
+		if ( card->cache.valid && bMatch >= 0 )
 		{
 			if ( pathlen - bMatch == 2 )
 				/* we are in the rigth directory */
