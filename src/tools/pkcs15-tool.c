@@ -503,19 +503,18 @@ static void print_prkey_info(const struct sc_pkcs15_object *obj)
 	printf("\n");
 
 	printf("\tAccess Flags   : [0x%X]", prkey->access_flags);
-	for (i = 0; i < af_count; i++)   {
-		if (prkey->access_flags & (1 << i)) {
-			printf(", %s", access_flags[i]);   
-		}
-	}
+	for (i = 0; i < af_count; i++)
+		if (prkey->access_flags & (1 << i))
+			printf(", %s", access_flags[i]); 
+	printf("\n");
 
 	print_access_rules(obj->access_rules, SC_PKCS15_MAX_ACCESS_RULES);
 
-	printf("\n");
 	printf("\tModLength      : %lu\n", (unsigned long)prkey->modulus_length);
 	printf("\tKey ref        : %d\n", prkey->key_reference);
 	printf("\tNative         : %s\n", prkey->native ? "yes" : "no");
-	printf("\tPath           : %s\n", sc_print_path(&prkey->path));
+	if (prkey->path.len)
+		printf("\tPath           : %s\n", sc_print_path(&prkey->path));
 	if (obj->auth_id.len != 0)
 		printf("\tAuth ID        : %s\n", sc_pkcs15_print_id(&obj->auth_id));
 	printf("\tID             : %s\n", sc_pkcs15_print_id(&prkey->id));
@@ -568,19 +567,18 @@ static void print_pubkey_info(const struct sc_pkcs15_object *obj)
 	printf("\n");
 
 	printf("\tAccess Flags   : [0x%X]", pubkey->access_flags);
-	for (i = 0; i < af_count; i++)   {
-		if (pubkey->access_flags & (1 << i)) {
-			printf(", %s", access_flags[i]);   
-		}
-	}
+	for (i = 0; i < af_count; i++) 
+		if (pubkey->access_flags & (1 << i))
+			printf(", %s", access_flags[i]);
+	printf("\n");
 
 	print_access_rules(obj->access_rules, SC_PKCS15_MAX_ACCESS_RULES);
 
-	printf("\n");
 	printf("\tModLength      : %lu\n", (unsigned long)pubkey->modulus_length);
 	printf("\tKey ref        : %d\n", pubkey->key_reference);
 	printf("\tNative         : %s\n", pubkey->native ? "yes" : "no");
-	printf("\tPath           : %s\n", sc_print_path(&pubkey->path));
+	if (pubkey->path.len)
+		printf("\tPath           : %s\n", sc_print_path(&pubkey->path));
 	if (obj->auth_id.len != 0)
 		printf("\tAuth ID        : %s\n", sc_pkcs15_print_id(&obj->auth_id));
 	printf("\tID             : %s\n", sc_pkcs15_print_id(&pubkey->id));
