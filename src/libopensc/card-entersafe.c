@@ -951,13 +951,6 @@ static int entersafe_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 
 	 if(data->cmd!=SC_PIN_CMD_UNBLOCK)
 	 {
-		 
-		 data->pin1.pad_length = 0x10;
-		 data->pin1.offset = 5;
-		 data->pin1.pad_char = 0x00;
-		 data->pin1.max_length = 0x08;
-		 data->pin1.min_length = 4;
-
 		  r = iso_ops->pin_cmd(card,data,tries_left);
 		  sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Verify rv:%i", r);
 	 }
@@ -965,11 +958,8 @@ static int entersafe_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 	 {
 		  {/*verify*/
 			   sc_apdu_t apdu;
-			   //u8 sbuf[0x10]={0};
-			   //
-			   u8 sbuf[0x40];
-			   memset(sbuf, 0xFF, sizeof(sbuf));
-			   //	   
+			   u8 sbuf[0x10]={0};
+
 			   memcpy(sbuf,data->pin1.data,data->pin1.len);
 			   sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT,0x20,0x00,data->pin_reference+1);
 			   apdu.lc = apdu.datalen = sizeof(sbuf);
