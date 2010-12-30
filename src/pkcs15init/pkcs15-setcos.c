@@ -590,6 +590,7 @@ static struct sc_pkcs15init_operations sc_pkcs15init_setcos_operations = {
 	NULL, 				/* emu_update_any_df */
 	NULL, 				/* emu_update_tokeninfo */
 	NULL, 				/* emu_write_info */
+	NULL, 				/* emu_store_data */
 	NULL				/* sanity_check */
 };
 

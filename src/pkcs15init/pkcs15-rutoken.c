@@ -326,7 +326,8 @@ static struct sc_pkcs15init_operations sc_pkcs15init_rutoken_operations = {
 	NULL,                           /* encode_public_key */
 	NULL,                           /* finalize_card */
 	NULL,                           /* delete_object */
-	NULL, NULL, NULL, NULL, NULL    /* pkcs15init emulation */
+	NULL, NULL, NULL, NULL, NULL,   /* pkcs15init emulation */
+	NULL                            /* sanity_check */
 };
 
 struct sc_pkcs15init_operations* sc_pkcs15init_get_rutoken_ops(void)

@@ -363,7 +363,8 @@ static struct sc_pkcs15init_operations sc_pkcs15init_jcop_operations = {
 	NULL, NULL,			/* encode private/public key */
 	NULL,				/* finalize_card */
 	NULL, 				/* delete_object */
-	NULL, NULL, NULL, NULL, NULL  /* pkcs15init emulation */
+	NULL, NULL, NULL, NULL, NULL,	/* pkcs15init emulation */
+	NULL				/* sanity_check */
 };
 
 struct sc_pkcs15init_operations *sc_pkcs15init_get_jcop_ops(void)

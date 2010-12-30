@@ -151,6 +151,7 @@ static struct profile_operations {
 	{ "rutoken_ecp", (void *) sc_pkcs15init_get_rtecp_ops },
 	{ "westcos", (void *) sc_pkcs15init_get_westcos_ops },
 	{ "myeid", (void *) sc_pkcs15init_get_myeid_ops },
+	/* { "authentic", (void *) sc_pkcs15init_get_authentic_ops }, */
 	{ NULL, NULL },
 };
 
@@ -1677,6 +1678,12 @@ sc_pkcs15init_store_data(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 	int		r;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
+
+	if (profile->ops->emu_store_data)   {
+		r = profile->ops->emu_store_data(p15card, profile, object, data, path);
+		if (r == SC_SUCCESS || r != SC_ERROR_NOT_IMPLEMENTED)
+			SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, r);
+	}
 
 	r = select_object_path(p15card, profile, object, path);
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Failed to select object path");

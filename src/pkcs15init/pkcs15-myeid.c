@@ -707,7 +707,8 @@ static struct sc_pkcs15init_operations sc_pkcs15init_myeid_operations = {
 	myeid_encode_public_key,
 	myeid_finalize_card,
 	myeid_delete_object,		/* delete_object */
-	NULL, NULL, NULL, NULL, NULL	/* pkcs15init emulation */
+	NULL, NULL, NULL, NULL, NULL,	/* pkcs15init emulation */
+	NULL				/* sanity_check */
 };
 
 struct sc_pkcs15init_operations *sc_pkcs15init_get_myeid_ops(void)

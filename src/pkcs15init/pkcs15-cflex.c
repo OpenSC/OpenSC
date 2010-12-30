@@ -900,33 +900,35 @@ static struct sc_pkcs15init_operations sc_pkcs15init_cryptoflex_operations = {
 	cflex_create_domain,
 	cflex_select_pin_reference,
 	cflex_create_pin,
-	NULL,					/* select_key_reference */
+	NULL,				/* select_key_reference */
 	cflex_create_key,
 	cflex_store_key,
 	cflex_generate_key,
 	cryptoflex_encode_private_key,
 	cryptoflex_encode_public_key,
-	NULL,					/* finalize_card */
-	NULL, 					/* delete_object */
-	NULL, NULL, NULL, NULL, NULL  /* pkcs15init emulation */
+	NULL,				/* finalize_card */
+	NULL, 				/* delete_object */
+	NULL, NULL, NULL, NULL, NULL,  	/* pkcs15init emulation */
+	NULL				/* sanity_check */
 };
 
 static struct sc_pkcs15init_operations sc_pkcs15init_cyberflex_operations = {
 	cflex_erase_card,
-	NULL,					/* init_card */
+	NULL,				/* init_card */
 	cflex_create_dir,
 	cflex_create_domain,
 	cflex_select_pin_reference,
 	cflex_create_pin,
-	NULL,					/* select_key_reference */
+	NULL,				/* select_key_reference */
 	cflex_create_key,
 	cflex_store_key,
 	cflex_generate_key,
 	cyberflex_encode_private_key,
 	cyberflex_encode_public_key,
-	NULL,					/* finalize_card */
-	NULL, 					/* delete_object */
-	NULL, NULL, NULL, NULL, NULL  /* pkcs15init emulation */
+	NULL,				/* finalize_card */
+	NULL, 				/* delete_object */
+	NULL, NULL, NULL, NULL, NULL,  	/* pkcs15init emulation */
+	NULL				/* sanity_check */
 };
 
 struct sc_pkcs15init_operations *

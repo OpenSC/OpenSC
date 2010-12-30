@@ -138,6 +138,8 @@ struct sc_pkcs15init_operations {
 			struct sc_pkcs15_tokeninfo *);
 	int (*emu_write_info)(struct sc_profile *, struct sc_pkcs15_card *,
 		struct sc_pkcs15_object *);
+	int (*emu_store_data)(struct sc_pkcs15_card *, struct sc_profile *, struct sc_pkcs15_object *,
+			struct sc_pkcs15_der *, struct sc_path *);
 
 	int (*sanity_check)(struct sc_profile *, struct sc_pkcs15_card *);
 };
@@ -384,6 +386,7 @@ extern struct sc_pkcs15init_operations *sc_pkcs15init_get_entersafe_ops(void);
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_rtecp_ops(void);
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_westcos_ops(void);
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_myeid_ops(void);
+/* extern struct sc_pkcs15init_operations *sc_pkcs15init_get_authentic_ops(void); */
 
 #ifdef __cplusplus
 }

@@ -299,16 +299,17 @@ static struct sc_pkcs15init_operations sc_pkcs15init_muscle_operations = {
 	muscle_init_card,		/* init_card  */
 	muscle_create_dir,		/* create_dir */
 	NULL,				/* create_domain */
-	muscle_select_pin_reference,				/* select pin reference */
-	muscle_create_pin,				/* Create PIN */
-	muscle_select_key_reference,				/* select_key_reference */
-	muscle_create_key,				/* create_key */
-	muscle_store_key,				/* store_key */
-	muscle_generate_key,				/* generate_key */
+	muscle_select_pin_reference,	/* select pin reference */
+	muscle_create_pin,		/* Create PIN */
+	muscle_select_key_reference,	/* select_key_reference */
+	muscle_create_key,		/* create_key */
+	muscle_store_key,		/* store_key */
+	muscle_generate_key,		/* generate_key */
 	NULL, NULL,			/* encode private/public key */
 	NULL,				/* finalize_card */
 	NULL, 				/* delete_object */
-	NULL, NULL, NULL, NULL, NULL  /* pkcs15init emulation */
+	NULL, NULL, NULL, NULL, NULL,	/* pkcs15init emulation */
+	NULL				/* sanity_check */
 };
 
 struct sc_pkcs15init_operations *

@@ -872,9 +872,11 @@ sc_pkcs15init_oberthur_operations = {
 	cosm_emu_update_any_df,
 	cosm_emu_update_tokeninfo,
 	cosm_emu_write_info,
+	NULL,
 	NULL
 #else
-	NULL, NULL, NULL, NULL, NULL
+	NULL, NULL, NULL, NULL, NULL,
+	NULL
 #endif
 };
 
