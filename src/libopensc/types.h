@@ -40,6 +40,8 @@ typedef unsigned char u8;
 #define SC_MAX_PATH_SIZE		16
 #define SC_MAX_PATH_STRING_SIZE		(SC_MAX_PATH_SIZE * 2 + 1)
 
+#define SC_MAX_SDO_ACLS			8
+
 /* When changing this value, pay attention to the initialization of the ASN1 
  * static variables that use this macro, like, for example, 
  * 'c_asn1_supported_algorithms' in src/libopensc/pkcs15.c 
@@ -82,6 +84,10 @@ typedef struct sc_path {
 #define SC_AC_PRO			0x00000004 /* Secure Messaging */
 #define SC_AC_AUT			0x00000008 /* Key auth. */
 #define SC_AC_SYMBOLIC			0x00000010 /* internal use only */
+#define SC_AC_SEN                       0x00000020 /* Security Environment. */
+#define SC_AC_SCB                       0x00000040 /* IAS/ECC SCB byte. */
+#define SC_AC_IDA                       0x00000080 /* PKCS#15 authentication ID */
+
 #define SC_AC_UNKNOWN			0xFFFFFFFE
 #define SC_AC_NEVER			0xFFFFFFFF
 
@@ -215,6 +221,8 @@ typedef struct sc_apdu {
 	unsigned int sw1, sw2;	/* Status words returned in R-APDU */
 
 	unsigned long flags;
+
+	struct sc_apdu *next;
 } sc_apdu_t;
 
 #ifdef __cplusplus
