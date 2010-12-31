@@ -21,20 +21,18 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
 
+#ifdef ENABLE_OPENSSL   /* empty file without openssl */
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
 #include <ctype.h>
 #include <errno.h>
 #include <stdio.h>
-
-#ifndef ENABLE_OPENSSL
-#error "Need OpenSSL"
-#endif
 
 #include <openssl/bn.h>
 #include <openssl/evp.h>
@@ -1019,3 +1017,5 @@ sc_pkcs15init_get_authentic_ops(void)
 {   
 	return &sc_pkcs15init_authentic_operations;
 }
+
+#endif /* ENABLE_OPENSSL */

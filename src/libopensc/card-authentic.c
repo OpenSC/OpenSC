@@ -20,6 +20,12 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#ifdef ENABLE_OPENSSL   /* empty file without openssl */
+
 #include <string.h>
 #include <stdlib.h>
 
@@ -31,10 +37,6 @@
 #include "iso7816.h"
 /* #include "hash-strings.h" */
 #include "authentic.h"
-
-#ifndef ENABLE_OPENSSL
-#error "Need OpenSSL"
-#endif
 
 #include <openssl/bn.h>
 #include <openssl/evp.h>
@@ -2411,3 +2413,5 @@ sc_get_authentic_driver(void)
 {
 	return sc_get_driver();
 }
+
+#endif /* ENABLE_OPENSSL */
