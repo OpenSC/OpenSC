@@ -1309,7 +1309,7 @@ static int do_apdu(int argc, char **argv)
 		return -1;
 	}
 
-	for (ii = 0, len = 0; ii < argc; ii++)   {
+	for (ii = 0, len = 0; ii < (unsigned) argc; ii++)   {
 		len0 = strlen(argv[ii]);
 		sc_hex_to_bin(argv[ii], buf + len, &len0);
 		len += len0;
@@ -1435,7 +1435,7 @@ static int do_asn1(int argc, char **argv)
 		goto err;
 	}
 	if ((size_t)r != len) {
-		printf("expecting %ld, got only %d bytes.\n", len, r);
+		printf("expecting %u, got only %d bytes.\n", len, r);
 		goto err;
 	}
 
