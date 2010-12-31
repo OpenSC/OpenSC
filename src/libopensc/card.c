@@ -95,8 +95,7 @@ static void sc_card_free(sc_card_t *card)
 	if (card->mutex != NULL) {
 		int r = sc_mutex_destroy(card->ctx, card->mutex);
 		if (r != SC_SUCCESS)
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
-				"unable to destroy mutex\n");
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "unable to destroy mutex");
 	}
 	sc_mem_clear(card, sizeof(*card));
 	free(card);
@@ -134,7 +133,7 @@ int sc_connect_card(sc_reader_t *reader, sc_card_t **card_out)
 
 	/* See if the ATR matches any ATR specified in the config file */
 	if ((driver = ctx->forced_driver) == NULL) {
-		sc_debug(ctx, SC_LOG_DEBUG_MATCH, "matching configured ATRs\n");
+		sc_debug(ctx, SC_LOG_DEBUG_MATCH, "matching configured ATRs");
 		for (i = 0; ctx->card_drivers[i] != NULL; i++) {
 			driver = ctx->card_drivers[i];
 
@@ -143,14 +142,12 @@ int sc_connect_card(sc_reader_t *reader, sc_card_t **card_out)
 				driver = NULL;
 				continue;
 			}
-			sc_debug(ctx, SC_LOG_DEBUG_MATCH,
-				"trying driver: %s\n", driver->short_name);
+			sc_debug(ctx, SC_LOG_DEBUG_MATCH, "trying driver: %s", driver->short_name);
 			idx = _sc_match_atr(card, driver->atr_map, NULL);
 			if (idx >= 0) {
 				struct sc_atr_table *src = &driver->atr_map[idx];
 
-				sc_debug(ctx, SC_LOG_DEBUG_MATCH,
-					"matched: %s\n", driver->name);
+				sc_debug(ctx, SC_LOG_DEBUG_MATCH, "matched: %s", driver->name);
 				/* It's up to card driver to notice these correctly */
 				card->name = src->name;
 				card->type = src->type;
@@ -169,33 +166,30 @@ int sc_connect_card(sc_reader_t *reader, sc_card_t **card_out)
 		if (card->ops->init != NULL) {
 			r = card->ops->init(card);
 			if (r) {
-				sc_debug(ctx, SC_LOG_DEBUG_MATCH, "driver '%s' init() failed: %s\n",
+				sc_debug(ctx, SC_LOG_DEBUG_MATCH, "driver '%s' init() failed: %s",
 					card->driver->name, sc_strerror(r));
 				goto err;
 			}
 		}
 	} else {
-		sc_debug(ctx, SC_LOG_DEBUG_MATCH,
-			"matching built-in ATRs\n");
+		sc_debug(ctx, SC_LOG_DEBUG_MATCH, "matching built-in ATRs");
 		for (i = 0; ctx->card_drivers[i] != NULL; i++) {
 			struct sc_card_driver *drv = ctx->card_drivers[i];
 			const struct sc_card_operations *ops = drv->ops;
 
-			sc_debug(ctx, SC_LOG_DEBUG_MATCH,
-				"trying driver: %s\n", drv->short_name);
+			sc_debug(ctx, SC_LOG_DEBUG_MATCH, "trying driver: %s", drv->short_name);
 			if (ops == NULL || ops->match_card == NULL)
 				continue;
 			/* Needed if match_card() needs to talk with the card (e.g. card-muscle) */
 			*card->ops = *ops;
 			if (ops->match_card(card) != 1)
 				continue;
-			sc_debug(ctx, SC_LOG_DEBUG_MATCH,
-				"matched: %s\n", drv->name);
+			sc_debug(ctx, SC_LOG_DEBUG_MATCH, "matched: %s", drv->name);
 			memcpy(card->ops, ops, sizeof(struct sc_card_operations));
 			card->driver = drv;
 			r = ops->init(card);
 			if (r) {
-				sc_debug(ctx, SC_LOG_DEBUG_MATCH, "driver '%s' init() failed: %s\n", drv->name,
+				sc_debug(ctx, SC_LOG_DEBUG_MATCH, "driver '%s' init() failed: %s", drv->name,
 				      sc_strerror(r));
 				if (r == SC_ERROR_INVALID_CARD) {
 					card->driver = NULL;
@@ -207,8 +201,7 @@ int sc_connect_card(sc_reader_t *reader, sc_card_t **card_out)
 		}
 	}
 	if (card->driver == NULL) {
-		sc_debug(ctx, SC_LOG_DEBUG_MATCH,
-			"unable to find driver for inserted card\n");
+		sc_debug(ctx, SC_LOG_DEBUG_MATCH, "unable to find driver for inserted card");
 		r = SC_ERROR_INVALID_CARD;
 		goto err;
 	}
@@ -228,8 +221,8 @@ int sc_connect_card(sc_reader_t *reader, sc_card_t **card_out)
                 card->max_send_size = reader->driver->max_send_size;
         }
 
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "card info: %s, %i, 0x%X\n",
-		card->name, card->type, card->flags);
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "card info name:'%s', type:%i, flags:0x%X, max_send/recv_size:%i/%i",
+		card->name, card->type, card->flags, card->max_send_size, card->max_recv_size);
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, 0);
 err:
 	if (connected)
@@ -248,13 +241,13 @@ int sc_disconnect_card(sc_card_t *card)
 	if (card->ops->finish) {
 		int r = card->ops->finish(card);
 		if (r)
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "card driver finish() failed: %s\n",
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "card driver finish() failed: %s",
 			      sc_strerror(r));
 	}
 	if (card->reader->ops->disconnect) {
 		int r = card->reader->ops->disconnect(card->reader);
 		if (r)
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "disconnect() failed: %s\n",
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "disconnect() failed: %s",
 			      sc_strerror(r));
 	}
 	sc_card_free(card);
@@ -281,7 +274,7 @@ int sc_reset(sc_card_t *card, int do_cold_reset)
 
 	r2 = sc_mutex_unlock(card->ctx, card->mutex);
 	if (r2 != SC_SUCCESS) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "unable to release lock\n");
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "unable to release lock");
 		r = r != SC_SUCCESS ? r : r2;
 	}
 
@@ -316,7 +309,7 @@ int sc_lock(sc_card_t *card)
 		card->lock_count++;
 	r2 = sc_mutex_unlock(card->ctx, card->mutex);
 	if (r2 != SC_SUCCESS) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "unable to release lock\n");
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "unable to release lock");
 		r = r != SC_SUCCESS ? r : r2;
 	}
 	return r;
@@ -347,7 +340,7 @@ int sc_unlock(sc_card_t *card)
 	}
 	r2 = sc_mutex_unlock(card->ctx, card->mutex);
 	if (r2 != SC_SUCCESS) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "unable to release lock\n");
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "unable to release lock");
 		r = (r == SC_SUCCESS) ? r2 : r;
 	}
 	return r;
@@ -377,9 +370,8 @@ int sc_create_file(sc_card_t *card, sc_file_t *file)
 	if (r != SC_SUCCESS)
 		pbuf[0] = '\0';
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
-		"called; type=%d, path=%s, size=%u\n",
-		in_path->type, pbuf, file->size);
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "called; type=%d, path=%s, size=%u", 
+			in_path->type, pbuf, file->size);
 	if (card->ops->create_file == NULL)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED);
 	r = card->ops->create_file(card, file);
@@ -397,8 +389,7 @@ int sc_delete_file(sc_card_t *card, const sc_path_t *path)
 	if (r != SC_SUCCESS)
 		pbuf[0] = '\0';
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
-		"called; type=%d, path=%s\n", path->type, pbuf);
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "called; type=%d, path=%s", path->type, pbuf);
 	if (card->ops->delete_file == NULL)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED);
 	r = card->ops->delete_file(card, path);
@@ -412,8 +403,7 @@ int sc_read_binary(sc_card_t *card, unsigned int idx,
 	int r;
 
 	assert(card != NULL && card->ops != NULL && buf != NULL);
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
-		"called; %d bytes at index %d\n", count, idx);
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "called; %d bytes at index %d", count, idx);
 	if (count == 0)
 		return 0;
 	if (card->ops->read_binary == NULL)
@@ -454,8 +444,7 @@ int sc_write_binary(sc_card_t *card, unsigned int idx,
 	int r;
 
 	assert(card != NULL && card->ops != NULL && buf != NULL);
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
-		"called; %d bytes at index %d\n", count, idx);
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "called; %d bytes at index %d", count, idx);
 	if (count == 0)
 		return 0;
 	if (card->ops->write_binary == NULL)
@@ -496,8 +485,7 @@ int sc_update_binary(sc_card_t *card, unsigned int idx,
 	int r;
 
 	assert(card != NULL && card->ops != NULL && buf != NULL);
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
-		"called; %d bytes at index %d\n", count, idx);
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "called; %d bytes at index %d", count, idx);
 	if (count == 0)
 		return 0;
 	if (card->ops->update_binary == NULL)
@@ -561,8 +549,7 @@ int sc_select_file(sc_card_t *card,
 	if (r != SC_SUCCESS)
 		pbuf[0] = '\0';
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
-		"called; type=%d, path=%s\n", in_path->type, pbuf);
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "called; type=%d, path=%s", in_path->type, pbuf);
 	if (in_path->len > SC_MAX_PATH_SIZE)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
 	if (in_path->type == SC_PATH_TYPE_PATH) {
@@ -590,7 +577,7 @@ int sc_get_data(sc_card_t *card, unsigned int tag, u8 *buf, size_t len)
 {
 	int	r;
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "called, tag=%04x\n", tag);
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "called, tag=%04x", tag);
 	if (card->ops->get_data == NULL)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_NOT_SUPPORTED);
 	r = card->ops->get_data(card, tag, buf, len);
@@ -601,7 +588,7 @@ int sc_put_data(sc_card_t *card, unsigned int tag, const u8 *buf, size_t len)
 {
 	int	r;
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "called, tag=%04x\n", tag);
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "called, tag=%04x", tag);
 	if (card->ops->put_data == NULL)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_NOT_SUPPORTED);
 	r = card->ops->put_data(card, tag, buf, len);
@@ -696,8 +683,7 @@ sc_card_ctl(sc_card_t *card, unsigned long cmd, void *args)
 
 	/* suppress "not supported" error messages */
 	if (r == SC_ERROR_NOT_SUPPORTED) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "card_ctl(%lu) not supported\n",
-			(unsigned long) cmd);
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "card_ctl(%lu) not supported", cmd);
 		return r;
 	}
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
@@ -799,7 +785,7 @@ static int match_atr_table(sc_context_t *ctx, struct sc_atr_table *table, u8 *at
 	sc_bin_to_hex(card_atr_bin, card_atr_bin_len, card_atr_hex, sizeof(card_atr_hex), ':');
 	card_atr_hex_len = strlen(card_atr_hex);
 
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "ATR     : %s\n", card_atr_hex);
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "ATR     : %s", card_atr_hex);
 
 	for (i = 0; table[i].atr != NULL; i++) {
 		const char *tatr = table[i].atr;
@@ -810,15 +796,14 @@ static int match_atr_table(sc_context_t *ctx, struct sc_atr_table *table, u8 *at
 		size_t fix_hex_len = card_atr_hex_len;
 		size_t fix_bin_len = card_atr_bin_len;
 
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "ATR try : %s\n", tatr);
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "ATR try : %s", tatr);
 
 		if (tatr_len != fix_hex_len) {
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "ignored - wrong length\n");
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "ignored - wrong length");
 			continue;
 		}
 		if (matr != NULL) {
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
-				"ATR mask: %s\n", matr);
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "ATR mask: %s", matr);
 
 			matr_len = strlen(matr);
 			if (tatr_len != matr_len)
@@ -828,7 +813,8 @@ static int match_atr_table(sc_context_t *ctx, struct sc_atr_table *table, u8 *at
 			mbin_len = sizeof(mbin);
 			sc_hex_to_bin(matr, mbin, &mbin_len);
 			if (mbin_len != fix_bin_len) {
-				sc_debug(ctx, SC_LOG_DEBUG_NORMAL,"length of atr and atr mask do not match - ignored: %s - %s", tatr, matr); 
+				sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
+						"length of atr and atr mask do not match - ignored: %s - %s", tatr, matr); 
 				continue;
 			}
 			for (s = 0; s < tbin_len; s++) {
