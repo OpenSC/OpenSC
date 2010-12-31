@@ -314,7 +314,7 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	}
 	senv.algorithm_flags = sec_flags;
 
-sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "DEE flags:0x%8.8x alg_info->flags:0x%8.8x pad:0x%8.8x sec:0x%8.8x",
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "DEE flags:0x%8.8x alg_info->flags:0x%8.8x pad:0x%8.8x sec:0x%8.8x",
 		flags, alg_info->flags, pad_flags, sec_flags);
  
 

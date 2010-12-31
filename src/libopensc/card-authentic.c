@@ -1,6 +1,6 @@
 /*
  * card-authentic.c: Support for the Oberthur smart cards 
- * 	with PKI applet AuthentIC v3.1
+ * 	with PKI applet AuthentIC v3.2
  * 	
  * Copyright (C) 2010  Viktor Tarasov <vtarasov@opentrust.com>
  * 			OpenTrust <www.opentrust.com>
@@ -305,8 +305,6 @@ authentic_parse_credential_data(struct sc_context *ctx, struct sc_pin_cmd_data *
 			if (!sc)
 				continue;
 
-			/* pin_cmd->pin1.acls[ii].raw_value = sc; */
-
 			if (acl & AUTHENTIC_AC_SM_MASK)   {
 				pin_cmd->pin1.acls[ii].method = SC_AC_SCB;
 				pin_cmd->pin1.acls[ii].key_ref = sc;
@@ -472,9 +470,6 @@ authentic_init(struct sc_card *card)
 	card->drv_data = (struct authentic_private_data *) calloc(sizeof(struct authentic_private_data), 1);
 	if (!card->drv_data)
 		LOGN_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
-#if 0	
-	card->flags |= SC_CARD_FLAG_ZERO_LENGTH_PIN_ACCEPTED;
-#endif
 
 	if (card->type == SC_CARD_TYPE_OBERTHUR_AUTHENTIC_3_2)
 		rv = authentic_init_oberthur_authentic_3_2(card);
@@ -485,65 +480,6 @@ authentic_init(struct sc_card *card)
 	LOGN_FUNC_RETURN(ctx, rv);
 }
 
-
-#if 0
-static int 
-authentic_read_binary_long(struct sc_card *card, unsigned int offs, 
-		unsigned char *buf, size_t count, unsigned long flags)
-{
-	struct sc_context *ctx = card->ctx;
-	const struct sc_acl_entry *entry = NULL;
-	int rv;
-
-	LOGN_FUNC_CALLED(ctx);
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "authentic_sc_read_binary(card:%p) offs %i; count %i\n", card, offs, count);
-	if (offs > 0x7fff)
-		LOGN_TEST_RET(ctx, SC_ERROR_OFFSET_TOO_LARGE, "Invalid arguments");
-
-	if (count == 0)
-		LOGN_FUNC_RETURN(ctx, SC_SUCCESS);
-
-	authentic_debug_select_file(card, NULL);
-
-	if (card->cache.valid  && card->cache.current_ef)   {
-		entry = sc_file_get_acl_entry(card->cache.current_ef, SC_AC_OP_READ);
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "READ method/reference %X/%X\n", entry->method, entry->key_ref);
-		if (entry->method == SC_AC_SCB)   {
-			rv = sm_read_binary(card, entry->key_ref, offs, count ? count : card->cache.current_ef->size, buf, count);
-			LOGN_FUNC_RETURN(ctx, rv);
-		}
-	}
-
-	LOGN_FUNC_RETURN(ctx, SC_SUCCESS);
-}
-
-
-static int
-authentic_update_binary_long(struct sc_card *card, unsigned int offs,
-		const unsigned char *buff, size_t count, unsigned long flags)
-{
-	struct sc_context *ctx = card->ctx;
-	const struct sc_acl_entry *entry = NULL;
-	int rv;
-	
-	LOGN_FUNC_CALLED(ctx);
-	if (count == 0)
-		return SC_SUCCESS;
-
-	authentic_debug_select_file(card, NULL);
-
-	if (card->cache.valid && card->cache.current_ef)   {
-		entry = sc_file_get_acl_entry(card->cache.current_ef, SC_AC_OP_UPDATE);
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "UPDATE method/reference %X/%X\n", entry->method, entry->key_ref);
-		if (entry->method == SC_AC_SCB)   {
-			rv = sm_update_binary(card, entry->key_ref, offs, buff, count);
-			LOGN_FUNC_RETURN(ctx, rv);
-		}
-	}
-
-	LOGN_FUNC_RETURN(ctx, SC_SUCCESS);
-}
-#endif
 
 static int
 authentic_erase_binary(struct sc_card *card, unsigned int offs, size_t count, unsigned long flags)
@@ -776,18 +712,21 @@ authentic_debug_select_file(struct sc_card *card, const struct sc_path *path)
 	struct sc_card_cache *cache = &card->cache;
 
 	if (path)
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "try to select path(type:%i) %s", path->type, sc_print_path(path));
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "try to select path(type:%i) %s", 
+				path->type, sc_print_path(path));
 
 	if (!cache->valid)
 		return;
 
 	if (cache->current_df)
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "current_df(type=%i) %s", cache->current_df->path.type, sc_print_path(&cache->current_df->path));
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "current_df(type=%i) %s", 
+				cache->current_df->path.type, sc_print_path(&cache->current_df->path));
 	else
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "current_df empty");
 
 	if (cache->current_ef)
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "current_ef(type=%i) %s", cache->current_ef->path.type, sc_print_path(&cache->current_ef->path));
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "current_ef(type=%i) %s", 
+				cache->current_ef->path.type, sc_print_path(&cache->current_ef->path));
 	else
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "current_ef empty");
 }
@@ -1222,14 +1161,8 @@ authentic_create_file(struct sc_card *card, struct sc_file *file)
 		const struct sc_acl_entry *entry = sc_file_get_acl_entry(card->cache.current_df, SC_AC_OP_CREATE);
 
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "CREATE method/reference %X/%X\n", entry->method, entry->key_ref);
-		if (entry->method == SC_AC_SCB)   {
-#if 0
-			rv = sm_create_file(card, entry->key_ref, sbuf, sbuf_len + 2);
-			LOGN_FUNC_RETURN(ctx, rv);
-#else
-			LOGN_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Not yet");
-#endif
-		}
+		if (entry->method == SC_AC_SCB)
+			LOGN_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Not yet supported");
 	}
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xE0, 0, 0);
@@ -2145,215 +2078,6 @@ authentic_decipher(struct sc_card *card, const unsigned char *in, size_t in_len,
 }
 
 
-/*  
- *  Remote Access 
- */
-#if 0
-static int
-authentic_encode_answer(struct sc_context *ctx, struct sc_remote_apdu *in_apdus, 
-		unsigned char *out, size_t *out_len)
-{
-	struct sc_remote_apdu *p_apdu = in_apdus;
-	char ticket[SC_MAX_APDU_BUFFER_SIZE * 2 + 32];
-	char *answer = NULL;
-	unsigned sw = 0;
-	int ii;
-
-	printf("TODO: use ASN1 encoder\n");
-	LOGN_FUNC_CALLED(ctx);
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "encode_answer: out %p/%p", out, out_len);
-
-	answer = calloc(1, 16);
-	if (!answer)
-		LOGN_TEST_RET(ctx, SC_ERROR_MEMORY_FAILURE, "encode_answer: answer allocate failed");
-	strcpy(answer, "DATA=");
-
-	memset(ticket, 0, sizeof(ticket));
-	for (p_apdu = in_apdus, ii=0; p_apdu; p_apdu = p_apdu->next, ii++)   {
-		unsigned char tmp_buff[0x200];
-		size_t len, offs = sizeof(tmp_buff);
-
-		sw = p_apdu->apdu.sw1 * 0x100 + p_apdu->apdu.sw2;
-
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "%i: encode_answer: SW %X; resplen %i", ii, sw, p_apdu->apdu.resplen);
-		if (p_apdu->apdu.resplen)   {
-			offs -= p_apdu->apdu.resplen;
-			memcpy(tmp_buff + offs--, p_apdu->apdu.resp, p_apdu->apdu.resplen);
-
-			*(tmp_buff + offs--) = p_apdu->apdu.resplen & 0xFF;
-			if (p_apdu->apdu.resplen > 0xFF)
-				*(tmp_buff + offs--) = (p_apdu->apdu.resplen >> 8) & 0xFF;
-
-			if (p_apdu->apdu.resplen > 0xFF)
-				*(tmp_buff + offs--) = 0x82;
-			else if (p_apdu->apdu.resplen > 0x7F)
-				*(tmp_buff + offs--) = 0x81;
-
-			*(tmp_buff + offs--) = SM_RESPONSE_CONTEXT_DATA_TAG;
-		}
-		else   {
-			offs--;
-		}
-
-		*(tmp_buff + offs--) = p_apdu->apdu.sw2;
-		*(tmp_buff + offs--) = p_apdu->apdu.sw1;
-		if (p_apdu->apdu.sw1 & 0x80)   {
-			*(tmp_buff + offs--) = 0x00;
-			*(tmp_buff + offs--) = 3;
-		}
-		else   {
-			*(tmp_buff + offs--) = 2;
-		}
-		*(tmp_buff + offs--) = SC_ASN1_TAG_INTEGER;
-
-		*(tmp_buff + offs--) = ii + 1;
-		*(tmp_buff + offs--) = 1;
-		*(tmp_buff + offs--) = SC_ASN1_TAG_INTEGER;
-
-		len = sizeof(tmp_buff) - offs - 1;
-
-		*(tmp_buff + offs--) = len & 0xFF;
-
-		if (len >= 0x80 && len < 0x100)   {
-			*(tmp_buff + offs--) = 0x81;
-		}
-		else   if (len >= 0x100) {
-			*(tmp_buff + offs--) = (len > 8) & 0xFF;
-			*(tmp_buff + offs--) = 0x82;
-		}
-
-		*(tmp_buff + offs) = SM_RESPONSE_CONTEXT_TAG;
-
-		len = sizeof(tmp_buff) - offs;
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "%i: EncodedAnswer(%i) %s\n", ii, len, sc_dump_hex(tmp_buff + offs, len));
-		
-		answer = realloc(answer, strlen(answer) + len*2 + 16);
-		if (!answer)
-			LOGN_TEST_RET(ctx, SC_ERROR_MEMORY_FAILURE, "encode_answer: answer (re)allocate failed");
-
-		sprintf(answer + strlen(answer), "%s", sc_dump_hex(tmp_buff + offs, len));
-	}
-
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "encode_answer: SW:%X,ticket:%s", sw, ticket);
-	if (strlen(ticket))   {
-		answer = realloc(answer, strlen(answer) + strlen(ticket) + 16);
-		if (!answer)
-			LOGN_TEST_RET(ctx, SC_ERROR_MEMORY_FAILURE, "encode_answer: answer (re)allocate for ticket failed");
-		sprintf(answer + strlen(answer), ";%s", ticket);
-	}
-
-	answer = realloc(answer, strlen(answer) + 16);
-	if (!answer)
-		LOGN_TEST_RET(ctx, SC_ERROR_MEMORY_FAILURE, "encode_answer: answer (re)allocate failed");
-	sprintf(answer + strlen(answer), ";SW=%04X", sw);
-
-	if (out && out_len)   {
-		if (strlen(answer) + 1 > *out_len)   {
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "encode_answer: buffer too small: need %i, have %i", strlen(answer) + 1, *out_len);
-			LOGN_FUNC_RETURN(ctx, SC_ERROR_BUFFER_TOO_SMALL);
-		}
-
-		strcpy((char *)out, answer);
-		*out_len = strlen(answer);
-	}
-	else if (out_len)   {
-		*out_len = 0;
-	}
-
-	free(answer);
-
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "encode_answer: returns '%s'", out);
-	LOGN_FUNC_RETURN(ctx, SC_SUCCESS);
-}
-
-
-static int 
-authentic_external_apdus(struct sc_card *card, char *encoded_apdus, 
-		unsigned char *out, size_t *out_len)
-{
-	struct sc_context *ctx = card->ctx;
-	int rv = 0, rvv = 0;
-	size_t _out_len = 0;
-
-	printf("TODO: implement non card specific procedures -- common procedures for IAS/ECC and AuthentIC\n");
-	LOGN_FUNC_CALLED(ctx);
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "external_apdus: out(%p) %p", out_len, out);
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "external_apdus: encoded_apdus:'%s'", encoded_apdus);
-
-	if (out && out_len)   {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "external_apdus: out_len:%i", *out_len);
-		memset(out, 0, *out_len);
-		_out_len = *out_len;
-	}
-
-	do   {
-		struct sc_remote_apdu *remote_apdus = NULL, *current = NULL;
-		char header[0x200];
-
-		if (encoded_apdus && strlen(encoded_apdus))   {
-			rv = sc_hash_decode_remote_apdus(card->ctx, encoded_apdus, &remote_apdus);
-			if (rv)
-				break;
-
-			if (!remote_apdus)
-				break;
-
-			current = remote_apdus;
-			while(current)   {
-				rv = sc_transmit_apdu(card, &current->apdu);
-				if (rv)   {
-					sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "external_apdus: transmit APDU error %i", rv);
-					break;
-				}
-
-	  			rv = sc_check_sw(card, current->apdu.sw1, current->apdu.sw2);
-				if (rv && !current->fatal)   {
-					sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "external_apdus: non fatal APDU error %i", rv);
-					rv = 0;
-				}
-
-				if (rv)   {
-					sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "external_apdus: APDU error %i", rv);
-					break;
-				}
-
-				current = current->next;
-			}
-		
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "external_apdus: out before encode %p/%p", out, out_len);
-			rvv = authentic_encode_answer(card->ctx, remote_apdus, out, out_len);
-			if (rvv)   {   
-				sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "external_apdus: encode answer error %i", rvv);
-				if (rv!=0)
-					rv = rvv;
-			}
-
-			sc_remote_apdu_free(remote_apdus);
-			remote_apdus = NULL;
-		}
-
-		memset(header, 0, sizeof(header));
-		sprintf(header + strlen(header), "SERIAL=%s;", sc_dump_hex(card->serialnr.value,card->serialnr.len));
-
-		if (out && out_len)   {
-			int str_len = strlen((char *)out);
-
-			if (strlen(header) > _out_len - str_len)   {
-				sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "external_apdus: unsufficient buffer; need/have %i/%i", 
-						strlen(header) + str_len, _out_len);
-				LOGN_TEST_RET(card->ctx, SC_ERROR_BUFFER_TOO_SMALL, "authentic_external_apdus() buffer too small");
-			}
-
-			sprintf((char *)(out + str_len), "%s%s", str_len ? ";" : "", header);
-		}
-
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "external_apdus returns '%s'", out);
-	} while (0);
-
-	LOGN_FUNC_RETURN(ctx, rv);
-}
-#endif
-
 static int
 authentic_finish(struct sc_card *card)
 {
@@ -2400,11 +2124,6 @@ sc_get_driver(void)
 	authentic_ops.process_fci = authentic_process_fci;
 	authentic_ops.pin_cmd = authentic_pin_cmd;
 
-	/*
-	authentic_ops.external_apdus = authentic_external_apdus;
-	authentic_ops.update_binary_long = authentic_update_binary_long;
-	authentic_ops.read_binary_long = authentic_read_binary_long;
-	*/
 	return &authentic_drv;
 }
 

@@ -374,45 +374,6 @@ authentic_sdo_allocate_prvkey(struct sc_profile *profile, struct sc_card *card,
 	LOGN_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
-#if 0
-static int 
-authentic_sdo_convert_to_file(struct sc_card *card, struct sc_authentic_sdo *sdo, struct sc_file **out)
-{
-	struct sc_context *ctx = card->ctx;
-	struct sc_file *file = sc_file_new();
-	int rv, ii;
-
-	LOGN_FUNC_CALLED(ctx);
-	if (file == NULL)
-		LOGN_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
-	else if (!card || !sdo)
-		LOGN_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
-
-	sc_debug_normal(card->ctx, "sdo->sdo_class %X", sdo->sdo_class);
-
-	if (sdo->sdo_class == IASECC_SDO_CLASS_RSA_PRIVATE)   {
-		unsigned char ops[] = { 
-			SC_AC_OP_PSO_COMPUTE_SIGNATURE, SC_AC_OP_INTERNAL_AUTHENTICATE, SC_AC_OP_PSO_DECRYPT, 
-			SC_AC_OP_GENERATE, SC_AC_OP_UPDATE, SC_AC_OP_READ
-		};
-
-		for (ii=0; ii<sizeof(ops)/sizeof(ops[0]);ii++)   {
-			unsigned op_method, op_ref; 
-			
-			rv = authentic_sdo_convert_acl(card, sdo, ops[ii], &op_method, &op_ref);
-			LOGN_TEST_RET(ctx, rv, "IasEcc: cannot convert ACL");
-			sc_debug_normal(card->ctx, "ii:%i, method:%X, ref:%X", ii, op_method, op_ref);
-
-			sc_file_add_acl_entry(file, ops[ii], op_method, op_ref);
-		}
-	}
-
-	if (out)
-		*out = file;
-	LOGN_FUNC_RETURN(ctx, SC_SUCCESS);
-}
-#endif
-
 
 static int
 authentic_pkcs15_add_access_rule(struct sc_pkcs15_object *object, unsigned access_mode, struct sc_pkcs15_id *auth_id)
@@ -444,44 +405,6 @@ authentic_pkcs15_add_access_rule(struct sc_pkcs15_object *object, unsigned acces
 	return SC_SUCCESS;	
 }
 
-#if 0
-static int
-authentic_pkcs15_get_auth_id_from_se(struct sc_pkcs15_card *p15card, unsigned char scb,
-		struct sc_pkcs15_id *auth_id)
-{
-	struct sc_context *ctx = p15card->card->ctx;
-        struct sc_pkcs15_object *pin_objs[32];
-	int rv, ii, nn_pins, se_ref, pin_ref;
-
-	LOGN_FUNC_CALLED(ctx);
-	if (auth_id)
-		memset(auth_id, 0, sizeof(struct sc_pkcs15_id));
-
-	if (!(scb & IASECC_SCB_METHOD_USER_AUTH))
-		LOGN_FUNC_RETURN(ctx, SC_SUCCESS);
-
-        rv = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_AUTH_PIN, pin_objs, 32);
-	LOGN_TEST_RET(ctx, rv, "Error while getting AUTH objects");
-	nn_pins = rv;
-
-	se_ref = scb & 0x0F;
-	rv = sc_card_ctl(p15card->card, SC_CARDCTL_GET_CHV_REFERENCE_IN_SE, (void *)(&se_ref));
-	LOGN_TEST_RET(ctx, rv, "Card CTL error: cannot get CHV reference from SE");
-	pin_ref = rv;
-	for (ii=0; ii<nn_pins; ii++)   {
-		const struct sc_pkcs15_pin_info *pin_info = (const struct sc_pkcs15_pin_info *) pin_objs[ii]->data;
-
-		if (pin_ref == pin_info->reference)   {
-			*auth_id = pin_info->auth_id;
-			break;
-		}
-	}
-	if (ii == nn_pins)
-		LOGN_TEST_RET(ctx, SC_ERROR_OBJECT_NOT_FOUND, "No AUTH object found");
-
-	LOGN_FUNC_RETURN(ctx, SC_SUCCESS);
-}
-#endif
 
 static int
 authentic_pkcs15_fix_file_access_rule(struct sc_pkcs15_card *p15card, struct sc_file *file,
@@ -574,58 +497,6 @@ authentic_pkcs15_fix_usage(struct sc_pkcs15_card *p15card, struct sc_pkcs15_obje
 }
 
 
-static int 
-authentic_pkcs15_fix_supported_algos(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *object)
-{
-	struct sc_context *ctx = p15card->card->ctx;
-	struct sc_pkcs15_prkey_info *prkey_info = (struct sc_pkcs15_prkey_info *) object->data;
-	struct sc_supported_algo_info *algo;
-	int rv = SC_SUCCESS, ii;
-
-	LOGN_FUNC_CALLED(ctx);
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "encode supported algos for object(%s,type:%X)", object->label, object->type);
-#if 0
-	switch (object->type)   {
-	case SC_PKCS15_TYPE_PRKEY_RSA:
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "PrKey Usage:%X,Access:%X", prkey_info->usage, prkey_info->access_flags);
-		if (prkey_info->usage & (SC_PKCS15_PRKEY_USAGE_DECRYPT | SC_PKCS15_PRKEY_USAGE_UNWRAP))   {
-			algo = sc_pkcs15_get_supported_algo(p15card, SC_PKCS15_ALGO_OP_DECIPHER, CKM_RSA_PKCS);
-			rv = sc_pkcs15_add_supported_algo_ref(object, algo);
-			LOGN_TEST_RET(ctx, rv, "cannot add supported algorithm DECIPHER:CKM_RSA_PKCS");
-		}
-
-		if (prkey_info->usage & SC_PKCS15_PRKEY_USAGE_SIGN)   {
-			if (prkey_info->usage & SC_PKCS15_PRKEY_USAGE_NONREPUDIATION)   {
-				algo = sc_pkcs15_get_supported_algo(p15card, SC_PKCS15_ALGO_OP_COMPUTE_SIGNATURE, CKM_SHA1_RSA_PKCS);
-				rv = sc_pkcs15_add_supported_algo_ref(object, algo);
-				LOGN_TEST_RET(ctx, rv, "cannot add supported algorithm SIGN:CKM_SHA1_RSA_PKCS");
-
-				algo = sc_pkcs15_get_supported_algo(p15card, SC_PKCS15_ALGO_OP_COMPUTE_SIGNATURE, CKM_SHA256_RSA_PKCS);
-				rv = sc_pkcs15_add_supported_algo_ref(object, algo);
-				LOGN_TEST_RET(ctx, rv, "cannot add supported algorithm SIGN:CKM_SHA256_RSA_PKCS");
-			}
-			else   {
-				algo = sc_pkcs15_get_supported_algo(p15card, SC_PKCS15_ALGO_OP_COMPUTE_SIGNATURE, CKM_RSA_PKCS);
-				rv = sc_pkcs15_add_supported_algo_ref(object, algo);
-				LOGN_TEST_RET(ctx, rv, "cannot add supported algorithm SIGN:CKM_RSA_PKCS");
-			}
-		}
-
-		for (ii=0; ii<SC_MAX_SUPPORTED_ALGORITHMS && prkey_info->algo_refs[ii]; ii++)
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "algoReference %i", prkey_info->algo_refs[ii]);
-
-		break;
-	default:
-		rv = SC_ERROR_NOT_SUPPORTED;
-		break;
-	}
-#else
-	printf("%s +%i: FIXME\n", __FILE__, __LINE__);
-#endif
-	LOGN_FUNC_RETURN(ctx, rv);
-}
-
-
 static void
 authentic_free_sdo_data(struct sc_authentic_sdo *sdo)
 {
@@ -706,8 +577,9 @@ authentic_pkcs15_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p
 	rv = authentic_pkcs15_fix_usage(p15card, object);
 	LOGN_TEST_RET(ctx, rv, "cannot fix access rules for private key");
 
-	rv = authentic_pkcs15_fix_supported_algos(p15card, object);
-	LOGN_TEST_RET(ctx, rv, "encode private key access rules failed");
+	/* Here fix the key's supported algorithms, if these ones will be implemented 
+	 * (see src/libopensc/pkcs15-prkey.c).
+	 */
 
 	sdo->file = file_p_prvkey;
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "sdo->file:%p", sdo->file);
@@ -770,8 +642,9 @@ authentic_pkcs15_generate_key(struct sc_profile *profile, sc_pkcs15_card_t *p15c
 	rv = sc_pkcs15_encode_pubkey(ctx, pubkey, &pubkey->data.value, &pubkey->data.len);
 	LOGN_TEST_RET(ctx, rv, "encode public key failed");
 
-	rv = authentic_pkcs15_fix_supported_algos(p15card, object);
-	LOGN_TEST_RET(ctx, rv, "encode private key access rules failed");
+	/* Here fix the key's supported algorithms, if these ones will be implemented 
+	 * (see src/libopensc/pkcs15-prkey.c).
+	 */
 
 	authentic_free_sdo_data(sdo);
 
@@ -926,11 +799,9 @@ authentic_store_pubkey(struct sc_pkcs15_card *p15card, struct sc_profile *profil
 
 	authentic_pkcs15_add_access_rule(object, SC_PKCS15_ACCESS_RULE_MODE_READ, NULL);
 
-#if 0
-	memcpy(&pubkey_info->algo_refs[0], &prkey_info->algo_refs[0], sizeof(pubkey_info->algo_refs));
-#else
-	printf("%s +%i: FiXME\n", __FILE__, __LINE__);
-#endif
+	/* Here, if key supported algorithms will be implemented (see src/libopensc/pkcs15-prkey.c),
+	 * copy private key supported algorithms to the public key's ones. 
+	 */
 
 	LOGN_FUNC_RETURN(ctx, SC_SUCCESS);
 }

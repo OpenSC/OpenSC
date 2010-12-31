@@ -35,6 +35,11 @@ static const struct sc_asn1_entry c_asn1_com_key_attr[] = {
 	{ "native",	 SC_ASN1_BOOLEAN, SC_ASN1_TAG_BOOLEAN, SC_ASN1_OPTIONAL, NULL, NULL },
 	{ "accessFlags", SC_ASN1_BIT_FIELD, SC_ASN1_TAG_BIT_STRING, SC_ASN1_OPTIONAL, NULL, NULL },
 	{ "keyReference",SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL },
+/* IAS/ECC and ECC(CEN/TS 15480-2:2007) defines 'algReference' member of 'CommonKeyAttributes'.
+ * It's absent in PKCS#15 v1.1 .
+ * Will see if any card will really need it.
+ *	{ "algReference", SC_ASN1_STRUCT, SC_ASN1_CONS | SC_ASN1_CTX | 1, SC_ASN1_OPTIONAL, NULL, NULL },
+ */
 	{ NULL, 0, 0, 0, NULL, NULL }
 };
 
