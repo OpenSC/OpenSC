@@ -60,8 +60,24 @@ int util_connect_card(sc_context_t *ctx, sc_card_t **cardp,
 			/* If no reader had a card, default to the first reader */
 			reader = sc_ctx_get_reader(ctx, 0);
 		} else {
-			/* Get the reader by name if possible */
+			/* If the reader identifiers looks like an ATR, try to find the reader with that card */
+			unsigned char atr_buf[SC_MAX_ATR_SIZE * 3];
+			size_t atr_buf_len = sizeof(atr_buf);
+			unsigned int i;
+			if (sc_hex_to_bin(reader_id, atr_buf, &atr_buf_len) == SC_SUCCESS) {
+				/* Loop readers, looking for a card with ATR */
+				for (i = 0; i < sc_ctx_get_reader_count(ctx); i++) {
+					reader = sc_ctx_get_reader(ctx, i);
+					if (sc_detect_card_presence(reader) & SC_READER_CARD_PRESENT) {
+						if (!memcmp(reader->atr, atr_buf, reader->atr_len)) {
+							fprintf(stderr, "Matched ATR in reader: %s\n", reader->name);
+							goto autofound;
+						}	
+					}
+				}		
+			}
 			if (!sscanf(reader_id, "%d", &tmp_reader_num)) {
+				/* Try to get the reader by name if it does not parse as a number */
 				reader = sc_ctx_get_reader_by_name(ctx, reader_id);
 			} else {
 				reader = sc_ctx_get_reader(ctx, tmp_reader_num);
@@ -285,7 +301,7 @@ util_warn(const char *fmt, ...)
 	va_end(ap);
 }
 
-int 
+int
 util_getpass (char **lineptr, size_t *len, FILE *stream)
 {
 #define MAX_PASS_SIZE	128
