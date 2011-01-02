@@ -50,8 +50,14 @@ static const struct sc_asn1_entry c_asn1_com_pubkey_attr[] = {
 	{ NULL, 0, 0, 0, NULL, NULL }
 };
 
+static const struct sc_asn1_entry c_asn1_rsakey_value_choice[] = {
+	{ "path",       SC_ASN1_PATH,      SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_EMPTY_ALLOWED, NULL, NULL },
+	{ "direct",     SC_ASN1_OCTET_STRING, SC_ASN1_CTX | 0 | SC_ASN1_CONS, SC_ASN1_OPTIONAL | SC_ASN1_ALLOC, NULL, NULL },
+	{ NULL, 0, 0, 0, NULL, NULL }
+};
+
 static const struct sc_asn1_entry c_asn1_rsakey_attr[] = {
-	{ "value",	   SC_ASN1_PATH, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
+	{ "value",         SC_ASN1_CHOICE, 0, 0, NULL, NULL },
 	{ "modulusLength", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, 0, NULL, NULL },
 	{ "keyInfo",	   SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL },
 	{ NULL, 0, 0, 0, NULL, NULL }
@@ -108,7 +114,9 @@ int sc_pkcs15_decode_pukdf_entry(struct sc_pkcs15_card *p15card,
 	struct sc_pkcs15_keyinfo_gostparams *keyinfo_gostparams;
 	size_t usage_len = sizeof(info.usage);
 	size_t af_len = sizeof(info.access_flags);
+	struct sc_pkcs15_der *der = &obj->content;
 	struct sc_asn1_entry asn1_com_key_attr[6], asn1_com_pubkey_attr[1];
+	struct sc_asn1_entry asn1_rsakey_value_choice[3];
 	struct sc_asn1_entry asn1_rsakey_attr[4], asn1_rsa_type_attr[2];
 	struct sc_asn1_entry asn1_dsakey_attr[2], asn1_dsa_type_attr[2];
 	struct sc_asn1_entry asn1_gostr3410key_attr[5], asn1_gostr3410_type_attr[2];
@@ -124,6 +132,7 @@ int sc_pkcs15_decode_pukdf_entry(struct sc_pkcs15_card *p15card,
 	sc_copy_asn1_entry(c_asn1_pubkey, asn1_pubkey);
 	sc_copy_asn1_entry(c_asn1_pubkey_choice, asn1_pubkey_choice);
 	sc_copy_asn1_entry(c_asn1_rsa_type_attr, asn1_rsa_type_attr);
+	sc_copy_asn1_entry(c_asn1_rsakey_value_choice, asn1_rsakey_value_choice);
 	sc_copy_asn1_entry(c_asn1_rsakey_attr, asn1_rsakey_attr);
 	sc_copy_asn1_entry(c_asn1_dsa_type_attr, asn1_dsa_type_attr);
 	sc_copy_asn1_entry(c_asn1_dsakey_attr, asn1_dsakey_attr);
@@ -138,7 +147,10 @@ int sc_pkcs15_decode_pukdf_entry(struct sc_pkcs15_card *p15card,
 
 	sc_format_asn1_entry(asn1_rsa_type_attr + 0, asn1_rsakey_attr, NULL, 0);
 
-	sc_format_asn1_entry(asn1_rsakey_attr + 0, &info.path, NULL, 0);
+	sc_format_asn1_entry(asn1_rsakey_value_choice + 0, &info.path, NULL, 0);
+	sc_format_asn1_entry(asn1_rsakey_value_choice + 1, &der->value, &der->len, 0);
+
+	sc_format_asn1_entry(asn1_rsakey_attr + 0, asn1_rsakey_value_choice, NULL, 0);
 	sc_format_asn1_entry(asn1_rsakey_attr + 1, &info.modulus_length, NULL, 0);
 
 	sc_format_asn1_entry(asn1_dsa_type_attr + 0, asn1_dsakey_attr, NULL, 0);
@@ -221,6 +233,7 @@ int sc_pkcs15_encode_pukdf_entry(sc_context_t *ctx,
 				 u8 **buf, size_t *buflen)
 {
 	struct sc_asn1_entry asn1_com_key_attr[6], asn1_com_pubkey_attr[1];
+	struct sc_asn1_entry asn1_rsakey_value_choice[3];
 	struct sc_asn1_entry asn1_rsakey_attr[4], asn1_rsa_type_attr[2];
 	struct sc_asn1_entry asn1_dsakey_attr[2], asn1_dsa_type_attr[2];
 	struct sc_asn1_entry asn1_gostr3410key_attr[5], asn1_gostr3410_type_attr[2];
@@ -244,6 +257,7 @@ int sc_pkcs15_encode_pukdf_entry(sc_context_t *ctx,
 	sc_copy_asn1_entry(c_asn1_pubkey, asn1_pubkey);
 	sc_copy_asn1_entry(c_asn1_pubkey_choice, asn1_pubkey_choice);
 	sc_copy_asn1_entry(c_asn1_rsa_type_attr, asn1_rsa_type_attr);
+	sc_copy_asn1_entry(c_asn1_rsakey_value_choice, asn1_rsakey_value_choice);
 	sc_copy_asn1_entry(c_asn1_rsakey_attr, asn1_rsakey_attr);
 	sc_copy_asn1_entry(c_asn1_dsa_type_attr, asn1_dsa_type_attr);
 	sc_copy_asn1_entry(c_asn1_dsakey_attr, asn1_dsakey_attr);
@@ -257,8 +271,11 @@ int sc_pkcs15_encode_pukdf_entry(sc_context_t *ctx,
 		sc_format_asn1_entry(asn1_pubkey_choice + 0, &rsakey_obj, NULL, 1);
 
 		sc_format_asn1_entry(asn1_rsa_type_attr + 0, asn1_rsakey_attr, NULL, 1);
-
-		sc_format_asn1_entry(asn1_rsakey_attr + 0, &pubkey->path, NULL, 1);
+		if (pubkey->path.len || !obj->content.value)
+			sc_format_asn1_entry(asn1_rsakey_value_choice + 0, &pubkey->path, NULL, 1);
+		else
+			sc_format_asn1_entry(asn1_rsakey_value_choice + 1, obj->content.value, (void *)&obj->content.len, 1);
+		sc_format_asn1_entry(asn1_rsakey_attr + 0, asn1_rsakey_value_choice, NULL, 1);
 		sc_format_asn1_entry(asn1_rsakey_attr + 1, &pubkey->modulus_length, NULL, 1);
 		break;
 
