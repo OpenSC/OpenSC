@@ -121,6 +121,10 @@ static struct map		fileOpNames[] = {
         { "PIN-CHANGE", SC_AC_OP_PIN_CHANGE },
         { "PIN-RESET",  SC_AC_OP_PIN_RESET },
 	{ "GENERATE",	SC_AC_OP_GENERATE },
+	{ "PSO-COMPUTE-SIGNATURE",	SC_AC_OP_PSO_COMPUTE_SIGNATURE },
+	{ "INTERNAL-AUTHENTICATE",	SC_AC_OP_INTERNAL_AUTHENTICATE },
+	{ "PSO-DECRYPT",		SC_AC_OP_PSO_DECRYPT },
+	{ "RESIZE",	SC_AC_OP_RESIZE },
 	{ NULL, 0 }
 };
 static struct map		fileTypeNames[] = {
