@@ -306,7 +306,7 @@ util_getpass (char **lineptr, size_t *len, FILE *stream)
 {
 #define MAX_PASS_SIZE	128
 	char *buf;
-	int i;
+	unsigned int i;
 #ifndef _WIN32
 	struct termios old, new;
 
@@ -338,14 +338,14 @@ util_getpass (char **lineptr, size_t *len, FILE *stream)
 	tcsetattr (fileno (stdout), TCSAFLUSH, &old);
 	fputs("\n", stdout);
 #endif
-	if (buf[i] == 0 || buf[i] == 3)   {
+	if (buf[i] == 0 || buf[i] == 3) {
 		free(buf);
 		return -1;
 	}
 
 	buf[i] = 0;
 
-	if (*lineptr && (!len || *len < i+1))   {
+	if (*lineptr && (!len || *len < i+1)) {
 		free(*lineptr);
 		*lineptr = NULL;
 	}
