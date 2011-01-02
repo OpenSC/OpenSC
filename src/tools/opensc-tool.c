@@ -586,7 +586,10 @@ static int list_algorithms(void)
 			break; 
 		case SC_ALGORITHM_PBES2: 
 			aname = "pbes2"; 
-			break; 
+			break;
+		case SC_ALGORITHM_GOSTR3410:
+			aname = "gost";
+			break;
 		default: 
 			aname = "unknown"; 
 			break; 
