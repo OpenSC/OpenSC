@@ -308,7 +308,7 @@ static int refresh_attributes(sc_reader_t *reader)
 		return SC_ERROR_READER_DETACHED;
 	}
 
-	reader->flags &= ~SC_READER_CARD_CHANGED;
+	reader->flags &= ~(SC_READER_CARD_CHANGED|SC_READER_CARD_INUSE|SC_READER_CARD_EXCLUSIVE);
 
 	if (state & SCARD_STATE_PRESENT) {
 		reader->flags |= SC_READER_CARD_PRESENT;
@@ -321,6 +321,12 @@ static int refresh_attributes(sc_reader_t *reader)
 			reader->atr_len = priv->reader_state.cbAtr;	
 			memcpy(reader->atr, priv->reader_state.rgbAtr, reader->atr_len);
 		}
+		
+		/* Is the reader in use by some other application ? */
+		if (state & SCARD_STATE_INUSE)
+			reader->flags |= SC_READER_CARD_INUSE;
+		if (state & SCARD_STATE_EXCLUSIVE)
+			reader->flags |= SC_READER_CARD_EXCLUSIVE;
 
 		if (old_flags & SC_READER_CARD_PRESENT) {
 			/* Requires pcsc-lite 1.6.5+ to function properly */
@@ -342,7 +348,6 @@ static int refresh_attributes(sc_reader_t *reader)
 		reader->flags &= ~SC_READER_CARD_PRESENT;
 		if (old_flags & SC_READER_CARD_PRESENT)
 			reader->flags |= SC_READER_CARD_CHANGED;
-
 	}
 	sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "card %s%s",
 	         reader->flags & SC_READER_CARD_PRESENT ? "present" : "absent",
