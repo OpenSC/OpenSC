@@ -803,7 +803,7 @@ static int asn1_decode_path(sc_context_t *ctx, const u8 *in, size_t len,
 }
 
 static int asn1_encode_path(sc_context_t *ctx, const sc_path_t *path,
-			    u8 **buf, size_t *bufsize, int depth)
+			    u8 **buf, size_t *bufsize, int depth, unsigned int parent_flags)
 {
 	int r;
  	struct sc_asn1_entry asn1_path[4];
@@ -811,6 +811,9 @@ static int asn1_encode_path(sc_context_t *ctx, const sc_path_t *path,
 
 	sc_copy_asn1_entry(c_asn1_path, asn1_path);
 	sc_format_asn1_entry(asn1_path + 0, (void *) &tpath.value, (void *) &tpath.len, 1);
+
+	asn1_path[0].flags |= parent_flags;
+
 	if (path->count > 0) {
 		sc_format_asn1_entry(asn1_path + 1, (void *) &tpath.index, NULL, 1);
 		sc_format_asn1_entry(asn1_path + 2, (void *) &tpath.count, NULL, 1);
@@ -1428,7 +1431,7 @@ static int asn1_encode_entry(sc_context_t *ctx, const struct sc_asn1_entry *entr
 		r = sc_asn1_encode_object_id(&buf, &buflen, (struct sc_object_id *) parm);
 		break;
 	case SC_ASN1_PATH:
-		r = asn1_encode_path(ctx, (const sc_path_t *) parm, &buf, &buflen, depth);
+		r = asn1_encode_path(ctx, (const sc_path_t *) parm, &buf, &buflen, depth, entry->flags);
 		break;
 	case SC_ASN1_PKCS15_ID:
 		{
