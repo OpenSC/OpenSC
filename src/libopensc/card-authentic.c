@@ -837,7 +837,7 @@ authentic_select_file(struct sc_card *card, const struct sc_path *path,
 	LOGN_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
-#if 0
+
 static int
 authentic_apdus_allocate(struct sc_apdu **head, struct sc_apdu **new)
 {
@@ -889,6 +889,15 @@ authentic_read_binary(struct sc_card *card, unsigned int idx,
 	LOGN_FUNC_CALLED(ctx);
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "offs:%i,count:%i,max_recv_size:%i", idx, count, card->max_recv_size);
 
+	/* Data size more then 256 bytes can happen when card reader is 
+	 * configurated with max_send/recv_size more then 255/256 bytes 
+	 *   (for ex. 'remote-access' reader) .
+	 * For that case create chained APDUs 'read-binary' APDUs. 
+	 */
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "reader flags 0x%X", card->reader->flags);
+	if (count > 256 && !(card->reader->flags & SC_READER_HAS_WAITING_AREA))
+		LOGN_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Invalid size of the data to read");
+
 	rest = count;
 	while(rest)   {
 		if (authentic_apdus_allocate(&apdus, &cur_apdu))
@@ -929,6 +938,11 @@ authentic_write_binary(struct sc_card *card, unsigned int idx,
 	LOGN_FUNC_CALLED(ctx);
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "offs:%i,count:%i,max_send_size:%i", idx, count, card->max_send_size);
 
+	/* see comments for authentic_read_binary() */
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "reader flags 0x%X", card->reader->flags);
+	if (count > 255 && !(card->reader->flags & SC_READER_HAS_WAITING_AREA))
+		LOGN_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Invalid size of the data to read");
+
 	rest = count;
 	while(rest)   {
 		if (authentic_apdus_allocate(&apdus, &cur_apdu))
@@ -967,6 +981,11 @@ authentic_update_binary(struct sc_card *card, unsigned int idx,
 	LOGN_FUNC_CALLED(ctx);
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "offs:%i,count:%i,max_send_size:%i", idx, count, card->max_send_size);
 
+	/* see comments for authentic_read_binary() */
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "reader flags 0x%X", card->reader->flags);
+	if (count > 255 && !(card->reader->flags & SC_READER_HAS_WAITING_AREA))
+		LOGN_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Invalid size of the data to read");
+
 	rest = count;
 	while(rest)   {
 		if (authentic_apdus_allocate(&apdus, &cur_apdu))
@@ -991,7 +1010,7 @@ authentic_update_binary(struct sc_card *card, unsigned int idx,
 	LOGN_TEST_RET(ctx, rv, "authentic_write_binary() failed");
 	LOGN_FUNC_RETURN(ctx, count);
 }
-#endif
+
 
 static int
 authentic_process_fci(struct sc_card *card, struct sc_file *file,
@@ -1015,14 +1034,14 @@ authentic_process_fci(struct sc_card *card, struct sc_file *file,
 
 	tag = sc_asn1_find_tag(card->ctx,  buf, buflen, 0x6F, &taglen);
 	if (tag != NULL) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "  FCP length %i\n", taglen);
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "  FCP length %i", taglen);
 		buf = tag;
 		buflen = taglen;
 	}
 
 	tag = sc_asn1_find_tag(card->ctx,  buf, buflen, 0x62, &taglen);
 	if (tag != NULL) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "  FCP length %i\n", taglen);
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "  FCP length %i", taglen);
 		buf = tag;
 		buflen = taglen;
 	}
@@ -1160,7 +1179,7 @@ authentic_create_file(struct sc_card *card, struct sc_file *file)
 	if (card->cache.valid  && card->cache.current_df)   {
 		const struct sc_acl_entry *entry = sc_file_get_acl_entry(card->cache.current_df, SC_AC_OP_CREATE);
 
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "CREATE method/reference %X/%X\n", entry->method, entry->key_ref);
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "CREATE method/reference %X/%X", entry->method, entry->key_ref);
 		if (entry->method == SC_AC_SCB)
 			LOGN_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Not yet supported");
 	}
@@ -2050,7 +2069,7 @@ authentic_decipher(struct sc_card *card, const unsigned char *in, size_t in_len,
 	int rv;
 
 	LOGN_FUNC_CALLED(ctx);
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "crgram_len %i;  outlen %i\n", in_len, out_len);
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "crgram_len %i;  outlen %i", in_len, out_len);
 	if (!out || !out_len || in_len > SC_MAX_APDU_BUFFER_SIZE) 
 		LOGN_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 	
@@ -2104,11 +2123,9 @@ sc_get_driver(void)
 	authentic_ops.match_card = authentic_match_card;
 	authentic_ops.init = authentic_init;
 	authentic_ops.finish = authentic_finish;
-	/*
 	authentic_ops.read_binary = authentic_read_binary;
 	authentic_ops.write_binary = authentic_write_binary;
 	authentic_ops.update_binary = authentic_update_binary;
-	*/
 	authentic_ops.erase_binary = authentic_erase_binary;
 	/* authentic_ops.resize_file = authentic_resize_file; */
 	authentic_ops.select_file = authentic_select_file;
