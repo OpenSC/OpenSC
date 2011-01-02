@@ -372,6 +372,10 @@ int sc_create_file(sc_card_t *card, sc_file_t *file)
 
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "called; type=%d, path=%s, size=%u", 
 			in_path->type, pbuf, file->size);
+	/* ISO 7816-4: "Number of data bytes in the file, including structural information if any"
+	 * can not be bigger than two bytes */
+	if (file->size > 0xFFFF)
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
 	if (card->ops->create_file == NULL)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED);
 	r = card->ops->create_file(card, file);
