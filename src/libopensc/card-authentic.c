@@ -121,7 +121,7 @@ authentic_update_blob(struct sc_context *ctx, unsigned tag, unsigned char *data,
 	
 	pp = realloc(*blob, *blob_size + sz);
 	if (!pp)
-		LOGN_FUNC_RETURN(ctx, SC_ERROR_MEMORY_FAILURE);
+		LOGN_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 	
 	if (tag > 0xFF)
 		*(pp + *blob_size + offs++) = (tag >> 8) & 0xFF;
@@ -500,7 +500,7 @@ authentic_erase_binary(struct sc_card *card, unsigned int offs, size_t count, un
 
 	buf_zero = calloc(1, count);
 	if (!buf_zero)
-		LOGN_TEST_RET(ctx, SC_ERROR_MEMORY_FAILURE, "cannot allocate buff 'zero'");
+		LOGN_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "cannot allocate buff 'zero'");
 
 	rv = sc_update_binary(card, offs, buf_zero, count, flags);
 	free(buf_zero);
@@ -848,7 +848,7 @@ authentic_apdus_allocate(struct sc_apdu **head, struct sc_apdu **new)
 
 	allocated_apdu = calloc(1, sizeof(struct sc_apdu));
 	if (!allocated_apdu)
-		return SC_ERROR_MEMORY_FAILURE;
+		return SC_ERROR_OUT_OF_MEMORY;
 
 	if (*head == NULL)
 		*head = allocated_apdu;
@@ -901,7 +901,7 @@ authentic_read_binary(struct sc_card *card, unsigned int idx,
 	rest = count;
 	while(rest)   {
 		if (authentic_apdus_allocate(&apdus, &cur_apdu))
-			LOGN_TEST_RET(ctx, SC_ERROR_MEMORY_FAILURE, "cannot allocate APDU");
+			LOGN_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "cannot allocate APDU");
 
 		sz = rest > 256 ? 256 : rest;
 		sc_format_apdu(card, cur_apdu, SC_APDU_CASE_2_SHORT, 0xB0, (idx >> 8) & 0x7F, idx & 0xFF);
@@ -946,7 +946,7 @@ authentic_write_binary(struct sc_card *card, unsigned int idx,
 	rest = count;
 	while(rest)   {
 		if (authentic_apdus_allocate(&apdus, &cur_apdu))
-			LOGN_TEST_RET(ctx, SC_ERROR_MEMORY_FAILURE, "cannot allocate APDU");
+			LOGN_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "cannot allocate APDU");
 
 		sz = rest > 255 ? 255 : rest;
 		sc_format_apdu(card, cur_apdu, SC_APDU_CASE_3_SHORT, 0xD0, (idx >> 8) & 0x7F, idx & 0xFF);
@@ -989,7 +989,7 @@ authentic_update_binary(struct sc_card *card, unsigned int idx,
 	rest = count;
 	while(rest)   {
 		if (authentic_apdus_allocate(&apdus, &cur_apdu))
-			LOGN_TEST_RET(ctx, SC_ERROR_MEMORY_FAILURE, "cannot allocate APDU");
+			LOGN_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "cannot allocate APDU");
 
 		sz = rest > 255 ? 255 : rest;
 		sc_format_apdu(card, cur_apdu, SC_APDU_CASE_3_SHORT, 0xD6, (idx >> 8) & 0x7F, idx & 0xFF);

@@ -352,7 +352,7 @@ authentic_sdo_allocate_prvkey(struct sc_profile *profile, struct sc_card *card,
 
 	sdo = calloc(1, sizeof(struct sc_authentic_sdo));
 	if (!sdo)
-		LOGN_TEST_RET(ctx, SC_ERROR_MEMORY_FAILURE, "Cannot allocate 'sc_authentic_sdo'");
+		LOGN_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate 'sc_authentic_sdo'");
 
 	sdo->magic = AUTHENTIC_SDO_MAGIC;
 	sdo->docp.id = key_info->key_reference &  ~AUTHENTIC_OBJECT_REF_FLAG_LOCAL;
