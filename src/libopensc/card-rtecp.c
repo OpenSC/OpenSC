@@ -42,18 +42,21 @@ static struct sc_card_driver rtecp_drv = {
 static struct sc_atr_table rtecp_atrs[] = {
 	/* Rutoken ECP */
 	{ "3B:8B:01:52:75:74:6F:6B:65:6E:20:45:43:50:A0",
-		NULL, NULL, SC_CARD_TYPE_GENERIC_BASE, 0, NULL },
+		NULL, "Rutoken ECP", SC_CARD_TYPE_GENERIC_BASE, 0, NULL },
 	/* Rutoken ECP (DS) */
 	{ "3B:8B:01:52:75:74:6F:6B:65:6E:20:44:53:20:C1",
-		NULL, NULL, SC_CARD_TYPE_GENERIC_BASE, 0, NULL },
+		NULL, "Rutoken ECP (DS)", SC_CARD_TYPE_GENERIC_BASE, 0, NULL },
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
 static int rtecp_match_card(sc_card_t *card)
 {
-	assert(card && card->ctx);
-	if (_sc_match_atr(card, rtecp_atrs, &card->type) >= 0)
+	int i = -1;
+	i = _sc_match_atr(card, rtecp_atrs, &card->type);
+	if (i >= 0) {
+		card->name = rtecp_atrs[i].name;
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, 1);
+	}
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, 0);
 }
 
@@ -63,7 +66,6 @@ static int rtecp_init(sc_card_t *card)
 	unsigned long flags;
 
 	assert(card && card->ctx);
-	card->name = "Rutoken ECP card";
 	card->caps |= SC_CARD_CAP_RSA_2048 | SC_CARD_CAP_NO_FCI | SC_CARD_CAP_RNG;
 	card->cla = 0;
 
