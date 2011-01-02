@@ -40,8 +40,8 @@ PIN user-pin {
     attempts            = 5;
     max-length          = 4;
     min-length          = 4;
-    flags                = 0x10; # initialized
-    reference           = 193;
+    flags               = 0x10; # initialized
+    reference           = 1;
 }
 PIN so-pin {
     auth-id = FF;
