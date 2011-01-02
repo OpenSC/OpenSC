@@ -31,11 +31,6 @@
 #define LOGN_FUNC_RETURN(ctx, r) SC_FUNC_RETURN((ctx), SC_LOG_DEBUG_NORMAL, (r))
 #define LOGN_TEST_RET(ctx, r, text) SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, text)
 
-#define AUTHENTIC_V3_TITLE "AuthentIC.v3"
-
-#define PAN_ISO7812_SN_TAG	0x5A
-#define PAN_ISO7812_LENGTH	0x0C
-
 #ifndef CKM_RSA_PKCS
 	#define CKM_RSA_PKCS		0x00000001
 	#define CKM_SHA1_RSA_PKCS	0x00000006

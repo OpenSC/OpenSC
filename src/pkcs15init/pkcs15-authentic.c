@@ -44,12 +44,12 @@
 #include <openssl/x509.h>
 #include <openssl/pkcs12.h>
 
-#include "../libopensc/opensc.h"
-#include "../libopensc/cardctl.h"
-#include "../libopensc/log.h"
-#include "../libopensc/pkcs15.h"
-#include "../libopensc/cards.h"
-#include "../libopensc/authentic.h"
+#include "libopensc/opensc.h"
+#include "libopensc/cardctl.h"
+#include "libopensc/log.h"
+#include "libopensc/pkcs15.h"
+#include "libopensc/cards.h"
+#include "libopensc/authentic.h"
 
 #include "pkcs15-init.h"
 #include "profile.h"
