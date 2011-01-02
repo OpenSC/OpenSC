@@ -542,28 +542,39 @@ int
 sc_profile_get_file_instance(struct sc_profile *profile, const char *name, 
 		int index, sc_file_t **ret)
 {
+	struct sc_context *ctx = profile->card->ctx;
 	struct file_info *fi;
 	struct sc_file *file;
 	int r;
 
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "get '%s' file instance", name);
+
 	if ((fi = sc_profile_find_file(profile, NULL, name)) == NULL)
-		return SC_ERROR_FILE_NOT_FOUND;
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_FILE_NOT_FOUND);
 	sc_file_dup(&file, fi->file);
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "ident '%s'; parent '%s'", fi->ident, fi->parent->ident);
 	if (file == NULL)
-		return SC_ERROR_OUT_OF_MEMORY;
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "file (type:%X, path:'%s')", file->type, sc_print_path(&file->path));
 
 	file->id += index;
-	file->path.value[file->path.len - 2] = (file->id >> 8) & 0xFF;
-	file->path.value[file->path.len - 1] = file->id & 0xFF;
+        if(file->type == SC_FILE_TYPE_BSO) {
+		r = sc_profile_add_file(profile, name, file);
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Profile error: cannot add BSO file");
+	}
+	else if (file->path.len)   {
+		file->path.value[file->path.len - 2] = (file->id >> 8) & 0xFF;
+		file->path.value[file->path.len - 1] = file->id & 0xFF;
 
-	r = sc_profile_add_file(profile, name, file);
-	if (r)
-		return r;
+		r = sc_profile_add_file(profile, name, file);
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Profile error: cannot add file");
+	}
 
 	if (ret)
 		*ret = file;
 
-	return SC_SUCCESS;
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
 }
 
 int
@@ -595,19 +606,28 @@ sc_profile_get_file_by_path(struct sc_profile *profile,
 int
 sc_profile_add_file(sc_profile_t *profile, const char *name, sc_file_t *file)
 {
+	struct sc_context *ctx = profile->card->ctx;
 	sc_path_t	path = file->path;
 	file_info	*parent;
 
-	path.len -= 2;
-	if (!(parent = sc_profile_find_file_by_path(profile, &path))) {
-		/* XXX perror */
-		return SC_ERROR_FILE_NOT_FOUND;
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
+	if (!path.len)   {
+		parent = profile->df_info;
+		        }
+        else   {
+		path.len -= 2;
+		parent = sc_profile_find_file_by_path(profile, &path);
 	}
+	if (!parent)
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_FILE_NOT_FOUND);
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Parent path:%s", sc_print_path(&parent->file->path));
+
 	sc_file_dup(&file, file);
 	if (file == NULL)
-		return SC_ERROR_OUT_OF_MEMORY;
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+
 	add_file(profile, name, file, parent);
-	return 0;
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
 }
 
 /*
