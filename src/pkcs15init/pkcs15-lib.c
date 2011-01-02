@@ -1066,8 +1066,7 @@ sc_pkcs15init_init_prkdf(struct sc_pkcs15_card *p15card,
 	/* Create the prkey object now.
 	 * If we find out below that we're better off reusing an
 	 * existing object, we'll ditch this one */
-	object = sc_pkcs15init_new_object(prkey_pkcs15_algo(p15card, key),
-				label, &keyargs->auth_id, NULL);
+	object = sc_pkcs15init_new_object(prkey_pkcs15_algo(p15card, key), label, &keyargs->auth_id, NULL);
 	if (object == NULL)
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate new PrKey object");
 
@@ -1084,15 +1083,10 @@ sc_pkcs15init_init_prkdf(struct sc_pkcs15_card *p15card,
 		key_info->native = 0;
 	}
 
-	if (keyargs->id.len != 0 && (keyargs->flags & SC_PKCS15INIT_SPLIT_KEY)) {
-		/* Split key; this ID exists already, don't check for
-		 * the pkcs15 object */
-	} else {
-		/* Select a Key ID if the user didn't specify one,
-		 * otherwise make sure it's compatible with our intended use */
-		r = select_id(p15card, SC_PKCS15_TYPE_PRKEY, &keyargs->id);
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Cannot select ID for PrKey object");
-	}
+	/* Select a Key ID if the user didn't specify one,
+	 * otherwise make sure it's compatible with our intended use */
+	r = select_id(p15card, SC_PKCS15_TYPE_PRKEY, &keyargs->id);
+	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Cannot select ID for PrKey object");
 
 	key_info->id = keyargs->id;
 
@@ -2107,15 +2101,19 @@ done:
 static int 
 select_id(struct sc_pkcs15_card *p15card, int type, struct sc_pkcs15_id *id)
 {
+	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15_id unused_id;
 	struct sc_pkcs15_object *obj;
 	unsigned int nid = DEFAULT_ID;
 	int r;
 
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 	/* If the user provided an ID, make sure we can use it */
 	if (id->len != 0) {
 		r = sc_pkcs15_find_object_by_id(p15card, type, id, &obj);
-		return (r == SC_ERROR_OBJECT_NOT_FOUND) ? 0 : r;
+		if (r == SC_ERROR_OBJECT_NOT_FOUND)
+			r = 0;
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, r);
 	}
 
 	memset(&unused_id, 0, sizeof(unused_id));
@@ -2133,14 +2131,10 @@ select_id(struct sc_pkcs15_card *p15card, int type, struct sc_pkcs15_id *id)
 				struct sc_pkcs15_search_key search_key;
 
 				memset(&search_key, 0, sizeof(search_key));
-				search_key.class_mask = 
-					SC_PKCS15_SEARCH_CLASS_PUBKEY |
-					SC_PKCS15_SEARCH_CLASS_CERT;
+				search_key.class_mask = SC_PKCS15_SEARCH_CLASS_PUBKEY | SC_PKCS15_SEARCH_CLASS_CERT;
 				search_key.id = id;
 
-				r = sc_pkcs15_search_objects(p15card,
-						&search_key,
-						NULL, 0);
+				r = sc_pkcs15_search_objects(p15card, &search_key, NULL, 0);
 				/* If there is a pubkey or cert with
 				 * this ID, skip it. */
 				if (r > 0)
@@ -2154,10 +2148,10 @@ select_id(struct sc_pkcs15_card *p15card, int type, struct sc_pkcs15_id *id)
 
 	if (unused_id.len) {
 		*id = unused_id;
-		return 0;
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, 0);
 	}
 	
-	return SC_ERROR_TOO_MANY_OBJECTS;
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_TOO_MANY_OBJECTS);
 }
 
 

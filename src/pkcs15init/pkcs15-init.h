@@ -219,7 +219,6 @@ struct sc_pkcs15init_keygen_args {
 };
 
 #define SC_PKCS15INIT_NO_PASSPHRASE	0x0002
-#define SC_PKCS15INIT_SPLIT_KEY		0x0004
 
 struct sc_pkcs15init_pubkeyargs {
 	struct sc_pkcs15_id	id;
