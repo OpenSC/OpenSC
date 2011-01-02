@@ -1598,15 +1598,12 @@ int sc_pkcs15_parse_df(struct sc_pkcs15_card *p15card,
 				"%s: Error adding object", sc_strerror(r));
 			goto ret;
 		}
-
-		/* Flag that DF as enumerated, after the first valid object
-		 * was found and the internal obj_list became modified. */
-		df->enumerated = 1;
 	};
 
 	if (r > 0)
 		r = 0;
 ret:
+	df->enumerated = 1;
 	free(buf);
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, r);
 }
