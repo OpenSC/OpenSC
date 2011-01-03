@@ -3248,8 +3248,8 @@ static int register_gost_mechanisms(struct sc_pkcs11_card *p11card, int flags)
 	return CKR_OK;
 }
 
-static int register_ec_mechanisms(struct sc_pkcs11_card *p11card, int flags, 
-			unsigned long ext_flags, int min_key_size, int max_key_size)
+static int register_ec_mechanisms(struct sc_pkcs11_card *p11card,
+			unsigned long ext_flags, CK_ULONG min_key_size, CK_ULONG max_key_size)
 {
 	CK_MECHANISM_INFO mech_info;
 	sc_pkcs11_mechanism_type_t *mt;
@@ -3312,7 +3312,7 @@ static CK_RV register_mechanisms(struct sc_pkcs11_card *p11card)
 	sc_card_t *card = p11card->card;
 	sc_algorithm_info_t *alg_info;
 	CK_MECHANISM_INFO mech_info;
-	int ec_min_key_size, ec_max_key_size;
+	CK_ULONG ec_min_key_size, ec_max_key_size;
 	unsigned long ec_ext_flags;
 	sc_pkcs11_mechanism_type_t *mt;
 	unsigned int num;
@@ -3369,7 +3369,7 @@ static CK_RV register_mechanisms(struct sc_pkcs11_card *p11card)
 	}
 
 	if (flags & SC_ALGORITHM_ECDSA_RAW) {
-		rc = register_ec_mechanisms(p11card, flags, ec_ext_flags, ec_min_key_size, ec_max_key_size);
+		rc = register_ec_mechanisms(p11card, ec_ext_flags, ec_min_key_size, ec_max_key_size);
 	}
 
 	if (flags & (SC_ALGORITHM_GOSTR3410_RAW
