@@ -593,14 +593,14 @@ int
 sc_profile_get_file_by_path(struct sc_profile *profile,
 		const sc_path_t *path, sc_file_t **ret)
 {
+	struct sc_context *ctx = profile->card->ctx;
 	struct file_info *fi;
 
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 	if ((fi = sc_profile_find_file_by_path(profile, path)) == NULL)
-		return SC_ERROR_FILE_NOT_FOUND;
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_FILE_NOT_FOUND);
 	sc_file_dup(ret, fi->file);
-	if (*ret == NULL)
-		return SC_ERROR_OUT_OF_MEMORY;
-	return 0;
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, *ret ? SC_SUCCESS : SC_ERROR_OUT_OF_MEMORY);
 }
 
 int
