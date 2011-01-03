@@ -279,15 +279,16 @@ static CK_RV sc_pkcs11_openssl_md_update(sc_pkcs11_operation_t *op,
 static CK_RV sc_pkcs11_openssl_md_final(sc_pkcs11_operation_t *op,
 				CK_BYTE_PTR pDigest, CK_ULONG_PTR pulDigestLen)
 {
-	EVP_MD_CTX	*md_ctx = DIGEST_CTX(op);
-	unsigned int len = *pulDigestLen;
+	EVP_MD_CTX *md_ctx = DIGEST_CTX(op);
 
-	if (len < EVP_MD_CTX_size(md_ctx)) {
+	if (*pulDigestLen < (unsigned) EVP_MD_CTX_size(md_ctx)) {
+		sc_debug(context, SC_LOG_DEBUG_NORMAL, "Provided buffer too small: %ul < %d",
+			*pulDigestLen, EVP_MD_CTX_size(md_ctx));
 		*pulDigestLen = EVP_MD_CTX_size(md_ctx);
 		return CKR_BUFFER_TOO_SMALL;
 	}
-	EVP_DigestFinal(md_ctx, pDigest, &len);
-	*pulDigestLen = len;
+
+	EVP_DigestFinal(md_ctx, pDigest, (unsigned *) pulDigestLen);
 
 	return CKR_OK;
 }
