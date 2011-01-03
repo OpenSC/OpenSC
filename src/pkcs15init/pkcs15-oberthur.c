@@ -812,7 +812,7 @@ cosm_emu_update_tokeninfo(struct sc_profile *profile, struct sc_pkcs15_card *p15
 	
 	buf = calloc(1, file->size);
 	if (!buf)
-		SC_FUNC_RETURN(ctx, 1, SC_ERROR_MEMORY_FAILURE);
+		SC_FUNC_RETURN(ctx, 1, SC_ERROR_OUT_OF_MEMORY);
 	
 	label_len = strlen(tinfo->label) > (file->size - 4) ? (file->size - 4) : strlen(tinfo->label);
 	memcpy(buf, tinfo->label, label_len);

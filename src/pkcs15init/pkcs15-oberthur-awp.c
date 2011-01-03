@@ -209,7 +209,7 @@ awp_update_blob(struct sc_context *ctx,
 	switch (type)  {
 	case TLV_TYPE_LLV :
 		if (!(pp = realloc(*blob, *blob_size + 2 + lv->len)))
-			return SC_ERROR_MEMORY_FAILURE;
+			return SC_ERROR_OUT_OF_MEMORY;
 		*(pp + *blob_size) = (lv->len >> 8) & 0xFF;
 		*(pp + *blob_size + 1) = lv->len & 0xFF;
 		memcpy(pp + *blob_size + 2, lv->value, (lv->len & 0xFF));
@@ -217,14 +217,14 @@ awp_update_blob(struct sc_context *ctx,
 		break;
 	case TLV_TYPE_LV :
 		if (!(pp = realloc(*blob, *blob_size + 1 + lv->len)))
-			return SC_ERROR_MEMORY_FAILURE;
+			return SC_ERROR_OUT_OF_MEMORY;
 		*(pp + *blob_size) = lv->len & 0xFF;
 		memcpy(pp + *blob_size + 1, lv->value, (lv->len & 0xFF));
 		*blob_size += 1 + lv->len;
 		break;
 	case TLV_TYPE_V :
 		if (!(pp = realloc(*blob, *blob_size + lv->len)))
-			return SC_ERROR_MEMORY_FAILURE;
+			return SC_ERROR_OUT_OF_MEMORY;
 		memcpy(pp + *blob_size, lv->value, lv->len);
 		*blob_size += lv->len;
 		break;
@@ -283,7 +283,7 @@ awp_create_container_record (struct sc_pkcs15_card *p15card, struct sc_profile *
 
 	buff = malloc(list_file->record_length);
 	if (!buff)
-		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_MEMORY_FAILURE);
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
 	
 	memset(buff, 0, list_file->record_length);
 	
@@ -367,7 +367,7 @@ awp_update_container_entry (struct sc_pkcs15_card *p15card, struct sc_profile *p
 
 	buff = malloc(list_file->record_length);
 	if (!buff)
-		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_MEMORY_FAILURE);
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
 	
 	memset(buff, 0, list_file->record_length);
 	
@@ -452,7 +452,7 @@ awp_remove_container_entry (struct sc_pkcs15_card *p15card, struct sc_profile *p
 		goto done;
 	
 	if (!(buff = malloc(file->record_length)))   {
-		rv = SC_ERROR_MEMORY_FAILURE;
+		rv = SC_ERROR_OUT_OF_MEMORY;
 		goto done;
 	}
 	
@@ -557,7 +557,7 @@ awp_update_container(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 
 	list = malloc(AWP_CONTAINER_RECORD_LEN * file->record_count);
 	if (!list)  {
-		rv = SC_ERROR_MEMORY_FAILURE;
+		rv = SC_ERROR_OUT_OF_MEMORY;
 		goto done;
 	}
 	
@@ -597,7 +597,7 @@ awp_update_container(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
         			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "file id %X; size %i", ff->id, ff->size);
 				buff = malloc(ff->size);
 				if (!buff)   {
-					rv = SC_ERROR_MEMORY_FAILURE;
+					rv = SC_ERROR_OUT_OF_MEMORY;
 					break;
 				}
 
@@ -664,7 +664,7 @@ awp_set_certificate_info (struct sc_pkcs15_card *p15card,
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 	blob_size = 2;
 	if (!(blob = malloc(blob_size)))   {
-		r = SC_ERROR_MEMORY_FAILURE;
+		r = SC_ERROR_OUT_OF_MEMORY;
         	goto done;
 	}
 
@@ -797,7 +797,7 @@ awp_update_object_list(struct sc_pkcs15_card *p15card, struct sc_profile *profil
 
 	buff = malloc(lst_file->size);
 	if (!buff)   {
-		rv = SC_ERROR_MEMORY_FAILURE;
+		rv = SC_ERROR_OUT_OF_MEMORY;
 		goto done;
 	}
 
@@ -887,7 +887,7 @@ awp_encode_key_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *obj
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "pubkey->modulus.len %i",pubkey->modulus.len);
 	ki->modulus.value = malloc(pubkey->modulus.len);
 	if (!ki->modulus.value)   {
-		r = SC_ERROR_MEMORY_FAILURE;
+		r = SC_ERROR_OUT_OF_MEMORY;
 		goto done;
 	}
 	memcpy(ki->modulus.value, pubkey->modulus.data, pubkey->modulus.len);
@@ -898,7 +898,7 @@ awp_encode_key_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *obj
 	 */
 	ki->exponent.value = malloc(pubkey->exponent.len);
 	if (!ki->exponent.value)   {
-		r = SC_ERROR_MEMORY_FAILURE;
+		r = SC_ERROR_OUT_OF_MEMORY;
 		goto done;
 	}
 	memcpy(ki->exponent.value, pubkey->exponent.data, pubkey->exponent.len);
@@ -909,7 +909,7 @@ awp_encode_key_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *obj
 	 */
 	ki->id.value = calloc(1, key_info->id.len);
 	if (!ki->id.value)
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_MEMORY_FAILURE, "AWP encode cert failed: ID allocation error");
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY, "AWP encode cert failed: ID allocation error");
 	memcpy(ki->id.value, key_info->id.value, key_info->id.len);
 	ki->id.len = key_info->id.len;
 
@@ -946,7 +946,7 @@ awp_set_key_info (struct sc_pkcs15_card *p15card, struct sc_profile *profile, st
 	blob_size = 2;
 	blob = malloc(blob_size);
 	if (!blob)
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_MEMORY_FAILURE, "AWP set key info failed: blob allocation error");
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY, "AWP set key info failed: blob allocation error");
 
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "label:%s",ki->label.value);
 
@@ -1051,7 +1051,7 @@ awp_encode_cert_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *ob
 
 	buff = OPENSSL_malloc(i2d_X509(x,NULL) + EVP_MAX_MD_SIZE);
 	if (!buff)
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_MEMORY_FAILURE, "AWP encode cert failed: memory allocation error");
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY, "AWP encode cert failed: memory allocation error");
 	
 	/*
 	 * subject commonName.
@@ -1072,7 +1072,7 @@ awp_encode_cert_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *ob
 	
 	ci->subject.value = malloc(r);
 	if (!ci->subject.value)
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_MEMORY_FAILURE, "AWP encode cert failed: subject allocation error");
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY, "AWP encode cert failed: subject allocation error");
 	memcpy(ci->subject.value, buff, r);
 	ci->subject.len = r;
 	
@@ -1086,7 +1086,7 @@ awp_encode_cert_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *ob
 		
 	ci->issuer.value = malloc(r);
 	if (!ci->issuer.value)
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_MEMORY_FAILURE, "AWP encode cert failed: issuer allocation error");
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY, "AWP encode cert failed: issuer allocation error");
 	memcpy(ci->issuer.value, buff, r);
 	ci->issuer.len = r;
 
@@ -1095,7 +1095,7 @@ awp_encode_cert_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *ob
 	 */
 	ci->id.value = calloc(1, cert_info->id.len);
 	if (!ci->id.value)
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_MEMORY_FAILURE, "AWP encode cert failed: ID allocation error");
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY, "AWP encode cert failed: ID allocation error");
 	memcpy(ci->id.value, cert_info->id.value, cert_info->id.len);
 	ci->id.len = cert_info->id.len;
 
@@ -1110,7 +1110,7 @@ awp_encode_cert_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *ob
 		encoded_len = i2c_ASN1_INTEGER(X509_get_serialNumber(x), &encoded_ptr);
 
 		if (!(ci->serial.value = malloc(encoded_len + 3)))   {
-			r = SC_ERROR_MEMORY_FAILURE;
+			r = SC_ERROR_OUT_OF_MEMORY;
 			goto done;
 		}
 
@@ -1190,7 +1190,7 @@ awp_encode_data_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *ob
 	if (di->app.len)   {
 		di->app.value = strdup(data_info->app_label);
 		if (!di->app.value) 
-			SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_MEMORY_FAILURE, 
+			SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY, 
 					"AWP encode data failed: cannot allocate App.Label");
 	}
 
@@ -1200,7 +1200,7 @@ awp_encode_data_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *ob
 	di->oid.len = buflen + 2;
 	di->oid.value = malloc(di->oid.len);
 	if (!di->oid.value)   
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_MEMORY_FAILURE, "AWP encode data failed: cannot allocate OID");
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY, "AWP encode data failed: cannot allocate OID");
 	
 	*(di->oid.value + 0) = 0x06;
 	*(di->oid.value + 1) = buflen;	
@@ -1239,7 +1239,7 @@ awp_set_data_info (struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 	sc_debug (ctx, SC_LOG_DEBUG_NORMAL, "Set 'DATA' info %p", di);
 	blob_size = 2;
 	if (!(blob = malloc(blob_size)))   {
-		r = SC_ERROR_MEMORY_FAILURE;
+		r = SC_ERROR_OUT_OF_MEMORY;
         	goto done;
 	}
 	*blob       = (di->flags >> 8) & 0xFF;
@@ -1300,7 +1300,7 @@ awp_get_lv(struct sc_context *ctx, unsigned char *buf, size_t buf_len,
 
 		out->value = malloc(len);
 		if (!out->value)
-			return SC_ERROR_MEMORY_FAILURE;
+			return SC_ERROR_OUT_OF_MEMORY;
 		memcpy(out->value, buf + offs + len_len, len);
 		out->len = len;
 	}
@@ -1403,7 +1403,7 @@ awp_update_key_info(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 
 	buf = calloc(1,file->size);
 	if (!buf)
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_MEMORY_FAILURE, "AWP update key info failed: allocation error");
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY, "AWP update key info failed: allocation error");
 
 	rv = sc_read_binary(p15card->card, 0, buf, file->size, 0);
 	if (rv < 0)    {
@@ -1708,7 +1708,7 @@ awp_delete_from_container(struct sc_pkcs15_card *p15card,
 
 	buff = malloc(file->record_length);
 	if (!buff)
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_MEMORY_FAILURE, "AWP update container entry: allocation error");
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY, "AWP update container entry: allocation error");
 	
 	for (rec = 1; rec <= file->record_count; rec++)   {
 		rv = sc_read_record(p15card->card, rec, buff, file->record_length, SC_RECORD_BY_REC_NR);
@@ -1809,7 +1809,7 @@ awp_remove_from_object_list( struct sc_pkcs15_card *p15card, struct sc_profile *
 
 	buff = malloc(lst->size);
 	if (!buff)
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_MEMORY_FAILURE, "AWP update object list: allocation error");
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY, "AWP update object list: allocation error");
 
 	rv = sc_read_binary(p15card->card, 0, buff, lst->size, 0);
 	if (rv != lst->size)
