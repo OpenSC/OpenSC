@@ -120,8 +120,7 @@ authentic_pkcs15_delete_file(struct sc_pkcs15_card *p15card, struct sc_profile *
 	int rv = 0;
 
 	LOGN_FUNC_CALLED(ctx);
-
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "authentic_pkcs15_delete_file() id %04X\n", df->id);
+	sc_logn(ctx, "delete file with file-id:%04X\n", df->id);
 
 	card->caps |= SC_CARD_CAP_USE_FCI_AC;
 	rv = sc_pkcs15init_authenticate(profile, p15card, df, SC_AC_OP_DELETE);
@@ -155,7 +154,7 @@ authentic_pkcs15_erase_card(struct sc_profile *profile, struct sc_pkcs15_card *p
 	LOGN_FUNC_CALLED(ctx);
 
 	if (p15card->file_odf)   {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Select ODF path: %s", sc_print_path(&p15card->file_odf->path));
+		sc_logn(ctx, "Select ODF path: %s", sc_print_path(&p15card->file_odf->path));
 		rv = sc_select_file(p15card->card, &p15card->file_odf->path, NULL);
 		LOGN_TEST_RET(ctx, rv, "Erase application error: cannot select ODF path");
 	}
@@ -220,7 +219,7 @@ authentic_pkcs15_new_file(struct sc_profile *profile, struct sc_card *card,
 	int rv;
 
 	LOGN_FUNC_CALLED(ctx);
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "type %X; num %i", type, num);
+	sc_logn(ctx, "type %X; num %i", type, num);
 	switch (type) {
 		case SC_PKCS15_TYPE_PRKEY_RSA:
 			t_name = "template-private-key";
@@ -238,11 +237,11 @@ authentic_pkcs15_new_file(struct sc_profile *profile, struct sc_card *card,
 			LOGN_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Profile template not supported");
 	}
 
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "df_info path '%s'", sc_print_path(&profile->df_info->file->path));
+	sc_logn(ctx, "df_info path '%s'", sc_print_path(&profile->df_info->file->path));
 	rv = sc_profile_get_file(profile, t_name, &file);
 	LOGN_TEST_RET(ctx, rv, "Error when getting file from template");
 
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "file(type:%X), path(type:%X;path:%s)", file->type, file->path.type, sc_print_path(&file->path));
+	sc_logn(ctx, "file(type:%X), path(type:%X;path:%s)", file->type, file->path.type, sc_print_path(&file->path));
 
 	file->id = (file->id & 0xFF00) | (num & 0xFF);
 	if (file->type != SC_FILE_TYPE_BSO)   {
@@ -255,8 +254,8 @@ authentic_pkcs15_new_file(struct sc_profile *profile, struct sc_card *card,
 		file->path.count = -1;
 	}
 
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "file size %i; ef type %i/%i; id %04X", file->size, file->type, file->ef_structure, file->id);
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "path type %X; path '%s'", file->path.type, sc_print_path(&file->path));
+	sc_logn(ctx, "file size %i; ef type %i/%i; id %04X", file->size, file->type, file->ef_structure, file->id);
+	sc_logn(ctx, "path type %X; path '%s'", file->path.type, sc_print_path(&file->path));
 
 	if (out)
 		*out = file;
@@ -285,7 +284,7 @@ authentic_pkcs15_select_key_reference(struct sc_profile *profile, struct sc_pkcs
 	if (key_info->key_reference < AUTHENTIC_V3_CRYPTO_OBJECT_REF_MIN)
 		key_info->key_reference = AUTHENTIC_V3_CRYPTO_OBJECT_REF_MIN;
 
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "returns key reference %i", key_info->key_reference);
+	sc_logn(ctx, "returns key reference %i", key_info->key_reference);
 	LOGN_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
@@ -347,7 +346,7 @@ authentic_sdo_allocate_prvkey(struct sc_profile *profile, struct sc_card *card,
 		LOGN_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	rv = authentic_pkcs15_new_file(profile, card, SC_PKCS15_TYPE_PRKEY_RSA, key_info->key_reference, &file);
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "authentic_pkcs15_create_key() new_file(TYPE_PRKEY_RSA) rv %i", rv);
+	sc_logn(ctx, "authentic_pkcs15_create_key() new_file(TYPE_PRKEY_RSA) rv %i", rv);
 	LOGN_TEST_RET(ctx, rv, "IasEcc pkcs15 new PRKEY_RSA file error");
 
 	sdo = calloc(1, sizeof(struct sc_authentic_sdo));
@@ -364,7 +363,7 @@ authentic_sdo_allocate_prvkey(struct sc_profile *profile, struct sc_card *card,
 
 	sc_file_free(file);
 
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "sdo(mech:%X,id:%X,acls:%s)", sdo->docp.mech, sdo->docp.id, 
+	sc_logn(ctx, "sdo(mech:%X,id:%X,acls:%s)", sdo->docp.mech, sdo->docp.id, 
 			sc_dump_hex(sdo->docp.acl_data, sdo->docp.acl_data_len));
 	if (out)
 		*out = sdo;
@@ -418,19 +417,19 @@ authentic_pkcs15_fix_file_access_rule(struct sc_pkcs15_card *p15card, struct sc_
 
 	LOGN_FUNC_CALLED(ctx);
 	acl = sc_file_get_acl_entry(file, ac_op);
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Fix access rule(op:%i;mode:%i) with ACL(method:%X,ref:%X)", 
+	sc_logn(ctx, "Fix access rule(op:%i;mode:%i) with ACL(method:%X,ref:%X)", 
 			ac_op, rule_mode, acl->method, acl->key_ref);
 	if (acl->method == SC_AC_NEVER)   {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "ignore access rule(op:%i,mode:%i)", ac_op, rule_mode);
+		sc_logn(ctx, "ignore access rule(op:%i,mode:%i)", ac_op, rule_mode);
 	}
 	else if (acl->method == SC_AC_NONE)   {
 		rv = authentic_pkcs15_add_access_rule(object, rule_mode, NULL);
 		LOGN_TEST_RET(ctx, rv, "Fix file access rule error");
 	}
 	else   {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "ACL(method:%X,ref:%X)", acl->method, acl->key_ref);
+		sc_logn(ctx, "ACL(method:%X,ref:%X)", acl->method, acl->key_ref);
 		if (acl->method == SC_AC_CHV)   {
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "ACL(method:%X,ref:%X)", acl->method, acl->key_ref);
+			sc_logn(ctx, "ACL(method:%X,ref:%X)", acl->method, acl->key_ref);
 			ref = acl->key_ref;
 			authentic_reference_to_pkcs15_id (ref, &id);
 		}
@@ -438,9 +437,9 @@ authentic_pkcs15_fix_file_access_rule(struct sc_pkcs15_card *p15card, struct sc_
 			LOGN_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Fix file access error");
 		}
 
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "ACL(method:%X,ref:%X)", acl->method, acl->key_ref);
+		sc_logn(ctx, "ACL(method:%X,ref:%X)", acl->method, acl->key_ref);
 		rv = authentic_pkcs15_add_access_rule(object, rule_mode, &id);
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "rv %i", rv);
+		sc_logn(ctx, "rv %i", rv);
 		LOGN_TEST_RET(ctx, rv, "Fix file access rule error");
 	}
 
@@ -456,7 +455,7 @@ authentic_pkcs15_fix_access(struct sc_pkcs15_card *p15card, struct sc_file *file
 	int rv, ii;
 
 	LOGN_FUNC_CALLED(ctx);
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "authID %s", sc_pkcs15_print_id(&object->auth_id));
+	sc_logn(ctx, "authID %s", sc_pkcs15_print_id(&object->auth_id));
 
 	memset(object->access_rules, 0, sizeof(object->access_rules));
 
@@ -482,7 +481,7 @@ authentic_pkcs15_fix_usage(struct sc_pkcs15_card *p15card, struct sc_pkcs15_obje
 	if (object->type == SC_PKCS15_TYPE_PRKEY_RSA)   {
 		struct sc_pkcs15_prkey_info *prkey_info = (struct sc_pkcs15_prkey_info *) object->data;
 
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "fix private key usage 0x%X", prkey_info->usage);
+		sc_logn(ctx, "fix private key usage 0x%X", prkey_info->usage);
         	for (ii=0;ii<SC_PKCS15_MAX_ACCESS_RULES;ii++)   {
 			if (!object->access_rules[ii].access_mode)
 				break;
@@ -491,7 +490,7 @@ authentic_pkcs15_fix_usage(struct sc_pkcs15_card *p15card, struct sc_pkcs15_obje
 				if (authentic_v3_rsa_map_attributes[jj].access_rule & object->access_rules[ii].access_mode)
 					prkey_info->usage |= authentic_v3_rsa_map_attributes[jj].usage;
 		}
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "fixed private key usage 0x%X", prkey_info->usage);
+		sc_logn(ctx, "fixed private key usage 0x%X", prkey_info->usage);
 	}
 	LOGN_FUNC_RETURN(ctx, SC_SUCCESS);
 }
@@ -530,7 +529,7 @@ authentic_pkcs15_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p
 	int	 rv;
 
 	LOGN_FUNC_CALLED(ctx);
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "create private key(keybits:%i,usage:%X,access:%X,ref:%X)", keybits, 
+	sc_logn(ctx, "create private key(keybits:%i,usage:%X,access:%X,ref:%X)", keybits, 
 			key_info->usage, key_info->access_flags, key_info->key_reference);
 	if (keybits < 1024 || keybits > 2048 || (keybits % 256))
 		LOGN_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Invalid RSA key size");
@@ -582,7 +581,7 @@ authentic_pkcs15_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p
 	 */
 
 	sdo->file = file_p_prvkey;
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "sdo->file:%p", sdo->file);
+	sc_logn(ctx, "sdo->file:%p", sdo->file);
 
 	rv = sc_pkcs15_allocate_object_content(object, (unsigned char *)sdo, sizeof(struct sc_authentic_sdo));
 	LOGN_TEST_RET(ctx, rv, "Failed to allocate PrvKey SDO as object content");
@@ -607,7 +606,7 @@ authentic_pkcs15_generate_key(struct sc_profile *profile, sc_pkcs15_card_t *p15c
 	int rv;
 
 	LOGN_FUNC_CALLED(ctx);
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "generate key(bits:%i,path:%s,AuthID:%s\n", keybits, 
+	sc_logn(ctx, "generate key(bits:%i,path:%s,AuthID:%s\n", keybits, 
 			sc_print_path(&key_info->path), sc_pkcs15_print_id(&object->auth_id));
 
 	if (!object->content.value || object->content.len != sizeof(struct sc_authentic_sdo))
@@ -671,7 +670,7 @@ authentic_pkcs15_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p1
 	int rv;
 
 	LOGN_FUNC_CALLED(ctx);
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Store IAS/ECC key(keybits:%i,AuthID:%s,path:%s)", 
+	sc_logn(ctx, "Store IAS/ECC key(keybits:%i,AuthID:%s,path:%s)", 
 			keybits, sc_pkcs15_print_id(&object->auth_id), sc_print_path(&key_info->path));
 
 	if (!object->content.value || object->content.len != sizeof(struct sc_authentic_sdo))
@@ -690,7 +689,7 @@ authentic_pkcs15_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p1
 
 	sdo->data.prvkey = prvkey;
 	        
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "sdo(mech:%X,id:%X,acls:%s)", sdo->docp.mech, sdo->docp.id,
+	sc_logn(ctx, "sdo(mech:%X,id:%X,acls:%s)", sdo->docp.mech, sdo->docp.id,
 			sc_dump_hex(sdo->docp.acl_data, sdo->docp.acl_data_len));
 
 	caps = card->caps;
@@ -719,7 +718,7 @@ authentic_pkcs15_delete_rsa_sdo (struct sc_profile *profile, struct sc_pkcs15_ca
 	int rv;
 
 	LOGN_FUNC_CALLED(ctx);
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "delete SDO RSA key (ref:%i,size:%i)", key_info->key_reference, key_info->modulus_length);
+	sc_logn(ctx, "delete SDO RSA key (ref:%i,size:%i)", key_info->key_reference, key_info->modulus_length);
 
 	rv = authentic_pkcs15_new_file(profile, p15card->card, SC_PKCS15_TYPE_PRKEY_RSA, key_info->key_reference, &file);
 	LOGN_TEST_RET(ctx, rv, "PRKEY_RSA instantiation file error");
@@ -750,7 +749,7 @@ authentic_pkcs15_delete_object (struct sc_profile *profile, struct sc_pkcs15_car
 	int rv;
 
 	LOGN_FUNC_CALLED(ctx);
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "delete PKCS15 object: type %X; path %s\n", type, sc_print_path(path));
+	sc_logn(ctx, "delete PKCS15 object: type %X; path %s\n", type, sc_print_path(path));
 
 	switch(type & SC_PKCS15_TYPE_CLASS_MASK)   {
 	case SC_PKCS15_TYPE_PRKEY:
@@ -777,7 +776,7 @@ authentic_store_pubkey(struct sc_pkcs15_card *p15card, struct sc_profile *profil
 	int rv;
 
 	LOGN_FUNC_CALLED(ctx);
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Public Key id '%s'", sc_pkcs15_print_id(&pubkey_info->id));
+	sc_logn(ctx, "Public Key id '%s'", sc_pkcs15_print_id(&pubkey_info->id));
 
 	rv = sc_pkcs15_find_prkey_by_id(p15card, &pubkey_info->id, &prkey_object);
 	LOGN_TEST_RET(ctx, rv, "Find related PrKey error");
