@@ -509,7 +509,7 @@ authentic_free_sdo_data(struct sc_authentic_sdo *sdo)
 		sc_file_free(sdo->file);
 
 	for (ii=0; ii<rsa_mechs_num; ii++)
-		if (sdo->sdo_class == authentic_v3_rsa_mechs[ii])
+		if (sdo->docp.mech == authentic_v3_rsa_mechs[ii])
 			break;
 	if (ii<rsa_mechs_num)
 		sc_pkcs15_free_prkey(sdo->data.prvkey);
