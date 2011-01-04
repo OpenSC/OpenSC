@@ -119,14 +119,14 @@ authentic_pkcs15_delete_file(struct sc_pkcs15_card *p15card, struct sc_profile *
 	unsigned long caps = card->caps;
 	int rv = 0;
 
-	LOGN_FUNC_CALLED(ctx);
-	sc_logn(ctx, "delete file with file-id:%04X\n", df->id);
+	LOG_FUNC_CALLED(ctx);
+	sc_log(ctx, "delete file with file-id:%04X\n", df->id);
 
 	card->caps |= SC_CARD_CAP_USE_FCI_AC;
 	rv = sc_pkcs15init_authenticate(profile, p15card, df, SC_AC_OP_DELETE);
 	card->caps = caps;
 
-	LOGN_TEST_RET(ctx, rv, "Cannnot authenticate SC_AC_OP_DELETE");
+	LOG_TEST_RET(ctx, rv, "Cannnot authenticate SC_AC_OP_DELETE");
 
 	memset(&path, 0, sizeof(path));
 	path.type = SC_PATH_TYPE_FILE_ID;
@@ -135,7 +135,7 @@ authentic_pkcs15_delete_file(struct sc_pkcs15_card *p15card, struct sc_profile *
 	path.len = 2;
 
 	rv = sc_delete_file(card, &path);
-	LOGN_FUNC_RETURN(ctx, rv);
+	LOG_FUNC_RETURN(ctx, rv);
 }
 
 
@@ -151,12 +151,12 @@ authentic_pkcs15_erase_card(struct sc_profile *profile, struct sc_pkcs15_card *p
 	struct sc_pkcs15_df *df;
 	int rv;
 
-	LOGN_FUNC_CALLED(ctx);
+	LOG_FUNC_CALLED(ctx);
 
 	if (p15card->file_odf)   {
-		sc_logn(ctx, "Select ODF path: %s", sc_print_path(&p15card->file_odf->path));
+		sc_log(ctx, "Select ODF path: %s", sc_print_path(&p15card->file_odf->path));
 		rv = sc_select_file(p15card->card, &p15card->file_odf->path, NULL);
-		LOGN_TEST_RET(ctx, rv, "Erase application error: cannot select ODF path");
+		LOG_TEST_RET(ctx, rv, "Erase application error: cannot select ODF path");
 	}
 
 	for (df = p15card->df_list; df; df = df->next)   {
@@ -177,7 +177,7 @@ authentic_pkcs15_erase_card(struct sc_profile *profile, struct sc_pkcs15_card *p
 
 		if (df->enumerated)   {
 			rv = sc_pkcs15_get_objects(p15card, obj_type, objs, 32);
-			LOGN_TEST_RET(ctx, rv, "Failed to get PKCS#15 objects to remove");
+			LOG_TEST_RET(ctx, rv, "Failed to get PKCS#15 objects to remove");
 
 			for (ii=0; ii<rv; ii++)
 				sc_pkcs15_remove_object(p15card, objs[ii]);
@@ -186,23 +186,23 @@ authentic_pkcs15_erase_card(struct sc_profile *profile, struct sc_pkcs15_card *p
 		rv = sc_select_file(p15card->card, &df->path, &file);
 		if (rv == SC_ERROR_FILE_NOT_FOUND)
 			continue;
-		LOGN_TEST_RET(ctx, rv, "Cannot select object file");
+		LOG_TEST_RET(ctx, rv, "Cannot select object file");
 
 		rv = sc_erase_binary(p15card->card, 0, file->size, 0);
 		if (rv == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED)   {
 			rv = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_UPDATE);
-			LOGN_TEST_RET(ctx, rv, "SC_AC_OP_UPDATE authentication failed");
+			LOG_TEST_RET(ctx, rv, "SC_AC_OP_UPDATE authentication failed");
 
 			rv = sc_erase_binary(p15card->card, 0, file->size, 0);
 		}
-		LOGN_TEST_RET(ctx, rv, "Binary erase error");
+		LOG_TEST_RET(ctx, rv, "Binary erase error");
 
 		sc_file_free(file);
 
 		profile->dirty = 1;
 	}
 
-	LOGN_FUNC_RETURN(ctx, SC_SUCCESS);
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
 
@@ -218,8 +218,8 @@ authentic_pkcs15_new_file(struct sc_profile *profile, struct sc_card *card,
 	const char *t_name = NULL;
 	int rv;
 
-	LOGN_FUNC_CALLED(ctx);
-	sc_logn(ctx, "type %X; num %i", type, num);
+	LOG_FUNC_CALLED(ctx);
+	sc_log(ctx, "type %X; num %i", type, num);
 	switch (type) {
 		case SC_PKCS15_TYPE_PRKEY_RSA:
 			t_name = "template-private-key";
@@ -234,14 +234,14 @@ authentic_pkcs15_new_file(struct sc_profile *profile, struct sc_card *card,
 			t_name = "template-public-data";
 			break;
 		default:
-			LOGN_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Profile template not supported");
+			LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Profile template not supported");
 	}
 
-	sc_logn(ctx, "df_info path '%s'", sc_print_path(&profile->df_info->file->path));
+	sc_log(ctx, "df_info path '%s'", sc_print_path(&profile->df_info->file->path));
 	rv = sc_profile_get_file(profile, t_name, &file);
-	LOGN_TEST_RET(ctx, rv, "Error when getting file from template");
+	LOG_TEST_RET(ctx, rv, "Error when getting file from template");
 
-	sc_logn(ctx, "file(type:%X), path(type:%X;path:%s)", file->type, file->path.type, sc_print_path(&file->path));
+	sc_log(ctx, "file(type:%X), path(type:%X;path:%s)", file->type, file->path.type, sc_print_path(&file->path));
 
 	file->id = (file->id & 0xFF00) | (num & 0xFF);
 	if (file->type != SC_FILE_TYPE_BSO)   {
@@ -254,13 +254,13 @@ authentic_pkcs15_new_file(struct sc_profile *profile, struct sc_card *card,
 		file->path.count = -1;
 	}
 
-	sc_logn(ctx, "file size %i; ef type %i/%i; id %04X", file->size, file->type, file->ef_structure, file->id);
-	sc_logn(ctx, "path type %X; path '%s'", file->path.type, sc_print_path(&file->path));
+	sc_log(ctx, "file size %i; ef type %i/%i; id %04X", file->size, file->type, file->ef_structure, file->id);
+	sc_log(ctx, "path type %X; path '%s'", file->path.type, sc_print_path(&file->path));
 
 	if (out)
 		*out = file;
 
-	LOGN_FUNC_RETURN(ctx, SC_SUCCESS);
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
 
@@ -273,19 +273,19 @@ authentic_pkcs15_select_key_reference(struct sc_profile *profile, struct sc_pkcs
 {
 	struct sc_context *ctx = p15card->card->ctx;
 
-	LOGN_FUNC_CALLED(ctx);
+	LOG_FUNC_CALLED(ctx);
 
 	/* In authentic PKCS#15 all crypto objects are locals */
 	key_info->key_reference |= AUTHENTIC_OBJECT_REF_FLAG_LOCAL;
 
 	if (key_info->key_reference > AUTHENTIC_V3_CRYPTO_OBJECT_REF_MAX)
-		LOGN_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	if (key_info->key_reference < AUTHENTIC_V3_CRYPTO_OBJECT_REF_MIN)
 		key_info->key_reference = AUTHENTIC_V3_CRYPTO_OBJECT_REF_MIN;
 
-	sc_logn(ctx, "returns key reference %i", key_info->key_reference);
-	LOGN_FUNC_RETURN(ctx, SC_SUCCESS);
+	sc_log(ctx, "returns key reference %i", key_info->key_reference);
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
 
@@ -297,9 +297,9 @@ authentic_docp_set_acls(struct sc_card *card, struct sc_file *file,
 	struct sc_context *ctx = card->ctx;
 	int ii, offs;
 
-	LOGN_FUNC_CALLED(ctx);
+	LOG_FUNC_CALLED(ctx);
 	if (ops_len > sizeof(docp->acl_data) / 2)
-		LOGN_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	for (ii=0, offs=0; ii<ops_len; ii++)   {
 		const struct sc_acl_entry *entry;
@@ -316,7 +316,7 @@ authentic_docp_set_acls(struct sc_card *card, struct sc_file *file,
 		else if (entry->method == SC_AC_CHV)   {
 			if (!(entry->key_ref & AUTHENTIC_V3_CREDENTIAL_ID_MASK)
 					|| (entry->key_ref & ~AUTHENTIC_V3_CREDENTIAL_ID_MASK))
-				LOGN_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Non supported Credential Reference");
+				LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Non supported Credential Reference");
 						                        
 			docp->acl_data[offs++] = 0x00;
 			docp->acl_data[offs++] = 0x01 << (entry->key_ref - 1);
@@ -324,7 +324,7 @@ authentic_docp_set_acls(struct sc_card *card, struct sc_file *file,
 	}
 
 	docp->acl_data_len = offs;
-	LOGN_FUNC_RETURN(ctx, offs);
+	LOG_FUNC_RETURN(ctx, offs);
 }
 
 
@@ -337,21 +337,21 @@ authentic_sdo_allocate_prvkey(struct sc_profile *profile, struct sc_card *card,
 	struct sc_file *file = NULL;
 	int rv;
 
-	LOGN_FUNC_CALLED(ctx);
+	LOG_FUNC_CALLED(ctx);
 
 	if (!out)
-		LOGN_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	if ((key_info->modulus_length % 256) || key_info->modulus_length < 1024 || key_info->modulus_length > 2048)
-		LOGN_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	rv = authentic_pkcs15_new_file(profile, card, SC_PKCS15_TYPE_PRKEY_RSA, key_info->key_reference, &file);
-	sc_logn(ctx, "authentic_pkcs15_create_key() new_file(TYPE_PRKEY_RSA) rv %i", rv);
-	LOGN_TEST_RET(ctx, rv, "IasEcc pkcs15 new PRKEY_RSA file error");
+	sc_log(ctx, "authentic_pkcs15_create_key() new_file(TYPE_PRKEY_RSA) rv %i", rv);
+	LOG_TEST_RET(ctx, rv, "IasEcc pkcs15 new PRKEY_RSA file error");
 
 	sdo = calloc(1, sizeof(struct sc_authentic_sdo));
 	if (!sdo)
-		LOGN_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate 'sc_authentic_sdo'");
+		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate 'sc_authentic_sdo'");
 
 	sdo->magic = AUTHENTIC_SDO_MAGIC;
 	sdo->docp.id = key_info->key_reference &  ~AUTHENTIC_OBJECT_REF_FLAG_LOCAL;
@@ -359,18 +359,18 @@ authentic_sdo_allocate_prvkey(struct sc_profile *profile, struct sc_card *card,
 
 	rv = authentic_docp_set_acls(card, file, authentic_v3_rsa_ac_ops, 
 			sizeof(authentic_v3_rsa_ac_ops)/sizeof(authentic_v3_rsa_ac_ops[0]), &sdo->docp);
-	LOGN_TEST_RET(ctx, rv, "Cannot set key ACLs from file");
+	LOG_TEST_RET(ctx, rv, "Cannot set key ACLs from file");
 
 	sc_file_free(file);
 
-	sc_logn(ctx, "sdo(mech:%X,id:%X,acls:%s)", sdo->docp.mech, sdo->docp.id, 
+	sc_log(ctx, "sdo(mech:%X,id:%X,acls:%s)", sdo->docp.mech, sdo->docp.id, 
 			sc_dump_hex(sdo->docp.acl_data, sdo->docp.acl_data_len));
 	if (out)
 		*out = sdo;
 	else
 		free(sdo);
 
-	LOGN_FUNC_RETURN(ctx, SC_SUCCESS);
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
 
@@ -415,35 +415,35 @@ authentic_pkcs15_fix_file_access_rule(struct sc_pkcs15_card *p15card, struct sc_
 	unsigned ref;
 	int rv;
 
-	LOGN_FUNC_CALLED(ctx);
+	LOG_FUNC_CALLED(ctx);
 	acl = sc_file_get_acl_entry(file, ac_op);
-	sc_logn(ctx, "Fix access rule(op:%i;mode:%i) with ACL(method:%X,ref:%X)", 
+	sc_log(ctx, "Fix access rule(op:%i;mode:%i) with ACL(method:%X,ref:%X)", 
 			ac_op, rule_mode, acl->method, acl->key_ref);
 	if (acl->method == SC_AC_NEVER)   {
-		sc_logn(ctx, "ignore access rule(op:%i,mode:%i)", ac_op, rule_mode);
+		sc_log(ctx, "ignore access rule(op:%i,mode:%i)", ac_op, rule_mode);
 	}
 	else if (acl->method == SC_AC_NONE)   {
 		rv = authentic_pkcs15_add_access_rule(object, rule_mode, NULL);
-		LOGN_TEST_RET(ctx, rv, "Fix file access rule error");
+		LOG_TEST_RET(ctx, rv, "Fix file access rule error");
 	}
 	else   {
-		sc_logn(ctx, "ACL(method:%X,ref:%X)", acl->method, acl->key_ref);
+		sc_log(ctx, "ACL(method:%X,ref:%X)", acl->method, acl->key_ref);
 		if (acl->method == SC_AC_CHV)   {
-			sc_logn(ctx, "ACL(method:%X,ref:%X)", acl->method, acl->key_ref);
+			sc_log(ctx, "ACL(method:%X,ref:%X)", acl->method, acl->key_ref);
 			ref = acl->key_ref;
 			authentic_reference_to_pkcs15_id (ref, &id);
 		}
 		else   {
-			LOGN_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Fix file access error");
+			LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Fix file access error");
 		}
 
-		sc_logn(ctx, "ACL(method:%X,ref:%X)", acl->method, acl->key_ref);
+		sc_log(ctx, "ACL(method:%X,ref:%X)", acl->method, acl->key_ref);
 		rv = authentic_pkcs15_add_access_rule(object, rule_mode, &id);
-		sc_logn(ctx, "rv %i", rv);
-		LOGN_TEST_RET(ctx, rv, "Fix file access rule error");
+		sc_log(ctx, "rv %i", rv);
+		LOG_TEST_RET(ctx, rv, "Fix file access rule error");
 	}
 
-	LOGN_FUNC_RETURN(ctx, SC_SUCCESS);
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
 
@@ -454,8 +454,8 @@ authentic_pkcs15_fix_access(struct sc_pkcs15_card *p15card, struct sc_file *file
 	struct sc_context *ctx = p15card->card->ctx;
 	int rv, ii;
 
-	LOGN_FUNC_CALLED(ctx);
-	sc_logn(ctx, "authID %s", sc_pkcs15_print_id(&object->auth_id));
+	LOG_FUNC_CALLED(ctx);
+	sc_log(ctx, "authID %s", sc_pkcs15_print_id(&object->auth_id));
 
 	memset(object->access_rules, 0, sizeof(object->access_rules));
 
@@ -464,10 +464,10 @@ authentic_pkcs15_fix_access(struct sc_pkcs15_card *p15card, struct sc_file *file
 				authentic_v3_rsa_map_attributes[ii].ac_op, 
 				authentic_v3_rsa_map_attributes[ii].access_rule, 
 				object);
-		LOGN_TEST_RET(ctx, rv, "Fix file READ access error");
+		LOG_TEST_RET(ctx, rv, "Fix file READ access error");
 	}
 
-	LOGN_FUNC_RETURN(ctx, SC_SUCCESS);
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
 
@@ -477,11 +477,11 @@ authentic_pkcs15_fix_usage(struct sc_pkcs15_card *p15card, struct sc_pkcs15_obje
 	struct sc_context *ctx = p15card->card->ctx;
 	int ii, jj;
 
-	LOGN_FUNC_CALLED(ctx);
+	LOG_FUNC_CALLED(ctx);
 	if (object->type == SC_PKCS15_TYPE_PRKEY_RSA)   {
 		struct sc_pkcs15_prkey_info *prkey_info = (struct sc_pkcs15_prkey_info *) object->data;
 
-		sc_logn(ctx, "fix private key usage 0x%X", prkey_info->usage);
+		sc_log(ctx, "fix private key usage 0x%X", prkey_info->usage);
         	for (ii=0;ii<SC_PKCS15_MAX_ACCESS_RULES;ii++)   {
 			if (!object->access_rules[ii].access_mode)
 				break;
@@ -490,9 +490,9 @@ authentic_pkcs15_fix_usage(struct sc_pkcs15_card *p15card, struct sc_pkcs15_obje
 				if (authentic_v3_rsa_map_attributes[jj].access_rule & object->access_rules[ii].access_mode)
 					prkey_info->usage |= authentic_v3_rsa_map_attributes[jj].usage;
 		}
-		sc_logn(ctx, "fixed private key usage 0x%X", prkey_info->usage);
+		sc_log(ctx, "fixed private key usage 0x%X", prkey_info->usage);
 	}
-	LOGN_FUNC_RETURN(ctx, SC_SUCCESS);
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
 
@@ -528,22 +528,22 @@ authentic_pkcs15_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p
 	size_t keybits = key_info->modulus_length;
 	int	 rv;
 
-	LOGN_FUNC_CALLED(ctx);
-	sc_logn(ctx, "create private key(keybits:%i,usage:%X,access:%X,ref:%X)", keybits, 
+	LOG_FUNC_CALLED(ctx);
+	sc_log(ctx, "create private key(keybits:%i,usage:%X,access:%X,ref:%X)", keybits, 
 			key_info->usage, key_info->access_flags, key_info->key_reference);
 	if (keybits < 1024 || keybits > 2048 || (keybits % 256))
-		LOGN_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Invalid RSA key size");
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Invalid RSA key size");
 
 	rv = authentic_pkcs15_new_file(profile, card, SC_PKCS15_TYPE_PRKEY_RSA, key_info->key_reference, &file_p_prvkey);
-	LOGN_TEST_RET(ctx, rv, "IasEcc pkcs15 new PRKEY_RSA file error");
+	LOG_TEST_RET(ctx, rv, "IasEcc pkcs15 new PRKEY_RSA file error");
 
 	key_info->key_reference |= AUTHENTIC_OBJECT_REF_FLAG_LOCAL;
 
 	rv = sc_select_file(card, &file_p_prvkey->path, &parent);
-	LOGN_TEST_RET(ctx, rv, "DF for the private objects not defined");
+	LOG_TEST_RET(ctx, rv, "DF for the private objects not defined");
 
 	rv = sc_pkcs15init_authenticate(profile, p15card, parent, SC_AC_OP_CRYPTO);
-	LOGN_TEST_RET(ctx, rv, "SC_AC_OP_CRYPTO authentication failed for parent DF");
+	LOG_TEST_RET(ctx, rv, "SC_AC_OP_CRYPTO authentication failed for parent DF");
 
 	sc_file_free(parent);
 
@@ -552,7 +552,7 @@ authentic_pkcs15_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p
 		| SC_PKCS15_PRKEY_ACCESS_SENSITIVE;
 
         rv = authentic_sdo_allocate_prvkey(profile, card, key_info, &sdo);
-        LOGN_TEST_RET(ctx, rv, "IasEcc: init SDO private key failed");
+        LOG_TEST_RET(ctx, rv, "IasEcc: init SDO private key failed");
 
 	rv = sc_card_ctl(card, SC_CARDCTL_AUTHENTIC_SDO_CREATE, sdo);
 	if (rv == SC_ERROR_FILE_ALREADY_EXISTS)   {
@@ -561,32 +561,32 @@ authentic_pkcs15_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p
 		p15card->card->caps &= ~SC_CARD_CAP_USE_FCI_AC;
 		rv = sc_pkcs15init_authenticate(profile, p15card, file_p_prvkey, SC_AC_OP_DELETE);
 		p15card->card->caps = caps;
-		LOGN_TEST_RET(ctx, rv, "SC_AC_OP_CRYPTO authentication failed for parent DF");
+		LOG_TEST_RET(ctx, rv, "SC_AC_OP_CRYPTO authentication failed for parent DF");
 
 		rv = sc_card_ctl(card, SC_CARDCTL_AUTHENTIC_SDO_DELETE, sdo);
-		LOGN_TEST_RET(ctx, rv, "SC_CARDCTL_AUTHENTIC_SDO_DELETE failed for private key");
+		LOG_TEST_RET(ctx, rv, "SC_CARDCTL_AUTHENTIC_SDO_DELETE failed for private key");
 	
 		rv = sc_card_ctl(card, SC_CARDCTL_AUTHENTIC_SDO_CREATE, sdo);
 	}
-	LOGN_TEST_RET(ctx, rv, "SC_CARDCTL_AUTHENTIC_SDO_CREATE failed");
+	LOG_TEST_RET(ctx, rv, "SC_CARDCTL_AUTHENTIC_SDO_CREATE failed");
 
 	rv = authentic_pkcs15_fix_access(p15card, file_p_prvkey, object);
-	LOGN_TEST_RET(ctx, rv, "cannot fix access rules for private key");
+	LOG_TEST_RET(ctx, rv, "cannot fix access rules for private key");
 
 	rv = authentic_pkcs15_fix_usage(p15card, object);
-	LOGN_TEST_RET(ctx, rv, "cannot fix access rules for private key");
+	LOG_TEST_RET(ctx, rv, "cannot fix access rules for private key");
 
 	/* Here fix the key's supported algorithms, if these ones will be implemented 
 	 * (see src/libopensc/pkcs15-prkey.c).
 	 */
 
 	sdo->file = file_p_prvkey;
-	sc_logn(ctx, "sdo->file:%p", sdo->file);
+	sc_log(ctx, "sdo->file:%p", sdo->file);
 
 	rv = sc_pkcs15_allocate_object_content(object, (unsigned char *)sdo, sizeof(struct sc_authentic_sdo));
-	LOGN_TEST_RET(ctx, rv, "Failed to allocate PrvKey SDO as object content");
+	LOG_TEST_RET(ctx, rv, "Failed to allocate PrvKey SDO as object content");
 
-	LOGN_FUNC_RETURN(ctx, rv);
+	LOG_FUNC_RETURN(ctx, rv);
 }
 
 
@@ -605,32 +605,32 @@ authentic_pkcs15_generate_key(struct sc_profile *profile, sc_pkcs15_card_t *p15c
 	unsigned long caps;
 	int rv;
 
-	LOGN_FUNC_CALLED(ctx);
-	sc_logn(ctx, "generate key(bits:%i,path:%s,AuthID:%s\n", keybits, 
+	LOG_FUNC_CALLED(ctx);
+	sc_log(ctx, "generate key(bits:%i,path:%s,AuthID:%s\n", keybits, 
 			sc_print_path(&key_info->path), sc_pkcs15_print_id(&object->auth_id));
 
 	if (!object->content.value || object->content.len != sizeof(struct sc_authentic_sdo))
-		LOGN_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Invalid PrKey SDO data");
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Invalid PrKey SDO data");
 	else if (keybits < 1024 || keybits > 2048 || (keybits % 256))
-		LOGN_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Invalid RSA key size");
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Invalid RSA key size");
 
 	sdo = (struct sc_authentic_sdo *)object->content.value;
 	if (sdo->magic != AUTHENTIC_SDO_MAGIC)
-		LOGN_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "'Magic' control failed for SDO PrvKey");
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "'Magic' control failed for SDO PrvKey");
 
 	rv = sc_select_file(card, &key_info->path, NULL);
-	LOGN_TEST_RET(ctx, rv, "failed to select parent DF");
+	LOG_TEST_RET(ctx, rv, "failed to select parent DF");
 
 	caps = card->caps;
 	card->caps &= ~SC_CARD_CAP_USE_FCI_AC;
 	rv = sc_pkcs15init_authenticate(profile, p15card, sdo->file, SC_AC_OP_GENERATE);
 	card->caps = caps;
-	LOGN_TEST_RET(ctx, rv, "SC_AC_OP_GENERATE authentication failed");
+	LOG_TEST_RET(ctx, rv, "SC_AC_OP_GENERATE authentication failed");
 
 	key_info->access_flags |= SC_PKCS15_PRKEY_ACCESS_LOCAL;
 
 	rv = sc_card_ctl(card, SC_CARDCTL_AUTHENTIC_SDO_GENERATE, sdo);
-	LOGN_TEST_RET(ctx, rv, "generate key failed");
+	LOG_TEST_RET(ctx, rv, "generate key failed");
 
 	pubkey->algorithm = SC_ALGORITHM_RSA;
 	//FIXME: allocate/copy/free to reduce memory likage
@@ -639,7 +639,7 @@ authentic_pkcs15_generate_key(struct sc_profile *profile, sc_pkcs15_card_t *p15c
 	sdo->data.prvkey = NULL;
 
 	rv = sc_pkcs15_encode_pubkey(ctx, pubkey, &pubkey->data.value, &pubkey->data.len);
-	LOGN_TEST_RET(ctx, rv, "encode public key failed");
+	LOG_TEST_RET(ctx, rv, "encode public key failed");
 
 	/* Here fix the key's supported algorithms, if these ones will be implemented 
 	 * (see src/libopensc/pkcs15-prkey.c).
@@ -648,9 +648,9 @@ authentic_pkcs15_generate_key(struct sc_profile *profile, sc_pkcs15_card_t *p15c
 	authentic_free_sdo_data(sdo);
 
 	rv = sc_pkcs15_allocate_object_content(object, pubkey->data.value, pubkey->data.len);
-	LOGN_TEST_RET(ctx, rv, "Failed to allocate public key as object content");
+	LOG_TEST_RET(ctx, rv, "Failed to allocate public key as object content");
 
-	LOGN_FUNC_RETURN(ctx, rv);
+	LOG_FUNC_RETURN(ctx, rv);
 }
 
 
@@ -669,41 +669,41 @@ authentic_pkcs15_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p1
 	struct sc_authentic_sdo *sdo;
 	int rv;
 
-	LOGN_FUNC_CALLED(ctx);
-	sc_logn(ctx, "Store IAS/ECC key(keybits:%i,AuthID:%s,path:%s)", 
+	LOG_FUNC_CALLED(ctx);
+	sc_log(ctx, "Store IAS/ECC key(keybits:%i,AuthID:%s,path:%s)", 
 			keybits, sc_pkcs15_print_id(&object->auth_id), sc_print_path(&key_info->path));
 
 	if (!object->content.value || object->content.len != sizeof(struct sc_authentic_sdo))
-		LOGN_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Invalid PrKey SDO data");
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Invalid PrKey SDO data");
 	else if (keybits < 1024 || keybits > 2048 || (keybits % 256))
-		LOGN_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Invalid RSA key size");
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Invalid RSA key size");
 
 	key_info->access_flags &= ~SC_PKCS15_PRKEY_ACCESS_LOCAL;
 
 	sdo = (struct sc_authentic_sdo *)object->content.value;
 	if (sdo->magic != AUTHENTIC_SDO_MAGIC)
-		LOGN_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "'Magic' control failed for SDO PrvKey");
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "'Magic' control failed for SDO PrvKey");
 
 	rv = sc_select_file(card, &key_info->path, NULL);
-	LOGN_TEST_RET(ctx, rv, "failed to select parent DF");
+	LOG_TEST_RET(ctx, rv, "failed to select parent DF");
 
 	sdo->data.prvkey = prvkey;
 	        
-	sc_logn(ctx, "sdo(mech:%X,id:%X,acls:%s)", sdo->docp.mech, sdo->docp.id,
+	sc_log(ctx, "sdo(mech:%X,id:%X,acls:%s)", sdo->docp.mech, sdo->docp.id,
 			sc_dump_hex(sdo->docp.acl_data, sdo->docp.acl_data_len));
 
 	caps = card->caps;
 	card->caps &= ~SC_CARD_CAP_USE_FCI_AC;
 	rv = sc_pkcs15init_authenticate(profile, p15card, sdo->file, SC_AC_OP_UPDATE);
-	LOGN_TEST_RET(ctx, rv, "SC_AC_OP_GENERATE authentication failed");
+	LOG_TEST_RET(ctx, rv, "SC_AC_OP_GENERATE authentication failed");
 
 	rv = sc_card_ctl(card, SC_CARDCTL_AUTHENTIC_SDO_STORE, sdo);
-	LOGN_TEST_RET(ctx, rv, "store IAS SDO PRIVATE KEY failed");
+	LOG_TEST_RET(ctx, rv, "store IAS SDO PRIVATE KEY failed");
 
 	authentic_free_sdo_data(sdo);
 	sc_pkcs15_free_object_content(object);
 
-	LOGN_FUNC_RETURN(ctx, rv);
+	LOG_FUNC_RETURN(ctx, rv);
 }
 
 
@@ -717,16 +717,16 @@ authentic_pkcs15_delete_rsa_sdo (struct sc_profile *profile, struct sc_pkcs15_ca
 	struct sc_file  *file = NULL;
 	int rv;
 
-	LOGN_FUNC_CALLED(ctx);
-	sc_logn(ctx, "delete SDO RSA key (ref:%i,size:%i)", key_info->key_reference, key_info->modulus_length);
+	LOG_FUNC_CALLED(ctx);
+	sc_log(ctx, "delete SDO RSA key (ref:%i,size:%i)", key_info->key_reference, key_info->modulus_length);
 
 	rv = authentic_pkcs15_new_file(profile, p15card->card, SC_PKCS15_TYPE_PRKEY_RSA, key_info->key_reference, &file);
-	LOGN_TEST_RET(ctx, rv, "PRKEY_RSA instantiation file error");
+	LOG_TEST_RET(ctx, rv, "PRKEY_RSA instantiation file error");
 
 	p15card->card->caps &= ~SC_CARD_CAP_USE_FCI_AC;
 	rv = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_DELETE);
 	p15card->card->caps = caps;
-	LOGN_TEST_RET(ctx, rv, "'DELETE' authentication failed for parent RSA key");
+	LOG_TEST_RET(ctx, rv, "'DELETE' authentication failed for parent RSA key");
 
 	sdo.magic = AUTHENTIC_SDO_MAGIC;
 	sdo.docp.id = key_info->key_reference & ~AUTHENTIC_OBJECT_REF_FLAG_LOCAL;
@@ -735,9 +735,9 @@ authentic_pkcs15_delete_rsa_sdo (struct sc_profile *profile, struct sc_pkcs15_ca
 	rv = sc_card_ctl(p15card->card, SC_CARDCTL_AUTHENTIC_SDO_DELETE, &sdo);
 	if (rv == SC_ERROR_DATA_OBJECT_NOT_FOUND)
 		rv = SC_SUCCESS;
-	LOGN_TEST_RET(ctx, rv, "SC_CARDCTL_AUTHENTIC_SDO_DELETE failed for private key");
+	LOG_TEST_RET(ctx, rv, "SC_CARDCTL_AUTHENTIC_SDO_DELETE failed for private key");
 
-	LOGN_FUNC_RETURN(ctx, rv);
+	LOG_FUNC_RETURN(ctx, rv);
 }
 
 
@@ -748,20 +748,20 @@ authentic_pkcs15_delete_object (struct sc_profile *profile, struct sc_pkcs15_car
 	struct sc_context *ctx = p15card->card->ctx;
 	int rv;
 
-	LOGN_FUNC_CALLED(ctx);
-	sc_logn(ctx, "delete PKCS15 object: type %X; path %s\n", type, sc_print_path(path));
+	LOG_FUNC_CALLED(ctx);
+	sc_log(ctx, "delete PKCS15 object: type %X; path %s\n", type, sc_print_path(path));
 
 	switch(type & SC_PKCS15_TYPE_CLASS_MASK)   {
 	case SC_PKCS15_TYPE_PRKEY:
 		rv = authentic_pkcs15_delete_rsa_sdo (profile, p15card, (struct sc_pkcs15_prkey_info *)data);
-		LOGN_FUNC_RETURN(ctx, rv);
+		LOG_FUNC_RETURN(ctx, rv);
 	case SC_PKCS15_TYPE_PUBKEY:
-		LOGN_FUNC_RETURN(ctx, SC_SUCCESS);
+		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 	default:
-		LOGN_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
+		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 	}
 
-	LOGN_FUNC_RETURN(ctx, SC_SUCCESS);
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
 
@@ -775,11 +775,11 @@ authentic_store_pubkey(struct sc_pkcs15_card *p15card, struct sc_profile *profil
 	struct sc_pkcs15_object *prkey_object = NULL;
 	int rv;
 
-	LOGN_FUNC_CALLED(ctx);
-	sc_logn(ctx, "Public Key id '%s'", sc_pkcs15_print_id(&pubkey_info->id));
+	LOG_FUNC_CALLED(ctx);
+	sc_log(ctx, "Public Key id '%s'", sc_pkcs15_print_id(&pubkey_info->id));
 
 	rv = sc_pkcs15_find_prkey_by_id(p15card, &pubkey_info->id, &prkey_object);
-	LOGN_TEST_RET(ctx, rv, "Find related PrKey error");
+	LOG_TEST_RET(ctx, rv, "Find related PrKey error");
 
 	prkey_info = (struct sc_pkcs15_prkey_info *)prkey_object->data;
 
@@ -802,7 +802,7 @@ authentic_store_pubkey(struct sc_pkcs15_card *p15card, struct sc_profile *profil
 	 * copy private key supported algorithms to the public key's ones. 
 	 */
 
-	LOGN_FUNC_RETURN(ctx, SC_SUCCESS);
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
 
@@ -815,7 +815,7 @@ authentic_emu_store_data(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 	struct sc_context *ctx = p15card->card->ctx;
 	int rv = SC_ERROR_NOT_IMPLEMENTED;
 
-	LOGN_FUNC_CALLED(ctx);
+	LOG_FUNC_CALLED(ctx);
 
 	switch (object->type & SC_PKCS15_TYPE_CLASS_MASK) {
 	case SC_PKCS15_TYPE_PUBKEY:
@@ -823,7 +823,7 @@ authentic_emu_store_data(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 		break;
 	}
 		
-	LOGN_FUNC_RETURN(ctx, rv);
+	LOG_FUNC_RETURN(ctx, rv);
 }
 
 
@@ -841,16 +841,16 @@ authentic_emu_update_tokeninfo(struct sc_profile *profile, struct sc_pkcs15_card
         rv = sc_select_file(p15card->card, &path, &file);
         if (!rv)   {
 		rv = sc_get_challenge(p15card->card, buffer, sizeof(buffer));
-		LOGN_TEST_RET(ctx, rv, "Get challenge error");
+		LOG_TEST_RET(ctx, rv, "Get challenge error");
 
 		len = file->size > sizeof(buffer) ? sizeof(buffer) : file->size;
 	        rv = sc_update_binary(p15card->card, 0, buffer, len, 0);
-		LOGN_TEST_RET(ctx, rv, "Get challenge error");
+		LOG_TEST_RET(ctx, rv, "Get challenge error");
 
 		sc_file_free(file);
 	}
 
-	LOGN_FUNC_RETURN(ctx, SC_SUCCESS);
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
 

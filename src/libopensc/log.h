@@ -46,10 +46,10 @@ enum {
 
 #if defined(__GNUC__)
 #define sc_debug(ctx, level, format, args...)	sc_do_log(ctx, level, __FILE__, __LINE__, __FUNCTION__, format , ## args)
-#define sc_logn(ctx, format, args...)   sc_do_log(ctx, SC_LOG_DEBUG_NORMAL, __FILE__, __LINE__, __FUNCTION__, format , ## args)
+#define sc_log(ctx, format, args...)   sc_do_log(ctx, SC_LOG_DEBUG_NORMAL, __FILE__, __LINE__, __FUNCTION__, format , ## args)
 #else
 #define sc_debug _sc_debug
-#define sc_logn _sc_logn
+#define sc_log _sc_log
 #endif
 
 void sc_do_log(struct sc_context *ctx, int level, const char *file, int line, const char *func, 
@@ -57,7 +57,7 @@ void sc_do_log(struct sc_context *ctx, int level, const char *file, int line, co
 void sc_do_log_va(struct sc_context *ctx, int level, const char *file, int line, const char *func, 
 		const char *format, va_list args);
 void _sc_debug(struct sc_context *ctx, int level, const char *format, ...);
-void _sc_logn(struct sc_context *ctx, const char *format, ...);
+void _sc_log(struct sc_context *ctx, const char *format, ...);
 
 void sc_hex_dump(struct sc_context *ctx, int level, const u8 * buf, size_t len, char *out, size_t outlen);
 char * sc_dump_hex(const u8 * in, size_t count);
@@ -65,7 +65,7 @@ char * sc_dump_hex(const u8 * in, size_t count);
 #define SC_FUNC_CALLED(ctx, level) do { \
 	 sc_do_log(ctx, level, __FILE__, __LINE__, __FUNCTION__, "called\n"); \
 } while (0)
-#define LOGN_FUNC_CALLED(ctx) SC_FUNC_CALLED((ctx), SC_LOG_DEBUG_NORMAL)
+#define LOG_FUNC_CALLED(ctx) SC_FUNC_CALLED((ctx), SC_LOG_DEBUG_NORMAL)
 
 #define SC_FUNC_RETURN(ctx, level, r) do { \
 	int _ret = r; \
@@ -78,7 +78,7 @@ char * sc_dump_hex(const u8 * in, size_t count);
 	} \
 	return _ret; \
 } while(0)
-#define LOGN_FUNC_RETURN(ctx, r) SC_FUNC_RETURN((ctx), SC_LOG_DEBUG_NORMAL, (r))
+#define LOG_FUNC_RETURN(ctx, r) SC_FUNC_RETURN((ctx), SC_LOG_DEBUG_NORMAL, (r))
 
 #define SC_TEST_RET(ctx, level, r, text) do { \
 	int _ret = (r); \
@@ -88,7 +88,7 @@ char * sc_dump_hex(const u8 * in, size_t count);
 		return _ret; \
 	} \
 } while(0)
-#define LOGN_TEST_RET(ctx, r, text) SC_TEST_RET((ctx), SC_LOG_DEBUG_NORMAL, (r), (text))
+#define LOG_TEST_RET(ctx, r, text) SC_TEST_RET((ctx), SC_LOG_DEBUG_NORMAL, (r), (text))
 
 #ifdef __cplusplus
 }

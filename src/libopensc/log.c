@@ -128,7 +128,7 @@ void _sc_debug(struct sc_context *ctx, int level, const char *format, ...)
         va_end(ap);
 }
 
-void _sc_logn(struct sc_context *ctx, const char *format, ...)
+void _sc_log(struct sc_context *ctx, const char *format, ...)
 {
 	va_list ap;
 
