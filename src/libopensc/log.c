@@ -128,6 +128,14 @@ void _sc_debug(struct sc_context *ctx, int level, const char *format, ...)
         va_end(ap);
 }
 
+void _sc_logn(struct sc_context *ctx, const char *format, ...)
+{
+	va_list ap;
+
+	va_start(ap, format);
+	sc_do_log_va(ctx, SC_LOG_DEBUG_NORMAL, NULL, 0, NULL, format, ap);
+	va_end(ap);
+}
 
 /* Although not used, we need this for consistent exports */
 void sc_hex_dump(struct sc_context *ctx, int level, const u8 * in, size_t count, char *buf, size_t len)

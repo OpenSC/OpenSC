@@ -27,10 +27,6 @@
 #include "types.h"
 #include "iso7816.h"
 
-#define LOGN_FUNC_CALLED(ctx) SC_FUNC_CALLED((ctx), SC_LOG_DEBUG_NORMAL)
-#define LOGN_FUNC_RETURN(ctx, r) SC_FUNC_RETURN((ctx), SC_LOG_DEBUG_NORMAL, (r))
-#define LOGN_TEST_RET(ctx, r, text) SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, text)
-
 #ifndef CKM_RSA_PKCS
 	#define CKM_RSA_PKCS		0x00000001
 	#define CKM_SHA1_RSA_PKCS	0x00000006
