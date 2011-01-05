@@ -44,6 +44,7 @@ static int verbose = 0, opt_wait = 0, opt_raw = 0;
 static char * opt_reader;
 static char * opt_pincode = NULL, * opt_key_id = NULL;
 static char * opt_input = NULL, * opt_output = NULL;
+static char * opt_bind_to_aid = NULL;
 static int opt_crypt_flags = 0;
 
 enum {
@@ -54,6 +55,7 @@ enum {
 	OPT_SHA224,
 	OPT_MD5,
 	OPT_PKCS1,
+	OPT_BIND_TO_AID,
 };
 
 static const struct option options[] = {
@@ -72,6 +74,7 @@ static const struct option options[] = {
 	{ "md5",		0, NULL,		OPT_MD5 },
 	{ "pkcs1",		0, NULL,		OPT_PKCS1 },
 	{ "pin",		1, NULL,		'p' },
+	{ "bind-to-aid",        1, NULL,		OPT_BIND_TO_AID },
 	{ "wait",		0, NULL,		'w' },
 	{ "verbose",		0, NULL,		'v' },
 	{ NULL, 0, NULL, 0 }
@@ -93,6 +96,7 @@ static const char *option_help[] = {
 	"Input file is a MD5 hash",
 	"Use PKCS #1 v1.5 padding",
 	"Uses password (PIN) <arg> (use - for reading PIN from STDIN)",
+	"Use on-card PKCS#15 application indicated by AID",
 	"Wait for card insertion",
 	"Verbose operation. Use several times to enable debug output.",
 };
@@ -550,6 +554,9 @@ int main(int argc, char * const argv[])
 		case 'p':
 			opt_pincode = optarg;
 			break;
+		case OPT_BIND_TO_AID:
+			opt_bind_to_aid = optarg;
+			break;
 		case 'w':
 			opt_wait = 1;
 			break;
@@ -579,7 +586,20 @@ int main(int argc, char * const argv[])
 
 	if (verbose)
 		fprintf(stderr, "Trying to find a PKCS #15 compatible card...\n");
-	r = sc_pkcs15_bind(card, NULL, &p15card);
+	if (opt_bind_to_aid)   {
+		struct sc_aid aid;
+
+		aid.len = sizeof(aid.value);
+		if (sc_hex_to_bin(opt_bind_to_aid, aid.value, &aid.len))   {
+			fprintf(stderr, "Invalid AID value: '%s'\n", opt_bind_to_aid);
+			return 1;
+		}
+
+		r = sc_pkcs15_bind(card, &aid, &p15card);
+	}
+	else   {
+		r = sc_pkcs15_bind(card, NULL, &p15card);
+	}
 	if (r) {
 		fprintf(stderr, "PKCS #15 binding failed: %s\n", sc_strerror(r));
 		err = 1;
