@@ -1462,7 +1462,7 @@ DWORD WINAPI CardAcquireContext(IN PCARD_DATA pCardData, __in DWORD dwFlags)
 						r, sc_strerror(r));
 				if(!r)
 				{
-					r = sc_pkcs15_bind(vs->card, &(vs->p15card));
+					r = sc_pkcs15_bind(vs->card, NULL, &(vs->p15card));
 					logprintf(pCardData, 2, "PKCS#15 initialization result: %d, %s\n", \
 						r, sc_strerror(r));
 				}
