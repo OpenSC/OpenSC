@@ -50,6 +50,7 @@ static char * opt_cert = NULL;
 static char * opt_data = NULL;
 static char * opt_pubkey = NULL;
 static char * opt_outfile = NULL;
+static char * opt_bind_to_aid = NULL;
 static u8 * opt_newpin = NULL;
 static u8 * opt_pin = NULL;
 static u8 * opt_puk = NULL;
@@ -71,6 +72,7 @@ enum {
 	OPT_NEWPIN,
 	OPT_PUK,
 	OPT_VERIFY_PIN,
+	OPT_BIND_TO_AID,
 };
 
 #define NELEMENTS(x)	(sizeof(x)/sizeof((x)[0]))
@@ -104,6 +106,7 @@ static const struct option options[] = {
 	{ "output",		required_argument, NULL,	'o' },
 	{ "no-cache",		no_argument, NULL,		OPT_NO_CACHE },
 	{ "auth-id",		required_argument, NULL,	'a' },
+	{ "bind-to-aid",        required_argument, NULL,   	OPT_BIND_TO_AID },
 	{ "wait",		no_argument, NULL,		'w' },
 	{ "verbose",		no_argument, NULL,		'v' },
 	{ NULL, 0, NULL, 0 }
@@ -135,6 +138,7 @@ static const char *option_help[] = {
 	"Outputs to file <arg>",
 	"Disable card caching",
 	"The auth ID of the PIN to use",
+	"Use on-card PKCS#15 application indicated by AID",
 	"Wait for card insertion",
 	"Verbose operation. Use several times to enable debug output.",
 };
@@ -1692,6 +1696,9 @@ int main(int argc, char * const argv[])
 		case 'a':
 			opt_auth_id = optarg;
 			break;
+		case OPT_BIND_TO_AID:
+			opt_bind_to_aid = optarg;
+			break;
 		case OPT_NO_CACHE:
 			opt_no_cache++;
 			break;
@@ -1724,7 +1731,22 @@ int main(int argc, char * const argv[])
 
 	if (verbose)
 		fprintf(stderr, "Trying to find a PKCS#15 compatible card...\n");
-	r = sc_pkcs15_bind(card, NULL, &p15card);
+
+        if (opt_bind_to_aid)   {
+		struct sc_aid aid;
+
+		aid.len = sizeof(aid.value);
+		if (sc_hex_to_bin(opt_bind_to_aid, aid.value, &aid.len))   {
+			fprintf(stderr, "Invalid AID value: '%s'\n", opt_bind_to_aid);
+			return 1;
+		}
+
+		r = sc_pkcs15_bind(card, &aid, &p15card);
+	}
+	else   {
+		r = sc_pkcs15_bind(card, NULL, &p15card);
+	}
+
 	if (r) {
 		fprintf(stderr, "PKCS#15 binding failed: %s\n", sc_strerror(r));
 		err = 1;
