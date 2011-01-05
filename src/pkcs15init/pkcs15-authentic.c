@@ -120,13 +120,13 @@ authentic_pkcs15_delete_file(struct sc_pkcs15_card *p15card, struct sc_profile *
 	int rv = 0;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "delete file with file-id:%04X\n", df->id);
+	sc_log(ctx, "delete file(id:%04X)", df->id);
 
 	card->caps |= SC_CARD_CAP_USE_FCI_AC;
 	rv = sc_pkcs15init_authenticate(profile, p15card, df, SC_AC_OP_DELETE);
 	card->caps = caps;
 
-	LOG_TEST_RET(ctx, rv, "Cannnot authenticate SC_AC_OP_DELETE");
+	LOG_TEST_RET(ctx, rv, "'DELETE' authentication failed");
 
 	memset(&path, 0, sizeof(path));
 	path.type = SC_PATH_TYPE_FILE_ID;
@@ -186,12 +186,12 @@ authentic_pkcs15_erase_card(struct sc_profile *profile, struct sc_pkcs15_card *p
 		rv = sc_select_file(p15card->card, &df->path, &file);
 		if (rv == SC_ERROR_FILE_NOT_FOUND)
 			continue;
-		LOG_TEST_RET(ctx, rv, "Cannot select object file");
+		LOG_TEST_RET(ctx, rv, "Cannot select object data file");
 
 		rv = sc_erase_binary(p15card->card, 0, file->size, 0);
 		if (rv == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED)   {
 			rv = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_UPDATE);
-			LOG_TEST_RET(ctx, rv, "SC_AC_OP_UPDATE authentication failed");
+			LOG_TEST_RET(ctx, rv, "'UPDATE' authentication failed");
 
 			rv = sc_erase_binary(p15card->card, 0, file->size, 0);
 		}
@@ -241,7 +241,7 @@ authentic_pkcs15_new_file(struct sc_profile *profile, struct sc_card *card,
 	rv = sc_profile_get_file(profile, t_name, &file);
 	LOG_TEST_RET(ctx, rv, "Error when getting file from template");
 
-	sc_log(ctx, "file(type:%X), path(type:%X;path:%s)", file->type, file->path.type, sc_print_path(&file->path));
+	sc_log(ctx, "file(type:%X), path(type:%X,path:%s)", file->type, file->path.type, sc_print_path(&file->path));
 
 	file->id = (file->id & 0xFF00) | (num & 0xFF);
 	if (file->type != SC_FILE_TYPE_BSO)   {
@@ -254,9 +254,8 @@ authentic_pkcs15_new_file(struct sc_profile *profile, struct sc_card *card,
 		file->path.count = -1;
 	}
 
-	sc_log(ctx, "file size %i; ef type %i/%i; id %04X", file->size, file->type, file->ef_structure, file->id);
-	sc_log(ctx, "path type %X; path '%s'", file->path.type, sc_print_path(&file->path));
-
+	sc_log(ctx, "file(size:%i,type:%i/%i,id:%04X), path(type:%X,'%s')",  file->size, file->type, file->ef_structure, file->id, 
+			file->path.type, sc_print_path(&file->path));
 	if (out)
 		*out = file;
 
@@ -346,8 +345,7 @@ authentic_sdo_allocate_prvkey(struct sc_profile *profile, struct sc_card *card,
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	rv = authentic_pkcs15_new_file(profile, card, SC_PKCS15_TYPE_PRKEY_RSA, key_info->key_reference, &file);
-	sc_log(ctx, "authentic_pkcs15_create_key() new_file(TYPE_PRKEY_RSA) rv %i", rv);
-	LOG_TEST_RET(ctx, rv, "IasEcc pkcs15 new PRKEY_RSA file error");
+	LOG_TEST_RET(ctx, rv, "Cannot instantiate new PRKEY-RSA file");
 
 	sdo = calloc(1, sizeof(struct sc_authentic_sdo));
 	if (!sdo)
@@ -429,7 +427,6 @@ authentic_pkcs15_fix_file_access_rule(struct sc_pkcs15_card *p15card, struct sc_
 	else   {
 		sc_log(ctx, "ACL(method:%X,ref:%X)", acl->method, acl->key_ref);
 		if (acl->method == SC_AC_CHV)   {
-			sc_log(ctx, "ACL(method:%X,ref:%X)", acl->method, acl->key_ref);
 			ref = acl->key_ref;
 			authentic_reference_to_pkcs15_id (ref, &id);
 		}

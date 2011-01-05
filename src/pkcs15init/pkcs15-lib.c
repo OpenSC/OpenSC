@@ -2348,7 +2348,7 @@ sc_pkcs15init_update_dir(struct sc_pkcs15_card *p15card,
 
 		sc_format_path("3F002F00", &path);
 		r = sc_profile_get_file_by_path(profile, &path, &dir_file);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "DIR file not defined in profile");
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "DIR file not defined in profile");
 
 		/* Create DIR file */
 		r = sc_pkcs15init_update_file(profile, p15card, dir_file, NULL, 0);
@@ -2359,7 +2359,7 @@ sc_pkcs15init_update_dir(struct sc_pkcs15_card *p15card,
 		card->app[card->app_count++] = app;
 		r = sc_update_dir(card, NULL);
 	}
-	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, r);
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, r);
 }
 
 
