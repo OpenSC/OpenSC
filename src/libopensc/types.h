@@ -78,6 +78,8 @@ typedef struct sc_path {
 	int count;
 
 	int type;
+
+	struct sc_aid aid;
 } sc_path_t;
 
 
