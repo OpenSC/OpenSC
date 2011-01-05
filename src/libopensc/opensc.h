@@ -214,7 +214,6 @@ typedef struct sc_app_info {
 	u8 *ddo;
 	size_t ddo_len;
 
-	const char *desc;	/* App description, if known */
 	int rec_nr;		/* -1, if EF(DIR) is transparent */
 } sc_app_info_t;
 

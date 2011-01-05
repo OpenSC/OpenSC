@@ -256,6 +256,68 @@ static const struct sc_asn1_entry c_asn1_ddo[] = {
 	{ NULL, 0, 0, 0, NULL, NULL }
 };
 
+static void fix_authentic_ddo(struct sc_pkcs15_card *p15card)
+{
+	struct sc_context *ctx = p15card->card->ctx;
+	struct sc_path tmp_path;
+
+	/* AuthentIC v3.2 card has invalid ODF and tokenInfo paths encoded into DDO.
+	 * Cleanup this attributes -- default values must be OK.
+	 */
+	if (p15card->card->type == SC_CARD_TYPE_OBERTHUR_AUTHENTIC_3_2)   {
+        	if (p15card->file_odf != NULL) {
+			sc_file_free(p15card->file_odf);
+			p15card->file_odf = NULL;
+		}
+	        if (p15card->file_tokeninfo != NULL) {
+			sc_file_free(p15card->file_tokeninfo);
+			p15card->file_tokeninfo = NULL;
+		}
+	}
+}
+
+
+static void fix_starcos_pkcs15_card(struct sc_pkcs15_card *p15card)
+{
+	struct sc_context *ctx = p15card->card->ctx;
+	scconf_block *conf_block = sc_get_conf_block(ctx, "framework", "pkcs15", 1);
+
+	/* for starcos cards only: fix asn1 integers */
+	if (!strcmp(p15card->card->driver->short_name,"starcos")
+		&& scconf_get_bool(conf_block, "enable_fix_asn1_integers", 1))
+		p15card->flags |= SC_PKCS15_CARD_FLAG_FIX_INTEGERS;
+
+	/* set special flags based on card meta data */
+	if (strcmp(p15card->card->driver->short_name,"cardos") == 0) {
+
+		/* D-Trust cards (D-TRUST, D-SIGN) */
+		if (strstr(p15card->tokeninfo->label,"D-TRUST") != NULL
+			|| strstr(p15card->tokeninfo->label,"D-SIGN") != NULL) {
+
+			/* D-TRUST Card 2.0 2cc (standard cards, which always add
+			 * SHA1 prefix itself */
+			if (strstr(p15card->tokeninfo->label, "2cc") != NULL) {
+				p15card->card->caps |= SC_CARD_CAP_ONLY_RAW_HASH_STRIPPED;
+				sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "D-TRUST 2cc card detected, only SHA1 works with this card");
+				/* XXX: add detection when other hash than SHA1 is used with
+				 *      such a card, as this produces invalid signatures.
+				 */
+			}
+
+			/* D-SIGN multicard 2.0 2ca (cards working with all types of hashes
+			 * and no addition of prefix) */
+			else if (strstr(p15card->tokeninfo->label, "2ca") != NULL) {
+				p15card->card->caps |= SC_CARD_CAP_ONLY_RAW_HASH;
+				sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "D-TRUST 2ca card detected");
+			}
+
+			/* XXX: probably there are more D-Trust card in the wild,
+			 *      which also need these flags to produce valid signatures
+			 */
+		}
+	}
+}
+
 static int parse_ddo(struct sc_pkcs15_card *p15card, const u8 * buf, size_t buflen)
 {
 	struct sc_asn1_entry asn1_ddo[5];
@@ -291,6 +353,8 @@ static int parse_ddo(struct sc_pkcs15_card *p15card, const u8 * buf, size_t bufl
 			goto mem_err;
 		p15card->file_unusedspace->path = us_path;
 	}
+
+	fix_authentic_ddo(p15card);
 	return 0;
 mem_err:
 	if (p15card->file_odf != NULL) {
@@ -584,57 +648,81 @@ void sc_pkcs15_card_clear(sc_pkcs15_card_t *p15card)
 	}
 }
 
+const sc_app_info_t * sc_find_app(sc_card_t *card, struct sc_aid *aid)
+{
+	int ii;
+	
+	if (card->app_count <= 0)
+		return NULL;
+
+	if (!aid || !aid->len)
+		return card->app[0];
+
+	for (ii=0; ii < card->app_count; ii++) {
+		if (card->app[ii]->aid_len != aid->len)
+			continue;
+		if (memcmp(card->app[ii]->aid, aid->value, aid->len))
+			continue;
+		return card->app[ii];
+	}
+	return NULL;
+}
+
 static int sc_pkcs15_bind_internal(sc_pkcs15_card_t *p15card, struct sc_aid *aid)
 {
 	unsigned char *buf = NULL;
-	int    err, ok = 0;
+	int    err, ok = 0, ii;
 	size_t len;
 	sc_path_t tmppath;
 	sc_card_t    *card = p15card->card;
 	sc_context_t *ctx  = card->ctx;
 	sc_pkcs15_tokeninfo_t tokeninfo;
+	sc_pkcs15_df_t *df;
+	const sc_app_info_t *info = NULL;
 
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "trying normal pkcs15 processing");
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 
 	/* Enumerate apps now */
 	if (card->app_count < 0) {
 		err = sc_enum_apps(card);
-		if (err < 0 && err != SC_ERROR_FILE_NOT_FOUND) {
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "unable to enumerate apps: %s", sc_strerror(err));
-			goto end;
-		}
+		if (err != SC_ERROR_FILE_NOT_FOUND)
+			SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, err, "unable to enumerate apps");
 	}
 	p15card->file_app = sc_file_new();
 	if (p15card->file_app == NULL) {
 		err = SC_ERROR_OUT_OF_MEMORY;
 		goto end;
 	}
+
 	sc_format_path("3F005015", &p15card->file_app->path);
-	if (card->app_count > 0) {
-		const sc_app_info_t *info;
-		
-		info = sc_find_pkcs15_app(card);
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "info '%p'", info);
-		if (info != NULL) {
-			if (info->path.len)
-				p15card->file_app->path = info->path;
-			if (info->ddo != NULL)
-				parse_ddo(p15card, info->ddo, info->ddo_len);
-		}
+
+	info = sc_find_app(card, aid);
+	if (info)   {
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "bind to application('%s',aid:'%s')", 
+				info->label, sc_dump_hex(info->aid, info->aid_len));
+		if (info->path.len)
+			p15card->file_app->path = info->path;
+
+		if (info->ddo)
+			parse_ddo(p15card, info->ddo, info->ddo_len);
 	}
+	else if (aid)   {
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Application(aid:'%s') not found", sc_dump_hex(aid->value, aid->len));
+		err = SC_ERROR_INVALID_ARGUMENTS;
+		goto end;
+	}
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "application path '%s'", sc_print_path(&p15card->file_app->path));
 
 	/* Check if pkcs15 directory exists */
 	err = sc_select_file(card, &p15card->file_app->path, NULL);
-#if 1
+
 	/* If the above test failed on cards without EF(DIR),
 	 * try to continue read ODF from 3F005031. -aet
 	 */
-	if ((err == SC_ERROR_FILE_NOT_FOUND) &&
-	    (card->app_count < 1)) {
+	if ((err == SC_ERROR_FILE_NOT_FOUND) && (card->app_count < 1)) {
 		sc_format_path("3F00", &p15card->file_app->path);
 		err = SC_SUCCESS;
 	}
-#endif
 	if (err < 0)
 		goto end;
 
@@ -642,29 +730,24 @@ static int sc_pkcs15_bind_internal(sc_pkcs15_card_t *p15card, struct sc_aid *aid
 		/* check if an ODF is present; we don't know yet whether we have a pkcs15 card */
 		tmppath = p15card->file_app->path;
 		sc_append_path_id(&tmppath, (const u8 *) "\x50\x31", 2);
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "tmppath '%s'", sc_print_path(&tmppath));
 		err = sc_select_file(card, &tmppath, &p15card->file_odf);
 		
-	} else {
+	} 
+	else {
 		tmppath = p15card->file_odf->path;
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "tmppath '%s'", sc_print_path(&tmppath));
 		sc_file_free(p15card->file_odf);
 		p15card->file_odf = NULL;
 		err = sc_select_file(card, &tmppath, &p15card->file_odf);
 	}
+
 	if (err != SC_SUCCESS) {
-		char pbuf[SC_MAX_PATH_STRING_SIZE];
-
-		int r = sc_path_print(pbuf, sizeof(pbuf), &tmppath);
-		if (r != SC_SUCCESS)
-			pbuf[0] = '\0';
-
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "EF(ODF) not found in '%s'", pbuf);
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "EF(ODF) not found in '%s'", sc_print_path(&tmppath));
 		goto end;
 	}
 
-	if ((len = p15card->file_odf->size) == 0) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "EF(ODF) is empty");
+	len = p15card->file_odf->size;
+	if (!len) {
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "EF(ODF) is empty");
 		goto end;
 	}
 	buf = malloc(len);
@@ -680,33 +763,22 @@ static int sc_pkcs15_bind_internal(sc_pkcs15_card_t *p15card, struct sc_aid *aid
 	len = err;
 	if (parse_odf(buf, len, p15card)) {
 		err = SC_ERROR_PKCS15_APP_NOT_FOUND;
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Unable to parse ODF");
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Unable to parse ODF");
 		goto end;
 	}
 	free(buf);
 	buf = NULL;
 
-	if (card->ctx->debug) {
-		sc_pkcs15_df_t *df;
-
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "The following DFs were found:");
-		for (df = p15card->df_list; df; df = df->next) {
-			char pbuf[SC_MAX_PATH_STRING_SIZE];
-
-			int r = sc_path_print(pbuf, sizeof(pbuf), &df->path);
-			if (r != SC_SUCCESS)
-				pbuf[0] = '\0';
-
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
-				"  DF type %u, path %s, index %u, count %d",
-				df->type, pbuf, df->path.index, df->path.count);
-		}
-	}
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "The following DFs were found:");
+	for (df = p15card->df_list; df; df = df->next)
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "  DF type %u, path %s, index %u, count %d",
+				df->type, sc_print_path(&df->path), df->path.index, df->path.count);
 
 	if (p15card->file_tokeninfo == NULL) {
 		tmppath = p15card->file_app->path;
 		sc_append_path_id(&tmppath, (const u8 *) "\x50\x32", 2);
-	} else {
+	} 
+	else {
 		tmppath = p15card->file_tokeninfo->path;
 		sc_file_free(p15card->file_tokeninfo);
 		p15card->file_tokeninfo = NULL;
@@ -716,7 +788,7 @@ static int sc_pkcs15_bind_internal(sc_pkcs15_card_t *p15card, struct sc_aid *aid
 		goto end;
 
 	if ((len = p15card->file_tokeninfo->size) == 0) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "EF(TokenInfo) is empty");
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "EF(TokenInfo) is empty");
 		goto end;
 	}
 	buf = malloc(len);
@@ -761,8 +833,7 @@ end:
 	return SC_SUCCESS;
 }
 
-int sc_pkcs15_bind(sc_card_t *card, struct sc_aid *aid,
-		struct sc_pkcs15_card **p15card_out)
+int sc_pkcs15_bind(sc_card_t *card, struct sc_aid *aid, struct sc_pkcs15_card **p15card_out)
 {
 	struct sc_pkcs15_card *p15card = NULL;
 	sc_context_t *ctx = card->ctx;
@@ -770,6 +841,7 @@ int sc_pkcs15_bind(sc_card_t *card, struct sc_aid *aid,
 	int r, emu_first, enable_emu;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "application(aid:'%s')", aid ? sc_dump_hex(aid->value, aid->len) : "empty");
 
 	assert(p15card_out != NULL);
 	p15card = sc_pkcs15_card_new();
@@ -822,41 +894,7 @@ int sc_pkcs15_bind(sc_card_t *card, struct sc_aid *aid,
 			goto error;
 	}
 done:
-
-	/* for starcos cards only: fix asn1 integers */
-	if (strcmp(p15card->card->driver->short_name,"starcos") == 0
-		&& scconf_get_bool(conf_block, "enable_fix_asn1_integers", 1))
-		p15card->flags |= SC_PKCS15_CARD_FLAG_FIX_INTEGERS;
-
-	/* set special flags based on card meta data */
-	if (strcmp(p15card->card->driver->short_name,"cardos") == 0) {
-
-		/* D-Trust cards (D-TRUST, D-SIGN) */
-		if (strstr(p15card->tokeninfo->label,"D-TRUST") != NULL
-			|| strstr(p15card->tokeninfo->label,"D-SIGN") != NULL) {
-
-			/* D-TRUST Card 2.0 2cc (standard cards, which always add
-			 * SHA1 prefix itself */
-			if (strstr(p15card->tokeninfo->label, "2cc") != NULL) {
-				p15card->card->caps |= SC_CARD_CAP_ONLY_RAW_HASH_STRIPPED;
-				sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "D-TRUST 2cc card detected, only SHA1 works with this card");
-				/* XXX: add detection when other hash than SHA1 is used with
-				 *      such a card, as this produces invalid signatures.
-				 */
-			}
-
-			/* D-SIGN multicard 2.0 2ca (cards working with all types of hashes
-			 * and no addition of prefix) */
-			else if (strstr(p15card->tokeninfo->label, "2ca") != NULL) {
-				p15card->card->caps |= SC_CARD_CAP_ONLY_RAW_HASH;
-				sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "D-TRUST 2ca card detected");
-			}
-
-			/* XXX: probably there are more D-Trust card in the wild,
-			 *      which also need these flags to produce valid signatures
-			 */
-		}
-	}
+	fix_starcos_pkcs15_card(p15card);
 
 	*p15card_out = p15card;
 	sc_unlock(card);
@@ -866,20 +904,6 @@ error:
 	sc_pkcs15_card_free(p15card);
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, r);
 }
-
-#if 0
-int sc_pkcs15_detect(sc_card_t *card)
-{
-	int r;
-	sc_path_t path;
-
-	sc_format_path("NA0000063504B43532D3135", &path);
-	r = sc_select_file(card, &path, NULL);
-	if (r != 0)
-		return 0;
-	return 1;
-}
-#endif
 
 int sc_pkcs15_unbind(struct sc_pkcs15_card *p15card)
 {
