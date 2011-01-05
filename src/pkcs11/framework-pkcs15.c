@@ -163,7 +163,7 @@ static CK_RV pkcs15_bind(struct sc_pkcs11_card *p11card)
 		return CKR_HOST_MEMORY;
 	p11card->fw_data = fw_data;
 
-	rc = sc_pkcs15_bind(p11card->card, &fw_data->p15_card);
+	rc = sc_pkcs15_bind(p11card->card, NULL, &fw_data->p15_card);
 	if (rc != SC_SUCCESS) {
 		sc_debug(context, SC_LOG_DEBUG_NORMAL, "sc_pkcs15_bind failed: %d", rc);
 		return sc_to_cryptoki_error(rc, NULL);

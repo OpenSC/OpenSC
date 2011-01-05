@@ -503,7 +503,7 @@ typedef struct sc_pkcs15_card {
  * and initializes a new PKCS #15 card object.  Will return
  * SC_ERROR_PKCS15_APP_NOT_FOUND, if the card hasn't got a
  * valid PKCS #15 file structure. */
-int sc_pkcs15_bind(struct sc_card *card,
+int sc_pkcs15_bind(struct sc_card *card, struct sc_aid *aid,
 		   struct sc_pkcs15_card **pkcs15_card);
 /* sc_pkcs15_unbind:  Releases a PKCS #15 card object, and frees any
  * memory allocations done on the card object. */

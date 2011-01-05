@@ -53,6 +53,10 @@ struct sc_object_id {
 	int value[SC_MAX_OBJECT_ID_OCTETS];
 };
 
+struct sc_aid {
+	unsigned char value[SC_MAX_AID_SIZE];
+	size_t len;
+};
 
 #define SC_PATH_TYPE_FILE_ID		0
 #define SC_PATH_TYPE_DF_NAME		1

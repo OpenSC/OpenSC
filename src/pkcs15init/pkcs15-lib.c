@@ -459,7 +459,7 @@ sc_pkcs15init_erase_card(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 {
 	/* Needs the 'SOPIN' AUTH pkcs15 object.
 	 * So that, SOPIN can be found by it's reference. */
-	if (sc_pkcs15_bind(p15card->card, &p15card) >= 0)
+	if (sc_pkcs15_bind(p15card->card, NULL, &p15card) >= 0)
 		profile->p15_data = p15card;						        
 
 	if (profile->ops->erase_card == NULL)

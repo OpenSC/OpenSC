@@ -584,7 +584,7 @@ void sc_pkcs15_card_clear(sc_pkcs15_card_t *p15card)
 	}
 }
 
-static int sc_pkcs15_bind_internal(sc_pkcs15_card_t *p15card)
+static int sc_pkcs15_bind_internal(sc_pkcs15_card_t *p15card, struct sc_aid *aid)
 {
 	unsigned char *buf = NULL;
 	int    err, ok = 0;
@@ -614,6 +614,7 @@ static int sc_pkcs15_bind_internal(sc_pkcs15_card_t *p15card)
 		const sc_app_info_t *info;
 		
 		info = sc_find_pkcs15_app(card);
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "info '%p'", info);
 		if (info != NULL) {
 			if (info->path.len)
 				p15card->file_app->path = info->path;
@@ -641,10 +642,12 @@ static int sc_pkcs15_bind_internal(sc_pkcs15_card_t *p15card)
 		/* check if an ODF is present; we don't know yet whether we have a pkcs15 card */
 		tmppath = p15card->file_app->path;
 		sc_append_path_id(&tmppath, (const u8 *) "\x50\x31", 2);
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "tmppath '%s'", sc_print_path(&tmppath));
 		err = sc_select_file(card, &tmppath, &p15card->file_odf);
 		
 	} else {
 		tmppath = p15card->file_odf->path;
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "tmppath '%s'", sc_print_path(&tmppath));
 		sc_file_free(p15card->file_odf);
 		p15card->file_odf = NULL;
 		err = sc_select_file(card, &tmppath, &p15card->file_odf);
@@ -758,7 +761,8 @@ end:
 	return SC_SUCCESS;
 }
 
-int sc_pkcs15_bind(sc_card_t *card, struct sc_pkcs15_card **p15card_out)
+int sc_pkcs15_bind(sc_card_t *card, struct sc_aid *aid,
+		struct sc_pkcs15_card **p15card_out)
 {
 	struct sc_pkcs15_card *p15card = NULL;
 	sc_context_t *ctx = card->ctx;
@@ -801,11 +805,11 @@ int sc_pkcs15_bind(sc_card_t *card, struct sc_pkcs15_card **p15card_out)
 			r = sc_pkcs15_bind_synthetic(p15card);
 			if (r == SC_SUCCESS)
 				goto done;
-			r = sc_pkcs15_bind_internal(p15card);
+			r = sc_pkcs15_bind_internal(p15card, aid);
 			if (r < 0)
 				goto error;
 		} else {
-			r = sc_pkcs15_bind_internal(p15card);
+			r = sc_pkcs15_bind_internal(p15card, aid);
 			if (r == SC_SUCCESS)
 				goto done;
 			r = sc_pkcs15_bind_synthetic(p15card);
@@ -813,7 +817,7 @@ int sc_pkcs15_bind(sc_card_t *card, struct sc_pkcs15_card **p15card_out)
 				goto error;
 		}
 	} else {
-		r = sc_pkcs15_bind_internal(p15card);
+		r = sc_pkcs15_bind_internal(p15card, aid);
 		if (r < 0)
 			goto error;
 	}

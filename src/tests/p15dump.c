@@ -112,7 +112,7 @@ int main(int argc, char *argv[])
 	printf("Looking for a PKCS#15 compatible Smart Card... ");
 	fflush(stdout);
 	sc_lock(card);
-	i = sc_pkcs15_bind(card, &p15card);
+	i = sc_pkcs15_bind(card, NULL, &p15card);
 	/* Keep card locked to prevent useless calls to sc_logout */
 	if (i) {
 		fprintf(stderr, "failed: %s\n", sc_strerror(i));

@@ -450,7 +450,7 @@ main(int argc, char **argv)
 		 && action != ACTION_ASSERT_PRISTINE
 		 && p15card == NULL) {
 			/* Read the PKCS15 structure from the card */
-			r = sc_pkcs15_bind(card, &p15card);
+			r = sc_pkcs15_bind(card, NULL, &p15card);
 			if (r) {
 				fprintf(stderr,
 					"PKCS#15 binding failed: %s\n",

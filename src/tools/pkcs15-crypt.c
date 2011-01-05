@@ -579,7 +579,7 @@ int main(int argc, char * const argv[])
 
 	if (verbose)
 		fprintf(stderr, "Trying to find a PKCS #15 compatible card...\n");
-	r = sc_pkcs15_bind(card, &p15card);
+	r = sc_pkcs15_bind(card, NULL, &p15card);
 	if (r) {
 		fprintf(stderr, "PKCS #15 binding failed: %s\n", sc_strerror(r));
 		err = 1;
