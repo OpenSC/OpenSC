@@ -207,8 +207,7 @@ typedef struct sc_algorithm_info {
 } sc_algorithm_info_t;
 
 typedef struct sc_app_info {
-	u8 aid[SC_MAX_AID_SIZE];
-	size_t aid_len;
+	struct sc_aid aid;
 	char *label;
 	struct sc_path path;
 	u8 *ddo;
@@ -1120,9 +1119,6 @@ int sc_make_cache_dir(sc_context_t *ctx);
 
 int sc_enum_apps(sc_card_t *card);
 void sc_free_apps(sc_card_t *card);
-const sc_app_info_t * sc_find_pkcs15_app(sc_card_t *card);
-const sc_app_info_t * sc_find_app_by_aid(sc_card_t *card,
-					 const u8 *aid, size_t aid_len);
 int sc_update_dir(sc_card_t *card, sc_app_info_t *app);
 
 struct sc_algorithm_info * sc_card_find_rsa_alg(sc_card_t *card,

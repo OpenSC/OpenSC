@@ -855,11 +855,11 @@ static int asn1_decode_se_info(sc_context_t *ctx, const u8 *obj, size_t objlen,
 			goto err;
 		}
 
-		si->aid_len = sizeof(si->aid);
+		si->aid.len = sizeof(si->aid.value);
 		sc_copy_asn1_entry(c_asn1_se_info, asn1_se_info);
 		sc_format_asn1_entry(asn1_se_info + 0, &si->se, NULL, 0);
 		sc_format_asn1_entry(asn1_se_info + 1, &si->owner, NULL, 0);
-		sc_format_asn1_entry(asn1_se_info + 2, &si->aid, &si->aid_len, 0);
+		sc_format_asn1_entry(asn1_se_info + 2, &si->aid.value, &si->aid.len, 0);
 		ret = asn1_decode(ctx, asn1_se_info, p, plen, &p, &plen, 0, depth+1);
 		if (ret != SC_SUCCESS) {
 			free(si);

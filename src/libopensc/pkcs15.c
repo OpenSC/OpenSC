@@ -659,9 +659,9 @@ const sc_app_info_t * sc_find_app(sc_card_t *card, struct sc_aid *aid)
 		return card->app[0];
 
 	for (ii=0; ii < card->app_count; ii++) {
-		if (card->app[ii]->aid_len != aid->len)
+		if (card->app[ii]->aid.len != aid->len)
 			continue;
-		if (memcmp(card->app[ii]->aid, aid->value, aid->len))
+		if (memcmp(card->app[ii]->aid.value, aid->value, aid->len))
 			continue;
 		return card->app[ii];
 	}
@@ -699,7 +699,7 @@ static int sc_pkcs15_bind_internal(sc_pkcs15_card_t *p15card, struct sc_aid *aid
 	info = sc_find_app(card, aid);
 	if (info)   {
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "bind to application('%s',aid:'%s')", 
-				info->label, sc_dump_hex(info->aid, info->aid_len));
+				info->label, sc_dump_hex(info->aid.value, info->aid.len));
 		if (info->path.len)
 			p15card->file_app->path = info->path;
 

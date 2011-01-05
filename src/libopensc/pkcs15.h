@@ -438,8 +438,7 @@ typedef struct sc_pkcs15_unusedspace sc_pkcs15_unusedspace_t;
 typedef struct sc_pkcs15_sec_env_info {
 	int			se;
 	struct sc_object_id	owner;
-	u8			aid[SC_MAX_AID_SIZE];
-	size_t			aid_len;
+	struct sc_aid aid;
 } sc_pkcs15_sec_env_info_t;
 
 typedef struct sc_pkcs15_tokeninfo {

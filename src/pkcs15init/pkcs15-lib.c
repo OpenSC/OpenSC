@@ -771,8 +771,8 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 
 	app->path = p15card->file_app->path;
 	if (p15card->file_app->namelen <= SC_MAX_AID_SIZE) {
-		app->aid_len = p15card->file_app->namelen;
-		memcpy(app->aid, p15card->file_app->name, app->aid_len);
+		app->aid.len = p15card->file_app->namelen;
+		memcpy(app->aid.value, p15card->file_app->name, app->aid.len);
 	}
 
 	/* set serial number if explicitly specified */

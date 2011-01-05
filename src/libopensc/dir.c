@@ -59,7 +59,7 @@ static int parse_dir_record(sc_card_t *card, u8 ** buf, size_t *buflen,
 	sc_app_info_t *app = NULL;
 	const struct app_entry *ae;
 	int r;
-	u8 aid[128], label[128], path[128];
+	u8 aid[SC_MAX_AID_SIZE], label[128], path[128];
 	u8 ddo[128];
 	size_t aid_len = sizeof(aid), label_len = sizeof(label),
 	       path_len = sizeof(path), ddo_len = sizeof(ddo);
@@ -88,8 +88,8 @@ static int parse_dir_record(sc_card_t *card, u8 ** buf, size_t *buflen,
 	if (app == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 	
-	memcpy(app->aid, aid, aid_len);
-	app->aid_len = aid_len;
+	memcpy(app->aid.value, aid, aid_len);
+	app->aid.len = aid_len;
 	if (asn1_dirrecord[1].flags & SC_ASN1_PRESENT)
 		app->label = strdup((char *) label);
 	else
@@ -209,9 +209,9 @@ int sc_enum_apps(sc_card_t *card)
 	/* Move known PKCS#15 applications to the head of the list */
 	for (ii=0, idx=0; ii<card->app_count; ii++)   {
 		for (jj=0; jj < sizeof(apps)/sizeof(apps[0]); jj++) {
-			if (apps[jj].aid_len != card->app[ii]->aid_len)
+			if (apps[jj].aid_len != card->app[ii]->aid.len)
 				continue;
-			if (memcmp(apps[jj].aid, card->app[ii]->aid, apps[jj].aid_len))
+			if (memcmp(apps[jj].aid, card->app[ii]->aid.value, apps[jj].aid_len))
 				continue;
 			break;
 		}
@@ -253,7 +253,7 @@ static int encode_dir_record(sc_context_t *ctx, const sc_app_info_t *app,
 	sc_copy_asn1_entry(c_asn1_dirrecord, asn1_dirrecord);
 	sc_copy_asn1_entry(c_asn1_dir, asn1_dir);
 	sc_format_asn1_entry(asn1_dir + 0, asn1_dirrecord, NULL, 1);
-	sc_format_asn1_entry(asn1_dirrecord + 0, (void *) tapp.aid, (void *) &tapp.aid_len, 1);
+	sc_format_asn1_entry(asn1_dirrecord + 0, (void *) tapp.aid.value, (void *) &tapp.aid.len, 1);
 	if (tapp.label != NULL) {
 		label_len = strlen(tapp.label);
 		sc_format_asn1_entry(asn1_dirrecord + 1, tapp.label, &label_len, 1);
