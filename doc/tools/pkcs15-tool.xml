@@ -44,6 +44,11 @@
 				</varlistentry>
 
 				<varlistentry>
+					<term><option>--list-applications</option></term>
+					<listitem><para>List the on-card PKCS#15 applications</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
 					<term><option>--read-certificate</option> <varname>cert</varname>,
 					<option>-r</option> <varname>cert</varname></term>
 					<listitem><para>Reads the certificate with the given id.</para></listitem>

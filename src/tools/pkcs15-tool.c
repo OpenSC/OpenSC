@@ -73,6 +73,7 @@ enum {
 	OPT_PUK,
 	OPT_VERIFY_PIN,
 	OPT_BIND_TO_AID,
+	OPT_LIST_APPLICATIONS,
 };
 
 #define NELEMENTS(x)	(sizeof(x)/sizeof((x)[0]))
@@ -107,6 +108,7 @@ static const struct option options[] = {
 	{ "no-cache",		no_argument, NULL,		OPT_NO_CACHE },
 	{ "auth-id",		required_argument, NULL,	'a' },
 	{ "aid",		required_argument, NULL,   	OPT_BIND_TO_AID },
+	{ "list-applications",	no_argument, NULL,		OPT_LIST_APPLICATIONS },
 	{ "wait",		no_argument, NULL,		'w' },
 	{ "verbose",		no_argument, NULL,		'v' },
 	{ NULL, 0, NULL, 0 }
@@ -139,6 +141,7 @@ static const char *option_help[] = {
 	"Disable card caching",
 	"The auth ID of the PIN to use",
 	"Specify AID of the on-card PKCS#15 application to be binded to (in hexadecimal form)",
+	"List the on-card PKCS#15 applications",
 	"Wait for card insertion",
 	"Verbose operation. Use several times to enable debug output.",
 };
@@ -1095,9 +1098,36 @@ static int list_pins(void)
 	return 0;
 }
 
+static int list_apps(FILE *fout)
+{
+	int i, j;
+
+	for (i=0; i<p15card->card->app_count; i++)   {
+		struct sc_app_info *info = p15card->card->app[i];
+	
+		fprintf(fout, "Application '%s':\n", info->label);
+		fprintf(fout, "\tAID: ");
+		for(j=0;j<info->aid.len;j++)
+			fprintf(fout, "%02X", info->aid.value[j]);
+		fprintf(fout, "\n");
+
+		if (info->ddo.value && info->ddo.len)   {
+			fprintf(fout, "\tDDO: ");
+			for(j=0;j<info->ddo.len;j++)    
+				fprintf(fout, "%02X", info->ddo.value[j]);
+			fprintf(fout, "\n");
+		}
+
+		fprintf(fout, "\todfPath:       %s\n", sc_print_path(&p15card->file_odf->path));
+		fprintf(fout, "\ttokenInfoPath: %s\n", sc_print_path(&p15card->file_tokeninfo->path));
+
+		fprintf(fout, "\n");
+	}
+	return 0;
+}
+
 static int dump(void)
 {
-
 	const char *flags[] = {
 		"Read-only",
 		"Login required",
@@ -1583,6 +1613,7 @@ int main(int argc, char * const argv[])
 	int do_read_data_object = 0;
 	int do_list_data_objects = 0;
 	int do_list_pins = 0;
+	int do_list_apps = 0;
 	int do_dump = 0;
 	int do_list_prkeys = 0;
 	int do_list_pubkeys = 0;
@@ -1699,6 +1730,10 @@ int main(int argc, char * const argv[])
 		case OPT_BIND_TO_AID:
 			opt_bind_to_aid = optarg;
 			break;
+		case OPT_LIST_APPLICATIONS:
+			do_list_apps = 1;
+			action_count++;
+			break;
 		case OPT_NO_CACHE:
 			opt_no_cache++;
 			break;
@@ -1810,6 +1845,11 @@ int main(int argc, char * const argv[])
 #endif
 	if (do_list_pins) {
 		if ((err = list_pins()))
+			goto end;
+		action_count--;
+	}
+	if (do_list_apps) {
+		if ((err = list_apps(stdout)))
 			goto end;
 		action_count--;
 	}
