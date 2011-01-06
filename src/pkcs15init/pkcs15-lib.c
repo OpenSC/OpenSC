@@ -3094,34 +3094,27 @@ sc_pkcs15init_authenticate(struct sc_profile *profile, struct sc_pkcs15_card *p1
 		struct sc_file *file, int op)
 {
 	struct sc_context *ctx = p15card->card->ctx;
-	const struct sc_acl_entry *acl;
+	const struct sc_acl_entry *acl = NULL;
 	struct sc_file *file_tmp = NULL;
 	int  r = 0;
-	char pbuf[SC_MAX_PATH_STRING_SIZE];     
 
 	LOG_FUNC_CALLED(ctx);
-	r = sc_path_print(pbuf, sizeof(pbuf), &file->path);
-	if (r != SC_SUCCESS)
-		pbuf[0] = '\0';
-
-	sc_log(ctx, "path=%s, op=%u", pbuf, op);
+	sc_log(ctx, "path '%s', op=%u", sc_print_path(&file->path), op);
 
 	if (p15card->card->caps & SC_CARD_CAP_USE_FCI_AC) {
 		r = sc_select_file(p15card->card, &file->path, &file_tmp);
 		LOG_TEST_RET(ctx, r, "Authentication failed: cannot select file.");
+
 		acl = sc_file_get_acl_entry(file_tmp, op);
 	}
 	else   {
 		acl = sc_file_get_acl_entry(file, op);
 	}
-
-	sc_log(ctx, "r:[0x%08x]",r);
-	sc_log(ctx, "acl:[0x%08x]",acl);
+	sc_log(ctx, "acl %p",acl);
 
 	for (; r == 0 && acl; acl = acl->next) {
 		if (acl->method == SC_AC_NEVER)   {
-			LOG_TEST_RET(ctx, SC_ERROR_SECURITY_STATUS_NOT_SATISFIED, 
-					"Authentication failed: never allowed");
+			LOG_TEST_RET(ctx, SC_ERROR_SECURITY_STATUS_NOT_SATISFIED, "Authentication failed: never allowed");
 		}
 		else if (acl->method == SC_AC_NONE)   {
 			sc_log(ctx, "always allowed");
@@ -3279,7 +3272,6 @@ sc_pkcs15init_update_file(struct sc_profile *profile,
 
 	/* Present authentication info needed */
 	r = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_UPDATE);
-
 	if (r >= 0 && datalen)
 		r = sc_update_binary(p15card->card, 0, (const unsigned char *) data, datalen, 0);
 

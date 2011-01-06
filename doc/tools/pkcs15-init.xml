@@ -292,7 +292,12 @@
 							(currently, the only supported name is <option>RSA</option>),
 							optionally followed by a slash and the length of the key in bits.
 							It is a good idea to specify the key ID along with this command,
-							using the <option>id</option> option.
+							using the <option>id</option> option, otherwise an intrinsic ID 
+                                                        will be calculated from the key material. Look the description of 
+                                                        the 'pkcs15-id-style' attribut in the 'pkcs15.profile' for the details
+                                                        about the algorithm used to calculate intrinsic ID.
+                                                        For the multi-application cards the target PKCS#15 application can be 
+                                                        specified by the hexadecimal AID value of the <option>aid</option> option.
 						</para>
 					</listitem>
 				</varlistentry>
@@ -308,7 +313,12 @@
 							file is assumed to contain the key in PEM format. Alternative
 							formats can be specified using <option>--format</option>.
 							It is a good idea to specify the key ID along with this command,
-							using the <option>--id</option> option.
+							using the <option>--id</option> option, otherwise an intrinsic ID
+                                                        will be calculated from the key material. Look the description of
+                                                        the 'pkcs15-id-style' attribut in the 'pkcs15.profile' for the details
+                                                        about the algorithm used to calculate intrinsic ID.
+                                                        For the multi-application cards the target PKCS#15 application can be 
+                                                        specified by the hexadecimal AID value of the <option>aid</option> option.
 						</para>
 					</listitem>
 				</varlistentry>
@@ -334,7 +344,13 @@
 							Tells <command>pkcs15-init</command> to store the certificate given
 							in <option>filename</option> on the card, creating a certificate
 							object with the ID specified via the <option>--id</option> option.
+                                                        Without supplied ID an intrisic ID will be calculated from the 
+                                                        certificate's public key. Look the description of the 'pkcs15-id-style' 
+                                                        attribut in the 'pkcs15.profile' for the details
+                                                        about the algorithm used to calculate intrinsic ID.
 							The file is assumed to contain the PEM encoded certificate.
+                                                        For the multi-application cards the target application can be specified
+                                                        by the hexadecimal AID value of the <option>aid</option> option.
 						</para>
 					</listitem>
 				</varlistentry>

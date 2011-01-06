@@ -106,7 +106,7 @@ static const struct option options[] = {
 	{ "output",		required_argument, NULL,	'o' },
 	{ "no-cache",		no_argument, NULL,		OPT_NO_CACHE },
 	{ "auth-id",		required_argument, NULL,	'a' },
-	{ "bind-to-aid",        required_argument, NULL,   	OPT_BIND_TO_AID },
+	{ "aid",		required_argument, NULL,   	OPT_BIND_TO_AID },
 	{ "wait",		no_argument, NULL,		'w' },
 	{ "verbose",		no_argument, NULL,		'v' },
 	{ NULL, 0, NULL, 0 }
@@ -138,7 +138,7 @@ static const char *option_help[] = {
 	"Outputs to file <arg>",
 	"Disable card caching",
 	"The auth ID of the PIN to use",
-	"Use on-card PKCS#15 application indicated by AID",
+	"Specify AID of the on-card PKCS#15 application to be binded to (in hexadecimal form)",
 	"Wait for card insertion",
 	"Verbose operation. Use several times to enable debug output.",
 };

@@ -1,11 +1,11 @@
 #
-# PKCS15 r/w profile for Oberthur cards
+# PKCS15 r/w profile for Oberthur AuthentIC v3 cards
 #
 cardinfo {
     label       = "AuthentIC.v3";
     manufacturer    = "Oberthur COSMO.v7";
 
-    max-pin-length    = 4;
+    max-pin-length    = 63;
     min-pin-length    = 4;
     pin-encoding    = ascii-numeric;
     pin-pad-char    = 0xFF;
@@ -20,25 +20,12 @@ pkcs15 {
     do-last-update        = yes;
 }
 
-option ecc {
-  macros {
-    odf-size        = 96;
-    aodf-size       = 300;
-    cdf-size        = 3000;
-    prkdf-size      = 6700;
-    pukdf-size      = 2300;
-    dodf-size       = 3000;
-    skdf-size       = 3000;
-  }
-}
-
-
 # Define reasonable limits for PINs and PUK
 # Note that we do not set a file path or reference
 # here; that is done dynamically.
 PIN user-pin {
     attempts            = 5;
-    max-length          = 4;
+    max-length          = 63;
     min-length          = 4;
     flags               = 0x10; # initialized
     reference           = 1;
@@ -51,9 +38,6 @@ PIN so-pin {
     flags   = 0xB2;
     reference = 2
 }
-
-# CHV5 used for Oberthur's specifique access condition "PIN or SOPIN"
-# Any value for this pin can given, when the OpenSC tools are asking for.
 
 # Additional filesystem info.
 # This is added to the file system info specified in the

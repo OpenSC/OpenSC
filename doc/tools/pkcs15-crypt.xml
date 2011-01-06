@@ -124,6 +124,12 @@
 				</varlistentry>
 
 				<varlistentry>
+					<term><option>--aid</option> <varname>aid</varname></term>
+					<listitem><para>Specify in a hexadecimal form the AID of the on-card PKCS#15 
+                                        application to be binded to.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
 					<term><option>--verbose, -v</option></term>
 					<listitem><para>Causes <command>pkcs15-crypt</command> to be more
 					verbose. Specify this flag several times to enable debug output

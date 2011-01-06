@@ -141,6 +141,12 @@
 					operation. This is useful with the --change-pin operation.</para></listitem>
 				</varlistentry>
 
+                                <varlistentry>
+                                        <term><option>--aid</option> <varname>aid</varname></term>
+                                        <listitem><para>Specify in a hexadecimal form the AID of the on-card PKCS#15 
+                                        application to be binded to.</para></listitem>
+                                </varlistentry>
+
 				<varlistentry>
 					<term><option>--reader</option> <varname>num</varname></term>
 					<listitem><para>Forces <command>pkcs15-tool</command> to use reader

@@ -74,7 +74,7 @@ static const struct option options[] = {
 	{ "md5",		0, NULL,		OPT_MD5 },
 	{ "pkcs1",		0, NULL,		OPT_PKCS1 },
 	{ "pin",		1, NULL,		'p' },
-	{ "bind-to-aid",        1, NULL,		OPT_BIND_TO_AID },
+	{ "aid",		1, NULL,		OPT_BIND_TO_AID },
 	{ "wait",		0, NULL,		'w' },
 	{ "verbose",		0, NULL,		'v' },
 	{ NULL, 0, NULL, 0 }
@@ -96,7 +96,7 @@ static const char *option_help[] = {
 	"Input file is a MD5 hash",
 	"Use PKCS #1 v1.5 padding",
 	"Uses password (PIN) <arg> (use - for reading PIN from STDIN)",
-	"Use on-card PKCS#15 application indicated by AID",
+	"Specify AID of the on-card PKCS#15 application to be binded to (in hexadecimal form)",
 	"Wait for card insertion",
 	"Verbose operation. Use several times to enable debug output.",
 };
