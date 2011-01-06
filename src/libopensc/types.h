@@ -54,8 +54,19 @@ struct sc_object_id {
 };
 
 struct sc_aid {
-	unsigned char value[SC_MAX_AID_SIZE];
 	size_t len;
+	unsigned char value[SC_MAX_AID_SIZE];
+};
+
+struct sc_lv_data {
+	size_t len;
+	unsigned char *value;
+};
+
+struct sc_tlv_data {
+	unsigned tag;
+	size_t len;
+	unsigned char *value;
 };
 
 #define SC_PATH_TYPE_FILE_ID		0

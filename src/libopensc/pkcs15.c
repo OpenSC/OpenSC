@@ -703,8 +703,8 @@ static int sc_pkcs15_bind_internal(sc_pkcs15_card_t *p15card, struct sc_aid *aid
 		if (info->path.len)
 			p15card->file_app->path = info->path;
 
-		if (info->ddo)
-			parse_ddo(p15card, info->ddo, info->ddo_len);
+		if (info->ddo.value && info->ddo.len)
+			parse_ddo(p15card, info->ddo.value, info->ddo.len);
 	}
 	else if (aid)   {
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Application(aid:'%s') not found", sc_dump_hex(aid->value, aid->len));

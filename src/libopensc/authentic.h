@@ -123,12 +123,6 @@
 #define AUTHENTIC_GP_SM_LEVEL_MAC	0x4000 
 #define AUTHENTIC_GP_SM_LEVEL_ENC_MAC	0x6000 
 
-struct sc_authentic_tlv {
-	unsigned tag;
-	size_t size;
-	unsigned char *value;
-};
-
 /* 
  * DOCP (Data Object Control Parameters)
  * Common holder for the all DOCP types.

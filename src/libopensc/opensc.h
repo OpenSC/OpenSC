@@ -207,11 +207,12 @@ typedef struct sc_algorithm_info {
 } sc_algorithm_info_t;
 
 typedef struct sc_app_info {
-	struct sc_aid aid;
 	char *label;
+
+	struct sc_aid aid;
+	struct sc_lv_data ddo;
+
 	struct sc_path path;
-	u8 *ddo;
-	size_t ddo_len;
 
 	int rec_nr;		/* -1, if EF(DIR) is transparent */
 } sc_app_info_t;

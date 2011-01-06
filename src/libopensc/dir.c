@@ -110,16 +110,16 @@ static int parse_dir_record(sc_card_t *card, u8 ** buf, size_t *buflen,
 	} else
 		app->path.len = 0;
 	if (asn1_dirrecord[3].flags & SC_ASN1_PRESENT) {
-		app->ddo = malloc(ddo_len);
-		if (app->ddo == NULL) {
+		app->ddo.value = malloc(ddo_len);
+		if (app->ddo.value == NULL) {
 			free(app);
 			return SC_ERROR_OUT_OF_MEMORY;
 		}
-		memcpy(app->ddo, ddo, ddo_len);
-		app->ddo_len = ddo_len;
+		memcpy(app->ddo.value, ddo, ddo_len);
+		app->ddo.len = ddo_len;
 	} else {
-		app->ddo = NULL;
-		app->ddo_len = 0;
+		app->ddo.value = NULL;
+		app->ddo.len = 0;
 	}
 
 	app->rec_nr = rec_nr;
@@ -235,8 +235,8 @@ void sc_free_apps(sc_card_t *card)
 	for (i = 0; i < card->app_count; i++) {
 		if (card->app[i]->label)
 			free(card->app[i]->label);
-		if (card->app[i]->ddo)
-			free(card->app[i]->ddo);
+		if (card->app[i]->ddo.value)
+			free(card->app[i]->ddo.value);
 		free(card->app[i]);
 	}
 	card->app_count = -1;
@@ -261,9 +261,9 @@ static int encode_dir_record(sc_context_t *ctx, const sc_app_info_t *app,
 	if (tapp.path.len)
 		sc_format_asn1_entry(asn1_dirrecord + 2, (void *) tapp.path.value,
 				     (void *) &tapp.path.len, 1);
-	if (tapp.ddo != NULL)
-		sc_format_asn1_entry(asn1_dirrecord + 3, (void *) tapp.ddo,
-				     (void *) &tapp.ddo_len, 1);
+	if (tapp.ddo.value != NULL && tapp.ddo.len)
+		sc_format_asn1_entry(asn1_dirrecord + 3, (void *) tapp.ddo.value,
+				     (void *) &tapp.ddo.len, 1);
 	r = sc_asn1_encode(ctx, asn1_dir, buf, buflen);
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Encode DIR record error");
 
