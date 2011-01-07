@@ -485,8 +485,6 @@ static int
 authentic_erase_binary(struct sc_card *card, unsigned int offs, size_t count, unsigned long flags)
 {
 	struct sc_context *ctx = card->ctx;
-	struct sc_apdu *apdus = NULL, *cur_apdu = NULL;
-	size_t sz, rest;
 	int rv;
 	unsigned char *buf_zero = NULL;
 
@@ -1375,7 +1373,7 @@ authentic_pin_verify(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd)
 	if (pin_cmd->pin1.data)
 		SHA1(pin_cmd->pin1.data, pin_cmd->pin1.len, pin_sha1);
 	else
-		SHA1("", 0, pin_sha1);
+		SHA1((unsigned char *)"", 0, pin_sha1);
 
 	if (!memcmp(pin_sha1, prv_data->pins_sha1[pin_cmd->pin_reference], SHA_DIGEST_LENGTH))   {
 		sc_log(ctx, "Already verified");
@@ -1953,7 +1951,6 @@ authentic_manage_sdo(struct sc_card *card, struct sc_authentic_sdo *sdo, unsigne
 {
 	struct sc_context *ctx = card->ctx;
 	struct sc_apdu apdu;
-	unsigned char rbuf[0x400];
 	unsigned char *data = NULL;
 	size_t data_len = 0, save_max_send = card->max_send_size;
 	int rv;

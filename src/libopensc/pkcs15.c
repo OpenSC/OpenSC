@@ -18,7 +18,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "config.h"
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
 #include <stdlib.h>
 #include <string.h>
@@ -258,9 +260,6 @@ static const struct sc_asn1_entry c_asn1_ddo[] = {
 
 static void fix_authentic_ddo(struct sc_pkcs15_card *p15card)
 {
-	struct sc_context *ctx = p15card->card->ctx;
-	struct sc_path tmp_path;
-
 	/* AuthentIC v3.2 card has invalid ODF and tokenInfo paths encoded into DDO.
 	 * Cleanup this attributes -- default values must be OK.
 	 */
@@ -698,17 +697,20 @@ static struct sc_app_info *sc_dup_app_info(const struct sc_app_info *info)
 
 static int sc_pkcs15_bind_internal(sc_pkcs15_card_t *p15card, struct sc_aid *aid)
 {
-	unsigned char *buf = NULL;
-	int    err, ok = 0, ii;
-	size_t len;
 	sc_path_t tmppath;
 	sc_card_t    *card = p15card->card;
 	sc_context_t *ctx  = card->ctx;
 	sc_pkcs15_tokeninfo_t tokeninfo;
 	sc_pkcs15_df_t *df;
 	const sc_app_info_t *info = NULL;
+	unsigned char *buf = NULL;
+	size_t len;
+	int    err, ok = 0;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
+
+	err = sc_parse_ef_atr(card);
+	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, err, "Failed to parse EF(ATR) content");
 
 	/* Enumerate apps now */
 	if (card->app_count < 0) {
