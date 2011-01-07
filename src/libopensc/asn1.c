@@ -284,6 +284,10 @@ static void print_tags_recursive(const u8 * buf0, const u8 * buf,
 			}
 			printf("]");
 		}
+
+		if ((cla & SC_ASN1_TAG_CLASS) == SC_ASN1_TAG_APPLICATION)
+			printf(" <raw content> [%s]", sc_dump_hex(tagp, len));
+
 		putchar('\n');
 	}
 	return;
