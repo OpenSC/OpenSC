@@ -464,6 +464,8 @@ typedef struct sc_pkcs15_card {
 	sc_card_t *card;
 	unsigned int flags;
 
+	struct sc_app_info *app;
+
 	sc_file_t *file_app;
 	sc_file_t *file_tokeninfo, *file_odf, *file_unusedspace;
 

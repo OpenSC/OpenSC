@@ -578,6 +578,13 @@ void sc_pkcs15_card_free(struct sc_pkcs15_card *p15card)
 		free(p15card->tokeninfo->seInfo);
 	}
 	free(p15card->tokeninfo);
+	if (p15card->app)   {
+		if (p15card->app->label)
+			free(p15card->app->label);
+		if (p15card->app->ddo.value)
+			free(p15card->app->ddo.value);
+		free(p15card->app);
+	}
 	free(p15card);
 }
 
@@ -668,6 +675,27 @@ const sc_app_info_t * sc_find_app(sc_card_t *card, struct sc_aid *aid)
 	return NULL;
 }
 
+static struct sc_app_info *sc_dup_app_info(const struct sc_app_info *info)
+{
+	struct sc_app_info *out = calloc(1, sizeof(struct sc_app_info));
+
+	if (!out)
+		return NULL;
+
+	memcpy(out, info, sizeof(struct sc_app_info));
+
+	out->label = strdup(info->label);
+	if (!out->label)
+		return NULL;
+
+	out->ddo.value = malloc(info->ddo.len);
+	if (!out->ddo.value)
+		return NULL;
+	memcpy(out->ddo.value, info->ddo.value, info->ddo.len);
+
+	return out;
+}
+
 static int sc_pkcs15_bind_internal(sc_pkcs15_card_t *p15card, struct sc_aid *aid)
 {
 	unsigned char *buf = NULL;
@@ -705,6 +733,12 @@ static int sc_pkcs15_bind_internal(sc_pkcs15_card_t *p15card, struct sc_aid *aid
 
 		if (info->ddo.value && info->ddo.len)
 			parse_ddo(p15card, info->ddo.value, info->ddo.len);
+
+		p15card->app = sc_dup_app_info(info);
+		if (!p15card->app)   {
+			err = SC_ERROR_OUT_OF_MEMORY;
+			goto end;
+		}
 	}
 	else if (aid)   {
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Application(aid:'%s') not found", sc_dump_hex(aid->value, aid->len));
