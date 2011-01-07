@@ -83,6 +83,7 @@ static int	pem_encode(int, sc_pkcs15_der_t *, sc_pkcs15_der_t *);
 
 static const struct option options[] = {
 	{ "learn-card",		no_argument, NULL,		'L' },
+	{ "list-applications",	no_argument, NULL,		OPT_LIST_APPLICATIONS },
 	{ "read-certificate",	required_argument, NULL, 	'r' },
 	{ "list-certificates",	no_argument, NULL,		'c' },
 	{ "read-data-object",	required_argument, NULL, 	'R' },
@@ -108,7 +109,6 @@ static const struct option options[] = {
 	{ "no-cache",		no_argument, NULL,		OPT_NO_CACHE },
 	{ "auth-id",		required_argument, NULL,	'a' },
 	{ "aid",		required_argument, NULL,   	OPT_BIND_TO_AID },
-	{ "list-applications",	no_argument, NULL,		OPT_LIST_APPLICATIONS },
 	{ "wait",		no_argument, NULL,		'w' },
 	{ "verbose",		no_argument, NULL,		'v' },
 	{ NULL, 0, NULL, 0 }
@@ -116,6 +116,7 @@ static const struct option options[] = {
 
 static const char *option_help[] = {
 	"Stores card info to cache",
+	"List the on-card PKCS#15 applications",
 	"Reads certificate with ID <arg>",
 	"Lists certificates",
 	"Reads data object with OID, applicationName or label <arg>",
@@ -141,7 +142,6 @@ static const char *option_help[] = {
 	"Disable card caching",
 	"The auth ID of the PIN to use",
 	"Specify AID of the on-card PKCS#15 application to be binded to (in hexadecimal form)",
-	"List the on-card PKCS#15 applications",
 	"Wait for card insertion",
 	"Verbose operation. Use several times to enable debug output.",
 };
