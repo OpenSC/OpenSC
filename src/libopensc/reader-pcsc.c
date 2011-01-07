@@ -963,13 +963,17 @@ static int pcsc_detect_readers(sc_context_t *ctx)
 				continue;
 				
 			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Requesting reader features ... ");
-			
+
+			rv = SCARD_E_SHARING_VIOLATION;
+			/* Use DIRECT mode only if there is no card in the reader */
+			if (!(reader->flags & SC_READER_CARD_PRESENT)) {
 #ifndef _WIN32	/* Apple 10.5.7 and pcsc-lite previous to v1.5.5 do not support 0 as protocol identifier */
-			rv = gpriv->SCardConnect(gpriv->pcsc_ctx, reader->name, SCARD_SHARE_DIRECT, SCARD_PROTOCOL_T0|SCARD_PROTOCOL_T1, &card_handle, &active_proto);
+				rv = gpriv->SCardConnect(gpriv->pcsc_ctx, reader->name, SCARD_SHARE_DIRECT, SCARD_PROTOCOL_T0|SCARD_PROTOCOL_T1, &card_handle, &active_proto);
 #else
-			rv = gpriv->SCardConnect(gpriv->pcsc_ctx, reader->name, SCARD_SHARE_DIRECT, 0, &card_handle, &active_proto);
+				rv = gpriv->SCardConnect(gpriv->pcsc_ctx, reader->name, SCARD_SHARE_DIRECT, 0, &card_handle, &active_proto);
 #endif
-			PCSC_TRACE(reader, "SCardConnect(DIRECT)", rv);
+				PCSC_TRACE(reader, "SCardConnect(DIRECT)", rv);
+			}
 			if (rv == (LONG)SCARD_E_SHARING_VIOLATION) { /* Assume that there is a card in the reader in shared mode if direct communcation failed */
 				rv = gpriv->SCardConnect(gpriv->pcsc_ctx, reader->name, SCARD_SHARE_SHARED, SCARD_PROTOCOL_T0|SCARD_PROTOCOL_T1, &card_handle, &active_proto);
 				PCSC_TRACE(reader, "SCardConnect(SHARED)", rv);
