@@ -708,10 +708,6 @@ static int sc_pkcs15_bind_internal(sc_pkcs15_card_t *p15card, struct sc_aid *aid
 	int    err, ok = 0;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
-
-	err = sc_parse_ef_atr(card);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, err, "Failed to parse EF(ATR) content");
-
 	/* Enumerate apps now */
 	if (card->app_count < 0) {
 		err = sc_enum_apps(card);
