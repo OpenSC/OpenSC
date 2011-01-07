@@ -759,7 +759,7 @@ int main(int argc, char *argv[])
 	{
 		int mode = SC_CARDCTRL_LIFECYCLE_USER;
 
-		if(card->atr[10] != 0x82)
+		if(card->atr.value[10] != 0x82)
 		{
 			sc_format_path("0001", &path);
 			r = sc_select_file(card, &path, NULL);

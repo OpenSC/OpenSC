@@ -85,9 +85,9 @@ static int atrust_acos_match_card(struct sc_card *card)
 			continue;
 		/* we may only verify part of ATR since */
 		/* part of the hist chars is variable */
-		if (len > card->atr_len)
+		if (len > card->atr.len)
 			continue;
-		if (memcmp(card->atr, defatr, len) != 0)
+		if (memcmp(card->atr.value, defatr, len) != 0)
 			continue;
 
 		match = 1;

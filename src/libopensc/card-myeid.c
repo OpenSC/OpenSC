@@ -71,9 +71,9 @@ static int myeid_match_card(struct sc_card *card)
 
 		if (sc_hex_to_bin(atrp, defatr, &len))
 			continue;
-		if (len != card->atr_len)
+		if (len != card->atr.len)
 			continue;
-		if (memcmp(card->atr, defatr, len) != 0)
+		if (memcmp(card->atr.value, defatr, len) != 0)
 			continue;
 		match = i;
 		break;

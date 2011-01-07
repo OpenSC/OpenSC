@@ -48,25 +48,29 @@ typedef unsigned char u8;
  */
 #define SC_MAX_SUPPORTED_ALGORITHMS     8
 
+struct sc_lv_data {
+	unsigned char *value;
+	size_t len;
+};
+
+struct sc_tlv_data {
+	unsigned tag;
+	unsigned char *value;
+	size_t len;
+};
 
 struct sc_object_id {
 	int value[SC_MAX_OBJECT_ID_OCTETS];
 };
 
 struct sc_aid {
-	size_t len;
 	unsigned char value[SC_MAX_AID_SIZE];
+	size_t len;
 };
 
-struct sc_lv_data {
+struct sc_atr {
+	unsigned char value[SC_MAX_ATR_SIZE];
 	size_t len;
-	unsigned char *value;
-};
-
-struct sc_tlv_data {
-	unsigned tag;
-	size_t len;
-	unsigned char *value;
 };
 
 #define SC_PATH_TYPE_FILE_ID		0

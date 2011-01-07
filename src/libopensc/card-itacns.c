@@ -65,7 +65,7 @@ static struct sc_atr_table itacns_atrs[] = {
 
 /* Check that we are not looking at values beyond the ATR's length.
  * If we are, then the card does not match. */
-#define itacns_atr_l(idx) do {if (idx >= card->atr_len) return 0;} while(0);
+#define itacns_atr_l(idx) do {if (idx >= card->atr.len) return 0;} while(0);
 
 /* Match byte exactly and increment index. */
 #define itacns_atr_match(idx, c) do { \
@@ -88,7 +88,7 @@ static struct sc_atr_table itacns_atrs[] = {
 
 static int itacns_match_cns_card(sc_card_t *card, unsigned int i)
 {
-	unsigned char *atr = card->atr;
+	unsigned char *atr = card->atr.value;
 	sc_context_t *ctx;
 	ctx = card->ctx;
 
@@ -123,7 +123,7 @@ static int itacns_match_cns_card(sc_card_t *card, unsigned int i)
 
 static int itacns_match_cie_card(sc_card_t *card, unsigned int i)
 {
-	unsigned char *atr = card->atr;
+	unsigned char *atr = card->atr.value;
 	sc_context_t *ctx;
 	ctx = card->ctx;
 
@@ -146,7 +146,7 @@ static int itacns_match_card(sc_card_t *card)
 {
 	unsigned int i = 0;
 	int r;
-	unsigned char *atr = card->atr;
+	unsigned char *atr = card->atr.value;
 	int td1_idx;
 	sc_context_t *ctx;
 	ctx = card->ctx;
@@ -179,10 +179,10 @@ static int itacns_match_card(sc_card_t *card)
 	itacns_atr_match(i, 0x6b); /* H2 */
 	/* Store interesting data */
 	if(card->driver) {
-		DRVDATA(card)->ic_manufacturer_code = card->atr[i];
-		DRVDATA(card)->mask_manufacturer_code = card->atr[i+1];
-		DRVDATA(card)->os_version_h = card->atr[i+2];
-		DRVDATA(card)->os_version_l = card->atr[i+3];
+		DRVDATA(card)->ic_manufacturer_code = card->atr.value[i];
+		DRVDATA(card)->mask_manufacturer_code = card->atr.value[i+1];
+		DRVDATA(card)->os_version_h = card->atr.value[i+2];
+		DRVDATA(card)->os_version_l = card->atr.value[i+3];
 	}
 	i += 4; /* H3, H4, H5, H6 */
 

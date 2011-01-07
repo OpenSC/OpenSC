@@ -127,8 +127,7 @@ int sc_connect_card(sc_reader_t *reader, sc_card_t **card_out)
 	card->reader = reader;
 	card->ctx = ctx;
 
-	memcpy(card->atr, reader->atr, reader->atr_len);
-	card->atr_len = reader->atr_len;
+	memcpy(&card->atr, &reader->atr, sizeof(card->atr));
 
 	_sc_parse_atr(reader);
 
@@ -777,10 +776,10 @@ sc_algorithm_info_t * sc_card_find_gostr3410_alg(sc_card_t *card,
 	return sc_card_find_alg(card, SC_ALGORITHM_GOSTR3410, key_length);
 }
 
-static int match_atr_table(sc_context_t *ctx, struct sc_atr_table *table, u8 *atr, size_t atr_len)
+static int match_atr_table(sc_context_t *ctx, struct sc_atr_table *table, struct sc_atr *atr)
 {
-	u8 *card_atr_bin = atr;
-	size_t card_atr_bin_len = atr_len;
+	u8 *card_atr_bin = atr->value;
+	size_t card_atr_bin_len = atr->len;
 	char card_atr_hex[3 * SC_MAX_ATR_SIZE];
 	size_t card_atr_hex_len;
 	unsigned int i = 0;
@@ -845,7 +844,7 @@ int _sc_match_atr(sc_card_t *card, struct sc_atr_table *table, int *type_out)
 
 	if (card == NULL)
 		return -1;
-	res = match_atr_table(card->ctx, table, card->atr, card->atr_len);
+	res = match_atr_table(card->ctx, table, &card->atr);
 	if (res < 0)
 		return res;
 	if (type_out != NULL)
@@ -853,7 +852,7 @@ int _sc_match_atr(sc_card_t *card, struct sc_atr_table *table, int *type_out)
 	return res;
 }
 
-scconf_block *_sc_match_atr_block(sc_context_t *ctx, struct sc_card_driver *driver, u8 *atr, size_t atr_len)
+scconf_block *_sc_match_atr_block(sc_context_t *ctx, struct sc_card_driver *driver, struct sc_atr *atr)
 {
 	struct sc_card_driver *drv;
 	struct sc_atr_table *table;
@@ -864,7 +863,7 @@ scconf_block *_sc_match_atr_block(sc_context_t *ctx, struct sc_card_driver *driv
 	if (driver) {
 		drv = driver;
 		table = drv->atr_map;
-		res = match_atr_table(ctx, table, atr, atr_len);
+		res = match_atr_table(ctx, table, atr);
 		if (res < 0)
 			return NULL;
 		return table[res].card_atr;
@@ -874,7 +873,7 @@ scconf_block *_sc_match_atr_block(sc_context_t *ctx, struct sc_card_driver *driv
 		for (i = 0; ctx->card_drivers[i] != NULL; i++) {
 			drv = ctx->card_drivers[i];
 			table = drv->atr_map;
-			res = match_atr_table(ctx, table, atr, atr_len);
+			res = match_atr_table(ctx, table, atr);
 			if (res < 0)
 				continue;
 			return table[res].card_atr;

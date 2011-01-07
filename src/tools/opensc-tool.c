@@ -271,7 +271,7 @@ static int list_readers(void)
 			struct sc_card *card;
 			int r;
 			char tmp[SC_MAX_ATR_SIZE*3];
-			sc_bin_to_hex(reader->atr, reader->atr_len, tmp, sizeof(tmp) - 1, ':');
+			sc_bin_to_hex(reader->atr.value, reader->atr.len, tmp, sizeof(tmp) - 1, ':');
 
 			if (state & SC_READER_CARD_EXCLUSIVE)
 				printf("     %s [EXCLUSIVE]\n", tmp);
@@ -801,10 +801,10 @@ int main(int argc, char * const argv[])
 	if (do_print_atr) {
 		if (verbose) {
 			printf("Card ATR:\n");
-			util_hex_dump_asc(stdout, card->atr, card->atr_len, -1);		
+			util_hex_dump_asc(stdout, card->atr.value, card->atr.len, -1);		
 		} else {
 			char tmp[SC_MAX_ATR_SIZE*3];
-			sc_bin_to_hex(card->atr, card->atr_len, tmp, sizeof(tmp) - 1, ':');
+			sc_bin_to_hex(card->atr.value, card->atr.len, tmp, sizeof(tmp) - 1, ':');
 			fprintf(stdout,"%s\n",tmp);
 		}
 		action_count--;

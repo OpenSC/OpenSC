@@ -828,10 +828,10 @@ int sc_pkcs15emu_infocamere_init_ex(sc_pkcs15_card_t * p15card,
 			return SC_ERROR_WRONG_CARD;
 	}
 
-	if (memcmp(p15card->card->atr, ATR_1600, sizeof(ATR_1600)) == 0)
+	if (memcmp(p15card->card->atr.value, ATR_1600, sizeof(ATR_1600)) == 0)
 		return infocamere_1600_init(p15card);
 #ifdef ENABLE_ZLIB
-	else if (memcmp(p15card->card->atr, ATR_1400, sizeof(ATR_1400)) ==
+	else if (memcmp(p15card->card->atr.value, ATR_1400, sizeof(ATR_1400)) ==
 		 0)
 		return infocamere_1400_init(p15card);
 #endif

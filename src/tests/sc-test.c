@@ -120,7 +120,7 @@ int sc_test_init(int *argc, char *argv[])
 	printf("connected.\n");
 	{
 		char tmp[SC_MAX_ATR_SIZE*3];
-		sc_bin_to_hex(card->atr, card->atr_len, tmp, sizeof(tmp) - 1, ':');
+		sc_bin_to_hex(card->atr.value, card->atr.len, tmp, sizeof(tmp) - 1, ':');
 		printf("ATR = %s\n",tmp);
 	}
 

@@ -599,8 +599,8 @@ int sc_file_valid(const sc_file_t *file) {
 
 int _sc_parse_atr(sc_reader_t *reader)
 {
-	u8 *p = reader->atr;
-	int atr_len = (int) reader->atr_len;
+	u8 *p = reader->atr.value;
+	int atr_len = (int) reader->atr.len;
 	int n_hist, x;
 	int tx[4];
 	int i, FI, DI;

@@ -69,7 +69,7 @@ int util_connect_card(sc_context_t *ctx, sc_card_t **cardp,
 				for (i = 0; i < sc_ctx_get_reader_count(ctx); i++) {
 					reader = sc_ctx_get_reader(ctx, i);
 					if (sc_detect_card_presence(reader) & SC_READER_CARD_PRESENT) {
-						if (!memcmp(reader->atr, atr_buf, reader->atr_len)) {
+						if (!memcmp(reader->atr.value, atr_buf, reader->atr.len)) {
 							fprintf(stderr, "Matched ATR in reader: %s\n", reader->name);
 							goto autofound;
 						}	

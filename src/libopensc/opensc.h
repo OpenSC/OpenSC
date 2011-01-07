@@ -284,9 +284,8 @@ typedef struct sc_reader {
 	
 	unsigned long flags, capabilities;
 	unsigned int supported_protocols, active_protocol;
-	u8 atr[SC_MAX_ATR_SIZE];
-	size_t atr_len;
 
+	struct sc_atr atr;
 	struct _atr_info {
 		u8 *hist_bytes;
 		size_t hist_bytes_len;
@@ -441,12 +440,12 @@ typedef struct sc_card {
 	struct sc_context *ctx;
 	struct sc_reader *reader;
 
+	struct sc_atr atr;
+
 	int type;			/* Card type, for card driver internal use */
 	unsigned long caps, flags;
 	unsigned int wait_resend_apdu;	/* Delay (msec) before responding to an SW = 6CXX */
 	int cla;
-	u8 atr[SC_MAX_ATR_SIZE];
-	size_t atr_len;
 	size_t max_send_size; /* Max Lc supported by the card */
 	size_t max_recv_size; /* Max Le supported by the card */
 
