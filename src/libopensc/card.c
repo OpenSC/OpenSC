@@ -87,6 +87,7 @@ static sc_card_t * sc_card_new(sc_context_t *ctx)
 static void sc_card_free(sc_card_t *card)
 {
 	sc_free_apps(card);
+	sc_free_ef_atr(card);
 	if (card->ef_dir != NULL)
 		sc_file_free(card->ef_dir);
 	free(card->ops);

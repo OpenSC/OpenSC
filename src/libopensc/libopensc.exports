@@ -80,6 +80,7 @@ sc_disconnect_card
 sc_do_log
 _sc_debug
 sc_enum_apps
+sc_parse_ef_atr
 sc_establish_context
 sc_file_add_acl_entry
 sc_file_clear_acl_entries
@@ -98,6 +99,7 @@ sc_format_asn1_entry
 sc_format_oid
 sc_format_path
 sc_free_apps
+sc_free_ef_atr
 sc_get_cache_dir
 sc_get_challenge
 sc_get_conf_block

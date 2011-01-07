@@ -217,6 +217,29 @@ typedef struct sc_app_info {
 	int rec_nr;		/* -1, if EF(DIR) is transparent */
 } sc_app_info_t;
 
+struct sc_ef_atr {
+	unsigned char card_service;
+	unsigned char ic_manufacturer;
+	unsigned char ic_type;
+	unsigned char os_version;
+	unsigned char iasecc_version;
+	
+	unsigned char df_selection;
+	size_t unit_size;
+	unsigned char card_capabilities;
+
+	struct sc_aid aid;
+
+	size_t max_size_send;
+	size_t max_size_send_sc;
+	size_t max_size_recv;
+	size_t max_size_recv_sc;
+
+	struct sc_object_id allocation_oid;
+
+	unsigned status;
+};
+
 struct sc_card_cache {
 	struct sc_path current_path;
 
@@ -430,6 +453,8 @@ typedef struct sc_card {
 	struct sc_app_info *app[SC_MAX_CARD_APPS];
 	int app_count;
 	struct sc_file *ef_dir;
+
+	struct sc_ef_atr *ef_atr;
 
 	struct sc_algorithm_info *algorithms;
 	int algorithm_count;
@@ -1120,6 +1145,8 @@ int sc_make_cache_dir(sc_context_t *ctx);
 
 int sc_enum_apps(sc_card_t *card);
 void sc_free_apps(sc_card_t *card);
+int sc_parse_ef_atr(sc_card_t *card);
+void sc_free_ef_atr(sc_card_t *card);
 int sc_update_dir(sc_card_t *card, sc_app_info_t *app);
 
 struct sc_algorithm_info * sc_card_find_rsa_alg(sc_card_t *card,
