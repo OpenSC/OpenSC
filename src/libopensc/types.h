@@ -36,6 +36,7 @@ typedef unsigned char u8;
 #define SC_MAX_PIN_SIZE			256 /* OpenPGP card has 254 max */
 #define SC_MAX_ATR_SIZE			33
 #define SC_MAX_AID_SIZE			16
+#define SC_MAX_IIN_SIZE			10
 #define SC_MAX_OBJECT_ID_OCTETS		16
 #define SC_MAX_PATH_SIZE		16
 #define SC_MAX_PATH_STRING_SIZE		(SC_MAX_PATH_SIZE * 2 + 1)
@@ -71,6 +72,22 @@ struct sc_aid {
 struct sc_atr {
 	unsigned char value[SC_MAX_ATR_SIZE];
 	size_t len;
+};
+
+/* Issuer ID */
+struct sc_iid {
+	unsigned char value[SC_MAX_IIN_SIZE];
+	size_t len;
+};
+
+/* Discretionary ASN.1 data object */
+struct sc_ddo {
+	struct sc_aid aid;
+	struct sc_iid iid;
+	struct sc_object_id oid;
+
+	size_t len;
+	unsigned char *value;
 };
 
 #define SC_PATH_TYPE_FILE_ID		0
@@ -156,7 +173,6 @@ struct sc_crt {
 
 #define SC_AC_KEY_REF_NONE	0xFFFFFFFF
 
-
 typedef struct sc_acl_entry {
 	unsigned int method;	/* See SC_AC_* */
 	unsigned int key_ref;	/* SC_AC_KEY_REF_NONE or an integer */
@@ -165,7 +181,6 @@ typedef struct sc_acl_entry {
 
 	struct sc_acl_entry *next;
 } sc_acl_entry_t;
-
 
 /* File types */
 #define SC_FILE_TYPE_DF			0x04

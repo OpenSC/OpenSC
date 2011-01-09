@@ -210,7 +210,7 @@ typedef struct sc_app_info {
 	char *label;
 
 	struct sc_aid aid;
-	struct sc_lv_data ddo;
+	struct sc_ddo ddo;
 
 	struct sc_path path;
 
@@ -1156,6 +1156,8 @@ void sc_free_apps(sc_card_t *card);
 int sc_parse_ef_atr(sc_card_t *card);
 void sc_free_ef_atr(sc_card_t *card);
 int sc_update_dir(sc_card_t *card, sc_app_info_t *app);
+
+void sc_print_cache(struct sc_card *card);
 
 struct sc_algorithm_info * sc_card_find_rsa_alg(sc_card_t *card,
 		unsigned int key_length);
