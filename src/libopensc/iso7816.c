@@ -487,12 +487,12 @@ static int iso7816_select_file(sc_card_t *card,
 			card->ops->process_fci(card, file, apdu.resp+2, apdu.resp[1]);
 		*file_out = file;
 		break;
-	case 0x00:	/* proprietary coding */
+	case 0x00: /* proprietary coding */
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_UNKNOWN_DATA_RECEIVED);
 	default:
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_UNKNOWN_DATA_RECEIVED);
 	}
-	return 0;
+	return SC_SUCCESS;
 }
 
 static int iso7816_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
