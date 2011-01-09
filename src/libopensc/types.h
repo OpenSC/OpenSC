@@ -39,8 +39,8 @@ typedef unsigned char u8;
 #define SC_MAX_OBJECT_ID_OCTETS		16
 #define SC_MAX_PATH_SIZE		16
 #define SC_MAX_PATH_STRING_SIZE		(SC_MAX_PATH_SIZE * 2 + 1)
-
 #define SC_MAX_SDO_ACLS			8
+#define SC_MAX_CRTS_IN_SE		12
 
 /* When changing this value, pay attention to the initialization of the ASN1 
  * static variables that use this macro, like, for example, 
@@ -97,6 +97,13 @@ typedef struct sc_path {
 	struct sc_aid aid;
 } sc_path_t;
 
+/* Control reference template */
+struct sc_crt {
+	unsigned tag;
+	unsigned usage;		/* Usage Qualifier Byte */
+	unsigned algo;		/* Algorithm ID */
+	unsigned refs[8];	/* Security Object References */
+};
 
 /* Access Control flags */
 #define SC_AC_NONE			0x00000000
@@ -149,9 +156,12 @@ typedef struct sc_path {
 
 #define SC_AC_KEY_REF_NONE	0xFFFFFFFF
 
+
 typedef struct sc_acl_entry {
 	unsigned int method;	/* See SC_AC_* */
 	unsigned int key_ref;	/* SC_AC_KEY_REF_NONE or an integer */
+
+	struct sc_crt crts[SC_MAX_CRTS_IN_SE];
 
 	struct sc_acl_entry *next;
 } sc_acl_entry_t;
