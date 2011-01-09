@@ -107,6 +107,8 @@ int sc_pkcs15_is_emulation_only(sc_card_t *card)
 		case SC_CARD_TYPE_MCRD_ESTEID_V30:
 		case SC_CARD_TYPE_IAS_PTEID:
 		case SC_CARD_TYPE_GEMSAFEV1_PTEID:
+		case SC_CARD_TYPE_OPENPGP_V1:
+		case SC_CARD_TYPE_OPENPGP_V2:
 			return 1;
 		default:
 			return 0;

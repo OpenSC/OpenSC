@@ -18,6 +18,12 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+/*
+ * Specifications:
+ * http://www.g10code.de/docs/openpgp-card-1.1.pdf
+ * http://www.g10code.de/docs/openpgp-card-2.0.pdf
+ */
+
 #include "config.h"
 
 #include <stdlib.h>
@@ -29,7 +35,8 @@
 #include "cardctl.h"
 
 static struct sc_atr_table pgp_atrs[] = {
-	{ "3b:fa:13:00:ff:81:31:80:45:00:31:c1:73:c0:01:00:00:90:00:b1", NULL, NULL, SC_CARD_TYPE_OPENPGP_GENERIC, 0, NULL },
+	{ "3b:fa:13:00:ff:81:31:80:45:00:31:c1:73:c0:01:00:00:90:00:b1", NULL, "OpenPGP card v1.0/1.1", SC_CARD_TYPE_OPENPGP_V1, 0, NULL },
+	{ "3b:da:18:ff:81:b1:fe:75:1f:03:00:31:c5:73:c0:01:40:00:90:00:0c", NULL, "CryptoStick v1.2 (OpenPGP v2.0)", SC_CARD_TYPE_OPENPGP_V2, 0, NULL },
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
@@ -115,9 +122,11 @@ pgp_match_card(sc_card_t *card)
 	int i;
 
 	i = _sc_match_atr(card, pgp_atrs, &card->type);
-	if (i < 0)
-		return 0;
-	return 1;
+	if (i >= 0) {
+		card->name = pgp_atrs[i].name;
+		return 1;
+	}
+	return 0;
 }
 
 static int
@@ -133,7 +142,6 @@ pgp_init(sc_card_t *card)
 	priv = calloc (1, sizeof *priv);
 	if (!priv)
 		return SC_ERROR_OUT_OF_MEMORY;
-	card->name = "OpenPGP";
 	card->drv_data = priv;
 	card->cla = 0x00;
 

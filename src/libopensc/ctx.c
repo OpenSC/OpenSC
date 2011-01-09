@@ -62,7 +62,7 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 	{ "asepcos",	(void *(*)(void)) sc_get_asepcos_driver },
 	{ "starcos",	(void *(*)(void)) sc_get_starcos_driver },
 	{ "tcos",	(void *(*)(void)) sc_get_tcos_driver },
-	{ "opengpg",	(void *(*)(void)) sc_get_openpgp_driver },
+	{ "openpgp",	(void *(*)(void)) sc_get_openpgp_driver },
 	{ "jcop",	(void *(*)(void)) sc_get_jcop_driver },
 #ifdef ENABLE_OPENSSL
 	{ "oberthur",	(void *(*)(void)) sc_get_oberthur_driver },

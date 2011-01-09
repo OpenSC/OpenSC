@@ -236,7 +236,10 @@ failed:	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Failed to initialize OpenPGP e
 
 static int openpgp_detect_card(sc_pkcs15_card_t *p15card)
 {
-	return strcmp(p15card->card->name, "OpenPGP");
+	if (p15card->card->type == SC_CARD_TYPE_OPENPGP_V1 || p15card->card->type == SC_CARD_TYPE_OPENPGP_V2)
+		return SC_SUCCESS;
+	else
+		return SC_ERROR_WRONG_CARD;
 }
 
 int sc_pkcs15emu_openpgp_init_ex(sc_pkcs15_card_t *p15card,
