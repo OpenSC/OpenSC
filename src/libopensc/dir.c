@@ -57,7 +57,6 @@ static int parse_dir_record(sc_card_t *card, u8 ** buf, size_t *buflen,
 {
 	struct sc_asn1_entry asn1_dirrecord[5], asn1_dir[2];
 	sc_app_info_t *app = NULL;
-	const struct app_entry *ae;
 	int r;
 	u8 aid[SC_MAX_AID_SIZE], label[128], path[128];
 	u8 ddo[128];
@@ -84,7 +83,7 @@ static int parse_dir_record(sc_card_t *card, u8 ** buf, size_t *buflen,
 		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "AID is too long.\n");
 		return SC_ERROR_INVALID_ASN1_OBJECT;
 	}
-	app = malloc(sizeof(sc_app_info_t));
+	app = calloc(1, sizeof(struct sc_app_info));
 	if (app == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 	
