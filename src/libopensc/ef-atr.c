@@ -43,7 +43,7 @@ sc_parse_ef_atr_content(struct sc_card *card, unsigned char *buf, size_t buflen)
 	tag = sc_asn1_find_tag(ctx, buf, buflen, ISO7816_TAG_II_CARD_SERVICE, &taglen);
 	if (tag && taglen >= 1)   {
 		ef_atr.card_service = *tag;
-		sc_log(ctx, "From EF.ATR: card service 0x%X", ef_atr.card_service);
+		sc_log(ctx, "EF.ATR: card service 0x%X", ef_atr.card_service);
 	}
 
 	tag = sc_asn1_find_tag(ctx, buf, buflen, ISO7816_TAG_II_PRE_ISSUING, &taglen);
@@ -52,7 +52,7 @@ sc_parse_ef_atr_content(struct sc_card *card, unsigned char *buf, size_t buflen)
 		ef_atr.ic_type = *(tag + 1);
 		ef_atr.os_version = *(tag + 2);
 		ef_atr.iasecc_version = *(tag + 3);
-		sc_log(ctx, "From EF.ATR: IC manufacturer/type %X/%X, OS/IasEcc versions %X/%X", 
+		sc_log(ctx, "EF.ATR: IC manufacturer/type %X/%X, OS/IasEcc versions %X/%X", 
 				ef_atr.ic_manufacturer, ef_atr.ic_type,
 				ef_atr.os_version, ef_atr.iasecc_version);
 	}
@@ -62,7 +62,7 @@ sc_parse_ef_atr_content(struct sc_card *card, unsigned char *buf, size_t buflen)
 		ef_atr.df_selection =  *(tag + 0);
 		ef_atr.unit_size = *(tag + 1);
 		ef_atr.card_capabilities = *(tag + 2);
-		sc_log(ctx, "From EF.ATR: DF selection %X, unit_size %X, card caps %X", 
+		sc_log(ctx, "EF.ATR: DF selection %X, unit_size %X, card caps %X", 
 				ef_atr.df_selection, ef_atr.unit_size, ef_atr.card_capabilities);
 	}
 
@@ -72,8 +72,7 @@ sc_parse_ef_atr_content(struct sc_card *card, unsigned char *buf, size_t buflen)
 			LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Invalid MF AID size");
 		memcpy(ef_atr.aid.value, tag, taglen);
 		ef_atr.aid.len = taglen;
-		sc_log(ctx, "From EF.ATR: AID(%i) %s", ef_atr.aid.len, 
-			sc_dump_hex(ef_atr.aid.value, ef_atr.aid.len));
+		sc_log(ctx, "EF.ATR: AID '%s'", sc_dump_hex(ef_atr.aid.value, ef_atr.aid.len));
 	}
 
 	tag = sc_asn1_find_tag(ctx, buf, buflen, ISO7816_TAG_II_IO_BUFFER_SIZES, &taglen);
@@ -86,19 +85,19 @@ sc_parse_ef_atr_content(struct sc_card *card, unsigned char *buf, size_t buflen)
 		/* FIXME: tell me why '-5' */
 		card->max_send_size = ef_atr.max_size_send - 5;
 		card->max_recv_size = ef_atr.max_size_recv;
-		sc_log(ctx, "From EF.ATR: mas send/recv size %X/%X", card->max_send_size, card->max_recv_size);
+		sc_log(ctx, "EF.ATR: max send/recv sizes %X/%X", card->max_send_size, card->max_recv_size);
 	}
 
 	tag = sc_asn1_find_tag(ctx, buf, buflen, ISO7816_TAG_II_ALLOCATION_SCHEME, &taglen);
 	if (tag && taglen < sizeof(ef_atr.allocation_oid))   {
-		sc_log(ctx, "From EF.ATR: OID %s", sc_dump_hex(tag, sizeof(taglen)));
+		sc_log(ctx, "EF.ATR: OID %s", sc_dump_hex(tag, sizeof(taglen)));
 		memcpy(ef_atr.allocation_oid.value, tag, taglen);
 	}
 
 	tag = sc_asn1_find_tag(ctx, buf, buflen, ISO7816_TAG_II_STATUS, &taglen);
 	if (tag && taglen == 2)   {
 		ef_atr.status = *(tag + 0) * 0x100 + *(tag + 1);
-		sc_log(ctx, "From EF.ATR: status word 0x%X", ef_atr.status);
+		sc_log(ctx, "EF.ATR: status word 0x%X", ef_atr.status);
 	}
 
 	if (!card->ef_atr)
@@ -125,8 +124,6 @@ int sc_parse_ef_atr(struct sc_card *card)
 
 	sc_format_path("3F002F01", &path);
 	rv = sc_select_file(card, &path, &file);
-	if (rv == SC_ERROR_FILE_NOT_FOUND)
-		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 	LOG_TEST_RET(ctx, rv, "Cannot select EF(ATR) file");
 
 	buf = malloc(file->size);
