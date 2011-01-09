@@ -92,8 +92,6 @@ sc_file_set_prop_attr
 sc_file_set_sec_attr
 sc_file_set_type_attr
 sc_file_valid
-sc_find_app_by_aid
-sc_find_pkcs15_app
 sc_format_apdu
 sc_format_asn1_entry
 sc_format_oid
