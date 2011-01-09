@@ -1118,9 +1118,6 @@ static int list_apps(FILE *fout)
 			fprintf(fout, "\n");
 		}
 
-		fprintf(fout, "\todfPath:       %s\n", sc_print_path(&p15card->file_odf->path));
-		fprintf(fout, "\ttokenInfoPath: %s\n", sc_print_path(&p15card->file_tokeninfo->path));
-
 		fprintf(fout, "\n");
 	}
 	return 0;
