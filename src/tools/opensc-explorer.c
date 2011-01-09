@@ -124,6 +124,8 @@ static void check_ret(int r, int op, const char *err, const sc_file_t *file)
 
 static int arg_to_path(const char *arg, sc_path_t *path, int is_id)
 {
+	memset(path, 0, sizeof(sc_path_t));
+
 	if (strncasecmp(arg, "aid:", strlen("aid:")) == 0) {
 		/* DF aid */
 		const char *p = arg + strlen("aid:");

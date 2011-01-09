@@ -195,6 +195,8 @@ int sc_path_set(sc_path_t *path, int type, const u8 *id, size_t id_len,
 {
 	if (path == NULL || id == NULL || id_len == 0 || id_len > SC_MAX_PATH_SIZE)
 		return SC_ERROR_INVALID_ARGUMENTS;
+
+	memset(path, 0, sizeof(*path));
 	memcpy(path->value, id, id_len);
 	path->len   = id_len;
 	path->type  = type;
@@ -320,8 +322,13 @@ int sc_compare_path_prefix(const sc_path_t *prefix, const sc_path_t *path)
 
 const sc_path_t *sc_get_mf_path(void)
 {
-	static const sc_path_t mf_path = { {0x3f, 0x00, 0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0, 0, 0}, 2, 0, 0, SC_PATH_TYPE_PATH};
+	static const sc_path_t mf_path = { 
+		{0x3f, 0x00, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 2, 
+		0, 
+		0, 
+		SC_PATH_TYPE_PATH, 
+		{{0},0}
+	};
 	return &mf_path;
 }
 
