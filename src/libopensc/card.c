@@ -961,3 +961,28 @@ scconf_block *sc_get_conf_block(sc_context_t *ctx, const char *name1, const char
 	return conf_block;
 }
 
+void sc_print_cache(struct sc_card *card)   {
+	struct sc_context *ctx = NULL;
+
+	assert(card != NULL);
+	ctx = card->ctx;
+
+	if (!card->cache.valid || (!card->cache.current_ef && !card->cache.current_df))   {
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "card cache invalid");
+		return; 
+	}
+
+	if (card->cache.current_ef)   {
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "current_ef(type=%i) %s",
+				card->cache.current_ef->path.type,
+				sc_print_path(&card->cache.current_ef->path));
+	}
+
+	if (card->cache.current_df)   {
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "current_df(type=%i, aid_len=%i) %s",
+				card->cache.current_df->path.type,
+				card->cache.current_df->path.aid.len,
+				sc_print_path(&card->cache.current_df->path));
+	}
+}
+
