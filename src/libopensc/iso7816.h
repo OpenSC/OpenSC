@@ -9,6 +9,8 @@
 extern "C" {
 #endif
 
+#define ISO7816_TAG_FCI		0x6F
+
 #define ISO7816_TAG_FCP		0x62
 #define ISO7816_TAG_FCP_SIZE	0x80
 #define ISO7816_TAG_FCP_TYPE	0x82

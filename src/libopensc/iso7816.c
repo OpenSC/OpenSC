@@ -27,6 +27,7 @@
 
 #include "internal.h"
 #include "asn1.h"
+#include "iso7816.h"
 
 static const struct sc_card_error iso7816_errors[] = {
 	{ 0x6200, SC_ERROR_MEMORY_FAILURE,	"State of non-volatile memory unchanged" },
@@ -472,7 +473,8 @@ static int iso7816_select_file(sc_card_t *card,
 	if (apdu.resplen < 2)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_UNKNOWN_DATA_RECEIVED);
 	switch (apdu.resp[0]) {
-	case 0x6F:
+	case ISO7816_TAG_FCI:
+	case ISO7816_TAG_FCP:
 		file = sc_file_new();
 		if (file == NULL)
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
