@@ -760,10 +760,14 @@ static int sc_pkcs15_bind_internal(sc_pkcs15_card_t *p15card, struct sc_aid *aid
 
 	if (p15card->file_odf == NULL) {
 		/* check if an ODF is present; we don't know yet whether we have a pkcs15 card */
-		tmppath = p15card->file_app->path;
-		sc_append_path_id(&tmppath, (const u8 *) "\x50\x31", 2);
+		sc_format_path("5031", &tmppath);
+		err = sc_pkcs15_make_absolute_path(&p15card->file_app->path, &tmppath);
+		if (err != SC_SUCCESS)   {
+			sc_log(ctx, "Cannot make absolute path to EF(ODF); error:%i", err);
+			goto end;
+		}
+		sc_log(ctx, "absolute path to EF(ODF) %s", sc_print_path(&tmppath));
 		err = sc_select_file(card, &tmppath, &p15card->file_odf);
-		
 	} 
 	else {
 		tmppath = p15card->file_odf->path;
@@ -807,8 +811,13 @@ static int sc_pkcs15_bind_internal(sc_pkcs15_card_t *p15card, struct sc_aid *aid
 				df->type, sc_print_path(&df->path), df->path.index, df->path.count);
 
 	if (p15card->file_tokeninfo == NULL) {
-		tmppath = p15card->file_app->path;
-		sc_append_path_id(&tmppath, (const u8 *) "\x50\x32", 2);
+		sc_format_path("5032", &tmppath);
+		err = sc_pkcs15_make_absolute_path(&p15card->file_app->path, &tmppath);
+		if (err != SC_SUCCESS)   {
+			sc_log(ctx, "Cannot make absolute path to EF(TokenInfo); error:%i", err);
+			goto end;
+		}
+		sc_log(ctx, "absolute path to EF(TokenInfo) %s", sc_print_path(&tmppath));
 	} 
 	else {
 		tmppath = p15card->file_tokeninfo->path;
@@ -1974,12 +1983,35 @@ int sc_pkcs15_hex_string_to_id(const char *in, struct sc_pkcs15_id *out)
 
 int sc_pkcs15_make_absolute_path(const sc_path_t *parent, sc_path_t *child)
 {
+	struct sc_path ppath;
+
 	/* a 0 length path stays a 0 length path */
 	if (child->len == 0)
 		return SC_SUCCESS;
+	
+	if (child->aid.len)
+		return SC_SUCCESS;
+
+	memcpy(&ppath, parent, sizeof(struct sc_path));
+	if (ppath.aid.len)   {
+		memcpy(&child->aid, &ppath.aid, sizeof(child->aid));
+		if (ppath.len)   {
+			ppath.aid.len = 0;
+			ppath.type = SC_PATH_TYPE_FROM_CURRENT;
+			return sc_concatenate_path(child, &ppath, child);
+		}
+		return SC_SUCCESS;
+	}
+	else if (ppath.type == SC_PATH_TYPE_DF_NAME)   {
+		memcpy(child->aid.value, ppath.value, ppath.len);
+		child->aid.len = ppath.len;
+
+		return SC_SUCCESS;
+	}
 
 	if (sc_compare_path_prefix(sc_get_mf_path(), child))
 		return SC_SUCCESS;
+
 	return sc_concatenate_path(child, parent, child);
 }
 
