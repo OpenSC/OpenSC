@@ -834,9 +834,9 @@ static int asn1_decode_path(sc_context_t *ctx, const u8 *in, size_t len,
 		return SC_ERROR_ASN1_OBJECT_NOT_FOUND;
 	}
 
-	if (path_len == 2)
+	if (path->len == 2)
 		path->type = SC_PATH_TYPE_FILE_ID;
-	else   if (aid_len && path_len > 2)
+	else   if (path->aid.len && path->len > 2)
 		path->type = SC_PATH_TYPE_FROM_CURRENT;
 	else
 		path->type = SC_PATH_TYPE_PATH;
@@ -857,14 +857,13 @@ static int asn1_encode_path(sc_context_t *ctx, const sc_path_t *path,
 			    u8 **buf, size_t *bufsize, int depth, unsigned int parent_flags)
 {
 	int r;
- 	struct sc_asn1_entry asn1_path[4];
+ 	struct sc_asn1_entry asn1_path[5];
 	sc_path_t tpath = *path;
 
 	sc_copy_asn1_entry(c_asn1_path, asn1_path);
 	sc_format_asn1_entry(asn1_path + 0, (void *) &tpath.value, (void *) &tpath.len, 1);
 
 	asn1_path[0].flags |= parent_flags;
-
 	if (path->count > 0) {
 		sc_format_asn1_entry(asn1_path + 1, (void *) &tpath.index, NULL, 1);
 		sc_format_asn1_entry(asn1_path + 2, (void *) &tpath.count, NULL, 1);
