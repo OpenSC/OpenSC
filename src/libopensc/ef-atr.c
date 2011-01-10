@@ -47,14 +47,13 @@ sc_parse_ef_atr_content(struct sc_card *card, unsigned char *buf, size_t buflen)
 	}
 
 	tag = sc_asn1_find_tag(ctx, buf, buflen, ISO7816_TAG_II_PRE_ISSUING, &taglen);
-	if (tag && taglen >= 4) {
-		ef_atr.ic_manufacturer = *(tag + 0);
-		ef_atr.ic_type = *(tag + 1);
-		ef_atr.os_version = *(tag + 2);
-		ef_atr.iasecc_version = *(tag + 3);
-		sc_log(ctx, "EF.ATR: IC manufacturer/type %X/%X, OS/IasEcc versions %X/%X", 
-				ef_atr.ic_manufacturer, ef_atr.ic_type,
-				ef_atr.os_version, ef_atr.iasecc_version);
+	if (tag) {
+		size_t len = taglen > sizeof(ef_atr.pre_issuing) ? sizeof(ef_atr.pre_issuing) : taglen;
+
+		memcpy(ef_atr.pre_issuing, tag, len);
+		ef_atr.pre_issuing_len = len;
+
+		sc_log(ctx, "EF.ATR: Pre-Issuing data '%s'", sc_dump_hex(ef_atr.pre_issuing, ef_atr.pre_issuing_len));
 	}
 
 	tag = sc_asn1_find_tag(ctx, buf, buflen, ISO7816_TAG_II_CARD_CAPABILITIES, &taglen);
@@ -75,17 +74,14 @@ sc_parse_ef_atr_content(struct sc_card *card, unsigned char *buf, size_t buflen)
 		sc_log(ctx, "EF.ATR: AID '%s'", sc_dump_hex(ef_atr.aid.value, ef_atr.aid.len));
 	}
 
-	tag = sc_asn1_find_tag(ctx, buf, buflen, ISO7816_TAG_II_IO_BUFFER_SIZES, &taglen);
-	if (tag && taglen >= 0x10) {
-		ef_atr.max_size_send = *(tag + 2) * 0x100 + *(tag + 3);
-		ef_atr.max_size_send_sc = *(tag + 6) * 0x100 + *(tag + 7);
-		ef_atr.max_size_recv = *(tag + 10) * 0x100 + *(tag + 11);
-		ef_atr.max_size_recv_sc = *(tag + 14) * 0x100 + *(tag + 15);
+	tag = sc_asn1_find_tag(ctx, buf, buflen, IASECC_TAG_II_IO_BUFFER_SIZES, &taglen);
+	if (tag) {
+		size_t len = taglen > sizeof(ef_atr.issuer_data) ? sizeof(ef_atr.issuer_data) : taglen;
 
-		/* FIXME: tell me why '-5' */
-		card->max_send_size = ef_atr.max_size_send - 5;
-		card->max_recv_size = ef_atr.max_size_recv;
-		sc_log(ctx, "EF.ATR: max send/recv sizes %X/%X", card->max_send_size, card->max_recv_size);
+		memcpy(ef_atr.issuer_data, tag, len);
+		ef_atr.issuer_data_len = len;
+
+		sc_log(ctx, "EF.ATR: Issuer data '%s'", sc_dump_hex(ef_atr.issuer_data, ef_atr.issuer_data_len));
 	}
 
 	tag = sc_asn1_find_tag(ctx, buf, buflen, ISO7816_TAG_II_ALLOCATION_SCHEME, &taglen);

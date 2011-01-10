@@ -9,6 +9,9 @@
 extern "C" {
 #endif
 
+#define ISO7816_FILE_TYPE_TRANSPARENT_EF	0x01
+#define ISO7816_FILE_TYPE_DF			0x38
+
 #define ISO7816_TAG_FCI		0x6F
 
 #define ISO7816_TAG_FCP		0x62
@@ -17,19 +20,18 @@ extern "C" {
 #define ISO7816_TAG_FCP_ID	0x83
 #define ISO7816_TAG_FCP_ACLS	0x86
 
-/* Interindustry data tags */	
+/* ISO7816 interindustry data tags */	
 #define ISO7816_TAG_II_CARD_SERVICE             0x43
 #define ISO7816_TAG_II_INITIAL_ACCESS_DATA      0x44
 #define ISO7816_TAG_II_CARD_ISSUER_DATA         0x45
 #define ISO7816_TAG_II_PRE_ISSUING              0x46
 #define ISO7816_TAG_II_CARD_CAPABILITIES        0x47
 #define ISO7816_TAG_II_AID                      0x4F
-#define ISO7816_TAG_II_IO_BUFFER_SIZES          0xE0
 #define ISO7816_TAG_II_ALLOCATION_SCHEME        0x78
 #define ISO7816_TAG_II_STATUS                   0x82
 
-#define ISO7816_FILE_TYPE_TRANSPARENT_EF	0x01
-#define ISO7816_FILE_TYPE_DF			0x38
+/* Other interindustry data tags */
+#define IASECC_TAG_II_IO_BUFFER_SIZES		0xE0
 
 #ifdef __cplusplus
 }

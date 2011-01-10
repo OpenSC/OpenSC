@@ -219,21 +219,17 @@ typedef struct sc_app_info {
 
 struct sc_ef_atr {
 	unsigned char card_service;
-	unsigned char ic_manufacturer;
-	unsigned char ic_type;
-	unsigned char os_version;
-	unsigned char iasecc_version;
-	
 	unsigned char df_selection;
 	size_t unit_size;
 	unsigned char card_capabilities;
 
 	struct sc_aid aid;
 
-	size_t max_size_send;
-	size_t max_size_send_sc;
-	size_t max_size_recv;
-	size_t max_size_recv_sc;
+	unsigned char pre_issuing[6];
+	size_t pre_issuing_len;
+
+	unsigned char issuer_data[16];
+	size_t issuer_data_len;
 
 	struct sc_object_id allocation_oid;
 
