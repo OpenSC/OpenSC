@@ -36,11 +36,11 @@ typedef unsigned char u8;
 #define SC_MAX_PIN_SIZE			256 /* OpenPGP card has 254 max */
 #define SC_MAX_ATR_SIZE			33
 #define SC_MAX_AID_SIZE			16
-#define SC_MAX_AID_STRING_SIZE		(SC_MAX_AID_SIZE * 2 + 1)
+#define SC_MAX_AID_STRING_SIZE		(SC_MAX_AID_SIZE * 2 + 3)
 #define SC_MAX_IIN_SIZE			10
 #define SC_MAX_OBJECT_ID_OCTETS		16
 #define SC_MAX_PATH_SIZE		16
-#define SC_MAX_PATH_STRING_SIZE		(SC_MAX_PATH_SIZE * 2 + 1)
+#define SC_MAX_PATH_STRING_SIZE		(SC_MAX_PATH_SIZE * 2 + 3)
 #define SC_MAX_SDO_ACLS			8
 #define SC_MAX_CRTS_IN_SE		12
 
