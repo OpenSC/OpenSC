@@ -57,16 +57,17 @@ static int parse_dir_record(sc_card_t *card, u8 ** buf, size_t *buflen,
 {
 	struct sc_asn1_entry asn1_dirrecord[5], asn1_dir[2];
 	sc_app_info_t *app = NULL;
+	struct sc_aid aid;
+	u8 label[128], path[128], ddo[128];
+	size_t label_len = sizeof(label), path_len = sizeof(path), ddo_len = sizeof(ddo);
 	int r;
-	u8 aid[SC_MAX_AID_SIZE], label[128], path[128];
-	u8 ddo[128];
-	size_t aid_len = sizeof(aid), label_len = sizeof(label),
-	       path_len = sizeof(path), ddo_len = sizeof(ddo);
+
+	aid.len = sizeof(aid.value);
 
 	sc_copy_asn1_entry(c_asn1_dirrecord, asn1_dirrecord);
 	sc_copy_asn1_entry(c_asn1_dir, asn1_dir);
 	sc_format_asn1_entry(asn1_dir + 0, asn1_dirrecord, NULL, 0);
-	sc_format_asn1_entry(asn1_dirrecord + 0, aid, &aid_len, 0);
+	sc_format_asn1_entry(asn1_dirrecord + 0, aid.value, &aid.len, 0);
 	sc_format_asn1_entry(asn1_dirrecord + 1, label, &label_len, 0);
 	sc_format_asn1_entry(asn1_dirrecord + 2, path, &path_len, 0);
 	sc_format_asn1_entry(asn1_dirrecord + 3, ddo, &ddo_len, 0);
@@ -79,21 +80,20 @@ static int parse_dir_record(sc_card_t *card, u8 ** buf, size_t *buflen,
 		      sc_strerror(r));
 		return r;
 	}
-	if (aid_len > SC_MAX_AID_SIZE) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "AID is too long.\n");
-		return SC_ERROR_INVALID_ASN1_OBJECT;
-	}
+
 	app = calloc(1, sizeof(struct sc_app_info));
 	if (app == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 	
-	memcpy(app->aid.value, aid, aid_len);
-	app->aid.len = aid_len;
+	memcpy(&app->aid, &aid, sizeof(struct sc_aid));
+
 	if (asn1_dirrecord[1].flags & SC_ASN1_PRESENT)
 		app->label = strdup((char *) label);
 	else
 		app->label = NULL;
+
 	if (asn1_dirrecord[2].flags & SC_ASN1_PRESENT) {
+		/* application path present: ignore AID */
 		if (path_len > SC_MAX_PATH_SIZE) {
 			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Application path is too long.\n");
 			free(app);
@@ -102,12 +102,14 @@ static int parse_dir_record(sc_card_t *card, u8 ** buf, size_t *buflen,
 		memcpy(app->path.value, path, path_len);
 		app->path.len = path_len;	
 		app->path.type = SC_PATH_TYPE_PATH;
-	} else if (aid_len < sizeof(app->path.value)) {
-		memcpy(app->path.value, aid, aid_len);
-		app->path.len = aid_len;
+	} 
+	else {
+		/* application path not present: use AID as application path */
+		memcpy(app->path.value, aid.value, aid.len);
+		app->path.len = aid.len;
 		app->path.type = SC_PATH_TYPE_DF_NAME;
-	} else
-		app->path.len = 0;
+	} 
+
 	if (asn1_dirrecord[3].flags & SC_ASN1_PRESENT) {
 		app->ddo.value = malloc(ddo_len);
 		if (app->ddo.value == NULL) {
