@@ -255,6 +255,11 @@ static const struct sc_asn1_entry c_asn1_ddo[] = {
 	{ "odfPath",	   SC_ASN1_PATH, SC_ASN1_CONS | SC_ASN1_TAG_SEQUENCE, SC_ASN1_OPTIONAL, NULL, NULL },
 	{ "tokenInfoPath", SC_ASN1_PATH, SC_ASN1_CONS | SC_ASN1_CTX | 0, SC_ASN1_OPTIONAL, NULL, NULL },
 	{ "unusedPath",    SC_ASN1_PATH, SC_ASN1_CONS | SC_ASN1_CTX | 1, SC_ASN1_OPTIONAL, NULL, NULL },
+/* According to PKCS#15 v1.1 here is the place for the future extentions.
+ * The following data are used when ODF record points to the xDF files in a different application. 
+ */
+	{ "ddoIIN",	   SC_ASN1_OCTET_STRING, SC_ASN1_APP | 0x02, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "ddoAID",	   SC_ASN1_OCTET_STRING, SC_ASN1_APP | 0x0F, SC_ASN1_OPTIONAL, NULL, NULL },
 	{ NULL, 0, 0, 0, NULL, NULL }
 };
 
@@ -319,21 +324,28 @@ static void fix_starcos_pkcs15_card(struct sc_pkcs15_card *p15card)
 
 static int parse_ddo(struct sc_pkcs15_card *p15card, const u8 * buf, size_t buflen)
 {
-	struct sc_asn1_entry asn1_ddo[5];
+	struct sc_context *ctx = p15card->card->ctx;
+	struct sc_asn1_entry asn1_ddo[7];
 	sc_path_t odf_path, ti_path, us_path;
+	struct sc_iid iid;
+	struct sc_aid aid;
 	int r;
+
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
+
+	iid.len = sizeof(iid.value);
+	aid.len = sizeof(aid.value);
 
 	sc_copy_asn1_entry(c_asn1_ddo, asn1_ddo);
 	sc_format_asn1_entry(asn1_ddo + 1, &odf_path, NULL, 0);
 	sc_format_asn1_entry(asn1_ddo + 2, &ti_path, NULL, 0);
 	sc_format_asn1_entry(asn1_ddo + 3, &us_path, NULL, 0);
+	sc_format_asn1_entry(asn1_ddo + 4, iid.value, &iid.len, 0);
+	sc_format_asn1_entry(asn1_ddo + 5, aid.value, &aid.len, 0);
 
-	r = sc_asn1_decode(p15card->card->ctx, asn1_ddo, buf, buflen, NULL, NULL);
-	if (r) {
-		sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "DDO parsing failed: %s",
-		      sc_strerror(r));
-		return r;
-	}
+	r = sc_asn1_decode(ctx, asn1_ddo, buf, buflen, NULL, NULL);
+	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "DDO parsing failed");
+
 	if (asn1_ddo[1].flags & SC_ASN1_PRESENT) {
 		p15card->file_odf = sc_file_new();
 		if (p15card->file_odf == NULL)
@@ -352,9 +364,18 @@ static int parse_ddo(struct sc_pkcs15_card *p15card, const u8 * buf, size_t bufl
 			goto mem_err;
 		p15card->file_unusedspace->path = us_path;
 	}
+	if (asn1_ddo[4].flags & SC_ASN1_PRESENT) {
+		sc_debug(ctx, SC_LOG_DEBUG_ASN1, "DDO.IID '%s'", sc_dump_hex(iid.value, iid.len));
+		memcpy(&p15card->app->ddo.iid, &iid, sizeof(struct sc_iid));
+	}
+	if (asn1_ddo[5].flags & SC_ASN1_PRESENT) {
+		sc_debug(ctx, SC_LOG_DEBUG_ASN1, "DDO.AID '%s'", sc_dump_hex(aid.value, aid.len));
+		sc_debug(ctx, SC_LOG_DEBUG_ASN1, "p15card.app '%p'", p15card->app);
+		memcpy(&p15card->app->ddo.aid, &aid, sizeof(struct sc_aid));
+	}
 
 	fix_authentic_ddo(p15card);
-	return 0;
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
 mem_err:
 	if (p15card->file_odf != NULL) {
 		sc_file_free(p15card->file_odf);
@@ -368,7 +389,7 @@ mem_err:
 		sc_file_free(p15card->file_unusedspace);
 		p15card->file_unusedspace = NULL;
 	}
-	return SC_ERROR_OUT_OF_MEMORY;
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_OUT_OF_MEMORY);
 }
 
 #if 0
@@ -726,17 +747,18 @@ static int sc_pkcs15_bind_internal(sc_pkcs15_card_t *p15card, struct sc_aid *aid
 	if (info)   {
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "bind to application('%s',aid:'%s')", 
 				info->label, sc_dump_hex(info->aid.value, info->aid.len));
+		p15card->app = sc_dup_app_info(info);
+		if (!p15card->app)   {
+			err = SC_ERROR_OUT_OF_MEMORY;
+			goto end;
+		}
+
 		if (info->path.len)
 			p15card->file_app->path = info->path;
 
 		if (info->ddo.value && info->ddo.len)
 			parse_ddo(p15card, info->ddo.value, info->ddo.len);
 
-		p15card->app = sc_dup_app_info(info);
-		if (!p15card->app)   {
-			err = SC_ERROR_OUT_OF_MEMORY;
-			goto end;
-		}
 	}
 	else if (aid)   {
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Application(aid:'%s') not found", sc_dump_hex(aid->value, aid->len));
