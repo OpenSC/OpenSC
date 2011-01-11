@@ -2883,6 +2883,12 @@ get_pin_ident_name(int type, int reference)
 		return "secure messaging key";
 	case SC_AC_AUT:
 		return "authentication key";
+	case SC_AC_SEN:
+		return "security environment";
+	case SC_AC_IDA:
+		return "PKCS#15 reference";
+	case SC_AC_SCB:
+		return "SCB byte in IAS/ECC";
 	case SC_AC_SYMBOLIC:
 		switch (reference) {
 	        case SC_PKCS15INIT_USER_PIN:
@@ -2975,6 +2981,18 @@ sc_pkcs15init_verify_secret(struct sc_profile *profile, struct sc_pkcs15_card *p
 
 	ident = get_pin_ident_name(type, reference);
 	sc_log(ctx, "get and verify PIN('%s',type:0x%X,reference:0x%X)", ident, type, reference);
+
+	if (type == SC_AC_SEN)   {
+		r = sc_card_ctl(p15card->card, SC_CARDCTL_GET_CHV_REFERENCE_IN_SE, (void *)(&reference));
+		sc_log(ctx, "Card CTL(GET_CHV_REFERENCE_IN_SE) returned %i", r);
+		if (r > 0)   {
+			sc_log(ctx, "CHV(ref:%i) found in SE(ref:%i)", r, reference);
+			type = SC_AC_CHV;
+			reference = r;
+		}
+		else if (r != SC_ERROR_NOT_SUPPORTED)
+			LOG_TEST_RET(ctx, r, "Card CTL error: cannot get CHV reference");
+	}
 
 	memset(&pin_info, 0, sizeof(pin_info));
 	pin_info.auth_method = type;
