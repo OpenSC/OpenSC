@@ -452,16 +452,24 @@ sc_pkcs15init_set_lifecycle(struct sc_card *card, int lcycle)
  * Erase the card
  */
 int
-sc_pkcs15init_erase_card(struct sc_pkcs15_card *p15card, struct sc_profile *profile)
+sc_pkcs15init_erase_card(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
+		struct sc_aid *aid)
 {
+	struct sc_context *ctx = p15card->card->ctx;
+	int rv;
+
+	LOG_FUNC_CALLED(ctx);
 	/* Needs the 'SOPIN' AUTH pkcs15 object.
 	 * So that, SOPIN can be found by it's reference. */
-	if (sc_pkcs15_bind(p15card->card, NULL, &p15card) >= 0)
+	if (sc_pkcs15_bind(p15card->card, aid, &p15card) >= 0)
 		profile->p15_data = p15card;						        
 
 	if (profile->ops->erase_card == NULL)
-		return SC_ERROR_NOT_SUPPORTED;
-	return profile->ops->erase_card(profile, p15card);
+		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
+
+	rv = profile->ops->erase_card(profile, p15card);
+
+	LOG_FUNC_RETURN(ctx, rv);
 }
 
 

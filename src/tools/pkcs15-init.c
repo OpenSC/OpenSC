@@ -644,7 +644,21 @@ do_erase(sc_card_t *in_card, struct sc_profile *profile)
 	p15card->tokeninfo->label = strdup("Dummy PKCS#15 object");
 
 	ignore_cmdline_pins++;
-	r = sc_pkcs15init_erase_card(p15card, profile);
+	if (opt_bind_to_aid)   {
+		struct sc_aid aid;
+
+		aid.len = sizeof(aid.value);
+		if (sc_hex_to_bin(opt_bind_to_aid, aid.value, &aid.len))   {
+			fprintf(stderr, "Invalid AID value: '%s'\n", opt_bind_to_aid);
+			return 1;
+									                
+		}
+
+		r = sc_pkcs15init_erase_card(p15card, profile, &aid);
+	}
+	else   {
+		r = sc_pkcs15init_erase_card(p15card, profile, NULL);
+	}
 	ignore_cmdline_pins--;
 
 	sc_pkcs15_card_free(p15card);

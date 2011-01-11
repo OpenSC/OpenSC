@@ -264,7 +264,7 @@ extern void	sc_pkcs15init_set_p15card(struct sc_profile *,
 				struct sc_pkcs15_card *);
 extern int	sc_pkcs15init_set_lifecycle(struct sc_card *, int);
 extern int	sc_pkcs15init_erase_card(struct sc_pkcs15_card *,
-				struct sc_profile *);
+				struct sc_profile *, struct sc_aid *);
 /* XXX could this function be merged with ..._set_lifecycle ?? */
 extern int	sc_pkcs15init_finalize_card(struct sc_card *,
 				struct sc_profile *);
