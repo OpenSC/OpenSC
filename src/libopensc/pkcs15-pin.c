@@ -115,13 +115,29 @@ int sc_pkcs15_decode_aodf_entry(struct sc_pkcs15_card *p15card,
 	/* OpenSC 0.11.4 and older encoded "pinReference" as a negative
 	   value. Fixed in 0.11.5 we need to add a hack, so old cards
 	   continue to work. */
-	if (p15card->flags & SC_PKCS15_CARD_FLAG_FIX_INTEGERS) {
-		if (info.reference < 0) {
+	if (p15card->flags & SC_PKCS15_CARD_FLAG_FIX_INTEGERS)
+		if (info.reference < 0)
 			info.reference += 256;
-		}
-	}
 
 	info.auth_method = SC_AC_CHV;
+
+	/* 'Local' PIN should have path defined */
+	if (info.flags & SC_PKCS15_PIN_FLAG_LOCAL)   {
+		if (!info.path.len)   {
+			/* Give priority to AID defined in the application DDO */
+			if (p15card->app->ddo.aid.len)   {
+				memset(&info.path, 0, sizeof(struct sc_path));
+				info.path.type = SC_PATH_TYPE_DF_NAME;
+				memcpy(info.path.value, p15card->app->ddo.aid.value, p15card->app->ddo.aid.len);
+				info.path.len = p15card->app->ddo.aid.len;
+				sc_debug(ctx, SC_LOG_DEBUG_ASN1, "path from DDO (path:%s)", sc_print_path(&info.path));
+			}
+			else if (p15card->file_app->path.len)  {
+				info.path = p15card->file_app->path;
+				sc_debug(ctx, SC_LOG_DEBUG_ASN1, "path from file_app (path:%s)", sc_print_path(&info.path));
+			}
+		}
+	}
 
 	memcpy(obj->data, &info, sizeof(info));
 
@@ -273,7 +289,7 @@ int sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card,
 		sc_pkcs15_pincache_add(p15card, pin_obj, pincode, pinlen);
 out:
 	sc_unlock(card);
-	return r;
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, r);
 }
 
 /*
