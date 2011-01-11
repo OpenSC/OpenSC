@@ -38,8 +38,16 @@ sc_parse_ef_atr_content(struct sc_card *card, unsigned char *buf, size_t buflen)
 	const unsigned char *tag = NULL;
 	size_t taglen;
 	struct sc_ef_atr ef_atr;
+	unsigned char category = *buf;
 
 	LOG_FUNC_CALLED(ctx);
+
+	category = *buf;
+
+	/* IAS/ECC specific: skip second 'zero' byte */
+	if (*(++buf)  == 0x00)	
+		++buf;
+
 	tag = sc_asn1_find_tag(ctx, buf, buflen, ISO7816_TAG_II_CARD_SERVICE, &taglen);
 	if (tag && taglen >= 1)   {
 		ef_atr.card_service = *tag;
@@ -74,6 +82,7 @@ sc_parse_ef_atr_content(struct sc_card *card, unsigned char *buf, size_t buflen)
 		sc_log(ctx, "EF.ATR: AID '%s'", sc_dump_hex(ef_atr.aid.value, ef_atr.aid.len));
 	}
 
+	/* IAS/ECC specific issuer data: contains the max send/recv buffer sizes in plain and SM modes */
 	tag = sc_asn1_find_tag(ctx, buf, buflen, IASECC_TAG_II_IO_BUFFER_SIZES, &taglen);
 	if (tag) {
 		size_t len = taglen > sizeof(ef_atr.issuer_data) ? sizeof(ef_atr.issuer_data) : taglen;
@@ -90,10 +99,12 @@ sc_parse_ef_atr_content(struct sc_card *card, unsigned char *buf, size_t buflen)
 		memcpy(ef_atr.allocation_oid.value, tag, taglen);
 	}
 
-	tag = sc_asn1_find_tag(ctx, buf, buflen, ISO7816_TAG_II_STATUS, &taglen);
-	if (tag && taglen == 2)   {
-		ef_atr.status = *(tag + 0) * 0x100 + *(tag + 1);
-		sc_log(ctx, "EF.ATR: status word 0x%X", ef_atr.status);
+	if (category == ISO7816_II_CATEGORY_TLV)   {
+		tag = sc_asn1_find_tag(ctx, buf, buflen, ISO7816_TAG_II_STATUS_SW, &taglen);
+		if (tag && taglen == 2)   {
+			ef_atr.status = *(tag + 0) * 0x100 + *(tag + 1);
+			sc_log(ctx, "EF.ATR: status word 0x%X", ef_atr.status);
+		}
 	}
 
 	if (!card->ef_atr)
