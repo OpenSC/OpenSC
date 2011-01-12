@@ -370,7 +370,6 @@ static int parse_ddo(struct sc_pkcs15_card *p15card, const u8 * buf, size_t bufl
 	}
 	if (asn1_ddo[5].flags & SC_ASN1_PRESENT) {
 		sc_debug(ctx, SC_LOG_DEBUG_ASN1, "DDO.AID '%s'", sc_dump_hex(aid.value, aid.len));
-		sc_debug(ctx, SC_LOG_DEBUG_ASN1, "p15card.app '%p'", p15card->app);
 		memcpy(&p15card->app->ddo.aid, &aid, sizeof(struct sc_aid));
 	}
 
@@ -675,10 +674,10 @@ void sc_pkcs15_card_clear(sc_pkcs15_card_t *p15card)
 	}
 }
 
-const sc_app_info_t * sc_find_app(sc_card_t *card, struct sc_aid *aid)
+struct sc_app_info * sc_find_app(struct sc_card *card, struct sc_aid *aid)
 {
 	int ii;
-	
+
 	if (card->app_count <= 0)
 		return NULL;
 

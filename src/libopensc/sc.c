@@ -303,7 +303,7 @@ int sc_path_print(char *buf, size_t buflen, const sc_path_t *path)
 
 	for (i = 0; i < path->len; i++)
 		snprintf(buf + strlen(buf), buflen - strlen(buf), "%02x", path->value[i]);
-	if (path->type == SC_PATH_TYPE_DF_NAME)
+	if (!path->aid.len && path->type == SC_PATH_TYPE_DF_NAME)
 		snprintf(buf + strlen(buf), buflen - strlen(buf), "::");
 
 	return SC_SUCCESS;

@@ -1148,6 +1148,7 @@ int sc_get_cache_dir(sc_context_t *ctx, char *buf, size_t bufsize);
 int sc_make_cache_dir(sc_context_t *ctx);
 
 int sc_enum_apps(sc_card_t *card);
+struct sc_app_info *sc_find_app(struct sc_card *card, struct sc_aid *aid);
 void sc_free_apps(sc_card_t *card);
 int sc_parse_ef_atr(sc_card_t *card);
 void sc_free_ef_atr(sc_card_t *card);
