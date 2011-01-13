@@ -193,6 +193,7 @@ void sc_asn1_clear_algorithm_id(struct sc_algorithm_id *);
 #define SC_ASN1_TAG_GENERALSTRING	27
 #define SC_ASN1_TAG_UNIVERSALSTRING	28
 #define SC_ASN1_TAG_BMPSTRING		30
+#define SC_ASN1_TAG_ESCAPE_MARKER	31
 
 #ifdef __cplusplus
 }
