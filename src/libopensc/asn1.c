@@ -724,7 +724,6 @@ int sc_asn1_put_tag(int tag, const u8 * data, size_t datalen, u8 * out, size_t o
 	return 0;
 }
 
-
 static int asn1_write_element(sc_context_t *ctx, unsigned int tag,
 	const u8 * data, size_t datalen, u8 ** out, size_t * outlen)
 {
@@ -743,14 +742,14 @@ static int asn1_write_element(sc_context_t *ctx, unsigned int tag,
 
 	if (tag_len > 1)   {
 		if ((tag_char[tag_len - 1] & SC_ASN1_TAG_PRIMITIVE) != SC_ASN1_TAG_ESCAPE_MARKER)
-			SC_TEST_RET(ctx, SC_LOG_DEBUG_ASN1, SC_ERROR_INVALID_DATA, "First byte of the long tag is not 'espace marker'");
+			SC_TEST_RET(ctx, SC_LOG_DEBUG_ASN1, SC_ERROR_INVALID_DATA, "First byte of the long tag is not 'escape marker'");
 
 		for (ii = 1; ii < tag_len - 1; ii++)
 			if (!(tag_char[ii] & 0x80))
-				SC_TEST_RET(ctx, SC_LOG_DEBUG_ASN1, SC_ERROR_INVALID_DATA, "MS bit exected to be 'one'");
+				SC_TEST_RET(ctx, SC_LOG_DEBUG_ASN1, SC_ERROR_INVALID_DATA, "MS bit expected to be 'one'");
 
 		if (tag_char[0] & 0x80)
-			SC_TEST_RET(ctx, SC_LOG_DEBUG_ASN1, SC_ERROR_INVALID_DATA, "MS bit of the last byte exected to be 'zero'");
+			SC_TEST_RET(ctx, SC_LOG_DEBUG_ASN1, SC_ERROR_INVALID_DATA, "MS bit of the last byte expected to be 'zero'");
 	}
 
 	t = tag_char[tag_len - 1] & 0x1F;
