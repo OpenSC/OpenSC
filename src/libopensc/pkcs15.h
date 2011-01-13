@@ -319,6 +319,8 @@ struct sc_pkcs15_prkey_info {
 	size_t modulus_length; /* RSA */
 	size_t field_length;   /* EC in bits */
 
+	int algo_refs[SC_MAX_SUPPORTED_ALGORITHMS];
+
 	struct sc_pkcs15_der subject;
 
 	void   *params;
@@ -335,6 +337,8 @@ struct sc_pkcs15_pubkey_info {
 	/* convert to union if other types are supported */
 	size_t modulus_length; /* RSA */
 	size_t field_length;   /* EC in bits */
+
+	int algo_refs[SC_MAX_SUPPORTED_ALGORITHMS];
 
 	struct sc_pkcs15_der subject;
 
@@ -780,6 +784,11 @@ void sc_pkcs15_free_object_content(struct sc_pkcs15_object *);
 /* Allocate and set object content */
 int sc_pkcs15_allocate_object_content(struct sc_pkcs15_object *,
 		const unsigned char *, size_t);
+
+struct sc_supported_algo_info *sc_pkcs15_get_supported_algo(struct sc_pkcs15_card *,
+		unsigned, unsigned);
+int sc_pkcs15_add_supported_algo_ref(struct sc_pkcs15_object *,
+		struct sc_supported_algo_info *);
 
 /* New object search API.
  * More complex, but also more powerful.
