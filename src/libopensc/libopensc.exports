@@ -249,7 +249,6 @@ sc_pkcs15init_delete_object
 sc_pkcs15init_erase_card
 sc_pkcs15init_erase_card_recursively
 sc_pkcs15init_finalize_card
-sc_pkcs15init_finalize_profile
 sc_pkcs15init_fixup_file
 sc_pkcs15init_generate_key
 sc_pkcs15init_get_asepcos_ops
