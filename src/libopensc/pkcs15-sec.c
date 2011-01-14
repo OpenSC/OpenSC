@@ -77,6 +77,10 @@ int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 
 	memset(&senv, 0, sizeof(senv));
 
+	/* Card driver should have the access to supported algorithms from 'tokenInfo'. So that  
+	 * it can get value of card specific 'AlgorithmInfo::algRef'. */
+	memcpy(&senv.supported_algos, &p15card->tokeninfo->supported_algos, sizeof(senv.supported_algos));
+
 	/* If the key is not native, we can't operate with it. */
 	if (!prkey->native)
 		return SC_ERROR_NOT_SUPPORTED;
@@ -187,6 +191,10 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 
 	memset(&senv, 0, sizeof(senv));
+
+	/* Card driver should have the access to supported algorithms from 'tokenInfo'. So that  
+	 * it can get value of card specific 'AlgorithmInfo::algRef'. */
+	memcpy(&senv.supported_algos, &p15card->tokeninfo->supported_algos, sizeof(senv.supported_algos));
 
 	if ((obj->type & SC_PKCS15_TYPE_CLASS_MASK) != SC_PKCS15_TYPE_PRKEY) {
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "This is not a private key\n");
