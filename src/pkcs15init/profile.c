@@ -101,6 +101,9 @@ static struct map		aclNames[] = {
 	{ "PRO",	SC_AC_PRO	},
 	{ "AUT",	SC_AC_AUT	},
 	{ "KEY",	SC_AC_AUT	},
+	{ "SEN",	SC_AC_SEN	},
+	{ "IDA",	SC_AC_IDA	},
+	{ "SCB",	SC_AC_SCB	},
 	{ NULL, 0 }
 };
 static struct map		fileOpNames[] = {
@@ -325,6 +328,7 @@ sc_profile_load(struct sc_profile *profile, const char *filename)
 	HKEY hKey;
 #endif
                 
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 	for (i = 0; ctx->conf_blocks[i]; i++) {
 		profile_dir = scconf_get_str(ctx->conf_blocks[i], "profile_dir", NULL);
 		if (profile_dir)
@@ -357,41 +361,38 @@ sc_profile_load(struct sc_profile *profile, const char *filename)
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Using profile directory '%s'.", profile_dir);
 
 #ifdef _WIN32
-	snprintf(path, sizeof(path), "%s\\%s.%s",
-		profile_dir, filename, SC_PKCS15_PROFILE_SUFFIX);
+	snprintf(path, sizeof(path), "%s\\%s.%s", profile_dir, filename, SC_PKCS15_PROFILE_SUFFIX);
 #else /* _WIN32 */
-	snprintf(path, sizeof(path), "%s/%s.%s",
-		profile_dir, filename, SC_PKCS15_PROFILE_SUFFIX);
+	snprintf(path, sizeof(path), "%s/%s.%s", profile_dir, filename, SC_PKCS15_PROFILE_SUFFIX);
 #endif /* _WIN32 */
 
-	sc_debug(profile->card->ctx, SC_LOG_DEBUG_NORMAL,
-		"Trying profile file %s", path);
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Trying profile file %s", path);
 
 	conf = scconf_new(path);
 	res = scconf_parse(conf);
 
-	sc_debug(profile->card->ctx, SC_LOG_DEBUG_NORMAL,
-		"profile %s loaded ok", path);
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "profile %s loaded ok", path);
 
 	if (res < 0)
-		return SC_ERROR_FILE_NOT_FOUND;
-	if (res == 0) {
-		/* FIXME - we may want to display conf->errmsg here. */
-		return SC_ERROR_SYNTAX_ERROR;
-	}
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_FILE_NOT_FOUND);
+
+	if (res == 0)
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_SYNTAX_ERROR);
 
 	res = process_conf(profile, conf);
 	scconf_free(conf);
-	return res;
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, res);
 }
 
 int
 sc_profile_finish(struct sc_profile *profile)
 {
+	struct sc_context *ctx = profile->card->ctx;
 	struct file_info *fi;
 	struct pin_info	*pi;
 	char		reason[64];
 
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 	profile->mf_info = sc_profile_find_file(profile, NULL, "MF");
 	if (!profile->mf_info) {
 		strcpy(reason, "Profile doesn't define a MF");
@@ -412,16 +413,16 @@ sc_profile_finish(struct sc_profile *profile)
 		if (!(name = pi->file_name))
 			continue;
 		if (!(fi = sc_profile_find_file(profile, NULL, name))) {
-			snprintf(reason, sizeof(reason),
-				"unknown PIN file \"%s\"\n", name);
+			snprintf(reason, sizeof(reason), "unknown PIN file \"%s\"\n", name);
 			goto whine;
 		}
 		pi->file = fi;
 	}
-	return 0;
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
 
-whine:	sc_debug(profile->card->ctx, SC_LOG_DEBUG_NORMAL, "%s", reason);
-	return SC_ERROR_INCONSISTENT_PROFILE;
+whine:	
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "%s", reason);
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INCONSISTENT_PROFILE);
 }
 
 void
@@ -547,8 +548,8 @@ sc_profile_get_file_instance(struct sc_profile *profile, const char *name,
 	struct sc_file *file;
 	int r;
 
-	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "get '%s' file instance", name);
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "try to get '%s' file instance", name);
 
 	if ((fi = sc_profile_find_file(profile, NULL, name)) == NULL)
 		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_FILE_NOT_FOUND);
@@ -639,9 +640,10 @@ sc_profile_instantiate_template(sc_profile_t *profile,
 		const char *file_name, const sc_pkcs15_id_t *id,
 		sc_file_t **ret)
 {
-	sc_card_t	*card = profile->card;
-	sc_profile_t	*tmpl;
-	sc_template_t	*info;
+	struct sc_context *ctx = profile->card->ctx;
+	struct sc_card	*card = profile->card;
+	struct sc_profile	*tmpl;
+	struct sc_template	*info;
 	unsigned int	idx;
 	struct file_info *fi, *base_file, *match = NULL;
 
@@ -653,7 +655,7 @@ sc_profile_instantiate_template(sc_profile_t *profile,
 		if (!strcmp(info->name, template_name))
 			break;
 	if (info == NULL)   {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Template %s not found", template_name);
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Template %s not found", template_name);
 		return SC_ERROR_TEMPLATE_NOT_FOUND;
 	}
 
@@ -671,13 +673,11 @@ sc_profile_instantiate_template(sc_profile_t *profile,
 		}
 	}
 
-	if (card->ctx->debug >= 2)
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
-			"Instantiating template %s at %s", template_name, sc_print_path(base_path));
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Instantiating template %s at %s", template_name, sc_print_path(base_path));
 
 	base_file = sc_profile_find_file_by_path(profile, base_path);
 	if (base_file == NULL) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Directory %s not defined in profile", sc_print_path(base_path));
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Directory %s not defined in profile", sc_print_path(base_path));
 		return SC_ERROR_OBJECT_NOT_FOUND;
 	}
 
@@ -708,7 +708,7 @@ sc_profile_instantiate_template(sc_profile_t *profile,
 	}
 
 	if (match == NULL) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "No file named \"%s\" in template \"%s\"",
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "No file named \"%s\" in template \"%s\"",
 				file_name, template_name);
 		return SC_ERROR_OBJECT_NOT_FOUND;
 	}
@@ -725,8 +725,9 @@ static file_info *
 sc_profile_instantiate_file(sc_profile_t *profile, file_info *ft,
 		file_info *parent, unsigned int skew)
 {
+	struct sc_context *ctx = profile->card->ctx;
+	struct sc_card	*card = profile->card;
 	struct file_info *fi;
-	sc_card_t	*card = profile->card;
 
 	fi = calloc(1, sizeof(*fi));
 	if (fi == NULL)
@@ -756,10 +757,8 @@ sc_profile_instantiate_file(sc_profile_t *profile, file_info *ft,
 
 	ft->instance = fi;
 
-	if (card->ctx->debug >= 2) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Instantiated %s at %s", ft->ident, sc_print_path(&fi->file->path));
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "  parent=%s@%s", parent->ident, sc_print_path(&parent->file->path));
-	}
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Instantiated %s at %s", ft->ident, sc_print_path(&fi->file->path));
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "  parent=%s@%s", parent->ident, sc_print_path(&parent->file->path));
 
 	return fi;
 }
@@ -1242,8 +1241,7 @@ do_file_path(struct state *cur, int argc, char **argv)
 		parse_error(cur, "Invalid path length\n");
 		return 1;
 	}
-	file->id = (path->value[path->len-2] << 8)
-		  | path->value[path->len-1];
+	file->id = (path->value[path->len-2] << 8) | path->value[path->len-1];
 	return 0;
 }
 
@@ -1828,35 +1826,29 @@ process_block(struct state *cur, struct block *info,
 			ident = NULL;
 			if ((nlist = item->value.block->name) != NULL) {
 				if (nlist->next) {
-					parse_error(cur,
-						"Too many name components "
-						"in block name.");
+					parse_error(cur, "Too many name components in block name.");
 					return SC_ERROR_SYNTAX_ERROR;
 				}
 				ident = nlist->data;
 			}
 #ifdef DEBUG_PROFILE
-			printf("Processing %s %s\n",
-				cmd, ident? ident : "");
+			printf("Processing %s %s\n", cmd, ident? ident : "");
 #endif
 			if ((bp = find_block_handler(info->blk_info, cmd))) {
-				res = bp->handler(cur, bp, ident,
-						item->value.block);
+				res = bp->handler(cur, bp, ident, item->value.block);
 				continue;
 			}
-		} else
-		if (item->type == SCCONF_ITEM_TYPE_VALUE) {
+		}
+		else if (item->type == SCCONF_ITEM_TYPE_VALUE) {
 #ifdef DEBUG_PROFILE
 			printf("Processing %s\n", cmd);
 #endif
 			if ((cp = find_cmd_handler(info->cmd_info, cmd))) {
-				res = process_command(cur, cp,
-						item->value.list);
+				res = process_command(cur, cp, item->value.list);
 				continue;
 			}
 		}
-		parse_error(cur,
-			"Command \"%s\" not understood in this context.", cmd);
+		parse_error(cur, "Command \"%s\" not understood in this context.", cmd);
 		return SC_ERROR_SYNTAX_ERROR;
 	}
 
@@ -1895,28 +1887,29 @@ sc_profile_find_file(struct sc_profile *pro,
 	return NULL;
 }
 
+
 static struct file_info *
 sc_profile_find_file_by_path(struct sc_profile *pro, const sc_path_t *path)
 {
+	struct sc_context *ctx = pro->card->ctx;
 	struct file_info *fi, *out = NULL;
 	struct sc_file	*fp;
 
 #ifdef DEBUG_PROFILE
-	sc_debug(pro->card->ctx, SC_LOG_DEBUG_NORMAL, "profile's EF list:");
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "profile's EF list:");
 	for (fi = pro->ef_list; fi; fi = fi->next)
-		sc_debug(pro->card->ctx, SC_LOG_DEBUG_NORMAL, "check fi (%s:path:%s)", fi->ident, sc_print_path(&fi->file->path));
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "check fi (%s:path:%s)", fi->ident, sc_print_path(&fi->file->path));
 
-	sc_debug(pro->card->ctx, SC_LOG_DEBUG_NORMAL, "find profile file by path:%s", sc_print_path(path));
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "find profile file by path:%s", sc_print_path(path));
 #endif
 	for (fi = pro->ef_list; fi; fi = fi->next) {
 		fp = fi->file;
-		if (fp->path.len == path->len
-		 && !memcmp(fp->path.value, path->value, path->len))
+		if (fp->path.len == path->len && !memcmp(fp->path.value, path->value, path->len))
 			out = fi;
 	}
 
 #ifdef DEBUG_PROFILE
-	sc_debug(pro->card->ctx, SC_LOG_DEBUG_NORMAL, "returns (%s)", out ? out->ident: "<null>");
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "returns (%s)", out ? out->ident: "<null>");
 #endif
 	return out;
 }
@@ -1957,8 +1950,7 @@ get_uint(struct state *cur, const char *value, unsigned int *vp)
 	else
 		*vp = strtoul(value, &ep, 0);
 	if (*ep != '\0') {
-		parse_error(cur, 
-			"invalid integer argument \"%s\"\n", value);
+		parse_error(cur, "invalid integer argument \"%s\"\n", value);
 		return 1;
 	}
 	return 0;
@@ -2084,13 +2076,16 @@ __expr_get(struct num_exp_ctx *ctx, int eof_okay)
 	if (isdigit(*s)) {
 		while (isdigit(*s))
 			expr_put(ctx, *s++);
-	} else if (*s == '$') {
+	} 
+	else if (*s == '$') {
 		expr_put(ctx, *s++);
 		while (isalnum(*s) || *s == '-' || *s == '_')
 			expr_put(ctx, *s++);
-	} else if (strchr("*/+-()|&", *s)) {
+	} 
+	else if (strchr("*/+-()|&", *s)) {
 		expr_put(ctx, *s++);
-	} else {
+	} 
+	else {
 		expr_fail(ctx);
 	}
 	ctx->str = s;
@@ -2132,13 +2127,15 @@ expr_term(struct num_exp_ctx *ctx, unsigned int *vp)
 	if (*tok == '(') {
 		expr_eval(ctx, vp, 1);
 		expr_expect(ctx, ')');
-	} else if (isdigit(*tok)) {
+	} 
+	else if (isdigit(*tok)) {
 		char	*ep;
 
 		*vp = strtoul(tok, &ep, 0);
 		if (*ep)
 			expr_fail(ctx);
-	} else if (*tok == '$') {
+	} 
+	else if (*tok == '$') {
 		sc_macro_t	*mac;
 		char		*argv[32];
 		int		argc;
@@ -2146,13 +2143,11 @@ expr_term(struct num_exp_ctx *ctx, unsigned int *vp)
 		if (!(mac = find_macro(ctx->state->profile, tok + 1)))
 			expr_fail(ctx);
 		argc = build_argv(ctx->state, "<expr>", mac->value, argv, 32);
-		if (argc < 0
-		 || get_uint_eval(ctx->state, argc, argv, vp) < 0)
+		if (argc < 0 || get_uint_eval(ctx->state, argc, argv, vp) < 0)
 			expr_fail(ctx);
-	} else {
-		parse_error(ctx->state,
-			"Unexpected token \"%s\" in expression",
-			tok);
+	} 
+	else {
+		parse_error(ctx->state, "Unexpected token \"%s\" in expression", tok);
 		expr_fail(ctx);
 	}
 }
