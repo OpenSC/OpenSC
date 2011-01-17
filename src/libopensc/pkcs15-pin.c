@@ -67,6 +67,7 @@ int sc_pkcs15_decode_aodf_entry(struct sc_pkcs15_card *p15card,
 	struct sc_asn1_entry asn1_pin[2];
 	struct sc_asn1_pkcs15_object pin_obj = { obj, asn1_com_ao_attr, NULL, asn1_type_pin_attr };
 	
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_ASN1);
 	sc_copy_asn1_entry(c_asn1_pin, asn1_pin);
 	sc_copy_asn1_entry(c_asn1_type_pin_attr, asn1_type_pin_attr);
 	sc_copy_asn1_entry(c_asn1_pin_attr, asn1_pin_attr);
@@ -121,8 +122,10 @@ int sc_pkcs15_decode_aodf_entry(struct sc_pkcs15_card *p15card,
 
 	info.auth_method = SC_AC_CHV;
 
-	/* 'Local' PIN should have path defined */
 	if (info.flags & SC_PKCS15_PIN_FLAG_LOCAL)   {
+		/* In OpenSC pkcs#15 framework 'path' is mandatory for the 'Local' PINs. 
+		 * If 'path' do not present in PinAttributes, 
+		 * 	derive it from the PKCS#15 context. */
 		if (!info.path.len)   {
 			/* Give priority to AID defined in the application DDO */
 			if (p15card->app->ddo.aid.len)   {
@@ -139,9 +142,10 @@ int sc_pkcs15_decode_aodf_entry(struct sc_pkcs15_card *p15card,
 		}
 	}
 
-	memcpy(obj->data, &info, sizeof(info));
+	sc_debug(ctx, SC_LOG_DEBUG_ASN1, "decoded PIN(ref:%X,path:%s)", info.reference, sc_print_path(&info.path));
 
-	return 0;
+	memcpy(obj->data, &info, sizeof(info));
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_ASN1, SC_SUCCESS);
 }
 
 int sc_pkcs15_encode_aodf_entry(sc_context_t *ctx,
