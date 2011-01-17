@@ -64,6 +64,8 @@ static int ias_select_applet(sc_card_t *card, const u8 *aid, size_t aid_len)
 	int 		r;
 	sc_path_t 	tpath;
 
+	memset(&tpath, 0, sizeof(sc_path_t));
+
 	tpath.type = SC_PATH_TYPE_DF_NAME;
 	tpath.len = aid_len;
 	memcpy(tpath.value, aid, aid_len);

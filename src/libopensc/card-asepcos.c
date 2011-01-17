@@ -55,6 +55,8 @@ static int asepcos_select_asepcos_applet(sc_card_t *card)
 	sc_path_t tpath;
 	int       r;
 
+	memset(&tpath, 0, sizeof(sc_path_t));
+
 	tpath.type = SC_PATH_TYPE_DF_NAME;
 	tpath.len  = sizeof(asepcos_aid);
 	memcpy(tpath.value, asepcos_aid, sizeof(asepcos_aid));

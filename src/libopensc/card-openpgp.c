@@ -354,6 +354,8 @@ pgp_select_file(sc_card_t *card, const sc_path_t *path, sc_file_t **ret)
 	unsigned int	n;
 	int		r;
 
+	memset(&path_copy, 0, sizeof(path_copy));
+
 	if (path->type == SC_PATH_TYPE_DF_NAME)
 		return iso_ops->select_file(card, path, ret);
 	if (path->type != SC_PATH_TYPE_PATH)

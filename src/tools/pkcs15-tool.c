@@ -1382,6 +1382,7 @@ static int learn_card(void)
 		
 		printf("[%s]\n", certs[i]->label);
 
+		memset(&tpath, 0, sizeof(tpath));
 		tpath = cinfo->path;
 		if (tpath.type == SC_PATH_TYPE_FILE_ID) {
 			/* prepend application DF path in case of a file id */

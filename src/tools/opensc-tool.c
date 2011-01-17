@@ -445,6 +445,7 @@ static int enum_dir(sc_path_t path, int depth)
 		for (i = 0; i < r/2; i++) {
 			sc_path_t tmppath;
 
+			memset(&tmppath, 0, sizeof(tmppath));
 			memcpy(&tmppath, &path, sizeof(path));
 			memcpy(tmppath.value + tmppath.len, files + 2*i, 2);
 			tmppath.len += 2;

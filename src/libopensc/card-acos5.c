@@ -63,8 +63,9 @@ static int acos5_select_file_by_path(sc_card_t * card,
 {
 	int in_len = in_path->len;
 	const u8 *in_pos = in_path->value;
-
 	sc_path_t path;
+
+	memset(&path, 0, sizeof(sc_path_t));
 	path.len = 2;		/* one component at a time */
 	path.type = SC_PATH_TYPE_FILE_ID;
 
