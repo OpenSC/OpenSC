@@ -1353,6 +1353,55 @@ do_aid(struct state *cur, int argc, char **argv)
 	return res;
 }
 
+static int
+do_exclusive_aid(struct state *cur, int argc, char **argv)
+{
+	struct sc_file	*file = cur->file->file;
+	const char	*name = argv[0];
+	unsigned int	len;
+	int		res = 0;
+
+#ifdef DEBUG_PROFILE
+	printf("do_exclusive_aid(): exclusive-aid '%s'\n", name);
+	printf("do_exclusive_aid(): current file '%s' (path:%s)\n", cur->file->ident, sc_print_path(&file->path));
+#endif
+	sc_format_path(name, &file->path);
+	if (file->path.len > SC_MAX_AID_SIZE)   {
+		parse_error(cur, "Path length is too big\n");
+		return 1;
+	}
+
+	memcpy(file->path.aid.value, file->path.value, file->path.len);
+	file->path.aid.len = file->path.len;
+
+	file->path.len = 0;
+	file->path.type = SC_PATH_TYPE_DF_NAME;
+
+#ifdef DEBUG_PROFILE
+	printf("do_exclusive_aid(): '%s' exclusive-aid path %s\n", cur->file->ident, sc_print_path(&file->path));
+#endif
+	if (*name == '=') {
+		len = strlen(++name);
+		if (len > sizeof(file->name)) {
+			parse_error(cur, "AID \"%s\" too long\n", name);
+			return 1;
+		}
+		memcpy(file->name, name, len);
+		file->namelen = len;
+	} 
+	else {
+		file->namelen = sizeof(file->name);
+		res = sc_hex_to_bin(name, file->name, &file->namelen);
+	}
+	return res;
+}
+
+static int
+do_profile_extention(struct state *cur, int argc, char **argv)
+{
+	return setstr(&cur->file->profile_extention, argv[0]);
+}
+
 /*
  * Parse ACL list.
  * The way we do this is we first split things like CHV1
@@ -1675,6 +1724,10 @@ static struct command	fs_commands[] = {
  { "record-length",	1,	1,	do_reclength	},
  { "AID",		1,	1,	do_aid		},
  { "ACL",		1,	-1,	do_acl		},
+/* AID dependent sub-profile */
+ { "profile-extention",	1,	1,	do_profile_extention	},
+/* AID of the DFs without file-id */
+ { "exclusive-aid",	1,	1,	do_exclusive_aid	},
 
  { NULL, 0, 0, NULL }
 };
