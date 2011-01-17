@@ -603,6 +603,7 @@ sc_pkcs15_read_pubkey(struct sc_pkcs15_card *p15card,
 			const struct sc_pkcs15_object *obj,
 			struct sc_pkcs15_pubkey **out)
 {
+	struct sc_context *ctx = p15card->card->ctx;
 	const struct sc_pkcs15_pubkey_info *info;
 	struct sc_pkcs15_pubkey *pubkey;
 	u8	*data;
@@ -610,7 +611,7 @@ sc_pkcs15_read_pubkey(struct sc_pkcs15_card *p15card,
 	int	algorithm, r;
 
 	assert(p15card != NULL && obj != NULL && out != NULL);
-	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 
 	switch (obj->type) {
 	case SC_PKCS15_TYPE_PUBKEY_RSA:
@@ -626,32 +627,39 @@ sc_pkcs15_read_pubkey(struct sc_pkcs15_card *p15card,
 		algorithm = SC_ALGORITHM_EC;
 		break;
 	default:
-		sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "Unsupported public key type.");
-		return SC_ERROR_NOT_SUPPORTED;
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED, "Unsupported public key type.");
 	}
 	info = (const struct sc_pkcs15_pubkey_info *) obj->data;
 
-	r = sc_pkcs15_read_file(p15card, &info->path, &data, &len, NULL);
-	if (r < 0) {
-		sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "Failed to read public key file.");
-		return r;
+	if (obj->content.value && obj->content.len)   {
+		/* public key data is present as 'direct' value of pkcs#15 object */
+		data = calloc(1, obj->content.len);
+		if (!data)
+			SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+		memcpy(data, obj->content.value, obj->content.len);
+		len = obj->content.len;
+	}
+        else   {
+		r = sc_pkcs15_read_file(p15card, &info->path, &data, &len, NULL);
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Failed to read public key file.");
 	}
 
 	pubkey = calloc(1, sizeof(struct sc_pkcs15_pubkey));
 	if (pubkey == NULL) {
 		free(data);
-		return SC_ERROR_OUT_OF_MEMORY;
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
 	}
 	pubkey->algorithm = algorithm;
 	pubkey->data.value = data;
 	pubkey->data.len = len;
-	if (sc_pkcs15_decode_pubkey(p15card->card->ctx, pubkey, data, len)) {
+	if (sc_pkcs15_decode_pubkey(ctx, pubkey, data, len)) {
 		free(data);
 		free(pubkey);
-		return SC_ERROR_INVALID_ASN1_OBJECT;
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ASN1_OBJECT);
 	}
+
 	*out = pubkey;
-	return 0;
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
 }
 
 static int
