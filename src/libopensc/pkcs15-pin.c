@@ -128,7 +128,7 @@ int sc_pkcs15_decode_aodf_entry(struct sc_pkcs15_card *p15card,
 		 * 	derive it from the PKCS#15 context. */
 		if (!info.path.len)   {
 			/* Give priority to AID defined in the application DDO */
-			if (p15card->app->ddo.aid.len)   {
+			if (p15card->app && p15card->app->ddo.aid.len)   {
 				memset(&info.path, 0, sizeof(struct sc_path));
 				info.path.type = SC_PATH_TYPE_DF_NAME;
 				memcpy(info.path.value, p15card->app->ddo.aid.value, p15card->app->ddo.aid.len);
