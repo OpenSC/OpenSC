@@ -2366,7 +2366,7 @@ parse_error(struct state *cur, const char *fmt, ...)
 		*sp = '\0';
 
 	if (cur->profile->card && cur->profile->card->ctx)
-		sc_log(ctx, "%s: %s", cur->filename, buffer);
+		sc_log(cur->profile->card->ctx, "%s: %s", cur->filename, buffer);
 	else
 		fprintf(stdout, "%s: %s\n", cur->filename, buffer);
 }
