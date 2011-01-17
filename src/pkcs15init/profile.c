@@ -1985,6 +1985,24 @@ sc_profile_find_file_by_path(struct sc_profile *pro, const sc_path_t *path)
 	return out;
 }
 
+int
+sc_profile_get_parent(struct sc_profile *profile,
+		const char *name, sc_file_t **ret)
+{
+	struct file_info *fi = NULL;
+
+	if ((fi = sc_profile_find_file(profile, NULL, name)) == NULL)
+		return SC_ERROR_FILE_NOT_FOUND;
+
+	if (!fi->parent)
+		return SC_ERROR_FILE_NOT_FOUND;
+
+	sc_file_dup(ret, fi->parent->file);
+	if (*ret == NULL)
+		return SC_ERROR_OUT_OF_MEMORY;
+	return 0;
+}
+
 /*
  * Split up KEY0 or CHV1 into SC_AC_XXX and a number
  */
@@ -2000,7 +2018,7 @@ get_authid(struct state *cur, const char *value,
 		return get_uint(cur, value, type);
 	}
 
-	n = strcspn(value, "0123456789");
+	n = strcspn(value, "0123456789x");
 	strlcpy(temp, value, (sizeof(temp) > n) ? n + 1 : sizeof(temp));
 
 	if (map_str2int(cur, temp, type, aclNames))
@@ -2018,6 +2036,8 @@ get_uint(struct state *cur, const char *value, unsigned int *vp)
 
 	if (strstr(value, "0x") == value)
 		*vp = strtoul(value + 2, &ep, 16);
+	else if (strstr(value, "x") == value)
+		*vp = strtoul(value + 1, &ep, 16);
 	else
 		*vp = strtoul(value, &ep, 0);
 	if (*ep != '\0') {
