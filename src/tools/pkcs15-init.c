@@ -462,6 +462,13 @@ main(int argc, char **argv)
 					fprintf(stderr, "Invalid AID value: '%s'\n", opt_bind_to_aid);
 					return 1;
 				}
+
+				r = sc_pkcs15init_finalize_profile(card, profile, &aid);
+				if (r < 0)   {
+					fprintf(stderr, "Finalize profile error %s\n", sc_strerror(r));
+					break;
+				}
+
 				r = sc_pkcs15_bind(card, &aid, &p15card);
 			}
 			else   {	

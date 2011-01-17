@@ -652,6 +652,36 @@ sc_pkcs15init_finalize_card(struct sc_card *card, struct sc_profile *profile)
 }
 
 
+int
+sc_pkcs15init_finalize_profile(struct sc_card *card, struct sc_profile *profile, 
+		struct sc_aid *aid)
+{
+	struct sc_context *ctx = card->ctx;
+	const struct sc_app_info *app = NULL;
+	int rv;
+
+	LOG_FUNC_CALLED(ctx);
+	if (!aid || !aid->len)
+		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+
+	if (card->app_count < 0)
+		sc_enum_apps(card);
+
+	sc_log(ctx, "finalize profile for AID %s", sc_dump_hex(aid->value, aid->len));
+	app = sc_find_app(card, aid);
+	if (!app)   {
+		sc_log(ctx, "Cannot find oncard application");
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+	}
+	
+	sc_log(ctx, "Finalize profile with application '%s'", app->label);
+	rv = sc_profile_finish(profile, app);
+
+	sc_log(ctx, "sc_pkcs15init_finalize_profile() returns %i", rv);
+	LOG_FUNC_RETURN(ctx, rv);
+}
+
+
 /*
  * Initialize the PKCS#15 application
  */
@@ -3174,7 +3204,7 @@ do_select_parent(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	path = file->path;
 	if (path.len >= 2)
 		path.len -= 2;
-	if (path.len == 0)
+	if (!path.len && !path.aid.len)
 		sc_format_path("3F00", &path);
 
 	/* Select the parent DF. */

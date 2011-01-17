@@ -368,6 +368,9 @@ extern int	sc_pkcs15init_get_pin_reference(struct sc_pkcs15_card *,
 
 extern int 	sc_pkcs15init_sanity_check(struct sc_pkcs15_card *, struct sc_profile *);
 
+extern int	sc_pkcs15init_finalize_profile(struct sc_card *card, struct sc_profile *profile,
+		                struct sc_aid *aid);
+
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_gpk_ops(void);
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_miocos_ops(void);
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_cryptoflex_ops(void);
