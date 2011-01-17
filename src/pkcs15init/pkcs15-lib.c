@@ -360,7 +360,7 @@ sc_pkcs15init_bind(struct sc_card *card, const char *name,
 			break;
 		}
 
-	 	r = sc_profile_finish(profile);
+	 	r = sc_profile_finish(profile, NULL);
 		if (r < 0)
 			sc_log(ctx, "Failed to finalize profile: %s", sc_strerror(r));
 	}  while (0);

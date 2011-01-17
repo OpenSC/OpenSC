@@ -384,25 +384,42 @@ sc_profile_load(struct sc_profile *profile, const char *filename)
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, res);
 }
 
+
 int
-sc_profile_finish(struct sc_profile *profile)
+sc_profile_finish(struct sc_profile *profile, const struct sc_app_info *app_info)
 {
 	struct sc_context *ctx = profile->card->ctx;
 	struct file_info *fi;
 	struct pin_info	*pi;
 	char		reason[64];
 
-	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(ctx);
 	profile->mf_info = sc_profile_find_file(profile, NULL, "MF");
-	if (!profile->mf_info) {
-		strcpy(reason, "Profile doesn't define a MF");
-		goto whine;
+	if (!profile->mf_info)
+		LOG_TEST_RET(ctx, SC_ERROR_INCONSISTENT_PROFILE, "Profile doesn't define a MF");
+
+	if (app_info && app_info->aid.len)   {
+		struct sc_path path;
+
+		sc_log(ctx, "finish profile with '%s' application profile", app_info->label); 
+		memset(&path, 0, sizeof(struct sc_path));
+		path.type = SC_PATH_TYPE_DF_NAME;
+		path.aid = app_info->aid;
+
+		sc_log(ctx, "Look for file by path '%s'", sc_print_path(&path));
+		profile->df_info = sc_profile_find_file_by_path(profile, &path);
+		sc_log(ctx, "returned DF info %p", profile->df_info); 
+		if (profile->df_info && profile->df_info->profile_extention)   {
+			sc_log(ctx, "application profile extention '%s'", profile->df_info->profile_extention);
+			if (sc_profile_load(profile, profile->df_info->profile_extention))
+				LOG_TEST_RET(ctx, SC_ERROR_INCONSISTENT_PROFILE, "Cannot load application profile extention");
+		}
 	}
+	
 	profile->df_info = sc_profile_find_file(profile, NULL, "PKCS15-AppDF");
-	if (!profile->df_info) {
-		strcpy(reason, "Profile doesn't define a PKCS15-AppDF");
-		goto whine;
-	}
+	if (!profile->df_info)
+		LOG_TEST_RET(ctx, SC_ERROR_INCONSISTENT_PROFILE, "Profile doesn't define a PKCS15-AppDF");
+
 	profile->p15_spec->file_app = profile->df_info->file;
 	profile->df_info->dont_free = 1;
 
@@ -416,6 +433,7 @@ sc_profile_finish(struct sc_profile *profile)
 			snprintf(reason, sizeof(reason), "unknown PIN file \"%s\"\n", name);
 			goto whine;
 		}
+
 		pi->file = fi;
 	}
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);

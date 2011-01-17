@@ -38,6 +38,11 @@ struct file_info {
 	struct sc_profile *	base_template;
 	unsigned int		inst_index;
 	sc_path_t		inst_path;
+
+        /* Profile extention dependent on the application ID (sub-profile).
+	 * Sub-profile is loaded when binding to the particular application
+	 * of the multi-application PKCS#15 card. */
+	char *			profile_extention;
 };
 
 /* For now, we assume the PUK always resides
@@ -123,7 +128,7 @@ struct sc_profile {
 
 struct sc_profile *sc_profile_new(void);
 int		sc_profile_load(struct sc_profile *, const char *);
-int		sc_profile_finish(struct sc_profile *);
+int		sc_profile_finish(struct sc_profile *, const struct sc_app_info *);
 void		sc_profile_free(struct sc_profile *);
 int		sc_profile_build_pkcs15(struct sc_profile *);
 void		sc_profile_get_pin_info(struct sc_profile *,
