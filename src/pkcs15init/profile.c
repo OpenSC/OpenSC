@@ -1280,7 +1280,7 @@ do_fileid(struct state *cur, int argc, char **argv)
 
 	/* Get the DF, if any */
 	if ((fi = cur->file->parent) && (df = fi->file)) {
-		if (df->path.len == 0) {
+		if (!df->path.len && !df->path.aid.len) {
 			parse_error(cur, "No path/fileid set for parent DF\n");
 			return 1;
 		}
@@ -1346,7 +1346,8 @@ do_aid(struct state *cur, int argc, char **argv)
 		}
 		memcpy(file->name, name, len);
 		file->namelen = len;
-	} else {
+	} 
+	else {
 		file->namelen = sizeof(file->name);
 		res = sc_hex_to_bin(name, file->name, &file->namelen);
 	}
@@ -1964,23 +1965,55 @@ sc_profile_find_file_by_path(struct sc_profile *pro, const sc_path_t *path)
 {
 	struct sc_context *ctx = pro->card->ctx;
 	struct file_info *fi, *out = NULL;
-	struct sc_file	*fp;
+	struct sc_path *fp_path, *fpp_path;
 
 #ifdef DEBUG_PROFILE
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "profile's EF list:");
-	for (fi = pro->ef_list; fi; fi = fi->next)
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "check fi (%s:path:%s)", fi->ident, sc_print_path(&fi->file->path));
-
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "find profile file by path:%s", sc_print_path(path));
+	sc_log(ctx, "profile's EF list:");
+	for (fi = pro->ef_list; fi; fi = fi->next)   {
+		sc_log(ctx, "'%s' (path:%s)",  fi->ident, sc_print_path(&fi->file->path));
+		sc_log(ctx, "fi parent %p", fi->parent);
+		if (fi->parent && fi->parent->file)
+			sc_log(ctx, "fi parent path %s", sc_print_path(&fi->parent->file->path));
+	}
+	sc_log(ctx, "find profile file by path:%s", sc_print_path(path));
 #endif
+
+	if (!path->len && !path->aid.len)
+		return NULL;
+
 	for (fi = pro->ef_list; fi; fi = fi->next) {
-		fp = fi->file;
-		if (fp->path.len == path->len && !memcmp(fp->path.value, path->value, path->len))
-			out = fi;
+		fp_path = &fi->file->path;
+		fpp_path = fi->parent ? &fi->parent->file->path : NULL;
+
+		if (fp_path->len != path->len)
+			continue;
+		if (fp_path->len && memcmp(fp_path->value, path->value, path->len))
+			continue;
+		
+		if (path->aid.len && fp_path->aid.len)   {
+			if (memcmp(fp_path->aid.value, path->aid.value, path->aid.len))
+				continue;
+		}
+		else if (path->aid.len && !fp_path->aid.len && fpp_path)   {
+			if (fpp_path->type == SC_PATH_TYPE_DF_NAME && fpp_path->len)   {
+				if (fpp_path->len != path->aid.len)
+					continue;
+				if (memcmp(fpp_path->value, path->aid.value, path->aid.len))
+					continue;
+			}
+			else if (fpp_path->aid.len)   {
+				if (fpp_path->aid.len != path->aid.len)
+					continue;
+				if (memcmp(fpp_path->aid.value, path->aid.value, path->aid.len))
+					continue;
+			}
+		}
+
+		out = fi;
 	}
 
 #ifdef DEBUG_PROFILE
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "returns (%s)", out ? out->ident: "<null>");
+	sc_log(ctx, "returns (%s)", out ? out->ident: "<null>");
 #endif
 	return out;
 }
