@@ -274,6 +274,7 @@ static int detect_netkey(
 	const char *c_auth;
 
 	/* NKS-Applikation ? */
+	memset(&p, 0, sizeof(sc_path_t));
 	p.len=7; p.type=SC_PATH_TYPE_DF_NAME;
 	memcpy(p.value, "\xD2\x76\x00\x00\x03\x01\x02", p.len=7);
 	if (sc_select_file(card,&p,&f)!=SC_SUCCESS) return 1;

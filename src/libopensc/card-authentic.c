@@ -623,7 +623,6 @@ authentic_select_mf(struct sc_card *card, struct sc_file **file_out)
 
 	LOG_FUNC_CALLED(ctx);
 
-	memset(&mfpath, 0, sizeof(struct sc_path));
 	sc_format_path("3F00", &mfpath);
 	mfpath.type = SC_PATH_TYPE_PATH;
 

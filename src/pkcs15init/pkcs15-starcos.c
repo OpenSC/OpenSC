@@ -86,6 +86,7 @@ static int starcos_init_card(sc_profile_t *profile, sc_pkcs15_card_t *p15card)
 	sc_pkcs15_pin_info_t sopin;
 
 	/* test if we already have a MF */
+	memset(&tpath, 0, sizeof(sc_path_t));
 	tpath.value[0] = 0x3f;
 	tpath.value[1] = 0x00;
 	tpath.len      = 2;

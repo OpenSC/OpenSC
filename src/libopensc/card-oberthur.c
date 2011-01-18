@@ -186,7 +186,8 @@ auth_select_aid(struct sc_card *card)
 		data->sn += (int)(*(apdu.resp + 15 + ii)) << (3-ii)*8;
 	
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "serial number %li/0x%lX\n", data->sn, data->sn);
-		
+	
+	memset(&tmp_path, 0, sizeof(struct sc_path));
 	tmp_path.type = SC_PATH_TYPE_DF_NAME;
 	memcpy(tmp_path.value, aidAuthentIC_V5, lenAidAuthentIC_V5);
 	tmp_path.len = lenAidAuthentIC_V5;
@@ -572,7 +573,8 @@ auth_select_file(struct sc_card *card, const struct sc_path *in_path,
 	
 		if (path.len - offs > 0)   {
 			struct sc_path tmp_path;
-			
+		
+			memset(&tmp_path, 0, sizeof(struct sc_path));	
 			tmp_path.type = SC_PATH_TYPE_FILE_ID;
 			tmp_path.len = 2;
 			
@@ -678,6 +680,7 @@ auth_delete_file(struct sc_card *card, const struct sc_path *path)
 		int ii, len;
 		unsigned char lbuf[SC_MAX_APDU_BUFFER_SIZE];
 		
+		memset(&tmp_path, 0, sizeof(struct sc_path));	
 		tmp_path.type = SC_PATH_TYPE_FILE_ID;
 		memcpy(tmp_path.value, sbuf, 2);
 		tmp_path.len = 2;
@@ -690,6 +693,7 @@ auth_delete_file(struct sc_card *card, const struct sc_path *path)
 		for (ii=0; ii<len/2; ii++)   {
 			struct sc_path tmp_path_x;
 
+			memset(&tmp_path_x, 0, sizeof(struct sc_path));	
 			tmp_path_x.type = SC_PATH_TYPE_FILE_ID;
 			tmp_path_x.value[0] = *(lbuf + ii*2);
 			tmp_path_x.value[1] = *(lbuf + ii*2 + 1);
@@ -1303,6 +1307,7 @@ auth_generate_key(struct sc_card *card, int use_sm,
 	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, rv, "Card returned error");
 		
+	memset(&tmp_path, 0, sizeof(struct sc_path));	
 	tmp_path.type = SC_PATH_TYPE_FILE_ID;
 	tmp_path.len = 2;
 	memcpy(tmp_path.value, sbuf, 2);
@@ -1809,6 +1814,8 @@ auth_pin_reset_oberthur_style(struct sc_card *card, unsigned int type,
 		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS, "Oberthur style 'PIN RESET' failed: invalid PIN reference");
 
 	memset(&pin_cmd, 0, sizeof(pin_cmd));
+	memset(&tmp_path, 0, sizeof(struct sc_path));	
+
 	pin_cmd.pin_type = SC_AC_CHV;
         pin_cmd.cmd = SC_PIN_CMD_VERIFY;
 	pin_cmd.pin_reference = OBERTHUR_PIN_REFERENCE_PUK;

@@ -2004,7 +2004,7 @@ int sc_pkcs15_hex_string_to_id(const char *in, struct sc_pkcs15_id *out)
 
 int sc_pkcs15_make_absolute_path(const sc_path_t *parent, sc_path_t *child)
 {
-	struct sc_path ppath;
+	sc_path_t ppath;
 
 	/* a 0 length path stays a 0 length path */
 	if (child->len == 0)
@@ -2013,7 +2013,7 @@ int sc_pkcs15_make_absolute_path(const sc_path_t *parent, sc_path_t *child)
 	if (child->aid.len)
 		return SC_SUCCESS;
 
-	memcpy(&ppath, parent, sizeof(struct sc_path));
+	memcpy(&ppath, parent, sizeof(sc_path_t));
 	if (ppath.aid.len)   {
 		memcpy(&child->aid, &ppath.aid, sizeof(child->aid));
 		if (ppath.len)   {
