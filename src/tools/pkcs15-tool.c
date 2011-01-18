@@ -520,7 +520,7 @@ static void print_prkey_info(const struct sc_pkcs15_object *obj)
 	printf("\tModLength      : %lu\n", (unsigned long)prkey->modulus_length);
 	printf("\tKey ref        : %d\n", prkey->key_reference);
 	printf("\tNative         : %s\n", prkey->native ? "yes" : "no");
-	if (prkey->path.len)
+	if (prkey->path.len || prkey->path.aid.len)
 		printf("\tPath           : %s\n", sc_print_path(&prkey->path));
 	if (obj->auth_id.len != 0)
 		printf("\tAuth ID        : %s\n", sc_pkcs15_print_id(&obj->auth_id));
@@ -1074,7 +1074,8 @@ static void print_pin_info(const struct sc_pkcs15_object *obj)
 		printf("\tType           : %s\n", pin_types[pin->type]);
 	else
 		printf("\tType           : [encoding %d]\n", pin->type);
-	printf("\tPath           : %s\n", sc_print_path(&pin->path));
+	if (pin->path.len || pin->path.aid.len)
+		printf("\tPath           : %s\n", sc_print_path(&pin->path));
 	if (pin->tries_left >= 0)
 		printf("\tTries left     : %d\n", pin->tries_left);
 }
