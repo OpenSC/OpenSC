@@ -128,20 +128,12 @@ int sc_pkcs15_decode_aodf_entry(struct sc_pkcs15_card *p15card,
 		 * 	derive it from the PKCS#15 context. */
 		if (!info.path.len)   {
 			/* Give priority to AID defined in the application DDO */
-			if (p15card->app && p15card->app->ddo.aid.len)   {
-				memset(&info.path, 0, sizeof(struct sc_path));
-				info.path.type = SC_PATH_TYPE_DF_NAME;
-				memcpy(info.path.value, p15card->app->ddo.aid.value, p15card->app->ddo.aid.len);
-				info.path.len = p15card->app->ddo.aid.len;
-				sc_debug(ctx, SC_LOG_DEBUG_ASN1, "path from DDO (path:%s)", sc_print_path(&info.path));
-			}
-			else if (p15card->file_app->path.len)  {
+			if (p15card->app && p15card->app->ddo.aid.len)
+				info.path.aid = p15card->app->ddo.aid;
+			else if (p15card->file_app->path.len)
 				info.path = p15card->file_app->path;
-				sc_debug(ctx, SC_LOG_DEBUG_ASN1, "path from file_app (path:%s)", sc_print_path(&info.path));
-			}
 		}
 	}
-
 	sc_debug(ctx, SC_LOG_DEBUG_ASN1, "decoded PIN(ref:%X,path:%s)", info.reference, sc_print_path(&info.path));
 
 	memcpy(obj->data, &info, sizeof(info));
