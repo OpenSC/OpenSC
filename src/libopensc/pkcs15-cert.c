@@ -250,9 +250,16 @@ int sc_pkcs15_decode_cdf_entry(struct sc_pkcs15_card *p15card,
 	if (r == SC_ERROR_ASN1_END_OF_CONTENTS)
 		return r;
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "ASN.1 decoding failed");
-	r = sc_pkcs15_make_absolute_path(&p15card->file_app->path, &info.path);
-	if (r < 0)
-		return r;
+
+	if (!p15card->app || !p15card->app->ddo.aid.len)   {
+		r = sc_pkcs15_make_absolute_path(&p15card->file_app->path, &info.path);
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Cannot make absolute path");
+	}
+	else   {	
+		info.path.aid = p15card->app->ddo.aid;
+	}
+	sc_debug(ctx, SC_LOG_DEBUG_ASN1, "Certificate path '%s'", sc_print_path(&info.path));
+
 	obj->type = SC_PKCS15_TYPE_CERT_X509;
 	obj->data = malloc(sizeof(info));
 	if (obj->data == NULL)

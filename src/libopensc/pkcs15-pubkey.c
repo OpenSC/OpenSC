@@ -201,12 +201,18 @@ int sc_pkcs15_decode_pukdf_entry(struct sc_pkcs15_card *p15card,
 	} else {
 		obj->type = SC_PKCS15_TYPE_PUBKEY_DSA;
 	}
-	r = sc_pkcs15_make_absolute_path(&p15card->file_app->path, &info.path);
-	if (r < 0) {
-		if (info.params)
-			free(info.params);
-		return r;
+	if (!p15card->app || !p15card->app->ddo.aid.len)   {
+		r = sc_pkcs15_make_absolute_path(&p15card->file_app->path, &info.path);
+		if (r < 0) {
+			if (info.params)
+				free(info.params);
+			return r;
+		}
 	}
+	else   {
+		info.path.aid = p15card->app->ddo.aid;
+	}
+	sc_debug(ctx, SC_LOG_DEBUG_ASN1, "PubKey path '%s'", sc_print_path(&info.path));
 
         /* OpenSC 0.11.4 and older encoded "keyReference" as a negative
            value. Fixed in 0.11.5 we need to add a hack, so old cards
