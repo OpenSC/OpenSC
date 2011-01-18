@@ -2748,24 +2748,27 @@ sc_pkcs15init_delete_object(struct sc_pkcs15_card *p15card, struct sc_profile *p
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
-	sc_log(ctx, "delete object with path(%X) %s", path.type, sc_print_path(&path));
+	sc_log(ctx, "delete object(type:%X) with path(type:%X,%s)", obj->type, path.type, sc_print_path(&path));
 	r = sc_select_file(p15card->card, &path, &file);
-	LOG_TEST_RET(ctx, r, "select object path failed");
+	if (r != SC_ERROR_FILE_NOT_FOUND)
+		LOG_TEST_RET(ctx, r, "select object path failed");
 
 	stored_in_ef = (file->type != SC_FILE_TYPE_DF);
 
 	sc_file_free(file);
 
-	/* If the object is stored in a normal EF, try to delete the EF. */
-	if (stored_in_ef) {
-		r = sc_pkcs15init_delete_by_path(profile, p15card, &path);
-		LOG_TEST_RET(ctx, r, "Failed to delete object by path");
-	} 
-	else if (profile->ops->delete_object != NULL) {
-		/* If there's a card-specific way to delete objects, use it. */
-		r = profile->ops->delete_object(profile, p15card, obj->type, obj->data, &path);
-		LOG_TEST_RET(ctx, r, "Card specific delete object failed");
-	} 
+	if (!r)   {
+		/* If the object is stored in a normal EF, try to delete the EF. */
+		if (stored_in_ef) {
+			r = sc_pkcs15init_delete_by_path(profile, p15card, &path);
+			LOG_TEST_RET(ctx, r, "Failed to delete object by path");
+		} 
+		else if (profile->ops->delete_object != NULL) {
+			/* If there's a card-specific way to delete objects, use it. */
+			r = profile->ops->delete_object(profile, p15card, obj->type, obj->data, &path);
+			LOG_TEST_RET(ctx, r, "Card specific delete object failed");
+		}
+	}	
 	
 	if (profile->ops->emu_update_any_df)   {
 		r = profile->ops->emu_update_any_df(profile, p15card, SC_AC_OP_ERASE, obj);
