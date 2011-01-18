@@ -2004,32 +2004,40 @@ int sc_pkcs15_hex_string_to_id(const char *in, struct sc_pkcs15_id *out)
 
 int sc_pkcs15_make_absolute_path(const sc_path_t *parent, sc_path_t *child)
 {
-	sc_path_t ppath;
+	/* nothing to do if child has valid 'aid' */
+	if (child->aid.len)
+		return SC_SUCCESS;
+
+	if (parent->aid.len)   {
+		sc_path_t ppath;
+
+		/* child inherits parent's 'aid' */
+		child->aid = parent->aid;
+		if (!parent->len)
+			return SC_SUCCESS;
+
+		/* parent has valid 'path' -- concatenate it with the child's one */
+		memcpy(&ppath, parent, sizeof(sc_path_t));
+		ppath.aid.len = 0;
+		ppath.type = SC_PATH_TYPE_FROM_CURRENT;
+		return sc_concatenate_path(child, &ppath, child);
+
+	}
+	else if (parent->type == SC_PATH_TYPE_DF_NAME)   {
+		/* child inherits parent's 'DF NAME' as 'aid' */
+		if (parent->len > sizeof(child->aid.value))
+			return SC_ERROR_WRONG_LENGTH;
+
+		memcpy(child->aid.value, parent->value, parent->len);
+		child->aid.len = parent->len;
+
+		return SC_SUCCESS;
+	}
 
 	/* a 0 length path stays a 0 length path */
 	if (child->len == 0)
 		return SC_SUCCESS;
 	
-	if (child->aid.len)
-		return SC_SUCCESS;
-
-	memcpy(&ppath, parent, sizeof(sc_path_t));
-	if (ppath.aid.len)   {
-		memcpy(&child->aid, &ppath.aid, sizeof(child->aid));
-		if (ppath.len)   {
-			ppath.aid.len = 0;
-			ppath.type = SC_PATH_TYPE_FROM_CURRENT;
-			return sc_concatenate_path(child, &ppath, child);
-		}
-		return SC_SUCCESS;
-	}
-	else if (ppath.type == SC_PATH_TYPE_DF_NAME)   {
-		memcpy(child->aid.value, ppath.value, ppath.len);
-		child->aid.len = ppath.len;
-
-		return SC_SUCCESS;
-	}
-
 	if (sc_compare_path_prefix(sc_get_mf_path(), child))
 		return SC_SUCCESS;
 
