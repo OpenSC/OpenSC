@@ -190,18 +190,39 @@ myeid_init_card(sc_profile_t *profile,
 static int 
 myeid_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *df)
 {
-	int	r=0;
+	struct sc_context *ctx = p15card->card->ctx;
+	struct sc_file *file = NULL;
+	int	r=0, ii;
+        static const char *create_dfs[] = {
+		"PKCS15-PrKDF",
+		"PKCS15-PuKDF",
+		"PKCS15-CDF",
+		"PKCS15-DODF",
+		NULL
+	};
 
 	if (!profile || !p15card || !df)
 		return SC_ERROR_INVALID_ARGUMENTS;
-	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "id (%x)",df->id);
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "id (%x)",df->id);
 
 	if(df->id == 0x5015)
 	{
-		sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "only Select (%x)",df->id);
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Select (%x)",df->id);
 		r = sc_select_file(p15card->card, &df->path, NULL);
+
+        	for (ii = 0; create_dfs[ii]; ii++)   {
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Create '%s'", create_dfs[ii]);
+                	if (sc_profile_get_file(profile, create_dfs[ii], &file))   {
+				sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Inconsistent profile: cannot find %s", create_dfs[ii]);
+				SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INCONSISTENT_PROFILE);
+			}
+			r = sc_pkcs15init_create_file(profile, p15card, file);
+			sc_file_free(file);
+			if (r != SC_ERROR_FILE_ALREADY_EXISTS)
+				SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Failed to create MyEID xDF file");
+		}
 	}
 
 	SC_FUNC_RETURN(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, r);
