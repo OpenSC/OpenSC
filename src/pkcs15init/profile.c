@@ -659,7 +659,6 @@ sc_profile_instantiate_template(sc_profile_t *profile,
 		sc_file_t **ret)
 {
 	struct sc_context *ctx = profile->card->ctx;
-	struct sc_card	*card = profile->card;
 	struct sc_profile	*tmpl;
 	struct sc_template	*info;
 	unsigned int	idx;
@@ -744,7 +743,6 @@ sc_profile_instantiate_file(sc_profile_t *profile, file_info *ft,
 		file_info *parent, unsigned int skew)
 {
 	struct sc_context *ctx = profile->card->ctx;
-	struct sc_card	*card = profile->card;
 	struct file_info *fi;
 
 	fi = calloc(1, sizeof(*fi));
@@ -1963,11 +1961,12 @@ sc_profile_find_file(struct sc_profile *pro,
 static struct file_info *
 sc_profile_find_file_by_path(struct sc_profile *pro, const sc_path_t *path)
 {
-	struct sc_context *ctx = pro->card->ctx;
 	struct file_info *fi, *out = NULL;
 	struct sc_path *fp_path, *fpp_path;
 
 #ifdef DEBUG_PROFILE
+	struct sc_context *ctx = pro->card->ctx;
+
 	sc_log(ctx, "profile's EF list:");
 	for (fi = pro->ef_list; fi; fi = fi->next)   {
 		sc_log(ctx, "'%s' (path:%s)",  fi->ident, sc_print_path(&fi->file->path));
