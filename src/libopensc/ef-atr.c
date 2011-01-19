@@ -44,6 +44,7 @@ sc_parse_ef_atr_content(struct sc_card *card, unsigned char *buf, size_t buflen)
 
 	category = *buf;
 
+	memset(&ef_atr, 0, sizeof(struct sc_ef_atr));
 	/* IAS/ECC specific: skip second 'zero' byte */
 	if (*(++buf)  == 0x00)	
 		++buf;
