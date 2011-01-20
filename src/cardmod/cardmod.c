@@ -33,7 +33,7 @@
 #include <stdlib.h>
 
 #include <windows.h>
-#include <cardmod.h>
+#include "cardmod.h"
 
 #include "libopensc/opensc.h"
 #include "libopensc/pkcs15.h"
