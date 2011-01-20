@@ -91,16 +91,16 @@ static void logprintf(PCARD_DATA pCardData, int level, const char* format, ...)
 		vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
 		if(vs != NULL && vs->ctx != NULL)
 		{
-			#ifdef VISUAL_STUDIO
+#ifdef _MSC_VER
 			sc_debug(vs->ctx, level, format, arg);
-			#else
+#else
 			/* FIXME: trouble in vsprintf with %S arg under
 			mingw32
 			*/
 			if(vs->ctx->debug>=level) {
 				vfprintf(vs->ctx->debug_file, format, arg);
 			}
-			#endif
+#endif
 		}
 	}
 	va_end(arg);
@@ -560,14 +560,13 @@ DWORD WINAPI CardReadFile(__in PCARD_DATA pCardData,
 				pubkey = cert->key;
 				if(pubkey->algorithm == SC_ALGORITHM_RSA)
 				{
-					#ifdef VISUAL_STUDIO
-					/* for visual studio */
+#ifdef _MSC_VER
 					swprintf(p->wszGuid, sizeof(p->wszGuid), L"%0*.*d", MAX_CONTAINER_NAME_LEN, \
 						MAX_CONTAINER_NAME_LEN, i);
-					#else
+#else
 					swprintf(p->wszGuid, L"%0*.*d", MAX_CONTAINER_NAME_LEN, \
 						MAX_CONTAINER_NAME_LEN, i);
-					#endif
+#endif
 					
 					p->bFlags += CONTAINER_MAP_VALID_CONTAINER;
 					if(i == 0)
