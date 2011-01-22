@@ -595,7 +595,7 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 	struct _sc_ctx_options	opts;
 	int			r;
 
-	if (ctx_out == NULL)
+	if (ctx_out == NULL || parm == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	ctx = calloc(1, sizeof(sc_context_t));
@@ -604,7 +604,7 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 	memset(&opts, 0, sizeof(opts));
 
 	/* set the application name if set in the parameter options */
-	if (parm != NULL && parm->app_name != NULL)
+	if (parm->app_name != NULL)
 		ctx->app_name = strdup(parm->app_name);
 	else
 		ctx->app_name = strdup("default");
@@ -617,7 +617,7 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 	list_init(&ctx->readers);
 	list_attributes_seeker(&ctx->readers, reader_list_seeker);
 	/* set thread context and create mutex object (if specified) */
-	if (parm != NULL && parm->thread_ctx != NULL)
+	if (parm->thread_ctx != NULL)
 		ctx->thread_ctx = parm->thread_ctx;
 	r = sc_mutex_create(ctx, &ctx->mutex);
 	if (r != SC_SUCCESS) {
