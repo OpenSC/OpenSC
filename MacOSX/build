@@ -89,13 +89,13 @@ if ! test -e OpenSC.tokend; then
 fi
 
 case "${OSX_RELEASE}" in
-	"10.5") git --git-dir OpenSC.tokend/.git --work-tree OpenSC.tokend checkout --force origin/10.5; rm -rf OpenSC.tokend/build
+	"10.5") git --git-dir OpenSC.tokend/.git --work-tree OpenSC.tokend checkout --force origin/10.5-0.12.1; rm -rf OpenSC.tokend/build
 	        if test ${INTEL_ONLY} = "yes"; then
 	        	sed -e 's/ ppc7400//g' OpenSC.tokend/Tokend.xcodeproj/project.pbxproj > project.tmp
 	        	mv project.tmp OpenSC.tokend/Tokend.xcodeproj/project.pbxproj
 	        fi
 	;;
-	"10.6") git --git-dir OpenSC.tokend/.git --work-tree OpenSC.tokend checkout --force origin/10.6; rm -rf OpenSC.tokend/build ;;
+	"10.6") git --git-dir OpenSC.tokend/.git --work-tree OpenSC.tokend checkout --force origin/10.6-0.12.1; rm -rf OpenSC.tokend/build ;;
 esac
 
 if ! test -e build-${OSX_RELEASE}.tar.gz; then
