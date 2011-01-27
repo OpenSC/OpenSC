@@ -488,19 +488,23 @@ void sc_pkcs15_pincache_add(struct sc_pkcs15_card *p15card, struct sc_pkcs15_obj
 	const u8 *pin, size_t pinlen)
 {
 	struct sc_context *ctx = p15card->card->ctx;
+	struct sc_pkcs15_pin_info *pin_info = (struct sc_pkcs15_pin_info *)pin_obj->data;
+	struct sc_pkcs15_object *obj = NULL;
 	int r;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 
 	if (!p15card->opts.use_pin_cache)   {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "No PIN cache allowed");
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "PIN caching not enabled");
 		return;
 	}
 
-	/* Is it a user consent protecting PIN ? */
-	if (pin_obj->user_consent) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Not caching a PIN requiring user consent");
-		return;
+	/* If the PIN protects a private key with user consent, don't cache it */
+	if (sc_pkcs15_find_prkey_by_reference(p15card, NULL, pin_info->reference, &obj) == SC_SUCCESS) {
+		if (obj->user_consent) {
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Not caching a PIN protecting a key with user consent");
+			return;
+		}
 	}
 
 	r = sc_pkcs15_allocate_object_content(pin_obj, pin, pinlen);
