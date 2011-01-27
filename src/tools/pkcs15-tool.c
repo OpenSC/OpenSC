@@ -1239,6 +1239,17 @@ static int change_pin(void)
 		return 2;
 	pinfo = (sc_pkcs15_pin_info_t *) pin_obj->data;
 
+	if (pinfo->tries_left != -1) {
+		if (pinfo->tries_left != pinfo->max_tries) {
+			if (pinfo->tries_left == 0) {
+				fprintf(stderr, "PIN code blocked!\n");
+				return 2;
+			} else {
+				fprintf(stderr, "%d PIN tries left.\n", pinfo->tries_left);
+			}
+		}
+	}
+
 	pincode = opt_pin;
 	if (pincode == NULL) {
 		pincode = get_pin("Enter old PIN", pin_obj);
