@@ -703,9 +703,12 @@ static struct sc_app_info *sc_dup_app_info(const struct sc_app_info *info)
 
 	memcpy(out, info, sizeof(struct sc_app_info));
 
-	out->label = strdup(info->label);
-	if (!out->label)
-		return NULL;
+	if (info->label) {
+		out->label = strdup(info->label);
+		if (!out->label)
+			return NULL;
+	} else
+		out->label = NULL;
 
 	out->ddo.value = malloc(info->ddo.len);
 	if (!out->ddo.value)
