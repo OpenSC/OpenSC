@@ -599,10 +599,6 @@ static void process_fcp(sc_card_t * card, sc_file_t * file,
 
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "processing FCI bytes\n");
 
-	/* Optional FCP in FCI */
-	if (card->type == SC_CARD_TYPE_MCRD_ESTEID_V30 && buf[0] == 0x62)
-		buf += 2;
-
 	/* File identifier. */
 	tag = sc_asn1_find_tag(ctx, p, len, 0x83, &taglen);
 	if (tag != NULL && taglen == 2) {
@@ -775,7 +771,8 @@ do_select(sc_card_t * card, u8 kind,
 		*file = sc_file_new();
 		if (!*file)
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
-		if (card->type == SC_CARD_TYPE_MCRD_ESTEID_V30)
+		/* EstEID v3.0 cards are buggy and sometimes return a double 0x62 tag */
+		if (card->type == SC_CARD_TYPE_MCRD_ESTEID_V30 && apdu.resp[2] == 0x62)
 			process_fcp(card, *file, apdu.resp + 4, apdu.resp[3]);
 		else
 			process_fcp(card, *file, apdu.resp + 2, apdu.resp[1]);
