@@ -44,6 +44,17 @@ int _sc_add_reader(sc_context_t *ctx, sc_reader_t *reader)
 	return SC_SUCCESS;
 }
 
+int _sc_delete_reader(sc_context_t *ctx, sc_reader_t *reader)
+{
+	assert(reader != NULL);
+	if (reader->ops->release)
+			reader->ops->release(reader);
+	if (reader->name)
+		free(reader->name);
+	list_delete(&ctx->readers, reader);
+	free(reader);
+}
+
 struct _sc_driver_entry {
 	const char *name;
 	void *(*func)(void);
@@ -692,12 +703,9 @@ int sc_release_context(sc_context_t *ctx)
 
 	assert(ctx != NULL);
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
-	for (i=0; i<list_size(&ctx->readers); i++) {
-		sc_reader_t *rdr = (sc_reader_t *) list_get_at(&ctx->readers, i);
-		if (rdr->ops->release != NULL)
-			rdr->ops->release(rdr);
-		free(rdr->name);
-		free(rdr);
+	while (list_size(&ctx->readers)) {
+		sc_reader_t *rdr = (sc_reader_t *) list_get_at(&ctx->readers, 0);
+		_sc_delete_reader(ctx, rdr);
 	}
 
 	if (ctx->reader_driver->ops->finish != NULL)

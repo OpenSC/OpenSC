@@ -74,6 +74,7 @@ struct sc_atr_table {
 
 /* Internal use only */
 int _sc_add_reader(struct sc_context *ctx, struct sc_reader *reader);
+int _sc_delete_reader(struct sc_context *ctx, struct sc_reader *reader);
 int _sc_parse_atr(struct sc_reader *reader);
 
 /* Add an ATR to the card driver's struct sc_atr_table */
