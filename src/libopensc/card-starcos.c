@@ -569,7 +569,7 @@ static int starcos_process_acl(sc_card_t *card, sc_file_t *file,
 			tmp = 0x00;	/* no sm */
 		*p++ = tmp;	/* use the same sm mode for all ops */
 		*p++ = tmp;
-		*p++ = tmp;
+		*p = tmp;
 		data->type = SC_STARCOS_MF_DATA;
 
 		return SC_SUCCESS;
@@ -606,7 +606,7 @@ static int starcos_process_acl(sc_card_t *card, sc_file_t *file,
 		else
 			tmp = 0x00;
 		*p++ = tmp;	/* SM CR  */
-		*p++ = tmp;	/* SM ISF */
+		*p = tmp;	/* SM ISF */
 
 		data->data.df.size[0] = (file->size >> 8) & 0xff;
 		data->data.df.size[1] = file->size & 0xff;
@@ -644,17 +644,17 @@ static int starcos_process_acl(sc_card_t *card, sc_file_t *file,
 		case SC_FILE_EF_TRANSPARENT:
 			*p++ = 0x81;
 			*p++ = (file->size >> 8) & 0xff;
-			*p++ = file->size & 0xff;
+			*p = file->size & 0xff;
 			break;
 		case SC_FILE_EF_LINEAR_FIXED:
 			*p++ = 0x82;
 			*p++ = file->record_count  & 0xff;
-			*p++ = file->record_length & 0xff;
+			*p = file->record_length & 0xff;
 			break;
 		case SC_FILE_EF_CYCLIC:
 			*p++ = 0x84;
 			*p++ = file->record_count  & 0xff;
-			*p++ = file->record_length & 0xff;
+			*p = file->record_length & 0xff;
 			break;
 		default:
 			return SC_ERROR_INVALID_ARGUMENTS;
@@ -1014,14 +1014,13 @@ static int starcos_set_security_env(sc_card_t *card,
 				    const sc_security_env_t *env,
 				    int se_num)
 {
-	u8              *p, *pp, keyID;
+	u8              *p, *pp;
 	int              r, operation = env->operation;
 	sc_apdu_t   apdu;
 	u8               sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	starcos_ex_data *ex_data = (starcos_ex_data *)card->drv_data;
 
 	p     = sbuf;
-	keyID = env->key_ref[0];
 
 	/* copy key reference, if present */
 	if (env->flags & SC_SEC_ENV_KEY_REF_PRESENT) {
