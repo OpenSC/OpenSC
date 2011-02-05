@@ -423,7 +423,7 @@ cosm_create_pin(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15_pin_info *pin_info = (struct sc_pkcs15_pin_info *) pin_obj->data;
 	struct sc_file *pin_file;
-	int rv = 0, type;
+	int rv = 0;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "create '%s'; ref 0x%X; flags %X", pin_obj->label, pin_info->reference, pin_info->flags);
@@ -442,19 +442,16 @@ cosm_create_pin(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 		else   {
 			if (pin_info->reference != 4)  
 				SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_PIN_REFERENCE, "Invalid SOPIN reference");
-			type = SC_PKCS15INIT_SO_PIN;
 		}
 	} 
 	else {
 		if (pin_info->flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN)   {
 			if (pin_info->reference != 0x84)  
 				SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_PIN_REFERENCE, "Invalid User PUK reference");
-			type = SC_PKCS15INIT_USER_PUK;
 		}
 		else   {
 			if (pin_info->reference != 0x81)
 				SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_PIN_REFERENCE, "Invalid User PIN reference");
-			type = SC_PKCS15INIT_USER_PIN;
 		}
 	}
 
