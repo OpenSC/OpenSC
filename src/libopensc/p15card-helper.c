@@ -221,8 +221,6 @@ int sc_pkcs15emu_initialize_certificates(sc_pkcs15_card_t *p15card, p15data_item
 		memset(&cert_info, 0, sizeof(cert_info));
 		memset(&cert_obj,  0, sizeof(cert_obj));
 		
-		r = SC_SUCCESS;
-
 		sc_pkcs15_format_id(certs[i].id, &cert_info.id);
 		cert_info.authority = certs[i].authority;
 		sc_format_path(certs[i].path, &cert_info.path);
@@ -234,7 +232,7 @@ int sc_pkcs15emu_initialize_certificates(sc_pkcs15_card_t *p15card, p15data_item
 			u8* cert_buffer = NULL;
 			size_t cert_length = 0;
 			int should_free = 0;
-			if(SC_SUCCESS != (r = sc_select_file(card, &cert_info.path, NULL))) {
+			if(SC_SUCCESS != sc_select_file(card, &cert_info.path, NULL)) {
 				if(onFailResume)
 					continue;
 				else
@@ -260,7 +258,7 @@ int sc_pkcs15emu_initialize_certificates(sc_pkcs15_card_t *p15card, p15data_item
 					break;
 			}
 		} else { /* Automatically add */
-			if(SC_SUCCESS != (r = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info))) {
+			if(SC_SUCCESS != sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info)) {
 				if(onFailResume)
 					continue;
 				else
