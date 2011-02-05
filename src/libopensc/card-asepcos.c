@@ -443,7 +443,7 @@ static int asepcos_set_security_attributes(sc_card_t *card, sc_file_t *file)
 {
 	size_t i;
 	const amode_entry_t *table;
-	u8     buf[64], *p = buf;
+	u8     buf[64], *p;
 	int    r = SC_SUCCESS;
 
 	/* first check wether the security attributes in encoded form
