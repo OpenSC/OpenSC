@@ -1318,7 +1318,6 @@ static int asn1_decode(sc_context_t *ctx, struct sc_asn1_entry *asn1,
 
 	for (idx = 0; asn1[idx].name != NULL; idx++) {
 		entry = &asn1[idx];
-		r = 0;
 
 		sc_debug(ctx, SC_LOG_DEBUG_ASN1,
 			"Looking for '%s', tag 0x%x%s%s\n",
