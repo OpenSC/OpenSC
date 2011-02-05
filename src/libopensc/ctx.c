@@ -53,6 +53,7 @@ int _sc_delete_reader(sc_context_t *ctx, sc_reader_t *reader)
 		free(reader->name);
 	list_delete(&ctx->readers, reader);
 	free(reader);
+	return SC_SUCCESS;
 }
 
 struct _sc_driver_entry {
