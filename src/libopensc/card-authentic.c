@@ -1020,7 +1020,7 @@ authentic_update_binary(struct sc_card *card, unsigned int idx,
 
 	authentic_apdus_free(apdus);
 
-	LOG_TEST_RET(ctx, rv, "authentic_write_binary() failed");
+	LOG_TEST_RET(ctx, rv, "authentic_update_binary() failed");
 	LOG_FUNC_RETURN(ctx, count);
 }
 
