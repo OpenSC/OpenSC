@@ -784,7 +784,7 @@ void sc_pkcs15_free_pubkey_info(sc_pkcs15_pubkey_info_t *key)
 	free(key);
 }
 
-int sc_pkcs15_read_der_file(sc_context_t *ctx, char * filename,
+static int sc_pkcs15_read_der_file(sc_context_t *ctx, char * filename,
 		u8 ** buf, size_t * buflen)
 {
 	int r;
