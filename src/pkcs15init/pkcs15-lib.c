@@ -695,7 +695,7 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 	struct sc_pkcs15_object	*pin_obj = NULL;
 	struct sc_app_info	*app;
 	struct sc_file		*df = profile->df_info->file;
-	int			r, pin_type = SC_PKCS15INIT_SO_PIN;
+	int			r;
 
 	LOG_FUNC_CALLED(ctx);
 	p15card->card = card;
@@ -720,11 +720,6 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 		/* Path encoded only for local SO PIN */
 		if (pin_info.flags & SC_PKCS15_PIN_FLAG_LOCAL)
 			pin_info.path = df->path;
-
-		/* Put the new SO pin in the key cache (note: in case
-	 	 * of the "onepin" profile store it as a normal pin) */
-		if (!(pin_info.flags & SC_PKCS15_PIN_FLAG_SO_PIN))
-			pin_type = SC_PKCS15INIT_USER_PIN;
 
 		/* Select the PIN reference */
 		if (profile->ops->select_pin_reference) {
@@ -986,7 +981,6 @@ sc_pkcs15init_create_pin(struct sc_pkcs15_card *p15card,
 	struct sc_pkcs15_pin_info *pin_info = (struct sc_pkcs15_pin_info *) pin_obj->data;
 	struct sc_file	*df = profile->df_info->file;
 	int		r, retry = 0;
-	int 		pin_type = SC_PKCS15INIT_USER_PIN;
 
 	LOG_FUNC_CALLED(ctx);
 	/* Some cards need to keep all their PINs in separate directories.
@@ -1004,11 +998,6 @@ sc_pkcs15init_create_pin(struct sc_pkcs15_card *p15card,
 	/* Path encoded only for local PINs */
 	if (pin_info->flags & SC_PKCS15_PIN_FLAG_LOCAL)
 		pin_info->path = df->path;
-
-	if (pin_info->flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN)
-		pin_type = SC_PKCS15INIT_USER_PUK;
-	if (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN)
-		pin_type = SC_PKCS15INIT_SO_PIN;
 
 	/* pin_info->reference = 0; */
 
@@ -1496,15 +1485,10 @@ sc_pkcs15init_store_certificate(struct sc_pkcs15_card *p15card,
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15_cert_info *cert_info;
 	struct sc_pkcs15_object *object;
-	unsigned int	usage;
 	const char	*label;
 	int		r;
 
 	LOG_FUNC_CALLED(ctx);
-
-	usage = SC_PKCS15_PRKEY_USAGE_SIGN;
-	if (args->x509_usage)
-		usage = sc_pkcs15init_map_usage(args->x509_usage, 0);
 
 	label = args->label;
 	if (!label)
@@ -2549,16 +2533,14 @@ sc_pkcs15init_add_object(struct sc_pkcs15_card *p15card,
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15_df *df;
-	struct sc_file	*file = NULL;
 	int is_new = 0, r = 0, object_added = 0;
 
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx, "add object %p to DF of type %u", object, df_type);
 
 	df = find_df_by_type(p15card, df_type);
-	if (df != NULL) {
-		file = df->file;
-	} else {
+	if (df == NULL) {
+		struct sc_file	*file;
 		file = profile->df[df_type];
 		if (file == NULL) {
 			sc_log(ctx, "Profile doesn't define a DF file %u", df_type);
