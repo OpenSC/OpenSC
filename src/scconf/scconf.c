@@ -190,9 +190,7 @@ int scconf_put_int(scconf_block * block, const char *option, int value)
 
 int scconf_put_bool(scconf_block * block, const char *option, int value)
 {
-	const char *ret;
-
-	ret = scconf_put_str(block, option, !value ? "false" : "true");
+	scconf_put_str(block, option, !value ? "false" : "true");
 	return value;
 }
 
@@ -582,7 +580,6 @@ static int parse_entries(const scconf_context * config, const scconf_block * blo
 	}
 	for (idx = 0; entry[idx].name; idx++) {
 		e = &entry[idx];
-		r = 0;
 		blocks = getblocks(config, block, e);
 		if (!blocks) {
 			if (!(e->flags & SCCONF_MANDATORY)) {
@@ -708,7 +705,6 @@ static int write_entries(scconf_context * config, scconf_block * block, scconf_e
 	}
 	for (idx = 0; entry[idx].name; idx++) {
 		e = &entry[idx];
-		r = 0;
 		r = write_type(config, block, e, depth);
 		if (r) {
 			return r;
