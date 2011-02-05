@@ -503,7 +503,6 @@ static int setcos_create_file_44(sc_card_t *card, sc_file_t *file)
 		}
 		/* RSA signing/decryption requires AC adaptive coding,  can't be put
 		   in AC simple coding. Only implemented for pins, not for a key. */
-		bKeyNumber = 0;
 		if ( (file->type == SC_FILE_TYPE_INTERNAL_EF) &&
 		     (acl_to_byte_44(file->acl[SC_AC_OP_CRYPTO], &bNumber) == SC_AC_CHV) ) {
 			bBuf[len++] = 0x83;
