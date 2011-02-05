@@ -538,14 +538,13 @@ static int atrust_acos_set_security_env(struct sc_card *card,
 				    const struct sc_security_env *env,
 				    int se_num)
 {
-	u8              *p, *pp, keyID;
+	u8              *p, *pp;
 	int              r, operation = env->operation;
 	struct sc_apdu   apdu;
 	u8               sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	atrust_acos_ex_data *ex_data = (atrust_acos_ex_data *)card->drv_data;
 
 	p     = sbuf;
-	keyID = env->key_ref[0];
 
 	/* copy key reference, if present */
 	if (env->flags & SC_SEC_ENV_KEY_REF_PRESENT) {
