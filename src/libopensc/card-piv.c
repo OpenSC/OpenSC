@@ -561,7 +561,6 @@ static int piv_generate_key(sc_card_t *card,
 	int r;
 	u8 *rbuf = NULL; 
 	size_t rbuflen = 0;
-	size_t buf_len = 0;
 	u8 *p;
 	const u8 *tag;
 	u8 tagbuf[16]; 
