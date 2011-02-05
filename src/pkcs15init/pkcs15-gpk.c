@@ -200,18 +200,14 @@ gpk_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *df,
 {
 	sc_pkcs15_pin_info_t *pin_info = (sc_pkcs15_pin_info_t *) pin_obj->data;
 	u8	nulpin[8];
-	int	r, type;
+	int	r;
 
 	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
 	if (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN) {
-		type = SC_PKCS15INIT_SO_PIN;
-
 		/* SO PIN reference must be 0 */
 		if (pin_info->reference != (GPK_PIN_SCOPE | 0))
 			return SC_ERROR_INVALID_ARGUMENTS;
 	} else {
-		type = SC_PKCS15INIT_USER_PIN;
-
 		/* PIN references must be even numbers
 		 * (the odd numbered PIN entries contain the
 		 * PUKs).
@@ -850,7 +846,6 @@ gpk_pkfile_update_private(struct sc_profile *profile,
 		r = gpk_pkfile_load_private(p15card->card, file, data, size-1, nb);
 		if (r < 0)
 			break;
-		pe++;
 	}
 	return r;
 }
