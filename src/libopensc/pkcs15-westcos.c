@@ -34,7 +34,7 @@ int sc_pkcs15emu_westcos_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
 static int sc_pkcs15emu_westcos_init(sc_pkcs15_card_t * p15card)
 {
 	int i, r;
-	int modulus_length = 0, usage = 0;
+	int modulus_length = 0;
 	char buf[256];
 	sc_card_t *card = p15card->card;
 	sc_serial_number_t serial;
@@ -193,11 +193,6 @@ static int sc_pkcs15emu_westcos_init(sc_pkcs15_card_t * p15card)
 			if (r < 0)
 				goto out;
 		}
-	}
-	if (!usage) {
-		usage =
-		    SC_PKCS15_PRKEY_USAGE_SIGN | SC_PKCS15_PRKEY_USAGE_DECRYPT |
-		    SC_PKCS15_PRKEY_USAGE_NONREPUDIATION;
 	}
 	if (file)
 		sc_file_free(file);
