@@ -1766,7 +1766,7 @@ authentic_get_challenge(struct sc_card *card, unsigned char *rnd, size_t len)
 }
 
 
-int
+static int
 authentic_manage_sdo_encode_prvkey(struct sc_card *card, struct sc_pkcs15_prkey *prvkey,
 			unsigned char **out, size_t *out_len)
 {
@@ -1828,7 +1828,7 @@ authentic_manage_sdo_encode_prvkey(struct sc_card *card, struct sc_pkcs15_prkey 
 }
 
 
-int
+static int
 authentic_manage_sdo_encode(struct sc_card *card, struct sc_authentic_sdo *sdo, unsigned long cmd,
 			unsigned char **out, size_t *out_len)
 {
