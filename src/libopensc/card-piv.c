@@ -2011,7 +2011,6 @@ static int piv_compute_signature(sc_card_t *card,
 	int r;
 	int i;
 	int nLen;
-	u8 * outp = out;
 	u8 rbuf[128]; /* For EC conversions  384 will fit */
 	size_t rbuflen = sizeof(rbuf);
 	const u8 * body;
