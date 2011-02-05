@@ -349,8 +349,6 @@ sc_oberthur_parse_tokeninfo (struct sc_pkcs15_card *p15card,
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS, "Cannot parse token info");
 
 	memset(label, 0, sizeof(label));
-	if (len > sizeof(label) - 1)
-		len = sizeof(label) - 1;
 
 	memcpy(label, buff, 0x20);
 	ii = 0x20;
@@ -555,7 +553,7 @@ sc_pkcs15emu_oberthur_add_pubkey(struct sc_pkcs15_card *p15card,
 	struct sc_pkcs15_object key_obj;
 	char ch_tmp[0x100];
 	unsigned char *info_blob;
-	size_t len, info_len, offs, sz;
+	size_t len, info_len, offs;
 	unsigned flags;
 	int rv;
 
@@ -584,7 +582,7 @@ sc_pkcs15emu_oberthur_add_pubkey(struct sc_pkcs15_card *p15card,
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add public key: no 'Label'");
 	len = *(info_blob + offs + 1) + *(info_blob + offs) * 0x100;
 	if (len)   {
-		sz = len > sizeof(key_obj.label) - 1 ? sizeof(key_obj.label) - 1 : len;
+		len > sizeof(key_obj.label) - 1 ? sizeof(key_obj.label) - 1 : len;
 		memcpy(key_obj.label, info_blob + offs + 2, len);
 	}
 	offs += 2 + len;
@@ -628,7 +626,7 @@ sc_pkcs15emu_oberthur_add_cert(struct sc_pkcs15_card *p15card, unsigned int file
 	struct sc_pkcs15_cert_info cinfo;
 	struct sc_pkcs15_object cobj;
 	unsigned char *info_blob, *cert_blob;
-	size_t info_len, cert_len, len, offs, sz;
+	size_t info_len, cert_len, len, offs;
 	unsigned flags;
 	int rv;
 	char ch_tmp[0x20];
@@ -653,7 +651,7 @@ sc_pkcs15emu_oberthur_add_cert(struct sc_pkcs15_card *p15card, unsigned int file
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add certificate: no 'CN'");
 	len = *(info_blob + offs + 1) + *(info_blob + offs) * 0x100;
 	if (len)   {
-		sz = len > sizeof(cobj.label) - 1 ? sizeof(cobj.label) - 1 : len;
+		len > sizeof(cobj.label) - 1 ? sizeof(cobj.label) - 1 : len;
 		memcpy(cobj.label, info_blob + offs + 2, len);
 	}
 	offs += 2 + len;
@@ -666,7 +664,6 @@ sc_pkcs15emu_oberthur_add_cert(struct sc_pkcs15_card *p15card, unsigned int file
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_DATA, "Failed to add certificate: invalie 'ID' length");
 	memcpy(cinfo.id.value, info_blob + offs + 2, len);
 	cinfo.id.len = len;
-	offs += 2 + len;
 
 	/* Ignore subject, issuer and serial */
 
