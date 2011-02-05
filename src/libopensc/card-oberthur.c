@@ -1531,7 +1531,7 @@ auth_read_component(struct sc_card *card, enum SC_CARDCTL_OBERTHUR_KEY_TYPE type
 static int 
 auth_get_pin_reference (struct sc_card *card, int type, int reference, int cmd, int *out_ref)
 {
-	if (!card || !out_ref)
+	if (!out_ref)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
 	
 	switch (type) {
@@ -2250,7 +2250,7 @@ auth_delete_record(struct sc_card *card, unsigned int nr_rec)
 static int
 auth_get_serialnr(struct sc_card *card, struct sc_serial_number *serial)
 {
-	if (!card || !serial)
+	if (!serial)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
 
 	if (card->serialnr.len==0)
