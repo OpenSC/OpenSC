@@ -414,7 +414,6 @@ void msc_change_pin_apdu(sc_card_t *card, sc_apdu_t *apdu, u8* buffer, size_t bu
 	*ptr = newPinLength;
 	ptr++;
 	memcpy(ptr, newPin, newPinLength);
-	ptr += newPinLength;
 	apdu->lc = pinLength + newPinLength + 2;
 	apdu->datalen = apdu->lc;
 	apdu->data = buffer;
@@ -914,8 +913,6 @@ int msc_compute_crypt(sc_card_t *card,
 			&received);
 		if(r < 0) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 	}	
-	left -= toSend;
-	inPtr += toSend;
 	outPtr += received;
 
 	return outPtr - outputData; /* Amt received */
@@ -1009,7 +1006,7 @@ int msc_import_key(sc_card_t *card,
 	p = apduBuffer;
 	ushort2bebytes(p, readAcl); p+=2;
 	ushort2bebytes(p, writeAcl); p+=2;
-	ushort2bebytes(p, use); p+=2;	
+	ushort2bebytes(p, use); 
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 	if(apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
