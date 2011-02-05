@@ -130,7 +130,7 @@ incrypto34_erase(struct sc_profile *profile, sc_pkcs15_card_t *p15card)
 	sc_format_path("3F00", &path);
 	if ((r = sc_select_file(p15card->card, &path, &file)) < 0)
 		return r;
-	if ((r = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_DELETE)) < 0)
+	if (sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_DELETE) < 0)
 		return sc_pkcs15init_erase_card_recursively(p15card, profile);
 	else
 		return sc_card_ctl(p15card->card, SC_CARDCTL_INCRYPTO34_ERASE_FILES, NULL);
