@@ -515,7 +515,7 @@ static int asepcos_do_create_key(sc_card_t *card, size_t ksize, int fileid,
 	*p++ = 0x82;
 	p   += 2;
 	/* file id */
-	*p++ = (fileid >> 8) && 0xff;
+	*p++ = (fileid >> 8) & 0xff;
 	*p++ = fileid & 0xff;
 	/* key size */
 	*p++ = (ksize >> 8) & 0xff;
