@@ -1020,7 +1020,7 @@ mcrd_select_file(sc_card_t * card, const sc_path_t * path, sc_file_t ** file)
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	{
-		char line[256], *linep = line;
+		char line[256], *linep;
 		size_t i;
 
 		linep = line;
