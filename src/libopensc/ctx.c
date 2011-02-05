@@ -547,7 +547,7 @@ static void process_config_file(sc_context_t *ctx, struct _sc_ctx_options *opts)
 	if (strcmp(ctx->app_name, "default") != 0) {
 		blocks = scconf_find_blocks(ctx->conf, NULL, "app", "default");
 		if (blocks[0])
-		    	ctx->conf_blocks[count++] = blocks[0];
+		    	ctx->conf_blocks[count] = blocks[0];
 		free(blocks);
 	}
 	/* Above we add 2 blocks at most, but conf_blocks has 3 elements,
