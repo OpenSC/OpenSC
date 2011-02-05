@@ -287,7 +287,7 @@ cryptoflex_process_file_attrs(sc_card_t *card, sc_file_t *file,
 	sc_context_t *ctx = card->ctx;
 	const u8 *p = buf + 2;
 	u8 b1, b2;
-	int left, is_mf = 0;
+	int is_mf = 0;
 	
 	if (buflen < 14)
 		return -1;
@@ -351,11 +351,10 @@ cryptoflex_process_file_attrs(sc_card_t *card, sc_file_t *file,
 		add_acl_entry(card, file, SC_AC_OP_INVALIDATE, (u8)(p[2] & 0x0F));
 	}
 	p += 3;
-	if (*p++)
+	if (*p)
 		file->status = SC_FILE_STATUS_ACTIVATED;
 	else
 		file->status = SC_FILE_STATUS_INVALIDATED;
-	left = *p++;
 
 	return cryptoflex_get_ac_keys(card, file);
 }
