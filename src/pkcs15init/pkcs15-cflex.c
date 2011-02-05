@@ -744,7 +744,7 @@ cryptoflex_encode_private_key(sc_profile_t *profile, sc_card_t *card,
         key += 5 * base;
 	*key++ = 0;
 	*key++ = 0;
-	*key++ = 0;
+	*key = 0;
 	
         return 0;
 }
