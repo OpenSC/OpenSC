@@ -1531,13 +1531,9 @@ auth_read_component(struct sc_card *card, enum SC_CARDCTL_OBERTHUR_KEY_TYPE type
 static int 
 auth_get_pin_reference (struct sc_card *card, int type, int reference, int cmd, int *out_ref)
 {
-	struct auth_private_data *prv;
-
 	if (!card || !out_ref)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
 	
-	prv = (struct auth_private_data *) card->drv_data;
-    
 	switch (type) {
 	case SC_AC_CHV:
 		if (reference != 1 && reference != 2 && reference != 4)
