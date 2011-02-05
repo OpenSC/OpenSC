@@ -662,7 +662,6 @@ authentic_pkcs15_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p1
 	struct sc_context *ctx = card->ctx;
 	struct sc_pkcs15_prkey_info *key_info = (struct sc_pkcs15_prkey_info *) object->data;
 	size_t keybits = key_info->modulus_length;
-	unsigned long caps;
 	struct sc_authentic_sdo *sdo;
 	int rv;
 
@@ -689,7 +688,6 @@ authentic_pkcs15_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p1
 	sc_log(ctx, "sdo(mech:%X,id:%X,acls:%s)", sdo->docp.mech, sdo->docp.id,
 			sc_dump_hex(sdo->docp.acl_data, sdo->docp.acl_data_len));
 
-	caps = card->caps;
 	card->caps &= ~SC_CARD_CAP_USE_FCI_AC;
 	rv = sc_pkcs15init_authenticate(profile, p15card, sdo->file, SC_AC_OP_UPDATE);
 	LOG_TEST_RET(ctx, rv, "SC_AC_OP_GENERATE authentication failed");
