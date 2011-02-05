@@ -125,7 +125,7 @@ static int starcos_init_card(sc_profile_t *profile, sc_pkcs15_card_t *p15card)
 	*p++ = get_so_ac(mf_file, SC_AC_OP_CREATE, &sopin, STARCOS_AC_ALWAYS, 1);
 	*p++ = 0x00;	/* SM CR:  no */
 	*p++ = 0x00;	/* SM EF:  no */
-	*p++ = 0x00;	/* SM ISF: no */
+	*p = 0x00;	/* SM ISF: no */
 	sc_file_free(mf_file);
 	sc_file_free(isf_file);
 	/* call CREATE MF  */
@@ -155,7 +155,7 @@ static int starcos_init_card(sc_profile_t *profile, sc_pkcs15_card_t *p15card)
 	*p++ = 0x00;			/* SID         */
 	*p++ = 0xA1;			/* IPF         */
 	*p++ = (ipf_file->size >> 8) & 0xff;
-	*p++ = ipf_file->size & 0xff;
+	*p = ipf_file->size & 0xff;
 	ret  = sc_card_ctl(card, SC_CARDCTL_STARCOS_CREATE_FILE, &ipf_data);
 	if (ret != SC_SUCCESS) {
 		free(ipf_file);
@@ -203,7 +203,7 @@ static int starcos_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	/* AC CREATE KEY */
 	*p++ = get_so_ac(isf_file, SC_AC_OP_WRITE, &sopin, STARCOS_AC_NEVER, 0);
 	*p++ = 0x00;		/* SM EF:  no */
-	*p++ = 0x00;		/* SM ISF: no */
+	*p = 0x00;		/* SM ISF: no */
 	df_data.data.df.size[0] = (df->size >> 8) & 0xff;
 	df_data.data.df.size[1] = df->size & 0xff;
 	sc_file_free(isf_file);
@@ -236,7 +236,7 @@ static int starcos_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	*p++ = 0x00;			/* SID         */
 	*p++ = 0xA1;			/* IPF         */
 	*p++ = (ipf_file->size >> 8) & 0xff;
-	*p++ = ipf_file->size & 0xff;
+	*p = ipf_file->size & 0xff;
 	ret  = sc_card_ctl(card, SC_CARDCTL_STARCOS_CREATE_FILE, &ipf_data);
 	if (ret != SC_SUCCESS) {
 		free(ipf_file);
@@ -610,7 +610,7 @@ static int starcos_encode_pukey(struct sc_pkcs15_prkey_rsa *rsa, u8 *buf,
 		*p++ = (kinfo->modulus_length >> 3) & 0xff;
 		*p++ = 0x13;			/* RSA: e   */
 		*p++ = 0x04;
-		*p++ = (u8) kinfo->key_reference;	/* CHA byte */
+		*p = (u8) kinfo->key_reference;	/* CHA byte */
 	} else {
 		/* encode normal public key  */
 		size_t	mod_len = rsa->modulus.len  & 0xff,
@@ -633,7 +633,7 @@ static int starcos_encode_pukey(struct sc_pkcs15_prkey_rsa *rsa, u8 *buf,
 		/* copy exponent */
 		for (i = exp_len; i != 0; i--)
 			*p++ = rsa->exponent.data[i - 1];
-		*p++ = 0x00;
+		*p = 0x00;
 	}
 	return SC_SUCCESS;
 }
@@ -696,7 +696,7 @@ static int starcos_write_pukey(sc_profile_t *profile, sc_card_t *card,
 	}
 	p   += keylen;
 	*p++ = 0x04;				/* CPI */
-	*p++ = (u8) kinfo->key_reference;	/* CHA */
+	*p = (u8) kinfo->key_reference;	/* CHA */
 	/* updated IPF (XXX: currently append only) */
 	num_keys++;
 	r = sc_update_binary(card, 0, &num_keys, 1, 0);
