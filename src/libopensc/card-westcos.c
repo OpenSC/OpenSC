@@ -1062,9 +1062,6 @@ static int westcos_set_security_env(sc_card_t *card,
 			mode = WESTCOS_RSA_NO_HASH_PAD_PKCS1;
 		else if ((priv_data->env.flags) & SC_ALGORITHM_RSA_RAW)
 			mode = WESTCOS_RSA_NO_HASH_NO_PAD;
-		else {
-			r = SC_ERROR_INVALID_ARGUMENTS;
-		}
 
 		r = sc_path_print((char *)buf, sizeof(buf), &(env->file_ref));
 		if(r)
