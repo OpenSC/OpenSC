@@ -236,19 +236,15 @@ static int
 myeid_select_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		sc_pkcs15_pin_info_t *pin_info)
 {
-	int type;
-
 	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
 	if (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN)
 	{
-	  type = SC_PKCS15INIT_SO_PIN;
 	  sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL,
 			  "PIN_FLAG_SO_PIN, ref (%d), tries_left (%d)",
 			  pin_info->reference,pin_info->tries_left);	
 	}
 	else	
 	{
-	  type = SC_PKCS15INIT_USER_PIN;
 	  sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, 
 			  "PIN_FLAG_PIN, ref (%d), tries_left (%d)",
 			  pin_info->reference, pin_info->tries_left);
