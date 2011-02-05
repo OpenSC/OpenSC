@@ -106,16 +106,13 @@ jcop_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *df,
         sc_pkcs15_pin_info_t *pin_info = (sc_pkcs15_pin_info_t *) pin_obj->data;
         unsigned char   nulpin[16];
         unsigned char   padpin[16];
-        int             r, type;
+        int             r;
 
         if (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN) {
-                type = SC_PKCS15INIT_SO_PIN;
-
                 /* SO PIN reference must be 0 */
                 if (pin_info->reference != 3)
                         return SC_ERROR_INVALID_ARGUMENTS;
         } else {
-                type = SC_PKCS15INIT_USER_PIN;
                 if (pin_info->reference >= 3)
                         return SC_ERROR_TOO_MANY_OBJECTS;
         }
@@ -149,7 +146,7 @@ jcop_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_pkcs15_obje
 {
         sc_pkcs15_prkey_info_t *key_info = (sc_pkcs15_prkey_info_t *) obj->data;
         sc_file_t  *keyfile = NULL;
-        size_t          bytes, mod_len, exp_len, prv_len, pub_len;
+        size_t          bytes, mod_len, prv_len;
         int             r;
 
 	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
@@ -166,9 +163,7 @@ jcop_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_pkcs15_obje
                 return r;
 
         mod_len = key_info->modulus_length / 8;
-        exp_len = 4;
         bytes   = mod_len / 2;
-        pub_len = 2 + mod_len + exp_len;
 	prv_len = 2 + 5 * bytes;
         keyfile->size = prv_len;
 
@@ -263,7 +258,7 @@ jcop_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
      struct sc_cardctl_jcop_genkey args;
      sc_file_t       *temppubfile=NULL, *keyfile=NULL;
      unsigned char   *keybuf=NULL;
-     size_t          bytes, mod_len, exp_len, pub_len, keybits;
+     size_t          mod_len, exp_len, pub_len, keybits;
      int             r,delete_ok=0;
 
      if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
@@ -281,7 +276,6 @@ jcop_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 
      mod_len = key_info->modulus_length / 8;
      exp_len = 4;
-     bytes   = mod_len / 2;
      pub_len = 2 + mod_len + exp_len;
      temppubfile->size = pub_len;     
 
