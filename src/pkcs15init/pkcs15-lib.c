@@ -1934,8 +1934,8 @@ prkey_fixup_rsa(struct sc_pkcs15_card *p15card, struct sc_pkcs15_prkey_rsa *key)
 	if (!key->dmp1.len || !key->dmq1.len || !key->iqmp.len) {
 		static u8 dmp1[256], dmq1[256], iqmp[256];
 		RSA    *rsa;
-		BIGNUM *aux = BN_new();
-		BN_CTX *ctx = BN_CTX_new();
+		BIGNUM *aux;
+		BN_CTX *ctx;
 
 		rsa = RSA_new();
 		rsa->n = BN_bin2bn(key->modulus.data, key->modulus.len, NULL);
