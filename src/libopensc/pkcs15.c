@@ -1654,15 +1654,12 @@ int sc_pkcs15_parse_df(struct sc_pkcs15_card *p15card,
 	p = buf;
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "bufsize %i; first tag 0x%X", bufsize, *p);
 	while (bufsize && *p != 0x00) {
-		const u8 *oldp;
-		size_t obj_len;
 		
 		obj = calloc(1, sizeof(struct sc_pkcs15_object));
 		if (obj == NULL) {
 			r = SC_ERROR_OUT_OF_MEMORY;
 			goto ret;
 		}
-		oldp = p;
 		r = func(p15card, obj, &p, &bufsize);
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "rv %i", r);
 		if (r) {
@@ -1674,7 +1671,6 @@ int sc_pkcs15_parse_df(struct sc_pkcs15_card *p15card,
 			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "%s: Error decoding DF entry", sc_strerror(r));
 			goto ret;
 		}
-		obj_len = p - oldp;
 
 		obj->df = df;
 		r = sc_pkcs15_add_object(p15card, obj);
@@ -1939,13 +1935,11 @@ int sc_pkcs15_read_file(struct sc_pkcs15_card *p15card,
 				} else {
 					if (r < 4)
 						break;
-					record_len = head[2] * 256 + head[3];
 					memmove(head,head+4,r-4);
 					head += (r-4);
 				}
 			}
 			len = head-data;
-			r = len;
 		} else {
 			r = sc_read_binary(p15card->card, offset, data, len, 0);
 			if (r < 0) {
