@@ -308,7 +308,7 @@ static int asepcos_select_file(sc_card_t *card, const sc_path_t *in_path,
 	if (file != NULL && *file != NULL) 
 		if ((*file)->ef_structure == SC_FILE_EF_UNKNOWN)
 			(*file)->ef_structure = SC_FILE_EF_TRANSPARENT;
-	if (r == SC_SUCCESS && file != NULL) {
+	if (r == SC_SUCCESS && file != NULL && *file != NULL) {
 		r = asepcos_parse_sec_attr(card, *file, (*file)->sec_attr, (*file)->sec_attr_len);
 		if (r != SC_SUCCESS) 
 			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "error parsing security attributes");
