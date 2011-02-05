@@ -421,7 +421,6 @@ authentic_init_oberthur_authentic_3_2(struct sc_card *card)
 {
 	struct sc_context *ctx = card->ctx;
 	unsigned char resp[0x100];
-	size_t resp_len;
 	unsigned int flags;
 	int rv = 0;
 
@@ -437,7 +436,6 @@ authentic_init_oberthur_authentic_3_2(struct sc_card *card)
 	card->caps |= SC_CARD_CAP_APDU_EXT; 
 	card->caps |= SC_CARD_CAP_USE_FCI_AC;
 
-	resp_len = sizeof(resp);
 	rv = authentic_select_aid(card, aid_AuthentIC_3_2, sizeof(aid_AuthentIC_3_2), NULL, NULL);
 	LOG_TEST_RET(ctx, rv, "AuthentIC application select error");
 
@@ -1016,7 +1014,7 @@ authentic_process_fci(struct sc_card *card, struct sc_file *file,
 	struct sc_context *ctx = card->ctx;
 	size_t taglen;
 	int rv, ii;
-	const unsigned char *acls = NULL, *tag = NULL;
+	const unsigned char *tag = NULL;
 	unsigned char ops_DF[8] = {
 		SC_AC_OP_CREATE, SC_AC_OP_DELETE, SC_AC_OP_CRYPTO, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
 	};
@@ -1050,7 +1048,6 @@ authentic_process_fci(struct sc_card *card, struct sc_file *file,
 		sc_log(ctx, "ACLs not found in data(%i) %s", buflen, sc_dump_hex(buf, buflen));
 		sc_log(ctx, "Path:%s; Type:%X; PathType:%X", sc_print_path(&file->path), file->type, file->path.type);
 		if (file->path.type == SC_PATH_TYPE_DF_NAME || file->type == SC_FILE_TYPE_DF)   {
-			acls = acls_NEVER;
 			file->type = SC_FILE_TYPE_DF;
 		}
 		else   {
