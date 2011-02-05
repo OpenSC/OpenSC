@@ -91,56 +91,47 @@ awp_new_file(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_file	*ifile=NULL, *ofile=NULL;
 	char	name[NAME_MAX_LEN];
-	const char *itag=NULL, *desc=NULL, *otag=NULL;
+	const char *itag=NULL, *otag=NULL;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "type 0x%X; num %i; info %p; obj %p", type, num, info_out, obj_out);
 	switch (type) {
 	case SC_PKCS15_TYPE_CERT_X509:
-		desc = "Oberthur AWP certificate info";
 		itag = "certificate-info";
 		otag = "template-certificate";
 		break;
 	case SC_PKCS15_TYPE_PRKEY_RSA:
 	case COSM_TYPE_PRKEY_RSA:
-		desc = "Oberthur AWP private key info";
 		itag = "private-key-info";
 		otag = "template-private-key";
 		break;
 	case SC_PKCS15_TYPE_PUBKEY_RSA:
 	case COSM_TYPE_PUBKEY_RSA:
-		desc = "Oberthur AWP public key info";
 		itag = "public-key-info";
 		otag = "template-public-key";
 		break;
 	case SC_PKCS15_TYPE_DATA_OBJECT:
-		desc = "Oberthur AWP data object info";
 		itag = "data-info";
 		otag = "template-data";
 		break;
 	case COSM_TYPE_PRIVDATA_OBJECT:
-		desc = "Oberthur AWP private data object info";
 		itag = "privdata-info";
 		otag = "template-privdata";
 		break;
 	case SC_PKCS15_TYPE_AUTH_PIN:
 	case COSM_TOKENINFO : 
-		desc = "Oberthur AWP token info";
 		itag = "token-info";
 		num = 0;
 		break;
 	case COSM_PUBLIC_LIST:
-		desc = "Oberthur AWP public object list";
 		itag = "public-list";
 		num = 0;
 		break;
 	case COSM_PRIVATE_LIST:
-		desc = "Oberthur AWP private object list";
 		itag = "private-list";
 		num = 0;
 		break;
 	case COSM_CONTAINER_LIST:
-		desc = "Oberthur AWP container list";
         itag = "container-list";
         num = 0;
         break;
@@ -320,7 +311,7 @@ awp_create_container(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_file *clist = NULL, *file = NULL;
-	int rv = 0, rec_offs;
+	int rv = 0;
 	unsigned char *list = NULL;
 	  
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
@@ -335,7 +326,6 @@ awp_create_container(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 	file->record_length = clist->record_length;
 	
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "contaner file(rcount:%i,rlength:%i)", file->record_count, file->record_length);
-	rec_offs = 0;
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Append new record %i for private key", file->record_count + 1);
 
 	rv = awp_create_container_record(p15card, profile, file, acc);
@@ -1366,7 +1356,6 @@ awp_parse_key_info(struct sc_context *ctx, unsigned char *buf, size_t buf_len,
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, len, "AWP parse key info failed: exponent");
 	if (!len)
 		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
-	offs += len;
 
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
 }
