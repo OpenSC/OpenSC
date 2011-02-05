@@ -93,7 +93,7 @@ struct authentic_ac_access_usage authentic_v3_rsa_map_attributes[7]  = {
 
 int authentic_pkcs15_delete_file(struct sc_pkcs15_card *p15card, struct sc_profile *profile, struct sc_file *df);
 
-void
+static void
 authentic_reference_to_pkcs15_id (unsigned int ref, struct sc_pkcs15_id *id)
 {
 	int ii, sz;
