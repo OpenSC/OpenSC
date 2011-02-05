@@ -301,7 +301,6 @@ get_next_part:
 
 	if (apdu.resplen > 256) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "directory listing > 256 bytes, cutting");
-		r = 256;
 	}
 
 	len = apdu.resplen;
