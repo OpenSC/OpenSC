@@ -38,7 +38,7 @@ sc_parse_ef_atr_content(struct sc_card *card, unsigned char *buf, size_t buflen)
 	const unsigned char *tag = NULL;
 	size_t taglen;
 	struct sc_ef_atr ef_atr;
-	unsigned char category = *buf;
+	unsigned char category;
 
 	LOG_FUNC_CALLED(ctx);
 
