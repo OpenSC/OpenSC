@@ -129,7 +129,7 @@ static int ias_build_pin_apdu(sc_card_t *card,
 	static u8 	sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	int 		r, len, pad, use_pin_pad, ins, p1;
 
-	r = len = pad = use_pin_pad = ins = p1 = 0;
+	len = pad = use_pin_pad = p1 = 0;
 	assert(card != NULL);
 
 	switch (data->pin_type) {
@@ -351,19 +351,17 @@ static int ias_compute_signature(sc_card_t *card, const u8 * data,
 static int ias_select_file(sc_card_t *card, const sc_path_t *in_path,
 		sc_file_t **file_out)
 {
-	int 			r, pathlen, stripped_len, offset;
+	int 			r, pathlen, stripped_len;
 	u8 				buf[SC_MAX_APDU_BUFFER_SIZE];
 	u8 				pathbuf[SC_MAX_PATH_SIZE], *path;
-	sc_context_t 	*ctx;
 	sc_apdu_t 		apdu;
 	sc_file_t 		*file;
 
-	r = pathlen = stripped_len = offset = 0;
+	stripped_len = 0;
 	path = pathbuf;
 	file = NULL;
 
 	assert(card != NULL && in_path != NULL);
-	ctx = card->ctx;
 
 	if (in_path->len > SC_MAX_PATH_SIZE)
 		return SC_ERROR_INVALID_ARGUMENTS;
