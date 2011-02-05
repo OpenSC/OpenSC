@@ -1071,6 +1071,12 @@ static int pcsc_wait_for_event(sc_context_t *ctx, unsigned int event_mask, sc_re
 #else
 	gpriv->pcsc_wait_ctx = gpriv->pcsc_ctx;
 #endif
+	if (!event_reader || !event)
+	{
+		r = SC_ERROR_INTERNAL;
+		goto out;
+	}
+
 	if (num_watch == 0) {
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "No readers available, PnP notification not supported");
 		*event_reader = NULL;
