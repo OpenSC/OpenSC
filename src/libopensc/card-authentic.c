@@ -908,6 +908,12 @@ authentic_read_binary(struct sc_card *card, unsigned int idx,
 		rest -= sz;
 	}
 
+	if (!apdus)
+	{
+		LOG_TEST_RET(ctx, SC_ERROR_INTERNAL, "authentic_read_binary() failed");
+		LOG_FUNC_RETURN(ctx, count);
+	}
+
 	rv = sc_transmit_apdu(card, apdus);
 	if (!rv)
 		rv = sc_check_sw(card, apdus->sw1, apdus->sw2);
@@ -953,6 +959,12 @@ authentic_write_binary(struct sc_card *card, unsigned int idx,
 		rest -= sz;
 	}
 
+	if (!apdus)
+	{
+		LOG_TEST_RET(ctx, SC_ERROR_INTERNAL, "authentic_write_binary() failed");
+		LOG_FUNC_RETURN(ctx, count);
+	}
+
 	rv = sc_transmit_apdu(card, apdus);
 	if (!rv)
 		rv = sc_check_sw(card, apdus->sw1, apdus->sw2);
@@ -994,6 +1006,12 @@ authentic_update_binary(struct sc_card *card, unsigned int idx,
 
 		idx += sz;
 		rest -= sz;
+	}
+
+	if (!apdus)
+	{
+		LOG_TEST_RET(ctx, SC_ERROR_INTERNAL, "authentic_update_binary() failed");
+		LOG_FUNC_RETURN(ctx, count);
 	}
 
 	rv = sc_transmit_apdu(card, apdus);
