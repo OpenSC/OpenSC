@@ -103,8 +103,6 @@ void sc_do_log_va(sc_context_t *ctx, int level, const char *file, int line, cons
 	r = vsnprintf(p, left, format, args);
 	if (r < 0)
 		return;
-	p += r;
-	left -= r;
 
 	outf = ctx->debug_file;
 	if (outf == NULL)
