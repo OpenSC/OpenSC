@@ -229,7 +229,7 @@ static int parse_EF_CardInfo(sc_pkcs15_card_t *p15card)
 	for (i=0; i<key_num; i++) {
 		u8   pinId, keyId, cert_count;
 		int  ch_cert, ca_cert, r1_cert, r2_cert = 0;
-		int  key_descr, pinType;
+		int  key_descr;
 		/* evaluate CertInfo2 */
 		cert_count = *p2++;
 		p2 += 2; /* ignore cert DF (it's always 1002) */
@@ -250,7 +250,6 @@ static int parse_EF_CardInfo(sc_pkcs15_card_t *p15card)
 		/* evaluate CertInfo1 */
 		key_descr = (p1[0] << 8) | p1[1];
 		p1 += 2;
-		pinType   = key_descr & TC_CARDOS_PIN_MASK;
 		/* create and add certificates */
 		if (ch_cert) {
 			r = create_cert_obj(p15card, ch_cert);
