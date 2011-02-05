@@ -617,7 +617,7 @@ int _sc_parse_atr(sc_reader_t *reader)
 	u8 *p = reader->atr.value;
 	int atr_len = (int) reader->atr.len;
 	int n_hist, x;
-	int tx[4];
+	int tx[4] = {-1, -1, -1, -1};
 	int i, FI, DI;
 	const int Fi_table[] = {
 		372, 372, 558, 744, 1116, 1488, 1860, -1,
