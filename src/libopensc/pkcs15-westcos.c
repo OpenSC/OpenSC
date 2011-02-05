@@ -244,7 +244,7 @@ static int westcos_detect_card(sc_pkcs15_card_t * p15card)
 {
 	sc_card_t *card = p15card->card;
 	sc_context_t *ctx = card->ctx;
-	char *name = "WESTCOS";
+	const char *name = "WESTCOS";
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
 		"westcos_detect_card (%s)", card->name);
 	if (strncmp(card->name, name, strlen(name)))
