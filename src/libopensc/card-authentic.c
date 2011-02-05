@@ -420,7 +420,6 @@ static int
 authentic_init_oberthur_authentic_3_2(struct sc_card *card)
 {
 	struct sc_context *ctx = card->ctx;
-	unsigned char resp[0x100];
 	unsigned int flags;
 	int rv = 0;
 
@@ -1038,9 +1037,6 @@ authentic_process_fci(struct sc_card *card, struct sc_file *file,
 	};
 	unsigned char ops_EF[8] = {
 		SC_AC_OP_READ, SC_AC_OP_DELETE, SC_AC_OP_UPDATE, SC_AC_OP_RESIZE, 0xFF, 0xFF, 0xFF, 0xFF
-	};
-	unsigned char acls_NEVER[8] = {
-		0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
 	};
 
 	LOG_FUNC_CALLED(ctx);
