@@ -56,7 +56,7 @@ int sc_hex_to_bin(const char *in, u8 *out, size_t *outlen)
 	while (*in != '\0') {
 		int byte = 0, nybbles = 2;
 
-		while (nybbles-- && *in && *in != ':') {
+		while (nybbles-- && *in && *in != ':' && *in != ' ') {
 			char c;
 			byte <<= 4;
 			c = *in++;
@@ -74,7 +74,7 @@ int sc_hex_to_bin(const char *in, u8 *out, size_t *outlen)
 			}
 			byte |= c;
 		}
-		if (*in == ':')
+		if (*in == ':' || *in == ' ')
 			in++;
 		if (left <= 0) {
                         err = SC_ERROR_BUFFER_TOO_SMALL;
