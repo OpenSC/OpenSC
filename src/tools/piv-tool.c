@@ -261,7 +261,7 @@ static int gen_key(const char * key_info)
 	unsigned long expl;
 	u8 expc[4];
 #if OPENSSL_VERSION_NUMBER >= 0x00908000L && !defined(OPENSSL_NO_EC)
-	int nid;
+	int nid = -1;
 #endif	
 	sc_hex_to_bin(key_info, buf, &buflen);
 	if (buflen != 2) {
@@ -344,8 +344,8 @@ static int gen_key(const char * key_info)
 	
 		/* PIV returns 04||x||y  and x and y are the same size */
 		i = (keydata.ecpoint_len - 1)/2;
-		x = BN_bin2bn(keydata.ecpoint + 1, i, x);
-		y = BN_bin2bn(keydata.ecpoint + 1 + i, i, y) ;
+		x = BN_bin2bn(keydata.ecpoint + 1, i, NULL);
+		y = BN_bin2bn(keydata.ecpoint + 1 + i, i, NULL) ;
 		r = EC_POINT_set_affine_coordinates_GFp(ecgroup, ecpoint, x, y, NULL);
 		eckey = EC_KEY_new();
 		r = EC_KEY_set_group(eckey, ecgroup);
