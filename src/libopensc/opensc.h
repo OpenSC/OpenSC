@@ -388,6 +388,8 @@ struct sc_reader_operations {
 			int timeout, void **reader_states);
 	/* Reset a reader */
 	int (*reset)(struct sc_reader *, int);
+	/* used to pass in reader handles in cardmod mode */
+	int (*use_reader)(struct sc_context *ctx, void * pcsc_context_handle, void * pcsc_card_handle);
 };
 
 /*
@@ -725,6 +727,17 @@ int sc_ctx_detect_readers(sc_context_t *ctx);
  *         not available
  */
 sc_reader_t *sc_ctx_get_reader(sc_context_t *ctx, unsigned int i);
+
+/**
+ * Pass in pointers to handles to be used for the pcsc reader.
+ * This is used by cardmod to pass in handles provided by BaseCSP
+ *
+ * @param  ctx   pointer to a sc_context_t
+ * @param  pcsc_context_handle pointer to the  new context_handle to use
+ * @param  pcsc_card_handle pointer to the new card_handle to use 
+ * @return SC_SUCCESS on success and an error code otherwise.
+ */
+int sc_ctx_use_reader(sc_context_t *ctx, void * pcsc_context_handle, void * pcsc_card_handle);
 
 /** 
  * Returns a pointer to the specified sc_reader_t object

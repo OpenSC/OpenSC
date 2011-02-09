@@ -1535,6 +1535,7 @@ struct sc_reader_driver * sc_get_pcsc_driver(void)
 	pcsc_ops.wait_for_event = pcsc_wait_for_event;
 	pcsc_ops.cancel = pcsc_cancel;
 	pcsc_ops.reset = pcsc_reset;
+	pcsc_ops.use_reader = NULL;
 
 	return &pcsc_drv;
 }
@@ -1926,6 +1927,7 @@ struct sc_reader_driver * sc_get_cardmod_driver(void)
 	/* cardmod_ops.perform_verify = ; */
 	cardmod_ops.wait_for_event = NULL; 
 	cardmod_ops.reset = NULL; 
+	cardmod_ops.use_reader = NULL; /* TODO Replace with entry point with major changes to cardmod */
 
 	return &cardmod_drv;
 }

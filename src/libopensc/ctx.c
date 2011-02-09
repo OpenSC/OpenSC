@@ -677,6 +677,16 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 	return SC_SUCCESS;
 }
 
+/* use by cardmod to pass in provided handles to reader-pcsc */
+int sc_ctx_use_reader(sc_context_t *ctx, void * pcsc_context_handle, void * pcsc_card_handle)
+{
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
+	if (ctx->reader_driver->ops->use_reader != NULL)
+		return ctx->reader_driver->ops->use_reader(ctx, pcsc_context_handle, pcsc_card_handle);
+
+	return SC_ERROR_NOT_SUPPORTED;
+}
+
 /* Following two are only implemented with internal PC/SC and don't consume a reader object */
 int sc_cancel(sc_context_t *ctx)
 {
