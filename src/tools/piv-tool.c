@@ -480,7 +480,8 @@ int main(int argc, char * const argv[])
 	const char *object_id = NULL;
 	const char *key_info = NULL;
 	const char *admin_info = NULL;
-		
+	sc_context_param_t ctx_param;
+
 	setbuf(stderr, NULL);
 	setbuf(stdout, NULL);
 
@@ -566,8 +567,11 @@ int main(int argc, char * const argv[])
 		BIO_set_fp(bp,stdout,BIO_NOCLOSE);
 	}
 
-	r = sc_establish_context(&ctx, app_name);
-	if (r) {
+	memset(&ctx_param, 0, sizeof(sc_context_param_t));
+	ctx_param.app_name = app_name;
+
+	r = sc_context_create(&ctx, &ctx_param);
+	if (r != SC_SUCCESS) {
 		fprintf(stderr, "Failed to establish context: %s\n", sc_strerror(r));
 		return 1;
 	}
