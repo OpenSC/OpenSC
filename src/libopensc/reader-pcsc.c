@@ -1666,7 +1666,7 @@ static int cardmod_finish(sc_context_t *ctx)
 	return SC_SUCCESS;
 }
 
-static int cardmod_detect_readers(sc_context_t *ctx)
+int cardmod_use_reader(sc_context_t *ctx, void * pcsc_context_handle, void * pcsc_card_handle)
 {
 	SCARDHANDLE card_handle;
 	u8 feature_buf[256], rbuf[SC_MAX_APDU_BUFFER_SIZE];
@@ -1688,39 +1688,17 @@ static int cardmod_detect_readers(sc_context_t *ctx)
 		goto out;
 	}
 
+	/* if we already had a reader, delete it */
+	if (sc_ctx_get_reader_count(ctx) > 0) {
+		sc_reader_t *oldrdr = list_extract_at(&ctx->readers, 0);
+		if (oldrdr) 
+			_sc_delete_reader(ctx, oldrdr);
+	}
+
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Probing pcsc readers");
 
-	if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, "SOFTWARE\\OpenSC Project\\Opensc",\
-		NULL, KEY_READ, &key)==ERROR_SUCCESS)
-	{
-		CHAR val[1024]; 
-		DWORD type;
-		LONG size = sizeof(val);
-
-		if(RegQueryValueEx(key,"pcsc_ctx", NULL, &type, 
-			val, &size) == ERROR_SUCCESS)
-		{
-			if(type == REG_DWORD)
-			{
-				gpriv->pcsc_ctx = *(DWORD*)val;
-			}
-		}
-
-		if(RegQueryValueEx(key,"pcsc_card", NULL, &type, 
-			val, &size) == ERROR_SUCCESS)
-		{
-			if(type == REG_DWORD)
-			{
-				card_handle = *(DWORD*)val;
-			}
-		}
-		
-		RegCloseKey(key);
-	}
-	else
-	{
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Unable to open registry key Opensc");
-	}
+	gpriv->pcsc_ctx = *(SCARDCONTEXT *)pcsc_context_handle;
+	card_handle =  *(SCARDHANDLE *)pcsc_card_handle;
 
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "gpriv->pcsc_ctx = %X, card_handle = %X", gpriv->pcsc_ctx, card_handle);
 	
@@ -1743,7 +1721,7 @@ static int cardmod_detect_readers(sc_context_t *ctx)
 			ret = SC_ERROR_OUT_OF_MEMORY;
 			goto err1;
 		}
-		if ((priv = malloc(sizeof(struct pcsc_private_data))) == NULL) {
+		if ((priv = calloc(1, sizeof(struct pcsc_private_data))) == NULL) {
 			ret = SC_ERROR_OUT_OF_MEMORY;
 			goto err1;
 		}
@@ -1907,6 +1885,14 @@ out:
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, ret);
 }
 
+static int cardmod_release(sc_reader_t *reader)
+{
+	struct pcsc_private_data *priv = GET_PRIV_DATA(reader);
+
+	free(priv);
+	return SC_SUCCESS;
+}
+
 struct sc_reader_driver * sc_get_cardmod_driver(void)
 {
 
@@ -1916,18 +1902,17 @@ struct sc_reader_driver * sc_get_cardmod_driver(void)
 	
 	cardmod_ops.init = cardmod_init;
 	cardmod_ops.finish = cardmod_finish;
-	cardmod_ops.detect_readers = cardmod_detect_readers;
+	cardmod_ops.detect_readers = NULL;
 	/* cardmod_ops.transmit = ; */
-	cardmod_ops.detect_card_presence = NULL; 
 	cardmod_ops.lock = NULL;
 	cardmod_ops.unlock = NULL;
-	cardmod_ops.release = NULL; 
+	cardmod_ops.release = cardmod_release;
 	cardmod_ops.connect = cardmod_connect;
 	cardmod_ops.disconnect = cardmod_disconnect;
 	/* cardmod_ops.perform_verify = ; */
 	cardmod_ops.wait_for_event = NULL; 
 	cardmod_ops.reset = NULL; 
-	cardmod_ops.use_reader = NULL; /* TODO Replace with entry point with major changes to cardmod */
+	cardmod_ops.use_reader = cardmod_use_reader;
 
 	return &cardmod_drv;
 }
