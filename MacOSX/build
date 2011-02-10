@@ -51,11 +51,6 @@ fi
 # compile
 make -j 2
 
-if !(test -e /Library/OpenSC/lib/libopensc.dylib && (file /Library/OpenSC/lib/libopensc.dylib | grep $required_arch)); then
-	echo "Installing OpenSC to support building OpenSC.tokend. Remove with opensc-uninstall after .dmg has been created"
-	sudo make install
-fi
-
 # copy files
 rm -rf target
 make install DESTDIR=${BUILDPATH}/target
