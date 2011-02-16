@@ -987,16 +987,8 @@ iasecc_sdo_encode_rsa_update(struct sc_context *ctx, struct iasecc_sdo *sdo,
 	memset(sdo_update, 0, sizeof(*sdo_update));
 	if (sdo->sdo_class == IASECC_SDO_CLASS_RSA_PRIVATE)   {
 		sc_log(ctx, "iasecc_sdo_encode_rsa_update(IASECC_SDO_CLASS_RSA_PRIVATE)");
-		if (!rsa->p.len || !rsa->q.len || !rsa->iqmp.len || !rsa->dmp1.len || !rsa->dmq1.len)   {
-#if 0
-			if (!rsa->encrypted_key.value || !rsa->encrypted_key.len)
-				LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "need all private RSA key components");
-
-			LOG_FUNC_RETURN(ctx, SC_SUCCESS);
-#else
+		if (!rsa->p.len || !rsa->q.len || !rsa->iqmp.len || !rsa->dmp1.len || !rsa->dmq1.len) 
 			LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "need all private RSA key components");
-#endif
-		}
 
 		sdo_update->magic = SC_CARDCTL_IASECC_SDO_MAGIC_PUT_DATA;
 		sdo_update->sdo_ref = sdo->sdo_ref;
@@ -1028,7 +1020,7 @@ iasecc_sdo_encode_rsa_update(struct sc_context *ctx, struct iasecc_sdo *sdo,
 		sdo_update->fields[4].value = rsa->dmq1.data;
 		sdo_update->fields[4].size = rsa->dmq1.len;
 
-		// TODO: Activated for Oberthur -- check for others
+		/* FIXME: Activated for Oberthur -- check for others */
 		sc_log(ctx, "prv_key.compulsory.on_card %i", sdo->data.prv_key.compulsory.on_card);
 		if (!sdo->data.prv_key.compulsory.on_card)   {
 			if (sdo->data.prv_key.compulsory.value)   {
@@ -1104,7 +1096,7 @@ iasecc_sdo_parse_card_answer(struct sc_context *ctx, unsigned char *data, size_t
 	struct iasecc_sm_card_answer *out)
 {
 	int offs, have_mac = 0, have_status = 0;
-	size_t size,  size_size;
+	size_t size = 0,  size_size;
 
 	LOG_FUNC_CALLED(ctx);
 	if (!data || !data_len || !out)

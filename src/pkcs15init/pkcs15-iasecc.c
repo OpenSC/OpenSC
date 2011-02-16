@@ -63,7 +63,7 @@ iasecc_reference_to_pkcs15_id (unsigned int ref, struct sc_pkcs15_id *id)
 {
 	int ii, sz;
 
-	for (ii=0, sz = 0; ii<sizeof(unsigned int); ii++)
+	for (ii=0, sz = 0; (unsigned)ii < sizeof(unsigned int); ii++)
 		if (ref >> 8*ii)
 			sz++;
 
@@ -306,7 +306,6 @@ iasecc_sdo_get_data(struct sc_card *card, struct iasecc_sdo *sdo)
 static int
 iasecc_file_convert_acls(struct sc_context *ctx, struct sc_profile *profile, struct sc_file *file)
 {
-/*	struct pin_info *pi = NULL, **tail = NULL; */
 	int ii;
 
 	for (ii=0; ii<SC_MAX_AC_OPS;ii++)   {
@@ -315,28 +314,7 @@ iasecc_file_convert_acls(struct sc_context *ctx, struct sc_profile *profile, str
 		if (acl)   {
 			switch (acl->method)   {				
 			case SC_AC_IDA:
-#if 0
-				for (tail = &profile->pin_list; (pi = *tail); tail = &pi->next) {
-					if (pi->pin.reference == acl->key_ref && pi->pin.sen_reference)   {
-						acl->method = SC_AC_SEN;
-						acl->key_ref = pi->pin.sen_reference;
-						break;
-					}
-					if (pi->pin.reference == acl->key_ref && pi->pin.chv_reference)   {
-						acl->method = SC_AC_CHV;
-						acl->key_ref = pi->pin.chv_reference;
-						break;
-					}
-				}
-
-				if (!pi)   {
-					sc_log(ctx, "convert ACLs error: no PIN found for SC_AC_IDA(ref:%X)", acl->key_ref);
-					LOG_TEST_RET(ctx, SC_ERROR_INCONSISTENT_PROFILE, "Cannot convert ACL(s)");
-				}
-				break;
-#else
 				LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "'IDA' not actually supported");
-#endif
 			case SC_AC_SCB:
 				if ((acl->key_ref & IASECC_SCB_METHOD_MASK) == IASECC_SCB_METHOD_USER_AUTH)   {
 					acl->method = SC_AC_SEN;
@@ -461,8 +439,7 @@ iasecc_sdo_allocate_prvkey(struct sc_profile *profile, struct sc_card *card,
 		rv = iasecc_sdo_set_key_acls_from_profile(profile, card, "private-key", sdo);
 		LOG_TEST_RET(ctx, rv, "IasEcc: cannot set ACLs for SDO from the 'private-key'");
 
-		//sdo->docp.name = 
-		//sdo->docp.idata = 
+		/* FIXME: set here sdo->docp.name and sdo->docp.idata */
 
 		sdo->docp.non_repudiation.value = calloc(1, 1);
 		if (!sdo->docp.non_repudiation.value)
@@ -483,11 +460,12 @@ iasecc_sdo_allocate_prvkey(struct sc_profile *profile, struct sc_card *card,
 		sdo->docp.size.size = 2;
 		*(sdo->docp.size.value + 0) = (sz >> 8) & 0xFF;
 		*(sdo->docp.size.value + 1) = sz & 0xFF;
-
-		// TODO: Manage CRT key types: IASECC_GEN_KEY_TYPE_*: X509_usage
-		// Optional PRIVATE KEY SDO attribute 'Algorithm to compulsorily use' can have one of the three values:
-		// B6(Sign), A4(Authentication), B8(Confidentiality).
-		// If present, this attribute has to be the same in a 'GENERATE KEY' template data.
+/* 
+  		FIXME: Manage CRT key types: IASECC_GEN_KEY_TYPE_*: X509_usage
+		Optional PRIVATE KEY SDO attribute 'Algorithm to compulsorily use' can have one of the three values:
+		B6(Sign), A4(Authentication), B8(Confidentiality).
+		If present, this attribute has to be the same in the 'GENERATE KEY' template data.
+*/
 		if (!(key_info->access_flags & SC_PKCS15_PRKEY_ACCESS_LOCAL) && (key_info->usage & SC_PKCS15_PRKEY_USAGE_NONREPUDIATION))
 			sc_log(ctx, "Non fatal error: NON_REPUDATION can be used only for the localy generated keys");
 
@@ -1331,7 +1309,8 @@ iasecc_store_cert(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 }
 
 
-#if 0
+/*
+ * FIXME: Implement 'store data object'
 static int 
 iasecc_store_opaqueDO(struct sc_pkcs15_card *p15card, struct sc_profile *profile, 
 		struct sc_pkcs15_object *object, struct sc_pkcs15_id *id, 
@@ -1447,7 +1426,7 @@ iasecc_store_opaqueDO(struct sc_pkcs15_card *p15card, struct sc_profile *profile
 
 	LOG_FUNC_RETURN(ctx, rv);
 }
-#endif
+*/
 
 
 static int 
@@ -1468,11 +1447,11 @@ iasecc_emu_store_data(struct sc_pkcs15_card *p15card, struct sc_profile *profile
 	case SC_PKCS15_TYPE_CERT:
 		rv = iasecc_store_cert(p15card, profile, object, data, path);
 		break;
-#if 0
+/*
 	case SC_PKCS15_TYPE_DATA_OBJECT:
 		rv = iasecc_store_opaqueDO(p15card, profile, object, id, data, path);
 		break;
-#endif
+*/
 	}
 		
 	LOG_FUNC_RETURN(ctx, rv);
@@ -1510,11 +1489,13 @@ sc_pkcs15init_iasecc_operations = {
 	iasecc_emu_update_tokeninfo,
 	NULL,
 	iasecc_emu_store_data,
-#if 0
-	iasecc_pkcs15init_select_id,		/* ext_select_id */
+
+	NULL, 					/* sanity_check */
+/*
+	iasecc_pkcs15init_select_id,
 	iasecc_pkcs15init_set_pin,
 	iasecc_pkcs15init_erase_application
-#endif
+*/
 };
 
 

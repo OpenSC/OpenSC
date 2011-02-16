@@ -566,9 +566,10 @@ iasecc_read_binary(struct sc_card *card, unsigned int offs,
 	LOG_TEST_RET(ctx, rv, "APDU transmit failed");
 	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(ctx, rv, "iasecc_read_binary() failed");
-	//if (apdu.resplen == 0)
-	//	SC_FUNC_RETURN(ctx, 2, sc_check_sw(card, apdu.sw1, apdu.sw2));
-
+/*	
+	if (apdu.resplen == 0)
+		SC_FUNC_RETURN(ctx, 2, sc_check_sw(card, apdu.sw1, apdu.sw2));
+*/
 	sc_log(ctx, "iasecc_read_binary() apdu.resplen %i", apdu.resplen);
 
 	if (apdu.resplen == IASECC_READ_BINARY_LENGTH_MAX && apdu.resplen < count)   {
@@ -880,10 +881,11 @@ iasecc_process_fci(struct sc_card *card, struct sc_file *file,
 
 	rv = iso_ops->process_fci(card, file, buf, buflen);
 	LOG_TEST_RET(ctx, rv, "ISO parse FCI failed");
-
-	// Gemalto:  6F 19 80 02 02 ED 82 01 01 83 02 B0 01 88 00	8C 07 7B 17 17 17 17 17 00 8A 01 05 90 00
-	// Sagem:    6F 17 62 15 80 02 00 7D 82 01 01                   8C 02 01 00 83 02 2F 00 88 01 F0 8A 01 05 90 00
-	// Oberthur: 62 1B 80 02 05 DC 82 01 01 83 02 B0 01 88 00 A1 09 8C 07 7B 17 FF 17 17 17 00 8A 01 05 90 00
+/*
+	Gemalto:  6F 19 80 02 02 ED 82 01 01 83 02 B0 01 88 00	8C 07 7B 17 17 17 17 17 00 8A 01 05 90 00
+	Sagem:    6F 17 62 15 80 02 00 7D 82 01 01                   8C 02 01 00 83 02 2F 00 88 01 F0 8A 01 05 90 00
+	Oberthur: 62 1B 80 02 05 DC 82 01 01 83 02 B0 01 88 00 A1 09 8C 07 7B 17 FF 17 17 17 00 8A 01 05 90 00
+*/
 
 	sc_log(ctx, "iasecc_process_fci() type %i; let's parse file ACLs", file->type);
 	tag = sc_asn1_find_tag(ctx, buf, buflen, IASECC_DOCP_TAG_ACLS, &taglen);
@@ -1193,34 +1195,6 @@ iasecc_check_sw(struct sc_card *card, unsigned int sw1, unsigned int sw2)
 }
 
 
-#if 0
-const struct sc_supported_algo_info *
-iasecc_get_algorithm(struct sc_context *ctx, const struct sc_security_env *env,
-		unsigned operation, unsigned mechanism)
-{
-    const struct sc_supported_algo_info *info = NULL;
-    int ii;
-    
-    if (!env)
-        return NULL;
-
-    for (ii=0;ii<SC_MAX_SUPPORTED_ALGORITHMS && env->supported_algos[ii].reference; ii++)
-        if ((env->supported_algos[ii].operations & operation) 
-			&& (env->supported_algos[ii].mechanism == mechanism))
-            break;
-
-    if (ii < SC_MAX_SUPPORTED_ALGORITHMS && env->supported_algos[ii].reference)   {
-        info = &env->supported_algos[ii];
-        sc_log(ctx, "found IAS/ECC algorithm %X:%X:%X:%X",
-		       	info->reference, info->mechanism, info->operations, info->algo_ref); 
-    }
-    else   {
-        sc_log(ctx, "cannot find IAS/ECC algorithm (operation:%X,mechanism:%X)", operation, mechanism);
-    }
-    
-    return info;
-}
-#else
 static unsigned
 iasecc_get_algorithm(struct sc_context *ctx, const struct sc_security_env *env,
 		unsigned operation, unsigned mechanism)
@@ -1247,7 +1221,6 @@ iasecc_get_algorithm(struct sc_context *ctx, const struct sc_security_env *env,
     
     return info ? info->algo_ref : 0;
 }
-#endif
 
 
 static int
@@ -1382,7 +1355,6 @@ iasecc_set_security_env(struct sc_card *card,
 	struct sc_context *ctx = card->ctx;
 	struct iasecc_sdo sdo;
 	struct iasecc_private_data *prv = (struct iasecc_private_data *) card->drv_data;
-	//const struct sc_supported_algo_info *algo_info = NULL;
 	unsigned algo_ref;
 	struct sc_apdu apdu;
 	unsigned sign_meth, sign_ref, auth_meth, auth_ref, aflags;
@@ -2045,11 +2017,9 @@ iasecc_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_
 		ignore_ext_auth = ((scb & IASECC_SCB_METHOD_EXT_AUTH) && !need_all && (scb & IASECC_SCB_METHOD_SM));
 #endif
 		if (scb & IASECC_SCB_METHOD_USER_AUTH)   {
-			int puk_tries_left;
-
 			sc_log(ctx, "Try to verify PUK code: pin1.data:%p, pin1.len:%i", data->pin1.data, data->pin1.len);
 			rv = iasecc_pin_verify(card, SC_AC_SEN, scb & IASECC_SCB_METHOD_MASK_REF, 
-						data->pin1.data, data->pin1.len, &puk_tries_left);
+						data->pin1.data, data->pin1.len, tries_left);
 			sc_log(ctx, "Verify PUK code returned %i", rv);
 			LOG_TEST_RET(ctx, rv, "iasecc_pin_reset() PIN verification error");
 
@@ -2192,7 +2162,6 @@ iasecc_get_serialnr(struct sc_card *card, struct sc_serial_number *serial)
 	unsigned char rbuf[0xC0];
 	size_t ii, offs;
 	int rv;
-	int  coucou;
 
 	LOG_FUNC_CALLED(ctx);
 	if (card->serialnr.len) 
@@ -2853,7 +2822,10 @@ iasecc_compute_signature(struct sc_card *card,
 	LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 }
 
-#if 0
+/* 
+ * FIXME: Should we implement 'read-public-key' facility, or assume that public key will be always present as
+ * 'direct' PKCS#15 ObjectValue ?
+
 static int
 iasecc_read_public_key(struct sc_card *card, unsigned type, void *data,
 			unsigned char **out, size_t *out_len)
@@ -2915,7 +2887,7 @@ iasecc_read_public_key(struct sc_card *card, unsigned type, void *data,
 
 	SC_FUNC_RETURN(ctx, 1, rv);
 }
-#endif
+*/
 
 static int 
 iasecc_get_free_reference(struct sc_card *card, struct iasecc_ctl_get_free_reference *ctl_data) 
@@ -3032,36 +3004,35 @@ sc_get_driver(void)
 	iasecc_ops.init = iasecc_init;
 	iasecc_ops.finish = iasecc_finish;
 	iasecc_ops.read_binary = iasecc_read_binary;
-	// write_binary: ISO7816 implementation works
-	// update_binary: ISO7816 implementation works
+	/*	write_binary: ISO7816 implementation works	*/
+	/*	update_binary: ISO7816 implementation works	*/
 	iasecc_ops.erase_binary = iasecc_erase_binary;
-	// resize_binary
-	// read_record: Untested
-	// write_record: Untested
-	// append_record: Untested
-	// update_record: Untested
+	/*	resize_binary	*/
+	/* 	read_record: Untested	*/
+	/*	write_record: Untested	*/
+	/*	append_record: Untested	*/
+	/*	update_record: Untested	*/
 	iasecc_ops.select_file = iasecc_select_file;
-	// get_response: Untested
-	// get_challenge: ISO7816 implementation works
+	/*	get_response: Untested	*/
+	/*	get_challenge: ISO7816 implementation works	*/
 	iasecc_ops.logout = iasecc_logout;
-	// restore_security_env
+	/*	restore_security_env	*/
 	iasecc_ops.set_security_env = iasecc_set_security_env;
-	// decipher: Untested
 	iasecc_ops.decipher = iasecc_decipher;
 	iasecc_ops.compute_signature = iasecc_compute_signature;
 	iasecc_ops.create_file = iasecc_create_file;
 	iasecc_ops.delete_file = iasecc_delete_file;
-	// list_files
+	/*	list_files	*/
 	iasecc_ops.check_sw = iasecc_check_sw;
 	iasecc_ops.card_ctl = iasecc_card_ctl;
 	iasecc_ops.process_fci = iasecc_process_fci;
-	// construct_fci: Not needed
+	/*	construct_fci: Not needed	*/
 	iasecc_ops.pin_cmd = iasecc_pin_cmd;
-	// get_data: 
-	// put_data: Not implemented
-	// delete_record: Not implemented
+	/*	get_data: Not implemented	*/
+	/*	put_data: Not implemented	*/
+	/*	delete_record: Not implemented	*/
 
-	// iasecc_ops.read_public_key = iasecc_read_public_key;
+	/* iasecc_ops.read_public_key = iasecc_read_public_key	*/
 
 	return &iasecc_drv;
 }
