@@ -807,7 +807,7 @@ static int piv_read_obj_from_file(sc_card_t * card, char * filename,
 	int r;
 	int f = -1;
 	size_t len;
-	ssize_t res;
+	int res;
 	u8 tagbuf[16];
 	size_t rbuflen;
 	const u8 * body;
