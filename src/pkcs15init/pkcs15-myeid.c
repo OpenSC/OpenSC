@@ -177,6 +177,8 @@ myeid_init_card(sc_profile_t *profile,
 	sc_format_path("3F00", &path);
 	r = sc_select_file(p15card->card, &path, &file);
 
+	p15card->tokeninfo->flags = SC_PKCS15_TOKEN_PRN_GENERATION | SC_PKCS15_TOKEN_EID_COMPLIANT;
+
 	if (file)
 		sc_file_free(file);
 		
