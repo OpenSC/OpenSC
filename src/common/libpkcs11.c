@@ -10,15 +10,17 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <ltdl.h>
 
-#include "sc-pkcs11.h"
+#include "pkcs11/pkcs11.h"
+
+#include "common/libscdl.h"
+#include "common/libpkcs11.h"
 
 #define MAGIC			0xd00bed00
 
 struct sc_pkcs11_module {
 	unsigned int _magic;
-	lt_dlhandle handle;
+	void *handle;
 };
 typedef struct sc_pkcs11_module sc_pkcs11_module_t;
 
@@ -31,23 +33,23 @@ C_LoadModule(const char *mspec, CK_FUNCTION_LIST_PTR_PTR funcs)
 {
 	sc_pkcs11_module_t *mod;
 	CK_RV rv, (*c_get_function_list)(CK_FUNCTION_LIST_PTR_PTR);
-
+#ifdef HAVE_LTDL_H
 	lt_dlinit();
-
+#endif
 	mod = calloc(1, sizeof(*mod));
 	mod->_magic = MAGIC;
 
 	if (mspec == NULL)
-		mspec = PKCS11_DEFAULT_MODULE_NAME;
-	mod->handle = lt_dlopen(mspec);
+		return NULL;
+	mod->handle = sc_dlopen(mspec);
 	if (mod->handle == NULL) {
-		fprintf(stderr, "lt_dlopen failed: %s\n", lt_dlerror());
+		fprintf(stderr, "sc_dlopen failed: %s\n", sc_dlerror());
 		goto failed;
 	}
 
 	/* Get the list of function pointers */
 	c_get_function_list = (CK_RV (*)(CK_FUNCTION_LIST_PTR_PTR))
-				lt_dlsym(mod->handle, "C_GetFunctionList");
+				sc_dlsym(mod->handle, "C_GetFunctionList");
 	if (!c_get_function_list)
 		goto failed;
 	rv = c_get_function_list(funcs);
@@ -73,7 +75,7 @@ C_UnloadModule(void *module)
 	if (!mod || mod->_magic != MAGIC)
 		return CKR_ARGUMENTS_BAD;
 
-	if (lt_dlclose(mod->handle) < 0)
+	if (sc_dlclose(mod->handle) < 0)
 		return CKR_FUNCTION_FAILED;
 
 	memset(mod, 0, sizeof(*mod));

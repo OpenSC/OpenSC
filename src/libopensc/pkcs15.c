@@ -26,7 +26,6 @@
 #include <string.h>
 #include <stdio.h>
 #include <assert.h>
-#include <ltdl.h>
 
 #include "internal.h"
 #include "pkcs15.h"
@@ -975,7 +974,7 @@ int sc_pkcs15_unbind(struct sc_pkcs15_card *p15card)
 	assert(p15card != NULL && p15card->magic == SC_PKCS15_CARD_MAGIC);
 	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
 	if (p15card->dll_handle)
-		lt_dlclose(p15card->dll_handle);
+		sc_dlclose(p15card->dll_handle);
 	sc_pkcs15_pincache_clear(p15card);
 	sc_pkcs15_card_free(p15card);
 	return 0;

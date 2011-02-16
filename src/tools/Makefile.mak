@@ -17,6 +17,6 @@ all: $(TARGETS)
 	cl $(COPTS) /c $<
 	link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj util.obj \
         ..\common\common.lib ..\scconf\scconf.lib ..\libopensc\opensc.lib \
-        ..\pkcs15init\pkcs15init.lib ..\pkcs11\libpkcs11.lib \
-        $(TOPDIR)\win32\versioninfo.res $(OPENSSL_LIB) $(LIBLTDL) gdi32.lib
+        ..\pkcs15init\pkcs15init.lib ..\common\libpkcs11.lib \
+        $(TOPDIR)\win32\versioninfo.res $(OPENSSL_LIB) gdi32.lib
 		if EXIST $@.manifest mt -manifest $@.manifest -outputresource:$@;1

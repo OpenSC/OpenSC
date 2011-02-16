@@ -25,7 +25,6 @@
 #include <string.h>
 #include <stdio.h>
 #include <assert.h>
-#include <ltdl.h>
 
 #include "internal.h"
 #include "asn1.h"
@@ -209,7 +208,7 @@ static int parse_emu_block(sc_pkcs15_card_t *p15card, scconf_block *conf)
 	sc_card_t	*card = p15card->card;
 	sc_context_t	*ctx = card->ctx;
 	sc_pkcs15emu_opt_t opts;
-	lt_dlhandle	handle = NULL;
+	void *handle = NULL;
 	int		(*init_func)(sc_pkcs15_card_t *);
 	int		(*init_func_ex)(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
 	int		r, force = 0;
@@ -246,14 +245,14 @@ static int parse_emu_block(sc_pkcs15_card_t *p15card, scconf_block *conf)
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Loading %s\n", module_name);
 		
 		/* try to open dynamic library */
-		handle = lt_dlopen(module_name);
+		handle = sc_dlopen(module_name);
 		if (!handle) {
 			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "unable to open dynamic library '%s': %s\n",
-			         module_name, lt_dlerror());
+			         module_name, sc_dlerror());
 			return SC_ERROR_INTERNAL;
 		}
 		/* try to get version of the driver/api */
-		get_version =  (const char *(*)(void)) lt_dlsym(handle, "sc_driver_version");
+		get_version =  (const char *(*)(void)) sc_dlsym(handle, "sc_driver_version");
 		if (!get_version || strcmp(get_version(), "0.9.3") < 0) {
 			/* no sc_driver_version function => assume old style
 			 * init function (note: this should later give an error
@@ -261,13 +260,13 @@ static int parse_emu_block(sc_pkcs15_card_t *p15card, scconf_block *conf)
 			/* get the init function name */
 			name = scconf_get_str(conf, "function", func_name);
 
-			address = lt_dlsym(handle, name);
+			address = sc_dlsym(handle, name);
 			if (address)
 				init_func = (int (*)(sc_pkcs15_card_t *)) address;
 		} else {
 			name = scconf_get_str(conf, "function", exfunc_name);
 
-			address = lt_dlsym(handle, name);
+			address = sc_dlsym(handle, name);
 			if (address)
 				init_func_ex = (int (*)(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *)) address;
 		}
@@ -290,7 +289,7 @@ static int parse_emu_block(sc_pkcs15_card_t *p15card, scconf_block *conf)
 		/* clear pkcs15 card */
 		sc_pkcs15_card_clear(p15card);
 		if (handle)
-			lt_dlclose(handle);
+			sc_dlclose(handle);
 	}
 
 	return r;

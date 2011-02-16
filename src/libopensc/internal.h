@@ -36,6 +36,7 @@ extern "C" {
 #endif
 
 #include "common/simclist.h"
+#include "common/libscdl.h"
 #include "libopensc/opensc.h"
 #include "libopensc/log.h"
 #include "libopensc/cards.h"

@@ -25,7 +25,7 @@ pkcs15_tool_SOURCES = pkcs15-tool.c util.c
 pkcs15_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
 pkcs11_tool_SOURCES = pkcs11-tool.c util.c
 pkcs11_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS) $(LTLIB_LIBS) \
-	$(top_builddir)/src/pkcs11/libpkcs11.la
+	$(top_builddir)/src/common/libpkcs11.la
 pkcs15_crypt_SOURCES = pkcs15-crypt.c util.c
 pkcs15_crypt_LDADD = $(OPTIONAL_OPENSSL_LIBS)
 cryptoflex_tool_SOURCES = cryptoflex-tool.c util.c

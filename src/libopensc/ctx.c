@@ -27,7 +27,6 @@
 #include <errno.h>
 #include <sys/stat.h>
 #include <limits.h>
-#include <ltdl.h>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -291,7 +290,7 @@ static const char *find_library(sc_context_t *ctx, const char *name)
 static void *load_dynamic_driver(sc_context_t *ctx, void **dll, const char *name)
 {
 	const char *version, *libname;
-	lt_dlhandle handle;
+	void *handle;
 	void *(*modinit)(const char *) = NULL;
 	void *(**tmodi)(const char *) = &modinit;
 	const char *(*modversion)(void) = NULL;
@@ -304,18 +303,18 @@ static void *load_dynamic_driver(sc_context_t *ctx, void **dll, const char *name
 	libname = find_library(ctx, name);
 	if (libname == NULL)
 		return NULL;
-	handle = lt_dlopen(libname);
+	handle = sc_dlopen(libname);
 	if (handle == NULL) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Module %s: cannot load %s library: %s", name, libname, lt_dlerror());
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Module %s: cannot load %s library: %s", name, libname, sc_dlerror());
 		return NULL;
 	}
 
 	/* verify correctness of module */
-	*(void **)tmodi = lt_dlsym(handle, "sc_module_init");
-	*(void **)tmodv = lt_dlsym(handle, "sc_driver_version");
+	*(void **)tmodi = sc_dlsym(handle, "sc_module_init");
+	*(void **)tmodv = sc_dlsym(handle, "sc_driver_version");
 	if (modinit == NULL || modversion == NULL) {
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "dynamic library '%s' is not a OpenSC module",libname);
-		lt_dlclose(handle);
+		sc_dlclose(handle);
 		return NULL;
 	}
 	/* verify module version */
@@ -323,7 +322,7 @@ static void *load_dynamic_driver(sc_context_t *ctx, void **dll, const char *name
 	/* XXX: We really need to have ABI version for each interface */
 	if (version == NULL || strncmp(version, PACKAGE_VERSION, strlen(PACKAGE_VERSION)) != 0) {
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL,"dynamic library '%s': invalid module version",libname);
-		lt_dlclose(handle);
+		sc_dlclose(handle);
 		return NULL;
 	}
 	*dll = handle;
@@ -642,12 +641,14 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "==================================="); /* first thing in the log */
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "opensc version: %s", sc_get_version());
 
-	/* initialize ltdl */
+#ifdef HAVE_LIBLTL_H
+	/* initialize ltdl, if available. See scdl.c for more information */
 	if (lt_dlinit() != 0) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "lt_dlinit failed");
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "lt_dlinit() failed");
 		sc_release_context(ctx);
-		return SC_ERROR_OUT_OF_MEMORY;
+		return SC_ERROR_INTERNAL;
 	}
+#endif
 
 #ifdef ENABLE_PCSC
 	ctx->reader_driver = sc_get_pcsc_driver();
@@ -729,7 +730,7 @@ int sc_release_context(sc_context_t *ctx)
 		if (drv->atr_map)
 			_sc_free_atr(ctx, drv);
 		if (drv->dll)
-			lt_dlclose(drv->dll);
+			sc_dlclose(drv->dll);
 	}
 	if (ctx->preferred_language != NULL)
 		free(ctx->preferred_language);

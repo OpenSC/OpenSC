@@ -5,7 +5,6 @@ EXTRA_DIST = Makefile.mak
 
 dist_noinst_SCRIPTS = opensc_pkcs11_install.js
 lib_LTLIBRARIES = opensc-pkcs11.la pkcs11-spy.la onepin-opensc-pkcs11.la
-noinst_LTLIBRARIES = libpkcs11.la
 
 AM_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(LTLIB_CFLAGS) $(PTHREAD_CFLAGS)
 INCLUDES = -I$(top_srcdir)/src
@@ -18,9 +17,6 @@ OPENSC_PKCS11_SRC = pkcs11-global.c pkcs11-session.c pkcs11-object.c misc.c slot
 OPENSC_PKCS11_LIBS = $(OPTIONAL_OPENSSL_LIBS) $(PTHREAD_LIBS) \
 	$(top_builddir)/src/common/libcompat.la \
 	$(top_builddir)/src/libopensc/libopensc.la
-
-libpkcs11_la_SOURCES = libpkcs11.c
-libpkcs11_la_LIBADD = $(LTLIB_LIBS)
 
 opensc_pkcs11_la_SOURCES = $(OPENSC_PKCS11_SRC) $(OPENSC_PKCS11_INC) hack-disabled.c
 opensc_pkcs11_la_LIBADD = $(OPENSC_PKCS11_LIBS)
@@ -35,7 +31,7 @@ onepin_opensc_pkcs11_la_LDFLAGS = $(AM_LDFLAGS) \
 	-module -shared -avoid-version -no-undefined
 
 pkcs11_spy_la_SOURCES = pkcs11-spy.c pkcs11-display.c pkcs11-display.h pkcs11-spy.exports
-pkcs11_spy_la_LIBADD = $(OPTIONAL_OPENSSL_LIBS) $(LTLIB_LIBS) libpkcs11.la
+pkcs11_spy_la_LIBADD = $(OPTIONAL_OPENSSL_LIBS) $(LTLIB_LIBS) $(top_builddir)/src/common/libpkcs11.la
 pkcs11_spy_la_LDFLAGS = $(AM_LDFLAGS) \
 	-export-symbols "$(srcdir)/pkcs11-spy.exports" \
 	-module -shared -avoid-version -no-undefined

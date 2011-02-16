@@ -26,7 +26,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <ltdl.h>
 
 #ifdef _WIN32
 #include <winsock2.h>
@@ -55,7 +54,7 @@ struct pcsc_global_private_data {
 	DWORD transaction_end_action;
 	DWORD reconnect_action;
 	const char *provider_library;
-	lt_dlhandle dlhandle;
+	void *dlhandle;
 	SCardEstablishContext_t SCardEstablishContext;
 	SCardReleaseContext_t SCardReleaseContext;
 	SCardConnect_t SCardConnect;
@@ -653,45 +652,45 @@ static int pcsc_init(sc_context_t *ctx)
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "PC/SC options: connect_exclusive=%d disconnect_action=%d transaction_end_action=%d reconnect_action=%d enable_pinpad=%d",
 		gpriv->connect_exclusive, gpriv->disconnect_action, gpriv->transaction_end_action, gpriv->reconnect_action, gpriv->enable_pinpad);
 
-	gpriv->dlhandle = lt_dlopen(gpriv->provider_library);
+	gpriv->dlhandle = sc_dlopen(gpriv->provider_library);
 	if (gpriv->dlhandle == NULL) {
 		ret = SC_ERROR_CANNOT_LOAD_MODULE;
 		goto out;
 	}
 
-	gpriv->SCardEstablishContext = (SCardEstablishContext_t)lt_dlsym(gpriv->dlhandle, "SCardEstablishContext");
-	gpriv->SCardReleaseContext = (SCardReleaseContext_t)lt_dlsym(gpriv->dlhandle, "SCardReleaseContext");
-	gpriv->SCardConnect = (SCardConnect_t)lt_dlsym(gpriv->dlhandle, "SCardConnect");
-	gpriv->SCardReconnect = (SCardReconnect_t)lt_dlsym(gpriv->dlhandle, "SCardReconnect");
-	gpriv->SCardDisconnect = (SCardDisconnect_t)lt_dlsym(gpriv->dlhandle, "SCardDisconnect");
-	gpriv->SCardBeginTransaction = (SCardBeginTransaction_t)lt_dlsym(gpriv->dlhandle, "SCardBeginTransaction");
-	gpriv->SCardEndTransaction = (SCardEndTransaction_t)lt_dlsym(gpriv->dlhandle, "SCardEndTransaction");
-	gpriv->SCardStatus = (SCardStatus_t)lt_dlsym(gpriv->dlhandle, "SCardStatus");
-	gpriv->SCardGetStatusChange = (SCardGetStatusChange_t)lt_dlsym(gpriv->dlhandle, "SCardGetStatusChange");
-	gpriv->SCardCancel = (SCardCancel_t)lt_dlsym(gpriv->dlhandle, "SCardCancel");
-	gpriv->SCardTransmit = (SCardTransmit_t)lt_dlsym(gpriv->dlhandle, "SCardTransmit");
-	gpriv->SCardListReaders = (SCardListReaders_t)lt_dlsym(gpriv->dlhandle, "SCardListReaders");
+	gpriv->SCardEstablishContext = (SCardEstablishContext_t)sc_dlsym(gpriv->dlhandle, "SCardEstablishContext");
+	gpriv->SCardReleaseContext = (SCardReleaseContext_t)sc_dlsym(gpriv->dlhandle, "SCardReleaseContext");
+	gpriv->SCardConnect = (SCardConnect_t)sc_dlsym(gpriv->dlhandle, "SCardConnect");
+	gpriv->SCardReconnect = (SCardReconnect_t)sc_dlsym(gpriv->dlhandle, "SCardReconnect");
+	gpriv->SCardDisconnect = (SCardDisconnect_t)sc_dlsym(gpriv->dlhandle, "SCardDisconnect");
+	gpriv->SCardBeginTransaction = (SCardBeginTransaction_t)sc_dlsym(gpriv->dlhandle, "SCardBeginTransaction");
+	gpriv->SCardEndTransaction = (SCardEndTransaction_t)sc_dlsym(gpriv->dlhandle, "SCardEndTransaction");
+	gpriv->SCardStatus = (SCardStatus_t)sc_dlsym(gpriv->dlhandle, "SCardStatus");
+	gpriv->SCardGetStatusChange = (SCardGetStatusChange_t)sc_dlsym(gpriv->dlhandle, "SCardGetStatusChange");
+	gpriv->SCardCancel = (SCardCancel_t)sc_dlsym(gpriv->dlhandle, "SCardCancel");
+	gpriv->SCardTransmit = (SCardTransmit_t)sc_dlsym(gpriv->dlhandle, "SCardTransmit");
+	gpriv->SCardListReaders = (SCardListReaders_t)sc_dlsym(gpriv->dlhandle, "SCardListReaders");
 
 	if (gpriv->SCardConnect == NULL)
-		gpriv->SCardConnect = (SCardConnect_t)lt_dlsym(gpriv->dlhandle, "SCardConnectA");
+		gpriv->SCardConnect = (SCardConnect_t)sc_dlsym(gpriv->dlhandle, "SCardConnectA");
 	if (gpriv->SCardStatus == NULL)
-		gpriv->SCardStatus = (SCardStatus_t)lt_dlsym(gpriv->dlhandle, "SCardStatusA");
+		gpriv->SCardStatus = (SCardStatus_t)sc_dlsym(gpriv->dlhandle, "SCardStatusA");
 	if (gpriv->SCardGetStatusChange == NULL)
-		gpriv->SCardGetStatusChange = (SCardGetStatusChange_t)lt_dlsym(gpriv->dlhandle, "SCardGetStatusChangeA");
+		gpriv->SCardGetStatusChange = (SCardGetStatusChange_t)sc_dlsym(gpriv->dlhandle, "SCardGetStatusChangeA");
 	if (gpriv->SCardListReaders == NULL)
-		gpriv->SCardListReaders = (SCardListReaders_t)lt_dlsym(gpriv->dlhandle, "SCardListReadersA");
+		gpriv->SCardListReaders = (SCardListReaders_t)sc_dlsym(gpriv->dlhandle, "SCardListReadersA");
 
 	/* If we have SCardGetAttrib it is correct API */
-	if (lt_dlsym(gpriv->dlhandle, "SCardGetAttrib") != NULL) {
+	if (sc_dlsym(gpriv->dlhandle, "SCardGetAttrib") != NULL) {
 #ifdef __APPLE__
-		gpriv->SCardControl = (SCardControl_t)lt_dlsym(gpriv->dlhandle, "SCardControl132");
+		gpriv->SCardControl = (SCardControl_t)sc_dlsym(gpriv->dlhandle, "SCardControl132");
 #endif
 		if (gpriv->SCardControl == NULL) {
-			gpriv->SCardControl = (SCardControl_t)lt_dlsym(gpriv->dlhandle, "SCardControl");
+			gpriv->SCardControl = (SCardControl_t)sc_dlsym(gpriv->dlhandle, "SCardControl");
 		}
 	}
 	else {
-		gpriv->SCardControlOLD = (SCardControlOLD_t)lt_dlsym(gpriv->dlhandle, "SCardControl");
+		gpriv->SCardControlOLD = (SCardControlOLD_t)sc_dlsym(gpriv->dlhandle, "SCardControl");
 	}
 
 	if (
@@ -719,7 +718,7 @@ static int pcsc_init(sc_context_t *ctx)
 out:
 	if (gpriv != NULL) {
 		if (gpriv->dlhandle != NULL)
-			lt_dlclose(gpriv->dlhandle);
+			sc_dlclose(gpriv->dlhandle);
 		free(gpriv);
 	}
 
@@ -736,7 +735,7 @@ static int pcsc_finish(sc_context_t *ctx)
 		if (gpriv->pcsc_ctx != -1)
 			gpriv->SCardReleaseContext(gpriv->pcsc_ctx);
 		if (gpriv->dlhandle != NULL)
-			lt_dlclose(gpriv->dlhandle);
+			sc_dlclose(gpriv->dlhandle);
 		free(gpriv);
 	}
 
@@ -1602,31 +1601,31 @@ static int cardmod_init(sc_context_t *ctx)
 	}
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "PC/SC options: enable_pinpad=%d", gpriv->enable_pinpad);
 
-	gpriv->dlhandle = lt_dlopen("winscard.dll");
+	gpriv->dlhandle = sc_dlopen("winscard.dll");
 	if (gpriv->dlhandle == NULL) {
 		ret = SC_ERROR_CANNOT_LOAD_MODULE;
 		goto out;
 	}
 
-	gpriv->SCardStatus = (SCardStatus_t)lt_dlsym(gpriv->dlhandle, "SCardStatus");
-	gpriv->SCardGetStatusChange = (SCardGetStatusChange_t)lt_dlsym(gpriv->dlhandle, "SCardGetStatusChange");
-	gpriv->SCardTransmit = (SCardTransmit_t)lt_dlsym(gpriv->dlhandle, "SCardTransmit");
+	gpriv->SCardStatus = (SCardStatus_t)sc_dlsym(gpriv->dlhandle, "SCardStatus");
+	gpriv->SCardGetStatusChange = (SCardGetStatusChange_t)sc_dlsym(gpriv->dlhandle, "SCardGetStatusChange");
+	gpriv->SCardTransmit = (SCardTransmit_t)sc_dlsym(gpriv->dlhandle, "SCardTransmit");
 
 	if (gpriv->SCardStatus == NULL)
-		gpriv->SCardStatus = (SCardStatus_t)lt_dlsym(gpriv->dlhandle, "SCardStatusA");
+		gpriv->SCardStatus = (SCardStatus_t)sc_dlsym(gpriv->dlhandle, "SCardStatusA");
 	if (gpriv->SCardGetStatusChange == NULL)
-		gpriv->SCardGetStatusChange = (SCardGetStatusChange_t)lt_dlsym(gpriv->dlhandle, "SCardGetStatusChangeA");
+		gpriv->SCardGetStatusChange = (SCardGetStatusChange_t)sc_dlsym(gpriv->dlhandle, "SCardGetStatusChangeA");
 	
-	gpriv->SCardGetAttrib = lt_dlsym(gpriv->dlhandle, "SCardGetAttrib");
+	gpriv->SCardGetAttrib = sc_dlsym(gpriv->dlhandle, "SCardGetAttrib");
 
 	/* If we have SCardGetAttrib it is correct API */
 	if (gpriv->SCardGetAttrib != NULL) {
 		if (gpriv->SCardControl == NULL) {
-			gpriv->SCardControl = (SCardControl_t)lt_dlsym(gpriv->dlhandle, "SCardControl");
+			gpriv->SCardControl = (SCardControl_t)sc_dlsym(gpriv->dlhandle, "SCardControl");
 		}
 	}
 	else {
-		/* gpriv->SCardControlOLD = (SCardControlOLD_t)lt_dlsym(gpriv->dlhandle, "SCardControl"); */
+		/* gpriv->SCardControlOLD = (SCardControlOLD_t)sc_dlsym(gpriv->dlhandle, "SCardControl"); */
 	}
 
 	if (
@@ -1646,7 +1645,7 @@ static int cardmod_init(sc_context_t *ctx)
 out:
 	if (gpriv != NULL) {
 		if (gpriv->dlhandle != NULL)
-			lt_dlclose(gpriv->dlhandle);
+			sc_dlclose(gpriv->dlhandle);
 		free(gpriv);
 	}
 
@@ -1659,7 +1658,7 @@ static int cardmod_finish(sc_context_t *ctx)
 
 	if (gpriv) {
 		if (gpriv->dlhandle != NULL)
-			lt_dlclose(gpriv->dlhandle);
+			sc_dlclose(gpriv->dlhandle);
 		free(gpriv);
 	}
 

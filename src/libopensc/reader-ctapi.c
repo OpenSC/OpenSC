@@ -350,19 +350,19 @@ static int ctapi_load_module(sc_context_t *ctx,
 	}
 
 	val = conf->name->data;
-	dlh = lt_dlopen(val);
+	dlh = sc_dlopen(val);
 	if (!dlh) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Unable to open shared library '%s': %s\n", val, lt_dlerror());
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Unable to open shared library '%s': %s\n", val, sc_dlerror());
 		return -1;
 	}
 
-	funcs.CT_init = (CT_INIT_TYPE *) lt_dlsym(dlh, "CT_init");
+	funcs.CT_init = (CT_INIT_TYPE *) sc_dlsym(dlh, "CT_init");
 	if (!funcs.CT_init)
 		goto symerr;
-	funcs.CT_close = (CT_CLOSE_TYPE *) lt_dlsym(dlh, "CT_close");
+	funcs.CT_close = (CT_CLOSE_TYPE *) sc_dlsym(dlh, "CT_close");
 	if (!funcs.CT_close)
 		goto symerr;
-	funcs.CT_data = (CT_DATA_TYPE *) lt_dlsym(dlh, "CT_data");
+	funcs.CT_data = (CT_DATA_TYPE *) sc_dlsym(dlh, "CT_data");
 	if (!funcs.CT_data)
 		goto symerr;
 
@@ -495,7 +495,7 @@ static int ctapi_load_module(sc_context_t *ctx,
 	return 0;
 symerr:
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Unable to resolve CT-API symbols.\n");
-	lt_dlclose(dlh);
+	sc_dlclose(dlh);
 	return -1;
 }
 
@@ -540,7 +540,7 @@ static int ctapi_finish(sc_context_t *ctx)
 			struct ctapi_module *mod = &priv->modules[i];
 			
 			free(mod->name);
-			lt_dlclose(mod->dlhandle);
+			sc_dlclose(mod->dlhandle);
 		}
 		if (priv->module_count)
 			free(priv->modules);

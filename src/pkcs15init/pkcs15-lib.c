@@ -54,7 +54,6 @@
 #include <openssl/rsa.h>
 #include <openssl/pkcs12.h>
 #endif
-#include <ltdl.h>
 
 #include "common/compat_strlcpy.h"
 #include "libopensc/pkcs15.h"
@@ -240,32 +239,32 @@ load_dynamic_driver(struct sc_context *ctx, void **dll,
 	const char *name)
 {
 	const char *version, *libname;
-	lt_dlhandle handle;
+	void *handle;
 	void *(*modinit)(const char *)  = NULL;
 	const char *(*modversion)(void) = NULL;
 
 	libname = find_library(ctx, name);
 	if (!libname)
 		return NULL;
-	handle = lt_dlopen(libname);
+	handle = sc_dlopen(libname);
 	if (handle == NULL) {
-		sc_log(ctx, "Module %s: cannot load '%s' library: %s", name, libname, lt_dlerror());
+		sc_log(ctx, "Module %s: cannot load '%s' library: %s", name, libname, sc_dlerror());
 		return NULL;
 	}
 
 	/* verify correctness of module */
-	modinit    = (void *(*)(const char *)) lt_dlsym(handle, "sc_module_init");
-	modversion = (const char *(*)(void)) lt_dlsym(handle, "sc_driver_version");
+	modinit    = (void *(*)(const char *)) sc_dlsym(handle, "sc_module_init");
+	modversion = (const char *(*)(void)) sc_dlsym(handle, "sc_driver_version");
 	if (modinit == NULL || modversion == NULL) {
 		sc_log(ctx, "dynamic library '%s' is not a OpenSC module",libname);
-		lt_dlclose(handle);
+		sc_dlclose(handle);
 		return NULL;
 	}
 	/* verify module version */
 	version = modversion();
 	if (version == NULL || strncmp(version, "0.9.", strlen("0.9.")) > 0) {
 		sc_log(ctx,"dynamic library '%s': invalid module version",libname);
-		lt_dlclose(handle);
+		sc_dlclose(handle);
 		return NULL;
 	}
 	*dll = handle;
@@ -388,7 +387,7 @@ sc_pkcs15init_unbind(struct sc_profile *profile)
 			sc_log(ctx, "Failed to update TokenInfo: %s", sc_strerror(r));
 	}
 	if (profile->dll)
-		lt_dlclose(profile->dll);
+		sc_dlclose(profile->dll);
 	sc_profile_free(profile);
 }
 
