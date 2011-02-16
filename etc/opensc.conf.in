@@ -244,8 +244,6 @@ app default {
 		force_protocol = t0;
 	}
 
-	
-
 	# D-Trust cards are also based on micardo and need T=0 for some reason
 	card_atr 3b:ff:94:00:ff:80:b1:fe:45:1f:03:00:68:d2:76:00:00:28:ff:05:1e:31:80:00:90:00:23 {
 		force_protocol = t0;
@@ -253,6 +251,27 @@ app default {
 	card_atr 3b:ff:11:00:ff:80:b1:fe:45:1f:03:00:68:d2:76:00:00:28:ff:05:1e:31:80:00:90:00:a6 {
 		force_protocol = t0;
 	}
+	
+	# IAS/ECC cards
+	card_atr 3B:7F:96:00:00:00:31:B9:64:40:70:14:10:73:94:01:80:82:90:00 {
+                type = 25001;
+                driver = "iasecc";
+                name = "Gemalto MultiApp IAS/ECC v1.0.1";
+                # secure_messaging = local_gemalto_iam;
+                # secure_messaging = local_adele;
+        }
+        card_atr 3B:DD:18:00:81:31:FE:45:80:F9:A0:00:00:00:77:01:08:00:07:90:00:FE {
+                type = 25002;
+                driver = "iasecc";
+                name = "Oberthur IAS/ECC v1.0.1";
+                # No 'admin' application for this card -- no secure messaging
+        }
+        card_atr 3B:7F:18:00:00:00:31:B8:64:50:23:EC:C1:73:94:01:80:82:90:00 {
+                type = 25003;
+                driver = "iasecc";
+                name = "Morpho YpsID S3 IAS/ECC";
+                # secure_messaging = local_morpho_YpsID_S3;
+        }
 
 	# Below are the framework specific configuration blocks.
 
