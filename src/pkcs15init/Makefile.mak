@@ -8,7 +8,7 @@ OBJECTS = pkcs15-lib.obj profile.obj \
           pkcs15-setcos.obj pkcs15-incrypto34.obj \
           pkcs15-muscle.obj pkcs15-asepcos.obj pkcs15-rutoken.obj \
           pkcs15-entersafe.obj pkcs15-rtecp.obj pkcs15-westcos.obj \
-	  pkcs15-myeid.obj pkcs15-authentic.obj 
+	  pkcs15-myeid.obj pkcs15-authentic.obj pkcs15-iasecc.obj 
 
 all: $(TARGET) 
 

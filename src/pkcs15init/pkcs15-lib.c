@@ -153,6 +153,7 @@ static struct profile_operations {
 	{ "myeid", (void *) sc_pkcs15init_get_myeid_ops },
 #ifdef ENABLE_OPENSSL
 	{ "authentic", (void *) sc_pkcs15init_get_authentic_ops },
+	{ "iasecc", (void *) sc_pkcs15init_get_iasecc_ops },
 #endif
 	{ NULL, NULL },
 };
