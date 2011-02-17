@@ -22,9 +22,9 @@
 #ifndef _OPENSC_IASECC_H
 #define _OPENSC_IASECC_H
 
-#include "errors.h"
-#include "types.h"
-#include "iasecc-sdo.h"
+#include "libopensc/errors.h"
+#include "libopensc/types.h"
+#include "libopensc/iasecc-sdo.h"
 
 #define ISO7812_PAN_SN_TAG	0x5A
 #define ISO7812_PAN_LENGTH	0x0C

@@ -22,7 +22,7 @@
 #ifndef SC_IASECC_SDO_H
 #define SC_IASECC_SDO_H
 
-#include "types.h"
+#include "libopensc/types.h"
 
 #define IASECC_SDO_TAG_HEADER	0xBF
 

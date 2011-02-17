@@ -23,9 +23,9 @@
 #ifndef _OPENSC_AUTHENTIC_V3_H
 #define _OPENSC_AUTHENTIC_V3_H
 
-#include "errors.h"
-#include "types.h"
-#include "iso7816.h"
+#include "libopensc/errors.h"
+#include "libopensc/types.h"
+#include "libopensc/iso7816.h"
 
 #ifndef CKM_RSA_PKCS
 	#define CKM_RSA_PKCS		0x00000001
