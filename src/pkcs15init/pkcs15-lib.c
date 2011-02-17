@@ -56,6 +56,7 @@
 #endif
 
 #include "common/compat_strlcpy.h"
+#include "common/libscdl.h"
 #include "libopensc/pkcs15.h"
 #include "libopensc/cardctl.h"
 #include "libopensc/log.h"
