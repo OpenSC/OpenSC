@@ -62,10 +62,6 @@
                 <File Id='OPENSC_DLL_FILE' Name='opensc.dll' DiskId='1' 
                           Source='$(var.SOURCE_DIR)\src\libopensc\opensc.dll' Vital='yes' KeyPath='yes' />
               </Component>
-              <Component Id='LIBLTDL3_DLL' Guid='7FB99A8F-D091-4EB4-8E82-9F89F943BCF7'>
-                <File Id='LIBLTDL3_DLL_FILE' Name='libltdl3.dll' DiskId='1' 
-				Source='$(var.PATH_TO_LIBLTD3_DLL)' Vital='yes' KeyPath='yes' />
-              </Component>
             </Directory>
 
             <Directory Id='INSTALLDIR_ETC' Name='etc'>
@@ -151,7 +147,6 @@
 
         <ComponentRef Id='OPENSC_PKCS11_DLL' />
         <ComponentRef Id='OPENSC_DLL' />
-        <ComponentRef Id='LIBLTDL3_DLL' />
         
         <ComponentRef Id='OPENSC_CONF' />
 
