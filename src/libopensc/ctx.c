@@ -641,7 +641,7 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "==================================="); /* first thing in the log */
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "opensc version: %s", sc_get_version());
 
-#ifdef HAVE_LIBLTL_H
+#ifdef HAVE_LTDL_H
 	/* initialize ltdl, if available. See scdl.c for more information */
 	if (lt_dlinit() != 0) {
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "lt_dlinit() failed");
