@@ -807,7 +807,6 @@ static int piv_read_obj_from_file(sc_card_t * card, char * filename,
 	int r;
 	int f = -1;
 	size_t len;
-	int res;
 	u8 tagbuf[16];
 	size_t rbuflen;
 	const u8 * body;
@@ -825,13 +824,12 @@ static int piv_read_obj_from_file(sc_card_t * card, char * filename,
 			r = SC_ERROR_FILE_NOT_FOUND; 
 			goto err;
 	}
-	res = read(f, tagbuf, sizeof(tagbuf)); /* get tag and length */
-	if (res < 0) {
+	len = read(f, tagbuf, sizeof(tagbuf)); /* get tag and length */
+	if (len < 2 || len > sizeof(tagbuf)) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"Problem with \"%s\"\n",filename);
 		r =  SC_ERROR_DATA_OBJECT_NOT_FOUND;
 		goto err;
 	}
-	len = res;
 	body = tagbuf;
 	if (sc_asn1_read_tag(&body, 0xfffff, &cla_out, 
 			&tag_out, &bodylen) != SC_SUCCESS) { 
