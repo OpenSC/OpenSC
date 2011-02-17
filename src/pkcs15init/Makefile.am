@@ -30,7 +30,7 @@ dist_pkgdata_DATA = \
 	iasecc_generic_pki.profile iasecc_admin_eid.profile iasecc_generic_oberthur.profile
 
 AM_CPPFLAGS = -DSC_PKCS15_PROFILE_DIRECTORY=\"$(pkgdatadir)\"
-AM_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(LTLIB_CFLAGS)
+AM_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS)
 INCLUDES = -I$(top_srcdir)/src
 
 libpkcs15init_la_SOURCES = \

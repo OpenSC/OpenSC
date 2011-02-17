@@ -6,7 +6,7 @@ EXTRA_DIST = Makefile.mak
 dist_noinst_SCRIPTS = opensc_pkcs11_install.js
 lib_LTLIBRARIES = opensc-pkcs11.la pkcs11-spy.la onepin-opensc-pkcs11.la
 
-AM_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(LTLIB_CFLAGS) $(PTHREAD_CFLAGS)
+AM_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(PTHREAD_CFLAGS)
 INCLUDES = -I$(top_srcdir)/src
 
 OPENSC_PKCS11_INC = sc-pkcs11.h pkcs11.h pkcs11-opensc.h

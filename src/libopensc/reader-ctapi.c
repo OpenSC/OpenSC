@@ -24,7 +24,6 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
-#include <ltdl.h>
 
 #include "internal.h"
 #include "ctbcs.h"
