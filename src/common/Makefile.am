@@ -22,6 +22,7 @@ libcompat_la_SOURCES = \
 
 compat_getopt_main_LDADD = libcompat.la
 
-libpkcs11_la_SOURCES = libpkcs11.c libscdl.c
+libpkcs11_la_SOURCES = libpkcs11.c libpkcs11.h
+libpkcs11_la_LIBADD = libscdl.la
 
-libscdl_la_SOURCES = libscdl.c
+libscdl_la_SOURCES = libscdl.c libscdl.h
