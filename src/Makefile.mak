@@ -4,7 +4,7 @@ TOPDIR = ..
 
 SUBDIRS = common scconf pkcs15init libopensc pkcs11 tools tests
 
-!IF "$(MINIDRIVER_DEF)" == "/DENABLE_MINIDRIVER"
+!IF "$(MINIDRIVER_DEF)" == "/DENABLE_CARDMOD"
 SUBDIRS = $(SUBDIRS) cardmod
 !ENDIF
 
