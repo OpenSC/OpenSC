@@ -126,7 +126,7 @@ static void logprintf(PCARD_DATA pCardData, int level, const char* format, ...)
 		if(vs != NULL && vs->ctx != NULL)
 		{
 #ifdef _MSC_VER
-			sc_debug(vs->ctx, level, format, arg);
+			sc_do_log_va(vs->ctx, level, NULL, 0, NULL, format, arg);
 #else
 			/* FIXME: trouble in vsprintf with %S arg under
 			mingw32
@@ -229,6 +229,7 @@ static int check_reader_status(PCARD_DATA pCardData) {
 		logprintf(pCardData, 2, "check_reader_status r=%d flags 0x%08X\n",
 			r, vs->reader->flags); 
 	}
+	return SCARD_S_SUCCESS;
 }
 
 
