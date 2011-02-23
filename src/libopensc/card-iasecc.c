@@ -1894,7 +1894,6 @@ iasecc_pin_get_policy (struct sc_card *card, struct sc_pin_cmd_data *data)
 		acl->method = scb & IASECC_SCB_METHOD_MASK;
 		acl->key_ref = scb & IASECC_SCB_METHOD_MASK_REF;
 
-
 		if (scb==0 || scb==0xFF)
 			continue;
 
@@ -1916,11 +1915,14 @@ iasecc_pin_get_policy (struct sc_card *card, struct sc_pin_cmd_data *data)
 			crt_num++;
 		}
 
-		if (scb & IASECC_SCB_METHOD_SM)
-			LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "");
-
-		if (scb & IASECC_SCB_METHOD_EXT_AUTH)
-			LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "");
+		if (scb & (IASECC_SCB_METHOD_SM || IASECC_SCB_METHOD_EXT_AUTH))   {
+			sc_log(ctx, "'SM' and 'EXTERNAL AUTHENTICATION' protection methods are not supported: SCB:0x%X", scb);
+			/* Set to 'NEVER' if all conditions are needed or 
+			 * there is no user authentication method allowed */
+			if (!crt_num || (scb & IASECC_SCB_METHOD_NEED_ALL))
+				acl->method = SC_AC_NEVER;
+			continue;
+		}
 
 		if (se.df)
 			sc_file_free(se.df);
