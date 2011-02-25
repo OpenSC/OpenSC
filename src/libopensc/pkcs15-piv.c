@@ -99,6 +99,7 @@ typedef struct prdata_st {
 typedef struct common_key_info_st {
 	int cert_found;
 	int pubkey_found;
+	int pubkey_from_file;
 	int key_alg;
 	unsigned int pubkey_len;
 	int not_present;
@@ -579,6 +580,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 		ckis[i].cert_found = 0;
 		ckis[i].key_alg = -1;
 		ckis[i].pubkey_found = 0;
+		ckis[i].pubkey_from_file = 0;
 		ckis[i].pubkey_len = 0;
 
 		if ((card->flags & 0x20) &&  (exposed_cert[i] == 0))
@@ -778,11 +780,13 @@ sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "DEE Adding pin %d label=%s",i, label);
 					/* save pubkey_len in pub and priv */
 					ckis[i].pubkey_len = p15_key->u.rsa.modulus.len * 8;
 					ckis[i].pubkey_found = 1;
+					ckis[i].pubkey_from_file = 1;
 					break;
 				case SC_ALGORITHM_EC:
 					ckis[i].key_alg = SC_ALGORITHM_EC;
 					ckis[i].pubkey_len = p15_key->u.ec.field_length;
 					ckis[i].pubkey_found = 1;
+					ckis[i].pubkey_from_file = 1;
 					break;
 				default:
 					sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"Unsupported key_alg %d",p15_key->algorithm);
@@ -849,14 +853,28 @@ sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "DEE Adding pin %d label=%s",i, label);
 		if (prkeys[i].auth_id)
 			sc_pkcs15_format_id(prkeys[i].auth_id, &prkey_obj.auth_id);
 
+		/*
+		 * When no cert is present and a pubkey in a file was found, 
+		 * means the caller is initilaizeing a card. A sign operation 
+		 * will be required to sign a certificate request even if 
+		 * normal usage would not allow it. Set SC_PKCS15_PRKEY_USAGE_SIGN 
+		 * TODO if code is added to allow key generation and reqest
+		 * sign in the same session, similiar code will be needed. 
+		 */
+
+		if (ckis[i].pubkey_from_file == 1) {
+			prkey_info.usage = SC_PKCS15_PRKEY_USAGE_SIGN;
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Adding SC_PKCS15_PRKEY_USAGE_SIGN");
+		}
+
 		switch (ckis[i].key_alg) {
 			case SC_ALGORITHM_RSA: 
-				prkey_info.usage         = prkeys[i].usage_rsa;
+				prkey_info.usage         |= prkeys[i].usage_rsa;
 				prkey_info.modulus_length= ckis[i].pubkey_len;
 				r = sc_pkcs15emu_add_rsa_prkey(p15card, &prkey_obj, &prkey_info);
 				break;
 		 	case SC_ALGORITHM_EC: 
-				prkey_info.usage         = prkeys[i].usage_ec;
+				prkey_info.usage         |= prkeys[i].usage_ec;
 				prkey_info.field_length = ckis[i].pubkey_len;
 				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "DEE added key_alg %2.2x prkey_obj.flags %8.8x",
 					 ckis[i].key_alg, prkey_obj.flags);
