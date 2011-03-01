@@ -238,9 +238,12 @@ app default {
 	card_atr 3b:fe:18:00:00:80:31:fe:45:80:31:80:66:40:90:a4:56:1b:16:83:01:90:00:86 {
 		force_protocol = t0;
 	}
-
 	# Warm ATR v3 dev2
 	card_atr 3b:fe:18:00:00:80:31:fe:45:80:31:80:66:40:90:a4:16:2a:00:83:01:90:00:e1 {
+		force_protocol = t0;
+	}
+	# Warm ATR v3 (18.01.2011)
+	card_atr 3b:fe:18:00:00:80:31:fe:45:80:31:80:66:40:90:a4:16:2a:00:83:0f:90:00:ef {
 		force_protocol = t0;
 	}
 
