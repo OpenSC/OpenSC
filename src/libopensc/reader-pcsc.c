@@ -1507,6 +1507,9 @@ pcsc_pin_cmd(sc_reader_t *reader, struct sc_pin_cmd_data *data)
 	case 0x6402: /* PINs don't match */
 		r = SC_ERROR_KEYPAD_PIN_MISMATCH;
 		break;
+	case 0x6403: /* Entered PIN is not in length limits */
+		r = SC_ERROR_INVALID_PIN_LENGTH; /* XXX: designed to be returned when PIN is in API call */
+		break;
 	case 0x6B80: /* Wrong data in the buffer, rejected by firmware */
 		r = SC_ERROR_READER;
 		break;
