@@ -104,7 +104,7 @@ const char *sc_strerror(int error)
 		"Inconsistent or incomplete PKCS#15 profile",
 		"Key length/algorithm not supported by card",
 		"No default (transport) key available",
-		"UNUSED",
+		"Non unique object ID",
 		"Unable to load key and certificate(s) from file",
 		"UNUSED",
 		"File template not found",

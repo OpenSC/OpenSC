@@ -1195,7 +1195,16 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card,
 	if (profile->ops->generate_key == NULL)
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Key generation not supported");
 
-	caller_supplied_id = keygen_args->prkey_args.id.len != 0;
+	if (keygen_args->prkey_args.id.len)   {
+		caller_supplied_id = 1;
+
+		/* Make sure that private key's ID is the unique inside the PKCS#15 application */
+		r = sc_pkcs15_find_prkey_by_id(p15card, &keygen_args->prkey_args.id, NULL);
+		if (!r)
+			LOG_TEST_RET(ctx, SC_ERROR_NON_UNIQUE_ID, "Non unique ID of the private key object");
+		else if (r != SC_ERROR_OBJECT_NOT_FOUND)
+			LOG_TEST_RET(ctx, r, "Find private key error");
+	}
 
 	/* Set up the PrKDF object */
 	r = sc_pkcs15init_init_prkdf(p15card, profile, &keygen_args->prkey_args,
@@ -1284,21 +1293,26 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
 	LOG_TEST_RET(ctx, keybits, "Invalid private key size");
 
 	/* Now check whether the card is able to handle this key */
-	if (!check_key_compatibility(p15card, &key,
-			keyargs->x509_usage, keybits, 0)) {
+	if (!check_key_compatibility(p15card, &key, keyargs->x509_usage, keybits, 0)) {
 		/* Make sure the caller explicitly tells us to store
 		 * the key as extractable. */
 		if (!(keyargs->access_flags & SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE))		                        
 			LOG_TEST_RET(ctx, SC_ERROR_INCOMPATIBLE_KEY, "Card does not support this key.");
 
-		if (!keyargs->passphrase
-				&& !(keyargs->flags & SC_PKCS15INIT_NO_PASSPHRASE))
+		if (!keyargs->passphrase && !(keyargs->flags & SC_PKCS15INIT_NO_PASSPHRASE))
 			LOG_TEST_RET(ctx, SC_ERROR_PASSPHRASE_REQUIRED, "No key encryption passphrase given.");
 	}
 
 	/* Select a intrinsic Key ID if user didn't specify one */
 	r = select_intrinsic_id(p15card, profile, SC_PKCS15_TYPE_PRKEY, &keyargs->id, &keyargs->key);
 	LOG_TEST_RET(ctx, r, "Get intrinsic ID error");
+
+	/* Make sure that private key's ID is the unique inside the PKCS#15 application */
+	r = sc_pkcs15_find_prkey_by_id(p15card, &keyargs->id, NULL);
+	if (!r)
+		LOG_TEST_RET(ctx, SC_ERROR_NON_UNIQUE_ID, "Non unique ID of the private key object");
+	else if (r != SC_ERROR_OBJECT_NOT_FOUND)
+		LOG_TEST_RET(ctx, r, "Find private key error");
 
 	/* Set up the PrKDF object */
 	r = sc_pkcs15init_init_prkdf(p15card, profile, keyargs, &key, keybits, &object);
