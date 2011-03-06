@@ -285,11 +285,6 @@ static void fix_starcos_pkcs15_card(struct sc_pkcs15_card *p15card)
 	struct sc_context *ctx = p15card->card->ctx;
 	scconf_block *conf_block = sc_get_conf_block(ctx, "framework", "pkcs15", 1);
 
-	/* for starcos cards only: fix asn1 integers */
-	if (!strcmp(p15card->card->driver->short_name,"starcos")
-		&& scconf_get_bool(conf_block, "enable_fix_asn1_integers", 1))
-		p15card->flags |= SC_PKCS15_CARD_FLAG_FIX_INTEGERS;
-
 	/* set special flags based on card meta data */
 	if (strcmp(p15card->card->driver->short_name,"cardos") == 0) {
 
@@ -681,7 +676,7 @@ struct sc_app_info * sc_find_app(struct sc_card *card, struct sc_aid *aid)
 		return NULL;
 
 	if (!aid || !aid->len)
-		return card->app[0];
+		return card->app[card->app_count - 1];
 
 	for (ii=0; ii < card->app_count; ii++) {
 		if (card->app[ii]->aid.len != aid->len)

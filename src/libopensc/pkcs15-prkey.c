@@ -222,11 +222,8 @@ int sc_pkcs15_decode_prkdf_entry(struct sc_pkcs15_card *p15card,
         /* OpenSC 0.11.4 and older encoded "keyReference" as a negative
            value. Fixed in 0.11.5 we need to add a hack, so old cards
            continue to work. */
-        if (p15card->flags & SC_PKCS15_CARD_FLAG_FIX_INTEGERS) {
-                if (info.key_reference < -1) {
-                        info.key_reference += 256;
-                }
-        }
+      	if (info.key_reference < -1)
+		info.key_reference += 256;
 
 	obj->data = malloc(sizeof(info));
 	if (obj->data == NULL) {

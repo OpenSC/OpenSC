@@ -115,10 +115,11 @@ int sc_pkcs15_decode_aodf_entry(struct sc_pkcs15_card *p15card,
 
 	/* OpenSC 0.11.4 and older encoded "pinReference" as a negative
 	   value. Fixed in 0.11.5 we need to add a hack, so old cards
-	   continue to work. */
-	if (p15card->flags & SC_PKCS15_CARD_FLAG_FIX_INTEGERS)
-		if (info.reference < 0)
-			info.reference += 256;
+	   continue to work. 
+	   The same invalid encoding has some models of the proprietary PKCS#15 cards.
+	*/
+	if (info.reference < 0)
+		info.reference += 256;
 
 	info.auth_method = SC_AC_CHV;
 
