@@ -500,12 +500,24 @@ void sc_pkcs15_pincache_add(struct sc_pkcs15_card *p15card, struct sc_pkcs15_obj
 		return;
 	}
 
-	/* If the PIN protects a private key with user consent, don't cache it */
-	if (sc_pkcs15_find_prkey_by_reference(p15card, NULL, pin_info->reference, &obj) == SC_SUCCESS) {
-		if (obj->user_consent) {
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Not caching a PIN protecting a key with user consent");
-			return;
+	/* If the PIN protects an object with user consent, don't cache it */
+
+	obj = p15card->obj_list;
+	while (obj != NULL) {
+		/* Compare 'sc_pkcs15_object.auth_id' with 'sc_pkcs15_pin_info.auth_id'.
+		 * In accordance with PKCS#15 "6.1.8 CommonObjectAttributes" and
+		 * "6.1.16 CommonAuthenticationObjectAttributes" with the exception that
+		 * "CommonObjectAttributes.accessControlRules" are not taken into account. */
+
+		if (sc_pkcs15_compare_id(&obj->auth_id, &pin_info->auth_id)) {
+			/* Caching is refused, if the protected object requires user consent */
+			if (obj->user_consent > 0) {
+				sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "caching refused (user consent)");
+				return;
+			}
 		}
+
+		obj = obj->next;
 	}
 
 	r = sc_pkcs15_allocate_object_content(pin_obj, pin, pinlen);
