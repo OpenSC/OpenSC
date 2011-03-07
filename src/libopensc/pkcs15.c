@@ -283,7 +283,6 @@ static void fix_authentic_ddo(struct sc_pkcs15_card *p15card)
 static void fix_starcos_pkcs15_card(struct sc_pkcs15_card *p15card)
 {
 	struct sc_context *ctx = p15card->card->ctx;
-	scconf_block *conf_block = sc_get_conf_block(ctx, "framework", "pkcs15", 1);
 
 	/* set special flags based on card meta data */
 	if (strcmp(p15card->card->driver->short_name,"cardos") == 0) {
