@@ -482,7 +482,6 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 	int    r, i;
 	sc_card_t *card = p15card->card;
 	sc_file_t *file_out = NULL;
-	int exposed_cert[PIV_NUM_CERTS_AND_KEYS] = {1, 0, 0, 0};
 	sc_serial_number_t serial;
 	char buf[SC_MAX_SERIALNR * 2 + 1];
 	common_key_info ckis[PIV_NUM_CERTS_AND_KEYS];
@@ -582,9 +581,6 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 		ckis[i].pubkey_found = 0;
 		ckis[i].pubkey_from_file = 0;
 		ckis[i].pubkey_len = 0;
-
-		if ((card->flags & 0x20) &&  (exposed_cert[i] == 0))
-			continue;
 
 		memset(&cert_info, 0, sizeof(cert_info));
 		memset(&cert_obj,  0, sizeof(cert_obj));
@@ -703,9 +699,6 @@ sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "DEE Adding pin %d label=%s",i, label);
 		struct sc_pkcs15_pubkey_info pubkey_info;
 		struct sc_pkcs15_object     pubkey_obj;
 		struct sc_pkcs15_pubkey *p15_key;
-
-		if ((card->flags & 0x20) &&  (exposed_cert[i] == 0))
-			continue;
 
 		memset(&pubkey_info, 0, sizeof(pubkey_info));
 		memset(&pubkey_obj,  0, sizeof(pubkey_obj));
@@ -831,9 +824,6 @@ sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "DEE Adding pin %d label=%s",i, label);
 	for (i = 0; i < PIV_NUM_CERTS_AND_KEYS; i++) {
 		struct sc_pkcs15_prkey_info prkey_info;
 		struct sc_pkcs15_object     prkey_obj;
-
-		if ((card->flags & 0x20) &&  (exposed_cert[i] == 0))
-			continue;
 
 		memset(&prkey_info, 0, sizeof(prkey_info));
 		memset(&prkey_obj,  0, sizeof(prkey_obj));
