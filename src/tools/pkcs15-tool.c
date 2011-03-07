@@ -1101,7 +1101,8 @@ static int list_pins(void)
 
 static int list_apps(FILE *fout)
 {
-	int i, j;
+	unsigned j;
+	int i;
 
 	for (i=0; i<p15card->card->app_count; i++)   {
 		struct sc_app_info *info = p15card->card->app[i];
