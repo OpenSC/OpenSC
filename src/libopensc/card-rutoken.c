@@ -249,7 +249,7 @@ static int rutoken_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 	{
 		apdu.resp = rbuf;
 		apdu.resplen = sizeof(rbuf);
-		apdu.le = sizeof(rbuf) - 2;
+		apdu.le = 256;
 		ret = sc_transmit_apdu(card, &apdu);
 		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "APDU transmit failed");
 		if (apdu.sw1 == 0x6A  &&  apdu.sw2 == 0x82)
@@ -284,7 +284,7 @@ static int rutoken_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 			sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xA4, 0x03, 0);
 			apdu.resp = rbuf;
 			apdu.resplen = sizeof(rbuf);
-			apdu.le = sizeof(rbuf) - 2;
+			apdu.le = 256;
 			ret = sc_transmit_apdu(card, &apdu);
 			SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "APDU transmit failed");
 			ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
@@ -398,7 +398,7 @@ static int rutoken_select_file(sc_card_t *card,
 
 	apdu.resp = buf;
 	apdu.resplen = sizeof(buf);
-	apdu.le = sizeof(buf) - 2;
+	apdu.le = 256;
 
 	ret = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "APDU transmit failed");
