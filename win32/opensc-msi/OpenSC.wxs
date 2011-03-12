@@ -62,6 +62,10 @@
                 <File Id='OPENSC_DLL_FILE' Name='opensc.dll' DiskId='1' 
                           Source='$(var.SOURCE_DIR)\src\libopensc\opensc.dll' Vital='yes' KeyPath='yes' />
               </Component>
+              <Component Id='CARDMOD_DLL' Guid='A6004548-CFBC-40E7-9DC6-C78D62F1DDD0'>
+                <File Id='CARDMOD_DLL_FILE' Name='opensc-cardmod.dll' DiskId='1' 
+                          Source='$(var.SOURCE_DIR)\src\cardmod\opensc-cardmod.dll' Vital='yes' KeyPath='yes' />
+              </Component>
             </Directory>
 
             <Directory Id='INSTALLDIR_ETC' Name='etc'>
@@ -113,6 +117,14 @@
                   <File Id='PROFILE_AUTHENTIC' Name='authentic.profile' DiskId='1' 
 				Source='$(var.SOURCE_DIR)\src\pkcs15init\authentic.profile' Vital='yes' KeyPath='yes' />
                 </Component>
+		<Component Id='PROFILE_PKCS15_RUTOKEN' Guid='8B612DE0-7568-4DD5-9BBD-26E23E23FE09'>
+                  <File Id='PROFILE_RUTOKEN' Name='rutoken.profile' DiskId='1' 
+				Source='$(var.SOURCE_DIR)\src\pkcs15init\rutoken.profile' Vital='yes' KeyPath='yes' />
+                </Component>
+		<Component Id='PROFILE_PKCS15_RUTOKEN_ECP' Guid='63BEC797-F119-492C-B914-0E7F7E6E3740'>
+                  <File Id='PROFILE_RUTOKEN_ECP' Name='rutoken_ecp.profile' DiskId='1' 
+				Source='$(var.SOURCE_DIR)\src\pkcs15init\rutoken_ecp.profile' Vital='yes' KeyPath='yes' />
+                </Component>
               </Directory>
             </Directory>
             
@@ -147,6 +159,7 @@
 
         <ComponentRef Id='OPENSC_PKCS11_DLL' />
         <ComponentRef Id='OPENSC_DLL' />
+        <ComponentRef Id='CARDMOD_DLL' />
         
         <ComponentRef Id='OPENSC_CONF' />
 
@@ -160,6 +173,8 @@
         <ComponentRef Id='PROFILE_PKCS15_WESTCOS' />
         <ComponentRef Id='PROFILE_PKCS15_OBERTHUR' />
         <ComponentRef Id='PROFILE_PKCS15_AUTHENTIC' />
+        <ComponentRef Id='PROFILE_RUTOKEN' />
+        <ComponentRef Id='PROFILE_RUTOKEN_ECP' />
 
         <ComponentRef Id='ProgramMenuDir' />
       </Feature>
