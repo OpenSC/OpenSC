@@ -173,8 +173,8 @@
         <ComponentRef Id='PROFILE_PKCS15_WESTCOS' />
         <ComponentRef Id='PROFILE_PKCS15_OBERTHUR' />
         <ComponentRef Id='PROFILE_PKCS15_AUTHENTIC' />
-        <ComponentRef Id='PROFILE_RUTOKEN' />
-        <ComponentRef Id='PROFILE_RUTOKEN_ECP' />
+        <ComponentRef Id='PROFILE_PKCS15_RUTOKEN' />
+        <ComponentRef Id='PROFILE_PKCS15_RUTOKEN_ECP' />
 
         <ComponentRef Id='ProgramMenuDir' />
       </Feature>
