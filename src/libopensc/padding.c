@@ -178,12 +178,14 @@ static int sc_pkcs1_add_digest_info_prefix(unsigned int algorithm,
 			const u8 *hdr      = digest_info_prefix[i].hdr;
 			size_t    hdr_len  = digest_info_prefix[i].hdr_len,
 			          hash_len = digest_info_prefix[i].hash_len;
-			if (in_len != hash_len ||
-			    *out_len < (hdr_len + hash_len))
+
+			if (in_len != hash_len || *out_len < (hdr_len + hash_len))
 				return SC_ERROR_INTERNAL;
+
 			memmove(out + hdr_len, in, hash_len);
 			memmove(out, hdr, hdr_len);
 			*out_len = hdr_len + hash_len;
+
 			return SC_SUCCESS;
 		}
 	}
@@ -222,25 +224,27 @@ int sc_pkcs1_strip_digest_info_prefix(unsigned int *algorithm,
 int sc_pkcs1_encode(sc_context_t *ctx, unsigned long flags,
 	const u8 *in, size_t in_len, u8 *out, size_t *out_len, size_t mod_len)
 {
-	int    i;
+	int    rv, i;
 	size_t tmp_len = *out_len;
 	const u8    *tmp = in;
 	unsigned int hash_algo, pad_algo;
 
+	LOG_FUNC_CALLED(ctx);
+
 	hash_algo = flags & (SC_ALGORITHM_RSA_HASHES | SC_ALGORITHM_RSA_HASH_NONE);
 	pad_algo  = flags & SC_ALGORITHM_RSA_PADS;
+	sc_log(ctx, "hash algorithm 0x%X, pad algorithm 0x%X", hash_algo, pad_algo);
 
 	if (hash_algo != SC_ALGORITHM_RSA_HASH_NONE) {
-		i = sc_pkcs1_add_digest_info_prefix(hash_algo, in, in_len,
-						    out, &tmp_len);
+		i = sc_pkcs1_add_digest_info_prefix(hash_algo, in, in_len, out, &tmp_len);
 		if (i != SC_SUCCESS) {
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Unable to add digest info 0x%x",
-			      hash_algo);
-			return i;
+			sc_log(ctx, "Unable to add digest info 0x%x", hash_algo);
+			LOG_FUNC_RETURN(ctx, i);
 		}
 		tmp = out;
-	} else
+	} else   {
 		tmp_len = in_len;
+	}
 
 	switch(pad_algo) {
 	case SC_ALGORITHM_RSA_PAD_NONE:
@@ -248,15 +252,15 @@ int sc_pkcs1_encode(sc_context_t *ctx, unsigned long flags,
 		if (out != tmp)
 			memcpy(out, tmp, tmp_len);
 		*out_len = tmp_len;
-		return SC_SUCCESS;
+		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 	case SC_ALGORITHM_RSA_PAD_PKCS1:
 		/* add pkcs1 bt01 padding */
-		return sc_pkcs1_add_01_padding(tmp, tmp_len, out, out_len,
-					       mod_len);
+		rv = sc_pkcs1_add_01_padding(tmp, tmp_len, out, out_len, mod_len);
+		LOG_FUNC_RETURN(ctx, rv);
 	default:
 		/* currently only pkcs1 padding is supported */
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Unsupported padding algorithm 0x%x", pad_algo);
-		return SC_ERROR_NOT_SUPPORTED;
+		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 	}
 }
 
@@ -266,9 +270,11 @@ int sc_get_encoding_flags(sc_context_t *ctx,
 {
 	size_t i;
 
+	LOG_FUNC_CALLED(ctx);
 	if (pflags == NULL || sflags == NULL)
-		return SC_ERROR_INVALID_ARGUMENTS;
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
+	sc_log(ctx, "iFlags 0x%X, card capabilities 0x%X", iflags, caps);
 	for (i = 0; digest_info_prefix[i].algorithm != 0; i++) {
 		if (iflags & digest_info_prefix[i].algorithm) {
 			if (digest_info_prefix[i].algorithm != SC_ALGORITHM_RSA_HASH_NONE &&
@@ -288,16 +294,15 @@ int sc_get_encoding_flags(sc_context_t *ctx,
 	} else if ((iflags & SC_ALGORITHM_RSA_PADS) == SC_ALGORITHM_RSA_PAD_NONE) {
 		
 		/* Work with RSA, EC and maybe GOSTR? */
-		if (!(caps & SC_ALGORITHM_RAW_MASK)) {
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "raw encryption is not supported");
-			return SC_ERROR_NOT_SUPPORTED;
-		}
+		if (!(caps & SC_ALGORITHM_RAW_MASK))
+			LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "raw encryption is not supported");
+
 		*sflags |= (caps & SC_ALGORITHM_RAW_MASK); /* adds in the one raw type */
 		*pflags = 0;
 	} else {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "unsupported algorithm");
-		return SC_ERROR_NOT_SUPPORTED;
+		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "unsupported algorithm");
 	}
 
-	return SC_SUCCESS;
+	sc_log(ctx, "pad flags 0x%X, secure algorithm flags 0x%X", pflags, sflags);
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
