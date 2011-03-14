@@ -1487,10 +1487,6 @@ int sc_pkcs15_add_df(struct sc_pkcs15_card *p15card,
 {
 	struct sc_pkcs15_df *p, *newdf;
 	
-	for (p = p15card->df_list; p; p = p->next)
-		if (p->type == type)
-			return 0;
-
 	newdf = calloc(1, sizeof(struct sc_pkcs15_df));
 	if (newdf == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
