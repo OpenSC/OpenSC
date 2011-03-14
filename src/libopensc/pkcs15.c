@@ -675,7 +675,7 @@ struct sc_app_info * sc_find_app(struct sc_card *card, struct sc_aid *aid)
 		return NULL;
 
 	if (!aid || !aid->len)
-		return card->app[card->app_count - 1];
+		return card->app[0];
 
 	for (ii=0; ii < card->app_count; ii++) {
 		if (card->app[ii]->aid.len != aid->len)
