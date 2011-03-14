@@ -204,7 +204,7 @@ openct_reader_connect(sc_reader_t *reader)
 	}
 
 	rc = ct_card_request(data->h, data->slot, 0, NULL,
-				reader->atr, sizeof(reader->atr));
+				reader->atr.value, reader->atr.len);
 	if (rc < 0) {
 		sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL,
 				"openct_reader_connect read failed: %s\n",
@@ -217,7 +217,7 @@ openct_reader_connect(sc_reader_t *reader)
 		return SC_ERROR_READER;
 	}
 
-	reader->atr_len = rc;
+	reader->atr.len = rc;
 	return SC_SUCCESS;
 }
 
