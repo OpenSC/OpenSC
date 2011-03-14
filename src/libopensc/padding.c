@@ -303,6 +303,6 @@ int sc_get_encoding_flags(sc_context_t *ctx,
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "unsupported algorithm");
 	}
 
-	sc_log(ctx, "pad flags 0x%X, secure algorithm flags 0x%X", pflags, sflags);
+	sc_log(ctx, "pad flags 0x%X, secure algorithm flags 0x%X", *pflags, *sflags);
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
