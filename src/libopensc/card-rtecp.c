@@ -524,7 +524,7 @@ static int rtecp_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 	{
 		apdu.resp = rbuf;
 		apdu.resplen = sizeof(rbuf);
-		apdu.le = sizeof(rbuf) - 2;
+		apdu.le = 256;
 		r = sc_transmit_apdu(card, &apdu);
 		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 		if (apdu.sw1 == 0x6A  &&  apdu.sw2 == 0x82)
@@ -595,7 +595,7 @@ static int rtecp_card_ctl(sc_card_t *card, unsigned long request, void *data)
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xCA, 0x01, 0x81);
 		apdu.resp = buf;
 		apdu.resplen = sizeof(buf);
-		apdu.le = sizeof(buf) - 2;
+		apdu.le = 256;
 		serial->len = sizeof(serial->value);
 		break;
 	case SC_CARDCTL_RTECP_GENERATE_KEY:
@@ -605,7 +605,7 @@ static int rtecp_card_ctl(sc_card_t *card, unsigned long request, void *data)
 				genkey_data->key_id);
 		apdu.resp = buf;
 		apdu.resplen = sizeof(buf);
-		apdu.le = sizeof(buf) - 2;
+		apdu.le = 256;
 		break;
 	case SC_CARDCTL_LIFECYCLE_SET:
 		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "%s\n",
