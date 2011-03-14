@@ -228,7 +228,7 @@ static void print_cert_info(const struct sc_pkcs15_object *obj)
 		printf("\tEncoded serial : %02X %02X ", *(cert_parsed->serial), *(cert_parsed->serial + 1));
 		util_hex_dump(stdout, cert_parsed->serial + 2, cert_parsed->serial_len - 2, "");
 		printf("\n");
-		free(cert_parsed);
+		sc_pkcs15_free_certificate(cert_parsed);
 	}
 }
 
