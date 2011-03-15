@@ -36,11 +36,11 @@ option onepin {
 		dir-size		 = 128;
 		tinfo-size		 = 128;
 		unusedspace-size = 128;
-		odf-size		 = 256;
+		odf-size		 = 512;
 		aodf-size		 = 256;
-		cdf-size		 = 512;
-		prkdf-size		 = 256;
-		pukdf-size		 = 256;
+		cdf-size		 = 2048;
+		prkdf-size		 = 1024;
+		pukdf-size		 = 1024;
 		dodf-size		 = 256;
 		info-size		 = 128;
 	}
