@@ -133,6 +133,13 @@ static int iso7816_read_binary(sc_card_t *card,
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 	memcpy(buf, recvbuf, apdu.resplen);
 
+	if (apdu.resplen < count)   {
+		r = iso7816_read_binary(card, idx + apdu.resplen, buf + apdu.resplen, count - apdu.resplen, flags);
+		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+
+		apdu.resplen += r;
+	}
+
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, apdu.resplen);
 }
 
