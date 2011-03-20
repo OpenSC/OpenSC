@@ -162,7 +162,7 @@ struct piv_aid {
  * NIST published  this on 10/6/2005   
  * 800-73-2 Part 1 now refers to version "02 00"
  * i.e. "A0 00 00 03 08 00 00 01 00 02 00". 
- * but we dont need the version number. but could get it from the PIX. 
+ * but we don't need the version number. but could get it from the PIX. 
  *
  * 800-73-3 Part 1 now referes to "01 00" i.e. going back to 800-73-1.
  * The main differences between 73-1, and 73-3 are the addition of the 

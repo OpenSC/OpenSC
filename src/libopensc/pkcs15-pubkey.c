@@ -308,7 +308,7 @@ int sc_pkcs15_encode_pukdf_entry(sc_context_t *ctx,
 		}
 		break;
 	default:
-		/* TODO: -DEE Should add ECC  but dont have PKCS15 card with ECC */
+		/* TODO: -DEE Should add ECC  but don't have PKCS15 card with ECC */
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Unsupported public key type: %X\n", obj->type);
 		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INTERNAL);
 		break;
