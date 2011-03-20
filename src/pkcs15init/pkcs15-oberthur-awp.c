@@ -1,5 +1,5 @@
 /*
- * Oberthur AWP extention for PKCS #15 initialization
+ * Oberthur AWP extension for PKCS #15 initialization
  *
  * Copyright (C) 2010  Viktor Tarasov <viktor.tarasov@opentrust.com>
  * Copyright (C) 2002  Juha Yrjola <juha.yrjola@iki.fi>

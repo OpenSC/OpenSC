@@ -409,10 +409,10 @@ sc_profile_finish(struct sc_profile *profile, const struct sc_app_info *app_info
 		sc_log(ctx, "Look for file by path '%s'", sc_print_path(&path));
 		profile->df_info = sc_profile_find_file_by_path(profile, &path);
 		sc_log(ctx, "returned DF info %p", profile->df_info); 
-		if (profile->df_info && profile->df_info->profile_extention)   {
-			sc_log(ctx, "application profile extention '%s'", profile->df_info->profile_extention);
-			if (sc_profile_load(profile, profile->df_info->profile_extention))
-				LOG_TEST_RET(ctx, SC_ERROR_INCONSISTENT_PROFILE, "Cannot load application profile extention");
+		if (profile->df_info && profile->df_info->profile_extension)   {
+			sc_log(ctx, "application profile extension '%s'", profile->df_info->profile_extension);
+			if (sc_profile_load(profile, profile->df_info->profile_extension))
+				LOG_TEST_RET(ctx, SC_ERROR_INCONSISTENT_PROFILE, "Cannot load application profile extension");
 		}
 	}
 	
@@ -1396,9 +1396,9 @@ do_exclusive_aid(struct state *cur, int argc, char **argv)
 }
 
 static int
-do_profile_extention(struct state *cur, int argc, char **argv)
+do_profile_extension(struct state *cur, int argc, char **argv)
 {
-	return setstr(&cur->file->profile_extention, argv[0]);
+	return setstr(&cur->file->profile_extension, argv[0]);
 }
 
 /*
@@ -1724,7 +1724,7 @@ static struct command	fs_commands[] = {
  { "AID",		1,	1,	do_aid		},
  { "ACL",		1,	-1,	do_acl		},
 /* AID dependent sub-profile */
- { "profile-extention",	1,	1,	do_profile_extention	},
+ { "profile-extension",	1,	1,	do_profile_extension	},
 /* AID of the DFs without file-id */
  { "exclusive-aid",	1,	1,	do_exclusive_aid	},
 

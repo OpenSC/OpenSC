@@ -39,10 +39,10 @@ struct file_info {
 	unsigned int		inst_index;
 	sc_path_t		inst_path;
 
-        /* Profile extention dependent on the application ID (sub-profile).
+        /* Profile extension dependent on the application ID (sub-profile).
 	 * Sub-profile is loaded when binding to the particular application
 	 * of the multi-application PKCS#15 card. */
-	char *			profile_extention;
+	char *			profile_extension;
 };
 
 /* For now, we assume the PUK always resides

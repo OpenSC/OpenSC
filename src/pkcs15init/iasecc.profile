@@ -76,37 +76,37 @@ filesystem {
         DF CIA-Adele-AppDF {
             type    = DF;
             exclusive-aid	= E8:28:BD:08:0F:D2:50:00:00:04:01:01;
-            profile-extention	= "ias_adele_admin1";
+            profile-extension	= "ias_adele_admin1";
         }
 
         DF AdeleAdmin2-AppDF {
             type    = DF;
             exclusive-aid	= E8:28:BD:08:0F:D2:50:00:00:04:02:01;
-            profile-extention	= "ias_adele_admin2";
+            profile-extension	= "ias_adele_admin2";
         }
 
         DF AdeleCommon-AppDF {
             type    = DF;
             exclusive-aid	= E8:28:BD:08:0F:D2:50:00:00:04:03:01;
-            profile-extention	= "ias_adele_common";
+            profile-extension	= "ias_adele_common";
         }
 
         DF ECCeID-AppDF {
             type    = DF;
             exclusive-aid	= E8:28:BD:08:0F:D2:50:45:43:43:2D:65:49:44;
-            profile-extention	= "iasecc_admin_eid";
+            profile-extension	= "iasecc_admin_eid";
         }
 
         DF ECCGeneric-AppDF {
             type    = DF;
             exclusive-aid	= E8:28:BD:08:0F:D2:50:47:65:6E:65:72:69:63;
-            profile-extention	= "iasecc_generic_pki";
+            profile-extension	= "iasecc_generic_pki";
         }
 
 	DF ECCGenericOberthur-AppDF  {
             type = DF;
             exclusive-aid	= E8:28:BD:08:0F:F2:50:4F:54:20:41:57:50;
-            profile-extention	= "iasecc_generic_oberthur";
+            profile-extension	= "iasecc_generic_oberthur";
         }
     }
 }
