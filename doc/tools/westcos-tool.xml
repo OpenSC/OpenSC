@@ -8,8 +8,8 @@
 
 	<refnamediv>
 		<refname>westcos-tool</refname>
-		<refpurpose>utility for manipulating data structure 
-			on westcos smart card and similar security tokens</refpurpose>
+		<refpurpose>utility for manipulating data structures
+			on westcos smart cards</refpurpose>
 	</refnamediv>
 
 	<refsect1>
@@ -34,13 +34,9 @@
 		<para>
 			<variablelist>
 				<varlistentry>
-					<term>
-						<option>--reader</option> num,
-						<option>-r</option> num
-					</term>
+					<term><option>--reader, r</option> num</term>
 					<listitem><para>
-					Use the given reader number. The default
-					is 0, the first reader in the system.
+					Use the given reader. The default is the first reader with a card.
 					</para></listitem>
 				</varlistentry>
 				
@@ -52,14 +48,14 @@
 				<varlistentry>
 					<term><option>--generate-key, -g</option></term>
 					<listitem><para>Generate a private key on smart card. The smart card must be
-					not finalized and pin installed (ig. file for pin must be created, see option
+					not finalized and a PIN must be installed (ie. file for PIN must be created, see option
 					-i). By default key length is 1536 bits. User authentication is required for 
 					this operation. </para></listitem>
 				</varlistentry>
 				
 				<varlistentry>
 					<term><option>--overwrite-key, -o</option></term>
-					<listitem><para>Otherwrite key if they are already a key on card.</para></listitem>
+					<listitem><para>Overwrite the key if there is already a key on card.</para></listitem>
 				</varlistentry>
 				
 				<varlistentry>
@@ -73,7 +69,7 @@
 
 				<varlistentry>
 					<term><option>--install-pin, -i</option></term>
-					<listitem><para>Install pin file in token, you must provide pin value 
+					<listitem><para>Install PIN file in token, you must provide PIN value
 					with <option>-x</option>.</para></listitem>
 				</varlistentry>
 
@@ -82,7 +78,7 @@
 						<option>--pin-value</option> value,
 						<option>-x</option> value
 					</term>
-					<listitem><para>set value of pin.</para></listitem>
+					<listitem><para>set value of PIN.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -90,7 +86,7 @@
 						<option>--puk-value</option> value,
 						<option>-y</option> value
 					</term>
-					<listitem><para>set value of puk (or value of new pin for change pin
+					<listitem><para>set value of PUK (or value of new PIN for change PIN
 					command see <option>-n</option>).</para></listitem>
 				</varlistentry>
 
@@ -102,25 +98,25 @@
 
 				<varlistentry>
 					<term><option>--unblock-pin, -u</option></term>
-					<listitem><para>Unblocks a PIN stored on the token. Knowledge of the Pin 
-					Unblock Key (PUK) is required for this operation.</para></listitem>
+					<listitem><para>Unblocks a PIN stored on the token. Knowledge of the
+					PIN Unblock Key (PUK) is required for this operation.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
 					<term>
-						<option>--certificat</option> file,
+						<option>--certificate</option> file,
 						<option>-t</option> file 
 					</term>
-					<listitem><para>Write certificate file in pem format on the 
+					<listitem><para>Write certificate file in PEM format to the
 					card. User authentication is required for this operation.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
 					<term><option>--finalize, -f</option></term>
-					<listitem><para>Finalize the card, once finalize default key is invalidate so pin and puk
-					can'be changed anymore without user authentification. Warning, smart cards not finalized are
-					unsecure because pin can be changed without user authentification (knowledge of default key
-					is enougth).</para></listitem>
+					<listitem><para>Finalize the card. Once finalized the default key is invalidated so PIN and PUK
+					can't be changed anymore without user authentication. Warning,
+					un-finalized are insecure because PIN can be changed without user authentication (knowledge of default key
+					is enough).</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
