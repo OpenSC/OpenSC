@@ -55,7 +55,7 @@ static const struct sc_card_error starcos_errors[] =
 	{ 0x6F01, SC_ERROR_CARD_CMD_FAILED, "public key not complete"},
 	{ 0x6F02, SC_ERROR_CARD_CMD_FAILED, "data overflow"},
 	{ 0x6F03, SC_ERROR_CARD_CMD_FAILED, "invalid command sequence"},
-	{ 0x6F05, SC_ERROR_CARD_CMD_FAILED, "security enviroment invalid"},
+	{ 0x6F05, SC_ERROR_CARD_CMD_FAILED, "security environment invalid"},
 	{ 0x6F07, SC_ERROR_FILE_NOT_FOUND, "key part not found"},
 	{ 0x6F08, SC_ERROR_CARD_CMD_FAILED, "signature failed"},
 	{ 0x6F0A, SC_ERROR_INCORRECT_PARAMETERS, "key format does not match key length"},
@@ -63,7 +63,7 @@ static const struct sc_card_error starcos_errors[] =
 	{ 0x6F81, SC_ERROR_CARD_CMD_FAILED, "system error"}
 };
 
-/* internal structure to save the current security enviroment */
+/* internal structure to save the current security environment */
 typedef struct starcos_ex_data_st {
 	int    sec_ops;	/* the currently selected security operation,
 			 * i.e. SC_SEC_OPERATION_AUTHENTICATE etc. */
@@ -997,14 +997,14 @@ static int starcos_gen_key(sc_card_t *card, sc_starcos_gen_key_data *data)
 }
 
 /** starcos_set_security_env
- * sets the security enviroment
+ * sets the security environment
  * \param card pointer to the sc_card object
  * \param env pointer to a sc_security_env object
  * \param se_num not used here
  * \return SC_SUCCESS on success or an error code
  *
- * This function sets the security enviroment (using the starcos spk 2.3
- * command MANAGE SECURITY ENVIROMENT). In case a COMPUTE SIGNATURE
+ * This function sets the security environment (using the starcos spk 2.3
+ * command MANAGE SECURITY ENVIRONMENT). In case a COMPUTE SIGNATURE
  * operation is requested , this function tries to detect whether
  * COMPUTE SIGNATURE or INTERNAL AUTHENTICATE must be used for signature
  * calculation.

@@ -61,7 +61,7 @@ static struct sc_card_driver atrust_acos_drv = {
 	NULL, 0, NULL
 };
 
-/* internal structure to save the current security enviroment */
+/* internal structure to save the current security environment */
 typedef struct atrust_acos_ex_data_st {
 	int    sec_ops;	/* the currently selected security operation,
 			 * i.e. SC_SEC_OPERATION_AUTHENTICATE etc. */
@@ -522,14 +522,14 @@ static int atrust_acos_select_file(struct sc_card *card,
 }
 
 /** atrust_acos_set_security_env
- * sets the security enviroment
+ * sets the security environment
  * \param card pointer to the sc_card object
  * \param env pointer to a sc_security_env object
  * \param se_num not used here
  * \return SC_SUCCESS on success or an error code
  *
- * This function sets the security enviroment (using the 
- * command MANAGE SECURITY ENVIROMENT). In case a COMPUTE SIGNATURE
+ * This function sets the security environment (using the
+ * command MANAGE SECURITY ENVIRONMENT). In case a COMPUTE SIGNATURE
  * operation is requested , this function tries to detect whether
  * COMPUTE SIGNATURE or INTERNAL AUTHENTICATE must be used for signature
  * calculation.
