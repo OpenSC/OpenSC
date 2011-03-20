@@ -82,7 +82,7 @@
     <para>If you specify the global PIN via the <option>--pin</option> option,
     <command>netkey-tool</command> will also display the initial value of the cards
     global PUK. If your global PUK was changed <command>netkey-tool</command> will still
-    diplay its initial value. There's no way to recover a lost global PUK once it was changed.
+    display its initial value. There's no way to recover a lost global PUK once it was changed.
     There's also no way to display the initial value of your global PUK without knowing the
     current value of your global PIN. </para>
 
