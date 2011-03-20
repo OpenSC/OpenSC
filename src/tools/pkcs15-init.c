@@ -220,7 +220,7 @@ static const char *		option_help[] = {
 	"Specify unblock PIN",
 	"Specify security officer (SO) PIN",
 	"Specify unblock PIN for SO PIN",
-	"Do not install a SO PIN, and dont prompt for it",
+	"Do not install a SO PIN, and do not prompt for it",
 	"Specify the serial number of the card",
 	"Specify ID of PIN to use/create",
 	"Specify ID of PUK to use/create",
