@@ -93,7 +93,6 @@ static void logprintf(PCARD_DATA pCardData, int level, const char* format, ...)
 {
 	va_list arg;
 	VENDOR_SPECIFIC *vs;
-	
 /* #define CARDMOD_LOW_LEVEL_DEBUG 1 */
 #ifdef CARDMOD_LOW_LEVEL_DEBUG
 /* Use a simplied log to get all messages including messages 
@@ -247,6 +246,162 @@ static size_t compute_keybits(sc_pkcs15_bignum_t *bn)
 		bits--;
 	return bits;
 }
+
+
+/*
+ * Serialize GUID
+ * Ex. {3F2504E0-4F89-11D3-9A0C-0305E82C3301}
+ */
+static int serialize_guid(unsigned char *in, char *out, size_t out_len)
+{
+	int ii, jj, in_offs = 0, out_offs = 0;
+
+	if (out_len < 39)	/* In cardmod.h MAX_CONTAINER_NAME_LEN defined as 39 */ 
+		return SCARD_E_INSUFFICIENT_BUFFER;
+
+	strcpy(out, "{");
+	for (ii=0; ii<4; ii++)
+		sprintf(out + strlen(out), "%02X", *(in + in_offs++));
+	for (jj=0; jj<3; jj++)   {
+		strcat(out, "-");
+		for (ii=0; ii<2; ii++)
+			sprintf(out + strlen(out), "%02X", *(in + in_offs++));
+	}
+	strcat(out, "-");
+	for (ii=0; ii<6; ii++)
+		sprintf(out + strlen(out), "%02X", *(in + in_offs++));
+	strcat(out, "}");
+	return SCARD_S_SUCCESS;
+}
+
+static int get_pin_by_role(PCARD_DATA pCardData, PIN_ID role, struct sc_pkcs15_object **ret_obj)
+{
+	VENDOR_SPECIFIC *vs;
+	int i;
+
+	if (!pCardData) 
+		return SCARD_E_INVALID_PARAMETER;
+
+	logprintf(pCardData, 2, "get PIN with role %i\n", role);
+
+	vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
+	if (vs->pin_count == 0)   {
+		logprintf(pCardData, 2, "cannot get PIN object: no PIN defined\n");
+		return SCARD_E_UNSUPPORTED_FEATURE;
+	}
+
+	if (!ret_obj)
+		return SCARD_E_INVALID_PARAMETER;
+
+	*ret_obj = NULL;
+
+	for(i = 0; i < vs->pin_count; i++)
+	{
+		struct sc_pkcs15_object *obj = vs->pin_objs[i];
+		struct sc_pkcs15_pin_info *pin_info = (struct sc_pkcs15_pin_info *) (obj->data);
+		unsigned int pin_flags = pin_info->flags;
+		unsigned int admin_pin_flags = SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN | SC_PKCS15_PIN_FLAG_SO_PIN;
+
+		logprintf(pCardData, 2, "PIN[%s] flags 0x%X\n", obj->label, pin_flags);
+		if (role == ROLE_USER)   {
+			if (!(pin_flags & admin_pin_flags))   {
+				*ret_obj = obj;
+				break;
+			}
+		}
+		else if (role == ROLE_ADMIN)   {
+			if (pin_flags & admin_pin_flags)   {
+				*ret_obj = obj;
+				break;
+			}
+		}
+		else   {
+			logprintf(pCardData, 2, "cannot get PIN object: unsupported role\n");
+			return SCARD_E_UNSUPPORTED_FEATURE;
+		}
+	}
+
+	if (i == vs->pin_count)   {
+		logprintf(pCardData, 2, "cannot get PIN object: not found\n");
+		return SCARD_E_UNSUPPORTED_FEATURE;
+	}
+
+	return SCARD_S_SUCCESS;
+}
+
+static void dump_objects (PCARD_DATA pCardData)
+{
+	VENDOR_SPECIFIC *vs;
+	sc_pkcs15_prkey_info_t *prkey_info;
+	sc_pkcs15_cert_t *cert;
+	int i;
+
+	if (!pCardData)
+		return;
+
+	vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
+	if (!vs)
+		return;
+
+	for(i = 0; i < vs->prkey_count; i++)
+	{
+		prkey_info = (sc_pkcs15_prkey_info_t*)(vs->prkey_objs[i]->data);
+		logprintf(pCardData, 5, "prkey_info->subject %d (subject_len=%d)" \
+			"modulus_length=%d subject ", i, prkey_info->subject.len, \
+				prkey_info->modulus_length);
+		loghex(pCardData, 5, prkey_info->subject.value, prkey_info->subject.len);
+	}
+		
+	for(i = 0; i < vs->cert_count; i++)
+	{
+		sc_pkcs15_read_certificate(vs->p15card, \
+			(struct sc_pkcs15_cert_info *)(vs->cert_objs[i]->data), &cert);
+		logprintf(pCardData, 5, "cert->subject %d ", i);
+		loghex(pCardData, 5, cert->subject, cert->subject_len);
+		sc_pkcs15_free_certificate(cert);
+	}
+		
+	for(i = 0; i < vs->pin_count; i++)
+	{
+		const char *pin_flags[] = 
+		{
+			"case-sensitive", "local", "change-disabled",
+			"unblock-disabled", "initialized", "needs-padding",
+			"unblockingPin", "soPin", "disable_allowed",
+			"integrity-protected", "confidentiality-protected",
+			"exchangeRefData"
+		};
+		const char *pin_types[] = {"bcd", "ascii-numeric", "UTF-8",
+			"halfnibble bcd", "iso 9664-1"}; 
+		const struct sc_pkcs15_object *obj = vs->pin_objs[i];
+		const struct sc_pkcs15_pin_info *pin = (const struct sc_pkcs15_pin_info *) (obj->data);
+		const size_t pf_count = sizeof(pin_flags)/sizeof(pin_flags[0]);
+		size_t j;
+
+		logprintf(pCardData, 2, "PIN [%s]\n", obj->label);
+		logprintf(pCardData, 2, "\tCom. Flags: 0x%X\n", obj->flags);
+		logprintf(pCardData, 2, "\tID        : %s\n", sc_pkcs15_print_id(&pin->auth_id));
+		logprintf(pCardData, 2, "\tFlags     : [0x%02X]", pin->flags);
+		for (j = 0; j < pf_count; j++)
+			if (pin->flags & (1 << j)) {
+				logprintf(pCardData, 2, ", %s", pin_flags[j]);
+			}
+		logprintf(pCardData, 2, "\n");
+		logprintf(pCardData, 2, "\tLength    : min_len:%lu, max_len:%lu, stored_len:%lu\n",
+			(unsigned long)pin->min_length, (unsigned long)pin->max_length,
+			(unsigned long)pin->stored_length);
+		logprintf(pCardData, 2, "\tPad char  : 0x%02X\n", pin->pad_char);
+		logprintf(pCardData, 2, "\tReference : %d\n", pin->reference);
+		if (pin->type < sizeof(pin_types)/sizeof(pin_types[0]))
+			logprintf(pCardData, 2, "\tType      : %s\n", pin_types[pin->type]);
+		else
+			logprintf(pCardData, 2, "\tType      : [encoding %d]\n", pin->type);
+		logprintf(pCardData, 2, "\tPath      : %s\n", sc_print_path(&pin->path));
+		if (pin->tries_left >= 0)
+			logprintf(pCardData, 2, "\tTries left: %d\n", pin->tries_left);
+	}
+}
+
 
 DWORD WINAPI CardDeleteContext(__inout PCARD_DATA  pCardData)
 {
@@ -693,11 +848,10 @@ DWORD WINAPI CardReadFile(__in PCARD_DATA pCardData,
 			for(i = 0, p = (PCONTAINER_MAP_RECORD)*ppbData; \
 				i < vs->cert_count; i++,p++)
 			{
+				struct sc_pkcs15_cert_info *cert_info = (sc_pkcs15_cert_info_t *)vs->cert_objs[i]->data;
 				sc_pkcs15_cert_t *cert = NULL;
 				
-				r = sc_pkcs15_read_certificate(vs->p15card, \
-					(struct sc_pkcs15_cert_info *)(vs->cert_objs[i]->data), \
-					&cert);
+				r = sc_pkcs15_read_certificate(vs->p15card, cert_info, &cert);
 				logprintf(pCardData, 2, "sc_pkcs15_read_certificate return %d\n", r);
 				if(r)
 				{
@@ -706,55 +860,25 @@ DWORD WINAPI CardReadFile(__in PCARD_DATA pCardData,
 				pubkey = cert->key;
 				if(pubkey->algorithm == SC_ALGORITHM_RSA)
 				{
-					char guid[MAX_CONTAINER_NAME_LEN + 1];
-					char *g;
-					char *sn;
-					size_t snlen;
-					size_t idlen;
-					u8 * id;
-					int si;
-					
-					/* We need unique number here, so 
-					 * Use card serial number + sc_pkcs15_id of the cert. 
-					 * the wszGuid is 39 characters,
-					 * The sc_pkcs15_id can be 255 and is binary an must be converted 
-					 * serial is large and character 
-					 * So will use as  much of the id as posible. 
-					 * converting to a string. 
-					 * Will do this in ingle byte char then convert to wchar
+					struct sc_card *card = vs->p15card->card;
+					unsigned char guid_bin[SC_PKCS15_MAX_ID_SIZE + SC_MAX_SERIALNR];
+                                        char guid[MAX_CONTAINER_NAME_LEN + 1];
+	
+					/* The globally unique identifier derived from the PKCS#15 object 
+					 * identifier concatenated with the card's serial number.
+					 * So that, the object's id will be used as much as possible.
+					 * Will do this firstly in single byte char then convert to wchar.
 					 */
 
-					id = (u8 *)((sc_pkcs15_cert_info_t *)vs->cert_objs[i]->data)->id.value;  
-					idlen = ((sc_pkcs15_cert_info_t *)vs->cert_objs[i]->data)->id.len;
+					memset(guid_bin, 0, sizeof(guid_bin));
+					memcpy(guid_bin, cert_info->id.value, cert_info->id.len);
+					memcpy(guid_bin + cert_info->id.len, card->serialnr.value, card->serialnr.len);
+					r = serialize_guid(guid_bin, guid, sizeof(guid));
+					if(r)
+					{
+						return r;
+					}
 
-					if (idlen > MAX_CONTAINER_NAME_LEN/2) {
-						id += idlen - MAX_CONTAINER_NAME_LEN/2;
-						idlen  = MAX_CONTAINER_NAME_LEN/2;
-					}
-					
-					g = guid;
-					/* if id (convereted to printable) is less then MAX_CONTAINER_NAME_LEN  */
-					/* use last part of serial number. */
-					logprintf(pCardData, 7, "DEE id=%p:%d g=%p\n", id, idlen, g);
-					if (idlen * 2 < MAX_CONTAINER_NAME_LEN) {
-						si = MAX_CONTAINER_NAME_LEN - idlen * 2;
-						sn = vs->p15card->tokeninfo->serial_number;
-						snlen= strlen(vs->p15card->tokeninfo->serial_number);
-						logprintf(pCardData, 7, "DEE si=%d sn=%d\n", si, sn);
-						if (snlen > si) {
-							sn += snlen - si;
-							snlen = si;
-						}
-						logprintf(pCardData, 7, "DEE si=%d g=%p sn=%p:%d\n", si,g, sn, snlen);
-						memcpy(g, sn, snlen);
-						g += snlen;
-						 
-					}
-					for (si = 0; si < idlen; si++) {
-						sprintf(g, "%02X", id[si]);
-						g +=2;
-					}
-					*g = '\0';
 					logprintf(pCardData, 7, "Guid=%s\n", guid);
 					
 					mbstowcs(p->wszGuid, guid, MAX_CONTAINER_NAME_LEN + 1);
@@ -1060,12 +1184,14 @@ DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 DWORD WINAPI CardSignData(__in PCARD_DATA pCardData,
 	__in PCARD_SIGNING_INFO pInfo)
 {
-	int r;
-	int i, opt_crypt_flags = 0;
+	int r, i;
+	int opt_crypt_flags = 0, opt_hash_flags = 0;
 	VENDOR_SPECIFIC *vs;
-	ALG_ID hashAlg = pInfo->aiHashAlg;
+	ALG_ID hashAlg;
 	sc_pkcs15_cert_info_t *cert_info;
 	sc_pkcs15_prkey_info_t *prkey_info;
+	BYTE dataToSign[0x200];
+	size_t dataToSignLen = sizeof(dataToSign);
 	
 	logprintf(pCardData, 1, "\nP:%d T:%d pCardData:%p ",GetCurrentProcessId(), GetCurrentThreadId(), pCardData);
 	logprintf(pCardData, 1, "CardSignData\n");
@@ -1074,10 +1200,15 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData,
 	if (!pInfo) return SCARD_E_INVALID_PARAMETER;
 
 	logprintf(pCardData, 2, "CardSignData dwVersion=%u, bContainerIndex=%u," \
-		"dwKeySpec=%u, dwSigningFlags=0x%08X, aiHashAlg=0x%08X, cbData=%u\n", \
+		"dwKeySpec=%u, dwSigningFlags=0x%08X, aiHashAlg=0x%08X\n", \
 		pInfo->dwVersion,pInfo->bContainerIndex ,pInfo->dwKeySpec, \
-		pInfo->dwSigningFlags, pInfo->aiHashAlg, pInfo->cbData);
+		pInfo->dwSigningFlags, pInfo->aiHashAlg);
 		
+	logprintf(pCardData, 7, "pInfo->pbData(%i) ", pInfo->cbData);
+	loghex(pCardData, 7, pInfo->pbData, pInfo->cbData);
+
+	hashAlg = pInfo->aiHashAlg;
+
 	vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
 
 	check_reader_status(pCardData);
@@ -1085,6 +1216,10 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData,
 	vs->pkey = NULL;
 	
 	logprintf(pCardData, 2, "pInfo->dwVersion = %d\n", pInfo->dwVersion);
+
+	if (dataToSignLen < pInfo->cbData) return SCARD_E_INSUFFICIENT_BUFFER;
+	memcpy(dataToSign, pInfo->pbData, pInfo->cbData);
+	dataToSignLen = pInfo->cbData;
 
 	if (CARD_PADDING_INFO_PRESENT & pInfo->dwSigningFlags) 
 	{
@@ -1094,19 +1229,18 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData,
 			logprintf(pCardData, 0, "unsupported paddingtype\n");
 			return SCARD_E_UNSUPPORTED_FEATURE;
 		}
-		opt_crypt_flags += SC_ALGORITHM_RSA_PAD_PKCS1;
 		if (!pinf->pszAlgId) 
 		{
 			/* hashAlg = CALG_SSL3_SHAMD5; */
 			logprintf(pCardData, 3, "Using CALG_SSL3_SHAMD5  hashAlg\n");
-			opt_crypt_flags += SC_ALGORITHM_RSA_HASH_MD5_SHA1;
+			opt_hash_flags = SC_ALGORITHM_RSA_HASH_MD5_SHA1;
 		}
 		else 
 		{
 			
-			if (wcscmp(pinf->pszAlgId, L"MD5") == 0)  opt_crypt_flags += SC_ALGORITHM_RSA_HASH_MD5;
-			else if (wcscmp(pinf->pszAlgId, L"SHA1") == 0)  opt_crypt_flags += SC_ALGORITHM_RSA_HASH_SHA1;
-			else if (wcscmp(pinf->pszAlgId, L"SHAMD5") == 0) opt_crypt_flags += SC_ALGORITHM_RSA_HASH_MD5_SHA1;
+			if (wcscmp(pinf->pszAlgId, L"MD5") == 0)  opt_hash_flags = SC_ALGORITHM_RSA_HASH_MD5;
+			else if (wcscmp(pinf->pszAlgId, L"SHA1") == 0)  opt_hash_flags = SC_ALGORITHM_RSA_HASH_SHA1;
+			else if (wcscmp(pinf->pszAlgId, L"SHAMD5") == 0) opt_hash_flags = SC_ALGORITHM_RSA_HASH_MD5_SHA1;
 			else 
 				logprintf(pCardData, 0,"unknown AlgId %S\n",NULLWSTR(pinf->pszAlgId));
 		}
@@ -1115,30 +1249,44 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData,
 	{
 		logprintf(pCardData, 3, "CARD_PADDING_INFO_PRESENT not set\n");
 		
-		opt_crypt_flags = SC_ALGORITHM_RSA_PAD_PKCS1;
-		
 		if (GET_ALG_CLASS(hashAlg) != ALG_CLASS_HASH) 
 		{
 			logprintf(pCardData, 0, "bogus aiHashAlg\n");
 			return SCARD_E_INVALID_PARAMETER;
 		}
-		if (hashAlg !=0 && hashAlg != CALG_SSL3_SHAMD5 &&
-			hashAlg != CALG_SHA1 && hashAlg != CALG_MD5) 
-		{
-			logprintf(pCardData, 0, "unsupported aiHashAlg\n");
-			return SCARD_E_UNSUPPORTED_FEATURE;
-		}
 
 		if (hashAlg == CALG_MD5) 
-			opt_crypt_flags += SC_ALGORITHM_RSA_HASH_MD5;
-		if (hashAlg == CALG_SHA1) 
-			opt_crypt_flags += SC_ALGORITHM_RSA_HASH_SHA1;
-		if (hashAlg == CALG_SSL3_SHAMD5)
-			opt_crypt_flags += SC_ALGORITHM_RSA_HASH_MD5_SHA1;
+			opt_hash_flags = SC_ALGORITHM_RSA_HASH_MD5;
+		else if (hashAlg == CALG_SHA1) 
+			opt_hash_flags = SC_ALGORITHM_RSA_HASH_SHA1;
+		else if (hashAlg == CALG_SSL3_SHAMD5)
+			opt_hash_flags = SC_ALGORITHM_RSA_HASH_MD5_SHA1;
+		else if (hashAlg !=0)
+			return SCARD_E_UNSUPPORTED_FEATURE;
 	}
-	
-	logprintf(pCardData, 2, "pInfo->pbSignedData = %p, opt_crypt_flags = 0x%08X\n", \
-		pInfo->pbSignedData, opt_crypt_flags);
+
+	/* From sc-minidriver_specs_v7.docx pp.76:
+	 * 'The Base CSP/KSP performs the hashing operation on the data before passing it 
+	 * 	to CardSignData for signature.'
+         * So, the SC_ALGORITHM_RSA_HASH_* flags should not be passed to pkcs15 library 
+	 * 	when calculating the signature .
+	 *
+	 * From sc-minidriver_specs_v7.docx pp.76:
+	 * 'If the aiHashAlg member is nonzero, it specifies the hash algorithm’s object identifier (OID) 
+	 *  that is encoded in the PKCS padding.'
+	 * So, the digest info has be included into the data to be signed.
+	 * */
+	if (opt_hash_flags)   {
+		logprintf(pCardData, 2, "include digest info of the algorithm 0x%08X\n", opt_hash_flags);
+		dataToSignLen = sizeof(dataToSign);
+		r = sc_pkcs1_encode(vs->p15card->card->ctx, opt_hash_flags,
+			pInfo->pbData, pInfo->cbData, dataToSign, &dataToSignLen, 0);
+		if (r)   {
+			logprintf(pCardData, 2, "PKCS#1 encode error %s\n", sc_strerror(r));
+			return SCARD_E_INVALID_VALUE;
+		}
+	}
+	opt_crypt_flags = SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE;
 	
 	if(!(pInfo->bContainerIndex < vs->cert_count))
 	{
@@ -1147,32 +1295,21 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData,
 		
 	cert_info = (struct sc_pkcs15_cert_info *) \
 		(vs->cert_objs[pInfo->bContainerIndex]->data);
-	
-	for(i = 0; i < vs->prkey_count; i++)
-	{
-		sc_pkcs15_object_t *obj = (sc_pkcs15_object_t *)vs->prkey_objs[i];
-		if(sc_pkcs15_compare_id(&((struct sc_pkcs15_prkey_info *) obj->data)->id, &(cert_info->id)))
-		{
-			vs->pkey = vs->prkey_objs[i];
-			break;
-		}
-	}
-	
-	if(vs->pkey == NULL)
-	{
+
+	r = sc_pkcs15_find_prkey_by_id(vs->p15card, &cert_info->id, &vs->pkey);
+	if (r)
 		return SCARD_E_INVALID_PARAMETER;
-	}
-	
+
 	prkey_info = (sc_pkcs15_prkey_info_t*)(vs->pkey->data);
-	
+
 	pInfo->cbSignedData = prkey_info->modulus_length / 8;
 	logprintf(pCardData, 3, "pInfo->cbSignedData = %d\n", pInfo->cbSignedData);
 	
 	if(!(pInfo->dwSigningFlags&CARD_BUFFER_SIZE_ONLY))
 	{
 		int r,i;
-		BYTE *pbuf = NULL, *pbuf2 = NULL;
-		DWORD lg, lg2;
+		BYTE *pbuf = NULL;
+		DWORD lg;
 		
 		lg = pInfo->cbSignedData;
 		logprintf(pCardData, 3, "lg = %d\n", lg);
@@ -1182,43 +1319,24 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData,
 			return SCARD_E_NO_MEMORY;
 		}
 		
-		lg2 = pInfo->cbData;
-		pbuf2 = pCardData->pfnCspAlloc(lg2);
-		if (!pbuf2) 
-		{
-			pCardData->pfnCspFree(pbuf);
-			return SCARD_E_NO_MEMORY;
-		}
-
-		logprintf(pCardData, 7, "pInfo->pbData ");
-		loghex(pCardData, 7, pInfo->pbData, pInfo->cbData);
-
-		
-		/*inversion donnees*/
-		for(i = 0; i < lg2; i++) pbuf2[i] = pInfo->pbData[lg2-i-1];
-
-		logprintf(pCardData, 7, "pbuf2 ");
-		loghex(pCardData, 7, pbuf2, lg2);
-		
+		logprintf(pCardData, 7, "Data to sign: ");
+		loghex(pCardData, 7, dataToSign, dataToSignLen);
 
 		pInfo->pbSignedData = pCardData->pfnCspAlloc(pInfo->cbSignedData);
 		if (!pInfo->pbSignedData) 
 		{
 			pCardData->pfnCspFree(pbuf);
-			pCardData->pfnCspFree(pbuf2);
 			return SCARD_E_NO_MEMORY;
 		}
 		
 		r = sc_pkcs15_compute_signature(vs->p15card, vs->pkey, \
-			opt_crypt_flags, pInfo->pbData, pInfo->cbData, pbuf, lg);
+			opt_crypt_flags, dataToSign, dataToSignLen, pbuf, lg);
 		logprintf(pCardData, 2, "sc_pkcs15_compute_signature return %d\n", r);
 		if(r < 0)
 		{
 			logprintf(pCardData, 2, "sc_pkcs15_compute_signature erreur %s\n", \
 				sc_strerror(r));
 		}
-
-		pCardData->pfnCspFree(pbuf2);
 
 		pInfo->cbSignedData = r;
 		
@@ -1300,7 +1418,7 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 {
 	int r;
 	VENDOR_SPECIFIC *vs;
-	sc_pkcs15_object_t *pin_obj;
+	sc_pkcs15_object_t *pin_obj = NULL;
 
 	logprintf(pCardData, 1, "\nP:%d T:%d pCardData:%p ",GetCurrentProcessId(), GetCurrentThreadId(), pCardData);
 	logprintf(pCardData, 1, "CardAuthenticateEx\n");
@@ -1324,7 +1442,13 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 	
 	if (PinId != ROLE_USER) return SCARD_E_INVALID_PARAMETER;
 	
-	pin_obj = vs->pin_objs[0];
+	r = get_pin_by_role(pCardData, ROLE_USER, &pin_obj);
+	if (r != SCARD_S_SUCCESS)
+	{
+		logprintf(pCardData, 2, "Cannot get User PIN object");
+		return r;
+	}
+
 	r = sc_pkcs15_verify_pin(vs->p15card, pin_obj, (const u8 *) pbPinData, cbPinData);
 	if (r) 
 	{
@@ -1957,70 +2081,10 @@ static int associate_card(PCARD_DATA pCardData)
 	logprintf(pCardData, 2, "Found %d pin(s) in the card.\n", \
 		vs->pin_count);
 
-	
-	if(1) /* for debuging */
-	{
-		int i;
-		sc_pkcs15_prkey_info_t *prkey_info;
-		sc_pkcs15_cert_t *cert;
-		for(i = 0; i < vs->prkey_count; i++)
-		{
-			prkey_info = (sc_pkcs15_prkey_info_t*)(vs->prkey_objs[i]->data);
-			logprintf(pCardData, 5, "prkey_info->subject %d (subject_len=%d)" \
-				"modulus_length=%d subject ", i, prkey_info->subject.len, \
-				prkey_info->modulus_length);
-			loghex(pCardData, 5, prkey_info->subject.value, prkey_info->subject.len);
-		}
-		
-		for(i = 0; i < vs->cert_count; i++)
-		{
-			sc_pkcs15_read_certificate(vs->p15card, \
-				(struct sc_pkcs15_cert_info *)(vs->cert_objs[i]->data), &cert);
-			logprintf(pCardData, 5, "cert->subject %d ", i);
-			loghex(pCardData, 5, cert->subject, cert->subject_len);
-			sc_pkcs15_free_certificate(cert);
-		}
-		
-		for(i = 0; i < vs->pin_count; i++)
-		{
-			const char *pin_flags[] = 
-			{
-				"case-sensitive", "local", "change-disabled",
-				"unblock-disabled", "initialized", "needs-padding",
-				"unblockingPin", "soPin", "disable_allowed",
-				"integrity-protected", "confidentiality-protected",
-				"exchangeRefData"
-			};
-			const char *pin_types[] = {"bcd", "ascii-numeric", "UTF-8",
-				"halfnibble bcd", "iso 9664-1"}; 
-			const struct sc_pkcs15_object *obj = vs->pin_objs[i];
-			const struct sc_pkcs15_pin_info *pin = (const struct sc_pkcs15_pin_info *) (obj->data);
-			const size_t pf_count = sizeof(pin_flags)/sizeof(pin_flags[0]);
-			size_t j;
+#if 1	
+	dump_objects(pCardData);
+#endif
 
-			logprintf(pCardData, 2, "PIN [%s]\n", obj->label);
-			logprintf(pCardData, 2, "\tCom. Flags: 0x%X\n", obj->flags);
-			logprintf(pCardData, 2, "\tID        : %s\n", sc_pkcs15_print_id(&pin->auth_id));
-			logprintf(pCardData, 2, "\tFlags     : [0x%02X]", pin->flags);
-			for (j = 0; j < pf_count; j++)
-				if (pin->flags & (1 << j)) {
-					logprintf(pCardData, 2, ", %s", pin_flags[j]);
-				}
-			logprintf(pCardData, 2, "\n");
-			logprintf(pCardData, 2, "\tLength    : min_len:%lu, max_len:%lu, stored_len:%lu\n",
-				(unsigned long)pin->min_length, (unsigned long)pin->max_length,
-				(unsigned long)pin->stored_length);
-			logprintf(pCardData, 2, "\tPad char  : 0x%02X\n", pin->pad_char);
-			logprintf(pCardData, 2, "\tReference : %d\n", pin->reference);
-			if (pin->type < sizeof(pin_types)/sizeof(pin_types[0]))
-				logprintf(pCardData, 2, "\tType      : %s\n", pin_types[pin->type]);
-			else
-				logprintf(pCardData, 2, "\tType      : [encoding %d]\n", pin->type);
-			logprintf(pCardData, 2, "\tPath      : %s\n", sc_print_path(&pin->path));
-			if (pin->tries_left >= 0)
-				logprintf(pCardData, 2, "\tTries left: %d\n", pin->tries_left);
-		}
-	}
 	return SCARD_S_SUCCESS;
 
 }
