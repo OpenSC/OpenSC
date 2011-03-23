@@ -28,6 +28,10 @@
 #include <sys/stat.h>
 #include <limits.h>
 
+#ifdef HAVE_LTDL_H
+#include <ltdl.h>
+#endif
+
 #ifdef _WIN32
 #include <windows.h>
 #include <winreg.h>
