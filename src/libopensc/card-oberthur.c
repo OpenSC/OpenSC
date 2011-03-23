@@ -1578,12 +1578,12 @@ auth_pin_verify_pinpad(struct sc_card *card, int pin_reference, int *tries_left)
 	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
 	struct sc_pin_cmd_data pin_cmd;    
 	struct sc_apdu apdu;
-	unsigned char ffs[0x100];	        
+	unsigned char ffs1[0x100];	        
 	int rv;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	memset(ffs, 0xFF, sizeof(ffs));
+	memset(ffs1, 0xFF, sizeof(ffs1));
 	memset(&pin_cmd, 0, sizeof(pin_cmd));
 	
         rv = auth_pin_is_verified(card, pin_reference, tries_left);
@@ -1605,7 +1605,7 @@ auth_pin_verify_pinpad(struct sc_card *card, int pin_reference, int *tries_left)
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x20, 0x00, pin_reference);
 	apdu.lc = OBERTHUR_AUTH_MAX_LENGTH_PIN;
 	apdu.datalen = OBERTHUR_AUTH_MAX_LENGTH_PIN;
-	apdu.data = ffs;
+	apdu.data = ffs1;
 
 	pin_cmd.apdu = &apdu;
 	pin_cmd.pin_type = SC_AC_CHV;
@@ -1617,7 +1617,7 @@ auth_pin_verify_pinpad(struct sc_card *card, int pin_reference, int *tries_left)
 	pin_cmd.pin1.max_length = 8;
 	pin_cmd.pin1.encoding = SC_PIN_ENCODING_ASCII;
 	pin_cmd.pin1.offset = 5;
-	pin_cmd.pin1.data = ffs;
+	pin_cmd.pin1.data = ffs1;
 	pin_cmd.pin1.len = OBERTHUR_AUTH_MAX_LENGTH_PIN;
 	pin_cmd.pin1.pad_length = OBERTHUR_AUTH_MAX_LENGTH_PIN;
 
@@ -1799,7 +1799,7 @@ auth_pin_reset_oberthur_style(struct sc_card *card, unsigned int type,
 	struct sc_file *tmp_file = NULL;
 	struct sc_apdu apdu;
 	unsigned char puk[OBERTHUR_AUTH_MAX_LENGTH_PUK];
-	unsigned char ffs[0x100]; 
+	unsigned char ffs1[0x100]; 
 	int rv, rvv, local_pin_reference;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
@@ -1833,15 +1833,15 @@ auth_pin_reset_oberthur_style(struct sc_card *card, unsigned int type,
 	if (rv != OBERTHUR_AUTH_MAX_LENGTH_PUK)
 		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_DATA, "Oberthur style 'PIN RESET' failed");
 	
-	memset(ffs, 0xFF, sizeof(ffs));
-	memcpy(ffs, puk, rv);
+	memset(ffs1, 0xFF, sizeof(ffs1));
+	memcpy(ffs1, puk, rv);
 
 	memset(&pin_cmd, 0, sizeof(pin_cmd));
 	pin_cmd.pin_type = SC_AC_CHV;
         pin_cmd.cmd = SC_PIN_CMD_UNBLOCK;
 	pin_cmd.pin_reference = local_pin_reference;
 	auth_init_pin_info(card, &pin_cmd.pin1, OBERTHUR_AUTH_TYPE_PUK);
-	pin_cmd.pin1.data = ffs;
+	pin_cmd.pin1.data = ffs1;
 	pin_cmd.pin1.len = OBERTHUR_AUTH_MAX_LENGTH_PUK;
 
 	if (data->pin2.data)   {
@@ -1853,7 +1853,7 @@ auth_pin_reset_oberthur_style(struct sc_card *card, unsigned int type,
         sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x2C, 0x00, local_pin_reference);
 	apdu.lc = OBERTHUR_AUTH_MAX_LENGTH_PIN  + OBERTHUR_AUTH_MAX_LENGTH_PUK;
 	apdu.datalen = OBERTHUR_AUTH_MAX_LENGTH_PIN  + OBERTHUR_AUTH_MAX_LENGTH_PUK;
-	apdu.data = ffs;
+	apdu.data = ffs1;
 
 	pin_cmd.apdu = &apdu;
 	pin_cmd.flags |= SC_PIN_CMD_USE_PINPAD | SC_PIN_CMD_IMPLICIT_CHANGE;
@@ -1863,7 +1863,7 @@ auth_pin_reset_oberthur_style(struct sc_card *card, unsigned int type,
         pin_cmd.pin1.encoding = SC_PIN_ENCODING_ASCII;
         pin_cmd.pin1.offset = 5;
 
-	pin_cmd.pin2.data = &ffs[OBERTHUR_AUTH_MAX_LENGTH_PUK];
+	pin_cmd.pin2.data = &ffs1[OBERTHUR_AUTH_MAX_LENGTH_PUK];
 	pin_cmd.pin2.len = OBERTHUR_AUTH_MAX_LENGTH_PIN;
 	pin_cmd.pin2.offset = 5 + OBERTHUR_AUTH_MAX_LENGTH_PUK;
 	pin_cmd.pin2.min_length = 4;
