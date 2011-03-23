@@ -475,7 +475,7 @@ static int get_name_from_EF_DatiPersonali(unsigned char *EFdata,
 
 static int itacns_add_data_files(sc_pkcs15_card_t *p15card)
 {
-	const size_t list_size =
+	const size_t array_size =
 		sizeof(itacns_data_files)/sizeof(itacns_data_files[0]);
 	unsigned int i;
 	int rv;
@@ -484,7 +484,7 @@ static int itacns_add_data_files(sc_pkcs15_card_t *p15card)
 	struct sc_pkcs15_object *objs[32];
 	struct sc_pkcs15_data_info *cinfo;
 
-	for(i=0; i < list_size; i++) {
+	for(i=0; i < array_size; i++) {
 		sc_path_t path;
 		sc_pkcs15_data_info_t data;
 		sc_pkcs15_object_t    obj;
