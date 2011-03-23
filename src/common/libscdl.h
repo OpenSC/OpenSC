@@ -21,4 +21,4 @@
 void *sc_dlopen(const char *filename);
 void *sc_dlsym(void *handle, const char *symbol);
 int sc_dlclose(void *handle);
-const char *sc_dlerror();
+const char *sc_dlerror(void);
