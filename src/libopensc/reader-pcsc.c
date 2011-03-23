@@ -334,9 +334,9 @@ static int refresh_attributes(sc_reader_t *reader)
 			} else {
 				/* Check if the card handle is still valid. If the card changed,
 				 * the handle will be invalid. */
-				DWORD readers_len = 0, state, prot, atr_len = SC_MAX_ATR_SIZE;
+				DWORD readers_len = 0, cstate, prot, atr_len = SC_MAX_ATR_SIZE;
 				unsigned char atr[SC_MAX_ATR_SIZE];
-				LONG rv = priv->gpriv->SCardStatus(priv->pcsc_card, NULL, &readers_len, &state, &prot, atr, &atr_len);
+				LONG rv = priv->gpriv->SCardStatus(priv->pcsc_card, NULL, &readers_len, &cstate, &prot, atr, &atr_len);
 				if (rv == (LONG)SCARD_W_REMOVED_CARD)
 					reader->flags |= SC_READER_CARD_CHANGED;
 			}
