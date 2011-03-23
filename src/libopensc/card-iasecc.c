@@ -2214,7 +2214,6 @@ iasecc_get_serialnr(struct sc_card *card, struct sc_serial_number *serial)
 
 	do  {
 		char txt[0x200];
-		size_t ii;
 
 		for (ii=0;ii<card->serialnr.len;ii++)
 			sprintf(txt + ii*2, "%02X", *(card->serialnr.value + ii));
