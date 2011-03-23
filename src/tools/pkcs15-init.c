@@ -2837,7 +2837,7 @@ static int verify_pin(struct sc_pkcs15_card *p15card, char *auth_id_str)
 
 	if (!auth_id_str)   {
 	        struct sc_pkcs15_object *objs[32];
-        	int r, ii;
+        	int ii;
 		
 		r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_AUTH_PIN, objs, 32);
 		if (r < 0) {
