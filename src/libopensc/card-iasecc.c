@@ -644,7 +644,6 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 	sc_print_cache(card);
 	if (lpath.len >= 2 && lpath.value[0] == 0x3F && lpath.value[1] == 0x00)   {
 		struct sc_path mfpath;
-		int rv;
 
 		memset(&mfpath, 0, sizeof(struct sc_path));
 		sc_log(ctx, "EF.ATR(aid:'%s')", card->ef_atr ? sc_dump_hex(card->ef_atr->aid.value, card->ef_atr->aid.len) : "");
