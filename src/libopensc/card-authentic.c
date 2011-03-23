@@ -505,6 +505,7 @@ authentic_erase_binary(struct sc_card *card, unsigned int offs, size_t count, un
 }
 
 
+#if 0
 static int 
 authentic_resize_file(struct sc_card *card, unsigned file_id, unsigned new_size)
 {
@@ -536,6 +537,7 @@ authentic_resize_file(struct sc_card *card, unsigned file_id, unsigned new_size)
 
 	LOG_FUNC_RETURN(ctx, rv);
 }
+#endif
 
 
 static int
