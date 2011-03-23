@@ -1336,7 +1336,6 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
 		LOG_TEST_RET(ctx, r, "Card specific 'store key' failed");
 	} else {
 		struct sc_pkcs15_der encoded, wrapped, *der = &encoded;
-		struct sc_context *ctx = p15card->card->ctx;
 
 		/* DER encode the private key */
 		encoded.value = wrapped.value = NULL;
