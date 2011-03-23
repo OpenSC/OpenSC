@@ -1933,7 +1933,7 @@ prkey_fixup_rsa(struct sc_pkcs15_card *p15card, struct sc_pkcs15_prkey_rsa *key)
 		static u8 dmp1[256], dmq1[256], iqmp[256];
 		RSA    *rsa;
 		BIGNUM *aux;
-		BN_CTX *ctx;
+		BN_CTX *bn_ctx;
 
 		rsa = RSA_new();
 		rsa->n = BN_bin2bn(key->modulus.data, key->modulus.len, NULL);
@@ -1949,18 +1949,18 @@ prkey_fixup_rsa(struct sc_pkcs15_card *p15card, struct sc_pkcs15_prkey_rsa *key)
 			rsa->iqmp = BN_new();
 
 		aux = BN_new();
-		ctx = BN_CTX_new();
+		bn_ctx = BN_CTX_new();
 
 		BN_sub(aux, rsa->q, BN_value_one());
-		BN_mod(rsa->dmq1, rsa->d, aux, ctx);
+		BN_mod(rsa->dmq1, rsa->d, aux, bn_ctx);
 
 		BN_sub(aux, rsa->p, BN_value_one());
-		BN_mod(rsa->dmp1, rsa->d, aux, ctx);
+		BN_mod(rsa->dmp1, rsa->d, aux, bn_ctx);
 
-		BN_mod_inverse(rsa->iqmp, rsa->q, rsa->p, ctx);
+		BN_mod_inverse(rsa->iqmp, rsa->q, rsa->p, bn_ctx);
 
 		BN_clear_free(aux);
-		BN_CTX_free(ctx);
+		BN_CTX_free(bn_ctx);
 
 		/* Not thread safe, but much better than a memory leak */
 		GETBN(key->dmp1, rsa->dmp1, dmp1);
