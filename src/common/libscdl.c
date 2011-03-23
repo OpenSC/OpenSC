@@ -20,6 +20,8 @@
 
 #include "config.h"
 
+#include "libscdl.h"
+
 #ifdef HAVE_LTDL_H
 #include <ltdl.h>
 /* libltdl is present, pass all calls to it */
