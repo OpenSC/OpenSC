@@ -214,8 +214,6 @@ static struct {
 	{ NULL, NULL }
 };
 
-typedef struct file_info file_info;
-
 static int		process_conf(struct sc_profile *, scconf_context *);
 static int		process_block(struct state *, struct block *,
 				const char *, scconf_block *);
@@ -231,20 +229,20 @@ static int		map_str2int(struct state *, const char *,
 static int		setstr(char **strp, const char *value);
 static void		parse_error(struct state *, const char *, ...);
 
-static file_info *	sc_profile_instantiate_file(sc_profile_t *,
+static struct file_info *	sc_profile_instantiate_file(sc_profile_t *,
 				struct file_info *, struct file_info *,
 				unsigned int);
-static file_info *	sc_profile_find_file(struct sc_profile *,
+static struct file_info *	sc_profile_find_file(struct sc_profile *,
 				const sc_path_t *, const char *);
-static file_info *	sc_profile_find_file_by_path(
+static struct file_info *	sc_profile_find_file_by_path(
 				struct sc_profile *,
 				const sc_path_t *);
 
 static struct pin_info *	new_pin(struct sc_profile *, int);
-static file_info *	new_file(struct state *, const char *,
+static struct file_info *	new_file(struct state *, const char *,
 				unsigned int);
-static file_info *	add_file(sc_profile_t *, const char *,
-				sc_file_t *, file_info *);
+static struct file_info *	add_file(sc_profile_t *, const char *,
+				sc_file_t *, struct file_info *);
 static void		free_file_list(struct file_info **);
 static void		append_file(sc_profile_t *, struct file_info *);
 static struct auth_info *	new_key(struct sc_profile *,
@@ -625,7 +623,7 @@ sc_profile_add_file(sc_profile_t *profile, const char *name, sc_file_t *file)
 {
 	struct sc_context *ctx = profile->card->ctx;
 	sc_path_t	path = file->path;
-	file_info	*parent;
+	struct file_info	*parent;
 
 	LOG_FUNC_CALLED(ctx);
 	if (!path.len)   {
@@ -701,7 +699,7 @@ sc_profile_instantiate_template(sc_profile_t *profile,
 	 */
 	assert(base_file->instance);
 	for (fi = tmpl->ef_list; fi; fi = fi->next) {
-		file_info	*parent, *instance;
+		struct file_info	*parent, *instance;
 		unsigned int	skew = 0;
 
 		fi->instance = NULL;
@@ -736,9 +734,9 @@ sc_profile_instantiate_template(sc_profile_t *profile,
 	return 0;
 }
 
-static file_info *
-sc_profile_instantiate_file(sc_profile_t *profile, file_info *ft,
-		file_info *parent, unsigned int skew)
+static struct file_info *
+sc_profile_instantiate_file(sc_profile_t *profile, struct file_info *ft,
+		struct file_info *parent, unsigned int skew)
 {
 	struct sc_context *ctx = profile->card->ctx;
 	struct file_info *fi;
@@ -1136,11 +1134,11 @@ static void append_file(sc_profile_t *profile, struct file_info *nfile)
  * Add a new file to the profile.
  * This function is called by sc_profile_add_file.
  */
-static file_info *
+static struct file_info *
 add_file(sc_profile_t *profile, const char *name,
-		sc_file_t *file, file_info *parent)
+		sc_file_t *file, struct file_info *parent)
 {
-	file_info	*info;
+	struct file_info	*info;
 
 	info = calloc(1, sizeof(*info));
 	if (info == NULL)
@@ -1181,7 +1179,7 @@ static struct file_info *
 new_file(struct state *cur, const char *name, unsigned int type)
 {
 	sc_profile_t	*profile = cur->profile;
-	file_info	*info;
+	struct file_info	*info;
 	sc_file_t	*file;
 	unsigned int	df_type = 0, dont_free = 0;
 
