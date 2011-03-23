@@ -1526,7 +1526,7 @@ static int
 iasecc_chv_verify_pinpad(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd, int *tries_left)
 {
 	struct sc_context *ctx = card->ctx;
-	unsigned char ffs[0x100];
+	unsigned char buffer[0x100];
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
@@ -1549,8 +1549,8 @@ iasecc_chv_verify_pinpad(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd, 
 
 	pin_cmd->pin1.len = pin_cmd->pin1.min_length;
 
-	memset(ffs, 0xFF, sizeof(ffs));
-	pin_cmd->pin1.data = ffs;
+	memset(buffer, 0xFF, sizeof(buffer));
+	pin_cmd->pin1.data = buffer;
 
 	pin_cmd->cmd = SC_PIN_CMD_VERIFY;
 	pin_cmd->flags |= SC_PIN_CMD_USE_PINPAD;
