@@ -1252,7 +1252,7 @@ static int
 authentic_chv_verify_pinpad(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd, int *tries_left)
 {
 	struct sc_context *ctx = card->ctx;
-	unsigned char ffs[0x100];
+	unsigned char buffer[0x100];
 	struct sc_pin_cmd_pin *pin1 = &pin_cmd->pin1;
 	int rv;
 
@@ -1271,8 +1271,8 @@ authentic_chv_verify_pinpad(struct sc_card *card, struct sc_pin_cmd_data *pin_cm
 	pin1->len = pin1->min_length;
 	pin1->max_length = 8;
 
-	memset(ffs, pin1->pad_char, sizeof(ffs));
-	pin1->data = ffs;
+	memset(buffer, pin1->pad_char, sizeof(buffer));
+	pin1->data = buffer;
 
 	pin_cmd->cmd = SC_PIN_CMD_VERIFY;
 	pin_cmd->flags |= SC_PIN_CMD_USE_PINPAD;
