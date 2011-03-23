@@ -10,6 +10,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#ifdef HAVE_LTDL_H
+#include <ltdl.h>
+#endif
 
 #include "pkcs11/pkcs11.h"
 
