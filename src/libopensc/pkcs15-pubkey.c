@@ -941,7 +941,7 @@ int sc_pkcs15_pubkey_from_spki_filename(sc_context_t *ctx,
 {
 	int r;
 	u8 * buf = NULL;
-	size_t buflen;
+	size_t buflen = 0;
 	sc_pkcs15_pubkey_t * pubkey = NULL;
 	struct sc_asn1_entry asn1_spki[] = {
 		{ "PublicKeyInfo",SC_ASN1_CALLBACK, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, sc_pkcs15_pubkey_from_spki, &pubkey},
