@@ -252,7 +252,7 @@ static int westcos_init(sc_card_t * card)
 	    scconf_get_str(card->ctx->conf_blocks[0], "westcos_default_key",
 			   DEFAULT_TRANSPORT_KEY);
 	if (default_key) {
-		priv_data_t *priv_data = (priv_data_t *) (card->drv_data);
+		priv_data = (priv_data_t *) (card->drv_data);
 		priv_data->default_key.key_reference = 0;
 		priv_data->default_key.key_len =
 			sizeof(priv_data->default_key.key_value);
