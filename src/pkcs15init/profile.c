@@ -214,9 +214,7 @@ static struct {
 	{ NULL, NULL }
 };
 
-typedef struct pin_info pin_info;
 typedef struct file_info file_info;
-typedef struct auth_info auth_info;
 
 static int		process_conf(struct sc_profile *, scconf_context *);
 static int		process_block(struct state *, struct block *,
@@ -242,14 +240,14 @@ static file_info *	sc_profile_find_file_by_path(
 				struct sc_profile *,
 				const sc_path_t *);
 
-static pin_info *	new_pin(struct sc_profile *, int);
+static struct pin_info *	new_pin(struct sc_profile *, int);
 static file_info *	new_file(struct state *, const char *,
 				unsigned int);
 static file_info *	add_file(sc_profile_t *, const char *,
 				sc_file_t *, file_info *);
 static void		free_file_list(struct file_info **);
 static void		append_file(sc_profile_t *, struct file_info *);
-static auth_info *	new_key(struct sc_profile *,
+static struct auth_info *	new_key(struct sc_profile *,
 				unsigned int, unsigned int);
 static void		set_pin_defaults(struct sc_profile *,
 				struct pin_info *);
