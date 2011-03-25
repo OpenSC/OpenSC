@@ -35,6 +35,7 @@
 #include <windows.h>
 #include "cardmod.h"
 
+#include "libopensc/cardctl.h"
 #include "libopensc/opensc.h"
 #include "libopensc/pkcs15.h"
 #include "libopensc/log.h"
@@ -862,7 +863,8 @@ DWORD WINAPI CardReadFile(__in PCARD_DATA pCardData,
 				{
 					struct sc_card *card = vs->p15card->card;
 					unsigned char guid_bin[SC_PKCS15_MAX_ID_SIZE + SC_MAX_SERIALNR];
-                                        char guid[MAX_CONTAINER_NAME_LEN + 1];
+					struct sc_serial_number serialnr;
+					char guid[MAX_CONTAINER_NAME_LEN + 1];
 	
 					/* The globally unique identifier derived from the PKCS#15 object 
 					 * identifier concatenated with the card's serial number.
@@ -872,7 +874,11 @@ DWORD WINAPI CardReadFile(__in PCARD_DATA pCardData,
 
 					memset(guid_bin, 0, sizeof(guid_bin));
 					memcpy(guid_bin, cert_info->id.value, cert_info->id.len);
-					memcpy(guid_bin + cert_info->id.len, card->serialnr.value, card->serialnr.len);
+					r = sc_card_ctl(card, SC_CARDCTL_GET_SERIALNR, &serialnr);
+					if (r)
+						return SCARD_F_INTERNAL_ERROR;
+					memcpy(guid_bin + cert_info->id.len, serialnr.value, serialnr.len);
+
 					r = serialize_guid(guid_bin, guid, sizeof(guid));
 					if(r)
 					{
