@@ -751,7 +751,8 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 	PCSC_TLV_STRUCTURE *pcsc_tlv;
 	LONG rv;
 	const char *log_disabled = "but it's disabled in configuration file";
-	
+	const char *broken_readers[] = {"HP USB Smart Card Keyboard"};
+
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 
 	if (gpriv->SCardControl == NULL)
@@ -811,6 +812,14 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 			reader->capabilities |= SC_READER_CAP_PIN_PAD;
 		} else {
 			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "%s %s", log_text, log_disabled);
+		}
+	}
+
+	/* Ignore advertised pinpad capability on readers known to be broken. Trac #340 */
+	for (i = 0; i < sizeof(broken_readers)/sizeof(broken_readers[0]); i++) {
+		if (strstr(reader->name, broken_readers[i]) && (reader->capabilities & SC_READER_CAP_PIN_PAD)) {
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "%s has a broken pinpad, ignoring", reader->name);
+			reader->capabilities &= ~SC_READER_CAP_PIN_PAD;
 		}
 	}
 
