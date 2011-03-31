@@ -342,7 +342,6 @@ static int do_cat(int argc, char **argv)
 	sc_file_t *file = NULL;
 	int not_current = 1;
 	int sfi = 0;
-	const char sfi_prefix[] = "sfi:";
 
 	if (argc > 1)
 		goto usage;
@@ -351,17 +350,10 @@ static int do_cat(int argc, char **argv)
 		file = current_file;
 		not_current = 0;
 	} else {
-		if (strncmp(argv[0], sfi_prefix, sizeof(sfi_prefix)-1)) {
-			if (arg_to_path(argv[0], &path, 1) != 0)
-				goto usage;
-			r = sc_select_file(card, &path, &file);
-			if (r) {
-				check_ret(r, SC_AC_OP_SELECT, "unable to select file",
-					current_file);
-				goto err;
-			}
-		} else {
-			const char *sfi_n = &argv[0][sizeof(sfi_prefix)-1];
+		const char sfi_prefix[] = "sfi:";
+
+		if (strncasecmp(argv[0], sfi_prefix, strlen(sfi_prefix)) == 0) {
+			const char *sfi_n = argv[0] + strlen(sfi_prefix);
 
 			if(!current_file) {
 				printf("A DF must be selected to read by SFI\n");
@@ -374,6 +366,15 @@ static int do_cat(int argc, char **argv)
 			if ((sfi < 1) || (sfi > 30)) {
 				printf("Invalid SFI: %s\n", sfi_n);
 				goto usage;
+			}
+		} else {
+			if (arg_to_path(argv[0], &path, 1) != 0)
+				goto usage;
+			r = sc_select_file(card, &path, &file);
+			if (r) {
+				check_ret(r, SC_AC_OP_SELECT, "unable to select file",
+					current_file);
+				goto err;
 			}
 		}
 	}
