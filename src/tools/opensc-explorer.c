@@ -164,17 +164,9 @@ static int arg_to_path(const char *arg, sc_path_t *path, int is_id)
 
 static void print_file(const sc_file_t *file)
 {
-	const char *st;
+	const char *format = " %02X%02X ";
+	const char *st = "???";
 
-	if (file->type == SC_FILE_TYPE_DF)
-		printf("[");
-	else
-		printf(" ");
-	printf("%02X%02X", file->id >> 8, file->id & 0xFF);
-	if (file->type == SC_FILE_TYPE_DF)
-		printf("]");
-	else
-		printf(" ");
 	switch (file->type) {
 	case SC_FILE_TYPE_WORKING_EF:
 		st = "wEF";
@@ -183,12 +175,11 @@ static void print_file(const sc_file_t *file)
 		st = "iEF";
 		break;
 	case SC_FILE_TYPE_DF:
+		format = "[%02X%02X]";
 		st = "DF";
 		break;
-	default:
-		st = "???";
-		break;
 	}
+	printf(format, file->id >> 8, file->id & 0xFF);
 	printf("\t%4s", st);
 	printf(" %5lu", (unsigned long)file->size);
 	if (file->namelen) {
