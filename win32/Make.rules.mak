@@ -1,4 +1,3 @@
-
 OPENSC_FEATURES = pcsc
 
 #Uncomment to use 'static' linking mode
@@ -7,15 +6,14 @@ LINK_MODE = STATIC
 #Include support of minidriver 'cardmod'
 MINIDRIVER_DEF = /DENABLE_CARDMOD
 
-
 #Build MSI with the Windows Installer XML (WIX), minimal WIX version 3.6
+WIX_INSTALLED_PATH = "C:\Program Files\Windows Installer XML v3.6"
+
 #Static link mode should be used.
 #WIX_MSI_DEF = /DBUILD_MSI
 !IF "$(WIX_MSI_DEF)" == "/DBUILD_MSI"
-WIX_INSTALLED_PATH = c:\download\wix36-binaries
 LINK_MODE = STATIC
 !ENDIF
-
 
 # If you want support for OpenSSL (needed for pkcs15-init tool, software hashing in PKCS#11 library and verification):
 # - download and build OpenSSL
