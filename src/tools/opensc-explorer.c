@@ -368,7 +368,7 @@ static int do_cat(int argc, char **argv)
 				goto usage;
 			}
 		} else {
-			if (arg_to_path(argv[0], &path, 1) != 0)
+			if (arg_to_path(argv[0], &path, 0) != 0)
 				goto usage;
 			r = sc_select_file(card, &path, &file);
 			if (r) {
