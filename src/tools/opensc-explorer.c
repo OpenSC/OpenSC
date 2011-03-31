@@ -903,7 +903,9 @@ static int do_get(int argc, char **argv)
 		fbuf[5*i-1] = 0;
 		filename = fbuf;
 	}
-	outf = fopen(filename, "wb");
+	outf = (strcmp(filename, "-") == 0)
+		? stdout
+		: fopen(filename, "wb");
 	if (outf == NULL) {
 		perror(filename);
 		goto err;
@@ -936,14 +938,19 @@ static int do_get(int argc, char **argv)
 		idx += r;
 		count -= r;
 	}
-	printf("Total of %d bytes read from %s and saved to %s.\n",
-	       idx, argv[0], filename);
+	if (outf == stdout) {
+		fwrite("\n", 1, 1, outf);
+	}
+	else {
+		printf("Total of %d bytes read from %s and saved to %s.\n",
+		       idx, argv[0], filename);
+	}
 	
 	err = 0;
 err:
 	if (file)
 		sc_file_free(file);
-	if (outf)
+	if (outf != NULL && outf != stdout)
 		fclose(outf);
 	select_current_path_or_die();
 	return -err;
