@@ -152,6 +152,6 @@
     <UIRef Id="WixUI_Mondo"/>
     <UIRef Id="WixUI_ErrorProgressText"/>
 
-    <Icon Id="opensc.ico" SourceFile="$(var.SOURCE_DIR)\win32\opensc-msi\OpenSC.ico"/>
+    <Icon Id="opensc.ico" SourceFile="$(var.SOURCE_DIR)\win32\OpenSC.ico"/>
   </Product>
 </Wix>
