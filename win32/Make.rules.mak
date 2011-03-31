@@ -15,7 +15,7 @@ WIX_PATH = "C:\Program Files\Windows Installer XML v3.6"
 OPENSSL_DEF = /DENABLE_OPENSSL
 !IF "$(OPENSSL_DEF)" == "/DENABLE_OPENSSL"
 OPENSSL_INCL_DIR = /IC:\OpenSSL-Win32\include
-OPENSSL_LIB = C:\OpenSSL-Win32\lib\VC\static\libeay32MT.lib C:\OpenSSL-Win32\lib\VC\static\ssleay32MT.lib user32.lib advapi32.lib
+OPENSSL_LIB = C:\OpenSSL-Win32\lib\VC\static\libeay32MT.lib C:\OpenSSL-Win32\lib\VC\static\ssleay32MT.lib user32.lib advapi32.lib crypt32.lib
 
 PROGRAMS_OPENSSL = pkcs15-init.exe cryptoflex-tool.exe netkey-tool.exe piv-tool.exe westcos-tool.exe
 OPENSC_FEATURES = $(OPENSC_FEATURES) openssl
