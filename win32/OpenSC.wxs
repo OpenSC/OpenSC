@@ -55,7 +55,7 @@
 
             <Directory Id="INSTALLDIR_ETC" Name="etc">
               <Component Id="OPENSC_CONF" Guid="038019E3-3FA9-442A-891F-F0BF2E39183E">
-                <File Id="OPENSC_CONF_FILE" Name="opensc.conf" DiskId="1" Source="$(var.SOURCE_DIR)\etc\opensc.conf" Vital="yes" KeyPath="yes"/>
+                <File Id="OPENSC_CONF_FILE" Name="opensc.conf" DiskId="1" Source="$(var.SOURCE_DIR)\etc\opensc.conf.in" Vital="yes" KeyPath="yes"/>
               </Component>
             </Directory>
 
