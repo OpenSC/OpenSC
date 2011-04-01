@@ -13,7 +13,7 @@ OBJECTS = pkcs15-lib.obj profile.obj \
 all: $(TARGET) 
 
 $(TARGET): $(OBJECTS)
-	lib /nologo /machine:ix86 /out:$(TARGET) $(OBJECTS)
+	lib $(LIBFLAGS) /out:$(TARGET) $(OBJECTS)
 
 !INCLUDE $(TOPDIR)\win32\Make.rules.mak
 

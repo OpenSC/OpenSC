@@ -8,6 +8,6 @@ OBJECTS = scconf.obj parse.obj write.obj sclex.obj
 all: $(TARGET)
 
 $(TARGET): $(OBJECTS)
-	lib /nologo /machine:ix86 /out:$(TARGET) $(OBJECTS)
+	lib $(LIBFLAGS) /out:$(TARGET) $(OBJECTS)
 
 !INCLUDE $(TOPDIR)\win32\Make.rules.mak
