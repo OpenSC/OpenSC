@@ -4,7 +4,7 @@ OPENSC_FEATURES = pcsc
 MINIDRIVER_DEF = /DENABLE_CARDMOD
 
 #Build MSI with the Windows Installer XML (WIX) toolkit, requires WIX >= 3.6
-!IF "$(BUILD_TYPE)" == "WIN64"
+!IF "$(BUILD_ON)" == "WIN64"
 WIX_PATH = "C:\Program Files (x86)\Windows Installer XML v3.6"
 !ELSE
 WIX_PATH = "C:\Program Files\Windows Installer XML v3.6"
@@ -17,7 +17,7 @@ WIX_PATH = "C:\Program Files\Windows Installer XML v3.6"
 # - set the OPENSSL_LIB below to your openssl lib file
 OPENSSL_DEF = /DENABLE_OPENSSL
 !IF "$(OPENSSL_DEF)" == "/DENABLE_OPENSSL"
-!IF "$(BUILD_TYPE)" == "WIN64"
+!IF "$(BUILD_FOR)" == "WIN64"
 OPENSSL_DIR = C:\OpenSSL-Win64
 !ELSE
 OPENSSL_DIR = C:\OpenSSL-Win32
@@ -43,7 +43,7 @@ OPENSC_FEATURES = $(OPENSC_FEATURES) zlib
 !ENDIF
 
 # Used for MiniDriver
-!IF "$(BUILD_TYPE)" == "WIN64"
+!IF "$(BUILD_ON)" == "WIN64"
 CNGSDK_INCL_DIR = "/IC:\Program Files (x86)\Microsoft CNG Development Kit\Include"
 !ELSE
 CNGSDK_INCL_DIR = "/IC:\Program Files\Microsoft CNG Development Kit\Include"
@@ -54,7 +54,7 @@ CNGSDK_INCL_DIR = "/IC:\Program Files\Microsoft CNG Development Kit\Include"
 
 ALL_INCLUDES = /I$(TOPDIR)\win32 /I$(TOPDIR)\src $(OPENSSL_INCL_DIR) $(ZLIB_INCL_DIR) $(LIBLTDL_INCL) $(INTTYPES_INCL_DIR) $(CNGSDK_INCL_DIR)
 COPTS =  /D_CRT_SECURE_NO_DEPRECATE /MT /nologo /DHAVE_CONFIG_H $(ALL_INCLUDES) /D_WIN32_WINNT=0x0502 /DWIN32_LEAN_AND_MEAN $(OPENSSL_DEF) $(ZLIB_DEF) $(MINIDRIVER_DEF) /DOPENSC_FEATURES="\"$(OPENSC_FEATURES)\""
-!IF "$(BUILD_TYPE)" == "WIN64"
+!IF "$(BUILD_FOR)" == "WIN64"
 LINKFLAGS = /NOLOGO /INCREMENTAL:NO /MACHINE:X64 /MANIFEST:NO /NODEFAULTLIB:MSVCRTD  /NODEFAULTLIB:MSVCRT /NODEFAULTLIB:LIBCMTD
 LIBFLAGS =  /nologo /machine:x64
 !ELSE
