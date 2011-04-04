@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="windows-1252"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi" xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
-  <Product Name="OpenSC" Id="BDD73EB0-0485-4B79-93EC-CF2EAEFF3BAB" UpgradeCode="69428F65-B96D-458D-BB87-DBB5FDB35DCE" Language="1033" Codepage="1252" Version="0.12.1" Manufacturer="OpenSC Project">
+  <Product Name="OpenSC" Id="BDD73EB0-0485-4B79-93EC-CF2EAEFF3BAB" UpgradeCode="69428F65-B96D-458D-BB87-DBB5FDB35DCE" Language="1033" Codepage="1252" Version="@OPENSC_VERSION_MAJOR@.@OPENSC_VERSION_MINOR@.@OPENSC_VERSION_FIX@.0" Manufacturer="OpenSC Project">
     <Package Id="*" Keywords="Installer" Description="OpenSC Installer" Comments="OpenSC Project home page http://www.opensc-project.org/opensc/" Manufacturer="OpenSC Project" InstallerVersion="100" Languages="1033" Compressed="yes" SummaryCodepage="1252"/>
     <!-- OpenSC is covered by LGPL. Extend the license as required with other EULA notes -->
     <WixVariable Id="WixUILicenseRtf" Value="license.rtf"/>

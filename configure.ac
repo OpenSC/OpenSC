@@ -598,6 +598,7 @@ AC_CONFIG_FILES([
 	win32/versioninfo.rc
 	win32/winconfig.h
 	win32/OpenSC.iss
+	win32/OpenSC.wxs
 ])
 AC_OUTPUT
 
