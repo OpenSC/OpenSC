@@ -135,8 +135,8 @@ int sc_enum_apps(sc_card_t *card)
 	struct sc_context *ctx = card->ctx;
 	sc_path_t path;
 	int ef_structure;
-	size_t file_size;
-	int r, ii, jj, idx;
+	size_t file_size, jj;
+	int r, ii, idx;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 	if (card->app_count < 0)
