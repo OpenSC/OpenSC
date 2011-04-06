@@ -729,10 +729,10 @@ static int asn1_write_element(sc_context_t *ctx, unsigned int tag,
 {
 	unsigned char t;
 	unsigned char *buf, *p;
-	int c = 0, ii;
+	int c = 0;
 	unsigned short_tag;
 	unsigned char tag_char[3] = {0, 0, 0};
-	size_t tag_len;
+	size_t tag_len, ii;
 	
 	short_tag = tag & SC_ASN1_TAG_MASK;
 	for (tag_len = 0; short_tag >> (8 * tag_len); tag_len++)
