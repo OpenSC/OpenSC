@@ -7,8 +7,7 @@
            Codepage="1252"
            Version="@OPENSC_VERSION_MAJOR@.@OPENSC_VERSION_MINOR@.@OPENSC_VERSION_FIX@.0"
            Manufacturer="OpenSC Project">
-    <Package Platform="$(var.Platform)"
-             Description="OpenSC Installer"
+    <Package Description="OpenSC Installer"
              Comments="OpenSC Project home page http://www.opensc-project.org/opensc/"
              Manufacturer="OpenSC Project"
              InstallerVersion="100"
