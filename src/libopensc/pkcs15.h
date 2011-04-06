@@ -319,7 +319,7 @@ struct sc_pkcs15_prkey_info {
 	size_t modulus_length; /* RSA */
 	size_t field_length;   /* EC in bits */
 
-	int algo_refs[SC_MAX_SUPPORTED_ALGORITHMS];
+	unsigned int algo_refs[SC_MAX_SUPPORTED_ALGORITHMS];
 
 	struct sc_pkcs15_der subject;
 
@@ -338,7 +338,7 @@ struct sc_pkcs15_pubkey_info {
 	size_t modulus_length; /* RSA */
 	size_t field_length;   /* EC in bits */
 
-	int algo_refs[SC_MAX_SUPPORTED_ALGORITHMS];
+	unsigned int algo_refs[SC_MAX_SUPPORTED_ALGORITHMS];
 
 	struct sc_pkcs15_der subject;
 

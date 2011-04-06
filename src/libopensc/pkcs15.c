@@ -2097,8 +2097,7 @@ int
 sc_pkcs15_add_supported_algo_ref(struct sc_pkcs15_object *obj, 
 		struct sc_supported_algo_info *algo)
 {
-	int *algo_refs = NULL;
-	int ii;
+	unsigned int ii, *algo_refs = NULL;
 
 	if (!algo)
 		return SC_SUCCESS;
