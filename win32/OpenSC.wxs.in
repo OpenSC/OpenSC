@@ -1,21 +1,38 @@
 <?xml version="1.0" encoding="windows-1252"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi" xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
-  <Product Name="OpenSC" Id="BDD73EB0-0485-4B79-93EC-CF2EAEFF3BAB" UpgradeCode="69428F65-B96D-458D-BB87-DBB5FDB35DCE" Language="1033" Codepage="1252" Version="@OPENSC_VERSION_MAJOR@.@OPENSC_VERSION_MINOR@.@OPENSC_VERSION_FIX@.0" Manufacturer="OpenSC Project">
-    <Package Id="*" Keywords="Installer" Description="OpenSC Installer" Comments="OpenSC Project home page http://www.opensc-project.org/opensc/" Manufacturer="OpenSC Project" InstallerVersion="100" Languages="1033" Compressed="yes" SummaryCodepage="1252"/>
+  <Product Name="OpenSC"
+           Id="*"
+           UpgradeCode="{69428F65-B96D-458D-BB87-DBB5FDB35DCE}"
+           Language="1033"
+           Codepage="1252"
+           Version="@OPENSC_VERSION_MAJOR@.@OPENSC_VERSION_MINOR@.@OPENSC_VERSION_FIX@.0"
+           Manufacturer="OpenSC Project">
+    <Package Platform="$(var.Platform)"
+             Description="OpenSC Installer"
+             Comments="OpenSC Project home page http://www.opensc-project.org/opensc/"
+             Manufacturer="OpenSC Project"
+             InstallerVersion="100"
+             Languages="1033"
+             Compressed="yes"
+             SummaryCodepage="1252"/>
     <!-- OpenSC is covered by LGPL. Extend the license as required with other EULA notes -->
     <WixVariable Id="WixUILicenseRtf" Value="license.rtf"/>
     <Media Id="1" Cabinet="OpenSC.cab" EmbedCab="yes"/>
+    <MajorUpgrade DowngradeErrorMessage="Can't downgrade."/>
     <Directory Id="TARGETDIR" Name="SourceDir">
       <!-- Install critical DLL-s to system folder. NB! Id-s can not contain "-" characters! -->
       <Directory Id="SystemFolder" Name=".">
-        <Component Id="opensc_pkcs11.dll" Guid="5918FB75-E6DE-4611-B0FA-AB34765AD832">
-          <File Id="opensc_pkcs11.dll" Name="opensc-pkcs11.dll" DiskId="1" Source="$(var.SOURCE_DIR)\src\pkcs11\opensc-pkcs11.dll" Vital="yes" KeyPath="yes"/>
+        <Component Id="onepin_opensc_pkcs11.dll" Guid="*">
+          <File Source="$(var.SOURCE_DIR)\src\pkcs11\onepin-opensc-pkcs11.dll" Vital="yes"/>
         </Component>
-        <Component Id="opensc.dll" Guid="F7819E3C-F48A-460C-8F91-1DD84FC44ABB">
-          <File Id="opensc.dll" Name="opensc.dll" DiskId="1" Source="$(var.SOURCE_DIR)\src\libopensc\opensc.dll" Vital="yes" KeyPath="yes"/>
+        <Component Id="opensc_pkcs11.dll" Guid="*">
+          <File Source="$(var.SOURCE_DIR)\src\pkcs11\opensc-pkcs11.dll" Vital="yes"/>
         </Component>
-        <Component Id="opensc_minidriver.dll" Guid="A6004548-CFBC-40E7-9DC6-C78D62F1DDD0">
-          <File Id="opensc_minidriver.dll" Name="opensc-minidriver.dll" DiskId="1" Source="$(var.SOURCE_DIR)\src\cardmod\opensc-cardmod.dll" Vital="yes" KeyPath="yes"/>
+        <Component Id="opensc.dll" Guid="*">
+          <File Source="$(var.SOURCE_DIR)\src\libopensc\opensc.dll" Vital="yes"/>
+        </Component>
+        <Component Id="opensc_minidriver.dll" Guid="*">
+          <File Source="$(var.SOURCE_DIR)\src\cardmod\opensc-cardmod.dll" Vital="yes"/>
         </Component>
       </Directory>
       <!-- Install tools and profiles to Program Files -->
@@ -24,8 +41,8 @@
           <!-- Most of the stuff goes to the Program Files folder -->
           <Directory Id="INSTALLDIR" Name="OpenSC">
             <!-- opensc.conf sample goes to installation directory -->
-            <Component Id="opensc.conf" Guid="038019E3-3FA9-442A-891F-F0BF2E39183E">
-              <File Id="opensc.conf" Name="opensc.conf" DiskId="1" Source="$(var.SOURCE_DIR)\etc\opensc.conf.in" KeyPath="yes"/>
+            <Component Id="opensc.conf" Guid="*">
+              <File Source="$(var.SOURCE_DIR)\etc\opensc.conf.in" KeyPath="yes"/>
               <!-- -->
               <RegistryKey Id="OpenscRegs" Root="HKLM" Key="Software\[Manufacturer]\[ProductName]" Action="createAndRemoveOnUninstall">
                 <RegistryValue Type="string" Name="ConfigFile" Value="[INSTALLDIR]\opensc.conf"/>
@@ -34,61 +51,61 @@
             </Component>
             <!-- Tools have their own folder -->
             <Directory Id="INSTALLDIR_TOOLS" Name="tools">
-              <Component Id="opensc_explorer.exe" Guid="C101C84A-3B23-4A2E-BCFC-5E02B6B8015F">
-                <File Id="opensc_explorer.exe" Name="opensc-explorer.exe" DiskId="1" Source="$(var.SOURCE_DIR)\src\tools\opensc-explorer.exe" Vital="yes" KeyPath="yes"/>
+              <Component Id="opensc_explorer.exe" Guid="*">
+                <File Source="$(var.SOURCE_DIR)\src\tools\opensc-explorer.exe" Vital="yes"/>
               </Component>
-              <Component Id="opensc_tool.exe" Guid="CD6DCFD8-1705-436E-8E62-4D62C9F1BEC7">
-                <File Id="opensc_tool.exe" Name="opensc-tool.exe" DiskId="1" Source="$(var.SOURCE_DIR)\src\tools\opensc-tool.exe" Vital="yes" KeyPath="yes"/>
+              <Component Id="opensc_tool.exe" Guid="*">
+                <File Source="$(var.SOURCE_DIR)\src\tools\opensc-tool.exe" Vital="yes"/>
               </Component>
-              <Component Id="pkcs11_tool.exe" Guid="E2B4EACD-5DC7-40F7-9641-001F2D6C00EC">
-                <File Id="pkcs11_tool.exe" Name="pkcs11-tool.exe" DiskId="1" Source="$(var.SOURCE_DIR)\src\tools\pkcs11-tool.exe" Vital="yes" KeyPath="yes"/>
+              <Component Id="pkcs11_tool.exe" Guid="*">
+                <File Source="$(var.SOURCE_DIR)\src\tools\pkcs11-tool.exe" Vital="yes"/>
               </Component>
-              <Component Id="pkcs15_init.exe" Guid="8EB17FE2-A080-4166-86C4-F59E6BE62FD4">
-                <File Id="pkcs15_init.exe" Name="pkcs15-init.exe" DiskId="1" Source="$(var.SOURCE_DIR)\src\tools\pkcs15-init.exe" Vital="yes" KeyPath="yes"/>
+              <Component Id="pkcs15_init.exe" Guid="*">
+                <File Source="$(var.SOURCE_DIR)\src\tools\pkcs15-init.exe" Vital="yes"/>
               </Component>
-              <Component Id="pkcs15_tool.exe" Guid="A7A4257E-919D-423A-9354-3C689E3BE334">
-                <File Id="pkcs15_tool.exe" Name="pkcs15-tool.exe" DiskId="1" Source="$(var.SOURCE_DIR)\src\tools\pkcs15-tool.exe" Vital="yes" KeyPath="yes"/>
+              <Component Id="pkcs15_tool.exe" Guid="*">
+                <File Source="$(var.SOURCE_DIR)\src\tools\pkcs15-tool.exe" Vital="yes"/>
               </Component>
-              <Component Id="pkcs15_crypt.exe" Guid="150A0E6D-D4A6-4085-9A04-735BAC54E24A">
-                <File Id="pkcs15_crypt.exe" Name="pkcs15-crypt.exe" DiskId="1" Source="$(var.SOURCE_DIR)\src\tools\pkcs15-crypt.exe" Vital="yes" KeyPath="yes"/>
+              <Component Id="pkcs15_crypt.exe" Guid="*">
+                <File Source="$(var.SOURCE_DIR)\src\tools\pkcs15-crypt.exe" Vital="yes"/>
               </Component>
             </Directory>
             <Directory Id="INSTALLDIR_PROFILES" Name="profiles">
-              <Component Id="pkcs15.profile" Guid="17B47C7B-7057-4EDC-87B6-E846A1BEB812">
-                <File Id="pkcs15.profile" Name="pkcs15.profile" DiskId="1" Source="$(var.SOURCE_DIR)\src\pkcs15init\pkcs15.profile" Vital="yes" KeyPath="yes"/>
+              <Component Id="pkcs15.profile" Guid="*">
+                <File Source="$(var.SOURCE_DIR)\src\pkcs15init\pkcs15.profile"/>
               </Component>
-              <Component Id="asepcos.profile" Guid="1DA2BCBD-7615-4E26-AEA1-554624684AE7">
-                <File Id="asepcos.profile" Name="asepcos.profile" DiskId="1" Source="$(var.SOURCE_DIR)\src\pkcs15init\asepcos.profile" Vital="yes" KeyPath="yes"/>
+              <Component Id="asepcos.profile" Guid="*">
+                <File Source="$(var.SOURCE_DIR)\src\pkcs15init\asepcos.profile"/>
               </Component>
-              <Component Id="cardos.profile" Guid="FD519D05-6918-4DCF-98FC-3F1B61450DDC">
-                <File Id="cardos.profile" Name="cardos.profile" DiskId="1" Source="$(var.SOURCE_DIR)\src\pkcs15init\cardos.profile" Vital="yes" KeyPath="yes"/>
+              <Component Id="cardos.profile" Guid="*">
+                <File Source="$(var.SOURCE_DIR)\src\pkcs15init\cardos.profile"/>
               </Component>
-              <Component Id="entersafe.profile" Guid="A2FCE915-C426-45A7-81F7-5FF09F01C6B3">
-                <File Id="entersafe.profile" Name="entersafe.profile" DiskId="1" Source="$(var.SOURCE_DIR)\src\pkcs15init\entersafe.profile" Vital="yes" KeyPath="yes"/>
+              <Component Id="entersafe.profile" Guid="*">
+                <File Source="$(var.SOURCE_DIR)\src\pkcs15init\entersafe.profile"/>
               </Component>
-              <Component Id="myeid.profile" Guid="059DA967-5121-482A-B6B2-2E4F74D026AF">
-                <File Id="myeid.profile" Name="myeid.profile" DiskId="1" Source="$(var.SOURCE_DIR)\src\pkcs15init\myeid.profile" Vital="yes" KeyPath="yes"/>
+              <Component Id="myeid.profile" Guid="*">
+                <File Source="$(var.SOURCE_DIR)\src\pkcs15init\myeid.profile"/>
               </Component>
-              <Component Id="setcos.profile" Guid="7147805B-7851-44E9-B717-5A032E760882">
-                <File Id="setcos.profile" Name="setcos.profile" DiskId="1" Source="$(var.SOURCE_DIR)\src\pkcs15init\setcos.profile" Vital="yes" KeyPath="yes"/>
+              <Component Id="setcos.profile" Guid="*">
+                <File Source="$(var.SOURCE_DIR)\src\pkcs15init\setcos.profile"/>
               </Component>
-              <Component Id="starcos.profile" Guid="17EB09DA-FFA0-4C67-9CD4-E68901B8A0BE">
-                <File Id="starcos.profile" Name="starcos.profile" DiskId="1" Source="$(var.SOURCE_DIR)\src\pkcs15init\starcos.profile" Vital="yes" KeyPath="yes"/>
+              <Component Id="starcos.profile" Guid="*">
+                <File Source="$(var.SOURCE_DIR)\src\pkcs15init\starcos.profile"/>
               </Component>
-              <Component Id="westcos.profile" Guid="4221C3DB-7C36-4694-A3D4-9E653651429B">
-                <File Id="westcos.profile" Name="westcos.profile" DiskId="1" Source="$(var.SOURCE_DIR)\src\pkcs15init\westcos.profile" Vital="yes" KeyPath="yes"/>
+              <Component Id="westcos.profile" Guid="*">
+                <File Source="$(var.SOURCE_DIR)\src\pkcs15init\westcos.profile"/>
               </Component>
-              <Component Id="oberthur.profile" Guid="97D31202-FF84-4F17-92B8-E4D47E48D31B">
-                <File Id="oberthur.profile" Name="oberthur.profile" DiskId="1" Source="$(var.SOURCE_DIR)\src\pkcs15init\oberthur.profile" Vital="yes" KeyPath="yes"/>
+              <Component Id="oberthur.profile" Guid="*">
+                <File Source="$(var.SOURCE_DIR)\src\pkcs15init\oberthur.profile"/>
               </Component>
-              <Component Id="authentic.profile" Guid="75AE2D59-D249-4110-93F0-65E6F323CB63">
-                <File Id="authentic.profile" Name="authentic.profile" DiskId="1" Source="$(var.SOURCE_DIR)\src\pkcs15init\authentic.profile" Vital="yes" KeyPath="yes"/>
+              <Component Id="authentic.profile" Guid="*">
+                <File Source="$(var.SOURCE_DIR)\src\pkcs15init\authentic.profile"/>
               </Component>
-              <Component Id="rutoken.profile" Guid="8B612DE0-7568-4DD5-9BBD-26E23E23FE09">
-                <File Id="rutoken.profile" Name="rutoken.profile" DiskId="1" Source="$(var.SOURCE_DIR)\src\pkcs15init\rutoken.profile" Vital="yes" KeyPath="yes"/>
+              <Component Id="rutoken.profile" Guid="*">
+                <File Source="$(var.SOURCE_DIR)\src\pkcs15init\rutoken.profile"/>
               </Component>
-              <Component Id="rutoken_ecp.profile" Guid="63BEC797-F119-492C-B914-0E7F7E6E3740">
-                <File Id="rutoken_ecp.profile" Name="rutoken_ecp.profile" DiskId="1" Source="$(var.SOURCE_DIR)\src\pkcs15init\rutoken_ecp.profile" Vital="yes" KeyPath="yes"/>
+              <Component Id="rutoken_ecp.profile" Guid="*">
+                <File Source="$(var.SOURCE_DIR)\src\pkcs15init\rutoken_ecp.profile"/>
               </Component>
             </Directory>
           </Directory>
@@ -96,7 +113,7 @@
       </Directory>
       <Directory Id="ProgramMenuFolder" Name="Programs">
         <Directory Id="ProgramMenuDir" Name="OpenSC Project">
-          <Component Id="ProgramMenuDir" Guid="522E1FD6-F4C4-4B69-BB6F-5733DF1B73DA">
+          <Component Id="ProgramMenuDir" Guid="*">
             <util:InternetShortcut Id="OnlineDocumentationShortcut" Name="OpenSC wiki" Target="http://www.opensc-project.org/opensc/"/>
             <RemoveFolder Id="ProgramMenuDir" On="uninstall"/>
             <RegistryValue Root="HKCU" Key="Software\[Manufacturer]\[ProductName]" Name="installed" Type="integer" Value="1" KeyPath="yes"/>
@@ -111,6 +128,7 @@
         <ComponentRef Id="opensc.conf"/>
       </Feature>
       <Feature Id="OpenSC_pkcs11" Level="1" Title="OpenSC PKCS#11 module" Description="PKCS#11 module usd by most open source and cross-platform software (like Firefox, Putty, TrueCrypt, OpenVPN etc)" TypicalDefault="install">
+        <ComponentRef Id="onepin_opensc_pkcs11.dll"/>
         <ComponentRef Id="opensc_pkcs11.dll"/>
       </Feature>
       <!-- Minidriver is only installed if selected via Custom install (level == 4) -->
