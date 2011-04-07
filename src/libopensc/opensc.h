@@ -422,10 +422,6 @@ struct sc_reader_operations {
  * is made. */
 #define SC_CARD_CAP_APDU_EXT		0x00000001
 
-/* Card can handle operations specified in the
- * EMV 4.0 standard. */
-#define SC_CARD_CAP_EMV			0x00000002
-
 /* Card has on-board random number source. */
 #define SC_CARD_CAP_RNG			0x00000004
 
