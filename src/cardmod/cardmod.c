@@ -406,7 +406,6 @@ static void dump_objects (PCARD_DATA pCardData)
 
 DWORD WINAPI CardDeleteContext(__inout PCARD_DATA  pCardData)
 {
-	int i;
 	VENDOR_SPECIFIC *vs = NULL;
 
 	logprintf(pCardData, 1, "\nP:%d T:%d pCardData:%p ",GetCurrentProcessId(), GetCurrentThreadId(), pCardData);
@@ -493,9 +492,6 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData,
 	__in PCONTAINER_INFO pContainerInfo)
 {
 	int r;
-	int lg;
-	char name[100];
-	void  *pkeyblob, *pubkeyblob;
 	sc_pkcs15_cert_t *cert = NULL;
 	VENDOR_SPECIFIC *vs = NULL;
 	
@@ -829,7 +825,7 @@ DWORD WINAPI CardReadFile(__in PCARD_DATA pCardData,
 	
 	if(pszDirectoryName != NULL && strcmp(pszDirectoryName, "mscp") == 0)
 	{
-		int r,i,n, type;
+		int r,i,n;
 		sc_pkcs15_cert_t *cert = NULL;
 
 		if(strcmp(pszFileName, "cmapfile") == 0) 
@@ -1099,8 +1095,8 @@ DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 	__inout PCARD_RSA_DECRYPT_INFO  pInfo)
 
 {
-	int r;
-	int i, opt_crypt_flags = 0;
+	int r, i, opt_crypt_flags = 0;
+	unsigned ui;
 	VENDOR_SPECIFIC *vs;
 	sc_pkcs15_cert_info_t *cert_info;
 	sc_pkcs15_prkey_info_t *prkey_info;
@@ -1168,7 +1164,7 @@ DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 	}
 
 	/*inversion donnees*/
-	for(i = 0; i < pInfo->cbData; i++) pbuf[i] = pInfo->pbData[pInfo->cbData-i-1];
+	for(ui = 0; ui < pInfo->cbData; ui++) pbuf[ui] = pInfo->pbData[pInfo->cbData-ui-1];
 
 	r = sc_pkcs15_decipher(vs->p15card, vs->pkey, 
 		opt_crypt_flags, pbuf, pInfo->cbData, pbuf2, pInfo->cbData);
@@ -1179,7 +1175,7 @@ DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 	}
 	
 	/*inversion donnees */
-        for(i = 0; i < pInfo->cbData; i++) pInfo->pbData[i] = pbuf2[pInfo->cbData-i-1];
+        for(ui = 0; ui < pInfo->cbData; ui++) pInfo->pbData[ui] = pbuf2[pInfo->cbData-ui-1];
 
 	pCardData->pfnCspFree(pbuf);
 	pCardData->pfnCspFree(pbuf2);
@@ -1190,13 +1186,12 @@ DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 DWORD WINAPI CardSignData(__in PCARD_DATA pCardData,
 	__in PCARD_SIGNING_INFO pInfo)
 {
-	int r, i;
-	int opt_crypt_flags = 0, opt_hash_flags = 0;
 	VENDOR_SPECIFIC *vs;
 	ALG_ID hashAlg;
 	sc_pkcs15_cert_info_t *cert_info;
 	sc_pkcs15_prkey_info_t *prkey_info;
 	BYTE dataToSign[0x200];
+	int r, opt_crypt_flags = 0, opt_hash_flags = 0;
 	size_t dataToSignLen = sizeof(dataToSign);
 	
 	logprintf(pCardData, 1, "\nP:%d T:%d pCardData:%p ",GetCurrentProcessId(), GetCurrentThreadId(), pCardData);
@@ -1523,8 +1518,6 @@ DWORD WINAPI CardGetContainerProperty(__in PCARD_DATA pCardData,
 	__out PDWORD pdwDataLen,
 	__in DWORD dwFlags)
 {
-	VENDOR_SPECIFIC *vs;
-
 	logprintf(pCardData, 1, "\nP:%d T:%d pCardData:%p ",GetCurrentProcessId(), GetCurrentThreadId(), pCardData);
 	logprintf(pCardData, 1, "CardGetContainerProperty\n");
 
@@ -1833,8 +1826,6 @@ DWORD WINAPI CardSetProperty(__in   PCARD_DATA pCardData,
 
 DWORD WINAPI CardAcquireContext(IN PCARD_DATA pCardData, __in DWORD dwFlags)
 {
-	DWORD result;
-	DWORD dwActiveProtocol;
 	VENDOR_SPECIFIC *vs;
 	DWORD suppliedVersion = 0;
 	u8 challenge[8];
@@ -1884,7 +1875,6 @@ DWORD WINAPI CardAcquireContext(IN PCARD_DATA pCardData, __in DWORD dwFlags)
 	if(1)
 	{
 		int r;
-		HKEY key;
 		sc_context_param_t ctx_param;
 		
 		vs->ctx = NULL;
@@ -1970,7 +1960,6 @@ DWORD WINAPI CardAcquireContext(IN PCARD_DATA pCardData, __in DWORD dwFlags)
 static int associate_card(PCARD_DATA pCardData)
 {
     VENDOR_SPECIFIC *vs;
-	int i;
 	int  r;
 	BYTE empty_appdir[] = {1,'m','s','c','p',0,0,0,0};
 	BYTE empty_cardcf[6]={0,0,0,0,0,0};
