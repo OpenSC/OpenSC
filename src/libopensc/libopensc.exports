@@ -182,6 +182,8 @@ sc_pkcs15_free_prkey
 sc_pkcs15_free_prkey_info
 sc_pkcs15_free_pubkey
 sc_pkcs15_free_pubkey_info
+sc_pkcs15_get_guid
+sc_pkcs15_get_object_id
 sc_pkcs15_get_objects
 sc_pkcs15_get_objects_cond
 sc_pkcs15_hex_string_to_id
