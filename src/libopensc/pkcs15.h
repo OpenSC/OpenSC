@@ -462,6 +462,8 @@ typedef struct sc_pkcs15_tokeninfo {
 struct sc_pkcs15_operations   {
 	int (*parse_df)(struct sc_pkcs15_card *, struct sc_pkcs15_df *);
 	void (*clear)(struct sc_pkcs15_card *);
+	int (*get_guid)(struct sc_pkcs15_card *, const struct sc_pkcs15_object *, 
+			char *, size_t);
 };
 
 typedef struct sc_pkcs15_card {
@@ -775,11 +777,16 @@ const char *sc_pkcs15_print_id(const struct sc_pkcs15_id *id);
 void sc_pkcs15_format_id(const char *id_in, struct sc_pkcs15_id *id_out);
 int sc_pkcs15_hex_string_to_id(const char *in, struct sc_pkcs15_id *out);
 void sc_der_copy(sc_pkcs15_der_t *, const sc_pkcs15_der_t *);
+int sc_pkcs15_get_object_id(const struct sc_pkcs15_object *, struct sc_pkcs15_id *);
+int sc_pkcs15_get_guid(struct sc_pkcs15_card *, const struct sc_pkcs15_object *, 
+		char *, size_t);
+
 /* Prepend 'parent' to 'child' in case 'child' is a relative path */
 int sc_pkcs15_make_absolute_path(const sc_path_t *parent, sc_path_t *child);
 
 /* Clean and free object content */
 void sc_pkcs15_free_object_content(struct sc_pkcs15_object *);
+
 /* Allocate and set object content */
 int sc_pkcs15_allocate_object_content(struct sc_pkcs15_object *,
 		const unsigned char *, size_t);

@@ -27,6 +27,7 @@
 #include <stdio.h>
 #include <assert.h>
 
+#include "cardctl.h"
 #include "internal.h"
 #include "pkcs15.h"
 #include "asn1.h"
@@ -676,7 +677,7 @@ struct sc_app_info * sc_find_app(struct sc_card *card, struct sc_aid *aid)
 
 	if (!aid || !aid->len)
 		return card->app[0];
-
+		
 	for (ii=0; ii < card->app_count; ii++) {
 		if (card->app[ii]->aid.len != aid->len)
 			continue;
@@ -2125,5 +2126,100 @@ sc_pkcs15_add_supported_algo_ref(struct sc_pkcs15_object *obj,
 	}
 
 	return SC_ERROR_TOO_MANY_OBJECTS;
+}
+
+
+int 
+sc_pkcs15_get_object_id(const struct sc_pkcs15_object *obj, struct sc_pkcs15_id *out)
+{
+	if (!obj || !out)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	switch (obj->type) {
+	case SC_PKCS15_TYPE_CERT_X509:
+		*out = ((struct sc_pkcs15_cert_info *) obj->data)->id;
+		break;
+	case SC_PKCS15_TYPE_PRKEY_RSA:
+	case SC_PKCS15_TYPE_PRKEY_DSA:
+	case SC_PKCS15_TYPE_PRKEY_GOSTR3410:
+		*out = ((struct sc_pkcs15_prkey_info *) obj->data)->id;
+		break;
+	case SC_PKCS15_TYPE_PUBKEY_RSA:
+	case SC_PKCS15_TYPE_PUBKEY_DSA:
+	case SC_PKCS15_TYPE_PUBKEY_GOSTR3410:
+		*out = ((struct sc_pkcs15_pubkey_info *) obj->data)->id;
+		break;
+	case SC_PKCS15_TYPE_AUTH_PIN:
+		*out = ((struct sc_pkcs15_pin_info *) obj->data)->auth_id;
+		break;
+	case SC_PKCS15_TYPE_DATA_OBJECT:
+		*out = ((struct sc_pkcs15_data_info *) obj->data)->id;
+		break;
+	default:
+		return SC_ERROR_NOT_SUPPORTED;
+	}
+
+	return SC_SUCCESS;
+}
+
+/*
+ * Simplified GUID serializing.
+ * Ex. {3F2504E0-4F89-11D3-9A0C-0305E82C3301}
+ *
+ * There is no variant, version number and other special meaning fields
+ *  that are described in RFC-4122 .
+ */
+static int
+sc_pkcs15_serialize_guid(unsigned char *in, size_t in_size, 
+		char *out, size_t out_size)
+{
+	int ii, jj, offs = 0;
+
+	if (in_size < 16)
+		return SC_ERROR_BUFFER_TOO_SMALL;
+	if (out_size < 39) 
+		return SC_ERROR_BUFFER_TOO_SMALL;
+
+	strcpy(out, "{");
+	for (ii=0; ii<4; ii++)
+		sprintf(out + strlen(out), "%02x", *(in + offs++));
+	for (jj=0; jj<3; jj++)   {
+		strcat(out, "-");
+		for (ii=0; ii<2; ii++)
+			sprintf(out + strlen(out), "%02x", *(in + offs++));
+	}
+	strcat(out, "-");
+	for (ii=0; ii<6; ii++)
+		sprintf(out + strlen(out), "%02x", *(in + offs++));
+	strcat(out, "}");
+
+	return SC_SUCCESS;
+}
+
+int 
+sc_pkcs15_get_guid(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_object *obj,
+		                char *out, size_t out_size)
+{
+	struct sc_serial_number serialnr;
+	struct sc_pkcs15_id  id;
+	unsigned char guid_bin[SC_PKCS15_MAX_ID_SIZE + SC_MAX_SERIALNR];
+	int rv;
+
+	if (p15card->ops.get_guid)
+		return p15card->ops.get_guid(p15card, obj, out, out_size);
+
+	rv = sc_pkcs15_get_object_id(obj, &id);
+	if (rv)
+		return rv;
+
+	rv = sc_card_ctl(p15card->card, SC_CARDCTL_GET_SERIALNR, &serialnr);                                        
+	if (rv)
+		return rv;
+
+	memset(guid_bin, 0, sizeof(guid_bin));
+	memcpy(guid_bin, id.value, id.len);
+	memcpy(guid_bin + id.len, serialnr.value, serialnr.len);
+
+	return sc_pkcs15_serialize_guid(guid_bin, id.len + serialnr.len, out, out_size);
 }
 
