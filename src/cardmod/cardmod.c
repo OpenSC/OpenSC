@@ -39,6 +39,7 @@
 #include "libopensc/opensc.h"
 #include "libopensc/pkcs15.h"
 #include "libopensc/log.h"
+#include "libopensc/internal.h"
 
 #if defined(__MINGW32__)
 /* Part of the build svn project in the include directory */
@@ -248,32 +249,6 @@ static size_t compute_keybits(sc_pkcs15_bignum_t *bn)
 	return bits;
 }
 
-
-/*
- * Serialize GUID
- * Ex. {3F2504E0-4F89-11D3-9A0C-0305E82C3301}
- */
-static int serialize_guid(unsigned char *in, char *out, size_t out_len)
-{
-	int ii, jj, in_offs = 0, out_offs = 0;
-
-	if (out_len < 39)	/* In cardmod.h MAX_CONTAINER_NAME_LEN defined as 39 */ 
-		return SCARD_E_INSUFFICIENT_BUFFER;
-
-	strcpy(out, "{");
-	for (ii=0; ii<4; ii++)
-		sprintf(out + strlen(out), "%02X", *(in + in_offs++));
-	for (jj=0; jj<3; jj++)   {
-		strcat(out, "-");
-		for (ii=0; ii<2; ii++)
-			sprintf(out + strlen(out), "%02X", *(in + in_offs++));
-	}
-	strcat(out, "-");
-	for (ii=0; ii<6; ii++)
-		sprintf(out + strlen(out), "%02X", *(in + in_offs++));
-	strcat(out, "}");
-	return SCARD_S_SUCCESS;
-}
 
 static int get_pin_by_role(PCARD_DATA pCardData, PIN_ID role, struct sc_pkcs15_object **ret_obj)
 {
@@ -858,28 +833,11 @@ DWORD WINAPI CardReadFile(__in PCARD_DATA pCardData,
 				if(pubkey->algorithm == SC_ALGORITHM_RSA)
 				{
 					struct sc_card *card = vs->p15card->card;
-					unsigned char guid_bin[SC_PKCS15_MAX_ID_SIZE + SC_MAX_SERIALNR];
-					struct sc_serial_number serialnr;
 					char guid[MAX_CONTAINER_NAME_LEN + 1];
 	
-					/* The globally unique identifier derived from the PKCS#15 object 
-					 * identifier concatenated with the card's serial number.
-					 * So that, the object's id will be used as much as possible.
-					 * Will do this firstly in single byte char then convert to wchar.
-					 */
-
-					memset(guid_bin, 0, sizeof(guid_bin));
-					memcpy(guid_bin, cert_info->id.value, cert_info->id.len);
-					r = sc_card_ctl(card, SC_CARDCTL_GET_SERIALNR, &serialnr);
+					r = sc_pkcs15_get_guid(vs->p15card, vs->cert_objs[i], guid, sizeof(guid));
 					if (r)
-						return SCARD_F_INTERNAL_ERROR;
-					memcpy(guid_bin + cert_info->id.len, serialnr.value, serialnr.len);
-
-					r = serialize_guid(guid_bin, guid, sizeof(guid));
-					if(r)
-					{
 						return r;
-					}
 
 					logprintf(pCardData, 7, "Guid=%s\n", guid);
 					
