@@ -44,8 +44,8 @@
               <File Source="$(var.SOURCE_DIR)\etc\opensc.conf.in" KeyPath="yes"/>
               <!-- -->
               <RegistryKey Id="OpenscRegs" Root="HKLM" Key="Software\[Manufacturer]\[ProductName]" Action="createAndRemoveOnUninstall">
-                <RegistryValue Type="string" Name="ConfigFile" Value="[INSTALLDIR]\opensc.conf"/>
-                <RegistryValue Type="string" Name="ProfileDir" Value="[INSTALLDIR]\profiles"/>
+                <RegistryValue Type="string" Name="ConfigFile" Value="[INSTALLDIR]opensc.conf"/>
+                <RegistryValue Type="string" Name="ProfileDir" Value="[INSTALLDIR]profiles"/>
               </RegistryKey>
             </Component>
             <!-- Tools have their own folder -->
