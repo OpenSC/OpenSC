@@ -99,7 +99,7 @@ static int tcos_init(sc_card_t *card)
         _sc_card_add_rsa_alg(card, 1024, flags, 0);
 
 	if (card->type == SC_CARD_TYPE_TCOS_V3) {
-		card->caps |= SC_CARD_CAP_RSA_2048|SC_CARD_CAP_APDU_EXT;
+		card->caps |= SC_CARD_CAP_APDU_EXT;
 		_sc_card_add_rsa_alg(card, 1280, flags, 0);
 		_sc_card_add_rsa_alg(card, 1536, flags, 0);
 		_sc_card_add_rsa_alg(card, 1792, flags, 0);

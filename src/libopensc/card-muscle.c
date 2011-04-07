@@ -475,11 +475,9 @@ static int muscle_init(sc_card_t *card)
 	/* Card type detection */
 	_sc_match_atr(card, muscle_atrs, &card->type);
 	if(card->type == SC_CARD_TYPE_MUSCLE_ETOKEN_72K) {
-		card->caps |= SC_CARD_CAP_RSA_2048;
 		card->caps |= SC_CARD_CAP_APDU_EXT;
 	}
 	if(card->type == SC_CARD_TYPE_MUSCLE_JCOP241) {
-		card->caps |= SC_CARD_CAP_RSA_2048;
 		card->caps |= SC_CARD_CAP_APDU_EXT;
 	}
 

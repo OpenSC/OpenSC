@@ -96,9 +96,7 @@ static int asepcos_init(sc_card_t *card)
 	_sc_card_add_rsa_alg(card, 1792, flags, 0);
 	_sc_card_add_rsa_alg(card, 2048, flags, 0);
 
-	card->caps |= SC_CARD_CAP_RSA_2048
-	              | SC_CARD_CAP_APDU_EXT
-	              | SC_CARD_CAP_USE_FCI_AC;
+	card->caps |= SC_CARD_CAP_APDU_EXT | SC_CARD_CAP_USE_FCI_AC;
 
 	return SC_SUCCESS;
 }

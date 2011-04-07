@@ -431,7 +431,6 @@ authentic_init_oberthur_authentic_3_2(struct sc_card *card)
 	_sc_card_add_rsa_alg(card, 2048, flags, 0x10001);
 
 	card->caps = SC_CARD_CAP_RNG;
-	card->caps |= SC_CARD_CAP_RSA_2048;
 	card->caps |= SC_CARD_CAP_APDU_EXT; 
 	card->caps |= SC_CARD_CAP_USE_FCI_AC;
 

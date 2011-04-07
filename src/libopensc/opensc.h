@@ -432,9 +432,6 @@ struct sc_reader_operations {
  * instead of relying on the ACL info in the profile files. */
 #define SC_CARD_CAP_USE_FCI_AC		0x00000010
 
-/* The card supports 2048 bit RSA keys */
-#define SC_CARD_CAP_RSA_2048		0x00000020
-
 /* D-TRUST CardOS cards special flags */
 #define SC_CARD_CAP_ONLY_RAW_HASH		0x00000040
 #define SC_CARD_CAP_ONLY_RAW_HASH_STRIPPED	0x00000080

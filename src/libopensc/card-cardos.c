@@ -155,7 +155,7 @@ static int cardos_have_2048bit_package(sc_card_t *card)
 
 static int cardos_init(sc_card_t *card)
 {
-	unsigned long	flags;
+	unsigned long	flags, rsa_2048 = 0;
 
 	card->name = "CardOS M4";
 	card->cla = 0x00;
@@ -175,17 +175,17 @@ static int cardos_init(sc_card_t *card)
 		if (r < 0)
 			return r;
 		if (r == 1)
-			card->caps |= SC_CARD_CAP_RSA_2048;
+			rsa_2048 = 1;
 		card->caps |= SC_CARD_CAP_APDU_EXT;
 	} else if (card->type == SC_CARD_TYPE_CARDOS_M4_3 
 		|| card->type == SC_CARD_TYPE_CARDOS_M4_2B
 		|| card->type == SC_CARD_TYPE_CARDOS_M4_2C
 		|| card->type == SC_CARD_TYPE_CARDOS_M4_4) {
-		card->caps |= SC_CARD_CAP_RSA_2048;
+		rsa_2048 = 1;
 		card->caps |= SC_CARD_CAP_APDU_EXT;
 	}
 
-	if (card->caps & SC_CARD_CAP_RSA_2048) {
+	if (rsa_2048 == 1) {
 		_sc_card_add_rsa_alg(card, 1280, flags, 0);
 		_sc_card_add_rsa_alg(card, 1536, flags, 0);
 		_sc_card_add_rsa_alg(card, 1792, flags, 0);
