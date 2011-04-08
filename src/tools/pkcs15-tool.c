@@ -523,7 +523,7 @@ static void print_prkey_info(const struct sc_pkcs15_object *obj)
 	print_access_rules(obj->access_rules, SC_PKCS15_MAX_ACCESS_RULES);
 
 	printf("\tModLength      : %lu\n", (unsigned long)prkey->modulus_length);
-	printf("\tKey ref        : %d\n", prkey->key_reference);
+	printf("\tKey ref        : %d (0x%X)\n", prkey->key_reference, prkey->key_reference);
 	printf("\tNative         : %s\n", prkey->native ? "yes" : "no");
 	if (prkey->path.len || prkey->path.aid.len)
 		printf("\tPath           : %s\n", sc_print_path(&prkey->path));
