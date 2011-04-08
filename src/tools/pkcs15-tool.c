@@ -504,6 +504,7 @@ static void print_prkey_info(const struct sc_pkcs15_object *obj)
 		"neverExtract", "local"
 	};
 	const unsigned int af_count = NELEMENTS(access_flags);
+	char guid[39];
 
 	printf("Private %s Key [%s]\n", types[3 & obj->type], obj->label);
 	print_common_flags(obj);
@@ -530,6 +531,10 @@ static void print_prkey_info(const struct sc_pkcs15_object *obj)
 	if (obj->auth_id.len != 0)
 		printf("\tAuth ID        : %s\n", sc_pkcs15_print_id(&obj->auth_id));
 	printf("\tID             : %s\n", sc_pkcs15_print_id(&prkey->id));
+
+	if (!sc_pkcs15_get_guid(p15card, obj, guid, sizeof(guid)))
+		printf("\tGUID           : %s\n", guid);
+
 }
 
 
