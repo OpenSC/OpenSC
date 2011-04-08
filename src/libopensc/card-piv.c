@@ -689,7 +689,7 @@ static int piv_select_aid(sc_card_t* card, u8* aid, size_t aidlen, u8* response,
 
 	r = sc_transmit_apdu(card, &apdu);
 	*responselen = apdu.resplen;
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, 4,  r);
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "PIV select failed");
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,  sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
 
