@@ -65,9 +65,9 @@ enum {
 static const struct option options[] = {
 	{ "serial",		0, NULL,	OPT_SERIAL  },
 	{ "name",		0, NULL,		'n' },
-	{ "admin",		0, NULL, 		'A' },
+	{ "admin",		1, NULL, 		'A' },
 	{ "usepin",		0, NULL,		'P' }, /* some beta cards want user pin for put_data */
-	{ "genkey",		0, NULL,		'G' },
+	{ "genkey",		1, NULL,		'G' },
 	{ "object",		1, NULL,		'O' },
 	{ "cert",		1, NULL,		'C' },
 	{ "compresscert", 1, NULL,		'Z' },
