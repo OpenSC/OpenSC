@@ -457,9 +457,7 @@ static int load_card_atrs(sc_context_t *ctx)
 					continue;
 				}
 				flags = 0;
-				if (!strcmp(list->data, "keygen")) {
-					flags = SC_CARD_FLAG_ONBOARD_KEY_GEN;
-				} else if (!strcmp(list->data, "rng")) {
+				if (!strcmp(list->data, "rng")) {
 					flags = SC_CARD_FLAG_RNG;
 				} else {
 					if (sscanf(list->data, "%x", &flags) != 1)

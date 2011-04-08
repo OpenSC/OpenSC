@@ -175,10 +175,9 @@ app default {
 		# Optionally, some known parameters
 		# can be specified as strings:
 		#
-		# keygen - On-board key generation capability
 		# rng - On-board random number source
 		#
-		# flags = "keygen", "rng", "0x80000000";
+		# flags = "rng", "0x80000000";
 
 		#
 		# Context: PKCS#15 emulation layer
