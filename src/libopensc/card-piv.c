@@ -1619,8 +1619,7 @@ static int piv_general_external_authenticate(sc_card_t *card,
 	*p++ = 0x00;
 
 	/* get a challenge */
-
-	r = piv_general_io(card, 0x87, 0x00, 0x00, sbuf, p - sbuf, &rbuf, &rbuflen); 
+	r = piv_general_io(card, 0x87, alg_id, key_ref, sbuf, p - sbuf, &rbuf, &rbuflen);
 
  	if (r < 0) goto err;
 	q = rbuf;
