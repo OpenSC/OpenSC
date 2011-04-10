@@ -145,14 +145,12 @@ int sc_pkcs15_parse_tokeninfo(sc_context_t *ctx,
 	sc_format_asn1_entry(asn1_tokeninfo, asn1_toki, NULL, 0);
 	
 	r = sc_asn1_decode(ctx, asn1_tokeninfo, buf, blen, NULL, NULL);
-	if (r) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "ASN.1 parsing of EF(TokenInfo) failed: %s",
-			sc_strerror(r));
-		return r;
-	}
+	LOG_TEST_RET(ctx, r, "ASN.1 parsing of EF(TokenInfo) failed");
+
 	ti->serial_number = malloc(serial_len * 2 + 1);
 	if (ti->serial_number == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
+
 	ti->serial_number[0] = 0;
 	for (ii = 0; ii < serial_len; ii++) {
 		char byte[3];
@@ -243,11 +241,9 @@ int sc_pkcs15_encode_tokeninfo(sc_context_t *ctx,
 	sc_format_asn1_entry(asn1_tokeninfo, asn1_toki, NULL, 1);
 
 	r = sc_asn1_encode(ctx, asn1_tokeninfo, buf, buflen);
-	if (r) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "sc_asn1_encode() failed: %s", sc_strerror(r));
-		return r;
-	}
-	return 0;
+	LOG_TEST_RET(ctx, r, "sc_asn1_encode() failed");
+
+	return SC_SUCCESS;
 }
 
 static const struct sc_asn1_entry c_asn1_ddo[] = {
@@ -296,7 +292,7 @@ static void fix_starcos_pkcs15_card(struct sc_pkcs15_card *p15card)
 			 * SHA1 prefix itself */
 			if (strstr(p15card->tokeninfo->label, "2cc") != NULL) {
 				p15card->card->caps |= SC_CARD_CAP_ONLY_RAW_HASH_STRIPPED;
-				sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "D-TRUST 2cc card detected, only SHA1 works with this card");
+				sc_log(ctx, "D-TRUST 2cc card detected, only SHA1 works with this card");
 				/* XXX: add detection when other hash than SHA1 is used with
 				 *      such a card, as this produces invalid signatures.
 				 */
@@ -306,7 +302,7 @@ static void fix_starcos_pkcs15_card(struct sc_pkcs15_card *p15card)
 			 * and no addition of prefix) */
 			else if (strstr(p15card->tokeninfo->label, "2ca") != NULL) {
 				p15card->card->caps |= SC_CARD_CAP_ONLY_RAW_HASH;
-				sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "D-TRUST 2ca card detected");
+				sc_log(ctx, "D-TRUST 2ca card detected");
 			}
 
 			/* XXX: probably there are more D-Trust card in the wild,
@@ -325,7 +321,7 @@ static int parse_ddo(struct sc_pkcs15_card *p15card, const u8 * buf, size_t bufl
 	struct sc_aid aid;
 	int r;
 
-	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(ctx);
 
 	iid.len = sizeof(iid.value);
 	aid.len = sizeof(aid.value);
@@ -338,7 +334,7 @@ static int parse_ddo(struct sc_pkcs15_card *p15card, const u8 * buf, size_t bufl
 	sc_format_asn1_entry(asn1_ddo + 5, aid.value, &aid.len, 0);
 
 	r = sc_asn1_decode(ctx, asn1_ddo, buf, buflen, NULL, NULL);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "DDO parsing failed");
+	LOG_TEST_RET(ctx, r, "DDO parsing failed");
 
 	if (asn1_ddo[1].flags & SC_ASN1_PRESENT) {
 		p15card->file_odf = sc_file_new();
@@ -368,7 +364,7 @@ static int parse_ddo(struct sc_pkcs15_card *p15card, const u8 * buf, size_t bufl
 	}
 
 	fix_authentic_ddo(p15card);
-	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 mem_err:
 	if (p15card->file_odf != NULL) {
 		sc_file_free(p15card->file_odf);
@@ -382,7 +378,7 @@ mem_err:
 		sc_file_free(p15card->file_unusedspace);
 		p15card->file_unusedspace = NULL;
 	}
-	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_OUT_OF_MEMORY);
+	LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 }
 
 #if 0
@@ -484,10 +480,9 @@ int sc_pkcs15_encode_odf(sc_context_t *ctx,
 		df_count++;
 		df = df->next;
 	};
-	if (df_count == 0) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "No DF's found.");
-		return SC_ERROR_OBJECT_NOT_FOUND;
-	}
+	if (df_count == 0)
+		LOG_TEST_RET(ctx, SC_ERROR_OBJECT_NOT_FOUND, "No DF's found.");
+
 	asn1_odf = malloc(sizeof(struct sc_asn1_entry) * (df_count + 1));
 	if (asn1_odf == NULL) {
 		r = SC_ERROR_OUT_OF_MEMORY;
@@ -507,7 +502,7 @@ int sc_pkcs15_encode_odf(sc_context_t *ctx,
 				break;
 			}
 		if (type == -1) {
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Unsupported DF type.");
+			sc_log(ctx, "Unsupported DF type.");
 			continue;
 		}
 		asn1_odf[c] = c_asn1_odf[type];
@@ -724,12 +719,12 @@ static int sc_pkcs15_bind_internal(sc_pkcs15_card_t *p15card, struct sc_aid *aid
 	size_t len;
 	int    err, ok = 0;
 
-	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(ctx);
 	/* Enumerate apps now */
 	if (card->app_count < 0) {
 		err = sc_enum_apps(card);
 		if (err != SC_ERROR_FILE_NOT_FOUND)
-			SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, err, "unable to enumerate apps");
+			LOG_TEST_RET(ctx, err, "unable to enumerate apps");
 	}
 	p15card->file_app = sc_file_new();
 	if (p15card->file_app == NULL) {
@@ -741,8 +736,8 @@ static int sc_pkcs15_bind_internal(sc_pkcs15_card_t *p15card, struct sc_aid *aid
 
 	info = sc_find_app(card, aid);
 	if (info)   {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "bind to application('%s',aid:'%s')", 
-				info->label, sc_dump_hex(info->aid.value, info->aid.len));
+		sc_log(ctx, "bind to application('%s',aid:'%s')",  info->label, 
+				sc_dump_hex(info->aid.value, info->aid.len));
 		p15card->app = sc_dup_app_info(info);
 		if (!p15card->app)   {
 			err = SC_ERROR_OUT_OF_MEMORY;
@@ -757,11 +752,11 @@ static int sc_pkcs15_bind_internal(sc_pkcs15_card_t *p15card, struct sc_aid *aid
 
 	}
 	else if (aid)   {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Application(aid:'%s') not found", sc_dump_hex(aid->value, aid->len));
+		sc_log(ctx, "Application(aid:'%s') not found", sc_dump_hex(aid->value, aid->len));
 		err = SC_ERROR_INVALID_ARGUMENTS;
 		goto end;
 	}
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "application path '%s'", sc_print_path(&p15card->file_app->path));
+	sc_log(ctx, "application path '%s'", sc_print_path(&p15card->file_app->path));
 
 	/* Check if pkcs15 directory exists */
 	err = sc_select_file(card, &p15card->file_app->path, NULL);
@@ -795,18 +790,19 @@ static int sc_pkcs15_bind_internal(sc_pkcs15_card_t *p15card, struct sc_aid *aid
 	}
 
 	if (err != SC_SUCCESS) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "EF(ODF) not found in '%s'", sc_print_path(&tmppath));
+		sc_log(ctx, "EF(ODF) not found in '%s'", sc_print_path(&tmppath));
 		goto end;
 	}
 
 	len = p15card->file_odf->size;
 	if (!len) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "EF(ODF) is empty");
+		sc_log(ctx, "EF(ODF) is empty");
 		goto end;
 	}
 	buf = malloc(len);
 	if(buf == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
+
 	err = sc_read_binary(card, 0, buf, len, 0);
 	if (err < 0)
 		goto end;
@@ -817,16 +813,16 @@ static int sc_pkcs15_bind_internal(sc_pkcs15_card_t *p15card, struct sc_aid *aid
 	len = err;
 	if (parse_odf(buf, len, p15card)) {
 		err = SC_ERROR_PKCS15_APP_NOT_FOUND;
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Unable to parse ODF");
+		sc_log(ctx, "Unable to parse ODF");
 		goto end;
 	}
 	free(buf);
 	buf = NULL;
 
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "The following DFs were found:");
+	sc_log(ctx, "The following DFs were found:");
 	for (df = p15card->df_list; df; df = df->next)
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "  DF type %u, path %s, index %u, count %d",
-				df->type, sc_print_path(&df->path), df->path.index, df->path.count);
+		sc_log(ctx, "  DF type %u, path %s, index %u, count %d", df->type, 
+				sc_print_path(&df->path), df->path.index, df->path.count);
 
 	if (p15card->file_tokeninfo == NULL) {
 		sc_format_path("5032", &tmppath);
@@ -847,12 +843,13 @@ static int sc_pkcs15_bind_internal(sc_pkcs15_card_t *p15card, struct sc_aid *aid
 		goto end;
 
 	if ((len = p15card->file_tokeninfo->size) == 0) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "EF(TokenInfo) is empty");
+		sc_log(ctx, "EF(TokenInfo) is empty");
 		goto end;
 	}
 	buf = malloc(len);
 	if(buf == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
+
 	err = sc_read_binary(card, 0, buf, len, 0);
 	if (err < 0)
 		goto end;
@@ -876,8 +873,7 @@ static int sc_pkcs15_bind_internal(sc_pkcs15_card_t *p15card, struct sc_aid *aid
 			sprintf(serial + ii*2, "%02X", *(card->serialnr.value + ii));
 
 		p15card->tokeninfo->serial_number = serial;
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "p15card->tokeninfo->serial_number %s",
-			p15card->tokeninfo->serial_number);
+		sc_log(ctx, "p15card->tokeninfo->serial_number %s", p15card->tokeninfo->serial_number);
 	}
 
 	ok = 1;
@@ -899,13 +895,13 @@ int sc_pkcs15_bind(sc_card_t *card, struct sc_aid *aid, struct sc_pkcs15_card **
 	scconf_block *conf_block = NULL;
 	int r, emu_first, enable_emu;
 
-	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "application(aid:'%s')", aid ? sc_dump_hex(aid->value, aid->len) : "empty");
+	LOG_FUNC_CALLED(ctx);
+	sc_log(ctx, "application(aid:'%s')", aid ? sc_dump_hex(aid->value, aid->len) : "empty");
 
 	assert(p15card_out != NULL);
 	p15card = sc_pkcs15_card_new();
 	if (p15card == NULL)
-		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 
 	p15card->card = card;
 	p15card->opts.use_file_cache = 0;
@@ -919,14 +915,14 @@ int sc_pkcs15_bind(sc_card_t *card, struct sc_aid *aid, struct sc_pkcs15_card **
 		p15card->opts.use_pin_cache = scconf_get_bool(conf_block, "use_pin_caching", p15card->opts.use_pin_cache);
 		p15card->opts.pin_cache_counter = scconf_get_int(conf_block, "pin_cache_counter", p15card->opts.pin_cache_counter);
 	}
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "PKCS#15 options: use_file_cache=%d use_pin_cache=%d pin_cache_counter=%d",
+	sc_log(ctx, "PKCS#15 options: use_file_cache=%d use_pin_cache=%d pin_cache_counter=%d",
 	         p15card->opts.use_file_cache, p15card->opts.use_pin_cache, p15card->opts.pin_cache_counter);
 
 	r = sc_lock(card);
 	if (r) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "sc_lock() failed: %s", sc_strerror(r));
+		sc_log(ctx, "sc_lock() failed: %s", sc_strerror(r));
 		sc_pkcs15_card_free(p15card);
-		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, r);
+		LOG_FUNC_RETURN(ctx, r);
 	}
 
 	enable_emu = scconf_get_bool(conf_block, "enable_pkcs15_emulation", 1);
@@ -957,17 +953,17 @@ done:
 
 	*p15card_out = p15card;
 	sc_unlock(card);
-	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 error:
 	sc_unlock(card);
 	sc_pkcs15_card_free(p15card);
-	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(ctx, r);
 }
 
 int sc_pkcs15_unbind(struct sc_pkcs15_card *p15card)
 {
 	assert(p15card != NULL && p15card->magic == SC_PKCS15_CARD_MAGIC);
-	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
+	LOG_FUNC_CALLED(p15card->card->ctx);
 	if (p15card->dll_handle)
 		sc_dlclose(p15card->dll_handle);
 	sc_pkcs15_pincache_clear(p15card);
@@ -989,7 +985,7 @@ __sc_pkcs15_search_objects(sc_pkcs15_card_t *p15card,
 	size_t		match_count = 0;
 	int		r = 0;
 
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "called; class=0x%02X, type=0x%03X", class_mask, type);
+	sc_log(ctx, "called; class=0x%02X, type=0x%03X", class_mask, type);
 
 	if (type)
 		class_mask |= SC_PKCS15_TYPE_TO_CLASS(type);
@@ -1001,7 +997,7 @@ __sc_pkcs15_search_objects(sc_pkcs15_card_t *p15card,
 			    SC_PKCS15_SEARCH_CLASS_CERT |
 			    SC_PKCS15_SEARCH_CLASS_DATA |
 			    SC_PKCS15_SEARCH_CLASS_AUTH))) {
-		SC_FUNC_RETURN(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
+		LOG_FUNC_RETURN(p15card->card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 
 	if (class_mask & SC_PKCS15_SEARCH_CLASS_PRKEY)
@@ -1048,7 +1044,7 @@ __sc_pkcs15_search_objects(sc_pkcs15_card_t *p15card,
 		if (ret_size <= match_count)
 			break;
 	}
-	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, match_count);
+	LOG_FUNC_RETURN(ctx, match_count);
 }
 
 int sc_pkcs15_get_objects(struct sc_pkcs15_card *p15card, unsigned int type,
@@ -1247,9 +1243,7 @@ int sc_pkcs15_find_object_by_id(sc_pkcs15_card_t *p15card,
 	memset(&sk, 0, sizeof(sk));
 	sk.id = id;
 
-	r = __sc_pkcs15_search_objects(p15card, 0, type,
-				compare_obj_key, &sk,
-				out, 1);
+	r = __sc_pkcs15_search_objects(p15card, 0, type, compare_obj_key, &sk, out, 1);
 	if (r < 0)
 		return r;
 	if (r == 0)
@@ -1311,7 +1305,7 @@ int sc_pkcs15_find_pin_by_type_and_reference(struct sc_pkcs15_card *p15card,
 
 	/* Get all existing pkcs15 AUTH objects */
 	r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_AUTH_PIN, auth_objs, 0x10);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Get PKCS#15 AUTH objects error");
+	LOG_TEST_RET(ctx, r, "Get PKCS#15 AUTH objects error");
 	nn_objs = r;
 
 	for (ii=0; ii<nn_objs; ii++)   {
@@ -1552,7 +1546,7 @@ int sc_pkcs15_encode_df(sc_context_t *ctx,
 		break;
 	}
 	if (func == NULL) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "unknown DF type: %d", df->type);
+		sc_log(ctx, "unknown DF type: %d", df->type);
 		*buf_out = NULL;
 		*bufsize_out = 0;
 		return 0;
@@ -1589,16 +1583,16 @@ int sc_pkcs15_parse_df(struct sc_pkcs15_card *p15card,
 	int (* func)(struct sc_pkcs15_card *, struct sc_pkcs15_object *,
 		     const u8 **nbuf, size_t *nbufsize) = NULL;
 
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "called; path=%s, type=%d, enum=%d", 
+	sc_log(ctx, "called; path=%s, type=%d, enum=%d", 
 			sc_print_path(&df->path), df->type, df->enumerated);
 
 	if (p15card->ops.parse_df)   {
 		r = p15card->ops.parse_df(p15card, df);
-		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, r);
+		LOG_FUNC_RETURN(ctx, r);
 	}
 
 	if (df->enumerated)
-		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
+		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 
 	switch (df->type) {
 	case SC_PKCS15_PRKDF:
@@ -1620,14 +1614,14 @@ int sc_pkcs15_parse_df(struct sc_pkcs15_card *p15card,
 		break;
 	}
 	if (func == NULL) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "unknown DF type: %d", df->type);
-		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
+		sc_log(ctx, "unknown DF type: %d", df->type);
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 	r = sc_pkcs15_read_file(p15card, &df->path, &buf, &bufsize, NULL);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "pkcs15 read file failed");
+	LOG_TEST_RET(ctx, r, "pkcs15 read file failed");
 
 	p = buf;
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "bufsize %i; first tag 0x%X", bufsize, *p);
+	sc_log(ctx, "bufsize %i; first tag 0x%X", bufsize, *p);
 	while (bufsize && *p != 0x00) {
 		
 		obj = calloc(1, sizeof(struct sc_pkcs15_object));
@@ -1636,14 +1630,14 @@ int sc_pkcs15_parse_df(struct sc_pkcs15_card *p15card,
 			goto ret;
 		}
 		r = func(p15card, obj, &p, &bufsize);
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "rv %i", r);
+		sc_log(ctx, "rv %i", r);
 		if (r) {
 			free(obj);
 			if (r == SC_ERROR_ASN1_END_OF_CONTENTS) {
 				r = 0;
 				break;
 			}
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "%s: Error decoding DF entry", sc_strerror(r));
+			sc_log(ctx, "%s: Error decoding DF entry", sc_strerror(r));
 			goto ret;
 		}
 
@@ -1653,7 +1647,7 @@ int sc_pkcs15_parse_df(struct sc_pkcs15_card *p15card,
 			if (obj->data)
 				free(obj->data);
 			free(obj);
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "%s: Error adding object", sc_strerror(r));
+			sc_log(ctx, "%s: Error adding object", sc_strerror(r));
 			goto ret;
 		}
 	};
@@ -1663,12 +1657,13 @@ int sc_pkcs15_parse_df(struct sc_pkcs15_card *p15card,
 ret:
 	df->enumerated = 1;
 	free(buf);
-	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(ctx, r);
 }
 
 int sc_pkcs15_add_unusedspace(struct sc_pkcs15_card *p15card,
 		     const sc_path_t *path, const sc_pkcs15_id_t *auth_id)
 {
+	struct sc_context *ctx = p15card->card->ctx;
 	sc_pkcs15_unusedspace_t *p = p15card->unusedspace_list, *new_unusedspace;
 
 	if (path->count == -1) {
@@ -1678,7 +1673,7 @@ int sc_pkcs15_add_unusedspace(struct sc_pkcs15_card *p15card,
 		if (r != SC_SUCCESS)
 			pbuf[0] = '\0';
 
-		sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "No offset and length present in path %s", pbuf);
+		sc_log(ctx, "No offset and length present in path %s", pbuf);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
@@ -1843,6 +1838,7 @@ int sc_pkcs15_read_file(struct sc_pkcs15_card *p15card,
 			u8 **buf, size_t *buflen,
 			sc_file_t **file_out)
 {
+	struct sc_context *ctx = p15card->card->ctx;
 	sc_file_t *file = NULL;
 	u8	*data = NULL;
 	size_t	len = 0, offset = 0;
@@ -1850,8 +1846,8 @@ int sc_pkcs15_read_file(struct sc_pkcs15_card *p15card,
 
 	assert(p15card != NULL && in_path != NULL && buf != NULL);
 
-	sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "called; path=%s, index=%u, count=%d",
-			sc_print_path(in_path), in_path->index, in_path->count);
+	sc_log(ctx, "called; path=%s, index=%u, count=%d", sc_print_path(in_path), 
+			in_path->index, in_path->count);
 
 	r = -1; /* file state: not in cache */
 	if (p15card->opts.use_file_cache) {
@@ -1859,7 +1855,7 @@ int sc_pkcs15_read_file(struct sc_pkcs15_card *p15card,
 	}
 	if (r) {
 		r = sc_lock(p15card->card);
-		SC_TEST_RET(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, r, "sc_lock() failed");
+		LOG_TEST_RET(ctx, r, "sc_lock() failed");
 		r = sc_select_file(p15card->card, in_path, &file);
 		if (r)
 			goto fail_unlock;
@@ -1869,12 +1865,12 @@ int sc_pkcs15_read_file(struct sc_pkcs15_card *p15card,
 		if (in_path->count < 0) {
 			len = file->size;
 			offset = 0;
-		} else {
+		} 
+		else {
 			offset = in_path->index;
 			len = in_path->count;
 			/* Make sure we're within proper bounds */
-			if (offset >= file->size
-			 || offset + len > file->size) {
+			if (offset >= file->size || offset + len > file->size) {
 				r = SC_ERROR_INVALID_ASN1_OBJECT;
 				goto fail_unlock;
 			}
@@ -1884,6 +1880,7 @@ int sc_pkcs15_read_file(struct sc_pkcs15_card *p15card,
 			r = SC_ERROR_OUT_OF_MEMORY;
 			goto fail_unlock;
 		}
+
 		if (file->ef_structure == SC_FILE_EF_LINEAR_VARIABLE_TLV) {
 			int i;
 			size_t l, record_len;
@@ -1893,8 +1890,7 @@ int sc_pkcs15_read_file(struct sc_pkcs15_card *p15card,
 			for (i=1;  ; i++) {
 				l = len - (head - data);
 				if (l > 256) { l = 256; }
-				r = sc_read_record(p15card->card, i, head, l,
-						SC_RECORD_BY_REC_NR);
+				r = sc_read_record(p15card->card, i, head, l, SC_RECORD_BY_REC_NR);
 				if (r == SC_ERROR_RECORD_NOT_FOUND)
 					break;
 				if (r < 0) {
@@ -1934,13 +1930,13 @@ int sc_pkcs15_read_file(struct sc_pkcs15_card *p15card,
 	}
 	*buf = data;
 	*buflen = len;
-	SC_FUNC_RETURN(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 
 fail_unlock:
 	if (file)
 		sc_file_free(file);
 	sc_unlock(p15card->card);
-	SC_FUNC_RETURN(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(ctx, r);
 }
 
 int sc_pkcs15_compare_id(const struct sc_pkcs15_id *id1,
