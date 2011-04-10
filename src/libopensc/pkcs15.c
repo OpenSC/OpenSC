@@ -457,7 +457,7 @@ static int parse_odf(const u8 * buf, size_t buflen, struct sc_pkcs15_card *p15ca
 		r = sc_pkcs15_make_absolute_path(&p15card->file_app->path, &path);
 		if (r < 0)
 			return r;
-		r = sc_pkcs15_add_df(p15card, odf_indexes[type], &path, NULL);
+		r = sc_pkcs15_add_df(p15card, odf_indexes[type], &path);
 		if (r)
 			return r;
 	}
@@ -1482,9 +1482,7 @@ void sc_pkcs15_free_object(struct sc_pkcs15_object *obj)
 	free(obj);
 }
 
-int sc_pkcs15_add_df(struct sc_pkcs15_card *p15card,
-		     unsigned int type, const sc_path_t *path,
-		     const sc_file_t *file)
+int sc_pkcs15_add_df(struct sc_pkcs15_card *p15card, unsigned int type, const sc_path_t *path)
 {
 	struct sc_pkcs15_df *p, *newdf;
 	
@@ -1493,14 +1491,6 @@ int sc_pkcs15_add_df(struct sc_pkcs15_card *p15card,
 		return SC_ERROR_OUT_OF_MEMORY;
 	newdf->path = *path;
 	newdf->type = type;
-	if (file != NULL) {
-		sc_file_dup(&newdf->file, file);
-		if (newdf->file == NULL) {
-			free(newdf);
-			return SC_ERROR_OUT_OF_MEMORY;
-		}
-			
-	}
 
 	if (p15card->df_list == NULL) {
 		p15card->df_list = newdf;
@@ -1525,8 +1515,6 @@ void sc_pkcs15_remove_df(struct sc_pkcs15_card *p15card,
 		obj->prev->next = obj->next;
 	if (obj->next != NULL)
 		obj->next->prev = obj->prev;
-	if (obj->file)
-		sc_file_free(obj->file);
 	free(obj);
 }
 
@@ -1635,10 +1623,7 @@ int sc_pkcs15_parse_df(struct sc_pkcs15_card *p15card,
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "unknown DF type: %d", df->type);
 		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
 	}
-	if (df->file != NULL)
-		r = sc_pkcs15_read_file(p15card, &df->path, &buf, &bufsize, NULL);
-	else
-		r = sc_pkcs15_read_file(p15card, &df->path, &buf, &bufsize, &df->file);
+	r = sc_pkcs15_read_file(p15card, &df->path, &buf, &bufsize, NULL);
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "pkcs15 read file failed");
 
 	p = buf;

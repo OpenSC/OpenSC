@@ -2494,14 +2494,15 @@ sc_pkcs15init_update_any_df(struct sc_pkcs15_card *p15card,
 {
 	struct sc_context	*ctx = p15card->card->ctx;
 	struct sc_card	*card = p15card->card;
-	struct sc_file	*file = df->file, *pfile = NULL;
+	struct sc_file	*file = NULL;
 	unsigned char	*buf = NULL;
 	size_t		bufsize;
 	int		update_odf = is_new, r = 0;
 
 	LOG_FUNC_CALLED(ctx);
-	if (!sc_profile_get_file_by_path(profile, &df->path, &pfile))
-		file = pfile;
+	sc_profile_get_file_by_path(profile, &df->path, &file);
+	if (file == NULL)
+		sc_select_file(card, &df->path, &file);
 
 	r = sc_pkcs15_encode_df(card->ctx, p15card, df, &buf, &bufsize);
 	if (r >= 0) {
@@ -2523,8 +2524,8 @@ sc_pkcs15init_update_any_df(struct sc_pkcs15_card *p15card,
 		}
 		free(buf);
 	}
-	if (pfile)
-		sc_file_free(pfile);
+	if (file)
+		sc_file_free(file);
 
 	LOG_TEST_RET(ctx, r, "Failed to encode or update xDF");
 
@@ -2560,7 +2561,7 @@ sc_pkcs15init_add_object(struct sc_pkcs15_card *p15card,
 			sc_log(ctx, "Profile doesn't define a DF file %u", df_type);
 			LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "DF not found in profile");
 		}
-		sc_pkcs15_add_df(p15card, df_type, &file->path, file);
+		sc_pkcs15_add_df(p15card, df_type, &file->path);
 		df = find_df_by_type(p15card, df_type);
 		assert(df != NULL);
 		is_new = 1;

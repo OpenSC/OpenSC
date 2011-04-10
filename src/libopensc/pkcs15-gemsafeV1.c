@@ -372,7 +372,7 @@ sc_pkcs15emu_get_df(sc_pkcs15_card_t *p15card, unsigned int type)
 		if (!file)
 			return NULL;
 		sc_format_path("11001101", &file->path);
-		sc_pkcs15_add_df(p15card, type, &file->path, file);
+		sc_pkcs15_add_df(p15card, type, &file->path);
 		sc_file_free(file);
 		created++;
 	}

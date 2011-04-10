@@ -418,8 +418,6 @@ typedef struct sc_pkcs15_object sc_pkcs15_object_t;
 struct sc_pkcs15_card;
 
 struct sc_pkcs15_df {
-	struct sc_file *file;
-
 	struct sc_path path;
 	int record_length;
 	unsigned int type;
@@ -724,8 +722,7 @@ int sc_pkcs15_add_object(struct sc_pkcs15_card *p15card,
 			 struct sc_pkcs15_object *obj);
 void sc_pkcs15_remove_object(struct sc_pkcs15_card *p15card,
 			     struct sc_pkcs15_object *obj);
-int sc_pkcs15_add_df(struct sc_pkcs15_card *, unsigned int, 
-			const sc_path_t *, const struct sc_file *);
+int sc_pkcs15_add_df(struct sc_pkcs15_card *, unsigned int, const sc_path_t *);
 void sc_pkcs15_remove_df(struct sc_pkcs15_card *p15card,
 			 struct sc_pkcs15_df *df);
 

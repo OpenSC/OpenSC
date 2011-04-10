@@ -502,7 +502,7 @@ sc_oberthur_parse_privateinfo (struct sc_pkcs15_card *p15card,
 
 				sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "postpone adding of the private keys");
 				sc_format_path("5011A5A5", &path);
-				rv = sc_pkcs15_add_df(p15card, SC_PKCS15_PRKDF, &path, NULL);
+				rv = sc_pkcs15_add_df(p15card, SC_PKCS15_PRKDF, &path);
 				SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Add PrkDF error");
 				no_more_private_keys = 1;
 			}
@@ -521,7 +521,7 @@ sc_oberthur_parse_privateinfo (struct sc_pkcs15_card *p15card,
 
 				sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "postpone adding of the private data");
 				sc_format_path("5011A6A6", &path);
-				rv = sc_pkcs15_add_df(p15card, SC_PKCS15_DODF, &path, NULL);
+				rv = sc_pkcs15_add_df(p15card, SC_PKCS15_DODF, &path);
 				SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Add DODF error");
 				no_more_private_data = 1;
 			}
