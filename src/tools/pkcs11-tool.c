@@ -234,7 +234,7 @@ static void		show_cryptoki_info(void);
 static void		list_slots(int, int, int);
 static void		show_token(CK_SLOT_ID);
 static void		list_mechs(CK_SLOT_ID);
-static void		list_objects(CK_SESSION_HANDLE);
+static void		list_objects(CK_SESSION_HANDLE, CK_OBJECT_CLASS);
 static int		login(CK_SESSION_HANDLE, int);
 static void		init_token(CK_SLOT_ID);
 static void		init_pin(CK_SLOT_ID, CK_SESSION_HANDLE);
@@ -662,7 +662,7 @@ int main(int argc, char * argv[])
 	}
 
 	if (do_list_objects)
-		list_objects(session);
+		list_objects(session, opt_object_class);
 
 	if (do_sign)
 		sign_data(opt_slot, session, object);
@@ -915,27 +915,6 @@ static void list_mechs(CK_SLOT_ID slot)
 		}
 		printf("\n");
 	}
-}
-
-static void list_objects(CK_SESSION_HANDLE sess)
-{
-	CK_OBJECT_HANDLE object;
-	CK_ULONG count;
-	CK_RV rv;
-
-	rv = p11->C_FindObjectsInit(sess, NULL, 0);
-	if (rv != CKR_OK)
-		p11_fatal("C_FindObjectsInit", rv);
-
-	while (1) {
-		rv = p11->C_FindObjects(sess, &object, 1, &count);
-		if (rv != CKR_OK)
-			p11_fatal("C_FindObjects", rv);
-		if (count == 0)
-			break;
-		show_object(sess, object);
-	}
-	p11->C_FindObjectsFinal(sess);
 }
 
 static int login(CK_SESSION_HANDLE session, int login_type)
@@ -2001,6 +1980,28 @@ VARATTR_METHOD(VALUE, unsigned char);
 VARATTR_METHOD(GOSTR3410_PARAMS, unsigned char);
 VARATTR_METHOD(EC_POINT, unsigned char);
 VARATTR_METHOD(EC_PARAMS, unsigned char);
+
+static void list_objects(CK_SESSION_HANDLE sess, CK_OBJECT_CLASS  object_class)
+{
+	CK_OBJECT_HANDLE object;
+	CK_ULONG count;
+	CK_RV rv;
+
+	rv = p11->C_FindObjectsInit(sess, NULL, 0);
+	if (rv != CKR_OK)
+		p11_fatal("C_FindObjectsInit", rv);
+
+	while (1) {
+		rv = p11->C_FindObjects(sess, &object, 1, &count);
+		if (rv != CKR_OK)
+			p11_fatal("C_FindObjects", rv);
+		if (count == 0)
+			break;
+		if (object_class == -1 || object_class == getCLASS(sess, object))
+			show_object(sess, object);
+	}
+	p11->C_FindObjectsFinal(sess);
+}
 
 static void show_object(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 {
