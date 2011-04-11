@@ -492,7 +492,7 @@ static void print_prkey_info(const struct sc_pkcs15_object *obj)
 {
 	unsigned int i;
 	struct sc_pkcs15_prkey_info *prkey = (struct sc_pkcs15_prkey_info *) obj->data;
-	const char *types[] = { "", "RSA", "DSA", "GOSTR3410" };
+	const char *types[] = { "", "RSA", "DSA", "GOSTR3410", "EC", "", "", "" };
 	const char *usages[] = {
 		"encrypt", "decrypt", "sign", "signRecover",
 		"wrap", "unwrap", "verify", "verifyRecover",
@@ -506,7 +506,7 @@ static void print_prkey_info(const struct sc_pkcs15_object *obj)
 	const unsigned int af_count = NELEMENTS(access_flags);
 	char guid[39];
 
-	printf("Private %s Key [%s]\n", types[3 & obj->type], obj->label);
+	printf("Private %s Key [%s]\n", types[7 & obj->type], obj->label);
 	print_common_flags(obj);
 	printf("\tUsage          : [0x%X]", prkey->usage);
 	for (i = 0; i < usage_count; i++)
