@@ -66,7 +66,6 @@ static const struct option options[] = {
 	{ "serial",		0, NULL,	OPT_SERIAL  },
 	{ "name",		0, NULL,		'n' },
 	{ "admin",		1, NULL, 		'A' },
-	{ "usepin",		0, NULL,		'P' }, /* some beta cards want user pin for put_data */
 	{ "genkey",		1, NULL,		'G' },
 	{ "object",		1, NULL,		'O' },
 	{ "cert",		1, NULL,		'C' },
@@ -85,7 +84,6 @@ static const char *option_help[] = {
 	"Prints the card serial number",
 	"Identify the card and print its name",
 	"authenticate using default 3des key",
-	"authenticate using user pin", 
 	"Generate key <ref>:<alg> 9A:06 on card, and output pubkey",
 	"Load an object <containerID> containerID as defined in 800-73 without leading 0x",
 	"Load a cert <ref> where <ref> is 9A,9B,9C or 9D",

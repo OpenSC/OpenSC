@@ -52,12 +52,6 @@
 					</para></listitem>
 				</varlistentry>
 				<varlistentry>
-					<term><option>--usepin, -P</option></term>
-					<listitem><para>Authenticate to the card using the user pin.  
-									</para></listitem>
-				</varlistentry>	
-				
-				<varlistentry>
 					<term><option>--genkey</option>argument, <option>-G</option> argument</term>
 					<listitem><para>Generate a key pair on the card and output the public key.
 					An argument {ref}:{alg} is required, where ref is 9A, 9C, 9D or 9E and alg is 
