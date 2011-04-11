@@ -89,6 +89,12 @@
 				</varlistentry>				
 				
 				<varlistentry>
+					<term><option>--key-slots-discovery</option> file</term>
+					<listitem><para>Print properties of the key slots. Needs 'admin' authentication.
+					</para></listitem>
+				</varlistentry>	
+
+				<varlistentry>
 					<term><option>--send-apdu</option> apdu, <option>-s</option> apdu</term>
 					<listitem><para>Sends an arbitrary APDU to the card in the format AA:BB:CC:DD:EE:FF...
 					This option may be repeated.</para></listitem>
