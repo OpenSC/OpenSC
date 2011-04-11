@@ -447,7 +447,7 @@ static int load_card_atrs(sc_context_t *ctx)
 			t.atr = atr;
 			t.atrmask = (char *) scconf_get_str(b, "atrmask", NULL);
 			t.name = (char *) scconf_get_str(b, "name", NULL);
-			t.type = scconf_get_int(b, "type", -1);
+			t.type = scconf_get_int(b, "type", SC_CARD_TYPE_UNKNOWN);
 			list = scconf_find_list(b, "flags");
 			while (list != NULL) {
 				unsigned int flags;
