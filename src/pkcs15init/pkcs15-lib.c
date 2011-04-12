@@ -2696,7 +2696,7 @@ sc_pkcs15init_delete_object(struct sc_pkcs15_card *p15card, struct sc_profile *p
 	struct sc_file *file = NULL;
 	struct sc_path path;
 	struct sc_pkcs15_df *df;
-	int r, stored_in_ef = 0;
+	int r = 0, stored_in_ef = 0;
 
 	LOG_FUNC_CALLED(ctx);
 	switch(obj->type & SC_PKCS15_TYPE_CLASS_MASK)   {
@@ -2717,13 +2717,14 @@ sc_pkcs15init_delete_object(struct sc_pkcs15_card *p15card, struct sc_profile *p
 	}
 
 	sc_log(ctx, "delete object(type:%X) with path(type:%X,%s)", obj->type, path.type, sc_print_path(&path));
-	r = sc_select_file(p15card->card, &path, &file);
-	if (r != SC_ERROR_FILE_NOT_FOUND)
-		LOG_TEST_RET(ctx, r, "select object path failed");
+	if (path.len || path.aid.len)   {
+		r = sc_select_file(p15card->card, &path, &file);
+		if (r != SC_ERROR_FILE_NOT_FOUND)
+			LOG_TEST_RET(ctx, r, "select object path failed");
 
-	stored_in_ef = (file->type != SC_FILE_TYPE_DF);
-
-	sc_file_free(file);
+		stored_in_ef = (file->type != SC_FILE_TYPE_DF);
+		sc_file_free(file);
+	}
 
 	if (!r)   {
 		/* If the object is stored in a normal EF, try to delete the EF. */
