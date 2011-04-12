@@ -31,14 +31,14 @@ OPENSC_FEATURES = $(OPENSC_FEATURES) openssl
 
 
 # If you want support for zlib (Used for PIV, infocamere and actalis):
-# - Download zlib and build
+# - Download zlib and build with "nmake /f win32\Makefile.msc zlib.lib"
 # - uncomment the line starting with ZLIB_DEF 
 # - set the ZLIB_INCL_DIR below to the zlib include lib proceeded by "/I"
 # - set the ZLIB_LIB  below to your zlib lib file
-#ZLIB_DEF = /DENABLE_ZLIB
+ZLIB_DEF = /DENABLE_ZLIB
 !IF "$(ZLIB_DEF)" == "/DENABLE_ZLIB"
-ZLIB_INCL_DIR = /IC:\ZLIB\INCLUDE
-ZLIB_LIB = C:\ZLIB\LIB\zlib.lib 
+ZLIB_INCL_DIR = /IC:\zlib-1.2.5
+ZLIB_LIB = C:\zlib-1.2.5\zlib.lib
 OPENSC_FEATURES = $(OPENSC_FEATURES) zlib
 !ENDIF
 
