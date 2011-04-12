@@ -1187,7 +1187,7 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card,
 	LOG_TEST_RET(ctx, r, "Invalid key size");
 
 	/* For now, we support just RSA and GOST key pair generation */
-	if (!check_key_compatibility(p15card, &keygen_args->prkey_args.key,
+	if (check_key_compatibility(p15card, &keygen_args->prkey_args.key,
 			keygen_args->prkey_args.x509_usage,
 			keybits, SC_ALGORITHM_ONBOARD_KEY_GEN))
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Generation of RSA and GOST keys is only supported");
@@ -1293,7 +1293,7 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
 	LOG_TEST_RET(ctx, keybits, "Invalid private key size");
 
 	/* Now check whether the card is able to handle this key */
-	if (!check_key_compatibility(p15card, &key, keyargs->x509_usage, keybits, 0)) {
+	if (check_key_compatibility(p15card, &key, keyargs->x509_usage, keybits, 0)) {
 		/* Make sure the caller explicitly tells us to store
 		 * the key as extractable. */
 		if (!(keyargs->access_flags & SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE))		                        
@@ -1840,26 +1840,17 @@ check_key_size(struct sc_card *card, unsigned int alg,
  * Check whether the card has native crypto support for this key.
  */
 static int
-__check_key_compatibility(struct sc_pkcs15_card *p15card,
-			  struct sc_pkcs15_prkey *key,
-			  unsigned int x509_usage,
-			  unsigned int key_length,
-			  unsigned int flags)
+check_key_compatibility(struct sc_pkcs15_card *p15card, struct sc_pkcs15_prkey *key,
+			  unsigned int x509_usage, unsigned int key_length, unsigned int flags)
 {
 	struct sc_algorithm_info *info;
 	unsigned int count;
-	int bad_usage = 0;
 
 	count = p15card->card->algorithm_count;
 	for (info = p15card->card->algorithms; count--; info++) {
-		/* XXX: check for equality, or <= ? */
-		if (info->algorithm != key->algorithm
-		 || info->key_length != key_length
-		 || (info->flags & flags) != flags)
+		if (info->algorithm != key->algorithm || info->key_length != key_length || (info->flags & flags) != flags)
 			continue;
-		if (key->algorithm == SC_ALGORITHM_RSA
-		 && info->u._rsa.exponent != 0
-		 && key->u.rsa.exponent.len != 0) {
+		if (key->algorithm == SC_ALGORITHM_RSA && info->u._rsa.exponent != 0 && key->u.rsa.exponent.len != 0) {
 			struct sc_pkcs15_bignum *e = &key->u.rsa.exponent;
 			unsigned long	exponent = 0;
 			unsigned int	n;
@@ -1874,32 +1865,12 @@ __check_key_compatibility(struct sc_pkcs15_card *p15card,
 				continue;
 		}
 
-		return 1;
+		return SC_SUCCESS;
 	}
 
-	return bad_usage? -1 : 0;
+	return SC_ERROR_OBJECT_NOT_VALID;
 }
 
-
-static int
-check_key_compatibility(struct sc_pkcs15_card *p15card,
-			struct sc_pkcs15_prkey *key,
-			unsigned int x509_usage,
-			unsigned int key_length,
-			unsigned int flags)
-{
-	struct sc_context *ctx = p15card->card->ctx;
-	int	res;
-
-	res = __check_key_compatibility(p15card, key, x509_usage, key_length, flags);
-	if (res < 0) {
-		sc_log(ctx, "This device requires that keys have a specific key usage.\n"
-			"Keys can be used for either signature or decryption, but not both.\n"
-			"Please specify a key usage.\n");
-		res = 0;
-	}
-	return res;
-}
 
 /*
  * Check RSA key for consistency, and compute missing
