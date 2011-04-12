@@ -104,8 +104,8 @@ static int	do_select_parent(struct sc_profile *, struct sc_pkcs15_card *,
 			struct sc_file *, struct sc_file **);
 static int	sc_pkcs15init_create_pin(struct sc_pkcs15_card *, struct sc_profile *,
 			struct sc_pkcs15_object *, struct sc_pkcs15init_pinargs *);
-static int	check_key_size(struct sc_card *card, unsigned int alg,
-			unsigned int bits);
+static int	check_keygen_params_consistency(struct sc_card *card, struct sc_pkcs15init_keygen_args *args,
+			unsigned int bits, unsigned int *out_bits);
 static int	check_key_compatibility(struct sc_pkcs15_card *,
 			struct sc_pkcs15_prkey *, unsigned int,
 			unsigned int, unsigned int);
@@ -154,8 +154,19 @@ static struct profile_operations {
 #ifdef ENABLE_OPENSSL
 	{ "authentic", (void *) sc_pkcs15init_get_authentic_ops },
 	{ "iasecc", (void *) sc_pkcs15init_get_iasecc_ops },
+/*	{ "piv", (void *) sc_pkcs15init_get_piv_ops }, */
 #endif
 	{ NULL, NULL },
+};
+
+
+static struct ec_curve_info {
+	const char *name;
+	size_t size;
+} ec_curve_infos[] = {
+	{"secp256k1", 256},
+	{"secp384r1", 384},
+	{NULL, 0},
 };
 
 static struct sc_pkcs15init_callbacks callbacks = {
@@ -1080,7 +1091,7 @@ sc_pkcs15init_init_prkdf(struct sc_pkcs15_card *p15card,
 	struct sc_pkcs15_object *object;
 	const char	*label;
 	unsigned int	usage;
-	int		r = 0;
+	int		r = 0, key_type;
 
 	LOG_FUNC_CALLED(ctx);
 	if (!res_obj || !keybits)
@@ -1100,7 +1111,10 @@ sc_pkcs15init_init_prkdf(struct sc_pkcs15_card *p15card,
 	/* Create the prkey object now.
 	 * If we find out below that we're better off reusing an
 	 * existing object, we'll ditch this one */
-	object = sc_pkcs15init_new_object(prkey_pkcs15_algo(p15card, key), label, &keyargs->auth_id, NULL);
+	key_type = prkey_pkcs15_algo(p15card, key);
+	LOG_TEST_RET(ctx, key_type, "Unsupported key type");
+
+	object = sc_pkcs15init_new_object(key_type, label, &keyargs->auth_id, NULL);
 	if (object == NULL)
 		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate new PrKey object");
 
@@ -1146,8 +1160,7 @@ sc_pkcs15init_init_prkdf(struct sc_pkcs15_card *p15card,
 			r = profile->ops->select_key_reference(profile, p15card, key_info);
 			LOG_TEST_RET(ctx, r, "Failed to select card specific key reference");
 
-			r = sc_pkcs15_find_prkey_by_reference(p15card, &key_info->path, 
-					key_info->key_reference, NULL);
+			r = sc_pkcs15_find_prkey_by_reference(p15card, &key_info->path, key_info->key_reference, NULL);
 			if (r == SC_ERROR_OBJECT_NOT_FOUND)
 				break;
 
@@ -1169,10 +1182,8 @@ sc_pkcs15init_init_prkdf(struct sc_pkcs15_card *p15card,
  * Generate a new private key
  */
 int
-sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card,
-		struct sc_profile *profile,
-		struct sc_pkcs15init_keygen_args *keygen_args,
-		unsigned int keybits,
+sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
+		struct sc_pkcs15init_keygen_args *keygen_args, unsigned int keybits,
 		struct sc_pkcs15_object **res_obj)
 {
 	struct sc_context *ctx = p15card->card->ctx;
@@ -1183,14 +1194,12 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card,
 
 	LOG_FUNC_CALLED(ctx);
 	/* check supported key size */
-	r = check_key_size(p15card->card, keygen_args->prkey_args.key.algorithm, keybits);
+	r = check_keygen_params_consistency(p15card->card, keygen_args, keybits, &keybits);
 	LOG_TEST_RET(ctx, r, "Invalid key size");
 
-	/* For now, we support just RSA and GOST key pair generation */
-	if (check_key_compatibility(p15card, &keygen_args->prkey_args.key,
-			keygen_args->prkey_args.x509_usage,
+	if (check_key_compatibility(p15card, &keygen_args->prkey_args.key, keygen_args->prkey_args.x509_usage,
 			keybits, SC_ALGORITHM_ONBOARD_KEY_GEN))
-		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Generation of RSA and GOST keys is only supported");
+		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Cannot generate key with the given parameters");
 
 	if (profile->ops->generate_key == NULL)
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Key generation not supported");
@@ -1814,24 +1823,44 @@ sc_pkcs15init_keybits(struct sc_pkcs15_bignum *bn)
 }
 
 
+static unsigned int
+get_keybits_from_curve_name(const char *curve)   
+{
+	int ii;
+	for (ii=0;ec_curve_infos[ii].name;ii++)
+		if (!strcmp(ec_curve_infos[ii].name, curve))
+			return ec_curve_infos[ii].size;
+	return 0;
+}
+
 /*
- * Check if the key size is supported.
+ * Check consistency of the key parameters.
  */
 static int 
-check_key_size(struct sc_card *card, unsigned int alg,
-	unsigned int bits)
+check_keygen_params_consistency(struct sc_card *card, struct sc_pkcs15init_keygen_args *params, 
+		unsigned int keybits, unsigned int *out_keybits)
 {
+	unsigned int alg = params->prkey_args.key.algorithm; 
 	int i;
+
+	if (!keybits && ( alg == SC_ALGORITHM_EC))
+		keybits = get_keybits_from_curve_name(params->prkey_args.params.ec.curve);
+
+	if (out_keybits)
+		*out_keybits = keybits;
 
 	for (i = 0; i < card->algorithm_count; i++) {
 		struct sc_algorithm_info *info = &card->algorithms[i];
 
 		if (info->algorithm != alg)
 			continue;
-		if (info->key_length != bits)
+
+		if (info->key_length != keybits)
 			continue;
+
 		return SC_SUCCESS;
 	}
+
 	return SC_ERROR_NOT_SUPPORTED;
 }
 
@@ -1850,19 +1879,24 @@ check_key_compatibility(struct sc_pkcs15_card *p15card, struct sc_pkcs15_prkey *
 	for (info = p15card->card->algorithms; count--; info++) {
 		if (info->algorithm != key->algorithm || info->key_length != key_length || (info->flags & flags) != flags)
 			continue;
-		if (key->algorithm == SC_ALGORITHM_RSA && info->u._rsa.exponent != 0 && key->u.rsa.exponent.len != 0) {
-			struct sc_pkcs15_bignum *e = &key->u.rsa.exponent;
-			unsigned long	exponent = 0;
-			unsigned int	n;
 
-			if (e->len > 4)
-				continue;
-			for (n = 0; n < e->len; n++) {
-				exponent <<= 8;
-				exponent |= e->data[n];
+		if (key->algorithm == SC_ALGORITHM_RSA)   {
+			if (info->u._rsa.exponent != 0 && key->u.rsa.exponent.len != 0) {
+				struct sc_pkcs15_bignum *e = &key->u.rsa.exponent;
+				unsigned long	exponent = 0;
+				unsigned int	n;
+
+				if (e->len > 4)
+					continue;
+				for (n = 0; n < e->len; n++) {
+					exponent <<= 8;
+					exponent |= e->data[n];
+				}
+				if (info->u._rsa.exponent != exponent)
+					continue;
 			}
-			if (info->u._rsa.exponent != exponent)
-				continue;
+		}
+		else if (key->algorithm == SC_ALGORITHM_EC)   {
 		}
 
 		return SC_SUCCESS;
@@ -1994,6 +2028,8 @@ prkey_pkcs15_algo(struct sc_pkcs15_card *p15card, struct sc_pkcs15_prkey *key)
 		return SC_PKCS15_TYPE_PRKEY_DSA;
 	case SC_ALGORITHM_GOSTR3410:
 		return SC_PKCS15_TYPE_PRKEY_GOSTR3410;
+	case SC_ALGORITHM_EC:
+		return SC_PKCS15_TYPE_PRKEY_EC;
 	}
 	sc_log(ctx, "Unsupported key algorithm.");
 	return SC_ERROR_NOT_SUPPORTED;
@@ -2568,8 +2604,7 @@ sc_pkcs15init_add_object(struct sc_pkcs15_card *p15card,
 
 
 struct sc_pkcs15_object * 
-sc_pkcs15init_new_object(int type,
-		const char *label, struct sc_pkcs15_id *auth_id, void *data)
+sc_pkcs15init_new_object(int type, const char *label, struct sc_pkcs15_id *auth_id, void *data)
 {
 	struct sc_pkcs15_object	*object;
 	unsigned int data_size = 0;
