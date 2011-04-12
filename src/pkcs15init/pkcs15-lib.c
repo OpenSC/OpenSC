@@ -1132,9 +1132,9 @@ sc_pkcs15init_init_prkdf(struct sc_pkcs15_card *p15card,
 		if (!key_info->params)
 			LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate memory for GOST parameters");
 		keyinfo_gostparams = key_info->params;
-		keyinfo_gostparams->gostr3410 = keyargs->gost_params.gostr3410;
-		keyinfo_gostparams->gostr3411 = keyargs->gost_params.gostr3411;
-		keyinfo_gostparams->gost28147 = keyargs->gost_params.gost28147;
+		keyinfo_gostparams->gostr3410 = keyargs->params.gost.gostr3410;
+		keyinfo_gostparams->gostr3411 = keyargs->params.gost.gostr3411;
+		keyinfo_gostparams->gost28147 = keyargs->params.gost.gost28147;
 	}
 
 	r = select_object_path(p15card, profile, object, &key_info->path);
@@ -1221,7 +1221,7 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card,
 	pubkey_args.label = keygen_args->pubkey_label ? keygen_args->pubkey_label : object->label;
 	pubkey_args.usage = keygen_args->prkey_args.usage;
 	pubkey_args.x509_usage = keygen_args->prkey_args.x509_usage;
-	pubkey_args.gost_params = keygen_args->prkey_args.gost_params;
+	pubkey_args.params.gost = keygen_args->prkey_args.params.gost;
 
 	/* Generate the private key on card */
 	r = profile->ops->create_key(profile, p15card, object);
@@ -1445,9 +1445,9 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
 		if (!key_info->params)
 			return SC_ERROR_OUT_OF_MEMORY;
 		keyinfo_gostparams = key_info->params;
-		keyinfo_gostparams->gostr3410 = keyargs->gost_params.gostr3410;
-		keyinfo_gostparams->gostr3411 = keyargs->gost_params.gostr3411;
-		keyinfo_gostparams->gost28147 = keyargs->gost_params.gost28147;
+		keyinfo_gostparams->gostr3410 = keyargs->params.gost.gostr3410;
+		keyinfo_gostparams->gostr3411 = keyargs->params.gost.gostr3411;
+		keyinfo_gostparams->gost28147 = keyargs->params.gost.gost28147;
 	}
 
 	/* Select a intrinsic Key ID if the user didn't specify one */

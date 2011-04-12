@@ -856,7 +856,7 @@ do_store_private_key(struct sc_profile *profile)
 
 	if ((r = do_convert_private_key(&args.key, pkey)) < 0)
 		return r;
-	init_gost_params(&args.gost_params, pkey);
+	init_gost_params(&args.params.gost, pkey);
 
 	if (ncerts) {
 		unsigned int	usage;
@@ -1003,11 +1003,10 @@ do_store_public_key(struct sc_profile *profile, EVP_PKEY *pkey)
 	if (r >= 0) {
 		r = do_convert_public_key(&args.key, pkey);
 		if (r >= 0)
-			init_gost_params(&args.gost_params, pkey);
+			init_gost_params(&args.params.gost, pkey);
 	}
 	if (r >= 0)
-		r = sc_pkcs15init_store_public_key(p15card, profile,
-					&args, &dummy);
+		r = sc_pkcs15init_store_public_key(p15card, profile, &args, &dummy);
 
 	return r;
 }
@@ -1456,9 +1455,13 @@ do_generate_key(struct sc_profile *profile, const char *spec)
 		keygen_args.prkey_args.key.algorithm = SC_ALGORITHM_GOSTR3410;
 		keybits = SC_PKCS15_GOSTR3410_KEYSIZE;
 		/* FIXME: now only SC_PKCS15_PARAMSET_GOSTR3410_A */
-		keygen_args.prkey_args.gost_params.gostr3410 =
-			SC_PKCS15_PARAMSET_GOSTR3410_A;
+		keygen_args.prkey_args.params.gost.gostr3410 = SC_PKCS15_PARAMSET_GOSTR3410_A;
 		spec += strlen("gost2001");
+	} else if (!strncasecmp(spec, "ec", 2)) {
+		keygen_args.prkey_args.key.algorithm = SC_ALGORITHM_EC;
+		spec += 2;
+		keygen_args.prkey_args.params.ec.curve = spec;
+		keybits = 0;
 	} else {
 		util_error("Unknown algorithm \"%s\"", spec);
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -1466,7 +1469,8 @@ do_generate_key(struct sc_profile *profile, const char *spec)
 
 	if (*spec == '/' || *spec == '-')
 		spec++;
-	if (*spec) {
+
+	if (*spec && isdigit(*spec))   {
 		char	*end;
 
 		keybits = strtoul(spec, &end, 10);

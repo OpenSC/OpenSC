@@ -755,6 +755,7 @@ pkcs15_add_object(struct sc_pkcs11_slot *slot,
 	switch (__p15_type(obj)) {
 	case SC_PKCS15_TYPE_PRKEY_RSA:
 	case SC_PKCS15_TYPE_PRKEY_GOSTR3410:
+	case SC_PKCS15_TYPE_PRKEY_EC:
 		pkcs15_add_object(slot, (struct pkcs15_any_object *) obj->related_pubkey, NULL);
 		card_fw_data = (struct pkcs15_fw_data *) slot->card->fw_data;
 		for (i = 0; i < card_fw_data->num_objects; i++) {
@@ -1857,10 +1858,8 @@ set_gost_params(struct sc_pkcs15init_prkeyargs *prkey_args,
 		for (i = 0; i < sizeof(gostr3410_param_oid)
 				/sizeof(gostr3410_param_oid[0]); ++i) {
 			if (!memcmp(gost_params_oid, gostr3410_param_oid[i].oid, len)) {
-				prkey_args->gost_params.gostr3410 =
-					gostr3410_param_oid[i].param;
-				pubkey_args->gost_params.gostr3410 =
-					gostr3410_param_oid[i].param;
+				prkey_args->params.gost.gostr3410 = gostr3410_param_oid[i].param;
+				pubkey_args->params.gost.gostr3410 = gostr3410_param_oid[i].param;
 				break;
 			}
 		}

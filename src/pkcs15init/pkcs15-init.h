@@ -197,6 +197,10 @@ struct sc_pkcs15init_keyarg_gost_params {
 	unsigned char gostr3410, gostr3411, gost28147;
 };
 
+struct sc_pkcs15init_keyarg_ec_params {
+	const char *curve;
+};
+
 struct sc_pkcs15init_prkeyargs {
 	struct sc_pkcs15_id	id;
 	struct sc_pkcs15_id	auth_id;
@@ -205,7 +209,11 @@ struct sc_pkcs15init_prkeyargs {
 	unsigned long		x509_usage;
 	unsigned int		flags;
 	unsigned int		access_flags;
-	struct sc_pkcs15init_keyarg_gost_params gost_params;
+
+	union {
+		struct sc_pkcs15init_keyarg_gost_params gost;
+		struct sc_pkcs15init_keyarg_ec_params ec;
+	} params;
 
 	struct sc_pkcs15_prkey	key;
 
@@ -226,7 +234,11 @@ struct sc_pkcs15init_pubkeyargs {
 	const char *		label;
 	unsigned long		usage;
 	unsigned long		x509_usage;
-	struct sc_pkcs15init_keyarg_gost_params gost_params;
+
+	union {
+		struct sc_pkcs15init_keyarg_gost_params gost;
+		struct sc_pkcs15init_keyarg_ec_params ec;
+	} params;
 
 	struct sc_pkcs15_pubkey	key;
 };
@@ -390,6 +402,7 @@ extern struct sc_pkcs15init_operations *sc_pkcs15init_get_westcos_ops(void);
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_myeid_ops(void);
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_authentic_ops(void);
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_iasecc_ops(void);
+extern struct sc_pkcs15init_operations *sc_pkcs15init_get_piv_ops(void);
 
 #ifdef __cplusplus
 }
