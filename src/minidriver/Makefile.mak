@@ -1,7 +1,7 @@
 TOPDIR = ..\..
 
 TARGET = opensc-minidriver.dll
-OBJECTS = opensc-minidriver.obj
+OBJECTS = minidriver.obj
 
 !INCLUDE $(TOPDIR)\win32\Make.rules.mak
 
