@@ -1,7 +1,7 @@
 OPENSC_FEATURES = pcsc
 
-#Include support of minidriver 'cardmod'
-MINIDRIVER_DEF = /DENABLE_CARDMOD
+#Include support for minidriver
+MINIDRIVER_DEF = /DENABLE_MINIDRIVER
 
 #Build MSI with the Windows Installer XML (WIX) toolkit, requires WIX >= 3.6
 !IF "$(BUILD_ON)" == "WIN64"

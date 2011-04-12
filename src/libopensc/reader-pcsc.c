@@ -1551,7 +1551,7 @@ struct sc_reader_driver * sc_get_pcsc_driver(void)
 	return &pcsc_drv;
 }
 
-#ifdef ENABLE_CARDMOD
+#ifdef ENABLE_MINIDRIVER
 
 #define SCARD_CLASS_SYSTEM     0x7fff 
 #define SCARD_ATTR_VALUE(Class, Tag) ((((ULONG)(Class)) << 16) | ((ULONG)(Tag)))

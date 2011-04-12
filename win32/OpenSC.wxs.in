@@ -31,7 +31,7 @@
           <File Source="$(var.SOURCE_DIR)\src\libopensc\opensc.dll" Vital="yes"/>
         </Component>
         <Component Id="opensc_minidriver.dll" Guid="*">
-          <File Source="$(var.SOURCE_DIR)\src\cardmod\opensc-cardmod.dll" Vital="yes"/>
+          <File Source="$(var.SOURCE_DIR)\src\minidriver\opensc-minidriver.dll" Vital="yes"/>
         </Component>
       </Directory>
       <!-- Install tools and profiles to Program Files -->

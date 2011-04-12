@@ -654,11 +654,12 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 
 #ifdef ENABLE_PCSC
 	ctx->reader_driver = sc_get_pcsc_driver();
-	#ifdef ENABLE_CARDMOD
+/* XXX: remove cardmod pseudoreader driver */
+#ifdef ENABLE_MINIDRIVER
 	if(strcmp(ctx->app_name, "cardmod") == 0) {
 		ctx->reader_driver = sc_get_cardmod_driver();
 	}
-	#endif
+#endif
 #elif ENABLE_CTAPI
 	ctx->reader_driver = sc_get_ctapi_driver();
 #elif ENABLE_OPENCT
@@ -681,8 +682,8 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 	return SC_SUCCESS;
 }
 
-/* use by cardmod to pass in provided handles to reader-pcsc */
-int sc_ctx_use_reader(sc_context_t *ctx, void * pcsc_context_handle, void * pcsc_card_handle)
+/* Used by minidriver to pass in provided handles to reader-pcsc */
+int sc_ctx_use_reader(sc_context_t *ctx, void *pcsc_context_handle, void *pcsc_card_handle)
 {
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 	if (ctx->reader_driver->ops->use_reader != NULL)

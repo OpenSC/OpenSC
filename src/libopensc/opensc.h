@@ -388,8 +388,8 @@ struct sc_reader_operations {
 			int timeout, void **reader_states);
 	/* Reset a reader */
 	int (*reset)(struct sc_reader *, int);
-	/* used to pass in reader handles in cardmod mode */
-	int (*use_reader)(struct sc_context *ctx, void * pcsc_context_handle, void * pcsc_card_handle);
+	/* Used to pass in PC/SC handles to minidriver */
+	int (*use_reader)(struct sc_context *ctx, void *pcsc_context_handle, void *pcsc_card_handle);
 };
 
 /*

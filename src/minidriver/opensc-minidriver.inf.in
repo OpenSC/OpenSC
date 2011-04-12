@@ -140,10 +140,9 @@ wow64_CopyFiles=10,syswow64
 ; =================== Generic ==================================
 
 [Strings]
-ProviderName ="Opensc"
-MediaDescription="Opensc Smart Card Minidriver Installation Disk"
-CardDeviceName="Opensc Minidriver for Smart Card"
+ProviderName ="OpenSC"
+MediaDescription="OpenSC Smart Card Minidriver Installation Disk"
+CardDeviceName="OpenSC Minidriver"
 SmartCardName="SOFTWARE\Microsoft\Cryptography\Calais\SmartCards\Cev Westcos"
 SmartCardNameWOW64="SOFTWARE\Wow6432Node\Microsoft\Cryptography\Calais\SmartCards\Cev Westcos"
-SmartCardCardModule="opensc-cardmod32.dll"
-SmartCardCardModule64="opensc-cardmod64.dll"
+SmartCardCardModule="opensc-minidriver.dll"
