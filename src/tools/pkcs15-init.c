@@ -1460,23 +1460,27 @@ do_generate_key(struct sc_profile *profile, const char *spec)
 	} else if (!strncasecmp(spec, "ec", 2)) {
 		keygen_args.prkey_args.key.algorithm = SC_ALGORITHM_EC;
 		spec += 2;
-		keygen_args.prkey_args.params.ec.curve = spec;
-		keybits = 0;
 	} else {
 		util_error("Unknown algorithm \"%s\"", spec);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
-	if (*spec == '/' || *spec == '-')
+	if (*spec == '/' || *spec == '-' || *spec == ':')
 		spec++;
 
-	if (*spec && isdigit(*spec))   {
-		char	*end;
+	if (*spec)   {
+		if (isalpha(*spec) && keygen_args.prkey_args.key.algorithm == SC_ALGORITHM_EC)   {
+			keygen_args.prkey_args.params.ec.curve = spec;
+			keybits = 0;
+		}
+		else {
+			char	*end;
 
-		keybits = strtoul(spec, &end, 10);
-		if (*end) {
-			util_error("Invalid number of key bits \"%s\"", spec);
-			return SC_ERROR_INVALID_ARGUMENTS;
+			keybits = strtoul(spec, &end, 10);
+			if (*end) {
+				util_error("Invalid number of key bits \"%s\"", spec);
+				return SC_ERROR_INVALID_ARGUMENTS;
+			}
 		}
 	}
 	r = sc_pkcs15init_generate_key(p15card, profile, &keygen_args, keybits, NULL);
