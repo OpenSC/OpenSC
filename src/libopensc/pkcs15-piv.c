@@ -105,6 +105,124 @@ typedef struct common_key_info_st {
 	int not_present;
 } common_key_info;
 
+
+/*
+ * The PIV applet has no serial number, and so the either the FASC-N
+ * is used, or the GUID is used as a serial number.
+ * We need to return a GUID like value for each object
+ * But this needs to be some what unique.
+ * So we will use two different methods, depending 
+ * on the size of the sereal number.
+ * If it is 25 bytes, then it was from a FASCN. If 16 bytes
+ * its from a GUID.
+ * If neither, we will uase the default method. 
+ */
+
+static int piv_get_guid(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_object *obj,
+		char *out, size_t out_size)
+{
+	struct sc_serial_number serialnr;
+	struct sc_pkcs15_id  id;
+	unsigned char guid_bin[SC_PKCS15_MAX_ID_SIZE + SC_MAX_SERIALNR];
+	size_t bin_size, offs, tlen;
+	int r, i;
+	unsigned char fbit, fbits, fbyte, fbyte2, fnibble;
+	unsigned char *f5p, *f8p;
+
+	if (!p15card || !obj || !out || out_size < 3)
+		return SC_ERROR_INCORRECT_PARAMETERS;
+
+	r = sc_pkcs15_get_object_id(obj, &id);
+	if (r)
+		return r;
+
+	r = sc_card_ctl(p15card->card, SC_CARDCTL_GET_SERIALNR, &serialnr);
+	if (r)
+		return r;
+
+	memset(guid_bin, 0, sizeof(guid_bin));
+	memset(out, 0, out_size);
+
+	if (id.len == 1 && serialnr.len == 25) {
+
+		/* It is from a FASCN, and we need to shorten it but keep
+		 * as much uniquness as possible.
+		 * FASC-N is stored like a ISO 7811 Magnetic Strip Card 
+		 * Using the ANSI/ISO BCD Data Format
+		 * 4 data bit + 1 parity bit (odd) least significant bit first. 
+		 * It starts with the Start Sentinel 0x0b ";" 
+		 * Fields are seperated by 0x0d "="
+		 * Ends with End Sentinel 0x0f "?"
+		 * Its 39 characters + the LRC 
+		 * http://www.dataip.co.uk/Reference/MagneticCardBCD.php
+		 * 0x0a, 0x0c, 0x0e are some type of control
+		 * the FASCN has a lot of extra bits, with only 32 digits.
+		 */
+		f5p = serialnr.value;
+		f8p = guid_bin;
+		fbyte2 = 0;
+		fnibble = 0;
+		fbits = 0;
+		for (i = 0; i < 25*8; i++) {
+			if (i%8 == 0) {
+				fbyte=*f5p++;
+			}
+			fbit = (fbyte & 0x80) ? 1:0;
+			fbyte <<= 1;
+			fbits = (fbits >> 1) + (fbit << 4);
+			/* reversed with parity */
+			if ((i - 4)%5 == 0) {
+				fbits = fbits & 0x0f; /* drop parity */
+				if (fbits <= 9) {  /* only save digits, drop control codes */
+					fbyte2 = (fbyte2 << 4) | fbits;
+					if (fnibble) {
+						*f8p = fbyte2;
+						f8p++;
+						fbyte2 = 0;
+						fnibble = 0;
+					} else
+					fnibble = 1;
+				}
+				fbits = 0;
+			}
+		}
+
+		/* overwrite two insignificant digits in middle with id */
+		memcpy(guid_bin + 7, id.value, id.len); 
+		tlen = 16;
+	}
+	else if (id.len == 1 && serialnr.len == 16) {
+		/* its from a GUID, we will overwrite the 
+		 * first byte with id.value, as this preserves most
+	     * of the uniqueness. 
+		 */ 
+		memcpy(guid_bin, id.value, id.len);
+		memcpy(guid_bin + id.len, serialnr.value + 1, serialnr.len - 1);
+		
+		tlen = id.len + serialnr.len - 1; /* i.e. 16 */
+	} else {
+		/* not what was expected...  use default */
+
+		memcpy(guid_bin, serialnr.value, serialnr.len);
+		memcpy(guid_bin + serialnr.len, id.value, id.len);
+
+		tlen = id.len + serialnr.len;
+	}
+
+	/* reserve one byte for the 'C' line ending */
+	bin_size = (out_size - 1)/2;
+	if (bin_size > tlen)
+		bin_size = tlen;
+
+	offs = tlen - bin_size;
+
+	for (i=0; i<bin_size; i++)
+		sprintf(out + i*2, "%02x", guid_bin[offs + i]);
+
+	return SC_SUCCESS;
+}
+
+
 static int piv_detect_card(sc_pkcs15_card_t *p15card)
 {
 	sc_card_t *card = p15card->card;
@@ -877,6 +995,8 @@ sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "DEE Adding pin %d label=%s",i, label);
 		if (r < 0)
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 	}
+
+	p15card->ops.get_guid = piv_get_guid;
 
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
 }
