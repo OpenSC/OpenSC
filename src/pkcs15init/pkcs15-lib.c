@@ -95,10 +95,6 @@ static int	sc_pkcs15init_update_tokeninfo(struct sc_pkcs15_card *,
 			struct sc_profile *profile);
 static int	sc_pkcs15init_update_odf(struct sc_pkcs15_card *,
 			struct sc_profile *profile);
-static int	sc_pkcs15init_add_object(struct sc_pkcs15_card *,
-			struct sc_profile *profile,
-			unsigned int df_type,
-			struct sc_pkcs15_object *);
 static int	sc_pkcs15init_map_usage(unsigned long, int);
 static int	do_select_parent(struct sc_profile *, struct sc_pkcs15_card *,
 			struct sc_file *, struct sc_file **);
@@ -2554,7 +2550,7 @@ sc_pkcs15init_update_any_df(struct sc_pkcs15_card *p15card,
 /*
  * Add an object to one of the pkcs15 directory files.
  */
-static int
+int
 sc_pkcs15init_add_object(struct sc_pkcs15_card *p15card,
 		struct sc_profile *profile,
 		unsigned int df_type,

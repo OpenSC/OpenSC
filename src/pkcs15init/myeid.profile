@@ -29,13 +29,14 @@ option default {
         #protected	= READ=NONE, UPDATE=CHV1, DELETE=CHV2;
         #unprotected	= READ=NONE, UPDATE=CHV1, DELETE=CHV1;
 		
-	unusedspace-size = 512;
-	odf-size	= 256;
-	aodf-size	= 384;
-	cdf-size	= 512;
-	prkdf-size	= 1485;
-	pukdf-size	= 1200;
-	dodf-size	= 256;
+	unusedspace-size = 510;
+	odf-size	     = 255;
+	aodf-size	     = 255;
+	cdf-size	     = 1530;
+	cdf-trusted-size = 510;
+	prkdf-size	     = 1530;
+	pukdf-size	     = 1530;
+	dodf-size	     = 255;
     }
 }
 
@@ -129,21 +130,28 @@ filesystem {
             }
 
             EF PKCS15-PuKDF {
-                file-id	  = 4403;
+                file-id	  = 4404;
                 structure = transparent;
                 size	  = $pukdf-size;
                 acl	      = *=NEVER, READ=NONE, UPDATE=$PIN, DELETE=$SOPIN;
             }
 
             EF PKCS15-CDF {
-                file-id	  = 4404;
+                file-id	  = 4403;
                 structure = transparent;
                 size	  = $cdf-size;
                 acl	      = *=NEVER, READ=NONE, UPDATE=$PIN, DELETE=$SOPIN;
             }
 
-            EF PKCS15-DODF {
+            EF PKCS15-CDF-TRUSTED {
                 file-id	  = 4405;
+                structure = transparent;
+                size	  = $cdf-trusted-size;
+                acl	      = *=NEVER, READ=NONE, UPDATE=$PIN, DELETE=$SOPIN;
+            }
+
+            EF PKCS15-DODF {
+                file-id	  = 4406;
                 structure = transparent;
                 size	  = $dodf-size;
                 acl       = *=NEVER, READ=NONE, UPDATE=$PIN, DELETE=$SOPIN;

@@ -324,6 +324,10 @@ extern int	sc_pkcs15init_change_attrib(struct sc_pkcs15_card *,
 				int,
 				void *,
 				int);
+extern int	sc_pkcs15init_add_object(struct sc_pkcs15_card *,
+			struct sc_profile *profile,
+			unsigned int,
+			struct sc_pkcs15_object *);
 extern int	sc_pkcs15init_delete_object(struct sc_pkcs15_card *,
 				struct sc_profile *,
 				struct sc_pkcs15_object *);
