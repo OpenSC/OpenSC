@@ -529,8 +529,8 @@ static int containers_discovery(void)
 static int send_apdu(void)
 {
 	sc_apdu_t apdu;
-	u8 buf[SC_MAX_APDU_BUFFER_SIZE+3], sbuf[SC_MAX_APDU_BUFFER_SIZE],
-	   rbuf[SC_MAX_APDU_BUFFER_SIZE*3], *p;
+	u8 buf[SC_MAX_APDU_BUFFER_SIZE+3], sbuf[SC_MAX_APDU_BUFFER_SIZE];
+	u8 rbuf[8192], *p;
 	size_t len, len0, r;
 	int c;
 
