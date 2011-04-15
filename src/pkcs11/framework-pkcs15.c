@@ -3086,35 +3086,36 @@ get_public_exponent(struct sc_pkcs15_pubkey *key, CK_ATTRIBUTE_PTR attr)
 static CK_RV
 get_ec_pubkey_params(struct sc_pkcs15_pubkey *key, CK_ATTRIBUTE_PTR attr)
 {
-		struct sc_ec_params * ecp;
-	    if (key == NULL)
-			return CKR_ATTRIBUTE_TYPE_INVALID;
-		if (key->alg_id == NULL) 
-			return CKR_ATTRIBUTE_TYPE_INVALID;
-			ecp = (struct sc_ec_params *) key->alg_id->params;
-
-		switch (key->algorithm) {
-		case SC_ALGORITHM_EC:
-			check_attribute_buffer(attr, ecp->der_len);
-			memcpy(attr->pValue, ecp->der, ecp->der_len);
-			return CKR_OK;
-		}
+	struct sc_ec_params * ecp;
+	
+	if (key == NULL)
 		return CKR_ATTRIBUTE_TYPE_INVALID;
+	if (key->alg_id == NULL) 
+		return CKR_ATTRIBUTE_TYPE_INVALID;
+	ecp = (struct sc_ec_params *) key->alg_id->params;
+
+	switch (key->algorithm) {
+	case SC_ALGORITHM_EC:
+		check_attribute_buffer(attr, ecp->der_len);
+		memcpy(attr->pValue, ecp->der, ecp->der_len);
+		return CKR_OK;
+	}
+	return CKR_ATTRIBUTE_TYPE_INVALID;
 }
 
 static CK_RV
 get_ec_pubkey_point(struct sc_pkcs15_pubkey *key, CK_ATTRIBUTE_PTR attr)
 {
-	    if (key == NULL)
-			return CKR_ATTRIBUTE_TYPE_INVALID;
-
-		switch (key->algorithm) {
-		case SC_ALGORITHM_EC:
-			check_attribute_buffer(attr, key->u.ec.ecpointQ.len);
-			memcpy(attr->pValue, key->u.ec.ecpointQ.value, key->u.ec.ecpointQ.len);
-			return CKR_OK;
-		}
+	if (key == NULL)
 		return CKR_ATTRIBUTE_TYPE_INVALID;
+
+	switch (key->algorithm) {
+	case SC_ALGORITHM_EC:
+		check_attribute_buffer(attr, key->u.ec.ecpointQ.len);
+		memcpy(attr->pValue, key->u.ec.ecpointQ.value, key->u.ec.ecpointQ.len);
+		return CKR_OK;
+	}
+	return CKR_ATTRIBUTE_TYPE_INVALID;
 }
 
 static CK_RV
