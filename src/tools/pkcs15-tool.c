@@ -254,6 +254,7 @@ static int list_certificates(void)
 		print_cert_info(objs[i]);
 		printf("\n");
 	}
+
 	return 0;
 }
 
@@ -523,7 +524,10 @@ static void print_prkey_info(const struct sc_pkcs15_object *obj)
 
 	print_access_rules(obj->access_rules, SC_PKCS15_MAX_ACCESS_RULES);
 
-	printf("\tModLength      : %lu\n", (unsigned long)prkey->modulus_length);
+	if (prkey->modulus_length)
+		printf("\tModLength      : %lu\n", (unsigned long)prkey->modulus_length);
+	else
+		printf("\tFieldLength      : %lu\n", (unsigned long)prkey->field_length);
 	printf("\tKey ref        : %d (0x%X)\n", prkey->key_reference, prkey->key_reference);
 	printf("\tNative         : %s\n", prkey->native ? "yes" : "no");
 	if (prkey->path.len || prkey->path.aid.len)
@@ -561,7 +565,7 @@ static void print_pubkey_info(const struct sc_pkcs15_object *obj)
 {
 	unsigned int i;
 	const struct sc_pkcs15_pubkey_info *pubkey = (const struct sc_pkcs15_pubkey_info *) obj->data;
-	const char *types[] = { "", "RSA", "DSA", "GOSTR3410" };
+	const char *types[] = { "", "RSA", "DSA", "GOSTR3410", "EC", "", "", "" };
 	const char *usages[] = {
 		"encrypt", "decrypt", "sign", "signRecover",
 		"wrap", "unwrap", "verify", "verifyRecover",
@@ -574,7 +578,7 @@ static void print_pubkey_info(const struct sc_pkcs15_object *obj)
 	};
 	const unsigned int af_count = NELEMENTS(access_flags);
 
-	printf("Public %s Key [%s]\n", types[3 & obj->type], obj->label);
+	printf("Public %s Key [%s]\n", types[7 & obj->type], obj->label);
 	print_common_flags(obj);
 	printf("\tUsage          : [0x%X]", pubkey->usage);
 	for (i = 0; i < usage_count; i++)
@@ -591,7 +595,10 @@ static void print_pubkey_info(const struct sc_pkcs15_object *obj)
 
 	print_access_rules(obj->access_rules, SC_PKCS15_MAX_ACCESS_RULES);
 
-	printf("\tModLength      : %lu\n", (unsigned long)pubkey->modulus_length);
+	if (pubkey->modulus_length)
+		printf("\tModLength      : %lu\n", (unsigned long)pubkey->modulus_length);
+	else
+		printf("\tFieldLength      : %lu\n", (unsigned long)pubkey->field_length);
 	printf("\tKey ref        : %d\n", pubkey->key_reference);
 	printf("\tNative         : %s\n", pubkey->native ? "yes" : "no");
 	if (pubkey->path.len)
