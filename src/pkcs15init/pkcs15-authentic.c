@@ -738,17 +738,17 @@ authentic_pkcs15_delete_rsa_sdo (struct sc_profile *profile, struct sc_pkcs15_ca
 
 static int 
 authentic_pkcs15_delete_object (struct sc_profile *profile, struct sc_pkcs15_card *p15card,
-		unsigned int type, const void *data, const struct sc_path *path)
+		struct sc_pkcs15_object *object, const struct sc_path *path)
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "delete PKCS15 object: type %X; path %s\n", type, sc_print_path(path));
+	sc_log(ctx, "delete PKCS15 object: type %X; path %s\n", object->type, sc_print_path(path));
 
-	switch(type & SC_PKCS15_TYPE_CLASS_MASK)   {
+	switch(object->type & SC_PKCS15_TYPE_CLASS_MASK)   {
 	case SC_PKCS15_TYPE_PRKEY:
-		rv = authentic_pkcs15_delete_rsa_sdo (profile, p15card, (struct sc_pkcs15_prkey_info *)data);
+		rv = authentic_pkcs15_delete_rsa_sdo (profile, p15card, (struct sc_pkcs15_prkey_info *)object->data);
 		LOG_FUNC_RETURN(ctx, rv);
 	case SC_PKCS15_TYPE_PUBKEY:
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);

@@ -40,9 +40,8 @@ unsigned char MYEID_DEFAULT_PUBKEY[] = {0x01, 0x00, 0x01};
 
 /* For Myeid, all objects are files that can be deleted in any order */
 static int 
-myeid_delete_object(struct sc_profile *profile, 
-		struct sc_pkcs15_card *p15card, unsigned int type, 
-		const void *data, const sc_path_t *path)
+myeid_delete_object(struct sc_profile *profile, struct sc_pkcs15_card *p15card, 
+		struct sc_pkcs15_object *object, const struct sc_path *path)
 {
 	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
 	return sc_pkcs15init_delete_by_path(profile, p15card, path);

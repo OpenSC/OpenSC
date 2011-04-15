@@ -125,7 +125,7 @@ struct sc_pkcs15init_operations {
 	 * Delete object
 	 */
 	int (*delete_object)(struct sc_profile *, struct sc_pkcs15_card *,
-			unsigned int, const void *, const struct sc_path *);
+			struct sc_pkcs15_object *, const struct sc_path *);
 
 	/*
 	 * Support of pkcs15init emulation

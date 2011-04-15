@@ -1205,25 +1205,24 @@ iasecc_pkcs15_delete_sdo (struct sc_profile *profile, struct sc_pkcs15_card *p15
 
 static int 
 iasecc_pkcs15_delete_object (struct sc_profile *profile, struct sc_pkcs15_card *p15card,
-		unsigned int type, const void *data, const struct sc_path *path)
+		struct sc_pkcs15_object *object, const struct sc_path *path)
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_file *file = sc_file_new();
 	int rv, key_ref;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "delete PKCS15 object: type %X; path %s\n", type, sc_print_path(path));
+	sc_log(ctx, "delete PKCS15 object '%s', path %s", object->label, sc_print_path(path));
 
-	type &= SC_PKCS15_TYPE_CLASS_MASK;
-	switch(type)   {
+	switch(object->type & SC_PKCS15_TYPE_CLASS_MASK)   {
 	case SC_PKCS15_TYPE_PUBKEY:
-		key_ref = ((sc_pkcs15_pubkey_info_t *)data)->key_reference;
+		key_ref = ((sc_pkcs15_pubkey_info_t *)object->data)->key_reference;
 		sc_log(ctx, "Ignore delete of the SDO-PUBLIC-KEY(ref:%X)", key_ref);
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 	case SC_PKCS15_TYPE_PRKEY:
-		key_ref = ((sc_pkcs15_prkey_info_t *)data)->key_reference;
+		key_ref = ((sc_pkcs15_prkey_info_t *)object->data)->key_reference;
 		rv = iasecc_pkcs15_delete_sdo (profile, p15card, IASECC_SDO_CLASS_RSA_PRIVATE, key_ref); 
-		sc_log(ctx, "delete SDO PRIVATE KEY with ref %X returns %i\n",  key_ref, rv);
+		sc_log(ctx, "delete SDO PRIVATE KEY with ref %X returns %i",  key_ref, rv);
 		LOG_FUNC_RETURN(ctx, rv);
 	case SC_PKCS15_TYPE_CERT:
 		break;

@@ -60,8 +60,9 @@ setcos_puk_retries(sc_profile_t *profile, int pin_ref)
 
 static int 
 setcos_delete_object(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
-	unsigned int type, const void *data, const sc_path_t *path)
+		struct sc_pkcs15_object *object, const struct sc_path *path)
 {
+
 	/* For Setcos, all objects are files that can be deleted in any order */
 	return sc_pkcs15init_delete_by_path(profile, p15card, path);
 }
@@ -355,7 +356,7 @@ setcos_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 
         r = sc_select_file(p15card->card, &file->path, NULL);
         if (!r)   {
-		r = setcos_delete_object(profile, p15card, object->type, NULL, &file->path);
+		r = setcos_delete_object(profile, p15card, object, &file->path);
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Failed to delete private key file");
 	}
         else if (r != SC_ERROR_FILE_NOT_FOUND)    {

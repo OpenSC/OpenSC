@@ -1415,15 +1415,22 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
 	switch (key.algorithm) {
 	case SC_ALGORITHM_RSA:
 		keybits = sc_pkcs15init_keybits(&key.u.rsa.modulus);
-		type = SC_PKCS15_TYPE_PUBKEY_RSA; break;
+		type = SC_PKCS15_TYPE_PUBKEY_RSA; 
+		break;
 #ifdef SC_PKCS15_TYPE_PUBKEY_DSA
 	case SC_ALGORITHM_DSA:
 		keybits = sc_pkcs15init_keybits(&key.u.dsa.q);
-		type = SC_PKCS15_TYPE_PUBKEY_DSA; break;
+		type = SC_PKCS15_TYPE_PUBKEY_DSA; 
+		break;
 #endif
 	case SC_ALGORITHM_GOSTR3410:
 		keybits = SC_PKCS15_GOSTR3410_KEYSIZE;
-		type = SC_PKCS15_TYPE_PUBKEY_GOSTR3410; break;
+		type = SC_PKCS15_TYPE_PUBKEY_GOSTR3410; 
+		break;
+	case SC_ALGORITHM_EC:
+		keybits = key.u.ec.field_length;
+		type = SC_PKCS15_TYPE_PUBKEY_EC; 
+		break;
 	default:
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Unsupported key algorithm.");
 	}
@@ -2769,7 +2776,7 @@ sc_pkcs15init_delete_object(struct sc_pkcs15_card *p15card, struct sc_profile *p
 		} 
 		else if (profile->ops->delete_object != NULL) {
 			/* If there's a card-specific way to delete objects, use it. */
-			r = profile->ops->delete_object(profile, p15card, obj->type, obj->data, &path);
+			r = profile->ops->delete_object(profile, p15card, obj, &path);
 			LOG_TEST_RET(ctx, r, "Card specific delete object failed");
 		}
 	}	
