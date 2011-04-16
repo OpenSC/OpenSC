@@ -1690,6 +1690,10 @@ static int piv_get_serial_nr_from_CHUI(sc_card_t* card, sc_serial_number_t* seri
 	size_t templen = sizeof(temp);
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+	if (card->serialnr.len)   {
+		*serial = card->serialnr;
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
+	}
 
 	/* ensure we've got the PIV selected, and nothing else is in process */
 	/* This fixes several problems due to previous incomplete APDUs during card detection */
@@ -1737,7 +1741,8 @@ static int piv_get_serial_nr_from_CHUI(sc_card_t* card, sc_serial_number_t* seri
 			}
 		}
 	}
-      
+
+	card->serialnr = *serial;	
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 }
 
