@@ -10,7 +10,7 @@
 <?endif ?>
 
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi" xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
-  <Product Name=""
+  <Product Name="$(var.ProductName)"
            Id="*"
            UpgradeCode="{69428F65-B96D-458D-BB87-DBB5FDB35DCE}"
            Language="1033"
