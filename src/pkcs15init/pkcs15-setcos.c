@@ -58,15 +58,6 @@ setcos_puk_retries(sc_profile_t *profile, int pin_ref)
 }
 
 
-static int 
-setcos_delete_object(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
-		struct sc_pkcs15_object *object, const struct sc_path *path)
-{
-
-	/* For Setcos, all objects are files that can be deleted in any order */
-	return sc_pkcs15init_delete_by_path(profile, p15card, path);
-}
-
 /*
  * Erase the card.
  */
@@ -356,7 +347,7 @@ setcos_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 
         r = sc_select_file(p15card->card, &file->path, NULL);
         if (!r)   {
-		r = setcos_delete_object(profile, p15card, object, &file->path);
+		r = sc_pkcs15init_delete_by_path(profile, p15card, &file->path);
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Failed to delete private key file");
 	}
         else if (r != SC_ERROR_FILE_NOT_FOUND)    {
@@ -586,7 +577,7 @@ static struct sc_pkcs15init_operations sc_pkcs15init_setcos_operations = {
 	setcos_encode_private_key, 	/* encode_private_key  */ 
 	setcos_encode_public_key, 	/* encode_public_key */
 	NULL,				/* finalize_card */
-	setcos_delete_object,		/* setcos_delete_object */
+	NULL, 				/* delete_object */
 	NULL,				/* emu_update_dir */
 	NULL, 				/* emu_update_any_df */
 	NULL, 				/* emu_update_tokeninfo */
