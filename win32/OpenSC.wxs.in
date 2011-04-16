@@ -1,13 +1,24 @@
 <?xml version="1.0" encoding="windows-1252"?>
+<?if $(var.Platform) = x64 ?>
+  <?define ProductName = "OpenSC (64bit)" ?>
+  <?define Win64YesNo="yes" ?>
+  <?define PlatformProgramFilesFolder = "ProgramFiles64Folder" ?>
+<?else ?>
+  <?define ProductName = "OpenSC" ?>
+  <?define Win64YesNo="yes" ?>
+  <?define PlatformProgramFilesFolder = "ProgramFilesFolder" ?>
+<?endif ?>
+
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi" xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
-  <Product Name="OpenSC"
+  <Product Name=""
            Id="*"
            UpgradeCode="{69428F65-B96D-458D-BB87-DBB5FDB35DCE}"
            Language="1033"
            Codepage="1252"
            Version="@OPENSC_VERSION_MAJOR@.@OPENSC_VERSION_MINOR@.@OPENSC_VERSION_FIX@.0"
            Manufacturer="OpenSC Project">
-    <Package Description="OpenSC Installer"
+    <Package Platform="$(var.Platform)"
+             Description="OpenSC Installer"
              Comments="OpenSC Project home page http://www.opensc-project.org/opensc/"
              Manufacturer="OpenSC Project"
              InstallerVersion="100"
@@ -16,26 +27,32 @@
              SummaryCodepage="1252"/>
     <!-- OpenSC is covered by LGPL. Extend the license as required with other EULA notes -->
     <WixVariable Id="WixUILicenseRtf" Value="license.rtf"/>
-    <Media Id="1" Cabinet="OpenSC.cab" EmbedCab="yes"/>
+    <!-- Links in info -->
+    <Property Id="ARPHELPLINK" Value="http://www.opensc-project.org"/>
+    <Property Id="ARPURLINFOABOUT" Value="http://www.opensc-project.org/"/>
+    <Property Id="ARPURLUPDATEINFO" Value="http://www.opensc-project.org"/>
+
+
+    <Media Id="1" Cabinet="OpenSC.cab" EmbedCab="yes" CompressionLevel="high"/>
     <MajorUpgrade DowngradeErrorMessage="Can't downgrade."/>
     <Directory Id="TARGETDIR" Name="SourceDir">
       <!-- Install critical DLL-s to system folder. NB! Id-s can not contain "-" characters! -->
       <Directory Id="SystemFolder" Name=".">
         <Component Id="onepin_opensc_pkcs11.dll" Guid="*">
-          <File Source="$(var.SOURCE_DIR)\src\pkcs11\onepin-opensc-pkcs11.dll" Vital="yes"/>
+          <File Source="$(var.SOURCE_DIR)\src\pkcs11\onepin-opensc-pkcs11.dll" Vital="yes" Win64="$(var.Win64YesNo)"/>
         </Component>
         <Component Id="opensc_pkcs11.dll" Guid="*">
-          <File Source="$(var.SOURCE_DIR)\src\pkcs11\opensc-pkcs11.dll" Vital="yes"/>
+          <File Source="$(var.SOURCE_DIR)\src\pkcs11\opensc-pkcs11.dll" Vital="yes" Win64="$(var.Win64YesNo)"/>
         </Component>
         <Component Id="opensc.dll" Guid="*">
-          <File Source="$(var.SOURCE_DIR)\src\libopensc\opensc.dll" Vital="yes"/>
+          <File Source="$(var.SOURCE_DIR)\src\libopensc\opensc.dll" Vital="yes" Win64="$(var.Win64YesNo)"/>
         </Component>
         <Component Id="opensc_minidriver.dll" Guid="*">
-          <File Source="$(var.SOURCE_DIR)\src\minidriver\opensc-minidriver.dll" Vital="yes"/>
+          <File Source="$(var.SOURCE_DIR)\src\minidriver\opensc-minidriver.dll" Vital="yes" Win64="$(var.Win64YesNo)"/>
         </Component>
       </Directory>
       <!-- Install tools and profiles to Program Files -->
-      <Directory Id="ProgramFilesFolder" Name="PFiles">
+      <Directory Id="$(var.PlatformProgramFilesFolder)" Name="PFiles">
         <Directory Id="OpenSC_Project_Dir" Name="OpenSC Project">
           <!-- Most of the stuff goes to the Program Files folder -->
           <Directory Id="INSTALLDIR" Name="OpenSC">
@@ -51,22 +68,22 @@
             <!-- Tools have their own folder -->
             <Directory Id="INSTALLDIR_TOOLS" Name="tools">
               <Component Id="opensc_explorer.exe" Guid="*">
-                <File Source="$(var.SOURCE_DIR)\src\tools\opensc-explorer.exe" Vital="yes"/>
+                <File Source="$(var.SOURCE_DIR)\src\tools\opensc-explorer.exe" Vital="yes" Win64="$(var.Win64YesNo)"/>
               </Component>
               <Component Id="opensc_tool.exe" Guid="*">
-                <File Source="$(var.SOURCE_DIR)\src\tools\opensc-tool.exe" Vital="yes"/>
+                <File Source="$(var.SOURCE_DIR)\src\tools\opensc-tool.exe" Vital="yes" Win64="$(var.Win64YesNo)"/>
               </Component>
               <Component Id="pkcs11_tool.exe" Guid="*">
-                <File Source="$(var.SOURCE_DIR)\src\tools\pkcs11-tool.exe" Vital="yes"/>
+                <File Source="$(var.SOURCE_DIR)\src\tools\pkcs11-tool.exe" Vital="yes" Win64="$(var.Win64YesNo)"/>
               </Component>
               <Component Id="pkcs15_init.exe" Guid="*">
-                <File Source="$(var.SOURCE_DIR)\src\tools\pkcs15-init.exe" Vital="yes"/>
+                <File Source="$(var.SOURCE_DIR)\src\tools\pkcs15-init.exe" Vital="yes" Win64="$(var.Win64YesNo)"/>
               </Component>
               <Component Id="pkcs15_tool.exe" Guid="*">
-                <File Source="$(var.SOURCE_DIR)\src\tools\pkcs15-tool.exe" Vital="yes"/>
+                <File Source="$(var.SOURCE_DIR)\src\tools\pkcs15-tool.exe" Vital="yes" Win64="$(var.Win64YesNo)"/>
               </Component>
               <Component Id="pkcs15_crypt.exe" Guid="*">
-                <File Source="$(var.SOURCE_DIR)\src\tools\pkcs15-crypt.exe" Vital="yes"/>
+                <File Source="$(var.SOURCE_DIR)\src\tools\pkcs15-crypt.exe" Vital="yes" Win64="$(var.Win64YesNo)"/>
               </Component>
             </Directory>
             <Directory Id="INSTALLDIR_PROFILES" Name="profiles">
