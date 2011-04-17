@@ -5,7 +5,7 @@
   <?define PlatformProgramFilesFolder = "ProgramFiles64Folder" ?>
 <?else ?>
   <?define ProductName = "OpenSC" ?>
-  <?define Win64YesNo="yes" ?>
+  <?define Win64YesNo="no" ?>
   <?define PlatformProgramFilesFolder = "ProgramFilesFolder" ?>
 <?endif ?>
 
