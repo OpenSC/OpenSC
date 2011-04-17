@@ -3,10 +3,11 @@
   <?define ProductName = "OpenSC (64bit)" ?>
   <?define Win64YesNo="yes" ?>
   <?define PlatformProgramFilesFolder = "ProgramFiles64Folder" ?>
+  <?define PlatformSystemFolder = "System64Folder" ?>
 <?else ?>
   <?define ProductName = "OpenSC" ?>
   <?define Win64YesNo="no" ?>
-  <?define PlatformProgramFilesFolder = "ProgramFilesFolder" ?>
+  <?define PlatformSystemFolder = "SystemFolder" ?>
 <?endif ?>
 
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi" xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
@@ -37,7 +38,7 @@
     <MajorUpgrade DowngradeErrorMessage="Can't downgrade."/>
     <Directory Id="TARGETDIR" Name="SourceDir">
       <!-- Install critical DLL-s to system folder. NB! Id-s can not contain "-" characters! -->
-      <Directory Id="SystemFolder" Name=".">
+      <Directory Id="$(var.PlatformSystemFolder)" Name=".">
         <Component Id="onepin_opensc_pkcs11.dll" Guid="*" Win64="$(var.Win64YesNo)">
           <File Source="$(var.SOURCE_DIR)\src\pkcs11\onepin-opensc-pkcs11.dll" Vital="yes"/>
         </Component>
@@ -87,40 +88,40 @@
               </Component>
             </Directory>
             <Directory Id="INSTALLDIR_PROFILES" Name="profiles">
-              <Component Id="pkcs15.profile" Guid="*">
+              <Component Id="pkcs15.profile" Guid="*" Win64="$(var.Win64YesNo)">
                 <File Source="$(var.SOURCE_DIR)\src\pkcs15init\pkcs15.profile"/>
               </Component>
-              <Component Id="asepcos.profile" Guid="*">
+              <Component Id="asepcos.profile" Guid="*" Win64="$(var.Win64YesNo)">
                 <File Source="$(var.SOURCE_DIR)\src\pkcs15init\asepcos.profile"/>
               </Component>
-              <Component Id="cardos.profile" Guid="*">
+              <Component Id="cardos.profile" Guid="*" Win64="$(var.Win64YesNo)">
                 <File Source="$(var.SOURCE_DIR)\src\pkcs15init\cardos.profile"/>
               </Component>
-              <Component Id="entersafe.profile" Guid="*">
+              <Component Id="entersafe.profile" Guid="*" Win64="$(var.Win64YesNo)">
                 <File Source="$(var.SOURCE_DIR)\src\pkcs15init\entersafe.profile"/>
               </Component>
-              <Component Id="myeid.profile" Guid="*">
+              <Component Id="myeid.profile" Guid="*" Win64="$(var.Win64YesNo)">
                 <File Source="$(var.SOURCE_DIR)\src\pkcs15init\myeid.profile"/>
               </Component>
-              <Component Id="setcos.profile" Guid="*">
+              <Component Id="setcos.profile" Guid="*" Win64="$(var.Win64YesNo)">
                 <File Source="$(var.SOURCE_DIR)\src\pkcs15init\setcos.profile"/>
               </Component>
-              <Component Id="starcos.profile" Guid="*">
+              <Component Id="starcos.profile" Guid="*" Win64="$(var.Win64YesNo)">
                 <File Source="$(var.SOURCE_DIR)\src\pkcs15init\starcos.profile"/>
               </Component>
-              <Component Id="westcos.profile" Guid="*">
+              <Component Id="westcos.profile" Guid="*" Win64="$(var.Win64YesNo)">
                 <File Source="$(var.SOURCE_DIR)\src\pkcs15init\westcos.profile"/>
               </Component>
-              <Component Id="oberthur.profile" Guid="*">
+              <Component Id="oberthur.profile" Guid="*" Win64="$(var.Win64YesNo)">
                 <File Source="$(var.SOURCE_DIR)\src\pkcs15init\oberthur.profile"/>
               </Component>
-              <Component Id="authentic.profile" Guid="*">
+              <Component Id="authentic.profile" Guid="*" Win64="$(var.Win64YesNo)">
                 <File Source="$(var.SOURCE_DIR)\src\pkcs15init\authentic.profile"/>
               </Component>
-              <Component Id="rutoken.profile" Guid="*">
+              <Component Id="rutoken.profile" Guid="*" Win64="$(var.Win64YesNo)">
                 <File Source="$(var.SOURCE_DIR)\src\pkcs15init\rutoken.profile"/>
               </Component>
-              <Component Id="rutoken_ecp.profile" Guid="*">
+              <Component Id="rutoken_ecp.profile" Guid="*" Win64="$(var.Win64YesNo)">
                 <File Source="$(var.SOURCE_DIR)\src\pkcs15init\rutoken_ecp.profile"/>
               </Component>
             </Directory>
