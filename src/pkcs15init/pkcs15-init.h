@@ -198,7 +198,10 @@ struct sc_pkcs15init_keyarg_gost_params {
 };
 
 struct sc_pkcs15init_keyarg_ec_params {
-	const char *curve;
+	char *curve;
+	struct sc_object_id id;
+	struct sc_pkcs15_der der;
+	size_t size_bits;
 };
 
 struct sc_pkcs15init_prkeyargs {
