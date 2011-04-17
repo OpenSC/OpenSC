@@ -1898,7 +1898,8 @@ static CK_RV pkcs15_gen_keypair(struct sc_pkcs11_card *p11card,
 	sc_debug(context, SC_LOG_DEBUG_NORMAL, "Keypair generation, mech = 0x%0x\n", pMechanism->mechanism);
 
 	if (pMechanism->mechanism != CKM_RSA_PKCS_KEY_PAIR_GEN
-			&& pMechanism->mechanism != CKM_GOSTR3410_KEY_PAIR_GEN)
+			&& pMechanism->mechanism != CKM_GOSTR3410_KEY_PAIR_GEN
+			&& pMechanism->mechanism != CKM_EC_KEY_PAIR_GEN)
 		return CKR_MECHANISM_INVALID;
 
 	rc = sc_lock(p11card->card);
@@ -1923,23 +1924,35 @@ static CK_RV pkcs15_gen_keypair(struct sc_pkcs11_card *p11card,
 		&keytype, NULL);
 	if (rv != CKR_OK && pMechanism->mechanism == CKM_RSA_PKCS_KEY_PAIR_GEN)
 		keytype = CKK_RSA;
+	if (rv != CKR_OK && pMechanism->mechanism == CKM_EC_KEY_PAIR_GEN)
+		keytype = CKK_EC;
 	else if (rv != CKR_OK)
 		goto kpgen_done;
-	if (keytype == CKK_GOSTR3410)
-	{
+	if (keytype == CKK_GOSTR3410)   {
 		keygen_args.prkey_args.key.algorithm = SC_ALGORITHM_GOSTR3410;
 		pub_args.key.algorithm               = SC_ALGORITHM_GOSTR3410;
 		set_gost_params(&keygen_args.prkey_args, &pub_args,
 				pPubTpl, ulPubCnt, pPrivTpl, ulPrivCnt);
 	}
-	else if (keytype == CKK_RSA)
-	{
+	else if (keytype == CKK_RSA)   {
 		/* default value (CKA_KEY_TYPE isn't set) or CKK_RSA is set */
 		keygen_args.prkey_args.key.algorithm = SC_ALGORITHM_RSA;
 		pub_args.key.algorithm               = SC_ALGORITHM_RSA;
 	}
-	else
-	{
+	else if (keytype == CKK_EC)   {
+		struct sc_pkcs15_der *der = &keygen_args.prkey_args.params.ec.der;
+
+		der->len = sizeof(struct sc_object_id);
+		rv = attr_find_ptr(pPubTpl, ulPubCnt, CKA_EC_PARAMS, (void **)&der->value, &der->len);
+		if (rv != CKR_OK)   {
+			sc_unlock(p11card->card);
+			return sc_to_cryptoki_error(rc, "C_GenerateKeyPair");
+		}
+
+		keygen_args.prkey_args.key.algorithm = SC_ALGORITHM_EC;
+		pub_args.key.algorithm               = SC_ALGORITHM_EC;
+	}
+	else   {
 		/* CKA_KEY_TYPE is set, but keytype isn't correct */
 		rv = CKR_ATTRIBUTE_VALUE_INVALID;
 		goto kpgen_done;
