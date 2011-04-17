@@ -58,7 +58,7 @@
           <!-- Most of the stuff goes to the Program Files folder -->
           <Directory Id="INSTALLDIR" Name="OpenSC">
             <!-- opensc.conf sample goes to installation directory -->
-            <Component Id="opensc.conf" Guid="*">
+            <Component Id="opensc.conf" Guid="*" Win64="$(var.Win64YesNo)">
               <File Source="$(var.SOURCE_DIR)\etc\opensc.conf.in" KeyPath="yes"/>
               <!-- -->
               <RegistryKey Id="OpenscRegs" Root="HKLM" Key="Software\[Manufacturer]\[ProductName]" Action="createAndRemoveOnUninstall">
