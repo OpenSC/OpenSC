@@ -653,7 +653,7 @@ int sc_asn1_encode_object_id(u8 **buf, size_t *buflen,
 	int	i;
 	const int *value = (const int *) id->value;
 
-	for (i = 0; value[i] >= 0 && i < SC_MAX_OBJECT_ID_OCTETS; i++) {
+	for (i = 0; i < SC_MAX_OBJECT_ID_OCTETS && value[i] >= 0; i++) {
 		unsigned int k, shift;
 
 		k = value[i];
