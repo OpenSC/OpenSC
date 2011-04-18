@@ -26,17 +26,21 @@
              InstallerVersion="100"
              Languages="1033"
              Compressed="yes"
-             SummaryCodepage="1252"/>
+             SummaryCodepage="1252"
+             InstallScope="perMachine"/>
     <!-- OpenSC is covered by LGPL. Extend the license as required with other EULA notes -->
     <WixVariable Id="WixUILicenseRtf" Value="license.rtf"/>
     <!-- Links in info -->
-    <Property Id="ARPHELPLINK" Value="http://www.opensc-project.org"/>
+    <Property Id="ARPHELPLINK" Value="http://www.opensc-project.org/opensc/wiki/ReportingBugs"/>
     <Property Id="ARPURLINFOABOUT" Value="http://www.opensc-project.org/"/>
-    <Property Id="ARPURLUPDATEINFO" Value="http://www.opensc-project.org"/>
+    <Property Id="ARPURLUPDATEINFO" Value="http://www.opensc-project.org/opensc/wiki/WindowsInstaller"/>
+
+	<Icon Id="OpenSC.ico" SourceFile="OpenSC.ico" />
+	<Property Id="ARPPRODUCTICON" Value="OpenSC.ico" />
 
 
     <Media Id="1" Cabinet="OpenSC.cab" EmbedCab="yes" CompressionLevel="high"/>
-    <MajorUpgrade DowngradeErrorMessage="Can't downgrade."/>
+    <MajorUpgrade DowngradeErrorMessage="Can't downgrade." AllowSameVersionUpgrades="yes"/>
     <Directory Id="TARGETDIR" Name="SourceDir">
       <!-- Install critical DLL-s to system folder. NB! Id-s can not contain "-" characters! -->
       <Directory Id="$(var.PlatformSystemFolder)" Name=".">
@@ -60,7 +64,7 @@
           <Directory Id="INSTALLDIR" Name="OpenSC">
             <!-- opensc.conf sample goes to installation directory -->
             <Component Id="opensc.conf" Guid="*" Win64="$(var.Win64YesNo)">
-              <File Source="$(var.SOURCE_DIR)\etc\opensc.conf.in" KeyPath="yes"/>
+              <File Source="$(var.SOURCE_DIR)\etc\opensc.conf.in" LongName="opensc.conf" KeyPath="yes"/>
               <!-- -->
               <RegistryKey Id="OpenscRegs" Root="HKLM" Key="Software\[Manufacturer]\OpenSC" Action="createAndRemoveOnUninstall">
                 <RegistryValue Type="string" Name="ConfigFile" Value="[INSTALLDIR]opensc.conf"/>
