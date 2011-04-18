@@ -4,17 +4,19 @@
   <?define Win64YesNo="yes" ?>
   <?define PlatformProgramFilesFolder = "ProgramFiles64Folder" ?>
   <?define PlatformSystemFolder = "System64Folder" ?>
+  <?define PlatformUpgradeCode = "{9A449570-69A2-11E0-9CC6-955B4824019B}" ?>
 <?else ?>
   <?define ProductName = "OpenSC" ?>
   <?define Win64YesNo="no" ?>
   <?define PlatformProgramFilesFolder = "ProgramFilesFolder" ?>
   <?define PlatformSystemFolder = "SystemFolder" ?>
+  <?define PlatformUpgradeCode = "{69428F65-B96D-458D-BB87-DBB5FDB35DCE}" ?>
 <?endif ?>
 
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi" xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
   <Product Name="$(var.ProductName)"
            Id="*"
-           UpgradeCode="{69428F65-B96D-458D-BB87-DBB5FDB35DCE}"
+           UpgradeCode="$(var.PlatformUpgradeCode)"
            Language="1033"
            Codepage="1252"
            Version="@OPENSC_VERSION_MAJOR@.@OPENSC_VERSION_MINOR@.@OPENSC_VERSION_FIX@.0"
