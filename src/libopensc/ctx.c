@@ -190,6 +190,29 @@ static void set_defaults(sc_context_t *ctx, struct _sc_ctx_options *opts)
 	add_internal_drvs(opts);
 }
 
+/* In Windows, file handles can not be shared between DLL-s,
+ * each DLL has a separate file handle table. Thus tools and utilities
+ * can not set the file handle themselves when -v is specified on command line.
+ */
+int sc_ctx_log_to_file(sc_context_t *ctx, const char* filename)
+{
+	/* Close any existing handles */
+	if (ctx->debug_file && (ctx->debug_file != stderr && ctx->debug_file != stdout))
+		fclose(ctx->debug_file);
+
+	/* Handle special names */
+	if (!strcmp(filename, "stdout"))
+		ctx->debug_file = stdout;
+	else if (!strcmp(filename, "stderr"))
+		ctx->debug_file = stderr;
+	else {
+		ctx->debug_file = fopen(filename, "a");
+		if (ctx->debug_file == NULL)
+			return SC_ERROR_INTERNAL;
+	}
+	return SC_SUCCESS;
+}
+
 static int load_parameters(sc_context_t *ctx, scconf_block *block,
 			   struct _sc_ctx_options *opts)
 {
@@ -204,16 +227,9 @@ static int load_parameters(sc_context_t *ctx, scconf_block *block,
 		ctx->debug = atoi(debug);
 
 	val = scconf_get_str(block, "debug_file", NULL);
-	if (val) {
-		if (ctx->debug_file && (ctx->debug_file != stderr && ctx->debug_file != stdout))
-			fclose(ctx->debug_file);
-		if (!strcmp(val, "stdout"))
-			ctx->debug_file = stdout;
-		else if (!strcmp(val, "stderr"))
-			ctx->debug_file = stderr;
-		else
-			ctx->debug_file = fopen(val, "a");
-	}
+	if (val)
+		sc_ctx_log_to_file(ctx, val);
+
 	val = scconf_get_str(block, "force_card_driver", NULL);
 	if (val) {
 		if (opts->forced_card_driver)

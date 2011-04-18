@@ -756,6 +756,14 @@ sc_reader_t *sc_ctx_get_reader_by_id(sc_context_t *ctx, unsigned int id);
 unsigned int sc_ctx_get_reader_count(sc_context_t *ctx);
 
 /**
+ * Redirects OpenSC debug log to the specified file
+ * @param  ctx existing OpenSC context
+ * @param  filename path to the file or "stderr" or "stdout"
+ * @return SC_SUCCESS on success and an error code otherwise
+ */
+int sc_ctx_log_to_file(sc_context_t *ctx, const char* filename);
+
+/**
  * Forces the use of a specified card driver
  * @param ctx OpenSC context
  * @param short_name The short name of the driver to use (e.g. 'cardos')

@@ -1785,7 +1785,7 @@ int main(int argc, char * const argv[])
 
 	if (verbose > 1) {
 		ctx->debug = verbose;
-		ctx->debug_file = stderr;
+		sc_ctx_log_to_file(ctx, "stderr");
 	}
                                          
 	err = util_connect_card(ctx, &card, opt_reader, opt_wait, verbose);

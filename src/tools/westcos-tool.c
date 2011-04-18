@@ -442,7 +442,7 @@ int main(int argc, char *argv[])
 
 	if (verbose > 1) {
 		ctx->debug = verbose;
-		ctx->debug_file = stderr;
+		sc_ctx_log_to_file(ctx, "stderr");
 	}
 
 	if (opt_driver != NULL) 

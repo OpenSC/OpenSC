@@ -544,7 +544,7 @@ int main(
 	}
 	if (debug > 1) {
 		ctx->debug = debug;
-		ctx->debug_file = stderr;
+		sc_ctx_log_to_file(ctx, "stderr");
 	}
 	if(ctx->debug>0)
 		printf("Context for application \"%s\" created, Debug=%d\n", ctx->app_name, ctx->debug);

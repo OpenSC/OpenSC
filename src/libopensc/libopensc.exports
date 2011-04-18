@@ -71,6 +71,7 @@ sc_ctx_get_reader
 sc_ctx_get_reader_by_id
 sc_ctx_get_reader_by_name
 sc_ctx_get_reader_count
+sc_ctx_log_to_file
 sc_ctx_use_reader
 sc_decipher
 sc_delete_file

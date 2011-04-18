@@ -760,7 +760,7 @@ int main(int argc, char * const argv[])
 
 	if (verbose > 1) {
 		ctx->debug = verbose;
-		ctx->debug_file = stderr;
+		sc_ctx_log_to_file(ctx, "stderr");
 	}
 
 	if (do_get_conf_entry) {

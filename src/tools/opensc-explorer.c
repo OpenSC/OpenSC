@@ -1192,10 +1192,8 @@ static int do_debug(int argc, char **argv)
 			return -1;
 		printf("Debug level set to %d\n", i);
 		ctx->debug = i;
-		if (i) {
-			ctx->debug_file = stderr;
-		} else {
-			ctx->debug_file = NULL;
+		if (i > 1) {
+			sc_ctx_log_to_file(ctx, "stderr");
 		}
 	}
 	return 0;

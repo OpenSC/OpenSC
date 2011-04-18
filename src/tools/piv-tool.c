@@ -745,7 +745,7 @@ int main(int argc, char * const argv[])
 	/* Only change if not in opensc.conf */
 	if (verbose > 1 && ctx->debug == 0) { 
 		ctx->debug = verbose;
-		ctx->debug_file = stderr;
+		sc_ctx_log_to_file(ctx, "stderr");
 	}
 
 	if (action_count <= 0)

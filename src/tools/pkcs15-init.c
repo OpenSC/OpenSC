@@ -589,7 +589,7 @@ open_reader_and_card(char *reader)
 
 	if (verbose > 1) {
 		ctx->debug = verbose;
-		ctx->debug_file = stderr;
+		sc_ctx_log_to_file(ctx, "stderr");
 	}
 
 	if (util_connect_card(ctx, &card, reader, opt_wait, verbose))
