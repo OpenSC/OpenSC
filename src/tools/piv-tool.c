@@ -548,6 +548,7 @@ static int send_apdu(void)
 		}
 		len = len0;
 		p = buf;
+		/* TODO: move this to apdu.c as bytes2apdu or similar. See #237 */
 		memset(&apdu, 0, sizeof(apdu));
 		apdu.cla = *p++;
 		apdu.ins = *p++;

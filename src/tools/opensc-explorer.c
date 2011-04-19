@@ -1321,6 +1321,7 @@ static int do_apdu(int argc, char **argv)
 	}
 	len0 = len;
 
+	/* TODO: move this to apdu.c as bytes2apdu or similar. See #237 */
 	memset(&apdu, 0, sizeof(apdu));
 	p = buf;
 	apdu.cla = *p++;
