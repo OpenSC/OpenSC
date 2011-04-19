@@ -34,6 +34,12 @@
 #include "libopensc/cardctl.h"
 #include "util.h"
 
+/* type for associations of IDs to names */
+typedef struct _id2str {
+	unsigned int id;
+	const char *str;
+} id2str_t;
+
 static const char *app_name = "opensc-tool";
 
 static int	opt_wait = 0;
@@ -556,81 +562,85 @@ static void print_serial(sc_card_t *in_card)
 static int list_algorithms(void) 
 {
 	int i; 
-	const char *aname; 
+	const char *aname = "unknown";
+
+	const id2str_t alg_type_names[] = {
+		{ SC_ALGORITHM_RSA,       "rsa"    },
+		{ SC_ALGORITHM_DSA,       "ec"     },
+		{ SC_ALGORITHM_DES,       "des"    },
+		{ SC_ALGORITHM_3DES,      "3des"   },
+		{ SC_ALGORITHM_MD5,       "md5"    },
+		{ SC_ALGORITHM_SHA1,      "sha1"   },
+		{ SC_ALGORITHM_PBKDF2,    "pbkdf2" },
+		{ SC_ALGORITHM_PBES2,     "pbes2"  },
+		{ SC_ALGORITHM_GOSTR3410, "gost"   },
+		{ 0, NULL }
+	};
+	const id2str_t alg_flag_names[] = {
+		{ SC_ALGORITHM_ONBOARD_KEY_GEN, "onboard key generation" },
+		{ SC_ALGORITHM_NEED_USAGE,      "needs usage"            },
+		{ 0, NULL }
+	};
+	const id2str_t rsa_flag_names[] = {
+		{ SC_ALGORITHM_RSA_PAD_PKCS1,      "pkcs1"     },
+		{ SC_ALGORITHM_RSA_PAD_ANSI,       "ansi"      },
+		{ SC_ALGORITHM_RSA_PAD_ISO9796,    "iso9796"   },
+		{ SC_ALGORITHM_RSA_HASH_SHA1,      "sha1"      },
+		{ SC_ALGORITHM_RSA_HASH_MD5,       "MD5"       },
+		{ SC_ALGORITHM_RSA_HASH_MD5_SHA1,  "md5-sha1"  },
+		{ SC_ALGORITHM_RSA_HASH_RIPEMD160, "ripemd160" },
+		{ SC_ALGORITHM_RSA_HASH_SHA256,    "sha256"    },
+		{ SC_ALGORITHM_RSA_HASH_SHA384,    "sha384"    },
+		{ SC_ALGORITHM_RSA_HASH_SHA512,    "sha512"    },
+		{ SC_ALGORITHM_RSA_HASH_SHA224,    "sha224"    },
+		{ 0, NULL }
+	};
 
 	if (verbose)
 		printf("Card supports %d algorithm(s)\n\n",card->algorithm_count); 
   
 	for (i=0; i < card->algorithm_count; i++) { 
-		switch (card->algorithms[i].algorithm) { 
-		case SC_ALGORITHM_RSA: 
-			aname = "rsa"; 
-			break; 
-		case SC_ALGORITHM_DSA: 
-			aname = "dsa"; 
-			aname = "ec"; 
-			break; 
-		case SC_ALGORITHM_DES: 
-			aname = "des"; 
-			break; 
-		case SC_ALGORITHM_3DES: 
-			aname = "3des"; 
-			break; 
-		case SC_ALGORITHM_MD5: 
-			aname = "md5"; 
-			break; 
-		case SC_ALGORITHM_SHA1: 
-			aname = "sha1"; 
-			break; 
-		case SC_ALGORITHM_PBKDF2: 
-			aname = "pbkdf2"; 
-			break; 
-		case SC_ALGORITHM_PBES2: 
-			aname = "pbes2"; 
-			break;
-		case SC_ALGORITHM_GOSTR3410:
-			aname = "gost";
-			break;
-		default: 
-			aname = "unknown"; 
-			break; 
-		} 
-  
+		int j;
+
+		/* find algorithm name */
+		for (j = 0; alg_type_names[j].str != NULL; j++) {
+			if (card->algorithms[i].algorithm == alg_type_names[j].id) {
+				aname = alg_type_names[j].str;
+				break;
+			}
+		}
+
 		printf("Algorithm: %s\n", aname); 
 		printf("Key length: %d\n", card->algorithms[i].key_length); 
 		printf("Flags:"); 
-		if (card->algorithms[i].flags & SC_ALGORITHM_ONBOARD_KEY_GEN) 
-			printf(" onboard key generation"); 
-		if (card->algorithms[i].flags & SC_ALGORITHM_NEED_USAGE) 
-			printf(" needs usage"); 
+
+		/* print general flags */
+		for (j = 0; alg_flag_names[j].str != NULL; j++)
+			if (card->algorithms[i].flags & alg_flag_names[j].id)
+				printf(" %s", alg_flag_names[j].str);
+
+		/* print RSA spcific flags */
 		if ( card->algorithms[i].algorithm == SC_ALGORITHM_RSA) { 
 			int padding = card->algorithms[i].flags 
 					& SC_ALGORITHM_RSA_PADS; 
 			int hashes =  card->algorithms[i].flags 
 					& SC_ALGORITHM_RSA_HASHES; 
 					 
+			/* print RSA padding flags */
 			printf(" padding ("); 
+			for (j = 0; rsa_flag_names[j].str != NULL; j++)
+				if (padding & rsa_flag_names[j].id)
+					printf(" %s", rsa_flag_names[j].str);
 			if (padding == SC_ALGORITHM_RSA_PAD_NONE)  
 				printf(" none"); 
-			if (padding & SC_ALGORITHM_RSA_PAD_PKCS1) 
-				printf(" pkcs1"); 
-			if (padding & SC_ALGORITHM_RSA_PAD_ANSI) 
-				printf(" ansi"); 
-			if (padding & SC_ALGORITHM_RSA_PAD_ISO9796) 
-				printf(" iso9796"); 
-  
 			printf(" ) "); 
+			/* print RSA hash flags */
 			printf("hashes ("); 
-			if (hashes & SC_ALGORITHM_RSA_HASH_NONE) 
+			for (j = 0; rsa_flag_names[j].str != NULL; j++)
+				if (hashes & rsa_flag_names[j].id)
+					printf(" %s", rsa_flag_names[j].str);
+			if (hashes == SC_ALGORITHM_RSA_HASH_NONE)
 				printf(" none"); 
-			if (hashes & SC_ALGORITHM_RSA_HASH_SHA1) 
-				printf(" sha1"); 
-			if (hashes & SC_ALGORITHM_RSA_HASH_MD5) 
-				printf(" MD5"); 
-			if (hashes & SC_ALGORITHM_RSA_HASH_MD5_SHA1) 
-				printf(" md5-sha1"); 
-			if (hashes & SC_ALGORITHM_RSA_HASH_RIPEMD160) 
-				printf(" ripemd160"); 
 			printf(" )"); 
 		} 
 		printf("\n"); 
