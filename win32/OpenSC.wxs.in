@@ -25,7 +25,7 @@
              Description="OpenSC Installer"
              Comments="OpenSC Project home page http://www.opensc-project.org/opensc/"
              Manufacturer="OpenSC Project"
-             InstallerVersion="100"
+             InstallerVersion="300"
              Languages="1033"
              Compressed="yes"
              SummaryCodepage="1252"
