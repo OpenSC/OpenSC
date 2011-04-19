@@ -1997,7 +1997,7 @@ static void list_objects(CK_SESSION_HANDLE sess, CK_OBJECT_CLASS  object_class)
 			p11_fatal("C_FindObjects", rv);
 		if (count == 0)
 			break;
-		if (object_class == -1 || object_class == getCLASS(sess, object))
+		if ((int) object_class == -1 || object_class == getCLASS(sess, object))
 			show_object(sess, object);
 	}
 	p11->C_FindObjectsFinal(sess);
