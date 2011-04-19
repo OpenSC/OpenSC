@@ -209,10 +209,10 @@ typedef struct sc_file {
 	u8 name[16];	/* DF name */
 	size_t namelen; /* length of DF name */
 
-	int type, shareable, ef_structure;
+	unsigned int type, ef_structure, status; /* See constant values defined above */
+	unsigned int shareable;                  /* true(1), false(0) according to ISO 7816-4:2005 Table 14 */
 	size_t size;	/* Size of file (in bytes) */
 	int id;		/* Short file id (2 bytes) */
-	int status;	/* Status flags */
 	struct sc_acl_entry *acl[SC_MAX_AC_OPS]; /* Access Control List */
 
 	int record_length; /* In case of fixed-length or cyclic EF */
