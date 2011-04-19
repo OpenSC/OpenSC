@@ -648,7 +648,6 @@ do_erase(sc_card_t *in_card, struct sc_profile *profile)
 
 	p15card = sc_pkcs15_card_new();
 	p15card->card = in_card;
-	p15card->tokeninfo->label = strdup("Dummy PKCS#15 object");
 
 	ignore_cmdline_pins++;
 	if (opt_bind_to_aid)   {
