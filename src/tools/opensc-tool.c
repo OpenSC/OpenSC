@@ -619,15 +619,18 @@ static int list_algorithms(void)
 	const char *aname = "unknown";
 
 	const id2str_t alg_type_names[] = {
-		{ SC_ALGORITHM_RSA,       "rsa"    },
-		{ SC_ALGORITHM_DSA,       "ec"     },
-		{ SC_ALGORITHM_DES,       "des"    },
-		{ SC_ALGORITHM_3DES,      "3des"   },
-		{ SC_ALGORITHM_MD5,       "md5"    },
-		{ SC_ALGORITHM_SHA1,      "sha1"   },
-		{ SC_ALGORITHM_PBKDF2,    "pbkdf2" },
-		{ SC_ALGORITHM_PBES2,     "pbes2"  },
-		{ SC_ALGORITHM_GOSTR3410, "gost"   },
+		{ SC_ALGORITHM_RSA,       "rsa"       },
+		{ SC_ALGORITHM_DSA,       "dsa"       },
+		{ SC_ALGORITHM_EC,        "ec"        },
+		{ SC_ALGORITHM_GOSTR3410, "gostr3410" },
+		{ SC_ALGORITHM_DES,       "des"       },
+		{ SC_ALGORITHM_3DES,      "3des"      },
+		{ SC_ALGORITHM_GOST,      "gost"      },
+		{ SC_ALGORITHM_MD5,       "md5"       },
+		{ SC_ALGORITHM_SHA1,      "sha1"      },
+		{ SC_ALGORITHM_GOSTR3411, "gostr3411" },
+		{ SC_ALGORITHM_PBKDF2,    "pbkdf2"    },
+		{ SC_ALGORITHM_PBES2,     "pbes2"     },
 		{ 0, NULL }
 	};
 	const id2str_t alg_flag_names[] = {
