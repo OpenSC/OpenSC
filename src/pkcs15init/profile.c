@@ -1209,7 +1209,7 @@ new_file(struct state *cur, const char *name, unsigned int type)
 		profile->df[df_type] = file;
 	}
 	assert(file);
-	if (file->type != (int)type) {
+	if (file->type != type) {
 		parse_error(cur, "inconsistent file type (should be %s)",
 			file->type == SC_FILE_TYPE_DF 
 				? "DF" : file->type == SC_FILE_TYPE_BSO 
