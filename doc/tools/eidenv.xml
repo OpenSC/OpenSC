@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<refentry id="eidenv">
+	<refmeta>
+		<refentrytitle>eidenv</refentrytitle>
+		<manvolnum>1</manvolnum>
+		<refmiscinfo>opensc</refmiscinfo>
+	</refmeta>
+
+	<refnamediv>
+		<refname>eidenv</refname>
+		<refpurpose>utility for accessing visible data from
+		electronic identity cards</refpurpose>
+	</refnamediv>
+
+	<refsect1>
+		<title>Synopsis</title>
+		<para>
+			<command>eidenv</command> [OPTIONS]
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Description</title>
+		<para>
+			The <command>eidenv</command> utility is used for
+			accessing data from electronic identity cards (like
+			national eID cards) which might not be present in
+			PKCS#15 objects but available in custom files on the
+			card. The data can be printed on screen or used by
+			other programs via environment variables.
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Options</title>
+		<para>
+			<variablelist>
+				<varlistentry>
+					<term><option>--reader, r</option> num</term>
+					<listitem><para>
+					Use the given reader. The default is the first reader with a card.
+					</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>--wait, -w</option></term>
+					<listitem><para>Wait for a card to be inserted</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>--help, -h</option></term>
+					<listitem><para>Print help message on screen.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>--version, -v</option></term>
+					<listitem><para>Prints the version
+					of the utility and exits.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>--print, -n</option></term>
+					<listitem><para>Prints all data
+					fields from the card, like validity
+					period, document number etc.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>--stats, -t</option></term>
+					<listitem><para>Prints key usage statistics
+					(only for Estonian ID card).</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>--exec, -x</option> prog</term>
+					<listitem><para>Executes the given program with
+					data in environment variables.</para></listitem>
+				</varlistentry>
+
+			</variablelist>
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Authors</title>
+		<para><command>eidenv</command> utility was written by
+		Stef Hoeben and Martin Paljak <email>martin@martinpaljak.net</email>.</para>
+	</refsect1>
+
+</refentry>
