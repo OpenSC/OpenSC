@@ -315,21 +315,6 @@ static int print_file(sc_card_t *in_card, const sc_file_t *file,
 {
 	int r;
 	const char *tmps;
-	const char *ac_ops_df[] = {
-		"select", "lock", "delete", "create", "rehab", "inval",
-		"list"
-	};
-	struct ac_op_str {
-		unsigned int ac_op;
-		const char *str;
-	} const ac_ops_ef[] = {
-		{ SC_AC_OP_READ, "read" },
-		{ SC_AC_OP_UPDATE, "update" },
-		{ SC_AC_OP_ERASE, "erase" },
-		{ SC_AC_OP_WRITE, "write" },
-		{ SC_AC_OP_REHABILITATE, "rehab" },
-		{ SC_AC_OP_INVALIDATE, "inval" }
-	};
 
 	for (r = 0; r < depth; r++)
 		printf("  ");
@@ -355,25 +340,58 @@ static int print_file(sc_card_t *in_card, const sc_file_t *file,
 	}
 	printf("type: %-3s, ", tmps);
 	if (file->type != SC_FILE_TYPE_DF) {
-		const char *structs[] = {
-			"unknown", "transpnt", "linrfix", "linrfix(TLV)",
-			"linvar", "linvar(TLV)", "lincyc", "lincyc(TLV)"
+		const id2str_t ef_type_name[] = {
+			{ SC_FILE_EF_TRANSPARENT,         "transpnt"     },
+			{ SC_FILE_EF_LINEAR_FIXED,        "linrfix"      },
+			{ SC_FILE_EF_LINEAR_FIXED_TLV,    "linrfix(TLV)" },
+			{ SC_FILE_EF_LINEAR_VARIABLE,     "linvar"       },
+			{ SC_FILE_EF_LINEAR_VARIABLE_TLV, "linvar(TLV)"  },
+			{ SC_FILE_EF_CYCLIC,              "lincyc"       },
+			{ SC_FILE_EF_CYCLIC_TLV,          "lincyc(TLV)"  },
+			{ 0, NULL }
 		};
-		int ef_type = file->ef_structure;
-		if (ef_type < 0 || ef_type > 7)
-			ef_type = 0;	/* invalid or unknow ef type */
-		printf("ef structure: %s, ", structs[ef_type]);
+		const char *ef_type = "unknown";
+
+		for (r = 0; ef_type_name[r].str != NULL; r++)
+			if (file->ef_structure == ef_type_name[r].id)
+				ef_type = ef_type_name[r].str;
+
+		printf("ef structure: %s, ", ef_type);
 	}
 	printf("size: %lu\n", (unsigned long) file->size);
 	for (r = 0; r < depth; r++)
 		printf("  ");
-	if (file->type == SC_FILE_TYPE_DF)
-		for (r = 0; r < (int) (sizeof(ac_ops_df)/sizeof(ac_ops_df[0])); r++)
-			printf("%s[%s] ", ac_ops_df[r], util_acl_to_str(sc_file_get_acl_entry(file, r)));
-	else
-		for (r = 0; r < (int) (sizeof(ac_ops_ef)/sizeof(ac_ops_ef[0])); r++)
+	if (file->type == SC_FILE_TYPE_DF) {
+		const id2str_t ac_ops_df[] = {
+			{ SC_AC_OP_SELECT,       "select" },
+			{ SC_AC_OP_LOCK,         "lock"   },
+			{ SC_AC_OP_DELETE,       "delete" },
+			{ SC_AC_OP_CREATE,       "create" },
+			{ SC_AC_OP_REHABILITATE, "rehab"  },
+			{ SC_AC_OP_INVALIDATE,   "inval"  },
+			{ SC_AC_OP_LIST_FILES,   "list"   },
+			{ 0, NULL }
+		};
+
+		for (r = 0; ac_ops_df[r].str != NULL; r++)
+			printf("%s[%s] ", ac_ops_df[r].str,
+					 util_acl_to_str(sc_file_get_acl_entry(file, ac_ops_df[r].id)));
+	}
+	else {
+		const id2str_t ac_ops_ef[] = {
+			{ SC_AC_OP_READ,         "read"   },
+			{ SC_AC_OP_UPDATE,       "update" },
+			{ SC_AC_OP_ERASE,        "erase"  },
+			{ SC_AC_OP_WRITE,        "write"  },
+			{ SC_AC_OP_REHABILITATE, "rehab"  },
+			{ SC_AC_OP_INVALIDATE,   "inval"  },
+			{ 0, NULL }
+		};
+
+		for (r = 0; ac_ops_ef[r].str != NULL; r++)
 			printf("%s[%s] ", ac_ops_ef[r].str,
-					util_acl_to_str(sc_file_get_acl_entry(file, ac_ops_ef[r].ac_op)));
+					util_acl_to_str(sc_file_get_acl_entry(file, ac_ops_ef[r].id)));
+	}
 
 	if (file->sec_attr_len) {
 		printf("sec: ");
