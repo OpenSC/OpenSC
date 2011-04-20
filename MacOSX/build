@@ -5,4 +5,4 @@ test -x ./configure || ./bootstrap
 # configure once to set the version in build script
 ./configure
 # build and package installer
-bash ./MacOSX/build-package
+bash ./MacOSX/build-package $@
