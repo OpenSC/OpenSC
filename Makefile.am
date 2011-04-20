@@ -13,7 +13,7 @@ MAINTAINERCLEANFILES = \
 	$(srcdir)/packaged
 EXTRA_DIST = Makefile.mak svnignore
 
-SUBDIRS = etc src win32 doc
+SUBDIRS = etc src win32 doc MacOSX
 
 dist_noinst_SCRIPTS = bootstrap
 dist_noinst_DATA = README \
