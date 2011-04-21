@@ -476,7 +476,7 @@ __pkcs15_create_pubkey_object(struct pkcs15_fw_data *fw_data,
 	 * and saved as a file before the certificate has been created. 
 	 */  
 	if (pubkey->flags & SC_PKCS15_CO_FLAG_PRIVATE)   	/* is the key private? */
-	  p15_key = NULL; 		/* will read key when needed */
+		p15_key = NULL; 		/* will read key when needed */
 	else {	  
 		/* if emulation already created pubkey use it */
 		if (pubkey->emulated && (fw_data->p15_card->flags & SC_PKCS15_CARD_FLAG_EMULATED)) {
@@ -3262,30 +3262,34 @@ static int register_gost_mechanisms(struct sc_pkcs11_card *p11card, int flags)
 	return CKR_OK;
 }
 
-static int register_ec_mechanisms(struct sc_pkcs11_card *p11card,
-			unsigned long ext_flags, CK_ULONG min_key_size, CK_ULONG max_key_size)
+
+static int register_ec_mechanisms(struct sc_pkcs11_card *p11card, int flags, 
+		unsigned long ext_flags, CK_ULONG min_key_size, CK_ULONG max_key_size)
 {
 	CK_MECHANISM_INFO mech_info;
 	sc_pkcs11_mechanism_type_t *mt;
+	CK_FLAGS ec_flags = 0;
 	int rc;
 	
-	mech_info.flags = CKF_HW | CKF_SIGN; /* check for more */
 	if (ext_flags & SC_ALGORITHM_EXT_EC_F_P)
-		mech_info.flags |= CKF_EC_F_P;
+		ec_flags |= CKF_EC_F_P;
 	if (ext_flags & SC_ALGORITHM_EXT_EC_F_2M)
-		mech_info.flags |= CKF_EC_F_2M;
+		ec_flags |= CKF_EC_F_2M;
 	if (ext_flags & SC_ALGORITHM_EXT_EC_ECPARAMETERS)
-		mech_info.flags |= CKF_EC_ECPARAMETERS;
+		ec_flags |= CKF_EC_ECPARAMETERS;
 	if (ext_flags & SC_ALGORITHM_EXT_EC_NAMEDCURVE)
-		mech_info.flags |= CKF_EC_NAMEDCURVE;
+		ec_flags |= CKF_EC_NAMEDCURVE;
 	if (ext_flags & SC_ALGORITHM_EXT_EC_UNCOMPRESES)
-		mech_info.flags |= CKF_EC_UNCOMPRESES;
+		ec_flags |= CKF_EC_UNCOMPRESES;
 	if (ext_flags & SC_ALGORITHM_EXT_EC_COMPRESS)
-		mech_info.flags |= CKF_EC_COMPRESS;
+		ec_flags |= CKF_EC_COMPRESS;
+
+	mech_info.flags = CKF_HW | CKF_SIGN; /* check for more */
+	mech_info.flags |= ec_flags;
 	mech_info.ulMinKeySize = min_key_size;
 	mech_info.ulMaxKeySize = max_key_size;
-	mt = sc_pkcs11_new_fw_mechanism(CKM_ECDSA,
-		&mech_info, CKK_EC, NULL);
+
+	mt = sc_pkcs11_new_fw_mechanism(CKM_ECDSA, &mech_info, CKK_EC, NULL);
 	if (!mt)
 		return CKR_HOST_MEMORY;
 	rc = sc_pkcs11_register_mechanism(p11card, mt);
@@ -3301,6 +3305,17 @@ static int register_ec_mechanisms(struct sc_pkcs11_card *p11card,
 	if (rc != CKR_OK)
 		return rc;
 #endif
+	if (flags & SC_ALGORITHM_ONBOARD_KEY_GEN) {
+		mech_info.flags = CKF_HW | CKF_GENERATE_KEY_PAIR;
+		mech_info.flags |= ec_flags;
+		mt = sc_pkcs11_new_fw_mechanism(CKM_EC_KEY_PAIR_GEN, &mech_info, CKK_EC, NULL);
+		if (!mt)
+			return CKR_HOST_MEMORY;
+		rc = sc_pkcs11_register_mechanism(p11card, mt);
+		if (rc != CKR_OK)
+			return rc;
+	}	
+	
 
 #if 0
 /* TODO: -DEE Add CKM_ECDH1_COFACTOR_DERIVE  as PIV can do this */
@@ -3316,6 +3331,7 @@ static int register_ec_mechanisms(struct sc_pkcs11_card *p11card,
 	return CKR_OK;
 }
 	
+
 /*
  * Mechanism handling
  * FIXME: We should consult the card's algorithm list to
@@ -3382,9 +3398,8 @@ static CK_RV register_mechanisms(struct sc_pkcs11_card *p11card)
 		alg_info++;
 	}
 
-	if (flags & SC_ALGORITHM_ECDSA_RAW) {
-		rc = register_ec_mechanisms(p11card, ec_ext_flags, ec_min_key_size, ec_max_key_size);
-	}
+	if (flags & SC_ALGORITHM_ECDSA_RAW)
+		rc = register_ec_mechanisms(p11card, flags, ec_ext_flags, ec_min_key_size, ec_max_key_size);
 
 	if (flags & (SC_ALGORITHM_GOSTR3410_RAW
 				| SC_ALGORITHM_GOSTR3410_HASH_NONE
