@@ -71,7 +71,8 @@ enum {
 	OPT_UNLOCK_PIN,
 	OPT_PUK,
 	OPT_NEW_PIN,
-	OPT_LOGIN_TYPE
+	OPT_LOGIN_TYPE,
+	OPT_TEST_EC
 };
 
 static const struct option options[] = {
@@ -119,6 +120,7 @@ static const struct option options[] = {
 	{ "moz-cert",		1, NULL,		'z' },
 	{ "verbose",		0, NULL,		'v' },
 	{ "private",		0, NULL,		OPT_PRIVATE },
+	{ "test-ec",		0, NULL,		OPT_TEST_EC },
 	{ NULL, 0, NULL, 0 }
 };
 
@@ -144,7 +146,7 @@ static const char *option_help[] = {
 	"Change User PIN",
 	"Unlock User PIN (without '--login' unlock in ulogged session; otherwise '--login_type' has to be 'context-specific')",
 	"Key pair generation",
-	"Specify the type and length of the key to create, for example rsa:1024",
+	"Specify the type and length of the key to create, for example rsa:1024 or EC:prime256v1",
 	"Write an object (key, cert, data) to the card",
 	"Get object's CKA_VALUE attribute (use with --type)",
 	"Delete an object",
@@ -166,7 +168,8 @@ static const char *option_help[] = {
 	"Test hotplug capabilities (C_GetSlotList + C_WaitForSlotEvent)",
 	"Test Mozilla-like keypair gen and cert req, <arg>=certfile",
 	"Verbose operation. (Set OPENSC_DEBUG to enable OpenSC specific debugging)",
-	"Set the CKA_PRIVATE attribute (object is only viewable after a login)"
+	"Set the CKA_PRIVATE attribute (object is only viewable after a login)",
+	"Test EC (best used with the --login or --pin option)"
 };
 
 static const char *	app_name = "pkcs11-tool"; /* for utils.c */
@@ -286,6 +289,7 @@ static int		p11_test(CK_SLOT_ID slot, CK_SESSION_HANDLE session);
 static int test_card_detection(int);
 static int		hex_to_bin(const char *in, CK_BYTE *out, size_t *outlen);
 static void		test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE session);
+static void		test_ec(CK_SLOT_ID slot, CK_SESSION_HANDLE session);
 static CK_RV find_object_with_attributes(
 		CK_SESSION_HANDLE session, CK_OBJECT_HANDLE *out,
 		CK_ATTRIBUTE *attrs, CK_ULONG attrsLen,
@@ -316,6 +320,7 @@ int main(int argc, char * argv[])
 	int do_set_id = 0;
 	int do_test = 0;
 	int do_test_kpgen_certwrite = 0;
+	int do_test_ec = 0;
 	int need_session = 0;
 	int opt_login = 0;
 	int do_init_token = 0;
@@ -531,6 +536,10 @@ int main(int argc, char * argv[])
 			opt_test_hotplug = 1;
 			action_count++;
 			break;
+		case OPT_TEST_EC:
+			do_test_ec = 1;
+			action_count++;
+			break;
 		default:
 			util_print_usage_and_die(app_name, options, option_help);
 		}
@@ -725,6 +734,9 @@ int main(int argc, char * argv[])
 
 	if (do_test_kpgen_certwrite)
 		test_kpgen_certwrite(opt_slot, session);
+
+	if (do_test_ec) 
+		test_ec(opt_slot, session);
 
 end:
 	if (session)
@@ -3662,7 +3674,7 @@ static void test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		{CKA_LABEL, label, label_len},
 		{CKA_SUBJECT, (void *) "This won't be used in our lib", 29}
 	};
-	FILE			*f;
+	FILE                    *f;
 
 	printf("\n*** We already opened a session and logged in ***\n");
 
@@ -3805,6 +3817,101 @@ static void test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 
 	printf("\n==> OK, successfull! Should work with Mozilla\n");	
 }
+
+
+static void test_ec(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
+{
+	CK_MECHANISM		mech = {CKM_ECDSA_SHA1, NULL_PTR, 0};
+	CK_MECHANISM_TYPE	*mech_type = NULL;
+	CK_OBJECT_HANDLE	pub_key, priv_key;
+	CK_ULONG		i, num_mechs = 0;
+	CK_RV			rv;
+	CK_BYTE			*tmp, *ec_params, *ec_point;
+	CK_BYTE			*data_to_sign = (CK_BYTE *)"My Heart's in the Highland";
+	CK_BYTE			*data, sig[512];
+	CK_ULONG		data_len, sig_len;
+	CK_BYTE			*id = (CK_BYTE *) "abcdefghijklmnopqrst";
+	CK_ULONG		id_len = strlen((char *)id), ec_params_len, ec_point_len;
+	CK_BYTE			*label = (CK_BYTE *) "Just a label";
+	CK_ULONG		label_len = 12;
+	CK_ATTRIBUTE		attribs[3] = {
+		{CKA_ID, id, id_len},
+		{CKA_LABEL, label, label_len},
+		{CKA_SUBJECT, (void *) "This won't be used in our lib", 29}
+	};
+
+	printf("\n*** We already opened a session and logged in ***\n");
+
+	num_mechs = get_mechanisms(slot, &mech_type, -1);
+	for (i = 0; i < num_mechs; i++)
+		if (mech_type[i] == CKM_EC_KEY_PAIR_GEN)
+			break;
+	if (i == num_mechs) {
+		printf("ERR: no 'CKM_EC_KEY_PAIR_GEN' found in the mechanism list\n");
+		return;
+	}
+
+	printf("*** Generating EC key pair ***\n");
+	if (!gen_keypair(slot, session, &pub_key, &priv_key, opt_key_type))
+		return;
+
+	tmp = getID(session, priv_key, (CK_ULONG *) &opt_object_id_len);
+	if (opt_object_id == NULL || opt_object_id_len == 0) {
+		printf("ERR: newly generated private key has no (or an empty) CKA_ID\n");
+		return;
+	}
+	memcpy(opt_object_id, tmp, opt_object_id_len);
+
+	/* This is done in NSS */
+	ec_params = getEC_PARAMS(session, priv_key, &ec_params_len);
+	if (ec_params_len < 5 || ec_params_len > 10000) {
+		printf("ERR: GetAttribute(privkey, CKA_EC_PARAMS) doesn't seem to work\n");
+		return;
+	}
+	ec_point = getEC_POINT(session, pub_key, &ec_point_len);
+	if (ec_point_len < 5 || ec_point_len > 10000) {
+		printf("ERR: GetAttribute(pubkey, CKA_EC_POINT) doesn't seem to work\n");
+		return;
+	}
+
+	printf("*** Changing the CKA_ID of private and public key into one of 20 bytes ***\n");
+	rv = p11->C_SetAttributeValue(session, priv_key, attribs, 1);
+	if (rv != CKR_OK)
+		p11_fatal("C_SetAttributeValue(priv_key)", rv);
+
+	rv = p11->C_SetAttributeValue(session, pub_key, attribs, 1);
+	if (rv != CKR_OK)
+		p11_fatal("C_SetAttributeValue(pub_key)", rv);
+
+
+	printf("*** Do a signature ***\n");
+	data = data_to_sign;
+	data_len = sizeof(data_to_sign);
+	rv = p11->C_SignInit(session, &mech, priv_key);
+	if (rv != CKR_OK)
+		p11_fatal("C_SignInit", rv);
+	rv = p11->C_Sign(session, data, data_len, NULL, &sig_len);
+	if (rv != CKR_OK)
+		p11_fatal("C_Sign", rv);
+	sig_len = 20;
+	rv = p11->C_Sign(session, data, data_len, sig, &sig_len);
+	if (rv != CKR_BUFFER_TOO_SMALL) {
+		printf("ERR: C_Sign() didn't return CKR_BUFFER_TO_SMALL but %s\n", CKR2Str(rv));
+		return;
+	}
+	rv = p11->C_Sign(session, data, data_len, sig, &sig_len);
+	if (rv != CKR_OK)
+		p11_fatal("C_Sign", rv);
+
+	printf("*** Changing the CKA_LABEL, CKA_ID and CKA_SUBJECT of the public key ***\n");
+	rv = p11->C_SetAttributeValue(session, pub_key, attribs, 3);
+	if (rv != CKR_OK)
+		p11_fatal("C_SetAttributeValue", rv);
+
+	printf("==> OK\n");	
+}
+
+
 
 static const char *p11_flag_names(struct flag_info *list, CK_FLAGS value)
 {
