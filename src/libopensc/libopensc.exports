@@ -82,6 +82,7 @@ sc_disconnect_card
 sc_do_log
 _sc_debug
 sc_enum_apps
+sc_encode_oid
 sc_parse_ef_atr
 sc_establish_context
 sc_file_add_acl_entry

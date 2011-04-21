@@ -777,6 +777,8 @@ int sc_der_copy(sc_pkcs15_der_t *, const sc_pkcs15_der_t *);
 int sc_pkcs15_get_object_id(const struct sc_pkcs15_object *, struct sc_pkcs15_id *);
 int sc_pkcs15_get_guid(struct sc_pkcs15_card *, const struct sc_pkcs15_object *, 
 		char *, size_t);
+int sc_encode_oid (struct sc_context *, struct sc_object_id *, 
+		unsigned char **, size_t *);
 
 /* Prepend 'parent' to 'child' in case 'child' is a relative path */
 int sc_pkcs15_make_absolute_path(const sc_path_t *parent, sc_path_t *child);
