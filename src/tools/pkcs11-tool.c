@@ -43,6 +43,17 @@ extern CK_RV C_UnloadModule(void *module);
 #define NEED_SESSION_RO	0x01
 #define NEED_SESSION_RW	0x02
 
+static struct ec_curve_info {
+	const char *name;
+	const char *oid;
+	const char *oid_encoded;
+	size_t size;
+} ec_curve_infos[] = {
+	{"prime256v1", "1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256},
+	{"secp384r1", "1.3.132.0.34", "06052B81040022", 384},
+	{NULL, 0},
+};
+
 enum {
 	OPT_MODULE = 0x100,
 	OPT_SLOT,
@@ -1325,10 +1336,8 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		{CKA_ENCRYPT, &_true, sizeof(_true)},
 		{CKA_VERIFY, &_true, sizeof(_true)},
 		{CKA_WRAP, &_true, sizeof(_true)},
-		{CKA_MODULUS_BITS, &modulusBits, sizeof(modulusBits)},
-		{CKA_PUBLIC_EXPONENT, publicExponent, sizeof(publicExponent)}
 	};
-	int n_pubkey_attr = 7;
+	int n_pubkey_attr = 5;
 	CK_ATTRIBUTE privateKeyTemplate[20] = {
 		{CKA_CLASS, &privkey_class, sizeof(privkey_class)},
 		{CKA_TOKEN, &_true, sizeof(_true)},
@@ -1339,6 +1348,8 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		{CKA_UNWRAP, &_true, sizeof(_true)}
 	};
 	int n_privkey_attr = 7;
+	unsigned char *ecparams = NULL;
+	size_t ecparams_size;
 	CK_RV rv;
 
 	if (type != NULL) {
@@ -1352,7 +1363,41 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 			key_length = (unsigned long)atol(size);
 			if (key_length != 0)
 				modulusBits = key_length;
-		} else {
+
+			FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_MODULUS_BITS, &modulusBits, sizeof(modulusBits));
+			n_pubkey_attr++;
+			FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_PUBLIC_EXPONENT, publicExponent, sizeof(publicExponent));
+			n_pubkey_attr++;
+
+			mechanism.mechanism = CKM_RSA_PKCS_KEY_PAIR_GEN;
+		}
+		else if (!strncmp(type, "EC:", 3))   {
+			int ii;
+
+			for (ii=0; ec_curve_infos[ii].name; ii++)   {
+				if (!strcmp(ec_curve_infos[ii].name, type + 3))
+					break;
+				if (!strcmp(ec_curve_infos[ii].oid, type + 3))
+					break;
+			}
+			if (!ec_curve_infos[ii].name)
+				util_fatal("Unknown EC key params '%s'", type + 3);
+
+			ecparams_size = strlen(ec_curve_infos[ii].oid_encoded) / 2;
+			ecparams = malloc(ecparams_size);
+			if (!ecparams)
+				util_fatal("Allocation error", 0);
+			if (!hex_to_bin(ec_curve_infos[ii].oid_encoded, ecparams, &ecparams_size)) {
+				printf("Cannot convert \"%s\"\n", ec_curve_infos[ii].oid_encoded);
+				util_print_usage_and_die(app_name, options, option_help);
+			}
+
+			FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_EC_PARAMS, ecparams, ecparams_size);
+			n_pubkey_attr++;
+
+			mechanism.mechanism = CKM_EC_KEY_PAIR_GEN;
+		}
+		else {
 			util_fatal("Unknown key type %s", type);
 		}
 	}
@@ -1381,6 +1426,9 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		hPublicKey, hPrivateKey);
 	if (rv != CKR_OK)
 		p11_fatal("C_GenerateKeyPair", rv);
+
+	if (ecparams)
+		free(ecparams);
 
 	printf("Key pair generated:\n");
 	show_object(session, *hPrivateKey);
