@@ -72,7 +72,7 @@ filesystem {
         # Here comes the application DF
         DF PKCS15-AppDF {
             type    = DF;
-            aid     = E8:28:BD:08:0F:F2:50:4F:54:20:41:57:50;
+            exclusive-aid = E8:28:BD:08:0F:F2:50:4F:54:20:41:57:50;
             acl     = *=NONE;
             size    = 5000;
 
@@ -127,7 +127,6 @@ filesystem {
                 # Private RSA keys
                 BSO private-key {
                     ACL     = *=NEVER;
-                    ACL = UPDATE=COUCOUx12;
                     ACL = UPDATE=SCB0x12, READ=NONE;
                     ACL = PSO-COMPUTE-SIGNATURE=SCB0x12, INTERNAL-AUTHENTICATE=SCB0x12, PSO-DECRYPT=SCB0x12, GENERATE=SCB0x12;
 
@@ -155,7 +154,7 @@ filesystem {
                 #Public Key
                 BSO public-key {
                     ACL     = *=NEVER;
-                    ACL     = AUTHENTICATE=SCB0x12, GENERATE=SCB0x12, UPDATE=SCB0x12, READ=NONE;
+                    ACL     = INTERNAL-AUTHENTICATE=SCB0x12, GENERATE=SCB0x12, UPDATE=SCB0x12, READ=NONE;
                 }
 
                 # Public DES keys
