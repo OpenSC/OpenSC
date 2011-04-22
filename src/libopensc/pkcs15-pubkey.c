@@ -961,3 +961,90 @@ int sc_pkcs15_pubkey_from_spki_filename(sc_context_t *ctx,
 	*outpubkey = pubkey;
 	return r;
 }
+
+
+static struct ec_curve_info {
+	const char *name;
+	const char *oid_str;
+	const char *oid_encoded;
+	size_t size;
+} ec_curve_infos[] = {
+	{"prime256v1",		"1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256},
+	{"secp256r1",		"1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256},
+	{"ansiX9p256r1",	"1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256},
+	{"secp384r1",		"1.3.132.0.34", "06052B81040022", 384},
+	{"prime384v1",		"1.3.132.0.34", "06052B81040022", 384},
+	{"ansiX9p384r1",	"1.3.132.0.34", "06052B81040022", 384},
+	{NULL, NULL, 0},
+};
+
+int 
+sc_pkcs15_fix_ec_parameters(struct sc_context *ctx, struct sc_pkcs15_ec_parameters *ecparams)
+{
+	int rv, ii;
+
+	LOG_FUNC_CALLED(ctx);
+
+	/* In PKCS#11 EC parameters arrives in DER encoded form */
+	if (ecparams->der.value && ecparams->der.len)   { 
+		for (ii=0; ec_curve_infos[ii].name; ii++)   {
+			struct sc_object_id id;
+			unsigned char *buf = NULL;
+			size_t len = 0;
+
+			sc_format_oid(&id, ec_curve_infos[ii].oid_str);
+			sc_encode_oid (ctx, &id, &buf, &len);
+
+			if (ecparams->der.len == len && !memcmp(ecparams->der.value, buf, len))   {
+				free(buf);
+				break;
+			}
+
+			free(buf);
+		}
+
+		/* TODO: support of explicit EC parameters form */
+		if (!ec_curve_infos[ii].name)
+			LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Unsupported named curve");
+
+		sc_debug(ctx,SC_LOG_DEBUG_NORMAL, "Found known curve '%s'", ec_curve_infos[ii].name);
+		if (!ecparams->named_curve)   {
+			ecparams->named_curve = strdup(ec_curve_infos[ii].name);
+			if (!ecparams->named_curve)
+				SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+
+			sc_debug(ctx,SC_LOG_DEBUG_NORMAL, "Curve name: '%s'", ecparams->named_curve);
+		}
+
+		if (ecparams->id.value[0] <=0 || ecparams->id.value[1] <=0)
+			sc_format_oid(&ecparams->id, ec_curve_infos[ii].oid_str);
+
+		ecparams->field_length = ec_curve_infos[ii].size;
+		sc_debug(ctx,SC_LOG_DEBUG_NORMAL, "Curve length %i", ecparams->field_length);
+	}
+	else if (ecparams->named_curve)   {	/* it can be name of curve or OID in ASCII form */
+		for (ii=0; ec_curve_infos[ii].name; ii++)   {
+			if (!strcmp(ec_curve_infos[ii].name, ecparams->named_curve))
+				break;
+			if (!strcmp(ec_curve_infos[ii].oid_str, ecparams->named_curve))
+				break;
+		}
+		if (!ec_curve_infos[ii].name)
+			LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Unsupported named curve");
+
+		rv = sc_format_oid(&ecparams->id, ec_curve_infos[ii].oid_str);
+		LOG_TEST_RET(ctx, rv, "Invalid OID format");
+
+		ecparams->field_length = ec_curve_infos[ii].size;
+
+		if (!ecparams->der.value || !ecparams->der.len)   {
+			rv = sc_encode_oid (ctx, &ecparams->id, &ecparams->der.value, &ecparams->der.len);
+			LOG_TEST_RET(ctx, rv, "Cannot encode object ID");
+		}
+	}
+	else if (ecparams->id.value[0] > 0 && ecparams->id.value[1] > 0)  {
+		LOG_TEST_RET(ctx, SC_ERROR_NOT_IMPLEMENTED, "EC parameters has to be presented as a named curve or explicit data");
+	}
+
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+}

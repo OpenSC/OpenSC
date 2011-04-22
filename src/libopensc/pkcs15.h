@@ -803,6 +803,8 @@ struct sc_supported_algo_info *sc_pkcs15_get_supported_algo(struct sc_pkcs15_car
 int sc_pkcs15_add_supported_algo_ref(struct sc_pkcs15_object *,
 		struct sc_supported_algo_info *);
 
+int sc_pkcs15_fix_ec_parameters(struct sc_context *, struct sc_pkcs15_ec_parameters *);
+
 /* New object search API.
  * More complex, but also more powerful.
  */

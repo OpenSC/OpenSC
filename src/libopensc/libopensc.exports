@@ -173,6 +173,7 @@ sc_pkcs15_find_prkey_by_id_usage
 sc_pkcs15_find_prkey_by_reference
 sc_pkcs15_find_pubkey_by_id
 sc_pkcs15_find_so_pin
+sc_pkcs15_fix_ec_parameters
 sc_pkcs15_format_id
 sc_pkcs15_free_cert_info
 sc_pkcs15_free_certificate
