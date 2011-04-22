@@ -2703,7 +2703,7 @@ sc_pkcs15init_change_attrib(struct sc_pkcs15_card *p15card,
 
 	if (profile->ops->emu_update_any_df)   {
 		r = profile->ops->emu_update_any_df(profile, p15card, SC_AC_OP_CREATE, object);
-		LOG_TEST_RET(ctx, r, "Card specific DF update failed");
+		LOG_TEST_RET(card->ctx, r, "Card specific DF update failed");
 	}
 	else   {
 		r = sc_pkcs15_encode_df(card->ctx, p15card, df, &buf, &bufsize);
