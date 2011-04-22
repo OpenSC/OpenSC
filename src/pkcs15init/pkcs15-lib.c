@@ -2701,17 +2701,23 @@ sc_pkcs15init_change_attrib(struct sc_pkcs15_card *p15card,
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
-	r = sc_pkcs15_encode_df(card->ctx, p15card, df, &buf, &bufsize);
-	if (r >= 0) {
-		struct sc_file *file = NULL;
+	if (profile->ops->emu_update_any_df)   {
+		r = profile->ops->emu_update_any_df(profile, p15card, SC_AC_OP_CREATE, object);
+		LOG_TEST_RET(ctx, r, "Card specific DF update failed");
+	}
+	else   {
+		r = sc_pkcs15_encode_df(card->ctx, p15card, df, &buf, &bufsize);
+		if (r >= 0) {
+			struct sc_file *file = NULL;
 
-		r = sc_profile_get_file_by_path(profile, &df->path, &file);
-		if(r < 0) 
-			return r;
+			r = sc_profile_get_file_by_path(profile, &df->path, &file);
+			if(r < 0) 
+				return r;
 
-		r = sc_pkcs15init_update_file(profile, p15card, file, buf, bufsize);
-		free(buf);
-		sc_file_free(file);
+			r = sc_pkcs15init_update_file(profile, p15card, file, buf, bufsize);
+			free(buf);
+			sc_file_free(file);
+		}
 	}
 
 	return r < 0 ? r : 0;
