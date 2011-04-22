@@ -156,15 +156,6 @@ static struct profile_operations {
 };
 
 
-static struct ec_curve_info {
-	const char *name;
-	size_t size;
-} ec_curve_infos[] = {
-	{"secp256k1", 256},
-	{"secp384r1", 384},
-	{NULL, 0},
-};
-
 static struct sc_pkcs15init_callbacks callbacks = {
 	NULL,
 	NULL,
@@ -1826,16 +1817,6 @@ sc_pkcs15init_keybits(struct sc_pkcs15_bignum *bn)
 }
 
 
-static unsigned int
-get_keybits_from_curve_name(const char *curve)   
-{
-	int ii;
-	for (ii=0;ec_curve_infos[ii].name;ii++)
-		if (!strcmp(ec_curve_infos[ii].name, curve))
-			return ec_curve_infos[ii].size;
-	return 0;
-}
-
 /*
  * Check consistency of the key parameters.
  */
@@ -1843,11 +1824,20 @@ static int
 check_keygen_params_consistency(struct sc_card *card, struct sc_pkcs15init_keygen_args *params, 
 		unsigned int keybits, unsigned int *out_keybits)
 {
+	struct sc_context *ctx = card->ctx;
 	unsigned int alg = params->prkey_args.key.algorithm; 
-	int i;
+	int i, rv;
 
-	if (!keybits && ( alg == SC_ALGORITHM_EC))
-		keybits = get_keybits_from_curve_name(params->prkey_args.params.ec.named_curve);
+	if (alg == SC_ALGORITHM_EC)   {
+		struct sc_pkcs15_ec_parameters *ecparams = &params->prkey_args.params.ec;
+	 
+		rv = sc_pkcs15_fix_ec_parameters(ctx, ecparams);
+		LOG_TEST_RET(ctx, rv, "Cannot fix EC parameters");
+		
+		sc_log(ctx, "EC parameters: %s", sc_dump_hex(ecparams->der.value, ecparams->der.len));
+		if (keybits)
+			keybits = ecparams->field_length;
+	}
 
 	if (out_keybits)
 		*out_keybits = keybits;
@@ -1864,7 +1854,7 @@ check_keygen_params_consistency(struct sc_card *card, struct sc_pkcs15init_keyge
 		return SC_SUCCESS;
 	}
 
-	return SC_ERROR_NOT_SUPPORTED;
+	LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 }
 
 
@@ -2114,6 +2104,8 @@ select_intrinsic_id(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 			SHA1(pubkey->u.rsa.modulus.data, pubkey->u.rsa.modulus.len, id->value);
 		else if (pubkey->algorithm == SC_ALGORITHM_DSA)
 			SHA1(pubkey->u.dsa.pub.data, pubkey->u.dsa.pub.len, id->value);
+		else if (pubkey->algorithm == SC_ALGORITHM_EC)
+			SHA1(pubkey->u.ec.ecpointQ.value, pubkey->u.ec.ecpointQ.len, id->value);
 		else
 			goto done;
 
