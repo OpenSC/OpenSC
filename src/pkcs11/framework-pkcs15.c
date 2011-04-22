@@ -2484,7 +2484,7 @@ static CK_RV pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
 		switch (prkey->prv_p15obj->type) {
 			case SC_PKCS15_TYPE_PRKEY_EC:
 				if (key)
-					*(CK_ULONG *) attr->pValue = key->u.ec.field_length; 
+					*(CK_ULONG *) attr->pValue = key->u.ec.params.field_length; 
 				else 
 					*(CK_ULONG *) attr->pValue = 384; /* TODO -DEE needs work */
 				return CKR_OK;

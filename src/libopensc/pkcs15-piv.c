@@ -751,7 +751,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 				ckis[i].pubkey_len = cert_out->key->u.rsa.modulus.len * 8;
 				break;
 			case SC_ALGORITHM_EC:
-				ckis[i].pubkey_len = cert_out->key->u.ec.field_length;
+				ckis[i].pubkey_len = cert_out->key->u.ec.params.field_length;
 				break;
 			default:
 				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Unsuported key.algorithm %d", cert_out->key->algorithm);
@@ -895,7 +895,7 @@ sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "DEE Adding pin %d label=%s",i, label);
 					break;
 				case SC_ALGORITHM_EC:
 					ckis[i].key_alg = SC_ALGORITHM_EC;
-					ckis[i].pubkey_len = p15_key->u.ec.field_length;
+					ckis[i].pubkey_len = p15_key->u.ec.params.field_length;
 					ckis[i].pubkey_found = 1;
 					ckis[i].pubkey_from_file = 1;
 					break;

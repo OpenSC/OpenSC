@@ -1469,7 +1469,7 @@ do_generate_key(struct sc_profile *profile, const char *spec)
 
 	if (*spec)   {
 		if (isalpha(*spec) && keygen_args.prkey_args.key.algorithm == SC_ALGORITHM_EC)   {
-			keygen_args.prkey_args.params.ec.curve = spec;
+			keygen_args.prkey_args.params.ec.named_curve = strdup(spec);
 			keybits = 0;
 		}
 		else {

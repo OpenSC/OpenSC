@@ -523,7 +523,7 @@ sc_pkcs15_decode_pubkey_ec(sc_context_t *ctx,
 	if (r < 0)
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "ASN.1 encoding failed");
 
-sc_debug(ctx, SC_LOG_DEBUG_NORMAL,"DEE-EC key=%p, buf=%p, buflen=%d", key, buf, buflen);
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL,"DEE-EC key=%p, buf=%p, buflen=%d", key, buf, buflen);
 	key->ecpointQ.value = malloc(buflen);
 	if (key->ecpointQ.value == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
@@ -535,7 +535,7 @@ sc_debug(ctx, SC_LOG_DEBUG_NORMAL,"DEE-EC key=%p, buf=%p, buflen=%d", key, buf, 
 	 * The 04 indicates uncompressed
 	 * x and y are same size, and field_length = sizeof(x) in bits. */
 	/* TODO: -DEE  support more then uncompressed */
-	key->field_length = (ecpoint_len - 1)/2 * 8; 
+	key->params.field_length = (ecpoint_len - 1)/2 * 8; 
 	if (ecpoint_data)
 		free (ecpoint_data);
 
@@ -755,8 +755,10 @@ void sc_pkcs15_erase_pubkey(struct sc_pkcs15_pubkey *key)
 			free(key->u.gostr3410.xy.data);
 		break;
 	case SC_ALGORITHM_EC:
-		if (key->u.ec.ecparameters.value)
-			free(key->u.ec.ecparameters.value);
+		if (key->u.ec.params.der.value)
+			free(key->u.ec.params.der.value);
+		if (key->u.ec.params.named_curve)
+			free(key->u.ec.params.named_curve);
 		if (key->u.ec.ecpointQ.value)
 			free(key->u.ec.ecpointQ.value);
 		break;

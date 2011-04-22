@@ -197,13 +197,6 @@ struct sc_pkcs15init_keyarg_gost_params {
 	unsigned char gostr3410, gostr3411, gost28147;
 };
 
-struct sc_pkcs15init_keyarg_ec_params {
-	const char *curve;
-	struct sc_object_id id;
-	struct sc_pkcs15_der der;
-	size_t size_bits;
-};
-
 struct sc_pkcs15init_prkeyargs {
 	struct sc_pkcs15_id	id;
 	struct sc_pkcs15_id	auth_id;
@@ -215,7 +208,7 @@ struct sc_pkcs15init_prkeyargs {
 
 	union {
 		struct sc_pkcs15init_keyarg_gost_params gost;
-		struct sc_pkcs15init_keyarg_ec_params ec;
+		struct sc_pkcs15_ec_parameters ec;
 	} params;
 
 	struct sc_pkcs15_prkey	key;
@@ -240,7 +233,7 @@ struct sc_pkcs15init_pubkeyargs {
 
 	union {
 		struct sc_pkcs15init_keyarg_gost_params gost;
-		struct sc_pkcs15init_keyarg_ec_params ec;
+		struct sc_pkcs15_ec_parameters ec;
 	} params;
 
 	struct sc_pkcs15_pubkey	key;

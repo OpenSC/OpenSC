@@ -1424,7 +1424,7 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
 		type = SC_PKCS15_TYPE_PUBKEY_GOSTR3410; 
 		break;
 	case SC_ALGORITHM_EC:
-		keybits = key.u.ec.field_length;
+		keybits = key.u.ec.params.field_length;
 		type = SC_PKCS15_TYPE_PUBKEY_EC; 
 		break;
 	default:
@@ -1847,7 +1847,7 @@ check_keygen_params_consistency(struct sc_card *card, struct sc_pkcs15init_keyge
 	int i;
 
 	if (!keybits && ( alg == SC_ALGORITHM_EC))
-		keybits = get_keybits_from_curve_name(params->prkey_args.params.ec.curve);
+		keybits = get_keybits_from_curve_name(params->prkey_args.params.ec.named_curve);
 
 	if (out_keybits)
 		*out_keybits = keybits;
