@@ -155,6 +155,18 @@ static int arg_to_path(const char *arg, sc_path_t *path, int is_id)
 				path->type = SC_PATH_TYPE_PATH;
 		} else {
 			*path = current_path;
+			if (path->type == SC_PATH_TYPE_DF_NAME)   {
+				if (path->len > sizeof(path->aid.value))   {
+					printf("Invalid length of DF_NAME path\n");
+					return -1;
+				}
+
+				memcpy(path->aid.value, path->value, path->len);
+				path->aid.len = path->len;
+
+				path->type = SC_PATH_TYPE_FILE_ID;
+				path->len = 0;
+			}
 			sc_append_path_id(path, cbuf, 2);
 		}
 	}
@@ -245,12 +257,19 @@ static int do_cd(int argc, char **argv)
 	if (argc != 1)
 		goto usage;
 	if (strcmp(argv[0], "..") == 0) {
-		if (current_path.len < 4) {
+		path = current_path;
+		if (path.len < 4) {
 			printf("unable to go up, already in MF.\n");
 			return -1;
 		}
-		path = current_path;
-		path.len -= 2;
+
+		if (path.type == SC_PATH_TYPE_DF_NAME)   {
+			sc_format_path("3F00", &path);
+		}
+		else   {
+			path.len -= 2;
+		}
+
 		r = sc_select_file(card, &path, &file);
 		if (r) {
 			printf("unable to go up: %s\n", sc_strerror(r));
