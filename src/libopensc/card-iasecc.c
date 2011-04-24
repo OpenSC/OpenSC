@@ -337,6 +337,14 @@ static int iasecc_parse_ef_atr(struct sc_card *card)
 
 	card->max_send_size = sizes->send;
 	card->max_recv_size = sizes->recv;
+
+	/* Most of the card producers interpret 'send' values as "maximum APDU data size".
+	 * Oberthur strictly follows specification and interpret these values as "maximum APDU command size".
+	 * Here we need 'data size'.
+	 */
+	if (card->max_send_size > 0xFF)
+		card->max_send_size -= 5;
+
 	sc_log(ctx, "EF.ATR: max send/recv sizes %X/%X", card->max_send_size, card->max_recv_size);
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
