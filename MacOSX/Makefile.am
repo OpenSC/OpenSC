@@ -1,3 +1,4 @@
+MAINTAINERCLEANFILES = $(srcdir)/Makefile.in
 EXTRA_DIST = build build-package.in libtool-bundle opensc-uninstall \
 	10.5/resources \
 	10.5/resources/background.jpg \
