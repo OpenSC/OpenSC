@@ -1317,11 +1317,8 @@ static int do_apdu(int argc, char **argv)
 {
 	sc_apdu_t apdu;
 	u8 buf[SC_MAX_APDU_BUFFER_SIZE];
-	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
-	u8 *p;
 	size_t len, len0, r, ii;
-	int cse = 0;
 
 	if (argc < 1) {
 		puts("Usage: apdu [apdu:hex:codes:...]");
@@ -1334,86 +1331,12 @@ static int do_apdu(int argc, char **argv)
 		len += len0;
 	}
 
-	if (len < 4) {
-		puts("APDU too short (must be at least 4 bytes)");
-		return 1;
+	r = sc_bytes2apdu(card->ctx, buf, len, &apdu);
+	if (r) {
+		fprintf(stderr, "Invalid APDU: %s\n", sc_strerror(r));
+		return 2;
 	}
-	len0 = len;
 
-	/* TODO: move this to apdu.c as bytes2apdu or similar. See #237 */
-	memset(&apdu, 0, sizeof(apdu));
-	p = buf;
-	apdu.cla = *p++;
-	apdu.ins = *p++;
-	apdu.p1 = *p++;
-	apdu.p2 = *p++;
-	len -= 4;
-
-	if (len == 0) {
-		apdu.cse = SC_APDU_CASE_1;
-	}
-	else {
-		size_t size = 0;
-
-		if ((*p == 0) && (len >= 3)) {
-			cse |= SC_APDU_EXT;
-			p++;
-			size = (*p++) << 8;
-			size += *p++;
-			len -= 3;
-		}
-		else {
-			size = *p++;
-			len--;
-		}
-		if (len == 0) {
-			apdu.le = (size == 0) ? 256 : size;
-			if ((apdu.le == 0) && (cse & SC_APDU_EXT))
-				apdu.le <<= 8;
-			apdu.cse = SC_APDU_CASE_2_SHORT | cse;
-		}
-		else {
-			apdu.lc = size;
-			if (len < apdu.lc) {
-				printf("APDU too short (need %lu bytes)\n",
-					(unsigned long) apdu.lc - len);
-				return 1;
-			}
-			memcpy(sbuf, p, apdu.lc);
-			apdu.data = sbuf;
-			apdu.datalen = apdu.lc;
-			len -= apdu.lc;
-			p += apdu.lc;
-			if (len == 0) {
-				apdu.cse = SC_APDU_CASE_3_SHORT | cse;
-			}
-			else {
-				apdu.le = 0;
-				if (cse & SC_APDU_EXT) {
-					if (len < 2) {
-						printf("APDU too short (need %lu bytes)\n",
-							(unsigned long) apdu.lc - len);
-						return 1;
-					}
-					size = (*p++) << 8;
-					size += *p++;
-					len -= 2;
-					apdu.le = (size == 0) ? 65536 : size;
-				}
-				else {
-					size = *p++;
-					len--;
-					apdu.le = (size == 0) ? 256 : size;
-				}
-				apdu.cse = SC_APDU_CASE_4_SHORT | cse;
-				if (len) {
-					printf("APDU too long (%lu bytes extra)\n",
-						(unsigned long) len);
-					return 1;
-				}
-			}
-		}
-	}
 	apdu.resp = rbuf;
 	apdu.resplen = sizeof(rbuf);
 
