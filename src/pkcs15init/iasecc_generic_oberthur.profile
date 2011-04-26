@@ -66,14 +66,15 @@ filesystem {
             type    = EF;
             file-id = 2F00;
             size    = 128;
-            acl     = *=NONE;
+            ACL     = *=NONE;
         }
 
         # Here comes the application DF
         DF PKCS15-AppDF {
             type    = DF;
             exclusive-aid = E8:28:BD:08:0F:F2:50:4F:54:20:41:57:50;
-            acl     = *=NONE;
+            ACL     = *=NONE;
+            ACL     = CREATE=SCB0x12;
             size    = 5000;
 
             EF PKCS15-ODF {

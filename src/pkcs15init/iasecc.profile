@@ -107,6 +107,8 @@ filesystem {
             type = DF;
             exclusive-aid	= E8:28:BD:08:0F:F2:50:4F:54:20:41:57:50;
             profile-extension	= "iasecc_generic_oberthur";
+            ACL     = *=NONE;
+            ACL     = CREATE=SCB0x12;
         }
     }
 }
