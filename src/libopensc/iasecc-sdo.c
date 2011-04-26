@@ -39,6 +39,33 @@
 static int iasecc_parse_size(unsigned char *data, size_t *out);
 
 
+static int
+iasecc_parse_acls(struct sc_card *card, struct iasecc_sdo_docp *docp, int flags)
+{
+	struct sc_context *ctx = card->ctx;
+	struct iasecc_extended_tlv *acls = &docp->acls_contact;
+	int ii, offs; 
+	unsigned char mask = 0x40;
+
+	if (flags)
+		acls = &docp->acls_contactless;
+
+	if (!acls->size)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
+
+	docp->amb = *(acls->value + 0);
+	memset(docp->scbs, 0xFF, sizeof(docp->scbs));
+	for (ii=0, offs = 1; ii<7; ii++, mask >>= 1)
+		if (mask & docp->amb)
+			docp->scbs[ii] = *(acls->value + offs++);
+
+	sc_log(ctx, "iasecc_parse_docp() SCBs %02X:%02X:%02X:%02X:%02X:%02X:%02X",
+			docp->scbs[0],docp->scbs[1],docp->scbs[2],docp->scbs[3],
+			docp->scbs[4],docp->scbs[5],docp->scbs[6]);
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+}
+
+
 int
 iasecc_sdo_convert_acl(struct sc_card *card, struct iasecc_sdo *sdo, 
 		unsigned char op, unsigned *out_method, unsigned *out_ref)
@@ -68,8 +95,17 @@ iasecc_sdo_convert_acl(struct sc_card *card, struct iasecc_sdo *sdo,
 		}
 	}
 	if (ops[ii].mask == 0)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED); 
-   
+		LOG_FUNC_RETURN(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
+
+	sc_log(ctx, "OP:%i, mask:0x%X", op, ops[ii].mask);
+	sc_log(ctx, "AMB:%X, scbs:%s", sdo->docp.amb, sc_dump_hex(sdo->docp.scbs, IASECC_MAX_SCBS));
+	sc_log(ctx, "docp.acls_contact:%s", sc_dump_hex(sdo->docp.acls_contact.value, sdo->docp.acls_contact.size));
+
+	if (!sdo->docp.amb && sdo->docp.acls_contact.size)   {
+		int rv = iasecc_parse_acls(card, &sdo->docp, 0);
+		LOG_TEST_RET(ctx, rv, "Cannot parse ACLs in DOCP");
+	}
+
 	*out_method = SC_AC_NEVER;
 	*out_ref = SC_AC_NEVER;
 
@@ -78,6 +114,7 @@ iasecc_sdo_convert_acl(struct sc_card *card, struct iasecc_sdo *sdo,
 		if (sdo->docp.amb & mask)   {
 			if (op_mask == mask)   {
 				unsigned char scb = sdo->docp.scbs[ii];
+				sc_log(ctx, "ii:%i, scb:0x%X", ii, scb);
 
 				*out_ref = scb & 0x0F;
 				if (scb == 0)
@@ -569,20 +606,8 @@ iasecc_parse_docp(struct sc_card *card, unsigned char *data, size_t data_len, st
 		offs += rv;
 	}
 
-	if (sdo->docp.acls_contact.size)   {
-		int ii, offs; 
-		unsigned char mask = 0x40;
-
-		sdo->docp.amb = *(sdo->docp.acls_contact.value + 0);
-		memset(sdo->docp.scbs, 0xFF, sizeof(sdo->docp.scbs));
-		for (ii=0, offs = 1; ii<7; ii++, mask >>= 1)
-			if (mask & sdo->docp.amb)
-				sdo->docp.scbs[ii] = *(sdo->docp.acls_contact.value + offs++);
-
-		sc_log(ctx, "iasecc_parse_docp() SCBs %02X:%02X:%02X:%02X:%02X:%02X:%02X",
-					sdo->docp.scbs[0],sdo->docp.scbs[1],sdo->docp.scbs[2],sdo->docp.scbs[3],
-					sdo->docp.scbs[4],sdo->docp.scbs[5],sdo->docp.scbs[6]);
-	}
+	rv = iasecc_parse_acls(card, &sdo->docp, 0);
+	LOG_TEST_RET(ctx, rv, "Cannot parse ACLs in DOCP");
 
 	LOG_FUNC_RETURN(ctx, 0);
 }
@@ -776,10 +801,9 @@ iasecc_sdo_allocate_and_parse(struct sc_card *card, unsigned char *data, size_t 
 
 
 static int
-iasecc_update_blob(struct sc_card *card, struct iasecc_extended_tlv *tlv,
+iasecc_update_blob(struct sc_context *ctx, struct iasecc_extended_tlv *tlv,
 		unsigned char **blob, size_t *blob_size)
 {
-	struct sc_context *ctx = card->ctx;
 	unsigned char *pp = NULL;
 	int offs = 0, sz = tlv->size + 2;
 
@@ -822,10 +846,9 @@ iasecc_update_blob(struct sc_card *card, struct iasecc_extended_tlv *tlv,
 }
 
 
-int
-iasecc_encode_docp(struct sc_card *card, struct iasecc_sdo_docp *docp, unsigned char **out, size_t *out_len)
+static int
+iasecc_encode_docp(struct sc_context *ctx, struct iasecc_sdo_docp *docp, unsigned char **out, size_t *out_len)
 {
-	struct sc_context *ctx = card->ctx;
 	struct iasecc_extended_tlv tlv, tlv_st;
 	unsigned char *st_blob, *tmp_blob, *docp_blob;
 	size_t blob_size;
@@ -840,10 +863,10 @@ iasecc_encode_docp(struct sc_card *card, struct iasecc_sdo_docp *docp, unsigned 
 
 	st_blob = NULL;
 	blob_size = 0;
-	rv = iasecc_update_blob(card, &docp->acls_contact, &st_blob, &blob_size);
+	rv = iasecc_update_blob(ctx, &docp->acls_contact, &st_blob, &blob_size);
 	LOG_TEST_RET(ctx, rv, "ECC: cannot add contact ACLs to blob");
 
-	rv = iasecc_update_blob(card, &docp->acls_contactless, &st_blob, &blob_size);
+	rv = iasecc_update_blob(ctx, &docp->acls_contactless, &st_blob, &blob_size);
 	LOG_TEST_RET(ctx, rv, "ECC: cannot add contactless ACLs to blob");
 
 	tlv.tag = IASECC_DOCP_TAG_ACLS;
@@ -852,31 +875,31 @@ iasecc_encode_docp(struct sc_card *card, struct iasecc_sdo_docp *docp, unsigned 
 
 	tmp_blob = NULL;
 	blob_size = 0;
-	rv = iasecc_update_blob(card, &tlv, &tmp_blob, &blob_size);
+	rv = iasecc_update_blob(ctx, &tlv, &tmp_blob, &blob_size);
 	LOG_TEST_RET(ctx, rv, "ECC: cannot add ACLs template to blob");
 
-	rv = iasecc_update_blob(card, &docp->name, &tmp_blob, &blob_size);
+	rv = iasecc_update_blob(ctx, &docp->name, &tmp_blob, &blob_size);
 	LOG_TEST_RET(ctx, rv, "ECC: cannot add NAME to blob");
 
-	rv = iasecc_update_blob(card, &docp->tries_maximum, &tmp_blob, &blob_size);
+	rv = iasecc_update_blob(ctx, &docp->tries_maximum, &tmp_blob, &blob_size);
 	LOG_TEST_RET(ctx, rv, "ECC: cannot add TRIES MAXIMUM to blob");
 
-	rv = iasecc_update_blob(card, &docp->tries_remaining, &tmp_blob, &blob_size);
+	rv = iasecc_update_blob(ctx, &docp->tries_remaining, &tmp_blob, &blob_size);
 	LOG_TEST_RET(ctx, rv, "ECC: cannot add TRIES REMAINING to blob");
 
-	rv = iasecc_update_blob(card, &docp->usage_maximum, &tmp_blob, &blob_size);
+	rv = iasecc_update_blob(ctx, &docp->usage_maximum, &tmp_blob, &blob_size);
 	LOG_TEST_RET(ctx, rv, "ECC: cannot add USAGE MAXIMUM to blob");
 
-	rv = iasecc_update_blob(card, &docp->usage_remaining, &tmp_blob, &blob_size);
+	rv = iasecc_update_blob(ctx, &docp->usage_remaining, &tmp_blob, &blob_size);
 	LOG_TEST_RET(ctx, rv, "ECC: cannot add USAGE REMAINING to blob");
 
-	rv = iasecc_update_blob(card, &docp->non_repudiation, &tmp_blob, &blob_size);
+	rv = iasecc_update_blob(ctx, &docp->non_repudiation, &tmp_blob, &blob_size);
 	LOG_TEST_RET(ctx, rv, "ECC: cannot add NON REPUDATION to blob");
 
-	rv = iasecc_update_blob(card, &docp->size, &tmp_blob, &blob_size);
+	rv = iasecc_update_blob(ctx, &docp->size, &tmp_blob, &blob_size);
 	LOG_TEST_RET(ctx, rv, "ECC: cannot add SIZE to blob");
 
-	rv = iasecc_update_blob(card, &docp->issuer_data, &tmp_blob, &blob_size);
+	rv = iasecc_update_blob(ctx, &docp->issuer_data, &tmp_blob, &blob_size);
 	LOG_TEST_RET(ctx, rv, "ECC: cannot add IDATA to blob");
 
 	tlv.tag = IASECC_DOCP_TAG;
@@ -885,7 +908,7 @@ iasecc_encode_docp(struct sc_card *card, struct iasecc_sdo_docp *docp, unsigned 
 
 	docp_blob = NULL;
 	blob_size = 0;
-	rv = iasecc_update_blob(card, &tlv, &docp_blob, &blob_size);
+	rv = iasecc_update_blob(ctx, &tlv, &docp_blob, &blob_size);
 	LOG_TEST_RET(ctx, rv, "ECC: cannot add ACLs to blob");
 
 	free(tmp_blob);
@@ -920,6 +943,50 @@ iasecc_sdo_encode_asn1_tag(unsigned in_tag)
 		break;
 	}
 	return out_tag;
+}
+
+
+int
+iasecc_sdo_encode_create(struct sc_context *ctx, struct iasecc_sdo *sdo, unsigned char **out)
+{
+	struct sc_asn1_entry c_asn1_docp_data[2] = {
+		{ "docpData", SC_ASN1_OCTET_STRING, 0, SC_ASN1_ALLOC, NULL, NULL },
+		{ NULL, 0, 0, 0, NULL, NULL }
+	};
+	struct sc_asn1_entry c_asn1_create_data[2] = {
+		{ "createData", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_APP | SC_ASN1_CONS, 0, NULL, NULL },
+        	{ NULL, 0, 0, 0, NULL, NULL }
+	};
+	struct sc_asn1_entry asn1_docp_data[2], asn1_create_data[2];
+	unsigned char *blob = NULL;
+	size_t len, out_len;
+	unsigned sdo_full_ref;
+	int rv;
+
+	LOG_FUNC_CALLED(ctx);
+	sc_log(ctx, "ecc_sdo_encode_create() sdo->sdo_class %X", sdo->sdo_class);
+	sc_log(ctx, "id %02X%02X%02X", IASECC_SDO_TAG_HEADER, sdo->sdo_class | 0x80, sdo->sdo_ref);
+
+	if (out)
+		*out = NULL;
+
+	rv = iasecc_encode_docp(ctx, &sdo->docp, &blob, &len);
+	LOG_TEST_RET(ctx, rv, "ECC encode DOCP error");
+
+	sdo_full_ref = (sdo->sdo_ref&0x3F)  + 0x100*(sdo->sdo_class | IASECC_OBJECT_REF_LOCAL) + 0x10000*IASECC_SDO_TAG_HEADER;
+	c_asn1_docp_data[0].tag = iasecc_sdo_encode_asn1_tag(sdo_full_ref) | SC_ASN1_CONS;
+
+	sc_copy_asn1_entry(c_asn1_docp_data, asn1_docp_data);
+	sc_copy_asn1_entry(c_asn1_create_data, asn1_create_data);
+
+	sc_format_asn1_entry(asn1_docp_data + 0, blob, &len, 1);
+	sc_format_asn1_entry(asn1_create_data + 0, asn1_docp_data, NULL, 1);
+
+	rv = sc_asn1_encode(ctx, asn1_create_data, out, &out_len);
+	LOG_TEST_RET(ctx, rv, "Encode create data error");
+	sc_debug(ctx, SC_LOG_DEBUG_ASN1,"Create data: %s", sc_dump_hex(*out, out_len));
+
+	LOG_FUNC_RETURN(ctx, out_len);
 }
 
 

@@ -297,7 +297,7 @@ int iasecc_se_parse(struct sc_card *, unsigned char *, size_t, struct iasecc_se_
 int iasecc_sdo_parse(struct sc_card *, unsigned char *, size_t, struct iasecc_sdo *);
 int iasecc_sdo_allocate_and_parse(struct sc_card *, unsigned char *, size_t, struct iasecc_sdo **);
 int iasecc_encode_size(size_t, unsigned char *);
-int iasecc_encode_docp(struct sc_card *, struct iasecc_sdo_docp *, unsigned char **, size_t *);
+int iasecc_sdo_encode_create(struct sc_context*, struct iasecc_sdo *, unsigned char **out);
 int iasecc_sdo_encode_update_field(struct sc_context *, unsigned char, unsigned char, 
 		struct iasecc_extended_tlv *, unsigned char **);
 int iasecc_se_get_crt(struct sc_card *, struct iasecc_se_info *, struct sc_crt *);
