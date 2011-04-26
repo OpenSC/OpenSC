@@ -565,7 +565,7 @@ iasecc_sdo_convert_to_file(struct sc_card *card, struct iasecc_sdo *sdo, struct 
 	else if (!card || !sdo)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
-	sc_log(card->ctx, "sdo->sdo_class %X", sdo->sdo_class);
+	sc_log(ctx, "SDO class 0x%X", sdo->sdo_class);
 
 	if (sdo->sdo_class == IASECC_SDO_CLASS_RSA_PRIVATE)   {
 		unsigned char ops[] = { 
@@ -578,7 +578,7 @@ iasecc_sdo_convert_to_file(struct sc_card *card, struct iasecc_sdo *sdo, struct 
 			
 			rv = iasecc_sdo_convert_acl(card, sdo, ops[ii], &op_method, &op_ref);
 			LOG_TEST_RET(ctx, rv, "IasEcc: cannot convert ACL");
-			sc_log(card->ctx, "ii:%i, method:%X, ref:%X", ii, op_method, op_ref);
+			sc_log(ctx, "ii:%i, method:%X, ref:%X", ii, op_method, op_ref);
 
 			sc_file_add_acl_entry(file, ops[ii], op_method, op_ref);
 		}
@@ -940,6 +940,87 @@ iasecc_pkcs15_fix_private_key_attributes(struct sc_profile *profile, struct sc_p
 
 
 static int
+iasecc_pkcs15_create_key_slot(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
+		struct iasecc_sdo *sdo_prvkey, struct iasecc_sdo *sdo_pubkey,
+		struct sc_pkcs15_prkey_info *key_info)
+{
+	struct sc_context *ctx = p15card->card->ctx;
+	struct sc_card *card = p15card->card;
+	struct sc_file  *file_p_pubkey = NULL, *file_p_prvkey = NULL, *parent = NULL;
+	struct sc_pkcs15_prkey_rsa rsa;
+	unsigned long save_card_caps = p15card->card->caps;
+	size_t keybits = key_info->modulus_length;
+	unsigned char zeros[0x200];
+	int rv;
+
+	LOG_FUNC_CALLED(ctx);
+
+	rv = iasecc_pkcs15_new_file(profile, card, SC_PKCS15_TYPE_PRKEY_RSA, key_info->key_reference, &file_p_prvkey);
+	LOG_TEST_RET(ctx, rv, "create key slot: cannot instantiate PRKEY_RSA file");
+
+	rv = iasecc_pkcs15_new_file(profile, card, SC_PKCS15_TYPE_PUBKEY_RSA, key_info->key_reference, &file_p_pubkey);
+	LOG_TEST_RET(ctx, rv, "create key slot: cannot instantiate PUBKEY_RSA file");
+
+	rv = iasecc_file_convert_acls(ctx, profile, file_p_prvkey);
+	LOG_TEST_RET(ctx, rv, "create key slot: cannot convert ACLs of the private key file");
+
+	rv = iasecc_file_convert_acls(ctx, profile, file_p_pubkey);
+	LOG_TEST_RET(ctx, rv, "create key slot: cannot convert ACLs of the public key file");
+
+	rv = sc_profile_get_parent(profile, "private-key", &parent);
+	LOG_TEST_RET(ctx, rv, "create key slot: cannot get parent of private key file");
+
+	rv = iasecc_file_convert_acls(ctx, profile, parent);
+	LOG_TEST_RET(ctx, rv, "create key slot: cannot convert parent's ACLs");
+
+	/* Oberthur's card do not returns FCP for selected application DF.
+	 * That's why for the following authentication use the 'CREATE' ACL defined in the application profile. */
+	if (card->type == SC_CARD_TYPE_IASECC_OBERTHUR)
+		p15card->card->caps &= ~SC_CARD_CAP_USE_FCI_AC;
+	rv = sc_pkcs15init_authenticate(profile, p15card, parent, SC_AC_OP_CREATE);
+	p15card->card->caps  = save_card_caps;
+	LOG_TEST_RET(ctx, rv, "create key slot: SC_AC_OP_CREATE authentication failed");
+
+	memset(zeros, 0, sizeof(zeros));
+	if (sdo_prvkey->not_on_card)   {
+		rv = sc_card_ctl(card, SC_CARDCTL_IASECC_SDO_CREATE, sdo_prvkey);
+		LOG_TEST_RET(ctx, rv, "create key slot: cannot create private key: ctl failed");
+
+		memset(&rsa, 0, sizeof(rsa));
+		rsa.p.data = rsa.q.data = rsa.iqmp.data = rsa.dmp1.data = rsa.dmq1.data = zeros;
+		rsa.p.len = rsa.q.len = rsa.iqmp.len = rsa.dmp1.len = rsa.dmq1.len = keybits/16;
+
+		rv = iasecc_sdo_store_key(profile, p15card, sdo_prvkey, NULL, &rsa);
+		LOG_TEST_RET(ctx, rv, "create key slot: cannot store empty private key");
+	}
+	else   {
+		sc_log(ctx, "create key slot: SDO private key already present");
+	}
+
+	if (sdo_pubkey->not_on_card)   {
+		rv = sc_card_ctl(card, SC_CARDCTL_IASECC_SDO_CREATE, sdo_pubkey);
+		LOG_TEST_RET(ctx, rv, "create key slot: cannot create public key: ctl failed");
+
+		memset(&rsa, 0, sizeof(rsa));
+		rsa.modulus.data = rsa.exponent.data = zeros;
+		rsa.modulus.len = keybits/8;
+		rsa.exponent.len = 3;
+
+		rv = iasecc_sdo_store_key(profile, p15card, NULL, sdo_pubkey, &rsa);
+		LOG_TEST_RET(ctx, rv, "create key slot: cannot store empty public key");
+	}
+	else   {
+		sc_log(ctx, "create key slot: SDO public key already present");
+	}
+
+	sc_file_free(file_p_prvkey);
+	sc_file_free(file_p_pubkey);
+	sc_file_free(parent);
+
+	LOG_FUNC_RETURN(ctx, rv);
+}
+	
+static int
 iasecc_pkcs15_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 					struct sc_pkcs15_object *object)
 {
@@ -969,10 +1050,13 @@ iasecc_pkcs15_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p15c
 	LOG_TEST_RET(ctx, rv, "IasEcc: init SDO private key failed");
 	sc_log(ctx, "iasecc_pkcs15_create_key() sdo_prvkey->not_on_card %i", sdo_prvkey->not_on_card);
 
-	if (!sdo_prvkey->not_on_card && !sdo_pubkey->not_on_card)
+	if (!sdo_prvkey->not_on_card && !sdo_pubkey->not_on_card)   {
 		sc_log(ctx, "Key ref %i already allocated", key_info->key_reference);
-	else
-		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "SDO creation is not supported for the IAS/ECC cards");
+	}
+	else   {
+		rv = iasecc_pkcs15_create_key_slot(profile, p15card, sdo_prvkey, sdo_pubkey, key_info);
+		LOG_TEST_RET(ctx, rv, "Cannot create key slot");
+	}
 	
 	rv = sc_pkcs15_allocate_object_content(object, (unsigned char *)sdo_prvkey, sizeof(struct iasecc_sdo));
 	LOG_TEST_RET(ctx, rv, "Failed to allocate PrvKey SDO as object content");
@@ -1146,6 +1230,7 @@ iasecc_pkcs15_delete_sdo (struct sc_profile *profile, struct sc_pkcs15_card *p15
 	struct iasecc_sdo *sdo = NULL;
 	struct sc_pkcs15_prkey_rsa rsa;
 	struct sc_file  *dummy_file = NULL;
+	unsigned long save_card_caps = card->caps;
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
@@ -1160,26 +1245,37 @@ iasecc_pkcs15_delete_sdo (struct sc_profile *profile, struct sc_pkcs15_card *p15
 	sdo->sdo_ref = ref & 0x3F;
 
 	rv = iasecc_sdo_get_data(card, sdo);
-	if (rv == SC_ERROR_OBJECT_NOT_FOUND)   {
-		rv = 0;
+	if (rv < 0)   {
+		if (rv == SC_ERROR_OBJECT_NOT_FOUND) 
+			rv = SC_SUCCESS;
+
+		iasecc_sdo_free(card, sdo);
+		LOG_FUNC_RETURN(ctx, rv);
 	}
-	else if (!rv)   {
+	
+	sc_log(ctx, "iasecc_pkcs15_delete_sdo() SDO class 0x%X, ref 0x%X", sdo->sdo_class, sdo->sdo_ref);
+	rv = iasecc_sdo_convert_to_file(card, sdo, &dummy_file);
+	LOG_TEST_RET(ctx, rv, "iasecc_pkcs15_delete_sdo() Cannot convert SDO to file");
+
+	card->caps &= ~SC_CARD_CAP_USE_FCI_AC;
+	rv = sc_pkcs15init_authenticate(profile, p15card, dummy_file, SC_AC_OP_UPDATE);
+	card->caps = save_card_caps;
+	LOG_TEST_RET(ctx, rv, "iasecc_pkcs15_delete_sdo() UPDATE authentication failed for SDO");
+	
+	if (dummy_file)
+		sc_file_free(dummy_file);
+
+	if (card->type == SC_CARD_TYPE_IASECC_OBERTHUR)   {
+		/* Oberthur's card supports creation/deletion of the key slots ... */ 
+		rv = sc_card_ctl(card, SC_CARDCTL_IASECC_SDO_DELETE, sdo);
+	}
+	else  {
+		/* ... other cards not. 
+		 * Set to zero the key components . */
 		unsigned char zeros[0x200];
 		int size = *(sdo->docp.size.value + 0) * 0x100 + *(sdo->docp.size.value + 1);
-		unsigned long caps = card->caps;
 
-		sc_log(ctx, "iasecc_pkcs15_delete_sdo() SDO class %X, ref %i, size %i bytes", sdo->sdo_class, sdo->sdo_ref, size);
-		rv = iasecc_sdo_convert_to_file(card, sdo, &dummy_file);
-		LOG_TEST_RET(ctx, rv, "iasecc_pkcs15_delete_sdo() Cannot convert SDO to file");
-
-		card->caps &= ~SC_CARD_CAP_USE_FCI_AC;
-		rv = sc_pkcs15init_authenticate(profile, p15card, dummy_file, SC_AC_OP_UPDATE);
-		card->caps = caps;
-		LOG_TEST_RET(ctx, rv, "iasecc_pkcs15_delete_sdo() UPDATE authentication failed for SDO");
-	
-		if (dummy_file)
-			sc_file_free(dummy_file);
-
+		sc_log(ctx, "iasecc_pkcs15_delete_sdo() SDO size %i bytes", size);
 		memset(zeros, 0, sizeof(zeros));
 		memset(&rsa, 0, sizeof(rsa));
 
@@ -1193,9 +1289,6 @@ iasecc_pkcs15_delete_sdo (struct sc_profile *profile, struct sc_pkcs15_card *p15
 		/* Don't know why, but, clean public key do not working with Gemalto card */
 		rv = iasecc_sdo_store_key(profile, p15card, sdo, NULL, &rsa);
 		LOG_TEST_RET(ctx, rv, "iasecc_pkcs15_delete_sdo() store empty private key failed");
-	}
-	else   { 
-		LOG_TEST_RET(ctx, rv, "iasecc_pkcs15_delete_sdo() cannot get data of SDO to be deleted");
 	}
 
 	iasecc_sdo_free(card, sdo);
@@ -1221,8 +1314,14 @@ iasecc_pkcs15_delete_object (struct sc_profile *profile, struct sc_pkcs15_card *
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 	case SC_PKCS15_TYPE_PRKEY:
 		key_ref = ((sc_pkcs15_prkey_info_t *)object->data)->key_reference;
+
+		/* Delete both parts of the RSA key */
 		rv = iasecc_pkcs15_delete_sdo (profile, p15card, IASECC_SDO_CLASS_RSA_PRIVATE, key_ref); 
-		sc_log(ctx, "delete SDO PRIVATE KEY with ref %X returns %i",  key_ref, rv);
+		LOG_TEST_RET(ctx, rv, "Cannot delete RSA_PRIVATE SDO");
+
+		rv = iasecc_pkcs15_delete_sdo (profile, p15card, IASECC_SDO_CLASS_RSA_PUBLIC, key_ref); 
+		LOG_TEST_RET(ctx, rv, "Cannot delete RSA_PUBLIC SDO");
+
 		LOG_FUNC_RETURN(ctx, rv);
 	case SC_PKCS15_TYPE_CERT:
 		break;
