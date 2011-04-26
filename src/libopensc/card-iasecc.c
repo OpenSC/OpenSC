@@ -266,7 +266,7 @@ iasecc_select_aid(struct sc_card *card, struct sc_aid *aid, unsigned char *out, 
 	unsigned char apdu_resp[SC_MAX_APDU_BUFFER_SIZE];
 	int rv;
 
-	/* Select Card Manager (to deselect previously selected application) */
+	/* Select application (deselect previously selected application) */
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, 0x04, 0x00);
 	apdu.lc = aid->len;
 	apdu.data = aid->value;
@@ -632,6 +632,36 @@ iasecc_erase_binary(struct sc_card *card, unsigned int offs, size_t count, unsig
 
 
 static int
+iasecc_emulate_fcp(struct sc_context *ctx, struct sc_apdu *apdu)
+{
+	unsigned char dummy_df_fcp[] = {
+		0x62,0xFF,
+			0x82,0x01,0x38,
+			0x8A,0x01,0x05,
+			0xA1,0x04,0x8C,0x02,0x02,0x00,
+			0x84,0xFF,
+				0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
+				0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF
+	};
+
+	LOG_FUNC_CALLED(ctx);
+
+	if (apdu->p1 != 0x04)
+		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "FCP emulation supported only for the DF-NAME selection type");
+	if (apdu->datalen > 16)
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Invalid DF-NAME length");
+	if (apdu->resplen < apdu->datalen + 16)
+		LOG_TEST_RET(ctx, SC_ERROR_BUFFER_TOO_SMALL, "not enough space for FCP data");
+
+	memcpy(dummy_df_fcp + 16, apdu->data, apdu->datalen);
+	dummy_df_fcp[15] = apdu->datalen;
+	dummy_df_fcp[1] = apdu->datalen + 14;
+	memcpy(apdu->resp, dummy_df_fcp, apdu->datalen + 16);
+
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+}
+
+static int
 iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 		 struct sc_file **file_out)
 {
@@ -743,40 +773,24 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 			apdu.data = lpath.value;
 			apdu.datalen = pathlen;
 
-			if (apdu.cse == SC_APDU_CASE_4_SHORT || apdu.cse == SC_APDU_CASE_2_SHORT)   {
-				apdu.resp = rbuf;
-				apdu.resplen = sizeof(rbuf);
-				apdu.le = 256;
-			}
+			apdu.resp = rbuf;
+			apdu.resplen = sizeof(rbuf);
+			apdu.le = 256;
 
 			rv = sc_transmit_apdu(card, &apdu);
 			LOG_TEST_RET(ctx, rv, "APDU transmit failed");
 			rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
-			if (rv == SC_ERROR_INCORRECT_PARAMETERS && lpath.type == SC_PATH_TYPE_DF_NAME && apdu.p2 == 0x00)   {
+			if (rv == SC_ERROR_INCORRECT_PARAMETERS && 
+					lpath.type == SC_PATH_TYPE_DF_NAME && apdu.p2 == 0x00)   {
 				apdu.p2 = 0x0C;
 				continue;
 			}
 
 			if (ii)   {
-				/* 'SELECT AID' do not returned FCP. 
-				 * Use dummy FCP with NONE 'create file' ACL.
-				 */
-				unsigned char dummy_df_fcp[] = {
-					0x62,0xFF,
-						0x82,0x01,0x38,
-						0x8A,0x01,0x05,
-						0xA1,0x04,0x8C,0x02,0x02,0x00,
-						0x84,0xFF,
-							0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
-							0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF
-				};
-
-				memcpy(dummy_df_fcp + 16, apdu.data, apdu.datalen);
-				dummy_df_fcp[15] = apdu.datalen;
-				dummy_df_fcp[1] = apdu.datalen + 14;
-
-				memcpy(apdu.resp, dummy_df_fcp, apdu.datalen + 16);
-				apdu.resplen = apdu.datalen + 16;
+				/* 'SELECT AID' do not returned FCP. Try to emulate. */
+				apdu.resplen = sizeof(rbuf);
+				rv = iasecc_emulate_fcp(ctx, &apdu);
+				LOG_TEST_RET(ctx, rv, "Failed to emulate DF FCP");
 			}
 
 			break;
@@ -2235,6 +2249,41 @@ end:
 
 
 static int
+iasecc_sdo_create(struct sc_card *card, struct iasecc_sdo *sdo)
+{
+	struct sc_context *ctx = card->ctx;
+	struct sc_apdu apdu;
+	unsigned char *data = NULL;
+	int rv = SC_ERROR_NOT_SUPPORTED, data_len;
+
+	LOG_FUNC_CALLED(ctx);
+	if (sdo->magic != SC_CARDCTL_IASECC_SDO_MAGIC)
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Invalid SDO data");
+
+	sc_log(ctx, "iasecc_sdo_create(card:%p) %02X%02X%02X", card,
+			IASECC_SDO_TAG_HEADER, sdo->sdo_class | 0x80, sdo->sdo_ref);
+
+	data_len = iasecc_sdo_encode_create(ctx, sdo, &data);
+	LOG_TEST_RET(ctx, data_len, "iasecc_sdo_create() cannot encode SDO create data");
+	sc_log(ctx, "iasecc_sdo_create() create data(%i):%s", data_len, sc_dump_hex(data, data_len));
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xDB, 0x3F, 0xFF);
+	apdu.data = data;
+	apdu.datalen = data_len;
+	apdu.lc = data_len;
+	apdu.flags |= SC_APDU_FLAGS_CHAINING;
+
+	rv = sc_transmit_apdu(card, &apdu);
+	LOG_TEST_RET(ctx, rv, "APDU transmit failed");
+	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	LOG_TEST_RET(ctx, rv, "iasecc_sdo_create() SDO put data error");
+
+	free(data);
+	LOG_FUNC_RETURN(ctx, rv);
+}
+
+
+static int
 iasecc_sdo_put_data(struct sc_card *card, struct iasecc_sdo_update *update)
 {
 	struct sc_context *ctx = card->ctx;
@@ -2539,6 +2588,9 @@ iasecc_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 	switch (cmd) {
 	case SC_CARDCTL_GET_SERIALNR:
 		return iasecc_get_serialnr(card, (struct sc_serial_number *)ptr);
+	case SC_CARDCTL_IASECC_SDO_CREATE:
+		sc_log(ctx, "CMD SC_CARDCTL_IASECC_SDO_CREATE: sdo_class %X", sdo->sdo_class);
+		return iasecc_sdo_create(card, (struct iasecc_sdo *) ptr);
 	case SC_CARDCTL_IASECC_SDO_PUT_DATA:
 		sc_log(ctx, "CMD SC_CARDCTL_IASECC_SDO_PUT_DATA: sdo_class %X", sdo->sdo_class);
 		return iasecc_sdo_put_data(card, (struct iasecc_sdo_update *) ptr);
