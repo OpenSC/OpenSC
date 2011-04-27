@@ -67,6 +67,12 @@
 				</varlistentry>
 
 				<varlistentry>
+					<term><option>--verify-pin</option></term>
+					<listitem><para>Verify PIN after card binding and before issuing any command 
+                                        (without 'auth-id' the first non-SO, non-Unblock PIN will be verified)</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
 					<term><option>--list-data-objects, -C</option></term>
 					<listitem><para>Lists all data objects stored on the token.
 					For some cards the PKCS#15 attributes of the private data objects are 
