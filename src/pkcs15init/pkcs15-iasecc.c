@@ -463,7 +463,7 @@ iasecc_sdo_allocate_prvkey(struct sc_profile *profile, struct sc_card *card,
 /* 
   		FIXME: Manage CRT key types: IASECC_GEN_KEY_TYPE_*: X509_usage
 		Optional PRIVATE KEY SDO attribute 'Algorithm to compulsorily use' can have one of the three values:
-		B6(Sign), A4(Authentication), B8(Confidentiality).
+		0(any usage), B6(Sign), A4(Authentication), B8(Confidentiality).
 		If present, this attribute has to be the same in the 'GENERATE KEY' template data.
 */
 		if (!(key_info->access_flags & SC_PKCS15_PRKEY_ACCESS_LOCAL) && (key_info->usage & SC_PKCS15_PRKEY_USAGE_NONREPUDIATION))
@@ -947,10 +947,7 @@ iasecc_pkcs15_create_key_slot(struct sc_profile *profile, struct sc_pkcs15_card 
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_card *card = p15card->card;
 	struct sc_file  *file_p_pubkey = NULL, *file_p_prvkey = NULL, *parent = NULL;
-	struct sc_pkcs15_prkey_rsa rsa;
 	unsigned long save_card_caps = p15card->card->caps;
-	size_t keybits = key_info->modulus_length;
-	unsigned char zeros[0x200];
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
@@ -981,37 +978,17 @@ iasecc_pkcs15_create_key_slot(struct sc_profile *profile, struct sc_pkcs15_card 
 	p15card->card->caps  = save_card_caps;
 	LOG_TEST_RET(ctx, rv, "create key slot: SC_AC_OP_CREATE authentication failed");
 
-	memset(zeros, 0, sizeof(zeros));
-	if (sdo_prvkey->not_on_card)   {
-		rv = sc_card_ctl(card, SC_CARDCTL_IASECC_SDO_CREATE, sdo_prvkey);
-		LOG_TEST_RET(ctx, rv, "create key slot: cannot create private key: ctl failed");
-
-		memset(&rsa, 0, sizeof(rsa));
-		rsa.p.data = rsa.q.data = rsa.iqmp.data = rsa.dmp1.data = rsa.dmq1.data = zeros;
-		rsa.p.len = rsa.q.len = rsa.iqmp.len = rsa.dmp1.len = rsa.dmq1.len = keybits/16;
-
-		rv = iasecc_sdo_store_key(profile, p15card, sdo_prvkey, NULL, &rsa);
-		LOG_TEST_RET(ctx, rv, "create key slot: cannot store empty private key");
-	}
-	else   {
+	if (!sdo_prvkey->not_on_card)
 		sc_log(ctx, "create key slot: SDO private key already present");
-	}
+	else
+		rv = sc_card_ctl(card, SC_CARDCTL_IASECC_SDO_CREATE, sdo_prvkey);
+	LOG_TEST_RET(ctx, rv, "create key slot: cannot create private key: ctl failed");
 
-	if (sdo_pubkey->not_on_card)   {
-		rv = sc_card_ctl(card, SC_CARDCTL_IASECC_SDO_CREATE, sdo_pubkey);
-		LOG_TEST_RET(ctx, rv, "create key slot: cannot create public key: ctl failed");
-
-		memset(&rsa, 0, sizeof(rsa));
-		rsa.modulus.data = rsa.exponent.data = zeros;
-		rsa.modulus.len = keybits/8;
-		rsa.exponent.len = 3;
-
-		rv = iasecc_sdo_store_key(profile, p15card, NULL, sdo_pubkey, &rsa);
-		LOG_TEST_RET(ctx, rv, "create key slot: cannot store empty public key");
-	}
-	else   {
+	if (!sdo_pubkey->not_on_card)
 		sc_log(ctx, "create key slot: SDO public key already present");
-	}
+	else
+		rv = sc_card_ctl(card, SC_CARDCTL_IASECC_SDO_CREATE, sdo_pubkey);
+	LOG_TEST_RET(ctx, rv, "create key slot: cannot create public key: ctl failed");
 
 	sc_file_free(file_p_prvkey);
 	sc_file_free(file_p_pubkey);
