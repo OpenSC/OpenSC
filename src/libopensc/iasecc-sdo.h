@@ -290,20 +290,20 @@ enum IASECC_KEY_TYPE {
 };
 
 struct sc_card;
-int iasecc_sdo_convert_acl(struct sc_card *card, struct iasecc_sdo *, unsigned char, unsigned *, unsigned *);
-void iasecc_sdo_free_fields(struct sc_card *card, struct iasecc_sdo *);
+int iasecc_sdo_convert_acl(struct sc_card *, struct iasecc_sdo *, unsigned char, unsigned *, unsigned *);
+void iasecc_sdo_free_fields(struct sc_card *, struct iasecc_sdo *);
 void iasecc_sdo_free(struct sc_card *, struct iasecc_sdo *);
 int iasecc_se_parse(struct sc_card *, unsigned char *, size_t, struct iasecc_se_info *);
 int iasecc_sdo_parse(struct sc_card *, unsigned char *, size_t, struct iasecc_sdo *);
 int iasecc_sdo_allocate_and_parse(struct sc_card *, unsigned char *, size_t, struct iasecc_sdo **);
 int iasecc_encode_size(size_t, unsigned char *);
-int iasecc_sdo_encode_create(struct sc_context*, struct iasecc_sdo *, unsigned char **out);
+int iasecc_sdo_encode_create(struct sc_context*, struct iasecc_sdo *, unsigned char **);
 int iasecc_sdo_encode_update_field(struct sc_context *, unsigned char, unsigned char, 
 		struct iasecc_extended_tlv *, unsigned char **);
 int iasecc_se_get_crt(struct sc_card *, struct iasecc_se_info *, struct sc_crt *);
 int iasecc_se_get_crt_by_usage(struct sc_card *, struct iasecc_se_info *, 
 		unsigned char, unsigned char, struct sc_crt *);
 int iasecc_sdo_encode_rsa_update(struct sc_context *, struct iasecc_sdo *, struct sc_pkcs15_prkey_rsa *, struct iasecc_sdo_update *);
-int iasecc_sdo_parse_card_answer(struct sc_context *ctx, unsigned char *data, size_t data_len, struct iasecc_sm_card_answer *out);
-int iasecc_docp_copy(struct sc_context *ctx, struct iasecc_sdo_docp *in, struct iasecc_sdo_docp *out);
+int iasecc_sdo_parse_card_answer(struct sc_context *, unsigned char *, size_t, struct iasecc_sm_card_answer *);
+int iasecc_docp_copy(struct sc_context *, struct iasecc_sdo_docp *, struct iasecc_sdo_docp *);
 #endif

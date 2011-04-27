@@ -1044,8 +1044,7 @@ iasecc_sdo_encode_update_field(struct sc_context *ctx, unsigned char sdo_class, 
 
 
 int 
-iasecc_sdo_encode_rsa_update(struct sc_context *ctx, struct iasecc_sdo *sdo, 
-		struct sc_pkcs15_prkey_rsa *rsa, 
+iasecc_sdo_encode_rsa_update(struct sc_context *ctx, struct iasecc_sdo *sdo, struct sc_pkcs15_prkey_rsa *rsa,
 		struct iasecc_sdo_update *sdo_update)
 {
 	LOG_FUNC_CALLED(ctx);
@@ -1053,6 +1052,8 @@ iasecc_sdo_encode_rsa_update(struct sc_context *ctx, struct iasecc_sdo *sdo,
 	sc_log(ctx, "iasecc_sdo_encode_rsa_update() SDO class %X", sdo->sdo_class);
 	memset(sdo_update, 0, sizeof(*sdo_update));
 	if (sdo->sdo_class == IASECC_SDO_CLASS_RSA_PRIVATE)   {
+		int indx = 0;
+
 		sc_log(ctx, "iasecc_sdo_encode_rsa_update(IASECC_SDO_CLASS_RSA_PRIVATE)");
 		if (!rsa->p.len || !rsa->q.len || !rsa->iqmp.len || !rsa->dmp1.len || !rsa->dmq1.len) 
 			LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "need all private RSA key components");
@@ -1062,40 +1063,45 @@ iasecc_sdo_encode_rsa_update(struct sc_context *ctx, struct iasecc_sdo *sdo,
 
 		sdo_update->sdo_class = IASECC_SDO_CLASS_RSA_PRIVATE;
 
-		sdo_update->fields[0].parent_tag = IASECC_SDO_PRVKEY_TAG;
-		sdo_update->fields[0].tag = IASECC_SDO_PRVKEY_TAG_P;
-		sdo_update->fields[0].value = rsa->p.data;
-		sdo_update->fields[0].size = rsa->p.len;
+		sdo_update->fields[indx].parent_tag = IASECC_SDO_PRVKEY_TAG;
+		sdo_update->fields[indx].tag = IASECC_SDO_PRVKEY_TAG_P;
+		sdo_update->fields[indx].value = rsa->p.data;
+		sdo_update->fields[indx].size = rsa->p.len;
+		indx++;
 
-		sdo_update->fields[1].parent_tag = IASECC_SDO_PRVKEY_TAG;
-		sdo_update->fields[1].tag = IASECC_SDO_PRVKEY_TAG_Q;
-		sdo_update->fields[1].value = rsa->q.data;
-		sdo_update->fields[1].size = rsa->q.len;
+		sdo_update->fields[indx].parent_tag = IASECC_SDO_PRVKEY_TAG;
+		sdo_update->fields[indx].tag = IASECC_SDO_PRVKEY_TAG_Q;
+		sdo_update->fields[indx].value = rsa->q.data;
+		sdo_update->fields[indx].size = rsa->q.len;
+		indx++;
 
-		sdo_update->fields[2].parent_tag = IASECC_SDO_PRVKEY_TAG;
-		sdo_update->fields[2].tag = IASECC_SDO_PRVKEY_TAG_IQMP;
-		sdo_update->fields[2].value = rsa->iqmp.data;
-		sdo_update->fields[2].size = rsa->iqmp.len;
+		sdo_update->fields[indx].parent_tag = IASECC_SDO_PRVKEY_TAG;
+		sdo_update->fields[indx].tag = IASECC_SDO_PRVKEY_TAG_IQMP;
+		sdo_update->fields[indx].value = rsa->iqmp.data;
+		sdo_update->fields[indx].size = rsa->iqmp.len;
+		indx++;
 
-		sdo_update->fields[3].parent_tag = IASECC_SDO_PRVKEY_TAG;
-		sdo_update->fields[3].tag = IASECC_SDO_PRVKEY_TAG_DMP1;
-		sdo_update->fields[3].value = rsa->dmp1.data;
-		sdo_update->fields[3].size = rsa->dmp1.len;
+		sdo_update->fields[indx].parent_tag = IASECC_SDO_PRVKEY_TAG;
+		sdo_update->fields[indx].tag = IASECC_SDO_PRVKEY_TAG_DMP1;
+		sdo_update->fields[indx].value = rsa->dmp1.data;
+		sdo_update->fields[indx].size = rsa->dmp1.len;
+		indx++;
 
-		sdo_update->fields[4].parent_tag = IASECC_SDO_PRVKEY_TAG;
-		sdo_update->fields[4].tag = IASECC_SDO_PRVKEY_TAG_DMQ1;
-		sdo_update->fields[4].value = rsa->dmq1.data;
-		sdo_update->fields[4].size = rsa->dmq1.len;
+		sdo_update->fields[indx].parent_tag = IASECC_SDO_PRVKEY_TAG;
+		sdo_update->fields[indx].tag = IASECC_SDO_PRVKEY_TAG_DMQ1;
+		sdo_update->fields[indx].value = rsa->dmq1.data;
+		sdo_update->fields[indx].size = rsa->dmq1.len;
+		indx++;
 
-		/* FIXME: Activated for Oberthur -- check for others */
 		sc_log(ctx, "prv_key.compulsory.on_card %i", sdo->data.prv_key.compulsory.on_card);
 		if (!sdo->data.prv_key.compulsory.on_card)   {
 			if (sdo->data.prv_key.compulsory.value)   {
 				sc_log(ctx, "sdo_prvkey->data.prv_key.compulsory.size %i", sdo->data.prv_key.compulsory.size); 
-				sdo_update->fields[5].parent_tag = IASECC_SDO_PRVKEY_TAG;
-				sdo_update->fields[5].tag = IASECC_SDO_PRVKEY_TAG_COMPULSORY;
-				sdo_update->fields[5].value = sdo->data.prv_key.compulsory.value;
-				sdo_update->fields[5].size = sdo->data.prv_key.compulsory.size;
+				sdo_update->fields[indx].parent_tag = IASECC_SDO_PRVKEY_TAG;
+				sdo_update->fields[indx].tag = IASECC_SDO_PRVKEY_TAG_COMPULSORY;
+				sdo_update->fields[indx].value = sdo->data.prv_key.compulsory.value;
+				sdo_update->fields[indx].size = sdo->data.prv_key.compulsory.size;
+				indx++;
 			}
 		}
 	}
