@@ -110,6 +110,8 @@ static int iasecc_sdo_get_data(struct sc_card *card, struct iasecc_sdo *sdo);
 static int iasecc_pin_get_policy (struct sc_card *card, struct sc_pin_cmd_data *data);
 static int iasecc_pin_is_verified(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd, int *tries_left);
 static int iasecc_get_free_reference(struct sc_card *card, struct iasecc_ctl_get_free_reference *ctl_data);
+static int iasecc_sdo_put_data(struct sc_card *card, struct iasecc_sdo_update *update);
+
 
 static int 
 iasecc_chv_cache_verified(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd)
@@ -2253,7 +2255,9 @@ iasecc_sdo_create(struct sc_card *card, struct iasecc_sdo *sdo)
 {
 	struct sc_context *ctx = card->ctx;
 	struct sc_apdu apdu;
-	unsigned char *data = NULL;
+	unsigned char *data = NULL, sdo_class = sdo->sdo_class;
+	struct iasecc_sdo_update update;
+	struct iasecc_extended_tlv *field = NULL;
 	int rv = SC_ERROR_NOT_SUPPORTED, data_len;
 
 	LOG_FUNC_CALLED(ctx);
@@ -2277,6 +2281,34 @@ iasecc_sdo_create(struct sc_card *card, struct iasecc_sdo *sdo)
 	LOG_TEST_RET(ctx, rv, "APDU transmit failed");
 	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(ctx, rv, "iasecc_sdo_create() SDO put data error");
+
+	memset(&update, 0, sizeof(update));
+	update.magic = SC_CARDCTL_IASECC_SDO_MAGIC_PUT_DATA;
+	update.sdo_class = sdo->sdo_class;
+	update.sdo_ref = sdo->sdo_ref;
+
+	if (sdo_class == IASECC_SDO_CLASS_RSA_PRIVATE)   {
+		update.fields[0] = sdo->data.prv_key.compulsory;
+		update.fields[0].parent_tag = IASECC_SDO_PRVKEY_TAG;
+		field = &sdo->data.prv_key.compulsory;
+	}
+	else if (sdo_class == IASECC_SDO_CLASS_RSA_PUBLIC)   { 
+		update.fields[0] = sdo->data.pub_key.compulsory;
+		update.fields[0].parent_tag = IASECC_SDO_PUBKEY_TAG;
+		field = &sdo->data.pub_key.compulsory;
+	}
+	else if (sdo_class == IASECC_SDO_CLASS_KEYSET)   { 
+		update.fields[0] = sdo->data.keyset.compulsory;
+		update.fields[0].parent_tag = IASECC_SDO_KEYSET_TAG;
+		field = &sdo->data.keyset.compulsory;
+	}
+
+	if (update.fields[0].value && !update.fields[0].on_card)   {
+		rv = iasecc_sdo_put_data(card, &update);
+		LOG_TEST_RET(ctx, rv, "failed to update 'Compulsory usage' data");
+
+		field->on_card = 1;
+	}
 
 	free(data);
 	LOG_FUNC_RETURN(ctx, rv);
