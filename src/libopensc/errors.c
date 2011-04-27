@@ -48,6 +48,7 @@ const char *sc_strerror(int error)
 		"Reader in use by another application"
 	};
 	const int rdr_base = -SC_ERROR_READER;
+
 	const char *card_errors[] = {
 		"Card command failed",
 		"File not found",
@@ -67,8 +68,11 @@ const char *sc_strerror(int error)
 		"File already exists",
 		"Data object not found",
 		"Not enough memory on card",
+		"Part of returned data may be corrupted",
+		"End of file/record reached before reading Le bytes"
 	};
 	const int card_base = -SC_ERROR_CARD_CMD_FAILED;
+
 	const char *arg_errors[] = {
 		"Invalid arguments",
 		"UNUSED",
@@ -78,6 +82,7 @@ const char *sc_strerror(int error)
 		"Invalid data",
 	};
 	const int arg_base = -SC_ERROR_INVALID_ARGUMENTS;
+
 	const char *int_errors[] = {
 		"Internal error",
 		"Invalid ASN.1 object",
@@ -98,6 +103,7 @@ const char *sc_strerror(int error)
 		"Not implemented"
 	};
 	const int int_base = -SC_ERROR_INTERNAL;
+
 	const char *p15i_errors[] = {
 		"Generic PKCS#15 initialization error",
 		"Syntax error",
@@ -112,12 +118,14 @@ const char *sc_strerror(int error)
 		"File too small",
 	};
 	const int p15i_base = -SC_ERROR_PKCS15INIT;
+
 	const char *misc_errors[] = {
 		"Unknown error",
 		"PKCS#15 compatible smart card not found",
 	};
-	const char *no_errors = "Success";
 	const int misc_base = -SC_ERROR_UNKNOWN;
+
+	const char *no_errors = "Success";
 	const char **errors = NULL;
 	int count = 0, err_base = 0;
 
@@ -125,6 +133,7 @@ const char *sc_strerror(int error)
 		return no_errors;
 	if (error < 0)
 		error = -error;
+
 	if (error >= misc_base) {
 		errors = misc_errors;
 		count = DIM(misc_errors);
