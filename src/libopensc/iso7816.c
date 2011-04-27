@@ -31,8 +31,8 @@
 
 static const struct sc_card_error iso7816_errors[] = {
 	{ 0x6200, SC_ERROR_MEMORY_FAILURE,	"State of non-volatile memory unchanged" },
-	{ 0x6281, SC_ERROR_MEMORY_FAILURE,	"Part of returned data may be corrupted" },
-	{ 0x6282, SC_ERROR_CARD_CMD_FAILED,	"End of file/record reached before reading Le bytes" },
+	{ 0x6281, SC_ERROR_CORRUPTED_DATA,	"Part of returned data may be corrupted" },
+	{ 0x6282, SC_ERROR_FILE_END_REACHED,	"End of file/record reached before reading Le bytes" },
 	{ 0x6283, SC_ERROR_CARD_CMD_FAILED,	"Selected file invalidated" },
 	{ 0x6284, SC_ERROR_CARD_CMD_FAILED,	"FCI not formatted according to ISO 7816-4" },
 
@@ -111,12 +111,13 @@ static int iso7816_read_binary(sc_card_t *card,
 			       unsigned int idx, u8 *buf, size_t count,
 			       unsigned long flags)
 {
+	sc_context_t *ctx = card->ctx;
 	sc_apdu_t apdu;
 	u8 recvbuf[SC_MAX_APDU_BUFFER_SIZE];
 	int r;
 
 	if (idx > 0x7fff) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "invalid EF offset: 0x%X > 0x7FFF", idx);
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "invalid EF offset: 0x%X > 0x7FFF", idx);
 		return SC_ERROR_OFFSET_TOO_LARGE;
 	}
 
@@ -128,19 +129,24 @@ static int iso7816_read_binary(sc_card_t *card,
 	apdu.resp = recvbuf;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 	if (apdu.resplen == 0)
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 	memcpy(buf, recvbuf, apdu.resplen);
+
+	r =  sc_check_sw(card, apdu.sw1, apdu.sw2);
+	if (r == SC_ERROR_FILE_END_REACHED)
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, apdu.resplen);
+	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Check SW error");
 
 	if (apdu.resplen < count)   {
 		r = iso7816_read_binary(card, idx + apdu.resplen, buf + apdu.resplen, count - apdu.resplen, flags);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 
 		apdu.resplen += r;
 	}
 
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, apdu.resplen);
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, apdu.resplen);
 }
 
 static int iso7816_read_record(sc_card_t *card,
