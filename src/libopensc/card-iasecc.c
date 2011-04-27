@@ -2741,12 +2741,16 @@ iasecc_get_qsign_data (struct sc_context *ctx, const unsigned char *in, size_t i
 		out->counter[hh_size+ii] = (sha.Nl >> 8*(hh_size-1-ii)) &0xFF;
 	}
 
+	for (ii=0, out->counter_long=0; ii<sizeof(out->counter); ii++)
+		out->counter_long = out->counter_long*0x100 + out->counter[ii];
+
 	sc_log(ctx, "Pre SHA1:%s", sc_dump_hex(out->pre_hash, out->pre_hash_size));
-	sc_log(ctx, "Pre counter:%s", sc_dump_hex(out->counter, sizeof(out->counter)));
+	sc_log(ctx, "Pre counter(%li):%s", out->counter_long, sc_dump_hex(out->counter, sizeof(out->counter)));
 
 	for (ii=0;ii<sha.num; ii++)
 		out->last_block[ii] = (sha.data[ii/hh_size] >> 8*(hh_size-1-(ii%hh_size))) &0xFF;
 	out->last_block_size = sha.num;
+	sc_log(ctx, "Last block(%i):%s", out->last_block_size, sc_dump_hex(out->last_block, out->last_block_size));
 
 	SHA1_Final(out->hash, &sha);
 	out->hash_size = SHA_DIGEST_LENGTH;
@@ -2792,11 +2796,16 @@ iasecc_compute_signature_dst(struct sc_card *card,
 
 	memset(sbuf, 0, sizeof(sbuf));
 	sbuf[offs++] = 0x90;
-	sbuf[offs++] = qsign_data.hash_size + 8;
-	memcpy(sbuf + offs, qsign_data.pre_hash, qsign_data.pre_hash_size);
-	offs += qsign_data.pre_hash_size;
-	memcpy(sbuf + offs, qsign_data.counter, sizeof(qsign_data.counter));
-	offs += sizeof(qsign_data.counter);
+	if (qsign_data.counter_long)   {
+		sbuf[offs++] = qsign_data.hash_size + 8;
+		memcpy(sbuf + offs, qsign_data.pre_hash, qsign_data.pre_hash_size);
+		offs += qsign_data.pre_hash_size;
+		memcpy(sbuf + offs, qsign_data.counter, sizeof(qsign_data.counter));
+		offs += sizeof(qsign_data.counter);
+	}
+	else   {
+		sbuf[offs++] = 0;
+	}
 
 	sbuf[offs++] = 0x80;
 	sbuf[offs++] = qsign_data.last_block_size;

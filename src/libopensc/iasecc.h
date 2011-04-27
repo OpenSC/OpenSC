@@ -102,6 +102,7 @@ typedef struct iasecc_qsign_data {
 	size_t pre_hash_size;
 
 	unsigned char counter[8];
+	unsigned long counter_long;
 
 	unsigned char last_block[64];
 	size_t last_block_size;
