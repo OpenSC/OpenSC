@@ -79,6 +79,9 @@
 #define TEMPLATE_INSTANTIATE_MIN_INDEX	0x0
 #define TEMPLATE_INSTANTIATE_MAX_INDEX	0xFE
 
+/* Maximal number of access conditions that can be defined for one card operation. */
+#define SC_MAX_OP_ACS                   16
+
 /* Handle encoding of PKCS15 on the card */
 typedef int	(*pkcs15_encoder)(struct sc_context *,
 			struct sc_pkcs15_card *, u8 **, size_t *);
@@ -3359,14 +3362,14 @@ sc_pkcs15init_fixup_acls(struct sc_pkcs15_card *p15card, struct sc_file *file,
 
 	LOG_FUNC_CALLED(ctx);
 	for (op = 0; r == 0 && op < SC_MAX_AC_OPS; op++) {
-		struct sc_acl_entry acls[16];
+		struct sc_acl_entry acls[SC_MAX_OP_ACS];
 		const struct sc_acl_entry *acl;
 		const char	*what;
 		int		added = 0, num, ii;
 
 		/* First, get original ACLs */
 		acl = sc_file_get_acl_entry(file, op);
-		for (num = 0; num < 16 && acl; num++, acl = acl->next)
+		for (num = 0; num < SC_MAX_OP_ACS && acl; num++, acl = acl->next)
 			acls[num] = *acl;
 
 		sc_file_clear_acl_entries(file, op);
