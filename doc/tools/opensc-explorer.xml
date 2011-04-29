@@ -291,7 +291,7 @@
 	
 	<refsect1>
 		<title>See also</title>
-		<para>opensc(7), opensc-tool(1)</para>
+		<para>opensc-tool(1)</para>
 	</refsect1>
 
 </refentry>

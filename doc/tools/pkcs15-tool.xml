@@ -178,7 +178,7 @@
 	
 	<refsect1>
 		<title>See also</title>
-		<para>opensc(7), pkcs15-init(1), pkcs15-crypt(1)</para>
+		<para>pkcs15-init(1), pkcs15-crypt(1)</para>
 	</refsect1>
 
 </refentry>

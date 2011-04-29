@@ -51,10 +51,7 @@
 	
 	<refsect1>
 		<title>See also</title>
-		<para>
-			<command>pkcs15</command>(7), <command>pkcs15-init</command>(1),
-			<command>pkcs15-crypt</command>(1), <command>opensc</command>(7), 
-		</para>
+		<para>pkcs15-init(1), pkcs15-crypt(1)</para>
 	</refsect1>
 
 </refentry>
