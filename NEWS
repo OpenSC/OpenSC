@@ -3,6 +3,26 @@ NEWS for OpenSC -- History of user visible changes
 Complete change history is available online:
 http://www.opensc-project.org/opensc/timeline
 
+New in 0.12.1; 2011-04-XX
+* New card driver: IAS/ECC 1.0.1
+* rutoken-tool has been deprecated and removed.
+* eidenv and piv-tool utilities now have manual pages.
+* All tools can now use an ATR as an argument to --reader, to skip to the
+  card with given ATR.
+* opensc-tool -l with -v now shows information about the inserted cards.
+* Creating files have an enforced upper size limit, 64K
+* Support for multiple PKCS#15 applications with different AID-s.
+  PKCS#15 applications can be listed with pkcs15-tool --list-applications.
+  Binding to a specific AID with PKCS#15 tools can be done with --aid.
+* Hex strings (like card ATR or APDU-s) can now be separated by space, in
+  addition to colons.
+* Pinpad readers known to be bogus are now ignored by OpenSC. At the moment
+  only "HP USB Smart Card Keyboard" is disabled.
+* Windows installer is now distributed as a statically built MSI, for both
+  x86 and x64.
+* Numerous compiler warnings, unused code and internal bugs have been
+  eliminated.
+
 New in 0.12.0; 2010-12-22
 * OpenSC uses a single reader driver, specified at compile time.
 * New card driver: Italian eID (CNS) by Emanuele Pucciarelli.
