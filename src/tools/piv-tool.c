@@ -60,8 +60,6 @@ static int	verbose = 0;
 
 enum {
 	OPT_SERIAL = 0x100,
-	OPT_KEY_SLOTS_DISCOVERY,
-	OPT_CONTAINERS_DISCOVERY,
 };
 
 static const struct option options[] = {
@@ -74,8 +72,6 @@ static const struct option options[] = {
 	{ "compresscert",	1, NULL,		'Z' },
 	{ "out",		1, NULL, 		'o' },
 	{ "in",			1, NULL, 		'i' },
-	{ "key-slots-discovery",0, NULL,	OPT_KEY_SLOTS_DISCOVERY	},
-	{ "containers-discovery",0, NULL,	OPT_CONTAINERS_DISCOVERY},
 	{ "send-apdu",		1, NULL,		's' },
 	{ "reader",		1, NULL,		'r' },
 	{ "card-driver",	1, NULL,		'c' },
@@ -94,8 +90,6 @@ static const char *option_help[] = {
 	"Load a cert that has been gziped <ref>",
 	"Output file for cert or key",
 	"Inout file for cert",
-	"Key slots discovery (need admin authentication)",
-	"Containers discovery (need admin authentication)",
 	"Sends an APDU in format AA:BB:CC:DD:EE:FF...",
 	"Uses reader number <arg> [0]",
 	"Forces the use of driver <arg> [auto-detect]",
@@ -400,132 +394,6 @@ static int gen_key(const char * key_info)
 }
 
 
-static int key_slots_discovery(void)   
-{
-	sc_apdu_t apdu;
-	u8 sbuf[4] = {0x5C, 0x02, 0x3F, 0xF7};
-	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE*3], *data = NULL;
-	unsigned int cla_out, tag_out;
-	size_t r, i, data_len;
-
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xCB, 0x3F, 0xFF);
-	apdu.lc = sizeof(sbuf);
-	apdu.le = 256;
-	apdu.data = sbuf;
-	apdu.datalen = sizeof(sbuf);
-	apdu.resp = rbuf;
-	apdu.resplen = sizeof(rbuf);
-
-	r = sc_transmit_apdu(card, &apdu);
-	if (r) {
-		fprintf(stderr, "APDU transmit failed: %s\n", sc_strerror(r));
-		return 1;
-	}
-
-	data = rbuf;
-	if (*data != 0x53)   {
-		fprintf(stderr, "Invalid 'GET DATA' response\n");
-		return 1;
-	}
-
-	if (*(data + 1) & 0x80)   {
-		for (i=0, data_len=0; i < (*(data + 1) & 0x7F); i++)
-			data_len = data_len * 0x100 + *(data + 2 + i);
-		data += 2 + i;
-	}
-	else {
-		data_len = *(data + 1);
-		data += 2;
-	}
-
-	if (data_len % 12)   {
-		fprintf(stderr, "Invalid key discovery data length\n");
-		return 1;
-	}
-
-	for (i=0;i<data_len/12;i++)   {
-		unsigned char *slot = data + 12*i;
-
-		if (*(slot + 1) > 20)   {
-			fprintf(stderr, "Invalid algorithm identifier\n");
-			return 1;
-		}
-
-		printf("%02X(%s): %02X(%s)", *(slot + 0), *(slot + 7) ? "loaded" : "not loaded", 
-				*(slot + 1), algorithm_identifiers[*(slot + 1)]); 
-		if (*(slot + 2) == 0)
-			printf (",           ");
-		else if (*(slot + 2) == 0x35) 
-			printf (", PIV-ADMIN ");
-		else if (*(slot + 2) == 0x29)
-			printf (", MutualAuth");
-		else    {
-			fprintf(stderr, "Invalid role\n");
-			return 1;
-		}
-		printf(", ACLs %02X:%02X %02X:%02X", *(slot + 8), *(slot + 9), *(slot + 10), *(slot + 11));
-		printf("\n");
-	}
-
-	return SC_SUCCESS;
-}
-
-
-static int containers_discovery(void)   
-{
-	sc_apdu_t apdu;
-	u8 sbuf[4] = {0x5C, 0x02, 0x3F, 0xF6};
-	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE*3], *data = NULL;
-	unsigned int cla_out, tag_out;
-	size_t r, i, data_len;
-
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xCB, 0x3F, 0xFF);
-	apdu.lc = sizeof(sbuf);
-	apdu.le = 256;
-	apdu.data = sbuf;
-	apdu.datalen = sizeof(sbuf);
-	apdu.resp = rbuf;
-	apdu.resplen = sizeof(rbuf);
-
-	r = sc_transmit_apdu(card, &apdu);
-	if (r) {
-		fprintf(stderr, "APDU transmit failed: %s\n", sc_strerror(r));
-		return 1;
-	}
-
-	data = rbuf;
-	if (*data != 0x53)   {
-		fprintf(stderr, "Invalid 'GET DATA' response\n");
-		return 1;
-	}
-
-	if (*(data + 1) & 0x80)   {
-		for (i=0, data_len=0; i < (*(data + 1) & 0x7F); i++)
-			data_len = data_len * 0x100 + *(data + 2 + i);
-		data += 2 + i;
-	}
-	else {
-		data_len = *(data + 1);
-		data += 2;
-	}
-
-	if (data_len % 9)   {
-		fprintf(stderr, "Invalid containers discovery data length\n");
-		return 1;
-	}
-
-	for (i=0;i<data_len/9;i++)   {
-		unsigned char *slot = data + 9*i;
-
-		printf("%02X%02X%02X", *(slot + 0), *(slot + 1), *(slot + 2));
-		printf(", size %02X%02X", *(slot + 3), *(slot + 4));
-		printf(", ACLs %02X:%02X %02X:%02X", *(slot + 5), *(slot + 6), *(slot + 7), *(slot + 8));
-		printf("\n");
-	}
-
-	return SC_SUCCESS;
-}
-
 static int send_apdu(void)
 {
 	sc_apdu_t apdu;
@@ -578,8 +446,6 @@ int main(int argc, char * const argv[])
 	int compress_cert = 0;
 	int do_print_serial = 0;
 	int do_print_name = 0;
-	int do_key_slots_discovery = 0;
-	int do_containers_discovery = 0;
 	int action_count = 0;
 	const char *opt_driver = NULL;
 	const char *out_file = NULL;
@@ -602,14 +468,6 @@ int main(int argc, char * const argv[])
 		switch (c) {
 		case OPT_SERIAL:
 			do_print_serial = 1;
-			action_count++;
-			break;
-		case OPT_KEY_SLOTS_DISCOVERY:
-			do_key_slots_discovery = 1;
-			action_count++;
-			break;
-		case OPT_CONTAINERS_DISCOVERY:
-			do_containers_discovery = 1;
 			action_count++;
 			break;
 		case 's':
@@ -750,28 +608,6 @@ int main(int argc, char * const argv[])
 			printf("Card name: ");
 		printf("%s\n", card->name);
 		action_count--;
-	}
-	if (do_key_slots_discovery)   {
-		if (!do_admin_mode)   {
-			fprintf(stderr, "Key slots discovery needs admin authentication\n");
-			err = 1;
-			goto end;
-		}
-		if (verbose)
-			printf("Key slots discovery: ");
-		if ((err = key_slots_discovery()))
-			goto end;
-	}
-	if (do_containers_discovery)   {
-		if (!do_admin_mode)   {
-			fprintf(stderr, "Containers discovery needs admin authentication\n");
-			err = 1;
-			goto end;
-		}
-		if (verbose)
-			printf("Containers discovery: ");
-		if ((err = containers_discovery()))
-			goto end;
 	}
 end:
 	if (bp) 
