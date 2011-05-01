@@ -2671,17 +2671,17 @@ sc_pkcs15init_change_attrib(struct sc_pkcs15_card *p15card, struct sc_profile *p
 	struct sc_pkcs15_id new_id = *((struct sc_pkcs15_id *) new_value);
 
 	if (object == NULL || object->df == NULL)
-		return SC_ERROR_OBJECT_NOT_FOUND;
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Cannot change attribute");
 	df_type = object->df->type;
 
 	df = find_df_by_type(p15card, df_type);
 	if (df == NULL)
-		return SC_ERROR_OBJECT_NOT_FOUND;
+		LOG_TEST_RET(ctx, SC_ERROR_OBJECT_NOT_FOUND, "Cannot change attribute");
 
 	switch(new_attrib_type)   {
 	case P15_ATTR_TYPE_LABEL:
 		if (new_len >= SC_PKCS15_MAX_LABEL_SIZE)
-			return SC_ERROR_INVALID_ARGUMENTS;
+			LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "New label too long");
 		memcpy(object->label, new_value, new_len);
 		object->label[new_len] = '\0';
 		break;
