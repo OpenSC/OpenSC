@@ -319,6 +319,12 @@ struct sc_pkcs15_accessrule {
 typedef struct sc_pkcs15_accessrule sc_pkcs15_accessrule_t;
 
 
+struct sc_pkcs15_key_params {
+	void   *data;
+	size_t len;
+	void (*free_params)(void *);
+};
+
 struct sc_pkcs15_prkey_info {
 	struct sc_pkcs15_id id;	/* correlates to public certificate id */
 	unsigned int usage, access_flags;
@@ -331,8 +337,7 @@ struct sc_pkcs15_prkey_info {
 
 	struct sc_pkcs15_der subject;
 
-	void   *params;
-	size_t params_len;
+	struct sc_pkcs15_key_params params;
 
 	struct sc_path path;
 };
@@ -350,8 +355,7 @@ struct sc_pkcs15_pubkey_info {
 
 	struct sc_pkcs15_der subject;
 
-	void   *params;
-	size_t params_len;
+	struct sc_pkcs15_key_params params;
 
 	struct sc_path path;
 };
@@ -592,6 +596,7 @@ int sc_pkcs15_encode_prkey(struct sc_context *,
 			u8 **, size_t *);
 void sc_pkcs15_erase_prkey(struct sc_pkcs15_prkey *prkey);
 void sc_pkcs15_free_prkey(struct sc_pkcs15_prkey *prkey);
+void sc_pkcs15_free_key_params(struct sc_pkcs15_key_params *params);
 
 int sc_pkcs15_read_data_object(struct sc_pkcs15_card *p15card,
 			       const struct sc_pkcs15_data_info *info,

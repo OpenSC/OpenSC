@@ -2213,3 +2213,15 @@ sc_pkcs15_get_guid(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_object
 	return sc_pkcs15_serialize_guid(guid_bin, id.len + serialnr.len, out, out_size);
 }
 
+void sc_pkcs15_free_key_params(struct sc_pkcs15_key_params *params)   
+{
+	if (!params)
+		return;
+	if (params->data && params->free_params)
+		params->free_params(params->data);
+	else if (params->data)
+		free(params->data);
+
+	params->data = NULL;
+}
+

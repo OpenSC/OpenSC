@@ -180,6 +180,7 @@ sc_pkcs15_free_cert_info
 sc_pkcs15_free_certificate
 sc_pkcs15_free_data_info
 sc_pkcs15_free_data_object
+sc_pkcs15_free_key_params
 sc_pkcs15_free_object
 sc_pkcs15_free_pin_info
 sc_pkcs15_free_prkey

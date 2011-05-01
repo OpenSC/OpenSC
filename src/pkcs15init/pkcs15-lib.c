@@ -1129,13 +1129,13 @@ sc_pkcs15init_init_prkdf(struct sc_pkcs15_card *p15card,
 	key_info->id = keyargs->id;
 
 	if (key->algorithm == SC_ALGORITHM_GOSTR3410) {
-		key_info->params_len = sizeof(*keyinfo_gostparams);
+		key_info->params.len = sizeof(*keyinfo_gostparams);
 		/* FIXME: malloc() call in pkcs15init, but free() call
 		 * in libopensc (sc_pkcs15_free_prkey_info) */
-		key_info->params = malloc(key_info->params_len);
-		if (!key_info->params)
+		key_info->params.data = malloc(key_info->params.len);
+		if (!key_info->params.data)
 			LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate memory for GOST parameters");
-		keyinfo_gostparams = key_info->params;
+		keyinfo_gostparams = key_info->params.data;
 		keyinfo_gostparams->gostr3410 = keyargs->params.gost.gostr3410;
 		keyinfo_gostparams->gostr3411 = keyargs->params.gost.gostr3411;
 		keyinfo_gostparams->gost28147 = keyargs->params.gost.gost28147;
@@ -1444,13 +1444,13 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
 	key_info->modulus_length = keybits;
 
 	if (key.algorithm == SC_ALGORITHM_GOSTR3410) {
-		key_info->params_len = sizeof(*keyinfo_gostparams);
+		key_info->params.len = sizeof(*keyinfo_gostparams);
 		/* FIXME: malloc() call in pkcs15init, but free() call
 		 * in libopensc (sc_pkcs15_free_prkey_info) */
-		key_info->params = malloc(key_info->params_len);
-		if (!key_info->params)
+		key_info->params.data = malloc(key_info->params.len);
+		if (!key_info->params.data)
 			return SC_ERROR_OUT_OF_MEMORY;
-		keyinfo_gostparams = key_info->params;
+		keyinfo_gostparams = key_info->params.data;
 		keyinfo_gostparams->gostr3410 = keyargs->params.gost.gostr3410;
 		keyinfo_gostparams->gostr3411 = keyargs->params.gost.gostr3411;
 		keyinfo_gostparams->gost28147 = keyargs->params.gost.gost28147;

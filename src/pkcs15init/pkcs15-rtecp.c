@@ -299,12 +299,12 @@ static int rtecp_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	}
 	if (obj->type == SC_PKCS15_TYPE_PRKEY_GOSTR3410)
 	{
-		if (key_info->params_len < sizeof(int))
+		if (key_info->params.len < sizeof(int))
 			return SC_ERROR_INVALID_ARGUMENTS;
-		if (((int*)key_info->params)[0] < 1
-				|| ((int*)key_info->params)[0] > 3)
+		if (((int*)key_info->params.data)[0] < 1
+				|| ((int*)key_info->params.data)[0] > 3)
 			return SC_ERROR_INVALID_ARGUMENTS;
-		paramset = ((unsigned int*)key_info->params)[0] & 0x03;
+		paramset = ((unsigned int*)key_info->params.data)[0] & 0x03;
 		assert(sizeof(prgkey_prop)/sizeof(prgkey_prop[0]) > 1);
 		assert(sizeof(pbgkey_prop)/sizeof(pbgkey_prop[0]) > 1);
 		prgkey_prop[1] = 0x10 + (paramset << 4);

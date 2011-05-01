@@ -191,13 +191,13 @@ int sc_pkcs15_decode_prkdf_entry(struct sc_pkcs15_card *p15card,
 		obj->type = SC_PKCS15_TYPE_PRKEY_GOSTR3410;
 		assert(info.modulus_length == 0);
 		info.modulus_length = SC_PKCS15_GOSTR3410_KEYSIZE;
-		assert(info.params_len == 0);
-		info.params_len = sizeof(struct sc_pkcs15_keyinfo_gostparams);
-		info.params = malloc(info.params_len);
-		if (info.params == NULL)
+		assert(info.params.len == 0);
+		info.params.len = sizeof(struct sc_pkcs15_keyinfo_gostparams);
+		info.params.data = malloc(info.params.len);
+		if (info.params.data == NULL)
 			SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
-		assert(sizeof(*keyinfo_gostparams) == info.params_len);
-		keyinfo_gostparams = info.params;
+		assert(sizeof(*keyinfo_gostparams) == info.params.len);
+		keyinfo_gostparams = info.params.data;
 		keyinfo_gostparams->gostr3410 = gostr3410_params[0];
 		keyinfo_gostparams->gostr3411 = gostr3410_params[1];
 		keyinfo_gostparams->gost28147 = gostr3410_params[2];
@@ -209,8 +209,7 @@ int sc_pkcs15_decode_prkdf_entry(struct sc_pkcs15_card *p15card,
 	if (!p15card->app || !p15card->app->ddo.aid.len)   {
 		r = sc_pkcs15_make_absolute_path(&p15card->file_app->path, &info.path);
 		if (r < 0) {
-			if (info.params)
-				free(info.params);
+			sc_pkcs15_free_key_params(&info.params);
 			return r;
 		}
 	}
@@ -227,8 +226,7 @@ int sc_pkcs15_decode_prkdf_entry(struct sc_pkcs15_card *p15card,
 
 	obj->data = malloc(sizeof(info));
 	if (obj->data == NULL) {
-		if (info.params)
-			free(info.params);
+		sc_pkcs15_free_key_params(&info.params);
 		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
 	}
 	memcpy(obj->data, &info, sizeof(info));
@@ -300,9 +298,9 @@ int sc_pkcs15_encode_prkdf_entry(sc_context_t *ctx,
 		sc_format_asn1_entry(asn1_prkey + 2, &gostr3410_prkey_obj, NULL, 1);
 		sc_format_asn1_entry(asn1_prk_gostr3410_attr + 0, asn1_gostr3410key_attr, NULL, 1);
 		sc_format_asn1_entry(asn1_gostr3410key_attr + 0, &prkey->path, NULL, 1);
-		if (prkey->params_len == sizeof(*keyinfo_gostparams))
+		if (prkey->params.len == sizeof(*keyinfo_gostparams))
 		{
-			keyinfo_gostparams = prkey->params;
+			keyinfo_gostparams = prkey->params.data;
 			sc_format_asn1_entry(asn1_gostr3410key_attr + 1,
 					&keyinfo_gostparams->gostr3410, NULL, 1);
 			sc_format_asn1_entry(asn1_gostr3410key_attr + 2,
@@ -524,7 +522,8 @@ void sc_pkcs15_free_prkey_info(sc_pkcs15_prkey_info_t *key)
 {
 	if (key->subject.value)
 		free(key->subject.value);
-	if (key->params)
-		free(key->params);
+
+	sc_pkcs15_free_key_params(&key->params);
+
 	free(key);
 }

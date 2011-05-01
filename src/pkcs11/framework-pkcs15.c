@@ -2507,9 +2507,9 @@ static CK_RV pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
 		attr->ulValueLen = 0;
 		return CKR_OK;
 	case CKA_GOSTR3410_PARAMS:
-		if (prkey->prv_info && prkey->prv_info->params_len)
-			return get_gostr3410_params(prkey->prv_info->params,
-					prkey->prv_info->params_len, attr);
+		if (prkey->prv_info && prkey->prv_info->params.len)
+			return get_gostr3410_params(prkey->prv_info->params.data,
+					prkey->prv_info->params.len, attr);
 		else
 			return CKR_ATTRIBUTE_TYPE_INVALID;
 	case CKA_EC_PARAMS:
@@ -2865,9 +2865,9 @@ static CK_RV pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session,
 		}
 		break;
 	case CKA_GOSTR3410_PARAMS:
-		if (pubkey->pub_info && pubkey->pub_info->params_len)
-			return get_gostr3410_params(pubkey->pub_info->params,
-					pubkey->pub_info->params_len, attr);
+		if (pubkey->pub_info && pubkey->pub_info->params.len)
+			return get_gostr3410_params(pubkey->pub_info->params.data,
+					pubkey->pub_info->params.len, attr);
 		else
 			return CKR_ATTRIBUTE_TYPE_INVALID;
 	case CKA_EC_PARAMS:
