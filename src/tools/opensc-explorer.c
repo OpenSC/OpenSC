@@ -1467,7 +1467,7 @@ static void usage(void)
 
 	printf("Supported commands:\n");
 	for (cmd = cmds; cmd->name; cmd++)
-		printf("  %-10s %s\n", cmd->name, cmd->help);
+		printf("  %-16s %s\n", cmd->name, cmd->help);
 }
 
 static int parse_line(char *in, char **argv, int maxargc)
