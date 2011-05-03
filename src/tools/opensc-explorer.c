@@ -1373,7 +1373,7 @@ static int do_asn1(int argc, char **argv)
 
 	/* select file */
 	if (argc) {
-		if (arg_to_path(argv[0], &path, 1) != 0) {
+		if (arg_to_path(argv[0], &path, 0) != 0) {
 			puts("Invalid file path");
 			return -1;
 		}
