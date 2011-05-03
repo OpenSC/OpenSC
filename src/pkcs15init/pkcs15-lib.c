@@ -153,7 +153,6 @@ static struct profile_operations {
 #ifdef ENABLE_OPENSSL
 	{ "authentic", (void *) sc_pkcs15init_get_authentic_ops },
 	{ "iasecc", (void *) sc_pkcs15init_get_iasecc_ops },
-/*	{ "piv", (void *) sc_pkcs15init_get_piv_ops }, */
 #endif
 	{ NULL, NULL },
 };
