@@ -1229,6 +1229,14 @@ iasecc_pkcs15_delete_sdo (struct sc_profile *profile, struct sc_pkcs15_card *p15
 		iasecc_sdo_free(card, sdo);
 		LOG_FUNC_RETURN(ctx, rv);
 	}
+
+	if (sdo->sdo_class == IASECC_SDO_CLASS_RSA_PUBLIC)   {
+		if (sdo->data.pub_key.cha.value)   {
+			free(sdo->data.pub_key.cha.value);
+			sdo->data.pub_key.cha.value = NULL;
+			sdo->data.pub_key.cha.size = 0;
+		}
+	}
 	
 	sc_log(ctx, "iasecc_pkcs15_delete_sdo() SDO class 0x%X, ref 0x%X", sdo->sdo_class, sdo->sdo_ref);
 	rv = iasecc_sdo_convert_to_file(card, sdo, &dummy_file);
