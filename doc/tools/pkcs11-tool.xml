@@ -131,8 +131,10 @@
 
 				<varlistentry>
 					<term><option>--write-object</option> <varname>id</varname>,
-					<option>-w</option> <varname>id</varname></term>
-					<listitem><para>Write a key or certificate object to the token.</para></listitem>
+					<option>-w</option> <varname>path</varname></term>
+					<listitem><para>Write a key or certificate object to the token. 
+                                                <varname>path</varname> points to the DER-encoded certificate or key file.
+                                        </para></listitem>
 				</varlistentry>
 
 				<varlistentry>
