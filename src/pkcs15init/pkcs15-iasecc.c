@@ -1223,7 +1223,7 @@ iasecc_pkcs15_delete_sdo (struct sc_profile *profile, struct sc_pkcs15_card *p15
 
 	rv = iasecc_sdo_get_data(card, sdo);
 	if (rv < 0)   {
-		if (rv == SC_ERROR_OBJECT_NOT_FOUND) 
+		if (rv == SC_ERROR_DATA_OBJECT_NOT_FOUND) 
 			rv = SC_SUCCESS;
 
 		iasecc_sdo_free(card, sdo);
