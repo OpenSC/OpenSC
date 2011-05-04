@@ -51,7 +51,7 @@ static struct ec_curve_info {
 } ec_curve_infos[] = {
 	{"prime256v1", "1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256},
 	{"secp384r1", "1.3.132.0.34", "06052B81040022", 384},
-	{NULL, 0},
+	{NULL, NULL, NULL, 0},
 };
 
 enum {
