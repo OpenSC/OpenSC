@@ -361,6 +361,7 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 	unsigned int i;
 	CK_ULONG numMatches;
 	sc_pkcs11_slot_t *slot;
+	sc_reader_t *prev_reader = NULL;
 	CK_RV rv;
 
 	if (pulCount == NULL_PTR)
@@ -390,11 +391,18 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 		goto out;
 	}
 
+	prev_reader = NULL;
 	numMatches = 0;
 	for (i=0; i<list_size(&virtual_slots); i++) {
 	        slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, i);
-	        if (!tokenPresent || (slot->slot_info.flags & CKF_TOKEN_PRESENT))
+		/* the list of available slots contains:
+		 * - if present, virtual hotplug slot;
+		 * - any slot with token;
+		 * - without token(s), one empty slot per reader;
+		 */
+	        if (!slot->reader || (!tokenPresent && slot->reader != prev_reader) || (slot->slot_info.flags & CKF_TOKEN_PRESENT))
 			found[numMatches++] = slot->id;
+		prev_reader = slot->reader;
 	}
 
 	if (pSlotList == NULL_PTR) {
