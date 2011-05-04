@@ -102,31 +102,6 @@ static sc_card_t *card = NULL;
 static BIO * bp = NULL;
 static EVP_PKEY * evpkey = NULL;
 
-static char *algorithm_identifiers[] = {
-	"3DES – ECB   ",
-	"2DES – ECB   ",
-	"2DES – CBC   ",
-	"3DES – ECB   ",
-	"3DES – CBC   ",
-	NULL,
-	"RSA 1024 bits",
-	"RSA 2048 bits",
-	"AES-128 – ECB",
-	"AES-128 – CBC", 
-	"AES-192 – ECB",
-	"AES-192 – CBC",
-	"AES-256 – ECB",
-	"AES-256 – CBC",
-	"ECC P-224    ",
-	NULL,
-	NULL,
-	"ECC P-256    ",
-	NULL,
-	NULL,
-	"ECC P-384    ",
-	NULL,
-};
-
 static int load_object(const char * object_id, const char * object_file)
 {
 	FILE *fp;
