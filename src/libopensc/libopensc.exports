@@ -80,6 +80,7 @@ sc_der_copy
 sc_detect_card_presence
 sc_disconnect_card
 sc_do_log
+sc_do_log_va
 _sc_debug
 sc_enum_apps
 sc_encode_oid
@@ -119,6 +120,7 @@ sc_mem_clear
 sc_path_print
 sc_path_set
 sc_pin_cmd
+sc_pkcs1_encode
 sc_pkcs15_add_df
 sc_pkcs15_add_object
 sc_pkcs15_add_unusedspace
