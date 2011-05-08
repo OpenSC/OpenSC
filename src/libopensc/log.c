@@ -42,6 +42,8 @@
 
 #include "internal.h"
 
+static void sc_do_log_va(sc_context_t *ctx, int level, const char *file, int line, const char *func, const char *format, va_list args);
+
 void sc_do_log(sc_context_t *ctx, int level, const char *file, int line, const char *func, const char *format, ...)
 {
 	va_list ap;
@@ -51,7 +53,12 @@ void sc_do_log(sc_context_t *ctx, int level, const char *file, int line, const c
 	va_end(ap);
 }
 
-void sc_do_log_va(sc_context_t *ctx, int level, const char *file, int line, const char *func, const char *format, va_list args)
+void sc_do_log_noframe(sc_context_t *ctx, int level, const char *format, va_list args)
+{
+	sc_do_log_va(ctx, level, NULL, 0, NULL, format, args);
+}
+
+static void sc_do_log_va(sc_context_t *ctx, int level, const char *file, int line, const char *func, const char *format, va_list args)
 {
 	char	buf[1836], *p;
 	int	r;

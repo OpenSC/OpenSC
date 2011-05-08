@@ -127,7 +127,7 @@ static void logprintf(PCARD_DATA pCardData, int level, const char* format, ...)
 		if(vs != NULL && vs->ctx != NULL)
 		{
 #ifdef _MSC_VER
-			sc_do_log_va(vs->ctx, level, NULL, 0, NULL, format, arg);
+			sc_do_log_noframe(vs->ctx, level, format, arg);
 #else
 			/* FIXME: trouble in vsprintf with %S arg under
 			mingw32
@@ -2128,3 +2128,4 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 #pragma managed(pop)
 #endif
 #endif
+

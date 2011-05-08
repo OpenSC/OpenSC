@@ -54,8 +54,7 @@ enum {
 
 void sc_do_log(struct sc_context *ctx, int level, const char *file, int line, const char *func, 
 		const char *format, ...);
-void sc_do_log_va(struct sc_context *ctx, int level, const char *file, int line, const char *func, 
-		const char *format, va_list args);
+void sc_do_log_noframe(sc_context_t *ctx, int level, const char *format, va_list args);
 void _sc_debug(struct sc_context *ctx, int level, const char *format, ...);
 void _sc_log(struct sc_context *ctx, const char *format, ...);
 
