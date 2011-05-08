@@ -80,7 +80,7 @@ sc_der_copy
 sc_detect_card_presence
 sc_disconnect_card
 sc_do_log
-sc_do_log_va
+sc_do_log_noframe
 _sc_debug
 sc_enum_apps
 sc_encode_oid
