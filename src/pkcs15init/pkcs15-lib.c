@@ -1472,6 +1472,13 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
 	r = select_id(p15card, SC_PKCS15_TYPE_PUBKEY, &keyargs->id);
 	LOG_TEST_RET(ctx, r, "Failed to select public key object ID");
 
+	/* Make sure that private key's ID is the unique inside the PKCS#15 application */
+	r = sc_pkcs15_find_pubkey_by_id(p15card, &keyargs->id, NULL);
+	if (!r)
+		LOG_TEST_RET(ctx, SC_ERROR_NON_UNIQUE_ID, "Non unique ID of the public key object");
+	else if (r != SC_ERROR_OBJECT_NOT_FOUND)
+		LOG_TEST_RET(ctx, r, "Find public key error");
+
 	key_info->id = keyargs->id;
 
 	/* DER encode public key components */
