@@ -55,14 +55,14 @@ static CK_RV pkcs15init_create_tokens(struct sc_pkcs11_card *p11card)
 {
 	struct sc_profile	*profile;
 	struct sc_pkcs11_slot	*slot;
+	int rc;
 
 	profile = (struct sc_profile *) p11card->fw_data;
-	while (slot_allocate(&slot, p11card) == CKR_OK) {
+
+	rc = slot_allocate(&slot, p11card);
+	if (rc == CKR_OK) {
 		CK_TOKEN_INFO_PTR pToken = &slot->token_info;
 		const char	*string;
-
-		if (sc_pkcs11_conf.hide_empty_tokens)
-			continue;
 
 		slot->slot_info.flags |= CKF_TOKEN_PRESENT;
 

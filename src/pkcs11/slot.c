@@ -287,7 +287,7 @@ CK_RV slot_allocate(struct sc_pkcs11_slot ** slot, struct sc_pkcs11_card * card)
 		if (tmp_slot->reader == card->reader && tmp_slot->card == NULL)
 			break;
 	}
-	if (!tmp_slot)
+	if (!tmp_slot || (i == list_size(&virtual_slots)))
 		return CKR_FUNCTION_FAILED;
 	sc_debug(context, SC_LOG_DEBUG_NORMAL, "Allocated slot 0x%lx for card in reader %s", tmp_slot->id,
 		 card->reader->name);
