@@ -2734,63 +2734,100 @@ iasecc_decipher(struct sc_card *card,
 
 
 static int
-iasecc_get_qsign_data (struct sc_context *ctx, const unsigned char *in, size_t in_len,
-				struct iasecc_qsign_data *out, unsigned hash_type)
+iasecc_qsign_data_sha1(struct sc_context *ctx, const unsigned char *in, size_t in_len,
+				struct iasecc_qsign_data *out)
 {
 	SHA_CTX sha;
-	SHA_LONG *hh[5] = {
+	SHA_LONG pre_hash_Nl, *hh[5] = {
 		&sha.h0, &sha.h1, &sha.h2, &sha.h3, &sha.h4
 	};
 	int jj, ii;
 	int hh_size = sizeof(SHA_LONG), hh_num = SHA_DIGEST_LENGTH / sizeof(SHA_LONG);
-	unsigned long len;
 
 	LOG_FUNC_CALLED(ctx);
-	if (hash_type != SC_ALGORITHM_RSA_HASH_SHA1)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
-
-	SHA1_Init(&sha);
+	sc_log(ctx, "sc_pkcs15_get_qsign_data() input data length %i", in_len);
 
 	if (!in || !in_len || !out)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
-	
-	sc_log(ctx, "sc_pkcs15_get_qsign_data() input data length %i", in_len);
 
-	for (ii=0; ii<in_len; )   {
-		len = in_len - ii > 64 ? 64 : in_len - ii;
-		SHA1_Update(&sha, in + ii, len);
-		ii += len;
-	}
-
-	sha.Nl -= sha.Nl % 0x200;
+	SHA1_Init(&sha);
+	SHA1_Update(&sha, in, in_len);
 
 	for (jj=0; jj<hh_num; jj++) 
 		for(ii=0; ii<hh_size; ii++) 
 			out->pre_hash[jj*hh_size + ii] = ((*hh[jj] >> 8*(hh_size-1-ii)) & 0xFF);
 	out->pre_hash_size = SHA_DIGEST_LENGTH;
+	sc_log(ctx, "Pre SHA1:%s", sc_dump_hex(out->pre_hash, out->pre_hash_size));
 
+	pre_hash_Nl = sha.Nl - (sha.Nl % (sizeof(sha.data) * 8));
 	for (ii=0; ii<hh_size; ii++)   {
 		out->counter[ii] = (sha.Nh >> 8*(hh_size-1-ii)) &0xFF;
-		out->counter[hh_size+ii] = (sha.Nl >> 8*(hh_size-1-ii)) &0xFF;
+		out->counter[hh_size+ii] = (pre_hash_Nl >> 8*(hh_size-1-ii)) &0xFF;
 	}
-
 	for (ii=0, out->counter_long=0; ii<sizeof(out->counter); ii++)
 		out->counter_long = out->counter_long*0x100 + out->counter[ii];
-
-	sc_log(ctx, "Pre SHA1:%s", sc_dump_hex(out->pre_hash, out->pre_hash_size));
 	sc_log(ctx, "Pre counter(%li):%s", out->counter_long, sc_dump_hex(out->counter, sizeof(out->counter)));
 
 	for (ii=0;ii<sha.num; ii++)
-		out->last_block[ii] = (sha.data[ii/hh_size] >> 8*(hh_size-1-(ii%hh_size))) &0xFF;
+		out->last_block[ii] = (sha.data[ii/hh_size] >> 8*(ii%hh_size)) &0xFF;
 	out->last_block_size = sha.num;
 	sc_log(ctx, "Last block(%i):%s", out->last_block_size, sc_dump_hex(out->last_block, out->last_block_size));
 
 	SHA1_Final(out->hash, &sha);
 	out->hash_size = SHA_DIGEST_LENGTH;
+	sc_log(ctx, "Expected digest %s\n", sc_dump_hex(out->hash, out->hash_size));
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
+
+static int
+iasecc_qsign_data_sha256(struct sc_context *ctx, const unsigned char *in, size_t in_len,
+				struct iasecc_qsign_data *out)
+{
+	SHA256_CTX sha256;
+	SHA_LONG pre_hash_Nl;
+	int jj, ii;
+	int hh_size = sizeof(SHA_LONG), hh_num = SHA256_DIGEST_LENGTH / sizeof(SHA_LONG);
+
+	LOG_FUNC_CALLED(ctx);
+	if (!in || !in_len || !out)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+	
+	sc_log(ctx, "sc_pkcs15_get_qsign_data() input data length %i", in_len);
+
+	SHA256_Init(&sha256);
+	SHA256_Update(&sha256, in, in_len);
+
+	for (jj=0; jj<hh_num; jj++) 
+		for(ii=0; ii<hh_size; ii++) 
+			out->pre_hash[jj*hh_size + ii] = ((sha256.h[jj] >> 8*(hh_size-1-ii)) & 0xFF);
+	out->pre_hash_size = SHA256_DIGEST_LENGTH;
+
+	pre_hash_Nl = sha256.Nl - (sha256.Nl % (sizeof(sha256.data) * 8));
+	for (ii=0; ii<hh_size; ii++)   {
+		out->counter[ii] = (sha256.Nh >> 8*(hh_size-1-ii)) &0xFF;
+		out->counter[hh_size+ii] = (pre_hash_Nl >> 8*(hh_size-1-ii)) &0xFF;
+	}
+
+	for (ii=0, out->counter_long=0; ii<sizeof(out->counter); ii++)
+		out->counter_long = out->counter_long*0x100 + out->counter[ii];
+
+	sc_log(ctx, "Pre hash:%s", sc_dump_hex(out->pre_hash, out->pre_hash_size));
+	sc_log(ctx, "Pre counter(%li):%s", out->counter_long, sc_dump_hex(out->counter, sizeof(out->counter)));
+
+	for (ii=0;ii<sha256.num; ii++) 
+		out->last_block[ii] = (sha256.data[ii/hh_size] >> 8*(ii%hh_size)) &0xFF;
+
+	out->last_block_size = sha256.num;
+	sc_log(ctx, "Last block(%i):%s", out->last_block_size, sc_dump_hex(out->last_block, out->last_block_size));
+
+	SHA256_Final(out->hash, &sha256);
+	out->hash_size = SHA256_DIGEST_LENGTH;
+	sc_log(ctx, "Expected digest %s\n", sc_dump_hex(out->hash, out->hash_size));
+
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+}
 
 static int 
 iasecc_compute_signature_dst(struct sc_card *card, 
@@ -2815,11 +2852,10 @@ iasecc_compute_signature_dst(struct sc_card *card,
 
 	memset(&qsign_data, 0, sizeof(qsign_data));
 	if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA1)   {
-		rv = iasecc_get_qsign_data(card->ctx, in, in_len, &qsign_data, SC_ALGORITHM_RSA_HASH_SHA1);
+		rv = iasecc_qsign_data_sha1(card->ctx, in, in_len, &qsign_data);
 	}
 	else if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA256)   {
-		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "RSA_HASH_SHA256 not yet supported");
-		rv = iasecc_get_qsign_data(card->ctx, in, in_len, &qsign_data, SC_ALGORITHM_RSA_HASH_SHA256);
+		rv = iasecc_qsign_data_sha256(card->ctx, in, in_len, &qsign_data);
 	}
 	else
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Need RSA_HASH_SHA1 or RSA_HASH_SHA256 algorithm");
