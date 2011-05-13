@@ -309,7 +309,11 @@ typedef struct sc_serial_number {
 	struct sc_iin iin;
 } sc_serial_number_t;
 
-/* Data type used to send/get the data to/from the external (SM) moudules */
+/**
+ * @struct sc_remote_apdu data
+ * Structure to supply the linked APDU data used in 
+ * communication with the external (SM) modules.
+ */
 #define SC_REMOTE_APDU_FLAG_FATAL
 #define SC_REMOTE_APDU_FLAG_LAST
 #define SC_REMOTE_APDU_FLAG_RETURN_ANSWER
@@ -324,11 +328,25 @@ struct sc_remote_apdu {
 	struct sc_remote_apdu *next;
 };
 
+/**
+ * @struct sc_remote_data 
+ * Frame for the list of the @c sc_remote_apdu data with
+ * the handlers to allocate and free.
+ */
 struct sc_remote_data {
 	struct sc_remote_apdu *data;
 	int length;
 
+	/**
+         * Handler to allocate a new @c sc_remote_apdu data and add it to the list.
+ 	 * @param rdata Self pointer to the @c sc_remote_data
+	 * @param out Pointer to newle allocated member
+  	 */
 	int (*alloc)(struct sc_remote_data *rdata, struct sc_remote_apdu **out);
+	/**
+         * Handler to free the list of @c sc_remote_apdu data 
+ 	 * @param rdata Self pointer to the @c sc_remote_data
+  	 */
 	void (*free)(struct sc_remote_data *rdata);
 };
 

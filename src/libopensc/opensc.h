@@ -1172,6 +1172,11 @@ struct sc_algorithm_info * sc_card_find_ec_alg(sc_card_t *card,
 struct sc_algorithm_info * sc_card_find_gostr3410_alg(sc_card_t *card,
 		unsigned int key_length);
 
+/**
+ * Used to initialize the @c sc_remote_data structure -- 
+ * reset the header of the 'remote APDUs' list, set the handlers 
+ * to manipulate the list. 
+ */
 void sc_remote_data_init(struct sc_remote_data *rdata);
 
 struct sc_card_error {
