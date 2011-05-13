@@ -150,17 +150,4 @@ struct sc_authentic_sdo  {
 	unsigned magic;
 };
 
-#define SC_MAX_AUTHENTIC_CPLC	45
-struct sc_authentic_cplc {
-	unsigned char ic_data[4];
-	unsigned char ic_serial[4];
-	unsigned char ic_batch[4];
-	unsigned char aid_last_bytes[2];
-	unsigned char keyset_version;
-	unsigned char starting_index;
-
-	unsigned char value[SC_MAX_AUTHENTIC_CPLC];
-	size_t len;
-};
-
 #endif

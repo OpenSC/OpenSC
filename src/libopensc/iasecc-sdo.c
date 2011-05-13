@@ -370,7 +370,7 @@ iasecc_se_parse(struct sc_card *card, unsigned char *data, size_t data_len, stru
 	if (offs != data_len)
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "parse error: not totaly parsed");
 
-	LOG_FUNC_RETURN(ctx, 0);
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
 
@@ -455,7 +455,7 @@ iasecc_parse_chv(struct sc_card *card, unsigned char *data, size_t data_len, str
 		offs += rv;
 	}
 
-	LOG_FUNC_RETURN(ctx, 0);
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
 
@@ -483,7 +483,7 @@ iasecc_parse_prvkey(struct sc_card *card, unsigned char *data, size_t data_len, 
 		offs += rv;
 	}
 
-	LOG_FUNC_RETURN(ctx, 0);
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
 
@@ -519,7 +519,7 @@ iasecc_parse_pubkey(struct sc_card *card, unsigned char *data, size_t data_len, 
 		offs += rv;
 	}
 
-	LOG_FUNC_RETURN(ctx, 0);
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
 
@@ -547,7 +547,7 @@ iasecc_parse_keyset(struct sc_card *card, unsigned char *data, size_t data_len, 
 		offs += rv;
 	}
 
-	LOG_FUNC_RETURN(ctx, 0);
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
 
@@ -609,7 +609,7 @@ iasecc_parse_docp(struct sc_card *card, unsigned char *data, size_t data_len, st
 	rv = iasecc_parse_acls(card, &sdo->docp, 0);
 	LOG_TEST_RET(ctx, rv, "Cannot parse ACLs in DOCP");
 
-	LOG_FUNC_RETURN(ctx, 0);
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
 
@@ -739,7 +739,7 @@ iasecc_sdo_parse(struct sc_card *card, unsigned char *data, size_t data_len, str
 
 	sc_log(ctx, "docp.acls_contact.size %i, docp.size.size %i", sdo->docp.acls_contact.size, sdo->docp.size.size);
 
-	LOG_FUNC_RETURN(ctx, 0);
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
 
@@ -770,7 +770,7 @@ iasecc_sdo_allocate_and_parse(struct sc_card *card, unsigned char *data, size_t 
 	sc_log(ctx, "sdo_class 0x%X, sdo_ref 0x%X", sdo->sdo_class, sdo->sdo_ref);
 	if (data_len == 3)   {
 		*out = sdo;
-		LOG_FUNC_RETURN(ctx, 0);
+		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 	}
 
 	size_size = iasecc_parse_size(data + 3, &size);
@@ -808,7 +808,7 @@ iasecc_update_blob(struct sc_context *ctx, struct iasecc_extended_tlv *tlv,
 	int offs = 0, sz = tlv->size + 2;
 
 	if (tlv->size == 0)
-		LOG_FUNC_RETURN(ctx, 0);
+		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 
 	sz = tlv->size + 2;
 	
@@ -918,7 +918,7 @@ iasecc_encode_docp(struct sc_context *ctx, struct iasecc_sdo_docp *docp, unsigne
 		*out_len = blob_size;
 	}
 
-	LOG_FUNC_RETURN(ctx, 0);
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
 

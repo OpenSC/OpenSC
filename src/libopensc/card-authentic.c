@@ -77,7 +77,7 @@ struct authentic_private_data {
 	struct sc_pin_cmd_data pins[8];
 	unsigned char pins_sha1[8][SHA_DIGEST_LENGTH];
 
-	struct sc_authentic_cplc cplc;
+	struct sc_cplc cplc;
 };
 
 static struct sc_atr_table authentic_known_atrs[] = {
