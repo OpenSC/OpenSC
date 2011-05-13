@@ -2784,6 +2784,7 @@ iasecc_qsign_data_sha1(struct sc_context *ctx, const unsigned char *in, size_t i
 }
 
 
+#if OPENSSL_VERSION_NUMBER >= 0x00908000L
 static int
 iasecc_qsign_data_sha256(struct sc_context *ctx, const unsigned char *in, size_t in_len,
 				struct iasecc_qsign_data *out)
@@ -2830,6 +2831,7 @@ iasecc_qsign_data_sha256(struct sc_context *ctx, const unsigned char *in, size_t
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
+#endif
 
 
 static int 
@@ -2858,7 +2860,11 @@ iasecc_compute_signature_dst(struct sc_card *card,
 		rv = iasecc_qsign_data_sha1(card->ctx, in, in_len, &qsign_data);
 	}
 	else if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA256)   {
+#if OPENSSL_VERSION_NUMBER >= 0x00908000L
 		rv = iasecc_qsign_data_sha256(card->ctx, in, in_len, &qsign_data);
+#else
+		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "SHA256 is not supported by OpenSSL previous to v0.9.8");
+#endif
 	}
 	else
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Need RSA_HASH_SHA1 or RSA_HASH_SHA256 algorithm");
