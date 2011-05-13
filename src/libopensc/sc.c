@@ -717,6 +717,68 @@ void sc_mem_clear(void *ptr, size_t len)
 #endif
 }
 
+static int 
+sc_remote_apdu_allocate(struct sc_remote_data *rdata, 
+		struct sc_remote_apdu **new_rapdu)
+{
+	struct sc_remote_apdu *rapdu = NULL, *rr;
+	int counter;
+
+	if (!rdata)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	rapdu = calloc(1, sizeof(struct sc_remote_apdu));
+	if (rapdu == NULL)
+		return SC_ERROR_OUT_OF_MEMORY;
+
+	rapdu->apdu.data = &rapdu->sbuf[0];
+	rapdu->apdu.resp = &rapdu->rbuf[0];
+	rapdu->apdu.resplen = sizeof(rapdu->rbuf);
+
+	if (new_rapdu)
+		*new_rapdu = rapdu;
+
+	if (rdata->data == NULL)   {
+		rdata->data = rapdu;
+		rdata->length = 1;
+		return SC_SUCCESS;
+	}
+
+	for (rr = rdata->data; rr->next; rr = rr->next)
+		;
+	rr->next = rapdu;
+	rdata->length++;
+
+	return SC_SUCCESS;
+}
+
+static void 
+sc_remote_apdu_free (struct sc_remote_data *rdata)
+{
+	struct sc_remote_apdu *rapdu = NULL;
+
+	if (!rdata)
+		return;
+
+	rapdu = rdata->data;
+	while(rapdu)   {
+		struct sc_remote_apdu *rr = rapdu->next;
+
+		free(rapdu);
+		rapdu = rr;
+	}
+}
+
+void sc_remote_data_init(struct sc_remote_data *rdata)
+{
+	if (!rdata)
+		return;
+	memset(rdata, 0, sizeof(struct sc_remote_data));
+
+	rdata->alloc = sc_remote_apdu_allocate;
+	rdata->free = sc_remote_apdu_free;
+}
+
 /**************************** mutex functions ************************/
 
 int sc_mutex_create(const sc_context_t *ctx, void **mutex)
