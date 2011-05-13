@@ -339,23 +339,6 @@ struct sc_pin_cmd_data {
 	struct sc_apdu *apdu;		/* APDU of the PIN command */
 };
 
-/* 'Issuer Identification Number' is a part of ISO/IEC 7812 PAN definition */
-struct sc_iin {	
-	unsigned char mii;		/* industry identifier */
-	unsigned country;		/* country identifier */
-	unsigned long issuer_id;	/* issuer identifier */
-};
-
-/* structure for the card serial number (normally the ICCSN) */
-#define SC_MAX_SERIALNR		32
-
-typedef struct sc_serial_number {
-	unsigned char value[SC_MAX_SERIALNR];
-	size_t len;
-
-	struct sc_iin iin;
-} sc_serial_number_t;
-
 struct sc_reader_operations {
 	/* Called during sc_establish_context(), when the driver
 	 * is loaded */

@@ -272,6 +272,67 @@ typedef struct sc_apdu {
 	struct sc_apdu *next;
 } sc_apdu_t;
 
+/* Card manager Production Life Cycle data (CPLC) 
+ * (from the Open Platform specification) */
+#define SC_CPLC_TAG		0x9F7F
+#define SC_CPLC_DER_SIZE	45
+struct sc_cplc {
+	unsigned char ic_fabricator[2];
+	unsigned char ic_type[2];
+	unsigned char os_data[6];
+	unsigned char ic_date[2];
+	unsigned char ic_serial[4];
+	unsigned char ic_batch_id[2];
+	unsigned char ic_module_data[4];
+	unsigned char icc_manufacturer[2];
+	unsigned char ic_embed_date[2];
+	unsigned char pre_perso_data[6];
+	unsigned char personalizer_data[6];
+
+	unsigned char value[SC_CPLC_DER_SIZE];
+	size_t len;
+};
+
+/* 'Issuer Identification Number' is a part of ISO/IEC 7812 PAN definition */
+struct sc_iin {
+	unsigned char mii;              /* industry identifier */
+	unsigned country;               /* country identifier */
+	unsigned long issuer_id;        /* issuer identifier */
+};
+
+/* structure for the card serial number (normally the ICCSN) */
+#define SC_MAX_SERIALNR         32
+typedef struct sc_serial_number {
+	unsigned char value[SC_MAX_SERIALNR];
+	size_t len;
+
+	struct sc_iin iin;
+} sc_serial_number_t;
+
+/* Data type used to send/get the data to/from the external (SM) moudules */
+#define SC_REMOTE_APDU_FLAG_FATAL
+#define SC_REMOTE_APDU_FLAG_LAST
+#define SC_REMOTE_APDU_FLAG_RETURN_ANSWER
+#define SC_REMOTE_APDU_FLAG_GET_RESPONSE
+struct sc_remote_apdu {
+	unsigned char sbuf[2*SC_MAX_APDU_BUFFER_SIZE];
+	unsigned char rbuf[2*SC_MAX_APDU_BUFFER_SIZE];
+	struct sc_apdu apdu;
+
+	unsigned flags;
+
+	struct sc_remote_apdu *next;
+};
+
+struct sc_remote_data {
+	struct sc_remote_apdu *data;
+	int length;
+
+	int (*alloc)(struct sc_remote_data *rdata, struct sc_remote_apdu **out);
+	void (*free)(struct sc_remote_data *rdata);
+};
+
+
 #ifdef __cplusplus
 }
 #endif
