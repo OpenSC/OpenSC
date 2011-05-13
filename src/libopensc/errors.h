@@ -108,6 +108,19 @@ extern "C" {
 #define SC_ERROR_INVALID_PIN_REFERENCE		-1509
 #define SC_ERROR_FILE_TOO_SMALL			-1510
 
+/* Related to secure messaging */
+#define SC_ERROR_SM                             -1600
+#define SC_ERROR_SM_ENCRYPT_FAILED              -1601
+#define SC_ERROR_SM_INVALID_LEVEL               -1602
+#define SC_ERROR_SM_NO_SESSION_KEYS             -1603
+#define SC_ERROR_SM_INVALID_SESSION_KEY         -1604
+#define SC_ERROR_SM_NOT_INITIALIZED             -1605
+#define SC_ERROR_SM_AUTHENTICATION_FAILED       -1606
+#define SC_ERROR_SM_RAND_FAILED                 -1607
+#define SC_ERROR_SM_KEYSET_NOT_FOUND            -1608
+#define SC_ERROR_SM_IFD_DATA_MISSING            -1609
+
+
 /* Errors that do not fit the categories above */
 #define SC_ERROR_UNKNOWN			-1900
 #define SC_ERROR_PKCS15_APP_NOT_FOUND		-1901

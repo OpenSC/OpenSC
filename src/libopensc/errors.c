@@ -119,6 +119,21 @@ const char *sc_strerror(int error)
 	};
 	const int p15i_base = -SC_ERROR_PKCS15INIT;
 
+	const int sm_base = -SC_ERROR_SM;
+	const char *sm_errors[] = {
+		"Generic Secure Messaging error",
+		"Data enciphering error",
+		"Invalid secure messaging level",
+		"No session keys",
+		"Invalid session keys",
+		"Secure Messaging not initialized",
+		"Cannot authenticate card",
+		"Random generation error",
+		"Secure messaging keyset not found",
+		"IFD data missing"
+	};
+
+
 	const char *misc_errors[] = {
 		"Unknown error",
 		"PKCS#15 compatible smart card not found",
@@ -138,6 +153,10 @@ const char *sc_strerror(int error)
 		errors = misc_errors;
 		count = DIM(misc_errors);
 		err_base = misc_base;
+	} else if (error >= sm_base) {
+		errors = sm_errors;
+		count = DIM(sm_errors);
+		err_base = sm_base;
 	} else if (error >= p15i_base) {
 		errors = p15i_errors;
 		count = DIM(p15i_errors);
