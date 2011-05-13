@@ -135,6 +135,13 @@ AC_ARG_ENABLE(
 )
 
 AC_ARG_ENABLE(
+	[sm],
+	[AS_HELP_STRING([--enable-sm],[enable secure messaging support and modules @<:@disabled@:>@])],
+	,
+	[enable_sm="no"]
+)
+
+AC_ARG_ENABLE(
 	[man],
 	[AS_HELP_STRING([--disable-man],[disable installation of manuals @<:@enabled for none Windows@:>@])],
 	,
@@ -301,6 +308,10 @@ if test "${enable_minidriver}" = "yes"; then
 		[AC_MSG_ERROR([cardmod.h is not found and required for minidriver])]
 	)
 	AC_DEFINE([ENABLE_MINIDRIVER], [1], [Enable minidriver support])
+fi
+
+if test "${enable_sm}" = "yes"; then
+        AC_DEFINE([ENABLE_SM], [1], [Enable secure messaging support])
 fi
 
 AC_ARG_VAR([ZLIB_CFLAGS], [C compiler flags for zlib])
@@ -562,6 +573,7 @@ AM_CONDITIONAL([ENABLE_DOC], [test "${enable_doc}" = "yes"])
 AM_CONDITIONAL([WIN32], [test "${WIN32}" = "yes"])
 AM_CONDITIONAL([CYGWIN], [test "${CYGWIN}" = "yes"])
 AM_CONDITIONAL([ENABLE_MINIDRIVER], [test "${enable_minidriver}" = "yes"])
+AM_CONDITIONAL([ENABLE_SM], [test "${enable_sm}" = "yes"])
 
 if test "${enable_pedantic}" = "yes"; then
 	enable_strict="yes";
@@ -622,6 +634,7 @@ PC/SC support:           ${enable_pcsc}
 OpenCT support:          ${enable_openct}
 CT-API support:          ${enable_ctapi}
 minidriver support:      ${enable_minidriver}
+SM support:              ${enable_sm}
 
 PC/SC default provider:  ${DEFAULT_PCSC_PROVIDER}
 
