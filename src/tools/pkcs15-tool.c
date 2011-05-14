@@ -1075,6 +1075,8 @@ static void print_pin_info(const struct sc_pkcs15_object *obj)
 
 	printf("PIN [%s]\n", obj->label);
 	print_common_flags(obj);	
+	if (obj->auth_id.len)
+		printf("\tAuth ID        : %s\n", sc_pkcs15_print_id(&obj->auth_id));
 	printf("\tID             : %s\n", sc_pkcs15_print_id(&pin->auth_id));
 	printf("\tFlags          : [0x%02X]", pin->flags);
 	for (i = 0; i < pf_count; i++)
