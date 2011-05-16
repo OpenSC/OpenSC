@@ -169,6 +169,17 @@ static void sc_asn1_print_integer(const u8 * buf, size_t buflen)
 	printf("%lld", a);
 }
 
+static void sc_asn1_print_boolean(const u8 * buf, size_t buflen)
+{
+	if (!buflen)
+		return;
+
+	if (buf[0])
+		printf("true");
+	else
+		printf("false");
+}
+
 static void sc_asn1_print_bit_string(const u8 * buf, size_t buflen)
 {
 #ifndef _WIN32
@@ -280,6 +291,9 @@ static void print_tags_recursive(const u8 * buf0, const u8 * buf,
 			case SC_ASN1_TAG_PRINTABLESTRING:
 			case SC_ASN1_TAG_UTF8STRING:
 				sc_asn1_print_utf8string(tagp, len);
+				break;
+			case SC_ASN1_TAG_BOOLEAN:
+				sc_asn1_print_boolean(tagp, len);
 				break;
 			}
 			printf("]");
