@@ -76,6 +76,7 @@ enum {
 };
 
 static const struct option options[] = {
+	{ "module",		1, NULL,		OPT_MODULE },
 	{ "show-info",		0, NULL,		'I' },
 	{ "list-slots",		0, NULL,		'L' },
 	{ "list-token-slots",	0, NULL,		'T' },
@@ -113,7 +114,6 @@ static const struct option options[] = {
 	{ "attr-from",		1, NULL, 		OPT_ATTR_FROM },
 	{ "input-file",		1, NULL,		'i' },
 	{ "output-file",	1, NULL,		'o' },
-	{ "module",		1, NULL,		OPT_MODULE },
 
 	{ "test",		0, NULL,		't' },
 	{ "test-hotplug",	0, NULL,		OPT_TEST_HOTPLUG },
@@ -125,6 +125,7 @@ static const struct option options[] = {
 };
 
 static const char *option_help[] = {
+	"Specify the module to load (mandatory)",
 	"Show global token information",
 	"List available slots",
 	"List slots with tokens",
@@ -162,7 +163,6 @@ static const char *option_help[] = {
 	"Use <arg> to create some attributes when writing an object",
 	"Specify the input file",
 	"Specify the output file",
-	"Specify the module to load",
 
 	"Test (best used with the --login or --pin option)",
 	"Test hotplug capabilities (C_GetSlotList + C_WaitForSlotEvent)",
@@ -544,6 +544,10 @@ int main(int argc, char * argv[])
 			util_print_usage_and_die(app_name, options, option_help);
 		}
 	}
+
+	if (opt_module == NULL)
+		util_print_usage_and_die(app_name, options, option_help);
+
 	if (action_count == 0)
 		util_print_usage_and_die(app_name, options, option_help);
 
