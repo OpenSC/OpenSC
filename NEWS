@@ -3,7 +3,7 @@ NEWS for OpenSC -- History of user visible changes
 Complete change history is available online:
 http://www.opensc-project.org/opensc/timeline
 
-New in 0.12.1; 2011-04-XX
+New in 0.12.1; 2011-05-17
 * New card driver: IAS/ECC 1.0.1
 * rutoken-tool has been deprecated and removed.
 * eidenv and piv-tool utilities now have manual pages.
