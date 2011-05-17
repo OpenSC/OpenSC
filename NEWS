@@ -7,6 +7,7 @@ New in 0.12.1; 2011-04-XX
 * New card driver: IAS/ECC 1.0.1
 * rutoken-tool has been deprecated and removed.
 * eidenv and piv-tool utilities now have manual pages.
+* pkcs11-tool now requires the use of --module parameter.
 * All tools can now use an ATR as an argument to --reader, to skip to the
   card with given ATR.
 * opensc-tool -l with -v now shows information about the inserted cards.
