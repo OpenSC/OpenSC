@@ -128,7 +128,7 @@ cp MacOSX/opensc-uninstall target/usr/local/bin
 -t "OpenSC @PACKAGE_VERSION@ for Mac OS X ${OSX_RELEASE}" \
 -i org.opensc-project.mac \
 -n @PACKAGE_VERSION@ \
--g 10.5 \
+-g 10.4 \
 -b \
 -v \
 --no-relocate \
