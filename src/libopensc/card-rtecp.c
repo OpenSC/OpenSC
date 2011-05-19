@@ -365,7 +365,7 @@ static int rtecp_cipher(sc_card_t *card, const u8 *data, size_t data_len,
 	apdu.datalen = data_len;
 	apdu.resp = buf_out;
 	apdu.resplen = out_len + 2;
-	apdu.le = out_len;
+	apdu.le = out_len > 256 ? 256 : out_len;
 	if (apdu.lc > 255)
 		apdu.flags |= SC_APDU_FLAGS_CHAINING;
 	r = sc_transmit_apdu(card, &apdu);
