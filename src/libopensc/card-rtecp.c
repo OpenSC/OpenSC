@@ -383,8 +383,8 @@ static int rtecp_cipher(sc_card_t *card, const u8 *data, size_t data_len,
 		if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
 		{
 			assert(buf_out);
-			for (i = 0; i < out_len && i < apdu.resplen; ++i)
-				out[i] = buf_out[out_len - 1 - i];
+			for (i = 0; i < apdu.resplen; ++i)
+				out[i] = buf_out[apdu.resplen - 1 - i];
 			r = (i > 0) ? (int)i : SC_ERROR_INTERNAL;
 		}
 		else
