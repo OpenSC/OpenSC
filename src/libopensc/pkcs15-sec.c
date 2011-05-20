@@ -334,6 +334,7 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 			memmove(tmp+modlen-inlen, tmp, inlen);
 			memset(tmp, 0, modlen-inlen);
 		}
+		inlen = modlen;
 	}
 
 	senv.operation = SC_SEC_OPERATION_SIGN;
