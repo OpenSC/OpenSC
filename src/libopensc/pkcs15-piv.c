@@ -160,6 +160,7 @@ static int piv_get_guid(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_o
 		 */
 		f5p = serialnr.value;
 		f8p = guid_bin;
+		fbyte = 0;
 		fbyte2 = 0;
 		fnibble = 0;
 		fbits = 0;
