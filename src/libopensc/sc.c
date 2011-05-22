@@ -722,7 +722,6 @@ sc_remote_apdu_allocate(struct sc_remote_data *rdata,
 		struct sc_remote_apdu **new_rapdu)
 {
 	struct sc_remote_apdu *rapdu = NULL, *rr;
-	int counter;
 
 	if (!rdata)
 		return SC_ERROR_INVALID_ARGUMENTS;
