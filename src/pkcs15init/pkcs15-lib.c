@@ -1066,6 +1066,26 @@ sc_pkcs15_create_pin_domain(struct sc_profile *profile,
 	return r;
 }
 
+int
+sc_pkcs15init_encode_prvkey_content(struct sc_pkcs15_card *p15card, struct sc_pkcs15_prkey *prvkey,
+		struct sc_pkcs15_object *object)
+{
+	struct sc_context *ctx = p15card->card->ctx;
+
+	LOG_FUNC_CALLED(ctx);
+	if (prvkey->algorithm == SC_ALGORITHM_RSA)   {
+		struct sc_pkcs15_pubkey pubkey;
+		int rv;
+
+		pubkey.algorithm = prvkey->algorithm;
+		pubkey.u.rsa.modulus = prvkey->u.rsa.modulus;
+		pubkey.u.rsa.exponent = prvkey->u.rsa.exponent;
+
+		rv = sc_pkcs15_encode_pubkey(ctx, &pubkey, &object->content.value, &object->content.len);
+		LOG_TEST_RET(ctx, rv, "Failed to encode public key");
+	}
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+}
 
 /*
  * Prepare private key download, and initialize a prkdf entry
@@ -1285,7 +1305,6 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
 	struct sc_pkcs15_object *object;
 	struct sc_pkcs15_prkey_info *key_info;
 	struct sc_pkcs15_prkey key;
-	struct sc_pkcs15_pubkey pubkey;
 	int keybits, idx, r = 0;
 
 	LOG_FUNC_CALLED(ctx);
@@ -1325,11 +1344,7 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
 	LOG_TEST_RET(ctx, r, "Failed to initialize private key object");
 	key_info = (struct sc_pkcs15_prkey_info *) object->data;
 
-	pubkey.algorithm = key.algorithm;
-	pubkey.u.rsa.modulus = key.u.rsa.modulus;
-	pubkey.u.rsa.exponent = key.u.rsa.exponent;
-
-	r = sc_pkcs15_encode_pubkey(ctx, &pubkey, &object->content.value, &object->content.len);
+	r = sc_pkcs15init_encode_prvkey_content(p15card, &key, object);
 	LOG_TEST_RET(ctx, r, "Failed to encode public key");
 
 	/* Get the number of private keys already on this card */
