@@ -1207,42 +1207,59 @@ static int unlock_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess, int login_type)
 static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		CK_OBJECT_HANDLE key)
 {
-	unsigned char	buffer[512];
+	unsigned char	in_buffer[1025], sig_buffer[512];
 	CK_MECHANISM	mech;
 	CK_RV		rv;
 	CK_ULONG	sig_len;
 	int		fd, r;
 
-	if (!opt_mechanism_used) {
+	if (!opt_mechanism_used)
 		opt_mechanism = find_mechanism(slot, CKF_SIGN|CKF_HW, 1, &opt_mechanism);
-		printf("Using signature algorithm %s\n",
-				p11_mechanism_to_name(opt_mechanism));
-	}
+	printf("Using signature algorithm %s\n", p11_mechanism_to_name(opt_mechanism));
 
 	memset(&mech, 0, sizeof(mech));
 	mech.mechanism = opt_mechanism;
-
-	rv = p11->C_SignInit(session, &mech, key);
-	if (rv != CKR_OK)
-		p11_fatal("C_SignInit", rv);
 
 	if (opt_input == NULL)
 		fd = 0;
 	else if ((fd = open(opt_input, O_RDONLY|O_BINARY)) < 0)
 		util_fatal("Cannot open %s: %m", opt_input);
+	
+	r = read(fd, in_buffer, sizeof(in_buffer));
+	if (r < 0)
+		util_fatal("Cannot read from %s: %m", opt_input);
 
-	while ((r = read(fd, buffer, sizeof(buffer))) > 0) {
-		rv = p11->C_SignUpdate(session, buffer, r);
+	rv = CKR_CANCEL;
+	if (r < sizeof(in_buffer))   {
+		rv = p11->C_SignInit(session, &mech, key);
 		if (rv != CKR_OK)
-			p11_fatal("C_SignUpdate", rv);
+			p11_fatal("C_SignInit", rv);
+
+		sig_len = sizeof(sig_buffer);
+		rv =  p11->C_Sign(session, in_buffer, r, sig_buffer, &sig_len);
 	}
+
+	if (rv != CKR_OK)   {
+		rv = p11->C_SignInit(session, &mech, key);
+		if (rv != CKR_OK)
+			p11_fatal("C_SignInit", rv);
+		
+		do   {
+			rv = p11->C_SignUpdate(session, in_buffer, r);
+			if (rv != CKR_OK)
+				p11_fatal("C_SignUpdate", rv);
+
+			r = read(fd, in_buffer, sizeof(in_buffer));
+		} while (r > 0);
+	
+		sig_len = sizeof(sig_buffer);
+		rv = p11->C_SignFinal(session, sig_buffer, &sig_len);
+		if (rv != CKR_OK)
+			p11_fatal("C_SignFinal", rv);
+	}
+
 	if (fd != 0)
 		close(fd);
-
-	sig_len = sizeof(buffer);
-	rv = p11->C_SignFinal(session, buffer, &sig_len);
-	if (rv != CKR_OK)
-		p11_fatal("C_SignFinal", rv);
 
 	if (opt_output == NULL)
 		fd = 1;
@@ -1265,8 +1282,8 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		nLen = sig_len/2;
 
 		ecsig = ECDSA_SIG_new();
-		ecsig->r = BN_bin2bn(buffer, nLen, ecsig->r);
-		ecsig->s = BN_bin2bn(buffer + nLen, nLen, ecsig->s);	
+		ecsig->r = BN_bin2bn(sig_buffer, nLen, ecsig->r);
+		ecsig->s = BN_bin2bn(sig_buffer + nLen, nLen, ecsig->s);	
 
 		der_len = i2d_ECDSA_SIG(ecsig, &p); 
 		printf("Writing OpenSSL ECDSA_SIG\n");
@@ -1276,7 +1293,7 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 
 	} else 
 #endif /* ENABLE_OPENSSL  && !OPENSSL_NO_EC && !OPENSSL_NO_ECDSA */
-	r = write(fd, buffer, sig_len);
+	r = write(fd, sig_buffer, sig_len);
 	if (r < 0)
 		util_fatal("Failed to write to %s: %m", opt_output);
 	if (fd != 1)
