@@ -163,7 +163,7 @@ static struct sc_pkcs15init_callbacks callbacks = {
 	NULL,
 };
 
-void sc_pkcs15init_empty_callback(void *ptr)
+static void sc_pkcs15init_empty_callback(void *ptr)
 {
 }
 
