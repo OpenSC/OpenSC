@@ -1361,7 +1361,7 @@ static int piv_write_binary(sc_card_t *card, unsigned int idx,
 	}
 	priv->w_buf = NULL;
 	priv->w_buf_len = 0;
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, (r < 0)? r : count); 
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, (r < 0)? r : (int)count); 
 }
 
 /*
