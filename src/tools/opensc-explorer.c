@@ -1599,10 +1599,10 @@ int main(int argc, char * const argv[])
 	if (opt_startfile) {
 		if(*opt_startfile) {
 			char startpath[1024];
-			char *argv[] = { startpath };
+			char *args[] = { startpath };
 
 			strncpy(startpath, opt_startfile, sizeof(startpath)-1);
-			r = do_cd(1, argv);
+			r = do_cd(1, args);
 			if (r) {
 				printf("unable to select file %s: %s\n",
 					opt_startfile, sc_strerror(r));
