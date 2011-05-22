@@ -121,7 +121,7 @@ static int sc_pkcs15emu_westcos_init(sc_pkcs15_card_t * p15card)
 	}
 	else
 	{
-		/* certificat file */
+		/* certificate file */
 		struct sc_pkcs15_cert_info cert_info;
 		struct sc_pkcs15_object cert_obj;
 		struct sc_pkcs15_pubkey_info pubkey_info;
