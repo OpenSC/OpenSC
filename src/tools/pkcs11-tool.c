@@ -20,11 +20,18 @@
 
 #include "config.h"
 
+#include <fcntl.h>
+#include <stdio.h>
+#include <stdlib.h>
 #ifdef ENABLE_OPENSSL
+#if OPENSSL_VERSION_NUMBER >= 0x10000000L
 #include <openssl/opensslconf.h>
+#endif
+#include <openssl/conf.h>
 #include <openssl/evp.h>
 #include <openssl/x509.h>
 #include <openssl/rsa.h>
+#include <openssl/pem.h>
 #if OPENSSL_VERSION_NUMBER >= 0x00908000L && !defined(OPENSSL_NO_EC) && !defined(OPENSSL_NO_ECDSA)
 #include <openssl/ec.h>
 #include <openssl/ecdsa.h>
@@ -243,6 +250,11 @@ struct rsakey_info {
 	unsigned char	*coefficient;
 	int		coefficient_len;
 };
+struct gostkey_info {
+	struct sc_lv_data param_oid;
+	struct sc_lv_data public;
+	struct sc_lv_data private;
+};
 
 static void		show_cryptoki_info(void);
 static void		list_slots(int, int, int);
@@ -330,6 +342,14 @@ int main(int argc, char * argv[])
 	int action_count = 0;
 	CK_RV rv;
 
+#ifdef ENABLE_OPENSSL
+#if OPENSSL_VERSION_NUMBER >= 0x00907000L
+	OPENSSL_config(NULL);
+#endif
+	/* OpenSSL magic */
+	SSLeay_add_all_algorithms();
+	CRYPTO_malloc_init();
+#endif
 	while (1) {
 		c = getopt_long(argc, argv, "ILMOTa:bd:e:hi:klm:o:p:scvty:w:z:r",
 		                options, &long_optind);
@@ -1509,6 +1529,34 @@ static void	parse_certificate(struct x509cert_info *cert,
 	cert->serialnum_len = n;
 }
 
+static int 
+do_read_private_key(unsigned char *data, size_t data_len, EVP_PKEY **key)
+{
+	BIO	*mem;
+	BUF_MEM buf_mem;
+
+	if (!key)
+		return -1;
+	buf_mem.data = malloc(data_len);
+        if (!buf_mem.data)
+		return -1;
+
+        memcpy(buf_mem.data, data, data_len);
+        buf_mem.max = buf_mem.length = data_len;
+
+	mem = BIO_new(BIO_s_mem());
+	BIO_set_mem_buf(mem, &buf_mem, BIO_NOCLOSE);
+	if (!strstr((char *)data, "-----BEGIN PRIVATE KEY-----"))
+		*key = d2i_PrivateKey_bio(mem, NULL);
+	else
+		*key = PEM_read_bio_PrivateKey(mem, NULL, NULL, NULL);
+	BIO_free(mem);
+	if (*key == NULL)
+		return -1;
+
+	return 0;
+}
+
 #define RSA_GET_BN(LOCALNAME, BNVALUE) \
 	do { \
 		rsa->LOCALNAME = malloc(BN_num_bytes(BNVALUE)); \
@@ -1517,8 +1565,8 @@ static void	parse_certificate(struct x509cert_info *cert,
 		rsa->LOCALNAME##_len = BN_bn2bin(BNVALUE, rsa->LOCALNAME); \
 	} while (0)
 
-static void	parse_rsa_private_key(struct rsakey_info *rsa,
-		unsigned char *data, int len)
+static int 
+parse_rsa_private_key(struct rsakey_info *rsa, unsigned char *data, int len)
 {
 	RSA *r = NULL;
 	const unsigned char *p;
@@ -1536,9 +1584,11 @@ static void	parse_rsa_private_key(struct rsakey_info *rsa,
 	RSA_GET_BN(exponent_1, r->dmp1);
 	RSA_GET_BN(exponent_2, r->dmq1);
 	RSA_GET_BN(coefficient, r->iqmp);
+
+	return 0;
 }
 
-static void	parse_rsa_public_key(struct rsakey_info *rsa,
+static void parse_rsa_public_key(struct rsakey_info *rsa,
 		unsigned char *data, int len)
 {
 	RSA *r = NULL;
@@ -1557,6 +1607,42 @@ static void	parse_rsa_public_key(struct rsakey_info *rsa,
 	RSA_GET_BN(modulus, r->n);
 	RSA_GET_BN(public_exponent, r->e);
 }
+
+#if OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_EC)
+static int parse_gost_private_key(EVP_PKEY *evp_key, struct gostkey_info *gost)
+{
+	EC_KEY *src = EVP_PKEY_get0(evp_key);
+	unsigned char *pder;
+	const BIGNUM *bignum;
+	int nid, rv;
+
+	if (!src)
+		return -1;
+
+	nid = EC_GROUP_get_curve_name(EC_KEY_get0_group(EVP_PKEY_get0(evp_key)));
+	rv = i2d_ASN1_OBJECT(OBJ_nid2obj(nid), NULL);
+	if (rv < 0)
+		return -1;
+
+	gost->param_oid.value = malloc(rv);
+	if (!gost->param_oid.value)
+		return -1;
+
+	pder =  gost->param_oid.value;
+	rv = i2d_ASN1_OBJECT(OBJ_nid2obj(nid), &pder);
+	gost->param_oid.len = rv;
+
+	bignum = EC_KEY_get0_private_key(EVP_PKEY_get0(evp_key));
+
+	gost->private.len = BN_num_bytes(bignum);
+	gost->private.value = malloc(gost->private.len);
+	if (!gost->private.value)
+		return -1;
+	BN_bn2bin(bignum, gost->private.value);
+
+	return 0;
+}
+#endif
 #endif
 
 #define MAX_OBJECT_SIZE	5000
@@ -1581,11 +1667,13 @@ static int write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 #ifdef ENABLE_OPENSSL
 	struct x509cert_info cert;
 	struct rsakey_info rsa;
+	struct gostkey_info gost;
+	EVP_PKEY *evp_key = NULL;
 
 	memset(&cert, 0, sizeof(cert));
 	memset(&rsa,  0, sizeof(rsa));
+	memset(&gost,  0, sizeof(gost));
 #endif
-
 	f = fopen(opt_file_to_write, "rb");
 	if (f == NULL)
 		util_fatal("Couldn't open file \"%s\"\n", opt_file_to_write);
@@ -1618,9 +1706,28 @@ static int write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	}
 	if (opt_object_class == CKO_PRIVATE_KEY) {
 #ifdef ENABLE_OPENSSL
-		parse_rsa_private_key(&rsa, contents, contents_len);
+		int rv; 
+
+		rv = do_read_private_key(contents, contents_len, &evp_key);
+		if (rv)
+			return rv;
+
+		if (evp_key->type == EVP_PKEY_RSA)   {
+			rv = parse_rsa_private_key(&rsa, contents, contents_len);
+		}
+#if OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_EC)
+		else if (evp_key->type == NID_id_GostR3410_2001)   {
+			rv = parse_gost_private_key(evp_key, &gost);
+		}
+#endif
+		else   {
+			util_fatal("Unsupported key type: 0x%X\n", evp_key->type);
+		}
+
+		if (rv)
+			return rv;
 #else
-		util_fatal("No OpenSSL support, cannot parse RSA private key\n");
+		util_fatal("No OpenSSL support, cannot parse private key\n");
 #endif
 	}
 	if (opt_object_class == CKO_PUBLIC_KEY) {
@@ -1667,55 +1774,63 @@ static int write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	else
 	if (opt_object_class == CKO_PRIVATE_KEY) {
 		CK_OBJECT_CLASS clazz = CKO_PRIVATE_KEY;
-		CK_KEY_TYPE type = CKK_RSA;
+		CK_KEY_TYPE type;
 
-		FILL_ATTR(privkey_templ[0], CKA_CLASS, &clazz, sizeof(clazz));
-		FILL_ATTR(privkey_templ[1], CKA_KEY_TYPE, &type, sizeof(type));
-		FILL_ATTR(privkey_templ[2], CKA_TOKEN, &_true, sizeof(_true));
-		FILL_ATTR(privkey_templ[3], CKA_PRIVATE, &_true, sizeof(_true));
-		FILL_ATTR(privkey_templ[4], CKA_SENSITIVE, &_true, sizeof(_true));
-		n_privkey_attr = 5;
+		n_privkey_attr = 0;
+		FILL_ATTR(privkey_templ[n_privkey_attr], CKA_CLASS, &clazz, sizeof(clazz));
+		n_privkey_attr++;
+		FILL_ATTR(privkey_templ[n_privkey_attr], CKA_TOKEN, &_true, sizeof(_true));
+		n_privkey_attr++;
+		FILL_ATTR(privkey_templ[n_privkey_attr], CKA_PRIVATE, &_true, sizeof(_true));
+		n_privkey_attr++;
+		FILL_ATTR(privkey_templ[n_privkey_attr], CKA_SENSITIVE, &_true, sizeof(_true));
+		n_privkey_attr++;
 
 		if (opt_object_label != NULL) {
-			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_LABEL,
-				opt_object_label, strlen(opt_object_label));
+			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_LABEL, opt_object_label, strlen(opt_object_label));
 			n_privkey_attr++;
 		}
 		if (opt_object_id_len != 0) {
-			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_ID,
-				opt_object_id, opt_object_id_len);
+			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_ID, opt_object_id, opt_object_id_len);
 			n_privkey_attr++;
 		}
 #ifdef ENABLE_OPENSSL
 		if (cert.subject_len != 0) {
-			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_SUBJECT,
-				cert.subject, cert.subject_len);
+			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_SUBJECT, cert.subject, cert.subject_len);
 			n_privkey_attr++;
 		}
-		FILL_ATTR(privkey_templ[n_privkey_attr], CKA_MODULUS,
-			rsa.modulus, rsa.modulus_len);
-		n_privkey_attr++;
-		FILL_ATTR(privkey_templ[n_privkey_attr], CKA_PUBLIC_EXPONENT,
-			rsa.public_exponent, rsa.public_exponent_len);
-		n_privkey_attr++;
-		FILL_ATTR(privkey_templ[n_privkey_attr], CKA_PRIVATE_EXPONENT,
-			rsa.private_exponent, rsa.private_exponent_len);
-		n_privkey_attr++;
-		FILL_ATTR(privkey_templ[n_privkey_attr], CKA_PRIME_1,
-			rsa.prime_1, rsa.prime_1_len);
-		n_privkey_attr++;
-		FILL_ATTR(privkey_templ[n_privkey_attr], CKA_PRIME_2,
-			rsa.prime_2, rsa.prime_2_len);
-		n_privkey_attr++;
-		FILL_ATTR(privkey_templ[n_privkey_attr], CKA_EXPONENT_1,
-			rsa.exponent_1, rsa.exponent_1_len);
-		n_privkey_attr++;
-		FILL_ATTR(privkey_templ[n_privkey_attr], CKA_EXPONENT_2,
-			rsa.exponent_2, rsa.exponent_2_len);
-		n_privkey_attr++;
-		FILL_ATTR(privkey_templ[n_privkey_attr], CKA_COEFFICIENT,
-			rsa.coefficient, rsa.coefficient_len);
-		n_privkey_attr++;
+		if (evp_key->type == EVP_PKEY_RSA)   {
+			type = CKK_RSA;
+			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_KEY_TYPE, &type, sizeof(type));
+			n_privkey_attr++;
+			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_MODULUS, rsa.modulus, rsa.modulus_len);
+			n_privkey_attr++;
+			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_PUBLIC_EXPONENT, rsa.public_exponent, rsa.public_exponent_len);
+			n_privkey_attr++;
+			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_PRIVATE_EXPONENT, rsa.private_exponent, rsa.private_exponent_len);
+			n_privkey_attr++;
+			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_PRIME_1, rsa.prime_1, rsa.prime_1_len);
+			n_privkey_attr++;
+			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_PRIME_2, rsa.prime_2, rsa.prime_2_len);
+			n_privkey_attr++;
+			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_EXPONENT_1, rsa.exponent_1, rsa.exponent_1_len);
+			n_privkey_attr++;
+			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_EXPONENT_2, rsa.exponent_2, rsa.exponent_2_len);
+			n_privkey_attr++;
+			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_COEFFICIENT, rsa.coefficient, rsa.coefficient_len);
+			n_privkey_attr++;
+		}
+#if OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_EC)
+		else if (evp_key->type == NID_id_GostR3410_2001)   {
+			type = CKK_GOSTR3410;
+			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_KEY_TYPE, &type, sizeof(type));
+			n_privkey_attr++;
+			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_GOSTR3410_PARAMS, gost.param_oid.value, gost.param_oid.len);
+			n_privkey_attr++;
+			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_VALUE, gost.private.value, gost.private.len);
+			n_privkey_attr++;
+		}
+#endif
 #endif
 	}
 	else
@@ -2143,7 +2258,7 @@ static void show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 		if ((oid = getGOSTR3410_PARAMS(sess, obj, &size)) != NULL) {
 			unsigned int	n;
 
-			printf("  OID:        ");
+			printf("  PARAMS OID:  ");
 			for (n = 0; n < size; n++)
 				printf("%02x", oid[n]);
 			printf("\n");
