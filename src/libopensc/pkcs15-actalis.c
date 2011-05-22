@@ -214,7 +214,7 @@ static int sc_pkcs15emu_actalis_init(sc_pkcs15_card_t * p15card)
 
 		if (sc_select_file(card, &cpath, NULL) == SC_SUCCESS) {
 			unsigned char *compCert = NULL, *cert = NULL, size[2];
-			unsigned int compLen, len;
+			unsigned long compLen, len;
 
 			sc_pkcs15_cert_info_t cert_info;
 			sc_pkcs15_object_t cert_obj;
@@ -229,7 +229,7 @@ static int sc_pkcs15emu_actalis_init(sc_pkcs15_card_t * p15card)
 
 			sc_read_binary(card, 4, compCert, compLen, 0);
 
-			if (uncompress(cert, (unsigned long int *) &len,
+			if (uncompress(cert, &len,
 				compCert, compLen) != Z_OK)
 				return SC_ERROR_INTERNAL;
 			cpath.index = 0;
