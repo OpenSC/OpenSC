@@ -207,6 +207,21 @@ pgp_init(sc_card_t *card)
 		return SC_ERROR_OUT_OF_MEMORY;
 	}
 
+	/* update card capabilities from ATR */
+	if (card->atr.len > 0) {
+		unsigned char *hist_bytes = card->atr.value;
+		size_t len = card->atr.len;
+		size_t i = 0;
+
+		while ((i < len) && (hist_bytes[i] != 0x73))
+			i++;
+
+		/* bit 0x40 in byte 3 of TL 0x73 means "extended Le/Lc" */
+		if ((hist_bytes[i] == 0x73) && (len > i+3) &&
+		    (hist_bytes[i+3] & 0x40))
+			card->caps |= SC_CARD_CAP_APDU_EXT;
+	}
+
 	return SC_SUCCESS;
 }
 
