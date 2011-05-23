@@ -265,7 +265,6 @@ static int
 pgp_init(sc_card_t *card)
 {
         struct pgp_priv_data *priv;
-        unsigned long	flags;
 	sc_path_t	aid;
 	sc_file_t	*file = NULL;
 	struct do_info	*info;
@@ -284,20 +283,6 @@ pgp_init(sc_card_t *card)
 	}
 
 	card->cla = 0x00;
-
-	/* Is this correct? */
-	/* OpenPGP card spec 1.1 & 2.0, section 2.1 */
-        flags = SC_ALGORITHM_RSA_RAW;
-	/* OpenPGP card spec 1.1 & 2.0, section 7.2.9 & 7.2.10 */
-        flags |= SC_ALGORITHM_RSA_PAD_PKCS1;
-        flags |= SC_ALGORITHM_RSA_HASH_NONE;
-
-	/* Is this correct? */
-        _sc_card_add_rsa_alg(card, 512, flags, 0);
-        _sc_card_add_rsa_alg(card, 768, flags, 0);
-        _sc_card_add_rsa_alg(card, 1024, flags, 0);
-	if (card->type == SC_CARD_TYPE_OPENPGP_V2)
-		_sc_card_add_rsa_alg(card, 2048, flags, 0);
 
 	/* set pointer to correct list of card objects */
 	priv->pgp_objects = (card->type == SC_CARD_TYPE_OPENPGP_V2)
@@ -412,6 +397,27 @@ pgp_get_card_features(sc_card_t *card)
 		    (blob->data != NULL) && (blob->len > 1)) {
 			/* 2nd byte in "CHV status bytes" DO means "max. PIN length" */
 			card->max_pin_len = blob->data[1];
+		}
+
+		/* get supported algorithms & key lengths from "algorithm attributes" DOs */
+		for (i = 0x00c1; i < 0x0c3; i++) {
+			unsigned long flags;
+
+			/* Is this correct? */
+			/* OpenPGP card spec 1.1 & 2.0, section 2.1 */
+			flags = SC_ALGORITHM_RSA_RAW;
+			/* OpenPGP card spec 1.1 & 2.0, section 7.2.9 & 7.2.10 */
+			flags |= SC_ALGORITHM_RSA_PAD_PKCS1;
+			flags |= SC_ALGORITHM_RSA_HASH_NONE;
+
+			if ((pgp_get_blob(card, blob73, i, &blob) >= 0) &&
+			    (blob->data != NULL) && (blob->len >= 4)) {
+				if (blob->data[0] == 0x01) {	/* Algorithm ID [RFC4880]: RSA */
+					unsigned int keylen = bebytes2ushort(blob->data + 1);
+
+					_sc_card_add_rsa_alg(card, keylen, flags, 0);
+				}
+			}
 		}
 	}
 
