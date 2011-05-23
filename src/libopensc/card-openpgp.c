@@ -124,6 +124,7 @@ struct pgp_priv_data {
 };
 
 
+/* ABI: check if card's ATR matches one of driver's */
 static int
 pgp_match_card(sc_card_t *card)
 {
@@ -137,6 +138,8 @@ pgp_match_card(sc_card_t *card)
 	return 0;
 }
 
+
+/* ABI: initialize driver */
 static int
 pgp_init(sc_card_t *card)
 {
@@ -235,6 +238,8 @@ pgp_init(sc_card_t *card)
 	return SC_SUCCESS;
 }
 
+
+/* ABI: terminate driver */
 static int
 pgp_finish(sc_card_t *card)
 {
@@ -252,6 +257,8 @@ pgp_finish(sc_card_t *card)
 	return SC_SUCCESS;
 }
 
+
+/* internal: fill a blob's data */
 static int
 pgp_set_blob(struct blob *blob, const u8 *data, size_t len)
 {
@@ -278,6 +285,8 @@ pgp_set_blob(struct blob *blob, const u8 *data, size_t len)
 	return SC_SUCCESS;
 }
 
+
+/* internal: append a blob to the list of children of a given parent blob */
 static struct blob *
 pgp_new_blob(struct blob *parent, unsigned int file_id,
 		int file_type, struct do_info *info)
@@ -304,6 +313,8 @@ pgp_new_blob(struct blob *parent, unsigned int file_id,
 	return blob;
 }
 
+
+/* internal: free a blob including its content */
 static void
 pgp_free_blob(struct blob *blob)
 {
@@ -317,6 +328,7 @@ pgp_free_blob(struct blob *blob)
 }
 
 
+/* internal: iterate through the blob tree, calling a function for each blob */
 static void
 pgp_iterate_blobs(struct blob *blob, int level, void (*func)())
 {
@@ -335,6 +347,8 @@ pgp_iterate_blobs(struct blob *blob, int level, void (*func)())
 	}
 }
 
+
+/* internal: read a blob's contents from card */
 static int
 pgp_read_blob(sc_card_t *card, struct blob *blob)
 {
@@ -358,8 +372,9 @@ pgp_read_blob(sc_card_t *card, struct blob *blob)
 	return pgp_set_blob(blob, buffer, r);
 }
 
+
 /*
- * Enumerate contents of a data blob.
+ * internal: Enumerate contents of a data blob.
  * The OpenPGP card has a TLV encoding according ASN.1 BER-encoding rules.
  */
 static int
@@ -411,6 +426,8 @@ pgp_enumerate_blob(sc_card_t *card, struct blob *blob)
 	return SC_SUCCESS;
 }
 
+
+/* internal: find a blob by ID below a given parent, filling its contents when necessary */
 static int
 pgp_get_blob(sc_card_t *card, struct blob *blob, unsigned int id,
 		struct blob **ret)
@@ -435,6 +452,8 @@ pgp_get_blob(sc_card_t *card, struct blob *blob, unsigned int id,
 	return SC_ERROR_FILE_NOT_FOUND;
 }
 
+
+/* ABI: SELECT FILE */
 static int
 pgp_select_file(sc_card_t *card, const sc_path_t *path, sc_file_t **ret)
 {
@@ -476,6 +495,8 @@ pgp_select_file(sc_card_t *card, const sc_path_t *path, sc_file_t **ret)
 	return SC_SUCCESS;
 }
 
+
+/* ABI: LIST FILES */
 static int
 pgp_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 {
@@ -501,6 +522,8 @@ pgp_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 	return k;
 }
 
+
+/* ABI: READ BINARY */
 static int
 pgp_read_binary(sc_card_t *card, unsigned int idx,
 		u8 *buf, size_t count, unsigned long flags)
@@ -528,6 +551,8 @@ pgp_read_binary(sc_card_t *card, unsigned int idx,
 	return count;
 }
 
+
+/* ABI: WRITE BINARY */
 static int
 pgp_write_binary(sc_card_t *card, unsigned int idx,
 		const u8 *buf, size_t count, unsigned long flags)
@@ -535,6 +560,8 @@ pgp_write_binary(sc_card_t *card, unsigned int idx,
 	return SC_ERROR_NOT_SUPPORTED;
 }
 
+
+/* internal: get public key from card: as DF + sub-wEFs */
 static int
 pgp_get_pubkey(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 {
@@ -563,6 +590,8 @@ pgp_get_pubkey(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 	return apdu.resplen;
 }
 
+
+/* internal: get public key from card: as one wEF */
 static int
 pgp_get_pubkey_pem(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 {
@@ -600,6 +629,8 @@ pgp_get_pubkey_pem(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 	return len;
 }
 
+
+/* ABI: GET DATA */
 static int
 pgp_get_data(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 {
@@ -619,12 +650,16 @@ pgp_get_data(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 	return apdu.resplen;
 }
 
+
+/* ABI: PUT DATA */
 static int
 pgp_put_data(sc_card_t *card, unsigned int tag, const u8 *buf, size_t buf_len)
 {
 	return SC_ERROR_NOT_SUPPORTED;
 }
 
+
+/* ABI: PIN cmd: verify/change/unblock a PIN */
 static int
 pgp_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 {
@@ -636,6 +671,8 @@ pgp_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 	return iso_ops->pin_cmd(card, data, tries_left);
 }
 
+
+/* ABI: set security environment */
 static int
 pgp_set_security_env(sc_card_t *card,
 		const sc_security_env_t *env, int se_num)
@@ -678,6 +715,8 @@ pgp_set_security_env(sc_card_t *card,
 	return SC_SUCCESS;
 }
 
+
+/* ABI: COMPUTE DIGITAL SIGNATURE */
 static int
 pgp_compute_signature(sc_card_t *card, const u8 *data,
                 size_t data_len, u8 * out, size_t outlen)
@@ -724,6 +763,8 @@ pgp_compute_signature(sc_card_t *card, const u8 *data,
 	return apdu.resplen;
 }
 
+
+/* ABI: DECIPHER */
 static int
 pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 		u8 *out, size_t outlen)
@@ -783,6 +824,8 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 	return apdu.resplen;
 }
 
+
+/* ABI: card ctl: perform special card-specific operations */
 static int pgp_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 {
 	struct pgp_priv_data	*priv = DRVDATA(card);
@@ -797,7 +840,8 @@ static int pgp_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED);
 }
 
-/* Driver binding stuff */
+
+/* ABI: driver binding stuff */
 static struct sc_card_driver *
 sc_get_driver(void)
 {
