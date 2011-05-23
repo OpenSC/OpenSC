@@ -61,6 +61,13 @@ static struct sc_card_driver pgp_drv = {
  *
  * Everything else is mapped to "file" IDs.
  */
+
+enum _version {		/* 2-byte BCD-alike encoded version number */
+	OPENPGP_CARD_1_0 = 0x0100,
+	OPENPGP_CARD_1_1 = 0x0101,
+	OPENPGP_CARD_2_0 = 0x0200
+};
+
 struct blob {
 	struct blob *	next;	/* pointer to next sibling */
 	struct blob *	parent;	/* pointer to parent */
@@ -120,6 +127,8 @@ struct pgp_priv_data {
 	struct blob *		mf;
 	struct blob *		current;	/* currently selected file */
 
+	enum _version		bcd_version;
+
 	sc_security_env_t	sec_env;
 };
 
@@ -178,6 +187,10 @@ pgp_init(sc_card_t *card)
 	if (card->type == SC_CARD_TYPE_OPENPGP_V2)
 		_sc_card_add_rsa_alg(card, 2048, flags, 0);
 
+	/* set detailed card version */
+	priv->bcd_version = (card->type == SC_CARD_TYPE_OPENPGP_V2)
+				? OPENPGP_CARD_2_0 : OPENPGP_CARD_1_1;
+
 	/* select application "OpenPGP" */
 	sc_format_path("D276:0001:2401", &aid);
 	aid.type = SC_PATH_TYPE_DF_NAME;
@@ -186,9 +199,11 @@ pgp_init(sc_card_t *card)
 		return r;
 	}
 
-	/* kludge: get card's serial number from manufacturer ID + serial number */
+	/* read information from AID */
 	if (file && file->namelen == 16) {
 		/* OpenPGP card spec 1.1 & 2.0, section 4.2.1 & 4.1.2.1 */
+		priv->bcd_version = bebytes2ushort(file->name + 6);
+		/* kludge: get card's serial number from manufacturer ID + serial number */
 		memcpy(card->serialnr.value, file->name + 8, 6);
 		card->serialnr.len = 6;
 	}
