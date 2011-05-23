@@ -390,6 +390,31 @@ pgp_get_card_features(sc_card_t *card)
 		}
 	}
 
+	if ((pgp_get_blob(card, priv->mf, 0x006e, &blob6e) >= 0) &&
+	    (pgp_get_blob(card, blob6e, 0x0073, &blob73) >= 0)) {
+
+		/* get "extended capabilities" DO */
+		if ((pgp_get_blob(card, blob73, 0x00c0, &blob) >= 0) &&
+		    (blob->data != NULL) && (blob->len > 0)) {
+			/* bit 0x40 if first byte means "support for get challenge" */
+			if (blob->data[0] & 0x40)
+				card->caps |= SC_CARD_CAP_RNG;
+
+			if ((priv->bcd_version >= OPENPGP_CARD_2_0) && (blob->len >= 10)) {
+				/* max. send/receive sizes are at bytes 7-8 resp. 9-10 */
+				card->max_send_size = bebytes2ushort(blob->data + 6);
+				card->max_recv_size = bebytes2ushort(blob->data + 8);
+			}
+		}
+
+		/* get max. PIN length from "CHV status bytes" DO */
+		if ((pgp_get_blob(card, blob73, 0x00c4, &blob) >= 0) &&
+		    (blob->data != NULL) && (blob->len > 1)) {
+			/* 2nd byte in "CHV status bytes" DO means "max. PIN length" */
+			card->max_pin_len = blob->data[1];
+		}
+	}
+
 	return SC_SUCCESS;
 }
 
