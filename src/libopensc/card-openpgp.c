@@ -83,6 +83,7 @@ struct do_info {
 	int		(*put_fn)(sc_card_t *, unsigned int, const u8 *, size_t);
 };
 
+static int		pgp_finish(sc_card_t *card);
 static void		pgp_iterate_blobs(struct blob *, int, void (*func)());
 
 static struct blob *	pgp_new_blob(struct blob *, unsigned int, int,
@@ -146,6 +147,7 @@ pgp_init(sc_card_t *card)
 	sc_file_t	*file = NULL;
 	struct do_info	*info;
 	int		r;
+	struct blob 	*child;
 
 	priv = calloc (1, sizeof *priv);
 	if (!priv)
@@ -188,14 +190,23 @@ pgp_init(sc_card_t *card)
 
 	priv->current = priv->mf;
 
-	/* Populate MF - add all blobs listed in the pgp_objects
-	 * table. */
+	/* Populate MF - add all blobs listed in the pgp_objects table. */
 	for (info = pgp_objects; info->id > 0; info++) {
-		pgp_new_blob(priv->mf, info->id,
+		child = pgp_new_blob(priv->mf, info->id,
 			  	info->constructed? SC_FILE_TYPE_DF
 					  	 : SC_FILE_TYPE_WORKING_EF,
 				info);
+		/* catch out of memory condition */
+		if (child == NULL)
+			break;
 	}
+
+	/* treat out of memory condition */
+	if (child == NULL) {
+		pgp_finish(card);
+		return SC_ERROR_OUT_OF_MEMORY;
+	}
+
 	return SC_SUCCESS;
 }
 
@@ -249,20 +260,21 @@ pgp_new_blob(struct blob *parent, unsigned int file_id,
 	sc_file_t	*file = sc_file_new();
 	struct blob	*blob, **p;
 
-	blob = calloc(1, sizeof(*blob));
-	blob->parent = parent;
-	blob->id     = file_id;
-	blob->file   = file;
-	blob->info   = info;
+	if ((blob = calloc(1, sizeof(*blob))) != NULL) {
+		blob->parent = parent;
+		blob->id     = file_id;
+		blob->file   = file;
+		blob->info   = info;
 
-	file->type   = file_type;
-	file->path   = parent->file->path;
-	file->ef_structure = SC_FILE_EF_TRANSPARENT;
-	sc_append_file_id(&file->path, file_id);
+		file->type   = file_type;
+		file->path   = parent->file->path;
+		file->ef_structure = SC_FILE_EF_TRANSPARENT;
+		sc_append_file_id(&file->path, file_id);
 
-	for (p = &parent->files; *p; p = &(*p)->next)
-		;
-	*p = blob;
+		for (p = &parent->files; *p; p = &(*p)->next)
+			;
+		*p = blob;
+	}
 
 	return blob;
 }
