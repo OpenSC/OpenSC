@@ -481,24 +481,27 @@ pgp_iterate_blobs(struct blob *blob, int level, void (*func)())
 static int
 pgp_read_blob(sc_card_t *card, struct blob *blob)
 {
-	unsigned char	buffer[2048];
-	size_t		buf_len = (card->caps & SC_CARD_CAP_APDU_EXT)
-				  ? sizeof(buffer) : 256;
-	int		r;
-
 	if (blob->data != NULL)
 		return SC_SUCCESS;
 	if (blob->info == NULL)
 		return blob->status;
 
-	r = blob->info->get_fn(card, blob->id, buffer, buf_len);
+	if (blob->info->get_fn) {	/* readable, top-level DO */
+		u8 	buffer[2048];
+		size_t	buf_len = (card->caps & SC_CARD_CAP_APDU_EXT)
+				  ? sizeof(buffer) : 256;
+		int	r = blob->info->get_fn(card, blob->id, buffer, buf_len);
 
-	if (r < 0) {	/* an error occurred */
-		blob->status = r;
-		return r;
+		if (r < 0) {	/* an error occurred */
+			blob->status = r;
+			return r;
+		}
+
+		return pgp_set_blob(blob, buffer, r);
 	}
-
-	return pgp_set_blob(blob, buffer, r);
+	else {		/* un-readable DO or part of a constrcuted DO */
+		return SC_SUCCESS;
+	}
 }
 
 
