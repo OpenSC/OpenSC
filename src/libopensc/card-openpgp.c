@@ -154,13 +154,14 @@ pgp_init(sc_card_t *card)
 	priv = calloc (1, sizeof *priv);
 	if (!priv)
 		return SC_ERROR_OUT_OF_MEMORY;
+	card->drv_data = priv;
+
 	priv->mf = calloc(1, sizeof(struct blob));
 	if (!priv->mf) {
-		free(priv);
+		pgp_finish(card);
 		return SC_ERROR_OUT_OF_MEMORY;
 	}
 
-	card->drv_data = priv;
 	card->cla = 0x00;
 
 	/* Is this correct? */
@@ -181,9 +182,7 @@ pgp_init(sc_card_t *card)
 	sc_format_path("D276:0001:2401", &aid);
 	aid.type = SC_PATH_TYPE_DF_NAME;
 	if ((r = iso_ops->select_file(card, &aid, &file)) < 0) {
-		free(priv->mf);
-		free(priv);
-		card->drv_data = NULL;
+		pgp_finish(card);
 		return r;
 	}
 
