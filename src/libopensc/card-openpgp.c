@@ -185,6 +185,13 @@ pgp_init(sc_card_t *card)
 		return r;
 	}
 
+	/* kludge: get card's serial number from manufacturer ID + serial number */
+	if (file && file->namelen == 16) {
+		/* OpenPGP card spec 1.1 & 2.0, section 4.2.1 & 4.1.2.1 */
+		memcpy(card->serialnr.value, file->name + 8, 6);
+		card->serialnr.len = 6;
+	}
+
 	sc_format_path("3f00", &file->path);
 	file->type = SC_FILE_TYPE_DF;
 	file->id = 0x3f00;
@@ -777,6 +784,20 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 	return apdu.resplen;
 }
 
+static int pgp_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
+{
+	struct pgp_priv_data	*priv = DRVDATA(card);
+
+	switch(cmd) {
+	case SC_CARDCTL_GET_SERIALNR:
+		memmove((sc_serial_number_t *) ptr, &card->serialnr, sizeof(card->serialnr));
+		return SC_SUCCESS;
+		break;
+	}
+
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED);
+}
+
 /* Driver binding stuff */
 static struct sc_card_driver *
 sc_get_driver(void)
@@ -799,6 +820,7 @@ sc_get_driver(void)
 	pgp_ops.set_security_env= pgp_set_security_env;
 	pgp_ops.compute_signature= pgp_compute_signature;
 	pgp_ops.decipher	= pgp_decipher;
+	pgp_ops.card_ctl	= pgp_card_ctl;
 
 	return &pgp_drv;
 }
