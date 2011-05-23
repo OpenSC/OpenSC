@@ -78,7 +78,6 @@ struct blob {
 struct do_info {
 	unsigned int	id;
 	unsigned int	constructed : 1;
-	unsigned int	size;
 	int		(*get_fn)(sc_card_t *, unsigned int, u8 *, size_t);
 	int		(*put_fn)(sc_card_t *, unsigned int, const u8 *, size_t);
 };
@@ -95,25 +94,25 @@ static int		pgp_get_pubkey_pem(sc_card_t *, unsigned int,
 				u8 *, size_t);
 
 static struct do_info		pgp_objects[] = {
-      {	0x004f,		0, 0,	sc_get_data,	sc_put_data	},
-      {	0x005e,		0, 0,	sc_get_data,	sc_put_data	},
-      {	0x0065,		1, 0,	sc_get_data,	sc_put_data	},
-      {	0x006e,		1, 0,	sc_get_data,	sc_put_data	},
-      {	0x007a,		1, 0,	sc_get_data,	sc_put_data	},
-      {	0x00c4,		0, 0,	sc_get_data,	sc_put_data	},
-      {	0x0101,		0, 0,	sc_get_data,	sc_put_data	},
-      {	0x0102,		0, 0,	sc_get_data,	sc_put_data	},
-      {	0x5f50,		0, 0,	sc_get_data,	sc_put_data	},
-      {	0x5f52,		0, 0,	sc_get_data,	sc_put_data	},
-      {	0x7f21,		1, 0,	sc_get_data,	sc_put_data	},
-      { 0xb600,		1, 0,	pgp_get_pubkey,	NULL		},
-      { 0xb800,		1, 0,	pgp_get_pubkey,	NULL		},
-      { 0xa400,		1, 0,	pgp_get_pubkey,	NULL		},
-      { 0xb601,		0, 0,	pgp_get_pubkey_pem,NULL		},
-      { 0xb801,		0, 0,	pgp_get_pubkey_pem,NULL		},
-      { 0xa401,		0, 0,	pgp_get_pubkey_pem,NULL		},
+      {	0x004f,		0,	sc_get_data,	sc_put_data	},
+      {	0x005e,		0,	sc_get_data,	sc_put_data	},
+      {	0x0065,		1,	sc_get_data,	sc_put_data	},
+      {	0x006e,		1,	sc_get_data,	sc_put_data	},
+      {	0x007a,		1,	sc_get_data,	sc_put_data	},
+      {	0x00c4,		0,	sc_get_data,	sc_put_data	},
+      {	0x0101,		0,	sc_get_data,	sc_put_data	},
+      {	0x0102,		0,	sc_get_data,	sc_put_data	},
+      {	0x5f50,		0,	sc_get_data,	sc_put_data	},
+      {	0x5f52,		0,	sc_get_data,	sc_put_data	},
+      {	0x7f21,		1,	sc_get_data,	sc_put_data	},
+      { 0xb600,		1,	pgp_get_pubkey,	NULL		},
+      { 0xb800,		1,	pgp_get_pubkey,	NULL		},
+      { 0xa400,		1,	pgp_get_pubkey,	NULL		},
+      { 0xb601,		0,	pgp_get_pubkey_pem,NULL		},
+      { 0xb801,		0,	pgp_get_pubkey_pem,NULL		},
+      { 0xa401,		0,	pgp_get_pubkey_pem,NULL		},
 
-      { 0, 0, 0, NULL, NULL },
+      { 0, 0, NULL, NULL },
 };
 
 #define DRVDATA(card)        ((struct pgp_priv_data *) ((card)->drv_data))
