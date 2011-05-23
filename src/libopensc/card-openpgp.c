@@ -770,12 +770,9 @@ pgp_get_pubkey(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 
 	sc_log(card->ctx, "called, tag=%04x\n", tag);
 
-	idbuf[0] = tag >> 8;
-	idbuf[1] = tag;
-
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4, 0x47, 0x81, 0);
 	apdu.lc = 2;
-	apdu.data = idbuf;
+	apdu.data = ushort2bebytes(idbuf, tag);
 	apdu.datalen = 2;
 	apdu.le = ((buf_len >= 256) && !(card->caps & SC_CARD_CAP_APDU_EXT)) ? 256 : buf_len;
 	apdu.resp = buf;
