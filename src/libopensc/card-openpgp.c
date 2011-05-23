@@ -328,7 +328,9 @@ pgp_iterate_blobs(struct blob *blob, int level, void (*func)())
 static int
 pgp_read_blob(sc_card_t *card, struct blob *blob)
 {
-	unsigned char	buffer[256];
+	unsigned char	buffer[2048];
+	size_t		buf_len = (card->caps & SC_CARD_CAP_APDU_EXT)
+				  ? sizeof(buffer) : 256;
 	int		r;
 
 	if (blob->data != NULL)
@@ -336,7 +338,7 @@ pgp_read_blob(sc_card_t *card, struct blob *blob)
 	if (blob->info == NULL)
 		return blob->status;
 
-	r = blob->info->get_fn(card, blob->id, buffer, sizeof(buffer));
+	r = blob->info->get_fn(card, blob->id, buffer, buf_len);
 
 	if (r < 0) {	/* an error occurred */
 		blob->status = r;
@@ -535,11 +537,11 @@ pgp_get_pubkey(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 	idbuf[0] = tag >> 8;
 	idbuf[1] = tag;
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x47, 0x81, 0);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_4, 0x47, 0x81, 0);
 	apdu.lc = 2;
 	apdu.data = idbuf;
 	apdu.datalen = 2;
-	apdu.le = (buf_len > 256)? 256 : buf_len;
+	apdu.le = ((buf_len >= 256) && !(card->caps & SC_CARD_CAP_APDU_EXT)) ? 256 : buf_len;
 	apdu.resp = buf;
 	apdu.resplen = buf_len;
 
