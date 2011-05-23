@@ -266,12 +266,12 @@ pgp_read_blob(sc_card_t *card, struct blob *blob)
 
 /*
  * Enumerate contents of a data blob.
- * The OpenPGP card has a funny TLV encoding.
+ * The OpenPGP card has a TLV encoding according ASN.1 BER-encoding rules.
  */
 static int
 pgp_enumerate_blob(sc_card_t *card, struct blob *blob)
 {
-	const u8	*in, *end;
+	const u8	*in;
 	int		r;
 
 	if (blob->files != NULL)
@@ -281,52 +281,40 @@ pgp_enumerate_blob(sc_card_t *card, struct blob *blob)
 		return r;
 
 	in = blob->data;
-	end = blob->data + blob->len;
-	while (in < end) {
-		unsigned int	tag, len, type = SC_FILE_TYPE_WORKING_EF;
-		unsigned char	c;
 
-		c = *in++;
-		if (c == 0x00 || c == 0xFF)
-			continue;
+	while (blob->len > (in - blob->data)) {
+		unsigned int	cla, tag, tmptag;
+		unsigned int	type = SC_FILE_TYPE_WORKING_EF;
+		size_t		len;
+		const u8	*data = in;
+		struct blob	*new;
 
-		tag = c;
-		if (tag & 0x20)
+		r = sc_asn1_read_tag(&data, blob->len - (in - blob->data),
+					&cla, &tag, &len);
+		if (r < 0) {
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+				 "Unexpected end of contents\n");
+			return SC_ERROR_OBJECT_NOT_VALID;
+		}
+
+		/* create fake file system hierarchy by
+		 * using constructed DOs as DF */
+		if (cla & SC_ASN1_TAG_CONSTRUCTED)
 			type = SC_FILE_TYPE_DF;
-		while ((c & 0x1f) == 0x1f) {
-			if (in >= end)
-				goto eoc;
-			c = *in++;
-			tag = (tag << 8) | c;
+
+		/* undo ASN1's split of tag & class */
+		for (tmptag = tag; tmptag > 0x0FF; tmptag >>= 8) {
+			cla <<= 8;
 		}
+		tag |= cla;
 
-		if (in >= end)
-			goto eoc;
-		c = *in++;
-		if (c < 0x80) {
-			len = c;
-		} else {
-			len = 0;
-			c &= 0x7F;
-			while (c--) {
-				if (in >= end)
-					goto eoc;
-				len = (len << 8) | *in++;
-			}
-		}
-
-		/* Don't search past end of content */
-		if (in + len > end)
-			goto eoc;
-
-		pgp_set_blob(pgp_new_blob(blob, tag, type, NULL), in, len);
-		in += len;
+		if ((new = pgp_new_blob(blob, tag, type, NULL)) == NULL)
+			return SC_ERROR_OUT_OF_MEMORY;
+		pgp_set_blob(new, data, len);
+		in = data + len;
 	}
 
 	return 0;
-
-eoc:	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Unexpected end of contents\n");
-	return SC_ERROR_OBJECT_NOT_VALID;
 }
 
 static int
