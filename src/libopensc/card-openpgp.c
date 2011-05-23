@@ -220,12 +220,24 @@ pgp_set_blob(struct blob *blob, const u8 *data, size_t len)
 {
 	if (blob->data)
 		free(blob->data);
-	blob->len    = len;
+	blob->data = NULL;
+	blob->len    = 0;
 	blob->status = 0;
-	blob->data   = malloc(len);
-	memcpy(blob->data, data, len);
 
-	blob->file->size = len;
+	if (len > 0) {
+		void *tmp = malloc(len);
+
+		if (tmp == NULL)
+			return SC_ERROR_OUT_OF_MEMORY;
+
+		blob->data = tmp;
+		blob->len  = len;
+		memcpy(blob->data, data, len);
+	}
+
+	if (blob->file)
+		blob->file->size = len;
+
 	return 0;
 }
 
