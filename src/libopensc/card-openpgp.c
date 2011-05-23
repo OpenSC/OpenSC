@@ -463,14 +463,21 @@ pgp_select_file(sc_card_t *card, const sc_path_t *path, sc_file_t **ret)
 	unsigned int	n;
 	int		r;
 
+	LOG_FUNC_CALLED(card->ctx);
+
 	memset(&path_copy, 0, sizeof(path_copy));
 
 	if (path->type == SC_PATH_TYPE_DF_NAME)
-		return iso_ops->select_file(card, path, ret);
+		LOG_FUNC_RETURN(card->ctx, iso_ops->select_file(card, path, ret));
+
 	if (path->type != SC_PATH_TYPE_PATH)
-		return SC_ERROR_INVALID_ARGUMENTS;
+		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
+				"invalid path type");
+
 	if (path->len < 2 || (path->len & 1))
-		return SC_ERROR_INVALID_ARGUMENTS;
+		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
+				"invalid path length");
+
 	if (!memcmp(path->value, "\x3f\x00", 2)) {
 		memcpy(path_copy.value, path->value + 2, path->len - 2);
 		path_copy.len = path->len - 2;
@@ -484,7 +491,7 @@ pgp_select_file(sc_card_t *card, const sc_path_t *path, sc_file_t **ret)
 				&blob);
 		if (r < 0) {
 			priv->current = NULL;
-			return r;
+			LOG_FUNC_RETURN(card->ctx, r);
 		}
 	}
 
@@ -492,7 +499,8 @@ pgp_select_file(sc_card_t *card, const sc_path_t *path, sc_file_t **ret)
 
 	if (ret)
 		sc_file_dup(ret, blob->file);
-	return SC_SUCCESS;
+
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
 
@@ -505,12 +513,15 @@ pgp_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 	unsigned int	k;
 	int		r;
 
+	LOG_FUNC_CALLED(card->ctx);
+
 	blob = priv->current;
 	if (blob->file->type != SC_FILE_TYPE_DF)
-		return SC_ERROR_OBJECT_NOT_VALID;
+		LOG_TEST_RET(card->ctx, SC_ERROR_OBJECT_NOT_VALID,
+				"invalid file type");
 
 	if ((r = pgp_enumerate_blob(card, blob)) < 0)
-		return r;
+		LOG_FUNC_RETURN(card->ctx, r);
 
 	for (k = 0, blob = blob->files; blob; blob = blob->next) {
 		if (k + 2 > buflen)
@@ -519,7 +530,7 @@ pgp_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 		buf[k++] = blob->id;
 	}
 
-	return k;
+	LOG_FUNC_RETURN(card->ctx, k);
 }
 
 
@@ -532,23 +543,25 @@ pgp_read_binary(sc_card_t *card, unsigned int idx,
 	struct blob	*blob;
 	int		r;
 
+	LOG_FUNC_CALLED(card->ctx);
+
 	if ((blob = priv->current) == NULL)
-		return SC_ERROR_FILE_NOT_FOUND;
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_FILE_NOT_FOUND);
 
 	if (blob->file->type != SC_FILE_TYPE_WORKING_EF)
-		return SC_ERROR_FILE_NOT_FOUND;
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_FILE_NOT_FOUND);
 
 	if ((r = pgp_read_blob(card, blob)) < 0)
-		return r;
+		LOG_FUNC_RETURN(card->ctx, r);
 
 	if (idx > blob->len)
-		return SC_ERROR_INCORRECT_PARAMETERS;
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INCORRECT_PARAMETERS);
 
 	if (idx + count > blob->len)
 		count = blob->len - idx;
-
 	memcpy(buf, blob->data + idx, count);
-	return count;
+
+	LOG_FUNC_RETURN(card->ctx, count);
 }
 
 
@@ -557,7 +570,7 @@ static int
 pgp_write_binary(sc_card_t *card, unsigned int idx,
 		const u8 *buf, size_t count, unsigned long flags)
 {
-	return SC_ERROR_NOT_SUPPORTED;
+	LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 }
 
 
@@ -569,7 +582,7 @@ pgp_get_pubkey(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 	u8		idbuf[2];
 	int		r;
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "called, tag=%04x\n", tag);
+	sc_log(card->ctx, "called, tag=%04x\n", tag);
 
 	idbuf[0] = tag >> 8;
 	idbuf[1] = tag;
@@ -583,11 +596,12 @@ pgp_get_pubkey(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 	apdu.resplen = buf_len;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
-	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
-	return apdu.resplen;
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	LOG_TEST_RET(card->ctx, r, "Card returned error");
+
+	LOG_FUNC_RETURN(card->ctx, apdu.resplen);
 }
 
 
@@ -602,7 +616,7 @@ pgp_get_pubkey_pem(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 	size_t		len;
 	int		r;
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "called, tag=%04x\n", tag);
+	sc_log(card->ctx, "called, tag=%04x\n", tag);
 	
 	if ((r = pgp_get_blob(card, priv->mf, tag & 0xFFFE, &blob)) < 0
 	 || (r = pgp_get_blob(card, blob, 0x7F49, &blob)) < 0
@@ -610,7 +624,7 @@ pgp_get_pubkey_pem(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 	 || (r = pgp_get_blob(card, blob, 0x0082, &exp_blob)) < 0
 	 || (r = pgp_read_blob(card, mod_blob)) < 0
 	 || (r = pgp_read_blob(card, exp_blob)) < 0)
-		return r;
+		LOG_TEST_RET(card->ctx, r, "error getting elements");
 
 	memset(&pubkey, 0, sizeof(pubkey));
 	pubkey.algorithm = SC_ALGORITHM_RSA;
@@ -619,14 +633,15 @@ pgp_get_pubkey_pem(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 	pubkey.u.rsa.exponent.data = exp_blob->data;
 	pubkey.u.rsa.exponent.len  = exp_blob->len;
 
-	if ((r = sc_pkcs15_encode_pubkey(card->ctx, &pubkey, &data, &len)) < 0)
-		return r;
+	r = sc_pkcs15_encode_pubkey(card->ctx, &pubkey, &data, &len);
+	LOG_TEST_RET(card->ctx, r, "public key encoding failed");
 
 	if (len > buf_len)
 		len = buf_len;
 	memcpy(buf, data, len);
 	free(data);
-	return len;
+
+	LOG_FUNC_RETURN(card->ctx, len);
 }
 
 
@@ -637,17 +652,20 @@ pgp_get_data(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 	sc_apdu_t	apdu;
 	int		r;
 
+	LOG_FUNC_CALLED(card->ctx);
+
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2, 0xCA, tag >> 8, tag);
 	apdu.le = ((buf_len >= 256) && !(card->caps & SC_CARD_CAP_APDU_EXT)) ? 256 : buf_len;
 	apdu.resp = buf;
 	apdu.resplen = buf_len;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
-	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
-	return apdu.resplen;
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	LOG_TEST_RET(card->ctx, r, "Card returned error");
+
+	LOG_FUNC_RETURN(card->ctx, apdu.resplen);
 }
 
 
@@ -655,7 +673,7 @@ pgp_get_data(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 static int
 pgp_put_data(sc_card_t *card, unsigned int tag, const u8 *buf, size_t buf_len)
 {
-	return SC_ERROR_NOT_SUPPORTED;
+	LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 }
 
 
@@ -663,12 +681,15 @@ pgp_put_data(sc_card_t *card, unsigned int tag, const u8 *buf, size_t buf_len)
 static int
 pgp_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 {
+	LOG_FUNC_CALLED(card->ctx);
+
 	if (data->pin_type != SC_AC_CHV)
-		return SC_ERROR_INVALID_ARGUMENTS;
+		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
+				"invalid PIN type");
 
 	data->pin_reference |= 0x80;
 
-	return iso_ops->pin_cmd(card, data, tries_left);
+	LOG_FUNC_RETURN(card->ctx, iso_ops->pin_cmd(card, data, tries_left));
 }
 
 
@@ -679,40 +700,43 @@ pgp_set_security_env(sc_card_t *card,
 {
 	struct pgp_priv_data *priv = DRVDATA(card);
 
-	if (env->flags & SC_SEC_ENV_ALG_PRESENT) {
-		if (env->algorithm != SC_ALGORITHM_RSA)
-			return SC_ERROR_INVALID_ARGUMENTS;
-	}
-	if (!(env->flags & SC_SEC_ENV_KEY_REF_PRESENT)
-	 || env->key_ref_len != 1)
-		return SC_ERROR_INVALID_ARGUMENTS;
+	LOG_FUNC_CALLED(card->ctx);
+
+	if ((env->flags & SC_SEC_ENV_ALG_PRESENT) && (env->algorithm != SC_ALGORITHM_RSA))
+		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
+				"only RSA algorithm supported");
+
+	if (!(env->flags & SC_SEC_ENV_KEY_REF_PRESENT) || (env->key_ref_len != 1))
+		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
+				"exactly one key reference required");
+
 	if (env->flags & SC_SEC_ENV_FILE_REF_PRESENT)
-		return SC_ERROR_INVALID_ARGUMENTS;
+		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
+			"passing file references not supported");
 
 	switch (env->operation) {
 	case SC_SEC_OPERATION_SIGN:
-		if (env->key_ref[0] != 0x00
-		 && env->key_ref[0] != 0x02) {
-		 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+		if (env->key_ref[0] != 0x00 && env->key_ref[0] != 0x02) {
+			LOG_TEST_RET(card->ctx, SC_ERROR_NOT_SUPPORTED,
 				"Key reference not compatible with "
-				"requested usage\n");
-			return SC_ERROR_NOT_SUPPORTED;
+				"requested usage");
 		}
 		break;
 	case SC_SEC_OPERATION_DECIPHER:
 		if (env->key_ref[0] != 0x01) {
-		 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+			LOG_TEST_RET(card->ctx, SC_ERROR_NOT_SUPPORTED,
 				"Key reference not compatible with "
-				"requested usage\n");
-			return SC_ERROR_NOT_SUPPORTED;
+				"requested usage");
 		}
 		break;
 	default:
-		return SC_ERROR_INVALID_ARGUMENTS;
+		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
+				"invalid operation");
 	}
 
 	priv->sec_env = *env;
-	return SC_SUCCESS;
+
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
 
@@ -726,8 +750,11 @@ pgp_compute_signature(sc_card_t *card, const u8 *data,
 	sc_apdu_t		apdu;
 	int			r;
 
+	LOG_FUNC_CALLED(card->ctx);
+
 	if (env->operation != SC_SEC_OPERATION_SIGN)
-		return SC_ERROR_INVALID_ARGUMENTS;
+		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
+				"invalid operation");
 
 	switch (env->key_ref[0]) {
 	case 0x00: /* signature key */
@@ -739,13 +766,9 @@ pgp_compute_signature(sc_card_t *card, const u8 *data,
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_4, 0x88, 0, 0);
 		break;
 	case 0x01:
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
-			"Invalid key reference (decipher only key)\n");
-		return SC_ERROR_INVALID_ARGUMENTS;
 	default:
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Invalid key reference 0x%02x\n",
-				env->key_ref[0]);
-		return SC_ERROR_INVALID_ARGUMENTS;
+		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
+			"invalid key reference");
 	}
 
 	apdu.lc = data_len;
@@ -756,11 +779,12 @@ pgp_compute_signature(sc_card_t *card, const u8 *data,
 	apdu.resplen = outlen;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
-	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
-	return apdu.resplen;
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	LOG_TEST_RET(card->ctx, r, "Card returned error");
+
+	LOG_FUNC_RETURN(card->ctx, apdu.resplen);
 }
 
 
@@ -775,10 +799,12 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 	u8		*temp = NULL;
 	int		r;
 
+	LOG_FUNC_CALLED(card->ctx);
+
 	/* There's some funny padding indicator that must be
 	 * prepended... hmm. */
 	if (!(temp = malloc(inlen + 1)))
-		return SC_ERROR_OUT_OF_MEMORY;
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 	temp[0] = '\0';
 	memcpy(temp + 1, in, inlen);
 	in = temp;
@@ -786,7 +812,8 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 
 	if (env->operation != SC_SEC_OPERATION_DECIPHER) {
 		free(temp);
-		return SC_ERROR_INVALID_ARGUMENTS;
+		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
+				"invalid operation");
 	}
 
 	switch (env->key_ref[0]) {
@@ -796,15 +823,10 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 		break;
 	case 0x00: /* signature key */
 	case 0x02: /* authentication key */
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
-			"Invalid key reference (signature only key)\n");
-		free(temp);
-		return SC_ERROR_INVALID_ARGUMENTS;
 	default:
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Invalid key reference 0x%02x\n",
-				env->key_ref[0]);
 		free(temp);
-		return SC_ERROR_INVALID_ARGUMENTS;
+		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
+				"invalid key reference");
 	}
 
 	apdu.lc = inlen;
@@ -816,12 +838,12 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 
 	r = sc_transmit_apdu(card, &apdu);
 	free(temp);
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
+	LOG_TEST_RET(card->ctx, r, "Card returned error");
 
-	return apdu.resplen;
+	LOG_FUNC_RETURN(card->ctx, apdu.resplen);
 }
 
 
@@ -830,14 +852,16 @@ static int pgp_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 {
 	struct pgp_priv_data	*priv = DRVDATA(card);
 
+	LOG_FUNC_CALLED(card->ctx);
+
 	switch(cmd) {
 	case SC_CARDCTL_GET_SERIALNR:
 		memmove((sc_serial_number_t *) ptr, &card->serialnr, sizeof(card->serialnr));
-		return SC_SUCCESS;
+		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 		break;
 	}
 
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED);
+	LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 }
 
 
