@@ -596,9 +596,8 @@ pgp_get_data(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 	sc_apdu_t	apdu;
 	int		r;
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT,
-				0xCA, tag >> 8, tag);
-	apdu.le = (buf_len <= 255)? buf_len : 256;
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_2, 0xCA, tag >> 8, tag);
+	apdu.le = ((buf_len >= 256) && !(card->caps & SC_CARD_CAP_APDU_EXT)) ? 256 : buf_len;
 	apdu.resp = buf;
 	apdu.resplen = buf_len;
 
@@ -684,13 +683,11 @@ pgp_compute_signature(sc_card_t *card, const u8 *data,
 	switch (env->key_ref[0]) {
 	case 0x00: /* signature key */
 		/* PSO SIGNATURE */
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT,
-				0x2A, 0x9E, 0x9A);
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_4, 0x2A, 0x9E, 0x9A);
 		break;
 	case 0x02: /* authentication key */
 		/* INTERNAL AUTHENTICATE */
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT,
-				0x88, 0, 0);
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_4, 0x88, 0, 0);
 		break;
 	case 0x01:
 		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
@@ -705,7 +702,7 @@ pgp_compute_signature(sc_card_t *card, const u8 *data,
 	apdu.lc = data_len;
 	apdu.data = data;
 	apdu.datalen = data_len;
-	apdu.le      = outlen > 256 ? 256 : outlen;
+	apdu.le = ((outlen >= 256) && !(card->caps & SC_CARD_CAP_APDU_EXT)) ? 256 : outlen;
 	apdu.resp    = out;
 	apdu.resplen = outlen;
 
@@ -744,8 +741,7 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 	switch (env->key_ref[0]) {
 	case 0x01: /* Decryption key */
 		/* PSO DECIPHER */
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT,
-				0x2A, 0x80, 0x86);
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_4, 0x2A, 0x80, 0x86);
 		break;
 	case 0x00: /* signature key */
 	case 0x02: /* authentication key */
@@ -763,7 +759,7 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 	apdu.lc = inlen;
 	apdu.data = in;
 	apdu.datalen = inlen;
-	apdu.le = 256;
+	apdu.le = ((outlen >= 256) && !(card->caps & SC_CARD_CAP_APDU_EXT)) ? 256 : outlen;
 	apdu.resp = out;
 	apdu.resplen = outlen;
 
