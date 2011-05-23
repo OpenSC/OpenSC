@@ -111,28 +111,38 @@ int sc_bin_to_hex(const u8 *in, size_t in_len, char *out, size_t out_len,
 	return 0;
 }
 
-void ulong2bebytes(u8 *buf, unsigned long x)
+u8 *ulong2bebytes(u8 *buf, unsigned long x)
 {
-    buf[3] = (u8) (x & 0xff);
-    buf[2] = (u8) ((x >> 8) & 0xff);
-    buf[1] = (u8) ((x >> 16) & 0xff);
-    buf[0] = (u8) ((x >> 24) & 0xff);
+	if (buf != NULL) {
+		buf[3] = (u8) (x & 0xff);
+		buf[2] = (u8) ((x >> 8) & 0xff);
+		buf[1] = (u8) ((x >> 16) & 0xff);
+		buf[0] = (u8) ((x >> 24) & 0xff);
+	}
+	return buf;
 }
 
-void ushort2bebytes(u8 *buf, unsigned short x)
+u8 *ushort2bebytes(u8 *buf, unsigned short x)
 {
-    buf[1] = (u8) (x & 0xff);
-    buf[0] = (u8) ((x >> 8) & 0xff);
+	if (buf != NULL) {
+		buf[1] = (u8) (x & 0xff);
+		buf[0] = (u8) ((x >> 8) & 0xff);
+	}
+	return buf;
 }
 
 unsigned long bebytes2ulong(const u8 *buf)
 {
-    return (unsigned long) (buf[0] << 24 | buf[1] << 16 | buf[2] << 8 | buf[3]);
+	if (buf == NULL)
+		return 0UL;
+	return (unsigned long) (buf[0] << 24 | buf[1] << 16 | buf[2] << 8 | buf[3]);
 }
 
 unsigned short bebytes2ushort(const u8 *buf)
 {
-    return (unsigned short) (buf[0] << 8 | buf[1]);
+	if (buf == NULL)
+		return 0U;
+	return (unsigned short) (buf[0] << 8 | buf[1]);
 }
 
 int sc_format_oid(struct sc_object_id *oid, const char *in)

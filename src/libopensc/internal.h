@@ -86,14 +86,16 @@ int _sc_free_atr(struct sc_context *ctx, struct sc_card_driver *driver);
  * Convert an unsigned long into 4 bytes in big endian order
  * @param  buf   the byte array for the result, should be 4 bytes long
  * @param  x     the value to be converted
+ * @return       the buffer passed, containing the converted value
  */
-void ulong2bebytes(u8 *buf, unsigned long x);
+u8 *ulong2bebytes(u8 *buf, unsigned long x);
 /**
  * Convert an unsigned long into 2 bytes in big endian order
  * @param  buf   the byte array for the result, should be 2 bytes long
  * @param  x     the value to be converted
+ * @return       the buffer passed, containing the converted value
  */
-void ushort2bebytes(u8 *buf, unsigned short x);
+u8 *ushort2bebytes(u8 *buf, unsigned short x);
 /**
  * Convert 4 bytes in big endian order into an unsigned long
  * @param  buf   the byte array of 4 bytes
