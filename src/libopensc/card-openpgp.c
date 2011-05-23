@@ -118,7 +118,7 @@ static struct do_info		pgp_objects[] = {
 #define DRVDATA(card)        ((struct pgp_priv_data *) ((card)->drv_data))
 struct pgp_priv_data {
 	struct blob *		mf;
-	struct blob *		current;
+	struct blob *		current;	/* currently selected file */
 
 	sc_security_env_t	sec_env;
 };
@@ -200,6 +200,7 @@ pgp_init(sc_card_t *card)
 	priv->mf->file = file;
 	priv->mf->id = 0x3F00;
 
+	/* select MF */
 	priv->current = priv->mf;
 
 	/* Populate MF - add all blobs listed in the pgp_objects table. */
@@ -495,6 +496,7 @@ pgp_select_file(sc_card_t *card, const sc_path_t *path, sc_file_t **ret)
 		}
 	}
 
+	/* select file = set "current" pointer to blob found */
 	priv->current = blob;
 
 	if (ret)
@@ -515,7 +517,9 @@ pgp_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 
 	LOG_FUNC_CALLED(card->ctx);
 
+	/* jump to selected file */
 	blob = priv->current;
+
 	if (blob->file->type != SC_FILE_TYPE_DF)
 		LOG_TEST_RET(card->ctx, SC_ERROR_OBJECT_NOT_VALID,
 				"invalid file type");
@@ -545,7 +549,10 @@ pgp_read_binary(sc_card_t *card, unsigned int idx,
 
 	LOG_FUNC_CALLED(card->ctx);
 
-	if ((blob = priv->current) == NULL)
+	/* jump to selected file */
+	blob = priv->current;
+
+	if (blob == NULL)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_FILE_NOT_FOUND);
 
 	if (blob->file->type != SC_FILE_TYPE_WORKING_EF)
