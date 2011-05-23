@@ -150,7 +150,9 @@ pgp_init(sc_card_t *card)
 	card->cla = 0x00;
 
 	/* Is this correct? */
+	/* OpenPGP card spec 1.1 & 2.0, section 2.1 */
         flags = SC_ALGORITHM_RSA_RAW;
+	/* OpenPGP card spec 1.1 & 2.0, section 7.2.9 & 7.2.10 */
         flags |= SC_ALGORITHM_RSA_PAD_PKCS1;
         flags |= SC_ALGORITHM_RSA_HASH_NONE;
 
