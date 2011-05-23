@@ -178,8 +178,12 @@ pgp_init(sc_card_t *card)
 	/* select application "OpenPGP" */
 	sc_format_path("D276:0001:2401", &aid);
 	aid.type = SC_PATH_TYPE_DF_NAME;
-	if ((r = iso_ops->select_file(card, &aid, &file)) < 0)
+	if ((r = iso_ops->select_file(card, &aid, &file)) < 0) {
+		free(priv->mf);
+		free(priv);
+		card->drv_data = NULL;
 		return r;
+	}
 
 	sc_format_path("3f00", &file->path);
 	file->type = SC_FILE_TYPE_DF;
