@@ -158,6 +158,8 @@ pgp_init(sc_card_t *card)
         _sc_card_add_rsa_alg(card, 512, flags, 0);
         _sc_card_add_rsa_alg(card, 768, flags, 0);
         _sc_card_add_rsa_alg(card, 1024, flags, 0);
+	if (card->type == SC_CARD_TYPE_OPENPGP_V2)
+		_sc_card_add_rsa_alg(card, 2048, flags, 0);
 
 	sc_format_path("D276:0001:2401", &aid);
 	aid.type = SC_PATH_TYPE_DF_NAME;
