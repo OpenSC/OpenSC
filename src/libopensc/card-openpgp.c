@@ -629,14 +629,11 @@ pgp_get_blob(sc_card_t *card, struct blob *blob, unsigned int id,
 		return r;
 
 	for (child = blob->files; child; child = child->next) {
-		if (child->id == id)
-			break;
-	}
-
-	if (child != NULL) {
-		(void) pgp_read_blob(card, child);
-		*ret = child;
-		return SC_SUCCESS;
+		if (child->id == id) {
+			(void) pgp_read_blob(card, child);
+			*ret = child;
+			return SC_SUCCESS;
+		}
 	}
 
 	return SC_ERROR_FILE_NOT_FOUND;
