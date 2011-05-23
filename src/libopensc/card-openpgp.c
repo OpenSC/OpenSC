@@ -62,10 +62,30 @@ static struct sc_card_driver pgp_drv = {
  * Everything else is mapped to "file" IDs.
  */
 
+enum _type {		/* DO type */
+	SIMPLE      = SC_FILE_TYPE_WORKING_EF,
+	CONSTRUCTED = SC_FILE_TYPE_DF
+};
+
 enum _version {		/* 2-byte BCD-alike encoded version number */
 	OPENPGP_CARD_1_0 = 0x0100,
 	OPENPGP_CARD_1_1 = 0x0101,
 	OPENPGP_CARD_2_0 = 0x0200
+};
+
+enum _access {		/* access flags for the respective DO/file */
+	READ_NEVER   = 0x0010,
+	READ_PIN1    = 0x0011,
+	READ_PIN2    = 0x0012,
+	READ_PIN3    = 0x0014,
+	READ_ALWAYS  = 0x0018,
+	READ_MASK    = 0x00FF,
+	WRITE_NEVER  = 0x1000,
+	WRITE_PIN1   = 0x1100,
+	WRITE_PIN2   = 0x1200,
+	WRITE_PIN3   = 0x1400,
+	WRITE_ALWAYS = 0x1800,
+	WRITE_MASK   = 0x1F00
 };
 
 struct blob {
@@ -83,9 +103,16 @@ struct blob {
 };
 
 struct do_info {
-	unsigned int	id;
-	unsigned int	constructed : 1;
+	unsigned int	id;		/* ID of the DO in question */
+
+	enum _type	type;		/* constructed DO or not */
+	enum _access	access;		/* R/W acces levels for the DO */
+
+	/* function to get the DO from the card:
+	 * only != NULL is DO if readable and not only a part of a constructed DO */
 	int		(*get_fn)(sc_card_t *, unsigned int, u8 *, size_t);
+	/* function to write the DO to the card:
+	 * only != NULL if DO is writeable under some conditions */
 	int		(*put_fn)(sc_card_t *, unsigned int, const u8 *, size_t);
 };
 
@@ -100,26 +127,107 @@ static int		pgp_get_pubkey(sc_card_t *, unsigned int,
 static int		pgp_get_pubkey_pem(sc_card_t *, unsigned int,
 				u8 *, size_t);
 
-static struct do_info		pgp_objects[] = {
-      {	0x004f,		0,	sc_get_data,	sc_put_data	},
-      {	0x005e,		0,	sc_get_data,	sc_put_data	},
-      {	0x0065,		1,	sc_get_data,	sc_put_data	},
-      {	0x006e,		1,	sc_get_data,	sc_put_data	},
-      {	0x007a,		1,	sc_get_data,	sc_put_data	},
-      {	0x00c4,		0,	sc_get_data,	sc_put_data	},
-      {	0x0101,		0,	sc_get_data,	sc_put_data	},
-      {	0x0102,		0,	sc_get_data,	sc_put_data	},
-      {	0x5f50,		0,	sc_get_data,	sc_put_data	},
-      {	0x5f52,		0,	sc_get_data,	sc_put_data	},
-      {	0x7f21,		1,	sc_get_data,	sc_put_data	},
-      { 0xb600,		1,	pgp_get_pubkey,	NULL		},
-      { 0xb800,		1,	pgp_get_pubkey,	NULL		},
-      { 0xa400,		1,	pgp_get_pubkey,	NULL		},
-      { 0xb601,		0,	pgp_get_pubkey_pem,NULL		},
-      { 0xb801,		0,	pgp_get_pubkey_pem,NULL		},
-      { 0xa401,		0,	pgp_get_pubkey_pem,NULL		},
+static struct do_info		pgp1_objects[] = {	/* OpenPGP card spec 1.1 */
+	{ 0x004f, SIMPLE,      READ_ALWAYS | WRITE_NEVER, NULL,               NULL        },
+	{ 0x005b, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  NULL,               sc_put_data },
+	{ 0x005e, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  sc_get_data,        sc_put_data },
+	{ 0x0065, CONSTRUCTED, READ_ALWAYS | WRITE_NEVER, sc_get_data,        NULL        },
+	{ 0x006e, CONSTRUCTED, READ_ALWAYS | WRITE_NEVER, sc_get_data,        NULL        },
+	{ 0x0073, CONSTRUCTED, READ_ALWAYS | WRITE_NEVER, NULL,               NULL        },
+	{ 0x007a, CONSTRUCTED, READ_ALWAYS | WRITE_NEVER, sc_get_data,        NULL        },
+	{ 0x0081, SIMPLE,      READ_ALWAYS | WRITE_NEVER, NULL,               NULL        },
+	{ 0x0082, SIMPLE,      READ_ALWAYS | WRITE_NEVER, NULL,               NULL        },
+	{ 0x0093, SIMPLE,      READ_ALWAYS | WRITE_NEVER, NULL,               NULL        },
+	{ 0x00c0, SIMPLE,      READ_ALWAYS | WRITE_NEVER, NULL,               NULL        },
+	{ 0x00c1, SIMPLE,      READ_ALWAYS | WRITE_NEVER, NULL,               NULL        },
+	{ 0x00c2, SIMPLE,      READ_ALWAYS | WRITE_NEVER, NULL,               NULL        },
+	{ 0x00c3, SIMPLE,      READ_ALWAYS | WRITE_NEVER, NULL,               NULL        },
+	{ 0x00c4, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  NULL,               sc_put_data },
+	{ 0x00c5, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  NULL,               sc_put_data },
+	{ 0x00c6, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  NULL,               sc_put_data },
+	{ 0x00c7, SIMPLE,      READ_NEVER  | WRITE_PIN3,  NULL,               sc_put_data },
+	{ 0x00c8, SIMPLE,      READ_NEVER  | WRITE_PIN3,  NULL,               sc_put_data },
+	{ 0x00c9, SIMPLE,      READ_NEVER  | WRITE_PIN3,  NULL,               sc_put_data },
+	{ 0x00ca, SIMPLE,      READ_NEVER  | WRITE_PIN3,  NULL,               sc_put_data },
+	{ 0x00cb, SIMPLE,      READ_NEVER  | WRITE_PIN3,  NULL,               sc_put_data },
+	{ 0x00cc, SIMPLE,      READ_NEVER  | WRITE_PIN3,  NULL,               sc_put_data },
+	{ 0x00cd, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  NULL,               sc_put_data },
+	{ 0x00ce, SIMPLE,      READ_NEVER  | WRITE_PIN3,  NULL,               sc_put_data },
+	{ 0x00cf, SIMPLE,      READ_NEVER  | WRITE_PIN3,  NULL,               sc_put_data },
+	{ 0x00d0, SIMPLE,      READ_NEVER  | WRITE_PIN3,  NULL,               sc_put_data },
+	{ 0x00e0, CONSTRUCTED, READ_NEVER  | WRITE_PIN3,  NULL,               sc_put_data },
+	{ 0x00e1, CONSTRUCTED, READ_NEVER  | WRITE_PIN3,  NULL,               sc_put_data },
+	{ 0x00e2, CONSTRUCTED, READ_NEVER  | WRITE_PIN3,  NULL,               sc_put_data },
+	{ 0x00ff, CONSTRUCTED, READ_ALWAYS | WRITE_NEVER, sc_get_data,        NULL        },
+	{ 0x0101, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  sc_get_data,        sc_put_data },
+	{ 0x0102, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  sc_get_data,        sc_put_data },
+	{ 0x0103, SIMPLE,      READ_PIN1   | WRITE_PIN1,  sc_get_data,        sc_put_data },
+	{ 0x0104, SIMPLE,      READ_PIN3   | WRITE_PIN3,  sc_get_data,        sc_put_data },
+	{ 0x5f2d, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  NULL,               sc_put_data },
+	{ 0x5f35, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  NULL,               sc_put_data },
+	{ 0x5f50, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  sc_get_data,        sc_put_data },
+	{ 0x7f49, CONSTRUCTED, READ_ALWAYS | WRITE_NEVER, NULL,               NULL        },
+	{ 0xa400, CONSTRUCTED, READ_ALWAYS | WRITE_NEVER, pgp_get_pubkey,     NULL        },
+	{ 0xa401, SIMPLE,      READ_ALWAYS | WRITE_NEVER, pgp_get_pubkey_pem, NULL        },
+	{ 0xb600, CONSTRUCTED, READ_ALWAYS | WRITE_NEVER, pgp_get_pubkey,     NULL        },
+	{ 0xb601, SIMPLE,      READ_ALWAYS | WRITE_NEVER, pgp_get_pubkey_pem, NULL        },
+	{ 0xb800, CONSTRUCTED, READ_ALWAYS | WRITE_NEVER, pgp_get_pubkey,     NULL        },
+	{ 0xb801, SIMPLE,      READ_ALWAYS | WRITE_NEVER, pgp_get_pubkey_pem, NULL        },
+	{ 0, 0, 0, NULL, NULL },
+};
 
-      { 0, 0, NULL, NULL },
+static struct do_info		pgp2_objects[] = {	/* OpenPGP card spec 2.0 */
+	{ 0x004d, CONSTRUCTED, READ_NEVER  | WRITE_PIN3,  NULL,               sc_put_data },
+	{ 0x004f, SIMPLE,      READ_ALWAYS | WRITE_NEVER, sc_get_data,        NULL        },
+	{ 0x005b, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  NULL,               sc_put_data },
+	{ 0x005e, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  sc_get_data,        sc_put_data },
+	{ 0x0065, CONSTRUCTED, READ_ALWAYS | WRITE_NEVER, sc_get_data,        NULL        },
+	{ 0x006e, CONSTRUCTED, READ_ALWAYS | WRITE_NEVER, sc_get_data,        NULL        },
+	{ 0x0073, CONSTRUCTED, READ_ALWAYS | WRITE_NEVER, NULL,               NULL        },
+	{ 0x007a, CONSTRUCTED, READ_ALWAYS | WRITE_NEVER, sc_get_data,        NULL        },
+	{ 0x0081, SIMPLE,      READ_ALWAYS | WRITE_NEVER, NULL,               NULL        },
+	{ 0x0082, SIMPLE,      READ_ALWAYS | WRITE_NEVER, NULL,               NULL        },
+	{ 0x0093, SIMPLE,      READ_ALWAYS | WRITE_NEVER, NULL,               NULL        },
+	{ 0x00c0, SIMPLE,      READ_ALWAYS | WRITE_NEVER, NULL,               NULL        },
+	{ 0x00c1, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  NULL,               sc_put_data },
+	{ 0x00c2, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  NULL,               sc_put_data },
+	{ 0x00c3, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  NULL,               sc_put_data },
+	{ 0x00c4, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  sc_get_data,        sc_put_data },
+	{ 0x00c5, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  NULL,               sc_put_data },
+	{ 0x00c6, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  NULL,               sc_put_data },
+	{ 0x00c7, SIMPLE,      READ_NEVER  | WRITE_PIN3,  NULL,               sc_put_data },
+	{ 0x00c8, SIMPLE,      READ_NEVER  | WRITE_PIN3,  NULL,               sc_put_data },
+	{ 0x00c9, SIMPLE,      READ_NEVER  | WRITE_PIN3,  NULL,               sc_put_data },
+	{ 0x00ca, SIMPLE,      READ_NEVER  | WRITE_PIN3,  NULL,               sc_put_data },
+	{ 0x00cb, SIMPLE,      READ_NEVER  | WRITE_PIN3,  NULL,               sc_put_data },
+	{ 0x00cc, SIMPLE,      READ_NEVER  | WRITE_PIN3,  NULL,               sc_put_data },
+	{ 0x00cd, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  NULL,               sc_put_data },
+	{ 0x00ce, SIMPLE,      READ_NEVER  | WRITE_PIN3,  NULL,               sc_put_data },
+	{ 0x00cf, SIMPLE,      READ_NEVER  | WRITE_PIN3,  NULL,               sc_put_data },
+	{ 0x00d0, SIMPLE,      READ_NEVER  | WRITE_PIN3,  NULL,               sc_put_data },
+	{ 0x00d1, SIMPLE,      READ_NEVER  | WRITE_PIN3,  NULL,               sc_put_data },
+	{ 0x00d2, SIMPLE,      READ_NEVER  | WRITE_PIN3,  NULL,               sc_put_data },
+	{ 0x00d3, SIMPLE,      READ_NEVER  | WRITE_PIN3,  NULL,               sc_put_data },
+	{ 0x00f4, CONSTRUCTED, READ_NEVER  | WRITE_PIN3,  NULL,               sc_put_data },
+	{ 0x0101, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  sc_get_data,        sc_put_data },
+	{ 0x0102, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  sc_get_data,        sc_put_data },
+	{ 0x0103, SIMPLE,      READ_PIN1   | WRITE_PIN1,  sc_get_data,        sc_put_data },
+	{ 0x0104, SIMPLE,      READ_PIN3   | WRITE_PIN3,  sc_get_data,        sc_put_data },
+	{ 0x5f2d, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  NULL,               sc_put_data },
+	{ 0x5f35, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  NULL,               sc_put_data },
+	{ 0x5f48, CONSTRUCTED, READ_NEVER  | WRITE_PIN3,  NULL,               sc_put_data },
+	{ 0x5f50, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  sc_get_data,        sc_put_data },
+	{ 0x5f52, SIMPLE,      READ_ALWAYS | WRITE_NEVER, sc_get_data,        NULL        },
+	{ 0x7f21, CONSTRUCTED, READ_ALWAYS | WRITE_PIN3,  sc_get_data,        sc_put_data },
+	{ 0x7f48, CONSTRUCTED, READ_NEVER  | WRITE_NEVER, NULL,               NULL        },
+	{ 0x7f49, CONSTRUCTED, READ_ALWAYS | WRITE_NEVER, NULL,               NULL        },
+	{ 0xa400, CONSTRUCTED, READ_ALWAYS | WRITE_NEVER, pgp_get_pubkey,     NULL        },
+	{ 0xa401, SIMPLE,      READ_ALWAYS | WRITE_NEVER, pgp_get_pubkey_pem, NULL        },
+	{ 0xb600, CONSTRUCTED, READ_ALWAYS | WRITE_NEVER, pgp_get_pubkey,     NULL        },
+	{ 0xb601, SIMPLE,      READ_ALWAYS | WRITE_NEVER, pgp_get_pubkey_pem, NULL        },
+	{ 0xb800, CONSTRUCTED, READ_ALWAYS | WRITE_NEVER, pgp_get_pubkey,     NULL        },
+	{ 0xb801, SIMPLE,      READ_ALWAYS | WRITE_NEVER, pgp_get_pubkey_pem, NULL        },
+	{ 0, 0, 0, NULL, NULL },
 };
 
 #define DRVDATA(card)        ((struct pgp_priv_data *) ((card)->drv_data))
@@ -128,6 +236,7 @@ struct pgp_priv_data {
 	struct blob *		current;	/* currently selected file */
 
 	enum _version		bcd_version;
+	struct do_info		*pgp_objects;
 
 	sc_security_env_t	sec_env;
 };
@@ -187,6 +296,10 @@ pgp_init(sc_card_t *card)
 	if (card->type == SC_CARD_TYPE_OPENPGP_V2)
 		_sc_card_add_rsa_alg(card, 2048, flags, 0);
 
+	/* set pointer to correct list of card objects */
+	priv->pgp_objects = (card->type == SC_CARD_TYPE_OPENPGP_V2)
+				? pgp2_objects : pgp1_objects;
+
 	/* set detailed card version */
 	priv->bcd_version = (card->type == SC_CARD_TYPE_OPENPGP_V2)
 				? OPENPGP_CARD_2_0 : OPENPGP_CARD_1_1;
@@ -218,15 +331,15 @@ pgp_init(sc_card_t *card)
 	/* select MF */
 	priv->current = priv->mf;
 
-	/* Populate MF - add all blobs listed in the pgp_objects table. */
-	for (info = pgp_objects; info->id > 0; info++) {
-		child = pgp_new_blob(priv->mf, info->id,
-			  	info->constructed? SC_FILE_TYPE_DF
-					  	 : SC_FILE_TYPE_WORKING_EF,
-				info);
-		/* catch out of memory condition */
-		if (child == NULL)
-			break;
+	/* Populate MF - add matching blobs listed in the pgp_objects table. */
+	for (info = priv->pgp_objects; (info != NULL) && (info->id > 0); info++) {
+		if (((info->access & READ_MASK) == READ_ALWAYS) &&
+		    (info->get_fn != NULL)) {
+			child = pgp_new_blob(priv->mf, info->id, info->type, info);
+			/* catch out of memory condition */
+			if (child == NULL)
+				break;
+		}
 	}
 
 	/* treat out of memory condition */
