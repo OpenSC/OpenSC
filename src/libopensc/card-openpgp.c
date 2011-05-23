@@ -33,6 +33,7 @@
 #include "internal.h"
 #include "asn1.h"
 #include "cardctl.h"
+#include "errors.h"
 
 static struct sc_atr_table pgp_atrs[] = {
 	{ "3b:fa:13:00:ff:81:31:80:45:00:31:c1:73:c0:01:00:00:90:00:b1", NULL, "OpenPGP card v1.0/1.1", SC_CARD_TYPE_OPENPGP_V1, 0, NULL },
@@ -195,7 +196,7 @@ pgp_init(sc_card_t *card)
 					  	 : SC_FILE_TYPE_WORKING_EF,
 				info);
 	}
-	return 0;
+	return SC_SUCCESS;
 }
 
 static int
@@ -204,7 +205,7 @@ pgp_finish(sc_card_t *card)
         struct pgp_priv_data *priv;
 
         if (card == NULL)
-                return 0;
+                return SC_SUCCESS;
 	priv = DRVDATA (card);
 
 	/* delete fake file hierarchy */
@@ -212,7 +213,7 @@ pgp_finish(sc_card_t *card)
 
 	free(priv);
 	card->drv_data = NULL;
-	return 0;
+	return SC_SUCCESS;
 }
 
 static int
@@ -238,7 +239,7 @@ pgp_set_blob(struct blob *blob, const u8 *data, size_t len)
 	if (blob->file)
 		blob->file->size = len;
 
-	return 0;
+	return SC_SUCCESS;
 }
 
 static struct blob *
@@ -304,13 +305,13 @@ pgp_read_blob(sc_card_t *card, struct blob *blob)
 	int		r;
 
 	if (blob->data != NULL)
-		return 0;
+		return SC_SUCCESS;
 	if (blob->info == NULL)
 		return blob->status;
 
 	r = blob->info->get_fn(card, blob->id, buffer, sizeof(buffer));
 
-	if (r < 0) {
+	if (r < 0) {	/* an error occurred */
 		blob->status = r;
 		return r;
 	}
@@ -329,7 +330,7 @@ pgp_enumerate_blob(sc_card_t *card, struct blob *blob)
 	int		r;
 
 	if (blob->files != NULL)
-		return 0;
+		return SC_SUCCESS;
 
 	if ((r = pgp_read_blob(card, blob)) < 0)
 		return r;
@@ -368,7 +369,7 @@ pgp_enumerate_blob(sc_card_t *card, struct blob *blob)
 		in = data + len;
 	}
 
-	return 0;
+	return SC_SUCCESS;
 }
 
 static int
@@ -389,7 +390,7 @@ pgp_get_blob(sc_card_t *card, struct blob *blob, unsigned int id,
 	if (child != NULL) {
 		(void) pgp_read_blob(card, child);
 		*ret = child;
-		return 0;
+		return SC_SUCCESS;
 	}
 
 	return SC_ERROR_FILE_NOT_FOUND;
@@ -433,7 +434,7 @@ pgp_select_file(sc_card_t *card, const sc_path_t *path, sc_file_t **ret)
 
 	if (ret)
 		sc_file_dup(ret, blob->file);
-	return 0;
+	return SC_SUCCESS;
 }
 
 static int
@@ -636,7 +637,7 @@ pgp_set_security_env(sc_card_t *card,
 	}
 
 	priv->sec_env = *env;
-	return 0;
+	return SC_SUCCESS;
 }
 
 static int
