@@ -61,8 +61,8 @@ static struct sc_card_driver pgp_drv = {
  * Everything else is mapped to "file" IDs.
  */
 struct blob {
-	struct blob *	next;
-	struct blob *	parent;
+	struct blob *	next;	/* pointer to next sibling */
+	struct blob *	parent;	/* pointer to parent */
 	struct do_info *info;
 
 	sc_file_t *	file;
@@ -71,7 +71,7 @@ struct blob {
 
 	unsigned char *	data;
 	unsigned int	len;
-	struct blob *	files;
+	struct blob *	files;	/* pointer to 1st child */
 };
 
 struct do_info {
@@ -172,9 +172,9 @@ pgp_init(sc_card_t *card)
 	if (card->type == SC_CARD_TYPE_OPENPGP_V2)
 		_sc_card_add_rsa_alg(card, 2048, flags, 0);
 
+	/* select application "OpenPGP" */
 	sc_format_path("D276:0001:2401", &aid);
 	aid.type = SC_PATH_TYPE_DF_NAME;
-
 	if ((r = iso_ops->select_file(card, &aid, &file)) < 0)
 		return r;
 
