@@ -460,13 +460,10 @@ pgp_select_file(sc_card_t *card, const sc_path_t *path, sc_file_t **ret)
 {
 	struct pgp_priv_data *priv = DRVDATA(card);
 	struct blob	*blob;
-	sc_path_t	path_copy;
+	unsigned int	path_start;
 	unsigned int	n;
-	int		r;
 
 	LOG_FUNC_CALLED(card->ctx);
-
-	memset(&path_copy, 0, sizeof(path_copy));
 
 	if (path->type == SC_PATH_TYPE_DF_NAME)
 		LOG_FUNC_RETURN(card->ctx, iso_ops->select_file(card, path, ret));
@@ -479,24 +476,23 @@ pgp_select_file(sc_card_t *card, const sc_path_t *path, sc_file_t **ret)
 		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
 				"invalid path length");
 
-	if (!memcmp(path->value, "\x3f\x00", 2)) {
-		memcpy(path_copy.value, path->value + 2, path->len - 2);
-		path_copy.len = path->len - 2;
-		path = &path_copy;
-	}
+	/* ignore explicitely mentioned MF at the path's beginning */
+	path_start = (memcmp(path->value, "\x3f\x00", 2) == 0) ? 2 : 0;
 
+	/* starting with the MF ... */
 	blob = priv->mf;
-	for (n = 0; n < path->len; n += 2) {
-		r = pgp_get_blob(card, blob,
-				(path->value[n] << 8) | path->value[n+1],
-				&blob);
-		if (r < 0) {
+	/* ... recurse through the tree following the path */
+	for (n = path_start; n < path->len; n += 2) {
+		unsigned int	id = bebytes2ushort(path->value + n);
+		int		r = pgp_get_blob(card, blob, id, &blob);
+
+		if (r < 0) {	/* failure */
 			priv->current = NULL;
 			LOG_FUNC_RETURN(card->ctx, r);
 		}
 	}
 
-	/* select file = set "current" pointer to blob found */
+	/* success: select file = set "current" pointer to blob found */
 	priv->current = blob;
 
 	if (ret)
