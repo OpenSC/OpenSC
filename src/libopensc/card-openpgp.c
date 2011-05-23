@@ -211,6 +211,7 @@ pgp_finish(sc_card_t *card)
 	pgp_iterate_blobs(priv->mf, 99, pgp_free_blob);
 
 	free(priv);
+	card->drv_data = NULL;
 	return 0;
 }
 
