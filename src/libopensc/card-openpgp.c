@@ -243,17 +243,18 @@ pgp_init(sc_card_t *card)
 static int
 pgp_finish(sc_card_t *card)
 {
-        struct pgp_priv_data *priv;
+	if (card != NULL) {
+		struct pgp_priv_data *priv = DRVDATA (card);
 
-        if (card == NULL)
-                return SC_SUCCESS;
-	priv = DRVDATA (card);
+		if (priv != NULL) {
+			/* delete fake file hierarchy */
+			pgp_iterate_blobs(priv->mf, 99, pgp_free_blob);
 
-	/* delete fake file hierarchy */
-	pgp_iterate_blobs(priv->mf, 99, pgp_free_blob);
-
-	free(priv);
-	card->drv_data = NULL;
+			/* delete private data */
+			free(priv);
+		}
+		card->drv_data = NULL;
+	}
 	return SC_SUCCESS;
 }
 
