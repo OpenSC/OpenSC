@@ -116,9 +116,12 @@ struct do_info {
 	int		(*put_fn)(sc_card_t *, unsigned int, const u8 *, size_t);
 };
 
+static int		pgp_get_card_features(sc_card_t *card);
 static int		pgp_finish(sc_card_t *card);
 static void		pgp_iterate_blobs(struct blob *, int, void (*func)());
 
+static int		pgp_get_blob(sc_card_t *card, struct blob *blob,
+				 unsigned int id, struct blob **ret);
 static struct blob *	pgp_new_blob(struct blob *, unsigned int, int,
 				struct do_info *);
 static void		pgp_free_blob(struct blob *);
@@ -348,19 +351,43 @@ pgp_init(sc_card_t *card)
 		return SC_ERROR_OUT_OF_MEMORY;
 	}
 
-	/* update card capabilities from ATR */
-	if (card->atr.len > 0) {
-		unsigned char *hist_bytes = card->atr.value;
-		size_t len = card->atr.len;
-		size_t i = 0;
 
-		while ((i < len) && (hist_bytes[i] != 0x73))
+	/* get card_features from ATR & DOs */
+	pgp_get_card_features(card);
+
+	return SC_SUCCESS;
+}
+
+
+/* internal: get features of the card: capabilitis, ... */
+static int
+pgp_get_card_features(sc_card_t *card)
+{
+	struct pgp_priv_data *priv = DRVDATA (card);
+	unsigned char *hist_bytes = card->atr.value;
+	size_t atr_len = card->atr.len;
+	size_t i = 0;
+	struct blob *blob, *blob6e, *blob73;
+
+	/* get SC_CARD_CAP_APDU_EXT capability */
+	while ((i < atr_len) && (hist_bytes[i] != 0x73))
 			i++;
-
+	if ((hist_bytes[i] == 0x73) && (atr_len > i+3)) {
 		/* bit 0x40 in byte 3 of TL 0x73 means "extended Le/Lc" */
-		if ((hist_bytes[i] == 0x73) && (len > i+3) &&
-		    (hist_bytes[i+3] & 0x40))
+		if (hist_bytes[i+3] & 0x40)
 			card->caps |= SC_CARD_CAP_APDU_EXT;
+	}
+	else if (priv->bcd_version >= OPENPGP_CARD_2_0) {
+		/* get card capabilities from "historical bytes" DO */
+		if ((pgp_get_blob(card, priv->mf, 0x5f52, &blob) >= 0) &&
+		    (blob->data != NULL) && (blob->data[0] == 0x00)) {
+			while ((i < blob->len) && (blob->data[i] != 0x73))
+				i++;
+			/* bit 0x40 in byte 3 of TL 0x73 means "extended Le/Lc" */
+			if ((blob->data[i] == 0x73) && (blob->len > i+3) &&
+			    (blob->data[i+3] & 0x40))
+				card->caps |= SC_CARD_CAP_APDU_EXT;
+		}
 	}
 
 	return SC_SUCCESS;
