@@ -187,131 +187,6 @@ static int write_output(const u8 *buf, int len)
 	return 0;
 }
 
-#ifdef ENABLE_OPENSSL
-#define GETBN(bn)	((bn)->len? BN_bin2bn((bn)->data, (bn)->len, NULL) : NULL)
-static int extract_key(struct sc_pkcs15_object *obj, EVP_PKEY **pk)
-{
-	struct sc_pkcs15_prkey	*key;
-	const char	*pass = NULL;
-	int		r;
-
-	while (1) {
-		r = sc_pkcs15_read_prkey(p15card, obj, pass, &key);
-		if (r != SC_ERROR_PASSPHRASE_REQUIRED)
-			break;
-
-		if (pass)
-			return SC_ERROR_INTERNAL;
-		pass = getpass("Please enter pass phrase "
-				"to unlock secret key: ");
-		if (!pass || !*pass)
-			break;
-	}
-
-	if (r < 0)
-		return r;
-
-	*pk = EVP_PKEY_new();
-	switch (key->algorithm) {
-	case SC_ALGORITHM_RSA:
-		{
-		RSA	*rsa = RSA_new();
-
-		EVP_PKEY_set1_RSA(*pk, rsa);
-		rsa->n = GETBN(&key->u.rsa.modulus);
-		rsa->e = GETBN(&key->u.rsa.exponent);
-		rsa->d = GETBN(&key->u.rsa.d);
-		rsa->p = GETBN(&key->u.rsa.p);
-		rsa->q = GETBN(&key->u.rsa.q);
-		break;
-		}
-	case SC_ALGORITHM_DSA:
-		{
-		DSA	*dsa = DSA_new();
-
-		EVP_PKEY_set1_DSA(*pk, dsa);
-		dsa->priv_key = GETBN(&key->u.dsa.priv);
-		break;
-		}
-	default:
-		r = SC_ERROR_NOT_SUPPORTED;
-	}
-
-	/* DSA keys need additional parameters from public key file */
-	if (obj->type == SC_PKCS15_TYPE_PRKEY_DSA) {
-		struct sc_pkcs15_id     *id;
-		struct sc_pkcs15_object *pub_obj;
-		struct sc_pkcs15_pubkey *pub;
-		DSA			*dsa;
-
-		id = &((struct sc_pkcs15_prkey_info *) obj->data)->id;
-		r = sc_pkcs15_find_pubkey_by_id(p15card, id, &pub_obj);
-		if (r < 0)
-			goto done;
-		r = sc_pkcs15_read_pubkey(p15card, pub_obj, &pub);
-		if (r < 0)
-			goto done;
-
-		dsa = (*pk)->pkey.dsa;
-		dsa->pub_key = GETBN(&pub->u.dsa.pub);
-		dsa->p = GETBN(&pub->u.dsa.p);
-		dsa->q = GETBN(&pub->u.dsa.q);
-		dsa->g = GETBN(&pub->u.dsa.g);
-		sc_pkcs15_free_pubkey(pub);
-	}
-
-done:	if (r < 0)
-		EVP_PKEY_free(*pk);
-	sc_pkcs15_free_prkey(key);
-	return r;
-}
-
-static int sign_ext(struct sc_pkcs15_object *obj,
-		u8 *data, size_t len, u8 *out, size_t out_len)
-{
-	EVP_PKEY *pkey = NULL;
-	int	r, nid = -1;
-	unsigned int out_int = out_len;
-
-	r = extract_key(obj, &pkey);
-	if (r < 0)
-		return r;
-
-	switch (obj->type) {
-	case SC_PKCS15_TYPE_PRKEY_RSA:
-		if (opt_crypt_flags & SC_ALGORITHM_RSA_HASH_MD5) {
-			nid = NID_md5;
-		} else if (opt_crypt_flags & SC_ALGORITHM_RSA_HASH_SHA1) {
-			nid = NID_sha1;
-		} else {
-			if (len == 16)
-				nid = NID_md5;
-			else if (len == 20)
-				nid = NID_sha1;
-			else {
-				fprintf(stderr,
-					"Invalid input size (%lu bytes)\n",
-					(unsigned long) len);
-				return SC_ERROR_INVALID_ARGUMENTS;
-			}
-		}
-		r = RSA_sign(nid, data, len, out, &out_int, pkey->pkey.rsa);
-		if (r <= 0)
-			r = SC_ERROR_INTERNAL;
-		break;
-	case SC_PKCS15_TYPE_PRKEY_DSA:
-		r = DSA_sign(NID_sha1, data, len, out, &out_int, pkey->pkey.dsa);
-		if (r <= 0)
-			r = SC_ERROR_INTERNAL;
-		break;
-	}
-	if (r >= 0)
-		r = out_int;
-	EVP_PKEY_free(pkey);
-	return r;
-}
-#endif
-
 static int sign(struct sc_pkcs15_object *obj)
 {
 	u8 buf[1024], out[1024];
@@ -335,57 +210,20 @@ static int sign(struct sc_pkcs15_object *obj)
 		return 2;
 	}
 	if (!key->native) {
-#ifdef ENABLE_OPENSSL
-		r = sign_ext(obj, buf, c, out, len);
-#else
-		fprintf(stderr, "Cannot use extractable key because this "
-				"program was compiled without crypto "
-				"support.\n");
-		r = SC_ERROR_NOT_SUPPORTED;
-#endif
-	} else {
-		r = sc_pkcs15_compute_signature(p15card, obj, opt_crypt_flags,
-					buf, c, out, len);
+		fprintf(stderr, "Deprecated non-native key detected! Upgrade your smart cards.\n");
+		return SC_ERROR_NOT_SUPPORTED;
 	}
+
+	r = sc_pkcs15_compute_signature(p15card, obj, opt_crypt_flags, buf, c, out, len);
 	if (r < 0) {
 		fprintf(stderr, "Compute signature failed: %s\n", sc_strerror(r));
 		return 1;
 	}
+
 	r = write_output(out, r);
 	
 	return 0;
 }
-
-#ifdef ENABLE_OPENSSL
-static int decipher_ext(struct sc_pkcs15_object *obj,
-		u8 *data, size_t len, u8 *out, size_t out_len)
-{
-	EVP_PKEY *pkey = NULL;
-	int	r;
-
-	r = extract_key(obj, &pkey);
-	if (r < 0)
-		return r;
-
-	switch (obj->type) {
-	case SC_PKCS15_TYPE_PRKEY_RSA:
-#if OPENSSL_VERSION_NUMBER >= 0x00909000L
-		r = EVP_PKEY_decrypt_old(out, data, len, pkey);
-#else
-		r = EVP_PKEY_decrypt(out, data, len, pkey);
-#endif
-		if (r <= 0) {
-			fprintf(stderr, "Decryption failed.\n");
-			r = SC_ERROR_INTERNAL;
-		}
-		break;
-	default:
-		fprintf(stderr, "Key type not supported.\n");
-		r = SC_ERROR_NOT_SUPPORTED;
-	}
-	return r;
-}
-#endif
 
 static int decipher(struct sc_pkcs15_object *obj)
 {
@@ -402,20 +240,11 @@ static int decipher(struct sc_pkcs15_object *obj)
 
 	len = sizeof(out);
 	if (!((struct sc_pkcs15_prkey_info *) obj->data)->native) {
-#ifdef ENABLE_OPENSSL
-		r = decipher_ext(obj, buf, c, out, len);
-#else
-		fprintf(stderr, "Cannot use extractable key because this "
-				"program was compiled without crypto "
-				"support.\n");
-		r = SC_ERROR_NOT_SUPPORTED;
-#endif
-	} else {
-		r = sc_pkcs15_decipher(p15card, obj,
-			opt_crypt_flags & SC_ALGORITHM_RSA_PAD_PKCS1,
-			buf, c, out, len);
+                fprintf(stderr, "Deprecated non-native key detected! Upgrade your smart cards.\n");
+		return SC_ERROR_NOT_SUPPORTED;
 	}
 
+	r = sc_pkcs15_decipher(p15card, obj, opt_crypt_flags & SC_ALGORITHM_RSA_PAD_PKCS1, buf, c, out, len);
 	if (r < 0) {
 		fprintf(stderr, "Decrypt failed: %s\n", sc_strerror(r));
 		return 1;
