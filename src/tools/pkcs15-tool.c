@@ -176,7 +176,7 @@ print_access_rules(const struct sc_pkcs15_accessrule *rules, int num)
 	if (!rules->access_mode)
 		return;
 
-	printf("\tAccess Rules:\t");
+	printf("\tAccess Rules   :");
 	for (i = 0; i < num; i++)   {
 		int next_coma = 0;
 
