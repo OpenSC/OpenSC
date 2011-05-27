@@ -1250,7 +1250,7 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		util_fatal("Cannot read from %s: %m", opt_input);
 
 	rv = CKR_CANCEL;
-	if (r < sizeof(in_buffer))   {
+	if (r < (int) sizeof(in_buffer))   {
 		rv = p11->C_SignInit(session, &mech, key);
 		if (rv != CKR_OK)
 			p11_fatal("C_SignInit", rv);
@@ -1774,7 +1774,6 @@ static int write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	else
 	if (opt_object_class == CKO_PRIVATE_KEY) {
 		CK_OBJECT_CLASS clazz = CKO_PRIVATE_KEY;
-		CK_KEY_TYPE type;
 
 		n_privkey_attr = 0;
 		FILL_ATTR(privkey_templ[n_privkey_attr], CKA_CLASS, &clazz, sizeof(clazz));
@@ -1800,7 +1799,7 @@ static int write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 			n_privkey_attr++;
 		}
 		if (evp_key->type == EVP_PKEY_RSA)   {
-			type = CKK_RSA;
+			CK_KEY_TYPE type = CKK_RSA;
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_KEY_TYPE, &type, sizeof(type));
 			n_privkey_attr++;
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_MODULUS, rsa.modulus, rsa.modulus_len);
@@ -1822,7 +1821,7 @@ static int write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		}
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_EC)
 		else if (evp_key->type == NID_id_GostR3410_2001)   {
-			type = CKK_GOSTR3410;
+			CK_KEY_TYPE type = CKK_GOSTR3410;
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_KEY_TYPE, &type, sizeof(type));
 			n_privkey_attr++;
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_GOSTR3410_PARAMS, gost.param_oid.value, gost.param_oid.len);
