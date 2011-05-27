@@ -269,7 +269,7 @@ pgp_init(sc_card_t *card)
 	sc_file_t	*file = NULL;
 	struct do_info	*info;
 	int		r;
-	struct blob 	*child;
+	struct blob 	*child = NULL;
 
 	priv = calloc (1, sizeof *priv);
 	if (!priv)
@@ -581,7 +581,7 @@ pgp_enumerate_blob(sc_card_t *card, struct blob *blob)
 
 	in = blob->data;
 
-	while (blob->len > (in - blob->data)) {
+	while ((int) blob->len > (in - blob->data)) {
 		unsigned int	cla, tag, tmptag;
 		unsigned int	type = SC_FILE_TYPE_WORKING_EF;
 		size_t		len;
@@ -1033,8 +1033,6 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 /* ABI: card ctl: perform special card-specific operations */
 static int pgp_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 {
-	struct pgp_priv_data	*priv = DRVDATA(card);
-
 	LOG_FUNC_CALLED(card->ctx);
 
 	switch(cmd) {
