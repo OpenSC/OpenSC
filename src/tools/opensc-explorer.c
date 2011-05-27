@@ -32,6 +32,7 @@
 #include "libopensc/opensc.h"
 #include "libopensc/asn1.h"
 #include "libopensc/cardctl.h"
+#include "libopensc/cards.h"
 #include "util.h"
 
 #define DIM(v) (sizeof(v)/sizeof((v)[0]))
@@ -289,7 +290,7 @@ static int do_cd(int argc, char **argv)
 		check_ret(r, SC_AC_OP_SELECT, "unable to select DF", current_file);
 		return -1;
 	}
-	if ((file->type != SC_FILE_TYPE_DF) && !(card->caps & SC_CARD_CAP_NO_FCI)) {
+	if ((file->type != SC_FILE_TYPE_DF) && (card->type != SC_CARD_TYPE_BELPIC_EID)) {
 		printf("Error: file is not a DF.\n");
 		sc_file_free(file);
 		select_current_path_or_die();
@@ -322,11 +323,11 @@ static int read_and_util_print_binary_file(sc_file_t *file)
 			check_ret(r, SC_AC_OP_READ, "read failed", file);
 			return -1;
 		}
-		if ((r != c) && !(card->caps & SC_CARD_CAP_NO_FCI)) {
+		if ((r != c) && (card->type != SC_CARD_TYPE_BELPIC_EID)) {
 			printf("expecting %d, got only %d bytes.\n", c, r);
 			return -1;
 		}
-		if ((r == 0) && (card->caps & SC_CARD_CAP_NO_FCI))
+		if ((r == 0) && (card->type == SC_CARD_TYPE_BELPIC_EID))
 			break;
 		util_hex_dump_asc(stdout, buf, r, idx);
 		idx += r;
@@ -939,11 +940,11 @@ static int do_get(int argc, char **argv)
 			check_ret(r, SC_AC_OP_READ, "read failed", file);
 			goto err;
 		}
-		if ((r != c) && !(card->caps & SC_CARD_CAP_NO_FCI)) {
+		if ((r != c) && (card->type != SC_CARD_TYPE_BELPIC_EID)) {
 			printf("expecting %d, got only %d bytes.\n", c, r);
 			goto err;
 		}
-		if ((r == 0) && (card->caps & SC_CARD_CAP_NO_FCI))
+		if ((r == 0) && (card->type == SC_CARD_TYPE_BELPIC_EID))
 			break;
 		fwrite(buf, r, 1, outf);
 		idx += r;

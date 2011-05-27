@@ -406,9 +406,6 @@ struct sc_reader_operations {
 /* Card has on-board random number source. */
 #define SC_CARD_CAP_RNG			0x00000004
 
-/* Card doesn't return any File Control Info. */
-#define SC_CARD_CAP_NO_FCI		0x00000008
-
 /* Use the card's ACs in sc_pkcs15init_authenticate(),
  * instead of relying on the ACL info in the profile files. */
 #define SC_CARD_CAP_USE_FCI_AC		0x00000010

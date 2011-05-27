@@ -938,8 +938,6 @@ static int belpic_init(sc_card_t *card)
 
 	/* State that we have an RNG */
 	card->caps |= SC_CARD_CAP_RNG;
-	/* State that we don't return FCI (no file type, no file size, ...) */
-	card->caps |= SC_CARD_CAP_NO_FCI;
 
 	/* Language prefences */
 	priv->lang = -1;

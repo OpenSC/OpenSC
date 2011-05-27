@@ -112,7 +112,7 @@ static int token_init(sc_card_t *card, const char *card_name)
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
 
 	card->name = card_name;
-	card->caps |= SC_CARD_CAP_NO_FCI | SC_CARD_CAP_RNG;
+	card->caps |= SC_CARD_CAP_RNG;
 	card->drv_data = calloc(1, sizeof(auth_senv_t));
 	if (card->drv_data == NULL)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_OUT_OF_MEMORY);

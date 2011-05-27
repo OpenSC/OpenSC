@@ -66,7 +66,7 @@ static int rtecp_init(sc_card_t *card)
 	unsigned long flags;
 
 	assert(card && card->ctx);
-	card->caps |= SC_CARD_CAP_NO_FCI | SC_CARD_CAP_RNG;
+	card->caps |= SC_CARD_CAP_RNG;
 	card->cla = 0;
 
 	flags = SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_ONBOARD_KEY_GEN
