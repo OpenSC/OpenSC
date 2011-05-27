@@ -77,7 +77,7 @@ int sc_test_init(int *argc, char *argv[])
 	}
 	ctx->debug = opt_debug;
 
-	if (opt_reader >= sc_ctx_get_reader_count(ctx)) {
+	if (opt_reader >= (int) sc_ctx_get_reader_count(ctx)) {
 		fprintf(stderr, "Illegal reader number.\n"
 				"Only %d reader(s) configured.\n",
 				sc_ctx_get_reader_count(ctx));
@@ -91,7 +91,7 @@ int sc_test_init(int *argc, char *argv[])
 			if (rc < 0)
 				return rc;
 		} else {
-			for (i = rc = 0; rc != 1 && i < sc_ctx_get_reader_count(ctx); i++)
+			for (i = rc = 0; rc != 1 && i < (int) sc_ctx_get_reader_count(ctx); i++)
 				rc = sc_detect_card_presence(sc_ctx_get_reader(ctx, opt_reader));
 			if (rc == 1)
 				opt_reader = i - 1;
