@@ -449,7 +449,7 @@ awp_remove_container_entry (struct sc_pkcs15_card *p15card, struct sc_profile *p
 	id[0] = (file_id >> 8) & 0xFF;
 	id[1] = file_id & 0xFF;
 
-	for (rec = 1; rec <= file->record_count; rec++)   {
+	for (rec = 1; rec <= (unsigned)file->record_count; rec++)   {
 		rv = sc_read_record(p15card->card, rec, buff, file->record_length, SC_RECORD_BY_REC_NR);
 		if (rv < 0)
 			break;
@@ -724,7 +724,8 @@ awp_update_object_list(struct sc_pkcs15_card *p15card, struct sc_profile *profil
 	struct sc_file *file = NULL;
 	char obj_name[NAME_MAX_LEN], lst_name[NAME_MAX_LEN];
 	unsigned char *buff = NULL;
-	int rv, ii;
+	int rv;
+	unsigned ii;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "type %i, num %i", type, num);
@@ -1699,7 +1700,7 @@ awp_delete_from_container(struct sc_pkcs15_card *p15card,
 	if (!buff)
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY, "AWP update container entry: allocation error");
 	
-	for (rec = 1; rec <= file->record_count; rec++)   {
+	for (rec = 1; rec <= (unsigned)file->record_count; rec++)   {
 		rv = sc_read_record(p15card->card, rec, buff, file->record_length, SC_RECORD_BY_REC_NR);
 		if (rv < 0)   {
 			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "AWP update contaner entry: read record error %i", rv);
@@ -1763,7 +1764,8 @@ awp_remove_from_object_list( struct sc_pkcs15_card *p15card, struct sc_profile *
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_file *lst_file=NULL, *lst=NULL;
-	int rv = 0, ii;
+	int rv = 0;
+	unsigned ii;
 	char lst_name[NAME_MAX_LEN];
 	unsigned char *buff=NULL;
 	unsigned char id[2];
