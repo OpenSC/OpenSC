@@ -7,8 +7,7 @@ OBJECTS			= \
 	\
 	pkcs15.obj pkcs15-cert.obj pkcs15-data.obj pkcs15-pin.obj \
 	pkcs15-prkey.obj pkcs15-pubkey.obj pkcs15-sec.obj \
-	pkcs15-wrap.obj pkcs15-algo.obj pkcs15-cache.obj pkcs15-syn.obj \
-	pkcs15-gemsafeV1.obj \
+	pkcs15-algo.obj pkcs15-cache.obj pkcs15-syn.obj \
 	\
 	muscle.obj muscle-filesystem.obj \
 	\
@@ -28,7 +27,7 @@ OBJECTS			= \
 	pkcs15-tcos.obj pkcs15-esteid.obj pkcs15-postecert.obj pkcs15-gemsafeGPK.obj \
 	pkcs15-actalis.obj pkcs15-atrust-acos.obj pkcs15-tccardos.obj pkcs15-piv.obj \
 	pkcs15-esinit.obj pkcs15-westcos.obj pkcs15-pteid.obj pkcs15-oberthur.obj \
-	pkcs15-itacns.obj \
+	pkcs15-itacns.obj pkcs15-gemsafeV1.obj \
 	compression.obj p15card-helper.obj \
 	$(TOPDIR)\win32\versioninfo.res
 

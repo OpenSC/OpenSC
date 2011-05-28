@@ -24,8 +24,7 @@ libopensc_la_SOURCES = \
 	\
 	pkcs15.c pkcs15-cert.c pkcs15-data.c pkcs15-pin.c \
 	pkcs15-prkey.c pkcs15-pubkey.c pkcs15-sec.c \
-	pkcs15-wrap.c pkcs15-algo.c pkcs15-cache.c pkcs15-syn.c \
-	pkcs15-gemsafeV1.c \
+	pkcs15-algo.c pkcs15-cache.c pkcs15-syn.c \
 	\
 	muscle.c muscle-filesystem.c \
 	\
@@ -45,7 +44,7 @@ libopensc_la_SOURCES = \
 	pkcs15-tcos.c pkcs15-esteid.c pkcs15-postecert.c pkcs15-gemsafeGPK.c \
 	pkcs15-actalis.c pkcs15-atrust-acos.c pkcs15-tccardos.c pkcs15-piv.c \
 	pkcs15-esinit.c pkcs15-westcos.c pkcs15-pteid.c pkcs15-oberthur.c \
-	pkcs15-itacns.c \
+	pkcs15-itacns.c pkcs15-gemsafeV1.c \
 	compression.c p15card-helper.c \
 	libopensc.exports
 if WIN32

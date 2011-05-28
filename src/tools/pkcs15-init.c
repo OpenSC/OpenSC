@@ -121,7 +121,7 @@ enum {
 	OPT_PASSPHRASE,
 	OPT_PUBKEY,
 	OPT_EXTRACTABLE,
-	OPT_UNPROTECTED,
+	OPT_INSECURE,
 	OPT_AUTHORITY,
 	OPT_ASSERT_PRISTINE,
 	OPT_SECRET,
@@ -184,7 +184,7 @@ const struct option	options[] = {
 	{ "finalize",		no_argument,       NULL,   	'F' },
 
 	{ "extractable",	no_argument, NULL,		OPT_EXTRACTABLE },
-	{ "insecure",		no_argument, NULL,		OPT_UNPROTECTED },
+	{ "insecure",		no_argument, NULL,		OPT_INSECURE },
 	{ "use-default-transport-keys",
 				no_argument, NULL,		'T' },
 	{ "no-prompt",		no_argument, NULL,		OPT_NO_PROMPT },
@@ -241,7 +241,7 @@ static const char *		option_help[] = {
 	"Finish initialization phase of the smart card",
 
 	"Private key stored as an extractable key",
-	"Insecure mode: do not require PIN/passphrase for private key",
+	"Insecure mode: do not require a PIN for private key",
 	"Do not ask for transport keys if the driver thinks it knows the key",
 	"Do not prompt the user; if no PINs supplied, pinpad will be used",
 
@@ -316,7 +316,7 @@ static struct sc_pkcs15_card *	p15card = NULL;
 static char *			opt_reader = NULL;
 static unsigned int		opt_actions;
 static int			opt_extractable = 0,
-				opt_unprotected = 0,
+				opt_insecure = 0,
 				opt_authority = 0,
 				opt_no_prompt = 0,
 				opt_no_sopin = 0,
@@ -1493,25 +1493,13 @@ static int init_keyargs(struct sc_pkcs15init_prkeyargs *args)
 		sc_pkcs15_format_id(opt_objectid, &args->id);
 	if (opt_authid) {
 		sc_pkcs15_format_id(opt_authid, &args->auth_id);
-	} else if (!opt_unprotected) {
+	} else if (!opt_insecure) {
 		util_error("no PIN given for key - either use --insecure or \n"
 		      "specify a PIN using --auth-id");
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	if (opt_extractable) {
 		args->access_flags |= SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE;
-		if (opt_passphrase) {
-			args->passphrase = opt_passphrase;
-		} else {
-			if (!opt_unprotected) {
-				util_error("no pass phrase given for key - "
-				      "either use --insecure or\n"
-				      "specify a pass phrase using "
-				      "--passphrase");
-				return SC_ERROR_PASSPHRASE_REQUIRED;
-			}
-			args->flags |= SC_PKCS15INIT_NO_PASSPHRASE;
-		}
 	}
 	args->label = opt_label;
 	args->x509_usage = opt_x509_usage;
@@ -2538,11 +2526,11 @@ handle_option(const struct option *opt)
 		this_action = ACTION_STORE_PUBKEY;
 		opt_infile = optarg;
 		break;
-	case OPT_UNPROTECTED:
-		opt_unprotected++;
+	case OPT_INSECURE:
+		opt_insecure = 1;
 		break;
 	case OPT_EXTRACTABLE:
-		opt_extractable++;
+		opt_extractable = 1;
 		break;
 	case OPT_AUTHORITY:
 		opt_authority = 1;

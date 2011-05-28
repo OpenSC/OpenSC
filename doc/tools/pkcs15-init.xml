@@ -146,10 +146,6 @@
 				<command>pkcs15-init --store-private-key okir.pem --id 45 --auth-id 01</command>
 			</para>
 			<para>
-				If the key is protected by a pass phrase, <command>pkcs15-init</command>
-				will prompt you for a pass phrase to unlock the key.
-			</para>
-			<para>
 				In addition to storing the private portion of the key on the card,
 				<command>pkcs15-init</command> will also store the the public portion of the
 				key as a PKCS #15 public key object.
@@ -393,17 +389,6 @@
 							as <command>ps(1)</command>. Therefore, you should use these options
 							only on a secured system, or in an options file specified with
 							<option>--options-file</option>.
-						</para>
-					</listitem>
-				</varlistentry>
-
-				<varlistentry>
-					<term><option>--passphrase</option></term>
-					<listitem>
-						<para>
-							When downloading a private key, this option can be used to specify
-							the pass phrase to unlock the private key. The same caveat applies
-							here as in the case of the <option>--pin</option> options.
 						</para>
 					</listitem>
 				</varlistentry>

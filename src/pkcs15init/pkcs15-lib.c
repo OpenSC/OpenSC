@@ -1323,9 +1323,6 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
 		 * the key as extractable. */
 		if (!(keyargs->access_flags & SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE))		                        
 			LOG_TEST_RET(ctx, SC_ERROR_INCOMPATIBLE_KEY, "Card does not support this key.");
-
-		if (!keyargs->passphrase && !(keyargs->flags & SC_PKCS15INIT_NO_PASSPHRASE))
-			LOG_TEST_RET(ctx, SC_ERROR_PASSPHRASE_REQUIRED, "No key encryption passphrase given.");
 	}
 
 	/* Select a intrinsic Key ID if user didn't specify one */
@@ -1349,42 +1346,12 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
 
 	/* Get the number of private keys already on this card */
 	idx = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PRKEY, NULL, 0);
-	if (!(keyargs->access_flags & SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE)) {
-		r = profile->ops->create_key(profile, p15card, object);
-		LOG_TEST_RET(ctx, r, "Card specific 'create key' failed");
 
-		r = profile->ops->store_key(profile, p15card, object, &key);
-		LOG_TEST_RET(ctx, r, "Card specific 'store key' failed");
-	} else {
-		struct sc_pkcs15_der encoded, wrapped, *der = &encoded;
+	r = profile->ops->create_key(profile, p15card, object);
+	LOG_TEST_RET(ctx, r, "Card specific 'create key' failed");
 
-		/* DER encode the private key */
-		encoded.value = wrapped.value = NULL;
-		r = sc_pkcs15_encode_prkey(ctx, &key, &encoded.value, &encoded.len);
-		LOG_TEST_RET(ctx, r, "Failed to encode private key");
-
-		if (keyargs->passphrase) {
-			r = sc_pkcs15_wrap_data(ctx, keyargs->passphrase, der->value, der->len,
-					&wrapped.value, &wrapped.len);
-			if (r < 0) {
-				free(der->value);
-				LOG_TEST_RET(ctx, r, "Failed to wrap private key data");
-			}
-			der = &wrapped;
-		}
-
-		r = sc_pkcs15init_store_data(p15card, profile, object, der, &key_info->path);
-
-		/* If the key is encrypted, flag the PrKDF entry as
-		 * indirect-protected */
-		if (keyargs->passphrase)
-			key_info->path.type = SC_PATH_TYPE_PATH_PROT;
-
-		free(encoded.value);
-		free(wrapped.value);
-
-		LOG_TEST_RET(ctx, r, "Failed to store private key data");
-	}
+	r = profile->ops->store_key(profile, p15card, object, &key);
+	LOG_TEST_RET(ctx, r, "Card specific 'store key' failed");
 
 	/* Now update the PrKDF */
 	r = sc_pkcs15init_add_object(p15card, profile, SC_PKCS15_PRKDF, object);
@@ -1894,8 +1861,7 @@ check_keygen_params_consistency(struct sc_card *card, struct sc_pkcs15init_keyge
  * Check whether the card has native crypto support for this key.
  */
 static int
-check_key_compatibility(struct sc_pkcs15_card *p15card, struct sc_pkcs15_prkey *key,
-			  unsigned int x509_usage, unsigned int key_length, unsigned int flags)
+check_key_compatibility(struct sc_pkcs15_card *p15card, struct sc_pkcs15_prkey *key, unsigned int x509_usage, unsigned int key_length, unsigned int flags)
 {
 	struct sc_algorithm_info *info;
 	unsigned int count;

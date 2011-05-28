@@ -212,17 +212,12 @@ struct sc_pkcs15init_prkeyargs {
 	} params;
 
 	struct sc_pkcs15_prkey	key;
-
-	/* support for non-native keys */
-	char *			passphrase;
 };
 
 struct sc_pkcs15init_keygen_args {
 	struct sc_pkcs15init_prkeyargs prkey_args;
 	const char *                   pubkey_label;
 };
-
-#define SC_PKCS15INIT_NO_PASSPHRASE	0x0002
 
 struct sc_pkcs15init_pubkeyargs {
 	struct sc_pkcs15_id	id;

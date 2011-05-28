@@ -584,17 +584,9 @@ int sc_pkcs15_pubkey_from_spki_filename(struct sc_context *,
 			char *, sc_pkcs15_pubkey_t ** );
 int sc_pkcs15_pubkey_from_spki(struct sc_context *,
 			sc_pkcs15_pubkey_t **, u8 *, size_t, int);
-int sc_pkcs15_read_prkey(struct sc_pkcs15_card *,
-			const struct sc_pkcs15_object *,
-			const char *passphrase,
-			struct sc_pkcs15_prkey **);
-int sc_pkcs15_decode_prkey(struct sc_context *,
-			struct sc_pkcs15_prkey *,
-			const u8 *, size_t);
 int sc_pkcs15_encode_prkey(struct sc_context *,
 			struct sc_pkcs15_prkey *,
 			u8 **, size_t *);
-void sc_pkcs15_erase_prkey(struct sc_pkcs15_prkey *prkey);
 void sc_pkcs15_free_prkey(struct sc_pkcs15_prkey *prkey);
 void sc_pkcs15_free_key_params(struct sc_pkcs15_key_params *params);
 
@@ -755,16 +747,6 @@ void sc_pkcs15_free_cert_info(sc_pkcs15_cert_info_t *cert);
 void sc_pkcs15_free_data_info(sc_pkcs15_data_info_t *data);
 void sc_pkcs15_free_pin_info(sc_pkcs15_pin_info_t *pin);
 void sc_pkcs15_free_object(sc_pkcs15_object_t *obj);
-
-/* File content wrapping */
-int sc_pkcs15_wrap_data(struct sc_context *ctx,
-			const char *passphrase,
-			const u8 *in, size_t in_len,
-			u8 **out, size_t *out_len);
-int sc_pkcs15_unwrap_data(struct sc_context *ctx,
-			  const char *passphrase,
-			  const u8 *in, size_t in_len,
-			  u8 **out, size_t *out_len);
 
 /* Generic file i/o */
 int sc_pkcs15_read_file(struct sc_pkcs15_card *p15card,
