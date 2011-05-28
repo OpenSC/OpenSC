@@ -1,7 +1,7 @@
 /*
  * card-tcos.c: Support for TCOS cards
  *
- * Copyright (C) 2007  Peter Koch <Koch@smartcard-auth.de>
+ * Copyright (C) 2011  Peter Koch <pk@opensc-project.org>
  * Copyright (C) 2002  g10 Code GmbH
  * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
  *
@@ -42,6 +42,8 @@ static struct sc_atr_table tcos_atrs[] = {
 	{ "3B:BA:96:00:81:31:86:5D:00:64:05:7B:02:03:31:80:90:00:7D", NULL, NULL, SC_CARD_TYPE_TCOS_V2, 0, NULL },
 	/* Philips P5CT072 */
 	{ "3B:BF:96:00:81:31:FE:5D:00:64:04:11:03:01:31:C0:73:F7:01:D0:00:90:00:7D", NULL, NULL, SC_CARD_TYPE_TCOS_V3, 0, NULL },
+	/* Philips P5CT080 */
+	{ "3B:BF:B6:00:81:31:FE:5D:00:64:04:28:03:02:31:C0:73:F7:01:D0:00:90:00:67", NULL, NULL, SC_CARD_TYPE_TCOS_V3, 0, NULL },
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
