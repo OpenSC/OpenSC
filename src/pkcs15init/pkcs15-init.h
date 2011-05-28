@@ -346,7 +346,6 @@ extern int	sc_pkcs15init_get_manufacturer(struct sc_profile *,
 				const char **);
 extern int	sc_pkcs15init_get_serial(struct sc_profile *, const char **);
 extern int	sc_pkcs15init_set_serial(struct sc_profile *, const char *);
-extern int	sc_pkcs15init_get_label(struct sc_profile *, const char **);
 
 extern int	sc_pkcs15init_verify_secret(struct sc_profile *, struct sc_pkcs15_card *,
 				sc_file_t *,  unsigned int, int);

@@ -3507,14 +3507,6 @@ sc_pkcs15init_set_serial(struct sc_profile *profile, const char *serial)
 }
 
 
-int
-sc_pkcs15init_get_label(struct sc_profile *profile, const char **res)
-{
-	*res = profile->p15_spec->tokeninfo->label;
-	return 0;
-}
-
-
 /*
  * Card specific sanity check procedure. 
  */
