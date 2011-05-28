@@ -666,7 +666,7 @@ authentic_reduce_path(struct sc_card *card, struct sc_path *path)
 {
 	struct sc_context *ctx = card->ctx;
 	struct sc_path in_path, cur_path;
-	int offs;
+	size_t offs;
 
 	LOG_FUNC_CALLED(ctx);
 
@@ -1031,7 +1031,8 @@ authentic_process_fci(struct sc_card *card, struct sc_file *file,
 {
 	struct sc_context *ctx = card->ctx;
 	size_t taglen;
-	int rv, ii;
+	int rv;
+	unsigned ii;
 	const unsigned char *tag = NULL;
 	unsigned char ops_DF[8] = {
 		SC_AC_OP_CREATE, SC_AC_OP_DELETE, SC_AC_OP_CRYPTO, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
@@ -1396,7 +1397,7 @@ authentic_pin_verify(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd)
 	rv = authentic_pin_get_policy(card, pin_cmd);
 	LOG_TEST_RET(ctx, rv, "Get 'PIN policy' error");
 
-	if (pin_cmd->pin1.len > pin_cmd->pin1.max_length)
+	if (pin_cmd->pin1.len > (int)pin_cmd->pin1.max_length)
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_PIN_LENGTH, "PIN policy check failed");
 
 	pin_cmd->pin1.tries_left = -1;	
@@ -1477,7 +1478,7 @@ authentic_pin_change(struct sc_card *card, struct sc_pin_cmd_data *data, int *tr
 		LOG_FUNC_RETURN(ctx, rv);
 	}
 
-	if (card->max_send_size && data->pin1.len + data->pin2.len > card->max_send_size)
+	if (card->max_send_size && (data->pin1.len + data->pin2.len > (int)card->max_send_size))
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_PIN_LENGTH, "APDU transmit failed");
 
 	memset(pin_data, data->pin1.pad_char, sizeof(pin_data));
