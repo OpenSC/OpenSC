@@ -473,12 +473,17 @@ sc_pkcs15_decode_pubkey_gostr3410(sc_context_t *ctx,
 {
 	struct sc_asn1_entry asn1_gostr3410_pub_coeff[2];
 	int r;
+	struct sc_object_id param_key = { 1, 2, 643, 2, 2, 35, 1, -1};
+	struct sc_object_id param_hash = { 1, 2, 643, 2, 2, 30, 1, -1};
 
 	sc_copy_asn1_entry(c_asn1_gostr3410_pub_coefficients, asn1_gostr3410_pub_coeff);
 	sc_format_asn1_entry(asn1_gostr3410_pub_coeff + 0, &key->xy.data, &key->xy.len, 0);
 
 	r = sc_asn1_decode(ctx, asn1_gostr3410_pub_coeff, buf, buflen, NULL, NULL);
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "ASN.1 parsing of public key failed");
+
+	key->params.key = param_key; 
+	key->params.hash = param_hash; 
 
 	return 0;
 }
@@ -491,13 +496,14 @@ sc_pkcs15_encode_pubkey_gostr3410(sc_context_t *ctx,
 	struct sc_asn1_entry asn1_gostr3410_pub_coeff[2];
 	int r;
 
+	LOG_FUNC_CALLED(ctx);
 	sc_copy_asn1_entry(c_asn1_gostr3410_pub_coefficients, asn1_gostr3410_pub_coeff);
 	sc_format_asn1_entry(asn1_gostr3410_pub_coeff + 0, key->xy.data, &key->xy.len, 1);
 
 	r = sc_asn1_encode(ctx, asn1_gostr3410_pub_coeff, buf, buflen);
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "ASN.1 encoding failed");
 
-	return 0;
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
 	/* 
@@ -551,7 +557,7 @@ int sc_pkcs15_encode_pubkey_ec(sc_context_t *ctx,
 	memcpy(*buf, key->ecpointQ.value, key->ecpointQ.len);
 	*buflen = key->ecpointQ.len;
 
-sc_debug(ctx, SC_LOG_DEBUG_NORMAL,"DEE-EC key->ecpointQ=%p:%d *buf=%p:%d",
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL,"DEE-EC key->ecpointQ=%p:%d *buf=%p:%d",
 		key->ecpointQ.value, key->ecpointQ.len, *buf, *buflen); 
 	
 	return 0;
