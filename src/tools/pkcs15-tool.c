@@ -79,7 +79,7 @@ enum {
 #define NELEMENTS(x)	(sizeof(x)/sizeof((x)[0]))
 
 static int	authenticate(sc_pkcs15_object_t *obj);
-static int	pem_encode(int, sc_pkcs15_der_t *, sc_pkcs15_der_t *);
+static int	pubkey_pem_encode(sc_pkcs15_pubkey_t *, sc_pkcs15_der_t *, sc_pkcs15_der_t *);
 
 static const struct option options[] = {
 	{ "learn-card",		no_argument, NULL,		'L' },
@@ -673,10 +673,9 @@ static int read_public_key(void)
 		return 1;
 	}
 
-	r = pem_encode(pubkey->algorithm, &pubkey->data, &pem_key);
+	r = pubkey_pem_encode(pubkey, &pubkey->data, &pem_key);
 	if (r < 0) {
-		fprintf(stderr, "Error encoding PEM key: %s\n",
-				sc_strerror(r));
+		fprintf(stderr, "Error encoding PEM key: %s\n", sc_strerror(r));
 		r = 1;
 	} else {
 		r = print_pem_object("PUBLIC KEY", pem_key.value, pem_key.len);
@@ -1935,7 +1934,7 @@ static const struct sc_asn1_entry	c_asn1_pem_key[] = {
 	{ NULL, 0, 0, 0, NULL, NULL }
 };
 
-static int pem_encode(int alg_id, sc_pkcs15_der_t *key, sc_pkcs15_der_t *out)
+static int pubkey_pem_encode(sc_pkcs15_pubkey_t *pubkey, sc_pkcs15_der_t *key, sc_pkcs15_der_t *out)
 {
 	struct sc_asn1_entry	asn1_pem_key[2],
 				asn1_pem_key_items[3];
@@ -1943,16 +1942,16 @@ static int pem_encode(int alg_id, sc_pkcs15_der_t *key, sc_pkcs15_der_t *out)
 	size_t key_len;
 
 	memset(&algorithm, 0, sizeof(algorithm));
-	algorithm.algorithm = alg_id;
+	algorithm.algorithm = pubkey->algorithm;
+	if (algorithm.algorithm == SC_ALGORITHM_GOSTR3410)
+		algorithm.params = &pubkey->u.gostr3410.params;
 
 	sc_copy_asn1_entry(c_asn1_pem_key, asn1_pem_key);
 	sc_copy_asn1_entry(c_asn1_pem_key_items, asn1_pem_key_items);
 	sc_format_asn1_entry(asn1_pem_key + 0, asn1_pem_key_items, NULL, 1);
-	sc_format_asn1_entry(asn1_pem_key_items + 0,
-			&algorithm, NULL, 1);
+	sc_format_asn1_entry(asn1_pem_key_items + 0, &algorithm, NULL, 1);
 	key_len = 8 * key->len;
-	sc_format_asn1_entry(asn1_pem_key_items + 1,
-			key->value, &key_len, 1);
+	sc_format_asn1_entry(asn1_pem_key_items + 1, key->value, &key_len, 1);
 
 	return sc_asn1_encode(ctx, asn1_pem_key, &out->value, &out->len);
 }
