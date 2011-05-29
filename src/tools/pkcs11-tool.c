@@ -1822,11 +1822,16 @@ static int write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_EC)
 		else if (evp_key->type == NID_id_GostR3410_2001)   {
 			CK_KEY_TYPE type = CKK_GOSTR3410;
+
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_KEY_TYPE, &type, sizeof(type));
 			n_privkey_attr++;
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_GOSTR3410_PARAMS, gost.param_oid.value, gost.param_oid.len);
 			n_privkey_attr++;
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_VALUE, gost.private.value, gost.private.len);
+			/* CKA_VALUE of the GOST key has to be in the little endian order */
+			rv = sc_mem_reverse(privkey_templ[n_privkey_attr].pValue, privkey_templ[n_privkey_attr].ulValueLen);
+			if (rv)
+				return rv;
 			n_privkey_attr++;
 		}
 #endif
