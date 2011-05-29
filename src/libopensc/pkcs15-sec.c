@@ -253,6 +253,13 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 		LOG_FUNC_RETURN(ctx, SC_ERROR_BUFFER_TOO_SMALL);
 
 	memcpy(buf, in, inlen);
+
+	/* revert data to sign when signing with the GOST key.
+	 * TODO: can it be confirmed by the GOST standard?
+	 * TODO: tested with RuTokenECP, has to be validated for RuToken. */
+	if (obj->type == SC_PKCS15_TYPE_PRKEY_GOSTR3410)
+		sc_mem_reverse(buf, inlen);
+
 	tmp = buf;
 
 	/* flags: the requested algo
