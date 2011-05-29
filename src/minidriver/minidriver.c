@@ -769,14 +769,12 @@ DWORD WINAPI CardReadFile(__in PCARD_DATA pCardData,
 	{
 		if(strcmp(pszFileName, "cardid") == 0)
 		{
-			*pcbData = strlen(vs->p15card->tokeninfo->serial_number) + 10;
+			*pcbData = sizeof(vs->cardFiles.file_cardid);
 			*ppbData = pCardData->pfnCspAlloc(*pcbData);
 			if(!*ppbData)
-			{
 				return SCARD_E_NO_MEMORY;
-			}
 
-			strcpy(*ppbData, vs->p15card->tokeninfo->serial_number);
+			memcpy(*ppbData, &(vs->cardFiles.file_cardid), *pcbData);
 
 			logprintf(pCardData, 7, "return cardid ");
 			loghex(pCardData, 7, *ppbData, *pcbData);
