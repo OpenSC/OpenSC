@@ -162,6 +162,12 @@ struct sc_pkcs15_ec_parameters {
 	size_t field_length; /* in bits */
 };
 
+struct sc_pkcs15_gost_parameters {
+	struct sc_object_id key;
+	struct sc_object_id hash;
+	struct sc_object_id cipher;
+};
+
 struct sc_pkcs15_pubkey_ec {
 	struct sc_pkcs15_ec_parameters params;
 	sc_pkcs15_der_t		ecpointQ; /* note this is der */
@@ -173,11 +179,12 @@ struct sc_pkcs15_prkey_ec {
 };
 
 struct sc_pkcs15_pubkey_gostr3410 {
+	struct sc_pkcs15_gost_parameters params;
 	sc_pkcs15_bignum_t xy;
 };
 
 struct sc_pkcs15_prkey_gostr3410 {
-	/* private components */
+	struct sc_pkcs15_gost_parameters params;
 	sc_pkcs15_bignum_t d;
 };
 

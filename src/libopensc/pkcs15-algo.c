@@ -109,8 +109,22 @@ static int
 asn1_encode_gostr3410_params(sc_context_t *ctx, void *params,
 		u8 **buf, size_t *buflen, int depth)
 {
-	(void)ctx, (void)params, (void)buf, (void)buflen, (void)depth; /* no warning */
-	return SC_ERROR_NOT_IMPLEMENTED;
+	struct sc_asn1_entry asn1_gostr3410_params0[2], asn1_gostr3410_params[4];
+	struct sc_pkcs15_gost_parameters *gost_params = (struct sc_pkcs15_gost_parameters *)params;
+	int r;
+
+	sc_copy_asn1_entry(c_asn1_gostr3410_params0, asn1_gostr3410_params0);
+	sc_copy_asn1_entry(c_asn1_gostr3410_params, asn1_gostr3410_params);
+
+	sc_format_asn1_entry(asn1_gostr3410_params0 + 0, asn1_gostr3410_params, NULL, 1);
+	sc_format_asn1_entry(asn1_gostr3410_params + 0, &gost_params->key, NULL, 1);
+	sc_format_asn1_entry(asn1_gostr3410_params + 1, &gost_params->hash, NULL, 1);
+	/* sc_format_asn1_entry(asn1_gostr3410_params + 2, &cipherp, NULL, 1); */
+
+	r = _sc_asn1_encode(ctx, asn1_gostr3410_params0, buf, buflen, depth + 1);
+
+	sc_log(ctx, "encoded-params: %s", sc_dump_hex(*buf, *buflen));
+	return r;
 }
 
 static const struct sc_asn1_entry	c_asn1_pbkdf2_params[] = {
@@ -251,7 +265,7 @@ asn1_decode_ec_params(sc_context_t *ctx, void **paramp,
 	struct sc_asn1_entry asn1_ec_params[4];
 	struct sc_ec_params * ecp;
 
-sc_debug(ctx, SC_LOG_DEBUG_ASN1, "DEE - asn1_decode_ec_params %p:%d %d", buf, buflen, depth);
+	sc_debug(ctx, SC_LOG_DEBUG_ASN1, "DEE - asn1_decode_ec_params %p:%d %d", buf, buflen, depth);
 
 	memset(&curve, 0, sizeof(curve));
 	ecp = malloc(sizeof(struct sc_ec_params));
@@ -298,9 +312,9 @@ asn1_encode_ec_params(sc_context_t *ctx, void *params,
 u8 **buf, size_t *buflen, int depth) 
 {
 	int r;
-/* TODO: -DEE EC paramameters are DER so is there anything to do? */
-/* I have not needed this yet */
-sc_debug(ctx, SC_LOG_DEBUG_ASN1, "DEE - asn1_encode_ec_params");
+	/* TODO: -DEE EC paramameters are DER so is there anything to do? */
+	/* I have not needed this yet */
+	sc_debug(ctx, SC_LOG_DEBUG_ASN1, "DEE - asn1_encode_ec_params");
 	r = SC_ERROR_NOT_IMPLEMENTED;
 
 	return r;
@@ -555,6 +569,7 @@ sc_asn1_encode_algorithm_id(sc_context_t *ctx,
 		free(obj);
 	}
 
+	sc_log(ctx, "return encoded algorithm ID: %s", sc_dump_hex(*buf, *len));
 	return 0;
 }
 
