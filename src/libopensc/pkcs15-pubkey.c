@@ -473,8 +473,8 @@ sc_pkcs15_decode_pubkey_gostr3410(sc_context_t *ctx,
 {
 	struct sc_asn1_entry asn1_gostr3410_pub_coeff[2];
 	int r;
-	struct sc_object_id param_key = { 1, 2, 643, 2, 2, 35, 1, -1};
-	struct sc_object_id param_hash = { 1, 2, 643, 2, 2, 30, 1, -1};
+	struct sc_object_id param_key = {{ 1, 2, 643, 2, 2, 35, 1, -1}};
+	struct sc_object_id param_hash = {{ 1, 2, 643, 2, 2, 30, 1, -1}};
 
 	sc_copy_asn1_entry(c_asn1_gostr3410_pub_coefficients, asn1_gostr3410_pub_coeff);
 	sc_format_asn1_entry(asn1_gostr3410_pub_coeff + 0, &key->xy.data, &key->xy.len, 0);
