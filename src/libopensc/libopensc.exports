@@ -117,6 +117,7 @@ sc_lock
 sc_logout
 sc_make_cache_dir
 sc_mem_clear
+sc_mem_reverse
 sc_path_print
 sc_path_set
 sc_pin_cmd
