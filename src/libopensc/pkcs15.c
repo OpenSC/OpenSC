@@ -985,8 +985,6 @@ __sc_pkcs15_search_objects(sc_pkcs15_card_t *p15card,
 	size_t		match_count = 0;
 	int		r = 0;
 
-	sc_log(ctx, "called; class=0x%02X, type=0x%03X", class_mask, type);
-
 	if (type)
 		class_mask |= SC_PKCS15_TYPE_TO_CLASS(type);
 
@@ -1044,7 +1042,8 @@ __sc_pkcs15_search_objects(sc_pkcs15_card_t *p15card,
 		if (ret_size <= match_count)
 			break;
 	}
-	LOG_FUNC_RETURN(ctx, match_count);
+
+	return match_count;
 }
 
 int sc_pkcs15_get_objects(struct sc_pkcs15_card *p15card, unsigned int type,
