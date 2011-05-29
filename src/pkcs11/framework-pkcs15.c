@@ -19,6 +19,7 @@
  */
 
 #include "config.h"
+#include "libopensc/log.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -151,6 +152,9 @@ static int	lock_card(struct pkcs15_fw_data *);
 static int	unlock_card(struct pkcs15_fw_data *);
 static int	reselect_app_df(sc_pkcs15_card_t *p15card);
 
+static CK_RV set_gost_params(struct sc_pkcs15init_keyarg_gost_params *,
+		struct sc_pkcs15init_keyarg_gost_params *,
+		CK_ATTRIBUTE_PTR, CK_ULONG, CK_ATTRIBUTE_PTR, CK_ULONG);
 /* PKCS#15 Framework */
 
 static CK_RV pkcs15_bind(struct sc_pkcs11_card *p11card)
@@ -1386,6 +1390,7 @@ static CK_RV pkcs15_create_private_key(struct sc_pkcs11_card *p11card,
 	CK_KEY_TYPE		key_type;
 	struct sc_pkcs15_prkey_rsa *rsa;
 	struct sc_pkcs15_prkey_ec  *ec;
+	struct sc_pkcs15_prkey_gostr3410  *gost;
 	int			rc, rv;
 	char label[SC_PKCS15_MAX_LABEL_SIZE];
 
@@ -1410,12 +1415,15 @@ static CK_RV pkcs15_create_private_key(struct sc_pkcs11_card *p11card,
 			ec = &args.key.u.ec;
 			/* TODO: -DEE Do not have PKCS15 card with EC to test this */
 			/* fall through */
+		case CKK_GOSTR3410:
+			set_gost_params(&args.params.gost, NULL, pTemplate, ulCount, NULL, 0);
+			args.key.algorithm = SC_ALGORITHM_GOSTR3410;
+			gost = &args.key.u.gostr3410;
+			break;
 		default:
 			return CKR_ATTRIBUTE_VALUE_INVALID;
 	}
 
-
-	rv = CKR_OK;
 	while (ulCount--) {
 		CK_ATTRIBUTE_PTR attr = pTemplate++;
 		sc_pkcs15_bignum_t *bn = NULL;
@@ -1446,23 +1454,43 @@ static CK_RV pkcs15_create_private_key(struct sc_pkcs11_card *p11card,
 			bn = &rsa->p; break;
 		case CKA_PRIME_2:
 			bn = &rsa->q; break;
+		case CKA_VALUE:
+			if (key_type == CKK_GOSTR3410)
+				bn = &gost->d; 
+			break;
+
 		default:
 			/* ignore unknown attrs, or flag error? */
 			continue;
 		}
 
 		if (bn) {
-			if (attr->ulValueLen > 1024)
+			if (attr->ulValueLen > 1024)   {
 				return CKR_ATTRIBUTE_VALUE_INVALID;
+			}
 			bn->len = attr->ulValueLen;
 			bn->data = (u8 *) attr->pValue;
 		}
 	}
 
-	if (!rsa->modulus.len || !rsa->exponent.len || !rsa->d.len
-	 || !rsa->p.len || !rsa->q.len) {
-		rv = CKR_TEMPLATE_INCOMPLETE;
-		goto out;
+	if (key_type == CKK_RSA)   {
+		if (!rsa->modulus.len || !rsa->exponent.len || !rsa->d.len || !rsa->p.len || !rsa->q.len) {
+			sc_debug(context, SC_LOG_DEBUG_NORMAL, "Template to store the RSA key is incomplete");
+			rv = CKR_TEMPLATE_INCOMPLETE;
+			goto out;
+		}
+	}
+	else if (key_type == CKK_GOSTR3410)   {
+		if (!gost->d.len)   {
+			sc_debug(context, SC_LOG_DEBUG_NORMAL, "Template to store the GOST key is incomplete");
+			return CKR_ATTRIBUTE_VALUE_INVALID;
+		}
+		/* CKA_VALUE arrives in little endian form. pkcs15init framework expects it in a big endian one. */
+		rc = sc_mem_reverse(gost->d.data, gost->d.len);
+		if (rv)  {
+			rv = sc_to_cryptoki_error(rc, "C_CreateObject");
+			goto out;
+		}
 	}
 
 	rc = sc_pkcs15init_store_private_key(fw_data->p15_card, profile, &args, &key_obj);
@@ -1839,9 +1867,10 @@ get_X509_usage_pubk(CK_ATTRIBUTE_PTR pTempl, CK_ULONG ulCount, unsigned long *x5
 	return CKR_OK;
 }
 
+
 static CK_RV
-set_gost_params(struct sc_pkcs15init_prkeyargs *prkey_args,
-		struct sc_pkcs15init_pubkeyargs *pubkey_args,
+set_gost_params(struct sc_pkcs15init_keyarg_gost_params *first_params,
+		struct sc_pkcs15init_keyarg_gost_params *second_params,
 		CK_ATTRIBUTE_PTR pPubTpl, CK_ULONG ulPubCnt,
 		CK_ATTRIBUTE_PTR pPrivTpl, CK_ULONG ulPrivCnt)
 {
@@ -1850,22 +1879,28 @@ set_gost_params(struct sc_pkcs15init_prkeyargs *prkey_args,
 	CK_RV rv;
 
 	len = GOST_PARAMS_OID_SIZE;
-	rv = attr_find2(pPubTpl, ulPubCnt, pPrivTpl, ulPrivCnt, CKA_GOSTR3410_PARAMS,
-			&gost_params_oid, &len);
+	if (pPrivTpl && ulPrivCnt)
+		rv = attr_find2(pPubTpl, ulPubCnt, pPrivTpl, ulPrivCnt, CKA_GOSTR3410_PARAMS, &gost_params_oid, &len);
+	else
+		rv = attr_find(pPubTpl, ulPubCnt, CKA_GOSTR3410_PARAMS, &gost_params_oid, &len);
 	if (rv == CKR_OK) {
+		int nn = sizeof(gostr3410_param_oid)/sizeof(gostr3410_param_oid[0]);
+
 		if (len != GOST_PARAMS_OID_SIZE)
 			return CKR_ATTRIBUTE_VALUE_INVALID;
-		for (i = 0; i < sizeof(gostr3410_param_oid)
-				/sizeof(gostr3410_param_oid[0]); ++i) {
+
+		for (i = 0; i < nn; ++i) {
 			if (!memcmp(gost_params_oid, gostr3410_param_oid[i].oid, len)) {
-				prkey_args->params.gost.gostr3410 = gostr3410_param_oid[i].param;
-				pubkey_args->params.gost.gostr3410 = gostr3410_param_oid[i].param;
+				if (first_params)
+					first_params->gostr3410 = gostr3410_param_oid[i].param;
+				if (second_params)
+					second_params->gostr3410 = gostr3410_param_oid[i].param;
 				break;
 			}
 		}
-		if (i != sizeof(gostr3410_param_oid)/sizeof(gostr3410_param_oid[0]))
-			return CKR_OK;
-		return CKR_ATTRIBUTE_VALUE_INVALID;
+
+		if (i == nn)
+			return CKR_ATTRIBUTE_VALUE_INVALID;
 	}
 	return CKR_OK;
 }
@@ -1932,7 +1967,7 @@ static CK_RV pkcs15_gen_keypair(struct sc_pkcs11_card *p11card,
 	if (keytype == CKK_GOSTR3410)   {
 		keygen_args.prkey_args.key.algorithm = SC_ALGORITHM_GOSTR3410;
 		pub_args.key.algorithm               = SC_ALGORITHM_GOSTR3410;
-		set_gost_params(&keygen_args.prkey_args, &pub_args,
+		set_gost_params(&keygen_args.prkey_args.params.gost, &pub_args.params.gost,
 				pPubTpl, ulPubCnt, pPrivTpl, ulPrivCnt);
 	}
 	else if (keytype == CKK_RSA)   {
