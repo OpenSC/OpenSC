@@ -7,6 +7,8 @@ New in 0.12.2; 2011-06-XX
 * Greatly improved OpenPGP card support, including OpenPGP 2.0 cards
   like the one found in German Privacy Foundation CryptoStick
 * Fixed support for FINeID cards issued after 01.03.2011 with 2048bit keys
+* Fixed support for TCOS cards (broken since 0.12.0)
+* added support for IDKey-cards to TCOS3-driver
 
 New in 0.12.1; 2011-05-17
 * New card driver: IAS/ECC 1.0.1
