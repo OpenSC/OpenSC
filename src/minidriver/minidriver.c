@@ -2113,7 +2113,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 		case DLL_PROCESS_ATTACH:
 #ifdef CARDMOD_LOW_LEVEL_DEBUG
 			{
-				CHAR name[MAX_PATH + 1] = "\0", *p;
+				CHAR name[MAX_PATH + 1] = "\0";
 				GetModuleFileName(GetModuleHandle(NULL),name,MAX_PATH);
 				logprintf(NULL,1,"** DllMain Attach ModuleFileName=%s\n",name);
 			}
