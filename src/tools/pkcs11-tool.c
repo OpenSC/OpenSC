@@ -64,8 +64,9 @@ static struct ec_curve_info {
 enum {
 	OPT_MODULE = 0x100,
 	OPT_SLOT,
-	OPT_SLOT_LABEL,
+	OPT_SLOT_DESCRIPTION,
 	OPT_SLOT_INDEX,
+	OPT_TOKEN_LABEL,
 	OPT_APPLICATION_LABEL,
 	OPT_APPLICATION_ID,
 	OPT_SO_PIN,
@@ -115,8 +116,9 @@ static const struct option options[] = {
 	{ "id", 		1, NULL, 		'd' },
 	{ "label", 		1, NULL, 		'a' },
 	{ "slot",		1, NULL,		OPT_SLOT },
-	{ "slot-label",		1, NULL,		OPT_SLOT_LABEL },
+	{ "slot-description",	1, NULL,		OPT_SLOT_DESCRIPTION },
 	{ "slot-index",		1, NULL,		OPT_SLOT_INDEX },
+	{ "token-label",	1, NULL,		OPT_TOKEN_LABEL },
 	{ "set-id",		1, NULL, 		'e' },
 	{ "attr-from",		1, NULL, 		OPT_ATTR_FROM },
 	{ "input-file",		1, NULL,		'i' },
@@ -164,8 +166,9 @@ static const char *option_help[] = {
 	"Specify the ID of the object",
 	"Specify the label of the object",
 	"Specify the ID of the slot to use",
-	"Specify the token label of the slot to use",
+	"Specify the description of the slot to use",
 	"Specify the index of the slot to use",	
+	"Specify the token label of the slot to use",
 	"Set the CKA_ID of an object, <args>= the (new) CKA_ID",
 	"Use <arg> to create some attributes when writing an object",
 	"Specify the input file",
@@ -187,7 +190,8 @@ static const char *	opt_output = NULL;
 static const char *	opt_module = NULL;
 static int		opt_slot_set = 0;
 static CK_SLOT_ID	opt_slot = 0;
-static const char *	opt_slot_label = NULL;
+static const char *	opt_slot_description = NULL;
+static const char *	opt_token_label = NULL;
 static CK_ULONG		opt_slot_index = 0;
 static int		opt_slot_index_set = 0;
 static CK_MECHANISM_TYPE opt_mechanism = 0;
@@ -283,7 +287,8 @@ static int		find_object(CK_SESSION_HANDLE, CK_OBJECT_CLASS,
 				CK_OBJECT_HANDLE_PTR,
 				const unsigned char *, size_t id_len, int obj_index);
 static int		find_mechanism(CK_SLOT_ID, CK_FLAGS, int, CK_MECHANISM_TYPE_PTR);
-static int		find_slot_by_label(const char *, CK_SLOT_ID_PTR);
+static int		find_slot_by_description(const char *, CK_SLOT_ID_PTR);
+static int		find_slot_by_token_label(const char *, CK_SLOT_ID_PTR);
 static void		get_token_info(CK_SLOT_ID, CK_TOKEN_INFO_PTR);
 static CK_ULONG		get_mechanisms(CK_SLOT_ID,
 				CK_MECHANISM_TYPE_PTR *, CK_FLAGS);
@@ -492,20 +497,27 @@ int main(int argc, char * argv[])
 			if (verbose)
 				fprintf(stderr, "Using slot with ID 0x%lx\n", opt_slot);
 			break;
-		case OPT_SLOT_LABEL:
+		case OPT_SLOT_DESCRIPTION:
 			if (opt_slot_set) {
-				fprintf(stderr, "Error: Only one of --slot, --slot-label or --slot-index can be used\n");
+				fprintf(stderr, "Error: Only one of --slot, --slot-label, --slot-index or --token-label can be used\n");
 				util_print_usage_and_die(app_name, options, option_help);
 			}
-			opt_slot_label = optarg;
+			opt_slot_description = optarg;
 			break;
 		case OPT_SLOT_INDEX:
-			if (opt_slot_set || opt_slot_label) {
-				fprintf(stderr, "Error: Only one of --slot, --slot-label or --slot-index can be used\n");
+			if (opt_slot_set || opt_slot_description) {
+				fprintf(stderr, "Error: Only one of --slot, --slot-label, --slot-index or --token-label can be used\n");
 				util_print_usage_and_die(app_name, options, option_help);
 			}
 			opt_slot_index = (CK_ULONG) strtoul(optarg, NULL, 0);
 			opt_slot_index_set = 1;
+			break;
+		case OPT_TOKEN_LABEL:
+			if (opt_slot_set || opt_slot_description || opt_slot_index_set) {
+				fprintf(stderr, "Error: Only one of --slot, --slot-label, --slot-index or --token-label can be used\n");
+				util_print_usage_and_die(app_name, options, option_help);
+			}
+			opt_token_label = optarg;
 			break;
 		case OPT_MODULE:
 			opt_module = optarg;
@@ -596,14 +608,22 @@ int main(int argc, char * argv[])
 	}
 
 	if (!opt_slot_set && (action_count > do_list_slots)) {
-		if (opt_slot_label) {
-			if (!find_slot_by_label(opt_slot_label, &opt_slot)) {
-				fprintf(stderr, "No slot with a token named \"%s\" found\n", opt_slot_label);
+		if (opt_slot_description) {
+			if (!find_slot_by_description(opt_slot_description, &opt_slot)) {
+				fprintf(stderr, "No slot named \"%s\" found\n", opt_slot_description);
 				err = 1;
 				goto end;
 			}
 			if (verbose)
-				fprintf(stderr, "Using slot with label \"%s\" (0x%lx)\n", opt_slot_label, opt_slot);
+				fprintf(stderr, "Using slot with label \"%s\" (0x%lx)\n", opt_slot_description, opt_slot);
+		} else if (opt_token_label) {
+			if (!find_slot_by_token_label(opt_token_label, &opt_slot)) {
+				fprintf(stderr, "No slot with token named \"%s\" found\n", opt_token_label);
+				err = 1;
+				goto end;
+			}
+			if (verbose)
+				fprintf(stderr, "Using slot with label \"%s\" (0x%lx)\n", opt_slot_description, opt_slot);
 		} else if (opt_slot_index_set) {
 			if (opt_slot_index < p11_num_slots) {
 				opt_slot = p11_slots[opt_slot_index];
@@ -1978,7 +1998,32 @@ static void set_id_attr(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	show_object(session, obj);
 }
 
-static int find_slot_by_label(const char *label, CK_SLOT_ID_PTR result)
+static int find_slot_by_description(const char *label, CK_SLOT_ID_PTR result)
+{
+	CK_SLOT_INFO	info;
+	CK_ULONG	n, len;
+	CK_RV		rv;
+
+	if (!p11_num_slots)
+		return 0;
+
+	len = strlen(label);
+	for (n = 0; n < p11_num_slots; n++) {
+		const char	*slot_label;
+
+		rv = p11->C_GetSlotInfo(p11_slots[n], &info);
+		if (rv != CKR_OK)
+			continue;
+		slot_label = p11_utf8_to_local(info.slotDescription, sizeof(info.slotDescription));
+		if (!strncmp(label, slot_label, len)) {
+			*result = p11_slots[n];
+			return 1;
+		}
+	}
+	return 0;
+}
+
+static int find_slot_by_token_label(const char *label, CK_SLOT_ID_PTR result)
 {
 	CK_TOKEN_INFO	info;
 	CK_ULONG	n, len;
@@ -2002,6 +2047,7 @@ static int find_slot_by_label(const char *label, CK_SLOT_ID_PTR result)
 	}
 	return 0;
 }
+
 
 static int find_object(CK_SESSION_HANDLE sess, CK_OBJECT_CLASS cls,
 		CK_OBJECT_HANDLE_PTR ret,
