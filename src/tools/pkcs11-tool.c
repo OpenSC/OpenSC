@@ -1710,7 +1710,7 @@ static int write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 
 		rv = do_read_private_key(contents, contents_len, &evp_key);
 		if (rv)
-			return rv;
+			util_fatal("Cannot read private key\n");
 
 		if (evp_key->type == EVP_PKEY_RSA)   {
 			rv = parse_rsa_private_key(&rsa, contents, contents_len);
@@ -1725,7 +1725,7 @@ static int write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		}
 
 		if (rv)
-			return rv;
+			util_fatal("Cannot parse private key\n");
 #else
 		util_fatal("No OpenSSL support, cannot parse private key\n");
 #endif
@@ -2231,7 +2231,7 @@ static void show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 {
 	CK_KEY_TYPE	key_type = getKEY_TYPE(sess, obj);
 	CK_ULONG	size = 0;
-	unsigned char	*id, *oid;
+	unsigned char	*id, *oid, *value;
 	const char      *sepa;
 	char		*label;
 	int		pub;
@@ -2259,15 +2259,33 @@ static void show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 		break;
 	case CKK_GOSTR3410:
 		printf("; GOSTR3410 \n");
-		if ((oid = getGOSTR3410_PARAMS(sess, obj, &size)) != NULL) {
+		oid = getGOSTR3410_PARAMS(sess, obj, &size);
+		if (oid) {
 			unsigned int	n;
 
-			printf("  PARAMS OID:  ");
+			printf("  PARAMS OID: ");
 			for (n = 0; n < size; n++)
 				printf("%02x", oid[n]);
 			printf("\n");
 			free(oid);
 		}
+		
+		if (pub)   {
+			value = getVALUE(sess, obj, &size);
+			if (value) {
+				unsigned int	n;
+
+				printf("  VALUE:      ");
+				for (n = 0; n < size; n++)   {
+					if (n && (n%32)==0)
+						printf("\n              ");
+					printf("%02x", value[n]);
+				}
+				printf("\n");
+				free(value);
+			}
+		}
+		break;
 		break;
 	case CKK_EC:
 		printf("; EC");
