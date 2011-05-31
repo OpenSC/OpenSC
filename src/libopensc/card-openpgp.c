@@ -122,8 +122,7 @@ static void		pgp_iterate_blobs(struct blob *, int, void (*func)());
 
 static int		pgp_get_blob(sc_card_t *card, struct blob *blob,
 				 unsigned int id, struct blob **ret);
-static struct blob *	pgp_new_blob(struct blob *, unsigned int, int,
-				struct do_info *);
+static struct blob *	pgp_new_blob(sc_card_t *, struct blob *, unsigned int, sc_file_t *);
 static void		pgp_free_blob(struct blob *);
 static int		pgp_get_pubkey(sc_card_t *, unsigned int,
 				u8 *, size_t);
@@ -322,7 +321,8 @@ pgp_init(sc_card_t *card)
 	for (info = priv->pgp_objects; (info != NULL) && (info->id > 0); info++) {
 		if (((info->access & READ_MASK) == READ_ALWAYS) &&
 		    (info->get_fn != NULL)) {
-			child = pgp_new_blob(priv->mf, info->id, info->type, info);
+			child = pgp_new_blob(card, priv->mf, info->id, sc_file_new());
+
 			/* catch out of memory condition */
 			if (child == NULL) {
 				pgp_finish(card);
@@ -469,26 +469,54 @@ pgp_set_blob(struct blob *blob, const u8 *data, size_t len)
 
 /* internal: append a blob to the list of children of a given parent blob */
 static struct blob *
-pgp_new_blob(struct blob *parent, unsigned int file_id,
-		int file_type, struct do_info *info)
+pgp_new_blob(sc_card_t *card, struct blob *parent, unsigned int file_id,
+		sc_file_t *file)
 {
-	sc_file_t	*file = sc_file_new();
-	struct blob	*blob, **p;
+	struct blob *blob = NULL;
 
-	if ((blob = calloc(1, sizeof(*blob))) != NULL) {
-		blob->parent = parent;
+	if (file == NULL)
+		return NULL;
+
+	if ((blob = calloc(1, sizeof(struct blob))) != NULL) {
+		struct pgp_priv_data *priv = DRVDATA (card);
+		struct do_info *info;
+
+		blob->file = file;
+
+		blob->file->type         = SC_FILE_TYPE_WORKING_EF; /* default */
+		blob->file->ef_structure = SC_FILE_EF_TRANSPARENT;
+		blob->file->id           = file_id;
+
 		blob->id     = file_id;
-		blob->file   = file;
-		blob->info   = info;
+		blob->parent = parent;
 
-		file->type   = file_type;
-		file->path   = parent->file->path;
-		file->ef_structure = SC_FILE_EF_TRANSPARENT;
-		sc_append_file_id(&file->path, file_id);
+		if (parent != NULL) {
+			struct blob **p;
 
-		for (p = &parent->files; *p; p = &(*p)->next)
-			;
-		*p = blob;
+			/* set file's path = parent's path + file's id */
+			blob->file->path = parent->file->path;
+			sc_append_file_id(&blob->file->path, file_id);
+
+			/* append blob to list of parent's children */
+			for (p = &parent->files; *p != NULL; p = &(*p)->next)
+				;
+			*p = blob;
+		}
+		else {
+			u8 id_str[2];
+
+			/* no parent: set file's path = file's id */
+			sc_format_path(ushort2bebytes(id_str, file_id), &blob->file->path);
+		}
+
+		/* find matching DO info: set file type depending on it */
+		for (info = priv->pgp_objects; (info != NULL) && (info->id > 0); info++) {
+			if (info->id == file_id) {
+				blob->info = info;
+				blob->file->type = blob->info->type;
+				break;
+			}
+		}
 	}
 
 	return blob;
@@ -577,7 +605,6 @@ pgp_enumerate_blob(sc_card_t *card, struct blob *blob)
 
 	while ((int) blob->len > (in - blob->data)) {
 		unsigned int	cla, tag, tmptag;
-		unsigned int	type = SC_FILE_TYPE_WORKING_EF;
 		size_t		len;
 		const u8	*data = in;
 		struct blob	*new;
@@ -590,18 +617,15 @@ pgp_enumerate_blob(sc_card_t *card, struct blob *blob)
 			return SC_ERROR_OBJECT_NOT_VALID;
 		}
 
-		/* create fake file system hierarchy by
-		 * using constructed DOs as DF */
-		if (cla & SC_ASN1_TAG_CONSTRUCTED)
-			type = SC_FILE_TYPE_DF;
-
 		/* undo ASN1's split of tag & class */
 		for (tmptag = tag; tmptag > 0x0FF; tmptag >>= 8) {
 			cla <<= 8;
 		}
 		tag |= cla;
 
-		if ((new = pgp_new_blob(blob, tag, type, NULL)) == NULL)
+		/* create fake file system hierarchy by
+		 * using constructed DOs as DF */
+		if ((new = pgp_new_blob(card, blob, tag, sc_file_new())) == NULL)
 			return SC_ERROR_OUT_OF_MEMORY;
 		pgp_set_blob(new, data, len);
 		in = data + len;
