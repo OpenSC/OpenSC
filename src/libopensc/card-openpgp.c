@@ -276,12 +276,6 @@ pgp_init(sc_card_t *card)
 		return SC_ERROR_OUT_OF_MEMORY;
 	card->drv_data = priv;
 
-	priv->mf = calloc(1, sizeof(struct blob));
-	if (!priv->mf) {
-		pgp_finish(card);
-		return SC_ERROR_OUT_OF_MEMORY;
-	}
-
 	card->cla = 0x00;
 
 	/* set pointer to correct list of card objects */
@@ -309,12 +303,15 @@ pgp_init(sc_card_t *card)
 		card->serialnr.len = 6;
 	}
 
+	/* change file path to MF for re-use in MF */
 	sc_format_path("3f00", &file->path);
-	file->type = SC_FILE_TYPE_DF;
-	file->id = 0x3f00;
 
-	priv->mf->file = file;
-	priv->mf->id = 0x3F00;
+	/* set up the root of our fake file tree */
+	priv->mf = pgp_new_blob(card, NULL, 0x3f00, file);
+	if (!priv->mf) {
+		pgp_finish(card);
+		return SC_ERROR_OUT_OF_MEMORY;
+	}
 
 	/* select MF */
 	priv->current = priv->mf;
