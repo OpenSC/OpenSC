@@ -1884,7 +1884,7 @@ set_gost_params(struct sc_pkcs15init_keyarg_gost_params *first_params,
 	else
 		rv = attr_find(pPubTpl, ulPubCnt, CKA_GOSTR3410_PARAMS, &gost_params_oid, &len);
 	if (rv == CKR_OK) {
-		int nn = sizeof(gostr3410_param_oid)/sizeof(gostr3410_param_oid[0]);
+		size_t nn = sizeof(gostr3410_param_oid)/sizeof(gostr3410_param_oid[0]);
 
 		if (len != GOST_PARAMS_OID_SIZE)
 			return CKR_ATTRIBUTE_VALUE_INVALID;
