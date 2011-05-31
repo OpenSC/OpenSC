@@ -978,7 +978,6 @@ __sc_pkcs15_search_objects(sc_pkcs15_card_t *p15card,
 			void *func_arg,
 			sc_pkcs15_object_t **ret, size_t ret_size)
 {
-	struct sc_context *ctx = p15card->card->ctx;
 	sc_pkcs15_object_t *obj;
 	sc_pkcs15_df_t	*df;
 	unsigned int	df_mask = 0;
