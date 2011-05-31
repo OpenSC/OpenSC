@@ -400,7 +400,7 @@ pgp_get_card_features(sc_card_t *card)
 		}
 
 		/* get supported algorithms & key lengths from "algorithm attributes" DOs */
-		for (i = 0x00c1; i < 0x0c3; i++) {
+		for (i = 0x00c1; i <= 0x00c3; i++) {
 			unsigned long flags;
 
 			/* Is this correct? */
