@@ -332,13 +332,13 @@ static int print_file(sc_card_t *in_card, const sc_file_t *file,
 		tmps = "iEF";
 		break;
 	case SC_FILE_TYPE_DF:
-		tmps = " DF";
+		tmps = "DF";
 		break;
 	default:
 		tmps = "unknown";
 		break;
 	}
-	printf("type: %-3s, ", tmps);
+	printf("type: %s, ", tmps);
 	if (file->type != SC_FILE_TYPE_DF) {
 		const id2str_t ef_type_name[] = {
 			{ SC_FILE_EF_TRANSPARENT,         "transparent"           },
