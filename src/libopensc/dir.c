@@ -315,8 +315,7 @@ static int update_transparent(sc_card_t *card, sc_file_t *file)
 	return SC_SUCCESS;
 }
 
-static int update_single_record(sc_card_t *card, sc_file_t *file,
-				sc_app_info_t *app)
+static int update_single_record(sc_card_t *card, sc_app_info_t *app)
 {
 	u8 *rec;
 	size_t rec_size;
@@ -351,12 +350,12 @@ static int update_single_record(sc_card_t *card, sc_file_t *file,
 	return 0;
 }
 
-static int update_records(sc_card_t *card, sc_file_t *file)
+static int update_records(sc_card_t *card)
 {
 	int i, r;
 
 	for (i = 0; i < card->app_count; i++) {
-		r = update_single_record(card, file, card->app[i]);
+		r = update_single_record(card, card->app[i]);
 		if (r)
 			return r;
 	}
@@ -376,9 +375,9 @@ int sc_update_dir(sc_card_t *card, sc_app_info_t *app)
 	if (file->ef_structure == SC_FILE_EF_TRANSPARENT)
 		r = update_transparent(card, file);
 	else if (app == NULL)
-		r = update_records(card, file);
+		r = update_records(card);
 	else
-		r = update_single_record(card, file, app);
+		r = update_single_record(card, app);
 	sc_file_free(file);
 	return r;
 }
