@@ -234,8 +234,8 @@ static int
 awp_new_container_entry(struct sc_pkcs15_card *p15card, unsigned char *buff, int len)
 {
 	struct sc_context *ctx = p15card->card->ctx;
-	int ii, mm, rv = 0;
-	int marks[5] = {4,6,8,10,0};
+	int mm, rv = 0;
+	unsigned ii, marks[5] = {4,6,8,10,0};
 	unsigned char rand_buf[0x10];
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
@@ -421,88 +421,6 @@ awp_update_container_entry (struct sc_pkcs15_card *p15card, struct sc_profile *p
 
 
 static int 
-awp_remove_container_entry (struct sc_pkcs15_card *p15card, struct sc_profile *profile,
-		 int type, int file_id)
-{
-	struct sc_context *ctx = p15card->card->ctx;
-	struct sc_file *clist=NULL, *file=NULL;
-	int rv = 0, ii;
-	unsigned rec, rec_len;
-	unsigned char *buff=NULL, id[2];
-
-	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "file_id %X", file_id);
-
-	rv = awp_new_file(p15card, profile, COSM_CONTAINER_LIST, 0, &clist, NULL);
-	if (rv)
-		goto done;
-
-	rv = sc_select_file(p15card->card, &clist->path, &file);
-	if (rv)
-		goto done;
-	
-	if (!(buff = malloc(file->record_length)))   {
-		rv = SC_ERROR_OUT_OF_MEMORY;
-		goto done;
-	}
-	
-	id[0] = (file_id >> 8) & 0xFF;
-	id[1] = file_id & 0xFF;
-
-	for (rec = 1; rec <= (unsigned)file->record_count; rec++)   {
-		rv = sc_read_record(p15card->card, rec, buff, file->record_length, SC_RECORD_BY_REC_NR);
-		if (rv < 0)
-			break;
-		rec_len = rv;
-		
-		for (ii=0; ii<12; ii+=2)  
-			if (!memcmp(id, buff+ii, 2))
-				break;
-		if (ii==12)
-			continue;
-
-		*(buff + ii + 0) = 0;
-		*(buff + ii + 1) = 0;
-
-		if (type == SC_PKCS15_TYPE_PRKEY_RSA || type == COSM_TYPE_PRKEY_RSA) 
-			memset(buff + ii/6*6, 0, 6);
-	
-		if (!memcmp(buff,"\0\0\0\0\0\0\0\0\0\0\0\0",12))   {
-			rv = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_ERASE);
-			if (rv)
-				break;
-			rv = sc_delete_record(p15card->card, rec);
-
-			if (rv)
-				break;
-
-			rv =  awp_remove_container_entry(p15card, profile, type, file_id);	
-			break;
-		}
-		else   {
-			rv = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_UPDATE);
-			if (rv)
-				break;
-			rv = sc_update_record(p15card->card, rec, buff, rec_len, SC_RECORD_BY_REC_NR);
-		}
-
-		if (rv<0)
-			break;
-	}
-
-	if (rv>0)
-		rv = 0;
-	
-done:
-	if (buff)		free(buff);
-	if (file)		sc_file_free(file);
-	if (clist)		sc_file_free(clist);
-
-	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, rv);
-}
-
-
-static int 
 awp_update_container(struct sc_pkcs15_card *p15card, struct sc_profile *profile, int type,	
 		struct awp_lv *key_id, unsigned obj_id, unsigned int *prkey_id)
 {
@@ -598,7 +516,7 @@ awp_update_container(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 				}
 
 				rv = sc_read_binary(p15card->card, 0, buff, ff->size, 0);
-				if (rv == ff->size)  {
+				if ((unsigned)rv == ff->size)  {
 					rv = 0;
 					id_offs = 5 + *(buff+3);
 					sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "rec %i; id offset %i",rec, id_offs);
@@ -1179,7 +1097,7 @@ awp_encode_data_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *ob
 
 	di->app.len = strlen(data_info->app_label);
 	if (di->app.len)   {
-		di->app.value = strdup(data_info->app_label);
+		di->app.value = (unsigned char *)strdup(data_info->app_label);
 		if (!di->app.value) 
 			SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY, 
 					"AWP encode data failed: cannot allocate App.Label");
@@ -1803,7 +1721,7 @@ awp_remove_from_object_list( struct sc_pkcs15_card *p15card, struct sc_profile *
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY, "AWP update object list: allocation error");
 
 	rv = sc_read_binary(p15card->card, 0, buff, lst->size, 0);
-	if (rv != lst->size)
+	if (rv != (int)lst->size)
 		goto done;
 
 	id[0] = (obj_id >> 8) & 0xFF;
