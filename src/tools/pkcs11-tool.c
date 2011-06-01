@@ -277,12 +277,12 @@ static void		show_dobj(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj);
 static void		sign_data(CK_SLOT_ID,
 				CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static void		hash_data(CK_SLOT_ID, CK_SESSION_HANDLE);
-static int		gen_keypair(CK_SLOT_ID, CK_SESSION_HANDLE,
+static int		gen_keypair(CK_SESSION_HANDLE,
 				CK_OBJECT_HANDLE *, CK_OBJECT_HANDLE *, const char *);
-static int 		write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session);
-static int 		read_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session);
-static int 		delete_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session);
-static void 		set_id_attr(CK_SLOT_ID slot, CK_SESSION_HANDLE session);
+static int 		write_object(CK_SESSION_HANDLE session);
+static int 		read_object(CK_SESSION_HANDLE session);
+static int 		delete_object(CK_SESSION_HANDLE session);
+static void 		set_id_attr(CK_SESSION_HANDLE session);
 static int		find_object(CK_SESSION_HANDLE, CK_OBJECT_CLASS,
 				CK_OBJECT_HANDLE_PTR,
 				const unsigned char *, size_t id_len, int obj_index);
@@ -302,7 +302,7 @@ static const char *	p11_mechanism_to_name(CK_MECHANISM_TYPE);
 static CK_MECHANISM_TYPE p11_name_to_mechanism(const char *);
 static void		p11_perror(const char *, CK_RV);
 static const char *	CKR2Str(CK_ULONG res);
-static int		p11_test(CK_SLOT_ID slot, CK_SESSION_HANDLE session);
+static int		p11_test(CK_SESSION_HANDLE session);
 static int test_card_detection(int);
 static int		hex_to_bin(const char *in, CK_BYTE *out, size_t *outlen);
 static void		test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE session);
@@ -736,13 +736,13 @@ int main(int argc, char * argv[])
 
 	if (do_gen_keypair) {
 		CK_OBJECT_HANDLE hPublicKey, hPrivateKey;
-		gen_keypair(opt_slot, session, &hPublicKey, &hPrivateKey, opt_key_type);
+		gen_keypair(session, &hPublicKey, &hPrivateKey, opt_key_type);
 	}
 
 	if (do_write_object) {
 		if (opt_object_class_str == NULL)
 			util_fatal("You should specify the object type with the -y option\n");
-		write_object(opt_slot, session);
+		write_object(session);
 	}
 
 	if (do_read_object) {
@@ -752,7 +752,7 @@ int main(int argc, char * argv[])
 				opt_application_label == NULL && opt_application_id == NULL)
 			 util_fatal("You should specify at least one of the "
 					 "object ID, object label, application label or application ID\n");
-		read_object(opt_slot, session);
+		read_object(session);
 	}
 
 	if (do_delete_object) {
@@ -762,7 +762,7 @@ int main(int argc, char * argv[])
 				opt_application_label == NULL && opt_application_id == NULL)
 			 util_fatal("You should specify at least one of the "
 					 "object ID, object label, application label or application ID\n");
-		delete_object(opt_slot, session);
+		delete_object(session);
 	}
 
 	if (do_set_id) {
@@ -770,11 +770,11 @@ int main(int argc, char * argv[])
 			util_fatal("You should specify the object type with the -y option\n");
 		if (opt_object_id_len == 0)
 			util_fatal("You should specify the current ID with the -d option\n");
-		set_id_attr(opt_slot, session);
+		set_id_attr(session);
 	}
 
 	if (do_test)
-		p11_test(opt_slot, session);
+		p11_test(session);
 
 	if (do_test_kpgen_certwrite)
 		test_kpgen_certwrite(opt_slot, session);
@@ -783,8 +783,12 @@ int main(int argc, char * argv[])
 		test_ec(opt_slot, session);
 
 end:
-	if (session)
-		p11->C_CloseSession(session);
+	if (session != CK_INVALID_HANDLE) {
+		rv = p11->C_CloseSession(session);
+		if (rv != CKR_OK)
+			p11_fatal("C_CloseSession", rv);
+	}
+
 	if (p11)
 		p11->C_Finalize(NULL_PTR);
 	if (module)
@@ -1394,7 +1398,7 @@ static void hash_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 
 #define FILL_ATTR(attr, typ, val, len) {(attr).type=(typ); (attr).pValue=(val); (attr).ulValueLen=len;}
 
-static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
+static int gen_keypair(CK_SESSION_HANDLE session,
 	CK_OBJECT_HANDLE *hPublicKey, CK_OBJECT_HANDLE *hPrivateKey, const char *type)
 {
 	CK_MECHANISM mechanism = {CKM_RSA_PKCS_KEY_PAIR_GEN, NULL_PTR, 0};
@@ -1670,7 +1674,7 @@ static int parse_gost_private_key(EVP_PKEY *evp_key, struct gostkey_info *gost)
 /* Currently for certificates (-type cert), private keys (-type privkey),
    public keys (-type pubkey) and data objects (-type data).
    Note: only RSA private keys are supported. */
-static int write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
+static int write_object(CK_SESSION_HANDLE session)
 {
 	CK_BBOOL _true = TRUE;
 	unsigned char contents[MAX_OBJECT_SIZE];
@@ -1979,7 +1983,7 @@ static int write_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	return 1;
 }
 
-static void set_id_attr(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
+static void set_id_attr(CK_SESSION_HANDLE session)
 {
 	CK_OBJECT_HANDLE obj;
 	CK_ATTRIBUTE templ[] = {{CKA_ID, new_object_id, new_object_id_len}};
@@ -2572,7 +2576,7 @@ static CK_ULONG get_mechanisms(CK_SLOT_ID slot, CK_MECHANISM_TYPE_PTR *pList,
 /*
  * Read object CKA_VALUE attribute's value.
  */
-static int read_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
+static int read_object(CK_SESSION_HANDLE session)
 {
 	CK_RV rv;
 	CK_ATTRIBUTE attrs[20];
@@ -2647,7 +2651,7 @@ static int read_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 /*
  * Delete object.
  */
-static int delete_object(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
+static int delete_object(CK_SESSION_HANDLE session)
 {
 	CK_RV rv;
 	CK_ATTRIBUTE attrs[20];
@@ -2722,17 +2726,17 @@ static CK_ULONG	get_private_key_length(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE 
 	return getMODULUS_BITS(sess, pubkey);
 }
 
-static int test_digest(CK_SLOT_ID slot)
+static int test_digest(CK_SESSION_HANDLE session)
 {
 	int             errors = 0;
 	CK_RV           rv;
-	CK_SESSION_HANDLE session;
 	CK_MECHANISM    ck_mech = { CKM_MD5, NULL, 0 };
 	CK_ULONG        i, j;
 	unsigned char   data[100];
 	unsigned char   hash1[64], hash2[64];
 	CK_ULONG        hashLen1, hashLen2;
 	CK_MECHANISM_TYPE firstMechType;
+	CK_SESSION_INFO sessionInfo;
 
 	CK_MECHANISM_TYPE mechTypes[] = {
 		CKM_MD5,
@@ -2751,17 +2755,15 @@ static int test_digest(CK_SLOT_ID slot)
 		20
 	};
 
+	rv = p11->C_GetSessionInfo(session, &sessionInfo);
+	if (rv != CKR_OK)
+		p11_fatal("C_OpenSession", rv);
 	
-	if (!find_mechanism(slot, CKF_DIGEST, 0, &firstMechType)) {
+	if (!find_mechanism(sessionInfo.slotID, CKF_DIGEST, 0, &firstMechType)) {
 		printf("Digests: not implemented\n");
 		return errors;
 	} else
 		printf("Digests:\n");
-
-	rv = p11->C_OpenSession(slot, CKF_SERIAL_SESSION,
-		NULL, NULL, &session);
-	if (rv != CKR_OK)
-		p11_fatal("C_OpenSession", rv);
 
 	/* 1st test */
 
@@ -2880,10 +2882,6 @@ static int test_digest(CK_SLOT_ID slot)
 	} else if (rv != CKR_OK)
 		p11_fatal("C_Sign", rv);
 
-	rv = p11->C_CloseSession(session);
-	if (rv != CKR_OK)
-		p11_fatal("C_CloseSession", rv);
-
 	return errors;
 }
 
@@ -2965,7 +2963,7 @@ static EVP_PKEY *get_public_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE priv
 }
 #endif
 
-static int sign_verify_openssl(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
+static int sign_verify_openssl(CK_SESSION_HANDLE session,
 		CK_MECHANISM *ck_mech, CK_OBJECT_HANDLE privKeyObject,
 		unsigned char *data, CK_ULONG dataLen,
 		unsigned char *verifyData, CK_ULONG verifyDataLen,
@@ -3040,12 +3038,11 @@ static int sign_verify_openssl(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 /*
  * Test signature functions
  */
-static int test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
+static int test_signature(CK_SESSION_HANDLE sess)
 {
 	int             errors = 0;
 	CK_RV           rv;
 	CK_OBJECT_HANDLE privKeyObject;
-	CK_SESSION_HANDLE sess;
 	CK_MECHANISM    ck_mech = { CKM_MD5, NULL, 0 };
 	CK_MECHANISM_TYPE firstMechType;
 	CK_SESSION_INFO sessionInfo;
@@ -3087,11 +3084,6 @@ static int test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		sizeof(verifyData),
 	};
 
-	rv = p11->C_OpenSession(slot, CKF_SERIAL_SESSION,
-		NULL, NULL, &sess);
-	if (rv != CKR_OK)
-		p11_fatal("C_OpenSession", rv);
-
 	rv = p11->C_GetSessionInfo(sess, &sessionInfo);
 	if (rv != CKR_OK)
 		p11_fatal("C_OpenSession", rv);
@@ -3100,7 +3092,7 @@ static int test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		return errors;
 	}
 
-	if (!find_mechanism(slot, CKF_SIGN | CKF_HW, 0, &firstMechType)) {
+	if (!find_mechanism(sessionInfo.slotID, CKF_SIGN | CKF_HW, 0, &firstMechType)) {
 		printf("Signatures: not implemented\n");
 		return errors;
 	}
@@ -3249,7 +3241,7 @@ static int test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	printf("  testing signature mechanisms:\n");
 	for (i = 0; mechTypes[i] != 0xffffff; i++) {
 		ck_mech.mechanism = mechTypes[i];
-		errors += sign_verify_openssl(slot, sess, &ck_mech, privKeyObject,
+		errors += sign_verify_openssl(sess, &ck_mech, privKeyObject,
 			datas[i], dataLens[i], verifyData, sizeof(verifyData),
 			modLenBytes, i);
 	}
@@ -3288,7 +3280,7 @@ static int test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 			printf("\n");
 		}
 
-		errors += sign_verify_openssl(slot, sess, &ck_mech, privKeyObject,
+		errors += sign_verify_openssl(sess, &ck_mech, privKeyObject,
 			datas[i], dataLens[i], verifyData, sizeof(verifyData),
 			modLenBytes, i);
 	}
@@ -3296,7 +3288,7 @@ static int test_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	return errors;
 }
 
-static int sign_verify(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
+static int sign_verify(CK_SESSION_HANDLE session,
 	CK_OBJECT_HANDLE priv_key, int key_len,
 	CK_OBJECT_HANDLE pub_key, int one_test)
 {
@@ -3377,17 +3369,13 @@ static int sign_verify(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	return errors;
 }
 
-static int test_verify(CK_SLOT_ID slot, CK_SESSION_HANDLE sess)
+static int test_verify(CK_SESSION_HANDLE sess)
 {
 	int key_len, i, errors = 0;
 	CK_OBJECT_HANDLE priv_key, pub_key;
 	CK_MECHANISM_TYPE first_mech_type;
 	CK_SESSION_INFO sessionInfo;
 	CK_RV rv;
-
-	rv = p11->C_OpenSession(slot, CKF_SERIAL_SESSION, NULL, NULL, &sess);
-	if (rv != CKR_OK)
-		p11_fatal("C_OpenSession", rv);
 
 	rv = p11->C_GetSessionInfo(sess, &sessionInfo);
 	if (rv != CKR_OK)
@@ -3397,7 +3385,7 @@ static int test_verify(CK_SLOT_ID slot, CK_SESSION_HANDLE sess)
 		return errors;
 	}
 
-	if (!find_mechanism(slot, CKF_VERIFY, 0, &first_mech_type)) {
+	if (!find_mechanism(sessionInfo.slotID, CKF_VERIFY, 0, &first_mech_type)) {
 		printf("Verify: not implemented\n");
 		return errors;
 	}
@@ -3443,7 +3431,7 @@ static int test_verify(CK_SLOT_ID slot, CK_SESSION_HANDLE sess)
 			continue;
 		}
 
-		errors += sign_verify(slot, sess, priv_key, key_len, pub_key, i != 0);
+		errors += sign_verify(sess, priv_key, key_len, pub_key, i != 0);
 	}
 
 	if (i == 0)
@@ -3453,7 +3441,7 @@ static int test_verify(CK_SLOT_ID slot, CK_SESSION_HANDLE sess)
 }
 
 #ifdef ENABLE_OPENSSL
-static int wrap_unwrap(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
+static int wrap_unwrap(CK_SESSION_HANDLE session,
 	    const EVP_CIPHER *algo, CK_OBJECT_HANDLE privKeyObject)
 {
 	CK_OBJECT_HANDLE cipherKeyObject;
@@ -3544,20 +3532,15 @@ static int wrap_unwrap(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 /*
  * Test unwrap functions
  */
-static int test_unwrap(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
+static int test_unwrap(CK_SESSION_HANDLE sess)
 {
 	int             errors = 0;
 	CK_RV           rv;
 	CK_OBJECT_HANDLE privKeyObject;
-	CK_SESSION_HANDLE sess;
 	CK_MECHANISM_TYPE firstMechType;
 	CK_SESSION_INFO sessionInfo;
 	CK_ULONG        j;
 	char 		*label;
-
-	rv = p11->C_OpenSession(slot, CKF_SERIAL_SESSION, NULL, NULL, &sess);
-	if (rv != CKR_OK)
-		p11_fatal("C_OpenSession", rv);
 
 	rv = p11->C_GetSessionInfo(sess, &sessionInfo);
 	if (rv != CKR_OK)
@@ -3567,7 +3550,7 @@ static int test_unwrap(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		return errors;
 	}
 
-	if (!find_mechanism(slot, CKF_UNWRAP | CKF_HW, 0, &firstMechType)) {
+	if (!find_mechanism(sessionInfo.slotID, CKF_UNWRAP | CKF_HW, 0, &firstMechType)) {
 		printf("Unwrap: not implemented\n");
 		return errors;
 	}
@@ -3588,10 +3571,10 @@ static int test_unwrap(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 #ifndef ENABLE_OPENSSL
 		printf("No OpenSSL support, unable to validate C_Unwrap\n");
 #else
-		errors += wrap_unwrap(slot, sess, EVP_des_cbc(), privKeyObject);
-		errors += wrap_unwrap(slot, sess, EVP_des_ede3_cbc(), privKeyObject);
-		errors += wrap_unwrap(slot, sess, EVP_bf_cbc(), privKeyObject);
-		errors += wrap_unwrap(slot, sess, EVP_cast5_cfb(), privKeyObject);
+		errors += wrap_unwrap(sess, EVP_des_cbc(), privKeyObject);
+		errors += wrap_unwrap(sess, EVP_des_ede3_cbc(), privKeyObject);
+		errors += wrap_unwrap(sess, EVP_bf_cbc(), privKeyObject);
+		errors += wrap_unwrap(sess, EVP_cast5_cfb(), privKeyObject);
 #endif
 	}
 
@@ -3599,7 +3582,7 @@ static int test_unwrap(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 }
 
 #ifdef ENABLE_OPENSSL
-static int encrypt_decrypt(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
+static int encrypt_decrypt(CK_SESSION_HANDLE session,
 		CK_MECHANISM_TYPE mech_type,
 		CK_OBJECT_HANDLE privKeyObject)
 {
@@ -3677,20 +3660,15 @@ static int encrypt_decrypt(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 /*
  * Test decryption functions
  */
-static int test_decrypt(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
+static int test_decrypt(CK_SESSION_HANDLE sess)
 {
 	int             errors = 0;
 	CK_RV           rv;
 	CK_OBJECT_HANDLE privKeyObject;
-	CK_SESSION_HANDLE sess;
 	CK_MECHANISM_TYPE *mechs = NULL;
 	CK_SESSION_INFO sessionInfo;
 	CK_ULONG        j, n, num_mechs = 0;
 	char 		*label;
-
-	rv = p11->C_OpenSession(slot, CKF_SERIAL_SESSION, NULL, NULL, &sess);
-	if (rv != CKR_OK)
-		p11_fatal("C_OpenSession", rv);
 
 	rv = p11->C_GetSessionInfo(sess, &sessionInfo);
 	if (rv != CKR_OK)
@@ -3700,7 +3678,7 @@ static int test_decrypt(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		return errors;
 	}
 
-	num_mechs = get_mechanisms(slot, &mechs, CKF_DECRYPT);
+	num_mechs = get_mechanisms(sessionInfo.slotID, &mechs, CKF_DECRYPT);
 	if (num_mechs == 0) {
 		printf("Decrypt: not implemented\n");
 		return errors;
@@ -3724,8 +3702,7 @@ static int test_decrypt(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		n = 0;
 #else
 		for (n = 0; n < num_mechs; n++) {
-			errors += encrypt_decrypt(slot, sess,
-						mechs[n], privKeyObject);
+			errors += encrypt_decrypt(sess, mechs[n], privKeyObject);
 		}
 #endif
 	}
@@ -3734,20 +3711,14 @@ static int test_decrypt(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	return errors;
 }
 
-static int test_random(CK_SLOT_ID slot)
+static int test_random(CK_SESSION_HANDLE session)
 {
-	CK_SESSION_HANDLE session;
 	CK_BYTE buf1[100], buf2[100];
 	CK_BYTE seed1[100];
 	CK_RV rv;
 	int errors = 0;
 
 	printf("C_SeedRandom() and C_GenerateRandom():\n");
-
-	rv = p11->C_OpenSession(slot, CKF_SERIAL_SESSION,
-		NULL, NULL, &session);
-	if (rv != CKR_OK)
-		p11_fatal("C_OpenSession", rv);
 
 	rv = p11->C_SeedRandom(session, seed1, 100);
 	if (rv == CKR_RANDOM_NO_RNG) {
@@ -3829,21 +3800,21 @@ static int test_card_detection(int wait_for_event)
 	return 0;
 }
 
-static int p11_test(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
+static int p11_test(CK_SESSION_HANDLE session)
 {
 	int errors = 0;
 
-	errors += test_random(slot);
+	errors += test_random(session);
 
-	errors += test_digest(slot);
+	errors += test_digest(session);
 
-	errors += test_signature(slot, session);
+	errors += test_signature(session);
 
-	errors += test_verify(slot, session);
+	errors += test_verify(session);
 
-	errors += test_unwrap(slot, session);
+	errors += test_unwrap(session);
 
-	errors += test_decrypt(slot, session);
+	errors += test_decrypt(session);
 
 	if (errors == 0)
 		printf("No errors\n");
@@ -3903,7 +3874,7 @@ static void test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	
 	printf("\n*** Generating a 1024 bit RSA key pair ***\n");
 
-	if (!gen_keypair(slot, session, &pub_key, &priv_key, opt_key_type))
+	if (!gen_keypair(session, &pub_key, &priv_key, opt_key_type))
 		return;
 
 	tmp = getID(session, priv_key, (CK_ULONG *) &opt_object_id_len);
@@ -4016,7 +3987,7 @@ static void test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	memcpy(opt_object_id, id, id_len);
 	opt_object_id_len = id_len;
 	opt_object_label = (char *) label;
-	if (!write_object(slot, session))
+	if (!write_object(session))
 		return;
 
 	printf("\n==> OK, successfull! Should work with Mozilla\n");	
@@ -4056,7 +4027,7 @@ static void test_ec(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	}
 
 	printf("*** Generating EC key pair ***\n");
-	if (!gen_keypair(slot, session, &pub_key, &priv_key, opt_key_type))
+	if (!gen_keypair(session, &pub_key, &priv_key, opt_key_type))
 		return;
 
 	tmp = getID(session, priv_key, (CK_ULONG *) &opt_object_id_len);
