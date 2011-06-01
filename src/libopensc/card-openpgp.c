@@ -324,17 +324,12 @@ pgp_init(sc_card_t *card)
 		    (info->get_fn != NULL)) {
 			child = pgp_new_blob(priv->mf, info->id, info->type, info);
 			/* catch out of memory condition */
-			if (child == NULL)
-				break;
+			if (child == NULL) {
+				pgp_finish(card);
+				return SC_ERROR_OUT_OF_MEMORY;
+			}
 		}
 	}
-
-	/* treat out of memory condition */
-	if (child == NULL) {
-		pgp_finish(card);
-		return SC_ERROR_OUT_OF_MEMORY;
-	}
-
 
 	/* get card_features from ATR & DOs */
 	pgp_get_card_features(card);
