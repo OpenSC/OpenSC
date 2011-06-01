@@ -37,6 +37,12 @@
 
 #define DIM(v) (sizeof(v)/sizeof((v)[0]))
 
+/* type for associations of IDs to names */
+typedef struct _id2str {
+	unsigned int id;
+	const char *str;
+} id2str_t;
+
 static const char *app_name = "opensc-explorer";
 
 static int opt_wait = 0, verbose = 0;
@@ -432,6 +438,7 @@ static int do_info(int argc, char **argv)
 	size_t i;
 	const char *st;
 	int r, not_current = 1;
+	const id2str_t *ac_ops = NULL;
 
 	if (!argc) {
 		path = current_path;
@@ -472,48 +479,67 @@ static int do_info(int argc, char **argv)
 	printf("\n%-15s%lu bytes\n", "File size:", (unsigned long) file->size);
 
 	if (file->type == SC_FILE_TYPE_DF) {
-		const char *ops[] = {
-			"SELECT", "LOCK", "DELETE", "CREATE", "REHABILITATE",
-			"INVALIDATE", "LIST FILES", "CRYPTO", "DELETE SELF"
+		static const id2str_t ac_ops_df[] = {
+			{ SC_AC_OP_SELECT,       "SELECT"       },
+			{ SC_AC_OP_LOCK,         "LOCK"         },
+			{ SC_AC_OP_DELETE,       "DELETE"       },
+			{ SC_AC_OP_CREATE,       "CREATE"       },
+			{ SC_AC_OP_REHABILITATE, "REHABILITATE" },
+			{ SC_AC_OP_INVALIDATE,   "INVALIDATE"   },
+			{ SC_AC_OP_LIST_FILES,   "LIST FILES"   },
+			{ SC_AC_OP_CRYPTO,       "CRYPTO"       },
+			{ SC_AC_OP_DELETE_SELF,  "DELETE SELF"  },
+			{ 0, NULL }
 		};
+
 		if (file->namelen) {
 			printf("%-15s", "DF name:");
 			util_print_binary(stdout, file->name, file->namelen);
 			printf("\n");
 		}
-		for (i = 0; i < sizeof(ops)/sizeof(ops[0]); i++) {
-			char buf[80];
-			
-			sprintf(buf, "ACL for %s:", ops[i]);
-			printf("%-25s%s\n", buf, util_acl_to_str(sc_file_get_acl_entry(file, i)));
-		}
+
+		ac_ops = ac_ops_df;
 	} else {
-		const char *structs[] = {
-			"Unknown", "Transparent", "Linear fixed",
-			"Linear fixed, SIMPLE-TLV", "Linear variable",
-			"Linear variable TLV", "Cyclic, SIMPLE-TLV",
+		static const id2str_t ac_ops_ef[] = {
+			{ SC_AC_OP_READ,         "READ"         },
+			{ SC_AC_OP_UPDATE,       "UPDATE"       },
+			{ SC_AC_OP_DELETE,       "DELETE"       },
+			{ SC_AC_OP_WRITE,        "WRITE"        },
+			{ SC_AC_OP_REHABILITATE, "REHABILITATE" },
+			{ SC_AC_OP_INVALIDATE,   "INVALIDATE"   },
+			{ SC_AC_OP_LIST_FILES,   "LIST FILES"   },
+			{ SC_AC_OP_CRYPTO,       "CRYPTO"       },
+			{ 0, NULL }
 		};
-		const struct {
-			const char * label;
-			int op;
-		} ops[] = {
-			{ "READ", SC_AC_OP_READ },
-			{ "UPDATE", SC_AC_OP_UPDATE },
-			{ "DELETE", SC_AC_OP_DELETE },
-			{ "WRITE", SC_AC_OP_WRITE },
-			{ "REHABILITATE", SC_AC_OP_REHABILITATE },
-			{ "INVALIDATE", SC_AC_OP_INVALIDATE },
-			{ "LIST_FILES", SC_AC_OP_LIST_FILES },
-			{ "CRYPTO", SC_AC_OP_CRYPTO },
+		const id2str_t ef_type_name[] = {
+			{ SC_FILE_EF_TRANSPARENT,         "Transparent"                 },
+			{ SC_FILE_EF_LINEAR_FIXED,        "Linear fixed"                },
+			{ SC_FILE_EF_LINEAR_FIXED_TLV,    "Linear fixed, SIMPLE-TLV"    },
+			{ SC_FILE_EF_LINEAR_VARIABLE,     "Linear variable"             },
+			{ SC_FILE_EF_LINEAR_VARIABLE_TLV, "Linear variable, SIMPLE-TLV" },
+			{ SC_FILE_EF_CYCLIC,              "Cyclic"                      },
+			{ SC_FILE_EF_CYCLIC_TLV,          "Cyclic, SIMPLE-TLV"          },
+			{ 0, NULL }
 		};
-		printf("%-15s%s\n", "EF structure:", structs[file->ef_structure]);
-		for (i = 0; i < sizeof(ops)/sizeof(ops[0]); i++) {
-			char buf[80];
-			
-			sprintf(buf, "ACL for %s:", ops[i].label);
-			printf("%-25s%s\n", buf, util_acl_to_str(sc_file_get_acl_entry(file, ops[i].op)));
-		}
-	}	
+		const char *ef_type = "Unknown";
+
+		for (i = 0; ef_type_name[i].str != NULL; i++)
+			if (file->ef_structure == ef_type_name[i].id)
+				ef_type = ef_type_name[i].str;
+		printf("%-15s%s\n", "EF structure:", ef_type);
+
+		ac_ops = ac_ops_ef;
+	}
+
+	for (i = 0; ac_ops != NULL && ac_ops[i].str != NULL; i++) {
+		int len = strlen(ac_ops[i].str);
+
+		printf("ACL for %s:%*s %s\n",
+			ac_ops[i].str,
+			(12 > len) ? (12 - len) : 0, "",
+			util_acl_to_str(sc_file_get_acl_entry(file, ac_ops[i].id)));
+	}
+
 	if (file->prop_attr_len) {
 		printf("%-25s", "Proprietary attributes:");
 		for (i = 0; i < file->prop_attr_len; i++)
