@@ -301,10 +301,7 @@ static int arg_to_path(const char *arg, sc_path_t *path, int is_id)
 		if ((cbuf[0] == 0x3F && cbuf[1] == 0x00) || is_id) {
 			path->len = 2;
 			memcpy(path->value, cbuf, 2);
-			if (is_id)
-				path->type = SC_PATH_TYPE_FILE_ID;
-			else
-				path->type = SC_PATH_TYPE_PATH;
+			path->type = (is_id) ? SC_PATH_TYPE_FILE_ID : SC_PATH_TYPE_PATH;
 		} else {
 			*path = current_path;
 			if (path->type == SC_PATH_TYPE_DF_NAME)   {
