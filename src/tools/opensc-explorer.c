@@ -185,6 +185,21 @@ static struct command	cmds[] = {
 };
 
 
+static char *path_to_filename(const sc_path_t *path, const char sep)
+{
+	static char buf[2*SC_MAX_PATH_STRING_SIZE];
+	int i, j;
+
+	for (i = 0, j = 0; path != NULL && i < path->len; i++) {
+		if (sep != '\0' && i > 0 && (i & 1) == 0)
+			j += sprintf(buf+j, "%c", sep);
+		j += sprintf(buf+j, "%02X", path->value[i]);
+	}
+	buf[j] = 0;
+
+	return buf;
+}
+
 static int parse_string_or_hexdata(const char *in, u8 *out, size_t *outlen)
 {
 	if (in == NULL)
@@ -603,15 +618,8 @@ static int do_info(int argc, char **argv)
 		break;
 	}
 	printf("\n%s  ID %04X\n\n", st, file->id);
-	printf("%-15s", "File path:");
-	for (i = 0; i < path.len; i++) {
-		for (i = 0; i < path.len; i++) {
-			if ((i & 1) == 0 && i)
-				printf("/");
-			printf("%02X", path.value[i]);
-		}
-	}
-	printf("\n%-15s%lu bytes\n", "File size:", (unsigned long) file->size);
+	printf("%-15s%s\n", "File path:", path_to_filename(&path, '/'));
+	printf("%-15s%lu bytes\n", "File size:", (unsigned long) file->size);
 
 	if (file->type == SC_FILE_TYPE_DF) {
 		static const id2str_t ac_ops_df[] = {
@@ -989,25 +997,15 @@ static int do_get(int argc, char **argv)
 	unsigned int idx = 0;
 	sc_path_t path;
 	sc_file_t *file = NULL;
-	char fbuf[256], *filename;
+	char *filename;
 	FILE *outf = NULL;
 
 	if (argc < 1 || argc > 2)
 		return usage(do_get);
 	if (arg_to_path(argv[0], &path, 0) != 0)
 		return usage(do_get);
-	if (argc == 2)
-		filename = argv[1];
-	else {
-		size_t i = 0;
 
-		while (2*i < path.len) {
-			sprintf(&fbuf[5*i], "%02X%02X_", path.value[2*i], path.value[2*i+1]);
-			i++;
-		}
-		fbuf[5*i-1] = 0;
-		filename = fbuf;
-	}
+	filename = (argc == 2) ? argv[1] : path_to_filename(&path, '_');
 	outf = (strcmp(filename, "-") == 0)
 		? stdout
 		: fopen(filename, "wb");
@@ -1188,12 +1186,8 @@ static int do_put(int argc, char **argv)
 		return usage(do_put);
 	if (arg_to_path(argv[0], &path, 0) != 0)
 		return usage(do_put);
-	if (argc == 2)
-		filename = argv[1];
-	else {
-		sprintf((char *) buf, "%02X%02X", path.value[0], path.value[1]);
-		filename = (char *) buf;
-	}
+
+	filename = (argc == 2) ? argv[1] : path_to_filename(&path, '_');
 	outf = fopen(filename, "rb");
 	if (outf == NULL) {
 		perror(filename);
@@ -1627,17 +1621,9 @@ int main(int argc, char * const argv[])
 
 	while (1) {
 		struct command *cmd;
-		size_t i;
-		char prompt[40];
+		char prompt[3*SC_MAX_PATH_STRING_SIZE];
 
-		sprintf(prompt, "OpenSC [");
-		for (i = 0; i < current_path.len; i++) {
-			if ((i & 1) == 0 && i && current_path.type != SC_PATH_TYPE_DF_NAME)
-				sprintf(prompt+strlen(prompt), "/");
-			sprintf(prompt+strlen(prompt), "%02X",
-			        current_path.value[i]);
-		}
-		sprintf(prompt+strlen(prompt), "]> ");
+		sprintf(prompt, "OpenSC [%s]> ", path_to_filename(&current_path, '/'));
 		line = my_readline(prompt);
 		if (line == NULL)
 			break;
