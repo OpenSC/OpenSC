@@ -168,12 +168,13 @@ static int rtecp_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 {
 	sc_context_t *ctx;
 	sc_pkcs15_pin_info_t *pin_info;
-	sc_file_t *file;
+	sc_file_t *file = NULL;
 	/*                        GCHV min-length Flags Attempts  Reserve */
 	unsigned char prop[]  = { 0x01,       '?', 0x01,     '?', 0, 0 };
 	/*                  AccessMode Unblock Change             Delete */
 	unsigned char sec[15] = { 0x43,    '?',   '?', 0, 0, 0, 0,  0xFF };
-	int r;
+	char pin_sname[0x10];
+	int r, reset_by_sopin = 0;
 
 	(void)puk; /* no warning */
 	if (!profile || !p15card || !p15card->card || !p15card->card->ctx || !df 
@@ -182,6 +183,7 @@ static int rtecp_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 
 	ctx = p15card->card->ctx;
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
+
 	if (puk_len != 0)
 	{
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Do not enter User unblocking PIN (PUK): %s\n",
@@ -196,6 +198,25 @@ static int rtecp_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 				" (Rutoken ECP) PINs\n", pin_info->reference);
 		return SC_ERROR_NOT_SUPPORTED;
 	}
+
+	snprintf(pin_sname, sizeof(pin_sname), "CHV%i", pin_info->reference);
+	if (pin_info->reference == RTECP_USER_PIN_REF)   {
+	        r = sc_profile_get_file(profile, pin_sname, &file);
+		if (!r)   {
+			const struct sc_acl_entry *acl = NULL;
+
+			r = sc_pkcs15init_fixup_file(profile, p15card, file);
+			SC_TEST_RET(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, r, "Cannot fixup the ACLs of PIN file");
+
+			acl = sc_file_get_acl_entry(file, SC_AC_OP_PIN_RESET);
+			if (acl && acl->method == SC_AC_CHV && acl->key_ref == RTECP_SO_PIN_REF)   {
+				sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Allow reset of User PIN with SoPIN\n");
+				reset_by_sopin = 1;
+			}
+			sc_file_free(file);
+		}
+	}
+
 	file = sc_file_new();
 	if (!file)
 		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
@@ -203,7 +224,7 @@ static int rtecp_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	file->size = pin_len;
 	assert(sizeof(sec)/sizeof(sec[0]) > 2);
 	sec[1] = (pin_info->reference == RTECP_SO_PIN_REF) ? 0xFF : RTECP_SO_PIN_REF;
-	sec[2] = (unsigned char)pin_info->reference;
+	sec[2] = (unsigned char)pin_info->reference | (reset_by_sopin ? RTECP_SO_PIN_REF : 0);
 	r = sc_file_set_sec_attr(file, sec, sizeof(sec));
 	if (r == SC_SUCCESS)
 	{

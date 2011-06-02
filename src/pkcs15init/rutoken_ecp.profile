@@ -23,6 +23,8 @@ pkcs15 {
     encode-df-length    = no;
     # Have a lastUpdate field in the EF(TokenInfo)?
     do-last-update      = yes;
+
+    pkcs15-id-style     = mozilla;
 }
 
 # Default settings.
@@ -45,8 +47,8 @@ option default {
 PIN user-pin {
     auth-id     = 2;
     reference   = 2;
-    attempts    = 10;
-    min-length  = 8;
+    attempts    = 5;
+    min-length  = 4;
     max-length  = 32;
     flags       = case-sensitive, initialized;
 }
@@ -69,6 +71,10 @@ PIN so-puk {
 }
 
 filesystem {
+    EF CHV2 {
+        file-id = 0002;
+        ACL     = *=NEVER, UPDATE=$SOPIN, PIN-RESET=$SOPIN;
+    }
 
     DF MF {
         path    = 3F00;
