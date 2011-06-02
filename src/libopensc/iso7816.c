@@ -122,8 +122,7 @@ static int iso7816_read_binary(sc_card_t *card,
 	}
 
 	assert(count <= (card->max_recv_size > 0 ? card->max_recv_size : 256));
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xB0,
-		       (idx >> 8) & 0x7F, idx & 0xFF);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xB0, (idx >> 8) & 0x7F, idx & 0xFF);
 	apdu.le = count;
 	apdu.resplen = count;
 	apdu.resp = recvbuf;
@@ -141,9 +140,11 @@ static int iso7816_read_binary(sc_card_t *card,
 
 	if (apdu.resplen < count)   {
 		r = iso7816_read_binary(card, idx + apdu.resplen, buf + apdu.resplen, count - apdu.resplen, flags);
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
-
-		apdu.resplen += r;
+		/* Ignore all but 'corrupted data' errors */
+		if (r == SC_ERROR_CORRUPTED_DATA)
+			SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_CORRUPTED_DATA);
+		else if (r > 0)
+			apdu.resplen += r;
 	}
 
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, apdu.resplen);
