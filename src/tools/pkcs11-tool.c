@@ -24,10 +24,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #ifdef ENABLE_OPENSSL
+#include <openssl/opensslv.h>
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L
 #include <openssl/opensslconf.h>
 #endif
+#if OPENSSL_VERSION_NUMBER >= 0x00907000L
 #include <openssl/conf.h>
+#endif
 #include <openssl/evp.h>
 #include <openssl/x509.h>
 #include <openssl/rsa.h>
