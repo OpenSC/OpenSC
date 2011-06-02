@@ -1268,6 +1268,8 @@ static CK_RV pkcs15_change_pin(struct sc_pkcs11_card *p11card,
 	if (!(pin_info = slot_data_pin_info(fw_token)))
 		return CKR_USER_PIN_NOT_INITIALIZED;
 
+	sc_debug(context, SC_LOG_DEBUG_NORMAL, "Change '%s', reference %i; login type %i", 
+			pin_obj->label, pin_info->reference, login_user);
 	if (p11card->card->reader->capabilities & SC_READER_CAP_PIN_PAD) {
 		/* pPin should be NULL in case of a pin pad reader, but
 		 * some apps (e.g. older Netscapes) don't know about it.
@@ -1298,6 +1300,26 @@ static CK_RV pkcs15_change_pin(struct sc_pkcs11_card *p11card,
 	}
 	else if (login_user == CKU_USER)   {
 		rc = sc_pkcs15_change_pin(fw_data->p15_card, pin_obj, pOldPin, ulOldLen, pNewPin, ulNewLen);
+	}
+	else if (login_user == CKU_SO)   {
+		struct sc_pkcs15_object *auths[SC_PKCS15_MAX_PINS];
+		int i, auth_count;
+
+		rc = sc_pkcs15_get_objects(fw_data->p15_card, SC_PKCS15_TYPE_AUTH_PIN, auths, SC_PKCS15_MAX_PINS);
+		if (rc < 0)
+			return sc_to_cryptoki_error(rc, "C_SetPIN");
+		auth_count = rc;
+		for (i = 0; i < auth_count; i++)   {
+                	pin_info = (struct sc_pkcs15_pin_info*) auths[i]->data;
+                	if ((pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN))
+	                        break;
+		}
+		if (i == auth_count)   {
+			sc_debug(context, SC_LOG_DEBUG_NORMAL, "Change SoPIN non supported");
+			return CKR_FUNCTION_NOT_SUPPORTED;
+		}
+
+		rc = sc_pkcs15_change_pin(fw_data->p15_card, auths[i], pOldPin, ulOldLen, pNewPin, ulNewLen);
 	}
 	else   {
 		sc_debug(context, SC_LOG_DEBUG_NORMAL, "cannot change PIN: non supported login type: %i", login_user);
