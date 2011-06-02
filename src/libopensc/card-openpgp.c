@@ -527,6 +527,16 @@ static void
 pgp_free_blob(struct blob *blob)
 {
 	if (blob) {
+		if (blob->parent) {
+			struct blob **p;
+
+			/* remove blob from list of parent's children */
+			for (p = &blob->parent->files; *p != NULL && *p != blob; p = &(*p)->next)
+				;
+			if (*p == blob)
+				*p = blob->next;
+		}
+
 		if (blob->file)
 			sc_file_free(blob->file);
 		if (blob->data)
