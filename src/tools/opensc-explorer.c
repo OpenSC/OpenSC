@@ -71,7 +71,6 @@ static const char *option_help[] = {
 	"Verbose operation. Use several times to enable debug output.",
 };
 
-static size_t hex2binary(u8 *out, size_t outlen, const char *in);
 
 /* declare functions called by user commands */
 static int do_ls(int argc, char **argv);
@@ -1090,41 +1089,6 @@ err:
 		fclose(outf);
 	select_current_path_or_die();
 	return -err;
-}
-
-static size_t hex2binary(u8 *out, size_t outlen, const char *in)
-{
-	size_t      inlen = strlen(in), len = outlen;
-	const char *p = in;
-	int	    s = 0;
-
-	out--;
-	while (inlen && (len || s)) {
-		char c = *p++;
-		inlen--;
-		if (!isxdigit(c))
-			continue;
-		if (c >= '0' && c <= '9')
-			c -= '0';
-		else if (c >= 'a' && c <= 'f')
-			c -= 'a' - 10;
-		else /* (c >= 'A' && c <= 'F') */
-			c -= 'A' - 10;
-		if (s)
-			*out <<= 4;
-		else {
-			len--;
-			*(++out) = 0;
-		}
-		s = !s;
-		*out |= (u8)c;
-	} 
-	if (s) {
-		printf("Error: the number of hex digits must be even.\n");
-		return 0;
-	}
-
-	return outlen - len;
 }
 
 static int do_update_binary(int argc, char **argv)
