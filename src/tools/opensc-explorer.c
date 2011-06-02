@@ -159,7 +159,7 @@ static struct command	cmds[] = {
 		"random",	"<count>",
 		"obtain <count> random bytes from card"	},
 	{ do_update_record,
-		"update_record", "<file id> <rec no> <rec offs> <hex value>",
+		"update_record", "<file id> <rec no> <rec offs> <data>",
 		"update record"				},
 	{ do_update_binary,
 		"update_binary", "<file id> <offs> <data>",
@@ -1176,6 +1176,7 @@ err:
 static int do_update_record(int argc, char **argv)
 {
 	u8 buf[240];
+	size_t buflen;
 	int r, i, err = 1;
 	int rec, offs;
 	sc_path_t path;
@@ -1212,9 +1213,10 @@ static int do_update_record(int argc, char **argv)
 		goto err;;
 	}
 
-	i = hex2binary(buf + offs, sizeof(buf) - offs, in_str);
+	buflen = sizeof(buf) - offs;
+	i = parse_string_or_hexdata(in_str, buf + offs, &buflen);
 	if (!i) {
-		printf("unable to parse hex value\n");
+		printf("unable to parse data\n");
 		goto err;
 	}
 
