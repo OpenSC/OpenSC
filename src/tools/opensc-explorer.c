@@ -164,7 +164,7 @@ static struct command	cmds[] = {
 		"update_binary", "<file id> <offs> <data>",
 		"update binary"				},
 	{ do_apdu,
-		"apdu",	"<apdu:hex:codes:...>",
+		"apdu",	"<data>+",
 		"send a custom apdu command"		},
 	{ do_asn1,
 		"asn1",	"[<file id>]",
@@ -1346,14 +1346,18 @@ static int do_apdu(int argc, char **argv)
 	sc_apdu_t apdu;
 	u8 buf[SC_MAX_APDU_BUFFER_SIZE];
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
-	size_t len, len0, r, ii;
+	size_t len, r, i;
 
 	if (argc < 1)
 		return usage(do_apdu);
 
-	for (ii = 0, len = 0; ii < (unsigned) argc; ii++)   {
-		len0 = strlen(argv[ii]);
-		sc_hex_to_bin(argv[ii], buf + len, &len0);
+	for (i = 0, len = 0; i < (unsigned) argc; i++)   {
+		size_t len0 = strlen(argv[i]);
+
+		if ((r = parse_string_or_hexdata(argv[i], buf + len, &len0)) < 0) {
+			fprintf(stderr, "error parsing %s: %s\n", argv[i], sc_strerror(r));
+			return r;
+		};
 		len += len0;
 	}
 
@@ -1367,8 +1371,7 @@ static int do_apdu(int argc, char **argv)
 	apdu.resplen = sizeof(rbuf);
 
 	printf("Sending: ");
-	for (r = 0; r < len0; r++)
-		printf("%02X ", buf[r]);
+	util_hex_dump(stdout, buf, len, " ");
 	printf("\n");
 	r = sc_transmit_apdu(card, &apdu);
 	if (r) {
