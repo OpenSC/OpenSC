@@ -73,11 +73,128 @@ static const char *option_help[] = {
 
 static size_t hex2binary(u8 *out, size_t outlen, const char *in);
 
+/* declare functions called by user commands */
+static int do_ls(int argc, char **argv);
+static int do_cd(int argc, char **argv);
+static int do_cat(int argc, char **argv);
+static int do_info(int argc, char **argv);
+static int do_create(int argc, char **argv);
+static int do_mkdir(int argc, char **argv);
+static int do_delete(int argc, char **argv);
+static int do_verify(int argc, char **argv);
+static int do_change(int argc, char **argv);
+static int do_unblock(int argc, char **argv);
+static int do_get(int argc, char **argv);
+static int do_update_binary(int argc, char **argv);
+static int do_update_record(int argc, char **argv);
+static int do_put(int argc, char **argv);
+static int do_debug(int argc, char **argv);
+static int do_erase(int argc, char **argv);
+static int do_random(int argc, char **argv);
+static int do_get_data(int argc, char **argv);
+static int do_put_data(int argc, char **argv);
+static int do_apdu(int argc, char **argv);
+static int do_asn1(int argc, char **argv);
+static int do_help(int argc, char **argv);
+static int do_quit(int argc, char **argv);
+
+
 struct command {
-	const char *	name;
 	int		(*func)(int, char **);
+	const char *	name;
+	const char *	args;
 	const char *	help;
 };
+
+static struct command	cmds[] = {
+	{ do_ls,
+		"ls",	"",
+		"list all files in the current DF"	},
+	{ do_cd,
+		"cd",	"{.. | <file id> | aid:<DF name>}",
+		"change to another DF"			},
+	{ do_cat,
+		"cat",	"[<file id> | sfi:<sfi id>]"
+	,	"print the contents of an EF"		},
+	{ do_info,
+		"info",	"[<file id>]",
+		"display attributes of card file"	},
+	{ do_create,
+		"create",	"<file id> <size>",
+		"create a new EF"			},
+	{ do_mkdir,
+		"mkdir",	"<file id> <size>",
+		"create a new DF"			},
+	{ do_delete,
+		"delete",	"<file id>",
+		"remove an EF/DF"			},
+	{ do_delete,
+		"rm",	"<file id>",
+		"remove an EF/DF"			},
+	{ do_verify,
+		"verify",	"<key type><key ref> [<pin>]",
+		"present a PIN or key to the card"	},
+	{ do_change,
+		"change",	"CHV<pin ref> [[<old pin>] <new pin>]",
+		"change a PIN"                          },
+	{ do_unblock,
+		"unblock",	"CHV<pin ref> [<puk> [<new pin>]]",
+		"unblock a PIN"                         },
+	{ do_put,
+		"put",	"<file id> [<input file>]",
+		"copy a local file to the card"		},
+	{ do_get,
+		"get",	"<file id> [<output file>]",
+		"copy an EF to a local file"		},
+	{ do_get_data,
+		"do_get",	"<hex tag> [<output file>]",
+		"get a data object"			},
+	{ do_put_data,
+		"do_put",	"<hex tag> <data>",
+		"put a data object"			},
+	{ do_erase,
+		"erase",	"",
+		"erase card"				},
+	{ do_random,
+		"random",	"<count>",
+		"obtain <count> random bytes from card"	},
+	{ do_update_record,
+		"update_record", "<file id> <rec no> <rec offs> <hex value>",
+		"update record"				},
+	{ do_update_binary,
+		"update_binary", "<file id> <offs> <data>",
+		"update binary"				},
+	{ do_apdu,
+		"apdu",	"<apdu:hex:codes:...>",
+		"send a custom apdu command"		},
+	{ do_asn1,
+		"asn1",	"[<file id>]",
+		"decode an asn1 file"			},
+	{ do_debug,
+		"debug",	"[<value>]",
+		"get/set the debug level"		},
+	{ do_quit,
+		"quit",	"",
+		"quit this program"			},
+	{ do_quit,
+		"exit",	"",
+		"quit this program"			},
+	{ do_help,
+		"help",	"",
+		"show this help"			},
+	{ NULL, NULL, NULL, NULL }
+};
+
+
+static int usage(int (*func)(int, char **))
+{
+	struct command	*cmd;
+
+	for (cmd = cmds; cmd->func; cmd++)
+		if (cmd->func == func)
+			printf("Usage: %s %s\n", cmd->name, cmd->args);
+	return -1;
+}
 
 static void die(int ret)
 {
@@ -142,7 +259,7 @@ static int arg_to_path(const char *arg, sc_path_t *path, int is_id)
 		/* file id */
 		unsigned int buf[2];
 		u8 cbuf[2];
-	
+
 		if (strlen(arg) != 4) {
 			printf("Wrong ID length.\n");
 			return -1;
@@ -178,7 +295,7 @@ static int arg_to_path(const char *arg, sc_path_t *path, int is_id)
 		}
 	}
 
-	return 0;	
+	return 0;
 }
 
 static void print_file(const sc_file_t *file)
@@ -215,7 +332,8 @@ static int do_ls(int argc, char **argv)
 	int r, count;
 
 	if (argc)
-		goto usage;
+		return usage(do_ls);
+
 	r = sc_list_files(card, buf, sizeof(buf));
 	if (r < 0) {
 		check_ret(r, SC_AC_OP_LIST_FILES, "unable to receive file listing", current_file);
@@ -236,7 +354,7 @@ static int do_ls(int argc, char **argv)
 				die(1);
 			}
 		}
-			
+
 		r = sc_select_file(card, &path, &file);
 		if (r) {
 			printf(" %02X%02X unable to select file, %s\n", cur[0], cur[1], sc_strerror(r));
@@ -250,9 +368,6 @@ static int do_ls(int argc, char **argv)
 		select_current_path_or_die();
 	}
 	return 0;
-usage:
-	puts("Usage: ls");
-	return -1;
 }
 
 static int do_cd(int argc, char **argv)
@@ -262,7 +377,8 @@ static int do_cd(int argc, char **argv)
 	int r;
 
 	if (argc != 1)
-		goto usage;
+		return usage(do_cd);
+
 	if (strcmp(argv[0], "..") == 0) {
 		path = current_path;
 		if (path.len < 4) {
@@ -289,7 +405,7 @@ static int do_cd(int argc, char **argv)
 		return 0;
 	}
 	if (arg_to_path(argv[0], &path, 0) != 0) 
-		goto usage;
+		return usage(do_cd);
 
 	r = sc_select_file(card, &path, &file);
 	if (r) {
@@ -308,9 +424,6 @@ static int do_cd(int argc, char **argv)
 	current_file = file;
 
 	return 0;
-usage:
-	puts("Usage: cd <file_id>|aid:<DF name>");
-	return -1;
 }
 
 static int read_and_util_print_binary_file(sc_file_t *file)
@@ -319,7 +432,7 @@ static int read_and_util_print_binary_file(sc_file_t *file)
 	u8 buf[128];
 	size_t count;
 	int r;
-	
+
 	count = file->size;
 	while (count) {
 		int c = count > sizeof(buf) ? sizeof(buf) : count;
@@ -370,7 +483,8 @@ static int do_cat(int argc, char **argv)
 	int sfi = 0;
 
 	if (argc > 1)
-		goto usage;
+		return usage(do_cat);
+
 	if (!argc) {
 		path = current_path;
 		file = current_file;
@@ -391,11 +505,12 @@ static int do_cat(int argc, char **argv)
 			sfi = atoi(sfi_n);
 			if ((sfi < 1) || (sfi > 30)) {
 				printf("Invalid SFI: %s\n", sfi_n);
-				goto usage;
+				return usage(do_cat);
 			}
 		} else {
 			if (arg_to_path(argv[0], &path, 0) != 0)
-				goto usage;
+				return usage(do_cat);
+
 			r = sc_select_file(card, &path, &file);
 			if (r) {
 				check_ret(r, SC_AC_OP_SELECT, "unable to select file",
@@ -413,22 +528,16 @@ static int do_cat(int argc, char **argv)
 		read_and_util_print_binary_file(file);
 	else
 		read_and_print_record_file(file, sfi);
-	
-	err = 0;
 
+	err = 0;
 err:
 	if (not_current) {
-		if (file != NULL) {
+		if (file != NULL)
 			sc_file_free(file);
-		}
 		select_current_path_or_die();
 	}
 
 	return -err;
-usage:
-	puts("Usage: cat [file_id] or");
-	puts("       cat sfi:<sfi_id>");
-	return -1;
 }
 
 static int do_info(int argc, char **argv)
@@ -446,14 +555,15 @@ static int do_info(int argc, char **argv)
 		not_current = 0;
 	} else if (argc == 1) {
 		if (arg_to_path(argv[0], &path, 0) != 0) 
-			goto usage;
+			return usage(do_info);
+
 		r = sc_select_file(card, &path, &file);
 		if (r) {
 			printf("unable to select file: %s\n", sc_strerror(r));
 			return -1;
 		}
 	} else 
-		goto usage;
+		return usage(do_info);
 
 	switch (file->type) {
 	case SC_FILE_TYPE_WORKING_EF:
@@ -558,16 +668,12 @@ static int do_info(int argc, char **argv)
 		select_current_path_or_die();
 	}
 	return 0;
-
-usage:
-	puts("Usage: info [file_id]");
-	return -1;
 }
 
 static int create_file(sc_file_t *file)
 {
 	int r;
-	
+
 	r = sc_create_file(card, file);
 	if (r) {
 		check_ret(r, SC_AC_OP_CREATE, "CREATE FILE failed", current_file);
@@ -587,12 +693,12 @@ static int do_create(int argc, char **argv)
 	int r, op;
 
 	if (argc != 2)
-		goto usage;
+		return usage(do_create);
 	if (arg_to_path(argv[0], &path, 1) != 0)
-		goto usage;
+		return usage(do_create);
 	/* %z isn't supported everywhere */
 	if (sscanf(argv[1], "%u", &size) != 1)
-		goto usage;
+		return usage(do_create);
 	file = sc_file_new();
 	file->id = (path.value[0] << 8) | path.value[1];
 	file->type = SC_FILE_TYPE_WORKING_EF;
@@ -601,13 +707,10 @@ static int do_create(int argc, char **argv)
 	file->status = SC_FILE_STATUS_ACTIVATED;
 	for (op = 0; op < SC_MAX_AC_OPS; op++)
 		sc_file_add_acl_entry(file, op, SC_AC_NONE, 0);
-	
+
 	r = create_file(file);
 	sc_file_free(file);
 	return r;
- usage:
-	printf("Usage: create <file_id> <file_size>\n");
-	return -1;
 }
 
 static int do_mkdir(int argc, char **argv)
@@ -618,11 +721,11 @@ static int do_mkdir(int argc, char **argv)
 	int r, op;
 
 	if (argc != 2)
-		goto usage;
+		return usage(do_mkdir);
 	if (arg_to_path(argv[0], &path, 1) != 0)
-		goto usage;
+		return usage(do_mkdir);
 	if (sscanf(argv[1], "%u", &size) != 1)
-		goto usage;
+		return usage(do_mkdir);
 	file = sc_file_new();
 	file->id = (path.value[0] << 8) | path.value[1];
 	file->type = SC_FILE_TYPE_DF;
@@ -634,9 +737,6 @@ static int do_mkdir(int argc, char **argv)
 	r = create_file(file);
 	sc_file_free(file);
 	return r;
- usage:
-	printf("Usage: mkdir <file_id> <df_size>\n");
-	return -1;
 }
 
 static int do_delete(int argc, char **argv)
@@ -645,11 +745,11 @@ static int do_delete(int argc, char **argv)
 	int r;
 
 	if (argc != 1)
-		goto usage;
+		return usage(do_delete);
 	if (arg_to_path(argv[0], &path, 1) != 0)
-		goto usage;
+		return usage(do_delete);
 	if (path.len != 2)
-		goto usage;
+		return usage(do_delete);
 	path.type = SC_PATH_TYPE_FILE_ID;
 	r = sc_delete_file(card, &path);
 	if (r) {
@@ -657,9 +757,6 @@ static int do_delete(int argc, char **argv)
 		return -1;
 	}
 	return 0;
-usage:
-	printf("Usage: delete <file_id>\n");
-	return -1;
 }
 
 static int do_verify(int argc, char **argv)
@@ -739,7 +836,7 @@ static int do_verify(int argc, char **argv)
 	printf("Code correct.\n");
 	return 0;
 usage:
-	printf("Usage: verify <key type><key ref> [<key in hex>]\n");
+	printf("Usage: verify <key type><key ref> [<pin>]\n");
 	printf("Possible values of <key type>:\n");
 	for (i = 0; typeNames[i].name; i++)
 		printf("\t%s\n", typeNames[i].name);
@@ -757,7 +854,7 @@ static int do_change(int argc, char **argv)
 	const char *s;
 	size_t oldpinlen = sizeof(oldpin), i;
 	size_t newpinlen = sizeof(newpin);
-	
+
 	if (argc < 1 || argc > 3)
 		goto usage;
 	if (strncasecmp(argv[0], "CHV", 3)) {
@@ -838,7 +935,7 @@ static int do_unblock(int argc, char **argv)
 	const char *s;
 	size_t puklen = sizeof(puk_buf), i;
 	size_t newpinlen = sizeof(newpin_buf);
-	
+
 	if (argc < 1 || argc > 3)
 		goto usage;
 	if (strncasecmp(argv[0], "CHV", 3)) {
@@ -901,7 +998,7 @@ static int do_unblock(int argc, char **argv)
 	printf("PIN unblocked.\n");
 	return 0;
 usage:
-	printf("Usage: unblock CHV<pin ref> [<puk>] [<new pin>]\n");
+	printf("Usage: unblock CHV<pin ref> [<puk> [<new pin>]]\n");
 	printf("PUK and PIN values can be hexadecimal, ASCII, empty (\"\") or absent\n");
 	printf("Examples:\n");
 	printf("\tUnblock PIN and set a new value:   unblock CHV2 00:00:00:00:00:00 \"foobar\"\n");
@@ -924,11 +1021,11 @@ static int do_get(int argc, char **argv)
 	sc_file_t *file = NULL;
 	char fbuf[256], *filename;
 	FILE *outf = NULL;
-	
+
 	if (argc < 1 || argc > 2)
-		goto usage;
+		return usage(do_get);
 	if (arg_to_path(argv[0], &path, 0) != 0)
-		goto usage;
+		return usage(do_get);
 	if (argc == 2)
 		filename = argv[1];
 	else {
@@ -983,7 +1080,7 @@ static int do_get(int argc, char **argv)
 		printf("Total of %d bytes read from %s and saved to %s.\n",
 		       idx, argv[0], filename);
 	}
-	
+
 	err = 0;
 err:
 	if (file)
@@ -992,9 +1089,6 @@ err:
 		fclose(outf);
 	select_current_path_or_die();
 	return -err;
-usage:
-	printf("Usage: get <file id> [output file]\n");
-	return -1;
 }
 
 static size_t hex2binary(u8 *out, size_t outlen, const char *in)
@@ -1040,11 +1134,11 @@ static int do_update_binary(int argc, char **argv)
 	sc_path_t path;
 	sc_file_t *file;
 	char *in_str;
-	
+
 	if (argc < 2 || argc > 3)
-		goto usage;
+		return usage(do_update_binary);
 	if (arg_to_path(argv[0], &path, 0) != 0)
-		goto usage;
+		return usage(do_update_binary);
 	offs = strtol(argv[1],NULL,10);
 
 	in_str = argv[2];
@@ -1059,7 +1153,7 @@ static int do_update_binary(int argc, char **argv)
 			return -1;
 		}
 	}
-	
+
 	r = sc_select_file(card, &path, &file);
 	if (r) {
 		check_ret(r, SC_AC_OP_SELECT, "unable to select file", current_file);
@@ -1070,7 +1164,7 @@ static int do_update_binary(int argc, char **argv)
 		printf("EF structure should be SC_FILE_EF_TRANSPARENT\n");
 		goto err;
 	}
-	
+
 	r = sc_update_binary(card, offs, buf, in_len, 0);
 	if (r < 0) {
 		printf("Cannot update %04X; return %i\n", file->id, r);
@@ -1081,14 +1175,10 @@ static int do_update_binary(int argc, char **argv)
 	       r, file->id, offs);
 
 	err = 0;
-
 err:
 	sc_file_free(file);
 	select_current_path_or_die();
 	return -err;
-usage:
-	printf("Usage: update <file id> offs <hex value> | <'\"' enclosed string>\n");
-	return -1;
 }
 
 static int do_update_record(int argc, char **argv)
@@ -1099,11 +1189,11 @@ static int do_update_record(int argc, char **argv)
 	sc_path_t path;
 	sc_file_t *file;
 	char *in_str;
-	
+
 	if (argc < 3 || argc > 4)
-		goto usage;
+		return usage(do_update_record);
 	if (arg_to_path(argv[0], &path, 0) != 0)
-		goto usage;
+		return usage(do_update_record);
 	rec  = strtol(argv[1],NULL,10);
 	offs = strtol(argv[2],NULL,10);
 
@@ -1123,7 +1213,7 @@ static int do_update_record(int argc, char **argv)
 		printf("Invalid record number %i\n", rec);
 		goto err;
 	}
-	
+
 	r = sc_read_record(card, rec, buf, sizeof(buf), SC_RECORD_BY_REC_NR);
 	if (r<0)   {
 		printf("Cannot read record %i; return %i\n", rec, r);
@@ -1144,15 +1234,12 @@ static int do_update_record(int argc, char **argv)
 
 	printf("Total of %d bytes written to record %i at %i offset.\n", 
 	       i, rec, offs);
-	err = 0;
 
+	err = 0;
 err:
 	sc_file_free(file);
 	select_current_path_or_die();
 	return -err;
-usage:
-	printf("Usage: update_record <file id> rec_nr rec_offs <hex value>\n");
-	return -1;
 }
 
 
@@ -1168,9 +1255,9 @@ static int do_put(int argc, char **argv)
 	FILE *outf = NULL;
 
 	if (argc < 1 || argc > 2)
-		goto usage;
+		return usage(do_put);
 	if (arg_to_path(argv[0], &path, 0) != 0)
-		goto usage;
+		return usage(do_put);
 	if (argc == 2)
 		filename = argv[1];
 	else {
@@ -1213,18 +1300,13 @@ static int do_put(int argc, char **argv)
 	printf("Total of %d bytes written.\n", idx);
 
 	err = 0;
-
 err:
-
 	if (file)
 		sc_file_free(file);
 	if (outf)
 		fclose(outf);
 	select_current_path_or_die();
 	return -err;
-usage:
-	printf("Usage: put <file id> [input file]\n");
-	return -1;
 }
 
 static int do_debug(int argc, char **argv)
@@ -1246,13 +1328,12 @@ static int do_debug(int argc, char **argv)
 }
 
 
-static int
-do_erase(int argc, char **argv)
+static int do_erase(int argc, char **argv)
 {
 	int	r;
 
 	if (argc != 0)
-		goto usage;
+		return usage(do_erase);
 
 	r = sc_card_ctl(card, SC_CARDCTL_ERASE_CARD, NULL);
 	if (r) {
@@ -1260,20 +1341,15 @@ do_erase(int argc, char **argv)
 		return -1;
 	}
 	return 0;
-
-usage:
-	printf("Usage: erase\n");
-	return -1;
 }
 
-static int
-do_random(int argc, char **argv)
+static int do_random(int argc, char **argv)
 {
 	unsigned char buffer[128];
 	int r, count;
 
 	if (argc != 1)
-		goto usage;
+		return usage(do_random);
 
 	count = atoi(argv[0]);
 	if (count < 0 || count > 128) {
@@ -1289,10 +1365,6 @@ do_random(int argc, char **argv)
 
 	util_hex_dump_asc(stdout, buffer, count, 0);
 	return 0;
-
-usage:
-	printf("Usage: random count\n");
-	return -1;
 }
 
 static int do_get_data(int argc, char **argv)
@@ -1303,7 +1375,7 @@ static int do_get_data(int argc, char **argv)
 	int r;
 
 	if (argc != 1 && argc != 2)
-		goto usage;
+		return usage(do_get_data);
 
 	tag = strtoul(argv[0], NULL, 16);
 	r = sc_get_data(card, tag, buffer, sizeof(buffer));
@@ -1327,17 +1399,11 @@ static int do_get_data(int argc, char **argv)
 	}
 
 	return 0;
-
-usage:	printf("Usage: do_get hex_tag [dest_file]\n");
-	return -1;
 }
 
 static int do_put_data(int argc, char **argv)
 {
-	printf("Usage: do_put hex_tag source_file\n"
-	       "or:    do_put hex_tag aa:bb:cc\n"
-	       "or:    do_put hex_tag \"foobar...\"\n");
-	return -1;
+	return usage(do_put_data);
 }
 
 static int do_apdu(int argc, char **argv)
@@ -1347,10 +1413,8 @@ static int do_apdu(int argc, char **argv)
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	size_t len, len0, r, ii;
 
-	if (argc < 1) {
-		puts("Usage: apdu [apdu:hex:codes:...]");
-		return -1;
-	}
+	if (argc < 1)
+		return usage(do_apdu);
 
 	for (ii = 0, len = 0; ii < (unsigned) argc; ii++)   {
 		len0 = strlen(argv[ii]);
@@ -1393,10 +1457,8 @@ static int do_asn1(int argc, char **argv)
 	size_t len;
 	unsigned char *buf = NULL;
 
-	if (argc > 1) {
-		puts("Usage: asn1 [file_id]");
-		return -1;
-	}
+	if (argc > 1)
+		return usage(do_asn1);
 
 	/* select file */
 	if (argc) {
@@ -1454,47 +1516,28 @@ err:
 	return -err;
 }
 
+static int do_help(int argc, char **argv)
+{
+	struct command	*cmd;
+
+	if (argc)
+		return usage(do_help);
+
+	printf("Supported commands:\n");
+	for (cmd = cmds; cmd->name; cmd++) {
+		int len = strlen(cmd->name) + strlen(cmd->args);
+		printf("  %s %s%*s  %s\n",
+			cmd->name, cmd->args,
+			(len > 40) ? 0 : (40 - len), "",
+			cmd->help);
+	}
+	return 0;
+}
+
 static int do_quit(int argc, char **argv)
 {
 	die(0);
 	return 0;
-}
-
-static struct command	cmds[] = {
- { "ls",	do_ls,		"list all files in the current DF"	},
- { "cd",	do_cd,		"change to another DF"			},
- { "cat",	do_cat,		"print the contents of an EF"		},
- { "info",	do_info,	"display attributes of card file"	},
- { "create",	do_create,	"create a new EF"			},
- { "delete",	do_delete,	"remove an EF/DF"			},
- { "rm",	do_delete,	"remove an EF/DF"			},
- { "verify",	do_verify,	"present a PIN or key to the card"	},
- { "change",	do_change,	"change a PIN"                          },
- { "unblock",	do_unblock,	"unblock a PIN"                         },
- { "put",	do_put,		"copy a local file to the card"		},
- { "get",	do_get,		"copy an EF to a local file"		},
- { "do_get",	do_get_data,	"get a data object"			},
- { "do_put",	do_put_data,	"put a data object"			},
- { "mkdir",	do_mkdir,	"create a DF"				},
- { "erase",	do_erase,	"erase card"				},
- { "random",	do_random,	"obtain N random bytes from card"	},
- { "quit",	do_quit,	"quit this program"			},
- { "exit",	do_quit,	"quit this program"			},
- { "update_record", do_update_record, "update record"			},
- { "update_binary", do_update_binary, "update binary"			},
- { "debug",	do_debug,	"set the debug level"			},
- { "apdu",	do_apdu,	"send a custom apdu command"		},
- { "asn1",	do_asn1,	"decode an asn1 file"			},
- { NULL, NULL, NULL }
-};
-
-static void usage(void)
-{
-	struct command	*cmd;
-
-	printf("Supported commands:\n");
-	for (cmd = cmds; cmd->name; cmd++)
-		printf("  %-16s %s\n", cmd->name, cmd->help);
 }
 
 static int parse_line(char *in, char **argv, int maxargc)
@@ -1644,7 +1687,7 @@ int main(int argc, char * const argv[])
 			return 1;
 		}
 	}
-	
+
 	r = sc_card_ctl(card, SC_CARDCTL_LIFECYCLE_SET, &lcycle);
 	if (r && r != SC_ERROR_NOT_SUPPORTED)
 		printf("unable to change lifecycle: %s\n", sc_strerror(r));
@@ -1672,13 +1715,13 @@ int main(int argc, char * const argv[])
 			cargv[r] = "";
 		cmd = ambiguous_match(cmds, cargv[0]);
 		if (cmd == NULL) {
-			usage();
+			do_help(0, NULL);
 		} else {
 			cmd->func(cargc-1, cargv+1);
 		}
 	}
 end:
 	die(err);
-	
+
 	return 0; /* not reached */
 }
