@@ -677,14 +677,12 @@ static int do_info(int argc, char **argv)
 
 	if (file->prop_attr_len) {
 		printf("%-25s", "Proprietary attributes:");
-		for (i = 0; i < file->prop_attr_len; i++)
-			printf("%02X ", file->prop_attr[i]);
+		util_hex_dump(stdout, file->prop_attr, file->prop_attr_len, " ");
 		printf("\n");
 	}
 	if (file->sec_attr_len) {
 		printf("%-25s", "Security attributes:");
-		for (i = 0; i < file->sec_attr_len; i++)
-			printf("%02X ", file->sec_attr[i]);
+		util_hex_dump(stdout, file->sec_attr, file->sec_attr_len, " ");
 		printf("\n");
 	}
 	printf("\n");
