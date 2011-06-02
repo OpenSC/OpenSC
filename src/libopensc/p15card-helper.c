@@ -160,7 +160,9 @@ CERT_HANDLE_FUNCTION(default_cert_handle) {
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
-	if(! EVP_PK_RSA & (certtype = X509_certificate_type(cert_data, pkey))) {
+
+	certtype = X509_certificate_type(cert_data, pkey);
+	if(! (EVP_PK_RSA & certtype)) {
 		sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "Error: certificate is not for an RSA key");
 		r = SC_ERROR_INTERNAL;
 		goto err;
