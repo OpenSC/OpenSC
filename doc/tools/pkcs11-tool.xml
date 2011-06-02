@@ -165,8 +165,19 @@
 				</varlistentry>
 
 				<varlistentry>
-					<term><option>--slot-id</option> <varname>name</varname></term>
-					<listitem><para>Specify the name of the slot to use.</para></listitem>
+					<term><option>--slot-description</option> <varname>description</varname></term>
+					<listitem><para>Specify the description of the slot to use.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>--slot-index</option> <varname>index</varname></term>
+					<listitem><para>Specify the index of the slot to use.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term><option>--token-label</option> <varname>label</varname></term>
+					<listitem><para>Specify the label of token. Will be used the first slot, that has the 
+                                                inserted token with this label.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
