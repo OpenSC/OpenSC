@@ -96,7 +96,7 @@ int authentic_pkcs15_delete_file(struct sc_pkcs15_card *p15card, struct sc_profi
 static void
 authentic_reference_to_pkcs15_id (unsigned int ref, struct sc_pkcs15_id *id)
 {
-	int ii, sz;
+	unsigned ii, sz;
 
 	for (ii=0, sz = 0; ii<sizeof(unsigned int); ii++)
 		if (ref >> 8*ii)
@@ -294,7 +294,7 @@ authentic_docp_set_acls(struct sc_card *card, struct sc_file *file,
 		struct sc_authentic_sdo_docp *docp)
 {
 	struct sc_context *ctx = card->ctx;
-	int ii, offs;
+	unsigned ii, offs;
 
 	LOG_FUNC_CALLED(ctx);
 	if (ops_len > sizeof(docp->acl_data) / 2)

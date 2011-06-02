@@ -304,8 +304,7 @@ sc_oberthur_read_file(struct sc_pkcs15_card *p15card, const char *in_path,
 			pinfo = (struct sc_pkcs15_pin_info *) objs[ii]->data;
 			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "compare PIN/ACL refs:%i/%i, method:%i/%i", 
 					pinfo->reference, acl->key_ref, pinfo->auth_method, acl->method);
-			if (pinfo->reference == acl->key_ref 
-					&& pinfo->auth_method == acl->method)   {
+			if (pinfo->reference == (int)acl->key_ref && pinfo->auth_method == (unsigned)acl->method)   {
 				pin_obj = objs[ii];
 				break;
 			}

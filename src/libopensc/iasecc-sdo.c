@@ -1168,8 +1168,8 @@ int
 iasecc_sdo_parse_card_answer(struct sc_context *ctx, unsigned char *data, size_t data_len,
 	struct iasecc_sm_card_answer *out)
 {
-	int offs, have_mac = 0, have_status = 0;
-	size_t size = 0,  size_size;
+	int have_mac = 0, have_status = 0;
+	size_t size = 0, size_size, offs;
 
 	LOG_FUNC_CALLED(ctx);
 	if (!data || !data_len || !out)

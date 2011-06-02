@@ -1859,7 +1859,8 @@ iasecc_pin_get_policy (struct sc_card *card, struct sc_pin_cmd_data *data)
 	struct sc_file *save_current_df = NULL, *save_current_ef = NULL;
 	struct iasecc_sdo sdo;
 	struct sc_path path;
-	int ii, rv;
+	unsigned ii;
+	int rv;
 
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx, "iasecc_pin_get_policy(card:%p)", card);
@@ -1918,7 +1919,7 @@ iasecc_pin_get_policy (struct sc_card *card, struct sc_pin_cmd_data *data)
 		if (scb==0 || scb==0xFF)
 			continue;
 
-		if (se.reference != acl->key_ref)   {
+		if (se.reference != (int)acl->key_ref)   {
 			memset(&se, 0, sizeof(se));
 
 			se.reference = acl->key_ref;
@@ -2135,7 +2136,7 @@ iasecc_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_le
 		sc_log(ctx, "iasecc_pin_cmd(SC_PIN_CMD_CHANGE) pin_verify returned %i", rv);
 		LOG_TEST_RET(ctx, rv, "PIN verification error");
 
-		if (data->pin1.len + data->pin2.len > sizeof(pin_data))
+		if ((unsigned)(data->pin1.len + data->pin2.len) > sizeof(pin_data))
 			LOG_TEST_RET(ctx, SC_ERROR_BUFFER_TOO_SMALL, "Buffer too small for the 'Change PIN' data");
 
 		if (data->pin1.data)
@@ -2766,7 +2767,7 @@ iasecc_qsign_data_sha1(struct sc_context *ctx, const unsigned char *in, size_t i
 		out->counter[ii] = (sha.Nh >> 8*(hh_size-1-ii)) &0xFF;
 		out->counter[hh_size+ii] = (pre_hash_Nl >> 8*(hh_size-1-ii)) &0xFF;
 	}
-	for (ii=0, out->counter_long=0; ii<sizeof(out->counter); ii++)
+	for (ii=0, out->counter_long=0; ii<(int)sizeof(out->counter); ii++)
 		out->counter_long = out->counter_long*0x100 + out->counter[ii];
 	sc_log(ctx, "Pre counter(%li):%s", out->counter_long, sc_dump_hex(out->counter, sizeof(out->counter)));
 
@@ -2815,7 +2816,7 @@ iasecc_qsign_data_sha256(struct sc_context *ctx, const unsigned char *in, size_t
 		out->counter[ii] = (sha256.Nh >> 8*(hh_size-1-ii)) &0xFF;
 		out->counter[hh_size+ii] = (pre_hash_Nl >> 8*(hh_size-1-ii)) &0xFF;
 	}
-	for (ii=0, out->counter_long=0; ii<sizeof(out->counter); ii++)
+	for (ii=0, out->counter_long=0; ii<(int)sizeof(out->counter); ii++)
 		out->counter_long = out->counter_long*0x100 + out->counter[ii];
 	sc_log(ctx, "Pre counter(%li):%s", out->counter_long, sc_dump_hex(out->counter, sizeof(out->counter)));
 

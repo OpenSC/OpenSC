@@ -557,7 +557,8 @@ iasecc_sdo_convert_to_file(struct sc_card *card, struct iasecc_sdo *sdo, struct 
 {
 	struct sc_context *ctx = card->ctx;
 	struct sc_file *file = sc_file_new();
-	int rv, ii;
+	unsigned ii;
+	int rv;
 
 	LOG_FUNC_CALLED(ctx);
 	if (file == NULL)
