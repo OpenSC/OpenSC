@@ -1131,7 +1131,7 @@ static int do_update_binary(int argc, char **argv)
 	sc_file_t *file;
 	char *in_str;
 
-	if (argc < 2 || argc > 3)
+	if (argc != 3)
 		return usage(do_update_binary);
 	if (arg_to_path(argv[0], &path, 0) != 0)
 		return usage(do_update_binary);
@@ -1182,7 +1182,7 @@ static int do_update_record(int argc, char **argv)
 	sc_file_t *file;
 	char *in_str;
 
-	if (argc < 3 || argc > 4)
+	if (argc != 4)
 		return usage(do_update_record);
 	if (arg_to_path(argv[0], &path, 0) != 0)
 		return usage(do_update_record);
