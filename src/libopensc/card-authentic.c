@@ -1705,7 +1705,7 @@ authentic_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries
 		rv = authentic_pin_get_policy(card, data);
 		break;
 	default:
-		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Unupported PIN command");
+		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Unsupported PIN command");
 	}
 
 	if (rv == SC_ERROR_PIN_CODE_INCORRECT && tries_left)
