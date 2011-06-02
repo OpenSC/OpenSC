@@ -1099,7 +1099,6 @@ static int do_update_binary(int argc, char **argv)
 	int offs;
 	sc_path_t path;
 	sc_file_t *file;
-	char *in_str;
 
 	if (argc != 3)
 		return usage(do_update_binary);
@@ -1107,10 +1106,9 @@ static int do_update_binary(int argc, char **argv)
 		return usage(do_update_binary);
 	offs = strtol(argv[1],NULL,10);
 
-	in_str = argv[2];
-	printf("in: %i; %s\n", offs, in_str);
+	printf("in: %i; %s\n", offs, argv[2]);
 
-	r = parse_string_or_hexdata(in_str, buf, &buflen);
+	r = parse_string_or_hexdata(argv[2], buf, &buflen);
 	if (r < 0) {
 		printf("unable to parse data\n");
 		return -1;
@@ -1151,7 +1149,6 @@ static int do_update_record(int argc, char **argv)
 	int rec, offs;
 	sc_path_t path;
 	sc_file_t *file;
-	char *in_str;
 
 	if (argc != 4)
 		return usage(do_update_record);
@@ -1160,8 +1157,7 @@ static int do_update_record(int argc, char **argv)
 	rec  = strtol(argv[1],NULL,10);
 	offs = strtol(argv[2],NULL,10);
 
-	in_str = argv[3];
-	printf("in: %i; %i; %s\n", rec, offs, in_str);
+	printf("in: %i; %i; %s\n", rec, offs, argv[3]);
 
 	r = sc_select_file(card, &path, &file);
 	if (r) {
@@ -1184,7 +1180,7 @@ static int do_update_record(int argc, char **argv)
 	}
 
 	buflen = sizeof(buf) - offs;
-	i = parse_string_or_hexdata(in_str, buf + offs, &buflen);
+	i = parse_string_or_hexdata(argv[3], buf + offs, &buflen);
 	if (!i) {
 		printf("unable to parse data\n");
 		goto err;
