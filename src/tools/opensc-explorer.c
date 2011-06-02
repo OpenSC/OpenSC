@@ -789,15 +789,12 @@ static int do_delete(int argc, char **argv)
 
 static int do_verify(int argc, char **argv)
 {
-	struct {
-		const char *	name;
-		int		type;
-	} typeNames[] = {
-		{ "CHV",	SC_AC_CHV	},
-		{ "KEY",	SC_AC_AUT	},
-		{ "AUT",	SC_AC_AUT	},
-		{ "PRO",	SC_AC_PRO	},
-		{ NULL, 	SC_AC_NONE	}
+	const id2str_t typeNames[] = {
+		{ SC_AC_CHV,	"CHV"	},
+		{ SC_AC_AUT,	"KEY"	},
+		{ SC_AC_AUT,	"AUT"	},
+		{ SC_AC_PRO,	"PRO"	},
+		{ SC_AC_NONE,	NULL, 	}
 	};
 	int r, tries_left = -1;
 	u8 buf[64];
@@ -811,9 +808,9 @@ static int do_verify(int argc, char **argv)
 	data.cmd = SC_PIN_CMD_VERIFY;
 
 	data.pin_type = SC_AC_NONE;
-	for (i = 0; typeNames[i].name; i++) {
-		if (strncasecmp(argv[0], typeNames[i].name, 3) == 0) {
-			data.pin_type = typeNames[i].type;
+	for (i = 0; typeNames[i].str; i++) {
+		if (strncasecmp(argv[0], typeNames[i].str, 3) == 0) {
+			data.pin_type = typeNames[i].id;
 			break;
 		}
 	}
@@ -860,8 +857,8 @@ static int do_verify(int argc, char **argv)
 usage:
 	printf("Usage: verify <key type><key ref> [<pin>]\n");
 	printf("Possible values of <key type>:\n");
-	for (i = 0; typeNames[i].name; i++)
-		printf("\t%s\n", typeNames[i].name);
+	for (i = 0; typeNames[i].str; i++)
+		printf("\t%s\n", typeNames[i].str);
 	printf("Example: verify CHV2 31:32:33:34:00:00:00:00\n");
 	printf("If key is omitted, card reader's keypad will be used to collect PIN.\n");
 	return -1;
