@@ -276,8 +276,14 @@ static int arg_to_path(const char *arg, sc_path_t *path, int is_id)
 	if (strncasecmp(arg, "aid:", strlen("aid:")) == 0) {
 		/* DF aid */
 		const char *p = arg + strlen("aid:");
-		path->len  = hex2binary(path->value, sizeof(path->value), p);
+		int r;
+
 		path->type = SC_PATH_TYPE_DF_NAME;
+		path->len  = sizeof(path->value);
+		if ((r = sc_hex_to_bin(p, path->value, &path->len)) < 0) {
+			printf("Error parsing AID: %s\n", p);
+			return r;
+		}
 	} else {
 		/* file id */
 		unsigned int buf[2];
