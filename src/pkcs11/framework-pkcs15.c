@@ -1320,24 +1320,23 @@ static CK_RV pkcs15_init_pin(struct sc_pkcs11_card *p11card,
 	struct sc_pkcs15_pin_info *pin_info;
 	int			rc;
 
-	sc_debug(context, SC_LOG_DEBUG_NORMAL, "pkcs15 init PIN: pin %p:%d\n", pPin, ulPinLen);
+	sc_debug(context, SC_LOG_DEBUG_NORMAL, "pkcs15 init PIN: pin %p:%d; unblock style %i",
+			pPin, ulPinLen, sc_pkcs11_conf.pin_unblock_style);
 
 	pin_info = slot_data_pin_info(slot->fw_data);
 	if (pin_info && sc_pkcs11_conf.pin_unblock_style == SC_PKCS11_PIN_UNBLOCK_SO_LOGGED_INITPIN)   {
+		/* C_InitPIN is used to unblock User PIN or set it in the SO session .*/
 		auth_obj = slot_data_auth(slot->fw_data);
 		if (fw_data->user_puk_len)   {
 			rc = sc_pkcs15_unblock_pin(fw_data->p15_card, auth_obj, 
 					fw_data->user_puk, fw_data->user_puk_len, pPin, ulPinLen);
 		}
 		else   {
-#if 0
-			/* TODO: Actually sc_pkcs15_unblock_pin() do not accepts zero length value as a PUK argument.
-			 * It's usefull for the cards that do not supports modes 00 and 01 
-			 * of ISO 'RESET RETRY COUNTER' command. */
-			rc = sc_pkcs15_unblock_pin(fw_data->p15_card, auth_obj, NULL, 0, pPin, ulPinLen);
-#else
-			return sc_to_cryptoki_error(SC_ERROR_NOT_SUPPORTED, "C_InitPIN");
-#endif
+			/* FIXME (VT): Actually sc_pkcs15_unblock_pin() do not accepts zero length PUK.
+			 * Something like sc_pkcs15_set_pin() should be introduced.
+			 * For a while, use the 'libopensc' API to set PIN. */
+			rc = sc_reset_retry_counter(fw_data->p15_card->card, SC_AC_CHV, pin_info->reference, 
+					NULL, 0, pPin, ulPinLen);
 		}
 
 		return sc_to_cryptoki_error(rc, "C_InitPIN");
