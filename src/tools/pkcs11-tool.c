@@ -1150,29 +1150,42 @@ static int change_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess)
 	get_token_info(slot, &info);
 
 	if (!(info.flags & CKF_PROTECTED_AUTHENTICATION_PATH)) {
-		printf("Please enter the current PIN: ");
-		r = util_getpass(&old_pin, &len, stdin);
-		if (r < 0)
-			return 1;
-		if (!old_pin || !*old_pin || strlen(old_pin) > 20)
-			return 1;
-		strcpy(old_buf, old_pin);
-		old_pin = old_buf;
+		if (!opt_pin && !opt_so_pin) {		
+			printf("Please enter the current PIN: ");
+			r = util_getpass(&old_pin, &len, stdin);
+			if (r < 0)
+				return 1;
+			if (!old_pin || !*old_pin || strlen(old_pin) > 20)
+				return 1;
+			strcpy(old_buf, old_pin);
+			old_pin = old_buf;
+		}
+		else   {
+			if (opt_so_pin)
+				old_pin = opt_so_pin;
+			else
+				old_pin = opt_pin;
+		}
 
-		printf("Please enter the new PIN: ");
-		r = util_getpass(&new_pin, &len, stdin);
-		if (r < 0)
-			return 1;
-		if (!new_pin || !*new_pin || strlen(new_pin) > 20)
-			return 1;
-		strcpy(new_buf, new_pin);
-
-		printf("Please enter the new PIN again: ");
-		r = util_getpass(&new_pin, &len, stdin);
-		if (r < 0)
-			return 1;
-		if (!new_pin || !*new_pin || strcmp(new_buf, new_pin) != 0)
-			return 1;
+		if (!opt_new_pin) {
+			printf("Please enter the new PIN: ");
+			r = util_getpass(&new_pin, &len, stdin);
+			if (r < 0)
+				return 1;
+			if (!new_pin || !*new_pin || strlen(new_pin) > 20)
+				return 1;
+			strcpy(new_buf, new_pin);
+		
+			printf("Please enter the new PIN again: ");
+			r = util_getpass(&new_pin, &len, stdin);
+			if (r < 0)
+				return 1;
+			if (!new_pin || !*new_pin || strcmp(new_buf, new_pin) != 0)
+				return 1;
+		}
+		else   {
+			new_pin = opt_new_pin;
+		}
 	}
 
 	rv = p11->C_SetPIN(sess,
