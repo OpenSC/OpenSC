@@ -202,9 +202,9 @@ static int sign(struct sc_pkcs15_object *obj)
 	if (c < 0)
 		return 2;
 	len = sizeof(out);
-	if (obj->type == SC_PKCS15_TYPE_PRKEY_RSA
-	 && !(opt_crypt_flags & SC_ALGORITHM_RSA_PAD_PKCS1)
-	 && (size_t)c != key->modulus_length/8) {
+	if (obj->type == SC_PKCS15_TYPE_PRKEY_RSA 
+			&& !(opt_crypt_flags & SC_ALGORITHM_RSA_PAD_PKCS1)
+			&& (size_t)c != key->modulus_length/8) {
 		fprintf(stderr, "Input has to be exactly %lu bytes, when using no padding.\n",
 			(unsigned long) key->modulus_length/8);
 		return 2;
@@ -443,6 +443,7 @@ int main(int argc, char * const argv[])
 			goto end;
 		action_count--;
 	}
+	
 	if (do_sign) {
 		if ((err = get_key(SC_PKCS15_PRKEY_USAGE_SIGN|
 				   SC_PKCS15_PRKEY_USAGE_SIGNRECOVER|
