@@ -873,8 +873,8 @@ static int do_change(int argc, char **argv)
 	int ref, r, tries_left = -1;
 	u8 oldpin[30];
 	u8 newpin[30];
-	size_t oldpinlen = sizeof(oldpin);
-	size_t newpinlen = sizeof(newpin);
+	size_t oldpinlen = 0;
+	size_t newpinlen = 0;
 
 	if (argc < 1 || argc > 3)
 		goto usage;
@@ -886,27 +886,18 @@ static int do_change(int argc, char **argv)
 		printf("Invalid key reference.\n");
 		goto usage;
 	}
-	argc--;
-	argv++;
 
-	if (argc == 0) {
-		/* set without verification */
-		oldpinlen = 0;
-		newpinlen = 0;
-	} else if (argc == 1) {
-		/* set without verification */
-		oldpinlen = 0;
-	} else {
-		if (parse_string_or_hexdata(argv[0], oldpin, &oldpinlen) != 0) {
+	if (argc == 3) {
+		oldpinlen = sizeof(oldpin);
+		if (parse_string_or_hexdata(argv[1], oldpin, &oldpinlen) != 0) {
 			printf("Invalid key value.\n");
 			goto usage;
 		}
-		argc--;
-		argv++;
 	}
 
-	if (argc)   {
-		if (parse_string_or_hexdata(argv[0], newpin, &newpinlen) != 0) {
+	if (argc >= 2) {
+		newpinlen = sizeof(newpin);
+		if (parse_string_or_hexdata(argv[argc-1], newpin, &newpinlen) != 0) {
 			printf("Invalid key value.\n");
 			goto usage;
 		}
@@ -941,10 +932,10 @@ usage:
 static int do_unblock(int argc, char **argv)
 {
 	int ref, r;
-	u8 puk_buf[30], *puk = NULL;
-	u8 newpin_buf[30], *newpin = NULL;
-	size_t puklen = sizeof(puk_buf);
-	size_t newpinlen = sizeof(newpin_buf);
+	u8 puk[30];
+	u8 newpin[30];
+	size_t puklen = 0;
+	size_t newpinlen = 0;
 
 	if (argc < 1 || argc > 3)
 		goto usage;
@@ -956,39 +947,26 @@ static int do_unblock(int argc, char **argv)
 		printf("Invalid key reference.\n");
 		goto usage;
 	}
-	argc--;
-	argv++;
 
-	if (argc == 0) {
-		puklen = 0;
-		puk = NULL;
-	} else {
-		if (parse_string_or_hexdata(argv[0], puk_buf, &puklen) != 0) {
+	if (argc > 1) {
+		puklen = sizeof(puk);
+		if (parse_string_or_hexdata(argv[1], puk, &puklen) != 0) {
 			printf("Invalid key value.\n");
 			goto usage;
 		}
-		puk = &puk_buf[0];
-
-		argc--;
-		argv++;
 	}
 
-	if (argc)   {
-		if (parse_string_or_hexdata(argv[0], newpin_buf, &newpinlen) != 0) {
+	if (argc > 2)   {
+		newpinlen = sizeof(newpin);
+		if (parse_string_or_hexdata(argv[2], newpin, &newpinlen) != 0) {
 			printf("Invalid key value.\n");
 			goto usage;
 		}
-
-		newpin = &newpin_buf[0];
-	}
-	else   {
-		newpinlen = 0;
-		newpin = NULL;
 	}
 
 	r = sc_reset_retry_counter (card, SC_AC_CHV, ref,
-                                      puk, puklen,
-                                      newpin, newpinlen);
+                                      puklen ? puk : NULL, puklen,
+                                      newpinlen ? newpin : NULL, newpinlen);
 	if (r) {
 		if (r == SC_ERROR_PIN_CODE_INCORRECT)
 			printf("Incorrect code.\n");
