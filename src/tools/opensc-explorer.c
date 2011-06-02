@@ -186,6 +186,29 @@ static struct command	cmds[] = {
 };
 
 
+static int parse_string_or_hexdata(const char *in, u8 *out, size_t *outlen)
+{
+	if (in == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	if (*in == '"') {
+		u8 quote = *in++;
+		size_t count = 0;
+
+		while (*in != quote && *in != '\0' && count < *outlen)
+			out[count++] = *in++;
+		if (*in == '\0')
+			return SC_ERROR_INVALID_ARGUMENTS;
+		if (count >= *outlen)
+			return SC_ERROR_BUFFER_TOO_SMALL;
+
+		*outlen = count;
+		return 0;
+	}
+	else
+		return sc_hex_to_bin(in, out, outlen);
+}
+
 static int usage(int (*func)(int, char **))
 {
 	struct command	*cmd;
@@ -773,7 +796,6 @@ static int do_verify(int argc, char **argv)
 	};
 	int r, tries_left = -1;
 	u8 buf[64];
-	const char *s;
 	size_t buflen = sizeof(buf), i;
 	struct sc_pin_cmd_data data;
 
@@ -807,13 +829,8 @@ static int do_verify(int argc, char **argv)
 		printf("Please enter PIN on the reader's pin pad.\n");
 		data.pin1.prompt = "Please enter PIN";
 		data.flags |= SC_PIN_CMD_USE_PINPAD;
-	} else if (argv[1][0] == '"') {
-		for (s=argv[1]+1, i=0; i < sizeof(buf) && *s && *s != '"';i++) 
-			buf[i] = *s++;
-		data.pin1.data = buf;
-		data.pin1.len = i;
 	} else {
-		r = sc_hex_to_bin(argv[1], buf, &buflen); 
+		r = parse_string_or_hexdata(argv[1], buf, &buflen);
 		if (0 != r) {
 			printf("Invalid key value.\n");
 			goto usage;
@@ -851,8 +868,7 @@ static int do_change(int argc, char **argv)
 	int ref, r, tries_left = -1;
 	u8 oldpin[30];
 	u8 newpin[30];
-	const char *s;
-	size_t oldpinlen = sizeof(oldpin), i;
+	size_t oldpinlen = sizeof(oldpin);
 	size_t newpinlen = sizeof(newpin);
 
 	if (argc < 1 || argc > 3)
@@ -876,12 +892,7 @@ static int do_change(int argc, char **argv)
 		/* set without verification */
 		oldpinlen = 0;
 	} else {
-		if (argv[0][0] == '"') {
-			for (s = argv[0] + 1, i = 0;
-			     i < sizeof(oldpin) && *s && *s != '"'; i++) 
-				oldpin[i] = *s++;
-			oldpinlen = i;
-		} else if (sc_hex_to_bin(argv[0], oldpin, &oldpinlen) != 0) {
+		if (parse_string_or_hexdata(argv[0], oldpin, &oldpinlen) != 0) {
 			printf("Invalid key value.\n");
 			goto usage;
 		}
@@ -890,12 +901,7 @@ static int do_change(int argc, char **argv)
 	}
 
 	if (argc)   {
-		if (argv[0][0] == '"') {
-			for (s = argv[0] + 1, i = 0;
-			     i < sizeof(newpin) && *s && *s != '"'; i++) 
-				newpin[i] = *s++;
-			newpinlen = i;
-		} else if (sc_hex_to_bin(argv[0], newpin, &newpinlen) != 0) {
+		if (parse_string_or_hexdata(argv[0], newpin, &newpinlen) != 0) {
 			printf("Invalid key value.\n");
 			goto usage;
 		}
@@ -932,8 +938,7 @@ static int do_unblock(int argc, char **argv)
 	int ref, r;
 	u8 puk_buf[30], *puk = NULL;
 	u8 newpin_buf[30], *newpin = NULL;
-	const char *s;
-	size_t puklen = sizeof(puk_buf), i;
+	size_t puklen = sizeof(puk_buf);
 	size_t newpinlen = sizeof(newpin_buf);
 
 	if (argc < 1 || argc > 3)
@@ -953,12 +958,7 @@ static int do_unblock(int argc, char **argv)
 		puklen = 0;
 		puk = NULL;
 	} else {
-		if (argv[0][0] == '"') {
-			for (s = argv[0] + 1, i = 0;
-			     i < sizeof(puk_buf) && *s && *s != '"'; i++) 
-				puk_buf[i] = *s++;
-			puklen = i;
-		} else if (sc_hex_to_bin(argv[0], puk_buf, &puklen) != 0) {
+		if (parse_string_or_hexdata(argv[0], puk_buf, &puklen) != 0) {
 			printf("Invalid key value.\n");
 			goto usage;
 		}
@@ -969,12 +969,7 @@ static int do_unblock(int argc, char **argv)
 	}
 
 	if (argc)   {
-		if (argv[0][0] == '"') {
-			for (s = argv[0] + 1, i = 0;
-			     i < sizeof(newpin_buf) && *s && *s != '"'; i++) 
-				newpin_buf[i] = *s++;
-			newpinlen = i;
-		} else if (sc_hex_to_bin(argv[0], newpin_buf, &newpinlen) != 0) {
+		if (parse_string_or_hexdata(argv[0], newpin_buf, &newpinlen) != 0) {
 			printf("Invalid key value.\n");
 			goto usage;
 		}
@@ -1129,7 +1124,8 @@ static size_t hex2binary(u8 *out, size_t outlen, const char *in)
 static int do_update_binary(int argc, char **argv)
 {
 	u8 buf[240];
-	int r, err = 1, in_len;
+	size_t buflen = sizeof(buf);
+	int r, err = 1;
 	int offs;
 	sc_path_t path;
 	sc_file_t *file;
@@ -1143,15 +1139,11 @@ static int do_update_binary(int argc, char **argv)
 
 	in_str = argv[2];
 	printf("in: %i; %s\n", offs, in_str);
-	if (*in_str=='\"')   {
-		in_len = strlen(in_str)-2 >= sizeof(buf) ? sizeof(buf)-1 : strlen(in_str)-2;
-		strncpy((char *) buf, in_str+1, in_len);
-	} else {
-		in_len = hex2binary(buf, sizeof(buf), in_str);
-		if (!in_len) {
-			printf("unable to parse hex value\n");
-			return -1;
-		}
+
+	r = parse_string_or_hexdata(in_str, buf, &buflen);
+	if (r < 0) {
+		printf("unable to parse data\n");
+		return -1;
 	}
 
 	r = sc_select_file(card, &path, &file);
@@ -1165,7 +1157,7 @@ static int do_update_binary(int argc, char **argv)
 		goto err;
 	}
 
-	r = sc_update_binary(card, offs, buf, in_len, 0);
+	r = sc_update_binary(card, offs, buf, buflen, 0);
 	if (r < 0) {
 		printf("Cannot update %04X; return %i\n", file->id, r);
 		goto err;
