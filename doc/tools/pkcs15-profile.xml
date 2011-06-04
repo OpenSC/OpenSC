@@ -12,13 +12,6 @@
 	</refnamediv>
 
 	<refsect1>
-		<title>Synopsis</title>
-		<para>
-			<command></command>
-		</para>
-	</refsect1>
-
-	<refsect1>
 		<title>Description</title>
 		<para>
 			The <command>pkcs15-init</command> utility for PKCS #15 smart card
