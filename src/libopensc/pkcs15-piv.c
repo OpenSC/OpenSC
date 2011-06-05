@@ -600,7 +600,6 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 
 	int    r, i;
 	sc_card_t *card = p15card->card;
-	sc_file_t *file_out = NULL;
 	sc_serial_number_t serial;
 	char buf[SC_MAX_SERIALNR * 2 + 1];
 	common_key_info ckis[PIV_NUM_CERTS_AND_KEYS];
@@ -718,13 +717,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 			continue;
 		}
 
-		/* use a &file_out so card-piv.c will read cert if present */
-		r = sc_pkcs15_read_file(p15card, &cert_info.path, 
-				&cert_der.value, &cert_der.len, &file_out);
-		if (file_out) {
-			sc_file_free(file_out);
-			file_out = NULL;
-		}
+		r = sc_pkcs15_read_file(p15card, &cert_info.path, &cert_der.value, &cert_der.len);
 
 		if (r) { 
 			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "No cert found,i=%d", i);

@@ -52,7 +52,7 @@ int sc_pkcs15_read_data_object(struct sc_pkcs15_card *p15card,
 		return SC_ERROR_INVALID_ARGUMENTS;
 	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	r = sc_pkcs15_read_file(p15card, &info->path, &data, &len, NULL);
+	r = sc_pkcs15_read_file(p15card, &info->path, &data, &len);
 	if (r)
 		return r;
 	data_object = malloc(sizeof(struct sc_pkcs15_data));

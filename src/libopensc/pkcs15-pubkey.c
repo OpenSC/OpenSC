@@ -647,7 +647,7 @@ sc_pkcs15_read_pubkey(struct sc_pkcs15_card *p15card,
 		len = obj->content.len;
 	}
         else   {
-		r = sc_pkcs15_read_file(p15card, &info->path, &data, &len, NULL);
+		r = sc_pkcs15_read_file(p15card, &info->path, &data, &len);
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Failed to read public key file.");
 	}
 

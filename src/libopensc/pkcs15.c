@@ -1622,7 +1622,7 @@ int sc_pkcs15_parse_df(struct sc_pkcs15_card *p15card,
 		sc_log(ctx, "unknown DF type: %d", df->type);
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
-	r = sc_pkcs15_read_file(p15card, &df->path, &buf, &bufsize, NULL);
+	r = sc_pkcs15_read_file(p15card, &df->path, &buf, &bufsize);
 	LOG_TEST_RET(ctx, r, "pkcs15 read file failed");
 
 	p = buf;
@@ -1840,8 +1840,7 @@ int sc_pkcs15_parse_unusedspace(const u8 * buf, size_t buflen, struct sc_pkcs15_
 
 int sc_pkcs15_read_file(struct sc_pkcs15_card *p15card,
 			const sc_path_t *in_path,
-			u8 **buf, size_t *buflen,
-			sc_file_t **file_out)
+			u8 **buf, size_t *buflen)
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	sc_file_t *file = NULL;
@@ -1927,11 +1926,7 @@ int sc_pkcs15_read_file(struct sc_pkcs15_card *p15card,
 		}
 		sc_unlock(p15card->card);
 
-		/* Return of release file */
-		if (file_out != NULL)
-			*file_out = file;
-		else
-			sc_file_free(file);
+		sc_file_free(file);
 	}
 	*buf = data;
 	*buflen = len;

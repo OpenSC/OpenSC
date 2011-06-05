@@ -147,7 +147,7 @@ int sc_pkcs15_read_certificate(struct sc_pkcs15_card *p15card,
 	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	if (info->path.len) {
-		r = sc_pkcs15_read_file(p15card, &info->path, &data, &len, NULL);
+		r = sc_pkcs15_read_file(p15card, &info->path, &data, &len);
 		if (r)
 			return r;
 	} else {
