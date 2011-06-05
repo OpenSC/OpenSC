@@ -150,10 +150,10 @@ rutoken_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
+	auth_info = (sc_pkcs15_auth_info_t *)pin_obj->data;
 	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
                 return SC_ERROR_OBJECT_NOT_VALID;
 
-	auth_info = (sc_pkcs15_auth_info_t *)pin_obj->data;
 	for (i = 0; i < sizeof(do_pins)/sizeof(do_pins[0]); ++i)
 		if (auth_info->attrs.pin.reference == do_pins[i].id)
 		{
