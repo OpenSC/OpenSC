@@ -1554,7 +1554,7 @@ authentic_pin_get_policy (struct sc_card *card, struct sc_pin_cmd_data *data)
 	int ii, rv;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "get PIN(type:%X,ref:%X)", data->pin_type, data->pin_reference);
+	sc_log(ctx, "get PIN(type:%X,ref:%X,tries-left:%i)", data->pin_type, data->pin_reference, data->pin1.tries_left);
   
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xCA, 0x5F, data->pin_reference);
 	for (ii=0;ii<2;ii++)   {
@@ -1572,6 +1572,8 @@ authentic_pin_get_policy (struct sc_card *card, struct sc_pin_cmd_data *data)
 		apdu.cla = 0x80;
 	}
         LOG_TEST_RET(ctx, rv, "'GET DATA' error");
+
+	data->pin1.tries_left = -1;
 
 	rv = authentic_parse_credential_data(ctx, data, apdu.resp, apdu.resplen);
         LOG_TEST_RET(ctx, rv, "Cannot parse credential data");
@@ -1610,6 +1612,7 @@ authentic_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data, int *tri
 	memset(&pin_cmd, 0, sizeof(pin_cmd));
 	pin_cmd.pin_reference = data->pin_reference;
 	pin_cmd.pin_type = data->pin_type;
+	pin_cmd.pin1.tries_left = -1;
 
 	rv = authentic_pin_get_policy(card, &pin_cmd);
 	LOG_TEST_RET(ctx, rv, "Get 'PIN policy' error");
@@ -1688,8 +1691,9 @@ authentic_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "PIN-CMD:%X,PIN(type:%X,ret:%i),PIN1(%p,len:%i),PIN2(%p,len:%i)", data->cmd, data->pin_type, 
-			data->pin_reference, data->pin1.data, data->pin1.len, data->pin2.data, data->pin2.len);
+	sc_log(ctx, "PIN-CMD:%X,PIN(type:%X,ret:%i)", data->cmd, data->pin_type, data->pin_reference);
+	sc_log(ctx, "PIN1(%p,len:%i,tries-left:%i)", data->pin1.data, data->pin1.len, data->pin1.tries_left);
+	sc_log(ctx, "PIN2(%p,len:%i)", data->pin2.data, data->pin2.len);
   
 	switch (data->cmd)   {
 	case SC_PIN_CMD_VERIFY:
