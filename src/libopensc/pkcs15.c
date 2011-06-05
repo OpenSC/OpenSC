@@ -147,17 +147,20 @@ int sc_pkcs15_parse_tokeninfo(sc_context_t *ctx,
 	r = sc_asn1_decode(ctx, asn1_tokeninfo, buf, blen, NULL, NULL);
 	LOG_TEST_RET(ctx, r, "ASN.1 parsing of EF(TokenInfo) failed");
 
-	ti->serial_number = malloc(serial_len * 2 + 1);
-	if (ti->serial_number == NULL)
-		return SC_ERROR_OUT_OF_MEMORY;
+	if (asn1_toki[1].flags & SC_ASN1_PRESENT)   {
+		ti->serial_number = malloc(serial_len * 2 + 1);
+		if (ti->serial_number == NULL)
+			return SC_ERROR_OUT_OF_MEMORY;
 
-	ti->serial_number[0] = 0;
-	for (ii = 0; ii < serial_len; ii++) {
-		char byte[3];
+		ti->serial_number[0] = 0;
+		for (ii = 0; ii < serial_len; ii++) {
+			char byte[3];
 
-		sprintf(byte, "%02X", serial[ii]);
-		strcat(ti->serial_number, byte);
+			sprintf(byte, "%02X", serial[ii]);
+			strcat(ti->serial_number, byte);
+		}
 	}
+
 	if (ti->manufacturer_id == NULL) {
 		if (asn1_toki[2].flags & SC_ASN1_PRESENT)
 			ti->manufacturer_id = strdup((char *) mnfid);
