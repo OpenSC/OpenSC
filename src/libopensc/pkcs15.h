@@ -78,13 +78,16 @@ struct sc_pkcs15_pin_attributes {
 	size_t  min_length, stored_length, max_length;
 	int  reference;
 	u8  pad_char;
- };
+};
 struct sc_pkcs15_authkey_attributes {
 	int derived;
 	struct sc_pkcs15_id skey_id;
- };
+};
 struct sc_pkcs15_biometric_attributes {
- };
+	unsigned int flags;
+	struct sc_object_id template_id;
+	/* ... */
+};
 struct sc_pkcs15_auth_info {
 	struct sc_pkcs15_id  auth_id;
 	struct sc_path  path;
