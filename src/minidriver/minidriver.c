@@ -273,8 +273,8 @@ static int get_pin_by_role(PCARD_DATA pCardData, PIN_ID role, struct sc_pkcs15_o
 	for(i = 0; i < vs->pin_count; i++)
 	{
 		struct sc_pkcs15_object *obj = vs->pin_objs[i];
-		struct sc_pkcs15_pin_info *pin_info = (struct sc_pkcs15_pin_info *) (obj->data);
-		unsigned int pin_flags = pin_info->flags;
+		struct sc_pkcs15_auth_info *auth_info = (struct sc_pkcs15_auth_info *) (obj->data);
+		unsigned int pin_flags = auth_info->attrs.pin.flags;
 		unsigned int admin_pin_flags = SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN | SC_PKCS15_PIN_FLAG_SO_PIN;
 
 		logprintf(pCardData, 2, "PIN[%s] flags 0x%X\n", obj->label, pin_flags);
@@ -349,31 +349,32 @@ static void dump_objects (PCARD_DATA pCardData)
 		const char *pin_types[] = {"bcd", "ascii-numeric", "UTF-8",
 			"halfnibble bcd", "iso 9664-1"};
 		const struct sc_pkcs15_object *obj = vs->pin_objs[i];
-		const struct sc_pkcs15_pin_info *pin = (const struct sc_pkcs15_pin_info *) (obj->data);
+		const struct sc_pkcs15_auth_info *auth_info = (const struct sc_pkcs15_auth_info *) (obj->data);
+		const struct sc_pkcs15_pin_attributes *pin_attrs = &auth_info->attrs.pin;
 		const size_t pf_count = sizeof(pin_flags)/sizeof(pin_flags[0]);
 		size_t j;
 
 		logprintf(pCardData, 2, "PIN [%s]\n", obj->label);
 		logprintf(pCardData, 2, "\tCom. Flags: 0x%X\n", obj->flags);
-		logprintf(pCardData, 2, "\tID        : %s\n", sc_pkcs15_print_id(&pin->auth_id));
-		logprintf(pCardData, 2, "\tFlags     : [0x%02X]", pin->flags);
+		logprintf(pCardData, 2, "\tID        : %s\n", sc_pkcs15_print_id(&auth_info->auth_id));
+		logprintf(pCardData, 2, "\tFlags     : [0x%02X]", pin_attrs->flags);
 		for (j = 0; j < pf_count; j++)
-			if (pin->flags & (1 << j)) {
+			if (pin_attrs->flags & (1 << j)) {
 				logprintf(pCardData, 2, ", %s", pin_flags[j]);
 			}
 		logprintf(pCardData, 2, "\n");
 		logprintf(pCardData, 2, "\tLength    : min_len:%lu, max_len:%lu, stored_len:%lu\n",
-			(unsigned long)pin->min_length, (unsigned long)pin->max_length,
-			(unsigned long)pin->stored_length);
-		logprintf(pCardData, 2, "\tPad char  : 0x%02X\n", pin->pad_char);
-		logprintf(pCardData, 2, "\tReference : %d\n", pin->reference);
-		if (pin->type < sizeof(pin_types)/sizeof(pin_types[0]))
-			logprintf(pCardData, 2, "\tType      : %s\n", pin_types[pin->type]);
+			(unsigned long)pin_attrs->min_length, (unsigned long)pin_attrs->max_length,
+			(unsigned long)pin_attrs->stored_length);
+		logprintf(pCardData, 2, "\tPad char  : 0x%02X\n", pin_attrs->pad_char);
+		logprintf(pCardData, 2, "\tReference : %d\n", pin_attrs->reference);
+		if (pin_attrs->type < sizeof(pin_types)/sizeof(pin_types[0]))
+			logprintf(pCardData, 2, "\tType      : %s\n", pin_types[pin_attrs->type]);
 		else
-			logprintf(pCardData, 2, "\tType      : [encoding %d]\n", pin->type);
-		logprintf(pCardData, 2, "\tPath      : %s\n", sc_print_path(&pin->path));
-		if (pin->tries_left >= 0)
-			logprintf(pCardData, 2, "\tTries left: %d\n", pin->tries_left);
+			logprintf(pCardData, 2, "\tType      : [encoding %d]\n", pin_attrs->type);
+		logprintf(pCardData, 2, "\tPath      : %s\n", sc_print_path(&auth_info->path));
+		if (auth_info->tries_left >= 0)
+			logprintf(pCardData, 2, "\tTries left: %d\n", auth_info->tries_left);
 	}
 }
 
