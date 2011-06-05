@@ -67,27 +67,27 @@ static int sc_pkcs15emu_add_pin(sc_pkcs15_card_t *p15card,
                 unsigned int max_length,
                 int flags, int tries_left, const char pad_char, int obj_flags)
 {
-        sc_pkcs15_pin_info_t info;
+        sc_pkcs15_auth_info_t info;
 	sc_pkcs15_object_t   obj;
 
 	memset(&info, 0, sizeof(info));
 	memset(&obj,  0, sizeof(obj));
 
         info.auth_id           = *id;
-        info.min_length        = min_length;
-        info.max_length        = max_length;
-        info.stored_length     = max_length;
-        info.type              = type;
-        info.reference         = ref;
-        info.flags             = flags;
+	info.auth_type = SC_PKCS15_PIN_AUTH_TYPE_PIN;
+        info.attrs.pin.min_length        = min_length;
+        info.attrs.pin.max_length        = max_length;
+        info.attrs.pin.stored_length     = max_length;
+        info.attrs.pin.type              = type;
+        info.attrs.pin.reference         = ref;
+        info.attrs.pin.flags             = flags;
+        info.attrs.pin.pad_char          = pad_char;
         info.tries_left        = tries_left;
-        info.magic             = SC_PKCS15_PIN_MAGIC;
-        info.pad_char          = pad_char;
 
         if (path)
                 info.path = *path;
         if (type == SC_PKCS15_PIN_TYPE_BCD)
-                info.stored_length /= 2;
+                info.attrs.pin.stored_length /= 2;
 
 	strlcpy(obj.label, label, sizeof(obj.label));
 	obj.flags = obj_flags;

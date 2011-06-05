@@ -136,11 +136,13 @@ miocos_create_dir(struct sc_profile *profile, sc_pkcs15_card_t *p15card,
  */
 static int
 miocos_select_pin_reference(struct sc_profile *profile, sc_pkcs15_card_t *p15card,
-		struct sc_pkcs15_pin_info *pin_info)
+		struct sc_pkcs15_auth_info *auth_info)
 {
+	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
+		return SC_ERROR_OBJECT_NOT_VALID;
 
-	if (pin_info->reference < MIOCOS_PIN_ID_MIN)
-		pin_info->reference = MIOCOS_PIN_ID_MIN; 
+	if (auth_info->attrs.pin.reference < MIOCOS_PIN_ID_MIN)
+		auth_info->attrs.pin.reference = MIOCOS_PIN_ID_MIN; 
 
 	return SC_SUCCESS;
 }
@@ -155,22 +157,23 @@ miocos_create_pin(struct sc_profile *profile, sc_pkcs15_card_t *p15card, struct 
 		const u8 *puk, size_t puk_len)
 {
 	struct sc_context *ctx = p15card->card->ctx;
-	struct sc_pkcs15_pin_info *pin_info = (struct sc_pkcs15_pin_info *)pin_obj->data;
-	struct sc_pkcs15_pin_info tmpinfo;
+	struct sc_pkcs15_auth_info *auth_info = (struct sc_pkcs15_auth_info *)pin_obj->data;
+	struct sc_pkcs15_pin_attributes *pin_attrs = &auth_info->attrs.pin;
+	struct sc_pkcs15_auth_info tmpinfo;
 	struct sc_cardctl_miocos_ac_info ac_info;
 	int r;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 	/* Ignore SOPIN */
-	if (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN)	
+	if (pin_attrs->flags & SC_PKCS15_PIN_FLAG_SO_PIN)	
 		return SC_SUCCESS;
 
-	pin_info->path = profile->df_info->file->path;
-	r = sc_select_file(p15card->card, &pin_info->path, NULL);
+	auth_info->path = profile->df_info->file->path;
+	r = sc_select_file(p15card->card, &auth_info->path, NULL);
 	if (r)
 		return r;
 	memset(&ac_info, 0, sizeof(ac_info));
-	ac_info.ref = pin_info->reference;
+	ac_info.ref = pin_attrs->reference;
 	sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PIN, &tmpinfo);
 	ac_info.max_tries = tmpinfo.tries_left;
 	sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PUK, &tmpinfo);

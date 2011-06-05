@@ -71,13 +71,16 @@ static int westcos_pkcs15init_create_dir(sc_profile_t *profile,
  */
 static int westcos_pkcs15_select_pin_reference(sc_profile_t *profile, 
 					sc_pkcs15_card_t *p15card,
-					sc_pkcs15_pin_info_t *pin_info)
+					sc_pkcs15_auth_info_t *auth_info)
 {
 
-	if (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN) {
-		pin_info->reference = 1;
+	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
+		return SC_ERROR_OBJECT_NOT_VALID;
+
+	if (auth_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN) {
+		auth_info->attrs.pin.reference = 1;
 	} else {
-		pin_info->reference = 0;
+		auth_info->attrs.pin.reference = 0;
 	}
 
 	return 0;

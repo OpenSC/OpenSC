@@ -53,38 +53,40 @@ static void print_pin(const struct sc_pkcs15_object *obj)
 		"integrity-protected", "confidentiality-protected",
 		"exchangeRefData"
 	};
-	struct sc_pkcs15_pin_info *pin;
+	struct sc_pkcs15_auth_info *pin;
 	const int pf_count = sizeof(pin_flags) / sizeof(pin_flags[0]);
 	int i;
 
-	pin = (struct sc_pkcs15_pin_info *) obj->data;
+	pin = (struct sc_pkcs15_auth_info *) obj->data;
 	printf("\tAuth ID     : %s\n", sc_pkcs15_print_id(&pin->auth_id));
-	printf("\tFlags       : [0x%02X]", pin->flags);
-	for (i = 0; i < pf_count; i++)
-		if (pin->flags & (1 << i)) {
-			printf(", %s", pin_flags[i]);
+	if (pin->auth_type == SC_PKCS15_PIN_AUTH_TYPE_PIN)   {
+		printf("\tFlags       : [0x%02X]", pin->attrs.pin.flags);
+		for (i = 0; i < pf_count; i++)
+			if (pin->attrs.pin.flags & (1 << i)) {
+				printf(", %s", pin_flags[i]);
+			}
+		printf("\n");
+		printf("\tLength      : min_len:%lu, max_len:%lu, stored_len:%lu\n",
+			(unsigned long) pin->attrs.pin.min_length,
+			(unsigned long) pin->attrs.pin.max_length,
+			(unsigned long) pin->attrs.pin.stored_length);
+		printf("\tPad char    : 0x%02X\n", pin->attrs.pin.pad_char);
+		printf("\tReference   : %d\n", pin->attrs.pin.reference);
+		printf("\tEncoding    : ");
+		switch (pin->attrs.pin.type) {
+		case SC_PKCS15_PIN_TYPE_BCD:
+			printf("BCD\n"); break;
+		case SC_PKCS15_PIN_TYPE_ASCII_NUMERIC:
+			printf("ASCII-numeric\n"); break;
+		case SC_PKCS15_PIN_TYPE_UTF8:
+			printf("UTF8\n"); break;
+		case SC_PKCS15_PIN_TYPE_HALFNIBBLE_BCD:
+			printf("half-nibble BCD\n"); break;
+		case SC_PKCS15_PIN_TYPE_ISO9564_1:
+			printf("ISO 9564-1\n"); break;
+		default:
+			printf("[encoding %d]\n", pin->attrs.pin.type);
 		}
-	printf("\n");
-	printf("\tLength      : min_len:%lu, max_len:%lu, stored_len:%lu\n",
-		(unsigned long) pin->min_length,
-		(unsigned long) pin->max_length,
-		(unsigned long) pin->stored_length);
-	printf("\tPad char    : 0x%02X\n", pin->pad_char);
-	printf("\tReference   : %d\n", pin->reference);
-	printf("\tEncoding    : ");
-	switch (pin->type) {
-	case SC_PKCS15_PIN_TYPE_BCD:
-		printf("BCD\n"); break;
-	case SC_PKCS15_PIN_TYPE_ASCII_NUMERIC:
-		printf("ASCII-numeric\n"); break;
-	case SC_PKCS15_PIN_TYPE_UTF8:
-		printf("UTF8\n"); break;
-	case SC_PKCS15_PIN_TYPE_HALFNIBBLE_BCD:
-		printf("half-nibble BCD\n"); break;
-	case SC_PKCS15_PIN_TYPE_ISO9564_1:
-		printf("ISO 9564-1\n"); break;
-	default:
-		printf("[encoding %d]\n", pin->type);
 	}
 	if (pin->path.len)
 		printf("\tPath        : %s\n", sc_print_path(&pin->path));

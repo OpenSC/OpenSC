@@ -962,23 +962,26 @@ get_pin_info(void)
 
 static u8 * get_pin(const char *prompt, sc_pkcs15_object_t *pin_obj)
 {
-	sc_pkcs15_pin_info_t *pinfo = (sc_pkcs15_pin_info_t *) pin_obj->data;
+	sc_pkcs15_auth_info_t *pinfo = (sc_pkcs15_auth_info_t *) pin_obj->data;
 	char *pincode = NULL;
 	size_t len = 0;
 	int r;
 	
 	printf("%s [%s]: ", prompt, pin_obj->label);
+	if (pinfo->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
+		return NULL;
+
 	while (1) {
 		r = util_getpass(&pincode, &len, stdin);
 		if (r < 0)
 			return NULL;
 		if (!pincode || strlen(pincode) == 0)
 			return NULL;
-		if (strlen(pincode) < pinfo->min_length) {
+		if (strlen(pincode) < pinfo->attrs.pin.min_length) {
 			printf("PIN code too short, try again.\n");
 			continue;
 		}
-		if (strlen(pincode) > pinfo->max_length) {
+		if (strlen(pincode) > pinfo->attrs.pin.max_length) {
 			printf("PIN code too long, try again.\n");
 			continue;
 		}
@@ -1003,11 +1006,13 @@ static int verify_pin(void)
 		}
 
 		for (ii=0;ii<r;ii++)   {
-			struct sc_pkcs15_pin_info *pin_info = (struct sc_pkcs15_pin_info *) objs[ii]->data;
+			struct sc_pkcs15_auth_info *pin_info = (struct sc_pkcs15_auth_info *) objs[ii]->data;
 
-                	if (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN)
+			if (pin_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
 				continue;
-			if (pin_info->flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN)
+                	if (pin_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN)
+				continue;
+			if (pin_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN)
 				continue;
 
 			pin_obj = objs[ii];
@@ -1068,7 +1073,7 @@ static void print_pin_info(const struct sc_pkcs15_object *obj)
 	};
 	const char *pin_types[] = {"bcd", "ascii-numeric", "UTF-8",
 		"halfnibble bcd", "iso 9664-1"}; 
-	const struct sc_pkcs15_pin_info *pin = (const struct sc_pkcs15_pin_info *) obj->data;
+	const struct sc_pkcs15_auth_info *pin = (const struct sc_pkcs15_auth_info *) obj->data;
 	const size_t pf_count = NELEMENTS(pin_flags);
 	size_t i;
 
@@ -1077,21 +1082,23 @@ static void print_pin_info(const struct sc_pkcs15_object *obj)
 	if (obj->auth_id.len)
 		printf("\tAuth ID        : %s\n", sc_pkcs15_print_id(&obj->auth_id));
 	printf("\tID             : %s\n", sc_pkcs15_print_id(&pin->auth_id));
-	printf("\tFlags          : [0x%02X]", pin->flags);
-	for (i = 0; i < pf_count; i++)
-		if (pin->flags & (1 << i)) {
-			printf(", %s", pin_flags[i]);
-		}
-	printf("\n");
-	printf("\tLength         : min_len:%lu, max_len:%lu, stored_len:%lu\n",
-		(unsigned long)pin->min_length, (unsigned long)pin->max_length,
-		(unsigned long)pin->stored_length);
-	printf("\tPad char       : 0x%02X\n", pin->pad_char);
-	printf("\tReference      : %d\n", pin->reference);
-	if (pin->type < NELEMENTS(pin_types))
-		printf("\tType           : %s\n", pin_types[pin->type]);
-	else
-		printf("\tType           : [encoding %d]\n", pin->type);
+	if (pin->auth_type == SC_PKCS15_PIN_AUTH_TYPE_PIN)   {
+		printf("\tFlags          : [0x%02X]", pin->attrs.pin.flags);
+		for (i = 0; i < pf_count; i++)
+			if (pin->attrs.pin.flags & (1 << i)) {
+				printf(", %s", pin_flags[i]);
+			}
+		printf("\n");
+		printf("\tLength         : min_len:%lu, max_len:%lu, stored_len:%lu\n",
+			(unsigned long)pin->attrs.pin.min_length, (unsigned long)pin->attrs.pin.max_length,
+			(unsigned long)pin->attrs.pin.stored_length);
+		printf("\tPad char       : 0x%02X\n", pin->attrs.pin.pad_char);
+		printf("\tReference      : %d\n", pin->attrs.pin.reference);
+		if (pin->attrs.pin.type < NELEMENTS(pin_types))
+			printf("\tType           : %s\n", pin_types[pin->attrs.pin.type]);
+		else
+			printf("\tType           : [encoding %d]\n", pin->attrs.pin.type);
+	}
 	if (pin->path.len || pin->path.aid.len)
 		printf("\tPath           : %s\n", sc_print_path(&pin->path));
 	if (pin->tries_left >= 0)
@@ -1184,7 +1191,7 @@ static int dump(void)
 
 static int unblock_pin(void)
 {
-	struct sc_pkcs15_pin_info *pinfo = NULL;
+	struct sc_pkcs15_auth_info *pinfo = NULL;
 	sc_pkcs15_object_t *pin_obj;
 	u8 *pin, *puk;
 	int r, pinpad_present = 0;
@@ -1193,7 +1200,10 @@ static int unblock_pin(void)
 
 	if (!(pin_obj = get_pin_info()))
 		return 2;
-	pinfo = (sc_pkcs15_pin_info_t *) pin_obj->data;
+	pinfo = (sc_pkcs15_auth_info_t *) pin_obj->data;
+
+	if (pinfo->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN) 
+		return 1;
 
 	puk = opt_puk;
 	if (puk == NULL) {
@@ -1248,7 +1258,7 @@ static int unblock_pin(void)
 static int change_pin(void)
 {
 	sc_pkcs15_object_t *pin_obj;
-	sc_pkcs15_pin_info_t *pinfo = NULL;
+	sc_pkcs15_auth_info_t *pinfo = NULL;
 	u8 *pincode, *newpin;
 	int r, pinpad_present = 0;
 
@@ -1256,7 +1266,10 @@ static int change_pin(void)
 
 	if (!(pin_obj = get_pin_info()))
 		return 2;
-	pinfo = (sc_pkcs15_pin_info_t *) pin_obj->data;
+
+	pinfo = (sc_pkcs15_auth_info_t *) pin_obj->data;
+	if (pinfo->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN) 
+		return 1;
 
 	if (pinfo->tries_left != -1) {
 		if (pinfo->tries_left != pinfo->max_tries) {

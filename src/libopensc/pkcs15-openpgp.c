@@ -126,7 +126,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 	for (i = 0; i < 3; i++) {
 		unsigned int	flags;
 
-		struct sc_pkcs15_pin_info pin_info;
+		struct sc_pkcs15_auth_info pin_info;
 		struct sc_pkcs15_object   pin_obj;
 
 		memset(&pin_info, 0, sizeof(pin_info));
@@ -140,15 +140,16 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 				 SC_PKCS15_PIN_FLAG_SO_PIN;
 		}
 
+		pin_info.auth_type = SC_PKCS15_PIN_AUTH_TYPE_PIN;
 		pin_info.auth_id.len   = 1;
 		pin_info.auth_id.value[0] = i + 1;
-		pin_info.reference     = i + 1;
-		pin_info.flags         = flags;
-		pin_info.type          = SC_PKCS15_PIN_TYPE_ASCII_NUMERIC;
-		pin_info.min_length    = 0;
-		pin_info.stored_length = buffer[1+i];
-		pin_info.max_length    = buffer[1+i];
-		pin_info.pad_char      = '\0';
+		pin_info.attrs.pin.reference     = i + 1;
+		pin_info.attrs.pin.flags         = flags;
+		pin_info.attrs.pin.type          = SC_PKCS15_PIN_TYPE_ASCII_NUMERIC;
+		pin_info.attrs.pin.min_length    = 0;
+		pin_info.attrs.pin.stored_length = buffer[1+i];
+		pin_info.attrs.pin.max_length    = buffer[1+i];
+		pin_info.attrs.pin.pad_char      = '\0';
 		sc_format_path("3F00", &pin_info.path);
 		pin_info.tries_left    = buffer[4+i];
 

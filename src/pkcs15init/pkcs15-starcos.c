@@ -49,13 +49,13 @@ static int starcos_erase_card(struct sc_profile *pro, sc_pkcs15_card_t *p15card)
 }
 
 static u8 get_so_ac(const sc_file_t *file, unsigned int op,
-	const sc_pkcs15_pin_info_t *pin, unsigned int def,
+	const sc_pkcs15_auth_info_t *auth, unsigned int def,
 	unsigned int need_global)
 {
 	int is_global = 1;
 	const sc_acl_entry_t *acl;
 
-	if (pin->flags & SC_PKCS15_PIN_FLAG_LOCAL)
+	if (auth->attrs.pin.flags & SC_PKCS15_PIN_FLAG_LOCAL)
 		is_global = 0;
 	if (!is_global && need_global)
 		return def & 0xff;
@@ -83,7 +83,7 @@ static int starcos_init_card(sc_profile_t *profile, sc_pkcs15_card_t *p15card)
 	sc_file_t	*mf_file, *isf_file, *ipf_file;
 	sc_path_t	tpath;
 	u8		*p = mf_data.data.mf.header, tmp = 0;
-	sc_pkcs15_pin_info_t sopin;
+	sc_pkcs15_auth_info_t sopin;
 
 	/* test if we already have a MF */
 	memset(&tpath, 0, sizeof(sc_path_t));
@@ -180,7 +180,7 @@ static int starcos_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	sc_starcos_create_data df_data, ipf_data;
 	sc_file_t	*isf_file, *ipf_file;
 	u8		*p = df_data.data.df.header, tmp = 0;
-	sc_pkcs15_pin_info_t sopin;
+	sc_pkcs15_auth_info_t sopin;
 
 	sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PIN, &sopin);
 
@@ -255,10 +255,11 @@ static int starcos_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 
 static int have_onepin(sc_profile_t *profile)
 {
-	sc_pkcs15_pin_info_t sopin;
+	sc_pkcs15_auth_info_t sopin;
 
 	sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PIN, &sopin);
-	if (!(sopin.flags & SC_PKCS15_PIN_FLAG_SO_PIN))
+
+	if (!(sopin.attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN))
 		return 1;
 	else
 		return 0;
@@ -272,20 +273,25 @@ static int have_onepin(sc_profile_t *profile)
 #define STARCOS_MIN_GPIN_ID	0x03
 #define STARCOS_MAX_GPIN_ID	0x0f
 static int starcos_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
-	sc_pkcs15_pin_info_t *pin_info)
+	sc_pkcs15_auth_info_t *auth_info)
 {
-	int	             tmp = pin_info->reference;
+	int tmp;
+
+	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
+		return SC_ERROR_OBJECT_NOT_VALID;
+
+	tmp = auth_info->attrs.pin.reference;
 
 	if (have_onepin(profile)) {
 		/* we have the onepin profile */
-		pin_info->reference = STARCOS_SOPIN_GID;
+		auth_info->attrs.pin.reference = STARCOS_SOPIN_GID;
 		return SC_SUCCESS;
 	}
 
-	if (pin_info->flags & SC_PKCS15_PIN_FLAG_LOCAL) {
+	if (auth_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_LOCAL) {
 		/* use local KID */
 		/* SO-pin */
-		if (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN)
+		if (auth_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN)
 			tmp = STARCOS_SOPIN_LID;
 		else {
 			if (tmp < STARCOS_MIN_LPIN_ID)
@@ -299,7 +305,7 @@ static int starcos_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15car
 	} else {
 		/* use global KID */
 		/* SO-pin */
-		if (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN)
+		if (auth_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN)
 			tmp = STARCOS_SOPIN_GID;
 		else {
 			if (tmp < STARCOS_MIN_GPIN_ID)
@@ -311,7 +317,7 @@ static int starcos_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15car
 				return SC_ERROR_TOO_MANY_OBJECTS;
 		}
 	}
-	pin_info->reference = tmp;
+	auth_info->attrs.pin.reference = tmp;
 
 	return SC_SUCCESS;
 }
@@ -349,14 +355,17 @@ static int starcos_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	size_t	akd;
 	sc_file_t            *tfile;
 	const sc_acl_entry_t *acl_entry;
-	sc_pkcs15_pin_info_t *pin_info = (sc_pkcs15_pin_info_t *) pin_obj->data;
+	sc_pkcs15_auth_info_t *auth_info = (sc_pkcs15_auth_info_t *) pin_obj->data;
 	sc_starcos_wkey_data  pin_d, puk_d;
 	u8		      tpin[8];
 
 	if (!pin || !pin_len || pin_len > 8)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
-	is_local = 0x80 & pin_info->reference;
+	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
+		return SC_ERROR_OBJECT_NOT_VALID;
+
+	is_local = 0x80 & auth_info->attrs.pin.reference;
 	if (is_local)
 		r = sc_select_file(card, &df->path, NULL);
 	else
@@ -369,7 +378,7 @@ static int starcos_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
                 return r;
 	acl_entry = sc_file_get_acl_entry(tfile, SC_AC_OP_WRITE);
 	if (acl_entry->method != SC_AC_NONE) {
-		if ((pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN) || have_onepin(profile))
+		if ((auth_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN) || have_onepin(profile))
 			need_finalize = 1;
 		else
 			r = sc_pkcs15init_authenticate(profile, p15card, tfile, SC_AC_OP_WRITE);
@@ -383,8 +392,8 @@ static int starcos_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	memcpy(tpin, pin, pin_len);
 
 	/* write PIN */
-	tmp    = pin_info->tries_left;
-	pin_id = pin_info->reference;
+	tmp    = auth_info->tries_left;
+	pin_id = auth_info->attrs.pin.reference;
 
 	pin_d.mode    = 0;	/* install */
 	pin_d.kid     = (u8) pin_id;
@@ -394,7 +403,7 @@ static int starcos_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	pin_d.key_header[1]  = 0;
 	pin_d.key_header[2]  = 8;
 	pin_d.key_header[3]  = STARCOS_AC_ALWAYS;
-	if (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN)
+	if (auth_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN)
 		pin_d.key_header[4] = STARCOS_SOPIN_STATE;
 	else
 		pin_d.key_header[4] = STARCOS_PINID2STATE(pin_id);
@@ -402,7 +411,7 @@ static int starcos_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	pin_d.key_header[6]  = ((0x0f & tmp) << 4) | (0x0f & tmp);
 	pin_d.key_header[7]  = 0x00;
 	pin_d.key_header[8]  = 0x00;
-	akd = pin_info->min_length;
+	akd = auth_info->attrs.pin.min_length;
 	if (akd < 4)
 		akd = 4;
 	if (akd > 8)
@@ -419,7 +428,7 @@ static int starcos_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		return r;
 
 	if (puk && puk_len) {
-		sc_pkcs15_pin_info_t puk_info;
+		sc_pkcs15_auth_info_t puk_info;
 
 		if (puk_len > 8)
 			return SC_ERROR_INVALID_ARGUMENTS;

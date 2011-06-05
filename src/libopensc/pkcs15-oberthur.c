@@ -294,17 +294,16 @@ sc_oberthur_read_file(struct sc_pkcs15_card *p15card, const char *in_path,
 	if (verify_pin && rv == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED)   {
 		struct sc_pkcs15_object *objs[0x10], *pin_obj = NULL;
 		const struct sc_acl_entry *acl = sc_file_get_acl_entry(file, SC_AC_OP_READ);
-		struct sc_pkcs15_pin_info *pinfo = NULL;
 		int ii;
 
 		rv = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_AUTH_PIN, objs, 0x10);
 		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, rv, "Cannot read oberthur file: get AUTH objects error");
 
 		for (ii=0; ii<rv; ii++)   {
-			pinfo = (struct sc_pkcs15_pin_info *) objs[ii]->data;
+			struct sc_pkcs15_auth_info *auth_info = (struct sc_pkcs15_auth_info *) objs[ii]->data;
 			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "compare PIN/ACL refs:%i/%i, method:%i/%i", 
-					pinfo->reference, acl->key_ref, pinfo->auth_method, acl->method);
-			if (pinfo->reference == (int)acl->key_ref && pinfo->auth_method == (unsigned)acl->method)   {
+					auth_info->attrs.pin.reference, acl->key_ref, auth_info->auth_method, acl->method);
+			if (auth_info->attrs.pin.reference == (int)acl->key_ref && auth_info->auth_method == (unsigned)acl->method)   {
 				pin_obj = objs[ii];
 				break;
 			}
@@ -911,7 +910,7 @@ static int
 sc_pkcs15emu_oberthur_init(struct sc_pkcs15_card * p15card)
 {
 	struct sc_context *ctx = p15card->card->ctx;
-	struct sc_pkcs15_pin_info info;
+	struct sc_pkcs15_auth_info auth_info;
 	struct sc_pkcs15_object   obj;
 	struct sc_card *card = p15card->card;
 	struct sc_path path;
@@ -942,67 +941,66 @@ sc_pkcs15emu_oberthur_init(struct sc_pkcs15_card * p15card)
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Invalid state of SO-PIN");
 
 	/* add PIN */
-	memset(&info, 0, sizeof(info));
+	memset(&auth_info, 0, sizeof(auth_info));
 	memset(&obj,  0, sizeof(obj));
-	
-	info.auth_id.len = 1;
-	info.auth_id.value[0] = 0xFF;
-	info.min_length		= 4;
-	info.max_length		= 64;
-	info.stored_length	= 64;
-	info.type		= SC_PKCS15_PIN_TYPE_ASCII_NUMERIC;
-	info.reference		= sopin_reference;
-	info.tries_left		= tries_left;
-	info.auth_method	= SC_AC_CHV;
-	info.magic		= SC_PKCS15_PIN_MAGIC;
-	info.pad_char		= 0xFF;
-	info.flags		= SC_PKCS15_PIN_FLAG_CASE_SENSITIVE 
+
+	auth_info.auth_type = SC_PKCS15_PIN_AUTH_TYPE_PIN;	
+	auth_info.auth_method	= SC_AC_CHV;
+	auth_info.auth_id.len = 1;
+	auth_info.auth_id.value[0] = 0xFF;
+	auth_info.attrs.pin.min_length		= 4;
+	auth_info.attrs.pin.max_length		= 64;
+	auth_info.attrs.pin.stored_length	= 64;
+	auth_info.attrs.pin.type		= SC_PKCS15_PIN_TYPE_ASCII_NUMERIC;
+	auth_info.attrs.pin.reference		= sopin_reference;
+	auth_info.attrs.pin.pad_char		= 0xFF;
+	auth_info.attrs.pin.flags		= SC_PKCS15_PIN_FLAG_CASE_SENSITIVE 
 				| SC_PKCS15_PIN_FLAG_INITIALIZED 
 				| SC_PKCS15_PIN_FLAG_NEEDS_PADDING
 				| SC_PKCS15_PIN_FLAG_SO_PIN;
+	auth_info.tries_left		= tries_left;
 	
 	strncpy(obj.label, "SO PIN", SC_PKCS15_MAX_LABEL_SIZE-1);
 	obj.flags = SC_PKCS15_CO_FLAG_MODIFIABLE | SC_PKCS15_CO_FLAG_PRIVATE;
 	
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Add PIN(%s,auth_id:%s,reference:%i)", obj.label, 
-			sc_pkcs15_print_id(&info.auth_id), info.reference);
-	rv = sc_pkcs15emu_add_pin_obj(p15card, &obj, &info);
+			sc_pkcs15_print_id(&auth_info.auth_id), auth_info.attrs.pin.reference);
+	rv = sc_pkcs15emu_add_pin_obj(p15card, &obj, &auth_info);
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Oberthur init failed: cannot add PIN object");
 
 	tries_left = -1;
 	rv = sc_verify(card, SC_AC_CHV, 0x81, (unsigned char *)"", 0, &tries_left);
 	if (rv == SC_ERROR_PIN_CODE_INCORRECT)   {
 		/* add PIN */
-		memset(&info, 0, sizeof(info));
+		memset(&auth_info, 0, sizeof(auth_info));
 		memset(&obj,  0, sizeof(obj));
 	
-		info.auth_id.len = sizeof(PinDomainID) > sizeof(info.auth_id.value) 
-				? sizeof(info.auth_id.value) : sizeof(PinDomainID);
-		memcpy(info.auth_id.value, PinDomainID, info.auth_id.len);
+		auth_info.auth_id.len = sizeof(PinDomainID) > sizeof(auth_info.auth_id.value) 
+				? sizeof(auth_info.auth_id.value) : sizeof(PinDomainID);
+		memcpy(auth_info.auth_id.value, PinDomainID, auth_info.auth_id.len);
+		auth_info.auth_method	= SC_AC_CHV;
 
-		info.min_length		= 4;
-		info.max_length		= 64;
-		info.stored_length	= 64;
-		info.type		= SC_PKCS15_PIN_TYPE_ASCII_NUMERIC;
-		info.reference		= 0x81;
-		info.auth_method	= SC_AC_CHV;
-		info.tries_left		= tries_left;
-		info.magic		= SC_PKCS15_PIN_MAGIC;
-		info.pad_char		= 0xFF;
-		info.flags		= SC_PKCS15_PIN_FLAG_CASE_SENSITIVE 
+		auth_info.attrs.pin.min_length		= 4;
+		auth_info.attrs.pin.max_length		= 64;
+		auth_info.attrs.pin.stored_length	= 64;
+		auth_info.attrs.pin.type		= SC_PKCS15_PIN_TYPE_ASCII_NUMERIC;
+		auth_info.attrs.pin.reference		= 0x81;
+		auth_info.attrs.pin.pad_char		= 0xFF;
+		auth_info.attrs.pin.flags		= SC_PKCS15_PIN_FLAG_CASE_SENSITIVE 
 					| SC_PKCS15_PIN_FLAG_INITIALIZED 
 					| SC_PKCS15_PIN_FLAG_NEEDS_PADDING
 					| SC_PKCS15_PIN_FLAG_LOCAL;
+		auth_info.tries_left		= tries_left;
 	
 		strncpy(obj.label, PIN_DOMAIN_LABEL, SC_PKCS15_MAX_LABEL_SIZE-1);
 		obj.flags = SC_PKCS15_CO_FLAG_MODIFIABLE | SC_PKCS15_CO_FLAG_PRIVATE;
 	
-		sc_format_path(AWP_PIN_DF, &info.path); 
-		info.path.type = SC_PATH_TYPE_PATH;
+		sc_format_path(AWP_PIN_DF, &auth_info.path); 
+		auth_info.path.type = SC_PATH_TYPE_PATH;
 	
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Add PIN(%s,auth_id:%s,reference:%i)", obj.label, 
-				sc_pkcs15_print_id(&info.auth_id), info.reference);
-		rv = sc_pkcs15emu_add_pin_obj(p15card, &obj, &info);
+				sc_pkcs15_print_id(&auth_info.auth_id), auth_info.attrs.pin.reference);
+		rv = sc_pkcs15emu_add_pin_obj(p15card, &obj, &auth_info);
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Oberthur init failed: cannot add PIN object");
 	}
 	else if (rv != SC_ERROR_DATA_OBJECT_NOT_FOUND)    {

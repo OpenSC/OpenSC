@@ -57,7 +57,7 @@ struct sc_pkcs15init_operations {
 	 * Select a PIN reference
 	 */
 	int	(*select_pin_reference)(struct sc_profile *, struct sc_pkcs15_card *,
-			struct sc_pkcs15_pin_info *);
+			struct sc_pkcs15_auth_info *);
 
 	/*
 	 * Create a PIN object within the given DF.
@@ -160,7 +160,7 @@ struct sc_pkcs15init_callbacks {
 	 * Get a PIN from the front-end. The first argument is
 	 * one of the SC_PKCS15INIT_XXX_PIN/PUK macros.
 	 */
-	int	(*get_pin)(struct sc_profile *, int, const struct sc_pkcs15_pin_info *,
+	int	(*get_pin)(struct sc_profile *, int, const struct sc_pkcs15_auth_info *,
 				const char *, unsigned char *, size_t *);
 
 	/*
@@ -340,7 +340,7 @@ extern int	sc_pkcs15init_authenticate(struct sc_profile *, struct sc_pkcs15_card
 				struct sc_file *, int);
 extern int	sc_pkcs15init_fixup_file(struct sc_profile *, struct sc_pkcs15_card *, 
 				struct sc_file *);
-extern int	sc_pkcs15init_get_pin_info(struct sc_profile *, int, struct sc_pkcs15_pin_info *);
+extern int	sc_pkcs15init_get_pin_info(struct sc_profile *, int, struct sc_pkcs15_auth_info *);
 extern int	sc_profile_get_pin_retries(struct sc_profile *, int);
 extern int	sc_pkcs15init_get_manufacturer(struct sc_profile *,
 				const char **);

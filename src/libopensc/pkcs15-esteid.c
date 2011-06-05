@@ -173,7 +173,7 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 		static const int esteid_pin_authid[3] = {1, 2, 3};
 		static const int esteid_pin_flags[3] = {0, 0, SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN};
 		
-		struct sc_pkcs15_pin_info pin_info;
+		struct sc_pkcs15_auth_info pin_info;
 		struct sc_pkcs15_object pin_obj;
 
 		memset(&pin_info, 0, sizeof(pin_info));
@@ -187,13 +187,14 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 		
 		pin_info.auth_id.len = 1;
 		pin_info.auth_id.value[0] = esteid_pin_authid[i];
-		pin_info.reference = esteid_pin_ref[i];
-		pin_info.flags = esteid_pin_flags[i];
-		pin_info.type = SC_PKCS15_PIN_TYPE_ASCII_NUMERIC;
-		pin_info.min_length = esteid_pin_min[i];
-		pin_info.stored_length = 12;
-		pin_info.max_length = 12;
-		pin_info.pad_char = '\0';
+		pin_info.auth_type = SC_PKCS15_PIN_AUTH_TYPE_PIN;	
+		pin_info.attrs.pin.reference = esteid_pin_ref[i];
+		pin_info.attrs.pin.flags = esteid_pin_flags[i];
+		pin_info.attrs.pin.type = SC_PKCS15_PIN_TYPE_ASCII_NUMERIC;
+		pin_info.attrs.pin.min_length = esteid_pin_min[i];
+		pin_info.attrs.pin.stored_length = 12;
+		pin_info.attrs.pin.max_length = 12;
+		pin_info.attrs.pin.pad_char = '\0';
 		pin_info.tries_left = (int)tries_left;
 		pin_info.max_tries = 3;
 

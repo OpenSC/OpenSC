@@ -46,12 +46,12 @@ static int enum_pins(struct sc_pkcs15_object ***ret)
 
 static int ask_and_verify_pin(struct sc_pkcs15_object *pin_obj)
 {
-	struct sc_pkcs15_pin_info *pin_info = (struct sc_pkcs15_pin_info *) pin_obj->data;
+	struct sc_pkcs15_auth_info *pin_info = (struct sc_pkcs15_auth_info *) pin_obj->data;
 	int i = 0;
 	char prompt[80];
 	u8 *pass;
 
-	if (pin_info->flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN) {
+	if (pin_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN) {
 		printf("Skipping unblocking pin [%s]\n", pin_obj->label);
 		return 0;
 	}

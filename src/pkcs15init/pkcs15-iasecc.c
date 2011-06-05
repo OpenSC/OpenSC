@@ -648,12 +648,14 @@ iasecc_pkcs15_get_auth_id_from_se(struct sc_pkcs15_card *p15card, unsigned char 
 	LOG_TEST_RET(ctx, rv, "Card CTL error: cannot get CHV reference from SE");
 	pin_ref = rv;
 	for (ii=0; ii<nn_pins; ii++)   {
-		const struct sc_pkcs15_pin_info *pin_info = (const struct sc_pkcs15_pin_info *) pin_objs[ii]->data;
+		const struct sc_pkcs15_auth_info *auth_info = (const struct sc_pkcs15_auth_info *) pin_objs[ii]->data;
 		
-		/* FIXME: make pin reference 'unsigned' */
-		sc_log(ctx, "PIN refs %i/%i", pin_ref, pin_info->reference);
-		if (pin_ref == ((pin_info->reference + 0x100) % 0x100))   {
-			*auth_id = pin_info->auth_id;
+		if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
+			continue;
+		
+		sc_log(ctx, "PIN refs %i/%i", pin_ref, auth_info->attrs.pin.reference);
+		if (pin_ref == ((auth_info->attrs.pin.reference + 0x100) % 0x100))   {
+			*auth_id = auth_info->auth_id;
 			break;
 		}
 	}

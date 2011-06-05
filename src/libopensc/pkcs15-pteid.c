@@ -151,23 +151,24 @@ static int sc_pkcs15emu_pteid_init(sc_pkcs15_card_t * p15card)
 		/* PIN Paths */
 		static const char *pteid_pin_paths[2][3] = { {NULL, "3f005f00", NULL},
 													 {NULL, NULL, NULL} };
-		struct sc_pkcs15_pin_info pin_info;
+		struct sc_pkcs15_auth_info pin_info;
 		struct sc_pkcs15_object pin_obj;
 
 		memset(&pin_info, 0, sizeof(pin_info));
 		memset(&pin_obj, 0, sizeof(pin_obj));
 
+		pin_info.auth_type = SC_PKCS15_PIN_AUTH_TYPE_PIN;
 		pin_info.auth_id.len = 1;
 		pin_info.auth_id.value[0] = pteid_pin_authid[i];
-		pin_info.reference = pteid_pin_ref[type][i];
-		pin_info.flags = SC_PKCS15_PIN_FLAG_NEEDS_PADDING
+		pin_info.attrs.pin.reference = pteid_pin_ref[type][i];
+		pin_info.attrs.pin.flags = SC_PKCS15_PIN_FLAG_NEEDS_PADDING
 						 | SC_PKCS15_PIN_FLAG_INITIALIZED
 						 | SC_PKCS15_PIN_FLAG_CASE_SENSITIVE;
-		pin_info.type = SC_PKCS15_PIN_TYPE_ASCII_NUMERIC;
-		pin_info.min_length = 4;
-		pin_info.stored_length = 8;
-		pin_info.max_length = 8;
-		pin_info.pad_char = type == IAS_CARD ? 0x2F : 0xFF;
+		pin_info.attrs.pin.type = SC_PKCS15_PIN_TYPE_ASCII_NUMERIC;
+		pin_info.attrs.pin.min_length = 4;
+		pin_info.attrs.pin.stored_length = 8;
+		pin_info.attrs.pin.max_length = 8;
+		pin_info.attrs.pin.pad_char = type == IAS_CARD ? 0x2F : 0xFF;
 		pin_info.tries_left = -1;
 		if (pteid_pin_paths[type][i] != NULL)
 			sc_format_path(pteid_pin_paths[type][i], &pin_info.path);

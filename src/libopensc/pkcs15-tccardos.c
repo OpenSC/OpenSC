@@ -166,7 +166,7 @@ static int create_pin_obj(sc_pkcs15_card_t *p15card, int cert,
 	int key_descr, unsigned int pinId)
 {
 	sc_pkcs15_object_t   p15obj;
-	sc_pkcs15_pin_info_t ainfo;
+	sc_pkcs15_auth_info_t ainfo;
 
 	/* init data objects */
 	memset(&p15obj, 0, sizeof(p15obj));
@@ -174,15 +174,16 @@ static int create_pin_obj(sc_pkcs15_card_t *p15card, int cert,
 	/* the authentication object attributes */
 	ainfo.auth_id.value[0] = (u8)pinId;
 	ainfo.auth_id.len   = 1;
-	ainfo.reference = (u8)pinId;
-	ainfo.flags = SC_PKCS15_PIN_FLAG_EXCHANGE_REF_DATA;
+	ainfo.auth_type = SC_PKCS15_PIN_AUTH_TYPE_PIN;
+	ainfo.attrs.pin.reference = (u8)pinId;
+	ainfo.attrs.pin.flags = SC_PKCS15_PIN_FLAG_EXCHANGE_REF_DATA;
 	if ((key_descr & TC_CARDOS_PIN_MASK) == TC_CARDOS_LOCALPIN)
-		ainfo.flags |= SC_PKCS15_PIN_FLAG_LOCAL;
-	ainfo.type  = SC_PKCS15_PIN_TYPE_BCD; /* XXX */
-	ainfo.min_length = 6;    /* XXX */
-	ainfo.stored_length = 8; /* XXX */
-	ainfo.max_length = 8;
-	ainfo.pad_char   = 0;
+		ainfo.attrs.pin.flags |= SC_PKCS15_PIN_FLAG_LOCAL;
+	ainfo.attrs.pin.type  = SC_PKCS15_PIN_TYPE_BCD; /* XXX */
+	ainfo.attrs.pin.min_length = 6;    /* XXX */
+	ainfo.attrs.pin.stored_length = 8; /* XXX */
+	ainfo.attrs.pin.max_length = 8;
+	ainfo.attrs.pin.pad_char   = 0;
 	ainfo.tries_left = 3;    /* XXX */
 	sc_format_path(TC_CARDOS_APP_DF, &ainfo.path);
 	ainfo.path.index = 0;

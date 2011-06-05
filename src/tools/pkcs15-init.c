@@ -100,7 +100,7 @@ static int	do_sanity_check(struct sc_profile *profile);
 static int	init_keyargs(struct sc_pkcs15init_prkeyargs *);
 static void	init_gost_params(struct sc_pkcs15init_keyarg_gost_params *, EVP_PKEY *);
 static int	get_pin_callback(struct sc_profile *profile,
-			int id, const struct sc_pkcs15_pin_info *info,
+			int id, const struct sc_pkcs15_auth_info *info,
 			const char *label,
 			u8 *pinbuf, size_t *pinsize);
 static int	get_key_callback(struct sc_profile *,
@@ -388,7 +388,7 @@ typedef struct sc_ui_hints {
 	 * look like. */
 	const char *		obj_label;	/* O: object (PIN) label */
 	union {
-	    struct sc_pkcs15_pin_info *pin;
+	    struct sc_pkcs15_auth_info *pin;
 	} info;
 } sc_ui_hints_t;
 
@@ -683,12 +683,13 @@ static int
 do_init_app(struct sc_profile *profile)
 {
 	struct sc_pkcs15init_initargs args;
-	sc_pkcs15_pin_info_t	info;
+	sc_pkcs15_auth_info_t	info;
 	sc_ui_hints_t		hints;
 	const char		*role = "so";
 	int			r, so_puk_disabled = 0;
 
 	memset(&hints, 0, sizeof(hints));
+	memset(&info, 0, sizeof(info));
 	hints.usage	= SC_UI_USAGE_NEW_PIN;
 	hints.flags	= SC_UI_PIN_RETYPE
 			   | SC_UI_PIN_CHECK_LENGTH
@@ -709,14 +710,14 @@ do_init_app(struct sc_profile *profile)
 
 	sc_pkcs15init_get_pin_info(profile, SC_PKCS15INIT_SO_PIN, &info);
 
-	if (!(info.flags & SC_PKCS15_PIN_FLAG_SO_PIN))
+	if (!(info.attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN))
 		role = "user";
 	else
 		hints.flags |= SC_UI_PIN_OPTIONAL; /* SO PIN is always optional */
 			
 
-	if ((info.flags & SC_PKCS15_PIN_FLAG_UNBLOCK_DISABLED) 
-			&& (info.flags & SC_PKCS15_PIN_FLAG_SO_PIN))
+	if ((info.attrs.pin.flags & SC_PKCS15_PIN_FLAG_UNBLOCK_DISABLED) 
+			&& (info.attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN))
 		so_puk_disabled = 1;
 
 
@@ -729,7 +730,7 @@ do_init_app(struct sc_profile *profile)
 	if (!so_puk_disabled && opt_pins[2] && !opt_pins[3] && !opt_no_prompt) {
 		sc_pkcs15init_get_pin_info(profile, SC_PKCS15INIT_SO_PUK, &info);
 
-		if (!(info.flags & SC_PKCS15_PIN_FLAG_SO_PIN))
+		if (!(info.attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN))
 			role = "user";
 
 		hints.flags |= SC_UI_PIN_OPTIONAL;
@@ -764,7 +765,7 @@ static int
 do_store_pin(struct sc_profile *profile)
 {
 	struct sc_pkcs15init_pinargs args;
-	sc_pkcs15_pin_info_t	info;
+	sc_pkcs15_auth_info_t	info;
 	sc_ui_hints_t		hints;
 	int			r;
 	const char 		*pin_id;
@@ -801,7 +802,7 @@ do_store_pin(struct sc_profile *profile)
 	args.pin_len = strlen(opt_pins[0]);
 	args.label = opt_label;
 
-	if (!(info.flags & SC_PKCS15_PIN_FLAG_UNBLOCK_DISABLED) 
+	if (!(info.attrs.pin.flags & SC_PKCS15_PIN_FLAG_UNBLOCK_DISABLED) 
 			&& opt_pins[1] == NULL) {
 		sc_pkcs15init_get_pin_info(profile, SC_PKCS15INIT_USER_PUK, &info);
 
@@ -1626,7 +1627,7 @@ static int get_new_pin(sc_ui_hints_t *hints,
  */
 static int
 get_pin_callback(struct sc_profile *profile,
-		int id, const struct sc_pkcs15_pin_info *info,
+		int id, const struct sc_pkcs15_auth_info *info,
 		const char *label,
 		u8 *pinbuf, size_t *pinsize)
 {
@@ -1636,13 +1637,13 @@ get_pin_callback(struct sc_profile *profile,
 	size_t	len = 0;
 	int	allocated = 0;
 
-	if (label) {
+	if (info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
+		return SC_ERROR_NOT_SUPPORTED; 
+
+	if (label)
 		snprintf(namebuf, sizeof(namebuf), "PIN [%s]", label);
-	} else {
-		snprintf(namebuf, sizeof(namebuf),
-			"Unspecified PIN [reference %u]",
-			info->reference);
-	}
+	else
+		snprintf(namebuf, sizeof(namebuf), "Unspecified PIN [reference %u]", info->attrs.pin.reference);
 
 	if (!ignore_cmdline_pins) {
 		if (info->auth_method == SC_AC_SYMBOLIC)   {
@@ -1666,23 +1667,23 @@ get_pin_callback(struct sc_profile *profile,
 			}
 		}
 		else if (info->auth_method == SC_AC_CHV)   {
-			if (!(info->flags & SC_PKCS15_PIN_FLAG_SO_PIN)
-					&& !(info->flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN))    {
+			if (!(info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN)
+					&& !(info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN))    {
 				name = "User PIN";
 				secret = opt_pins[OPT_PIN1 & 3];
 			}
-			else if (!(info->flags & SC_PKCS15_PIN_FLAG_SO_PIN)
-					&& (info->flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN))    {
+			else if (!(info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN)
+					&& (info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN))    {
 				name = "User PUK";
 				secret = opt_pins[OPT_PUK1 & 3];
 			}
-			else if ((info->flags & SC_PKCS15_PIN_FLAG_SO_PIN)
-					&& !(info->flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN))    {
+			else if ((info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN)
+					&& !(info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN))    {
 				name = "Security officer PIN";
 				secret = opt_pins[OPT_PIN2 & 3];
 			}
-			else if ((info->flags & SC_PKCS15_PIN_FLAG_SO_PIN)
-					&& (info->flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN))    {
+			else if ((info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN)
+					&& (info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN))    {
 				name = "Security officer PIN unlock key";
 				secret = opt_pins[OPT_PUK2 & 3];
 			}
@@ -2717,15 +2718,18 @@ ossl_print_errors(void)
  */
 int get_pin(sc_ui_hints_t *hints, char **out)
 {
-	sc_pkcs15_pin_info_t *pin_info;
+	sc_pkcs15_auth_info_t *pin_info;
 	const char	*label;
 	int		flags = hints->flags;
 
 	pin_info = hints->info.pin;
+	if (pin_info && pin_info->auth_type == SC_PKCS15_PIN_AUTH_TYPE_PIN)
+		return SC_ERROR_NOT_SUPPORTED;
+
 	if (!(label = hints->obj_label)) {
 		if (pin_info == NULL) {
 			label = "PIN";
-		} else if (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN) {
+		} else if (pin_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN) {
 			label = "Security Officer PIN";
 		} else {
 			label = "User PIN";
@@ -2758,17 +2762,17 @@ int get_pin(sc_ui_hints_t *hints, char **out)
 			return 0;
 
 		if (pin_info && (flags & SC_UI_PIN_CHECK_LENGTH)) {
-			if (strlen(pin) < pin_info->min_length) {
+			if (strlen(pin) < pin_info->attrs.pin.min_length) {
 				fprintf(stderr,
 					"PIN too short (min %lu characters)\n",
-					(unsigned long) pin_info->min_length);
+					(unsigned long) pin_info->attrs.pin.min_length);
 				continue;
 			}
-			if (pin_info->max_length
-			 && strlen(pin) > pin_info->max_length) {
+			if (pin_info->attrs.pin.max_length
+			 && strlen(pin) > pin_info->attrs.pin.max_length) {
 				fprintf(stderr,
 					"PIN too long (max %lu characters)\n",
-					(unsigned long) pin_info->max_length);
+					(unsigned long) pin_info->attrs.pin.max_length);
 				continue;
 			}
 		}
@@ -2827,11 +2831,13 @@ static int verify_pin(struct sc_pkcs15_card *p15card, char *auth_id_str)
 		}
 
 		for (ii=0;ii<r;ii++)   {
-			struct sc_pkcs15_pin_info *pin_info = (struct sc_pkcs15_pin_info *) objs[ii]->data;
+			struct sc_pkcs15_auth_info *pin_info = (struct sc_pkcs15_auth_info *) objs[ii]->data;
 
-                	if (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN)
+			if (pin_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
 				continue;
-			if (pin_info->flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN)
+                	if (pin_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN)
+				continue;
+			if (pin_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN)
 				continue;
 
 			pin_obj = objs[ii];

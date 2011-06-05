@@ -246,25 +246,29 @@ myeid_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *df
  */
 static int 
 myeid_select_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
-		sc_pkcs15_pin_info_t *pin_info)
+		sc_pkcs15_auth_info_t *auth_info)
 {
 	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
-	if (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN)
+
+	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
+		return SC_ERROR_OBJECT_NOT_VALID;
+
+	if (auth_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN)
 	{
 	  sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL,
 			  "PIN_FLAG_SO_PIN, ref (%d), tries_left (%d)",
-			  pin_info->reference,pin_info->tries_left);	
+			  auth_info->attrs.pin.reference, auth_info->tries_left);	
 	}
 	else	
 	{
 	  sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, 
 			  "PIN_FLAG_PIN, ref (%d), tries_left (%d)",
-			  pin_info->reference, pin_info->tries_left);
+			  auth_info->attrs.pin.reference, auth_info->tries_left);
 
 	}
 
-	if (pin_info->reference <= 0 || pin_info->reference > MYEID_MAX_PINS)
-		pin_info->reference = 1;
+	if (auth_info->attrs.pin.reference <= 0 || auth_info->attrs.pin.reference > MYEID_MAX_PINS)
+		auth_info->attrs.pin.reference = 1;
 		
 	SC_FUNC_RETURN(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, 0);
 }
@@ -281,41 +285,43 @@ myeid_create_pin(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	struct sc_context *ctx = p15card->card->ctx;
 	unsigned char  data[20];
 	struct sc_cardctl_myeid_data_obj data_obj;
-	struct sc_pkcs15_pin_info *pin_info = (struct sc_pkcs15_pin_info *)pin_obj->data;
-        struct sc_pkcs15_pin_info puk_info;
+	struct sc_pkcs15_auth_info *auth_info = (struct sc_pkcs15_auth_info *)pin_obj->data;
+        struct sc_pkcs15_auth_info puk_ainfo;
 	int	r;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "PIN('%s',ref:%i,flags:0x%X,pin_len:%d,puk_len:%d)\n",
-                            pin_obj->label, pin_info->reference, pin_info->flags, pin_len, puk_len);
+                            pin_obj->label, auth_info->attrs.pin.reference, auth_info->attrs.pin.flags, pin_len, puk_len);
 
-	if (pin_info->reference >= MYEID_MAX_PINS)
+	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
+		return SC_ERROR_OBJECT_NOT_VALID;
+	if (auth_info->attrs.pin.reference >= MYEID_MAX_PINS)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	if (pin == NULL || puk == NULL || pin_len < 4 || puk_len < 4)
 		return SC_ERROR_INVALID_PIN_LENGTH;
 
-	sc_profile_get_pin_info(profile, (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN) 
+	sc_profile_get_pin_info(profile, (auth_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN) 
 			? SC_PKCS15INIT_SO_PUK : SC_PKCS15INIT_USER_PUK, 
-			&puk_info);
+			&puk_ainfo);
 
 	memset(data, 0, sizeof(data));
 	/* Make command to add a pin-record */
 	data_obj.P1 = 0x01;
-	data_obj.P2 = pin_info->reference;	/* myeid pin number */
+	data_obj.P2 = auth_info->attrs.pin.reference;	/* myeid pin number */
 	
-	memset(data, pin_info->pad_char, 8);
+	memset(data, auth_info->attrs.pin.pad_char, 8);
 	memcpy(&data[0], (u8 *)pin, pin_len);   /* copy pin */
 
-	memset(&data[8], puk_info.pad_char, 8);
+	memset(&data[8], puk_ainfo.attrs.pin.pad_char, 8);
 	memcpy(&data[8], (u8 *)puk, puk_len);   /* copy puk */
 
-	if(pin_info->tries_left > 0 && pin_info->tries_left < 15)
-		data[16] = pin_info->tries_left;
+	if(auth_info->tries_left > 0 && auth_info->tries_left < 15)
+		data[16] = auth_info->tries_left;
 	else
 		data[16] = 5;	/* default value */
 
-	if(puk_info.tries_left > 0 && puk_info.tries_left < 15)
-		data[17] = puk_info.tries_left;
+	if(puk_ainfo.tries_left > 0 && puk_ainfo.tries_left < 15)
+		data[17] = puk_ainfo.tries_left;
 	else
 		data[17] = 5;	/* default value */
 

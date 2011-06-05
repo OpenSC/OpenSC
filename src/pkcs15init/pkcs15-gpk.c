@@ -162,15 +162,19 @@ gpk_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *df)
  */
 static int
 gpk_select_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
-		sc_pkcs15_pin_info_t *pin_info)
+		sc_pkcs15_auth_info_t *auth_info)
 {
 	int	preferred, current;
 
 	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
-	if ((current = pin_info->reference) < 0)
+
+	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
+		return SC_ERROR_OBJECT_NOT_VALID;
+
+	if ((current = auth_info->attrs.pin.reference) < 0)
 		current = 0;
 
-	if (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN) {
+	if (auth_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN) {
 		preferred = GPK_PIN_SCOPE | 0;
 	} else {
 		preferred = current | GPK_PIN_SCOPE;
@@ -185,7 +189,7 @@ gpk_select_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 
 	if (current > preferred)
 		return SC_ERROR_TOO_MANY_OBJECTS;
-	pin_info->reference = preferred;
+	auth_info->attrs.pin.reference = preferred;
 	SC_FUNC_RETURN(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, 0);
 }
 
@@ -198,14 +202,19 @@ gpk_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *df,
 		const u8 *pin, size_t pin_len,
 		const u8 *puk, size_t puk_len)
 {
-	sc_pkcs15_pin_info_t *pin_info = (sc_pkcs15_pin_info_t *) pin_obj->data;
+	sc_pkcs15_auth_info_t *auth_info = (sc_pkcs15_auth_info_t *) pin_obj->data;
+	struct sc_pkcs15_pin_attributes *pin_attrs = &auth_info->attrs.pin;
 	u8	nulpin[8];
 	int	r;
 
 	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
-	if (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN) {
+
+	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
+		return SC_ERROR_OBJECT_NOT_VALID;
+
+	if (pin_attrs->flags & SC_PKCS15_PIN_FLAG_SO_PIN) {
 		/* SO PIN reference must be 0 */
-		if (pin_info->reference != (GPK_PIN_SCOPE | 0))
+		if (pin_attrs->reference != (GPK_PIN_SCOPE | 0))
 			return SC_ERROR_INVALID_ARGUMENTS;
 	} else {
 		/* PIN references must be even numbers
@@ -214,9 +223,9 @@ gpk_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *df,
 		 * Returning SC_ERROR_INVALID_PIN_REFERENCE will
 		 * tell the caller to pick a different value.
 		 */
-		if ((pin_info->reference & 1) || !(pin_info->reference & GPK_PIN_SCOPE))
+		if ((pin_attrs->reference & 1) || !(pin_attrs->reference & GPK_PIN_SCOPE))
 			return SC_ERROR_INVALID_PIN_REFERENCE;
-		if (pin_info->reference >= (GPK_PIN_SCOPE + GPK_MAX_PINS))
+		if (pin_attrs->reference >= (GPK_PIN_SCOPE + GPK_MAX_PINS))
 			return SC_ERROR_TOO_MANY_OBJECTS;
 	}
 
@@ -238,7 +247,7 @@ gpk_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *df,
 	/* Current PIN is 00:00:00:00:00:00:00:00 */
 	memset(nulpin, 0, sizeof(nulpin));
 	r = sc_change_reference_data(p15card->card, SC_AC_CHV,
-			pin_info->reference,
+			pin_attrs->reference,
 			nulpin, sizeof(nulpin),
 			pin, pin_len, NULL);
 	sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "change  CHV %i", r);
@@ -247,7 +256,7 @@ gpk_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *df,
 
 	/* Current PUK is 00:00:00:00:00:00:00:00 */
 	r = sc_change_reference_data(p15card->card, SC_AC_CHV,
-			pin_info->reference + 1,
+			pin_attrs->reference + 1,
 			nulpin, sizeof(nulpin),
 			puk, puk_len, NULL);
 	sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "change  CHV+1 %i", r);

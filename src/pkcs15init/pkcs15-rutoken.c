@@ -94,18 +94,21 @@ rutoken_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
  */
 static int
 rutoken_select_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
-			sc_pkcs15_pin_info_t *pin_info)
+			sc_pkcs15_auth_info_t *auth_info)
 {
 	int pin_ref;
 	unsigned int so_pin_flag;
 
-	if (!profile || !p15card || !p15card->card || !p15card->card->ctx || !pin_info)
+	if (!profile || !p15card || !p15card->card || !p15card->card->ctx || !auth_info)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	pin_ref = pin_info->reference;
-	so_pin_flag = pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN;
+	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
+		return SC_ERROR_OBJECT_NOT_VALID;
+
+	pin_ref = auth_info->attrs.pin.reference;
+	so_pin_flag = auth_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN;
 
 	sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "PIN reference %i%s\n",
 			pin_ref, so_pin_flag ? " SO PIN flag" : "");
@@ -128,7 +131,7 @@ rutoken_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 			const unsigned char *puk, size_t puk_len)
 {
 	sc_context_t *ctx;
-	sc_pkcs15_pin_info_t *pin_info;
+	sc_pkcs15_auth_info_t *auth_info;
 	size_t i;
 
 	(void)puk; /* no warning */
@@ -146,9 +149,13 @@ rutoken_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 				sc_strerror(SC_ERROR_NOT_SUPPORTED));
 		return SC_ERROR_NOT_SUPPORTED;
 	}
-	pin_info = (sc_pkcs15_pin_info_t *)pin_obj->data;
+
+	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
+                return SC_ERROR_OBJECT_NOT_VALID;
+
+	auth_info = (sc_pkcs15_auth_info_t *)pin_obj->data;
 	for (i = 0; i < sizeof(do_pins)/sizeof(do_pins[0]); ++i)
-		if (pin_info->reference == do_pins[i].id)
+		if (auth_info->attrs.pin.reference == do_pins[i].id)
 		{
 			if (pin_len == sizeof(do_pins[i].pass)
 					&&  memcmp(do_pins[i].pass, pin, pin_len) == 0
@@ -162,7 +169,7 @@ rutoken_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		}
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
 			"PIN reference %i not found in standard (Rutoken) PINs\n",
-			pin_info->reference);
+			auth_info->attrs.pin.reference);
 	return SC_ERROR_NOT_SUPPORTED;
 }
 

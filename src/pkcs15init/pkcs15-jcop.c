@@ -73,13 +73,16 @@ jcop_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *fil
  */
 static int
 jcop_select_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
-                sc_pkcs15_pin_info_t *pin_info) {
+                sc_pkcs15_auth_info_t *auth_info) {
         int     preferred, current;
 
-        if ((current = pin_info->reference) < 0)
+	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
+		return SC_ERROR_OBJECT_NOT_VALID;
+
+        if ((current = auth_info->attrs.pin.reference) < 0)
                 current = 0;
 
-        if (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN) {
+        if (auth_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN) {
 	     preferred = 3;
 	} else {
 	     preferred = current;
@@ -90,7 +93,7 @@ jcop_select_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	}
 	if (current > preferred)
 	     return SC_ERROR_TOO_MANY_OBJECTS;
-        pin_info->reference = preferred;
+        auth_info->attrs.pin.reference = preferred;
         return 0;
 }
 
@@ -103,17 +106,21 @@ jcop_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *df,
                 const unsigned char *pin, size_t pin_len,
                 const unsigned char *puk, size_t puk_len)
 {
-        sc_pkcs15_pin_info_t *pin_info = (sc_pkcs15_pin_info_t *) pin_obj->data;
+        sc_pkcs15_auth_info_t *auth_info = (sc_pkcs15_auth_info_t *) pin_obj->data;
+	struct sc_pkcs15_pin_attributes *pin_attrs = &auth_info->attrs.pin;
         unsigned char   nulpin[16];
         unsigned char   padpin[16];
         int             r;
 
-        if (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN) {
+	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
+		return SC_ERROR_OBJECT_NOT_VALID;
+
+        if (pin_attrs->flags & SC_PKCS15_PIN_FLAG_SO_PIN) {
                 /* SO PIN reference must be 0 */
-                if (pin_info->reference != 3)
+                if (pin_attrs->reference != 3)
                         return SC_ERROR_INVALID_ARGUMENTS;
         } else {
-                if (pin_info->reference >= 3)
+                if (pin_attrs->reference >= 3)
                         return SC_ERROR_TOO_MANY_OBJECTS;
         }
         if (puk != NULL && puk_len > 0) {
@@ -128,13 +135,13 @@ jcop_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *df,
         memset(padpin, 0, sizeof(padpin));
 	memcpy(padpin, pin, pin_len);
         r = sc_change_reference_data(p15card->card, SC_AC_CHV,
-                        pin_info->reference,
+                        pin_attrs->reference,
                         nulpin, sizeof(nulpin),
                         padpin, sizeof(padpin), NULL);
         if (r < 0)
                 return r;
 
-	pin_info->flags &= ~SC_PKCS15_PIN_FLAG_LOCAL;
+	pin_attrs->flags &= ~SC_PKCS15_PIN_FLAG_LOCAL;
         return r;
 }
 

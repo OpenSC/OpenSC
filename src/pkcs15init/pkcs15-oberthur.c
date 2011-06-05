@@ -53,10 +53,10 @@
 #define COSM_TOKEN_FLAG_TOKEN_INITIALIZED	0x0400
 
 static int cosm_create_reference_data(struct sc_profile *, struct sc_pkcs15_card *,
-		struct sc_pkcs15_pin_info *, const unsigned char *, size_t,
+		struct sc_pkcs15_auth_info *, const unsigned char *, size_t,
 		const unsigned char *, size_t);
 static int cosm_update_pin(struct sc_profile *, struct sc_pkcs15_card *,
-		struct sc_pkcs15_pin_info *, const unsigned char *, size_t,
+		struct sc_pkcs15_auth_info *, const unsigned char *, size_t,
 		const unsigned char *, size_t);
 
 static int 
@@ -269,14 +269,13 @@ cosm_create_dir(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 
 static int 
 cosm_create_reference_data(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
-		struct sc_pkcs15_pin_info *pinfo, 
+		struct sc_pkcs15_auth_info *ainfo, 
 		const unsigned char *pin, size_t pin_len,	
 		const unsigned char *puk, size_t puk_len )
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_card *card = p15card->card;
-	struct sc_pkcs15_pin_info profile_pin;
-	struct sc_pkcs15_pin_info profile_puk;
+	struct sc_pkcs15_auth_info profile_auth_pin, profile_auth_puk;
 	struct sc_cardctl_oberthur_createpin_info args;
 	unsigned char *puk_buff = NULL;
 	int rv;
@@ -291,35 +290,38 @@ cosm_create_reference_data(struct sc_profile *profile, struct sc_pkcs15_card *p1
 		return SC_ERROR_INVALID_ARGUMENTS;
 	if (puk && !puk_len)
 		return SC_ERROR_INVALID_ARGUMENTS;
+	if (ainfo->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
+		return SC_ERROR_OBJECT_NOT_VALID;	
 
-	rv = sc_select_file(card, &pinfo->path, NULL);
+	rv = sc_select_file(card, &ainfo->path, NULL);
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Cannot select file");
 
-	sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PIN, &profile_pin);
-	sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PUK, &profile_puk);
+	sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PIN, &profile_auth_pin);
+	sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PUK, &profile_auth_puk);
 
 	memset(&args, 0, sizeof(args));
 	args.type = SC_AC_CHV;
-	args.ref = pinfo->reference;
+	args.ref = ainfo->attrs.pin.reference;
 	args.pin = pin;
 	args.pin_len = pin_len;
 
-	if (!(pinfo->flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN))   {
-		args.pin_tries = profile_pin.tries_left;
-		if (profile_puk.tries_left > 0)   {
+	if (!(ainfo->attrs.pin.flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN))   {
+		args.pin_tries = profile_auth_pin.tries_left;
+		if (profile_auth_puk.tries_left > 0)   {
 			args.puk = oberthur_puk;
 			args.puk_len = sizeof(oberthur_puk);
 			args.puk_tries = 5;
 		}
 	}
 	else   {
-		args.pin_tries = profile_puk.tries_left;
+		args.pin_tries = profile_auth_puk.tries_left;
 	}
 
 	rv = sc_card_ctl(card, SC_CARDCTL_OBERTHUR_CREATE_PIN, &args);
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "'CREATE_PIN' card specific command failed");
 
-	if (!(pinfo->flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN) && (profile_puk.tries_left > 0))   {
+	if (!(ainfo->attrs.pin.flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN) 
+			&& (profile_auth_puk.tries_left > 0))   {
 	        struct sc_file *file = NULL;
 
 		if (sc_profile_get_file(profile, COSM_TITLE"-puk-file", &file))
@@ -344,24 +346,26 @@ cosm_create_reference_data(struct sc_profile *profile, struct sc_pkcs15_card *p1
  */
 static int 
 cosm_update_pin(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
-		struct sc_pkcs15_pin_info *pinfo, const unsigned char *pin, size_t pin_len,
+		struct sc_pkcs15_auth_info *ainfo, const unsigned char *pin, size_t pin_len,
 		const unsigned char *puk, size_t puk_len )
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	int rv;
 	
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "ref %i; flags 0x%X", pinfo->reference, pinfo->flags);
+	if (ainfo->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
+		return SC_ERROR_OBJECT_NOT_VALID;	
 
-	if (pinfo->flags & SC_PKCS15_PIN_FLAG_SO_PIN)   {
-		if (pinfo->reference != 4)
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "ref %i; flags 0x%X", ainfo->attrs.pin.reference, ainfo->attrs.pin.flags);
+
+	if (ainfo->attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN)   {
+		if (ainfo->attrs.pin.reference != 4)
 			SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_PIN_REFERENCE, "cosm_update_pin() invalid SOPIN reference");
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Update SOPIN ignored");
 		rv = SC_SUCCESS;
 	}
 	else   {
-		rv = cosm_create_reference_data(profile, p15card, pinfo, 
-				pin, pin_len, puk, puk_len);
+		rv = cosm_create_reference_data(profile, p15card, ainfo, pin, pin_len, puk, puk_len);
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "cosm_update_pin() failed to change PIN");
 
 		rv = cosm_write_tokeninfo(p15card, profile, NULL,
@@ -378,33 +382,39 @@ cosm_update_pin(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 
 static int
 cosm_select_pin_reference(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
-		struct sc_pkcs15_pin_info *pin_info) 
+		struct sc_pkcs15_auth_info *auth_info) 
 {
 	struct sc_context *ctx = p15card->card->ctx;
+	struct sc_pkcs15_pin_attributes *pin_attrs;
 	struct sc_file *pinfile;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "ref %i; flags %X", pin_info->reference, pin_info->flags);
+	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
+		return SC_ERROR_OBJECT_NOT_VALID;
+
+	pin_attrs = &auth_info->attrs.pin;
+
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "ref %i; flags %X", pin_attrs->reference, pin_attrs->flags);
 	if (sc_profile_get_file(profile, COSM_TITLE "-AppDF", &pinfile) < 0) {
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Profile doesn't define \"%s\"", COSM_TITLE "-AppDF");
 		return SC_ERROR_INCONSISTENT_PROFILE;
 	}
 
-	if (pin_info->flags & SC_PKCS15_PIN_FLAG_LOCAL)
-		pin_info->path = pinfile->path;
+	if (pin_attrs->flags & SC_PKCS15_PIN_FLAG_LOCAL)
+		auth_info->path = pinfile->path;
 
 	sc_file_free(pinfile);
 	
-	if (pin_info->reference <= 0)   {
-		if (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN)   
-			pin_info->reference = 4;
-		else if (pin_info->flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN)
-			pin_info->reference = 4;	
+	if (pin_attrs->reference <= 0)   {
+		if (pin_attrs->flags & SC_PKCS15_PIN_FLAG_SO_PIN)   
+			pin_attrs->reference = 4;
+		else if (pin_attrs->flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN)
+			pin_attrs->reference = 4;	
 		else  
-			pin_info->reference = 1;
+			pin_attrs->reference = 1;
 
-		if (pin_info->flags & SC_PKCS15_PIN_FLAG_LOCAL)
-			pin_info->reference |= 0x80;
+		if (pin_attrs->flags & SC_PKCS15_PIN_FLAG_LOCAL)
+			pin_attrs->reference |= 0x80;
 	}
 
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
@@ -421,42 +431,48 @@ cosm_create_pin(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 		const unsigned char *puk, size_t puk_len)
 {
 	struct sc_context *ctx = p15card->card->ctx;
-	struct sc_pkcs15_pin_info *pin_info = (struct sc_pkcs15_pin_info *) pin_obj->data;
+	struct sc_pkcs15_auth_info *auth_info = (struct sc_pkcs15_auth_info *) pin_obj->data;
+	struct sc_pkcs15_pin_attributes *pin_attrs;
 	struct sc_file *pin_file;
 	int rv = 0;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "create '%s'; ref 0x%X; flags %X", pin_obj->label, pin_info->reference, pin_info->flags);
+	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
+		return SC_ERROR_OBJECT_NOT_VALID;
+
+	pin_attrs = &auth_info->attrs.pin;
+
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "create '%s'; ref 0x%X; flags %X", pin_obj->label, pin_attrs->reference, pin_attrs->flags);
 	if (sc_profile_get_file(profile, COSM_TITLE "-AppDF", &pin_file) < 0)
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INCONSISTENT_PROFILE, "\""COSM_TITLE"-AppDF\" not defined");
 
-	if (pin_info->flags & SC_PKCS15_PIN_FLAG_LOCAL)
-		pin_info->path = pin_file->path;
+	if (pin_attrs->flags & SC_PKCS15_PIN_FLAG_LOCAL)
+		auth_info->path = pin_file->path;
 
 	sc_file_free(pin_file);
 	
-	if (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN)   {
-		if (pin_info->flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN)   {
+	if (pin_attrs->flags & SC_PKCS15_PIN_FLAG_SO_PIN)   {
+		if (pin_attrs->flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN)   {
 			SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED, "SOPIN unblocking is not supported");
 		}
 		else   {
-			if (pin_info->reference != 4)  
+			if (pin_attrs->reference != 4)  
 				SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_PIN_REFERENCE, "Invalid SOPIN reference");
 		}
 	} 
 	else {
-		if (pin_info->flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN)   {
-			if (pin_info->reference != 0x84)  
+		if (pin_attrs->flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN)   {
+			if (pin_attrs->reference != 0x84)  
 				SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_PIN_REFERENCE, "Invalid User PUK reference");
 		}
 		else   {
-			if (pin_info->reference != 0x81)
+			if (pin_attrs->reference != 0x81)
 				SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_PIN_REFERENCE, "Invalid User PIN reference");
 		}
 	}
 
 	if (pin && pin_len)   {
-		rv = cosm_update_pin(profile, p15card, pin_info, pin, pin_len,  puk, puk_len);
+		rv = cosm_update_pin(profile, p15card, auth_info, pin, pin_len,  puk, puk_len);
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Update PIN failed");
 	}
 

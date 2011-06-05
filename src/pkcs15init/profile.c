@@ -488,7 +488,7 @@ sc_profile_free(struct sc_profile *profile)
 
 void
 sc_profile_get_pin_info(struct sc_profile *profile,
-		int id, struct sc_pkcs15_pin_info *info)
+		int id, struct sc_pkcs15_auth_info *info)
 {
 	struct pin_info	*pi;
 
@@ -516,7 +516,9 @@ sc_profile_get_pin_id(struct sc_profile *profile,
 	struct pin_info	*pi;
 
 	for (pi = profile->pin_list; pi; pi = pi->next) {
-		if (pi->pin.reference == (int)reference) {
+		if (pi->pin.auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
+			continue;
+		if (pi->pin.attrs.pin.reference == (int)reference) {
 			*id = pi->id;
 			return 0;
 		}
@@ -778,7 +780,7 @@ sc_profile_instantiate_file(sc_profile_t *profile, struct file_info *ft,
 int
 sc_profile_get_pin_id_by_reference(struct sc_profile *profile, 
 		unsigned auth_method, int reference, 
-		struct sc_pkcs15_pin_info *pin_info)
+		struct sc_pkcs15_auth_info *auth_info)
 {
 	struct pin_info *pinfo;
 
@@ -788,14 +790,16 @@ sc_profile_get_pin_id_by_reference(struct sc_profile *profile,
 				continue;
 		}
 		else   {
+			if (pinfo->pin.auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
+				continue;
 			if (pinfo->pin.auth_method != auth_method)
 				continue;
-			if (pinfo->pin.reference != reference)
+			if (pinfo->pin.attrs.pin.reference != reference)
 				continue;
 		}
 
-		if (pin_info)
-			*pin_info = pinfo->pin;
+		if (auth_info)
+			*auth_info = pinfo->pin;
 		return pinfo->id;
 	}
 
@@ -1490,15 +1494,15 @@ new_pin(struct sc_profile *profile, int id)
 	if (pi == NULL)
 		return NULL;
 	pi->id = id;
+	pi->pin.auth_type = SC_PKCS15_PIN_AUTH_TYPE_PIN;
 	pi->pin.auth_method = SC_AC_CHV;
-	pi->pin.type = (unsigned int)-1;
-	pi->pin.flags = 0x32;
-	pi->pin.max_length = 0;
-	pi->pin.min_length = 0;
-	pi->pin.stored_length = 0;
-	pi->pin.pad_char = 0xA5;
-	pi->pin.magic = SC_PKCS15_PIN_MAGIC;
-	pi->pin.reference = -1;
+	pi->pin.attrs.pin.type = (unsigned int)-1;
+	pi->pin.attrs.pin.flags = 0x32;
+	pi->pin.attrs.pin.max_length = 0;
+	pi->pin.attrs.pin.min_length = 0;
+	pi->pin.attrs.pin.stored_length = 0;
+	pi->pin.attrs.pin.pad_char = 0xA5;
+	pi->pin.attrs.pin.reference = -1;
 	pi->pin.tries_left = 3;
 
 	*tail = pi;
@@ -1507,22 +1511,25 @@ new_pin(struct sc_profile *profile, int id)
 
 static void set_pin_defaults(struct sc_profile *profile, struct pin_info *pi)
 {
-	struct sc_pkcs15_pin_info *info = &pi->pin;
+	struct sc_pkcs15_auth_info *info = &pi->pin;
+	struct sc_pkcs15_pin_attributes *pin_attrs = &info->attrs.pin;
 
-	if (info->type == (unsigned int) -1)
-		info->type = profile->pin_encoding;
-	if (info->max_length == 0)
-		info->max_length = profile->pin_maxlen;
-	if (info->min_length == 0)
-		info->min_length = profile->pin_minlen;
-	if (info->stored_length == 0) {
-		info->stored_length = profile->pin_maxlen;
+	info->auth_type = SC_PKCS15_PIN_AUTH_TYPE_PIN;
+
+	if (pin_attrs->type == (unsigned int) -1)
+		pin_attrs->type = profile->pin_encoding;
+	if (pin_attrs->max_length == 0)
+		pin_attrs->max_length = profile->pin_maxlen;
+	if (pin_attrs->min_length == 0)
+		pin_attrs->min_length = profile->pin_minlen;
+	if (pin_attrs->stored_length == 0) {
+		pin_attrs->stored_length = profile->pin_maxlen;
 		/* BCD encoded PIN takes half the space */
-		if (info->type == SC_PKCS15_PIN_TYPE_BCD)
-			info->stored_length = (info->stored_length + 1) / 2;
+		if (pin_attrs->type == SC_PKCS15_PIN_TYPE_BCD)
+			pin_attrs->stored_length = (pin_attrs->stored_length + 1) / 2;
 	}
-	if (info->pad_char == 0xA5)
-		info->pad_char = profile->pin_pad_char;
+	if (pin_attrs->pad_char == 0xA5)
+		pin_attrs->pad_char = profile->pin_pad_char;
 }
 
 static int
@@ -1557,7 +1564,9 @@ do_pin_type(struct state *cur, int argc, char **argv)
 
 	if (map_str2int(cur, argv[0], &type, pinTypeNames))
 		return 1;
-	cur->pin->pin.type = type;
+	if (cur->pin->pin.auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
+		return 1;
+	cur->pin->pin.attrs.pin.type = type;
 	return 0;
 }
 
@@ -1568,7 +1577,9 @@ do_pin_reference(struct state *cur, int argc, char **argv)
 
 	if (get_uint(cur, argv[0], &reference))
 		return 1;
-	cur->pin->pin.reference = reference;
+	if (cur->pin->pin.auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
+		return 1;
+	cur->pin->pin.attrs.pin.reference = reference;
 	return 0;
 }
 
@@ -1586,7 +1597,9 @@ do_pin_minlength(struct state *cur, int argc, char **argv)
 
 	if (get_uint(cur, argv[0], &len))
 		return 1;
-	cur->pin->pin.min_length = len;
+	if (cur->pin->pin.auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
+		return 1;
+	cur->pin->pin.attrs.pin.min_length = len;
 	return 0;
 }
 
@@ -1597,7 +1610,9 @@ do_pin_maxlength(struct state *cur, int argc, char **argv)
 
 	if (get_uint(cur, argv[0], &len))
 		return 1;
-	cur->pin->pin.max_length = len;
+	if (cur->pin->pin.auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
+		return 1;
+	cur->pin->pin.attrs.pin.max_length = len;
 	return 0;
 }
 
@@ -1608,7 +1623,9 @@ do_pin_storedlength(struct state *cur, int argc, char **argv)
 
 	if (get_uint(cur, argv[0], &len))
 		return 1;
-	cur->pin->pin.stored_length = len;
+	if (cur->pin->pin.auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
+		return 1;
+	cur->pin->pin.attrs.pin.stored_length = len;
 	return 0;
 }
 
@@ -1618,11 +1635,14 @@ do_pin_flags(struct state *cur, int argc, char **argv)
 	unsigned int	flags;
 	int		i, r;
 
-	cur->pin->pin.flags = 0;
+	if (cur->pin->pin.auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
+		return -1;
+
+	cur->pin->pin.attrs.pin.flags = 0;
 	for (i = 0; i < argc; i++) {
 		if ((r = map_str2int(cur, argv[i], &flags, pinFlagNames)) < 0)
 			return r;
-		cur->pin->pin.flags |= flags;
+		cur->pin->pin.attrs.pin.flags |= flags;
 	}
 
 	return 0;

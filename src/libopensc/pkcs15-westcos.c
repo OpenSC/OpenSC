@@ -72,7 +72,7 @@ static int sc_pkcs15emu_westcos_init(sc_pkcs15_card_t * p15card)
 	{
 		for (i = 0; i < 1; i++) {
 			unsigned int flags;
-			struct sc_pkcs15_pin_info pin_info;
+			struct sc_pkcs15_auth_info pin_info;
 			struct sc_pkcs15_object pin_obj;
 			memset(&pin_info, 0, sizeof(pin_info));
 			memset(&pin_obj, 0, sizeof(pin_obj));
@@ -82,15 +82,16 @@ static int sc_pkcs15emu_westcos_init(sc_pkcs15_card_t * p15card)
 					SC_PKCS15_PIN_FLAG_UNBLOCK_DISABLED |
 					SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN;
 			}
+			pin_info.auth_type = SC_PKCS15_PIN_AUTH_TYPE_PIN;
 			pin_info.auth_id.len = 1;
 			pin_info.auth_id.value[0] = i + 1;
-			pin_info.reference = i;
-			pin_info.flags = flags;
-			pin_info.type = SC_PKCS15_PIN_TYPE_BCD;
-			pin_info.min_length = 4;
-			pin_info.stored_length = 8;
-			pin_info.max_length = 8;
-			pin_info.pad_char = 0xff;
+			pin_info.attrs.pin.reference = i;
+			pin_info.attrs.pin.flags = flags;
+			pin_info.attrs.pin.type = SC_PKCS15_PIN_TYPE_BCD;
+			pin_info.attrs.pin.min_length = 4;
+			pin_info.attrs.pin.stored_length = 8;
+			pin_info.attrs.pin.max_length = 8;
+			pin_info.attrs.pin.pad_char = 0xff;
 			pin_info.path = path;
 			pin_info.tries_left = -1;
 			if (i == 1)

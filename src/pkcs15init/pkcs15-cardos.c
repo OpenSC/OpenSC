@@ -50,7 +50,7 @@ struct tlv {
  * Local functions
  */
 static int	cardos_store_pin(sc_profile_t *profile, sc_card_t *card,
-			sc_pkcs15_pin_info_t *pin_info, int puk_id,
+			sc_pkcs15_auth_info_t *auth_info, int puk_id,
 			const u8 *pin, size_t pin_len);
 static int	cardos_create_sec_env(sc_profile_t *, sc_card_t *,
 			unsigned int, unsigned int);
@@ -152,14 +152,17 @@ cardos_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *d
  */
 static int
 cardos_select_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
-		sc_pkcs15_pin_info_t *pin_info)
+		sc_pkcs15_auth_info_t *auth_info)
 {
 	int	preferred, current;
 
-	if ((current = pin_info->reference) < 0)
+	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
+		return SC_ERROR_OBJECT_NOT_VALID;
+
+	if ((current = auth_info->attrs.pin.reference) < 0)
 		current = CARDOS_PIN_ID_MIN;
 
-	if (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN) {
+	if (auth_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN) {
 		preferred = 1;
 	} else {
 		preferred = current;
@@ -172,7 +175,7 @@ cardos_select_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 
 	if (current > preferred || preferred > CARDOS_PIN_ID_MAX)
 		return SC_ERROR_TOO_MANY_OBJECTS;
-	pin_info->reference = preferred;
+	auth_info->attrs.pin.reference = preferred;
 	return 0;
 }
 
@@ -185,7 +188,7 @@ cardos_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *d
 		const u8 *pin, size_t pin_len,
 		const u8 *puk, size_t puk_len)
 {
-	sc_pkcs15_pin_info_t *pin_info = (sc_pkcs15_pin_info_t *) pin_obj->data;
+	sc_pkcs15_auth_info_t *auth_info = (sc_pkcs15_auth_info_t *) pin_obj->data;
 	struct sc_card *card = p15card->card;
 	unsigned int	puk_id = CARDOS_AC_NEVER;
 	int		r;
@@ -193,24 +196,27 @@ cardos_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *d
 	if (!pin || !pin_len)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
+	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
+		return SC_ERROR_OBJECT_NOT_VALID;
+
 	r = sc_select_file(card, &df->path, NULL);
 	if (r < 0)
 		return r;
 
 	if (puk && puk_len) {
-		struct sc_pkcs15_pin_info puk_info;
+		struct sc_pkcs15_auth_info puk_ainfo;
 
 		sc_profile_get_pin_info(profile,
-				SC_PKCS15INIT_USER_PUK, &puk_info);
-		puk_info.reference = puk_id = pin_info->reference + 1;
+				SC_PKCS15INIT_USER_PUK, &puk_ainfo);
+		puk_ainfo.attrs.pin.reference = puk_id = auth_info->attrs.pin.reference + 1;
 		r = cardos_store_pin(profile, card,
-				&puk_info, CARDOS_AC_NEVER,
+				&puk_ainfo, CARDOS_AC_NEVER,
 				puk, puk_len);
 	}
 
 	if (r >= 0) {
 		r = cardos_store_pin(profile, card,
-				pin_info, puk_id, pin, pin_len);
+				auth_info, puk_id, pin, pin_len);
 	}
 
 	return r;
@@ -399,7 +405,7 @@ out:
  */
 static int
 cardos_store_pin(sc_profile_t *profile, sc_card_t *card,
-		sc_pkcs15_pin_info_t *pin_info, int puk_id,
+		sc_pkcs15_auth_info_t *auth_info, int puk_id,
 		const u8 *pin, size_t pin_len)
 {
 	struct sc_cardctl_cardos_obj_info args;
@@ -408,6 +414,9 @@ cardos_store_pin(sc_profile_t *profile, sc_card_t *card,
 	struct tlv	tlv;
 	unsigned int	attempts, minlen, maxlen;
 	int		r;
+
+	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
+		return SC_ERROR_OBJECT_NOT_VALID;
 
 	/* We need to do padding because pkcs15-lib.c does it.
 	 * Would be nice to have a flag in the profile that says
@@ -423,15 +432,15 @@ cardos_store_pin(sc_profile_t *profile, sc_card_t *card,
 		pinpadded[pin_len++] = profile->pin_pad_char;
 	pin = pinpadded;
 
-	attempts = pin_info->tries_left;
-	minlen = pin_info->min_length;
+	attempts = auth_info->tries_left;
+	minlen = auth_info->attrs.pin.min_length;
 
 	tlv_init(&tlv, buffer, sizeof(buffer));
 
 	/* object address: class, id */
 	tlv_next(&tlv, 0x83);
 	tlv_add(&tlv, 0x00);		/* class byte: usage TEST, k=0 */
-	tlv_add(&tlv, pin_info->reference);
+	tlv_add(&tlv, auth_info->attrs.pin.reference);
 
 	/* parameters */
 	tlv_next(&tlv, 0x85);
@@ -461,7 +470,7 @@ cardos_store_pin(sc_profile_t *profile, sc_card_t *card,
 	/* AC conditions */
 	tlv_next(&tlv, 0x86);
 	tlv_add(&tlv, 0x00);			/* use: always */
-	tlv_add(&tlv, pin_info->reference);	/* change: PIN */
+	tlv_add(&tlv, auth_info->attrs.pin.reference);	/* change: PIN */
 	tlv_add(&tlv, puk_id);			/* unblock: PUK */
 
 	/* data: PIN */

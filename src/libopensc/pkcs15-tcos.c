@@ -189,20 +189,21 @@ static int insert_pin(
 	sc_card_t *card=p15card->card;
 	sc_context_t *ctx=p15card->card->ctx;
 	sc_file_t *f;
-	struct sc_pkcs15_pin_info pin_info;
+	struct sc_pkcs15_auth_info pin_info;
 	struct sc_pkcs15_object pin_obj;
 	int r;
 
 	memset(&pin_info, 0, sizeof(pin_info));
 	pin_info.auth_id.len      = 1;
 	pin_info.auth_id.value[0] = id;
-	pin_info.reference        = pin_reference;
-	pin_info.flags            = pin_flags;
-	pin_info.type             = SC_PKCS15_PIN_TYPE_ASCII_NUMERIC;
-	pin_info.min_length       = min_length;
-	pin_info.stored_length    = 16;
-	pin_info.max_length       = 16;
-	pin_info.pad_char         = '\0';
+	pin_info.auth_type = SC_PKCS15_PIN_AUTH_TYPE_PIN;
+	pin_info.attrs.pin.reference        = pin_reference;
+	pin_info.attrs.pin.flags            = pin_flags;
+	pin_info.attrs.pin.type             = SC_PKCS15_PIN_TYPE_ASCII_NUMERIC;
+	pin_info.attrs.pin.min_length       = min_length;
+	pin_info.attrs.pin.stored_length    = 16;
+	pin_info.attrs.pin.max_length       = 16;
+	pin_info.attrs.pin.pad_char         = '\0';
 	sc_format_path(path, &pin_info.path);
 
 	memset(&pin_obj, 0, sizeof(pin_obj));

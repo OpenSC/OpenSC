@@ -185,21 +185,24 @@ cflex_create_domain(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
  */
 static int
 cflex_select_pin_reference(sc_profile_t *profike, sc_pkcs15_card_t *p15card,
-		sc_pkcs15_pin_info_t *pin_info)
+		sc_pkcs15_auth_info_t *auth_info)
 {
 	int	preferred;
 
-	if (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN) {
+	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
+		return SC_ERROR_OBJECT_NOT_VALID;
+
+	if (auth_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN) {
 		preferred = 2;
 	} else {
 		preferred = 1;
 	}
-	if (pin_info->reference <= preferred) {
-		pin_info->reference = preferred;
+	if (auth_info->attrs.pin.reference <= preferred) {
+		auth_info->attrs.pin.reference = preferred;
 		return 0;
 	}
 
-	if (pin_info->reference > 2)
+	if (auth_info->attrs.pin.reference > 2)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	/* Caller, please select a different PIN reference */
@@ -217,34 +220,39 @@ cflex_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *df
 		const u8 *puk, size_t puk_len)
 {
 	struct sc_context *ctx = p15card->card->ctx;
-	sc_pkcs15_pin_info_t *pin_info = (sc_pkcs15_pin_info_t *) pin_obj->data;
+	sc_pkcs15_auth_info_t *auth_info = (sc_pkcs15_auth_info_t *) pin_obj->data;
+	struct sc_pkcs15_pin_attributes *pin_attrs = &auth_info->attrs.pin;
 	sc_file_t	*dummies[2];
 	int		ndummies, pin_type, puk_type, r;
 	sc_file_t       *file;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
+
+	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
+		return SC_ERROR_OBJECT_NOT_VALID;
+
 	/* If the profile doesn't specify a reference for this PIN, guess */
-	if (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN) {
+	if (pin_attrs->flags & SC_PKCS15_PIN_FLAG_SO_PIN) {
 		pin_type = SC_PKCS15INIT_SO_PIN;
 		puk_type = SC_PKCS15INIT_SO_PUK;
-		if (pin_info->reference != 2)
+		if (pin_attrs->reference != 2)
 			return SC_ERROR_INVALID_ARGUMENTS;
 	} else {
 		pin_type = SC_PKCS15INIT_USER_PIN;
 		puk_type = SC_PKCS15INIT_USER_PUK;
-		if (pin_info->reference != 1)
+		if (pin_attrs->reference != 1)
 			return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
 	/* Get file definition from the profile */
-	if (sc_profile_get_file(profile, (pin_info->reference == 1)? "CHV1" : "CHV2", &file) < 0
+	if (sc_profile_get_file(profile, (pin_attrs->reference == 1)? "CHV1" : "CHV2", &file) < 0
 			&& sc_profile_get_file(profile, "CHV", &file) < 0)
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_FILE_NOT_FOUND, "profile does not define pin file ACLs");
 
 	ndummies = cflex_create_dummy_chvs(profile, p15card, file, SC_AC_OP_CREATE, dummies);
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, ndummies, "Unable to create dummy CHV file");
 
-	r = cflex_create_pin_file(profile, p15card, &df->path, pin_info->reference,
+	r = cflex_create_pin_file(profile, p15card, &df->path, pin_attrs->reference,
 			pin, pin_len, sc_profile_get_pin_retries(profile, pin_type),
 			puk, puk_len, sc_profile_get_pin_retries(profile, puk_type),
 			NULL, 0);

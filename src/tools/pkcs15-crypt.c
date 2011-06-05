@@ -124,8 +124,11 @@ static char * get_pin(struct sc_pkcs15_object *obj)
 {
 	char buf[80];
 	char *pincode;
-	struct sc_pkcs15_pin_info *pinfo = (struct sc_pkcs15_pin_info *) obj->data;
-	
+	struct sc_pkcs15_auth_info *pinfo = (struct sc_pkcs15_auth_info *) obj->data;
+
+	if (pinfo->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
+		return NULL;
+
 	if (opt_pincode != NULL) {
 		if (strcmp(opt_pincode, "-") == 0)
 			return readpin_stdin();
@@ -138,8 +141,8 @@ static char * get_pin(struct sc_pkcs15_object *obj)
 		pincode = getpass(buf);
 		if (strlen(pincode) == 0)
 			return NULL;
-		if (strlen(pincode) < pinfo->min_length ||
-		    strlen(pincode) > pinfo->max_length)
+		if (strlen(pincode) < pinfo->attrs.pin.min_length ||
+		    strlen(pincode) > pinfo->attrs.pin.max_length)
 		    	continue;
 		return strdup(pincode);
 	}

@@ -56,7 +56,7 @@ struct rsakey {
  * Local functions
  */
 static int	incrypto34_store_pin(sc_profile_t *profile, sc_card_t *card,
-			sc_pkcs15_pin_info_t *pin_info, int puk_id,
+			sc_pkcs15_auth_info_t *auth_info, int puk_id,
 			const u8 *pin, size_t pin_len);
 static int	incrypto34_create_sec_env(sc_profile_t *, sc_card_t *,
 			unsigned int, unsigned int);
@@ -172,14 +172,17 @@ incrypto34_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_
  */
 static int
 incrypto34_select_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
-		sc_pkcs15_pin_info_t *pin_info)
+		sc_pkcs15_auth_info_t *auth_info)
 {
 	int	preferred, current;
 
-	if ((current = pin_info->reference) < 0)
+	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
+		return SC_ERROR_OBJECT_NOT_VALID;
+
+	if ((current = auth_info->attrs.pin.reference) < 0)
 		current = INCRYPTO34_PIN_ID_MIN;
 
-	if (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN) {
+	if (auth_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN) {
 		preferred = 1;
 	} else {
 		preferred = current;
@@ -192,7 +195,7 @@ incrypto34_select_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 
 	if (current > preferred || preferred > INCRYPTO34_PIN_ID_MAX)
 		return SC_ERROR_TOO_MANY_OBJECTS;
-	pin_info->reference = preferred;
+	auth_info->attrs.pin.reference = preferred;
 	return 0;
 }
 
@@ -205,31 +208,34 @@ incrypto34_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		const u8 *pin, size_t pin_len,
 		const u8 *puk, size_t puk_len)
 {
-	sc_pkcs15_pin_info_t *pin_info = (sc_pkcs15_pin_info_t *) pin_obj->data;
+	sc_pkcs15_auth_info_t *auth_info = (sc_pkcs15_auth_info_t *) pin_obj->data;
 	unsigned int	puk_id = INCRYPTO34_AC_NEVER;
 	int		r;
 
 	if (!pin || !pin_len)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
+	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
+		return SC_ERROR_OBJECT_NOT_VALID;
+
 	r = sc_select_file(p15card->card, &df->path, NULL);
 	if (r < 0)
 		return r;
 
 	if (puk && puk_len) {
-		struct sc_pkcs15_pin_info puk_info;
+		struct sc_pkcs15_auth_info puk_ainfo;
 
 		sc_profile_get_pin_info(profile,
-				SC_PKCS15INIT_USER_PUK, &puk_info);
-		puk_info.reference = puk_id = pin_info->reference + 1;
+				SC_PKCS15INIT_USER_PUK, &puk_ainfo);
+		puk_ainfo.attrs.pin.reference = puk_id = auth_info->attrs.pin.reference + 1;
 		r = incrypto34_store_pin(profile, p15card->card,
-				&puk_info, INCRYPTO34_AC_NEVER,
+				&puk_ainfo, INCRYPTO34_AC_NEVER,
 				puk, puk_len);
 	}
 
 	if (r >= 0) {
 		r = incrypto34_store_pin(profile, p15card->card,
-				pin_info, puk_id,
+				auth_info, puk_id,
 				pin, pin_len);
 	}
 
@@ -383,7 +389,7 @@ out:	if (delete_it) {
  */
 static int
 incrypto34_store_pin(sc_profile_t *profile, sc_card_t *card,
-		sc_pkcs15_pin_info_t *pin_info, int puk_id,
+		sc_pkcs15_auth_info_t *auth_info, int puk_id,
 		const u8 *pin, size_t pin_len)
 {
 	struct sc_cardctl_incrypto34_obj_info args;
@@ -391,6 +397,9 @@ incrypto34_store_pin(sc_profile_t *profile, sc_card_t *card,
 	unsigned char	pinpadded[16];
 	struct tlv	tlv;
 	unsigned int	attempts, minlen, maxlen;
+
+	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
+		return SC_ERROR_OBJECT_NOT_VALID;
 
 	/* We need to do padding because pkcs15-lib.c does it.
 	 * Would be nice to have a flag in the profile that says
@@ -403,15 +412,15 @@ incrypto34_store_pin(sc_profile_t *profile, sc_card_t *card,
 		pinpadded[pin_len++] = profile->pin_pad_char;
 	pin = pinpadded;
 
-	attempts = pin_info->tries_left;
-	minlen = pin_info->min_length;
+	attempts = auth_info->tries_left;
+	minlen = auth_info->attrs.pin.min_length;
 
 	tlv_init(&tlv, buffer, sizeof(buffer));
 
 	/* object address: class, id */
 	tlv_next(&tlv, 0x83);
 	tlv_add(&tlv, 0x00);		/* class byte: usage TEST, k=0 */
-	tlv_add(&tlv, pin_info->reference);
+	tlv_add(&tlv, auth_info->attrs.pin.reference);
 
 	/* parameters */
 	tlv_next(&tlv, 0x85);
@@ -439,7 +448,7 @@ incrypto34_store_pin(sc_profile_t *profile, sc_card_t *card,
 	/* AC conditions */
 	tlv_next(&tlv, 0x86);
 	tlv_add(&tlv, 0x00);			/* use: always */
-	tlv_add(&tlv, pin_info->reference);	/* change: PIN */
+	tlv_add(&tlv, auth_info->attrs.pin.reference);	/* change: PIN */
 	tlv_add(&tlv, puk_id);			/* unblock: PUK */
 	tlv_add(&tlv, 0xFF);			/*RFU*/
 	tlv_add(&tlv, 0xFF);			/*RFU*/

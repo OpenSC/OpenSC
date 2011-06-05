@@ -324,11 +324,11 @@ static sc_pkcs15_df_t * sc_pkcs15emu_get_df(sc_pkcs15_card_t *p15card,
 }
 
 int sc_pkcs15emu_add_pin_obj(sc_pkcs15_card_t *p15card,
-	const sc_pkcs15_object_t *obj, const sc_pkcs15_pin_info_t *in_pin)
+	const sc_pkcs15_object_t *obj, const sc_pkcs15_auth_info_t *in_pin)
 {
-	sc_pkcs15_pin_info_t pin = *in_pin;
+	sc_pkcs15_auth_info_t pin = *in_pin;
 
-	pin.magic = SC_PKCS15_PIN_MAGIC;
+	pin.auth_type = SC_PKCS15_PIN_AUTH_TYPE_PIN;
 	if(!pin.auth_method) /* or SC_AC_NONE */
 		pin.auth_method = SC_AC_CHV;
 
@@ -412,7 +412,7 @@ int sc_pkcs15emu_object_add(sc_pkcs15_card_t *p15card, unsigned int type,
 	switch (type & SC_PKCS15_TYPE_CLASS_MASK) {
 	case SC_PKCS15_TYPE_AUTH:
 		df_type  = SC_PKCS15_AODF;
-		data_len = sizeof(struct sc_pkcs15_pin_info);
+		data_len = sizeof(struct sc_pkcs15_auth_info);
 		break;
 	case SC_PKCS15_TYPE_PRKEY:
 		df_type  = SC_PKCS15_PRKDF;

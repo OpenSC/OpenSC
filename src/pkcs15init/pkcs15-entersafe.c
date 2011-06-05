@@ -246,14 +246,18 @@ static int entersafe_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 }
 
 static int entersafe_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
-								   sc_pkcs15_pin_info_t *pin_info)
+								   sc_pkcs15_auth_info_t *auth_info)
 {
 	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	if (pin_info->reference < ENTERSAFE_USER_PIN_ID)
-		 pin_info->reference = ENTERSAFE_USER_PIN_ID;
-	if(pin_info->reference>ENTERSAFE_USER_PIN_ID)
+	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
+		return SC_ERROR_OBJECT_NOT_VALID;	
+
+	if (auth_info->attrs.pin.reference < ENTERSAFE_USER_PIN_ID)
+		 auth_info->attrs.pin.reference = ENTERSAFE_USER_PIN_ID;
+	if (auth_info->attrs.pin.reference > ENTERSAFE_USER_PIN_ID)
 		 return SC_ERROR_TOO_MANY_OBJECTS;
+
 	SC_FUNC_RETURN(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE,SC_SUCCESS);
 }
 
@@ -264,9 +268,12 @@ static int entersafe_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 {
 	struct sc_card *card = p15card->card;
 	int	r;
-	sc_pkcs15_pin_info_t *pin_info = (sc_pkcs15_pin_info_t *) pin_obj->data;
+	sc_pkcs15_auth_info_t *auth_info = (sc_pkcs15_auth_info_t *) pin_obj->data;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
+		return SC_ERROR_OBJECT_NOT_VALID;
 
 	{/*pin*/
 		 sc_entersafe_wkey_data  data;
@@ -274,7 +281,7 @@ static int entersafe_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 		 if (!pin || !pin_len || pin_len > 16)
 			  return SC_ERROR_INVALID_ARGUMENTS;
 
-		 data.key_id=pin_info->reference;
+		 data.key_id = auth_info->attrs.pin.reference;
 		 data.usage=0x0B;
 		 data.key_data.symmetric.EC=0x33;
 		 data.key_data.symmetric.ver=0x00;
@@ -296,7 +303,7 @@ static int entersafe_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 		 if (!puk || !puk_len || puk_len > 16)
 			  return SC_ERROR_INVALID_ARGUMENTS;
 
-		 data.key_id=pin_info->reference+1;
+		 data.key_id = auth_info->attrs.pin.reference+1;
 		 data.usage=0x0B;
 		 data.key_data.symmetric.EC=0x33;
 		 data.key_data.symmetric.ver=0x00;
@@ -427,7 +434,7 @@ static int entersafe_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15ca
 static int entersafe_sanity_check(sc_profile_t *profile, sc_pkcs15_card_t *p15card)
 {
 	struct sc_context *ctx = p15card->card->ctx;
-	struct sc_pkcs15_pin_info profile_pin;
+	struct sc_pkcs15_auth_info profile_auth;
 	struct sc_pkcs15_object *objs[32];
 	int rv, nn, ii, update_df = 0;
 
@@ -438,17 +445,22 @@ static int entersafe_sanity_check(sc_profile_t *profile, sc_pkcs15_card_t *p15ca
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Failed to get PINs");
 	nn = rv;
 
-	sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PIN, &profile_pin);
+	sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PIN, &profile_auth);
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Failed to get PIN info");
 
 	for (ii=0; ii<nn; ii++) {
-		struct sc_pkcs15_pin_info *pinfo = (struct sc_pkcs15_pin_info *) objs[ii]->data;
+		struct sc_pkcs15_auth_info *ainfo = (struct sc_pkcs15_auth_info *) objs[ii]->data;
+		struct sc_pkcs15_pin_attributes *pin_attrs = &ainfo->attrs.pin;
 
-		if (pinfo->reference == profile_pin.reference && pinfo->flags != profile_pin.flags)   {
+		if (ainfo->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
+			continue;
+
+		if (pin_attrs->reference == profile_auth.attrs.pin.reference 
+				&& pin_attrs->flags != profile_auth.attrs.pin.flags)   {
 			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Set flags of '%s'(flags:%X,ref:%i,id:%s) to %X", objs[ii]->label, 
-					pinfo->flags, pinfo->reference, sc_pkcs15_print_id(&pinfo->auth_id), 
-					profile_pin.flags);
-			pinfo->flags = profile_pin.flags;
+					pin_attrs->flags, pin_attrs->reference, sc_pkcs15_print_id(&ainfo->auth_id), 
+					profile_auth.attrs.pin.flags);
+			pin_attrs->flags = profile_auth.attrs.pin.flags;
 			update_df = 1;
 		}
 	}

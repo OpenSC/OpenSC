@@ -36,25 +36,26 @@ static unsigned char SETCOS_DEFAULT_PUBKEY[] = {0x01, 0x00, 0x01};
 #define SETCOS_DEFAULT_PUBKEY_LEN       sizeof(SETCOS_DEFAULT_PUBKEY)
 
 static int setcos_create_pin_internal(sc_profile_t *, sc_pkcs15_card_t *,
-	int, sc_pkcs15_pin_info_t *, const u8 *, size_t, const u8 *, size_t);
+	int, sc_pkcs15_auth_info_t *, const u8 *, size_t, const u8 *, size_t);
 
 
 static int 
 setcos_puk_retries(sc_profile_t *profile, int pin_ref)
 {
-	sc_pkcs15_pin_info_t pin_info;
+	sc_pkcs15_auth_info_t auth_info;
 
-	pin_info.reference = 1; /* Default SO PIN ref. */
-	sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PIN, &pin_info);
+	auth_info.auth_type = SC_PKCS15_PIN_AUTH_TYPE_PIN;
+	auth_info.attrs.pin.reference = 1; /* Default SO PIN ref. */
+	sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PIN, &auth_info);
 
 	/* If pin_ref is the SO PIN, get the SO PUK info, otherwise the User PUK info */
 	sc_profile_get_pin_info(profile,
-		pin_ref == pin_info.reference ? SC_PKCS15INIT_SO_PUK : SC_PKCS15INIT_USER_PUK,
-		&pin_info);
+		pin_ref == auth_info.attrs.pin.reference ? SC_PKCS15INIT_SO_PUK : SC_PKCS15INIT_USER_PUK,
+		&auth_info);
 	
-	if ((pin_info.tries_left < 0) || (pin_info.tries_left > 15))
+	if ((auth_info.tries_left < 0) || (auth_info.tries_left > 15))
 		return 3; /* Little extra safety */
-	return pin_info.tries_left;
+	return auth_info.tries_left;
 }
 
 
@@ -162,21 +163,22 @@ setcos_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *d
  */
 static int
 setcos_select_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
-	sc_pkcs15_pin_info_t *pin_info)
+	sc_pkcs15_auth_info_t *auth_info)
 {
-	sc_pkcs15_pin_info_t pin_info_prof;
+	sc_pkcs15_auth_info_t auth_info_prof;
 
-	pin_info_prof.reference = 1; /* Default SO PIN ref. */
-	sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PIN, &pin_info_prof);
+	auth_info_prof.attrs.pin.reference = 1; /* Default SO PIN ref. */
+	auth_info_prof.auth_type = SC_PKCS15_PIN_AUTH_TYPE_PIN;
+	sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PIN, &auth_info_prof);
 
 	/* For the SO pin, we take the first available pin reference = 1 */
-	if (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN)
-		pin_info->reference = pin_info_prof.reference;
+	if (auth_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN)
+		auth_info->attrs.pin.reference = auth_info_prof.attrs.pin.reference;
 	/* sc_pkcs15init_create_pin() starts checking if -1 is an acceptable
 	 * pin reference, which isn't for the SetCOS cards. And since the
 	 * value 1 has been assigned to the SO pin, we'll jump to 2. */
-	else if (pin_info->reference <= 0)
-		pin_info->reference = pin_info_prof.reference + 1;
+	else if (auth_info->attrs.pin.reference <= 0)
+		auth_info->attrs.pin.reference = auth_info_prof.attrs.pin.reference + 1;
 
 	return 0;
 }
@@ -192,11 +194,14 @@ setcos_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	const u8 *puk, size_t puk_len)
 {
 	struct sc_context *ctx = p15card->card->ctx;
-	sc_pkcs15_pin_info_t *pin_info = (sc_pkcs15_pin_info_t *) pin_obj->data;
+	sc_pkcs15_auth_info_t *auth_info = (sc_pkcs15_auth_info_t *) pin_obj->data;
 	sc_file_t *pinfile = NULL;
 	int r, ignore_ac = 0;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
+
+	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
+		return SC_ERROR_OBJECT_NOT_VALID;
 
         /* Create the global pin file if it doesn't exist yet */
 	r = sc_profile_get_file(profile, "pinfile", &pinfile);
@@ -207,18 +212,18 @@ setcos_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "pinfile->status:%X", pinfile->status);
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "create PIN with reference:%X, flags:%X, path:%s",
-			pin_info->reference, pin_info->flags, sc_print_path(&pin_info->path));
+			auth_info->attrs.pin.reference, auth_info->attrs.pin.flags, sc_print_path(&auth_info->path));
 
 	if (pinfile->status == SC_FILE_STATUS_CREATION)
 		ignore_ac = 1;
 
-	r = setcos_create_pin_internal(profile, p15card, ignore_ac, pin_info, 
+	r = setcos_create_pin_internal(profile, p15card, ignore_ac, auth_info, 
 			pin, pin_len, puk, puk_len);
 
 	/* If pinfile is in 'Creation' state and SOPIN has been created, 
 	 * change status of MF and 'pinfile' to 'Operational:Activated'
 	 */
-	if (ignore_ac && (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN))   {
+	if (ignore_ac && (auth_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN))   {
 		sc_file_t *mf = profile->mf_info->file;
 
 		r = sc_card_ctl(p15card->card, SC_CARDCTL_SETCOS_ACTIVATE_FILE, NULL);
@@ -496,7 +501,7 @@ setcos_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
  */
 static int
 setcos_create_pin_internal(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
-	int ignore_ac, sc_pkcs15_pin_info_t *pin_info,
+	int ignore_ac, sc_pkcs15_auth_info_t *auth_info,
 	const u8 *pin, size_t pin_len,
 	const u8 *puk, size_t puk_len)
 {
@@ -507,7 +512,10 @@ setcos_create_pin_internal(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	sc_file_t *pinfile = NULL;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
-	if (pin_info->reference >= SETCOS_MAX_PINS)
+	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
+		return SC_ERROR_OBJECT_NOT_VALID;
+
+	if (auth_info->attrs.pin.reference >= SETCOS_MAX_PINS)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	if (pin == NULL || puk == NULL || pin_len < 4 || puk_len < 4)
 		return SC_ERROR_INVALID_PIN_LENGTH;
@@ -529,26 +537,26 @@ setcos_create_pin_internal(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	data_obj.P2 = 01;
 
 	/* setcos pin number */
-	data[0] = pin_info->reference;
+	data[0] = auth_info->attrs.pin.reference;
 
-	memset(&data[1], pin_info->pad_char, 16); /* padding */		
+	memset(&data[1], auth_info->attrs.pin.pad_char, 16); /* padding */		
 	memcpy(&data[1], (u8 *)pin, pin_len);     /* copy pin*/
 	memcpy(&data[9], (u8 *)puk, puk_len);     /* copy puk */
 
-	data[17] = pin_info->tries_left & 0x0F;
-	data[18] = pin_info->tries_left & 0x0F;
+	data[17] = auth_info->tries_left & 0x0F;
+	data[18] = auth_info->tries_left & 0x0F;
 	/* 0xF0: unlimited unblock tries */
-	data[19] = 0xF0 | setcos_puk_retries(profile, pin_info->reference);
+	data[19] = 0xF0 | setcos_puk_retries(profile, auth_info->attrs.pin.reference);
 
 	/* Allow an unlimited number of signatures after a pin verification.
 	 * If set to 1 or so, we would have a UserConsent PIN. */
 	data[20] = 0x00;
 
-	if (pin_info->type == 0)
+	if (auth_info->attrs.pin.type == 0)
 		data[21] = 0x01; /* BCD */
 	else
 		data[21] = 0x00; /* ASCII */
-	if ((pin_info->flags & 0x010) == 0) /* test for initial pin */
+	if ((auth_info->attrs.pin.flags & 0x010) == 0) /* test for initial pin */
 		data[21] |= 0x80;
 
 	data[22]        = 0x00;			/* not used */

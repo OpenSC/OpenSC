@@ -168,17 +168,17 @@ static int asepcos_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
  * determine the next best file id of the PIN file.
  */
 static int asepcos_select_pin_reference(sc_profile_t *profile, 
-		sc_pkcs15_card_t *p15card, sc_pkcs15_pin_info_t *pinfo)
+		sc_pkcs15_card_t *p15card, sc_pkcs15_auth_info_t *auth_info)
 {
-	if (pinfo->flags & SC_PKCS15_PIN_FLAG_SO_PIN)
+	if (auth_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN)
 		return SC_SUCCESS;
-	if (pinfo->reference <= 0)
-		pinfo->reference = 1;
+	if (auth_info->attrs.pin.reference <= 0)
+		auth_info->attrs.pin.reference = 1;
 	/* as we want to use <fileid of PIN> + 1 for the PUK we need to
 	 * ensure that all references are odd => if the reference is
 	 * even add one */
-	if ((pinfo->reference & 1) == 0)
-		pinfo->reference++;
+	if ((auth_info->attrs.pin.reference & 1) == 0)
+		auth_info->attrs.pin.reference++;
         return SC_SUCCESS;
 }
 
@@ -216,12 +216,15 @@ static int asepcos_pinid_to_akn(sc_card_t *card, int fileid, int *akn)
 }
 
 static int asepcos_do_store_pin(sc_profile_t *profile, sc_card_t *card,
-	sc_pkcs15_pin_info_t *pinfo, const u8* pin, size_t pinlen,
+	sc_pkcs15_auth_info_t *auth_info, const u8* pin, size_t pinlen,
 	int puk, int pinid)
 {
 	sc_file_t *nfile = NULL;
 	u8  buf[64], sbuf[64], *p = buf, *q = sbuf;
 	int r, akn;
+
+	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
+		return SC_ERROR_OBJECT_NOT_VALID;
 
 	/* outter tag */
 	*p++ = 0x85;
@@ -237,7 +240,7 @@ static int asepcos_do_store_pin(sc_profile_t *profile, sc_card_t *card,
 	*p++ = 0x00;
 	*p++ = pinlen & 0xff;
 	/* max tries */
-	*p++ = pinfo->tries_left & 0xff;
+	*p++ = auth_info->tries_left & 0xff;
 	/* algorithm id and key key usage and padding bytes */
 	*p++ = 0x00;
 	*p++ = 0x00;
@@ -305,11 +308,11 @@ static int asepcos_do_store_pin(sc_profile_t *profile, sc_card_t *card,
 	if (r != SC_SUCCESS)
 		return r;
 	/* use the AKN as reference */
-	pinfo->reference = akn;
+	auth_info->attrs.pin.reference = akn;
 	/* set the correct PIN length */
-	pinfo->min_length    = 4;
-	pinfo->stored_length = pinlen;
-	pinfo->max_length    = 16;
+	auth_info->attrs.pin.min_length    = 4;
+	auth_info->attrs.pin.stored_length = pinlen;
+	auth_info->attrs.pin.max_length    = 16;
 
 	return r;
 } 
@@ -319,9 +322,11 @@ static int asepcos_do_store_pin(sc_profile_t *profile, sc_card_t *card,
  */
 static int have_onepin(sc_profile_t *profile)
 {
-        sc_pkcs15_pin_info_t sopin;
+        sc_pkcs15_auth_info_t sopin;
+
         sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PIN, &sopin);
-        if (!(sopin.flags & SC_PKCS15_PIN_FLAG_SO_PIN))
+
+        if (!(sopin.attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN))
                 return 1;
         else
                 return 0;
@@ -342,7 +347,7 @@ static int asepcos_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	sc_file_t *df, sc_pkcs15_object_t *pin_obj,
 	const u8 *pin, size_t pin_len, const u8 *puk, size_t puk_len)
 {
-	sc_pkcs15_pin_info_t *pinfo = (sc_pkcs15_pin_info_t *) pin_obj->data;
+	sc_pkcs15_auth_info_t *auth_info = (sc_pkcs15_auth_info_t *) pin_obj->data;
 	struct sc_card *card = p15card->card;
 	int       r, pid, puk_id;
 	sc_path_t tpath = df->path;
@@ -353,7 +358,10 @@ static int asepcos_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	if (!pin || !pin_len)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
-	pid = (pinfo->reference & 0xff) | (((tpath.len >> 1) - 1) << 16);
+	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
+        	return SC_ERROR_OBJECT_NOT_VALID;	
+
+	pid = (auth_info->attrs.pin.reference & 0xff) | (((tpath.len >> 1) - 1) << 16);
 
 	/* get the ACL of the application DF */
 	r = sc_select_file(card, &df->path, &tfile);
@@ -389,29 +397,29 @@ static int asepcos_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		/* Create PUK (if specified). Note: we need to create the PUK
 		 * the PIN as the PUK fileid is used in the PIN acl.
 		 */
-		struct sc_pkcs15_pin_info puk_info;
+		struct sc_pkcs15_auth_info puk_ainfo;
 
-		if (pinfo->flags & SC_PKCS15_PIN_FLAG_SO_PIN)
-			sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PUK, &puk_info);
+		if (auth_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN)
+			sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PUK, &puk_ainfo);
 		else
-			sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PUK, &puk_info);
+			sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PUK, &puk_ainfo);
 
 		/* If a PUK we use "file id of the PIN" + 1  as the file id
 		 * of the PUK.
 		 */
 		puk_id = pid + 1;
-		r = asepcos_do_store_pin(profile, card, &puk_info, puk, puk_len, 0, puk_id);
+		r = asepcos_do_store_pin(profile, card, &puk_ainfo, puk, puk_len, 0, puk_id);
 		if (r != SC_SUCCESS) 
 			SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, r);
 	} else
 		puk_id = 0;
 
-	r = asepcos_do_store_pin(profile, card, pinfo, pin, pin_len, puk_id, pid);
+	r = asepcos_do_store_pin(profile, card, auth_info, pin, pin_len, puk_id, pid);
 	if (r != SC_SUCCESS)
 		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, r);
 
 #if 1
-	if (pinfo->flags & SC_PKCS15_PIN_FLAG_SO_PIN || 
+	if (auth_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN || 
 	    (have_onepin(profile) && pid == 0x010001)) {
 		sc_cardctl_asepcos_activate_file_t st;
 		/* Once the SO PIN or ,in case of the "onepin" profile", the 
@@ -454,7 +462,7 @@ static int asepcos_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	r = sc_append_file_id(&tpath, pid & 0xff);
 	if (r != SC_SUCCESS)
 		return r;
-	pinfo->path = tpath;
+	auth_info->path = tpath;
 #endif
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, r);
 }

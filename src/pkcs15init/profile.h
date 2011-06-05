@@ -55,7 +55,7 @@ struct pin_info {
 	unsigned int		file_offset;	/* obsolete */
 	struct file_info *	file;		/* obsolete */
 
-	sc_pkcs15_pin_info_t	pin;
+	struct sc_pkcs15_auth_info	pin;
 };
 
 typedef struct sc_macro {
@@ -131,7 +131,7 @@ int	sc_profile_load(struct sc_profile *, const char *);
 int	sc_profile_finish(struct sc_profile *, const struct sc_app_info *);
 void	sc_profile_free(struct sc_profile *);
 int	sc_profile_build_pkcs15(struct sc_profile *);
-void	sc_profile_get_pin_info(struct sc_profile *, int, struct sc_pkcs15_pin_info *);
+void	sc_profile_get_pin_info(struct sc_profile *, int, struct sc_pkcs15_auth_info *);
 int	sc_profile_get_pin_id(struct sc_profile *, unsigned int, int *);
 int	sc_profile_get_file(struct sc_profile *, const char *, struct sc_file **);
 int	sc_profile_get_file_by_path(struct sc_profile *, const struct sc_path *, struct sc_file **);
@@ -142,7 +142,7 @@ int	sc_profile_instantiate_template(struct sc_profile *, const char *, const sc_
 int	sc_profile_add_file(struct sc_profile *, const char *, sc_file_t *);
 int	sc_profile_get_file_instance(struct sc_profile *, const char *, int, sc_file_t **);
 int	sc_profile_get_pin_id_by_reference(struct sc_profile *, unsigned, int, 
-			struct sc_pkcs15_pin_info *);
+			struct sc_pkcs15_auth_info *);
 int    sc_profile_get_parent(struct sc_profile *profile, const char *, sc_file_t **);
 
 #ifdef __cplusplus

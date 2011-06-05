@@ -141,18 +141,21 @@ static int rtecp_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc
  * Select a PIN reference
  */
 static int rtecp_select_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
-		sc_pkcs15_pin_info_t *pin_info)
+		sc_pkcs15_auth_info_t *auth_info)
 {
 	int pin_ref;
 
-	if (!profile || !p15card || !p15card->card || !p15card->card->ctx || !pin_info)
+	if (!profile || !p15card || !p15card->card || !p15card->card->ctx || !auth_info)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
-	if (pin_info->flags & SC_PKCS15_PIN_FLAG_SO_PIN)
+	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
+	                return SC_ERROR_OBJECT_NOT_VALID;
+
+	if (auth_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN)
 		pin_ref = RTECP_SO_PIN_REF;
 	else
 		pin_ref = RTECP_USER_PIN_REF;
-	if (pin_info->reference != pin_ref)
+	if (auth_info->attrs.pin.reference != pin_ref)
 		SC_FUNC_RETURN(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED);
 
 	return SC_SUCCESS;
@@ -167,7 +170,7 @@ static int rtecp_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		const unsigned char *puk, size_t puk_len)
 {
 	sc_context_t *ctx;
-	sc_pkcs15_pin_info_t *pin_info;
+	sc_pkcs15_auth_info_t *auth_info;
 	sc_file_t *file = NULL;
 	/*                        GCHV min-length Flags Attempts  Reserve */
 	unsigned char prop[]  = { 0x01,       '?', 0x01,     '?', 0, 0 };
@@ -190,17 +193,21 @@ static int rtecp_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 				sc_strerror(SC_ERROR_NOT_SUPPORTED));
 		return SC_ERROR_NOT_SUPPORTED;
 	}
-	pin_info = (sc_pkcs15_pin_info_t *)pin_obj->data;
-	if (pin_info->reference != RTECP_SO_PIN_REF
-			&& pin_info->reference != RTECP_USER_PIN_REF)
+
+	auth_info = (sc_pkcs15_auth_info_t *)pin_obj->data;
+	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
+		return SC_ERROR_OBJECT_NOT_VALID;
+
+	if (auth_info->attrs.pin.reference != RTECP_SO_PIN_REF
+			&& auth_info->attrs.pin.reference != RTECP_USER_PIN_REF)
 	{
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "PIN reference %i not found in standard"
-				" (Rutoken ECP) PINs\n", pin_info->reference);
+				" (Rutoken ECP) PINs\n", auth_info->attrs.pin.reference);
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
-	snprintf(pin_sname, sizeof(pin_sname), "CHV%i", pin_info->reference);
-	if (pin_info->reference == RTECP_USER_PIN_REF)   {
+	snprintf(pin_sname, sizeof(pin_sname), "CHV%i", auth_info->attrs.pin.reference);
+	if (auth_info->attrs.pin.reference == RTECP_USER_PIN_REF)   {
 	        r = sc_profile_get_file(profile, pin_sname, &file);
 		if (!r)   {
 			const struct sc_acl_entry *acl = NULL;
@@ -220,17 +227,17 @@ static int rtecp_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	file = sc_file_new();
 	if (!file)
 		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
-	file->id = pin_info->reference;
+	file->id = auth_info->attrs.pin.reference;
 	file->size = pin_len;
 	assert(sizeof(sec)/sizeof(sec[0]) > 2);
-	sec[1] = (pin_info->reference == RTECP_SO_PIN_REF) ? 0xFF : RTECP_SO_PIN_REF;
-	sec[2] = (unsigned char)pin_info->reference | (reset_by_sopin ? RTECP_SO_PIN_REF : 0);
+	sec[1] = (auth_info->attrs.pin.reference == RTECP_SO_PIN_REF) ? 0xFF : RTECP_SO_PIN_REF;
+	sec[2] = (unsigned char)auth_info->attrs.pin.reference | (reset_by_sopin ? RTECP_SO_PIN_REF : 0);
 	r = sc_file_set_sec_attr(file, sec, sizeof(sec));
 	if (r == SC_SUCCESS)
 	{
 		assert(sizeof(prop)/sizeof(prop[0]) > 3);
-		prop[1] = (unsigned char)pin_info->min_length;
-		prop[3] = 0x11 * (unsigned char)(pin_info->tries_left & 0x0F);
+		prop[1] = (unsigned char)auth_info->attrs.pin.min_length;
+		prop[3] = 0x11 * (unsigned char)(auth_info->tries_left & 0x0F);
 		r = sc_file_set_prop_attr(file, prop, sizeof(prop));
 	}
 	if (r == SC_SUCCESS)
@@ -241,7 +248,7 @@ static int rtecp_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 
 	if (r == SC_SUCCESS)
 		r = sc_change_reference_data(p15card->card, SC_AC_CHV,
-				pin_info->reference, NULL, 0, pin, pin_len, NULL);
+				auth_info->attrs.pin.reference, NULL, 0, pin, pin_len, NULL);
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, r);
 }
 

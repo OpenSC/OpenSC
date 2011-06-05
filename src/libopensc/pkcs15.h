@@ -73,20 +73,31 @@ typedef struct sc_pkcs15_id sc_pkcs15_id_t;
 #define SC_PKCS15_PIN_AUTH_TYPE_AUTH_KEY		1
 #define SC_PKCS15_PIN_AUTH_TYPE_SM_KEY			2
 
-struct sc_pkcs15_pin_info {
-	struct sc_pkcs15_id auth_id;
-	int reference;
-	unsigned int flags, type;
-	unsigned int auth_method;
-	size_t min_length, stored_length, max_length;
-	u8 pad_char;
-	struct sc_path path;
-	int tries_left;
-	int max_tries;
-
-	unsigned int magic;
-};
-typedef struct sc_pkcs15_pin_info sc_pkcs15_pin_info_t;
+struct sc_pkcs15_pin_attributes {
+	unsigned int  flags, type;
+	size_t  min_length, stored_length, max_length;
+	int  reference;
+	u8  pad_char;
+ };
+struct sc_pkcs15_authkey_attributes {
+	int derived;
+	struct sc_pkcs15_id skey_id;
+ };
+struct sc_pkcs15_biometric_attributes {
+ };
+struct sc_pkcs15_auth_info {
+	struct sc_pkcs15_id  auth_id;
+	struct sc_path  path;
+	unsigned auth_type;
+	union {
+		struct sc_pkcs15_pin_attributes pin;
+		struct sc_pkcs15_biometric_attributes bio;
+		struct sc_pkcs15_authkey_attributes authkey;
+	} attrs;
+	unsigned int  auth_method;
+	int  tries_left, max_tries;
+ };
+typedef struct sc_pkcs15_auth_info sc_pkcs15_auth_info_t;
 
 #define SC_PKCS15_ALGO_OP_COMPUTE_CHECKSUM	0x01
 #define SC_PKCS15_ALGO_OP_COMPUTE_SIGNATURE	0x02
@@ -752,7 +763,7 @@ void sc_pkcs15_free_prkey_info(sc_pkcs15_prkey_info_t *key);
 void sc_pkcs15_free_pubkey_info(sc_pkcs15_pubkey_info_t *key);
 void sc_pkcs15_free_cert_info(sc_pkcs15_cert_info_t *cert);
 void sc_pkcs15_free_data_info(sc_pkcs15_data_info_t *data);
-void sc_pkcs15_free_pin_info(sc_pkcs15_pin_info_t *pin);
+void sc_pkcs15_free_auth_info(sc_pkcs15_auth_info_t *auth_info);
 void sc_pkcs15_free_object(sc_pkcs15_object_t *obj);
 
 /* Generic file i/o */
@@ -834,7 +845,7 @@ int sc_pkcs15emu_object_add(sc_pkcs15_card_t *, unsigned int,
 			const sc_pkcs15_object_t *, const void *);
 /* some wrapper functions for sc_pkcs15emu_object_add */
 int sc_pkcs15emu_add_pin_obj(sc_pkcs15_card_t *,
-	const sc_pkcs15_object_t *, const sc_pkcs15_pin_info_t *);
+	const sc_pkcs15_object_t *, const sc_pkcs15_auth_info_t *);
 int sc_pkcs15emu_add_rsa_prkey(sc_pkcs15_card_t *,
 	const sc_pkcs15_object_t *, const sc_pkcs15_prkey_info_t *);
 int sc_pkcs15emu_add_rsa_pubkey(sc_pkcs15_card_t *,
