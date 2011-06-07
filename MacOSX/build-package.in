@@ -75,7 +75,7 @@ if test ${OSX_RELEASE} = "10.6"; then
 	(cd engine_pkcs11
 	git checkout origin/martin
 	test -x configure || ./bootstrap
-	PKG_CONFIG_PATH=${BUILDPATH}/build/lib/pkgconfig ./configure --disable-dependency-tracking --prefix=/Library/OpenSC && make
+	PKG_CONFIG_PATH=${BUILDPATH}/build/lib/pkgconfig:${PKG_CONFIG_PATH} ./configure --disable-dependency-tracking --prefix=/Library/OpenSC && make
 	make install DESTDIR=${BUILDPATH}/target)
 fi
 
