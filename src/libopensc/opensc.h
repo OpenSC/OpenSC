@@ -422,7 +422,6 @@ typedef struct sc_card {
 
 	int type;			/* Card type, for card driver internal use */
 	unsigned long caps, flags;
-	unsigned int wait_resend_apdu;	/* Delay (msec) before responding to an SW = 6CXX */
 	int cla;
 	size_t max_send_size; /* Max Lc supported by the card */
 	size_t max_recv_size; /* Max Le supported by the card */
