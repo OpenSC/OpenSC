@@ -24,17 +24,6 @@ PIN user-puk {
     attempts	= 10;
 }
 
-# For CardOS 4.3B and 4.4, the Verify Retry Counter Package 
-# can be loaded at ADMINISTRATION life cycle phase to change
-# the behavior of the VERIFY command in regard to return codes.
-# When that package is loaded, the PIN can be created with this
-# "verifyRC" flag if the return code must be ISO7816-4 compliant
-# (63Cx with x being the value of the remaining retry counter
-# when required verification has failed).
-#PIN user-pin {
-#    flags	= verifyRC;
-#}
-
 # Additional filesystem info.
 # This is added to the file system info specified in the
 # main profile.
