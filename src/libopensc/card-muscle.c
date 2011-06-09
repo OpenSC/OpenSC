@@ -760,7 +760,10 @@ static int muscle_compute_signature(sc_card_t *card, const u8 *data,
 
 static int muscle_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 {
-	return msc_get_challenge(card, len, 0, NULL, rnd);
+	if (len == 0)
+		return SC_SUCCESS;
+	else
+		return msc_get_challenge(card, len, 0, NULL, rnd);
 }
 
 static int muscle_check_sw(sc_card_t * card, unsigned int sw1, unsigned int sw2) {

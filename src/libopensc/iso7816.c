@@ -515,7 +515,7 @@ static int iso7816_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 	sc_apdu_t apdu;
 	u8 buf[10];
 
-	if (!rnd)
+	if (!rnd && len)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT,
