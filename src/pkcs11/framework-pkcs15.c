@@ -1517,11 +1517,9 @@ static CK_RV pkcs15_create_private_key(struct sc_pkcs11_card *p11card,
 		case CKA_UNWRAP:
 			args.usage |= pkcs15_check_bool_cka(attr, SC_PKCS15_PRKEY_USAGE_UNWRAP);
 			break;
-		/*
 		case OPENSC_CKA_NON_REPUDIATION:
 			args.usage |= pkcs15_check_cka_flag(attr, SC_PKCS15_PRKEY_USAGE_NONREPUDIATION);
 			break;	
-		 */
 		default:
 			/* ignore unknown attrs, or flag error? */
 			continue;
