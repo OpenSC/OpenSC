@@ -1113,7 +1113,7 @@ static int rutoken_get_challenge(sc_card_t *card, u8 *rnd, size_t count)
 	sc_apdu_t apdu;
 	u8 rbuf[32];
 	size_t n;
-	int ret = SC_ERROR_INVALID_ARGUMENTS; /* if count == 0 */
+	int ret = SC_SUCCESS; /* if count == 0 */
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0x84, 0x00, 0x00);
