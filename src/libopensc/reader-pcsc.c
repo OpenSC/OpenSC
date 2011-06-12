@@ -86,6 +86,8 @@ struct pcsc_private_data {
 
 	DWORD pin_properties_ioctl;
 
+	DWORD get_tlv_properties;
+
 	int locked;
 };
 
@@ -789,6 +791,8 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 			priv->modify_ioctl_finish = ntohl(pcsc_tlv[i].value);
 		} else if (pcsc_tlv[i].tag == FEATURE_IFD_PIN_PROPERTIES) {
 			priv->pin_properties_ioctl = ntohl(pcsc_tlv[i].value);
+		} else if (pcsc_tlv[i].tag == FEATURE_GET_TLV_PROPERTIES)  {
+			priv->get_tlv_properties = ntohl(pcsc_tlv[i].value);
 		} else {
 			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Reader feature %02x is not supported", pcsc_tlv[i].tag);
 		}
@@ -1430,6 +1434,91 @@ static int part10_build_modify_pin_block(struct sc_reader *reader, u8 * buf, siz
 	return SC_SUCCESS;
 }
 
+/* Find a given PCSC v2 part 10 property */
+static int
+part10_find_property_by_tag(unsigned char buffer[], int length,
+	int tag_searched)
+{
+	unsigned char *p;
+	int found = 0, len, value = -1;
+
+	p = buffer;
+	while (p-buffer < length)
+	{
+		if (*p++ == tag_searched)
+		{
+			found = 1;
+			break;
+		}
+
+		/* go to next tag */
+		len = *p++;
+		p += len;
+	}
+
+	if (found)
+	{
+		len = *p++;
+
+		switch(len)
+		{
+			case 1:
+				value = *p;
+				break;
+			case 2:
+				value = *p + (*(p+1)<<8);
+				break;
+			case 4:
+				value = *p + (*(p+1)<<8) + (*(p+2)<<16) + (*(p+3)<<24);
+				break;
+			default:
+				value = -1;
+		}
+	}
+
+	return value;
+} /* part10_find_property_by_tag */
+
+/* Make sure the pin min and max are supported by the reader
+ * and fix the values if needed */
+static int
+part10_check_pin_min_max(sc_reader_t *reader, struct sc_pin_cmd_data *data)
+{
+	int r;
+	unsigned char buffer[256];
+	size_t length = sizeof buffer;
+	struct pcsc_private_data *priv = GET_PRIV_DATA(reader);
+
+	r = pcsc_internal_transmit(reader, NULL, 0, buffer, &length,
+		priv->get_tlv_properties);
+	SC_TEST_RET(reader->ctx, SC_LOG_DEBUG_NORMAL, r,
+		"PC/SC v2 part 10: Get TLV properties failed!");
+
+	/* minimum pin size */
+	r = part10_find_property_by_tag(buffer, length,
+		PCSCv2_PART10_PROPERTY_bMinPINSize);
+	if (r >= 0)
+	{
+		unsigned int value = r;
+
+		if (data->pin1.min_length < value)
+			data->pin1.min_length = r;
+	}
+
+	/* maximum pin size */
+	r = part10_find_property_by_tag(buffer, length,
+		PCSCv2_PART10_PROPERTY_bMaxPINSize);
+	if (r >= 0)
+	{
+		unsigned int value = r;
+
+		if (data->pin1.max_length > value)
+			data->pin1.max_length = r;
+	}
+
+	return 0;
+}
+
 /* Do the PIN command */
 static int
 pcsc_pin_cmd(sc_reader_t *reader, struct sc_pin_cmd_data *data)
@@ -1460,6 +1549,7 @@ pcsc_pin_cmd(sc_reader_t *reader, struct sc_pin_cmd_data *data)
 			sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "Pinpad reader does not support verification!");
 			return SC_ERROR_NOT_SUPPORTED;
 		}
+		part10_check_pin_min_max(reader, data);
 		r = part10_build_verify_pin_block(reader, sbuf, &scount, data);
 		ioctl = priv->verify_ioctl ? priv->verify_ioctl : priv->verify_ioctl_start;
 		break;
@@ -1469,6 +1559,7 @@ pcsc_pin_cmd(sc_reader_t *reader, struct sc_pin_cmd_data *data)
 			sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "Pinpad reader does not support modification!");
 			return SC_ERROR_NOT_SUPPORTED;
 		}
+		part10_check_pin_min_max(reader, data);
 		r = part10_build_modify_pin_block(reader, sbuf, &scount, data);
 		ioctl = priv->modify_ioctl ? priv->modify_ioctl : priv->modify_ioctl_start;
 		break;
