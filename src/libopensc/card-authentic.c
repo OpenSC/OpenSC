@@ -1756,7 +1756,7 @@ authentic_get_challenge(struct sc_card *card, unsigned char *rnd, size_t len)
 	int rv, nn;
 
 	LOG_FUNC_CALLED(ctx);
-	if (!rnd)
+	if (!rnd && len)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0x84, 0x00, 0x00);

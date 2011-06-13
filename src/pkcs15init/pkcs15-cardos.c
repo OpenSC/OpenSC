@@ -409,7 +409,6 @@ cardos_store_pin(sc_profile_t *profile, sc_card_t *card,
 		const u8 *pin, size_t pin_len)
 {
 	struct sc_cardctl_cardos_obj_info args;
-	struct sc_pkcs15_auth_info profile_auth;
 	unsigned char	buffer[256];
 	unsigned char	pinpadded[256];
 	struct tlv	tlv;
@@ -446,11 +445,6 @@ cardos_store_pin(sc_profile_t *profile, sc_card_t *card,
 	/* parameters */
 	tlv_next(&tlv, 0x85);
 	tlv_add(&tlv, 0x02);		/* options byte */
-	sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PIN, &profile_auth);
-	if (profile_auth.attrs.pin.flags & SC_PKCS15_PIN_FLAG_VERIFY_RC_COUNTER)	{
-		/* Use 9 byte OCI parameters to be able to set VerifyRC bit */
-		tlv_add(&tlv, 0x04);		/* options_2 byte with Bit n°2 set to return CurrentErrorCounter */
-		}
 	tlv_add(&tlv, attempts & 0xf);	/* flags byte */
 	tlv_add(&tlv, CARDOS_ALGO_PIN);	/* algorithm = pin-test */
 	tlv_add(&tlv, attempts & 0xf);	/* errcount = attempts */

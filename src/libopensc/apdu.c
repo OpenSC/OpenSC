@@ -410,11 +410,12 @@ static int do_single_transmit(sc_card_t *card, sc_apdu_t *apdu)
 			/* set the new expected length */
 			apdu->resplen = olen;
 			apdu->le      = nlen;
-			/* as some reader/smartcards can't handle an immediate
-			 * re-transmit so we optionally need to sleep for
-			 * a while */
-			if (card->wait_resend_apdu != 0)
-				msleep(card->wait_resend_apdu);
+			/* Belpic V1 applets have a problem: if the card sends a 6C XX
+			 * (only XX bytes available), and we resend the command too soon
+			 * (i.e. the reader is too fast), the card doesn't respond. So
+			 * we build in a delay. */
+			if (card->type == SC_CARD_TYPE_BELPIC_EID)
+				msleep(40);
 			/* re-transmit the APDU with new Le length */
 			r = card->reader->ops->transmit(card->reader, apdu);
 			if (r != SC_SUCCESS) {

@@ -483,6 +483,7 @@ int main(int argc, char * argv[])
 			action_count++;
 			break;
 		case 't':
+			need_session |= NEED_SESSION_RO;
 			do_test = 1;
 			action_count++;
 			break;

@@ -191,7 +191,6 @@ static struct map		pinFlagNames[] = {
 	{ "integrity-protected",	SC_PKCS15_PIN_FLAG_INTEGRITY_PROTECTED		},
 	{ "confidentiality-protected",	SC_PKCS15_PIN_FLAG_CONFIDENTIALITY_PROTECTED	},
 	{ "exchangeRefData",		SC_PKCS15_PIN_FLAG_EXCHANGE_REF_DATA		},
-	{ "verifyRC",			SC_PKCS15_PIN_FLAG_VERIFY_RC_COUNTER		},
 	{ NULL, 0 }
 };
 static struct map		idStyleNames[] = {
