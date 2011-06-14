@@ -52,6 +52,10 @@ CNGSDK_INCL_DIR = "/IC:\Program Files\Microsoft CNG Development Kit\Include"
 # http://msinttypes.googlecode.com/files/msinttypes-r26.zip
 # INTTYPES_INCL_DIR =  /IC:\opensc\dependencies\msys\local
 
+# Code optimisation
+#  O1 - minimal code size
+CODE_OPTIMIZATION = /O1
+
 ALL_INCLUDES = /I$(TOPDIR)\win32 /I$(TOPDIR)\src $(OPENSSL_INCL_DIR) $(ZLIB_INCL_DIR) $(LIBLTDL_INCL) $(INTTYPES_INCL_DIR) $(CNGSDK_INCL_DIR)
 COPTS =  /W3 /D_CRT_SECURE_NO_DEPRECATE /MT /nologo /DHAVE_CONFIG_H $(ALL_INCLUDES) /D_WIN32_WINNT=0x0502 /DWIN32_LEAN_AND_MEAN $(OPENSSL_DEF) $(ZLIB_DEF) $(MINIDRIVER_DEF) /DOPENSC_FEATURES="\"$(OPENSC_FEATURES)\""
 !IF "$(BUILD_FOR)" == "WIN64"
@@ -64,7 +68,7 @@ LIBFLAGS =  /nologo /machine:x86
 CANDLEFLAGS = -dPlatform=x86
 !ENDIF
 .c.obj::
-	cl $(COPTS) /c $<
+	cl $(CODE_OPTIMIZATION) $(COPTS) /c $<
 
 .rc.res::
 	rc /l 0x0409 $<
