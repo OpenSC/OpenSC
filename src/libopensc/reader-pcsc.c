@@ -1029,6 +1029,7 @@ static int pcsc_wait_for_event(sc_context_t *ctx, unsigned int event_mask, sc_re
 	size_t i;
 	unsigned int num_watch;
 	int r = SC_ERROR_INTERNAL;
+	DWORD dwtimeout;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 
@@ -1167,10 +1168,12 @@ static int pcsc_wait_for_event(sc_context_t *ctx, unsigned int event_mask, sc_re
 
 		/* Set the timeout if caller wants to time out */
 		if (timeout == -1) {
-			timeout = INFINITE;
+			dwtimeout = INFINITE;
 		}
+		else
+			dwtimeout = timeout;
 
-		rv = gpriv->SCardGetStatusChange(gpriv->pcsc_wait_ctx, timeout, rgReaderStates, num_watch);
+		rv = gpriv->SCardGetStatusChange(gpriv->pcsc_wait_ctx, dwtimeout, rgReaderStates, num_watch);
 
 		if (rv == (LONG) SCARD_E_CANCELLED) {
 			/* C_Finalize was called, events don't matter */
