@@ -15,11 +15,11 @@ all: $(TOPDIR)\win32\versioninfo.res $(TARGET0) $(TARGET1) $(TARGET3)
 
 !INCLUDE $(TOPDIR)\win32\Make.rules.mak
 
-$(TARGET0): $(OBJECTS) hack-enabled.obj ..\libopensc\opensc.lib ..\scconf\scconf.lib ..\pkcs15init\pkcs15init.lib ..\common\common.lib
+$(TARGET0): $(OBJECTS) hack-enabled.obj ..\libopensc\opensc_a.lib ..\pkcs15init\pkcs15init.lib
 	echo LIBRARY $* > $*.def
 	echo EXPORTS >> $*.def
 	type opensc-pkcs11.exports >> $*.def
-	link $(LINKFLAGS) /dll /def:$*.def /implib:$*.lib /out:$(TARGET0) $(OBJECTS) hack-enabled.obj ..\libopensc\opensc.lib ..\scconf\scconf.lib ..\pkcs15init\pkcs15init.lib ..\common\common.lib $(OPENSSL_LIB) gdi32.lib
+	link $(LINKFLAGS) /dll /def:$*.def /implib:$*.lib /out:$(TARGET0) $(OBJECTS) hack-enabled.obj  ..\libopensc\opensc_a.lib ..\pkcs15init\pkcs15init.lib $(OPENSSL_LIB) gdi32.lib
 	if EXIST $(TARGET0).manifest mt -manifest $(TARGET0).manifest -outputresource:$(TARGET0);2
 
 $(TARGET1): $(OBJECTS) hack-disabled.obj ..\libopensc\opensc_a.lib ..\pkcs15init\pkcs15init.lib
