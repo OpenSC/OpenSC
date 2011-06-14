@@ -1411,6 +1411,18 @@ static CK_RV pkcs15_init_pin(struct sc_pkcs11_card *p11card,
 	return CKR_OK;
 }
 
+static unsigned long
+pkcs15_check_bool_cka(CK_ATTRIBUTE_PTR attr, unsigned long flag)
+{
+	if (attr->ulValueLen != sizeof(CK_BBOOL) || !attr->pValue)
+		return 0;
+
+	if (*((CK_BBOOL *)attr->pValue))
+		return flag;
+
+	return 0;
+}
+
 static CK_RV pkcs15_create_private_key(struct sc_pkcs11_card *p11card,
 		struct sc_pkcs11_slot *slot,
 		struct sc_profile *profile,
@@ -1493,7 +1505,21 @@ static CK_RV pkcs15_create_private_key(struct sc_pkcs11_card *p11card,
 			if (key_type == CKK_GOSTR3410)
 				bn = &gost->d; 
 			break;
-
+		case CKA_SIGN:
+			args.usage |= pkcs15_check_bool_cka(attr, SC_PKCS15_PRKEY_USAGE_SIGN);
+			break;	
+		case CKA_SIGN_RECOVER:
+			args.usage |= pkcs15_check_bool_cka(attr, SC_PKCS15_PRKEY_USAGE_SIGNRECOVER);
+			break;	
+		case CKA_DECRYPT:
+			args.usage |= pkcs15_check_bool_cka(attr, SC_PKCS15_PRKEY_USAGE_DECRYPT);
+			break;	
+		case CKA_UNWRAP:
+			args.usage |= pkcs15_check_bool_cka(attr, SC_PKCS15_PRKEY_USAGE_UNWRAP);
+			break;
+		case OPENSC_CKA_NON_REPUDIATION:
+			args.usage |= pkcs15_check_bool_cka(attr, SC_PKCS15_PRKEY_USAGE_NONREPUDIATION);
+			break;	
 		default:
 			/* ignore unknown attrs, or flag error? */
 			continue;

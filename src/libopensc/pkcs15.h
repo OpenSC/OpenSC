@@ -70,26 +70,33 @@ typedef struct sc_pkcs15_id sc_pkcs15_id_t;
 #define SC_PKCS15_PIN_TYPE_ISO9564_1			4
 
 #define SC_PKCS15_PIN_AUTH_TYPE_PIN			0
-#define SC_PKCS15_PIN_AUTH_TYPE_AUTH_KEY		1
-#define SC_PKCS15_PIN_AUTH_TYPE_SM_KEY			2
+#define SC_PKCS15_PIN_AUTH_TYPE_BIOMETRIC		1
+#define SC_PKCS15_PIN_AUTH_TYPE_AUTH_KEY		2
+#define SC_PKCS15_PIN_AUTH_TYPE_SM_KEY			3
 
+/* PinAttributes as they defined in PKCS#15 v1.1 for PIN authentication object */
 struct sc_pkcs15_pin_attributes {
 	unsigned int  flags, type;
 	size_t  min_length, stored_length, max_length;
 	int  reference;
 	u8  pad_char;
 };
+/* AuthKeyAttributes of the authKey authentication object */
 struct sc_pkcs15_authkey_attributes {
 	int derived;
 	struct sc_pkcs15_id skey_id;
 };
+/* BiometricAttributes of the biometricTemplate authentication object */
 struct sc_pkcs15_biometric_attributes {
 	unsigned int flags;
 	struct sc_object_id template_id;
 	/* ... */
 };
 struct sc_pkcs15_auth_info {
+	/* CommonAuthenticationObjectAttributes */
 	struct sc_pkcs15_id  auth_id;
+
+	/* AuthObjectAttributes */
 	struct sc_path  path;
 	unsigned auth_type;
 	union {
@@ -97,7 +104,10 @@ struct sc_pkcs15_auth_info {
 		struct sc_pkcs15_biometric_attributes bio;
 		struct sc_pkcs15_authkey_attributes authkey;
 	} attrs;
+
+	/* authentication method: CHV, SEN, SYMBOLIC, ... */
 	unsigned int  auth_method;
+
 	int  tries_left, max_tries;
  };
 typedef struct sc_pkcs15_auth_info sc_pkcs15_auth_info_t;
