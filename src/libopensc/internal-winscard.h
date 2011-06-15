@@ -173,6 +173,17 @@ typedef LONG (PCSC_API *SCardGetAttrib_t)(SCARDHANDLE hCard, DWORD dwAttrId,\
 #define FEATURE_GET_TLV_PROPERTIES       0x12
 #define FEATURE_CCID_ESC_COMMAND         0x13
 
+/* properties returned by FEATURE_GET_TLV_PROPERTIES */
+#define PCSCv2_PART10_PROPERTY_wLcdLayout 1
+#define PCSCv2_PART10_PROPERTY_bEntryValidationCondition 2
+#define PCSCv2_PART10_PROPERTY_bTimeOut2 3
+#define PCSCv2_PART10_PROPERTY_wLcdMaxCharacters 4
+#define PCSCv2_PART10_PROPERTY_wLcdMaxLines 5
+#define PCSCv2_PART10_PROPERTY_bMinPINSize 6
+#define PCSCv2_PART10_PROPERTY_bMaxPINSize 7
+#define PCSCv2_PART10_PROPERTY_sFirmwareID 8
+#define PCSCv2_PART10_PROPERTY_bPPDUSupport 9
+
 /* structures used (but not defined) in PCSC Part 10:
  * "IFDs with Secure Pin Entry Capabilities" */
 

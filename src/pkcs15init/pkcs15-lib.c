@@ -1065,7 +1065,7 @@ sc_pkcs15_create_pin_domain(struct sc_profile *profile,
 	return r;
 }
 
-int
+static int
 sc_pkcs15init_encode_prvkey_content(struct sc_pkcs15_card *p15card, struct sc_pkcs15_prkey *prvkey,
 		struct sc_pkcs15_object *object)
 {
