@@ -332,22 +332,22 @@ static int print_file(sc_card_t *in_card, const sc_file_t *file,
 		tmps = "iEF";
 		break;
 	case SC_FILE_TYPE_DF:
-		tmps = " DF";
+		tmps = "DF";
 		break;
 	default:
 		tmps = "unknown";
 		break;
 	}
-	printf("type: %-3s, ", tmps);
+	printf("type: %s, ", tmps);
 	if (file->type != SC_FILE_TYPE_DF) {
 		const id2str_t ef_type_name[] = {
-			{ SC_FILE_EF_TRANSPARENT,         "transpnt"     },
-			{ SC_FILE_EF_LINEAR_FIXED,        "linrfix"      },
-			{ SC_FILE_EF_LINEAR_FIXED_TLV,    "linrfix(TLV)" },
-			{ SC_FILE_EF_LINEAR_VARIABLE,     "linvar"       },
-			{ SC_FILE_EF_LINEAR_VARIABLE_TLV, "linvar(TLV)"  },
-			{ SC_FILE_EF_CYCLIC,              "lincyc"       },
-			{ SC_FILE_EF_CYCLIC_TLV,          "lincyc(TLV)"  },
+			{ SC_FILE_EF_TRANSPARENT,         "transparent"           },
+			{ SC_FILE_EF_LINEAR_FIXED,        "linear-fixed"          },
+			{ SC_FILE_EF_LINEAR_FIXED_TLV,    "linear-fixed (TLV)"    },
+			{ SC_FILE_EF_LINEAR_VARIABLE,     "linear-variable"       },
+			{ SC_FILE_EF_LINEAR_VARIABLE_TLV, "linear-variable (TLV)" },
+			{ SC_FILE_EF_CYCLIC,              "cyclic"                },
+			{ SC_FILE_EF_CYCLIC_TLV,          "cyclic (TLV)"          },
 			{ 0, NULL }
 		};
 		const char *ef_type = "unknown";
