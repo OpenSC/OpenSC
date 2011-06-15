@@ -188,14 +188,14 @@ static struct command	cmds[] = {
 static char *path_to_filename(const sc_path_t *path, const char sep)
 {
 	static char buf[2*SC_MAX_PATH_STRING_SIZE];
-	int i, j;
+	size_t i, j;
 
 	for (i = 0, j = 0; path != NULL && i < path->len; i++) {
 		if (sep != '\0' && i > 0 && (i & 1) == 0)
 			j += sprintf(buf+j, "%c", sep);
 		j += sprintf(buf+j, "%02X", path->value[i]);
 	}
-	buf[j] = 0;
+	buf[j] = '\0';
 
 	return buf;
 }
@@ -1335,7 +1335,8 @@ static int do_apdu(int argc, char **argv)
 	sc_apdu_t apdu;
 	u8 buf[SC_MAX_APDU_BUFFER_SIZE];
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
-	size_t len, r, i;
+	size_t len, i;
+	int r;
 
 	if (argc < 1)
 		return usage(do_apdu);
@@ -1424,7 +1425,7 @@ static int do_asn1(int argc, char **argv)
 		goto err;
 	}
 	if ((size_t)r != len) {
-		printf("expecting %u, got only %d bytes.\n", len, r);
+		printf("expecting %lu, got only %d bytes.\n", (unsigned long) len, r);
 		goto err;
 	}
 
