@@ -286,8 +286,9 @@ static int refresh_attributes(sc_reader_t *reader)
 
 	rv = priv->gpriv->SCardGetStatusChange(priv->gpriv->pcsc_ctx, 0, &priv->reader_state, 1);
 
-	if (rv != SCARD_S_SUCCESS && rv != (LONG)SCARD_E_TIMEOUT) {
+	if (rv != SCARD_S_SUCCESS) {
 		if (rv == (LONG)SCARD_E_TIMEOUT) {
+			/* Timeout, no change from previous recorded state. Make sure that changed flag is not set. */
 			reader->flags &= ~SC_READER_CARD_CHANGED;
 			SC_FUNC_RETURN(reader->ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
 		}
