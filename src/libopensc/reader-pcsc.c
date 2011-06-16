@@ -397,7 +397,8 @@ static int check_forced_protocol(sc_context_t *ctx, struct sc_atr *atr, DWORD *p
 
 static int pcsc_reconnect(sc_reader_t * reader, DWORD action)
 {
-	DWORD active_proto, tmp, protocol = SCARD_PROTOCOL_T0 | SCARD_PROTOCOL_T1;
+	DWORD active_proto = opensc_proto_to_pcsc(reader->active_protocol),
+		  tmp, protocol = SCARD_PROTOCOL_T0 | SCARD_PROTOCOL_T1;
 	LONG rv;
 	struct pcsc_private_data *priv = GET_PRIV_DATA(reader);
 	int r;
@@ -858,7 +859,7 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 static int pcsc_detect_readers(sc_context_t *ctx)
 {
 	struct pcsc_global_private_data *gpriv = (struct pcsc_global_private_data *) ctx->reader_drv_data;
-	DWORD active_proto, reader_buf_size;
+	DWORD active_proto, reader_buf_size = 0;
 	SCARDHANDLE card_handle;
 	LONG rv;
 	char *reader_buf = NULL, *reader_name;
