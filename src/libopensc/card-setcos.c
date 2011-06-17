@@ -1134,9 +1134,7 @@ static struct sc_card_driver *sc_get_driver(void)
 	return &setcos_drv;
 }
 
-#if 1
 struct sc_card_driver *sc_get_setcos_driver(void)
 {
 	return sc_get_driver();
 }
-#endif
