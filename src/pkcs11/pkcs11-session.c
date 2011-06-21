@@ -137,11 +137,14 @@ CK_RV C_CloseSession(CK_SESSION_HANDLE hSession)
 {				/* the session's handle */
 	CK_RV rv;
 
+	rv = sc_pkcs11_lock();
+	if (rv != CKR_OK)
+		return rv;
+
 	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_CloseSession(0x%lx)\n", hSession);
 
-	rv = sc_pkcs11_lock();
-	if (rv == CKR_OK)
-		rv = sc_pkcs11_close_session(hSession);
+	rv = sc_pkcs11_close_session(hSession);
+
 	sc_pkcs11_unlock();
 	return rv;
 }
@@ -151,10 +154,11 @@ CK_RV C_CloseAllSessions(CK_SLOT_ID slotID)
 	CK_RV rv;
 	struct sc_pkcs11_slot *slot;
 
-	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_CloseAllSessions(0x%lx)\n", slotID);
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
 		return rv;
+
+	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_CloseAllSessions(0x%lx)\n", slotID);
 
 	rv = slot_get_token(slotID, &slot);
 	if (rv != CKR_OK)
