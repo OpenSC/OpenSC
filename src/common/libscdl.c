@@ -83,7 +83,7 @@ void *sc_dlsym(void *handle, const char *symbol)
 	return dlsym(handle, symbol);
 }
 
-const char *sc_dlerror()
+const char *sc_dlerror(void)
 {
 	return dlerror();
 }
