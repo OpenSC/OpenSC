@@ -676,9 +676,9 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 		ctx->reader_driver = sc_get_cardmod_driver();
 	}
 #endif
-#elif ENABLE_CTAPI
+#elif defined(ENABLE_CTAPI)
 	ctx->reader_driver = sc_get_ctapi_driver();
-#elif ENABLE_OPENCT
+#elif defined(ENABLE_OPENCT)
 	ctx->reader_driver = sc_get_openct_driver();
 #endif
 
