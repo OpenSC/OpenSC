@@ -75,7 +75,7 @@ int sc_dlclose(void *handle)
 /* Use native interfaces */
 void *sc_dlopen(const char *filename)
 {
-	return (void *)dlopen(filename, RTLD_LAZY);
+	return dlopen(filename, RTLD_LAZY);
 }
 
 void *sc_dlsym(void *handle, const char *symbol)
@@ -83,7 +83,7 @@ void *sc_dlsym(void *handle, const char *symbol)
 	return dlsym(handle, symbol);
 }
 
-const char *sc_dlerror()
+const char *sc_dlerror(void)
 {
 	return dlerror();
 }

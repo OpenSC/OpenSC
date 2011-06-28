@@ -484,10 +484,10 @@ CK_RV C_Digest(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	struct sc_pkcs11_session *session;
 
 	rv = sc_pkcs11_lock();
-	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_Digest(hSession=0x%lx)", hSession);
 	if (rv != CKR_OK)
 		return rv;
 
+	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_Digest(hSession=0x%lx)", hSession);
 	rv = get_session(hSession, &session);
 	if (rv != CKR_OK)
 		goto out;
