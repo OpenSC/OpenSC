@@ -29,6 +29,9 @@ OPENSC_LT_AGE="$((${OPENSC_LT_CURRENT}-${OPENSC_LT_OLDEST}))"
 
 AC_CONFIG_SRCDIR([src/libopensc/sc.c])
 
+# silent build by default
+m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
+
 AC_CANONICAL_HOST
 AC_PROG_CC
 PKG_PROG_PKG_CONFIG
