@@ -107,10 +107,8 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 	if ((r = sc_get_data(card, 0x006E, buffer, sizeof(buffer))) < 0)
 		goto failed;
 
-	/* TBD: extract algorithm info */
-
 	/* Get CHV status bytes:
-	 *  00:		??
+	 *  00:		1 == user consent for signature PIN
 	 *  01-03:	max length of pins 1-3
 	 *  04-07:	tries left for pins 1-3
 	 */
@@ -118,8 +116,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 		goto failed;
 	if (r != 7) {
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
-			"CHV status bytes have unexpected length "
-			"(expected 7, got %d)\n", r);
+			"CHV status bytes have unexpected length (expected 7, got %d)\n", r);
 		return SC_ERROR_OBJECT_NOT_VALID;
 	}
 
@@ -161,6 +158,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 			return SC_ERROR_INTERNAL;
 	}
 
+	/* XXX: check if "halfkeyes" can be stored with gpg2. If not, add keypairs in one loop */
 	for (i = 0; i < 3; i++) {
 		static int	prkey_pin[3] = { 1, 2, 2 };
 		static int	prkey_usage[3] = {
@@ -175,15 +173,24 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 		struct sc_pkcs15_prkey_info prkey_info;
 		struct sc_pkcs15_object     prkey_obj;
 
+		char path_template[] = "006E007300C0";
 		memset(&prkey_info, 0, sizeof(prkey_info));
 		memset(&prkey_obj,  0, sizeof(prkey_obj));
+
+		path_template[11] = '1' + i; /* The needed tags are C1 C2 and C3 */
+		if ((r = read_file(card, path_template, buffer, sizeof(buffer))) < 0)
+			goto failed;
+		if (r != 6) {
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Key info bytes have unexpected length(expected 6, got %d)\n", r);
+			return SC_ERROR_INTERNAL;
+		}
 
 		prkey_info.id.len        = 1;
 		prkey_info.id.value[0]   = i + 1;
 		prkey_info.usage         = prkey_usage[i];
 		prkey_info.native        = 1;
 		prkey_info.key_reference = i;
-		prkey_info.modulus_length= 1024;
+		prkey_info.modulus_length= (buffer[1]<<8) + buffer[2];
 
 		strlcpy(prkey_obj.label, pgp_key_name[i], sizeof(prkey_obj.label));
 		prkey_obj.flags = SC_PKCS15_CO_FLAG_PRIVATE | SC_PKCS15_CO_FLAG_MODIFIABLE;
@@ -206,13 +213,23 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 
 		struct sc_pkcs15_pubkey_info pubkey_info;
 		struct sc_pkcs15_object      pubkey_obj;
+		char path_template[] = "006E007300C0";
 
 		memset(&pubkey_info, 0, sizeof(pubkey_info));
 		memset(&pubkey_obj,  0, sizeof(pubkey_obj));
 
+		path_template[11] = '1' + i; /* The needed tags are C1 C2 and C3 */
+		if ((r = read_file(card, path_template, buffer, sizeof(buffer))) < 0)
+			goto failed;
+		if (r != 6) {
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Key info bytes have unexpected length(expected 6, got %d)\n", r);
+			return SC_ERROR_INTERNAL;
+		}
+
+
 		pubkey_info.id.len = 1;
 		pubkey_info.id.value[0] = i +1;
-		pubkey_info.modulus_length = 1024;
+		pubkey_info.modulus_length = (buffer[1]<<8) + buffer[2];;
 		pubkey_info.usage    = pubkey_usage[i];
 		sc_format_path(pgp_pubkey_path[i], &pubkey_info.path);
 
