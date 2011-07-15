@@ -3,7 +3,7 @@ NEWS for OpenSC -- History of user visible changes
 Complete change history is available online:
 http://www.opensc-project.org/opensc/timeline
 
-New in 0.12.2; 2011-06-XX
+New in 0.12.2; 2011-07-15
 * Builds are now silent by default when OpenSC is built from source on Unix.
 * Using --wait with command line tools works with 64bit Linux again.
 * Greatly improved OpenPGP card support, including OpenPGP 2.0 cards
