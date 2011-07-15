@@ -132,6 +132,8 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 		flags =	SC_PKCS15_PIN_FLAG_CASE_SENSITIVE |
 			SC_PKCS15_PIN_FLAG_INITIALIZED |
 			SC_PKCS15_PIN_FLAG_LOCAL;
+		if (card->type == SC_CARD_TYPE_OPENPGP_V2 && i == 1)
+				continue;
 		if (i == 2) {
 			flags |= SC_PKCS15_PIN_FLAG_UNBLOCK_DISABLED |
 				 SC_PKCS15_PIN_FLAG_SO_PIN;
@@ -140,7 +142,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 		pin_info.auth_type = SC_PKCS15_PIN_AUTH_TYPE_PIN;
 		pin_info.auth_id.len   = 1;
 		pin_info.auth_id.value[0] = i + 1;
-		pin_info.attrs.pin.reference     = i + 1;
+		pin_info.attrs.pin.reference     = 0x81 + i;
 		pin_info.attrs.pin.flags         = flags;
 		pin_info.attrs.pin.type          = SC_PKCS15_PIN_TYPE_ASCII_NUMERIC;
 		pin_info.attrs.pin.min_length    = 0;
