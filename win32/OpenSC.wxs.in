@@ -52,9 +52,6 @@
         <Component Id="opensc_pkcs11.dll" Guid="*" Win64="$(var.Win64YesNo)">
           <File Source="$(var.SOURCE_DIR)\src\pkcs11\opensc-pkcs11.dll" Vital="yes"/>
         </Component>
-        <Component Id="opensc.dll" Guid="*" Win64="$(var.Win64YesNo)">
-          <File Source="$(var.SOURCE_DIR)\src\libopensc\opensc.dll" Vital="yes"/>
-        </Component>
         <Component Id="opensc_minidriver.dll" Guid="*" Win64="$(var.Win64YesNo)">
           <File Source="$(var.SOURCE_DIR)\src\minidriver\opensc-minidriver.dll" Vital="yes"/>
         </Component>
@@ -75,6 +72,9 @@
             </Component>
             <!-- Tools have their own folder -->
             <Directory Id="INSTALLDIR_TOOLS" Name="tools">
+              <Component Id="opensc.dll" Guid="*" Win64="$(var.Win64YesNo)">
+                <File Source="$(var.SOURCE_DIR)\src\libopensc\opensc.dll" Vital="yes"/>
+              </Component>
               <Component Id="opensc_explorer.exe" Guid="*" Win64="$(var.Win64YesNo)">
                 <File Source="$(var.SOURCE_DIR)\src\tools\opensc-explorer.exe" Vital="yes"/>
               </Component>

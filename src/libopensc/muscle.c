@@ -585,11 +585,9 @@ int msc_extract_rsa_public_key(sc_card_t *card,
 			u8** exponent)
 {
 	int r;
-	const int buffer_size = 1024;
 	u8 buffer[1024]; /* Should be plenty... */
 	int fileLocation = 1;
 
-	assert(modLength && expLength && modulus && exponent);
 	r = msc_extract_key(card, keyLocation);
 	if(r < 0) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 	
@@ -601,7 +599,6 @@ int msc_extract_rsa_public_key(sc_card_t *card,
 	if(buffer[0] != MSC_RSA_PUBLIC) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_UNKNOWN_DATA_RECEIVED);
 	*modLength = (buffer[3] << 8) | buffer[4];
 	/* Read the modulus and the exponent length */
-	assert(*modLength + 2 < buffer_size);
 	
 	r = msc_read_object(card, inputId, fileLocation, buffer, *modLength + 2);
 	fileLocation += *modLength + 2;
@@ -611,7 +608,6 @@ int msc_extract_rsa_public_key(sc_card_t *card,
 	if(!*modulus) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
 	memcpy(*modulus, buffer, *modLength);
 	*expLength = (buffer[*modLength] << 8) | buffer[*modLength + 1];
-	assert(*expLength < buffer_size);
 	r = msc_read_object(card, inputId, fileLocation, buffer, *expLength);
 	if(r < 0) {
 		free(*modulus); *modulus = NULL;

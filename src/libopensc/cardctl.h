@@ -228,7 +228,7 @@ enum {
 	SC_CARDCTL_IASECC_SDO_GET_DATA,
 	SC_CARDCTL_IASECC_SDO_GENERATE,
 	SC_CARDCTL_IASECC_SDO_CREATE,
-	SC_CARDCTL_IASECC_SDO_DELETE,
+	SC_CARDCTL_IASECC_SDO_DELETE
 };
 
 enum {
@@ -626,7 +626,7 @@ typedef enum
 {
 	select_first,
 	select_by_id,
-	select_next,
+	select_next
 } SC_RUTOKEN_DO_SEL_TYPES;
 
 typedef struct sc_DO_INFO_V2 {

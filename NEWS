@@ -4,11 +4,18 @@ Complete change history is available online:
 http://www.opensc-project.org/opensc/timeline
 
 New in 0.12.2; 2011-06-XX
+* Builds are now silent by default when OpenSC is built from source on Unix.
+* Using --wait with command line tools works with 64bit Linux again.
 * Greatly improved OpenPGP card support, including OpenPGP 2.0 cards
-  like the one found in German Privacy Foundation CryptoStick
-* Fixed support for FINeID cards issued after 01.03.2011 with 2048bit keys
-* #256: Fixed support for TCOS cards (broken since 0.12.0)
-* Added support for IDKey-cards to TCOS3 driver
+  like the one found in German Privacy Foundation CryptoStick.
+* Fixed support for FINeID cards issued after 01.03.2011 with 2048bit keys.
+* #256: Fixed support for TCOS cards (broken since 0.12.0).
+* Added support for IDKey-cards to TCOS3 driver.
+* #361: Improved PC/SC driver to fetch the maximum PIN sizes from the open
+  source CCID driver. This fixes the issue for Linux/OSX with recent driver.
+* WindowsInstaller now installs only static DLL-s (PKCS#11, minidriver) to
+  system folder.
+* Several smaller bugs and compiler warnings fixed.
 
 New in 0.12.1; 2011-05-17
 * New card driver: IAS/ECC 1.0.1

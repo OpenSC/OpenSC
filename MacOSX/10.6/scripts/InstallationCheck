@@ -8,8 +8,8 @@ if ( $ENV{OS_INSTALL} == 1) {
 }
 
 DO_CHECKS: {
-	# 10.6.3 or higher system must be active
-	if(CheckVersion("$SYSTEM_VERS", "10.6.4", "ProductVersion", "<")) {
+	# 10.6.8 or higher system must be active
+	if(CheckVersion("$SYSTEM_VERS", "10.6.8", "ProductVersion", "<")) {
 		$EXIT_VALUE = ((1 << 6) | ( 1 << 5 ) | 17 );
 		last;
 	}

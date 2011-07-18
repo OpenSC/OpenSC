@@ -1,6 +1,6 @@
 MAINTAINERCLEANFILES = $(srcdir)/Makefile.in
 
-dist_noinst_SCRIPTS = svn2cl.xsl html.xsl man.xsl
+dist_noinst_SCRIPTS = html.xsl man.xsl
 dist_noinst_DATA = $(srcdir)/tools/*.xml api.css
 if ENABLE_DOC
 html_DATA = html.out/*
