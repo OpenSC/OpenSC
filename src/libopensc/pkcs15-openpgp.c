@@ -33,11 +33,7 @@
 
 int sc_pkcs15emu_openpgp_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
 
-static const char *	pgp_pin_name[3] = {
-				"Signature PIN",
-				"Encryption PIN",
-				"Admin PIN"
-			};
+
 static const char *	pgp_key_name[3] = {
 				"Signature key",
 				"Encryption key",
@@ -86,7 +82,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 	u8		buffer[256];
 	int		r, i;
 
-	set_string(&p15card->tokeninfo->label, "OpenPGP Card");
+	set_string(&p15card->tokeninfo->label, "OpenPGP card");
 	set_string(&p15card->tokeninfo->manufacturer_id, "OpenPGP project");
 
 	if ((r = read_file(card, "004f", buffer, sizeof(buffer))) < 0)
@@ -120,8 +116,20 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 		return SC_ERROR_OBJECT_NOT_VALID;
 	}
 
+	/* Add PIN codes */
 	for (i = 0; i < 3; i++) {
 		unsigned int	flags;
+		static const char *	pgp_pin_name_v1[3] = {
+			"Signature PIN",
+			"Encryption PIN",
+			"Admin PIN"
+		};
+		static const char *	pgp_pin_name_v2[3] = {
+			"User PIN (sig)",
+			"User PIN",
+			"Admin PIN"
+			};
+		static int pin_reference[3] = { 0x81, 0x82, 0x83};
 
 		struct sc_pkcs15_auth_info pin_info;
 		struct sc_pkcs15_object   pin_obj;
@@ -132,8 +140,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 		flags =	SC_PKCS15_PIN_FLAG_CASE_SENSITIVE |
 			SC_PKCS15_PIN_FLAG_INITIALIZED |
 			SC_PKCS15_PIN_FLAG_LOCAL;
-		if (card->type == SC_CARD_TYPE_OPENPGP_V2 && i == 1)
-				continue;
+
 		if (i == 2) {
 			flags |= SC_PKCS15_PIN_FLAG_UNBLOCK_DISABLED |
 				 SC_PKCS15_PIN_FLAG_SO_PIN;
@@ -142,17 +149,25 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 		pin_info.auth_type = SC_PKCS15_PIN_AUTH_TYPE_PIN;
 		pin_info.auth_id.len   = 1;
 		pin_info.auth_id.value[0] = i + 1;
-		pin_info.attrs.pin.reference     = 0x81 + i;
+		pin_info.attrs.pin.reference     = pin_reference[i];
 		pin_info.attrs.pin.flags         = flags;
 		pin_info.attrs.pin.type          = SC_PKCS15_PIN_TYPE_ASCII_NUMERIC;
-		pin_info.attrs.pin.min_length    = 0;
+		pin_info.attrs.pin.min_length    = (i == 2 ? 8 : 6);
 		pin_info.attrs.pin.stored_length = buffer[1+i];
 		pin_info.attrs.pin.max_length    = buffer[1+i];
 		pin_info.attrs.pin.pad_char      = '\0';
 		sc_format_path("3F00", &pin_info.path);
 		pin_info.tries_left    = buffer[4+i];
-
-		strlcpy(pin_obj.label, pgp_pin_name[i], sizeof(pin_obj.label));
+		
+		/* Use different names for PIN codes for v1/v2 cards */
+		if (card->type == SC_CARD_TYPE_OPENPGP_V2) {
+        		strlcpy(pin_obj.label, pgp_pin_name_v2[i], sizeof(pin_obj.label));
+        		/* v2 cards have a single User PIN, but use different PIN reference for signatures. Map accordingly. */
+        		pin_info.tries_left = buffer[4+(i==1?0:i)];
+                } else {
+        		strlcpy(pin_obj.label, pgp_pin_name_v1[i], sizeof(pin_obj.label));
+        		pin_info.tries_left = buffer[4+i];
+                }
 		pin_obj.flags = SC_PKCS15_CO_FLAG_MODIFIABLE | SC_PKCS15_CO_FLAG_PRIVATE;
 
 		r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
@@ -203,7 +218,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 		if (r < 0)
 			return SC_ERROR_INTERNAL;
 	}
-
+	/* Add public keys */
 	for (i = 0; i < 3; i++) {
 		static int	pubkey_usage[3] = {
 					SC_PKCS15_PRKEY_USAGE_VERIFY
@@ -236,8 +251,6 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 		sc_format_path(pgp_pubkey_path[i], &pubkey_info.path);
 
 		strlcpy(pubkey_obj.label, pgp_key_name[i], sizeof(pubkey_obj.label));
-		pubkey_obj.auth_id.len      = 1;
-		pubkey_obj.auth_id.value[0] = 3;
 		pubkey_obj.flags = SC_PKCS15_CO_FLAG_MODIFIABLE;
 
 		r = sc_pkcs15emu_add_rsa_pubkey(p15card, &pubkey_obj, &pubkey_info);
