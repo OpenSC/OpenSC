@@ -20,6 +20,7 @@
 
 /*
  * Specifications:
+ * http://www.g10code.de/docs/openpgp-card-1.0.pdf (obsolete)
  * http://www.g10code.de/docs/openpgp-card-1.1.pdf
  * http://www.g10code.de/docs/openpgp-card-2.0.pdf
  */
