@@ -90,7 +90,12 @@ to enable debug output in the opensc library.</para></listitem>
 	
 	<refsect1>
 		<title>See also</title>
-		<para>opensc-explorer(1)</para>
+		<para>
+			<citerefentry>
+				<refentrytitle>opensc-explorer</refentrytitle>
+				<manvolnum>1</manvolnum>
+			</citerefentry>
+		</para>
 	</refsect1>
 
 </refentry>
