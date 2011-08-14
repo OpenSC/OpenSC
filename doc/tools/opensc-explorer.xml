@@ -14,12 +14,12 @@
 		</refpurpose>
 	</refnamediv>
 
-	<refsect1>
-		<title>Synopsis</title>
-		<para>
-			<command>opensc-explorer</command> [OPTIONS]
-		</para>
-	</refsect1>
+	<refsynopsisdiv>
+		<cmdsynopsis>
+			<command>opensc-explorer</command>
+			<arg choice="opt"><replaceable class="option">OPTIONS</replaceable></arg>
+		</cmdsynopsis>
+	</refsynopsisdiv>
 
 	<refsect1>
 		<title>Description</title>
