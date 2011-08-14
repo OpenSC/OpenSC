@@ -11,6 +11,13 @@
 		<refpurpose>smart card personalization utility</refpurpose>
 	</refnamediv>
 
+	<refsynopsisdiv>
+		<cmdsynopsis>
+			<command>pkcs15-init</command>
+			<arg choice="opt"><replaceable class="option">OPTIONS</replaceable></arg>
+		</cmdsynopsis>
+	</refsynopsisdiv>
+
 	<refsect1>
 		<title>Description</title>
 		<para>
@@ -366,7 +373,6 @@
 						</para>
 					</listitem>
 				</varlistentry>
-
 
 				<varlistentry>
 					<term><option>--use-default-transport-keys</option>,
