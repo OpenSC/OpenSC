@@ -44,7 +44,16 @@
 	
 	<refsect1>
 		<title>See also</title>
-		<para>pkcs15-init(1), pkcs15-crypt(1)</para>
+		<para>
+			<citerefentry>
+				<refentrytitle>pkcs15-init</refentrytitle>
+				<manvolnum>1</manvolnum>
+			</citerefentry>,
+			<citerefentry>
+				<refentrytitle>pkcs15-crypt</refentrytitle>
+				<manvolnum>1</manvolnum>
+			</citerefentry>
+		</para>
 	</refsect1>
 
 </refentry>
