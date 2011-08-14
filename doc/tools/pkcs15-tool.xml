@@ -12,12 +12,12 @@
 		on smart cards and similar security tokens</refpurpose>
 	</refnamediv>
 
-	<refsect1>
-		<title>Synopsis</title>
-		<para>
-			<command>pkcs15-tool</command> [OPTIONS]
-		</para>
-	</refsect1>
+	<refsynopsisdiv>
+		<cmdsynopsis>
+			<command>pkcs15-tool</command>
+			<arg choice="opt"><replaceable class="option">OPTIONS</replaceable></arg>
+		</cmdsynopsis>
+	</refsynopsisdiv>
 
 	<refsect1>
 		<title>Description</title>

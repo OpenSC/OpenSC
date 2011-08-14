@@ -11,12 +11,12 @@
 		<refpurpose>perform crypto operations using pkcs15 smart card</refpurpose>
 	</refnamediv>
 
-	<refsect1>
-		<title>Synopsis</title>
-		<para>
-			<command>pkcs15-crypt</command> [OPTIONS]
-		</para>
-	</refsect1>
+	<refsynopsisdiv>
+		<cmdsynopsis>
+			<command>pkcs15-crypt</command>
+			<arg choice="opt"><replaceable class="option">OPTIONS</replaceable></arg>
+		</cmdsynopsis>
+	</refsynopsisdiv>
 
 	<refsect1>
 		<title>Description</title>

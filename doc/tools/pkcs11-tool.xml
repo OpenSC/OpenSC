@@ -11,12 +11,12 @@
 		<refpurpose>utility for managing and using PKCS #11 security tokens</refpurpose>
 	</refnamediv>
 
-	<refsect1>
-		<title>Synopsis</title>
-		<para>
-			<command>pkcs11-tool</command> [OPTIONS]
-		</para>
-	</refsect1>
+	<refsynopsisdiv>
+		<cmdsynopsis>
+			<command>pkcs11-tool</command>
+			<arg choice="opt"><replaceable class="option">OPTIONS</replaceable></arg>
+		</cmdsynopsis>
+	</refsynopsisdiv>
 
 	<refsect1>
 		<title>Description</title>

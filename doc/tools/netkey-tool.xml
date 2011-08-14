@@ -11,10 +11,13 @@
     <refpurpose>administrative utility for Netkey E4 cards</refpurpose>
   </refnamediv>
 
-  <refsect1>
-    <title>Synopsis</title>
-    <para><command>netkey-tool</command> [OPTIONS] [COMMAND]</para>
-  </refsect1>
+  <refsynopsisdiv>
+    <cmdsynopsis>
+      <command>netkey-tool</command>
+      <arg choice="opt"><replaceable class="option">OPTIONS</replaceable></arg>
+      <arg choice="opt"><replaceable class="parameter">COMMAND</replaceable></arg>
+    </cmdsynopsis>
+  </refsynopsisdiv>
 
   <refsect1>
     <title>Description</title>

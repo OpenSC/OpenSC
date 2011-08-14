@@ -12,12 +12,12 @@
 		electronic identity cards</refpurpose>
 	</refnamediv>
 
-	<refsect1>
-		<title>Synopsis</title>
-		<para>
-			<command>eidenv</command> [OPTIONS]
-		</para>
-	</refsect1>
+	<refsynopsisdiv>
+		<cmdsynopsis>
+			<command>eidenv</command>
+			<arg choice="opt"><replaceable class="option">OPTIONS</replaceable></arg>
+		</cmdsynopsis>
+	</refsynopsisdiv>
 
 	<refsect1>
 		<title>Description</title>
