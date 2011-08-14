@@ -124,7 +124,12 @@
 	
 	<refsect1>
 		<title>See also</title>
-		<para>opensc-tool(1)</para>
+		<para>
+			<citerefentry>
+				<refentrytitle>opensc-tool</refentrytitle>
+				<manvolnum>1</manvolnum>
+			</citerefentry>
+		</para>
 	</refsect1>
 
 </refentry>

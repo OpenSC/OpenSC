@@ -440,7 +440,12 @@
 
 	<refsect1>
 		<title>See also</title>
-		<para>pkcs15-profile(5)</para>
+		<para>
+			<citerefentry>
+				<refentrytitle>pkcs15-profile</refentrytitle>
+				<manvolnum>5</manvolnum>
+			</citerefentry>
+		</para>
 	</refsect1>
 
 </refentry>
