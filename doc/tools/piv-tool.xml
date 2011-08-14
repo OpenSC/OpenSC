@@ -42,9 +42,9 @@
 					<listitem><para>Print the name of the inserted card (driver)</para></listitem>
 				</varlistentry>
 				<varlistentry>
-					<term><option>--admin</option> argument, <option>-A</option> arguement</term>
+					<term><option>--admin</option> argument, <option>-A</option> argument</term>
 					<listitem><para>Authenticate to the card using a 2DES or 3DES key.
-					An arguement {A|M}:{ref}:{alg} is required, were A uses "EXTERNAL AUTHENTICATION"
+					An argument {A|M}:{ref}:{alg} is required, were A uses "EXTERNAL AUTHENTICATION"
 					and M uses "MUTUAL AUTHENTICATION". ref is normally 9B, and alg is 03 for
 					3DES. The key is provided by card vendor, and the environment variable 
 					PIV_EXT_AUTH_KEY must point to a text file with the key in the format:
