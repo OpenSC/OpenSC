@@ -3,7 +3,9 @@
 	<refmeta>
 		<refentrytitle>opensc-explorer</refentrytitle>
 		<manvolnum>1</manvolnum>
-		<refmiscinfo>opensc</refmiscinfo>
+		<refmiscinfo class="productname">OpenSC</refmiscinfo>
+		<refmiscinfo class="manual">OpenSC Tools</refmiscinfo>
+		<refmiscinfo class="source">opensc</refmiscinfo>
 	</refmeta>
 
 	<refnamediv>
