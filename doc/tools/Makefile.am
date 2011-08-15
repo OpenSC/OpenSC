@@ -14,10 +14,12 @@ tools.html: $(srcdir)/tools.xml $(wildcard $(srcdir)/*.1.xml) $(wildcard $(srcdi
 	$(XSLTPROC) --nonet --path "$(srcdir)/..:$(xslstylesheetsdir)/html" --xinclude -o $@ html.xsl $<
 
 %.1: $(srcdir)/%.1.xml
-	$(XSLTPROC) --nonet --path "$(srcdir)/..:$(xslstylesheetsdir)/manpages" --xinclude -o $@ man.xsl $<
+	sed -e 's|@pkgdatadir[@]|$(pkgdatadir)|g' < $< \
+	| $(XSLTPROC) --nonet --path "$(srcdir)/..:$(xslstylesheetsdir)/manpages" --xinclude -o $@ man.xsl $<
 
 %.5: $(srcdir)/%.5.xml
-	$(XSLTPROC) --nonet --path "$(srcdir)/..:$(xslstylesheetsdir)/manpages" --xinclude -o $@ man.xsl $<
+	sed -e 's|@pkgdatadir[@]|$(pkgdatadir)|g' < $< \
+	| $(XSLTPROC) --nonet --path "$(srcdir)/..:$(xslstylesheetsdir)/manpages" --xinclude -o $@ man.xsl $<
 
 clean-local:
 	-rm -rf $(html_DATA) $(man1_MANS) $(man5_MANS)
