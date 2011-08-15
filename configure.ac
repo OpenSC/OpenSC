@@ -581,6 +581,7 @@ fi
 AC_CONFIG_FILES([
 	Makefile
 	doc/Makefile
+	doc/tools/Makefile
 	etc/Makefile
 	src/Makefile
 	src/common/Makefile
