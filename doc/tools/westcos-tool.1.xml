@@ -25,8 +25,8 @@
 		<title>Description</title>
 		<para>
 			The <command>westcos-tool</command> utility is used to manipulate
-			the westcos data structures on 2 Ko smart cards. Users can create PINs, 
-			keys and certificates stored on the token. User PIN authentication is 
+			the westcos data structures on 2 Ko smart cards. Users can create PINs,
+			keys and certificates stored on the token. User PIN authentication is
 			performed for those operations that require it.
 		</para>
 	</refsect1>
@@ -41,25 +41,25 @@
 					Use the given reader. The default is the first reader with a card.
 					</para></listitem>
 				</varlistentry>
-				
+
 				<varlistentry>
 					<term><option>--wait, -w</option></term>
 					<listitem><para>Wait for a card to be inserted</para></listitem>
 				</varlistentry>
-				
+
 				<varlistentry>
 					<term><option>--generate-key, -g</option></term>
 					<listitem><para>Generate a private key on smart card. The smart card must be
 					not finalized and a PIN must be installed (ie. file for PIN must be created, see option
-					-i). By default key length is 1536 bits. User authentication is required for 
+					-i). By default key length is 1536 bits. User authentication is required for
 					this operation. </para></listitem>
 				</varlistentry>
-				
+
 				<varlistentry>
 					<term><option>--overwrite-key, -o</option></term>
 					<listitem><para>Overwrite the key if there is already a key on card.</para></listitem>
 				</varlistentry>
-				
+
 				<varlistentry>
 					<term>
 						<option>--key-length</option> length,
@@ -107,7 +107,7 @@
 				<varlistentry>
 					<term>
 						<option>--certificate</option> file,
-						<option>-t</option> file 
+						<option>-t</option> file
 					</term>
 					<listitem><para>Write certificate file in PEM format to the
 					card. User authentication is required for this operation.</para></listitem>
@@ -126,7 +126,7 @@
 						<option>--read-file</option> path,
 						<option>-j</option> path
 					</term>
-					<listitem><para>Get the file path the file is written 
+					<listitem><para>Get the file path the file is written
 					on disk with path name. User authentication
 					is required for this operation.</para></listitem>
 				</varlistentry>
