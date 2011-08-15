@@ -22,11 +22,11 @@
 
 	<refsect1>
 		<para>
-			The <command>piv-tool</command> utility can be used from the command line to perform 
+			The <command>piv-tool</command> utility can be used from the command line to perform
 			miscellaneous smart card operations on a HSPD-12 PIV smart card as defined in NIST 800-73-3.
-			It is intened for use with test cards only. It can be used to load objects, and generate 
-			key pairs, as well as send arbitrary APDU commands to a card after having authenticated 
-			to the card using the card key provided by the card vendor.   
+			It is intened for use with test cards only. It can be used to load objects, and generate
+			key pairs, as well as send arbitrary APDU commands to a card after having authenticated
+			to the card using the card key provided by the card vendor.
 		</para>
 	</refsect1>
 
@@ -36,9 +36,9 @@
 			<variablelist>
 				<varlistentry>
 					<term><option>--serial</option></term>
-					<listitem><para>Print the derived card serial number from the CHUID object if any.   
+					<listitem><para>Print the derived card serial number from the CHUID object if any.
 					output is in hex byte format.</para></listitem>
-				</varlistentry>			
+				</varlistentry>
 				<varlistentry>
 					<term><option>--name, -n</option></term>
 					<listitem><para>Print the name of the inserted card (driver)</para></listitem>
@@ -48,7 +48,7 @@
 					<listitem><para>Authenticate to the card using a 2DES or 3DES key.
 					An argument {A|M}:{ref}:{alg} is required, were A uses "EXTERNAL AUTHENTICATION"
 					and M uses "MUTUAL AUTHENTICATION". ref is normally 9B, and alg is 03 for
-					3DES. The key is provided by card vendor, and the environment variable 
+					3DES. The key is provided by card vendor, and the environment variable
 					PIV_EXT_AUTH_KEY must point to a text file with the key in the format:
 					XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX
 					</para></listitem>
@@ -56,45 +56,45 @@
 				<varlistentry>
 					<term><option>--genkey</option>argument, <option>-G</option> argument</term>
 					<listitem><para>Generate a key pair on the card and output the public key.
-					An argument {ref}:{alg} is required, where ref is 9A, 9C, 9D or 9E and alg is 
-					06, 07, 11 or 14 for RSA 1024, RSA 2048, ECC 256 or ECC 384. 
+					An argument {ref}:{alg} is required, where ref is 9A, 9C, 9D or 9E and alg is
+					06, 07, 11 or 14 for RSA 1024, RSA 2048, ECC 256 or ECC 384.
 					</para></listitem>
-				</varlistentry>	
+				</varlistentry>
 				<varlistentry>
 					<term><option>--object</option> ContainerID, <option>-O</option> ContainerID</term>
 					<listitem><para>Load an object on to the card. The ContainerID is defined
 					in NIST 800-73-n without leading 0x. Example: CHUID object is 3000
 					</para></listitem>
 				</varlistentry>
-				
+
 				<varlistentry>
 					<term><option>--cert</option> ref, <option>-s</option> ref</term>
 					<listitem><para>Load a certificate on to the card. ref is 9A, 9C, 9D or 9E</para></listitem>
 				</varlistentry>
-				
+
 				<varlistentry>
 					<term><option>--compresscert</option> ref, <option>-Z</option> ref</term>
 					<listitem><para>Load a certificate that has been gziped on to the card.
 					ref is 9A, 9C, 9D or 9E</para></listitem>
 				</varlistentry>
-				
+
 				<varlistentry>
 					<term><option>--out</option> file, <option>-o</option> file</term>
 					<listitem><para>Output file for any operation that produces output.
 					</para></listitem>
-				</varlistentry>	
-				
+				</varlistentry>
+
 				<varlistentry>
 					<term><option>--in</option> file, <option>-i</option> file</term>
 					<listitem><para>Input file for any operation that requires an input file.
 					</para></listitem>
-				</varlistentry>				
-				
+				</varlistentry>
+
 				<varlistentry>
 					<term><option>--key-slots-discovery</option> file</term>
 					<listitem><para>Print properties of the key slots. Needs 'admin' authentication.
 					</para></listitem>
-				</varlistentry>	
+				</varlistentry>
 
 				<varlistentry>
 					<term><option>--send-apdu</option> apdu, <option>-s</option> apdu</term>
@@ -104,7 +104,7 @@
 
 				<varlistentry>
 					<term><option>--reader, -r</option> num</term>
-					<listitem><para>Use the given reader number.  The default is 0, 
+					<listitem><para>Use the given reader number.  The default is 0,
 					the first reader in the system.</para></listitem>
 				</varlistentry>
 				<varlistentry>
@@ -117,13 +117,13 @@
 				</varlistentry>
 				<varlistentry>
 					<term><option>--verbose, -v</option></term>
-					<listitem><para>Causes <command>piv-tool</command> to be more verbose. 
+					<listitem><para>Causes <command>piv-tool</command> to be more verbose.
 					Specify this flag several times to enable debug output in the opensc library.</para></listitem>
 				</varlistentry>
 			</variablelist>
 		</para>
 	</refsect1>
-	
+
 	<refsect1>
 		<title>See also</title>
 		<para>

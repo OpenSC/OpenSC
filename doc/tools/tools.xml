@@ -8,19 +8,19 @@
 		<referenceinfo>
 			<title>OpenSC</title>
 		</referenceinfo>
-		<xi:include href="eidenv.xml"/>
-		<xi:include href="cardos-tool.xml"/>
-		<xi:include href="cryptoflex-tool.xml"/>
-		<xi:include href="netkey-tool.xml"/>
-		<xi:include href="opensc-tool.xml"/>
-		<xi:include href="opensc-explorer.xml"/>
-		<xi:include href="piv-tool.xml"/>
-		<xi:include href="pkcs11-tool.xml"/>
-		<xi:include href="pkcs15-crypt.xml"/>
-		<xi:include href="pkcs15-tool.xml"/>
-		<xi:include href="pkcs15-init.xml"/>
-		<xi:include href="westcos-tool.xml"/>
+		<xi:include href="eidenv.1.xml"/>
+		<xi:include href="cardos-tool.1.xml"/>
+		<xi:include href="cryptoflex-tool.1.xml"/>
+		<xi:include href="netkey-tool.1.xml"/>
+		<xi:include href="opensc-tool.1.xml"/>
+		<xi:include href="opensc-explorer.1.xml"/>
+		<xi:include href="piv-tool.1.xml"/>
+		<xi:include href="pkcs11-tool.1.xml"/>
+		<xi:include href="pkcs15-crypt.1.xml"/>
+		<xi:include href="pkcs15-tool.1.xml"/>
+		<xi:include href="pkcs15-init.1.xml"/>
+		<xi:include href="westcos-tool.1.xml"/>
 
-		<xi:include href="pkcs15-profile.xml"/>
+		<xi:include href="pkcs15-profile.5.xml"/>
 	</reference>
 </book>

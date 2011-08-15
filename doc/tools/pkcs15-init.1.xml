@@ -76,13 +76,13 @@
 			have been entered in a row.
 		</para>
 		<para>
-			For some cards that use the PKCS#15 emulation, the attributes of private objects 
+			For some cards that use the PKCS#15 emulation, the attributes of private objects
 			are protected and cannot be parsed without authentication (usually with User PIN).
 			This authentication need to be done immediately after the card binding.
 			In such cases <option>--verify-pin</option> has to be used.
 		</para>
 	</refsect1>
-	
+
 	<refsect1>
 		<title>Modes of operation</title>
 		<refsect2>
@@ -99,7 +99,7 @@
 			</para>
 			<para>
 				If the card supports it, you should erase the contents of the card with
-				<command>pkcs15-init --erase-card</command> before creating the PKCS#15 structure.	
+				<command>pkcs15-init --erase-card</command> before creating the PKCS#15 structure.
 			</para>
 		</refsect2>
 
@@ -176,7 +176,7 @@
 				template defined by the profile.
 			</para>
 			<para>
-				In addition to the PEM key file format, <command>pkcs15-init</command> also 
+				In addition to the PEM key file format, <command>pkcs15-init</command> also
 				supports DER encoded keys, and PKCS #12 files. The latter is the file format
 				used by Netscape Navigator (among others) when exporting certificates to
 				a file. A PKCS #12 file usually contains the X.509 certificate corresponding
@@ -233,7 +233,7 @@
 			</para>
 		</refsect2>
 	</refsect1>
-	
+
 	<refsect1>
 		<title>Options</title>
 		<para>
@@ -305,11 +305,11 @@
 							(currently, the only supported name is <option>RSA</option>),
 							optionally followed by a slash and the length of the key in bits.
 							It is a good idea to specify the key ID along with this command,
-							using the <option>id</option> option, otherwise an intrinsic ID 
-                                                        will be calculated from the key material. Look the description of 
+							using the <option>id</option> option, otherwise an intrinsic ID
+                                                        will be calculated from the key material. Look the description of
                                                         the 'pkcs15-id-style' attribut in the 'pkcs15.profile' for the details
                                                         about the algorithm used to calculate intrinsic ID.
-                                                        For the multi-application cards the target PKCS#15 application can be 
+                                                        For the multi-application cards the target PKCS#15 application can be
                                                         specified by the hexadecimal AID value of the <option>aid</option> option.
 						</para>
 					</listitem>
@@ -330,7 +330,7 @@
                                                         will be calculated from the key material. Look the description of
                                                         the 'pkcs15-id-style' attribut in the 'pkcs15.profile' for the details
                                                         about the algorithm used to calculate intrinsic ID.
-                                                        For the multi-application cards the target PKCS#15 application can be 
+                                                        For the multi-application cards the target PKCS#15 application can be
                                                         specified by the hexadecimal AID value of the <option>aid</option> option.
 						</para>
 					</listitem>
@@ -357,8 +357,8 @@
 							Tells <command>pkcs15-init</command> to store the certificate given
 							in <option>filename</option> on the card, creating a certificate
 							object with the ID specified via the <option>--id</option> option.
-                                                        Without supplied ID an intrisic ID will be calculated from the 
-                                                        certificate's public key. Look the description of the 'pkcs15-id-style' 
+                                                        Without supplied ID an intrisic ID will be calculated from the
+                                                        certificate's public key. Look the description of the 'pkcs15-id-style'
                                                         attribut in the 'pkcs15.profile' for the details
                                                         about the algorithm used to calculate intrinsic ID.
 							The file is assumed to contain the PEM encoded certificate.
@@ -373,12 +373,12 @@
 					<option>-U</option> <emphasis>filename</emphasis></term>
 					<listitem>
 						<para>
-							Tells <command>pkcs15-init</command> to update the certificate 
+							Tells <command>pkcs15-init</command> to update the certificate
 							object with the ID specified via the <option>--id</option> option
 							with the certificate in <option>filename</option>.
 							The file is assumed to contain a PEM encoded certificate.
 						</para>
-						<para>Pay extra attention when updating mail decryption certificates, as 
+						<para>Pay extra attention when updating mail decryption certificates, as
 						missing certificates can render e-mail messages unreadable!
 						</para>
 					</listitem>

@@ -154,7 +154,7 @@
 			</varlistentry>
 
 			<varlistentry>
-				<term><option>change CHV</option><varname>id</varname> 
+				<term><option>change CHV</option><varname>id</varname>
                                         [[<varname>old-pin</varname>] <varname>new-pin</varname>]</term>
 				<listitem><para>change a PIN, where <varname>id</varname> is the PIN reference</para>
 				<para>
@@ -186,7 +186,7 @@
 				        by <varname>output</varname> while the card file is specified by <varname>file-id</varname>.
                                         </para>
                                         <para>
-                                        If <varname>output</varname> is ommited, the name of the output file will be 
+                                        If <varname>output</varname> is ommited, the name of the output file will be
                                         derivated from the full card path to <varname>file-id</varname>.
                                         </para>
                                 </listitem>
@@ -196,7 +196,7 @@
 				<term><option>do_put</option> <varname>hex-tag</varname> <varname>input</varname></term>
 				<listitem>
                                         <para>update internal card's 'tagged' data. </para>
-                                        <para><varname>hex-tag</varname> is the tag of the card's data. 
+                                        <para><varname>hex-tag</varname> is the tag of the card's data.
                                         <varname>input</varname> is the filename of the source file or the literal data presented as
                                         a sequence of hexadecimal values or '"' enclosed string.
 				        </para>
@@ -207,11 +207,11 @@
 				<term><option>do_get</option> <varname>hex-tag</varname> [<varname>output</varname>]</term>
 				<listitem>
                                         <para>copy the internal card's 'tagged' data into the local file.</para>
-                                        <para>The local file is specified by <varname>output</varname> while the tag of 
+                                        <para>The local file is specified by <varname>output</varname> while the tag of
                                         the card's data is specified by <varname>hex-tag</varname>.
                                         </para>
                                         <para>
-                                        If <varname>output</varname> is ommited, the name of the output file will be 
+                                        If <varname>output</varname> is ommited, the name of the output file will be
                                         derivated from <varname>hex-tag</varname>.
                                         </para>
                                 </listitem>
@@ -239,22 +239,22 @@
 				<term><option>update_record</option> <varname>file-id</varname> <varname>rec_nr</varname>
                                         <varname>rec_offs</varname> <varname>data</varname></term>
 				<listitem>
-                                        <para>update record specified by <varname>rec_nr</varname> of the file 
-                                        specified by <varname>file-id</varname> with the literal data 
-                                        <varname>data</varname> starting from offset specified by 
+                                        <para>update record specified by <varname>rec_nr</varname> of the file
+                                        specified by <varname>file-id</varname> with the literal data
+                                        <varname>data</varname> starting from offset specified by
                                         <varname>rec_offs</varname>.</para>
-                                        <para><varname>data</varname> can be supplied as a sequence of the hex values or 
+                                        <para><varname>data</varname> can be supplied as a sequence of the hex values or
                                         as a '"' encolsed string. </para>
                                 </listitem>
 			</varlistentry>
 
 			<varlistentry>
-				<term><option>update_binary</option> <varname>file-id</varname> <varname>offs</varname> 
+				<term><option>update_binary</option> <varname>file-id</varname> <varname>offs</varname>
                                         <varname>data</varname></term>
 				<listitem>
-                                        <para>binary update of the file specified by <varname>file-id</varname> with the literal data 
+                                        <para>binary update of the file specified by <varname>file-id</varname> with the literal data
                                         <varname>data</varname> starting from offset specified by <varname>offs</varname>.</para>
-                                        <para><varname>data</varname> can be supplied as a sequence of the hex values or 
+                                        <para><varname>data</varname> can be supplied as a sequence of the hex values or
                                         as a '"' encolsed string. </para>
                                 </listitem>
 			</varlistentry>
@@ -277,7 +277,7 @@
 			<varlistentry>
 				<term><option>asn1</option> <varname>file-id</varname></term>
 				<listitem>
-                                        <para>parse and print the ASN1 encoded content of the file specified by 
+                                        <para>parse and print the ASN1 encoded content of the file specified by
                                                 <varname>file-id</varname>.</para>
                                 </listitem>
 			</varlistentry>
@@ -290,7 +290,7 @@
 		</variablelist>
 	</para>
 </refsect1>
-	
+
 	<refsect1>
 		<title>See also</title>
 		<para>

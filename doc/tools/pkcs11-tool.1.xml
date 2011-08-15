@@ -134,7 +134,7 @@
 				<varlistentry>
 					<term><option>--write-object</option> <varname>id</varname>,
 					<option>-w</option> <varname>path</varname></term>
-					<listitem><para>Write a key or certificate object to the token. 
+					<listitem><para>Write a key or certificate object to the token.
                                                 <varname>path</varname> points to the DER-encoded certificate or key file.
                                         </para></listitem>
 				</varlistentry>
@@ -178,7 +178,7 @@
 
 				<varlistentry>
 					<term><option>--token-label</option> <varname>label</varname></term>
-					<listitem><para>Specify the label of token. Will be used the first slot, that has the 
+					<listitem><para>Specify the label of token. Will be used the first slot, that has the
                                                 inserted token with this label.</para></listitem>
 				</varlistentry>
 

@@ -23,8 +23,8 @@
 	<refsect1>
 		<title>Description</title>
 		<para>
-			The <command>opensc-tool</command> utility can be used from the command line to perform 
-			miscellaneous smart card operations such as getting the card ATR or 
+			The <command>opensc-tool</command> utility can be used from the command line to perform
+			miscellaneous smart card operations such as getting the card ATR or
 			sending arbitrary APDU commands to a card.
 		</para>
 	</refsect1>
@@ -89,7 +89,7 @@ to enable debug output in the opensc library.</para></listitem>
 			</variablelist>
 		</para>
 	</refsect1>
-	
+
 	<refsect1>
 		<title>See also</title>
 		<para>
