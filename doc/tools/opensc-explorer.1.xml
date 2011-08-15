@@ -42,8 +42,8 @@
 			<variablelist>
 				<varlistentry>
 					<term>
-						<option>--reader</option> num,
-						<option>-r</option> num
+						<option>--reader</option> <replaceable>num</replaceable>,
+						<option>-r</option> <replaceable>num</replaceable>
 					</term>
 					<listitem><para>
 					Use the given reader number. The default
@@ -52,8 +52,8 @@
 				</varlistentry>
 				<varlistentry>
 					<term>
-						<option>--card-driver</option> driver,
-						<option>-c</option> driver
+						<option>--card-driver</option> <replaceable>driver</replaceable>,
+						<option>-c</option> <replaceable>driver</replaceable>
 					</term>
 					<listitem><para>
 						Use the given card driver.  The default is
@@ -62,22 +62,26 @@
 				</varlistentry>
 				<varlistentry>
 					<term>
-						<option>--mf</option> path,
-						<option>-m</option> path
+						<option>--mf</option> <replaceable>path</replaceable>,
+						<option>-m</option> <replaceable>path</replaceable>
 					</term>
 					<listitem><para>
 						Select the file referenced by the given path on
 						startup.  The default is the path to the standard master file,
-						3F00. If <varname>path</varname> is empty (e.g. <command>opensc-explorer
+						3F00. If <replaceable>path</replaceable> is empty (e.g. <command>opensc-explorer
 						--mf ""</command>), then no file is explicitly selected.
 					</para></listitem>
 				</varlistentry>
 				<varlistentry>
-					<term><option>--wait, -w</option></term>
+					<term>
+						<option>--wait</option>, <option>-w</option>
+					</term>
 					<listitem><para>Wait for a card to be inserted</para></listitem>
 				</varlistentry>
 				<varlistentry>
-					<term><option>--verbose, -v</option></term>
+					<term>
+						<option>--verbose</option>, <option>-v</option>
+					</term>
 					<listitem><para>
 						Causes <command>opensc-explorer</command> to be more
 						verbose. Specify this flag several times to enable
@@ -95,57 +99,74 @@
 		interactive prompt.
 		<variablelist>
 			<varlistentry>
-				<term><option>ls</option></term>
+				<term>
+					<command>ls</command>
+				</term>
 				<listitem><para>list all files in the current DF</para></listitem>
 			</varlistentry>
 
 			<varlistentry>
-				<term><option>cd</option> <varname>file-id</varname></term>
-				<listitem><para>change to another DF specified by <varname>file-id</varname></para></listitem>
+				<term>
+					<command>cd</command> <replaceable>file-id</replaceable>
+				</term>
+				<listitem><para>change to another DF specified by <replaceable>file-id</replaceable></para></listitem>
 			</varlistentry>
 
 			<varlistentry>
-				<term><option>cat</option> [<varname>file-id</varname>]</term>
-				<term><option>cat</option> sfi:<varname>sfi-id</varname></term>
+				<term>
+					<command>cat</command> [<replaceable>file-id</replaceable>]
+				</term>
+				<term>
+					<command>cat</command> sfi:<replaceable>sfi-id</replaceable>
+				</term>
 				<listitem><para>print the contents of the currently selected EF or the contents of a file
-                                        specified by <varname>file-id</varname>
-										or <varname>sfi-id</varname>.
+                                        specified by <replaceable>file-id</replaceable>
+										or <replaceable>sfi-id</replaceable>.
                                 </para></listitem>
 			</varlistentry>
 
 			<varlistentry>
-				<term><option>info</option> [<varname>file-id</varname>]</term>
-				<listitem><para>display attributes of a file specified by <varname>file-id</varname>.
-				If <varname>file-id</varname> is not supplied,
+				<term>
+					<command>info</command> [<replaceable>file-id</replaceable>]
+				</term>
+				<listitem><para>display attributes of a file specified by <replaceable>file-id</replaceable>.
+				If <replaceable>file-id</replaceable> is not supplied,
 				the attributes of the current file are printed.</para></listitem>
 			</varlistentry>
 
 			<varlistentry>
-				<term><option>create</option> <varname>file-id</varname> <varname>size</varname></term>
-				<listitem><para>create a new EF.  <varname>file-id</varname> specifies the
-				id number and <varname>size</varname> is the size of the new file.
+				<term>
+					<command>create</command> <replaceable>file-id</replaceable> <replaceable>size</replaceable>
+				</term>
+				<listitem><para>create a new EF.  <replaceable>file-id</replaceable> specifies the
+				id number and <replaceable>size</replaceable> is the size of the new file.
 				</para></listitem>
 			</varlistentry>
 
 			<varlistentry>
-				<term><option>delete</option> <varname>file-id</varname></term>
-				<listitem><para>remove the EF or DF specified by <varname>file-id</varname></para></listitem>
+				<term>
+					<command>delete</command> <replaceable>file-id</replaceable>
+				</term>
+				<listitem><para>remove the EF or DF specified by <replaceable>file-id</replaceable></para></listitem>
 			</varlistentry>
 
 			<varlistentry>
-				<term><option>rm</option> <varname>file-id</varname></term>
-				<listitem><para>remove the EF or DF specified by <varname>file-id</varname></para></listitem>
+				<term>
+					<command>rm</command> <replaceable>file-id</replaceable>
+				</term>
+				<listitem><para>remove the EF or DF specified by <replaceable>file-id</replaceable></para></listitem>
 			</varlistentry>
 
 			<varlistentry>
-				<term><option>verify</option> <varname>key-type</varname><varname>key-id</varname>
-				[<varname>key</varname>]</term>
-				<listitem><para>present a PIN or key to the card. Where <varname>key-type</varname>
-				can be one of CHV, KEY or PRO. <varname>key-id</varname> is a number representing the
-				key or PIN reference. <varname>key</varname> is the key or PIN to be verified in hex.
+				<term>
+					<command>verify</command> <replaceable>key-type</replaceable><replaceable>key-id</replaceable> [<replaceable>key</replaceable>]
+				</term>
+				<listitem><para>present a PIN or key to the card. Where <replaceable>key-type</replaceable>
+				can be one of CHV, KEY or PRO. <replaceable>key-id</replaceable> is a number representing the
+				key or PIN reference. <replaceable>key</replaceable> is the key or PIN to be verified in hex.
 				</para>
                                 <para>
-                                If <varname>key</varname> is omitted, PIN will be verified with PIN-Pad.
+                                If <replaceable>key</replaceable> is omitted, PIN will be verified with PIN-Pad.
                                 </para>
 				<para>
 					Example: verify CHV0 31:32:33:34:00:00:00:00
@@ -154,9 +175,10 @@
 			</varlistentry>
 
 			<varlistentry>
-				<term><option>change CHV</option><varname>id</varname>
-                                        [[<varname>old-pin</varname>] <varname>new-pin</varname>]</term>
-				<listitem><para>change a PIN, where <varname>id</varname> is the PIN reference</para>
+				<term>
+					<command>change CHV</command><replaceable>id</replaceable> [[<replaceable>old-pin</replaceable>] <replaceable>new-pin</replaceable>]
+				</term>
+				<listitem><para>change a PIN, where <replaceable>id</replaceable> is the PIN reference</para>
 				<para>
                                         Examples:
                                 </para>
@@ -173,117 +195,141 @@
 			</varlistentry>
 
 			<varlistentry>
-				<term><option>put</option> <varname>file-id</varname> <varname>input</varname></term>
+				<term>
+					<command>put</command> <replaceable>file-id</replaceable> <replaceable>input</replaceable>
+				</term>
 				<listitem><para>copy a local file to the card. The local file is specified
-				by <varname>input</varname> while the card file is specified by <varname>file-id</varname>.
+				by <replaceable>input</replaceable> while the card file is specified by <replaceable>file-id</replaceable>.
 				</para></listitem>
 			</varlistentry>
 
 			<varlistentry>
-				<term><option>get</option> <varname>file-id</varname> [<varname>output</varname>]</term>
+				<term>
+					<command>get</command> <replaceable>file-id</replaceable> [<replaceable>output</replaceable>]
+				</term>
 				<listitem>
                                         <para>copy an EF to a local file. The local file is specified
-				        by <varname>output</varname> while the card file is specified by <varname>file-id</varname>.
+				        by <replaceable>output</replaceable> while the card file is specified by <replaceable>file-id</replaceable>.
                                         </para>
                                         <para>
-                                        If <varname>output</varname> is ommited, the name of the output file will be
-                                        derivated from the full card path to <varname>file-id</varname>.
+                                        If <replaceable>output</replaceable> is ommited, the name of the output file will be
+                                        derivated from the full card path to <replaceable>file-id</replaceable>.
                                         </para>
                                 </listitem>
 			</varlistentry>
 
 			<varlistentry>
-				<term><option>do_put</option> <varname>hex-tag</varname> <varname>input</varname></term>
+				<term>
+					<command>do_put</command> <replaceable>hex-tag</replaceable> <replaceable>input</replaceable>
+				</term>
 				<listitem>
                                         <para>update internal card's 'tagged' data. </para>
-                                        <para><varname>hex-tag</varname> is the tag of the card's data.
-                                        <varname>input</varname> is the filename of the source file or the literal data presented as
+                                        <para><replaceable>hex-tag</replaceable> is the tag of the card's data.
+                                        <replaceable>input</replaceable> is the filename of the source file or the literal data presented as
                                         a sequence of hexadecimal values or '"' enclosed string.
 				        </para>
                                 </listitem>
 			</varlistentry>
 
 			<varlistentry>
-				<term><option>do_get</option> <varname>hex-tag</varname> [<varname>output</varname>]</term>
+				<term>
+					<command>do_get</command> <replaceable>hex-tag</replaceable> [<replaceable>output</replaceable>]
+				</term>
 				<listitem>
                                         <para>copy the internal card's 'tagged' data into the local file.</para>
-                                        <para>The local file is specified by <varname>output</varname> while the tag of
-                                        the card's data is specified by <varname>hex-tag</varname>.
+                                        <para>The local file is specified by <replaceable>output</replaceable> while the tag of
+                                        the card's data is specified by <replaceable>hex-tag</replaceable>.
                                         </para>
                                         <para>
-                                        If <varname>output</varname> is ommited, the name of the output file will be
-                                        derivated from <varname>hex-tag</varname>.
+                                        If <replaceable>output</replaceable> is ommited, the name of the output file will be
+                                        derivated from <replaceable>hex-tag</replaceable>.
                                         </para>
                                 </listitem>
 			</varlistentry>
 
 			<varlistentry>
-				<term><option>mkdir</option> <varname>file-id</varname> <varname>size</varname></term>
-				<listitem><para>create a DF.  <varname>file-id</varname> specifies the id number
-				and <varname>size</varname> is the size of the new file.</para></listitem>
+				<term>
+					<command>mkdir</command> <replaceable>file-id</replaceable> <replaceable>size</replaceable>
+				</term>
+				<listitem><para>create a DF.  <replaceable>file-id</replaceable> specifies the id number
+				and <replaceable>size</replaceable> is the size of the new file.</para></listitem>
 			</varlistentry>
 
 			<varlistentry>
-				<term><option>erase</option></term>
+				<term>
+					<command>erase</command>
+				</term>
 				<listitem><para>erase the card, if the card supports it.</para></listitem>
 			</varlistentry>
 
 			<varlistentry>
-				<term><option>random</option> <varname>count</varname></term>
+				<term>
+					<command>random</command> <replaceable>count</replaceable>
+				</term>
 				<listitem>
-                                        <para>generate random sequence of <varname>count</varname> bytes.</para>
+                                        <para>generate random sequence of <replaceable>count</replaceable> bytes.</para>
                                 </listitem>
 			</varlistentry>
 
 			<varlistentry>
-				<term><option>update_record</option> <varname>file-id</varname> <varname>rec_nr</varname>
-                                        <varname>rec_offs</varname> <varname>data</varname></term>
+				<term>
+					<command>update_record</command> <replaceable>file-id</replaceable> <replaceable>rec-nr</replaceable> <replaceable>rec-offs</replaceable> <replaceable>data</replaceable>
+				</term>
 				<listitem>
-                                        <para>update record specified by <varname>rec_nr</varname> of the file
-                                        specified by <varname>file-id</varname> with the literal data
-                                        <varname>data</varname> starting from offset specified by
-                                        <varname>rec_offs</varname>.</para>
-                                        <para><varname>data</varname> can be supplied as a sequence of the hex values or
+                                        <para>update record specified by <replaceable>rec-nr</replaceable> of the file
+                                        specified by <replaceable>file-id</replaceable> with the literal data
+                                        <replaceable>data</replaceable> starting from offset specified by
+                                        <replaceable>rec-offs</replaceable>.</para>
+                                        <para><replaceable>data</replaceable> can be supplied as a sequence of the hex values or
                                         as a '"' encolsed string. </para>
                                 </listitem>
 			</varlistentry>
 
 			<varlistentry>
-				<term><option>update_binary</option> <varname>file-id</varname> <varname>offs</varname>
-                                        <varname>data</varname></term>
+				<term>
+					<command>update_binary</command> <replaceable>file-id</replaceable> <replaceable>offs</replaceable> <replaceable>data</replaceable>
+				</term>
 				<listitem>
-                                        <para>binary update of the file specified by <varname>file-id</varname> with the literal data
-                                        <varname>data</varname> starting from offset specified by <varname>offs</varname>.</para>
-                                        <para><varname>data</varname> can be supplied as a sequence of the hex values or
+                                        <para>binary update of the file specified by <replaceable>file-id</replaceable> with the literal data
+                                        <replaceable>data</replaceable> starting from offset specified by <replaceable>offs</replaceable>.</para>
+                                        <para><replaceable>data</replaceable> can be supplied as a sequence of the hex values or
                                         as a '"' encolsed string. </para>
                                 </listitem>
 			</varlistentry>
 
 			<varlistentry>
-				<term><option>debug</option> [<varname>level</varname>]</term>
+				<term>
+					<command>debug</command> [<replaceable>level</replaceable>]
+				</term>
 				<listitem>
-                                        <para>set OpenSC debug level to <varname>level</varname>.</para>
-                                        <para>If <varname>level</varname> is ommited the current debug level will be shown.</para>
+                                        <para>set OpenSC debug level to <replaceable>level</replaceable>.</para>
+                                        <para>If <replaceable>level</replaceable> is ommited the current debug level will be shown.</para>
                                 </listitem>
 			</varlistentry>
 
 			<varlistentry>
-				<term><option>apdu</option> <varname>hex_data</varname></term>
+				<term>
+					<command>apdu</command> <replaceable>hex-data</replaceable>
+				</term>
 				<listitem>
-                                        <para>send a custom APDU command <varname>hex_data</varname>.</para>
+                                        <para>send a custom APDU command <replaceable>hex-data</replaceable>.</para>
                                 </listitem>
 			</varlistentry>
 
 			<varlistentry>
-				<term><option>asn1</option> <varname>file-id</varname></term>
+				<term>
+					<command>asn1</command> <replaceable>file-id</replaceable>
+				</term>
 				<listitem>
                                         <para>parse and print the ASN1 encoded content of the file specified by
-                                                <varname>file-id</varname>.</para>
+                                                <replaceable>file-id</replaceable>.</para>
                                 </listitem>
 			</varlistentry>
 
 			<varlistentry>
-				<term><option>quit</option></term>
+				<term>
+					<command>quit</command>
+				</term>
 				<listitem><para>exit the program.</para></listitem>
 			</varlistentry>
 
