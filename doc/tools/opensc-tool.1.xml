@@ -34,55 +34,90 @@
 		<para>
 			<variablelist>
 				<varlistentry>
-					<term><option>--info, -i</option></term>
+					<term>
+						<option>--info</option>,
+						<option>-i</option>
+					</term>
 					<listitem><para>Print information about OpenSC, such as version and enabled components</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
-					<term><option>--atr, -a</option></term>
+					<term>
+						<option>--atr</option>,
+						<option>-a</option>
+					</term>
 					<listitem><para>Print the Answer To Reset (ATR) of the card,
 					output is in hex byte format</para></listitem>
 				</varlistentry>
 				<varlistentry>
-					<term><option>--name, -n</option></term>
+					<term>
+						<option>--name</option>,
+						<option>-n</option>
+					</term>
 					<listitem><para>Print the name of the inserted card (driver)</para></listitem>
 				</varlistentry>
 				<varlistentry>
-					<term><option>--serial</option></term>
+					<term>
+						<option>--serial</option>
+					</term>
 					<listitem><para>Print the card serial number (normally the ICCSN), output is in hex byte
 format</para></listitem>
 				</varlistentry>
 				<varlistentry>
-					<term><option>--send-apdu</option> apdu, <option>-s</option> apdu</term>
+					<term>
+						<option>--send-apdu</option> <replaceable>apdu</replaceable>,
+						<option>-s</option> <replaceable>apdu</replaceable>
+					</term>
 					<listitem><para>Sends an arbitrary APDU to the card in the format AA:BB:CC:DD:EE:FF...</para></listitem>
 				</varlistentry>
 				<varlistentry>
-					<term><option>--list-files, -f</option></term>
+					<term>
+						<option>--list-files</option>,
+						<option>-f</option>
+					</term>
 					<listitem><para>Recursively lists all files stored on card</para></listitem>
 				</varlistentry>
 				<varlistentry>
-					<term><option>--list-readers, -l</option></term>
+					<term>
+						<option>--list-readers</option>,
+						<option>-l</option>
+					</term>
 					<listitem><para>Lists all configured readers</para></listitem>
 				</varlistentry>
 				<varlistentry>
-					<term><option>--list-drivers, -D</option></term>
+					<term>
+						<option>--list-drivers</option>,
+						<option>-D</option>
+					</term>
 					<listitem><para>Lists all installed card drivers</para></listitem>
 				</varlistentry>
 				<varlistentry>
-					<term><option>--reader</option> num, <option>-r</option> num</term>
+					<term>
+						<option>--reader</option> <replaceable>num</replaceable>,
+						<option>-r</option> <replaceable>num</replaceable>
+					</term>
 					<listitem><para>Use the given reader number.  The default is 0, the first reader
 in the system.</para></listitem>
 				</varlistentry>
 				<varlistentry>
-					<term><option>--card-driver</option> driver, <option>-c</option> driver</term>
+					<term>
+						<option>--card-driver</option> <replaceable>driver</replaceable>,
+						<option>-c</option> <replaceable>driver</replaceable>
+					</term>
 					<listitem><para>Use the given card driver.  The default is auto-detected.</para></listitem>
 				</varlistentry>
 				<varlistentry>
-					<term><option>--wait, -w</option></term>
+					<term>
+						<option>--wait</option>,
+						<option>-w</option>
+					</term>
 					<listitem><para>Wait for a card to be inserted</para></listitem>
 				</varlistentry>
 				<varlistentry>
-					<term><option>--verbose, -v</option></term>
+					<term>
+						<option>--verbose</option>,
+						<option>-v</option>
+					</term>
 					<listitem><para>Causes <command>opensc-tool</command> to be more verbose. Specify this flag several times
 to enable debug output in the opensc library.</para></listitem>
 				</varlistentry>
