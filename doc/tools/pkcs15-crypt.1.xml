@@ -35,21 +35,26 @@
 		<para>
 			<variablelist>
 				<varlistentry>
-					<term><option>--sign, -s</option></term>
+					<term>
+						<option>--sign</option>,
+						<option>-s</option>
+					</term>
 					<listitem><para>Perform digital signature operation on
-					the data read from a file specified using the <option>input</option>
+					the data read from a file specified using the <option>--input</option>
 					option. By default, the contents of the file are assumed to
 					be the result of an MD5 hash operation. Note that <command>pkcs15-crypt</command>
 					expects the data in binary representation, not ASCII.</para>
 					<para>The digital signature is stored, in binary representation,
-					in the file specified by the <option>output</option> option. If
+					in the file specified by the <option>--output</option> option. If
 					this option is not given, the signature is printed on standard
 					output, displaying non-printable characters using their hex notation
 					xNN (see also <option>--raw</option>).</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
-					<term><option>--pkcs1</option></term>
+					<term>
+						<option>--pkcs1</option>
+					</term>
 					<listitem><para>By default, <command>pkcs15-crypt</command>
 					assumes that input data has been padded to the correct length
 					(i.e. when computing an RSA signature using a 1024 bit key,
@@ -61,7 +66,9 @@
 				</varlistentry>
 
 				<varlistentry>
-					<term><option>--sha-1</option></term>
+					<term>
+						<option>--sha-1</option>
+					</term>
 					<listitem><para>This option tells <command>pkcs15-crypt</command>
 					that the input file is the result of an SHA1 hash operation,
 					rather than an MD5 hash. Again, the data must be in binary
@@ -69,7 +76,10 @@
 				</varlistentry>
 
 				<varlistentry>
-					<term><option>--decipher, -c</option></term>
+					<term>
+						<option>--decipher</option>,
+						<option>-c</option>
+					</term>
 					<listitem><para>Decrypt the contents of the file specified by
 					the <option>--input</option> option. The result of the
 					decryption operation is written to the file specified by the
@@ -80,40 +90,53 @@
 				</varlistentry>
 
 				<varlistentry>
-					<term><option>--key</option> <varname>id</varname>,
-					<option>-k</option> <varname>id</varname></term>
+					<term>
+						<option>--key</option> <replaceable>id</replaceable>,
+						<option>-k</option> <replaceable>id</replaceable>
+					</term>
 					<listitem><para>Selects the ID of the key to use.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
-					<term><option>--reader</option> <varname>N</varname>,
-					<option>-r</option> <varname>N</varname></term>
-					<listitem><para>Selects the <varname>N</varname>-th smart
+					<term>
+						<option>--reader</option> <replaceable>N</replaceable>,
+						<option>-r</option> <replaceable>N</replaceable>
+					</term>
+					<listitem><para>Selects the <replaceable>N</replaceable>-th smart
 					card reader configured by the system. If unspecified,
 					<command>pkcs15-crypt</command> will use the first reader
 					found.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
-					<term><option>--input</option> <varname>file</varname>,
-					<option>-i</option> <varname>file</varname></term>
+					<term>
+						<option>--input</option> <replaceable>file</replaceable>,
+						<option>-i</option> <replaceable>file</replaceable>
+					</term>
 					<listitem><para>Specifies the input file to use.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
-					<term><option>--output</option> <varname>file</varname>,
-					<option>-o</option> <varname>file</varname></term>
+					<term>
+						<option>--output</option> <replaceable>file</replaceable>,
+						<option>-o</option> <replaceable>file</replaceable>
+					</term>
 					<listitem><para>Any output will be sent to the specified file.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
-					<term><option>--raw, -R</option></term>
+					<term>
+						<option>--raw</option>,
+						<option>-R</option>
+					</term>
 					<listitem><para>Outputs raw 8 bit data.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
-					<term><option>--pin</option> <varname>pin</varname>,
-					<option>-p</option> <varname>pin</varname></term>
+					<term>
+						<option>--pin</option> <replaceable>pin</replaceable>,
+						<option>-p</option> <replaceable>pin</replaceable>
+					</term>
 					<listitem><para>When the cryptographic operation requires a
 					PIN to access the key, <command>pkcs15-crypt</command> will
 					prompt the user for the PIN on the terminal. Using this option
@@ -126,13 +149,18 @@
 				</varlistentry>
 
 				<varlistentry>
-					<term><option>--aid</option> <varname>aid</varname></term>
+					<term>
+						<option>--aid</option> <replaceable>aid</replaceable>
+					</term>
 					<listitem><para>Specify in a hexadecimal form the AID of the on-card PKCS#15
                                         application to be binded to.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
-					<term><option>--verbose, -v</option></term>
+					<term>
+						<option>--verbose</option>,
+						<option>-v</option>
+					</term>
 					<listitem><para>Causes <command>pkcs15-crypt</command> to be more
 					verbose. Specify this flag several times to enable debug output
 					in the OpenSC library.</para></listitem>
