@@ -127,7 +127,7 @@
 
 				<varlistentry>
 					<term><option>--aid</option> <varname>aid</varname></term>
-					<listitem><para>Specify in a hexadecimal form the AID of the on-card PKCS#15 
+					<listitem><para>Specify in a hexadecimal form the AID of the on-card PKCS#15
                                         application to be binded to.</para></listitem>
 				</varlistentry>
 
@@ -141,7 +141,7 @@
 			</variablelist>
 		</para>
 	</refsect1>
-	
+
 	<refsect1>
 		<title>See also</title>
 		<para>
