@@ -102,14 +102,14 @@
 				<term>
 					<command>ls</command>
 				</term>
-				<listitem><para>list all files in the current DF</para></listitem>
+				<listitem><para>List all files in the current DF</para></listitem>
 			</varlistentry>
 
 			<varlistentry>
 				<term>
 					<command>cd</command> <replaceable>file-id</replaceable>
 				</term>
-				<listitem><para>change to another DF specified by <replaceable>file-id</replaceable></para></listitem>
+				<listitem><para>Change to another DF specified by <replaceable>file-id</replaceable></para></listitem>
 			</varlistentry>
 
 			<varlistentry>
@@ -119,7 +119,7 @@
 				<term>
 					<command>cat</command> sfi:<replaceable>sfi-id</replaceable>
 				</term>
-				<listitem><para>print the contents of the currently selected EF or the contents of a file
+				<listitem><para>Print the contents of the currently selected EF or the contents of a file
                                         specified by <replaceable>file-id</replaceable>
 										or <replaceable>sfi-id</replaceable>.
                                 </para></listitem>
@@ -129,7 +129,7 @@
 				<term>
 					<command>info</command> [<replaceable>file-id</replaceable>]
 				</term>
-				<listitem><para>display attributes of a file specified by <replaceable>file-id</replaceable>.
+				<listitem><para>Display attributes of a file specified by <replaceable>file-id</replaceable>.
 				If <replaceable>file-id</replaceable> is not supplied,
 				the attributes of the current file are printed.</para></listitem>
 			</varlistentry>
@@ -138,7 +138,7 @@
 				<term>
 					<command>create</command> <replaceable>file-id</replaceable> <replaceable>size</replaceable>
 				</term>
-				<listitem><para>create a new EF.  <replaceable>file-id</replaceable> specifies the
+				<listitem><para>Create a new EF.  <replaceable>file-id</replaceable> specifies the
 				id number and <replaceable>size</replaceable> is the size of the new file.
 				</para></listitem>
 			</varlistentry>
@@ -147,21 +147,21 @@
 				<term>
 					<command>delete</command> <replaceable>file-id</replaceable>
 				</term>
-				<listitem><para>remove the EF or DF specified by <replaceable>file-id</replaceable></para></listitem>
+				<listitem><para>Remove the EF or DF specified by <replaceable>file-id</replaceable></para></listitem>
 			</varlistentry>
 
 			<varlistentry>
 				<term>
 					<command>rm</command> <replaceable>file-id</replaceable>
 				</term>
-				<listitem><para>remove the EF or DF specified by <replaceable>file-id</replaceable></para></listitem>
+				<listitem><para>Remove the EF or DF specified by <replaceable>file-id</replaceable></para></listitem>
 			</varlistentry>
 
 			<varlistentry>
 				<term>
 					<command>verify</command> <replaceable>key-type</replaceable><replaceable>key-id</replaceable> [<replaceable>key</replaceable>]
 				</term>
-				<listitem><para>present a PIN or key to the card. Where <replaceable>key-type</replaceable>
+				<listitem><para>Present a PIN or key to the card. Where <replaceable>key-type</replaceable>
 				can be one of CHV, KEY or PRO. <replaceable>key-id</replaceable> is a number representing the
 				key or PIN reference. <replaceable>key</replaceable> is the key or PIN to be verified in hex.
 				</para>
@@ -178,7 +178,7 @@
 				<term>
 					<command>change CHV</command><replaceable>id</replaceable> [[<replaceable>old-pin</replaceable>] <replaceable>new-pin</replaceable>]
 				</term>
-				<listitem><para>change a PIN, where <replaceable>id</replaceable> is the PIN reference</para>
+				<listitem><para>Change a PIN, where <replaceable>id</replaceable> is the PIN reference</para>
 				<para>
                                         Examples:
                                 </para>
@@ -198,7 +198,7 @@
 				<term>
 					<command>put</command> <replaceable>file-id</replaceable> <replaceable>input</replaceable>
 				</term>
-				<listitem><para>copy a local file to the card. The local file is specified
+				<listitem><para>Copy a local file to the card. The local file is specified
 				by <replaceable>input</replaceable> while the card file is specified by <replaceable>file-id</replaceable>.
 				</para></listitem>
 			</varlistentry>
@@ -208,12 +208,12 @@
 					<command>get</command> <replaceable>file-id</replaceable> [<replaceable>output</replaceable>]
 				</term>
 				<listitem>
-                                        <para>copy an EF to a local file. The local file is specified
+                                        <para>Copy an EF to a local file. The local file is specified
 				        by <replaceable>output</replaceable> while the card file is specified by <replaceable>file-id</replaceable>.
                                         </para>
                                         <para>
-                                        If <replaceable>output</replaceable> is ommited, the name of the output file will be
-                                        derivated from the full card path to <replaceable>file-id</replaceable>.
+                                        If <replaceable>output</replaceable> is omitted, the name of the output file will be
+                                        derived from the full card path to <replaceable>file-id</replaceable>.
                                         </para>
                                 </listitem>
 			</varlistentry>
@@ -223,10 +223,10 @@
 					<command>do_put</command> <replaceable>hex-tag</replaceable> <replaceable>input</replaceable>
 				</term>
 				<listitem>
-                                        <para>update internal card's 'tagged' data. </para>
+                                        <para>Update internal card's 'tagged' data. </para>
                                         <para><replaceable>hex-tag</replaceable> is the tag of the card's data.
                                         <replaceable>input</replaceable> is the filename of the source file or the literal data presented as
-                                        a sequence of hexadecimal values or '"' enclosed string.
+                                        a sequence of hexadecimal values or <literal>"</literal> enclosed string.
 				        </para>
                                 </listitem>
 			</varlistentry>
@@ -236,13 +236,13 @@
 					<command>do_get</command> <replaceable>hex-tag</replaceable> [<replaceable>output</replaceable>]
 				</term>
 				<listitem>
-                                        <para>copy the internal card's 'tagged' data into the local file.</para>
+                                        <para>Copy the internal card's 'tagged' data into the local file.</para>
                                         <para>The local file is specified by <replaceable>output</replaceable> while the tag of
                                         the card's data is specified by <replaceable>hex-tag</replaceable>.
                                         </para>
                                         <para>
-                                        If <replaceable>output</replaceable> is ommited, the name of the output file will be
-                                        derivated from <replaceable>hex-tag</replaceable>.
+                                        If <replaceable>output</replaceable> is omitted, the name of the output file will be
+                                        derived from <replaceable>hex-tag</replaceable>.
                                         </para>
                                 </listitem>
 			</varlistentry>
@@ -251,7 +251,7 @@
 				<term>
 					<command>mkdir</command> <replaceable>file-id</replaceable> <replaceable>size</replaceable>
 				</term>
-				<listitem><para>create a DF.  <replaceable>file-id</replaceable> specifies the id number
+				<listitem><para>Create a DF.  <replaceable>file-id</replaceable> specifies the id number
 				and <replaceable>size</replaceable> is the size of the new file.</para></listitem>
 			</varlistentry>
 
@@ -259,7 +259,7 @@
 				<term>
 					<command>erase</command>
 				</term>
-				<listitem><para>erase the card, if the card supports it.</para></listitem>
+				<listitem><para>Erase the card, if the card supports it.</para></listitem>
 			</varlistentry>
 
 			<varlistentry>
@@ -267,7 +267,7 @@
 					<command>random</command> <replaceable>count</replaceable>
 				</term>
 				<listitem>
-                                        <para>generate random sequence of <replaceable>count</replaceable> bytes.</para>
+                                        <para>Generate random sequence of <replaceable>count</replaceable> bytes.</para>
                                 </listitem>
 			</varlistentry>
 
@@ -276,12 +276,12 @@
 					<command>update_record</command> <replaceable>file-id</replaceable> <replaceable>rec-nr</replaceable> <replaceable>rec-offs</replaceable> <replaceable>data</replaceable>
 				</term>
 				<listitem>
-                                        <para>update record specified by <replaceable>rec-nr</replaceable> of the file
+                                        <para>Update record specified by <replaceable>rec-nr</replaceable> of the file
                                         specified by <replaceable>file-id</replaceable> with the literal data
                                         <replaceable>data</replaceable> starting from offset specified by
                                         <replaceable>rec-offs</replaceable>.</para>
                                         <para><replaceable>data</replaceable> can be supplied as a sequence of the hex values or
-                                        as a '"' encolsed string. </para>
+                                        as a <literal>"</literal> enclosed string. </para>
                                 </listitem>
 			</varlistentry>
 
@@ -290,10 +290,10 @@
 					<command>update_binary</command> <replaceable>file-id</replaceable> <replaceable>offs</replaceable> <replaceable>data</replaceable>
 				</term>
 				<listitem>
-                                        <para>binary update of the file specified by <replaceable>file-id</replaceable> with the literal data
+                                        <para>Binary update of the file specified by <replaceable>file-id</replaceable> with the literal data
                                         <replaceable>data</replaceable> starting from offset specified by <replaceable>offs</replaceable>.</para>
                                         <para><replaceable>data</replaceable> can be supplied as a sequence of the hex values or
-                                        as a '"' encolsed string. </para>
+                                        as a <literal>"</literal> enclosed string. </para>
                                 </listitem>
 			</varlistentry>
 
@@ -302,8 +302,8 @@
 					<command>debug</command> [<replaceable>level</replaceable>]
 				</term>
 				<listitem>
-                                        <para>set OpenSC debug level to <replaceable>level</replaceable>.</para>
-                                        <para>If <replaceable>level</replaceable> is ommited the current debug level will be shown.</para>
+                                        <para>Set OpenSC debug level to <replaceable>level</replaceable>.</para>
+                                        <para>If <replaceable>level</replaceable> is omitted the current debug level will be shown.</para>
                                 </listitem>
 			</varlistentry>
 
@@ -312,7 +312,7 @@
 					<command>apdu</command> <replaceable>hex-data</replaceable>
 				</term>
 				<listitem>
-                                        <para>send a custom APDU command <replaceable>hex-data</replaceable>.</para>
+                                        <para>Send a custom APDU command <replaceable>hex-data</replaceable>.</para>
                                 </listitem>
 			</varlistentry>
 
@@ -321,7 +321,7 @@
 					<command>asn1</command> <replaceable>file-id</replaceable>
 				</term>
 				<listitem>
-                                        <para>parse and print the ASN1 encoded content of the file specified by
+                                        <para>Parse and print the ASN.1 encoded content of the file specified by
                                                 <replaceable>file-id</replaceable>.</para>
                                 </listitem>
 			</varlistentry>
@@ -330,7 +330,7 @@
 				<term>
 					<command>quit</command>
 				</term>
-				<listitem><para>exit the program.</para></listitem>
+				<listitem><para>Exit the program.</para></listitem>
 			</varlistentry>
 
 		</variablelist>
