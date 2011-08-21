@@ -36,18 +36,10 @@
 			<variablelist>
 				<varlistentry>
 					<term>
-						<option>--verify-pin</option>,
-						<option>-V</option>
+						<option>--app-df</option> <replaceable>num</replaceable>,
+						<option>-a</option> <replaceable>num</replaceable>
 					</term>
-					<listitem><para>Verifies CHV1 before issuing commands</para></listitem>
-				</varlistentry>
-
-				<varlistentry>
-					<term>
-						<option>--list-keys</option>,
-						<option>-l</option>
-					</term>
-					<listitem><para>Lists all keys stored in a public key file</para></listitem>
+					<listitem><para>Specifies the DF to operate in</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -68,19 +60,19 @@
 
 				<varlistentry>
 					<term>
-						<option>--generate-key</option>,
-						<option>-g</option>
+						<option>--exponent</option> <replaceable>exp</replaceable>,
+						<option>-e</option> <replaceable>exp</replaceable>
 					</term>
-					<listitem><para>Generate a new RSA key pair</para></listitem>
+					<listitem><para>Specifies the RSA exponent, <replaceable>exp</replaceable>,
+					to use in key generation. The default value is 3.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
 					<term>
-						<option>--read-key</option>
+						<option>--generate-key</option>,
+						<option>-g</option>
 					</term>
-					<listitem><para>Reads a public key from the card, allowing the user to
-					extract and store or use the public key
-					</para></listitem>
+					<listitem><para>Generate a new RSA key pair</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -94,10 +86,19 @@
 
 				<varlistentry>
 					<term>
-						<option>--app-df</option> <replaceable>num</replaceable>,
-						<option>-a</option> <replaceable>num</replaceable>
+						<option>--list-keys</option>,
+						<option>-l</option>
 					</term>
-					<listitem><para>Specifies the DF to operate in</para></listitem>
+					<listitem><para>Lists all keys stored in a public key file</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--modulus-length</option> <replaceable>length</replaceable>,
+						<option>-m</option> <replaceable>length</replaceable>
+					</term>
+					<listitem><para>Specifies the modulus <replaceable>length</replaceable> to use
+					in key generation. The default value is 1024.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -120,20 +121,11 @@
 
 				<varlistentry>
 					<term>
-						<option>--exponent</option> <replaceable>exp</replaceable>,
-						<option>-e</option> <replaceable>exp</replaceable>
+						<option>--read-key</option>
 					</term>
-					<listitem><para>Specifies the RSA exponent, <replaceable>exp</replaceable>,
-					to use in key generation. The default value is 3.</para></listitem>
-				</varlistentry>
-
-				<varlistentry>
-					<term>
-						<option>--modulus-length</option> <replaceable>length</replaceable>,
-						<option>-m</option> <replaceable>length</replaceable>
-					</term>
-					<listitem><para>Specifies the modulus <replaceable>length</replaceable> to use
-					in key generation. The default value is 1024.</para></listitem>
+					<listitem><para>Reads a public key from the card, allowing the user to
+					extract and store or use the public key
+					</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -154,6 +146,14 @@
 					<listitem><para>Causes <command>cryptoflex-tool</command> to be more
 					verbose. Specify this flag several times to enable debug output in
 					the opensc library.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--verify-pin</option>,
+						<option>-V</option>
+					</term>
+					<listitem><para>Verifies CHV1 before issuing commands</para></listitem>
 				</varlistentry>
 
 			</variablelist>
