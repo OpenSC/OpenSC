@@ -39,20 +39,11 @@
 			<variablelist>
 				<varlistentry>
 					<term>
-						<option>--reader</option> <replaceable>num</replaceable>,
-						<option>-r</option> <replaceable>num</replaceable>
+						<option>--exec</option> <replaceable>prog</replaceable>,
+						<option>-x</option> <replaceable>prog</replaceable>
 					</term>
-					<listitem><para>
-					Use the given reader. The default is the first reader with a card.
-					</para></listitem>
-				</varlistentry>
-
-				<varlistentry>
-					<term>
-						<option>--wait</option>,
-						<option>-w</option>
-					</term>
-					<listitem><para>Wait for a card to be inserted</para></listitem>
+					<listitem><para>Executes the given program with
+					data in environment variables.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -61,15 +52,6 @@
 						<option>-h</option>
 					</term>
 					<listitem><para>Print help message on screen.</para></listitem>
-				</varlistentry>
-
-				<varlistentry>
-					<term>
-						<option>--version</option>,
-						<option>-v</option>
-					</term>
-					<listitem><para>Prints the version
-					of the utility and exits.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -84,6 +66,16 @@
 
 				<varlistentry>
 					<term>
+						<option>--reader</option> <replaceable>num</replaceable>,
+						<option>-r</option> <replaceable>num</replaceable>
+					</term>
+					<listitem><para>
+					Use the given reader. The default is the first reader with a card.
+					</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
 						<option>--stats</option>,
 						<option>-t</option>
 					</term>
@@ -93,11 +85,19 @@
 
 				<varlistentry>
 					<term>
-						<option>--exec</option> <replaceable>prog</replaceable>,
-						<option>-x</option> <replaceable>prog</replaceable>
+						<option>--version</option>,
+						<option>-v</option>
 					</term>
-					<listitem><para>Executes the given program with
-					data in environment variables.</para></listitem>
+					<listitem><para>Prints the version
+					of the utility and exits.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--wait</option>,
+						<option>-w</option>
+					</term>
+					<listitem><para>Wait for a card to be inserted</para></listitem>
 				</varlistentry>
 
 			</variablelist>
