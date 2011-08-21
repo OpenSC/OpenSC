@@ -36,6 +36,39 @@
 		<title>Options</title>
 		<para>
 			<variablelist>
+                                <varlistentry>
+                                        <term>
+						<option>--aid</option> <replaceable>aid</replaceable>
+					</term>
+                                        <listitem><para>Specify in a hexadecimal form the AID of the on-card PKCS#15
+                                        application to be binded to.</para></listitem>
+                                </varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--auth-id</option> <replaceable>pin</replaceable>,
+						<option>-a</option> <replaceable>pin</replaceable>
+					</term>
+					<listitem><para>Specifies the auth id of the PIN to use for the
+					operation. This is useful with the --change-pin operation.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--change-pin</option>
+					</term>
+					<listitem><para>Changes a PIN or PUK stored on the token. User authentication
+					is required for this operation.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--dump</option>,
+						<option>-D</option>
+					</term>
+					<listitem><para>Dump card objects.</para></listitem>
+				</varlistentry>
+
 				<varlistentry>
 					<term>
 						<option>--learn-card</option>,
@@ -57,35 +90,10 @@
 
 				<varlistentry>
 					<term>
-						<option>--read-certificate</option> <replaceable>cert</replaceable>,
-						<option>-r</option> <replaceable>cert</replaceable>
-					</term>
-					<listitem><para>Reads the certificate with the given id.</para></listitem>
-				</varlistentry>
-
-				<varlistentry>
-					<term>
 						<option>--list-certificates</option>,
 						<option>-c</option>
 					</term>
 					<listitem><para>Lists all certificates stored on the token.</para></listitem>
-				</varlistentry>
-
-				<varlistentry>
-					<term>
-						<option>--read-data-object</option> <replaceable>cert</replaceable>,
-						<option>-R</option> <replaceable>data</replaceable>
-					</term>
-					<listitem><para>Reads data object with OID, applicationName or label.
-                                        </para></listitem>
-				</varlistentry>
-
-				<varlistentry>
-					<term>
-						<option>--verify-pin</option>
-					</term>
-					<listitem><para>Verify PIN after card binding and before issuing any command
-                                        (without 'auth-id' the first non-SO, non-Unblock PIN will be verified)</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -98,39 +106,6 @@
 					protected for reading and need the authentication with the User PIN.
 					In such a case the <option>--verify-pin</option> option has to be used.
 					</para></listitem>
-				</varlistentry>
-
-				<varlistentry>
-					<term>
-						<option>--list-pins</option>
-					</term>
-					<listitem><para>Lists all PINs stored on the token. General information
-					about each PIN is listed (eg. PIN name). Actual PIN values are not shown.</para></listitem>
-				</varlistentry>
-
-				<varlistentry>
-					<term>
-						<option>--dump</option>,
-						<option>-D</option>
-					</term>
-					<listitem><para>Dump card objects.</para></listitem>
-				</varlistentry>
-
-				<varlistentry>
-					<term>
-						<option>--change-pin</option>
-					</term>
-					<listitem><para>Changes a PIN or PUK stored on the token. User authentication
-					is required for this operation.</para></listitem>
-				</varlistentry>
-
-				<varlistentry>
-					<term>
-						<option>--unblock-pin</option>,
-						<option>-u</option>
-					</term>
-					<listitem><para>Unblocks a PIN stored on the token. Knowledge of the
-					Pin Unblock Key (PUK) is required for this operation.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -148,10 +123,52 @@
 
 				<varlistentry>
 					<term>
+						<option>--list-pins</option>
+					</term>
+					<listitem><para>Lists all PINs stored on the token. General information
+					about each PIN is listed (eg. PIN name). Actual PIN values are not shown.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
 						<option>--list-public-keys</option>
 					</term>
 					<listitem><para>Lists all public keys stored on the token, including
 					key name, id, algorithm and length information.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--no-cache</option>
+					</term>
+					<listitem><para>Disables token data caching.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--output</option> <replaceable>filename</replaceable>,
+						<option>-o</option> <replaceable>filename</replaceable>
+					</term>
+					<listitem><para>Specifies where key output should be written.
+					If <replaceable>filename</replaceable> already exists, it will be overwritten.
+					If this option is not given, keys will be printed to standard output.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--read-certificate</option> <replaceable>cert</replaceable>,
+						<option>-r</option> <replaceable>cert</replaceable>
+					</term>
+					<listitem><para>Reads the certificate with the given id.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--read-data-object</option> <replaceable>cert</replaceable>,
+						<option>-R</option> <replaceable>data</replaceable>
+					</term>
+					<listitem><para>Reads data object with OID, applicationName or label.
+                                        </para></listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -173,45 +190,20 @@
 
 				<varlistentry>
 					<term>
-						<option>--output</option> <replaceable>filename</replaceable>,
-						<option>-o</option> <replaceable>filename</replaceable>
-					</term>
-					<listitem><para>Specifies where key output should be written.
-					If <replaceable>filename</replaceable> already exists, it will be overwritten.
-					If this option is not given, keys will be printed to standard output.</para></listitem>
-				</varlistentry>
-
-				<varlistentry>
-					<term>
-						<option>--no-cache</option>
-					</term>
-					<listitem><para>Disables token data caching.</para></listitem>
-				</varlistentry>
-
-				<varlistentry>
-					<term>
-						<option>--auth-id</option> <replaceable>pin</replaceable>,
-						<option>-a</option> <replaceable>pin</replaceable>
-					</term>
-					<listitem><para>Specifies the auth id of the PIN to use for the
-					operation. This is useful with the --change-pin operation.</para></listitem>
-				</varlistentry>
-
-                                <varlistentry>
-                                        <term>
-						<option>--aid</option> <replaceable>aid</replaceable>
-					</term>
-                                        <listitem><para>Specify in a hexadecimal form the AID of the on-card PKCS#15
-                                        application to be binded to.</para></listitem>
-                                </varlistentry>
-
-				<varlistentry>
-					<term>
 						<option>--reader</option> <replaceable>num</replaceable>
 					</term>
 					<listitem><para>Forces <command>pkcs15-tool</command> to use reader
 					number <replaceable>num</replaceable> for operations. The default is to use
 					reader number 0, the first reader in the system.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--unblock-pin</option>,
+						<option>-u</option>
+					</term>
+					<listitem><para>Unblocks a PIN stored on the token. Knowledge of the
+					Pin Unblock Key (PUK) is required for this operation.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -222,6 +214,14 @@
 					<listitem><para>Causes <command>pkcs15-tool</command> to be more
 					verbose. Specify this flag several times to enable debug output
 					in the OpenSC library.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--verify-pin</option>
+					</term>
+					<listitem><para>Verify PIN after card binding and before issuing any command
+                                        (without 'auth-id' the first non-SO, non-Unblock PIN will be verified)</para></listitem>
 				</varlistentry>
 
 			</variablelist>
