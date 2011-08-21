@@ -43,20 +43,6 @@
         </varlistentry>
         <varlistentry>
           <term>
-            <option>--reader</option> <replaceable>number</replaceable>,
-            <option>-r</option> <replaceable>number</replaceable>
-          </term>
-          <listitem><para>Use smart card in specified reader. Default is reader 0.</para></listitem>
-        </varlistentry>
-        <varlistentry>
-          <term>
-            <option>-v</option>
-          </term>
-          <listitem><para>Causes <command>netkey-tool</command> to be more verbose. This
-          options may be specified multiple times to increase verbosity.</para></listitem>
-        </varlistentry>
-        <varlistentry>
-          <term>
             <option>--pin</option> <replaceable>pin-value</replaceable>,
             <option>-p</option> <replaceable>pin-value</replaceable>
           </term>
@@ -82,6 +68,20 @@
             <option>-1</option> <replaceable>pin-value</replaceable>
           </term>
           <listitem><para>Specifies the current value of the local PIN1 (aka local PUK).</para></listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
+            <option>--reader</option> <replaceable>number</replaceable>,
+            <option>-r</option> <replaceable>number</replaceable>
+          </term>
+          <listitem><para>Use smart card in specified reader. Default is reader 0.</para></listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
+            <option>-v</option>
+          </term>
+          <listitem><para>Causes <command>netkey-tool</command> to be more verbose. This
+          options may be specified multiple times to increase verbosity.</para></listitem>
         </varlistentry>
       </variablelist>
     </para>
@@ -119,11 +119,24 @@
       <variablelist>
         <varlistentry>
           <term>
-            <command>unblock</command> { <parameter>pin</parameter> | <parameter>pin0</parameter> | <parameter>pin1</parameter> }
+            <command>cert</command> <replaceable>number</replaceable> <replaceable>filename</replaceable>
           </term>
-          <listitem><para>This unblocks the specified pin. You must specify another pin
-          to be able to do this and if you don't specify a correct one,
-          <command>netkey-tool</command> will tell you which one is needed.</para></listitem>
+          <listitem><para>This command will read one of your cards certificates (as specified by
+          <replaceable>number</replaceable>) and save this certificate into file <replaceable>filename</replaceable>
+          in PEM-format.  Certificates on a NetKey E4 card are readable without a pin, so you don't
+          have to specify one.</para></listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
+            <command>cert</command> <replaceable>filename</replaceable> <replaceable>number</replaceable>
+          </term>
+          <listitem><para>This command will read the first PEM-encoded certificate from file
+          <replaceable>filename</replaceable> and store this into your smart cards certificate file
+          <replaceable>number</replaceable>. Some of your smart cards certificate files might be readonly, so
+          this will not work with all values of <replaceable>number</replaceable>. If a certificate file is
+          writable you must specify a pin in order to change it. If you try to use this command
+          without specifying a pin, <command>netkey-tool</command> will tell you which one is
+          needed.</para></listitem>
         </varlistentry>
         <varlistentry>
           <term>
@@ -147,24 +160,11 @@
         </varlistentry>
         <varlistentry>
           <term>
-            <command>cert</command> <replaceable>number</replaceable> <replaceable>filename</replaceable>
+            <command>unblock</command> { <parameter>pin</parameter> | <parameter>pin0</parameter> | <parameter>pin1</parameter> }
           </term>
-          <listitem><para>This command will read one of your cards certificates (as specified by
-          <replaceable>number</replaceable>) and save this certificate into file <replaceable>filename</replaceable>
-          in PEM-format.  Certificates on a NetKey E4 card are readable without a pin, so you don't
-          have to specify one.</para></listitem>
-        </varlistentry>
-        <varlistentry>
-          <term>
-            <command>cert</command> <replaceable>filename</replaceable> <replaceable>number</replaceable>
-          </term>
-          <listitem><para>This command will read the first PEM-encoded certificate from file
-          <replaceable>filename</replaceable> and store this into your smart cards certificate file
-          <replaceable>number</replaceable>. Some of your smart cards certificate files might be readonly, so
-          this will not work with all values of <replaceable>number</replaceable>. If a certificate file is
-          writable you must specify a pin in order to change it. If you try to use this command
-          without specifying a pin, <command>netkey-tool</command> will tell you which one is
-          needed.</para></listitem>
+          <listitem><para>This unblocks the specified pin. You must specify another pin
+          to be able to do this and if you don't specify a correct one,
+          <command>netkey-tool</command> will tell you which one is needed.</para></listitem>
         </varlistentry>
       </variablelist>
     </para>
