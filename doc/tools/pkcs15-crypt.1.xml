@@ -36,43 +36,11 @@
 			<variablelist>
 				<varlistentry>
 					<term>
-						<option>--sign</option>,
-						<option>-s</option>
+						<option>--aid</option> <replaceable>aid</replaceable>
 					</term>
-					<listitem><para>Perform digital signature operation on
-					the data read from a file specified using the <option>--input</option>
-					option. By default, the contents of the file are assumed to
-					be the result of an MD5 hash operation. Note that <command>pkcs15-crypt</command>
-					expects the data in binary representation, not ASCII.</para>
-					<para>The digital signature is stored, in binary representation,
-					in the file specified by the <option>--output</option> option. If
-					this option is not given, the signature is printed on standard
-					output, displaying non-printable characters using their hex notation
-					xNN (see also <option>--raw</option>).</para></listitem>
-				</varlistentry>
-
-				<varlistentry>
-					<term>
-						<option>--pkcs1</option>
-					</term>
-					<listitem><para>By default, <command>pkcs15-crypt</command>
-					assumes that input data has been padded to the correct length
-					(i.e. when computing an RSA signature using a 1024 bit key,
-					the input must be padded to 128 bytes to match the modulus
-					length). When giving the <option>--pkcs1</option> option,
-					however, <command>pkcs15-crypt</command> will perform the
-					required padding using the algorithm outlined in the
-					PKCS #1 standard version 1.5.</para></listitem>
-				</varlistentry>
-
-				<varlistentry>
-					<term>
-						<option>--sha-1</option>
-					</term>
-					<listitem><para>This option tells <command>pkcs15-crypt</command>
-					that the input file is the result of an SHA1 hash operation,
-					rather than an MD5 hash. Again, the data must be in binary
-					representation.</para></listitem>
+					<listitem><para>Specify the AID of the on-card PKCS#15 applicationi
+					to bind to. The <replaceable>aid</replaceable> must be in hexadecimal
+					form.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -91,25 +59,6 @@
 
 				<varlistentry>
 					<term>
-						<option>--key</option> <replaceable>id</replaceable>,
-						<option>-k</option> <replaceable>id</replaceable>
-					</term>
-					<listitem><para>Selects the ID of the key to use.</para></listitem>
-				</varlistentry>
-
-				<varlistentry>
-					<term>
-						<option>--reader</option> <replaceable>N</replaceable>,
-						<option>-r</option> <replaceable>N</replaceable>
-					</term>
-					<listitem><para>Selects the <replaceable>N</replaceable>-th smart
-					card reader configured by the system. If unspecified,
-					<command>pkcs15-crypt</command> will use the first reader
-					found.</para></listitem>
-				</varlistentry>
-
-				<varlistentry>
-					<term>
 						<option>--input</option> <replaceable>file</replaceable>,
 						<option>-i</option> <replaceable>file</replaceable>
 					</term>
@@ -118,18 +67,18 @@
 
 				<varlistentry>
 					<term>
-						<option>--output</option> <replaceable>file</replaceable>,
-						<option>-o</option> <replaceable>file</replaceable>
+						<option>--key</option> <replaceable>id</replaceable>,
+						<option>-k</option> <replaceable>id</replaceable>
 					</term>
-					<listitem><para>Any output will be sent to the specified file.</para></listitem>
+					<listitem><para>Selects the ID of the key to use.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
 					<term>
-						<option>--raw</option>,
-						<option>-R</option>
+						<option>--output</option> <replaceable>file</replaceable>,
+						<option>-o</option> <replaceable>file</replaceable>
 					</term>
-					<listitem><para>Outputs raw 8 bit data.</para></listitem>
+					<listitem><para>Any output will be sent to the specified file.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -150,10 +99,64 @@
 
 				<varlistentry>
 					<term>
-						<option>--aid</option> <replaceable>aid</replaceable>
+						<option>--pkcs1</option>
 					</term>
-					<listitem><para>Specify in a hexadecimal form the AID of the on-card PKCS#15
-                                        application to be binded to.</para></listitem>
+					<listitem><para>By default, <command>pkcs15-crypt</command>
+					assumes that input data has been padded to the correct length
+					(i.e. when computing an RSA signature using a 1024 bit key,
+					the input must be padded to 128 bytes to match the modulus
+					length). When giving the <option>--pkcs1</option> option,
+					however, <command>pkcs15-crypt</command> will perform the
+					required padding using the algorithm outlined in the
+					PKCS #1 standard version 1.5.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--raw</option>,
+						<option>-R</option>
+					</term>
+					<listitem><para>Outputs raw 8 bit data.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--reader</option> <replaceable>N</replaceable>,
+						<option>-r</option> <replaceable>N</replaceable>
+					</term>
+					<listitem><para>Selects the <replaceable>N</replaceable>-th smart
+					card reader configured by the system. If unspecified,
+					<command>pkcs15-crypt</command> will use the first reader
+					found.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--sha-1</option>
+					</term>
+					<listitem><para>This option tells <command>pkcs15-crypt</command>
+					that the input file is the result of an SHA1 hash operation,
+					rather than an MD5 hash. Again, the data must be in binary
+					representation.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--sign</option>,
+						<option>-s</option>
+					</term>
+					<listitem><para>Perform digital signature operation on
+					the data read from a file specified using the <option>--input</option>
+					option. By default, the contents of the file are assumed to
+					be the result of an MD5 hash operation.
+					Note that <command>pkcs15-crypt</command>
+					expects the data in binary representation, not ASCII.</para>
+					<para>The digital signature is stored, in binary representation,
+					in the file specified by the <option>--output</option> option. If
+					this option is not given, the signature is printed on standard
+					output, displaying non-printable characters using their hex notation
+					<literal>x</literal><replaceable>NN</replaceable>
+					(see also <option>--raw</option>).</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
