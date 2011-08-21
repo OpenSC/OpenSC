@@ -38,8 +38,8 @@
 					<term>
 						<option>--serial</option>
 					</term>
-					<listitem><para>Print the derived card serial number from the CHUID object if any.
-					output is in hex byte format.</para></listitem>
+					<listitem><para>Print the card serial number derived from the CHUID object,
+					if any. Output is in hex byte format.</para></listitem>
 				</varlistentry>
 				<varlistentry>
 					<term>
@@ -54,11 +54,16 @@
 						<option>-A</option> <replaceable>argument</replaceable>
 					</term>
 					<listitem><para>Authenticate to the card using a 2DES or 3DES key.
-					An argument {A|M}:{ref}:{alg} is required, were A uses "EXTERNAL AUTHENTICATION"
-					and M uses "MUTUAL AUTHENTICATION". ref is normally 9B, and alg is 03 for
-					3DES. The key is provided by card vendor, and the environment variable
-					PIV_EXT_AUTH_KEY must point to a text file with the key in the format:
-					XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX
+					The <replaceable>argument</replaceable> of the form
+					<synopsis> {<literal>A</literal>|<literal>M</literal>}<literal>:</literal><replaceable>ref</replaceable><literal>:</literal><replaceable>alg</replaceable></synopsis>
+					is required, were <literal>A</literal> uses "EXTERNAL AUTHENTICATION"
+					and <literal>M</literal> uses "MUTUAL AUTHENTICATION".
+					<replaceable>ref</replaceable> is normally <literal>9B</literal>,
+					and <replaceable>alg</replaceable> is <literal>03</literal> for 3DES.
+					The key is provided by the card vendor, and the environment variable
+					<varname>PIV_EXT_AUTH_KEY</varname> must point to a text file containing
+					the key in the format:
+					<code>XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX</code>
 					</para></listitem>
 				</varlistentry>
 				<varlistentry>
@@ -67,17 +72,22 @@
 						<option>-G</option> <replaceable>argument</replaceable>
 					</term>
 					<listitem><para>Generate a key pair on the card and output the public key.
-					An argument {ref}:{alg} is required, where ref is 9A, 9C, 9D or 9E and alg is
-					06, 07, 11 or 14 for RSA 1024, RSA 2048, ECC 256 or ECC 384.
-					</para></listitem>
+					The <replaceable>argument</replaceable> of th form
+					<synopsis><replaceable>ref</replaceable>:<replaceable>alg</replaceable></synopsis>
+					is required, where <replaceable>ref</replaceable> is <literal>9A</literal>,
+					<literal>9C</literal>, <literal>9D</literal> or <literal>9E</literal> and
+					<replaceable>alg</replaceable> is <literal>06</literal>,
+					<literal>07</literal>, <literal>11</literal> or <literal>14</literal>
+					for RSA 1024, RSA 2048,	ECC 256 or ECC 384 respectively. </para></listitem>
 				</varlistentry>
 				<varlistentry>
 					<term>
 						<option>--object</option> <replaceable>ContainerID</replaceable>,
 						<option>-O</option> <replaceable>ContainerID</replaceable>
 					</term>
-					<listitem><para>Load an object on to the card. The ContainerID is defined
-					in NIST 800-73-n without leading 0x. Example: CHUID object is 3000
+					<listitem><para>Load an object on to the card.
+					The <replaceable>ContainerID</replaceable> is as defined in NIST 800-73-n
+					without leading <literal>0x</literal>. Example: CHUID object is 3000
 					</para></listitem>
 				</varlistentry>
 
@@ -86,7 +96,10 @@
 						<option>--cert</option> <replaceable>ref</replaceable>,
 						<option>-s</option> <replaceable>ref</replaceable>
 					</term>
-					<listitem><para>Load a certificate on to the card. ref is 9A, 9C, 9D or 9E</para></listitem>
+					<listitem><para>Load a certificate on to the card.
+					<replaceable>ref</replaceable> is <literal>9A</literal>,
+					<literal>9C</literal>, <literal>9D</literal> or
+					<literal>9E</literal></para></listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -95,7 +108,9 @@
 						<option>-Z</option> <replaceable>ref</replaceable>
 					</term>
 					<listitem><para>Load a certificate that has been gziped on to the card.
-					ref is 9A, 9C, 9D or 9E</para></listitem>
+					<replaceable>ref</replaceable> is <literal>9A</literal>,
+					<literal>9C</literal>, <literal>9D</literal> or
+					 <literal>9E</literal></para></listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -129,7 +144,8 @@
 						<option>--send-apdu</option> <replaceable>apdu</replaceable>,
 						<option>-s</option> <replaceable>apdu</replaceable>
 					</term>
-					<listitem><para>Sends an arbitrary APDU to the card in the format AA:BB:CC:DD:EE:FF...
+					<listitem><para>Sends an arbitrary APDU to the card in the format
+					<code>AA:BB:CC:DD:EE:FF...</code>.
 					This option may be repeated.</para></listitem>
 				</varlistentry>
 
@@ -138,15 +154,16 @@
 						<option>--reader</option> <replaceable>num</replaceable>,
 						<option>-r</option> <replaceable>num</replaceable>
 					</term>
-					<listitem><para>Use the given reader number.  The default is 0,
-					the first reader in the system.</para></listitem>
+					<listitem><para>Use the given reader number. The default is
+					<literal>0</literal>, the first reader in the system.</para></listitem>
 				</varlistentry>
 				<varlistentry>
 					<term>
 						<option>--card-driver</option> <replaceable>driver</replaceable>,
 						<option>-c</option> <replaceable>driver</replaceable>
 					</term>
-					<listitem><para>Use the given card driver. The default is auto-detected.</para></listitem>
+					<listitem><para>Use the given card driver.
+					The default is auto-detected.</para></listitem>
 				</varlistentry>
 				<varlistentry>
 					<term>
@@ -161,7 +178,8 @@
 						<option>-v</option>
 					</term>
 					<listitem><para>Causes <command>piv-tool</command> to be more verbose.
-					Specify this flag several times to enable debug output in the opensc library.</para></listitem>
+					Specify this flag several times to enable debug output in the opensc
+					library.</para></listitem>
 				</varlistentry>
 			</variablelist>
 		</para>
