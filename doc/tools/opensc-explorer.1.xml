@@ -42,16 +42,6 @@
 			<variablelist>
 				<varlistentry>
 					<term>
-						<option>--reader</option> <replaceable>num</replaceable>,
-						<option>-r</option> <replaceable>num</replaceable>
-					</term>
-					<listitem><para>
-					Use the given reader number. The default
-					is 0, the first reader in the system.
-					</para></listitem>
-				</varlistentry>
-				<varlistentry>
-					<term>
 						<option>--card-driver</option> <replaceable>driver</replaceable>,
 						<option>-c</option> <replaceable>driver</replaceable>
 					</term>
@@ -74,9 +64,13 @@
 				</varlistentry>
 				<varlistentry>
 					<term>
-						<option>--wait</option>, <option>-w</option>
+						<option>--reader</option> <replaceable>num</replaceable>,
+						<option>-r</option> <replaceable>num</replaceable>
 					</term>
-					<listitem><para>Wait for a card to be inserted</para></listitem>
+					<listitem><para>
+					Use the given reader number. The default
+					is 0, the first reader in the system.
+					</para></listitem>
 				</varlistentry>
 				<varlistentry>
 					<term>
@@ -87,6 +81,12 @@
 						verbose. Specify this flag several times to enable
 						debug output in the opensc library.
 					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--wait</option>, <option>-w</option>
+					</term>
+					<listitem><para>Wait for a card to be inserted</para></listitem>
 				</varlistentry>
 			</variablelist>
 		</para>
@@ -100,16 +100,19 @@
 		<variablelist>
 			<varlistentry>
 				<term>
-					<command>ls</command>
+					<command>apdu</command> <replaceable>hex-data</replaceable>
 				</term>
-				<listitem><para>List all files in the current DF</para></listitem>
+				<listitem>
+                                        <para>Send a custom APDU command <replaceable>hex-data</replaceable>.</para>
+                                </listitem>
 			</varlistentry>
 
 			<varlistentry>
 				<term>
-					<command>cd</command> <replaceable>file-id</replaceable>
+					<command>asn1</command> <replaceable>file-id</replaceable>
 				</term>
-				<listitem><para>Change to another DF specified by <replaceable>file-id</replaceable></para></listitem>
+				<listitem><para>Parse and print the ASN.1 encoded content of the file specified by
+				<replaceable>file-id</replaceable>.</para></listitem>
 			</varlistentry>
 
 			<varlistentry>
@@ -117,61 +120,19 @@
 					<command>cat</command> [<replaceable>file-id</replaceable>]
 				</term>
 				<term>
-					<command>cat</command> sfi:<replaceable>sfi-id</replaceable>
+					<command>cat sfi:</command><replaceable>short-id</replaceable>
 				</term>
-				<listitem><para>Print the contents of the currently selected EF or the contents of a file
-                                        specified by <replaceable>file-id</replaceable>
-										or <replaceable>sfi-id</replaceable>.
+				<listitem><para>Print the contents of the currently selected EF or the contents
+				of a file specified by <replaceable>file-id</replaceable> or the short file id
+				<replaceable>short-id</replaceable>.
                                 </para></listitem>
 			</varlistentry>
 
 			<varlistentry>
 				<term>
-					<command>info</command> [<replaceable>file-id</replaceable>]
+					<command>cd</command> <replaceable>file-id</replaceable>
 				</term>
-				<listitem><para>Display attributes of a file specified by <replaceable>file-id</replaceable>.
-				If <replaceable>file-id</replaceable> is not supplied,
-				the attributes of the current file are printed.</para></listitem>
-			</varlistentry>
-
-			<varlistentry>
-				<term>
-					<command>create</command> <replaceable>file-id</replaceable> <replaceable>size</replaceable>
-				</term>
-				<listitem><para>Create a new EF.  <replaceable>file-id</replaceable> specifies the
-				id number and <replaceable>size</replaceable> is the size of the new file.
-				</para></listitem>
-			</varlistentry>
-
-			<varlistentry>
-				<term>
-					<command>delete</command> <replaceable>file-id</replaceable>
-				</term>
-				<listitem><para>Remove the EF or DF specified by <replaceable>file-id</replaceable></para></listitem>
-			</varlistentry>
-
-			<varlistentry>
-				<term>
-					<command>rm</command> <replaceable>file-id</replaceable>
-				</term>
-				<listitem><para>Remove the EF or DF specified by <replaceable>file-id</replaceable></para></listitem>
-			</varlistentry>
-
-			<varlistentry>
-				<term>
-					<command>verify</command> <replaceable>key-type</replaceable><replaceable>key-id</replaceable> [<replaceable>key</replaceable>]
-				</term>
-				<listitem><para>Present a PIN or key to the card. Where <replaceable>key-type</replaceable>
-				can be one of CHV, KEY or PRO. <replaceable>key-id</replaceable> is a number representing the
-				key or PIN reference. <replaceable>key</replaceable> is the key or PIN to be verified in hex.
-				</para>
-                                <para>
-                                If <replaceable>key</replaceable> is omitted, PIN will be verified with PIN-Pad.
-                                </para>
-				<para>
-					Example: verify CHV0 31:32:33:34:00:00:00:00
-				</para>
-				</listitem>
+				<listitem><para>Change to another DF specified by <replaceable>file-id</replaceable></para></listitem>
 			</varlistentry>
 
 			<varlistentry>
@@ -196,39 +157,28 @@
 
 			<varlistentry>
 				<term>
-					<command>put</command> <replaceable>file-id</replaceable> <replaceable>input</replaceable>
+					<command>create</command> <replaceable>file-id</replaceable> <replaceable>size</replaceable>
 				</term>
-				<listitem><para>Copy a local file to the card. The local file is specified
-				by <replaceable>input</replaceable> while the card file is specified by <replaceable>file-id</replaceable>.
+				<listitem><para>Create a new EF.  <replaceable>file-id</replaceable> specifies the
+				id number and <replaceable>size</replaceable> is the size of the new file.
 				</para></listitem>
 			</varlistentry>
 
 			<varlistentry>
 				<term>
-					<command>get</command> <replaceable>file-id</replaceable> [<replaceable>output</replaceable>]
+					<command>debug</command> [<replaceable>level</replaceable>]
 				</term>
 				<listitem>
-                                        <para>Copy an EF to a local file. The local file is specified
-				        by <replaceable>output</replaceable> while the card file is specified by <replaceable>file-id</replaceable>.
-                                        </para>
-                                        <para>
-                                        If <replaceable>output</replaceable> is omitted, the name of the output file will be
-                                        derived from the full card path to <replaceable>file-id</replaceable>.
-                                        </para>
+                                        <para>Set OpenSC debug level to <replaceable>level</replaceable>.</para>
+                                        <para>If <replaceable>level</replaceable> is omitted the current debug level will be shown.</para>
                                 </listitem>
 			</varlistentry>
 
 			<varlistentry>
 				<term>
-					<command>do_put</command> <replaceable>hex-tag</replaceable> <replaceable>input</replaceable>
+					<command>delete</command> <replaceable>file-id</replaceable>
 				</term>
-				<listitem>
-                                        <para>Update internal card's 'tagged' data. </para>
-                                        <para><replaceable>hex-tag</replaceable> is the tag of the card's data.
-                                        <replaceable>input</replaceable> is the filename of the source file or the literal data presented as
-                                        a sequence of hexadecimal values or <literal>"</literal> enclosed string.
-				        </para>
-                                </listitem>
+				<listitem><para>Remove the EF or DF specified by <replaceable>file-id</replaceable></para></listitem>
 			</varlistentry>
 
 			<varlistentry>
@@ -249,10 +199,15 @@
 
 			<varlistentry>
 				<term>
-					<command>mkdir</command> <replaceable>file-id</replaceable> <replaceable>size</replaceable>
+					<command>do_put</command> <replaceable>hex-tag</replaceable> <replaceable>input</replaceable>
 				</term>
-				<listitem><para>Create a DF.  <replaceable>file-id</replaceable> specifies the id number
-				and <replaceable>size</replaceable> is the size of the new file.</para></listitem>
+				<listitem>
+                                        <para>Update internal card's 'tagged' data. </para>
+                                        <para><replaceable>hex-tag</replaceable> is the tag of the card's data.
+                                        <replaceable>input</replaceable> is the filename of the source file or the literal data presented as
+                                        a sequence of hexadecimal values or <literal>"</literal> enclosed string.
+				        </para>
+                                </listitem>
 			</varlistentry>
 
 			<varlistentry>
@@ -264,10 +219,84 @@
 
 			<varlistentry>
 				<term>
+					<command>get</command> <replaceable>file-id</replaceable> [<replaceable>output</replaceable>]
+				</term>
+				<listitem>
+                                        <para>Copy an EF to a local file. The local file is specified
+				        by <replaceable>output</replaceable> while the card file is specified by <replaceable>file-id</replaceable>.
+                                        </para>
+                                        <para>
+                                        If <replaceable>output</replaceable> is omitted, the name of the output file will be
+                                        derived from the full card path to <replaceable>file-id</replaceable>.
+                                        </para>
+                                </listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term>
+					<command>info</command> [<replaceable>file-id</replaceable>]
+				</term>
+				<listitem><para>Display attributes of a file specified by <replaceable>file-id</replaceable>.
+				If <replaceable>file-id</replaceable> is not supplied,
+				the attributes of the current file are printed.</para></listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term>
+					<command>ls</command>
+				</term>
+				<listitem><para>List all files in the current DF</para></listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term>
+					<command>mkdir</command> <replaceable>file-id</replaceable> <replaceable>size</replaceable>
+				</term>
+				<listitem><para>Create a DF. <replaceable>file-id</replaceable> specifies the id number
+				and <replaceable>size</replaceable> is the size of the new file.</para></listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term>
+					<command>put</command> <replaceable>file-id</replaceable> <replaceable>input</replaceable>
+				</term>
+				<listitem><para>Copy a local file to the card. The local file is specified
+				by <replaceable>input</replaceable> while the card file is specified by <replaceable>file-id</replaceable>.
+				</para></listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term>
+					<command>quit</command>
+				</term>
+				<listitem><para>Exit the program.</para></listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term>
 					<command>random</command> <replaceable>count</replaceable>
 				</term>
 				<listitem>
                                         <para>Generate random sequence of <replaceable>count</replaceable> bytes.</para>
+                                </listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term>
+					<command>rm</command> <replaceable>file-id</replaceable>
+				</term>
+				<listitem><para>Remove the EF or DF specified by <replaceable>file-id</replaceable></para></listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term>
+					<command>update_binary</command> <replaceable>file-id</replaceable> <replaceable>offs</replaceable> <replaceable>data</replaceable>
+				</term>
+				<listitem>
+                                        <para>Binary update of the file specified by <replaceable>file-id</replaceable> with the literal data
+                                        <replaceable>data</replaceable> starting from offset specified by <replaceable>offs</replaceable>.</para>
+                                        <para><replaceable>data</replaceable> can be supplied as a sequence of the hex values or
+                                        as a <literal>"</literal> enclosed string. </para>
                                 </listitem>
 			</varlistentry>
 
@@ -287,50 +316,19 @@
 
 			<varlistentry>
 				<term>
-					<command>update_binary</command> <replaceable>file-id</replaceable> <replaceable>offs</replaceable> <replaceable>data</replaceable>
+					<command>verify</command> <replaceable>key-type</replaceable> <replaceable>key-id</replaceable> [<replaceable>key</replaceable>]
 				</term>
-				<listitem>
-                                        <para>Binary update of the file specified by <replaceable>file-id</replaceable> with the literal data
-                                        <replaceable>data</replaceable> starting from offset specified by <replaceable>offs</replaceable>.</para>
-                                        <para><replaceable>data</replaceable> can be supplied as a sequence of the hex values or
-                                        as a <literal>"</literal> enclosed string. </para>
-                                </listitem>
-			</varlistentry>
-
-			<varlistentry>
-				<term>
-					<command>debug</command> [<replaceable>level</replaceable>]
-				</term>
-				<listitem>
-                                        <para>Set OpenSC debug level to <replaceable>level</replaceable>.</para>
-                                        <para>If <replaceable>level</replaceable> is omitted the current debug level will be shown.</para>
-                                </listitem>
-			</varlistentry>
-
-			<varlistentry>
-				<term>
-					<command>apdu</command> <replaceable>hex-data</replaceable>
-				</term>
-				<listitem>
-                                        <para>Send a custom APDU command <replaceable>hex-data</replaceable>.</para>
-                                </listitem>
-			</varlistentry>
-
-			<varlistentry>
-				<term>
-					<command>asn1</command> <replaceable>file-id</replaceable>
-				</term>
-				<listitem>
-                                        <para>Parse and print the ASN.1 encoded content of the file specified by
-                                                <replaceable>file-id</replaceable>.</para>
-                                </listitem>
-			</varlistentry>
-
-			<varlistentry>
-				<term>
-					<command>quit</command>
-				</term>
-				<listitem><para>Exit the program.</para></listitem>
+				<listitem><para>Present a PIN or key to the card. Where <replaceable>key-type</replaceable>
+				can be one of CHV, KEY or PRO. <replaceable>key-id</replaceable> is a number representing the
+				key or PIN reference. <replaceable>key</replaceable> is the key or PIN to be verified in hex.
+				</para>
+                                <para>
+                                If <replaceable>key</replaceable> is omitted, PIN will be verified with PIN-Pad.
+                                </para>
+				<para>
+					Example: verify CHV0 31:32:33:34:00:00:00:00
+				</para>
+				</listitem>
 			</varlistentry>
 
 		</variablelist>
