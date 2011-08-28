@@ -770,13 +770,10 @@ static int iso7816_restore_security_env(sc_card_t *card, int se_num)
 {
 	sc_apdu_t apdu;
 	int r;
-	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	
 	assert(card != NULL);
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x22, 0xF3, se_num);
-	apdu.resplen = sizeof(rbuf) > 250 ? 250 : sizeof(rbuf);
-	apdu.resp = rbuf;
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 	return sc_check_sw(card, apdu.sw1, apdu.sw2);
