@@ -676,10 +676,10 @@ static int iso7816_delete_file(sc_card_t *card, const sc_path_t *path)
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xE4, 0x00, 0x00);
 		apdu.lc = 2;
 		apdu.datalen = 2;
+		apdu.data = sbuf;
 	}
 	else /* No file ID given: means currently selected file */
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0xE4, 0x00, 0x00);
-	apdu.data = sbuf;
 	
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
