@@ -91,6 +91,7 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 	{ "akis",	(void *(*)(void)) sc_get_akis_driver },
 #ifdef ENABLE_OPENSSL
 	{ "entersafe",(void *(*)(void)) sc_get_entersafe_driver },
+	{ "es_ep2k3",(void *(*)(void)) sc_get_es_ep2k3_driver },
 #endif
 	{ "rutoken",	(void *(*)(void)) sc_get_rutoken_driver },
 	{ "rutoken_ecp",(void *(*)(void)) sc_get_rtecp_driver },
