@@ -709,6 +709,46 @@ typedef struct sc_entersafe_gen_key_data_st {
 	u8	*modulus;
 } sc_entersafe_gen_key_data;
 
+#define	SC_ES_KEY	0x00000010
+#define	SC_ES_KEY_RSA	0x00000011
+#define	SC_ES_SECRET	0x00000020
+#define	SC_ES_SECRET_PRE	0x00000021
+#define	SC_ES_SECRET_PIN	0x00000022
+
+#define ES_AC_EVERYONE 0x00
+#define ES_AC_USER 0x06
+#define ES_AC_SO 0x08
+#define ES_AC_NOONE 0x0F
+#define ES_AC_MAC_UNEQUAL 0x80
+#define ES_AC_MAC_NOLESS 0x90
+#define ES_AC_MAC_LESS 0xA0
+#define ES_AC_MAC_EQUAL 0xB0
+
+#define FID_STEP 0x20
+
+typedef struct sc_es_ep2k3_wkey_data_st {
+	 u8 type;
+	 union {
+		  struct {
+			  unsigned short fid;
+			  struct sc_pkcs15_prkey_rsa* rsa;
+		  } es_key;
+		  struct {
+			  u8 kid;
+			  u8 ac[2];
+			  u8 key_val[256];
+			  size_t key_len;
+		  } es_secret;
+	 } key_data;
+} sc_es_ep2k3_wkey_data;
+
+typedef struct sc_es_ep2k3_gen_key_data_st {
+	 int prkey_id;
+	 int pukey_id;
+	 size_t key_length;
+	 u8 *modulus;
+} sc_es_ep2k3_gen_key_data;
+
 #if defined(__APPLE__) || defined(sun)
 #pragma pack()
 #else

@@ -147,6 +147,7 @@ static struct profile_operations {
 	{ "muscle", (void*) sc_pkcs15init_get_muscle_ops },
 	{ "asepcos", (void*) sc_pkcs15init_get_asepcos_ops },
 	{ "entersafe",(void*) sc_pkcs15init_get_entersafe_ops },
+	{ "es_ep2k3",(void*) sc_pkcs15init_get_es_ep2k3_ops },
 	{ "rutoken_ecp", (void *) sc_pkcs15init_get_rtecp_ops },
 	{ "westcos", (void *) sc_pkcs15init_get_westcos_ops },
 	{ "myeid", (void *) sc_pkcs15init_get_myeid_ops },
@@ -1065,7 +1066,7 @@ sc_pkcs15_create_pin_domain(struct sc_profile *profile,
 	return r;
 }
 
-static int
+int
 sc_pkcs15init_encode_prvkey_content(struct sc_pkcs15_card *p15card, struct sc_pkcs15_prkey *prvkey,
 		struct sc_pkcs15_object *object)
 {
