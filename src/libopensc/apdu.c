@@ -168,19 +168,21 @@ static int sc_apdu2bytes(sc_context_t *ctx, const sc_apdu_t *apdu,
 	return SC_SUCCESS;
 }
 
-void sc_apdu_log(sc_context_t *ctx, int level, const u8 *data, size_t len, int is_out)
+void sc_apdu_log(sc_reader_t *reader, const u8 *data, size_t len, int is_out)
 {
 	size_t blen = len * 5 + 128;
+	sc_context_t *ctx = reader->ctx;
 	char   *buf = malloc(blen);
 	if (buf == NULL)
 		return;
 
-	sc_hex_dump(ctx, level, data, len, buf, blen);
+	sc_hex_dump(ctx, SC_LOG_DEBUG_NORMAL, data, len, buf, blen);
 
-	sc_debug(ctx, level, "\n%s APDU data [%5u bytes] =====================================\n"
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "\n%s APDU data [%5u bytes] %s=================================\n"
 		"%s"
 		"======================================================================\n",
 		is_out != 0 ? "Outgoing" : "Incoming", len,
+		is_out != 0 ? (reader->active_protocol == SC_PROTO_T0?"T=0 ":"T=1 "): "====",
 		buf);
 	free(buf);
 }

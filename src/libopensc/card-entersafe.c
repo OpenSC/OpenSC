@@ -331,7 +331,7 @@ static int entersafe_transmit_apdu(sc_card_t *card, sc_apdu_t *apdu,
 
 	r = sc_apdu_get_octets(card->ctx, apdu, &sbuf, &ssize, SC_PROTO_RAW);
 	if (r == SC_SUCCESS)
-		sc_apdu_log(card->ctx, SC_LOG_DEBUG_VERBOSE, sbuf, ssize, 1);
+		sc_apdu_log(card->reader, sbuf, ssize, 1);
 	free(sbuf);
 
 	 if(cipher)
