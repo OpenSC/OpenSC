@@ -221,18 +221,18 @@ load_parameters(sc_context_t *ctx, scconf_block *block, struct _sc_ctx_options *
 	int err = 0;
 	const scconf_list *list;
 	const char *val, *s_internal = "internal";
-	const char *debug = NULL;
+	int debug;
 	int reopen;
 #ifdef _WIN32
 	char expanded_val[PATH_MAX];
 	DWORD expanded_len;
 #endif
-	ctx->debug = scconf_get_int(block, "debug", ctx->debug);
+
 	reopen = scconf_get_bool(block, "reopen_debug_file", 1);
 
-	debug = getenv("OPENSC_DEBUG");
-	if (debug)
-		ctx->debug = atoi(debug);
+	debug = scconf_get_int(block, "debug", ctx->debug);
+	if (debug > ctx->debug)
+		ctx->debug = debug;
 
 	val = scconf_get_str(block, "debug_file", NULL);
 	if (val)   {
@@ -515,12 +515,18 @@ static void process_config_file(sc_context_t *ctx, struct _sc_ctx_options *opts)
 	int i, r, count = 0;
 	scconf_block **blocks;
 	const char *conf_path = NULL;
+	const char *debug = NULL;
 #ifdef _WIN32
 	char temp_path[PATH_MAX];
 	DWORD temp_len;
 	long rc;
 	HKEY hKey;
 #endif
+
+	/* Takes effect even when no config around */
+	debug = getenv("OPENSC_DEBUG");
+	if (debug)
+		ctx->debug = atoi(debug);
 
 	memset(ctx->conf_blocks, 0, sizeof(ctx->conf_blocks));
 #ifdef _WIN32
