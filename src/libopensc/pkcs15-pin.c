@@ -533,7 +533,7 @@ void sc_pkcs15_pincache_add(struct sc_pkcs15_card *p15card, struct sc_pkcs15_obj
 		obj = obj->next;
 	}
 
-	r = sc_pkcs15_allocate_object_content(pin_obj, pin, pinlen);
+	r = sc_pkcs15_allocate_object_content(ctx, pin_obj, pin, pinlen);
 	if (r != SC_SUCCESS)   {
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Failed to allocate object content");
 		return;
