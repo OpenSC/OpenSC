@@ -698,7 +698,7 @@ int _sc_parse_atr(sc_reader_t *reader)
 	return 0;
 }
 
-void *sc_mem_alloc_secure(size_t len)
+void *sc_mem_alloc_secure(sc_context_t *ctx, size_t len)
 {
     void *pointer;
     
@@ -708,10 +708,8 @@ void *sc_mem_alloc_secure(size_t len)
 #ifdef HAVE_SYS_MMAN_H
     /* TODO Windows support and mprotect too */
     /* Do not swap the memory */
-    if (mlock(pointer, len) == -1) {
-        free(pointer);
-        return NULL;
-    }
+    if (mlock(pointer, len) == -1)
+        sc_do_log (ctx, 0, NULL, 0, NULL, "cannot lock memory, pin may be paged to disk");
 #endif
     return pointer;
 }

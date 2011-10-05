@@ -1038,7 +1038,7 @@ iasecc_pkcs15_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p15c
 		LOG_TEST_RET(ctx, rv, "Cannot create key slot");
 	}
 	
-	rv = sc_pkcs15_allocate_object_content(object, (unsigned char *)sdo_prvkey, sizeof(struct iasecc_sdo));
+	rv = sc_pkcs15_allocate_object_content(ctx, object, (unsigned char *)sdo_prvkey, sizeof(struct iasecc_sdo));
 	LOG_TEST_RET(ctx, rv, "Failed to allocate PrvKey SDO as object content");
 
 	rv = iasecc_pkcs15_fix_private_key_attributes(profile, p15card, object, (struct iasecc_sdo *)object->content.value);
@@ -1135,7 +1135,7 @@ iasecc_pkcs15_generate_key(struct sc_profile *profile, sc_pkcs15_card_t *p15card
 	LOG_TEST_RET(ctx, rv, "encode private key access rules failed");
 
 	/* SDO PrvKey data replaced by public part of generated key */
-	rv = sc_pkcs15_allocate_object_content(object, pubkey->data.value, pubkey->data.len);
+	rv = sc_pkcs15_allocate_object_content(ctx, object, pubkey->data.value, pubkey->data.len);
 	LOG_TEST_RET(ctx, rv, "Failed to allocate public key as object content");
 
 	iasecc_sdo_free(card, sdo_pubkey);

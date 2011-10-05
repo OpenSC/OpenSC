@@ -812,7 +812,7 @@ int sc_pkcs15_make_absolute_path(const sc_path_t *parent, sc_path_t *child);
 void sc_pkcs15_free_object_content(struct sc_pkcs15_object *);
 
 /* Allocate and set object content */
-int sc_pkcs15_allocate_object_content(struct sc_pkcs15_object *,
+int sc_pkcs15_allocate_object_content(struct sc_context *, struct sc_pkcs15_object *,
 		const unsigned char *, size_t);
 
 struct sc_supported_algo_info *sc_pkcs15_get_supported_algo(struct sc_pkcs15_card *,
