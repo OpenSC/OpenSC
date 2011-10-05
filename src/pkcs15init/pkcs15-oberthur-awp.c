@@ -1427,7 +1427,7 @@ awp_update_df_create_prvkey(struct sc_pkcs15_card *p15card, struct sc_profile *p
 		rv = sc_pkcs15_read_certificate(p15card, cert_info, &p15cert);
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "AWP 'update private key' DF failed:  cannot get certificate");
 
-		rv = sc_pkcs15_allocate_object_content(cert_obj, p15cert->data, p15cert->data_len);
+		rv = sc_pkcs15_allocate_object_content(ctx, cert_obj, p15cert->data, p15cert->data_len);
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "AWP 'update private key' DF failed:  cannot allocate content");
 
 		rv = awp_encode_cert_info(p15card, cert_obj, &icert);
