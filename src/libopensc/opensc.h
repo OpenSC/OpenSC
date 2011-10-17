@@ -463,6 +463,15 @@ struct sc_card_operations {
 	 * table.  May return SC_ERROR_INVALID_CARD to indicate that
 	 * the card cannot be handled with this driver. */
 	int (*init)(struct sc_card *card);
+	/* Called before invoke card_driver->ops->transmit.
+	 * Performing APDU wrap. If set to NULL, there is no wrapping.
+	 * Usefull on Secure Messaging APDU encode
+	 * Returns SC_SUCCESS or error code */
+    int (*sm_wrap_apdu)(struct sc_card *card,
+                         struct sc_apdu *plain, struct sc_apdu *sm);
+	/* Same as wrap_apdu, but perform unwrap */
+    int (*sm_unwrap_apdu)(struct sc_card *card,
+                         struct sc_apdu *sm, struct sc_apdu *plain);
 	/* Called when the card object is being freed.  finish() has to
 	 * deallocate all possible private data. */
 	int (*finish)(struct sc_card *card);
@@ -618,6 +627,7 @@ typedef struct sc_context {
 	sc_thread_context_t	*thread_ctx;
 	void *mutex;
 
+	int use_sm;
 	unsigned int magic;
 } sc_context_t;
 

@@ -185,7 +185,7 @@ static int des3_encrypt_ecb(const unsigned char *key, int keysize,
 	{
 		memcpy(&bKey[0],key,24);
 	}
-	return openssl_enc(EVP_des_ede3(), key, iv, input, length, output);
+	return openssl_enc(EVP_des_ede3(), bKey, iv, input, length, output);
 }
 
 static int des3_encrypt_cbc(const unsigned char *key, int keysize,
@@ -203,7 +203,7 @@ static int des3_encrypt_cbc(const unsigned char *key, int keysize,
 	{
 		memcpy(&bKey[0],key,24);
 	}
-	return openssl_enc(EVP_des_ede3_cbc(), key, iv, input, length, output);
+	return openssl_enc(EVP_des_ede3_cbc(), bKey, iv, input, length, output);
 }
 
 static int des3_decrypt_cbc(const unsigned char *key, int keysize,
@@ -221,7 +221,7 @@ static int des3_decrypt_cbc(const unsigned char *key, int keysize,
 	{
 		memcpy(&bKey[0],key,24);
 	}
-	return openssl_dec(EVP_des_ede3_cbc(), key, iv, input, length, output);
+	return openssl_dec(EVP_des_ede3_cbc(), bKey, iv, input, length, output);
 }
 
 static int des_encrypt_cbc(const unsigned char *key, int keysize,
@@ -431,6 +431,383 @@ int epass2003_refresh(struct sc_card *card)
 	return r;
 }
 
+/* Data(TLV)=0x87|L|0x01+Cipher */
+static int construct_data_tlv(struct sc_apdu *apdu, unsigned char *apdu_buf,
+			      unsigned char *data_tlv, size_t * data_tlv_len,
+			      const unsigned char key_type)
+{
+	size_t block_size = (KEY_TYPE_AES == key_type ? 16 : 8);
+	unsigned char pad[4096] = { 0 };
+	size_t pad_len;
+	size_t tlv_more;	/* increased tlv length */
+	unsigned char iv[16] = { 0 };
+
+	/* padding */
+	apdu_buf[block_size] = 0x87;
+	memcpy(pad, apdu->data, apdu->lc);
+	pad[apdu->lc] = 0x80;
+	if ((apdu->lc + 1) % block_size) {
+		pad_len = ((apdu->lc + 1) / block_size + 1) * block_size;
+	} else {
+		pad_len = apdu->lc + 1;
+	}
+
+	/* encode Lc' */
+	if (pad_len > 0x7E) {
+		/* Lc' > 0x7E, use extended APDU */
+		apdu_buf[block_size + 1] = 0x82;
+		apdu_buf[block_size + 2] =
+		    (unsigned char)((pad_len + 1) / 0x100);
+		apdu_buf[block_size + 3] =
+		    (unsigned char)((pad_len + 1) % 0x100);
+		apdu_buf[block_size + 4] = 0x01;
+		tlv_more = 5;
+	} else {
+		apdu_buf[block_size + 1] = (unsigned char)pad_len + 1;
+		apdu_buf[block_size + 2] = 0x01;
+		tlv_more = 3;
+	}
+	memcpy(data_tlv, &apdu_buf[block_size], tlv_more);
+
+	/* encrypt Data */
+	if (KEY_TYPE_AES == key_type) {
+		aes128_encrypt_cbc(g_sk_enc, 16, iv, pad, pad_len,
+				   apdu_buf + block_size + tlv_more);
+	} else {
+		des3_encrypt_cbc(g_sk_enc, 16, iv, pad, pad_len,
+				 apdu_buf + block_size + tlv_more);
+	}
+	memcpy(data_tlv + tlv_more, apdu_buf + block_size + tlv_more, pad_len);
+	*data_tlv_len = tlv_more + pad_len;
+	return 0;
+}
+
+/* Le(TLV)=0x97|L|Le */
+static int construct_le_tlv(struct sc_apdu *apdu, unsigned char *apdu_buf,
+			    size_t data_tlv_len, unsigned char *le_tlv,
+			    size_t * le_tlv_len, const unsigned char key_type)
+{
+	size_t block_size = (KEY_TYPE_AES == key_type ? 16 : 8);
+	*(apdu_buf + block_size + data_tlv_len) = 0x97;
+	if (apdu->le > 0x7F) {
+		/* Le' > 0x7E, use extended APDU */
+		*(apdu_buf + block_size + data_tlv_len + 1) = 2;
+		*(apdu_buf + block_size + data_tlv_len + 2) =
+		    (unsigned char)(apdu->le / 0x100);
+		*(apdu_buf + block_size + data_tlv_len + 3) =
+		    (unsigned char)(apdu->le % 0x100);
+		memcpy(le_tlv, apdu_buf + block_size + data_tlv_len, 4);
+		*le_tlv_len = 4;
+	} else {
+		*(apdu_buf + block_size + data_tlv_len + 1) = 1;
+		*(apdu_buf + block_size + data_tlv_len + 2) =
+		    (unsigned char)apdu->le;
+		memcpy(le_tlv, apdu_buf + block_size + data_tlv_len, 3);
+		*le_tlv_len = 3;
+	}
+	return 0;
+}
+
+/* MAC(TLV)=0x8e|0x08|MAC */
+static int construct_mac_tlv(unsigned char *apdu_buf, size_t data_tlv_len,
+			     size_t le_tlv_len, unsigned char *mac_tlv,
+			     size_t * mac_tlv_len, const unsigned char key_type)
+{
+	size_t block_size = (KEY_TYPE_AES == key_type ? 16 : 8);
+	unsigned char mac[4096] = { 0 };
+	size_t mac_len;
+	unsigned char icv[16] = { 0 };
+	size_t i = (KEY_TYPE_AES == key_type ? 15 : 7);
+
+	if (0 == data_tlv_len && 0 == le_tlv_len) {
+		mac_len = block_size;
+	} else {
+		/* padding */
+		*(apdu_buf + block_size + data_tlv_len + le_tlv_len) = 0x80;
+		if ((data_tlv_len + le_tlv_len + 1) % block_size) {
+			mac_len =
+			    (((data_tlv_len + le_tlv_len + 1) / block_size) +
+			     1) * block_size + block_size;
+		} else {
+			mac_len = data_tlv_len + le_tlv_len + 1 + block_size;
+		}
+		memset((apdu_buf + block_size + data_tlv_len + le_tlv_len + 1),
+		       0, (mac_len - (data_tlv_len + le_tlv_len + 1)));
+	}
+
+	/* increase icv */
+	for (; i >= 0; i--) {
+		if (g_icv_mac[i] == 0xff) {
+			g_icv_mac[i] = 0;
+		} else {
+			g_icv_mac[i]++;
+			break;
+		}
+	}
+
+	/* calculate MAC */
+	memset(icv, 0, sizeof(icv));
+	memcpy(icv, g_icv_mac, 16);
+	if (KEY_TYPE_AES == key_type) {
+		aes128_encrypt_cbc(g_sk_mac, 16, icv, apdu_buf, mac_len, mac);
+		memcpy(mac_tlv + 2, &mac[mac_len - 16], 8);
+	} else {
+		unsigned char iv[8] = { 0 };
+		unsigned char tmp[8] = { 0 };
+		des_encrypt_cbc(g_sk_mac, 8, icv, apdu_buf, mac_len, mac);
+		des_decrypt_cbc(&g_sk_mac[8], 8, iv, &mac[mac_len - 8], 8, tmp);
+		memset(iv, 0x00, 8);
+		des_encrypt_cbc(g_sk_mac, 8, iv, tmp, 8, mac_tlv + 2);
+	}
+	*mac_tlv_len = 2 + 8;
+	return 0;
+}
+
+static size_t calc_le(size_t le)
+{
+	size_t le_new = 0;
+	size_t resp_len = 0;
+	size_t sw_len = 4;	/* T 1 L 1 V 2 */
+	size_t mac_len = 10;	/* T 1 L 1 V 8 */
+	size_t mod = 16;
+	/* padding first */
+	resp_len = 1 + ((le + (mod - 1)) / mod) * mod;
+
+	if (0x7f < resp_len) {
+		resp_len += 0;
+
+	} else if (0x7f <= resp_len && resp_len < 0xff) {
+		resp_len += 1;
+	} else if (0xff <= resp_len) {
+		resp_len += 2;
+	}
+	resp_len += 2;		/* +T+L */
+	le_new = resp_len + sw_len + mac_len;
+	return le_new;
+}
+
+/* According to GlobalPlatform Card Specification's SCP01
+ * encode APDU from
+ * CLA INS P1 P2 [Lc] Data [Le] 
+ * to
+ * CLA INS P1 P2 Lc' Data' [Le]
+ * where
+ * Data'=Data(TLV)+Le(TLV)+MAC(TLV) */
+static int encode_apdu(struct sc_apdu *plain, struct sc_apdu *sm,
+		       unsigned char *apdu_buf, size_t * apdu_buf_len)
+{
+	size_t block_size = (KEY_TYPE_DES == g_smtype ? 16 : 8);
+	unsigned char dataTLV[4096] = { 0 };
+	size_t data_tlv_len = 0;
+	unsigned char le_tlv[256] = { 0 };
+	size_t le_tlv_len = 0;
+	unsigned char mac_tlv[256] = { 0 };
+	size_t mac_tlv_len = 10;
+	size_t tmp_lc;
+	size_t tmp_le;
+	/* size_t plain_le = 0; */
+
+	mac_tlv[0] = 0x8E;
+	mac_tlv[1] = 8;
+	sm->cse = SC_APDU_CASE_4_SHORT;
+	apdu_buf[0] = (unsigned char)plain->cla;
+	apdu_buf[1] = (unsigned char)plain->ins;
+	apdu_buf[2] = (unsigned char)plain->p1;
+	apdu_buf[3] = (unsigned char)plain->p2;
+
+	/* plain_le = plain->le; */
+
+	/* padding */
+	apdu_buf[4] = 0x80;
+	memset(&apdu_buf[5], 0x00, block_size - 5);
+
+	/* Data -> Data' */
+	if (plain->lc != 0) {
+		if (0 !=
+		    construct_data_tlv(plain, apdu_buf, dataTLV, &data_tlv_len,
+				       g_smtype)) {
+			return -1;
+		}
+	}
+	if (plain->le != 0 || (plain->le == 0 && plain->resplen != 0)) {
+		if (0 !=
+		    construct_le_tlv(plain, apdu_buf, data_tlv_len, le_tlv,
+				     &le_tlv_len, g_smtype)) {
+			return -1;
+		}
+	}
+	if (0 !=
+	    construct_mac_tlv(apdu_buf, data_tlv_len, le_tlv_len, mac_tlv,
+			      &mac_tlv_len, g_smtype)) {
+		return -1;
+	}
+	memset(apdu_buf + 4, 0, *apdu_buf_len - 4);
+	sm->lc = sm->datalen = data_tlv_len + le_tlv_len + mac_tlv_len;
+	if (sm->lc > 0xFF) {
+		sm->cse = SC_APDU_CASE_4_EXT;
+		apdu_buf[4] = (unsigned char)((sm->lc) / 0x10000);
+		apdu_buf[5] = (unsigned char)(((sm->lc) / 0x100) % 0x100);
+		apdu_buf[6] = (unsigned char)((sm->lc) % 0x100);
+		tmp_lc = 3;
+	} else {
+		apdu_buf[4] = (unsigned char)sm->lc;
+		tmp_lc = 1;
+	}
+	memcpy(apdu_buf + 4 + tmp_lc, dataTLV, data_tlv_len);
+	memcpy(apdu_buf + 4 + tmp_lc + data_tlv_len, le_tlv, le_tlv_len);
+	memcpy(apdu_buf + 4 + tmp_lc + data_tlv_len + le_tlv_len, mac_tlv,
+	       mac_tlv_len);
+	memcpy((unsigned char *)sm->data, apdu_buf + 4 + tmp_lc, sm->datalen);
+	*apdu_buf_len = 0;
+	if (4 == le_tlv_len) {
+		sm->cse = SC_APDU_CASE_4_EXT;
+		*(apdu_buf + 4 + tmp_lc + sm->lc) =
+		    (unsigned char)(plain->le / 0x100);
+		*(apdu_buf + 4 + tmp_lc + sm->lc + 1) =
+		    (unsigned char)(plain->le % 0x100);
+		tmp_le = 2;
+	} else if (3 == le_tlv_len) {
+		*(apdu_buf + 4 + tmp_lc + sm->lc) = (unsigned char)plain->le;
+		tmp_le = 1;
+	}
+	*apdu_buf_len +=
+	    4 + tmp_lc + data_tlv_len + le_tlv_len + mac_tlv_len + tmp_le;
+	/* sm->le = calc_le(plain_le); */
+	return 0;
+}
+
+static int epass2003_sm_wrap_apdu(struct sc_card *card,
+				  struct sc_apdu *plain, struct sc_apdu *sm)
+{
+	int r;
+	unsigned char buf[4096] = { 0 };	/* APDU buffer */
+	size_t buf_len = sizeof(buf);
+	size_t ssize = 0;
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	if (g_sm) {
+		plain->cla |= 0x0C;
+	}
+
+	sm->cse = plain->cse;
+	sm->cla = plain->cla;
+	sm->ins = plain->ins;
+	sm->p1 = plain->p1;
+	sm->p2 = plain->p2;
+	sm->lc = plain->lc;
+	sm->le = plain->le;
+	sm->control = plain->control;
+	sm->flags = plain->flags;
+
+	switch (sm->cla & 0x0C) {
+	case 0x00:
+	case 0x04:
+		{
+			sm->datalen = plain->datalen;
+			sm->data = plain->data;
+			sm->resplen = plain->resplen;
+			sm->resp = plain->resp;
+		}
+		break;
+	case 0x0C:
+		{
+			memset(buf, 0, sizeof(buf));
+			if (0 != encode_apdu(plain, sm, buf, &buf_len)) {
+				return SC_ERROR_CARD_CMD_FAILED;
+			}
+		}
+		break;
+	default:
+		return SC_ERROR_INCORRECT_PARAMETERS;
+	}
+	return SC_SUCCESS;
+}
+
+/* According to GlobalPlatform Card Specification's SCP01
+ * decrypt APDU response from
+ * ResponseData' SW1 SW2 
+ * to
+ * ResponseData SW1 SW2
+ * where
+ * ResponseData'=Data(TLV)+SW12(TLV)+MAC(TLV)
+ * where
+ * Data(TLV)=0x87|L|Cipher 
+ * SW12(TLV)=0x99|0x02|SW1+SW2
+ * MAC(TLV)=0x8e|0x08|MAC */
+static int decrypt_response(unsigned char *in, unsigned char *out,
+			    size_t * out_len)
+{
+	size_t in_len;
+	size_t i;
+	unsigned char iv[16] = { 0 };
+	unsigned char plaintext[4096] = { 0 };
+
+	if (in[0] == 0x99) {
+		/* no cipher */
+		return 0;
+	}
+
+	/* parse cipher length */
+	if (0x01 == in[2] && 0x82 != in[1]) {
+		in_len = in[1];
+		i = 3;
+	} else if (0x01 == in[3] && 0x81 == in[1]) {
+		in_len = in[2];
+		i = 4;
+	} else if (0x01 == in[4] && 0x82 == in[1]) {
+		in_len = in[2] * 0x100;
+		in_len += in[3];
+		i = 5;
+	} else {
+		return -1;
+	}
+
+	/* decrypt */
+	if (KEY_TYPE_AES == g_smtype) {
+		aes128_decrypt_cbc(g_sk_enc, 16, iv, &in[i], in_len - 1,
+				   plaintext);
+	} else {
+		des3_decrypt_cbc(g_sk_enc, 16, iv, &in[i], in_len - 1,
+				 plaintext);
+	}
+
+	/* unpadding */
+	while (0x80 != plaintext[in_len - 2] && (in_len - 2 > 0)) {
+		in_len--;
+	}
+	if (2 == in_len) {
+		return -1;
+	}
+	memcpy(out, plaintext, in_len - 2);
+	*out_len = in_len - 2;
+	return 0;
+}
+
+static int epass2003_sm_unwrap_apdu(struct sc_card *card,
+				    struct sc_apdu *sm, struct sc_apdu *plain)
+{
+	int r;
+	size_t len = 0;
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	r = sc_check_sw(card, sm->sw1, sm->sw2);
+	if (r == SC_SUCCESS) {
+		if (g_sm) {
+			if (0 != decrypt_response(sm->resp, plain->resp, &len)) {
+				return SC_ERROR_CARD_CMD_FAILED;
+			}
+			plain->resplen = len;
+		} else {
+			memcpy(plain->resp, sm->resp, sm->resplen);
+			plain->resplen = sm->resplen;
+		}
+	}
+	plain->sw1 = sm->sw1;
+	plain->sw2 = sm->sw2;
+
+	return SC_SUCCESS;
+}
+
 static int epass2003_transmit_apdu(struct sc_card *card, struct sc_apdu *apdu)
 {
 	int r;
@@ -502,9 +879,10 @@ static int epass2003_init(struct sc_card *card)
 	card->name = "epass2003";
 	card->cla = 0x00;
 	card->drv_data = NULL;
+	card->ctx->use_sm = 1;
 
-	/* g_sm = SM_SCP01; */
-	g_sm = SM_PLAIN;
+	g_sm = SM_SCP01;
+	/* g_sm = SM_PLAIN; */
 
 	/* decide FIPS/Non-FIPS mode */
 	if (SC_SUCCESS != get_data(card, 0x86, data, datalen)) {
@@ -528,6 +906,9 @@ static int epass2003_init(struct sc_card *card)
 	_sc_card_add_rsa_alg(card, 2048, flags, 0x10001);
 
 	card->caps = SC_CARD_CAP_RNG | SC_CARD_CAP_APDU_EXT;
+	/* FIXME:we need read_binary&friends with max 224 bytes per read */
+//      card->max_send_size = 224;
+//      card->max_recv_size = 224;
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
 }
 
@@ -1831,6 +2212,8 @@ static struct sc_card_driver *sc_get_driver(void)
 
 	epass2003_ops.match_card = epass2003_match_card;
 	epass2003_ops.init = epass2003_init;
+	epass2003_ops.sm_wrap_apdu = epass2003_sm_wrap_apdu;
+	epass2003_ops.sm_unwrap_apdu = epass2003_sm_unwrap_apdu;
 	epass2003_ops.write_binary = NULL;
 	epass2003_ops.write_record = NULL;
 	epass2003_ops.select_file = epass2003_select_file;
