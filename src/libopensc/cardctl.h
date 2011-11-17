@@ -735,6 +735,7 @@ typedef struct sc_epass2003_wkey_data_st {
 		  } es_key;
 		  struct {
 			  u8 kid;
+			  u8 EC;
 			  u8 ac[2];
 			  u8 key_val[256];
 			  size_t key_len;

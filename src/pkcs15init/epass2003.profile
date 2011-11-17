@@ -17,6 +17,7 @@ option default {
 		ef_acl			 = *=NEVER, READ=NONE, UPDATE=NONE, WRITE=NONE, DELETE=NONE;
 		sf_acl			 = *=NEVER, UPDATE=NONE;
 		protected		 = *=$PIN,READ=NONE;
+        unprotected      = *=NONE;
 		dir-size		 = 112;
 		tinfo-size		 = 128;
 		unusedspace-size = 128;
@@ -27,6 +28,7 @@ option default {
 		pukdf-size		 = 256;
 		dodf-size		 = 256;
 		info-size		 = 128;
+		maxPin-size      = 2;
 	}
 }
 
@@ -38,6 +40,7 @@ option onepin {
 		ef_acl			 = *=NEVER, READ=NONE, UPDATE=NONE, WRITE=NONE, DELETE=NONE;
 		sf_acl			 = *=NEVER, UPDATE=NONE;
 		protected		 = *=NEVER,READ=NONE, UPDATE=$PIN, DELETE=$PIN;
+        unprotected      = *=NONE;
 		dir-size		 = 112;
 		tinfo-size		 = 128;
 		unusedspace-size = 128;
@@ -48,28 +51,29 @@ option onepin {
 		pukdf-size		 = 1024;
 		dodf-size		 = 256;
 		info-size		 = 128;
+		maxPin-size      = 2;
 	}
 }
 
 PIN so-pin {
-	reference	= 2;
-	attempts	= 3;
+	reference	= 1;
+	attempts	= 6;
 	flags		= $pin-flags;
 	min-length	= $min-pin-length;
 }
 PIN so-puk {
-	attempts	= 3;
+	attempts	= 6;
 	flags		= $pin-flags;
 	min-length	= $min-pin-length;
 }
 PIN user-pin {
-	reference	= 1;
-	attempts	= 3;
+	reference	= 2;
+	attempts	= 6;
 	flags		= $pin-flags;
 	min-length	= $min-pin-length;
 }
 PIN user-puk {
-	attempts	= 3;
+	attempts	= 6;
 	flags		= $pin-flags;
 	min-length	= $min-pin-length;
 }
@@ -107,6 +111,13 @@ filesystem {
 				ACL		= $sf_acl
 				size	= 32;
 			}
+
+			EF MAXPIN {
+			file-id = 9F00;
+			size	= $maxPin-size;
+			ACL		= $unprotected;
+	    	}
+ 
 	    	EF PKCS15-ODF {
 			size	= $odf-size;
 			ACL		= $protected;
