@@ -246,11 +246,13 @@ int sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card,
 	r = sc_lock(card);
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "sc_lock() failed");
 	/* the path in the pin object is optional */
+/* comment out to work with MuscleApplet
 	if (auth_info->path.len > 0) {
 		r = sc_select_file(card, &auth_info->path, NULL);
 		if (r)
 			goto out;
 	}
+*/
 
 	/* Initialize arguments */
 	memset(&data, 0, sizeof(data));
