@@ -94,6 +94,10 @@ static int epass2003_pkcs15_create_dir(struct sc_profile *profile, struct sc_pkc
 		struct sc_file *df_file;
 		struct sc_file *skey_file;
 		 struct sc_file *ef_file;
+		 u8 max_counter[2] = {0};
+		 int id;
+		 u8 user_maxtries = 0;
+		 u8 so_maxtries = 0;
 
 		ret = sc_profile_get_file(profile, "PKCS15-AppDF", &df_file);
 		 SC_TEST_RET(card->ctx,SC_LOG_DEBUG_NORMAL, ret,"Get PKCS15-AppDF info failed");
@@ -112,7 +116,20 @@ static int epass2003_pkcs15_create_dir(struct sc_profile *profile, struct sc_pkc
 		 SC_TEST_RET(card->ctx,SC_LOG_DEBUG_NORMAL, ret,"Create MAXPIN failed");
 		 ret = sc_select_file(card, &(ef_file->path), &ef_file);
 		 SC_TEST_RET(card->ctx,SC_LOG_DEBUG_NORMAL, ret,"Select MAXPIN failed");
-		 ret = sc_update_binary(card, 0, "\x06\x06", 2, 0);
+
+		 ret = sc_profile_get_pin_id(profile, 2, &id);
+		 SC_TEST_RET(card->ctx,SC_LOG_DEBUG_NORMAL, ret,"Get User PIN id error!");
+		 user_maxtries = (u8)sc_profile_get_pin_retries(profile, id);
+
+		 ret = sc_profile_get_pin_id(profile, 1, &id);
+		 SC_TEST_RET(card->ctx,SC_LOG_DEBUG_NORMAL, ret,"Get User PIN id error!");
+		 so_maxtries = (u8)sc_profile_get_pin_retries(profile, id);
+
+		 max_counter[0] = user_maxtries;
+		 max_counter[1] = so_maxtries;
+
+		 ret = sc_update_binary(card, 0, max_counter, 2, 0);
+
 		 SC_TEST_RET(card->ctx,SC_LOG_DEBUG_NORMAL, ret,"Update MAXPIN failed");
 		 sc_file_free(ef_file);
 	}

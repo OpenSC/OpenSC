@@ -61,7 +61,6 @@ static unsigned char g_smtype;	/* sm cryption algorithm type */
 #define HASH_LEN	24
 
 static unsigned char PIN_ID[2] = { ENTERSAFE_USER_PIN_ID, ENTERSAFE_SO_PIN_ID };
-#define MAX_PIN_COUNTER						0x03
 
 /*0x00:plain; 0x01:scp01 sm*/
 #define SM_PLAIN				0x00
@@ -2089,6 +2088,29 @@ static void internal_sanitize_pin_info(struct sc_pin_cmd_pin *pin, unsigned int 
 	pin->pad_char = 0x00;
 }
 
+static int get_external_key_maxtries(struct sc_card *card, unsigned char kid, unsigned char* maxtries)
+{
+	unsigned char maxcounter[2] = {0};
+	static const sc_path_t file_path = { 
+		{0x3f, 0x00, 0x50, 0x15, 0x9f, 0x00, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 6, 
+		0, 
+		0, 
+		SC_PATH_TYPE_PATH, 
+		{{0},0}
+	};
+	struct sc_file *ef_file;
+	int ret;
+	ret = sc_select_file(card, &file_path, &ef_file);
+	SC_TEST_RET(card->ctx,SC_LOG_DEBUG_NORMAL, ret,"select max counter file failed");
+
+	ret = sc_read_binary(card, 0, maxcounter, 2, 0);
+	SC_TEST_RET(card->ctx,SC_LOG_DEBUG_NORMAL, ret,"read max counter file failed");
+
+	*maxtries = maxcounter[0];
+	return SC_SUCCESS;
+}
+
+
 static int get_external_key_retries(struct sc_card *card, unsigned char kid, unsigned char* retries)
 {
 	int r;
@@ -2100,8 +2122,8 @@ static int get_external_key_retries(struct sc_card *card, unsigned char kid, uns
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "get challenge get_external_key_retries failed");
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0x82, 0x01, 0x80|kid); 
-	apdu.resp = resp;
-	apdu.resplen = resplen;
+	apdu.resp = NULL;
+	apdu.resplen = 0;
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU get_external_key_retries failed");
 	if (retries && ((0x63 == (apdu.sw1 & 0xff)) && (0xC0 == (apdu.sw2 & 0xf0))))
@@ -2112,6 +2134,7 @@ static int get_external_key_retries(struct sc_card *card, unsigned char kid, uns
 	else
 	{
 		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "get_external_key_retries failed");
+		r = SC_ERROR_CARD_CMD_FAILED;
 	}
 	return r;
 }
@@ -2145,9 +2168,12 @@ static int update_secret_key(struct sc_card *card, unsigned char ktype, unsigned
 	struct sc_apdu apdu;
 	unsigned char hash[HASH_LEN] = { 0 };
 	unsigned char tmp_data[256] = { 0 };
+	unsigned char maxtries = 0;
 	r = hash_data(data, datalen, hash);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "hash data failed");
-	tmp_data[0] = (MAX_PIN_COUNTER << 4) | MAX_PIN_COUNTER;
+	r = get_external_key_maxtries(card, 0, &maxtries);
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "get max counter failed");
+	tmp_data[0] = (maxtries<<4) | maxtries;
 	memcpy(&tmp_data[1], hash, HASH_LEN);
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xe5, ktype, kid);
 	apdu.cla = 0x80;
@@ -2166,6 +2192,7 @@ static int epass2003_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data,
 {
 	int r;
 	u8 kid;
+	unsigned char maxtries = 0;
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	internal_sanitize_pin_info(&data->pin1, 0);
 	internal_sanitize_pin_info(&data->pin2, 1);
@@ -2178,9 +2205,14 @@ static int epass2003_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data,
 		r = get_external_key_retries(card, 0x80 | kid, &retries);
 		if( r == SC_SUCCESS )
 		{
-			data->pin1.max_tries = MAX_PIN_COUNTER;
 			data->pin1.tries_left = retries;
+
+			r = get_external_key_maxtries(card, 0, &maxtries);
+			SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "get max counter failed");
+			if (r == SC_SUCCESS)
+				data->pin1.max_tries = maxtries;
 		}
+
 		return r;
 	}
 	/* verify */
