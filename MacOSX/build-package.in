@@ -56,10 +56,7 @@ rm -rf target
 make install DESTDIR=${BUILDPATH}/target
 
 # remove garbage
-rm target/Library/OpenSC/lib/onepin-opensc-pkcs11.la
-rm target/Library/OpenSC/lib/opensc-pkcs11.la
-rm target/Library/OpenSC/lib/pkcs11-spy.la
-rm target/Library/OpenSC/lib/libopensc.la
+rm -f target/Library/OpenSC/lib/*.la
 
 # generate .bundle (required by Adobe Acrobat)
 ./MacOSX/libtool-bundle target/Library/OpenSC/lib/opensc-pkcs11.so target/Library/OpenSC/lib
