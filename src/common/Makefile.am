@@ -9,7 +9,6 @@ dist_noinst_DATA = \
 	compat_getopt_main.c \
 	README.compat_strlcpy compat_strlcpy.3
 
-AM_CFLAGS = $(LTLIB_CFLAGS)
 INCLUDES = -I$(top_srcdir)/src
 
 libcompat_la_SOURCES = \

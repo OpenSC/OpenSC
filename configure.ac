@@ -267,22 +267,6 @@ AC_CHECK_LIB(
 	]
 )
 
-dnl check for libltdl. If libltdl is not found, native dlopen/LoadLibrary is used
-AC_ARG_VAR([LTLIB_CFLAGS], [C compiler flags for libltdl])
-AC_ARG_VAR([LTLIB_LIBS], [linker flags for libltdl])
-if test -z "${LTLIB_LIBS}"; then
-	AC_CHECK_LIB(
-		[ltdl],
-		[lt_dlopen],
-		[LTLIB_LIBS="-lltdl"]
-	)
-fi
-
-saved_CFLAGS="${CFLAGS}"
-CFLAGS="${CFLAGS} ${LTLIB_CFLAGS}"
-AC_CHECK_HEADERS([ltdl.h])
-CFLAGS="${saved_CFLAGS}"
-
 if test "${WIN32}" = "no"; then
 	dnl Special check for pthread support.
 	ACX_PTHREAD(
@@ -635,8 +619,6 @@ Compiler flags:          ${CFLAGS}
 Linker flags:            ${LDFLAGS}
 Libraries:               ${LIBS}
 
-LTLIB_CFLAGS:            ${LTLIB_CFLAGS}
-LTLIB_LIBS:              ${LTLIB_LIBS}
 READLINE_CFLAGS:         ${READLINE_CFLAGS}
 READLINE_LIBS:           ${READLINE_LIBS}
 ZLIB_CFLAGS:             ${ZLIB_CFLAGS}

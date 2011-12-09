@@ -22,34 +22,7 @@
 
 #include "libscdl.h"
 
-#ifdef HAVE_LTDL_H
-#include <ltdl.h>
-/* libltdl is present, pass all calls to it */
-
-void *sc_dlopen(const char *filename)
-{
-	return (void *)lt_dlopen(filename);
-}
-
-void *sc_dlsym(void *handle, const char *symbol)
-{
-	return lt_dlsym((lt_dlhandle)handle, symbol);
-}
-
-const char *sc_dlerror(void)
-{
-	return lt_dlerror();
-}
-
-int sc_dlclose(void *handle)
-{
-	return lt_dlclose((lt_dlhandle)handle);
-}
-
-#else
-/* Small wrappers for native functions, bypassing libltdl */
-#ifdef _WIN32
-/* Use Windows calls */
+#ifdef WIN32
 void *sc_dlopen(const char *filename)
 {
 	return (void *)LoadLibrary(filename);
@@ -69,10 +42,8 @@ int sc_dlclose(void *handle)
 {
 	return FreeLibrary(handle);
 }
-
-#elif defined(HAVE_DLFCN_H)
+#else
 #include <dlfcn.h>
-/* Use native interfaces */
 void *sc_dlopen(const char *filename)
 {
 	return dlopen(filename, RTLD_LAZY);
@@ -92,28 +63,4 @@ int sc_dlclose(void *handle)
 {
 	return dlclose(handle);
 }
-
-#else
-/* Dynamic loading is not available */
-void *sc_dlopen(const char *filename)
-{
-	return NULL;
-}
-
-void *sc_dlsym(void *handle, const char *symbol)
-{
-	return NULL;
-}
-
-const char *sc_dlerror()
-{
-	return "dlopen() functionality not available";
-}
-
-int sc_dlclose(void *handle)
-{
-	return 0;
-}
-
-#endif
 #endif
