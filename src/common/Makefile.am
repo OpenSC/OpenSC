@@ -17,11 +17,10 @@ libcompat_la_SOURCES = \
 	compat_strlcpy.h compat_strlcpy.c \
 	compat_getpass.h compat_getpass.c \
 	compat_getopt.h compat_getopt.c \
-	simclist.c simclist.h libscdl.c
+	simclist.c simclist.h
 
 compat_getopt_main_LDADD = libcompat.la
 
 libpkcs11_la_SOURCES = libpkcs11.c libpkcs11.h
-libpkcs11_la_LIBADD = libscdl.la
 
 libscdl_la_SOURCES = libscdl.c libscdl.h

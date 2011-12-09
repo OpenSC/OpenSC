@@ -33,6 +33,7 @@
 #include <winreg.h>
 #endif
 
+#include "common/libscdl.h"
 #include "internal.h"
 
 int _sc_add_reader(sc_context_t *ctx, sc_reader_t *reader)
