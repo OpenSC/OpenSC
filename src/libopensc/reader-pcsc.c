@@ -33,6 +33,7 @@
 #include <arpa/inet.h>
 #endif
 
+#include "common/libscdl.h"
 #include "internal.h"
 #include "internal-winscard.h"
 

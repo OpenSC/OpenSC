@@ -8,7 +8,7 @@ common.lib: $(COMMON_OBJECTS)
 	lib $(LIBFLAGS) /out:common.lib $(COMMON_OBJECTS)
 
 libpkcs11.lib: libpkcs11.obj libscdl.obj
-	lib $(LIBFLAGS) /out:libpkcs11.lib libpkcs11.obj libscdl.obj
+	lib $(LIBFLAGS) /out:libpkcs11.lib libpkcs11.obj
 
 libscdl.lib: libscdl.obj
 	lib $(LIBFLAGS) /out:libscdl.lib libscdl.obj
