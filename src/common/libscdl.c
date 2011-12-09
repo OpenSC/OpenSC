@@ -18,11 +18,14 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "config.h"
+#if HAVE_CONFIG_H
+#include <config.h>
+#endif
 
 #include "libscdl.h"
 
 #ifdef WIN32
+#include <windows.h>
 void *sc_dlopen(const char *filename)
 {
 	return (void *)LoadLibrary(filename);
@@ -30,7 +33,7 @@ void *sc_dlopen(const char *filename)
 
 void *sc_dlsym(void *handle, const char *symbol)
 {
-	return GetProcAddress(handle, symbol);
+	return GetProcAddress((HANDLE)handle, symbol);
 }
 
 const char *sc_dlerror()
@@ -40,7 +43,7 @@ const char *sc_dlerror()
 
 int sc_dlclose(void *handle)
 {
-	return FreeLibrary(handle);
+	return FreeLibrary((HANDLE)handle);
 }
 #else
 #include <dlfcn.h>
