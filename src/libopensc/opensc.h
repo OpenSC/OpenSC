@@ -603,6 +603,7 @@ typedef struct sc_context {
 	scconf_block *conf_blocks[3];
 	char *app_name;
 	int debug;
+	int paranoid_memory;
 
 	FILE *debug_file;
 	char *preferred_language;
