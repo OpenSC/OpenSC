@@ -701,16 +701,26 @@ int _sc_parse_atr(sc_reader_t *reader)
 void *sc_mem_alloc_secure(sc_context_t *ctx, size_t len)
 {
     void *pointer;
-    
+    int locked = 0;
+
     pointer = calloc(len, sizeof(unsigned char));
     if (!pointer)
         return NULL;
 #ifdef HAVE_SYS_MMAN_H
     /* TODO Windows support and mprotect too */
     /* Do not swap the memory */
-    if (mlock(pointer, len) == -1)
-        sc_do_log (ctx, 0, NULL, 0, NULL, "cannot lock memory, pin may be paged to disk");
+    if (mlock(pointer, len) >= 0)
+        locked = 1;
 #endif
+    if (!locked) {
+        if (ctx->paranoid_memory) {
+            sc_do_log (ctx, 0, NULL, 0, NULL, "cannot lock memory, failing allocation because paranoid set");
+            free (pointer);
+            pointer = NULL;
+        } else {
+            sc_do_log (ctx, 0, NULL, 0, NULL, "cannot lock memory, sensitive data may be paged to disk");
+        }
+    }
     return pointer;
 }
 
