@@ -353,10 +353,11 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 
 	static const pindata pins[] = {
 		{ "1", "PIV Card Holder pin", "", 0x80,
-		  /* label and ref will change if using global pin */
+		  /* label, flag  and ref will change if using global pin */
 		  SC_PKCS15_PIN_TYPE_ASCII_NUMERIC,
 		  8, 4, 8, 
 		  SC_PKCS15_PIN_FLAG_NEEDS_PADDING |
+		  SC_PKCS15_PIN_FLAG_INITIALIZED |
 		  SC_PKCS15_PIN_FLAG_LOCAL, 
 		  -1, 0xFF,
 		  SC_PKCS15_CO_FLAG_PRIVATE },
@@ -364,6 +365,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 		  SC_PKCS15_PIN_TYPE_ASCII_NUMERIC,
 		  8, 4, 8, 
 		  SC_PKCS15_PIN_FLAG_NEEDS_PADDING |
+		  SC_PKCS15_PIN_FLAG_INITIALIZED |
 		  SC_PKCS15_PIN_FLAG_LOCAL | SC_PKCS15_PIN_FLAG_SO_PIN |
 		  SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN, 
 		  -1, 0xFF, 
@@ -789,6 +791,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 					&pin_ref) == 0 &&
 				pin_ref == 0x00) { /* must be 80 for PIV pin, or 00 for Global PIN */
 			pin_info.attrs.pin.reference = pin_ref;
+			pin_info.attrs.pin.flags &= ~SC_PKCS15_PIN_FLAG_LOCAL;
 			label = "Global PIN";
 		} 
 sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "DEE Adding pin %d label=%s",i, label);
