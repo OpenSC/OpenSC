@@ -339,6 +339,70 @@ struct sc_pin_cmd_data {
 	struct sc_apdu *apdu;		/* APDU of the PIN command */
 };
 
+/** 
+ * Input data for EstablishPACEChannel()
+ */
+struct establish_pace_channel_input {
+    /** Version of TR-03110 to use with PACE */
+    //enum eac_tr_version tr_version;
+
+    /** Type of secret (CAN, MRZ, PIN or PUK). You may use <tt>enum s_type</tt> from \c <openssl/pace.h> */
+    unsigned char pin_id;
+
+    /** Length of \a chat */
+    size_t chat_length;
+    /** Card holder authorization template */
+    const unsigned char *chat;
+
+    /** Length of \a pin */
+    size_t pin_length;
+    /** Secret */
+    const unsigned char *pin;
+
+    /** Length of \a certificate_description */
+    size_t certificate_description_length;
+    /** Certificate description */
+    const unsigned char *certificate_description;
+};
+
+/** 
+ * Output data for EstablishPACEChannel()
+ */
+struct establish_pace_channel_output {
+    /** PACE result (TR-03119) */
+    unsigned int result;
+
+    /** MSE: Set AT status byte */
+    unsigned char mse_set_at_sw1;
+    /** MSE: Set AT status byte */
+    unsigned char mse_set_at_sw2;
+
+    /** Length of \a ef_cardaccess */
+    size_t ef_cardaccess_length;
+    /** EF.CardAccess */
+    unsigned char *ef_cardaccess;
+
+    /** Length of \a recent_car */
+    size_t recent_car_length;
+    /** Most recent certificate authority reference */
+    unsigned char *recent_car;
+
+    /** Length of \a previous_car */
+    size_t previous_car_length;
+    /** Previous certificate authority reference */
+    unsigned char *previous_car;
+
+    /** Length of \a id_icc */
+    size_t id_icc_length;
+    /** ICC identifier */
+    unsigned char *id_icc;
+
+    /** Length of \a id_pcd */
+    size_t id_pcd_length;
+    /** PCD identifier */
+    unsigned char *id_pcd;
+};
+
 struct sc_reader_operations {
 	/* Called during sc_establish_context(), when the driver
 	 * is loaded */
@@ -365,6 +429,9 @@ struct sc_reader_operations {
 	/* Pin pad functions */
 	int (*display_message)(struct sc_reader *, const char *);
 	int (*perform_verify)(struct sc_reader *, struct sc_pin_cmd_data *);
+	int (*perform_pace)(struct sc_reader *reader,
+            struct establish_pace_channel_input *,
+            struct establish_pace_channel_output *);
 
 	/* Wait for an event */
 	int (*wait_for_event)(struct sc_context *ctx, unsigned int event_mask, sc_reader_t **event_reader, unsigned int *event, 

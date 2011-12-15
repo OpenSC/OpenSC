@@ -173,6 +173,10 @@ typedef LONG (PCSC_API *SCardGetAttrib_t)(SCARDHANDLE hCard, DWORD dwAttrId,\
 #define FEATURE_GET_TLV_PROPERTIES       0x12
 #define FEATURE_CCID_ESC_COMMAND         0x13
 
+#ifndef FEATURE_EXECUTE_PACE
+#define FEATURE_EXECUTE_PACE 0x20
+#endif
+
 /* properties returned by FEATURE_GET_TLV_PROPERTIES */
 #define PCSCv2_PART10_PROPERTY_wLcdLayout 1
 #define PCSCv2_PART10_PROPERTY_bEntryValidationCondition 2
