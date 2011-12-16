@@ -279,3 +279,25 @@ int sc_build_pin(u8 *buf, size_t buflen, struct sc_pin_cmd_pin *pin, int pad)
 
 	return i;
 }
+
+int sc_perform_pace(sc_card_t *card,
+        struct establish_pace_channel_input *pace_input,
+        struct establish_pace_channel_output *pace_output)
+{
+    int r = SC_ERROR_NOT_SUPPORTED;
+
+    if (!card)
+        return SC_ERROR_INVALID_ARGUMENTS;
+
+    if (card->reader
+            && card->reader->ops
+            && card->reader->ops->perform_pace) {
+        r = card->reader->ops->perform_pace(card->reader, pace_input,
+                pace_output);
+    } else {
+        /* Add EstablishPACEChannel using a normal reader here */
+        /* see for example http://vsmartcard.sourceforge.net/npa/README.html */
+    }
+
+    return r;
+}

@@ -1260,6 +1260,10 @@ extern const char *sc_get_version(void);
 
 extern sc_card_driver_t *sc_get_iso7816_driver(void);
 
+int sc_perform_pace(sc_card_t *card,
+        struct establish_pace_channel_input *pace_input,
+        struct establish_pace_channel_output *pace_output);
+
 #ifdef __cplusplus
 }
 #endif
