@@ -1,15 +1,269 @@
 /*
  * Copyright (C) 2011 Frank Morgner
  *
- * derived from http://vsmartcard.sourceforge.net/npa/README.html
+ * derived from npa-tool from the virtual smart card architecture
+ * http://vsmartcard.sourceforge.net/npa/README.html
  */
+#include "config.h"
 #include "libopensc/log.h"
 #include "libopensc/opensc.h"
+#include "common/compat_getopt.h"
+#include <openssl/evp.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
+
+void print_usage(const char *app_name, const struct option options[],
+	const char *option_help[])
+{
+    int i = 0;
+    printf("Usage: %s [OPTIONS]\nOptions:\n", app_name);
+
+    while (options[i].name) {
+        /* Flawfinder: ignore */
+        char buf[40], tmp[5];
+        const char *arg_str;
+
+        /* Skip "hidden" options */
+        if (option_help[i] == NULL) {
+            i++;
+            continue;
+        }
+
+        if (options[i].val > 0 && options[i].val < 128)
+            /* Flawfinder: ignore */
+            sprintf(tmp, "-%c", options[i].val);
+        else
+            tmp[0] = 0;
+        switch (options[i].has_arg) {
+            case 1:
+                arg_str = " <arg>";
+                break;
+            case 2:
+                arg_str = " [arg]";
+                break;
+            default:
+                arg_str = "";
+                break;
+        }
+        snprintf(buf, sizeof buf, "--%-13s%s%s", options[i].name, tmp, arg_str);
+        if (strlen(buf) > 24) {
+            printf("  %s\n", buf);
+            buf[0] = '\0';
+        }
+        printf("  %-24s %s\n", buf, option_help[i]);
+        i++;
+    }
+}
+
+void parse_error(const char *app_name, const struct option options[],
+        const char *option_help[], const char *optarg, int opt_ind)
+{
+    printf("Could not parse %s ('%s').\n", options[opt_ind].name, optarg);
+    print_usage(app_name , options, option_help);
+}
+
+int initialize(int reader_id, const char *cdriver, int verbose,
+        sc_context_t **ctx, sc_reader_t **reader)
+{
+    unsigned int i, reader_count;
+
+    if (!ctx || !reader)
+        return SC_ERROR_INVALID_ARGUMENTS;
+
+    int r = sc_establish_context(ctx, "");
+    if (r < 0) {
+        fprintf(stderr, "Failed to create initial context: %s", sc_strerror(r));
+        return r;
+    }
+
+    if (cdriver != NULL) {
+        r = sc_set_card_driver(*ctx, cdriver);
+        if (r < 0) {
+            sc_debug(*ctx, SC_LOG_DEBUG_VERBOSE, "Card driver '%s' not found.\n", cdriver);
+            return r;
+        }
+    }
+
+    (*ctx)->debug = verbose;
+
+    reader_count = sc_ctx_get_reader_count(*ctx);
+
+    if (reader_count == 0) {
+        sc_debug(*ctx, SC_LOG_DEBUG_NORMAL, "No reader not found.\n");
+        return SC_ERROR_NO_READERS_FOUND;
+    }
+
+    if (reader_id < 0) {
+        /* Automatically try to skip to a reader with a card if reader not specified */
+        for (i = 0; i < reader_count; i++) {
+            *reader = sc_ctx_get_reader(*ctx, i);
+            if (sc_detect_card_presence(*reader) & SC_READER_CARD_PRESENT) {
+                reader_id = i;
+                sc_debug(*ctx, SC_LOG_DEBUG_NORMAL, "Using the first reader"
+                        " with a card: %s", (*reader)->name);
+                break;
+            }
+        }
+        if (reader_id >= reader_count) {
+            sc_debug(*ctx, SC_LOG_DEBUG_NORMAL, "No card found, using the first reader.");
+            reader_id = 0;
+        }
+    }
+
+    if (reader_id >= reader_count) {
+        sc_debug(*ctx, SC_LOG_DEBUG_NORMAL, "Invalid reader number "
+                "(%d), only %d available.\n", reader_id, reader_count);
+        return SC_ERROR_NO_READERS_FOUND;
+    }
+
+    *reader = sc_ctx_get_reader(*ctx, reader_id);
+
+    return SC_SUCCESS;
+}
+
+void _bin_log(sc_context_t *ctx, int type, const char *file, int line,
+        const char *func, const char *label, const u8 *data, size_t len,
+        FILE *f)
+{
+    if (!f) {
+        char buf[1800];
+        if (data)
+            sc_hex_dump(ctx, SC_LOG_DEBUG_NORMAL, data, len, buf, sizeof buf);
+        else
+            buf[0] = 0;
+        sc_do_log(ctx, type, file, line, func,
+                "\n%s (%u byte%s):\n%s",
+                label, len, len==1?"":"s", buf);
+    } else {
+        fprintf(f, "%s (%u byte%s):\n%s\n",
+                label, len, len==1?"":"s", sc_dump_hex(data, len));
+    }
+}
+
+#define bin_print(file, label, data, len) \
+    _bin_log(NULL, 0, NULL, 0, NULL, label, data, len, file)
+
+#define bin_log(ctx, level, label, data, len) \
+    _bin_log(ctx, level, __FILE__, __LINE__, __FUNCTION__, label, data, len, NULL)
+
+static int list_drivers(sc_context_t *ctx)
+{
+	int i;
+	
+	if (ctx->card_drivers[0] == NULL) {
+		printf("No card drivers installed!\n");
+		return 0;
+	}
+	printf("Configured card drivers:\n");
+	for (i = 0; ctx->card_drivers[i] != NULL; i++) {
+		printf("  %-16s %s\n", ctx->card_drivers[i]->short_name,
+		       ctx->card_drivers[i]->name);
+	}
+
+	return 0;
+}
+
+static int list_readers(sc_context_t *ctx)
+{
+	unsigned int i, rcount = sc_ctx_get_reader_count(ctx);
+	
+	if (rcount == 0) {
+		printf("No smart card readers found.\n");
+		return 0;
+	}
+	printf("Readers known about:\n");
+	printf("Nr.    Driver     Name\n");
+	for (i = 0; i < rcount; i++) {
+		sc_reader_t *screader = sc_ctx_get_reader(ctx, i);
+		printf("%-7d%-11s%s\n", i, screader->driver->short_name,
+		       screader->name);
+	}
+
+	return 0;
+}
+
+int print_avail(int verbose)
+{
+    sc_context_t *ctx = NULL;
+
+    int r;
+    r = sc_establish_context(&ctx, "");
+    if (r) {
+        fprintf(stderr, "Failed to establish context: %s\n", sc_strerror(r));
+        return 1;
+    }
+    ctx->debug = verbose;
+
+    r = list_readers(ctx)|list_drivers(ctx);
+
+    if (ctx)
+        sc_release_context(ctx);
+
+    return r;
+}
+
+#define MIN_PIN_LEN       6
+#define MAX_PIN_LEN       6
+int npa_reset_retry_counter(sc_card_t *card, unsigned char pin_id,
+        int ask_for_secret, const char *new, size_t new_len)
+{
+    sc_apdu_t apdu;
+    char *p = NULL;
+    int r;
+
+    if (ask_for_secret && (!new || !new_len)) {
+        p = malloc(MAX_PIN_LEN+1);
+        if (!p) {
+            sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Not enough memory for new PIN.\n");
+            return SC_ERROR_OUT_OF_MEMORY;
+        }
+        if (0 > EVP_read_pw_string_min(p,
+                    MIN_PIN_LEN, MAX_PIN_LEN+1,
+                    "Please enter your new PIN: ", 0)) {
+            sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not read new PIN.\n");
+            free(p);
+            return SC_ERROR_INTERNAL;
+        }
+        new_len = strlen(p);
+        if (new_len > MAX_PIN_LEN)
+            return SC_ERROR_INVALID_PIN_LENGTH;
+        new = p;
+    }
+
+    memset(&apdu, 0, sizeof apdu);
+    apdu.ins = 0x2C;
+    apdu.p2 = pin_id;
+    apdu.data = (u8 *) new;
+    apdu.datalen = new_len;
+    apdu.lc = apdu.datalen;
+    apdu.flags = SC_APDU_FLAGS_NO_GET_RESP|SC_APDU_FLAGS_NO_RETRY_WL;
+
+    if (new_len) {
+        apdu.p1 = 0x02;
+        apdu.cse = SC_APDU_CASE_3_SHORT;
+    } else {
+        apdu.p1 = 0x03;
+        apdu.cse = SC_APDU_CASE_1;
+    }
+
+    r = sc_transmit_apdu(card, &apdu);
+
+    if (p) {
+        OPENSSL_cleanse(p, new_len);
+        free(p);
+    }
+
+    return r;
+}
+
+#define npa_unblock_pin(card) \
+    npa_reset_retry_counter(card, 0x03, 0, NULL, 0)
+
+#define npa_change_pin(card, newp, newplen) \
+    npa_reset_retry_counter(card, 0x03, 1, newp, newplen)
 
 #ifndef HAVE_GETLINE
 static ssize_t getline(char **lineptr, size_t *n, FILE *stream)
@@ -113,7 +367,7 @@ static const char *option_help[] = {
     "Print version, available readers and drivers.",
 };
 
-int npa_translate_apdus(struct sm_ctx *sctx, sc_card_t *card, FILE *input)
+int npa_translate_apdus(sc_card_t *card, FILE *input)
 {
     u8 buf[4 + 3 + 0xffff + 3];
     char *read = NULL;
@@ -160,7 +414,7 @@ int npa_translate_apdus(struct sm_ctx *sctx, sc_card_t *card, FILE *input)
         apdu.resp = buf;
         apdu.resplen = sizeof buf;
 
-        r = sm_transmit_apdu(sctx, card, &apdu);
+        r = sc_transmit_apdu(card, &apdu);
         if (r < 0) {
             sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE_TOOL,
                     "Could not send C-APDU: %s", sc_strerror(r));
@@ -178,19 +432,36 @@ int npa_translate_apdus(struct sm_ctx *sctx, sc_card_t *card, FILE *input)
     return r;
 }
 
+static const char *MRZ_name = "MRZ";
+static const char *PIN_name = "PIN";
+static const char *PUK_name = "PUK";
+static const char *CAN_name = "CAN";
+static const char *UNDEF_name = "UNDEF";
+const char *npa_secret_name(unsigned char pin_id) {
+    switch (pin_id) {
+        case 0x01:
+            return MRZ_name;
+        case 0x04:
+            return PUK_name;
+        case 0x03:
+            return PIN_name;
+        case 0x02:
+            return CAN_name;
+        default:
+            return UNDEF_name;
+    }
+}
+
 int
 main (int argc, char **argv)
 {
     int r, oindex = 0;
     size_t channeldatalen;
-    struct sm_ctx sctx, tmpctx;
     struct establish_pace_channel_input pace_input;
     struct establish_pace_channel_output pace_output;
     struct timeval tv;
     size_t outlen;
 
-    memset(&sctx, 0, sizeof sctx);
-    memset(&tmpctx, 0, sizeof tmpctx);
     memset(&pace_input, 0, sizeof pace_input);
     memset(&pace_output, 0, sizeof pace_output);
 
@@ -281,12 +552,14 @@ main (int argc, char **argv)
                     file = optarg;
                 }
                 break;
+#ifdef TR_VERSION_DONE
             case OPT_TRVERSION:
                 if (sscanf(optarg, "%d", (int *) &pace_input.tr_version) != 1) {
                     parse_error(argv[0], options, option_help, optarg, oindex);
                     exit(2);
                 }
                 break;
+#endif
             case '?':
                 /* fall through */
             default:
@@ -330,7 +603,7 @@ main (int argc, char **argv)
         unsigned long long maxsecret = 0;
 
         if (usepin) {
-            pace_input.pin_id = PACE_PIN;
+            pace_input.pin_id = 0x03;
             pace_input.pin_length = 6;
             maxsecret = 999999;
             if (pin) {
@@ -347,7 +620,7 @@ main (int argc, char **argv)
                 }
             }
         } else if (usecan) {
-            pace_input.pin_id = PACE_CAN;
+            pace_input.pin_id = 0x02;
             pace_input.pin_length = 6;
             maxsecret = 999999;
             if (can) {
@@ -364,7 +637,7 @@ main (int argc, char **argv)
                 }
             }
         } else if (usepuk) {
-            pace_input.pin_id = PACE_PUK;
+            pace_input.pin_id = 0x04;
             pace_input.pin_length = 10;
             maxsecret = 9999999999LLU;
             if (puk) {
@@ -396,8 +669,7 @@ main (int argc, char **argv)
                     (unsigned int) tv.tv_sec, (unsigned int) tv.tv_usec,
                     npa_secret_name(pace_input.pin_id), pace_input.pin);
 
-            r = EstablishPACEChannel(NULL, card, pace_input, &pace_output,
-                    &sctx);
+            r = sc_perform_pace(card, &pace_input, &pace_output);
 
             secret++;
         } while (0 > r && secret <= maxsecret);
@@ -417,7 +689,7 @@ main (int argc, char **argv)
     }
 
     if (doresumepin) {
-        pace_input.pin_id = PACE_CAN;
+        pace_input.pin_id = 0x02;
         if (can) {
             pace_input.pin = can;
             pace_input.pin_length = strlen(can);
@@ -425,13 +697,12 @@ main (int argc, char **argv)
             pace_input.pin = NULL;
             pace_input.pin_length = 0;
         }
-        r = EstablishPACEChannel(NULL, card, pace_input, &pace_output,
-            &tmpctx);
+        r = sc_perform_pace(card, &pace_input, &pace_output);
         if (r < 0)
             goto err;
         printf("Established PACE channel with CAN.\n");
 
-        pace_input.pin_id = PACE_PIN;
+        pace_input.pin_id = 0x03;
         if (pin) {
             pace_input.pin = pin;
             pace_input.pin_length = strlen(pin);
@@ -439,15 +710,14 @@ main (int argc, char **argv)
             pace_input.pin = NULL;
             pace_input.pin_length = 0;
         }
-        r = EstablishPACEChannel(&tmpctx, card, pace_input, &pace_output,
-            &sctx);
+        r = sc_perform_pace(card, &pace_input, &pace_output);
         if (r < 0)
             goto err;
         printf("Established PACE channel with PIN. PIN resumed.\n");
     }
 
     if (dounblock) {
-        pace_input.pin_id = PACE_PUK;
+        pace_input.pin_id = 0x04;
         if (puk) {
             pace_input.pin = puk;
             pace_input.pin_length = strlen(puk);
@@ -455,20 +725,19 @@ main (int argc, char **argv)
             pace_input.pin = NULL;
             pace_input.pin_length = 0;
         }
-        r = EstablishPACEChannel(NULL, card, pace_input, &pace_output,
-            &sctx);
+        r = sc_perform_pace(card, &pace_input, &pace_output);
         if (r < 0)
             goto err;
         printf("Established PACE channel with PUK.\n");
 
-        r = npa_unblock_pin(&sctx, card);
+        r = npa_unblock_pin(card);
         if (r < 0)
             goto err;
         printf("Unblocked PIN.\n");
     }
 
     if (dochangepin) {
-        pace_input.pin_id = PACE_PIN;
+        pace_input.pin_id = 0x03;
         if (pin) {
             pace_input.pin = pin;
             pace_input.pin_length = strlen(pin);
@@ -476,13 +745,12 @@ main (int argc, char **argv)
             pace_input.pin = NULL;
             pace_input.pin_length = 0;
         }
-        r = EstablishPACEChannel(NULL, card, pace_input, &pace_output,
-            &sctx);
+        r = sc_perform_pace(card, &pace_input, &pace_output);
         if (r < 0)
             goto err;
         printf("Established PACE channel with PIN.\n");
 
-        r = npa_change_pin(&sctx, card, newpin, newpin ? strlen(newpin) : 0);
+        r = npa_change_pin(card, newpin, newpin ? strlen(newpin) : 0);
         if (r < 0)
             goto err;
         printf("Changed PIN.\n");
@@ -492,25 +760,25 @@ main (int argc, char **argv)
         pace_input.pin = NULL;
         pace_input.pin_length = 0;
         if (usepin) {
-            pace_input.pin_id = PACE_PIN;
+            pace_input.pin_id = 0x03;
             if (pin) {
                 pace_input.pin = pin;
                 pace_input.pin_length = strlen(pin);
             }
         } else if (usecan) {
-            pace_input.pin_id = PACE_CAN;
+            pace_input.pin_id = 0x02;
             if (can) {
                 pace_input.pin = can;
                 pace_input.pin_length = strlen(can);
             }
         } else if (usemrz) {
-            pace_input.pin_id = PACE_MRZ;
+            pace_input.pin_id = 0x01;
             if (mrz) {
                 pace_input.pin = mrz;
                 pace_input.pin_length = strlen(mrz);
             }
         } else if (usepuk) {
-            pace_input.pin_id = PACE_PUK;
+            pace_input.pin_id = 0x04;
             if (puk) {
                 pace_input.pin = puk;
                 pace_input.pin_length = strlen(puk);
@@ -521,8 +789,7 @@ main (int argc, char **argv)
             exit(1);
         }
 
-        r = EstablishPACEChannel(NULL, card, pace_input, &pace_output,
-            &sctx);
+        r = sc_perform_pace(card, &pace_input, &pace_output);
         if (r < 0)
             goto err;
         printf("Established PACE channel with %s.\n",
@@ -540,7 +807,7 @@ main (int argc, char **argv)
                 }
             }
 
-            r = npa_translate_apdus(&sctx, card, input);
+            r = npa_translate_apdus(card, input);
             fclose(input);
             if (r < 0)
                 goto err;
@@ -548,8 +815,6 @@ main (int argc, char **argv)
     }
 
 err:
-    sm_ctx_clear_free(&sctx);
-    sm_ctx_clear_free(&tmpctx);
     if (pace_output.ef_cardaccess)
         free(pace_output.ef_cardaccess);
     if (pace_output.recent_car)

@@ -7,7 +7,7 @@ noinst_HEADERS = util.h
 bin_PROGRAMS = opensc-tool opensc-explorer pkcs15-tool pkcs15-crypt \
 	pkcs11-tool cardos-tool eidenv
 if ENABLE_OPENSSL
-bin_PROGRAMS += cryptoflex-tool pkcs15-init netkey-tool piv-tool westcos-tool
+bin_PROGRAMS += cryptoflex-tool pkcs15-init netkey-tool piv-tool westcos-tool npa-tool
 endif
 
 # compile with $(PTHREAD_CFLAGS) to allow debugging with gdb
@@ -39,6 +39,8 @@ netkey_tool_SOURCES = netkey-tool.c
 netkey_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
 westcos_tool_SOURCES = westcos-tool.c util.c
 westcos_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
+npa_tool_SOURCES = npa-tool.c util.c
+npa_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
 
 if WIN32
 opensc_tool_SOURCES += $(top_builddir)/win32/versioninfo.rc
