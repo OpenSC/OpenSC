@@ -856,8 +856,10 @@ static int epass2003_init(struct sc_card *card)
 	card->name = "epass2003";
 	card->cla = 0x00;
 	card->drv_data = NULL;
+	card->ctx->use_sm = 1;
 
-	g_sm = SM_PLAIN;
+	g_sm = SM_SCP01;
+	/* g_sm = SM_PLAIN; */
 
 	/* decide FIPS/Non-FIPS mode */
 	if (SC_SUCCESS != get_data(card, 0x86, data, datalen)) {
@@ -2216,6 +2218,8 @@ static struct sc_card_driver *sc_get_driver(void)
 
 	epass2003_ops.match_card = epass2003_match_card;
 	epass2003_ops.init = epass2003_init;
+	epass2003_ops.sm_wrap_apdu = epass2003_sm_wrap_apdu;
+	epass2003_ops.sm_unwrap_apdu = epass2003_sm_unwrap_apdu;
 	epass2003_ops.write_binary = NULL;
 	epass2003_ops.write_record = NULL;
 	epass2003_ops.select_file = epass2003_select_file;

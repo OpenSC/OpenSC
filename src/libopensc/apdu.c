@@ -515,7 +515,7 @@ static int do_single_transmit(sc_card_t *card, sc_apdu_t *apdu)
 	return SC_SUCCESS;
 }
 
-int sc_transmit_apdu(sc_card_t *card, sc_apdu_t *apdu)
+static int _sc_transmit_apdu(sc_card_t *card, sc_apdu_t *apdu)
 {
 	int r = SC_SUCCESS;
 
@@ -605,6 +605,55 @@ int sc_transmit_apdu(sc_card_t *card, sc_apdu_t *apdu)
 	if (sc_unlock(card) != SC_SUCCESS)
 		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "sc_unlock failed");
 
+	return r;
+}
+
+/*
+ * Wrap/Unwrap APDU when requested before sending to reader driver
+ * Needed (un)wrapping apdu is noticed by a non-null
+ * card->ops->(un)wrap_apdu() function pointer
+ * (eg: for Secure Messaging)
+ *  @param  card  sc_card_t object for the smartcard
+ *  @param  apdu  APDU to be sent
+ *  @return SC_SUCCESS on success and an error value otherwise
+ */
+int sc_transmit_apdu(sc_card_t *card, sc_apdu_t *apdu) {
+	int r;
+	sc_context_t *ctx = card->ctx;
+
+	if (ctx->use_sm != 0) {
+		//construct new SM apdu from original apdu
+		u8 data[SC_MAX_EXT_APDU_BUFFER_SIZE] = {0};
+		u8 resp[SC_MAX_EXT_APDU_BUFFER_SIZE] = {0};
+		sc_apdu_t wrapped_apdu;
+		wrapped_apdu.data = &data[0];
+		wrapped_apdu.datalen = SC_MAX_EXT_APDU_BUFFER_SIZE;
+		wrapped_apdu.resp = &resp[0];
+		wrapped_apdu.resplen = SC_MAX_EXT_APDU_BUFFER_SIZE;
+
+		/* wrap apdu */
+		r = card->ops->sm_wrap_apdu(card, apdu, &wrapped_apdu);
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "sm_wrap_apdu error");
+
+		/* determine the APDU type if necessary, i.e. to use
+		 * short or extended APDUs  */
+		sc_detect_apdu_cse(card, apdu);
+
+		/* check wrapped apdu */
+		r = sc_check_apdu(card, &wrapped_apdu);
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "wrapped APDU is invalid");
+
+		r = _sc_transmit_apdu(card, &wrapped_apdu);
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "unable to transmit wrapped APDU");
+
+		/* unwrap apdu */
+		r = card->ops->sm_unwrap_apdu(card, &wrapped_apdu, apdu);
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "sm_unwrap_apdu error");
+
+	} else {
+		/* no wrap needed, just call reader driver */
+		r = _sc_transmit_apdu(card, apdu);
+	}
 	return r;
 }
 
