@@ -1011,6 +1011,8 @@ static struct sc_card_operations iso_ops = {
 	no_match,
 	NULL,			/* init   */
 	NULL,			/* finish */
+	NULL,			/* sm_wrap_apdu */
+	NULL,			/* sm_unwrap_apdu */
 	iso7816_read_binary,
 	iso7816_write_binary,
 	iso7816_update_binary,
