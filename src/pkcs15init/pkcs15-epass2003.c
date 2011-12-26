@@ -454,10 +454,6 @@ static int epass2003_pkcs15_store_key(struct sc_profile *profile,
 
 	sc_file_free(tfile);
 
-	if (key_info->id.len > sizeof(data.key_data.es_key.fid))
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,
-			       SC_ERROR_INVALID_ARGUMENTS);
-
 	fidl = (file->id & 0xff) * FID_STEP;
 	file->id = (file->id & 0xff00) + fidl;
 	data.type = SC_EPASS2003_KEY_RSA;
