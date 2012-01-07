@@ -801,6 +801,8 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 			priv->pin_properties_ioctl = ntohl(pcsc_tlv[i].value);
 		} else if (pcsc_tlv[i].tag == FEATURE_GET_TLV_PROPERTIES)  {
 			priv->get_tlv_properties = ntohl(pcsc_tlv[i].value);
+        } else if (pcsc_tlv[i].tag == FEATURE_EXECUTE_PACE) {
+            priv->pace_ioctl = ntohl(pcsc_tlv[i].value);
 		} else {
 			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Reader feature %02x is not supported", pcsc_tlv[i].tag);
 		}
@@ -861,6 +863,16 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 				sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Returned PIN properties structure has bad length (%d/%d)", rcount, sizeof(PIN_PROPERTIES_STRUCTURE));
 		}
 	}
+
+    if (priv->pace_ioctl) {
+        char *log_text = "Reader supports PACE";
+        if (priv->gpriv->enable_pace) {
+            sc_debug(ctx, SC_LOG_DEBUG_NORMAL, log_text);
+            reader->capabilities |= SC_READER_CAP_PACE;
+        } else {
+            sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "%s %s", log_text, log_disabled);
+        }
+    }
 }
 
 static int pcsc_detect_readers(sc_context_t *ctx)
@@ -1637,7 +1649,7 @@ static int transform_pace_input(
 {
 	char dbuf[SC_MAX_APDU_BUFFER_SIZE * 3];
     u8 *p = sbuf;
-    size_t lengthInputData;
+    uint16_t lengthInputData, lengthCertificateDescription;
 
     if (!pace_input || !sbuf || !scount)
         return SC_ERROR_INVALID_ARGUMENTS;
@@ -1645,36 +1657,42 @@ static int transform_pace_input(
     lengthInputData = 5 + pace_input->pin_length + pace_input->chat_length
         + pace_input->certificate_description_length;
 
-    if (lengthInputData + 1 > *scount)
+    if (lengthInputData + 3 > *scount)
         return SC_ERROR_OUT_OF_MEMORY;
 
     /* idxFunction = EstabishPACEChannel */
-    *p = 0x02;
+    *(p++) = 0x02;
 
     /* lengthInputData */
-    *(p++) = lengthInputData & 0xff;
-    *(p++) = lengthInputData >> 8;
+    memcpy(p, &lengthInputData, sizeof lengthInputData);
+    p += sizeof lengthInputData;
 
     *(p++) = pace_input->pin_id;
 
     /* length CHAT */
     *(p++) = pace_input->chat_length;
     /* CHAT */
-    memcpy(p++, pace_input->chat, pace_input->chat_length);
+    memcpy(p, pace_input->chat, pace_input->chat_length);
+    p += pace_input->chat_length;
 
     /* length PIN */
     *(p++) = pace_input->pin_length;
-    /* PIN */
-    memcpy(p++, pace_input->pin, pace_input->pin_length);
 
-    /* length certificate description */
-    *(p++) = pace_input->certificate_description_length & 0xff;
-    *(p++) = pace_input->certificate_description_length >> 8;
+    /* PIN */
+    memcpy(p, pace_input->pin, pace_input->pin_length);
+    p += pace_input->pin_length;
+
+    /* lengthCertificateDescription */
+    lengthCertificateDescription = pace_input->certificate_description_length;
+    memcpy(p, &lengthCertificateDescription,
+            sizeof lengthCertificateDescription);
+    p += sizeof lengthCertificateDescription;
+
     /* certificate description */
-    memcpy(p++, pace_input->certificate_description,
+    memcpy(p, pace_input->certificate_description,
             pace_input->certificate_description_length);
 
-    *scount = lengthInputData + 1;
+    *scount = lengthInputData + 3;
 
     return SC_SUCCESS;
 }
@@ -1694,13 +1712,14 @@ static int transform_pace_output(u8 *rbuf, size_t rbuflen,
     /* Result */
     if (parsed+4 > rbuflen)
         return SC_ERROR_UNKNOWN_DATA_RECEIVED;
-    memcpy(&rbuf[parsed], &pace_output->result, 4);
+    memcpy(&pace_output->result, &rbuf[parsed], 4);
     parsed += 4;
 
     /* length_OutputData */
     if (parsed+2 > rbuflen)
         return SC_ERROR_UNKNOWN_DATA_RECEIVED;
-    memcpy(&rbuf[parsed], &ui16, 2);
+    memcpy(&ui16, &rbuf[parsed], 2);
+    printf("%d:%d\n", rbuflen, ui16);
     if ((size_t)ui16+6 != rbuflen)
         return SC_ERROR_UNKNOWN_DATA_RECEIVED;
     parsed += 2;
@@ -1715,7 +1734,7 @@ static int transform_pace_output(u8 *rbuf, size_t rbuflen,
     /* length_CardAccess */
     if (parsed+2 > rbuflen)
         return SC_ERROR_UNKNOWN_DATA_RECEIVED;
-    memcpy(&rbuf[parsed], &ui16, 2);
+    memcpy(&ui16, &rbuf[parsed], 2);
     /* do not just yet copy ui16 to pace_output->ef_cardaccess_length */
     parsed += 2;
 
@@ -1729,7 +1748,7 @@ static int transform_pace_output(u8 *rbuf, size_t rbuflen,
 
         /* now save ui16 to pace_output->ef_cardaccess_length */
         pace_output->ef_cardaccess_length = ui16;
-        memcpy(&rbuf[parsed], pace_output->ef_cardaccess, ui16);
+        memcpy(pace_output->ef_cardaccess, &rbuf[parsed], ui16);
     } else {
         /* caller does not want EF.CardAccess */
         pace_output->ef_cardaccess_length = 0;
@@ -1756,7 +1775,7 @@ static int transform_pace_output(u8 *rbuf, size_t rbuflen,
                 return SC_ERROR_OUT_OF_MEMORY;
             /* now save ui8 to pace_output->recent_car_length */
             pace_output->recent_car_length = ui8;
-            memcpy(&rbuf[parsed], pace_output->recent_car, ui8);
+            memcpy(pace_output->recent_car, &rbuf[parsed], ui8);
         } else {
             /* caller does not want most recent certificate authority reference */
             pace_output->recent_car_length = 0;
@@ -1777,7 +1796,7 @@ static int transform_pace_output(u8 *rbuf, size_t rbuflen,
                 return SC_ERROR_OUT_OF_MEMORY;
             /* now save ui8 to pace_output->previous_car_length */
             pace_output->previous_car_length = ui8;
-            memcpy(&rbuf[parsed], pace_output->previous_car, ui8);
+            memcpy(pace_output->previous_car, &rbuf[parsed], ui8);
         } else {
             /* caller does not want previous certificate authority reference */
             pace_output->previous_car_length = 0;
@@ -1787,7 +1806,7 @@ static int transform_pace_output(u8 *rbuf, size_t rbuflen,
         /* length_IDicc */
         if (parsed+2 > rbuflen)
             return SC_ERROR_UNKNOWN_DATA_RECEIVED;
-        memcpy(&rbuf[parsed], &ui16, 2);
+        memcpy(&ui16, &rbuf[parsed], 2);
         /* do not just yet copy ui16 to pace_output->id_icc_length */
         parsed += 2;
 
@@ -1801,7 +1820,7 @@ static int transform_pace_output(u8 *rbuf, size_t rbuflen,
 
             /* now save ui16 to pace_output->id_icc_length */
             pace_output->id_icc_length = ui16;
-            memcpy(&rbuf[parsed], pace_output->id_icc, ui16);
+            memcpy(pace_output->id_icc, &rbuf[parsed], ui16);
         } else {
             /* caller does not want Ephemeral PACE public key of the IFD */
             pace_output->id_icc_length = 0;
