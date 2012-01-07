@@ -75,7 +75,7 @@ int initialize(int reader_id, const char *cdriver, int verbose,
 
     int r = sc_establish_context(ctx, "");
     if (r < 0) {
-        fprintf(stderr, "Failed to create initial context: %s", sc_strerror(r));
+        fprintf(stderr, "Failed to create initial context.\n");
         return r;
     }
 
@@ -829,6 +829,9 @@ err:
     sc_reset(card, 1);
     sc_disconnect_card(card);
     sc_release_context(ctx);
+
+    if (r < 0)
+        fprintf(stderr, "Error: %s\n", sc_strerror(r));
 
     return -r;
 }
