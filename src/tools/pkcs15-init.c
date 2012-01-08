@@ -886,6 +886,11 @@ do_store_private_key(struct sc_profile *profile)
 		args.x509_usage = opt_x509_usage? opt_x509_usage : usage;
 	}
 
+	args.access_flags |= 
+		  SC_PKCS15_PRKEY_ACCESS_SENSITIVE 
+		| SC_PKCS15_PRKEY_ACCESS_ALWAYSSENSITIVE 
+		| SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE;
+
 	r = sc_pkcs15init_store_private_key(p15card, profile, &args, NULL);
 
 	if (r < 0)
