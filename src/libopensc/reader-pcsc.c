@@ -1719,7 +1719,6 @@ static int transform_pace_output(u8 *rbuf, size_t rbuflen,
     if (parsed+2 > rbuflen)
         return SC_ERROR_UNKNOWN_DATA_RECEIVED;
     memcpy(&ui16, &rbuf[parsed], 2);
-    printf("%d:%d\n", rbuflen, ui16);
     if ((size_t)ui16+6 != rbuflen)
         return SC_ERROR_UNKNOWN_DATA_RECEIVED;
     parsed += 2;
