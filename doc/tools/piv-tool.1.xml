@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<refentry id="piv-tool">
+	<refmeta>
+		<refentrytitle>piv-tool</refentrytitle>
+		<manvolnum>1</manvolnum>
+		<refmiscinfo class="productname">OpenSC</refmiscinfo>
+		<refmiscinfo class="manual">OpenSC Tools</refmiscinfo>
+		<refmiscinfo class="source">opensc</refmiscinfo>
+	</refmeta>
+
+	<refnamediv>
+		<refname>piv-tool</refname>
+		<refpurpose>smart card utility for HSPD-12 PIV cards</refpurpose>
+	</refnamediv>
+
+	<refsynopsisdiv>
+		<cmdsynopsis>
+			<command>piv-tool</command>
+			<arg choice="opt"><replaceable class="option">OPTIONS</replaceable></arg>
+		</cmdsynopsis>
+	</refsynopsisdiv>
+
+	<refsect1>
+		<para>
+			The <command>piv-tool</command> utility can be used from the command line to perform
+			miscellaneous smart card operations on a HSPD-12 PIV smart card as defined in NIST 800-73-3.
+			It is intened for use with test cards only. It can be used to load objects, and generate
+			key pairs, as well as send arbitrary APDU commands to a card after having authenticated
+			to the card using the card key provided by the card vendor.
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Options</title>
+		<para>
+			<variablelist>
+				<varlistentry>
+					<term>
+						<option>--serial</option>
+					</term>
+					<listitem><para>Print the card serial number derived from the CHUID object,
+					if any. Output is in hex byte format.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--name</option>,
+						<option>-n</option>
+					</term>
+					<listitem><para>Print the name of the inserted card (driver)</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--admin</option> <replaceable>argument</replaceable>,
+						<option>-A</option> <replaceable>argument</replaceable>
+					</term>
+					<listitem><para>Authenticate to the card using a 2DES or 3DES key.
+					The <replaceable>argument</replaceable> of the form
+					<synopsis> {<literal>A</literal>|<literal>M</literal>}<literal>:</literal><replaceable>ref</replaceable><literal>:</literal><replaceable>alg</replaceable></synopsis>
+					is required, were <literal>A</literal> uses "EXTERNAL AUTHENTICATION"
+					and <literal>M</literal> uses "MUTUAL AUTHENTICATION".
+					<replaceable>ref</replaceable> is normally <literal>9B</literal>,
+					and <replaceable>alg</replaceable> is <literal>03</literal> for 3DES.
+					The key is provided by the card vendor, and the environment variable
+					<varname>PIV_EXT_AUTH_KEY</varname> must point to a text file containing
+					the key in the format:
+					<code>XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX</code>
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--genkey</option> <replaceable>argument</replaceable>,
+						<option>-G</option> <replaceable>argument</replaceable>
+					</term>
+					<listitem><para>Generate a key pair on the card and output the public key.
+					The <replaceable>argument</replaceable> of th form
+					<synopsis><replaceable>ref</replaceable>:<replaceable>alg</replaceable></synopsis>
+					is required, where <replaceable>ref</replaceable> is <literal>9A</literal>,
+					<literal>9C</literal>, <literal>9D</literal> or <literal>9E</literal> and
+					<replaceable>alg</replaceable> is <literal>06</literal>,
+					<literal>07</literal>, <literal>11</literal> or <literal>14</literal>
+					for RSA 1024, RSA 2048,	ECC 256 or ECC 384 respectively. </para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--object</option> <replaceable>ContainerID</replaceable>,
+						<option>-O</option> <replaceable>ContainerID</replaceable>
+					</term>
+					<listitem><para>Load an object on to the card.
+					The <replaceable>ContainerID</replaceable> is as defined in NIST 800-73-n
+					without leading <literal>0x</literal>. Example: CHUID object is 3000
+					</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--cert</option> <replaceable>ref</replaceable>,
+						<option>-s</option> <replaceable>ref</replaceable>
+					</term>
+					<listitem><para>Load a certificate on to the card.
+					<replaceable>ref</replaceable> is <literal>9A</literal>,
+					<literal>9C</literal>, <literal>9D</literal> or
+					<literal>9E</literal></para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--compresscert</option> <replaceable>ref</replaceable>,
+						<option>-Z</option> <replaceable>ref</replaceable>
+					</term>
+					<listitem><para>Load a certificate that has been gziped on to the card.
+					<replaceable>ref</replaceable> is <literal>9A</literal>,
+					<literal>9C</literal>, <literal>9D</literal> or
+					 <literal>9E</literal></para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--out</option> <replaceable>file</replaceable>,
+						<option>-o</option> <replaceable>file</replaceable>
+					</term>
+					<listitem><para>Output file for any operation that produces output.
+					</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--in</option> <replaceable>file</replaceable>,
+						<option>-i</option> <replaceable>file</replaceable>
+					</term>
+					<listitem><para>Input file for any operation that requires an input file.
+					</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--key-slots-discovery</option> <replaceable>file</replaceable>
+					</term>
+					<listitem><para>Print properties of the key slots. Needs 'admin' authentication.
+					</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--send-apdu</option> <replaceable>apdu</replaceable>,
+						<option>-s</option> <replaceable>apdu</replaceable>
+					</term>
+					<listitem><para>Sends an arbitrary APDU to the card in the format
+					<code>AA:BB:CC:DD:EE:FF...</code>.
+					This option may be repeated.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--reader</option> <replaceable>num</replaceable>,
+						<option>-r</option> <replaceable>num</replaceable>
+					</term>
+					<listitem><para>Use the given reader number. The default is
+					<literal>0</literal>, the first reader in the system.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--card-driver</option> <replaceable>driver</replaceable>,
+						<option>-c</option> <replaceable>driver</replaceable>
+					</term>
+					<listitem><para>Use the given card driver.
+					The default is auto-detected.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--wait</option>,
+						<option>-w</option>
+					</term>
+					<listitem><para>Wait for a card to be inserted</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--verbose</option>,
+						<option>-v</option>
+					</term>
+					<listitem><para>Causes <command>piv-tool</command> to be more verbose.
+					Specify this flag several times to enable debug output in the opensc
+					library.</para></listitem>
+				</varlistentry>
+			</variablelist>
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>See also</title>
+		<para>
+			<citerefentry>
+				<refentrytitle>opensc-tool</refentrytitle>
+				<manvolnum>1</manvolnum>
+			</citerefentry>
+		</para>
+	</refsect1>
+
+</refentry>
