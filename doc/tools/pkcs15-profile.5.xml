@@ -1,22 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<refentry id="">
+<refentry id="pkcs15-profile">
 	<refmeta>
 		<refentrytitle>pkcs15-profile</refentrytitle>
 		<manvolnum>5</manvolnum>
-		<refmiscinfo>opensc</refmiscinfo>
+		<refmiscinfo class="productname">OpenSC</refmiscinfo>
+		<refmiscinfo class="manual">OpenSC File Formats</refmiscinfo>
+		<refmiscinfo class="source">opensc</refmiscinfo>
 	</refmeta>
 
 	<refnamediv>
 		<refname>pkcs15-profile</refname>
 		<refpurpose>format of profile for <command>pkcs15-init</command></refpurpose>
 	</refnamediv>
-
-	<refsect1>
-		<title>Synopsis</title>
-		<para>
-			<command></command>
-		</para>
-	</refsect1>
 
 	<refsect1>
 		<title>Description</title>
@@ -48,10 +43,19 @@
 			this soonishly.
 		</para>
 	</refsect1>
-	
+
 	<refsect1>
 		<title>See also</title>
-		<para>pkcs15-init(1), pkcs15-crypt(1)</para>
+		<para>
+			<citerefentry>
+				<refentrytitle>pkcs15-init</refentrytitle>
+				<manvolnum>1</manvolnum>
+			</citerefentry>,
+			<citerefentry>
+				<refentrytitle>pkcs15-crypt</refentrytitle>
+				<manvolnum>1</manvolnum>
+			</citerefentry>
+		</para>
 	</refsect1>
 
 </refentry>
