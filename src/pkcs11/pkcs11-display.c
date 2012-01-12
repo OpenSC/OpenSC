@@ -18,6 +18,7 @@
  */
 
 #include "config.h"
+#include <string.h>
 
 #ifdef ENABLE_OPENSSL
 #include <openssl/x509.h>
@@ -120,16 +121,36 @@ void print_generic(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_V
 {
   CK_ULONG i;
   if((CK_LONG)size != -1 && value != NULL) {
-    fprintf(f, "%s\n    ", buf_spec(value, size));
+    char hex[16*3+1], ascii[16+1];
+    char *hex_ptr = hex, *ascii_ptr = ascii;
+    int offset = 0;
+    memset(ascii, ' ', sizeof ascii);
+    ascii[sizeof ascii -1] = 0;
+    fprintf(f, "%s", buf_spec(value, size));
     for(i = 0; i < size; i++) {
-      if (i != 0) {
-	if ((i % 32) == 0)
-	  fprintf(f, "\n    ");
-	else if((i % 4) == 0)
-	  fprintf(f, " ");
+      if (i && (i % 16) == 0) {
+          fprintf(f, "\n    %08X  %s %s", offset, hex, ascii);
+          offset += 16;
+          hex_ptr = hex;
+          ascii_ptr = ascii;
+          memset(ascii, ' ', sizeof ascii -1);
       }
-      fprintf(f, "%02X", ((CK_BYTE *)value)[i]);
+
+      CK_BYTE val = ((CK_BYTE *)value)[i];
+      /* hex */
+      sprintf(hex_ptr, "%02X ", val);
+      hex_ptr += 3;
+      /* ascii */
+      if (val > 31 && val < 128)
+          *ascii_ptr = val;
+      else
+          *ascii_ptr = '.';
+      ascii_ptr++;
     }
+	/* padd */
+    while (strlen(hex) < 3*16)
+        strcat(hex, "   ");
+    fprintf(f, "\n    %08X  %s %s", offset, hex, ascii);
   } else {
     if (value != NULL)
       fprintf(f, "EMPTY");
