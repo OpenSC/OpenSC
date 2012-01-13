@@ -1764,7 +1764,7 @@ static int internal_write_rsa_key_factor(struct sc_card *card,
 	sbuff[0] = ((fid & 0xff00) >> 8);
 	sbuff[1] = (fid & 0x00ff);
 	memcpy(&sbuff[2], data.data, data.len);
-	sc_mem_reverse(&sbuff[2], data.len);
+//	sc_mem_reverse(&sbuff[2], data.len);
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3, 0xe7, factor, 0x00);
 	apdu.cla = 0x80;
