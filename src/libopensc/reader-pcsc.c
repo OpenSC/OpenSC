@@ -1653,6 +1653,7 @@ static int transform_pace_input(
 	char dbuf[SC_MAX_APDU_BUFFER_SIZE * 3];
     u8 *p = sbuf;
     uint16_t lengthInputData, lengthCertificateDescription;
+    uint8_t lengthCHAT, lengthPIN;
 
     if (!pace_input || !sbuf || !scount)
         return SC_ERROR_INVALID_ARGUMENTS;
@@ -1673,17 +1674,19 @@ static int transform_pace_input(
     *(p++) = pace_input->pin_id;
 
     /* length CHAT */
-    *(p++) = pace_input->chat_length;
+    lengthCHAT = pace_input->chat_length;
+    *(p++) = lengthCHAT;
     /* CHAT */
-    memcpy(p, pace_input->chat, pace_input->chat_length);
-    p += pace_input->chat_length;
+    memcpy(p, pace_input->chat, lengthCHAT);
+    p += lengthCHAT;
 
     /* length PIN */
-    *(p++) = pace_input->pin_length;
+    lengthPIN = pace_input->pin_length;
+    *(p++) = lengthPIN;
 
     /* PIN */
-    memcpy(p, pace_input->pin, pace_input->pin_length);
-    p += pace_input->pin_length;
+    memcpy(p, pace_input->pin, lengthPIN);
+    p += lengthPIN;
 
     /* lengthCertificateDescription */
     lengthCertificateDescription = pace_input->certificate_description_length;
@@ -1693,7 +1696,7 @@ static int transform_pace_input(
 
     /* certificate description */
     memcpy(p, pace_input->certificate_description,
-            pace_input->certificate_description_length);
+            lengthCertificateDescription);
 
     *scount = lengthInputData + 3;
 
