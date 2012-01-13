@@ -1644,6 +1644,9 @@ pcsc_pin_cmd(sc_reader_t *reader, struct sc_pin_cmd_data *data)
 	return SC_SUCCESS;
 }
 
+#define BSI_TR_03119_FUNCTION_GetReaderPACECapabilities 0x01
+#define BSI_TR_03119_FUNCTION_EstabishPACEChannel       0x02
+
 static int transform_pace_input(
         struct establish_pace_channel_input *pace_input, u8 *sbuf, size_t *scount)
 {
@@ -1660,8 +1663,8 @@ static int transform_pace_input(
     if (lengthInputData + 3 > *scount)
         return SC_ERROR_OUT_OF_MEMORY;
 
-    /* idxFunction = EstabishPACEChannel */
-    *(p++) = 0x02;
+    /* idxFunction */
+    *(p++) = BSI_TR_03119_FUNCTION_GetReaderPACECapabilities;
 
     /* lengthInputData */
     memcpy(p, &lengthInputData, sizeof lengthInputData);
@@ -1837,6 +1840,11 @@ static int transform_pace_output(u8 *rbuf, size_t rbuflen,
     return SC_SUCCESS;
 }
 
+#define BSI_TR_03119_PIN_ID_MRZ 0x01
+#define BSI_TR_03119_PIN_ID_CAN 0x02
+#define BSI_TR_03119_PIN_ID_PIN 0x03
+#define BSI_TR_03119_PIN_ID_PUK 0x04
+
 static int pcsc_perform_pace(struct sc_reader *reader,
         struct establish_pace_channel_input *pace_input,
         struct establish_pace_channel_output *pace_output)
@@ -1849,16 +1857,16 @@ static int pcsc_perform_pace(struct sc_reader *reader,
         return SC_ERROR_INVALID_ARGUMENTS;
 
     switch (pace_input->pin_id) {
-        case 0x01:
+        case BSI_TR_03119_PIN_ID_MRZ:
             sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "Initiating PACE with MRZ");
             break;
-        case 0x02:
+        case BSI_TR_03119_PIN_ID_CAN:
             sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "Initiating PACE with CAN");
             break;
-        case 0x03:
+        case BSI_TR_03119_PIN_ID_PIN:
             sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "Initiating PACE with PIN");
             break;
-        case 0x04:
+        case BSI_TR_03119_PIN_ID_PUK:
             sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "Initiating PACE with PUK");
             break;
         default:
