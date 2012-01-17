@@ -1665,7 +1665,7 @@ static int transform_pace_input(
         return SC_ERROR_OUT_OF_MEMORY;
 
     /* idxFunction */
-    *(p++) = BSI_TR_03119_FUNCTION_GetReaderPACECapabilities;
+    *(p++) = BSI_TR_03119_FUNCTION_EstabishPACEChannel;
 
     /* lengthInputData */
     memcpy(p, &lengthInputData, sizeof lengthInputData);
