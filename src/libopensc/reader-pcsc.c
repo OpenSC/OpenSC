@@ -1853,7 +1853,7 @@ static int pcsc_perform_pace(struct sc_reader *reader,
         struct establish_pace_channel_output *pace_output)
 {
 	struct pcsc_private_data *priv = GET_PRIV_DATA(reader);
-	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE], sbuf[SC_MAX_APDU_BUFFER_SIZE];
+	u8 rbuf[SC_MAX_EXT_APDU_BUFFER_SIZE], sbuf[SC_MAX_EXT_APDU_BUFFER_SIZE];
     size_t rcount = sizeof rbuf, scount = sizeof sbuf;
 
     if (!reader || !priv)
