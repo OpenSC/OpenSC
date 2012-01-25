@@ -175,6 +175,15 @@ typedef LONG (PCSC_API *SCardGetAttrib_t)(SCARDHANDLE hCard, DWORD dwAttrId,\
 
 #ifndef FEATURE_EXECUTE_PACE
 #define FEATURE_EXECUTE_PACE 0x20
+
+#define PACE_FUNCTION_GetReaderPACECapabilities 0x01
+#define PACE_FUNCTION_EstablishPACEChannel      0x02
+#define PACE_FUNCTION_DestroyPACEChannel        0x03
+
+#define PACE_CAPABILITY_eSign                   0x10
+#define PACE_CAPABILITY_eID                     0x20
+#define PACE_CAPABILITY_PACE                    0x40
+#define PACE_CAPABILITY_DestroyPACEChannel      0x80
 #endif
 
 /* properties returned by FEATURE_GET_TLV_PROPERTIES */

@@ -752,6 +752,59 @@ static int pcsc_finish(sc_context_t *ctx)
 	return SC_SUCCESS;
 }
 
+/**
+ * @brief Detects reader's PACE capabilities
+ *
+ * @param reader reader to probe (\c pace_ioctl must be initialized)
+ *
+ * @return Bitmask of \c SC_READER_CAP_PACE, \c SC_READER_CAP_EID and \c * SC_READER_CAP_ESIGN logically OR'ed if supported
+ */
+static unsigned long part10_detect_pace_capabilities(sc_reader_t *reader)
+{
+    u8 pace_capabilities_buf[] = {
+        PACE_FUNCTION_GetReaderPACECapabilities, /* idxFunction */
+        0, 0,                                    /* lengthInputData */
+    };
+    u8 rbuf[6];
+    u8 *p = rbuf;
+    size_t rcount = sizeof rbuf;
+	struct pcsc_private_data *priv;
+    unsigned long flags = 0;
+
+    if (!reader)
+        goto err;
+    priv = GET_PRIV_DATA(reader);
+
+    if (priv->pace_ioctl) {
+        pcsc_internal_transmit(reader, pace_capabilities_buf,
+                sizeof pace_capabilities_buf, rbuf, &rcount,
+                priv->pace_ioctl);
+
+        if (rcount != 7)
+            goto err;
+        /* Result */
+        if ((uint32_t) *p != 0)
+            goto err;
+        p += sizeof(uint32_t);
+        /* length_OutputData */
+        if ((uint16_t) *p != 1)
+            goto err;
+        p += sizeof(uint16_t);
+
+        if (*p & PACE_CAPABILITY_eSign)
+            flags |= SC_READER_CAP_ESIGN;
+        if (*p & PACE_CAPABILITY_eID)
+            flags |= SC_READER_CAP_EID;
+        if (*p & PACE_CAPABILITY_PACE)
+            flags |= SC_READER_CAP_PACE;
+        if (*p & PACE_CAPABILITY_DestroyPACEChannel)
+            flags |= SC_READER_CAP_DESTROYPACECHANNEL;
+    }
+
+err:
+    return flags;
+}
+
 static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle) {
 	sc_context_t *ctx = reader->ctx;
 	struct pcsc_global_private_data *gpriv = (struct pcsc_global_private_data *) ctx->reader_drv_data;
@@ -867,8 +920,10 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
     if (priv->pace_ioctl) {
         char *log_text = "Reader supports PACE";
         if (priv->gpriv->enable_pace) {
-            sc_debug(ctx, SC_LOG_DEBUG_NORMAL, log_text);
-            reader->capabilities |= SC_READER_CAP_PACE;
+            reader->capabilities |= part10_detect_pace_capabilities(reader);
+
+            if (reader->capabilities & SC_READER_CAP_PACE)
+                sc_debug(ctx, SC_LOG_DEBUG_NORMAL, log_text);
         } else {
             sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "%s %s", log_text, log_disabled);
         }
@@ -1644,9 +1699,6 @@ pcsc_pin_cmd(sc_reader_t *reader, struct sc_pin_cmd_data *data)
 	return SC_SUCCESS;
 }
 
-#define BSI_TR_03119_FUNCTION_GetReaderPACECapabilities 0x01
-#define BSI_TR_03119_FUNCTION_EstabishPACEChannel       0x02
-
 static int transform_pace_input(
         struct establish_pace_channel_input *pace_input, u8 *sbuf, size_t *scount)
 {
@@ -1665,7 +1717,7 @@ static int transform_pace_input(
         return SC_ERROR_OUT_OF_MEMORY;
 
     /* idxFunction */
-    *(p++) = BSI_TR_03119_FUNCTION_EstabishPACEChannel;
+    *(p++) = PACE_FUNCTION_EstablishPACEChannel;
 
     /* lengthInputData */
     memcpy(p, &lengthInputData, sizeof lengthInputData);
