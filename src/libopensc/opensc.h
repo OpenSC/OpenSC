@@ -343,6 +343,11 @@ struct sc_pin_cmd_data {
 	struct sc_apdu *apdu;		/* APDU of the PIN command */
 };
 
+
+#define PACE_PIN_ID_MRZ 0x01
+#define PACE_PIN_ID_CAN 0x02
+#define PACE_PIN_ID_PIN 0x03
+#define PACE_PIN_ID_PUK 0x04
 /** 
  * Input data for EstablishPACEChannel()
  */
@@ -352,7 +357,7 @@ struct establish_pace_channel_input {
     enum eac_tr_version tr_version;
 #endif
 
-    /** Type of secret (CAN, MRZ, PIN or PUK). You may use <tt>enum s_type</tt> from \c <openssl/pace.h> */
+    /** Type of secret (CAN, MRZ, PIN or PUK). */
     unsigned char pin_id;
 
     /** Length of \a chat */
