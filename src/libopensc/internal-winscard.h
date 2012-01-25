@@ -184,6 +184,11 @@ typedef LONG (PCSC_API *SCardGetAttrib_t)(SCARDHANDLE hCard, DWORD dwAttrId,\
 #define PACE_CAPABILITY_eID                     0x20
 #define PACE_CAPABILITY_PACE                    0x40
 #define PACE_CAPABILITY_DestroyPACEChannel      0x80
+
+#define PACE_PIN_ID_MRZ 0x01
+#define PACE_PIN_ID_CAN 0x02
+#define PACE_PIN_ID_PIN 0x03
+#define PACE_PIN_ID_PUK 0x04
 #endif
 
 /* properties returned by FEATURE_GET_TLV_PROPERTIES */

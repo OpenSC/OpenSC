@@ -1897,11 +1897,6 @@ static int transform_pace_output(u8 *rbuf, size_t rbuflen,
     return SC_SUCCESS;
 }
 
-#define BSI_TR_03119_PIN_ID_MRZ 0x01
-#define BSI_TR_03119_PIN_ID_CAN 0x02
-#define BSI_TR_03119_PIN_ID_PIN 0x03
-#define BSI_TR_03119_PIN_ID_PUK 0x04
-
 static int pcsc_perform_pace(struct sc_reader *reader,
         struct establish_pace_channel_input *pace_input,
         struct establish_pace_channel_output *pace_output)
@@ -1917,16 +1912,16 @@ static int pcsc_perform_pace(struct sc_reader *reader,
         return SC_ERROR_INVALID_ARGUMENTS;
 
     switch (pace_input->pin_id) {
-        case BSI_TR_03119_PIN_ID_MRZ:
+        case PACE_PIN_ID_MRZ:
             sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "Initiating PACE with MRZ");
             break;
-        case BSI_TR_03119_PIN_ID_CAN:
+        case PACE_PIN_ID_CAN:
             sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "Initiating PACE with CAN");
             break;
-        case BSI_TR_03119_PIN_ID_PIN:
+        case PACE_PIN_ID_PIN:
             sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "Initiating PACE with PIN");
             break;
-        case BSI_TR_03119_PIN_ID_PUK:
+        case PACE_PIN_ID_PUK:
             sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "Initiating PACE with PUK");
             break;
         default:
