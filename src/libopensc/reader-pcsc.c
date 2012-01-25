@@ -774,6 +774,8 @@ static unsigned long part10_detect_pace_capabilities(sc_reader_t *reader)
     if (!reader)
         goto err;
     priv = GET_PRIV_DATA(reader);
+    if (!priv)
+        goto err;
 
     if (priv->pace_ioctl) {
         pcsc_internal_transmit(reader, pace_capabilities_buf,
@@ -1904,11 +1906,14 @@ static int pcsc_perform_pace(struct sc_reader *reader,
         struct establish_pace_channel_input *pace_input,
         struct establish_pace_channel_output *pace_output)
 {
-	struct pcsc_private_data *priv = GET_PRIV_DATA(reader);
+	struct pcsc_private_data *priv;
 	u8 rbuf[SC_MAX_EXT_APDU_BUFFER_SIZE], sbuf[SC_MAX_EXT_APDU_BUFFER_SIZE];
     size_t rcount = sizeof rbuf, scount = sizeof sbuf;
 
-    if (!reader || !priv)
+    if (!reader)
+        return SC_ERROR_INVALID_ARGUMENTS;
+    priv = GET_PRIV_DATA(reader);
+    if (!priv)
         return SC_ERROR_INVALID_ARGUMENTS;
 
     switch (pace_input->pin_id) {
@@ -1940,18 +1945,24 @@ static int pcsc_perform_pace(struct sc_reader *reader,
             sc_dump_hex(pace_input->certificate_description,
                 pace_input->certificate_description_length));
 
-    LOG_TEST_RET(reader->ctx,
-            transform_pace_input(pace_input, sbuf, &scount),
-            "Creating EstabishPACEChannel input data");
+    if (reader->capabilities & SC_READER_CAP_PACE) {
+        LOG_TEST_RET(reader->ctx,
+                transform_pace_input(pace_input, sbuf, &scount),
+                "Creating EstabishPACEChannel input data");
 
-    LOG_TEST_RET(reader->ctx,
-            pcsc_internal_transmit(reader, sbuf, scount, rbuf, &rcount,
-                priv->pace_ioctl),
-            "Executing EstabishPACEChannel");
+        LOG_TEST_RET(reader->ctx,
+                pcsc_internal_transmit(reader, sbuf, scount, rbuf, &rcount,
+                    priv->pace_ioctl),
+                "Executing EstabishPACEChannel");
 
-    LOG_TEST_RET(reader->ctx,
-            transform_pace_output(rbuf, rcount, pace_output),
-            "Parsing EstabishPACEChannel output data");
+        LOG_TEST_RET(reader->ctx,
+                transform_pace_output(rbuf, rcount, pace_output),
+                "Parsing EstabishPACEChannel output data");
+    } else {
+        /* TODO include libnpa here */
+        sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "PACE currently only supported via reader.");
+		return SC_ERROR_NOT_SUPPORTED;
+    }
 
     sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL,
             "EstablishPACEChannel Result is %08X",
