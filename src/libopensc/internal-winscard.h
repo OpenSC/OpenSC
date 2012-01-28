@@ -172,9 +172,7 @@ typedef LONG (PCSC_API *SCardGetAttrib_t)(SCARDHANDLE hCard, DWORD dwAttrId,\
 #define FEATURE_IFD_DISPLAY_PROPERTIES   0x11
 #define FEATURE_GET_TLV_PROPERTIES       0x12
 #define FEATURE_CCID_ESC_COMMAND         0x13
-
-#ifndef FEATURE_EXECUTE_PACE
-#define FEATURE_EXECUTE_PACE 0x20
+#define FEATURE_EXECUTE_PACE             0x20
 
 #define PACE_FUNCTION_GetReaderPACECapabilities 0x01
 #define PACE_FUNCTION_EstablishPACEChannel      0x02
@@ -184,7 +182,6 @@ typedef LONG (PCSC_API *SCardGetAttrib_t)(SCARDHANDLE hCard, DWORD dwAttrId,\
 #define PACE_CAPABILITY_eID                     0x20
 #define PACE_CAPABILITY_PACE                    0x40
 #define PACE_CAPABILITY_DestroyPACEChannel      0x80
-#endif
 
 /* properties returned by FEATURE_GET_TLV_PROPERTIES */
 #define PCSCv2_PART10_PROPERTY_wLcdLayout 1
