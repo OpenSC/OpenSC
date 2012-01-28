@@ -1939,7 +1939,6 @@ struct sc_reader_driver * sc_get_pcsc_driver(void)
 	pcsc_ops.connect = pcsc_connect;
 	pcsc_ops.disconnect = pcsc_disconnect;
 	pcsc_ops.perform_verify = pcsc_pin_cmd;
-	pcsc_ops.perform_pace = NULL;
 	pcsc_ops.wait_for_event = pcsc_wait_for_event;
 	pcsc_ops.cancel = pcsc_cancel;
 	pcsc_ops.reset = pcsc_reset;
@@ -2333,7 +2332,6 @@ struct sc_reader_driver * sc_get_cardmod_driver(void)
 	cardmod_ops.connect = cardmod_connect;
 	cardmod_ops.disconnect = cardmod_disconnect;
 	/* cardmod_ops.perform_verify = ; */
-	cardmod_ops.perform_pace = NULL;
 	cardmod_ops.wait_for_event = NULL; 
 	cardmod_ops.reset = NULL; 
 	cardmod_ops.use_reader = cardmod_use_reader;
