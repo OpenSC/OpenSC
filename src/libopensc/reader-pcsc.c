@@ -1763,7 +1763,6 @@ static int transform_pace_output(u8 *rbuf, size_t rbuflen,
     size_t parsed = 0;
 
     uint8_t ui8;
-    uint32_t ui32;
     uint16_t ui16;
 
     if (!rbuf || !pace_output)
@@ -1905,91 +1904,24 @@ static int pcsc_perform_pace(struct sc_reader *reader,
 	u8 rbuf[SC_MAX_EXT_APDU_BUFFER_SIZE], sbuf[SC_MAX_EXT_APDU_BUFFER_SIZE];
     size_t rcount = sizeof rbuf, scount = sizeof sbuf;
 
-    if (!reader)
+    if (!reader || !reader->capabilities & SC_READER_CAP_PACE)
         return SC_ERROR_INVALID_ARGUMENTS;
     priv = GET_PRIV_DATA(reader);
     if (!priv)
         return SC_ERROR_INVALID_ARGUMENTS;
 
-    switch (pace_input->pin_id) {
-        case PACE_PIN_ID_MRZ:
-            sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "Initiating PACE with MRZ");
-            break;
-        case PACE_PIN_ID_CAN:
-            sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "Initiating PACE with CAN");
-            break;
-        case PACE_PIN_ID_PIN:
-            sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "Initiating PACE with PIN");
-            break;
-        case PACE_PIN_ID_PUK:
-            sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "Initiating PACE with PUK");
-            break;
-        default:
-            sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "Initiating PACE with unknown PACE secret type");
-            break;
-    }
+    LOG_TEST_RET(reader->ctx,
+            transform_pace_input(pace_input, sbuf, &scount),
+            "Creating EstabishPACEChannel input data");
 
-    sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL,
-            "CHAT (%d bytes)\n%s",
-            pace_input->chat_length,
-            sc_dump_hex(pace_input->chat, pace_input->chat_length));
+    LOG_TEST_RET(reader->ctx,
+            pcsc_internal_transmit(reader, sbuf, scount, rbuf, &rcount,
+                priv->pace_ioctl),
+            "Executing EstabishPACEChannel");
 
-    sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL,
-            "Certificate description (%d bytes)\n%s",
-                pace_input->certificate_description_length,
-            sc_dump_hex(pace_input->certificate_description,
-                pace_input->certificate_description_length));
-
-    if (reader->capabilities & SC_READER_CAP_PACE) {
-        LOG_TEST_RET(reader->ctx,
-                transform_pace_input(pace_input, sbuf, &scount),
-                "Creating EstabishPACEChannel input data");
-
-        LOG_TEST_RET(reader->ctx,
-                pcsc_internal_transmit(reader, sbuf, scount, rbuf, &rcount,
-                    priv->pace_ioctl),
-                "Executing EstabishPACEChannel");
-
-        LOG_TEST_RET(reader->ctx,
-                transform_pace_output(rbuf, rcount, pace_output),
-                "Parsing EstabishPACEChannel output data");
-    } else {
-        /* TODO include libnpa here */
-        sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "PACE currently only supported via reader.");
-		return SC_ERROR_NOT_SUPPORTED;
-    }
-
-    sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL,
-            "EstablishPACEChannel Result is %08X",
-            pace_output->result);
-
-    sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL,
-            "MSE:Set AT Statusbytes: %02X %02X",
-            pace_output->mse_set_at_sw1, pace_output->mse_set_at_sw2);
-
-    sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL,
-            "EF.CardAccess (%d bytes)\n%s",
-            pace_output->ef_cardaccess_length,
-            sc_dump_hex(pace_output->ef_cardaccess,
-                pace_output->ef_cardaccess_length));
-
-    sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL,
-            "Most recent certificate authority reference (%d bytes)\n%s",
-            pace_output->recent_car_length,
-            sc_dump_hex(pace_output->recent_car,
-                pace_output->recent_car_length));
-
-    sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL,
-            "Previous certificate authority reference (%d bytes)\n%s",
-            pace_output->previous_car_length,
-            sc_dump_hex(pace_output->previous_car,
-                pace_output->previous_car_length));
-
-    sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL,
-            "Ephemeral PACE public key of the IFD (%d bytes)\n%s",
-            pace_output->id_icc_length,
-            sc_dump_hex(pace_output->id_icc,
-                pace_output->id_icc_length));
+    LOG_TEST_RET(reader->ctx,
+            transform_pace_output(rbuf, rcount, pace_output),
+            "Parsing EstabishPACEChannel output data");
 
     return SC_SUCCESS;
 }
