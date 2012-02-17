@@ -147,7 +147,7 @@ static void add_drv(struct _sc_ctx_options *opts, const char *name)
 {
 	struct _sc_driver_entry *lst;
 	int *cp, max, i;
-	
+
 	lst = opts->cdrv;
 	cp = &opts->ccount;
 	max = SC_MAX_CARD_DRIVERS;
@@ -232,7 +232,7 @@ static int load_parameters(sc_context_t *ctx, scconf_block *block,
 		sc_ctx_log_to_file(ctx, val);
 
 	ctx->paranoid_memory = scconf_get_bool (block, "paranoid-memory",
-	                                        ctx->paranoid_memory);
+		ctx->paranoid_memory);
 
 	val = scconf_get_str(block, "force_card_driver", NULL);
 	if (val) {
@@ -259,12 +259,12 @@ static void load_reader_driver_options(sc_context_t *ctx)
 {
 	struct sc_reader_driver *driver = ctx->reader_driver;
 	scconf_block *conf_block = NULL;
-	
+
 	driver->max_send_size = 0;
 	driver->max_recv_size = 0;
 
 	conf_block = sc_get_conf_block(ctx, "reader_driver", driver->short_name, 1);
-	
+
 	if (conf_block != NULL) {
 		driver->max_send_size = scconf_get_int(conf_block, "max_send_size", driver->max_send_size);
 		driver->max_recv_size = scconf_get_int(conf_block, "max_recv_size", driver->max_recv_size);
@@ -564,12 +564,12 @@ static void process_config_file(sc_context_t *ctx, struct _sc_ctx_options *opts)
 	}
 	blocks = scconf_find_blocks(ctx->conf, NULL, "app", ctx->app_name);
 	if (blocks[0])
-	    	ctx->conf_blocks[count++] = blocks[0];
+		ctx->conf_blocks[count++] = blocks[0];
 	free(blocks);
 	if (strcmp(ctx->app_name, "default") != 0) {
 		blocks = scconf_find_blocks(ctx->conf, NULL, "app", "default");
 		if (blocks[0])
-		    	ctx->conf_blocks[count] = blocks[0];
+			ctx->conf_blocks[count] = blocks[0];
 		free(blocks);
 	}
 	/* Above we add 2 blocks at most, but conf_blocks has 3 elements,
@@ -587,7 +587,7 @@ int sc_ctx_detect_readers(sc_context_t *ctx)
 
 	if (drv->ops->detect_readers != NULL)
 		r = drv->ops->detect_readers(ctx);
-	
+
 	sc_mutex_unlock(ctx, ctx->mutex);
 
 	return r;
@@ -646,7 +646,7 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 		sc_release_context(ctx);
 		return SC_ERROR_OUT_OF_MEMORY;
 	}
-	
+
 	set_defaults(ctx, &opts);
 	list_init(&ctx->readers);
 	list_attributes_seeker(&ctx->readers, reader_list_seeker);
@@ -688,7 +688,7 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 
 	load_reader_driver_options(ctx);
 	ctx->reader_driver->ops->init(ctx);
-	
+
 	load_card_drivers(ctx, &opts);
 	load_card_atrs(ctx);
 	if (opts.forced_card_driver) {
@@ -728,7 +728,7 @@ int sc_wait_for_event(sc_context_t *ctx, unsigned int event_mask, sc_reader_t **
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 	if (ctx->reader_driver->ops->wait_for_event != NULL)
 		return ctx->reader_driver->ops->wait_for_event(ctx, event_mask, event_reader, event, timeout, reader_states);
-		
+
 	return SC_ERROR_NOT_SUPPORTED;
 }
 
