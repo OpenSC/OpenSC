@@ -158,7 +158,7 @@ int sc_format_oid(struct sc_object_id *oid, const char *in)
 		oid->value[ii] = -1;
 
 	p = in;
-	
+
 	for (ii=0; ii < SC_MAX_OBJECT_ID_OCTETS; ii++)   {
 		oid->value[ii] = strtol(p, &q, 10);
 		if (!*q)
@@ -200,7 +200,7 @@ int sc_detect_card_presence(sc_reader_t *reader)
 	SC_FUNC_RETURN(reader->ctx, SC_LOG_DEBUG_NORMAL, r);
 }
 
-int sc_path_set(sc_path_t *path, int type, const u8 *id, size_t id_len, 
+int sc_path_set(sc_path_t *path, int type, const u8 *id, size_t id_len,
 	int idx, int count)
 {
 	if (path == NULL || id == NULL || id_len == 0 || id_len > SC_MAX_PATH_SIZE)
@@ -212,7 +212,7 @@ int sc_path_set(sc_path_t *path, int type, const u8 *id, size_t id_len,
 	path->type  = type;
 	path->index = idx;
 	path->count = count;
-	
+
 	return SC_SUCCESS;
 }
 
@@ -340,11 +340,11 @@ int sc_compare_path_prefix(const sc_path_t *prefix, const sc_path_t *path)
 
 const sc_path_t *sc_get_mf_path(void)
 {
-	static const sc_path_t mf_path = { 
-		{0x3f, 0x00, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 2, 
-		0, 
-		0, 
-		SC_PATH_TYPE_PATH, 
+	static const sc_path_t mf_path = {
+		{0x3f, 0x00, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 2,
+		0,
+		0,
+		SC_PATH_TYPE_PATH,
 		{{0},0}
 	};
 	return &mf_path;
@@ -687,7 +687,7 @@ int _sc_parse_atr(sc_reader_t *reader)
 	                        atr_len--;
 	                } else
 	                        tx[i] = -1;
-        	}
+		}
 	}
 	if (atr_len <= 0)
 		return 0;
@@ -752,8 +752,8 @@ int sc_mem_reverse(unsigned char *buf, size_t len)
 	return 0;
 }
 
-static int 
-sc_remote_apdu_allocate(struct sc_remote_data *rdata, 
+static int
+sc_remote_apdu_allocate(struct sc_remote_data *rdata,
 		struct sc_remote_apdu **new_rapdu)
 {
 	struct sc_remote_apdu *rapdu = NULL, *rr;
@@ -786,7 +786,7 @@ sc_remote_apdu_allocate(struct sc_remote_data *rdata,
 	return SC_SUCCESS;
 }
 
-static void 
+static void
 sc_remote_apdu_free (struct sc_remote_data *rdata)
 {
 	struct sc_remote_apdu *rapdu = NULL;
@@ -857,7 +857,7 @@ int sc_mutex_destroy(const sc_context_t *ctx, void *mutex)
 
 unsigned long sc_thread_id(const sc_context_t *ctx)
 {
-	if (ctx == NULL || ctx->thread_ctx == NULL || 
+	if (ctx == NULL || ctx->thread_ctx == NULL ||
 	    ctx->thread_ctx->thread_id == NULL)
 		return 0UL;
 	else
