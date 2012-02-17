@@ -603,6 +603,7 @@ typedef struct sc_context {
 	scconf_block *conf_blocks[3];
 	char *app_name;
 	int debug;
+	int paranoid_memory;
 
 	FILE *debug_file;
 	char *preferred_language;
@@ -1147,7 +1148,7 @@ int sc_base64_decode(const char *in, u8 *out, size_t outlen);
  * @param  len  length of the memory buffer
  */
 void sc_mem_clear(void *ptr, size_t len);
-void *sc_mem_alloc_secure(size_t len);
+void *sc_mem_alloc_secure(sc_context_t *ctx, size_t len);
 int sc_mem_reverse(unsigned char *buf, size_t len);
 
 int sc_get_cache_dir(sc_context_t *ctx, char *buf, size_t bufsize);
