@@ -29,6 +29,8 @@
 #include "asn1.h"
 #include "cardctl.h"
 
+#define _FINEID_BROKEN_SELECT_FLAG 1
+
 static struct sc_atr_table setcos_atrs[] = {
 	/* some Nokia branded SC */
 	{ "3B:1F:11:00:67:80:42:46:49:53:45:10:52:66:FF:81:90:00", NULL, NULL, SC_CARD_TYPE_SETCOS_GENERIC, 0, NULL },
@@ -50,6 +52,8 @@ static struct sc_atr_table setcos_atrs[] = {
 	{ "3b:7b:94:00:00:80:62:11:51:56:46:69:6e:45:49:44", NULL, NULL, SC_CARD_TYPE_SETCOS_FINEID_V2, 0, NULL },
 	/* FINEID cards 1.3.2011 with Samsung chips (round connector) that supports 2048 bit keys. */
 	{ "3b:7b:94:00:00:80:62:12:51:56:46:69:6e:45:49:44", NULL, NULL, SC_CARD_TYPE_SETCOS_FINEID_V2_2048, 0, NULL },
+	/* FINEID card for organisations, chip unknown. */
+	{ "3b:7b:18:00:00:80:62:01:54:56:46:69:6e:45:49:44", NULL, NULL, SC_CARD_TYPE_SETCOS_FINEID_V2, _FINEID_BROKEN_SELECT_FLAG, NULL },
 	/* Swedish NIDEL card */
 	{ "3b:9f:94:80:1f:c3:00:68:10:44:05:01:46:49:53:45:31:c8:07:90:00:18", NULL, NULL, SC_CARD_TYPE_SETCOS_NIDEL, 0, NULL },
 	/* Setcos 4.4.1 */
@@ -904,6 +908,9 @@ static int setcos_select_file(sc_card_t *card,
 	int r;
 
 	r = iso_ops->select_file(card, in_path, file);
+	/* Certain FINeID cards for organisations return 6A88 instead of 6A82 for missing files */
+	if (card->flags & _FINEID_BROKEN_SELECT_FLAG && r == SC_ERROR_DATA_OBJECT_NOT_FOUND)
+		return SC_ERROR_FILE_NOT_FOUND;
 	if (r)
 		return r;
 	if (file != NULL) {

@@ -149,7 +149,7 @@ static int sc_pkcs15emu_pteid_init(sc_pkcs15_card_t * p15card)
 		/* PIN Authentication IDs */
 		static const int pteid_pin_authid[3] = {1, 2, 3};
 		/* PIN Paths */
-		static const char *pteid_pin_paths[2][3] = { {NULL, "3f005f00", NULL},
+		static const char *pteid_pin_paths[2][3] = { {NULL, "3f005f00", "3f005f00"},
 													 {NULL, NULL, NULL} };
 		struct sc_pkcs15_auth_info pin_info;
 		struct sc_pkcs15_object pin_obj;
@@ -230,7 +230,7 @@ static int sc_pkcs15emu_pteid_init(sc_pkcs15_card_t * p15card)
 		static const char *object_labels[3] = {"Citizen Data",
 											   "Citizen Address Data",
 											   "Citizen Notepad"};
-		static const char *object_authids[3] = {"3", "3", "1"};
+		static const char *object_authids[3] = {NULL, "3", "1"};
 		static const char *object_paths[3] = {"3f005f00ef02",
 											  "3f005f00ef05",
 											  "3f005f00ef07"};

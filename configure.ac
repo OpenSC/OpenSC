@@ -4,8 +4,8 @@ AC_PREREQ(2.60)
 
 define([PACKAGE_VERSION_MAJOR], [0])
 define([PACKAGE_VERSION_MINOR], [12])
-define([PACKAGE_VERSION_FIX], [2])
-define([PACKAGE_SUFFIX], [-rc1])
+define([PACKAGE_VERSION_FIX], [3])
+define([PACKAGE_SUFFIX], [-pre1])
 
 AC_INIT([opensc],[PACKAGE_VERSION_MAJOR.PACKAGE_VERSION_MINOR.PACKAGE_VERSION_FIX[]PACKAGE_SUFFIX])
 AC_CONFIG_AUX_DIR([.])
@@ -581,6 +581,7 @@ fi
 AC_CONFIG_FILES([
 	Makefile
 	doc/Makefile
+	doc/tools/Makefile
 	etc/Makefile
 	src/Makefile
 	src/common/Makefile

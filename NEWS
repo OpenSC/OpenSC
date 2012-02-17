@@ -3,7 +3,7 @@ NEWS for OpenSC -- History of user visible changes
 Complete change history is available online:
 http://www.opensc-project.org/opensc/timeline
 
-New in 0.12.2; 2011-06-XX
+New in 0.12.2; 2011-07-15
 * Builds are now silent by default when OpenSC is built from source on Unix.
 * Using --wait with command line tools works with 64bit Linux again.
 * Greatly improved OpenPGP card support, including OpenPGP 2.0 cards
@@ -15,6 +15,7 @@ New in 0.12.2; 2011-06-XX
   source CCID driver. This fixes the issue for Linux/OSX with recent driver.
 * WindowsInstaller now installs only static DLL-s (PKCS#11, minidriver) to
   system folder.
+* Fix FINeID cards for organizations.
 * Several smaller bugs and compiler warnings fixed.
 
 New in 0.12.1; 2011-05-17
