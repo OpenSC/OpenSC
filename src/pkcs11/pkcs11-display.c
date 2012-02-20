@@ -85,131 +85,152 @@
 #define CKA_CERT_MD5_HASH		        (CKA_TRUST + 101)
 
 
-static char *buf_spec(CK_VOID_PTR buf_addr, CK_ULONG buf_len)
+static char *
+buf_spec(CK_VOID_PTR buf_addr, CK_ULONG buf_len)
 {
 	static char ret[64];
-	if (sizeof(CK_VOID_PTR) == 4) {
+
+	if (sizeof(CK_VOID_PTR) == 4)
 		sprintf(ret, "%08lx / %ld", (unsigned long) buf_addr, (CK_LONG) buf_len);
-	} else {
+	else
 		sprintf(ret, "%016lx / %ld", (unsigned long) buf_addr, (CK_LONG) buf_len);
-	}
+
 	return ret;
 }
 
-void print_enum(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg)
-{
-  enum_spec *spec = (enum_spec*)arg;
-  CK_ULONG i;
-  CK_ULONG ctype = *((CK_ULONG_PTR)value);
 
-  for(i = 0; i < spec->size; i++) {
-    if(spec->specs[i].type == ctype) {
-      fprintf(f, "%s\n", spec->specs[i].name);
-      return;
-    }
-  }
-  fprintf(f, "Value %lX not found for type %s\n", ctype, spec->name);
+void
+print_enum(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg)
+{
+	enum_spec *spec = (enum_spec*)arg;
+	CK_ULONG i;
+	CK_ULONG ctype = *((CK_ULONG_PTR)value);
+
+	for(i = 0; i < spec->size; i++) {
+		if(spec->specs[i].type == ctype) {
+			fprintf(f, "%s\n", spec->specs[i].name);
+			return;
+		}
+	}
+	fprintf(f, "Value %lX not found for type %s\n", ctype, spec->name);
 }
 
-void print_boolean(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg)
+
+void
+print_boolean(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg)
 {
-  CK_BYTE i = *((CK_BYTE *)value);
-  fprintf(f, i ? "True\n" : "False\n");
+	CK_BYTE i = *((CK_BYTE *)value);
+	fprintf(f, i ? "True\n" : "False\n");
 }
 
-void print_generic(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg)
+
+void
+print_generic(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg)
 {
-  CK_ULONG i;
-  if((CK_LONG)size != -1 && value != NULL) {
-    char hex[16*3+1], ascii[16+1];
-    char *hex_ptr = hex, *ascii_ptr = ascii;
-    int offset = 0;
-    memset(ascii, ' ', sizeof ascii);
-    ascii[sizeof ascii -1] = 0;
-    fprintf(f, "%s", buf_spec(value, size));
-    for(i = 0; i < size; i++) {
-	    CK_BYTE val;
+	CK_ULONG i;
 
-      if (i && (i % 16) == 0) {
-          fprintf(f, "\n    %08X  %s %s", offset, hex, ascii);
-          offset += 16;
-          hex_ptr = hex;
-          ascii_ptr = ascii;
-          memset(ascii, ' ', sizeof ascii -1);
-      }
+	if((CK_LONG)size != -1 && value != NULL) {
+		char hex[16*3+1], ascii[16+1];
+		char *hex_ptr = hex, *ascii_ptr = ascii;
+		int offset = 0;
 
-      val = ((CK_BYTE *)value)[i];
-      /* hex */
-      sprintf(hex_ptr, "%02X ", val);
-      hex_ptr += 3;
-      /* ascii */
-      if (val > 31 && val < 128)
-          *ascii_ptr = val;
-      else
-          *ascii_ptr = '.';
-      ascii_ptr++;
-    }
-	/* padd */
-    while (strlen(hex) < 3*16)
-        strcat(hex, "   ");
-    fprintf(f, "\n    %08X  %s %s", offset, hex, ascii);
-  } else {
-    if (value != NULL)
-      fprintf(f, "EMPTY");
-    else
-      fprintf(f, "NULL [size : 0x%lX (%ld)]", size, size);
-  }
-  fprintf(f, "\n");
+		memset(ascii, ' ', sizeof ascii);
+		ascii[sizeof ascii -1] = 0;
+		fprintf(f, "%s", buf_spec(value, size));
+		for(i = 0; i < size; i++) {
+			CK_BYTE val;
+
+			if (i && (i % 16) == 0) {
+				fprintf(f, "\n    %08X  %s %s", offset, hex, ascii);
+				offset += 16;
+				hex_ptr = hex;
+				ascii_ptr = ascii;
+				memset(ascii, ' ', sizeof ascii -1);
+			}
+
+			val = ((CK_BYTE *)value)[i];
+			/* hex */
+			sprintf(hex_ptr, "%02X ", val);
+			hex_ptr += 3;
+			/* ascii */
+			if (val > 31 && val < 128)
+				*ascii_ptr = val;
+			else
+				*ascii_ptr = '.';
+			ascii_ptr++;
+		}
+	
+		/* padd */
+		while (strlen(hex) < 3*16)
+			strcat(hex, "   ");
+		fprintf(f, "\n    %08X  %s %s", offset, hex, ascii);
+	} 
+	else {
+		if (value != NULL)
+			fprintf(f, "EMPTY");
+		else
+			fprintf(f, "NULL [size : 0x%lX (%ld)]", size, size);
+	}
+	fprintf(f, "\n");
 }
+
 
 #ifdef ENABLE_OPENSSL
-static void print_dn(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg)
+static void 
+print_dn(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg)
 {
-  print_generic(f, type, value, size, arg);
-  if(size && value) {
-    X509_NAME *name;
-    const unsigned char *tmp = value;
-    name = d2i_X509_NAME(NULL, &tmp, size);
-    if(name) {
-      BIO *bio = BIO_new(BIO_s_file());
-      BIO_set_fp(bio, f, 0);
-      fprintf(f, "    DN: ");
-      X509_NAME_print(bio, name, XN_FLAG_RFC2253);
-      fprintf(f, "\n");
-      BIO_free(bio);
-    }
-  }
+	print_generic(f, type, value, size, arg);
+	if(size && value) {
+		X509_NAME *name;
+		const unsigned char *tmp = value;
+
+		name = d2i_X509_NAME(NULL, &tmp, size);
+		if(name) {
+			BIO *bio = BIO_new(BIO_s_file());
+			BIO_set_fp(bio, f, 0);
+			fprintf(f, "    DN: ");
+			X509_NAME_print(bio, name, XN_FLAG_RFC2253);
+			fprintf(f, "\n");
+			BIO_free(bio);
+		}
+	}
 }
 #endif
 
-void print_print(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg)
+void 
+print_print(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg)
 {
-  CK_ULONG i, j;
-  CK_BYTE  c;
-  if((CK_LONG)size != -1) {
-    fprintf(f, "%s\n    ", buf_spec(value, size));
-    for(i = 0; i < size; i += j) {
-      for(j = 0; ((i + j < size) && (j < 32)); j++) {
-	if (((j % 4) == 0) && (j != 0)) fprintf(f, " ");
-	c = ((CK_BYTE *)value)[i+j];
-	fprintf(f, "%02X", c);
-      }
-      fprintf(f, "\n    ");
-      for(j = 0; ((i + j < size) && (j < 32)); j++) {
-	if (((j % 4) == 0) && (j != 0)) fprintf(f, " ");
-	c = ((CK_BYTE *)value)[i + j];
-	if((c > 32) && (c < 128)) {
-	  fprintf(f, " %c", c);
-	} else {
-	  fprintf(f, " .");
+	CK_ULONG i, j;
+	CK_BYTE  c;
+
+	if((CK_LONG)size != -1) {
+		fprintf(f, "%s\n    ", buf_spec(value, size));
+		for(i = 0; i < size; i += j) {
+			for(j = 0; ((i + j < size) && (j < 32)); j++) {
+				if (((j % 4) == 0) && (j != 0)) 
+					fprintf(f, " ");
+				c = ((CK_BYTE *)value)[i+j];
+				fprintf(f, "%02X", c);
+			}
+			fprintf(f, "\n    ");
+
+			for(j = 0; ((i + j < size) && (j < 32)); j++) {
+				if (((j % 4) == 0) && (j != 0)) 
+					fprintf(f, " ");
+				c = ((CK_BYTE *)value)[i + j];
+				if((c > 32) && (c < 128))
+					fprintf(f, " %c", c);
+				else
+					fprintf(f, " .");
+			}
+		}
+		if(j == 32) 
+			fprintf(f, "\n    ");
 	}
-      }
-      if(j == 32) fprintf(f, "\n    ");
-    }
-  } else {
-    fprintf(f, "EMPTY");
-  }
-  fprintf(f, "\n");
+	else {
+		fprintf(f, "EMPTY");
+	}
+	fprintf(f, "\n");
 }
 
 static enum_specs ck_cls_s[] = {
@@ -713,180 +734,193 @@ type_spec ck_attribute_specs[] = {
 CK_ULONG ck_attribute_num = sizeof(ck_attribute_specs)/sizeof(type_spec);
 
 
-const char *lookup_enum_spec(enum_spec *spec, CK_ULONG value)
+const char 
+lookup_enum_spec(enum_spec *spec, CK_ULONG value)
 {
-  CK_ULONG i;
-  for(i = 0; i < spec->size; i++) {
-    if(spec->specs[i].type == value) {
-      return spec->specs[i].name;
-    }
-  }
-  return NULL;
+	CK_ULONG i;
+
+	for(i = 0; i < spec->size; i++)
+		if(spec->specs[i].type == value)
+			return spec->specs[i].name;
+	return NULL;
 }
 
-const char *lookup_enum(CK_ULONG type, CK_ULONG value)
+
+const char *
+lookup_enum(CK_ULONG type, CK_ULONG value)
 {
-  CK_ULONG i;
-  for(i = 0; ck_types[i].type < ( sizeof(ck_types) / sizeof(enum_spec) ) ; i++) {
-    if(ck_types[i].type == type) {
-      return lookup_enum_spec(&(ck_types[i]), value);
-    }
-  }
-  return NULL;
+	CK_ULONG i;
+	
+	for(i = 0; ck_types[i].type < ( sizeof(ck_types) / sizeof(enum_spec) ) ; i++)
+		if(ck_types[i].type == type)
+			return lookup_enum_spec(&(ck_types[i]), value);
+	return NULL;
 }
 
-void show_error( FILE *f, char *str, CK_RV rc )
+
+void 
+show_error( FILE *f, char *str, CK_RV rc )
 {
-  fprintf(f, "%s returned:  %ld %s", str, (unsigned long) rc, lookup_enum ( RV_T, rc ));
-  fprintf(f, "\n");
+	fprintf(f, "%s returned:  %ld %s", str, (unsigned long) rc, lookup_enum ( RV_T, rc ));
+	fprintf(f, "\n");
 }
 
-void print_ck_info(FILE *f, CK_INFO *info)
+
+void 
+print_ck_info(FILE *f, CK_INFO *info)
 {
-  fprintf(f, "      cryptokiVersion:         %d.%d\n",    info->cryptokiVersion.major, info->cryptokiVersion.minor );
-  fprintf(f, "      manufacturerID:         '%32.32s'\n",  info->manufacturerID );
-  fprintf(f, "      flags:                   %0lx\n",     info->flags );
-  fprintf(f, "      libraryDescription:     '%32.32s'\n",  info->libraryDescription );
-  fprintf(f, "      libraryVersion:          %d.%d\n",    info->libraryVersion.major, info->libraryVersion.minor );
+	fprintf(f, "      cryptokiVersion:         %d.%d\n",    info->cryptokiVersion.major, info->cryptokiVersion.minor );
+	fprintf(f, "      manufacturerID:         '%32.32s'\n",  info->manufacturerID );
+	fprintf(f, "      flags:                   %0lx\n",     info->flags );
+	fprintf(f, "      libraryDescription:     '%32.32s'\n",  info->libraryDescription );
+	fprintf(f, "      libraryVersion:          %d.%d\n",    info->libraryVersion.major, info->libraryVersion.minor );
 }
 
-void print_slot_list(FILE *f, CK_SLOT_ID_PTR pSlotList, CK_ULONG ulCount)
+
+void 
+print_slot_list(FILE *f, CK_SLOT_ID_PTR pSlotList, CK_ULONG ulCount)
 {
-  CK_ULONG          i;
-  if(pSlotList) {
-    for (i = 0; i < ulCount; i++) {
-      fprintf(f, "Slot %ld\n", pSlotList[i]);
-    }
-  } else {
-    fprintf(f, "Count is %ld\n", ulCount);
-  }
+	CK_ULONG i;
+
+	if(pSlotList) {
+		for (i = 0; i < ulCount; i++)
+			fprintf(f, "Slot %ld\n", pSlotList[i]);
+	} 
+	else {
+		fprintf(f, "Count is %ld\n", ulCount);
+	}
 }
 
-void print_slot_info(FILE *f, CK_SLOT_INFO *info)
-{
-  size_t i;
-  enum_specs ck_flags[] = {
-    { CKF_TOKEN_PRESENT    , "CKF_TOKEN_PRESENT                " },
-    { CKF_REMOVABLE_DEVICE , "CKF_REMOVABLE_DEVICE             " },
-    { CKF_HW_SLOT          , "CKF_HW_SLOT                      " },
-  };
 
-  fprintf(f, "      slotDescription:        '%32.32s'\n",  info->slotDescription );
-  fprintf(f, "                              '%32.32s'\n",  info->slotDescription+32 );
-  fprintf(f, "      manufacturerID:         '%32.32s'\n",  info->manufacturerID );
-  fprintf(f, "      hardwareVersion:         %d.%d\n",    info->hardwareVersion.major, info->hardwareVersion.minor );
-  fprintf(f, "      firmwareVersion:         %d.%d\n",    info->firmwareVersion.major, info->firmwareVersion.minor );
-  fprintf(f, "      flags:                   %0lx\n",     info->flags );
-  for(i = 0; i < sizeof (ck_flags) / sizeof (*ck_flags); i++) {
-    if(info->flags & ck_flags[i].type) {
-      fprintf(f, "        %s\n", ck_flags[i].name);
-    }
-  }
+void 
+print_slot_info(FILE *f, CK_SLOT_INFO *info)
+{
+	size_t i;
+	enum_specs ck_flags[] = {
+		{ CKF_TOKEN_PRESENT    , "CKF_TOKEN_PRESENT                " },
+		{ CKF_REMOVABLE_DEVICE , "CKF_REMOVABLE_DEVICE             " },
+		{ CKF_HW_SLOT          , "CKF_HW_SLOT                      " },
+	};
+
+	fprintf(f, "      slotDescription:        '%32.32s'\n",  info->slotDescription );
+	fprintf(f, "                              '%32.32s'\n",  info->slotDescription+32 );
+	fprintf(f, "      manufacturerID:         '%32.32s'\n",  info->manufacturerID );
+	fprintf(f, "      hardwareVersion:         %d.%d\n",    info->hardwareVersion.major, info->hardwareVersion.minor );
+	fprintf(f, "      firmwareVersion:         %d.%d\n",    info->firmwareVersion.major, info->firmwareVersion.minor );
+	fprintf(f, "      flags:                   %0lx\n",     info->flags );
+
+	for(i = 0; i < sizeof (ck_flags) / sizeof (*ck_flags); i++)
+		if(info->flags & ck_flags[i].type)
+			fprintf(f, "        %s\n", ck_flags[i].name);
 }
 
-void print_token_info(FILE *f, CK_TOKEN_INFO *info)
-{
-  size_t            i;
-  enum_specs ck_flags[] = {
-    { CKF_RNG                          , "CKF_RNG                          " },
-    { CKF_WRITE_PROTECTED              , "CKF_WRITE_PROTECTED              " },
-    { CKF_LOGIN_REQUIRED               , "CKF_LOGIN_REQUIRED               " },
-    { CKF_USER_PIN_INITIALIZED         , "CKF_USER_PIN_INITIALIZED         " },
-    { CKF_RESTORE_KEY_NOT_NEEDED       , "CKF_RESTORE_KEY_NOT_NEEDED       " },
-    { CKF_CLOCK_ON_TOKEN               , "CKF_CLOCK_ON_TOKEN               " },
-    { CKF_PROTECTED_AUTHENTICATION_PATH, "CKF_PROTECTED_AUTHENTICATION_PATH" },
-    { CKF_DUAL_CRYPTO_OPERATIONS       , "CKF_DUAL_CRYPTO_OPERATIONS       " },
-    { CKF_TOKEN_INITIALIZED            , "CKF_TOKEN_INITIALIZED            " },
-    { CKF_SECONDARY_AUTHENTICATION     , "CKF_SECONDARY_AUTHENTICATION     " },
-    { CKF_USER_PIN_COUNT_LOW           , "CKF_USER_PIN_COUNT_LOW           " },
-    { CKF_USER_PIN_FINAL_TRY           , "CKF_USER_PIN_FINAL_TRY           " },
-    { CKF_USER_PIN_LOCKED              , "CKF_USER_PIN_LOCKED              " },
-    { CKF_USER_PIN_TO_BE_CHANGED       , "CKF_USER_PIN_TO_BE_CHANGED       " },
-    { CKF_SO_PIN_COUNT_LOW             , "CKF_SO_PIN_COUNT_LOW             " },
-    { CKF_SO_PIN_FINAL_TRY             , "CKF_SO_PIN_FINAL_TRY             " },
-    { CKF_SO_PIN_LOCKED                , "CKF_SO_PIN_LOCKED                " },
-    { CKF_SO_PIN_TO_BE_CHANGED         , "CKF_SO_PIN_TO_BE_CHANGED         " }
-  };
 
-  fprintf(f, "      label:                  '%32.32s'\n",  info->label );
-  fprintf(f, "      manufacturerID:         '%32.32s'\n",  info->manufacturerID );
-  fprintf(f, "      model:                  '%16.16s'\n",  info->model );
-  fprintf(f, "      serialNumber:           '%16.16s'\n",  info->serialNumber );
-  fprintf(f, "      ulMaxSessionCount:       %ld\n",       info->ulMaxSessionCount );
-  fprintf(f, "      ulSessionCount:          %ld\n",       info->ulSessionCount );
-  fprintf(f, "      ulMaxRwSessionCount:     %ld\n",       info->ulMaxRwSessionCount );
-  fprintf(f, "      ulRwSessionCount:        %ld\n",       info->ulRwSessionCount );
-  fprintf(f, "      ulMaxPinLen:             %ld\n",       info->ulMaxPinLen );
-  fprintf(f, "      ulMinPinLen:             %ld\n",       info->ulMinPinLen );
-  fprintf(f, "      ulTotalPublicMemory:     %ld\n",       info->ulTotalPublicMemory );
-  fprintf(f, "      ulFreePublicMemory:      %ld\n",       info->ulFreePublicMemory );
-  fprintf(f, "      ulTotalPrivateMemory:    %ld\n",       info->ulTotalPrivateMemory );
-  fprintf(f, "      ulFreePrivateMemory:     %ld\n",       info->ulFreePrivateMemory );
-  fprintf(f, "      hardwareVersion:         %d.%d\n",     info->hardwareVersion.major, info->hardwareVersion.minor );
-  fprintf(f, "      firmwareVersion:         %d.%d\n",     info->firmwareVersion.major, info->firmwareVersion.minor );
-  fprintf(f, "      time:                   '%16.16s'\n",  info->utcTime );
-  fprintf(f, "      flags:                   %0lx\n",      info->flags );
-  for(i = 0; i < sizeof (ck_flags) / sizeof (*ck_flags); i++) {
-    if(info->flags & ck_flags[i].type) {
-      fprintf(f, "        %s\n", ck_flags[i].name);
-    }
-  }
+void 
+print_token_info(FILE *f, CK_TOKEN_INFO *info)
+{
+	size_t            i;
+	enum_specs ck_flags[] = {
+		{ CKF_RNG                          , "CKF_RNG                          " },
+		{ CKF_WRITE_PROTECTED              , "CKF_WRITE_PROTECTED              " },
+		{ CKF_LOGIN_REQUIRED               , "CKF_LOGIN_REQUIRED               " },
+		{ CKF_USER_PIN_INITIALIZED         , "CKF_USER_PIN_INITIALIZED         " },
+		{ CKF_RESTORE_KEY_NOT_NEEDED       , "CKF_RESTORE_KEY_NOT_NEEDED       " },
+		{ CKF_CLOCK_ON_TOKEN               , "CKF_CLOCK_ON_TOKEN               " },
+		{ CKF_PROTECTED_AUTHENTICATION_PATH, "CKF_PROTECTED_AUTHENTICATION_PATH" },
+		{ CKF_DUAL_CRYPTO_OPERATIONS       , "CKF_DUAL_CRYPTO_OPERATIONS       " },
+		{ CKF_TOKEN_INITIALIZED            , "CKF_TOKEN_INITIALIZED            " },
+		{ CKF_SECONDARY_AUTHENTICATION     , "CKF_SECONDARY_AUTHENTICATION     " },
+		{ CKF_USER_PIN_COUNT_LOW           , "CKF_USER_PIN_COUNT_LOW           " },
+		{ CKF_USER_PIN_FINAL_TRY           , "CKF_USER_PIN_FINAL_TRY           " },
+		{ CKF_USER_PIN_LOCKED              , "CKF_USER_PIN_LOCKED              " },
+		{ CKF_USER_PIN_TO_BE_CHANGED       , "CKF_USER_PIN_TO_BE_CHANGED       " },
+		{ CKF_SO_PIN_COUNT_LOW             , "CKF_SO_PIN_COUNT_LOW             " },
+		{ CKF_SO_PIN_FINAL_TRY             , "CKF_SO_PIN_FINAL_TRY             " },
+		{ CKF_SO_PIN_LOCKED                , "CKF_SO_PIN_LOCKED                " },
+		{ CKF_SO_PIN_TO_BE_CHANGED         , "CKF_SO_PIN_TO_BE_CHANGED         " }
+	};
+
+	fprintf(f, "      label:                  '%32.32s'\n",  info->label );
+	fprintf(f, "      manufacturerID:         '%32.32s'\n",  info->manufacturerID );
+	fprintf(f, "      model:                  '%16.16s'\n",  info->model );
+	fprintf(f, "      serialNumber:           '%16.16s'\n",  info->serialNumber );
+	fprintf(f, "      ulMaxSessionCount:       %ld\n",       info->ulMaxSessionCount );
+	fprintf(f, "      ulSessionCount:          %ld\n",       info->ulSessionCount );
+	fprintf(f, "      ulMaxRwSessionCount:     %ld\n",       info->ulMaxRwSessionCount );
+	fprintf(f, "      ulRwSessionCount:        %ld\n",       info->ulRwSessionCount );
+	fprintf(f, "      ulMaxPinLen:             %ld\n",       info->ulMaxPinLen );
+	fprintf(f, "      ulMinPinLen:             %ld\n",       info->ulMinPinLen );
+	fprintf(f, "      ulTotalPublicMemory:     %ld\n",       info->ulTotalPublicMemory );
+	fprintf(f, "      ulFreePublicMemory:      %ld\n",       info->ulFreePublicMemory );
+	fprintf(f, "      ulTotalPrivateMemory:    %ld\n",       info->ulTotalPrivateMemory );
+	fprintf(f, "      ulFreePrivateMemory:     %ld\n",       info->ulFreePrivateMemory );
+	fprintf(f, "      hardwareVersion:         %d.%d\n",     info->hardwareVersion.major, info->hardwareVersion.minor );
+	fprintf(f, "      firmwareVersion:         %d.%d\n",     info->firmwareVersion.major, info->firmwareVersion.minor );
+	fprintf(f, "      time:                   '%16.16s'\n",  info->utcTime );
+	fprintf(f, "      flags:                   %0lx\n",      info->flags );
+
+	for(i = 0; i < sizeof (ck_flags) / sizeof (*ck_flags); i++)
+		if(info->flags & ck_flags[i].type)
+			fprintf(f, "        %s\n", ck_flags[i].name);
 }
 
-void print_mech_list(FILE *f, CK_MECHANISM_TYPE_PTR pMechanismList,
-		     CK_ULONG ulMechCount)
+
+void 
+print_mech_list(FILE *f, CK_MECHANISM_TYPE_PTR pMechanismList, CK_ULONG ulMechCount)
 {
-  CK_ULONG          imech;
-  if(pMechanismList) {
-    for (imech = 0; imech < ulMechCount; imech++) {
-      const char *name = lookup_enum(MEC_T, pMechanismList[imech]);
-      if (name) {
-	fprintf(f, "%30s \n", name);
-      } else {
-	fprintf(f, " Unknown Mechanism (%08lx)  \n", pMechanismList[imech]);
-      }
-    }
-  } else {
-    fprintf(f, "Count is %ld\n", ulMechCount);
-  }
+	CK_ULONG          imech;
+
+	if(pMechanismList) {
+		for (imech = 0; imech < ulMechCount; imech++) {
+			const char *name = lookup_enum(MEC_T, pMechanismList[imech]);
+			if (name)
+				fprintf(f, "%30s \n", name);
+			else
+				fprintf(f, " Unknown Mechanism (%08lx)  \n", pMechanismList[imech]);
+		}
+	} 
+	else {
+		fprintf(f, "Count is %ld\n", ulMechCount);
+	}
 }
 
-void print_mech_info(FILE *f, CK_MECHANISM_TYPE type,
-		     CK_MECHANISM_INFO_PTR minfo)
+
+void 
+print_mech_info(FILE *f, CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_PTR minfo)
 {
-  const char *name = lookup_enum(MEC_T, type);
-  CK_ULONG known_flags = CKF_HW|CKF_ENCRYPT|CKF_DECRYPT|CKF_DIGEST|
-    CKF_SIGN|CKF_SIGN_RECOVER|CKF_VERIFY|CKF_VERIFY_RECOVER|
-    CKF_GENERATE|CKF_GENERATE_KEY_PAIR|CKF_WRAP|CKF_UNWRAP|
-    CKF_DERIVE;
+	const char *name = lookup_enum(MEC_T, type);
+	CK_ULONG known_flags = CKF_HW | CKF_ENCRYPT | CKF_DECRYPT | CKF_DIGEST |
+			CKF_SIGN | CKF_SIGN_RECOVER | CKF_VERIFY | CKF_VERIFY_RECOVER |
+			CKF_GENERATE | CKF_GENERATE_KEY_PAIR | CKF_WRAP | CKF_UNWRAP | CKF_DERIVE;
     
-  if (name) {
-    fprintf(f, "%s : ", name);
-  } else {
-    fprintf(f, "Unknown Mechanism (%08lx) : ", type);
-  }
-  fprintf(f, "min:%lu max:%lu flags:0x%lX ",
-	  (unsigned long) minfo->ulMinKeySize,
-	  (unsigned long) minfo->ulMaxKeySize, minfo->flags);
-  fprintf(f, "( %s%s%s%s%s%s%s%s%s%s%s%s%s%s)\n",
-	 (minfo->flags & CKF_HW)                ? "Hardware " : "",
-	 (minfo->flags & CKF_ENCRYPT)           ? "Encrypt "  : "",
-	 (minfo->flags & CKF_DECRYPT)           ? "Decrypt "  : "",
-	 (minfo->flags & CKF_DIGEST)            ? "Digest "   : "",
-	 (minfo->flags & CKF_SIGN)              ? "Sign "     : "",
-	 (minfo->flags & CKF_SIGN_RECOVER)      ? "SigRecov " : "",
-	 (minfo->flags & CKF_VERIFY)            ? "Verify "   : "",
-	 (minfo->flags & CKF_VERIFY_RECOVER)    ? "VerRecov " : "",
-	 (minfo->flags & CKF_GENERATE)          ? "Generate " : "",
-	 (minfo->flags & CKF_GENERATE_KEY_PAIR) ? "KeyPair "  : "",
-	 (minfo->flags & CKF_WRAP)              ? "Wrap "     : "",
-	 (minfo->flags & CKF_UNWRAP)            ? "Unwrap "   : "",
-	 (minfo->flags & CKF_DERIVE)            ? "Derive "   : "",
-	 (minfo->flags & ~known_flags)          ? "Unknown "  : "");
+	if (name)
+		fprintf(f, "%s : ", name);
+	else
+		fprintf(f, "Unknown Mechanism (%08lx) : ", type);
+
+	fprintf(f, "min:%lu max:%lu flags:0x%lX ",
+			(unsigned long) minfo->ulMinKeySize,
+			(unsigned long) minfo->ulMaxKeySize, minfo->flags);
+	fprintf(f, "( %s%s%s%s%s%s%s%s%s%s%s%s%s%s)\n",
+			(minfo->flags & CKF_HW)                ? "Hardware " : "",
+			(minfo->flags & CKF_ENCRYPT)           ? "Encrypt "  : "",
+			(minfo->flags & CKF_DECRYPT)           ? "Decrypt "  : "",
+			(minfo->flags & CKF_DIGEST)            ? "Digest "   : "",
+			(minfo->flags & CKF_SIGN)              ? "Sign "     : "",
+			(minfo->flags & CKF_SIGN_RECOVER)      ? "SigRecov " : "",
+			(minfo->flags & CKF_VERIFY)            ? "Verify "   : "",
+			(minfo->flags & CKF_VERIFY_RECOVER)    ? "VerRecov " : "",
+			(minfo->flags & CKF_GENERATE)          ? "Generate " : "",
+			(minfo->flags & CKF_GENERATE_KEY_PAIR) ? "KeyPair "  : "",
+			(minfo->flags & CKF_WRAP)              ? "Wrap "     : "",
+			(minfo->flags & CKF_UNWRAP)            ? "Unwrap "   : "",
+			(minfo->flags & CKF_DERIVE)            ? "Derive "   : "",
+			(minfo->flags & ~known_flags)          ? "Unknown "  : "");
 }
 
-void print_attribute_list(FILE *f, CK_ATTRIBUTE_PTR pTemplate,
-			  CK_ULONG  ulCount)
+
+void 
+print_attribute_list(FILE *f, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG  ulCount)
 {
 	CK_ULONG j, k;
 	int found;
@@ -915,43 +949,48 @@ void print_attribute_list(FILE *f, CK_ATTRIBUTE_PTR pTemplate,
 	}
 }
 
-void print_attribute_list_req(FILE *f, CK_ATTRIBUTE_PTR pTemplate,
-			      CK_ULONG  ulCount)
+
+void 
+print_attribute_list_req(FILE *f, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG  ulCount)
 {
-  CK_ULONG j, k;
-  int found;
-  for(j = 0; j < ulCount ; j++) {
-    found = 0;
-    for(k = 0; k < ck_attribute_num; k++) {
-      if(ck_attribute_specs[k].type == pTemplate[j].type) {
-	found = 1;
-	fprintf(f, "    %s ", ck_attribute_specs[k].name);
-	fprintf(f, "%s\n", buf_spec(pTemplate[j].pValue, pTemplate[j].ulValueLen));
-	k = ck_attribute_num;
-      }
-    }
-    if (!found) {
-	fprintf(f, "    CKA_? (0x%08lx)    ", pTemplate[j].type);
-	fprintf(f, "%s\n", buf_spec(pTemplate[j].pValue, pTemplate[j].ulValueLen));
-    }
-  }
+	CK_ULONG j, k;
+	int found;
+	
+	for(j = 0; j < ulCount ; j++) {
+		found = 0;
+		for(k = 0; k < ck_attribute_num; k++) {
+			if(ck_attribute_specs[k].type == pTemplate[j].type) {
+				found = 1;
+				fprintf(f, "    %s ", ck_attribute_specs[k].name);
+				fprintf(f, "%s\n", buf_spec(pTemplate[j].pValue, pTemplate[j].ulValueLen));
+				k = ck_attribute_num;
+			}
+		}
+		
+		if (!found) {
+			fprintf(f, "    CKA_? (0x%08lx)    ", pTemplate[j].type);
+			fprintf(f, "%s\n", buf_spec(pTemplate[j].pValue, pTemplate[j].ulValueLen));
+		}
+	}
 }
 
-void print_session_info(FILE *f, CK_SESSION_INFO *info)
-{
-  size_t i;
-  enum_specs ck_flags[] = {
-    { CKF_RW_SESSION     , "CKF_RW_SESSION                   " },
-    { CKF_SERIAL_SESSION , "CKF_SERIAL_SESSION               " }
-  };
 
-  fprintf(f, "      slotID:                  %ld\n",       info->slotID );
-  fprintf(f, "      state:                  '%32.32s'\n",  lookup_enum(STA_T, info->state));
-  fprintf(f, "      flags:                   %0lx\n",     info->flags );
-  for(i = 0; i < sizeof (ck_flags) / sizeof (*ck_flags); i++) {
-    if(info->flags & ck_flags[i].type) {
-      fprintf(f, "        %s\n", ck_flags[i].name);
-    }
-  }
-  fprintf(f, "      ulDeviceError:           %0lx\n",     info->ulDeviceError );
+void 
+print_session_info(FILE *f, CK_SESSION_INFO *info)
+{
+	size_t i;
+	enum_specs ck_flags[] = {
+		{ CKF_RW_SESSION     , "CKF_RW_SESSION                   " },
+		{ CKF_SERIAL_SESSION , "CKF_SERIAL_SESSION               " }
+	};
+
+	fprintf(f, "      slotID:                  %ld\n",       info->slotID );
+	fprintf(f, "      state:                  '%32.32s'\n",  lookup_enum(STA_T, info->state));
+	fprintf(f, "      flags:                   %0lx\n",     info->flags );
+
+	for(i = 0; i < sizeof (ck_flags) / sizeof (*ck_flags); i++) {
+		if(info->flags & ck_flags[i].type) 
+			fprintf(f, "        %s\n", ck_flags[i].name);
+	}
+	fprintf(f, "      ulDeviceError:           %0lx\n",     info->ulDeviceError );
 }
