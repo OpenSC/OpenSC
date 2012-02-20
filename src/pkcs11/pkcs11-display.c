@@ -734,7 +734,7 @@ type_spec ck_attribute_specs[] = {
 CK_ULONG ck_attribute_num = sizeof(ck_attribute_specs)/sizeof(type_spec);
 
 
-const char 
+const char *
 lookup_enum_spec(enum_spec *spec, CK_ULONG value)
 {
 	CK_ULONG i;
