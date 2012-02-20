@@ -270,6 +270,10 @@ struct sc_reader_driver {
 /* reader capabilities */
 #define SC_READER_CAP_DISPLAY	0x00000001
 #define SC_READER_CAP_PIN_PAD	0x00000002
+#define SC_READER_CAP_PACE_GENERIC         0x00000003
+#define SC_READER_CAP_PACE_EID             0x00000004
+#define SC_READER_CAP_PACE_ESIGN           0x00000008
+#define SC_READER_CAP_PACE_DESTROY_CHANNEL 0x00000010
 
 typedef struct sc_reader {
 	struct sc_context *ctx;
@@ -339,6 +343,72 @@ struct sc_pin_cmd_data {
 	struct sc_apdu *apdu;		/* APDU of the PIN command */
 };
 
+
+#define PACE_PIN_ID_MRZ 0x01
+#define PACE_PIN_ID_CAN 0x02
+#define PACE_PIN_ID_PIN 0x03
+#define PACE_PIN_ID_PUK 0x04
+/** 
+ * Input data for EstablishPACEChannel()
+ */
+struct establish_pace_channel_input {
+    /** Type of secret (CAN, MRZ, PIN or PUK). */
+    unsigned char pin_id;
+
+    /** Length of \a chat */
+    size_t chat_length;
+    /** Card holder authorization template */
+    const unsigned char *chat;
+
+    /** Length of \a pin */
+    size_t pin_length;
+    /** Secret */
+    const unsigned char *pin;
+
+    /** Length of \a certificate_description */
+    size_t certificate_description_length;
+    /** Certificate description */
+    const unsigned char *certificate_description;
+};
+
+/** 
+ * Output data for EstablishPACEChannel()
+ */
+struct establish_pace_channel_output {
+    /** PACE result (TR-03119) */
+    unsigned int result;
+
+    /** MSE: Set AT status byte */
+    unsigned char mse_set_at_sw1;
+    /** MSE: Set AT status byte */
+    unsigned char mse_set_at_sw2;
+
+    /** Length of \a ef_cardaccess */
+    size_t ef_cardaccess_length;
+    /** EF.CardAccess */
+    unsigned char *ef_cardaccess;
+
+    /** Length of \a recent_car */
+    size_t recent_car_length;
+    /** Most recent certificate authority reference */
+    unsigned char *recent_car;
+
+    /** Length of \a previous_car */
+    size_t previous_car_length;
+    /** Previous certificate authority reference */
+    unsigned char *previous_car;
+
+    /** Length of \a id_icc */
+    size_t id_icc_length;
+    /** ICC identifier */
+    unsigned char *id_icc;
+
+    /** Length of \a id_pcd */
+    size_t id_pcd_length;
+    /** PCD identifier */
+    unsigned char *id_pcd;
+};
+
 struct sc_reader_operations {
 	/* Called during sc_establish_context(), when the driver
 	 * is loaded */
@@ -365,6 +435,9 @@ struct sc_reader_operations {
 	/* Pin pad functions */
 	int (*display_message)(struct sc_reader *, const char *);
 	int (*perform_verify)(struct sc_reader *, struct sc_pin_cmd_data *);
+	int (*perform_pace)(struct sc_reader *reader,
+            struct establish_pace_channel_input *,
+            struct establish_pace_channel_output *);
 
 	/* Wait for an event */
 	int (*wait_for_event)(struct sc_context *ctx, unsigned int event_mask, sc_reader_t **event_reader, unsigned int *event, 
@@ -1193,6 +1266,10 @@ extern const char *sc_get_version(void);
 	}
 
 extern sc_card_driver_t *sc_get_iso7816_driver(void);
+
+int sc_perform_pace(sc_card_t *card,
+        struct establish_pace_channel_input *pace_input,
+        struct establish_pace_channel_output *pace_output);
 
 #ifdef __cplusplus
 }
