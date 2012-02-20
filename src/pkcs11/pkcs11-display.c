@@ -128,6 +128,8 @@ void print_generic(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_V
     ascii[sizeof ascii -1] = 0;
     fprintf(f, "%s", buf_spec(value, size));
     for(i = 0; i < size; i++) {
+	    CK_BYTE val;
+
       if (i && (i % 16) == 0) {
           fprintf(f, "\n    %08X  %s %s", offset, hex, ascii);
           offset += 16;
@@ -136,7 +138,7 @@ void print_generic(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_V
           memset(ascii, ' ', sizeof ascii -1);
       }
 
-      CK_BYTE val = ((CK_BYTE *)value)[i];
+      val = ((CK_BYTE *)value)[i];
       /* hex */
       sprintf(hex_ptr, "%02X ", val);
       hex_ptr += 3;
