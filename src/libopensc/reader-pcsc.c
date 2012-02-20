@@ -49,6 +49,7 @@ struct pcsc_global_private_data {
 	SCARDCONTEXT pcsc_ctx;
 	SCARDCONTEXT pcsc_wait_ctx;
 	int enable_pinpad;
+	int enable_pace;
 	int connect_exclusive;
 	DWORD disconnect_action;
 	DWORD transaction_end_action;
@@ -83,6 +84,8 @@ struct pcsc_private_data {
 	DWORD modify_ioctl;
 	DWORD modify_ioctl_start;
 	DWORD modify_ioctl_finish;
+
+	DWORD pace_ioctl;
 
 	DWORD pin_properties_ioctl;
 
@@ -634,6 +637,7 @@ static int pcsc_init(sc_context_t *ctx)
 	gpriv->transaction_end_action = SCARD_LEAVE_CARD;
 	gpriv->reconnect_action = SCARD_LEAVE_CARD;
 	gpriv->enable_pinpad = 1;
+	gpriv->enable_pace = 1;
 	gpriv->provider_library = DEFAULT_PCSC_PROVIDER;
 	gpriv->pcsc_ctx = -1;
 	gpriv->pcsc_wait_ctx = -1;
@@ -650,11 +654,13 @@ static int pcsc_init(sc_context_t *ctx)
 		    pcsc_reset_action(scconf_get_str(conf_block, "reconnect_action", "leave"));
 		gpriv->enable_pinpad =
 		    scconf_get_bool(conf_block, "enable_pinpad", gpriv->enable_pinpad);
+		gpriv->enable_pace =
+		    scconf_get_bool(conf_block, "enable_pace", gpriv->enable_pace);
 		gpriv->provider_library =
 		    scconf_get_str(conf_block, "provider_library", gpriv->provider_library);
 	}
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "PC/SC options: connect_exclusive=%d disconnect_action=%d transaction_end_action=%d reconnect_action=%d enable_pinpad=%d",
-		gpriv->connect_exclusive, gpriv->disconnect_action, gpriv->transaction_end_action, gpriv->reconnect_action, gpriv->enable_pinpad);
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "PC/SC options: connect_exclusive=%d disconnect_action=%d transaction_end_action=%d reconnect_action=%d enable_pinpad=%d enable_pace=%d",
+		gpriv->connect_exclusive, gpriv->disconnect_action, gpriv->transaction_end_action, gpriv->reconnect_action, gpriv->enable_pinpad, gpriv->enable_pace);
 
 	gpriv->dlhandle = sc_dlopen(gpriv->provider_library);
 	if (gpriv->dlhandle == NULL) {
@@ -746,6 +752,61 @@ static int pcsc_finish(sc_context_t *ctx)
 	return SC_SUCCESS;
 }
 
+/**
+ * @brief Detects reader's PACE capabilities
+ *
+ * @param reader reader to probe (\c pace_ioctl must be initialized)
+ *
+ * @return Bitmask of \c SC_READER_CAP_PACE_GENERIC, \c SC_READER_CAP_PACE_EID and \c * SC_READER_CAP_PACE_ESIGN logically OR'ed if supported
+ */
+static unsigned long part10_detect_pace_capabilities(sc_reader_t *reader)
+{
+    u8 pace_capabilities_buf[] = {
+        PACE_FUNCTION_GetReaderPACECapabilities, /* idxFunction */
+        0, 0,                                    /* lengthInputData */
+    };
+    u8 rbuf[6];
+    u8 *p = rbuf;
+    size_t rcount = sizeof rbuf;
+    struct pcsc_private_data *priv;
+    unsigned long flags = 0;
+
+    if (!reader)
+        goto err;
+    priv = GET_PRIV_DATA(reader);
+    if (!priv)
+        goto err;
+
+    if (priv->pace_ioctl) {
+        pcsc_internal_transmit(reader, pace_capabilities_buf,
+                sizeof pace_capabilities_buf, rbuf, &rcount,
+                priv->pace_ioctl);
+
+        if (rcount != 7)
+            goto err;
+        /* Result */
+        if ((uint32_t) *p != 0)
+            goto err;
+        p += sizeof(uint32_t);
+        /* length_OutputData */
+        if ((uint16_t) *p != 1)
+            goto err;
+        p += sizeof(uint16_t);
+
+        if (*p & PACE_CAPABILITY_eSign)
+            flags |= SC_READER_CAP_PACE_ESIGN;
+        if (*p & PACE_CAPABILITY_eID)
+            flags |= SC_READER_CAP_PACE_EID;
+        if (*p & PACE_CAPABILITY_generic)
+            flags |= SC_READER_CAP_PACE_GENERIC;
+        if (*p & PACE_CAPABILITY_DestroyPACEChannel)
+            flags |= SC_READER_CAP_PACE_DESTROY_CHANNEL;
+    }
+
+err:
+    return flags;
+}
+
 static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle) {
 	sc_context_t *ctx = reader->ctx;
 	struct pcsc_global_private_data *gpriv = (struct pcsc_global_private_data *) ctx->reader_drv_data;
@@ -795,6 +856,8 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 			priv->pin_properties_ioctl = ntohl(pcsc_tlv[i].value);
 		} else if (pcsc_tlv[i].tag == FEATURE_GET_TLV_PROPERTIES)  {
 			priv->get_tlv_properties = ntohl(pcsc_tlv[i].value);
+		} else if (pcsc_tlv[i].tag == FEATURE_EXECUTE_PACE) {
+			priv->pace_ioctl = ntohl(pcsc_tlv[i].value);
 		} else {
 			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Reader feature %02x is not supported", pcsc_tlv[i].tag);
 		}
@@ -853,6 +916,18 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 					sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Reader does not have a display.");
 			} else 
 				sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Returned PIN properties structure has bad length (%d/%d)", rcount, sizeof(PIN_PROPERTIES_STRUCTURE));
+		}
+	}
+
+	if (priv->pace_ioctl) {
+		char *log_text = "Reader supports PACE";
+		if (priv->gpriv->enable_pace) {
+			reader->capabilities |= part10_detect_pace_capabilities(reader);
+
+			if (reader->capabilities & SC_READER_CAP_PACE_GENERIC)
+				sc_debug(ctx, SC_LOG_DEBUG_NORMAL, log_text);
+		} else {
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "%s %s", log_text, log_disabled);
 		}
 	}
 }
@@ -1626,6 +1701,232 @@ pcsc_pin_cmd(sc_reader_t *reader, struct sc_pin_cmd_data *data)
 	return SC_SUCCESS;
 }
 
+static int transform_pace_input(
+        struct establish_pace_channel_input *pace_input,
+        u8 *sbuf, size_t *scount)
+{
+	char dbuf[SC_MAX_APDU_BUFFER_SIZE * 3];
+    u8 *p = sbuf;
+    uint16_t lengthInputData, lengthCertificateDescription;
+    uint8_t lengthCHAT, lengthPIN;
+
+    if (!pace_input || !sbuf || !scount)
+        return SC_ERROR_INVALID_ARGUMENTS;
+
+    lengthInputData = 5 + pace_input->pin_length + pace_input->chat_length
+        + pace_input->certificate_description_length;
+
+    if (lengthInputData + 3 > *scount)
+        return SC_ERROR_OUT_OF_MEMORY;
+
+    /* idxFunction */
+    *(p++) = PACE_FUNCTION_EstablishPACEChannel;
+
+    /* lengthInputData */
+    memcpy(p, &lengthInputData, sizeof lengthInputData);
+    p += sizeof lengthInputData;
+
+    *(p++) = pace_input->pin_id;
+
+    /* length CHAT */
+    lengthCHAT = pace_input->chat_length;
+    *(p++) = lengthCHAT;
+    /* CHAT */
+    memcpy(p, pace_input->chat, lengthCHAT);
+    p += lengthCHAT;
+
+    /* length PIN */
+    lengthPIN = pace_input->pin_length;
+    *(p++) = lengthPIN;
+
+    /* PIN */
+    memcpy(p, pace_input->pin, lengthPIN);
+    p += lengthPIN;
+
+    /* lengthCertificateDescription */
+    lengthCertificateDescription = pace_input->certificate_description_length;
+    memcpy(p, &lengthCertificateDescription,
+            sizeof lengthCertificateDescription);
+    p += sizeof lengthCertificateDescription;
+
+    /* certificate description */
+    memcpy(p, pace_input->certificate_description,
+            lengthCertificateDescription);
+
+    *scount = lengthInputData + 3;
+
+    return SC_SUCCESS;
+}
+
+static int transform_pace_output(u8 *rbuf, size_t rbuflen,
+        struct establish_pace_channel_output *pace_output)
+{
+    size_t parsed = 0;
+
+    uint8_t ui8;
+    uint16_t ui16;
+
+    if (!rbuf || !pace_output)
+        return SC_ERROR_INVALID_ARGUMENTS;
+
+    /* Result */
+    if (parsed+4 > rbuflen)
+        return SC_ERROR_UNKNOWN_DATA_RECEIVED;
+    memcpy(&pace_output->result, &rbuf[parsed], 4);
+    parsed += 4;
+
+    /* length_OutputData */
+    if (parsed+2 > rbuflen)
+        return SC_ERROR_UNKNOWN_DATA_RECEIVED;
+    memcpy(&ui16, &rbuf[parsed], 2);
+    if ((size_t)ui16+6 != rbuflen)
+        return SC_ERROR_UNKNOWN_DATA_RECEIVED;
+    parsed += 2;
+
+    /* MSE:Set AT Statusbytes */
+    if (parsed+2 > rbuflen)
+        return SC_ERROR_UNKNOWN_DATA_RECEIVED;
+    pace_output->mse_set_at_sw1 = rbuf[parsed+0];
+    pace_output->mse_set_at_sw1 = rbuf[parsed+1];
+    parsed += 2;
+
+    /* length_CardAccess */
+    if (parsed+2 > rbuflen)
+        return SC_ERROR_UNKNOWN_DATA_RECEIVED;
+    memcpy(&ui16, &rbuf[parsed], 2);
+    /* do not just yet copy ui16 to pace_output->ef_cardaccess_length */
+    parsed += 2;
+
+    /* EF_CardAccess */
+    if (parsed+ui16 > rbuflen)
+        return SC_ERROR_UNKNOWN_DATA_RECEIVED;
+    if (pace_output->ef_cardaccess) {
+        /* caller wants EF.CardAccess */
+        if (pace_output->ef_cardaccess_length < ui16)
+            return SC_ERROR_OUT_OF_MEMORY;
+
+        /* now save ui16 to pace_output->ef_cardaccess_length */
+        pace_output->ef_cardaccess_length = ui16;
+        memcpy(pace_output->ef_cardaccess, &rbuf[parsed], ui16);
+    } else {
+        /* caller does not want EF.CardAccess */
+        pace_output->ef_cardaccess_length = 0;
+    }
+    parsed += ui16;
+
+    if (parsed < rbuflen) {
+        /* The following elements are only present if the execution of PACE is
+         * to be followed by an execution of Terminal Authentication Version 2
+         * as defined in [TR-03110]. These data are needed to perform the
+         * Terminal Authentication. */
+
+        /* length_CARcurr */
+        ui8 = rbuf[parsed];
+        /* do not just yet copy ui8 to pace_output->recent_car_length */
+        parsed += 1;
+
+        /* CARcurr */
+        if (parsed+ui8 > rbuflen)
+            return SC_ERROR_UNKNOWN_DATA_RECEIVED;
+        if (pace_output->recent_car) {
+            /* caller wants most recent certificate authority reference */
+            if (pace_output->recent_car_length < ui8)
+                return SC_ERROR_OUT_OF_MEMORY;
+            /* now save ui8 to pace_output->recent_car_length */
+            pace_output->recent_car_length = ui8;
+            memcpy(pace_output->recent_car, &rbuf[parsed], ui8);
+        } else {
+            /* caller does not want most recent certificate authority reference */
+            pace_output->recent_car_length = 0;
+        }
+        parsed += ui8;
+
+        /* length_CARprev */
+        ui8 = rbuf[parsed];
+        /* do not just yet copy ui8 to pace_output->previous_car_length */
+        parsed += 1;
+
+        /* length_CCARprev */
+        if (parsed+ui8 > rbuflen)
+            return SC_ERROR_UNKNOWN_DATA_RECEIVED;
+        if (pace_output->previous_car) {
+            /* caller wants previous certificate authority reference */
+            if (pace_output->previous_car_length < ui8)
+                return SC_ERROR_OUT_OF_MEMORY;
+            /* now save ui8 to pace_output->previous_car_length */
+            pace_output->previous_car_length = ui8;
+            memcpy(pace_output->previous_car, &rbuf[parsed], ui8);
+        } else {
+            /* caller does not want previous certificate authority reference */
+            pace_output->previous_car_length = 0;
+        }
+        parsed += ui8;
+
+        /* length_IDicc */
+        if (parsed+2 > rbuflen)
+            return SC_ERROR_UNKNOWN_DATA_RECEIVED;
+        memcpy(&ui16, &rbuf[parsed], 2);
+        /* do not just yet copy ui16 to pace_output->id_icc_length */
+        parsed += 2;
+
+        /* IDicc */
+        if (parsed+ui16 > rbuflen)
+            return SC_ERROR_UNKNOWN_DATA_RECEIVED;
+        if (pace_output->id_icc) {
+            /* caller wants Ephemeral PACE public key of the IFD */
+            if (pace_output->id_icc_length < ui16)
+                return SC_ERROR_OUT_OF_MEMORY;
+
+            /* now save ui16 to pace_output->id_icc_length */
+            pace_output->id_icc_length = ui16;
+            memcpy(pace_output->id_icc, &rbuf[parsed], ui16);
+        } else {
+            /* caller does not want Ephemeral PACE public key of the IFD */
+            pace_output->id_icc_length = 0;
+        }
+        parsed += ui16;
+
+        if (parsed < rbuflen)
+            return SC_ERROR_UNKNOWN_DATA_RECEIVED;
+    } else {
+        pace_output->recent_car_length = 0;
+        pace_output->previous_car_length = 0;
+        pace_output->id_icc_length = 0;
+    }
+
+    return SC_SUCCESS;
+}
+
+static int pcsc_perform_pace(struct sc_reader *reader,
+        struct establish_pace_channel_input *pace_input,
+        struct establish_pace_channel_output *pace_output)
+{
+	struct pcsc_private_data *priv;
+	u8 rbuf[SC_MAX_EXT_APDU_BUFFER_SIZE], sbuf[SC_MAX_EXT_APDU_BUFFER_SIZE];
+    size_t rcount = sizeof rbuf, scount = sizeof sbuf;
+
+    if (!reader || !reader->capabilities & SC_READER_CAP_PACE_GENERIC)
+        return SC_ERROR_INVALID_ARGUMENTS;
+    priv = GET_PRIV_DATA(reader);
+    if (!priv)
+        return SC_ERROR_INVALID_ARGUMENTS;
+
+    LOG_TEST_RET(reader->ctx,
+            transform_pace_input(pace_input, sbuf, &scount),
+            "Creating EstabishPACEChannel input data");
+
+    LOG_TEST_RET(reader->ctx,
+            pcsc_internal_transmit(reader, sbuf, scount, rbuf, &rcount,
+                priv->pace_ioctl),
+            "Executing EstabishPACEChannel");
+
+    LOG_TEST_RET(reader->ctx,
+            transform_pace_output(rbuf, rcount, pace_output),
+            "Parsing EstabishPACEChannel output data");
+
+    return SC_SUCCESS;
+}
+
 struct sc_reader_driver * sc_get_pcsc_driver(void)
 {
 	pcsc_ops.init = pcsc_init;
@@ -1643,6 +1944,7 @@ struct sc_reader_driver * sc_get_pcsc_driver(void)
 	pcsc_ops.cancel = pcsc_cancel;
 	pcsc_ops.reset = pcsc_reset;
 	pcsc_ops.use_reader = NULL;
+	pcsc_ops.perform_pace = pcsc_perform_pace; 
 
 	return &pcsc_drv;
 }
@@ -1913,6 +2215,10 @@ int cardmod_use_reader(sc_context_t *ctx, void * pcsc_context_handle, void * pcs
 						{
 							display_ioctl = ntohl(pcsc_tlv[i].value);
 						} 
+						else if (pcsc_tlv[i].tag == FEATURE_EXECUTE_PACE) 
+						{
+							priv->pace_ioctl = ntohl(pcsc_tlv[i].value);
+						}
 						else 
 						{
 							sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Reader feature %02x is not supported", pcsc_tlv[i].tag);
@@ -1961,6 +2267,16 @@ int cardmod_use_reader(sc_context_t *ctx, void * pcsc_context_handle, void * pcs
 							{
 								sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Returned PIN properties structure has bad length (%d/%d)", rcount, sizeof(PIN_PROPERTIES_STRUCTURE));
 							}
+						}
+					}
+
+					if (priv->pace_ioctl) {
+						char *log_text = "Reader supports PACE";
+						if (priv->gpriv->enable_pace) {
+							sc_debug(ctx, SC_LOG_DEBUG_NORMAL, log_text);
+							reader->capabilities |= SC_READER_CAP_PACE;
+						} else {
+							sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "%s %s", log_text, log_disabled);
 						}
 					}
 				}
@@ -2020,6 +2336,7 @@ struct sc_reader_driver * sc_get_cardmod_driver(void)
 	cardmod_ops.wait_for_event = NULL; 
 	cardmod_ops.reset = NULL; 
 	cardmod_ops.use_reader = cardmod_use_reader;
+	cardmod_ops.perform_pace = NULL; 
 
 	return &cardmod_drv;
 }
