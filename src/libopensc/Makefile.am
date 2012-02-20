@@ -30,7 +30,7 @@ libopensc_la_SOURCES = \
 	ctbcs.c reader-ctapi.c reader-pcsc.c reader-openct.c \
 	\
 	card-setcos.c card-miocos.c card-flex.c card-gpk.c \
-	card-cardos.c card-tcos.c card-default.c \
+	card-cardos.c card-tcos.c card-default.c card-npa.c \
 	card-mcrd.c card-starcos.c card-openpgp.c card-jcop.c \
 	card-oberthur.c card-belpic.c card-atrust-acos.c \
 	card-entersafe.c card-epass2003.c \

@@ -187,7 +187,12 @@ enum {
 	SC_CARD_TYPE_IASECC_GEMALTO,
 	SC_CARD_TYPE_IASECC_OBERTHUR,
 	SC_CARD_TYPE_IASECC_SAGEM,
-	SC_CARD_TYPE_IASECC_AMOS
+	SC_CARD_TYPE_IASECC_AMOS,
+
+	/* German identity cards */
+	SC_CARD_TYPE_NPA_BASE = 26000,
+	SC_CARD_TYPE_NPA,
+	SC_CARD_TYPE_NPA_TEST,
 };
 
 extern sc_card_driver_t *sc_get_default_driver(void);
@@ -223,6 +228,7 @@ extern sc_card_driver_t *sc_get_itacns_driver(void);
 extern sc_card_driver_t *sc_get_authentic_driver(void);
 extern sc_card_driver_t *sc_get_iasecc_driver(void);
 extern sc_card_driver_t *sc_get_epass2003_driver(void);
+extern sc_card_driver_t *sc_get_npa_driver(void);
 
 #ifdef __cplusplus
 }
