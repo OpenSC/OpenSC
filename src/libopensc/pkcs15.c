@@ -2033,7 +2033,8 @@ void sc_pkcs15_free_object_content(struct sc_pkcs15_object *obj)
 	obj->content.len = 0;
 }
 
-int sc_pkcs15_allocate_object_content(struct sc_pkcs15_object *obj,
+int sc_pkcs15_allocate_object_content(struct sc_context *ctx,
+		struct sc_pkcs15_object *obj,
 		const unsigned char *value, size_t len)
 {
 	unsigned char *tmp_buf;
@@ -2049,7 +2050,7 @@ int sc_pkcs15_allocate_object_content(struct sc_pkcs15_object *obj,
 	/* Need to pass by temporary variable,
 	 * because 'value' and 'content.value' pointers can be the sames.
 	 */
-	tmp_buf = (unsigned char *)sc_mem_alloc_secure(len);
+	tmp_buf = (unsigned char *)sc_mem_alloc_secure(ctx, len);
 	if (!tmp_buf)
 		return SC_ERROR_OUT_OF_MEMORY;
 

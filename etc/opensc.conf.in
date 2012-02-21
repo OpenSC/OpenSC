@@ -28,6 +28,15 @@ app default {
 	#
 	# profile_dir = @pkgdatadir@;
 
+	# Paranoid memory allocation.
+	#
+	# If set to 'true', then refuse to continue when locking of non-pageable
+	# memory fails. This can cause subtle failures but is more secure when
+	# you have a swap disk.
+	# Default: false
+	#
+	# paranoid_memory = false;
+
 	# CT-API module configuration.
 	reader_driver ctapi {
 		# module /usr/local/towitoko/lib/libtowitoko.so {
