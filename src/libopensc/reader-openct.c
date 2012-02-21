@@ -448,6 +448,7 @@ struct sc_reader_driver *sc_get_openct_driver(void)
 	openct_ops.disconnect = openct_reader_disconnect;
 	openct_ops.transmit = openct_reader_transmit;
 	openct_ops.perform_verify = openct_reader_perform_verify;
+	openct_ops.perform_pace = NULL;
 	openct_ops.lock = openct_reader_lock;
 	openct_ops.unlock = openct_reader_unlock;
 	openct_ops.use_reader = NULL;
