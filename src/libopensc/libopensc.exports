@@ -292,3 +292,4 @@ sc_card_find_rsa_alg
 sc_print_cache
 sc_find_app
 sc_remote_data_init
+sc_perform_pace
