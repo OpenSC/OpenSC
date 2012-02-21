@@ -276,9 +276,9 @@ static int refresh_attributes(sc_reader_t *reader)
 	int old_flags = reader->flags;
 	DWORD state, prev_state;
 	LONG rv;
-	
+
 	sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "%s check", reader->name);
-	
+
 	if (priv->reader_state.szReader == NULL) {
 		priv->reader_state.szReader = reader->name;
 		priv->reader_state.dwCurrentState = SCARD_STATE_UNAWARE;
@@ -317,16 +317,16 @@ static int refresh_attributes(sc_reader_t *reader)
 
 	if (state & SCARD_STATE_PRESENT) {
 		reader->flags |= SC_READER_CARD_PRESENT;
-		
+
 		if (priv->reader_state.cbAtr > SC_MAX_ATR_SIZE)
 			return SC_ERROR_INTERNAL;
 
 		/* Some cards have a different cold (after a powerup) and warm (after a reset) ATR  */
 		if (memcmp(priv->reader_state.rgbAtr, reader->atr.value, priv->reader_state.cbAtr) != 0) {
-			reader->atr.len = priv->reader_state.cbAtr;	
+			reader->atr.len = priv->reader_state.cbAtr;
 			memcpy(reader->atr.value, priv->reader_state.rgbAtr, reader->atr.len);
 		}
-		
+
 		/* Is the reader in use by some other application ? */
 		if (state & SCARD_STATE_INUSE)
 			reader->flags |= SC_READER_CARD_INUSE;
@@ -357,7 +357,7 @@ static int refresh_attributes(sc_reader_t *reader)
 	sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "card %s%s",
 	         reader->flags & SC_READER_CARD_PRESENT ? "present" : "absent",
 	         reader->flags & SC_READER_CARD_CHANGED ? ", changed": "");
-	
+
 	return SC_SUCCESS;
 }
 
@@ -453,7 +453,7 @@ static int pcsc_connect(sc_reader_t *reader)
 	if (!(reader->flags & SC_READER_CARD_PRESENT))
 		SC_FUNC_RETURN(reader->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_CARD_NOT_PRESENT);
 
-	
+
 	rv = priv->gpriv->SCardConnect(priv->gpriv->pcsc_ctx, reader->name,
 			  priv->gpriv->connect_exclusive ? SCARD_SHARE_EXCLUSIVE : SCARD_SHARE_SHARED,
 			  protocol, &card_handle, &active_proto);
@@ -472,7 +472,7 @@ static int pcsc_connect(sc_reader_t *reader)
 
 	reader->active_protocol = pcsc_proto_to_opensc(active_proto);
 	priv->pcsc_card = card_handle;
-	
+
 	sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "Initial protocol: %s", reader->active_protocol == SC_PROTO_T1 ? "T=1" : "T=0");
 
 	/* Check if we need a specific protocol. refresh_attributes above already sets the ATR */
@@ -822,18 +822,18 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 
 	if (gpriv->SCardControl == NULL)
 		return;
-	
+
 	rv = gpriv->SCardControl(card_handle, CM_IOCTL_GET_FEATURE_REQUEST, NULL, 0, feature_buf, sizeof(feature_buf), &feature_len);
 	if (rv != (LONG)SCARD_S_SUCCESS) {
 		PCSC_TRACE(reader, "SCardControl failed", rv);
 		return;
 	}
-	
+
 	if ((feature_len % sizeof(PCSC_TLV_STRUCTURE)) != 0) {
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Inconsistent TLV from reader!");
 		return;
 	}
-	
+
 	/* get the number of elements instead of the complete size */
 	feature_len /= sizeof(PCSC_TLV_STRUCTURE);
 
@@ -873,7 +873,7 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "%s %s", log_text, log_disabled);
 		}
 	}
-	
+
 	if (priv->modify_ioctl || (priv->modify_ioctl_start && priv->modify_ioctl_finish)) {
 		const char *log_text = "Reader supports pinpad PIN modification";
 		if (priv->gpriv->enable_pinpad) {
@@ -914,7 +914,7 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 					reader->capabilities |= SC_READER_CAP_DISPLAY;
 				} else
 					sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Reader does not have a display.");
-			} else 
+			} else
 				sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Returned PIN properties structure has bad length (%d/%d)", rcount, sizeof(PIN_PROPERTIES_STRUCTURE));
 		}
 	}
@@ -1043,14 +1043,14 @@ static int pcsc_detect_readers(sc_context_t *ctx)
 			ret = SC_SUCCESS;	/* silent ignore */
 			goto err1;
 		}
-		
+
 		refresh_attributes(reader);
 
 		/* check for pinpad support early, to allow opensc-tool -l display accurate information */
 		if (gpriv->SCardControl != NULL) {
 			if (priv->reader_state.dwEventState & SCARD_STATE_EXCLUSIVE)
 				continue;
-				
+
 			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Requesting reader features ... ");
 
 			rv = SCARD_E_SHARING_VIOLATION;
@@ -1067,13 +1067,13 @@ static int pcsc_detect_readers(sc_context_t *ctx)
 				rv = gpriv->SCardConnect(gpriv->pcsc_ctx, reader->name, SCARD_SHARE_SHARED, SCARD_PROTOCOL_T0|SCARD_PROTOCOL_T1, &card_handle, &active_proto);
 				PCSC_TRACE(reader, "SCardConnect(SHARED)", rv);
 			}
-			
+
 			if (rv == SCARD_S_SUCCESS) {
 				detect_reader_features(reader, card_handle);
 				gpriv->SCardDisconnect(card_handle, SCARD_LEAVE_CARD);
 			}
 		}
-		
+
 		continue;
 
 	err1:
@@ -1101,7 +1101,7 @@ out:
 
 /* Wait for an event to occur.
  */
-static int pcsc_wait_for_event(sc_context_t *ctx, unsigned int event_mask, sc_reader_t **event_reader, unsigned int *event, 
+static int pcsc_wait_for_event(sc_context_t *ctx, unsigned int event_mask, sc_reader_t **event_reader, unsigned int *event,
 			       int timeout, void **reader_states)
 {
 	struct pcsc_global_private_data *gpriv = (struct pcsc_global_private_data *)ctx->reader_drv_data;
@@ -1194,7 +1194,7 @@ static int pcsc_wait_for_event(sc_context_t *ctx, unsigned int event_mask, sc_re
 		*event = 0;
 		for (i = 0, rsp = rgReaderStates; i < num_watch; i++, rsp++) {
 			DWORD state, prev_state;
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "'%s' before=0x%08X now=0x%08X", rsp->szReader, 
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "'%s' before=0x%08X now=0x%08X", rsp->szReader,
 					rsp->dwCurrentState, rsp->dwEventState);
 			prev_state = rsp->dwCurrentState;
 			state = rsp->dwEventState;
@@ -1227,14 +1227,14 @@ static int pcsc_wait_for_event(sc_context_t *ctx, unsigned int event_mask, sc_re
 					sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "reader re-attached event");
 					*event |= SC_EVENT_READER_ATTACHED;
 				}
-					
+
 				if (*event & event_mask) {
 					sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Matching event 0x%02X in reader %s", *event, rsp->szReader);
 					*event_reader = sc_ctx_get_reader_by_name(ctx, rsp->szReader);
 					r = SC_SUCCESS;
 					goto out;
 				}
-				
+
 			}
 
 			/* No match - copy the state so pcscd knows
@@ -1944,14 +1944,14 @@ struct sc_reader_driver * sc_get_pcsc_driver(void)
 	pcsc_ops.cancel = pcsc_cancel;
 	pcsc_ops.reset = pcsc_reset;
 	pcsc_ops.use_reader = NULL;
-	pcsc_ops.perform_pace = pcsc_perform_pace; 
+	pcsc_ops.perform_pace = pcsc_perform_pace;
 
 	return &pcsc_drv;
 }
 
 #ifdef ENABLE_MINIDRIVER
 
-#define SCARD_CLASS_SYSTEM     0x7fff 
+#define SCARD_CLASS_SYSTEM     0x7fff
 #define SCARD_ATTR_VALUE(Class, Tag) ((((ULONG)(Class)) << 16) | ((ULONG)(Tag)))
 #define SCARD_ATTR_DEVICE_FRIENDLY_NAME_A SCARD_ATTR_VALUE(SCARD_CLASS_SYSTEM, 0x0003)
 #define SCARD_ATTR_DEVICE_SYSTEM_NAME_A SCARD_ATTR_VALUE(SCARD_CLASS_SYSTEM, 0x0004)
@@ -2004,7 +2004,7 @@ static int cardmod_init(sc_context_t *ctx)
 
 	/* Defaults */
 	gpriv->enable_pinpad = 1;
-	
+
 	conf_block = sc_get_conf_block(ctx, "reader_driver", "cardmod", 1);
 	if (conf_block) {
 		    scconf_get_bool(conf_block, "enable_pinpad", gpriv->enable_pinpad);
@@ -2025,7 +2025,7 @@ static int cardmod_init(sc_context_t *ctx)
 		gpriv->SCardStatus = (SCardStatus_t)sc_dlsym(gpriv->dlhandle, "SCardStatusA");
 	if (gpriv->SCardGetStatusChange == NULL)
 		gpriv->SCardGetStatusChange = (SCardGetStatusChange_t)sc_dlsym(gpriv->dlhandle, "SCardGetStatusChangeA");
-	
+
 	gpriv->SCardGetAttrib = sc_dlsym(gpriv->dlhandle, "SCardGetAttrib");
 
 	/* If we have SCardGetAttrib it is correct API */
@@ -2089,7 +2089,7 @@ int cardmod_use_reader(sc_context_t *ctx, void * pcsc_context_handle, void * pcs
 	unsigned int i;
 	wchar_t b;
 	char *p;
-	
+
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 
 	if (!gpriv) {
@@ -2100,7 +2100,7 @@ int cardmod_use_reader(sc_context_t *ctx, void * pcsc_context_handle, void * pcs
 	/* if we already had a reader, delete it */
 	if (sc_ctx_get_reader_count(ctx) > 0) {
 		sc_reader_t *oldrdr = list_extract_at(&ctx->readers, 0);
-		if (oldrdr) 
+		if (oldrdr)
 			_sc_delete_reader(ctx, oldrdr);
 	}
 
@@ -2110,9 +2110,9 @@ int cardmod_use_reader(sc_context_t *ctx, void * pcsc_context_handle, void * pcs
 	card_handle =  *(SCARDHANDLE *)pcsc_card_handle;
 
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "gpriv->pcsc_ctx = %X, card_handle = %X", gpriv->pcsc_ctx, card_handle);
-	
+
 	if(gpriv->SCardGetAttrib(card_handle, SCARD_ATTR_DEVICE_SYSTEM_NAME_A, \
-			reader_name, &reader_name_size) == SCARD_S_SUCCESS) 
+			reader_name, &reader_name_size) == SCARD_S_SUCCESS)
 	{
 		sc_reader_t *reader = NULL;
 		struct pcsc_private_data *priv = NULL;
@@ -2125,7 +2125,7 @@ int cardmod_use_reader(sc_context_t *ctx, void * pcsc_context_handle, void * pcs
 			sc_bin_to_hex(reader_name, reader_name_size, texte, sizeof(texte)-5, ':');
 			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "lecteur name = %s\n%s\n", reader_name,texte);
 		}
-	
+
 		if ((reader = calloc(1, sizeof(sc_reader_t))) == NULL) {
 			ret = SC_ERROR_OUT_OF_MEMORY;
 			goto err1;
@@ -2143,11 +2143,11 @@ int cardmod_use_reader(sc_context_t *ctx, void * pcsc_context_handle, void * pcs
 			goto err1;
 		}
 		priv->gpriv = gpriv;
-		
+
 		/* attempt to detect protocol in use T0/T1/RAW */
 		rv = priv->gpriv->SCardStatus(card_handle, NULL, &readers_len,
 			&state, &prot, atr, &atr_len);
-		if (rv != SCARD_S_SUCCESS) 
+		if (rv != SCARD_S_SUCCESS)
 		{
 			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "SCardStatus failed %08x", rv);
 			prot = SCARD_PROTOCOL_T0;
@@ -2155,76 +2155,76 @@ int cardmod_use_reader(sc_context_t *ctx, void * pcsc_context_handle, void * pcs
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Set protocole to %s", \
 			(prot==SCARD_PROTOCOL_T0)?"T0":((prot==SCARD_PROTOCOL_T1)?"T1":"RAW"));
 		reader->active_protocol = pcsc_proto_to_opensc(prot);
-		
+
 		if (_sc_add_reader(ctx, reader)) {
 			ret = SC_SUCCESS;	/* silent ignore */
 			goto err1;
 		}
 		priv->pcsc_card = card_handle;
-		
+
 		/* check for pinpad support */
-		if (gpriv->SCardControl != NULL) 
+		if (gpriv->SCardControl != NULL)
 		{
 			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Requesting reader features ... ");
 			rv = gpriv->SCardControl(card_handle, CM_IOCTL_GET_FEATURE_REQUEST, NULL, 0, feature_buf, sizeof(feature_buf), &feature_len);
-			if (rv != SCARD_S_SUCCESS) 
+			if (rv != SCARD_S_SUCCESS)
 			{
 				sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "SCardControl failed %08x", rv);
 			}
-			else 
+			else
 			{
-				if ((feature_len % sizeof(PCSC_TLV_STRUCTURE)) != 0) 
+				if ((feature_len % sizeof(PCSC_TLV_STRUCTURE)) != 0)
 				{
 					sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Inconsistent TLV from reader!");
 				}
-				else 
+				else
 				{
 					char *log_disabled = "but it's disabled in configuration file";
 					/* get the number of elements instead of the complete size */
 					feature_len /= sizeof(PCSC_TLV_STRUCTURE);
 
 					pcsc_tlv = (PCSC_TLV_STRUCTURE *)feature_buf;
-					for (i = 0; i < feature_len; i++) 
+					for (i = 0; i < feature_len; i++)
 					{
 						sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Reader feature %02x detected", pcsc_tlv[i].tag);
-						if (pcsc_tlv[i].tag == FEATURE_VERIFY_PIN_DIRECT) 
+						if (pcsc_tlv[i].tag == FEATURE_VERIFY_PIN_DIRECT)
 						{
 							priv->verify_ioctl = ntohl(pcsc_tlv[i].value);
-						} 
-						else if (pcsc_tlv[i].tag == FEATURE_VERIFY_PIN_START) 
+						}
+						else if (pcsc_tlv[i].tag == FEATURE_VERIFY_PIN_START)
 						{
 							priv->verify_ioctl_start = ntohl(pcsc_tlv[i].value);
-						} 
-						else if (pcsc_tlv[i].tag == FEATURE_VERIFY_PIN_FINISH) 
+						}
+						else if (pcsc_tlv[i].tag == FEATURE_VERIFY_PIN_FINISH)
 						{
 							priv->verify_ioctl_finish = ntohl(pcsc_tlv[i].value);
-						} 
-						else if (pcsc_tlv[i].tag == FEATURE_MODIFY_PIN_DIRECT) 
+						}
+						else if (pcsc_tlv[i].tag == FEATURE_MODIFY_PIN_DIRECT)
 						{
 							priv->modify_ioctl = ntohl(pcsc_tlv[i].value);
-						} 
-						else if (pcsc_tlv[i].tag == FEATURE_MODIFY_PIN_START) 
+						}
+						else if (pcsc_tlv[i].tag == FEATURE_MODIFY_PIN_START)
 						{
 							priv->modify_ioctl_start = ntohl(pcsc_tlv[i].value);
-						} 
-						else if (pcsc_tlv[i].tag == FEATURE_MODIFY_PIN_FINISH) 
+						}
+						else if (pcsc_tlv[i].tag == FEATURE_MODIFY_PIN_FINISH)
 						{
 							priv->modify_ioctl_finish = ntohl(pcsc_tlv[i].value);
-						} 
-						else if (pcsc_tlv[i].tag == FEATURE_IFD_PIN_PROPERTIES) 
+						}
+						else if (pcsc_tlv[i].tag == FEATURE_IFD_PIN_PROPERTIES)
 						{
 							display_ioctl = ntohl(pcsc_tlv[i].value);
-						} 
-						else if (pcsc_tlv[i].tag == FEATURE_EXECUTE_PACE) 
+						}
+						else if (pcsc_tlv[i].tag == FEATURE_EXECUTE_PACE)
 						{
 							priv->pace_ioctl = ntohl(pcsc_tlv[i].value);
 						}
-						else 
+						else
 						{
 							sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Reader feature %02x is not supported", pcsc_tlv[i].tag);
 						}
 					}
-						
+
 					/* Set slot capabilities based on detected IOCTLs */
 					if (priv->verify_ioctl || (priv->verify_ioctl_start && priv->verify_ioctl_finish)) {
 						char *log_text = "Reader supports pinpad PIN verification";
@@ -2235,7 +2235,7 @@ int cardmod_use_reader(sc_context_t *ctx, void * pcsc_context_handle, void * pcs
 							sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "%s %s", log_text, log_disabled);
 						}
 					}
-						
+
 					if (priv->modify_ioctl || (priv->modify_ioctl_start && priv->modify_ioctl_finish)) {
 						char *log_text = "Reader supports pinpad PIN modification";
 						if (priv->gpriv->enable_pinpad) {
@@ -2246,24 +2246,24 @@ int cardmod_use_reader(sc_context_t *ctx, void * pcsc_context_handle, void * pcs
 						}
 					}
 
-					if (display_ioctl) 
+					if (display_ioctl)
 					{
 						rcount = sizeof(rbuf);
 						rv = gpriv->SCardControl(card_handle, display_ioctl, NULL, 0, rbuf, sizeof(rbuf), &rcount);
-						if (rv == SCARD_S_SUCCESS) 
+						if (rv == SCARD_S_SUCCESS)
 						{
-							if (rcount == sizeof(PIN_PROPERTIES_STRUCTURE)) 
+							if (rcount == sizeof(PIN_PROPERTIES_STRUCTURE))
 							{
 								PIN_PROPERTIES_STRUCTURE *caps = (PIN_PROPERTIES_STRUCTURE *)rbuf;
-								if (caps->wLcdLayout > 0) 
+								if (caps->wLcdLayout > 0)
 								{
 									sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Reader has a display: %04X", caps->wLcdLayout);
 									reader->capabilities |= SC_READER_CAP_DISPLAY;
-								} 
+								}
 								else
 									sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Reader does not have a display.");
-							} 
-							else 
+							}
+							else
 							{
 								sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Returned PIN properties structure has bad length (%d/%d)", rcount, sizeof(PIN_PROPERTIES_STRUCTURE));
 							}
@@ -2274,7 +2274,7 @@ int cardmod_use_reader(sc_context_t *ctx, void * pcsc_context_handle, void * pcs
 						char *log_text = "Reader supports PACE";
 						if (priv->gpriv->enable_pace) {
 							sc_debug(ctx, SC_LOG_DEBUG_NORMAL, log_text);
-							reader->capabilities |= SC_READER_CAP_PACE;
+							reader->capabilities |= SC_READER_CAP_PACE_GENERIC;
 						} else {
 							sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "%s %s", log_text, log_disabled);
 						}
@@ -2282,20 +2282,20 @@ int cardmod_use_reader(sc_context_t *ctx, void * pcsc_context_handle, void * pcs
 				}
 			}
 		}
-		
-		
+
+
 		refresh_attributes(reader);
-	
+
 		ret = SC_SUCCESS;
 
 		goto out;
-		
+
 	err1:
-		if (priv != NULL) 
+		if (priv != NULL)
 		{
 			free(priv);
 		}
-		if (reader != NULL) 
+		if (reader != NULL)
 		{
 			if (reader->name)
 				free(reader->name);
@@ -2320,9 +2320,9 @@ struct sc_reader_driver * sc_get_cardmod_driver(void)
 {
 
 	struct sc_reader_driver *pcsc_drv = sc_get_pcsc_driver();
-	
+
 	cardmod_ops = *(pcsc_drv->ops);
-	
+
 	cardmod_ops.init = cardmod_init;
 	cardmod_ops.finish = cardmod_finish;
 	cardmod_ops.detect_readers = NULL;
@@ -2333,10 +2333,10 @@ struct sc_reader_driver * sc_get_cardmod_driver(void)
 	cardmod_ops.connect = cardmod_connect;
 	cardmod_ops.disconnect = cardmod_disconnect;
 	/* cardmod_ops.perform_verify = ; */
-	cardmod_ops.wait_for_event = NULL; 
-	cardmod_ops.reset = NULL; 
+	cardmod_ops.wait_for_event = NULL;
+	cardmod_ops.reset = NULL;
 	cardmod_ops.use_reader = cardmod_use_reader;
-	cardmod_ops.perform_pace = NULL; 
+	cardmod_ops.perform_pace = NULL;
 
 	return &cardmod_drv;
 }
