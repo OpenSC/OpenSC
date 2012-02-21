@@ -2274,7 +2274,7 @@ int cardmod_use_reader(sc_context_t *ctx, void * pcsc_context_handle, void * pcs
 						char *log_text = "Reader supports PACE";
 						if (priv->gpriv->enable_pace) {
 							sc_debug(ctx, SC_LOG_DEBUG_NORMAL, log_text);
-							reader->capabilities |= SC_READER_CAP_PACE;
+							reader->capabilities |= SC_READER_CAP_PACE_GENERIC;
 						} else {
 							sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "%s %s", log_text, log_disabled);
 						}
