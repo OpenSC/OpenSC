@@ -1002,6 +1002,7 @@ do_store_public_key(struct sc_profile *profile, EVP_PKEY *pkey)
 	if (opt_objectid)
 		sc_pkcs15_format_id(opt_objectid, &args.id);
 	args.label = (opt_pubkey_label != 0 ? opt_pubkey_label : opt_label);
+	args.x509_usage = opt_x509_usage;
 
 	if (pkey == NULL)
 		r = do_read_public_key(opt_infile, opt_format, &pkey);
@@ -2728,7 +2729,7 @@ int get_pin(sc_ui_hints_t *hints, char **out)
 	int		flags = hints->flags;
 
 	pin_info = hints->info.pin;
-	if (pin_info && pin_info->auth_type == SC_PKCS15_PIN_AUTH_TYPE_PIN)
+	if (pin_info && pin_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
 		return SC_ERROR_NOT_SUPPORTED;
 
 	if (!(label = hints->obj_label)) {
