@@ -2724,7 +2724,7 @@ int get_pin(sc_ui_hints_t *hints, char **out)
 	int		flags = hints->flags;
 
 	pin_info = hints->info.pin;
-	if (pin_info && pin_info->auth_type == SC_PKCS15_PIN_AUTH_TYPE_PIN)
+	if (pin_info && pin_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
 		return SC_ERROR_NOT_SUPPORTED;
 
 	if (!(label = hints->obj_label)) {
