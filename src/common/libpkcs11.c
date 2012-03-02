@@ -10,9 +10,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#ifdef HAVE_LTDL_H
-#include <ltdl.h>
-#endif
 
 #include "pkcs11/pkcs11.h"
 
@@ -36,9 +33,6 @@ C_LoadModule(const char *mspec, CK_FUNCTION_LIST_PTR_PTR funcs)
 {
 	sc_pkcs11_module_t *mod;
 	CK_RV rv, (*c_get_function_list)(CK_FUNCTION_LIST_PTR_PTR);
-#ifdef HAVE_LTDL_H
-	lt_dlinit();
-#endif
 	mod = calloc(1, sizeof(*mod));
 	mod->_magic = MAGIC;
 

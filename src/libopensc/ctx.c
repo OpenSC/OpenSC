@@ -28,15 +28,12 @@
 #include <sys/stat.h>
 #include <limits.h>
 
-#ifdef HAVE_LTDL_H
-#include <ltdl.h>
-#endif
-
 #ifdef _WIN32
 #include <windows.h>
 #include <winreg.h>
 #endif
 
+#include "common/libscdl.h"
 #include "internal.h"
 
 int _sc_add_reader(sc_context_t *ctx, sc_reader_t *reader)
@@ -658,15 +655,6 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 	process_config_file(ctx, &opts);
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "==================================="); /* first thing in the log */
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "opensc version: %s", sc_get_version());
-
-#ifdef HAVE_LTDL_H
-	/* initialize ltdl, if available. See scdl.c for more information */
-	if (lt_dlinit() != 0) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "lt_dlinit() failed");
-		sc_release_context(ctx);
-		return SC_ERROR_INTERNAL;
-	}
-#endif
 
 #ifdef ENABLE_PCSC
 	ctx->reader_driver = sc_get_pcsc_driver();

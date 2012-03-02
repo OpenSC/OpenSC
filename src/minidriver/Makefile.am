@@ -16,7 +16,7 @@ INCLUDES = -I$(top_srcdir)/src
 
 opensc_minidriver@LIBRARY_BITNESS@_la_SOURCES = minidriver.c minidriver.exports \
 	$(top_builddir)/win32/versioninfo.rc
-opensc_minidriver@LIBRARY_BITNESS@_la_LIBADD =  $(LTLIB_LIBS) \
+opensc_minidriver@LIBRARY_BITNESS@_la_LIBADD =  \
 	$(top_builddir)/src/libopensc/libopensc.la \
 	-lcrypt32
 opensc_minidriver@LIBRARY_BITNESS@_la_LDFLAGS = $(AM_LDFLAGS) \

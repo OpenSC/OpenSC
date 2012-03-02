@@ -27,6 +27,7 @@
 #include <stdio.h>
 #include <assert.h>
 
+#include "common/libscdl.h"
 #include "cardctl.h"
 #include "internal.h"
 #include "pkcs15.h"
