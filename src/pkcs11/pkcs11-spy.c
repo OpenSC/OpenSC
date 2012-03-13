@@ -137,7 +137,7 @@ static CK_RV init_spy(void)
     return CKR_HOST_MEMORY;
   }
 
-  /* 
+  /*
    * Don't use getenv() as the last parameter for scconf_get_str(),
    * as we want to be able to override configuration file via
    * environment variables
@@ -148,14 +148,14 @@ static CK_RV init_spy(void)
   }
 #ifdef _WIN32
   if (!spy_output) {
-		/* try for the machine version first, as we may be runing 
-	     * without a user during login 
+		/* try for the machine version first, as we may be runing
+	     * without a user during login
 		 */
         rc = RegOpenKeyEx( HKEY_LOCAL_MACHINE, "Software\\OpenSC Project\\PKCS11-Spy",
                 0, KEY_QUERY_VALUE, &hKey );
 		if (rc != ERROR_SUCCESS ) {
-        	rc = RegOpenKeyEx( HKEY_CURRENT_USER, "Software\\OpenSC Project\\PKCS11-Spy",
-                	0, KEY_QUERY_VALUE, &hKey );
+			rc = RegOpenKeyEx( HKEY_CURRENT_USER, "Software\\OpenSC Project\\PKCS11-Spy",
+					0, KEY_QUERY_VALUE, &hKey );
 		}
         if( rc == ERROR_SUCCESS ) {
                 temp_len = PATH_MAX;
@@ -177,13 +177,13 @@ static CK_RV init_spy(void)
 #ifdef _WIN32
   if (!module) {
 		/* try for the machine version first, as we may be runing
-		 * without a user during login 
+		 * without a user during login
 		 */
         rc = RegOpenKeyEx( HKEY_LOCAL_MACHINE, "Software\\OpenSC Project\\PKCS11-Spy",
                 0, KEY_QUERY_VALUE, &hKey );
 		if (rc != ERROR_SUCCESS ) {
-        	rc = RegOpenKeyEx( HKEY_CURRENT_USER, "Software\\OpenSC Project\\PKCS11-Spy",
-           	     0, KEY_QUERY_VALUE, &hKey );
+			rc = RegOpenKeyEx( HKEY_CURRENT_USER, "Software\\OpenSC Project\\PKCS11-Spy",
+					0, KEY_QUERY_VALUE, &hKey );
 		}
         if( rc == ERROR_SUCCESS ) {
                 temp_len = PATH_MAX;
@@ -204,9 +204,9 @@ static CK_RV init_spy(void)
   if (modhandle && po) {
     fprintf(spy_output, "Loaded: \"%s\"\n", module);
   } else {
-  	po = NULL;
-  	free(pkcs11_spy);
-  	rv = CKR_GENERAL_ERROR;
+	po = NULL;
+	free(pkcs11_spy);
+	rv = CKR_GENERAL_ERROR;
   }
   return rv;
 }
@@ -288,7 +288,7 @@ CK_RV C_GetFunctionList
   if (po == NULL) {
     CK_RV rv = init_spy();
     if (rv != CKR_OK)
-    	return rv;
+		return rv;
   }
 
   enter("C_GetFunctionList");
@@ -303,7 +303,7 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs)
   if (po == NULL) {
     rv = init_spy();
     if (rv != CKR_OK)
-    	return rv;
+		return rv;
   }
 
   enter("C_Initialize");
