@@ -1414,7 +1414,7 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
 	}
 
 	if ((usage = keyargs->usage) == 0) {
-		usage = SC_PKCS15_PRKEY_USAGE_SIGN;
+		usage = SC_PKCS15_PRKEY_USAGE_VERIFY;
 		if (keyargs->x509_usage)
 			usage = sc_pkcs15init_map_usage(keyargs->x509_usage, 0);
 	}
