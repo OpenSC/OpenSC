@@ -2,7 +2,7 @@
  * Support for ePass2003 smart cards 
  *
  * Copyright (C) 2008, Weitao Sun <weitao@ftsafe.com>
- * Copyright (C) 2011, Xiaoshuo Wu <xiaoshuo@ftsafe.com>
+ * Copyright (C) 2011, Riham <ruihan@ftsafe.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
