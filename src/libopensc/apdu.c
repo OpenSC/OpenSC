@@ -373,7 +373,7 @@ static void sc_detect_apdu_cse(const sc_card_t *card, sc_apdu_t *apdu)
  */
 static int do_single_transmit(sc_card_t *card, sc_apdu_t *apdu)
 {
-	int          r;
+	int          r ;
 	size_t       olen  = apdu->resplen;
 	sc_context_t *ctx  = card->ctx;
 
@@ -388,13 +388,41 @@ static int do_single_transmit(sc_card_t *card, sc_apdu_t *apdu)
 	}
 	*/
 
+#ifdef ENABLE_SM	
+	sc_apdu_t sm_apdu = {0};
+	sc_apdu_t plain_apdu = {0};
+	if (ctx->use_sm != 0) {
+		//construct new SM apdu from original apdu
+		u8 data[SC_MAX_EXT_APDU_BUFFER_SIZE] = {0};
+		u8 resp[SC_MAX_EXT_APDU_BUFFER_SIZE] = {0};
+		sm_apdu.data = &data[0];
+		sm_apdu.datalen = SC_MAX_EXT_APDU_BUFFER_SIZE;
+		sm_apdu.resp = &resp[0];
+		sm_apdu.resplen = SC_MAX_EXT_APDU_BUFFER_SIZE;
+
+		r = card->ops->sm_wrap_apdu(card, apdu, &sm_apdu);
+		if(r)
+			return r;
+
+		r = sc_check_apdu(card, &sm_apdu);
+		if(r < 0){
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "cannot validate SM encoded APDU");
+			goto done;
+		}
+		memcpy(&plain_apdu,apdu,sizeof(sc_apdu_t));
+		memcpy(apdu,&sm_apdu,sizeof(sc_apdu_t));
+	}
+#endif	
+
 	/* send APDU to the reader driver */
-	if (card->reader->ops->transmit == NULL)
-		return SC_ERROR_NOT_SUPPORTED;
+	if (card->reader->ops->transmit == NULL){
+		r = SC_ERROR_NOT_SUPPORTED;
+		goto done;
+	}
 	r = card->reader->ops->transmit(card->reader, apdu);
 	if (r != 0) {
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "unable to transmit APDU");
-		return r;
+		goto done;
 	}
 	/* ok, the APDU was successfully transmitted. Now we have two
 	 * special cases:
@@ -420,13 +448,14 @@ static int do_single_transmit(sc_card_t *card, sc_apdu_t *apdu)
 			r = card->reader->ops->transmit(card->reader, apdu);
 			if (r != SC_SUCCESS) {
 				sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "unable to transmit APDU");
-				return r;
+				goto done;
 			}
 		} else {
 			/* we cannot re-transmit the APDU with the demanded
 			 * Le value as the buffer is too small => error */
 			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "wrong length: required length exceeds resplen");
-			return SC_ERROR_WRONG_LENGTH;
+			r = SC_ERROR_WRONG_LENGTH;
+			goto done;
 		}
 	}
 
@@ -455,7 +484,8 @@ static int do_single_transmit(sc_card_t *card, sc_apdu_t *apdu)
 			if (card->ops->get_response == NULL) {
 				/* this should _never_ happen */
 				sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "no GET RESPONSE command\n");
-                        	return SC_ERROR_NOT_SUPPORTED;
+                        	r = SC_ERROR_NOT_SUPPORTED;
+							goto done;
 	                }
 
 			/* if the command already returned some data 
@@ -511,11 +541,17 @@ static int do_single_transmit(sc_card_t *card, sc_apdu_t *apdu)
 			apdu->sw2 = 0x00;
 		}
 	}
-
-	return SC_SUCCESS;
+	
+	r = SC_SUCCESS;	
+done:
+#ifdef ENABLE_SM	
+	r = card->ops->sm_unwrap_apdu(card, apdu,&plain_apdu);
+	memcpy(apdu,&plain_apdu,sizeof(sc_apdu_t));
+#endif	
+	return r;
 }
 
-static int _sc_transmit_apdu(sc_card_t *card, sc_apdu_t *apdu)
+int sc_transmit_apdu(sc_card_t *card, sc_apdu_t *apdu)
 {
 	int r = SC_SUCCESS;
 
@@ -605,55 +641,6 @@ static int _sc_transmit_apdu(sc_card_t *card, sc_apdu_t *apdu)
 	if (sc_unlock(card) != SC_SUCCESS)
 		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "sc_unlock failed");
 
-	return r;
-}
-
-/*
- * Wrap/Unwrap APDU when requested before sending to reader driver
- * Needed (un)wrapping apdu is noticed by a non-null
- * card->ops->(un)wrap_apdu() function pointer
- * (eg: for Secure Messaging)
- *  @param  card  sc_card_t object for the smartcard
- *  @param  apdu  APDU to be sent
- *  @return SC_SUCCESS on success and an error value otherwise
- */
-int sc_transmit_apdu(sc_card_t *card, sc_apdu_t *apdu) {
-	int r;
-	sc_context_t *ctx = card->ctx;
-
-	if (ctx->use_sm != 0) {
-		//construct new SM apdu from original apdu
-		u8 data[SC_MAX_EXT_APDU_BUFFER_SIZE] = {0};
-		u8 resp[SC_MAX_EXT_APDU_BUFFER_SIZE] = {0};
-		sc_apdu_t wrapped_apdu;
-		wrapped_apdu.data = &data[0];
-		wrapped_apdu.datalen = SC_MAX_EXT_APDU_BUFFER_SIZE;
-		wrapped_apdu.resp = &resp[0];
-		wrapped_apdu.resplen = SC_MAX_EXT_APDU_BUFFER_SIZE;
-
-		/* wrap apdu */
-		r = card->ops->sm_wrap_apdu(card, apdu, &wrapped_apdu);
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "sm_wrap_apdu error");
-
-		/* determine the APDU type if necessary, i.e. to use
-		 * short or extended APDUs  */
-		sc_detect_apdu_cse(card, apdu);
-
-		/* check wrapped apdu */
-		r = sc_check_apdu(card, &wrapped_apdu);
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "wrapped APDU is invalid");
-
-		r = _sc_transmit_apdu(card, &wrapped_apdu);
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "unable to transmit wrapped APDU");
-
-		/* unwrap apdu */
-		r = card->ops->sm_unwrap_apdu(card, &wrapped_apdu, apdu);
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "sm_unwrap_apdu error");
-
-	} else {
-		/* no wrap needed, just call reader driver */
-		r = _sc_transmit_apdu(card, apdu);
-	}
 	return r;
 }
 
