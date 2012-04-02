@@ -180,7 +180,7 @@ static int rtecp_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	int r, reset_by_sopin = 0;
 
 	(void)puk; /* no warning */
-	if (!profile || !p15card || !p15card->card || !p15card->card->ctx || !df 
+	if (!profile || !p15card || !p15card->card || !p15card->card->ctx || !df
 			|| !pin_obj || !pin_obj->data || !pin || !pin_len)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
