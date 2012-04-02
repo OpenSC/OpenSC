@@ -92,9 +92,9 @@ int util_connect_card(sc_context_t *ctx, sc_card_t **cardp,
 						if (!memcmp(reader->atr.value, atr_buf, reader->atr.len)) {
 							fprintf(stderr, "Matched ATR in reader: %s\n", reader->name);
 							goto autofound;
-						}	
+						}
 					}
-				}		
+				}
 			}
 			if (!sscanf(reader_id, "%d", &tmp_reader_num)) {
 				/* Try to get the reader by name if it does not parse as a number */

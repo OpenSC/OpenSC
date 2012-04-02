@@ -460,7 +460,7 @@ CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, int pubkey_len,
 			RSA_free(rsa);
 			return CKR_DEVICE_MEMORY;
 		}
-		
+
 		rsa_outlen = RSA_public_decrypt(signat_len, signat, rsa_out, rsa, pad);
 		RSA_free(rsa);
 		if(rsa_outlen <= 0) {

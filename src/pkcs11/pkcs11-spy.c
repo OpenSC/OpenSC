@@ -137,7 +137,7 @@ static CK_RV init_spy(void)
     return CKR_HOST_MEMORY;
   }
 
-  /* 
+  /*
    * Don't use getenv() as the last parameter for scconf_get_str(),
    * as we want to be able to override configuration file via
    * environment variables
@@ -148,8 +148,8 @@ static CK_RV init_spy(void)
   }
 #ifdef _WIN32
   if (!spy_output) {
-		/* try for the machine version first, as we may be runing 
-	     * without a user during login 
+		/* try for the machine version first, as we may be runing
+	     * without a user during login
 		 */
         rc = RegOpenKeyEx( HKEY_LOCAL_MACHINE, "Software\\OpenSC Project\\PKCS11-Spy",
                 0, KEY_QUERY_VALUE, &hKey );
@@ -177,7 +177,7 @@ static CK_RV init_spy(void)
 #ifdef _WIN32
   if (!module) {
 		/* try for the machine version first, as we may be runing
-		 * without a user during login 
+		 * without a user during login
 		 */
         rc = RegOpenKeyEx( HKEY_LOCAL_MACHINE, "Software\\OpenSC Project\\PKCS11-Spy",
                 0, KEY_QUERY_VALUE, &hKey );

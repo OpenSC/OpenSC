@@ -150,7 +150,7 @@ static int sc_unlock_mutex(void *m)
 		return SC_SUCCESS;
 	else
 		return SC_ERROR_INTERNAL;
-	
+
 }
 
 static int sc_destroy_mutex(void *m)
@@ -221,7 +221,7 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs)
 	ctx_opts.ver        = 0;
 	ctx_opts.app_name   = "opensc-pkcs11";
 	ctx_opts.thread_ctx = &sc_thread_ctx;
-	
+
 	rc = sc_context_create(&context, &ctx_opts);
 	if (rc != SC_SUCCESS) {
 		rv = CKR_GENERAL_ERROR;
@@ -234,11 +234,11 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs)
 	/* List of sessions */
 	list_init(&sessions);
 	list_attributes_seeker(&sessions, session_list_seeker);
-	
+
 	/* List of slots */
 	list_init(&virtual_slots);
 	list_attributes_seeker(&virtual_slots, slot_list_seeker);
-	
+
 	/* Create a slot for a future "PnP" stuff. */
 	if (sc_pkcs11_conf.plug_and_play) {
 		create_slot(NULL);
@@ -254,7 +254,7 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs)
 		slot->events = 0; /* Initially there are no events */
 	}
 
-out:	
+out:
 	if (context != NULL)
 		sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_Initialize() = %s", lookup_enum ( RV_T, rv ));
 
@@ -288,7 +288,7 @@ CK_RV C_Finalize(CK_VOID_PTR pReserved)
 		return rv;
 
 	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_Finalize()");
-	
+
 	/* cancel pending calls */
 	in_finalize = 1;
 	sc_cancel(context);
@@ -342,7 +342,7 @@ CK_RV C_GetInfo(CK_INFO_PTR pInfo)
 
 	sc_pkcs11_unlock();
 	return rv;
-}	
+}
 
 CK_RV C_GetFunctionList(CK_FUNCTION_LIST_PTR_PTR ppFunctionList)
 {
@@ -379,7 +379,7 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 		/* Trick NSS into updating the slot list by changing the hotplug slot ID */
 		sc_pkcs11_slot_t *hotplug_slot = list_get_at(&virtual_slots, 0);
 		hotplug_slot->id--;
-		sc_ctx_detect_readers(context); 
+		sc_ctx_detect_readers(context);
 	}
 
 	card_detect_all();
@@ -400,8 +400,8 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 		 * - any slot with token;
 		 * - without token(s), one empty slot per reader;
 		 */
-	        if ((!tokenPresent && !slot->reader) 
-				|| (!tokenPresent && slot->reader != prev_reader) 
+	        if ((!tokenPresent && !slot->reader)
+				|| (!tokenPresent && slot->reader != prev_reader)
 				|| (slot->slot_info.flags & CKF_TOKEN_PRESENT))
 			found[numMatches++] = slot->id;
 		prev_reader = slot->reader;
@@ -564,7 +564,7 @@ CK_RV C_InitToken(CK_SLOT_ID slotID,
 	rv = slot_get_token(slotID, &slot);
 	if (rv != CKR_OK)
 		goto out;
-	
+
 	/* Make sure there's no open session for this token */
 	for (i=0; i<list_size(&sessions); i++) {
 		session = (struct sc_pkcs11_session*)list_get_at(&sessions, i);
@@ -600,7 +600,7 @@ CK_RV C_WaitForSlotEvent(CK_FLAGS flags,   /* blocking/nonblocking flag */
 	CK_SLOT_ID slot_id;
 	CK_RV rv;
 	int r;
-	
+
 	if (pReserved != NULL_PTR)
 		return  CKR_ARGUMENTS_BAD;
 
@@ -633,7 +633,7 @@ again:
 		   Change the first hotplug slot id on every call to make this happen. */
 		sc_pkcs11_slot_t *hotplug_slot = list_get_at(&virtual_slots, 0);
 		*pSlot= hotplug_slot->id -1;
-	
+
 		rv = sc_pkcs11_lock();
 		if (rv != CKR_OK)
 			return rv;
@@ -659,7 +659,7 @@ again:
 	if (rv != CKR_OK)
 		goto again;
 
-out:	
+out:
 	if (pSlot)
 		*pSlot = slot_id;
 
@@ -740,7 +740,7 @@ CK_RV sc_pkcs11_lock(void)
 	if (global_locking)  {
 		while (global_locking->LockMutex(global_lock) != CKR_OK)
 			;
-	} 
+	}
 
 	return CKR_OK;
 }
@@ -753,7 +753,7 @@ __sc_pkcs11_unlock(void *lock)
 	if (global_locking) {
 		while (global_locking->UnlockMutex(lock) != CKR_OK)
 			;
-	} 
+	}
 }
 
 void sc_pkcs11_unlock(void)

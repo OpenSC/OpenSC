@@ -31,7 +31,7 @@
 
 /*
  * Netscape-defined object classes
- * 
+ *
  */
 #define CKO_NETSCAPE 0xCE534350
 
@@ -159,12 +159,12 @@ print_generic(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_P
 				*ascii_ptr = '.';
 			ascii_ptr++;
 		}
-	
+
 		/* padd */
 		while (strlen(hex) < 3*16)
 			strcat(hex, "   ");
 		fprintf(f, "\n    %08X  %s %s", offset, hex, ascii);
-	} 
+	}
 	else {
 		if (value != NULL)
 			fprintf(f, "EMPTY");
@@ -176,7 +176,7 @@ print_generic(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_P
 
 
 #ifdef ENABLE_OPENSSL
-static void 
+static void
 print_dn(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg)
 {
 	print_generic(f, type, value, size, arg);
@@ -197,7 +197,7 @@ print_dn(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR ar
 }
 #endif
 
-void 
+void
 print_print(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg)
 {
 	CK_ULONG i, j;
@@ -207,7 +207,7 @@ print_print(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR
 		fprintf(f, "%s\n    ", buf_spec(value, size));
 		for(i = 0; i < size; i += j) {
 			for(j = 0; ((i + j < size) && (j < 32)); j++) {
-				if (((j % 4) == 0) && (j != 0)) 
+				if (((j % 4) == 0) && (j != 0))
 					fprintf(f, " ");
 				c = ((CK_BYTE *)value)[i+j];
 				fprintf(f, "%02X", c);
@@ -215,7 +215,7 @@ print_print(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR
 			fprintf(f, "\n    ");
 
 			for(j = 0; ((i + j < size) && (j < 32)); j++) {
-				if (((j % 4) == 0) && (j != 0)) 
+				if (((j % 4) == 0) && (j != 0))
 					fprintf(f, " ");
 				c = ((CK_BYTE *)value)[i + j];
 				if((c > 32) && (c < 128))
@@ -224,7 +224,7 @@ print_print(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR
 					fprintf(f, " .");
 			}
 		}
-		if(j == 32) 
+		if(j == 32)
 			fprintf(f, "\n    ");
 	}
 	else {
@@ -474,7 +474,7 @@ static enum_specs ck_mec_s[] = {
   { CKM_JUNIPER_WRAP             , "CKM_JUNIPER_WRAP             " },
   { CKM_FASTHASH                 , "CKM_FASTHASH                 " },
   { CKM_AES_KEY_GEN              , "CKM_AES_KEY_GEN              " },
-  { CKM_AES_ECB                  , "CKM_AES_ECB                  " }, 
+  { CKM_AES_ECB                  , "CKM_AES_ECB                  " },
   { CKM_AES_CBC                  , "CKM_AES_CBC                  " },
   { CKM_AES_MAC                  , "CKM_AES_MAC                  " },
   { CKM_AES_MAC_GENERAL          , "CKM_AES_MAC_GENERAL          " },
@@ -573,13 +573,13 @@ static enum_specs ck_err_s[] = {
   { CKR_VENDOR_DEFINED,                   "CKR_VENDOR_DEFINED" }
 };
 
-static enum_specs ck_usr_s[] = { 
-  { CKU_SO,   "CKU_SO" }, 
+static enum_specs ck_usr_s[] = {
+  { CKU_SO,   "CKU_SO" },
   { CKU_USER, "CKU_USER" },
   { CKU_CONTEXT_SPECIFIC, "CKU_CONTEXT_SPECIFIC" }
 };
 
-static enum_specs ck_sta_s[] = { 
+static enum_specs ck_sta_s[] = {
   { CKS_RO_PUBLIC_SESSION, "CKS_RO_PUBLIC_SESSION" },
   { CKS_RO_USER_FUNCTIONS, "CKS_RO_USER_FUNCTIONS" },
   { CKS_RW_PUBLIC_SESSION, "CKS_RW_PUBLIC_SESSION" },
@@ -612,13 +612,13 @@ type_spec ck_attribute_specs[] = {
   { CKA_VALUE             , "CKA_VALUE            ", print_generic, NULL },
   { CKA_OBJECT_ID         , "CKA_OBJECT_ID        ", print_generic, NULL },
   { CKA_CERTIFICATE_TYPE  , "CKA_CERTIFICATE_TYPE ", print_enum,    ck_crt_t },
-#ifdef ENABLE_OPENSSL 
+#ifdef ENABLE_OPENSSL
   { CKA_ISSUER            , "CKA_ISSUER           ", print_dn,      NULL },
 #else
   { CKA_ISSUER            , "CKA_ISSUER           ", print_generic, NULL },
 #endif
   { CKA_SERIAL_NUMBER     , "CKA_SERIAL_NUMBER    ", print_generic, NULL },
-#ifdef ENABLE_OPENSSL 
+#ifdef ENABLE_OPENSSL
   { CKA_AC_ISSUER         , "CKA_AC_ISSUER        ", print_dn,      NULL },
 #else
   { CKA_AC_ISSUER         , "CKA_AC_ISSUER        ", print_generic, NULL },
@@ -633,7 +633,7 @@ type_spec ck_attribute_specs[] = {
   { CKA_HASH_OF_ISSUER_PUBLIC_KEY, "CKA_HASH_OF_ISSUER_PUBLIC_KEY ", print_generic, NULL },
   { CKA_CHECK_VALUE       , "CKA_CHECK_VALUE      ", print_generic, NULL },
   { CKA_KEY_TYPE          , "CKA_KEY_TYPE         ", print_enum,    ck_key_t },
-#ifdef ENABLE_OPENSSL 
+#ifdef ENABLE_OPENSSL
   { CKA_SUBJECT           , "CKA_SUBJECT          ", print_dn,      NULL },
 #else
   { CKA_SUBJECT           , "CKA_SUBJECT          ", print_generic, NULL },
@@ -750,7 +750,7 @@ const char *
 lookup_enum(CK_ULONG type, CK_ULONG value)
 {
 	CK_ULONG i;
-	
+
 	for(i = 0; ck_types[i].type < ( sizeof(ck_types) / sizeof(enum_spec) ) ; i++)
 		if(ck_types[i].type == type)
 			return lookup_enum_spec(&(ck_types[i]), value);
@@ -758,7 +758,7 @@ lookup_enum(CK_ULONG type, CK_ULONG value)
 }
 
 
-void 
+void
 show_error( FILE *f, char *str, CK_RV rc )
 {
 	fprintf(f, "%s returned:  %ld %s", str, (unsigned long) rc, lookup_enum ( RV_T, rc ));
@@ -766,7 +766,7 @@ show_error( FILE *f, char *str, CK_RV rc )
 }
 
 
-void 
+void
 print_ck_info(FILE *f, CK_INFO *info)
 {
 	fprintf(f, "      cryptokiVersion:         %d.%d\n",    info->cryptokiVersion.major, info->cryptokiVersion.minor );
@@ -777,7 +777,7 @@ print_ck_info(FILE *f, CK_INFO *info)
 }
 
 
-void 
+void
 print_slot_list(FILE *f, CK_SLOT_ID_PTR pSlotList, CK_ULONG ulCount)
 {
 	CK_ULONG i;
@@ -785,14 +785,14 @@ print_slot_list(FILE *f, CK_SLOT_ID_PTR pSlotList, CK_ULONG ulCount)
 	if(pSlotList) {
 		for (i = 0; i < ulCount; i++)
 			fprintf(f, "Slot %ld\n", pSlotList[i]);
-	} 
+	}
 	else {
 		fprintf(f, "Count is %ld\n", ulCount);
 	}
 }
 
 
-void 
+void
 print_slot_info(FILE *f, CK_SLOT_INFO *info)
 {
 	size_t i;
@@ -815,7 +815,7 @@ print_slot_info(FILE *f, CK_SLOT_INFO *info)
 }
 
 
-void 
+void
 print_token_info(FILE *f, CK_TOKEN_INFO *info)
 {
 	size_t            i;
@@ -865,7 +865,7 @@ print_token_info(FILE *f, CK_TOKEN_INFO *info)
 }
 
 
-void 
+void
 print_mech_list(FILE *f, CK_MECHANISM_TYPE_PTR pMechanismList, CK_ULONG ulMechCount)
 {
 	CK_ULONG          imech;
@@ -878,21 +878,21 @@ print_mech_list(FILE *f, CK_MECHANISM_TYPE_PTR pMechanismList, CK_ULONG ulMechCo
 			else
 				fprintf(f, " Unknown Mechanism (%08lx)  \n", pMechanismList[imech]);
 		}
-	} 
+	}
 	else {
 		fprintf(f, "Count is %ld\n", ulMechCount);
 	}
 }
 
 
-void 
+void
 print_mech_info(FILE *f, CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_PTR minfo)
 {
 	const char *name = lookup_enum(MEC_T, type);
 	CK_ULONG known_flags = CKF_HW | CKF_ENCRYPT | CKF_DECRYPT | CKF_DIGEST |
 			CKF_SIGN | CKF_SIGN_RECOVER | CKF_VERIFY | CKF_VERIFY_RECOVER |
 			CKF_GENERATE | CKF_GENERATE_KEY_PAIR | CKF_WRAP | CKF_UNWRAP | CKF_DERIVE;
-    
+
 	if (name)
 		fprintf(f, "%s : ", name);
 	else
@@ -919,7 +919,7 @@ print_mech_info(FILE *f, CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_PTR minfo)
 }
 
 
-void 
+void
 print_attribute_list(FILE *f, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG  ulCount)
 {
 	CK_ULONG j, k;
@@ -950,12 +950,12 @@ print_attribute_list(FILE *f, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG  ulCount)
 }
 
 
-void 
+void
 print_attribute_list_req(FILE *f, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG  ulCount)
 {
 	CK_ULONG j, k;
 	int found;
-	
+
 	for(j = 0; j < ulCount ; j++) {
 		found = 0;
 		for(k = 0; k < ck_attribute_num; k++) {
@@ -966,7 +966,7 @@ print_attribute_list_req(FILE *f, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG  ulCount)
 				k = ck_attribute_num;
 			}
 		}
-		
+
 		if (!found) {
 			fprintf(f, "    CKA_? (0x%08lx)    ", pTemplate[j].type);
 			fprintf(f, "%s\n", buf_spec(pTemplate[j].pValue, pTemplate[j].ulValueLen));
@@ -975,7 +975,7 @@ print_attribute_list_req(FILE *f, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG  ulCount)
 }
 
 
-void 
+void
 print_session_info(FILE *f, CK_SESSION_INFO *info)
 {
 	size_t i;
@@ -989,7 +989,7 @@ print_session_info(FILE *f, CK_SESSION_INFO *info)
 	fprintf(f, "      flags:                   %0lx\n",     info->flags );
 
 	for(i = 0; i < sizeof (ck_flags) / sizeof (*ck_flags); i++) {
-		if(info->flags & ck_flags[i].type) 
+		if(info->flags & ck_flags[i].type)
 			fprintf(f, "        %s\n", ck_flags[i].name);
 	}
 	fprintf(f, "      ulDeviceError:           %0lx\n",     info->ulDeviceError );

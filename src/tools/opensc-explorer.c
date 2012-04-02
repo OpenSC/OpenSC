@@ -444,7 +444,7 @@ static int do_cd(int argc, char **argv)
 		current_path = path;
 		return 0;
 	}
-	if (arg_to_path(argv[0], &path, 0) != 0) 
+	if (arg_to_path(argv[0], &path, 0) != 0)
 		return usage(do_cd);
 
 	r = sc_select_file(card, &path, &file);
@@ -594,7 +594,7 @@ static int do_info(int argc, char **argv)
 		file = current_file;
 		not_current = 0;
 	} else if (argc == 1) {
-		if (arg_to_path(argv[0], &path, 0) != 0) 
+		if (arg_to_path(argv[0], &path, 0) != 0)
 			return usage(do_info);
 
 		r = sc_select_file(card, &path, &file);
@@ -602,7 +602,7 @@ static int do_info(int argc, char **argv)
 			printf("unable to select file: %s\n", sc_strerror(r));
 			return -1;
 		}
-	} else 
+	} else
 		return usage(do_info);
 
 	switch (file->type) {
@@ -847,7 +847,7 @@ static int do_verify(int argc, char **argv)
 
 	if (r) {
 		if (r == SC_ERROR_PIN_CODE_INCORRECT) {
-			if (tries_left >= 0) 
+			if (tries_left >= 0)
 				printf("Incorrect code, %d tries left.\n", tries_left);
 			else
 				printf("Incorrect code.\n");
@@ -909,7 +909,7 @@ static int do_change(int argc, char **argv)
                                       &tries_left);
 	if (r) {
 		if (r == SC_ERROR_PIN_CODE_INCORRECT) {
-			if (tries_left >= 0) 
+			if (tries_left >= 0)
 				printf("Incorrect code, %d tries left.\n", tries_left);
 			else
 				printf("Incorrect code.\n");
@@ -1099,7 +1099,7 @@ static int do_update_binary(int argc, char **argv)
 		goto err;
 	}
 
-	printf("Total of %d bytes written to %04X at %i offset.\n", 
+	printf("Total of %d bytes written to %04X at %i offset.\n",
 	       r, file->id, offs);
 
 	err = 0;
@@ -1160,7 +1160,7 @@ static int do_update_record(int argc, char **argv)
 		goto err;
 	}
 
-	printf("Total of %d bytes written to record %i at %i offset.\n", 
+	printf("Total of %d bytes written to record %i at %i offset.\n",
 	       i, rec, offs);
 
 	err = 0;

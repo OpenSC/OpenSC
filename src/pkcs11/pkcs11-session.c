@@ -178,7 +178,7 @@ CK_RV C_GetSessionInfo(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	struct sc_pkcs11_slot *slot;
 
 	if (pInfo == NULL_PTR)
-		return CKR_ARGUMENTS_BAD;	
+		return CKR_ARGUMENTS_BAD;
 
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)

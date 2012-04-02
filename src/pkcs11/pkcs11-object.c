@@ -53,10 +53,10 @@ static sc_pkcs11_mechanism_type_t find_mechanism = {
 
 static void sc_find_release(sc_pkcs11_operation_t *operation)
 {
-	struct sc_pkcs11_find_operation *fop = 
+	struct sc_pkcs11_find_operation *fop =
 				(struct sc_pkcs11_find_operation *)operation;
 
-	sc_debug(context, SC_LOG_DEBUG_NORMAL,"freeing %d handles used %d  at %p", 
+	sc_debug(context, SC_LOG_DEBUG_NORMAL,"freeing %d handles used %d  at %p",
 			fop->allocated_handles, fop->num_handles, fop->handles);
 	if (fop->handles) {
 		free(fop->handles);
@@ -322,13 +322,13 @@ CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	hide_private = 0;
 	if (slot->login_user != CKU_USER && (slot->token_info.flags & CKF_LOGIN_REQUIRED))
 		hide_private = 1;
-        
+
 	/* For each object in token do */
 	for (i=0; i<list_size(&slot->objects); i++) {
 		object = (struct sc_pkcs11_object *)list_get_at(&slot->objects, i);
 		sc_debug(context, SC_LOG_DEBUG_NORMAL, "Object with handle 0x%lx", object->handle);
 
-		/* User not logged in and private object? */ 
+		/* User not logged in and private object? */
 		if (hide_private) {
 			if (object->ops->get_attribute(session, object, &private_attribute) != CKR_OK)
 			        continue;
@@ -365,7 +365,7 @@ CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 				operation->allocated_handles += SC_PKCS11_FIND_INC_HANDLES;
 				sc_debug(context, SC_LOG_DEBUG_NORMAL, "realloc for %d handles",
 					 operation->allocated_handles);
-				operation->handles = realloc(operation->handles, 
+				operation->handles = realloc(operation->handles,
 					sizeof(CK_OBJECT_HANDLE) * operation->allocated_handles);
 				if (operation->handles == NULL) {
 					rv = CKR_HOST_MEMORY;
@@ -1002,7 +1002,7 @@ CK_RV C_DeriveKey(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		  CK_ULONG ulAttributeCount,	/* # of attributes in template */
 		  CK_OBJECT_HANDLE_PTR phKey)
 {				/* gets handle of derived key */
-/* TODO: -DEE ECDH with Cofactor  on PIV is an example */ 
+/* TODO: -DEE ECDH with Cofactor  on PIV is an example */
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
@@ -1010,7 +1010,7 @@ CK_RV C_SeedRandom(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		   CK_BYTE_PTR pSeed,	/* the seed material */
 		   CK_ULONG ulSeedLen)
 {				/* count of bytes of seed material */
-	return CKR_FUNCTION_NOT_SUPPORTED;	
+	return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
 CK_RV C_GenerateRandom(CK_SESSION_HANDLE hSession,	/* the session's handle */

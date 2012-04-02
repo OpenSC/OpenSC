@@ -45,7 +45,7 @@ static struct sc_pkcs11_slot * reader_get_slot(sc_reader_t *reader)
 		sc_pkcs11_slot_t *slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, i);
 		if (slot->reader == reader) {
 			return slot;
-		}	
+		}
 	}
 	return NULL;
 }
@@ -72,7 +72,7 @@ static int object_list_seeker(const void *el, const void *key)
 		return 1;
 	return 0;
 }
-								
+
 CK_RV create_slot(sc_reader_t *reader)
 {
 	struct sc_pkcs11_slot *slot;
@@ -88,7 +88,7 @@ CK_RV create_slot(sc_reader_t *reader)
 	slot->login_user = -1;
 	slot->id = (CK_SLOT_ID) list_locate(&virtual_slots, slot);
 	sc_debug(context, SC_LOG_DEBUG_NORMAL, "Creating slot with id 0x%lx", slot->id);
-	
+
 	list_init(&slot->objects);
 	list_attributes_seeker(&slot->objects, object_list_seeker);
 
@@ -172,7 +172,7 @@ CK_RV card_removed(sc_reader_t * reader)
 		free(card->mechanisms);
 		free(card);
 	}
-	
+
 	return CKR_OK;
 }
 
@@ -203,7 +203,7 @@ CK_RV card_detect(sc_reader_t *reader)
 		sc_debug(context, SC_LOG_DEBUG_NORMAL, "%s: Card changed\n", reader->name);
 		/* The following should never happen - but if it
 		 * does we'll be stuck in an endless loop.
-		 * So better be fussy. 
+		 * So better be fussy.
 		if (!retry--)
 			return CKR_TOKEN_NOT_PRESENT; */
 		card_removed(reader);
@@ -272,7 +272,7 @@ CK_RV card_detect_all(void) {
 			 initialize_reader(reader);
 		 card_detect(sc_ctx_get_reader(context, i));
 	 }
-	 return CKR_OK;			
+	 return CKR_OK;
 }
 
 /* Allocates an existing slot to a card */
@@ -317,7 +317,7 @@ CK_RV slot_get_token(CK_SLOT_ID id, struct sc_pkcs11_slot ** slot)
 		return rv;
 
 	if (!((*slot)->slot_info.flags & CKF_TOKEN_PRESENT)) {
-		if ((*slot)->reader == NULL)	
+		if ((*slot)->reader == NULL)
 			return CKR_TOKEN_NOT_PRESENT;
 		rv = card_detect((*slot)->reader);
 		if (rv != CKR_OK)
