@@ -22,7 +22,8 @@
 
 static struct sc_atr_table npa_atrs[] = {
     {"3B:8A:80:01:80:31:F8:73:F7:41:E0:82:90:00:75", NULL, "German ID card (neuer Personalausweis, nPA)", SC_CARD_TYPE_NPA, 0, NULL},
-    {"3B:84:80:01:00:00:90:00:95", NULL, "German ID card (Test neuer Personalausweis, Test nPA)", SC_CARD_TYPE_NPA_TEST, 0, NULL},
+    {"3B:84:80:01:00:00:90:00:95", NULL, "German ID card (Test neuer Personalausweis)", SC_CARD_TYPE_NPA_TEST, 0, NULL},
+    {"3B:88:80:01:00:E1:F3:5E:13:77:83:00:00", "FF:FF:FF:FF:00:FF:FF:FF:FF:FF:FF:FF:00", "German ID card (Test Online-Ausweisfunktion)", SC_CARD_TYPE_NPA_ONLINE, 0, NULL},
     {NULL, NULL, NULL, 0, 0, NULL}
 };
 

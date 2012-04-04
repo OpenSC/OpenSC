@@ -193,6 +193,7 @@ enum {
 	SC_CARD_TYPE_NPA_BASE = 26000,
 	SC_CARD_TYPE_NPA,
 	SC_CARD_TYPE_NPA_TEST,
+	SC_CARD_TYPE_NPA_ONLINE,
 };
 
 extern sc_card_driver_t *sc_get_default_driver(void);
