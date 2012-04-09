@@ -1875,6 +1875,10 @@ int sc_pkcs15_read_file(struct sc_pkcs15_card *p15card,
 		r = sc_select_file(p15card->card, in_path, &file);
 		if (r)
 			goto fail_unlock;
+		if (file->type == SC_FILE_TYPE_DF)   {
+			r = SC_ERROR_NOT_SUPPORTED;
+			goto fail_unlock;
+		}
 
 		/* Handle the case where the ASN.1 Path object specified
 		 * index and length values */
