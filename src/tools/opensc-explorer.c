@@ -28,6 +28,9 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 #endif
+#if !defined(_WIN32)
+#include <arpa/inet.h>  /* for htons() */
+#endif
 
 #include "libopensc/opensc.h"
 #include "libopensc/asn1.h"
@@ -74,6 +77,7 @@ static const char *option_help[] = {
 
 /* declare functions called by user commands */
 static int do_ls(int argc, char **argv);
+static int do_find(int argc, char **argv);
 static int do_cd(int argc, char **argv);
 static int do_cat(int argc, char **argv);
 static int do_info(int argc, char **argv);
@@ -109,6 +113,9 @@ static struct command	cmds[] = {
 	{ do_ls,
 		"ls",	"",
 		"list all files in the current DF"	},
+	{ do_find,
+		"find",	"[<start id> [<end id>]]",
+		"find all files in the current DF"	},
 	{ do_cd,
 		"cd",	"{.. | <file id> | aid:<DF name>}",
 		"change to another DF"			},
@@ -283,6 +290,19 @@ static void check_ret(int r, int op, const char *err, const sc_file_t *file)
 		fprintf(stderr, "ACL for operation: %s\n", util_acl_to_str(sc_file_get_acl_entry(file, op)));
 }
 
+static int arg_to_fid(const char *arg, u8 *fid)
+{
+    if (strlen(arg) != 4) {
+        printf("Wrong ID length.\n");
+        return -1;
+    }
+    if (sscanf(arg, "%02X%02X", &fid[0], &fid[1]) != 2) {
+        printf("Invalid ID.\n");
+        return -1;
+    }
+
+    return 0;
+}
 static int arg_to_path(const char *arg, sc_path_t *path, int is_id)
 {
 	memset(path, 0, sizeof(sc_path_t));
@@ -300,19 +320,10 @@ static int arg_to_path(const char *arg, sc_path_t *path, int is_id)
 		}
 	} else {
 		/* file id */
-		unsigned int buf[2];
 		u8 cbuf[2];
+        if (arg_to_fid(arg, cbuf) < 0)
+			return -1;
 
-		if (strlen(arg) != 4) {
-			printf("Wrong ID length.\n");
-			return -1;
-		}
-		if (sscanf(arg, "%02X%02X", &buf[0], &buf[1]) != 2) {
-			printf("Invalid ID.\n");
-			return -1;
-		}
-		cbuf[0] = buf[0];
-		cbuf[1] = buf[1];
 		if ((cbuf[0] == 0x3F && cbuf[1] == 0x00) || is_id) {
 			path->len = 2;
 			memcpy(path->value, cbuf, 2);
@@ -406,6 +417,71 @@ static int do_ls(int argc, char **argv)
 		cur += 2;
 		count -= 2;
 		select_current_path_or_die();
+	}
+	return 0;
+}
+
+static int do_find(int argc, char **argv)
+{
+	u8 fid[2], end[2];
+    sc_path_t path;
+	int r, count;
+
+    fid[0] = 0;
+    fid[1] = 0;
+    end[0] = 0xFF;
+    end[1] = 0xFF;
+    switch (argc) {
+        case 2:
+            if (arg_to_fid(argv[1], end) != 0) 
+                return usage(do_find);
+            /* fall through */
+        case 1:
+            if (arg_to_fid(argv[0], fid) != 0) 
+                return usage(do_find);
+            /* fall through */
+        case 0:
+            break;
+        default:
+            return usage(do_find);
+    }
+
+	printf("FileID\tType  Size\n");
+	while (1) {
+		sc_file_t *file = NULL;
+
+        printf("(%02X%02X)\r", fid[0], fid[1]);
+        fflush(stdout);
+
+		if (current_path.type != SC_PATH_TYPE_DF_NAME) {
+			path = current_path;
+			sc_append_path_id(&path, fid, sizeof fid);
+		} else {
+			if (sc_path_set(&path, SC_PATH_TYPE_FILE_ID, fid, 2, 0, 0) != SC_SUCCESS) {
+				printf("unable to set path.\n");
+				die(1);
+			}
+		}
+
+        r = sc_select_file(card, &path, &file);
+		switch (r) {
+            case SC_SUCCESS:
+                file->id = (fid[0] << 8) | fid[1];
+                print_file(file);
+                sc_file_free(file);
+                select_current_path_or_die();
+                break;
+            case SC_ERROR_NOT_ALLOWED:
+            case SC_ERROR_SECURITY_STATUS_NOT_SATISFIED:
+                printf("(%02X%02X)\t%s\n", fid[0], fid[1], sc_strerror(r));
+                break;
+        }
+
+        if (fid[0] == end[0] && fid[1] == end[1])
+            break;
+        fid[1] = fid[1] + 1;
+        if (fid[1] == 0)
+            fid[0] = fid[0] + 1;
 	}
 	return 0;
 }
