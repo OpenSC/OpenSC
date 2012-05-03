@@ -952,7 +952,35 @@ pgp_get_data(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 static int
 pgp_put_data(sc_card_t *card, unsigned int tag, const u8 *buf, size_t buf_len)
 {
-	LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+	/* TODO: The manual say that
+	 * "input is the filename of the source file or the literal data presented as
+	 * a sequence of hexadecimal values or '"' enclosed string."
+	 * but how to distinguish filename and literal data?
+	 */
+	sc_apdu_t apdu;
+	int r;
+
+	LOG_FUNC_CALLED(card->ctx);
+
+	/* Build APDU */
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xDA, tag >> 8, tag);
+	apdu.data = buf;
+	apdu.datalen = buf_len;
+	apdu.lc = buf_len;
+
+	/* Send APDU to card */
+	r = sc_transmit_apdu(card, &apdu);
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+	/* Check response */
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+
+	/* Instruct more in case of error */
+	if (r == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Please verify PIN first.");
+	}
+	LOG_TEST_RET(card->ctx, r, "Card returned error");
+
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, buf_len);
 }
 
 
@@ -966,6 +994,27 @@ pgp_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
 				"invalid PIN type");
 
+	/* In general, the PIN Reference is extracted from the key-id, for
+	 * example, CHV0 -> Ref=0, CHV1 -> Ref=1.
+	 * However, in the case of OpenGPG, the PIN Ref to compose APDU
+	 * must be 81, 82, 83.
+	 * So, if we receive Ref=1, Ref=2, we must convert to 81, 82...
+	 * In OpenPGP ver 1, the PINs are named CHV1, CHV2, CHV3. In ver 2, they
+	 * are named PW1, PW3 (PW1 operates in 2 modes). However, the PIN references (P2 in APDU)
+	 * are the same between 2 version:
+	 * 81 (CHV1 or PW1), 82 (CHV2 or PW1-mode 2), 83 (CHV3 or PW3).
+	 *
+	 * Note that if this function is called from sc_pkcs15_verify_pin() in pkcs15-pin.c,
+	 * the Ref is already 81, 82, 83.
+	 */
+
+	/* Convert the PIN Reference if needed */
+	data->pin_reference |= 0x80;
+	/* Ensure pin_reference is 81, 82, 83 */
+	if (!(data->pin_reference == 0x81 || data->pin_reference == 0x82 || data->pin_reference == 0x83)) {
+		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
+					 "key-id should be 1, 2, 3.");
+	}
 	LOG_FUNC_RETURN(card->ctx, iso_ops->pin_cmd(card, data, tries_left));
 }
 
