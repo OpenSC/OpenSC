@@ -613,7 +613,7 @@ sc_pkcs15_read_pubkey(struct sc_pkcs15_card *p15card,
 	struct sc_context *ctx = p15card->card->ctx;
 	const struct sc_pkcs15_pubkey_info *info;
 	struct sc_pkcs15_pubkey *pubkey;
-	u8	*data;
+	unsigned char *data = NULL;
 	size_t	len;
 	int	algorithm, r;
 
@@ -649,6 +649,9 @@ sc_pkcs15_read_pubkey(struct sc_pkcs15_card *p15card,
         else   {
 		r = sc_pkcs15_read_file(p15card, &info->path, &data, &len);
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Failed to read public key file.");
+
+		if (!data || !len)
+			LOG_TEST_RET(ctx, SC_ERROR_DATA_OBJECT_NOT_FOUND, "Empty public key file.");
 	}
 
 	pubkey = calloc(1, sizeof(struct sc_pkcs15_pubkey));
