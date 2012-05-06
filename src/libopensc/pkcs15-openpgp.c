@@ -215,21 +215,24 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 			return SC_ERROR_INTERNAL;
 		}
 
-		prkey_info.id.len         = 1;
-		prkey_info.id.value[0]    = i + 1;
-		prkey_info.usage          = key_cfg[i].prkey_usage;
-		prkey_info.native         = 1;
-		prkey_info.key_reference  = i;
-		prkey_info.modulus_length = bebytes2ushort(buffer + 1);
+		/* only add valid keys, i.e. those with a legal algorithm identifier */
+		if (buffer[0] != 0) {
+			prkey_info.id.len         = 1;
+			prkey_info.id.value[0]    = i + 1;
+			prkey_info.usage          = key_cfg[i].prkey_usage;
+			prkey_info.native         = 1;
+			prkey_info.key_reference  = i;
+			prkey_info.modulus_length = bebytes2ushort(buffer + 1);
 
-		strlcpy(prkey_obj.label, key_cfg[i].label, sizeof(prkey_obj.label));
-		prkey_obj.flags = SC_PKCS15_CO_FLAG_PRIVATE | SC_PKCS15_CO_FLAG_MODIFIABLE;
-		prkey_obj.auth_id.len      = 1;
-		prkey_obj.auth_id.value[0] = key_cfg[i].prkey_pin;
+			strlcpy(prkey_obj.label, key_cfg[i].label, sizeof(prkey_obj.label));
+			prkey_obj.flags = SC_PKCS15_CO_FLAG_PRIVATE | SC_PKCS15_CO_FLAG_MODIFIABLE;
+			prkey_obj.auth_id.len      = 1;
+			prkey_obj.auth_id.value[0] = key_cfg[i].prkey_pin;
 
-		r = sc_pkcs15emu_add_rsa_prkey(p15card, &prkey_obj, &prkey_info);
-		if (r < 0)
-			return SC_ERROR_INTERNAL;
+			r = sc_pkcs15emu_add_rsa_prkey(p15card, &prkey_obj, &prkey_info);
+			if (r < 0)
+				return SC_ERROR_INTERNAL;
+		}
 	}
 	/* Add public keys */
 	for (i = 0; i < 3; i++) {
@@ -248,18 +251,21 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 			return SC_ERROR_INTERNAL;
 		}
 
-		pubkey_info.id.len         = 1;
-		pubkey_info.id.value[0]    = i + 1;
-		pubkey_info.modulus_length = bebytes2ushort(buffer + 1);
-		pubkey_info.usage          = key_cfg[i].pubkey_usage;
-		sc_format_path(key_cfg[i].pubkey_path, &pubkey_info.path);
+		/* only add valid keys, i.e. those with a legal algorithm identifier */
+		if (buffer[0] != 0) {
+			pubkey_info.id.len         = 1;
+			pubkey_info.id.value[0]    = i + 1;
+			pubkey_info.modulus_length = bebytes2ushort(buffer + 1);
+			pubkey_info.usage          = key_cfg[i].pubkey_usage;
+			sc_format_path(key_cfg[i].pubkey_path, &pubkey_info.path);
 
-		strlcpy(pubkey_obj.label, key_cfg[i].label, sizeof(pubkey_obj.label));
-		pubkey_obj.flags = SC_PKCS15_CO_FLAG_MODIFIABLE;
+			strlcpy(pubkey_obj.label, key_cfg[i].label, sizeof(pubkey_obj.label));
+			pubkey_obj.flags = SC_PKCS15_CO_FLAG_MODIFIABLE;
 
-		r = sc_pkcs15emu_add_rsa_pubkey(p15card, &pubkey_obj, &pubkey_info);
-		if (r < 0)
-			return SC_ERROR_INTERNAL;
+			r = sc_pkcs15emu_add_rsa_pubkey(p15card, &pubkey_obj, &pubkey_info);
+			if (r < 0)
+				return SC_ERROR_INTERNAL;
+		}
 	}
 
 	return 0;
