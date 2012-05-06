@@ -67,16 +67,33 @@ static const pgp_pin_cfg_t	pin_cfg_v2[3] = {
 };
 
 
-static const char *	pgp_key_name[3] = {
-				"Signature key",
-				"Encryption key",
-				"Authentication key"
-			};
-static const char *	pgp_pubkey_path[3] = {
-				"B601",
-				"B801",
-				"A401"
-			};
+#define PGP_SIG_PRKEY_USAGE	(SC_PKCS15_PRKEY_USAGE_SIGN \
+				| SC_PKCS15_PRKEY_USAGE_SIGNRECOVER \
+				| SC_PKCS15_PRKEY_USAGE_NONREPUDIATION)
+#define	PGP_ENC_PRKEY_USAGE	(SC_PKCS15_PRKEY_USAGE_DECRYPT \
+				| SC_PKCS15_PRKEY_USAGE_UNWRAP)
+#define PGP_AUTH_PRKEY_USAGE	(SC_PKCS15_PRKEY_USAGE_NONREPUDIATION)
+
+#define	PGP_SIG_PUBKEY_USAGE	(SC_PKCS15_PRKEY_USAGE_VERIFY \
+				| SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER)
+#define	PGP_ENC_PUBKEY_USAGE	(SC_PKCS15_PRKEY_USAGE_ENCRYPT \
+				| SC_PKCS15_PRKEY_USAGE_WRAP)
+#define	PGP_AUTH_PUBKEY_USAGE	(SC_PKCS15_PRKEY_USAGE_VERIFY)
+
+typedef	struct _pgp_key_cfg {
+	const char	*label;
+	const char	*pubkey_path;
+	int		prkey_pin;
+	int		prkey_usage;
+	int		pubkey_usage;
+} pgp_key_cfg_t;
+
+static const pgp_key_cfg_t key_cfg[3] = {
+	{ "Signature key",      "B601", 1, PGP_SIG_PRKEY_USAGE,  PGP_SIG_PUBKEY_USAGE  },
+	{ "Encryption key",     "B801", 2, PGP_ENC_PRKEY_USAGE,  PGP_ENC_PUBKEY_USAGE  },
+	{ "Authentication key", "A401", 2, PGP_AUTH_PRKEY_USAGE, PGP_AUTH_PUBKEY_USAGE }
+};
+
 
 static void
 set_string(char **strp, const char *value)
@@ -183,20 +200,10 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 
 	/* XXX: check if "halfkeys" can be stored with gpg2. If not, add keypairs in one loop */
 	for (i = 0; i < 3; i++) {
-		static int	prkey_pin[3] = { 1, 2, 2 };
-		static int	prkey_usage[3] = {
-					SC_PKCS15_PRKEY_USAGE_SIGN
-					| SC_PKCS15_PRKEY_USAGE_SIGNRECOVER
-					| SC_PKCS15_PRKEY_USAGE_NONREPUDIATION,
-					SC_PKCS15_PRKEY_USAGE_DECRYPT
-					| SC_PKCS15_PRKEY_USAGE_UNWRAP,
-					SC_PKCS15_PRKEY_USAGE_NONREPUDIATION
-				};
-
 		sc_pkcs15_prkey_info_t prkey_info;
 		sc_pkcs15_object_t     prkey_obj;
-
 		char path_template[] = "006E007300C0";
+
 		memset(&prkey_info, 0, sizeof(prkey_info));
 		memset(&prkey_obj,  0, sizeof(prkey_obj));
 
@@ -210,15 +217,15 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 
 		prkey_info.id.len         = 1;
 		prkey_info.id.value[0]    = i + 1;
-		prkey_info.usage          = prkey_usage[i];
+		prkey_info.usage          = key_cfg[i].prkey_usage;
 		prkey_info.native         = 1;
 		prkey_info.key_reference  = i;
 		prkey_info.modulus_length = bebytes2ushort(buffer + 1);
 
-		strlcpy(prkey_obj.label, pgp_key_name[i], sizeof(prkey_obj.label));
+		strlcpy(prkey_obj.label, key_cfg[i].label, sizeof(prkey_obj.label));
 		prkey_obj.flags = SC_PKCS15_CO_FLAG_PRIVATE | SC_PKCS15_CO_FLAG_MODIFIABLE;
 		prkey_obj.auth_id.len      = 1;
-		prkey_obj.auth_id.value[0] = prkey_pin[i];
+		prkey_obj.auth_id.value[0] = key_cfg[i].prkey_pin;
 
 		r = sc_pkcs15emu_add_rsa_prkey(p15card, &prkey_obj, &prkey_info);
 		if (r < 0)
@@ -226,14 +233,6 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 	}
 	/* Add public keys */
 	for (i = 0; i < 3; i++) {
-		static int	pubkey_usage[3] = {
-					SC_PKCS15_PRKEY_USAGE_VERIFY
-					| SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER,
-					SC_PKCS15_PRKEY_USAGE_ENCRYPT
-					| SC_PKCS15_PRKEY_USAGE_WRAP,
-					SC_PKCS15_PRKEY_USAGE_VERIFY
-				};
-
 		sc_pkcs15_pubkey_info_t pubkey_info;
 		sc_pkcs15_object_t      pubkey_obj;
 		char path_template[] = "006E007300C0";
@@ -249,14 +248,13 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 			return SC_ERROR_INTERNAL;
 		}
 
-
 		pubkey_info.id.len         = 1;
 		pubkey_info.id.value[0]    = i + 1;
 		pubkey_info.modulus_length = bebytes2ushort(buffer + 1);
-		pubkey_info.usage          = pubkey_usage[i];
-		sc_format_path(pgp_pubkey_path[i], &pubkey_info.path);
+		pubkey_info.usage          = key_cfg[i].pubkey_usage;
+		sc_format_path(key_cfg[i].pubkey_path, &pubkey_info.path);
 
-		strlcpy(pubkey_obj.label, pgp_key_name[i], sizeof(pubkey_obj.label));
+		strlcpy(pubkey_obj.label, key_cfg[i].label, sizeof(pubkey_obj.label));
 		pubkey_obj.flags = SC_PKCS15_CO_FLAG_MODIFIABLE;
 
 		r = sc_pkcs15emu_add_rsa_pubkey(p15card, &pubkey_obj, &pubkey_info);
