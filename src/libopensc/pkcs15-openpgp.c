@@ -144,7 +144,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 	p15card->tokeninfo->flags = SC_PKCS15_TOKEN_PRN_GENERATION | SC_PKCS15_TOKEN_EID_COMPLIANT;
 
 	/* Extract preferred language */
-	r = read_file(card, "00655f2d", string, sizeof(string)-1);
+	r = read_file(card, "0065:5f2d", string, sizeof(string)-1);
 	if (r < 0)
 		goto failed;
 	string[r] = '\0';
@@ -160,7 +160,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 	 *  01-03:	max length of pins 1-3
 	 *  04-07:	tries left for pins 1-3
 	 */
-	if ((r = read_file(card, "006E007300C4", buffer, sizeof(buffer))) < 0)
+	if ((r = read_file(card, "006E:0073:00C4", buffer, sizeof(buffer))) < 0)
 		goto failed;
 	if (r != 7) {
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
@@ -202,12 +202,12 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 	for (i = 0; i < 3; i++) {
 		sc_pkcs15_prkey_info_t prkey_info;
 		sc_pkcs15_object_t     prkey_obj;
-		char path_template[] = "006E007300C0";
+		char path_template[] = "006E:0073:00C0";
 
 		memset(&prkey_info, 0, sizeof(prkey_info));
 		memset(&prkey_obj,  0, sizeof(prkey_obj));
 
-		path_template[11] = '1' + i; /* The needed tags are C1 C2 and C3 */
+		path_template[13] = '1' + i; /* The needed tags are C1 C2 and C3 */
 		if ((r = read_file(card, path_template, buffer, sizeof(buffer))) < 0)
 			goto failed;
 		if (r != 6) {
@@ -238,12 +238,12 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 	for (i = 0; i < 3; i++) {
 		sc_pkcs15_pubkey_info_t pubkey_info;
 		sc_pkcs15_object_t      pubkey_obj;
-		char path_template[] = "006E007300C0";
+		char path_template[] = "006E:0073:00C0";
 
 		memset(&pubkey_info, 0, sizeof(pubkey_info));
 		memset(&pubkey_obj,  0, sizeof(pubkey_obj));
 
-		path_template[11] = '1' + i; /* The needed tags are C1 C2 and C3 */
+		path_template[13] = '1' + i; /* The needed tags are C1 C2 and C3 */
 		if ((r = read_file(card, path_template, buffer, sizeof(buffer))) < 0)
 			goto failed;
 		if (r != 6) {
