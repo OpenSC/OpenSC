@@ -95,6 +95,25 @@ static const pgp_key_cfg_t key_cfg[3] = {
 };
 
 
+typedef struct _pgp_manuf_map {
+	ushort		id;
+	const char	*name;
+} pgp_manuf_map_t;
+
+static const pgp_manuf_map_t manuf_map[] = {
+	{ 0x0001, "PPC Card Systems" },
+	{ 0x0002, "Prism"            },
+	{ 0x0003, "OpenFortress"     },
+	{ 0x0004, "Wewid AB"         },
+	{ 0x0005, "ZeitControl"      },
+	{ 0x002A, "Magrathea"        },
+	{ 0xF517, "FSIJ"             },
+	{ 0x0000, "test card"        },
+	{ 0xffff, "test card"        },
+	{ 0, NULL }
+};
+
+
 static void
 set_string(char **strp, const char *value)
 {
@@ -136,10 +155,21 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 	set_string(&p15card->tokeninfo->label, "OpenPGP card");
 	set_string(&p15card->tokeninfo->manufacturer_id, "OpenPGP project");
 
-	if ((r = read_file(card, "004f", buffer, sizeof(buffer))) < 0)
-		goto failed;
-	sc_bin_to_hex(buffer, (size_t)r, string, sizeof(string), 0);
-	set_string(&p15card->tokeninfo->serial_number, string);
+	/* card->serialnr = 2 byte manufacturer_id + 4 byte serial_number */
+	if (card->serialnr.len > 0) {
+		ushort manuf_id = bebytes2ushort(card->serialnr.value);
+		int j;
+
+		sc_bin_to_hex(card->serialnr.value, card->serialnr.len, string, sizeof(string)-1, 0);
+		set_string(&p15card->tokeninfo->serial_number, string);
+
+		for (j = 0; manuf_map[j].name != NULL; j++) {
+			if (manuf_id == manuf_map[j].id) {
+				set_string(&p15card->tokeninfo->manufacturer_id, manuf_map[j].name);
+				break;
+			}
+		}
+	}
 
 	p15card->tokeninfo->version = (card->type == SC_CARD_TYPE_OPENPGP_V2) ? 2 : 1;
 	p15card->tokeninfo->flags = SC_PKCS15_TOKEN_PRN_GENERATION | SC_PKCS15_TOKEN_EID_COMPLIANT;
