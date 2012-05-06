@@ -34,6 +34,39 @@
 int sc_pkcs15emu_openpgp_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
 
 
+#define	PGP_USER_PIN_FLAGS	(SC_PKCS15_PIN_FLAG_CASE_SENSITIVE \
+				| SC_PKCS15_PIN_FLAG_INITIALIZED \
+				| SC_PKCS15_PIN_FLAG_LOCAL)
+#define PGP_ADMIN_PIN_FLAGS	(PGP_USER_PIN_FLAGS \
+				| SC_PKCS15_PIN_FLAG_UNBLOCK_DISABLED \
+				| SC_PKCS15_PIN_FLAG_SO_PIN)
+
+typedef struct _pgp_pin_cfg {
+	const char	*label;
+	int		reference;
+	unsigned int	flags;
+	int		min_length;
+	int		do_index;
+} pgp_pin_cfg_t;
+
+/* OpenPGP cards v1:
+ * "Signature PIN2 & "Encryption PIN" are two different PINs - not sync'ed by hardware
+ */
+static const pgp_pin_cfg_t	pin_cfg_v1[3] = {
+	{ "Signature PIN",  0x81, PGP_USER_PIN_FLAGS,  6, 0 },	// used for PSO:CDS
+	{ "Encryption PIN", 0x82, PGP_USER_PIN_FLAGS,  6, 1 },	// used for PSO:DEC, INT-AUT, {GET,PUT} DATA
+	{ "Admin PIN",      0x83, PGP_ADMIN_PIN_FLAGS, 8, 2 }
+};
+/* OpenPGP cards v2:
+ * "User PIN (sig)" & "User PIN" are the same PIN, but c$use different references depending on action
+ */
+static const pgp_pin_cfg_t	pin_cfg_v2[3] = {
+	{ "User PIN (sig)", 0x81, PGP_USER_PIN_FLAGS,  6, 0 },	// used for PSO:CDS
+	{ "User PIN",       0x82, PGP_USER_PIN_FLAGS,  6, 0 },	// used for PSO:DEC, INT-AUT, {GET,PUT} DATA
+	{ "Admin PIN",      0x83, PGP_ADMIN_PIN_FLAGS, 8, 2 }
+};
+
+
 static const char *	pgp_key_name[3] = {
 				"Signature key",
 				"Encryption key",
@@ -81,6 +114,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 	char		string[256];
 	u8		buffer[256];
 	int		r, i;
+	const pgp_pin_cfg_t *pin_cfg = (card->type == SC_CARD_TYPE_OPENPGP_V2) ? pin_cfg_v2 : pin_cfg_v1;
 
 	set_string(&p15card->tokeninfo->label, "OpenPGP card");
 	set_string(&p15card->tokeninfo->manufacturer_id, "OpenPGP project");
@@ -103,8 +137,9 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 	if ((r = sc_get_data(card, 0x006E, buffer, sizeof(buffer))) < 0)
 		goto failed;
 
-	/* Get CHV status bytes:
+	/* Get CHV status bytes from DO 006E/0073/00C4:
 	 *  00:		1 == user consent for signature PIN
+	 *		(i.e. PIN still valid for next PSO:CDS command)
 	 *  01-03:	max length of pins 1-3
 	 *  04-07:	tries left for pins 1-3
 	 */
@@ -118,56 +153,27 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 
 	/* Add PIN codes */
 	for (i = 0; i < 3; i++) {
-		unsigned int	flags;
-		static const char *	pgp_pin_name_v1[3] = {
-			"Signature PIN",
-			"Encryption PIN",
-			"Admin PIN"
-		};
-		static const char *	pgp_pin_name_v2[3] = {
-			"User PIN (sig)",
-			"User PIN",
-			"Admin PIN"
-			};
-		static int pin_reference[3] = { 0x81, 0x82, 0x83};
-
 		struct sc_pkcs15_auth_info pin_info;
 		struct sc_pkcs15_object   pin_obj;
 
 		memset(&pin_info, 0, sizeof(pin_info));
 		memset(&pin_obj,  0, sizeof(pin_obj));
 
-		flags =	SC_PKCS15_PIN_FLAG_CASE_SENSITIVE |
-			SC_PKCS15_PIN_FLAG_INITIALIZED |
-			SC_PKCS15_PIN_FLAG_LOCAL;
-
-		if (i == 2) {
-			flags |= SC_PKCS15_PIN_FLAG_UNBLOCK_DISABLED |
-				 SC_PKCS15_PIN_FLAG_SO_PIN;
-		}
-
 		pin_info.auth_type = SC_PKCS15_PIN_AUTH_TYPE_PIN;
-		pin_info.auth_id.len   = 1;
+		pin_info.auth_id.len      = 1;
 		pin_info.auth_id.value[0] = i + 1;
-		pin_info.attrs.pin.reference     = pin_reference[i];
-		pin_info.attrs.pin.flags         = flags;
+		pin_info.attrs.pin.reference     = pin_cfg[i].reference;
+		pin_info.attrs.pin.flags         = pin_cfg[i].flags;
 		pin_info.attrs.pin.type          = SC_PKCS15_PIN_TYPE_ASCII_NUMERIC;
-		pin_info.attrs.pin.min_length    = (i == 2 ? 8 : 6);
-		pin_info.attrs.pin.stored_length = buffer[1+i];
-		pin_info.attrs.pin.max_length    = buffer[1+i];
+		pin_info.attrs.pin.min_length    = pin_cfg[i].min_length;
+		pin_info.attrs.pin.stored_length = buffer[1 + pin_cfg[i].do_index];
+		pin_info.attrs.pin.max_length    = buffer[1 + pin_cfg[i].do_index];
 		pin_info.attrs.pin.pad_char      = '\0';
+		pin_info.tries_left = buffer[4 + pin_cfg[i].do_index];
+
 		sc_format_path("3F00", &pin_info.path);
-		pin_info.tries_left    = buffer[4+i];
-		
-		/* Use different names for PIN codes for v1/v2 cards */
-		if (card->type == SC_CARD_TYPE_OPENPGP_V2) {
-        		strlcpy(pin_obj.label, pgp_pin_name_v2[i], sizeof(pin_obj.label));
-        		/* v2 cards have a single User PIN, but use different PIN reference for signatures. Map accordingly. */
-        		pin_info.tries_left = buffer[4+(i==1?0:i)];
-                } else {
-        		strlcpy(pin_obj.label, pgp_pin_name_v1[i], sizeof(pin_obj.label));
-        		pin_info.tries_left = buffer[4+i];
-                }
+
+		strlcpy(pin_obj.label, pin_cfg[i].label, sizeof(pin_obj.label));
 		pin_obj.flags = SC_PKCS15_CO_FLAG_MODIFIABLE | SC_PKCS15_CO_FLAG_PRIVATE;
 
 		r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
