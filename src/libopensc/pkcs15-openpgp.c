@@ -153,8 +153,8 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 
 	/* Add PIN codes */
 	for (i = 0; i < 3; i++) {
-		struct sc_pkcs15_auth_info pin_info;
-		struct sc_pkcs15_object   pin_obj;
+		sc_pkcs15_auth_info_t pin_info;
+		sc_pkcs15_object_t   pin_obj;
 
 		memset(&pin_info, 0, sizeof(pin_info));
 		memset(&pin_obj,  0, sizeof(pin_obj));
@@ -181,7 +181,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 			return SC_ERROR_INTERNAL;
 	}
 
-	/* XXX: check if "halfkeyes" can be stored with gpg2. If not, add keypairs in one loop */
+	/* XXX: check if "halfkeys" can be stored with gpg2. If not, add keypairs in one loop */
 	for (i = 0; i < 3; i++) {
 		static int	prkey_pin[3] = { 1, 2, 2 };
 		static int	prkey_usage[3] = {
@@ -193,8 +193,8 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 					SC_PKCS15_PRKEY_USAGE_NONREPUDIATION
 				};
 
-		struct sc_pkcs15_prkey_info prkey_info;
-		struct sc_pkcs15_object     prkey_obj;
+		sc_pkcs15_prkey_info_t prkey_info;
+		sc_pkcs15_object_t     prkey_obj;
 
 		char path_template[] = "006E007300C0";
 		memset(&prkey_info, 0, sizeof(prkey_info));
@@ -208,12 +208,12 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 			return SC_ERROR_INTERNAL;
 		}
 
-		prkey_info.id.len        = 1;
-		prkey_info.id.value[0]   = i + 1;
-		prkey_info.usage         = prkey_usage[i];
-		prkey_info.native        = 1;
-		prkey_info.key_reference = i;
-		prkey_info.modulus_length= (buffer[1]<<8) + buffer[2];
+		prkey_info.id.len         = 1;
+		prkey_info.id.value[0]    = i + 1;
+		prkey_info.usage          = prkey_usage[i];
+		prkey_info.native         = 1;
+		prkey_info.key_reference  = i;
+		prkey_info.modulus_length = bebytes2ushort(buffer + 1);
 
 		strlcpy(prkey_obj.label, pgp_key_name[i], sizeof(prkey_obj.label));
 		prkey_obj.flags = SC_PKCS15_CO_FLAG_PRIVATE | SC_PKCS15_CO_FLAG_MODIFIABLE;
@@ -234,8 +234,8 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 					SC_PKCS15_PRKEY_USAGE_VERIFY
 				};
 
-		struct sc_pkcs15_pubkey_info pubkey_info;
-		struct sc_pkcs15_object      pubkey_obj;
+		sc_pkcs15_pubkey_info_t pubkey_info;
+		sc_pkcs15_object_t      pubkey_obj;
 		char path_template[] = "006E007300C0";
 
 		memset(&pubkey_info, 0, sizeof(pubkey_info));
@@ -250,10 +250,10 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 		}
 
 
-		pubkey_info.id.len = 1;
-		pubkey_info.id.value[0] = i +1;
-		pubkey_info.modulus_length = (buffer[1]<<8) + buffer[2];;
-		pubkey_info.usage    = pubkey_usage[i];
+		pubkey_info.id.len         = 1;
+		pubkey_info.id.value[0]    = i + 1;
+		pubkey_info.modulus_length = bebytes2ushort(buffer + 1);
+		pubkey_info.usage          = pubkey_usage[i];
 		sc_format_path(pgp_pubkey_path[i], &pubkey_info.path);
 
 		strlcpy(pubkey_obj.label, pgp_key_name[i], sizeof(pubkey_obj.label));
