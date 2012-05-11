@@ -252,6 +252,10 @@ static struct do_info		pgp2_objects[] = {	/* OpenPGP card spec 2.0 */
 	{ 0, 0, 0, NULL, NULL },
 };
 
+/* The DO holding X.509 certificate is constructed but does not contain child DO.
+ * We should notice this when building fake file system later. */
+#define DO_CERT		0x7f21
+
 #define DRVDATA(card)        ((struct pgp_priv_data *) ((card)->drv_data))
 struct pgp_priv_data {
 	struct blob *		mf;
@@ -729,6 +733,32 @@ pgp_get_blob(sc_card_t *card, struct blob *blob, unsigned int id,
 	return SC_ERROR_FILE_NOT_FOUND;
 }
 
+/* Internal: search recursively for a blob by ID below a given root */
+static int
+pgp_seek_blob(sc_card_t *card, struct blob *root, unsigned int id,
+		struct blob **ret)
+{
+	struct blob	*child;
+	int			r;
+
+	if ((r = pgp_get_blob(card, root, id, ret)) == 0)
+		/* The sought blob is right under root */
+		return r;
+
+	/* Not found, seek deeper */
+	for (child = root->files; child; child = child->next) {
+		/* The DO of SIMPLE type or the DO holding certificate
+		 * does not contain children */
+		if (child->info->type == SIMPLE || child->id == DO_CERT)
+			continue;
+		r = pgp_seek_blob(card, child, id, ret);
+		if (r == 0)
+			return r;
+	}
+
+	return SC_ERROR_FILE_NOT_FOUND;
+}
+
 
 /* ABI: SELECT FILE */
 static int
@@ -948,6 +978,28 @@ pgp_get_data(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 }
 
 
+static int
+pgp_update_tag_blob(sc_card_t *card, unsigned int tag, const u8 *buf, size_t buf_len)
+{
+	struct pgp_priv_data *priv = DRVDATA(card);
+	struct blob	*updated_blob;
+	int r;
+
+	LOG_FUNC_CALLED(card->ctx);
+
+	r = pgp_seek_blob(card, priv->mf, tag, &updated_blob);
+	if (r < 0) {
+		sc_log(card->ctx, "Failed to select the blob representing the tag %04X. Error %d.", tag, r);
+		return r;
+	}
+	/* Found the blob */
+	r = pgp_set_blob(updated_blob, buf, buf_len);
+	if (r < 0)
+		sc_log(card->ctx, "Failed to update the blob %04X. Error %d.", updated_blob->id, r);
+
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, buf_len);
+}
+
 /* ABI: PUT DATA */
 static int
 pgp_put_data(sc_card_t *card, unsigned int tag, const u8 *buf, size_t buf_len)
@@ -980,9 +1032,13 @@ pgp_put_data(sc_card_t *card, unsigned int tag, const u8 *buf, size_t buf_len)
 	}
 	LOG_TEST_RET(card->ctx, r, "Card returned error");
 
+	/* Update the corresponding file */
+	sc_log(card->ctx, "To update the corresponding blob data");
+	pgp_update_tag_blob(card, tag, buf, buf_len);
+	/* The pgp_update_tag_blob()'s failure won't affect */
+
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, buf_len);
 }
-
 
 /* ABI: PIN cmd: verify/change/unblock a PIN */
 static int
