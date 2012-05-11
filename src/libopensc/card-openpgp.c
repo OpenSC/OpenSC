@@ -896,7 +896,7 @@ pgp_get_pubkey_pem(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 	int		r;
 
 	sc_log(card->ctx, "called, tag=%04x\n", tag);
-	
+
 	if ((r = pgp_get_blob(card, priv->mf, tag & 0xFFFE, &blob)) < 0
 	 || (r = pgp_get_blob(card, blob, 0x7F49, &blob)) < 0
 	 || (r = pgp_get_blob(card, blob, 0x0081, &mod_blob)) < 0
