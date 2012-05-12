@@ -56,7 +56,7 @@ void strcpy_bp(u8 * dst, const char *src, size_t dstsize)
 
 static CK_RV sc_to_cryptoki_error_common(int rc)
 {
-	sc_debug(context, SC_LOG_DEBUG_NORMAL, "libopensc return value: %d (%s)\n", rc, sc_strerror(rc));
+	sc_log(context, "libopensc return value: %d (%s)\n", rc, sc_strerror(rc));
 	switch (rc) {
 	case SC_SUCCESS:
 		return CKR_OK;
@@ -133,8 +133,8 @@ CK_RV session_start_operation(struct sc_pkcs11_session * session,
 	if (context == NULL)
 		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
-	SC_FUNC_CALLED(context, SC_LOG_DEBUG_NORMAL);
-	sc_debug(context, SC_LOG_DEBUG_NORMAL, "Session 0x%lx, type %d", session->handle, type);
+	LOG_FUNC_CALLED(context);
+	sc_log(context, "Session 0x%lx, type %d", session->handle, type);
 	if (type < 0 || type >= SC_PKCS11_OPERATION_MAX)
 		return CKR_ARGUMENTS_BAD;
 
@@ -155,7 +155,7 @@ CK_RV session_get_operation(struct sc_pkcs11_session * session, int type, sc_pkc
 {
 	sc_pkcs11_operation_t *op;
 
-	SC_FUNC_CALLED(context, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(context);
 
 	if (type < 0 || type >= SC_PKCS11_OPERATION_MAX)
 		return CKR_ARGUMENTS_BAD;
@@ -316,7 +316,7 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t * ctx)
 	conf->create_puk_slot = scconf_get_bool(conf_block, "create_puk_slot", conf->create_puk_slot);
 	conf->zero_ckaid_for_ca_certs = scconf_get_bool(conf_block, "zero_ckaid_for_ca_certs", conf->zero_ckaid_for_ca_certs);
 
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "PKCS#11 options: plug_and_play=%d max_virtual_slots=%d slots_per_card=%d "
+	sc_log(ctx, "PKCS#11 options: plug_and_play=%d max_virtual_slots=%d slots_per_card=%d "
 		 "hide_empty_tokens=%d lock_login=%d pin_unblock_style=%d zero_ckaid_for_ca_certs=%d",
 		 conf->plug_and_play, conf->max_virtual_slots, conf->slots_per_card,
 		 conf->hide_empty_tokens, conf->lock_login, conf->pin_unblock_style,

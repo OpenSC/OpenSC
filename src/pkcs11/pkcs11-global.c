@@ -208,7 +208,7 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs)
 #endif
 
 	if (context != NULL) {
-		sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_Initialize(): Cryptoki already initialized\n");
+		sc_log(context, "C_Initialize(): Cryptoki already initialized\n");
 		return CKR_CRYPTOKI_ALREADY_INITIALIZED;
 	}
 
@@ -256,7 +256,7 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs)
 
 out:
 	if (context != NULL)
-		sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_Initialize() = %s", lookup_enum ( RV_T, rv ));
+		sc_log(context, "C_Initialize() = %s", lookup_enum ( RV_T, rv ));
 
 	if (rv != CKR_OK) {
 		if (context != NULL) {
@@ -287,7 +287,7 @@ CK_RV C_Finalize(CK_VOID_PTR pReserved)
 	if (rv != CKR_OK)
 		return rv;
 
-	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_Finalize()");
+	sc_log(context, "C_Finalize()");
 
 	/* cancel pending calls */
 	in_finalize = 1;
@@ -326,7 +326,7 @@ CK_RV C_GetInfo(CK_INFO_PTR pInfo)
 	if (rv != CKR_OK)
 		return rv;
 
-	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_GetInfo()");
+	sc_log(context, "C_GetInfo()");
 
 	memset(pInfo, 0, sizeof(CK_INFO));
 	pInfo->cryptokiVersion.major = 2;
@@ -371,7 +371,7 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 		return rv;
 	}
 
-	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_GetSlotList(token=%d, %s)", tokenPresent,
+	sc_log(context, "C_GetSlotList(token=%d, %s)", tokenPresent,
 		 (pSlotList==NULL_PTR && sc_pkcs11_conf.plug_and_play)? "plug-n-play":"refresh");
 
 	/* Slot list can only change in v2.20 */
@@ -408,14 +408,14 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 	}
 
 	if (pSlotList == NULL_PTR) {
-		sc_debug(context, SC_LOG_DEBUG_NORMAL, "was only a size inquiry (%d)\n", numMatches);
+		sc_log(context, "was only a size inquiry (%d)\n", numMatches);
 		*pulCount = numMatches;
 		rv = CKR_OK;
 		goto out;
 	}
 
 	if (*pulCount < numMatches) {
-		sc_debug(context, SC_LOG_DEBUG_NORMAL, "buffer was too small (needed %d)\n", numMatches);
+		sc_log(context, "buffer was too small (needed %d)\n", numMatches);
 		*pulCount = numMatches;
 		rv = CKR_BUFFER_TOO_SMALL;
 		goto out;
@@ -425,7 +425,7 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 	*pulCount = numMatches;
 	rv = CKR_OK;
 
-	sc_debug(context, SC_LOG_DEBUG_NORMAL, "returned %d slots\n", numMatches);
+	sc_log(context, "returned %d slots\n", numMatches);
 
 out:
 	if (found != NULL) {
@@ -476,7 +476,7 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
 	if (rv != CKR_OK)
 		return rv;
 
-	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_GetSlotInfo(0x%lx)", slotID);
+	sc_log(context, "C_GetSlotInfo(0x%lx)", slotID);
 
 	rv = slot_get_slot(slotID, &slot);
 	if (rv == CKR_OK){
@@ -498,7 +498,7 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
 	if (rv == CKR_OK)
 		memcpy(pInfo, &slot->slot_info, sizeof(CK_SLOT_INFO));
 
-	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_GetSlotInfo(0x%lx) = %s", slotID, lookup_enum ( RV_T, rv ));
+	sc_log(context, "C_GetSlotInfo(0x%lx) = %s", slotID, lookup_enum ( RV_T, rv ));
 	sc_pkcs11_unlock();
 	return rv;
 }
@@ -604,7 +604,7 @@ CK_RV C_WaitForSlotEvent(CK_FLAGS flags,   /* blocking/nonblocking flag */
 	if (pReserved != NULL_PTR)
 		return  CKR_ARGUMENTS_BAD;
 
-	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_WaitForSlotEvent(block=%d)", !(flags & CKF_DONT_BLOCK));
+	sc_log(context, "C_WaitForSlotEvent(block=%d)", !(flags & CKF_DONT_BLOCK));
 	/* Not all pcsc-lite versions implement consistently used functions as they are */
 	/* FIXME: add proper checking into build to check correct pcsc-lite version for SCardStatusChange/SCardCancel */
 	if (!(flags & CKF_DONT_BLOCK))
@@ -625,7 +625,7 @@ CK_RV C_WaitForSlotEvent(CK_FLAGS flags,   /* blocking/nonblocking flag */
 		goto out;
 
 again:
-	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_WaitForSlotEvent() reader_states:%p", reader_states);
+	sc_log(context, "C_WaitForSlotEvent() reader_states:%p", reader_states);
 	sc_pkcs11_unlock();
 	r = sc_wait_for_event(context, mask, &found, &events, -1, &reader_states);
 	if (sc_pkcs11_conf.plug_and_play && events & SC_EVENT_READER_ATTACHED) {
@@ -648,7 +648,7 @@ again:
 		return rv;
 
 	if (r != SC_SUCCESS) {
-		sc_debug(context, SC_LOG_DEBUG_NORMAL, "sc_wait_for_event() returned %d\n",  r);
+		sc_log(context, "sc_wait_for_event() returned %d\n",  r);
 		rv = sc_to_cryptoki_error(r, "C_WaitForSlotEvent");
 		goto out;
 	}
@@ -665,11 +665,11 @@ out:
 
 	/* Free allocated readers states holder */
 	if (reader_states)   {
-		sc_debug(context, SC_LOG_DEBUG_NORMAL, "free reader states");
+		sc_log(context, "free reader states");
 		sc_wait_for_event(context, 0, NULL, NULL, -1, &reader_states);
 	}
 
-	sc_debug(context, SC_LOG_DEBUG_NORMAL, "C_WaitForSlotEvent() = %s, event in 0x%lx", lookup_enum (RV_T, rv), *pSlot);
+	sc_log(context, "C_WaitForSlotEvent() = %s, event in 0x%lx", lookup_enum (RV_T, rv), *pSlot);
 	sc_pkcs11_unlock();
 	return rv;
 }

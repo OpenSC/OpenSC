@@ -282,7 +282,7 @@ static CK_RV sc_pkcs11_openssl_md_final(sc_pkcs11_operation_t *op,
 	EVP_MD_CTX *md_ctx = DIGEST_CTX(op);
 
 	if (*pulDigestLen < (unsigned) EVP_MD_CTX_size(md_ctx)) {
-		sc_debug(context, SC_LOG_DEBUG_NORMAL, "Provided buffer too small: %ul < %d",
+		sc_log(context, "Provided buffer too small: %ul < %d",
 			*pulDigestLen, EVP_MD_CTX_size(md_ctx));
 		*pulDigestLen = EVP_MD_CTX_size(md_ctx);
 		return CKR_BUFFER_TOO_SMALL;
@@ -429,7 +429,7 @@ CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, int pubkey_len,
 		else if (res == 0)
 			return CKR_SIGNATURE_INVALID;
 		else {
-			sc_debug(context, SC_LOG_DEBUG_NORMAL, "EVP_VerifyFinal() returned %d\n", res);
+			sc_log(context, "EVP_VerifyFinal() returned %d\n", res);
 			return CKR_GENERAL_ERROR;
 		}
 	}
@@ -465,7 +465,7 @@ CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, int pubkey_len,
 		RSA_free(rsa);
 		if(rsa_outlen <= 0) {
 			free(rsa_out);
-			sc_debug(context, SC_LOG_DEBUG_NORMAL, "RSA_public_decrypt() returned %d\n", rsa_outlen);
+			sc_log(context, "RSA_public_decrypt() returned %d\n", rsa_outlen);
 			return CKR_GENERAL_ERROR;
 		}
 
