@@ -56,19 +56,20 @@ pkcs11-jar: jar-dir
 		 -k"testcert" jar-dir
 
 if WIN32
-install-exec-hook:	install-pkcs11DATA
+install-exec-hook:
+	$(mkdir_p) "$(DESTDIR)$(libdir)"
 	for l in opensc-pkcs11.dll onepin-opensc-pkcs11.dll pkcs11-spy.dll; do \
 		mv "$(DESTDIR)$(libdir)/$$l" "$(DESTDIR)$(bindir)/$$l"; \
 	done
 else
 # see http://wiki.cacert.org/wiki/Pkcs11TaskForce
-pkcs11_DATA = #This will create the directory
 if CYGWIN
 PKCS11_SUFFIX=.dll
 else
 PKCS11_SUFFIX=.so
 endif
-install-exec-hook:	install-pkcs11DATA
+install-exec-hook:
+	$(mkdir_p) "$(DESTDIR)$(pkcs11dir)"
 	for l in opensc-pkcs11$(PKCS11_SUFFIX) onepin-opensc-pkcs11$(PKCS11_SUFFIX) pkcs11-spy$(PKCS11_SUFFIX); do \
 		rm -f "$(DESTDIR)$(pkcs11dir)/$$l"; \
 		$(LN_S) ../$$l "$(DESTDIR)$(pkcs11dir)/$$l"; \
