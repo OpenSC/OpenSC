@@ -130,6 +130,7 @@ static int entersafe_init(sc_card_t *card)
 	_sc_card_add_rsa_alg(card,2048, flags, 0);
 
 	card->caps = SC_CARD_CAP_RNG; 
+	card->ctx->use_sm = 0;
 
 	/* we need read_binary&friends with max 224 bytes per read */
 	card->max_send_size = 224;
