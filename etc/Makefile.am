@@ -18,8 +18,8 @@ opensc.conf: opensc.conf.in force
 		-e 's|@DEFAULT_PCSC_PROVIDER[@]|$(DEFAULT_PCSC_PROVIDER)|g' \
 		< $< > $@
 
-sysconf_DATA=#required in order to create dir
-install-exec-hook:	install-sysconfDATA opensc.conf
+install-exec-hook: opensc.conf
+	$(mkdir_p) "$(DESTDIR)$(sysconfdir)"
 	if [ -f "$(DESTDIR)$(sysconfdir)/opensc.conf" ]; then \
 		$(INSTALL_DATA) opensc.conf "$(DESTDIR)$(sysconfdir)/opensc.conf.new"; \
 	else \
