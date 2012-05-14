@@ -14,10 +14,11 @@ OPENSC_PKCS11_SRC = pkcs11-global.c pkcs11-session.c pkcs11-object.c misc.c slot
 	mechanism.c openssl.c framework-pkcs15.c \
 	framework-pkcs15init.c debug.c opensc-pkcs11.exports \
 	pkcs11-display.c pkcs11-display.h
-OPENSC_PKCS11_LIBS = $(OPTIONAL_OPENSSL_LIBS) $(PTHREAD_LIBS) \
+OPENSC_PKCS11_LIBS = \
 	$(top_builddir)/src/libopensc/libopensc.la \
 	$(top_builddir)/src/common/libscdl.la \
-	$(top_builddir)/src/common/libcompat.la
+	$(top_builddir)/src/common/libcompat.la \
+	$(OPTIONAL_OPENSSL_LIBS) $(PTHREAD_LIBS)
 
 opensc_pkcs11_la_SOURCES = $(OPENSC_PKCS11_SRC) $(OPENSC_PKCS11_INC) hack-disabled.c
 opensc_pkcs11_la_LIBADD = $(OPENSC_PKCS11_LIBS)
