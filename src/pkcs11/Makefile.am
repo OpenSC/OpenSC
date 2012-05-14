@@ -14,9 +14,10 @@ OPENSC_PKCS11_SRC = pkcs11-global.c pkcs11-session.c pkcs11-object.c misc.c slot
 	mechanism.c openssl.c framework-pkcs15.c \
 	framework-pkcs15init.c debug.c opensc-pkcs11.exports \
 	pkcs11-display.c pkcs11-display.h
-OPENSC_PKCS11_LIBS = $(OPTIONAL_OPENSSL_LIBS) $(PTHREAD_LIBS) $(LTLIB_LIBS) \
+OPENSC_PKCS11_LIBS = \
 	$(top_builddir)/src/common/libcompat.la \
-	$(top_builddir)/src/libopensc/libopensc.la
+	$(top_builddir)/src/libopensc/libopensc.la \
+	$(OPTIONAL_OPENSSL_LIBS) $(PTHREAD_LIBS) $(LTLIB_LIBS)
 
 opensc_pkcs11_la_SOURCES = $(OPENSC_PKCS11_SRC) $(OPENSC_PKCS11_INC) hack-disabled.c
 opensc_pkcs11_la_LIBADD = $(OPENSC_PKCS11_LIBS)
@@ -31,7 +32,7 @@ onepin_opensc_pkcs11_la_LDFLAGS = $(AM_LDFLAGS) \
 	-module -shared -avoid-version -no-undefined
 
 pkcs11_spy_la_SOURCES = pkcs11-spy.c pkcs11-display.c pkcs11-display.h pkcs11-spy.exports
-pkcs11_spy_la_LIBADD = $(OPTIONAL_OPENSSL_LIBS) $(LTLIB_LIBS) $(top_builddir)/src/common/libpkcs11.la
+pkcs11_spy_la_LIBADD = $(top_builddir)/src/common/libpkcs11.la $(OPTIONAL_OPENSSL_LIBS) $(LTLIB_LIBS)
 pkcs11_spy_la_LDFLAGS = $(AM_LDFLAGS) \
 	-export-symbols "$(srcdir)/pkcs11-spy.exports" \
 	-module -shared -avoid-version -no-undefined
