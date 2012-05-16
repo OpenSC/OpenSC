@@ -460,17 +460,19 @@ static int iso7816_select_file(sc_card_t *card,
 	default:
 		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
 	}
-	apdu.p2 = 0;		/* first record, return FCI */
 	apdu.lc = pathlen;
 	apdu.data = path;
 	apdu.datalen = pathlen;
 
 	if (file_out != NULL) {
+        apdu.p2 = 0;		/* first record, return FCI */
 		apdu.resp = buf;
 		apdu.resplen = sizeof(buf);
 		apdu.le = card->max_recv_size > 0 ? card->max_recv_size : 256;
-	} else
+	} else {
+        apdu.p2 = 0x0C;		/* first record, return nothing */
 		apdu.cse = (apdu.lc == 0) ? SC_APDU_CASE_1 : SC_APDU_CASE_3_SHORT;
+    }
 
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
