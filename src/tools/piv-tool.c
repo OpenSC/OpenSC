@@ -114,11 +114,11 @@ static int load_object(const char * object_id, const char * object_file)
 	struct stat stat_buf;
 
     if((fp=fopen(object_file, "r"))==NULL){
-        printf("Cannot open object file, %s %s\n", 
+        printf("Cannot open object file, %s %s\n",
 			(object_file)?object_file:"", strerror(errno));
         return -1;
     }
-							
+
 	stat(object_file, &stat_buf);
 	derlen = stat_buf.st_size;
 	der = malloc(derlen);
@@ -139,17 +139,17 @@ static int load_object(const char * object_id, const char * object_file)
 	}
 
 	sc_format_path(object_id, &path);
-	
+
 	r = sc_select_file(card, &path, NULL);
 	if (r < 0) {
 		fprintf(stderr, "select file failed\n");
 		return -1;
 	}
-	/* leave 8 bits for flags, and pass in total length */ 
+	/* leave 8 bits for flags, and pass in total length */
 	r = sc_write_binary(card, 0, der, derlen, derlen<<8);
 
 	return r;
-}	
+}
 
 
 static int load_cert(const char * cert_id, const char * cert_file,
@@ -166,7 +166,7 @@ static int load_cert(const char * cert_id, const char * cert_file,
 	int r;
 
     if((fp=fopen(cert_file, "r"))==NULL){
-        printf("Cannot open cert file, %s %s\n", 
+        printf("Cannot open cert file, %s %s\n",
 			cert_file?cert_file:"", strerror(errno));
         return -1;
     }
@@ -200,7 +200,7 @@ static int load_cert(const char * cert_id, const char * cert_file,
 	}
     fclose(fp);
 	sc_hex_to_bin(cert_id, buf,&buflen);
-	
+
 	switch (buf[0]) {
 		case 0x9a: sc_format_path("0101",&path); break;
 		case 0x9b: sc_format_path("0500",&path); break;
@@ -218,8 +218,8 @@ static int load_cert(const char * cert_id, const char * cert_file,
 	}
 	/* we pass length  and  8 bits of flag to card-piv.c write_binary */
 	/* pass in its a cert and if needs compress */
-	r = sc_write_binary(card, 0, der, derlen, (derlen<<8) | (compress<<4) | 1); 
-	
+	r = sc_write_binary(card, 0, der, derlen, (derlen<<8) | (compress<<4) | 1);
+
 	return r;
 
 }
@@ -228,9 +228,9 @@ static int admin_mode(const char* admin_info)
 	int r;
 	u8 opts[3];
 	size_t buflen = 2;
-	
 
-	if (strlen(admin_info) == 7 && 
+
+	if (strlen(admin_info) == 7 &&
 			(admin_info[0] == 'A' || admin_info[0] == 'M') &&
 			admin_info[1] == ':' &&
 			(sc_hex_to_bin(admin_info+2, opts+1, &buflen) == 0) &&
@@ -241,7 +241,7 @@ static int admin_mode(const char* admin_info)
 		fprintf(stderr, " admin_mode params <M|A>:<keyref>:<alg>\n");
 		return -1;
 	}
-	
+
 	r = sc_card_ctl(card, SC_CARDCTL_PIV_AUTHENTICATE, &opts);
 	if (r)
 		fprintf(stderr, " admin_mode failed %d\n", r);
@@ -260,7 +260,7 @@ static int gen_key(const char * key_info)
 	u8 expc[4];
 #if OPENSSL_VERSION_NUMBER >= 0x00908000L && !defined(OPENSSL_NO_EC)
 	int nid = -1;
-#endif	
+#endif
 	sc_hex_to_bin(key_info, buf, &buflen);
 	if (buflen != 2) {
 		fprintf(stderr, "<keyref>:<algid> invalid, example: 9A:06\n");
@@ -282,12 +282,12 @@ static int gen_key(const char * key_info)
 		case 0x05: keydata.key_bits = 3072; break;
 		case 0x06: keydata.key_bits = 1024; break;
 		case 0x07: keydata.key_bits = 2048; break;
-#if OPENSSL_VERSION_NUMBER >= 0x00908000L && !defined(OPENSSL_NO_EC)		
-		case 0x11: keydata.key_bits = 0; 
+#if OPENSSL_VERSION_NUMBER >= 0x00908000L && !defined(OPENSSL_NO_EC)
+		case 0x11: keydata.key_bits = 0;
 			nid = NID_X9_62_prime256v1; /* We only support one curve per algid */
-			break; 
-		case 0x14: keydata.key_bits = 0; 
-			nid = NID_secp384r1; 
+			break;
+		case 0x14: keydata.key_bits = 0;
+			nid = NID_secp384r1;
 			break;
 #endif
 		default:
@@ -308,9 +308,9 @@ static int gen_key(const char * key_info)
 
 	if (keydata.key_bits > 0) { /* RSA key */
 		RSA * newkey = NULL;
-	
+
 		newkey = RSA_new();
-		if (newkey == NULL) { 
+		if (newkey == NULL) {
 			fprintf(stderr, "gen_key RSA_new failed %d\n",r);
 			return -1;
 		}
@@ -321,9 +321,9 @@ static int gen_key(const char * key_info)
 		expc[1] = (u8) (expl >>16) & 0xff;
 		expc[0] = (u8) (expl >>24) & 0xff;
 		newkey->e =  BN_bin2bn(expc, 4,  newkey->e);
-	
-		if (verbose) 
-			RSA_print_fp(stdout, newkey,0); 
+
+		if (verbose)
+			RSA_print_fp(stdout, newkey,0);
 
 		EVP_PKEY_assign_RSA(evpkey, newkey);
 
@@ -339,7 +339,7 @@ static int gen_key(const char * key_info)
 		ecgroup = EC_GROUP_new_by_curve_name(nid);
 		EC_GROUP_set_asn1_flag(ecgroup, OPENSSL_EC_NAMED_CURVE);
 		ecpoint = EC_POINT_new(ecgroup);
-	
+
 		/* PIV returns 04||x||y  and x and y are the same size */
 		i = (keydata.ecpoint_len - 1)/2;
 		x = BN_bin2bn(keydata.ecpoint + 1, i, NULL);
@@ -355,7 +355,7 @@ static int gen_key(const char * key_info)
 		EVP_PKEY_assign_EC_KEY(evpkey, eckey);
 #else
 		fprintf(stderr, "This build of OpenSSL does not support EC keys\n");
-		r = 1; 
+		r = 1;
 #endif /* OPENSSL_NO_EC */
 
 	}
@@ -526,7 +526,7 @@ int main(int argc, char * const argv[])
 	}
 
 	/* Only change if not in opensc.conf */
-	if (verbose > 1 && ctx->debug == 0) { 
+	if (verbose > 1 && ctx->debug == 0) {
 		ctx->debug = verbose;
 		sc_ctx_log_to_file(ctx, "stderr");
 	}
@@ -585,7 +585,7 @@ int main(int argc, char * const argv[])
 		action_count--;
 	}
 end:
-	if (bp) 
+	if (bp)
 		BIO_free(bp);
 	if (card) {
 		sc_unlock(card);

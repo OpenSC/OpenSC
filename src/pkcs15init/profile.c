@@ -37,7 +37,7 @@
 #include <assert.h>
 #include <stdlib.h>
 
-#ifdef _WIN32  
+#ifdef _WIN32
 #include <windows.h>
 #include <winreg.h>
 #endif
@@ -56,7 +56,7 @@
 #define TEMPLATE_FILEID_MIN_DIFF	0x20
 
 /*
-#define DEBUG_PROFILE 
+#define DEBUG_PROFILE
 */
 
 /*
@@ -304,7 +304,7 @@ sc_profile_new(void)
 	pro->pin_encoding = SC_PKCS15_PIN_TYPE_ASCII_NUMERIC;
 	pro->pin_minlen = 4;
 	pro->pin_maxlen = 8;
-	pro->id_style = SC_PKCS15INIT_ID_STYLE_NATIVE; 
+	pro->id_style = SC_PKCS15INIT_ID_STYLE_NATIVE;
 
 	return pro;
 }
@@ -323,7 +323,7 @@ sc_profile_load(struct sc_profile *profile, const char *filename)
 	long rc;
 	HKEY hKey;
 #endif
-                
+
 	LOG_FUNC_CALLED(ctx);
 	for (i = 0; ctx->conf_blocks[i]; i++) {
 		profile_dir = scconf_get_str(ctx->conf_blocks[i], "profile_dir", NULL);
@@ -348,8 +348,8 @@ sc_profile_load(struct sc_profile *profile, const char *filename)
 				if ((rc == ERROR_SUCCESS) && (temp_len < PATH_MAX))
 					profile_dir = temp_path;
 				RegCloseKey(hKey);
-			}	
-		}                                                                                                                                                                             
+			}
+		}
 #else
 		profile_dir = SC_PKCS15_PROFILE_DIRECTORY;
 #endif
@@ -397,21 +397,21 @@ sc_profile_finish(struct sc_profile *profile, const struct sc_app_info *app_info
 	if (app_info && app_info->aid.len)   {
 		struct sc_path path;
 
-		sc_log(ctx, "finish profile with '%s' application profile", app_info->label); 
+		sc_log(ctx, "finish profile with '%s' application profile", app_info->label);
 		memset(&path, 0, sizeof(struct sc_path));
 		path.type = SC_PATH_TYPE_DF_NAME;
 		path.aid = app_info->aid;
 
 		sc_log(ctx, "Look for file by path '%s'", sc_print_path(&path));
 		profile->df_info = sc_profile_find_file_by_path(profile, &path);
-		sc_log(ctx, "returned DF info %p", profile->df_info); 
+		sc_log(ctx, "returned DF info %p", profile->df_info);
 		if (profile->df_info && profile->df_info->profile_extension)   {
 			sc_log(ctx, "application profile extension '%s'", profile->df_info->profile_extension);
 			if (sc_profile_load(profile, profile->df_info->profile_extension))
 				LOG_TEST_RET(ctx, SC_ERROR_INCONSISTENT_PROFILE, "Cannot load application profile extension");
 		}
 	}
-	
+
 	profile->df_info = sc_profile_find_file(profile, NULL, "PKCS15-AppDF");
 	if (!profile->df_info)
 		LOG_TEST_RET(ctx, SC_ERROR_INCONSISTENT_PROFILE, "Profile doesn't define a PKCS15-AppDF");
@@ -434,7 +434,7 @@ sc_profile_finish(struct sc_profile *profile, const struct sc_app_info *app_info
 	}
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 
-whine:	
+whine:
 	sc_log(ctx, "%s", reason);
 	LOG_FUNC_RETURN(ctx, SC_ERROR_INCONSISTENT_PROFILE);
 }
@@ -556,7 +556,7 @@ sc_profile_get_file(struct sc_profile *profile,
 }
 
 int
-sc_profile_get_file_instance(struct sc_profile *profile, const char *name, 
+sc_profile_get_file_instance(struct sc_profile *profile, const char *name,
 		int index, sc_file_t **ret)
 {
 	struct sc_context *ctx = profile->card->ctx;
@@ -666,7 +666,7 @@ sc_profile_instantiate_template(sc_profile_t *profile,
 	printf("Instantiate %s in template %s\n", file_name, template_name);
 	sc_profile_find_file_by_path(profile, base_path);
 #endif
-	for (info = profile->template_list; info; info = info->next) 
+	for (info = profile->template_list; info; info = info->next)
 		if (!strcmp(info->name, template_name))
 			break;
 	if (info == NULL)   {
@@ -762,7 +762,7 @@ sc_profile_instantiate_file(sc_profile_t *profile, struct file_info *ft,
 	fi->file->path = parent->file->path;
 	fi->file->id += skew;
 
-	if (fi->file->type == SC_FILE_TYPE_INTERNAL_EF 
+	if (fi->file->type == SC_FILE_TYPE_INTERNAL_EF
 			|| fi->file->type == SC_FILE_TYPE_WORKING_EF
 			|| (fi->file->type == SC_FILE_TYPE_DF && fi->file->id))
 		sc_append_file_id(&fi->file->path, fi->file->id);
@@ -778,8 +778,8 @@ sc_profile_instantiate_file(sc_profile_t *profile, struct file_info *ft,
 }
 
 int
-sc_profile_get_pin_id_by_reference(struct sc_profile *profile, 
-		unsigned auth_method, int reference, 
+sc_profile_get_pin_id_by_reference(struct sc_profile *profile,
+		unsigned auth_method, int reference,
 		struct sc_pkcs15_auth_info *auth_info)
 {
 	struct pin_info *pinfo;
@@ -1032,8 +1032,8 @@ process_bso(struct state *cur, struct block *info,
 	return process_block(&state, info, name, blk);
 }
 
-/* 
- * In the template the difference between any two file-ids 
+/*
+ * In the template the difference between any two file-ids
  * should be greater then TEMPLATE_FILEID_MIN_DIFF.
  */
 static int
@@ -1043,15 +1043,15 @@ template_sanity_check(struct state *cur, struct sc_profile *templ)
 
 	for (fi = templ->ef_list; fi; fi = fi->next) {
 		struct sc_path fi_path =  fi->file->path;
-		int fi_id = fi_path.value[fi_path.len - 2] * 0x100 
-			+ fi_path.value[fi_path.len - 1]; 
+		int fi_id = fi_path.value[fi_path.len - 2] * 0x100
+			+ fi_path.value[fi_path.len - 1];
 
 		if (fi->file->type == SC_FILE_TYPE_BSO)
 			continue;
 		for (ffi = templ->ef_list; ffi; ffi = ffi->next) {
 			struct sc_path ffi_path =  ffi->file->path;
-			int dlt, ffi_id = ffi_path.value[ffi_path.len - 2] * 0x100 
-				+ ffi_path.value[ffi_path.len - 1]; 
+			int dlt, ffi_id = ffi_path.value[ffi_path.len - 2] * 0x100
+				+ ffi_path.value[ffi_path.len - 1];
 
 			if (ffi->file->type == SC_FILE_TYPE_BSO)
 				continue;
@@ -1093,7 +1093,7 @@ process_tmpl(struct state *cur, struct block *info,
 		parse_error(cur, "memory allocation failed");
 		return 1;
 	}
-		
+
 	tinfo = calloc(1, sizeof(*tinfo));
 	if (tinfo == NULL) {
 		parse_error(cur, "memory allocation failed");
@@ -1215,11 +1215,11 @@ new_file(struct state *cur, const char *name, unsigned int type)
 	assert(file);
 	if (file->type != type) {
 		parse_error(cur, "inconsistent file type (should be %s)",
-			file->type == SC_FILE_TYPE_DF 
-				? "DF" : file->type == SC_FILE_TYPE_BSO 
+			file->type == SC_FILE_TYPE_DF
+				? "DF" : file->type == SC_FILE_TYPE_BSO
 					? "BS0" : "EF");
 		if (strncasecmp(name, "PKCS15-", 7) ||
-			!strcasecmp(name+7, "AppDF")) 
+			!strcasecmp(name+7, "AppDF"))
 			sc_file_free(file);
 		return NULL;
 	}
@@ -1344,7 +1344,7 @@ do_aid(struct state *cur, int argc, char **argv)
 		}
 		memcpy(file->name, name, len);
 		file->namelen = len;
-	} 
+	}
 	else {
 		file->namelen = sizeof(file->name);
 		res = sc_hex_to_bin(name, file->name, &file->namelen);
@@ -1387,7 +1387,7 @@ do_exclusive_aid(struct state *cur, int argc, char **argv)
 		}
 		memcpy(file->name, name, len);
 		file->namelen = len;
-	} 
+	}
 	else {
 		file->namelen = sizeof(file->name);
 		res = sc_hex_to_bin(name, file->name, &file->namelen);
@@ -1452,7 +1452,7 @@ do_acl(struct state *cur, int argc, char **argv)
 	}
 	return 0;
 
-bad:	parse_error(cur, 
+bad:	parse_error(cur,
 		"Invalid ACL \"%s%s%s\"\n",
 		oper, what? "=" : "", what? what : "");
 	return 1;
@@ -2004,7 +2004,7 @@ sc_profile_find_file_by_path(struct sc_profile *pro, const sc_path_t *path)
 			continue;
 		if (fp_path->len && memcmp(fp_path->value, path->value, path->len))
 			continue;
-		
+
 		if (path->aid.len && fp_path->aid.len)   {
 			if (memcmp(fp_path->aid.value, path->aid.value, path->aid.len))
 				continue;
@@ -2215,15 +2215,15 @@ __expr_get(struct num_exp_ctx *ctx, int eof_okay)
 	if (isdigit(*s)) {
 		while (isdigit(*s))
 			expr_put(ctx, *s++);
-	} 
+	}
 	else if (*s == '$') {
 		expr_put(ctx, *s++);
 		while (isalnum(*s) || *s == '-' || *s == '_')
 			expr_put(ctx, *s++);
-	} 
+	}
 	else if (strchr("*/+-()|&", *s)) {
 		expr_put(ctx, *s++);
-	} 
+	}
 	else {
 		expr_fail(ctx);
 	}
@@ -2266,14 +2266,14 @@ expr_term(struct num_exp_ctx *ctx, unsigned int *vp)
 	if (*tok == '(') {
 		expr_eval(ctx, vp, 1);
 		expr_expect(ctx, ')');
-	} 
+	}
 	else if (isdigit(*tok)) {
 		char	*ep;
 
 		*vp = strtoul(tok, &ep, 0);
 		if (*ep)
 			expr_fail(ctx);
-	} 
+	}
 	else if (*tok == '$') {
 		sc_macro_t	*mac;
 		char		*argv[32];
@@ -2284,7 +2284,7 @@ expr_term(struct num_exp_ctx *ctx, unsigned int *vp)
 		argc = build_argv(ctx->state, "<expr>", mac->value, argv, 32);
 		if (argc < 0 || get_uint_eval(ctx->state, argc, argv, vp) < 0)
 			expr_fail(ctx);
-	} 
+	}
 	else {
 		parse_error(ctx->state, "Unexpected token \"%s\" in expression", tok);
 		expr_fail(ctx);

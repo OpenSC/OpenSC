@@ -135,7 +135,7 @@ static char * get_pin(struct sc_pkcs15_object *obj)
 		else
 			return strdup(opt_pincode);
 	}
-	
+
 	sprintf(buf, "Enter PIN [%s]: ", obj->label);
 	while (1) {
 		pincode = getpass(buf);
@@ -152,7 +152,7 @@ static int read_input(u8 *buf, int buflen)
 {
 	FILE *inf;
 	int c;
-	
+
 	inf = fopen(opt_input, "rb");
 	if (inf == NULL) {
 		fprintf(stderr, "Unable to open '%s' for reading.\n", opt_input);
@@ -171,7 +171,7 @@ static int write_output(const u8 *buf, int len)
 {
 	FILE *outf;
 	int output_binary = (opt_output == NULL && opt_raw == 0 ? 0 : 1);
-	
+
 	if (opt_output != NULL) {
 		outf = fopen(opt_output, "wb");
 		if (outf == NULL) {
@@ -195,7 +195,7 @@ static int sign(struct sc_pkcs15_object *obj)
 	u8 buf[1024], out[1024];
 	struct sc_pkcs15_prkey_info *key = (struct sc_pkcs15_prkey_info *) obj->data;
 	int r, c, len;
-	
+
 	if (opt_input == NULL) {
 		fprintf(stderr, "No input file specified.\n");
 		return 2;
@@ -205,7 +205,7 @@ static int sign(struct sc_pkcs15_object *obj)
 	if (c < 0)
 		return 2;
 	len = sizeof(out);
-	if (obj->type == SC_PKCS15_TYPE_PRKEY_RSA 
+	if (obj->type == SC_PKCS15_TYPE_PRKEY_RSA
 			&& !(opt_crypt_flags & SC_ALGORITHM_RSA_PAD_PKCS1)
 			&& (size_t)c != key->modulus_length/8) {
 		fprintf(stderr, "Input has to be exactly %lu bytes, when using no padding.\n",
@@ -224,7 +224,7 @@ static int sign(struct sc_pkcs15_object *obj)
 	}
 
 	r = write_output(out, r);
-	
+
 	return 0;
 }
 
@@ -232,7 +232,7 @@ static int decipher(struct sc_pkcs15_object *obj)
 {
 	u8 buf[1024], out[1024];
 	int r, c, len;
-	
+
 	if (opt_input == NULL) {
 		fprintf(stderr, "No input file specified.\n");
 		return 2;
@@ -253,7 +253,7 @@ static int decipher(struct sc_pkcs15_object *obj)
 		return 1;
 	}
 	r = write_output(out, r);
-	
+
 	return 0;
 }
 
@@ -327,7 +327,7 @@ int main(int argc, char * const argv[])
 	int action_count = 0;
         struct sc_pkcs15_object *key;
 	sc_context_param_t ctx_param;
-		
+
 	while (1) {
 		c = getopt_long(argc, argv, "sck:r:i:o:Rp:vw", options, &long_optind);
 		if (c == -1)
@@ -446,7 +446,7 @@ int main(int argc, char * const argv[])
 			goto end;
 		action_count--;
 	}
-	
+
 	if (do_sign) {
 		if ((err = get_key(SC_PKCS15_PRKEY_USAGE_SIGN|
 				   SC_PKCS15_PRKEY_USAGE_SIGNRECOVER|

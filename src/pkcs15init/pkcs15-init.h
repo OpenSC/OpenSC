@@ -336,9 +336,9 @@ extern int	sc_pkcs15init_create_file(struct sc_profile *,
 				struct sc_pkcs15_card *, struct sc_file *);
 extern int	sc_pkcs15init_update_file(struct sc_profile *,
 				struct sc_pkcs15_card *, struct sc_file *, void *, unsigned int);
-extern int	sc_pkcs15init_authenticate(struct sc_profile *, struct sc_pkcs15_card *, 
+extern int	sc_pkcs15init_authenticate(struct sc_profile *, struct sc_pkcs15_card *,
 				struct sc_file *, int);
-extern int	sc_pkcs15init_fixup_file(struct sc_profile *, struct sc_pkcs15_card *, 
+extern int	sc_pkcs15init_fixup_file(struct sc_profile *, struct sc_pkcs15_card *,
 				struct sc_file *);
 extern int	sc_pkcs15init_get_pin_info(struct sc_profile *, int, struct sc_pkcs15_auth_info *);
 extern int	sc_profile_get_pin_retries(struct sc_profile *, int);
@@ -351,7 +351,7 @@ extern int	sc_pkcs15init_verify_secret(struct sc_profile *, struct sc_pkcs15_car
 				sc_file_t *,  unsigned int, int);
 extern int	sc_pkcs15init_delete_by_path(struct sc_profile *,
 				struct sc_pkcs15_card *, const struct sc_path *);
-extern int	sc_pkcs15init_update_any_df(struct sc_pkcs15_card *, struct sc_profile *, 
+extern int	sc_pkcs15init_update_any_df(struct sc_pkcs15_card *, struct sc_profile *,
 			struct sc_pkcs15_df *, int);
 
 /* Erasing the card structure via rm -rf */
@@ -369,7 +369,7 @@ extern int	sc_pkcs15init_requires_restrictive_usage(
 extern int	sc_pkcs15_create_pin_domain(struct sc_profile *, struct sc_pkcs15_card *,
 				const struct sc_pkcs15_id *, struct sc_file **);
 
-extern int	sc_pkcs15init_get_pin_reference(struct sc_pkcs15_card *, 
+extern int	sc_pkcs15init_get_pin_reference(struct sc_pkcs15_card *,
 				struct sc_profile *, unsigned, int);
 
 extern int 	sc_pkcs15init_sanity_check(struct sc_pkcs15_card *, struct sc_profile *);

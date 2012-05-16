@@ -437,15 +437,15 @@ sc_pkcs11_signature_size(sc_pkcs11_operation_t *operation, CK_ULONG_PTR pLength)
 	key = ((struct signature_data *) operation->priv_data)->key;
 	/*
 	 * EC and GOSTR do not have CKA_MODULUS_BITS attribute.
-	 * But other code in framework treats them as if they do. 
+	 * But other code in framework treats them as if they do.
 	 * So should do switch(key_type)
-	 * and then get what ever attributes are needed. 
+	 * and then get what ever attributes are needed.
 	 */
 	rv = key->ops->get_attribute(operation->session, key, &attr_key_type);
-	if (rv == CKR_OK) { 
+	if (rv == CKR_OK) {
 		switch(key_type) {
 			case CKK_RSA:
-				rv = key->ops->get_attribute(operation->session, key, &attr); 
+				rv = key->ops->get_attribute(operation->session, key, &attr);
 				/* convert bits to bytes */
 				if (rv == CKR_OK)
 					*pLength = (*pLength + 7) / 8;
@@ -453,7 +453,7 @@ sc_pkcs11_signature_size(sc_pkcs11_operation_t *operation, CK_ULONG_PTR pLength)
 			case CKK_EC:
 				/* TODO: -DEE we should use something other then CKA_MODULUS_BITS... */
 				rv = key->ops->get_attribute(operation->session, key, &attr);
-				*pLength = ((*pLength + 7)/8) * 2 ; /* 2*nLen in bytes */ 
+				*pLength = ((*pLength + 7)/8) * 2 ; /* 2*nLen in bytes */
 				break;
 			case CKK_GOSTR3410:
 				rv = key->ops->get_attribute(operation->session, key, &attr);
@@ -864,8 +864,8 @@ sc_pkcs11_register_sign_and_hash_mechanism(struct sc_pkcs11_card *p11card,
 	info->hash_mech = hash_mech;
 
 	new_type = sc_pkcs11_new_fw_mechanism(mech, &mech_info, sign_type->key_type, info);
-		
+
 	if (!new_type)
-		return CKR_HOST_MEMORY;	
+		return CKR_HOST_MEMORY;
 	return sc_pkcs11_register_mechanism(p11card, new_type);
 }

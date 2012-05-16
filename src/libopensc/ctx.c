@@ -28,15 +28,12 @@
 #include <sys/stat.h>
 #include <limits.h>
 
-#ifdef HAVE_LTDL_H
-#include <ltdl.h>
-#endif
-
 #ifdef _WIN32
 #include <windows.h>
 #include <winreg.h>
 #endif
 
+#include "common/libscdl.h"
 #include "internal.h"
 
 int _sc_add_reader(sc_context_t *ctx, sc_reader_t *reader)
@@ -147,7 +144,7 @@ static void add_drv(struct _sc_ctx_options *opts, const char *name)
 {
 	struct _sc_driver_entry *lst;
 	int *cp, max, i;
-	
+
 	lst = opts->cdrv;
 	cp = &opts->ccount;
 	max = SC_MAX_CARD_DRIVERS;
@@ -180,6 +177,7 @@ static void set_defaults(sc_context_t *ctx, struct _sc_ctx_options *opts)
 	if (ctx->debug_file && (ctx->debug_file != stderr && ctx->debug_file != stdout))
 		fclose(ctx->debug_file);
 	ctx->debug_file = stderr;
+	ctx->paranoid_memory = 0;
 #ifdef __APPLE__
 	/* Override the default debug log for OpenSC.tokend to be different from PKCS#11.
 	 * TODO: Could be moved to OpenSC.tokend */
@@ -230,6 +228,9 @@ static int load_parameters(sc_context_t *ctx, scconf_block *block,
 	if (val)
 		sc_ctx_log_to_file(ctx, val);
 
+	ctx->paranoid_memory = scconf_get_bool (block, "paranoid-memory",
+		ctx->paranoid_memory);
+
 	val = scconf_get_str(block, "force_card_driver", NULL);
 	if (val) {
 		if (opts->forced_card_driver)
@@ -255,12 +256,12 @@ static void load_reader_driver_options(sc_context_t *ctx)
 {
 	struct sc_reader_driver *driver = ctx->reader_driver;
 	scconf_block *conf_block = NULL;
-	
+
 	driver->max_send_size = 0;
 	driver->max_recv_size = 0;
 
 	conf_block = sc_get_conf_block(ctx, "reader_driver", driver->short_name, 1);
-	
+
 	if (conf_block != NULL) {
 		driver->max_send_size = scconf_get_int(conf_block, "max_send_size", driver->max_send_size);
 		driver->max_recv_size = scconf_get_int(conf_block, "max_recv_size", driver->max_recv_size);
@@ -560,12 +561,12 @@ static void process_config_file(sc_context_t *ctx, struct _sc_ctx_options *opts)
 	}
 	blocks = scconf_find_blocks(ctx->conf, NULL, "app", ctx->app_name);
 	if (blocks[0])
-	    	ctx->conf_blocks[count++] = blocks[0];
+		ctx->conf_blocks[count++] = blocks[0];
 	free(blocks);
 	if (strcmp(ctx->app_name, "default") != 0) {
 		blocks = scconf_find_blocks(ctx->conf, NULL, "app", "default");
 		if (blocks[0])
-		    	ctx->conf_blocks[count] = blocks[0];
+			ctx->conf_blocks[count] = blocks[0];
 		free(blocks);
 	}
 	/* Above we add 2 blocks at most, but conf_blocks has 3 elements,
@@ -583,7 +584,7 @@ int sc_ctx_detect_readers(sc_context_t *ctx)
 
 	if (drv->ops->detect_readers != NULL)
 		r = drv->ops->detect_readers(ctx);
-	
+
 	sc_mutex_unlock(ctx, ctx->mutex);
 
 	return r;
@@ -642,7 +643,7 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 		sc_release_context(ctx);
 		return SC_ERROR_OUT_OF_MEMORY;
 	}
-	
+
 	set_defaults(ctx, &opts);
 	list_init(&ctx->readers);
 	list_attributes_seeker(&ctx->readers, reader_list_seeker);
@@ -658,15 +659,6 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 	process_config_file(ctx, &opts);
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "==================================="); /* first thing in the log */
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "opensc version: %s", sc_get_version());
-
-#ifdef HAVE_LTDL_H
-	/* initialize ltdl, if available. See scdl.c for more information */
-	if (lt_dlinit() != 0) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "lt_dlinit() failed");
-		sc_release_context(ctx);
-		return SC_ERROR_INTERNAL;
-	}
-#endif
 
 #ifdef ENABLE_PCSC
 	ctx->reader_driver = sc_get_pcsc_driver();
@@ -684,7 +676,7 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 
 	load_reader_driver_options(ctx);
 	ctx->reader_driver->ops->init(ctx);
-	
+
 	load_card_drivers(ctx, &opts);
 	load_card_atrs(ctx);
 	if (opts.forced_card_driver) {
@@ -724,7 +716,7 @@ int sc_wait_for_event(sc_context_t *ctx, unsigned int event_mask, sc_reader_t **
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 	if (ctx->reader_driver->ops->wait_for_event != NULL)
 		return ctx->reader_driver->ops->wait_for_event(ctx, event_mask, event_reader, event, timeout, reader_states);
-		
+
 	return SC_ERROR_NOT_SUPPORTED;
 }
 
