@@ -31,6 +31,10 @@
 #include "pkcs15.h"
 #include "log.h"
 
+#ifdef _WIN32
+typedef USHORT ushort;
+#endif
+
 int sc_pkcs15emu_openpgp_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
 
 
