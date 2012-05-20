@@ -1602,7 +1602,7 @@ static int do_quit(int argc, char **argv)
 	return 0;
 }
 
-static int parse_line(char *in, char **argv, int maxargc)
+static int parse_cmdline(char *in, char **argv, int maxargc)
 {
 	int	argc;
 
@@ -1627,7 +1627,7 @@ static int parse_line(char *in, char **argv, int maxargc)
 	return argc;
 }
 
-static char * my_readline(FILE *script, char *prompt)
+static char *read_cmdline(FILE *script, char *prompt)
 {
 	static char buf[256];
 	static int initialized;
@@ -1778,10 +1778,10 @@ int main(int argc, char * const argv[])
 		char prompt[3*SC_MAX_PATH_STRING_SIZE];
 
 		sprintf(prompt, "OpenSC [%s]> ", path_to_filename(&current_path, '/'));
-		line = my_readline(script, prompt);
+		line = read_cmdline(script, prompt);
 		if (line == NULL)
 			break;
-		cargc = parse_line(line, cargv, DIM(cargv));
+		cargc = parse_cmdline(line, cargv, DIM(cargv));
 		if ((cargc < 1) || (*cargv[0] == '#'))
 			continue;
 		for (r=cargc; r < (int)DIM(cargv); r++)
