@@ -76,6 +76,7 @@ static const char *option_help[] = {
 
 
 /* declare functions called by user commands */
+static int do_echo(int argc, char **argv);
 static int do_ls(int argc, char **argv);
 static int do_find(int argc, char **argv);
 static int do_cd(int argc, char **argv);
@@ -111,6 +112,9 @@ struct command {
 };
 
 static struct command	cmds[] = {
+	{ do_echo,
+		"echo",	"[<string> ..]",
+		"display arguments"			},
 	{ do_ls,
 		"ls",	"",
 		"list all files in the current DF"	},
@@ -379,6 +383,17 @@ static void print_file(const sc_file_t *file)
 	}
 	printf("\n");
 	return;
+}
+
+static int do_echo(int argc, char **argv)
+{
+	int i;
+
+	for (i = 0; i < argc; i++) {
+		printf("%s%s", argv[i], (i < argc) ? " " : "");
+	}
+	printf("\n");
+	return 0;
 }
 
 static int do_ls(int argc, char **argv)
