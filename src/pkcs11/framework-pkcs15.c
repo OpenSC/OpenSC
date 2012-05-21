@@ -29,8 +29,6 @@
 #include "pkcs15init/pkcs15-init.h"
 #endif
 
-extern int hack_enabled;
-
 struct pkcs15_slot_data {
 	struct sc_pkcs15_object *auth_obj;
 };
@@ -946,7 +944,7 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 	/* Match up related keys and certificates */
 	pkcs15_bind_related_objects(fw_data);
 
-	if (hack_enabled)
+	if (sc_pkcs11_conf.create_slots_flags & SC_PKCS11_SLOT_FOR_PIN_USER)
 		auth_count = 1;
 
 	for (i = 0; i < auth_count; i++) {
@@ -962,8 +960,8 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 		if ((pin_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN) != 0)
 			continue;
 
-		/* Ignore unblocking pins for hacked module */
-		if (hack_enabled && (pin_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN) != 0)
+		/* Ignore unblocking PINs if there is only one authentication object */
+		if (auth_count == 1 && (pin_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN) != 0)
 			continue;
 
 		/* Ignore unblocking pins */
@@ -1018,8 +1016,8 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 	/* Add all the remaining objects */
 	for (j = 0; j < fw_data->num_objects; j++) {
 		struct pkcs15_any_object *obj = fw_data->objects[j];
-		/* We only have one pin and only the things related to it. */
-		if (hack_enabled)
+		/* We only have one PIN and only the things related to it. */
+		if (sc_pkcs11_conf.create_slots_flags & SC_PKCS11_SLOT_FOR_PIN_USER)
 			break;
 
 		if (!(obj->base.flags & SC_PKCS11_OBJECT_SEEN)) {
