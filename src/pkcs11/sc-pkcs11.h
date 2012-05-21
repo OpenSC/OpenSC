@@ -51,6 +51,11 @@ extern "C" {
 #define SC_PKCS11_PIN_UNBLOCK_SCONTEXT_SETPIN   2
 #define SC_PKCS11_PIN_UNBLOCK_SO_LOGGED_INITPIN 3
 
+#define SC_PKCS11_SLOT_FOR_PIN_USER     1
+#define SC_PKCS11_SLOT_FOR_PIN_SIGN     2
+#define SC_PKCS11_SLOT_FOR_APPLICATION  4
+#define SC_PKCS11_SLOT_CREATE_ALL       8
+
 extern void *C_LoadModule(const char *name, CK_FUNCTION_LIST_PTR_PTR);
 extern CK_RV C_UnloadModule(void *module);
 
@@ -80,6 +85,7 @@ struct sc_pkcs11_config {
 	unsigned int pin_unblock_style;
 	unsigned int create_puk_slot;
 	unsigned int zero_ckaid_for_ca_certs;
+	 unsigned int create_slots_flags;
 };
 
 /*

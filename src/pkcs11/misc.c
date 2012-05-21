@@ -283,6 +283,7 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t * ctx)
 {
 	scconf_block *conf_block = NULL;
 	char *unblock_style = NULL;
+	char *create_slots_for_pins = NULL, *op, *tmp;
 
 	/* Set defaults */
 	conf->plug_and_play = 1;
@@ -293,6 +294,7 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t * ctx)
 	conf->pin_unblock_style = SC_PKCS11_PIN_UNBLOCK_NOT_ALLOWED;
 	conf->create_puk_slot = 0;
 	conf->zero_ckaid_for_ca_certs = 0;
+	conf->create_slots_flags = 0;
 
 	conf_block = sc_get_conf_block(ctx, "pkcs11", NULL, 1);
 	if (!conf_block)
@@ -315,6 +317,22 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t * ctx)
 
 	conf->create_puk_slot = scconf_get_bool(conf_block, "create_puk_slot", conf->create_puk_slot);
 	conf->zero_ckaid_for_ca_certs = scconf_get_bool(conf_block, "zero_ckaid_for_ca_certs", conf->zero_ckaid_for_ca_certs);
+
+	create_slots_for_pins = (char *)scconf_get_str(conf_block, "create_slots_for_pins", "all");
+	tmp = strdup(create_slots_for_pins);
+	op = strtok(tmp, " ,");
+	while (op) {
+		if (!strcmp(op, "user"))
+			conf->create_slots_flags |= SC_PKCS11_SLOT_FOR_PIN_USER;
+		else if (!strcmp(op, "sign"))
+			conf->create_slots_flags |= SC_PKCS11_SLOT_FOR_PIN_SIGN;
+		else if (!strcmp(op, "application"))
+			conf->create_slots_flags |= SC_PKCS11_SLOT_FOR_APPLICATION;
+		else if (!strcmp(op, "all"))
+			conf->create_slots_flags |= SC_PKCS11_SLOT_CREATE_ALL;
+		op = strtok(NULL, " ,");
+	}
+        free(tmp);
 
 	sc_log(ctx, "PKCS#11 options: plug_and_play=%d max_virtual_slots=%d slots_per_card=%d "
 		 "hide_empty_tokens=%d lock_login=%d pin_unblock_style=%d zero_ckaid_for_ca_certs=%d",
