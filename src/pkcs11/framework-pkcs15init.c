@@ -30,7 +30,7 @@
 /*
  * Deal with uninitialized cards
  */
-static CK_RV pkcs15init_bind(struct sc_pkcs11_card *p11card)
+static CK_RV pkcs15init_bind(struct sc_pkcs11_card *p11card, struct sc_app_info *app_info)
 {
 	struct sc_card	*card = p11card->card;
 	struct sc_profile *profile;
@@ -38,7 +38,7 @@ static CK_RV pkcs15init_bind(struct sc_pkcs11_card *p11card)
 
 	rc = sc_pkcs15init_bind(card, "pkcs15", NULL, &profile);
 	if (rc == 0)
-		p11card->fw_data = profile;
+		p11card->fws_data[0] = profile;
 	return sc_to_cryptoki_error(rc, NULL);
 }
 
@@ -46,18 +46,21 @@ static CK_RV pkcs15init_unbind(struct sc_pkcs11_card *p11card)
 {
 	struct sc_profile *profile;
 
-	profile = (struct sc_profile *) p11card->fw_data;
+	profile = (struct sc_profile *) p11card->fws_data[0];
 	sc_pkcs15init_unbind(profile);
 	return CKR_OK;
 }
 
-static CK_RV pkcs15init_create_tokens(struct sc_pkcs11_card *p11card)
+
+static CK_RV
+pkcs15init_create_tokens(struct sc_pkcs11_card *p11card, struct sc_app_info *app_info,
+		struct sc_pkcs11_slot **first_slot)
 {
 	struct sc_profile	*profile;
 	struct sc_pkcs11_slot	*slot;
 	int rc;
 
-	profile = (struct sc_profile *) p11card->fw_data;
+	profile = (struct sc_profile *) p11card->fws_data[0];
 
 	rc = slot_allocate(&slot, p11card);
 	if (rc == CKR_OK) {
@@ -106,13 +109,13 @@ pkcs15init_login(struct sc_pkcs11_slot *slot,
 }
 
 static CK_RV
-pkcs15init_logout(struct sc_pkcs11_card *p11card, void *ptr)
+pkcs15init_logout(struct sc_pkcs11_slot *slot)
 {
 	return CKR_CRYPTOKI_NOT_INITIALIZED;
 }
 
 static CK_RV
-pkcs15init_change_pin(struct sc_pkcs11_card *p11card, void *ptr, int login_user,
+pkcs15init_change_pin(struct sc_pkcs11_slot *slot,
 			CK_CHAR_PTR oldPin, CK_ULONG oldPinLength,
 			CK_CHAR_PTR newPin, CK_ULONG newPinLength)
 {
@@ -124,7 +127,7 @@ pkcs15init_initialize(struct sc_pkcs11_card *p11card, void *ptr,
 		CK_UTF8CHAR_PTR pPin, CK_ULONG ulPinLen,
 		CK_UTF8CHAR_PTR pLabel)
 {
-	struct sc_profile *profile = (struct sc_profile *) p11card->fw_data;
+	struct sc_profile *profile = (struct sc_profile *) p11card->fws_data[0];
 	struct sc_pkcs15init_initargs args;
 	struct sc_pkcs11_slot *slot;
 	int		rc, rv, id;
@@ -142,9 +145,9 @@ pkcs15init_initialize(struct sc_pkcs11_card *p11card, void *ptr,
 	/* Change the binding from the pkcs15init framework
 	 * to the pkcs15 framework on the fly.
 	 * First, try to bind pkcs15 framework */
-	if ((rv = framework_pkcs15.bind(p11card)) != CKR_OK) {
+	if ((rv = framework_pkcs15.bind(p11card, NULL)) != CKR_OK) {
 		/* whoops, bad */
-		p11card->fw_data = profile;
+		p11card->fws_data[0] = profile;
 		return rv;
 	}
 
