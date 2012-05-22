@@ -122,7 +122,7 @@ gpk_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *df)
 	int		r, locked;
 
 	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
-	if (sc_card_ctl(p15card->card, SC_CARDCTL_GPK_IS_LOCKED, &locked) == 0 
+	if (sc_card_ctl(p15card->card, SC_CARDCTL_GPK_IS_LOCKED, &locked) == 0
 			&& locked) {
 		sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL,
 			"This card is already personalized, unable to "
@@ -594,7 +594,7 @@ gpk_pkfile_create(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *f
 	}
 
 	if (r >= 0)
-		r = sc_pkcs15init_authenticate(profile, p15card, file, 
+		r = sc_pkcs15init_authenticate(profile, p15card, file,
 				SC_AC_OP_UPDATE);
 	if (found)
 		sc_file_free(found);
@@ -677,7 +677,7 @@ gpk_pkfile_init_public(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file
 	if (r < 0)
 		return r;
 	/* Fix up PIN references in file ACL */
-	if ((r = sc_pkcs15init_fixup_file(profile, p15card, tmp)) < 0) 
+	if ((r = sc_pkcs15init_fixup_file(profile, p15card, tmp)) < 0)
 		goto out;
 
 	acl = sc_file_get_acl_entry(tmp, SC_AC_OP_CRYPTO);
@@ -756,7 +756,7 @@ gpk_pkfile_update_public(struct sc_profile *profile,
 		/* Check for bad record */
 		if (r < 2) {
 			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "key file format error: "
-				"record %u too small (%u bytes)\n", 
+				"record %u too small (%u bytes)\n",
 				n, r);
 			return SC_ERROR_OBJECT_NOT_VALID;
 		}
@@ -911,7 +911,7 @@ gpk_add_bignum(struct pkpart *part, unsigned int tag,
 		sc_pkcs15_bignum_t *bn, size_t size)
 {
 	struct pkcomp	*comp;
-	
+
 	if (size == 0)
 		size = bn->len;
 

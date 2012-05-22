@@ -38,7 +38,7 @@
 
 #ifdef __cplusplus
 extern "C" {
-#endif 
+#endif
 
 #if defined(_WIN32) || defined(USE_CYGWIN)
 #define PKCS11_DEFAULT_MODULE_NAME      "opensc-pkcs11.dll"

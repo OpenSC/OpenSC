@@ -95,7 +95,7 @@ static int entersafe_init_card(sc_profile_t *profile, sc_pkcs15_card_t *p15card)
 		 mf_data.data.df.lock_ac=0x10;
 		 memcpy(mf_data.data.df.aid,mf_file->name,mf_file->namelen);
 		 sc_file_free(mf_file);
-		 
+
 		 ret = sc_card_ctl(card, SC_CARDCTL_ENTERSAFE_CREATE_FILE, &mf_data);
 		 SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL,ret,"Create MF failed");
 	}
@@ -123,17 +123,17 @@ static int entersafe_init_card(sc_profile_t *profile, sc_pkcs15_card_t *p15card)
 		 ef_data.data.ef.name=0x00;
 		 memset(ef_data.data.ef.ac,0x10,sizeof(ef_data.data.ef.ac));
 		 memset(ef_data.data.ef.sm,0x00,sizeof(ef_data.data.ef.sm));
-		 
+
 		 ret = sc_card_ctl(card, SC_CARDCTL_ENTERSAFE_CREATE_FILE, &ef_data);
 		 SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL,ret,"Create EF(DIR) failed");
-		 
+
 
 		 /* fill file by 0 */
 		 buff = calloc(1,size);
 		 if(!buff)
 			  SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,SC_SUCCESS);
 		 memset(buff,0,size);
-		 
+
 		 ret = sc_update_binary(card,0,buff,size,0);
 		 free(buff);
 		 SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL,ret,"Initialize EF(DIR) failed");
@@ -190,7 +190,7 @@ static int entersafe_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 		 memset(ef_data.data.ef.sm,0x00,sizeof(ef_data.data.ef.sm));
 
 		 sc_file_free(gpkf_file);
-		 
+
 		 ret = sc_card_ctl(card, SC_CARDCTL_ENTERSAFE_CREATE_FILE, &ef_data);
 		 SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL,ret,"Create GPKF failed");
 	}
@@ -210,7 +210,7 @@ static int entersafe_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 		 int i;
 		 sc_file_t *file=0;
 		 sc_entersafe_create_data tmp;
-		 
+
 		 for(i = 0; create_efs[i]; ++i)   {
 			  if (sc_profile_get_file(profile, create_efs[i], &file))   {
 				   sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Inconsistent profile: cannot find %s", create_efs[i]);
@@ -229,7 +229,7 @@ static int entersafe_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 			  tmp.data.ef.ac[0]=process_acl_entry(file,SC_AC_OP_READ,ENTERSAFE_AC_ALWAYS); /* read */
 			  tmp.data.ef.ac[1]=process_acl_entry(file,SC_AC_OP_UPDATE,ENTERSAFE_AC_ALWAYS); /* update */
 			  memset(tmp.data.ef.sm,0x00,sizeof(tmp.data.ef.sm));
-			  
+
 			  sc_file_free(file);
 
 			  ret = sc_card_ctl(card, SC_CARDCTL_ENTERSAFE_CREATE_FILE, &tmp);
@@ -251,7 +251,7 @@ static int entersafe_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15c
 	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
-		return SC_ERROR_OBJECT_NOT_VALID;	
+		return SC_ERROR_OBJECT_NOT_VALID;
 
 	if (auth_info->attrs.pin.reference < ENTERSAFE_USER_PIN_ID)
 		 auth_info->attrs.pin.reference = ENTERSAFE_USER_PIN_ID;
@@ -455,10 +455,10 @@ static int entersafe_sanity_check(sc_profile_t *profile, sc_pkcs15_card_t *p15ca
 		if (ainfo->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
 			continue;
 
-		if (pin_attrs->reference == profile_auth.attrs.pin.reference 
+		if (pin_attrs->reference == profile_auth.attrs.pin.reference
 				&& pin_attrs->flags != profile_auth.attrs.pin.flags)   {
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Set flags of '%s'(flags:%X,ref:%i,id:%s) to %X", objs[ii]->label, 
-					pin_attrs->flags, pin_attrs->reference, sc_pkcs15_print_id(&ainfo->auth_id), 
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Set flags of '%s'(flags:%X,ref:%i,id:%s) to %X", objs[ii]->label,
+					pin_attrs->flags, pin_attrs->reference, sc_pkcs15_print_id(&ainfo->auth_id),
 					profile_auth.attrs.pin.flags);
 			pin_attrs->flags = profile_auth.attrs.pin.flags;
 			update_df = 1;

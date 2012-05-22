@@ -20,6 +20,7 @@
 
 /*
  * Specifications:
+ * http://www.g10code.de/docs/openpgp-card-1.0.pdf (obsolete)
  * http://www.g10code.de/docs/openpgp-card-1.1.pdf
  * http://www.g10code.de/docs/openpgp-card-2.0.pdf
  */
@@ -902,8 +903,6 @@ pgp_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 	if (data->pin_type != SC_AC_CHV)
 		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
 				"invalid PIN type");
-
-	data->pin_reference |= 0x80;
 
 	LOG_FUNC_RETURN(card->ctx, iso_ops->pin_cmd(card, data, tries_left));
 }

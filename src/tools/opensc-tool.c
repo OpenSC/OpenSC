@@ -66,7 +66,7 @@ static const struct option options[] = {
 	{ "send-apdu",		1, NULL,		's' },
 	{ "reader",		1, NULL,		'r' },
 	{ "card-driver",	1, NULL,		'c' },
-	{ "list-algorithms",    0, NULL,	OPT_LIST_ALG }, 
+	{ "list-algorithms",    0, NULL,	OPT_LIST_ALG },
 	{ "wait",		0, NULL,		'w' },
 	{ "verbose",		0, NULL,		'v' },
 	{ NULL, 0, NULL, 0 }
@@ -260,7 +260,7 @@ cleanup:
 static int list_readers(void)
 {
 	unsigned int i, rcount = sc_ctx_get_reader_count(ctx);
-	
+
 	if (rcount == 0) {
 		printf("No smart card readers found.\n");
 		return 0;
@@ -281,7 +281,7 @@ static int list_readers(void)
 
 			if (state & SC_READER_CARD_EXCLUSIVE)
 				printf("     %s [EXCLUSIVE]\n", tmp);
-			else {		
+			else {
 				if ((r = sc_connect_card(reader, &card)) != SC_SUCCESS) {
 					fprintf(stderr, "     failed: %s\n", sc_strerror(r));
 				} else {
@@ -297,7 +297,7 @@ static int list_readers(void)
 static int list_drivers(void)
 {
 	int i;
-	
+
 	if (ctx->card_drivers[0] == NULL) {
 		printf("No card drivers installed!\n");
 		return 0;
@@ -398,7 +398,7 @@ static int print_file(sc_card_t *in_card, const sc_file_t *file,
 		/* Octets are as follows:
 		*   DF: select, lock, delete, create, rehab, inval
 		*   EF: read, update, write, erase, rehab, inval
-		* 4 MSB's of the octet mean:			
+		* 4 MSB's of the octet mean:
 		*  0 = ALW, 1 = PIN1, 2 = PIN2, 4 = SYS,
 		* 15 = NEV */
 		util_hex_dump(stdout, file->sec_attr, file->sec_attr_len, ":");
@@ -417,7 +417,7 @@ static int print_file(sc_card_t *in_card, const sc_file_t *file,
 
 	if (file->ef_structure == SC_FILE_EF_TRANSPARENT) {
 		unsigned char *buf;
-		
+
 		if (!(buf = malloc(file->size))) {
 			fprintf(stderr, "out of memory");
 			return 1;
@@ -477,13 +477,13 @@ static int enum_dir(sc_path_t path, int depth)
 		}
 	}
 	return 0;
-}	
+}
 
 static int list_files(void)
 {
 	sc_path_t path;
 	int r;
-	
+
 	sc_format_path("3F00", &path);
 	r = enum_dir(path, 0);
 	return r;
@@ -539,9 +539,9 @@ static void print_serial(sc_card_t *in_card)
 		util_hex_dump_asc(stdout, serial.value, serial.len, -1);
 }
 
-static int list_algorithms(void) 
+static int list_algorithms(void)
 {
-	int i; 
+	int i;
 	const char *aname = "unknown";
 
 	const id2str_t alg_type_names[] = {
@@ -580,9 +580,9 @@ static int list_algorithms(void)
 	};
 
 	if (verbose)
-		printf("Card supports %d algorithm(s)\n\n",card->algorithm_count); 
-  
-	for (i=0; i < card->algorithm_count; i++) { 
+		printf("Card supports %d algorithm(s)\n\n",card->algorithm_count);
+
+	for (i=0; i < card->algorithm_count; i++) {
 		int j;
 
 		/* find algorithm name */
@@ -593,9 +593,9 @@ static int list_algorithms(void)
 			}
 		}
 
-		printf("Algorithm: %s\n", aname); 
-		printf("Key length: %d\n", card->algorithms[i].key_length); 
-		printf("Flags:"); 
+		printf("Algorithm: %s\n", aname);
+		printf("Key length: %d\n", card->algorithms[i].key_length);
+		printf("Flags:");
 
 		/* print general flags */
 		for (j = 0; alg_flag_names[j].str != NULL; j++)
@@ -603,41 +603,41 @@ static int list_algorithms(void)
 				printf(" %s", alg_flag_names[j].str);
 
 		/* print RSA spcific flags */
-		if ( card->algorithms[i].algorithm == SC_ALGORITHM_RSA) { 
-			int padding = card->algorithms[i].flags 
-					& SC_ALGORITHM_RSA_PADS; 
-			int hashes =  card->algorithms[i].flags 
-					& SC_ALGORITHM_RSA_HASHES; 
-					 
+		if ( card->algorithms[i].algorithm == SC_ALGORITHM_RSA) {
+			int padding = card->algorithms[i].flags
+					& SC_ALGORITHM_RSA_PADS;
+			int hashes =  card->algorithms[i].flags
+					& SC_ALGORITHM_RSA_HASHES;
+
 			/* print RSA padding flags */
-			printf(" padding ("); 
+			printf(" padding (");
 			for (j = 0; rsa_flag_names[j].str != NULL; j++)
 				if (padding & rsa_flag_names[j].id)
 					printf(" %s", rsa_flag_names[j].str);
-			if (padding == SC_ALGORITHM_RSA_PAD_NONE)  
-				printf(" none"); 
-			printf(" ) "); 
+			if (padding == SC_ALGORITHM_RSA_PAD_NONE)
+				printf(" none");
+			printf(" ) ");
 			/* print RSA hash flags */
-			printf("hashes ("); 
+			printf("hashes (");
 			for (j = 0; rsa_flag_names[j].str != NULL; j++)
 				if (hashes & rsa_flag_names[j].id)
 					printf(" %s", rsa_flag_names[j].str);
 			if (hashes == SC_ALGORITHM_RSA_HASH_NONE)
-				printf(" none"); 
-			printf(" )"); 
-		} 
-		printf("\n"); 
-		if (card->algorithms[i].algorithm == SC_ALGORITHM_RSA  
-			&& card->algorithms[i].u._rsa.exponent) { 
-			printf("RSA public exponent: %lu\n", (unsigned long) 
+				printf(" none");
+			printf(" )");
+		}
+		printf("\n");
+		if (card->algorithms[i].algorithm == SC_ALGORITHM_RSA
+			&& card->algorithms[i].u._rsa.exponent) {
+			printf("RSA public exponent: %lu\n", (unsigned long)
 				card->algorithms[i].u._rsa.exponent);
-		} 
-  
-		if (i < card->algorithm_count) 
-			printf("\n"); 
-	} 
-	return 0; 
-} 
+		}
+
+		if (i < card->algorithm_count)
+			printf("\n");
+	}
+	return 0;
+}
 
 int main(int argc, char * const argv[])
 {
@@ -657,7 +657,7 @@ int main(int argc, char * const argv[])
 	const char *opt_driver = NULL;
 	const char *opt_conf_entry = NULL;
 	sc_context_param_t ctx_param;
-		
+
 	setbuf(stderr, NULL);
 	setbuf(stdout, NULL);
 
@@ -728,8 +728,8 @@ int main(int argc, char * const argv[])
 			action_count++;
 			break;
 		case OPT_LIST_ALG:
-			do_list_algorithms = 1; 
-			action_count++; 
+			do_list_algorithms = 1;
+			action_count++;
 			break;
 		}
 	}
@@ -795,7 +795,7 @@ int main(int argc, char * const argv[])
 	if (do_print_atr) {
 		if (verbose) {
 			printf("Card ATR:\n");
-			util_hex_dump_asc(stdout, card->atr.value, card->atr.len, -1);		
+			util_hex_dump_asc(stdout, card->atr.value, card->atr.len, -1);
 		} else {
 			char tmp[SC_MAX_ATR_SIZE*3];
 			sc_bin_to_hex(card->atr.value, card->atr.len, tmp, sizeof(tmp) - 1, ':');
@@ -820,18 +820,18 @@ int main(int argc, char * const argv[])
 			goto end;
 		action_count--;
 	}
-	
+
 	if (do_list_files) {
 		if ((err = list_files()))
 			goto end;
 		action_count--;
 	}
 
-	if (do_list_algorithms) { 
-		if ((err = list_algorithms())) 
+	if (do_list_algorithms) {
+		if ((err = list_algorithms()))
 			goto end;
-		action_count--; 
-	} 
+		action_count--;
+	}
 end:
 	if (card) {
 		sc_unlock(card);

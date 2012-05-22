@@ -1,5 +1,5 @@
 /*
- * pkcs15-muscle.c: Support for MuscleCard Applet from musclecard.com 
+ * pkcs15-muscle.c: Support for MuscleCard Applet from musclecard.com
  *
  * Copyright (C) 2006, Identity Alliance, Thomas Harning <support@identityalliance.com>
  *
@@ -81,7 +81,7 @@ muscle_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *d
 	if ((r = sc_select_file(p15card->card, &df->path, NULL)) < 0)
 		return r;
 
-	
+
 	return 0;
 }
 
@@ -169,7 +169,7 @@ muscle_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	struct sc_pkcs15_prkey_rsa *rsa;
 	sc_cardctl_muscle_key_info_t info;
 	int		r;
-	
+
 	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Muscle supports RSA keys only.");
 		return SC_ERROR_NOT_SUPPORTED;
@@ -189,24 +189,24 @@ muscle_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE,r);
 	}
 	rsa = &key->u.rsa;
-	
+
 	info.keySize = rsa->modulus.len << 3;
 	info.keyType = 0x03; /* CRT type */
 	info.keyLocation = key_info->key_reference * 2; /* Mult by 2 to preserve even/odd keynumber structure */
-	
+
 	info.pLength = rsa->p.len;
 	info.pValue = rsa->p.data;
 	info.qLength = rsa->q.len;
 	info.qValue = rsa->q.data;
-	
+
 	info.pqLength = rsa->iqmp.len;
 	info.pqValue = rsa->iqmp.data;
-	
+
 	info.dp1Length = rsa->dmp1.len;
 	info.dp1Value = rsa->dmp1.data;
 	info.dq1Length = rsa->dmq1.len;
 	info.dq1Value = rsa->dmq1.data;
-	
+
 	r = sc_card_ctl(p15card->card, SC_CARDCTL_MUSCLE_IMPORT_KEY, &info);
 	if (r < 0) {
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Unable to import key");
@@ -227,7 +227,7 @@ muscle_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	sc_file_t* prkf;
 	unsigned int	keybits;
 	int		r;
-	
+
 	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Muscle supports only RSA keys (for now).");
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,SC_ERROR_NOT_SUPPORTED);
@@ -248,27 +248,27 @@ muscle_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,SC_ERROR_NOT_SUPPORTED);
 	}
 	sc_file_free(prkf);
-	
+
 	/* END VERIFICATION STUFF */
-	
+
 	/* Public key acls... get_file_by_path as well? */
-	
+
 	memset(&args, 0, sizeof(args));
 	args.keyType = 0x01; /* RSA forced */
 	args.privateKeyLocation = key_info->key_reference * 2;
 	args.publicKeyLocation = key_info->key_reference * 2 + 1;
-	
+
 	args.keySize = keybits;
-	
+
 	r = sc_card_ctl(card, SC_CARDCTL_MUSCLE_GENERATE_KEY, &args);
 	if (r < 0) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Unable to generate key");
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,r);
 	}
-	
+
 	memset(&extArgs, 0, sizeof(extArgs));
 	memset(pubkey, 0, sizeof(*pubkey));
-	
+
 	extArgs.keyType = 0x01;
 	extArgs.keyLocation = args.publicKeyLocation;
 	r = sc_card_ctl(card, SC_CARDCTL_MUSCLE_EXTRACT_KEY, &extArgs);
@@ -276,20 +276,20 @@ muscle_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Unable to extract the public key");
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,r);
 	}
-	
+
 	pubkey->algorithm = SC_ALGORITHM_RSA;
 	pubkey->u.rsa.modulus.len   = extArgs.modLength;
 	pubkey->u.rsa.modulus.data  = extArgs.modValue;
 	pubkey->u.rsa.exponent.len  = extArgs.expLength;
 	pubkey->u.rsa.exponent.data = extArgs.expValue;
-	
+
 	if (r < 0) {
 		if (pubkey->u.rsa.modulus.data)
 			free (pubkey->u.rsa.modulus.data);
 		if (pubkey->u.rsa.exponent.data)
 			free (pubkey->u.rsa.exponent.data);
 	}
-	return r;	
+	return r;
 }
 
 

@@ -250,6 +250,14 @@
 
 			<varlistentry>
 				<term>
+					<command>find</command> [<replaceable>start-id</replaceable> [<replaceable>end-id</replaceable>]]
+				</term>
+                <listitem><para>Find all files in the current DF.
+                        Files are found by selecting all file identifiers in the range from <replaceable>start-fid</replaceable> to <replaceable>end-fid</replaceable> (by default from 0000 to FFFF).</para></listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term>
 					<command>mkdir</command> <replaceable>file-id</replaceable> <replaceable>size</replaceable>
 				</term>
 				<listitem><para>Create a DF. <replaceable>file-id</replaceable> specifies the id number
@@ -327,6 +335,22 @@
                                 </para>
 				<para>
 					Example: verify CHV0 31:32:33:34:00:00:00:00
+				</para>
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term>
+					<command>pace</command> <replaceable>secret-type</replaceable> [<replaceable>secret</replaceable>]
+				</term>
+				<listitem><para>Perform PACE with the card. <replaceable>secret-type</replaceable>
+				can be one of pin, can, puk or mrz. <replaceable>secret</replaceable> is the secret to be verified as string.
+				</para>
+                                <para>
+                                If <replaceable>secret</replaceable> is omitted, the secret will be verified with the PIN-Pad.
+                                </para>
+				<para>
+					Example: pace can 123456
 				</para>
 				</listitem>
 			</varlistentry>

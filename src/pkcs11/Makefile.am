@@ -14,10 +14,11 @@ OPENSC_PKCS11_SRC = pkcs11-global.c pkcs11-session.c pkcs11-object.c misc.c slot
 	mechanism.c openssl.c framework-pkcs15.c \
 	framework-pkcs15init.c debug.c opensc-pkcs11.exports \
 	pkcs11-display.c pkcs11-display.h
-OPENSC_PKCS11_LIBS = $(OPTIONAL_OPENSSL_LIBS) $(PTHREAD_LIBS) \
+OPENSC_PKCS11_LIBS = \
 	$(top_builddir)/src/libopensc/libopensc.la \
 	$(top_builddir)/src/common/libscdl.la \
-	$(top_builddir)/src/common/libcompat.la
+	$(top_builddir)/src/common/libcompat.la \
+	$(OPTIONAL_OPENSSL_LIBS) $(PTHREAD_LIBS)
 
 opensc_pkcs11_la_SOURCES = $(OPENSC_PKCS11_SRC) $(OPENSC_PKCS11_INC) hack-disabled.c
 opensc_pkcs11_la_LIBADD = $(OPENSC_PKCS11_LIBS)
@@ -56,19 +57,20 @@ pkcs11-jar: jar-dir
 		 -k"testcert" jar-dir
 
 if WIN32
-install-exec-hook:	install-pkcs11DATA
+install-exec-hook:
+	$(mkdir_p) "$(DESTDIR)$(libdir)"
 	for l in opensc-pkcs11.dll onepin-opensc-pkcs11.dll pkcs11-spy.dll; do \
 		mv "$(DESTDIR)$(libdir)/$$l" "$(DESTDIR)$(bindir)/$$l"; \
 	done
 else
 # see http://wiki.cacert.org/wiki/Pkcs11TaskForce
-pkcs11_DATA = #This will create the directory
 if CYGWIN
 PKCS11_SUFFIX=.dll
 else
 PKCS11_SUFFIX=.so
 endif
-install-exec-hook:	install-pkcs11DATA
+install-exec-hook:
+	$(mkdir_p) "$(DESTDIR)$(pkcs11dir)"
 	for l in opensc-pkcs11$(PKCS11_SUFFIX) onepin-opensc-pkcs11$(PKCS11_SUFFIX) pkcs11-spy$(PKCS11_SUFFIX); do \
 		rm -f "$(DESTDIR)$(pkcs11dir)/$$l"; \
 		$(LN_S) ../$$l "$(DESTDIR)$(pkcs11dir)/$$l"; \

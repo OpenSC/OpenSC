@@ -203,7 +203,7 @@ incrypto34_select_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card
  * Store a PIN
  */
 static int
-incrypto34_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card, 
+incrypto34_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		sc_file_t *df, sc_pkcs15_object_t *pin_obj,
 		const u8 *pin, size_t pin_len,
 		const u8 *puk, size_t puk_len)

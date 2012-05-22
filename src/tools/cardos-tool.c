@@ -83,7 +83,7 @@ static int cardos_info(void)
 
 	if (verbose) {
 		printf("Card ATR:\n");
-		util_hex_dump_asc(stdout, card->atr.value, card->atr.len, -1);      
+		util_hex_dump_asc(stdout, card->atr.value, card->atr.len, -1);
 	} else {
 		char tmp[SC_MAX_ATR_SIZE*3];
 		sc_bin_to_hex(card->atr.value, card->atr.len, tmp, sizeof(tmp) - 1, ':');
@@ -170,9 +170,9 @@ static int cardos_info(void)
 	} else if (apdu.resp[0] == 0xc8 && apdu.resp[1] == 0x09) {
 		printf(" (that's CardOS M4.2B)\n");
 	} else if (apdu.resp[0] == 0xc8 && apdu.resp[1] == 0x0B) {
-		printf(" (that's CardOS M4.2C)\n");	
+		printf(" (that's CardOS M4.2C)\n");
 	} else if (apdu.resp[0] == 0xc8 && apdu.resp[1] == 0x0D) {
-		printf(" (that's CardOS M4.4)\n");	
+		printf(" (that's CardOS M4.4)\n");
 	} else {
 		printf(" (unknown Version)\n");
 	}
@@ -271,7 +271,7 @@ static int cardos_info(void)
 	} else {
 		printf("ATR Status: 0x%d unknown\n",rbuf[0]);
 	}
-	
+
 	apdu.p2 = 0x88;
 	apdu.resplen = sizeof(rbuf);
 	r = sc_transmit_apdu(card, &apdu);
@@ -396,7 +396,7 @@ static int cardos_sm4h(const unsigned char *in, size_t inlen, unsigned char
 		plain_lc = 0;
 	if (inlen > 5)
 		plain_lc = in[4];
-	
+
 	/* 4 + plain_lc plus 0..7 bytes of padding */
 	mac_input_len = 4 + plain_lc;
 	while (mac_input_len % 8) mac_input_len++;
@@ -413,7 +413,7 @@ static int cardos_sm4h(const unsigned char *in, size_t inlen, unsigned char
 	if (plain_lc)	/* copy data from in APDU */
 		memcpy(&mac_input[4],&in[5],plain_lc);
 	/* calloc already did the ansi padding: rest is 00 */
-	
+
 	/* prepare des key using first 8 bytes of key */
 	DES_set_key((const_DES_cblock*) &key[0], &ks_a);
 	/* prepare des key using second 8 bytes of key */
@@ -447,7 +447,7 @@ static int cardos_sm4h(const unsigned char *in, size_t inlen, unsigned char
 		printf("out of memory, aborting\n");
 		return 0;
 	}
-	if (plain_lc) 
+	if (plain_lc)
 		memcpy(&enc_input[0],&in[5],plain_lc);
 	for (i=0; i < 8; i++) enc_input[i+plain_lc] = des_out[i];
 	enc_input[plain_lc+8] = 0x80; /* iso padding */
@@ -470,7 +470,7 @@ static int cardos_sm4h(const unsigned char *in, size_t inlen, unsigned char
 
 	/* xor data and IV (8 bytes 00) to get input data */
 	for (i=0; i < 8; i++) des_in[i] = enc_input[i] ^ 00;
-	
+
 	/* encrypt with des2 (tripple des, but using keys A-B-A) */
 	DES_ecb2_encrypt(&des_in, &des_out, &ks_a, &ks_b, 1);
 
@@ -481,7 +481,7 @@ static int cardos_sm4h(const unsigned char *in, size_t inlen, unsigned char
 	for (j=1; j < (enc_input_len / 8); j++) {
 		/* xor data and prev. result to get input data */
 		for (i=0; i < 8; i++) des_in[i] = enc_input[i+j*8] ^ des_out[i];
-	
+
 		/* encrypt with des2 (tripple des, but using keys A-B-A) */
 		DES_ecb2_encrypt(&des_in, &des_out, &ks_a, &ks_b, 1);
 
@@ -506,7 +506,7 @@ static int cardos_format(const char *opt_startkey)
 {
 	unsigned const char startkey[] = {
 		0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-		0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff }; 
+		0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
 	sc_apdu_t apdu;
 	u8 rbuf[256];
 	int r;
@@ -519,12 +519,12 @@ static int cardos_format(const char *opt_startkey)
 		/* with "ii" the startkey index as hex number and */
 		/* "vv" the 16 byte value in hex (32 chars) */
 	}
-	
+
 	if (verbose)	{
 		printf ("StartKey:\n");
 		util_hex_dump_asc(stdout, startkey, 16, -1);
 		}
-	
+
 	/* use GET DATA for version - 00 ca 01 82
 	 * returns e.g. c8 09 for 4.2B
 	 */
@@ -606,7 +606,7 @@ static int cardos_format(const char *opt_startkey)
 	if (apdu.resp[3] < 5) {
 		printf("startkey has only %d tries left. to be safe: aborting\n", apdu.resp[3]);
 		return 1;
-	}	
+	}
 
 	/* first run GET DATA for lifecycle	 00 CA 01 83
 	 * returns 34 MANUFACTURING 20 ADMINISTRATION 10 OPERATIONAL
@@ -657,7 +657,7 @@ static int cardos_format(const char *opt_startkey)
 
 		/* we should handle ERASE IN PROGRESS (29) too */
 	}
-		
+
 	if (apdu.resp[0] == 0x20) {
 		printf("card in administrative state, ok\n");
 		goto admin_state;
@@ -722,7 +722,7 @@ static int cardos_format(const char *opt_startkey)
 
 admin_state:
 	/* use GET DATA for packages - 00 ca 01 88
-	 * returns e1 LEN MM 04 ID ID ID ID 8f 01 SS 
+	 * returns e1 LEN MM 04 ID ID ID ID 8f 01 SS
 	 * MM = Manufacturing ID (01 .. 3f = Siemens
 	 * ID ID ID ID = Id of the package
 	 * SS = License state (01 enabled, 00 disabled
@@ -781,7 +781,7 @@ admin_state:
 		apdu.lc = rbuf[4];
 		apdu.data = &rbuf[5];
 		apdu.datalen = rbuf[4];
-		
+
 		r = sc_transmit_apdu(card, &apdu);
 		if (r) {
 			fprintf(stderr, "APDU transmit failed: %s\n",
@@ -796,7 +796,7 @@ admin_state:
 			return 1;
 		}
 	}
-	
+
 erase_state:
 
 	/* next we need to format the card. Our command is:
@@ -835,7 +835,7 @@ erase_state:
 		apdu.lc = rbuf[4];
 		apdu.data = &rbuf[5];
 		apdu.datalen = rbuf[4];
-		
+
 		r = sc_transmit_apdu(card, &apdu);
 		if (r) {
 			fprintf(stderr, "APDU transmit failed: %s\n",
@@ -877,13 +877,13 @@ static int cardos_change_startkey(const char *change_startkey_apdu)
 	sc_apdu_t apdu;
 	u8 rbuf[256];
 	int r;
-	
+
 	if (verbose)	{
 		printf ("Change StartKey APDU:\n");
 		util_hex_dump_asc(stdout, (unsigned char *)change_startkey_apdu,
 			strlen(change_startkey_apdu), -1);
 		}
-	
+
 	/* use GET DATA for version - 00 ca 01 82
 	 * returns e.g. c8 09 for 4.2B
 	 */
@@ -967,7 +967,7 @@ static int cardos_change_startkey(const char *change_startkey_apdu)
 	if (apdu.resp[3] < 5) {
 		printf("startkey has only %d tries left. to be safe: aborting\n", apdu.resp[3]);
 		return 1;
-	}	
+	}
 
 	/* now check if the correct APDU was passed */
 	if (sc_hex_to_bin(change_startkey_apdu, apdu_bin, &apdu_len) != 0) {
@@ -979,17 +979,17 @@ static int cardos_change_startkey(const char *change_startkey_apdu)
 	if (cardos_version[0] == 0xc8 && cardos_version[1] == 0x08) {
 		if (memcmp(checksum, cardos_43b_checksum, SHA_DIGEST_LENGTH) != 0) {
 			printf("change startkey apdu is wrong, checksum doesn't match\n");
-			util_hex_dump_asc(stdout, checksum, SHA_DIGEST_LENGTH, -1);  
-			util_hex_dump_asc(stdout, cardos_43b_checksum, SHA_DIGEST_LENGTH, -1);  
+			util_hex_dump_asc(stdout, checksum, SHA_DIGEST_LENGTH, -1);
+			util_hex_dump_asc(stdout, cardos_43b_checksum, SHA_DIGEST_LENGTH, -1);
 			printf("aborting\n");
 			return 1;
 		}
 		goto change_startkey;
 	}
-	
+
 	printf("checksum for your card not yet implemented, aborting\n");
 	return 1;
-	
+
 change_startkey:
 	/* run change startkey apdu */
 

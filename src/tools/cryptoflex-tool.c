@@ -89,7 +89,7 @@ static char *getpin(const char *prompt)
 {
 	char *buf, pass[20];
 	int i;
-	
+
 	printf("%s", prompt);
 	fflush(stdout);
 	if (fgets(pass, 20, stdin) == NULL)
@@ -116,7 +116,7 @@ static int verify_pin(int pin)
 {
 	char prompt[50];
 	int r, tries_left = -1;
-	
+
 	if (pincode == NULL) {
 		sprintf(prompt, "Please enter CHV%d: ", pin);
 		pincode = (u8 *) getpin(prompt);
@@ -168,15 +168,15 @@ static void invert_buf(u8 *dest, const u8 *src, size_t c)
 	size_t i;
 
 	for (i = 0; i < c; i++)
-		dest[i] = src[c-1-i];	
+		dest[i] = src[c-1-i];
 }
 
 static BIGNUM * cf2bn(const u8 *buf, size_t bufsize, BIGNUM *num)
 {
 	u8 tmp[512];
-	
+
 	invert_buf(tmp, buf, bufsize);
-		
+
 	return BN_bin2bn(tmp, bufsize, num);
 }
 
@@ -189,7 +189,7 @@ static int bn2cf(const BIGNUM *num, u8 *buf)
 	if (r <= 0)
 		return r;
 	invert_buf(buf, tmp, r);
-	
+
 	return r;
 }
 
@@ -198,7 +198,7 @@ static int parse_public_key(const u8 *key, size_t keysize, RSA *rsa)
 	const u8 *p = key;
 	BIGNUM *n, *e;
 	int base;
-	
+
 	base = (keysize - 7) / 5;
 	if (base != 32 && base != 48 && base != 64 && base != 128) {
 		fprintf(stderr, "Invalid public key.\n");
@@ -225,7 +225,7 @@ static int gen_d(RSA *rsa)
 {
 	BN_CTX *bnctx;
 	BIGNUM *r0, *r1, *r2;
-	
+
 	bnctx = BN_CTX_new();
 	if (bnctx == NULL)
 		return -1;
@@ -250,7 +250,7 @@ static int parse_private_key(const u8 *key, size_t keysize, RSA *rsa)
 	const u8 *p = key;
 	BIGNUM *bn_p, *q, *dmp1, *dmq1, *iqmp;
 	int base;
-	
+
 	base = (keysize - 3) / 5;
 	if (base != 32 && base != 48 && base != 64 && base != 128) {
 		fprintf(stderr, "Invalid private key.\n");
@@ -305,7 +305,7 @@ static int read_public_key(RSA *rsa)
 	sc_file_t *file;
 	u8 buf[2048], *p = buf;
 	size_t bufsize, keysize;
-	
+
 	r = select_app_df();
 	if (r)
 		return 1;
@@ -350,10 +350,10 @@ static int read_private_key(RSA *rsa)
 	sc_path_t path;
 	sc_file_t *file;
 	const sc_acl_entry_t *e;
-	
+
 	u8 buf[2048], *p = buf;
 	size_t bufsize, keysize;
-	
+
 	r = select_app_df();
 	if (r)
 		return 1;
@@ -400,7 +400,7 @@ static int read_key(void)
 	u8 buf[1024], *p = buf;
 	u8 b64buf[2048];
 	int r;
-	
+
 	if (rsa == NULL)
 		return -1;
 	r = read_public_key(rsa);
@@ -435,7 +435,7 @@ static int read_key(void)
 		return -1;
 	}
 	printf("-----BEGIN RSA PRIVATE KEY-----\n%s-----END RSA PRIVATE KEY-----\n", b64buf);
-	
+
 	return 0;
 }
 
@@ -459,7 +459,7 @@ static int list_keys(void)
 	}
 	do {
 		int mod_len = -1;
-		
+
 		r = sc_read_binary(card, idx, buf, 3, 0);
 		if (r < 0) {
 			fprintf(stderr, "Unable to read public key file: %s\n", sc_strerror(r));
@@ -486,7 +486,7 @@ static int generate_key(void)
 	u8 sbuf[4];
 	u8 p2;
 	int r;
-	
+
 	switch (opt_mod_length) {
 	case 512:
 		p2 = 0x40;
@@ -545,7 +545,7 @@ static int create_key_files(void)
 	int size = -1;
 	int r;
 	size_t i;
-	
+
 	for (i = 0; i < sizeof(mod_lens) / sizeof(int); i++)
 		if (mod_lens[i] == opt_mod_length) {
 			size = sizes[i];
@@ -555,10 +555,10 @@ static int create_key_files(void)
 		fprintf(stderr, "Invalid modulus length.\n");
 		return 1;
 	}
-	
+
 	if (verbose)
 		printf("Creating key files for %d keys.\n", opt_key_count);
-	
+
 	file = sc_file_new();
 	if (!file) {
 		fprintf(stderr, "out of memory.\n");
@@ -609,7 +609,7 @@ static int create_key_files(void)
 		return 1;
 	}
 	if (verbose)
-		printf("Key files generated successfully.\n");	
+		printf("Key files generated successfully.\n");
 	return 0;
 }
 
@@ -618,7 +618,7 @@ static int read_rsa_privkey(RSA **rsa_out)
 	RSA *rsa = NULL;
 	BIO *in = NULL;
 	int r;
-	
+
 	in = BIO_new(BIO_s_file());
 	if (opt_prkeyf == NULL) {
 		fprintf(stderr, "Private key file must be set.\n");
@@ -645,7 +645,7 @@ static int encode_private_key(RSA *rsa, u8 *key, size_t *keysize)
 	u8 bnbuf[256];
 	int base = 0;
 	int r;
-	
+
 	switch (BN_num_bits(rsa->n)) {
 	case 512:
 		base = 32;
@@ -719,7 +719,7 @@ static int encode_public_key(RSA *rsa, u8 *key, size_t *keysize)
 	u8 bnbuf[256];
 	int base = 0;
 	int r;
-	
+
 	switch (BN_num_bits(rsa->n)) {
 	case 512:
 		base = 32;
@@ -817,7 +817,7 @@ static int store_key(void)
 	size_t prvsize, pubsize;
 	int r;
 	RSA *rsa;
-	
+
 	r = read_rsa_privkey(&rsa);
 	if (r)
 		return r;
@@ -843,8 +843,8 @@ static int store_key(void)
 	r = update_public_key(pub, pubsize);
 	if (r)
 		return r;
-	return 0;	
-}                              
+	return 0;
+}
 
 static int create_pin_file(const sc_path_t *inpath, int chv, const char *key_id)
 {
@@ -854,7 +854,7 @@ static int create_pin_file(const sc_path_t *inpath, int chv, const char *key_id)
 	sc_file_t *file;
 	size_t len;
 	int r;
-	
+
 	file_id = *inpath;
 	if (file_id.len < 2)
 		return -1;
@@ -875,7 +875,7 @@ static int create_pin_file(const sc_path_t *inpath, int chv, const char *key_id)
 	pin = getpin(prompt);
 	if (pin == NULL)
 		return -1;
-	
+
 	sprintf(prompt, "Please enter PUK for CHV%d%s: ", chv, key_id);
 	puk = getpin(prompt);
 	if (puk == NULL) {
@@ -897,7 +897,7 @@ static int create_pin_file(const sc_path_t *inpath, int chv, const char *key_id)
 
 	free(pin);
 	free(puk);
-	
+
 	file = sc_file_new();
 	file->type = SC_FILE_TYPE_WORKING_EF;
 	file->ef_structure = SC_FILE_EF_TRANSPARENT;
@@ -930,7 +930,7 @@ static int create_pin_file(const sc_path_t *inpath, int chv, const char *key_id)
 		fprintf(stderr, "Unable to update created PIN file: %s\n", sc_strerror(r));
 		return r;
 	}
-	
+
 	return 0;
 }
 
@@ -938,7 +938,7 @@ static int create_pin(void)
 {
 	sc_path_t path;
 	char buf[80];
-	
+
 	if (opt_pin_num != 1 && opt_pin_num != 2) {
 		fprintf(stderr, "Invalid PIN number. Possible values: 1, 2.\n");
 		return 2;
@@ -947,7 +947,7 @@ static int create_pin(void)
 	if (opt_appdf != NULL)
 		strcat(buf, opt_appdf);
 	sc_format_path(buf, &path);
-	
+
 	return create_pin_file(&path, opt_pin_num, "");
 }
 
