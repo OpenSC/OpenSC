@@ -237,12 +237,12 @@ CK_RV card_detect(sc_reader_t *reader)
 
 	/* Detect the framework */
 	if (p11card->framework == NULL) {
-		sc_log(context, "%s: Detecting Framework\n", reader->name);
+		sc_log(context, "%s: Detecting Framework", reader->name);
 
 		for (i = 0; frameworks[i]; i++) {
 			if (frameworks[i]->bind == NULL)
 				continue;
-			rv = frameworks[i]->bind(p11card);
+			rv = frameworks[i]->bind(p11card, NULL);
 			if (rv == CKR_OK)
 				break;
 		}
@@ -251,8 +251,8 @@ CK_RV card_detect(sc_reader_t *reader)
 			return CKR_TOKEN_NOT_RECOGNIZED;
 
 		/* Initialize framework */
-		sc_log(context, "%s: Detected framework %d. Creating tokens.\n", reader->name, i);
-		rv = frameworks[i]->create_tokens(p11card);
+		sc_log(context, "%s: Detected framework %d. Creating tokens.", reader->name, i);
+		rv = frameworks[i]->create_tokens(p11card, NULL, NULL);
 		if (rv != CKR_OK)
 			return rv;
 

@@ -46,15 +46,15 @@ extern "C" {
 #define PKCS11_DEFAULT_MODULE_NAME      "opensc-pkcs11.so"
 #endif
 
-#define SC_PKCS11_PIN_UNBLOCK_NOT_ALLOWED       0
-#define SC_PKCS11_PIN_UNBLOCK_UNLOGGED_SETPIN   1
-#define SC_PKCS11_PIN_UNBLOCK_SCONTEXT_SETPIN   2
-#define SC_PKCS11_PIN_UNBLOCK_SO_LOGGED_INITPIN 3
+#define SC_PKCS11_PIN_UNBLOCK_NOT_ALLOWED	0
+#define SC_PKCS11_PIN_UNBLOCK_UNLOGGED_SETPIN	1
+#define SC_PKCS11_PIN_UNBLOCK_SCONTEXT_SETPIN	2
+#define SC_PKCS11_PIN_UNBLOCK_SO_LOGGED_INITPIN	3
 
-#define SC_PKCS11_SLOT_FOR_PIN_USER     1
-#define SC_PKCS11_SLOT_FOR_PIN_SIGN     2
-#define SC_PKCS11_SLOT_FOR_APPLICATION  4
-#define SC_PKCS11_SLOT_CREATE_ALL       8
+#define SC_PKCS11_SLOT_FOR_PIN_USER	1
+#define SC_PKCS11_SLOT_FOR_PIN_SIGN	2
+#define SC_PKCS11_SLOT_FOR_APPLICATION	4
+#define SC_PKCS11_SLOT_CREATE_ALL	8
 
 extern void *C_LoadModule(const char *name, CK_FUNCTION_LIST_PTR_PTR);
 extern CK_RV C_UnloadModule(void *module);
@@ -85,7 +85,7 @@ struct sc_pkcs11_config {
 	unsigned int pin_unblock_style;
 	unsigned int create_puk_slot;
 	unsigned int zero_ckaid_for_ca_certs;
-	 unsigned int create_slots_flags;
+	unsigned int create_slots_flags;
 };
 
 /*
@@ -119,6 +119,14 @@ struct sc_pkcs11_object_ops {
 			CK_BYTE_PTR pEncryptedData, CK_ULONG ulEncryptedDataLen,
 			CK_BYTE_PTR pData, CK_ULONG_PTR pulDataLen);
 
+	CK_RV (*derive)(struct sc_pkcs11_session *, void *,
+			CK_MECHANISM_PTR,
+			CK_BYTE_PTR pSeedData, CK_ULONG ulSeedDataLen,
+			CK_BYTE_PTR pDerived, CK_ULONG_PTR pulDerivedLen);
+
+	/* Check compatibility of PKCS#15 object usage and an asked PKCS#11 mechanism. */
+	CK_RV (*can_do)(struct sc_pkcs11_session *, void *, CK_MECHANISM_TYPE, unsigned int);
+
 	/* Others to be added when implemented */
 };
 
@@ -139,20 +147,20 @@ struct sc_pkcs11_object {
 
 struct sc_pkcs11_framework_ops {
 	/* Detect and bind card to framework */
-	CK_RV (*bind)(struct sc_pkcs11_card *);
+	CK_RV (*bind)(struct sc_pkcs11_card *, struct sc_app_info *);
 	/* Unbind and release allocated resources */
 	CK_RV (*unbind)(struct sc_pkcs11_card *);
 
 	/* Create tokens to virtual slots and
 	 * objects in tokens; called after bind */
-	CK_RV (*create_tokens)(struct sc_pkcs11_card *);
+	CK_RV (*create_tokens)(struct sc_pkcs11_card *, struct sc_app_info *, struct sc_pkcs11_slot **);
 	CK_RV (*release_token)(struct sc_pkcs11_card *, void *);
 
 	/* Login and logout */
 	CK_RV (*login)(struct sc_pkcs11_slot *,
 				CK_USER_TYPE, CK_CHAR_PTR, CK_ULONG);
-	CK_RV (*logout)(struct sc_pkcs11_card *, void *);
-	CK_RV (*change_pin)(struct sc_pkcs11_card *, void *, int,
+	CK_RV (*logout)(struct sc_pkcs11_slot *);
+	CK_RV (*change_pin)(struct sc_pkcs11_slot *,
 				CK_CHAR_PTR, CK_ULONG,
 				CK_CHAR_PTR, CK_ULONG);
 
@@ -163,20 +171,17 @@ struct sc_pkcs11_framework_ops {
 	CK_RV (*init_token)(struct sc_pkcs11_card *, void *,
 				CK_UTF8CHAR_PTR, CK_ULONG,
 				CK_UTF8CHAR_PTR);
-	CK_RV (*init_pin)(struct sc_pkcs11_card *,
-				struct sc_pkcs11_slot *,
+	CK_RV (*init_pin)(struct sc_pkcs11_slot *,
 				CK_UTF8CHAR_PTR, CK_ULONG);
-	CK_RV (*create_object)(struct sc_pkcs11_card *,
-				struct sc_pkcs11_slot *,
+	CK_RV (*create_object)(struct sc_pkcs11_slot *,
 				CK_ATTRIBUTE_PTR, CK_ULONG,
 				CK_OBJECT_HANDLE_PTR);
-	CK_RV (*gen_keypair)(struct sc_pkcs11_card *p11card,
-				struct sc_pkcs11_slot *slot,
-				CK_MECHANISM_PTR pMechanism,
-				CK_ATTRIBUTE_PTR pPubKeyTempl, CK_ULONG ulPubKeyAttrCnt,
-				CK_ATTRIBUTE_PTR pPrivKeyTempl, CK_ULONG ulPrivKeyAttrCnt,
-				CK_OBJECT_HANDLE_PTR phPubKey, CK_OBJECT_HANDLE_PTR phPrivKey);
-	CK_RV (*get_random)(struct sc_pkcs11_card *p11card,
+	CK_RV (*gen_keypair)(struct sc_pkcs11_slot *,
+				CK_MECHANISM_PTR,
+				CK_ATTRIBUTE_PTR, CK_ULONG,
+				CK_ATTRIBUTE_PTR, CK_ULONG,
+				CK_OBJECT_HANDLE_PTR, CK_OBJECT_HANDLE_PTR);
+	CK_RV (*get_random)(struct sc_pkcs11_slot *,
 				CK_BYTE_PTR, CK_ULONG);
 };
 
@@ -190,11 +195,12 @@ typedef unsigned long long sc_timestamp_t;
 typedef unsigned __int64   sc_timestamp_t;
 #endif
 
+#define SC_PKCS11_FRAMEWORK_DATA_MAX_NUM	4
 struct sc_pkcs11_card {
 	sc_reader_t *reader;
 	sc_card_t *card;
 	struct sc_pkcs11_framework_ops *framework;
-	void *fw_data;
+	void *fws_data[SC_PKCS11_FRAMEWORK_DATA_MAX_NUM];
 
 	/* List of supported mechanisms */
 	struct sc_pkcs11_mechanism_type **mechanisms;
@@ -202,17 +208,20 @@ struct sc_pkcs11_card {
 };
 
 struct sc_pkcs11_slot {
-	CK_SLOT_ID id; /* ID of the slot */
-	int login_user; /* Currently logged in user */
-	CK_SLOT_INFO slot_info; /* Slot specific information (information about reader) */
-	CK_TOKEN_INFO token_info; /* Token specific information (information about card) */
-	sc_reader_t *reader; /* same as card->reader if there's a card present */
-	struct sc_pkcs11_card *card; /* The card associated with this slot */
-	unsigned int events; /* Card events SC_EVENT_CARD_{INSERTED,REMOVED} */
-	void *fw_data; /* Framework specific data */
-	list_t objects; /* Objects in this slot */
-	unsigned int nsessions; /* Number of sessions using this slot */
+	CK_SLOT_ID id;			/* ID of the slot */
+	int login_user;			/* Currently logged in user */
+	CK_SLOT_INFO slot_info;		/* Slot specific information (information about reader) */
+	CK_TOKEN_INFO token_info;	/* Token specific information (information about card) */
+	sc_reader_t *reader;		/* same as card->reader if there's a card present */
+	struct sc_pkcs11_card *card;	/* The card associated with this slot */
+	unsigned int events;		/* Card events SC_EVENT_CARD_{INSERTED,REMOVED} */
+	void *fw_data;			/* Framework specific data */  /* TODO: get know how it used */
+	list_t objects;			/* Objects in this slot */
+	unsigned int nsessions;		/* Number of sessions using this slot */
 	sc_timestamp_t slot_state_expires;
+
+	int fw_data_idx;		/* Index of framework data */
+	struct sc_app_info *app_info;	/* Application assosiated to slot */
 };
 typedef struct sc_pkcs11_slot sc_pkcs11_slot_t;
 
@@ -226,6 +235,7 @@ enum {
 	SC_PKCS11_OPERATION_VERIFY,
 	SC_PKCS11_OPERATION_DIGEST,
 	SC_PKCS11_OPERATION_DECRYPT,
+	SC_PKCS11_OPERATION_DERIVE,
 	SC_PKCS11_OPERATION_MAX
 };
 
@@ -254,17 +264,19 @@ struct sc_pkcs11_mechanism_type {
 					CK_BYTE_PTR, CK_ULONG_PTR);
 	CK_RV		  (*sign_size)(sc_pkcs11_operation_t *,
 					CK_ULONG_PTR);
-#ifdef ENABLE_OPENSSL
 	CK_RV		  (*verif_init)(sc_pkcs11_operation_t *,
 					struct sc_pkcs11_object *);
 	CK_RV		  (*verif_update)(sc_pkcs11_operation_t *,
 					CK_BYTE_PTR, CK_ULONG);
 	CK_RV		  (*verif_final)(sc_pkcs11_operation_t *,
 					CK_BYTE_PTR, CK_ULONG);
-#endif
 	CK_RV		  (*decrypt_init)(sc_pkcs11_operation_t *,
 					struct sc_pkcs11_object *);
 	CK_RV		  (*decrypt)(sc_pkcs11_operation_t *,
+					CK_BYTE_PTR, CK_ULONG,
+					CK_BYTE_PTR, CK_ULONG_PTR);
+	CK_RV		  (*derive)(sc_pkcs11_operation_t *,
+					struct sc_pkcs11_object *,
 					CK_BYTE_PTR, CK_ULONG,
 					CK_BYTE_PTR, CK_ULONG_PTR);
 	/* mechanism specific data */
@@ -388,6 +400,9 @@ CK_RV sc_pkcs11_verif_final(struct sc_pkcs11_session *, CK_BYTE_PTR, CK_ULONG);
 #endif
 CK_RV sc_pkcs11_decr_init(struct sc_pkcs11_session *, CK_MECHANISM_PTR, struct sc_pkcs11_object *, CK_MECHANISM_TYPE);
 CK_RV sc_pkcs11_decr(struct sc_pkcs11_session *, CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR, CK_ULONG_PTR);
+CK_RV sc_pkcs11_deri(struct sc_pkcs11_session *, CK_MECHANISM_PTR,
+				struct sc_pkcs11_object *, CK_KEY_TYPE,
+				CK_SESSION_HANDLE, CK_OBJECT_HANDLE, struct sc_pkcs11_object *);
 sc_pkcs11_mechanism_type_t *sc_pkcs11_find_mechanism(struct sc_pkcs11_card *,
 				CK_MECHANISM_TYPE, unsigned int);
 sc_pkcs11_mechanism_type_t *sc_pkcs11_new_fw_mechanism(CK_MECHANISM_TYPE,

@@ -335,8 +335,9 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t * ctx)
         free(tmp);
 
 	sc_log(ctx, "PKCS#11 options: plug_and_play=%d max_virtual_slots=%d slots_per_card=%d "
-		 "hide_empty_tokens=%d lock_login=%d pin_unblock_style=%d zero_ckaid_for_ca_certs=%d",
+		 "hide_empty_tokens=%d lock_login=%d pin_unblock_style=%d "
+		 "zero_ckaid_for_ca_certs=%d create_slots_flags=0x%X",
 		 conf->plug_and_play, conf->max_virtual_slots, conf->slots_per_card,
 		 conf->hide_empty_tokens, conf->lock_login, conf->pin_unblock_style,
-		 conf->zero_ckaid_for_ca_certs);
+		 conf->zero_ckaid_for_ca_certs, conf->create_slots_flags);
 }

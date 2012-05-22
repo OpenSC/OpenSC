@@ -155,16 +155,16 @@ static CK_RV set_gost_params(struct sc_pkcs15init_keyarg_gost_params *,
 		CK_ATTRIBUTE_PTR, CK_ULONG, CK_ATTRIBUTE_PTR, CK_ULONG);
 /* PKCS#15 Framework */
 
-static CK_RV pkcs15_bind(struct sc_pkcs11_card *p11card)
+static CK_RV pkcs15_bind(struct sc_pkcs11_card *p11card, struct sc_app_info *app_info)
 {
 	struct pkcs15_fw_data *fw_data;
 	int rc;
 	CK_RV rv;
 
-	sc_log(context, "Bind PKCS#15 application");
+	sc_log(context, "Bind PKCS#15 '%s' application", app_info ? app_info->label : "<anonymous>");
 	if (!(fw_data = calloc(1, sizeof(*fw_data))))
 		return CKR_HOST_MEMORY;
-	p11card->fw_data = fw_data;
+	p11card->fws_data[0] = fw_data;
 
 	rc = sc_pkcs15_bind(p11card->card, NULL, &fw_data->p15_card);
 	if (rc != SC_SUCCESS) {
@@ -183,7 +183,7 @@ static CK_RV pkcs15_bind(struct sc_pkcs11_card *p11card)
 
 static CK_RV pkcs15_unbind(struct sc_pkcs11_card *p11card)
 {
-	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fw_data;
+	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fws_data[0];
 	unsigned int i;
 	int rc;
 
@@ -765,7 +765,7 @@ pkcs15_add_object(struct sc_pkcs11_slot *slot,
 	case SC_PKCS15_TYPE_PRKEY_GOSTR3410:
 	case SC_PKCS15_TYPE_PRKEY_EC:
 		pkcs15_add_object(slot, (struct pkcs15_any_object *) obj->related_pubkey, NULL);
-		card_fw_data = (struct pkcs15_fw_data *) slot->card->fw_data;
+		card_fw_data = (struct pkcs15_fw_data *) slot->card->fws_data[0];
 		for (i = 0; i < card_fw_data->num_objects; i++) {
 			struct pkcs15_any_object *obj2 = card_fw_data->objects[i];
 			struct pkcs15_cert_object *cert;
@@ -847,7 +847,7 @@ static CK_RV pkcs15_create_slot(struct sc_pkcs11_card *p11card,
 		struct sc_pkcs15_object *auth,
 		struct sc_pkcs11_slot **out)
 {
-	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fw_data;
+	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fws_data[0];
 	struct sc_pkcs11_slot *slot;
 	int rv;
 
@@ -865,9 +865,12 @@ static CK_RV pkcs15_create_slot(struct sc_pkcs11_card *p11card,
 	return CKR_OK;
 }
 
-static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
+
+static CK_RV
+pkcs15_create_tokens(struct sc_pkcs11_card *p11card, struct sc_app_info *app_info,
+		struct sc_pkcs11_slot **first_slot)
 {
-	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fw_data;
+	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fws_data[0];
 	struct sc_pkcs15_object *auths[MAX_OBJECTS];
 	struct sc_pkcs11_slot *slot = NULL;
 	int i, rv;
@@ -1048,7 +1051,7 @@ static CK_RV pkcs15_create_tokens(struct sc_pkcs11_card *p11card)
 
 static CK_RV pkcs15_release_token(struct sc_pkcs11_card *p11card, void *fw_token)
 {
-	unlock_card((struct pkcs15_fw_data *) p11card->fw_data);
+	unlock_card((struct pkcs15_fw_data *) p11card->fws_data[0]);
 	free(fw_token);
 	return CKR_OK;
 }
@@ -1060,7 +1063,7 @@ static CK_RV pkcs15_login(struct sc_pkcs11_slot *slot,
 {
 	int rc;
 	struct sc_pkcs11_card *p11card = slot->card;
-	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fw_data;
+	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fws_data[0];
 	struct sc_pkcs15_card *p15card = fw_data->p15_card;
 	struct sc_pkcs15_object *auth_object;
 	struct sc_pkcs15_auth_info *pin_info;
@@ -1236,9 +1239,10 @@ static CK_RV pkcs15_login(struct sc_pkcs11_slot *slot,
 	return CKR_OK;
 }
 
-static CK_RV pkcs15_logout(struct sc_pkcs11_card *p11card, void *fw_token)
+static CK_RV pkcs15_logout(struct sc_pkcs11_slot *slot)
 {
-	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fw_data;
+	struct sc_pkcs11_card *p11card = slot->card;
+	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fws_data[0];
 	CK_RV ret = CKR_OK;
 	int rc;
 
@@ -1265,15 +1269,19 @@ static CK_RV pkcs15_logout(struct sc_pkcs11_card *p11card, void *fw_token)
 	return ret;
 }
 
-static CK_RV pkcs15_change_pin(struct sc_pkcs11_card *p11card,
-			  void *fw_token, int login_user,
-			  CK_CHAR_PTR pOldPin, CK_ULONG ulOldLen,
-			  CK_CHAR_PTR pNewPin, CK_ULONG ulNewLen)
+
+static CK_RV
+pkcs15_change_pin(struct sc_pkcs11_slot *slot,
+		CK_CHAR_PTR pOldPin, CK_ULONG ulOldLen,
+		CK_CHAR_PTR pNewPin, CK_ULONG ulNewLen)
 {
-	int rc;
-	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fw_data;
+	struct sc_pkcs11_card *p11card = slot->card;
+	void *fw_token = slot->fw_data;
+	int login_user = slot->login_user;
+	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fws_data[0];
 	struct sc_pkcs15_auth_info *auth_info;
 	struct sc_pkcs15_object *pin_obj;
+	int rc;
 
 	if (!(pin_obj = slot_data_auth(fw_token)))
 		return CKR_USER_PIN_NOT_INITIALIZED;
@@ -1344,11 +1352,11 @@ static CK_RV pkcs15_change_pin(struct sc_pkcs11_card *p11card,
 }
 
 #ifdef USE_PKCS15_INIT
-static CK_RV pkcs15_init_pin(struct sc_pkcs11_card *p11card,
-			struct sc_pkcs11_slot *slot,
-			CK_CHAR_PTR pPin, CK_ULONG ulPinLen)
+static CK_RV
+pkcs15_init_pin(struct sc_pkcs11_slot *slot, CK_CHAR_PTR pPin, CK_ULONG ulPinLen)
 {
-	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fw_data;
+	struct sc_pkcs11_card *p11card = slot->card;
+	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fws_data[0];
 	struct sc_pkcs15init_pinargs args;
 	struct sc_profile	*profile;
 	struct sc_pkcs15_object	*auth_obj;
@@ -1422,13 +1430,15 @@ pkcs15_check_bool_cka(CK_ATTRIBUTE_PTR attr, unsigned long flag)
 	return 0;
 }
 
-static CK_RV pkcs15_create_private_key(struct sc_pkcs11_card *p11card,
-		struct sc_pkcs11_slot *slot,
+
+static CK_RV
+pkcs15_create_private_key(struct sc_pkcs11_slot *slot,
 		struct sc_profile *profile,
 		CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount,
 		CK_OBJECT_HANDLE_PTR phObject)
 {
-	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fw_data;
+	struct sc_pkcs11_card *p11card = slot->card;
+	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fws_data[0];
 	struct sc_pkcs15init_prkeyargs args;
 	struct pkcs15_any_object *key_any_obj;
 	struct sc_pkcs15_object	*key_obj;
@@ -1568,13 +1578,15 @@ static CK_RV pkcs15_create_private_key(struct sc_pkcs11_card *p11card,
 out:	return rv;
 }
 
-static CK_RV pkcs15_create_public_key(struct sc_pkcs11_card *p11card,
-		struct sc_pkcs11_slot *slot,
+
+static CK_RV
+pkcs15_create_public_key(struct sc_pkcs11_slot *slot,
 		struct sc_profile *profile,
 		CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount,
 		CK_OBJECT_HANDLE_PTR phObject)
 {
-	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fw_data;
+	struct sc_pkcs11_card *p11card = slot->card;
+	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fws_data[0];
 	struct sc_pkcs15init_pubkeyargs args;
 	struct pkcs15_any_object *key_any_obj;
 	struct sc_pkcs15_object	*key_obj;
@@ -1665,13 +1677,15 @@ static CK_RV pkcs15_create_public_key(struct sc_pkcs11_card *p11card,
 out:	return rv;
 }
 
-static CK_RV pkcs15_create_certificate(struct sc_pkcs11_card *p11card,
-		struct sc_pkcs11_slot *slot,
+
+static CK_RV
+pkcs15_create_certificate(struct sc_pkcs11_slot *slot,
 		struct sc_profile *profile,
 		CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount,
 		CK_OBJECT_HANDLE_PTR phObject)
 {
-	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fw_data;
+	struct sc_pkcs11_card *p11card = slot->card;
+	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fws_data[0];
 	struct sc_pkcs15init_certargs args;
 	struct pkcs15_any_object *cert_any_obj;
 	struct sc_pkcs15_object	*cert_obj;
@@ -1743,13 +1757,15 @@ static CK_RV pkcs15_create_certificate(struct sc_pkcs11_card *p11card,
 out:	return rv;
 }
 
-static CK_RV pkcs15_create_data(struct sc_pkcs11_card *p11card,
-		struct sc_pkcs11_slot *slot,
+
+static CK_RV
+pkcs15_create_data(struct sc_pkcs11_slot *slot,
 		struct sc_profile *profile,
 		CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount,
 		CK_OBJECT_HANDLE_PTR phObject)
 {
-	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fw_data;
+	struct sc_pkcs11_card *p11card = slot->card;
+	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fws_data[0];
 	struct sc_pkcs15init_dataargs args;
 	struct pkcs15_any_object *data_any_obj;
 	struct sc_pkcs15_object	*data_obj;
@@ -1826,11 +1842,13 @@ static CK_RV pkcs15_create_data(struct sc_pkcs11_card *p11card,
 out:	return rv;
 }
 
-static CK_RV pkcs15_create_object(struct sc_pkcs11_card *p11card,
-		struct sc_pkcs11_slot *slot,
+
+static CK_RV
+pkcs15_create_object(struct sc_pkcs11_slot *slot,
 		CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount,
 		CK_OBJECT_HANDLE_PTR phObject)
 {
+	struct sc_pkcs11_card *p11card = slot->card;
 	struct sc_profile *profile = NULL;
 	CK_OBJECT_CLASS	_class;
 	int rv, rc;
@@ -1852,20 +1870,16 @@ static CK_RV pkcs15_create_object(struct sc_pkcs11_card *p11card,
 
 	switch (_class) {
 	case CKO_PRIVATE_KEY:
-		rv = pkcs15_create_private_key(p11card, slot, profile,
-				pTemplate, ulCount, phObject);
+		rv = pkcs15_create_private_key(slot, profile, pTemplate, ulCount, phObject);
 		break;
 	case CKO_PUBLIC_KEY:
-		rv = pkcs15_create_public_key(p11card, slot, profile,
-				pTemplate, ulCount, phObject);
+		rv = pkcs15_create_public_key(slot, profile, pTemplate, ulCount, phObject);
 		break;
 	case CKO_CERTIFICATE:
-		rv = pkcs15_create_certificate(p11card, slot, profile,
-				pTemplate, ulCount, phObject);
+		rv = pkcs15_create_certificate(slot, profile, pTemplate, ulCount, phObject);
 		break;
 	case CKO_DATA:
-		rv = pkcs15_create_data(p11card, slot, profile,
-				pTemplate, ulCount, phObject);
+		rv = pkcs15_create_data(slot, profile, pTemplate, ulCount, phObject);
 		break;
 	default:
 		rv = CKR_FUNCTION_NOT_SUPPORTED;
@@ -1966,16 +1980,17 @@ set_gost_params(struct sc_pkcs15init_keyarg_gost_params *first_params,
 }
 
 /* FIXME: check for the public exponent in public key template and use this value */
-static CK_RV pkcs15_gen_keypair(struct sc_pkcs11_card *p11card,
-			struct sc_pkcs11_slot *slot,
+static CK_RV
+pkcs15_gen_keypair(struct sc_pkcs11_slot *slot,
 			CK_MECHANISM_PTR pMechanism,
 			CK_ATTRIBUTE_PTR pPubTpl, CK_ULONG ulPubCnt,
 			CK_ATTRIBUTE_PTR pPrivTpl, CK_ULONG ulPrivCnt,
 			CK_OBJECT_HANDLE_PTR phPubKey, CK_OBJECT_HANDLE_PTR phPrivKey)                /* gets priv. key handle */
 {
 	struct sc_profile *profile = NULL;
+	struct sc_pkcs11_card *p11card = slot->card;
 	struct sc_pkcs15_auth_info *pin;
-	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fw_data;
+	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fws_data[0];
 	struct sc_pkcs15init_keygen_args keygen_args;
 	struct sc_pkcs15init_pubkeyargs pub_args;
 	struct sc_pkcs15_object	 *priv_key_obj;
@@ -2146,7 +2161,7 @@ static CK_RV pkcs15_any_destroy(struct sc_pkcs11_session *session, void *object)
 	struct pkcs15_data_object *obj = (struct pkcs15_data_object*) object;
 	struct pkcs15_any_object *any_obj = (struct pkcs15_any_object*) object;
 	struct sc_pkcs11_card *card = session->slot->card;
-	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) card->fw_data;
+	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) card->fws_data[0];
 	struct sc_profile *profile = NULL;
 	int rv;
 
@@ -2182,12 +2197,13 @@ static CK_RV pkcs15_any_destroy(struct sc_pkcs11_session *session, void *object)
 }
 
 
-static CK_RV pkcs15_get_random(struct sc_pkcs11_card *p11card,
+static CK_RV pkcs15_get_random(struct sc_pkcs11_slot *slot,
 				CK_BYTE_PTR p, CK_ULONG len)
 {
-	int rc;
-	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fw_data;
+	struct sc_pkcs11_card *p11card = slot->card;
+	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fws_data[0];
 	struct sc_card *card = fw_data->p15_card->card;
+	int rc;
 
 	rc = sc_get_challenge(card, p, (size_t)len);
 	return sc_to_cryptoki_error(rc, "C_GenerateRandom");
@@ -2223,7 +2239,7 @@ static CK_RV pkcs15_set_attrib(struct sc_pkcs11_session *session,
 #else
 	struct sc_profile *profile = NULL;
 	struct sc_pkcs11_card *p11card = session->slot->card;
-	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fw_data;
+	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fws_data[0];
 	struct sc_pkcs15_id id;
 	int rc = 0;
 	CK_RV rv = CKR_OK;
@@ -2299,7 +2315,7 @@ static CK_RV pkcs15_cert_get_attribute(struct sc_pkcs11_session *session,
 				CK_ATTRIBUTE_PTR attr)
 {
 	struct pkcs15_cert_object *cert = (struct pkcs15_cert_object*) object;
-	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) session->slot->card->fw_data;
+	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) session->slot->card->fws_data[0];
 	size_t len;
 
 	switch (attr->type) {
@@ -2386,7 +2402,7 @@ pkcs15_cert_cmp_attribute(struct sc_pkcs11_session *session,
 				CK_ATTRIBUTE_PTR attr)
 {
 	struct pkcs15_cert_object *cert = (struct pkcs15_cert_object*) object;
-	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) session->slot->card->fw_data;
+	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) session->slot->card->fws_data[0];
 	u8	*data;
 	size_t	len;
 
@@ -2429,10 +2445,12 @@ struct sc_pkcs11_object_ops pkcs15_cert_ops = {
 	pkcs15_cert_get_attribute,
 	pkcs15_cert_cmp_attribute,
 	pkcs15_any_destroy,
-	NULL,
-	NULL,
-	NULL,
-	NULL
+	NULL,	/* get_size */
+	NULL,	/* sign */
+	NULL,	/* unwrap_key */
+	NULL,	/* decrypt */
+	NULL,	/* derive */
+	NULL	/* can_do */
 };
 
 /*
@@ -2456,7 +2474,7 @@ static CK_RV pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
 				CK_ATTRIBUTE_PTR attr)
 {
 	struct pkcs15_prkey_object *prkey = (struct pkcs15_prkey_object*) object;
-	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) session->slot->card->fw_data;
+	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) session->slot->card->fws_data[0];
 	struct sc_pkcs15_pubkey *key = NULL;
 	unsigned int usage;
 	size_t len;
@@ -2622,7 +2640,7 @@ static CK_RV pkcs15_prkey_sign(struct sc_pkcs11_session *ses, void *obj,
 			CK_ULONG_PTR pulDataLen)
 {
 	struct pkcs15_prkey_object *prkey = (struct pkcs15_prkey_object *) obj;
-	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) ses->slot->card->fw_data;
+	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) ses->slot->card->fws_data[0];
 	int rv, flags = 0;
 
 	sc_log(context, "Initiating signing operation, mechanism 0x%x.\n",
@@ -2733,7 +2751,7 @@ pkcs15_prkey_decrypt(struct sc_pkcs11_session *ses, void *obj,
 		CK_BYTE_PTR pEncryptedData, CK_ULONG ulEncryptedDataLen,
 		CK_BYTE_PTR pData, CK_ULONG_PTR pulDataLen)
 {
-	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) ses->slot->card->fw_data;
+	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) ses->slot->card->fws_data[0];
 	struct pkcs15_prkey_object *prkey;
 	u8	decrypted[256]; /* FIXME: Will not work for keys above 2048 bits */
 	int	buff_too_small, rv, flags = 0;
@@ -2804,8 +2822,10 @@ struct sc_pkcs11_object_ops pkcs15_prkey_ops = {
 	pkcs15_any_destroy,
 	NULL,
 	pkcs15_prkey_sign,
-	NULL, /* unwrap */
-	pkcs15_prkey_decrypt
+	NULL,	/* unwrap */
+	pkcs15_prkey_decrypt,
+	NULL,	/* derive */
+	NULL	/* can_do */
 };
 
 /*
@@ -2836,7 +2856,7 @@ static CK_RV pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session,
 {
 	struct pkcs15_pubkey_object *pubkey = (struct pkcs15_pubkey_object*) object;
 	struct pkcs15_cert_object *cert = pubkey->pub_genfrom;
-	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) session->slot->card->fw_data;
+	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) session->slot->card->fws_data[0];
 	size_t len;
 
 	/* We may need to get these from cert */
@@ -2983,10 +3003,12 @@ struct sc_pkcs11_object_ops pkcs15_pubkey_ops = {
 	pkcs15_pubkey_get_attribute,
 	sc_pkcs11_any_cmp_attribute,
 	pkcs15_any_destroy,
-	NULL,
-	NULL,
-	NULL,
-	NULL
+	NULL,	/* get_size */
+	NULL,	/* sign */
+	NULL,	/* unwrap_key */
+	NULL,	/* decrypt */
+	NULL,	/* derive */
+	NULL	/* can_do */
 };
 
 
@@ -3011,8 +3033,7 @@ static int pkcs15_dobj_get_value(struct sc_pkcs11_session *session,
 		struct sc_pkcs15_data **out_data)
 {
 	int rv;
-	struct pkcs15_fw_data *fw_data =
-		(struct pkcs15_fw_data *) session->slot->card->fw_data;
+	struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) session->slot->card->fws_data[0];
 	sc_card_t *card = session->slot->card->card;
 
 	if (!out_data)
@@ -3123,12 +3144,13 @@ struct sc_pkcs11_object_ops pkcs15_dobj_ops = {
 	pkcs15_dobj_get_attribute,
 	sc_pkcs11_any_cmp_attribute,
 	pkcs15_any_destroy,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
+	NULL,	/* get_size */
+	NULL,	/* sign */
+	NULL,	/* unwrap_key */
+	NULL,	/* decrypt */
+	NULL,	/* derive */
+	NULL	/* can_do */
 };
-
 
 /*
  * get_attribute helpers
