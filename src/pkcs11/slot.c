@@ -181,7 +181,7 @@ CK_RV card_detect(sc_reader_t *reader)
 {
 	struct sc_pkcs11_card *p11card = NULL;
 	int rc, rv;
-	unsigned int i;
+	unsigned int i, j;
 
 	rv = CKR_OK;
 
@@ -237,28 +237,64 @@ CK_RV card_detect(sc_reader_t *reader)
 
 	/* Detect the framework */
 	if (p11card->framework == NULL) {
-		sc_log(context, "%s: Detecting Framework\n", reader->name);
+		struct sc_app_info *app_generic = sc_pkcs15_get_application_by_type(p11card->card, "generic");
+		struct sc_pkcs11_slot *first_slot = NULL;
 
-		for (i = 0; frameworks[i]; i++) {
-			if (frameworks[i]->bind == NULL)
-				continue;
-			rv = frameworks[i]->bind(p11card);
-			if (rv == CKR_OK)
+		sc_log(context, "%s: Detecting Framework. %i on-card applications", reader->name, p11card->card->app_count);
+		sc_log(context, "%s: generic application %s", reader->name, app_generic ? app_generic->label : "<none>");
+
+		for (i = 0; frameworks[i]; i++)
+			if (frameworks[i]->bind != NULL)
 				break;
-		}
-
+		/*TODO: only first framework is used: pkcs15init framework is not reachable here */
 		if (frameworks[i] == NULL)
-			return CKR_TOKEN_NOT_RECOGNIZED;
+			return CKR_GENERAL_ERROR;
 
 		/* Initialize framework */
-		sc_log(context, "%s: Detected framework %d. Creating tokens.\n", reader->name, i);
-		rv = frameworks[i]->create_tokens(p11card);
-		if (rv != CKR_OK)
-			return rv;
+		sc_log(context, "%s: Detected framework %d. Creating tokens.", reader->name, i);
+		/* Bind firstly 'generic' application or (emulated?) card without applications */
+		if (app_generic || !p11card->card->app_count)   {
+			sc_log(context, "%s: Try to bind 'generic' token.", reader->name);
+			rv = frameworks[i]->bind(p11card, app_generic);
+			if (rv != CKR_OK)   {
+				sc_log(context, "%s: cannot bind 'generic' token.", reader->name);
+				return rv;
+			}
+
+			sc_log(context, "%s: Creating 'generic' token.", reader->name);
+			rv = frameworks[i]->create_tokens(p11card, app_generic, &first_slot);
+			if (rv != CKR_OK)   {
+				sc_log(context, "%s: cannot create 'generic' token.", reader->name);
+				return rv;
+			}
+		}
+
+		/* Now bind the rest of applications that are not 'generic' */
+		for (j = 0; j < p11card->card->app_count; j++)   {
+			struct sc_app_info *app_info = p11card->card->app[j];
+			char *app_name = app_info ? app_info->label : "<anonymous>";
+
+			if (app_generic && app_generic == p11card->card->app[j])
+				continue;
+
+			sc_log(context, "%s: Binding %s token.", reader->name, app_name);
+			rv = frameworks[i]->bind(p11card, app_info);
+			if (rv != CKR_OK)   {
+				sc_log(context, "%s: cannot bind %s token.", reader->name, app_name);
+				continue;
+			}
+
+			sc_log(context, "%s: Creating %s token.", reader->name, app_name);
+			rv = frameworks[i]->create_tokens(p11card, app_info, &first_slot);
+			if (rv != CKR_OK)   {
+				sc_log(context, "%s: cannot create %s token.", reader->name, app_name);
+				return rv;
+			}
+		}
 
 		p11card->framework = frameworks[i];
 	}
-	sc_log(context, "%s: Detection ended\n", reader->name);
+	sc_log(context, "%s: Detection ended", reader->name);
 	return CKR_OK;
 }
 

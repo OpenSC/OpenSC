@@ -676,7 +676,7 @@ struct sc_app_info * sc_find_app(struct sc_card *card, struct sc_aid *aid)
 
 	if (!aid || !aid->len)
 		return card->app[0];
-		
+
 	for (ii=0; ii < card->app_count; ii++) {
 		if (card->app[ii]->aid.len != aid->len)
 			continue;
@@ -710,6 +710,50 @@ static struct sc_app_info *sc_dup_app_info(const struct sc_app_info *info)
 
 	return out;
 }
+
+
+struct sc_app_info *
+sc_pkcs15_get_application_by_type(struct sc_card * card, char *app_type)
+{
+	struct sc_app_info *out = NULL;
+	scconf_block *conf_block = NULL;
+	int i, rv;
+
+	if (!card)
+		return NULL;
+
+	if (card->app_count < 0)   {
+		rv = sc_enum_apps(card);
+		if (rv < 0 && rv != SC_ERROR_FILE_NOT_FOUND)
+			return NULL;
+	}
+
+	conf_block = sc_get_conf_block(card->ctx, "framework", "pkcs15", 1);
+	if (!conf_block)
+		return NULL;
+
+	for (i = 0; i < card->app_count; i++)   {
+		struct sc_app_info *app_info = card->app[i];
+		scconf_block **blocks = NULL;
+		char str_path[SC_MAX_AID_STRING_SIZE];
+
+		sc_bin_to_hex(app_info->aid.value, app_info->aid.len, str_path, sizeof(str_path), 0);
+		blocks = scconf_find_blocks(card->ctx->conf, conf_block, "application", str_path);
+		if (blocks)   {
+			if (blocks[0])   {
+				char *type = (char *)scconf_get_str(blocks[0], "type", app_type);
+				if (!strcmp(type, app_type))   {
+					out = app_info;
+					break;
+				}
+			}
+			free(blocks);
+		}
+	}
+
+	return out;
+}
+
 
 static int sc_pkcs15_bind_internal(sc_pkcs15_card_t *p15card, struct sc_aid *aid)
 {
