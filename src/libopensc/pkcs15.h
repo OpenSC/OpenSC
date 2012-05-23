@@ -805,6 +805,9 @@ int sc_pkcs15_get_guid(struct sc_pkcs15_card *, const struct sc_pkcs15_object *,
 int sc_encode_oid (struct sc_context *, struct sc_object_id *, 
 		unsigned char **, size_t *);
 
+/* Get application by type: 'protected', 'generic' */
+struct sc_app_info *sc_pkcs15_get_application_by_type(struct sc_card *, char *);
+
 /* Prepend 'parent' to 'child' in case 'child' is a relative path */
 int sc_pkcs15_make_absolute_path(const sc_path_t *parent, sc_path_t *child);
 

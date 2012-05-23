@@ -185,6 +185,7 @@ sc_pkcs15_free_prkey
 sc_pkcs15_free_prkey_info
 sc_pkcs15_free_pubkey
 sc_pkcs15_free_pubkey_info
+sc_pkcs15_get_application_by_type
 sc_pkcs15_get_guid
 sc_pkcs15_get_object_id
 sc_pkcs15_get_objects
