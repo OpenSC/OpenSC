@@ -63,6 +63,27 @@ typedef struct sc_pkcs15_id sc_pkcs15_id_t;
 #define SC_PKCS15_PIN_FLAG_CONFIDENTIALITY_PROTECTED	0x0400
 #define SC_PKCS15_PIN_FLAG_EXCHANGE_REF_DATA		0x0800
 
+#define SC_PKCS15_PIN_TYPE_FLAGS_MASK					\
+	( SC_PKCS15_PIN_FLAG_LOCAL | SC_PKCS15_PIN_FLAG_INITIALIZED	\
+	| SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN | SC_PKCS15_PIN_FLAG_SO_PIN )
+
+#define SC_PKCS15_PIN_TYPE_FLAGS_SOPIN					\
+	( SC_PKCS15_PIN_FLAG_SO_PIN | SC_PKCS15_PIN_FLAG_INITIALIZED )
+
+#define SC_PKCS15_PIN_TYPE_FLAGS_PIN_GLOBAL				\
+	( SC_PKCS15_PIN_FLAG_INITIALIZED )
+
+#define SC_PKCS15_PIN_TYPE_FLAGS_PIN_LOCAL				\
+	( SC_PKCS15_PIN_FLAG_INITIALIZED | SC_PKCS15_PIN_FLAG_LOCAL)
+
+#define SC_PKCS15_PIN_TYPE_FLAGS_PUK_GLOBAL				\
+	( SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN				\
+	| SC_PKCS15_PIN_FLAG_INITIALIZED )
+
+#define SC_PKCS15_PIN_TYPE_FLAGS_PUK_LOCAL				\
+	( SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN				\
+	| SC_PKCS15_PIN_FLAG_INITIALIZED | SC_PKCS15_PIN_FLAG_LOCAL)
+
 #define SC_PKCS15_PIN_TYPE_BCD				0
 #define SC_PKCS15_PIN_TYPE_ASCII_NUMERIC		1
 #define SC_PKCS15_PIN_TYPE_UTF8				2
@@ -683,15 +704,18 @@ int sc_pkcs15_find_pin_by_reference(struct sc_pkcs15_card *card,
 				    const sc_path_t *path, int reference,
 				    struct sc_pkcs15_object **out);
 int sc_pkcs15_find_pin_by_type_and_reference(struct sc_pkcs15_card *card,
-				    const sc_path_t *path, unsigned auth_method, 
+				    const sc_path_t *path, unsigned auth_method,
 				    int reference,
 				    struct sc_pkcs15_object **out);
 int sc_pkcs15_find_so_pin(struct sc_pkcs15_card *card,
 			struct sc_pkcs15_object **out);
+int sc_pkcs15_find_pin_by_flags(struct sc_pkcs15_card *p15card,
+			unsigned flags, unsigned mask, int *index,
+			struct sc_pkcs15_object **out);
 
-void sc_pkcs15_pincache_add(struct sc_pkcs15_card *, struct sc_pkcs15_object *, 
+void sc_pkcs15_pincache_add(struct sc_pkcs15_card *, struct sc_pkcs15_object *,
 			const u8 *, size_t);
-int sc_pkcs15_pincache_revalidate(struct sc_pkcs15_card *p15card, 
+int sc_pkcs15_pincache_revalidate(struct sc_pkcs15_card *p15card,
 			const sc_pkcs15_object_t *obj);
 void sc_pkcs15_pincache_clear(struct sc_pkcs15_card *p15card);
 
