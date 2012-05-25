@@ -36,7 +36,7 @@ static CK_RV pkcs15init_bind(struct sc_pkcs11_card *p11card, struct sc_app_info 
 	struct sc_profile *profile;
 	int		rc;
 
-	rc = sc_pkcs15init_bind(card, "pkcs15", NULL, &profile);
+	rc = sc_pkcs15init_bind(card, "pkcs15", NULL, NULL, &profile);
 	if (rc == 0)
 		p11card->fws_data[0] = profile;
 	return sc_to_cryptoki_error(rc, NULL);

@@ -59,6 +59,7 @@
 #include "common/libscdl.h"
 #include "libopensc/pkcs15.h"
 #include "libopensc/cardctl.h"
+#include "libopensc/asn1.h"
 #include "libopensc/log.h"
 #include "profile.h"
 #include "pkcs15-init.h"
@@ -282,9 +283,8 @@ load_dynamic_driver(struct sc_context *ctx, void **dll,
  * Set up profile
  */
 int
-sc_pkcs15init_bind(struct sc_card *card, const char *name,
-		const char *profile_option,
-		struct sc_profile **result)
+sc_pkcs15init_bind(struct sc_card *card, const char *name, const char *profile_option,
+		struct sc_app_info *app_info, struct sc_profile **result)
 {
 	struct sc_context *ctx = card->ctx;
 	struct sc_profile *profile;
@@ -335,21 +335,20 @@ sc_pkcs15init_bind(struct sc_card *card, const char *name,
 				profile->options[i++] = strdup(s);
 		}
 	}
-
+#if 0
 	r = sc_pkcs15init_read_info(card, profile);
 	if (r < 0) {
 		sc_profile_free(profile);
 		LOG_TEST_RET(ctx, r, "Read info error");
 	}
-
+#endif
 	/* Check the config file for a profile name.
 	 * If none is defined, use the default profile name.
 	 */
 	if (!get_profile_from_config(card, card_profile, sizeof(card_profile)))
 		strcpy(card_profile, driver);
-	if (profile_option != NULL) {
+	if (profile_option != NULL)
 		strlcpy(card_profile, profile_option, sizeof(card_profile));
-	}
 
 	do   {
 		r = sc_profile_load(profile, profile->name);
@@ -364,7 +363,7 @@ sc_pkcs15init_bind(struct sc_card *card, const char *name,
 			break;
 		}
 
-	 	r = sc_profile_finish(profile, NULL);
+		r = sc_profile_finish(profile, NULL);
 		if (r < 0)
 			sc_log(ctx, "Failed to finalize profile: %s", sc_strerror(r));
 	}  while (0);
@@ -372,6 +371,28 @@ sc_pkcs15init_bind(struct sc_card *card, const char *name,
 	if (r < 0)   {
 		sc_profile_free(profile);
 		LOG_TEST_RET(ctx, r, "Load profile error");
+	}
+
+	if (app_info && app_info->aid.len)   {
+		struct sc_path path;
+
+		if (card->ef_atr->aid.len)   {
+			sc_log(ctx, "sc_pkcs15init_bind() select MF");
+			memset(&path, 0, sizeof(struct sc_path));
+			path.type = SC_PATH_TYPE_DF_NAME;
+			path.aid = card->ef_atr->aid;
+			r = sc_select_file(card, &path, NULL);
+			sc_log(ctx, "rv %i", r);
+			if (r)
+				return r;
+		}
+
+		sc_log(ctx, "sc_pkcs15init_bind() select application DF");
+		memset(&path, 0, sizeof(struct sc_path));
+		path.type = SC_PATH_TYPE_DF_NAME;
+		path.aid = app_info->aid;
+		r = sc_select_file(card, &path, NULL);
+		sc_log(ctx, "sc_pkcs15init_bind() select application DF returned %i", r);
 	}
 
 	*result = profile;
@@ -666,26 +687,30 @@ sc_pkcs15init_finalize_profile(struct sc_card *card, struct sc_profile *profile,
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
-	if (!aid || !aid->len)
-		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
-
 	if (card->app_count < 0)
 		sc_enum_apps(card);
 
-	sc_log(ctx, "finalize profile for AID %s", sc_dump_hex(aid->value, aid->len));
-	app = sc_find_app(card, aid);
-	if (!app)   {
-		sc_log(ctx, "Cannot find oncard application");
-		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+	if (aid)   {
+		sc_log(ctx, "finalize profile for AID %s", sc_dump_hex(aid->value, aid->len));
+		app = sc_find_app(card, aid);
+		if (!app)   {
+			sc_log(ctx, "Cannot find oncard application");
+			LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+		}
+	}
+	else if (card->app_count == 1) {
+		app = card->app[0];
+	}
+	else if (card->app_count > 1) {
+		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Need AID defined in this context");
 	}
 
-	sc_log(ctx, "Finalize profile with application '%s'", app->label);
+	sc_log(ctx, "Finalize profile with application '%s'", app ? app->label : "default");
 	rv = sc_profile_finish(profile, app);
 
 	sc_log(ctx, "sc_pkcs15init_finalize_profile() returns %i", rv);
 	LOG_FUNC_RETURN(ctx, rv);
 }
-
 
 /*
  * Initialize the PKCS#15 application
@@ -840,8 +865,8 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 		if (r >= 0)
 			r = sc_pkcs15init_update_tokeninfo(p15card, profile);
 		/* FIXME: what to do if sc_pkcs15init_update_dir failed? */
-	} else {
-
+	}
+	else {
 		free(app); /* unused */
 	}
 
@@ -1178,8 +1203,10 @@ sc_pkcs15init_init_prkdf(struct sc_pkcs15_card *p15card,
 			LOG_TEST_RET(ctx, r, "Failed to select card specific key reference");
 
 			r = sc_pkcs15_find_prkey_by_reference(p15card, &key_info->path, key_info->key_reference, NULL);
-			if (r == SC_ERROR_OBJECT_NOT_FOUND)
+			if (r == SC_ERROR_OBJECT_NOT_FOUND)   {
+				sc_log(ctx, "Will use key reference %i", key_info->key_reference);
 				break;
+			}
 
 			if (r != 0)
 				/* Other error trying to retrieve pin obj */
