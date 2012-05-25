@@ -20,6 +20,7 @@
 		<cmdsynopsis>
 			<command>opensc-explorer</command>
 			<arg choice="opt"><replaceable class="option">OPTIONS</replaceable></arg>
+			<arg choice="opt"><replaceable class="parameter">SCRIPT</replaceable></arg>
 		</cmdsynopsis>
 	</refsynopsisdiv>
 
@@ -95,8 +96,9 @@
 <refsect1>
 	<title>Commands</title>
 	<para>
-		The following commands are supported at the <command>opensc-explorer</command>
-		interactive prompt.
+		The following commands are supported at <command>opensc-explorer</command>'s
+		interactive prompt or in script files passed via the command line parameter
+		<replaceable class="parameter">SCRIPT</replaceable>.
 		<variablelist>
 			<varlistentry>
 				<term>
