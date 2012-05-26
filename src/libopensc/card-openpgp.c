@@ -89,6 +89,24 @@ enum _access {		/* access flags for the respective DO/file */
 	WRITE_MASK   = 0x1F00
 };
 
+enum _ext_caps {	/* extended capabilities/features */
+	EXT_CAP_ALG_ATTR_CHANGEABLE = 0x0004,
+	EXT_CAP_PRIVATE_DO          = 0x0008,
+	EXT_CAP_C4_CHANGEABLE       = 0x0010,
+	EXT_CAP_KEY_IMPORT          = 0x0020,
+	EXT_CAP_GET_CHALLENGE       = 0x0040,
+	EXT_CAP_SM                  = 0x0080,
+	EXT_CAP_CHAINING            = 0x1000,
+	EXT_CAP_APDU_EXT            = 0x2000
+};
+
+enum _card_state {
+	CARD_STATE_UNKNOWN        = 0x00,
+	CARD_STATE_INITIALIZATION = 0x03,
+	CARD_STATE_ACTIVATED      = 0x05
+};
+
+
 struct blob {
 	struct blob *	next;	/* pointer to next sibling */
 	struct blob *	parent;	/* pointer to parent */
@@ -242,6 +260,12 @@ struct pgp_priv_data {
 	enum _version		bcd_version;
 	struct do_info		*pgp_objects;
 
+	enum _card_state	state;		/* card state */
+	enum _ext_caps		ext_caps;	/* extended capabilities */
+
+	size_t			max_challenge_size;
+	size_t			max_cert_size;
+
 	sc_security_env_t	sec_env;
 };
 
@@ -348,24 +372,41 @@ pgp_get_card_features(sc_card_t *card)
 	size_t i = 0;
 	struct blob *blob, *blob6e, *blob73;
 
-	/* get SC_CARD_CAP_APDU_EXT capability */
+	/* parse card capabilities from historical bytes */
 	while ((i < atr_len) && (hist_bytes[i] != 0x73))
 			i++;
+	/* IS07816-4 hist bytes 3rd function table */
 	if ((hist_bytes[i] == 0x73) && (atr_len > i+3)) {
 		/* bit 0x40 in byte 3 of TL 0x73 means "extended Le/Lc" */
-		if (hist_bytes[i+3] & 0x40)
+		if (hist_bytes[i+3] & 0x40) {
 			card->caps |= SC_CARD_CAP_APDU_EXT;
+			priv->ext_caps |= EXT_CAP_APDU_EXT;
+		}
+		/* bit 0x80 in byte 3 of TL 0x73 means "Command chaining" */
+		if (hist_bytes[i+3] & 0x80)
+			priv->ext_caps |= EXT_CAP_CHAINING;
 	}
-	else if (priv->bcd_version >= OPENPGP_CARD_2_0) {
+	if (priv->bcd_version >= OPENPGP_CARD_2_0) {
 		/* get card capabilities from "historical bytes" DO */
 		if ((pgp_get_blob(card, priv->mf, 0x5f52, &blob) >= 0) &&
 		    (blob->data != NULL) && (blob->data[0] == 0x00)) {
 			while ((i < blob->len) && (blob->data[i] != 0x73))
 				i++;
-			/* bit 0x40 in byte 3 of TL 0x73 means "extended Le/Lc" */
-			if ((blob->data[i] == 0x73) && (blob->len > i+3) &&
-			    (blob->data[i+3] & 0x40))
-				card->caps |= SC_CARD_CAP_APDU_EXT;
+			/* IS07816-4 hist bytes 3rd function table */
+			if ((blob->data[i] == 0x73) && (blob->len > i+3)) {
+				/* bit 0x40 in byte 3 of TL 0x73 means "extended Le/Lc" */
+				if (blob->data[i+3] & 0x40) {
+					card->caps |= SC_CARD_CAP_APDU_EXT;
+					priv->ext_caps |= EXT_CAP_APDU_EXT;
+				}
+				/* bit 0x80 in byte 3 of TL 0x73 means "Command chaining" */
+				if (hist_bytes[i+3] & 0x80)
+					priv->ext_caps |= EXT_CAP_CHAINING;
+			}
+
+			/* get card status from historical bytes status indicator */
+			if ((blob->data[0] == 0x00) && (blob->len >= 4))
+				priv->state = blob->data[blob->len-3];
 		}
 	}
 
@@ -375,11 +416,32 @@ pgp_get_card_features(sc_card_t *card)
 		/* get "extended capabilities" DO */
 		if ((pgp_get_blob(card, blob73, 0x00c0, &blob) >= 0) &&
 		    (blob->data != NULL) && (blob->len > 0)) {
-			/* bit 0x40 if first byte means "support for get challenge" */
-			if (blob->data[0] & 0x40)
+			/* in v2.0 bit 0x04 in first byte means "algorithm attributes changeable */
+			if ((blob->data[0] & 0x04) && (card->type == SC_CARD_TYPE_OPENPGP_V2))
+				priv->ext_caps |= EXT_CAP_ALG_ATTR_CHANGEABLE;
+			/* bit 0x08 in first byte means "support for private use DOs" */
+			if (blob->data[0] & 0x08)
+				priv->ext_caps |= EXT_CAP_PRIVATE_DO;
+			/* bit 0x10 in first byte means "support for CHV status byte changeable" */
+			if (blob->data[0] & 0x10)
+				priv->ext_caps |= EXT_CAP_C4_CHANGEABLE;
+			/* bit 0x20 in first byte means "support for Key Import" */
+			if (blob->data[0] & 0x20)
+				priv->ext_caps |= EXT_CAP_KEY_IMPORT;
+			/* bit 0x40 in first byte means "support for Get Challenge" */
+			if (blob->data[0] & 0x40) {
 				card->caps |= SC_CARD_CAP_RNG;
+				priv->ext_caps |= EXT_CAP_GET_CHALLENGE;
+			}
+			/* in v2.0 bit 0x80 in first byte means "support Secure Messaging" */
+			if ((blob->data[0] & 0x80) && (card->type == SC_CARD_TYPE_OPENPGP_V2))
+				priv->ext_caps |= EXT_CAP_SM;
 
 			if ((priv->bcd_version >= OPENPGP_CARD_2_0) && (blob->len >= 10)) {
+				/* max. challenge size is at bytes 3-4 */
+				priv->max_challenge_size = bebytes2ushort(blob->data + 2);
+				/* max. cert size it at bytes 5-6 */
+				priv->max_cert_size = bebytes2ushort(blob->data + 4);
 				/* max. send/receive sizes are at bytes 7-8 resp. 9-10 */
 				card->max_send_size = bebytes2ushort(blob->data + 6);
 				card->max_recv_size = bebytes2ushort(blob->data + 8);
