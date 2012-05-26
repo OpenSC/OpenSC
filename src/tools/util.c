@@ -197,10 +197,14 @@ void util_hex_dump_asc(FILE *f, const u8 *in, size_t count, int addr)
 }
 
 void util_print_usage_and_die(const char *app_name, const struct option options[],
-	const char *option_help[])
+	const char *option_help[], const char *args)
 {
 	int i = 0;
-	printf("Usage: %s [OPTIONS]\nOptions:\n", app_name);
+
+	if (args)
+		printf("Usage: %s [OPTIONS] %s\nOptions:\n", app_name, args);
+	else
+		printf("Usage: %s [OPTIONS]\nOptions:\n", app_name);
 
 	while (options[i].name) {
 		char buf[40], tmp[5];

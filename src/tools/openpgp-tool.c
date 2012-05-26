@@ -233,7 +233,7 @@ static int decode_options(int argc, char **argv)
 			actions++;;
 			break;
 		case 'h':
-			util_print_usage_and_die(app_name, options, option_help);
+			util_print_usage_and_die(app_name, options, option_help, NULL);
 			break;
 		case 'w':
 			opt_wait = 1;
@@ -246,7 +246,7 @@ static int decode_options(int argc, char **argv)
 			exit(EXIT_SUCCESS);
 			break;
 		default:
-			util_print_usage_and_die(app_name, options, option_help);
+			util_print_usage_and_die(app_name, options, option_help, NULL);
 		}
 	}
 
@@ -387,7 +387,7 @@ int main(int argc, char **argv)
 
 	/* fail on too many arguments */
 	if (argind > argc)
-		util_print_usage_and_die(app_name, options, option_help);
+		util_print_usage_and_die(app_name, options, option_help, NULL);
 
 	/* set default action */
 	if (!actions)
