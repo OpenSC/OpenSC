@@ -5,7 +5,7 @@ EXTRA_DIST = Makefile.mak
 
 noinst_HEADERS = util.h
 bin_PROGRAMS = opensc-tool opensc-explorer pkcs15-tool pkcs15-crypt \
-	pkcs11-tool cardos-tool eidenv
+	pkcs11-tool cardos-tool eidenv openpgp-tool
 if ENABLE_OPENSSL
 bin_PROGRAMS += cryptoflex-tool pkcs15-init netkey-tool piv-tool westcos-tool
 endif
@@ -42,6 +42,8 @@ netkey_tool_SOURCES = netkey-tool.c
 netkey_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
 westcos_tool_SOURCES = westcos-tool.c util.c
 westcos_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
+openpgp_tool_SOURCES = openpgp-tool.c util.c
+openpgp_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
 
 if WIN32
 opensc_tool_SOURCES += $(top_builddir)/win32/versioninfo.rc
@@ -56,4 +58,5 @@ cardos_tool_SOURCES += $(top_builddir)/win32/versioninfo.rc
 eidenv_SOURCES += $(top_builddir)/win32/versioninfo.rc
 netkey_tool_SOURCES += $(top_builddir)/win32/versioninfo.rc
 westcos_tool_SOURCES += $(top_builddir)/win32/versioninfo.rc
+openpgp_tool_SOURCES += $(top_builddir)/win32/versioninfo.rc
 endif
