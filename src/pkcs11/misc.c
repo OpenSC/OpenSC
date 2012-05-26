@@ -34,7 +34,9 @@ struct sc_to_cryptoki_error_conversion  {
 };
 
 static struct sc_to_cryptoki_error_conversion sc_to_cryptoki_error_map[]  = {
-	{ "C_GenerateKeyPair", SC_ERROR_INVALID_PIN_LENGTH, CKR_GENERAL_ERROR },
+	{ "C_GenerateKeyPair",	SC_ERROR_INVALID_PIN_LENGTH,	CKR_GENERAL_ERROR },
+	{ "C_Sign",		SC_ERROR_NOT_ALLOWED,		CKR_FUNCTION_FAILED},
+	{ "C_Decrypt",		SC_ERROR_NOT_ALLOWED,		CKR_FUNCTION_FAILED},
 	{NULL, 0, 0}
 };
 
@@ -199,11 +201,13 @@ CK_RV attr_extract(CK_ATTRIBUTE_PTR pAttr, void *ptr, size_t * sizep)
 			size = sizeof(CK_KEY_TYPE);
 			break;
 		case CKA_PRIVATE:
+		case CKA_TOKEN:
 			size = sizeof(CK_BBOOL);
 			break;
 		case CKA_CERTIFICATE_TYPE:
 			size = sizeof(CK_CERTIFICATE_TYPE);
 			break;
+		case CKA_VALUE_LEN:
 		case CKA_MODULUS_BITS:
 			size = sizeof(CK_ULONG);
 			break;

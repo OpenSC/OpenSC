@@ -413,6 +413,21 @@ struct sc_pkcs15_pubkey_info {
 };
 typedef struct sc_pkcs15_pubkey_info sc_pkcs15_pubkey_info_t;
 
+struct sc_pkcs15_skey_info {
+	struct sc_pkcs15_id id;
+	unsigned int usage, access_flags;
+	int native, key_reference;
+	size_t value_len;
+	unsigned long key_type;
+	int algo_refs[SC_MAX_SUPPORTED_ALGORITHMS];
+	struct sc_path path; /* if on card */
+	struct sc_pkcs15_der data;
+};
+typedef struct sc_pkcs15_skey_info sc_pkcs15_skey_info_t;
+
+#define sc_pkcs15_skey sc_pkcs15_data
+#define sc_pkcs15_skey_t sc_pkcs15_data_t
+
 #define SC_PKCS15_TYPE_CLASS_MASK		0xF00
 
 #define SC_PKCS15_TYPE_PRKEY			0x100
@@ -426,6 +441,12 @@ typedef struct sc_pkcs15_pubkey_info sc_pkcs15_pubkey_info_t;
 #define SC_PKCS15_TYPE_PUBKEY_DSA		0x202
 #define SC_PKCS15_TYPE_PUBKEY_GOSTR3410		0x203
 #define SC_PKCS15_TYPE_PUBKEY_EC		0x204
+
+#define SC_PKCS15_TYPE_SKEY			0x300
+#define SC_PKCS15_TYPE_SKEY_GENERIC		0x301
+#define SC_PKCS15_TYPE_SKEY_DES			0x302
+#define SC_PKCS15_TYPE_SKEY_2DES		0x303
+#define SC_PKCS15_TYPE_SKEY_3DES		0x304
 
 #define SC_PKCS15_TYPE_CERT			0x400
 #define SC_PKCS15_TYPE_CERT_X509		0x401

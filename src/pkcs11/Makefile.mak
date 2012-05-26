@@ -10,7 +10,7 @@ OBJECTS			= pkcs11-global.obj pkcs11-session.obj pkcs11-object.obj misc.obj slot
 OBJECTS3		= pkcs11-spy.obj pkcs11-display.obj \
 				$(TOPDIR)\win32\versioninfo.res
 
-all: $(TOPDIR)\win32\versioninfo.res $(TARGET0) $(TARGET1) $(TARGET3)
+all: $(TOPDIR)\win32\versioninfo.res $(TARGET1) $(TARGET3)
 
 !INCLUDE $(TOPDIR)\win32\Make.rules.mak
 
