@@ -1684,7 +1684,7 @@ int main(int argc, char * const argv[])
 		if (c == -1)
 			break;
 		if (c == '?')
-			util_print_usage_and_die(app_name, options, option_help);
+			util_print_usage_and_die(app_name, options, option_help, "[SCRIPT]");
 		switch (c) {
 		case 'r':
 			opt_reader = optarg;
@@ -1760,7 +1760,7 @@ int main(int argc, char * const argv[])
 
 	switch (argc - optind) {
 	default:
-		util_print_usage_and_die(app_name, options, option_help);
+		util_print_usage_and_die(app_name, options, option_help, "[SCRIPT]");
 		break;
 	case 0:
 		script = stdin;
@@ -1770,7 +1770,7 @@ int main(int argc, char * const argv[])
 			script = stdin;
 		}
 		else if ((script = fopen(argv[optind], "r")) == NULL) {
-			util_print_usage_and_die(app_name, options, option_help);
+			util_print_usage_and_die(app_name, options, option_help, "[SCRIPT]");
 		}
 		break;
 	}

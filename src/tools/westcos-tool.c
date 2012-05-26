@@ -378,7 +378,7 @@ int main(int argc, char *argv[])
 		if (c == -1)
 			break;
 		if (c == '?' || c == 'h')
-			util_print_usage_and_die(app_name, options, option_help);
+			util_print_usage_and_die(app_name, options, option_help, NULL);
 		switch (c)
 		{
 			case 'r':

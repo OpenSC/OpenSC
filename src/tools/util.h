@@ -27,7 +27,7 @@ void util_print_binary(FILE *f, const u8 *buf, int count);
 void util_hex_dump(FILE *f, const u8 *in, int len, const char *sep);
 void util_hex_dump_asc(FILE *f, const u8 *in, size_t count, int addr);
 void util_print_usage_and_die(const char *app_name, const struct option options[],
-	const char *option_help[]);
+	const char *option_help[], const char *args);
 const char * util_acl_to_str(const struct sc_acl_entry *e);
 void util_warn(const char *fmt, ...);
 void util_error(const char *fmt, ...);

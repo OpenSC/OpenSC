@@ -666,7 +666,7 @@ int main(int argc, char * const argv[])
 		if (c == -1)
 			break;
 		if (c == '?')
-			util_print_usage_and_die(app_name, options, option_help);
+			util_print_usage_and_die(app_name, options, option_help, NULL);
 		switch (c) {
 		case 'i':
 			do_info = 1;
@@ -734,7 +734,7 @@ int main(int argc, char * const argv[])
 		}
 	}
 	if (action_count == 0)
-		util_print_usage_and_die(app_name, options, option_help);
+		util_print_usage_and_die(app_name, options, option_help, NULL);
 
 	if (do_info) {
 		opensc_info();
