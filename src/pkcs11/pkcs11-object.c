@@ -50,25 +50,26 @@ static sc_pkcs11_mechanism_type_t find_mechanism = {
 	NULL		/* mech_data */
 };
 
-static void sc_find_release(sc_pkcs11_operation_t *operation)
+static void
+sc_find_release(sc_pkcs11_operation_t *operation)
 {
-	struct sc_pkcs11_find_operation *fop =
-				(struct sc_pkcs11_find_operation *)operation;
+	struct sc_pkcs11_find_operation *fop = (struct sc_pkcs11_find_operation *)operation;
 
-	sc_log(context,"freeing %d handles used %d  at %p",
-			fop->allocated_handles, fop->num_handles, fop->handles);
+	sc_log(context,"freeing %d handles used %d  at %p", fop->allocated_handles, fop->num_handles, fop->handles);
 	if (fop->handles) {
 		free(fop->handles);
 		fop->handles = NULL;
 	}
 }
 
-static CK_RV get_object_from_session(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject,
-				     struct sc_pkcs11_session **session,
-				     struct sc_pkcs11_object **object)
+
+static CK_RV
+get_object_from_session(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject,
+		struct sc_pkcs11_session **session, struct sc_pkcs11_object **object)
 {
-	CK_RV rv;
 	struct sc_pkcs11_session *sess;
+	CK_RV rv;
+
 	rv = get_session(hSession, &sess);
 	if (rv != CKR_OK)
 		return rv;
@@ -80,23 +81,29 @@ static CK_RV get_object_from_session(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDL
 	return CKR_OK;
 }
 
-CK_RV C_CreateObject(CK_SESSION_HANDLE hSession,	/* the session's handle */
-		     CK_ATTRIBUTE_PTR pTemplate,	/* the object's template */
-		     CK_ULONG ulCount,	/* attributes in template */
-		     CK_OBJECT_HANDLE_PTR phObject)
-{				/* receives new object's handle. */
-	CK_RV rv;
+/* C_CreateObject can be called from C_DeriveKey
+ * which is holding the sc_pkcs11_lock
+ * So dont get the lock again. */
+static
+CK_RV sc_create_object_int(CK_SESSION_HANDLE hSession,	/* the session's handle */
+		CK_ATTRIBUTE_PTR pTemplate,		/* the object's template */
+		CK_ULONG ulCount,			/* attributes in template */
+		CK_OBJECT_HANDLE_PTR phObject,		/* receives new object's handle. */
+		int use_lock)
+{
+	CK_RV rv = CKR_OK;
 	struct sc_pkcs11_session *session;
 	struct sc_pkcs11_card *card;
 
+	LOG_FUNC_CALLED(context);
 	if (pTemplate == NULL_PTR || ulCount == 0)
 		return CKR_ARGUMENTS_BAD;
 
-	rv = sc_pkcs11_lock();
-	if (rv != CKR_OK)
+	if (use_lock) {
+	    rv = sc_pkcs11_lock();
+	    if (rv != CKR_OK)
 		return rv;
-	LOG_FUNC_CALLED(context);
-
+	}
 
 	dump_template(SC_LOG_DEBUG_NORMAL, "C_CreateObject()", pTemplate, ulCount);
 
@@ -106,48 +113,68 @@ CK_RV C_CreateObject(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		goto out;
 	}
 
+#if 0
+/* TODO DEE what should we check here */
 	if (!(session->flags & CKF_RW_SESSION)) {
 		rv = CKR_SESSION_READ_ONLY;
 		goto out;
 	}
-
+#endif
 	card = session->slot->card;
 	if (card->framework->create_object == NULL)
 		rv = CKR_FUNCTION_NOT_SUPPORTED;
 	else
 		rv = card->framework->create_object(session->slot, pTemplate, ulCount, phObject);
 
-out:	sc_pkcs11_unlock();
+out:
+	if (use_lock)
+		sc_pkcs11_unlock();
 	LOG_FUNC_RETURN(context, rv);
 }
 
-CK_RV C_CopyObject(CK_SESSION_HANDLE hSession,	/* the session's handle */
-		   CK_OBJECT_HANDLE hObject,	/* the object's handle */
-		   CK_ATTRIBUTE_PTR pTemplate,	/* template for new object */
-		   CK_ULONG ulCount,	/* attributes in template */
-		   CK_OBJECT_HANDLE_PTR phNewObject)/* receives handle of copy */
+
+CK_RV
+C_CreateObject(CK_SESSION_HANDLE hSession,	/* the session's handle */
+		CK_ATTRIBUTE_PTR pTemplate,	/* the object's template */
+		CK_ULONG ulCount,		/* attributes in template */
+		CK_OBJECT_HANDLE_PTR phObject)
+{
+	return sc_create_object_int(hSession, pTemplate, ulCount, phObject, 1);
+}
+
+
+CK_RV
+C_CopyObject(CK_SESSION_HANDLE hSession,	/* the session's handle */
+		CK_OBJECT_HANDLE hObject,	/* the object's handle */
+		CK_ATTRIBUTE_PTR pTemplate,	/* template for new object */
+		CK_ULONG ulCount,		/* attributes in template */
+		CK_OBJECT_HANDLE_PTR phNewObject)	/* receives handle of copy */
 {
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
-CK_RV C_DestroyObject(CK_SESSION_HANDLE hSession,	/* the session's handle */
-		      CK_OBJECT_HANDLE hObject)
-{				/* the object's handle */
+
+CK_RV
+C_DestroyObject(CK_SESSION_HANDLE hSession,	/* the session's handle */
+		CK_OBJECT_HANDLE hObject)	/* the object's handle */
+{
 	CK_RV rv;
 	struct sc_pkcs11_session *session;
 	struct sc_pkcs11_object *object;
+	CK_BBOOL is_token = FALSE;
+	CK_ATTRIBUTE token_attribure = {CKA_TOKEN, &is_token, sizeof(is_token)};
 
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
 		return rv;
 
 	sc_log(context, "C_DestroyObject(hSession=0x%lx, hObject=0x%lx)", hSession, hObject);
-
 	rv = get_object_from_session(hSession, hObject, &session, &object);
 	if (rv != CKR_OK)
 		goto out;
 
-	if (!(session->flags & CKF_RW_SESSION)) {
+	object->ops->get_attribute(session, object, &token_attribure);
+	if (is_token == TRUE && !(session->flags & CKF_RW_SESSION)) {
 		rv = CKR_SESSION_READ_ONLY;
 		goto out;
 	}
@@ -157,22 +184,27 @@ CK_RV C_DestroyObject(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	else
 		rv = object->ops->destroy_object(session, object);
 
-out:	sc_pkcs11_unlock();
+out:
+	sc_pkcs11_unlock();
 	return rv;
 }
 
-CK_RV C_GetObjectSize(CK_SESSION_HANDLE hSession,	/* the session's handle */
+
+CK_RV
+C_GetObjectSize(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		      CK_OBJECT_HANDLE hObject,	/* the object's handle */
-		      CK_ULONG_PTR pulSize)
-{				/* receives size of object */
+		      CK_ULONG_PTR pulSize)	/* receives size of object */
+{
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
-CK_RV C_GetAttributeValue(CK_SESSION_HANDLE hSession,	/* the session's handle */
-			  CK_OBJECT_HANDLE hObject,	/* the object's handle */
-			  CK_ATTRIBUTE_PTR pTemplate,	/* specifies attributes, gets values */
-			  CK_ULONG ulCount)
-{				/* attributes in template */
+
+CK_RV
+C_GetAttributeValue(CK_SESSION_HANDLE hSession,	/* the session's handle */
+		CK_OBJECT_HANDLE hObject,	/* the object's handle */
+		CK_ATTRIBUTE_PTR pTemplate,	/* specifies attributes, gets values */
+		CK_ULONG ulCount)		/* attributes in template */
+{
 	static int precedence[] = {
 		CKR_OK,
 		CKR_BUFFER_TOO_SMALL,
@@ -235,11 +267,13 @@ out:	sc_log(context, "C_GetAttributeValue(hSession=0x%lx, hObject=0x%lx) = %s",
 	return rv;
 }
 
-CK_RV C_SetAttributeValue(CK_SESSION_HANDLE hSession,	/* the session's handle */
-			  CK_OBJECT_HANDLE hObject,	/* the object's handle */
-			  CK_ATTRIBUTE_PTR pTemplate,	/* specifies attributes and values */
-			  CK_ULONG ulCount)
-{				/* attributes in template */
+
+CK_RV
+C_SetAttributeValue(CK_SESSION_HANDLE hSession,	/* the session's handle */
+		CK_OBJECT_HANDLE hObject,	/* the object's handle */
+		CK_ATTRIBUTE_PTR pTemplate,	/* specifies attributes and values */
+		CK_ULONG ulCount)		/* attributes in template */
+{
 	CK_RV rv;
 	unsigned int i;
 	struct sc_pkcs11_session *session;
@@ -273,14 +307,17 @@ CK_RV C_SetAttributeValue(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		}
 	}
 
-out:	sc_pkcs11_unlock();
+out:
+	sc_pkcs11_unlock();
 	return rv;
 }
 
-CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
-			CK_ATTRIBUTE_PTR pTemplate,	/* attribute values to match */
-			CK_ULONG ulCount)
-{				/* attributes in search template */
+
+CK_RV
+C_FindObjectsInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
+		CK_ATTRIBUTE_PTR pTemplate,	/* attribute values to match */
+		CK_ULONG ulCount)		/* attributes in search template */
+{
 	CK_RV rv;
 	CK_BBOOL is_private = TRUE;
 	CK_ATTRIBUTE private_attribute = { CKA_PRIVATE, &is_private, sizeof(is_private) };
@@ -374,15 +411,18 @@ CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 
 	sc_log(context, "%d matching objects\n", operation->num_handles);
 
-out:	sc_pkcs11_unlock();
+out:
+	sc_pkcs11_unlock();
 	return rv;
 }
 
-CK_RV C_FindObjects(CK_SESSION_HANDLE hSession,	/* the session's handle */
-		    CK_OBJECT_HANDLE_PTR phObject,	/* receives object handle array */
-		    CK_ULONG ulMaxObjectCount,	/* max handles to be returned */
-		    CK_ULONG_PTR pulObjectCount)
-{				/* actual number returned */
+
+CK_RV
+C_FindObjects(CK_SESSION_HANDLE hSession,	/* the session's handle */
+		CK_OBJECT_HANDLE_PTR phObject,	/* receives object handle array */
+		CK_ULONG ulMaxObjectCount,	/* max handles to be returned */
+		CK_ULONG_PTR pulObjectCount)	/* actual number returned */
+{
 	CK_RV rv;
 	CK_ULONG to_return;
 	struct sc_pkcs11_session *session;
@@ -399,8 +439,7 @@ CK_RV C_FindObjects(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	if (rv != CKR_OK)
 		goto out;
 
-	rv = session_get_operation(session, SC_PKCS11_OPERATION_FIND,
-				   (sc_pkcs11_operation_t **) & operation);
+	rv = session_get_operation(session, SC_PKCS11_OPERATION_FIND, (sc_pkcs11_operation_t **) & operation);
 	if (rv != CKR_OK)
 		goto out;
 
@@ -410,9 +449,7 @@ CK_RV C_FindObjects(CK_SESSION_HANDLE hSession,	/* the session's handle */
 
 	*pulObjectCount = to_return;
 
-	memcpy(phObject,
-	       &operation->handles[operation->current_handle],
-	       to_return * sizeof(CK_OBJECT_HANDLE));
+	memcpy(phObject, &operation->handles[operation->current_handle], to_return * sizeof(CK_OBJECT_HANDLE));
 
 	operation->current_handle += to_return;
 
@@ -420,8 +457,10 @@ out:	sc_pkcs11_unlock();
 	return rv;
 }
 
-CK_RV C_FindObjectsFinal(CK_SESSION_HANDLE hSession)
-{				/* the session's handle */
+
+CK_RV
+C_FindObjectsFinal(CK_SESSION_HANDLE hSession)	/* the session's handle */
+{
 	CK_RV rv;
 	struct sc_pkcs11_session *session;
 
@@ -445,10 +484,10 @@ out:	sc_pkcs11_unlock();
  * Below here all functions are wrappers to pass all object attribute and method
  * handling to appropriate object layer.
  */
-
-CK_RV C_DigestInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
-		   CK_MECHANISM_PTR pMechanism)
-{				/* the digesting mechanism */
+CK_RV
+C_DigestInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
+		CK_MECHANISM_PTR pMechanism)	/* the digesting mechanism */
+{
 	CK_RV rv;
 	struct sc_pkcs11_session *session;
 
@@ -469,12 +508,14 @@ CK_RV C_DigestInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	return rv;
 }
 
-CK_RV C_Digest(CK_SESSION_HANDLE hSession,	/* the session's handle */
-	       CK_BYTE_PTR pData,	/* data to be digested */
-	       CK_ULONG ulDataLen,	/* bytes of data to be digested */
-	       CK_BYTE_PTR pDigest,	/* receives the message digest */
-	       CK_ULONG_PTR pulDigestLen)
-{				/* receives byte length of digest */
+
+CK_RV
+C_Digest(CK_SESSION_HANDLE hSession,		/* the session's handle */
+		CK_BYTE_PTR pData,		/* data to be digested */
+		CK_ULONG ulDataLen,		/* bytes of data to be digested */
+		CK_BYTE_PTR pDigest,		/* receives the message digest */
+		CK_ULONG_PTR pulDigestLen)	/* receives byte length of digest */
+{
 	CK_RV rv;
 	struct sc_pkcs11_session *session;
 
@@ -496,10 +537,12 @@ out:	sc_log(context, "C_Digest() = %s", lookup_enum ( RV_T, rv ));
 	return rv;
 }
 
-CK_RV C_DigestUpdate(CK_SESSION_HANDLE hSession,	/* the session's handle */
-		     CK_BYTE_PTR pPart,	/* data to be digested */
-		     CK_ULONG ulPartLen)
-{				/* bytes of data to be digested */
+
+CK_RV
+C_DigestUpdate(CK_SESSION_HANDLE hSession,	/* the session's handle */
+		CK_BYTE_PTR pPart,		/* data to be digested */
+		CK_ULONG ulPartLen)		/* bytes of data to be digested */
+{
 	CK_RV rv;
 	struct sc_pkcs11_session *session;
 
@@ -516,16 +559,20 @@ CK_RV C_DigestUpdate(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	return rv;
 }
 
-CK_RV C_DigestKey(CK_SESSION_HANDLE hSession,	/* the session's handle */
-		  CK_OBJECT_HANDLE hKey)
-{				/* handle of secret key to digest */
+
+CK_RV
+C_DigestKey(CK_SESSION_HANDLE hSession,	/* the session's handle */
+		CK_OBJECT_HANDLE hKey)	/* handle of secret key to digest */
+{
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
-CK_RV C_DigestFinal(CK_SESSION_HANDLE hSession,	/* the session's handle */
-		    CK_BYTE_PTR pDigest,	/* receives the message digest */
-		    CK_ULONG_PTR pulDigestLen)
-{				/* receives byte count of digest */
+
+CK_RV
+C_DigestFinal(CK_SESSION_HANDLE hSession,	/* the session's handle */
+		CK_BYTE_PTR pDigest,		/* receives the message digest */
+		CK_ULONG_PTR pulDigestLen)	/* receives byte count of digest */
+{
 	CK_RV rv;
 	struct sc_pkcs11_session *session;
 
@@ -542,17 +589,19 @@ CK_RV C_DigestFinal(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	return rv;
 }
 
-CK_RV C_SignInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
-		 CK_MECHANISM_PTR pMechanism,	/* the signature mechanism */
-		 CK_OBJECT_HANDLE hKey)
-{				/* handle of the signature key */
-	CK_RV rv;
+
+CK_RV
+C_SignInit(CK_SESSION_HANDLE hSession,		/* the session's handle */
+		CK_MECHANISM_PTR pMechanism,	/* the signature mechanism */
+		CK_OBJECT_HANDLE hKey)		/* handle of the signature key */
+{
 	CK_BBOOL can_sign;
 	CK_KEY_TYPE key_type;
 	CK_ATTRIBUTE sign_attribute = { CKA_SIGN, &can_sign, sizeof(can_sign) };
 	CK_ATTRIBUTE key_type_attr = { CKA_KEY_TYPE, &key_type, sizeof(key_type) };
 	struct sc_pkcs11_session *session;
 	struct sc_pkcs11_object *object;
+	CK_RV rv;
 
 	if (pMechanism == NULL_PTR)
 		return CKR_ARGUMENTS_BAD;
@@ -586,17 +635,20 @@ CK_RV C_SignInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 
 	rv = sc_pkcs11_sign_init(session, pMechanism, object, key_type);
 
-out:	sc_log(context, "C_SignInit() = %s", lookup_enum ( RV_T, rv ));
+out:
+	sc_log(context, "C_SignInit() = %s", lookup_enum ( RV_T, rv ));
 	sc_pkcs11_unlock();
 	return rv;
 }
 
-CK_RV C_Sign(CK_SESSION_HANDLE hSession,	/* the session's handle */
-	     CK_BYTE_PTR pData,	/* the data (digest) to be signed */
-	     CK_ULONG ulDataLen,	/* count of bytes to be signed */
-	     CK_BYTE_PTR pSignature,	/* receives the signature */
-	     CK_ULONG_PTR pulSignatureLen)
-{				/* receives byte count of signature */
+
+CK_RV
+C_Sign(CK_SESSION_HANDLE hSession,		/* the session's handle */
+		CK_BYTE_PTR pData,		/* the data (digest) to be signed */
+		CK_ULONG ulDataLen,		/* count of bytes to be signed */
+		CK_BYTE_PTR pSignature,		/* receives the signature */
+		CK_ULONG_PTR pulSignatureLen)	/* receives byte count of signature */
+{
 	CK_RV rv;
 	struct sc_pkcs11_session *session;
 	CK_ULONG length;
@@ -627,15 +679,18 @@ CK_RV C_Sign(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	if (rv == CKR_OK)
 		rv = sc_pkcs11_sign_final(session, pSignature, pulSignatureLen);
 
-out:	sc_log(context, "C_Sign() = %s", lookup_enum ( RV_T, rv ));
+out:
+	sc_log(context, "C_Sign() = %s", lookup_enum ( RV_T, rv ));
 	sc_pkcs11_unlock();
 	return rv;
 }
 
-CK_RV C_SignUpdate(CK_SESSION_HANDLE hSession,	/* the session's handle */
-		   CK_BYTE_PTR pPart,	/* the data (digest) to be signed */
-		   CK_ULONG ulPartLen)
-{				/* count of bytes to be signed */
+
+CK_RV
+C_SignUpdate(CK_SESSION_HANDLE hSession,	/* the session's handle */
+		CK_BYTE_PTR pPart,		/* the data (digest) to be signed */
+		CK_ULONG ulPartLen)		/* count of bytes to be signed */
+{
 	CK_RV rv;
 	struct sc_pkcs11_session *session;
 
@@ -652,10 +707,12 @@ CK_RV C_SignUpdate(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	return rv;
 }
 
-CK_RV C_SignFinal(CK_SESSION_HANDLE hSession,	/* the session's handle */
-		  CK_BYTE_PTR pSignature,	/* receives the signature */
-		  CK_ULONG_PTR pulSignatureLen)
-{				/* receives byte count of signature */
+
+CK_RV
+C_SignFinal(CK_SESSION_HANDLE hSession,		/* the session's handle */
+		CK_BYTE_PTR pSignature,		/* receives the signature */
+		CK_ULONG_PTR pulSignatureLen)	/* receives byte count of signature */
+{
 	struct sc_pkcs11_session *session;
 	CK_ULONG length;
 	CK_RV rv;
@@ -683,15 +740,18 @@ CK_RV C_SignFinal(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		rv = sc_pkcs11_sign_final(session, pSignature, pulSignatureLen);
 	}
 
-out:	sc_log(context, "C_SignFinal() = %s", lookup_enum ( RV_T, rv ));
+out:
+	sc_log(context, "C_SignFinal() = %s", lookup_enum ( RV_T, rv ));
 	sc_pkcs11_unlock();
 	return rv;
 }
 
-CK_RV C_SignRecoverInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
-			CK_MECHANISM_PTR pMechanism,	/* the signature mechanism */
-			CK_OBJECT_HANDLE hKey)
-{				/* handle of the signature key */
+
+CK_RV
+C_SignRecoverInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
+		CK_MECHANISM_PTR pMechanism,	/* the signature mechanism */
+		CK_OBJECT_HANDLE hKey)		/* handle of the signature key */
+{
 	CK_RV rv;
 	CK_BBOOL can_sign;
 	CK_KEY_TYPE key_type;
@@ -739,26 +799,32 @@ CK_RV C_SignRecoverInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 
 	rv = sc_pkcs11_sign_init(session, pMechanism, object, key_type);
 
-out:	sc_log(context, "C_SignRecoverInit() = %sn", lookup_enum ( RV_T, rv ));
+out:
+	sc_log(context, "C_SignRecoverInit() = %sn", lookup_enum ( RV_T, rv ));
 	sc_pkcs11_unlock();
 	return rv;
 }
 
-CK_RV C_SignRecover(CK_SESSION_HANDLE hSession,	/* the session's handle */
-		    CK_BYTE_PTR pData,	/* the data (digest) to be signed */
-		    CK_ULONG ulDataLen,	/* count of bytes to be signed */
-		    CK_BYTE_PTR pSignature,	/* receives the signature */
-		    CK_ULONG_PTR pulSignatureLen)
-{				/* receives byte count of signature */
+
+CK_RV
+C_SignRecover(CK_SESSION_HANDLE hSession,	/* the session's handle */
+		CK_BYTE_PTR pData,		/* the data (digest) to be signed */
+		CK_ULONG ulDataLen,		/* count of bytes to be signed */
+		CK_BYTE_PTR pSignature,		/* receives the signature */
+		CK_ULONG_PTR pulSignatureLen)	/* receives byte count of signature */
+{
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
-CK_RV C_EncryptInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
-		    CK_MECHANISM_PTR pMechanism,	/* the encryption mechanism */
-		    CK_OBJECT_HANDLE hKey)
-{				/* handle of encryption key */
+
+CK_RV
+C_EncryptInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
+		CK_MECHANISM_PTR pMechanism,	/* the encryption mechanism */
+		CK_OBJECT_HANDLE hKey)		/* handle of encryption key */
+{
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
+
 
 CK_RV C_Encrypt(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		CK_BYTE_PTR pData,	/* the plaintext data */
@@ -789,13 +855,14 @@ CK_RV C_DecryptInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		    CK_MECHANISM_PTR pMechanism,	/* the decryption mechanism */
 		    CK_OBJECT_HANDLE hKey)
 {				/* handle of the decryption key */
-	CK_RV rv;
-	CK_BBOOL can_decrypt;
+	CK_BBOOL can_decrypt, can_unwrap;
 	CK_KEY_TYPE key_type;
-	CK_ATTRIBUTE decrypt_attribute = { CKA_DECRYPT, &can_decrypt, sizeof(can_decrypt) };
-	CK_ATTRIBUTE key_type_attr = { CKA_KEY_TYPE, &key_type, sizeof(key_type) };
+	CK_ATTRIBUTE decrypt_attribute = { CKA_DECRYPT,	&can_decrypt,	sizeof(can_decrypt) };
+	CK_ATTRIBUTE key_type_attr = { CKA_KEY_TYPE,	&key_type,	sizeof(key_type) };
+	CK_ATTRIBUTE unwrap_attribute = { CKA_UNWRAP,	&can_unwrap,	sizeof(can_unwrap) };
 	struct sc_pkcs11_session *session;
 	struct sc_pkcs11_object *object;
+	CK_RV rv;
 
 	if (pMechanism == NULL_PTR)
 		return CKR_ARGUMENTS_BAD;
@@ -818,8 +885,12 @@ CK_RV C_DecryptInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 
 	rv = object->ops->get_attribute(session, object, &decrypt_attribute);
 	if (rv != CKR_OK || !can_decrypt) {
-		rv = CKR_KEY_TYPE_INCONSISTENT;
-		goto out;
+		/* Also accept UNWRAP - apps call Decrypt when they mean Unwrap */
+		rv = object->ops->get_attribute(session, object, &unwrap_attribute);
+		if (rv != CKR_OK || !can_unwrap) {
+			rv = CKR_KEY_TYPE_INCONSISTENT;
+			goto out;
+		}
 	}
 	rv = object->ops->get_attribute(session, object, &key_type_attr);
 	if (rv != CKR_OK) {
@@ -953,20 +1024,19 @@ CK_RV C_GenerateKeyPair(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	}
 
 	slot = session->slot;
-	if (slot->card->framework->gen_keypair == NULL) {
+	if (slot->card->framework->gen_keypair == NULL)
 		rv = CKR_FUNCTION_NOT_SUPPORTED;
-	} else {
-		rv = slot->card->framework->gen_keypair(slot,
-							pMechanism, pPublicKeyTemplate,
-							ulPublicKeyAttributeCount,
-							pPrivateKeyTemplate,
-							ulPrivateKeyAttributeCount, phPublicKey,
-							phPrivateKey);
-	}
+	else
+		rv = slot->card->framework->gen_keypair(slot, pMechanism,
+				pPublicKeyTemplate, ulPublicKeyAttributeCount,
+				pPrivateKeyTemplate, ulPrivateKeyAttributeCount,
+				phPublicKey, phPrivateKey);
 
-out:	sc_pkcs11_unlock();
+out:
+	sc_pkcs11_unlock();
 	return rv;
 }
+
 
 CK_RV C_WrapKey(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		CK_MECHANISM_PTR pMechanism,	/* the wrapping mechanism */
@@ -995,10 +1065,78 @@ CK_RV C_DeriveKey(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		  CK_OBJECT_HANDLE hBaseKey,	/* handle of the base key */
 		  CK_ATTRIBUTE_PTR pTemplate,	/* template for the new key */
 		  CK_ULONG ulAttributeCount,	/* # of attributes in template */
-		  CK_OBJECT_HANDLE_PTR phKey)
-{				/* gets handle of derived key */
+		  CK_OBJECT_HANDLE_PTR phKey)	/* gets handle of derived key */
+{
 /* TODO: -DEE ECDH with Cofactor  on PIV is an example */
-	return CKR_FUNCTION_NOT_SUPPORTED;
+/* TODO: need to do a lot of checking, will only support ECDH for now.*/
+	CK_RV rv;
+	CK_BBOOL can_derive;
+	CK_KEY_TYPE key_type;
+	CK_ATTRIBUTE derive_attribute = { CKA_DERIVE, &can_derive, sizeof(can_derive) };
+	CK_ATTRIBUTE key_type_attr = { CKA_KEY_TYPE, &key_type, sizeof(key_type) };
+	struct sc_pkcs11_session *session;
+	struct sc_pkcs11_object *object;
+	struct sc_pkcs11_object *key_object;
+
+	if (pMechanism == NULL_PTR)
+		return CKR_ARGUMENTS_BAD;
+
+	rv = sc_pkcs11_lock();
+	if (rv != CKR_OK)
+		return rv;
+
+	rv = get_object_from_session(hSession, hBaseKey, &session, &object);
+	if (rv != CKR_OK) {
+		if (rv == CKR_OBJECT_HANDLE_INVALID)
+			rv = CKR_KEY_HANDLE_INVALID;
+		goto out;
+	}
+
+	if (object->ops->derive == NULL_PTR) {
+		rv = CKR_KEY_TYPE_INCONSISTENT;
+		goto out;
+	}
+
+	rv = object->ops->get_attribute(session, object, &derive_attribute);
+	if (rv != CKR_OK || !can_derive) {
+		rv = CKR_KEY_TYPE_INCONSISTENT;
+		goto out;
+	}
+	rv = object->ops->get_attribute(session, object, &key_type_attr);
+	if (rv != CKR_OK) {
+		rv = CKR_KEY_TYPE_INCONSISTENT;
+		goto out;
+	}
+	/* TODO DEE Should also check SENSITIVE, ALWAYS_SENSITIVE, EXTRACTABLE,
+	   NEVER_EXTRACTABLE of the BaseKey against the template for the newkey.
+	*/
+
+	switch(key_type) {
+	    case CKK_EC:
+
+		rv = sc_create_object_int(hSession, pTemplate, ulAttributeCount, phKey, 0);
+		if (rv != CKR_OK)
+		    goto out;
+
+		rv = get_object_from_session(hSession, *phKey, &session, &key_object);
+		if (rv != CKR_OK) {
+		if (rv == CKR_OBJECT_HANDLE_INVALID)
+			rv = CKR_KEY_HANDLE_INVALID;
+			goto out;
+		}
+
+		rv = sc_pkcs11_deri(session, pMechanism, object, key_type,
+			hSession, *phKey, key_object);
+		/* TODO if (rv != CK_OK) need to destroy the object */
+
+		break;
+	    default:
+		rv = CKR_KEY_TYPE_INCONSISTENT;
+	}
+
+out:
+	sc_pkcs11_unlock();
+	return rv;
 }
 
 CK_RV C_SeedRandom(CK_SESSION_HANDLE hSession,	/* the session's handle */
