@@ -124,6 +124,9 @@ struct sc_profile {
 
 	/* PKCS15 object ID style */
 	unsigned int id_style;
+
+	/* Minidriver support style */
+	unsigned int md_style;
 };
 
 struct sc_profile *sc_profile_new(void);

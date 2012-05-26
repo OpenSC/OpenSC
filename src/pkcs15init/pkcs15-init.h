@@ -155,6 +155,9 @@ struct sc_pkcs15init_operations {
 #define SC_PKCS15INIT_USER_PUK		3
 #define SC_PKCS15INIT_NPINS		4
 
+#define SC_PKCS15INIT_MD_STYLE_NONE	0
+#define SC_PKCS15INIT_MD_STYLE_GEMALTO	1
+
 struct sc_pkcs15init_callbacks {
 	/*
 	 * Get a PIN from the front-end. The first argument is
