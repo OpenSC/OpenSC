@@ -209,14 +209,14 @@ app default {
 	# PIV cards need an entry similar to this one:
 	# card_atr 3B:7D:96:00:00:80:31:80:65:B0:83:11:00:AC:83:00:90:00 {
 		# name = "PIV-II";
-	 	# driver = "piv";
+		# driver = "piv";
 	# }
 
 	# Estonian ID card and Micardo driver sometimes only play together with T=0
 	# In theory only the 'cold' ATR should be specified, as T=0 will
 	# be the preferred protocol once you boot it up with T=0, but be
 	# paranoid.
-	# 
+	#
 	# Warm ATR v1
 	card_atr 3b:6e:00:ff:45:73:74:45:49:44:20:76:65:72:20:31:2e:30 {
 		force_protocol = t0;
@@ -262,7 +262,7 @@ app default {
 	card_atr 3b:ff:11:00:ff:80:b1:fe:45:1f:03:00:68:d2:76:00:00:28:ff:05:1e:31:80:00:90:00:a6 {
 		force_protocol = t0;
 	}
-	
+
 	# IAS/ECC cards
 	#card_atr 3B:7F:96:00:00:00:31:B9:64:40:70:14:10:73:94:01:80:82:90:00 {
         #        type = 25001;
@@ -318,7 +318,7 @@ app default {
 		#
 		# Default: no
 		# try_emulation_first = yes;
-		
+
 		# Enable builtin emulators.
 		# Default: yes
 		# enable_builtin_emulation = no;
@@ -381,19 +381,19 @@ app opensc-pkcs11 {
 		# (which may be possible because you have already authenticated
 		# with the card). This setting is not very secure.
 		#
-		# Also, if your card is not locked, you can enconter problems 
-		# due to limitation of the OpenSC framework, that still is not 
+		# Also, if your card is not locked, you can enconter problems
+		# due to limitation of the OpenSC framework, that still is not
 		# thoroughly tested in the multi threads environment.
 		#
-		# Your settings will be more secure if you choose to lock your 
-		# card. Nevertheless this behavior is a known violation of PKCS#11 
-		# specification. Now once one application has started using your 
-		# card with C_Login, no other application can use it, until 
-		# the first is done and calls C_Logout or C_Finalize. In the case 
-		# of many PKCS#11 application this does not happen until you exit 
+		# Your settings will be more secure if you choose to lock your
+		# card. Nevertheless this behavior is a known violation of PKCS#11
+		# specification. Now once one application has started using your
+		# card with C_Login, no other application can use it, until
+		# the first is done and calls C_Logout or C_Finalize. In the case
+		# of many PKCS#11 application this does not happen until you exit
 		# the application.
-		# Thus it is impossible to use several smart card aware applications 
-		# at the same time, e.g. you cannot run both Firefox and Thunderbird at 
+		# Thus it is impossible to use several smart card aware applications
+		# at the same time, e.g. you cannot run both Firefox and Thunderbird at
 		# the same time, if both are configured to use your smart card.
 		#
 		# Default: false
@@ -424,8 +424,8 @@ app opensc-pkcs11 {
 		# create_puk_slot = true;
 
 		# Report as 'zero' the CKA_ID attribute of CA certificate
-		# For the unknown reason the middleware of the manufacturer of gemalto (axalto, gemplus) 
-		# card reports as '0' the CKA_ID of CA cartificates. 
+		# For the unknown reason the middleware of the manufacturer of gemalto (axalto, gemplus)
+		# card reports as '0' the CKA_ID of CA cartificates.
 		# Maybe someone else will need it. (Would be nice to know who and what for -- VTA)
 		#
 		# Default: false
@@ -437,6 +437,27 @@ app opensc-pkcs11 {
 		#
 		# Default: empty
 		# ignored_readers = "CardMan 1021", "SPR 532";
+
+                # Symbolic names of PINs for which slots are created
+                # Card can contain more then one PINs or more then one on-card application with
+                #   its own PINs. Normally, to access all of them with the PKCS#11 API a slot has to be
+                #   created for all of them. Many slots could be ennoying for some of widely used application,
+                #   like FireFox. This configuration parameter allows to select the PINs or on-card application
+                #   for which PKCS#11 slot will be created.
+                # Actually recognised following symbolic names:
+                #  'user', 'sign', 'application', all
+                # Only PINs initialised, non-SoPIN, non-unblocking are associated with symbolic name.
+                # 'user' is identified as first global or first local PIN.
+                # 'sign' is identified as second PIN: first local, second global or second local.
+                # 'application' slot created for each on-card application,
+                #   even if they use a common global PIN.
+                # 'all' slot created for all non-sopin, non-unblocking PINs,
+                #   optionally for PUK (see option 'create_puk_slot')
+                #
+                # Default: all
+                # create_slots_for_pins = "user,sign";
+                # create_slots_for_pins = application;
+                # create_slots_for_pins = "application,sign";
 	}
 }
 
@@ -458,8 +479,8 @@ app tokend {
 
 # XXX: remove cardmod pseudodriver
 app cardmod {
-	# cardmod app name use special pcsc reader subset 
-	# fix options for this reader driver here. 
+	# cardmod app name use special pcsc reader subset
+	# fix options for this reader driver here.
 
 	reader_driver cardmod {
 		# Enable pinpad if detected (PC/SC v2.0.2 Part 10)

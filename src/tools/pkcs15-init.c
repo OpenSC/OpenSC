@@ -437,8 +437,7 @@ main(int argc, char **argv)
 	sc_pkcs15init_set_callbacks(&callbacks);
 
 	/* Bind the card-specific operations and load the profile */
-	if ((r = sc_pkcs15init_bind(card, opt_profile,
-		opt_card_profile, &profile)) < 0) {
+	if ((r = sc_pkcs15init_bind(card, opt_profile, opt_card_profile, NULL, &profile)) < 0) {
 		printf("Couldn't bind to the card: %s\n", sc_strerror(r));
 		return 1;
 	}

@@ -166,6 +166,7 @@ sc_pkcs15_find_data_object_by_id
 sc_pkcs15_find_data_object_by_name
 sc_pkcs15_find_object_by_id
 sc_pkcs15_find_pin_by_auth_id
+sc_pkcs15_find_pin_by_flags
 sc_pkcs15_find_pin_by_reference
 sc_pkcs15_find_prkey_by_id
 sc_pkcs15_find_prkey_by_id_usage
@@ -185,6 +186,7 @@ sc_pkcs15_free_prkey
 sc_pkcs15_free_prkey_info
 sc_pkcs15_free_pubkey
 sc_pkcs15_free_pubkey_info
+sc_pkcs15_get_application_by_type
 sc_pkcs15_get_guid
 sc_pkcs15_get_object_id
 sc_pkcs15_get_objects

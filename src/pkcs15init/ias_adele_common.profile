@@ -139,10 +139,10 @@ filesystem {
 
                 # Private data
                 EF  private-data {
-                    file-id = F000;
+                    file-id = B200;
                     size    = 36;
                     ACL     = *=NONE;
-                    ACL     = WRITE=SCBx17, UPDATE=SCBx17, READ=SCBx17;
+                    ACL     =  WRITE=SCBx17, UPDATE=SCBx17, READ=SCBx17, DELETE=SCBx17;
                 }
 
                 # Certificate
@@ -168,9 +168,9 @@ filesystem {
 
                 # Public data
                 EF  public-data {
-                    file-id = D000;
+                    file-id = B100;
                     ACL     = *=NONE;
-                    ACL     = WRITE=SCBx17, UPDATE=SCBx17, DELETE=NONE;
+                    ACL     = WRITE=SCBx17, UPDATE=SCBx17, DELETE=SCBx17;
                 }
             }
         }

@@ -107,7 +107,7 @@ static CK_RV sc_pkcs11_close_session(CK_SESSION_HANDLE hSession)
 	slot->nsessions--;
 	if (slot->nsessions == 0 && slot->login_user >= 0) {
 		slot->login_user = -1;
-		slot->card->framework->logout(slot->card, slot->fw_data);
+		slot->card->framework->logout(slot);
 	}
 
 	if (list_delete(&sessions, session) != 0)
@@ -141,7 +141,7 @@ CK_RV C_CloseSession(CK_SESSION_HANDLE hSession)
 	if (rv != CKR_OK)
 		return rv;
 
-	sc_log(context, "C_CloseSession(0x%lx)\n", hSession);
+	sc_log(context, "C_CloseSession(0x%lx)", hSession);
 
 	rv = sc_pkcs11_close_session(hSession);
 
@@ -158,7 +158,7 @@ CK_RV C_CloseAllSessions(CK_SLOT_ID slotID)
 	if (rv != CKR_OK)
 		return rv;
 
-	sc_log(context, "C_CloseAllSessions(0x%lx)\n", slotID);
+	sc_log(context, "C_CloseAllSessions(0x%lx)", slotID);
 
 	rv = slot_get_token(slotID, &slot);
 	if (rv != CKR_OK)
@@ -184,7 +184,7 @@ CK_RV C_GetSessionInfo(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	if (rv != CKR_OK)
 		return rv;
 
-	sc_log(context, "C_GetSessionInfo(0x%lx)", hSession);
+	sc_log(context, "C_GetSessionInfo(hSession:0x%lx)", hSession);
 
 	session = list_seek(&sessions, &hSession);
 	if (!session) {
@@ -192,7 +192,7 @@ CK_RV C_GetSessionInfo(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		goto out;
 	}
 
-	sc_log(context, "C_GetSessionInfo(slot 0x%lx).", session->slot->id);
+	sc_log(context, "C_GetSessionInfo(slot:0x%lx)", session->slot->id);
 	pInfo->slotID = session->slot->id;
 	pInfo->flags = session->flags;
 	pInfo->ulDeviceError = 0;
@@ -208,7 +208,7 @@ CK_RV C_GetSessionInfo(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		    ? CKS_RW_PUBLIC_SESSION : CKS_RO_PUBLIC_SESSION;
 	}
 
-      out:
+out:
 	sc_log(context, "C_GetSessionInfo(0x%lx) = %s", hSession, lookup_enum(RV_T, rv));
 	sc_pkcs11_unlock();
 	return rv;
@@ -306,13 +306,13 @@ CK_RV C_Logout(CK_SESSION_HANDLE hSession)
 		goto out;
 	}
 
-	sc_log(context, "C_Logout(0x%lx)", hSession);
+	sc_log(context, "C_Logout(hSession:0x%lx)", hSession);
 
 	slot = session->slot;
 
 	if (slot->login_user >= 0) {
 		slot->login_user = -1;
-		rv = slot->card->framework->logout(slot->card, slot->fw_data);
+		rv = slot->card->framework->logout(slot);
 	} else
 		rv = CKR_USER_NOT_LOGGED_IN;
 
@@ -350,7 +350,7 @@ CK_RV C_InitPIN(CK_SESSION_HANDLE hSession, CK_CHAR_PTR pPin, CK_ULONG ulPinLen)
 	} else if (slot->card->framework->init_pin == NULL) {
 		rv = CKR_FUNCTION_NOT_SUPPORTED;
 	} else {
-		rv = slot->card->framework->init_pin(slot->card, slot, pPin, ulPinLen);
+		rv = slot->card->framework->init_pin(slot, pPin, ulPinLen);
 	}
 
       out:sc_pkcs11_unlock();
@@ -364,8 +364,7 @@ CK_RV C_SetPIN(CK_SESSION_HANDLE hSession,
 	struct sc_pkcs11_session *session;
 	struct sc_pkcs11_slot *slot;
 
-	if ((pOldPin == NULL_PTR && ulOldLen > 0)
-	    || (pNewPin == NULL_PTR && ulNewLen > 0))
+	if ((pOldPin == NULL_PTR && ulOldLen > 0) || (pNewPin == NULL_PTR && ulNewLen > 0))
 		return CKR_ARGUMENTS_BAD;
 
 	rv = sc_pkcs11_lock();
@@ -379,18 +378,15 @@ CK_RV C_SetPIN(CK_SESSION_HANDLE hSession,
 	}
 
 	slot = session->slot;
-	sc_log(context, "Changing PIN (session 0x%lx; login user %d)\n", hSession,
-		 slot->login_user);
+	sc_log(context, "Changing PIN (session 0x%lx; login user %d)", hSession, slot->login_user);
 
 	if (!(session->flags & CKF_RW_SESSION)) {
 		rv = CKR_SESSION_READ_ONLY;
 		goto out;
 	}
 
-	rv = slot->card->framework->change_pin(slot->card, slot->fw_data,
-					       slot->login_user, pOldPin, ulOldLen, pNewPin,
-					       ulNewLen);
-
-      out:sc_pkcs11_unlock();
+	rv = slot->card->framework->change_pin(slot, pOldPin, ulOldLen, pNewPin, ulNewLen);
+out:
+	sc_pkcs11_unlock();
 	return rv;
 }

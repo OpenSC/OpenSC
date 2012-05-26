@@ -4,7 +4,7 @@ MAINTAINERCLEANFILES = $(srcdir)/Makefile.in
 EXTRA_DIST = Makefile.mak
 
 dist_noinst_SCRIPTS = opensc_pkcs11_install.js
-lib_LTLIBRARIES = opensc-pkcs11.la pkcs11-spy.la onepin-opensc-pkcs11.la
+lib_LTLIBRARIES = opensc-pkcs11.la pkcs11-spy.la
 
 AM_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(PTHREAD_CFLAGS)
 INCLUDES = -I$(top_srcdir)/src
@@ -20,15 +20,9 @@ OPENSC_PKCS11_LIBS = \
 	$(top_builddir)/src/common/libcompat.la \
 	$(OPTIONAL_OPENSSL_LIBS) $(PTHREAD_LIBS)
 
-opensc_pkcs11_la_SOURCES = $(OPENSC_PKCS11_SRC) $(OPENSC_PKCS11_INC) hack-disabled.c
+opensc_pkcs11_la_SOURCES = $(OPENSC_PKCS11_SRC) $(OPENSC_PKCS11_INC)
 opensc_pkcs11_la_LIBADD = $(OPENSC_PKCS11_LIBS)
 opensc_pkcs11_la_LDFLAGS = $(AM_LDFLAGS) \
-	-export-symbols "$(srcdir)/opensc-pkcs11.exports" \
-	-module -shared -avoid-version -no-undefined
-
-onepin_opensc_pkcs11_la_SOURCES = $(OPENSC_PKCS11_SRC) $(OPENSC_PKCS11_INC) hack-enabled.c
-onepin_opensc_pkcs11_la_LIBADD = $(OPENSC_PKCS11_LIBS)
-onepin_opensc_pkcs11_la_LDFLAGS = $(AM_LDFLAGS) \
 	-export-symbols "$(srcdir)/opensc-pkcs11.exports" \
 	-module -shared -avoid-version -no-undefined
 
@@ -43,7 +37,6 @@ pkcs11_spy_la_LDFLAGS = $(AM_LDFLAGS) \
 
 if WIN32
 opensc_pkcs11_la_SOURCES += $(top_builddir)/win32/versioninfo.rc
-onepin_opensc_pkcs11_la_SOURCES += $(top_builddir)/win32/versioninfo.rc
 pkcs11_spy_la_SOURCES += $(top_builddir)/win32/versioninfo.rc
 endif
 
@@ -59,7 +52,7 @@ pkcs11-jar: jar-dir
 if WIN32
 install-exec-hook:
 	$(mkdir_p) "$(DESTDIR)$(libdir)"
-	for l in opensc-pkcs11.dll onepin-opensc-pkcs11.dll pkcs11-spy.dll; do \
+	for l in opensc-pkcs11.dll pkcs11-spy.dll; do \
 		mv "$(DESTDIR)$(libdir)/$$l" "$(DESTDIR)$(bindir)/$$l"; \
 	done
 else
@@ -71,7 +64,7 @@ PKCS11_SUFFIX=.so
 endif
 install-exec-hook:
 	$(mkdir_p) "$(DESTDIR)$(pkcs11dir)"
-	for l in opensc-pkcs11$(PKCS11_SUFFIX) onepin-opensc-pkcs11$(PKCS11_SUFFIX) pkcs11-spy$(PKCS11_SUFFIX); do \
+	for l in opensc-pkcs11$(PKCS11_SUFFIX) pkcs11-spy$(PKCS11_SUFFIX); do \
 		rm -f "$(DESTDIR)$(pkcs11dir)/$$l"; \
 		$(LN_S) ../$$l "$(DESTDIR)$(pkcs11dir)/$$l"; \
 	done
