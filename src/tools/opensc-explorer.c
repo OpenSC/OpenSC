@@ -76,6 +76,7 @@ static const char *option_help[] = {
 
 
 /* declare functions called by user commands */
+static int do_echo(int argc, char **argv);
 static int do_ls(int argc, char **argv);
 static int do_find(int argc, char **argv);
 static int do_cd(int argc, char **argv);
@@ -111,6 +112,9 @@ struct command {
 };
 
 static struct command	cmds[] = {
+	{ do_echo,
+		"echo",	"[<string> ..]",
+		"display arguments"			},
 	{ do_ls,
 		"ls",	"",
 		"list all files in the current DF"	},
@@ -379,6 +383,17 @@ static void print_file(const sc_file_t *file)
 	}
 	printf("\n");
 	return;
+}
+
+static int do_echo(int argc, char **argv)
+{
+	int i;
+
+	for (i = 0; i < argc; i++) {
+		printf("%s%s", argv[i], (i < argc) ? " " : "");
+	}
+	printf("\n");
+	return 0;
 }
 
 static int do_ls(int argc, char **argv)
@@ -1587,7 +1602,7 @@ static int do_quit(int argc, char **argv)
 	return 0;
 }
 
-static int parse_line(char *in, char **argv, int maxargc)
+static int parse_cmdline(char *in, char **argv, int maxargc)
 {
 	int	argc;
 
@@ -1612,7 +1627,7 @@ static int parse_line(char *in, char **argv, int maxargc)
 	return argc;
 }
 
-static char * my_readline(char *prompt)
+static char *read_cmdline(FILE *script, char *prompt)
 {
 	static char buf[256];
 	static int initialized;
@@ -1620,10 +1635,10 @@ static char * my_readline(char *prompt)
 
 	if (!initialized) {
 		initialized = 1;
-		interactive = isatty(fileno(stdin));
+		interactive = isatty(fileno(script));
 #ifdef ENABLE_READLINE
 		if (interactive)
-			using_history ();
+			using_history();
 #endif
 	}
 #ifdef ENABLE_READLINE
@@ -1637,10 +1652,11 @@ static char * my_readline(char *prompt)
 	/* Either we don't have readline or we are not running
 	   interactively */
 #ifndef ENABLE_READLINE
-	printf("%s", prompt);
+	if (interactive)
+		printf("%s", prompt);
 #endif
 	fflush(stdout);
-	if (fgets(buf, sizeof(buf), stdin) == NULL)
+	if (fgets(buf, sizeof(buf), script) == NULL)
 		return NULL;
 	if (strlen(buf) == 0)
 		return NULL;
@@ -1657,6 +1673,7 @@ int main(int argc, char * const argv[])
 	char *cargv[260];
 	sc_context_param_t ctx_param;
 	int lcycle = SC_CARDCTRL_LIFECYCLE_ADMIN;
+	FILE *script;
 
 	printf("OpenSC Explorer version %s\n", sc_get_version());
 
@@ -1739,16 +1756,33 @@ int main(int argc, char * const argv[])
 	if (r && r != SC_ERROR_NOT_SUPPORTED)
 		printf("unable to change lifecycle: %s\n", sc_strerror(r));
 
-	while (1) {
+	switch (argc - optind) {
+	default:
+		util_print_usage_and_die(app_name, options, option_help);
+		break;
+	case 0:
+		script = stdin;
+		break;
+	case 1:
+		if (strcmp(argv[optind], "-") == 0) {
+			script = stdin;
+		}
+		else if ((script = fopen(argv[optind], "r")) == NULL) {
+			util_print_usage_and_die(app_name, options, option_help);
+		}
+		break;
+	}
+
+	while (!feof(script)) {
 		struct command *cmd;
 		char prompt[3*SC_MAX_PATH_STRING_SIZE];
 
 		sprintf(prompt, "OpenSC [%s]> ", path_to_filename(&current_path, '/'));
-		line = my_readline(prompt);
+		line = read_cmdline(script, prompt);
 		if (line == NULL)
 			break;
-		cargc = parse_line(line, cargv, DIM(cargv));
-		if (cargc < 1)
+		cargc = parse_cmdline(line, cargv, DIM(cargv));
+		if ((cargc < 1) || (*cargv[0] == '#'))
 			continue;
 		for (r=cargc; r < (int)DIM(cargv); r++)
 			cargv[r] = "";
