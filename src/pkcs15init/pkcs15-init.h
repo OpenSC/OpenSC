@@ -155,6 +155,9 @@ struct sc_pkcs15init_operations {
 #define SC_PKCS15INIT_USER_PUK		3
 #define SC_PKCS15INIT_NPINS		4
 
+#define SC_PKCS15INIT_MD_STYLE_NONE	0
+#define SC_PKCS15INIT_MD_STYLE_GEMALTO	1
+
 struct sc_pkcs15init_callbacks {
 	/*
 	 * Get a PIN from the front-end. The first argument is
@@ -201,6 +204,7 @@ struct sc_pkcs15init_prkeyargs {
 	struct sc_pkcs15_id	id;
 	struct sc_pkcs15_id	auth_id;
 	const char *		label;
+	const char *		guid;
 	unsigned long		usage;
 	unsigned long		x509_usage;
 	unsigned int		flags;
@@ -261,7 +265,7 @@ extern struct	sc_pkcs15_object *sc_pkcs15init_new_object(int, const char *,
 				struct sc_pkcs15_id *, void *);
 extern void	sc_pkcs15init_set_callbacks(struct sc_pkcs15init_callbacks *);
 extern int	sc_pkcs15init_bind(struct sc_card *, const char *, const char *,
-				struct sc_profile **);
+				struct sc_app_info *app_info, struct sc_profile **);
 extern void	sc_pkcs15init_unbind(struct sc_profile *);
 extern void	sc_pkcs15init_set_p15card(struct sc_profile *,
 				struct sc_pkcs15_card *);

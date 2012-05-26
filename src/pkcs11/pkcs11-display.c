@@ -200,7 +200,7 @@ print_dn(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR ar
 void
 print_print(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg)
 {
-	CK_ULONG i, j;
+	CK_ULONG i, j=0;
 	CK_BYTE  c;
 
 	if((CK_LONG)size != -1) {
