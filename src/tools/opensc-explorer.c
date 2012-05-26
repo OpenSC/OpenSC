@@ -143,7 +143,7 @@ static struct command	cmds[] = {
 		"rm",	"<file id>",
 		"remove an EF/DF"			},
 	{ do_verify,
-		"verify",	"<key type><key ref> [<pin>]",
+		"verify",	"{CHV|KEY|AUT|PRO}<key ref> [<pin>]",
 		"present a PIN or key to the card"	},
 	{ do_pace,
 		"pace",	"{pin|can|puk|mrz} [<secret>]",
@@ -955,7 +955,7 @@ static int do_verify(int argc, char **argv)
 	printf("Code correct.\n");
 	return 0;
 usage:
-	printf("Usage: verify <key type><key ref> [<pin>]\n");
+	printf("Usage: verify {CHV|KEY|AUT|PRO}<key ref> [<pin>]\n");
 	printf("Possible values of <key type>:\n");
 	for (i = 0; typeNames[i].str; i++)
 		printf("\t%s\n", typeNames[i].str);
