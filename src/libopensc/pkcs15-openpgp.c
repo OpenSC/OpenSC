@@ -175,7 +175,6 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 		}
 	}
 
-	p15card->tokeninfo->version = (card->type == SC_CARD_TYPE_OPENPGP_V2) ? 2 : 1;
 	p15card->tokeninfo->flags = SC_PKCS15_TOKEN_PRN_GENERATION | SC_PKCS15_TOKEN_EID_COMPLIANT;
 
 	/* Extract preferred language */
