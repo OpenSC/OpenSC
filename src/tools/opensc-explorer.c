@@ -898,6 +898,7 @@ static int do_verify(int argc, char **argv)
 	u8 buf[64];
 	size_t buflen = sizeof(buf), i;
 	struct sc_pin_cmd_data data;
+	int prefix_len = 0;
 
 	if (argc < 1 || argc > 2)
 		goto usage;
@@ -907,7 +908,8 @@ static int do_verify(int argc, char **argv)
 
 	data.pin_type = SC_AC_NONE;
 	for (i = 0; typeNames[i].str; i++) {
-		if (strncasecmp(argv[0], typeNames[i].str, 3) == 0) {
+		prefix_len = strlen(typeNames[i].str);
+		if (strncasecmp(argv[0], typeNames[i].str, prefix_len) == 0) {
 			data.pin_type = typeNames[i].id;
 			break;
 		}
@@ -916,7 +918,7 @@ static int do_verify(int argc, char **argv)
 		printf("Invalid type.\n");
 		goto usage;
 	}
-	if (sscanf(argv[0] + 3, "%d", &data.pin_reference) != 1) {
+	if (sscanf(argv[0] + prefix_len, "%d", &data.pin_reference) != 1) {
 		printf("Invalid key reference.\n");
 		goto usage;
 	}
