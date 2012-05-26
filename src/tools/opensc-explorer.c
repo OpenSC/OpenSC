@@ -978,13 +978,13 @@ static int do_pace(int argc, char **argv)
             pace_input.pin = (unsigned char *) argv[1];
             /* fall through */
         case 1:
-            if (strcmp(argv[0], "pin") == 0)
+            if (strcasecmp(argv[0], "pin") == 0)
                 pace_input.pin_id = PACE_PIN_ID_PIN;
-            else if (strcmp(argv[0], "puk") == 0)
+            else if (strcasecmp(argv[0], "puk") == 0)
                 pace_input.pin_id = PACE_PIN_ID_PUK;
-            else if (strcmp(argv[0], "can") == 0)
+            else if (strcasecmp(argv[0], "can") == 0)
                 pace_input.pin_id = PACE_PIN_ID_CAN;
-            else if (strcmp(argv[0], "mrz") == 0)
+            else if (strcasecmp(argv[0], "mrz") == 0)
                 pace_input.pin_id = PACE_PIN_ID_MRZ;
             else
                 return usage(do_pace);
