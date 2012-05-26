@@ -721,6 +721,17 @@ struct ck_mechanism_info
 /* Flags for C_WaitForSlotEvent.  */
 #define CKF_DONT_BLOCK				(1UL)
 
+/* Flags for Key derivation */
+#define CKD_NULL			(1UL << 0)
+
+typedef struct CK_ECDH1_DERIVE_PARAMS {
+	unsigned long  kdf;
+	unsigned long  ulSharedDataLen;
+	unsigned char *  pSharedData;
+	unsigned long  ulPublicDataLen;
+	unsigned char *  pPublicData;
+} CK_ECDH1_DERIVE_PARAMS;
+
 
 typedef unsigned long ck_rv_t;
 

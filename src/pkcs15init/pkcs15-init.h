@@ -248,6 +248,18 @@ struct sc_pkcs15init_dataargs {
 	struct sc_pkcs15_der	der_encoded; /* Wrong name: is not DER encoded */
 };
 
+struct sc_pkcs15init_skeyargs {
+	struct sc_pkcs15_id	id;
+	struct sc_pkcs15_id	auth_id;
+	const char *		label;
+	unsigned long           usage;
+	unsigned int		flags;
+	unsigned int		access_flags;
+	unsigned long		value_len; /* User requested length */
+
+	struct sc_pkcs15_der	data_value; /* Wrong name: is not DER encoded */
+};
+
 struct sc_pkcs15init_certargs {
 	struct sc_pkcs15_id	id;
 	const char *		label;
