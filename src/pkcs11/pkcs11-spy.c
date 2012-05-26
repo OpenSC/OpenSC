@@ -26,6 +26,9 @@
 #include <windows.h>
 #include <winreg.h>
 #include <limits.h>
+#else
+#include <sys/time.h>
+#include <time.h>
 #endif
 
 #define CRYPTOKI_EXPORTS
@@ -53,8 +56,8 @@ static CK_RV init_spy(void)
   const char *output, *module;
   int rv = CKR_OK;
 #ifdef _WIN32
-        char temp_path[PATH_MAX];
-        DWORD temp_len;
+        char temp_path[PATH_MAX], expanded_path[PATH_MAX];
+        DWORD temp_len, expanded_len;
         long rc;
         HKEY hKey;
 #endif
@@ -151,16 +154,23 @@ static CK_RV init_spy(void)
 		/* try for the machine version first, as we may be runing
 	     * without a user during login
 		 */
-        rc = RegOpenKeyEx( HKEY_LOCAL_MACHINE, "Software\\OpenSC Project\\PKCS11-Spy",
+	rc = RegOpenKeyEx( HKEY_LOCAL_MACHINE, "Software\\OpenSC Project\\PKCS11-Spy",
                 0, KEY_QUERY_VALUE, &hKey );
-		if (rc != ERROR_SUCCESS ) {
-        	rc = RegOpenKeyEx( HKEY_CURRENT_USER, "Software\\OpenSC Project\\PKCS11-Spy",
-                	0, KEY_QUERY_VALUE, &hKey );
-		}
+	if (rc != ERROR_SUCCESS ) {
+		rc = RegOpenKeyEx( HKEY_CURRENT_USER, "Software\\OpenSC Project\\PKCS11-Spy",
+				0, KEY_QUERY_VALUE, &hKey );
+	}
         if( rc == ERROR_SUCCESS ) {
                 temp_len = PATH_MAX;
-                rc = RegQueryValueEx( hKey, "Output", NULL, NULL,
-                        (LPBYTE) temp_path, &temp_len);
+                rc = RegQueryValueEx( hKey, "Output", NULL, NULL, (LPBYTE) temp_path, &temp_len);
+		if (rc == ERROR_SUCCESS)   {
+			expanded_len = PATH_MAX;
+			expanded_len = ExpandEnvironmentStrings(temp_path, expanded_path, &expanded_len);
+			if (expanded_len > 0)   {
+				memcpy(temp_path, expanded_path, PATH_MAX);
+				temp_len = expanded_len;
+			}
+		}
                 if( (rc == ERROR_SUCCESS) && (temp_len < PATH_MAX) )
                         output = temp_path;
                 RegCloseKey( hKey );
@@ -181,14 +191,21 @@ static CK_RV init_spy(void)
 		 */
         rc = RegOpenKeyEx( HKEY_LOCAL_MACHINE, "Software\\OpenSC Project\\PKCS11-Spy",
                 0, KEY_QUERY_VALUE, &hKey );
-		if (rc != ERROR_SUCCESS ) {
+	if (rc != ERROR_SUCCESS ) {
         	rc = RegOpenKeyEx( HKEY_CURRENT_USER, "Software\\OpenSC Project\\PKCS11-Spy",
            	     0, KEY_QUERY_VALUE, &hKey );
-		}
+	}
         if( rc == ERROR_SUCCESS ) {
                 temp_len = PATH_MAX;
-                rc = RegQueryValueEx( hKey, "Module", NULL, NULL,
-                        (LPBYTE) temp_path, &temp_len);
+                rc = RegQueryValueEx( hKey, "Module", NULL, NULL, (LPBYTE) temp_path, &temp_len);
+		if (rc == ERROR_SUCCESS)   {
+			expanded_len = PATH_MAX;
+			expanded_len = ExpandEnvironmentStrings(temp_path, expanded_path, &expanded_len);
+			if (expanded_len > 0)   {
+				memcpy(temp_path, expanded_path, PATH_MAX);
+				temp_len = expanded_len;
+			}
+		}
                 if( (rc == ERROR_SUCCESS) && (temp_len < PATH_MAX) )
                         module = temp_path;
                 RegCloseKey( hKey );
@@ -214,7 +231,26 @@ static CK_RV init_spy(void)
 static void enter(const char *function)
 {
   static int count = 0;
-  fprintf(spy_output, "\n\n%d: %s\n", count++, function);
+#ifdef _WIN32
+         SYSTEMTIME st;
+#else
+	struct tm *tm;
+	struct timeval tv;
+	char time_string[40];
+#endif
+
+	fprintf(spy_output, "\n%d: %s\n", count++, function);
+#ifdef _WIN32
+        GetLocalTime(&st);
+        fprintf(spy_output, "%i-%02i-%02i %02i:%02i:%02i.%03i\n", st.wYear, st.wMonth, st.wDay,
+			st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
+#else
+	gettimeofday (&tv, NULL);
+	tm = localtime (&tv.tv_sec);
+	strftime (time_string, sizeof(time_string), "%F %H:%M:%S", tm);
+	fprintf(spy_output, "%s.%03ld\n", time_string, tv.tv_usec / 1000);
+#endif
+
 }
 
 static CK_RV retne(CK_RV rv)
