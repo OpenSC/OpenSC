@@ -184,10 +184,6 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 	string[r] = '\0';
 	set_string(&p15card->tokeninfo->preferred_language, string);
 
-	/* Get Application Related Data (006E) */
-	if ((r = sc_get_data(card, 0x006E, buffer, sizeof(buffer))) < 0)
-		goto failed;
-
 	/* Get CHV status bytes from DO 006E/0073/00C4:
 	 *  00:		1 == user consent for signature PIN
 	 *		(i.e. PIN still valid for next PSO:CDS command)
