@@ -956,9 +956,6 @@ static int do_verify(int argc, char **argv)
 	return 0;
 usage:
 	printf("Usage: verify {CHV|KEY|AUT|PRO}<key ref> [<pin>]\n");
-	printf("Possible values of <key type>:\n");
-	for (i = 0; typeNames[i].str; i++)
-		printf("\t%s\n", typeNames[i].str);
 	printf("Example: verify CHV2 31:32:33:34:00:00:00:00\n");
 	printf("If key is omitted, card reader's keypad will be used to collect PIN.\n");
 	return -1;
