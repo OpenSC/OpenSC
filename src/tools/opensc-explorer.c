@@ -122,8 +122,8 @@ static struct command	cmds[] = {
 		"echo",	"[<string> ..]",
 		"display arguments"			},
 	{ do_ls,
-		"ls",	"",
-		"list all files in the current DF"	},
+		"ls",	"[<pattern> ..]",
+		"list files in the current DF"		},
 	{ do_find,
 		"find",	"[<start id> [<end id>]]",
 		"find all files in the current DF"	},
@@ -402,13 +402,51 @@ static int do_echo(int argc, char **argv)
 	return 0;
 }
 
+static int pattern_match(const char *pattern, const char *string)
+{
+	if (pattern == NULL || string == NULL)
+		return 0;
+
+	while (*pattern != '\0' && *string != '\0') {
+		/* wildcard matching multple characters */
+		if (*pattern == '*') {
+			for (pattern++; *string != '\0' ; string++)
+				if (pattern_match(pattern, string))
+					return 1;
+			return 0;
+		}
+		/* simple character class matching a single character */
+		else if (*pattern == '[') {
+			char *end = strchr(pattern, ']');
+			int match = 0;
+
+			for (pattern++; end != NULL && pattern != end; pattern++) {
+				if (tolower(*pattern) == tolower(*string))
+					match++;
+			}
+			if (!match)
+				return 0;
+			pattern++;
+			string++;
+		}
+		/* single character comparison / wildcard matching a single character */
+		else if (tolower(*pattern) == tolower(*string) || *pattern == '?') {
+			pattern++;
+			string++;
+		}
+		else
+			return 0;
+
+		if (*string == '\0' || *pattern == '\0')
+			break;
+	}
+	return (*pattern != '\0' || *string != '\0' || tolower(*pattern) != tolower(*string)) ? 0 : 1;
+}
+
 static int do_ls(int argc, char **argv)
 {
 	u8 buf[256], *cur = buf;
 	int r, count;
-
-	if (argc)
-		return usage(do_ls);
 
 	r = sc_list_files(card, buf, sizeof(buf));
 	if (r < 0) {
@@ -420,24 +458,41 @@ static int do_ls(int argc, char **argv)
 	while (count >= 2) {
 		sc_path_t path;
 		sc_file_t *file = NULL;
+		char filename[10];
+		int i = 0;
+		int matches = 0;
 
-		if (current_path.type != SC_PATH_TYPE_DF_NAME) {
-			path = current_path;
-			sc_append_path_id(&path, cur, 2);
-		} else {
-			if (sc_path_set(&path, SC_PATH_TYPE_FILE_ID, cur, 2, 0, 0) != SC_SUCCESS) {
-				printf("unable to set path.\n");
-				die(1);
+		/* construct file name */
+		sprintf(filename, "%02X%02X", cur[0], cur[1]);
+
+		 /* compare file name against patterns */
+		for (i = 0; i < argc; i++) {
+			if (pattern_match(argv[i], filename)) {
+				matches = 1;
+				break;
 			}
 		}
 
-		r = sc_select_file(card, &path, &file);
-		if (r) {
-			printf(" %02X%02X unable to select file, %s\n", cur[0], cur[1], sc_strerror(r));
-		} else {
-			file->id = (cur[0] << 8) | cur[1];
-			print_file(file);
-			sc_file_free(file);
+		/* if any filename pattern were given, filter only matching file names */
+		if (argc == 0 || matches) {
+			if (current_path.type != SC_PATH_TYPE_DF_NAME) {
+				path = current_path;
+				sc_append_path_id(&path, cur, 2);
+			} else {
+				if (sc_path_set(&path, SC_PATH_TYPE_FILE_ID, cur, 2, 0, 0) != SC_SUCCESS) {
+					printf("unable to set path.\n");
+					die(1);
+				}
+			}
+
+			r = sc_select_file(card, &path, &file);
+			if (r) {
+				printf(" %02X%02X unable to select file, %s\n", cur[0], cur[1], sc_strerror(r));
+			} else {
+				file->id = (cur[0] << 8) | cur[1];
+					print_file(file);
+				sc_file_free(file);
+			}
 		}
 		cur += 2;
 		count -= 2;
