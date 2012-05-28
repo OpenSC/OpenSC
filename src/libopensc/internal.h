@@ -235,15 +235,13 @@ int sc_apdu_get_octets(sc_context_t *ctx, const sc_apdu_t *apdu, u8 **buf,
 int sc_apdu_set_resp(sc_context_t *ctx, sc_apdu_t *apdu, const u8 *buf,
 	size_t len);
 /**
- * Logs APDU
- * @param  ctx          sc_context_t object
- * @param  level	log if ctx->debug >= level
- * @param  buf          buffer with the APDU data
- * @param  len          length of the APDU
- * @param  is_outgoing  != 0 if the data is send to the card
+ * Logs APDU-s going back and forth to the card
+ * @param  reder        sc_reader_t object of the associated reader
+ * @param  buf          buffer with the raw APDU data
+ * @param  len          length of the buffer
+ * @param  is_outgoing  != 0 if the data is sent to the card
  */
-void sc_apdu_log(sc_context_t *ctx, int level, const u8 *data, size_t len,
-	int is_outgoing);
+void sc_apdu_log(sc_reader_t *reader, const u8 *data, size_t len, int is_outgoing);
 
 extern struct sc_reader_driver *sc_get_pcsc_driver(void);
 extern struct sc_reader_driver *sc_get_ctapi_driver(void);

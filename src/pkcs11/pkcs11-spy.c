@@ -154,8 +154,8 @@ static CK_RV init_spy(void)
         rc = RegOpenKeyEx( HKEY_LOCAL_MACHINE, "Software\\OpenSC Project\\PKCS11-Spy",
                 0, KEY_QUERY_VALUE, &hKey );
 		if (rc != ERROR_SUCCESS ) {
-        	rc = RegOpenKeyEx( HKEY_CURRENT_USER, "Software\\OpenSC Project\\PKCS11-Spy",
-                	0, KEY_QUERY_VALUE, &hKey );
+			rc = RegOpenKeyEx( HKEY_CURRENT_USER, "Software\\OpenSC Project\\PKCS11-Spy",
+					0, KEY_QUERY_VALUE, &hKey );
 		}
         if( rc == ERROR_SUCCESS ) {
                 temp_len = PATH_MAX;
@@ -182,8 +182,8 @@ static CK_RV init_spy(void)
         rc = RegOpenKeyEx( HKEY_LOCAL_MACHINE, "Software\\OpenSC Project\\PKCS11-Spy",
                 0, KEY_QUERY_VALUE, &hKey );
 		if (rc != ERROR_SUCCESS ) {
-        	rc = RegOpenKeyEx( HKEY_CURRENT_USER, "Software\\OpenSC Project\\PKCS11-Spy",
-           	     0, KEY_QUERY_VALUE, &hKey );
+			rc = RegOpenKeyEx( HKEY_CURRENT_USER, "Software\\OpenSC Project\\PKCS11-Spy",
+					0, KEY_QUERY_VALUE, &hKey );
 		}
         if( rc == ERROR_SUCCESS ) {
                 temp_len = PATH_MAX;
@@ -204,9 +204,9 @@ static CK_RV init_spy(void)
   if (modhandle && po) {
     fprintf(spy_output, "Loaded: \"%s\"\n", module);
   } else {
-  	po = NULL;
-  	free(pkcs11_spy);
-  	rv = CKR_GENERAL_ERROR;
+	po = NULL;
+	free(pkcs11_spy);
+	rv = CKR_GENERAL_ERROR;
   }
   return rv;
 }
@@ -288,7 +288,7 @@ CK_RV C_GetFunctionList
   if (po == NULL) {
     CK_RV rv = init_spy();
     if (rv != CKR_OK)
-    	return rv;
+		return rv;
   }
 
   enter("C_GetFunctionList");
@@ -303,11 +303,19 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs)
   if (po == NULL) {
     rv = init_spy();
     if (rv != CKR_OK)
-    	return rv;
+		return rv;
   }
 
   enter("C_Initialize");
   print_ptr_in("pInitArgs", pInitArgs);
+  if (pInitArgs) {
+	  CK_C_INITIALIZE_ARGS *ptr = pInitArgs;
+	  fprintf(spy_output, "     flags: %ld\n", ptr->flags);
+	  if (ptr->flags & CKF_LIBRARY_CANT_CREATE_OS_THREADS)
+		  fprintf(spy_output, "       CKF_LIBRARY_CANT_CREATE_OS_THREADS\n");
+	  if (ptr->flags & CKF_OS_LOCKING_OK)
+		  fprintf(spy_output, "       CKF_OS_LOCKING_OK\n");
+  }
   rv = po->C_Initialize(pInitArgs);
   return retne(rv);
 }

@@ -245,7 +245,7 @@ static int pcsc_transmit(sc_reader_t *reader, sc_apdu_t *apdu)
 		goto out;
 	if (reader->name)
 		sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "reader '%s'", reader->name);
-	sc_apdu_log(reader->ctx, SC_LOG_DEBUG_NORMAL, sbuf, ssize, 1);
+	sc_apdu_log(reader, sbuf, ssize, 1);
 
 	r = pcsc_internal_transmit(reader, sbuf, ssize,
 				rbuf, &rsize, apdu->control);
@@ -254,7 +254,7 @@ static int pcsc_transmit(sc_reader_t *reader, sc_apdu_t *apdu)
 		sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "unable to transmit");
 		goto out;
 	}
-	sc_apdu_log(reader->ctx, SC_LOG_DEBUG_NORMAL, rbuf, rsize, 0);
+	sc_apdu_log(reader, rbuf, rsize, 0);
 	/* set response */
 	r = sc_apdu_set_resp(reader->ctx, apdu, rbuf, rsize);
 out:
