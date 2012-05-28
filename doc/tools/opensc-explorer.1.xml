@@ -276,9 +276,12 @@
 
 			<varlistentry>
 				<term>
-					<command>ls</command>
+					<command>ls</command> [<replaceable>pattern</replaceable> ...]
 				</term>
-				<listitem><para>List all files in the current DF</para></listitem>
+				<listitem><para>List files in the current DF.
+				If no <replaceable>pattern</replaceable> is given, then all files are listed.
+				If one ore more <replaceable>pattern</replaceable>s are given, only files matching
+				at least one <replaceable>pattern</replaceable> are listed.</para></listitem>
 			</varlistentry>
 
 			<varlistentry>
