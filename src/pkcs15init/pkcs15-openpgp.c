@@ -43,7 +43,7 @@
  **/
 static int openpgp_erase(struct sc_profile *profile, sc_pkcs15_card_t *p15card)
 {
-	return SC_SUCCESS;
+	return SC_ERROR_NOT_SUPPORTED;
 }
 
 /**
@@ -57,7 +57,7 @@ static int openpgp_erase(struct sc_profile *profile, sc_pkcs15_card_t *p15card)
 static int openpgp_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	sc_file_t *df)
 {
-	return SC_SUCCESS;
+	return SC_ERROR_NOT_SUPPORTED;
 }
 
 /**
@@ -68,7 +68,7 @@ static int openpgp_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 static int openpgp_select_pin_reference(sc_profile_t *profile,
 		sc_pkcs15_card_t *p15card, sc_pkcs15_auth_info_t *auth_info)
 {
-	return SC_SUCCESS;
+	return SC_ERROR_NOT_SUPPORTED;
 }
 
 /**
@@ -86,7 +86,7 @@ static int openpgp_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	sc_file_t *df, sc_pkcs15_object_t *pin_obj,
 	const u8 *pin, size_t pin_len, const u8 *puk, size_t puk_len)
 {
-	return SC_SUCCESS;
+	return SC_ERROR_NOT_SUPPORTED;
 }
 
 /**
@@ -95,7 +95,7 @@ static int openpgp_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 static int openpgp_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	sc_pkcs15_object_t *obj)
 {
-	return SC_SUCCESS;
+	return SC_ERROR_NOT_SUPPORTED;
 }
 
 /**
@@ -109,7 +109,7 @@ static int openpgp_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 static int openpgp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	sc_pkcs15_object_t *obj, sc_pkcs15_prkey_t *key)
 {
-	return SC_SUCCESS;
+	return SC_ERROR_NOT_SUPPORTED;
 }
 
 /**
@@ -123,7 +123,25 @@ static int openpgp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 static int openpgp_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	sc_pkcs15_object_t *obj, sc_pkcs15_pubkey_t *pubkey)
 {
-	return SC_SUCCESS;
+	return SC_ERROR_NOT_SUPPORTED;
+}
+
+static int openpgp_emu_update_any_df(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
+									 unsigned operation, sc_pkcs15_object_t *obj)
+{
+	LOG_FUNC_CALLED(p15card->card->ctx);
+	/* After storing object, pkcs15init will call this function to update DF.
+	 * But OpenPGP has no other DF than OpenPGP-Application, so we do nothing. */
+	LOG_FUNC_RETURN(p15card->card->ctx, SC_SUCCESS);
+}
+
+static int openpgp_emu_update_tokeninfo(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
+										sc_pkcs15_tokeninfo_t *tokeninfo)
+{
+	LOG_FUNC_CALLED(p15card->card->ctx);
+	/* When unbinding pkcs15init, this function will be called.
+	 * But for OpenPGP, token info does not need to change, we do nothing. */
+	LOG_FUNC_RETURN(p15card->card->ctx, SC_SUCCESS);
 }
 
 static struct sc_pkcs15init_operations sc_pkcs15init_openpgp_operations = {
@@ -140,7 +158,10 @@ static struct sc_pkcs15init_operations sc_pkcs15init_openpgp_operations = {
 	NULL, NULL, 			/* encode private/public key */
 	NULL,				/* finalize_card */
 	NULL, 				/* delete_object */
-	NULL, NULL, NULL, NULL, NULL, 	/* pkcs15init emulation */
+	NULL,
+	openpgp_emu_update_any_df,
+	openpgp_emu_update_tokeninfo,
+	NULL, NULL, 	/* pkcs15init emulation */
 	NULL				/* sanity_check */
 };
 
