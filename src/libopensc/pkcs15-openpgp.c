@@ -175,7 +175,6 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 		}
 	}
 
-	p15card->tokeninfo->version = (card->type == SC_CARD_TYPE_OPENPGP_V2) ? 2 : 1;
 	p15card->tokeninfo->flags = SC_PKCS15_TOKEN_PRN_GENERATION | SC_PKCS15_TOKEN_EID_COMPLIANT;
 
 	/* Extract preferred language */
@@ -216,7 +215,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 		pin_info.auth_id.value[0] = i + 1;
 		pin_info.attrs.pin.reference     = pin_cfg[i].reference;
 		pin_info.attrs.pin.flags         = pin_cfg[i].flags;
-		pin_info.attrs.pin.type          = SC_PKCS15_PIN_TYPE_ASCII_NUMERIC;
+		pin_info.attrs.pin.type          = SC_PKCS15_PIN_TYPE_UTF8;
 		pin_info.attrs.pin.min_length    = pin_cfg[i].min_length;
 		pin_info.attrs.pin.stored_length = buffer[1 + pin_cfg[i].do_index];
 		pin_info.attrs.pin.max_length    = buffer[1 + pin_cfg[i].do_index];

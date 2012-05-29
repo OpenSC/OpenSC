@@ -418,7 +418,7 @@ int main(int argc, char * argv[])
 			new_object_id_len = sizeof(new_object_id);
 			if (!hex_to_bin(optarg, new_object_id, &new_object_id_len)) {
 				printf("Invalid ID \"%s\"\n", optarg);
-				util_print_usage_and_die(app_name, options, option_help);
+				util_print_usage_and_die(app_name, options, option_help, NULL);
 			}
 			action_count++;
 			break;
@@ -437,14 +437,14 @@ int main(int argc, char * argv[])
 				opt_object_class = CKO_DATA;
 			else {
 				printf("Unsupported object type \"%s\"\n", optarg);
-				util_print_usage_and_die(app_name, options, option_help);
+				util_print_usage_and_die(app_name, options, option_help, NULL);
 			}
 			break;
 		case 'd':
 			opt_object_id_len = sizeof(opt_object_id);
 			if (!hex_to_bin(optarg, opt_object_id, &opt_object_id_len)) {
 				printf("Invalid ID \"%s\"\n", optarg);
-				util_print_usage_and_die(app_name, options, option_help);
+				util_print_usage_and_die(app_name, options, option_help, NULL);
 			}
 			break;
 		case 'a':
@@ -504,14 +504,14 @@ int main(int argc, char * argv[])
 		case OPT_SLOT_DESCRIPTION:
 			if (opt_slot_set) {
 				fprintf(stderr, "Error: Only one of --slot, --slot-label, --slot-index or --token-label can be used\n");
-				util_print_usage_and_die(app_name, options, option_help);
+				util_print_usage_and_die(app_name, options, option_help, NULL);
 			}
 			opt_slot_description = optarg;
 			break;
 		case OPT_SLOT_INDEX:
 			if (opt_slot_set || opt_slot_description) {
 				fprintf(stderr, "Error: Only one of --slot, --slot-label, --slot-index or --token-label can be used\n");
-				util_print_usage_and_die(app_name, options, option_help);
+				util_print_usage_and_die(app_name, options, option_help, NULL);
 			}
 			opt_slot_index = (CK_ULONG) strtoul(optarg, NULL, 0);
 			opt_slot_index_set = 1;
@@ -519,7 +519,7 @@ int main(int argc, char * argv[])
 		case OPT_TOKEN_LABEL:
 			if (opt_slot_set || opt_slot_description || opt_slot_index_set) {
 				fprintf(stderr, "Error: Only one of --slot, --slot-label, --slot-index or --token-label can be used\n");
-				util_print_usage_and_die(app_name, options, option_help);
+				util_print_usage_and_die(app_name, options, option_help, NULL);
 			}
 			opt_token_label = optarg;
 			break;
@@ -547,7 +547,7 @@ int main(int argc, char * argv[])
 				opt_login_type = CKU_CONTEXT_SPECIFIC;
 			else {
 				printf("Unsupported login type \"%s\"\n", optarg);
-				util_print_usage_and_die(app_name, options, option_help);
+				util_print_usage_and_die(app_name, options, option_help, NULL);
 			}
 			break;
 		case OPT_SO_PIN:
@@ -577,15 +577,15 @@ int main(int argc, char * argv[])
 			action_count++;
 			break;
 		default:
-			util_print_usage_and_die(app_name, options, option_help);
+			util_print_usage_and_die(app_name, options, option_help, NULL);
 		}
 	}
 
 	if (opt_module == NULL)
-		util_print_usage_and_die(app_name, options, option_help);
+		util_print_usage_and_die(app_name, options, option_help, NULL);
 
 	if (action_count == 0)
-		util_print_usage_and_die(app_name, options, option_help);
+		util_print_usage_and_die(app_name, options, option_help, NULL);
 
 	module = C_LoadModule(opt_module, &p11);
 	if (module == NULL)
@@ -709,7 +709,7 @@ int main(int argc, char * argv[])
 		if (opt_login_type != -1
 				&& opt_login_type != CKU_CONTEXT_SPECIFIC)   {
 			printf("Invalid login type for 'Unlock User PIN' operation\n");
-                	util_print_usage_and_die(app_name, options, option_help);
+                	util_print_usage_and_die(app_name, options, option_help, NULL);
 		}
 
 		return unlock_pin(opt_slot, session, opt_login_type);
@@ -1483,7 +1483,7 @@ static int gen_keypair(CK_SESSION_HANDLE session,
 				util_fatal("Allocation error", 0);
 			if (!hex_to_bin(ec_curve_infos[ii].oid_encoded, ecparams, &ecparams_size)) {
 				printf("Cannot convert \"%s\"\n", ec_curve_infos[ii].oid_encoded);
-				util_print_usage_and_die(app_name, options, option_help);
+				util_print_usage_and_die(app_name, options, option_help, NULL);
 			}
 
 			FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_EC_PARAMS, ecparams, ecparams_size);

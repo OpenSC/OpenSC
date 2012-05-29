@@ -420,14 +420,14 @@ main(int argc, char **argv)
 	parse_commandline(argc, argv);
 
 	if (optind != argc)
-		util_print_usage_and_die(app_name, options, option_help);
+		util_print_usage_and_die(app_name, options, option_help, NULL);
 	if (opt_actions == 0) {
 		fprintf(stderr, "No action specified.\n");
-		util_print_usage_and_die(app_name, options, option_help);
+		util_print_usage_and_die(app_name, options, option_help, NULL);
 	}
 	if (!opt_profile) {
 		fprintf(stderr, "No profile specified.\n");
-		util_print_usage_and_die(app_name, options, option_help);
+		util_print_usage_and_die(app_name, options, option_help, NULL);
 	}
 
 	/* Connect to the card */
@@ -2476,7 +2476,7 @@ handle_option(const struct option *opt)
 		opt_format = optarg;
 		break;
 	case 'h':
-		util_print_usage_and_die(app_name, options, option_help);
+		util_print_usage_and_die(app_name, options, option_help, NULL);
 	case 'i':
 		opt_objectid = optarg;
 		break;
@@ -2574,7 +2574,7 @@ handle_option(const struct option *opt)
 		this_action = ACTION_SANITY_CHECK;
 		break;
 	default:
-		util_print_usage_and_die(app_name, options, option_help);
+		util_print_usage_and_die(app_name, options, option_help, NULL);
 	}
 
 	if ((opt_actions & (1 << this_action)) && opt->has_arg != no_argument) {
@@ -2584,7 +2584,7 @@ handle_option(const struct option *opt)
 		if (isprint(opt->val))
 			fprintf(stderr, " -%c", opt->val);
 		fprintf(stderr, " more than once.\n");
-		util_print_usage_and_die(app_name, options, option_help);
+		util_print_usage_and_die(app_name, options, option_help, NULL);
 	}
 	if (this_action)
 		opt_actions |= (1 << this_action);
@@ -2593,13 +2593,13 @@ handle_option(const struct option *opt)
 		fprintf(stderr, "Error: "
 		"The --no-so-pin option and --so-pin/--so-puk are mutually"
 		"exclusive.\n");
-		util_print_usage_and_die(app_name, options, option_help);
+		util_print_usage_and_die(app_name, options, option_help, NULL);
 	}
 
 	if ((opt_actions & (1 << ACTION_ERASE)) &&
 		(opt_actions != (1 << ACTION_ERASE))) {
 		fprintf(stderr, "Error: erasing a card is incompatible with all other actions\n");
-		util_print_usage_and_die(app_name, options, option_help);
+		util_print_usage_and_die(app_name, options, option_help, NULL);
 	}
 }
 
@@ -2673,7 +2673,7 @@ read_options_file(const char *filename)
 					break;
 			if (!o->name) {
 				util_error("Unknown option \"%s\"\n", name);
-				util_print_usage_and_die(app_name, options, option_help);
+				util_print_usage_and_die(app_name, options, option_help, NULL);
 			}
 			if (o->has_arg != no_argument) {
 				optarg = strtok(NULL, "");
@@ -2686,7 +2686,7 @@ read_options_file(const char *filename)
 			if (o->has_arg == required_argument
 			 && (!optarg || !*optarg)) {
 				util_error("Option %s: missing argument\n", name);
-				util_print_usage_and_die(app_name, options, option_help);
+				util_print_usage_and_die(app_name, options, option_help, NULL);
 			}
 			handle_option(o);
 			name = strtok(NULL, " \t");
