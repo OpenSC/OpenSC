@@ -681,10 +681,11 @@ typedef struct sc_context {
 	int paranoid_memory;
 
 	FILE *debug_file;
+	char *debug_filename;
 	char *preferred_language;
 
 	list_t readers;
-	
+
 	struct sc_reader_driver *reader_driver;
 	void *reader_drv_data;
 

@@ -211,22 +211,39 @@ int sc_ctx_log_to_file(sc_context_t *ctx, const char* filename)
 	return SC_SUCCESS;
 }
 
-static int load_parameters(sc_context_t *ctx, scconf_block *block,
-			   struct _sc_ctx_options *opts)
+
+static int
+load_parameters(sc_context_t *ctx, scconf_block *block, struct _sc_ctx_options *opts)
 {
 	int err = 0;
 	const scconf_list *list;
 	const char *val, *s_internal = "internal";
-    const char *debug = NULL;
-
+	const char *debug = NULL;
+	int reopen;
+#ifdef _WIN32
+	char expanded_val[PATH_MAX];
+	DWORD expanded_len;
+#endif
 	ctx->debug = scconf_get_int(block, "debug", ctx->debug);
+	reopen = scconf_get_bool(block, "reopen_debug_file", 1);
+
 	debug = getenv("OPENSC_DEBUG");
 	if (debug)
 		ctx->debug = atoi(debug);
 
 	val = scconf_get_str(block, "debug_file", NULL);
-	if (val)
+	if (val)   {
+#ifdef _WIN32
+		expanded_len = PATH_MAX;
+		expanded_len = ExpandEnvironmentStrings(val, expanded_val, expanded_len);
+		if (expanded_len > 0)
+			val = expanded_val;
+#endif
+		if (reopen)
+			ctx->debug_filename = strdup(val);
+
 		sc_ctx_log_to_file(ctx, val);
+	}
 
 	ctx->paranoid_memory = scconf_get_bool (block, "paranoid-memory",
 		ctx->paranoid_memory);
@@ -620,6 +637,24 @@ int sc_establish_context(sc_context_t **ctx_out, const char *app_name)
 	return sc_context_create(ctx_out, &ctx_param);
 }
 
+/* For multithreaded issues */
+int sc_context_repair(sc_context_t **ctx_out)
+{
+	/* Must already exist */
+	if ((ctx_out == NULL) || (*ctx_out == NULL) ||
+	    ((*ctx_out)->app_name == NULL))
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	/* The only thing that should be shared across different contexts are the
+	 * card drivers - so rebuild the ATR's
+	 */
+	load_card_atrs(*ctx_out);
+
+	/* TODO: May need to re-open any card driver DLL's */
+
+	return SC_SUCCESS;
+}
+
 int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 {
 	sc_context_t		*ctx;
@@ -756,9 +791,11 @@ int sc_release_context(sc_context_t *ctx)
 		scconf_free(ctx->conf);
 	if (ctx->debug_file && (ctx->debug_file != stdout && ctx->debug_file != stderr))
 		fclose(ctx->debug_file);
+	if (ctx->debug_filename != NULL)
+		free(ctx->debug_filename);
 	if (ctx->app_name != NULL)
 		free(ctx->app_name);
-		list_destroy(&ctx->readers);
+	list_destroy(&ctx->readers);
 	sc_mem_clear(ctx, sizeof(*ctx));
 	free(ctx);
 	return SC_SUCCESS;
