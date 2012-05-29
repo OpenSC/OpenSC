@@ -143,7 +143,7 @@ static struct command	cmds[] = {
 		"rm",	"<file id>",
 		"remove an EF/DF"			},
 	{ do_verify,
-		"verify",	"<key type><key ref> [<pin>]",
+		"verify",	"{CHV|KEY|AUT|PRO}<key ref> [<pin>]",
 		"present a PIN or key to the card"	},
 	{ do_pace,
 		"pace",	"{pin|can|puk|mrz} [<secret>]",
@@ -898,6 +898,7 @@ static int do_verify(int argc, char **argv)
 	u8 buf[64];
 	size_t buflen = sizeof(buf), i;
 	struct sc_pin_cmd_data data;
+	int prefix_len = 0;
 
 	if (argc < 1 || argc > 2)
 		goto usage;
@@ -907,7 +908,8 @@ static int do_verify(int argc, char **argv)
 
 	data.pin_type = SC_AC_NONE;
 	for (i = 0; typeNames[i].str; i++) {
-		if (strncasecmp(argv[0], typeNames[i].str, 3) == 0) {
+		prefix_len = strlen(typeNames[i].str);
+		if (strncasecmp(argv[0], typeNames[i].str, prefix_len) == 0) {
 			data.pin_type = typeNames[i].id;
 			break;
 		}
@@ -916,7 +918,7 @@ static int do_verify(int argc, char **argv)
 		printf("Invalid type.\n");
 		goto usage;
 	}
-	if (sscanf(argv[0] + 3, "%d", &data.pin_reference) != 1) {
+	if (sscanf(argv[0] + prefix_len, "%d", &data.pin_reference) != 1) {
 		printf("Invalid key reference.\n");
 		goto usage;
 	}
@@ -953,10 +955,7 @@ static int do_verify(int argc, char **argv)
 	printf("Code correct.\n");
 	return 0;
 usage:
-	printf("Usage: verify <key type><key ref> [<pin>]\n");
-	printf("Possible values of <key type>:\n");
-	for (i = 0; typeNames[i].str; i++)
-		printf("\t%s\n", typeNames[i].str);
+	printf("Usage: verify {CHV|KEY|AUT|PRO}<key ref> [<pin>]\n");
 	printf("Example: verify CHV2 31:32:33:34:00:00:00:00\n");
 	printf("If key is omitted, card reader's keypad will be used to collect PIN.\n");
 	return -1;
@@ -976,13 +975,13 @@ static int do_pace(int argc, char **argv)
             pace_input.pin = (unsigned char *) argv[1];
             /* fall through */
         case 1:
-            if (strcmp(argv[0], "pin") == 0)
+            if (strcasecmp(argv[0], "pin") == 0)
                 pace_input.pin_id = PACE_PIN_ID_PIN;
-            else if (strcmp(argv[0], "puk") == 0)
+            else if (strcasecmp(argv[0], "puk") == 0)
                 pace_input.pin_id = PACE_PIN_ID_PUK;
-            else if (strcmp(argv[0], "can") == 0)
+            else if (strcasecmp(argv[0], "can") == 0)
                 pace_input.pin_id = PACE_PIN_ID_CAN;
-            else if (strcmp(argv[0], "mrz") == 0)
+            else if (strcasecmp(argv[0], "mrz") == 0)
                 pace_input.pin_id = PACE_PIN_ID_MRZ;
             else
                 return usage(do_pace);
@@ -1459,9 +1458,40 @@ static int do_get_data(int argc, char **argv)
 	return 0;
 }
 
+/**
+ * Use PUT DATA command to write to Data Object.
+ **/
 static int do_put_data(int argc, char **argv)
 {
-	return usage(do_put_data);
+	unsigned int tag;
+	u8 buf[240];
+	size_t buflen = sizeof(buf);
+	int r;
+
+	if (argc != 2)
+		return usage(do_put_data);
+
+	/* Extract DO's tag */
+	tag = strtoul(argv[0], NULL, 16);
+
+	/* Extract the new content */
+	/* buflen is the max length of reception buffer */
+	r = parse_string_or_hexdata(argv[1], buf, &buflen);
+	if (r < 0) {
+		printf("unable to parse data\n");
+		return -1;
+	}
+
+	/* Call OpenSC to do put data */
+	r = sc_put_data(card, tag, buf, buflen);
+	if (r < 0) {
+		printf("Cannot put data to %04X; return %i\n", tag, r);
+		return -1;
+	}
+
+	printf("Total of %d bytes written.\n", r);
+
+	return 0;
 }
 
 static int do_apdu(int argc, char **argv)
@@ -1682,7 +1712,7 @@ int main(int argc, char * const argv[])
 		if (c == -1)
 			break;
 		if (c == '?')
-			util_print_usage_and_die(app_name, options, option_help);
+			util_print_usage_and_die(app_name, options, option_help, "[SCRIPT]");
 		switch (c) {
 		case 'r':
 			opt_reader = optarg;
@@ -1758,7 +1788,7 @@ int main(int argc, char * const argv[])
 
 	switch (argc - optind) {
 	default:
-		util_print_usage_and_die(app_name, options, option_help);
+		util_print_usage_and_die(app_name, options, option_help, "[SCRIPT]");
 		break;
 	case 0:
 		script = stdin;
@@ -1768,7 +1798,7 @@ int main(int argc, char * const argv[])
 			script = stdin;
 		}
 		else if ((script = fopen(argv[optind], "r")) == NULL) {
-			util_print_usage_and_die(app_name, options, option_help);
+			util_print_usage_and_die(app_name, options, option_help, "[SCRIPT]");
 		}
 		break;
 	}

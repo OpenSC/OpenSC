@@ -152,7 +152,8 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 	sc_card_t	*card = p15card->card;
 	sc_context_t	*ctx = card->ctx;
 	char		string[256];
-	u8		buffer[256];
+	u8		c4data[10];
+	u8		c5data[70];
 	int		r, i;
 	const pgp_pin_cfg_t *pin_cfg = (card->type == SC_CARD_TYPE_OPENPGP_V2) ? pin_cfg_v2 : pin_cfg_v1;
 
@@ -175,7 +176,6 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 		}
 	}
 
-	p15card->tokeninfo->version = (card->type == SC_CARD_TYPE_OPENPGP_V2) ? 2 : 1;
 	p15card->tokeninfo->flags = SC_PKCS15_TOKEN_PRN_GENERATION | SC_PKCS15_TOKEN_EID_COMPLIANT;
 
 	/* Extract preferred language */
@@ -185,17 +185,13 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 	string[r] = '\0';
 	set_string(&p15card->tokeninfo->preferred_language, string);
 
-	/* Get Application Related Data (006E) */
-	if ((r = sc_get_data(card, 0x006E, buffer, sizeof(buffer))) < 0)
-		goto failed;
-
 	/* Get CHV status bytes from DO 006E/0073/00C4:
 	 *  00:		1 == user consent for signature PIN
 	 *		(i.e. PIN still valid for next PSO:CDS command)
 	 *  01-03:	max length of pins 1-3
 	 *  04-07:	tries left for pins 1-3
 	 */
-	if ((r = read_file(card, "006E:0073:00C4", buffer, sizeof(buffer))) < 0)
+	if ((r = read_file(card, "006E:0073:00C4", c4data, sizeof(c4data))) < 0)
 		goto failed;
 	if (r != 7) {
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
@@ -216,12 +212,12 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 		pin_info.auth_id.value[0] = i + 1;
 		pin_info.attrs.pin.reference     = pin_cfg[i].reference;
 		pin_info.attrs.pin.flags         = pin_cfg[i].flags;
-		pin_info.attrs.pin.type          = SC_PKCS15_PIN_TYPE_ASCII_NUMERIC;
+		pin_info.attrs.pin.type          = SC_PKCS15_PIN_TYPE_UTF8;
 		pin_info.attrs.pin.min_length    = pin_cfg[i].min_length;
-		pin_info.attrs.pin.stored_length = buffer[1 + pin_cfg[i].do_index];
-		pin_info.attrs.pin.max_length    = buffer[1 + pin_cfg[i].do_index];
+		pin_info.attrs.pin.stored_length = c4data[1 + pin_cfg[i].do_index];
+		pin_info.attrs.pin.max_length    = c4data[1 + pin_cfg[i].do_index];
 		pin_info.attrs.pin.pad_char      = '\0';
-		pin_info.tries_left = buffer[4 + pin_cfg[i].do_index];
+		pin_info.tries_left = c4data[4 + pin_cfg[i].do_index];
 
 		sc_format_path("3F00", &pin_info.path);
 
@@ -233,31 +229,52 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 			return SC_ERROR_INTERNAL;
 	}
 
+	/* Get private key finger prints from DO 006E/0073/00C5:
+	 *  00-19:	finger print for SIG key
+	 *  20-39:	finger print for ENC key
+	 *  40-59:	finger print for AUT key
+	 */
+	if ((r = read_file(card, "006E:0073:00C5", c5data, sizeof(c5data))) < 0)
+		goto failed;
+	if (r != 60) {
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
+			"finger print bytes have unexpected length (expected 60, got %d)\n", r);
+		return SC_ERROR_OBJECT_NOT_VALID;
+	}
+
 	/* XXX: check if "halfkeys" can be stored with gpg2. If not, add keypairs in one loop */
 	for (i = 0; i < 3; i++) {
 		sc_pkcs15_prkey_info_t prkey_info;
 		sc_pkcs15_object_t     prkey_obj;
-		char path_template[] = "006E:0073:00C0";
+		u8 cxdata[10];
+		char path_template[] = "006E:0073:00Cx";
+		int j;
 
 		memset(&prkey_info, 0, sizeof(prkey_info));
 		memset(&prkey_obj,  0, sizeof(prkey_obj));
 
 		path_template[13] = '1' + i; /* The needed tags are C1 C2 and C3 */
-		if ((r = read_file(card, path_template, buffer, sizeof(buffer))) < 0)
+		if ((r = read_file(card, path_template, cxdata, sizeof(cxdata))) < 0)
 			goto failed;
 		if (r != 6) {
 			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Key info bytes have unexpected length(expected 6, got %d)\n", r);
 			return SC_ERROR_INTERNAL;
 		}
 
-		/* only add valid keys, i.e. those with a legal algorithm identifier */
-		if (buffer[0] != 0) {
+		/* check validity using finger prints */
+		for (j = 19; j >= 0; j--) {
+			if (c5data[20 * i + j] != '\0')
+				break;
+		}
+
+		/* only add valid keys, i.e. those with a legal algorithm identifier & finger print */
+		if (j >= 0 && cxdata[0] != 0) {
 			prkey_info.id.len         = 1;
 			prkey_info.id.value[0]    = i + 1;
 			prkey_info.usage          = key_cfg[i].prkey_usage;
 			prkey_info.native         = 1;
 			prkey_info.key_reference  = i;
-			prkey_info.modulus_length = bebytes2ushort(buffer + 1);
+			prkey_info.modulus_length = bebytes2ushort(cxdata + 1);
 
 			strlcpy(prkey_obj.label, key_cfg[i].label, sizeof(prkey_obj.label));
 			prkey_obj.flags = SC_PKCS15_CO_FLAG_PRIVATE | SC_PKCS15_CO_FLAG_MODIFIABLE;
@@ -273,24 +290,32 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 	for (i = 0; i < 3; i++) {
 		sc_pkcs15_pubkey_info_t pubkey_info;
 		sc_pkcs15_object_t      pubkey_obj;
-		char path_template[] = "006E:0073:00C0";
+		u8 cxdata[10];
+		char path_template[] = "006E:0073:00Cx";
+		int j;
 
 		memset(&pubkey_info, 0, sizeof(pubkey_info));
 		memset(&pubkey_obj,  0, sizeof(pubkey_obj));
 
 		path_template[13] = '1' + i; /* The needed tags are C1 C2 and C3 */
-		if ((r = read_file(card, path_template, buffer, sizeof(buffer))) < 0)
+		if ((r = read_file(card, path_template, cxdata, sizeof(cxdata))) < 0)
 			goto failed;
 		if (r != 6) {
 			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Key info bytes have unexpected length(expected 6, got %d)\n", r);
 			return SC_ERROR_INTERNAL;
 		}
 
-		/* only add valid keys, i.e. those with a legal algorithm identifier */
-		if (buffer[0] != 0) {
+		/* check validity using finger prints */
+		for (j = 19; j >= 0; j--) {
+			if (c5data[20 * i + j] != '\0')
+				break;
+		}
+
+		/* only add valid keys, i.e. those with a legal algorithm identifier & finger print */
+		if (j >= 0 && cxdata[0] != 0) {
 			pubkey_info.id.len         = 1;
 			pubkey_info.id.value[0]    = i + 1;
-			pubkey_info.modulus_length = bebytes2ushort(buffer + 1);
+			pubkey_info.modulus_length = bebytes2ushort(cxdata + 1);
 			pubkey_info.usage          = key_cfg[i].pubkey_usage;
 			sc_format_path(key_cfg[i].pubkey_path, &pubkey_info.path);
 

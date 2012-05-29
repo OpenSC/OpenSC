@@ -1090,7 +1090,7 @@ int main(int argc, char *const argv[])
 		switch (c) {
 		case 'h':
 			printf("NB! This tool is only for Siemens CardOS based cards!\n\n");
-			util_print_usage_and_die(app_name, options, option_help);
+			util_print_usage_and_die(app_name, options, option_help, NULL);
 		case 'i':
 			do_info = 1;
 			action_count++;
