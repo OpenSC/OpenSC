@@ -111,10 +111,11 @@ extern "C" {
 /* Or should the HASH_NONE be 0x00000010  and HASHES be 0x00008010 */
 
 /* May need more bits if card can do more hashes */
-/* TODO: -DEE Will overload RSA_HASHES with EC_HASHES */ 
+/* TODO: -DEE Will overload RSA_HASHES with EC_HASHES */
 /* Not clear if these need their own bits or not */
 /* The PIV card does not support and hashes */
-#define SC_ALGORITHM_ECDSA_RAW				0x00010000
+#define SC_ALGORITHM_ECDSA_RAW		0x00010000
+#define SC_ALGORITHM_ECDH_CDH_RAW	0x00020000
 #define SC_ALGORITHM_ECDSA_HASH_NONE		SC_ALGORITHM_RSA_HASH_NONE
 #define SC_ALGORITHM_ECDSA_HASH_SHA1		SC_ALGORITHM_RSA_HASH_SHA1
 #define SC_ALGORITHM_ECDSA_HASH_SHA224		SC_ALGORITHM_RSA_HASH_SHA224
@@ -282,7 +283,7 @@ typedef struct sc_reader {
 	const struct sc_reader_operations *ops;
 	void *drv_data;
 	char *name;
-	
+
 	unsigned long flags, capabilities;
 	unsigned int supported_protocols, active_protocol;
 
@@ -754,11 +755,21 @@ typedef struct {
 	/** mutex functions to use (optional) */
 	sc_thread_context_t *thread_ctx;
 } sc_context_param_t;
+
+/**
+ * Repairs an already existing sc_context_t object. This may occur if
+ * multithreaded issues mean that another context in the same heap is deleted.
+ * @param  ctx   pointer to a sc_context_t pointer containing the (partial)
+ *               context.
+ * @return SC_SUCCESS or an error value if an error occurred.
+ */
+int sc_context_repair(sc_context_t **ctx);
+
 /**
  * Creates a new sc_context_t object.
  * @param  ctx   pointer to a sc_context_t pointer for the newly
  *               created sc_context_t object.
- * @param  parm  parameters for the sc_context_t creation (see 
+ * @param  parm  parameters for the sc_context_t creation (see
  *               sc_context_param_t for a description of the supported
  *               options). This parameter is optional and can be NULL.
  * @return SC_SUCCESS on success and an error code otherwise.
@@ -1245,9 +1256,16 @@ struct sc_algorithm_info * sc_card_find_gostr3410_alg(sc_card_t *card,
 		unsigned int key_length);
 
 /**
- * Used to initialize the @c sc_remote_data structure -- 
- * reset the header of the 'remote APDUs' list, set the handlers 
- * to manipulate the list. 
+ * Get CRC-32 digest
+ * @param value pointer to data used for CRC calculation
+ * @param len length of data used for CRC calculation
+ */
+unsigned sc_crc32(unsigned char *value, size_t len);
+
+/**
+ * Used to initialize the @c sc_remote_data structure --
+ * reset the header of the 'remote APDUs' list, set the handlers
+ * to manipulate the list.
  */
 void sc_remote_data_init(struct sc_remote_data *rdata);
 
