@@ -165,7 +165,7 @@ init_spy(void)
 			rc = RegQueryValueEx( hKey, "Output", NULL, NULL, (LPBYTE) temp_path, &temp_len);
 			if (rc == ERROR_SUCCESS)   {
 				expanded_len = PATH_MAX;
-				expanded_len = ExpandEnvironmentStrings(temp_path, expanded_path, &expanded_len);
+				expanded_len = ExpandEnvironmentStrings(temp_path, expanded_path, expanded_len);
 				if (expanded_len > 0)   {
 					memcpy(temp_path, expanded_path, PATH_MAX);
 					temp_len = expanded_len;
@@ -202,7 +202,7 @@ init_spy(void)
 			rc = RegQueryValueEx( hKey, "Module", NULL, NULL, (LPBYTE) temp_path, &temp_len);
 			if (rc == ERROR_SUCCESS)   {
 				expanded_len = PATH_MAX;
-				expanded_len = ExpandEnvironmentStrings(temp_path, expanded_path, &expanded_len);
+				expanded_len = ExpandEnvironmentStrings(temp_path, expanded_path, expanded_len);
 				if (expanded_len > 0)   {
 					memcpy(temp_path, expanded_path, PATH_MAX);
 					temp_len = expanded_len;
