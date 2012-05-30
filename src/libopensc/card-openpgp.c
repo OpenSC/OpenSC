@@ -1105,6 +1105,16 @@ pgp_put_data(sc_card_t *card, unsigned int tag, const u8 *buf, size_t buf_len)
 		return SC_ERROR_NOT_ALLOWED;
 	}
 
+	/* Check data size.
+	 * We won't check other DOs than 7F21 (certificate), because their capacity
+	 * is hard-codded and may change in various version of the card. If we check here,
+	 * the driver may be sticked to a limit version number of card.
+	 * 7F21 size is soft-coded, so we can check it. */
+	if (tag == DO_CERT && buf_len > priv->max_cert_size) {
+		sc_log(card->ctx, "Data exceeds DO limit. It should be smaller than %d bytes.", priv->max_cert_size);
+		return SC_ERROR_WRONG_LENGTH;
+	}
+
 	/* Build APDU */
 	/* Large data can be sent via extended APDU, if card supports */
 	if (buf_len > 0xFF && card->caps & SC_CARD_CAP_APDU_EXT) {
