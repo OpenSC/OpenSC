@@ -34,9 +34,9 @@ extern "C" {
 #define SC_PKCS15_MAX_LABEL_SIZE	255
 #define SC_PKCS15_MAX_ID_SIZE		255
 
-/* When changing this value, change also initialisation of the 
+/* When changing this value, change also initialisation of the
  * static ASN1 variables, that use this macro,
- * like for example, 'c_asn1_access_control_rules' 
+ * like for example, 'c_asn1_access_control_rules'
  * in src/libopensc/asn1.c */
 #define SC_PKCS15_MAX_ACCESS_RULES      8
 
@@ -64,7 +64,7 @@ typedef struct sc_pkcs15_id sc_pkcs15_id_t;
 #define SC_PKCS15_PIN_FLAG_EXCHANGE_REF_DATA		0x0800
 
 #define SC_PKCS15_PIN_TYPE_FLAGS_MASK					\
-	( SC_PKCS15_PIN_FLAG_LOCAL | SC_PKCS15_PIN_FLAG_INITIALIZED	\
+	( SC_PKCS15_PIN_FLAG_LOCAL | SC_PKCS15_PIN_FLAG_INITIALIZED 	\
 	| SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN | SC_PKCS15_PIN_FLAG_SO_PIN )
 
 #define SC_PKCS15_PIN_TYPE_FLAGS_SOPIN					\
@@ -77,11 +77,11 @@ typedef struct sc_pkcs15_id sc_pkcs15_id_t;
 	( SC_PKCS15_PIN_FLAG_INITIALIZED | SC_PKCS15_PIN_FLAG_LOCAL)
 
 #define SC_PKCS15_PIN_TYPE_FLAGS_PUK_GLOBAL				\
-	( SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN				\
+	( SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN 				\
 	| SC_PKCS15_PIN_FLAG_INITIALIZED )
 
 #define SC_PKCS15_PIN_TYPE_FLAGS_PUK_LOCAL				\
-	( SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN				\
+	( SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN 				\
 	| SC_PKCS15_PIN_FLAG_INITIALIZED | SC_PKCS15_PIN_FLAG_LOCAL)
 
 #define SC_PKCS15_PIN_TYPE_BCD				0
@@ -94,7 +94,6 @@ typedef struct sc_pkcs15_id sc_pkcs15_id_t;
 #define SC_PKCS15_PIN_AUTH_TYPE_BIOMETRIC		1
 #define SC_PKCS15_PIN_AUTH_TYPE_AUTH_KEY		2
 #define SC_PKCS15_PIN_AUTH_TYPE_SM_KEY			3
-
 /* PinAttributes as they defined in PKCS#15 v1.1 for PIN authentication object */
 struct sc_pkcs15_pin_attributes {
 	unsigned int  flags, type;
@@ -194,7 +193,7 @@ struct sc_pkcs15_prkey_dsa {
 	sc_pkcs15_bignum_t priv;
 };
 
-/* 
+/*
  * The ecParameters can be presented as
  * - named curve;
  * - OID of named curve;
@@ -333,6 +332,18 @@ typedef struct sc_pkcs15_data_info sc_pkcs15_data_info_t;
 #define SC_PKCS15_PRKEY_USAGE_DERIVE		0x100
 #define SC_PKCS15_PRKEY_USAGE_NONREPUDIATION	0x200
 
+/* keyUsageFlags  are the same for all key types */
+#define SC_PKCS15_KEY_USAGE_ENCRYPT		0x01
+#define SC_PKCS15_KEY_USAGE_DECRYPT		0x02
+#define SC_PKCS15_KEY_USAGE_SIGN		0x04
+#define SC_PKCS15_KEY_USAGE_SIGNRECOVER		0x08
+#define SC_PKCS15_KEY_USAGE_WRAP		0x10
+#define SC_PKCS15_KEY_USAGE_UNWRAP		0x20
+#define SC_PKCS15_KEY_USAGE_VERIFY		0x40
+#define SC_PKCS15_KEY_USAGE_VERIFYRECOVER	0x80
+#define SC_PKCS15_KEY_USAGE_DERIVE		0x100
+#define SC_PKCS15_KEY_USAGE_NONREPUDIATION	0x200
+
 #define SC_PKCS15_PRKEY_ACCESS_SENSITIVE	0x01
 #define SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE	0x02
 #define SC_PKCS15_PRKEY_ACCESS_ALWAYSSENSITIVE	0x04
@@ -453,12 +464,16 @@ typedef struct sc_pkcs15_skey_info sc_pkcs15_skey_info_t;
 #define SC_PKCS15_TYPE_CERT_SPKI		0x402
 
 #define SC_PKCS15_TYPE_DATA_OBJECT		0x500
+
 #define SC_PKCS15_TYPE_AUTH			0x600
 #define SC_PKCS15_TYPE_AUTH_PIN			0x601
+#define SC_PKCS15_TYPE_AUTH_BIO			0x602
+#define SC_PKCS15_TYPE_AUTH_AUTHKEY		0x603
 
 #define SC_PKCS15_TYPE_TO_CLASS(t)		(1 << ((t) >> 8))
 #define SC_PKCS15_SEARCH_CLASS_PRKEY		0x0002U
 #define SC_PKCS15_SEARCH_CLASS_PUBKEY		0x0004U
+#define SC_PKCS15_SEARCH_CLASS_SKEY		0x0008U
 #define SC_PKCS15_SEARCH_CLASS_CERT		0x0010U
 #define SC_PKCS15_SEARCH_CLASS_DATA		0x0020U
 #define SC_PKCS15_SEARCH_CLASS_AUTH		0x0040U
@@ -480,11 +495,13 @@ struct sc_pkcs15_object {
 	/* emulated object pointer */
 	void *emulated;
 
-
 	struct sc_pkcs15_df *df; /* can be NULL, if object is 'floating' */
 	struct sc_pkcs15_object *next, *prev; /* used only internally */
-	
+
 	struct sc_pkcs15_der content;
+
+	/* Used by minidriver and its on-card support */
+	char *guid;
 };
 typedef struct sc_pkcs15_object sc_pkcs15_object_t;
 
@@ -528,13 +545,27 @@ typedef struct sc_pkcs15_sec_env_info {
 	struct sc_aid aid;
 } sc_pkcs15_sec_env_info_t;
 
+typedef struct sc_pkcs15_last_update {
+	char *gtime;
+	struct sc_path path;
+
+} sc_pkcs15_last_update_t;
+
+typedef struct sc_pkcs15_profile_indication {
+	struct sc_object_id oid;
+	char *name;
+} sc_pkcs15_profile_indication_t;
+
 typedef struct sc_pkcs15_tokeninfo {
 	unsigned int version;
 	unsigned int flags;
 	char *label;
 	char *serial_number;
-	char *manufacturer_id;	
-	char *last_update;
+	char *manufacturer_id;
+
+	struct sc_pkcs15_last_update last_update;
+	struct sc_pkcs15_profile_indication profile_indication;
+
 	char *preferred_language;
 	sc_pkcs15_sec_env_info_t **seInfo;
 	size_t num_seInfo;
@@ -545,7 +576,7 @@ typedef struct sc_pkcs15_tokeninfo {
 struct sc_pkcs15_operations   {
 	int (*parse_df)(struct sc_pkcs15_card *, struct sc_pkcs15_df *);
 	void (*clear)(struct sc_pkcs15_card *);
-	int (*get_guid)(struct sc_pkcs15_card *, const struct sc_pkcs15_object *, 
+	int (*get_guid)(struct sc_pkcs15_card *, const struct sc_pkcs15_object *,
 			char *, size_t);
 };
 
@@ -617,6 +648,11 @@ int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 		       unsigned long flags,
 		       const u8 *in, size_t inlen, u8 *out, size_t outlen);
 
+int sc_pkcs15_derive(struct sc_pkcs15_card *p15card,
+		       const struct sc_pkcs15_object *prkey_obj,
+		       unsigned long flags,
+		       const u8 *in, size_t inlen, u8 *out, unsigned long *poutlen);
+
 int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 				const struct sc_pkcs15_object *prkey_obj,
 				unsigned long alg_flags, const u8 *in,
@@ -649,11 +685,11 @@ int sc_pkcs15_encode_pubkey(struct sc_context *,
 			struct sc_pkcs15_pubkey *, u8 **, size_t *);
 void sc_pkcs15_erase_pubkey(struct sc_pkcs15_pubkey *);
 void sc_pkcs15_free_pubkey(struct sc_pkcs15_pubkey *);
-int sc_pkcs15_pubkey_from_prvkey(struct sc_context *, struct sc_pkcs15_prkey *, 
+int sc_pkcs15_pubkey_from_prvkey(struct sc_context *, struct sc_pkcs15_prkey *,
 			struct sc_pkcs15_pubkey **);
-int sc_pkcs15_pubkey_from_cert(struct sc_context *, struct sc_pkcs15_der *, 
+int sc_pkcs15_pubkey_from_cert(struct sc_context *, struct sc_pkcs15_der *,
 			struct sc_pkcs15_pubkey **);
-int sc_pkcs15_pubkey_from_spki_filename(struct sc_context *, 
+int sc_pkcs15_pubkey_from_spki_filename(struct sc_context *,
 			char *, sc_pkcs15_pubkey_t ** );
 int sc_pkcs15_pubkey_from_spki(struct sc_context *,
 			sc_pkcs15_pubkey_t **, u8 *, size_t, int);
@@ -706,6 +742,9 @@ int sc_pkcs15_find_prkey_by_reference(sc_pkcs15_card_t *,
 int sc_pkcs15_find_pubkey_by_id(struct sc_pkcs15_card *card,
 			       const struct sc_pkcs15_id *id,
 			       struct sc_pkcs15_object **out);
+int sc_pkcs15_find_skey_by_id(struct sc_pkcs15_card *card,
+			       const struct sc_pkcs15_id *id,
+			       struct sc_pkcs15_object **out);
 
 int sc_pkcs15_verify_pin(struct sc_pkcs15_card *card,
 			 struct sc_pkcs15_object *pin_obj,
@@ -731,8 +770,8 @@ int sc_pkcs15_find_pin_by_type_and_reference(struct sc_pkcs15_card *card,
 int sc_pkcs15_find_so_pin(struct sc_pkcs15_card *card,
 			struct sc_pkcs15_object **out);
 int sc_pkcs15_find_pin_by_flags(struct sc_pkcs15_card *p15card,
-			unsigned flags, unsigned mask, int *index,
-			struct sc_pkcs15_object **out);
+		unsigned flags, unsigned mask, int *index,
+		struct sc_pkcs15_object **out);
 
 void sc_pkcs15_pincache_add(struct sc_pkcs15_card *, struct sc_pkcs15_object *,
 			const u8 *, size_t);
@@ -791,6 +830,9 @@ int sc_pkcs15_decode_prkdf_entry(struct sc_pkcs15_card *p15card,
 int sc_pkcs15_decode_pukdf_entry(struct sc_pkcs15_card *p15card,
 				 struct sc_pkcs15_object *obj,
 				 const u8 **buf, size_t *bufsize);
+int sc_pkcs15_decode_skdf_entry(struct sc_pkcs15_card *p15card,
+				 struct sc_pkcs15_object *obj,
+				 const u8 **buf, size_t *bufsize);
 
 int sc_pkcs15_decode_enveloped_data(struct sc_context *ctx,
 				    struct sc_pkcs15_enveloped_data *result,
@@ -804,18 +846,18 @@ int sc_pkcs15_add_object(struct sc_pkcs15_card *p15card,
 void sc_pkcs15_remove_object(struct sc_pkcs15_card *p15card,
 			     struct sc_pkcs15_object *obj);
 int sc_pkcs15_add_df(struct sc_pkcs15_card *, unsigned int, const sc_path_t *);
-void sc_pkcs15_remove_df(struct sc_pkcs15_card *p15card,
-			 struct sc_pkcs15_df *df);
 
 int sc_pkcs15_add_unusedspace(struct sc_pkcs15_card *p15card,
 		     const sc_path_t *path, const sc_pkcs15_id_t *auth_id);
-void sc_pkcs15_remove_unusedspace(struct sc_pkcs15_card *p15card,
-			 sc_pkcs15_unusedspace_t *obj);
 int sc_pkcs15_parse_unusedspace(const u8 * buf, size_t buflen,
 			struct sc_pkcs15_card *card);
 int sc_pkcs15_encode_unusedspace(sc_context_t *ctx,
 			 struct sc_pkcs15_card *p15card,
 			 u8 **buf, size_t *buflen);
+
+/* Deduce private key attributes from cerresponding certificate */
+int sc_pkcs15_prkey_attrs_from_cert(struct sc_pkcs15_card *, struct sc_pkcs15_object *,
+		struct sc_pkcs15_object **);
 
 void sc_pkcs15_free_prkey_info(sc_pkcs15_prkey_info_t *key);
 void sc_pkcs15_free_pubkey_info(sc_pkcs15_pubkey_info_t *key);
@@ -845,9 +887,9 @@ void sc_pkcs15_format_id(const char *id_in, struct sc_pkcs15_id *id_out);
 int sc_pkcs15_hex_string_to_id(const char *in, struct sc_pkcs15_id *out);
 int sc_der_copy(sc_pkcs15_der_t *, const sc_pkcs15_der_t *);
 int sc_pkcs15_get_object_id(const struct sc_pkcs15_object *, struct sc_pkcs15_id *);
-int sc_pkcs15_get_guid(struct sc_pkcs15_card *, const struct sc_pkcs15_object *, 
+int sc_pkcs15_get_guid(struct sc_pkcs15_card *, const struct sc_pkcs15_object *, unsigned,
 		char *, size_t);
-int sc_encode_oid (struct sc_context *, struct sc_object_id *, 
+int sc_encode_oid (struct sc_context *, struct sc_object_id *,
 		unsigned char **, size_t *);
 
 /* Get application by type: 'protected', 'generic' */
@@ -869,6 +911,14 @@ int sc_pkcs15_add_supported_algo_ref(struct sc_pkcs15_object *,
 		struct sc_supported_algo_info *);
 
 int sc_pkcs15_fix_ec_parameters(struct sc_context *, struct sc_pkcs15_ec_parameters *);
+
+/* Convert the OpenSSL key data type into the OpenSC key */
+int sc_pkcs15_convert_bignum(sc_pkcs15_bignum_t *dst, const void *bignum);
+int sc_pkcs15_convert_prkey(struct sc_pkcs15_prkey *key, void *evp_key);
+int sc_pkcs15_convert_pubkey(struct sc_pkcs15_pubkey *key, void *evp_key);
+
+/* Get 'LastUpdate' string */
+char *sc_pkcs15_get_lastupdate(struct sc_pkcs15_card *p15card);
 
 /* New object search API.
  * More complex, but also more powerful.

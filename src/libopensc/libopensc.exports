@@ -191,6 +191,7 @@ sc_pkcs15_get_guid
 sc_pkcs15_get_object_id
 sc_pkcs15_get_objects
 sc_pkcs15_get_objects_cond
+sc_pkcs15_get_lastupdate
 sc_pkcs15_hex_string_to_id
 sc_pkcs15_is_emulation_only
 sc_pkcs15_make_absolute_path

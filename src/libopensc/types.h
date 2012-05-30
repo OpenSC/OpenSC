@@ -43,12 +43,13 @@ typedef unsigned char u8;
 #define SC_MAX_PATH_STRING_SIZE		(SC_MAX_PATH_SIZE * 2 + 3)
 #define SC_MAX_SDO_ACLS			8
 #define SC_MAX_CRTS_IN_SE		12
+#define SC_MAX_SE_NUM			8
 
 /* When changing this value, pay attention to the initialization of the ASN1 
  * static variables that use this macro, like, for example, 
  * 'c_asn1_supported_algorithms' in src/libopensc/pkcs15.c 
  */
-#define SC_MAX_SUPPORTED_ALGORITHMS     8
+#define SC_MAX_SUPPORTED_ALGORITHMS	8
 
 struct sc_lv_data {
 	unsigned char *value;
@@ -311,13 +312,11 @@ typedef struct sc_serial_number {
 
 /**
  * @struct sc_remote_apdu data
- * Structure to supply the linked APDU data used in 
+ * Structure to supply the linked APDU data used in
  * communication with the external (SM) modules.
  */
-#define SC_REMOTE_APDU_FLAG_FATAL
-#define SC_REMOTE_APDU_FLAG_LAST
-#define SC_REMOTE_APDU_FLAG_RETURN_ANSWER
-#define SC_REMOTE_APDU_FLAG_GET_RESPONSE
+#define SC_REMOTE_APDU_FLAG_NOT_FATAL		0x01
+#define SC_REMOTE_APDU_FLAG_RETURN_ANSWER	0x02
 struct sc_remote_apdu {
 	unsigned char sbuf[2*SC_MAX_APDU_BUFFER_SIZE];
 	unsigned char rbuf[2*SC_MAX_APDU_BUFFER_SIZE];

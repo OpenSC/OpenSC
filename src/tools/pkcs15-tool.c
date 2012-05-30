@@ -222,7 +222,7 @@ static void print_cert_info(const struct sc_pkcs15_object *obj)
 	printf("\tPath           : %s\n", sc_print_path(&cert_info->path));
 	printf("\tID             : %s\n", sc_pkcs15_print_id(&cert_info->id));
 
-	rv = sc_pkcs15_get_guid(p15card, obj, guid, sizeof(guid));
+	rv = sc_pkcs15_get_guid(p15card, obj, 0, guid, sizeof(guid));
 	if (!rv)
 		printf("\tGUID           : %s\n", guid);
 
@@ -536,7 +536,7 @@ static void print_prkey_info(const struct sc_pkcs15_object *obj)
 		printf("\tAuth ID        : %s\n", sc_pkcs15_print_id(&obj->auth_id));
 	printf("\tID             : %s\n", sc_pkcs15_print_id(&prkey->id));
 
-	if (!sc_pkcs15_get_guid(p15card, obj, guid, sizeof(guid)))
+	if (!sc_pkcs15_get_guid(p15card, obj, 0, guid, sizeof(guid)))
 		printf("\tGUID           : %s\n", guid);
 
 }
@@ -1158,17 +1158,19 @@ static int dump(void)
 		"PRN generation",
 		"EID compliant"
 	};
-
+	char *last_update = sc_pkcs15_get_lastupdate(p15card);
 	int i, count = 0;
 
 	printf("PKCS#15 Card [%s]:\n", p15card->tokeninfo->label);
 	printf("\tVersion        : %d\n", p15card->tokeninfo->version);
 	printf("\tSerial number  : %s\n", p15card->tokeninfo->serial_number);
 	printf("\tManufacturer ID: %s\n", p15card->tokeninfo->manufacturer_id);
-	if (p15card->tokeninfo->last_update)
-		printf("\tLast update    : %s\n", p15card->tokeninfo->last_update);
+	if (last_update)
+		printf("\tLast update    : %s\n", last_update);
 	if (p15card->tokeninfo->preferred_language)
 		printf("\tLanguage       : %s\n", p15card->tokeninfo->preferred_language);
+	if (p15card->tokeninfo->profile_indication.name)
+		printf("\tProfile        : %s\n", p15card->tokeninfo->profile_indication.name);
 	printf("\tFlags          : ");
 	for (i = 0; i < 4; i++) {
 		if ((p15card->tokeninfo->flags >> i) & 1) {
