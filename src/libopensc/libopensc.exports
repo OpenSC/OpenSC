@@ -207,7 +207,6 @@ sc_pkcs15_read_file
 sc_pkcs15_read_pubkey
 sc_pkcs15_pubkey_from_prvkey
 sc_pkcs15_pubkey_from_cert
-sc_pkcs15_remove_df
 sc_pkcs15_remove_object
 sc_pkcs15_remove_unusedspace
 sc_pkcs15_search_objects
