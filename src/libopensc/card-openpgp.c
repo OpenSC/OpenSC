@@ -1095,6 +1095,9 @@ pgp_put_data(sc_card_t *card, unsigned int tag, const u8 *buf, size_t buf_len)
 	sc_apdu_t apdu;
 	struct pgp_priv_data *priv = DRVDATA(card);
 	struct blob	*affected_blob = NULL;
+	u8 ins = 0xDA;
+	u8 p1 = tag >> 8;
+	u8 p2 = tag;
 	int r;
 
 	LOG_FUNC_CALLED(card->ctx);
@@ -1115,19 +1118,26 @@ pgp_put_data(sc_card_t *card, unsigned int tag, const u8 *buf, size_t buf_len)
 		return SC_ERROR_WRONG_LENGTH;
 	}
 
+	/* Extended Header list (004D DO) needs a variant of PUT DATA command */
+	if (tag == 0x004D) {
+		ins = 0xDB;
+		p1 = 0x3F;
+		p2 = 0xFF;
+	}
+
 	/* Build APDU */
 	/* Large data can be sent via extended APDU, if card supports */
 	if (buf_len > 0xFF && card->caps & SC_CARD_CAP_APDU_EXT) {
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_EXT, 0xDA, tag >> 8, tag);
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_EXT, ins, p1, p2);
 	}
 	/* Card/Reader does not support extended, use command chaining, if supported */
 	else if (buf_len > 0xFF && priv->ext_caps & EXT_CAP_CHAINING) {
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_3, 0xDA, tag >> 8, tag);
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_3, ins, p1, p2);
 		apdu.flags |= SC_APDU_FLAGS_CHAINING;
 		/* FIXME: The case of command chaining is not tested. */
 	}
 	else if (buf_len <= 0xFF) {
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xDA, tag >> 8, tag);
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, ins, p1, p2);
 	}
 	else {
 		sc_log(card->ctx, "Data is too big to send.");
