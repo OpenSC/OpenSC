@@ -839,7 +839,7 @@ DWORD WINAPI CardReadFile(__in PCARD_DATA pCardData,
 					struct sc_card *card = vs->p15card->card;
 					char guid[MAX_CONTAINER_NAME_LEN + 1];
 
-					r = sc_pkcs15_get_guid(vs->p15card, vs->cert_objs[i], guid, sizeof(guid));
+					r = sc_pkcs15_get_guid(vs->p15card, vs->cert_objs[i], 0, guid, sizeof(guid));
 					if (r)
 						return r;
 
