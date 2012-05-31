@@ -145,6 +145,7 @@ sc_pkcs15_decode_pubkey_rsa
 sc_pkcs15_decode_pubkey_ec
 sc_pkcs15_decode_pubkey_gostr3410
 sc_pkcs15_decode_pukdf_entry
+sc_pkcs15_decode_skdf_entry
 sc_pkcs15_encode_aodf_entry
 sc_pkcs15_encode_cdf_entry
 sc_pkcs15_encode_df
@@ -172,6 +173,7 @@ sc_pkcs15_find_prkey_by_id
 sc_pkcs15_find_prkey_by_id_usage
 sc_pkcs15_find_prkey_by_reference
 sc_pkcs15_find_pubkey_by_id
+sc_pkcs15_find_skey_by_id
 sc_pkcs15_find_so_pin
 sc_pkcs15_fix_ec_parameters
 sc_pkcs15_format_id
