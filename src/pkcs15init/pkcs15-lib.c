@@ -365,7 +365,7 @@ sc_pkcs15init_bind(struct sc_card *card, const char *name, const char *profile_o
 			break;
 		}
 
-		r = sc_profile_finish(profile, NULL);
+		r = sc_profile_finish(profile, app_info);
 		if (r < 0)
 			sc_log(ctx, "Failed to finalize profile: %s", sc_strerror(r));
 	}  while (0);
@@ -422,8 +422,7 @@ sc_pkcs15init_unbind(struct sc_profile *profile)
 
 
 void
-sc_pkcs15init_set_p15card(struct sc_profile *profile,
-		struct sc_pkcs15_card *p15card)
+sc_pkcs15init_set_p15card(struct sc_profile *profile, struct sc_pkcs15_card *p15card)
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15_object *p15objects[10];
@@ -451,8 +450,7 @@ sc_pkcs15init_set_p15card(struct sc_profile *profile,
 			if (!sc_select_file(p15card->card, &auth_info->path, &file))   {
 				char pin_name[16];
 
-				sprintf(pin_name, "pin-dir-%02X%02X",
-						file->path.value[file->path.len - 2],
+				sprintf(pin_name, "pin-dir-%02X%02X", file->path.value[file->path.len - 2],
 						file->path.value[file->path.len - 1]);
 				sc_log(ctx, "add '%s' to profile file list", pin_name);
 				sc_profile_add_file(profile, pin_name, file);
@@ -540,13 +538,13 @@ sc_pkcs15init_erase_card_recursively(struct sc_pkcs15_card *p15card,
 
 
 int
-sc_pkcs15init_delete_by_path(struct sc_profile *profile,
-		struct sc_pkcs15_card *p15card, const struct sc_path *file_path)
+sc_pkcs15init_delete_by_path(struct sc_profile *profile, struct sc_pkcs15_card *p15card, 
+		const struct sc_path *file_path)
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_file *parent = NULL, *file = NULL;
 	struct sc_path path;
-	int rv;
+	int rv, file_type = SC_FILE_TYPE_DF;
 
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx, "trying to delete '%s'", sc_print_path(file_path));
@@ -555,19 +553,27 @@ sc_pkcs15init_delete_by_path(struct sc_profile *profile,
 	 * for the others the 'DELETE' ACL of parent.
 	 * Let's start from the file's 'DELETE' ACL.
 	 *
-	 * FIXME: will it be better to introduce the ACLs 'DELETE-CHILD' and 'DELETE-ITSELF',
-	 *        or dedicated card flag ?
+	 * TODO: 'DELETE_SELF' exists. Proper solution would be to use this acl by every
+	 * card (driver and profile) that uses self delete ACL.
 	 */
-
 	/* Select the file itself */
         path = *file_path;
         rv = sc_select_file(p15card->card, &path, &file);
         LOG_TEST_RET(ctx, rv, "cannot select file to delete");
 
-        rv = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_DELETE);
-        sc_file_free(file);
-
-	if (rv == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED)   {
+	if (sc_file_get_acl_entry(file, SC_AC_OP_DELETE_SELF))   {
+		sc_log(ctx, "Found 'DELETE-SELF' acl");
+		rv = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_DELETE_SELF);
+		sc_file_free(file);
+	}
+	else if (sc_file_get_acl_entry(file, SC_AC_OP_DELETE))   {
+		sc_log(ctx, "Found 'DELETE' acl");
+	        rv = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_DELETE);
+		sc_file_free(file);
+	}
+	else    {
+		sc_log(ctx, "Try to get the parent's 'DELETE' access");
+		file_type = file->type;
 		if (file_path->len >= 2) {
 			/* Select the parent DF */
 			path.len -= 2;
@@ -587,6 +593,13 @@ sc_pkcs15init_delete_by_path(struct sc_profile *profile,
 	path.value[1] = file_path->value[file_path->len - 1];
 	path.len = 2;
 
+	/* Reselect file to delete if the parent DF was selected and it's not DF. */
+	if (file_type != SC_FILE_TYPE_DF)   {
+		rv = sc_select_file(p15card->card, &path, &file);
+		LOG_TEST_RET(ctx, rv, "cannot select file to delete");
+	}
+
+	sc_log(ctx, "Now really delete file");
 	rv = sc_delete_file(p15card->card, &path);
 	LOG_FUNC_RETURN(ctx, rv);
 }
@@ -1203,6 +1216,7 @@ sc_pkcs15init_init_prkdf(struct sc_pkcs15_card *p15card,
 	/* See if we need to select a key reference for this object */
 	if (profile->ops->select_key_reference) {
 		while (1) {
+			sc_log(ctx, "Look for usable key reference starting from %i", key_info->key_reference);
 			r = profile->ops->select_key_reference(profile, p15card, key_info);
 			LOG_TEST_RET(ctx, r, "Failed to select card specific key reference");
 
@@ -1269,6 +1283,12 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 	LOG_TEST_RET(ctx, r, "Set up private key object error");
 
 	key_info = (struct sc_pkcs15_prkey_info *) object->data;
+	if (keygen_args->prkey_args.guid)   {
+		object->guid = strdup(keygen_args->prkey_args.guid);
+		if (!object->guid)
+			LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate guid");
+		sc_log(ctx, "new key GUID: '%s'", object->guid);
+	}
 
 	/* Set up the PuKDF info. The public key will be filled in
 	 * by the card driver's generate_key function called below.
@@ -1307,6 +1327,13 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 
 	r = sc_pkcs15init_add_object(p15card, profile, SC_PKCS15_PRKDF, object);
 	LOG_TEST_RET(ctx, r, "Failed to add generated private key object");
+
+	if (!r && profile->ops->emu_store_data)   {
+		r = profile->ops->emu_store_data(p15card, profile, object, NULL, NULL);
+		if (r == SC_ERROR_NOT_IMPLEMENTED)
+			r = SC_SUCCESS;
+		LOG_TEST_RET(ctx, r, "Card specific 'store data' failed");
+	}
 
 	r = sc_pkcs15init_store_public_key(p15card, profile, &pubkey_args, NULL);
 	LOG_TEST_RET(ctx, r, "Failed to store public key");
@@ -1383,8 +1410,27 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
 	r = profile->ops->store_key(profile, p15card, object, &key);
 	LOG_TEST_RET(ctx, r, "Card specific 'store key' failed");
 
+	sc_pkcs15_free_object_content(object);
+	r = sc_pkcs15init_encode_prvkey_content(p15card, &key, object);
+	LOG_TEST_RET(ctx, r, "Failed to encode public key");
+
 	/* Now update the PrKDF */
 	r = sc_pkcs15init_add_object(p15card, profile, SC_PKCS15_PRKDF, object);
+	LOG_TEST_RET(ctx, r, "Failed to add new private key PKCS#15 object");
+
+	if (keyargs->guid)   {
+		object->guid = strdup(keyargs->guid);
+		if (!object->guid)
+			LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate guid");
+		sc_log(ctx, "new key GUID: '%s'", object->guid);
+	}
+
+	if (!r && profile->ops->emu_store_data)   {
+		r = profile->ops->emu_store_data(p15card, profile, object, NULL, NULL);
+		if (r == SC_ERROR_NOT_IMPLEMENTED)
+			r = SC_SUCCESS;
+		LOG_TEST_RET(ctx, r, "Card specific 'store data' failed");
+	}
 
 	if (r >= 0 && res_obj)
 		*res_obj = object;
@@ -1529,9 +1575,10 @@ sc_pkcs15init_store_certificate(struct sc_pkcs15_card *p15card,
 		struct sc_pkcs15_object **res_obj)
 {
 	struct sc_context *ctx = p15card->card->ctx;
-	struct sc_pkcs15_cert_info *cert_info;
-	struct sc_pkcs15_object *object;
-	const char	*label;
+	struct sc_pkcs15_cert_info *cert_info = NULL;
+	struct sc_pkcs15_object *object = NULL;
+	struct sc_pkcs15_object *key_object = NULL;
+	const char *label = NULL;
 	int		r;
 
 	LOG_FUNC_CALLED(ctx);
@@ -1569,11 +1616,24 @@ sc_pkcs15init_store_certificate(struct sc_pkcs15_card *p15card,
 		/* TODO: update private key PKCS#15 object with the certificate's attributes */
 	}
 
-	if (r < 0)
-		sc_pkcs15_free_object(object);
+	if (r >= 0)   {
+		r = sc_pkcs15_prkey_attrs_from_cert(p15card, object, &key_object);
+		if (r)   {
+			r = 0;
+		}
+		else if (key_object)   {
+			r = sc_pkcs15init_update_any_df(p15card, profile, key_object->df, 0);
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "sc_pkcs15init_store_certificate() update_any_df returned %i", r);
+		}
+	}
 
-	if (r >= 0 && res_obj)
+	if (r < 0)   {
+		sc_pkcs15_remove_object(p15card, object);
+		sc_pkcs15_free_object(object);
+	}
+	else if (res_obj)   {
 		*res_obj = object;
+	}
 
 	profile->dirty = 1;
 
@@ -2296,14 +2356,13 @@ select_object_path(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_file	*file;
 	struct sc_pkcs15_object	*objs[32];
-	struct sc_pkcs15_id	indx_id;
-	struct sc_path 	obj_path;
-	int		ii, r, nn_objs, indx;
-	const char	*name;
+	struct sc_pkcs15_id indx_id;
+	struct sc_path obj_path;
+	int ii, r, nn_objs, indx;
+	const char *name;
 
 	LOG_FUNC_CALLED(ctx);
-	r = sc_pkcs15_get_objects(p15card, obj->type & SC_PKCS15_TYPE_CLASS_MASK,
-			objs, sizeof(objs)/sizeof(objs[0]));
+	r = sc_pkcs15_get_objects(p15card, obj->type & SC_PKCS15_TYPE_CLASS_MASK, objs, sizeof(objs)/sizeof(objs[0]));
 	LOG_TEST_RET(ctx, r, "Get PKCS#15 objects error");
 	nn_objs = r;
 
@@ -2545,8 +2604,7 @@ sc_pkcs15init_update_lastupdate(struct sc_pkcs15_card *p15card, struct sc_profil
 
 
 static int
-sc_pkcs15init_update_odf(struct sc_pkcs15_card *p15card,
-		struct sc_profile *profile)
+sc_pkcs15init_update_odf(struct sc_pkcs15_card *p15card, struct sc_profile *profile)
 {
 	struct sc_context	*ctx = p15card->card->ctx;
 	unsigned char	*buf = NULL;
@@ -2556,8 +2614,7 @@ sc_pkcs15init_update_odf(struct sc_pkcs15_card *p15card,
 	LOG_FUNC_CALLED(ctx);
 	r = sc_pkcs15_encode_odf(ctx, p15card, &buf, &size);
 	if (r >= 0)
-		r = sc_pkcs15init_update_file(profile, p15card,
-			       p15card->file_odf, buf, size);
+		r = sc_pkcs15init_update_file(profile, p15card, p15card->file_odf, buf, size);
 	if (buf)
 		free(buf);
 	LOG_FUNC_RETURN(ctx, r);
@@ -2614,7 +2671,7 @@ sc_pkcs15init_update_any_df(struct sc_pkcs15_card *p15card,
 		r = sc_pkcs15init_update_odf(p15card, profile);
 	LOG_TEST_RET(ctx, r, "Failed to encode or update ODF");
 
-	LOG_FUNC_RETURN(ctx, r);
+	LOG_FUNC_RETURN(ctx, r > 0 ? SC_SUCCESS : r);
 }
 
 /*
@@ -2670,7 +2727,7 @@ sc_pkcs15init_add_object(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 	if (r < 0 && object_added)
 		sc_pkcs15_remove_object(p15card, object);
 
-	LOG_FUNC_RETURN(ctx, r);
+	LOG_FUNC_RETURN(ctx, r > 0 ? SC_SUCCESS : r);
 }
 
 
@@ -3154,7 +3211,7 @@ sc_pkcs15init_verify_secret(struct sc_profile *profile, struct sc_pkcs15_card *p
 			if (pin_obj->content.len > pinsize)
 				LOG_TEST_RET(ctx, SC_ERROR_BUFFER_TOO_SMALL, "PIN buffer is too small");
 			memcpy(pinbuf, pin_obj->content.value, pin_obj->content.len);
-	        	pinsize = pin_obj->content.len;
+			pinsize = pin_obj->content.len;
 			sc_log(ctx, "'ve got '%s' value from cache", ident);
 			goto found;
 		}
@@ -3170,6 +3227,11 @@ sc_pkcs15init_verify_secret(struct sc_profile *profile, struct sc_pkcs15_card *p
 			sc_log(ctx, "'get_pin' callback returned %i; pinsize:%i", r, pinsize);
 		}
 		break;
+	case SC_AC_SCB:
+	case SC_AC_PRO:
+		pinsize = 0;
+		r = 0;
+		break;
 	default:
 		r = sc_pkcs15init_get_transport_key(profile, p15card, type, reference, pinbuf, &pinsize);
 		break;
@@ -3177,12 +3239,16 @@ sc_pkcs15init_verify_secret(struct sc_profile *profile, struct sc_pkcs15_card *p
 
 	if (r == SC_ERROR_OBJECT_NOT_FOUND)   {
 		if (p15card->card->reader->capabilities & SC_READER_CAP_PIN_PAD)
-			r = 0, 	use_pinpad = 1;
+			r = 0, use_pinpad = 1;
 		else
 			r = SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
 	}
 
 	LOG_TEST_RET(ctx, r, "Failed to get secret");
+	if (type == SC_AC_PRO)   {
+		sc_log(ctx, "No 'verify' for secure messaging");
+		LOG_FUNC_RETURN(ctx, r);
+	}
 
 found:
 	if (pin_obj)   {
@@ -3415,7 +3481,7 @@ sc_pkcs15init_update_file(struct sc_profile *profile,
 	if (copy)
 		free(copy);
 	sc_file_free(selected_file);
-	return r;
+	LOG_FUNC_RETURN(ctx, r);
 }
 
 /*
@@ -3549,7 +3615,7 @@ sc_pkcs15init_get_pin_path(struct sc_pkcs15_card *p15card,
 	if (r < 0)
 		return r;
 	*path = ((struct sc_pkcs15_auth_info *) obj->data)->path;
-	return 0;
+	return SC_SUCCESS;
 }
 
 
@@ -3557,7 +3623,7 @@ int
 sc_pkcs15init_get_pin_info(struct sc_profile *profile, int id, struct sc_pkcs15_auth_info *pin)
 {
 	sc_profile_get_pin_info(profile, id, pin);
-	return 0;
+	return SC_SUCCESS;
 }
 
 
@@ -3565,14 +3631,14 @@ int
 sc_pkcs15init_get_manufacturer(struct sc_profile *profile, const char **res)
 {
 	*res = profile->p15_spec->tokeninfo->manufacturer_id;
-	return 0;
+	return SC_SUCCESS;
 }
 
 int
 sc_pkcs15init_get_serial(struct sc_profile *profile, const char **res)
 {
 	*res = profile->p15_spec->tokeninfo->serial_number;
-	return 0;
+	return SC_SUCCESS;
 }
 
 
@@ -3583,7 +3649,7 @@ sc_pkcs15init_set_serial(struct sc_profile *profile, const char *serial)
 		free(profile->p15_spec->tokeninfo->serial_number);
 	profile->p15_spec->tokeninfo->serial_number = strdup(serial);
 
-	return 0;
+	return SC_SUCCESS;
 }
 
 
@@ -3606,13 +3672,13 @@ sc_pkcs15init_sanity_check(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 
 static int
 sc_pkcs15init_qualify_pin(struct sc_card *card, const char *pin_name,
-	       	unsigned int pin_len, struct sc_pkcs15_auth_info *auth_info)
+		unsigned int pin_len, struct sc_pkcs15_auth_info *auth_info)
 {
 	struct sc_context *ctx = card->ctx;
 	struct sc_pkcs15_pin_attributes *pin_attrs;
 
 	if (pin_len == 0 || auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
-		return 0;
+		return SC_SUCCESS;
 
 	pin_attrs = &auth_info->attrs.pin;
 
@@ -3625,7 +3691,7 @@ sc_pkcs15init_qualify_pin(struct sc_card *card, const char *pin_name,
 		return SC_ERROR_WRONG_LENGTH;
 	}
 
-	return 0;
+	return SC_SUCCESS;
 }
 
 
@@ -3675,7 +3741,7 @@ set_info_string(char **strp, const u8 *p, size_t len)
 	if (*strp)
 		free(*strp);
 	*strp = s;
-	return 0;
+	return SC_SUCCESS;
 }
 
 /*
@@ -3689,8 +3755,7 @@ set_info_string(char **strp, const u8 *p, size_t len)
  */
 static int
 sc_pkcs15init_parse_info(struct sc_card *card,
-	       			const unsigned char *p, size_t len,
-				struct sc_profile *profile)
+		const unsigned char *p, size_t len, struct sc_profile *profile)
 {
 	unsigned char	tag;
 	const unsigned char *end;
@@ -3741,6 +3806,7 @@ error:
 	sc_log(card->ctx, "OpenSC info file corrupted");
 	return SC_ERROR_PKCS15INIT;
 }
+
 
 static int
 do_encode_string(unsigned char **memp, unsigned char *end,
