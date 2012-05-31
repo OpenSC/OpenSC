@@ -1926,11 +1926,9 @@ int sc_pkcs15_parse_df(struct sc_pkcs15_card *p15card,
 	case SC_PKCS15_PUKDF:
 		func = sc_pkcs15_decode_pukdf_entry;
 		break;
-/*
 	case SC_PKCS15_SKDF:
 		func = sc_pkcs15_decode_skdf_entry;
 		break;
-*/
 	case SC_PKCS15_CDF:
 	case SC_PKCS15_CDF_TRUSTED:
 	case SC_PKCS15_CDF_USEFUL:

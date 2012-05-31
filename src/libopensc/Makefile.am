@@ -2,7 +2,7 @@ include $(top_srcdir)/win32/ltrc.inc
 
 MAINTAINERCLEANFILES = $(srcdir)/Makefile.in
 
-EXTRA_DIST = Makefile.mak 
+EXTRA_DIST = Makefile.mak
 
 lib_LTLIBRARIES = libopensc.la
 noinst_HEADERS = cards.h ctbcs.h internal.h esteid.h muscle.h muscle-filesystem.h \
@@ -22,8 +22,8 @@ libopensc_la_SOURCES = \
 	asn1.c base64.c sec.c card.c iso7816.c dir.c ef-atr.c padding.c apdu.c \
 	\
 	pkcs15.c pkcs15-cert.c pkcs15-data.c pkcs15-pin.c \
-	pkcs15-prkey.c pkcs15-pubkey.c pkcs15-sec.c \
-	pkcs15-algo.c pkcs15-cache.c pkcs15-syn.c \
+	pkcs15-prkey.c pkcs15-pubkey.c pkcs15-skey.c \
+	pkcs15-sec.c pkcs15-algo.c pkcs15-cache.c pkcs15-syn.c \
 	\
 	muscle.c muscle-filesystem.c \
 	\
