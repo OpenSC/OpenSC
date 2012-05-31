@@ -214,6 +214,15 @@
 
 			<varlistentry>
 				<term>
+					<command>echo</command> <replaceable>string</replaceable> ...
+				</term>
+				<listitem>
+                                        <para>Print the <replaceable>string</replaceable>s given.</para>
+                                </listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term>
 					<command>erase</command>
 				</term>
 				<listitem><para>Erase the card, if the card supports it.</para></listitem>
