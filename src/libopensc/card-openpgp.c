@@ -761,6 +761,24 @@ pgp_seek_blob(sc_card_t *card, struct blob *root, unsigned int id,
 	return SC_ERROR_FILE_NOT_FOUND;
 }
 
+/**
+ * Strip out the parts of PKCS15 file layout in the path. Get the reduced version
+ * which is understood by the OpenPGP card driver.
+ * Return the index whose preceding part will be ignored.
+ **/
+static unsigned int pgp_strip_path(sc_card_t *card, const sc_path_t *path)
+{
+	unsigned int start_point = 0;
+	/* start_point will move through the path string */
+	if (path->value == NULL || path->len == 0)
+		return 0;
+
+	/* Ignore 3F00 (MF) at the beginning */
+	start_point = (memcmp(path->value, "\x3f\x00", 2) == 0) ? 2 : 0;
+	/* Strip path of PKCS15-AppDF (5015) */
+	start_point += (memcmp(path->value + start_point, "\x50\x15", 2) == 0) ? 2 : 0;
+	return start_point;
+}
 
 /* ABI: SELECT FILE */
 static int
@@ -768,7 +786,7 @@ pgp_select_file(sc_card_t *card, const sc_path_t *path, sc_file_t **ret)
 {
 	struct pgp_priv_data *priv = DRVDATA(card);
 	struct blob	*blob;
-	unsigned int	path_start;
+	unsigned int	path_start = 0;
 	unsigned int	n;
 
 	LOG_FUNC_CALLED(card->ctx);
@@ -776,16 +794,16 @@ pgp_select_file(sc_card_t *card, const sc_path_t *path, sc_file_t **ret)
 	if (path->type == SC_PATH_TYPE_DF_NAME)
 		LOG_FUNC_RETURN(card->ctx, iso_ops->select_file(card, path, ret));
 
-	if (path->type != SC_PATH_TYPE_PATH)
-		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
-				"invalid path type");
-
 	if (path->len < 2 || (path->len & 1))
 		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
 				"invalid path length");
 
+	if (path->type == SC_PATH_TYPE_FILE_ID && path->len != 2)
+		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
+				"invalid path type");
+
 	/* ignore explicitely mentioned MF at the path's beginning */
-	path_start = (memcmp(path->value, "\x3f\x00", 2) == 0) ? 2 : 0;
+	path_start = pgp_strip_path(card, path);
 
 	/* starting with the MF ... */
 	blob = priv->mf;
