@@ -534,6 +534,65 @@ pgp_set_blob(struct blob *blob, const u8 *data, size_t len)
 	return SC_SUCCESS;
 }
 
+/**
+ * Internal: Implement Access Control List for emulated file.
+ * The Access Control is derived from the DO access permission.
+ **/
+static int
+pgp_attach_acl(sc_card_t *card, sc_file_t *file, struct do_info *info)
+{
+	int waccess = info->access & WRITE_MASK;
+	int raccess = info->access & READ_MASK;
+	sc_acl_entry_t *acl;
+	unsigned int method = SC_AC_NONE;
+	unsigned long key_ref = 0;
+
+	/* Write access */
+	if (waccess == WRITE_NEVER) {
+		method = SC_AC_NEVER;
+	}
+	else if (waccess == WRITE_PIN1) {
+		method = SC_AC_CHV;
+		key_ref = 0x81;
+	}
+	else if (waccess == WRITE_PIN2) {
+		method = SC_AC_CHV;
+		key_ref = 0x82;
+	}
+	else if (waccess == WRITE_PIN3) {
+		method = SC_AC_CHV;
+		key_ref = 0x83;
+	}
+
+	if (method != SC_AC_NONE || key_ref != 0) {
+		sc_file_add_acl_entry(file, SC_AC_OP_WRITE, method, key_ref);
+		sc_file_add_acl_entry(file, SC_AC_OP_UPDATE, method, key_ref);
+		sc_file_add_acl_entry(file, SC_AC_OP_DELETE, method, key_ref);
+		sc_file_add_acl_entry(file, SC_AC_OP_CREATE, method, key_ref);
+	}
+
+	method = SC_AC_NONE;
+	key_ref = 0;
+	/* Read access */
+	if (raccess == READ_NEVER) {
+		method = SC_AC_NEVER;
+	}
+	else if (raccess == READ_PIN1){
+		method = SC_AC_CHV;
+		key_ref = 0x81;
+	}
+	else if (raccess == READ_PIN2){
+		method = SC_AC_CHV;
+		key_ref = 0x82;
+	}
+	else if (raccess == READ_PIN3){
+		method = SC_AC_CHV;
+		key_ref = 0x83;
+	}
+	if (method != SC_AC_NONE || key_ref != 0) {
+		sc_file_add_acl_entry(file, SC_AC_OP_READ, SC_AC_CHV, key_ref);
+	}
+}
 
 /* internal: append a blob to the list of children of a given parent blob */
 static struct blob *
@@ -582,6 +641,7 @@ pgp_new_blob(sc_card_t *card, struct blob *parent, unsigned int file_id,
 			if (info->id == file_id) {
 				blob->info = info;
 				blob->file->type = blob->info->type;
+				pgp_attach_acl(card, blob->file, info);
 				break;
 			}
 		}
