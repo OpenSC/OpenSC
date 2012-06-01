@@ -64,6 +64,7 @@
 #include "libopensc/log.h"
 #include "libopensc/cards.h"
 #include "pkcs15init/pkcs15-init.h"
+#include "pkcs15init/profile.h"
 #include "util.h"
 
 #undef GET_KEY_ECHO_OFF
@@ -78,6 +79,7 @@ typedef int	(*pkcs15_encoder)(sc_context_t *,
 static int	open_reader_and_card(char *);
 static int	do_assert_pristine(sc_card_t *);
 static int	do_erase(sc_card_t *, struct sc_profile *);
+static int	do_erase_application(sc_card_t *, struct sc_profile *);
 static int	do_delete_objects(struct sc_profile *, unsigned int myopt_delete_flags);
 static int	do_change_attributes(struct sc_profile *, unsigned int myopt_type);
 static int	do_init_app(struct sc_profile *);
@@ -87,8 +89,6 @@ static int	do_store_private_key(struct sc_profile *);
 static int	do_store_public_key(struct sc_profile *, EVP_PKEY *);
 static int	do_store_certificate(struct sc_profile *);
 static int	do_update_certificate(struct sc_profile *);
-static int	do_convert_private_key(struct sc_pkcs15_prkey *, EVP_PKEY *);
-static int	do_convert_public_key(struct sc_pkcs15_pubkey *, EVP_PKEY *);
 static int	do_convert_cert(sc_pkcs15_der_t *, X509 *);
 static int	is_cacert_already_present(struct sc_pkcs15init_certargs *);
 static int	do_finalize_card(sc_card_t *, struct sc_profile *);
@@ -107,10 +107,10 @@ static int	get_key_callback(struct sc_profile *,
 			int method, int reference,
 			const u8 *, size_t, u8 *, size_t *);
 
-static int	do_read_private_key(const char *, const char *,
-				EVP_PKEY **, X509 **, unsigned int);
+static int	do_read_private_key(const char *, const char *, EVP_PKEY **, X509 **, unsigned int);
 static int	do_read_public_key(const char *, const char *, EVP_PKEY **);
 static int	do_read_certificate(const char *, const char *, X509 **);
+static char *	cert_common_name(X509 *x509);
 static void	parse_commandline(int argc, char **argv);
 static void	read_options_file(const char *);
 static void	ossl_print_errors(void);
@@ -134,6 +134,9 @@ enum {
 	OPT_VERIFY_PIN,
 	OPT_SANITY_CHECK,
 	OPT_BIND_TO_AID,
+	OPT_UPDATE_LAST_UPDATE,
+	OPT_ERASE_APPLICATION,
+	OPT_IGNORE_CA_CERTIFICATES,
 
 	OPT_PIN1     = 0x10000,	/* don't touch these values */
 	OPT_PUK1     = 0x10001,
@@ -157,6 +160,7 @@ const struct option	options[] = {
 	{ "delete-objects",	required_argument, NULL,	'D' },
 	{ "change-attributes",	required_argument, NULL,	'A' },
 	{ "sanity-check",	no_argument, NULL,		OPT_SANITY_CHECK},
+	{ "erase-application",	required_argument, NULL,	OPT_ERASE_APPLICATION},
 
 	{ "reader",		required_argument, NULL,	'r' },
 	{ "pin",		required_argument, NULL,	OPT_PIN1 },
@@ -181,7 +185,9 @@ const struct option	options[] = {
 	{ "passphrase",		required_argument, NULL,	OPT_PASSPHRASE },
 	{ "authority",		no_argument,	   NULL,	OPT_AUTHORITY },
 	{ "key-usage",		required_argument, NULL,	'u' },
-	{ "finalize",		no_argument,       NULL,   	'F' },
+	{ "finalize",		no_argument,       NULL,	'F' },
+	{ "update-last-update", no_argument,       NULL,        OPT_UPDATE_LAST_UPDATE},
+	{ "ignore-ca-certificates",no_argument,    NULL,	OPT_IGNORE_CA_CERTIFICATES},
 
 	{ "extractable",	no_argument, NULL,		OPT_EXTRACTABLE },
 	{ "insecure",		no_argument, NULL,		OPT_INSECURE },
@@ -214,6 +220,7 @@ static const char *		option_help[] = {
 	"Delete object(s) (use \"help\" for more information)",
 	"Change attribute(s) (use \"help\" for more information)",
 	"Card specific sanity check and possibly update procedure",
+	"Erase application with AID <arg>",
 
 	"Specify which reader to use",
 	"Specify PIN",
@@ -239,6 +246,8 @@ static const char *		option_help[] = {
 	"Mark certificate as a CA certificate",
 	"Specify X.509 key usage (use \"--key-usage help\" for more information)",
 	"Finish initialization phase of the smart card",
+	"Update 'lastUpdate' attribut of tokenInfo",
+	"When storing PKCS#12 ignore CA certificates",
 
 	"Private key stored as an extractable key",
 	"Insecure mode: do not require a PIN for private key",
@@ -272,6 +281,8 @@ enum {
 	ACTION_DELETE_OBJECTS,
 	ACTION_CHANGE_ATTRIBUTES,
 	ACTION_SANITY_CHECK,
+	ACTION_UPDATE_LAST_UPDATE,
+	ACTION_ERASE_APPLICATION,
 
 	ACTION_MAX
 };
@@ -348,6 +359,7 @@ static unsigned int		opt_type = 0;
 static int			ignore_cmdline_pins = 0;
 static struct secret		opt_secrets[MAX_SECRETS];
 static unsigned int		opt_secret_count;
+static int			opt_ignore_ca_certs = 0;
 static int			verbose = 0;
 
 static struct sc_pkcs15init_callbacks callbacks = {
@@ -437,7 +449,8 @@ main(int argc, char **argv)
 	sc_pkcs15init_set_callbacks(&callbacks);
 
 	/* Bind the card-specific operations and load the profile */
-	if ((r = sc_pkcs15init_bind(card, opt_profile, opt_card_profile, NULL, &profile)) < 0) {
+	r = sc_pkcs15init_bind(card, opt_profile, opt_card_profile, NULL, &profile);
+	if (r < 0) {
 		printf("Couldn't bind to the card: %s\n", sc_strerror(r));
 		return 1;
 	}
@@ -543,6 +556,12 @@ main(int argc, char **argv)
 			break;
 		case ACTION_SANITY_CHECK:
 			r = do_sanity_check(profile);
+			break;
+		case ACTION_UPDATE_LAST_UPDATE:
+			profile->dirty = 1;
+			break;
+		case ACTION_ERASE_APPLICATION:
+			r = do_erase_application(card, profile);
 			break;
 		default:
 			util_fatal("Action not yet implemented\n");
@@ -667,6 +686,17 @@ do_erase(sc_card_t *in_card, struct sc_profile *profile)
 	ignore_cmdline_pins--;
 
 	sc_pkcs15_card_free(p15card);
+	return r;
+}
+
+static int
+do_erase_application(sc_card_t *in_card, struct sc_profile *profile)
+{
+	int r;
+
+	ignore_cmdline_pins--;
+	r = do_erase(in_card, profile);
+	ignore_cmdline_pins++;
 	return r;
 }
 
@@ -845,15 +875,14 @@ do_store_private_key(struct sc_profile *profile)
 	if (ncerts) {
 		char	namebuf[256];
 
-		printf("Importing %d certificates:\n", ncerts);
-		for (i = 0; i < ncerts; i++) {
-			printf("  %d: %s\n",
-				i, X509_NAME_oneline(cert[i]->cert_info->subject,
+		printf("Importing %d certificates:\n", opt_ignore_ca_certs ? 1 : ncerts);
+		for (i = 0; i < ncerts && !(i && opt_ignore_ca_certs); i++)
+			printf("  %d: %s\n", i, X509_NAME_oneline(cert[i]->cert_info->subject,
 					namebuf, sizeof(namebuf)));
-		}
 	}
 
-	if ((r = do_convert_private_key(&args.key, pkey)) < 0)
+	r = sc_pkcs15_convert_prkey(&args.key, pkey);
+	if (r < 0)
 		return r;
 	init_gost_params(&args.params.gost, pkey);
 
@@ -902,6 +931,9 @@ do_store_private_key(struct sc_profile *profile)
 		struct sc_pkcs15init_certargs cargs;
 		char	namebuf[SC_PKCS15_MAX_LABEL_SIZE-1];
 
+		if (i && opt_ignore_ca_certs)
+			break;
+
 		memset(&cargs, 0, sizeof(cargs));
 
 		/* Encode the cert */
@@ -910,8 +942,9 @@ do_store_private_key(struct sc_profile *profile)
 
 		X509_check_purpose(cert[i], -1, -1);
 		cargs.x509_usage = cert[i]->ex_kusage;
-		cargs.label = X509_NAME_oneline(cert[i]->cert_info->subject,
-					namebuf, sizeof(namebuf));
+		cargs.label = cert_common_name(cert[i]);
+		if (!cargs.label)
+			cargs.label = X509_NAME_oneline(cert[i]->cert_info->subject, namebuf, sizeof(namebuf));
 
 		/* Just the first certificate gets the same ID
 		 * as the private key. All others get
@@ -922,23 +955,20 @@ do_store_private_key(struct sc_profile *profile)
 				cargs.label = opt_cert_label;
 		} else {
 			if (is_cacert_already_present(&cargs)) {
-				printf("Certificate #%d already present, "
-					"not stored.\n", i);
+				printf("Certificate #%d already present, not stored.\n", i);
 				goto next_cert;
 			}
 			cargs.authority = 1;
 		}
 
-		r = sc_pkcs15init_store_certificate(p15card, profile,
-			       	&cargs, NULL);
+		r = sc_pkcs15init_store_certificate(p15card, profile, &cargs, NULL);
 next_cert:
 		free(cargs.der_encoded.value);
 	}
 
 	/* No certificates - store the public key */
-	if (ncerts == 0) {
+	if (ncerts == 0)
 		r = do_store_public_key(profile, pkey);
-	}
 
 	return r;
 }
@@ -1006,7 +1036,7 @@ do_store_public_key(struct sc_profile *profile, EVP_PKEY *pkey)
 	if (pkey == NULL)
 		r = do_read_public_key(opt_infile, opt_format, &pkey);
 	if (r >= 0) {
-		r = do_convert_public_key(&args.key, pkey);
+		r = sc_pkcs15_convert_pubkey(&args.key, pkey);
 		if (r >= 0)
 			init_gost_params(&args.params.gost, pkey);
 	}
@@ -2099,7 +2129,8 @@ do_read_certificate(const char *name, const char *format, X509 **out)
 	return 0;
 }
 
-static int determine_filesize(const char *filename) {
+static int determine_filesize(const char *filename)
+{
 	FILE *fp;
 	size_t size;
 
@@ -2110,7 +2141,7 @@ static int determine_filesize(const char *filename) {
 	size = ftell(fp);
 	fclose(fp);
 	return size;
-	}
+}
 
 static int
 do_read_data_object(const char *name, u8 **out, size_t *outlen)
@@ -2120,9 +2151,9 @@ do_read_data_object(const char *name, u8 **out, size_t *outlen)
 	int c;
 
 	*out = malloc(filesize);
-	if (*out == NULL) {
+	if (*out == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
-	}
+
 
         inf = fopen(name, "rb");
         if (inf == NULL) {
@@ -2140,141 +2171,39 @@ do_read_data_object(const char *name, u8 **out, size_t *outlen)
 	return 0;
 }
 
-static int
-do_convert_bignum(sc_pkcs15_bignum_t *dst, const BIGNUM *src)
+static char *
+cert_common_name(X509 *x509)
 {
-	if (src == 0)
-		return 0;
-	dst->len = BN_num_bytes(src);
-	dst->data = malloc(dst->len);
-	BN_bn2bin(src, dst->data);
-	return 1;
+	X509_NAME_ENTRY *ne = NULL;
+	ASN1_STRING *a_str = NULL;
+	char *out = NULL;
+	unsigned char *tmp = NULL;
+	int idx, out_len = 0;
+
+	idx = X509_NAME_get_index_by_NID(X509_get_subject_name(x509), NID_commonName, -1);
+	if (idx < 0)
+		return NULL;
+
+	ne = X509_NAME_get_entry(X509_get_subject_name(x509), idx);
+	if (!ne)
+	       return NULL;
+
+	a_str = X509_NAME_ENTRY_get_data(ne);
+	if (!a_str)
+		return NULL;
+
+	out_len = ASN1_STRING_to_UTF8(&tmp, a_str);
+	if (!tmp)
+		return NULL;
+
+	out = calloc(1, out_len + 1);
+	if (out)
+		memcpy(out, tmp, out_len);
+	OPENSSL_free(tmp);
+
+	return out;
 }
 
-static int do_convert_private_key(struct sc_pkcs15_prkey *key, EVP_PKEY *pk)
-{
-	switch (pk->type) {
-	case EVP_PKEY_RSA: {
-		struct sc_pkcs15_prkey_rsa *dst = &key->u.rsa;
-		RSA *src = EVP_PKEY_get1_RSA(pk);
-
-		key->algorithm = SC_ALGORITHM_RSA;
-		if (!do_convert_bignum(&dst->modulus, src->n)
-		 || !do_convert_bignum(&dst->exponent, src->e)
-		 || !do_convert_bignum(&dst->d, src->d)
-		 || !do_convert_bignum(&dst->p, src->p)
-		 || !do_convert_bignum(&dst->q, src->q))
-			util_fatal("Invalid/incomplete RSA key.\n");
-		if (src->iqmp && src->dmp1 && src->dmq1) {
-			do_convert_bignum(&dst->iqmp, src->iqmp);
-			do_convert_bignum(&dst->dmp1, src->dmp1);
-			do_convert_bignum(&dst->dmq1, src->dmq1);
-		}
-		RSA_free(src);
-		break;
-		}
-	case EVP_PKEY_DSA: {
-		struct sc_pkcs15_prkey_dsa *dst = &key->u.dsa;
-		DSA *src = EVP_PKEY_get1_DSA(pk);
-
-		key->algorithm = SC_ALGORITHM_DSA;
-		do_convert_bignum(&dst->pub, src->pub_key);
-		do_convert_bignum(&dst->p, src->p);
-		do_convert_bignum(&dst->q, src->q);
-		do_convert_bignum(&dst->g, src->g);
-		do_convert_bignum(&dst->priv, src->priv_key);
-		DSA_free(src);
-		break;
-		}
-#if OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_EC)
-	case NID_id_GostR3410_2001: {
-		struct sc_pkcs15_prkey_gostr3410 *dst = &key->u.gostr3410;
-		EC_KEY *src = EVP_PKEY_get0(pk);
-
-		assert(src);
-		key->algorithm = SC_ALGORITHM_GOSTR3410;
-		assert(EC_KEY_get0_private_key(src));
-		do_convert_bignum(&dst->d, EC_KEY_get0_private_key(src));
-		break;
-		}
-#endif /* OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_EC) */
-	default:
-		util_fatal("Unsupported key algorithm\n");
-	}
-
-	return 0;
-}
-
-static int do_convert_public_key(struct sc_pkcs15_pubkey *key, EVP_PKEY *pk)
-{
-	switch (pk->type) {
-	case EVP_PKEY_RSA: {
-		struct sc_pkcs15_pubkey_rsa *dst = &key->u.rsa;
-		RSA *src = EVP_PKEY_get1_RSA(pk);
-
-		key->algorithm = SC_ALGORITHM_RSA;
-		if (!do_convert_bignum(&dst->modulus, src->n)
-		 || !do_convert_bignum(&dst->exponent, src->e))
-			util_fatal("Invalid/incomplete RSA key.\n");
-		RSA_free(src);
-		break;
-		}
-	case EVP_PKEY_DSA: {
-		struct sc_pkcs15_pubkey_dsa *dst = &key->u.dsa;
-		DSA *src = EVP_PKEY_get1_DSA(pk);
-
-		key->algorithm = SC_ALGORITHM_DSA;
-		do_convert_bignum(&dst->pub, src->pub_key);
-		do_convert_bignum(&dst->p, src->p);
-		do_convert_bignum(&dst->q, src->q);
-		do_convert_bignum(&dst->g, src->g);
-		DSA_free(src);
-		break;
-		}
-#if OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_EC)
-	case NID_id_GostR3410_2001: {
-		struct sc_pkcs15_pubkey_gostr3410 *dst = &key->u.gostr3410;
-		EC_KEY *eckey = EVP_PKEY_get0(pk);
-		const EC_POINT *point;
-		BIGNUM *X, *Y;
-		int r = 0;
-
-		assert(eckey);
-		point = EC_KEY_get0_public_key(eckey);
-		if (!point)
-			return SC_ERROR_INTERNAL;
-		X = BN_new();
-		Y = BN_new();
-		if (X && Y && EC_KEY_get0_group(eckey))
-			r = EC_POINT_get_affine_coordinates_GFp(EC_KEY_get0_group(eckey),
-					point, X, Y, NULL);
-		if (r == 1) {
-			dst->xy.len = BN_num_bytes(X) + BN_num_bytes(Y);
-			dst->xy.data = malloc(dst->xy.len);
-			if (dst->xy.data) {
-				BN_bn2bin(Y, dst->xy.data);
-				BN_bn2bin(X, dst->xy.data + BN_num_bytes(Y));
-				r = sc_mem_reverse(dst->xy.data, dst->xy.len);
-				if (!r)
-					r = 1;
-				key->algorithm = SC_ALGORITHM_GOSTR3410;
-			}
-			else
-				r = -1;
-		}
-		BN_free(X);
-		BN_free(Y);
-		if (r != 1)
-			return SC_ERROR_INTERNAL;
-		break;
-		}
-#endif /* OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_EC) */
-	default:
-		util_fatal("Unsupported key algorithm\n");
-	}
-
-	return 0;
-}
 
 static int do_convert_cert(sc_pkcs15_der_t *der, X509 *cert)
 {
@@ -2573,6 +2502,16 @@ handle_option(const struct option *opt)
 	case OPT_SANITY_CHECK:
 		this_action = ACTION_SANITY_CHECK;
 		break;
+	case OPT_UPDATE_LAST_UPDATE:
+		this_action = ACTION_UPDATE_LAST_UPDATE;
+		break;
+	case OPT_ERASE_APPLICATION:
+		opt_bind_to_aid = optarg;
+		this_action = ACTION_ERASE_APPLICATION;
+		break;
+	case OPT_IGNORE_CA_CERTIFICATES:
+		opt_ignore_ca_certs = 1;
+		break;
 	default:
 		util_print_usage_and_die(app_name, options, option_help, NULL);
 	}
@@ -2719,7 +2658,7 @@ ossl_print_errors(void)
  *
  * @hints	dialog hints
  * @out		PIN entered by the user; must be freed.
- * 		NULL if dialog was canceled.
+ *		NULL if dialog was canceled.
  */
 int get_pin(sc_ui_hints_t *hints, char **out)
 {
@@ -2728,17 +2667,16 @@ int get_pin(sc_ui_hints_t *hints, char **out)
 	int		flags = hints->flags;
 
 	pin_info = hints->info.pin;
-	if (pin_info && pin_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
+	if (pin_info && (pin_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN))
 		return SC_ERROR_NOT_SUPPORTED;
 
 	if (!(label = hints->obj_label)) {
-		if (pin_info == NULL) {
+		if (pin_info == NULL)
 			label = "PIN";
-		} else if (pin_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN) {
+		else if (pin_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN)
 			label = "Security Officer PIN";
-		} else {
+		else
 			label = "User PIN";
-		}
 	}
 
 	if (hints->p15card) {
