@@ -1458,9 +1458,40 @@ static int do_get_data(int argc, char **argv)
 	return 0;
 }
 
+/**
+ * Use PUT DATA command to write to Data Object.
+ **/
 static int do_put_data(int argc, char **argv)
 {
-	return usage(do_put_data);
+	unsigned int tag;
+	u8 buf[240];
+	size_t buflen = sizeof(buf);
+	int r;
+
+	if (argc != 2)
+		return usage(do_put_data);
+
+	/* Extract DO's tag */
+	tag = strtoul(argv[0], NULL, 16);
+
+	/* Extract the new content */
+	/* buflen is the max length of reception buffer */
+	r = parse_string_or_hexdata(argv[1], buf, &buflen);
+	if (r < 0) {
+		printf("unable to parse data\n");
+		return -1;
+	}
+
+	/* Call OpenSC to do put data */
+	r = sc_put_data(card, tag, buf, buflen);
+	if (r < 0) {
+		printf("Cannot put data to %04X; return %i\n", tag, r);
+		return -1;
+	}
+
+	printf("Total of %d bytes written.\n", r);
+
+	return 0;
 }
 
 static int do_apdu(int argc, char **argv)
