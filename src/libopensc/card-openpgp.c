@@ -1303,6 +1303,41 @@ static int pgp_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 	LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 }
 
+/* ABI: Delete file */
+static int pgp_delete_file(sc_card_t *card, const sc_path_t *path)
+{
+	struct pgp_priv_data *priv = DRVDATA(card);
+	sc_file_t *file;
+	struct blob *affected_blob;
+	u8 *data;
+	size_t len;
+	int r;
+
+	LOG_FUNC_CALLED(card->ctx);
+	/* In sc_pkcs15init_delete_by_path(), the path type was set to SC_PATH_TYPE_FILE_ID */
+
+	r = pgp_select_file(card, path, &file);
+	LOG_TEST_RET(card->ctx, r, "Cannot select file.");
+	affected_blob = priv->current;
+	len = affected_blob->len;
+
+	/* Create zero-filled buffer to put to DO.
+	 * Though the spec says that PUT DATA with Lc=0 can erase the DO,
+	 * but this format of APDU is not allowed by OpenSC and in fact,
+	 * my CryptoStick responds "64 00" (execution error).
+	 * So, to erase DO, we will put all zeros to it. */
+	data = malloc(affected_blob->len);
+	if (data == NULL)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+	memset(data, 0, len);
+
+	r = pgp_put_data(card, file->id, data, len);
+	if (r < 0)
+		sc_log(card->ctx, "Failed to erase %04X DO: %s", file->id, sc_strerror(r));
+
+	free(data);
+	return r;
+}
 
 /* ABI: driver binding stuff */
 static struct sc_card_driver *
@@ -1327,6 +1362,7 @@ sc_get_driver(void)
 	pgp_ops.compute_signature= pgp_compute_signature;
 	pgp_ops.decipher	= pgp_decipher;
 	pgp_ops.card_ctl	= pgp_card_ctl;
+	pgp_ops.delete_file	= pgp_delete_file;
 
 	return &pgp_drv;
 }
