@@ -979,6 +979,36 @@ pgp_get_data(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 	LOG_FUNC_RETURN(card->ctx, apdu.resplen);
 }
 
+/* Internal: Check if a blob is writable */
+static u8
+pgp_blob_iswritable(sc_card_t *card, struct blob *tested_blob)
+{
+	return ((tested_blob->info->access & WRITE_MASK) != WRITE_NEVER);
+}
+
+/**
+ * Internal: Check if a DO is writable
+ * @param[out] ref_blob    Pointer to the blob corresponding to the DO.
+ **/
+static u8
+pgp_do_iswritable(sc_card_t *card, unsigned int tag, struct blob **ref_blob)
+{
+	struct pgp_priv_data *priv = DRVDATA(card);
+	int r;
+
+	/* Check if current selected blob is which we want to test*/
+	if (priv->current->id == tag) {
+		*ref_blob = priv->current;
+		return pgp_blob_iswritable(card, priv->current);
+	}
+	/* Look for the blob representing the DO */
+	r = pgp_seek_blob(card, priv->mf, tag, ref_blob);
+	if (r < 0) {
+		sc_log(card->ctx, "Failed to seek the blob representing the tag %04X. Error %d.", tag, r);
+		return 0;
+	}
+	return pgp_blob_iswritable(card, *ref_blob);
+}
 
 /* ABI: PUT DATA */
 static int
