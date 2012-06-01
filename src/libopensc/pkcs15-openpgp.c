@@ -257,7 +257,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 		if ((r = read_file(card, path_template, cxdata, sizeof(cxdata))) < 0)
 			goto failed;
 		if (r != 6) {
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Key info bytes have unexpected length(expected 6, got %d)\n", r);
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Key info bytes have unexpected length (expected 6, got %d)\n", r);
 			return SC_ERROR_INTERNAL;
 		}
 
@@ -301,7 +301,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 		if ((r = read_file(card, path_template, cxdata, sizeof(cxdata))) < 0)
 			goto failed;
 		if (r != 6) {
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Key info bytes have unexpected length(expected 6, got %d)\n", r);
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Key info bytes have unexpected length (expected 6, got %d)\n", r);
 			return SC_ERROR_INTERNAL;
 		}
 

@@ -722,7 +722,7 @@ pgp_read_blob(sc_card_t *card, struct blob *blob)
 
 		return pgp_set_blob(blob, buffer, r);
 	}
-	else {		/* un-readable DO or part of a constrcuted DO */
+	else {		/* un-readable DO or part of a constructed DO */
 		return SC_SUCCESS;
 	}
 }
@@ -1011,7 +1011,7 @@ pgp_get_pubkey_pem(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 	int		r;
 
 	sc_log(card->ctx, "called, tag=%04x\n", tag);
-	
+
 	if ((r = pgp_get_blob(card, priv->mf, tag & 0xFFFE, &blob)) < 0
 	 || (r = pgp_get_blob(card, blob, 0x7F49, &blob)) < 0
 	 || (r = pgp_get_blob(card, blob, 0x0081, &mod_blob)) < 0
