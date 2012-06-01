@@ -1464,7 +1464,7 @@ static int do_get_data(int argc, char **argv)
 static int do_put_data(int argc, char **argv)
 {
 	unsigned int tag;
-	u8 buf[240];
+	u8 buf[8192];
 	size_t buflen = sizeof(buf);
 	int r;
 
