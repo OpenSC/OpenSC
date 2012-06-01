@@ -1046,17 +1046,24 @@ pgp_put_data(sc_card_t *card, unsigned int tag, const u8 *buf, size_t buf_len)
 	}
 
 	/* Build APDU */
+	/* Large data can be sent via extended APDU, if card supports */
 	if (buf_len > 0xFF && card->caps & SC_CARD_CAP_APDU_EXT) {
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_EXT, 0xDA, tag >> 8, tag);
 	}
-	else {
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xDA, tag >> 8, tag);
-		/* In short APDU, the Lc only takes 1 byte */
-		apdu.lc = ((buf_len > 0xFF) && !(card->caps & SC_CARD_CAP_APDU_EXT)) ? 0xFF : buf_len;
+	/* Card/Reader does not support extended, use command chaining, if supported */
+	else if (buf_len > 0xFF && priv->ext_caps & EXT_CAP_CHAINING) {
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_3, 0xDA, tag >> 8, tag);
+		apdu.flags |= SC_APDU_FLAGS_CHAINING;
+		/* FIXME: The case of command chaining is not tested. */
 	}
-	/* TODO:
-	 * Command chaining for the large data.
-	 **/
+	else if (buf_len <= 0xFF) {
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xDA, tag >> 8, tag);
+	}
+	else {
+		sc_log(card->ctx, "Data is too big to send.");
+		return SC_ERROR_INVALID_DATA;
+	}
+
 	apdu.data = buf;
 	apdu.datalen = buf_len;
 	apdu.lc = buf_len;
