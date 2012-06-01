@@ -563,30 +563,28 @@ static int do_cd(int argc, char **argv)
 
 static int read_and_util_print_binary_file(sc_file_t *file)
 {
-	unsigned int idx = 0;
-	u8 buf[128];
-	size_t count;
+	unsigned char *buf = NULL;
 	int r;
 
-	count = file->size;
-	while (count) {
-		int c = count > sizeof(buf) ? sizeof(buf) : count;
+	buf = malloc(file->size);
+	if (!buf)
+		return -1;
 
-		r = sc_read_binary(card, idx, buf, c, 0);
-		if (r < 0) {
-			check_ret(r, SC_AC_OP_READ, "read failed", file);
-			return -1;
-		}
-		if ((r != c) && (card->type != SC_CARD_TYPE_BELPIC_EID)) {
-			printf("expecting %d, got only %d bytes.\n", c, r);
-			return -1;
-		}
-		if ((r == 0) && (card->type == SC_CARD_TYPE_BELPIC_EID))
-			break;
-		util_hex_dump_asc(stdout, buf, r, idx);
-		idx += r;
-		count -= r;
+	r = sc_read_binary(card, 0, buf, file->size, 0);
+	if (r < 0)   {
+		check_ret(r, SC_AC_OP_READ, "read failed", file);
+		return -1;
 	}
+	if ((r != file->size) && (card->type != SC_CARD_TYPE_BELPIC_EID))   {
+		printf("expecting %d, got only %d bytes.\n", file->size, r);
+		return -1;
+	}
+	if ((r == 0) && (card->type == SC_CARD_TYPE_BELPIC_EID))
+		return -1;
+
+	util_hex_dump_asc(stdout, buf, r, 0);
+
+	free(buf);
 	return 0;
 }
 
