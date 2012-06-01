@@ -1091,6 +1091,27 @@ pgp_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
 				"invalid PIN type");
 
+	/* In general, the PIN Reference is extracted from the key-id, for
+	 * example, CHV0 -> Ref=0, CHV1 -> Ref=1.
+	 * However, in the case of OpenGPG, the PIN Ref to compose APDU
+	 * must be 81, 82, 83.
+	 * So, if we receive Ref=1, Ref=2, we must convert to 81, 82...
+	 * In OpenPGP ver 1, the PINs are named CHV1, CHV2, CHV3. In ver 2, they
+	 * are named PW1, PW3 (PW1 operates in 2 modes). However, the PIN references (P2 in APDU)
+	 * are the same between 2 version:
+	 * 81 (CHV1 or PW1), 82 (CHV2 or PW1-mode 2), 83 (CHV3 or PW3).
+	 *
+	 * Note that if this function is called from sc_pkcs15_verify_pin() in pkcs15-pin.c,
+	 * the Ref is already 81, 82, 83.
+	 */
+
+	/* Convert the PIN Reference if needed */
+	data->pin_reference |= 0x80;
+	/* Ensure pin_reference is 81, 82, 83 */
+	if (!(data->pin_reference == 0x81 || data->pin_reference == 0x82 || data->pin_reference == 0x83)) {
+		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
+					 "key-id should be 1, 2, 3.");
+	}
 	LOG_FUNC_RETURN(card->ctx, iso_ops->pin_cmd(card, data, tries_left));
 }
 
