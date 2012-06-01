@@ -240,7 +240,9 @@ static struct do_info		pgp2_objects[] = {	/* OpenPGP card spec 2.0 */
 	{ 0x5f48, CONSTRUCTED, READ_NEVER  | WRITE_PIN3,  NULL,               sc_put_data },
 	{ 0x5f50, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  sc_get_data,        sc_put_data },
 	{ 0x5f52, SIMPLE,      READ_ALWAYS | WRITE_NEVER, sc_get_data,        NULL        },
-	{ 0x7f21, CONSTRUCTED, READ_ALWAYS | WRITE_PIN3,  sc_get_data,        sc_put_data },
+	/* The 7F21 is constructed DO in spec, but in practice, its content can be retrieved
+	 * as simple DO (no need to parse TLV). */
+	{ 0x7f21, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  sc_get_data,        sc_put_data },
 	{ 0x7f48, CONSTRUCTED, READ_NEVER  | WRITE_NEVER, NULL,               NULL        },
 	{ 0x7f49, CONSTRUCTED, READ_ALWAYS | WRITE_NEVER, NULL,               NULL        },
 	{ 0xa400, CONSTRUCTED, READ_ALWAYS | WRITE_NEVER, pgp_get_pubkey,     NULL        },
@@ -251,6 +253,10 @@ static struct do_info		pgp2_objects[] = {	/* OpenPGP card spec 2.0 */
 	{ 0xb801, SIMPLE,      READ_ALWAYS | WRITE_NEVER, pgp_get_pubkey_pem, NULL        },
 	{ 0, 0, 0, NULL, NULL },
 };
+
+/* The DO holding X.509 certificate is constructed but does not contain child DO.
+ * We should notice this when building fake file system later. */
+#define DO_CERT		0x7f21
 
 #define DRVDATA(card)        ((struct pgp_priv_data *) ((card)->drv_data))
 struct pgp_priv_data {
