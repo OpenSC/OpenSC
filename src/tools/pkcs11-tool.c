@@ -77,13 +77,17 @@ enum {
 	OPT_INIT_PIN,
 	OPT_ATTR_FROM,
 	OPT_KEY_TYPE,
+	OPT_KEY_USAGE_SIGN,
+	OPT_KEY_USAGE_DECRYPT,
+	OPT_KEY_USAGE_NONREPUDIATION,
 	OPT_PRIVATE,
 	OPT_TEST_HOTPLUG,
 	OPT_UNLOCK_PIN,
 	OPT_PUK,
 	OPT_NEW_PIN,
 	OPT_LOGIN_TYPE,
-	OPT_TEST_EC
+	OPT_TEST_EC,
+	OPT_DERIVE
 };
 
 static const struct option options[] = {
@@ -96,6 +100,7 @@ static const struct option options[] = {
 
 	{ "sign",		0, NULL,		's' },
 	{ "hash",		0, NULL,		'h' },
+	{ "derive",		0, NULL,		OPT_DERIVE },
 	{ "mechanism",		1, NULL,		'm' },
 
 	{ "login",		0, NULL,		'l' },
@@ -108,22 +113,25 @@ static const struct option options[] = {
 	{ "init-pin",		0, NULL,		OPT_INIT_PIN },
 	{ "change-pin",		0, NULL,		'c' },
 	{ "unlock-pin",		0, NULL,		OPT_UNLOCK_PIN },
-	{ "keypairgen", 	0, NULL, 		'k' },
+	{ "keypairgen",		0, NULL,		'k' },
 	{ "key-type",		1, NULL,		OPT_KEY_TYPE },
-	{ "write-object",	1, NULL, 		'w' },
-	{ "read-object",	0, NULL, 		'r' },
-	{ "delete-object",	0, NULL, 		'b' },
-	{ "application-label",	1, NULL, 		OPT_APPLICATION_LABEL },
-	{ "application-id",	1, NULL, 		OPT_APPLICATION_ID },
-	{ "type", 		1, NULL, 		'y' },
-	{ "id", 		1, NULL, 		'd' },
-	{ "label", 		1, NULL, 		'a' },
+	{ "usage-sign",		0, NULL,		OPT_KEY_USAGE_SIGN },
+	{ "usage-decrypt",	0, NULL,		OPT_KEY_USAGE_DECRYPT },
+	{ "usage-nonrepudiation",0, NULL,		OPT_KEY_USAGE_NONREPUDIATION },
+	{ "write-object",	1, NULL,		'w' },
+	{ "read-object",	0, NULL,		'r' },
+	{ "delete-object",	0, NULL,		'b' },
+	{ "application-label",	1, NULL,		OPT_APPLICATION_LABEL },
+	{ "application-id",	1, NULL,		OPT_APPLICATION_ID },
+	{ "type",		1, NULL,		'y' },
+	{ "id",			1, NULL,		'd' },
+	{ "label",		1, NULL,		'a' },
 	{ "slot",		1, NULL,		OPT_SLOT },
 	{ "slot-description",	1, NULL,		OPT_SLOT_DESCRIPTION },
 	{ "slot-index",		1, NULL,		OPT_SLOT_INDEX },
 	{ "token-label",	1, NULL,		OPT_TOKEN_LABEL },
-	{ "set-id",		1, NULL, 		'e' },
-	{ "attr-from",		1, NULL, 		OPT_ATTR_FROM },
+	{ "set-id",		1, NULL,		'e' },
+	{ "attr-from",		1, NULL,		OPT_ATTR_FROM },
 	{ "input-file",		1, NULL,		'i' },
 	{ "output-file",	1, NULL,		'o' },
 
@@ -133,6 +141,7 @@ static const struct option options[] = {
 	{ "verbose",		0, NULL,		'v' },
 	{ "private",		0, NULL,		OPT_PRIVATE },
 	{ "test-ec",		0, NULL,		OPT_TEST_EC },
+
 	{ NULL, 0, NULL, 0 }
 };
 
@@ -146,6 +155,7 @@ static const char *option_help[] = {
 
 	"Sign some data",
 	"Hash some data",
+	"Derive a secret key using another key and some data",
 	"Specify mechanism (use -M for a list of supported mechanisms)",
 
 	"Log into the token first",
@@ -160,6 +170,9 @@ static const char *option_help[] = {
 	"Unlock User PIN (without '--login' unlock in logged in session; otherwise '--login-type' has to be 'context-specific')",
 	"Key pair generation",
 	"Specify the type and length of the key to create, for example rsa:1024 or EC:prime256v1",
+	"Specify 'sign' key usage flag",
+	"Specify 'decrypt' key usage flag",
+	"Specify 'nonrepudiation' key usage flag",
 	"Write an object (key, cert, data) to the card",
 	"Get object's CKA_VALUE attribute (use with --type)",
 	"Delete an object",
@@ -216,6 +229,9 @@ static char *		opt_key_type = NULL;
 static int		opt_is_private = 0;
 static int		opt_test_hotplug = 0;
 static int		opt_login_type = -1;
+static int		opt_key_usage_sign = 0;
+static int		opt_key_usage_decrypt = 0;
+static int		opt_key_usage_nonrepudiation = 0;
 
 static void *module = NULL;
 static CK_FUNCTION_LIST_PTR p11 = NULL;
@@ -272,7 +288,7 @@ static int		login(CK_SESSION_HANDLE, int);
 static void		init_token(CK_SLOT_ID);
 static void		init_pin(CK_SLOT_ID, CK_SESSION_HANDLE);
 static int		change_pin(CK_SLOT_ID, CK_SESSION_HANDLE);
-static int 		unlock_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess, int login_type);
+static int		unlock_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess, int login_type);
 static void		show_object(CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static void		show_key(CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static void		show_cert(CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
@@ -280,12 +296,13 @@ static void		show_dobj(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj);
 static void		sign_data(CK_SLOT_ID,
 				CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static void		hash_data(CK_SLOT_ID, CK_SESSION_HANDLE);
+static void		derive_key(CK_SLOT_ID, CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static int		gen_keypair(CK_SESSION_HANDLE,
 				CK_OBJECT_HANDLE *, CK_OBJECT_HANDLE *, const char *);
-static int 		write_object(CK_SESSION_HANDLE session);
-static int 		read_object(CK_SESSION_HANDLE session);
-static int 		delete_object(CK_SESSION_HANDLE session);
-static void 		set_id_attr(CK_SESSION_HANDLE session);
+static int		write_object(CK_SESSION_HANDLE session);
+static int		read_object(CK_SESSION_HANDLE session);
+static int		delete_object(CK_SESSION_HANDLE session);
+static void		set_id_attr(CK_SESSION_HANDLE session);
 static int		find_object(CK_SESSION_HANDLE, CK_OBJECT_CLASS,
 				CK_OBJECT_HANDLE_PTR,
 				const unsigned char *, size_t id_len, int obj_index);
@@ -310,10 +327,8 @@ static int test_card_detection(int);
 static int		hex_to_bin(const char *in, CK_BYTE *out, size_t *outlen);
 static void		test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE session);
 static void		test_ec(CK_SLOT_ID slot, CK_SESSION_HANDLE session);
-static CK_RV find_object_with_attributes(
-		CK_SESSION_HANDLE session, CK_OBJECT_HANDLE *out,
-		CK_ATTRIBUTE *attrs, CK_ULONG attrsLen,
-		CK_ULONG obj_index);
+static CK_RV		find_object_with_attributes(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE *out,
+				CK_ATTRIBUTE *attrs, CK_ULONG attrsLen, CK_ULONG obj_index);
 static CK_ULONG		get_private_key_length(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE prkey);
 
 /* win32 needs this in open(2) */
@@ -333,6 +348,7 @@ int main(int argc, char * argv[])
 	int do_list_objects = 0;
 	int do_sign = 0;
 	int do_hash = 0;
+	int do_derive = 0;
 	int do_gen_keypair = 0;
 	int do_write_object = 0;
 	int do_read_object = 0;
@@ -565,6 +581,15 @@ int main(int argc, char * argv[])
 		case OPT_KEY_TYPE:
 			opt_key_type = optarg;
 			break;
+		case OPT_KEY_USAGE_SIGN:
+			opt_key_usage_sign = 1;
+			break;
+		case OPT_KEY_USAGE_DECRYPT:
+			opt_key_usage_decrypt = 1;
+			break;
+		case OPT_KEY_USAGE_NONREPUDIATION:
+			opt_key_usage_nonrepudiation = 1;
+			break;
 		case OPT_PRIVATE:
 			opt_is_private = 1;
 			break;
@@ -574,6 +599,11 @@ int main(int argc, char * argv[])
 			break;
 		case OPT_TEST_EC:
 			do_test_ec = 1;
+			action_count++;
+			break;
+		case OPT_DERIVE:
+			need_session |= NEED_SESSION_RW;
+			do_derive = 1;
 			action_count++;
 			break;
 		default:
@@ -709,7 +739,7 @@ int main(int argc, char * argv[])
 		if (opt_login_type != -1
 				&& opt_login_type != CKU_CONTEXT_SPECIFIC)   {
 			printf("Invalid login type for 'Unlock User PIN' operation\n");
-                	util_print_usage_and_die(app_name, options, option_help, NULL);
+			util_print_usage_and_die(app_name, options, option_help, NULL);
 		}
 
 		return unlock_pin(opt_slot, session, opt_login_type);
@@ -722,12 +752,16 @@ int main(int argc, char * argv[])
 		goto end;
 	}
 
-	if (do_sign) {
+	if (do_sign || do_derive) {
 		if (!find_object(session, CKO_PRIVATE_KEY, &object,
 					opt_object_id_len ? opt_object_id : NULL,
 					opt_object_id_len, 0))
 			util_fatal("Private key not found");
 	}
+
+	/* before list objects, so we can see a derived key */
+	if (do_derive)
+		derive_key(opt_slot, session, object);
 
 	if (do_list_objects)
 		list_objects(session, opt_object_class);
@@ -785,7 +819,6 @@ int main(int argc, char * argv[])
 
 	if (do_test_ec)
 		test_ec(opt_slot, session);
-
 end:
 	if (session != CK_INVALID_HANDLE) {
 		rv = p11->C_CloseSession(session);
@@ -1694,7 +1727,7 @@ static int parse_gost_private_key(EVP_PKEY *evp_key, struct gostkey_info *gost)
 static int write_object(CK_SESSION_HANDLE session)
 {
 	CK_BBOOL _true = TRUE;
-	unsigned char contents[MAX_OBJECT_SIZE];
+	unsigned char contents[MAX_OBJECT_SIZE + 1];
 	int contents_len = 0;
 	unsigned char certdata[MAX_OBJECT_SIZE];
 	int certdata_len = 0;
@@ -1715,13 +1748,18 @@ static int write_object(CK_SESSION_HANDLE session)
 	memset(&rsa,  0, sizeof(rsa));
 	memset(&gost,  0, sizeof(gost));
 #endif
+
+	memset(contents, 0, sizeof(contents));
+	memset(certdata, 0, sizeof(certdata));
+
 	f = fopen(opt_file_to_write, "rb");
 	if (f == NULL)
 		util_fatal("Couldn't open file \"%s\"\n", opt_file_to_write);
-	contents_len = fread(contents, 1, sizeof(contents), f);
+	contents_len = fread(contents, 1, sizeof(contents) - 1, f);
 	if (contents_len < 0)
 		util_fatal("Couldn't read from file \"%s\"\n", opt_file_to_write);
 	fclose(f);
+	contents[contents_len] = '\0';
 
 	if (opt_attr_from_file) {
 		if (!(f = fopen(opt_attr_from_file, "rb")))
@@ -2231,6 +2269,7 @@ ATTR_METHOD(VERIFY_RECOVER, CK_BBOOL);
 ATTR_METHOD(WRAP, CK_BBOOL);
 ATTR_METHOD(UNWRAP, CK_BBOOL);
 ATTR_METHOD(DERIVE, CK_BBOOL);
+ATTR_METHOD(OPENSC_NON_REPUDIATION, CK_BBOOL);
 #if 0
 ATTR_METHOD(EXTRACTABLE, CK_BBOOL);
 #endif
@@ -2279,6 +2318,7 @@ static void show_object(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 	switch (cls) {
 	case CKO_PUBLIC_KEY:
 	case CKO_PRIVATE_KEY:
+	case CKO_SECRET_KEY:
 		show_key(sess, obj);
 		break;
 	case CKO_CERTIFICATE:
@@ -2294,14 +2334,117 @@ static void show_object(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 	}
 }
 
-static void show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
+
+static void
+derive_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
+{
+	unsigned char *value = NULL;
+	CK_ULONG value_len = 0;
+	CK_MECHANISM mech;
+	CK_OBJECT_CLASS newkey_class= CKO_SECRET_KEY;
+	CK_KEY_TYPE newkey_type = CKK_GENERIC_SECRET;
+	CK_BBOOL true = TRUE;
+	CK_BBOOL false = FALSE;
+	CK_OBJECT_HANDLE newkey = 0;
+	CK_ECDH1_DERIVE_PARAMS ecdh_parms;
+	CK_RV rv;
+	int fd, r;
+	CK_ATTRIBUTE newkey_template[] = {
+		{CKA_TOKEN, &false, sizeof(false)}, /* session only object */
+		{CKA_CLASS, &newkey_class, sizeof(newkey_class)},
+		{CKA_KEY_TYPE, &newkey_type, sizeof(newkey_type)},
+		{CKA_ENCRYPT, &true, sizeof(true)},
+		{CKA_DECRYPT, &true, sizeof(true)}
+	};
+
+	if (!opt_mechanism_used)
+		opt_mechanism = find_mechanism(slot, CKF_DERIVE|CKF_HW, 1, &opt_mechanism);
+	printf("Using derive algorithm 0x%8.8lx %s\n",
+			opt_mechanism, p11_mechanism_to_name(opt_mechanism));
+
+	memset(&mech, 0, sizeof(mech));
+	mech.mechanism = opt_mechanism;
+
+	switch(opt_mechanism) {
+#if defined(ENABLE_OPENSSL) && OPENSSL_VERSION_NUMBER >= 0x00908000L && !defined(OPENSSL_NO_EC) && !defined(OPENSSL_NO_ECDSA)
+	case CKM_ECDH1_COFACTOR_DERIVE:
+	case CKM_ECDH1_DERIVE:
+		/*  Use OpenSSL to read the other public key, and get the raw verion */
+		{
+		unsigned char buf[512];
+		int len;
+		BIO     *bio_in = NULL;
+		const EC_KEY  *eckey = NULL;
+		const EC_GROUP *ecgroup = NULL;
+		const EC_POINT * ecpoint = NULL;
+
+		bio_in = BIO_new(BIO_s_file());
+		if (BIO_read_filename(bio_in, opt_input) <= 0)
+			util_fatal("Cannot open %s: %m", opt_input);
+
+		eckey = d2i_EC_PUBKEY_bio(bio_in, NULL);
+		if (!eckey)
+			util_fatal("Cannot read EC key from %s", opt_input);
+
+		ecpoint = EC_KEY_get0_public_key(eckey);
+		ecgroup = EC_KEY_get0_group(eckey);
+		if (!ecpoint || !ecgroup)
+			util_fatal("Failed to parse other EC kry from %s", opt_input);
+
+		len = EC_POINT_point2oct(ecgroup, ecpoint, POINT_CONVERSION_UNCOMPRESSED, buf, sizeof(buf),NULL);
+
+		memset(&ecdh_parms, 0, sizeof(ecdh_parms));
+		ecdh_parms.kdf = CKD_NULL;
+		ecdh_parms.ulSharedDataLen = 0;
+		ecdh_parms.pSharedData = NULL;
+		ecdh_parms.ulPublicDataLen = len;	/* TODO drop header */
+		ecdh_parms.pPublicData = buf;		/* Cheat to test */
+		mech.pParameter = &ecdh_parms;
+		mech.ulParameterLen = sizeof(ecdh_parms);
+		}
+		break;
+#endif /* ENABLE_OPENSSL  && !OPENSSL_NO_EC && !OPENSSL_NO_ECDSA */
+	/* TODO add RSA  but do not have card to test */
+	default:
+		util_fatal("mechanisum not supported for derive\n");
+		break;
+	}
+
+	rv = p11->C_DeriveKey(session, &mech, key, newkey_template, 5, &newkey);
+	if (rv != CKR_OK)
+	    p11_fatal("C_DeriveKey", rv);
+
+	/*TODO get the key value and write to stdout or file */
+	value = getVALUE(session, newkey, &value_len);
+	if (value && value_len > 0) {
+		if (opt_output == NULL)   {
+			fd = 1;
+		}
+		else  {
+			fd = open(opt_output, O_CREAT|O_TRUNC|O_WRONLY|O_BINARY, S_IRUSR|S_IWUSR);
+			if (fd < 0)
+				util_fatal("failed to open %s: %m", opt_output);
+		}
+
+		r = write(fd, value, value_len);
+		if (r < 0)
+			util_fatal("Failed to write to %s: %m", opt_output);
+		if (fd != 1)
+			close(fd);
+	}
+}
+
+
+static void
+show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 {
 	CK_KEY_TYPE	key_type = getKEY_TYPE(sess, obj);
 	CK_ULONG	size = 0;
 	unsigned char	*id, *oid, *value;
 	const char      *sepa;
 	char		*label;
-	int		pub;
+	int		pub = 1;
+	int             sec = 0;
 
 	switch(getCLASS(sess, obj)) {
 		case CKO_PRIVATE_KEY:
@@ -2311,6 +2454,10 @@ static void show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 		case CKO_PUBLIC_KEY:
 			printf("Public Key Object");
 			pub = 1;
+			break;
+		case CKO_SECRET_KEY:
+			printf("Secret Key Object");
+			sec = 1;
 			break;
 		default:
 			return;
@@ -2399,6 +2546,21 @@ static void show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 		} else
 			 printf("\n");
 		break;
+	case CKK_GENERIC_SECRET:
+		value = getVALUE(sess, obj, &size);
+		if (value) {
+			unsigned int    n;
+
+			printf("  VALUE:      ");
+			for (n = 0; n < size; n++)   {
+				if (n && (n%32)==0)
+					printf("\n              ");
+				printf("%02x", value[n]);
+			}
+			printf("\n");
+			free(value);
+		}
+		break;
 	default:
 		printf("; unknown key algorithm %lu\n",
 				(unsigned long) key_type);
@@ -2422,11 +2584,11 @@ static void show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 
 	printf("  Usage:      ");
 	sepa = "";
-	if (pub && getENCRYPT(sess, obj)) {
+	if ((pub || sec) && getENCRYPT(sess, obj)) {
 		printf("%sencrypt", sepa);
 		sepa = ", ";
 	}
-	if (!pub && getDECRYPT(sess, obj)) {
+	if ((!pub || sec) && getDECRYPT(sess, obj)) {
 		printf("%sdecrypt", sepa);
 		sepa = ", ";
 	}
@@ -2434,19 +2596,23 @@ static void show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 		printf("%ssign", sepa);
 		sepa = ", ";
 	}
+	if (!pub && getOPENSC_NON_REPUDIATION(sess, obj)) {
+		printf("%snon-repudiation", sepa);
+		sepa = ", ";
+	}
 	if (pub && getVERIFY(sess, obj)) {
 		printf("%sverify", sepa);
 		sepa = ", ";
 	}
-	if (pub && getWRAP(sess, obj)) {
+	if ((pub || sec) && getWRAP(sess, obj)) {
 		printf("%swrap", sepa);
 		sepa = ", ";
 	}
-	if (!pub && getUNWRAP(sess, obj)) {
+	if ((!pub || sec) && getUNWRAP(sess, obj)) {
 		printf("%sunwrap", sepa);
 		sepa = ", ";
 	}
-	if (!pub && getDERIVE(sess, obj)) {
+	if ((!pub || sec) && getDERIVE(sess, obj)) {
 		printf("%sderive", sepa);
 		sepa = ", ";
 	}
@@ -3889,7 +4055,7 @@ static void test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	while(find_object(session, CKO_PRIVATE_KEY, &priv_key, id, id_len, 0))
 		id[0]++;
 
-	printf("\n*** Generating a 1024 bit RSA key pair ***\n");
+	printf("\n*** Generating a %s key pair ***\n", opt_key_type);
 
 	if (!gen_keypair(session, &pub_key, &priv_key, opt_key_type))
 		return;
@@ -4102,7 +4268,6 @@ static void test_ec(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 
 	printf("==> OK\n");
 }
-
 
 
 static const char *p11_flag_names(struct flag_info *list, CK_FLAGS value)

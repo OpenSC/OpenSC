@@ -1852,7 +1852,7 @@ pkcs15_create_private_key(struct sc_pkcs11_slot *slot, struct sc_profile *profil
 		case CKA_UNWRAP:
 			args.usage |= pkcs15_check_bool_cka(attr, SC_PKCS15_PRKEY_USAGE_UNWRAP);
 			break;
-		case OPENSC_CKA_NON_REPUDIATION:
+		case CKA_OPENSC_NON_REPUDIATION:
 			args.usage |= pkcs15_check_bool_cka(attr, SC_PKCS15_PRKEY_USAGE_NONREPUDIATION);
 			break;
 		default:
@@ -2441,7 +2441,7 @@ get_X509_usage_privk(CK_ATTRIBUTE_PTR pTempl, CK_ULONG ulCount, unsigned long *x
 			*x509_usage |= SC_PKCS15INIT_X509_DATA_ENCIPHERMENT;
 		if (typ == CKA_DERIVE && *val)
 			*x509_usage |= SC_PKCS15INIT_X509_KEY_AGREEMENT;
-		if (typ == OPENSC_CKA_NON_REPUDIATION && *val)
+		if (typ == CKA_OPENSC_NON_REPUDIATION && *val)
 			*x509_usage |= SC_PKCS15INIT_X509_NON_REPUDIATION;
 		if (typ == CKA_VERIFY || typ == CKA_WRAP || typ == CKA_ENCRYPT) {
 			sc_log(context, "get_X509_usage_privk(): invalid typ = 0x%0x", typ);
@@ -3223,7 +3223,7 @@ pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
 	case CKA_VERIFY:
 	case CKA_VERIFY_RECOVER:
 	case CKA_DERIVE:
-	case OPENSC_CKA_NON_REPUDIATION:
+	case CKA_OPENSC_NON_REPUDIATION:
 		/* TODO seems to be obsolete */
 		/* Combine the usage bits of all split keys */
 		for (usage = 0; prkey; prkey = prkey->prv_next)
@@ -4237,7 +4237,7 @@ get_usage_bit(unsigned int usage, CK_ATTRIBUTE_PTR attr)
 		{ CKA_VERIFY,		SC_PKCS15_PRKEY_USAGE_VERIFY },
 		{ CKA_VERIFY_RECOVER,	SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER },
 		{ CKA_DERIVE,		SC_PKCS15_PRKEY_USAGE_DERIVE },
-		{ OPENSC_CKA_NON_REPUDIATION, SC_PKCS15_PRKEY_USAGE_NONREPUDIATION },
+		{ CKA_OPENSC_NON_REPUDIATION, SC_PKCS15_PRKEY_USAGE_NONREPUDIATION },
 		{ 0, 0 }
 	};
 	unsigned int mask = 0, j;

@@ -7,6 +7,6 @@
  * We need this flag in PKCS#15/libopensc to make dinstinction between
  * 'signature' and 'qualified signature' key slots.
  */
-#define OPENSC_CKA_NON_REPUDIATION      (CKA_VENDOR_DEFINED | 1UL)
+#define CKA_OPENSC_NON_REPUDIATION      (CKA_VENDOR_DEFINED | 1UL)
 
 #endif
