@@ -735,6 +735,32 @@ pgp_get_blob(sc_card_t *card, struct blob *blob, unsigned int id,
 	return SC_ERROR_FILE_NOT_FOUND;
 }
 
+/* Internal: search recursively for a blob by ID below a given root */
+static int
+pgp_seek_blob(sc_card_t *card, struct blob *root, unsigned int id,
+		struct blob **ret)
+{
+	struct blob	*child;
+	int			r;
+
+	if ((r = pgp_get_blob(card, root, id, ret)) == 0)
+		/* The sought blob is right under root */
+		return r;
+
+	/* Not found, seek deeper */
+	for (child = root->files; child; child = child->next) {
+		/* The DO of SIMPLE type or the DO holding certificate
+		 * does not contain children */
+		if (child->info->type == SIMPLE || child->id == DO_CERT)
+			continue;
+		r = pgp_seek_blob(card, child, id, ret);
+		if (r == 0)
+			return r;
+	}
+
+	return SC_ERROR_FILE_NOT_FOUND;
+}
+
 
 /* ABI: SELECT FILE */
 static int
