@@ -109,8 +109,11 @@ filesystem {
 					structure	= transparent;
 					ACL		= *=NEVER,
 							  READ=NONE,
-							  UPDATE=$PIN,
-							  ERASE=$PIN;
+							  UPDATE=CHV3,
+							  WRITE=CHV3,
+							  DELETE=CHV3;
+					# FIXME: CHV3 seems to make the sc_profile_get_file_by_path() understand that
+					# key_ref = 3. But for OpenPGP card driver, it should be 0x83.
 				}
 
 				# private data objects are stored in transparent EFs.
