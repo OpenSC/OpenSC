@@ -145,6 +145,7 @@ static struct profile_operations {
 	{ "jcop", (void *) sc_pkcs15init_get_jcop_ops },
 	{ "starcos", (void *) sc_pkcs15init_get_starcos_ops },
 	{ "oberthur", (void *) sc_pkcs15init_get_oberthur_ops },
+	{ "openpgp", (void *) sc_pkcs15init_get_openpgp_ops },
 	{ "setcos", (void *) sc_pkcs15init_get_setcos_ops },
 	{ "incrypto34", (void *) sc_pkcs15init_get_incrypto34_ops },
 	{ "muscle", (void*) sc_pkcs15init_get_muscle_ops },
