@@ -5,7 +5,7 @@ EXTRA_DIST = Makefile.mak
 
 noinst_HEADERS = util.h
 bin_PROGRAMS = opensc-tool opensc-explorer pkcs15-tool pkcs15-crypt \
-	pkcs11-tool cardos-tool eidenv openpgp-tool
+	pkcs11-tool cardos-tool eidenv openpgp-tool iasecc-tool
 if ENABLE_OPENSSL
 bin_PROGRAMS += cryptoflex-tool pkcs15-init netkey-tool piv-tool westcos-tool
 endif
@@ -32,7 +32,7 @@ pkcs11_tool_LDADD = \
 pkcs15_crypt_SOURCES = pkcs15-crypt.c util.c
 pkcs15_crypt_LDADD = $(OPTIONAL_OPENSSL_LIBS)
 cryptoflex_tool_SOURCES = cryptoflex-tool.c util.c
-cryptoflex_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS) 
+cryptoflex_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
 pkcs15_init_SOURCES = pkcs15-init.c util.c
 pkcs15_init_LDADD = $(OPTIONAL_OPENSSL_LIBS)
 cardos_tool_SOURCES = cardos-tool.c util.c
@@ -44,6 +44,8 @@ westcos_tool_SOURCES = westcos-tool.c util.c
 westcos_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
 openpgp_tool_SOURCES = openpgp-tool.c util.c
 openpgp_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
+iasecc_tool_SOURCES = iasecc-tool.c util.c
+iasecc_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
 
 if WIN32
 opensc_tool_SOURCES += $(top_builddir)/win32/versioninfo.rc
@@ -59,4 +61,5 @@ eidenv_SOURCES += $(top_builddir)/win32/versioninfo.rc
 netkey_tool_SOURCES += $(top_builddir)/win32/versioninfo.rc
 westcos_tool_SOURCES += $(top_builddir)/win32/versioninfo.rc
 openpgp_tool_SOURCES += $(top_builddir)/win32/versioninfo.rc
+iasecc_tool_SOURCES += $(top_builddir)/win32/versioninfo.rc
 endif

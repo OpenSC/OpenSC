@@ -13,6 +13,7 @@
 		<xi:include href="cryptoflex-tool.1.xml"/>
 		<xi:include href="netkey-tool.1.xml"/>
 		<xi:include href="openpgp-tool.1.xml"/>
+		<xi:include href="iasecc-tool.1.xml"/>
 		<xi:include href="opensc-tool.1.xml"/>
 		<xi:include href="opensc-explorer.1.xml"/>
 		<xi:include href="piv-tool.1.xml"/>
