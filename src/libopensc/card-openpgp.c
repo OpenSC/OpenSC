@@ -1132,16 +1132,16 @@ pgp_put_data(sc_card_t *card, unsigned int tag, const u8 *buf, size_t buf_len)
 
 	/* Build APDU */
 	/* Large data can be sent via extended APDU, if card supports */
-	if (buf_len > 0xFF && card->caps & SC_CARD_CAP_APDU_EXT) {
+	if (buf_len > 256 && card->caps & SC_CARD_CAP_APDU_EXT) {
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_EXT, ins, p1, p2);
 	}
 	/* Card/Reader does not support extended, use command chaining, if supported */
-	else if (buf_len > 0xFF && priv->ext_caps & EXT_CAP_CHAINING) {
+	else if (buf_len > 256 && priv->ext_caps & EXT_CAP_CHAINING) {
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_3, ins, p1, p2);
 		apdu.flags |= SC_APDU_FLAGS_CHAINING;
 		/* FIXME: The case of command chaining is not tested. */
 	}
-	else if (buf_len <= 0xFF) {
+	else if (buf_len <= 256) {
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, ins, p1, p2);
 	}
 	else {
