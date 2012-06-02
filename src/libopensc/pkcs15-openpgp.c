@@ -328,6 +328,24 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 		}
 	}
 
+	/* Add certificates */
+	struct sc_pkcs15_cert_info cert_info;
+	struct sc_pkcs15_object    cert_obj;
+
+	memset(&cert_info, 0, sizeof(cert_info));
+	memset(&cert_obj,  0, sizeof(cert_obj));
+
+	/* Certificate ID. We use the same ID as the authentication key */
+	cert_info.id.value[0] = 3;
+	cert_info.id.len = 1;
+	/* Authority, flag is zero */
+	sc_format_path("3F007F21", &cert_info.path);
+	strlcpy(cert_obj.label, "Cardholder certificate", sizeof(cert_obj.label));
+
+	r = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
+	if (r < 0)
+		return SC_ERROR_INTERNAL;
+
 	return 0;
 
 failed:	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Failed to initialize OpenPGP emulation: %s\n",
