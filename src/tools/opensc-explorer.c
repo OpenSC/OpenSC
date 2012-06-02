@@ -183,7 +183,7 @@ static struct command	cmds[] = {
 		"send a custom apdu command"		},
 	{ do_asn1,
 		"asn1",	"[<file id>]",
-		"decode an asn1 file"			},
+		"decode an ASN.1 file"			},
 	{ do_debug,
 		"debug",	"[<value>]",
 		"get/set the debug level"		},
