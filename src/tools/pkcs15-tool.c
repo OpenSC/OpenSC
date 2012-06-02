@@ -141,7 +141,7 @@ static const char *option_help[] = {
 	"Outputs to file <arg>",
 	"Disable card caching",
 	"The auth ID of the PIN to use",
-	"Specify AID of the on-card PKCS#15 application to be binded to (in hexadecimal form)",
+	"Specify AID of the on-card PKCS#15 application to bind to (in hexadecimal form)",
 	"Wait for card insertion",
 	"Verbose operation. Use several times to enable debug output.",
 };
