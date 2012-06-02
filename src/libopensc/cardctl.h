@@ -228,7 +228,13 @@ enum {
 	SC_CARDCTL_IASECC_SDO_GET_DATA,
 	SC_CARDCTL_IASECC_SDO_GENERATE,
 	SC_CARDCTL_IASECC_SDO_CREATE,
-	SC_CARDCTL_IASECC_SDO_DELETE
+	SC_CARDCTL_IASECC_SDO_DELETE,
+
+	/*
+	 * OpenPGP
+	 */
+	 SC_CARDCTL_OPENPGP_BASE = _CTL_PREFIX('P', 'G', 'P'),
+	 SC_CARDCTL_OPENPGP_GENERATE_KEY
 };
 
 enum {
@@ -786,6 +792,21 @@ typedef struct sc_cardctl_piv_genkey_info_st {
 	unsigned int    ecpoint_len;    /* EC */
 
 } sc_cardctl_piv_genkey_info_t;
+
+/*
+ * OpenPGP
+ */
+#define SC_OPENPGP_KEY_SIGN		1
+#define SC_OPENPGP_KEY_ENCR		2
+#define SC_OPENPGP_KEY_AUTH		3
+
+typedef struct sc_cardctl_openpgp_keygen_info {
+	u8 keytype;		      /* SC_OPENPGP_KEY_ */
+	u8 *modulus;          /* New-generated pubkey info responded from the card */
+	size_t modulus_len;   /* Length of modulus in byte */
+	u8 *exponent;
+	size_t exponent_len;
+} sc_cardctl_openpgp_keygen_info_t;
 
 #ifdef __cplusplus
 }
