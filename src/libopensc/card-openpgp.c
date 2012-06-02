@@ -546,27 +546,27 @@ pgp_set_blob(struct blob *blob, const u8 *data, size_t len)
 static int
 pgp_attach_acl(sc_card_t *card, sc_file_t *file, struct do_info *info)
 {
-	int waccess = info->access & WRITE_MASK;
-	int raccess = info->access & READ_MASK;
 	sc_acl_entry_t *acl;
 	unsigned int method = SC_AC_NONE;
 	unsigned long key_ref = 0;
 
 	/* Write access */
-	if (waccess == WRITE_NEVER) {
+	switch (info->access & WRITE_MASK) {
+	case WRITE_NEVER:
 		method = SC_AC_NEVER;
-	}
-	else if (waccess == WRITE_PIN1) {
+		break;
+	case WRITE_PIN1:
 		method = SC_AC_CHV;
-		key_ref = 0x81;
-	}
-	else if (waccess == WRITE_PIN2) {
+		key_ref = 0x01;
+		break;
+	case WRITE_PIN2:
 		method = SC_AC_CHV;
-		key_ref = 0x82;
-	}
-	else if (waccess == WRITE_PIN3) {
+		key_ref = 0x01;
+		break;
+	case WRITE_PIN3:
 		method = SC_AC_CHV;
-		key_ref = 0x83;
+		key_ref = 0x01;
+		break;
 	}
 
 	if (method != SC_AC_NONE || key_ref != 0) {
@@ -579,21 +579,24 @@ pgp_attach_acl(sc_card_t *card, sc_file_t *file, struct do_info *info)
 	method = SC_AC_NONE;
 	key_ref = 0;
 	/* Read access */
-	if (raccess == READ_NEVER) {
+	switch (info->access & READ_MASK) {
+	case READ_NEVER:
 		method = SC_AC_NEVER;
-	}
-	else if (raccess == READ_PIN1){
+		break;
+	case READ_PIN1:
 		method = SC_AC_CHV;
-		key_ref = 0x81;
-	}
-	else if (raccess == READ_PIN2){
+		key_ref = 0x01;
+		break;
+	case READ_PIN2:
 		method = SC_AC_CHV;
-		key_ref = 0x82;
-	}
-	else if (raccess == READ_PIN3){
+		key_ref = 0x01;
+		break;
+	case READ_PIN3:
 		method = SC_AC_CHV;
-		key_ref = 0x83;
+		key_ref = 0x01;
+		break;
 	}
+
 	if (method != SC_AC_NONE || key_ref != 0) {
 		sc_file_add_acl_entry(file, SC_AC_OP_READ, method, key_ref);
 	}
