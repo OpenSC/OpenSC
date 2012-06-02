@@ -595,7 +595,7 @@ pgp_attach_acl(sc_card_t *card, sc_file_t *file, struct do_info *info)
 		key_ref = 0x83;
 	}
 	if (method != SC_AC_NONE || key_ref != 0) {
-		sc_file_add_acl_entry(file, SC_AC_OP_READ, SC_AC_CHV, key_ref);
+		sc_file_add_acl_entry(file, SC_AC_OP_READ, method, key_ref);
 	}
 }
 
