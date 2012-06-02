@@ -57,17 +57,17 @@ typedef struct _pgp_pin_cfg {
  * "Signature PIN2 & "Encryption PIN" are two different PINs - not sync'ed by hardware
  */
 static const pgp_pin_cfg_t	pin_cfg_v1[3] = {
-	{ "Signature PIN",  0x81, PGP_USER_PIN_FLAGS,  6, 0 },	// used for PSO:CDS
-	{ "Encryption PIN", 0x82, PGP_USER_PIN_FLAGS,  6, 1 },	// used for PSO:DEC, INT-AUT, {GET,PUT} DATA
-	{ "Admin PIN",      0x83, PGP_ADMIN_PIN_FLAGS, 8, 2 }
+	{ "Signature PIN",  0x01, PGP_USER_PIN_FLAGS,  6, 0 },	// used for PSO:CDS
+	{ "Encryption PIN", 0x02, PGP_USER_PIN_FLAGS,  6, 1 },	// used for PSO:DEC, INT-AUT, {GET,PUT} DATA
+	{ "Admin PIN",      0x03, PGP_ADMIN_PIN_FLAGS, 8, 2 }
 };
 /* OpenPGP cards v2:
- * "User PIN (sig)" & "User PIN" are the same PIN, but c$use different references depending on action
+ * "User PIN (sig)" & "User PIN" are the same PIN, but use different references depending on action
  */
 static const pgp_pin_cfg_t	pin_cfg_v2[3] = {
-	{ "User PIN (sig)", 0x81, PGP_USER_PIN_FLAGS,  6, 0 },	// used for PSO:CDS
-	{ "User PIN",       0x82, PGP_USER_PIN_FLAGS,  6, 0 },	// used for PSO:DEC, INT-AUT, {GET,PUT} DATA
-	{ "Admin PIN",      0x83, PGP_ADMIN_PIN_FLAGS, 8, 2 }
+	{ "User PIN (sig)", 0x01, PGP_USER_PIN_FLAGS,  6, 0 },	// used for PSO:CDS
+	{ "User PIN",       0x02, PGP_USER_PIN_FLAGS,  6, 0 },	// used for PSO:DEC, INT-AUT, {GET,PUT} DATA
+	{ "Admin PIN",      0x03, PGP_ADMIN_PIN_FLAGS, 8, 2 }
 };
 
 
