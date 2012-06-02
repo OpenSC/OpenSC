@@ -106,6 +106,11 @@ enum _card_state {
 	CARD_STATE_ACTIVATED      = 0x05
 };
 
+enum _key_type {
+	KEY_SIGN                   = 1,
+	KEY_ENCR                   = 2,
+	KEY_AUTH                   = 3
+};
 
 struct blob {
 	struct blob *	next;	/* pointer to next sibling */
@@ -1374,10 +1379,147 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 	LOG_FUNC_RETURN(card->ctx, apdu.resplen);
 }
 
+/**
+ * Internal: Parse response data of key generation and update blob.
+ **/
+static int
+pgp_parse_and_update_pubkey_info(sc_card_t *card, u8* data, size_t data_len,
+								 sc_cardctl_openpgp_keygen_info_t *key_info)
+{
+	struct pgp_priv_data *priv = DRVDATA(card);
+	struct blob *kinfo_blob;
+	struct blob *modulus_blob;
+	struct blob *exponent_blob;
+	u8 *in = data;
+	int r;
+
+	LOG_FUNC_CALLED(card->ctx);
+	while (data_len > (in - data)) {
+		unsigned int cla, tag, tmptag;
+		size_t		len;
+		u8	*part = in;
+
+		/* Parse TLV structure */
+		r = sc_asn1_read_tag((const u8**)&part,
+							 data_len - (in - data),
+							 &cla, &tag, &len);
+		LOG_TEST_RET(card->ctx, r, "Unexpected end of contents.");
+		/* Undo ASN1's split of tag & class */
+		for (tmptag = tag; tmptag > 0x0FF; tmptag >>= 8) {
+			cla <<= 8;
+		}
+		tag |= cla;
+
+		if (tag == 0x7f49) {
+			r = pgp_get_blob(card, priv->mf, tag, &kinfo_blob);
+			LOG_TEST_RET(card->ctx, r, "Can not get the blob storing pubkey info.");
+		}
+		else if (tag == 0x0081) {
+			/* Set the output data */
+			if (key_info->modulus) {
+				memcpy(key_info->modulus, part, len);
+				key_info->modulus_len = len;
+			}
+			/* Update the corresponding blob content */
+			r = pgp_get_blob(card, kinfo_blob, tag, &modulus_blob);
+			LOG_TEST_RET(card->ctx, r, "Can not get the blob storing modulus info.");
+			pgp_set_blob(modulus_blob, part, len);
+		}
+		else if (tag == 0x0082) {
+			/* Set the output data */
+			if (key_info->exponent) {
+				memcpy(key_info->exponent, part, len);
+				key_info->exponent_len = len;
+			}
+			/* Update the corresponding blob content */
+			r = pgp_get_blob(card, kinfo_blob, tag, &exponent_blob);
+			LOG_TEST_RET(card->ctx, r, "Can not get the blob storing exponent info.");
+			pgp_set_blob(exponent_blob, part, len);
+		}
+
+		/* Go to next part to parse */
+		in = part + len;
+	}
+	LOG_FUNC_RETURN(card->ctx, r);
+}
+
+/**
+ * Generate key
+ **/
+static int pgp_gen_key(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_info)
+{
+	struct pgp_priv_data *priv = DRVDATA(card);
+	struct blob *algo_blob;
+	sc_apdu_t apdu;
+	unsigned int modulus_bitlen;
+	u8 apdu_case;
+	int r = SC_SUCCESS;
+
+	if (key_info->keytype == SC_OPENPGP_KEY_SIGN)
+		apdu.data = "\xb6";
+	else if (key_info->keytype == SC_OPENPGP_KEY_ENCR)
+		apdu.data = "\xb8";
+	else if (key_info->keytype == SC_OPENPGP_KEY_AUTH)
+		apdu.data = "\xa4";
+	else {
+		sc_log(card->ctx, "Unknown key type %X.", key_info->keytype);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+	}
+	apdu.datalen = 2;  /* Data = B600 */
+	apdu.lc = 2;
+
+	/* Get supported modulus length, to specify Le for APDU */
+	r = pgp_get_blob(card, priv->mf, (0x00C0 | key_info->keytype), &algo_blob);
+	LOG_TEST_RET(card->ctx, r, "Don't know supported modulus length");
+	modulus_bitlen = bebytes2ushort(algo_blob->data + 1);  /* The modulus length is coded in byte 2 & 3 */
+
+	/* Test whether we will need extended length mode. 1900 is an
+     * arbitrary length which for sure fits into a short apdu.
+     * This idea is borrowed from GnuPG code.  */
+	if (card->caps & SC_CARD_CAP_APDU_EXT && modulus_bitlen > 1900) {
+		apdu.le = card->max_recv_size;
+		apdu_case = SC_APDU_CASE_4_EXT;
+	}
+	else {
+		apdu.le = 256;
+		apdu_case = SC_APDU_CASE_4_SHORT;
+	}
+
+	/* Buffer to receive response */
+	apdu.resp = malloc(apdu.le);
+	if (apdu.resp == NULL) {
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
+	}
+	apdu.resplen = apdu.le;
+
+	sc_format_apdu(card, &apdu, apdu_case, 0x47, 0x80, 0);
+	r = sc_transmit_apdu(card, &apdu);
+	if (r < 0) {
+		sc_log(card->ctx, "APDU transmit failed. Error %s.", sc_strerror(r));
+		goto finish;
+	}
+
+	/* Check response */
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	/* Instruct more in case of error */
+	if (r == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Please verify PIN first.");
+		goto finish;
+	}
+
+	/* Parse the returned data (pubkey info) and update blob */
+	r = pgp_parse_and_update_pubkey_info(card, apdu.resp, apdu.resplen, key_info);
+
+finish:
+	free(apdu.resp);
+	LOG_FUNC_RETURN(card->ctx, r);
+}
 
 /* ABI: card ctl: perform special card-specific operations */
 static int pgp_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 {
+	int r;
+
 	LOG_FUNC_CALLED(card->ctx);
 
 	switch(cmd) {
@@ -1385,6 +1527,10 @@ static int pgp_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 		memmove((sc_serial_number_t *) ptr, &card->serialnr, sizeof(card->serialnr));
 		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 		break;
+
+	case SC_CARDCTL_OPENPGP_GENERATE_KEY:
+		r = pgp_gen_key(card, (sc_cardctl_openpgp_keygen_info_t *) ptr);
+		LOG_FUNC_RETURN(card->ctx, r);
 	}
 
 	LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
