@@ -230,7 +230,7 @@ void util_print_usage_and_die(const char *app_name, const struct option options[
 			break;
 		}
 		if (isascii(options[i].val) &&
-		    isprint(options[i].val) && !isascii(options[i].val))
+		    isprint(options[i].val) && !isspace(options[i].val))
 			sprintf(buf, "-%c, --%s%s", options[i].val, options[i].name, arg_str);
 		else
 			sprintf(buf, "    --%s%s", options[i].name, arg_str);
