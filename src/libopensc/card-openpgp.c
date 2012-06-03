@@ -561,11 +561,11 @@ pgp_attach_acl(sc_card_t *card, sc_file_t *file, struct do_info *info)
 		break;
 	case WRITE_PIN2:
 		method = SC_AC_CHV;
-		key_ref = 0x01;
+		key_ref = 0x02;
 		break;
 	case WRITE_PIN3:
 		method = SC_AC_CHV;
-		key_ref = 0x01;
+		key_ref = 0x03;
 		break;
 	}
 
@@ -589,11 +589,11 @@ pgp_attach_acl(sc_card_t *card, sc_file_t *file, struct do_info *info)
 		break;
 	case READ_PIN2:
 		method = SC_AC_CHV;
-		key_ref = 0x01;
+		key_ref = 0x02;
 		break;
 	case READ_PIN3:
 		method = SC_AC_CHV;
-		key_ref = 0x01;
+		key_ref = 0x03;
 		break;
 	}
 
