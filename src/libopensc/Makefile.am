@@ -37,7 +37,7 @@ libopensc_la_SOURCES = \
 	card-asepcos.c card-akis.c card-gemsafeV1.c card-rutoken.c \
 	card-rtecp.c card-westcos.c card-myeid.c card-ias.c \
 	card-javacard.c card-itacns.c card-authentic.c \
-	card-iasecc.c iasecc-sdo.c \
+	card-iasecc.c iasecc-sdo.c iasecc-sm.c \
 	\
 	pkcs15-openpgp.c pkcs15-infocamere.c pkcs15-starcert.c \
 	pkcs15-tcos.c pkcs15-esteid.c pkcs15-postecert.c pkcs15-gemsafeGPK.c \
