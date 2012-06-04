@@ -355,7 +355,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 
 		r = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
 		if (r < 0)
-			return SC_ERROR_INTERNAL;
+			goto failed;
 	}
 
 	return 0;
