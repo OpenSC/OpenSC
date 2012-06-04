@@ -348,7 +348,9 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 		cert_info.id.value[0] = 3;
 		cert_info.id.len = 1;
 		/* Authority, flag is zero */
+		/* The path following which PKCS15 will find the content of the object */
 		sc_format_path("3F007F21", &cert_info.path);
+		/* Object label */
 		strlcpy(cert_obj.label, "Cardholder certificate", sizeof(cert_obj.label));
 
 		r = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
