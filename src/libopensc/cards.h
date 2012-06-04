@@ -156,6 +156,7 @@ enum {
 	SC_CARD_TYPE_ENTERSAFE_BASE = 19000,
 	SC_CARD_TYPE_ENTERSAFE_3K,
 	SC_CARD_TYPE_ENTERSAFE_FTCOS_PK_01C,
+	SC_CARD_TYPE_ENTERSAFE_FTCOS_EPASS2003,
 
 	/* MyEID cards */
 	SC_CARD_TYPE_MYEID_BASE = 20000,
@@ -221,6 +222,7 @@ extern sc_card_driver_t *sc_get_javacard_driver(void);
 extern sc_card_driver_t *sc_get_itacns_driver(void);
 extern sc_card_driver_t *sc_get_authentic_driver(void);
 extern sc_card_driver_t *sc_get_iasecc_driver(void);
+extern sc_card_driver_t *sc_get_epass2003_driver(void);
 
 #ifdef __cplusplus
 }
