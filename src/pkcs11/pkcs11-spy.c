@@ -365,6 +365,16 @@ C_Initialize(CK_VOID_PTR pInitArgs)
 
 	enter("C_Initialize");
 	print_ptr_in("pInitArgs", pInitArgs);
+
+	if (pInitArgs) {
+		CK_C_INITIALIZE_ARGS *ptr = pInitArgs;
+		fprintf(spy_output, "     flags: %ld\n", ptr->flags);
+		if (ptr->flags & CKF_LIBRARY_CANT_CREATE_OS_THREADS)
+			fprintf(spy_output, "       CKF_LIBRARY_CANT_CREATE_OS_THREADS\n");
+		if (ptr->flags & CKF_OS_LOCKING_OK)
+			fprintf(spy_output, "       CKF_OS_LOCKING_OK\n");
+	}
+
 	rv = po->C_Initialize(pInitArgs);
 	return retne(rv);
 }
