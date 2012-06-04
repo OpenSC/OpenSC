@@ -34,6 +34,12 @@
 #define INVALIDATE_CARD_CACHE_IN_UNLOCK
 */
 
+#ifdef ENABLE_SM
+static int sc_card_sm_load(sc_card_t *card, const char *path, const char *module);
+static int sc_card_sm_unload(sc_card_t *card);
+static int sc_card_sm_check(sc_card_t *card);
+#endif
+
 int sc_check_sw(sc_card_t *card, unsigned int sw1, unsigned int sw2)
 {
 	if (card == NULL)
@@ -93,6 +99,10 @@ static void sc_card_free(sc_card_t *card)
 	free(card->ops);
 	if (card->algorithms != NULL)
 		free(card->algorithms);
+	if (card->cache.current_ef)
+		sc_file_free(card->cache.current_ef);
+	if (card->cache.current_df)
+		sc_file_free(card->cache.current_df);
 	if (card->mutex != NULL) {
 		int r = sc_mutex_destroy(card->ctx, card->mutex);
 		if (r != SC_SUCCESS)
@@ -133,7 +143,7 @@ int sc_connect_card(sc_reader_t *reader, sc_card_t **card_out)
 
 	/* See if the ATR matches any ATR specified in the config file */
 	if ((driver = ctx->forced_driver) == NULL) {
-		sc_debug(ctx, SC_LOG_DEBUG_MATCH, "matching configured ATRs");
+		sc_log(ctx, "matching configured ATRs");
 		for (i = 0; ctx->card_drivers[i] != NULL; i++) {
 			driver = ctx->card_drivers[i];
 
@@ -142,12 +152,12 @@ int sc_connect_card(sc_reader_t *reader, sc_card_t **card_out)
 				driver = NULL;
 				continue;
 			}
-			sc_debug(ctx, SC_LOG_DEBUG_MATCH, "trying driver: %s", driver->short_name);
+			sc_log(ctx, "trying driver '%s'", driver->short_name);
 			idx = _sc_match_atr(card, driver->atr_map, NULL);
 			if (idx >= 0) {
 				struct sc_atr_table *src = &driver->atr_map[idx];
 
-				sc_debug(ctx, SC_LOG_DEBUG_MATCH, "matched: %s", driver->name);
+				sc_log(ctx, "matched driver '%s'", driver->name);
 				/* It's up to card driver to notice these correctly */
 				card->name = src->name;
 				card->type = src->type;
@@ -166,8 +176,7 @@ int sc_connect_card(sc_reader_t *reader, sc_card_t **card_out)
 		if (card->ops->init != NULL) {
 			r = card->ops->init(card);
 			if (r) {
-				sc_debug(ctx, SC_LOG_DEBUG_MATCH, "driver '%s' init() failed: %s",
-					card->driver->name, sc_strerror(r));
+				sc_log(ctx, "driver '%s' init() failed: %s", card->driver->name, sc_strerror(r));
 				goto err;
 			}
 		}
@@ -177,20 +186,19 @@ int sc_connect_card(sc_reader_t *reader, sc_card_t **card_out)
 			struct sc_card_driver *drv = ctx->card_drivers[i];
 			const struct sc_card_operations *ops = drv->ops;
 
-			sc_debug(ctx, SC_LOG_DEBUG_MATCH, "trying driver: %s", drv->short_name);
+			sc_log(ctx, "trying driver '%s'", drv->short_name);
 			if (ops == NULL || ops->match_card == NULL)
 				continue;
 			/* Needed if match_card() needs to talk with the card (e.g. card-muscle) */
 			*card->ops = *ops;
 			if (ops->match_card(card) != 1)
 				continue;
-			sc_debug(ctx, SC_LOG_DEBUG_MATCH, "matched: %s", drv->name);
+			sc_log(ctx, "matched: %s", drv->name);
 			memcpy(card->ops, ops, sizeof(struct sc_card_operations));
 			card->driver = drv;
 			r = ops->init(card);
 			if (r) {
-				sc_debug(ctx, SC_LOG_DEBUG_MATCH, "driver '%s' init() failed: %s", drv->name,
-				      sc_strerror(r));
+				sc_log(ctx, "driver '%s' init() failed: %s", drv->name, sc_strerror(r));
 				if (r == SC_ERROR_INVALID_CARD) {
 					card->driver = NULL;
 					continue;
@@ -201,7 +209,7 @@ int sc_connect_card(sc_reader_t *reader, sc_card_t **card_out)
 		}
 	}
 	if (card->driver == NULL) {
-		sc_debug(ctx, SC_LOG_DEBUG_MATCH, "unable to find driver for inserted card");
+		sc_log(ctx, "unable to find driver for inserted card");
 		r = SC_ERROR_INVALID_CARD;
 		goto err;
 	}
@@ -222,6 +230,16 @@ int sc_connect_card(sc_reader_t *reader, sc_card_t **card_out)
 
 	sc_log(ctx, "card info name:'%s', type:%i, flags:0x%X, max_send/recv_size:%i/%i",
 		card->name, card->type, card->flags, card->max_send_size, card->max_recv_size);
+
+#ifdef ENABLE_SM
+        /* Check, if secure messaging module present. */
+	r = sc_card_sm_check(card);
+	if (r)   {
+		sc_log(ctx, "cannot load secure messaging module");
+		goto err;
+	}
+#endif
+
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 err:
 	if (connected)
@@ -253,6 +271,11 @@ int sc_disconnect_card(sc_card_t *card)
 		if (r)
 			sc_log(ctx, "disconnect() failed: %s", sc_strerror(r));
 	}
+
+#ifdef ENABLE_SM
+	/* release SM related resources */
+	sc_card_sm_unload(card);
+#endif
 
 	sc_card_free(card);
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
@@ -290,7 +313,7 @@ int sc_lock(sc_card_t *card)
 	int r = 0, r2 = 0;
 
 	LOG_FUNC_CALLED(card->ctx);
-	
+
 	if (card == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	r = sc_mutex_lock(card->ctx, card->mutex);
@@ -423,6 +446,13 @@ int sc_read_binary(sc_card_t *card, unsigned int idx,
 	if (count == 0)
 		return 0;
 
+#ifdef ENABLE_SM
+	if (card->sm_ctx.ops.read_binary)   {
+		r = card->sm_ctx.ops.read_binary(card, idx, buf, count);
+		if (r)
+			LOG_FUNC_RETURN(card->ctx, r);
+	}
+#endif
 	if (card->ops->read_binary == NULL)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 
@@ -508,6 +538,15 @@ int sc_update_binary(sc_card_t *card, unsigned int idx,
 	sc_log(card->ctx, "called; %d bytes at index %d", count, idx);
 	if (count == 0)
 		return 0;
+
+#ifdef ENABLE_SM
+	if (card->sm_ctx.ops.update_binary)   {
+		r = card->sm_ctx.ops.update_binary(card, idx, buf, count);
+		if (r)
+			LOG_FUNC_RETURN(card->ctx, r);
+	}
+#endif
+
 	if (card->ops->update_binary == NULL)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 
@@ -786,7 +825,7 @@ sc_algorithm_info_t * sc_card_find_ec_alg(sc_card_t *card,
 {
 	return sc_card_find_alg(card, SC_ALGORITHM_EC, key_length);
 }
-	
+
 int _sc_card_add_rsa_alg(sc_card_t *card, unsigned int key_length,
 			 unsigned long flags, unsigned long exponent)
 {
@@ -854,7 +893,7 @@ static int match_atr_table(sc_context_t *ctx, struct sc_atr_table *table, struct
 			mbin_len = sizeof(mbin);
 			sc_hex_to_bin(matr, mbin, &mbin_len);
 			if (mbin_len != fix_bin_len) {
-				sc_log(ctx, "length of atr and atr mask do not match - ignored: %s - %s", tatr, matr); 
+				sc_log(ctx, "length of atr and atr mask do not match - ignored: %s - %s", tatr, matr);
 				continue;
 			}
 			for (s = 0; s < tbin_len; s++) {
@@ -982,10 +1021,10 @@ scconf_block *sc_get_conf_block(sc_context_t *ctx, const char *name1, const char
 {
 	int i;
 	scconf_block *conf_block = NULL;
-	
+
 	for (i = 0; ctx->conf_blocks[i] != NULL; i++) {
 		scconf_block **blocks;
-		
+
 		blocks = scconf_find_blocks(ctx->conf, ctx->conf_blocks[i], name1, name2);
 		if (blocks != NULL) {
 			conf_block = blocks[0];
@@ -1005,7 +1044,7 @@ void sc_print_cache(struct sc_card *card)   {
 
 	if (!card->cache.valid || (!card->cache.current_ef && !card->cache.current_df))   {
 		sc_log(ctx, "card cache invalid");
-		return; 
+		return;
 	}
 
 	if (card->cache.current_ef)
@@ -1018,3 +1057,206 @@ void sc_print_cache(struct sc_card *card)   {
 				sc_print_path(&card->cache.current_df->path));
 }
 
+
+#ifdef ENABLE_SM
+static int
+sc_card_sm_unload(struct sc_card *card)
+{
+	if (card->sm_ctx.module.ops.module_cleanup)
+		card->sm_ctx.module.ops.module_cleanup(card->ctx);
+
+	if (card->sm_ctx.module.handle)
+		sc_dlclose(card->sm_ctx.module.handle);
+	card->sm_ctx.module.handle = NULL;
+	return 0;
+}
+
+
+static int
+sc_card_sm_load(struct sc_card *card, const char *module_path, const char *in_module)
+{
+	struct sc_context *ctx = NULL;
+	int rv = SC_ERROR_INTERNAL;
+	char *module = NULL;
+#ifdef _WIN32
+	char temp_path[PATH_MAX];
+	int temp_len;
+	long rc;
+	HKEY hKey;
+	const char path_delim = '\\';
+#else
+	const char path_delim = '/';
+#endif
+
+	assert(card != NULL);
+	ctx = card->ctx;
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
+	if (!in_module)
+		return sc_card_sm_unload(card);
+
+#ifdef _WIN32
+	if (!module_path) {
+		rc = RegOpenKeyEx( HKEY_CURRENT_USER, "Software\\OpenSC Project\\OpenSC", 0, KEY_QUERY_VALUE, &hKey );
+		if( rc == ERROR_SUCCESS ) {
+			temp_len = PATH_MAX;
+			rc = RegQueryValueEx( hKey, "SmDir", NULL, NULL, (LPBYTE) temp_path, &temp_len);
+			if( (rc == ERROR_SUCCESS) && (temp_len < PATH_MAX) )
+				module_path = temp_path;
+			RegCloseKey( hKey );
+		}
+	}
+	if (!module_path) {
+		rc = RegOpenKeyEx( HKEY_LOCAL_MACHINE, "Software\\OpenSC Project\\OpenSC", 0, KEY_QUERY_VALUE, &hKey );
+		if( rc == ERROR_SUCCESS ) {
+			temp_len = PATH_MAX;
+			rc = RegQueryValueEx( hKey, "SmDir", NULL, NULL, (LPBYTE) temp_path, &temp_len);
+			if(rc == ERROR_SUCCESS && temp_len < PATH_MAX)
+				module_path = temp_path;
+			RegCloseKey( hKey );
+		}
+	}
+#endif
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "SM module '%s' located in '%s'", in_module, module_path);
+	if (module_path)   {
+		int sz = strlen(in_module) + strlen(module_path) + 3;
+		module = malloc(sz);
+		if (module)
+			snprintf(module, sz, "%s%c%s", module_path, path_delim, in_module);
+	}
+	else   {
+		module = strdup(in_module);
+	}
+
+	if (!module)
+		return SC_ERROR_MEMORY_FAILURE;
+
+	sc_log(ctx, "try to load SM module '%s'", module);
+	do  {
+		struct sm_module_operations *mod_ops = &card->sm_ctx.module.ops;
+		void *mod_handle;
+
+		card->sm_ctx.module.handle = sc_dlopen(module);
+		if (!card->sm_ctx.module.handle)   {
+			sc_log(ctx, "cannot open dynamic library '%s': %s", module, sc_dlerror());
+			break;
+		}
+		mod_handle = card->sm_ctx.module.handle;
+
+		mod_ops->initialize = sc_dlsym(mod_handle, "initialize");
+		if (!mod_ops->initialize)   {
+			sc_log(ctx, "SM handler 'initialize' not exported: %s", sc_dlerror());
+			break;
+		}
+
+		mod_ops->get_apdus  = sc_dlsym(mod_handle, "get_apdus");
+		if (!mod_ops->get_apdus)   {
+			sc_log(ctx, "SM handler 'get_apdus' not exported: %s", sc_dlerror());
+			break;
+		}
+
+		mod_ops->finalize  = sc_dlsym(mod_handle, "finalize");
+		if (!mod_ops->finalize)
+			sc_log(ctx, "SM handler 'finalize' not exported -- ignored");
+
+		mod_ops->module_init  = sc_dlsym(mod_handle, "module_init");
+		if (!mod_ops->module_init)
+			sc_log(ctx, "SM handler 'module_init' not exported -- ignored");
+
+		mod_ops->module_cleanup  = sc_dlsym(mod_handle, "module_cleanup");
+		if (!mod_ops->module_cleanup)
+			sc_log(ctx, "SM handler 'module_cleanup' not exported -- ignored");
+
+		mod_ops->test  = sc_dlsym(mod_handle, "test");
+		if (mod_ops->test)
+			sc_log(ctx, "SM handler 'test' not exported -- ignored");
+
+		rv = 0;
+		break;
+	} while(0);
+
+	if (rv)
+		sc_card_sm_unload(card);
+
+	card->sm_ctx.sm_mode = SM_MODE_ACL;
+	if (module)
+		free(module);
+
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, rv);
+}
+
+
+/* get SM related configuration settings and initialize SM session, SM module, ... */
+static int
+sc_card_sm_check(struct sc_card *card)
+{
+	const char *sm = NULL, *module_name = NULL, *module_path = NULL, *module_data = NULL, *sm_mode = NULL;
+	struct sc_context *ctx = card->ctx;
+	scconf_block *atrblock = NULL, *sm_conf_block = NULL;
+	int rv, ii;
+
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
+
+	/* get the name of card specific SM configuration section */
+	atrblock = _sc_match_atr_block(ctx, card->driver, &card->atr);
+	if (atrblock == NULL)
+		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+	sm = scconf_get_str(atrblock, "secure_messaging", NULL);
+	if (!sm)
+		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+
+	/* get SM configuration section by the name */
+	sc_log(ctx, "secure_messaging configuration block '%s'", sm);
+        for (ii = 0; ctx->conf_blocks[ii]; ii++) {
+		scconf_block **blocks;
+
+                blocks = scconf_find_blocks(ctx->conf, ctx->conf_blocks[ii], "secure_messaging", sm);
+		if (blocks) {
+			sm_conf_block = blocks[0];
+			free(blocks);
+		}
+                if (sm_conf_block != NULL)
+			break;
+	}
+
+	if (!sm_conf_block)
+		LOG_TEST_RET(ctx, SC_ERROR_INCONSISTENT_CONFIGURATION, "SM configuration block not preset");
+
+	/* check if an external SM module has to be used */
+	module_path = scconf_get_str(sm_conf_block, "module_path", NULL);
+	module_name = scconf_get_str(sm_conf_block, "module_name", NULL);
+	sc_log(ctx, "SM module '%s' in  '%s'", module_name, module_path);
+	if (!module_name)
+		LOG_TEST_RET(ctx, SC_ERROR_INCONSISTENT_CONFIGURATION, "Invalid SM configuration: module not defined");
+
+	rv = sc_card_sm_load(card, module_path, module_name);
+	LOG_TEST_RET(ctx, rv, "Failed to load SM module");
+
+	strncpy(card->sm_ctx.module.filename, module_name, sizeof(card->sm_ctx.module.filename));
+	strncpy(card->sm_ctx.config_section, sm, sizeof(card->sm_ctx.config_section));
+
+	/* allocate resources for the external SM module */
+	sc_log(ctx, "'module_init' handler %p", card->sm_ctx.module.ops.module_init);
+	if (card->sm_ctx.module.ops.module_init)   {
+		module_data = scconf_get_str(sm_conf_block, "module_data", NULL);
+		sc_log(ctx, "module_data '%s'", module_data);
+
+		rv = card->sm_ctx.module.ops.module_init(ctx, module_data);
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Cannot initialize SM module");
+	}
+
+	/* initialize SM session in the case of 'APDU TRANSMIT' SM mode */
+	sm_mode = scconf_get_str(sm_conf_block, "mode", NULL);
+	sc_log(ctx, "SM mode '%s'; 'open' handler %p", sm_mode, card->sm_ctx.ops.open);
+	if (sm_mode && !strcasecmp("Transmit", sm_mode))   {
+		if (!card->sm_ctx.ops.open || !card->sm_ctx.ops.get_sm_apdu || !card->sm_ctx.ops.free_sm_apdu)
+			LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "'Transmit' SM asked but not supported by card driver");
+
+		card->sm_ctx.sm_mode = SM_MODE_TRANSMIT;
+		rv = card->sm_ctx.ops.open(card);
+		LOG_TEST_RET(ctx, rv, "Cannot initialize SM");
+	}
+
+	sc_log(ctx, "SM mode:%X", card->sm_ctx.sm_mode);
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, rv);
+}
+#endif
