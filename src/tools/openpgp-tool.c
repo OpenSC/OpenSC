@@ -36,6 +36,8 @@
 
 #define	OPT_RAW		256
 #define	OPT_PRETTY	257
+#define	OPT_VERIFY	258
+#define	OPT_PIN	    259
 
 /* define structures */
 struct ef_name_map {
@@ -69,6 +71,10 @@ static int opt_genkey = 0;
 static int opt_keylen = 0;
 static u8 key_id = 0;
 static unsigned int key_len = 2048;
+static int opt_verify = 0;
+static char *verifytype = NULL;
+static int opt_pin = 0;
+static char *pin = NULL;
 
 static const char *app_name = "openpgp-tool";
 
@@ -85,6 +91,8 @@ static const struct option options[] = {
 	{ "help",      no_argument,       NULL, 'h'        },
 	{ "verbose",   no_argument,       NULL, 'v'        },
 	{ "version",   no_argument,       NULL, 'V'        },
+	{ "verify",    required_argument, NULL, OPT_VERIFY },
+	{ "pin",       required_argument, NULL, OPT_PIN },
 	{ NULL, 0, NULL, 0 }
 };
 
@@ -100,7 +108,9 @@ static const char *option_help[] = {
 /* L */ "Key length (default 2048)",
 /* h */	"Print this help message",
 /* v */	"Verbose operation. Use several times to enable debug output.",
-/* V */	"Show version number"
+/* V */	"Show version number",
+	"Verify PIN (CHV1, CHV2, CHV3...)",
+	"PIN string"
 };
 
 static const struct ef_name_map openpgp_data[] = {
@@ -217,7 +227,7 @@ static int decode_options(int argc, char **argv)
 {
 	int c;
 
-	while ((c = getopt_long(argc, argv,"r:x:CUGLhwvV", options, (int *) 0)) != EOF) {
+	while ((c = getopt_long(argc, argv,"r:x:CUG:L:hwvV", options, (int *) 0)) != EOF) {
 		switch (c) {
 		case 'r':
 			opt_reader = optarg;
@@ -232,6 +242,18 @@ static int decode_options(int argc, char **argv)
 			break;
 		case OPT_PRETTY:
 			opt_raw = 0;
+			break;
+		case OPT_VERIFY:
+			opt_verify++;
+			if (verifytype)
+				free(verifytype);
+			verifytype = strdup(optarg);
+			break;
+		case OPT_PIN:
+			opt_pin++;
+			if (pin)
+				free(pin);
+			pin = strdup(optarg);
 			break;
 		case 'C':
 			opt_cardinfo++;
@@ -392,6 +414,30 @@ int do_genkey(sc_card_t *card, u8 key_id, unsigned int key_len)
 	return 0;
 }
 
+int do_verify(sc_card_t *card, u8 *type, u8* pin)
+{
+	struct sc_pin_cmd_data data;
+	int tries_left;
+	int r;
+	if (!type || !pin)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	if (strncasecmp("CHV", type, 3) != 0)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	if (type[3] < '1' || type[3] > '3')
+		return SC_ERROR_INVALID_PIN_REFERENCE;
+
+	memset(&data, 0, sizeof(struct sc_pin_cmd_data));
+	data.cmd = SC_PIN_CMD_VERIFY;
+	data.pin_type = SC_AC_CHV;
+	data.pin_reference = type[3] - '0';
+	data.pin1.data = pin;
+	data.pin1.len = strlen(pin);
+	r = sc_pin_cmd(card, &data, &tries_left);
+	return r;
+}
+
 int main(int argc, char **argv)
 {
 	sc_context_t *ctx = NULL;
@@ -446,6 +492,10 @@ int main(int argc, char **argv)
 
 	if (opt_userinfo)
 		exit_status |= do_userinfo(card);
+
+	if (opt_verify && opt_pin) {
+		exit_status |= do_verify(card, verifytype, pin);
+	}
 
 	if (opt_genkey)
 		exit_status |= do_genkey(card, key_id, key_len);
