@@ -31,6 +31,7 @@
 #include "libopensc/opensc.h"
 #include "libopensc/asn1.h"
 #include "libopensc/cards.h"
+#include "libopensc/cardctl.h"
 #include "util.h"
 
 #define	OPT_RAW		256
@@ -64,6 +65,10 @@ static int verbose = 0;
 static int opt_userinfo = 0;
 static int opt_cardinfo = 0;
 static char *exec_program = NULL;
+static int opt_genkey = 0;
+static int opt_keylen = 0;
+static u8 key_id = 0;
+static unsigned int key_len = 2048;
 
 static const char *app_name = "openpgp-tool";
 
@@ -75,6 +80,8 @@ static const struct option options[] = {
 	{ "pretty",    no_argument,       NULL, OPT_PRETTY },
 	{ "card-info", no_argument,       NULL, 'C'        },
 	{ "user-info", no_argument,       NULL, 'U'        },
+	{ "gen-key",   required_argument, NULL, 'G'        },
+	{ "key-length",required_argument, NULL, 'L'        },
 	{ "help",      no_argument,       NULL, 'h'        },
 	{ "verbose",   no_argument,       NULL, 'v'        },
 	{ "version",   no_argument,       NULL, 'V'        },
@@ -89,6 +96,8 @@ static const char *option_help[] = {
 	"Print values in pretty format",
 /* C */	NULL,
 /* U */	"Show card holder information",
+/* G */ "Generate key",
+/* L */ "Key length (default 2048)",
 /* h */	"Print this help message",
 /* v */	"Verbose operation. Use several times to enable debug output.",
 /* V */	"Show version number"
@@ -208,7 +217,7 @@ static int decode_options(int argc, char **argv)
 {
 	int c;
 
-	while ((c = getopt_long(argc, argv,"r:x:CUhwvV", options, (int *) 0)) != EOF) {
+	while ((c = getopt_long(argc, argv,"r:x:CUGLhwvV", options, (int *) 0)) != EOF) {
 		switch (c) {
 		case 'r':
 			opt_reader = optarg;
@@ -231,6 +240,16 @@ static int decode_options(int argc, char **argv)
 		case 'U':
 			opt_userinfo++;
 			actions++;;
+			break;
+		case 'G':
+			opt_genkey++;
+			key_id = optarg[0] - '0';
+			actions++;
+			break;
+		case 'L':
+			opt_keylen++;
+			key_len = atoi(optarg);
+			actions++;
 			break;
 		case 'h':
 			util_print_usage_and_die(app_name, options, option_help, NULL);
@@ -340,6 +359,38 @@ static void bintohex(char *buf, int len)
 	}
 }
 
+int do_genkey(sc_card_t *card, u8 key_id, unsigned int key_len)
+{
+	int r;
+	sc_cardctl_openpgp_keygen_info_t key_info;
+	u8 fingerprints[60];
+	sc_path_t path;
+	sc_file_t *file;
+
+	if (key_id < 1 || key_id > 3) {
+		printf("Unknown key ID %d.\n", key_id);
+		return 1;
+	}
+	memset(&key_info, 0, sizeof(sc_cardctl_openpgp_keygen_info_t));
+	key_info.keytype = key_id;
+	key_info.modulus_len = key_len;
+	key_info.modulus = malloc(key_len/8);
+	r = sc_card_ctl(card, SC_CARDCTL_OPENPGP_GENERATE_KEY, &key_info);
+	free(key_info.modulus);
+	if (r < 0) {
+		printf("Failed to generate key. Error %s.\n", sc_strerror(r));
+		return 1;
+	}
+	sc_format_path("006E007300C5", &path);
+	r = sc_select_file(card, &path, &file);
+	r = sc_read_binary(card, 0, fingerprints, 60, 0);
+	if (r < 0) {
+		printf("Failed to retrieve fingerprints. Error %s.\n", sc_strerror(r));
+		return 1;
+	}
+	printf("Fingerprint:\n%s\n", sc_dump_hex(fingerprints + 20*(key_id - 1), 20));
+	return 0;
+}
 
 int main(int argc, char **argv)
 {
@@ -395,6 +446,9 @@ int main(int argc, char **argv)
 
 	if (opt_userinfo)
 		exit_status |= do_userinfo(card);
+
+	if (opt_genkey)
+		exit_status |= do_genkey(card, key_id, key_len);
 
 	if (exec_program) {
 		char *const largv[] = {exec_program, NULL};
