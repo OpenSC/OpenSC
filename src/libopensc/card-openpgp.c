@@ -1096,7 +1096,7 @@ pgp_put_data(sc_card_t *card, unsigned int tag, const u8 *buf, size_t buf_len)
 	struct blob	*affected_blob = NULL;
 	u8 ins = 0xDA;
 	u8 p1 = tag >> 8;
-	u8 p2 = tag;
+	u8 p2 = tag & 0xFF;
 	int r;
 
 	LOG_FUNC_CALLED(card->ctx);
@@ -1104,8 +1104,8 @@ pgp_put_data(sc_card_t *card, unsigned int tag, const u8 *buf, size_t buf_len)
 	/* Check if the tag is writable */
 	affected_blob = pgp_find_blob(card, tag);
 	if (affected_blob == NULL || (affected_blob->info->access & WRITE_MASK) == WRITE_NEVER) {
-		sc_log(card->ctx, "The %04X DO is not writable.", tag);
-		return SC_ERROR_NOT_ALLOWED;
+		sc_log(card->ctx, "DO %04X is not writable.", tag);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ALLOWED);
 	}
 
 	/* Check data size.
@@ -1114,8 +1114,8 @@ pgp_put_data(sc_card_t *card, unsigned int tag, const u8 *buf, size_t buf_len)
 	 * the driver may be sticked to a limit version number of card.
 	 * 7F21 size is soft-coded, so we can check it. */
 	if (tag == DO_CERT && buf_len > priv->max_cert_size) {
-		sc_log(card->ctx, "Data exceeds DO limit. It should be smaller than %d bytes.", priv->max_cert_size);
-		return SC_ERROR_WRONG_LENGTH;
+		sc_log(card->ctx, "Data size %ld exceeds DO size limit %ld.", buf_len, priv->max_cert_size);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_WRONG_LENGTH);
 	}
 
 	/* Extended Header list (004D DO) needs a variant of PUT DATA command */
@@ -1126,43 +1126,21 @@ pgp_put_data(sc_card_t *card, unsigned int tag, const u8 *buf, size_t buf_len)
 	}
 
 	/* Build APDU */
-	/* Large data can be sent via extended APDU, if card supports */
-	if (buf_len > 256 && card->caps & SC_CARD_CAP_APDU_EXT) {
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_EXT, ins, p1, p2);
-	}
-	/* Card/Reader does not support extended, use command chaining, if supported */
-	else if (buf_len > 256 && priv->ext_caps & EXT_CAP_CHAINING) {
+	if (buf != NULL && buf_len > 0) {
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_3, ins, p1, p2);
-		apdu.flags |= SC_APDU_FLAGS_CHAINING;
-		/* FIXME: The case of command chaining is not tested. */
-	}
-	else if (buf_len <= 256) {
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, ins, p1, p2);
+
+		/* if card/reader does not support extended APDUs, but chaining, then set it */
+		if (((card->caps & SC_CARD_CAP_APDU_EXT) == 0) && (priv->ext_caps & EXT_CAP_CHAINING))
+			apdu.flags |= SC_APDU_FLAGS_CHAINING;
+
+		apdu.data = buf;
+		apdu.datalen = buf_len;
+		apdu.lc = buf_len;
 	}
 	else {
-		sc_log(card->ctx, "Data is too big to send.");
-		return SC_ERROR_INVALID_DATA;
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_1, ins, p1, p2);
 	}
 
-	apdu.data = buf;
-	apdu.datalen = buf_len;
-	apdu.lc = buf_len;
-
-	if (buf == NULL && buf_len == 0) {
-		/* Erase DO content.
-		 *
-		 * We won't call sc_transmit_apdu() in order to bypass
-		 * the check of APDU, because sc_transmit_apdu() does not allow
-		 * null data. */
-		r = sc_lock(card);	/* acquire card lock*/
-		sc_log(card->ctx, "card->reader->ops->transmit");
-		r = card->reader->ops->transmit(card->reader, &apdu);
-		/* all done => release lock */
-		if (sc_unlock(card) != SC_SUCCESS)
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "sc_unlock failed");
-
-		return r;
-	}
 	/* Send APDU to card */
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
@@ -1173,16 +1151,16 @@ pgp_put_data(sc_card_t *card, unsigned int tag, const u8 *buf, size_t buf_len)
 	if (r == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Please verify PIN first.");
 	}
-	LOG_TEST_RET(card->ctx, r, "Card returned error");
+	LOG_TEST_RET(card->ctx, r, "PUT DATA returned error");
 
 	/* Update the corresponding file */
-	sc_log(card->ctx, "To update the corresponding blob data");
+	sc_log(card->ctx, "Updating the corresponding blob data");
 	r = pgp_set_blob(affected_blob, buf, buf_len);
 	if (r < 0)
-		sc_log(card->ctx, "Failed to update the blob %04X. Error %d.", affected_blob->id, r);
-	/* The pgp_update_tag_blob()'s failure won't affect */
+		sc_log(card->ctx, "Failed to update blob %04X. Error %d.", affected_blob->id, r);
+	/* pgp_set_blob()'s failures do not impact pgp_put_data()'s result */
 
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, buf_len);
+	LOG_FUNC_RETURN(card->ctx, buf_len);
 }
 
 
