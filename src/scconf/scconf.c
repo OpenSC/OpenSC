@@ -125,15 +125,12 @@ const scconf_list *scconf_find_list(const scconf_block * block, const char *opti
 {
 	scconf_item *item;
 
-	if (!block) {
+	if (!block)
 		return NULL;
-	}
-	for (item = block->items; item; item = item->next) {
-		if (item->type == SCCONF_ITEM_TYPE_VALUE &&
-		    strcasecmp(option, item->key) == 0) {
+
+	for (item = block->items; item; item = item->next)
+		if (item->type == SCCONF_ITEM_TYPE_VALUE && strcasecmp(option, item->key) == 0)
 			return item->value.list;
-		}
-	}
 	return NULL;
 }
 
@@ -142,7 +139,14 @@ const char *scconf_get_str(const scconf_block * block, const char *option, const
 	const scconf_list *list;
 
 	list = scconf_find_list(block, option);
-	return !list ? def : list->data;
+	if (!list)
+		return def;
+
+	/* ignore non 'auto-configurated' values */
+	if (*list->data == '@' && *(list->data + strlen(list->data) - 1) == '@')
+		return def;
+
+	return list->data;
 }
 
 int scconf_get_int(const scconf_block * block, const char *option, int def)
