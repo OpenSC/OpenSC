@@ -1545,37 +1545,39 @@ static int pgp_delete_file(sc_card_t *card, const sc_path_t *path)
 	return r;
 }
 
-/* ABI: Update binary */
-static int pgp_update_binary(sc_card_t *card, unsigned int idx,
-		     const u8 *buf, size_t count, unsigned long flags)
+/* ABI: UPDATE BINARY */
+static int
+pgp_update_binary(sc_card_t *card, unsigned int idx,
+		  const u8 *buf, size_t count, unsigned long flags)
 {
 	struct pgp_priv_data *priv = DRVDATA(card);
-	struct blob *affected_blob = priv->current;
+	struct blob *blob = priv->current;
 	u8 *alldata;
 	size_t allength;
 	int r;
+
+	LOG_FUNC_CALLED(card->ctx);
 
 	/* We will use PUT DATA to write to DO.
 	 * This command does not support index, so we will write the overall data,
 	 * in which the part before idx is get from old content of DO */
 	allength = idx + count;
-	alldata = malloc(allength);
+	alldata = calloc(allength, 1);
 	if (alldata == NULL)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 
-	memset(alldata, 0, allength);
 	/* Copy the part before idx */
-	memcpy(alldata, affected_blob->data, MIN(idx, affected_blob->len));
+	if (blob->data)
+		memcpy(alldata, blob->data, MIN(idx, blob->len));
 	/* Copy data need to be written */
-	memcpy(alldata, buf, count);
+	memcpy(alldata+idx, buf, count);
 
-	r = pgp_put_data(card, affected_blob->id, alldata, allength);
-	if (r < 0) {
-		sc_log(card->ctx, "Failed to update binary. %s", sc_strerror(r));
-	}
+	r = pgp_put_data(card, blob->id, alldata, allength);
 	free(alldata);
-	return r;
+
+	LOG_FUNC_RETURN(card->ctx, r);
 }
+
 
 /* ABI: driver binding stuff */
 static struct sc_card_driver *
@@ -1601,7 +1603,7 @@ sc_get_driver(void)
 	pgp_ops.decipher	= pgp_decipher;
 	pgp_ops.card_ctl	= pgp_card_ctl;
 	pgp_ops.delete_file	= pgp_delete_file;
-	pgp_ops.update_binary = pgp_update_binary;
+	pgp_ops.update_binary	= pgp_update_binary;
 
 	return &pgp_drv;
 }
