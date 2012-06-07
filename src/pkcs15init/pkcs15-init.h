@@ -388,7 +388,7 @@ extern int	sc_pkcs15_create_pin_domain(struct sc_profile *, struct sc_pkcs15_car
 extern int	sc_pkcs15init_get_pin_reference(struct sc_pkcs15_card *,
 				struct sc_profile *, unsigned, int);
 
-extern int 	sc_pkcs15init_sanity_check(struct sc_pkcs15_card *, struct sc_profile *);
+extern int	sc_pkcs15init_sanity_check(struct sc_pkcs15_card *, struct sc_profile *);
 
 extern int	sc_pkcs15init_finalize_profile(struct sc_card *card, struct sc_profile *profile,
 		                struct sc_aid *aid);
@@ -407,6 +407,7 @@ extern struct sc_pkcs15init_operations *sc_pkcs15init_get_muscle_ops(void);
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_asepcos_ops(void);
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_rutoken_ops(void);
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_entersafe_ops(void);
+extern struct sc_pkcs15init_operations *sc_pkcs15init_get_epass2003_ops(void);
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_rtecp_ops(void);
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_westcos_ops(void);
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_myeid_ops(void);

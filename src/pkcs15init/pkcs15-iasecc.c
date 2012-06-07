@@ -57,6 +57,7 @@
 #define IASECC_TITLE "IASECC"
 
 int iasecc_pkcs15_delete_file(struct sc_pkcs15_card *p15card, struct sc_profile *profile, struct sc_file *df);
+static int iasecc_md_gemalto_delete_prvkey(struct sc_pkcs15_card *, struct sc_profile *, struct sc_pkcs15_object *);
 
 static void
 iasecc_reference_to_pkcs15_id (unsigned int ref, struct sc_pkcs15_id *id)
@@ -142,19 +143,33 @@ iasecc_pkcs15_erase_card(struct sc_profile *profile, struct sc_pkcs15_card *p15c
 			obj_type = SC_PKCS15_TYPE_PUBKEY;
 		else if (df->type == SC_PKCS15_CDF)
 			obj_type = SC_PKCS15_TYPE_CERT;
+		else if (df->type == SC_PKCS15_DODF)
+			obj_type = SC_PKCS15_TYPE_DATA_OBJECT;
 		else
 			continue;
 
 		rv = sc_pkcs15_get_objects(p15card, obj_type, objs, 32);
 		LOG_TEST_RET(ctx, rv, "Failed to get PKCS#15 objects to remove");
 
-		for (ii=0; ii<rv; ii++)
+		for (ii=0; ii<rv; ii++)   {
+			if (obj_type == SC_PKCS15_TYPE_CERT)   {
+				struct sc_path path = ((struct sc_pkcs15_cert_info *)(objs[ii]->data))->path;
+				rv = sc_delete_file(p15card->card, &path);
+			}
+			else if (obj_type == SC_PKCS15_TYPE_DATA_OBJECT)   {
+				struct sc_path path = ((struct sc_pkcs15_data_info *)(objs[ii]->data))->path;
+				rv = sc_delete_file(p15card->card, &path);
+			}
+
 			sc_pkcs15_remove_object(p15card, objs[ii]);
+		}
 
 		rv = sc_select_file(p15card->card, &df->path, &file);
 		if (rv == SC_ERROR_FILE_NOT_FOUND)
 			continue;
 		LOG_TEST_RET(ctx, rv, "Cannot select object file");
+
+		profile->dirty = 1;
 
 		rv = sc_erase_binary(p15card->card, 0, file->size, 0);
 		if (rv == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED)   {
@@ -899,14 +914,16 @@ iasecc_pkcs15_fix_private_key_attributes(struct sc_profile *profile, struct sc_p
 			rv = iasecc_pkcs15_add_access_rule(object, keys_access_modes[ii], &auth_id);
 			LOG_TEST_RET(ctx, rv, "Cannot add access rule");
 
-			if (ii == IASECC_ACLS_RSAKEY_PSO_SIGN
-					|| ii == IASECC_ACLS_RSAKEY_INTERNAL_AUTH
+			if (ii == IASECC_ACLS_RSAKEY_PSO_SIGN || ii == IASECC_ACLS_RSAKEY_INTERNAL_AUTH
 					|| ii == IASECC_ACLS_RSAKEY_PSO_DECIPHER)   {
 				if (!sc_pkcs15_compare_id(&object->auth_id, &auth_id))   {
 					/* Sorry, this will silently overwrite the profile option.*/
 					sc_log(ctx, "Change object's authId for the one that really protects crypto operation.");
 					object->auth_id = auth_id;
 				}
+
+				rv = iasecc_pkcs15_add_access_rule(object, SC_PKCS15_ACCESS_RULE_MODE_EXECUTE, &auth_id);
+				LOG_TEST_RET(ctx, rv, "Cannot add 'EXECUTE' access rule");
 			}
 		}
 
@@ -920,8 +937,10 @@ iasecc_pkcs15_fix_private_key_attributes(struct sc_profile *profile, struct sc_p
 			LOG_TEST_RET(ctx, rv, "Cannot add RSA_PKCS SHA2 supported mechanism");
 
 			key_info->usage |= SC_PKCS15_PRKEY_USAGE_SIGN;
-			if (sdo_prvkey->docp.non_repudiation.value && sdo_prvkey->docp.non_repudiation.value[0])
+			if (sdo_prvkey->docp.non_repudiation.value && sdo_prvkey->docp.non_repudiation.value[0])   {
 				key_info->usage |= SC_PKCS15_PRKEY_USAGE_NONREPUDIATION;
+				object->user_consent = 1;
+			}
 		}
 		else if (ii == IASECC_ACLS_RSAKEY_INTERNAL_AUTH)   {
 			rv = iasecc_pkcs15_add_algorithm_reference(p15card, key_info, IASECC_ALGORITHM_RSA_PKCS);
@@ -1264,7 +1283,7 @@ iasecc_pkcs15_delete_sdo (struct sc_profile *profile, struct sc_pkcs15_card *p15
 		int size = *(sdo->docp.size.value + 0) * 0x100 + *(sdo->docp.size.value + 1);
 
 		sc_log(ctx, "iasecc_pkcs15_delete_sdo() SDO size %i bytes", size);
-		memset(zeros, 0, sizeof(zeros));
+		memset(zeros, 0xA5, sizeof(zeros));
 		memset(&rsa, 0, sizeof(rsa));
 
 		rsa.modulus.data = rsa.exponent.data = zeros;
@@ -1297,11 +1316,11 @@ iasecc_pkcs15_delete_object (struct sc_profile *profile, struct sc_pkcs15_card *
 
 	switch(object->type & SC_PKCS15_TYPE_CLASS_MASK)   {
 	case SC_PKCS15_TYPE_PUBKEY:
-		key_ref = ((sc_pkcs15_pubkey_info_t *)object->data)->key_reference;
+		key_ref = ((struct sc_pkcs15_pubkey_info *)object->data)->key_reference;
 		sc_log(ctx, "Ignore delete of the SDO-PUBLIC-KEY(ref:%X)", key_ref);
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 	case SC_PKCS15_TYPE_PRKEY:
-		key_ref = ((sc_pkcs15_prkey_info_t *)object->data)->key_reference;
+		key_ref = ((struct sc_pkcs15_prkey_info *)object->data)->key_reference;
 
 		/* Delete both parts of the RSA key */
 		rv = iasecc_pkcs15_delete_sdo (profile, p15card, IASECC_SDO_CLASS_RSA_PRIVATE, key_ref);
@@ -1309,6 +1328,11 @@ iasecc_pkcs15_delete_object (struct sc_profile *profile, struct sc_pkcs15_card *
 
 		rv = iasecc_pkcs15_delete_sdo (profile, p15card, IASECC_SDO_CLASS_RSA_PUBLIC, key_ref);
 		LOG_TEST_RET(ctx, rv, "Cannot delete RSA_PUBLIC SDO");
+
+		if (profile->md_style == SC_PKCS15INIT_MD_STYLE_GEMALTO)   {
+			rv = iasecc_md_gemalto_delete_prvkey(p15card, profile, object);
+			LOG_TEST_RET(ctx, rv, "MD error: cannot delete private key");
+		}
 
 		LOG_FUNC_RETURN(ctx, rv);
 	case SC_PKCS15_TYPE_CERT:
@@ -1329,6 +1353,215 @@ iasecc_pkcs15_delete_object (struct sc_profile *profile, struct sc_pkcs15_card *
 	sc_file_free(file);
 
 	LOG_FUNC_RETURN(ctx, rv);
+}
+
+
+static int
+iasecc_md_gemalto_set_default(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
+		struct sc_pkcs15_object *key_obj)
+{
+	struct sc_context *ctx = p15card->card->ctx;
+	struct sc_pkcs15_object *data_obj = NULL;
+	struct sc_pkcs15init_dataargs data_args;
+	char guid[39];
+	int rv;
+
+	LOG_FUNC_CALLED(ctx);
+
+	rv = sc_pkcs15_find_data_object_by_name(p15card, "CSP", "Default Key Container", &data_obj);
+	if (rv != SC_ERROR_OBJECT_NOT_FOUND)
+		LOG_TEST_RET(ctx, rv, "Find 'Default Key Container' data object error");
+
+	rv = sc_pkcs15_get_guid(p15card, key_obj, 1, guid, sizeof(guid));
+	LOG_TEST_RET(ctx, rv, "Cannot get private key GUID");
+
+	if (!data_obj)   {
+		memset(&data_args, 0, sizeof(data_args));
+		data_args.app_oid.value[0] = -1;
+		data_args.label = "Default Key Container";
+		data_args.app_label = "CSP";
+		data_args.der_encoded.value = (unsigned char *)guid;
+		data_args.der_encoded.len = strlen(guid);
+
+		rv = sc_pkcs15init_store_data_object(p15card, profile, &data_args, NULL);
+		LOG_TEST_RET(ctx, rv, "Failed to store 'CSP'/'Default Key Container' data object");
+	}
+	else   {
+		struct sc_pkcs15_data_info *dinfo = (struct sc_pkcs15_data_info *)data_obj->data;
+		struct sc_file *file = NULL;
+
+		sc_log(ctx, "update data object content in '%s'\n", sc_print_path(&dinfo->path));
+                rv = sc_select_file(p15card->card, &dinfo->path, &file);
+                LOG_TEST_RET(ctx, rv, "Cannot select data object file");
+
+                rv = sc_pkcs15init_update_file(profile, p15card, file, guid, strlen(guid));
+                sc_file_free(file);
+                LOG_TEST_RET(ctx, rv, "Failed to update 'CSP'/'Default Key Container' data object");
+	}
+
+	LOG_FUNC_RETURN(ctx, rv);
+}
+
+
+static int
+iasecc_md_gemalto_unset_default(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
+		struct sc_pkcs15_object *key_obj)
+{
+	struct sc_context *ctx = p15card->card->ctx;
+	struct sc_pkcs15_object *data_obj = NULL;
+	struct sc_pkcs15_data *dod = NULL;
+        struct sc_pkcs15_object *key_objs[32];
+	struct sc_pkcs15_prkey_info *key_info = (struct sc_pkcs15_prkey_info *)key_obj->data;
+	char guid[39];
+	int rv, ii, keys_num;
+
+	LOG_FUNC_CALLED(ctx);
+
+	rv = sc_pkcs15_get_guid(p15card, key_obj, 1, guid, sizeof(guid));
+	LOG_TEST_RET(ctx, rv, "Cannot get private key GUID");
+
+	rv = sc_pkcs15_find_data_object_by_name(p15card, "CSP", "Default Key Container", &data_obj);
+	if (rv == SC_ERROR_OBJECT_NOT_FOUND)
+		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+
+	rv = sc_pkcs15_read_data_object(p15card, (struct sc_pkcs15_data_info *)data_obj->data, &dod);
+	LOG_TEST_RET(ctx, rv, "Cannot read from 'CSP/'Default Key Container'");
+
+	if (strlen(guid) != dod->data_len || memcmp(guid, dod->data, strlen(guid)))
+		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+
+	rv = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PRKEY, key_objs, 32);
+	LOG_TEST_RET(ctx, rv, "Get private key PKCS#15 objects error");
+	keys_num = rv;
+
+	if (keys_num)   {
+		for (ii=0; ii<keys_num; ii++)   {
+			struct sc_pkcs15_prkey_info *prkey_info = (struct sc_pkcs15_prkey_info *)key_objs[ii]->data;
+
+			if (sc_pkcs15_compare_id(&key_info->id, &prkey_info->id))
+				continue;
+
+			/* TODO: keys with inappropriate key usages should also be ignored */
+			rv = iasecc_md_gemalto_set_default(p15card, profile, key_objs[ii]);
+			LOG_TEST_RET(ctx, rv, "Cannot set default container");
+			break;
+		}
+
+		if (ii == keys_num)   {
+			/* No more default container */
+			rv = sc_pkcs15init_delete_object(p15card, profile, data_obj);
+			LOG_TEST_RET(ctx, rv, "Cannot delete 'CSP'/'Default Key Container' data object");
+		}
+	}
+
+	LOG_FUNC_RETURN(ctx, rv);
+}
+
+
+static int
+iasecc_md_gemalto_new_prvkey(struct sc_pkcs15_card *p15card, struct sc_profile *profile, struct sc_pkcs15_object *key_obj)
+{
+	struct sc_context *ctx = p15card->card->ctx;
+	struct sc_pkcs15_prkey_info *prkey_info = (struct sc_pkcs15_prkey_info *)key_obj->data;
+	struct sc_pkcs15init_dataargs data_args;
+	char guid[40];
+	unsigned char data[SC_PKCS15_MAX_ID_SIZE + 6];
+	size_t offs;
+	int rv;
+
+	LOG_FUNC_CALLED(ctx);
+
+	memset(guid, 0, sizeof(guid));
+	rv = sc_pkcs15_get_guid(p15card, key_obj, 1, guid, sizeof(guid) - 1);
+	LOG_TEST_RET(ctx, rv, "Cannot get private key GUID");
+	sc_log(ctx, "New key GUID: '%s'", guid);
+
+	offs = 0;
+	data[offs++] = 0x01;
+	data[offs++] = prkey_info->id.len;
+	memcpy(&data[offs], prkey_info->id.value, prkey_info->id.len);
+	offs += prkey_info->id.len;
+	data[offs++] = 0x02;
+	data[offs++] = 0x01;
+	data[offs++] = 0x01;
+
+	memset(&data_args, 0, sizeof(data_args));
+	data_args.app_oid.value[0] = -1;
+	data_args.label = guid;
+	data_args.app_label = "CSP";
+        data_args.der_encoded.value = data;
+	data_args.der_encoded.len = offs;
+
+	rv = sc_pkcs15init_store_data_object(p15card, profile, &data_args, NULL);
+	LOG_TEST_RET(ctx, rv, "Failed to store 'CSP' data object");
+
+	/* For a while default container is set for the first key.
+	 * TODO: Key usage should be taken into consideration. */
+	if (sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PRKEY, NULL, 0) == 1)   {
+		rv = iasecc_md_gemalto_set_default(p15card, profile, key_obj);
+		LOG_TEST_RET(ctx, rv, "MD: cannot set default container");
+	}
+
+	LOG_FUNC_RETURN(ctx, rv);
+}
+
+
+static int
+iasecc_md_gemalto_delete_prvkey(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
+		struct sc_pkcs15_object *key_obj)
+{
+	struct sc_context *ctx = p15card->card->ctx;
+	struct sc_pkcs15_object *data_obj = NULL;
+	char guid[39];
+	int rv;
+
+	LOG_FUNC_CALLED(ctx);
+
+	rv = sc_pkcs15_get_guid(p15card, key_obj, 1, guid, sizeof(guid));
+	LOG_TEST_RET(ctx, rv, "Cannot get private key GUID");
+
+	rv = sc_pkcs15_find_data_object_by_name(p15card, "CSP", guid, &data_obj);
+        if (rv == SC_ERROR_OBJECT_NOT_FOUND)
+		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+	LOG_TEST_RET(ctx, rv, "Find 'CSP'/<key> data object error");
+
+	rv = sc_pkcs15init_delete_object(p15card, profile, data_obj);
+	LOG_TEST_RET(ctx, rv, "Cannot delete 'CSP'/<key> data object");
+
+	/* For a while default container is set for the first key.
+	 * TODO: Key usage should be taken into consideration. */
+	if (sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PRKEY, NULL, 0) == 1)   {
+		rv = iasecc_md_gemalto_unset_default(p15card, profile, key_obj);
+		LOG_TEST_RET(ctx, rv, "MD: cannot set default container");
+	}
+
+	LOG_FUNC_RETURN(ctx, rv);
+}
+
+
+static int
+iasecc_store_prvkey(struct sc_pkcs15_card *p15card, struct sc_profile *profile, struct sc_pkcs15_object *object,
+		struct sc_pkcs15_der *data, struct sc_path *path)
+{
+	struct sc_context *ctx = p15card->card->ctx;
+	struct sc_pkcs15_prkey_info *prkey_info = (struct sc_pkcs15_prkey_info *)object->data;
+
+	LOG_FUNC_CALLED(ctx);
+	sc_log(ctx, "Private Key id '%s'", sc_pkcs15_print_id(&prkey_info->id));
+	sc_log(ctx, "MD style '0x%X'", profile->md_style);
+
+	if (profile->md_style == SC_PKCS15INIT_MD_STYLE_NONE)   {
+		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+	}
+	else if (profile->md_style == SC_PKCS15INIT_MD_STYLE_GEMALTO)   {
+		int rv = iasecc_md_gemalto_new_prvkey(p15card, profile, object);
+		LOG_TEST_RET(ctx, rv, "MD: cannot add new key");
+	}
+	else   {
+		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Unsupported MD style");
+	}
+
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
 
@@ -1390,57 +1623,54 @@ iasecc_store_cert(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 	rv = iasecc_pkcs15_fix_file_access(p15card, pfile, object);
 	LOG_TEST_RET(ctx, rv, "encode file access rules failed");
 
+	if (pfile)
+		sc_file_free(pfile);
+
 	/* NOT_IMPLEMENTED error code indicates to the upper call to execute the default 'store data' procedure */
 	LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_IMPLEMENTED);
 }
 
 
-/*
- * FIXME: Implement 'store data object'
 static int
-iasecc_store_opaqueDO(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
-		struct sc_pkcs15_object *object, struct sc_pkcs15_id *id,
+iasecc_store_data_object(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
+		struct sc_pkcs15_object *object,
 		struct sc_pkcs15_der *data, struct sc_path *path)
 {
+#define MAX_DATA_OBJS 32
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_card *card = p15card->card;
-	struct sc_pkcs15_object *p15objects[0x40];
-	struct sc_file *cfile = NULL, *pfile = NULL, *parent = NULL;
+	struct sc_pkcs15_object *p15objects[MAX_DATA_OBJS];
+	struct sc_file *cfile = NULL, *file = NULL, *parent = NULL;
 	int rv, nn_objs, indx, ii;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "iasecc_store_opaqueDO() id '%s'", sc_pkcs15_print_id(id));
-	sc_log(ctx, "iasecc_store_opaqueDO() authID '%s'", sc_pkcs15_print_id(&object->auth_id));
-	nn_objs = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_DATA_OBJECT, p15objects, 0x40);
+	sc_log(ctx, "iasecc_store_data_object() authID '%s'", sc_pkcs15_print_id(&object->auth_id));
+	nn_objs = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_DATA_OBJECT, p15objects, MAX_DATA_OBJS);
 	LOG_TEST_RET(ctx, nn_objs, "IasEcc get pkcs15 DATA objects error");
 
-	for(indx = 1; indx < 0x40; indx++)   {
+	for(indx = 1; indx < MAX_DATA_OBJS; indx++)   {
 		struct sc_path fpath;
 
-		rv = iasecc_pkcs15_new_file(profile, card, SC_PKCS15_TYPE_DATA_OBJECT, indx, &pfile);
-		LOG_TEST_RET(ctx, rv, "iasecc_store_opaqueDO() pkcs15 new DATA file error");
+		rv = iasecc_pkcs15_new_file(profile, card, SC_PKCS15_TYPE_DATA_OBJECT, indx, &file);
+		LOG_TEST_RET(ctx, rv, "iasecc_store_data_object() pkcs15 new DATA file error");
 
-		fpath = pfile->path;
-
+		fpath = file->path;
 		for (ii=0; ii<nn_objs; ii++)   {
 			struct sc_pkcs15_data_info *info = (struct sc_pkcs15_data_info *)p15objects[ii]->data;
 			int file_id = info->path.value[info->path.len - 2] * 0x100 + info->path.value[info->path.len - 1];
 
-			sc_log(ctx, "iasecc_store_opaqueDO() %i: file_id 0x%X, pfile->id 0x%X\n", ii, file_id, pfile->id);
-			if (pfile->id == file_id)
+			sc_log(ctx, "iasecc_store_data_object() %i: file_id 0x%X, pfile->id 0x%X\n", ii, file_id, file->id);
+			if (file->id == file_id)
 			   break;
 		}
 
 		if (ii == nn_objs)
 			break;
-
-		if (pfile)
-			sc_file_free(pfile);
-		pfile = NULL;
+		sc_file_free(file);
 	}
 
-	if (indx == 0x40)
-		LOG_TEST_RET(ctx, SC_ERROR_TOO_MANY_OBJECTS, "iasecc_store_opaqueDO() too many DATA objects.");
+	if (indx == MAX_DATA_OBJS)
+		LOG_TEST_RET(ctx, SC_ERROR_TOO_MANY_OBJECTS, "iasecc_store_data_object() too many DATA objects.");
 
 	do  {
 		const struct sc_acl_entry *acl;
@@ -1448,71 +1678,75 @@ iasecc_store_opaqueDO(struct sc_pkcs15_card *p15card, struct sc_profile *profile
 		memset(object->access_rules, 0, sizeof(object->access_rules));
 
 		object->access_rules[0].access_mode = SC_PKCS15_ACCESS_RULE_MODE_READ;
-		acl = sc_file_get_acl_entry(pfile, SC_AC_OP_READ);
-		sc_log(ctx, "iasecc_store_opaqueDO() READ method %i", acl->method);
+		acl = sc_file_get_acl_entry(file, SC_AC_OP_READ);
+		sc_log(ctx, "iasecc_store_data_object() READ method %i", acl->method);
 		if (acl->method == SC_AC_IDA)
 			iasecc_reference_to_pkcs15_id (acl->key_ref, &object->access_rules[0].auth_id);
 
 		object->access_rules[1].access_mode = SC_PKCS15_ACCESS_RULE_MODE_UPDATE;
-		acl = sc_file_get_acl_entry(pfile, SC_AC_OP_UPDATE);
-		sc_log(ctx, "iasecc_store_opaqueDO() UPDATE method %i", acl->method);
+		acl = sc_file_get_acl_entry(file, SC_AC_OP_UPDATE);
+		sc_log(ctx, "iasecc_store_data_object() UPDATE method %i", acl->method);
 		if (acl->method == SC_AC_IDA)
 			iasecc_reference_to_pkcs15_id (acl->key_ref, &object->access_rules[1].auth_id);
 
+		object->access_rules[2].access_mode = SC_PKCS15_ACCESS_RULE_MODE_DELETE;
+		acl = sc_file_get_acl_entry(file, SC_AC_OP_DELETE);
+		sc_log(ctx, "iasecc_store_data_object() UPDATE method %i", acl->method);
+		if (acl->method == SC_AC_IDA)
+			iasecc_reference_to_pkcs15_id (acl->key_ref, &object->access_rules[2].auth_id);
+
 	} while(0);
 
-	rv = iasecc_file_convert_acls(ctx, profile, pfile);
-	LOG_TEST_RET(ctx, rv, "iasecc_store_opaqueDO() cannot convert profile ACLs");
+	rv = iasecc_file_convert_acls(ctx, profile, file);
+	LOG_TEST_RET(ctx, rv, "iasecc_store_data_object() cannot convert profile ACLs");
 
-	sc_log(ctx, "sc_pkcs15init_store_opaqueDO() indx %i; pfile->parent.len %i\n", indx, pfile->parent_path.len);
-	sc_log(ctx, "sc_pkcs15init_store_opaqueDO() profile parent path '%s'\n", sc_print_path(&pfile->parent_path));
+	rv = sc_profile_get_parent(profile, "public-data", &parent);
+	LOG_TEST_RET(ctx, rv, "iasecc_store_data_object() cannot get object parent");
+	sc_log(ctx, "iasecc_store_data_object() parent path '%s'\n", sc_print_path(&parent->path));
 
-	rv = sc_select_file(card, &pfile->parent_path, &parent);
-	LOG_TEST_RET(ctx, rv, "iasecc_store_opaqueDO() cannot select DATA's parent");
-	sc_log(ctx, "iasecc_store_opaqueDO() parent path '%s'\n", sc_print_path(&parent->path));
+	rv = sc_select_file(card, &parent->path, NULL);
+	LOG_TEST_RET(ctx, rv, "iasecc_store_data_object() cannot select parent");
 
-	sc_ctx_suppress_errors_on(ctx);
-	rv = sc_select_file(card, &pfile->path, &cfile);
-	sc_ctx_suppress_errors_off(ctx);
+	rv = sc_select_file(card, &file->path, &cfile);
 	if (!rv)   {
 		rv = sc_pkcs15init_authenticate(profile, p15card, cfile, SC_AC_OP_DELETE);
-		LOG_TEST_RET(ctx, rv, "iasecc_store_opaqueDO() DELETE authentication failed");
+		LOG_TEST_RET(ctx, rv, "iasecc_store_data_object() DELETE authentication failed");
 
 		rv = iasecc_pkcs15_delete_file(p15card, profile, cfile);
-		LOG_TEST_RET(ctx, rv, "s_pkcs15init_store_opaqueDO() delete pkcs15 file error");
+		LOG_TEST_RET(ctx, rv, "s_pkcs15init_store_data_object() delete pkcs15 file error");
 	}
 	else if (rv != SC_ERROR_FILE_NOT_FOUND)   {
-		LOG_TEST_RET(ctx, rv, "iasecc_store_opaqueDO() select file error");
+		LOG_TEST_RET(ctx, rv, "iasecc_store_data_object() select file error");
 	}
 
 	rv = sc_pkcs15init_authenticate(profile, p15card, parent, SC_AC_OP_CREATE);
-	LOG_TEST_RET(ctx, rv, "iasecc_store_opaqueDO() parent CREATE authentication failed");
+	LOG_TEST_RET(ctx, rv, "iasecc_store_data_object() parent CREATE authentication failed");
 
-	pfile->size = data->len;
-	rv = sc_create_file(card, pfile);
-	LOG_TEST_RET(ctx, rv, "iasecc_store_opaqueDO() cannot create DATA file");
+	file->size = data->len;
+	rv = sc_create_file(card, file);
+	LOG_TEST_RET(ctx, rv, "iasecc_store_data_object() cannot create DATA file");
 
-	rv = sc_pkcs15init_authenticate(profile, p15card, pfile, SC_AC_OP_UPDATE);
-	LOG_TEST_RET(ctx, rv, "iasecc_store_opaqueDO() data file UPDATE authentication failed");
+	rv = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_UPDATE);
+	LOG_TEST_RET(ctx, rv, "iasecc_store_data_object() data file UPDATE authentication failed");
 
 	rv = sc_update_binary(card, 0, data->value, data->len, 0);
-	LOG_TEST_RET(ctx, rv, "iasecc_store_opaqueDO() update DATA file failed");
+	LOG_TEST_RET(ctx, rv, "iasecc_store_data_object() update DATA file failed");
 
 	if (path)
-		*path = pfile->path;
+		*path = file->path;
 
 	if (parent)
 		sc_file_free(parent);
 
-	if (pfile)
-		sc_file_free(pfile);
+	if (file)
+		sc_file_free(file);
 
 	if (cfile)
 		sc_file_free(cfile);
 
 	LOG_FUNC_RETURN(ctx, rv);
+#undef MAX_DATA_OBJS
 }
-*/
 
 
 static int
@@ -1527,17 +1761,21 @@ iasecc_emu_store_data(struct sc_pkcs15_card *p15card, struct sc_profile *profile
 	LOG_FUNC_CALLED(ctx);
 
 	switch (object->type & SC_PKCS15_TYPE_CLASS_MASK) {
+	case SC_PKCS15_TYPE_PRKEY:
+		rv = iasecc_store_prvkey(p15card, profile, object, data, path);
+		break;
 	case SC_PKCS15_TYPE_PUBKEY:
 		rv = iasecc_store_pubkey(p15card, profile, object, data, path);
 		break;
 	case SC_PKCS15_TYPE_CERT:
 		rv = iasecc_store_cert(p15card, profile, object, data, path);
 		break;
-/*
 	case SC_PKCS15_TYPE_DATA_OBJECT:
-		rv = iasecc_store_opaqueDO(p15card, profile, object, id, data, path);
+		rv = iasecc_store_data_object(p15card, profile, object, data, path);
 		break;
-*/
+	default:
+		rv = SC_ERROR_NOT_IMPLEMENTED;
+		break;
 	}
 
 	LOG_FUNC_RETURN(ctx, rv);
@@ -1568,20 +1806,12 @@ sc_pkcs15init_iasecc_operations = {
 	NULL,					/* encode public key */
 	NULL,					/* finalize_card */
 	iasecc_pkcs15_delete_object,
-
-	/* pkcs15init emulation */
-	NULL,
-	NULL,
-	iasecc_emu_update_tokeninfo,
-	NULL,
+	NULL,					/* pkcs15init emulation update_dir */
+	NULL,					/* pkcs15init emulation update_any_df */
+	NULL,					/* pkcs15init emulation update_tokeninfo */
+	NULL,					/* pkcs15init emulation write_info */
 	iasecc_emu_store_data,
-
-	NULL, 					/* sanity_check */
-/*
-	iasecc_pkcs15init_select_id,
-	iasecc_pkcs15init_set_pin,
-	iasecc_pkcs15init_erase_application
-*/
+	NULL,					/* sanity_check */
 };
 
 
