@@ -7,7 +7,7 @@ OBJECTS = minidriver.obj
 
 all: $(TARGET)
 
-$(TARGET): $(OBJECTS)
+$(TARGET): $(OBJECTS) ..\libopensc\opensc_a.lib ..\pkcs15init\pkcs15init.lib
 	echo LIBRARY $* > $*.def
 	echo EXPORTS >> $*.def
 	type minidriver.exports >> $*.def
