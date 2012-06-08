@@ -156,6 +156,11 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 	u8		c5data[70];
 	int		r, i;
 	const pgp_pin_cfg_t *pin_cfg = (card->type == SC_CARD_TYPE_OPENPGP_V2) ? pin_cfg_v2 : pin_cfg_v1;
+	struct sc_pkcs15_cert_info cert_info;
+	struct sc_pkcs15_object    cert_obj;
+
+	memset(&cert_info, 0, sizeof(cert_info));
+	memset(&cert_obj,  0, sizeof(cert_obj));
 
 	set_string(&p15card->tokeninfo->label, "OpenPGP card");
 	set_string(&p15card->tokeninfo->manufacturer_id, "OpenPGP project");
@@ -327,13 +332,6 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 				return SC_ERROR_INTERNAL;
 		}
 	}
-
-	/* Add certificates */
-	struct sc_pkcs15_cert_info cert_info;
-	struct sc_pkcs15_object    cert_obj;
-
-	memset(&cert_info, 0, sizeof(cert_info));
-	memset(&cert_obj,  0, sizeof(cert_obj));
 
 	/* Certificate ID. We use the same ID as the authentication key */
 	cert_info.id.value[0] = 3;
