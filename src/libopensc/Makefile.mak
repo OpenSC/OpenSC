@@ -16,12 +16,13 @@ OBJECTS			= \
 	card-setcos.obj card-miocos.obj card-flex.obj card-gpk.obj \
 	card-cardos.obj card-tcos.obj card-default.obj \
 	card-mcrd.obj card-starcos.obj card-openpgp.obj card-jcop.obj \
-	card-oberthur.obj card-belpic.obj card-atrust-acos.obj card-entersafe.obj \
+	card-oberthur.obj card-belpic.obj card-atrust-acos.obj \
+	card-entersafe.obj card-epass2003.obj \
 	card-incrypto34.obj card-piv.obj card-muscle.obj card-acos5.obj \
 	card-asepcos.obj card-akis.obj card-gemsafeV1.obj card-rutoken.obj \
 	card-rtecp.obj card-westcos.obj card-myeid.obj card-ias.obj \
 	card-javacard.obj card-itacns.obj card-authentic.obj \
-	card-iasecc.obj iasecc-sdo.obj \
+	card-iasecc.obj iasecc-sdo.obj iasecc-sm.obj \
 	\
 	pkcs15-openpgp.obj pkcs15-infocamere.obj pkcs15-starcert.obj \
 	pkcs15-tcos.obj pkcs15-esteid.obj pkcs15-postecert.obj pkcs15-gemsafeGPK.obj \

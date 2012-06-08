@@ -302,3 +302,14 @@ sc_crc32
 sc_pkcs15_convert_prkey
 sc_pkcs15_convert_pubkey
 sc_perform_pace
+iasecc_sdo_encode_update_field
+iasecc_sm_create_file
+iasecc_sm_delete_file
+iasecc_sm_external_authentication
+iasecc_sm_pin_reset
+iasecc_sm_pin_verify
+iasecc_sm_read_binary
+iasecc_sm_rsa_generate
+iasecc_sm_rsa_update
+iasecc_sm_update_binary
+iasecc_sm_sdo_update
