@@ -40,6 +40,10 @@ extern "C" {
 #include "scconf/scconf.h"
 #include "libopensc/errors.h"
 #include "libopensc/types.h"
+#ifdef ENABLE_SM
+#include "libopensc/sm.h"
+#endif
+
 
 #define SC_SEC_OPERATION_DECIPHER	0x0001
 #define SC_SEC_OPERATION_SIGN		0x0002
@@ -523,6 +527,9 @@ typedef struct sc_card {
 	sc_serial_number_t serialnr;
 
 	void *mutex;
+#ifdef ENABLE_SM
+	struct sm_context sm_ctx;
+#endif
 
 	unsigned int magic;
 } sc_card_t;

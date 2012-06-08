@@ -74,6 +74,16 @@ case "${host}" in
 	;;
 esac
 
+case "${host}" in
+	*-mingw*|*-winnt*|*-cygwin*)
+		DEBUG_FILE="%TEMP%\opensc-debug.log"
+	;;
+	*)
+		DEBUG_FILE="/tmp/opensc-debug.log"
+	;;
+esac
+AC_DEFINE_UNQUOTED([DEBUG_FILE], ["${DEBUG_FILE}"], [Debug file])
+
 AC_ARG_ENABLE(
 	[strict],
 	[AS_HELP_STRING([--enable-strict],[enable strict compile mode @<:@disabled@:>@])],
@@ -135,6 +145,13 @@ AC_ARG_ENABLE(
 	[AS_HELP_STRING([--enable-minidriver],[enable minidriver on Windows @<:@disabled@:>@])],
 	,
 	[enable_minidriver="no"]
+)
+
+AC_ARG_ENABLE(
+	[sm],
+	[AS_HELP_STRING([--enable-sm],[enable secure messaging support and modules @<:@disabled@:>@])],
+	,
+	[enable_sm="no"]
 )
 
 AC_ARG_ENABLE(
@@ -296,6 +313,20 @@ if test "${enable_minidriver}" = "yes"; then
 		[AC_MSG_ERROR([cardmod.h is not found and required for minidriver])]
 	)
 	AC_DEFINE([ENABLE_MINIDRIVER], [1], [Enable minidriver support])
+fi
+
+if test "${enable_sm}" = "yes"; then
+	AC_DEFINE([ENABLE_SM], [1], [Enable secure messaging support])
+
+	case "${host}" in
+		*-mingw*|*-winnt*|*-cygwin*)
+			DEFAULT_SM_MODULE="smm-local.dll"
+		;;
+		*)
+			DEFAULT_SM_MODULE="libsmm-local.so.3"
+		;;
+	esac
+	AC_DEFINE_UNQUOTED([DEFAULT_SM_MODULE], ["${DEFAULT_SM_MODULE}"], [Default SM module])
 fi
 
 AC_ARG_VAR([ZLIB_CFLAGS], [C compiler flags for zlib])
@@ -547,6 +578,8 @@ AC_SUBST([OPTIONAL_OPENCT_CFLAGS])
 AC_SUBST([OPTIONAL_OPENCT_LIBS])
 AC_SUBST([OPTIONAL_PCSC_CFLAGS])
 AC_SUBST([LIBRARY_BITNESS])
+AC_SUBST([DEFAULT_SM_MODULE])
+AC_SUBST([DEBUG_FILE])
 
 AM_CONDITIONAL([ENABLE_MAN], [test "${enable_man}" = "yes"])
 AM_CONDITIONAL([ENABLE_ZLIB], [test "${enable_zlib}" = "yes"])
@@ -557,6 +590,7 @@ AM_CONDITIONAL([ENABLE_DOC], [test "${enable_doc}" = "yes"])
 AM_CONDITIONAL([WIN32], [test "${WIN32}" = "yes"])
 AM_CONDITIONAL([CYGWIN], [test "${CYGWIN}" = "yes"])
 AM_CONDITIONAL([ENABLE_MINIDRIVER], [test "${enable_minidriver}" = "yes"])
+AM_CONDITIONAL([ENABLE_SM], [test "${enable_sm}" = "yes"])
 
 if test "${enable_pedantic}" = "yes"; then
 	enable_strict="yes";
@@ -585,6 +619,7 @@ AC_CONFIG_FILES([
 	src/tests/Makefile
 	src/tests/regression/Makefile
 	src/tools/Makefile
+	src/sm/Makefile
 	src/minidriver/Makefile
 	src/minidriver/opensc-minidriver.inf
 	win32/Makefile
@@ -618,6 +653,9 @@ PC/SC support:           ${enable_pcsc}
 OpenCT support:          ${enable_openct}
 CT-API support:          ${enable_ctapi}
 minidriver support:      ${enable_minidriver}
+SM support:              ${enable_sm}
+SM default module:       ${DEFAULT_SM_MODULE}
+Debug file:              ${DEBUG_FILE}
 
 PC/SC default provider:  ${DEFAULT_PCSC_PROVIDER}
 

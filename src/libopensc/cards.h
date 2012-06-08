@@ -116,7 +116,7 @@ enum {
 	SC_CARD_TYPE_OBERTHUR_32K_BIO,
 	SC_CARD_TYPE_OBERTHUR_64K,
 	/* Oberthur 'COSMO v7' with applet 'AuthentIC v3.2' */
-        SC_CARD_TYPE_OBERTHUR_AUTHENTIC_3_2 = 11100,	
+        SC_CARD_TYPE_OBERTHUR_AUTHENTIC_3_2 = 11100,
 
 	/* belpic driver */
 	SC_CARD_TYPE_BELPIC_BASE = 12000,
@@ -130,12 +130,12 @@ enum {
 	/* PIV-II type cards */
 	SC_CARD_TYPE_PIV_II_BASE = 14000,
 	SC_CARD_TYPE_PIV_II_GENERIC,
-	
+
 	/* MuscleApplet */
 	SC_CARD_TYPE_MUSCLE_BASE = 15000,
 	SC_CARD_TYPE_MUSCLE_GENERIC,
 	SC_CARD_TYPE_MUSCLE_V1,
-	SC_CARD_TYPE_MUSCLE_V2,	
+	SC_CARD_TYPE_MUSCLE_V2,
 	SC_CARD_TYPE_MUSCLE_ETOKEN_72K,
 	SC_CARD_TYPE_MUSCLE_JCOP241,
 
@@ -156,11 +156,12 @@ enum {
 	SC_CARD_TYPE_ENTERSAFE_BASE = 19000,
 	SC_CARD_TYPE_ENTERSAFE_3K,
 	SC_CARD_TYPE_ENTERSAFE_FTCOS_PK_01C,
+	SC_CARD_TYPE_ENTERSAFE_FTCOS_EPASS2003,
 
 	/* MyEID cards */
 	SC_CARD_TYPE_MYEID_BASE = 20000,
 	SC_CARD_TYPE_MYEID_GENERIC,
-	
+
 	/* GemsafeV1 cards */
 	SC_CARD_TYPE_GEMSAFEV1_BASE = 21000,
 	SC_CARD_TYPE_GEMSAFEV1_GENERIC,
@@ -169,7 +170,7 @@ enum {
 	/* IAS cards */
 	SC_CARD_TYPE_IAS_BASE = 22000,
 	SC_CARD_TYPE_IAS_PTEID,
-	
+
 	/* Italian CNS cards */
 	SC_CARD_TYPE_ITACNS_BASE = 23000,
 	SC_CARD_TYPE_ITACNS_GENERIC,
@@ -186,6 +187,7 @@ enum {
 	SC_CARD_TYPE_IASECC_GEMALTO,
 	SC_CARD_TYPE_IASECC_OBERTHUR,
 	SC_CARD_TYPE_IASECC_SAGEM,
+	SC_CARD_TYPE_IASECC_AMOS
 };
 
 extern sc_card_driver_t *sc_get_default_driver(void);
@@ -220,6 +222,7 @@ extern sc_card_driver_t *sc_get_javacard_driver(void);
 extern sc_card_driver_t *sc_get_itacns_driver(void);
 extern sc_card_driver_t *sc_get_authentic_driver(void);
 extern sc_card_driver_t *sc_get_iasecc_driver(void);
+extern sc_card_driver_t *sc_get_epass2003_driver(void);
 
 #ifdef __cplusplus
 }
