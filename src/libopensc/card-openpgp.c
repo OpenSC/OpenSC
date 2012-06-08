@@ -523,14 +523,15 @@ pgp_set_blob(struct blob *blob, const u8 *data, size_t len)
 	blob->status = 0;
 
 	if (len > 0) {
-		void *tmp = malloc(len);
+		void *tmp = calloc(len, 1);
 
 		if (tmp == NULL)
 			return SC_ERROR_OUT_OF_MEMORY;
 
 		blob->data = tmp;
 		blob->len  = len;
-		memcpy(blob->data, data, len);
+		if (data != NULL)
+			memcpy(blob->data, data, len);
 	}
 
 	if (blob->file)
