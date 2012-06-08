@@ -1552,28 +1552,16 @@ pgp_update_binary(sc_card_t *card, unsigned int idx,
 {
 	struct pgp_priv_data *priv = DRVDATA(card);
 	struct blob *blob = priv->current;
-	u8 *alldata;
-	size_t allength;
 	int r;
 
 	LOG_FUNC_CALLED(card->ctx);
 
 	/* We will use PUT DATA to write to DO.
-	 * This command does not support index, so we will write the overall data,
-	 * in which the part before idx is get from old content of DO */
-	allength = idx + count;
-	alldata = calloc(allength, 1);
-	if (alldata == NULL)
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+	 * As PUT DATA does not support idx, we don't either */
+	if (idx > 0)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INCORRECT_PARAMETERS);
 
-	/* Copy the part before idx */
-	if (blob->data)
-		memcpy(alldata, blob->data, MIN(idx, blob->len));
-	/* Copy data need to be written */
-	memcpy(alldata+idx, buf, count);
-
-	r = pgp_put_data(card, blob->id, alldata, allength);
-	free(alldata);
+	r = pgp_put_data(card, blob->id, buf, count);
 
 	LOG_FUNC_RETURN(card->ctx, r);
 }
