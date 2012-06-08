@@ -145,6 +145,7 @@ static struct profile_operations {
 	{ "jcop", (void *) sc_pkcs15init_get_jcop_ops },
 	{ "starcos", (void *) sc_pkcs15init_get_starcos_ops },
 	{ "oberthur", (void *) sc_pkcs15init_get_oberthur_ops },
+	{ "openpgp", (void *) sc_pkcs15init_get_openpgp_ops },
 	{ "setcos", (void *) sc_pkcs15init_get_setcos_ops },
 	{ "incrypto34", (void *) sc_pkcs15init_get_incrypto34_ops },
 	{ "muscle", (void*) sc_pkcs15init_get_muscle_ops },
@@ -2533,6 +2534,7 @@ sc_pkcs15init_update_tokeninfo(struct sc_pkcs15_card *p15card, struct sc_profile
 	size_t		size;
 	int		r;
 
+	LOG_FUNC_CALLED(p15card->card->ctx);
 	/* set lastUpdate field */
 	if (p15card->tokeninfo->last_update.gtime != NULL)
 		free(p15card->tokeninfo->last_update.gtime);
@@ -2550,7 +2552,7 @@ sc_pkcs15init_update_tokeninfo(struct sc_pkcs15_card *p15card, struct sc_profile
 		r = sc_pkcs15init_update_file(profile, p15card, p15card->file_tokeninfo, buf, size);
 	if (buf)
 		free(buf);
-	return r;
+	LOG_FUNC_RETURN(p15card->card->ctx, r);
 }
 
 
@@ -3474,7 +3476,7 @@ sc_pkcs15init_update_file(struct sc_profile *profile,
 	}
 
 	/* Present authentication info needed */
-	r = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_UPDATE);
+	r = sc_pkcs15init_authenticate(profile, p15card, selected_file, SC_AC_OP_UPDATE);
 	if (r >= 0 && datalen)
 		r = sc_update_binary(p15card->card, 0, (const unsigned char *) data, datalen, 0);
 
