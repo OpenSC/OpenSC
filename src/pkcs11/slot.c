@@ -185,22 +185,23 @@ CK_RV card_detect(sc_reader_t *reader)
 
 	rv = CKR_OK;
 
-	sc_log(context, "%s: Detecting smart card\n", reader->name);
-      /* Check if someone inserted a card */
-      again:rc = sc_detect_card_presence(reader);
+	sc_log(context, "%s: Detecting smart card", reader->name);
+	/* Check if someone inserted a card */
+again:
+	rc = sc_detect_card_presence(reader);
 	if (rc < 0) {
-		sc_log(context, "%s: failed, %s\n", reader->name, sc_strerror(rc));
+		sc_log(context, "%s: failed, %s", reader->name, sc_strerror(rc));
 		return sc_to_cryptoki_error(rc, NULL);
 	}
 	if (rc == 0) {
-		sc_log(context, "%s: card absent\n", reader->name);
+		sc_log(context, "%s: card absent", reader->name);
 		card_removed(reader);	/* Release all resources */
 		return CKR_TOKEN_NOT_PRESENT;
 	}
 
 	/* If the card was changed, disconnect the current one */
 	if (rc & SC_READER_CARD_CHANGED) {
-		sc_log(context, "%s: Card changed\n", reader->name);
+		sc_log(context, "%s: Card changed", reader->name);
 		/* The following should never happen - but if it
 		 * does we'll be stuck in an endless loop.
 		 * So better be fussy.
