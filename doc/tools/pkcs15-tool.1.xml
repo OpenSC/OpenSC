@@ -41,7 +41,7 @@
 						<option>--aid</option> <replaceable>aid</replaceable>
 					</term>
                                         <listitem><para>Specify in a hexadecimal form the AID of the on-card PKCS#15
-                                        application to be binded to.</para></listitem>
+                                        application to bind to.</para></listitem>
                                 </varlistentry>
 
 				<varlistentry>

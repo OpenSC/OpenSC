@@ -169,7 +169,8 @@ static CK_RV	pkcs15_create_slot(struct sc_pkcs11_card *p11card, struct pkcs15_fw
 			struct sc_pkcs15_object *auth, struct sc_app_info *app,
 			struct sc_pkcs11_slot **out);
 
-/* Returns forst available WF data or WF data corresponding to the given application */
+/* Returns WF data corresponding to the given application or,
+ * if application info is not supplied, returns first available WF data. */
 static struct pkcs15_fw_data *
 get_fw_data(struct sc_pkcs11_card *p11card, struct sc_app_info *app_info, int *out_idx)
 {

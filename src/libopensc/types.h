@@ -267,6 +267,8 @@ typedef struct sc_apdu {
 	u8 control;		/* Set if APDU should go to the reader */
 
 	unsigned int sw1, sw2;	/* Status words returned in R-APDU */
+	unsigned char mac[8];
+	size_t mac_len;
 
 	unsigned long flags;
 

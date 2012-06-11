@@ -145,7 +145,7 @@ static const char *option_help[] = {
 	"Outputs to file <arg>",
 	"Disable card caching",
 	"The auth ID of the PIN to use",
-	"Specify AID of the on-card PKCS#15 application to be binded to (in hexadecimal form)",
+	"Specify AID of the on-card PKCS#15 application to bind to (in hexadecimal form)",
 	"Wait for card insertion",
 	"Verbose operation. Use several times to enable debug output.",
 };
@@ -311,14 +311,20 @@ print_pem_object(const char *kind, const u8*data, size_t data_len)
 }
 
 static int
-list_data_object(const char *kind, const u8*data, size_t data_len)
+list_data_object(const char *kind, const unsigned char *data, size_t data_len)
 {
+	char title[0x100];
 	size_t i;
 
-	printf("%s (%lu bytes): <", kind, (unsigned long) data_len);
-	for (i = 0; i < data_len; i++)
-		printf(" %02X", data[i]);
-	printf(" >\n");
+	snprintf(title, sizeof(title), "%s (%lu bytes): ", kind, (unsigned long) data_len);
+	printf("%s", title);
+	memset(title, ' ', strlen(title));
+	for (i = 0; i < data_len; i++)   {
+		if (i && !(i%48))
+			printf("\n%s", title);
+		printf("%02X", data[i]);
+	}
+	printf("\n");
 
 	return 0;
 }
@@ -462,9 +468,8 @@ static int list_data_objects(void)
 		printf("Reading data object <%i>\n", i);
 		printf("applicationName: %s\n", cinfo->app_label);
 		printf("Label:           %s\n", objs[i]->label);
-		printf("applicationOID:  ");
 		if (cinfo->app_oid.value[0] >= 0) {
-			printf("%i", cinfo->app_oid.value[0]);
+			printf("applicationOID:  %i", cinfo->app_oid.value[0]);
 			idx = 1;
 			while (idx < SC_MAX_OBJECT_ID_OCTETS) {
 				if (cinfo->app_oid.value[idx] < 0)
@@ -472,8 +477,7 @@ static int list_data_objects(void)
 				printf(".%i", cinfo->app_oid.value[idx++]);
 			}
 			printf("\n");
-		} else
-			printf("NONE\n");
+		}
 		printf("Path:            %s\n", sc_print_path(&cinfo->path));
 		if (objs[i]->auth_id.len == 0) {
 			struct sc_pkcs15_data *data_object;
@@ -486,7 +490,8 @@ static int list_data_objects(void)
 			}
 			r = list_data_object("Data Object", data_object->data, data_object->data_len);
 			sc_pkcs15_free_data_object(data_object);
-		} else {
+		}
+		else {
 			printf("Auth ID:         %s\n", sc_pkcs15_print_id(&objs[i]->auth_id));
 		}
 	}
@@ -1193,13 +1198,13 @@ static int list_pins(void)
 	int r, i;
 	struct sc_pkcs15_object *objs[32];
 
-	r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_AUTH_PIN, objs, 32);
+	r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_AUTH, objs, 32);
 	if (r < 0) {
-		fprintf(stderr, "PIN enumeration failed: %s\n", sc_strerror(r));
+		fprintf(stderr, "AUTH objects enumeration failed: %s\n", sc_strerror(r));
 		return 1;
 	}
 	if (verbose)
-		printf("Card has %d PIN code(s).\n\n", r);
+		printf("Card has %d Authentication objects.\n", r);
 	for (i = 0; i < r; i++) {
 		print_pin_info(objs[i]);
 		printf("\n");
@@ -1515,7 +1520,7 @@ static int learn_card(void)
 	}
 	r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_AUTH, NULL, 0);
 	if (r < 0) {
-		fprintf(stderr, "PIN code enumeration failed: %s\n", sc_strerror(r));
+		fprintf(stderr, "Authentication objects enumeration failed: %s\n", sc_strerror(r));
 		return 1;
 	}
 
