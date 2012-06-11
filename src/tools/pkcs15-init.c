@@ -2100,18 +2100,22 @@ do_read_certificate(const char *name, const char *format, X509 **out)
 	return 0;
 }
 
-static int determine_filesize(const char *filename) {
+static size_t determine_filesize(const char *filename)
+{
 	FILE *fp;
-	size_t size;
+	long ll;
 
-	if ((fp = fopen(filename,"rb")) == NULL) {
-	  util_fatal("Unable to open %s: %m", filename);
-	  }
+	if ((fp = fopen(filename,"rb")) == NULL)
+		util_fatal("Unable to open %s: %m", filename);
+
 	fseek(fp,0L,SEEK_END);
-	size = ftell(fp);
+	ll = ftell(fp);
+	if (ll == -1l)
+		util_fatal("fseek/ftell error");
+
 	fclose(fp);
-	return size;
-	}
+	return (size_t)ll;
+}
 
 static int
 do_read_data_object(const char *name, u8 **out, size_t *outlen)
