@@ -544,7 +544,7 @@ pgp_set_blob(struct blob *blob, const u8 *data, size_t len)
  * Internal: Implement Access Control List for emulated file.
  * The Access Control is derived from the DO access permission.
  **/
-static int
+static void
 pgp_attach_acl(sc_card_t *card, sc_file_t *file, struct do_info *info)
 {
 	sc_acl_entry_t *acl;
