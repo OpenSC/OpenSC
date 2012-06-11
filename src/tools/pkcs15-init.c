@@ -1154,7 +1154,7 @@ static int
 do_store_data_object(struct sc_profile *profile)
 {
 	struct sc_pkcs15init_dataargs args;
-	u8	*data;
+	unsigned char *data = NULL;
 	size_t	datalen;
 	int	r=0;
 
@@ -1175,10 +1175,11 @@ do_store_data_object(struct sc_profile *profile)
 		/* der_encoded contains the plain data, nothing DER encoded */
 		args.der_encoded.value = data;
 		args.der_encoded.len = datalen;
-		r = sc_pkcs15init_store_data_object(p15card, profile,
-					&args, NULL);
+		r = sc_pkcs15init_store_data_object(p15card, profile, &args, NULL);
 	}
 
+	if (data)
+		free(data);
 	return r;
 }
 
