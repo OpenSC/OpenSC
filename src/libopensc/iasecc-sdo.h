@@ -154,7 +154,7 @@
 
 #define IASECC_SDO_TAGS_UPDATE_MAX	16
 
-#define IASECC_SE_CRTS_MAX	24
+//#define IASECC_SE_CRTS_MAX	24
 
 #define _MAKE_IASECC_SDO_MAGIC(a, b, c, d) (((a) << 24) | ((b) << 16) | ((c) << 8) | ((d)))
 
@@ -163,7 +163,7 @@
 #define IASECC_SDO_MAGIC_UPDATE_RSA	_MAKE_IASECC_SDO_MAGIC('E', 'C', 'U', 'R')
 
 #define IASECC_MAX_SCBS		7
-#define IASECC_MAX_CRTS_IN_SE	24
+//#define IASECC_MAX_CRTS_IN_SE	24
 
 struct iasecc_extended_tlv {
 	unsigned tag;

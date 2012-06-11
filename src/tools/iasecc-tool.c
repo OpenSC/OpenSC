@@ -147,7 +147,7 @@ static int list_sdos(char *sdo_tag)
 			if (!rv)   {
 				printf("Found SE #%X\n", se.reference);
 				_iasecc_print_docp(&se.docp);
-				for(jj=0; jj<IASECC_SE_CRTS_MAX && se.crts[jj].tag; jj++)
+				for(jj=0; jj<SC_MAX_CRTS_IN_SE && se.crts[jj].tag; jj++)
 					_iasecc_print_crt(&se.crts[jj]);
 			}
 		}
