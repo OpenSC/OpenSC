@@ -379,23 +379,26 @@ sc_pkcs15init_bind(struct sc_card *card, const char *name, const char *profile_o
 	if (app_info && app_info->aid.len)   {
 		struct sc_path path;
 
-		if (card->ef_atr->aid.len)   {
-			sc_log(ctx, "sc_pkcs15init_bind() select MF");
+		if (card->ef_atr && card->ef_atr->aid.len)   {
+			sc_log(ctx, "sc_pkcs15init_bind() select MF using EF.ATR data");
 			memset(&path, 0, sizeof(struct sc_path));
 			path.type = SC_PATH_TYPE_DF_NAME;
 			path.aid = card->ef_atr->aid;
 			r = sc_select_file(card, &path, NULL);
-			sc_log(ctx, "rv %i", r);
 			if (r)
 				return r;
 		}
 
-		sc_log(ctx, "sc_pkcs15init_bind() select application DF");
-		memset(&path, 0, sizeof(struct sc_path));
-		path.type = SC_PATH_TYPE_DF_NAME;
-		path.aid = app_info->aid;
+		if (app_info->path.len)   {
+			path = app_info->path;
+		}
+		else   {
+			memset(&path, 0, sizeof(struct sc_path));
+			path.type = SC_PATH_TYPE_DF_NAME;
+			path.aid = app_info->aid;
+		}
+		sc_log(ctx, "sc_pkcs15init_bind() select application path(type:%X) '%s'", path.type, sc_print_path(&path));
 		r = sc_select_file(card, &path, NULL);
-		sc_log(ctx, "sc_pkcs15init_bind() select application DF returned %i", r);
 	}
 
 	*result = profile;
