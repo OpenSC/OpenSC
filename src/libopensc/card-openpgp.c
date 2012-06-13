@@ -845,6 +845,20 @@ pgp_find_blob(sc_card_t *card, unsigned int tag)
 	return blob;
 }
 
+/* Internal: get info for a specific tag */
+static struct do_info *
+pgp_get_info_by_tag(sc_card_t *card, unsigned int tag)
+{
+	struct pgp_priv_data *priv = DRVDATA(card);
+	struct do_info *info;
+
+	for (info = priv->pgp_objects; (info != NULL) && (info->id > 0); info++)
+		if (tag == info->id)
+			return info;
+
+	return NULL;
+}
+
 /**
  * Strip out the parts of PKCS15 file layout in the path. Get the reduced version
  * which is understood by the OpenPGP card driver.
@@ -1087,7 +1101,8 @@ pgp_put_data(sc_card_t *card, unsigned int tag, const u8 *buf, size_t buf_len)
 {
 	sc_apdu_t apdu;
 	struct pgp_priv_data *priv = DRVDATA(card);
-	struct blob	*affected_blob = NULL;
+	struct blob *affected_blob = NULL;
+	struct do_info *dinfo = NULL;
 	u8 ins = 0xDA;
 	u8 p1 = tag >> 8;
 	u8 p2 = tag & 0xFF;
@@ -1097,7 +1112,18 @@ pgp_put_data(sc_card_t *card, unsigned int tag, const u8 *buf, size_t buf_len)
 
 	/* Check if the tag is writable */
 	affected_blob = pgp_find_blob(card, tag);
-	if (affected_blob == NULL || (affected_blob->info->access & WRITE_MASK) == WRITE_NEVER) {
+
+	/* Non-readable DOs have no represented blob, we have to check from pgp_get_info_by_tag */
+	if (affected_blob == NULL)
+		dinfo = pgp_get_info_by_tag(card, tag);
+	else
+		dinfo = affected_blob->info;
+
+	if (dinfo == NULL) {
+		sc_log(card->ctx, "The DO %04X does not exist.", tag);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+	}
+	else if ((dinfo->access & WRITE_MASK) == WRITE_NEVER) {
 		sc_log(card->ctx, "DO %04X is not writable.", tag);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ALLOWED);
 	}
@@ -1147,12 +1173,14 @@ pgp_put_data(sc_card_t *card, unsigned int tag, const u8 *buf, size_t buf_len)
 	}
 	LOG_TEST_RET(card->ctx, r, "PUT DATA returned error");
 
-	/* Update the corresponding file */
-	sc_log(card->ctx, "Updating the corresponding blob data");
-	r = pgp_set_blob(affected_blob, buf, buf_len);
-	if (r < 0)
-		sc_log(card->ctx, "Failed to update blob %04X. Error %d.", affected_blob->id, r);
-	/* pgp_set_blob()'s failures do not impact pgp_put_data()'s result */
+	if (affected_blob) {
+		/* Update the corresponding file */
+		sc_log(card->ctx, "Updating the corresponding blob data");
+		r = pgp_set_blob(affected_blob, buf, buf_len);
+		if (r < 0)
+			sc_log(card->ctx, "Failed to update blob %04X. Error %d.", affected_blob->id, r);
+		/* pgp_set_blob()'s failures do not impact pgp_put_data()'s result */
+	}
 
 	LOG_FUNC_RETURN(card->ctx, buf_len);
 }
