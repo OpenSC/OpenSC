@@ -1419,48 +1419,61 @@ static int pgp_gen_key(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_in
 	struct blob *algo_blob;
 	sc_apdu_t apdu;
 	unsigned int modulus_bitlen;
+	/* Temporary variables to hold APDU params */
 	u8 apdu_case;
+	u8 *apdu_data;
+	size_t apdu_le;
 	int r = SC_SUCCESS;
 
+	/* Set Control Reference Template for key */
 	if (key_info->keytype == SC_OPENPGP_KEY_SIGN)
-		apdu.data = "\xb6";
+		apdu_data = "\xb6";
 	else if (key_info->keytype == SC_OPENPGP_KEY_ENCR)
-		apdu.data = "\xb8";
+		apdu_data = "\xb8";
 	else if (key_info->keytype == SC_OPENPGP_KEY_AUTH)
-		apdu.data = "\xa4";
+		apdu_data = "\xa4";
 	else {
 		sc_log(card->ctx, "Unknown key type %X.", key_info->keytype);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
-	apdu.datalen = 2;  /* Data = B600 */
-	apdu.lc = 2;
 
 	/* Get supported modulus length, to specify Le for APDU */
 	r = pgp_get_blob(card, priv->mf, (0x00C0 | key_info->keytype), &algo_blob);
 	LOG_TEST_RET(card->ctx, r, "Don't know supported modulus length");
 	modulus_bitlen = bebytes2ushort(algo_blob->data + 1);  /* The modulus length is coded in byte 2 & 3 */
 
-	/* Test whether we will need extended length mode. 1900 is an
-     * arbitrary length which for sure fits into a short apdu.
+	/* Test whether we will need extended APDU. 1900 is an
+     * arbitrary modulus length which for sure fits into a short APDU.
      * This idea is borrowed from GnuPG code.  */
-	if (card->caps & SC_CARD_CAP_APDU_EXT && modulus_bitlen > 1900) {
-		apdu.le = card->max_recv_size;
+	if (card->caps & SC_CARD_CAP_APDU_EXT && key_info->modulus_len > 1900) {
+		/* We won't store to apdu variable yet, because it will be reset in
+		 * sc_format_apdu() */
+		apdu_le = card->max_recv_size;
 		apdu_case = SC_APDU_CASE_4_EXT;
 	}
 	else {
-		apdu.le = 256;
+		apdu_le = 256;
 		apdu_case = SC_APDU_CASE_4_SHORT;
 	}
 
+	/* Prepare APDU */
+	sc_format_apdu(card, &apdu, apdu_case, 0x47, 0x80,  0);
+	apdu.data = apdu_data;
+	apdu.datalen = 2;  /* Data = B600 */
+	apdu.lc = 2;
+	apdu.le = apdu_le;
+
 	/* Buffer to receive response */
-	apdu.resp = malloc(apdu.le);
+	apdu.resp = calloc(apdu.le, 1);
 	if (apdu.resp == NULL) {
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
 	}
 	apdu.resplen = apdu.le;
 
-	sc_format_apdu(card, &apdu, apdu_case, 0x47, 0x80, 0);
+	/* Send */
+	sc_log(card->ctx, "Waiting for the card to generate key...");
 	r = sc_transmit_apdu(card, &apdu);
+	sc_log(card->ctx, "Card has done key generation.");
 	if (r < 0) {
 		sc_log(card->ctx, "APDU transmit failed. Error %s.", sc_strerror(r));
 		goto finish;
