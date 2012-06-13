@@ -855,6 +855,24 @@ pgp_find_blob(sc_card_t *card, unsigned int tag)
 	return blob;
 }
 
+/* Internal: Check if DO named by tag is writeable.
+ * This check does not count blob, so unreadable DOs can be applied. */
+static u8
+pgp_do_iswritable(sc_card_t *card, unsigned int tag)
+{
+	struct pgp_priv_data *priv = DRVDATA(card);
+	u8 found = 0;
+	struct do_info *d;
+
+	for (d = priv->pgp_objects; d != NULL && d->id > 0; d++) {
+		if (d->id == tag && (d->access & WRITE_MASK) != WRITE_NEVER) {
+			found = 1;
+			break;
+		}
+	}
+	return found;
+}
+
 /**
  * Strip out the parts of PKCS15 file layout in the path. Get the reduced version
  * which is understood by the OpenPGP card driver.
@@ -1107,7 +1125,10 @@ pgp_put_data(sc_card_t *card, unsigned int tag, const u8 *buf, size_t buf_len)
 
 	/* Check if the tag is writable */
 	affected_blob = pgp_find_blob(card, tag);
-	if (affected_blob == NULL || (affected_blob->info->access & WRITE_MASK) == WRITE_NEVER) {
+
+	/* Non-readable DOs have no represented blob, we have to check with pgp_do_iswritable */
+	if ((affected_blob == NULL && !pgp_do_iswritable(card, tag)) ||
+		(affected_blob && (affected_blob->info->access & WRITE_MASK) == WRITE_NEVER)) {
 		sc_log(card->ctx, "DO %04X is not writable.", tag);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ALLOWED);
 	}
@@ -1157,12 +1178,14 @@ pgp_put_data(sc_card_t *card, unsigned int tag, const u8 *buf, size_t buf_len)
 	}
 	LOG_TEST_RET(card->ctx, r, "PUT DATA returned error");
 
-	/* Update the corresponding file */
-	sc_log(card->ctx, "Updating the corresponding blob data");
-	r = pgp_set_blob(affected_blob, buf, buf_len);
-	if (r < 0)
-		sc_log(card->ctx, "Failed to update blob %04X. Error %d.", affected_blob->id, r);
-	/* pgp_set_blob()'s failures do not impact pgp_put_data()'s result */
+	if (affected_blob) {
+		/* Update the corresponding file */
+		sc_log(card->ctx, "Updating the corresponding blob data");
+		r = pgp_set_blob(affected_blob, buf, buf_len);
+		if (r < 0)
+			sc_log(card->ctx, "Failed to update blob %04X. Error %d.", affected_blob->id, r);
+		/* pgp_set_blob()'s failures do not impact pgp_put_data()'s result */
+	}
 
 	LOG_FUNC_RETURN(card->ctx, buf_len);
 }
