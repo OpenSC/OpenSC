@@ -30,6 +30,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <time.h>
 
 #include "internal.h"
 #include "asn1.h"
@@ -273,7 +274,6 @@ struct pgp_priv_data {
 
 	sc_security_env_t	sec_env;
 };
-
 
 /* ABI: check if card's ATR matches one of driver's */
 static int
@@ -1347,6 +1347,30 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 }
 
 /**
+ * Internal: Store creation time of key
+ **/
+static int pgp_store_creationtime(sc_card_t *card, u8 key_id, time_t *outtime)
+{
+	int r;
+	time_t createtime = time(NULL);
+	u8 buf[4];
+
+	LOG_FUNC_CALLED(card->ctx);
+	if (key_id == 0 || key_id > 3) {
+		sc_log(card->ctx, "Invalid key ID %d.", key_id);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_DATA);
+	}
+
+	/* Set output */
+	*outtime = createtime;
+	/* Code borrowed from GnuPG */
+	ulong2bebytes(buf, createtime);
+	r = pgp_put_data(card, 0x00CD + key_id, buf, 4);
+	LOG_TEST_RET(card->ctx, r, "Cannot write to DO");
+	LOG_FUNC_RETURN(card->ctx, r);
+}
+
+/**
  * Internal: Parse response data and set output
  **/
 static int
@@ -1354,11 +1378,16 @@ pgp_parse_and_set_pubkey_output(sc_card_t *card, u8* data, size_t data_len,
 								sc_cardctl_openpgp_keygen_info_t *key_info)
 {
 	unsigned int blob_id;
+	time_t ctime;
 	u8 *in = data;
 	u8 *modulus;
 	u8 *exponent;
 	int r;
 	LOG_FUNC_CALLED(card->ctx);
+
+	/* Store creation time */
+	r = pgp_store_creationtime(card, key_info->keytype, &ctime);
+	LOG_TEST_RET(card->ctx, r, "Cannot store creation time");
 
 	/* Parse response. Ref: pgp_enumerate_blob() */
 	while (data_len > (in - data)) {
