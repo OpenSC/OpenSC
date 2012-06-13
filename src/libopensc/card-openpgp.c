@@ -1380,6 +1380,64 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 }
 
 /**
+ * Internal: Update algorithm attribute for new key size (before generating key).
+ **/
+static int
+pgp_update_new_algo_attr(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_info)
+{
+	struct pgp_priv_data *priv = DRVDATA(card);
+	struct blob *algo_blob;
+	unsigned int old_modulus_len;     /* Measured in bit */
+	unsigned int old_exponent_len;
+	const unsigned int tag = 0x00C0 | key_info->keytype;
+	u8 changed = 0;
+	int r = SC_SUCCESS;
+
+	LOG_FUNC_CALLED(card->ctx);
+	/* Get old algorithm attributes */
+	r = pgp_seek_blob(card, priv->mf, (0x00C0 | key_info->keytype), &algo_blob);
+	LOG_TEST_RET(card->ctx, r, "Cannot get old algorithm attributes");
+	old_modulus_len = bebytes2ushort(algo_blob->data + 1);  /* The modulus length is coded in byte 2 & 3 */
+	sc_log(card->ctx, "Old modulus length %d, new %d.", old_modulus_len, key_info->modulus_len);
+	old_exponent_len = bebytes2ushort(algo_blob->data + 3);  /* The exponent length is coded in byte 3 & 4 */
+	sc_log(card->ctx, "Old exponent length %d, new %d.", old_exponent_len, key_info->exponent_len);
+
+	/* Modulus */
+	/* If passed modulus_len is zero, it means using old key size */
+	if (key_info->modulus_len == 0) {
+		sc_log(card->ctx, "Use old modulus length (%d).", old_modulus_len);
+		key_info->modulus_len = old_modulus_len;
+	}
+	/* To generate key with new key size */
+	else if (old_modulus_len != key_info->modulus_len) {
+		algo_blob->data[1] = key_info->modulus_len >> 8;
+		algo_blob->data[2] = key_info->modulus_len;
+		changed = 1;
+	}
+
+	/* Exponent */
+	if (key_info->exponent_len == 0) {
+		sc_log(card->ctx, "Use old exponent length (%d).", old_exponent_len);
+		key_info->exponent_len = old_exponent_len;
+	}
+	else if (old_exponent_len != key_info->exponent_len) {
+		algo_blob->data[3] = key_info->exponent_len >> 8;
+		algo_blob->data[4] = key_info->exponent_len;
+		changed = 1;
+	}
+
+	/* If to-be-generated key has different size, we will set this new value for
+	 * GENERATE ASYMMETRIC KEY PAIR to work */
+	if (changed) {
+		r = pgp_put_data(card, tag, algo_blob->data, 6);
+		/* Note: Don't use pgp_set_blob to set data, because it won't touch the real DO */
+		LOG_TEST_RET(card->ctx, r, "Cannot set new algorithm attributes");
+	}
+
+	LOG_FUNC_RETURN(card->ctx, r);
+}
+
+/**
  * Wrapper for the time(3).  We use this here so we can fake the time for tests.
  * Code is borrowed from GnuPG.
  **/
@@ -1486,7 +1544,10 @@ pgp_parse_and_set_pubkey_output(sc_card_t *card, u8* data, size_t data_len,
 }
 
 /**
- * Generate key
+ * Generate key.
+ * Set key_info->modulus_len to zero if want to use old key size.
+ * Similarly for exponent length.
+ * key_info->modulus_len and key_info->exponent_len will be returned with new values.
  **/
 static int pgp_gen_key(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_info)
 {
@@ -1512,10 +1573,9 @@ static int pgp_gen_key(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_in
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 
-	/* Get supported modulus length, to specify Le for APDU */
-	r = pgp_get_blob(card, priv->mf, (0x00C0 | key_info->keytype), &algo_blob);
-	LOG_TEST_RET(card->ctx, r, "Don't know supported modulus length");
-	modulus_bitlen = bebytes2ushort(algo_blob->data + 1);  /* The modulus length is coded in byte 2 & 3 */
+	/* Set attributes for new-generated key */
+	r = pgp_update_new_algo_attr(card, key_info);
+	LOG_TEST_RET(card->ctx, r, "Cannot set attributes for new-generated key");
 
 	/* Test whether we will need extended APDU. 1900 is an
      * arbitrary modulus length which for sure fits into a short APDU.
