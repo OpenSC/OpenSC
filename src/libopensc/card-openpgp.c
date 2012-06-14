@@ -1577,6 +1577,40 @@ exit:
 }
 
 /**
+ * Internal: Update pubkey blob.
+ **/
+static int
+pgp_update_pubkey_blob(sc_card_t *card, u8* data, size_t data_len, u8 key_id)
+{
+	struct pgp_priv_data *priv = DRVDATA(card);
+	struct blob *pk_blob;
+	unsigned int blob_id;
+	int r;
+
+	LOG_FUNC_CALLED(card->ctx);
+
+	if (key_id == SC_OPENPGP_KEY_SIGN)
+		blob_id = 0xB601;
+	else if (key_id == SC_OPENPGP_KEY_ENCR)
+		blob_id = 0xB801;
+	else if (key_id == SC_OPENPGP_KEY_AUTH)
+		blob_id = 0xA401;
+	else {
+		sc_log(card->ctx, "Unknown key id %X.", key_id);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+	}
+
+	sc_log(card->ctx, "Get the blob %X.", blob_id);
+	r = pgp_get_blob(card, priv->mf, blob_id, &pk_blob);
+	LOG_TEST_RET(card->ctx, r, "Cannot get the blob.");
+
+	sc_log(card->ctx, "Update blob content.");
+	r = pgp_set_blob(pk_blob, data, data_len);
+	LOG_TEST_RET(card->ctx, r, "Cannot update blob content.");
+	LOG_FUNC_RETURN(card->ctx, r);
+}
+
+/**
  * Internal: Parse response data and set output
  **/
 static int
@@ -1642,6 +1676,9 @@ pgp_parse_and_set_pubkey_output(sc_card_t *card, u8* data, size_t data_len,
 	sc_log(card->ctx, "Calculate and store fingerprint");
 	r = pgp_calculate_and_store_fingerprint(card, ctime, modulus, exponent, key_info);
 	LOG_TEST_RET(card->ctx, r, "Cannot store fingerprint.");
+	/* Update pubkey blobs (B601,B801, A401) */
+	sc_log(card->ctx, "Update blobs holding pubkey info.");
+	r = pgp_update_pubkey_blob(card, data, data_len, key_info->keytype);
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
