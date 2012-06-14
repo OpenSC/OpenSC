@@ -845,7 +845,7 @@ typedef struct sc_cardctl_piv_genkey_info_st {
 typedef struct sc_cardctl_openpgp_keygen_info {
 	u8 keytype;		      /* SC_OPENPGP_KEY_ */
 	u8 *modulus;          /* New-generated pubkey info responded from the card */
-	size_t modulus_len;   /* Length of modulus in byte */
+	size_t modulus_len;   /* Length of modulus in bit */
 	u8 *exponent;
 	size_t exponent_len;
 } sc_cardctl_openpgp_keygen_info_t;

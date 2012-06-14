@@ -1347,20 +1347,20 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 }
 
 /**
- * Internal: Parse response data of key generation and update blob.
+ * Internal: Parse response data and set output
  **/
 static int
-pgp_parse_and_update_pubkey_info(sc_card_t *card, u8* data, size_t data_len,
-								 sc_cardctl_openpgp_keygen_info_t *key_info)
+pgp_parse_and_set_pubkey_output(sc_card_t *card, u8* data, size_t data_len,
+								sc_cardctl_openpgp_keygen_info_t *key_info)
 {
-	struct pgp_priv_data *priv = DRVDATA(card);
-	struct blob *kinfo_blob;
-	struct blob *modulus_blob;
-	struct blob *exponent_blob;
+	unsigned int blob_id;
 	u8 *in = data;
+	u8 *modulus;
+	u8 *exponent;
 	int r;
-
 	LOG_FUNC_CALLED(card->ctx);
+
+	/* Parse response. Ref: pgp_enumerate_blob() */
 	while (data_len > (in - data)) {
 		unsigned int cla, tag, tmptag;
 		size_t		len;
@@ -1377,36 +1377,32 @@ pgp_parse_and_update_pubkey_info(sc_card_t *card, u8* data, size_t data_len,
 		}
 		tag |= cla;
 
-		if (tag == 0x7f49) {
-			r = pgp_get_blob(card, priv->mf, tag, &kinfo_blob);
-			LOG_TEST_RET(card->ctx, r, "Can not get the blob storing pubkey info.");
-		}
-		else if (tag == 0x0081) {
+		if (tag == 0x0081) {
 			/* Set the output data */
 			if (key_info->modulus) {
 				memcpy(key_info->modulus, part, len);
-				key_info->modulus_len = len;
 			}
-			/* Update the corresponding blob content */
-			r = pgp_get_blob(card, kinfo_blob, tag, &modulus_blob);
-			LOG_TEST_RET(card->ctx, r, "Can not get the blob storing modulus info.");
-			pgp_set_blob(modulus_blob, part, len);
+			/* Always set output for modulus_len */
+			key_info->modulus_len = len*8;
+			/* Remember the modulus to calculate fingerprint later */
+			modulus = part;
 		}
 		else if (tag == 0x0082) {
 			/* Set the output data */
 			if (key_info->exponent) {
 				memcpy(key_info->exponent, part, len);
-				key_info->exponent_len = len;
 			}
-			/* Update the corresponding blob content */
-			r = pgp_get_blob(card, kinfo_blob, tag, &exponent_blob);
-			LOG_TEST_RET(card->ctx, r, "Can not get the blob storing exponent info.");
-			pgp_set_blob(exponent_blob, part, len);
+			/* Always set output for exponent_len */
+			key_info->exponent_len = len*8;
+			/* Remember the exponent to calculate fingerprint later */
+			exponent = part;
 		}
 
 		/* Go to next part to parse */
-		in = part + len;
+		/* This will be different from pgp_enumerate_blob() a bit */
+		in = part + ((tag != 0x7F49) ? len : 0);
 	}
+
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
@@ -1490,8 +1486,8 @@ static int pgp_gen_key(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_in
 		goto finish;
 	}
 
-	/* Parse the returned data (pubkey info) and update blob */
-	r = pgp_parse_and_update_pubkey_info(card, apdu.resp, apdu.resplen, key_info);
+	/* Parse response data and set output */
+	pgp_parse_and_set_pubkey_output(card, apdu.resp, apdu.resplen, key_info);
 
 finish:
 	free(apdu.resp);
