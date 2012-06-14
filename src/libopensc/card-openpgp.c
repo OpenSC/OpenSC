@@ -36,6 +36,9 @@
 #include "asn1.h"
 #include "cardctl.h"
 #include "errors.h"
+#ifdef ENABLE_OPENSSL
+#include <openssl/sha.h>
+#endif /* ENABLE_OPENSSL */
 
 static struct sc_atr_table pgp_atrs[] = {
 	{ "3b:fa:13:00:ff:81:31:80:45:00:31:c1:73:c0:01:00:00:90:00:b1", NULL, "OpenPGP card v1.0/1.1", SC_CARD_TYPE_OPENPGP_V1, 0, NULL },
@@ -1379,6 +1382,7 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 	LOG_FUNC_RETURN(card->ctx, apdu.resplen);
 }
 
+#ifdef ENABLE_OPENSSL
 /**
  * Internal: Update algorithm attribute for new key size (before generating key).
  **/
@@ -1629,6 +1633,7 @@ finish:
 	free(apdu.resp);
 	LOG_FUNC_RETURN(card->ctx, r);
 }
+#endif /* ENABLE_OPENSSL */
 
 /* ABI: card ctl: perform special card-specific operations */
 static int pgp_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
@@ -1643,9 +1648,11 @@ static int pgp_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 		break;
 
+#ifdef ENABLE_OPENSSL
 	case SC_CARDCTL_OPENPGP_GENERATE_KEY:
 		r = pgp_gen_key(card, (sc_cardctl_openpgp_keygen_info_t *) ptr);
 		LOG_FUNC_RETURN(card->ctx, r);
+#endif /* ENABLE_OPENSSL */
 	}
 
 	LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
