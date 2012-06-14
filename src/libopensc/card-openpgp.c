@@ -30,11 +30,15 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <time.h>
 
 #include "internal.h"
 #include "asn1.h"
 #include "cardctl.h"
 #include "errors.h"
+#ifdef ENABLE_OPENSSL
+#include <openssl/sha.h>
+#endif /* ENABLE_OPENSSL */
 
 static struct sc_atr_table pgp_atrs[] = {
 	{ "3b:fa:13:00:ff:81:31:80:45:00:31:c1:73:c0:01:00:00:90:00:b1", NULL, "OpenPGP card v1.0/1.1", SC_CARD_TYPE_OPENPGP_V1, 0, NULL },
@@ -274,7 +278,6 @@ struct pgp_priv_data {
 	sc_security_env_t	sec_env;
 };
 
-
 /* ABI: check if card's ATR matches one of driver's */
 static int
 pgp_match_card(sc_card_t *card)
@@ -367,7 +370,7 @@ pgp_init(sc_card_t *card)
 }
 
 
-/* internal: get features of the card: capabilitis, ... */
+/* internal: get features of the card: capabilities, ... */
 static int
 pgp_get_card_features(sc_card_t *card)
 {
@@ -474,7 +477,7 @@ pgp_get_card_features(sc_card_t *card)
 			if ((pgp_get_blob(card, blob73, i, &blob) >= 0) &&
 			    (blob->data != NULL) && (blob->len >= 4)) {
 				if (blob->data[0] == 0x01) {	/* Algorithm ID [RFC4880]: RSA */
-					unsigned int keylen = bebytes2ushort(blob->data + 1);
+					unsigned int keylen = bebytes2ushort(blob->data + 1);  /* Measured in bit */
 
 					_sc_card_add_rsa_alg(card, keylen, flags, 0);
 				}
@@ -845,6 +848,20 @@ pgp_find_blob(sc_card_t *card, unsigned int tag)
 	return blob;
 }
 
+/* Internal: get info for a specific tag */
+static struct do_info *
+pgp_get_info_by_tag(sc_card_t *card, unsigned int tag)
+{
+	struct pgp_priv_data *priv = DRVDATA(card);
+	struct do_info *info;
+
+	for (info = priv->pgp_objects; (info != NULL) && (info->id > 0); info++)
+		if (tag == info->id)
+			return info;
+
+	return NULL;
+}
+
 /**
  * Strip out the parts of PKCS15 file layout in the path. Get the reduced version
  * which is understood by the OpenPGP card driver.
@@ -1087,7 +1104,8 @@ pgp_put_data(sc_card_t *card, unsigned int tag, const u8 *buf, size_t buf_len)
 {
 	sc_apdu_t apdu;
 	struct pgp_priv_data *priv = DRVDATA(card);
-	struct blob	*affected_blob = NULL;
+	struct blob *affected_blob = NULL;
+	struct do_info *dinfo = NULL;
 	u8 ins = 0xDA;
 	u8 p1 = tag >> 8;
 	u8 p2 = tag & 0xFF;
@@ -1097,7 +1115,18 @@ pgp_put_data(sc_card_t *card, unsigned int tag, const u8 *buf, size_t buf_len)
 
 	/* Check if the tag is writable */
 	affected_blob = pgp_find_blob(card, tag);
-	if (affected_blob == NULL || (affected_blob->info->access & WRITE_MASK) == WRITE_NEVER) {
+
+	/* Non-readable DOs have no represented blob, we have to check from pgp_get_info_by_tag */
+	if (affected_blob == NULL)
+		dinfo = pgp_get_info_by_tag(card, tag);
+	else
+		dinfo = affected_blob->info;
+
+	if (dinfo == NULL) {
+		sc_log(card->ctx, "The DO %04X does not exist.", tag);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+	}
+	else if ((dinfo->access & WRITE_MASK) == WRITE_NEVER) {
 		sc_log(card->ctx, "DO %04X is not writable.", tag);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ALLOWED);
 	}
@@ -1147,12 +1176,14 @@ pgp_put_data(sc_card_t *card, unsigned int tag, const u8 *buf, size_t buf_len)
 	}
 	LOG_TEST_RET(card->ctx, r, "PUT DATA returned error");
 
-	/* Update the corresponding file */
-	sc_log(card->ctx, "Updating the corresponding blob data");
-	r = pgp_set_blob(affected_blob, buf, buf_len);
-	if (r < 0)
-		sc_log(card->ctx, "Failed to update blob %04X. Error %d.", affected_blob->id, r);
-	/* pgp_set_blob()'s failures do not impact pgp_put_data()'s result */
+	if (affected_blob) {
+		/* Update the corresponding file */
+		sc_log(card->ctx, "Updating the corresponding blob data");
+		r = pgp_set_blob(affected_blob, buf, buf_len);
+		if (r < 0)
+			sc_log(card->ctx, "Failed to update blob %04X. Error %d.", affected_blob->id, r);
+		/* pgp_set_blob()'s failures do not impact pgp_put_data()'s result */
+	}
 
 	LOG_FUNC_RETURN(card->ctx, buf_len);
 }
@@ -1346,21 +1377,237 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 	LOG_FUNC_RETURN(card->ctx, apdu.resplen);
 }
 
+#ifdef ENABLE_OPENSSL
 /**
- * Internal: Parse response data of key generation and update blob.
+ * Internal: Update algorithm attribute for new key size (before generating key).
  **/
 static int
-pgp_parse_and_update_pubkey_info(sc_card_t *card, u8* data, size_t data_len,
-								 sc_cardctl_openpgp_keygen_info_t *key_info)
+pgp_update_new_algo_attr(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_info)
 {
 	struct pgp_priv_data *priv = DRVDATA(card);
-	struct blob *kinfo_blob;
-	struct blob *modulus_blob;
-	struct blob *exponent_blob;
-	u8 *in = data;
+	struct blob *algo_blob;
+	unsigned int old_modulus_len;     /* Measured in bit */
+	unsigned int old_exponent_len;
+	const unsigned int tag = 0x00C0 | key_info->keytype;
+	u8 changed = 0;
+	int r = SC_SUCCESS;
+
+	LOG_FUNC_CALLED(card->ctx);
+	/* Get old algorithm attributes */
+	r = pgp_seek_blob(card, priv->mf, (0x00C0 | key_info->keytype), &algo_blob);
+	LOG_TEST_RET(card->ctx, r, "Cannot get old algorithm attributes");
+	old_modulus_len = bebytes2ushort(algo_blob->data + 1);  /* The modulus length is coded in byte 2 & 3 */
+	sc_log(card->ctx, "Old modulus length %d, new %d.", old_modulus_len, key_info->modulus_len);
+	old_exponent_len = bebytes2ushort(algo_blob->data + 3);  /* The exponent length is coded in byte 3 & 4 */
+	sc_log(card->ctx, "Old exponent length %d, new %d.", old_exponent_len, key_info->exponent_len);
+
+	/* Modulus */
+	/* If passed modulus_len is zero, it means using old key size */
+	if (key_info->modulus_len == 0) {
+		sc_log(card->ctx, "Use old modulus length (%d).", old_modulus_len);
+		key_info->modulus_len = old_modulus_len;
+	}
+	/* To generate key with new key size */
+	else if (old_modulus_len != key_info->modulus_len) {
+		algo_blob->data[1] = key_info->modulus_len >> 8;
+		algo_blob->data[2] = key_info->modulus_len;
+		changed = 1;
+	}
+
+	/* Exponent */
+	if (key_info->exponent_len == 0) {
+		sc_log(card->ctx, "Use old exponent length (%d).", old_exponent_len);
+		key_info->exponent_len = old_exponent_len;
+	}
+	else if (old_exponent_len != key_info->exponent_len) {
+		algo_blob->data[3] = key_info->exponent_len >> 8;
+		algo_blob->data[4] = key_info->exponent_len;
+		changed = 1;
+	}
+
+	/* If to-be-generated key has different size, we will set this new value for
+	 * GENERATE ASYMMETRIC KEY PAIR to work */
+	if (changed) {
+		r = pgp_put_data(card, tag, algo_blob->data, 6);
+		/* Note: Don't use pgp_set_blob to set data, because it won't touch the real DO */
+		LOG_TEST_RET(card->ctx, r, "Cannot set new algorithm attributes");
+	}
+
+	LOG_FUNC_RETURN(card->ctx, r);
+}
+
+/**
+ * Internal: Store creation time of key
+ **/
+static int pgp_store_creationtime(sc_card_t *card, u8 key_id, time_t *outtime)
+{
+	int r;
+	time_t createtime = time(NULL);
+	u8 buf[4];
+
+	LOG_FUNC_CALLED(card->ctx);
+	if (key_id == 0 || key_id > 3) {
+		sc_log(card->ctx, "Invalid key ID %d.", key_id);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_DATA);
+	}
+
+	/* Set output */
+	*outtime = createtime;
+	/* Code borrowed from GnuPG */
+	ulong2bebytes(buf, createtime);
+	r = pgp_put_data(card, 0x00CD + key_id, buf, 4);
+	LOG_TEST_RET(card->ctx, r, "Cannot write to DO");
+	LOG_FUNC_RETURN(card->ctx, r);
+}
+
+/**
+ * Internal: Calculate PGP fingerprints.
+ * Reference: GnuPG, app-openpgp.c.
+ * modulus and exponent are passed separately from key_info
+ * because key_info->exponent may be null.
+ **/
+static int
+pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
+									u8* modulus, u8* exponent,
+									sc_cardctl_openpgp_keygen_info_t *key_info)
+{
+	u8 fingerprint[SHA_DIGEST_LENGTH];
+	size_t mlen = key_info->modulus_len >> 3;  /* 1/8 */
+	size_t elen = key_info->exponent_len >> 3;  /* 1/8 */
+	u8 *fp_buffer = NULL;  /* Fingerprint buffer, not hashed */
+	size_t fp_buffer_len;
+	u8 *p; /* Use this pointer to set fp_buffer content */
+	size_t pk_packet_len;
+	unsigned int tag;
+	struct blob *fpseq_blob;
+	u8 *newdata;
 	int r;
 
 	LOG_FUNC_CALLED(card->ctx);
+
+	/* http://tools.ietf.org/html/rfc4880  page 41, 72 */
+	pk_packet_len =   1   /* For ver number */
+					+ 4   /* Creation time */
+					+ 1   /* Algorithm */
+					+ 2   /* Algorithm-specific fields */
+					+ mlen
+					+ 2
+					+ elen;
+
+	fp_buffer_len = 3 + pk_packet_len;
+	p = fp_buffer = calloc(fp_buffer_len, 1);
+	if (!p) {
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
+	}
+
+	p[0] = 0x99;   /* http://tools.ietf.org/html/rfc4880  page 71 */
+	ushort2bebytes(++p, pk_packet_len);
+	/* Start pk_packet */
+	p += 2;
+	*p = 4;        /* Version 4 key */
+	ulong2bebytes(++p, ctime);    /* Creation time */
+	p += 4;
+	*p = 1;        /* RSA */
+	/* Algorithm-specific fields */
+	ushort2bebytes(++p, key_info->modulus_len);
+	p += 2;
+	memcpy(p, modulus, mlen);
+	p += mlen;
+	ushort2bebytes(++p, key_info->exponent_len);
+	p += 2;
+	memcpy(p, exponent, elen);
+	p = NULL;
+
+	/* Hash with SHA-1 */
+	SHA1(fp_buffer, fp_buffer_len, fingerprint);
+	free(fp_buffer);
+
+	/* Store to DO */
+	tag = 0x00C6 + key_info->keytype;
+	sc_log(card->ctx, "Write to DO %04X.", tag);
+	r = pgp_put_data(card, 0x00C6 + key_info->keytype, fingerprint, SHA_DIGEST_LENGTH);
+	LOG_TEST_RET(card->ctx, r, "Cannot write to DO.");
+
+	/* Update the blob containing fingerprints (00C5) */
+	sc_log(card->ctx, "Update the blob containing fingerprints (00C5)");
+	fpseq_blob = pgp_find_blob(card, 0x00C5);
+	if (!fpseq_blob) {
+		sc_log(card->ctx, "Not found 00C5");
+		goto exit;
+	}
+	/* Save the fingerprints sequence */
+	newdata = malloc(fpseq_blob->len);
+	if (!newdata) {
+		sc_log(card->ctx, "Not enough memory to update fingerprints blob.");
+		goto exit;
+	}
+	memcpy(newdata, fpseq_blob->data, fpseq_blob->len);
+	/* Move p to the portion holding the fingerprint of the current key */
+	p = newdata + 20*(key_info->keytype - 1);
+	/* Copy new fingerprint value */
+	memcpy(p, fingerprint, 20);
+	/* Set blob's data */
+	pgp_set_blob(fpseq_blob, newdata, fpseq_blob->len);
+	free(newdata);
+
+exit:
+	LOG_FUNC_RETURN(card->ctx, r);
+}
+
+/**
+ * Internal: Update pubkey blob.
+ **/
+static int
+pgp_update_pubkey_blob(sc_card_t *card, u8* data, size_t data_len, u8 key_id)
+{
+	struct pgp_priv_data *priv = DRVDATA(card);
+	struct blob *pk_blob;
+	unsigned int blob_id;
+	int r;
+
+	LOG_FUNC_CALLED(card->ctx);
+
+	if (key_id == SC_OPENPGP_KEY_SIGN)
+		blob_id = 0xB601;
+	else if (key_id == SC_OPENPGP_KEY_ENCR)
+		blob_id = 0xB801;
+	else if (key_id == SC_OPENPGP_KEY_AUTH)
+		blob_id = 0xA401;
+	else {
+		sc_log(card->ctx, "Unknown key id %X.", key_id);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+	}
+
+	sc_log(card->ctx, "Get the blob %X.", blob_id);
+	r = pgp_get_blob(card, priv->mf, blob_id, &pk_blob);
+	LOG_TEST_RET(card->ctx, r, "Cannot get the blob.");
+
+	sc_log(card->ctx, "Update blob content.");
+	r = pgp_set_blob(pk_blob, data, data_len);
+	LOG_TEST_RET(card->ctx, r, "Cannot update blob content.");
+	LOG_FUNC_RETURN(card->ctx, r);
+}
+
+/**
+ * Internal: Parse response data and set output
+ **/
+static int
+pgp_parse_and_set_pubkey_output(sc_card_t *card, u8* data, size_t data_len,
+								sc_cardctl_openpgp_keygen_info_t *key_info)
+{
+	unsigned int blob_id;
+	time_t ctime;
+	u8 *in = data;
+	u8 *modulus;
+	u8 *exponent;
+	int r;
+	LOG_FUNC_CALLED(card->ctx);
+
+	/* Store creation time */
+	r = pgp_store_creationtime(card, key_info->keytype, &ctime);
+	LOG_TEST_RET(card->ctx, r, "Cannot store creation time");
+
+	/* Parse response. Ref: pgp_enumerate_blob() */
 	while (data_len > (in - data)) {
 		unsigned int cla, tag, tmptag;
 		size_t		len;
@@ -1377,41 +1624,69 @@ pgp_parse_and_update_pubkey_info(sc_card_t *card, u8* data, size_t data_len,
 		}
 		tag |= cla;
 
-		if (tag == 0x7f49) {
-			r = pgp_get_blob(card, priv->mf, tag, &kinfo_blob);
-			LOG_TEST_RET(card->ctx, r, "Can not get the blob storing pubkey info.");
-		}
-		else if (tag == 0x0081) {
+		if (tag == 0x0081) {
 			/* Set the output data */
 			if (key_info->modulus) {
 				memcpy(key_info->modulus, part, len);
-				key_info->modulus_len = len;
 			}
-			/* Update the corresponding blob content */
-			r = pgp_get_blob(card, kinfo_blob, tag, &modulus_blob);
-			LOG_TEST_RET(card->ctx, r, "Can not get the blob storing modulus info.");
-			pgp_set_blob(modulus_blob, part, len);
+			/* Always set output for modulus_len */
+			key_info->modulus_len = len*8;
+			/* Remember the modulus to calculate fingerprint later */
+			modulus = part;
 		}
 		else if (tag == 0x0082) {
 			/* Set the output data */
 			if (key_info->exponent) {
 				memcpy(key_info->exponent, part, len);
-				key_info->exponent_len = len;
 			}
-			/* Update the corresponding blob content */
-			r = pgp_get_blob(card, kinfo_blob, tag, &exponent_blob);
-			LOG_TEST_RET(card->ctx, r, "Can not get the blob storing exponent info.");
-			pgp_set_blob(exponent_blob, part, len);
+			/* Always set output for exponent_len */
+			key_info->exponent_len = len*8;
+			/* Remember the exponent to calculate fingerprint later */
+			exponent = part;
 		}
 
 		/* Go to next part to parse */
-		in = part + len;
+		/* This will be different from pgp_enumerate_blob() a bit */
+		in = part + ((tag != 0x7F49) ? len : 0);
 	}
+
+	/* Calculate and store fingerprint */
+	sc_log(card->ctx, "Calculate and store fingerprint");
+	r = pgp_calculate_and_store_fingerprint(card, ctime, modulus, exponent, key_info);
+	LOG_TEST_RET(card->ctx, r, "Cannot store fingerprint.");
+	/* Update pubkey blobs (B601,B801, A401) */
+	sc_log(card->ctx, "Update blobs holding pubkey info.");
+	r = pgp_update_pubkey_blob(card, data, data_len, key_info->keytype);
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 /**
- * Generate key
+ * Internal: Update card->algorithms
+ */
+static int pgp_update_card_algorithms(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_info)
+{
+	sc_algorithm_info_t *algo;
+	u8 id = key_info->keytype;
+
+	LOG_FUNC_CALLED(card->ctx);
+
+	if (id > card->algorithm_count) {
+		sc_log(card->ctx, "This key ID %d is out of the card's algorithm list.");
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+	}
+
+	/* Get the algorithm corresponding to the key ID */
+	algo = card->algorithms + (id - 1);
+	/* Update new key length attribute */
+	algo->key_length = key_info->modulus_len;
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+}
+
+/**
+ * Generate key.
+ * Set key_info->modulus_len to zero if want to use old key size.
+ * Similarly for exponent length.
+ * key_info->modulus_len and key_info->exponent_len will be returned with new values.
  **/
 static int pgp_gen_key(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_info)
 {
@@ -1440,10 +1715,9 @@ static int pgp_gen_key(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_in
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 
-	/* Get supported modulus length, to specify Le for APDU */
-	r = pgp_get_blob(card, priv->mf, (0x00C0 | key_info->keytype), &algo_blob);
-	LOG_TEST_RET(card->ctx, r, "Don't know supported modulus length");
-	modulus_bitlen = bebytes2ushort(algo_blob->data + 1);  /* The modulus length is coded in byte 2 & 3 */
+	/* Set attributes for new-generated key */
+	r = pgp_update_new_algo_attr(card, key_info);
+	LOG_TEST_RET(card->ctx, r, "Cannot set attributes for new-generated key");
 
 	/* Test whether we will need extended APDU. 1900 is an
 	 * arbitrary modulus length which for sure fits into a short APDU.
@@ -1490,13 +1764,15 @@ static int pgp_gen_key(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_in
 		goto finish;
 	}
 
-	/* Parse the returned data (pubkey info) and update blob */
-	r = pgp_parse_and_update_pubkey_info(card, apdu.resp, apdu.resplen, key_info);
+	/* Parse response data and set output */
+	pgp_parse_and_set_pubkey_output(card, apdu.resp, apdu.resplen, key_info);
+	pgp_update_card_algorithms(card, key_info);
 
 finish:
 	free(apdu.resp);
 	LOG_FUNC_RETURN(card->ctx, r);
 }
+#endif /* ENABLE_OPENSSL */
 
 /* ABI: card ctl: perform special card-specific operations */
 static int pgp_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
@@ -1511,9 +1787,11 @@ static int pgp_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 		break;
 
+#ifdef ENABLE_OPENSSL
 	case SC_CARDCTL_OPENPGP_GENERATE_KEY:
 		r = pgp_gen_key(card, (sc_cardctl_openpgp_keygen_info_t *) ptr);
 		LOG_FUNC_RETURN(card->ctx, r);
+#endif /* ENABLE_OPENSSL */
 	}
 
 	LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
