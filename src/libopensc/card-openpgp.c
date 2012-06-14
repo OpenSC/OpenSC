@@ -1461,6 +1461,100 @@ static int pgp_store_creationtime(sc_card_t *card, u8 key_id, time_t *outtime)
 }
 
 /**
+ * Internal: Calculate PGP fingerprints.
+ * Reference: GnuPG, app-openpgp.c.
+ * modulus and exponent are passed separately from key_info
+ * because key_info->exponent may be null.
+ **/
+static int
+pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
+									u8* modulus, u8* exponent,
+									sc_cardctl_openpgp_keygen_info_t *key_info)
+{
+	u8 fingerprint[SHA_DIGEST_LENGTH];
+	size_t mlen = key_info->modulus_len >> 3;  /* 1/8 */
+	size_t elen = key_info->exponent_len >> 3;  /* 1/8 */
+	u8 *fp_buffer = NULL;  /* Fingerprint buffer, not hashed */
+	size_t fp_buffer_len;
+	u8 *p; /* Use this pointer to set fp_buffer content */
+	size_t pk_packet_len;
+	unsigned int tag;
+	struct blob *fpseq_blob;
+	u8 *newdata;
+	int r;
+
+	LOG_FUNC_CALLED(card->ctx);
+
+	/* http://tools.ietf.org/html/rfc4880  page 41, 72 */
+	pk_packet_len =   1   /* For ver number */
+					+ 4   /* Creation time */
+					+ 1   /* Algorithm */
+					+ 2   /* Algorithm-specific fields */
+					+ mlen
+					+ 2
+					+ elen;
+
+	fp_buffer_len = 3 + pk_packet_len;
+	p = fp_buffer = calloc(fp_buffer_len, 1);
+	if (!p) {
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
+	}
+
+	p[0] = 0x99;   /* http://tools.ietf.org/html/rfc4880  page 71 */
+	ushort2bebytes(++p, pk_packet_len);
+	/* Start pk_packet */
+	p += 2;
+	*p = 4;        /* Version 4 key */
+	ulong2bebytes(++p, ctime);    /* Creation time */
+	p += 4;
+	*p = 1;        /* RSA */
+	/* Algorithm-specific fields */
+	ushort2bebytes(++p, key_info->modulus_len);
+	p += 2;
+	memcpy(p, modulus, mlen);
+	p += mlen;
+	ushort2bebytes(++p, key_info->exponent_len);
+	p += 2;
+	memcpy(p, exponent, elen);
+	p = NULL;
+
+	/* Hash with SHA-1 */
+	SHA1(fp_buffer, fp_buffer_len, fingerprint);
+	free(fp_buffer);
+
+	/* Store to DO */
+	tag = 0x00C6 + key_info->keytype;
+	sc_log(card->ctx, "Write to DO %04X.", tag);
+	r = pgp_put_data(card, 0x00C6 + key_info->keytype, fingerprint, SHA_DIGEST_LENGTH);
+	LOG_TEST_RET(card->ctx, r, "Cannot write to DO.");
+
+	/* Update the blob containing fingerprints (00C5) */
+	sc_log(card->ctx, "Update the blob containing fingerprints (00C5)");
+	fpseq_blob = pgp_find_blob(card, 0x00C5);
+	if (!fpseq_blob) {
+		sc_log(card->ctx, "Not found 00C5");
+		goto exit;
+	}
+	/* Save the fingerprints sequence */
+	newdata = malloc(fpseq_blob->len);
+	if (!newdata) {
+		sc_log(card->ctx, "Not enough memory to update fingerprints blob.");
+		goto exit;
+	}
+	memcpy(newdata, fpseq_blob->data, fpseq_blob->len);
+	/* Move p to the portion holding the fingerprint of the current key */
+	p = newdata + 20*(key_info->keytype - 1);
+	/* Copy new fingerprint value */
+	memcpy(p, fingerprint, 20);
+	/* Set blob's data */
+	pgp_set_blob(fpseq_blob, newdata, fpseq_blob->len);
+	free(newdata);
+
+exit:
+	LOG_FUNC_RETURN(card->ctx, r);
+}
+
+/**
  * Internal: Parse response data and set output
  **/
 static int
@@ -1522,6 +1616,10 @@ pgp_parse_and_set_pubkey_output(sc_card_t *card, u8* data, size_t data_len,
 		in = part + ((tag != 0x7F49) ? len : 0);
 	}
 
+	/* Calculate and store fingerprint */
+	sc_log(card->ctx, "Calculate and store fingerprint");
+	r = pgp_calculate_and_store_fingerprint(card, ctime, modulus, exponent, key_info);
+	LOG_TEST_RET(card->ctx, r, "Cannot store fingerprint.");
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
