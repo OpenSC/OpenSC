@@ -380,7 +380,7 @@ pgp_init(sc_card_t *card)
 }
 
 
-/* internal: get features of the card: capabilitis, ... */
+/* internal: get features of the card: capabilities, ... */
 static int
 pgp_get_card_features(sc_card_t *card)
 {
@@ -487,7 +487,7 @@ pgp_get_card_features(sc_card_t *card)
 			if ((pgp_get_blob(card, blob73, i, &blob) >= 0) &&
 			    (blob->data != NULL) && (blob->len >= 4)) {
 				if (blob->data[0] == 0x01) {	/* Algorithm ID [RFC4880]: RSA */
-					unsigned int keylen = bebytes2ushort(blob->data + 1);
+					unsigned int keylen = bebytes2ushort(blob->data + 1);  /* Measured in bit */
 
 					_sc_card_add_rsa_alg(card, keylen, flags, 0);
 				}
@@ -1683,6 +1683,28 @@ pgp_parse_and_set_pubkey_output(sc_card_t *card, u8* data, size_t data_len,
 }
 
 /**
+ * Internal: Update card->algorithms
+ */
+static int pgp_update_card_algorithms(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_info)
+{
+	sc_algorithm_info_t *algo;
+	u8 id = key_info->keytype;
+
+	LOG_FUNC_CALLED(card->ctx);
+
+	if (id > card->algorithm_count) {
+		sc_log(card->ctx, "This key ID %d is out of the card's algorithm list.");
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+	}
+
+	/* Get the algorithm corresponding to the key ID */
+	algo = card->algorithms + (id - 1);
+	/* Update new key length attribute */
+	algo->key_length = key_info->modulus_len;
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+}
+
+/**
  * Generate key.
  * Set key_info->modulus_len to zero if want to use old key size.
  * Similarly for exponent length.
@@ -1763,6 +1785,7 @@ static int pgp_gen_key(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_in
 
 	/* Parse response data and set output */
 	pgp_parse_and_set_pubkey_output(card, apdu.resp, apdu.resplen, key_info);
+	pgp_update_card_algorithms(card, key_info);
 
 finish:
 	free(apdu.resp);
