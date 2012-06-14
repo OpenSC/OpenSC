@@ -294,7 +294,7 @@ pgp_match_card(sc_card_t *card)
 static int
 pgp_init(sc_card_t *card)
 {
-        struct pgp_priv_data *priv;
+	struct pgp_priv_data *priv;
 	sc_path_t	aid;
 	sc_file_t	*file = NULL;
 	struct do_info	*info;
@@ -1443,8 +1443,8 @@ static int pgp_gen_key(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_in
 	modulus_bitlen = bebytes2ushort(algo_blob->data + 1);  /* The modulus length is coded in byte 2 & 3 */
 
 	/* Test whether we will need extended APDU. 1900 is an
-     * arbitrary modulus length which for sure fits into a short APDU.
-     * This idea is borrowed from GnuPG code.  */
+	 * arbitrary modulus length which for sure fits into a short APDU.
+	 * This idea is borrowed from GnuPG code.  */
 	if (card->caps & SC_CARD_CAP_APDU_EXT && key_info->modulus_len > 1900) {
 		/* We won't store to apdu variable yet, because it will be reset in
 		 * sc_format_apdu() */
