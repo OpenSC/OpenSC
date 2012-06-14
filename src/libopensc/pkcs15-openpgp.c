@@ -158,6 +158,8 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 	const pgp_pin_cfg_t *pin_cfg = (card->type == SC_CARD_TYPE_OPENPGP_V2) ? pin_cfg_v2 : pin_cfg_v1;
 	struct sc_pkcs15_cert_info cert_info;
 	struct sc_pkcs15_object    cert_obj;
+	sc_path_t path;
+	sc_file_t *file;
 
 	memset(&cert_info, 0, sizeof(cert_info));
 	memset(&cert_obj,  0, sizeof(cert_obj));
@@ -333,11 +335,16 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 		}
 	}
 
-	u8 cert_do[8];  /* Arbitrary size, because we only want to check for data existence */
-
-	/* Make sure the DO holding certificate has already been set */
-	if ((r = read_file(card, "7F21", cert_do, sizeof(cert_do))) < 0)
+	/* Check if 7F21 DO holds data */
+	sc_format_path("7F21", &path);
+	r = sc_select_file(card, &path, &file);
+	if (r < 0)
 		goto failed;
+
+	/* If 7F21 DO holds no data, we do nothing */
+	if (file->size == 0)
+		return SC_SUCCESS;
+	/* else, we declare cert object for pkcs15 */
 
 	/* Certificate ID. We use the same ID as the authentication key */
 	cert_info.id.value[0] = 3;
