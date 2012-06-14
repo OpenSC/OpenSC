@@ -106,12 +106,6 @@ enum _card_state {
 	CARD_STATE_ACTIVATED      = 0x05
 };
 
-enum _key_type {
-	KEY_SIGN                   = 1,
-	KEY_ENCR                   = 2,
-	KEY_AUTH                   = 3
-};
-
 struct blob {
 	struct blob *	next;	/* pointer to next sibling */
 	struct blob *	parent;	/* pointer to parent */
