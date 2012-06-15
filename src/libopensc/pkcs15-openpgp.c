@@ -156,13 +156,8 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 	u8		c5data[70];
 	int		r, i;
 	const pgp_pin_cfg_t *pin_cfg = (card->type == SC_CARD_TYPE_OPENPGP_V2) ? pin_cfg_v2 : pin_cfg_v1;
-	struct sc_pkcs15_cert_info cert_info;
-	struct sc_pkcs15_object    cert_obj;
 	sc_path_t path;
 	sc_file_t *file;
-
-	memset(&cert_info, 0, sizeof(cert_info));
-	memset(&cert_obj,  0, sizeof(cert_obj));
 
 	set_string(&p15card->tokeninfo->label, "OpenPGP card");
 	set_string(&p15card->tokeninfo->manufacturer_id, "OpenPGP project");
@@ -335,27 +330,31 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 		}
 	}
 
-	/* Check if 7F21 DO holds data */
+	/* Check if certificate DO 7F21 holds data */
 	sc_format_path("7F21", &path);
 	r = sc_select_file(card, &path, &file);
 	if (r < 0)
 		goto failed;
 
-	/* If 7F21 DO holds no data, we do nothing */
-	if (file->size == 0)
-		return SC_SUCCESS;
-	/* else, we declare cert object for pkcs15 */
+	/* If DO 7F21 holds data, we declare a cert object for pkcs15 */
+	if (file->size > 0) {
+		struct sc_pkcs15_cert_info cert_info;
+		struct sc_pkcs15_object    cert_obj;
 
-	/* Certificate ID. We use the same ID as the authentication key */
-	cert_info.id.value[0] = 3;
-	cert_info.id.len = 1;
-	/* Authority, flag is zero */
-	sc_format_path("3F007F21", &cert_info.path);
-	strlcpy(cert_obj.label, "Cardholder certificate", sizeof(cert_obj.label));
+		memset(&cert_info, 0, sizeof(cert_info));
+		memset(&cert_obj,  0, sizeof(cert_obj));
 
-	r = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
-	if (r < 0)
-		return SC_ERROR_INTERNAL;
+		/* Certificate ID. We use the same ID as the authentication key */
+		cert_info.id.value[0] = 3;
+		cert_info.id.len = 1;
+		/* Authority, flag is zero */
+		sc_format_path("3F007F21", &cert_info.path);
+		strlcpy(cert_obj.label, "Cardholder certificate", sizeof(cert_obj.label));
+
+		r = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
+		if (r < 0)
+			return SC_ERROR_INTERNAL;
+	}
 
 	return 0;
 
