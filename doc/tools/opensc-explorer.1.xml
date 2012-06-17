@@ -119,10 +119,7 @@
 
 			<varlistentry>
 				<term>
-					<command>cat</command> [<replaceable>file-id</replaceable>]
-				</term>
-				<term>
-					<command>cat sfi:</command><replaceable>short-id</replaceable>
+					<command>cat</command> [<replaceable>file-id</replaceable> | sfi:<replaceable>short-id</replaceable>]
 				</term>
 				<listitem><para>Print the contents of the currently selected EF or the contents
 				of a file specified by <replaceable>file-id</replaceable> or the short file id
@@ -132,27 +129,52 @@
 
 			<varlistentry>
 				<term>
-					<command>cd</command> <replaceable>file-id</replaceable>
+					<command>cd</command> {.. | <replaceable>file-id</replaceable> | aid:<replaceable>DF-name</replaceable>}
 				</term>
-				<listitem><para>Change to another DF specified by <replaceable>file-id</replaceable></para></listitem>
+				<listitem><para>
+				Change to another DF specified by the argument passed.
+				If the argument given is <literal>..</literal>, then move up one level in the
+				file system hierarchy.
+				If it is <replaceable>file-id</replaceable>, which must be a DF directly
+				beneath the current DF, then change to that DF.
+				If it is an application identifier given as
+				<literal>aid:</literal><replaceable>DF-name</replaceable>,
+				then jump to the MF of the application denoted by
+				<replaceable>DF-name</replaceable>.
+				</para></listitem>
 			</varlistentry>
 
 			<varlistentry>
 				<term>
-					<command>change CHV</command><replaceable>id</replaceable> [[<replaceable>old-pin</replaceable>] <replaceable>new-pin</replaceable>]
+					<command>change</command> CHV<replaceable>pin-ref</replaceable> [[<replaceable>old-pin</replaceable>] <replaceable>new-pin</replaceable>]
 				</term>
-				<listitem><para>Change a PIN, where <replaceable>id</replaceable> is the PIN reference</para>
+				<listitem>
+				<para>Change a PIN, where <replaceable>pin-ref</replaceable> is the PIN reference.</para>
 				<para>
-                                        Examples:
-                                </para>
-				<para>
-                                        Change PIN: change CHV2 00:00:00:00:00:00 "foobar"
-                                </para>
-				<para>
-                                        Set PIN: change CHV2 "foobar"
-                                </para>
-				<para>
-                                        Change PIN with pinpad: change CHV2
+				Examples:
+				<variablelist>
+					<varlistentry>
+						<term><code>change CHV2 00:00:00:00:00:00 "foobar"</code></term>
+						<listitem><para>
+						Change PIN <literal>CHV2</literal>
+						to the new value <literal>foobar</literal>,
+						giving the old value <literal>00:00:00:00:00:00</literal>.
+						</para></listitem>
+					</varlistentry>
+					<varlistentry>
+						<term><code>change CHV2 "foobar"</code></term>
+						<listitem><para>
+						Set PIN <literal>CHV2</literal>
+						to the new value <literal>foobar</literal>.
+						</para></listitem>
+					</varlistentry>
+					<varlistentry>
+						<term><code>change CHV2</code></term>
+						<listitem><para>
+						Change PIN <literal>CHV2</literal> using the card reader's pinpad.
+						</para></listitem>
+					</varlistentry>
+				</variablelist>
 				</para>
 				</listitem>
 			</varlistentry>
@@ -309,14 +331,84 @@
 
 			<varlistentry>
 				<term>
+					<command>unblock</command> CHV<replaceable>pin-ref</replaceable> [<replaceable>puk</replaceable> [<replaceable>new pin</replaceable>]]
+				</term>
+				<listitem>
+				<para>
+				Unblock the PIN denoted by <replaceable>pin-ref</replaceable>
+				using the PUK <replaceable>puk</replaceable>, and set potentially
+				change its value to <replaceable>new pin</replaceable>.
+				</para>
+				<para>
+				PUK and PIN values can be a sequence of hexadecimal values,
+				<literal>"</literal>-enclosed strings, empty (<literal>""</literal>),
+				or absent.
+				If they are absent, the values are read from the card reader's pin pad.
+				</para>
+				<para>
+				Examples:
+				<variablelist>
+					<varlistentry>
+						<term><code>unblock CHV2 00:00:00:00:00:00 "foobar"</code></term>
+						<listitem><para>
+						Unblock PIN <literal>CHV2</literal> using PUK
+						<literal>00:00:00:00:00:00</literal>
+						 and set it to the new value <literal>foobar</literal>.
+						</para></listitem>
+					</varlistentry>
+					<varlistentry>
+						<term><code>unblock CHV2 00:00:00:00:00:00 ""</code></term>
+						<listitem><para>
+						Unblock PIN <literal>CHV2</literal> using PUK
+						<literal>00:00:00:00:00:00</literal> keeping the old value.
+						</para></listitem>
+					</varlistentry>
+					<varlistentry>
+						<term><code>unblock CHV2 "" "foobar"</code></term>
+						<listitem><para>
+						Set new value of PIN <literal>CHV2</literal>
+						to <literal>foobar</literal>.
+						</para></listitem>
+					</varlistentry>
+					<varlistentry>
+						<term><code>unblock CHV2 00:00:00:00:00:00</code></term>
+						<listitem><para>
+						Unblock PIN <literal>CHV2</literal> using PUK
+						<literal>00:00:00:00:00:00</literal>.
+						The new PIN value is prompted by pinpad.
+						</para></listitem>
+					</varlistentry>
+					<varlistentry>
+						<term><code>unblock CHV2 ""</code></term>
+						<listitem><para>
+						Set PIN <literal>CHV2</literal>.
+						The new PIN value is prompted by pinpad.
+						</para></listitem>
+					</varlistentry>
+					<varlistentry>
+						<term><code>unblock CHV2</code></term>
+						<listitem><para>
+						Unblock PIN <literal>CHV2</literal>.
+						The unblock code and new PIN value are prompted by pinpad.
+						</para></listitem>
+					</varlistentry>
+				</variablelist>
+				</para>
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term>
 					<command>update_binary</command> <replaceable>file-id</replaceable> <replaceable>offs</replaceable> <replaceable>data</replaceable>
 				</term>
 				<listitem>
-                                        <para>Binary update of the file specified by <replaceable>file-id</replaceable> with the literal data
-                                        <replaceable>data</replaceable> starting from offset specified by <replaceable>offs</replaceable>.</para>
-                                        <para><replaceable>data</replaceable> can be supplied as a sequence of the hex values or
-                                        as a <literal>"</literal> enclosed string. </para>
-                                </listitem>
+					<para>Binary update of the file specified by
+					<replaceable>file-id</replaceable> with the literal data
+                                        <replaceable>data</replaceable> starting from offset specified
+					by <replaceable>offs</replaceable>.</para>
+                                        <para><replaceable>data</replaceable> can be supplied as a sequencer
+					of the hex values or as a <literal>"</literal> enclosed string. </para>
+				</listitem>
 			</varlistentry>
 
 			<varlistentry>
@@ -349,7 +441,30 @@
 				using the card reader's pin pad.
                                 </para>
 				<para>
-					Example: verify CHV0 31:32:33:34:00:00:00:00
+				Examples:
+				<variablelist>
+					<varlistentry>
+						<term><code>verify CHV0 31:32:33:34:00:00:00:00</code></term>
+						<listitem><para>
+						Verify <literal>CHV2</literal> using the hex value
+						<literal>31:32:33:34:00:00:00:00</literal>
+						</para></listitem>
+					</varlistentry>
+					<varlistentry>
+						<term><code>verify CHV1 "secret"</code></term>
+						<listitem><para>
+						Verify <literal>CHV1</literal>
+						using the string value <literal>secret</literal>.
+						</para></listitem>
+					</varlistentry>
+					<varlistentry>
+						<term><code>verify KEY2</code></term>
+						<listitem><para>
+						Verify <literal>KEY2</literal>,
+						get the value from the card reader's pin pad.
+						</para></listitem>
+					</varlistentry>
+				</variablelist>
 				</para>
 				</listitem>
 			</varlistentry>
