@@ -922,13 +922,30 @@ static int do_verify(int argc, char **argv)
 	}
 
 	if (argc < 2) {
-		if (!(card->reader->capabilities & SC_READER_CAP_PIN_PAD)) {
-			printf("Card reader or driver doesn't support PIN PAD\n");
-			return -1;
+		if (card->reader->capabilities & SC_READER_CAP_PIN_PAD) {
+			printf("Please enter PIN on the reader's pin pad.\n");
+			data.pin1.prompt = "Please enter PIN";
+			data.flags |= SC_PIN_CMD_USE_PINPAD;
 		}
-		printf("Please enter PIN on the reader's pin pad.\n");
-		data.pin1.prompt = "Please enter PIN";
-		data.flags |= SC_PIN_CMD_USE_PINPAD;
+		else {
+			char *pin = NULL;
+			size_t len = 0;
+
+			printf("Please enter PIN: ");
+			r = util_getpass(&pin, &len, stdin);
+			if (r < 0) {
+				printf("No PIN entered - aborting VERIFY.\n");
+				return -1;
+			}
+			if (strlcpy(buf, pin, sizeof(buf)) >= sizeof(buf)) {
+				free(pin);
+				printf("PIN too long - aborting VERIFY.\n");
+				return -1;
+			}
+			free(pin);
+			data.pin1.data = buf;
+			data.pin1.len = strlen(buf);
+		}
 	} else {
 		r = parse_string_or_hexdata(argv[1], buf, &buflen);
 		if (0 != r) {

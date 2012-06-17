@@ -437,8 +437,11 @@
 				colon-separated list of hex values or a <literal>"</literal> enclosed string.
 				</para>
                                 <para>
-                                If <replaceable>key</replaceable> is omitted, the PIN will be verified
-				using the card reader's pin pad.
+                                If <replaceable>key</replaceable> is omitted, the exact action depends on the
+				card reader's features: if the card readers supports PIN input via a pin pad,
+				then the PIN will be verified using the card reader's pin pad.
+				If the card reader does not support PIN input, then the PIN will be asked
+				interactively.
                                 </para>
 				<para>
 				Examples:
