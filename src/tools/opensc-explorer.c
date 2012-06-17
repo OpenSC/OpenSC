@@ -1001,6 +1001,10 @@ static int do_change(int argc, char **argv)
 	u8 newpin[64];
 	size_t oldpinlen = 0;
 	size_t newpinlen = 0;
+	struct sc_pin_cmd_data data;
+
+	memset(&data, 0, sizeof(data));
+	data.cmd = SC_PIN_CMD_CHANGE;
 
 	if (argc < 1 || argc > 3)
 		return usage(do_change);
@@ -1029,10 +1033,14 @@ static int do_change(int argc, char **argv)
 		}
 	}
 
-	r = sc_change_reference_data (card, SC_AC_CHV, ref,
-                                      oldpinlen ? oldpin : NULL, oldpinlen,
-                                      newpinlen ? newpin : NULL, newpinlen,
-                                      &tries_left);
+	data.pin_type = SC_AC_CHV;
+	data.pin_reference = ref;
+	data.pin1.data = oldpinlen ? oldpin : NULL;
+	data.pin1.len = oldpinlen;
+	data.pin2.data = newpinlen ? newpin : NULL;
+	data.pin2.len = newpinlen;
+
+	r = sc_pin_cmd(card, &data, &tries_left);
 	if (r) {
 		if (r == SC_ERROR_PIN_CODE_INCORRECT) {
 			if (tries_left >= 0)
@@ -1055,6 +1063,10 @@ static int do_unblock(int argc, char **argv)
 	u8 newpin[64];
 	size_t puklen = 0;
 	size_t newpinlen = 0;
+	struct sc_pin_cmd_data data;
+
+	memset(&data, 0, sizeof(data));
+	data.cmd = SC_PIN_CMD_UNBLOCK;
 
 	if (argc < 1 || argc > 3)
 		return usage(do_unblock);
@@ -1083,9 +1095,14 @@ static int do_unblock(int argc, char **argv)
 		}
 	}
 
-	r = sc_reset_retry_counter (card, SC_AC_CHV, ref,
-                                      puklen ? puk : NULL, puklen,
-                                      newpinlen ? newpin : NULL, newpinlen);
+	data.pin_type = SC_AC_CHV;
+	data.pin_reference = ref;
+	data.pin1.data = puklen ? puk : NULL;
+	data.pin1.len = puklen;
+	data.pin2.data = newpinlen ? newpin : NULL;
+	data.pin2.len = newpinlen;
+
+	r = sc_pin_cmd(card, &data, NULL);
 	if (r) {
 		if (r == SC_ERROR_PIN_CODE_INCORRECT)
 			printf("Incorrect code.\n");
