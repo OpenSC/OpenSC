@@ -1425,6 +1425,8 @@ static int pgp_gen_key(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_in
 	size_t apdu_le;
 	int r = SC_SUCCESS;
 
+	LOG_FUNC_CALLED(card->ctx);
+
 	/* Set Control Reference Template for key */
 	if (key_info->keytype == SC_OPENPGP_KEY_SIGN)
 		apdu_data = "\xb6";
