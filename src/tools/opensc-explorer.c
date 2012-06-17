@@ -997,8 +997,8 @@ static int do_pace(int argc, char **argv)
 static int do_change(int argc, char **argv)
 {
 	int ref, r, tries_left = -1;
-	u8 oldpin[30];
-	u8 newpin[30];
+	u8 oldpin[64];
+	u8 newpin[64];
 	size_t oldpinlen = 0;
 	size_t newpinlen = 0;
 
@@ -1051,8 +1051,8 @@ static int do_change(int argc, char **argv)
 static int do_unblock(int argc, char **argv)
 {
 	int ref, r;
-	u8 puk[30];
-	u8 newpin[30];
+	u8 puk[64];
+	u8 newpin[64];
 	size_t puklen = 0;
 	size_t newpinlen = 0;
 
