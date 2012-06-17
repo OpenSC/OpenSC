@@ -1545,6 +1545,12 @@ static int do_apdu(int argc, char **argv)
 	if (apdu.resplen)
 		util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
 
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	if (r)
+		printf("Failure: %s\n", sc_strerror(r));
+	else
+		printf("Success!\n");
+
 	return 0;
 }
 
