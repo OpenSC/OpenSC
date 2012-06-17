@@ -1410,15 +1410,15 @@ static int do_erase(int argc, char **argv)
 
 static int do_random(int argc, char **argv)
 {
-	unsigned char buffer[128];
+	unsigned char buffer[256];
 	int r, count;
 
 	if (argc != 1)
 		return usage(do_random);
 
 	count = atoi(argv[0]);
-	if (count < 0 || count > 128) {
-		printf("Number must be in range 0..128\n");
+	if (count < 0 || count > 256) {
+		printf("Number must be in range 0..256\n");
 		return -1;
 	}
 
