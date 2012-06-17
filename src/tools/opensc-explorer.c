@@ -899,7 +899,7 @@ static int do_verify(int argc, char **argv)
 	int prefix_len = 0;
 
 	if (argc < 1 || argc > 2)
-		goto usage;
+		return usage(do_verify);
 
 	memset(&data, 0, sizeof(data));
 	data.cmd = SC_PIN_CMD_VERIFY;
@@ -914,11 +914,11 @@ static int do_verify(int argc, char **argv)
 	}
 	if (data.pin_type == SC_AC_NONE) {
 		printf("Invalid type.\n");
-		goto usage;
+		return usage(do_verify);
 	}
 	if (sscanf(argv[0] + prefix_len, "%d", &data.pin_reference) != 1) {
 		printf("Invalid key reference.\n");
-		goto usage;
+		return usage(do_verify);
 	}
 
 	if (argc < 2) {
@@ -933,7 +933,7 @@ static int do_verify(int argc, char **argv)
 		r = parse_string_or_hexdata(argv[1], buf, &buflen);
 		if (0 != r) {
 			printf("Invalid key value.\n");
-			goto usage;
+			return usage(do_verify);
 		}
 		data.pin1.data = buf;
 		data.pin1.len = buflen;
@@ -952,11 +952,6 @@ static int do_verify(int argc, char **argv)
 	}
 	printf("Code correct.\n");
 	return 0;
-usage:
-	printf("Usage: verify {CHV|KEY|AUT|PRO}<key ref> [<pin>]\n");
-	printf("Example: verify CHV2 31:32:33:34:00:00:00:00\n");
-	printf("If key is omitted, card reader's keypad will be used to collect PIN.\n");
-	return -1;
 }
 
 
@@ -1008,21 +1003,21 @@ static int do_change(int argc, char **argv)
 	size_t newpinlen = 0;
 
 	if (argc < 1 || argc > 3)
-		goto usage;
+		return usage(do_change);
 	if (strncasecmp(argv[0], "CHV", 3)) {
 		printf("Invalid type.\n");
-		goto usage;
+		return usage(do_change);
 	}
 	if (sscanf(argv[0] + 3, "%d", &ref) != 1) {
 		printf("Invalid key reference.\n");
-		goto usage;
+		return usage(do_change);
 	}
 
 	if (argc == 3) {
 		oldpinlen = sizeof(oldpin);
 		if (parse_string_or_hexdata(argv[1], oldpin, &oldpinlen) != 0) {
 			printf("Invalid key value.\n");
-			goto usage;
+			return usage(do_change);
 		}
 	}
 
@@ -1030,7 +1025,7 @@ static int do_change(int argc, char **argv)
 		newpinlen = sizeof(newpin);
 		if (parse_string_or_hexdata(argv[argc-1], newpin, &newpinlen) != 0) {
 			printf("Invalid key value.\n");
-			goto usage;
+			return usage(do_change);
 		}
 	}
 
@@ -1050,13 +1045,6 @@ static int do_change(int argc, char **argv)
 	}
 	printf("PIN changed.\n");
 	return 0;
-usage:
-	printf("Usage: change CHV<pin ref> [[<old pin>] <new pin>]\n");
-	printf("Examples: \n");
-	printf("\tChange PIN: change CHV2 00:00:00:00:00:00 \"foobar\"\n");
-	printf("\tSet PIN: change CHV2 \"foobar\"\n");
-	printf("\tChange PIN with pinpad': change CHV2\n");
-	return -1;
 }
 
 
@@ -1069,21 +1057,21 @@ static int do_unblock(int argc, char **argv)
 	size_t newpinlen = 0;
 
 	if (argc < 1 || argc > 3)
-		goto usage;
+		return usage(do_unblock);
 	if (strncasecmp(argv[0], "CHV", 3)) {
 		printf("Invalid type.\n");
-		goto usage;
+		return usage(do_unblock);
 	}
 	if (sscanf(argv[0] + 3, "%d", &ref) != 1) {
 		printf("Invalid key reference.\n");
-		goto usage;
+		return usage(do_unblock);
 	}
 
 	if (argc > 1) {
 		puklen = sizeof(puk);
 		if (parse_string_or_hexdata(argv[1], puk, &puklen) != 0) {
 			printf("Invalid key value.\n");
-			goto usage;
+			return usage(do_unblock);
 		}
 	}
 
@@ -1091,7 +1079,7 @@ static int do_unblock(int argc, char **argv)
 		newpinlen = sizeof(newpin);
 		if (parse_string_or_hexdata(argv[2], newpin, &newpinlen) != 0) {
 			printf("Invalid key value.\n");
-			goto usage;
+			return usage(do_unblock);
 		}
 	}
 
@@ -1106,18 +1094,6 @@ static int do_unblock(int argc, char **argv)
 	}
 	printf("PIN unblocked.\n");
 	return 0;
-usage:
-	printf("Usage: unblock CHV<pin ref> [<puk> [<new pin>]]\n");
-	printf("PUK and PIN values can be hexadecimal, ASCII, empty (\"\") or absent\n");
-	printf("Examples:\n");
-	printf("\tUnblock PIN and set a new value:   unblock CHV2 00:00:00:00:00:00 \"foobar\"\n");
-	printf("\tUnblock PIN keeping the old value: unblock CHV2 00:00:00:00:00:00 \"\"\n");
-	printf("\tSet new PIN value:                 unblock CHV2 \"\" \"foobar\"\n");
-	printf("Examples with pinpad:\n");
-	printf("\tUnblock PIN: new PIN value is prompted by pinpad:                   unblock CHV2 00:00:00:00:00:00\n");
-	printf("\tSet PIN: new PIN value is prompted by pinpad:                       unblock CHV2 \"\"\n");
-	printf("\tUnblock PIN: unblock code and new PIN value are prompted by pinpad: unblock CHV2\n");
-	return -1;
 }
 
 static int do_get(int argc, char **argv)
