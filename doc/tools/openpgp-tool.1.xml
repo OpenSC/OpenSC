@@ -60,7 +60,7 @@
 
 				<varlistentry>
 					<term>
-						<option>--raw</option>,
+						<option>--raw</option>
 					</term>
 					<listitem><para>
 					Print values in raw format, as they are stored on the card.
@@ -69,7 +69,7 @@
 
 				<varlistentry>
 					<term>
-						<option>--pretty</option>,
+						<option>--pretty</option>
 					</term>
 					<listitem><para>
 					Print values in pretty format.
