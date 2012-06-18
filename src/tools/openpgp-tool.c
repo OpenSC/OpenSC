@@ -426,7 +426,7 @@ int do_verify(sc_card_t *card, u8 *type, u8* pin)
 	if (strncasecmp("CHV", type, 3) != 0)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
-	if (type[3] < '1' || type[3] > '3')
+	if (type[3] < '1' || type[3] > '3' || type[4] != '\0')
 		return SC_ERROR_INVALID_PIN_REFERENCE;
 
 	memset(&data, 0, sizeof(struct sc_pin_cmd_data));
