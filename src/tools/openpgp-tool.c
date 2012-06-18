@@ -423,11 +423,15 @@ int do_verify(sc_card_t *card, u8 *type, u8* pin)
 	if (!type || !pin)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
-	if (strncasecmp("CHV", type, 3) != 0)
+	if (strncasecmp("CHV", type, 3) != 0) {
+		printf("Invalid PIN type. Please use CHV1, CHV2 or CHV3.\n");
 		return SC_ERROR_INVALID_ARGUMENTS;
+	}
 
-	if (type[3] < '1' || type[3] > '3' || type[4] != '\0')
+	if (type[3] < '1' || type[3] > '3' || type[4] != '\0') {
+		printf("Invalid PIN reference. Please use CHV1, CHV2 or CHV3.\n");
 		return SC_ERROR_INVALID_PIN_REFERENCE;
+	}
 
 	memset(&data, 0, sizeof(struct sc_pin_cmd_data));
 	data.cmd = SC_PIN_CMD_VERIFY;
