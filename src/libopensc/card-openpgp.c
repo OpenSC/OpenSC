@@ -284,10 +284,6 @@ struct pgp_priv_data {
 	sc_security_env_t	sec_env;
 };
 
-/* Used for calculating time */
-static unsigned long timewarp;
-static enum { NORMAL = 0, FROZEN, FUTURE, PAST } timemode;
-
 /* ABI: check if card's ATR matches one of driver's */
 static int
 pgp_match_card(sc_card_t *card)
@@ -1447,29 +1443,12 @@ pgp_update_new_algo_attr(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_
 }
 
 /**
- * Wrapper for the time(3).  We use this here so we can fake the time for tests.
- * Code is borrowed from GnuPG.
- **/
-time_t pgp_get_time()
-{
-	time_t current = time (NULL);
-	if (timemode == NORMAL)
-		return current;
-	else if (timemode == FROZEN)
-		return timewarp;
-	else if (timemode == FUTURE)
-		return current + timewarp;
-	else
-		return current - timewarp;
-}
-
-/**
  * Internal: Store creation time of key
  **/
 static int pgp_store_creationtime(sc_card_t *card, u8 key_id, time_t *outtime)
 {
 	int r;
-	time_t createtime = pgp_get_time();
+	time_t createtime = time(NULL);
 	u8 buf[4];
 
 	LOG_FUNC_CALLED(card->ctx);
