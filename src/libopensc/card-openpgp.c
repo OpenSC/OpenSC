@@ -1468,8 +1468,8 @@ static int pgp_store_creationtime(sc_card_t *card, u8 key_id, time_t *outtime)
  **/
 static int
 pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
-									u8* modulus, u8* exponent,
-									sc_cardctl_openpgp_keygen_info_t *key_info)
+                                    u8* modulus, u8* exponent,
+                                    sc_cardctl_openpgp_keygen_info_t *key_info)
 {
 	u8 fingerprint[SHA_DIGEST_LENGTH];
 	size_t mlen = key_info->modulus_len >> 3;  /* 1/8 */
@@ -1487,12 +1487,12 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 
 	/* http://tools.ietf.org/html/rfc4880  page 41, 72 */
 	pk_packet_len =   1   /* For ver number */
-					+ 4   /* Creation time */
-					+ 1   /* Algorithm */
-					+ 2   /* Algorithm-specific fields */
-					+ mlen
-					+ 2
-					+ elen;
+	                + 4   /* Creation time */
+	                + 1   /* Algorithm */
+	                + 2   /* Algorithm-specific fields */
+	                + mlen
+	                + 2
+	                + elen;
 
 	fp_buffer_len = 3 + pk_packet_len;
 	p = fp_buffer = calloc(fp_buffer_len, 1);
@@ -1593,7 +1593,7 @@ pgp_update_pubkey_blob(sc_card_t *card, u8* data, size_t data_len, u8 key_id)
  **/
 static int
 pgp_parse_and_set_pubkey_output(sc_card_t *card, u8* data, size_t data_len,
-								sc_cardctl_openpgp_keygen_info_t *key_info)
+                                sc_cardctl_openpgp_keygen_info_t *key_info)
 {
 	unsigned int blob_id;
 	time_t ctime;
