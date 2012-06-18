@@ -1430,6 +1430,7 @@ static int pgp_gen_key(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_in
 	/* Set Control Reference Template for key */
 	if (key_info->keytype == SC_OPENPGP_KEY_SIGN)
 		apdu_data = "\xb6";
+		/* As a string, apdu_data will end with '\0' (B6 00) */
 	else if (key_info->keytype == SC_OPENPGP_KEY_ENCR)
 		apdu_data = "\xb8";
 	else if (key_info->keytype == SC_OPENPGP_KEY_AUTH)
