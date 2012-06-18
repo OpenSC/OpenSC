@@ -248,6 +248,7 @@ static int decode_options(int argc, char **argv)
 			if (verifytype)
 				free(verifytype);
 			verifytype = strdup(optarg);
+			actions++;
 			break;
 		case OPT_PIN:
 			opt_pin++;
