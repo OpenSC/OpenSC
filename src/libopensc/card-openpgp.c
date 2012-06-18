@@ -858,22 +858,18 @@ pgp_find_blob(sc_card_t *card, unsigned int tag)
 	return blob;
 }
 
-/* Internal: Check if DO named by tag is writeable.
- * This check does not count blob, so unreadable DOs can be applied. */
-static u8
-pgp_do_iswritable(sc_card_t *card, unsigned int tag)
+/* Internal: get info for a specific tag */
+static struct do_info *
+pgp_get_info_by_tag(sc_card_t *card, unsigned int tag)
 {
 	struct pgp_priv_data *priv = DRVDATA(card);
-	u8 found = 0;
-	struct do_info *d;
+	struct do_info *info;
 
-	for (d = priv->pgp_objects; d != NULL && d->id > 0; d++) {
-		if (d->id == tag && (d->access & WRITE_MASK) != WRITE_NEVER) {
-			found = 1;
-			break;
-		}
-	}
-	return found;
+	for (info = priv->pgp_objects; (info != NULL) && (info->id > 0); info++)
+		if (tag == info->id)
+			return info;
+
+	return NULL;
 }
 
 /**
@@ -1118,7 +1114,8 @@ pgp_put_data(sc_card_t *card, unsigned int tag, const u8 *buf, size_t buf_len)
 {
 	sc_apdu_t apdu;
 	struct pgp_priv_data *priv = DRVDATA(card);
-	struct blob	*affected_blob = NULL;
+	struct blob *affected_blob = NULL;
+	struct do_info *dinfo = NULL;
 	u8 ins = 0xDA;
 	u8 p1 = tag >> 8;
 	u8 p2 = tag & 0xFF;
@@ -1129,9 +1126,17 @@ pgp_put_data(sc_card_t *card, unsigned int tag, const u8 *buf, size_t buf_len)
 	/* Check if the tag is writable */
 	affected_blob = pgp_find_blob(card, tag);
 
-	/* Non-readable DOs have no represented blob, we have to check with pgp_do_iswritable */
-	if ((affected_blob == NULL && !pgp_do_iswritable(card, tag)) ||
-		(affected_blob && (affected_blob->info->access & WRITE_MASK) == WRITE_NEVER)) {
+	/* Non-readable DOs have no represented blob, we have to check from pgp_get_info_by_tag */
+	if (affected_blob == NULL)
+		dinfo = pgp_get_info_by_tag(card, tag);
+	else
+		dinfo = affected_blob->info;
+
+	if (dinfo == NULL) {
+		sc_log(card->ctx, "The DO %04X does not exist.", tag);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+	}
+	else if ((dinfo->access & WRITE_MASK) == WRITE_NEVER) {
 		sc_log(card->ctx, "DO %04X is not writable.", tag);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ALLOWED);
 	}
