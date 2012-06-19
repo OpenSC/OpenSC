@@ -411,7 +411,7 @@ int do_genkey(sc_card_t *card, u8 key_id, unsigned int key_len)
 		printf("Failed to retrieve fingerprints. Error %s.\n", sc_strerror(r));
 		return 1;
 	}
-	printf("Fingerprint:\n%s\n", sc_dump_hex(fingerprints + 20*(key_id - 1), 20));
+	printf("Fingerprint:\n%s\n", (char *)sc_dump_hex(fingerprints + 20*(key_id - 1), 20));
 	return 0;
 }
 
