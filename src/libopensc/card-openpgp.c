@@ -1437,12 +1437,17 @@ pgp_update_new_algo_attr(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_
 }
 
 /**
- * Internal: Store creation time of key
+ * Internal: Store creation time of key.
+ * Pass non-zero outtime to use predefined time.
+ * Pass zero/null outtime to calculate current time. outtime then will be output.
+ * Pass null outtime to not receive output.
  **/
 static int pgp_store_creationtime(sc_card_t *card, u8 key_id, time_t *outtime)
 {
 	int r;
-	time_t createtime = time(NULL);
+	time_t createtime = 0;
+	const size_t timestrlen = 64;
+	char timestring[timestrlen + 1];
 	u8 buf[4];
 
 	LOG_FUNC_CALLED(card->ctx);
@@ -1451,8 +1456,14 @@ static int pgp_store_creationtime(sc_card_t *card, u8 key_id, time_t *outtime)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_DATA);
 	}
 
-	/* Set output */
-	*outtime = createtime;
+	if (outtime != NULL && *outtime != 0)
+		createtime = *outtime;
+	else if (outtime != NULL)
+		/* Set output */
+		*outtime = createtime = time(NULL);
+
+	strftime(timestring, timestrlen, "%c %Z", gmtime(&createtime));
+	sc_log(card->ctx, "Creation time %s.", timestring);
 	/* Code borrowed from GnuPG */
 	ulong2bebytes(buf, createtime);
 	r = pgp_put_data(card, 0x00CD + key_id, buf, 4);
@@ -1601,7 +1612,7 @@ pgp_parse_and_set_pubkey_output(sc_card_t *card, u8* data, size_t data_len,
                                 sc_cardctl_openpgp_keygen_info_t *key_info)
 {
 	unsigned int blob_id;
-	time_t ctime;
+	time_t ctime = 0;
 	u8 *in = data;
 	u8 *modulus;
 	u8 *exponent;
