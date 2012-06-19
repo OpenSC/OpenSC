@@ -498,11 +498,11 @@ sc_pkcs15_prkey_attrs_from_cert(struct sc_pkcs15_card *p15card, struct sc_pkcs15
 }
 
 
-
-static void
-sc_pkcs15_erase_prkey(struct sc_pkcs15_prkey *key)
+void
+sc_pkcs15_free_prkey(struct sc_pkcs15_prkey *key)
 {
-	assert(key != NULL);
+	if (!key)
+		return;
 	switch (key->algorithm) {
 	case SC_ALGORITHM_RSA:
 		free(key->u.rsa.modulus.data);
@@ -529,15 +529,8 @@ sc_pkcs15_erase_prkey(struct sc_pkcs15_prkey *key)
 		/* TODO: -DEE may not need much */
 		break;
 	}
-	sc_mem_clear(key, sizeof(key));
 }
 
-void
-sc_pkcs15_free_prkey(struct sc_pkcs15_prkey *key)
-{
-	sc_pkcs15_erase_prkey(key);
-	free(key);
-}
 
 void sc_pkcs15_free_prkey_info(sc_pkcs15_prkey_info_t *key)
 {
