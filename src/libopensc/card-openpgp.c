@@ -1485,6 +1485,11 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 
 	LOG_FUNC_CALLED(card->ctx);
 
+	if (modulus == NULL || exponent == NULL || mlen == 0 || elen == 0) {
+		sc_log(card->ctx, "Null data (modulus or exponent)");
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+	}
+
 	/* http://tools.ietf.org/html/rfc4880  page 41, 72 */
 	pk_packet_len =   1   /* For ver number */
 	                + 4   /* Creation time */
