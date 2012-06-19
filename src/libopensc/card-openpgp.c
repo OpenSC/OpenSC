@@ -1804,6 +1804,310 @@ finish:
 	free(apdu.resp);
 	LOG_FUNC_RETURN(card->ctx, r);
 }
+
+/**
+ * Internal: Build TLV.
+ * @param[in]  data   The data ("value") part to build TLV.
+ * @param[in]  len    Data length
+ * @param[out] out    The buffer of overall TLV. This buffer should be freed later.
+ * @param[out] outlen The length of buffer out.
+ **/
+static int
+pgp_build_tlv(sc_context_t *ctx, unsigned int tag, u8 *data, size_t len, u8 **out, size_t *outlen)
+{
+	u8 highest_order = 0;
+	u8 cla;
+	int r;
+	r = asn1_write_element(ctx, tag, data, len, out, outlen);
+	LOG_TEST_RET(ctx, r, "Failed to write ASN.1 element");
+	/* Restore class bits stripped by asn1_write_element */
+	/* Determine the left most byte of tag, which contains class bits */
+	while (tag >> 8*highest_order) {
+		highest_order++;
+	}
+	highest_order--;
+	cla = tag >> 8*highest_order;
+	/* Restore class bits */
+	*out[0] |= cla;
+	return SC_SUCCESS;
+}
+
+/**
+ * Internal: Set Tag & Length components for TLV, store them in buffer.
+ * Return the total length of Tag + Length.
+ * Note that the Value components is not counted.
+ * Ref: add_tlv() of GnuPG code.
+ **/
+static size_t
+set_taglength_tlv(u8 *buffer, unsigned int tag, size_t length)
+{
+	u8 *p = buffer;
+
+	assert(tag <= 0xffff);
+	if (tag > 0xff)
+		*p++ = (tag >> 8) & 0xFF;
+	*p++ = tag;
+	if (length < 128)
+		*p++ = length;
+	else if (length < 256) {
+		*p++ = 0x81;
+		*p++ = length;
+	}
+	else {
+		if (length > 0xffff)
+			length = 0xffff;
+		*p++ = 0x82;
+		*p++ = (length >> 8) & 0xFF;
+		*p++ = length & 0xFF;
+	}
+
+	return p - buffer;
+}
+
+/**
+ * Internal: Build Extended Header list (sec 4.3.3.7 - OpenPGP card spec v.2)
+ **/
+static int
+pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_keystore_info_t *key_info,
+                               u8 **result, size_t *resultlen)
+{
+	struct pgp_priv_data *priv = DRVDATA(card);
+	sc_context_t *ctx = card->ctx;
+	/* The Cardholder private key template (7F48) part */
+	const size_t max_prtem_len = 7*(1 + 3);     /* 7 components */
+	                                            /* 1 for tag name (91, 92... 97)
+	                                             * 3 for storing length */
+	u8 pritemplate[max_prtem_len];
+	size_t tpl_len = 0;     /* Actual size of pritemplate */
+	/* Concatenation of key data */
+	u8 kdata[3 + 256 + 256 + 512];  /* Exponent is stored in 3 bytes
+	                                 * With maximum 4096-bit key,
+	                                 * p and q can be stored in 256 bytes (2048 bits).
+	                                 * Maximum 4096-bit modulus is stored in 512 bytes */
+	size_t kdata_len = 0;   /* Actual size of kdata */
+	u8 *tlvblock = NULL;
+	size_t tlvlen = 0;
+	u8 *tlv_5f48 = NULL;
+	size_t tlvlen_5f48 = 0;
+	u8 *tlv_7f48 = NULL;
+	size_t tlvlen_7f48 = 0;
+	u8 *data = NULL;
+	size_t len = 0;
+	u8 *p = NULL;
+	u8 *components[] = {key_info->e, key_info->p, key_info->q, key_info->n};
+	size_t componentlens[] = {key_info->e_len, key_info->p_len, key_info->q_len, key_info->n_len};
+	unsigned int componenttags[] = {0x91, 0x92, 0x93, 0x95};
+	char *componentnames[] = {
+		"public exponent",
+		"prime p",
+		"prime q",
+		"modulus"
+	};
+	size_t comp_to_add = 3;
+	size_t req_e_len = 0;     /* The exponent length specified in Algorithm Attributes */
+	struct blob *alat_blob;
+	u8 i;
+	int r;
+
+	LOG_FUNC_CALLED(ctx);
+
+	if (key_info->keyformat == SC_OPENPGP_KEYFORMAT_STDN
+		|| key_info->keyformat == SC_OPENPGP_KEYFORMAT_CRTN)
+		comp_to_add = 4;
+
+	/* Validate */
+	if (comp_to_add == 4 && (key_info->n == NULL || key_info->n_len == 0)){
+		sc_log(ctx, "Error: Modulus required!");
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+	}
+
+	/* Cardholder private key template's data part */
+	memset(pritemplate, 0, max_prtem_len);
+
+	/* Get required exponent length */
+	alat_blob = pgp_find_blob(card, 0x00C0 | key_info->keytype);
+	if (!alat_blob) {
+		sc_log(ctx, "Cannot read Algorithm Attributes.");
+		LOG_FUNC_RETURN(ctx, SC_ERROR_OBJECT_NOT_FOUND);
+	}
+	req_e_len = bebytes2ushort(alat_blob->data + 3) >> 3;   /* 1/8 */
+	assert(key_info->e_len <= req_e_len);
+
+	/* We need to right justify the exponent with required length, for example,
+	 * from 01 00 01 to 00 01 00 01 */
+	if (key_info->e_len < req_e_len) {
+		/* Create new buffer */
+		p = calloc(req_e_len, 1);
+		memcpy(p + req_e_len - key_info->e_len, key_info->e, key_info->e_len);
+		key_info->e_len = req_e_len;
+		/* Set key_info->e to new buffer */
+		free(key_info->e);
+		key_info->e = p;
+		components[0] = p;
+		componentlens[0] = req_e_len;
+	}
+
+	/* Start from beginning of pritemplate */
+	p = pritemplate;
+
+	for (i = 0; i < comp_to_add; i++) {
+		sc_log(ctx, "Set Tag+Length for %s (%X).", componentnames[i], componenttags[i]);
+		len = set_taglength_tlv(p, componenttags[i], componentlens[i]);
+		tpl_len += len;
+
+		/*
+		 *       <-- kdata_len --><--  Copy here  -->
+		 * kdata |===============|___________________
+		 */
+		memcpy(kdata + kdata_len, components[i], componentlens[i]);
+		kdata_len += componentlens[i];
+
+		/* Move p to next part and build */
+		p += len;
+	}
+
+	/* TODO: Components for CRT format */
+
+	/* TLV block for 7F48 */
+	r = pgp_build_tlv(ctx, 0x7F48, pritemplate, tpl_len, &tlv_7f48, &tlvlen_7f48);
+	LOG_TEST_RET(ctx, r, "Failed to build TLV for 7F48.");
+	tlv_7f48[0] |= 0x7F;
+	r = pgp_build_tlv(ctx, 0x5f48, kdata, kdata_len, &tlv_5f48, &tlvlen_5f48);
+	LOG_TEST_RET(ctx, r, "Failed to build TLV for 5F48.");
+
+	/* Data part's length for Extended Header list */
+	len = 2 + tlvlen_7f48 + tlvlen_5f48;
+	/* Set data part content */
+	data = calloc(len, 1);
+	if (data == NULL) {
+		sc_log(ctx, "Not enough memory.");
+		r = SC_ERROR_NOT_ENOUGH_MEMORY;
+		goto out2;
+	}
+	switch (key_info->keytype) {
+	case SC_OPENPGP_KEY_SIGN:
+		data[0] = 0xB6;
+		break;
+	case SC_OPENPGP_KEY_ENCR:
+		data[0] = 0xB8;
+		break;
+	case SC_OPENPGP_KEY_AUTH:
+		data[0] = 0xA4;
+		break;
+	default:
+		sc_log(ctx, "Unknown key type %d.", key_info->keytype);
+		r = SC_ERROR_INVALID_ARGUMENTS;
+		goto out2;
+	}
+	memcpy(data + 2, tlv_7f48, tlvlen_7f48);
+	memcpy(data + 2 + tlvlen_7f48, tlv_5f48, tlvlen_5f48);
+	r = pgp_build_tlv(ctx, 0x4D, data, len, &tlvblock, &tlvlen);
+	if (r < 0) {
+		sc_log(ctx, "Cannot build TLV for Extended Header list.");
+		goto out1;
+	}
+	/* Set output */
+	if (result != NULL) {
+		*result = tlvblock;
+		*resultlen = tlvlen;
+	}
+
+out1:
+	free(data);
+
+out2:
+	free(tlv_7f48);
+	free(tlv_5f48);
+	LOG_FUNC_RETURN(ctx, r);
+}
+
+/**
+ * Store key.
+ **/
+static int pgp_store_key(sc_card_t *card, sc_cardctl_openpgp_keystore_info_t *key_info)
+{
+	struct pgp_priv_data *priv = DRVDATA(card);
+	sc_context_t *ctx = card->ctx;
+	sc_cardctl_openpgp_keygen_info_t pubkey;
+	u8 *data;
+	size_t len;
+	int r;
+
+	LOG_FUNC_CALLED(ctx);
+
+	/* Validate */
+	if (key_info->keytype < 1 || key_info->keytype > 3) {
+		sc_log(ctx, "Unknown key type %d.", key_info->keytype);
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+	}
+	/* We just support standard key format */
+	switch (key_info->keyformat) {
+	case SC_OPENPGP_KEYFORMAT_STD:
+	case SC_OPENPGP_KEYFORMAT_STDN:
+		break;
+
+	case SC_OPENPGP_KEYFORMAT_CRT:
+	case SC_OPENPGP_KEYFORMAT_CRTN:
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+
+	default:
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+	}
+
+	/* We only support exponent of maximum 32 bits */
+	if (key_info->e_len > 4) {
+		sc_log(card->ctx, "Exponent %bit (>32) is not supported.", key_info->e_len*8);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+	}
+
+	/* Set algorithm attributes */
+	memset(&pubkey, 0, sizeof(pubkey));
+	pubkey.keytype = key_info->keytype;
+	if (key_info->n && key_info->n_len) {
+		pubkey.modulus = key_info->n;
+		pubkey.modulus_len = 8*key_info->n_len;
+		/* We won't update exponent length, because smaller exponent length
+		 * will be padded later */
+	}
+	r = pgp_update_new_algo_attr(card, &pubkey);
+	LOG_TEST_RET(card->ctx, r, "Failed to update new algorithm attributes");
+	/* Build Extended Header list */
+	r = pgp_build_extended_header_list(card, key_info, &data, &len);
+	if (r < 0) {
+		sc_log(ctx, "Failed to build Extended Header list.");
+		goto out;
+	}
+	/* Write to DO */
+	r = pgp_put_data(card, 0x4D, data, len);
+	if (r < 0) {
+		sc_log(ctx, "Failed to write to DO.");
+		goto out;
+	}
+
+	free(data);
+	data = NULL;
+
+	/* Store creation time */
+	r = pgp_store_creationtime(card, key_info->keytype, &key_info->creationtime);
+	LOG_TEST_RET(card->ctx, r, "Cannot store creation time");
+
+	/* Calculate and store fingerprint */
+	sc_log(card->ctx, "Calculate and store fingerprint");
+	r = pgp_calculate_and_store_fingerprint(card, key_info->creationtime, key_info->n, key_info->e, &pubkey);
+	LOG_TEST_RET(card->ctx, r, "Cannot store fingerprint.");
+	/* Update pubkey blobs (B601,B801, A401) */
+	sc_log(card->ctx, "Update blobs holding pubkey info.");
+	r = pgp_update_pubkey_blob(card, key_info->n, 8*key_info->n_len,
+	                           key_info->e, 8*key_info->e_len, key_info->keytype);
+
+out:
+	if (data) {
+		free(data);
+		data = NULL;
+	}
+	LOG_FUNC_RETURN(ctx, r);
+}
+
 #endif /* ENABLE_OPENSSL */
 
 /* ABI: card ctl: perform special card-specific operations */
@@ -1823,6 +2127,12 @@ static int pgp_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 	case SC_CARDCTL_OPENPGP_GENERATE_KEY:
 		r = pgp_gen_key(card, (sc_cardctl_openpgp_keygen_info_t *) ptr);
 		LOG_FUNC_RETURN(card->ctx, r);
+		break;
+
+	case SC_CARDCTL_OPENPGP_STORE_KEY:
+		r = pgp_store_key(card, (sc_cardctl_openpgp_keystore_info_t *) ptr);
+		LOG_FUNC_RETURN(card->ctx, r);
+		break;
 #endif /* ENABLE_OPENSSL */
 	}
 
