@@ -1572,13 +1572,18 @@ exit:
 
 /**
  * Internal: Update pubkey blob.
+ * Note that modulus_len, exponent_len is measured in bit.
  **/
 static int
-pgp_update_pubkey_blob(sc_card_t *card, u8* data, size_t data_len, u8 key_id)
+pgp_update_pubkey_blob(sc_card_t *card, u8* modulus, size_t modulus_len,
+                       u8* exponent, size_t exponent_len, u8 key_id)
 {
 	struct pgp_priv_data *priv = DRVDATA(card);
 	struct blob *pk_blob;
 	unsigned int blob_id;
+	sc_pkcs15_pubkey_t pubkey;
+	u8 *data = NULL;
+	size_t len;
 	int r;
 
 	LOG_FUNC_CALLED(card->ctx);
@@ -1598,8 +1603,18 @@ pgp_update_pubkey_blob(sc_card_t *card, u8* data, size_t data_len, u8 key_id)
 	r = pgp_get_blob(card, priv->mf, blob_id, &pk_blob);
 	LOG_TEST_RET(card->ctx, r, "Cannot get the blob.");
 
+	/* Encode pubkey */
+	memset(&pubkey, 0, sizeof(pubkey));
+	pubkey.algorithm = SC_ALGORITHM_RSA;
+	pubkey.u.rsa.modulus.data  = modulus;
+	pubkey.u.rsa.modulus.len   = modulus_len >> 3;  /* 1/8 */
+	pubkey.u.rsa.exponent.data = exponent;
+	pubkey.u.rsa.exponent.len  = exponent_len >> 3;
+
+	r = sc_pkcs15_encode_pubkey(card->ctx, &pubkey, &data, &len);
+
 	sc_log(card->ctx, "Update blob content.");
-	r = pgp_set_blob(pk_blob, data, data_len);
+	r = pgp_set_blob(pk_blob, data, len);
 	LOG_TEST_RET(card->ctx, r, "Cannot update blob content.");
 	LOG_FUNC_RETURN(card->ctx, r);
 }
@@ -1672,7 +1687,8 @@ pgp_parse_and_set_pubkey_output(sc_card_t *card, u8* data, size_t data_len,
 	LOG_TEST_RET(card->ctx, r, "Cannot store fingerprint.");
 	/* Update pubkey blobs (B601,B801, A401) */
 	sc_log(card->ctx, "Update blobs holding pubkey info.");
-	r = pgp_update_pubkey_blob(card, data, data_len, key_info->keytype);
+	r = pgp_update_pubkey_blob(card, modulus, key_info->modulus_len,
+	                           exponent, key_info->exponent_len, key_info->keytype);
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
