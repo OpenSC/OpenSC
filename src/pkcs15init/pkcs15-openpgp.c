@@ -144,6 +144,58 @@ static int openpgp_emu_update_tokeninfo(sc_profile_t *profile, sc_pkcs15_card_t 
 	LOG_FUNC_RETURN(p15card->card->ctx, SC_SUCCESS);
 }
 
+static int openpgp_store_data(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
+                              struct sc_pkcs15_object *obj,	struct sc_pkcs15_der *content,
+                              struct sc_path *path)
+{
+	sc_card_t *card = p15card->card;
+	sc_file_t *file;
+	sc_pkcs15_cert_info_t *cinfo;
+	sc_pkcs15_id_t *cid;
+	int r;
+
+	LOG_FUNC_CALLED(card->ctx);
+
+	switch (obj->type & SC_PKCS15_TYPE_CLASS_MASK) {
+	case SC_PKCS15_TYPE_PRKEY:
+	case SC_PKCS15_TYPE_PUBKEY:
+		/* For these two type, store_data just don't need to do anything.
+		 * All have been done already before this function is called */
+		r = SC_SUCCESS;
+		break;
+
+	case SC_PKCS15_TYPE_CERT:
+		cinfo = (sc_pkcs15_cert_info_t *) obj->data;
+		cid = &(cinfo->id);
+
+		if (cid->len != 1)
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
+		/* OpenPGP card v.2 contains only 1 certificate */
+		if (cid->value[0] != 3) {
+			sc_log(card->ctx,
+			       "This version does not support certificate ID = %d (only ID=3 is supported).",
+			       cid->value[0]);
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+		}
+		/* Just update the certificate DO */
+		sc_format_path("7F21", path);
+		r = sc_select_file(card, path, &file);
+		LOG_TEST_RET(card->ctx, r, "Cannot select cert file");
+		r = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_UPDATE);
+		if (r >= 0 && content->len)
+			r = sc_update_binary(p15card->card, 0,
+			                     (const unsigned char *) content->value,
+			                     content->len, 0);
+		break;
+
+	default:
+		r = SC_ERROR_NOT_IMPLEMENTED;
+	}
+
+	LOG_FUNC_RETURN(card->ctx, r);
+}
+
 static struct sc_pkcs15init_operations sc_pkcs15init_openpgp_operations = {
 	openpgp_erase,
 	NULL,				/* init_card */
@@ -161,7 +213,8 @@ static struct sc_pkcs15init_operations sc_pkcs15init_openpgp_operations = {
 	NULL,
 	openpgp_emu_update_any_df,
 	openpgp_emu_update_tokeninfo,
-	NULL, NULL, 	/* pkcs15init emulation */
+	NULL,   /* emu_write_info */
+	openpgp_store_data, /* emu_store_data */
 	NULL				/* sanity_check */
 };
 
