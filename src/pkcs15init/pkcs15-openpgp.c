@@ -95,7 +95,12 @@ static int openpgp_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 static int openpgp_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	sc_pkcs15_object_t *obj)
 {
-	return SC_ERROR_NOT_SUPPORTED;
+	/* For OpenPGP card, the number of keys is fixed,
+	 * so this function does not really do anything.
+	 * It just present here to avoid pkcs15init's default routine,
+	 * which tries to do impossible things. */
+	LOG_FUNC_CALLED(p15card->card->ctx);
+	LOG_FUNC_RETURN(p15card->card->ctx, SC_SUCCESS);
 }
 
 /**
@@ -109,7 +114,32 @@ static int openpgp_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 static int openpgp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	sc_pkcs15_object_t *obj, sc_pkcs15_prkey_t *key)
 {
-	return SC_ERROR_NOT_SUPPORTED;
+	sc_card_t *card = p15card->card;
+	sc_pkcs15_prkey_info_t *kinfo = (sc_pkcs15_prkey_info_t *) obj->data;
+	struct sc_pkcs15_prkey_rsa *rsa = &(key->u.rsa);
+	sc_cardctl_openpgp_keystore_info_t key_info;
+	int r;
+
+	LOG_FUNC_CALLED(card->ctx);
+
+	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "only RSA is currently supported");
+		return SC_ERROR_NOT_SUPPORTED;
+	}
+
+	memset(&key_info, 0, sizeof(sc_cardctl_openpgp_keystore_info_t));
+	key_info.keytype = kinfo->id.value[0];
+	key_info.e = rsa->exponent.data;
+	key_info.e_len = rsa->exponent.len;
+	key_info.p = rsa->p.data;
+	key_info.p_len = rsa->p.len;
+	key_info.q = rsa->q.data;
+	key_info.q_len = rsa->q.len;
+	key_info.n = rsa->modulus.data;
+	key_info.n_len = rsa->modulus.len;
+	r = sc_card_ctl(card, SC_CARDCTL_OPENPGP_STORE_KEY, &key_info);
+
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 /**
