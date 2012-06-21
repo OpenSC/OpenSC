@@ -128,7 +128,7 @@ struct do_info {
 	unsigned int	id;		/* ID of the DO in question */
 
 	enum _type	type;		/* constructed DO or not */
-	enum _access	access;		/* R/W acces levels for the DO */
+	enum _access	access;		/* R/W access levels for the DO */
 
 	/* function to get the DO from the card:
 	 * only != NULL is DO if readable and not only a part of a constructed DO */
@@ -191,12 +191,12 @@ static struct do_info		pgp1_objects[] = {	/* OpenPGP card spec 1.1 */
 	{ 0x5f35, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  NULL,               sc_put_data },
 	{ 0x5f50, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  sc_get_data,        sc_put_data },
 	{ 0x7f49, CONSTRUCTED, READ_ALWAYS | WRITE_NEVER, NULL,               NULL        },
-	{ 0xa400, CONSTRUCTED, READ_ALWAYS | WRITE_NEVER, pgp_get_pubkey,     NULL        },
-	{ 0xa401, SIMPLE,      READ_ALWAYS | WRITE_NEVER, pgp_get_pubkey_pem, NULL        },
-	{ 0xb600, CONSTRUCTED, READ_ALWAYS | WRITE_NEVER, pgp_get_pubkey,     NULL        },
-	{ 0xb601, SIMPLE,      READ_ALWAYS | WRITE_NEVER, pgp_get_pubkey_pem, NULL        },
-	{ 0xb800, CONSTRUCTED, READ_ALWAYS | WRITE_NEVER, pgp_get_pubkey,     NULL        },
-	{ 0xb801, SIMPLE,      READ_ALWAYS | WRITE_NEVER, pgp_get_pubkey_pem, NULL        },
+	{ 0xa400, CONSTRUCTED, READ_ALWAYS | WRITE_NEVER,  pgp_get_pubkey,     NULL        },
+	{ 0xa401, SIMPLE,      READ_ALWAYS | WRITE_ALWAYS, pgp_get_pubkey_pem, NULL        },
+	{ 0xb600, CONSTRUCTED, READ_ALWAYS | WRITE_NEVER,  pgp_get_pubkey,     NULL        },
+	{ 0xb601, SIMPLE,      READ_ALWAYS | WRITE_ALWAYS, pgp_get_pubkey_pem, NULL        },
+	{ 0xb800, CONSTRUCTED, READ_ALWAYS | WRITE_NEVER,  pgp_get_pubkey,     NULL        },
+	{ 0xb801, SIMPLE,      READ_ALWAYS | WRITE_ALWAYS, pgp_get_pubkey_pem, NULL        },
 	{ 0, 0, 0, NULL, NULL },
 };
 
@@ -249,11 +249,14 @@ static struct do_info		pgp2_objects[] = {	/* OpenPGP card spec 2.0 */
 	{ 0x7f48, CONSTRUCTED, READ_NEVER  | WRITE_NEVER, NULL,               NULL        },
 	{ 0x7f49, CONSTRUCTED, READ_ALWAYS | WRITE_NEVER, NULL,               NULL        },
 	{ 0xa400, CONSTRUCTED, READ_ALWAYS | WRITE_NEVER, pgp_get_pubkey,     NULL        },
-	{ 0xa401, SIMPLE,      READ_ALWAYS | WRITE_NEVER, pgp_get_pubkey_pem, NULL        },
-	{ 0xb600, CONSTRUCTED, READ_ALWAYS | WRITE_NEVER, pgp_get_pubkey,     NULL        },
-	{ 0xb601, SIMPLE,      READ_ALWAYS | WRITE_NEVER, pgp_get_pubkey_pem, NULL        },
-	{ 0xb800, CONSTRUCTED, READ_ALWAYS | WRITE_NEVER, pgp_get_pubkey,     NULL        },
-	{ 0xb801, SIMPLE,      READ_ALWAYS | WRITE_NEVER, pgp_get_pubkey_pem, NULL        },
+	/* The 0xA401, 0xB601, 0xB801 are just symbolic, it does not represent any real DO.
+	 * However, their R/W access condition may block the process of importing key in pkcs15init.
+	 * So we set their accesses condition as ALWAYS. */
+	{ 0xa401, SIMPLE,      READ_ALWAYS | WRITE_ALWAYS, pgp_get_pubkey_pem, NULL        },
+	{ 0xb600, CONSTRUCTED, READ_ALWAYS | WRITE_NEVER,  pgp_get_pubkey,     NULL        },
+	{ 0xb601, SIMPLE,      READ_ALWAYS | WRITE_ALWAYS, pgp_get_pubkey_pem, NULL        },
+	{ 0xb800, CONSTRUCTED, READ_ALWAYS | WRITE_NEVER,  pgp_get_pubkey,     NULL        },
+	{ 0xb801, SIMPLE,      READ_ALWAYS | WRITE_ALWAYS, pgp_get_pubkey_pem, NULL        },
 	{ 0, 0, 0, NULL, NULL },
 };
 
@@ -546,7 +549,7 @@ pgp_attach_acl(sc_card_t *card, sc_file_t *file, struct do_info *info)
 {
 	sc_acl_entry_t *acl;
 	unsigned int method = SC_AC_NONE;
-	unsigned long key_ref = 0;
+	unsigned long key_ref = SC_AC_KEY_REF_NONE;
 
 	/* Write access */
 	switch (info->access & WRITE_MASK) {
@@ -567,15 +570,20 @@ pgp_attach_acl(sc_card_t *card, sc_file_t *file, struct do_info *info)
 		break;
 	}
 
-	if (method != SC_AC_NONE || key_ref != 0) {
+	if (method != SC_AC_NONE || key_ref != SC_AC_KEY_REF_NONE) {
 		sc_file_add_acl_entry(file, SC_AC_OP_WRITE, method, key_ref);
 		sc_file_add_acl_entry(file, SC_AC_OP_UPDATE, method, key_ref);
 		sc_file_add_acl_entry(file, SC_AC_OP_DELETE, method, key_ref);
 		sc_file_add_acl_entry(file, SC_AC_OP_CREATE, method, key_ref);
 	}
+	else {
+		/* When SC_AC_OP_DELETE is absent, we need to provide
+		 * SC_AC_OP_DELETE_SELF for sc_pkcs15init_delete_by_path() */
+		sc_file_add_acl_entry(file, SC_AC_OP_DELETE_SELF, method, key_ref);
+	}
 
 	method = SC_AC_NONE;
-	key_ref = 0;
+	key_ref = SC_AC_KEY_REF_NONE;
 	/* Read access */
 	switch (info->access & READ_MASK) {
 	case READ_NEVER:
@@ -595,7 +603,7 @@ pgp_attach_acl(sc_card_t *card, sc_file_t *file, struct do_info *info)
 		break;
 	}
 
-	if (method != SC_AC_NONE || key_ref != 0) {
+	if (method != SC_AC_NONE || key_ref != SC_AC_KEY_REF_NONE) {
 		sc_file_add_acl_entry(file, SC_AC_OP_READ, method, key_ref);
 	}
 }
