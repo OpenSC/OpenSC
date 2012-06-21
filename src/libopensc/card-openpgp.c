@@ -2169,8 +2169,14 @@ pgp_delete_file(sc_card_t *card, const sc_path_t *path)
 	if (blob == priv->mf)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 
-	/* call pgp_put_data() with zero-sized NULL-buffer to zap the DO contents */
-	r = pgp_put_data(card, file->id, NULL, 0);
+	if (file->id == 0xB601 || file->id == 0xB801 || file->id == 0xA401) {
+		/* These tags are just symbolic. We don't really delete it. */
+		r = SC_SUCCESS;
+	}
+	else {
+		/* call pgp_put_data() with zero-sized NULL-buffer to zap the DO contents */
+		r = pgp_put_data(card, file->id, NULL, 0);
+	}
 
 	/* set "current" blob to parent */
 	priv->current = blob->parent;
