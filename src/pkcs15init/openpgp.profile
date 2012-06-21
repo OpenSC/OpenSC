@@ -18,7 +18,7 @@ option default {
 		so-pin-flags	= local, initialized, soPin;
 		so-min-pin-length = 8;
 		so-pin-attempts	= 3;
-		so-auth-id	= FF;
+		so-auth-id	= 3;
 		odf-size	= 256;
 		aodf-size	= 256;
 		cdf-size	= 512;
@@ -90,38 +90,7 @@ filesystem {
 				# this is present
 				EF private-key {
 					file-id	= 5F48;
-					ACL	= *=NEVER, CRYPTO=$PIN, UPDATE=$PIN;
-				}
-
-				# public keys
-				EF public-key {
-					file-id     = 7F49;
-					structure   = transparent;
-					ACL         = *=NEVER,
-								  READ=NONE,
-								  UPDATE=$PIN,
-								  ERASE=$PIN;
-				}
-
-				# Certificate template
-				EF certificate {
-					file-id	= 7F21;
-					structure	= transparent;
-					ACL		= *=NEVER,
-							  READ=NONE,
-							  UPDATE=CHV3,
-							  WRITE=CHV3,
-							  DELETE=CHV3;
-				}
-
-				# private data objects are stored in transparent EFs.
-				EF privdata {
-					file-id	= 0101;
-					structure	= transparent;
-					ACL		= *=NEVER,
-							  READ=$PIN,
-							  UPDATE=$PIN,
-							  ERASE=$PIN;
+					ACL	= *=NEVER, CRYPTO=$PIN, UPDATE=CHV3;
 				}
 			}
 		}
