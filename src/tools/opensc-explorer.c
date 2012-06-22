@@ -440,11 +440,64 @@ static int do_ls(int argc, char **argv)
 	return 0;
 }
 
+struct application {
+    const unsigned char *aid;
+    size_t aid_len;
+    const char *name;
+};
+static const unsigned char df_esign[]          = { 0xa0, 0x00, 0x00, 0x01, 0x67, 0x45, 0x53, 0x49, 0x47, 0x4e};
+static const unsigned char df_pkcs15[]         = { 0xa0, 0x00, 0x00, 0x00, 0x63, 0x50, 0x4b, 0x43, 0x53, 0x2d, 0x31, 0x35};
+static const unsigned char df_openpgp[]        = { 0xD2, 0x76, 0x00, 0x01, 0x24, 0x01};
+static const unsigned char df_lds[]            = { 0xa0, 0x00, 0x00, 0x02, 0x47, 0x10, 0x01};
+static const unsigned char df_sig[]            = { 0xD2, 0x76, 0x00, 0x00, 0x66, 0x01};
+static const unsigned char za_mf_neu[]         = { 0xD2, 0x76, 0x00, 0x00, 0x25, 0x5A, 0x41, 0x02, 0x00};
+static const unsigned char df_ec_cash_neu[]    = { 0xD2, 0x76, 0x00, 0x00, 0x25, 0x45, 0x43, 0x02, 0x00};
+static const unsigned char df_boerse_neu_1[]   = { 0xD2, 0x76, 0x00, 0x00, 0x25, 0x45, 0x50, 0x02, 0x00};
+static const unsigned char df_boerse_neu_2[]   = { 0xA0, 0x00, 0x00, 0x00, 0x59, 0x50, 0x41, 0x43, 0x45, 0x01, 0x00};
+static const unsigned char df_ga_maestro_1[]   = { 0xD2, 0x76, 0x00, 0x00, 0x25, 0x47, 0x41, 0x01, 0x00};
+static const unsigned char df_ga_maestro_2[]   = { 0xA0, 0x00, 0x00, 0x00, 0x04, 0x30, 0x60};
+static const unsigned char df_tan[]            = { 0xD2, 0x76, 0x00, 0x00, 0x25, 0x54, 0x44, 0x01, 0x00};
+static const unsigned char df_marktplatz_neu[] = { 0xD2, 0x76, 0x00, 0x00, 0x25, 0x4D, 0x01, 0x02, 0x00};
+static const unsigned char df_fahrschein_neu[] = { 0xD2, 0x76, 0x00, 0x00, 0x25, 0x46, 0x53, 0x02, 0x00};
+static const unsigned char df_banking_20[]     = { 0xD2, 0x76, 0x00, 0x00, 0x25, 0x48, 0x42, 0x02, 0x00};
+static const unsigned char df_notepad[]        = { 0xD2, 0x76, 0x00, 0x00, 0x25, 0x4E, 0x50, 0x01, 0x00};
+static const unsigned char nfc_type_4[]        = { 0xd2, 0x76, 0x00, 0x00, 0x85, 0x01, 0x00};
+static const unsigned char df_eid[]            = { 0xE8, 0x07, 0x04, 0x00, 0x7f, 0x00, 0x07, 0x03, 0x02};
+static const unsigned char vrs_ticket_1[]      = { 0xd2, 0x76, 0x00, 0x00, 0x25, 0x4b, 0x41, 0x4e, 0x4d, 0x30, 0x31, 0x00};
+static const unsigned char vrs_ticket_2[]      = { 0xd2, 0x76, 0x00, 0x01, 0x35, 0x4b, 0x41, 0x4e, 0x4d, 0x30, 0x31, 0x00};
+static const unsigned char pkcs_15[]           = { 0xA0, 0x00, 0x00, 0x00, 0x63, 'P',  'K',  'C',  'S',  '-',  '1',  '5'};
+static const unsigned char belgian_eid[]       = { 0xA0, 0x00, 0x00, 0x01, 0x77, 'P',  'K',  'C',  'S',  '-',  '1',  '5'};
+static const unsigned char portugal_eid[]      = { 0x44, 0x46, 0x20, 0x69, 0x73, 0x73, 0x75, 0x65, 0x72 };
+static struct application known_applications[] = {
+    { df_esign,          sizeof df_esign,          "DF.ESIGN", },
+    { df_pkcs15,         sizeof df_pkcs15,         "DF_PKCS15", },
+    { df_openpgp,        sizeof df_openpgp,        "DF_OpenPGP, OpenPGP card", },
+    { df_lds,            sizeof df_lds,            "DF_LDS, Machine Readable Travel Document", },
+    { df_sig,            sizeof df_sig,            "DF_SIG, Signature application", },
+    { za_mf_neu,         sizeof za_mf_neu,         "ZA_MF_NEU, Zusatzanwendungen", },
+    { df_ec_cash_neu,    sizeof df_ec_cash_neu,    "DF_EC_CASH_NEU, ec-Cash", },
+    { df_boerse_neu_1,   sizeof df_boerse_neu_1,   "DF_BOERSE_NEU, Geldkarte", },
+    { df_boerse_neu_2,   sizeof df_boerse_neu_2,   "DF_BOERSE_NEU, Geldkarte", },
+    { df_ga_maestro_1,   sizeof df_ga_maestro_1,   "DF_GA_MAESTRO, GA-Maestro", },
+    { df_ga_maestro_2,   sizeof df_ga_maestro_2,   "DF_GA_MAESTRO, GA-Maestro", },
+    { df_tan,            sizeof df_tan,            "DF_TAN, TAN-Anwendung", },
+    { df_marktplatz_neu, sizeof df_marktplatz_neu, "DF_MARKTPLATZ_NEU, Marktplatz", },
+    { df_fahrschein_neu, sizeof df_fahrschein_neu, "DF_FAHRSCHEIN_NEU, Fahrschein", },
+    { df_banking_20,     sizeof df_banking_20,     "DF_BANKING_20, HBCI", },
+    { df_notepad,        sizeof df_notepad,        "DF_NOTEPAD, Notepad", },
+    { nfc_type_4,        sizeof nfc_type_4,        "NFC_TYPE_4, NFC NDEF Application on tag type 4", },
+    { df_eid,            sizeof df_eid,            "DF_eID, eID application", },
+    { vrs_ticket_1,      sizeof vrs_ticket_1,      "VRS_TICKET, VRS Ticket", },
+    { vrs_ticket_2,      sizeof vrs_ticket_2,      "VRS_TICKET, VRS Ticket", },
+    { pkcs_15,           sizeof pkcs_15,           "PKCS #15", },
+    { belgian_eid,       sizeof belgian_eid,       "Belgian eID", },
+    { portugal_eid,      sizeof portugal_eid,      "Portugal eID", },
+};
 static int do_find(int argc, char **argv)
 {
 	u8 fid[2], end[2];
     sc_path_t path;
-	int r, count;
+	int r, i;
 
     fid[0] = 0;
     fid[1] = 0;
@@ -463,6 +516,31 @@ static int do_find(int argc, char **argv)
             break;
         default:
             return usage(do_find);
+    }
+
+    for (i = 0; i < (sizeof known_applications)/sizeof *known_applications; i++) {
+		sc_file_t *file = NULL;
+
+        sc_path_set(&path, SC_PATH_TYPE_DF_NAME, known_applications[i].aid,
+                known_applications[i].aid_len, 0, 0);
+        r = sc_select_file(card, &path, &file);
+		switch (r) {
+            case SC_SUCCESS:
+                sc_file_free(file);
+                printf(" %s\n\tAID: ", known_applications[i].name);
+                util_hex_dump(stdout, known_applications[i].aid,
+                        known_applications[i].aid_len, " ");
+                puts("");
+                select_current_path_or_die();
+                break;
+            case SC_ERROR_NOT_ALLOWED:
+            case SC_ERROR_SECURITY_STATUS_NOT_SATISFIED:
+                printf("(%s)\n\t%s\n\tAID: ", known_applications[i].name, sc_strerror(r));
+                util_hex_dump(stdout, known_applications[i].aid,
+                        known_applications[i].aid_len, " ");
+                puts("");
+                break;
+        }
     }
 
 	printf("FileID\tType  Size\n");
