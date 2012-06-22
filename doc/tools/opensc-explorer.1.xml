@@ -285,8 +285,11 @@
 				<term>
 					<command>find</command> [<replaceable>start-id</replaceable> [<replaceable>end-id</replaceable>]]
 				</term>
-                <listitem><para>Find all files in the current DF.
-                        Files are found by selecting all file identifiers in the range from <replaceable>start-fid</replaceable> to <replaceable>end-fid</replaceable> (by default from 0000 to FFFF).</para></listitem>
+				<listitem>
+					<para>Find all files in the current DF.</para>
+					<para>Files are found by selecting all file identifiers in the range from <replaceable>start-fid</replaceable> to <replaceable>end-fid</replaceable> (by default from 0000 to FFFF).</para>
+					<para>In the MF, <command>find</command> also looks for applications by trying commonly used application identifiers and inspecting EF.DIR.</para>
+				</listitem>
 			</varlistentry>
 
 			<varlistentry>
