@@ -22,7 +22,7 @@ opensc.conf: opensc.conf.in force
 		< $< > $@
 
 install-exec-hook: opensc.conf
-	$(mkdir_p) "$(DESTDIR)$(sysconfdir)"
+	$(MKDIR_P) "$(DESTDIR)$(sysconfdir)"
 	if [ -f "$(DESTDIR)$(sysconfdir)/opensc.conf" ]; then \
 		$(INSTALL_DATA) opensc.conf "$(DESTDIR)$(sysconfdir)/opensc.conf.new"; \
 	else \
