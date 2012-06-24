@@ -51,7 +51,7 @@ pkcs11-jar: jar-dir
 
 if WIN32
 install-exec-hook:
-	$(mkdir_p) "$(DESTDIR)$(libdir)"
+	$(MKDIR_P) "$(DESTDIR)$(libdir)"
 	for l in opensc-pkcs11.dll pkcs11-spy.dll; do \
 		mv "$(DESTDIR)$(libdir)/$$l" "$(DESTDIR)$(bindir)/$$l"; \
 	done
@@ -63,7 +63,7 @@ else
 PKCS11_SUFFIX=.so
 endif
 install-exec-hook:
-	$(mkdir_p) "$(DESTDIR)$(pkcs11dir)"
+	$(MKDIR_P) "$(DESTDIR)$(pkcs11dir)"
 	for l in opensc-pkcs11$(PKCS11_SUFFIX) pkcs11-spy$(PKCS11_SUFFIX); do \
 		rm -f "$(DESTDIR)$(pkcs11dir)/$$l"; \
 		$(LN_S) ../$$l "$(DESTDIR)$(pkcs11dir)/$$l"; \
