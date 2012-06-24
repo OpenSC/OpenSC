@@ -107,7 +107,7 @@ miocos_update_private_key(struct sc_profile *profile, sc_card_t *card,
 {
 	int r;
 	u8 buf[266];
-	
+
 	memcpy(buf, "\x30\x82\x01\x06\x80\x81\x80", 7);
 	memcpy(buf + 7, rsa->modulus.data, 128);
 	memcpy(buf + 7 + 128, "\x82\x81\x80", 3);
@@ -120,7 +120,7 @@ miocos_update_private_key(struct sc_profile *profile, sc_card_t *card,
 /*
  * Initialize the Application DF
  */
-static int 
+static int
 miocos_create_dir(struct sc_profile *profile, sc_pkcs15_card_t *p15card,
 		struct sc_file *df)
 {
@@ -142,7 +142,7 @@ miocos_select_pin_reference(struct sc_profile *profile, sc_pkcs15_card_t *p15car
 		return SC_ERROR_OBJECT_NOT_VALID;
 
 	if (auth_info->attrs.pin.reference < MIOCOS_PIN_ID_MIN)
-		auth_info->attrs.pin.reference = MIOCOS_PIN_ID_MIN; 
+		auth_info->attrs.pin.reference = MIOCOS_PIN_ID_MIN;
 
 	return SC_SUCCESS;
 }
@@ -151,7 +151,7 @@ miocos_select_pin_reference(struct sc_profile *profile, sc_pkcs15_card_t *p15car
  * Create new PIN
  */
 static int
-miocos_create_pin(struct sc_profile *profile, sc_pkcs15_card_t *p15card, struct sc_file *df, 
+miocos_create_pin(struct sc_profile *profile, sc_pkcs15_card_t *p15card, struct sc_file *df,
 		struct sc_pkcs15_object *pin_obj,
 		const u8 *pin, size_t pin_len,
 		const u8 *puk, size_t puk_len)
@@ -165,7 +165,7 @@ miocos_create_pin(struct sc_profile *profile, sc_pkcs15_card_t *p15card, struct 
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 	/* Ignore SOPIN */
-	if (pin_attrs->flags & SC_PKCS15_PIN_FLAG_SO_PIN)	
+	if (pin_attrs->flags & SC_PKCS15_PIN_FLAG_SO_PIN)
 		return SC_SUCCESS;
 
 	auth_info->path = profile->df_info->file->path;
@@ -204,7 +204,7 @@ miocos_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	int r;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
-	if (object->type != SC_PKCS15_TYPE_PRKEY_RSA)	
+	if (object->type != SC_PKCS15_TYPE_PRKEY_RSA)
         	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED, "MioCOS supports only 1024-bit RSA keys.");
 
 	if (key_info->modulus_length != 1024)
@@ -242,7 +242,7 @@ miocos_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	int r;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
-	if (object->type != SC_PKCS15_TYPE_PRKEY_RSA 
+	if (object->type != SC_PKCS15_TYPE_PRKEY_RSA
 			|| key->algorithm != SC_ALGORITHM_RSA)
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED, "MioCOS supports only 1024-bit RSA keys.");
 
@@ -273,7 +273,7 @@ static struct sc_pkcs15init_operations sc_pkcs15init_miocos_operations = {
 	miocos_create_pin,
 	NULL,				/* select_key_reference */
 	miocos_create_key,
-	miocos_store_key,	
+	miocos_store_key,
 	NULL,				/* generate_key */
 	NULL, NULL,			/* encode private/public key */
 	NULL,				/* finalize_card */

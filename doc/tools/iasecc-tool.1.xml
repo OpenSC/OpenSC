@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<refentry id="cardos-tool">
+	<refmeta>
+		<refentrytitle>iasecc-tool</refentrytitle>
+		<manvolnum>1</manvolnum>
+		<refmiscinfo class="productname">OpenSC</refmiscinfo>
+		<refmiscinfo class="manual">OpenSC Tools</refmiscinfo>
+		<refmiscinfo class="source">opensc</refmiscinfo>
+	</refmeta>
+
+	<refnamediv>
+		<refname>iasecc-tool</refname>
+		<refpurpose>displays information about IAS/ECC card
+		</refpurpose>
+	</refnamediv>
+
+	<refsynopsisdiv>
+		<cmdsynopsis>
+			<command>iasecc-tool</command>
+			<arg choice="opt"><replaceable class="option">OPTIONS</replaceable></arg>
+		</cmdsynopsis>
+	</refsynopsisdiv>
+
+	<refsect1>
+		<title>Description</title>
+		<para>
+			The <command>iasecc-tool</command> utility is used to display information about IAS/ECC v1.0.1 smart cards.
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Options</title>
+		<para>
+			<variablelist>
+				<varlistentry>
+					<term>
+						<option>--reader</option> <replaceable>number</replaceable>,
+					</term>
+					<listitem><para>Specify the reader number <replaceable>number</replaceable> to use.
+					The default is reader <literal>0</literal>.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--list-applications</option>,
+					</term>
+					<listitem><para>Get list of the on-card applications.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--aid</option> <replaceable>hex-aid</replaceable>,
+					</term>
+					<listitem><para>Select <replaceable>hex-aid</replaceable> before processing.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--list-sdos</option> <replaceable>sdo-type</replaceable>,
+					</term>
+					<listitem><para>List SDOs of the given <replaceable>sdo-type</replaceable>,
+                                        present in default or selected application.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--verbose</option>,
+						<option>-v</option>
+					</term>
+					<listitem><para>Causes <command>cardos-tool</command> to be more verbose.
+					Specify this flag several times to enable debug output in the opensc library.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--wait</option>,
+						<option>-w</option>
+					</term>
+					<listitem><para>Causes <command>iasecc-tool</command> to wait for the token
+					to be inserted into reader.</para>
+					</listitem>
+				</varlistentry>
+			</variablelist>
+		</para>
+	</refsect1>
+</refentry>

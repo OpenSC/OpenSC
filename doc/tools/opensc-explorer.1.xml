@@ -20,6 +20,7 @@
 		<cmdsynopsis>
 			<command>opensc-explorer</command>
 			<arg choice="opt"><replaceable class="option">OPTIONS</replaceable></arg>
+			<arg choice="opt"><replaceable class="parameter">SCRIPT</replaceable></arg>
 		</cmdsynopsis>
 	</refsynopsisdiv>
 
@@ -95,8 +96,9 @@
 <refsect1>
 	<title>Commands</title>
 	<para>
-		The following commands are supported at the <command>opensc-explorer</command>
-		interactive prompt.
+		The following commands are supported at <command>opensc-explorer</command>'s
+		interactive prompt or in script files passed via the command line parameter
+		<replaceable class="parameter">SCRIPT</replaceable>.
 		<variablelist>
 			<varlistentry>
 				<term>
@@ -212,6 +214,15 @@
 
 			<varlistentry>
 				<term>
+					<command>echo</command> <replaceable>string</replaceable> ...
+				</term>
+				<listitem>
+                                        <para>Print the <replaceable>string</replaceable>s given.</para>
+                                </listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term>
 					<command>erase</command>
 				</term>
 				<listitem><para>Erase the card, if the card supports it.</para></listitem>
@@ -246,6 +257,14 @@
 					<command>ls</command>
 				</term>
 				<listitem><para>List all files in the current DF</para></listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term>
+					<command>find</command> [<replaceable>start-id</replaceable> [<replaceable>end-id</replaceable>]]
+				</term>
+                <listitem><para>Find all files in the current DF.
+                        Files are found by selecting all file identifiers in the range from <replaceable>start-fid</replaceable> to <replaceable>end-fid</replaceable> (by default from 0000 to FFFF).</para></listitem>
 			</varlistentry>
 
 			<varlistentry>
@@ -318,15 +337,35 @@
 				<term>
 					<command>verify</command> <replaceable>key-type</replaceable> <replaceable>key-id</replaceable> [<replaceable>key</replaceable>]
 				</term>
-				<listitem><para>Present a PIN or key to the card. Where <replaceable>key-type</replaceable>
-				can be one of CHV, KEY or PRO. <replaceable>key-id</replaceable> is a number representing the
-				key or PIN reference. <replaceable>key</replaceable> is the key or PIN to be verified in hex.
+				<listitem><para>Present a PIN or key to the card, where
+				<replaceable>key-type</replaceable> can be one of <literal>CHV</literal>,
+				<literal>KEY</literal>, <literal>AUT</literal> or <literal>PRO</literal>.
+				<replaceable>key-id</replaceable> is a number representing the key or PIN reference.
+				<replaceable>key</replaceable> is the key or PIN to be verified, formatted as a
+				colon-separated list of hex values or a <literal>"</literal> enclosed string.
 				</para>
                                 <para>
-                                If <replaceable>key</replaceable> is omitted, PIN will be verified with PIN-Pad.
+                                If <replaceable>key</replaceable> is omitted, the PIN will be verified
+				using the card reader's pin pad.
                                 </para>
 				<para>
 					Example: verify CHV0 31:32:33:34:00:00:00:00
+				</para>
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term>
+					<command>pace</command> <replaceable>secret-type</replaceable> [<replaceable>secret</replaceable>]
+				</term>
+				<listitem><para>Perform PACE with the card. <replaceable>secret-type</replaceable>
+				can be one of pin, can, puk or mrz. <replaceable>secret</replaceable> is the secret to be verified as string.
+				</para>
+                                <para>
+                                If <replaceable>secret</replaceable> is omitted, the secret will be verified with the PIN-Pad.
+                                </para>
+				<para>
+					Example: pace can 123456
 				</para>
 				</listitem>
 			</varlistentry>

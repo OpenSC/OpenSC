@@ -155,6 +155,9 @@ struct sc_pkcs15init_operations {
 #define SC_PKCS15INIT_USER_PUK		3
 #define SC_PKCS15INIT_NPINS		4
 
+#define SC_PKCS15INIT_MD_STYLE_NONE	0
+#define SC_PKCS15INIT_MD_STYLE_GEMALTO	1
+
 struct sc_pkcs15init_callbacks {
 	/*
 	 * Get a PIN from the front-end. The first argument is
@@ -201,6 +204,7 @@ struct sc_pkcs15init_prkeyargs {
 	struct sc_pkcs15_id	id;
 	struct sc_pkcs15_id	auth_id;
 	const char *		label;
+	const char *		guid;
 	unsigned long		usage;
 	unsigned long		x509_usage;
 	unsigned int		flags;
@@ -244,6 +248,18 @@ struct sc_pkcs15init_dataargs {
 	struct sc_pkcs15_der	der_encoded; /* Wrong name: is not DER encoded */
 };
 
+struct sc_pkcs15init_skeyargs {
+	struct sc_pkcs15_id	id;
+	struct sc_pkcs15_id	auth_id;
+	const char *		label;
+	unsigned long           usage;
+	unsigned int		flags;
+	unsigned int		access_flags;
+	unsigned long		value_len; /* User requested length */
+
+	struct sc_pkcs15_der	data_value; /* Wrong name: is not DER encoded */
+};
+
 struct sc_pkcs15init_certargs {
 	struct sc_pkcs15_id	id;
 	const char *		label;
@@ -261,7 +277,7 @@ extern struct	sc_pkcs15_object *sc_pkcs15init_new_object(int, const char *,
 				struct sc_pkcs15_id *, void *);
 extern void	sc_pkcs15init_set_callbacks(struct sc_pkcs15init_callbacks *);
 extern int	sc_pkcs15init_bind(struct sc_card *, const char *, const char *,
-				struct sc_profile **);
+				struct sc_app_info *app_info, struct sc_profile **);
 extern void	sc_pkcs15init_unbind(struct sc_profile *);
 extern void	sc_pkcs15init_set_p15card(struct sc_profile *,
 				struct sc_pkcs15_card *);
@@ -336,9 +352,9 @@ extern int	sc_pkcs15init_create_file(struct sc_profile *,
 				struct sc_pkcs15_card *, struct sc_file *);
 extern int	sc_pkcs15init_update_file(struct sc_profile *,
 				struct sc_pkcs15_card *, struct sc_file *, void *, unsigned int);
-extern int	sc_pkcs15init_authenticate(struct sc_profile *, struct sc_pkcs15_card *, 
+extern int	sc_pkcs15init_authenticate(struct sc_profile *, struct sc_pkcs15_card *,
 				struct sc_file *, int);
-extern int	sc_pkcs15init_fixup_file(struct sc_profile *, struct sc_pkcs15_card *, 
+extern int	sc_pkcs15init_fixup_file(struct sc_profile *, struct sc_pkcs15_card *,
 				struct sc_file *);
 extern int	sc_pkcs15init_get_pin_info(struct sc_profile *, int, struct sc_pkcs15_auth_info *);
 extern int	sc_profile_get_pin_retries(struct sc_profile *, int);
@@ -351,7 +367,7 @@ extern int	sc_pkcs15init_verify_secret(struct sc_profile *, struct sc_pkcs15_car
 				sc_file_t *,  unsigned int, int);
 extern int	sc_pkcs15init_delete_by_path(struct sc_profile *,
 				struct sc_pkcs15_card *, const struct sc_path *);
-extern int	sc_pkcs15init_update_any_df(struct sc_pkcs15_card *, struct sc_profile *, 
+extern int	sc_pkcs15init_update_any_df(struct sc_pkcs15_card *, struct sc_profile *,
 			struct sc_pkcs15_df *, int);
 
 /* Erasing the card structure via rm -rf */
@@ -369,10 +385,10 @@ extern int	sc_pkcs15init_requires_restrictive_usage(
 extern int	sc_pkcs15_create_pin_domain(struct sc_profile *, struct sc_pkcs15_card *,
 				const struct sc_pkcs15_id *, struct sc_file **);
 
-extern int	sc_pkcs15init_get_pin_reference(struct sc_pkcs15_card *, 
+extern int	sc_pkcs15init_get_pin_reference(struct sc_pkcs15_card *,
 				struct sc_profile *, unsigned, int);
 
-extern int 	sc_pkcs15init_sanity_check(struct sc_pkcs15_card *, struct sc_profile *);
+extern int	sc_pkcs15init_sanity_check(struct sc_pkcs15_card *, struct sc_profile *);
 
 extern int	sc_pkcs15init_finalize_profile(struct sc_card *card, struct sc_profile *profile,
 		                struct sc_aid *aid);
@@ -391,6 +407,7 @@ extern struct sc_pkcs15init_operations *sc_pkcs15init_get_muscle_ops(void);
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_asepcos_ops(void);
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_rutoken_ops(void);
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_entersafe_ops(void);
+extern struct sc_pkcs15init_operations *sc_pkcs15init_get_epass2003_ops(void);
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_rtecp_ops(void);
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_westcos_ops(void);
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_myeid_ops(void);

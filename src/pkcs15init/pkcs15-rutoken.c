@@ -2,7 +2,7 @@
  * Rutoken S specific operation for PKCS15 initialization
  *
  * Copyright (C) 2007  Pavel Mironchik <rutoken@rutoken.ru>
- * Copyright (C) 2007  Eugene Hermann <rutoken@rutoken.ru> 
+ * Copyright (C) 2007  Eugene Hermann <rutoken@rutoken.ru>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -80,7 +80,7 @@ static const struct
  * Create a DF
  */
 static int
-rutoken_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card, 
+rutoken_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		sc_file_t *df)
 {
 	if (!profile || !p15card || !p15card->card || !p15card->card->ctx || !df)
@@ -195,7 +195,7 @@ static int create_pins(sc_card_t *card)
 		/* assert(do_pins[i].p_sattr != NULL); */
 		/* assert(sizeof(*param_do.HDR.SA_V2)) */
 		/* assert(sizeof(param_do.HDR.SA_V2) == sizeof(*do_pins[i].p_sattr)); */
-		memcpy(param_do.HDR.SA_V2, *do_pins[i].p_sattr, 
+		memcpy(param_do.HDR.SA_V2, *do_pins[i].p_sattr,
 				sizeof(*do_pins[i].p_sattr));
 		/* assert(do_pins[i].pass); */
 		/* assert(sizeof(*param_do.abyDOBody)) */
@@ -245,7 +245,7 @@ static int create_typical_fs(sc_card_t *card)
 		if (r != SC_SUCCESS) break;
 
 		/* VERIFY USER PIN */
-		r = sc_verify(card, SC_AC_CHV, do_pins[0].id, 
+		r = sc_verify(card, SC_AC_CHV, do_pins[0].id,
 				do_pins[0].pass, sizeof(do_pins[0].pass), NULL);
 		if (r != SC_SUCCESS) break;
 

@@ -19,8 +19,16 @@ app default {
 	# Special values 'stdout' and 'stderr' are recognized.
 	# Default: stderr
 	#
-	# debug_file = /tmp/opensc-debug.log;
-	# debug_file = "C:\Documents and Settings\All Users\Documents\opensc-debug.log";
+	# debug_file = @DEBUG_FILE@
+
+	# Re-open debug file  (used in WIN32)
+	#
+	# In Windows, file handles can not be shared between DLL-s,
+	#  each DLL has a separate file handle table.
+	# For that reason reopen debug file before every debug message.
+	#
+	# Default: true
+	# reopen_debug_file = false;
 
 	# PKCS#15 initialization / personalization
 	# profiles directory for pkcs15-init.
@@ -28,9 +36,18 @@ app default {
 	#
 	# profile_dir = @pkgdatadir@;
 
+	# Paranoid memory allocation.
+	#
+	# If set to 'true', then refuse to continue when locking of non-pageable
+	# memory fails. This can cause subtle failures but is more secure when
+	# you have a swap disk.
+	# Default: false
+	#
+	# paranoid_memory = false;
+
 	# CT-API module configuration.
 	reader_driver ctapi {
-		# module /usr/local/towitoko/lib/libtowitoko.so {
+		# module @libdir@/libtowitoko.so {
 			# CT-API ports:
 			# 0..3		COM1..4
 			# 4		Printer
@@ -107,7 +124,7 @@ app default {
 	#
 	# card_driver customcos {
 		# The location of the driver library
-		# module = /usr/lib/opensc/drivers/card_customcos.so;
+		# module = @libdir@/card_customcos.so;
 	# }
 
 	# Force using specific card driver
@@ -200,14 +217,14 @@ app default {
 	# PIV cards need an entry similar to this one:
 	# card_atr 3B:7D:96:00:00:80:31:80:65:B0:83:11:00:AC:83:00:90:00 {
 		# name = "PIV-II";
-	 	# driver = "piv";
+		# driver = "piv";
 	# }
 
 	# Estonian ID card and Micardo driver sometimes only play together with T=0
 	# In theory only the 'cold' ATR should be specified, as T=0 will
 	# be the preferred protocol once you boot it up with T=0, but be
 	# paranoid.
-	# 
+	#
 	# Warm ATR v1
 	card_atr 3b:6e:00:ff:45:73:74:45:49:44:20:76:65:72:20:31:2e:30 {
 		force_protocol = t0;
@@ -253,15 +270,35 @@ app default {
 	card_atr 3b:ff:11:00:ff:80:b1:fe:45:1f:03:00:68:d2:76:00:00:28:ff:05:1e:31:80:00:90:00:a6 {
 		force_protocol = t0;
 	}
-	
+
+	# Oberthur's AuthentIC v3.2.2
+	card_atr 3B:DD:18:00:81:31:FE:45:80:F9:A0:00:00:00:77:01:00:70:0A:90:00:8B {
+		type = 11100;
+		driver = "authentic";
+		name = "AuthentIC v3.1";
+
+		# Name of SM configuration sub-section
+		# secure_messaging = local_authentic;
+	}
+
 	# IAS/ECC cards
-	#card_atr 3B:7F:96:00:00:00:31:B9:64:40:70:14:10:73:94:01:80:82:90:00 {
-        #        type = 25001;
-        #        driver = "iasecc";
-        #        name = "Gemalto MultiApp IAS/ECC v1.0.1";
-        #        # secure_messaging = local_gemalto_iam;
-        #        # secure_messaging = local_adele;
-        #}
+	card_atr 3B:7F:96:00:00:00:31:B9:64:40:70:14:10:73:94:01:80:82:90:00 {
+                type = 25001;
+                driver = "iasecc";
+                name = "Gemalto MultiApp IAS/ECC v1.0.1";
+                secure_messaging = local_gemalto_iam;
+		# secure_messaging = local_adele;
+		md_read_only = false;
+		md_supports_X509_enrollment = true;
+        }
+	card_atr 3B:7F:96:00:00:00:31:B8:64:40:70:14:10:73:94:01:80:82:90:00 {
+                type = 25001;
+                driver = "iasecc";
+                name = "Gemalto MultiApp IAS/ECC v1.0.1";
+                secure_messaging = local_gemalto_iam;
+		md_read_only = false;
+		md_supports_X509_enrollment = true;
+        }
         #card_atr 3B:DD:18:00:81:31:FE:45:80:F9:A0:00:00:00:77:01:08:00:07:90:00:FE {
         #        type = 25002;
         #        driver = "iasecc";
@@ -274,6 +311,108 @@ app default {
         #        name = "Morpho YpsID S3 IAS/ECC";
         #        # secure_messaging = local_morpho_YpsID_S3;
         #}
+        card_atr 3B:DF:18:FF:81:91:FE:1F:C3:00:31:B8:64:0C:01:EC:C1:73:94:01:80:82:90:00:B3 {
+                type = 25004;
+                driver = "iasecc";
+                name = "Amos IAS/ECC v1.0.1";
+                md_read_only = false;
+                md_supports_X509_enrollment = true;
+                secure_messaging = local_amos;
+        }
+        card_atr 3B:DC:18:FF:81:91:FE:1F:C3:80:73:C8:21:13:66:01:0B:03:52:00:05:38 {
+                type = 25004;
+                driver = "iasecc";
+                name = "Amos IAS/ECC v1.0.1";
+                md_read_only = false;
+                md_supports_X509_enrollment = true;
+                secure_messaging = local_amos_eid;
+        }
+
+	secure_messaging local_authentic  {
+		#path to ans name of external SM module
+		#module_name = @DEFAULT_SM_MODULE@;
+		#module_path = @libdir@;
+
+		# specific data to tune the module initialization
+		#module_data = "Here can be your SM module init data";
+
+		# SM mode:
+		# 'transmit' -- in this mode the procedure to securize an APDU is called by the OpenSC general
+                #               APDU transmit procedure.
+		#		In this mode all APDUs, except the ones filtered by the card specific procedure,
+                #               are securized.
+                # 'acl' -- in this mode APDU are securized only if needed by the ACLs of the command to be executed.
+                #
+		#mode = transmit;
+
+		# SM type specific flags
+		# flags = 0x78;           # 0x78 -- level 3, channel 0
+
+		# Default KMC of the GP Card Manager for the Oberthur's Java cards
+		# kmc = "00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00";
+	}
+
+        secure_messaging local_gemalto_iam  {
+		module_name = @DEFAULT_SM_MODULE@;
+		module_path = @libdir@;
+                #module_data = "";
+                type = acl;             # transmit, acl
+
+                ifd_serial = "11:22:33:44:55:66:77:88";
+
+                # Keyset values from IAM profiles of the Gemalto IAS/ECC cards
+                keyset_02_enc = "RW_PRIV_ENC_TEST";
+                keyset_02_mac = "RW_PRIV_MAC_TEST";
+
+                keyset_E828BD080FD2504543432D654944_01_enc = "RO_ENC_TEST_KEY_";
+                keyset_E828BD080FD2504543432D654944_01_mac = "RO_MAC_TEST_KEY_";
+
+                keyset_E828BD080FD2504543432D654944_03_enc = "RW_PUBL_ENC_TEST";
+                keyset_E828BD080FD2504543432D654944_03_mac = "RW_PUBL_MAC_TEST";
+        }
+
+	secure_messaging local_amos  {
+		module_name = @DEFAULT_SM_MODULE@;
+		module_path = @libdir@;
+		mode = acl;
+		ifd_serial = "11:22:33:44:55:66:77:88";
+		keyset_02_enc = "ENCROECHANTILLON";
+		keyset_02_mac = "MACROECHANTILLON";
+	}
+
+        secure_messaging local_amos_eid  {
+		module_name = @DEFAULT_SM_MODULE@;
+		module_path = @libdir@;
+                mode = acl;
+                ifd_serial = "11:22:33:44:55:66:77:88";
+                keyset_E828BD080FD2504543432D654944_03_enc = "RW_PUBL_ENC_TEST";
+                keyset_E828BD080FD2504543432D654944_03_mac = "RW_PUBL_MAC_TEST";
+        }
+
+        secure_messaging local_adele  {
+		module_name = @DEFAULT_SM_MODULE@;
+		module_path = @libdir@;
+                #module_data = "";
+                type = acl;             # transmit, acl
+
+		ifd_serial = "11:22:33:44:55:66:77:88";
+
+                # Keyset values from 'Adele' profiles of the IAS/ECC cards
+                keyset_01_enc = "EMENCECHANTILLON";
+                keyset_01_mac = "EMMACECHANTILLON";
+
+                keyset_02_enc = "AAENCECHANTILLON";
+                keyset_02_mac = "AAMACECHANTILLON";
+
+                keyset_E828BD080FD2500000040301_02_enc = "E2ENCECHANTILLON";
+                keyset_E828BD080FD2500000040301_02_mac = "E2MACECHANTILLON";
+
+                keyset_D2500000044164E86C650101_02_enc = "E1ENCECHANTILLON";
+                keyset_D2500000044164E86C650101_02_mac = "E1MACECHANTILLON";
+
+                keyset_D2500000044164E86C650101_03_enc = "SIENCECHANTILLON";
+                keyset_D2500000044164E86C650101_03_mac = "SIMACECHANTILLON";
+        }
 
 	# Below are the framework specific configuration blocks.
 
@@ -309,7 +448,7 @@ app default {
 		#
 		# Default: no
 		# try_emulation_first = yes;
-		
+
 		# Enable builtin emulators.
 		# Default: yes
 		# enable_builtin_emulation = no;
@@ -326,8 +465,34 @@ app default {
 		#
 		# emulate custom {
 			# The location of the driver library
-			# module = /usr/lib/opensc/drivers/p15emu_custom.so;
+			# module = @libdir@/p15emu_custom.so;
 		# }
+
+		# some additional application parameters:
+		# - type (generic, protected) used to distinguish the common access application
+		#   and application for which authentication to perform some operation cannot be
+		#   obtained with the common procedures (ex. object creation protected by secure messaging).
+		#   Used by PKCS#11 module configurated to expose restricted number of slots.
+		#   (for ex. configurated to expose only User PIN slot, User and Sign PINs slots, ...)
+                application E828BD080FD25047656E65726963 {
+                        type = generic;
+                        model = "ECC Generic PKI";
+                }
+
+                application E828BD080FD2500000040301 {
+                        type = generic;
+                        model = "Adèle Générique";
+                }
+
+                application E828BD080FD2504543432D654944 {
+                        type = protected;
+                        model = "ECC eID";
+                }
+
+                application E828BD080FD2500000040201 {
+                        type = protected;
+                        model = "Adèle Admin-2";
+                }
 	}
 }
 
@@ -372,19 +537,19 @@ app opensc-pkcs11 {
 		# (which may be possible because you have already authenticated
 		# with the card). This setting is not very secure.
 		#
-		# Also, if your card is not locked, you can enconter problems 
-		# due to limitation of the OpenSC framework, that still is not 
+		# Also, if your card is not locked, you can enconter problems
+		# due to limitation of the OpenSC framework, that still is not
 		# thoroughly tested in the multi threads environment.
 		#
-		# Your settings will be more secure if you choose to lock your 
-		# card. Nevertheless this behavior is a known violation of PKCS#11 
-		# specification. Now once one application has started using your 
-		# card with C_Login, no other application can use it, until 
-		# the first is done and calls C_Logout or C_Finalize. In the case 
-		# of many PKCS#11 application this does not happen until you exit 
+		# Your settings will be more secure if you choose to lock your
+		# card. Nevertheless this behavior is a known violation of PKCS#11
+		# specification. Now once one application has started using your
+		# card with C_Login, no other application can use it, until
+		# the first is done and calls C_Logout or C_Finalize. In the case
+		# of many PKCS#11 application this does not happen until you exit
 		# the application.
-		# Thus it is impossible to use several smart card aware applications 
-		# at the same time, e.g. you cannot run both Firefox and Thunderbird at 
+		# Thus it is impossible to use several smart card aware applications
+		# at the same time, e.g. you cannot run both Firefox and Thunderbird at
 		# the same time, if both are configured to use your smart card.
 		#
 		# Default: false
@@ -415,8 +580,8 @@ app opensc-pkcs11 {
 		# create_puk_slot = true;
 
 		# Report as 'zero' the CKA_ID attribute of CA certificate
-		# For the unknown reason the middleware of the manufacturer of gemalto (axalto, gemplus) 
-		# card reports as '0' the CKA_ID of CA cartificates. 
+		# For the unknown reason the middleware of the manufacturer of gemalto (axalto, gemplus)
+		# card reports as '0' the CKA_ID of CA cartificates.
 		# Maybe someone else will need it. (Would be nice to know who and what for -- VTA)
 		#
 		# Default: false
@@ -428,6 +593,27 @@ app opensc-pkcs11 {
 		#
 		# Default: empty
 		# ignored_readers = "CardMan 1021", "SPR 532";
+
+                # Symbolic names of PINs for which slots are created
+                # Card can contain more then one PINs or more then one on-card application with
+                #   its own PINs. Normally, to access all of them with the PKCS#11 API a slot has to be
+                #   created for all of them. Many slots could be ennoying for some of widely used application,
+                #   like FireFox. This configuration parameter allows to select the PINs or on-card application
+                #   for which PKCS#11 slot will be created.
+                # Actually recognised following symbolic names:
+                #  'user', 'sign', 'application', all
+                # Only PINs initialised, non-SoPIN, non-unblocking are associated with symbolic name.
+                # 'user' is identified as first global or first local PIN.
+                # 'sign' is identified as second PIN: first local, second global or second local.
+                # 'application' slot created for each on-card application,
+                #   even if they use a common global PIN.
+                # 'all' slot created for all non-sopin, non-unblocking PINs,
+                #   optionally for PUK (see option 'create_puk_slot')
+                #
+                # Default: all
+                # create_slots_for_pins = "user,sign";
+                # create_slots_for_pins = application;
+                # create_slots_for_pins = "application,sign";
 	}
 }
 
@@ -449,8 +635,8 @@ app tokend {
 
 # XXX: remove cardmod pseudodriver
 app cardmod {
-	# cardmod app name use special pcsc reader subset 
-	# fix options for this reader driver here. 
+	# cardmod app name use special pcsc reader subset
+	# fix options for this reader driver here.
 
 	reader_driver cardmod {
 		# Enable pinpad if detected (PC/SC v2.0.2 Part 10)

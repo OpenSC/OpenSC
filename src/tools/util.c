@@ -88,13 +88,13 @@ int util_connect_card(sc_context_t *ctx, sc_card_t **cardp,
 				/* Loop readers, looking for a card with ATR */
 				for (i = 0; i < sc_ctx_get_reader_count(ctx); i++) {
 					reader = sc_ctx_get_reader(ctx, i);
-					if (sc_detect_card_presence(reader) & SC_READER_CARD_PRESENT) {
+					if ((sc_detect_card_presence(reader) & SC_READER_CARD_PRESENT) && (reader->atr.len > 0)) {
 						if (!memcmp(reader->atr.value, atr_buf, reader->atr.len)) {
 							fprintf(stderr, "Matched ATR in reader: %s\n", reader->name);
 							goto autofound;
-						}	
+						}
 					}
-				}		
+				}
 			}
 			if (!sscanf(reader_id, "%d", &tmp_reader_num)) {
 				/* Try to get the reader by name if it does not parse as a number */
@@ -197,25 +197,27 @@ void util_hex_dump_asc(FILE *f, const u8 *in, size_t count, int addr)
 }
 
 void util_print_usage_and_die(const char *app_name, const struct option options[],
-	const char *option_help[])
+	const char *option_help[], const char *args)
 {
-	int i = 0;
-	printf("Usage: %s [OPTIONS]\nOptions:\n", app_name);
+	int i;
+	int header_shown = 0;
 
-	while (options[i].name) {
-		char buf[40], tmp[5];
+	if (args)
+		printf("Usage: %s [OPTIONS] %s\n", app_name, args);
+	else
+		printf("Usage: %s [OPTIONS]\n", app_name);
+
+	for (i = 0; options[i].name; i++) {
+		char buf[40];
 		const char *arg_str;
 
 		/* Skip "hidden" options */
-		if (option_help[i] == NULL) {
-			i++;
+		if (option_help[i] == NULL)
 			continue;
-		}
 
-		if (options[i].val > 0 && options[i].val < 128)
-			sprintf(tmp, ", -%c", options[i].val);
-		else
-			tmp[0] = 0;
+		if (!header_shown++)
+			printf("Options:\n");
+
 		switch (options[i].has_arg) {
 		case 1:
 			arg_str = " <arg>";
@@ -227,14 +229,20 @@ void util_print_usage_and_die(const char *app_name, const struct option options[
 			arg_str = "";
 			break;
 		}
-		sprintf(buf, "--%s%s%s", options[i].name, tmp, arg_str);
-		if (strlen(buf) > 29) {
+		if (isascii(options[i].val) &&
+		    isprint(options[i].val) && !isspace(options[i].val))
+			sprintf(buf, "-%c, --%s%s", options[i].val, options[i].name, arg_str);
+		else
+			sprintf(buf, "    --%s%s", options[i].name, arg_str);
+
+		/* print the line - wrap if necessary */
+		if (strlen(buf) > 28) {
 			printf("  %s\n", buf);
 			buf[0] = '\0';
 		}
-		printf("  %-29s %s\n", buf, option_help[i]);
-		i++;
+		printf("  %-28s  %s\n", buf, option_help[i]);
 	}
+
 	exit(2);
 }
 

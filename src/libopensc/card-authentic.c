@@ -1,9 +1,9 @@
 /*
- * card-authentic.c: Support for the Oberthur smart cards 
- * 	with PKI applet AuthentIC v3.2
- * 	
+ * card-authentic.c: Support for the Oberthur smart cards
+ *	with PKI applet AuthentIC v3.2
+ *
  * Copyright (C) 2010  Viktor Tarasov <vtarasov@opentrust.com>
- * 			OpenTrust <www.opentrust.com>
+ *			OpenTrust <www.opentrust.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -81,7 +81,7 @@ struct authentic_private_data {
 };
 
 static struct sc_atr_table authentic_known_atrs[] = {
-	{ "3B:DD:18:00:81:31:FE:45:80:F9:A0:00:00:00:77:01:00:70:0A:90:00:8B", NULL, 
+	{ "3B:DD:18:00:81:31:FE:45:80:F9:A0:00:00:00:77:01:00:70:0A:90:00:8B", NULL,
 		"Oberthur AuthentIC 3.2.2", SC_CARD_TYPE_OBERTHUR_AUTHENTIC_3_2,  0, NULL },
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
@@ -98,6 +98,12 @@ static int authentic_pin_is_verified(struct sc_card *card, struct sc_pin_cmd_dat
 static int authentic_select_mf(struct sc_card *card, struct sc_file **file_out);
 static int authentic_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr);
 static void authentic_debug_select_file(struct sc_card *card, const struct sc_path *path);
+
+#ifdef ENABLE_SM
+static int authentic_sm_open(struct sc_card *card);
+static int authentic_sm_get_wrapped_apdu(struct sc_card *card, struct sc_apdu *apdu, struct sc_apdu **sm_apdu);
+static int authentic_sm_free_wrapped_apdu(struct sc_card *card, struct sc_apdu *apdu, struct sc_apdu **sm_apdu);
+#endif
 
 static int
 authentic_update_blob(struct sc_context *ctx, unsigned tag, unsigned char *data, size_t data_len,
@@ -118,11 +124,11 @@ authentic_update_blob(struct sc_context *ctx, unsigned tag, unsigned char *data,
 		sz++;
 	else if (data_len >= 0x100)
 		sz += 2;
-	
+
 	pp = realloc(*blob, *blob_size + sz);
 	if (!pp)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
-	
+
 	if (tag > 0xFF)
 		*(pp + *blob_size + offs++) = (tag >> 8) & 0xFF;
 	*(pp + *blob_size + offs++) = tag & 0xFF;
@@ -145,7 +151,7 @@ authentic_update_blob(struct sc_context *ctx, unsigned tag, unsigned char *data,
 }
 
 
-static int 
+static int
 authentic_parse_size(unsigned char *in, size_t *out)
 {
 	if (!in || !out)
@@ -168,8 +174,8 @@ authentic_parse_size(unsigned char *in, size_t *out)
 }
 
 
-static int 
-authentic_get_tagged_data(struct sc_context *ctx, unsigned char *in, size_t in_len, 
+static int
+authentic_get_tagged_data(struct sc_context *ctx, unsigned char *in, size_t in_len,
 		unsigned in_tag, unsigned char **out, size_t *out_len)
 {
 	size_t size_len, tag_len, offs, size;
@@ -187,7 +193,7 @@ authentic_get_tagged_data(struct sc_context *ctx, unsigned char *in, size_t in_l
 			tag = *(in + offs);
 			tag_len = 1;
 		}
-	
+
 		size_len = authentic_parse_size(in + offs + tag_len, &size);
 		LOG_TEST_RET(ctx, size_len, "parse error: invalid size data");
 
@@ -206,7 +212,7 @@ authentic_get_tagged_data(struct sc_context *ctx, unsigned char *in, size_t in_l
 
 
 static int
-authentic_decode_pubkey_rsa(struct sc_context *ctx, unsigned char *blob, size_t blob_len, 
+authentic_decode_pubkey_rsa(struct sc_context *ctx, unsigned char *blob, size_t blob_len,
 		struct sc_pkcs15_prkey **out_key)
 {
 	struct sc_pkcs15_prkey_rsa *key;
@@ -268,7 +274,7 @@ authentic_decode_pubkey_rsa(struct sc_context *ctx, unsigned char *blob, size_t 
 
 
 static int
-authentic_parse_credential_data(struct sc_context *ctx, struct sc_pin_cmd_data *pin_cmd, 
+authentic_parse_credential_data(struct sc_context *ctx, struct sc_pin_cmd_data *pin_cmd,
 		unsigned char *blob, size_t blob_len)
 {
 	unsigned char *data;
@@ -345,30 +351,33 @@ authentic_get_cplc(struct sc_card *card)
 	struct authentic_private_data *prv_data = (struct authentic_private_data *) card->drv_data;
 	struct sc_apdu apdu;
 	int rv, ii;
+	unsigned char p1, p2;
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xCA, 0x9F, 0x7F);
+	p1 = (SC_CPLC_TAG >> 8) & 0xFF;
+	p2 = SC_CPLC_TAG & 0xFF;
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xCA, p1, p2);
 	for (ii=0;ii<2;ii++)   {
-		apdu.le = 0x2D;
+		apdu.le = SC_CPLC_DER_SIZE;
 		apdu.resplen = sizeof(prv_data->cplc.value);
 		apdu.resp = prv_data->cplc.value;
 
-        	rv = sc_transmit_apdu(card, &apdu);
-        	LOG_TEST_RET(card->ctx, rv, "APDU transmit failed");
-        	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
+		rv = sc_transmit_apdu(card, &apdu);
+		LOG_TEST_RET(card->ctx, rv, "APDU transmit failed");
+		rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
 		if (rv != SC_ERROR_CLASS_NOT_SUPPORTED)
 			break;
 
 		apdu.cla = 0x80;
 	}
         LOG_TEST_RET(card->ctx, rv, "'GET CPLC' error");
-	
-	prv_data->cplc.len = 0x2D;
+
+	prv_data->cplc.len = SC_CPLC_DER_SIZE;
 	return SC_SUCCESS;
 }
 
 
 static int
-authentic_select_aid(struct sc_card *card, unsigned char *aid, size_t aid_len, 
+authentic_select_aid(struct sc_card *card, unsigned char *aid, size_t aid_len,
 		unsigned char *out, size_t *out_len)
 {
 	struct sc_apdu apdu;
@@ -431,15 +440,21 @@ authentic_init_oberthur_authentic_3_2(struct sc_card *card)
 	_sc_card_add_rsa_alg(card, 2048, flags, 0x10001);
 
 	card->caps = SC_CARD_CAP_RNG;
-	card->caps |= SC_CARD_CAP_APDU_EXT; 
+	card->caps |= SC_CARD_CAP_APDU_EXT;
 	card->caps |= SC_CARD_CAP_USE_FCI_AC;
+
+#ifdef ENABLE_SM
+	card->sm_ctx.ops.open = authentic_sm_open;
+	card->sm_ctx.ops.get_sm_apdu = authentic_sm_get_wrapped_apdu;
+	card->sm_ctx.ops.free_sm_apdu = authentic_sm_free_wrapped_apdu;
+#endif
 
 	rv = authentic_select_aid(card, aid_AuthentIC_3_2, sizeof(aid_AuthentIC_3_2), NULL, NULL);
 	LOG_TEST_RET(ctx, rv, "AuthentIC application select error");
 
 	rv = authentic_select_mf(card, NULL);
 	LOG_TEST_RET(ctx, rv, "MF selection error");
-	
+
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
@@ -488,8 +503,8 @@ authentic_erase_binary(struct sc_card *card, unsigned int offs, size_t count, un
 	if (!count)
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "'ERASE BINARY' with ZERO count not supported");
 
-	if (card->cache.valid && card->cache.current_ef) 
-		sc_log(ctx, "current_ef(type=%i) %s", card->cache.current_ef->path.type, 
+	if (card->cache.valid && card->cache.current_ef)
+		sc_log(ctx, "current_ef(type=%i) %s", card->cache.current_ef->path.type,
 				sc_print_path(&card->cache.current_ef->path));
 
 	buf_zero = calloc(1, count);
@@ -505,7 +520,7 @@ authentic_erase_binary(struct sc_card *card, unsigned int offs, size_t count, un
 
 
 #if 0
-static int 
+static int
 authentic_resize_file(struct sc_card *card, unsigned file_id, unsigned new_size)
 {
 	struct sc_context *ctx = card->ctx;
@@ -578,8 +593,8 @@ authentic_set_current_files(struct sc_card *card, struct sc_path *path,
 			sc_file_dup(&card->cache.current_df, file);
 
 			if (cur_df_path.len)   {
-				memcpy(card->cache.current_df->path.value + cur_df_path.len, 
-						card->cache.current_df->path.value, 
+				memcpy(card->cache.current_df->path.value + cur_df_path.len,
+						card->cache.current_df->path.value,
 						card->cache.current_df->path.len);
 				memcpy(card->cache.current_df->path.value, cur_df_path.value, cur_df_path.len);
 				card->cache.current_df->path.len += cur_df_path.len;
@@ -598,7 +613,7 @@ authentic_set_current_files(struct sc_card *card, struct sc_path *path,
 			card->cache.current_ef = NULL;
 			sc_file_dup(&card->cache.current_ef, file);
 		}
-		
+
 		if (file_out)
 			*file_out = file;
 		else
@@ -609,7 +624,7 @@ authentic_set_current_files(struct sc_card *card, struct sc_path *path,
 }
 
 
-static int 
+static int
 authentic_select_mf(struct sc_card *card, struct sc_file **file_out)
 {
 	struct sc_context *ctx = card->ctx;
@@ -624,18 +639,18 @@ authentic_select_mf(struct sc_card *card, struct sc_file **file_out)
 	sc_format_path("3F00", &mfpath);
 	mfpath.type = SC_PATH_TYPE_PATH;
 
-	if (card->cache.valid == 1 
-			&& card->cache.current_df 
-			&& card->cache.current_df->path.len == 2 
+	if (card->cache.valid == 1
+			&& card->cache.current_df
+			&& card->cache.current_df->path.len == 2
 			&& !memcmp(card->cache.current_df->path.value, "\x3F\x00", 2))   {
 		if (file_out)
 			sc_file_dup(file_out, card->cache.current_df);
-	
+
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 	}
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xA4, 0x00, 0x00);
-		
+
 	apdu.resp = rbuf;
 	apdu.resplen = sizeof(rbuf);
 
@@ -700,27 +715,27 @@ authentic_reduce_path(struct sc_card *card, struct sc_path *path)
 }
 
 
-static void 
+static void
 authentic_debug_select_file(struct sc_card *card, const struct sc_path *path)
 {
 	struct sc_context *ctx = card->ctx;
 	struct sc_card_cache *cache = &card->cache;
 
 	if (path)
-		sc_log(ctx, "try to select path(type:%i) %s", 
+		sc_log(ctx, "try to select path(type:%i) %s",
 				path->type, sc_print_path(path));
 
 	if (!cache->valid)
 		return;
 
 	if (cache->current_df)
-		sc_log(ctx, "current_df(type=%i) %s", 
+		sc_log(ctx, "current_df(type=%i) %s",
 				cache->current_df->path.type, sc_print_path(&cache->current_df->path));
 	else
 		sc_log(ctx, "current_df empty");
 
 	if (cache->current_ef)
-		sc_log(ctx, "current_ef(type=%i) %s", 
+		sc_log(ctx, "current_ef(type=%i) %s",
 				cache->current_ef->path.type, sc_print_path(&cache->current_ef->path));
 	else
 		sc_log(ctx, "current_ef empty");
@@ -780,7 +795,7 @@ authentic_select_file(struct sc_card *card, const struct sc_path *path,
 		lpath.type = SC_PATH_TYPE_FILE_ID;
 
 	rv = authentic_is_selected(card, &lpath, file_out);
-	if (!rv) 
+	if (!rv)
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 
 	pathlen = lpath.len;
@@ -839,7 +854,7 @@ authentic_apdus_allocate(struct sc_apdu **head, struct sc_apdu **new)
 	struct sc_apdu *allocated_apdu = NULL, *tmp_apdu = NULL;
 
 	if (!head)
-		return SC_ERROR_INVALID_ARGUMENTS; 
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	allocated_apdu = calloc(1, sizeof(struct sc_apdu));
 	if (!allocated_apdu)
@@ -852,7 +867,7 @@ authentic_apdus_allocate(struct sc_apdu **head, struct sc_apdu **new)
 		*new = allocated_apdu;
 
 	tmp_apdu = *head;
-	while(tmp_apdu->next) 
+	while(tmp_apdu->next)
 		tmp_apdu = tmp_apdu->next;
 
 	tmp_apdu->next = allocated_apdu;
@@ -869,11 +884,11 @@ authentic_apdus_free(struct sc_apdu *apdu)
 		free(apdu);
 		apdu = tmp_apdu;
 	}
-}	
+}
 
 
-static int 
-authentic_read_binary(struct sc_card *card, unsigned int idx, 
+static int
+authentic_read_binary(struct sc_card *card, unsigned int idx,
 		unsigned char *buf, size_t count, unsigned long flags)
 {
 	struct sc_context *ctx = card->ctx;
@@ -884,10 +899,10 @@ authentic_read_binary(struct sc_card *card, unsigned int idx,
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx, "offs:%i,count:%i,max_recv_size:%i", idx, count, card->max_recv_size);
 
-	/* Data size more then 256 bytes can happen when card reader is 
-	 * configurated with max_send/recv_size more then 255/256 bytes 
+	/* Data size more then 256 bytes can happen when card reader is
+	 * configurated with max_send/recv_size more then 255/256 bytes
 	 *   (for ex. 'remote-access' reader) .
-	 * For that case create chained APDUs 'read-binary' APDUs. 
+	 * In this case create chained 'read-binary' APDUs.
 	 */
 	sc_log(ctx, "reader flags 0x%X", card->reader->flags);
 	if (count > 256 && !(card->reader->flags & SC_READER_HAS_WAITING_AREA))
@@ -908,8 +923,7 @@ authentic_read_binary(struct sc_card *card, unsigned int idx,
 		rest -= sz;
 	}
 
-	if (!apdus)
-	{
+	if (!apdus)   {
 		LOG_TEST_RET(ctx, SC_ERROR_INTERNAL, "authentic_read_binary() failed");
 		LOG_FUNC_RETURN(ctx, count);
 	}
@@ -927,8 +941,8 @@ authentic_read_binary(struct sc_card *card, unsigned int idx,
 }
 
 
-static int 
-authentic_write_binary(struct sc_card *card, unsigned int idx, 
+static int
+authentic_write_binary(struct sc_card *card, unsigned int idx,
 		const unsigned char *buf, size_t count, unsigned long flags)
 {
 	struct sc_context *ctx = card->ctx;
@@ -976,8 +990,8 @@ authentic_write_binary(struct sc_card *card, unsigned int idx,
 }
 
 
-static int 
-authentic_update_binary(struct sc_card *card, unsigned int idx, 
+static int
+authentic_update_binary(struct sc_card *card, unsigned int idx,
 		const unsigned char *buf, size_t count, unsigned long flags)
 {
 	struct sc_context *ctx = card->ctx;
@@ -1076,7 +1090,7 @@ authentic_process_fci(struct sc_card *card, struct sc_file *file,
 		unsigned char op = file->type == SC_FILE_TYPE_DF ? ops_DF[ii] : ops_EF[ii];
 		unsigned char acl = *(file->sec_attr + ii*2);
 		unsigned char cred_id = *(file->sec_attr + ii*2 + 1);
-		unsigned sc = acl * 0x100 + cred_id; 
+		unsigned sc = acl * 0x100 + cred_id;
 
 		sc_log(ctx, "ACL(%i) op 0x%X, acl %X:%X", ii, op, acl, cred_id);
 		if (op == 0xFF)
@@ -1129,7 +1143,7 @@ authentic_fcp_encode(struct sc_card *card, struct sc_file *file, unsigned char *
 	buf[offs++] = ops_len * 2;
 	for (ii=0; ii < ops_len; ii++) {
 		const struct sc_acl_entry *entry;
-		
+
 		entry = sc_file_get_acl_entry(file, ops[ii]);
 		sc_log(ctx, "acl entry(method:%X,ref:%X)", entry->method, entry->key_ref);
 
@@ -1143,7 +1157,7 @@ authentic_fcp_encode(struct sc_card *card, struct sc_file *file, unsigned char *
 			buf[offs++] = 0x00;
 		}
 		else if (entry->method == SC_AC_CHV)   {
-			if (!(entry->key_ref & AUTHENTIC_V3_CREDENTIAL_ID_MASK) 
+			if (!(entry->key_ref & AUTHENTIC_V3_CREDENTIAL_ID_MASK)
 					|| (entry->key_ref & ~AUTHENTIC_V3_CREDENTIAL_ID_MASK))
 				LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Non supported Credential Reference");
 			buf[offs++] = 0x00;
@@ -1154,9 +1168,9 @@ authentic_fcp_encode(struct sc_card *card, struct sc_file *file, unsigned char *
 	}
 
 	if (out)   {
-		if (out_len < offs) 
+		if (out_len < offs)
 			LOG_TEST_RET(ctx, SC_ERROR_BUFFER_TOO_SMALL, "Buffer too small to encode FCP");
-		memcpy(out, buf, offs); 
+		memcpy(out, buf, offs);
 	}
 
 	LOG_FUNC_RETURN(ctx, offs);
@@ -1351,13 +1365,13 @@ authentic_pin_is_verified(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd_
 
 	LOG_FUNC_CALLED(ctx);
 
-	if (pin_cmd_data->pin_type != SC_AC_CHV) 
+	if (pin_cmd_data->pin_type != SC_AC_CHV)
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "PIN type is not supported for the verification");
 
 	pin_cmd = *pin_cmd_data;
 	pin_cmd.pin1.data = (unsigned char *)"";
 	pin_cmd.pin1.len = 0;
-		
+
 	rv = authentic_chv_verify(card, &pin_cmd, tries_left);
 
 	LOG_FUNC_RETURN(ctx, rv);
@@ -1373,7 +1387,7 @@ authentic_pin_verify(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd)
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "PIN(type:%X,reference:%X,data:%p,length:%i)", 
+	sc_log(ctx, "PIN(type:%X,reference:%X,data:%p,length:%i)",
 			pin_cmd->pin_type, pin_cmd->pin_reference, pin_cmd->pin1.data, pin_cmd->pin1.len);
 
 	if (pin_cmd->pin1.data && !pin_cmd->pin1.len)   {
@@ -1400,7 +1414,7 @@ authentic_pin_verify(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd)
 	if (pin_cmd->pin1.len > (int)pin_cmd->pin1.max_length)
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_PIN_LENGTH, "PIN policy check failed");
 
-	pin_cmd->pin1.tries_left = -1;	
+	pin_cmd->pin1.tries_left = -1;
 	rv = authentic_chv_verify(card, pin_cmd, &pin_cmd->pin1.tries_left);
 	LOG_TEST_RET(ctx, rv, "PIN CHV verification error");
 
@@ -1433,7 +1447,7 @@ authentic_pin_change_pinpad(struct sc_card *card, unsigned reference, int *tries
 
 	rv = authentic_pin_get_policy(card, &pin_cmd);
 	LOG_TEST_RET(ctx, rv, "Get 'PIN policy' error");
-	
+
 	memset(pin1_data, pin_cmd.pin1.pad_char, sizeof(pin1_data));
 	pin_cmd.pin1.data = pin1_data;
 
@@ -1444,9 +1458,9 @@ authentic_pin_change_pinpad(struct sc_card *card, unsigned reference, int *tries
 	memset(pin2_data, pin_cmd.pin2.pad_char, sizeof(pin2_data));
 	pin_cmd.pin2.data = pin2_data;
 
-	sc_log(ctx, "PIN1 lengths max/min/pad: %i/%i/%i", pin_cmd.pin1.max_length, pin_cmd.pin1.min_length, 
+	sc_log(ctx, "PIN1 lengths max/min/pad: %i/%i/%i", pin_cmd.pin1.max_length, pin_cmd.pin1.min_length,
 			pin_cmd.pin1.pad_length);
-	sc_log(ctx, "PIN2 lengths max/min/pad: %i/%i/%i", pin_cmd.pin2.max_length, pin_cmd.pin2.min_length, 
+	sc_log(ctx, "PIN2 lengths max/min/pad: %i/%i/%i", pin_cmd.pin2.max_length, pin_cmd.pin2.min_length,
 			pin_cmd.pin2.pad_length);
 
 	rv = iso_ops->pin_cmd(card, &pin_cmd, tries_left);
@@ -1454,7 +1468,7 @@ authentic_pin_change_pinpad(struct sc_card *card, unsigned reference, int *tries
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
-		
+
 static int
 authentic_pin_change(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left)
 {
@@ -1467,7 +1481,7 @@ authentic_pin_change(struct sc_card *card, struct sc_pin_cmd_data *data, int *tr
 
 	rv = authentic_pin_get_policy(card, data);
 	LOG_TEST_RET(ctx, rv, "Get 'PIN policy' error");
-	
+
 	memset(prv_data->pins_sha1[data->pin_reference], 0, sizeof(prv_data->pins_sha1[0]));
 
 	if (!data->pin1.data && !data->pin1.len && &data->pin2.data && !data->pin2.len)   {
@@ -1494,14 +1508,14 @@ authentic_pin_change(struct sc_card *card, struct sc_pin_cmd_data *data, int *tr
 	apdu.data = pin_data;
 	apdu.datalen = offs + data->pin1.pad_length;
 	apdu.lc = offs + data->pin1.pad_length;
-			
+
 	rv = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(ctx, rv, "APDU transmit failed");
 	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
 
 	LOG_FUNC_RETURN(ctx, rv);
 }
-	
+
 
 static int
 authentic_chv_set_pinpad(struct sc_card *card, unsigned char reference)
@@ -1537,7 +1551,7 @@ authentic_chv_set_pinpad(struct sc_card *card, unsigned char reference)
 	memcpy(&pin_cmd.pin2, &pin_cmd.pin1, sizeof(pin_cmd.pin1));
 	memset(&pin_cmd.pin1, 0, sizeof(pin_cmd.pin1));
 
-	sc_log(ctx, "PIN2 max/min/pad %i/%i/%i", 
+	sc_log(ctx, "PIN2 max/min/pad %i/%i/%i",
 			pin_cmd.pin2.max_length, pin_cmd.pin2.min_length, pin_cmd.pin2.pad_length);
 	rv = iso_ops->pin_cmd(card, &pin_cmd, NULL);
 
@@ -1546,7 +1560,7 @@ authentic_chv_set_pinpad(struct sc_card *card, unsigned char reference)
 
 
 static int
-authentic_pin_get_policy (struct sc_card *card, struct sc_pin_cmd_data *data)   
+authentic_pin_get_policy (struct sc_card *card, struct sc_pin_cmd_data *data)
 {
 	struct sc_context *ctx = card->ctx;
 	struct sc_apdu apdu;
@@ -1555,16 +1569,16 @@ authentic_pin_get_policy (struct sc_card *card, struct sc_pin_cmd_data *data)
 
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx, "get PIN(type:%X,ref:%X,tries-left:%i)", data->pin_type, data->pin_reference, data->pin1.tries_left);
-  
+
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xCA, 0x5F, data->pin_reference);
 	for (ii=0;ii<2;ii++)   {
-        	apdu.le = sizeof(rbuf);
-        	apdu.resp = rbuf;
-        	apdu.resplen = sizeof(rbuf);
+		apdu.le = sizeof(rbuf);
+		apdu.resp = rbuf;
+		apdu.resplen = sizeof(rbuf);
 
-        	rv = sc_transmit_apdu(card, &apdu);
-        	LOG_TEST_RET(ctx, rv, "APDU transmit failed");
-        	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
+		rv = sc_transmit_apdu(card, &apdu);
+		LOG_TEST_RET(ctx, rv, "APDU transmit failed");
+		rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
 
 		if (rv != SC_ERROR_CLASS_NOT_SUPPORTED)
 			break;
@@ -1606,7 +1620,7 @@ authentic_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data, int *tri
 
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx, "reset PIN (ref:%i,lengths %i/%i)", data->pin_reference, data->pin1.len, data->pin2.len);
- 
+
 	memset(prv_data->pins_sha1[data->pin_reference], 0, sizeof(prv_data->pins_sha1[0]));
 
 	memset(&pin_cmd, 0, sizeof(pin_cmd));
@@ -1655,7 +1669,7 @@ authentic_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data, int *tri
 		apdu.data = pin_data;
 		apdu.datalen = pin_cmd.pin1.pad_length;
 		apdu.lc = pin_cmd.pin1.pad_length;
-			
+
 		rv = sc_transmit_apdu(card, &apdu);
 		LOG_TEST_RET(ctx, rv, "APDU transmit failed");
 		rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
@@ -1663,7 +1677,7 @@ authentic_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data, int *tri
 	}
 	else if (data->pin2.data) {
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x2C, 3, reference);
-			
+
 		rv = sc_transmit_apdu(card, &apdu);
 		LOG_TEST_RET(ctx, rv, "APDU transmit failed");
 		rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
@@ -1694,7 +1708,7 @@ authentic_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries
 	sc_log(ctx, "PIN-CMD:%X,PIN(type:%X,ret:%i)", data->cmd, data->pin_type, data->pin_reference);
 	sc_log(ctx, "PIN1(%p,len:%i,tries-left:%i)", data->pin1.data, data->pin1.len, data->pin1.tries_left);
 	sc_log(ctx, "PIN2(%p,len:%i)", data->pin2.data, data->pin2.len);
-  
+
 	switch (data->cmd)   {
 	case SC_PIN_CMD_VERIFY:
 		rv = authentic_pin_verify(card, data);
@@ -1733,9 +1747,9 @@ authentic_get_serialnr(struct sc_card *card, struct sc_serial_number *serial)
 
 		card->serialnr.len = 4;
 		memcpy(card->serialnr.value, prv_data->cplc.value + 15, 4);
-	
-		sc_log(ctx, "serial %02X%02X%02X%02X", 
-				card->serialnr.value[0], card->serialnr.value[1], 
+
+		sc_log(ctx, "serial %02X%02X%02X%02X",
+				card->serialnr.value[0], card->serialnr.value[1],
 				card->serialnr.value[2], card->serialnr.value[3]);
 	}
 
@@ -1747,7 +1761,7 @@ authentic_get_serialnr(struct sc_card *card, struct sc_serial_number *serial)
 
 
 /* 'GET CHALLENGE' returns always 24 bytes */
-static int 
+static int
 authentic_get_challenge(struct sc_card *card, unsigned char *rnd, size_t len)
 {
 	struct sc_context *ctx = card->ctx;
@@ -1788,7 +1802,7 @@ authentic_manage_sdo_encode_prvkey(struct sc_card *card, struct sc_pkcs15_prkey 
 			unsigned char **out, size_t *out_len)
 {
 	struct sc_context *ctx = card->ctx;
-	struct sc_pkcs15_prkey_rsa rsa; 
+	struct sc_pkcs15_prkey_rsa rsa;
 	unsigned char *blob = NULL, *blob01 = NULL;
 	size_t blob_len = 0, blob01_len = 0;
 	int rv;
@@ -1798,7 +1812,7 @@ authentic_manage_sdo_encode_prvkey(struct sc_card *card, struct sc_pkcs15_prkey 
 	if (prvkey->algorithm != SC_ALGORITHM_RSA)
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Invalid SDO operation");
 
-	rsa = prvkey->u.rsa; 
+	rsa = prvkey->u.rsa;
 	/* Encode private RSA key part */
 	rv = authentic_update_blob(ctx, AUTHENTIC_TAG_RSA_PRIVATE_P, rsa.p.data, rsa.p.len, &blob, &blob_len);
 	LOG_TEST_RET(ctx, rv, "SDO RSA P encode error");
@@ -1861,7 +1875,7 @@ authentic_manage_sdo_encode(struct sc_card *card, struct sc_authentic_sdo *sdo, 
 	if (!out || !out_len)
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Invalid arguments");
 
-	rv = authentic_update_blob(ctx, AUTHENTIC_TAG_DOCP_MECH, &sdo->docp.mech, sizeof(sdo->docp.mech), 
+	rv = authentic_update_blob(ctx, AUTHENTIC_TAG_DOCP_MECH, &sdo->docp.mech, sizeof(sdo->docp.mech),
 			&data, &data_len);
 	LOG_TEST_RET(ctx, rv, "DOCP MECH encode error");
 
@@ -1870,27 +1884,27 @@ authentic_manage_sdo_encode(struct sc_card *card, struct sc_authentic_sdo *sdo, 
 	LOG_TEST_RET(ctx, rv, "DOCP ID encode error");
 
 	if (cmd == SC_CARDCTL_AUTHENTIC_SDO_CREATE)   {
-		rv = authentic_update_blob(ctx, AUTHENTIC_TAG_DOCP_ACLS, sdo->docp.acl_data, sdo->docp.acl_data_len, 
+		rv = authentic_update_blob(ctx, AUTHENTIC_TAG_DOCP_ACLS, sdo->docp.acl_data, sdo->docp.acl_data_len,
 				&data, &data_len);
 		LOG_TEST_RET(ctx, rv, "DOCP ACLs encode error");
 
 		if (sdo->docp.security_parameter)  {
-			rv = authentic_update_blob(ctx, AUTHENTIC_TAG_DOCP_SCP, 
-					&sdo->docp.security_parameter, sizeof(sdo->docp.security_parameter), 
+			rv = authentic_update_blob(ctx, AUTHENTIC_TAG_DOCP_SCP,
+					&sdo->docp.security_parameter, sizeof(sdo->docp.security_parameter),
 					&data, &data_len);
 			LOG_TEST_RET(ctx, rv, "DOCP ACLs encode error");
 		}
 		if (sdo->docp.usage_counter[0] || sdo->docp.usage_counter[1])  {
-			rv = authentic_update_blob(ctx, AUTHENTIC_TAG_DOCP_USAGE_COUNTER, 
-					sdo->docp.usage_counter, sizeof(sdo->docp.usage_counter), 
+			rv = authentic_update_blob(ctx, AUTHENTIC_TAG_DOCP_USAGE_COUNTER,
+					sdo->docp.usage_counter, sizeof(sdo->docp.usage_counter),
 					&data, &data_len);
 			LOG_TEST_RET(ctx, rv, "DOCP ACLs encode error");
 		}
 	}
 	else if (cmd == SC_CARDCTL_AUTHENTIC_SDO_STORE)   {
-		if (sdo->docp.mech == AUTHENTIC_MECH_CRYPTO_RSA1024 
+		if (sdo->docp.mech == AUTHENTIC_MECH_CRYPTO_RSA1024
 				|| sdo->docp.mech == AUTHENTIC_MECH_CRYPTO_RSA1280
-				|| sdo->docp.mech == AUTHENTIC_MECH_CRYPTO_RSA1536 
+				|| sdo->docp.mech == AUTHENTIC_MECH_CRYPTO_RSA1536
 				|| sdo->docp.mech == AUTHENTIC_MECH_CRYPTO_RSA1792
 				|| sdo->docp.mech == AUTHENTIC_MECH_CRYPTO_RSA2048)   {
 			rv = authentic_manage_sdo_encode_prvkey(card, sdo->data.prvkey, &data, &data_len);
@@ -1902,8 +1916,8 @@ authentic_manage_sdo_encode(struct sc_card *card, struct sc_authentic_sdo *sdo, 
 	}
 	else if (cmd == SC_CARDCTL_AUTHENTIC_SDO_GENERATE)   {
 		if (sdo->data.prvkey)   {
-		        rv = authentic_update_blob(ctx, AUTHENTIC_TAG_RSA_PUBLIC_EXPONENT, 
-					sdo->data.prvkey->u.rsa.exponent.data, sdo->data.prvkey->u.rsa.exponent.len, 
+		        rv = authentic_update_blob(ctx, AUTHENTIC_TAG_RSA_PUBLIC_EXPONENT,
+					sdo->data.prvkey->u.rsa.exponent.data, sdo->data.prvkey->u.rsa.exponent.len,
 					&data, &data_len);
 		        LOG_TEST_RET(ctx, rv, "SDO RSA Exponent encode error");
 		}
@@ -1986,6 +2000,7 @@ authentic_manage_sdo(struct sc_card *card, struct sc_authentic_sdo *sdo, unsigne
 
 	if (card->max_send_size > 255)
 		card->max_send_size = 255;
+
 	rv = sc_transmit_apdu(card, &apdu);
 	card->max_send_size = save_max_send;
 	LOG_TEST_RET(ctx, rv, "APDU transmit failed");
@@ -2024,24 +2039,24 @@ authentic_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 }
 
 
-static int 
+static int
 authentic_set_security_env(struct sc_card *card,
-		const struct sc_security_env *env, int se_num)   
+		const struct sc_security_env *env, int se_num)
 {
 	struct sc_context *ctx = card->ctx;
 	struct sc_apdu apdu;
 	unsigned char cse_crt_dst[] = {
 		0x80, 0x01, AUTHENTIC_ALGORITHM_RSA_PKCS1,
-		0x83, 0x01, env->key_ref[0] & ~AUTHENTIC_OBJECT_REF_FLAG_LOCAL, 
+		0x83, 0x01, env->key_ref[0] & ~AUTHENTIC_OBJECT_REF_FLAG_LOCAL,
 	};
 	unsigned char cse_crt_ct[] = {
 		0x80, 0x01, AUTHENTIC_ALGORITHM_RSA_PKCS1,
-		0x83, 0x01, env->key_ref[0] & ~AUTHENTIC_OBJECT_REF_FLAG_LOCAL, 
+		0x83, 0x01, env->key_ref[0] & ~AUTHENTIC_OBJECT_REF_FLAG_LOCAL,
 	};
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "set SE#%i(op:0x%X,algo:0x%X,algo_ref:0x%X,flags:0x%X), key_ref:0x%X", 
+	sc_log(ctx, "set SE#%i(op:0x%X,algo:0x%X,algo_ref:0x%X,flags:0x%X), key_ref:0x%X",
 			se_num, env->operation, env->algorithm, env->algorithm_ref, env->algorithm_flags, env->key_ref[0]);
 	switch (env->operation)  {
 	case SC_SEC_OPERATION_SIGN:
@@ -2072,7 +2087,7 @@ authentic_set_security_env(struct sc_card *card,
 }
 
 
-static int 
+static int
 authentic_decipher(struct sc_card *card, const unsigned char *in, size_t in_len,
 		unsigned char *out, size_t out_len)
 {
@@ -2083,9 +2098,9 @@ authentic_decipher(struct sc_card *card, const unsigned char *in, size_t in_len,
 
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx, "crgram_len %i;  outlen %i", in_len, out_len);
-	if (!out || !out_len || in_len > SC_MAX_APDU_BUFFER_SIZE) 
+	if (!out || !out_len || in_len > SC_MAX_APDU_BUFFER_SIZE)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
-	
+
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x80, 0x86);
 	apdu.flags |= SC_APDU_FLAGS_CHAINING;
 	apdu.data = in;
@@ -2093,8 +2108,8 @@ authentic_decipher(struct sc_card *card, const unsigned char *in, size_t in_len,
 	apdu.lc = in_len;
 	apdu.resp = resp;
 	apdu.resplen = sizeof(resp);
-	apdu.le = in_len - (in_len % 8);
-	
+	apdu.le = 256;
+
 	rv = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(ctx, rv, "APDU transmit failed");
 	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
@@ -2102,7 +2117,7 @@ authentic_decipher(struct sc_card *card, const unsigned char *in, size_t in_len,
 
 	if (out_len > apdu.resplen)
 		out_len = apdu.resplen;
-	
+
 	memcpy(out, apdu.resp, out_len);
 	rv = out_len;
 
@@ -2116,12 +2131,228 @@ authentic_finish(struct sc_card *card)
 	struct sc_context *ctx = card->ctx;
 
 	LOG_FUNC_CALLED(ctx);
+
+#ifdef ENABLE_SM
+	if (card->sm_ctx.ops.close)
+		card->sm_ctx.ops.close(card);
+#endif
+
 	if (card->drv_data)
 		free(card->drv_data);
 	card->drv_data = NULL;
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
+
+/* SM related */
+#ifdef ENABLE_SM
+static int
+authentic_sm_acl_init (struct sc_card *card, struct sm_info *sm_info, int cmd,
+		unsigned char *resp, size_t *resp_len)
+{
+	struct sc_context *ctx = card->ctx;
+	struct sm_type_params_gp *params_gp = &sm_info->sm_params.gp;
+	struct sc_remote_data rdata;
+	int rv;
+
+	sc_log(ctx, "called; command 0x%X\n", cmd);
+	if (!card || !sm_info || !resp || !resp_len)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+
+	if (!card->sm_ctx.module.ops.initialize || !card->sm_ctx.module.ops.get_apdus)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
+
+	if (*resp_len < 28)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+
+	sm_info->cmd = cmd;
+	sm_info->sm_type = SM_TYPE_GP_SCP01;
+	sm_info->card_type = card->type;
+	params_gp->index = 0;	/* logical channel */
+	params_gp->version = 1;
+	params_gp->level = 3;	/* Only supported SM level 'ENC & MAC' */
+
+	sm_info->serialnr = card->serialnr;
+
+	sc_remote_data_init(&rdata);
+
+	rv = card->sm_ctx.module.ops.initialize(ctx, sm_info, &rdata);
+	LOG_TEST_RET(ctx, rv, "SM: INITIALIZE failed");
+	if (!rdata.length)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
+
+	rv = sc_transmit_apdu(card, &rdata.data->apdu);
+	LOG_TEST_RET(ctx, rv, "transmit APDU failed");
+	rv = sc_check_sw(card, rdata.data->apdu.sw1, rdata.data->apdu.sw2);
+	LOG_TEST_RET(ctx, rv, "Card returned error");
+
+	if (rdata.data->apdu.resplen != 28 || *resp_len < 28)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
+
+	memcpy(resp, rdata.data->apdu.resp, 28);
+	*resp_len = 28;
+
+	rdata.free(&rdata);
+	LOG_FUNC_RETURN(ctx, rv);
+}
+
+
+static int
+authentic_sm_execute (struct sc_card *card, struct sm_info *sm_info,
+		unsigned char *data, int data_len, unsigned char *out, size_t len)
+{
+	struct sc_context *ctx = card->ctx;
+	struct sc_remote_data rdata;
+	int rv, ii;
+
+	if (!card->sm_ctx.module.ops.get_apdus)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
+
+	sc_remote_data_init(&rdata);
+	rv = card->sm_ctx.module.ops.get_apdus(ctx, sm_info, data, data_len, &rdata);
+	LOG_TEST_RET(ctx, rv, "SM: GET_APDUS failed");
+	if (!rdata.length)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
+
+	sc_log(ctx, "GET_APDUS: rv %i; rdata length %i", rv, rdata.length);
+
+	for (ii=0; ii < rdata.length; ii++)   {
+		struct sc_apdu *apdu = &((rdata.data + ii)->apdu);
+
+		if (!apdu->ins)
+			break;
+		rv = sc_transmit_apdu(card, apdu);
+		if (rv < 0)
+			break;
+
+		rv = sc_check_sw(card, apdu->sw1, apdu->sw2);
+		if (rv < 0)
+			break;
+	}
+
+	rdata.free(&rdata);
+	LOG_FUNC_RETURN(ctx, rv);
+}
+
+
+static int
+authentic_sm_open(struct sc_card *card)
+{
+	struct sc_context *ctx = card->ctx;
+	unsigned char init_data[SC_MAX_APDU_BUFFER_SIZE];
+	size_t init_data_len = sizeof(init_data);
+	int rv;
+
+	LOG_FUNC_CALLED(ctx);
+
+	memset(&card->sm_ctx.info, 0, sizeof(card->sm_ctx.info));
+	memcpy(card->sm_ctx.info.config_section, card->sm_ctx.config_section, sizeof(card->sm_ctx.info.config_section));
+	sc_log(ctx, "SM context config '%s'; SM mode 0x%X", card->sm_ctx.info.config_section, card->sm_ctx.sm_mode);
+
+	if (card->sm_ctx.sm_mode == SM_MODE_TRANSMIT && card->max_send_size == 0)
+		card->max_send_size = 239;
+
+	rv = authentic_sm_acl_init (card, &card->sm_ctx.info, SM_CMD_INITIALIZE, init_data, &init_data_len);
+	LOG_TEST_RET(ctx, rv, "authentIC: cannot open SM");
+
+	rv = authentic_sm_execute (card, &card->sm_ctx.info, init_data, init_data_len, NULL, 0);
+	LOG_TEST_RET(ctx, rv, "SM: execute failed");
+
+	card->sm_ctx.info.cmd = SM_CMD_APDU_TRANSMIT;
+	LOG_FUNC_RETURN(ctx, rv);
+}
+
+
+static int
+authentic_sm_free_wrapped_apdu(struct sc_card *card, struct sc_apdu *plain, struct sc_apdu **sm_apdu)
+{
+	struct sc_context *ctx = card->ctx;
+
+	LOG_FUNC_CALLED(ctx);
+	if (!sm_apdu)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+        if (!(*sm_apdu))
+		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+
+        if (plain)   {
+		if (plain->resplen < (*sm_apdu)->resplen)
+			LOG_TEST_RET(ctx, SC_ERROR_BUFFER_TOO_SMALL, "Unsufficient plain APDU response size");
+		memcpy(plain->resp, (*sm_apdu)->resp, (*sm_apdu)->resplen);
+		plain->resplen = (*sm_apdu)->resplen;
+		plain->sw1 = (*sm_apdu)->sw1;
+		plain->sw2 = (*sm_apdu)->sw2;
+	}
+
+	if ((*sm_apdu)->data)
+		free((*sm_apdu)->data);
+	if ((*sm_apdu)->resp)
+		free((*sm_apdu)->resp);
+
+	free(*sm_apdu);
+	*sm_apdu = NULL;
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+}
+
+static int
+authentic_sm_get_wrapped_apdu(struct sc_card *card, struct sc_apdu *plain, struct sc_apdu **sm_apdu)
+{
+	struct sc_context *ctx = card->ctx;
+	struct sc_apdu *apdu = NULL;
+	int rv  = 0;
+
+	LOG_FUNC_CALLED(ctx);
+
+        if (!plain || !sm_apdu)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+	sc_log(ctx, "called; CLA:%X, INS:%X, P1:%X, P2:%X, data(%i) %p",
+			plain->cla, plain->ins, plain->p1, plain->p2, plain->datalen, plain->data);
+        *sm_apdu = NULL;
+
+	if ((plain->cla & 0x04)
+		|| (plain->cla==0x00 && plain->ins==0x22)
+		|| (plain->cla==0x00 && plain->ins==0x2A)
+		|| (plain->cla==0x00 && plain->ins==0x84)
+		|| (plain->cla==0x00 && plain->ins==0x88)
+		|| (plain->cla==0x00 && plain->ins==0xA4)
+		|| (plain->cla==0x00 && plain->ins==0xC0)
+		|| (plain->cla==0x00 && plain->ins==0xCA)
+		|| (plain->cla==0x80 && plain->ins==0x50)
+		)   {
+		sc_log(ctx, "SM wrap is not applied for this APDU");
+		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+	}
+
+	if (card->sm_ctx.sm_mode != SM_MODE_TRANSMIT)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_SM_NOT_INITIALIZED);
+
+	if (!card->sm_ctx.module.ops.get_apdus)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
+
+        apdu = calloc(1, sizeof(struct sc_apdu));
+        if (!apdu)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+	memcpy((void *)apdu, (void *)plain, sizeof(struct sc_apdu));
+
+        apdu->data = calloc (1, plain->datalen + 24);
+        if (!apdu->data)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+	if (plain->data && plain->datalen)
+		memcpy(apdu->data, plain->data, plain->datalen);
+
+        apdu->resp = calloc (1, plain->resplen + 32);
+        if (!apdu->resp)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+
+	card->sm_ctx.info.cmd = SM_CMD_APDU_TRANSMIT;
+	card->sm_ctx.info.cmd_data = (void *)apdu;
+
+	rv = card->sm_ctx.module.ops.get_apdus(ctx, &card->sm_ctx.info, NULL, 0, NULL);
+	LOG_TEST_RET(ctx, rv, "SM: GET_APDUS failed");
+
+	*sm_apdu = apdu;
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+}
+#endif
 
 static struct sc_card_driver *
 sc_get_driver(void)

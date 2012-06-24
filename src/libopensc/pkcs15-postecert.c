@@ -156,8 +156,9 @@ static int sc_pkcs15emu_postecert_init(sc_pkcs15_card_t * p15card)
 {
 	static int prkey_usage = SC_PKCS15_PRKEY_USAGE_NONREPUDIATION;
 	static int authprkey_usage = SC_PKCS15_PRKEY_USAGE_SIGN
-	    | SC_PKCS15_PRKEY_USAGE_SIGNRECOVER
-	    | SC_PKCS15_PRKEY_USAGE_ENCRYPT | SC_PKCS15_PRKEY_USAGE_DECRYPT;
+		| SC_PKCS15_PRKEY_USAGE_SIGNRECOVER
+		| SC_PKCS15_PRKEY_USAGE_ENCRYPT
+		| SC_PKCS15_PRKEY_USAGE_DECRYPT;
 
 	sc_card_t *card = p15card->card;
 	sc_path_t path;
@@ -184,6 +185,9 @@ static int sc_pkcs15emu_postecert_init(sc_pkcs15_card_t * p15card)
 
 	const char *authPRKEY = "Authentication Key";
 	const char *nonrepPRKEY = "Non repudiation Key";
+
+	memset(index_cert, 0, sizeof(index_cert));
+	memset(count_cert, 0, sizeof(count_cert));
 
 	/* Get the non-repudiation certificate length */
 	sc_format_path(postecert_auth_cert_path, &path);

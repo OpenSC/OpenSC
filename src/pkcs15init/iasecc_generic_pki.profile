@@ -18,6 +18,8 @@ pkcs15 {
     encode-df-length    = no;
     # Have a lastUpdate field in the EF(TokenInfo)?
     do-last-update      = yes;
+    # Style of pkcs#15-init support of minidriver: 'none', 'gemalto';
+    minidriver-support-style    = gemalto;
 }
 
 option ecc {
@@ -168,7 +170,7 @@ filesystem {
 
                 # Public data
                 EF  public-data {
-                    file-id = F000;
+                    file-id = B101;
                     ACL     = *=NONE;
                     ACL     = WRITE=SCBx13, UPDATE=SCBx13, DELETE=NONE;
                 }

@@ -47,7 +47,7 @@ int sc_pkcs15_read_data_object(struct sc_pkcs15_card *p15card,
 	struct sc_pkcs15_data *data_object;
 	u8 *data = NULL;
 	size_t len;
-	
+
 	if (p15card == NULL || info == NULL || data_object_out == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
@@ -61,11 +61,11 @@ int sc_pkcs15_read_data_object(struct sc_pkcs15_card *p15card,
 		return SC_ERROR_OUT_OF_MEMORY;
 	}
 	memset(data_object, 0, sizeof(struct sc_pkcs15_data));
-	
+
 	data_object->data = data;
 	data_object->data_len = len;
 	*data_object_out = data_object;
-	return 0;
+	return SC_SUCCESS;
 }
 
 static const struct sc_asn1_entry c_asn1_data[] = {
@@ -99,7 +99,7 @@ int sc_pkcs15_decode_dodf_entry(struct sc_pkcs15_card *p15card,
 	sc_copy_asn1_entry(c_asn1_com_data_attr, asn1_com_data_attr);
 	sc_copy_asn1_entry(c_asn1_type_data_attr, asn1_type_data_attr);
 	sc_copy_asn1_entry(c_asn1_data, asn1_data);
-	
+
 	sc_format_asn1_entry(asn1_com_data_attr + 0, &info.app_label, &label_len, 0);
 	sc_format_asn1_entry(asn1_com_data_attr + 1, &info.app_oid, NULL, 0);
 	sc_format_asn1_entry(asn1_type_data_attr + 0, &info.path, NULL, 0);
@@ -129,7 +129,7 @@ int sc_pkcs15_decode_dodf_entry(struct sc_pkcs15_card *p15card,
 		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
 	memcpy(obj->data, &info, sizeof(info));
 
-	return 0;
+	return SC_SUCCESS;
 }
 
 int sc_pkcs15_encode_dodf_entry(sc_context_t *ctx,
@@ -151,7 +151,7 @@ int sc_pkcs15_encode_dodf_entry(sc_context_t *ctx,
 	sc_copy_asn1_entry(c_asn1_com_data_attr, asn1_com_data_attr);
 	sc_copy_asn1_entry(c_asn1_type_data_attr, asn1_type_data_attr);
 	sc_copy_asn1_entry(c_asn1_data, asn1_data);
-	
+
 	if (label_len) {
 		sc_format_asn1_entry(asn1_com_data_attr + 0,
 				&info->app_label, &label_len, 1);

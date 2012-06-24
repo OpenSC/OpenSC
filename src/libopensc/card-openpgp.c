@@ -20,6 +20,7 @@
 
 /*
  * Specifications:
+ * http://www.g10code.de/docs/openpgp-card-1.0.pdf (obsolete)
  * http://www.g10code.de/docs/openpgp-card-1.1.pdf
  * http://www.g10code.de/docs/openpgp-card-2.0.pdf
  */
@@ -86,6 +87,23 @@ enum _access {		/* access flags for the respective DO/file */
 	WRITE_PIN3   = 0x1400,
 	WRITE_ALWAYS = 0x1800,
 	WRITE_MASK   = 0x1F00
+};
+
+enum _ext_caps {	/* extended capabilities/features */
+	EXT_CAP_ALG_ATTR_CHANGEABLE = 0x0004,
+	EXT_CAP_PRIVATE_DO          = 0x0008,
+	EXT_CAP_C4_CHANGEABLE       = 0x0010,
+	EXT_CAP_KEY_IMPORT          = 0x0020,
+	EXT_CAP_GET_CHALLENGE       = 0x0040,
+	EXT_CAP_SM                  = 0x0080,
+	EXT_CAP_CHAINING            = 0x1000,
+	EXT_CAP_APDU_EXT            = 0x2000
+};
+
+enum _card_state {
+	CARD_STATE_UNKNOWN        = 0x00,
+	CARD_STATE_INITIALIZATION = 0x03,
+	CARD_STATE_ACTIVATED      = 0x05
 };
 
 struct blob {
@@ -160,9 +178,9 @@ static struct do_info		pgp1_objects[] = {	/* OpenPGP card spec 1.1 */
 	{ 0x00e0, CONSTRUCTED, READ_NEVER  | WRITE_PIN3,  NULL,               sc_put_data },
 	{ 0x00e1, CONSTRUCTED, READ_NEVER  | WRITE_PIN3,  NULL,               sc_put_data },
 	{ 0x00e2, CONSTRUCTED, READ_NEVER  | WRITE_PIN3,  NULL,               sc_put_data },
-	{ 0x0101, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  sc_get_data,        sc_put_data },
+	{ 0x0101, SIMPLE,      READ_ALWAYS | WRITE_PIN2,  sc_get_data,        sc_put_data },
 	{ 0x0102, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  sc_get_data,        sc_put_data },
-	{ 0x0103, SIMPLE,      READ_PIN1   | WRITE_PIN1,  sc_get_data,        sc_put_data },
+	{ 0x0103, SIMPLE,      READ_PIN2   | WRITE_PIN2,  sc_get_data,        sc_put_data },
 	{ 0x0104, SIMPLE,      READ_PIN3   | WRITE_PIN3,  sc_get_data,        sc_put_data },
 	{ 0x3f00, CONSTRUCTED, READ_ALWAYS | WRITE_NEVER, NULL,               NULL        },
 	{ 0x5f2d, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  NULL,               sc_put_data },
@@ -211,9 +229,9 @@ static struct do_info		pgp2_objects[] = {	/* OpenPGP card spec 2.0 */
 	{ 0x00d2, SIMPLE,      READ_NEVER  | WRITE_PIN3,  NULL,               sc_put_data },
 	{ 0x00d3, SIMPLE,      READ_NEVER  | WRITE_PIN3,  NULL,               sc_put_data },
 	{ 0x00f4, CONSTRUCTED, READ_NEVER  | WRITE_PIN3,  NULL,               sc_put_data },
-	{ 0x0101, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  sc_get_data,        sc_put_data },
+	{ 0x0101, SIMPLE,      READ_ALWAYS | WRITE_PIN2,  sc_get_data,        sc_put_data },
 	{ 0x0102, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  sc_get_data,        sc_put_data },
-	{ 0x0103, SIMPLE,      READ_PIN1   | WRITE_PIN1,  sc_get_data,        sc_put_data },
+	{ 0x0103, SIMPLE,      READ_PIN2   | WRITE_PIN2,  sc_get_data,        sc_put_data },
 	{ 0x0104, SIMPLE,      READ_PIN3   | WRITE_PIN3,  sc_get_data,        sc_put_data },
 	{ 0x3f00, CONSTRUCTED, READ_ALWAYS | WRITE_NEVER, NULL,               NULL        },
 	{ 0x5f2d, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  NULL,               sc_put_data },
@@ -221,7 +239,9 @@ static struct do_info		pgp2_objects[] = {	/* OpenPGP card spec 2.0 */
 	{ 0x5f48, CONSTRUCTED, READ_NEVER  | WRITE_PIN3,  NULL,               sc_put_data },
 	{ 0x5f50, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  sc_get_data,        sc_put_data },
 	{ 0x5f52, SIMPLE,      READ_ALWAYS | WRITE_NEVER, sc_get_data,        NULL        },
-	{ 0x7f21, CONSTRUCTED, READ_ALWAYS | WRITE_PIN3,  sc_get_data,        sc_put_data },
+	/* The 7F21 is constructed DO in spec, but in practice, its content can be retrieved
+	 * as simple DO (no need to parse TLV). */
+	{ 0x7f21, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  sc_get_data,        sc_put_data },
 	{ 0x7f48, CONSTRUCTED, READ_NEVER  | WRITE_NEVER, NULL,               NULL        },
 	{ 0x7f49, CONSTRUCTED, READ_ALWAYS | WRITE_NEVER, NULL,               NULL        },
 	{ 0xa400, CONSTRUCTED, READ_ALWAYS | WRITE_NEVER, pgp_get_pubkey,     NULL        },
@@ -233,6 +253,10 @@ static struct do_info		pgp2_objects[] = {	/* OpenPGP card spec 2.0 */
 	{ 0, 0, 0, NULL, NULL },
 };
 
+/* The DO holding X.509 certificate is constructed but does not contain child DO.
+ * We should notice this when building fake file system later. */
+#define DO_CERT		0x7f21
+
 #define DRVDATA(card)        ((struct pgp_priv_data *) ((card)->drv_data))
 struct pgp_priv_data {
 	struct blob *		mf;
@@ -240,6 +264,12 @@ struct pgp_priv_data {
 
 	enum _version		bcd_version;
 	struct do_info		*pgp_objects;
+
+	enum _card_state	state;		/* card state */
+	enum _ext_caps		ext_caps;	/* extended capabilities */
+
+	size_t			max_challenge_size;
+	size_t			max_cert_size;
 
 	sc_security_env_t	sec_env;
 };
@@ -264,7 +294,7 @@ pgp_match_card(sc_card_t *card)
 static int
 pgp_init(sc_card_t *card)
 {
-        struct pgp_priv_data *priv;
+	struct pgp_priv_data *priv;
 	sc_path_t	aid;
 	sc_file_t	*file = NULL;
 	struct do_info	*info;
@@ -347,24 +377,41 @@ pgp_get_card_features(sc_card_t *card)
 	size_t i = 0;
 	struct blob *blob, *blob6e, *blob73;
 
-	/* get SC_CARD_CAP_APDU_EXT capability */
+	/* parse card capabilities from historical bytes */
 	while ((i < atr_len) && (hist_bytes[i] != 0x73))
 			i++;
+	/* IS07816-4 hist bytes 3rd function table */
 	if ((hist_bytes[i] == 0x73) && (atr_len > i+3)) {
 		/* bit 0x40 in byte 3 of TL 0x73 means "extended Le/Lc" */
-		if (hist_bytes[i+3] & 0x40)
+		if (hist_bytes[i+3] & 0x40) {
 			card->caps |= SC_CARD_CAP_APDU_EXT;
+			priv->ext_caps |= EXT_CAP_APDU_EXT;
+		}
+		/* bit 0x80 in byte 3 of TL 0x73 means "Command chaining" */
+		if (hist_bytes[i+3] & 0x80)
+			priv->ext_caps |= EXT_CAP_CHAINING;
 	}
-	else if (priv->bcd_version >= OPENPGP_CARD_2_0) {
+	if (priv->bcd_version >= OPENPGP_CARD_2_0) {
 		/* get card capabilities from "historical bytes" DO */
 		if ((pgp_get_blob(card, priv->mf, 0x5f52, &blob) >= 0) &&
 		    (blob->data != NULL) && (blob->data[0] == 0x00)) {
 			while ((i < blob->len) && (blob->data[i] != 0x73))
 				i++;
-			/* bit 0x40 in byte 3 of TL 0x73 means "extended Le/Lc" */
-			if ((blob->data[i] == 0x73) && (blob->len > i+3) &&
-			    (blob->data[i+3] & 0x40))
-				card->caps |= SC_CARD_CAP_APDU_EXT;
+			/* IS07816-4 hist bytes 3rd function table */
+			if ((blob->data[i] == 0x73) && (blob->len > i+3)) {
+				/* bit 0x40 in byte 3 of TL 0x73 means "extended Le/Lc" */
+				if (blob->data[i+3] & 0x40) {
+					card->caps |= SC_CARD_CAP_APDU_EXT;
+					priv->ext_caps |= EXT_CAP_APDU_EXT;
+				}
+				/* bit 0x80 in byte 3 of TL 0x73 means "Command chaining" */
+				if (hist_bytes[i+3] & 0x80)
+					priv->ext_caps |= EXT_CAP_CHAINING;
+			}
+
+			/* get card status from historical bytes status indicator */
+			if ((blob->data[0] == 0x00) && (blob->len >= 4))
+				priv->state = blob->data[blob->len-3];
 		}
 	}
 
@@ -374,11 +421,32 @@ pgp_get_card_features(sc_card_t *card)
 		/* get "extended capabilities" DO */
 		if ((pgp_get_blob(card, blob73, 0x00c0, &blob) >= 0) &&
 		    (blob->data != NULL) && (blob->len > 0)) {
-			/* bit 0x40 if first byte means "support for get challenge" */
-			if (blob->data[0] & 0x40)
+			/* in v2.0 bit 0x04 in first byte means "algorithm attributes changeable */
+			if ((blob->data[0] & 0x04) && (card->type == SC_CARD_TYPE_OPENPGP_V2))
+				priv->ext_caps |= EXT_CAP_ALG_ATTR_CHANGEABLE;
+			/* bit 0x08 in first byte means "support for private use DOs" */
+			if (blob->data[0] & 0x08)
+				priv->ext_caps |= EXT_CAP_PRIVATE_DO;
+			/* bit 0x10 in first byte means "support for CHV status byte changeable" */
+			if (blob->data[0] & 0x10)
+				priv->ext_caps |= EXT_CAP_C4_CHANGEABLE;
+			/* bit 0x20 in first byte means "support for Key Import" */
+			if (blob->data[0] & 0x20)
+				priv->ext_caps |= EXT_CAP_KEY_IMPORT;
+			/* bit 0x40 in first byte means "support for Get Challenge" */
+			if (blob->data[0] & 0x40) {
 				card->caps |= SC_CARD_CAP_RNG;
+				priv->ext_caps |= EXT_CAP_GET_CHALLENGE;
+			}
+			/* in v2.0 bit 0x80 in first byte means "support Secure Messaging" */
+			if ((blob->data[0] & 0x80) && (card->type == SC_CARD_TYPE_OPENPGP_V2))
+				priv->ext_caps |= EXT_CAP_SM;
 
 			if ((priv->bcd_version >= OPENPGP_CARD_2_0) && (blob->len >= 10)) {
+				/* max. challenge size is at bytes 3-4 */
+				priv->max_challenge_size = bebytes2ushort(blob->data + 2);
+				/* max. cert size it at bytes 5-6 */
+				priv->max_cert_size = bebytes2ushort(blob->data + 4);
 				/* max. send/receive sizes are at bytes 7-8 resp. 9-10 */
 				card->max_send_size = bebytes2ushort(blob->data + 6);
 				card->max_recv_size = bebytes2ushort(blob->data + 8);
@@ -449,14 +517,15 @@ pgp_set_blob(struct blob *blob, const u8 *data, size_t len)
 	blob->status = 0;
 
 	if (len > 0) {
-		void *tmp = malloc(len);
+		void *tmp = calloc(len, 1);
 
 		if (tmp == NULL)
 			return SC_ERROR_OUT_OF_MEMORY;
 
 		blob->data = tmp;
 		blob->len  = len;
-		memcpy(blob->data, data, len);
+		if (data != NULL)
+			memcpy(blob->data, data, len);
 	}
 
 	if (blob->file)
@@ -465,6 +534,68 @@ pgp_set_blob(struct blob *blob, const u8 *data, size_t len)
 	return SC_SUCCESS;
 }
 
+/**
+ * Internal: Implement Access Control List for emulated file.
+ * The Access Control is derived from the DO access permission.
+ **/
+static void
+pgp_attach_acl(sc_card_t *card, sc_file_t *file, struct do_info *info)
+{
+	sc_acl_entry_t *acl;
+	unsigned int method = SC_AC_NONE;
+	unsigned long key_ref = 0;
+
+	/* Write access */
+	switch (info->access & WRITE_MASK) {
+	case WRITE_NEVER:
+		method = SC_AC_NEVER;
+		break;
+	case WRITE_PIN1:
+		method = SC_AC_CHV;
+		key_ref = 0x01;
+		break;
+	case WRITE_PIN2:
+		method = SC_AC_CHV;
+		key_ref = 0x02;
+		break;
+	case WRITE_PIN3:
+		method = SC_AC_CHV;
+		key_ref = 0x03;
+		break;
+	}
+
+	if (method != SC_AC_NONE || key_ref != 0) {
+		sc_file_add_acl_entry(file, SC_AC_OP_WRITE, method, key_ref);
+		sc_file_add_acl_entry(file, SC_AC_OP_UPDATE, method, key_ref);
+		sc_file_add_acl_entry(file, SC_AC_OP_DELETE, method, key_ref);
+		sc_file_add_acl_entry(file, SC_AC_OP_CREATE, method, key_ref);
+	}
+
+	method = SC_AC_NONE;
+	key_ref = 0;
+	/* Read access */
+	switch (info->access & READ_MASK) {
+	case READ_NEVER:
+		method = SC_AC_NEVER;
+		break;
+	case READ_PIN1:
+		method = SC_AC_CHV;
+		key_ref = 0x01;
+		break;
+	case READ_PIN2:
+		method = SC_AC_CHV;
+		key_ref = 0x02;
+		break;
+	case READ_PIN3:
+		method = SC_AC_CHV;
+		key_ref = 0x03;
+		break;
+	}
+
+	if (method != SC_AC_NONE || key_ref != 0) {
+		sc_file_add_acl_entry(file, SC_AC_OP_READ, method, key_ref);
+	}
+}
 
 /* internal: append a blob to the list of children of a given parent blob */
 static struct blob *
@@ -513,6 +644,7 @@ pgp_new_blob(sc_card_t *card, struct blob *parent, unsigned int file_id,
 			if (info->id == file_id) {
 				blob->info = info;
 				blob->file->type = blob->info->type;
+				pgp_attach_acl(card, blob->file, info);
 				break;
 			}
 		}
@@ -588,7 +720,7 @@ pgp_read_blob(sc_card_t *card, struct blob *blob)
 
 		return pgp_set_blob(blob, buffer, r);
 	}
-	else {		/* un-readable DO or part of a constrcuted DO */
+	else {		/* un-readable DO or part of a constructed DO */
 		return SC_SUCCESS;
 	}
 }
@@ -666,6 +798,71 @@ pgp_get_blob(sc_card_t *card, struct blob *blob, unsigned int id,
 	return SC_ERROR_FILE_NOT_FOUND;
 }
 
+/* Internal: search recursively for a blob by ID below a given root */
+static int
+pgp_seek_blob(sc_card_t *card, struct blob *root, unsigned int id,
+		struct blob **ret)
+{
+	struct blob	*child;
+	int			r;
+
+	if ((r = pgp_get_blob(card, root, id, ret)) == 0)
+		/* The sought blob is right under root */
+		return r;
+
+	/* Not found, seek deeper */
+	for (child = root->files; child; child = child->next) {
+		/* The DO of SIMPLE type or the DO holding certificate
+		 * does not contain children */
+		if (child->info->type == SIMPLE || child->id == DO_CERT)
+			continue;
+		r = pgp_seek_blob(card, child, id, ret);
+		if (r == 0)
+			return r;
+	}
+
+	return SC_ERROR_FILE_NOT_FOUND;
+}
+
+/* internal: find a blob by tag - pgp_seek_blob with optimizations */
+static struct blob *
+pgp_find_blob(sc_card_t *card, unsigned int tag)
+{
+	struct pgp_priv_data *priv = DRVDATA(card);
+	struct blob *blob = NULL;
+	int r;
+
+	/* Check if current selected blob is which we want to test*/
+	if (priv->current->id == tag) {
+		return priv->current;
+	}
+	/* Look for the blob representing the DO */
+	r = pgp_seek_blob(card, priv->mf, tag, &blob);
+	if (r < 0) {
+		sc_log(card->ctx, "Failed to seek the blob representing the tag %04X. Error %d.", tag, r);
+		return NULL;
+	}
+	return blob;
+}
+
+/**
+ * Strip out the parts of PKCS15 file layout in the path. Get the reduced version
+ * which is understood by the OpenPGP card driver.
+ * Return the index whose preceding part will be ignored.
+ **/
+static unsigned int pgp_strip_path(sc_card_t *card, const sc_path_t *path)
+{
+	unsigned int start_point = 0;
+	/* start_point will move through the path string */
+	if (path->value == NULL || path->len == 0)
+		return 0;
+
+	/* Ignore 3F00 (MF) at the beginning */
+	start_point = (memcmp(path->value, "\x3f\x00", 2) == 0) ? 2 : 0;
+	/* Strip path of PKCS15-AppDF (5015) */
+	start_point += (memcmp(path->value + start_point, "\x50\x15", 2) == 0) ? 2 : 0;
+	return start_point;
+}
 
 /* ABI: SELECT FILE */
 static int
@@ -673,7 +870,7 @@ pgp_select_file(sc_card_t *card, const sc_path_t *path, sc_file_t **ret)
 {
 	struct pgp_priv_data *priv = DRVDATA(card);
 	struct blob	*blob;
-	unsigned int	path_start;
+	unsigned int	path_start = 0;
 	unsigned int	n;
 
 	LOG_FUNC_CALLED(card->ctx);
@@ -681,16 +878,16 @@ pgp_select_file(sc_card_t *card, const sc_path_t *path, sc_file_t **ret)
 	if (path->type == SC_PATH_TYPE_DF_NAME)
 		LOG_FUNC_RETURN(card->ctx, iso_ops->select_file(card, path, ret));
 
-	if (path->type != SC_PATH_TYPE_PATH)
-		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
-				"invalid path type");
-
 	if (path->len < 2 || (path->len & 1))
 		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
 				"invalid path length");
 
+	if (path->type == SC_PATH_TYPE_FILE_ID && path->len != 2)
+		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
+				"invalid path type");
+
 	/* ignore explicitely mentioned MF at the path's beginning */
-	path_start = (memcmp(path->value, "\x3f\x00", 2) == 0) ? 2 : 0;
+	path_start = pgp_strip_path(card, path);
 
 	/* starting with the MF ... */
 	blob = priv->mf;
@@ -833,7 +1030,7 @@ pgp_get_pubkey_pem(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 	int		r;
 
 	sc_log(card->ctx, "called, tag=%04x\n", tag);
-	
+
 	if ((r = pgp_get_blob(card, priv->mf, tag & 0xFFFE, &blob)) < 0
 	 || (r = pgp_get_blob(card, blob, 0x7F49, &blob)) < 0
 	 || (r = pgp_get_blob(card, blob, 0x0081, &mod_blob)) < 0
@@ -884,12 +1081,80 @@ pgp_get_data(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 	LOG_FUNC_RETURN(card->ctx, apdu.resplen);
 }
 
-
 /* ABI: PUT DATA */
 static int
 pgp_put_data(sc_card_t *card, unsigned int tag, const u8 *buf, size_t buf_len)
 {
-	LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+	sc_apdu_t apdu;
+	struct pgp_priv_data *priv = DRVDATA(card);
+	struct blob	*affected_blob = NULL;
+	u8 ins = 0xDA;
+	u8 p1 = tag >> 8;
+	u8 p2 = tag & 0xFF;
+	int r;
+
+	LOG_FUNC_CALLED(card->ctx);
+
+	/* Check if the tag is writable */
+	affected_blob = pgp_find_blob(card, tag);
+	if (affected_blob == NULL || (affected_blob->info->access & WRITE_MASK) == WRITE_NEVER) {
+		sc_log(card->ctx, "DO %04X is not writable.", tag);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ALLOWED);
+	}
+
+	/* Check data size.
+	 * We won't check other DOs than 7F21 (certificate), because their capacity
+	 * is hard-codded and may change in various version of the card. If we check here,
+	 * the driver may be sticked to a limit version number of card.
+	 * 7F21 size is soft-coded, so we can check it. */
+	if (tag == DO_CERT && buf_len > priv->max_cert_size) {
+		sc_log(card->ctx, "Data size %ld exceeds DO size limit %ld.", buf_len, priv->max_cert_size);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_WRONG_LENGTH);
+	}
+
+	/* Extended Header list (004D DO) needs a variant of PUT DATA command */
+	if (tag == 0x004D) {
+		ins = 0xDB;
+		p1 = 0x3F;
+		p2 = 0xFF;
+	}
+
+	/* Build APDU */
+	if (buf != NULL && buf_len > 0) {
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_3, ins, p1, p2);
+
+		/* if card/reader does not support extended APDUs, but chaining, then set it */
+		if (((card->caps & SC_CARD_CAP_APDU_EXT) == 0) && (priv->ext_caps & EXT_CAP_CHAINING))
+			apdu.flags |= SC_APDU_FLAGS_CHAINING;
+
+		apdu.data = buf;
+		apdu.datalen = buf_len;
+		apdu.lc = buf_len;
+	}
+	else {
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_1, ins, p1, p2);
+	}
+
+	/* Send APDU to card */
+	r = sc_transmit_apdu(card, &apdu);
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+	/* Check response */
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+
+	/* Instruct more in case of error */
+	if (r == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Please verify PIN first.");
+	}
+	LOG_TEST_RET(card->ctx, r, "PUT DATA returned error");
+
+	/* Update the corresponding file */
+	sc_log(card->ctx, "Updating the corresponding blob data");
+	r = pgp_set_blob(affected_blob, buf, buf_len);
+	if (r < 0)
+		sc_log(card->ctx, "Failed to update blob %04X. Error %d.", affected_blob->id, r);
+	/* pgp_set_blob()'s failures do not impact pgp_put_data()'s result */
+
+	LOG_FUNC_RETURN(card->ctx, buf_len);
 }
 
 
@@ -903,8 +1168,27 @@ pgp_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
 				"invalid PIN type");
 
-	data->pin_reference |= 0x80;
+	/* In general, the PIN Reference is extracted from the key-id, for
+	 * example, CHV0 -> Ref=0, CHV1 -> Ref=1.
+	 * However, in the case of OpenGPG, the PIN Ref to compose APDU
+	 * must be 81, 82, 83.
+	 * So, if we receive Ref=1, Ref=2, we must convert to 81, 82...
+	 * In OpenPGP ver 1, the PINs are named CHV1, CHV2, CHV3. In ver 2, they
+	 * are named PW1, PW3 (PW1 operates in 2 modes). However, the PIN references (P2 in APDU)
+	 * are the same between 2 version:
+	 * 81 (CHV1 or PW1), 82 (CHV2 or PW1-mode 2), 83 (CHV3 or PW3).
+	 *
+	 * Note that if this function is called from sc_pkcs15_verify_pin() in pkcs15-pin.c,
+	 * the Ref is already 81, 82, 83.
+	 */
 
+	/* Convert the PIN Reference if needed */
+	data->pin_reference |= 0x80;
+	/* Ensure pin_reference is 81, 82, 83 */
+	if (!(data->pin_reference == 0x81 || data->pin_reference == 0x82 || data->pin_reference == 0x83)) {
+		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
+					 "key-id should be 1, 2, 3.");
+	}
 	LOG_FUNC_RETURN(card->ctx, iso_ops->pin_cmd(card, data, tries_left));
 }
 
@@ -1062,10 +1346,162 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 	LOG_FUNC_RETURN(card->ctx, apdu.resplen);
 }
 
+/**
+ * Internal: Parse response data of key generation and update blob.
+ **/
+static int
+pgp_parse_and_update_pubkey_info(sc_card_t *card, u8* data, size_t data_len,
+								 sc_cardctl_openpgp_keygen_info_t *key_info)
+{
+	struct pgp_priv_data *priv = DRVDATA(card);
+	struct blob *kinfo_blob;
+	struct blob *modulus_blob;
+	struct blob *exponent_blob;
+	u8 *in = data;
+	int r;
+
+	LOG_FUNC_CALLED(card->ctx);
+	while (data_len > (in - data)) {
+		unsigned int cla, tag, tmptag;
+		size_t		len;
+		u8	*part = in;
+
+		/* Parse TLV structure */
+		r = sc_asn1_read_tag((const u8**)&part,
+							 data_len - (in - data),
+							 &cla, &tag, &len);
+		LOG_TEST_RET(card->ctx, r, "Unexpected end of contents.");
+		/* Undo ASN1's split of tag & class */
+		for (tmptag = tag; tmptag > 0x0FF; tmptag >>= 8) {
+			cla <<= 8;
+		}
+		tag |= cla;
+
+		if (tag == 0x7f49) {
+			r = pgp_get_blob(card, priv->mf, tag, &kinfo_blob);
+			LOG_TEST_RET(card->ctx, r, "Can not get the blob storing pubkey info.");
+		}
+		else if (tag == 0x0081) {
+			/* Set the output data */
+			if (key_info->modulus) {
+				memcpy(key_info->modulus, part, len);
+				key_info->modulus_len = len;
+			}
+			/* Update the corresponding blob content */
+			r = pgp_get_blob(card, kinfo_blob, tag, &modulus_blob);
+			LOG_TEST_RET(card->ctx, r, "Can not get the blob storing modulus info.");
+			pgp_set_blob(modulus_blob, part, len);
+		}
+		else if (tag == 0x0082) {
+			/* Set the output data */
+			if (key_info->exponent) {
+				memcpy(key_info->exponent, part, len);
+				key_info->exponent_len = len;
+			}
+			/* Update the corresponding blob content */
+			r = pgp_get_blob(card, kinfo_blob, tag, &exponent_blob);
+			LOG_TEST_RET(card->ctx, r, "Can not get the blob storing exponent info.");
+			pgp_set_blob(exponent_blob, part, len);
+		}
+
+		/* Go to next part to parse */
+		in = part + len;
+	}
+	LOG_FUNC_RETURN(card->ctx, r);
+}
+
+/**
+ * Generate key
+ **/
+static int pgp_gen_key(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_info)
+{
+	struct pgp_priv_data *priv = DRVDATA(card);
+	struct blob *algo_blob;
+	sc_apdu_t apdu;
+	unsigned int modulus_bitlen;
+	/* Temporary variables to hold APDU params */
+	u8 apdu_case;
+	u8 *apdu_data;
+	size_t apdu_le;
+	int r = SC_SUCCESS;
+
+	LOG_FUNC_CALLED(card->ctx);
+
+	/* Set Control Reference Template for key */
+	if (key_info->keytype == SC_OPENPGP_KEY_SIGN)
+		apdu_data = "\xb6";
+	else if (key_info->keytype == SC_OPENPGP_KEY_ENCR)
+		apdu_data = "\xb8";
+	else if (key_info->keytype == SC_OPENPGP_KEY_AUTH)
+		apdu_data = "\xa4";
+	else {
+		sc_log(card->ctx, "Unknown key type %X.", key_info->keytype);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+	}
+
+	/* Get supported modulus length, to specify Le for APDU */
+	r = pgp_get_blob(card, priv->mf, (0x00C0 | key_info->keytype), &algo_blob);
+	LOG_TEST_RET(card->ctx, r, "Don't know supported modulus length");
+	modulus_bitlen = bebytes2ushort(algo_blob->data + 1);  /* The modulus length is coded in byte 2 & 3 */
+
+	/* Test whether we will need extended APDU. 1900 is an
+	 * arbitrary modulus length which for sure fits into a short APDU.
+	 * This idea is borrowed from GnuPG code.  */
+	if (card->caps & SC_CARD_CAP_APDU_EXT && key_info->modulus_len > 1900) {
+		/* We won't store to apdu variable yet, because it will be reset in
+		 * sc_format_apdu() */
+		apdu_le = card->max_recv_size;
+		apdu_case = SC_APDU_CASE_4_EXT;
+	}
+	else {
+		apdu_le = 256;
+		apdu_case = SC_APDU_CASE_4_SHORT;
+	}
+
+	/* Prepare APDU */
+	sc_format_apdu(card, &apdu, apdu_case, 0x47, 0x80,  0);
+	apdu.data = apdu_data;
+	apdu.datalen = 2;  /* Data = B600 */
+	apdu.lc = 2;
+	apdu.le = apdu_le;
+
+	/* Buffer to receive response */
+	apdu.resp = calloc(apdu.le, 1);
+	if (apdu.resp == NULL) {
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
+	}
+	apdu.resplen = apdu.le;
+
+	/* Send */
+	sc_log(card->ctx, "Waiting for the card to generate key...");
+	r = sc_transmit_apdu(card, &apdu);
+	sc_log(card->ctx, "Card has done key generation.");
+	if (r < 0) {
+		sc_log(card->ctx, "APDU transmit failed. Error %s.", sc_strerror(r));
+		goto finish;
+	}
+
+	/* Check response */
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	/* Instruct more in case of error */
+	if (r == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Please verify PIN first.");
+		goto finish;
+	}
+
+	/* Parse the returned data (pubkey info) and update blob */
+	r = pgp_parse_and_update_pubkey_info(card, apdu.resp, apdu.resplen, key_info);
+
+finish:
+	free(apdu.resp);
+	LOG_FUNC_RETURN(card->ctx, r);
+}
 
 /* ABI: card ctl: perform special card-specific operations */
 static int pgp_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 {
+	int r;
+
 	LOG_FUNC_CALLED(card->ctx);
 
 	switch(cmd) {
@@ -1073,9 +1509,66 @@ static int pgp_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 		memmove((sc_serial_number_t *) ptr, &card->serialnr, sizeof(card->serialnr));
 		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 		break;
+
+	case SC_CARDCTL_OPENPGP_GENERATE_KEY:
+		r = pgp_gen_key(card, (sc_cardctl_openpgp_keygen_info_t *) ptr);
+		LOG_FUNC_RETURN(card->ctx, r);
 	}
 
 	LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+}
+
+/* ABI: DELETE FILE */
+static int
+pgp_delete_file(sc_card_t *card, const sc_path_t *path)
+{
+	struct pgp_priv_data *priv = DRVDATA(card);
+	struct blob *blob;
+	sc_file_t *file;
+	int r;
+
+	LOG_FUNC_CALLED(card->ctx);
+
+	/* In sc_pkcs15init_delete_by_path(), the path type was set to SC_PATH_TYPE_FILE_ID */
+	r = pgp_select_file(card, path, &file);
+	LOG_TEST_RET(card->ctx, r, "Cannot select file.");
+
+	/* save "current" blob */
+	blob = priv->current;
+
+	/* do try to delete MF */
+	if (blob == priv->mf)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+
+	/* call pgp_put_data() with zero-sized NULL-buffer to zap the DO contents */
+	r = pgp_put_data(card, file->id, NULL, 0);
+
+	/* set "current" blob to parent */
+	priv->current = blob->parent;
+
+	LOG_FUNC_RETURN(card->ctx, r);
+}
+
+
+/* ABI: UPDATE BINARY */
+static int
+pgp_update_binary(sc_card_t *card, unsigned int idx,
+		  const u8 *buf, size_t count, unsigned long flags)
+{
+	struct pgp_priv_data *priv = DRVDATA(card);
+	struct blob *blob = priv->current;
+	int r;
+
+	LOG_FUNC_CALLED(card->ctx);
+
+	/* We will use PUT DATA to write to DO.
+	 * As PUT DATA does not support idx, we don't either */
+	if (idx > 0)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INCORRECT_PARAMETERS);
+
+	r = pgp_put_data(card, blob->id, buf, count);
+
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 
@@ -1102,6 +1595,8 @@ sc_get_driver(void)
 	pgp_ops.compute_signature= pgp_compute_signature;
 	pgp_ops.decipher	= pgp_decipher;
 	pgp_ops.card_ctl	= pgp_card_ctl;
+	pgp_ops.delete_file	= pgp_delete_file;
+	pgp_ops.update_binary	= pgp_update_binary;
 
 	return &pgp_drv;
 }

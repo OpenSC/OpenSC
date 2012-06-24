@@ -34,7 +34,9 @@ struct sc_to_cryptoki_error_conversion  {
 };
 
 static struct sc_to_cryptoki_error_conversion sc_to_cryptoki_error_map[]  = {
-	{ "C_GenerateKeyPair", SC_ERROR_INVALID_PIN_LENGTH, CKR_GENERAL_ERROR },
+	{ "C_GenerateKeyPair",	SC_ERROR_INVALID_PIN_LENGTH,	CKR_GENERAL_ERROR },
+	{ "C_Sign",		SC_ERROR_NOT_ALLOWED,		CKR_FUNCTION_FAILED},
+	{ "C_Decrypt",		SC_ERROR_NOT_ALLOWED,		CKR_FUNCTION_FAILED},
 	{NULL, 0, 0}
 };
 
@@ -56,7 +58,7 @@ void strcpy_bp(u8 * dst, const char *src, size_t dstsize)
 
 static CK_RV sc_to_cryptoki_error_common(int rc)
 {
-	sc_debug(context, SC_LOG_DEBUG_NORMAL, "libopensc return value: %d (%s)\n", rc, sc_strerror(rc));
+	sc_log(context, "libopensc return value: %d (%s)\n", rc, sc_strerror(rc));
 	switch (rc) {
 	case SC_SUCCESS:
 		return CKR_OK;
@@ -133,8 +135,8 @@ CK_RV session_start_operation(struct sc_pkcs11_session * session,
 	if (context == NULL)
 		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
-	SC_FUNC_CALLED(context, SC_LOG_DEBUG_NORMAL);
-	sc_debug(context, SC_LOG_DEBUG_NORMAL, "Session 0x%lx, type %d", session->handle, type);
+	LOG_FUNC_CALLED(context);
+	sc_log(context, "Session 0x%lx, type %d", session->handle, type);
 	if (type < 0 || type >= SC_PKCS11_OPERATION_MAX)
 		return CKR_ARGUMENTS_BAD;
 
@@ -155,7 +157,7 @@ CK_RV session_get_operation(struct sc_pkcs11_session * session, int type, sc_pkc
 {
 	sc_pkcs11_operation_t *op;
 
-	SC_FUNC_CALLED(context, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(context);
 
 	if (type < 0 || type >= SC_PKCS11_OPERATION_MAX)
 		return CKR_ARGUMENTS_BAD;
@@ -199,11 +201,13 @@ CK_RV attr_extract(CK_ATTRIBUTE_PTR pAttr, void *ptr, size_t * sizep)
 			size = sizeof(CK_KEY_TYPE);
 			break;
 		case CKA_PRIVATE:
+		case CKA_TOKEN:
 			size = sizeof(CK_BBOOL);
 			break;
 		case CKA_CERTIFICATE_TYPE:
 			size = sizeof(CK_CERTIFICATE_TYPE);
 			break;
+		case CKA_VALUE_LEN:
 		case CKA_MODULUS_BITS:
 			size = sizeof(CK_ULONG);
 			break;
@@ -283,6 +287,7 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t * ctx)
 {
 	scconf_block *conf_block = NULL;
 	char *unblock_style = NULL;
+	char *create_slots_for_pins = NULL, *op, *tmp;
 
 	/* Set defaults */
 	conf->plug_and_play = 1;
@@ -293,6 +298,7 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t * ctx)
 	conf->pin_unblock_style = SC_PKCS11_PIN_UNBLOCK_NOT_ALLOWED;
 	conf->create_puk_slot = 0;
 	conf->zero_ckaid_for_ca_certs = 0;
+	conf->create_slots_flags = 0;
 
 	conf_block = sc_get_conf_block(ctx, "pkcs11", NULL, 1);
 	if (!conf_block)
@@ -312,13 +318,30 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t * ctx)
 		conf->pin_unblock_style = SC_PKCS11_PIN_UNBLOCK_SCONTEXT_SETPIN;
 	else if (unblock_style && !strcmp(unblock_style, "init_pin_in_so_session"))
 		conf->pin_unblock_style = SC_PKCS11_PIN_UNBLOCK_SO_LOGGED_INITPIN;
-	
+
 	conf->create_puk_slot = scconf_get_bool(conf_block, "create_puk_slot", conf->create_puk_slot);
 	conf->zero_ckaid_for_ca_certs = scconf_get_bool(conf_block, "zero_ckaid_for_ca_certs", conf->zero_ckaid_for_ca_certs);
 
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "PKCS#11 options: plug_and_play=%d max_virtual_slots=%d slots_per_card=%d "
-		 "hide_empty_tokens=%d lock_login=%d pin_unblock_style=%d zero_ckaid_for_ca_certs=%d",
+	create_slots_for_pins = (char *)scconf_get_str(conf_block, "create_slots_for_pins", "all");
+	tmp = strdup(create_slots_for_pins);
+	op = strtok(tmp, " ,");
+	while (op) {
+		if (!strcmp(op, "user"))
+			conf->create_slots_flags |= SC_PKCS11_SLOT_FOR_PIN_USER;
+		else if (!strcmp(op, "sign"))
+			conf->create_slots_flags |= SC_PKCS11_SLOT_FOR_PIN_SIGN;
+		else if (!strcmp(op, "application"))
+			conf->create_slots_flags |= SC_PKCS11_SLOT_FOR_APPLICATION;
+		else if (!strcmp(op, "all"))
+			conf->create_slots_flags |= SC_PKCS11_SLOT_CREATE_ALL;
+		op = strtok(NULL, " ,");
+	}
+        free(tmp);
+
+	sc_log(ctx, "PKCS#11 options: plug_and_play=%d max_virtual_slots=%d slots_per_card=%d "
+		 "hide_empty_tokens=%d lock_login=%d pin_unblock_style=%d "
+		 "zero_ckaid_for_ca_certs=%d create_slots_flags=0x%X",
 		 conf->plug_and_play, conf->max_virtual_slots, conf->slots_per_card,
 		 conf->hide_empty_tokens, conf->lock_login, conf->pin_unblock_style,
-		 conf->zero_ckaid_for_ca_certs);
+		 conf->zero_ckaid_for_ca_certs, conf->create_slots_flags);
 }
