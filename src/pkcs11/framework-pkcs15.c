@@ -4324,6 +4324,17 @@ static int register_gost_mechanisms(struct sc_pkcs11_card *p11card, int flags)
 		if (rc != CKR_OK)
 			return rc;
 	}
+	if (flags & SC_ALGORITHM_ONBOARD_KEY_GEN) {
+		mech_info.flags = CKF_HW | CKF_GENERATE_KEY_PAIR;
+		mt = sc_pkcs11_new_fw_mechanism(CKM_GOSTR3410_KEY_PAIR_GEN,
+				&mech_info, CKK_GOSTR3410, NULL);
+		if (!mt)
+			return CKR_HOST_MEMORY;
+		rc = sc_pkcs11_register_mechanism(p11card, mt);
+		if (rc != CKR_OK)
+			return rc;
+	}
+    
 	return CKR_OK;
 }
 
