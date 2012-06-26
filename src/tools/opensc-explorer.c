@@ -493,11 +493,36 @@ static struct application known_applications[] = {
     { belgian_eid,       sizeof belgian_eid,       "Belgian eID", },
     { portugal_eid,      sizeof portugal_eid,      "Portugal eID", },
 };
+void try_application(const char *name,
+        const u8 *aid, size_t aid_len)
+{
+    int r;
+    sc_file_t *file = NULL;
+    sc_path_t path;
+
+    sc_path_set(&path, SC_PATH_TYPE_DF_NAME, aid, aid_len, 0, 0);
+    r = sc_select_file(card, &path, &file);
+    switch (r) {
+        case SC_SUCCESS:
+            sc_file_free(file);
+            printf(" %s\n\tAID: ", name);
+            util_hex_dump(stdout, aid, aid_len, " ");
+            puts("");
+            select_current_path_or_die();
+            break;
+        case SC_ERROR_NOT_ALLOWED:
+        case SC_ERROR_SECURITY_STATUS_NOT_SATISFIED:
+            printf("(%s)\n\t%s\n\tAID: ", name, sc_strerror(r));
+            util_hex_dump(stdout, aid, aid_len, " ");
+            puts("");
+            break;
+    }
+}
 static int do_find(int argc, char **argv)
 {
 	u8 fid[2], end[2];
     sc_path_t path;
-	int r, i;
+	int r, i, j;
 
     fid[0] = 0;
     fid[1] = 0;
@@ -519,31 +544,34 @@ static int do_find(int argc, char **argv)
     }
 
     if (1 == sc_compare_path(&current_path, sc_get_mf_path())) {
+
+        /* ignore the result */
+        sc_enum_apps(card);
+
+        /* print known applications, when they are not present in EF.DIR */
         for (i = 0; i < (sizeof known_applications)/sizeof *known_applications;
                 i++) {
-            sc_file_t *file = NULL;
-
-            sc_path_set(&path, SC_PATH_TYPE_DF_NAME, known_applications[i].aid,
-                    known_applications[i].aid_len, 0, 0);
-            r = sc_select_file(card, &path, &file);
-            switch (r) {
-                case SC_SUCCESS:
-                    sc_file_free(file);
-                    printf(" %s\n\tAID: ", known_applications[i].name);
-                    util_hex_dump(stdout, known_applications[i].aid,
-                            known_applications[i].aid_len, " ");
-                    puts("");
-                    select_current_path_or_die();
-                    break;
-                case SC_ERROR_NOT_ALLOWED:
-                case SC_ERROR_SECURITY_STATUS_NOT_SATISFIED:
-                    printf("(%s)\n\t%s\n\tAID: ", known_applications[i].name, sc_strerror(r));
-                    util_hex_dump(stdout, known_applications[i].aid,
-                            known_applications[i].aid_len, " ");
-                    puts("");
-                    break;
+            for (j = 0; j < card->app_count; j++) {
+                if (card->app[j]
+                        && card->app[j]->aid.len == known_applications[i].aid_len
+                        && 0 == memcmp(card->app[j]->aid.value,
+                            known_applications[i].aid, card->app[j]->aid.len))
+                    goto try_later;
             }
+            try_application(known_applications[i].name,
+                    known_applications[i].aid,
+                    known_applications[i].aid_len);
         }
+
+try_later:
+        /* print applications, which are present in EF.DIR */
+        for (j = 0; j < card->app_count; j++) {
+            try_application(card->app[j]->label,
+                    card->app[j]->aid.value,
+                    card->app[j]->aid.len);
+        }
+
+        sc_free_apps(card);
     }
 
 	printf("FileID\tType  Size\n");
