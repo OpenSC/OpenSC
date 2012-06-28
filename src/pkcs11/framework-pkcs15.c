@@ -2584,6 +2584,8 @@ pkcs15_gen_keypair(struct sc_pkcs11_slot *slot, CK_MECHANISM_PTR pMechanism,
 		keytype = CKK_RSA;
 	else if (rv != CKR_OK && pMechanism->mechanism == CKM_EC_KEY_PAIR_GEN)
 		keytype = CKK_EC;
+	else if (rv != CKR_OK && pMechanism->mechanism == CKM_GOSTR3410_KEY_PAIR_GEN)
+		keytype = CKK_GOSTR3410;
 	else if (rv != CKR_OK)
 		goto kpgen_done;
 
