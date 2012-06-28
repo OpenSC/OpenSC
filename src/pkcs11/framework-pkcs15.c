@@ -1793,16 +1793,16 @@ pkcs15_create_private_key(struct sc_pkcs11_slot *slot, struct sc_profile *profil
 			args.key.algorithm = SC_ALGORITHM_RSA;
 			rsa = &args.key.u.rsa;
 			break;
-		case CKK_EC:
-			args.key.algorithm = SC_ALGORITHM_EC;
-			ec = &args.key.u.ec;
-			/* TODO: -DEE Do not have PKCS15 card with EC to test this */
-			/* fall through */
 		case CKK_GOSTR3410:
 			set_gost_params(&args.params.gost, NULL, pTemplate, ulCount, NULL, 0);
 			args.key.algorithm = SC_ALGORITHM_GOSTR3410;
 			gost = &args.key.u.gostr3410;
 			break;
+		case CKK_EC:
+			args.key.algorithm = SC_ALGORITHM_EC;
+			ec = &args.key.u.ec;
+			/* TODO: -DEE Do not have PKCS15 card with EC to test this */
+			/* fall through */
 		default:
 			return CKR_ATTRIBUTE_VALUE_INVALID;
 	}
