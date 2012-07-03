@@ -2319,7 +2319,7 @@ authentic_sm_get_wrapped_apdu(struct sc_card *card, struct sc_apdu *plain, struc
 		|| (plain->cla==0x80 && plain->ins==0x50)
 		)   {
 		sc_log(ctx, "SM wrap is not applied for this APDU");
-		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+		LOG_FUNC_RETURN(ctx, SC_ERROR_SM_NOT_APPLIED);
 	}
 
 	if (card->sm_ctx.sm_mode != SM_MODE_TRANSMIT)
