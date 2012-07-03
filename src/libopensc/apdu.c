@@ -475,7 +475,7 @@ sc_single_sm_transmit(struct sc_card *card, struct sc_apdu *apdu)
 	rv = card->sm_ctx.ops.get_sm_apdu(card, apdu, &sm_apdu);
 	LOG_TEST_RET(ctx, rv, "get SM APDU error");
 
-	if (!sm_apdu)   {
+	if (rv == SC_ERROR_SM_NOT_APPLIED)   {
 		/* SM wrap of this APDU is ignored by card driver.
 		 * Send plain APDU to the reader driver */
 		rv = card->reader->ops->transmit(card->reader, apdu);
