@@ -101,8 +101,8 @@ static void authentic_debug_select_file(struct sc_card *card, const struct sc_pa
 
 #ifdef ENABLE_SM
 static int authentic_sm_open(struct sc_card *card);
-static int authentic_sm_get_wrapped_apdu(struct sc_card *card, struct sc_apdu *apdu, struct sc_apdu **sm_apdu);
-static int authentic_sm_free_wrapped_apdu(struct sc_card *card, struct sc_apdu *apdu, struct sc_apdu **sm_apdu);
+static int authentic_sm_get_wrapped_apdu(struct sc_card *card, struct sc_apdu *apdu, struct sc_apdu *sm_apdu);
+static int authentic_sm_free_wrapped_apdu(struct sc_card *card, struct sc_apdu *apdu, struct sc_apdu *sm_apdu);
 #endif
 
 static int
@@ -2264,40 +2264,28 @@ authentic_sm_open(struct sc_card *card)
 
 
 static int
-authentic_sm_free_wrapped_apdu(struct sc_card *card, struct sc_apdu *plain, struct sc_apdu **sm_apdu)
+authentic_sm_free_wrapped_apdu(struct sc_card *card, struct sc_apdu *plain, struct sc_apdu *sm_apdu)
 {
 	struct sc_context *ctx = card->ctx;
 
 	LOG_FUNC_CALLED(ctx);
-	if (!sm_apdu)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
-        if (!(*sm_apdu))
-		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 
-        if (plain)   {
-		if (plain->resplen < (*sm_apdu)->resplen)
-			LOG_TEST_RET(ctx, SC_ERROR_BUFFER_TOO_SMALL, "Unsufficient plain APDU response size");
-		memcpy(plain->resp, (*sm_apdu)->resp, (*sm_apdu)->resplen);
-		plain->resplen = (*sm_apdu)->resplen;
-		plain->sw1 = (*sm_apdu)->sw1;
-		plain->sw2 = (*sm_apdu)->sw2;
-	}
+    if (plain)   {
+        if (plain->resplen < sm_apdu->resplen)
+            LOG_TEST_RET(ctx, SC_ERROR_BUFFER_TOO_SMALL, "Unsufficient plain APDU response size");
+        memcpy(plain->resp, sm_apdu->resp, sm_apdu->resplen);
+        plain->resplen = sm_apdu->resplen;
+        plain->sw1 = sm_apdu->sw1;
+        plain->sw2 = sm_apdu->sw2;
+    }
 
-	if ((*sm_apdu)->data)
-		free((*sm_apdu)->data);
-	if ((*sm_apdu)->resp)
-		free((*sm_apdu)->resp);
-
-	free(*sm_apdu);
-	*sm_apdu = NULL;
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
 static int
-authentic_sm_get_wrapped_apdu(struct sc_card *card, struct sc_apdu *plain, struct sc_apdu **sm_apdu)
+authentic_sm_get_wrapped_apdu(struct sc_card *card, struct sc_apdu *plain, struct sc_apdu *sm_apdu)
 {
 	struct sc_context *ctx = card->ctx;
-	struct sc_apdu *apdu = NULL;
 	int rv  = 0;
 
 	LOG_FUNC_CALLED(ctx);
@@ -2306,7 +2294,6 @@ authentic_sm_get_wrapped_apdu(struct sc_card *card, struct sc_apdu *plain, struc
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 	sc_log(ctx, "called; CLA:%X, INS:%X, P1:%X, P2:%X, data(%i) %p",
 			plain->cla, plain->ins, plain->p1, plain->p2, plain->datalen, plain->data);
-        *sm_apdu = NULL;
 
 	if ((plain->cla & 0x04)
 		|| (plain->cla==0x00 && plain->ins==0x22)
@@ -2328,7 +2315,7 @@ authentic_sm_get_wrapped_apdu(struct sc_card *card, struct sc_apdu *plain, struc
 	if (!card->sm_ctx.module.ops.get_apdus)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 
-        apdu = calloc(1, sizeof(struct sc_apdu));
+        struct sc_apdu *apdu = calloc(1, sizeof(struct sc_apdu));
         if (!apdu)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 	memcpy((void *)apdu, (void *)plain, sizeof(struct sc_apdu));
@@ -2337,19 +2324,14 @@ authentic_sm_get_wrapped_apdu(struct sc_card *card, struct sc_apdu *plain, struc
         if (!apdu->data)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 	if (plain->data && plain->datalen)
-		memcpy(apdu->data, plain->data, plain->datalen);
-
-        apdu->resp = calloc (1, plain->resplen + 32);
-        if (!apdu->resp)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+		memcpy(sm_apdu->data, plain->data, plain->datalen);
 
 	card->sm_ctx.info.cmd = SM_CMD_APDU_TRANSMIT;
-	card->sm_ctx.info.cmd_data = (void *)apdu;
+	card->sm_ctx.info.cmd_data = (void *)sm_apdu;
 
 	rv = card->sm_ctx.module.ops.get_apdus(ctx, &card->sm_ctx.info, NULL, 0, NULL);
 	LOG_TEST_RET(ctx, rv, "SM: GET_APDUS failed");
 
-	*sm_apdu = apdu;
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 #endif
