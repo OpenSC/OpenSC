@@ -476,6 +476,8 @@ pgp_get_card_features(sc_card_t *card)
 			/* OpenPGP card spec 1.1 & 2.0, section 7.2.9 & 7.2.10 */
 			flags |= SC_ALGORITHM_RSA_PAD_PKCS1;
 			flags |= SC_ALGORITHM_RSA_HASH_NONE;
+			/* Can be generated in card */
+			flags |= SC_ALGORITHM_ONBOARD_KEY_GEN;
 
 			if ((pgp_get_blob(card, blob73, i, &blob) >= 0) &&
 			    (blob->data != NULL) && (blob->len >= 4)) {
@@ -897,6 +899,7 @@ pgp_select_file(sc_card_t *card, const sc_path_t *path, sc_file_t **ret)
 	struct blob	*blob;
 	unsigned int	path_start = 0;
 	unsigned int	n;
+	sc_path_t dummy_path;
 
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -910,6 +913,22 @@ pgp_select_file(sc_card_t *card, const sc_path_t *path, sc_file_t **ret)
 	if (path->type == SC_PATH_TYPE_FILE_ID && path->len != 2)
 		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
 				"invalid path type");
+
+	/* Due to pkcs15init implemetation, sometimes a file at path "11001101"
+	 * need to be written (1 use case is when importing key&cert from p12 file).
+	 * This file does not exist in OpenPGP but pkcs15 requires that
+	 * writing this file must be successfully.
+	 * So, we pretend that selecting & writing this file is successful.
+	 * The "11001101"is defined in sc_pkcs15emu_get_df() function, pkcs15-sync.c file. */
+	sc_format_path("11001101", &dummy_path);
+	if (sc_compare_path(path, &dummy_path)) {
+		*ret = sc_file_new();
+		/* One use case of this dummy file is after writing certificate in pkcs15init.
+		 * So we set its size to be the same as max certificate size the card supports. */
+		(*ret)->size = priv->max_cert_size;
+		priv->current = NULL;
+		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+	}
 
 	/* ignore explicitely mentioned MF at the path's beginning */
 	path_start = pgp_strip_path(card, path);
@@ -2108,6 +2127,9 @@ static int pgp_store_key(sc_card_t *card, sc_cardctl_openpgp_keystore_info_t *ke
 	r = pgp_update_pubkey_blob(card, key_info->n, 8*key_info->n_len,
 	                           key_info->e, 8*key_info->e_len, key_info->keytype);
 
+	sc_log(ctx, "Update card algorithms.");
+	pgp_update_card_algorithms(card, &pubkey);
+
 out:
 	if (data) {
 		free(data);
@@ -2192,7 +2214,7 @@ pgp_update_binary(sc_card_t *card, unsigned int idx,
 {
 	struct pgp_priv_data *priv = DRVDATA(card);
 	struct blob *blob = priv->current;
-	int r;
+	int r = SC_SUCCESS;
 
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -2201,7 +2223,11 @@ pgp_update_binary(sc_card_t *card, unsigned int idx,
 	if (idx > 0)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INCORRECT_PARAMETERS);
 
-	r = pgp_put_data(card, blob->id, buf, count);
+	/* When a dummy file, e.g "11001101", is selected, the current blob
+	 * is set to NULL. We don't really put data to dummy file. */
+	if (blob != NULL) {
+		r = pgp_put_data(card, blob->id, buf, count);
+	}
 
 	LOG_FUNC_RETURN(card->ctx, r);
 }
