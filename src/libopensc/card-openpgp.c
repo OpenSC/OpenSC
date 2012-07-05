@@ -2125,6 +2125,9 @@ static int pgp_store_key(sc_card_t *card, sc_cardctl_openpgp_keystore_info_t *ke
 	r = pgp_update_pubkey_blob(card, key_info->n, 8*key_info->n_len,
 	                           key_info->e, 8*key_info->e_len, key_info->keytype);
 
+	sc_log(ctx, "Update card algorithms.");
+	pgp_update_card_algorithms(card, &pubkey);
+
 out:
 	if (data) {
 		free(data);
