@@ -388,31 +388,32 @@ static int do_single_transmit(sc_card_t *card, sc_apdu_t *apdu)
 	}
 	*/
 
-#ifdef ENABLE_SM	
-	sc_apdu_t sm_apdu = {0};
-	sc_apdu_t plain_apdu = {0};
-	if (ctx->use_sm != 0) {
-		//construct new SM apdu from original apdu
-		u8 data[SC_MAX_EXT_APDU_BUFFER_SIZE] = {0};
-		u8 resp[SC_MAX_EXT_APDU_BUFFER_SIZE] = {0};
-		sm_apdu.data = &data[0];
-		sm_apdu.datalen = SC_MAX_EXT_APDU_BUFFER_SIZE;
-		sm_apdu.resp = &resp[0];
-		sm_apdu.resplen = SC_MAX_EXT_APDU_BUFFER_SIZE;
+// #ifdef ENABLE_SM	
+		sc_apdu_t sm_apdu = {0};
+		sc_apdu_t plain_apdu = {0};
+		if (ctx->use_sm != 0) {
+			//construct new SM apdu from original apdu
+			u8 data[SC_MAX_EXT_APDU_BUFFER_SIZE] = {0};
+			u8 resp[SC_MAX_EXT_APDU_BUFFER_SIZE] = {0};
+			sm_apdu.data = &data[0];
+			sm_apdu.datalen = SC_MAX_EXT_APDU_BUFFER_SIZE;
+			sm_apdu.resp = &resp[0];
+			sm_apdu.resplen = SC_MAX_EXT_APDU_BUFFER_SIZE;
 
-		r = card->ops->sm_wrap_apdu(card, apdu, &sm_apdu);
-		if(r)
-			return r;
+			r = card->ops->sm_wrap_apdu(card, apdu, &sm_apdu);
+			if(r)
+				return r;
 
-		r = sc_check_apdu(card, &sm_apdu);
-		if(r < 0){
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "cannot validate SM encoded APDU");
-			goto done;
+			r = sc_check_apdu(card, &sm_apdu);
+			if(r < 0){
+				sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "cannot validate SM encoded APDU");
+				goto done;
+			}
+			memcpy(&plain_apdu,apdu,sizeof(sc_apdu_t));
+			memcpy(apdu,&sm_apdu,sizeof(sc_apdu_t));
 		}
-		memcpy(&plain_apdu,apdu,sizeof(sc_apdu_t));
-		memcpy(apdu,&sm_apdu,sizeof(sc_apdu_t));
-	}
-#endif	
+	
+// #endif	
 
 	/* send APDU to the reader driver */
 	if (card->reader->ops->transmit == NULL){
@@ -544,10 +545,12 @@ static int do_single_transmit(sc_card_t *card, sc_apdu_t *apdu)
 	
 	r = SC_SUCCESS;	
 done:
-#ifdef ENABLE_SM	
-	r = card->ops->sm_unwrap_apdu(card, apdu,&plain_apdu);
-	memcpy(apdu,&plain_apdu,sizeof(sc_apdu_t));
-#endif	
+// #ifdef ENABLE_SM	
+	if(ctx->use_sm != 0){
+		r = card->ops->sm_unwrap_apdu(card, apdu,&plain_apdu);
+		memcpy(apdu,&plain_apdu,sizeof(sc_apdu_t));
+	}
+// #endif	
 	return r;
 }
 
