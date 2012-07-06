@@ -153,7 +153,68 @@ static int openpgp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 static int openpgp_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	sc_pkcs15_object_t *obj, sc_pkcs15_pubkey_t *pubkey)
 {
-	return SC_ERROR_NOT_SUPPORTED;
+	sc_card_t *card = p15card->card;
+	sc_context_t *ctx = card->ctx;
+	sc_cardctl_openpgp_keygen_info_t key_info;
+	sc_pkcs15_prkey_info_t *required = (sc_pkcs15_prkey_info_t *)obj->data;
+	sc_pkcs15_id_t *kid = &(required->id);
+	int r;
+
+	LOG_FUNC_CALLED(ctx);
+	memset(&key_info, 0, sizeof(key_info));
+	sc_log(ctx, "Key ID to be generated: %s", sc_dump_hex(kid->value, kid->len));
+
+	/* Accept KeyID = 45, which is default value set by pkcs15init */
+	if (kid->len == 1 && kid->value[0] == 0x45) {
+		/* Default key is authentication key. We choose this because the common use
+		 * is to generate from PKCS#11 (Firefox/Thunderbird) */
+		sc_log(ctx, "Authentication key is to be generated.");
+		key_info.keytype = 3;
+	}
+	if (!key_info.keytype && (kid->len > 1 || kid->value[0] > 3)) {
+		sc_log(ctx, "Key ID must be 1, 2 or 3!");
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+	}
+
+	if (!key_info.keytype)
+		key_info.keytype = kid->value[0];
+
+	/* Prepare buffer */
+	key_info.modulus_len = required->modulus_length;
+	key_info.modulus = calloc(required->modulus_length >> 3, 1);
+	if (key_info.modulus == NULL)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
+
+	/* The OpenPGP supports only 32-bit exponent. */
+	key_info.exponent_len = 32;
+	key_info.exponent = calloc(4, 1);
+	if (key_info.exponent == NULL)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
+
+	r = sc_card_ctl(card, SC_CARDCTL_OPENPGP_GENERATE_KEY, &key_info);
+	if (r < 0)
+		goto out;
+
+	sc_log(ctx, "Set output modulus info");
+	pubkey->u.rsa.modulus.len = key_info.modulus_len;
+	pubkey->u.rsa.modulus.data = calloc(key_info.modulus_len, 1);
+	if (pubkey->u.rsa.modulus.data == NULL)
+		goto out;
+	memcpy(pubkey->u.rsa.modulus.data, key_info.modulus, key_info.modulus_len);
+
+	sc_log(ctx, "Set output exponent info");
+	pubkey->u.rsa.exponent.len = key_info.exponent_len;
+	pubkey->u.rsa.exponent.data = calloc(key_info.exponent_len, 1);
+	if (pubkey->u.rsa.exponent.data == NULL)
+		goto out;
+	memcpy(pubkey->u.rsa.exponent.data, key_info.exponent, key_info.exponent_len);
+
+out:
+	if (key_info.modulus)
+		free(key_info.modulus);
+	if (key_info.exponent)
+		free(key_info.exponent);
+	LOG_FUNC_RETURN(ctx, r);
 }
 
 static int openpgp_emu_update_any_df(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
@@ -198,8 +259,10 @@ static int openpgp_store_data(struct sc_pkcs15_card *p15card, struct sc_profile 
 		cinfo = (sc_pkcs15_cert_info_t *) obj->data;
 		cid = &(cinfo->id);
 
-		if (cid->len != 1)
+		if (cid->len != 1) {
+			sc_log(card->ctx, "ID=%s is not valid.", sc_dump_hex(cid->value, cid->len));
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+		}
 
 		/* OpenPGP card v.2 contains only 1 certificate */
 		if (cid->value[0] != 3) {
