@@ -98,6 +98,28 @@
 
 				<varlistentry>
 					<term>
+						<option>--verify</option> <replaceable>pintype</replaceable>
+					</term>
+					<listitem>
+						<para>
+						Verify PIN (CHV1, CHV2 or CHV3).
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--pin</option> <replaceable>string</replaceable>
+					</term>
+					<listitem>
+						<para>
+						The PIN text to verify.
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
 						<option>--version</option>,
 						<option>-V</option>
 					</term>
