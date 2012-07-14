@@ -219,6 +219,7 @@ struct sm_info   {
 	union {
 		struct sm_gp_session gp;
 		struct sm_cwa_session cwa;
+		void *generic;
 	} session;
 
 	struct sc_serial_number serialnr;
