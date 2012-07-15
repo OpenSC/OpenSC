@@ -10,7 +10,7 @@
 
 	<refnamediv>
 		<refname>pkcs15-crypt</refname>
-		<refpurpose>perform crypto operations using pkcs15 smart card</refpurpose>
+		<refpurpose>perform crypto operations using PKCS#15 smart cards</refpurpose>
 	</refnamediv>
 
 	<refsynopsisdiv>
@@ -25,8 +25,8 @@
 		<para>
 			The <command>pkcs15-crypt</command> utility can be used from the
 			command line to perform cryptographic operations such as computing
-			digital signatures or decrypting data, using keys stored on a PKCS
-			#15 compliant smart card.
+			digital signatures or decrypting data, using keys stored on a PKCS#15
+			compliant smart card.
 		</para>
 	</refsect1>
 
@@ -38,7 +38,7 @@
 					<term>
 						<option>--aid</option> <replaceable>aid</replaceable>
 					</term>
-					<listitem><para>Specify the AID of the on-card PKCS#15 applicationi
+					<listitem><para>Specify the AID of the on-card PKCS#15 application
 					to bind to. The <replaceable>aid</replaceable> must be in hexadecimal
 					form.</para></listitem>
 				</varlistentry>

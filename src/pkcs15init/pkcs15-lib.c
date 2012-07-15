@@ -2537,6 +2537,7 @@ sc_pkcs15init_update_tokeninfo(struct sc_pkcs15_card *p15card, struct sc_profile
 	size_t		size;
 	int		r;
 
+	LOG_FUNC_CALLED(p15card->card->ctx);
 	/* set lastUpdate field */
 	if (p15card->tokeninfo->last_update.gtime != NULL)
 		free(p15card->tokeninfo->last_update.gtime);
@@ -2554,7 +2555,7 @@ sc_pkcs15init_update_tokeninfo(struct sc_pkcs15_card *p15card, struct sc_profile
 		r = sc_pkcs15init_update_file(profile, p15card, p15card->file_tokeninfo, buf, size);
 	if (buf)
 		free(buf);
-	return r;
+	LOG_FUNC_RETURN(p15card->card->ctx, r);
 }
 
 
