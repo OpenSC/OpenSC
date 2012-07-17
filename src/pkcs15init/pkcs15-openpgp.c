@@ -247,8 +247,10 @@ static int openpgp_store_data(struct sc_pkcs15_card *p15card, struct sc_profile 
 		cinfo = (sc_pkcs15_cert_info_t *) obj->data;
 		cid = &(cinfo->id);
 
-		if (cid->len != 1)
+		if (cid->len != 1) {
+			sc_log(card->ctx, "ID=%s is not valid.", sc_dump_hex(cid->value, cid->len));
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+		}
 
 		/* OpenPGP card v.2 contains only 1 certificate */
 		if (cid->value[0] != 3) {
