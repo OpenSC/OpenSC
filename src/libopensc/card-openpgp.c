@@ -1281,7 +1281,7 @@ pgp_set_security_env(sc_card_t *card,
 		}
 		break;
 	case SC_SEC_OPERATION_DECIPHER:
-		if (env->key_ref[0] != 0x01) {
+		if (env->key_ref[0] != 0x01 && env->key_ref[0] != 0x02) {
 			LOG_TEST_RET(card->ctx, SC_ERROR_NOT_SUPPORTED,
 				"Key reference not compatible with "
 				"requested usage");
@@ -1376,11 +1376,11 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 
 	switch (env->key_ref[0]) {
 	case 0x01: /* Decryption key */
+	case 0x02: /* authentication key */
 		/* PSO DECIPHER */
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_4, 0x2A, 0x80, 0x86);
 		break;
 	case 0x00: /* signature key */
-	case 0x02: /* authentication key */
 	default:
 		free(temp);
 		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
