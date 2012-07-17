@@ -95,7 +95,12 @@ static int openpgp_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 static int openpgp_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	sc_pkcs15_object_t *obj)
 {
-	return SC_ERROR_NOT_SUPPORTED;
+	/* For OpenPGP card, the number of keys is fixed,
+	 * so this function does not really do anything.
+	 * It just present here to avoid pkcs15init's default routine,
+	 * which tries to do impossible things. */
+	LOG_FUNC_CALLED(p15card->card->ctx);
+	LOG_FUNC_RETURN(p15card->card->ctx, SC_SUCCESS);
 }
 
 /**
