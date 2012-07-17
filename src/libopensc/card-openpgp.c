@@ -922,10 +922,12 @@ pgp_select_file(sc_card_t *card, const sc_path_t *path, sc_file_t **ret)
 	 * The "11001101"is defined in sc_pkcs15emu_get_df() function, pkcs15-sync.c file. */
 	sc_format_path("11001101", &dummy_path);
 	if (sc_compare_path(path, &dummy_path)) {
-		*ret = sc_file_new();
-		/* One use case of this dummy file is after writing certificate in pkcs15init.
-		 * So we set its size to be the same as max certificate size the card supports. */
-		(*ret)->size = priv->max_cert_size;
+		if (ret != NULL) {
+			*ret = sc_file_new();
+			/* One use case of this dummy file is after writing certificate in pkcs15init.
+			 * So we set its size to be the same as max certificate size the card supports. */
+			(*ret)->size = priv->max_cert_size;
+		}
 		priv->current = NULL;
 		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 	}
@@ -939,6 +941,20 @@ pgp_select_file(sc_card_t *card, const sc_path_t *path, sc_file_t **ret)
 	for (n = path_start; n < path->len; n += 2) {
 		unsigned int	id = bebytes2ushort(path->value + n);
 		int		r = pgp_get_blob(card, blob, id, &blob);
+
+		/* This file ID is refered when importing key&certificate via pkcs15init, like above.
+		 * We pretend to successfully find this inexistent file. */
+		if (id == 0x4402 || id == 0x5f48) {
+			priv->current = NULL;
+			if (ret == NULL)
+				/* No need to return file */
+				LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+
+			/* Else, need to return file */
+			*ret = sc_file_new();
+			(*ret)->size = priv->max_cert_size;
+			LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+		}
 
 		if (r < 0) {	/* failure */
 			priv->current = NULL;
@@ -1272,8 +1288,10 @@ pgp_set_security_env(sc_card_t *card,
 		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
 			"passing file references not supported");
 
+	sc_log(card->ctx, "Key ref %d", env->key_ref[0]);
 	switch (env->operation) {
 	case SC_SEC_OPERATION_SIGN:
+		sc_log(card->ctx, "Operation: Sign.");
 		if (env->key_ref[0] != 0x00 && env->key_ref[0] != 0x02) {
 			LOG_TEST_RET(card->ctx, SC_ERROR_NOT_SUPPORTED,
 				"Key reference not compatible with "
@@ -1281,7 +1299,9 @@ pgp_set_security_env(sc_card_t *card,
 		}
 		break;
 	case SC_SEC_OPERATION_DECIPHER:
-		if (env->key_ref[0] != 0x01) {
+		sc_log(card->ctx, "Operation: Decipher.");
+		/* We allow key ref 2 (auth key) to be used for deciphering */
+		if (env->key_ref[0] != 0x01 && env->key_ref[0] != 0x02) {
 			LOG_TEST_RET(card->ctx, SC_ERROR_NOT_SUPPORTED,
 				"Key reference not compatible with "
 				"requested usage");
@@ -1376,11 +1396,11 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 
 	switch (env->key_ref[0]) {
 	case 0x01: /* Decryption key */
+	case 0x02: /* authentication key */
 		/* PSO DECIPHER */
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_4, 0x2A, 0x80, 0x86);
 		break;
 	case 0x00: /* signature key */
-	case 0x02: /* authentication key */
 	default:
 		free(temp);
 		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
@@ -1474,7 +1494,7 @@ static int pgp_store_creationtime(sc_card_t *card, u8 key_id, time_t *outtime)
 	int r;
 	time_t createtime = 0;
 	const size_t timestrlen = 64;
-	char timestring[timestrlen + 1];
+	char timestring[65];
 	u8 buf[4];
 
 	LOG_FUNC_CALLED(card->ctx);
@@ -1904,7 +1924,7 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_keystore_info
 	const size_t max_prtem_len = 7*(1 + 3);     /* 7 components */
 	                                            /* 1 for tag name (91, 92... 97)
 	                                             * 3 for storing length */
-	u8 pritemplate[max_prtem_len];
+	u8 pritemplate[7*(1 + 3)];
 	size_t tpl_len = 0;     /* Actual size of pritemplate */
 	/* Concatenation of key data */
 	u8 kdata[3 + 256 + 256 + 512];  /* Exponent is stored in 3 bytes
