@@ -1272,8 +1272,10 @@ pgp_set_security_env(sc_card_t *card,
 		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
 			"passing file references not supported");
 
+	sc_log(card->ctx, "Key ref %d", env->key_ref[0]);
 	switch (env->operation) {
 	case SC_SEC_OPERATION_SIGN:
+		sc_log(card->ctx, "Operation: Sign.");
 		if (env->key_ref[0] != 0x00 && env->key_ref[0] != 0x02) {
 			LOG_TEST_RET(card->ctx, SC_ERROR_NOT_SUPPORTED,
 				"Key reference not compatible with "
@@ -1281,6 +1283,8 @@ pgp_set_security_env(sc_card_t *card,
 		}
 		break;
 	case SC_SEC_OPERATION_DECIPHER:
+		sc_log(card->ctx, "Operation: Decipher.");
+		/* We allow key ref 2 (auth key) to be used for deciphering */
 		if (env->key_ref[0] != 0x01 && env->key_ref[0] != 0x02) {
 			LOG_TEST_RET(card->ctx, SC_ERROR_NOT_SUPPORTED,
 				"Key reference not compatible with "
