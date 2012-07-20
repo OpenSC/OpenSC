@@ -161,13 +161,23 @@ static int openpgp_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 	int r;
 
 	LOG_FUNC_CALLED(ctx);
-	if (kid->len > 1 || kid->value[0] > 3) {
+	memset(&key_info, 0, sizeof(key_info));
+	sc_log(ctx, "Key ID to be generated: %s", sc_dump_hex(kid->value, kid->len));
+
+	/* Accept KeyID = 45, which is default value set by pkcs15init */
+	if (kid->len == 1 && kid->value[0] == 0x45) {
+		/* Default key is authentication key. We choose this because the common use
+		 * is to generate from PKCS#11 (Firefox/Thunderbird) */
+		sc_log(ctx, "Authentication key is to be generated.");
+		key_info.keytype = 3;
+	}
+	if (!key_info.keytype && (kid->len > 1 || kid->value[0] > 3)) {
 		sc_log(ctx, "Key ID must be 1, 2 or 3!");
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
-	memset(&key_info, 0, sizeof(key_info));
 
-	key_info.keytype = kid->value[0];
+	if (!key_info.keytype)
+		key_info.keytype = kid->value[0];
 
 	/* Prepare buffer */
 	key_info.modulus_len = required->modulus_length;
@@ -182,6 +192,8 @@ static int openpgp_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
 
 	r = sc_card_ctl(card, SC_CARDCTL_OPENPGP_GENERATE_KEY, &key_info);
+	if (r < 0)
+		goto out;
 
 	sc_log(ctx, "Set output modulus info");
 	pubkey->u.rsa.modulus.len = key_info.modulus_len;
