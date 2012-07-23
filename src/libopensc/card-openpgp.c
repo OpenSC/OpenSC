@@ -922,10 +922,12 @@ pgp_select_file(sc_card_t *card, const sc_path_t *path, sc_file_t **ret)
 	 * The "11001101"is defined in sc_pkcs15emu_get_df() function, pkcs15-sync.c file. */
 	sc_format_path("11001101", &dummy_path);
 	if (sc_compare_path(path, &dummy_path)) {
-		*ret = sc_file_new();
-		/* One use case of this dummy file is after writing certificate in pkcs15init.
-		 * So we set its size to be the same as max certificate size the card supports. */
-		(*ret)->size = priv->max_cert_size;
+		if (ret != NULL) {
+			*ret = sc_file_new();
+			/* One use case of this dummy file is after writing certificate in pkcs15init.
+			 * So we set its size to be the same as max certificate size the card supports. */
+			(*ret)->size = priv->max_cert_size;
+		}
 		priv->current = NULL;
 		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 	}
@@ -939,6 +941,20 @@ pgp_select_file(sc_card_t *card, const sc_path_t *path, sc_file_t **ret)
 	for (n = path_start; n < path->len; n += 2) {
 		unsigned int	id = bebytes2ushort(path->value + n);
 		int		r = pgp_get_blob(card, blob, id, &blob);
+
+		/* This file ID is refered when importing key&certificate via pkcs15init, like above.
+		 * We pretend to successfully find this inexistent file. */
+		if (id == 0x4402 || id == 0x5f48) {
+			priv->current = NULL;
+			if (ret == NULL)
+				/* No need to return file */
+				LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+
+			/* Else, need to return file */
+			*ret = sc_file_new();
+			(*ret)->size = priv->max_cert_size;
+			LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+		}
 
 		if (r < 0) {	/* failure */
 			priv->current = NULL;
