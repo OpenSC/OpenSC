@@ -31,10 +31,13 @@
 #include "libopensc/opensc.h"
 #include "libopensc/asn1.h"
 #include "libopensc/cards.h"
+#include "libopensc/cardctl.h"
 #include "util.h"
 
 #define	OPT_RAW		256
 #define	OPT_PRETTY	257
+#define	OPT_VERIFY	258
+#define	OPT_PIN	    259
 
 /* define structures */
 struct ef_name_map {
@@ -64,6 +67,14 @@ static int verbose = 0;
 static int opt_userinfo = 0;
 static int opt_cardinfo = 0;
 static char *exec_program = NULL;
+static int opt_genkey = 0;
+static int opt_keylen = 0;
+static u8 key_id = 0;
+static unsigned int key_len = 2048;
+static int opt_verify = 0;
+static char *verifytype = NULL;
+static int opt_pin = 0;
+static char *pin = NULL;
 
 static const char *app_name = "openpgp-tool";
 
@@ -75,9 +86,13 @@ static const struct option options[] = {
 	{ "pretty",    no_argument,       NULL, OPT_PRETTY },
 	{ "card-info", no_argument,       NULL, 'C'        },
 	{ "user-info", no_argument,       NULL, 'U'        },
+	{ "gen-key",   required_argument, NULL, 'G'        },
+	{ "key-length",required_argument, NULL, 'L'        },
 	{ "help",      no_argument,       NULL, 'h'        },
 	{ "verbose",   no_argument,       NULL, 'v'        },
 	{ "version",   no_argument,       NULL, 'V'        },
+	{ "verify",    required_argument, NULL, OPT_VERIFY },
+	{ "pin",       required_argument, NULL, OPT_PIN },
 	{ NULL, 0, NULL, 0 }
 };
 
@@ -89,9 +104,13 @@ static const char *option_help[] = {
 	"Print values in pretty format",
 /* C */	NULL,
 /* U */	"Show card holder information",
+/* G */ "Generate key",
+/* L */ "Key length (default 2048)",
 /* h */	"Print this help message",
 /* v */	"Verbose operation. Use several times to enable debug output.",
-/* V */	"Show version number"
+/* V */	"Show version number",
+	"Verify PIN (CHV1, CHV2, CHV3...)",
+	"PIN string"
 };
 
 static const struct ef_name_map openpgp_data[] = {
@@ -208,7 +227,7 @@ static int decode_options(int argc, char **argv)
 {
 	int c;
 
-	while ((c = getopt_long(argc, argv,"r:x:CUhwvV", options, (int *) 0)) != EOF) {
+	while ((c = getopt_long(argc, argv,"r:x:CUG:L:hwvV", options, (int *) 0)) != EOF) {
 		switch (c) {
 		case 'r':
 			opt_reader = optarg;
@@ -224,6 +243,19 @@ static int decode_options(int argc, char **argv)
 		case OPT_PRETTY:
 			opt_raw = 0;
 			break;
+		case OPT_VERIFY:
+			opt_verify++;
+			if (verifytype)
+				free(verifytype);
+			verifytype = strdup(optarg);
+			actions++;
+			break;
+		case OPT_PIN:
+			opt_pin++;
+			if (pin)
+				free(pin);
+			pin = strdup(optarg);
+			break;
 		case 'C':
 			opt_cardinfo++;
 			actions++;;
@@ -231,6 +263,16 @@ static int decode_options(int argc, char **argv)
 		case 'U':
 			opt_userinfo++;
 			actions++;;
+			break;
+		case 'G':
+			opt_genkey++;
+			key_id = optarg[0] - '0';
+			actions++;
+			break;
+		case 'L':
+			opt_keylen++;
+			key_len = atoi(optarg);
+			actions++;
 			break;
 		case 'h':
 			util_print_usage_and_die(app_name, options, option_help, NULL);
@@ -340,6 +382,66 @@ static void bintohex(char *buf, int len)
 	}
 }
 
+int do_genkey(sc_card_t *card, u8 key_id, unsigned int key_len)
+{
+	int r;
+	sc_cardctl_openpgp_keygen_info_t key_info;
+	u8 fingerprints[60];
+	sc_path_t path;
+	sc_file_t *file;
+
+	if (key_id < 1 || key_id > 3) {
+		printf("Unknown key ID %d.\n", key_id);
+		return 1;
+	}
+	memset(&key_info, 0, sizeof(sc_cardctl_openpgp_keygen_info_t));
+	key_info.keytype = key_id;
+	key_info.modulus_len = key_len;
+	key_info.modulus = malloc(key_len/8);
+	r = sc_card_ctl(card, SC_CARDCTL_OPENPGP_GENERATE_KEY, &key_info);
+	free(key_info.modulus);
+	if (r < 0) {
+		printf("Failed to generate key. Error %s.\n", sc_strerror(r));
+		return 1;
+	}
+	sc_format_path("006E007300C5", &path);
+	r = sc_select_file(card, &path, &file);
+	r = sc_read_binary(card, 0, fingerprints, 60, 0);
+	if (r < 0) {
+		printf("Failed to retrieve fingerprints. Error %s.\n", sc_strerror(r));
+		return 1;
+	}
+	printf("Fingerprint:\n%s\n", (char *)sc_dump_hex(fingerprints + 20*(key_id - 1), 20));
+	return 0;
+}
+
+int do_verify(sc_card_t *card, u8 *type, u8* pin)
+{
+	struct sc_pin_cmd_data data;
+	int tries_left;
+	int r;
+	if (!type || !pin)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	if (strncasecmp("CHV", type, 3) != 0) {
+		printf("Invalid PIN type. Please use CHV1, CHV2 or CHV3.\n");
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+
+	if (type[3] < '1' || type[3] > '3' || type[4] != '\0') {
+		printf("Invalid PIN reference. Please use CHV1, CHV2 or CHV3.\n");
+		return SC_ERROR_INVALID_PIN_REFERENCE;
+	}
+
+	memset(&data, 0, sizeof(struct sc_pin_cmd_data));
+	data.cmd = SC_PIN_CMD_VERIFY;
+	data.pin_type = SC_AC_CHV;
+	data.pin_reference = type[3] - '0';
+	data.pin1.data = pin;
+	data.pin1.len = strlen(pin);
+	r = sc_pin_cmd(card, &data, &tries_left);
+	return r;
+}
 
 int main(int argc, char **argv)
 {
@@ -395,6 +497,13 @@ int main(int argc, char **argv)
 
 	if (opt_userinfo)
 		exit_status |= do_userinfo(card);
+
+	if (opt_verify && opt_pin) {
+		exit_status |= do_verify(card, verifytype, pin);
+	}
+
+	if (opt_genkey)
+		exit_status |= do_genkey(card, key_id, key_len);
 
 	if (exec_program) {
 		char *const largv[] = {exec_program, NULL};

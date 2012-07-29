@@ -28,7 +28,8 @@ dist_pkgdata_DATA = \
 	authentic.profile \
 	iasecc.profile \
 	ias_adele_admin1.profile ias_adele_admin2.profile ias_adele_common.profile \
-	iasecc_generic_pki.profile iasecc_admin_eid.profile iasecc_generic_oberthur.profile
+	iasecc_generic_pki.profile iasecc_admin_eid.profile iasecc_generic_oberthur.profile \
+	openpgp.profile
 
 AM_CPPFLAGS = -DSC_PKCS15_PROFILE_DIRECTORY=\"$(pkgdatadir)\"
 AM_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS)
@@ -44,4 +45,4 @@ libpkcs15init_la_SOURCES = \
 	pkcs15-entersafe.c pkcs15-epass2003.c \
 	pkcs15-rtecp.c pkcs15-myeid.c \
 	pkcs15-oberthur.c pkcs15-oberthur-awp.c \
-	pkcs15-authentic.c pkcs15-iasecc.c
+	pkcs15-authentic.c pkcs15-iasecc.c pkcs15-openpgp.c
