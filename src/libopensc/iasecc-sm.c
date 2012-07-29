@@ -2,7 +2,7 @@
  * iasecc.h Support for IAS/ECC smart cards
  *
  * Copyright (C) 2010  Viktor Tarasov <vtarasov@opentrust.com>
- *      		OpenTrust <www.opentrust.com>
+ *			OpenTrust <www.opentrust.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -157,6 +157,7 @@ iasecc_sm_external_authentication(struct sc_card *card, unsigned skey_ref, int *
 	struct sc_context *ctx = card->ctx;
 #ifdef ENABLE_SM
 	struct sm_info *sm_info = &card->sm_ctx.info;
+	struct sm_cwa_session *cwa_session = &sm_info->session.cwa;
 	struct sc_remote_data rdata;
 	struct sc_apdu apdu;
 	unsigned char sbuf[0x100];
@@ -173,9 +174,9 @@ iasecc_sm_external_authentication(struct sc_card *card, unsigned skey_ref, int *
 	sm_info->serialnr = card->serialnr;
 	sm_info->card_type = card->type;
 	sm_info->sm_type = SM_TYPE_CWA14890;
-	sm_info->sm_params.cwa.crt_at.usage = IASECC_UQB_AT_EXTERNAL_AUTHENTICATION;
-	sm_info->sm_params.cwa.crt_at.algo = IASECC_ALGORITHM_ROLE_AUTH;
-	sm_info->sm_params.cwa.crt_at.refs[0] = skey_ref;
+	cwa_session->params.crt_at.usage = IASECC_UQB_AT_EXTERNAL_AUTHENTICATION;
+	cwa_session->params.crt_at.algo = IASECC_ALGORITHM_ROLE_AUTH;
+	cwa_session->params.crt_at.refs[0] = skey_ref;
 
 	offs = 0;
 	sbuf[offs++] = IASECC_CRT_TAG_ALGO;
@@ -195,7 +196,7 @@ iasecc_sm_external_authentication(struct sc_card *card, unsigned skey_ref, int *
 	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(ctx, rv, "iasecc_sm_external_authentication(): set SE error");
 
-	rv = sc_get_challenge(card, sm_info->schannel.card_challenge, sizeof(sm_info->schannel.card_challenge));
+	rv = sc_get_challenge(card, cwa_session->card_challenge, sizeof(cwa_session->card_challenge));
 	LOG_TEST_RET(ctx, rv, "iasecc_sm_external_authentication(): set SE error");
 
 	sc_remote_data_init(&rdata);
@@ -227,7 +228,7 @@ iasecc_sm_se_mutual_authentication(struct sc_card *card, unsigned se_num)
 #ifdef ENABLE_SM
 	struct sm_info *sm_info = &card->sm_ctx.info;
 	struct iasecc_se_info se;
-	struct sc_crt *crt =  &sm_info->sm_params.cwa.crt_at;
+	struct sc_crt *crt =  &sm_info->session.cwa.params.crt_at;
 	struct sc_apdu apdu;
 	unsigned char sbuf[0x100];
 	int rv, offs;
@@ -305,7 +306,7 @@ iasecc_sm_initialize(struct sc_card *card, unsigned se_num, unsigned cmd)
 	struct sc_context *ctx = card->ctx;
 #ifdef ENABLE_SM
 	struct sm_info *sm_info = &card->sm_ctx.info;
-	struct sm_cwa_session *cwa_session = &sm_info->schannel.session.cwa;
+	struct sm_cwa_session *cwa_session = &sm_info->session.cwa;
 	struct sc_remote_data rdata;
 	int rv;
 
@@ -320,7 +321,7 @@ iasecc_sm_initialize(struct sc_card *card, unsigned se_num, unsigned cmd)
 	rv = iasecc_sm_se_mutual_authentication(card, se_num);
 	LOG_TEST_RET(ctx, rv, "iasecc_sm_initialize() MUTUAL AUTHENTICATION failed");
 
-	rv = iasecc_sm_get_challenge(card, sm_info->schannel.card_challenge, SM_SMALL_CHALLENGE_LEN);
+	rv = iasecc_sm_get_challenge(card, cwa_session->card_challenge, SM_SMALL_CHALLENGE_LEN);
 	LOG_TEST_RET(ctx, rv, "iasecc_sm_initialize() GET CHALLENGE failed");
 
 	sc_remote_data_init(&rdata);
@@ -351,7 +352,7 @@ iasecc_sm_initialize(struct sc_card *card, unsigned se_num, unsigned cmd)
 	rdata.free(&rdata);
 
 	sc_log(ctx, "MA data(len:%i) '%s'", cwa_session->mdata_len, sc_dump_hex(cwa_session->mdata, cwa_session->mdata_len));
-	if (sm_info->schannel.session.cwa.mdata_len != 0x48)
+	if (cwa_session->mdata_len != 0x48)
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "iasecc_sm_initialize() invalid MUTUAL AUTHENTICATE result data");
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
@@ -370,7 +371,7 @@ iasecc_sm_cmd(struct sc_card *card, struct sc_remote_data *rdata)
 	struct sc_context *ctx = card->ctx;
 #ifdef ENABLE_SM
 	struct sm_info *sm_info = &card->sm_ctx.info;
-	struct sm_cwa_session *session = &sm_info->schannel.session.cwa;
+	struct sm_cwa_session *session = &sm_info->session.cwa;
 	struct sc_remote_apdu *rapdu = NULL;
 	int rv;
 

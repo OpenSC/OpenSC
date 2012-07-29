@@ -2151,7 +2151,7 @@ authentic_sm_acl_init (struct sc_card *card, struct sm_info *sm_info, int cmd,
 		unsigned char *resp, size_t *resp_len)
 {
 	struct sc_context *ctx = card->ctx;
-	struct sm_type_params_gp *params_gp = &sm_info->sm_params.gp;
+	struct sm_type_params_gp *params_gp = &sm_info->session.gp.params;
 	struct sc_remote_data rdata;
 	int rv;
 

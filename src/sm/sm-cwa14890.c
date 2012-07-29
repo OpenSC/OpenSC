@@ -248,10 +248,10 @@ sm_cwa_incr_ssc(struct sm_cwa_session *session_data)
 int
 sm_cwa_initialize(struct sc_context *ctx, struct sm_info *sm_info, struct sc_remote_data *rdata)
 {
-	struct sm_cwa_session *session_data = &sm_info->schannel.session.cwa;
-	struct sm_cwa_keyset *keyset = &sm_info->schannel.keyset.cwa;
+	struct sm_cwa_session *cwa_session = &sm_info->session.cwa;
+	struct sm_cwa_keyset *cwa_keyset = &sm_info->session.cwa.cwa_keyset;
 	struct sc_serial_number sn = sm_info->serialnr;
-	size_t icc_sn_len = sizeof(session_data->icc.sn);
+	size_t icc_sn_len = sizeof(cwa_session->icc.sn);
 	struct sc_remote_apdu *new_rapdu = NULL;
 	struct sc_apdu *apdu = NULL;
 	unsigned char buf[0x100], *encrypted;
@@ -261,9 +261,9 @@ sm_cwa_initialize(struct sc_context *ctx, struct sm_info *sm_info, struct sc_rem
 
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx, "SM IAS/ECC initialize: serial %s", sc_dump_hex(sm_info->serialnr.value, sm_info->serialnr.len));
-	sc_log(ctx, "SM IAS/ECC initialize: card challenge %s", sc_dump_hex(sm_info->schannel.card_challenge, 8));
+	sc_log(ctx, "SM IAS/ECC initialize: card challenge %s", sc_dump_hex(cwa_session->card_challenge, 8));
 	sc_log(ctx, "SM IAS/ECC initialize: current_df_path %s", sc_print_path(&sm_info->current_path_df));
-	sc_log(ctx, "SM IAS/ECC initialize: CRT_AT reference 0x%X", sm_info->sm_params.cwa.crt_at.refs[0]);
+	sc_log(ctx, "SM IAS/ECC initialize: CRT_AT reference 0x%X", cwa_session->params.crt_at.refs[0]);
 
 	if (!rdata || !rdata->alloc)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
@@ -272,27 +272,27 @@ sm_cwa_initialize(struct sc_context *ctx, struct sm_info *sm_info, struct sc_rem
 	LOG_TEST_RET(ctx, rv, "SM GP decode card answer: cannot allocate remote APDU");
 	apdu = &new_rapdu->apdu;
 
-	memcpy(&session_data->icc.rnd[0], sm_info->schannel.card_challenge, 8);
+	memcpy(&cwa_session->icc.rnd[0], cwa_session->card_challenge, 8);
 
 	if (sn.len > icc_sn_len)
-		memcpy(&session_data->icc.sn[0], &sn.value[sn.len - icc_sn_len], icc_sn_len);
+		memcpy(&cwa_session->icc.sn[0], &sn.value[sn.len - icc_sn_len], icc_sn_len);
 	else
-		memcpy(&session_data->icc.sn[icc_sn_len - sn.len], &sn.value[0], sn.len);
+		memcpy(&cwa_session->icc.sn[icc_sn_len - sn.len], &sn.value[0], sn.len);
 
 	if (sm_info->cmd == SM_CMD_EXTERNAL_AUTH)   {
-		offs = sm_cwa_encode_external_auth_data(ctx, session_data, buf, sizeof(buf));
+		offs = sm_cwa_encode_external_auth_data(ctx, cwa_session, buf, sizeof(buf));
 		if (offs != 0x10)
 			LOG_FUNC_RETURN(ctx, offs);
 	}
 	else   {
-		offs = sm_cwa_encode_mutual_auth_data(ctx, session_data, buf, sizeof(buf));
+		offs = sm_cwa_encode_mutual_auth_data(ctx, cwa_session, buf, sizeof(buf));
 		if (offs != 0x40)
 			LOG_FUNC_RETURN(ctx, offs);
 	}
 
 	sc_log(ctx, "S(%i) %s", offs, sc_dump_hex(buf, offs));
 
-	rv = sm_encrypt_des_cbc3(ctx, keyset->enc, buf, offs, &encrypted, &encrypted_len, 1);
+	rv = sm_encrypt_des_cbc3(ctx, cwa_keyset->enc, buf, offs, &encrypted, &encrypted_len, 1);
 	LOG_TEST_RET(ctx, rv, "_encrypt_des_cbc3() failed");
 
 	sc_log(ctx, "ENCed(%i) %s", encrypted_len, sc_dump_hex(encrypted, encrypted_len));
@@ -300,7 +300,7 @@ sm_cwa_initialize(struct sc_context *ctx, struct sm_info *sm_info, struct sc_rem
 	memcpy(buf, encrypted, encrypted_len);
 	offs = encrypted_len;
 
-	rv = sm_cwa_get_mac(ctx, keyset->mac, &icv, buf, offs, &cblock, 1);
+	rv = sm_cwa_get_mac(ctx, cwa_keyset->mac, &icv, buf, offs, &cblock, 1);
 	LOG_TEST_RET(ctx, rv, "sm_ecc_get_mac() failed");
 	sc_log(ctx, "MACed(%i) %s", sizeof(cblock), sc_dump_hex(cblock, sizeof(cblock)));
 
@@ -323,7 +323,7 @@ sm_cwa_initialize(struct sc_context *ctx, struct sm_info *sm_info, struct sc_rem
 int
 sm_cwa_securize_apdu(struct sc_context *ctx, struct sm_info *sm_info, struct sc_remote_apdu *rapdu)
 {
-	struct sm_cwa_session *session_data = &sm_info->schannel.session.cwa;
+	struct sm_cwa_session *session_data = &sm_info->session.cwa;
 	struct sc_apdu *apdu = &rapdu->apdu;
 	unsigned char sbuf[0x400];
 	DES_cblock cblock, icv;
