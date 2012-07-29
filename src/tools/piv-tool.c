@@ -390,6 +390,15 @@ static int send_apdu(void)
 		apdu.resp = rbuf;
 		apdu.resplen = sizeof(rbuf);
 
+		printf("Sending: ");
+		for (r = 0; r < len0; r++)
+			printf("%02X ", buf[r]);
+		printf("\n");
+		r = sc_transmit_apdu(card, &apdu);
+		if (r) {
+			fprintf(stderr, "APDU transmit failed: %s\n", sc_strerror(r));
+			return 1;
+		}
 		printf("Received (SW1=0x%02X, SW2=0x%02X)%s\n", apdu.sw1, apdu.sw2,
 		       apdu.resplen ? ":" : "");
 		if (apdu.resplen)
