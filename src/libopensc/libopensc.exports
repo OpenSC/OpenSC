@@ -49,6 +49,7 @@ sc_asn1_print_tags
 sc_asn1_put_tag
 sc_asn1_skip_tag
 sc_asn1_verify_tag
+sc_asn1_write_element
 sc_base64_decode
 sc_base64_encode
 sc_bin_to_hex

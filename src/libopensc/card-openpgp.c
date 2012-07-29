@@ -1818,9 +1818,9 @@ pgp_build_tlv(sc_context_t *ctx, unsigned int tag, u8 *data, size_t len, u8 **ou
 	u8 highest_order = 0;
 	u8 cla;
 	int r;
-	r = asn1_write_element(ctx, tag, data, len, out, outlen);
+	r = sc_asn1_write_element(ctx, tag, data, len, out, outlen);
 	LOG_TEST_RET(ctx, r, "Failed to write ASN.1 element");
-	/* Restore class bits stripped by asn1_write_element */
+	/* Restore class bits stripped by sc_asn1_write_element */
 	/* Determine the left most byte of tag, which contains class bits */
 	while (tag >> 8*highest_order) {
 		highest_order++;
