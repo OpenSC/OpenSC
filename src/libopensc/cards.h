@@ -187,7 +187,10 @@ enum {
 	SC_CARD_TYPE_IASECC_GEMALTO,
 	SC_CARD_TYPE_IASECC_OBERTHUR,
 	SC_CARD_TYPE_IASECC_SAGEM,
-	SC_CARD_TYPE_IASECC_AMOS
+	SC_CARD_TYPE_IASECC_AMOS,
+
+	/* SmartCard-HSM */
+	SC_CARD_TYPE_SC_HSM = 26000,
 };
 
 extern sc_card_driver_t *sc_get_default_driver(void);
@@ -218,6 +221,7 @@ extern sc_card_driver_t *sc_get_rtecp_driver(void);
 extern sc_card_driver_t *sc_get_westcos_driver(void);
 extern sc_card_driver_t *sc_get_myeid_driver(void);
 extern sc_card_driver_t *sc_get_ias_driver(void);
+extern sc_card_driver_t *sc_get_sc_hsm_driver(void);
 extern sc_card_driver_t *sc_get_javacard_driver(void);
 extern sc_card_driver_t *sc_get_itacns_driver(void);
 extern sc_card_driver_t *sc_get_authentic_driver(void);
