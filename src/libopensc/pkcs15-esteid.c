@@ -244,7 +244,7 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 		strlcpy(prkey_obj.label, prkey_name[i], sizeof(prkey_obj.label));
 		prkey_obj.auth_id.len = 1;
 		prkey_obj.auth_id.value[0] = prkey_pin[i];
-		prkey_obj.user_consent = (i == 1) ? 1 : 0;
+		prkey_obj.user_consent = 0;
 		prkey_obj.flags = SC_PKCS15_CO_FLAG_PRIVATE;
 
 		r = sc_pkcs15emu_add_rsa_prkey(p15card, &prkey_obj, &prkey_info);

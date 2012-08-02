@@ -597,8 +597,8 @@ int
 sm_iasecc_get_apdus(struct sc_context *ctx, struct sm_info *sm_info,
 	       unsigned char *init_data, size_t init_len, struct sc_remote_data *rdata, int release_sm)
 {
-	struct sm_cwa_session *session_data = &sm_info->schannel.session.cwa;
-	struct sm_cwa_keyset *keyset = &sm_info->schannel.keyset.cwa;
+	struct sm_cwa_session *cwa_session = &sm_info->session.cwa;
+	struct sm_cwa_keyset *cwa_keyset = &sm_info->session.cwa.cwa_keyset;
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
@@ -609,15 +609,15 @@ sm_iasecc_get_apdus(struct sc_context *ctx, struct sm_info *sm_info,
 	sc_log(ctx, "SM IAS/ECC get APDUs: rdata:%p", rdata);
 	sc_log(ctx, "SM IAS/ECC get APDUs: serial %s", sc_dump_hex(sm_info->serialnr.value, sm_info->serialnr.len));
 
-	rv = sm_cwa_decode_authentication_data(ctx, keyset, session_data, init_data);
+	rv = sm_cwa_decode_authentication_data(ctx, cwa_keyset, cwa_session, init_data);
 	LOG_TEST_RET(ctx, rv, "SM IAS/ECC get APDUs: decode authentication data error");
 
-	rv = sm_cwa_init_session_keys(ctx, session_data, sm_info->sm_params.cwa.crt_at.algo);
+	rv = sm_cwa_init_session_keys(ctx, cwa_session, cwa_session->params.crt_at.algo);
 	LOG_TEST_RET(ctx, rv, "SM IAS/ECC get APDUs: cannot get session keys");
 
-	sc_log(ctx, "SKENC %s", sc_dump_hex(session_data->session_enc, sizeof(session_data->session_enc)));
-	sc_log(ctx, "SKMAC %s", sc_dump_hex(session_data->session_mac, sizeof(session_data->session_mac)));
-	sc_log(ctx, "SSC   %s", sc_dump_hex(session_data->ssc, sizeof(session_data->ssc)));
+	sc_log(ctx, "SKENC %s", sc_dump_hex(cwa_session->session_enc, sizeof(cwa_session->session_enc)));
+	sc_log(ctx, "SKMAC %s", sc_dump_hex(cwa_session->session_mac, sizeof(cwa_session->session_mac)));
+	sc_log(ctx, "SSC   %s", sc_dump_hex(cwa_session->ssc, sizeof(cwa_session->ssc)));
 
 	switch (sm_info->cmd)  {
 	case SM_CMD_FILE_READ:
@@ -682,7 +682,7 @@ int
 sm_iasecc_decode_card_data(struct sc_context *ctx, struct sm_info *sm_info, struct sc_remote_data *rdata,
 		unsigned char *out, size_t out_len)
 {
-	struct sm_cwa_session *session_data = &sm_info->schannel.session.cwa;
+	struct sm_cwa_session *session_data = &sm_info->session.cwa;
 	struct sc_asn1_entry asn1_iasecc_sm_data_object[4];
 	struct sc_remote_apdu *rapdu = NULL;
 	int rv, offs = 0;

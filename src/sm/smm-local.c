@@ -58,6 +58,8 @@ static int
 sm_gp_config_get_keyset(struct sc_context *ctx, struct sm_info *sm_info)
 {
 	scconf_block *sm_conf_block = NULL, **blocks;
+	struct sm_gp_keyset *gp_keyset = &sm_info->session.gp.gp_keyset;
+
 	const char *kmc = NULL;
 	unsigned char hex[48];
 	size_t hex_len = sizeof(hex);
@@ -89,8 +91,8 @@ sm_gp_config_get_keyset(struct sc_context *ctx, struct sm_info *sm_info)
 	if (hex_len != 16 && hex_len != 48 )
 		return SC_ERROR_INVALID_DATA;
 
-	memcpy(sm_info->schannel.keyset.gp.kmc, hex, hex_len);
-	sm_info->schannel.keyset.gp.kmc_len = hex_len;
+	memcpy(gp_keyset->kmc, hex, hex_len);
+	gp_keyset->kmc_len = hex_len;
 
 	return SC_SUCCESS;
 }
@@ -99,9 +101,10 @@ sm_gp_config_get_keyset(struct sc_context *ctx, struct sm_info *sm_info)
 static int
 sm_cwa_config_get_keyset(struct sc_context *ctx, struct sm_info *sm_info)
 {
-	struct sm_cwa_session *session_data = &sm_info->schannel.session.cwa;
+	struct sm_cwa_session *cwa_session = &sm_info->session.cwa;
+	struct sm_cwa_keyset *cwa_keyset = &sm_info->session.cwa.cwa_keyset;
 	scconf_block *sm_conf_block = NULL, **blocks;
-	struct sc_crt *crt_at = &sm_info->sm_params.cwa.crt_at;
+	struct sc_crt *crt_at = &sm_info->session.cwa.params.crt_at;
 	const char *value = NULL;
 	char name[128];
 	unsigned char hex[48];
@@ -134,7 +137,7 @@ sm_cwa_config_get_keyset(struct sc_context *ctx, struct sm_info *sm_info)
 
 	sc_log(ctx, "keyset::enc(%i) %s", strlen(value), value);
 	if (strlen(value) == 16)   {
-		memcpy(sm_info->schannel.keyset.cwa.enc, value, 16);
+		memcpy(cwa_keyset->enc, value, 16);
 	}
 	else   {
 		hex_len = sizeof(hex);
@@ -148,9 +151,9 @@ sm_cwa_config_get_keyset(struct sc_context *ctx, struct sm_info *sm_info)
 		if (hex_len != 16)
 			return SC_ERROR_INVALID_DATA;
 
-		memcpy(sm_info->schannel.keyset.cwa.enc, hex, hex_len);
+		memcpy(cwa_keyset->enc, hex, hex_len);
 	}
-	sc_log(ctx, "%s %s", name, sc_dump_hex(sm_info->schannel.keyset.cwa.enc, 16));
+	sc_log(ctx, "%s %s", name, sc_dump_hex(cwa_keyset->enc, 16));
 
 	/* Keyset MAC */
 	if (sm_info->current_aid.len && (crt_at->refs[0] & IASECC_OBJECT_REF_LOCAL))
@@ -166,7 +169,7 @@ sm_cwa_config_get_keyset(struct sc_context *ctx, struct sm_info *sm_info)
 
 	sc_log(ctx, "keyset::mac(%i) %s", strlen(value), value);
 	if (strlen(value) == 16)   {
-		memcpy(sm_info->schannel.keyset.cwa.mac, value, 16);
+		memcpy(cwa_keyset->mac, value, 16);
 	}
 	else   {
 		hex_len = sizeof(hex);
@@ -180,15 +183,15 @@ sm_cwa_config_get_keyset(struct sc_context *ctx, struct sm_info *sm_info)
 		if (hex_len != 16)
 			return SC_ERROR_INVALID_DATA;
 
-		memcpy(sm_info->schannel.keyset.cwa.mac, hex, hex_len);
+		memcpy(cwa_keyset->mac, hex, hex_len);
 	}
-	sc_log(ctx, "%s %s", name, sc_dump_hex(sm_info->schannel.keyset.cwa.mac, 16));
+	sc_log(ctx, "%s %s", name, sc_dump_hex(cwa_keyset->mac, 16));
 
-	sm_info->schannel.keyset.cwa.sdo_reference = crt_at->refs[0];
+	cwa_keyset->sdo_reference = crt_at->refs[0];
 
 
 	/* IFD parameters */
-	memset(session_data, 0, sizeof(struct sm_cwa_session));
+	//memset(cwa_session, 0, sizeof(struct sm_cwa_session));
 	value = scconf_get_str(sm_conf_block, "ifd_serial", NULL);
 	if (!value)
 		return SC_ERROR_SM_IFD_DATA_MISSING;
@@ -199,27 +202,27 @@ sm_cwa_config_get_keyset(struct sc_context *ctx, struct sm_info *sm_info)
 		return SC_ERROR_UNKNOWN_DATA_RECEIVED;
 	}
 
-	if (hex_len != sizeof(session_data->ifd.sn))   {
+	if (hex_len != sizeof(cwa_session->ifd.sn))   {
 		sc_log(ctx, "SM get 'ifd_serial': invalid IFD serial length: %i", hex_len);
 		return SC_ERROR_UNKNOWN_DATA_RECEIVED;
 	}
 
-	memcpy(session_data->ifd.sn, hex, hex_len);
+	memcpy(cwa_session->ifd.sn, hex, hex_len);
 
-        rv = RAND_bytes(session_data->ifd.rnd, 8);
+        rv = RAND_bytes(cwa_session->ifd.rnd, 8);
         if (!rv)   {
 		sc_log(ctx, "Generate random error: %i", rv);
 		return SC_ERROR_SM_RAND_FAILED;
 	}
 
-        rv = RAND_bytes(session_data->ifd.k, 32);
+        rv = RAND_bytes(cwa_session->ifd.k, 32);
         if (!rv)   {
 		sc_log(ctx, "Generate random error: %i", rv);
 		return SC_ERROR_SM_RAND_FAILED;
 	}
-	sc_log(ctx, "IFD.Serial: %s", sc_dump_hex(session_data->ifd.sn, sizeof(session_data->ifd.sn)));
-	sc_log(ctx, "IFD.Rnd: %s", sc_dump_hex(session_data->ifd.rnd, sizeof(session_data->ifd.rnd)));
-	sc_log(ctx, "IFD.K: %s", sc_dump_hex(session_data->ifd.k, sizeof(session_data->ifd.k)));
+	sc_log(ctx, "IFD.Serial: %s", sc_dump_hex(cwa_session->ifd.sn, sizeof(cwa_session->ifd.sn)));
+	sc_log(ctx, "IFD.Rnd: %s", sc_dump_hex(cwa_session->ifd.rnd, sizeof(cwa_session->ifd.rnd)));
+	sc_log(ctx, "IFD.K: %s", sc_dump_hex(cwa_session->ifd.k, sizeof(cwa_session->ifd.k)));
 
 	return SC_SUCCESS;
 }
