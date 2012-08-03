@@ -1,13 +1,28 @@
 include $(top_srcdir)/win32/ltrc.inc
 
+do_subst = $(SED) \
+	   -e 's,[@]PACKAGE[@],$(PACKAGE),g' \
+	   -e 's,[@]PACKAGE_NAME[@],$(PACKAGE_NAME),g' \
+	   -e 's,[@]PACKAGE_TARNAME[@],$(PACKAGE_TARNAME),g' \
+	   -e 's,[@]PACKAGE_BUGREPORT[@],$(PACKAGE_BUGREPORT),g' \
+	   -e 's,[@]PACKAGE_URL[@],$(PACKAGE_URL),g' \
+	   -e 's,[@]PACKAGE_VERSION[@],$(PACKAGE_VERSION),g'
+BUILT_SOURCES = cmdline.h cmdline.c
+
 MAINTAINERCLEANFILES = $(srcdir)/Makefile.in
+MAINTAINERCLEANFILES += $(BUILT_SOURCES) npa-tool.ggo $(dist_man1_MANS)
+
 EXTRA_DIST = Makefile.mak
+EXTRA_DIST += npa-tool.ggo npa-tool.ggo.in
+
+dist_man1_MANS		= npa-tool.1
 
 noinst_HEADERS = util.h
 bin_PROGRAMS = opensc-tool opensc-explorer pkcs15-tool pkcs15-crypt \
 	pkcs11-tool cardos-tool eidenv openpgp-tool iasecc-tool
 if ENABLE_OPENSSL
-bin_PROGRAMS += cryptoflex-tool pkcs15-init netkey-tool piv-tool westcos-tool
+bin_PROGRAMS += cryptoflex-tool pkcs15-init netkey-tool piv-tool westcos-tool \
+				npa-tool
 endif
 
 # compile with $(PTHREAD_CFLAGS) to allow debugging with gdb
@@ -46,6 +61,25 @@ openpgp_tool_SOURCES = openpgp-tool.c util.c
 openpgp_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
 iasecc_tool_SOURCES = iasecc-tool.c util.c
 iasecc_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
+npa_tool_SOURCES = npa-tool.c util.c $(BUILT_SOURCES)
+npa_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
+
+
+npa-tool.c: $(BUILT_SOURCES)
+
+$(BUILT_SOURCES): npa-tool.ggo
+	$(GENGETOPT) --output-dir=$(srcdir) < $<
+
+npa-tool.ggo: npa-tool.ggo.in
+	$(do_subst) < $< > $(srcdir)/$@
+
+npa-tool.1:
+	$(HELP2MAN) \
+		--output=$@ \
+		--no-info \
+		--source='$(PACKAGE_STRING)' \
+		$(builddir)/npa-tool
+
 
 if WIN32
 opensc_tool_SOURCES += $(top_builddir)/win32/versioninfo.rc

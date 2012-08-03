@@ -13,6 +13,9 @@ AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE(foreign 1.10)
 
+AC_PATH_PROG(HELP2MAN, help2man, false // No help2man //)
+AC_PATH_PROG(GENGETOPT, gengetopt, false // No gengetopt //)
+
 OPENSC_VERSION_MAJOR="PACKAGE_VERSION_MAJOR"
 OPENSC_VERSION_MINOR="PACKAGE_VERSION_MINOR"
 OPENSC_VERSION_FIX="PACKAGE_VERSION_FIX"
@@ -261,7 +264,7 @@ AC_FUNC_VPRINTF
 AC_CHECK_FUNCS([ \
 	getpass gettimeofday memset mkdir \
 	strdup strerror getopt_long getopt_long_only \
-	strlcpy strlcat
+	strlcpy strlcat getline
 ])
 AC_CHECK_SIZEOF(void *)
 if test "${ac_cv_sizeof_void_p}" = 8; then
@@ -580,6 +583,7 @@ AC_DEFINE_UNQUOTED([OPENSC_VERSION_MAJOR], [${OPENSC_VERSION_MAJOR}], [OpenSC ve
 AC_DEFINE_UNQUOTED([OPENSC_VERSION_MINOR], [${OPENSC_VERSION_MINOR}], [OpenSC version minor component])
 AC_DEFINE_UNQUOTED([OPENSC_VERSION_FIX], [${OPENSC_VERSION_FIX}], [OpenSC version fix component])
 AC_DEFINE_UNQUOTED([OPENSC_FEATURES], ["${OPENSC_FEATURES}"], [Enabled OpenSC features])
+AC_DEFINE(BUERGERCLIENT_WORKAROUND, 1, [Always get EF.CardAccess, when connecting to a smart card. This is a workaround for the recent Buergerclient])
 
 pkcs11dir="\$(libdir)/pkcs11"
 
