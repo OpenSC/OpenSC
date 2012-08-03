@@ -443,6 +443,32 @@ esac
 if test "${enable_openssl}" = "yes"; then
 	if test "${have_openssl}" = "yes"; then
 		AC_DEFINE([ENABLE_OPENSSL], [1], [Have OpenSSL libraries and header files])
+
+        have_openpace="yes"
+        saved_CPPFLAGS="$CPPFLAGS"
+        saved_LIBS="$LIBS"
+        CPPFLAGS="$CPPFLAGS $OPENSSL_CFLAGS"
+        LIBS="$LDFLAGS $OPENSSL_LIBS"
+
+        AC_CHECK_HEADERS(openssl/evp.h, [], [ have_openpace="no" ])
+        AC_MSG_CHECKING([for EVP_read_pw_string_min])
+        AC_TRY_LINK_FUNC(EVP_read_pw_string_min, [ AC_MSG_RESULT([yes]) ], [
+                                                  AC_MSG_RESULT([no])
+                                                  have_openpace="no" ])
+
+        AC_CHECK_HEADERS(openssl/eac.h, [], [ have_openpace="no" ])
+        AC_MSG_CHECKING([for EAC_CTX_init_pace])
+        AC_TRY_LINK_FUNC(EAC_CTX_init_pace, [ AC_MSG_RESULT([yes]) ], [
+                                             AC_MSG_RESULT([no])
+                                             have_openpace="no" ])
+
+        CPPFLAGS="$saved_CPPFLAGS"
+        LIBS="$saved_LIBS"
+
+        if test "${have_openpace}" = "yes"; then
+            AC_DEFINE([ENABLE_OPENPACE], [1], [Have OpenPACE libraries and header files])
+        fi
+
 	else
 		AC_MSG_ERROR([OpenSSL linkage required, but no OpenSSL was found])
 	fi
@@ -649,6 +675,7 @@ doc support:             ${enable_doc}
 zlib support:            ${enable_zlib}
 readline support:        ${enable_readline}
 OpenSSL support:         ${enable_openssl}
+OpenPACE support:        ${have_openpace}
 PC/SC support:           ${enable_pcsc}
 OpenCT support:          ${enable_openct}
 CT-API support:          ${enable_ctapi}
