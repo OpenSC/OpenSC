@@ -57,6 +57,31 @@ void sc_do_log(struct sc_context *ctx, int level, const char *file, int line, co
 void sc_do_log_noframe(sc_context_t *ctx, int level, const char *format, va_list args);
 void _sc_debug(struct sc_context *ctx, int level, const char *format, ...);
 void _sc_log(struct sc_context *ctx, const char *format, ...);
+/** 
+ * @brief Log binary data to a sc context
+ * 
+ * @param[in] ctx   Context for logging
+ * @param[in] level
+ * @param[in] label Label to prepend to the buffer
+ * @param[in] data  Binary data
+ * @param[in] len   Length of \a data
+ */
+#define sc_debug_hex(ctx, level, label, data, len) \
+    _sc_debug_hex(ctx, level, __FILE__, __LINE__, __FUNCTION__, label, data, len)
+/** 
+ * @brief Log binary data
+ *
+ * @param[in] ctx   Context for logging
+ * @param[in] type  Debug level
+ * @param[in] file  File name to be prepended
+ * @param[in] line  Line to be prepended
+ * @param[in] func  Function to be prepended
+ * @param[in] label label to prepend to the buffer
+ * @param[in] data  binary data
+ * @param[in] len   length of \a data
+ */
+void _sc_debug_hex(struct sc_context *ctx, int level, const char *file, int line,
+        const char *func, const char *label, const u8 *data, size_t len);
 
 void sc_hex_dump(struct sc_context *ctx, int level, const u8 * buf, size_t len, char *out, size_t outlen);
 char * sc_dump_hex(const u8 * in, size_t count);

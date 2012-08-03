@@ -171,23 +171,6 @@ static int sc_apdu2bytes(sc_context_t *ctx, const sc_apdu_t *apdu,
 	return SC_SUCCESS;
 }
 
-void sc_apdu_log(sc_context_t *ctx, int level, const u8 *data, size_t len, int is_out)
-{
-	size_t blen = len * 5 + 128;
-	char   *buf = malloc(blen);
-	if (buf == NULL)
-		return;
-
-	sc_hex_dump(ctx, level, data, len, buf, blen);
-
-	sc_debug(ctx, level, "\n%s APDU data [%5u bytes] =====================================\n"
-		"%s"
-		"======================================================================\n",
-		is_out != 0 ? "Outgoing" : "Incoming", len,
-		buf);
-	free(buf);
-}
-
 int sc_apdu_get_octets(sc_context_t *ctx, const sc_apdu_t *apdu, u8 **buf,
 	size_t *len, unsigned int proto)
 {
