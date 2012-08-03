@@ -156,6 +156,28 @@ void _sc_log(struct sc_context *ctx, const char *format, ...)
 	va_end(ap);
 }
 
+void _sc_debug_hex(sc_context_t *ctx, int type, const char *file, int line,
+        const char *func, const char *label, const u8 *data, size_t len)
+{
+	size_t blen = len * 5 + 128;
+	char *buf = malloc(blen);
+	if (buf == NULL)
+		return;
+
+    sc_hex_dump(ctx, type, data, len, buf, blen);
+
+    if (label)
+        sc_do_log(ctx, type, file, line, func,
+                "\n%s (%u byte%s):\n%s",
+                label, (unsigned int) len, len==1?"":"s", buf);
+    else
+        sc_do_log(ctx, type, file, line, func,
+                "%u byte%s:\n%s",
+                (unsigned int) len, len==1?"":"s", buf);
+
+	free(buf);
+}
+
 /* Although not used, we need this for consistent exports */
 void sc_hex_dump(struct sc_context *ctx, int level, const u8 * in, size_t count, char *buf, size_t len)
 {
