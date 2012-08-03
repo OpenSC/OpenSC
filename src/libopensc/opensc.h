@@ -649,6 +649,10 @@ struct sc_card_operations {
 	int (*put_data)(sc_card_t *, unsigned int, const u8 *, size_t);
 
 	int (*delete_record)(sc_card_t *card, unsigned int rec_nr);
+
+	int (*perform_pace)(sc_card_t *card,
+            struct establish_pace_channel_input *,
+            struct establish_pace_channel_output *);
 };
 
 typedef struct sc_card_driver {

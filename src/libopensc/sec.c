@@ -339,9 +339,11 @@ int sc_perform_pace(sc_card_t *card,
         r = card->reader->ops->perform_pace(card->reader, pace_input,
                 pace_output);
     } else {
-        /* TODO Add EstablishPACEChannel using a normal reader here */
-        /* see for example http://vsmartcard.sourceforge.net/npa/README.html */
-        sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "PACE currently only supported via reader.");
+        if (card->reader && card->ops && card->ops->perform_pace) {
+            r = card->ops->perform_pace(card, pace_input, pace_output);
+        } else {
+            SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_NOT_SUPPORTED);
+        }
     }
 
     sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,

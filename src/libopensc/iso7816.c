@@ -1039,7 +1039,8 @@ static struct sc_card_operations iso_ops = {
 	iso7816_pin_cmd,
 	NULL,			/* get_data */
 	NULL,			/* put_data */
-	NULL			/* delete_record */
+	NULL,			/* delete_record */
+	NULL,			/* perform_pace */
 };
 
 static struct sc_card_driver iso_driver = {
