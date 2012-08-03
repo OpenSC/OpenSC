@@ -52,9 +52,11 @@ static const struct sc_asn1_entry c_asn1_dir[] = {
 	{ NULL, 0, 0, 0, NULL, NULL }
 };
 
-static int parse_dir_record(sc_card_t *card, u8 ** buf, size_t *buflen,
-			    int rec_nr)
+
+static int
+parse_dir_record(sc_card_t *card, u8 ** buf, size_t *buflen, int rec_nr)
 {
+	struct sc_context *ctx = card->ctx;
 	struct sc_asn1_entry asn1_dirrecord[5], asn1_dir[2];
 	sc_app_info_t *app = NULL;
 	struct sc_aid aid;
@@ -62,6 +64,7 @@ static int parse_dir_record(sc_card_t *card, u8 ** buf, size_t *buflen,
 	size_t label_len = sizeof(label), path_len = sizeof(path), ddo_len = sizeof(ddo);
 	int r;
 
+	LOG_FUNC_CALLED(ctx);
 	aid.len = sizeof(aid.value);
 
 	sc_copy_asn1_entry(c_asn1_dirrecord, asn1_dirrecord);
@@ -71,20 +74,16 @@ static int parse_dir_record(sc_card_t *card, u8 ** buf, size_t *buflen,
 	sc_format_asn1_entry(asn1_dirrecord + 1, label, &label_len, 0);
 	sc_format_asn1_entry(asn1_dirrecord + 2, path, &path_len, 0);
 	sc_format_asn1_entry(asn1_dirrecord + 3, ddo, &ddo_len, 0);
-	
-	r = sc_asn1_decode(card->ctx, asn1_dir, *buf, *buflen, (const u8 **) buf, buflen);
+
+	r = sc_asn1_decode(ctx, asn1_dir, *buf, *buflen, (const u8 **) buf, buflen);
 	if (r == SC_ERROR_ASN1_END_OF_CONTENTS)
-		return r;
-	if (r) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "EF(DIR) parsing failed: %s\n",
-		      sc_strerror(r));
-		return r;
-	}
+		LOG_FUNC_RETURN(ctx, r);
+	LOG_TEST_RET(ctx, r, "EF(DIR) parsing failed");
 
 	app = calloc(1, sizeof(struct sc_app_info));
 	if (app == NULL)
-		return SC_ERROR_OUT_OF_MEMORY;
-	
+		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+
 	memcpy(&app->aid, &aid, sizeof(struct sc_aid));
 
 	if (asn1_dirrecord[1].flags & SC_ASN1_PRESENT)
@@ -95,26 +94,25 @@ static int parse_dir_record(sc_card_t *card, u8 ** buf, size_t *buflen,
 	if (asn1_dirrecord[2].flags & SC_ASN1_PRESENT) {
 		/* application path present: ignore AID */
 		if (path_len > SC_MAX_PATH_SIZE) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Application path is too long.\n");
 			free(app);
-			return SC_ERROR_INVALID_ASN1_OBJECT;
+			LOG_TEST_RET(ctx, SC_ERROR_INVALID_ASN1_OBJECT, "Application path is too long.");
 		}
 		memcpy(app->path.value, path, path_len);
-		app->path.len = path_len;	
+		app->path.len = path_len;
 		app->path.type = SC_PATH_TYPE_PATH;
-	} 
+	}
 	else {
 		/* application path not present: use AID as application path */
 		memcpy(app->path.value, aid.value, aid.len);
 		app->path.len = aid.len;
 		app->path.type = SC_PATH_TYPE_DF_NAME;
-	} 
+	}
 
 	if (asn1_dirrecord[3].flags & SC_ASN1_PRESENT) {
 		app->ddo.value = malloc(ddo_len);
 		if (app->ddo.value == NULL) {
 			free(app);
-			return SC_ERROR_OUT_OF_MEMORY;
+			LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate DDO value");
 		}
 		memcpy(app->ddo.value, ddo, ddo_len);
 		app->ddo.len = ddo_len;
@@ -126,9 +124,10 @@ static int parse_dir_record(sc_card_t *card, u8 ** buf, size_t *buflen,
 	app->rec_nr = rec_nr;
 	card->app[card->app_count] = app;
 	card->app_count++;
-	
-	return 0;
+
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
+
 
 int sc_enum_apps(sc_card_t *card)
 {
@@ -138,7 +137,7 @@ int sc_enum_apps(sc_card_t *card)
 	size_t file_size, jj;
 	int r, ii, idx;
 
-	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(ctx);
 	if (card->app_count < 0)
 		card->app_count = 0;
 
@@ -148,35 +147,36 @@ int sc_enum_apps(sc_card_t *card)
 		card->ef_dir = NULL;
 	}
 	r = sc_select_file(card, &path, &card->ef_dir);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Cannot select EF.DIR file");
+	LOG_TEST_RET(ctx, r, "Cannot select EF.DIR file");
 
 	if (card->ef_dir->type != SC_FILE_TYPE_WORKING_EF) {
 		sc_file_free(card->ef_dir);
 		card->ef_dir = NULL;
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_CARD, "EF(DIR) is not a working EF.");
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_CARD, "EF(DIR) is not a working EF.");
 	}
-	ef_structure = card->ef_dir->ef_structure;
-	file_size = card->ef_dir->size;
-	if (file_size == 0)
-		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, 0);
 
+	ef_structure = card->ef_dir->ef_structure;
 	if (ef_structure == SC_FILE_EF_TRANSPARENT) {
 		u8 *buf = NULL, *p;
 		size_t bufsize;
-		
+
+		file_size = card->ef_dir->size;
+		if (file_size == 0)
+			LOG_FUNC_RETURN(ctx, 0);
+
 		buf = malloc(file_size);
 		if (buf == NULL)
-			SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 		p = buf;
 		r = sc_read_binary(card, 0, buf, file_size, 0);
 		if (r < 0) {
 			free(buf);
-			SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "sc_read_binary() failed");
+			LOG_TEST_RET(ctx, r, "sc_read_binary() failed");
 		}
 		bufsize = r;
 		while (bufsize > 0) {
 			if (card->app_count == SC_MAX_CARD_APPS) {
-				sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Too many applications on card");
+				sc_log(ctx, "Too many applications on card");
 				break;
 			}
 			r = parse_dir_record(card, &p, &bufsize, -1);
@@ -186,21 +186,25 @@ int sc_enum_apps(sc_card_t *card)
 		if (buf)
 			free(buf);
 
-	} 
+	}
 	else {	/* record structure */
-		u8 buf[256], *p;
+		unsigned char buf[256], *p;
 		unsigned int rec_nr;
-		size_t       rec_size;
-		
-		for (rec_nr = 1; ; rec_nr++) {
+		size_t rec_size;
+
+		/* Arbitrary set '16' as maximal number of records to check out:
+		 * to avoid endless loop because of some uncomplete cards/drivers */
+		for (rec_nr = 1; rec_nr < 16; rec_nr++) {
 			r = sc_read_record(card, rec_nr, buf, sizeof(buf), SC_RECORD_BY_REC_NR);
 			if (r == SC_ERROR_RECORD_NOT_FOUND)
 				break;
-			SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "read_record() failed");
+			LOG_TEST_RET(ctx, r, "read_record() failed");
+
 			if (card->app_count == SC_MAX_CARD_APPS) {
-				sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Too many applications on card");
+				sc_log(ctx, "Too many applications on card");
 				break;
 			}
+
 			rec_size = r;
 			p = buf;
 			parse_dir_record(card, &p, &rec_size, (int)rec_nr);
@@ -226,7 +230,7 @@ int sc_enum_apps(sc_card_t *card)
 		}
 	}
 
-	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
 void sc_free_apps(sc_card_t *card)
@@ -266,7 +270,7 @@ static int encode_dir_record(sc_context_t *ctx, const sc_app_info_t *app,
 		sc_format_asn1_entry(asn1_dirrecord + 3, (void *) tapp.ddo.value,
 				     (void *) &tapp.ddo.len, 1);
 	r = sc_asn1_encode(ctx, asn1_dir, buf, buflen);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Encode DIR record error");
+	LOG_TEST_RET(ctx, r, "Encode DIR record error");
 
 	return SC_SUCCESS;
 }
@@ -310,8 +314,8 @@ static int update_transparent(sc_card_t *card, sc_file_t *file)
 	}
 	r = sc_update_binary(card, 0, buf, buf_size, 0);
 	free(buf);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Unable to update EF(DIR)");
-	
+	LOG_TEST_RET(card->ctx, r, "Unable to update EF(DIR)");
+
 	return SC_SUCCESS;
 }
 
@@ -320,7 +324,7 @@ static int update_single_record(sc_card_t *card, sc_app_info_t *app)
 	u8 *rec;
 	size_t rec_size;
 	int r;
-	
+
 	r = encode_dir_record(card->ctx, app, &rec, &rec_size);
 	if (r)
 		return r;
@@ -342,11 +346,11 @@ static int update_single_record(sc_card_t *card, sc_app_info_t *app)
 			r = sc_update_record(card, (unsigned int)rec_nr, rec, rec_size, SC_RECORD_BY_REC_NR);
 		}
 	} else {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "invalid record number\n");
+		sc_log(card->ctx, "invalid record number\n");
 		r = SC_ERROR_INTERNAL;
 	}
 	free(rec);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Unable to update EF(DIR) record");
+	LOG_TEST_RET(card->ctx, r, "Unable to update EF(DIR) record");
 	return 0;
 }
 
@@ -367,11 +371,12 @@ int sc_update_dir(sc_card_t *card, sc_app_info_t *app)
 	sc_path_t path;
 	sc_file_t *file;
 	int r;
-	
+
 	sc_format_path("3F002F00", &path);
 
 	r = sc_select_file(card, &path, &file);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "unable to select EF(DIR)");
+	LOG_TEST_RET(card->ctx, r, "unable to select EF(DIR)");
+
 	if (file->ef_structure == SC_FILE_EF_TRANSPARENT)
 		r = update_transparent(card, file);
 	else if (app == NULL)

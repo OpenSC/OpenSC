@@ -40,10 +40,15 @@ extern "C" {
 #include "scconf/scconf.h"
 #include "libopensc/errors.h"
 #include "libopensc/types.h"
+#ifdef ENABLE_SM
+#include "libopensc/sm.h"
+#endif
+
 
 #define SC_SEC_OPERATION_DECIPHER	0x0001
 #define SC_SEC_OPERATION_SIGN		0x0002
 #define SC_SEC_OPERATION_AUTHENTICATE	0x0003
+#define SC_SEC_OPERATION_DERIVE         0x0004
 
 /* sc_security_env flags */
 #define SC_SEC_ENV_ALG_REF_PRESENT	0x0001
@@ -110,10 +115,11 @@ extern "C" {
 /* Or should the HASH_NONE be 0x00000010  and HASHES be 0x00008010 */
 
 /* May need more bits if card can do more hashes */
-/* TODO: -DEE Will overload RSA_HASHES with EC_HASHES */ 
+/* TODO: -DEE Will overload RSA_HASHES with EC_HASHES */
 /* Not clear if these need their own bits or not */
 /* The PIV card does not support and hashes */
-#define SC_ALGORITHM_ECDSA_RAW				0x00010000
+#define SC_ALGORITHM_ECDSA_RAW		0x00010000
+#define SC_ALGORITHM_ECDH_CDH_RAW	0x00020000
 #define SC_ALGORITHM_ECDSA_HASH_NONE		SC_ALGORITHM_RSA_HASH_NONE
 #define SC_ALGORITHM_ECDSA_HASH_SHA1		SC_ALGORITHM_RSA_HASH_SHA1
 #define SC_ALGORITHM_ECDSA_HASH_SHA224		SC_ALGORITHM_RSA_HASH_SHA224
@@ -270,6 +276,10 @@ struct sc_reader_driver {
 /* reader capabilities */
 #define SC_READER_CAP_DISPLAY	0x00000001
 #define SC_READER_CAP_PIN_PAD	0x00000002
+#define SC_READER_CAP_PACE_GENERIC         0x00000003
+#define SC_READER_CAP_PACE_EID             0x00000004
+#define SC_READER_CAP_PACE_ESIGN           0x00000008
+#define SC_READER_CAP_PACE_DESTROY_CHANNEL 0x00000010
 
 typedef struct sc_reader {
 	struct sc_context *ctx;
@@ -277,7 +287,7 @@ typedef struct sc_reader {
 	const struct sc_reader_operations *ops;
 	void *drv_data;
 	char *name;
-	
+
 	unsigned long flags, capabilities;
 	unsigned int supported_protocols, active_protocol;
 
@@ -339,6 +349,72 @@ struct sc_pin_cmd_data {
 	struct sc_apdu *apdu;		/* APDU of the PIN command */
 };
 
+
+#define PACE_PIN_ID_MRZ 0x01
+#define PACE_PIN_ID_CAN 0x02
+#define PACE_PIN_ID_PIN 0x03
+#define PACE_PIN_ID_PUK 0x04
+/** 
+ * Input data for EstablishPACEChannel()
+ */
+struct establish_pace_channel_input {
+    /** Type of secret (CAN, MRZ, PIN or PUK). */
+    unsigned char pin_id;
+
+    /** Length of \a chat */
+    size_t chat_length;
+    /** Card holder authorization template */
+    const unsigned char *chat;
+
+    /** Length of \a pin */
+    size_t pin_length;
+    /** Secret */
+    const unsigned char *pin;
+
+    /** Length of \a certificate_description */
+    size_t certificate_description_length;
+    /** Certificate description */
+    const unsigned char *certificate_description;
+};
+
+/** 
+ * Output data for EstablishPACEChannel()
+ */
+struct establish_pace_channel_output {
+    /** PACE result (TR-03119) */
+    unsigned int result;
+
+    /** MSE: Set AT status byte */
+    unsigned char mse_set_at_sw1;
+    /** MSE: Set AT status byte */
+    unsigned char mse_set_at_sw2;
+
+    /** Length of \a ef_cardaccess */
+    size_t ef_cardaccess_length;
+    /** EF.CardAccess */
+    unsigned char *ef_cardaccess;
+
+    /** Length of \a recent_car */
+    size_t recent_car_length;
+    /** Most recent certificate authority reference */
+    unsigned char *recent_car;
+
+    /** Length of \a previous_car */
+    size_t previous_car_length;
+    /** Previous certificate authority reference */
+    unsigned char *previous_car;
+
+    /** Length of \a id_icc */
+    size_t id_icc_length;
+    /** ICC identifier */
+    unsigned char *id_icc;
+
+    /** Length of \a id_pcd */
+    size_t id_pcd_length;
+    /** PCD identifier */
+    unsigned char *id_pcd;
+};
+
 struct sc_reader_operations {
 	/* Called during sc_establish_context(), when the driver
 	 * is loaded */
@@ -365,6 +441,9 @@ struct sc_reader_operations {
 	/* Pin pad functions */
 	int (*display_message)(struct sc_reader *, const char *);
 	int (*perform_verify)(struct sc_reader *, struct sc_pin_cmd_data *);
+	int (*perform_pace)(struct sc_reader *reader,
+            struct establish_pace_channel_input *,
+            struct establish_pace_channel_output *);
 
 	/* Wait for an event */
 	int (*wait_for_event)(struct sc_context *ctx, unsigned int event_mask, sc_reader_t **event_reader, unsigned int *event, 
@@ -448,6 +527,9 @@ typedef struct sc_card {
 	sc_serial_number_t serialnr;
 
 	void *mutex;
+#ifdef ENABLE_SM
+	struct sm_context sm_ctx;
+#endif
 
 	unsigned int magic;
 } sc_card_t;
@@ -603,12 +685,14 @@ typedef struct sc_context {
 	scconf_block *conf_blocks[3];
 	char *app_name;
 	int debug;
+	int paranoid_memory;
 
 	FILE *debug_file;
+	char *debug_filename;
 	char *preferred_language;
 
 	list_t readers;
-	
+
 	struct sc_reader_driver *reader_driver;
 	void *reader_drv_data;
 
@@ -679,11 +763,21 @@ typedef struct {
 	/** mutex functions to use (optional) */
 	sc_thread_context_t *thread_ctx;
 } sc_context_param_t;
+
+/**
+ * Repairs an already existing sc_context_t object. This may occur if
+ * multithreaded issues mean that another context in the same heap is deleted.
+ * @param  ctx   pointer to a sc_context_t pointer containing the (partial)
+ *               context.
+ * @return SC_SUCCESS or an error value if an error occurred.
+ */
+int sc_context_repair(sc_context_t **ctx);
+
 /**
  * Creates a new sc_context_t object.
  * @param  ctx   pointer to a sc_context_t pointer for the newly
  *               created sc_context_t object.
- * @param  parm  parameters for the sc_context_t creation (see 
+ * @param  parm  parameters for the sc_context_t creation (see
  *               sc_context_param_t for a description of the supported
  *               options). This parameter is optional and can be NULL.
  * @return SC_SUCCESS on success and an error code otherwise.
@@ -1147,7 +1241,7 @@ int sc_base64_decode(const char *in, u8 *out, size_t outlen);
  * @param  len  length of the memory buffer
  */
 void sc_mem_clear(void *ptr, size_t len);
-void *sc_mem_alloc_secure(size_t len);
+void *sc_mem_alloc_secure(sc_context_t *ctx, size_t len);
 int sc_mem_reverse(unsigned char *buf, size_t len);
 
 int sc_get_cache_dir(sc_context_t *ctx, char *buf, size_t bufsize);
@@ -1170,9 +1264,16 @@ struct sc_algorithm_info * sc_card_find_gostr3410_alg(sc_card_t *card,
 		unsigned int key_length);
 
 /**
- * Used to initialize the @c sc_remote_data structure -- 
- * reset the header of the 'remote APDUs' list, set the handlers 
- * to manipulate the list. 
+ * Get CRC-32 digest
+ * @param value pointer to data used for CRC calculation
+ * @param len length of data used for CRC calculation
+ */
+unsigned sc_crc32(unsigned char *value, size_t len);
+
+/**
+ * Used to initialize the @c sc_remote_data structure --
+ * reset the header of the 'remote APDUs' list, set the handlers
+ * to manipulate the list.
  */
 void sc_remote_data_init(struct sc_remote_data *rdata);
 
@@ -1192,6 +1293,10 @@ extern const char *sc_get_version(void);
 	}
 
 extern sc_card_driver_t *sc_get_iso7816_driver(void);
+
+int sc_perform_pace(sc_card_t *card,
+        struct establish_pace_channel_input *pace_input,
+        struct establish_pace_channel_output *pace_output);
 
 #ifdef __cplusplus
 }

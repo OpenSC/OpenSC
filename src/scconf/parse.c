@@ -72,7 +72,7 @@ static void scconf_parse_warning_expect(scconf_parser * parser, const char *toke
 	/* FIXME: save the warnings somewhere */
 	parser->warnings = 1;
 
-	snprintf(parser->emesg, sizeof(parser->emesg), 
+	snprintf(parser->emesg, sizeof(parser->emesg),
 		"Line %d: missing '%s', ignoring\n",
 		parser->line, token);
 }
@@ -360,7 +360,7 @@ void scconf_parse_token(scconf_parser * parser, int token_type, const char *toke
 			scconf_parse_reset_state(parser);
 			break;
 		default:
-			snprintf(parser->emesg, sizeof(parser->emesg), 
+			snprintf(parser->emesg, sizeof(parser->emesg),
 				"Line %d: bad token ignoring\n",
 				parser->line);
 		}

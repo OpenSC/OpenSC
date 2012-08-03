@@ -152,7 +152,7 @@ static void do_esteid(sc_card_t *card)
 			fprintf(stderr, "Failed to select key counters: %s\n", sc_strerror(r));
 			goto out;
 		}
-	
+
 		/* print the counters */
 		for (i = 1; i <= 4; i++) {
 			r = sc_read_record(card, i, buff, 128, SC_RECORD_BY_REC_NR);
@@ -167,7 +167,7 @@ static void do_esteid(sc_card_t *card)
 		exit_status = EXIT_SUCCESS;
 		goto out;
 	}
-	
+
 	/* Or just read the datafile */
 	sc_format_path("3f00eeee5044", &path);
 	r = sc_select_file(card, &path, NULL);
@@ -182,13 +182,13 @@ static void do_esteid(sc_card_t *card)
 			fprintf (stderr, "Failed to read record %d from card: %s\n",
 						esteid_data[i].recno, sc_strerror (r));
 			goto out;
-		} 
+		}
 		buff[r] = '\0';
 		if (exec_program) {
 			unsigned char * cp;
-			cp = malloc(strlen(esteid_data[i].env_name) + 
+			cp = malloc(strlen(esteid_data[i].env_name) +
 				strlen((char *) buff) + 2);
-			if (cp) { 
+			if (cp) {
 				strcpy((char *) cp,esteid_data[i].env_name);
 				strcat((char *) cp,"=");
 				strcat((char *) cp,(char *) buff);
@@ -198,7 +198,7 @@ static void do_esteid(sc_card_t *card)
 			printf("%s: %s\n", esteid_data[i].name, buff);
 		}
 	}
-	
+
 	exit_status = EXIT_SUCCESS;
 
 out:
@@ -240,7 +240,7 @@ static void exportprint(const char *key, const char *val)
 	if (exec_program) {
 		char * cp;
 		cp = malloc(strlen(key) + strlen(val) + 2);
-		if (cp) { 
+		if (cp) {
 			strcpy(cp, key);
 			strcat(cp, "=");
 			strcat(cp, val);
@@ -412,7 +412,7 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Not an EstEID or Belpic card!\n");
 		goto out;
 	}
-	
+
 	if (exec_program) {
 		char *const largv[] = {exec_program, NULL};
 		sc_unlock(card);
@@ -423,7 +423,7 @@ int main(int argc, char **argv)
 		perror("execv()");
 		exit(1);
 	}
-	
+
 out:
 	sc_unlock(card);
 	sc_disconnect_card(card);

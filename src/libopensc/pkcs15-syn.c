@@ -26,6 +26,7 @@
 #include <stdio.h>
 #include <assert.h>
 
+#include "common/libscdl.h"
 #include "internal.h"
 #include "asn1.h"
 #include "pkcs15.h"

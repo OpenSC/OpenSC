@@ -96,7 +96,7 @@ static int starcos_init_card(sc_profile_t *profile, sc_pkcs15_card_t *p15card)
 		/* we already have a MF => return OK */
 		return ret;
 
-	sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PIN, &sopin);	
+	sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PIN, &sopin);
 
 	/* get mf profile */
 	ret = sc_profile_get_file(profile, "MF", &mf_file);
@@ -118,7 +118,7 @@ static int starcos_init_card(sc_profile_t *profile, sc_pkcs15_card_t *p15card)
 	/* AC CREATE EF   */
 	*p++ = get_so_ac(mf_file, SC_AC_OP_CREATE, &sopin, STARCOS_AC_ALWAYS, 1);
 	/* AC CREATE KEY  */
-	*p++ = get_so_ac(isf_file, SC_AC_OP_WRITE, &sopin, STARCOS_AC_NEVER,  1); 
+	*p++ = get_so_ac(isf_file, SC_AC_OP_WRITE, &sopin, STARCOS_AC_NEVER,  1);
 	/* AC CREATE DF   */
 	*p++ = get_so_ac(mf_file, SC_AC_OP_CREATE, &sopin, STARCOS_AC_ALWAYS, 1);
 	/* AC REGISTER DF */
@@ -326,22 +326,22 @@ static int starcos_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15car
  * Starcos SPK 2.3 uses a state machine to control the access
  * to files or keys. This means that the access to a certain
  * object is granted if the current state (of either the current
- * DF or the MF) is =, <, >= or != a specified state (see 
- * Starcos S 2.1 manual). To map the pkcs15 access control model 
+ * DF or the MF) is =, <, >= or != a specified state (see
+ * Starcos S 2.1 manual). To map the pkcs15 access control model
  *(one object is protected by one pin etc.) to the Starcos S 2.1
  * model the following approach is used:
  * the pin with the key id 3 (or 0x81) sets the global (or local)
  * state to 15 (note: 16 is the lowest initial state).
  * the pin with the key id 4 (or 0x82) is reserved for the PUK
  * the pin with the key id 5 (or 0x83) sets the global (or local)
- * state to 14. 
- * ... 
- * Note: the key id 1 and 2 (or local 0x81 and 0x82) is used for 
+ * state to 14.
+ * ...
+ * Note: the key id 1 and 2 (or local 0x81 and 0x82) is used for
  * the 'SO-pin' which sets the state to 0x01.
  * XXX: some card operations, like terminate card usage are only
  * possible in state 0x00
- * 
- * Nils 
+ *
+ * Nils
  */
 #define STARCOS_PINID2STATE(a)	(((a) == STARCOS_SOPIN_GID) ? STARCOS_SOPIN_STATE : (0x0f - ((0x0f & (a)) >> 1)))
 
@@ -434,10 +434,10 @@ static int starcos_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 			return SC_ERROR_INVALID_ARGUMENTS;
 		memset(tpin, 0, 8);
 		memcpy(tpin, puk, puk_len);
-	
+
 		sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PUK, &puk_info);
 		tmp = puk_info.tries_left;
-		 
+
 		puk_d.mode    = 0;	/* install */
 		puk_d.kid     = (u8) pin_id + 1;
 		puk_d.key     = tpin;
@@ -551,7 +551,7 @@ static int starcos_encode_prkey(struct sc_pkcs15_prkey_rsa *rsa, u8 *buf)
 	} else if (rsa->modulus.len && rsa->d.len) {
 		/* normal RSA key  */
 		i = STARCOS_MAX_PR_KEYSIZE - 7 - rsa->modulus.len
-                    - rsa->d.len - 16; 
+                    - rsa->d.len - 16;
 		/* key format list */
 		*p++ = 6;
 		*p++ = 0x90;
@@ -570,7 +570,7 @@ static int starcos_encode_prkey(struct sc_pkcs15_prkey_rsa *rsa, u8 *buf)
 	} else
 		return SC_ERROR_INTERNAL;
 
-	return SC_SUCCESS;	
+	return SC_SUCCESS;
 }
 
 /* XXX the whole IPF stuff doesn't really work very well */
@@ -750,7 +750,7 @@ static int starcos_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	tkey.key_header[1] = (STARCOS_MAX_PR_KEYSIZE >> 8) & 0xff;
 	tkey.key_header[2] = STARCOS_MAX_PR_KEYSIZE & 0xff;
 
-	pin_id = sc_pkcs15init_get_pin_reference(p15card, profile, SC_AC_SYMBOLIC, 
+	pin_id = sc_pkcs15init_get_pin_reference(p15card, profile, SC_AC_SYMBOLIC,
 			SC_PKCS15INIT_USER_PIN);
 	if (pin_id < 0)
 		state = STARCOS_AC_ALWAYS;
@@ -773,7 +773,7 @@ static int starcos_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		akd |= 0x31;	/* allow DS, IA and PKCS11 */
 	if (kinfo->usage & SC_PKCS15_PRKEY_USAGE_SIGNRECOVER)
 		akd |= 0x31;	/* allow DS, IA and PKCS11 */
-	if (kinfo->usage & SC_PKCS15_PRKEY_USAGE_DECRYPT || 
+	if (kinfo->usage & SC_PKCS15_PRKEY_USAGE_DECRYPT ||
 	    kinfo->usage & SC_PKCS15_PRKEY_USAGE_UNWRAP)
 		akd |= 0x02;
 	tkey.key_header[9]  = akd;
@@ -898,7 +898,7 @@ static int starcos_finalize_card(sc_card_t *card)
 {
 	int       r;
 	sc_file_t tfile;
-	sc_path_t tpath;      
+	sc_path_t tpath;
 
 	/* SELECT FILE MF */
 	sc_format_path("3F00", &tpath);
@@ -917,7 +917,7 @@ static int starcos_finalize_card(sc_card_t *card)
 	tfile.id   = 0x5015;
 	r = sc_card_ctl(card, SC_CARDCTL_STARCOS_CREATE_END, &tfile);
 	if (r == SC_ERROR_NOT_ALLOWED)
-		/* card is already finalized */ 
+		/* card is already finalized */
 		return SC_SUCCESS;
 	return r;
 }

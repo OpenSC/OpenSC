@@ -18,7 +18,10 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#ifndef __LIBSCDL_H
+#define __LIBSCDL_H
 void *sc_dlopen(const char *filename);
 void *sc_dlsym(void *handle, const char *symbol);
 int sc_dlclose(void *handle);
 const char *sc_dlerror(void);
+#endif

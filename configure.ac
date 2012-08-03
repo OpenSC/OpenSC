@@ -3,8 +3,8 @@ dnl -*- mode: m4; -*-
 AC_PREREQ(2.60)
 
 define([PACKAGE_VERSION_MAJOR], [0])
-define([PACKAGE_VERSION_MINOR], [12])
-define([PACKAGE_VERSION_FIX], [3])
+define([PACKAGE_VERSION_MINOR], [13])
+define([PACKAGE_VERSION_FIX], [0])
 define([PACKAGE_SUFFIX], [-pre1])
 
 AC_INIT([opensc],[PACKAGE_VERSION_MAJOR.PACKAGE_VERSION_MINOR.PACKAGE_VERSION_FIX[]PACKAGE_SUFFIX])
@@ -74,6 +74,16 @@ case "${host}" in
 	;;
 esac
 
+case "${host}" in
+	*-mingw*|*-winnt*|*-cygwin*)
+		DEBUG_FILE="%TEMP%\opensc-debug.log"
+	;;
+	*)
+		DEBUG_FILE="/tmp/opensc-debug.log"
+	;;
+esac
+AC_DEFINE_UNQUOTED([DEBUG_FILE], ["${DEBUG_FILE}"], [Debug file])
+
 AC_ARG_ENABLE(
 	[strict],
 	[AS_HELP_STRING([--enable-strict],[enable strict compile mode @<:@disabled@:>@])],
@@ -135,6 +145,13 @@ AC_ARG_ENABLE(
 	[AS_HELP_STRING([--enable-minidriver],[enable minidriver on Windows @<:@disabled@:>@])],
 	,
 	[enable_minidriver="no"]
+)
+
+AC_ARG_ENABLE(
+	[sm],
+	[AS_HELP_STRING([--enable-sm],[enable secure messaging support and modules @<:@disabled@:>@])],
+	,
+	[enable_sm="no"]
 )
 
 AC_ARG_ENABLE(
@@ -267,23 +284,15 @@ AC_CHECK_LIB(
 	]
 )
 
-dnl check for libltdl. If libltdl is not found, native dlopen/LoadLibrary is used
-AC_ARG_VAR([LTLIB_CFLAGS], [C compiler flags for libltdl])
-AC_ARG_VAR([LTLIB_LIBS], [linker flags for libltdl])
-if test -z "${LTLIB_LIBS}"; then
-	AC_CHECK_LIB(
-		[ltdl],
-		[lt_dlopen],
-		[LTLIB_LIBS="-lltdl"]
-	)
-fi
-
-saved_CFLAGS="${CFLAGS}"
-CFLAGS="${CFLAGS} ${LTLIB_CFLAGS}"
-AC_CHECK_HEADERS([ltdl.h])
-CFLAGS="${saved_CFLAGS}"
-
 if test "${WIN32}" = "no"; then
+	dnl dl support
+	AC_CHECK_LIB(
+		[dl],
+		[dlopen],
+		,
+		[AC_MSG_ERROR([libdl required])]
+	)
+
 	dnl Special check for pthread support.
 	ACX_PTHREAD(
 		[AC_DEFINE(
@@ -304,6 +313,20 @@ if test "${enable_minidriver}" = "yes"; then
 		[AC_MSG_ERROR([cardmod.h is not found and required for minidriver])]
 	)
 	AC_DEFINE([ENABLE_MINIDRIVER], [1], [Enable minidriver support])
+fi
+
+if test "${enable_sm}" = "yes"; then
+	AC_DEFINE([ENABLE_SM], [1], [Enable secure messaging support])
+
+	case "${host}" in
+		*-mingw*|*-winnt*|*-cygwin*)
+			DEFAULT_SM_MODULE="smm-local.dll"
+		;;
+		*)
+			DEFAULT_SM_MODULE="libsmm-local.so.3"
+		;;
+	esac
+	AC_DEFINE_UNQUOTED([DEFAULT_SM_MODULE], ["${DEFAULT_SM_MODULE}"], [Default SM module])
 fi
 
 AC_ARG_VAR([ZLIB_CFLAGS], [C compiler flags for zlib])
@@ -555,6 +578,8 @@ AC_SUBST([OPTIONAL_OPENCT_CFLAGS])
 AC_SUBST([OPTIONAL_OPENCT_LIBS])
 AC_SUBST([OPTIONAL_PCSC_CFLAGS])
 AC_SUBST([LIBRARY_BITNESS])
+AC_SUBST([DEFAULT_SM_MODULE])
+AC_SUBST([DEBUG_FILE])
 
 AM_CONDITIONAL([ENABLE_MAN], [test "${enable_man}" = "yes"])
 AM_CONDITIONAL([ENABLE_ZLIB], [test "${enable_zlib}" = "yes"])
@@ -565,6 +590,7 @@ AM_CONDITIONAL([ENABLE_DOC], [test "${enable_doc}" = "yes"])
 AM_CONDITIONAL([WIN32], [test "${WIN32}" = "yes"])
 AM_CONDITIONAL([CYGWIN], [test "${CYGWIN}" = "yes"])
 AM_CONDITIONAL([ENABLE_MINIDRIVER], [test "${enable_minidriver}" = "yes"])
+AM_CONDITIONAL([ENABLE_SM], [test "${enable_sm}" = "yes"])
 
 if test "${enable_pedantic}" = "yes"; then
 	enable_strict="yes";
@@ -593,6 +619,7 @@ AC_CONFIG_FILES([
 	src/tests/Makefile
 	src/tests/regression/Makefile
 	src/tools/Makefile
+	src/sm/Makefile
 	src/minidriver/Makefile
 	src/minidriver/opensc-minidriver.inf
 	win32/Makefile
@@ -626,6 +653,9 @@ PC/SC support:           ${enable_pcsc}
 OpenCT support:          ${enable_openct}
 CT-API support:          ${enable_ctapi}
 minidriver support:      ${enable_minidriver}
+SM support:              ${enable_sm}
+SM default module:       ${DEFAULT_SM_MODULE}
+Debug file:              ${DEBUG_FILE}
 
 PC/SC default provider:  ${DEFAULT_PCSC_PROVIDER}
 
@@ -636,8 +666,6 @@ Compiler flags:          ${CFLAGS}
 Linker flags:            ${LDFLAGS}
 Libraries:               ${LIBS}
 
-LTLIB_CFLAGS:            ${LTLIB_CFLAGS}
-LTLIB_LIBS:              ${LTLIB_LIBS}
 READLINE_CFLAGS:         ${READLINE_CFLAGS}
 READLINE_LIBS:           ${READLINE_LIBS}
 ZLIB_CFLAGS:             ${ZLIB_CFLAGS}

@@ -460,17 +460,19 @@ static int iso7816_select_file(sc_card_t *card,
 	default:
 		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
 	}
-	apdu.p2 = 0;		/* first record, return FCI */
 	apdu.lc = pathlen;
 	apdu.data = path;
 	apdu.datalen = pathlen;
 
 	if (file_out != NULL) {
+        apdu.p2 = 0;		/* first record, return FCI */
 		apdu.resp = buf;
 		apdu.resplen = sizeof(buf);
 		apdu.le = card->max_recv_size > 0 ? card->max_recv_size : 256;
-	} else
+	} else {
+        apdu.p2 = 0x0C;		/* first record, return nothing */
 		apdu.cse = (apdu.lc == 0) ? SC_APDU_CASE_1 : SC_APDU_CASE_3_SHORT;
+    }
 
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
@@ -676,10 +678,10 @@ static int iso7816_delete_file(sc_card_t *card, const sc_path_t *path)
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xE4, 0x00, 0x00);
 		apdu.lc = 2;
 		apdu.datalen = 2;
+		apdu.data = sbuf;
 	}
 	else /* No file ID given: means currently selected file */
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0xE4, 0x00, 0x00);
-	apdu.data = sbuf;
 	
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
@@ -770,13 +772,10 @@ static int iso7816_restore_security_env(sc_card_t *card, int se_num)
 {
 	sc_apdu_t apdu;
 	int r;
-	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	
 	assert(card != NULL);
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x22, 0xF3, se_num);
-	apdu.resplen = sizeof(rbuf) > 250 ? 250 : sizeof(rbuf);
-	apdu.resp = rbuf;
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 	return sc_check_sw(card, apdu.sw1, apdu.sw2);

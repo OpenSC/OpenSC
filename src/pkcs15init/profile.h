@@ -124,6 +124,9 @@ struct sc_profile {
 
 	/* PKCS15 object ID style */
 	unsigned int id_style;
+
+	/* Minidriver support style */
+	unsigned int md_style;
 };
 
 struct sc_profile *sc_profile_new(void);
@@ -141,7 +144,7 @@ int	sc_profile_instantiate_template(struct sc_profile *, const char *, const sc_
 			const char *, const sc_pkcs15_id_t *, sc_file_t **);
 int	sc_profile_add_file(struct sc_profile *, const char *, sc_file_t *);
 int	sc_profile_get_file_instance(struct sc_profile *, const char *, int, sc_file_t **);
-int	sc_profile_get_pin_id_by_reference(struct sc_profile *, unsigned, int, 
+int	sc_profile_get_pin_id_by_reference(struct sc_profile *, unsigned, int,
 			struct sc_pkcs15_auth_info *);
 int    sc_profile_get_parent(struct sc_profile *profile, const char *, sc_file_t **);
 
