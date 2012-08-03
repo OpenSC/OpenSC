@@ -1605,7 +1605,6 @@ pcsc_pin_cmd(sc_reader_t *reader, struct sc_pin_cmd_data *data)
 {
 	struct pcsc_private_data *priv = GET_PRIV_DATA(reader);
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE], sbuf[SC_MAX_APDU_BUFFER_SIZE];
-	char dbuf[SC_MAX_APDU_BUFFER_SIZE * 3];
 	size_t rcount = sizeof(rbuf), scount = 0;
 	int r;
 	DWORD ioctl = 0;
@@ -1651,8 +1650,7 @@ pcsc_pin_cmd(sc_reader_t *reader, struct sc_pin_cmd_data *data)
 	/* If PIN block building failed, we fail too */
 	SC_TEST_RET(reader->ctx, SC_LOG_DEBUG_NORMAL, r, "PC/SC v2 pinpad block building failed!");
 	/* If not, debug it, just for fun */
-	sc_bin_to_hex(sbuf, scount, dbuf, sizeof(dbuf), ':');
-	sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "PC/SC v2 pinpad block: %s", dbuf);
+	sc_debug_hex(reader->ctx, SC_LOG_DEBUG_NORMAL, "PC/SC v2 pinpad block", sbuf, scount);
 
 	r = pcsc_internal_transmit(reader, sbuf, scount, rbuf, &rcount, ioctl);
 
