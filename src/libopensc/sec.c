@@ -405,3 +405,23 @@ int sc_perform_pace(sc_card_t *card,
 
     SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 }
+
+static const char *MRZ_name = "MRZ";
+static const char *PIN_name = "PIN";
+static const char *PUK_name = "PUK";
+static const char *CAN_name = "CAN";
+static const char *UNDEF_name = "UNDEF";
+const char *pace_secret_name(unsigned char pin_id) {
+    switch (pin_id) {
+        case PACE_PIN_ID_MRZ:
+            return MRZ_name;
+        case PACE_PIN_ID_PUK:
+            return PUK_name;
+        case PACE_PIN_ID_PIN:
+            return PIN_name;
+        case PACE_PIN_ID_CAN:
+            return CAN_name;
+        default:
+            return UNDEF_name;
+    }
+}

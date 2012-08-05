@@ -1302,6 +1302,15 @@ int sc_perform_pace(sc_card_t *card,
         struct establish_pace_channel_input *pace_input,
         struct establish_pace_channel_output *pace_output);
 
+/**
+ * @brief Names the type of the PACE secret
+ *
+ * @param pin_id type of the PACE secret
+ *
+ * @return Printable string containing the name
+ */
+const char *pace_secret_name(unsigned char pin_id);
+
 #ifdef __cplusplus
 }
 #endif
