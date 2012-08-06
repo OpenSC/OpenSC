@@ -174,7 +174,7 @@ static int gemsafe_get_cert_len(sc_card_t *card, sc_path_t *path,
 	/* Using (block+1) in while loop avoids using final cert object data block */
 	while (!found && ( (block+1) * 248 < objlen) ) {
 	    /* Check current buffer */
-	    for (i = 0; i < 248; i++) {
+	    for (i = 0; i < 247; i++) {
 	    	if (ibuf[i] == 0x30 && ibuf[i+1] == 0x82) {
 		    found = 1;
 		    break;

@@ -2000,6 +2000,7 @@ authentic_manage_sdo(struct sc_card *card, struct sc_authentic_sdo *sdo, unsigne
 
 	if (card->max_send_size > 255)
 		card->max_send_size = 255;
+
 	rv = sc_transmit_apdu(card, &apdu);
 	card->max_send_size = save_max_send;
 	LOG_TEST_RET(ctx, rv, "APDU transmit failed");
@@ -2150,7 +2151,7 @@ authentic_sm_acl_init (struct sc_card *card, struct sm_info *sm_info, int cmd,
 		unsigned char *resp, size_t *resp_len)
 {
 	struct sc_context *ctx = card->ctx;
-	struct sm_type_params_gp *params_gp = &sm_info->sm_params.gp;
+	struct sm_type_params_gp *params_gp = &sm_info->session.gp.params;
 	struct sc_remote_data rdata;
 	int rv;
 
@@ -2248,6 +2249,9 @@ authentic_sm_open(struct sc_card *card)
 	memcpy(card->sm_ctx.info.config_section, card->sm_ctx.config_section, sizeof(card->sm_ctx.info.config_section));
 	sc_log(ctx, "SM context config '%s'; SM mode 0x%X", card->sm_ctx.info.config_section, card->sm_ctx.sm_mode);
 
+	if (card->sm_ctx.sm_mode == SM_MODE_TRANSMIT && card->max_send_size == 0)
+		card->max_send_size = 239;
+
 	rv = authentic_sm_acl_init (card, &card->sm_ctx.info, SM_CMD_INITIALIZE, init_data, &init_data_len);
 	LOG_TEST_RET(ctx, rv, "authentIC: cannot open SM");
 
@@ -2304,18 +2308,19 @@ authentic_sm_get_wrapped_apdu(struct sc_card *card, struct sc_apdu *plain, struc
 			plain->cla, plain->ins, plain->p1, plain->p2, plain->datalen, plain->data);
         *sm_apdu = NULL;
 
-	if (plain->cla & 0x04)
-		return 0;
-	else if (plain->cla==0x00 && plain->ins==0xA4)
-		return 0;
-	else if (plain->cla==0x00 && plain->ins==0xC0)
-		return 0;
-	else if (plain->cla==0x00 && plain->ins==0x20)
-		return 0;
-	else if (plain->cla==0x80 && plain->ins==0x2E)
-		return 0;
-	else if (plain->cla==0x80 && plain->ins==0x50)
-		return 0;
+	if ((plain->cla & 0x04)
+		|| (plain->cla==0x00 && plain->ins==0x22)
+		|| (plain->cla==0x00 && plain->ins==0x2A)
+		|| (plain->cla==0x00 && plain->ins==0x84)
+		|| (plain->cla==0x00 && plain->ins==0x88)
+		|| (plain->cla==0x00 && plain->ins==0xA4)
+		|| (plain->cla==0x00 && plain->ins==0xC0)
+		|| (plain->cla==0x00 && plain->ins==0xCA)
+		|| (plain->cla==0x80 && plain->ins==0x50)
+		)   {
+		sc_log(ctx, "SM wrap is not applied for this APDU");
+		LOG_FUNC_RETURN(ctx, SC_ERROR_SM_NOT_APPLIED);
+	}
 
 	if (card->sm_ctx.sm_mode != SM_MODE_TRANSMIT)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_SM_NOT_INITIALIZED);

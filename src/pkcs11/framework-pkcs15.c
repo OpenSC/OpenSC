@@ -1793,16 +1793,16 @@ pkcs15_create_private_key(struct sc_pkcs11_slot *slot, struct sc_profile *profil
 			args.key.algorithm = SC_ALGORITHM_RSA;
 			rsa = &args.key.u.rsa;
 			break;
-		case CKK_EC:
-			args.key.algorithm = SC_ALGORITHM_EC;
-			ec = &args.key.u.ec;
-			/* TODO: -DEE Do not have PKCS15 card with EC to test this */
-			/* fall through */
 		case CKK_GOSTR3410:
 			set_gost_params(&args.params.gost, NULL, pTemplate, ulCount, NULL, 0);
 			args.key.algorithm = SC_ALGORITHM_GOSTR3410;
 			gost = &args.key.u.gostr3410;
 			break;
+		case CKK_EC:
+			args.key.algorithm = SC_ALGORITHM_EC;
+			ec = &args.key.u.ec;
+			/* TODO: -DEE Do not have PKCS15 card with EC to test this */
+			/* fall through */
 		default:
 			return CKR_ATTRIBUTE_VALUE_INVALID;
 	}
@@ -2584,6 +2584,8 @@ pkcs15_gen_keypair(struct sc_pkcs11_slot *slot, CK_MECHANISM_PTR pMechanism,
 		keytype = CKK_RSA;
 	else if (rv != CKR_OK && pMechanism->mechanism == CKM_EC_KEY_PAIR_GEN)
 		keytype = CKK_EC;
+	else if (rv != CKR_OK && pMechanism->mechanism == CKM_GOSTR3410_KEY_PAIR_GEN)
+		keytype = CKK_GOSTR3410;
 	else if (rv != CKR_OK)
 		goto kpgen_done;
 
@@ -4324,6 +4326,17 @@ static int register_gost_mechanisms(struct sc_pkcs11_card *p11card, int flags)
 		if (rc != CKR_OK)
 			return rc;
 	}
+	if (flags & SC_ALGORITHM_ONBOARD_KEY_GEN) {
+		mech_info.flags = CKF_HW | CKF_GENERATE_KEY_PAIR;
+		mt = sc_pkcs11_new_fw_mechanism(CKM_GOSTR3410_KEY_PAIR_GEN,
+				&mech_info, CKK_GOSTR3410, NULL);
+		if (!mt)
+			return CKR_HOST_MEMORY;
+		rc = sc_pkcs11_register_mechanism(p11card, mt);
+		if (rc != CKR_OK)
+			return rc;
+	}
+    
 	return CKR_OK;
 }
 

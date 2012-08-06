@@ -60,7 +60,7 @@
 
 				<varlistentry>
 					<term>
-						<option>--raw</option>,
+						<option>--raw</option>
 					</term>
 					<listitem><para>
 					Print values in raw format, as they are stored on the card.
@@ -69,7 +69,7 @@
 
 				<varlistentry>
 					<term>
-						<option>--pretty</option>,
+						<option>--pretty</option>
 					</term>
 					<listitem><para>
 					Print values in pretty format.
@@ -94,6 +94,52 @@
 					<listitem><para>
 					Use the given reader.  The default is the first reader with a card.
 					</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--verify</option> <replaceable>pintype</replaceable>
+					</term>
+					<listitem>
+						<para>
+						Verify PIN (CHV1, CHV2 or CHV3).
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--pin</option> <replaceable>string</replaceable>
+					</term>
+					<listitem>
+						<para>
+						The PIN text to verify.
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--gen-key</option> <replaceable>ID</replaceable>,
+						<option>-G</option> <replaceable>ID</replaceable>
+					</term>
+					<listitem>
+						<para>
+						Generate key. Specify key ID (1, 2 or 3) to generate.
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--key-length</option> <replaceable>bitlength</replaceable>,
+						<option>-L</option> <replaceable>bitlength</replaceable>
+					</term>
+					<listitem>
+						<para>
+						Length (default 2048 bit) of the key to be generated.
+						</para>
+					</listitem>
 				</varlistentry>
 
 				<varlistentry>

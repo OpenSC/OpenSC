@@ -640,12 +640,12 @@ int msc_compute_crypt_init(sc_card_t *card,
 	u8 *ptr;
 	int r;
 
-	u8 outputBuffer[MSC_MAX_APDU];
+	u8 outputBuffer[MSC_MAX_APDU + 2];
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x36, keyLocation, 0x01); /* Init */
 	apdu.data = buffer;
 	apdu.datalen = dataLength + 5;
 	apdu.lc = dataLength + 5;
-	
+
 	memset(outputBuffer, 0, sizeof(outputBuffer));
 	apdu.resp = outputBuffer;
 	apdu.resplen = dataLength + 2;
@@ -657,13 +657,14 @@ int msc_compute_crypt_init(sc_card_t *card,
 	*ptr = (dataLength >> 8) & 0xFF; ptr++;
 	*ptr = dataLength & 0xFF; ptr++;
 	memcpy(ptr, initData, dataLength);
-	
+
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 	if(apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 		short receivedData = outputBuffer[0] << 8 | outputBuffer[1];
 		 *outputDataLength = receivedData;
 		*outputDataLength = 0;
+
 		assert(receivedData <= MSC_MAX_APDU);
 		memcpy(outputData, outputBuffer + 2, receivedData);
 		return 0;
@@ -746,7 +747,7 @@ int msc_compute_crypt_final(
 {
 	sc_apdu_t apdu;
 	u8 buffer[MSC_MAX_APDU];
-	u8 outputBuffer[MSC_MAX_APDU];
+	u8 outputBuffer[MSC_MAX_APDU + 2];
 	u8 *ptr;
 	int r;
 

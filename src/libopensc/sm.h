@@ -60,9 +60,9 @@ extern "C" {
 #define SM_CMD_FILE_CREATE 		0x203
 #define SM_CMD_FILE_DELETE		0x204
 #define SM_CMD_PIN			0x300
-#define SM_CMD_PIN_VERIFY 		0x301
+#define SM_CMD_PIN_VERIFY		0x301
 #define SM_CMD_PIN_RESET		0x302
-#define SM_CMD_PIN_SET_PIN 		0x303
+#define SM_CMD_PIN_SET_PIN		0x303
 #define SM_CMD_PSO			0x400
 #define SM_CMD_PSO_DST			0x401
 #define SM_CMD_APDU			0x500
@@ -93,7 +93,7 @@ extern "C" {
 /* Global Platform (SCP01) data types */
 /*
  * @struct sm_type_params_gp
- * 	Global Platform SM channel parameters
+ *	Global Platform SM channel parameters
  */
 struct sm_type_params_gp {
 	unsigned level;
@@ -105,9 +105,9 @@ struct sm_type_params_gp {
 
 /*
  * @struct sm_gp_keyset
- * 	Global Platform keyset:
- * 	- version, index;
- * 	- keyset presented in three parts: 'ENC', 'MAC' and 'KEK';
+ *	Global Platform keyset:
+ *	- version, index;
+ *	- keyset presented in three parts: 'ENC', 'MAC' and 'KEK';
  *	- keyset presented in continuous manner - raw or 'to be diversified'.
  */
 struct sm_gp_keyset {
@@ -123,9 +123,16 @@ struct sm_gp_keyset {
 
 /*
  * @struct sm_gp_session
- * 	Global Platform SM session data
+ *	Global Platform SM session data
  */
 struct sm_gp_session {
+	struct sm_gp_keyset gp_keyset;
+
+	struct sm_type_params_gp params;
+
+	unsigned char host_challenge[SM_SMALL_CHALLENGE_LEN];
+	unsigned char card_challenge[SM_SMALL_CHALLENGE_LEN];
+
 	unsigned char *session_enc, *session_mac, *session_kek;
 	unsigned char mac_icv[8];
 };
@@ -142,9 +149,9 @@ struct sm_type_params_cwa {
 
 /*
  * @struct sm_cwa_keyset
- * 	CWA keyset:
- * 	- SDO reference;
- * 	- 'ENC' and 'MAC' 3DES keys.
+ *	CWA keyset:
+ *	- SDO reference;
+ *	- 'ENC' and 'MAC' 3DES keys.
  */
 struct sm_cwa_keyset {
 	unsigned sdo_reference;
@@ -154,9 +161,9 @@ struct sm_cwa_keyset {
 
 /*
  * @struct sm_cwa_token_data
- * 	CWA token data:
- * 	- serial;
- * 	- 'small' random;
+ *	CWA token data:
+ *	- serial;
+ *	- 'small' random;
  *	- 'big' random.
  */
 struct sm_cwa_token_data  {
@@ -167,13 +174,17 @@ struct sm_cwa_token_data  {
 
 /*
  * @struct sm_cwa_session
- * 	CWA working SM session data:
- * 	- ICC and IFD token data;
- * 	- ENC and MAC session keys;
- * 	- SSC (SM Sequence Counter);
- * 	- 'mutual authentication' data.
+ *	CWA working SM session data:
+ *	- ICC and IFD token data;
+ *	- ENC and MAC session keys;
+ *	- SSC (SM Sequence Counter);
+ *	- 'mutual authentication' data.
  */
 struct sm_cwa_session {
+	struct sm_cwa_keyset cwa_keyset;
+
+	struct sm_type_params_cwa params;
+
 	struct sm_cwa_token_data icc;
 	struct sm_cwa_token_data ifd;
 
@@ -182,37 +193,20 @@ struct sm_cwa_session {
 
 	unsigned char ssc[8];
 
+	unsigned char host_challenge[SM_SMALL_CHALLENGE_LEN];
+	unsigned char card_challenge[SM_SMALL_CHALLENGE_LEN];
+
 	unsigned char mdata[0x48];
 	size_t mdata_len;
 };
 
 /*
- * @struct sc_secure channel
- * 	data type to open and maintain the Secure Messaging session.
- */
-struct sm_secure_channel {
-	union {
-		struct sm_gp_keyset gp;
-		struct sm_cwa_keyset cwa;
-	} keyset;
-
-	union {
-		struct sm_gp_session gp;
-		struct sm_cwa_session cwa;
-	} session;
-
-	unsigned char host_challenge[SM_SMALL_CHALLENGE_LEN];
-	unsigned char card_challenge[SM_SMALL_CHALLENGE_LEN];
-};
-
-
-/*
  * @struct sc_info is the
- * 	placehold for the secure messaging working data:
- * 	- SM type;
- * 	- SM session state;
- * 	- command to execute by external SM module;
- * 	- data related to the current card context.
+ *	placehold for the secure messaging working data:
+ *	- SM type;
+ *	- SM session state;
+ *	- command to execute by external SM module;
+ *	- data related to the current card context.
  */
 struct sm_info   {
 	char config_section[64];
@@ -223,9 +217,9 @@ struct sm_info   {
 
 	unsigned sm_type;
 	union {
-		struct sm_type_params_gp gp;
-		struct sm_type_params_cwa cwa;
-	} sm_params;
+		struct sm_gp_session gp;
+		struct sm_cwa_session cwa;
+	} session;
 
 	struct sc_serial_number serialnr;
 
@@ -237,13 +231,11 @@ struct sm_info   {
 
 	unsigned char *rdata;
 	size_t rdata_len;
-
-	struct sm_secure_channel schannel;
 };
 
 /*
  * @struct sm_card_response
- * 	data type to return card response.
+ *	data type to return card response.
  */
 typedef struct sm_card_response   {
 	int num;
@@ -265,11 +257,11 @@ struct sc_card;
 
 /*
  * @struct sm_card_operations
- * 	card driver handlers related to secure messaging (in 'APDU TRANSMIT' mode)
- * 	- 'open' - initialize SM session;
- * 	- 'encode apdu' - SM encoding of the raw APDU;
- * 	- 'decrypt response' - decode card answer;
- * 	- 'close' - close SM session.
+ *	card driver handlers related to secure messaging (in 'APDU TRANSMIT' mode)
+ *	- 'open' - initialize SM session;
+ *	- 'encode apdu' - SM encoding of the raw APDU;
+ *	- 'decrypt response' - decode card answer;
+ *	- 'close' - close SM session.
  */
 struct sm_card_operations {
 	int (*open)(struct sc_card *card);
@@ -285,12 +277,12 @@ struct sm_card_operations {
 
 /*
  * @struct sm_module_operations
- * 	API to use external SM modules:
- * 	- 'initiliaze' - get APDU(s) to initialize SM session;
- * 	- 'get apdus' - get secured APDUs to execute particular command;
- * 	- 'finalize' - get APDU(s) to finalize SM session;
- * 	- 'module init' - initialize external module (allocate data, read configuration, ...);
- * 	- 'module cleanup' - free resources allocated by external module.
+ *	API to use external SM modules:
+ *	- 'initiliaze' - get APDU(s) to initialize SM session;
+ *	- 'get apdus' - get secured APDUs to execute particular command;
+ *	- 'finalize' - get APDU(s) to finalize SM session;
+ *	- 'module init' - initialize external module (allocate data, read configuration, ...);
+ *	- 'module cleanup' - free resources allocated by external module.
  */
 struct sm_module_operations {
 	int (*initialize)(struct sc_context *ctx, struct sm_info *info,
@@ -314,8 +306,8 @@ typedef struct sm_module {
 } sm_module_t;
 
 /* @struct sm_context
- * 	SM context -- top level of the SM data type
- * 	- SM mode ('ACL' or 'APDU TRANSMIT'), flags;
+ *	SM context -- top level of the SM data type
+ *	- SM mode ('ACL' or 'APDU TRANSMIT'), flags;
  *	- working SM data;
  *	- card operations related to SM in 'APDU TRANSMIT' mode;
  *	- external SM module;

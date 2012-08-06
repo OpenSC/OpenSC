@@ -270,6 +270,7 @@ enum {
 	ACTION_ASSERT_PRISTINE,
 	ACTION_ERASE,
 	ACTION_INIT,
+	ACTION_DELETE_OBJECTS,
 	ACTION_STORE_PIN,
 	ACTION_GENERATE_KEY,
 	ACTION_STORE_PRIVKEY,
@@ -278,7 +279,6 @@ enum {
 	ACTION_UPDATE_CERT,
 	ACTION_STORE_DATA,
 	ACTION_FINALIZE_CARD,
-	ACTION_DELETE_OBJECTS,
 	ACTION_CHANGE_ATTRIBUTES,
 	ACTION_SANITY_CHECK,
 	ACTION_UPDATE_LAST_UPDATE,
@@ -1184,7 +1184,7 @@ static int
 do_store_data_object(struct sc_profile *profile)
 {
 	struct sc_pkcs15init_dataargs args;
-	u8	*data;
+	unsigned char *data = NULL;
 	size_t	datalen;
 	int	r=0;
 
@@ -1205,10 +1205,11 @@ do_store_data_object(struct sc_profile *profile)
 		/* der_encoded contains the plain data, nothing DER encoded */
 		args.der_encoded.value = data;
 		args.der_encoded.len = datalen;
-		r = sc_pkcs15init_store_data_object(p15card, profile,
-					&args, NULL);
+		r = sc_pkcs15init_store_data_object(p15card, profile, &args, NULL);
 	}
 
+	if (data)
+		free(data);
 	return r;
 }
 
@@ -2129,18 +2130,21 @@ do_read_certificate(const char *name, const char *format, X509 **out)
 	return 0;
 }
 
-static int determine_filesize(const char *filename)
+static size_t determine_filesize(const char *filename)
 {
 	FILE *fp;
-	size_t size;
+	long ll;
 
-	if ((fp = fopen(filename,"rb")) == NULL) {
-	  util_fatal("Unable to open %s: %m", filename);
-	  }
+	if ((fp = fopen(filename,"rb")) == NULL)
+		util_fatal("Unable to open %s: %m", filename);
+
 	fseek(fp,0L,SEEK_END);
-	size = ftell(fp);
+	ll = ftell(fp);
+	if (ll == -1l)
+		util_fatal("fseek/ftell error");
+
 	fclose(fp);
-	return size;
+	return (size_t)ll;
 }
 
 static int

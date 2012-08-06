@@ -473,10 +473,13 @@ sc_single_sm_transmit(struct sc_card *card, struct sc_apdu *apdu)
 
 	/* get SM encoded APDU */
 	rv = card->sm_ctx.ops.get_sm_apdu(card, apdu, &sm_apdu);
+	if (rv == SC_ERROR_SM_NOT_APPLIED)   {
+		/* SM wrap of this APDU is ignored by card driver.
+		 * Send plain APDU to the reader driver */
+		rv = card->reader->ops->transmit(card->reader, apdu);
+		LOG_FUNC_RETURN(ctx, rv);
+	}
 	LOG_TEST_RET(ctx, rv, "get SM APDU error");
-
-	if (!sm_apdu)
-		LOG_TEST_RET(ctx, SC_ERROR_INTERNAL, "cannot get SM APDU");
 
 	/* check if SM APDU is still valid */
 	rv = sc_check_apdu(card, sm_apdu);
@@ -507,6 +510,8 @@ sc_single_transmit(struct sc_card *card, struct sc_apdu *apdu)
 	if (card->reader->ops->transmit == NULL)
 		LOG_TEST_RET(card->ctx, SC_ERROR_NOT_SUPPORTED, "cannot transmit APDU");
 
+	sc_log(ctx, "CLA:%X, INS:%X, P1:%X, P2:%X, data(%i) %p",
+			apdu->cla, apdu->ins, apdu->p1, apdu->p2, apdu->datalen, apdu->data);
 #ifdef ENABLE_SM
 	if (card->sm_ctx.sm_mode == SM_MODE_TRANSMIT)
 		return sc_single_sm_transmit(card, apdu);

@@ -95,7 +95,7 @@ typedef	struct _pgp_key_cfg {
 static const pgp_key_cfg_t key_cfg[3] = {
 	{ "Signature key",      "B601", 1, PGP_SIG_PRKEY_USAGE,  PGP_SIG_PUBKEY_USAGE  },
 	{ "Encryption key",     "B801", 2, PGP_ENC_PRKEY_USAGE,  PGP_ENC_PUBKEY_USAGE  },
-	{ "Authentication key", "A401", 2, PGP_AUTH_PRKEY_USAGE, PGP_AUTH_PUBKEY_USAGE }
+	{ "Authentication key", "A401", 2, PGP_AUTH_PRKEY_USAGE | PGP_ENC_PRKEY_USAGE, PGP_AUTH_PUBKEY_USAGE | PGP_ENC_PUBKEY_USAGE }
 };
 
 
@@ -156,11 +156,8 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 	u8		c5data[70];
 	int		r, i;
 	const pgp_pin_cfg_t *pin_cfg = (card->type == SC_CARD_TYPE_OPENPGP_V2) ? pin_cfg_v2 : pin_cfg_v1;
-	struct sc_pkcs15_cert_info cert_info;
-	struct sc_pkcs15_object    cert_obj;
-
-	memset(&cert_info, 0, sizeof(cert_info));
-	memset(&cert_obj,  0, sizeof(cert_obj));
+	sc_path_t path;
+	sc_file_t *file;
 
 	set_string(&p15card->tokeninfo->label, "OpenPGP card");
 	set_string(&p15card->tokeninfo->manufacturer_id, "OpenPGP project");
@@ -333,16 +330,33 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 		}
 	}
 
-	/* Certificate ID. We use the same ID as the authentication key */
-	cert_info.id.value[0] = 3;
-	cert_info.id.len = 1;
-	/* Authority, flag is zero */
-	sc_format_path("3F007F21", &cert_info.path);
-	strlcpy(cert_obj.label, "Cardholder certificate", sizeof(cert_obj.label));
-
-	r = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
+	/* Check if certificate DO 7F21 holds data */
+	sc_format_path("7F21", &path);
+	r = sc_select_file(card, &path, &file);
 	if (r < 0)
-		return SC_ERROR_INTERNAL;
+		goto failed;
+
+	/* If DO 7F21 holds data, we declare a cert object for pkcs15 */
+	if (file->size > 0) {
+		struct sc_pkcs15_cert_info cert_info;
+		struct sc_pkcs15_object    cert_obj;
+
+		memset(&cert_info, 0, sizeof(cert_info));
+		memset(&cert_obj,  0, sizeof(cert_obj));
+
+		/* Certificate ID. We use the same ID as the authentication key */
+		cert_info.id.value[0] = 3;
+		cert_info.id.len = 1;
+		/* Authority, flag is zero */
+		/* The path following which PKCS15 will find the content of the object */
+		sc_format_path("3F007F21", &cert_info.path);
+		/* Object label */
+		strlcpy(cert_obj.label, "Cardholder certificate", sizeof(cert_obj.label));
+
+		r = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
+		if (r < 0)
+			goto failed;
+	}
 
 	return 0;
 

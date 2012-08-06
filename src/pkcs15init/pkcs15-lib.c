@@ -145,6 +145,7 @@ static struct profile_operations {
 	{ "jcop", (void *) sc_pkcs15init_get_jcop_ops },
 	{ "starcos", (void *) sc_pkcs15init_get_starcos_ops },
 	{ "oberthur", (void *) sc_pkcs15init_get_oberthur_ops },
+	{ "openpgp", (void *) sc_pkcs15init_get_openpgp_ops },
 	{ "setcos", (void *) sc_pkcs15init_get_setcos_ops },
 	{ "incrypto34", (void *) sc_pkcs15init_get_incrypto34_ops },
 	{ "muscle", (void*) sc_pkcs15init_get_muscle_ops },
@@ -379,23 +380,26 @@ sc_pkcs15init_bind(struct sc_card *card, const char *name, const char *profile_o
 	if (app_info && app_info->aid.len)   {
 		struct sc_path path;
 
-		if (card->ef_atr->aid.len)   {
-			sc_log(ctx, "sc_pkcs15init_bind() select MF");
+		if (card->ef_atr && card->ef_atr->aid.len)   {
+			sc_log(ctx, "sc_pkcs15init_bind() select MF using EF.ATR data");
 			memset(&path, 0, sizeof(struct sc_path));
 			path.type = SC_PATH_TYPE_DF_NAME;
 			path.aid = card->ef_atr->aid;
 			r = sc_select_file(card, &path, NULL);
-			sc_log(ctx, "rv %i", r);
 			if (r)
 				return r;
 		}
 
-		sc_log(ctx, "sc_pkcs15init_bind() select application DF");
-		memset(&path, 0, sizeof(struct sc_path));
-		path.type = SC_PATH_TYPE_DF_NAME;
-		path.aid = app_info->aid;
+		if (app_info->path.len)   {
+			path = app_info->path;
+		}
+		else   {
+			memset(&path, 0, sizeof(struct sc_path));
+			path.type = SC_PATH_TYPE_DF_NAME;
+			path.aid = app_info->aid;
+		}
+		sc_log(ctx, "sc_pkcs15init_bind() select application path(type:%X) '%s'", path.type, sc_print_path(&path));
 		r = sc_select_file(card, &path, NULL);
-		sc_log(ctx, "sc_pkcs15init_bind() select application DF returned %i", r);
 	}
 
 	*result = profile;
@@ -2534,6 +2538,7 @@ sc_pkcs15init_update_tokeninfo(struct sc_pkcs15_card *p15card, struct sc_profile
 	size_t		size;
 	int		r;
 
+	LOG_FUNC_CALLED(p15card->card->ctx);
 	/* set lastUpdate field */
 	if (p15card->tokeninfo->last_update.gtime != NULL)
 		free(p15card->tokeninfo->last_update.gtime);
@@ -2551,7 +2556,7 @@ sc_pkcs15init_update_tokeninfo(struct sc_pkcs15_card *p15card, struct sc_profile
 		r = sc_pkcs15init_update_file(profile, p15card, p15card->file_tokeninfo, buf, size);
 	if (buf)
 		free(buf);
-	return r;
+	LOG_FUNC_RETURN(p15card->card->ctx, r);
 }
 
 

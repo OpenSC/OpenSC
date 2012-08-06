@@ -308,13 +308,11 @@ static const char *find_library(sc_context_t *ctx, const char *name)
 			continue;
 		libname = scconf_get_str(blk, "module", name);
 #ifdef _WIN32
-		if (libname && libname[0] != '\\' ) {
+		if (libname && libname[0] != '\\' )
 #else
-		if (libname && libname[0] != '/' ) {
+		if (libname && libname[0] != '/' )
 #endif
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "warning: relative path to driver '%s' used",
-				 libname);
-		}
+			sc_log(ctx, "warning: relative path to driver '%s' used", libname);
 		break;
 	}
 
@@ -338,7 +336,7 @@ static void *load_dynamic_driver(sc_context_t *ctx, void **dll, const char *name
 	const char *(**tmodv)(void) = &modversion;
 
 	if (name == NULL) { /* should not occurr, but... */
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL,"No module specified",name);
+		sc_log(ctx, "No module specified", name);
 		return NULL;
 	}
 	libname = find_library(ctx, name);
@@ -346,7 +344,7 @@ static void *load_dynamic_driver(sc_context_t *ctx, void **dll, const char *name
 		return NULL;
 	handle = sc_dlopen(libname);
 	if (handle == NULL) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Module %s: cannot load %s library: %s", name, libname, sc_dlerror());
+		sc_log(ctx, "Module %s: cannot load %s library: %s", name, libname, sc_dlerror());
 		return NULL;
 	}
 
@@ -354,7 +352,7 @@ static void *load_dynamic_driver(sc_context_t *ctx, void **dll, const char *name
 	*(void **)tmodi = sc_dlsym(handle, "sc_module_init");
 	*(void **)tmodv = sc_dlsym(handle, "sc_driver_version");
 	if (modinit == NULL || modversion == NULL) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "dynamic library '%s' is not a OpenSC module",libname);
+		sc_log(ctx, "dynamic library '%s' is not a OpenSC module",libname);
 		sc_dlclose(handle);
 		return NULL;
 	}
@@ -362,12 +360,13 @@ static void *load_dynamic_driver(sc_context_t *ctx, void **dll, const char *name
 	version = modversion();
 	/* XXX: We really need to have ABI version for each interface */
 	if (version == NULL || strncmp(version, PACKAGE_VERSION, strlen(PACKAGE_VERSION)) != 0) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL,"dynamic library '%s': invalid module version",libname);
+		sc_log(ctx, "dynamic library '%s': invalid module version", libname);
 		sc_dlclose(handle);
 		return NULL;
 	}
-	*dll = handle;
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "successfully loaded card driver '%s'", name);
+	if (dll)
+		*dll = handle;
+	sc_log(ctx, "successfully loaded card driver '%s'", name);
 	return modinit(name);
 }
 
@@ -378,9 +377,8 @@ static int load_card_driver_options(sc_context_t *ctx,
 	int i;
 
 	for (i = 0; ctx->conf_blocks[i]; i++) {
-		blocks = scconf_find_blocks(ctx->conf,
-					ctx->conf_blocks[i],
-					"card_driver", driver->short_name);
+		blocks = scconf_find_blocks(ctx->conf, ctx->conf_blocks[i],
+				"card_driver", driver->short_name);
 		if (!blocks)
 			continue;
 		blk = blocks[0];
@@ -420,7 +418,9 @@ static int load_card_drivers(sc_context_t *ctx,
 			*(void **)(tfunc) = load_dynamic_driver(ctx, &dll, ent->name);
 		/* if still null, assume driver not found */
 		if (func == NULL) {
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Unable to load '%s'.", ent->name);
+			sc_log(ctx, "Unable to load '%s'.", ent->name);
+			if (dll)
+				sc_dlclose(dll);
 			continue;
 		}
 
@@ -487,19 +487,18 @@ static int load_card_atrs(sc_context_t *ctx)
 			t.type = scconf_get_int(b, "type", SC_CARD_TYPE_UNKNOWN);
 			list = scconf_find_list(b, "flags");
 			while (list != NULL) {
-				unsigned int flags;
+				unsigned int flags = 0;
 
 				if (!list->data) {
 					list = list->next;
 					continue;
 				}
-				flags = 0;
-				if (!strcmp(list->data, "rng")) {
+
+				if (!strcmp(list->data, "rng"))
 					flags = SC_CARD_FLAG_RNG;
-				} else {
-					if (sscanf(list->data, "%x", &flags) != 1)
-						flags = 0;
-				}
+				else if (sscanf(list->data, "%x", &flags) != 1)
+					flags = 0;
+
 				t.flags |= flags;
 				list = list->next;
 			}
@@ -549,7 +548,7 @@ static void process_config_file(sc_context_t *ctx, struct _sc_ctx_options *opts)
 	}
 
 	if (!conf_path) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "process_config_file doesn't find opensc config file. Please set the registry key.");
+		sc_log(ctx, "process_config_file doesn't find opensc config file. Please set the registry key.");
 		return;
 	}
 
@@ -572,9 +571,9 @@ static void process_config_file(sc_context_t *ctx, struct _sc_ctx_options *opts)
 		 * there, which is not an error. Nevertheless log this
 		 * fact. */
 		if (r < 0)
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "scconf_parse failed: %s", ctx->conf->errmsg);
+			sc_log(ctx, "scconf_parse failed: %s", ctx->conf->errmsg);
 		else
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "scconf_parse failed: %s", ctx->conf->errmsg);
+			sc_log(ctx, "scconf_parse failed: %s", ctx->conf->errmsg);
 		scconf_free(ctx->conf);
 		ctx->conf = NULL;
 		return;
@@ -695,8 +694,8 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 	}
 
 	process_config_file(ctx, &opts);
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "==================================="); /* first thing in the log */
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "opensc version: %s", sc_get_version());
+	sc_log(ctx, "==================================="); /* first thing in the log */
+	sc_log(ctx, "opensc version: %s", sc_get_version());
 
 #ifdef ENABLE_PCSC
 	ctx->reader_driver = sc_get_pcsc_driver();
@@ -786,7 +785,7 @@ int sc_release_context(sc_context_t *ctx)
 	if (ctx->mutex != NULL) {
 		int r = sc_mutex_destroy(ctx, ctx->mutex);
 		if (r != SC_SUCCESS) {
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "unable to destroy mutex");
+			sc_log(ctx, "unable to destroy mutex");
 			return r;
 		}
 	}
@@ -873,9 +872,9 @@ int sc_make_cache_dir(sc_context_t *ctx)
 		if (mkdir(dirname, 0700) >= 0)
 #endif
 			break;
-		if (errno != ENOENT
-		 || (sp = strrchr(dirname, '/')) == NULL
-		 || sp == dirname)
+
+		if (errno != ENOENT || (sp = strrchr(dirname, '/')) == NULL
+				|| sp == dirname)
 			goto failed;
 		*sp = '\0';
 	}
@@ -897,6 +896,7 @@ int sc_make_cache_dir(sc_context_t *ctx)
 	return SC_SUCCESS;
 
 	/* for lack of a better return code */
-failed:	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "failed to create cache directory");
+failed:
+	sc_log(ctx, "failed to create cache directory");
 	return SC_ERROR_INTERNAL;
 }

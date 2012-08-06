@@ -811,10 +811,14 @@ static int read_ssh_key(void)
 	}
 
 	if (r == SC_ERROR_OBJECT_NOT_FOUND) {
+		if (outf != stdout)
+			fclose(outf);
 		fprintf(stderr, "Public key with ID '%s' not found.\n", opt_pubkey);
 		return 2;
 	}
 	if (r < 0) {
+		if (outf != stdout)
+			fclose(outf);
 		fprintf(stderr, "Public key enumeration failed: %s\n", sc_strerror(r));
 		return 1;
 	}
