@@ -27,7 +27,7 @@ New in 0.13.0; 2012-08-05
 * Support of PACE reader.
 * Remove libltdl reference.
 * New usefull commands in 'opensc-explorer' tool: 'find', 'put-data', ...
-* fixes for the number of documentation ussues
+* fixes for the number of documentation issues
 
 New in 0.12.2; 2011-07-15
 * Builds are now silent by default when OpenSC is built from source on Unix.
