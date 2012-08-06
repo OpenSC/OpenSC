@@ -109,26 +109,26 @@ static int sc_hsm_read_binary(sc_card_t *card,
 	apdu.resp = recvbuf;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(ctx, r, "APDU transmit failed");
 	if (apdu.resplen == 0)
-		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
+		LOG_FUNC_RETURN(ctx, sc_check_sw(card, apdu.sw1, apdu.sw2));
 	memcpy(buf, recvbuf, apdu.resplen);
 
 	r =  sc_check_sw(card, apdu.sw1, apdu.sw2);
 	if (r == SC_ERROR_FILE_END_REACHED)
-		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, apdu.resplen);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Check SW error");
+		LOG_FUNC_RETURN(ctx, apdu.resplen);
+	LOG_TEST_RET(ctx, r, "Check SW error");
 
 	if (apdu.resplen < count)   {
 		r = sc_hsm_read_binary(card, idx + apdu.resplen, buf + apdu.resplen, count - apdu.resplen, flags);
 		/* Ignore all but 'corrupted data' errors */
 		if (r == SC_ERROR_CORRUPTED_DATA)
-			SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_CORRUPTED_DATA);
+			LOG_FUNC_RETURN(ctx, SC_ERROR_CORRUPTED_DATA);
 		else if (r > 0)
 			apdu.resplen += r;
 	}
 
-	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, apdu.resplen);
+	LOG_FUNC_RETURN(ctx, apdu.resplen);
 }
 
 
@@ -145,11 +145,11 @@ static int sc_hsm_list_files(sc_card_t *card, u8 * buf, size_t buflen)
 	apdu.resplen = sizeof(recvbuf);
 	apdu.le = 0;
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "ENUMERATE OBJECTS APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "ENUMERATE OBJECTS APDU transmit failed");
 
 	memcpy(buf, recvbuf, buflen);
 
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, apdu.resplen);
+	LOG_FUNC_RETURN(card->ctx, apdu.resplen);
 }
 
 
@@ -170,7 +170,7 @@ static int sc_hsm_set_security_env(sc_card_t *card,
 //			} else if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA256) {
 //				priv->algorithm = ALGO_RSA_PKCS1_SHA256;
 //			} else {
-//				SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
+//				LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 //			}
 //		} else {
 			priv->algorithm = ALGO_RSA_RAW;
@@ -188,13 +188,13 @@ static int sc_hsm_set_security_env(sc_card_t *card,
 		} else if (env->algorithm_flags & SC_ALGORITHM_ECDSA_RAW) {
 			priv->algorithm = ALGO_EC_RAW;
 		} else {
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 		}
 		break;
 	default:
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
 
@@ -212,7 +212,7 @@ static int sc_hsm_compute_signature(sc_card_t *card,
 	assert(card != NULL && data != NULL && out != NULL);
 
 	if (priv->env == NULL) {
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_OBJECT_NOT_FOUND);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OBJECT_NOT_FOUND);
 	}
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4, 0x68, priv->env->key_ref[0], priv->algorithm);
@@ -226,14 +226,14 @@ static int sc_hsm_compute_signature(sc_card_t *card,
 	apdu.lc = datalen;
 	apdu.datalen = datalen;
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 		size_t len = apdu.resplen > outlen ? outlen : apdu.resplen;
 
 		memcpy(out, apdu.resp, len);
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, len);
+		LOG_FUNC_RETURN(card->ctx, len);
 	}
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
+	LOG_FUNC_RETURN(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
 
 
@@ -245,7 +245,7 @@ static int sc_hsm_decipher(sc_card_t *card, const u8 * crgram, size_t crgram_len
 	sc_hsm_private_data_t *priv = (sc_hsm_private_data_t *) card->drv_data;
 
 	assert(card != NULL && crgram != NULL && out != NULL);
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(card->ctx);
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4, 0x62, priv->env->key_ref[0], 0x21);
 	apdu.cla = 0x80;
@@ -262,11 +262,11 @@ static int sc_hsm_decipher(sc_card_t *card, const u8 * crgram, size_t crgram_len
 
 	r = sc_transmit_apdu(card, &apdu);
 
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, apdu.resplen);
+		LOG_FUNC_RETURN(card->ctx, apdu.resplen);
 	else
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
+		LOG_FUNC_RETURN(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
 
 
@@ -276,11 +276,11 @@ static int sc_hsm_init(struct sc_card *card)
 	sc_hsm_private_data_t *priv;
 	int flags,ext_flags;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+	LOG_FUNC_CALLED(card->ctx);
 
 	priv = calloc(1, sizeof(sc_hsm_private_data_t));
 	if (!priv)
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 
 	card->drv_data = priv;
 
