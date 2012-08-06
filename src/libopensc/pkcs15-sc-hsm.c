@@ -46,16 +46,27 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 	u8 filelist[MAX_EXT_APDU_LENGTH];
 	int filelistlength;
 	int r, i;
+	struct sc_app_info *appinfo;
+	struct sc_pkcs15_auth_info pin_info;
+	struct sc_pkcs15_object pin_obj;
+	struct sc_pkcs15_cert_info cert_info;
+	struct sc_pkcs15_object cert_obj;
+	u8 fid[2];
+	u8 prkdbin[512];
+	sc_pkcs15_object_t prkd;
+	u8 keyid;
+	u8 *ptr;
+	size_t len;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+	LOG_FUNC_CALLED(card->ctx);
 
 	p15card->tokeninfo->label = strdup("SmartCard-HSM");
 	p15card->tokeninfo->manufacturer_id = strdup("CardContact");
 
-	struct sc_app_info *appinfo = calloc(1, sizeof(struct sc_app_info));
+	appinfo = calloc(1, sizeof(struct sc_app_info));
 
 	if (appinfo == NULL) {
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 	}
 
 	appinfo->label = strdup(p15card->tokeninfo->label);
@@ -70,11 +81,7 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 	// ToDo: Extract version number
 	sc_file_free(file);
 
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Could not select SmartCard-HSM application");
-
-	// Define UserPIN
-	struct sc_pkcs15_auth_info pin_info;
-	struct sc_pkcs15_object pin_obj;
+	LOG_TEST_RET(card->ctx, r, "Could not select SmartCard-HSM application");
 
 	memset(&pin_info, 0, sizeof(pin_info));
 	memset(&pin_obj, 0, sizeof(pin_obj));
@@ -97,10 +104,10 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 
 	r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
 	if (r < 0)
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+		LOG_FUNC_RETURN(card->ctx, r);
 
 	filelistlength = sc_list_files(card, filelist, sizeof(filelist));
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Could not enumerate file and key identifier");
+	LOG_TEST_RET(card->ctx, r, "Could not enumerate file and key identifier");
 
 	for (i = 0; i < filelistlength; i += 2) {
 		/* Look for private key files */
@@ -108,10 +115,7 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 			continue;
 		}
 
-		u8 fid[2];
-		u8 prkdbin[512];
-		sc_pkcs15_object_t prkd;
-		u8 keyid = filelist[i + 1];
+		keyid = filelist[i + 1];
 
 		fid[0] = PRKD_PREFIX;
 		fid[1] = keyid;
@@ -126,13 +130,13 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 
 		sc_file_free(file);
 		r = sc_read_binary(p15card->card, 0, prkdbin, sizeof(prkdbin), 0);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Could not read EF.PRKD");
+		LOG_TEST_RET(card->ctx, r, "Could not read EF.PRKD");
 
 		memset(&prkd, 0, sizeof(prkd));
-		const u8 *ptr = prkdbin;
-		size_t len = r;
+		ptr = prkdbin;
+		len = r;
 
-		sc_pkcs15_decode_prkdf_entry(p15card, &prkd, &ptr, &len);
+		sc_pkcs15_decode_prkdf_entry(p15card, &prkd, (const u8 **)&ptr, &len);
 
 		/* All keys require user PIN authentication */
 		prkd.auth_id.len = 1;
@@ -156,7 +160,7 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 		} else {
 			r = sc_pkcs15emu_add_ec_prkey(p15card, &prkd, key_info);
 		}
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Could not decode EF.PRKD");
+		LOG_TEST_RET(card->ctx, r, "Could not decode EF.PRKD");
 
 		/* Check if we also have a certificate for the private key */
 		fid[0] = EE_CERTIFICATE_PREFIX;
@@ -170,9 +174,6 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 
 		sc_file_free(file);
 
-		struct sc_pkcs15_cert_info cert_info;
-		struct sc_pkcs15_object cert_obj;
-
 		memset(&cert_info, 0, sizeof(cert_info));
 		memset(&cert_obj, 0, sizeof(cert_obj));
 
@@ -183,10 +184,10 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 
 		strlcpy(cert_obj.label, prkd.label, sizeof(cert_obj.label));
 		r = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Could not add certificate");
+		LOG_TEST_RET(card->ctx, r, "Could not add certificate");
 	}
 
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
 
