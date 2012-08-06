@@ -26,8 +26,8 @@ New in 0.13.0; 2012-08-05
            support GOSTR3410 generate key mechanism
 * Support of PACE reader.
 * Remove libltdl reference.
-* New usefull commands in 'opensc-explorer' tool: 'find', 'put-data', ...
-* fixes for the number of documentation ussues
+* New useful commands in 'opensc-explorer' tool: 'find', 'put-data', ...
+* fixes for the number of documentation issues
 
 New in 0.12.2; 2011-07-15
 * Builds are now silent by default when OpenSC is built from source on Unix.
@@ -73,7 +73,7 @@ New in 0.12.0; 2010-12-22
 * pkcs11-tool can use a slot based on ID, label or index in the slot list.
 * PIN flags are updated from supported cards when C_GetTokenInfo is called.
 * Support for CardOS 4.4 cards added.
-* Fature to exclude readers from OpenSC PKCS#11 via "ignored_readers"
+* Feature to exclude readers from OpenSC PKCS#11 via "ignored_readers"
   configuration file entry.
 * #229: Support semi-automatic fixes to cards personalized with older and
   broken OpenSC versions.
@@ -123,7 +123,7 @@ New in 0.11.8; 2009-05-07; Andreas Jellinghaus
 * Fix security problem in pkcs11-tool gen_keypair (PublicExponent 1)
 * fix compiling without openssl.
 * updated and improve entersafe driver. FTCOS/PK-01C cards are supported
-  now, compatible with cards writen by Feitian's software on windows.
+  now, compatible with cards written by Feitian's software on windows.
 
 New in 0.11.7; 2009-02-26; Andreas Jellinghaus
 * hide_empty_slots now on by default? small logic change?
@@ -153,7 +153,7 @@ New in 0.11.5; 2008-07-31; Andreas Jellinghaus
 * PKCS#11 provider is now installed at LIBDIR/pkcs11
 * PKCS#11 - Number of virtual slots moved into configuration.
 * PKCS#11 - Fix fork() compliance.
-* make sign_with_decrypt hack configureable for siemens cards.
+* make sign_with_decrypt hack configurable for Siemens cards.
 
 New in 0.11.4; 2007-09-10; Andreas Jellinghaus
 * Drop AC_LIB_LINKFLAGS for libltdl and aclocal/lib* files.
@@ -173,7 +173,7 @@ New in 0.11.3; 2007-07-11; Andreas Jellinghaus
 * avoid variable names used also as glibc function (random etc.).
 * new code for deleting objects.
 * special hack for firefox.
-* suport for Athena APCOS cards added.
+* support for Athena APCOS cards added.
 * piv driver now supports bigger rsa keys too.
 
 New in 0.11.2; 2007-05-04; Andreas Jellinghaus
@@ -207,10 +207,10 @@ New in 0.11.0; 2006-05-01; Andreas Jellinghaus
 * remove old and outdated documentation
 * use "%lu" format for printf of size_t
 * add piv driver and tool by Douglas E. Engert
-* new threadding code in pkcs11 module
+* new threading code in pkcs11 module
 * renamed "etoken" driver to "cardos", as it really is a generic
   driver for Siemens CardOS M4, including but not limited to Aladdin eTokens.
-* add code to maange unused space
+* add code to manage unused space
 * support for swedish nidel cards
 
 New in 0.10.1; 2006-01-08; Andreas Jellinghaus
@@ -226,7 +226,7 @@ New in 0.10.1; 2006-01-08; Andreas Jellinghaus
 
 New in 0.10.0; 2005-10-31; Andreas Jellinghaus
 * released rc2 without changes.
-* Add more documentation, fix man page installtion.
+* Add more documentation, fix man page installation.
 * New generic ATR/card matching code with
   atrmask support, used by all card drivers.
 * Much improved and unified ATR handling in
@@ -264,7 +264,7 @@ New in 0.9.5; 2005-01-11; Andreas Jellinghaus:
   and we hope it doesn't break any other system. Feedback is very welcome.
 * The flags object attribute changed to a bitfield.
 * Many small bugfixes, including memory leaks.
-* Changes to the etoken and gpk profiles to eleminate overlapping file ids.
+* Changes to the etoken and gpk profiles to eliminate overlapping file ids.
 * pinpad code by Martin Paljak
 * add user_consent parameter to pkcs15emu add object/add prkey functions.
 * estid provide user_consent parameter.
@@ -301,7 +301,7 @@ New in 0.9.2; 2004-07-24; Andreas Jellinghaus:
 
 New in 0.8.1; 2003-09-30; Olaf Kirch:
 * Upgrade libopensc versioning, hasn't been
-  accidently upgraded since 0.6.0 release
+  accidentally upgraded since 0.6.0 release
 * MacOS X specific changes:
   - Allow to compile without PC/SC support
   - Bundle installation fixes

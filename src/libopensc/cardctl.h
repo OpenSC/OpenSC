@@ -21,6 +21,7 @@
 #ifndef _OPENSC_CARDCTL_H
 #define _OPENSC_CARDCTL_H
 
+#include <time.h>
 #include "libopensc/types.h"
 
 #ifdef __cplusplus
