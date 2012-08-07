@@ -3,6 +3,32 @@ NEWS for OpenSC -- History of user visible changes
 Complete change history is available online:
 http://www.opensc-project.org/opensc/timeline
 
+New in 0.13.0; 2012-08-05
+* New card driver ePass2003.
+* OpenPGP card:
+  greatly improved card driver and PKCS#15 emulation;
+  implemented write (pkcs15init) mode;
+  greatly enhanced documentation and tools.
+* ECDSA keys supported in 'read' and 'write' modes by
+  internal PKCS#15 library, PKCS#11 and tools.
+* Minidriver in 'write' mode.
+* SM: secure messaging in GlobalPlatform-SP01 and CW14890 specifications;
+      supported by ePass2003, IAS/ECC and AuthentIC cards;
+      "ACL" and "APDU" modes to trigger secure messaging session;
+      'local' version of the external secure messaging module.
+* PKCS#15: support of 'secret-key' PKCS#15 objects
+           support of 'authentication-object' PKCS#15 objects
+           support of 'algReference' common key PKCS#15 attribute
+           support of 'algReference' common key PKCS#15 attribute
+           support of 'subjectName' common public key PKCS#15 attribute
+* PKCS#11: removed 'onepin' version of pkcs#11 module
+           configuration options to expose slots for PINs and present on-card applications.
+           support GOSTR3410 generate key mechanism
+* Support of PACE reader.
+* Remove libltdl reference.
+* New usefull commands in 'opensc-explorer' tool: 'find', 'put-data', ...
+* fixes for the number of documentation ussues
+
 New in 0.12.2; 2011-07-15
 * Builds are now silent by default when OpenSC is built from source on Unix.
 * Using --wait with command line tools works with 64bit Linux again.
