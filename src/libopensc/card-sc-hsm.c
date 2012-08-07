@@ -164,17 +164,17 @@ static int sc_hsm_set_security_env(sc_card_t *card,
 
 	switch(env->algorithm) {
 	case SC_ALGORITHM_RSA:
-//		if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1) {
-//			if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA1) {
-//				priv->algorithm = ALGO_RSA_PKCS1_SHA1;
-//			} else if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA256) {
-//				priv->algorithm = ALGO_RSA_PKCS1_SHA256;
-//			} else {
-//				LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
-//			}
-//		} else {
+		if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1) {
+			if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA1) {
+				priv->algorithm = ALGO_RSA_PKCS1_SHA1;
+			} else if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA256) {
+				priv->algorithm = ALGO_RSA_PKCS1_SHA256;
+			} else {
+				priv->algorithm = ALGO_RSA_PKCS1;
+			}
+		} else {
 			priv->algorithm = ALGO_RSA_RAW;
-//		}
+		}
 		break;
 	case SC_ALGORITHM_EC:
 		if (env->algorithm_flags & SC_ALGORITHM_ECDSA_HASH_NONE) {
@@ -193,6 +193,7 @@ static int sc_hsm_set_security_env(sc_card_t *card,
 		break;
 	default:
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+		break;
 	}
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
@@ -285,6 +286,7 @@ static int sc_hsm_init(struct sc_card *card)
 	card->drv_data = priv;
 
 	flags = SC_ALGORITHM_RSA_RAW;
+//	flags = SC_ALGORITHM_RSA_RAW|
 //			SC_ALGORITHM_RSA_PAD_PKCS1|
 //			SC_ALGORITHM_RSA_HASH_SHA1|
 //			SC_ALGORITHM_RSA_HASH_SHA256;
@@ -293,15 +295,8 @@ static int sc_hsm_init(struct sc_card *card)
 	_sc_card_add_rsa_alg(card, 1536, flags, 0);
 	_sc_card_add_rsa_alg(card, 2048, flags, 0);
 
-#if 0
 	flags = SC_ALGORITHM_ECDSA_RAW|
 		SC_ALGORITHM_ECDSA_HASH_NONE|
-		SC_ALGORITHM_ECDSA_HASH_SHA1|
-		SC_ALGORITHM_ECDSA_HASH_SHA224|
-		SC_ALGORITHM_ECDSA_HASH_SHA256;
-#endif
-
-	flags = SC_ALGORITHM_ECDSA_HASH_NONE|
 		SC_ALGORITHM_ECDSA_HASH_SHA1|
 		SC_ALGORITHM_ECDSA_HASH_SHA224|
 		SC_ALGORITHM_ECDSA_HASH_SHA256;

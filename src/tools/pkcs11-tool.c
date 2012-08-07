@@ -3341,6 +3341,14 @@ static int test_signature(CK_SESSION_HANDLE sess)
 		return errors;
 	}
 
+	// ASC: The firstMechType mechanism is broken for cards that support multiple
+	// key types. find_mechanism always selects ECDSA, leading to a failure later.
+	// This hack ensures that ECDSA is never selected as firstMechType
+
+	if (firstMechType == CKM_ECDSA) {
+		firstMechType = CKM_RSA_X_509;
+	}
+
 	printf("Signatures (currently only RSA signatures)\n");
 	for (j = 0; find_object(sess, CKO_PRIVATE_KEY, &privKeyObject, NULL, 0, j); j++) {
 		printf("  testing key %ld ", j);
