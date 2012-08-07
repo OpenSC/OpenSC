@@ -487,6 +487,10 @@ sc_single_sm_transmit(struct sc_card *card, struct sc_apdu *apdu)
 	}
 	LOG_TEST_RET(ctx, rv, "get SM APDU error");
 
+	/* determine the APDU type if necessary, i.e. to use
+	 * short or extended APDUs  */
+	sc_detect_apdu_cse(card, &sm_apdu);
+
 	/* check if SM APDU is still valid */
 	rv = sc_check_apdu(card, &sm_apdu);
 	if (rv < 0)   {
