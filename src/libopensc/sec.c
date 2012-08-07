@@ -285,7 +285,7 @@ int sc_perform_pace(sc_card_t *card,
         struct establish_pace_channel_output *pace_output)
 {
     int r = SC_ERROR_NOT_SUPPORTED;
-    u8 buf[0xffff];
+    char buf[0xffff];
 
     assert(card != NULL && pace_input != NULL && pace_output != NULL);
     SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
