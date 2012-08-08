@@ -48,25 +48,27 @@ static int
 sm_oberthur_diversify_keyset(struct sc_context *ctx, struct sm_info *sm_info,
 		unsigned char *idata, size_t idata_len)
 {
-	struct sm_secure_channel *schannel = &sm_info->schannel;
-	struct sm_gp_keyset *keyset = &schannel->keyset.gp;
+	struct sm_gp_session *gp_session = &sm_info->session.gp;
+	struct sm_gp_keyset *gp_keyset = &sm_info->session.gp.gp_keyset;
 	unsigned char master_key[16] = {
 		0x10,0x11,0x12,0x13,0x14,0x15,0x16,0x17,0x18,0x19,0x1A,0x1B,0x1C,0x1D,0x1E,0x1F,
 	};
 	unsigned char *keys[3] = {
-		keyset->enc,keyset->mac,keyset->kek
+		gp_keyset->enc,
+		gp_keyset->mac,
+		gp_keyset->kek
 	};
 	unsigned char key_buff[16];
-    	unsigned char *tmp;
+	unsigned char *tmp;
 	int rv = 0, ii, tmp_len;
 
-	if (keyset->kmc_len == 48)   {
+	if (gp_keyset->kmc_len == 48)   {
 		for (ii=0; ii<3; ii++)
-			memcpy(keys[ii], keyset->kmc + 16*ii, 16);
+			memcpy(keys[ii], gp_keyset->kmc + 16*ii, 16);
 	}
-	else if (keyset->kmc_len == 16 || keyset->kmc_len == 0)   {
-		if (keyset->kmc_len == 16)
-			memcpy(master_key, keyset->kmc, 16);
+	else if (gp_keyset->kmc_len == 16 || gp_keyset->kmc_len == 0)   {
+		if (gp_keyset->kmc_len == 16)
+			memcpy(master_key, gp_keyset->kmc, 16);
 		sc_log(ctx, "KMC: %s", sc_dump_hex(master_key, sizeof(master_key)));
 		for (ii=0; ii<3; ii++)   {
 			key_buff[0] = key_buff[8] = 0;
@@ -83,7 +85,7 @@ sm_oberthur_diversify_keyset(struct sc_context *ctx, struct sm_info *sm_info,
 			rv = sm_encrypt_des_ecb3(master_key, key_buff, sizeof(key_buff), &tmp, &tmp_len);
 			LOG_TEST_RET(ctx, rv, "GP init session: cannot derivate key");
 
-			memcpy(keys[ii], tmp, sizeof(keyset->enc));
+			memcpy(keys[ii], tmp, sizeof(gp_keyset->enc));
 			free(tmp);
 		}
 	}
@@ -95,20 +97,20 @@ sm_oberthur_diversify_keyset(struct sc_context *ctx, struct sm_info *sm_info,
 		char dump_buf[2048];
 
 		sc_hex_dump(ctx, SC_LOG_DEBUG_NORMAL,
-				schannel->card_challenge, sizeof(schannel->card_challenge), dump_buf, sizeof(dump_buf));
+				gp_session->card_challenge, sizeof(gp_session->card_challenge), dump_buf, sizeof(dump_buf));
 		sc_log(ctx, "Card challenge: %s", dump_buf);
 
 		sc_hex_dump(ctx, SC_LOG_DEBUG_NORMAL,
-				schannel->host_challenge, sizeof(schannel->host_challenge), dump_buf, sizeof(dump_buf));
+				gp_session->host_challenge, sizeof(gp_session->host_challenge), dump_buf, sizeof(dump_buf));
 		sc_log(ctx, "Host challenge: %s", dump_buf);
 
-		sc_hex_dump(ctx, SC_LOG_DEBUG_NORMAL, keyset->enc, sizeof(keyset->enc), dump_buf, sizeof(dump_buf));
+		sc_hex_dump(ctx, SC_LOG_DEBUG_NORMAL, gp_keyset->enc, sizeof(gp_keyset->enc), dump_buf, sizeof(dump_buf));
 		sc_log(ctx, "ENC: %s", dump_buf);
 
-		sc_hex_dump(ctx, SC_LOG_DEBUG_NORMAL, keyset->mac, sizeof(keyset->mac), dump_buf, sizeof(dump_buf));
+		sc_hex_dump(ctx, SC_LOG_DEBUG_NORMAL, gp_keyset->mac, sizeof(gp_keyset->mac), dump_buf, sizeof(dump_buf));
 		sc_log(ctx, "MAC: %s", dump_buf);
 
-		sc_hex_dump(ctx, SC_LOG_DEBUG_NORMAL, keyset->kek, sizeof(keyset->kek), dump_buf, sizeof(dump_buf));
+		sc_hex_dump(ctx, SC_LOG_DEBUG_NORMAL, gp_keyset->kek, sizeof(gp_keyset->kek), dump_buf, sizeof(dump_buf));
 		sc_log(ctx, "KEK: %s", dump_buf);
 	}
 
@@ -328,7 +330,7 @@ sm_authentic_get_apdus(struct sc_context *ctx, struct sm_info *sm_info,
 		rv = sm_authentic_get_apdu_release(ctx, sm_info, init_data, init_len, out, out_num);
 		LOG_TEST_RET(ctx, rv, "SM get APDUs: add 'release' failed");
 
-		sm_gp_close_session(ctx, &sm_info->schannel);
+		sm_gp_close_session(ctx, &sm_info->session.gp);
 	}
 #endif
 	LOG_FUNC_RETURN(ctx, rv);

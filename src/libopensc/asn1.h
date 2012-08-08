@@ -111,6 +111,11 @@ int sc_asn1_encode_algorithm_id(struct sc_context *,
 				const struct sc_algorithm_id *, int);
 void sc_asn1_clear_algorithm_id(struct sc_algorithm_id *);
 
+
+/* ASN.1 object encoding functions */
+int sc_asn1_write_element(sc_context_t *ctx, unsigned int tag,
+		const u8 * data, size_t datalen, u8 ** out, size_t * outlen);
+
 #define SC_ASN1_CLASS_MASK		0x30000000
 #define SC_ASN1_UNI			0x00000000 /* Universal */
 #define SC_ASN1_APP			0x10000000 /* Application */

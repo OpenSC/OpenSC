@@ -311,8 +311,7 @@ static struct sc_pkcs15init_operations sc_pkcs15init_openpgp_operations = {
 	NULL				/* sanity_check */
 };
 
-struct sc_pkcs15init_operations *
-sc_pkcs15init_get_openpgp_ops(void)
+struct sc_pkcs15init_operations *sc_pkcs15init_get_openpgp_ops(void)
 {
 	return &sc_pkcs15init_openpgp_operations;
 }

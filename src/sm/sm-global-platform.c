@@ -109,7 +109,7 @@ sm_gp_decode_card_answer(struct sc_context *ctx, struct sc_remote_data *rdata, u
 		sc_format_asn1_entry(asn1_authentic_card_response + 2, &card_data, &card_data_len, 0);
 		sc_format_asn1_entry(asn1_card_response + 0, asn1_authentic_card_response, NULL, 0);
 
-        	rv = sc_asn1_decode(ctx, asn1_card_response, hex + hex_len - len_left, len_left, NULL, &len_left);
+		rv = sc_asn1_decode(ctx, asn1_card_response, hex + hex_len - len_left, len_left, NULL, &len_left);
 		if (rv) {
 			sc_log(ctx, "SM GP decode card answer: ASN.1 parse error: %s", sc_strerror(rv));
 			return rv;
@@ -141,6 +141,8 @@ int
 sm_gp_initialize(struct sc_context *ctx, struct sm_info *sm_info,  struct sc_remote_data *rdata)
 {
 	struct sc_serial_number sn = sm_info->serialnr;
+	struct sm_gp_session *gp_session = &sm_info->session.gp;
+	struct sm_gp_keyset *gp_keyset = &sm_info->session.gp.gp_keyset;
 	struct sc_remote_apdu *new_rapdu = NULL;
 	struct sc_apdu *apdu = NULL;
 	int rv;
@@ -148,7 +150,7 @@ sm_gp_initialize(struct sc_context *ctx, struct sm_info *sm_info,  struct sc_rem
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx, "SM GP initialize: serial:%s", sc_dump_hex(sn.value, sn.len));
 	sc_log(ctx, "SM GP initialize: current_df_path %s", sc_print_path(&sm_info->current_path_df));
-	sc_log(ctx, "SM GP initialize: KMC length %i", sm_info->schannel.keyset.gp.kmc_len);
+	sc_log(ctx, "SM GP initialize: KMC length %i", gp_keyset->kmc_len);
 
 	if (!rdata || !rdata->alloc)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
@@ -157,7 +159,7 @@ sm_gp_initialize(struct sc_context *ctx, struct sm_info *sm_info,  struct sc_rem
 	LOG_TEST_RET(ctx, rv, "SM GP decode card answer: cannot allocate remote APDU");
 	apdu = &new_rapdu->apdu;
 
-	rv = RAND_bytes(sm_info->schannel.host_challenge, SM_SMALL_CHALLENGE_LEN);
+	rv = RAND_bytes(gp_session->host_challenge, SM_SMALL_CHALLENGE_LEN);
 	if (!rv)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_SM_RAND_FAILED);
 
@@ -169,24 +171,24 @@ sm_gp_initialize(struct sc_context *ctx, struct sm_info *sm_info,  struct sc_rem
 	apdu->lc = SM_SMALL_CHALLENGE_LEN;
 	apdu->le = 0x1C;
 	apdu->datalen = SM_SMALL_CHALLENGE_LEN;
-	memcpy(&new_rapdu->sbuf[0], sm_info->schannel.host_challenge, SM_SMALL_CHALLENGE_LEN);
+	memcpy(&new_rapdu->sbuf[0], gp_session->host_challenge, SM_SMALL_CHALLENGE_LEN);
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
 
 static unsigned char *
-sc_gp_get_session_key(struct sc_context *ctx, struct sm_secure_channel *sc,
+sc_gp_get_session_key(struct sc_context *ctx, struct sm_gp_session *gp_session,
 		unsigned char *key)
 {
 	int out_len;
 	unsigned char *out;
 	unsigned char deriv[16];
 
-	memcpy(deriv, 		sc->card_challenge + 4,	4);
-	memcpy(deriv + 4, 	sc->host_challenge, 	4);
-	memcpy(deriv + 8, 	sc->card_challenge, 	4);
-	memcpy(deriv + 12, 	sc->host_challenge + 4,	4);
+	memcpy(deriv,		gp_session->card_challenge + 4,	4);
+	memcpy(deriv + 4,	gp_session->host_challenge,	4);
+	memcpy(deriv + 8,	gp_session->card_challenge,	4);
+	memcpy(deriv + 12,	gp_session->host_challenge + 4,	4);
 
 	if (sm_encrypt_des_ecb3(key, deriv, 16, &out, &out_len))   {
 		if (ctx)
@@ -266,24 +268,27 @@ sm_gp_get_mac(unsigned char *key, DES_cblock *icv,
 
 
 static int
-sm_gp_parse_init_data(struct sc_context *ctx, struct sm_secure_channel *sc,
+sm_gp_parse_init_data(struct sc_context *ctx, struct sm_gp_session *gp_session,
 		unsigned char *init_data, size_t init_len)
 {
+	struct sm_gp_keyset *gp_keyset = &gp_session->gp_keyset;
+
 	if(init_len != 0x1C)
 		return SC_ERROR_INVALID_DATA;
 
-	sc->keyset.gp.version = *(init_data + 10);
-	sc->keyset.gp.index = *(init_data + 11);
-	memcpy(sc->card_challenge, init_data + 12, SM_SMALL_CHALLENGE_LEN);
+	gp_keyset->version = *(init_data + 10);
+	gp_keyset->index = *(init_data + 11);
+	memcpy(gp_session->card_challenge, init_data + 12, SM_SMALL_CHALLENGE_LEN);
 
 	return SC_SUCCESS;
 }
 
 
 static int
-sm_gp_init_session(struct sc_context *ctx, struct sm_secure_channel *sc,
+sm_gp_init_session(struct sc_context *ctx, struct sm_gp_session *gp_session,
 		unsigned char *adata, size_t adata_len)
 {
+	struct sm_gp_keyset *gp_keyset = &gp_session->gp_keyset;
 	unsigned char cksum[8];
 	int rv;
 
@@ -293,19 +298,19 @@ sm_gp_init_session(struct sc_context *ctx, struct sm_secure_channel *sc,
 
 	sc_log(ctx, "SM GP init session: auth.data %s", sc_dump_hex(adata, 8));
 
-	sc->session.gp.session_enc = sc_gp_get_session_key(ctx, sc, sc->keyset.gp.enc);
-	sc->session.gp.session_mac = sc_gp_get_session_key(ctx, sc, sc->keyset.gp.mac);
-	sc->session.gp.session_kek = sc_gp_get_session_key(ctx, sc, sc->keyset.gp.kek);
-	if (!sc->session.gp.session_enc || !sc->session.gp.session_mac || !sc->session.gp.session_kek)
+	gp_session->session_enc = sc_gp_get_session_key(ctx, gp_session, gp_keyset->enc);
+	gp_session->session_mac = sc_gp_get_session_key(ctx, gp_session, gp_keyset->mac);
+	gp_session->session_kek = sc_gp_get_session_key(ctx, gp_session, gp_keyset->kek);
+	if (!gp_session->session_enc || !gp_session->session_mac || !gp_session->session_kek)
 		LOG_TEST_RET(ctx, SC_ERROR_SM_NO_SESSION_KEYS, "SM GP init session: get session keys error");
-	memcpy(sc->session.gp.session_kek, sc->keyset.gp.kek, 16);
+	memcpy(gp_session->session_kek, gp_keyset->kek, 16);
 
-	sc_log(ctx, "SM GP init session: session ENC: %s", sc_dump_hex(sc->session.gp.session_enc, 16));
-	sc_log(ctx, "SM GP init session: session MAC: %s", sc_dump_hex(sc->session.gp.session_mac, 16));
-	sc_log(ctx, "SM GP init session: session KEK: %s", sc_dump_hex(sc->session.gp.session_kek, 16));
+	sc_log(ctx, "SM GP init session: session ENC: %s", sc_dump_hex(gp_session->session_enc, 16));
+	sc_log(ctx, "SM GP init session: session MAC: %s", sc_dump_hex(gp_session->session_mac, 16));
+	sc_log(ctx, "SM GP init session: session KEK: %s", sc_dump_hex(gp_session->session_kek, 16));
 
 	memset(cksum, 0, sizeof(cksum));
-	rv = sm_gp_get_cryptogram(sc->session.gp.session_enc, sc->host_challenge, sc->card_challenge, cksum, sizeof(cksum));
+	rv = sm_gp_get_cryptogram(gp_session->session_enc, gp_session->host_challenge, gp_session->card_challenge, cksum, sizeof(cksum));
 	LOG_TEST_RET(ctx, rv, "SM GP init session: cannot get cryptogram");
 
 	sc_log(ctx, "SM GP init session: cryptogram: %s", sc_dump_hex(cksum, 8));
@@ -318,11 +323,11 @@ sm_gp_init_session(struct sc_context *ctx, struct sm_secure_channel *sc,
 
 
 void
-sm_gp_close_session(struct sc_context *ctx, struct sm_secure_channel *sc)
+sm_gp_close_session(struct sc_context *ctx, struct sm_gp_session *gp_session)
 {
-	free(sc->session.gp.session_enc);
-	free(sc->session.gp.session_mac);
-	free(sc->session.gp.session_kek);
+	free(gp_session->session_enc);
+	free(gp_session->session_mac);
+	free(gp_session->session_kek);
 }
 
 
@@ -336,7 +341,7 @@ sm_gp_external_authentication(struct sc_context *ctx, struct sm_info *sm_info,
 	struct sc_remote_apdu *new_rapdu = NULL;
 	struct sc_apdu *apdu = NULL;
 	unsigned char host_cryptogram[8], raw_apdu[SC_MAX_APDU_BUFFER_SIZE];
-	struct sm_secure_channel *schannel = &sm_info->schannel;
+	struct sm_gp_session *gp_session = &sm_info->session.gp;
 	DES_cblock mac;
 	int rv, idx = 0, offs = 0;
 
@@ -347,7 +352,7 @@ sm_gp_external_authentication(struct sc_context *ctx, struct sm_info *sm_info,
 	if (init_len != 0x1C)
 		LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "SM GP authentication: invalid auth data length");
 
-	rv = sm_gp_parse_init_data(ctx, schannel, init_data, init_len);
+	rv = sm_gp_parse_init_data(ctx, gp_session, init_data, init_len);
 	LOG_TEST_RET(ctx, rv, "SM GP authentication: 'INIT DATA' parse error");
 
 	if (diversify_keyset)   {
@@ -355,10 +360,11 @@ sm_gp_external_authentication(struct sc_context *ctx, struct sm_info *sm_info,
 		LOG_TEST_RET(ctx, rv, "SM GP authentication: keyset diversification error");
 	}
 
-	rv = sm_gp_init_session(ctx, schannel, init_data + 20, 8);
+	rv = sm_gp_init_session(ctx, gp_session, init_data + 20, 8);
 	LOG_TEST_RET(ctx, rv, "SM GP authentication: init session error");
 
-	rv = sm_gp_get_cryptogram(schannel->session.gp.session_enc, schannel->card_challenge, schannel->host_challenge,
+	rv = sm_gp_get_cryptogram(gp_session->session_enc,
+			gp_session->card_challenge, gp_session->host_challenge,
 			host_cryptogram, sizeof(host_cryptogram));
 	LOG_TEST_RET(ctx, rv, "SM GP authentication: get host cryptogram error");
 
@@ -372,19 +378,19 @@ sm_gp_external_authentication(struct sc_context *ctx, struct sm_info *sm_info,
 	apdu->cse = SC_APDU_CASE_3_SHORT;
 	apdu->cla = raw_apdu[offs++] = 0x84;
 	apdu->ins = raw_apdu[offs++] = 0x82;
-	apdu->p1  = raw_apdu[offs++] = sm_info->sm_params.gp.level;
+	apdu->p1  = raw_apdu[offs++] = gp_session->params.level;
 	apdu->p2  = raw_apdu[offs++] = 0;
 	apdu->lc  = raw_apdu[offs++] = 0x10;
 	apdu->datalen = 0x10;
 
 	memcpy(raw_apdu + offs, host_cryptogram, 8);
 	offs += 8;
-	rv = sm_gp_get_mac(schannel->session.gp.session_mac, &schannel->session.gp.mac_icv, raw_apdu, offs, &mac);
+	rv = sm_gp_get_mac(gp_session->session_mac, &gp_session->mac_icv, raw_apdu, offs, &mac);
 	LOG_TEST_RET(ctx, rv, "SM GP authentication: get MAC error");
 
 	memcpy(new_rapdu->sbuf, host_cryptogram, 8);
 	memcpy(new_rapdu->sbuf + 8, mac, 8);
-	memcpy(schannel->session.gp.mac_icv, mac, 8);
+	memcpy(gp_session->mac_icv, mac, 8);
 
 	LOG_FUNC_RETURN(ctx, 1);
 }
@@ -431,9 +437,9 @@ sm_gp_securize_apdu(struct sc_context *ctx, struct sm_info *sm_info,
 {
 	unsigned char  buff[SC_MAX_APDU_BUFFER_SIZE + 24];
 	unsigned char *apdu_data = NULL;
-	unsigned gp_level = sm_info->sm_params.gp.level;
-	unsigned gp_index = sm_info->sm_params.gp.index;
-	struct sm_gp_session *gp_session = &sm_info->schannel.session.gp;
+	struct sm_gp_session *gp_session = &sm_info->session.gp;
+	unsigned gp_level = sm_info->session.gp.params.level;
+	unsigned gp_index = sm_info->session.gp.params.index;
 	DES_cblock mac;
 	unsigned char *encrypted = NULL;
 	size_t encrypted_len = 0;
@@ -508,7 +514,7 @@ sm_gp_securize_apdu(struct sc_context *ctx, struct sm_info *sm_info,
 		free(encrypted);
 	}
 
-	memcpy(sm_info->schannel.session.gp.mac_icv, mac, 8);
+	memcpy(sm_info->session.gp.mac_icv, mac, 8);
 
 	LOG_FUNC_RETURN(ctx, rv);
 }

@@ -1494,7 +1494,7 @@ static int pgp_store_creationtime(sc_card_t *card, u8 key_id, time_t *outtime)
 	int r;
 	time_t createtime = 0;
 	const size_t timestrlen = 64;
-	char timestring[timestrlen + 1];
+	char timestring[65];
 	u8 buf[4];
 
 	LOG_FUNC_CALLED(card->ctx);
@@ -1865,9 +1865,9 @@ pgp_build_tlv(sc_context_t *ctx, unsigned int tag, u8 *data, size_t len, u8 **ou
 	u8 highest_order = 0;
 	u8 cla;
 	int r;
-	r = asn1_write_element(ctx, tag, data, len, out, outlen);
+	r = sc_asn1_write_element(ctx, tag, data, len, out, outlen);
 	LOG_TEST_RET(ctx, r, "Failed to write ASN.1 element");
-	/* Restore class bits stripped by asn1_write_element */
+	/* Restore class bits stripped by sc_asn1_write_element */
 	/* Determine the left most byte of tag, which contains class bits */
 	while (tag >> 8*highest_order) {
 		highest_order++;
@@ -1924,7 +1924,7 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_keystore_info
 	const size_t max_prtem_len = 7*(1 + 3);     /* 7 components */
 	                                            /* 1 for tag name (91, 92... 97)
 	                                             * 3 for storing length */
-	u8 pritemplate[max_prtem_len];
+	u8 pritemplate[7*(1 + 3)];
 	size_t tpl_len = 0;     /* Actual size of pritemplate */
 	/* Concatenation of key data */
 	u8 kdata[3 + 256 + 256 + 512];  /* Exponent is stored in 3 bytes

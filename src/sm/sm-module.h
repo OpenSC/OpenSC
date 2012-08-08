@@ -62,7 +62,7 @@ int sm_gp_securize_apdu(struct sc_context *ctx, struct sm_info *sm_info,
 		char *init_data, struct sc_apdu *apdu);
 int sm_gp_decode_card_answer(struct sc_context *ctx, struct sc_remote_data *rdata,
 		unsigned char *out, size_t out_len);
-void sm_gp_close_session(struct sc_context *ctx, struct sm_secure_channel *sc);
+void sm_gp_close_session(struct sc_context *ctx, struct sm_gp_session *gp_session);
 
 
 /* CWA-14890 helper functions */
