@@ -27,6 +27,7 @@
 #include "internal.h"
 #include "pkcs15.h"
 #include "asn1.h"
+#include "common/compat_strlcpy.h"
 
 #include "card-sc-hsm.h"
 
@@ -51,6 +52,7 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 	struct sc_pkcs15_object pin_obj;
 	struct sc_pkcs15_cert_info cert_info;
 	struct sc_pkcs15_object cert_obj;
+	sc_pkcs15_prkey_info_t *key_info;
 	u8 fid[2];
 	u8 prkdbin[512];
 	sc_pkcs15_object_t prkd;
@@ -147,7 +149,7 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 		 */
 		prkd.flags |= SC_PKCS15_CO_FLAG_PRIVATE;
 
-		sc_pkcs15_prkey_info_t *key_info = (sc_pkcs15_prkey_info_t *)prkd.data;
+		key_info = (sc_pkcs15_prkey_info_t *)prkd.data;
 		key_info->key_reference = keyid;
 
 		/*
