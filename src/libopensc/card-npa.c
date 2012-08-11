@@ -353,7 +353,7 @@ int get_ef_card_access(sc_card_t *card,
 
     /* test cards only return an empty FCI template,
      * so we can't determine any file proberties */
-    if (*length_ef_cardaccess < file->size) {
+    if (file && *length_ef_cardaccess < file->size) {
         sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Actual filesize differs from the size in file "
                 "proberties (%u!=%u).", *length_ef_cardaccess, file->size);
         r = SC_ERROR_FILE_TOO_SMALL;
