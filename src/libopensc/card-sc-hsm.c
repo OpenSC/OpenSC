@@ -173,7 +173,11 @@ static int sc_hsm_set_security_env(sc_card_t *card,
 				priv->algorithm = ALGO_RSA_PKCS1;
 			}
 		} else {
-			priv->algorithm = ALGO_RSA_RAW;
+			if (env->operation == SC_SEC_OPERATION_DECIPHER) {
+				priv->algorithm = ALGO_RSA_DECRYPT;
+			} else {
+				priv->algorithm = ALGO_RSA_RAW;
+			}
 		}
 		break;
 	case SC_ALGORITHM_EC:
@@ -186,7 +190,11 @@ static int sc_hsm_set_security_env(sc_card_t *card,
 		} else if (env->algorithm_flags & SC_ALGORITHM_ECDSA_HASH_SHA256) {
 			priv->algorithm = ALGO_EC_SHA256;
 		} else if (env->algorithm_flags & SC_ALGORITHM_ECDSA_RAW) {
-			priv->algorithm = ALGO_EC_RAW;
+			if (env->operation == SC_SEC_OPERATION_DERIVE) {
+				priv->algorithm = ALGO_EC_DH;
+			} else {
+				priv->algorithm = ALGO_EC_RAW;
+			}
 		} else {
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 		}
@@ -219,7 +227,7 @@ static int sc_hsm_compute_signature(sc_card_t *card,
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4, 0x68, priv->env->key_ref[0], priv->algorithm);
 	apdu.cla = 0x80;
 	apdu.resp = rbuf;
-	apdu.resplen = sizeof(rbuf); /* FIXME */
+	apdu.resplen = sizeof(rbuf);
 	apdu.le = 256;
 
 	memcpy(sbuf, data, datalen);
@@ -243,19 +251,17 @@ static int sc_hsm_decipher(sc_card_t *card, const u8 * crgram, size_t crgram_len
 {
 	int r;
 	sc_apdu_t apdu;
+	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	sc_hsm_private_data_t *priv = (sc_hsm_private_data_t *) card->drv_data;
 
 	assert(card != NULL && crgram != NULL && out != NULL);
 	LOG_FUNC_CALLED(card->ctx);
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_4, 0x62, priv->env->key_ref[0], 0x21);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_4, 0x62, priv->env->key_ref[0], priv->algorithm);
 	apdu.cla = 0x80;
-	apdu.resp    = out;
-	apdu.resplen = outlen;
-	/* if less than 256 bytes are expected than set Le to 0x00
-	 * to tell the card the we want everything available (note: we
-	 * always have Le <= crgram_len) */
-	apdu.le      = (outlen >= 256 && crgram_len < 256) ? 256 : outlen;
+	apdu.resp = rbuf;
+	apdu.resplen = sizeof(rbuf);
+	apdu.le = 256;
 
 	apdu.data = crgram;
 	apdu.lc = crgram_len;
@@ -264,8 +270,21 @@ static int sc_hsm_decipher(sc_card_t *card, const u8 * crgram, size_t crgram_len
 	r = sc_transmit_apdu(card, &apdu);
 
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
-	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
-		LOG_FUNC_RETURN(card->ctx, apdu.resplen);
+	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
+		if (priv->algorithm == ALGO_EC_DH) {
+			//
+			// The SmartCard-HSM returns the point result of the DH operation
+			// with a leading '04'
+			assert(apdu.resplen > 0);
+			size_t len = apdu.resplen - 1 > outlen ? outlen : apdu.resplen - 1;
+			memcpy(out, apdu.resp + 1, len);
+			LOG_FUNC_RETURN(card->ctx, len);
+		} else {
+			size_t len = apdu.resplen > outlen ? outlen : apdu.resplen;
+			memcpy(out, apdu.resp, len);
+			LOG_FUNC_RETURN(card->ctx, len);
+		}
+	}
 	else
 		LOG_FUNC_RETURN(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
