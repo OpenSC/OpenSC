@@ -60,7 +60,7 @@ static struct sc_atr_table sc_hsm_atrs[] = {
 
 /* Information the driver maintains between calls */
 typedef struct sc_hsm_private_data {
-	sc_security_env_t *env;
+	const sc_security_env_t *env;
 	u8 algorithm;
 } sc_hsm_private_data_t;
 
@@ -208,6 +208,67 @@ static int sc_hsm_set_security_env(sc_card_t *card,
 
 
 
+static int sc_hsm_decode_ecdsa_signature(sc_card_t *card,
+					const u8 * data, size_t datalen,
+					u8 * out, size_t outlen) {
+
+	int fieldsizebytes, i, r;
+	const u8 *body, *tag;
+	size_t bodylen, taglen;
+
+	// Determine field size from length of signature
+	if (datalen <= 58) {			// 192 bit curve = 24 * 2 + 10 byte maximum DER signature
+		fieldsizebytes = 24;
+	} else if (datalen <= 66) {		// 224 bit curve = 28 * 2 + 10 byte maximum DER signature
+		fieldsizebytes = 28;
+	} else if (datalen <= 74) {		// 256 bit curve = 32 * 2 + 10 byte maximum DER signature
+		fieldsizebytes = 32;
+	} else if (datalen <= 110) {	// 320 bit curve = 50 * 2 + 10 byte maximum DER signature
+		fieldsizebytes = 50;
+	} else {
+		fieldsizebytes = 64;
+	}
+
+	if (outlen < (fieldsizebytes * 2)) {
+		LOG_TEST_RETURN(card->ctx, SC_ERROR_INVALID_DATA, "output too small for EC signature");
+	}
+	memset(out, 0, outlen);
+
+	// Copied from card-piv.c. Thanks
+	body = sc_asn1_find_tag(card->ctx, data, datalen, 0x30, &bodylen);
+
+	for (i = 0; i<2; i++) {
+		if (body) {
+			tag = sc_asn1_find_tag(card->ctx, body,  bodylen, 0x02, &taglen);
+			if (tag) {
+				bodylen -= taglen - (tag - body);
+				body = tag + taglen;
+
+				if (taglen > fieldsizebytes) { /* drop leading 00 if present */
+					if (*tag != 0x00) {
+						r = SC_ERROR_INVALID_DATA;
+						goto err;
+					}
+					tag++;
+					taglen--;
+				}
+				memcpy(out + fieldsizebytes*i + fieldsizebytes - taglen , tag, taglen);
+			} else {
+				r = SC_ERROR_INVALID_DATA;
+				goto err;
+			}
+		} else  {
+			r = SC_ERROR_INVALID_DATA;
+			goto err;
+		}
+	}
+	r = 2 * fieldsizebytes;
+err:
+	LOG_FUNC_RETURN(card->ctx, r);
+}
+
+
+
 static int sc_hsm_compute_signature(sc_card_t *card,
 				     const u8 * data, size_t datalen,
 				     u8 * out, size_t outlen)
@@ -237,9 +298,17 @@ static int sc_hsm_compute_signature(sc_card_t *card,
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
-		size_t len = apdu.resplen > outlen ? outlen : apdu.resplen;
+		size_t len;
 
-		memcpy(out, apdu.resp, len);
+		if ((priv->algorithm & 0xF0) == ALGO_EC_RAW) {
+			len = sc_hsm_decode_ecdsa_signature(card, apdu.resp, apdu.resplen, out, outlen);
+			if (len < 0) {
+				LOG_FUNC_RETURN(card->ctx, len);
+			}
+		} else {
+			len = apdu.resplen > outlen ? outlen : apdu.resplen;
+			memcpy(out, apdu.resp, len);
+		}
 		LOG_FUNC_RETURN(card->ctx, len);
 	}
 	LOG_FUNC_RETURN(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2));

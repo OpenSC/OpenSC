@@ -472,7 +472,7 @@ sc_pkcs11_signature_size(sc_pkcs11_operation_t *operation, CK_ULONG_PTR pLength)
 			case CKK_EC:
 				/* TODO: -DEE we should use something other then CKA_MODULUS_BITS... */
 				rv = key->ops->get_attribute(operation->session, key, &attr);
-				*pLength = ((*pLength + 7)/8) * 2 + 8; /* 2*nLen in bytes plus SEQUENCE and 2 INTEGER tags plus leading '00' for signed integer */
+				*pLength = ((*pLength + 7)/8) * 2 ; /* 2*nLen in bytes */
 				break;
 			case CKK_GOSTR3410:
 				rv = key->ops->get_attribute(operation->session, key, &attr);
