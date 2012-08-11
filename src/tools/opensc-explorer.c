@@ -32,10 +32,16 @@
 #include <arpa/inet.h>  /* for htons() */
 #endif
 
+#ifdef HAVE_IO_H
+#include <io.h>
+#endif
+
 #include "libopensc/opensc.h"
 #include "libopensc/asn1.h"
 #include "libopensc/cardctl.h"
 #include "libopensc/cards.h"
+#include "common/compat_strlcpy.h"
+#include "common/compat_getopt.h"
 #include "util.h"
 
 #define DIM(v) (sizeof(v)/sizeof((v)[0]))
@@ -443,34 +449,34 @@ static int do_ls(int argc, char **argv)
 static int do_find(int argc, char **argv)
 {
 	u8 fid[2], end[2];
-    sc_path_t path;
-	int r, count;
+	sc_path_t path;
+	int r;
 
-    fid[0] = 0;
-    fid[1] = 0;
-    end[0] = 0xFF;
-    end[1] = 0xFF;
-    switch (argc) {
-        case 2:
-            if (arg_to_fid(argv[1], end) != 0) 
-                return usage(do_find);
-            /* fall through */
-        case 1:
-            if (arg_to_fid(argv[0], fid) != 0) 
-                return usage(do_find);
-            /* fall through */
-        case 0:
-            break;
-        default:
-            return usage(do_find);
-    }
+	fid[0] = 0;
+	fid[1] = 0;
+	end[0] = 0xFF;
+	end[1] = 0xFF;
+	switch (argc) {
+	case 2:
+		if (arg_to_fid(argv[1], end) != 0)
+			return usage(do_find);
+		/* fall through */
+	case 1:
+		if (arg_to_fid(argv[0], fid) != 0)
+			return usage(do_find);
+		/* fall through */
+	case 0:
+		break;
+	default:
+		return usage(do_find);
+	}
 
 	printf("FileID\tType  Size\n");
 	while (1) {
 		sc_file_t *file = NULL;
 
-        printf("(%02X%02X)\r", fid[0], fid[1]);
-        fflush(stdout);
+		printf("(%02X%02X)\r", fid[0], fid[1]);
+		fflush(stdout);
 
 		if (current_path.type != SC_PATH_TYPE_DF_NAME) {
 			path = current_path;
@@ -482,25 +488,25 @@ static int do_find(int argc, char **argv)
 			}
 		}
 
-        r = sc_select_file(card, &path, &file);
+		r = sc_select_file(card, &path, &file);
 		switch (r) {
-            case SC_SUCCESS:
-                file->id = (fid[0] << 8) | fid[1];
-                print_file(file);
-                sc_file_free(file);
-                select_current_path_or_die();
-                break;
-            case SC_ERROR_NOT_ALLOWED:
-            case SC_ERROR_SECURITY_STATUS_NOT_SATISFIED:
-                printf("(%02X%02X)\t%s\n", fid[0], fid[1], sc_strerror(r));
-                break;
-        }
+		case SC_SUCCESS:
+			file->id = (fid[0] << 8) | fid[1];
+			print_file(file);
+			sc_file_free(file);
+			select_current_path_or_die();
+			break;
+		case SC_ERROR_NOT_ALLOWED:
+		case SC_ERROR_SECURITY_STATUS_NOT_SATISFIED:
+			printf("(%02X%02X)\t%s\n", fid[0], fid[1], sc_strerror(r));
+			break;
+		}
 
-        if (fid[0] == end[0] && fid[1] == end[1])
-            break;
-        fid[1] = fid[1] + 1;
-        if (fid[1] == 0)
-            fid[0] = fid[0] + 1;
+		if (fid[0] == end[0] && fid[1] == end[1])
+			break;
+		fid[1] = fid[1] + 1;
+		if (fid[1] == 0)
+			fid[0] = fid[0] + 1;
 	}
 	return 0;
 }
@@ -1654,7 +1660,7 @@ static int parse_cmdline(char *in, char **argv, int maxargc)
 		in += strspn(in, " \t\n");
 		if (*in == '\0')
 			return argc;
- 		if (*in == '"') {
+		if (*in == '"') {
 			/* Parse quoted string */
 			argv[argc] = in++;
 			in += strcspn(in, "\"");
@@ -1662,12 +1668,12 @@ static int parse_cmdline(char *in, char **argv, int maxargc)
 				return 0;
 		} else {
 			/* White space delimited word */
- 			argv[argc] = in;
+			argv[argc] = in;
 			in += strcspn(in, " \t\n");
 		}
 		if (*in != '\0')
 			*in++ = '\0';
- 	}
+	}
 	return argc;
 }
 
