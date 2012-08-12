@@ -3304,6 +3304,7 @@ static int test_signature(CK_SESSION_HANDLE sess)
 		CKM_SHA1_RSA_PKCS,
 		CKM_MD5_RSA_PKCS,
 		CKM_RIPEMD160_RSA_PKCS,
+		CKM_SHA256_RSA_PKCS,
 		0xffffff
 	};
 	size_t mechTypes_num = sizeof(mechTypes)/sizeof(CK_MECHANISM_TYPE);
