@@ -223,11 +223,13 @@ static int sc_hsm_decode_ecdsa_signature(sc_card_t *card,
 		fieldsizebytes = 28;
 	} else if (datalen <= 74) {		// 256 bit curve = 32 * 2 + 10 byte maximum DER signature
 		fieldsizebytes = 32;
-	} else if (datalen <= 110) {	// 320 bit curve = 50 * 2 + 10 byte maximum DER signature
-		fieldsizebytes = 50;
+	} else if (datalen <= 90) {		// 320 bit curve = 40 * 2 + 10 byte maximum DER signature
+		fieldsizebytes = 40;
 	} else {
 		fieldsizebytes = 64;
 	}
+
+	sc_log(card->ctx, "Field size %d, signature buffer size %d", fieldsizebytes, outlen);
 
 	if (outlen < (fieldsizebytes * 2)) {
 		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_DATA, "output too small for EC signature");
