@@ -21,7 +21,7 @@
 #include "util.h"
 #include "libopensc/log.h"
 #include "libopensc/opensc.h"
-#include <openssl/pace.h>
+#include <eac/pace.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -219,7 +219,11 @@ int npa_translate_apdus(sc_card_t *card, FILE *input)
     return r;
 }
 
+#ifdef ENABLE_SM
+#ifdef ENABLE_OPENPACE
 extern enum eac_tr_version tr_version;
+#endif
+#endif
 int
 main (int argc, char **argv)
 {
@@ -270,9 +274,11 @@ main (int argc, char **argv)
             exit(2);
         }
     }
+#ifdef ENABLE_SM
 #ifdef ENABLE_OPENPACE
     if (cmdline.tr_03110v201_flag)
         tr_version = EAC_TR_VERSION_2_01;
+#endif
 #endif
 
 

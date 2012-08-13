@@ -43,13 +43,13 @@ static struct sc_card_driver npa_drv = {
 #include <openssl/asn1t.h>
 #include <openssl/bio.h>
 #include <openssl/buffer.h>
-#include <openssl/cv_cert.h>
-#include <openssl/eac.h>
-#include <openssl/ta.h>
+#include <eac/cv_cert.h>
+#include <eac/eac.h>
+#include <eac/ta.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/objects.h>
-#include <openssl/pace.h>
+#include <eac/pace.h>
 #include <string.h>
 #define ASN1_APP_IMP_OPT(stname, field, type, tag) ASN1_EX_TYPE(ASN1_TFLG_IMPTAG|ASN1_TFLG_APPLICATION|ASN1_TFLG_OPTIONAL, tag, stname, field, type)
 #define ASN1_APP_IMP(stname, field, type, tag) ASN1_EX_TYPE(ASN1_TFLG_IMPTAG|ASN1_TFLG_APPLICATION, tag, stname, field, type)

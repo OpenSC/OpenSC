@@ -123,6 +123,13 @@ AC_ARG_ENABLE(
 )
 
 AC_ARG_ENABLE(
+	[openpace],
+	[AS_HELP_STRING([--enable-openpace],[enable openpace linkage @<:@detect@:>@])],
+	,
+	[enable_openpace="detect"]
+)
+
+AC_ARG_ENABLE(
 	[openct],
 	[AS_HELP_STRING([--enable-openct],[enable openct linkage @<:@disabled@:>@])],
 	,
@@ -446,36 +453,59 @@ esac
 if test "${enable_openssl}" = "yes"; then
 	if test "${have_openssl}" = "yes"; then
 		AC_DEFINE([ENABLE_OPENSSL], [1], [Have OpenSSL libraries and header files])
+	else
+		AC_MSG_ERROR([OpenSSL linkage required, but no OpenSSL was found])
+	fi
+fi
 
-        have_openpace="yes"
-        saved_CPPFLAGS="$CPPFLAGS"
-        saved_LIBS="$LIBS"
-        CPPFLAGS="$CPPFLAGS $OPENSSL_CFLAGS"
-        LIBS="$LDFLAGS $OPENSSL_LIBS"
+PKG_CHECK_MODULES(
+	[OPENPACE],
+	[libeac >= 0.8],
+	[have_openpace="yes"],
+	[have_openpace="no"]
+)
 
-        AC_CHECK_HEADERS(openssl/evp.h, [], [ have_openpace="no" ])
-        AC_MSG_CHECKING([for EVP_read_pw_string_min])
-        AC_TRY_LINK_FUNC(EVP_read_pw_string_min, [ AC_MSG_RESULT([yes]) ], [
-                                                  AC_MSG_RESULT([no])
-                                                  have_openpace="no" ])
+case "${enable_openpace}" in
+	no)
+		have_openpace="no"
+	;;
+	detect)
+		if test "${have_openpace}" = "yes"; then
+			enable_openpace="yes"
+		else
+			enable_openpace="no"
+		fi
+	;;
+esac
 
-        AC_CHECK_HEADERS(openssl/eac.h, [], [ have_openpace="no" ])
-        AC_MSG_CHECKING([for EAC_CTX_init_pace])
-        AC_TRY_LINK_FUNC(EAC_CTX_init_pace, [ AC_MSG_RESULT([yes]) ], [
-                                             AC_MSG_RESULT([no])
-                                             have_openpace="no" ])
+if test "${have_openpace}" = "yes"; then
+    saved_CPPFLAGS="$CPPFLAGS"
+    saved_LIBS="$LIBS"
+    CPPFLAGS="$CPPFLAGS $OPENPACE_CFLAGS"
+    LIBS="$LDFLAGS $OPENPACE_LIBS"
 
-        CPPFLAGS="$saved_CPPFLAGS"
-        LIBS="$saved_LIBS"
+    AC_CHECK_HEADERS(eac/eac.h, [], [ have_openpace="no" ])
+    AC_MSG_CHECKING([for EAC_CTX_init_pace])
+    AC_TRY_LINK_FUNC(EAC_CTX_init_pace, [AC_MSG_RESULT([yes])],
+                     [AC_MSG_RESULT([no])
+                     have_openpace="no" ])
+
+    CPPFLAGS="$saved_CPPFLAGS"
+    LIBS="$saved_LIBS"
+fi
+
+if test "${enable_openpace}" = "yes"; then
+	if test "${have_openpace}" = "yes"; then
+		AC_DEFINE([ENABLE_OPENPACE], [1], [Have OpenPACE libraries and header files])
+	else
+		AC_MSG_ERROR([OpenPACE linkage required, but no OpenPACE was found])
+	fi
+fi
 
         if test "${have_openpace}" = "yes"; then
             AC_DEFINE([ENABLE_OPENPACE], [1], [Have OpenPACE libraries and header files])
         fi
 
-	else
-		AC_MSG_ERROR([OpenSSL linkage required, but no OpenSSL was found])
-	fi
-fi
 
 if test "${enable_openct}" = "yes"; then
 	PKG_CHECK_MODULES(
@@ -679,7 +709,7 @@ doc support:             ${enable_doc}
 zlib support:            ${enable_zlib}
 readline support:        ${enable_readline}
 OpenSSL support:         ${enable_openssl}
-OpenPACE support:        ${have_openpace}
+OpenPACE support:        ${enable_openpace}
 PC/SC support:           ${enable_pcsc}
 OpenCT support:          ${enable_openct}
 CT-API support:          ${enable_ctapi}
@@ -703,6 +733,8 @@ ZLIB_CFLAGS:             ${ZLIB_CFLAGS}
 ZLIB_LIBS:               ${ZLIB_LIBS}
 OPENSSL_CFLAGS:          ${OPENSSL_CFLAGS}
 OPENSSL_LIBS:            ${OPENSSL_LIBS}
+OPENPACE_CFLAGS:         ${OPENPACE_CFLAGS}
+OPENPACE_LIBS:           ${OPENPACE_LIBS}
 OPENCT_CFLAGS:           ${OPENCT_CFLAGS}
 OPENCT_LIBS:             ${OPENCT_LIBS}
 PCSC_CFLAGS:             ${PCSC_CFLAGS}
