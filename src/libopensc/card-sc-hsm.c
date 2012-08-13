@@ -230,7 +230,7 @@ static int sc_hsm_decode_ecdsa_signature(sc_card_t *card,
 	}
 
 	if (outlen < (fieldsizebytes * 2)) {
-		LOG_TEST_RETURN(card->ctx, SC_ERROR_INVALID_DATA, "output too small for EC signature");
+		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_DATA, "output too small for EC signature");
 	}
 	memset(out, 0, outlen);
 
