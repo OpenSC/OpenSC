@@ -3228,6 +3228,7 @@ static int sign_verify_openssl(CK_SESSION_HANDLE session,
 		EVP_sha1(),
 		EVP_md5(),
 		EVP_ripemd160(),
+		EVP_sha256(),
 	};
 #endif
 
@@ -3320,10 +3321,12 @@ static int test_signature(CK_SESSION_HANDLE sess)
 		verifyData,
 		verifyData,
 		verifyData,
+		verifyData,
 	};
 	CK_ULONG        dataLens[] = {
 		0,		/* should be modulus length, is done further on */
 		35,
+		sizeof(verifyData),
 		sizeof(verifyData),
 		sizeof(verifyData),
 		sizeof(verifyData),
