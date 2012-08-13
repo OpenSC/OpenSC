@@ -609,10 +609,12 @@ void sc_pkcs15_pincache_add(struct sc_pkcs15_card *p15card, struct sc_pkcs15_obj
 
 		if (sc_pkcs15_compare_id(&obj->auth_id, &auth_info->auth_id)) {
 			/* Caching is refused, if the protected object requires user consent */
+		    if (!p15card->opts.pin_cache_ignore_user_consent) {
 			if (obj->user_consent > 0) {
 				sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "caching refused (user consent)");
 				return;
 			}
+		    }
 		}
 
 		obj = obj->next;
@@ -640,8 +642,11 @@ int sc_pkcs15_pincache_revalidate(struct sc_pkcs15_card *p15card, const sc_pkcs1
 	if (!p15card->opts.use_pin_cache)
 		return SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
 
-	if (obj->user_consent)
+/*  Apps that do not support CK_ALWAYS_AUTHENTICATE may need pin_cache_ignore_user_consent = 1 */
+	if (!p15card->opts.pin_cache_ignore_user_consent) {
+	    if (obj->user_consent)
 		return SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
+	}
 
 	if (p15card->card->reader->capabilities & SC_READER_CAP_PIN_PAD)
 		return SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;

@@ -306,7 +306,7 @@ static void		set_id_attr(CK_SESSION_HANDLE session);
 static int		find_object(CK_SESSION_HANDLE, CK_OBJECT_CLASS,
 				CK_OBJECT_HANDLE_PTR,
 				const unsigned char *, size_t id_len, int obj_index);
-static int		find_mechanism(CK_SLOT_ID, CK_FLAGS, int, CK_MECHANISM_TYPE_PTR);
+static int		find_mechanism(CK_SLOT_ID, CK_FLAGS, CK_MECHANISM_TYPE_PTR, size_t, CK_MECHANISM_TYPE_PTR);
 static int		find_slot_by_description(const char *, CK_SLOT_ID_PTR);
 static int		find_slot_by_token_label(const char *, CK_SLOT_ID_PTR);
 static void		get_token_info(CK_SLOT_ID, CK_TOKEN_INFO_PTR);
@@ -1023,6 +1023,9 @@ static void list_mechs(CK_SLOT_ID slot)
 		}
 		printf("\n");
 	}
+
+	if (mechs)
+		free(mechs);
 }
 
 static int login(CK_SESSION_HANDLE session, int login_type)
@@ -1308,9 +1311,10 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	int		fd, r;
 
 	if (!opt_mechanism_used)
-		opt_mechanism = find_mechanism(slot, CKF_SIGN|CKF_HW, 1, &opt_mechanism);
-	printf("Using signature algorithm %s\n", p11_mechanism_to_name(opt_mechanism));
+		if (!find_mechanism(slot, CKF_SIGN|CKF_HW, NULL, 0, &opt_mechanism))
+			util_fatal("Sign mechanism not supported\n");
 
+	printf("Using signature algorithm %s\n", p11_mechanism_to_name(opt_mechanism));
 	memset(&mech, 0, sizeof(mech));
 	mech.mechanism = opt_mechanism;
 
@@ -1402,12 +1406,11 @@ static void hash_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	CK_ULONG	hash_len;
 	int		fd, r;
 
-	if (!opt_mechanism_used) {
-		opt_mechanism = find_mechanism(slot, CKF_DIGEST, 1, &opt_mechanism);
-		printf("Using digest algorithm %s\n",
-				p11_mechanism_to_name(opt_mechanism));
-	}
+	if (!opt_mechanism_used)
+		if (!find_mechanism(slot, CKF_DIGEST, NULL, 0, &opt_mechanism))
+			util_fatal("Digest mechanism is not supported\n");
 
+	printf("Using digest algorithm %s\n", p11_mechanism_to_name(opt_mechanism));
 	memset(&mech, 0, sizeof(mech));
 	mech.mechanism = opt_mechanism;
 
@@ -2189,21 +2192,39 @@ done:
 }
 
 
-static int find_mechanism(CK_SLOT_ID slot, CK_FLAGS flags,
-		int stop_if_not_found, CK_MECHANISM_TYPE_PTR result)
+static int
+find_mechanism(CK_SLOT_ID slot, CK_FLAGS flags,
+		CK_MECHANISM_TYPE_PTR list, size_t list_len,
+		CK_MECHANISM_TYPE_PTR result)
 {
 	CK_MECHANISM_TYPE *mechs = NULL;
 	CK_ULONG	count = 0;
 
 	count = get_mechanisms(slot, &mechs, flags);
-	if (count == 0) {
-		if (stop_if_not_found)
-			util_fatal("No appropriate mechanism found");
-	} else {
-		/* X: why only first ? */
-		*result = mechs[0];
+	if (count)   {
+		if (list && list_len)   {
+			unsigned ii, jj;
+
+			for (jj=0; jj<count; jj++)   {
+				for (ii=0; ii<list_len; ii++)
+					if (*(mechs + jj) == *(list + ii))
+						break;
+				if (ii<list_len)
+					break;
+			}
+
+			if (jj < count && ii < list_len)
+				*result = mechs[jj];
+			else
+				count = 0;
+		}
+		else   {
+			*result = mechs[0];
+		}
+
 		free(mechs);
 	}
+
 	return count;
 }
 
@@ -2358,10 +2379,10 @@ derive_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
 	};
 
 	if (!opt_mechanism_used)
-		opt_mechanism = find_mechanism(slot, CKF_DERIVE|CKF_HW, 1, &opt_mechanism);
-	printf("Using derive algorithm 0x%8.8lx %s\n",
-			opt_mechanism, p11_mechanism_to_name(opt_mechanism));
+		if (!find_mechanism(slot, CKF_DERIVE|CKF_HW, NULL, 0, &opt_mechanism))
+			util_fatal("Derive mechanism not supported\n");
 
+	printf("Using derive algorithm 0x%8.8lx %s\n", opt_mechanism, p11_mechanism_to_name(opt_mechanism));
 	memset(&mech, 0, sizeof(mech));
 	mech.mechanism = opt_mechanism;
 
@@ -2715,7 +2736,9 @@ static void show_dobj(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 	printf ("\n");
 }
 
-static void get_token_info(CK_SLOT_ID slot, CK_TOKEN_INFO_PTR info)
+
+static void
+get_token_info(CK_SLOT_ID slot, CK_TOKEN_INFO_PTR info)
 {
 	CK_RV		rv;
 
@@ -2724,8 +2747,9 @@ static void get_token_info(CK_SLOT_ID slot, CK_TOKEN_INFO_PTR info)
 		p11_fatal("C_GetTokenInfo", rv);
 }
 
-static CK_ULONG get_mechanisms(CK_SLOT_ID slot, CK_MECHANISM_TYPE_PTR *pList,
-		CK_FLAGS flags)
+
+static CK_ULONG
+get_mechanisms(CK_SLOT_ID slot, CK_MECHANISM_TYPE_PTR *pList, CK_FLAGS flags)
 {
 	CK_ULONG	m, n, ulCount = 0;
 	CK_RV		rv;
@@ -2942,11 +2966,13 @@ static int test_digest(CK_SESSION_HANDLE session)
 	if (rv != CKR_OK)
 		p11_fatal("C_OpenSession", rv);
 
-	if (!find_mechanism(sessionInfo.slotID, CKF_DIGEST, 0, &firstMechType)) {
+	if (!find_mechanism(sessionInfo.slotID, CKF_DIGEST, NULL, 0, &firstMechType)) {
 		printf("Digests: not implemented\n");
 		return errors;
-	} else
+	}
+	else    {
 		printf("Digests:\n");
+	}
 
 	/* 1st test */
 
@@ -3244,8 +3270,10 @@ static int test_signature(CK_SESSION_HANDLE sess)
 		CKM_SHA1_RSA_PKCS,
 		CKM_MD5_RSA_PKCS,
 		CKM_RIPEMD160_RSA_PKCS,
+		CKM_SHA256_RSA_PKCS,
 		0xffffff
 	};
+	size_t mechTypes_num = sizeof(mechTypes)/sizeof(CK_MECHANISM_TYPE);
 	unsigned char  *datas[] = {
 		/* PCKS1_wrap(SHA1_encode(SHA-1(verifyData))),
 		 * is done further on
@@ -3275,7 +3303,7 @@ static int test_signature(CK_SESSION_HANDLE sess)
 		return errors;
 	}
 
-	if (!find_mechanism(sessionInfo.slotID, CKF_SIGN | CKF_HW, 0, &firstMechType)) {
+	if (!find_mechanism(sessionInfo.slotID, CKF_SIGN | CKF_HW, mechTypes, mechTypes_num, &firstMechType)) {
 		printf("Signatures: not implemented\n");
 		return errors;
 	}
@@ -3527,7 +3555,7 @@ static int sign_verify(CK_SESSION_HANDLE session,
 
 		printf("    %s: ", p11_mechanism_to_name(*mech_type));
 		if (getALWAYS_AUTHENTICATE(session, priv_key))
-                	login(session,CKU_CONTEXT_SPECIFIC);
+			login(session,CKU_CONTEXT_SPECIFIC);
 
 		signat_len = sizeof(signat);
 		rv = p11->C_Sign(session, datas[j], data_lens[j], signat, &signat_len);
@@ -3576,7 +3604,7 @@ static int test_verify(CK_SESSION_HANDLE sess)
 		return errors;
 	}
 
-	if (!find_mechanism(sessionInfo.slotID, CKF_VERIFY, 0, &first_mech_type)) {
+	if (!find_mechanism(sessionInfo.slotID, CKF_VERIFY, NULL, 0, &first_mech_type)) {
 		printf("Verify: not implemented\n");
 		return errors;
 	}
@@ -3741,7 +3769,7 @@ static int test_unwrap(CK_SESSION_HANDLE sess)
 		return errors;
 	}
 
-	if (!find_mechanism(sessionInfo.slotID, CKF_UNWRAP | CKF_HW, 0, &firstMechType)) {
+	if (!find_mechanism(sessionInfo.slotID, CKF_UNWRAP | CKF_HW, NULL, 0, &firstMechType)) {
 		printf("Unwrap: not implemented\n");
 		return errors;
 	}

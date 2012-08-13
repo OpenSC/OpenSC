@@ -32,10 +32,16 @@
 #include <arpa/inet.h>  /* for htons() */
 #endif
 
+#ifdef HAVE_IO_H
+#include <io.h>
+#endif
+
 #include "libopensc/opensc.h"
 #include "libopensc/asn1.h"
 #include "libopensc/cardctl.h"
 #include "libopensc/cards.h"
+#include "common/compat_strlcpy.h"
+#include "common/compat_getopt.h"
 #include "util.h"
 
 #define DIM(v) (sizeof(v)/sizeof((v)[0]))
@@ -443,34 +449,34 @@ static int do_ls(int argc, char **argv)
 static int do_find(int argc, char **argv)
 {
 	u8 fid[2], end[2];
-    sc_path_t path;
-	int r, count;
+	sc_path_t path;
+	int r;
 
-    fid[0] = 0;
-    fid[1] = 0;
-    end[0] = 0xFF;
-    end[1] = 0xFF;
-    switch (argc) {
-        case 2:
-            if (arg_to_fid(argv[1], end) != 0) 
-                return usage(do_find);
-            /* fall through */
-        case 1:
-            if (arg_to_fid(argv[0], fid) != 0) 
-                return usage(do_find);
-            /* fall through */
-        case 0:
-            break;
-        default:
-            return usage(do_find);
-    }
+	fid[0] = 0;
+	fid[1] = 0;
+	end[0] = 0xFF;
+	end[1] = 0xFF;
+	switch (argc) {
+	case 2:
+		if (arg_to_fid(argv[1], end) != 0)
+			return usage(do_find);
+		/* fall through */
+	case 1:
+		if (arg_to_fid(argv[0], fid) != 0)
+			return usage(do_find);
+		/* fall through */
+	case 0:
+		break;
+	default:
+		return usage(do_find);
+	}
 
 	printf("FileID\tType  Size\n");
 	while (1) {
 		sc_file_t *file = NULL;
 
-        printf("(%02X%02X)\r", fid[0], fid[1]);
-        fflush(stdout);
+		printf("(%02X%02X)\r", fid[0], fid[1]);
+		fflush(stdout);
 
 		if (current_path.type != SC_PATH_TYPE_DF_NAME) {
 			path = current_path;
@@ -482,25 +488,25 @@ static int do_find(int argc, char **argv)
 			}
 		}
 
-        r = sc_select_file(card, &path, &file);
+		r = sc_select_file(card, &path, &file);
 		switch (r) {
-            case SC_SUCCESS:
-                file->id = (fid[0] << 8) | fid[1];
-                print_file(file);
-                sc_file_free(file);
-                select_current_path_or_die();
-                break;
-            case SC_ERROR_NOT_ALLOWED:
-            case SC_ERROR_SECURITY_STATUS_NOT_SATISFIED:
-                printf("(%02X%02X)\t%s\n", fid[0], fid[1], sc_strerror(r));
-                break;
-        }
+		case SC_SUCCESS:
+			file->id = (fid[0] << 8) | fid[1];
+			print_file(file);
+			sc_file_free(file);
+			select_current_path_or_die();
+			break;
+		case SC_ERROR_NOT_ALLOWED:
+		case SC_ERROR_SECURITY_STATUS_NOT_SATISFIED:
+			printf("(%02X%02X)\t%s\n", fid[0], fid[1], sc_strerror(r));
+			break;
+		}
 
-        if (fid[0] == end[0] && fid[1] == end[1])
-            break;
-        fid[1] = fid[1] + 1;
-        if (fid[1] == 0)
-            fid[0] = fid[0] + 1;
+		if (fid[0] == end[0] && fid[1] == end[1])
+			break;
+		fid[1] = fid[1] + 1;
+		if (fid[1] == 0)
+			fid[0] = fid[0] + 1;
 	}
 	return 0;
 }
@@ -899,7 +905,7 @@ static int do_verify(int argc, char **argv)
 	int prefix_len = 0;
 
 	if (argc < 1 || argc > 2)
-		goto usage;
+		return usage(do_verify);
 
 	memset(&data, 0, sizeof(data));
 	data.cmd = SC_PIN_CMD_VERIFY;
@@ -914,26 +920,43 @@ static int do_verify(int argc, char **argv)
 	}
 	if (data.pin_type == SC_AC_NONE) {
 		printf("Invalid type.\n");
-		goto usage;
+		return usage(do_verify);
 	}
 	if (sscanf(argv[0] + prefix_len, "%d", &data.pin_reference) != 1) {
 		printf("Invalid key reference.\n");
-		goto usage;
+		return usage(do_verify);
 	}
 
 	if (argc < 2) {
-		if (!(card->reader->capabilities & SC_READER_CAP_PIN_PAD)) {
-			printf("Card reader or driver doesn't support PIN PAD\n");
-			return -1;
+		if (card->reader->capabilities & SC_READER_CAP_PIN_PAD) {
+			printf("Please enter PIN on the reader's pin pad.\n");
+			data.pin1.prompt = "Please enter PIN";
+			data.flags |= SC_PIN_CMD_USE_PINPAD;
 		}
-		printf("Please enter PIN on the reader's pin pad.\n");
-		data.pin1.prompt = "Please enter PIN";
-		data.flags |= SC_PIN_CMD_USE_PINPAD;
+		else {
+			char *pin = NULL;
+			size_t len = 0;
+
+			printf("Please enter PIN: ");
+			r = util_getpass(&pin, &len, stdin);
+			if (r < 0) {
+				printf("No PIN entered - aborting VERIFY.\n");
+				return -1;
+			}
+			if (strlcpy(buf, pin, sizeof(buf)) >= sizeof(buf)) {
+				free(pin);
+				printf("PIN too long - aborting VERIFY.\n");
+				return -1;
+			}
+			free(pin);
+			data.pin1.data = buf;
+			data.pin1.len = strlen(buf);
+		}
 	} else {
 		r = parse_string_or_hexdata(argv[1], buf, &buflen);
 		if (0 != r) {
 			printf("Invalid key value.\n");
-			goto usage;
+			return usage(do_verify);
 		}
 		data.pin1.data = buf;
 		data.pin1.len = buflen;
@@ -952,11 +975,6 @@ static int do_verify(int argc, char **argv)
 	}
 	printf("Code correct.\n");
 	return 0;
-usage:
-	printf("Usage: verify {CHV|KEY|AUT|PRO}<key ref> [<pin>]\n");
-	printf("Example: verify CHV2 31:32:33:34:00:00:00:00\n");
-	printf("If key is omitted, card reader's keypad will be used to collect PIN.\n");
-	return -1;
 }
 
 
@@ -1002,27 +1020,31 @@ static int do_pace(int argc, char **argv)
 static int do_change(int argc, char **argv)
 {
 	int ref, r, tries_left = -1;
-	u8 oldpin[30];
-	u8 newpin[30];
+	u8 oldpin[64];
+	u8 newpin[64];
 	size_t oldpinlen = 0;
 	size_t newpinlen = 0;
+	struct sc_pin_cmd_data data;
+
+	memset(&data, 0, sizeof(data));
+	data.cmd = SC_PIN_CMD_CHANGE;
 
 	if (argc < 1 || argc > 3)
-		goto usage;
+		return usage(do_change);
 	if (strncasecmp(argv[0], "CHV", 3)) {
 		printf("Invalid type.\n");
-		goto usage;
+		return usage(do_change);
 	}
 	if (sscanf(argv[0] + 3, "%d", &ref) != 1) {
 		printf("Invalid key reference.\n");
-		goto usage;
+		return usage(do_change);
 	}
 
 	if (argc == 3) {
 		oldpinlen = sizeof(oldpin);
 		if (parse_string_or_hexdata(argv[1], oldpin, &oldpinlen) != 0) {
 			printf("Invalid key value.\n");
-			goto usage;
+			return usage(do_change);
 		}
 	}
 
@@ -1030,14 +1052,18 @@ static int do_change(int argc, char **argv)
 		newpinlen = sizeof(newpin);
 		if (parse_string_or_hexdata(argv[argc-1], newpin, &newpinlen) != 0) {
 			printf("Invalid key value.\n");
-			goto usage;
+			return usage(do_change);
 		}
 	}
 
-	r = sc_change_reference_data (card, SC_AC_CHV, ref,
-                                      oldpinlen ? oldpin : NULL, oldpinlen,
-                                      newpinlen ? newpin : NULL, newpinlen,
-                                      &tries_left);
+	data.pin_type = SC_AC_CHV;
+	data.pin_reference = ref;
+	data.pin1.data = oldpinlen ? oldpin : NULL;
+	data.pin1.len = oldpinlen;
+	data.pin2.data = newpinlen ? newpin : NULL;
+	data.pin2.len = newpinlen;
+
+	r = sc_pin_cmd(card, &data, &tries_left);
 	if (r) {
 		if (r == SC_ERROR_PIN_CODE_INCORRECT) {
 			if (tries_left >= 0)
@@ -1050,40 +1076,37 @@ static int do_change(int argc, char **argv)
 	}
 	printf("PIN changed.\n");
 	return 0;
-usage:
-	printf("Usage: change CHV<pin ref> [[<old pin>] <new pin>]\n");
-	printf("Examples: \n");
-	printf("\tChange PIN: change CHV2 00:00:00:00:00:00 \"foobar\"\n");
-	printf("\tSet PIN: change CHV2 \"foobar\"\n");
-	printf("\tChange PIN with pinpad': change CHV2\n");
-	return -1;
 }
 
 
 static int do_unblock(int argc, char **argv)
 {
 	int ref, r;
-	u8 puk[30];
-	u8 newpin[30];
+	u8 puk[64];
+	u8 newpin[64];
 	size_t puklen = 0;
 	size_t newpinlen = 0;
+	struct sc_pin_cmd_data data;
+
+	memset(&data, 0, sizeof(data));
+	data.cmd = SC_PIN_CMD_UNBLOCK;
 
 	if (argc < 1 || argc > 3)
-		goto usage;
+		return usage(do_unblock);
 	if (strncasecmp(argv[0], "CHV", 3)) {
 		printf("Invalid type.\n");
-		goto usage;
+		return usage(do_unblock);
 	}
 	if (sscanf(argv[0] + 3, "%d", &ref) != 1) {
 		printf("Invalid key reference.\n");
-		goto usage;
+		return usage(do_unblock);
 	}
 
 	if (argc > 1) {
 		puklen = sizeof(puk);
 		if (parse_string_or_hexdata(argv[1], puk, &puklen) != 0) {
 			printf("Invalid key value.\n");
-			goto usage;
+			return usage(do_unblock);
 		}
 	}
 
@@ -1091,13 +1114,18 @@ static int do_unblock(int argc, char **argv)
 		newpinlen = sizeof(newpin);
 		if (parse_string_or_hexdata(argv[2], newpin, &newpinlen) != 0) {
 			printf("Invalid key value.\n");
-			goto usage;
+			return usage(do_unblock);
 		}
 	}
 
-	r = sc_reset_retry_counter (card, SC_AC_CHV, ref,
-                                      puklen ? puk : NULL, puklen,
-                                      newpinlen ? newpin : NULL, newpinlen);
+	data.pin_type = SC_AC_CHV;
+	data.pin_reference = ref;
+	data.pin1.data = puklen ? puk : NULL;
+	data.pin1.len = puklen;
+	data.pin2.data = newpinlen ? newpin : NULL;
+	data.pin2.len = newpinlen;
+
+	r = sc_pin_cmd(card, &data, NULL);
 	if (r) {
 		if (r == SC_ERROR_PIN_CODE_INCORRECT)
 			printf("Incorrect code.\n");
@@ -1106,18 +1134,6 @@ static int do_unblock(int argc, char **argv)
 	}
 	printf("PIN unblocked.\n");
 	return 0;
-usage:
-	printf("Usage: unblock CHV<pin ref> [<puk> [<new pin>]]\n");
-	printf("PUK and PIN values can be hexadecimal, ASCII, empty (\"\") or absent\n");
-	printf("Examples:\n");
-	printf("\tUnblock PIN and set a new value:   unblock CHV2 00:00:00:00:00:00 \"foobar\"\n");
-	printf("\tUnblock PIN keeping the old value: unblock CHV2 00:00:00:00:00:00 \"\"\n");
-	printf("\tSet new PIN value:                 unblock CHV2 \"\" \"foobar\"\n");
-	printf("Examples with pinpad:\n");
-	printf("\tUnblock PIN: new PIN value is prompted by pinpad:                   unblock CHV2 00:00:00:00:00:00\n");
-	printf("\tSet PIN: new PIN value is prompted by pinpad:                       unblock CHV2 \"\"\n");
-	printf("\tUnblock PIN: unblock code and new PIN value are prompted by pinpad: unblock CHV2\n");
-	return -1;
 }
 
 static int do_get(int argc, char **argv)
@@ -1400,15 +1416,15 @@ static int do_erase(int argc, char **argv)
 
 static int do_random(int argc, char **argv)
 {
-	unsigned char buffer[128];
+	unsigned char buffer[256];
 	int r, count;
 
 	if (argc != 1)
 		return usage(do_random);
 
 	count = atoi(argv[0]);
-	if (count < 0 || count > 128) {
-		printf("Number must be in range 0..128\n");
+	if (count < 0 || count > 256) {
+		printf("Number must be in range 0..256\n");
 		return -1;
 	}
 
@@ -1535,6 +1551,12 @@ static int do_apdu(int argc, char **argv)
 	if (apdu.resplen)
 		util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
 
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	if (r)
+		printf("Failure: %s\n", sc_strerror(r));
+	else
+		printf("Success!\n");
+
 	return 0;
 }
 
@@ -1638,7 +1660,7 @@ static int parse_cmdline(char *in, char **argv, int maxargc)
 		in += strspn(in, " \t\n");
 		if (*in == '\0')
 			return argc;
- 		if (*in == '"') {
+		if (*in == '"') {
 			/* Parse quoted string */
 			argv[argc] = in++;
 			in += strcspn(in, "\"");
@@ -1646,12 +1668,12 @@ static int parse_cmdline(char *in, char **argv, int maxargc)
 				return 0;
 		} else {
 			/* White space delimited word */
- 			argv[argc] = in;
+			argv[argc] = in;
 			in += strcspn(in, " \t\n");
 		}
 		if (*in != '\0')
 			*in++ = '\0';
- 	}
+	}
 	return argc;
 }
 
