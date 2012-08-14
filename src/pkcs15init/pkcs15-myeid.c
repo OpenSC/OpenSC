@@ -43,7 +43,7 @@ static int
 myeid_delete_object(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 		struct sc_pkcs15_object *object, const struct sc_path *path)
 {
-	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
+	LOG_FUNC_CALLED(p15card->card->ctx);
 	return sc_pkcs15init_delete_by_path(profile, p15card, path);
 }
 
@@ -61,10 +61,10 @@ myeid_get_init_applet_data(struct sc_profile *profile, struct sc_pkcs15_card *p1
 	const struct sc_acl_entry *entry = NULL;
 	int r;
 
-	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
+	LOG_FUNC_CALLED(ctx);
 
 	if (data_len < 8)
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_BUFFER_TOO_SMALL, "Cannot get init applet data");
+		LOG_TEST_RET(ctx, SC_ERROR_BUFFER_TOO_SMALL, "Cannot get init applet data");
 
 	*(data + 0) = 0xFF;
 	*(data + 1) = 0xFF;
@@ -72,9 +72,9 @@ myeid_get_init_applet_data(struct sc_profile *profile, struct sc_pkcs15_card *p1
 	/* MF acls */
 	sc_file_dup(&tmp_file, profile->mf_info->file);
 	if (tmp_file == NULL)
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY, "Cannot duplicate MF file");
+		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot duplicate MF file");
 	r = sc_pkcs15init_fixup_file(profile, p15card, tmp_file);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "MF fixup failed");
+	LOG_TEST_RET(ctx, r, "MF fixup failed");
 
 	/* AC 'Create DF' and 'Create EF' */
 	*(data + 2) = 0x00;	/* 'NONE' */
@@ -101,9 +101,9 @@ myeid_get_init_applet_data(struct sc_profile *profile, struct sc_pkcs15_card *p1
 	/* Application DF (5015) acls */
 	sc_file_dup(&tmp_file, profile->df_info->file);
 	if (tmp_file == NULL)
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY, "Cannot duplicate Application DF file");
+		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot duplicate Application DF file");
 	r = sc_pkcs15init_fixup_file(profile, p15card, tmp_file);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Application DF fixup failed");
+	LOG_TEST_RET(ctx, r, "Application DF fixup failed");
 
 	/* AC 'Create DF' and 'Create EF' */
 	*(data + 5) = 0x00;	/* 'NONE' */
@@ -123,7 +123,7 @@ myeid_get_init_applet_data(struct sc_profile *profile, struct sc_pkcs15_card *p1
 	*(data + 7)= 0xFF;
 	sc_file_free(tmp_file);
 
-	SC_FUNC_RETURN(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
+	LOG_FUNC_RETURN(p15card->card->ctx, SC_SUCCESS);
 }
 
 
@@ -139,19 +139,19 @@ myeid_erase_card(struct sc_profile *profile, struct sc_pkcs15_card *p15card)
 	unsigned char data[8];
 	int r;
 
-	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
+	LOG_FUNC_CALLED(ctx);
 
 	r = myeid_get_init_applet_data(profile, p15card, data, sizeof(data));
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Get init applet date error");
+	LOG_TEST_RET(ctx, r, "Get init applet date error");
 
 	/* Select parent DF and verify PINs/key as necessary */
 	r = sc_select_file(p15card->card, sc_get_mf_path(), &mf);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Cannot select MF");
+	LOG_TEST_RET(ctx, r, "Cannot select MF");
 
 	/* ACLs are not actives if file is not in the operational state */
 	if (mf->status == SC_FILE_STATUS_ACTIVATED)
 		r = sc_pkcs15init_authenticate(profile, p15card, mf, SC_AC_OP_DELETE);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "'DELETE' authentication failed on MF");
+	LOG_TEST_RET(ctx, r, "'DELETE' authentication failed on MF");
 
 	data_obj.P1      = 0x01;
 	data_obj.P2      = 0xE0;
@@ -160,7 +160,7 @@ myeid_erase_card(struct sc_profile *profile, struct sc_pkcs15_card *p15card)
 
 	r = sc_card_ctl(p15card->card, SC_CARDCTL_MYEID_PUTDATA, &data_obj);
 
-	SC_FUNC_RETURN(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(p15card->card->ctx, r);
 }
 
 static int
@@ -171,7 +171,7 @@ myeid_init_card(sc_profile_t *profile,
 	struct sc_file *file = NULL;
 	int r;
 
-	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
+	LOG_FUNC_CALLED(p15card->card->ctx);
 
 	sc_format_path("3F00", &path);
 	r = sc_select_file(p15card->card, &path, &file);
@@ -181,7 +181,7 @@ myeid_init_card(sc_profile_t *profile,
 	if (file)
 		sc_file_free(file);
 
-	SC_FUNC_RETURN(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(p15card->card->ctx, r);
 }
 
 
@@ -214,30 +214,30 @@ myeid_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *df
 	if (!profile || !p15card || !df)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
-	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "id (%x)",df->id);
+	LOG_FUNC_CALLED(ctx);
+	sc_log(ctx, "id (%x)",df->id);
 
 	if(df->id == 0x5015)
 	{
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Select (%x)",df->id);
+		sc_log(ctx, "Select (%x)",df->id);
 		r = sc_select_file(p15card->card, &df->path, NULL);
 
-        	for (ii = 0; create_dfs[ii]; ii++)   {
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Create '%s'", create_dfs[ii]);
+		for (ii = 0; create_dfs[ii]; ii++)   {
+			sc_log(ctx, "Create '%s'", create_dfs[ii]);
 
 			if (sc_profile_get_file(profile, create_dfs[ii], &file))   {
-				sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Inconsistent profile: cannot find %s", create_dfs[ii]);
-				SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INCONSISTENT_PROFILE);
+				sc_log(ctx, "Inconsistent profile: cannot find %s", create_dfs[ii]);
+				LOG_FUNC_RETURN(ctx, SC_ERROR_INCONSISTENT_PROFILE);
 			}
 
 			r = sc_pkcs15init_add_object(p15card, profile, create_dfs_val[ii], NULL);
 
 			if (r != SC_ERROR_FILE_ALREADY_EXISTS)
-				SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Failed to create MyEID xDF file");
+				LOG_TEST_RET(ctx, r, "Failed to create MyEID xDF file");
 		}
 	}
 
-	SC_FUNC_RETURN(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(p15card->card->ctx, r);
 }
 
 
@@ -255,13 +255,13 @@ myeid_select_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 
 	if (auth_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN)
 	{
-	  sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL,
+	  sc_log(p15card->card->ctx,
 			  "PIN_FLAG_SO_PIN, ref (%d), tries_left (%d)",
 			  auth_info->attrs.pin.reference, auth_info->tries_left);
 	}
 	else
 	{
-	  sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL,
+	  sc_log(p15card->card->ctx,
 			  "PIN_FLAG_PIN, ref (%d), tries_left (%d)",
 			  auth_info->attrs.pin.reference, auth_info->tries_left);
 
@@ -270,7 +270,7 @@ myeid_select_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	if (auth_info->attrs.pin.reference <= 0 || auth_info->attrs.pin.reference > MYEID_MAX_PINS)
 		auth_info->attrs.pin.reference = 1;
 
-	SC_FUNC_RETURN(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, 0);
+	LOG_FUNC_RETURN(p15card->card->ctx, SC_SUCCESS);
 }
 
 /*
@@ -289,8 +289,8 @@ myeid_create_pin(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
         struct sc_pkcs15_auth_info puk_ainfo;
 	int	r;
 
-	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "PIN('%s',ref:%i,flags:0x%X,pin_len:%d,puk_len:%d)\n",
+	LOG_FUNC_CALLED(ctx);
+	sc_log(ctx, "PIN('%s',ref:%i,flags:0x%X,pin_len:%d,puk_len:%d)\n",
                             pin_obj->label, auth_info->attrs.pin.reference, auth_info->attrs.pin.flags, pin_len, puk_len);
 
 	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
@@ -331,9 +331,9 @@ myeid_create_pin(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	data_obj.DataLen = 19;
 
 	r = sc_card_ctl(p15card->card, SC_CARDCTL_MYEID_PUTDATA, &data_obj);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Initialize PIN failed");
+	LOG_TEST_RET(ctx, r, "Initialize PIN failed");
 
-	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(ctx, r);
 }
 
 
@@ -352,7 +352,7 @@ myeid_new_file(sc_profile_t *profile, sc_card_t *card,
 	const char *tag;
 	int r;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+	LOG_FUNC_CALLED(card->ctx);
 	if (type == SC_PKCS15_TYPE_PRKEY_RSA)
 		tag = "private-key";
 	else if (type  == SC_PKCS15_TYPE_PUBKEY_RSA)
@@ -363,7 +363,7 @@ myeid_new_file(sc_profile_t *profile, sc_card_t *card,
 		tag = "data";
 	else
 	{
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Unsupported file type");
+		sc_log(card->ctx, "Unsupported file type");
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
@@ -371,7 +371,7 @@ myeid_new_file(sc_profile_t *profile, sc_card_t *card,
 	snprintf(name, sizeof(name), "template-%s", tag);
 	if (sc_profile_get_file(profile, name, &file) < 0)
 	{
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Profile doesn't define %s", name);
+		sc_log(card->ctx, "Profile doesn't define %s", name);
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
@@ -393,7 +393,7 @@ myeid_new_file(sc_profile_t *profile, sc_card_t *card,
 	}
 
 	*out = file;
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, 0);
+	LOG_FUNC_RETURN(card->ctx, 0);
 }
 
 
@@ -402,8 +402,8 @@ myeid_encode_private_key(sc_profile_t *profile, sc_card_t *card,
 		struct sc_pkcs15_prkey_rsa *rsa, u8 *key,
 		size_t *keysize, int key_ref)
 {
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, 0);
+	LOG_FUNC_CALLED(card->ctx);
+	LOG_FUNC_RETURN(card->ctx, 0);
 }
 
 static int
@@ -411,8 +411,8 @@ myeid_encode_public_key(sc_profile_t *profile, sc_card_t *card,
 		struct sc_pkcs15_prkey_rsa *rsa, u8 *key,
 		size_t *keysize, int key_ref)
 {
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, 0);
+	LOG_FUNC_CALLED(card->ctx);
+	LOG_FUNC_RETURN(card->ctx, 0);
 }
 
 
@@ -457,10 +457,10 @@ static int myeid_generate_store_key(sc_profile_t *profile, sc_card_t *card,
 	int           r;
 	sc_file_t    *prkf = NULL;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+	LOG_FUNC_CALLED(card->ctx);
 	/* Parameter check */
 	if ( (keybits < 1024) || (keybits > 2048) || (keybits & 0X7)) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(card->ctx,
 			"Unsupported key size [%u]: 1024-2048 bit + 8-multiple\n", keybits);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
@@ -526,7 +526,7 @@ done:
 	if (prkf)
 		sc_file_free(prkf);
 
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 #endif
@@ -544,32 +544,32 @@ myeid_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	struct sc_file *file = NULL;
 	int keybits = key_info->modulus_length, r;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+	LOG_FUNC_CALLED(card->ctx);
 	/* Check that the card supports the requested modulus length */
 	if (sc_card_find_rsa_alg(p15card->card, keybits) == NULL)
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS, "Unsupported key size");
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Unsupported key size");
 
-        sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "create MyEID private key ID:%s", sc_pkcs15_print_id(&key_info->id));
+        sc_log(ctx, "create MyEID private key ID:%s", sc_pkcs15_print_id(&key_info->id));
 
 	/* Get the private key file */
 	r = myeid_new_file(profile, card, SC_PKCS15_TYPE_PRKEY_RSA, key_info->key_reference, &file);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Cannot get new MyEID private key file");
+	LOG_TEST_RET(ctx, r, "Cannot get new MyEID private key file");
 
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Key file size %d", keybits);
+	sc_log(ctx, "Key file size %d", keybits);
 	file->size = keybits;
 
 	memcpy(&key_info->path.value, &file->path.value, file->path.len);
 	key_info->key_reference = file->path.value[file->path.len - 1] & 0xFF;
 
-        sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Path of MyEID private key file to create %s",
+        sc_log(ctx, "Path of MyEID private key file to create %s",
 			sc_print_path(&file->path));
 
 	/* Now create the key file */
 	r = sc_pkcs15init_create_file(profile, p15card, file);
 	sc_file_free(file);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Cannot create MyEID private key file");
+	LOG_TEST_RET(ctx, r, "Cannot create MyEID private key file");
 
-	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(ctx, r);
 }
 
 
@@ -588,22 +588,22 @@ myeid_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	struct sc_file *file = NULL;
 	int r, keybits = key_info->modulus_length;
 
-	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
+	LOG_FUNC_CALLED(ctx);
 	if (object->type != SC_PKCS15_TYPE_PRKEY_RSA)
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED, "Store key failed: RSA only supported");
+		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Store key failed: RSA only supported");
 
 	/* Check that the card supports the requested modulus length */
 	if (sc_card_find_rsa_alg(p15card->card, keybits) == NULL)
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS, "Unsupported key size");
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Unsupported key size");
 
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "store MyEID key with ID:%s and path:%s",
+	sc_log(ctx, "store MyEID key with ID:%s and path:%s",
 			sc_pkcs15_print_id(&key_info->id), sc_print_path(&key_info->path));
 
 	r = sc_select_file(card, &key_info->path, &file);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Cannot store MyEID key: select key file failed");
+	LOG_TEST_RET(ctx, r, "Cannot store MyEID key: select key file failed");
 
 	r = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_UPDATE);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "No authorisation to store MyEID private key");
+	LOG_TEST_RET(ctx, r, "No authorisation to store MyEID private key");
 
 	if (file)
 		sc_file_free(file);
@@ -631,9 +631,9 @@ myeid_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 
 	/* Store RSA key  */
 	r = sc_card_ctl(card, SC_CARDCTL_MYEID_GENERATE_STORE_KEY, &args);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Card control 'MYEID_GENERATE_STORE_KEY' failed");
+	LOG_TEST_RET(ctx, r, "Card control 'MYEID_GENERATE_STORE_KEY' failed");
 
-	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(ctx, r);
 }
 
 
@@ -651,22 +651,22 @@ myeid_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	size_t keybits = key_info->modulus_length;
 	unsigned char raw_pubkey[256];
 
-	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
+	LOG_FUNC_CALLED(ctx);
 	if (object->type != SC_PKCS15_TYPE_PRKEY_RSA)
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED, "Store key failed: RSA only supported");
+		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Store key failed: RSA only supported");
 
 	/* Check that the card supports the requested modulus length */
 	if (sc_card_find_rsa_alg(p15card->card, keybits) == NULL)
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS, "Unsupported key size");
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Unsupported key size");
 
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "store MyEID key with ID:%s and path:%s",
+	sc_log(ctx, "store MyEID key with ID:%s and path:%s",
 			sc_pkcs15_print_id(&key_info->id), sc_print_path(&key_info->path));
 
 	r = sc_select_file(card, &key_info->path, &file);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Cannot store MyEID key: select key file failed");
+	LOG_TEST_RET(ctx, r, "Cannot store MyEID key: select key file failed");
 
 	r = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_GENERATE);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "No authorisation to generate MyEID private key");
+	LOG_TEST_RET(ctx, r, "No authorisation to generate MyEID private key");
 
 	/* Fill in data structure */
 	memset(&args, 0, sizeof(args));
@@ -677,7 +677,7 @@ myeid_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 
 	/* Generate RSA key  */
 	r = sc_card_ctl(card, SC_CARDCTL_MYEID_GENERATE_STORE_KEY, &args);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Card control 'MYEID_GENERATE_STORE_KEY' failed");
+	LOG_TEST_RET(ctx, r, "Card control 'MYEID_GENERATE_STORE_KEY' failed");
 
 	/* Keypair generation -> collect public key info */
 	/* FIXME: was not preset in original Aventra version. Need to be tested. (VT) */
@@ -693,7 +693,7 @@ myeid_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 
 		/* Get public key modulus */
 		r = sc_select_file(card, &file->path, NULL);
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Cannot get key modulus: select key file failed");
+		LOG_TEST_RET(ctx, r, "Cannot get key modulus: select key file failed");
 
 		data_obj.P1 = 0x01;
 		data_obj.P2 = 0x01;
@@ -701,10 +701,10 @@ myeid_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 		data_obj.DataLen = sizeof(raw_pubkey);
 
 		r = sc_card_ctl(card, SC_CARDCTL_MYEID_GETDATA, &data_obj);
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Cannot get key modulus: 'MYEID_GETDATA' failed");
+		LOG_TEST_RET(ctx, r, "Cannot get key modulus: 'MYEID_GETDATA' failed");
 
 		if ((data_obj.DataLen * 8) != key_info->modulus_length)
-			SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_PKCS15INIT, "Cannot get key modulus: invalid key-size");
+			LOG_TEST_RET(ctx, SC_ERROR_PKCS15INIT, "Cannot get key modulus: invalid key-size");
 
 		memcpy (pubkey->u.rsa.modulus.data, raw_pubkey, pubkey->u.rsa.modulus.len);
 	}
@@ -712,15 +712,14 @@ myeid_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	if (file)
 		sc_file_free(file);
 
-	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(ctx, r);
 }
 
 /* Finish initialization. After this ACL is in affect */
 static int myeid_finalize_card(sc_card_t *card)
 {
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL,
-			sc_card_ctl(card, SC_CARDCTL_MYEID_ACTIVATE_CARD, NULL));
+	LOG_FUNC_CALLED(card->ctx);
+	LOG_FUNC_RETURN(card->ctx, sc_card_ctl(card, SC_CARDCTL_MYEID_ACTIVATE_CARD, NULL));
 }
 
 
@@ -729,7 +728,7 @@ static int myeid_finalize_card(sc_card_t *card)
  */
 static struct sc_pkcs15init_operations sc_pkcs15init_myeid_operations = {
 	myeid_erase_card,
-	myeid_init_card,       		/* init_card */
+	myeid_init_card,		/* init_card */
 	myeid_create_dir,		/* create_dir */
 	NULL,				/* create_domain */
 	myeid_select_pin_reference,
