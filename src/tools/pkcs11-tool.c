@@ -22,6 +22,7 @@
 
 #include <fcntl.h>
 #include <stdio.h>
+#include <errno.h>
 #include <stdlib.h>
 #ifdef ENABLE_OPENSSL
 #include <openssl/opensslv.h>
@@ -373,6 +374,11 @@ int main(int argc, char * argv[])
 	int do_unlock_pin = 0;
 	int action_count = 0;
 	CK_RV rv;
+
+#ifdef _WIN32
+	if (_set_fmode(_O_BINARY) == EINVAL)
+		util_fatal("Cannot set FMODE to O_BINARY");
+#endif
 
 #ifdef ENABLE_OPENSSL
 #if OPENSSL_VERSION_NUMBER >= 0x00907000L
