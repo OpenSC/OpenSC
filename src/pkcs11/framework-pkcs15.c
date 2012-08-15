@@ -20,6 +20,7 @@
 
 #include "config.h"
 #include "libopensc/log.h"
+#include "libopensc/asn1.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -807,13 +808,11 @@ pkcs15_bind_related_objects(struct pkcs15_fw_data *fw_data)
 	}
 }
 
-/* We deferred reading of the cert until needed, as it may be
- * a private object, so we must wait till login to read
- */
 
+/* We deferred reading of the cert until needed, as it may be
+ * a private object, so we must wait till login to read  */
 static int
-check_cert_data_read(struct pkcs15_fw_data *fw_data,
-				 struct pkcs15_cert_object *cert)
+check_cert_data_read(struct pkcs15_fw_data *fw_data, struct pkcs15_cert_object *cert)
 {
 	int rv;
 	struct pkcs15_pubkey_object *obj2;
@@ -823,8 +822,8 @@ check_cert_data_read(struct pkcs15_fw_data *fw_data,
 
 	if (cert->cert_data)
 		return 0;
-	if ((rv = sc_pkcs15_read_certificate(fw_data->p15_card,
-				cert->cert_info, &cert->cert_data) < 0))
+	rv = sc_pkcs15_read_certificate(fw_data->p15_card, cert->cert_info, &cert->cert_data);
+	if (rv < 0)
 		return rv;
 
 	/* update the related public key object */
@@ -3014,6 +3013,8 @@ pkcs15_cert_get_attribute(struct sc_pkcs11_session *session, void *object, CK_AT
 }
 
 
+#define ASN1_SET_TAG (SC_ASN1_SET | SC_ASN1_TAG_CONSTRUCTED)
+#define ASN1_SEQ_TAG (SC_ASN1_SEQUENCE | SC_ASN1_TAG_CONSTRUCTED)
 static int
 pkcs15_cert_cmp_attribute(struct sc_pkcs11_session *session,
 		void *object, CK_ATTRIBUTE_PTR attr)
@@ -3021,38 +3022,43 @@ pkcs15_cert_cmp_attribute(struct sc_pkcs11_session *session,
 	struct pkcs15_cert_object *cert = (struct pkcs15_cert_object*) object;
 	struct sc_pkcs11_card *p11card = session->slot->card;
 	struct pkcs15_fw_data *fw_data = NULL;
-	unsigned char *data = NULL;
-	size_t	len;
+	unsigned char *data = NULL, *_data = NULL;
+	size_t	len, _len;
 
 	fw_data = (struct pkcs15_fw_data *) p11card->fws_data[session->slot->fw_data_idx];
 	if (!fw_data)
 		return sc_to_cryptoki_error(SC_ERROR_INTERNAL, "C_GetAttributeValue");
 
 	switch (attr->type) {
-	/* Check the issuer. Some pkcs11 callers (i.e. netscape) will pass
-	 * in the ASN.1 encoded SEQUENCE OF SET ... while OpenSC just
-	 * keeps the SET in the issuer field. */
+	/* Check the issuer/subject. Some pkcs11 callers (i.e. netscape) will pass
+	 * in the ASN.1 encoded SEQUENCE OF SET,
+	 * while OpenSC just keeps the SET in the issuer/subject field. */
 	case CKA_ISSUER:
 		if (check_cert_data_read(fw_data, cert) != 0)
 			break;
 		if (cert->cert_data->issuer_len == 0)
 			break;
-		data = (u8 *) attr->pValue;
-		len = attr->ulValueLen;
-		/* SEQUENCE is tag 0x30, SET is 0x31
-		 * I know this code is icky, but hey... this is netscape
-		 * we're dealing with :-) */
-		if (cert->cert_data->issuer[0] == 0x31
-		 && data[0] == 0x30 && len >= 2) {
-			/* skip the length byte(s) */
-			len = (data[1] & 0x80)? (data[1] & 0x7F) : 0;
-			if (attr->ulValueLen < len + 2)
-				break;
-			data += len + 2;
-			len = attr->ulValueLen - len - 2;
-		}
-		if (len == cert->cert_data->issuer_len
-		 && !memcmp(cert->cert_data->issuer, data, len))
+
+		data = _data = (u8 *) attr->pValue;
+		len = _len = attr->ulValueLen;
+		if (cert->cert_data->issuer[0] == ASN1_SET_TAG && data[0] == ASN1_SEQ_TAG && len >= 2)
+			data = sc_asn1_skip_tag(context, &_data, &_len, SC_ASN1_CONS | SC_ASN1_TAG_SEQUENCE, &len);
+
+		if (len == cert->cert_data->issuer_len && !memcmp(cert->cert_data->issuer, data, len))
+			return 1;
+		break;
+	case CKA_SUBJECT:
+		if (check_cert_data_read(fw_data, cert) != 0)
+			break;
+		if (cert->cert_data->subject_len == 0)
+			break;
+
+		data = _data = (u8 *) attr->pValue;
+		len = _len = attr->ulValueLen;
+		if (cert->cert_data->subject[0] == ASN1_SET_TAG && data[0] == ASN1_SEQ_TAG && len >= 2)
+			data = sc_asn1_skip_tag(context, &_data, &_len, SC_ASN1_CONS | SC_ASN1_TAG_SEQUENCE, &len);
+
+		if (len == cert->cert_data->subject_len && !memcmp(cert->cert_data->subject, data, len))
 			return 1;
 		break;
 	default:

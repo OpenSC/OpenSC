@@ -72,6 +72,8 @@ enum {
 	OPT_TOKEN_LABEL,
 	OPT_APPLICATION_LABEL,
 	OPT_APPLICATION_ID,
+	OPT_ISSUER,
+	OPT_SUBJECT,
 	OPT_SO_PIN,
 	OPT_INIT_TOKEN,
 	OPT_INIT_PIN,
@@ -123,6 +125,8 @@ static const struct option options[] = {
 	{ "delete-object",	0, NULL,		'b' },
 	{ "application-label",	1, NULL,		OPT_APPLICATION_LABEL },
 	{ "application-id",	1, NULL,		OPT_APPLICATION_ID },
+	{ "issuer",		1, NULL,		OPT_ISSUER },
+	{ "subject",		1, NULL,		OPT_SUBJECT },
 	{ "type",		1, NULL,		'y' },
 	{ "id",			1, NULL,		'd' },
 	{ "label",		1, NULL,		'a' },
@@ -178,6 +182,8 @@ static const char *option_help[] = {
 	"Delete an object",
 	"Specify the application label of the data object (use with --type data)",
 	"Specify the application ID of the data object (use with --type data)",
+	"Specify the issuer in hexadecimal format (use with --type cert)",
+	"Specify the subject in hexadecimal format (use with --type cert/privkey/pubkey)",
 	"Specify the type of object (e.g. cert, privkey, pubkey, data)",
 	"Specify the ID of the object",
 	"Specify the label of the object",
@@ -225,6 +231,8 @@ static char *		opt_puk = NULL;
 static char *		opt_new_pin = NULL;
 static char *		opt_application_label = NULL;
 static char *		opt_application_id = NULL;
+static char *		opt_issuer = NULL;
+static char *		opt_subject = NULL;
 static char *		opt_key_type = NULL;
 static int		opt_is_private = 0;
 static int		opt_test_hotplug = 0;
@@ -548,6 +556,12 @@ int main(int argc, char * argv[])
 		case OPT_APPLICATION_ID:
 			opt_application_id = optarg;
 			break;
+		case OPT_ISSUER:
+			opt_issuer = optarg;
+			break;
+		case OPT_SUBJECT:
+			opt_subject = optarg;
+			break;
 		case OPT_NEW_PIN:
 			opt_new_pin = optarg;
 			break;
@@ -787,7 +801,8 @@ int main(int argc, char * argv[])
 		if (opt_object_class_str == NULL)
 			util_fatal("You should specify type of the object to read");
 		if (opt_object_id_len == 0 && opt_object_label == NULL &&
-				opt_application_label == NULL && opt_application_id == NULL)
+				opt_application_label == NULL && opt_application_id == NULL &&
+				opt_issuer == NULL && opt_subject == NULL)
 			 util_fatal("You should specify at least one of the "
 					 "object ID, object label, application label or application ID\n");
 		read_object(session);
@@ -2794,6 +2809,7 @@ static int read_object(CK_SESSION_HANDLE session)
 	CK_ULONG len = 0;
 	FILE *out;
 	struct sc_object_id oid;
+	unsigned char subject[0x400], issuer[0x400];
 
 	if (opt_object_class_str != NULL)   {
 		FILL_ATTR(attrs[nn_attrs], CKA_CLASS,
@@ -2823,6 +2839,24 @@ static int read_object(CK_SESSION_HANDLE session)
 		sc_format_oid(&oid, opt_application_id);
 		FILL_ATTR(attrs[nn_attrs], CKA_OBJECT_ID,
 				(unsigned char *)oid.value, sizeof(oid.value));
+		nn_attrs++;
+	}
+
+	if (opt_issuer != NULL)   {
+		size_t sz = sizeof(issuer);
+
+		if (sc_hex_to_bin(opt_issuer, issuer, &sz))
+			util_fatal("Invalid 'issuer' hexadecimal value");
+		FILL_ATTR(attrs[nn_attrs], CKA_ISSUER, issuer,  sz);
+		nn_attrs++;
+	}
+
+	if (opt_subject != NULL)   {
+		size_t sz = sizeof(subject);
+
+		if (sc_hex_to_bin(opt_subject, subject, &sz))
+			util_fatal("Invalid 'subject' hexadecimal value");
+		FILL_ATTR(attrs[nn_attrs], CKA_SUBJECT, subject,  sz);
 		nn_attrs++;
 	}
 
