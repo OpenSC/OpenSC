@@ -779,7 +779,7 @@ int sc_context_repair(sc_context_t **ctx);
  *               created sc_context_t object.
  * @param  parm  parameters for the sc_context_t creation (see
  *               sc_context_param_t for a description of the supported
- *               options). This parameter is optional and can be NULL.
+ *               options)..
  * @return SC_SUCCESS on success and an error code otherwise.
  */
 int sc_context_create(sc_context_t **ctx, const sc_context_param_t *parm);
