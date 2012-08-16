@@ -399,13 +399,19 @@ static int load_card_drivers(sc_context_t *ctx,
 	int drv_count;
 	int i;
 
-	for (drv_count = 0; ctx->card_drivers[drv_count] != NULL; drv_count++);
+	for (drv_count = 0; ctx->card_drivers[drv_count] != NULL; drv_count++)
+		;
 
 	for (i = 0; i < opts->ccount; i++) {
 		struct sc_card_driver *(*func)(void) = NULL;
 		struct sc_card_driver *(**tfunc)(void) = &func;
 		void *dll = NULL;
 		int  j;
+
+		if (drv_count >= SC_MAX_CARD_DRIVERS - 1)   {
+			sc_log(ctx, "Not more then %i card drivers allowed.", SC_MAX_CARD_DRIVERS);
+			break;
+		}
 
 		ent = &opts->cdrv[i];
 		for (j = 0; internal_card_drivers[j].name != NULL; j++)
@@ -431,6 +437,10 @@ static int load_card_drivers(sc_context_t *ctx,
 		ctx->card_drivers[drv_count]->natrs = 0;
 
 		load_card_driver_options(ctx, ctx->card_drivers[drv_count]);
+
+		/* Ensure that the list is always terminated by NULL */
+		ctx->card_drivers[drv_count + 1] = NULL;
+
 		drv_count++;
 	}
 	return SC_SUCCESS;
