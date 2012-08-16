@@ -80,7 +80,6 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 	sc_path_set(&path, SC_PATH_TYPE_DF_NAME, sc_hsm_aid.value, sc_hsm_aid.len, 0, 0);
 	r = sc_select_file(card, &path, &file);
 
-	// ToDo: Extract version number
 	sc_file_free(file);
 
 	LOG_TEST_RET(card->ctx, r, "Could not select SmartCard-HSM application");
@@ -92,7 +91,7 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 	pin_info.auth_id.value[0] = 1;
 	pin_info.auth_type = SC_PKCS15_PIN_AUTH_TYPE_PIN;
 	pin_info.attrs.pin.reference = 0x81;
-	pin_info.attrs.pin.flags = 0;
+	pin_info.attrs.pin.flags = SC_PKCS15_PIN_FLAG_LOCAL|SC_PKCS15_PIN_FLAG_INITIALIZED|SC_PKCS15_PIN_FLAG_UNBLOCK_DISABLED|SC_PKCS15_PIN_FLAG_EXCHANGE_REF_DATA;
 	pin_info.attrs.pin.type = SC_PKCS15_PIN_TYPE_ASCII_NUMERIC;
 	pin_info.attrs.pin.min_length = 4;
 	pin_info.attrs.pin.stored_length = 0;
@@ -102,7 +101,7 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 	pin_info.max_tries = 3;
 
 	strlcpy(pin_obj.label, "UserPIN", sizeof(pin_obj.label));
-	pin_obj.flags = pin_info.attrs.pin.flags;
+	pin_obj.flags = SC_PKCS15_CO_FLAG_PRIVATE|SC_PKCS15_CO_FLAG_MODIFIABLE;
 
 	r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
 	if (r < 0)

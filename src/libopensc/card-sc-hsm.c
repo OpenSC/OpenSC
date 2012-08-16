@@ -79,6 +79,39 @@ static int sc_hsm_match_card(struct sc_card *card)
 
 
 
+static int sc_hsm_select_file(sc_card_t *card,
+			       const sc_path_t *in_path,
+			       sc_file_t **file_out)
+{
+	int rv;
+	sc_file_t *file = NULL;
+
+	if (file_out == NULL) {				// Versions before 0.16 of the SmartCard-HSM do not support P2='0C'
+		rv = sc_hsm_select_file(card, in_path, &file);
+		if (file != NULL) {
+			sc_file_free(file);
+		}
+		return rv;
+	}
+
+	if ((in_path->len == 2) && (in_path->value[0] == 0x3F) && (in_path->value[1] == 0x00)) {
+		// The SmartCard-HSM is an applet that is not default selected. Simultate selection of the MF
+		file = sc_file_new();
+		if (file == NULL)
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+		file->path = *in_path;
+		file->id = 0x3F00;
+		file->type = SC_FILE_TYPE_DF;
+		file->magic = SC_FILE_MAGIC;
+
+		*file_out = file;
+		return SC_SUCCESS;
+	}
+	return (*iso_ops->select_file)(card, in_path, file_out);
+}
+
+
+
 static int sc_hsm_read_binary(sc_card_t *card,
 			       unsigned int idx, u8 *buf, size_t count,
 			       unsigned long flags)
@@ -321,6 +354,7 @@ static int sc_hsm_compute_signature(sc_card_t *card,
 static int sc_hsm_decipher(sc_card_t *card, const u8 * crgram, size_t crgram_len, u8 * out, size_t outlen)
 {
 	int r;
+	size_t len;
 	sc_apdu_t apdu;
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	sc_hsm_private_data_t *priv = (sc_hsm_private_data_t *) card->drv_data;
@@ -347,17 +381,37 @@ static int sc_hsm_decipher(sc_card_t *card, const u8 * crgram, size_t crgram_len
 			// The SmartCard-HSM returns the point result of the DH operation
 			// with a leading '04'
 			assert(apdu.resplen > 0);
-			size_t len = apdu.resplen - 1 > outlen ? outlen : apdu.resplen - 1;
+			len = apdu.resplen - 1 > outlen ? outlen : apdu.resplen - 1;
 			memcpy(out, apdu.resp + 1, len);
 			LOG_FUNC_RETURN(card->ctx, len);
 		} else {
-			size_t len = apdu.resplen > outlen ? outlen : apdu.resplen;
+			len = apdu.resplen > outlen ? outlen : apdu.resplen;
 			memcpy(out, apdu.resp, len);
 			LOG_FUNC_RETURN(card->ctx, len);
 		}
 	}
 	else
 		LOG_FUNC_RETURN(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2));
+}
+
+
+
+static int sc_hsm_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
+{
+	serial->len = 4;
+	memcpy(serial->value, "ABCD", 4);
+	return 0;
+}
+
+
+
+static int sc_hsm_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
+{
+	switch (cmd) {
+	case SC_CARDCTL_GET_SERIALNR:
+		return sc_hsm_get_serialnr(card, (sc_serial_number_t *)ptr);
+	}
+	return SC_ERROR_NOT_SUPPORTED;
 }
 
 
@@ -423,6 +477,7 @@ static struct sc_card_driver * sc_get_driver(void)
 
 	sc_hsm_ops                   = *iso_drv->ops;
 	sc_hsm_ops.match_card        = sc_hsm_match_card;
+	sc_hsm_ops.select_file       = sc_hsm_select_file;
 	sc_hsm_ops.read_binary       = sc_hsm_read_binary;
 	sc_hsm_ops.list_files        = sc_hsm_list_files;
 	sc_hsm_ops.set_security_env  = sc_hsm_set_security_env;
@@ -430,6 +485,7 @@ static struct sc_card_driver * sc_get_driver(void)
 	sc_hsm_ops.decipher          = sc_hsm_decipher;
 	sc_hsm_ops.init              = sc_hsm_init;
 	sc_hsm_ops.finish            = sc_hsm_finish;
+	sc_hsm_ops.card_ctl          = sc_hsm_card_ctl;
 
 	/* no record oriented file services */
 	sc_hsm_ops.read_record       = NULL;
