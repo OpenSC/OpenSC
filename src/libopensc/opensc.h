@@ -649,6 +649,10 @@ struct sc_card_operations {
 	int (*put_data)(sc_card_t *, unsigned int, const u8 *, size_t);
 
 	int (*delete_record)(sc_card_t *card, unsigned int rec_nr);
+
+	int (*perform_pace)(sc_card_t *card,
+            struct establish_pace_channel_input *,
+            struct establish_pace_channel_output *);
 };
 
 typedef struct sc_card_driver {
@@ -1297,6 +1301,15 @@ extern sc_card_driver_t *sc_get_iso7816_driver(void);
 int sc_perform_pace(sc_card_t *card,
         struct establish_pace_channel_input *pace_input,
         struct establish_pace_channel_output *pace_output);
+
+/**
+ * @brief Names the type of the PACE secret
+ *
+ * @param pin_id type of the PACE secret
+ *
+ * @return Printable string containing the name
+ */
+const char *pace_secret_name(unsigned char pin_id);
 
 #ifdef __cplusplus
 }

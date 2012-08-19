@@ -83,6 +83,7 @@ sc_disconnect_card
 sc_do_log
 sc_do_log_noframe
 _sc_debug
+_sc_debug_hex
 sc_enum_apps
 sc_encode_oid
 sc_parse_ef_atr
@@ -303,6 +304,8 @@ sc_crc32
 sc_pkcs15_convert_prkey
 sc_pkcs15_convert_pubkey
 sc_perform_pace
+pace_secret_name
+tr_version
 iasecc_sdo_encode_update_field
 iasecc_sm_create_file
 iasecc_sm_delete_file

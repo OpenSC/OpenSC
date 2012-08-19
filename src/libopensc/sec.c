@@ -285,7 +285,7 @@ int sc_perform_pace(sc_card_t *card,
         struct establish_pace_channel_output *pace_output)
 {
     int r = SC_ERROR_NOT_SUPPORTED;
-    u8 buf[0xffff];
+    char buf[0xffff];
 
     assert(card != NULL && pace_input != NULL && pace_output != NULL);
     SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
@@ -339,9 +339,11 @@ int sc_perform_pace(sc_card_t *card,
         r = card->reader->ops->perform_pace(card->reader, pace_input,
                 pace_output);
     } else {
-        /* TODO Add EstablishPACEChannel using a normal reader here */
-        /* see for example http://vsmartcard.sourceforge.net/npa/README.html */
-        sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "PACE currently only supported via reader.");
+        if (card->reader && card->ops && card->ops->perform_pace) {
+            r = card->ops->perform_pace(card, pace_input, pace_output);
+        } else {
+            SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_NOT_SUPPORTED);
+        }
     }
 
     sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
@@ -402,4 +404,24 @@ int sc_perform_pace(sc_card_t *card,
     }
 
     SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
+}
+
+static const char *MRZ_name = "MRZ";
+static const char *PIN_name = "PIN";
+static const char *PUK_name = "PUK";
+static const char *CAN_name = "CAN";
+static const char *UNDEF_name = "UNDEF";
+const char *pace_secret_name(unsigned char pin_id) {
+    switch (pin_id) {
+        case PACE_PIN_ID_MRZ:
+            return MRZ_name;
+        case PACE_PIN_ID_PUK:
+            return PUK_name;
+        case PACE_PIN_ID_PIN:
+            return PIN_name;
+        case PACE_PIN_ID_CAN:
+            return CAN_name;
+        default:
+            return UNDEF_name;
+    }
 }

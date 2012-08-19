@@ -1,0 +1,81 @@
+package "npa-tool"
+purpose "Access the German electronic identity card (neuer Personalausweis, nPA)"
+
+option "info"           i
+    "Print available readers and drivers."
+    flag off
+option "reader"         r
+    "Number of the PC/SC reader to use (-1 for autodetect)"
+    int
+    default="-1"
+    optional
+option "verbose"    v
+    "Use (several times) to be more verbose"
+    multiple
+    optional
+option "env"            -
+    "Whether to use environment variables PIN, PUK, CAN, MRZ and NEWPIN. You may want to clean your environment before enabling this."
+    flag off
+
+section "Secrets for establishing the secure PACE channel to the card"
+option "pin"            p
+    "Run PACE with (transport) eID-PIN"
+    string
+    argoptional
+    optional
+option "puk"            u
+    "Run PACE with PUK"
+    string
+    argoptional
+    optional
+option "can"            c
+    "Run PACE with CAN"
+    string
+    argoptional
+    optional
+option "mrz"            m
+    "Run PACE with MRZ (insert MRZ without newlines)"
+    string
+    argoptional
+    optional
+
+section "PIN management"
+option "new-pin"        N
+    "Install a new PIN"
+    string
+    optional
+option "resume"         R
+    "Resume eID-PIN (uses CAN to activate last retry)"
+    flag off
+option "unblock"        U
+    "Unblock PIN (uses PUK to activate three more retries)"
+    flag off
+
+section "Special options, not always useful"
+option "break"          b
+    "Brute force PIN, CAN or PUK"
+    flag off
+option "chat"           -
+    "Card holder authorization template to use"
+    string
+    typestr="HEX_STRING"
+    optional
+option "cert-desc"      -
+    "Certificate description to use for Terminal Authentication"
+    string
+    typestr="HEX_STRING"
+    optional
+option "translate"      t
+    "File with APDUs to send through the secure channel"
+    string
+    typestr="FILENAME"
+    default="stdin"
+    optional
+option "tr-03110v201"    -
+    "Force compliance to BSI TR-03110 version 2.01"
+    flag off
+
+text "
+Report bugs to @PACKAGE_BUGREPORT@
+
+Written by Frank Morgner <morgner@informatik.hu-berlin.de>"

@@ -463,13 +463,19 @@ static int
 sc_single_sm_transmit(struct sc_card *card, struct sc_apdu *apdu)
 {
 	struct sc_context *ctx  = card->ctx;
-	struct sc_apdu *sm_apdu = NULL;
+    sc_apdu_t sm_apdu;
+    static u8 rbuf[0xffff], sbuf[0xffff];
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx, "SM_MODE:%X", card->sm_ctx.sm_mode);
 	if (!card->sm_ctx.ops.get_sm_apdu || !card->sm_ctx.ops.free_sm_apdu)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
+
+    sm_apdu.data = sbuf;
+    sm_apdu.datalen = sizeof sbuf;
+    sm_apdu.resp = rbuf;
+    sm_apdu.resplen = sizeof rbuf;
 
 	/* get SM encoded APDU */
 	rv = card->sm_ctx.ops.get_sm_apdu(card, apdu, &sm_apdu);
@@ -481,15 +487,19 @@ sc_single_sm_transmit(struct sc_card *card, struct sc_apdu *apdu)
 	}
 	LOG_TEST_RET(ctx, rv, "get SM APDU error");
 
+	/* determine the APDU type if necessary, i.e. to use
+	 * short or extended APDUs  */
+	sc_detect_apdu_cse(card, &sm_apdu);
+
 	/* check if SM APDU is still valid */
-	rv = sc_check_apdu(card, sm_apdu);
+	rv = sc_check_apdu(card, &sm_apdu);
 	if (rv < 0)   {
 		card->sm_ctx.ops.free_sm_apdu(card, apdu, &sm_apdu);
 		LOG_TEST_RET(ctx, rv, "cannot validate SM encoded APDU");
 	}
 
 	/* send APDU to the reader driver */
-	rv = card->reader->ops->transmit(card->reader, sm_apdu);
+	rv = card->reader->ops->transmit(card->reader, &sm_apdu);
 	LOG_TEST_RET(ctx, rv, "unable to transmit APDU");
 
 	/* decode SM answer and free temporary SM related data */

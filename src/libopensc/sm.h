@@ -219,6 +219,7 @@ struct sm_info   {
 	union {
 		struct sm_gp_session gp;
 		struct sm_cwa_session cwa;
+		void *generic;
 	} session;
 
 	struct sc_serial_number serialnr;
@@ -265,8 +266,8 @@ struct sc_card;
  */
 struct sm_card_operations {
 	int (*open)(struct sc_card *card);
-	int (*get_sm_apdu)(struct sc_card *card, struct sc_apdu *apdu, struct sc_apdu **sm_apdu);
-	int (*free_sm_apdu)(struct sc_card *card, struct sc_apdu *apdu, struct sc_apdu **sm_apdu);
+	int (*get_sm_apdu)(struct sc_card *card, struct sc_apdu *apdu, struct sc_apdu *sm_apdu);
+	int (*free_sm_apdu)(struct sc_card *card, struct sc_apdu *apdu, struct sc_apdu *sm_apdu);
 	int (*close)(struct sc_card *card);
 
 	int (*read_binary)(struct sc_card *card, unsigned int idx,
