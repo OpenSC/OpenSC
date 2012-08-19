@@ -169,12 +169,12 @@
 				key as a PKCS #15 public key object.
 			</para>
 			<para>
-				Note the use of the <option>--id</option> option. The current
-				<command>pkcs15</command> profile defines two key templates, one for
-				authentication (key ID <literal>45</literal>), and one for non-repudiation purposes (key ID <literal>46</literal>).
-				Other key templates will probably be added in the future. Note that if you don't
-				specify a key ID, <command>pkcs15-init</command> will pick just the first key
-				template defined by the profile.
+				Note that usage of <option>--id</option> option in the <command>pkcs15-init</command>
+                                commands to generate or to import a new key is deprecated.
+                                Better practice is to let the middleware to derive the identifier from the key material.
+                                (SHA1(modulus) for RSA, SHA1(pub) for DSA, ...).
+                                This allows easily set up relation between 'related' objects
+                                (private/public keys and certificates).
 			</para>
 			<para>
 				In addition to the PEM key file format, <command>pkcs15-init</command> also
