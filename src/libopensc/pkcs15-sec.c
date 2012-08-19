@@ -492,10 +492,10 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	}
 
 	r = sc_compute_signature(p15card->card, tmp, inlen, out, outlen);
-	if (r == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED) {
+	if (r == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED)
 		if (sc_pkcs15_pincache_revalidate(p15card, obj) == SC_SUCCESS)
 			r = sc_compute_signature(p15card->card, tmp, inlen, out, outlen);
-	}
+
 	sc_mem_clear(buf, sizeof(buf));
 	sc_unlock(p15card->card);
 	LOG_TEST_RET(ctx, r, "sc_compute_signature() failed");

@@ -63,8 +63,7 @@ int util_connect_card(sc_context_t *ctx, sc_card_t **cardp,
 		reader = found;
 	} else {
 		if (sc_ctx_get_reader_count(ctx) == 0) {
-			fprintf(stderr,
-				"No smart card readers found.\n");
+			fprintf(stderr, "No smart card readers found.\n");
 			return 1;
 		}
 		if (!reader_id) {
@@ -84,6 +83,7 @@ int util_connect_card(sc_context_t *ctx, sc_card_t **cardp,
 			unsigned char atr_buf[SC_MAX_ATR_SIZE * 3];
 			size_t atr_buf_len = sizeof(atr_buf);
 			unsigned int i;
+
 			if (sc_hex_to_bin(reader_id, atr_buf, &atr_buf_len) == SC_SUCCESS) {
 				/* Loop readers, looking for a card with ATR */
 				for (i = 0; i < sc_ctx_get_reader_count(ctx); i++) {
