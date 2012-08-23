@@ -205,9 +205,9 @@ int sc_pkcs15_decode_prkdf_entry(struct sc_pkcs15_card *p15card,
 	sc_copy_asn1_entry(c_asn1_com_key_attr, asn1_com_key_attr);
 
 	sc_format_asn1_entry(asn1_prkey + 0, &rsa_prkey_obj, NULL, 0);
-	sc_format_asn1_entry(asn1_prkey + 1, &dsa_prkey_obj, NULL, 0);
-	sc_format_asn1_entry(asn1_prkey + 2, &gostr3410_prkey_obj, NULL, 0);
-	sc_format_asn1_entry(asn1_prkey + 3, &ecc_prkey_obj, NULL, 0);
+	sc_format_asn1_entry(asn1_prkey + 1, &ecc_prkey_obj, NULL, 0);
+	sc_format_asn1_entry(asn1_prkey + 2, &dsa_prkey_obj, NULL, 0);
+	sc_format_asn1_entry(asn1_prkey + 3, &gostr3410_prkey_obj, NULL, 0);
 
 	sc_format_asn1_entry(asn1_prk_rsa_attr + 0, asn1_rsakey_attr, NULL, 0);
 	sc_format_asn1_entry(asn1_prk_dsa_attr + 0, asn1_dsakey_attr, NULL, 0);
@@ -256,12 +256,15 @@ int sc_pkcs15_decode_prkdf_entry(struct sc_pkcs15_card *p15card,
 		obj->type = SC_PKCS15_TYPE_PRKEY_RSA;
 	}
 	else if (asn1_prkey[1].flags & SC_ASN1_PRESENT) {
+		obj->type = SC_PKCS15_TYPE_PRKEY_EC;
+	}
+	else if (asn1_prkey[2].flags & SC_ASN1_PRESENT) {
 		obj->type = SC_PKCS15_TYPE_PRKEY_DSA;
 		/* If the value was indirect-protected, mark the path */
 		if (asn1_dsakey_i_p_attr[0].flags & SC_ASN1_PRESENT)
 			info.path.type = SC_PATH_TYPE_PATH_PROT;
 	}
-	else if (asn1_prkey[2].flags & SC_ASN1_PRESENT) {
+	else if (asn1_prkey[3].flags & SC_ASN1_PRESENT) {
 		obj->type = SC_PKCS15_TYPE_PRKEY_GOSTR3410;
 		assert(info.modulus_length == 0);
 		info.modulus_length = SC_PKCS15_GOSTR3410_KEYSIZE;
@@ -275,9 +278,6 @@ int sc_pkcs15_decode_prkdf_entry(struct sc_pkcs15_card *p15card,
 		keyinfo_gostparams->gostr3410 = gostr3410_params[0];
 		keyinfo_gostparams->gostr3411 = gostr3410_params[1];
 		keyinfo_gostparams->gost28147 = gostr3410_params[2];
-	}
-	else if (asn1_prkey[3].flags & SC_ASN1_PRESENT) {
-		obj->type = SC_PKCS15_TYPE_PRKEY_EC;
 	}
 	else {
 		sc_log(ctx, "Neither RSA or DSA or GOSTR3410 or ECC key in PrKDF entry.");
@@ -396,8 +396,10 @@ int sc_pkcs15_encode_prkdf_entry(sc_context_t *ctx, const struct sc_pkcs15_objec
 		sc_format_asn1_entry(asn1_rsakey_attr + 0, &prkey->path, NULL, 1);
 		sc_format_asn1_entry(asn1_rsakey_attr + 1, &prkey->modulus_length, NULL, 1);
 		break;
+	case SC_PKCS15_TYPE_PRKEY_EC:
+		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "EC private key type not supported");
 	case SC_PKCS15_TYPE_PRKEY_DSA:
-		sc_format_asn1_entry(asn1_prkey + 1, &dsa_prkey_obj, NULL, 1);
+		sc_format_asn1_entry(asn1_prkey + 2, &dsa_prkey_obj, NULL, 1);
 		sc_format_asn1_entry(asn1_prk_dsa_attr + 0, asn1_dsakey_value_attr, NULL, 1);
 		if (prkey->path.type != SC_PATH_TYPE_PATH_PROT) {
 			/* indirect: just add the path */
@@ -410,7 +412,7 @@ int sc_pkcs15_encode_prkdf_entry(sc_context_t *ctx, const struct sc_pkcs15_objec
 		}
 		break;
 	case SC_PKCS15_TYPE_PRKEY_GOSTR3410:
-		sc_format_asn1_entry(asn1_prkey + 2, &gostr3410_prkey_obj, NULL, 1);
+		sc_format_asn1_entry(asn1_prkey + 3, &gostr3410_prkey_obj, NULL, 1);
 		sc_format_asn1_entry(asn1_prk_gostr3410_attr + 0, asn1_gostr3410key_attr, NULL, 1);
 		sc_format_asn1_entry(asn1_gostr3410key_attr + 0, &prkey->path, NULL, 1);
 		if (prkey->params.len == sizeof(*keyinfo_gostparams))   {
