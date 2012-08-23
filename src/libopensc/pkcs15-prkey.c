@@ -398,6 +398,7 @@ int sc_pkcs15_encode_prkdf_entry(sc_context_t *ctx, const struct sc_pkcs15_objec
 		break;
 	case SC_PKCS15_TYPE_PRKEY_EC:
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "EC private key type not supported");
+		break;
 	case SC_PKCS15_TYPE_PRKEY_DSA:
 		sc_format_asn1_entry(asn1_prkey + 2, &dsa_prkey_obj, NULL, 1);
 		sc_format_asn1_entry(asn1_prk_dsa_attr + 0, asn1_dsakey_value_attr, NULL, 1);
