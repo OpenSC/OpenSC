@@ -209,8 +209,12 @@ static int epass2003_pkcs15_create_pin(struct sc_profile *profile,
 {
 	struct sc_card *card = p15card->card;
 	int r;
-	struct sc_pkcs15_auth_info *auth_info =
-	    (struct sc_pkcs15_auth_info *)pin_obj->data;
+	struct sc_pkcs15_auth_info *auth_info;
+
+	if (NULL == pin_obj)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	auth_info = (struct sc_pkcs15_auth_info *)pin_obj->data;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
