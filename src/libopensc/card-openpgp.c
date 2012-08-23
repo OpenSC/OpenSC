@@ -2057,6 +2057,8 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_keystore_info
 	if (result != NULL) {
 		*result = tlvblock;
 		*resultlen = tlvlen;
+	} else {
+		free(tlvblock);
 	}
 
 out1:
