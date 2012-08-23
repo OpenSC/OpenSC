@@ -2044,7 +2044,7 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_keystore_info
 	default:
 		sc_log(ctx, "Unknown key type %d.", key_info->keytype);
 		r = SC_ERROR_INVALID_ARGUMENTS;
-		goto out2;
+		goto out1;
 	}
 	memcpy(data + 2, tlv_7f48, tlvlen_7f48);
 	memcpy(data + 2 + tlvlen_7f48, tlv_5f48, tlvlen_5f48);
