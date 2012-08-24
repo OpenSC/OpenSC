@@ -536,7 +536,7 @@ static void print_prkey_info(const struct sc_pkcs15_object *obj)
 	if (prkey->modulus_length)
 		printf("\tModLength      : %lu\n", (unsigned long)prkey->modulus_length);
 	else
-		printf("\tFieldLength      : %lu\n", (unsigned long)prkey->field_length);
+		printf("\tFieldLength    : %lu\n", (unsigned long)prkey->field_length);
 	printf("\tKey ref        : %d (0x%X)\n", prkey->key_reference, prkey->key_reference);
 	printf("\tNative         : %s\n", prkey->native ? "yes" : "no");
 	if (prkey->path.len || prkey->path.aid.len)

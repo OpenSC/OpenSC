@@ -1067,9 +1067,14 @@ md_set_cardid(PCARD_DATA pCardData, struct md_file *file)
 		int rv;
 
 		rv = sc_hex_to_bin(vs->p15card->tokeninfo->serial_number, sn_bin, &sn_len);
-		if (rv)
-			return SCARD_E_INVALID_VALUE;
-
+		if (rv) {
+			sn_len = strlen(vs->p15card->tokeninfo->serial_number);
+			if (sn_len > SC_MAX_SERIALNR) {
+				sn_len = SC_MAX_SERIALNR;
+			}
+			memcpy(sn_bin, vs->p15card->tokeninfo->serial_number, sn_len);
+		}
+		
 		for (offs=0; offs < MD_CARDID_SIZE; )   {
 			wr = MD_CARDID_SIZE - offs;
 			if (wr > sn_len)
@@ -3234,8 +3239,11 @@ DWORD WINAPI CardGetProperty(__in PCARD_DATA pCardData,
 		size_t sn_len = strlen(vs->p15card->tokeninfo->serial_number)/2;
 
 		if (sc_hex_to_bin(vs->p15card->tokeninfo->serial_number, buf, &buf_len))   {
-			logprintf(pCardData, 0, "Hex to Bin conversion error");
-			return SCARD_F_INTERNAL_ERROR;
+			buf_len = strlen(vs->p15card->tokeninfo->serial_number);
+			if (buf_len > SC_MAX_SERIALNR) {
+				buf_len = SC_MAX_SERIALNR;
+			}
+			memcpy(buf, vs->p15card->tokeninfo->serial_number, buf_len);
 		}
 
 		if (pdwDataLen)

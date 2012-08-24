@@ -58,13 +58,6 @@ static struct sc_atr_table sc_hsm_atrs[] = {
 };
 
 
-/* Information the driver maintains between calls */
-typedef struct sc_hsm_private_data {
-	const sc_security_env_t *env;
-	u8 algorithm;
-} sc_hsm_private_data_t;
-
-
 
 static int sc_hsm_match_card(struct sc_card *card)
 {
@@ -143,23 +136,13 @@ static int sc_hsm_read_binary(sc_card_t *card,
 
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(ctx, r, "APDU transmit failed");
-	if (apdu.resplen == 0)
-		LOG_FUNC_RETURN(ctx, sc_check_sw(card, apdu.sw1, apdu.sw2));
-	memcpy(buf, recvbuf, apdu.resplen);
 
 	r =  sc_check_sw(card, apdu.sw1, apdu.sw2);
-	if (r == SC_ERROR_FILE_END_REACHED)
-		LOG_FUNC_RETURN(ctx, apdu.resplen);
-	LOG_TEST_RET(ctx, r, "Check SW error");
-
-	if (apdu.resplen < count)   {
-		r = sc_hsm_read_binary(card, idx + apdu.resplen, buf + apdu.resplen, count - apdu.resplen, flags);
-		/* Ignore all but 'corrupted data' errors */
-		if (r == SC_ERROR_CORRUPTED_DATA)
-			LOG_FUNC_RETURN(ctx, SC_ERROR_CORRUPTED_DATA);
-		else if (r > 0)
-			apdu.resplen += r;
+	if (r != SC_ERROR_FILE_END_REACHED) {
+		LOG_TEST_RET(ctx, r, "Check SW error");
 	}
+
+	memcpy(buf, recvbuf, apdu.resplen);
 
 	LOG_FUNC_RETURN(ctx, apdu.resplen);
 }
@@ -396,10 +379,29 @@ static int sc_hsm_decipher(sc_card_t *card, const u8 * crgram, size_t crgram_len
 
 
 
+void sc_hsm_set_serialnr(sc_card_t *card, char *serial)
+{
+	sc_hsm_private_data_t *priv = (sc_hsm_private_data_t *) card->drv_data;
+
+	if (priv->serialno) {
+		free(priv->serialno);
+	}
+
+	priv->serialno = strdup(serial);
+}
+
+
+
 static int sc_hsm_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 {
-	serial->len = 4;
-	memcpy(serial->value, "ABCD", 4);
+	sc_hsm_private_data_t *priv = (sc_hsm_private_data_t *) card->drv_data;
+
+	if (!priv->serialno) {
+		return SC_ERROR_OBJECT_NOT_FOUND;
+	}
+
+	serial->len = strlen(priv->serialno);
+	strncpy(serial->value, priv->serialno, sizeof(serial->value));
 	return 0;
 }
 
@@ -430,10 +432,6 @@ static int sc_hsm_init(struct sc_card *card)
 	card->drv_data = priv;
 
 	flags = SC_ALGORITHM_RSA_RAW;
-//	flags = SC_ALGORITHM_RSA_RAW|
-//			SC_ALGORITHM_RSA_PAD_PKCS1|
-//			SC_ALGORITHM_RSA_HASH_SHA1|
-//			SC_ALGORITHM_RSA_HASH_SHA256;
 
 	_sc_card_add_rsa_alg(card, 1024, flags, 0);
 	_sc_card_add_rsa_alg(card, 1536, flags, 0);
@@ -462,6 +460,9 @@ static int sc_hsm_init(struct sc_card *card)
 static int sc_hsm_finish(sc_card_t * card)
 {
 	sc_hsm_private_data_t *priv = (sc_hsm_private_data_t *) card->drv_data;
+	if (priv->serialno) {
+		free(priv->serialno);
+	}
 	free(priv);
 	return SC_SUCCESS;
 }

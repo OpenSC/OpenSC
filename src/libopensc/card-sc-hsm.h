@@ -42,4 +42,13 @@
 #define ALGO_EC_SHA256			0x73		/* ECDSA signature with SHA-256 hash */
 #define ALGO_EC_DH				0x80		/* ECDH key derivation */
 
+
+/* Information the driver maintains between calls */
+typedef struct sc_hsm_private_data {
+	const sc_security_env_t *env;
+	u8 algorithm;
+	char *serialno;
+} sc_hsm_private_data_t;
+
+
 #endif /* SC_HSM_H_ */

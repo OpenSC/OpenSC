@@ -35,6 +35,93 @@
 /* Our AID */
 static struct sc_aid sc_hsm_aid = { { 0xE8,0x2B,0x06,0x01,0x04,0x01,0x81,0xC3,0x1F,0x02,0x01 }, 11 };
 
+
+void sc_hsm_set_serialnr(sc_card_t *card, char *serial);
+
+
+#define C_ASN1_CVC_BODY_SIZE 5
+static const struct sc_asn1_entry c_asn1_cvc_body[C_ASN1_CVC_BODY_SIZE] = {
+	{ "certificateProfileIdentifier", SC_ASN1_INTEGER, SC_ASN1_APP | 0x1F29, 0, NULL, NULL },
+	{ "certificationAuthorityReference", SC_ASN1_PRINTABLESTRING, SC_ASN1_APP | 2, 0, NULL, NULL },
+	{ "publicKey", SC_ASN1_STRUCT, SC_ASN1_CONS | SC_ASN1_APP | 0x1F49, 0, NULL, NULL },
+	{ "certificateHolderReference", SC_ASN1_PRINTABLESTRING, SC_ASN1_APP | 0x1F20, 0, NULL, NULL },
+	{ NULL, 0, 0, 0, NULL, NULL }
+};
+
+#define C_ASN1_CVC_SIZE 3
+static const struct sc_asn1_entry c_asn1_cvc[C_ASN1_CVC_SIZE] = {
+	{ "certificateBody", SC_ASN1_STRUCT, SC_ASN1_CONS | SC_ASN1_APP | 0x1F4E, 0, NULL, NULL },
+	{ "signature", SC_ASN1_OCTET_STRING, SC_ASN1_APP | 0x1F37, SC_ASN1_ALLOC, NULL, NULL },
+	{ NULL, 0, 0, 0, NULL, NULL }
+};
+
+
+
+struct sc_cvc_signature {
+	void *data;
+	size_t len;
+};
+
+struct sc_cvc {
+	int cpi;
+	char car[17];
+	char chr[17];
+	struct sc_cvc_signature signature;
+};
+typedef struct sc_cvc sc_cvc_t;
+
+
+
+static int sc_pkcs15emu_sc_hsm_decode_cvc (sc_pkcs15_card_t * p15card,
+											const u8 ** buf, size_t *buflen,
+											sc_cvc_t *cvc)
+{
+	sc_card_t *card = p15card->card;
+	struct sc_asn1_entry asn1_cvc[C_ASN1_CVC_SIZE];
+	struct sc_asn1_entry asn1_cvc_body[C_ASN1_CVC_BODY_SIZE];
+	unsigned int cla,tag;
+	size_t taglen;
+	size_t lenchr = sizeof(cvc->chr);
+	size_t lencar = sizeof(cvc->car);
+	int r;
+
+	memset(cvc, 0, sizeof(cvc));
+	sc_copy_asn1_entry(c_asn1_cvc, asn1_cvc);
+	sc_copy_asn1_entry(c_asn1_cvc_body, asn1_cvc_body);
+
+	sc_format_asn1_entry(asn1_cvc_body    , &cvc->cpi, NULL, 0);
+	sc_format_asn1_entry(asn1_cvc_body + 1, &cvc->car, &lencar, 0);
+	sc_format_asn1_entry(asn1_cvc_body + 3, &cvc->chr, &lenchr, 0);
+
+	sc_format_asn1_entry(asn1_cvc    , &asn1_cvc_body, NULL, 0);
+	sc_format_asn1_entry(asn1_cvc + 1, &cvc->signature.data, &cvc->signature.len, 0);
+
+//	sc_asn1_print_tags(*buf, *buflen);
+
+	r = sc_asn1_read_tag(buf, *buflen, &cla, &tag, &taglen);
+	LOG_TEST_RET(card->ctx, r, "Could not decode card verifiable certificate");
+	if ((cla != (SC_ASN1_TAG_APPLICATION|SC_ASN1_TAG_CONSTRUCTED)) ||
+		(tag != 0x1F21)) {
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_DATA);
+	}
+
+	*buflen = taglen;
+	r = sc_asn1_decode(card->ctx, asn1_cvc, *buf, *buflen, buf, buflen);
+	LOG_TEST_RET(card->ctx, r, "Could not decode card verifiable certificate");
+
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+}
+
+
+
+static void sc_pkcs15emu_sc_hsm_free_cvc(sc_cvc_t *cvc) {
+	if (cvc->signature.data) {
+		free(cvc->signature.data);
+	}
+}
+
+
+
 /*
  * Initialize PKCS#15 emulation with user PIN, private keys and certificate objects
  *
@@ -47,6 +134,7 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 	u8 filelist[MAX_EXT_APDU_LENGTH];
 	int filelistlength;
 	int r, i;
+	sc_cvc_t devcert;
 	struct sc_app_info *appinfo;
 	struct sc_pkcs15_auth_info pin_info;
 	struct sc_pkcs15_object pin_obj;
@@ -54,7 +142,7 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 	struct sc_pkcs15_object cert_obj;
 	sc_pkcs15_prkey_info_t *key_info;
 	u8 fid[2];
-	u8 prkdbin[512];
+	u8 efbin[512];
 	sc_pkcs15_object_t prkd;
 	u8 keyid;
 	u8 *ptr;
@@ -79,10 +167,40 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 
 	sc_path_set(&path, SC_PATH_TYPE_DF_NAME, sc_hsm_aid.value, sc_hsm_aid.len, 0, 0);
 	r = sc_select_file(card, &path, &file);
-
 	sc_file_free(file);
 
 	LOG_TEST_RET(card->ctx, r, "Could not select SmartCard-HSM application");
+
+	// Read device certificate to determine serial number
+	sc_path_set(&path, SC_PATH_TYPE_FILE_ID, "\x2F\x02", 2, 0, 0);
+	r = sc_select_file(card, &path, &file);
+	sc_file_free(file);
+	LOG_TEST_RET(card->ctx, r, "Could not select EF.C_DevAut");
+
+	r = sc_read_binary(p15card->card, 0, efbin, sizeof(efbin), 0);
+	LOG_TEST_RET(card->ctx, r, "Could not read EF.C_DevAut");
+
+	ptr = efbin;
+	len = r;
+	r = sc_pkcs15emu_sc_hsm_decode_cvc(p15card, (const u8 **)&ptr, &len, &devcert);
+	LOG_TEST_RET(card->ctx, r, "Could not decode EF.C_DevAut");
+
+	len = strlen(devcert.chr);		// Strip last 5 digit sequence number from CHR
+	assert(len >= 8);
+	len -= 5;
+
+	p15card->tokeninfo->serial_number = calloc(len + 1, 1);
+	if (p15card->tokeninfo->serial_number == NULL) {
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+	}
+
+	memcpy(p15card->tokeninfo->serial_number, devcert.chr, len);
+	*(p15card->tokeninfo->serial_number + len) = 0;
+
+	sc_hsm_set_serialnr(card, p15card->tokeninfo->serial_number);
+
+	sc_pkcs15emu_sc_hsm_free_cvc(&devcert);
+
 
 	memset(&pin_info, 0, sizeof(pin_info));
 	memset(&pin_obj, 0, sizeof(pin_obj));
@@ -130,11 +248,11 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 		}
 
 		sc_file_free(file);
-		r = sc_read_binary(p15card->card, 0, prkdbin, sizeof(prkdbin), 0);
+		r = sc_read_binary(p15card->card, 0, efbin, sizeof(efbin), 0);
 		LOG_TEST_RET(card->ctx, r, "Could not read EF.PRKD");
 
 		memset(&prkd, 0, sizeof(prkd));
-		ptr = prkdbin;
+		ptr = efbin;
 		len = r;
 
 		sc_pkcs15_decode_prkdf_entry(p15card, &prkd, (const u8 **)&ptr, &len);
