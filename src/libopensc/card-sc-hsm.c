@@ -58,6 +58,7 @@ static struct sc_atr_table sc_hsm_atrs[] = {
 };
 
 
+
 static int sc_hsm_match_card(struct sc_card *card)
 {
 	int i;
@@ -142,17 +143,6 @@ static int sc_hsm_read_binary(sc_card_t *card,
 	}
 
 	memcpy(buf, recvbuf, apdu.resplen);
-
-#if 0
-	if (apdu.resplen < count)   {
-		r = sc_hsm_read_binary(card, idx + apdu.resplen, buf + apdu.resplen, count - apdu.resplen, flags);
-		/* Ignore all but 'corrupted data' errors */
-		if (r == SC_ERROR_CORRUPTED_DATA)
-			LOG_FUNC_RETURN(ctx, SC_ERROR_CORRUPTED_DATA);
-		else if (r > 0)
-			apdu.resplen += r;
-	}
-#endif
 
 	LOG_FUNC_RETURN(ctx, apdu.resplen);
 }
@@ -392,6 +382,11 @@ static int sc_hsm_decipher(sc_card_t *card, const u8 * crgram, size_t crgram_len
 void sc_hsm_set_serialnr(sc_card_t *card, char *serial)
 {
 	sc_hsm_private_data_t *priv = (sc_hsm_private_data_t *) card->drv_data;
+
+	if (priv->serialno) {
+		free(priv->serialno);
+	}
+
 	priv->serialno = strdup(serial);
 }
 
@@ -437,10 +432,6 @@ static int sc_hsm_init(struct sc_card *card)
 	card->drv_data = priv;
 
 	flags = SC_ALGORITHM_RSA_RAW;
-//	flags = SC_ALGORITHM_RSA_RAW|
-//			SC_ALGORITHM_RSA_PAD_PKCS1|
-//			SC_ALGORITHM_RSA_HASH_SHA1|
-//			SC_ALGORITHM_RSA_HASH_SHA256;
 
 	_sc_card_add_rsa_alg(card, 1024, flags, 0);
 	_sc_card_add_rsa_alg(card, 1536, flags, 0);
