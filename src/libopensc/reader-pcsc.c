@@ -37,6 +37,8 @@
 #include "internal.h"
 #include "internal-winscard.h"
 
+#include "pace.h"
+
 /* Logging */
 #define PCSC_TRACE(reader, desc, rv) do { sc_log(reader->ctx, "%s:" desc ": 0x%08lx\n", reader->name, rv); } while (0)
 #define PCSC_LOG(ctx, desc, rv) do { sc_log(ctx, desc ": 0x%08lx\n", rv); } while (0)
@@ -1898,13 +1900,15 @@ static int transform_pace_output(u8 *rbuf, size_t rbuflen,
     return SC_SUCCESS;
 }
 
-static int pcsc_perform_pace(struct sc_reader *reader,
-        struct establish_pace_channel_input *pace_input,
-        struct establish_pace_channel_output *pace_output)
+
+static int
+pcsc_perform_pace(struct sc_reader *reader, void *input_pace, void *output_pace)
 {
+        struct establish_pace_channel_input *pace_input = (struct establish_pace_channel_input *) input_pace;
+        struct establish_pace_channel_output *pace_output = (struct establish_pace_channel_output *) output_pace;
 	struct pcsc_private_data *priv;
 	u8 rbuf[SC_MAX_EXT_APDU_BUFFER_SIZE], sbuf[SC_MAX_EXT_APDU_BUFFER_SIZE];
-    size_t rcount = sizeof rbuf, scount = sizeof sbuf;
+	size_t rcount = sizeof rbuf, scount = sizeof sbuf;
 
     if (!reader || !reader->capabilities & SC_READER_CAP_PACE_GENERIC)
         return SC_ERROR_INVALID_ARGUMENTS;

@@ -330,7 +330,7 @@ struct sc_pin_cmd_pin {
 	u8 pad_char;
 	size_t offset;		/* PIN offset in the APDU */
 	size_t length_offset;	/* Effective PIN length offset in the APDU */
-	
+
 	int max_tries;	/* Used for signaling back from SC_PIN_CMD_GET_INFO */
 	int tries_left;	/* Used for signaling back from SC_PIN_CMD_GET_INFO */
 
@@ -349,7 +349,7 @@ struct sc_pin_cmd_data {
 	struct sc_apdu *apdu;		/* APDU of the PIN command */
 };
 
-
+#if 0
 #define PACE_PIN_ID_MRZ 0x01
 #define PACE_PIN_ID_CAN 0x02
 #define PACE_PIN_ID_PIN 0x03
@@ -414,6 +414,7 @@ struct establish_pace_channel_output {
     /** PCD identifier */
     unsigned char *id_pcd;
 };
+#endif
 
 struct sc_reader_operations {
 	/* Called during sc_establish_context(), when the driver
@@ -442,11 +443,12 @@ struct sc_reader_operations {
 	int (*display_message)(struct sc_reader *, const char *);
 	int (*perform_verify)(struct sc_reader *, struct sc_pin_cmd_data *);
 	int (*perform_pace)(struct sc_reader *reader,
-            struct establish_pace_channel_input *,
-            struct establish_pace_channel_output *);
+			void *establish_pace_channel_input,
+			void *establish_pace_channel_output);
 
 	/* Wait for an event */
-	int (*wait_for_event)(struct sc_context *ctx, unsigned int event_mask, sc_reader_t **event_reader, unsigned int *event, 
+	int (*wait_for_event)(struct sc_context *ctx, unsigned int event_mask,
+			sc_reader_t **event_reader, unsigned int *event,
 			int timeout, void **reader_states);
 	/* Reset a reader */
 	int (*reset)(struct sc_reader *, int);
@@ -1293,10 +1295,6 @@ extern const char *sc_get_version(void);
 	}
 
 extern sc_card_driver_t *sc_get_iso7816_driver(void);
-
-int sc_perform_pace(sc_card_t *card,
-        struct establish_pace_channel_input *pace_input,
-        struct establish_pace_channel_output *pace_output);
 
 #ifdef __cplusplus
 }

@@ -92,7 +92,6 @@ static int do_create(int argc, char **argv);
 static int do_mkdir(int argc, char **argv);
 static int do_delete(int argc, char **argv);
 static int do_verify(int argc, char **argv);
-static int do_pace(int argc, char **argv);
 static int do_change(int argc, char **argv);
 static int do_unblock(int argc, char **argv);
 static int do_get(int argc, char **argv);
@@ -151,9 +150,6 @@ static struct command	cmds[] = {
 	{ do_verify,
 		"verify",	"{CHV|KEY|AUT|PRO}<key ref> [<pin>]",
 		"present a PIN or key to the card"	},
-	{ do_pace,
-		"pace",	"{pin|can|puk|mrz} [<secret>]",
-		"Establish a PACE channel"	},
 	{ do_change,
 		"change",	"CHV<pin ref> [[<old pin>] <new pin>]",
 		"change a PIN"                          },
@@ -1031,46 +1027,6 @@ static int do_verify(int argc, char **argv)
 	printf("Code correct.\n");
 	return 0;
 }
-
-
-static int do_pace(int argc, char **argv)
-{
-    int r;
-    struct establish_pace_channel_input pace_input;
-    struct establish_pace_channel_output pace_output;
-	memset(&pace_input, 0, sizeof(pace_input));
-	memset(&pace_output, 0, sizeof(pace_output));
-
-    switch (argc) {
-        case 2:
-            pace_input.pin = (unsigned char *) argv[1];
-            /* fall through */
-        case 1:
-            if (strcasecmp(argv[0], "pin") == 0)
-                pace_input.pin_id = PACE_PIN_ID_PIN;
-            else if (strcasecmp(argv[0], "puk") == 0)
-                pace_input.pin_id = PACE_PIN_ID_PUK;
-            else if (strcasecmp(argv[0], "can") == 0)
-                pace_input.pin_id = PACE_PIN_ID_CAN;
-            else if (strcasecmp(argv[0], "mrz") == 0)
-                pace_input.pin_id = PACE_PIN_ID_MRZ;
-            else
-                return usage(do_pace);
-            break;
-        default:
-            return usage(do_pace);
-    }
-
-    r = sc_perform_pace(card, &pace_input, &pace_output);
-	if (r) {
-		printf("PACE failed: %s\n", sc_strerror(r));
-		return -1;
-    }
-    printf("Established PACE channel.\n");
-
-	return 0;
-}
-
 
 static int do_change(int argc, char **argv)
 {
