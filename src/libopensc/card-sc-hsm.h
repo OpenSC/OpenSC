@@ -47,6 +47,7 @@
 typedef struct sc_hsm_private_data {
 	const sc_security_env_t *env;
 	u8 algorithm;
+	int noExtLength;
 	char *serialno;
 } sc_hsm_private_data_t;
 
