@@ -475,22 +475,6 @@
 				</listitem>
 			</varlistentry>
 
-			<varlistentry>
-				<term>
-					<command>pace</command> <replaceable>secret-type</replaceable> [<replaceable>secret</replaceable>]
-				</term>
-				<listitem><para>Perform PACE with the card. <replaceable>secret-type</replaceable>
-				can be one of pin, can, puk or mrz. <replaceable>secret</replaceable> is the secret to be verified as string.
-				</para>
-                                <para>
-                                If <replaceable>secret</replaceable> is omitted, the secret will be verified with the PIN-Pad.
-                                </para>
-				<para>
-					Example: pace can 123456
-				</para>
-				</listitem>
-			</varlistentry>
-
 		</variablelist>
 	</para>
 </refsect1>
