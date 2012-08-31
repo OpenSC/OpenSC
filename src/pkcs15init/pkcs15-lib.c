@@ -319,7 +319,8 @@ sc_pkcs15init_bind(struct sc_card *card, const char *name, const char *profile_o
 	}
 	if (func) {
 		profile->ops = func();
-	} else {
+	}
+	else {
 		sc_log(ctx, "Unsupported card driver %s", driver);
 		sc_profile_free(profile);
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Unsupported card driver");
@@ -984,7 +985,8 @@ sc_pkcs15init_store_pin(struct sc_pkcs15_card *p15card, struct sc_profile *profi
 
 		if (r != SC_ERROR_OBJECT_NOT_FOUND)
 			LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "No auth_id specified for new PIN");
-	} else {
+	}
+	else   {
 		/* Make sure we don't get duplicate PIN IDs */
 		r = sc_pkcs15_find_pin_by_auth_id(p15card, &args->auth_id, NULL);
 		if (r != SC_ERROR_OBJECT_NOT_FOUND)
@@ -1626,9 +1628,16 @@ sc_pkcs15init_store_certificate(struct sc_pkcs15_card *p15card,
 		if (r)   {
 			r = 0;
 		}
-		else if (key_object)   {
-			r = sc_pkcs15init_update_any_df(p15card, profile, key_object->df, 0);
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "sc_pkcs15init_store_certificate() update_any_df returned %i", r);
+		else if (key_object) {
+			if (profile->ops->emu_update_any_df) {
+				r = profile->ops->emu_update_any_df(profile, p15card, SC_AC_OP_UPDATE, key_object);
+				if (r == SC_ERROR_NOT_SUPPORTED)
+					r = SC_SUCCESS;
+			}
+			else {
+				r = sc_pkcs15init_update_any_df(p15card, profile, key_object->df, 0);
+				sc_log(ctx, "update_any_df returned %i", r);
+			}
 		}
 	}
 
@@ -1688,7 +1697,8 @@ sc_pkcs15init_store_data_object(struct sc_pkcs15_card *p15card,
 			return SC_ERROR_TOO_MANY_OBJECTS;
 		args->id.len = 1;
 		args->id.value[0] = tid;
-	} else {
+	}
+	else   {
 		/* in case the user specifies an id it should be at most
 		 * one byte long */
 		if (args->id.len > 1)
@@ -1698,14 +1708,13 @@ sc_pkcs15init_store_data_object(struct sc_pkcs15_card *p15card,
 	object = sc_pkcs15init_new_object(SC_PKCS15_TYPE_DATA_OBJECT, label, &args->auth_id, NULL);
 	if (object == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
+
 	data_object_info = (struct sc_pkcs15_data_info *) object->data;
-	if (args->app_label != NULL) {
-		strlcpy(data_object_info->app_label, args->app_label,
-			sizeof(data_object_info->app_label));
-	} else if (label != NULL) {
-		strlcpy(data_object_info->app_label, label,
-			sizeof(data_object_info->app_label));
-	}
+	if (args->app_label != NULL)
+		strlcpy(data_object_info->app_label, args->app_label, sizeof(data_object_info->app_label));
+	else if (label != NULL)
+		strlcpy(data_object_info->app_label, label, sizeof(data_object_info->app_label));
+
 	data_object_info->app_oid = args->app_oid;
 
 	r = sc_pkcs15init_store_data(p15card, profile, object, &args->der_encoded, &data_object_info->path);
@@ -2404,9 +2413,9 @@ select_object_path(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 			snprintf(t_name, sizeof(t_name), "template-%s", name);
 			sc_log(ctx, "get instance %i of '%s'", indx, t_name);
 			r = sc_profile_get_file_instance(profile, t_name, indx, &file);
+			if (r == SC_ERROR_FILE_NOT_FOUND)
+				LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 		}
-		if (r == SC_ERROR_TEMPLATE_NOT_FOUND)
-			LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 		LOG_TEST_RET(ctx, r, "Template instantiation error");
 
 		if (file->type == SC_FILE_TYPE_BSO)
@@ -2714,13 +2723,15 @@ sc_pkcs15init_add_object(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 
 	if (object == NULL) {
 		sc_log(ctx, "Add nothing; just instantiate this directory file");
-	} else if (object->df == NULL) {
+	}
+	else if (object->df == NULL) {
 		sc_log(ctx, "Append object");
 		object->df = df;
 		r = sc_pkcs15_add_object(p15card, object);
 		LOG_TEST_RET(ctx, r, "Failed to add pkcs15 object");
 		object_added = 1;
-	} else {
+	}
+	else {
 		sc_log(ctx, "Reuse existing object");
 		assert(object->df == df);
 	}
@@ -2888,25 +2899,28 @@ sc_pkcs15init_delete_object(struct sc_pkcs15_card *p15card, struct sc_profile *p
 	}
 
 	sc_log(ctx, "delete object(type:%X) with path(type:%X,%s)", obj->type, path.type, sc_print_path(&path));
-	if (path.len || path.aid.len)   {
-		r = sc_select_file(p15card->card, &path, &file);
-		if (r != SC_ERROR_FILE_NOT_FOUND)
-			LOG_TEST_RET(ctx, r, "select object path failed");
 
-		stored_in_ef = (file->type != SC_FILE_TYPE_DF);
-		sc_file_free(file);
+	if (profile->ops->delete_object != NULL) {
+		/* If there's a card-specific way to delete objects, use it. */
+		r = profile->ops->delete_object(profile, p15card, obj, &path);
+		if (r != SC_ERROR_NOT_SUPPORTED)
+			LOG_TEST_RET(ctx, r, "Card specific delete object failed");
 	}
 
-	if (!r)   {
+	if (profile->ops->delete_object == NULL || r == SC_ERROR_NOT_SUPPORTED)  {
+		if (path.len || path.aid.len)   {
+			r = sc_select_file(p15card->card, &path, &file);
+			if (r != SC_ERROR_FILE_NOT_FOUND)
+				LOG_TEST_RET(ctx, r, "select object path failed");
+
+			stored_in_ef = (file->type != SC_FILE_TYPE_DF);
+			sc_file_free(file);
+		}
+
 		/* If the object is stored in a normal EF, try to delete the EF. */
-		if (stored_in_ef) {
+		if (r == SC_SUCCESS && stored_in_ef) {
 			r = sc_pkcs15init_delete_by_path(profile, p15card, &path);
 			LOG_TEST_RET(ctx, r, "Failed to delete object by path");
-		}
-		else if (profile->ops->delete_object != NULL) {
-			/* If there's a card-specific way to delete objects, use it. */
-			r = profile->ops->delete_object(profile, p15card, obj, &path);
-			LOG_TEST_RET(ctx, r, "Card specific delete object failed");
 		}
 	}
 
@@ -3036,9 +3050,19 @@ sc_pkcs15init_update_certificate(struct sc_pkcs15_card *p15card,
 			path->index = 0;
 			path->count = certlen;
 		}
-		else
+		else   {
 			path->count = -1;
-		r = sc_pkcs15init_update_any_df(p15card, profile, obj->df, 0);
+		}
+
+		if (profile->ops->emu_update_any_df) {
+			r = profile->ops->emu_update_any_df(profile, p15card, SC_AC_OP_UPDATE, obj);
+			if (r == SC_ERROR_NOT_SUPPORTED)
+				r = SC_SUCCESS;
+		}
+		else {
+			r = sc_pkcs15init_update_any_df(p15card, profile, obj->df, 0);
+		}
+
 		if (r < 0)
 			sc_log(ctx, "Failed to update CDF");
 	}
@@ -3719,16 +3743,18 @@ sc_pkcs15init_read_info(struct sc_card *card, struct sc_profile *profile)
 		len = file->size;
 		sc_file_free(file);
 		mem = malloc(len);
-		if (mem != NULL) {
+		if (mem != NULL)
 			r = sc_read_binary(card, 0, mem, len, 0);
-		} else {
+		else
 			r = SC_ERROR_OUT_OF_MEMORY;
-		}
-	} else
+	}
+	else   {
 		r = 0;
+	}
 
 	if (r >= 0)
 		r = sc_pkcs15init_parse_info(card, mem, len, profile);
+
 	if (mem)
 		free(mem);
 	return r;
