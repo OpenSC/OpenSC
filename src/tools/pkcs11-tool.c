@@ -4129,7 +4129,7 @@ static void test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	CK_BYTE			md5_and_digestinfo[34] = "\x30\x20\x30\x0c\x06\x08\x2a\x86\x48\x86\xf7\x0d\x02\x05\x05\x00\x04\x10";
 	CK_BYTE			*data, sig[512];
 	CK_ULONG		data_len, sig_len;
-	CK_BYTE			*id = (CK_BYTE *) "abcdefghijklmnopqrst";
+	CK_BYTE 		id[] = "abcdefghijklmnopqrst";
 	CK_ULONG		id_len = 20, mod_len = 0;
 	CK_BYTE			*label = (CK_BYTE *) "Just a label";
 	CK_ULONG		label_len = 12;
