@@ -236,7 +236,6 @@ static void print_cert_info(const struct sc_pkcs15_object *obj)
 	if (rv >= 0 && cert_parsed)   {
 		printf("\tEncoded serial : %02X %02X ", *(cert_parsed->serial), *(cert_parsed->serial + 1));
 		util_hex_dump(stdout, cert_parsed->serial + 2, cert_parsed->serial_len - 2, "");
-		printf("\n");
 		sc_pkcs15_free_certificate(cert_parsed);
 	}
 }
@@ -399,9 +398,9 @@ static int read_certificate(void)
 
 static int read_data_object(void)
 {
-	int    r, i, count, oid_len = 0;
+	int r, i, count;
 	struct sc_pkcs15_object *objs[32];
-	struct sc_object_id      oid;
+	struct sc_object_id oid;
 
 	r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_DATA_OBJECT, objs, 32);
 	if (r < 0) {
@@ -410,19 +409,15 @@ static int read_data_object(void)
 	}
 	count = r;
 
-	r = sc_format_oid(&oid, opt_data);
-	if (r == SC_SUCCESS) {
-		while (oid.value[oid_len] >= 0) oid_len++;
-	}
-
 	for (i = 0; i < count; i++) {
 		struct sc_pkcs15_data_info *cinfo = (struct sc_pkcs15_data_info *) objs[i]->data;
 		struct sc_pkcs15_data *data_object;
 
-		if (oid_len) {
-			if (memcmp(oid.value, cinfo->app_oid.value, sizeof(int) * oid_len))
+		if (!sc_format_oid(&oid, opt_data))   {
+			if (!sc_compare_oid(&oid, &cinfo->app_oid))
 				continue;
-		} else {
+		}
+		else   {
 			if (strcmp(opt_data, cinfo->app_label) && strcmp(opt_data, objs[i]->label))
 				continue;
 		}
@@ -465,20 +460,18 @@ static int list_data_objects(void)
 		int idx;
 		struct sc_pkcs15_data_info *cinfo = (struct sc_pkcs15_data_info *) objs[i]->data;
 
-		printf("Reading data object <%i>\n", i);
-		printf("applicationName: %s\n", cinfo->app_label);
-		printf("Label:           %s\n", objs[i]->label);
-		if (cinfo->app_oid.value[0] >= 0) {
-			printf("applicationOID:  %i", cinfo->app_oid.value[0]);
-			idx = 1;
-			while (idx < SC_MAX_OBJECT_ID_OCTETS) {
-				if (cinfo->app_oid.value[idx] < 0)
-					break;
-				printf(".%i", cinfo->app_oid.value[idx++]);
-			}
+		if (objs[i]->label)
+			printf("Data object '%s'\n", objs[i]->label);
+		else
+			printf("Data object <%i>\n", i);
+		printf("\tapplicationName: %s\n", cinfo->app_label);
+		if (sc_valid_oid(&cinfo->app_oid)) {
+			printf("\tapplicationOID:  %i", cinfo->app_oid.value[0]);
+			for (idx = 1; idx < SC_MAX_OBJECT_ID_OCTETS && cinfo->app_oid.value[idx] != -1 ; idx++)
+				printf(".%i", cinfo->app_oid.value[idx]);
 			printf("\n");
 		}
-		printf("Path:            %s\n", sc_print_path(&cinfo->path));
+		printf("\tPath:            %s\n", sc_print_path(&cinfo->path));
 		if (objs[i]->auth_id.len == 0) {
 			struct sc_pkcs15_data *data_object;
 			r = sc_pkcs15_read_data_object(p15card, cinfo, &data_object);
@@ -488,11 +481,11 @@ static int list_data_objects(void)
 					 continue; /* DEE emulation may say there is a file */
 				return 1;
 			}
-			r = list_data_object("Data Object", data_object->data, data_object->data_len);
+			r = list_data_object("\tData", data_object->data, data_object->data_len);
 			sc_pkcs15_free_data_object(data_object);
 		}
 		else {
-			printf("Auth ID:         %s\n", sc_pkcs15_print_id(&objs[i]->auth_id));
+			printf("\tAuth ID:         %s\n", sc_pkcs15_print_id(&objs[i]->auth_id));
 		}
 	}
 	return 0;

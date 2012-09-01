@@ -1384,7 +1384,7 @@ iasecc_md_gemalto_set_default(struct sc_pkcs15_card *p15card, struct sc_profile 
 
 	if (!data_obj)   {
 		memset(&data_args, 0, sizeof(data_args));
-		data_args.app_oid.value[0] = -1;
+		sc_init_oid(&data_args.app_oid);
 		data_args.label = "Default Key Container";
 		data_args.app_label = "CSP";
 		data_args.der_encoded.value = (unsigned char *)guid;
@@ -1493,7 +1493,7 @@ iasecc_md_gemalto_new_prvkey(struct sc_pkcs15_card *p15card, struct sc_profile *
 	data[offs++] = 0x01;
 
 	memset(&data_args, 0, sizeof(data_args));
-	data_args.app_oid.value[0] = -1;
+	sc_init_oid(&data_args.app_oid);
 	data_args.label = guid;
 	data_args.app_label = "CSP";
         data_args.der_encoded.value = data;
