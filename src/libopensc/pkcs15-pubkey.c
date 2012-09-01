@@ -1055,7 +1055,7 @@ sc_pkcs15_fix_ec_parameters(struct sc_context *ctx, struct sc_pkcs15_ec_paramete
 			sc_log(ctx, "Curve name: '%s'", ecparams->named_curve);
 		}
 
-		if (ecparams->id.value[0] <=0 || ecparams->id.value[1] <=0)
+		if (!sc_valid_oid(&ecparams->id))
 			sc_format_oid(&ecparams->id, ec_curve_infos[ii].oid_str);
 
 		ecparams->field_length = ec_curve_infos[ii].size;
@@ -1081,7 +1081,7 @@ sc_pkcs15_fix_ec_parameters(struct sc_context *ctx, struct sc_pkcs15_ec_paramete
 			LOG_TEST_RET(ctx, rv, "Cannot encode object ID");
 		}
 	}
-	else if (ecparams->id.value[0] > 0 && ecparams->id.value[1] > 0)  {
+	else if (sc_valid_oid(&ecparams->id))  {
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_IMPLEMENTED, "EC parameters has to be presented as a named curve or explicit data");
 	}
 

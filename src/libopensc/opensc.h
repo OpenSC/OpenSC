@@ -174,7 +174,7 @@ typedef struct sc_security_env {
 
 struct sc_algorithm_id {
 	unsigned int algorithm;
-	struct sc_object_id obj_id;
+	struct sc_object_id oid;
 	void *params;
 };
 
@@ -1216,6 +1216,12 @@ const sc_path_t *sc_get_mf_path(void);
 int sc_hex_to_bin(const char *in, u8 *out, size_t *outlen);
 int sc_bin_to_hex(const u8 *, size_t, char *, size_t, int separator);
 scconf_block *sc_get_conf_block(sc_context_t *ctx, const char *name1, const char *name2, int priority);
+
+/**
+ * Initializes a given OID
+ * @param  oid  sc_object_id object to be initialized
+ */
+void sc_init_oid(struct sc_object_id *oid);
 /**
  * Converts a given OID in ascii form to a internal sc_object_id object
  * @param  oid  OUT sc_object_id object for the result
@@ -1230,6 +1236,11 @@ int sc_format_oid(struct sc_object_id *oid, const char *in);
  * @return 1 if the oids are equal and a non-zero value otherwise
  */
 int sc_compare_oid(const struct sc_object_id *oid1, const struct sc_object_id *oid2);
+/**
+ * Validates a given OID
+ * @param  oid  sc_object_id object to be validated
+ */
+int sc_valid_oid(const struct sc_object_id *oid);
 
 /* Base64 encoding/decoding functions */
 int sc_base64_encode(const u8 *in, size_t inlen, u8 *out, size_t outlen,

@@ -101,6 +101,9 @@ sc_format_apdu
 sc_bytes2apdu
 sc_format_asn1_entry
 sc_format_oid
+sc_init_oid
+sc_compare_oid
+sc_valid_oid
 sc_format_path
 sc_free_apps
 sc_free_ef_atr

@@ -63,6 +63,7 @@
 #include "libopensc/pkcs15.h"
 #include "libopensc/log.h"
 #include "libopensc/cards.h"
+#include "libopensc/asn1.h"
 #include "pkcs15init/pkcs15-init.h"
 #include "pkcs15init/profile.h"
 #include "util.h"
@@ -1189,7 +1190,7 @@ do_store_data_object(struct sc_profile *profile)
 	int	r=0;
 
 	memset(&args, 0, sizeof(args));
-	args.app_oid.value[0] = -1;
+	sc_init_oid(&args.app_oid);
 
 	if (opt_objectid)
 		sc_pkcs15_format_id(opt_objectid, &args.id);

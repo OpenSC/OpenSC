@@ -46,6 +46,7 @@
 
 #include "pkcs11/pkcs11.h"
 #include "pkcs11/pkcs11-opensc.h"
+#include "libopensc/asn1.h"
 #include "util.h"
 
 extern void *C_LoadModule(const char *name, CK_FUNCTION_LIST_PTR_PTR);
@@ -1762,6 +1763,7 @@ static int write_object(CK_SESSION_HANDLE session)
 	struct sc_object_id oid;
 	CK_RV rv;
 	int need_to_parse_certdata = 0;
+	unsigned char *oid_buf = NULL;
 #ifdef ENABLE_OPENSSL
 	struct x509cert_info cert;
 	struct rsakey_info rsa;
@@ -2002,9 +2004,15 @@ static int write_object(CK_SESSION_HANDLE session)
 		}
 
 		if (opt_application_id != NULL) {
-			sc_format_oid(&oid, opt_application_id);
-			FILL_ATTR(data_templ[n_data_attr], CKA_OBJECT_ID,
-				(unsigned char *)oid.value, sizeof(oid.value));
+			size_t len;
+
+			if (sc_format_oid(&oid, opt_application_id))
+				util_fatal("Invalid OID \"%s\"\n", opt_application_id);
+
+			if (sc_asn1_encode_object_id(&oid_buf, &len, &oid))
+				util_fatal("Cannot encode OID \"%s\"\n", opt_application_id);
+
+			FILL_ATTR(data_templ[n_data_attr], CKA_OBJECT_ID, oid_buf, len);
 			n_data_attr++;
 		}
 
@@ -2053,6 +2061,8 @@ static int write_object(CK_SESSION_HANDLE session)
 		show_object(session, privkey_obj);
 	}
 
+	if (oid_buf)
+		free(oid_buf);
 	return 1;
 }
 
@@ -2702,8 +2712,8 @@ static void show_cert(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 
 static void show_dobj(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 {
-	int	*app_oid;
-	char		*label;
+	unsigned char *oid_buf;
+	char *label;
 	CK_ULONG    size = 0;
 
 	printf("Data object %u\n", (unsigned int) obj);
@@ -2726,18 +2736,20 @@ static void show_dobj(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 	}
 
 	printf("  app_id:         ");
-	app_oid = (int *)getOBJECT_ID(sess, obj, &size);
-	if (app_oid != NULL && size) {
+	oid_buf = getOBJECT_ID(sess, obj, &size);
+	if (oid_buf != NULL && size) {
 		unsigned int	n;
+		struct sc_object_id oid;
 
-		size /= sizeof(int);
-		printf("%i", app_oid[0]);
-		if (app_oid[0] >= 0)
-			for (n = 1; (n < size) && (app_oid[n] >= 0); n++)
-				printf(".%i", app_oid[n]);
-
+		sc_init_oid(&oid);
+		sc_asn1_decode_object_id(oid_buf, size, &oid);
+		printf("%i", oid.value[0]);
+		if (oid.value[0] >= 0)
+			for (n = 1; (n < SC_MAX_OBJECT_ID_OCTETS) && (oid.value[n] >= 0); n++)
+				printf(".%i", oid.value[n]);
 		printf("\n");
-		free(app_oid);
+
+		free(oid_buf);
 	}
 	else   {
 		printf("<empty>\n");
@@ -2805,7 +2817,7 @@ static int read_object(CK_SESSION_HANDLE session)
 	CK_OBJECT_CLASS clazz = opt_object_class;
 	CK_OBJECT_HANDLE obj = CK_INVALID_HANDLE;
 	int nn_attrs = 0;
-	unsigned char *value = NULL;
+	unsigned char *value = NULL, *oid_buf = NULL;
 	CK_ULONG len = 0;
 	FILE *out;
 	struct sc_object_id oid;
@@ -2836,9 +2848,15 @@ static int read_object(CK_SESSION_HANDLE session)
 	}
 
 	if (opt_application_id != NULL)   {
-		sc_format_oid(&oid, opt_application_id);
-		FILL_ATTR(attrs[nn_attrs], CKA_OBJECT_ID,
-				(unsigned char *)oid.value, sizeof(oid.value));
+		size_t oid_buf_len;
+
+		if (sc_format_oid(&oid, opt_application_id))
+			util_fatal("Invalid OID \"%s\"\n", opt_application_id);
+
+		if (sc_asn1_encode_object_id(&oid_buf, &oid_buf_len, &oid))
+			util_fatal("Cannot encode OID \"%s\"\n", opt_application_id);
+
+		FILL_ATTR(attrs[nn_attrs], CKA_OBJECT_ID, oid_buf, oid_buf_len);
 		nn_attrs++;
 	}
 
@@ -2886,6 +2904,9 @@ static int read_object(CK_SESSION_HANDLE session)
 		util_fatal("cannot write to '%s'\n", opt_output);
 	if (opt_output)
 		fclose(out);
+
+	if (oid_buf)
+		free(oid_buf);
 	return 1;
 }
 
@@ -2900,6 +2921,7 @@ static int delete_object(CK_SESSION_HANDLE session)
 	CK_OBJECT_HANDLE obj = CK_INVALID_HANDLE;
 	int nn_attrs = 0;
 	struct sc_object_id oid;
+	unsigned char *oid_buf = NULL;
 
 	if (opt_object_class_str != NULL)   {
 		FILL_ATTR(attrs[nn_attrs], CKA_CLASS,
@@ -2926,9 +2948,15 @@ static int delete_object(CK_SESSION_HANDLE session)
 	}
 
 	if (opt_application_id != NULL)   {
-		sc_format_oid(&oid, opt_application_id);
-		FILL_ATTR(attrs[nn_attrs], CKA_OBJECT_ID,
-				(unsigned char *)oid.value, sizeof(oid.value));
+		size_t oid_buf_len;
+
+		if (sc_format_oid(&oid, opt_application_id))
+			util_fatal("Invalid OID '%s'\n", opt_application_id);
+
+		if (sc_asn1_encode_object_id(&oid_buf, &oid_buf_len, &oid))
+			util_fatal("Cannot encode OID \"%s\"\n", opt_application_id);
+
+		FILL_ATTR(attrs[nn_attrs], CKA_OBJECT_ID, oid_buf, oid_buf_len);
 		nn_attrs++;
 	}
 
@@ -2940,6 +2968,9 @@ static int delete_object(CK_SESSION_HANDLE session)
 	rv = p11->C_DestroyObject(session, obj);
 	if (rv != CKR_OK)
 		p11_fatal("C_DestroyObject()", rv);
+
+	if (oid_buf)
+		free(oid_buf);
 
 	return 1;
 }

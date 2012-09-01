@@ -145,59 +145,88 @@ unsigned short bebytes2ushort(const u8 *buf)
 	return (unsigned short) (buf[0] << 8 | buf[1]);
 }
 
+void sc_init_oid(struct sc_object_id *oid)
+{
+	int ii;
+
+	if (!oid)
+		return;
+	for (ii=0; ii<SC_MAX_OBJECT_ID_OCTETS; ii++)
+		oid->value[ii] = -1;
+}
+
 int sc_format_oid(struct sc_object_id *oid, const char *in)
 {
-	int        ii;
+	int        ii, ret = SC_ERROR_INVALID_ARGUMENTS;
 	const char *p;
 	char       *q;
 
 	if (oid == NULL || in == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
-	/* init oid */
-	for (ii=0; ii<SC_MAX_OBJECT_ID_OCTETS; ii++)
-		oid->value[ii] = -1;
+
+	sc_init_oid(oid);
 
 	p = in;
-
 	for (ii=0; ii < SC_MAX_OBJECT_ID_OCTETS; ii++)   {
 		oid->value[ii] = strtol(p, &q, 10);
 		if (!*q)
 			break;
-		if (!(q[0] == '.' && isdigit(q[1]))) {
-			return SC_ERROR_INVALID_ARGUMENTS;
-		}
+
+		if (!(q[0] == '.' && isdigit(q[1])))
+			goto out;
+
 		p = q + 1;
 	}
 
-	if (ii == 1)
-		/* reject too short OIDs */
-		return SC_ERROR_INVALID_ARGUMENTS;
+	if (!sc_valid_oid(oid))
+		goto out;
 
-	return SC_SUCCESS;
+	ret = SC_SUCCESS;
+out:
+	if (ret)
+		sc_init_oid(oid);
+
+	return ret;
 }
 
 int sc_compare_oid(const struct sc_object_id *oid1, const struct sc_object_id *oid2)
 {
 	int i;
+
 	assert(oid1 != NULL && oid2 != NULL);
-	for (i = 0; i < SC_MAX_OBJECT_ID_OCTETS; i++) {
+
+	for (i = 0; i < SC_MAX_OBJECT_ID_OCTETS; i++)   {
 		if (oid1->value[i] != oid2->value[i])
 			return 0;
-		if (oid1->value[i] < 0)
-			return 1;
+		if (oid1->value[i] == -1)
+			break;
 	}
+
 	return 1;
 }
+
+
+int sc_valid_oid(const struct sc_object_id *oid)
+{
+	if (!oid)
+		return 0;
+	if (oid->value[0] == -1 || oid->value[1] == -1)
+		return 0;
+	if (oid->value[0] > 2 || oid->value[1] > 39)
+		return 0;
+	return 1;
+}
+
 
 int sc_detect_card_presence(sc_reader_t *reader)
 {
 	int r;
-	SC_FUNC_CALLED(reader->ctx, SC_LOG_DEBUG_VERBOSE);
+	LOG_FUNC_CALLED(reader->ctx);
 	if (reader->ops->detect_card_presence == NULL)
-		SC_FUNC_RETURN(reader->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED);
+		LOG_FUNC_RETURN(reader->ctx, SC_ERROR_NOT_SUPPORTED);
 
 	r = reader->ops->detect_card_presence(reader);
-	SC_FUNC_RETURN(reader->ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(reader->ctx, r);
 }
 
 int sc_path_set(sc_path_t *path, int type, const u8 *id, size_t id_len,
@@ -643,12 +672,12 @@ int _sc_parse_atr(sc_reader_t *reader)
 	reader->atr_info.hist_bytes = NULL;
 
 	if (atr_len == 0) {
-		sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "empty ATR - card not present?\n");
+		sc_log(reader->ctx, "empty ATR - card not present?\n");
 		return SC_ERROR_INTERNAL;
 	}
 
 	if (p[0] != 0x3B && p[0] != 0x3F) {
-		sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "invalid sync byte in ATR: 0x%02X\n", p[0]);
+		sc_log(reader->ctx, "invalid sync byte in ATR: 0x%02X\n", p[0]);
 		return SC_ERROR_INTERNAL;
 	}
 	n_hist = p[1] & 0x0F;

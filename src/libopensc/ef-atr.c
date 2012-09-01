@@ -95,9 +95,14 @@ sc_parse_ef_atr_content(struct sc_card *card, unsigned char *buf, size_t buflen)
 	}
 
 	tag = sc_asn1_find_tag(ctx, buf, buflen, ISO7816_TAG_II_ALLOCATION_SCHEME, &taglen);
-	if (tag && taglen < sizeof(ef_atr.allocation_oid))   {
-		sc_log(ctx, "EF.ATR: OID %s", sc_dump_hex(tag, sizeof(taglen)));
-		memcpy(ef_atr.allocation_oid.value, tag, taglen);
+	if (tag)   {
+		sc_log(ctx, "EF.ATR: DER encoded OID %s", sc_dump_hex(tag, taglen));
+		tag = sc_asn1_find_tag(ctx, tag, taglen, SC_ASN1_TAG_OBJECT, &taglen);
+		if (tag)   {
+			sc_log(ctx, "EF.ATR: OID %s", sc_dump_hex(tag, taglen));
+			if(sc_asn1_decode_object_id(tag, taglen, &ef_atr.allocation_oid))
+				LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ASN1_OBJECT);
+		}
 	}
 
 	if (category == ISO7816_II_CATEGORY_TLV)   {
