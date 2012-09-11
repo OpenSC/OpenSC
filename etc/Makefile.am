@@ -1,10 +1,12 @@
-MAINTAINERCLEANFILES = $(srcdir)/Makefile.in
-DISTCLEANFILES = opensc.conf
+MAINTAINERCLEANFILES = $(srcdir)/Makefile.in $(srcdir)/opensc.conf.win
+DISTCLEANFILES = opensc.conf opensc.conf.win
+
+EXTRA_DIST = Makefile.mak
 
 SUFFIXES = .in
 
-dist_noinst_DATA = opensc.conf.in
-nodist_noinst_DATA = opensc.conf	# For Windows MSVC build
+dist_noinst_DATA = opensc.conf.in opensc.conf.win.in
+nodist_noinst_DATA = opensc.conf opensc.conf.win # For Windows MSVC build
 
 # Make sure we build this every time
 # as there is no dependency for this.
