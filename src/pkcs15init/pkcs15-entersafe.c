@@ -14,6 +14,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 /* Initially written by Weitao Sun (weitao@ftsafe.com) 2008*/
+/* Disable RSA:512bits by Shengchao Niu (shengchao@ftsafe.com) 2012 */
 
 #include "config.h"
 
@@ -347,11 +348,28 @@ static int entersafe_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	const sc_acl_entry_t   *acl_entry;
 	int r;
 
+	struct sc_pkcs15_prkey_info *key_info = (struct sc_pkcs15_prkey_info *)obj->data;
+	size_t keybits = key_info->modulus_length;
+
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	if (key->algorithm != SC_ALGORITHM_RSA)
+	if ( key->algorithm != SC_ALGORITHM_RSA )
+	{
 		 /* ignore DSA keys */
 		 SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,SC_ERROR_INVALID_ARGUMENTS);
+	}
+
+	/* Disable RSA:512bits */
+	if ( ( keybits < 1024 ) ||
+		 ( keybits > 2048 ) ||
+		 ( keybits % 0x20 ) )
+	{
+		sc_debug( card->ctx,
+				  SC_LOG_DEBUG_NORMAL,
+				  "Unsupported key size %u\n",
+				  keybits );
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
 
 	r = sc_profile_get_file(profile, "PKCS15-AODF", &tfile);
 	if (r < 0)
@@ -381,10 +399,27 @@ static int entersafe_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15ca
 	sc_file_t              *tfile;
 	const sc_acl_entry_t   *acl_entry;
 
+	struct sc_pkcs15_prkey_info *key_info = (struct sc_pkcs15_prkey_info *)obj->data;
+	size_t keybits = key_info->modulus_length;
+
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA)
+	if ( obj->type != SC_PKCS15_TYPE_PRKEY_RSA )
+	{
 		return SC_ERROR_NOT_SUPPORTED;
+	}
+
+	/* Disable RSA:512bits */
+	if ( ( keybits < 1024 ) ||
+		 ( keybits > 2048 ) ||
+		 ( keybits % 0x20 ) )
+	{
+		sc_debug( card->ctx,
+				  SC_LOG_DEBUG_NORMAL,
+				  "Unsupported key size %u\n",
+				  keybits );
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
 
 	r = sc_profile_get_file(profile, "PKCS15-AODF", &tfile);
 	if (r < 0)

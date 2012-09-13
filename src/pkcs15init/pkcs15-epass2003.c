@@ -50,6 +50,8 @@ static int epass2003_pkcs15_init_card(struct sc_profile *profile,
 	int ret;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+	sc_do_log(card->ctx, SC_LOG_DEBUG_VERBOSE_TOOL,NULL,0,NULL,
+			"ePass2003 doesn't surpport SO-PIN and SO-PUK. You can unblock key with PUK. \n");
 	{			/* MF */
 		struct sc_file *mf_file;
 		struct sc_file *skey_file;
@@ -439,8 +441,8 @@ static int epass2003_pkcs15_store_key(struct sc_profile *profile,
 
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "index %i; keybits %i\n", idx,
 		 keybits);
-	if (keybits < 512 || keybits > 2048 || (keybits % 0x20)) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+	if (keybits < 1024 || keybits > 2048 || (keybits % 0x20)) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE_TOOL,
 			 "Unsupported key size %u\n", keybits);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
@@ -513,8 +515,8 @@ static int epass2003_pkcs15_generate_key(struct sc_profile *profile,
 
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "index %i; keybits %i\n", idx,
 		 keybits);
-	if (keybits < 512 || keybits > 2048 || (keybits % 0x20)) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+	if (keybits < 1024 || keybits > 2048 || (keybits % 0x20)) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE_TOOL,
 			 "Unsupported key size %u\n", keybits);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
