@@ -207,23 +207,23 @@ static void sc_asn1_print_bit_string(const u8 * buf, size_t buflen)
 
 static void sc_asn1_print_object_id(const u8 * buf, size_t buflen)
 {
-	int i = 0;
 	struct sc_object_id oid;
+	int i = 0;
 	char sbuf[256];
 
 	if (sc_asn1_decode_object_id(buf, buflen, &oid)) {
 		printf("decode error");
 		return;
 	}
+
 	sbuf[0] = 0;
-	while (oid.value[i] >= 0) {
+	for (i = 0; (i < SC_MAX_OBJECT_ID_OCTETS) && (oid.value[i] != -1); i++)   {
 		char tmp[12];
 
 		if (i)
 			strcat(sbuf, ".");
 		sprintf(tmp, "%d", oid.value[i]);
 		strcat(sbuf, tmp);
-		i++;
 	}
 	printf("%s", sbuf);
 }
@@ -636,18 +636,19 @@ static int asn1_encode_integer(int in, u8 ** obj, size_t * objsize)
 	return 0;
 }
 
-int sc_asn1_decode_object_id(const u8 * inbuf, size_t inlen,
-                             struct sc_object_id *id)
+int
+sc_asn1_decode_object_id(const u8 *inbuf, size_t inlen, struct sc_object_id *id)
 {
-	int i, a;
+	int a;
 	const u8 *p = inbuf;
 	int *octet;
 
 	if (inlen == 0 || inbuf == NULL || id == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
+
+	sc_init_oid(id);
 	octet = id->value;
-	for (i = 0; i < SC_MAX_OBJECT_ID_OCTETS; i++)
-		id->value[i] = -1;
+
 	a = *p;
 	*octet++ = a / 40;
 	*octet++ = a % 40;
@@ -664,31 +665,35 @@ int sc_asn1_decode_object_id(const u8 * inbuf, size_t inlen,
 			inlen--;
 		}
 		*octet++ = a;
-		if (octet - id->value >= SC_MAX_OBJECT_ID_OCTETS-1)
+		if (octet - id->value >= SC_MAX_OBJECT_ID_OCTETS)   {
+			sc_init_oid(id);
 			return SC_ERROR_INVALID_ASN1_OBJECT;
+		}
 	};
 
 	return 0;
 }
 
-int sc_asn1_encode_object_id(u8 **buf, size_t *buflen,
-			     const struct sc_object_id *id)
+int
+sc_asn1_encode_object_id(u8 **buf, size_t *buflen, const struct sc_object_id *id)
 {
 	u8 temp[SC_MAX_OBJECT_ID_OCTETS*5], *p = temp;
-	size_t	count = 0;
 	int	i;
-	int value[SC_MAX_OBJECT_ID_OCTETS];
 
-	/* set the unused ID part to '-1' */
-	memcpy(value, &id->value[0], sizeof(value));
-	for (i = SC_MAX_OBJECT_ID_OCTETS - 1; i>=0; i--)
-		if (!value[i])
-			value[i] = -1;
+	if (!buflen || !id)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
-	for (i = 0; i < SC_MAX_OBJECT_ID_OCTETS && value[i] >= 0; i++) {
+	/* an OID must have at least two components */
+	if (id->value[0] == -1 || id->value[1] == -1)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	for (i = 0; i < SC_MAX_OBJECT_ID_OCTETS; i++) {
 		unsigned int k, shift;
 
-		k = value[i];
+		if (id->value[i] == -1)
+			break;
+
+		k = id->value[i];
 		switch (i) {
 		case 0:
 			if (k > 2)
@@ -712,14 +717,15 @@ int sc_asn1_encode_object_id(u8 **buf, size_t *buflen,
 			break;
 		}
 	}
-	if (i == 1)
-		/* an OID must have at least two components */
-		return SC_ERROR_INVALID_ARGUMENTS;
-	*buflen = count = p - temp;
-	*buf = malloc(count);
-	if (!*buf)
-		return SC_ERROR_OUT_OF_MEMORY;
-	memcpy(*buf, temp, count);
+
+	*buflen = p - temp;
+
+	if (buf)   {
+		*buf = malloc(*buflen);
+		if (!*buf)
+			return SC_ERROR_OUT_OF_MEMORY;
+		memcpy(*buf, temp, *buflen);
+	}
 	return 0;
 }
 
@@ -953,7 +959,7 @@ static int asn1_decode_se_info(sc_context_t *ctx, const u8 *obj, size_t objlen,
 {
 	struct sc_pkcs15_sec_env_info **ses;
 	const unsigned char *ptr = obj;
-	size_t i, idx, ptrlen = objlen;
+	size_t idx, ptrlen = objlen;
 	int ret;
 
 	ses = calloc(SC_MAX_SE_NUM, sizeof(sc_pkcs15_sec_env_info_t *));
@@ -978,8 +984,7 @@ static int asn1_decode_se_info(sc_context_t *ctx, const u8 *obj, size_t objlen,
 		if (ret != SC_SUCCESS)
 			goto err;
 		if (!(asn1_se_info[1].flags & SC_ASN1_PRESENT))
-			for (i=0;i<SC_MAX_OBJECT_ID_OCTETS;i++)
-				si.owner.value[i] = -1;
+			sc_init_oid(&si.owner);
 
 		ses[idx] = calloc(1, sizeof(sc_pkcs15_sec_env_info_t));
 		if (ses[idx] == NULL) {
@@ -996,6 +1001,7 @@ static int asn1_decode_se_info(sc_context_t *ctx, const u8 *obj, size_t objlen,
 	ret = SC_SUCCESS;
 err:
 	if (ret != SC_SUCCESS) {
+		int i;
 		for (i = 0; i < idx; i++)
 			if (ses[i])
 				free(ses[i]);
@@ -1022,7 +1028,7 @@ static int asn1_encode_se_info(sc_context_t *ctx,
 		sc_copy_asn1_entry(c_asn1_se_info, asn1_se_info);
 
 		sc_format_asn1_entry(asn1_se_info + 0, &se[idx]->se, NULL, 1);
-		if (se[idx]->owner.value[0] != -1)
+		if (sc_valid_oid(&se[idx]->owner))
 			sc_format_asn1_entry(asn1_se_info + 1, &se[idx]->owner, NULL, 1);
 		if (se[idx]->aid.len)
 			sc_format_asn1_entry(asn1_se_info + 2, &se[idx]->aid.value, &se[idx]->aid.len, 1);

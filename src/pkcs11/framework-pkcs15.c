@@ -2260,7 +2260,7 @@ pkcs15_create_data(struct sc_pkcs11_slot *slot, struct sc_profile *profile,
 	char label[SC_PKCS15_MAX_LABEL_SIZE];
 
 	memset(&args, 0, sizeof(args));
-	args.app_oid.value[0] = -1;
+	sc_init_oid(&args.app_oid);
 
 	fw_data = (struct pkcs15_fw_data *) p11card->fws_data[slot->fw_data_idx];
 	if (!fw_data)
@@ -2298,9 +2298,10 @@ pkcs15_create_data(struct sc_pkcs11_slot *slot, struct sc_profile *profile,
 			args.app_label = (char *) attr->pValue;
 			break;
 		case CKA_OBJECT_ID:
-			rv = attr_extract(attr, args.app_oid.value, NULL);
-			if (rv != CKR_OK)
+			if (sc_asn1_decode_object_id(attr->pValue, attr->ulValueLen, &args.app_oid))   {
+				rv = CKR_ATTRIBUTE_VALUE_INVALID;
 				goto out;
+			}
 			break;
 		case CKA_VALUE:
 			args.der_encoded.len = attr->ulValueLen;
@@ -2907,10 +2908,9 @@ pkcs15_cert_release(void *obj)
 	struct pkcs15_cert_object *cert = (struct pkcs15_cert_object *) obj;
 	struct sc_pkcs15_cert      *cert_data = cert->cert_data;
 
-	if (__pkcs15_release_object((struct pkcs15_any_object *) obj) == 0) {
+	if (__pkcs15_release_object((struct pkcs15_any_object *) obj) == 0)
 		if (cert_data) /* may never have been read */
 			sc_pkcs15_free_certificate(cert_data);
-	}
 }
 
 
@@ -2945,8 +2945,7 @@ pkcs15_cert_get_attribute(struct sc_pkcs11_session *session, void *object, CK_AT
 		break;
 	case CKA_PRIVATE:
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
-		*(CK_BBOOL*)attr->pValue =
-			(cert->base.p15_object->flags & SC_PKCS15_CO_FLAG_PRIVATE) != 0;
+		*(CK_BBOOL*)attr->pValue = (cert->base.p15_object->flags & SC_PKCS15_CO_FLAG_PRIVATE) != 0;
 		break;
 	case CKA_MODIFIABLE:
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
@@ -2962,11 +2961,11 @@ pkcs15_cert_get_attribute(struct sc_pkcs11_session *session, void *object, CK_AT
 		*(CK_CERTIFICATE_TYPE*)attr->pValue = CKC_X_509;
 		break;
 	case CKA_ID:
-		if (cert->cert_info->authority
-				&& sc_pkcs11_conf.zero_ckaid_for_ca_certs) {
+		if (cert->cert_info->authority && sc_pkcs11_conf.zero_ckaid_for_ca_certs) {
 			check_attribute_buffer(attr, 1);
 			*(unsigned char*)attr->pValue = 0;
-		} else {
+		}
+		else {
 			check_attribute_buffer(attr, cert->cert_info->id.len);
 			memcpy(attr->pValue, cert->cert_info->id.value, cert->cert_info->id.len);
 		}
@@ -2996,15 +2995,13 @@ pkcs15_cert_get_attribute(struct sc_pkcs11_session *session, void *object, CK_AT
 			attr->ulValueLen = 0;
 			return CKR_OK;
 		}
-		return asn1_sequence_wrapper(cert->cert_data->subject,
-		                             cert->cert_data->subject_len, attr);
+		return asn1_sequence_wrapper(cert->cert_data->subject, cert->cert_data->subject_len, attr);
 	case CKA_ISSUER:
 		if (check_cert_data_read(fw_data, cert) != 0) {
 			attr->ulValueLen = 0;
 			return CKR_OK;
 		}
-		return asn1_sequence_wrapper(cert->cert_data->issuer,
-				 cert->cert_data->issuer_len, attr);
+		return asn1_sequence_wrapper(cert->cert_data->issuer, cert->cert_data->issuer_len, attr);
 	default:
 		return CKR_ATTRIBUTE_TYPE_INVALID;
 	}
@@ -3863,7 +3860,11 @@ static CK_RV
 pkcs15_dobj_get_attribute(struct sc_pkcs11_session *session, void *object, CK_ATTRIBUTE_PTR attr)
 {
 	struct pkcs15_data_object *dobj = (struct pkcs15_data_object*) object;
+	struct sc_pkcs15_data *data = NULL;
+	CK_RV rv;
 	size_t len;
+	int r;
+	unsigned char *buf = NULL;
 
 	switch (attr->type) {
 	case CKA_CLASS:
@@ -3876,13 +3877,11 @@ pkcs15_dobj_get_attribute(struct sc_pkcs11_session *session, void *object, CK_AT
 		break;
 	case CKA_PRIVATE:
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
-		*(CK_BBOOL*)attr->pValue =
-			(dobj->base.p15_object->flags & SC_PKCS15_CO_FLAG_PRIVATE) != 0;
+		*(CK_BBOOL*)attr->pValue = (dobj->base.p15_object->flags & SC_PKCS15_CO_FLAG_PRIVATE) != 0;
 		break;
 	case CKA_MODIFIABLE:
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
-		*(CK_BBOOL*)attr->pValue =
-			(dobj->base.p15_object->flags & 0x02) != 0;
+		*(CK_BBOOL*)attr->pValue = (dobj->base.p15_object->flags & 0x02) != 0;
 		break;
 	case CKA_LABEL:
 		len = strlen(dobj->base.p15_object->label);
@@ -3901,28 +3900,37 @@ pkcs15_dobj_get_attribute(struct sc_pkcs11_session *session, void *object, CK_AT
 		break;
 #endif
 	case CKA_OBJECT_ID:
-		{
-			len = sizeof(dobj->info->app_oid);
-
-			check_attribute_buffer(attr, len);
-			memcpy(attr->pValue, dobj->info->app_oid.value, len);
+		if (!sc_valid_oid(&dobj->info->app_oid))   {
+			attr->ulValueLen = -1;
+			return CKR_ATTRIBUTE_TYPE_INVALID;
 		}
+		r = sc_asn1_encode_object_id(NULL, &len, &dobj->info->app_oid);
+		if (r)   {
+			sc_log(context, "data_get_attr(): encode OID error %i", r);
+			return CKR_FUNCTION_FAILED;
+		}
+
+		check_attribute_buffer(attr, len);
+
+		r = sc_asn1_encode_object_id(&buf, &len, &dobj->info->app_oid);
+		if (r)   {
+			sc_log(context, "data_get_attr(): encode OID error %i", r);
+			return CKR_FUNCTION_FAILED;
+		}
+
+		memcpy(attr->pValue, buf, len);
+		free(buf);
 		break;
 	case CKA_VALUE:
-		{
-			CK_RV rv;
-			struct sc_pkcs15_data *data = NULL;
-
-			rv = pkcs15_dobj_get_value(session, dobj, &data);
-			if (rv == CKR_OK)
-				rv = data_value_to_attr(attr, data);
-			if (data) {
-				free(data->data);
-				free(data);
-			}
-			if (rv != CKR_OK)
-				return rv;
+		rv = pkcs15_dobj_get_value(session, dobj, &data);
+		if (rv == CKR_OK)
+			rv = data_value_to_attr(attr, data);
+		if (data) {
+			free(data->data);
+			free(data);
 		}
+		if (rv != CKR_OK)
+			return rv;
 		break;
 	default:
 		return CKR_ATTRIBUTE_TYPE_INVALID;

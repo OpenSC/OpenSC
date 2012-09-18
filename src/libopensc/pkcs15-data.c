@@ -107,7 +107,7 @@ int sc_pkcs15_decode_dodf_entry(struct sc_pkcs15_card *p15card,
 
 	/* Fill in defaults */
 	memset(&info, 0, sizeof(info));
-	info.app_oid.value[0] = -1;
+	sc_init_oid(&info.app_oid);
 
 	r = sc_asn1_decode(ctx, asn1_data, *buf, *buflen, buf, buflen);
 	if (r == SC_ERROR_ASN1_END_OF_CONTENTS)
@@ -152,14 +152,12 @@ int sc_pkcs15_encode_dodf_entry(sc_context_t *ctx,
 	sc_copy_asn1_entry(c_asn1_type_data_attr, asn1_type_data_attr);
 	sc_copy_asn1_entry(c_asn1_data, asn1_data);
 
-	if (label_len) {
-		sc_format_asn1_entry(asn1_com_data_attr + 0,
-				&info->app_label, &label_len, 1);
-	}
-	if (info->app_oid.value[0] != -1) {
-		sc_format_asn1_entry(asn1_com_data_attr + 1,
-				&info->app_oid, NULL, 1);
-	}
+	if (label_len)
+		sc_format_asn1_entry(asn1_com_data_attr + 0, &info->app_label, &label_len, 1);
+
+	if (sc_valid_oid(&info->app_oid))
+		sc_format_asn1_entry(asn1_com_data_attr + 1, &info->app_oid, NULL, 1);
+
 	sc_format_asn1_entry(asn1_type_data_attr + 0, &info->path, NULL, 1);
 	sc_format_asn1_entry(asn1_data + 0, &data_obj, NULL, 1);
 

@@ -45,9 +45,9 @@ typedef unsigned char u8;
 #define SC_MAX_CRTS_IN_SE		12
 #define SC_MAX_SE_NUM			8
 
-/* When changing this value, pay attention to the initialization of the ASN1 
- * static variables that use this macro, like, for example, 
- * 'c_asn1_supported_algorithms' in src/libopensc/pkcs15.c 
+/* When changing this value, pay attention to the initialization of the ASN1
+ * static variables that use this macro, like, for example,
+ * 'c_asn1_supported_algorithms' in src/libopensc/pkcs15.c
  */
 #define SC_MAX_SUPPORTED_ALGORITHMS	8
 

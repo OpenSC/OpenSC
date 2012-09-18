@@ -355,13 +355,13 @@ sc_pkcs15_encode_tokeninfo(sc_context_t *ctx, sc_pkcs15_tokeninfo_t *ti,
 	}
 	sc_format_asn1_entry(asn1_toki_attrs + 12, NULL, NULL, 0);
 
-	if (ti->profile_indication.oid.value[0] > 0)   {
-        	sc_format_asn1_entry(asn1_profile_indication + 0, &ti->profile_indication.oid, NULL, 1);
+	if (sc_valid_oid(&ti->profile_indication.oid))   {
+		sc_format_asn1_entry(asn1_profile_indication + 0, &ti->profile_indication.oid, NULL, 1);
 		sc_format_asn1_entry(asn1_toki_attrs + 13, asn1_profile_indication, NULL, 1);
 	}
 	else if (ti->profile_indication.name)   {
 		pi_len = strlen(ti->profile_indication.name);
-        	sc_format_asn1_entry(asn1_profile_indication + 1, ti->profile_indication.name, &pi_len, 1);
+		sc_format_asn1_entry(asn1_profile_indication + 1, ti->profile_indication.name, &pi_len, 1);
 		sc_format_asn1_entry(asn1_toki_attrs + 13, asn1_profile_indication, NULL, 1);
 	}
 	else    {
@@ -714,7 +714,7 @@ struct sc_pkcs15_card * sc_pkcs15_card_new(void)
 		return NULL;
 	}
 
-	p15card->tokeninfo->profile_indication.oid.value[0] = -1;
+	sc_init_oid(&p15card->tokeninfo->profile_indication.oid);
 
 	p15card->magic = SC_PKCS15_CARD_MAGIC;
 	return p15card;
