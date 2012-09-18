@@ -386,9 +386,9 @@ acl_to_ac(sc_file_t *file, unsigned int op, u8 *ac)
 }
 
 static int
-gpk_parse_fci(sc_card_t *card,
-		const u8 *buf, size_t buflen,
-		sc_file_t *file)
+gpk_parse_fci(__unusedparam__ sc_card_t *card,
+              const u8 *buf, size_t buflen,
+              sc_file_t *file)
 {
 	const u8	*end, *next;
 	unsigned int	tag, len;
@@ -1026,7 +1026,7 @@ gpk_select_key(sc_card_t *card, int key_sfi, const u8 *buf, size_t buflen)
 static int
 gpk_set_security_env(sc_card_t *card,
 		const sc_security_env_t *env,
-		int se_num)
+		__unusedparam__ int se_num)
 {
 	struct gpk_private_data *priv = DRVDATA(card);
 	sc_apdu_t	apdu;
@@ -1158,7 +1158,7 @@ gpk_set_security_env(sc_card_t *card,
  * Not sure what this is supposed to do.
  */
 static int
-gpk_restore_security_env(sc_card_t *card, int se_num)
+gpk_restore_security_env(__unusedparam__ sc_card_t *card, __unusedparam__ int se_num)
 {
 	return 0;
 }
@@ -1614,7 +1614,7 @@ gpk_pkfile_load(sc_card_t *card, struct sc_cardctl_gpk_pkload *args)
  * This function lets pkcs15init query for the transport key
  */
 static int
-gpk_get_default_key(sc_card_t *card, struct sc_cardctl_default_key *data)
+gpk_get_default_key(__unusedparam__ sc_card_t *card, struct sc_cardctl_default_key *data)
 {
 	if (data->method == SC_AC_PRO && data->key_ref == 1) {
 		if (data->len < 16)
@@ -1774,7 +1774,7 @@ gpk_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 }
 
 static int
-gpk_build_pin_apdu(sc_card_t *card, sc_apdu_t *apdu, struct sc_pin_cmd_data *data)
+gpk_build_pin_apdu(__unusedparam__ sc_card_t *card, sc_apdu_t *apdu, struct sc_pin_cmd_data *data)
 {
 	static u8	sbuf[8];
 	int		r;

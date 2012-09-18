@@ -1212,7 +1212,7 @@ static int belpic_pp_change(sc_card_t *card, SCR_Card * scr_card,
 #endif	/* BELPIC_PIN_PAD */
 
 static int belpic_pin_cmd_usage(sc_card_t *card, struct sc_pin_cmd_data *data,
-				int *tries_left, int pin_usage)
+				int *tries_left, __unusedparam__ int pin_usage)
 {
 #ifdef BELPIC_PIN_PAD
 	sc_apdu_t apdu;
@@ -1362,8 +1362,7 @@ static int belpic_askpin_verify(sc_card_t *card, int pin_usage)
 }
 #endif	/* HAVE_GUI */
 
-static int belpic_set_security_env(sc_card_t *card,
-				   const sc_security_env_t *env, int se_num)
+static int belpic_set_security_env(sc_card_t *card, const sc_security_env_t *env, __unusedparam__ int se_num)
 {
 	sc_apdu_t apdu;
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];

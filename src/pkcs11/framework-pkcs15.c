@@ -1346,7 +1346,7 @@ pkcs15_create_tokens(struct sc_pkcs11_card *p11card, struct sc_app_info *app_inf
 
 
 static CK_RV
-pkcs15_release_token(struct sc_pkcs11_card *p11card, void *fw_token)
+pkcs15_release_token(__unusedparam__ struct sc_pkcs11_card *p11card, __unusedparam__ void *fw_token)
 {
 #if 0
 	unlock_card((struct pkcs15_fw_data *) p11card->fws_data[0]);
@@ -1913,7 +1913,7 @@ out:	return rv;
  * code will need to be expanded.
  */
 static CK_RV
-pkcs15_create_secret_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile,
+pkcs15_create_secret_key(struct sc_pkcs11_slot *slot, __unusedparam__ struct sc_profile *profile,
 		CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount,
 		CK_OBJECT_HANDLE_PTR phObject)
 {
@@ -4022,7 +4022,7 @@ static int pkcs15_skey_get_value(struct sc_pkcs11_session *session,
 
 
 static CK_RV
-pkcs15_skey_get_attribute(struct sc_pkcs11_session *session,
+pkcs15_skey_get_attribute(__unusedparam__ struct sc_pkcs11_session *session,
 		void *object, CK_ATTRIBUTE_PTR attr)
 {
 	struct pkcs15_skey_object *skey = (struct pkcs15_skey_object*) object;

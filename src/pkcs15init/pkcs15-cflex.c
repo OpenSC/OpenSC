@@ -184,7 +184,7 @@ cflex_create_domain(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
  * Select the PIN reference
  */
 static int
-cflex_select_pin_reference(sc_profile_t *profike, sc_pkcs15_card_t *p15card,
+cflex_select_pin_reference(__unusedparam__ sc_profile_t *profile, __unusedparam__ sc_pkcs15_card_t *p15card,
 		sc_pkcs15_auth_info_t *auth_info)
 {
 	int	preferred;
@@ -716,7 +716,7 @@ bn2cft(sc_pkcs15_bignum_t *num, u8 tag, u8 *buf, size_t bufsize)
  * Cryptoflex key encoding
  */
 static int
-cryptoflex_encode_private_key(sc_profile_t *profile, sc_card_t *card,
+cryptoflex_encode_private_key(__unusedparam__ sc_profile_t *profile, __unusedparam__ sc_card_t *card,
 			struct sc_pkcs15_prkey_rsa *rsa,
 			u8 *key, size_t *keysize, int key_ref)
 {
@@ -758,7 +758,7 @@ cryptoflex_encode_private_key(sc_profile_t *profile, sc_card_t *card,
 }
 
 static int
-cryptoflex_encode_public_key(sc_profile_t *profile, sc_card_t *card,
+cryptoflex_encode_public_key(__unusedparam__ sc_profile_t *profile, __unusedparam__ sc_card_t *card,
 			struct sc_pkcs15_prkey_rsa *rsa,
 			u8 *key, size_t *keysize, int key_ref)
 {
@@ -805,7 +805,7 @@ cryptoflex_encode_public_key(sc_profile_t *profile, sc_card_t *card,
  * Cyberflex key encoding
  */
 static int
-cyberflex_encode_private_key(sc_profile_t *profile, sc_card_t *card,
+cyberflex_encode_private_key(__unusedparam__ sc_profile_t *profile, __unusedparam__ sc_card_t *card,
 			struct sc_pkcs15_prkey_rsa *rsa,
 			u8 *key, size_t *keysize, int key_ref)
 {
@@ -858,9 +858,9 @@ cyberflex_encode_private_key(sc_profile_t *profile, sc_card_t *card,
 }
 
 static int
-cyberflex_encode_public_key(sc_profile_t *profile, sc_card_t *card,
-			struct sc_pkcs15_prkey_rsa *rsa,
-			u8 *key, size_t *keysize, int key_ref)
+cyberflex_encode_public_key(__unusedparam__ sc_profile_t *profile, __unusedparam__ sc_card_t *card,
+                            struct sc_pkcs15_prkey_rsa *rsa,
+                            u8 *key, size_t *keysize, int key_ref)
 {
 	size_t base = rsa->modulus.len, key_blob_size, bnlen;
         int r, key_num = key_ref + 1, alg_id;

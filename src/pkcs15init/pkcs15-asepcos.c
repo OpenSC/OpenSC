@@ -167,8 +167,8 @@ static int asepcos_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
  * determined when the PIN is created. This is just helper function to
  * determine the next best file id of the PIN file.
  */
-static int asepcos_select_pin_reference(sc_profile_t *profile,
-		sc_pkcs15_card_t *p15card, sc_pkcs15_auth_info_t *auth_info)
+static int asepcos_select_pin_reference(__unusedparam__ sc_profile_t *profile,
+                                        __unusedparam__ sc_pkcs15_card_t *p15card, sc_pkcs15_auth_info_t *auth_info)
 {
 	if (auth_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN)
 		return SC_SUCCESS;
@@ -215,9 +215,9 @@ static int asepcos_pinid_to_akn(sc_card_t *card, int fileid, int *akn)
 	return SC_SUCCESS;
 }
 
-static int asepcos_do_store_pin(sc_profile_t *profile, sc_card_t *card,
-	sc_pkcs15_auth_info_t *auth_info, const u8* pin, size_t pinlen,
-	int puk, int pinid)
+static int asepcos_do_store_pin(__unusedparam__ sc_profile_t *profile, sc_card_t *card,
+                                sc_pkcs15_auth_info_t *auth_info, const u8* pin, size_t pinlen,
+                                int puk, int pinid)
 {
 	sc_file_t *nfile = NULL;
 	u8  buf[64], sbuf[64], *p = buf, *q = sbuf;

@@ -100,7 +100,7 @@ buf_spec(CK_VOID_PTR buf_addr, CK_ULONG buf_len)
 
 
 void
-print_enum(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg)
+print_enum(FILE *f, __unusedparam__ CK_LONG type, CK_VOID_PTR value, __unusedparam__ CK_ULONG size, CK_VOID_PTR arg)
 {
 	enum_spec *spec = (enum_spec*)arg;
 	CK_ULONG i;
@@ -117,7 +117,8 @@ print_enum(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR 
 
 
 void
-print_boolean(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg)
+print_boolean(FILE *f, __unusedparam__ CK_LONG type, CK_VOID_PTR value, __unusedparam__ CK_ULONG size,
+              __unusedparam__ CK_VOID_PTR arg)
 {
 	CK_BYTE i = *((CK_BYTE *)value);
 	fprintf(f, i ? "True\n" : "False\n");
@@ -125,7 +126,7 @@ print_boolean(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_P
 
 
 void
-print_generic(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg)
+print_generic(FILE *f, __unusedparam__ CK_LONG type, CK_VOID_PTR value, CK_ULONG size, __unusedparam__ CK_VOID_PTR arg)
 {
 	CK_ULONG i;
 
@@ -198,7 +199,7 @@ print_dn(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR ar
 #endif
 
 void
-print_print(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg)
+print_print(FILE *f, __unusedparam__ CK_LONG type, CK_VOID_PTR value, CK_ULONG size, __unusedparam__ CK_VOID_PTR arg)
 {
 	CK_ULONG i, j=0;
 	CK_BYTE  c;

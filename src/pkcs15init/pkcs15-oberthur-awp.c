@@ -306,8 +306,8 @@ awp_create_container_record (struct sc_pkcs15_card *p15card, struct sc_profile *
 
 
 static int
-awp_create_container(struct sc_pkcs15_card *p15card, struct sc_profile *profile, int type,
-		struct awp_lv *key_id, struct awp_crypto_container *acc)
+awp_create_container(struct sc_pkcs15_card *p15card, struct sc_profile *profile, __unusedparam__ int type,
+                     __unusedparam__ struct awp_lv *key_id, struct awp_crypto_container *acc)
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_file *clist = NULL, *file = NULL;
@@ -549,8 +549,8 @@ done:
 
 
 static int
-awp_update_df_create_pin(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
-		struct sc_pkcs15_object *pinobj)
+awp_update_df_create_pin(struct sc_pkcs15_card *p15card, __unusedparam__ struct sc_profile *profile,
+                         __unusedparam__ struct sc_pkcs15_object *pinobj)
 {
 	SC_FUNC_CALLED(p15card->card->ctx, 1);
 	/* No update DF when creating PIN objects */
@@ -1185,7 +1185,7 @@ done:
 
 
 static int
-awp_get_lv(struct sc_context *ctx, unsigned char *buf, size_t buf_len,
+awp_get_lv(__unusedparam__ struct sc_context *ctx, unsigned char *buf, size_t buf_len,
 		size_t offs, int len_len,
 		struct awp_lv *out)
 {

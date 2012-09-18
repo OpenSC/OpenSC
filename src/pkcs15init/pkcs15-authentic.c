@@ -267,8 +267,8 @@ authentic_pkcs15_new_file(struct sc_profile *profile, struct sc_card *card,
  * Select a key reference
  */
 static int
-authentic_pkcs15_select_key_reference(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
-		struct sc_pkcs15_prkey_info *key_info)
+authentic_pkcs15_select_key_reference(__unusedparam__ struct sc_profile *profile, struct sc_pkcs15_card *p15card,
+                                      struct sc_pkcs15_prkey_info *key_info)
 {
 	struct sc_context *ctx = p15card->card->ctx;
 
@@ -761,8 +761,8 @@ authentic_pkcs15_delete_object (struct sc_profile *profile, struct sc_pkcs15_car
 
 
 static int
-authentic_store_pubkey(struct sc_pkcs15_card *p15card, struct sc_profile *profile, struct sc_pkcs15_object *object,
-		struct sc_pkcs15_der *data, struct sc_path *path)
+authentic_store_pubkey(struct sc_pkcs15_card *p15card, __unusedparam__ struct sc_profile *profile, struct sc_pkcs15_object *object,
+                       __unusedparam__ struct sc_pkcs15_der *data, __unusedparam__ struct sc_path *path)
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15_pubkey_info *pubkey_info = (struct sc_pkcs15_pubkey_info *)object->data;
@@ -823,8 +823,8 @@ authentic_emu_store_data(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 
 
 static int
-authentic_emu_update_tokeninfo(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
-		struct sc_pkcs15_tokeninfo *tinfo)
+authentic_emu_update_tokeninfo(__unusedparam__ struct sc_profile *profile, struct sc_pkcs15_card *p15card,
+                               __unusedparam__ struct sc_pkcs15_tokeninfo *tinfo)
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_file *file = NULL;

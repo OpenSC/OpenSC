@@ -30,7 +30,7 @@
 /*
  * Deal with uninitialized cards
  */
-static CK_RV pkcs15init_bind(struct sc_pkcs11_card *p11card, struct sc_app_info *app_info)
+static CK_RV pkcs15init_bind(struct sc_pkcs11_card *p11card, __unusedparam__ struct sc_app_info *app_info)
 {
 	struct sc_card	*card = p11card->card;
 	struct sc_profile *profile;
@@ -53,8 +53,8 @@ static CK_RV pkcs15init_unbind(struct sc_pkcs11_card *p11card)
 
 
 static CK_RV
-pkcs15init_create_tokens(struct sc_pkcs11_card *p11card, struct sc_app_info *app_info,
-		struct sc_pkcs11_slot **first_slot)
+pkcs15init_create_tokens(struct sc_pkcs11_card *p11card, __unusedparam__ struct sc_app_info *app_info,
+                         __unusedparam__ struct sc_pkcs11_slot **first_slot)
 {
 	struct sc_profile	*profile;
 	struct sc_pkcs11_slot	*slot;
@@ -96,34 +96,34 @@ pkcs15init_create_tokens(struct sc_pkcs11_card *p11card, struct sc_app_info *app
 }
 
 static CK_RV
-pkcs15init_release_token(struct sc_pkcs11_card *p11card, void *ptr)
+pkcs15init_release_token(__unusedparam__ struct sc_pkcs11_card *p11card, __unusedparam__ void *ptr)
 {
 	return CKR_OK;
 }
 
 static CK_RV
-pkcs15init_login(struct sc_pkcs11_slot *slot,
-		CK_USER_TYPE user, CK_CHAR_PTR pin, CK_ULONG pinLength)
+pkcs15init_login(__unusedparam__ struct sc_pkcs11_slot *slot,
+                 __unusedparam__ CK_USER_TYPE user, __unusedparam__ CK_CHAR_PTR pin, __unusedparam__ CK_ULONG pinLength)
 {
 	return CKR_CRYPTOKI_NOT_INITIALIZED;
 }
 
 static CK_RV
-pkcs15init_logout(struct sc_pkcs11_slot *slot)
+pkcs15init_logout(__unusedparam__ struct sc_pkcs11_slot *slot)
 {
 	return CKR_CRYPTOKI_NOT_INITIALIZED;
 }
 
 static CK_RV
-pkcs15init_change_pin(struct sc_pkcs11_slot *slot,
-			CK_CHAR_PTR oldPin, CK_ULONG oldPinLength,
-			CK_CHAR_PTR newPin, CK_ULONG newPinLength)
+pkcs15init_change_pin(__unusedparam__ struct sc_pkcs11_slot *slot,
+                      __unusedparam__ CK_CHAR_PTR oldPin, __unusedparam__ CK_ULONG oldPinLength,
+                      __unusedparam__ CK_CHAR_PTR newPin, __unusedparam__ CK_ULONG newPinLength)
 {
 	return CKR_CRYPTOKI_NOT_INITIALIZED;
 }
 
 static CK_RV
-pkcs15init_initialize(struct sc_pkcs11_card *p11card, void *ptr,
+pkcs15init_initialize(struct sc_pkcs11_card *p11card, __unusedparam__ void *ptr,
 		CK_UTF8CHAR_PTR pPin, CK_ULONG ulPinLen,
 		CK_UTF8CHAR_PTR pLabel)
 {

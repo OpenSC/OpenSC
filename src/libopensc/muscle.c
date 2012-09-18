@@ -306,7 +306,8 @@ int msc_verify_pin(sc_card_t *card, int pinNumber, const u8 *pinValue, int pinLe
 }
 
 /* USE ISO_VERIFY due to tries return */
-void msc_verify_pin_apdu(sc_card_t *card, sc_apdu_t *apdu, u8* buffer, size_t bufferLength, int pinNumber, const u8 *pinValue, int pinLength)
+void msc_verify_pin_apdu(sc_card_t *card, sc_apdu_t *apdu, u8* buffer, __unusedparam__ size_t bufferLength,
+                         int pinNumber, const u8 *pinValue, int pinLength)
 {
 	assert(buffer);
 	assert(bufferLength >= (size_t)pinLength);
@@ -350,7 +351,8 @@ int msc_unblock_pin(sc_card_t *card, int pinNumber, const u8 *pukValue, int pukL
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,  SC_ERROR_PIN_CODE_INCORRECT);
 }
 
-void msc_unblock_pin_apdu(sc_card_t *card, sc_apdu_t *apdu, u8* buffer, size_t bufferLength, int pinNumber, const u8 *pukValue, int pukLength)
+void msc_unblock_pin_apdu(sc_card_t *card, sc_apdu_t *apdu, u8* buffer, __unusedparam__ size_t bufferLength,
+                          int pinNumber, const u8 *pukValue, int pukLength)
 {
 	assert(buffer);
 	assert(bufferLength >= (size_t)pukLength);
@@ -393,7 +395,8 @@ int msc_change_pin(sc_card_t *card, int pinNumber, const u8 *pinValue, int pinLe
 }
 
 /* USE ISO_VERIFY due to tries return */
-void msc_change_pin_apdu(sc_card_t *card, sc_apdu_t *apdu, u8* buffer, size_t bufferLength, int pinNumber, const u8 *pinValue, int pinLength, const u8 *newPin, int newPinLength)
+void msc_change_pin_apdu(sc_card_t *card, sc_apdu_t *apdu, u8* buffer, __unusedparam__ size_t bufferLength,
+                         int pinNumber, const u8 *pinValue, int pinLength, const u8 *newPin, int newPinLength)
 {
 	u8 *ptr;
 	assert(pinLength <= MSC_MAX_PIN_LENGTH);
@@ -496,7 +499,7 @@ int msc_get_challenge(sc_card_t *card, unsigned short dataLength, unsigned short
 	}
 }
 
-int msc_generate_keypair(sc_card_t *card, int privateKey, int publicKey, int algorithm, int keySize, int options)
+int msc_generate_keypair(sc_card_t *card, int privateKey, int publicKey, int algorithm, int keySize, __unusedparam__ int options)
 {
 	sc_apdu_t apdu;
 	u8 buffer[16]; /* Keypair payload length */
@@ -864,7 +867,7 @@ int msc_compute_crypt(sc_card_t *card,
 			const u8* data,
 			u8* outputData,
 			size_t dataLength,
-			size_t outputDataLength)
+			__unusedparam__ size_t outputDataLength)
 {
 	size_t left = dataLength;
 	const u8* inPtr = data;

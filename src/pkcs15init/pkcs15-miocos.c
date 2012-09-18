@@ -102,8 +102,8 @@ miocos_new_file(struct sc_profile *profile, sc_card_t *card,
 }
 
 static int
-miocos_update_private_key(struct sc_profile *profile, sc_card_t *card,
-		struct sc_pkcs15_prkey_rsa *rsa)
+miocos_update_private_key(__unusedparam__ struct sc_profile *profile, sc_card_t *card,
+                          struct sc_pkcs15_prkey_rsa *rsa)
 {
 	int r;
 	u8 buf[266];
@@ -121,8 +121,8 @@ miocos_update_private_key(struct sc_profile *profile, sc_card_t *card,
  * Initialize the Application DF
  */
 static int
-miocos_create_dir(struct sc_profile *profile, sc_pkcs15_card_t *p15card,
-		struct sc_file *df)
+miocos_create_dir(__unusedparam__ struct sc_profile *profile, sc_pkcs15_card_t *p15card,
+                  __unusedparam__ struct sc_file *df)
 {
 	/* Create the application DF */
 	if (sc_pkcs15init_create_file(profile, p15card, profile->df_info->file))
@@ -135,8 +135,8 @@ miocos_create_dir(struct sc_profile *profile, sc_pkcs15_card_t *p15card,
  * Validate PIN reference
  */
 static int
-miocos_select_pin_reference(struct sc_profile *profile, sc_pkcs15_card_t *p15card,
-		struct sc_pkcs15_auth_info *auth_info)
+miocos_select_pin_reference(__unusedparam__ struct sc_profile *profile, __unusedparam__ sc_pkcs15_card_t *p15card,
+                            struct sc_pkcs15_auth_info *auth_info)
 {
 	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
 		return SC_ERROR_OBJECT_NOT_VALID;
@@ -151,7 +151,7 @@ miocos_select_pin_reference(struct sc_profile *profile, sc_pkcs15_card_t *p15car
  * Create new PIN
  */
 static int
-miocos_create_pin(struct sc_profile *profile, sc_pkcs15_card_t *p15card, struct sc_file *df,
+miocos_create_pin(struct sc_profile *profile, sc_pkcs15_card_t *p15card, __unusedparam__ struct sc_file *df,
 		struct sc_pkcs15_object *pin_obj,
 		const u8 *pin, size_t pin_len,
 		const u8 *puk, size_t puk_len)

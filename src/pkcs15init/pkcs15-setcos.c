@@ -162,7 +162,7 @@ setcos_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *d
  * Select the PIN reference
  */
 static int
-setcos_select_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
+setcos_select_pin_reference(sc_profile_t *profile, __unusedparam__ sc_pkcs15_card_t *p15card,
 	sc_pkcs15_auth_info_t *auth_info)
 {
 	sc_pkcs15_auth_info_t auth_info_prof;
@@ -188,7 +188,7 @@ setcos_select_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
  */
 static int
 setcos_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
-	sc_file_t *df,
+	__unusedparam__ sc_file_t *df,
 	sc_pkcs15_object_t *pin_obj,
 	const u8 *pin, size_t pin_len,
 	const u8 *puk, size_t puk_len)
@@ -298,17 +298,17 @@ setcos_new_file(sc_profile_t *profile, sc_card_t *card,
 }
 
 static int
-setcos_encode_private_key(sc_profile_t *profile, sc_card_t *card,
-	struct sc_pkcs15_prkey_rsa *rsa,
-	u8 *key, size_t *keysize, int key_ref)
+setcos_encode_private_key(__unusedparam__ sc_profile_t *profile, __unusedparam__ sc_card_t *card,
+                          __unusedparam__ struct sc_pkcs15_prkey_rsa *rsa,
+                          __unusedparam__ u8 *key, __unusedparam__ size_t *keysize, __unusedparam__ int key_ref)
 {
 	return 0;
 }
 
 static int
-setcos_encode_public_key(sc_profile_t *profile, sc_card_t *card,
-	struct sc_pkcs15_prkey_rsa *rsa,
-	u8 *key, size_t *keysize, int key_ref)
+setcos_encode_public_key(__unusedparam__ sc_profile_t *profile, __unusedparam__ sc_card_t *card,
+                         __unusedparam__ struct sc_pkcs15_prkey_rsa *rsa,
+                         __unusedparam__ u8 *key, __unusedparam__ size_t *keysize, __unusedparam__ int key_ref)
 {
 	return 0;
 }

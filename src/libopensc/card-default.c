@@ -32,7 +32,7 @@ static struct sc_card_driver default_drv = {
 	NULL, 0, NULL
 };
 
-static int default_match_card(sc_card_t *card)
+static int default_match_card(__unusedparam__ sc_card_t *card)
 {
 	return 1;		/* always match */
 }

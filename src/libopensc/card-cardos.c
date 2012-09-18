@@ -719,7 +719,7 @@ cardos_restore_security_env(sc_card_t *card, int se_num)
 static int
 cardos_set_security_env(sc_card_t *card,
 			    const sc_security_env_t *env,
-			    int se_num)
+			    __unusedparam__ int se_num)
 {
 	sc_apdu_t apdu;
 	u8	data[3];

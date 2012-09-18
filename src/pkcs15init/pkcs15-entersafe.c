@@ -59,7 +59,7 @@ static u8 process_acl_entry(sc_file_t *in, unsigned int method, unsigned int in_
 	}
 }
 
-static int entersafe_erase_card(struct sc_profile *profile, sc_pkcs15_card_t *p15card)
+static int entersafe_erase_card(__unusedparam__ struct sc_profile *profile, sc_pkcs15_card_t *p15card)
 {
 	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -245,8 +245,8 @@ static int entersafe_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,ret);
 }
 
-static int entersafe_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
-								   sc_pkcs15_auth_info_t *auth_info)
+static int entersafe_pin_reference(__unusedparam__ sc_profile_t *profile, sc_pkcs15_card_t *p15card,
+                                   sc_pkcs15_auth_info_t *auth_info)
 {
 	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -261,10 +261,10 @@ static int entersafe_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15c
 	SC_FUNC_RETURN(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE,SC_SUCCESS);
 }
 
-static int entersafe_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
-								sc_file_t *df, sc_pkcs15_object_t *pin_obj,
-								const unsigned char *pin, size_t pin_len,
-								const unsigned char *puk, size_t puk_len)
+static int entersafe_create_pin(__unusedparam__ sc_profile_t *profile, sc_pkcs15_card_t *p15card,
+                                __unusedparam__ sc_file_t *df, sc_pkcs15_object_t *pin_obj,
+                                const unsigned char *pin, size_t pin_len,
+                                const unsigned char *puk, size_t puk_len)
 {
 	struct sc_card *card = p15card->card;
 	int	r;
@@ -319,7 +319,7 @@ static int entersafe_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,r);
 }
 
-static int entersafe_key_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
+static int entersafe_key_reference(__unusedparam__ sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 								   sc_pkcs15_prkey_info_t *prkey)
 {
 	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
@@ -330,8 +330,8 @@ static int entersafe_key_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15c
 	SC_FUNC_RETURN(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE,SC_SUCCESS);
 }
 
-static int entersafe_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
-								sc_pkcs15_object_t *obj)
+static int entersafe_create_key(__unusedparam__ sc_profile_t *profile, sc_pkcs15_card_t *p15card,
+                                __unusedparam__ sc_pkcs15_object_t *obj)
 {
 	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
 	SC_FUNC_RETURN(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE,SC_SUCCESS);

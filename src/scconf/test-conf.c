@@ -29,7 +29,7 @@
 
 #define ADD_TEST
 
-static int ldap_cb(const scconf_context * config, const scconf_block * block, scconf_entry * entry, int depth)
+static int ldap_cb(const scconf_context * config, const scconf_block * block, scconf_entry * entry, __unusedparam__ int depth)
 {
 	scconf_entry ldap_entry[] =
 	{
@@ -57,7 +57,8 @@ static int ldap_cb(const scconf_context * config, const scconf_block * block, sc
 	return 0;		/* 0 for ok, 1 for error */
 }
 
-static int card_cb(const scconf_context * config, const scconf_block * block, scconf_entry * entry, int depth)
+static int card_cb(const scconf_context * config, const scconf_block * block, __unusedparam__ scconf_entry * entry,
+                   __unusedparam__ int depth)
 {
 	char *str = scconf_list_strdup(block->name, " ");
 	scconf_entry card_entry[] =
@@ -78,7 +79,7 @@ static int card_cb(const scconf_context * config, const scconf_block * block, sc
 	return 0;		/* 0 for ok, 1 for error */
 }
 
-static int write_cb(scconf_context * config, scconf_block * block, scconf_entry * entry, int depth)
+static int write_cb(scconf_context * config, scconf_block * block, scconf_entry * entry, __unusedparam__ int depth)
 {
 	scconf_put_str(block, entry->name, "inside write_cb();");
 	scconf_item_add(config, block, NULL, SCCONF_ITEM_TYPE_COMMENT, NULL, "# commentN");

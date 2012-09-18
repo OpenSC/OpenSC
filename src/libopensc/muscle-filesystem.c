@@ -61,7 +61,7 @@ void mscfs_clear_cache(mscfs_t* fs) {
 	fs->cache.size = 0;
 }
 
-static int mscfs_is_ignored(mscfs_t* fs, msc_id objectId)
+static int mscfs_is_ignored(__unusedparam__ mscfs_t* fs, msc_id objectId)
 {
 	int ignored = 0;
 	const u8** ptr = ignoredFiles;

@@ -172,7 +172,7 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 	LOG_TEST_RET(card->ctx, r, "Could not select SmartCard-HSM application");
 
 	// Read device certificate to determine serial number
-	sc_path_set(&path, SC_PATH_TYPE_FILE_ID, "\x2F\x02", 2, 0, 0);
+	sc_path_set(&path, SC_PATH_TYPE_FILE_ID, (u8 *) "\x2F\x02", 2, 0, 0);
 	r = sc_select_file(card, &path, &file);
 	sc_file_free(file);
 	LOG_TEST_RET(card->ctx, r, "Could not select EF.C_DevAut");

@@ -125,9 +125,12 @@ static int	sc_pkcs15init_qualify_pin(struct sc_card *, const char *,
 	       		unsigned int, struct sc_pkcs15_auth_info *);
 static struct sc_pkcs15_df * find_df_by_type(struct sc_pkcs15_card *,
 			unsigned int);
+#if 0
+/* Defined, but not used */
 static int	sc_pkcs15init_read_info(struct sc_card *card, struct sc_profile *);
 static int	sc_pkcs15init_parse_info(struct sc_card *, const unsigned char *, size_t,
 			struct sc_profile *);
+#endif
 static int	sc_pkcs15init_write_info(struct sc_pkcs15_card *, struct sc_profile *,
 			struct sc_pkcs15_object *);
 
@@ -168,7 +171,7 @@ static struct sc_pkcs15init_callbacks callbacks = {
 	NULL,
 };
 
-static void sc_pkcs15init_empty_callback(void *ptr)
+static void sc_pkcs15init_empty_callback(__unusedparam__ void *ptr)
 {
 }
 
@@ -1966,7 +1969,8 @@ check_keygen_params_consistency(struct sc_card *card, struct sc_pkcs15init_keyge
  * Check whether the card has native crypto support for this key.
  */
 static int
-check_key_compatibility(struct sc_pkcs15_card *p15card, struct sc_pkcs15_prkey *key, unsigned int x509_usage, unsigned int key_length, unsigned int flags)
+check_key_compatibility(struct sc_pkcs15_card *p15card, struct sc_pkcs15_prkey *key, __unusedparam__ unsigned int x509_usage,
+                        unsigned int key_length, unsigned int flags)
 {
 	struct sc_algorithm_info *info;
 	unsigned int count;
@@ -3725,6 +3729,8 @@ sc_pkcs15init_qualify_pin(struct sc_card *card, const char *pin_name,
 }
 
 
+#if 0
+/* GCC warns "defined, but not used" */
 /*
  * Get the list of options from the card, if it specifies them
  */
@@ -3759,8 +3765,10 @@ sc_pkcs15init_read_info(struct sc_card *card, struct sc_profile *profile)
 		free(mem);
 	return r;
 }
+#endif
 
 
+#if 0
 static int
 set_info_string(char **strp, const u8 *p, size_t len)
 {
@@ -3775,7 +3783,9 @@ set_info_string(char **strp, const u8 *p, size_t len)
 	*strp = s;
 	return SC_SUCCESS;
 }
+#endif
 
+#if 0
 /*
  * Parse OpenSC Info file. We rudely clobber any information
  * given on the command line.
@@ -3838,6 +3848,7 @@ error:
 	sc_log(card->ctx, "OpenSC info file corrupted");
 	return SC_ERROR_PKCS15INIT;
 }
+#endif
 
 
 static int

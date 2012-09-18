@@ -35,7 +35,7 @@ static struct sc_card_driver javacard_drv = {
 	NULL, 0, NULL
 };
 
-static int javacard_finish(sc_card_t * card)
+static int javacard_finish(__unusedparam__ sc_card_t * card)
 {
 	return SC_SUCCESS;
 }

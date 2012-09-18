@@ -339,7 +339,7 @@ static int sc_pkcs15_tccardos_init_func(sc_pkcs15_card_t *p15card)
 }
 
 int sc_pkcs15emu_tccardos_init_ex(sc_pkcs15_card_t *p15card,
-				  sc_pkcs15emu_opt_t *opts)
+				  __unusedparam__ sc_pkcs15emu_opt_t *opts)
 {
 	return sc_pkcs15_tccardos_init_func(p15card);
 }

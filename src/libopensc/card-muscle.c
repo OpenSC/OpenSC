@@ -190,7 +190,7 @@ static int muscle_create_file(sc_card_t *card, sc_file_t *file)
 	return r;
 }
 
-static int muscle_read_binary(sc_card_t *card, unsigned int idx, u8* buf, size_t count, unsigned long flags)
+static int muscle_read_binary(sc_card_t *card, unsigned int idx, u8* buf, size_t count, __unusedparam__ unsigned long flags)
 {
 	mscfs_t *fs = MUSCLE_FS(card);
 	int r;
@@ -212,7 +212,7 @@ static int muscle_read_binary(sc_card_t *card, unsigned int idx, u8* buf, size_t
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 }
 
-static int muscle_update_binary(sc_card_t *card, unsigned int idx, const u8* buf, size_t count, unsigned long flags)
+static int muscle_update_binary(sc_card_t *card, unsigned int idx, const u8* buf, size_t count, __unusedparam__ unsigned long flags)
 {
 	mscfs_t *fs = MUSCLE_FS(card);
 	int r;
@@ -495,7 +495,7 @@ static int muscle_init(sc_card_t *card)
 	return SC_SUCCESS;
 }
 
-static int muscle_list_files(sc_card_t *card, u8 *buf, size_t bufLen)
+static int muscle_list_files(sc_card_t *card, u8 *buf, __unusedparam__ size_t bufLen)
 {
 	muscle_private_t* priv = MUSCLE_DATA(card);
 	mscfs_t *fs = priv->fs;
@@ -652,7 +652,7 @@ static int muscle_card_ctl(sc_card_t *card, unsigned long request, void *data)
 
 static int muscle_set_security_env(sc_card_t *card,
 				 const sc_security_env_t *env,
-				 int se_num)
+				 __unusedparam__ int se_num)
 {
 	muscle_private_t* priv = MUSCLE_DATA(card);
 
@@ -692,7 +692,7 @@ static int muscle_set_security_env(sc_card_t *card,
 	return 0;
 }
 
-static int muscle_restore_security_env(sc_card_t *card, int se_num)
+static int muscle_restore_security_env(sc_card_t *card, __unusedparam__ int se_num)
 {
 	muscle_private_t* priv = MUSCLE_DATA(card);
 	memset(&priv->env, 0, sizeof(priv->env));

@@ -41,7 +41,7 @@ unsigned char MYEID_DEFAULT_PUBKEY[] = {0x01, 0x00, 0x01};
 /* For Myeid, all objects are files that can be deleted in any order */
 static int
 myeid_delete_object(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
-		struct sc_pkcs15_object *object, const struct sc_path *path)
+                    __unusedparam__ struct sc_pkcs15_object *object, const struct sc_path *path)
 {
 	LOG_FUNC_CALLED(p15card->card->ctx);
 	return sc_pkcs15init_delete_by_path(profile, p15card, path);
@@ -164,8 +164,7 @@ myeid_erase_card(struct sc_profile *profile, struct sc_pkcs15_card *p15card)
 }
 
 static int
-myeid_init_card(sc_profile_t *profile,
-			   sc_pkcs15_card_t *p15card)
+myeid_init_card(__unusedparam__ sc_profile_t *profile, sc_pkcs15_card_t *p15card)
 {
 	struct sc_path path;
 	struct sc_file *file = NULL;
@@ -245,8 +244,8 @@ myeid_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *df
  * Select the PIN reference
  */
 static int
-myeid_select_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
-		sc_pkcs15_auth_info_t *auth_info)
+myeid_select_pin_reference(__unusedparam__ sc_profile_t *profile, sc_pkcs15_card_t *p15card,
+                           sc_pkcs15_auth_info_t *auth_info)
 {
 	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -278,9 +277,9 @@ myeid_select_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
  */
 static int
 myeid_create_pin(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
-		struct sc_file *df, struct sc_pkcs15_object *pin_obj,
-		const unsigned char *pin, size_t pin_len,
-		const unsigned char *puk, size_t puk_len)
+                 __unusedparam__ struct sc_file *df, struct sc_pkcs15_object *pin_obj,
+                 const unsigned char *pin, size_t pin_len,
+                 const unsigned char *puk, size_t puk_len)
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	unsigned char  data[20];
@@ -398,18 +397,18 @@ myeid_new_file(sc_profile_t *profile, sc_card_t *card,
 
 
 static int
-myeid_encode_private_key(sc_profile_t *profile, sc_card_t *card,
-		struct sc_pkcs15_prkey_rsa *rsa, u8 *key,
-		size_t *keysize, int key_ref)
+myeid_encode_private_key(__unusedparam__ sc_profile_t *profile, sc_card_t *card,
+                         __unusedparam__ struct sc_pkcs15_prkey_rsa *rsa, __unusedparam__ u8 *key,
+                         __unusedparam__ size_t *keysize, __unusedparam__ int key_ref)
 {
 	LOG_FUNC_CALLED(card->ctx);
 	LOG_FUNC_RETURN(card->ctx, 0);
 }
 
 static int
-myeid_encode_public_key(sc_profile_t *profile, sc_card_t *card,
-		struct sc_pkcs15_prkey_rsa *rsa, u8 *key,
-		size_t *keysize, int key_ref)
+myeid_encode_public_key(__unusedparam__ sc_profile_t *profile, sc_card_t *card,
+                        __unusedparam__ struct sc_pkcs15_prkey_rsa *rsa, __unusedparam__ u8 *key,
+                        __unusedparam__ size_t *keysize, __unusedparam__ int key_ref)
 {
 	LOG_FUNC_CALLED(card->ctx);
 	LOG_FUNC_RETURN(card->ctx, 0);

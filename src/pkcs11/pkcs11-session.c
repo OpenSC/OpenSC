@@ -214,18 +214,18 @@ out:
 	return rv;
 }
 
-CK_RV C_GetOperationState(CK_SESSION_HANDLE hSession,	/* the session's handle */
-			  CK_BYTE_PTR pOperationState,	/* location receiving state */
-			  CK_ULONG_PTR pulOperationStateLen)
+CK_RV C_GetOperationState(__unusedparam__ CK_SESSION_HANDLE hSession,	/* the session's handle */
+			  __unusedparam__ CK_BYTE_PTR pOperationState,	/* location receiving state */
+			  __unusedparam__ CK_ULONG_PTR pulOperationStateLen)
 {				/* location receiving state length */
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
-CK_RV C_SetOperationState(CK_SESSION_HANDLE hSession,	/* the session's handle */
-			  CK_BYTE_PTR pOperationState,	/* the location holding the state */
-			  CK_ULONG ulOperationStateLen,	/* location holding state length */
-			  CK_OBJECT_HANDLE hEncryptionKey,	/* handle of en/decryption key */
-			  CK_OBJECT_HANDLE hAuthenticationKey)
+CK_RV C_SetOperationState(__unusedparam__ CK_SESSION_HANDLE hSession,	/* the session's handle */
+			  __unusedparam__ CK_BYTE_PTR pOperationState,	/* the location holding the state */
+			  __unusedparam__ CK_ULONG ulOperationStateLen,	/* location holding state length */
+			  __unusedparam__ CK_OBJECT_HANDLE hEncryptionKey,	/* handle of en/decryption key */
+			  __unusedparam__ CK_OBJECT_HANDLE hAuthenticationKey)
 {				/* handle of sign/verify key */
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }

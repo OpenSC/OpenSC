@@ -766,8 +766,8 @@ sc_pkcs11_deri(struct sc_pkcs11_session *session,
 	CK_MECHANISM_PTR pMechanism,
 	struct sc_pkcs11_object * basekey,
 	CK_KEY_TYPE key_type,
-	CK_SESSION_HANDLE hSession,
-	CK_OBJECT_HANDLE hdkey,
+	__unusedparam__ CK_SESSION_HANDLE hSession,
+	__unusedparam__ CK_OBJECT_HANDLE hdkey,
 	struct sc_pkcs11_object * dkey)
 {
 

@@ -538,7 +538,7 @@ static u8 process_acl_entry(sc_file_t *in, unsigned int method, unsigned int in_
  * from the OpenSC internal acl (storing the result in the supplied
  * sc_starcos_create_data structure). 
  */
-static int starcos_process_acl(sc_card_t *card, sc_file_t *file,
+static int starcos_process_acl(__unusedparam__ sc_card_t *card, sc_file_t *file,
 	sc_starcos_create_data *data)
 {
 	u8     tmp, *p;
@@ -1011,7 +1011,7 @@ static int starcos_gen_key(sc_card_t *card, sc_starcos_gen_key_data *data)
  */
 static int starcos_set_security_env(sc_card_t *card,
 				    const sc_security_env_t *env,
-				    int se_num)
+				    __unusedparam__ int se_num)
 {
 	u8              *p, *pp;
 	int              r, operation = env->operation;

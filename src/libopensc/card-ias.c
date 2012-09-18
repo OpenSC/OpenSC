@@ -240,7 +240,8 @@ static int ias_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 }
 
 static int ias_set_security_env(sc_card_t *card,
-		const sc_security_env_t *env, int se_num)
+                                const sc_security_env_t *env,
+                                __unusedparam__ int se_num)
 {
 	int 		r;
 	sc_apdu_t 	apdu;

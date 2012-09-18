@@ -604,6 +604,17 @@ if test "$GCC" = "yes"; then
 	CFLAGS="-fno-strict-aliasing ${CFLAGS}"
 fi
 
+# Add some code to config.h, the autoheader way:
+AH_BOTTOM([
+#ifndef __unusedparam__
+#if defined(__GNUC__) || defined(__GNUG__)
+#define __unusedparam__ __attribute__((unused))
+#else
+#define __unusedparam__
+#endif
+#endif
+])
+
 AC_CONFIG_FILES([
 	Makefile
 	doc/Makefile

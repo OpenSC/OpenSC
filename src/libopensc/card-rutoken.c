@@ -614,8 +614,8 @@ static int rutoken_delete_file(sc_card_t *card, const sc_path_t *path)
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
 
-static int rutoken_verify(sc_card_t *card, unsigned int type, int ref_qualifier,
-			const u8 *data, size_t data_len, int *tries_left)
+static int rutoken_verify(sc_card_t *card, __unusedparam__ unsigned int type, int ref_qualifier,
+                          const u8 *data, size_t data_len, int *tries_left)
 {
 	sc_apdu_t apdu;
 	int ret;
@@ -700,9 +700,9 @@ static int rutoken_change_reference_data(sc_card_t *card, unsigned int type,
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, ret);
 }
 
-static int rutoken_reset_retry_counter(sc_card_t *card, unsigned int type,
-			int ref_qualifier, const u8 *puk, size_t puklen,
-			const u8 *newref, size_t newlen)
+static int rutoken_reset_retry_counter(sc_card_t *card, __unusedparam__ unsigned int type,
+                                       int ref_qualifier, __unusedparam__ const u8 *puk, __unusedparam__ size_t puklen,
+                                       __unusedparam__ const u8 *newref, __unusedparam__ size_t newlen)
 {
 #ifdef FORCE_VERIFY_RUTOKEN
 	int left;
@@ -740,8 +740,8 @@ static int rutoken_restore_security_env(sc_card_t *card, int se_num)
 }
 
 static int rutoken_set_security_env(sc_card_t *card, 
-			const sc_security_env_t *env, 
-			int se_num)
+                                    const sc_security_env_t *env, 
+                                    __unusedparam__ int se_num)
 {
 	sc_apdu_t apdu;
 	auth_senv_t *senv;

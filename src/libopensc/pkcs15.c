@@ -31,6 +31,7 @@
 #include "internal.h"
 #include "pkcs15.h"
 #include "asn1.h"
+#include <common/libscdl.h>
 
 #ifdef ENABLE_OPENSSL
 #include <openssl/sha.h>

@@ -216,8 +216,8 @@ static int entersafe_cipher_apdu(sc_card_t *card, sc_apdu_t *apdu,
 }
 
 static int entersafe_mac_apdu(sc_card_t *card, sc_apdu_t *apdu,
-							  u8 * key,size_t keylen,
-							  u8 * buff,size_t buffsize)
+                              u8 * key, size_t keylen,
+                              u8 * buff, __unusedparam__ size_t buffsize)
 {
 	 int r;
 	 u8 iv[8];
@@ -369,8 +369,8 @@ out:
 }
 
 static int entersafe_read_binary(sc_card_t *card,
-								 unsigned int idx, u8 *buf, size_t count,
-								 unsigned long flags)
+                                 unsigned int idx, u8 *buf, size_t count,
+                                 __unusedparam__ unsigned long flags)
 {
 	sc_apdu_t apdu;
 	u8 recvbuf[SC_MAX_APDU_BUFFER_SIZE];
@@ -397,8 +397,8 @@ static int entersafe_read_binary(sc_card_t *card,
 }
 
 static int entersafe_update_binary(sc_card_t *card,
-								   unsigned int idx, const u8 *buf,
-								   size_t count, unsigned long flags)
+                                   unsigned int idx, const u8 *buf,
+                                   size_t count, __unusedparam__ unsigned long flags)
 {
 	sc_apdu_t apdu;
 	int r;
@@ -847,8 +847,8 @@ static int entersafe_internal_set_security_env(sc_card_t *card,
  * the sign/decipher data within the security envirment apdu.
  */
 static int entersafe_set_security_env(sc_card_t *card,
-									  const sc_security_env_t *env,
-									  int se_num)
+                                      const sc_security_env_t *env,
+                                      __unusedparam__ int se_num)
 {
 	 assert(card);
 	 assert(env);
@@ -868,7 +868,7 @@ static int entersafe_set_security_env(sc_card_t *card,
 	 SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
 }
 
-static int entersafe_restore_security_env(sc_card_t *card, int se_num)
+static int entersafe_restore_security_env(sc_card_t *card, __unusedparam__ int se_num)
 {
 	 SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	 return SC_SUCCESS;

@@ -41,7 +41,7 @@
  *                  erased.
  * @return SC_SUCCESS on success and an error code otherwise
  **/
-static int openpgp_erase(struct sc_profile *profile, sc_pkcs15_card_t *p15card)
+static int openpgp_erase(__unusedparam__ struct sc_profile *profile, __unusedparam__ sc_pkcs15_card_t *p15card)
 {
 	return SC_ERROR_NOT_SUPPORTED;
 }
@@ -54,8 +54,8 @@ static int openpgp_erase(struct sc_profile *profile, sc_pkcs15_card_t *p15card)
  * @param  df       sc_file_t with the application DF to create
  * @return SC_SUCCESS on success and an error value otherwise
  **/
-static int openpgp_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
-	sc_file_t *df)
+static int openpgp_create_dir(__unusedparam__ sc_profile_t *profile, __unusedparam__ sc_pkcs15_card_t *p15card,
+                              __unusedparam__ sc_file_t *df)
 {
 	return SC_ERROR_NOT_SUPPORTED;
 }
@@ -65,8 +65,9 @@ static int openpgp_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
  * determined when the PIN is created. This is just helper function to
  * determine the next best file id of the PIN file.
  **/
-static int openpgp_select_pin_reference(sc_profile_t *profile,
-		sc_pkcs15_card_t *p15card, sc_pkcs15_auth_info_t *auth_info)
+static int openpgp_select_pin_reference(__unusedparam__ sc_profile_t *profile,
+                                        __unusedparam__ sc_pkcs15_card_t *p15card,
+                                        __unusedparam__ sc_pkcs15_auth_info_t *auth_info)
 {
 	return SC_ERROR_NOT_SUPPORTED;
 }
@@ -82,9 +83,10 @@ static int openpgp_select_pin_reference(sc_profile_t *profile,
  * @param  puk_len  PUK length (optional)
  * @return SC_SUCCESS on success and an error code otherwise
  **/
-static int openpgp_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
-	sc_file_t *df, sc_pkcs15_object_t *pin_obj,
-	const u8 *pin, size_t pin_len, const u8 *puk, size_t puk_len)
+static int openpgp_create_pin(__unusedparam__ sc_profile_t *profile, __unusedparam__ sc_pkcs15_card_t *p15card,
+                              __unusedparam__ sc_file_t *df, __unusedparam__ sc_pkcs15_object_t *pin_obj,
+                              __unusedparam__ const u8 *pin, __unusedparam__ size_t pin_len,
+                              __unusedparam__ const u8 *puk, __unusedparam__ size_t puk_len)
 {
 	return SC_ERROR_NOT_SUPPORTED;
 }
@@ -92,8 +94,8 @@ static int openpgp_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 /**
  * Creates empty key file
  **/
-static int openpgp_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
-	sc_pkcs15_object_t *obj)
+static int openpgp_create_key(__unusedparam__ sc_profile_t *profile, sc_pkcs15_card_t *p15card,
+                              __unusedparam__ sc_pkcs15_object_t *obj)
 {
 	/* For OpenPGP card, the number of keys is fixed,
 	 * so this function does not really do anything.
@@ -111,8 +113,8 @@ static int openpgp_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
  * @param  key      the private key
  * @return SC_SUCCESS on success and an error code otherwise
  **/
-static int openpgp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
-	sc_pkcs15_object_t *obj, sc_pkcs15_prkey_t *key)
+static int openpgp_store_key(__unusedparam__ sc_profile_t *profile, sc_pkcs15_card_t *p15card,
+                             sc_pkcs15_object_t *obj, sc_pkcs15_prkey_t *key)
 {
 	sc_card_t *card = p15card->card;
 	sc_pkcs15_prkey_info_t *kinfo = (sc_pkcs15_prkey_info_t *) obj->data;
@@ -150,8 +152,8 @@ static int openpgp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
  * @param  pukkey   OUT the newly created public key
  * @return SC_SUCCESS on success and an error code otherwise
  **/
-static int openpgp_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
-	sc_pkcs15_object_t *obj, sc_pkcs15_pubkey_t *pubkey)
+static int openpgp_generate_key(__unusedparam__ sc_profile_t *profile, sc_pkcs15_card_t *p15card,
+                                sc_pkcs15_object_t *obj, sc_pkcs15_pubkey_t *pubkey)
 {
 	sc_card_t *card = p15card->card;
 	sc_context_t *ctx = card->ctx;
@@ -217,8 +219,8 @@ out:
 	LOG_FUNC_RETURN(ctx, r);
 }
 
-static int openpgp_emu_update_any_df(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
-									 unsigned operation, sc_pkcs15_object_t *obj)
+static int openpgp_emu_update_any_df(__unusedparam__ sc_profile_t *profile, sc_pkcs15_card_t *p15card,
+                                     __unusedparam__ unsigned operation, __unusedparam__ sc_pkcs15_object_t *obj)
 {
 	LOG_FUNC_CALLED(p15card->card->ctx);
 	/* After storing object, pkcs15init will call this function to update DF.
@@ -226,8 +228,8 @@ static int openpgp_emu_update_any_df(sc_profile_t *profile, sc_pkcs15_card_t *p1
 	LOG_FUNC_RETURN(p15card->card->ctx, SC_SUCCESS);
 }
 
-static int openpgp_emu_update_tokeninfo(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
-										sc_pkcs15_tokeninfo_t *tokeninfo)
+static int openpgp_emu_update_tokeninfo(__unusedparam__ sc_profile_t *profile, sc_pkcs15_card_t *p15card,
+                                        __unusedparam__ sc_pkcs15_tokeninfo_t *tokeninfo)
 {
 	LOG_FUNC_CALLED(p15card->card->ctx);
 	/* When unbinding pkcs15init, this function will be called.

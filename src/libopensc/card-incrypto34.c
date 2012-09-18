@@ -435,7 +435,7 @@ static int incrypto34_restore_security_env(sc_card_t *card, int se_num)
  * XXX Need to find out how the Aladdin drivers do it.
  */
 static int incrypto34_set_security_env(sc_card_t *card,
-		    const sc_security_env_t *env, int se_num)
+                                       const sc_security_env_t *env, __unusedparam__ int se_num)
 {
 	sc_apdu_t apdu;
 	u8	data[3];

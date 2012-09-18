@@ -84,9 +84,10 @@ sm_restore_sc_context(struct sc_card *card, struct sm_info *sm_info)
 }
 #endif
 
+#ifdef I_AM_ACTUALLY_USED
 static int
-iasecc_sm_transmit_apdus(struct sc_card *card, struct sc_remote_data *rdata,
-		unsigned char *out, size_t *out_len)
+iasecc_sm_transmit_apdus(struct sc_card *card, __unusedparam__ struct sc_remote_data *rdata,
+                         __unusedparam__ unsigned char *out, __unusedparam__ size_t *out_len)
 {
 	struct sc_context *ctx = card->ctx;
 #ifdef ENABLE_SM
@@ -124,12 +125,14 @@ iasecc_sm_transmit_apdus(struct sc_card *card, struct sc_remote_data *rdata,
 	return SC_ERROR_NOT_SUPPORTED;
 #endif
 }
+#endif
 
 
+#ifdef I_AM_ACTUALLY_USED
 /* Big TODO: do SM release in all handles, clean the saved card context -- current DF, EF, etc. */
 static int
-sm_release (struct sc_card *card, struct sc_remote_data *rdata,
-		unsigned char *out, size_t out_len)
+sm_release (struct sc_card *card, __unusedparam__ struct sc_remote_data *rdata,
+            __unusedparam__ unsigned char *out, __unusedparam__ size_t out_len)
 {
 	struct sc_context *ctx = card->ctx;
 #ifdef ENABLE_SM
@@ -149,10 +152,11 @@ sm_release (struct sc_card *card, struct sc_remote_data *rdata,
 	return SC_ERROR_NOT_SUPPORTED;
 #endif
 }
+#endif
 
 
 int
-iasecc_sm_external_authentication(struct sc_card *card, unsigned skey_ref, int *tries_left)
+iasecc_sm_external_authentication(struct sc_card *card, __unusedparam__ unsigned skey_ref, __unusedparam__ int *tries_left)
 {
 	struct sc_context *ctx = card->ctx;
 #ifdef ENABLE_SM
@@ -221,8 +225,9 @@ iasecc_sm_external_authentication(struct sc_card *card, unsigned skey_ref, int *
 }
 
 
+#ifdef I_AM_ACTUALLY_USED
 static int
-iasecc_sm_se_mutual_authentication(struct sc_card *card, unsigned se_num)
+iasecc_sm_se_mutual_authentication(struct sc_card *card, __unusedparam__ unsigned se_num)
 {
 	struct sc_context *ctx = card->ctx;
 #ifdef ENABLE_SM
@@ -273,8 +278,10 @@ iasecc_sm_se_mutual_authentication(struct sc_card *card, unsigned se_num)
 	return SC_ERROR_NOT_SUPPORTED;
 #endif
 }
+#endif
 
 
+#ifdef I_AM_ACUALLY_USED
 static int
 iasecc_sm_get_challenge(struct sc_card *card, unsigned char *out, size_t len)
 {
@@ -298,10 +305,11 @@ iasecc_sm_get_challenge(struct sc_card *card, unsigned char *out, size_t len)
 
 	LOG_FUNC_RETURN(ctx, apdu.resplen);
 }
+#endif
 
 
 int
-iasecc_sm_initialize(struct sc_card *card, unsigned se_num, unsigned cmd)
+iasecc_sm_initialize(struct sc_card *card, __unusedparam__ unsigned se_num, __unusedparam__ unsigned cmd)
 {
 	struct sc_context *ctx = card->ctx;
 #ifdef ENABLE_SM
@@ -363,8 +371,9 @@ iasecc_sm_initialize(struct sc_card *card, unsigned se_num, unsigned cmd)
 }
 
 
+#ifdef I_AM_ACUTALLY_USED
 static int
-iasecc_sm_cmd(struct sc_card *card, struct sc_remote_data *rdata)
+iasecc_sm_cmd(struct sc_card *card, __unusedparam__ struct sc_remote_data *rdata)
 {
 #define AUTH_SM_APDUS_MAX 12
 #define ENCODED_APDUS_MAX_LENGTH (AUTH_SM_APDUS_MAX * (SC_MAX_APDU_BUFFER_SIZE * 2 + 64) + 32)
@@ -409,10 +418,11 @@ iasecc_sm_cmd(struct sc_card *card, struct sc_remote_data *rdata)
 	return SC_ERROR_NOT_SUPPORTED;
 #endif
 }
+#endif
 
 
 int
-iasecc_sm_rsa_generate(struct sc_card *card, unsigned se_num, struct iasecc_sdo *sdo)
+iasecc_sm_rsa_generate(struct sc_card *card, __unusedparam__ unsigned se_num, __unusedparam__ struct iasecc_sdo *sdo)
 {
 	struct sc_context *ctx = card->ctx;
 #ifdef ENABLE_SM
@@ -445,7 +455,7 @@ iasecc_sm_rsa_generate(struct sc_card *card, unsigned se_num, struct iasecc_sdo 
 
 
 int
-iasecc_sm_rsa_update(struct sc_card *card, unsigned se_num, struct iasecc_sdo_rsa_update *udata)
+iasecc_sm_rsa_update(struct sc_card *card, __unusedparam__ unsigned se_num, __unusedparam__ struct iasecc_sdo_rsa_update *udata)
 {
 	struct sc_context *ctx = card->ctx;
 #ifdef ENABLE_SM
@@ -479,7 +489,8 @@ iasecc_sm_rsa_update(struct sc_card *card, unsigned se_num, struct iasecc_sdo_rs
 
 
 int
-iasecc_sm_pin_verify(struct sc_card *card, unsigned se_num, struct sc_pin_cmd_data *data, int *tries_left)
+iasecc_sm_pin_verify(struct sc_card *card, __unusedparam__ unsigned se_num, __unusedparam__ struct sc_pin_cmd_data *data,
+                     __unusedparam__  int *tries_left)
 {
 	struct sc_context *ctx = card->ctx;
 #ifdef ENABLE_SM
@@ -516,7 +527,7 @@ iasecc_sm_pin_verify(struct sc_card *card, unsigned se_num, struct sc_pin_cmd_da
 
 
 int
-iasecc_sm_sdo_update(struct sc_card *card, unsigned se_num, struct iasecc_sdo_update *update)
+iasecc_sm_sdo_update(struct sc_card *card, __unusedparam__ unsigned se_num, __unusedparam__ struct iasecc_sdo_update *update)
 {
 	struct sc_context *ctx = card->ctx;
 #ifdef ENABLE_SM
@@ -551,7 +562,7 @@ iasecc_sm_sdo_update(struct sc_card *card, unsigned se_num, struct iasecc_sdo_up
 
 
 int
-iasecc_sm_pin_reset(struct sc_card *card, unsigned se_num, struct sc_pin_cmd_data *data)
+iasecc_sm_pin_reset(struct sc_card *card, __unusedparam__ unsigned se_num, __unusedparam__ struct sc_pin_cmd_data *data)
 {
 	struct sc_context *ctx = card->ctx;
 #ifdef ENABLE_SM
@@ -584,7 +595,8 @@ iasecc_sm_pin_reset(struct sc_card *card, unsigned se_num, struct sc_pin_cmd_dat
 
 
 int
-iasecc_sm_create_file(struct sc_card *card, unsigned se_num, unsigned char *fcp, size_t fcp_len)
+iasecc_sm_create_file(struct sc_card *card, __unusedparam__ unsigned se_num, __unusedparam__ unsigned char *fcp,
+                      __unusedparam__ size_t fcp_len)
 {
 	struct sc_context *ctx = card->ctx;
 #ifdef ENABLE_SM
@@ -619,7 +631,8 @@ iasecc_sm_create_file(struct sc_card *card, unsigned se_num, unsigned char *fcp,
 }
 
 int
-iasecc_sm_read_binary(struct sc_card *card, unsigned se_num, size_t offs, unsigned char *buff, size_t count)
+iasecc_sm_read_binary(struct sc_card *card, __unusedparam__ unsigned se_num, __unusedparam__ size_t offs, 
+                      __unusedparam__ unsigned char *buff, __unusedparam__ size_t count)
 {
 	struct sc_context *ctx = card->ctx;
 #ifdef ENABLE_SM
@@ -657,8 +670,8 @@ iasecc_sm_read_binary(struct sc_card *card, unsigned se_num, size_t offs, unsign
 
 
 int
-iasecc_sm_update_binary(struct sc_card *card, unsigned se_num, size_t offs,
-		const unsigned char *buff, size_t count)
+iasecc_sm_update_binary(struct sc_card *card, __unusedparam__ unsigned se_num, __unusedparam__ size_t offs,
+                        __unusedparam__ const unsigned char *buff, __unusedparam__ size_t count)
 {
 	struct sc_context *ctx = card->ctx;
 #ifdef ENABLE_SM
@@ -695,7 +708,7 @@ iasecc_sm_update_binary(struct sc_card *card, unsigned se_num, size_t offs,
 
 
 int
-iasecc_sm_delete_file(struct sc_card *card, unsigned se_num, unsigned int file_id)
+iasecc_sm_delete_file(struct sc_card *card, __unusedparam__ unsigned se_num, __unusedparam__ unsigned int file_id)
 {
 	struct sc_context *ctx = card->ctx;
 #ifdef ENABLE_SM

@@ -43,7 +43,7 @@
 
 static int starcos_finalize_card(sc_card_t *card);
 
-static int starcos_erase_card(struct sc_profile *pro, sc_pkcs15_card_t *p15card)
+static int starcos_erase_card(__unusedparam__ struct sc_profile *pro, sc_pkcs15_card_t *p15card)
 {
 	return sc_card_ctl(p15card->card, SC_CARDCTL_ERASE_CARD, NULL);
 }
@@ -272,7 +272,7 @@ static int have_onepin(sc_profile_t *profile)
 #define STARCOS_MAX_LPIN_ID	0x8f
 #define STARCOS_MIN_GPIN_ID	0x03
 #define STARCOS_MAX_GPIN_ID	0x0f
-static int starcos_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
+static int starcos_pin_reference(sc_profile_t *profile, __unusedparam__ sc_pkcs15_card_t *p15card,
 	sc_pkcs15_auth_info_t *auth_info)
 {
 	int tmp;
@@ -489,8 +489,8 @@ static int starcos_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 #define STARCOS_MAX_LPKEY_ID	0x9f
 #define STARCOS_MIN_GPKEY_ID	0x11
 #define STARCOS_MAX_GPKEY_ID	0x1f
-static int starcos_key_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
-	sc_pkcs15_prkey_info_t *prkey)
+static int starcos_key_reference(__unusedparam__ sc_profile_t *profile, __unusedparam__ sc_pkcs15_card_t *p15card,
+                                 sc_pkcs15_prkey_info_t *prkey)
 {
 	/* use (local) KIDs 0x91-0x9f for private rsa keys */
 	if (prkey->key_reference < STARCOS_MIN_LPKEY_ID)

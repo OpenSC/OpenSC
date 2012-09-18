@@ -317,11 +317,13 @@ typedef struct sc_reader {
 #define SC_PIN_ENCODING_BCD	1
 #define SC_PIN_ENCODING_GLP	2 /* Global Platform - Card Specification v2.0.1 */
 
+#define SC_PIN_GET_PIN_PAD      ((size_t) -1)
+
 struct sc_pin_cmd_pin {
 	const char *prompt;	/* Prompt to display */
 
 	const u8 *data;		/* PIN, if given by the appliction */
-	int len;		/* set to -1 to get pin from pin pad */
+	size_t len;		/* set to -1 to get pin from pin pad */
 
 	size_t min_length;	/* min/max length of PIN */
 	size_t max_length;

@@ -357,7 +357,7 @@ util_warn(const char *fmt, ...)
 }
 
 int
-util_getpass (char **lineptr, size_t *len, FILE *stream)
+util_getpass (char **lineptr, size_t *len, __unusedparam__ FILE *stream)
 {
 #define MAX_PASS_SIZE	128
 	char *buf;

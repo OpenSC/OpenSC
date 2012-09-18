@@ -1008,7 +1008,7 @@ err:
 
 static int asn1_encode_se_info(sc_context_t *ctx,
 		struct sc_pkcs15_sec_env_info **se, size_t se_num,
-		unsigned char **buf, size_t *bufsize, int depth)
+		unsigned char **buf, size_t *bufsize, __unusedparam__ int depth)
 {
 	unsigned char *ptr = NULL, *out = NULL;
 	size_t ptrlen = 0, outlen = 0, idx;

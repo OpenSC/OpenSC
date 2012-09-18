@@ -1016,7 +1016,7 @@ auth_create_file(struct sc_card *card, struct sc_file *file)
 
 static int 
 auth_set_security_env(struct sc_card *card, 
-		const struct sc_security_env *env, int se_num)   
+                      const struct sc_security_env *env, __unusedparam__ int se_num)   
 {
 	struct auth_senv *auth_senv = &((struct auth_private_data *) card->drv_data)->senv;
 	struct sc_apdu apdu;
@@ -1108,7 +1108,7 @@ auth_set_security_env(struct sc_card *card,
 
 
 static int 
-auth_restore_security_env(struct sc_card *card, int se_num)
+auth_restore_security_env(__unusedparam__ struct sc_card *card, __unusedparam__ int se_num)
 {
 	return SC_SUCCESS;
 }
@@ -1238,7 +1238,7 @@ done:
 
 /* Return the default AAK for this type of card */
 static int 
-auth_get_default_key(struct sc_card *card, struct sc_cardctl_default_key *data)
+auth_get_default_key(struct sc_card *card, __unusedparam__ struct sc_cardctl_default_key *data)
 {
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NO_DEFAULT_KEY);
 }
@@ -1265,8 +1265,8 @@ auth_encode_exponent(unsigned long exponent, unsigned char *buff, size_t buff_le
 
 /* Generate key on-card */
 static int 
-auth_generate_key(struct sc_card *card, int use_sm, 
-		struct sc_cardctl_oberthur_genkey_info *data)
+auth_generate_key(struct sc_card *card, __unusedparam__ int use_sm, 
+                  struct sc_cardctl_oberthur_genkey_info *data)
 {
 	struct sc_apdu apdu;
 	unsigned char sbuf[SC_MAX_APDU_BUFFER_SIZE];
@@ -1554,8 +1554,8 @@ auth_get_pin_reference (struct sc_card *card, int type, int reference, int cmd, 
 
 
 static void 
-auth_init_pin_info(struct sc_card *card, struct sc_pin_cmd_pin *pin, 
-		unsigned int type)
+auth_init_pin_info(__unusedparam__ struct sc_card *card, struct sc_pin_cmd_pin *pin, 
+                   unsigned int type)
 {
 	pin->offset = 0;
 	pin->pad_char   = 0xFF;
@@ -1754,7 +1754,7 @@ auth_pin_change_pinpad(struct sc_card *card, struct sc_pin_cmd_data *data,
 
 
 static int
-auth_pin_change(struct sc_card *card, unsigned int type, 
+auth_pin_change(struct sc_card *card, __unusedparam__ unsigned int type, 
 		struct sc_pin_cmd_data *data, int *tries_left) 
 {
 	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
@@ -1790,7 +1790,7 @@ auth_pin_change(struct sc_card *card, unsigned int type,
 
 
 static int
-auth_pin_reset_oberthur_style(struct sc_card *card, unsigned int type, 
+auth_pin_reset_oberthur_style(struct sc_card *card, __unusedparam__ unsigned int type, 
 		struct sc_pin_cmd_data *data, int *tries_left) 
 {
 	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
@@ -1887,7 +1887,7 @@ auth_pin_reset_oberthur_style(struct sc_card *card, unsigned int type,
 
 
 static int
-auth_pin_reset(struct sc_card *card, unsigned int type, 
+auth_pin_reset(struct sc_card *card, __unusedparam__ unsigned int type, 
 		struct sc_pin_cmd_data *data, int *tries_left) 
 {
 	int rv;
@@ -2084,7 +2084,7 @@ write_publickey (struct sc_card *card, unsigned int offset,
 
 static int
 auth_update_binary(struct sc_card *card, unsigned int offset,
-		const unsigned char *buf, size_t count, unsigned long flags)
+                   const unsigned char *buf, size_t count, __unusedparam__ unsigned long flags)
 {
 	int rv = 0;
 

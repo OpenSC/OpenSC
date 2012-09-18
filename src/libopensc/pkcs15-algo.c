@@ -308,8 +308,8 @@ sc_debug(ctx, SC_LOG_DEBUG_ASN1, "DEE - asn1_decode_ec_params paramp=%p %p:%d %d
 };
 
 static int
-asn1_encode_ec_params(sc_context_t *ctx, void *params,
-u8 **buf, size_t *buflen, int depth) 
+asn1_encode_ec_params(sc_context_t *ctx, __unusedparam__ void *params,
+                      __unusedparam__ u8 **buf, __unusedparam__ size_t *buflen, __unusedparam__ int depth) 
 {
 	int r;
 	/* TODO: -DEE EC paramameters are DER so is there anything to do? */

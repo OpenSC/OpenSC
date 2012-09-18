@@ -117,8 +117,10 @@ static int iasecc_pin_is_verified(struct sc_card *card, struct sc_pin_cmd_data *
 static int iasecc_get_free_reference(struct sc_card *card, struct iasecc_ctl_get_free_reference *ctl_data);
 static int iasecc_sdo_put_data(struct sc_card *card, struct iasecc_sdo_update *update);
 
+#ifdef I_AM_ACTUALLY_USED
 static int _iasecc_sm_read_binary(struct sc_card *card, unsigned int offs, unsigned char *buf, size_t count);
 static int _iasecc_sm_update_binary(struct sc_card *card, unsigned int offs, const unsigned char *buff, size_t count);
+#endif
 
 static int
 iasecc_chv_cache_verified(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd)
@@ -680,6 +682,7 @@ iasecc_erase_binary(struct sc_card *card, unsigned int offs, size_t count, unsig
 }
 
 
+#ifdef I_AM_ACTUALLY_USED
 static int
 _iasecc_sm_read_binary(struct sc_card *card, unsigned int offs,
 		unsigned char *buff, size_t count)
@@ -714,8 +717,10 @@ _iasecc_sm_read_binary(struct sc_card *card, unsigned int offs,
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
+#endif
 
 
+#ifdef I_AM_ACTUALLY_USED
 static int
 _iasecc_sm_update_binary(struct sc_card *card, unsigned int offs,
 		const unsigned char *buff, size_t count)
@@ -747,6 +752,7 @@ _iasecc_sm_update_binary(struct sc_card *card, unsigned int offs,
 
 	LOG_FUNC_RETURN(ctx, 0);
 }
+#endif
 
 
 static int
@@ -2179,7 +2185,7 @@ iasecc_pin_get_policy (struct sc_card *card, struct sc_pin_cmd_data *data)
 
 
 static int
-iasecc_keyset_change(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left)
+iasecc_keyset_change(struct sc_card *card, struct sc_pin_cmd_data *data, __unusedparam__ int *tries_left)
 {
 	struct sc_context *ctx = card->ctx;
 	struct iasecc_sdo_update update;
@@ -2215,12 +2221,14 @@ iasecc_keyset_change(struct sc_card *card, struct sc_pin_cmd_data *data, int *tr
 
 	update.fields[0].parent_tag = IASECC_SDO_KEYSET_TAG;
 	update.fields[0].tag = IASECC_SDO_KEYSET_TAG_MAC;
-	update.fields[0].value = data->pin2.data;
+        /* Avoid warnings about qualifiers being discarded */
+	memcpy(update.fields[0].value, data->pin2.data, sizeof(update.fields[0].value));
 	update.fields[0].size = 16;
 
 	update.fields[1].parent_tag = IASECC_SDO_KEYSET_TAG;
 	update.fields[1].tag = IASECC_SDO_KEYSET_TAG_ENC;
-	update.fields[1].value = data->pin2.data + 16;
+        /* Avoid warnings about qualifiers being discarded */
+	memcpy(update.fields[1].value, data->pin2.data + 16, sizeof(update.fields[1].value));
 	update.fields[1].size = 16;
 
 	rv = iasecc_sm_sdo_update(card, (scb & IASECC_SCB_METHOD_MASK_REF), &update);

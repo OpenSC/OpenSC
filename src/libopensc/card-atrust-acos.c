@@ -535,8 +535,8 @@ static int atrust_acos_select_file(struct sc_card *card,
  * calculation.
  */
 static int atrust_acos_set_security_env(struct sc_card *card,
-				    const struct sc_security_env *env,
-				    int se_num)
+                                        const struct sc_security_env *env,
+                                        __unusedparam__ int se_num)
 {
 	u8              *p, *pp;
 	int              r, operation = env->operation;
