@@ -271,7 +271,7 @@ asn1_decode_ec_params(sc_context_t *ctx, void **paramp,
 	ecp = malloc(sizeof(struct sc_ec_params));
 	if (ecp == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
-	memset(ecp,9,sizeof(struct sc_ec_params));
+	memset(ecp,0,sizeof(struct sc_ec_params));
 
 
 	/* We only want to copy the parms if they are a namedCurve 
