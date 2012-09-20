@@ -179,7 +179,8 @@ int sc_pkcs15_decode_prkdf_entry(struct sc_pkcs15_card *p15card,
 	struct sc_asn1_entry asn1_dsakey_value_attr[C_ASN1_DSAKEY_VALUE_ATTR_SIZE];
 	struct sc_asn1_entry asn1_gostr3410key_attr[C_ASN1_GOSTR3410KEY_ATTR_SIZE];
 	struct sc_asn1_entry asn1_prk_gostr3410_attr[C_ASN1_PRK_GOSTR3410_ATTR_SIZE];
-	struct sc_asn1_entry asn1_ecckey_attr[C_ASN1_ECCKEY_ATTR], asn1_prk_ecc_attr[C_ASN1_PRK_ECC_ATTR];
+	struct sc_asn1_entry asn1_ecckey_attr[C_ASN1_ECCKEY_ATTR];
+	struct sc_asn1_entry asn1_prk_ecc_attr[C_ASN1_PRK_ECC_ATTR];
 	struct sc_asn1_entry asn1_prkey[C_ASN1_PRKEY_SIZE];
 	struct sc_asn1_entry asn1_supported_algorithms[C_ASN1_SUPPORTED_ALGORITHMS_SIZE];
 	struct sc_asn1_pkcs15_object rsa_prkey_obj = {obj, asn1_com_key_attr, asn1_com_prkey_attr, asn1_prk_rsa_attr};
@@ -354,6 +355,8 @@ int sc_pkcs15_encode_prkdf_entry(sc_context_t *ctx, const struct sc_pkcs15_objec
 	struct sc_asn1_entry asn1_dsakey_i_p_attr[C_ASN1_DSAKEY_I_P_ATTR_SIZE];
 	struct sc_asn1_entry asn1_gostr3410key_attr[C_ASN1_GOSTR3410KEY_ATTR_SIZE];
 	struct sc_asn1_entry asn1_prk_gostr3410_attr[C_ASN1_PRK_GOSTR3410_ATTR_SIZE];
+	struct sc_asn1_entry asn1_ecckey_attr[C_ASN1_ECCKEY_ATTR];
+	struct sc_asn1_entry asn1_prk_ecc_attr[C_ASN1_PRK_ECC_ATTR];
 	struct sc_asn1_entry asn1_prkey[C_ASN1_PRKEY_SIZE];
 	struct sc_asn1_entry asn1_supported_algorithms[C_ASN1_SUPPORTED_ALGORITHMS_SIZE];
 	struct sc_asn1_pkcs15_object rsa_prkey_obj = {
@@ -368,6 +371,11 @@ int sc_pkcs15_encode_prkdf_entry(sc_context_t *ctx, const struct sc_pkcs15_objec
 		(struct sc_pkcs15_object *) obj,
 		asn1_com_key_attr, asn1_com_prkey_attr,
 		asn1_prk_gostr3410_attr
+	};
+	struct sc_asn1_pkcs15_object ecc_prkey_obj = {
+		(struct sc_pkcs15_object *) obj,
+		asn1_com_key_attr, asn1_com_prkey_attr,
+		asn1_prk_ecc_attr
 	};
 	struct sc_pkcs15_prkey_info *prkey = (struct sc_pkcs15_prkey_info *) obj->data;
 	struct sc_pkcs15_keyinfo_gostparams *keyinfo_gostparams;
@@ -385,6 +393,8 @@ int sc_pkcs15_encode_prkdf_entry(sc_context_t *ctx, const struct sc_pkcs15_objec
 	sc_copy_asn1_entry(c_asn1_dsakey_i_p_attr, asn1_dsakey_i_p_attr);
 	sc_copy_asn1_entry(c_asn1_prk_gostr3410_attr, asn1_prk_gostr3410_attr);
 	sc_copy_asn1_entry(c_asn1_gostr3410key_attr, asn1_gostr3410key_attr);
+	sc_copy_asn1_entry(c_asn1_prk_ecc_attr, asn1_prk_ecc_attr);
+	sc_copy_asn1_entry(c_asn1_ecckey_attr, asn1_ecckey_attr);
 
 	sc_copy_asn1_entry(c_asn1_com_prkey_attr, asn1_com_prkey_attr);
 	sc_copy_asn1_entry(c_asn1_com_key_attr, asn1_com_key_attr);
@@ -397,7 +407,10 @@ int sc_pkcs15_encode_prkdf_entry(sc_context_t *ctx, const struct sc_pkcs15_objec
 		sc_format_asn1_entry(asn1_rsakey_attr + 1, &prkey->modulus_length, NULL, 1);
 		break;
 	case SC_PKCS15_TYPE_PRKEY_EC:
-		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "EC private key type not supported");
+		sc_format_asn1_entry(asn1_prkey + 1, &ecc_prkey_obj, NULL, 1);
+		sc_format_asn1_entry(asn1_prk_ecc_attr + 0, asn1_ecckey_attr, NULL, 1);
+		sc_format_asn1_entry(asn1_ecckey_attr + 0, &prkey->path, NULL, 1);
+		sc_format_asn1_entry(asn1_ecckey_attr + 1, &prkey->field_length, NULL, 1);
 		break;
 	case SC_PKCS15_TYPE_PRKEY_DSA:
 		sc_format_asn1_entry(asn1_prkey + 2, &dsa_prkey_obj, NULL, 1);
