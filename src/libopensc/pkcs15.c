@@ -231,6 +231,8 @@ int sc_pkcs15_parse_tokeninfo(sc_context_t *ctx,
 		if (ti->preferred_language == NULL)
 			return SC_ERROR_OUT_OF_MEMORY;
 	}
+
+	sc_init_oid(&ti->profile_indication.oid);
 	if (asn1_toki_attrs[13].flags & SC_ASN1_PRESENT) {
 		if (asn1_profile_indication[0].flags & SC_ASN1_PRESENT)   {
 			sc_log(ctx, "ProfileIndication.oid present");
