@@ -1180,7 +1180,7 @@ iasecc_fcp_encode(struct sc_card *card, struct sc_file *file, unsigned char *out
 		sc_log(ctx, "%i: AMB %X; nn_smb %i", ii, amb, nn_smb);
 	}
 
-	printf("TODO: Encode contactless ACLs and life cycle status for all IAS/ECC cards\n");
+	/* TODO: Encode contactless ACLs and life cycle status for all IAS/ECC cards */
 	if (card->type == SC_CARD_TYPE_IASECC_SAGEM ||
 			card->type == SC_CARD_TYPE_IASECC_AMOS )  {
 		unsigned char status = 0;
@@ -1570,7 +1570,7 @@ iasecc_set_security_env(struct sc_card *card,
 	};
 	int rv, operation = env->operation;
 
-	printf("TODO: take algorithm references from 5032, not from header file.\n");
+	/* TODO: take algorithm references from 5032, not from header file. */
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx, "iasecc_set_security_env(card:%p) operation 0x%X; senv.algorithm 0x%X, senv.algorithm_ref 0x%X",
 			card, env->operation, env->algorithm, env->algorithm_ref);
