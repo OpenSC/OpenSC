@@ -2535,7 +2535,7 @@ pkcs15_gen_keypair(struct sc_pkcs11_slot *slot, CK_MECHANISM_PTR pMechanism,
 	struct sc_pkcs15_id id;
 	size_t		len;
 	CK_KEY_TYPE	keytype;
-	CK_ULONG	keybits;
+	CK_ULONG	keybits = 0;
 	char		pub_label[SC_PKCS15_MAX_LABEL_SIZE];
 	char		priv_label[SC_PKCS15_MAX_LABEL_SIZE];
 	int		rc, rv = CKR_OK;
