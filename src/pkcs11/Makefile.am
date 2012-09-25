@@ -7,7 +7,7 @@ dist_noinst_SCRIPTS = opensc_pkcs11_install.js
 lib_LTLIBRARIES = opensc-pkcs11.la pkcs11-spy.la
 
 AM_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(PTHREAD_CFLAGS)
-INCLUDES = -I$(top_srcdir)/src
+AM_CPPFLAGS = -I$(top_srcdir)/src
 
 OPENSC_PKCS11_INC = sc-pkcs11.h pkcs11.h pkcs11-opensc.h
 OPENSC_PKCS11_SRC = pkcs11-global.c pkcs11-session.c pkcs11-object.c misc.c slot.c \

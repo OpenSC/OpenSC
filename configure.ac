@@ -294,7 +294,7 @@ if test "${WIN32}" = "no"; then
 	)
 
 	dnl Special check for pthread support.
-	ACX_PTHREAD(
+	AX_PTHREAD(
 		[AC_DEFINE(
 			[HAVE_PTHREAD],
 			[1],

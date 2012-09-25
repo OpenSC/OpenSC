@@ -9,7 +9,7 @@ noinst_HEADERS = internal.h scconf.h
 noinst_PROGRAMS = test-conf
 noinst_LTLIBRARIES = libscconf.la
 
-INCLUDES = -I$(top_srcdir)/src
+AM_CPPFLAGS = -I$(top_srcdir)/src
 
 libscconf_la_SOURCES = scconf.c parse.c write.c sclex.c 
 
