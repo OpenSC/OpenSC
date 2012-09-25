@@ -2638,7 +2638,7 @@ pkcs15_gen_keypair(struct sc_pkcs11_slot *slot, CK_MECHANISM_PTR pMechanism,
 			goto kpgen_done;
 		}
 	}
-	else if (rc != SC_ERROR_NOT_SUPPORTED) {
+	else {
 		sc_log(context, "sc_pkcs15init_generate_key returned %d", rc);
 		rv = sc_to_cryptoki_error(rc, "C_GenerateKeyPair");
 		goto kpgen_done;
