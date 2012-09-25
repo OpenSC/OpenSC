@@ -1,5 +1,5 @@
 /*
- * Support for ePass2003 smart cards 
+ * Support for ePass2003 smart cards
  *
  * Copyright (C) 2008, Weitao Sun <weitao@ftsafe.com>
  * Copyright (C) 2011, Riham <ruihan@ftsafe.com>
