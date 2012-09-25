@@ -5,7 +5,7 @@ MAINTAINERCLEANFILES = Makefile.in
 EXTRA_DIST = Makefile.mak
 
 AM_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(OPTIONAL_READLINE_CFLAGS)
-INCLUDES = -I$(top_srcdir)/src -I$(top_srcdir)/src/common -I$(top_builddir)/src/include
+AM_CPPFLAGS = -I$(top_srcdir)/src -I$(top_srcdir)/src/common -I$(top_builddir)/src/include
 LIBS = $(top_builddir)/src/libopensc/libopensc.la $(top_builddir)/src/common/libcompat.la
 
 lib_LTLIBRARIES = libsmm-local.la

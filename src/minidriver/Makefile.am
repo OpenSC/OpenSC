@@ -12,7 +12,7 @@ else
 dist_noinst_DATA = opensc-minidriver.inf minidriver-westcos.reg minidriver-sc-hsm.reg
 endif
 
-INCLUDES = -I$(top_srcdir)/src
+AM_CPPFLAGS = -I$(top_srcdir)/src
 
 opensc_minidriver@LIBRARY_BITNESS@_la_SOURCES = minidriver.c minidriver.exports \
 	$(top_builddir)/win32/versioninfo.rc

@@ -31,9 +31,9 @@ dist_pkgdata_DATA = \
 	iasecc_generic_pki.profile iasecc_admin_eid.profile iasecc_generic_oberthur.profile \
 	openpgp.profile
 
-AM_CPPFLAGS = -DSC_PKCS15_PROFILE_DIRECTORY=\"$(pkgdatadir)\"
+AM_CPPFLAGS = -DSC_PKCS15_PROFILE_DIRECTORY=\"$(pkgdatadir)\" \
+	-I$(top_srcdir)/src
 AM_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS)
-INCLUDES = -I$(top_srcdir)/src
 
 libpkcs15init_la_SOURCES = \
 	pkcs15-lib.c profile.c \
