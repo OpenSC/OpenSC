@@ -155,6 +155,7 @@ static struct profile_operations {
 	{ "rutoken_ecp", (void *) sc_pkcs15init_get_rtecp_ops },
 	{ "westcos", (void *) sc_pkcs15init_get_westcos_ops },
 	{ "myeid", (void *) sc_pkcs15init_get_myeid_ops },
+	{ "sc-hsm", (void *) sc_pkcs15init_get_sc_hsm_ops },
 #ifdef ENABLE_OPENSSL
 	{ "authentic", (void *) sc_pkcs15init_get_authentic_ops },
 	{ "iasecc", (void *) sc_pkcs15init_get_iasecc_ops },
@@ -1939,7 +1940,7 @@ check_keygen_params_consistency(struct sc_card *card, struct sc_pkcs15init_keyge
 		LOG_TEST_RET(ctx, rv, "Cannot fix EC parameters");
 
 		sc_log(ctx, "EC parameters: %s", sc_dump_hex(ecparams->der.value, ecparams->der.len));
-		if (keybits)
+		if (!keybits)
 			keybits = ecparams->field_length;
 	}
 

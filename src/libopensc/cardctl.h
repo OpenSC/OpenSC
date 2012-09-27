@@ -236,7 +236,13 @@ enum {
 	 */
 	SC_CARDCTL_OPENPGP_BASE = _CTL_PREFIX('P', 'G', 'P'),
 	SC_CARDCTL_OPENPGP_GENERATE_KEY,
-	SC_CARDCTL_OPENPGP_STORE_KEY
+	SC_CARDCTL_OPENPGP_STORE_KEY,
+
+	/*
+	 * SmartCard-HSM
+	 */
+	SC_CARDCTL_SC_HSMP_BASE = _CTL_PREFIX('S', 'C', 'H'),
+	SC_CARDCTL_SC_HSM_GENERATE_KEY
 };
 
 enum {
@@ -870,6 +876,19 @@ typedef struct sc_cardctl_openpgp_keystore_info {
 	size_t n_len;
 	time_t creationtime;
 } sc_cardctl_openpgp_keystore_info_t;
+
+/*
+ * SmartCard-HSM
+ */
+typedef struct sc_cardctl_sc_hsm_keygen_info {
+	u8 key_id;
+	u8 auth_key_id;				/* Key to use for CV request signing */
+	u8 *gakprequest;			/* GENERATE ASYMMETRIC KEY PAIR request */
+	size_t gakprequest_len;		/* Size of request */
+	u8 *gakpresponse;			/* Authenticated CV request, allocated by the driver */
+	size_t gakpresponse_len;	/* Size of response */
+} sc_cardctl_sc_hsm_keygen_info_t;
+
 
 #ifdef __cplusplus
 }
