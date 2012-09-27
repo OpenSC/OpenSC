@@ -247,6 +247,7 @@ static void *module = NULL;
 static CK_FUNCTION_LIST_PTR p11 = NULL;
 static CK_SLOT_ID_PTR p11_slots = NULL;
 static CK_ULONG p11_num_slots = 0;
+static int suppress_warn = 0;
 
 struct flag_info {
 	CK_FLAGS	value;
@@ -2642,10 +2643,14 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 		printf("%ssign", sepa);
 		sepa = ", ";
 	}
+
+	suppress_warn = 1;
 	if (!pub && getOPENSC_NON_REPUDIATION(sess, obj)) {
 		printf("%snon-repudiation", sepa);
 		sepa = ", ";
 	}
+	suppress_warn = 0;
+
 	if (pub && getVERIFY(sess, obj)) {
 		printf("%sverify", sepa);
 		sepa = ", ";
@@ -2666,9 +2671,9 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 		printf("none");
 	printf("\n");
 
-	if (!pub && getALWAYS_AUTHENTICATE(sess, obj)) {
+	if (!pub && getALWAYS_AUTHENTICATE(sess, obj))
 		printf("  Access:     always authenticate\n");
-	}
+	suppress_warn = 0;
 }
 
 static void show_cert(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
@@ -2716,6 +2721,7 @@ static void show_dobj(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 	char *label;
 	CK_ULONG    size = 0;
 
+	suppress_warn = 1;
 	printf("Data object %u\n", (unsigned int) obj);
 	printf("  label:          ");
 	if ((label = getLABEL(sess, obj, NULL)) != NULL) {
@@ -2760,7 +2766,11 @@ static void show_dobj(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 		printf(" modifiable");
 	if (getPRIVATE(sess, obj))
 		printf(" private");
+	if (!getMODIFIABLE(sess, obj) && !getPRIVATE(sess, obj))
+		printf("<empty>\n");
+
 	printf ("\n");
+	suppress_warn = 0;
 }
 
 
@@ -4444,21 +4454,18 @@ static void p11_fatal(const char *func, CK_RV rv)
 	if (module)
 		C_UnloadModule(module);
 
-	util_fatal("PKCS11 function %s failed: rv = %s (0x%0x)\n",
-		func, CKR2Str(rv), (unsigned int) rv);
+	util_fatal("PKCS11 function %s failed: rv = %s (0x%0x)\n", func, CKR2Str(rv), (unsigned int) rv);
 }
 
 static void p11_warn(const char *func, CK_RV rv)
 {
-	util_warn("PKCS11 function %s failed: rv = %s (0x%0x)\n",
-		func, CKR2Str(rv), (unsigned int) rv);
+	if (!suppress_warn)
+		util_warn("PKCS11 function %s failed: rv = %s (0x%0x)\n", func, CKR2Str(rv), (unsigned int) rv);
 }
 
 static void p11_perror(const char *msg, CK_RV rv)
 {
-	fprintf(stderr,
-		"  ERR: %s failed: %s (0x%0x)\n",
-		msg, CKR2Str(rv), (unsigned int) rv);
+	fprintf(stderr, "  ERR: %s failed: %s (0x%0x)\n", msg, CKR2Str(rv), (unsigned int) rv);
 }
 
 static int hex_to_bin(const char *in, unsigned char *out, size_t *outlen)

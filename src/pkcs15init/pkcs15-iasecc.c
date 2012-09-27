@@ -541,7 +541,7 @@ iasecc_sdo_allocate_pubkey(struct sc_profile *profile, struct sc_card *card, str
 		*(sdo->docp.size.value + 1) = sz & 0xFF;
 
 		if (card->type == SC_CARD_TYPE_IASECC_OBERTHUR)   {
-			printf("TODO: Disabled for the tests of the Oberthur card\n");
+			/* TODO: Disabled for the tests of the Oberthur card */
 		}
 		else   {
 			sdo->data.pub_key.cha.value = calloc(1, 2);
@@ -1105,8 +1105,7 @@ iasecc_pkcs15_generate_key(struct sc_profile *profile, sc_pkcs15_card_t *p15card
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
-	printf("TODO: Check if native IAS middleware accepts the meaningfull path value.\n");
-
+	/* TODO: Check if native IAS middleware accepts the meaningfull path value. */
 	rv = sc_profile_get_parent(profile, "private-key", &file);
 	LOG_TEST_RET(ctx, rv, "IasEcc: cannot get private key parent file");
 

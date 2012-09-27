@@ -654,9 +654,7 @@ static int read_public_key(void)
 		if (r >= 0) {
 			if (verbose)
 				printf("Reading certificate with ID '%s'\n", opt_pubkey);
-			r = sc_pkcs15_read_certificate(p15card,
-				(sc_pkcs15_cert_info_t *) obj->data,
-				&cert);
+			r = sc_pkcs15_read_certificate(p15card, (sc_pkcs15_cert_info_t *) obj->data, &cert);
 		}
 		if (r >= 0)
 			pubkey = cert->key;
@@ -2071,6 +2069,7 @@ static int pubkey_pem_encode(sc_pkcs15_pubkey_t *pubkey, sc_pkcs15_der_t *key, s
 	size_t key_len;
 
 	memset(&algorithm, 0, sizeof(algorithm));
+	sc_init_oid(&algorithm.oid);
 	algorithm.algorithm = pubkey->algorithm;
 	if (algorithm.algorithm == SC_ALGORITHM_GOSTR3410)
 		algorithm.params = &pubkey->u.gostr3410.params;
