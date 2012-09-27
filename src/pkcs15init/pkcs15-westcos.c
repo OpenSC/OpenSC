@@ -38,8 +38,8 @@
 #include "pkcs15-init.h"
 #include "profile.h"
 
-static int westcos_pkcs15init_init_card(__unusedparam__ sc_profile_t *profile,
-                                        sc_pkcs15_card_t *p15card)
+static int westcos_pkcs15init_init_card(sc_profile_t *profile,
+						sc_pkcs15_card_t *p15card)
 {
 	int r;
 	struct sc_path path;
@@ -69,9 +69,9 @@ static int westcos_pkcs15init_create_dir(sc_profile_t *profile,
 /*
  * Select the PIN reference
  */
-static int westcos_pkcs15_select_pin_reference(__unusedparam__ sc_profile_t *profile,
-                                               __unusedparam__ sc_pkcs15_card_t *p15card,
-                                               sc_pkcs15_auth_info_t *auth_info)
+static int westcos_pkcs15_select_pin_reference(sc_profile_t *profile,
+					sc_pkcs15_card_t *p15card,
+					sc_pkcs15_auth_info_t *auth_info)
 {
 
 	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
@@ -91,8 +91,8 @@ static int westcos_pkcs15_select_pin_reference(__unusedparam__ sc_profile_t *pro
  */
 static int westcos_pkcs15_create_pin(sc_profile_t *profile,
 					sc_pkcs15_card_t *p15card,
-					__unusedparam__ sc_file_t *df,
-					__unusedparam__ sc_pkcs15_object_t *pin_obj,
+					sc_file_t *df,
+					sc_pkcs15_object_t *pin_obj,
 					const u8 *pin, size_t pin_len,
 					const u8 *puk, size_t puk_len)
 {
@@ -176,9 +176,9 @@ static int westcos_pkcs15_create_pin(sc_profile_t *profile,
 /*
  * Create a new key file
  */
-static int westcos_pkcs15init_create_key(__unusedparam__ sc_profile_t *profile,
-                                         __unusedparam__ sc_pkcs15_card_t *p15card,
-                                         sc_pkcs15_object_t *obj)
+static int westcos_pkcs15init_create_key(sc_profile_t *profile,
+						sc_pkcs15_card_t *p15card,
+						sc_pkcs15_object_t *obj)
 {
 
 	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
@@ -192,10 +192,10 @@ static int westcos_pkcs15init_create_key(__unusedparam__ sc_profile_t *profile,
 /*
  * Store a private key
  */
-static int westcos_pkcs15init_store_key(__unusedparam__ sc_profile_t *profile,
-                                        __unusedparam__ sc_pkcs15_card_t *p15card,
-                                        __unusedparam__ sc_pkcs15_object_t *obj,
-                                        __unusedparam__ sc_pkcs15_prkey_t *key)
+static int westcos_pkcs15init_store_key(sc_profile_t *profile,
+						sc_pkcs15_card_t *p15card,
+						sc_pkcs15_object_t *obj,
+						sc_pkcs15_prkey_t *key)
 {
 	return SC_ERROR_NOT_SUPPORTED;
 }

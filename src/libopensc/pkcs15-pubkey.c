@@ -891,7 +891,7 @@ out:
  */
 int
 sc_pkcs15_pubkey_from_spki(sc_context_t *ctx, sc_pkcs15_pubkey_t ** outpubkey, 
-                           u8 *buf, size_t buflen, __unusedparam__ int depth)
+		u8 *buf, size_t buflen, int depth)
 {
 
 	int r;

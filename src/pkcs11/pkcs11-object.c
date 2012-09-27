@@ -144,11 +144,11 @@ C_CreateObject(CK_SESSION_HANDLE hSession,	/* the session's handle */
 
 
 CK_RV
-C_CopyObject(__unusedparam__ CK_SESSION_HANDLE hSession,	/* the session's handle */
-		__unusedparam__ CK_OBJECT_HANDLE hObject,	/* the object's handle */
-		__unusedparam__ CK_ATTRIBUTE_PTR pTemplate,	/* template for new object */
-		__unusedparam__ CK_ULONG ulCount,		/* attributes in template */
-		__unusedparam__ CK_OBJECT_HANDLE_PTR phNewObject)	/* receives handle of copy */
+C_CopyObject(CK_SESSION_HANDLE hSession,	/* the session's handle */
+		CK_OBJECT_HANDLE hObject,	/* the object's handle */
+		CK_ATTRIBUTE_PTR pTemplate,	/* template for new object */
+		CK_ULONG ulCount,		/* attributes in template */
+		CK_OBJECT_HANDLE_PTR phNewObject)	/* receives handle of copy */
 {
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
@@ -191,9 +191,9 @@ out:
 
 
 CK_RV
-C_GetObjectSize(__unusedparam__ CK_SESSION_HANDLE hSession,	/* the session's handle */
-                __unusedparam__ CK_OBJECT_HANDLE hObject,	/* the object's handle */
-                __unusedparam__ CK_ULONG_PTR pulSize)	/* receives size of object */
+C_GetObjectSize(CK_SESSION_HANDLE hSession,	/* the session's handle */
+		      CK_OBJECT_HANDLE hObject,	/* the object's handle */
+		      CK_ULONG_PTR pulSize)	/* receives size of object */
 {
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
@@ -561,8 +561,8 @@ C_DigestUpdate(CK_SESSION_HANDLE hSession,	/* the session's handle */
 
 
 CK_RV
-C_DigestKey(__unusedparam__ CK_SESSION_HANDLE hSession,	/* the session's handle */
-            __unusedparam__ CK_OBJECT_HANDLE hKey)	/* handle of secret key to digest */
+C_DigestKey(CK_SESSION_HANDLE hSession,	/* the session's handle */
+		CK_OBJECT_HANDLE hKey)	/* handle of secret key to digest */
 {
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
@@ -807,46 +807,46 @@ out:
 
 
 CK_RV
-C_SignRecover(__unusedparam__ CK_SESSION_HANDLE hSession,	/* the session's handle */
-              __unusedparam__ CK_BYTE_PTR pData,		/* the data (digest) to be signed */
-              __unusedparam__ CK_ULONG ulDataLen,		/* count of bytes to be signed */
-              __unusedparam__ CK_BYTE_PTR pSignature,		/* receives the signature */
-              __unusedparam__ CK_ULONG_PTR pulSignatureLen)	/* receives byte count of signature */
+C_SignRecover(CK_SESSION_HANDLE hSession,	/* the session's handle */
+		CK_BYTE_PTR pData,		/* the data (digest) to be signed */
+		CK_ULONG ulDataLen,		/* count of bytes to be signed */
+		CK_BYTE_PTR pSignature,		/* receives the signature */
+		CK_ULONG_PTR pulSignatureLen)	/* receives byte count of signature */
 {
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
 
 CK_RV
-C_EncryptInit(__unusedparam__ CK_SESSION_HANDLE hSession,	/* the session's handle */
-              __unusedparam__ CK_MECHANISM_PTR pMechanism,	/* the encryption mechanism */
-              __unusedparam__ CK_OBJECT_HANDLE hKey)		/* handle of encryption key */
+C_EncryptInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
+		CK_MECHANISM_PTR pMechanism,	/* the encryption mechanism */
+		CK_OBJECT_HANDLE hKey)		/* handle of encryption key */
 {
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
 
-CK_RV C_Encrypt(__unusedparam__ CK_SESSION_HANDLE hSession,	/* the session's handle */
-		__unusedparam__ CK_BYTE_PTR pData,	/* the plaintext data */
-		__unusedparam__ CK_ULONG ulDataLen,	/* bytes of plaintext data */
-		__unusedparam__ CK_BYTE_PTR pEncryptedData,	/* receives encrypted data */
-		__unusedparam__ CK_ULONG_PTR pulEncryptedDataLen)
+CK_RV C_Encrypt(CK_SESSION_HANDLE hSession,	/* the session's handle */
+		CK_BYTE_PTR pData,	/* the plaintext data */
+		CK_ULONG ulDataLen,	/* bytes of plaintext data */
+		CK_BYTE_PTR pEncryptedData,	/* receives encrypted data */
+		CK_ULONG_PTR pulEncryptedDataLen)
 {				/* receives encrypted byte count */
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
-CK_RV C_EncryptUpdate(__unusedparam__ CK_SESSION_HANDLE hSession,	/* the session's handle */
-		      __unusedparam__ CK_BYTE_PTR pPart,	/* the plaintext data */
-		      __unusedparam__ CK_ULONG ulPartLen,	/* bytes of plaintext data */
-		      __unusedparam__ CK_BYTE_PTR pEncryptedPart,	/* receives encrypted data */
-		      __unusedparam__ CK_ULONG_PTR pulEncryptedPartLen)
+CK_RV C_EncryptUpdate(CK_SESSION_HANDLE hSession,	/* the session's handle */
+		      CK_BYTE_PTR pPart,	/* the plaintext data */
+		      CK_ULONG ulPartLen,	/* bytes of plaintext data */
+		      CK_BYTE_PTR pEncryptedPart,	/* receives encrypted data */
+		      CK_ULONG_PTR pulEncryptedPartLen)
 {				/* receives encrypted byte count */
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
-CK_RV C_EncryptFinal(__unusedparam__ CK_SESSION_HANDLE hSession,	/* the session's handle */
-		     __unusedparam__ CK_BYTE_PTR pLastEncryptedPart,	/* receives encrypted last part */
-		     __unusedparam__ CK_ULONG_PTR pulLastEncryptedPartLen)
+CK_RV C_EncryptFinal(CK_SESSION_HANDLE hSession,	/* the session's handle */
+		     CK_BYTE_PTR pLastEncryptedPart,	/* receives encrypted last part */
+		     CK_ULONG_PTR pulLastEncryptedPartLen)
 {				/* receives byte count */
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
@@ -928,63 +928,63 @@ CK_RV C_Decrypt(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	return rv;
 }
 
-CK_RV C_DecryptUpdate(__unusedparam__ CK_SESSION_HANDLE hSession,	/* the session's handle */
-		      __unusedparam__ CK_BYTE_PTR pEncryptedPart,	/* input encrypted data */
-		      __unusedparam__ CK_ULONG ulEncryptedPartLen,	/* count of bytes of input */
-		      __unusedparam__ CK_BYTE_PTR pPart,	/* receives decrypted output */
-		      __unusedparam__ CK_ULONG_PTR pulPartLen)
+CK_RV C_DecryptUpdate(CK_SESSION_HANDLE hSession,	/* the session's handle */
+		      CK_BYTE_PTR pEncryptedPart,	/* input encrypted data */
+		      CK_ULONG ulEncryptedPartLen,	/* count of bytes of input */
+		      CK_BYTE_PTR pPart,	/* receives decrypted output */
+		      CK_ULONG_PTR pulPartLen)
 {				/* receives decrypted byte count */
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
-CK_RV C_DecryptFinal(__unusedparam__ CK_SESSION_HANDLE hSession,	/* the session's handle */
-		     __unusedparam__ CK_BYTE_PTR pLastPart,	/* receives decrypted output */
-		     __unusedparam__ CK_ULONG_PTR pulLastPartLen)
+CK_RV C_DecryptFinal(CK_SESSION_HANDLE hSession,	/* the session's handle */
+		     CK_BYTE_PTR pLastPart,	/* receives decrypted output */
+		     CK_ULONG_PTR pulLastPartLen)
 {				/* receives decrypted byte count */
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
-CK_RV C_DigestEncryptUpdate(__unusedparam__ CK_SESSION_HANDLE hSession,	/* the session's handle */
-			    __unusedparam__ CK_BYTE_PTR pPart,	/* the plaintext data */
-			    __unusedparam__ CK_ULONG ulPartLen,	/* bytes of plaintext data */
-			    __unusedparam__ CK_BYTE_PTR pEncryptedPart,	/* receives encrypted data */
-			    __unusedparam__ CK_ULONG_PTR pulEncryptedPartLen)
+CK_RV C_DigestEncryptUpdate(CK_SESSION_HANDLE hSession,	/* the session's handle */
+			    CK_BYTE_PTR pPart,	/* the plaintext data */
+			    CK_ULONG ulPartLen,	/* bytes of plaintext data */
+			    CK_BYTE_PTR pEncryptedPart,	/* receives encrypted data */
+			    CK_ULONG_PTR pulEncryptedPartLen)
 {				/* receives encrypted byte count */
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
-CK_RV C_DecryptDigestUpdate(__unusedparam__ CK_SESSION_HANDLE hSession,	/* the session's handle */
-			    __unusedparam__ CK_BYTE_PTR pEncryptedPart,	/* input encrypted data */
-			    __unusedparam__ CK_ULONG ulEncryptedPartLen,	/* count of bytes of input */
-			    __unusedparam__ CK_BYTE_PTR pPart,	/* receives decrypted output */
-			    __unusedparam__ CK_ULONG_PTR pulPartLen)
+CK_RV C_DecryptDigestUpdate(CK_SESSION_HANDLE hSession,	/* the session's handle */
+			    CK_BYTE_PTR pEncryptedPart,	/* input encrypted data */
+			    CK_ULONG ulEncryptedPartLen,	/* count of bytes of input */
+			    CK_BYTE_PTR pPart,	/* receives decrypted output */
+			    CK_ULONG_PTR pulPartLen)
 {				/* receives decrypted byte count */
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
-CK_RV C_SignEncryptUpdate(__unusedparam__ CK_SESSION_HANDLE hSession,	/* the session's handle */
-			  __unusedparam__ CK_BYTE_PTR pPart,	/* the plaintext data */
-			  __unusedparam__ CK_ULONG ulPartLen,	/* bytes of plaintext data */
-			  __unusedparam__ CK_BYTE_PTR pEncryptedPart,	/* receives encrypted data */
-			  __unusedparam__ CK_ULONG_PTR pulEncryptedPartLen)
+CK_RV C_SignEncryptUpdate(CK_SESSION_HANDLE hSession,	/* the session's handle */
+			  CK_BYTE_PTR pPart,	/* the plaintext data */
+			  CK_ULONG ulPartLen,	/* bytes of plaintext data */
+			  CK_BYTE_PTR pEncryptedPart,	/* receives encrypted data */
+			  CK_ULONG_PTR pulEncryptedPartLen)
 {				/* receives encrypted byte count */
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
-CK_RV C_DecryptVerifyUpdate(__unusedparam__ CK_SESSION_HANDLE hSession,	/* the session's handle */
-			    __unusedparam__ CK_BYTE_PTR pEncryptedPart,	/* input encrypted data */
-			    __unusedparam__ CK_ULONG ulEncryptedPartLen,	/* count of byes of input */
-			    __unusedparam__ CK_BYTE_PTR pPart,	/* receives decrypted output */
-			    __unusedparam__ CK_ULONG_PTR pulPartLen)
+CK_RV C_DecryptVerifyUpdate(CK_SESSION_HANDLE hSession,	/* the session's handle */
+			    CK_BYTE_PTR pEncryptedPart,	/* input encrypted data */
+			    CK_ULONG ulEncryptedPartLen,	/* count of byes of input */
+			    CK_BYTE_PTR pPart,	/* receives decrypted output */
+			    CK_ULONG_PTR pulPartLen)
 {				/* receives decrypted byte count */
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
-CK_RV C_GenerateKey(__unusedparam__ CK_SESSION_HANDLE hSession,	/* the session's handle */
-		    __unusedparam__ CK_MECHANISM_PTR pMechanism,	/* the key generation mechanism */
-		    __unusedparam__ CK_ATTRIBUTE_PTR pTemplate,	/* template for the new key */
-		    __unusedparam__ CK_ULONG ulCount,	/* number of attributes in template */
-		    __unusedparam__ CK_OBJECT_HANDLE_PTR phKey)
+CK_RV C_GenerateKey(CK_SESSION_HANDLE hSession,	/* the session's handle */
+		    CK_MECHANISM_PTR pMechanism,	/* the key generation mechanism */
+		    CK_ATTRIBUTE_PTR pTemplate,	/* template for the new key */
+		    CK_ULONG ulCount,	/* number of attributes in template */
+		    CK_OBJECT_HANDLE_PTR phKey)
 {				/* receives handle of new key */
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
@@ -1038,24 +1038,24 @@ out:
 }
 
 
-CK_RV C_WrapKey(__unusedparam__ CK_SESSION_HANDLE hSession,	/* the session's handle */
-		__unusedparam__ CK_MECHANISM_PTR pMechanism,	/* the wrapping mechanism */
-		__unusedparam__ CK_OBJECT_HANDLE hWrappingKey,	/* handle of the wrapping key */
-		__unusedparam__ CK_OBJECT_HANDLE hKey,	/* handle of the key to be wrapped */
-		__unusedparam__ CK_BYTE_PTR pWrappedKey,	/* receives the wrapped key */
-		__unusedparam__ CK_ULONG_PTR pulWrappedKeyLen)
+CK_RV C_WrapKey(CK_SESSION_HANDLE hSession,	/* the session's handle */
+		CK_MECHANISM_PTR pMechanism,	/* the wrapping mechanism */
+		CK_OBJECT_HANDLE hWrappingKey,	/* handle of the wrapping key */
+		CK_OBJECT_HANDLE hKey,	/* handle of the key to be wrapped */
+		CK_BYTE_PTR pWrappedKey,	/* receives the wrapped key */
+		CK_ULONG_PTR pulWrappedKeyLen)
 {				/* receives byte size of wrapped key */
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
-CK_RV C_UnwrapKey(__unusedparam__ CK_SESSION_HANDLE hSession,	/* the session's handle */
-		  __unusedparam__ CK_MECHANISM_PTR pMechanism,	/* the unwrapping mechanism */
-		  __unusedparam__ CK_OBJECT_HANDLE hUnwrappingKey,	/* handle of the unwrapping key */
-		  __unusedparam__ CK_BYTE_PTR pWrappedKey,	/* the wrapped key */
-		  __unusedparam__ CK_ULONG ulWrappedKeyLen,	/* bytes length of wrapped key */
-		  __unusedparam__ CK_ATTRIBUTE_PTR pTemplate,	/* template for the new key */
-		  __unusedparam__ CK_ULONG ulAttributeCount,	/* # of attributes in template */
-		  __unusedparam__ CK_OBJECT_HANDLE_PTR phKey)
+CK_RV C_UnwrapKey(CK_SESSION_HANDLE hSession,	/* the session's handle */
+		  CK_MECHANISM_PTR pMechanism,	/* the unwrapping mechanism */
+		  CK_OBJECT_HANDLE hUnwrappingKey,	/* handle of the unwrapping key */
+		  CK_BYTE_PTR pWrappedKey,	/* the wrapped key */
+		  CK_ULONG ulWrappedKeyLen,	/* bytes length of wrapped key */
+		  CK_ATTRIBUTE_PTR pTemplate,	/* template for the new key */
+		  CK_ULONG ulAttributeCount,	/* # of attributes in template */
+		  CK_OBJECT_HANDLE_PTR phKey)
 {				/* gets handle of recovered key */
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
@@ -1139,9 +1139,9 @@ out:
 	return rv;
 }
 
-CK_RV C_SeedRandom(__unusedparam__ CK_SESSION_HANDLE hSession,	/* the session's handle */
-		   __unusedparam__ CK_BYTE_PTR pSeed,	/* the seed material */
-		   __unusedparam__ CK_ULONG ulSeedLen)
+CK_RV C_SeedRandom(CK_SESSION_HANDLE hSession,	/* the session's handle */
+		   CK_BYTE_PTR pSeed,	/* the seed material */
+		   CK_ULONG ulSeedLen)
 {				/* count of bytes of seed material */
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
@@ -1171,12 +1171,12 @@ CK_RV C_GenerateRandom(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	return rv;
 }
 
-CK_RV C_GetFunctionStatus(__unusedparam__ CK_SESSION_HANDLE hSession)
+CK_RV C_GetFunctionStatus(CK_SESSION_HANDLE hSession)
 {				/* the session's handle */
 	return CKR_FUNCTION_NOT_PARALLEL;
 }
 
-CK_RV C_CancelFunction(__unusedparam__ CK_SESSION_HANDLE hSession)
+CK_RV C_CancelFunction(CK_SESSION_HANDLE hSession)
 {				/* the session's handle */
 	return CKR_FUNCTION_NOT_PARALLEL;
 }
@@ -1311,18 +1311,18 @@ CK_RV C_VerifyFinal(CK_SESSION_HANDLE hSession,	/* the session's handle */
 #endif
 }
 
-CK_RV C_VerifyRecoverInit(__unusedparam__ CK_SESSION_HANDLE hSession,	/* the session's handle */
-			  __unusedparam__ CK_MECHANISM_PTR pMechanism,	/* the verification mechanism */
-			  __unusedparam__ CK_OBJECT_HANDLE hKey)
+CK_RV C_VerifyRecoverInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
+			  CK_MECHANISM_PTR pMechanism,	/* the verification mechanism */
+			  CK_OBJECT_HANDLE hKey)
 {				/* handle of the verification key */
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
-CK_RV C_VerifyRecover(__unusedparam__ CK_SESSION_HANDLE hSession,	/* the session's handle */
-		      __unusedparam__ CK_BYTE_PTR pSignature,	/* the signature to be verified */
-		      __unusedparam__ CK_ULONG ulSignatureLen,	/* count of bytes of signature */
-		      __unusedparam__ CK_BYTE_PTR pData,	/* receives decrypted data (digest) */
-		      __unusedparam__ CK_ULONG_PTR pulDataLen)
+CK_RV C_VerifyRecover(CK_SESSION_HANDLE hSession,	/* the session's handle */
+		      CK_BYTE_PTR pSignature,	/* the signature to be verified */
+		      CK_ULONG ulSignatureLen,	/* count of bytes of signature */
+		      CK_BYTE_PTR pData,	/* receives decrypted data (digest) */
+		      CK_ULONG_PTR pulDataLen)
 {				/* receives byte count of data */
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }

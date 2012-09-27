@@ -255,8 +255,8 @@ iasecc_pkcs15_new_file(struct sc_profile *profile, struct sc_card *card,
  * Select a key reference
  */
 static int
-iasecc_pkcs15_select_key_reference(__unusedparam__ struct sc_profile *profile, struct sc_pkcs15_card *p15card,
-                                   struct sc_pkcs15_prkey_info *key_info)
+iasecc_pkcs15_select_key_reference(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
+		struct sc_pkcs15_prkey_info *key_info)
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_card *card = p15card->card;
@@ -319,13 +319,12 @@ iasecc_sdo_get_data(struct sc_card *card, struct iasecc_sdo *sdo)
 
 
 static int
-iasecc_file_convert_acls(struct sc_context *ctx, __unusedparam__ struct sc_profile *profile, struct sc_file *file)
+iasecc_file_convert_acls(struct sc_context *ctx, struct sc_profile *profile, struct sc_file *file)
 {
 	int ii;
 
 	for (ii=0; ii<SC_MAX_AC_OPS;ii++)   {
-                /* FIXME: sc_file_get_acl_entry() returns a const, but this function mutates the structure */
-                struct sc_acl_entry *acl = (struct sc_acl_entry *) sc_file_get_acl_entry(file, ii);
+		struct sc_acl_entry *acl = sc_file_get_acl_entry(file, ii);
 
 		if (acl)   {
 			switch (acl->method)   {
@@ -866,7 +865,7 @@ iasecc_pkcs15_add_algorithm_reference(struct sc_pkcs15_card *p15card,
 
 
 static int
-iasecc_pkcs15_fix_private_key_attributes(__unusedparam__ struct sc_profile *profile, struct sc_pkcs15_card *p15card,
+iasecc_pkcs15_fix_private_key_attributes(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 					struct sc_pkcs15_object *object,
 					struct iasecc_sdo *sdo_prvkey)
 {
@@ -1548,7 +1547,7 @@ iasecc_md_gemalto_delete_prvkey(struct sc_pkcs15_card *p15card, struct sc_profil
 
 static int
 iasecc_store_prvkey(struct sc_pkcs15_card *p15card, struct sc_profile *profile, struct sc_pkcs15_object *object,
-                    __unusedparam__ struct sc_pkcs15_der *data, __unusedparam__ struct sc_path *path)
+		struct sc_pkcs15_der *data, struct sc_path *path)
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15_prkey_info *prkey_info = (struct sc_pkcs15_prkey_info *)object->data;
@@ -1573,8 +1572,8 @@ iasecc_store_prvkey(struct sc_pkcs15_card *p15card, struct sc_profile *profile, 
 
 
 static int
-iasecc_store_pubkey(struct sc_pkcs15_card *p15card, __unusedparam__ struct sc_profile *profile, struct sc_pkcs15_object *object,
-                    __unusedparam__ struct sc_pkcs15_der *data, __unusedparam__ struct sc_path *path)
+iasecc_store_pubkey(struct sc_pkcs15_card *p15card, struct sc_profile *profile, struct sc_pkcs15_object *object,
+		struct sc_pkcs15_der *data, struct sc_path *path)
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15_pubkey_info *pubkey_info = (struct sc_pkcs15_pubkey_info *)object->data;
@@ -1613,8 +1612,8 @@ iasecc_store_pubkey(struct sc_pkcs15_card *p15card, __unusedparam__ struct sc_pr
 
 static int
 iasecc_store_cert(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
-		struct sc_pkcs15_object *object, __unusedparam__ struct sc_pkcs15_der *data,
-		__unusedparam__ struct sc_path *path)
+		struct sc_pkcs15_object *object, struct sc_pkcs15_der *data,
+		struct sc_path *path)
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_card *card = p15card->card;
@@ -1789,15 +1788,12 @@ iasecc_emu_store_data(struct sc_pkcs15_card *p15card, struct sc_profile *profile
 }
 
 
-#if 0
-/* Defined, but not used */
 static int
-iasecc_emu_update_tokeninfo(__unusedparam__ struct sc_profile *profile, struct sc_pkcs15_card *p15card,
-                            __unusedparam__ struct sc_pkcs15_tokeninfo *tinfo)
+iasecc_emu_update_tokeninfo(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
+		struct sc_pkcs15_tokeninfo *tinfo)
 {
 	LOG_FUNC_RETURN(p15card->card->ctx, SC_SUCCESS);
 }
-#endif
 
 
 static struct sc_pkcs15init_operations

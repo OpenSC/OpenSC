@@ -181,8 +181,7 @@ CK_RV card_detect(sc_reader_t *reader)
 {
 	struct sc_pkcs11_card *p11card = NULL;
 	int rc, rv;
-	unsigned int i;
-        int j;
+	unsigned int i, j;
 
 	rv = CKR_OK;
 

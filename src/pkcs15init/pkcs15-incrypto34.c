@@ -171,8 +171,8 @@ incrypto34_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_
  * See if it's good, and if it isn't, propose something better
  */
 static int
-incrypto34_select_pin_reference(__unusedparam__ sc_profile_t *profile, __unusedparam__ sc_pkcs15_card_t *p15card,
-                                sc_pkcs15_auth_info_t *auth_info)
+incrypto34_select_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
+		sc_pkcs15_auth_info_t *auth_info)
 {
 	int	preferred, current;
 
@@ -246,8 +246,8 @@ incrypto34_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
  * Select a key reference
  */
 static int
-incrypto34_select_key_reference(__unusedparam__ sc_profile_t *profile, __unusedparam__ sc_pkcs15_card_t *p15card,
-                                sc_pkcs15_prkey_info_t *key_info)
+incrypto34_select_key_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
+			sc_pkcs15_prkey_info_t *key_info)
 {
 	if (key_info->key_reference < INCRYPTO34_KEY_ID_MIN)
 		key_info->key_reference = INCRYPTO34_KEY_ID_MIN;
@@ -261,8 +261,8 @@ incrypto34_select_key_reference(__unusedparam__ sc_profile_t *profile, __unusedp
  * This is a no-op.
  */
 static int
-incrypto34_create_key(__unusedparam__ sc_profile_t *profile, __unusedparam__ sc_pkcs15_card_t *p15card,
-                      __unusedparam__ sc_pkcs15_object_t *obj)
+incrypto34_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
+			sc_pkcs15_object_t *obj)
 {
 	return 0;
 }
@@ -474,7 +474,7 @@ incrypto34_store_pin(sc_profile_t *profile, sc_card_t *card,
  * Create an empty security environment
  */
 static int
-incrypto34_create_sec_env(__unusedparam__ struct sc_profile *profile, struct sc_card *card,
+incrypto34_create_sec_env(struct sc_profile *profile, struct sc_card *card,
 		unsigned int se_id, unsigned int key_id)
 {
 	struct sc_cardctl_incrypto34_obj_info args;
@@ -668,10 +668,12 @@ incrypto34_extract_pubkey(sc_card_t *card, int nr, u8 tag,
 	return 0;
 }
 
-static int incrypto34_init_card(__unusedparam__ sc_profile_t *profile, __unusedparam__ sc_pkcs15_card_t *p15card)
+static int incrypto34_init_card(sc_profile_t *profile, sc_pkcs15_card_t *p15card)
 {
 	return 0;
 }
+static struct sc_pkcs15init_operations sc_pkcs15init_incrypto34_operations;
+
 
 static struct sc_pkcs15init_operations sc_pkcs15init_incrypto34_operations = {
 	incrypto34_erase,

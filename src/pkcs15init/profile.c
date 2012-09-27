@@ -824,45 +824,45 @@ init_state(struct state *cur_state, struct state *new_state)
 }
 
 static int
-do_card_driver(struct state *cur, __unusedparam__ int argc, char **argv)
+do_card_driver(struct state *cur, int argc, char **argv)
 {
 	cur->profile->driver = strdup(argv[0]);
 	return 0;
 }
 
 static int
-do_maxpinlength(struct state *cur, __unusedparam__ int argc, char **argv)
+do_maxpinlength(struct state *cur, int argc, char **argv)
 {
 	return get_uint(cur, argv[0], &cur->profile->pin_maxlen);
 }
 
 static int
-do_minpinlength(struct state *cur, __unusedparam__ int argc, char **argv)
+do_minpinlength(struct state *cur, int argc, char **argv)
 {
 	return get_uint(cur, argv[0], &cur->profile->pin_minlen);
 }
 
 static int
-do_default_pin_type(struct state *cur, __unusedparam__ int argc, char **argv)
+do_default_pin_type(struct state *cur, int argc, char **argv)
 {
 	return map_str2int(cur, argv[0],
 		       	&cur->profile->pin_encoding, pinTypeNames);
 }
 
 static int
-do_pin_pad_char(struct state *cur, __unusedparam__ int argc, char **argv)
+do_pin_pad_char(struct state *cur, int argc, char **argv)
 {
 	return get_uint(cur, argv[0], &cur->profile->pin_pad_char);
 }
 
 static int
-do_pin_domains(struct state *cur, __unusedparam__ int argc, char **argv)
+do_pin_domains(struct state *cur, int argc, char **argv)
 {
 	return get_bool(cur, argv[0], &cur->profile->pin_domains);
 }
 
 static int
-do_card_label(struct state *cur, __unusedparam__ int argc, char **argv)
+do_card_label(struct state *cur, int argc, char **argv)
 {
 	struct sc_pkcs15_card	*p15card = cur->profile->p15_spec;
 
@@ -870,7 +870,7 @@ do_card_label(struct state *cur, __unusedparam__ int argc, char **argv)
 }
 
 static int
-do_card_manufacturer(struct state *cur, __unusedparam__ int argc, char **argv)
+do_card_manufacturer(struct state *cur, int argc, char **argv)
 {
 	struct sc_pkcs15_card	*p15card = cur->profile->p15_spec;
 
@@ -881,31 +881,31 @@ do_card_manufacturer(struct state *cur, __unusedparam__ int argc, char **argv)
  * Command related to the pkcs15 we generate
  */
 static int
-do_direct_certificates(struct state *cur, __unusedparam__ int argc, char **argv)
+do_direct_certificates(struct state *cur, int argc, char **argv)
 {
 	return get_bool(cur, argv[0], &cur->profile->pkcs15.direct_certificates);
 }
 
 static int
-do_encode_df_length(struct state *cur, __unusedparam__ int argc, char **argv)
+do_encode_df_length(struct state *cur, int argc, char **argv)
 {
 	return get_bool(cur, argv[0], &cur->profile->pkcs15.encode_df_length);
 }
 
 static int
-do_encode_update_field(struct state *cur, __unusedparam__ int argc, char **argv)
+do_encode_update_field(struct state *cur, int argc, char **argv)
 {
 	return get_bool(cur, argv[0], &cur->profile->pkcs15.do_last_update);
 }
 
 static int
-do_pkcs15_id_style(struct state *cur, __unusedparam__ int argc, char **argv)
+do_pkcs15_id_style(struct state *cur, int argc, char **argv)
 {
 	return map_str2int(cur, argv[0], &cur->profile->id_style, idStyleNames);
 }
 
 static int
-do_minidriver_support_style(struct state *cur, __unusedparam__ int argc, char **argv)
+do_minidriver_support_style(struct state *cur, int argc, char **argv)
 {
 	return map_str2int(cur, argv[0], &cur->profile->md_style, mdStyleNames);
 }
@@ -965,7 +965,7 @@ new_key(struct sc_profile *profile, unsigned int type, unsigned int ref)
 }
 
 static int
-do_key_value(struct state *cur, __unusedparam__ int argc, char **argv)
+do_key_value(struct state *cur, int argc, char **argv)
 {
 	struct auth_info *ai = cur->key;
 	const char	*key = argv[0];
@@ -1245,7 +1245,7 @@ new_file(struct state *cur, const char *name, unsigned int type)
 }
 
 static int
-do_file_type(struct state *cur, __unusedparam__ int argc, char **argv)
+do_file_type(struct state *cur, int argc, char **argv)
 {
 	unsigned int	type;
 
@@ -1256,7 +1256,7 @@ do_file_type(struct state *cur, __unusedparam__ int argc, char **argv)
 }
 
 static int
-do_file_path(struct state *cur, __unusedparam__ int argc, char **argv)
+do_file_path(struct state *cur, int argc, char **argv)
 {
 	struct sc_file	*file = cur->file->file;
 	struct sc_path	*path = &file->path;
@@ -1273,7 +1273,7 @@ do_file_path(struct state *cur, __unusedparam__ int argc, char **argv)
 }
 
 static int
-do_fileid(struct state *cur, __unusedparam__ int argc, char **argv)
+do_fileid(struct state *cur, int argc, char **argv)
 {
 	struct file_info *fi;
 	struct sc_file	*df, *file = cur->file->file;
@@ -1307,7 +1307,7 @@ do_fileid(struct state *cur, __unusedparam__ int argc, char **argv)
 }
 
 static int
-do_structure(struct state *cur, __unusedparam__ int argc, char **argv)
+do_structure(struct state *cur, int argc, char **argv)
 {
 	unsigned int	ef_structure;
 
@@ -1329,7 +1329,7 @@ do_size(struct state *cur, int argc, char **argv)
 }
 
 static int
-do_reclength(struct state *cur, __unusedparam__ int argc, char **argv)
+do_reclength(struct state *cur, int argc, char **argv)
 {
 	unsigned int	reclength;
 
@@ -1340,7 +1340,7 @@ do_reclength(struct state *cur, __unusedparam__ int argc, char **argv)
 }
 
 static int
-do_aid(struct state *cur, __unusedparam__ int argc, char **argv)
+do_aid(struct state *cur, int argc, char **argv)
 {
 	struct sc_file	*file = cur->file->file;
 	const char	*name = argv[0];
@@ -1364,7 +1364,7 @@ do_aid(struct state *cur, __unusedparam__ int argc, char **argv)
 }
 
 static int
-do_exclusive_aid(struct state *cur, __unusedparam__ int argc, char **argv)
+do_exclusive_aid(struct state *cur, int argc, char **argv)
 {
 	struct sc_file	*file = cur->file->file;
 	const char	*name = argv[0];
@@ -1407,7 +1407,7 @@ do_exclusive_aid(struct state *cur, __unusedparam__ int argc, char **argv)
 }
 
 static int
-do_profile_extension(struct state *cur, __unusedparam__ int argc, char **argv)
+do_profile_extension(struct state *cur, int argc, char **argv)
 {
 	return setstr(&cur->file->profile_extension, argv[0]);
 }
@@ -1544,20 +1544,20 @@ static void set_pin_defaults(struct sc_profile *profile, struct pin_info *pi)
 }
 
 static int
-do_pin_file(struct state *cur, __unusedparam__ int argc, char **argv)
+do_pin_file(struct state *cur, int argc, char **argv)
 {
 	cur->pin->file_name = strdup(argv[0]);
 	return 0;
 }
 
 static int
-do_pin_offset(struct state *cur, __unusedparam__ int argc, char **argv)
+do_pin_offset(struct state *cur, int argc, char **argv)
 {
 	return get_uint(cur, argv[0], &cur->pin->file_offset);
 }
 
 static int
-do_pin_attempts(struct state *cur, __unusedparam__ int argc, char **argv)
+do_pin_attempts(struct state *cur, int argc, char **argv)
 {
 	struct pin_info	*pi = cur->pin;
 	unsigned int	count;
@@ -1569,7 +1569,7 @@ do_pin_attempts(struct state *cur, __unusedparam__ int argc, char **argv)
 }
 
 static int
-do_pin_type(struct state *cur, __unusedparam__ int argc, char **argv)
+do_pin_type(struct state *cur, int argc, char **argv)
 {
 	unsigned int	type;
 
@@ -1582,7 +1582,7 @@ do_pin_type(struct state *cur, __unusedparam__ int argc, char **argv)
 }
 
 static int
-do_pin_reference(struct state *cur, __unusedparam__ int argc, char **argv)
+do_pin_reference(struct state *cur, int argc, char **argv)
 {
 	unsigned int	reference;
 
@@ -1595,14 +1595,14 @@ do_pin_reference(struct state *cur, __unusedparam__ int argc, char **argv)
 }
 
 static int
-do_pin_authid(struct state *cur, __unusedparam__ int argc, char **argv)
+do_pin_authid(struct state *cur, int argc, char **argv)
 {
 	sc_pkcs15_format_id(argv[0], &cur->pin->pin.auth_id);
 	return 0;
 }
 
 static int
-do_pin_minlength(struct state *cur, __unusedparam__ int argc, char **argv)
+do_pin_minlength(struct state *cur, int argc, char **argv)
 {
 	unsigned int	len;
 
@@ -1615,7 +1615,7 @@ do_pin_minlength(struct state *cur, __unusedparam__ int argc, char **argv)
 }
 
 static int
-do_pin_maxlength(struct state *cur, __unusedparam__ int argc, char **argv)
+do_pin_maxlength(struct state *cur, int argc, char **argv)
 {
 	unsigned int	len;
 
@@ -1628,7 +1628,7 @@ do_pin_maxlength(struct state *cur, __unusedparam__ int argc, char **argv)
 }
 
 static int
-do_pin_storedlength(struct state *cur, __unusedparam__ int argc, char **argv)
+do_pin_storedlength(struct state *cur, int argc, char **argv)
 {
 	unsigned int	len;
 
@@ -1641,7 +1641,7 @@ do_pin_storedlength(struct state *cur, __unusedparam__ int argc, char **argv)
 }
 
 static int
-do_pin_flags(struct state *cur, __unusedparam__ int argc, char **argv)
+do_pin_flags(struct state *cur, int argc, char **argv)
 {
 	unsigned int	flags;
 	int		i, r;
@@ -1660,8 +1660,8 @@ do_pin_flags(struct state *cur, __unusedparam__ int argc, char **argv)
 }
 
 static int
-process_macros(struct state *cur, __unusedparam__ struct block *info,
-               __unusedparam__ const char *dummy, scconf_block *blk)
+process_macros(struct state *cur, struct block *info,
+		const char *dummy, scconf_block *blk)
 {
 	scconf_item	*item;
 	const char	*name;
@@ -1906,7 +1906,7 @@ find_cmd_handler(struct command *cp, const char *name)
 
 static int
 process_block(struct state *cur, struct block *info,
-              __unusedparam__ const char *name, scconf_block *blk)
+		const char *name, scconf_block *blk)
 {
 	scconf_item	*item;
 	struct command	*cp;

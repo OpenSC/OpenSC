@@ -1106,7 +1106,7 @@ static int piv_cache_internal_data(sc_card_t *card, int enumtag)
  * as well as set that we want the cert from the object.
  */
 static int piv_read_binary(sc_card_t *card, unsigned int idx,
-                           unsigned char *buf, size_t count, __unusedparam__ unsigned long flags)
+		unsigned char *buf, size_t count, unsigned long flags)
 {
 	piv_private_data_t * priv = PIV_DATA(card);
 	int enumtag;
@@ -1883,7 +1883,7 @@ static int piv_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 
 static int piv_set_security_env(sc_card_t *card,
                     const sc_security_env_t *env,
-                    __unusedparam__ int se_num)
+                    int se_num)
 {
 	piv_private_data_t * priv = PIV_DATA(card);
 	int r = 0;
@@ -1923,7 +1923,7 @@ static int piv_set_security_env(sc_card_t *card,
 }
 
 
-static int piv_restore_security_env(sc_card_t *card, __unusedparam__ int se_num)
+static int piv_restore_security_env(sc_card_t *card, int se_num)
 {
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -1933,7 +1933,7 @@ static int piv_restore_security_env(sc_card_t *card, __unusedparam__ int se_num)
 
 static int piv_validate_general_authentication(sc_card_t *card,
 					const u8 * data, size_t datalen,
-					u8 * out, __unusedparam__ size_t outlen)
+					u8 * out, size_t outlen)
 {
 	piv_private_data_t * priv = PIV_DATA(card);
 	int r;
@@ -2011,7 +2011,7 @@ static int piv_compute_signature(sc_card_t *card,
 	piv_private_data_t * priv = PIV_DATA(card);
 	int r;
 	int i;
-	size_t nLen;
+	int nLen;
 	u8 rbuf[128]; /* For EC conversions  384 will fit */
 	size_t rbuflen = sizeof(rbuf);
 	const u8 * body;
@@ -2031,7 +2031,7 @@ static int piv_compute_signature(sc_card_t *card,
 
 	if (priv->alg_id == 0x11 || priv->alg_id == 0x14 ) {
 		nLen = (priv->key_size + 7) / 8;
-		if (outlen < 2l * nLen) {
+		if (outlen < 2*nLen) {
 			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL," output too small for EC signature %d < %d", outlen, 2*nLen);
 			r = SC_ERROR_INVALID_DATA;
 			goto err;
@@ -2603,7 +2603,7 @@ static int piv_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 	 */
 	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
 	if (data->cmd == SC_PIN_CMD_CHANGE) {
-		size_t i = 0;
+		int i = 0;
 		if (data->pin2.len < 6) {
 			return SC_ERROR_INVALID_PIN_LENGTH;
 		}

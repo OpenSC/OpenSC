@@ -335,7 +335,7 @@ sc_oberthur_read_file(struct sc_pkcs15_card *p15card, const char *in_path,
 
 static int 
 sc_oberthur_parse_tokeninfo (struct sc_pkcs15_card *p15card, 
-		unsigned char *buff, size_t len, __unusedparam__ int postpone_allowed)
+		unsigned char *buff, size_t len, int postpone_allowed)
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	char label[0x21];
@@ -371,7 +371,7 @@ sc_oberthur_parse_tokeninfo (struct sc_pkcs15_card *p15card,
 
 static int 
 sc_oberthur_parse_containers (struct sc_pkcs15_card *p15card, 
-		unsigned char *buff, size_t len, __unusedparam__ int postpone_allowed)
+		unsigned char *buff, size_t len, int postpone_allowed)
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	size_t offs;
@@ -427,7 +427,7 @@ sc_oberthur_parse_containers (struct sc_pkcs15_card *p15card,
 
 static int 
 sc_oberthur_parse_publicinfo (struct sc_pkcs15_card *p15card, 
-		unsigned char *buff, size_t len, __unusedparam__ int postpone_allowed)
+		unsigned char *buff, size_t len, int postpone_allowed)
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	size_t ii;

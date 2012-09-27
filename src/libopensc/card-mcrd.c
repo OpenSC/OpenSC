@@ -495,7 +495,7 @@ static int get_se_num_from_keyd(sc_card_t * card, unsigned short fid,
 }
 
 /* Process an ARR (7816-9/8.5.4) and setup the ACL. */
-static void process_arr(sc_card_t * card, __unusedparam__ sc_file_t * file,
+static void process_arr(sc_card_t * card, sc_file_t * file,
 			const u8 * buf, size_t buflen)
 {
 	sc_context_t *ctx = card->ctx;

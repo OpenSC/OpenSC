@@ -547,8 +547,9 @@ pgp_set_blob(struct blob *blob, const u8 *data, size_t len)
  * The Access Control is derived from the DO access permission.
  **/
 static void
-pgp_attach_acl(__unusedparam__ sc_card_t *card, sc_file_t *file, struct do_info *info)
+pgp_attach_acl(sc_card_t *card, sc_file_t *file, struct do_info *info)
 {
+	sc_acl_entry_t *acl;
 	unsigned int method = SC_AC_NONE;
 	unsigned long key_ref = SC_AC_KEY_REF_NONE;
 
@@ -648,7 +649,7 @@ pgp_new_blob(sc_card_t *card, struct blob *parent, unsigned int file_id,
 			u8 id_str[2];
 
 			/* no parent: set file's path = file's id */
-			sc_format_path((char *) ushort2bebytes(id_str, file_id), &blob->file->path);
+			sc_format_path(ushort2bebytes(id_str, file_id), &blob->file->path);
 		}
 
 		/* find matching DO info: set file type depending on it */
@@ -876,7 +877,7 @@ pgp_get_info_by_tag(sc_card_t *card, unsigned int tag)
  * which is understood by the OpenPGP card driver.
  * Return the index whose preceding part will be ignored.
  **/
-static unsigned int pgp_strip_path(__unusedparam__ sc_card_t *card, const sc_path_t *path)
+static unsigned int pgp_strip_path(sc_card_t *card, const sc_path_t *path)
 {
 	unsigned int start_point = 0;
 	/* start_point will move through the path string */
@@ -1009,7 +1010,7 @@ pgp_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 /* ABI: READ BINARY */
 static int
 pgp_read_binary(sc_card_t *card, unsigned int idx,
-		u8 *buf, size_t count, __unusedparam__ unsigned long flags)
+		u8 *buf, size_t count, unsigned long flags)
 {
 	struct pgp_priv_data *priv = DRVDATA(card);
 	struct blob	*blob;
@@ -1042,8 +1043,8 @@ pgp_read_binary(sc_card_t *card, unsigned int idx,
 
 /* ABI: WRITE BINARY */
 static int
-pgp_write_binary(sc_card_t *card, __unusedparam__ unsigned int idx,
-		__unusedparam__ const u8 *buf, __unusedparam__ size_t count, __unusedparam__ unsigned long flags)
+pgp_write_binary(sc_card_t *card, unsigned int idx,
+		const u8 *buf, size_t count, unsigned long flags)
 {
 	LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 }
@@ -1269,7 +1270,7 @@ pgp_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 /* ABI: set security environment */
 static int
 pgp_set_security_env(sc_card_t *card,
-		const sc_security_env_t *env, __unusedparam__ int se_num)
+		const sc_security_env_t *env, int se_num)
 {
 	struct pgp_priv_data *priv = DRVDATA(card);
 
@@ -1672,6 +1673,7 @@ static int
 pgp_parse_and_set_pubkey_output(sc_card_t *card, u8* data, size_t data_len,
                                 sc_cardctl_openpgp_keygen_info_t *key_info)
 {
+	unsigned int blob_id;
 	time_t ctime = 0;
 	u8 *in = data;
 	u8 *modulus;
@@ -1684,7 +1686,7 @@ pgp_parse_and_set_pubkey_output(sc_card_t *card, u8* data, size_t data_len,
 	LOG_TEST_RET(card->ctx, r, "Cannot store creation time");
 
 	/* Parse response. Ref: pgp_enumerate_blob() */
-	while (data + data_len > in) {
+	while (data_len > (in - data)) {
 		unsigned int cla, tag, tmptag;
 		size_t		len;
 		u8	*part = in;
@@ -1767,8 +1769,10 @@ static int pgp_update_card_algorithms(sc_card_t *card, sc_cardctl_openpgp_keygen
  **/
 static int pgp_gen_key(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_info)
 {
-        /* struct pgp_priv_data *priv = DRVDATA(card); */
+	struct pgp_priv_data *priv = DRVDATA(card);
+	struct blob *algo_blob;
 	sc_apdu_t apdu;
+	unsigned int modulus_bitlen;
 	/* Temporary variables to hold APDU params */
 	u8 apdu_case;
 	u8 *apdu_data;
@@ -1779,12 +1783,12 @@ static int pgp_gen_key(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_in
 
 	/* Set Control Reference Template for key */
 	if (key_info->keytype == SC_OPENPGP_KEY_SIGN)
-                apdu_data = (u8 *) "\xb6";
+		apdu_data = "\xb6";
 		/* As a string, apdu_data will end with '\0' (B6 00) */
 	else if (key_info->keytype == SC_OPENPGP_KEY_ENCR)
-                apdu_data = (u8 *) "\xb8";
+		apdu_data = "\xb8";
 	else if (key_info->keytype == SC_OPENPGP_KEY_AUTH)
-                apdu_data = (u8 *) "\xa4";
+		apdu_data = "\xa4";
 	else {
 		sc_log(card->ctx, "Unknown key type %X.", key_info->keytype);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
@@ -1914,7 +1918,7 @@ static int
 pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_keystore_info_t *key_info,
                                u8 **result, size_t *resultlen)
 {
-        /* struct pgp_priv_data *priv = DRVDATA(card); */
+	struct pgp_priv_data *priv = DRVDATA(card);
 	sc_context_t *ctx = card->ctx;
 	/* The Cardholder private key template (7F48) part */
 	const size_t max_prtem_len = 7*(1 + 3);     /* 7 components */
@@ -2071,7 +2075,7 @@ out2:
  **/
 static int pgp_store_key(sc_card_t *card, sc_cardctl_openpgp_keystore_info_t *key_info)
 {
-        /* struct pgp_priv_data *priv = DRVDATA(card); */
+	struct pgp_priv_data *priv = DRVDATA(card);
 	sc_context_t *ctx = card->ctx;
 	sc_cardctl_openpgp_keygen_info_t pubkey;
 	u8 *data;
@@ -2228,7 +2232,7 @@ pgp_delete_file(sc_card_t *card, const sc_path_t *path)
 /* ABI: UPDATE BINARY */
 static int
 pgp_update_binary(sc_card_t *card, unsigned int idx,
-		  const u8 *buf, size_t count, __unusedparam__ unsigned long flags)
+		  const u8 *buf, size_t count, unsigned long flags)
 {
 	struct pgp_priv_data *priv = DRVDATA(card);
 	struct blob *blob = priv->current;

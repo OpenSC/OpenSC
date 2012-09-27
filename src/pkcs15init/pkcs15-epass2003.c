@@ -32,7 +32,7 @@
 #include "libopensc/cards.h"
 #include "pkcs15-init.h"
 #include "profile.h"
-static int epass2003_pkcs15_erase_card(__unusedparam__ struct sc_profile *profile,
+static int epass2003_pkcs15_erase_card(struct sc_profile *profile,
 				       struct sc_pkcs15_card *p15card)
 {
 	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
@@ -91,7 +91,7 @@ static int epass2003_pkcs15_init_card(struct sc_profile *profile,
 
 static int epass2003_pkcs15_create_dir(struct sc_profile *profile,
 				       struct sc_pkcs15_card *p15card,
-				       __unusedparam__ struct sc_file *df)
+				       struct sc_file *df)
 {
 	struct sc_card *card = p15card->card;
 	int ret;
@@ -184,7 +184,7 @@ static int epass2003_pkcs15_create_dir(struct sc_profile *profile,
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, ret);
 }
 
-static int epass2003_pkcs15_pin_reference(__unusedparam__ struct sc_profile *profile,
+static int epass2003_pkcs15_pin_reference(struct sc_profile *profile,
 					  struct sc_pkcs15_card *p15card,
 					  struct sc_pkcs15_auth_info *auth_info)
 {
@@ -202,7 +202,7 @@ static int epass2003_pkcs15_pin_reference(__unusedparam__ struct sc_profile *pro
 
 static int epass2003_pkcs15_create_pin(struct sc_profile *profile,
 				       struct sc_pkcs15_card *p15card,
-				       __unusedparam__ struct sc_file *df,
+				       struct sc_file *df,
 				       struct sc_pkcs15_object *pin_obj,
 				       const unsigned char *pin, size_t pin_len,
 				       const unsigned char *puk, size_t puk_len)
@@ -287,7 +287,7 @@ static int epass2003_pkcs15_create_pin(struct sc_profile *profile,
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 }
 
-static int epass2003_pkcs15_key_reference(__unusedparam__ struct sc_profile *profile,
+static int epass2003_pkcs15_key_reference(struct sc_profile *profile,
 					  struct sc_pkcs15_card *p15card,
 					  struct sc_pkcs15_prkey_info *prkey)
 {
@@ -379,9 +379,9 @@ cosm_new_file(struct sc_profile *profile, struct sc_card *card,
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
 }
 
-static int epass2003_pkcs15_create_key(__unusedparam__ struct sc_profile *profile,
+static int epass2003_pkcs15_create_key(struct sc_profile *profile,
 				       struct sc_pkcs15_card *p15card,
-				       __unusedparam__ struct sc_pkcs15_object *obj)
+				       struct sc_pkcs15_object *obj)
 {
 	struct sc_card *card = p15card->card;
 
@@ -618,7 +618,7 @@ failed:
 
 static int epass2003_pkcs15_delete_object(struct sc_profile *profile,
 					  struct sc_pkcs15_card *p15card,
-					  __unusedparam__ struct sc_pkcs15_object *object,
+					  struct sc_pkcs15_object *object,
 					  const struct sc_path *path)
 {
 	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);

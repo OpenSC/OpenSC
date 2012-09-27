@@ -257,7 +257,7 @@ static int iso7816_update_record(sc_card_t *card, unsigned int rec_nr,
 
 static int iso7816_write_binary(sc_card_t *card,
 				unsigned int idx, const u8 *buf,
-				size_t count, __unusedparam__ unsigned long flags)
+				size_t count, unsigned long flags)
 {
 	sc_apdu_t apdu;
 	int r;
@@ -284,7 +284,7 @@ static int iso7816_write_binary(sc_card_t *card,
 
 static int iso7816_update_binary(sc_card_t *card,
 				 unsigned int idx, const u8 *buf,
-				size_t count, __unusedparam__ unsigned long flags)
+				size_t count, unsigned long flags)
 {
 	sc_apdu_t apdu;
 	int r;
@@ -540,7 +540,7 @@ static int iso7816_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 	return 0;
 }
 
-static int iso7816_construct_fci(__unusedparam__ sc_card_t *card, const sc_file_t *file,
+static int iso7816_construct_fci(sc_card_t *card, const sc_file_t *file,
 	u8 *out, size_t *outlen)
 {
 	u8 *p = out;
@@ -1001,7 +1001,7 @@ static int iso7816_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 	return sc_check_sw(card, apdu->sw1, apdu->sw2);
 }
 
-static int no_match(__unusedparam__ sc_card_t *card)
+static int no_match(sc_card_t *card)
 {
 	return 0;
 }

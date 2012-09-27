@@ -32,7 +32,6 @@
 #include "libopensc/asn1.h"
 #include "libopensc/cards.h"
 #include "libopensc/cardctl.h"
-#include "libopensc/log.h"
 #include "util.h"
 
 #define	OPT_RAW		256
@@ -56,10 +55,8 @@ static char *prettify_gender(char *str);
 static void display_data(const struct ef_name_map *mapping, char *value);
 static int decode_options(int argc, char **argv);
 static int do_userinfo(sc_card_t *card);
-#if I_AM_ACTUALLY_USED
 static int read_transp(sc_card_t *card, const char *pathstring, unsigned char *buf, int buflen);
 static void bintohex(char *buf, int len);
-#endif
 
 /* define global variables */
 static int actions = 0;
@@ -218,12 +215,8 @@ static void display_data(const struct ef_name_map *mapping, char *value)
 				}
 			} else {
 				const char *label = mapping->name;
-                                size_t labelLen = (int) strlen(label);
 
-                                if (labelLen > 10)
-                                  labelLen = 10;
-
-				printf("%s:%*s%s\n", label, 10 - (int) labelLen, "", value);
+				printf("%s:%*s%s\n", label, 10-strlen(label), "", value);
 			}
 		}
 	}
@@ -347,7 +340,7 @@ static int do_userinfo(sc_card_t *card)
 		buf[file->size] = '\0';
 
 		if (file->size > 0) {
-                  display_data(openpgp_data + i, (char *) buf);
+			display_data(openpgp_data + i, buf);
 		}
 	}
 
@@ -355,7 +348,6 @@ static int do_userinfo(sc_card_t *card)
 }
 
 
-#if I_AM_ACTUALLY_USED
 /* Select and read a transparent EF */
 static int read_transp(sc_card_t *card, const char *pathstring, unsigned char *buf, int buflen)
 {
@@ -374,10 +366,8 @@ static int read_transp(sc_card_t *card, const char *pathstring, unsigned char *b
 
 	return r;
 }
-#endif
 
 
-#if I_AM_ACTUALLY_USED
 /* Hex-encode the buf, 2*len+1 bytes must be reserved. E.g. {'1','2'} -> {'3','1','3','2','\0'} */
 static void bintohex(char *buf, int len)
 {
@@ -391,7 +381,6 @@ static void bintohex(char *buf, int len)
 		buf[2 * i] = hextable[c / 16];
 	}
 }
-#endif
 
 int do_genkey(sc_card_t *card, u8 key_id, unsigned int key_len)
 {
@@ -426,7 +415,7 @@ int do_genkey(sc_card_t *card, u8 key_id, unsigned int key_len)
 	return 0;
 }
 
-int do_verify(sc_card_t *card, char *type, char *pin)
+int do_verify(sc_card_t *card, u8 *type, u8* pin)
 {
 	struct sc_pin_cmd_data data;
 	int tries_left;
@@ -434,8 +423,7 @@ int do_verify(sc_card_t *card, char *type, char *pin)
 	if (!type || !pin)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
-        /* type has to be cast to char * for strncasecmp */
-	if (strncasecmp("CHV", (char *) type, 3) != 0) {
+	if (strncasecmp("CHV", type, 3) != 0) {
 		printf("Invalid PIN type. Please use CHV1, CHV2 or CHV3.\n");
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
@@ -449,7 +437,7 @@ int do_verify(sc_card_t *card, char *type, char *pin)
 	data.cmd = SC_PIN_CMD_VERIFY;
 	data.pin_type = SC_AC_CHV;
 	data.pin_reference = type[3] - '0';
-	data.pin1.data = (u8 *) pin;
+	data.pin1.data = pin;
 	data.pin1.len = strlen(pin);
 	r = sc_pin_cmd(card, &data, &tries_left);
 	return r;
@@ -511,7 +499,7 @@ int main(int argc, char **argv)
 		exit_status |= do_userinfo(card);
 
 	if (opt_verify && opt_pin) {
-          exit_status |= do_verify(card, verifytype, pin);
+		exit_status |= do_verify(card, verifytype, pin);
 	}
 
 	if (opt_genkey)

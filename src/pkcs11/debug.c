@@ -251,8 +251,8 @@ static const char *sc_pkcs11_print_ulong(int level, struct fmap *fm,
 	return sc_pkcs11_print_value(level, NULL, ptr, count);
 }
 
-static const char *sc_pkcs11_print_bool(int level, __unusedparam__ struct fmap *fm,
-                                        void *ptr, size_t count)
+static const char *sc_pkcs11_print_bool(int level, struct fmap *fm,
+		void *ptr, size_t count)
 {
 	CK_BBOOL	value;
 
@@ -266,8 +266,8 @@ static const char *sc_pkcs11_print_bool(int level, __unusedparam__ struct fmap *
 	return sc_pkcs11_print_value(level, NULL, ptr, count);
 }
 
-static const char *sc_pkcs11_print_string(__unusedparam__ int level, __unusedparam__ struct fmap *fm,
-                                          void *ptr, size_t count)
+static const char *sc_pkcs11_print_string(int level, struct fmap *fm,
+		void *ptr, size_t count)
 {
 	static char	buffer[128];
 
@@ -278,7 +278,7 @@ static const char *sc_pkcs11_print_string(__unusedparam__ int level, __unusedpar
 	return buffer;
 }
 
-static struct fmap *sc_pkcs11_map_ulong(__unusedparam__ int level, struct fmap *fm, CK_ULONG value)
+static struct fmap *sc_pkcs11_map_ulong(int level, struct fmap *fm, CK_ULONG value)
 {
 	for (; fm && fm->name; fm++) {
 		if (fm->value == value)

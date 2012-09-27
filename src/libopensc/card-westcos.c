@@ -1041,7 +1041,7 @@ static int westcos_card_ctl(sc_card_t * card, unsigned long cmd, void *ptr)
 
 static int westcos_set_security_env(sc_card_t *card,
 				    const struct sc_security_env *env,
-				    __unusedparam__ int se_num)
+				    int se_num)
 {
 	int r = 0;
 	priv_data_t *priv_data = NULL;
@@ -1081,7 +1081,7 @@ static int westcos_set_security_env(sc_card_t *card,
 	return r;
 }
 
-static int westcos_restore_security_env(sc_card_t *card, __unusedparam__ int se_num)
+static int westcos_restore_security_env(sc_card_t *card, int se_num)
 {
 	if (card == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;

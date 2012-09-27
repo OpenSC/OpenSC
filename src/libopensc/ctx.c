@@ -844,7 +844,7 @@ int sc_set_card_driver(sc_context_t *ctx, const char *short_name)
 	return SC_SUCCESS;
 }
 
-int sc_get_cache_dir(__unusedparam__ sc_context_t *ctx, char *buf, size_t bufsize)
+int sc_get_cache_dir(sc_context_t *ctx, char *buf, size_t bufsize)
 {
 	char *homedir;
 	const char *cache_dir;

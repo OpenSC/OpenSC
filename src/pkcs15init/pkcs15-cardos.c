@@ -152,8 +152,8 @@ cardos_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *d
  * See if it's good, and if it isn't, propose something better
  */
 static int
-cardos_select_pin_reference(__unusedparam__ sc_profile_t *profile, __unusedparam__ sc_pkcs15_card_t *p15card,
-                            sc_pkcs15_auth_info_t *auth_info)
+cardos_select_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
+		sc_pkcs15_auth_info_t *auth_info)
 {
 	int	preferred, current;
 
@@ -227,7 +227,7 @@ cardos_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *d
  * Select a key reference
  */
 static int
-cardos_select_key_reference(__unusedparam__ sc_profile_t *profile, __unusedparam__ sc_pkcs15_card_t *p15card,
+cardos_select_key_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 			sc_pkcs15_prkey_info_t *key_info)
 {
 	if (key_info->key_reference < CARDOS_KEY_ID_MIN)
@@ -242,8 +242,8 @@ cardos_select_key_reference(__unusedparam__ sc_profile_t *profile, __unusedparam
  * This is a no-op.
  */
 static int
-cardos_create_key(__unusedparam__ sc_profile_t *profile, __unusedparam__ sc_pkcs15_card_t *p15card,
-                  __unusedparam__ sc_pkcs15_object_t *obj)
+cardos_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
+			sc_pkcs15_object_t *obj)
 {
 	return 0;
 }
@@ -498,8 +498,8 @@ cardos_store_pin(sc_profile_t *profile, sc_card_t *card,
  * Create an empty security environment
  */
 static int
-cardos_create_sec_env(__unusedparam__ struct sc_profile *profile, sc_card_t *card,
-                      unsigned int se_id, unsigned int key_id)
+cardos_create_sec_env(struct sc_profile *profile, sc_card_t *card,
+		unsigned int se_id, unsigned int key_id)
 {
 	struct sc_cardctl_cardos_obj_info args;
 	struct tlv	tlv;

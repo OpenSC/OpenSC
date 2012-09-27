@@ -1663,7 +1663,7 @@ static int get_new_pin(sc_ui_hints_t *hints,
  * PIN retrieval callback
  */
 static int
-get_pin_callback(__unusedparam__ struct sc_profile *profile,
+get_pin_callback(struct sc_profile *profile,
 		int id, const struct sc_pkcs15_auth_info *info,
 		const char *label,
 		u8 *pinbuf, size_t *pinsize)
@@ -1791,7 +1791,7 @@ get_pin_callback(__unusedparam__ struct sc_profile *profile,
 
 
 static int
-get_key_callback(__unusedparam__ struct sc_profile *profile,
+get_key_callback(struct sc_profile *profile,
 			int method, int reference,
 			const u8 *def_key, size_t def_key_size,
 			u8 *key_buf, size_t *buf_size)
@@ -1891,7 +1891,7 @@ get_key_callback(__unusedparam__ struct sc_profile *profile,
 /*
  * Read a private key
  */
-static int pass_cb(char *buf, int len, __unusedparam__ int flags, void *d)
+static int pass_cb(char *buf, int len, int flags, void *d)
 {
 	size_t pass_len = 0;
 	int  plen, r;

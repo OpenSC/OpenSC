@@ -57,7 +57,7 @@ static int muscle_erase_card(sc_profile_t *profile, sc_pkcs15_card_t *p15card)
 }
 
 
-static int muscle_init_card(__unusedparam__ sc_profile_t *profile, __unusedparam__ sc_pkcs15_card_t *p15card)
+static int muscle_init_card(sc_profile_t *profile, sc_pkcs15_card_t *p15card)
 {
 	return 0;
 }
@@ -88,8 +88,8 @@ muscle_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *d
 static int
 muscle_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	sc_file_t *df, sc_pkcs15_object_t *pin_obj,
-	__unusedparam__ const unsigned char *pin, __unusedparam__ size_t pin_len,
-	__unusedparam__ const unsigned char *puk, __unusedparam__ size_t puk_len)
+	const unsigned char *pin, size_t pin_len,
+	const unsigned char *puk, size_t puk_len)
 {
 	sc_file_t *file;
 	sc_pkcs15_auth_info_t *auth_info = (sc_pkcs15_auth_info_t *) pin_obj->data;
@@ -105,8 +105,8 @@ muscle_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 }
 
 static int
-muscle_select_pin_reference(__unusedparam__ sc_profile_t *profile, __unusedparam__ sc_pkcs15_card_t *p15card,
-                            sc_pkcs15_auth_info_t *auth_info)
+muscle_select_pin_reference(sc_profile_t *profike, sc_pkcs15_card_t *p15card,
+		sc_pkcs15_auth_info_t *auth_info)
 {
 	int	preferred;
 
@@ -134,8 +134,8 @@ muscle_select_pin_reference(__unusedparam__ sc_profile_t *profile, __unusedparam
  * Select a key reference
  */
 static int
-muscle_select_key_reference(__unusedparam__ sc_profile_t *profile, __unusedparam__ sc_pkcs15_card_t *p15card,
-                            sc_pkcs15_prkey_info_t *key_info)
+muscle_select_key_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
+			sc_pkcs15_prkey_info_t *key_info)
 {
 	if (key_info->key_reference < MUSCLE_KEY_ID_MIN)
 		key_info->key_reference = MUSCLE_KEY_ID_MIN;
@@ -149,8 +149,8 @@ muscle_select_key_reference(__unusedparam__ sc_profile_t *profile, __unusedparam
  * This is a no-op.
  */
 static int
-muscle_create_key(__unusedparam__ sc_profile_t *profile, __unusedparam__ sc_pkcs15_card_t *p15card,
-                  __unusedparam__ sc_pkcs15_object_t *obj)
+muscle_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
+			sc_pkcs15_object_t *obj)
 {
 	return 0;
 }

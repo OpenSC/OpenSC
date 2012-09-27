@@ -98,7 +98,7 @@ static int sc_pkcs15emu_add_pin(sc_pkcs15_card_t *p15card,
 static int sc_pkcs15emu_add_prkey(sc_pkcs15_card_t *p15card,
                 const sc_pkcs15_id_t *id,
                 const char *label,
-                __unusedparam__ int type, unsigned int modulus_length, int usage,
+                int type, unsigned int modulus_length, int usage,
                 const sc_path_t *path, int ref,
                 const sc_pkcs15_id_t *auth_id, int obj_flags)
 {
@@ -130,7 +130,7 @@ static int sc_pkcs15emu_add_prkey(sc_pkcs15_card_t *p15card,
 }
 
 static int sc_pkcs15emu_add_cert(sc_pkcs15_card_t *p15card,
-	__unusedparam__ int type, int authority, const sc_path_t *path,
+	int type, int authority, const sc_path_t *path,
 	const sc_pkcs15_id_t *id, const char *label, int obj_flags)
 {
 	/* const char *label = "Certificate"; */

@@ -42,7 +42,7 @@ static int sc_card_sm_check(sc_card_t *card);
 
 int sc_check_sw(sc_card_t *card, unsigned int sw1, unsigned int sw2)
 {
-	if (card == NULL || card->ops == NULL)
+	if (card == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	if (card->ops->check_sw == NULL)
 		return SC_ERROR_NOT_SUPPORTED;
@@ -957,7 +957,7 @@ scconf_block *_sc_match_atr_block(sc_context_t *ctx, struct sc_card_driver *driv
 	return NULL;
 }
 
-int _sc_add_atr(__unusedparam__ sc_context_t *ctx, struct sc_card_driver *driver, struct sc_atr_table *src)
+int _sc_add_atr(sc_context_t *ctx, struct sc_card_driver *driver, struct sc_atr_table *src)
 {
 	struct sc_atr_table *map, *dst;
 
@@ -992,7 +992,7 @@ int _sc_add_atr(__unusedparam__ sc_context_t *ctx, struct sc_card_driver *driver
 	return SC_SUCCESS;
 }
 
-int _sc_free_atr(__unusedparam__ sc_context_t *ctx, struct sc_card_driver *driver)
+int _sc_free_atr(sc_context_t *ctx, struct sc_card_driver *driver)
 {
 	unsigned int i;
 

@@ -134,8 +134,8 @@ sc_pkcs15_decode_skdf_entry(struct sc_pkcs15_card *p15card, struct sc_pkcs15_obj
 
 
 int sc_pkcs15_encode_skdf_entry(struct sc_context *ctx,
-				 __unusedparam__ const struct sc_pkcs15_object *obj,
-				 __unusedparam__ u8 **buf, __unusedparam__ size_t *buflen)
+				 const struct sc_pkcs15_object *obj,
+				 u8 **buf, size_t *buflen)
 {
 #if 0
 	struct sc_asn1_entry asn1_com_key_attr[6], asn1_com_skey_attr[1];

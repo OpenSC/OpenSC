@@ -314,8 +314,8 @@ static int asepcos_select_file(sc_card_t *card, const sc_path_t *in_path,
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 }
 
-static int asepcos_set_security_env(__unusedparam__ sc_card_t *card,
-                                    __unusedparam__ const sc_security_env_t *env, __unusedparam__ int se_num)
+static int asepcos_set_security_env(sc_card_t *card,
+	const sc_security_env_t *env, int se_num)
 {
 #if 0
 	/* this function doesn't seem to be necessary if RSA ENCRYPT DECRYPT
@@ -841,8 +841,8 @@ static int asepcos_delete_file(sc_card_t *card, const sc_path_t *path)
 /* returns the default transport key (note: this should be put in the 
  * pkcs15 profile file).
  */
-static int asepcos_get_default_key(__unusedparam__ sc_card_t *card,
-                                   struct sc_cardctl_default_key *data)
+static int asepcos_get_default_key(sc_card_t *card,
+	struct sc_cardctl_default_key *data)
 {
 	static const u8 asepcos_def_key[] = {0x41,0x53,0x45,0x43,0x41,0x52,0x44,0x2b};
 	if (data->method != SC_AC_CHV && data->method != SC_AC_AUT)
@@ -923,8 +923,8 @@ static int asepcos_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 /* build the different APDUs for the PIN handling commands
  */
 static int asepcos_build_pin_apdu(sc_card_t *card, sc_apdu_t *apdu,
-                                  struct sc_pin_cmd_data *data, u8 *buf, __unusedparam__ size_t buf_len,
-                                  unsigned int cmd, int is_puk)
+	struct sc_pin_cmd_data *data, u8 *buf, size_t buf_len,
+	unsigned int cmd, int is_puk)
 {
 	int r, fileid;
 	u8  *p = buf;

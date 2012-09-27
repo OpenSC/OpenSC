@@ -257,7 +257,7 @@ add_acl_entry(sc_card_t *card, sc_file_t *file, unsigned int op, u8 nibble)
 }
 
 static int
-cryptoflex_get_ac_keys(__unusedparam__ sc_card_t *card, __unusedparam__ sc_file_t *file)
+cryptoflex_get_ac_keys(sc_card_t *card, sc_file_t *file)
 {
 #if 0
 	sc_apdu_t apdu;
@@ -971,7 +971,7 @@ static int flex_create_file(sc_card_t *card, sc_file_t *file)
 
 static int flex_set_security_env(sc_card_t *card,
 				 const sc_security_env_t *env,
-				 __unusedparam__ int se_num)   
+				 int se_num)   
 {
 	struct flex_private_data *prv = (struct flex_private_data *) card->drv_data;
 
@@ -1009,7 +1009,7 @@ static int flex_set_security_env(sc_card_t *card,
 	return 0;
 }
 
-static int flex_restore_security_env(__unusedparam__ sc_card_t *card, __unusedparam__ int se_num)
+static int flex_restore_security_env(sc_card_t *card, int se_num)
 {
 	return 0;
 }
@@ -1286,7 +1286,7 @@ static void flex_init_pin_info(struct sc_pin_cmd_pin *pin, unsigned int num)
 }
 
 static int flex_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
-			__unusedparam__ int *tries_left)
+			int *tries_left)
 {
 	sc_apdu_t apdu;
 	int r;

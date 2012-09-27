@@ -39,7 +39,7 @@
  * Erase the card
  */
 static int
-jcop_erase_card(__unusedparam__ struct sc_profile *pro, __unusedparam__ sc_pkcs15_card_t *p15card) {
+jcop_erase_card(struct sc_profile *pro, sc_pkcs15_card_t *p15card) {
      /* later */
      return SC_ERROR_NOT_SUPPORTED;
 }
@@ -60,7 +60,7 @@ jcop_init_app(sc_profile_t *profile, sc_card_t *card,
 #else
 
 static int
-jcop_create_dir(__unusedparam__ sc_profile_t *profile, __unusedparam__ sc_pkcs15_card_t *p15card, __unusedparam__ sc_file_t *file)
+jcop_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *file)
 {
      return SC_ERROR_NOT_SUPPORTED;
 };
@@ -72,9 +72,8 @@ jcop_create_dir(__unusedparam__ sc_profile_t *profile, __unusedparam__ sc_pkcs15
  * Select a PIN reference
  */
 static int
-jcop_select_pin_reference(__unusedparam__ sc_profile_t *profile, __unusedparam__ sc_pkcs15_card_t *p15card,
-                          sc_pkcs15_auth_info_t *auth_info)
-{
+jcop_select_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
+                sc_pkcs15_auth_info_t *auth_info) {
         int     preferred, current;
 
 	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
@@ -102,7 +101,7 @@ jcop_select_pin_reference(__unusedparam__ sc_profile_t *profile, __unusedparam__
  * Store a PIN
  */
 static int
-jcop_create_pin(__unusedparam__ sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *df,
+jcop_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *df,
                 sc_pkcs15_object_t *pin_obj,
                 const unsigned char *pin, size_t pin_len,
                 const unsigned char *puk, size_t puk_len)

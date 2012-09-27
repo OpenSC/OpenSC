@@ -567,7 +567,7 @@ static int tcos_set_security_env(sc_card_t *card, const sc_security_env_t *env, 
 }
 
 
-static int tcos_restore_security_env(__unusedparam__ sc_card_t *card, __unusedparam__ int se_num)
+static int tcos_restore_security_env(sc_card_t *card, int se_num)
 {
 	return 0;
 }
@@ -684,7 +684,7 @@ static int tcos_decipher(sc_card_t *card, const u8 * crgram, size_t crgram_len, 
 /* Issue the SET PERMANENT command.  With ENABLE_NULLPIN set the
    NullPIN method will be activated, otherwise the permanent operation
    will be done on the active file. */
-static int tcos_setperm(sc_card_t *card, __unusedparam__ int enable_nullpin)
+static int tcos_setperm(sc_card_t *card, int enable_nullpin)
 {
 	int r;
 	sc_apdu_t apdu;

@@ -97,7 +97,7 @@ static int	gpk_read_rsa_key(sc_card_t *, struct sc_pkcs15_pubkey_rsa *);
  * Erase the card
  */
 static int
-gpk_erase_card(__unusedparam__ struct sc_profile *pro, sc_pkcs15_card_t *p15card)
+gpk_erase_card(struct sc_profile *pro, sc_pkcs15_card_t *p15card)
 {
 	int	locked;
 
@@ -161,8 +161,8 @@ gpk_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *df)
  * Select a PIN reference
  */
 static int
-gpk_select_pin_reference(__unusedparam__ sc_profile_t *profile, sc_pkcs15_card_t *p15card,
-                         sc_pkcs15_auth_info_t *auth_info)
+gpk_select_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
+		sc_pkcs15_auth_info_t *auth_info)
 {
 	int	preferred, current;
 
@@ -197,10 +197,10 @@ gpk_select_pin_reference(__unusedparam__ sc_profile_t *profile, sc_pkcs15_card_t
  * Store a PIN
  */
 static int
-gpk_create_pin(__unusedparam__ sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *df,
-               sc_pkcs15_object_t *pin_obj,
-               const u8 *pin, size_t pin_len,
-               const u8 *puk, size_t puk_len)
+gpk_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *df,
+		sc_pkcs15_object_t *pin_obj,
+		const u8 *pin, size_t pin_len,
+		const u8 *puk, size_t puk_len)
 {
 	sc_pkcs15_auth_info_t *auth_info = (sc_pkcs15_auth_info_t *) pin_obj->data;
 	struct sc_pkcs15_pin_attributes *pin_attrs = &auth_info->attrs.pin;
@@ -510,9 +510,9 @@ gpk_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
  * On-board key generation.
  */
 static int
-gpk_generate_key(__unusedparam__ sc_profile_t *profile, sc_pkcs15_card_t *p15card,
-                 sc_pkcs15_object_t *obj,
-                 sc_pkcs15_pubkey_t *pubkey)
+gpk_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
+                        sc_pkcs15_object_t *obj,
+                        sc_pkcs15_pubkey_t *pubkey)
 {
 	struct sc_cardctl_gpk_genkey args;
 	sc_pkcs15_prkey_info_t *key_info = (sc_pkcs15_prkey_info_t *) obj->data;
@@ -733,8 +733,8 @@ out:	if (tmp)
 }
 
 static int
-gpk_pkfile_update_public(__unusedparam__ struct sc_profile *profile,
-                         sc_pkcs15_card_t *p15card, struct pkpart *part)
+gpk_pkfile_update_public(struct sc_profile *profile,
+		sc_pkcs15_card_t *p15card, struct pkpart *part)
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	struct pkcomp	*pe;
@@ -930,9 +930,9 @@ gpk_add_bignum(struct pkpart *part, unsigned int tag,
 	/* printf("TAG 0x%02x, len=%u\n", tag, comp->size); */
 }
 
-static int gpk_encode_rsa_key(__unusedparam__ sc_profile_t *profile, sc_card_t *card,
-                              struct sc_pkcs15_prkey_rsa *rsa, struct pkdata *p,
-                              sc_pkcs15_prkey_info_t *info)
+static int gpk_encode_rsa_key(sc_profile_t *profile, sc_card_t *card,
+		struct sc_pkcs15_prkey_rsa *rsa, struct pkdata *p,
+		sc_pkcs15_prkey_info_t *info)
 {
 	if (!rsa->modulus.len || !rsa->exponent.len) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
@@ -1007,9 +1007,9 @@ static int gpk_encode_rsa_key(__unusedparam__ sc_profile_t *profile, sc_card_t *
  * DSA with 512 as well as 1024 bits, but all byte sizes shown
  * in the tables are 512 bits only...
  */
-static int gpk_encode_dsa_key(__unusedparam__ sc_profile_t *profile, sc_card_t *card,
-                              struct sc_pkcs15_prkey_dsa *dsa, struct pkdata *p,
-                              sc_pkcs15_prkey_info_t *info)
+static int gpk_encode_dsa_key(sc_profile_t *profile, sc_card_t *card,
+		struct sc_pkcs15_prkey_dsa *dsa, struct pkdata *p,
+		sc_pkcs15_prkey_info_t *info)
 {
 	if (!dsa->p.len || !dsa->q.len || !dsa->g.len
 	 || !dsa->pub.len || !dsa->priv.len) {
