@@ -239,7 +239,8 @@ static int sc_hsm_decode_ecdsa_signature(sc_card_t *card,
 					const u8 * data, size_t datalen,
 					u8 * out, size_t outlen) {
 
-	int fieldsizebytes, i, r;
+        size_t fieldsizebytes;
+        int i, r;
 	const u8 *body, *tag;
 	size_t bodylen, taglen;
 
@@ -258,7 +259,7 @@ static int sc_hsm_decode_ecdsa_signature(sc_card_t *card,
 
 	sc_log(card->ctx, "Field size %d, signature buffer size %d", fieldsizebytes, outlen);
 
-	if (outlen < (fieldsizebytes * 2)) {
+	if (outlen < (fieldsizebytes * 2l)) {
 		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_DATA, "output too small for EC signature");
 	}
 	memset(out, 0, outlen);
@@ -331,9 +332,12 @@ static int sc_hsm_compute_signature(sc_card_t *card,
 
 		if ((priv->algorithm & 0xF0) == ALGO_EC_RAW) {
 			len = sc_hsm_decode_ecdsa_signature(card, apdu.resp, apdu.resplen, out, outlen);
+#if 0
+                        /* size_t is unsigned, so this test is nonsensical */
 			if (len < 0) {
 				LOG_FUNC_RETURN(card->ctx, len);
 			}
+#endif
 		} else {
 			len = apdu.resplen > outlen ? outlen : apdu.resplen;
 			memcpy(out, apdu.resp, len);
@@ -412,7 +416,7 @@ static int sc_hsm_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 	}
 
 	serial->len = strlen(priv->serialno);
-	strncpy(serial->value, priv->serialno, sizeof(serial->value));
+	memcpy(serial->value, priv->serialno, serial->len + 1);
 	return 0;
 }
 

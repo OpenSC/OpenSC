@@ -125,9 +125,11 @@ static int	sc_pkcs15init_qualify_pin(struct sc_card *, const char *,
 	       		unsigned int, struct sc_pkcs15_auth_info *);
 static struct sc_pkcs15_df * find_df_by_type(struct sc_pkcs15_card *,
 			unsigned int);
+#if I_AM_ACTUALLY_USED_SOMEDAY
 static int	sc_pkcs15init_read_info(struct sc_card *card, struct sc_profile *);
 static int	sc_pkcs15init_parse_info(struct sc_card *, const unsigned char *, size_t,
 			struct sc_profile *);
+#endif
 static int	sc_pkcs15init_write_info(struct sc_pkcs15_card *, struct sc_profile *,
 			struct sc_pkcs15_object *);
 
@@ -3725,6 +3727,7 @@ sc_pkcs15init_qualify_pin(struct sc_card *card, const char *pin_name,
 }
 
 
+#if I_AM_ACTUALLY_USED_SOMEDAY
 /*
  * Get the list of options from the card, if it specifies them
  */
@@ -3759,8 +3762,10 @@ sc_pkcs15init_read_info(struct sc_card *card, struct sc_profile *profile)
 		free(mem);
 	return r;
 }
+#endif
 
 
+#if I_AM_ACTUALLY_USED_SOMEDAY
 static int
 set_info_string(char **strp, const u8 *p, size_t len)
 {
@@ -3775,7 +3780,9 @@ set_info_string(char **strp, const u8 *p, size_t len)
 	*strp = s;
 	return SC_SUCCESS;
 }
+#endif
 
+#if I_AM_ACTUALLY_USED_SOMEDAY
 /*
  * Parse OpenSC Info file. We rudely clobber any information
  * given on the command line.
@@ -3787,7 +3794,7 @@ set_info_string(char **strp, const u8 *p, size_t len)
  */
 static int
 sc_pkcs15init_parse_info(struct sc_card *card,
-		const unsigned char *p, size_t len, struct sc_profile *profile)
+                         const unsigned char *p, size_t len, struct sc_profile *profile)
 {
 	unsigned char	tag;
 	const unsigned char *end;
@@ -3838,6 +3845,7 @@ error:
 	sc_log(card->ctx, "OpenSC info file corrupted");
 	return SC_ERROR_PKCS15INIT;
 }
+#endif
 
 
 static int

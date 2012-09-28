@@ -154,6 +154,24 @@ static unsigned int pcsc_proto_to_opensc(DWORD proto)
 	}
 }
 
+static const char *pcsc_proto_to_string(unsigned int proto) {
+  switch (proto) {
+  case SC_PROTO_T0:
+    return "T0 protocol";
+    break;
+  case SC_PROTO_T1:
+    return "T1 protocol";
+    break;
+  case SC_PROTO_RAW:
+    return "RAW protocol";
+    break;
+  default:
+    break;
+  }
+
+  return "!!INVALID!! protocol";
+}
+
 static DWORD opensc_proto_to_pcsc(unsigned int proto)
 {
 	switch (proto) {
@@ -476,7 +494,7 @@ static int pcsc_connect(sc_reader_t *reader)
 	reader->active_protocol = pcsc_proto_to_opensc(active_proto);
 	priv->pcsc_card = card_handle;
 
-	sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "Initial protocol: %s", reader->active_protocol == SC_PROTO_T1 ? "T=1" : "T=0");
+	sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "Initial protocol: %s", pcsc_proto_to_string(reader->active_protocol));
 
 	/* Check if we need a specific protocol. refresh_attributes above already sets the ATR */
 	if (check_forced_protocol(reader->ctx, &reader->atr, &tmp)) {
@@ -1708,9 +1726,8 @@ static int transform_pace_input(
         struct establish_pace_channel_input *pace_input,
         u8 *sbuf, size_t *scount)
 {
-	char dbuf[SC_MAX_APDU_BUFFER_SIZE * 3];
     u8 *p = sbuf;
-    uint16_t lengthInputData, lengthCertificateDescription;
+    size_t lengthInputData, lengthCertificateDescription;
     uint8_t lengthCHAT, lengthPIN;
 
     if (!pace_input || !sbuf || !scount)

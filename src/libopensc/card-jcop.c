@@ -642,7 +642,8 @@ static int jcop_set_security_env(sc_card_t *card,
                 if (tmp.algorithm_flags & SC_ALGORITHM_RSA_HASH_MD5)
                         tmp.algorithm_ref |= 0x20;
 
-		memcpy(env, &tmp, sizeof(struct sc_security_env));
+                /* NOTE: Have to break env's const-ness here to update the environment (???) */
+		memcpy((struct sc_security_env *) env, &tmp, sizeof(struct sc_security_env));
 	}
 	
         sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0xC1, 0);
@@ -696,6 +697,7 @@ static int jcop_set_security_env(sc_card_t *card,
 	drvdata->invalid_senv=0;
 	return 0;
 }
+
 static int jcop_compute_signature(sc_card_t *card,
 				  const u8 * data, size_t datalen,
 				  u8 * out, size_t outlen) {
