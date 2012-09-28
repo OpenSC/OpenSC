@@ -42,7 +42,7 @@ static int sc_card_sm_check(sc_card_t *card);
 
 int sc_check_sw(sc_card_t *card, unsigned int sw1, unsigned int sw2)
 {
-	if (card == NULL)
+	if (card == NULL || card->ops == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	if (card->ops->check_sw == NULL)
 		return SC_ERROR_NOT_SUPPORTED;

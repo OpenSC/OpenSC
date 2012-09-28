@@ -9,7 +9,7 @@ dist_noinst_DATA = \
 	compat_getopt_main.c \
 	README.compat_strlcpy compat_strlcpy.3
 
-INCLUDES = -I$(top_srcdir)/src
+AM_CPPFLAGS = -I$(top_srcdir)/src
 
 libcompat_la_SOURCES = \
 	compat_dummy.c \

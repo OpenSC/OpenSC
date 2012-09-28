@@ -2011,7 +2011,7 @@ static int piv_compute_signature(sc_card_t *card,
 	piv_private_data_t * priv = PIV_DATA(card);
 	int r;
 	int i;
-	int nLen;
+	size_t nLen;
 	u8 rbuf[128]; /* For EC conversions  384 will fit */
 	size_t rbuflen = sizeof(rbuf);
 	const u8 * body;
@@ -2031,7 +2031,7 @@ static int piv_compute_signature(sc_card_t *card,
 
 	if (priv->alg_id == 0x11 || priv->alg_id == 0x14 ) {
 		nLen = (priv->key_size + 7) / 8;
-		if (outlen < 2*nLen) {
+		if (outlen < 2l * nLen) {
 			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL," output too small for EC signature %d < %d", outlen, 2*nLen);
 			r = SC_ERROR_INVALID_DATA;
 			goto err;
@@ -2603,7 +2603,7 @@ static int piv_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 	 */
 	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
 	if (data->cmd == SC_PIN_CMD_CHANGE) {
-		int i = 0;
+		size_t i = 0;
 		if (data->pin2.len < 6) {
 			return SC_ERROR_INVALID_PIN_LENGTH;
 		}
