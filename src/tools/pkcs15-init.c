@@ -1005,12 +1005,12 @@ is_cacert_already_present(struct sc_pkcs15init_certargs *args)
 		if (r < 0 || !cert)
 			continue;
 
-		if (cert->data_len == args->der_encoded.len
-		     && !memcmp(cert->data, args->der_encoded.value,
-				     cert->data_len)) {
+		if (cert->data.len == args->der_encoded.len
+				&& !memcmp(cert->data.value, args->der_encoded.value, cert->data.len)) {
 			sc_pkcs15_free_certificate(cert);
 			return 1;
 		}
+
 		sc_pkcs15_free_certificate(cert);
 		cert=NULL;
 	}
@@ -1087,8 +1087,8 @@ do_read_check_certificate(sc_pkcs15_cert_t *sc_oldcert,
 	int r;
 
 	/* Get the public key from the old cert */
-	ptr = sc_oldcert->data;
-	oldcert = d2i_X509(NULL, &ptr, sc_oldcert->data_len);
+	ptr = sc_oldcert->data.value;
+	oldcert = d2i_X509(NULL, &ptr, sc_oldcert->data.len);
 
 	if (oldcert == NULL)
 		return SC_ERROR_INTERNAL;

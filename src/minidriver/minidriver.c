@@ -1141,9 +1141,9 @@ md_fs_read_content(PCARD_DATA pCardData, char *parent, struct md_file *file)
 				return;
 			}
 
-			file->size = cert->data_len;
-			file->blob = pCardData->pfnCspAlloc(cert->data_len);
-			CopyMemory(file->blob, cert->data, cert->data_len);
+			file->size = cert->data.len;
+			file->blob = pCardData->pfnCspAlloc(cert->data.len);
+			CopyMemory(file->blob, cert->data.value, cert->data.len);
 			sc_pkcs15_free_certificate(cert);
 		}
 	}

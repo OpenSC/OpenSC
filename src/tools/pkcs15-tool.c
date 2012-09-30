@@ -388,7 +388,7 @@ static int read_certificate(void)
 			fprintf(stderr, "Certificate read failed: %s\n", sc_strerror(r));
 			return 1;
 		}
-		r = print_pem_object("CERTIFICATE", cert->data, cert->data_len);
+		r = print_pem_object("CERTIFICATE", cert->data.value, cert->data.len);
 		sc_pkcs15_free_certificate(cert);
 		return r;
 	}

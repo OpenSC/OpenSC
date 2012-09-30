@@ -100,7 +100,7 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 		
 		memset(&cert_info, 0, sizeof(cert_info));
 		memset(&cert_obj, 0, sizeof(cert_obj));
-		
+
 		cert_info.id.value[0] = esteid_cert_ids[i];
 		cert_info.id.len = 1;
 		sc_format_path(esteid_cert_paths[i], &cert_info.path);
@@ -117,7 +117,7 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 			unsigned char *tmp = NULL;
 			r = sc_pkcs15_read_certificate(p15card, &cert_info, &cert);
 			if (r == SC_SUCCESS) {
-				mem = BIO_new_mem_buf(cert->data, cert->data_len);
+				mem = BIO_new_mem_buf(cert->data.value, cert->data.len);
 				if (!mem)
 					return SC_ERROR_INTERNAL;
 				x509 = d2i_X509_bio(mem, NULL);

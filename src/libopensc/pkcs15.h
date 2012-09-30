@@ -287,8 +287,9 @@ struct sc_pkcs15_cert {
 	size_t crl_len;
 
 	struct sc_pkcs15_pubkey * key;
-	u8 *data;	/* DER encoded raw cert */
-	size_t data_len;
+
+	/* DER encoded raw cert */
+	struct sc_pkcs15_der data;
 };
 typedef struct sc_pkcs15_cert sc_pkcs15_cert_t;
 
