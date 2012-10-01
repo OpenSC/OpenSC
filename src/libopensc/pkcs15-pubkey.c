@@ -804,6 +804,8 @@ sc_pkcs15_erase_pubkey(struct sc_pkcs15_pubkey *key)
 void
 sc_pkcs15_free_pubkey(struct sc_pkcs15_pubkey *key)
 {
+	if (!key)
+		return;
 	sc_pkcs15_erase_pubkey(key);
 	free(key);
 }

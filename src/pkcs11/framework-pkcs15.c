@@ -395,13 +395,14 @@ __pkcs15_delete_object(struct pkcs15_fw_data *fw_data, struct pkcs15_any_object 
 	if (fw_data->num_objects == 0)
 		return SC_ERROR_INTERNAL;
 
-	for (i = 0; i < fw_data->num_objects; ++i)
+	for (i = 0; i < fw_data->num_objects; ++i)   {
 		if (fw_data->objects[i] == obj) {
 			fw_data->objects[i] = fw_data->objects[--fw_data->num_objects];
 			if (__pkcs15_release_object(obj) > 0)
 				return SC_ERROR_INTERNAL;
 			return SC_SUCCESS;
 		}
+	}
 	return SC_ERROR_OBJECT_NOT_FOUND;
 }
 #endif
@@ -470,39 +471,29 @@ out:
 
 
 static int
-public_key_created(struct pkcs15_fw_data *fw_data, const unsigned int num_objects,
-			      const unsigned char *id, const size_t size_id,
-			      struct pkcs15_any_object **obj2)
+public_key_created(struct pkcs15_fw_data *fw_data, const struct sc_pkcs15_id *id,
+		struct pkcs15_any_object **obj2)
 {
-	int found = 0;
-	unsigned int ii=0;
+	size_t ii;
 
-	while(ii<num_objects && !found) {
-		if (!fw_data->objects[ii]->p15_object) {
-			ii++;
+	for(ii=0; ii<fw_data->num_objects; ii++) {
+		struct pkcs15_any_object *any_object = fw_data->objects[ii];
+		struct sc_pkcs15_object *p15_object = any_object->p15_object;
+
+		if (!p15_object)
 			continue;
-		}
-		if ((fw_data->objects[ii]->p15_object->type != SC_PKCS15_TYPE_PUBKEY) &&
-		    (fw_data->objects[ii]->p15_object->type != SC_PKCS15_TYPE_PUBKEY_RSA) &&
-		    (fw_data->objects[ii]->p15_object->type != SC_PKCS15_TYPE_PUBKEY_DSA) &&
-		    (fw_data->objects[ii]->p15_object->type != SC_PKCS15_TYPE_PUBKEY_EC) &&
-		    (fw_data->objects[ii]->p15_object->type != SC_PKCS15_TYPE_PUBKEY_GOSTR3410)) {
-			ii++;
+
+		if ((p15_object->type & SC_PKCS15_TYPE_CLASS_MASK) != SC_PKCS15_TYPE_PUBKEY)
 			continue;
+
+		if (sc_pkcs15_compare_id(id, &((struct sc_pkcs15_pubkey_info *)p15_object->data)->id))   {
+			if (obj2)
+				*obj2 = any_object;
+			return SC_SUCCESS;
 		}
-		/* XXX this is somewhat dirty as this assumes that the first
-		 * member of the is the pkcs15 id */
-		if (memcmp(fw_data->objects[ii]->p15_object->data, id, size_id) == 0) {
-			*obj2 = (struct pkcs15_any_object *) fw_data->objects[ii];
-			found=1;
-		} else
-			ii++;
 	}
 
-	if (found)
-		return SC_SUCCESS;
-	else
-		return SC_ERROR_OBJECT_NOT_FOUND;
+	return SC_ERROR_OBJECT_NOT_FOUND;
 }
 
 
@@ -537,8 +528,7 @@ __pkcs15_create_cert_object(struct pkcs15_fw_data *fw_data, struct sc_pkcs15_obj
 	object->cert_data = p15_cert;
 
 	/* Corresponding public key */
-	rv = public_key_created(fw_data, fw_data->num_objects, p15_info->id.value, p15_info->id.len,
-			(struct pkcs15_any_object **) &obj2);
+	rv = public_key_created(fw_data, &p15_info->id, (struct pkcs15_any_object **) &obj2);
 	if (rv != SC_SUCCESS)
 		rv = __pkcs15_create_object(fw_data, (struct pkcs15_any_object **) &obj2,
 				NULL, &pkcs15_pubkey_ops, sizeof(struct pkcs15_pubkey_object));
@@ -546,17 +536,11 @@ __pkcs15_create_cert_object(struct pkcs15_fw_data *fw_data, struct sc_pkcs15_obj
 		return rv;
 
 	if (p15_cert) {
-		 /* we take the pubkey from the cert, as it in not needed */
-		obj2->pub_data = p15_cert->key;
-		/* invalidate public data of the cert object so that sc_pkcs15_cert_free
-		 * does not free the public key data as well (something like
-		 * sc_pkcs15_pubkey_dup would have been nice here) -- Nils
-		 */
-		p15_cert->key = NULL;
-
-	}
-	else   {
-		obj2->pub_data = NULL; /* will copy from cert when cert is read */
+		 /* make a copy of public key from the cert */
+		if (!obj2->pub_data)
+			rv = sc_pkcs15_pubkey_from_cert(context, &p15_cert->data, &obj2->pub_data);
+		if (rv < 0)
+			return rv;
 	}
 
 	obj2->pub_genfrom = object;
@@ -600,8 +584,7 @@ __pkcs15_create_pubkey_object(struct pkcs15_fw_data *fw_data,
 
 	/* Public key object */
 	rv = __pkcs15_create_object(fw_data, (struct pkcs15_any_object **) &object,
-					pubkey, &pkcs15_pubkey_ops,
-					sizeof(struct pkcs15_pubkey_object));
+			pubkey, &pkcs15_pubkey_ops, sizeof(struct pkcs15_pubkey_object));
 	if (rv >= 0) {
 		object->pub_info = (struct sc_pkcs15_pubkey_info *) pubkey->data;
 		object->pub_data = p15_key;
@@ -643,8 +626,7 @@ __pkcs15_create_data_object(struct pkcs15_fw_data *fw_data,
 	int rv;
 
 	rv = __pkcs15_create_object(fw_data, (struct pkcs15_any_object **) &dobj,
-			object, &pkcs15_dobj_ops,
-			sizeof(struct pkcs15_data_object));
+			object, &pkcs15_dobj_ops, sizeof(struct pkcs15_data_object));
 	if (rv >= 0)   {
 	    dobj->info = (struct sc_pkcs15_data_info *) object->data;
 	    dobj->value = NULL;
@@ -665,11 +647,9 @@ __pkcs15_create_secret_key_object(struct pkcs15_fw_data *fw_data,
 	int rv;
 
 	rv = __pkcs15_create_object(fw_data, (struct pkcs15_any_object **) &skey,
-			object, &pkcs15_skey_ops,
-			sizeof(struct pkcs15_skey_object));
-	if (rv >= 0)   {
+			object, &pkcs15_skey_ops, sizeof(struct pkcs15_skey_object));
+	if (rv >= 0)
 	    skey->info = (struct sc_pkcs15_skey_info *) object->data;
-	}
 
 	if (skey_object != NULL)
 		*skey_object = (struct pkcs15_any_object *) skey;
@@ -677,12 +657,11 @@ __pkcs15_create_secret_key_object(struct pkcs15_fw_data *fw_data,
 	return 0;
 }
 
+
 static int
-pkcs15_create_pkcs11_objects(struct pkcs15_fw_data *fw_data,
-			     int p15_type, const char *name,
-			     int (*create)(struct pkcs15_fw_data *,
-				     struct sc_pkcs15_object *,
-				     struct pkcs15_any_object **any_object))
+pkcs15_create_pkcs11_objects(struct pkcs15_fw_data *fw_data, int p15_type, const char *name,
+		int (*create)(struct pkcs15_fw_data *, struct sc_pkcs15_object *,
+			struct pkcs15_any_object **any_object))
 {
 	struct sc_pkcs15_object *p15_object[MAX_OBJECTS];
 	int i, count, rv;
@@ -701,7 +680,7 @@ pkcs15_create_pkcs11_objects(struct pkcs15_fw_data *fw_data,
 static void
 __pkcs15_prkey_bind_related(struct pkcs15_fw_data *fw_data, struct pkcs15_prkey_object *pk)
 {
-	sc_pkcs15_id_t *id = &pk->prv_info->id;
+	struct sc_pkcs15_id *id = &pk->prv_info->id;
 	unsigned int i;
 
 	sc_log(context, "Object is a private key and has id %s", sc_pkcs15_print_id(id));
@@ -743,11 +722,10 @@ static void
 __pkcs15_cert_bind_related(struct pkcs15_fw_data *fw_data, struct pkcs15_cert_object *cert)
 {
 	struct sc_pkcs15_cert *c1 = cert->cert_data;
-	sc_pkcs15_id_t *id = &cert->cert_info->id;
+	struct sc_pkcs15_id *id = &cert->cert_info->id;
 	unsigned int i;
 
-	sc_log(context, "Object is a certificate and has id %s",
-	         sc_pkcs15_print_id(id));
+	sc_log(context, "Object is a certificate and has id %s", sc_pkcs15_print_id(id));
 
 	/* Loop over all objects to see if we find the certificate of
 	 * the issuer and the associated private key */
@@ -811,8 +789,8 @@ pkcs15_bind_related_objects(struct pkcs15_fw_data *fw_data)
 static int
 check_cert_data_read(struct pkcs15_fw_data *fw_data, struct pkcs15_cert_object *cert)
 {
-	int rv;
 	struct pkcs15_pubkey_object *obj2;
+	int rv;
 
 	if (!cert)
 		return SC_ERROR_OBJECT_NOT_FOUND;
@@ -823,19 +801,12 @@ check_cert_data_read(struct pkcs15_fw_data *fw_data, struct pkcs15_cert_object *
 	if (rv < 0)
 		return rv;
 
-	/* update the related public key object */
 	obj2 = cert->cert_pubkey;
-
-	obj2->pub_data = cert->cert_data->key;
-	/* We take the pub key from the cert that we will discard below */
-	/* invalidate public data of the cert object so that sc_pkcs15_cert_free
-	 * does not free the public key data as well (something like
-	 * sc_pkcs15_pubkey_dup would have been nice here) -- Nils
-	 */
-	cert->cert_data->key = NULL;
+	/* make a copy of public key from the cert data */
+	if (!obj2->pub_data)
+		rv = sc_pkcs15_pubkey_from_cert(context, &cert->cert_data->data, &obj2->pub_data);
 
 	/* now that we have the cert and pub key, lets see if we can bind anything else */
-
 	pkcs15_bind_related_objects(fw_data);
 
 	return 0;
@@ -2763,6 +2734,26 @@ pkcs15_any_destroy(struct sc_pkcs11_session *session, void *object)
 	if (rv != CKR_OK) {
 		sc_log(context, "Cannot finalize profile: %i", rv);
 		return sc_to_cryptoki_error(rv, "C_DestroyObject");
+	}
+
+	if (any_obj->related_pubkey)   {
+		struct pkcs15_any_object *ao_pubkey = (struct pkcs15_any_object *)any_obj->related_pubkey;
+		struct pkcs15_pubkey_object *pubkey = any_obj->related_pubkey;
+
+		/* Delete reference to related certificate of the public key PKCS#11 object */
+		pubkey->pub_genfrom = NULL;
+		if (ao_pubkey->p15_object == NULL)   {
+			/* Unlink related public key FW object if it has no corresponding PKCS#15 object
+			 * and was created from certificate. */
+			--ao_pubkey->refcount;
+			list_delete(&session->slot->objects, ao_pubkey);
+			/* Delete public key object in pkcs15 */
+			if (pubkey->pub_data)   {
+				sc_pkcs15_free_pubkey(pubkey->pub_data);
+				pubkey->pub_data = NULL;
+			}
+			__pkcs15_delete_object(fw_data, ao_pubkey);
+		}
 	}
 
 	/* Delete object in smartcard */
