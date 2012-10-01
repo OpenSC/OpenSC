@@ -23,9 +23,14 @@
 
 #define MAX_EXT_APDU_LENGTH 1014
 
+#define PRKD_PREFIX				0xC4		/* Hi byte in file identifier for PKCS#15 PRKD objects */
+#define CD_PREFIX				0xC8		/* Hi byte in file identifier for PKCS#15 CD objects */
+#define DCOD_PREFIX				0xC9		/* Hi byte in file identifier for PKCS#15 DCOD objects */
+#define CA_CERTIFICATE_PREFIX	0xCA		/* Hi byte in file identifier for CA certificates */
 #define KEY_PREFIX				0xCC		/* Hi byte in file identifier for key objects */
-#define PRKD_PREFIX				0xC4		/* Hi byte in file identifier for PRKD objects */
+#define PROT_DATA_PREFIX		0xCD		/* Hi byte in file identifier for PIN protected data objects */
 #define EE_CERTIFICATE_PREFIX	0xCE		/* Hi byte in file identifier for EE certificates */
+#define DATA_PREFIX				0xCF		/* Hi byte in file identifier for readable data objects */
 
 #define ALGO_RSA_RAW			0x20		/* RSA signature with external padding */
 #define ALGO_RSA_DECRYPT		0x21		/* RSA decrypt */
@@ -51,5 +56,49 @@ typedef struct sc_hsm_private_data {
 	char *serialno;
 } sc_hsm_private_data_t;
 
+
+
+struct sc_cvc {
+	int cpi;							// Certificate profile indicator (0)
+	char car[17];						// Certification authority reference
+
+	struct sc_object_id pukoid;			// Public key algorithm object identifier
+	u8 *primeOrModulus;					// Prime for ECC or modulus for RSA
+	size_t primeOrModuluslen;
+	u8 *coefficientAorExponent;			// Coefficient A for ECC or public exponent for RSA
+	size_t coefficientAorExponentlen;
+	u8 *coefficientB;					// Coefficient B for ECC
+	size_t coefficientBlen;
+	u8 *basePointG;						// Base point for ECC
+	size_t basePointGlen;
+	u8 *order;							// Order of the base point for ECC
+	size_t orderlen;
+	u8 *publicPoint;					// Public point for ECC
+	size_t publicPointlen;
+	u8 *cofactor;						// Cofactor for ECC
+	size_t cofactorlen;
+
+	int modulusSize;					// Size of RSA modulus in bits
+
+	char chr[17];						// Certificate holder reference
+
+	u8 *signature;						// Certificate signature or request self-signed signature
+	size_t signatureLen;
+
+	char outer_car[17];					// Instance signing the request
+	u8 *outerSignature;					// Request authenticating signature
+	size_t outerSignatureLen;
+};
+typedef struct sc_cvc sc_cvc_t;
+
+
+
+int sc_pkcs15emu_sc_hsm_decode_cvc(sc_pkcs15_card_t * p15card,
+											const u8 ** buf, size_t *buflen,
+											sc_cvc_t *cvc);
+int sc_pkcs15emu_sc_hsm_encode_cvc(sc_pkcs15_card_t * p15card,
+		sc_cvc_t *cvc,
+		u8 ** buf, size_t *buflen);
+void sc_pkcs15emu_sc_hsm_free_cvc(sc_cvc_t *cvc);
 
 #endif /* SC_HSM_H_ */

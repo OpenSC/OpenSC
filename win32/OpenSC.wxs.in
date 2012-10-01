@@ -165,6 +165,9 @@
               <Component Id="iasecc.profile" Guid="*" Win64="$(var.Win64YesNo)">
                 <File Source="$(var.SOURCE_DIR)\src\pkcs15init\iasecc.profile"/>
               </Component>
+			  <Component Id="sc-hsm.profile" Guid="*" Win64="$(var.Win64YesNo)">
+                <File Source="$(var.SOURCE_DIR)\src\pkcs15init\sc-hsm.profile"/>
+              </Component>
             </Directory>
           </Directory>
         </Directory>
@@ -226,6 +229,7 @@
         <ComponentRef Id="iasecc_generic_oberthur.profile"/>
         <ComponentRef Id="iasecc_generic_pki.profile"/>
         <ComponentRef Id="iasecc.profile"/>
+		<ComponentRef Id="sc-hsm.profile"/>
       </Feature>
       <Feature Id="OpenSC_menu" Level="1" Title="Start menu entries" Description="Start menu entries: link to documentation">
         <ComponentRef Id="ProgramMenuDir"/>

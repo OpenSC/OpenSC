@@ -61,8 +61,13 @@ static struct ec_curve_info {
 	const char *oid_encoded;
 	size_t size;
 } ec_curve_infos[] = {
+	{"prime192r1", "1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192},
 	{"prime256v1", "1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256},
 	{"secp384r1", "1.3.132.0.34", "06052B81040022", 384},
+	{"brainpoolP192r1", "1.3.36.3.3.2.8.1.1.3", "06092B2403030208010103", 192},
+	{"brainpoolP224r1", "1.3.36.3.3.2.8.1.1.5", "06092B2403030208010105", 224},
+	{"brainpoolP256r1", "1.3.36.3.3.2.8.1.1.7", "06092B2403030208010107", 256},
+	{"brainpoolP320r1", "1.3.36.3.3.2.8.1.1.9", "06092B2403030208010109", 320},
 	{NULL, NULL, NULL, 0},
 };
 
@@ -4129,7 +4134,7 @@ static void test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	CK_BYTE			md5_and_digestinfo[34] = "\x30\x20\x30\x0c\x06\x08\x2a\x86\x48\x86\xf7\x0d\x02\x05\x05\x00\x04\x10";
 	CK_BYTE			*data, sig[512];
 	CK_ULONG		data_len, sig_len;
-	CK_BYTE			*id = (CK_BYTE *) "abcdefghijklmnopqrst";
+	CK_BYTE 		id[] = "abcdefghijklmnopqrst";
 	CK_ULONG		id_len = 20, mod_len = 0;
 	CK_BYTE			*label = (CK_BYTE *) "Just a label";
 	CK_ULONG		label_len = 12;

@@ -2530,7 +2530,7 @@ pkcs15_gen_keypair(struct sc_pkcs11_slot *slot, CK_MECHANISM_PTR pMechanism,
 	struct sc_pkcs15_id id;
 	size_t		len;
 	CK_KEY_TYPE	keytype;
-	CK_ULONG	keybits;
+	CK_ULONG	keybits = 0;
 	char		pub_label[SC_PKCS15_MAX_LABEL_SIZE];
 	char		priv_label[SC_PKCS15_MAX_LABEL_SIZE];
 	int		rc, rv = CKR_OK;
@@ -2667,7 +2667,7 @@ pkcs15_gen_keypair(struct sc_pkcs11_slot *slot, CK_MECHANISM_PTR pMechanism,
 			goto kpgen_done;
 		}
 	}
-	else if (rc != SC_ERROR_NOT_SUPPORTED) {
+	else {
 		sc_log(context, "sc_pkcs15init_generate_key returned %d", rc);
 		rv = sc_to_cryptoki_error(rc, "C_GenerateKeyPair");
 		goto kpgen_done;
@@ -2765,8 +2765,12 @@ pkcs15_any_destroy(struct sc_pkcs11_session *session, void *object)
 		return sc_to_cryptoki_error(rv, "C_DestroyObject");
 	}
 
-	/* Delete object in smartcard */
-	rv = sc_pkcs15init_delete_object(fw_data->p15_card, profile, obj->base.p15_object);
+	if (obj->base.p15_object) {
+		/* Delete object in smartcard */
+		rv = sc_pkcs15init_delete_object(fw_data->p15_card, profile, obj->base.p15_object);
+	} else {
+		rv = SC_SUCCESS;
+	}
 	if (rv >= 0) {
 		/* Oppose to pkcs15_add_object */
 		--any_obj->refcount; /* correct refcont */
