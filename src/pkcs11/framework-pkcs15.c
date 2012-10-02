@@ -2731,7 +2731,7 @@ pkcs15_any_destroy(struct sc_pkcs11_session *session, void *object)
 	if(slot->app_info)
 		aid = &slot->app_info->aid;
 	rv = sc_pkcs15init_finalize_profile(p11card->card, profile, aid);
-	if (rv != CKR_OK) {
+	if (rv) {
 		sc_log(context, "Cannot finalize profile: %i", rv);
 		return sc_to_cryptoki_error(rv, "C_DestroyObject");
 	}
@@ -2756,8 +2756,9 @@ pkcs15_any_destroy(struct sc_pkcs11_session *session, void *object)
 		}
 	}
 
-	/* Delete object in smartcard */
-	rv = sc_pkcs15init_delete_object(fw_data->p15_card, profile, obj->base.p15_object);
+	/* Delete object in smartcard (if corresponding PKCS#15 object exists) */
+	if (obj->base.p15_object)
+		rv = sc_pkcs15init_delete_object(fw_data->p15_card, profile, obj->base.p15_object);
 	if (rv >= 0) {
 		/* Oppose to pkcs15_add_object */
 		--any_obj->refcount; /* correct refcont */
