@@ -242,8 +242,8 @@ int sc_apdu_set_resp(sc_context_t *ctx, sc_apdu_t *apdu, const u8 *buf,
  * @param  len          length of the APDU
  * @param  is_outgoing  != 0 if the data is send to the card
  */
-void sc_apdu_log(sc_context_t *ctx, int level, const u8 *data, size_t len,
-	int is_outgoing);
+#define sc_apdu_log(ctx, level, data, len, is_outgoing) \
+	sc_debug_hex(ctx, level, is_outgoing != 0 ? "Outgoing APDU" : "Incoming APDU", data, len)
 
 extern struct sc_reader_driver *sc_get_pcsc_driver(void);
 extern struct sc_reader_driver *sc_get_ctapi_driver(void);
