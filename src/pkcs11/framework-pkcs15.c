@@ -329,10 +329,10 @@ pkcs15_init_token_info(struct sc_pkcs15_card *p15card, CK_TOKEN_INFO_PTR pToken)
 	pToken->ulFreePublicMemory = CK_UNAVAILABLE_INFORMATION;
 	pToken->ulTotalPrivateMemory = CK_UNAVAILABLE_INFORMATION;
 	pToken->ulFreePrivateMemory = CK_UNAVAILABLE_INFORMATION;
-	pToken->hardwareVersion.major = 0;
-	pToken->hardwareVersion.minor = 0;
-	pToken->firmwareVersion.major = 0;
-	pToken->firmwareVersion.minor = 0;
+	pToken->hardwareVersion.major = p15card->tokeninfo->hw_major;
+	pToken->hardwareVersion.minor = p15card->tokeninfo->hw_minor;
+	pToken->firmwareVersion.major = p15card->tokeninfo->fw_major;
+	pToken->firmwareVersion.minor = p15card->tokeninfo->fw_minor;
 }
 
 #ifdef USE_PKCS15_INIT
