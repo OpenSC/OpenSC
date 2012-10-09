@@ -572,6 +572,14 @@ typedef struct sc_pkcs15_tokeninfo {
 	size_t num_seInfo;
 
 	struct sc_supported_algo_info supported_algos[SC_MAX_SUPPORTED_ALGORITHMS];
+
+	// Additional information, not contained in on-card TokenInfo structure, but filled
+	// in by the card driver
+	unsigned char hw_major;
+	unsigned char hw_minor;
+
+	unsigned char fw_major;
+	unsigned char fw_minor;
 } sc_pkcs15_tokeninfo_t;
 
 struct sc_pkcs15_operations   {

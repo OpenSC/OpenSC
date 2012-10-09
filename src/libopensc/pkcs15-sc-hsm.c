@@ -490,6 +490,12 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 	sc_path_set(&path, SC_PATH_TYPE_DF_NAME, sc_hsm_aid.value, sc_hsm_aid.len, 0, 0);
 	r = sc_select_file(card, &path, &file);
 	LOG_TEST_RET(card->ctx, r, "Could not select SmartCard-HSM application");
+
+	p15card->tokeninfo->hw_major = 24;	// JCOP 2.4.1r3
+	p15card->tokeninfo->hw_minor = 13;
+	p15card->tokeninfo->fw_major = file->prop_attr[file->prop_attr_len - 2];
+	p15card->tokeninfo->fw_minor = file->prop_attr[file->prop_attr_len - 1];
+
 	sc_file_free(file);
 
 	// Read device certificate to determine serial number
