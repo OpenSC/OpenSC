@@ -42,6 +42,8 @@ enum {
 	SC_CARDCTL_GET_SERIALNR,
 	SC_CARDCTL_GET_SE_INFO,
 	SC_CARDCTL_GET_CHV_REFERENCE_IN_SE,
+	SC_CARDCTL_PKCS11_INIT_TOKEN,
+	SC_CARDCTL_PKCS11_INIT_PIN,
 
 	/*
 	 * GPK specific calls
@@ -262,6 +264,23 @@ struct sc_cardctl_default_key {
 	size_t		len;		/* in: max size, out: actual size */
 	u8 *		key_data;	/* out: key data */
 };
+
+/*
+ * Generic cardctl - initialize token using PKCS#11 style
+ */
+typedef struct sc_cardctl_pkcs11_init_token {
+	const char *	so_pin;
+	size_t			so_pin_len;
+	const char *	label;
+} sc_cardctl_pkcs11_init_token_t;
+
+/*
+ * Generic cardctl - set pin using PKCS#11 style
+ */
+typedef struct sc_cardctl_pkcs11_init_pin {
+	const char *	pin;
+	size_t			pin_len;
+} sc_cardctl_pkcs11_init_pin_t;
 
 /*
  * GPK lock file.
