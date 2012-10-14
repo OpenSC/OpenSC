@@ -22,6 +22,8 @@
 #include "libopensc/log.h"
 #include "libopensc/asn1.h"
 
+#include "libopensc/cardctl.h"
+
 #include <stdlib.h>
 #include <string.h>
 
@@ -1637,7 +1639,43 @@ pkcs15_change_pin(struct sc_pkcs11_slot *slot,
 	return sc_to_cryptoki_error(rc, "C_SetPIN");
 }
 
+
+
 #ifdef USE_PKCS15_INIT
+static CK_RV
+pkcs15_initialize(struct sc_pkcs11_card *p11card, void *ptr,
+		CK_UTF8CHAR_PTR pPin, CK_ULONG ulPinLen,
+		CK_UTF8CHAR_PTR pLabel)
+{
+	struct sc_cardctl_pkcs11_init_token args;
+	int rv;
+
+	memset(&args, 0, sizeof(args));
+	args.so_pin = pPin;
+	args.so_pin_len = ulPinLen;
+	args.label = (const char *) pLabel;
+
+	rv = sc_card_ctl(p11card->card, SC_CARDCTL_PKCS11_INIT_TOKEN, &args);
+
+	if (rv == SC_ERROR_NOT_SUPPORTED)
+		return CKR_FUNCTION_NOT_SUPPORTED;
+
+	if (rv < 0)
+		return sc_to_cryptoki_error(rv, "C_InitToken");
+
+	rv = card_removed(p11card->reader);
+	if (rv != SC_SUCCESS)
+		return rv;
+
+	rv = card_detect_all();
+	if (rv != SC_SUCCESS)
+		return rv;
+
+	return CKR_OK;
+}
+
+
+
 static CK_RV
 pkcs15_init_pin(struct sc_pkcs11_slot *slot, CK_CHAR_PTR pPin, CK_ULONG ulPinLen)
 {
@@ -1647,7 +1685,20 @@ pkcs15_init_pin(struct sc_pkcs11_slot *slot, CK_CHAR_PTR pPin, CK_ULONG ulPinLen
 	struct sc_profile	*profile = NULL;
 	struct sc_pkcs15_object	*auth_obj = NULL;
 	struct sc_pkcs15_auth_info *auth_info = NULL;
+	struct sc_cardctl_pkcs11_init_pin p11args;
 	int rc;
+
+	memset(&p11args, 0, sizeof(p11args));
+	p11args.pin = pPin;
+	p11args.pin_len = ulPinLen;
+
+	rc = sc_card_ctl(p11card->card, SC_CARDCTL_PKCS11_INIT_PIN, &p11args);
+
+	if (rc != SC_ERROR_NOT_SUPPORTED) {
+		if (rc == SC_SUCCESS)
+			return CKR_OK;
+		return sc_to_cryptoki_error(rc, "C_InitPin");
+	}
 
 	sc_log(context, "Init PIN: pin %p:%d; unblock style %i", pPin, ulPinLen, sc_pkcs11_conf.pin_unblock_style);
 
@@ -2802,7 +2853,7 @@ struct sc_pkcs11_framework_ops framework_pkcs15 = {
 	pkcs15_login,
 	pkcs15_logout,
 	pkcs15_change_pin,
-	NULL,			/* init_token */
+	pkcs15_initialize,
 #ifdef USE_PKCS15_INIT
 	pkcs15_init_pin,
 	pkcs15_create_object,
