@@ -47,6 +47,8 @@
 #define ALGO_EC_SHA256			0x73		/* ECDSA signature with SHA-256 hash */
 #define ALGO_EC_DH				0x80		/* ECDH key derivation */
 
+#define ID_USER_PIN				0x81		/* User PIN identifier */
+#define ID_SO_PIN				0x88		/* Security officer PIN identifier */
 
 /* Information the driver maintains between calls */
 typedef struct sc_hsm_private_data {

@@ -67,6 +67,7 @@ extern "C" {
 #define SC_ERROR_NOT_ENOUGH_MEMORY		-1217
 #define SC_ERROR_CORRUPTED_DATA			-1218
 #define SC_ERROR_FILE_END_REACHED		-1219
+#define SC_ERROR_REF_DATA_NOT_USABLE	-1220
 
 /* Returned by OpenSC library when called with invalid arguments */
 #define SC_ERROR_INVALID_ARGUMENTS		-1300

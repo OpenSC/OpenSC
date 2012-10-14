@@ -244,7 +244,11 @@ enum {
 	 * SmartCard-HSM
 	 */
 	SC_CARDCTL_SC_HSMP_BASE = _CTL_PREFIX('S', 'C', 'H'),
-	SC_CARDCTL_SC_HSM_GENERATE_KEY
+	SC_CARDCTL_SC_HSM_GENERATE_KEY,
+	SC_CARDCTL_SC_HSM_INITIALIZE,
+	SC_CARDCTL_SC_HSM_IMPORT_DKEK_SHARE,
+	SC_CARDCTL_SC_HSM_WRAP_KEY,
+	SC_CARDCTL_SC_HSM_UNWRAP_KEY
 };
 
 enum {
@@ -908,6 +912,28 @@ typedef struct sc_cardctl_sc_hsm_keygen_info {
 	size_t gakpresponse_len;	/* Size of response */
 } sc_cardctl_sc_hsm_keygen_info_t;
 
+typedef struct sc_cardctl_sc_hsm_init_param {
+	u8 init_code[8];			/* Initialization code */
+	u8 *user_pin;				/* Initial user PIN */
+	size_t user_pin_len;		/* Length of user PIN */
+	u8 user_pin_retry_counter;	/* Retry counter default value */
+	u8 options[2];				/* Initilization options */
+	char dkek_shares;			/* Number of DKEK shares, 0 for card generated, -1 for none */
+} sc_cardctl_sc_hsm_init_param_t;
+
+typedef struct sc_cardctl_sc_hsm_dkek {
+	int importShare;			/* True to import share, false to just query status */
+	u8 dkek_share[32];			/* AES-256 DKEK share */
+	u8 dkek_shares;				/* Total number of shares */
+	u8 outstanding_shares;		/* Number of shares to be presented */
+	u8 key_check_value[8];		/* Key check value for DKEK */
+} sc_cardctl_sc_hsm_dkek_t;
+
+typedef struct sc_cardctl_sc_hsm_wrapped_key {
+	u8 key_id;					/* Key identifier */
+	u8 *wrapped_key;			/* Binary wrapped key */
+	size_t wrapped_key_length;	/* Length of key blob */
+} sc_cardctl_sc_hsm_wrapped_key_t;
 
 #ifdef __cplusplus
 }

@@ -44,6 +44,7 @@ sc_asn1_decode_object_id
 sc_asn1_encode
 sc_asn1_encode_object_id
 sc_asn1_encode_algorithm_id
+sc_asn1_read_tag
 sc_asn1_find_tag
 sc_asn1_print_tags
 sc_asn1_put_tag
