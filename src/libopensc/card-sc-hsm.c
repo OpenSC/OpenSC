@@ -134,11 +134,46 @@ static int sc_hsm_match_card(struct sc_card *card)
 
 
 
+static int sc_hsm_pin_info(sc_card_t *card, struct sc_pin_cmd_data *data,
+			   int *tries_left)
+{
+	sc_hsm_private_data_t *priv = (sc_hsm_private_data_t *) card->drv_data;
+	sc_apdu_t apdu;
+	int r;
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x20, 0x00, data->pin_reference);
+
+	r = sc_transmit_apdu(card, &apdu);
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+
+	r =  sc_check_sw(card, apdu.sw1, apdu.sw2);
+
+	if (r == SC_ERROR_PIN_CODE_INCORRECT) {
+		data->pin1.tries_left = apdu.sw2 & 0xF;
+		r = SC_SUCCESS;
+	} else if (r == SC_ERROR_AUTH_METHOD_BLOCKED) {
+		data->pin1.tries_left = 0;
+		r = SC_SUCCESS;
+	}
+	LOG_TEST_RET(card->ctx, r, "Check SW error");
+
+	if (tries_left != NULL) {
+		*tries_left = data->pin1.tries_left;
+	}
+
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+}
+
+
+
 static int sc_hsm_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 			   int *tries_left)
 {
 	sc_hsm_private_data_t *priv = (sc_hsm_private_data_t *) card->drv_data;
 
+	if (data->cmd == SC_PIN_CMD_GET_INFO) {
+		return sc_hsm_pin_info(card, data, tries_left);
+	}
 	if (data->pin_reference == 0x88) {
 		// Save SO PIN for later use in init pin
 		memcpy(priv->initpw, data->pin1.data, sizeof(priv->initpw));
@@ -581,6 +616,164 @@ static int sc_hsm_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 
 
 
+static int sc_hsm_initialize(sc_card_t *card, sc_cardctl_sc_hsm_init_param_t *params)
+{
+	sc_context_t *ctx = card->ctx;
+	int r, i;
+	sc_apdu_t apdu;
+	u8 ibuff[50], *p;
+
+	LOG_FUNC_CALLED(card->ctx);
+
+	p = ibuff;
+	*p++ = 0x80;	// Options
+	*p++ = 0x02;
+	memcpy(p, params->options, 2);
+	p += 2;
+
+	*p++ = 0x81;	// User PIN
+	*p++ = params->user_pin_len;
+	memcpy(p, params->user_pin, params->user_pin_len);
+	p += params->user_pin_len;
+
+	*p++ = 0x82;	// Initialization code
+	*p++ = 0x08;
+	memcpy(p, params->init_code, 8);
+	p += 8;
+
+	*p++ = 0x91;	// User PIN retry counter
+	*p++ = 0x01;
+	*p++ = params->user_pin_retry_counter;
+
+	if (params->dkek_shares >= 0) {
+		*p++ = 0x92;	// Number of DKEK shares
+		*p++ = 0x01;
+		*p++ = (u8)params->dkek_shares;
+	}
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x50, 0x00, 0x00);
+	apdu.cla = 0x80;
+	apdu.data = ibuff;
+	apdu.datalen = p - ibuff;
+	apdu.lc = apdu.datalen;
+
+	r = sc_transmit_apdu(card, &apdu);
+	LOG_TEST_RET(ctx, r, "APDU transmit failed");
+
+	r =  sc_check_sw(card, apdu.sw1, apdu.sw2);
+
+	if (r == SC_ERROR_NOT_ALLOWED) {
+		r = SC_ERROR_PIN_CODE_INCORRECT;
+	}
+
+	LOG_TEST_RET(ctx, r, "Check SW error");
+
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+}
+
+
+
+static int sc_hsm_import_dkek_share(sc_card_t *card, sc_cardctl_sc_hsm_dkek_t *params)
+{
+	sc_context_t *ctx = card->ctx;
+	sc_apdu_t apdu;
+	u8 status[SC_MAX_APDU_BUFFER_SIZE];
+	int r;
+
+	LOG_FUNC_CALLED(card->ctx);
+
+	if (params->importShare) {
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x52, 0x00, 0x00);
+		apdu.cla = 0x80;
+		apdu.data = params->dkek_share;
+		apdu.datalen = sizeof(params->dkek_share);
+		apdu.lc = apdu.datalen;
+	} else {
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0x52, 0x00, 0x00);
+	}
+	apdu.cla = 0x80;
+	apdu.le = 0;
+	apdu.resp = status;
+	apdu.resplen = sizeof(status);
+
+	r = sc_transmit_apdu(card, &apdu);
+	LOG_TEST_RET(ctx, r, "APDU transmit failed");
+
+	r =  sc_check_sw(card, apdu.sw1, apdu.sw2);
+
+	LOG_TEST_RET(ctx, r, "Check SW error");
+
+	assert(apdu.resplen >= (sizeof(params->key_check_value) + 2));
+
+	params->dkek_shares = status[0];
+	params->outstanding_shares = status[1];
+	memcpy(params->key_check_value, status + 2, sizeof(params->key_check_value));
+
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+}
+
+
+
+static int sc_hsm_wrap_key(sc_card_t *card, sc_cardctl_sc_hsm_wrapped_key_t *params)
+{
+	sc_context_t *ctx = card->ctx;
+	sc_apdu_t apdu;
+	u8 data[SC_MAX_EXT_APDU_BUFFER_SIZE];
+	int r;
+
+	LOG_FUNC_CALLED(card->ctx);
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_EXT, 0x72, params->key_id, 0x92);
+	apdu.cla = 0x80;
+	apdu.le = 0;
+	apdu.resp = data;
+	apdu.resplen = sizeof(data);
+
+	r = sc_transmit_apdu(card, &apdu);
+	LOG_TEST_RET(ctx, r, "APDU transmit failed");
+
+	r =  sc_check_sw(card, apdu.sw1, apdu.sw2);
+
+	LOG_TEST_RET(ctx, r, "Check SW error");
+
+	params->wrapped_key_length = apdu.resplen;
+	params->wrapped_key = malloc(apdu.resplen);
+	if (params->wrapped_key == NULL) {
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+	}
+	memcpy(params->wrapped_key, data, apdu.resplen);
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+}
+
+
+
+static int sc_hsm_unwrap_key(sc_card_t *card, sc_cardctl_sc_hsm_wrapped_key_t *params)
+{
+	sc_context_t *ctx = card->ctx;
+	sc_apdu_t apdu;
+	u8 status[MAX_EXT_APDU_LENGTH];
+	int r;
+
+	LOG_FUNC_CALLED(card->ctx);
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_EXT, 0x74, params->key_id, 0x93);
+	apdu.cla = 0x80;
+	apdu.lc = params->wrapped_key_length;
+	apdu.data = params->wrapped_key;
+	apdu.datalen = params->wrapped_key_length;
+
+	r = sc_transmit_apdu(card, &apdu);
+	LOG_TEST_RET(ctx, r, "APDU transmit failed");
+
+	r =  sc_check_sw(card, apdu.sw1, apdu.sw2);
+
+	LOG_TEST_RET(ctx, r, "Check SW error");
+
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+}
+
+
+
 static int sc_hsm_init_token(sc_card_t *card, sc_cardctl_pkcs11_init_token_t *params)
 {
 	sc_context_t *ctx = card->ctx;
@@ -734,6 +927,14 @@ static int sc_hsm_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 		return sc_hsm_init_pin(card, (sc_cardctl_pkcs11_init_pin_t *)ptr);
 	case SC_CARDCTL_SC_HSM_GENERATE_KEY:
 		return sc_hsm_generate_keypair(card, (sc_cardctl_sc_hsm_keygen_info_t *)ptr);
+	case SC_CARDCTL_SC_HSM_INITIALIZE:
+		return sc_hsm_initialize(card, (sc_cardctl_sc_hsm_init_param_t *)ptr);
+	case SC_CARDCTL_SC_HSM_IMPORT_DKEK_SHARE:
+		return sc_hsm_import_dkek_share(card, (sc_cardctl_sc_hsm_dkek_t *)ptr);
+	case SC_CARDCTL_SC_HSM_WRAP_KEY:
+		return sc_hsm_wrap_key(card, (sc_cardctl_sc_hsm_wrapped_key_t *)ptr);
+	case SC_CARDCTL_SC_HSM_UNWRAP_KEY:
+		return sc_hsm_unwrap_key(card, (sc_cardctl_sc_hsm_wrapped_key_t *)ptr);
 	}
 	return SC_ERROR_NOT_SUPPORTED;
 }

@@ -72,6 +72,8 @@ int _sc_asn1_decode(struct sc_context *, struct sc_asn1_entry *,
 int _sc_asn1_encode(struct sc_context *, const struct sc_asn1_entry *,
 		   u8 **, size_t *, int);
 
+int sc_asn1_read_tag(const u8 ** buf, size_t buflen, unsigned int *cla_out,
+		     unsigned int *tag_out, size_t *taglen);
 const u8 *sc_asn1_find_tag(struct sc_context *ctx, const u8 * buf,
 			   size_t buflen, unsigned int tag, size_t *taglen);
 const u8 *sc_asn1_verify_tag(struct sc_context *ctx, const u8 * buf,

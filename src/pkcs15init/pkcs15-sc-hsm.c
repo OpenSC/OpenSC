@@ -180,7 +180,7 @@ static int sc_hsm_update_ef(sc_pkcs15_card_t *p15card, u8 prefix, u8 id, int era
 		file->status = SC_FILE_STATUS_ACTIVATED;
 		r = sc_create_file(card, file);
 		sc_file_free(file);
-		LOG_TEST_RET(card->ctx, r, "Could not creat file");
+		LOG_TEST_RET(card->ctx, r, "Could not create file");
 	}
 
 	r = sc_update_binary(card, 0, buf, buflen, 0);
@@ -462,8 +462,8 @@ static int sc_hsm_generate_key(struct sc_profile *profile, struct sc_pkcs15_card
 
 
 	cvcpo = cvcbin;
-	sc_asn1_read_tag(&cvcpo, cvclen, &cla, &tag, &taglen);
-	sc_asn1_read_tag(&cvcpo, cvclen, &cla, &tag, &taglen);
+	sc_asn1_read_tag((const u8 **)&cvcpo, cvclen, &cla, &tag, &taglen);
+	sc_asn1_read_tag((const u8 **)&cvcpo, cvclen, &cla, &tag, &taglen);
 
 	sc_hsm_keyinfo.key_id = key_info->key_reference;
 	sc_hsm_keyinfo.auth_key_id = 0;
