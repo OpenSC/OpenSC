@@ -1825,8 +1825,26 @@ static int npa_perform_pace(sc_card_t * card,
 
 static int npa_match_card(sc_card_t * card)
 {
-    if (_sc_match_atr(card, npa_atrs, &card->type) < 0)
+    sc_apdu_t apdu;
+    const unsigned char ef_cardaccess_fid[] = {0x01, 0x1c};
+    int i;
+
+    sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, 0, 0);
+    apdu.data = ef_cardaccess_fid;
+    apdu.datalen = sizeof ef_cardaccess_fid;
+    apdu.lc = sizeof ef_cardaccess_fid;
+
+    if (sc_transmit_apdu(card, &apdu) < 0)
         return 0;
+
+    i = _sc_match_atr(card, npa_atrs, &card->type);
+    if (i >= 0)
+        card->name = npa_atrs[i].name;
+    else {
+        card->name = npa_atrs[0].name;
+        card->type = SC_CARD_TYPE_NPA;
+    }
+
     return 1;
 }
 
