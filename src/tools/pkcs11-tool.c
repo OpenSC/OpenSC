@@ -955,18 +955,20 @@ static void show_token(CK_SLOT_ID slot)
 		return;
 	}
 
-	printf("  token label:   %s\n",
+	printf("  token label        : %s\n",
 			p11_utf8_to_local(info.label,
 				sizeof(info.label)));
-	printf("  token manuf:   %s\n",
+	printf("  token manufacturer : %s\n",
 			p11_utf8_to_local(info.manufacturerID,
 				sizeof(info.manufacturerID)));
-	printf("  token model:   %s\n",
+	printf("  token model        : %s\n",
 			p11_utf8_to_local(info.model,
 				sizeof(info.model)));
-	printf("  token flags:   %s\n",
+	printf("  token flags        : %s\n",
 			p11_token_info_flags(info.flags));
-	printf("  serial num  :  %s\n", p11_utf8_to_local(info.serialNumber,
+	printf("  hardware version   : %d.%d\n", info.hardwareVersion.major, info.hardwareVersion.minor);
+	printf("  firmware version   : %d.%d\n", info.firmwareVersion.major, info.firmwareVersion.minor);
+	printf("  serial num         : %s\n", p11_utf8_to_local(info.serialNumber,
 			sizeof(info.serialNumber)));
 }
 

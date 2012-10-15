@@ -473,7 +473,7 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 	LOG_FUNC_CALLED(card->ctx);
 
 	p15card->tokeninfo->label = strdup("SmartCard-HSM");
-	p15card->tokeninfo->manufacturer_id = strdup("CardContact");
+	p15card->tokeninfo->manufacturer_id = strdup("www.CardContact.de");
 
 	appinfo = calloc(1, sizeof(struct sc_app_info));
 
@@ -490,6 +490,12 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 	sc_path_set(&path, SC_PATH_TYPE_DF_NAME, sc_hsm_aid.value, sc_hsm_aid.len, 0, 0);
 	r = sc_select_file(card, &path, &file);
 	LOG_TEST_RET(card->ctx, r, "Could not select SmartCard-HSM application");
+
+	p15card->tokeninfo->hw_major = 24;	// JCOP 2.4.1r3
+	p15card->tokeninfo->hw_minor = 13;
+	p15card->tokeninfo->fw_major = file->prop_attr[file->prop_attr_len - 2];
+	p15card->tokeninfo->fw_minor = file->prop_attr[file->prop_attr_len - 1];
+
 	sc_file_free(file);
 
 	// Read device certificate to determine serial number
@@ -545,6 +551,31 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 	r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
 	if (r < 0)
 		LOG_FUNC_RETURN(card->ctx, r);
+
+
+	memset(&pin_info, 0, sizeof(pin_info));
+	memset(&pin_obj, 0, sizeof(pin_obj));
+
+	pin_info.auth_id.len = 1;
+	pin_info.auth_id.value[0] = 2;
+	pin_info.auth_type = SC_PKCS15_PIN_AUTH_TYPE_PIN;
+	pin_info.attrs.pin.reference = 0x88;
+	pin_info.attrs.pin.flags = SC_PKCS15_PIN_FLAG_LOCAL|SC_PKCS15_PIN_FLAG_CHANGE_DISABLED|SC_PKCS15_PIN_FLAG_INITIALIZED|SC_PKCS15_PIN_FLAG_UNBLOCK_DISABLED|SC_PKCS15_PIN_FLAG_SO_PIN;
+	pin_info.attrs.pin.type = SC_PKCS15_PIN_TYPE_BCD;
+	pin_info.attrs.pin.min_length = 16;
+	pin_info.attrs.pin.stored_length = 0;
+	pin_info.attrs.pin.max_length = 16;
+	pin_info.attrs.pin.pad_char = '\0';
+	pin_info.tries_left = 3;
+	pin_info.max_tries = 3;
+
+	strlcpy(pin_obj.label, "SOPIN", sizeof(pin_obj.label));
+	pin_obj.flags = SC_PKCS15_CO_FLAG_PRIVATE;
+
+	r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
+	if (r < 0)
+		LOG_FUNC_RETURN(card->ctx, r);
+
 
 	filelistlength = sc_list_files(card, filelist, sizeof(filelist));
 	LOG_TEST_RET(card->ctx, filelistlength, "Could not enumerate file and key identifier");

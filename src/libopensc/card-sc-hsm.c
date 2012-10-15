@@ -134,6 +134,21 @@ static int sc_hsm_match_card(struct sc_card *card)
 
 
 
+static int sc_hsm_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
+			   int *tries_left)
+{
+	sc_hsm_private_data_t *priv = (sc_hsm_private_data_t *) card->drv_data;
+
+	if (data->pin_reference == 0x88) {
+		// Save SO PIN for later use in init pin
+		memcpy(priv->initpw, data->pin1.data, sizeof(priv->initpw));
+		return SC_SUCCESS;
+	}
+	return (*iso_ops->pin_cmd)(card, data, tries_left);
+}
+
+
+
 static int sc_hsm_read_binary(sc_card_t *card,
 			       unsigned int idx, u8 *buf, size_t count,
 			       unsigned long flags)
@@ -560,7 +575,111 @@ static int sc_hsm_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 
 	serial->len = strlen(priv->serialno);
 	strncpy(serial->value, priv->serialno, sizeof(serial->value));
-	return 0;
+
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+}
+
+
+
+static int sc_hsm_init_token(sc_card_t *card, sc_cardctl_pkcs11_init_token_t *params)
+{
+	sc_context_t *ctx = card->ctx;
+	int r, i;
+	sc_apdu_t apdu;
+	u8 ibuff[50], *p;
+
+	LOG_FUNC_CALLED(card->ctx);
+
+	if (params->so_pin_len != 16) {
+		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_DATA, "SO PIN wrong length (!=16)");
+	}
+
+	p = ibuff;
+	*p++ = 0x80;	// Options
+	*p++ = 0x02;
+	*p++ = 0x00;
+	*p++ = 0x01;
+
+	*p++ = 0x81;	// User PIN
+	*p++ = 0x06;	// Default value, later changed with C_InitPIN
+	// We use only 6 of the 16 bytes init password for the initial user PIN
+	memcpy(p, params->so_pin, 6);
+	p += 6;
+
+	*p++ = 0x82;	// Initialization code
+	*p++ = 0x08;
+
+	memset(p, 0, 8);
+	for (i = 0; i < 16; i++) {
+		*p <<= 4;
+		*p |= params->so_pin[i] & 0xf;
+		if (i & 1)
+			p++;
+	}
+
+	*p++ = 0x91;	// User PIN retry counter
+	*p++ = 0x01;
+	*p++ = 0x03;
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x50, 0x00, 0x00);
+	apdu.cla = 0x80;
+	apdu.data = ibuff;
+	apdu.datalen = p - ibuff;
+	apdu.lc = apdu.datalen;
+
+	r = sc_transmit_apdu(card, &apdu);
+	LOG_TEST_RET(ctx, r, "APDU transmit failed");
+
+	r =  sc_check_sw(card, apdu.sw1, apdu.sw2);
+
+	if (r == SC_ERROR_NOT_ALLOWED) {
+		r = SC_ERROR_PIN_CODE_INCORRECT;
+	}
+
+	LOG_TEST_RET(ctx, r, "Check SW error");
+
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+}
+
+
+
+static int sc_hsm_init_pin(sc_card_t *card, sc_cardctl_pkcs11_init_pin_t *params)
+{
+	sc_hsm_private_data_t *priv = (sc_hsm_private_data_t *) card->drv_data;
+	sc_context_t *ctx = card->ctx;
+	int r;
+	sc_apdu_t apdu;
+	u8 ibuff[50], *p;
+
+	LOG_FUNC_CALLED(card->ctx);
+
+	if (params->pin_len > 16) {
+		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_DATA, "User PIN too long");
+	}
+
+	p = ibuff;
+
+	// We use only 6 of the 8 bytes init password for the initial user PIN
+	memcpy(p, priv->initpw, 6);
+	p += 6;
+
+	memcpy(p, params->pin, params->pin_len);
+	p += params->pin_len;
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x24, 0x00, 0x81);
+	apdu.data = ibuff;
+	apdu.datalen = p - ibuff;
+	apdu.lc = apdu.datalen;
+
+	r = sc_transmit_apdu(card, &apdu);
+	LOG_TEST_RET(ctx, r, "APDU transmit failed");
+
+	r =  sc_check_sw(card, apdu.sw1, apdu.sw2);
+	LOG_TEST_RET(ctx, r, "Check SW error");
+
+	memset(priv->initpw, 0, sizeof(priv->initpw));
+
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
 
@@ -609,6 +728,10 @@ static int sc_hsm_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 	switch (cmd) {
 	case SC_CARDCTL_GET_SERIALNR:
 		return sc_hsm_get_serialnr(card, (sc_serial_number_t *)ptr);
+	case SC_CARDCTL_PKCS11_INIT_TOKEN:
+		return sc_hsm_init_token(card, (sc_cardctl_pkcs11_init_token_t *)ptr);
+	case SC_CARDCTL_PKCS11_INIT_PIN:
+		return sc_hsm_init_pin(card, (sc_cardctl_pkcs11_init_pin_t *)ptr);
 	case SC_CARDCTL_SC_HSM_GENERATE_KEY:
 		return sc_hsm_generate_keypair(card, (sc_cardctl_sc_hsm_keygen_info_t *)ptr);
 	}
@@ -693,6 +816,7 @@ static struct sc_card_driver * sc_get_driver(void)
 	sc_hsm_ops.init              = sc_hsm_init;
 	sc_hsm_ops.finish            = sc_hsm_finish;
 	sc_hsm_ops.card_ctl          = sc_hsm_card_ctl;
+	sc_hsm_ops.pin_cmd           = sc_hsm_pin_cmd;
 
 	/* no record oriented file services */
 	sc_hsm_ops.read_record       = NULL;
