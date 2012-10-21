@@ -526,7 +526,8 @@ typedef struct sc_card {
 
 	struct sc_card_cache cache;
 
-	sc_serial_number_t serialnr;
+	struct sc_serial_number serialnr;
+	struct sc_version version;
 
 	void *mutex;
 #ifdef ENABLE_SM

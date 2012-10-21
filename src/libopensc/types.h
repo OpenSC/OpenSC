@@ -82,6 +82,14 @@ struct sc_iid {
 	size_t len;
 };
 
+struct sc_version {
+	unsigned char hw_major;
+	unsigned char hw_minor;
+
+	unsigned char fw_major;
+	unsigned char fw_minor;
+};
+
 /* Discretionary ASN.1 data object */
 struct sc_ddo {
 	struct sc_aid aid;
