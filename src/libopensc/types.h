@@ -28,7 +28,7 @@ extern "C" {
 typedef unsigned char u8;
 
 /* various maximum values */
-#define SC_MAX_CARD_DRIVERS		32
+#define SC_MAX_CARD_DRIVERS		48
 #define SC_MAX_CARD_DRIVER_SNAME_SIZE	16
 #define SC_MAX_CARD_APPS		8
 #define SC_MAX_APDU_BUFFER_SIZE		261 /* takes account of: CLA INS P1 P2 Lc [255 byte of data] Le */
