@@ -335,6 +335,17 @@ static int sc_pkcs15emu_sc_hsm_add_prkd(sc_pkcs15_card_t * p15card, u8 keyid) {
 
 	sc_file_free(file);
 
+	/* Check if the certificate is a X.509 certificate */
+	r = sc_read_binary(p15card->card, 0, efbin, 1, 0);
+
+	if (r != SC_SUCCESS) {
+		return SC_SUCCESS;
+	}
+
+	if (efbin[0] != 0x30) {
+		return SC_SUCCESS;
+	}
+
 	memset(&cert_info, 0, sizeof(cert_info));
 	memset(&cert_obj, 0, sizeof(cert_obj));
 
