@@ -42,8 +42,8 @@ void sc_hsm_set_serialnr(sc_card_t *card, char *serial);
 #define C_ASN1_CVC_PUBKEY_SIZE 10
 static const struct sc_asn1_entry c_asn1_cvc_pubkey[C_ASN1_CVC_PUBKEY_SIZE] = {
 	{ "publicKeyOID", SC_ASN1_OBJECT, SC_ASN1_UNI | SC_ASN1_OBJECT, 0, NULL, NULL },
-	{ "primeOrModulus", SC_ASN1_OCTET_STRING, SC_ASN1_CTX | 1, SC_ASN1_ALLOC, NULL, NULL },
-	{ "coefficientAorExponent", SC_ASN1_OCTET_STRING, SC_ASN1_CTX | 2,  SC_ASN1_ALLOC, NULL, NULL },
+	{ "primeOrModulus", SC_ASN1_OCTET_STRING, SC_ASN1_CTX | 1, SC_ASN1_OPTIONAL | SC_ASN1_ALLOC, NULL, NULL },
+	{ "coefficientAorExponent", SC_ASN1_OCTET_STRING, SC_ASN1_CTX | 2,  SC_ASN1_OPTIONAL | SC_ASN1_ALLOC, NULL, NULL },
 	{ "coefficientB", SC_ASN1_OCTET_STRING, SC_ASN1_CTX | 3, SC_ASN1_OPTIONAL | SC_ASN1_ALLOC, NULL, NULL },
 	{ "basePointG", SC_ASN1_OCTET_STRING, SC_ASN1_CTX | 4, SC_ASN1_OPTIONAL | SC_ASN1_ALLOC, NULL, NULL },
 	{ "order", SC_ASN1_OCTET_STRING, SC_ASN1_CTX | 5, SC_ASN1_OPTIONAL | SC_ASN1_ALLOC, NULL, NULL },
@@ -338,7 +338,7 @@ static int sc_pkcs15emu_sc_hsm_add_prkd(sc_pkcs15_card_t * p15card, u8 keyid) {
 	/* Check if the certificate is a X.509 certificate */
 	r = sc_read_binary(p15card->card, 0, efbin, 1, 0);
 
-	if (r != SC_SUCCESS) {
+	if (r < 0) {
 		return SC_SUCCESS;
 	}
 
@@ -520,6 +520,8 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 
 	ptr = efbin;
 	len = r;
+
+	memset(&devcert, 0 ,sizeof(devcert));
 	r = sc_pkcs15emu_sc_hsm_decode_cvc(p15card, (const u8 **)&ptr, &len, &devcert);
 	LOG_TEST_RET(card->ctx, r, "Could not decode EF.C_DevAut");
 
