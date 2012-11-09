@@ -436,6 +436,7 @@ sc_pkcs15emu_add_pin(sc_pkcs15_card_t *p15card,
 
 	info = calloc(1, sizeof(*info));
 	info->auth_type = SC_PKCS15_PIN_AUTH_TYPE_PIN;
+	info->auth_method = SC_AC_CHV;
 	info->auth_id           = *id;
 	info->attrs.pin.min_length        = min_length;
 	info->attrs.pin.max_length        = max_length;
