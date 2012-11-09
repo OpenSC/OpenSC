@@ -837,60 +837,92 @@ cardos_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_BUFFER_TOO_SMALL);
 	outlen = datalen;
 
-	/* XXX As we don't know what operations are allowed with a
-	 * certain key, let's try RSA_PURE etc. and see which operation
-	 * succeeds (this is not really beautiful, but currently the
-	 * only way I see) -- Nils
+	/* There are two ways to create a signature, depending on the way, 
+	 * the key was created: RSA_SIG and RSA_PURE_SIG.
+	 * We can use the following reasoning, to determine the correct operation:
+	 * 1. We check for several caps flags (as set in card->caps), to pervent generating
+	 *    invalid signatures with duplicated hash prefixes with some cards
+	 * 2. Use the information from AlgorithmInfo of the TokenInfo file. 
+	 *    This information is parsed in set_security_env and stored in a static variable.
+	 *    The problem is, that that information is only available for the whole token and not
+	      for a specific key, so if both operations are present, we can only do trial and error
 	 *
-	 * We also check for several caps flags here to pervent generating
-	 * invalid signatures with duplicated hash prefixes with some cards
+	 * The Algorithm IDs for RSA_SIG are 0x86 and 0x88, those for RSA_PURE_SIG 0x8c and 0x8a
+	 * (According to http://www.opensc-project.org/pipermail/opensc-devel/2010-September/014912.html
+	 *   and www.crysys.hu/infsec/M40_Manual_E_2001_10.pdf)
 	 */
+	
+	int do_rsa_pure_sig = 0;
+	int do_rsa_sig = 0;
 
-        if (card->caps & SC_CARD_CAP_ONLY_RAW_HASH_STRIPPED)
+        if (card->caps & SC_CARD_CAP_ONLY_RAW_HASH_STRIPPED){
             sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Forcing RAW_HASH_STRIPPED\n");        	 
-        if (card->caps & SC_CARD_CAP_ONLY_RAW_HASH)
+	    do_rsa_sig = 1;
+	}else if (card->caps & SC_CARD_CAP_ONLY_RAW_HASH){
             sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Forcing RAW_HASH\n");
+	    do_rsa_sig = 1;
+	}else{
+	  //check the the algorithmIDs from the AlgorithmInfo
+	  int i;
+	  for(i=0; i<algorithm_ids_in_tokeninfo_count;++i){
+	    unsigned int id = algorithm_ids_in_tokeninfo[i];
+	    if(id == 0x86 || id == 0x88)
+	      do_rsa_sig = 1;
+	    else if(id == 0x8C || id == 0x8A)
+	      do_rsa_pure_sig = 1;
+	  }
+	}
 
-	if (!(card->caps & (SC_CARD_CAP_ONLY_RAW_HASH_STRIPPED | SC_CARD_CAP_ONLY_RAW_HASH))) {
+	if(do_rsa_pure_sig == 1){
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "trying RSA_PURE_SIG (padded DigestInfo)\n");
 		r = do_compute_signature(card, data, datalen, out, outlen);
 		if (r >= SC_SUCCESS)
 			SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, r);
 	}		
-		
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "trying RSA_SIG (just the DigestInfo)\n");
-	/* remove padding: first try pkcs1 bt01 padding */
-	r = sc_pkcs1_strip_01_padding(data, datalen, buf, &tmp_len);
-	if (r != SC_SUCCESS) {
-		const u8 *p = data;
-		/* no pkcs1 bt01 padding => let's try zero padding
-		 * This can only work if the data tbs doesn't have a
-		 * leading 0 byte.  */
-		tmp_len = buf_len;
-		while (*p == 0 && tmp_len != 0) {
-			++p;
-			--tmp_len;
-		}
-		memcpy(buf, p, tmp_len);
+	
+	//check if any operation was selected
+	if(do_rsa_sig == 0 && do_rsa_pure_sig == 0){
+	  //no operation selected. we just have to try both, for the lack of any better reasoning
+	  sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "I was unable to determine, wether this key can be used with RSA_SIG or RSA_PURE_SIG. I will just try both.\n");
+	  do_rsa_sig = 1;
+	  do_rsa_pure_sig = 1;
 	}
 
-	if (!(card->caps & (SC_CARD_CAP_ONLY_RAW_HASH_STRIPPED | SC_CARD_CAP_ONLY_RAW_HASH)) || card->caps & SC_CARD_CAP_ONLY_RAW_HASH ) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "trying to sign raw hash value with prefix\n");	
-		r = do_compute_signature(card, buf, tmp_len, out, outlen);
-		if (r >= SC_SUCCESS)	
-			SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, r);
-	}
-
-	if (card->caps & SC_CARD_CAP_ONLY_RAW_HASH) {
+	if(do_rsa_sig == 1){
+	  sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "trying RSA_SIG (just the DigestInfo)\n");
+	  /* remove padding: first try pkcs1 bt01 padding */
+	  r = sc_pkcs1_strip_01_padding(data, datalen, buf, &tmp_len);
+	  if (r != SC_SUCCESS) {
+	    const u8 *p = data;
+	    /* no pkcs1 bt01 padding => let's try zero padding
+	     * This can only work if the data tbs doesn't have a
+	     * leading 0 byte.  */
+	    tmp_len = buf_len;
+	    while (*p == 0 && tmp_len != 0) {
+	      ++p;
+	      --tmp_len;
+	    }
+	    memcpy(buf, p, tmp_len);
+	  }
+	  
+	  if (!(card->caps & (SC_CARD_CAP_ONLY_RAW_HASH_STRIPPED | SC_CARD_CAP_ONLY_RAW_HASH)) || card->caps & SC_CARD_CAP_ONLY_RAW_HASH ) {
+	    sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "trying to sign raw hash value with prefix\n");	
+	    r = do_compute_signature(card, buf, tmp_len, out, outlen);
+	    if (r >= SC_SUCCESS)	
+	      SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, r);
+	  }
+	  
+	  if (card->caps & SC_CARD_CAP_ONLY_RAW_HASH) {
 	    sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Failed to sign raw hash value with prefix when forcing\n");
 	    SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
+	  }
+	  
+	  sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "trying to sign stripped raw hash value (card is responsible for prefix)\n");
+	  r = sc_pkcs1_strip_digest_info_prefix(NULL,buf,tmp_len,buf,&buf_len);
+	  if (r != SC_SUCCESS)
+	    SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, r);
+	  return do_compute_signature(card, buf, buf_len, out, outlen);
 	}
-	   
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "trying to sign stripped raw hash value (card is responsible for prefix)\n");
-	r = sc_pkcs1_strip_digest_info_prefix(NULL,buf,tmp_len,buf,&buf_len);
-	if (r != SC_SUCCESS)
-		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, r);
-	return do_compute_signature(card, buf, buf_len, out, outlen);
 }
 
 static int
