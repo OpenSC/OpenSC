@@ -57,6 +57,9 @@ static struct sc_atr_table cardos_atrs[] = {
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
+static unsigned int algorithm_ids_in_tokeninfo[SC_MAX_SUPPORTED_ALGORITHMS];
+static unsigned int algorithm_ids_in_tokeninfo_count=0;
+
 static int cardos_match_card(sc_card_t *card)
 {
 	unsigned char atr[SC_MAX_ATR_SIZE];
@@ -763,6 +766,22 @@ cardos_set_security_env(sc_card_t *card,
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
+
+
+	const struct sc_supported_algo_info* algorithm_info = env->supported_algos;
+	int i=0;
+	int algorithm_id_count = 0;
+	for(i=0;i<SC_MAX_SUPPORTED_ALGORITHMS;++i){
+	  struct sc_supported_algo_info alg = algorithm_info[i];
+	  if(alg.operations & SC_PKCS15_ALGO_OP_COMPUTE_SIGNATURE){
+	    sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "is signature\n");
+	    unsigned int algorithm_id = alg.algo_ref;
+	    sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Adding ID %d at index %d.\n", algorithm_id, algorithm_id_count);
+	    algorithm_ids_in_tokeninfo[algorithm_id_count++] = algorithm_id;
+	  }
+	  sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "reference=%d, mechanism=%d, operations=%d, algo_ref=%d.\n", alg.reference, alg.mechanism, alg.operations, alg.algo_ref);
+	}
+	algorithm_ids_in_tokeninfo_count = algorithm_id_count;
 
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 }
