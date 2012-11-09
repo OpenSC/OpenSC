@@ -635,9 +635,9 @@ sc_pkcs15_read_pubkey(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_obj
 		struct sc_pkcs15_pubkey **out)
 {
 	struct sc_context *ctx = p15card->card->ctx;
-	const struct sc_pkcs15_pubkey_info *info;
-	struct sc_pkcs15_pubkey *pubkey;
-	u8	*data;
+	const struct sc_pkcs15_pubkey_info *info = NULL;
+	struct sc_pkcs15_pubkey *pubkey = NULL;
+	unsigned char *data = NULL;
 	size_t	len;
 	int	algorithm, r;
 
@@ -662,6 +662,7 @@ sc_pkcs15_read_pubkey(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_obj
 	}
 	info = (const struct sc_pkcs15_pubkey_info *) obj->data;
 
+	sc_log(ctx, "Content (%p, %i)", obj->content.value, obj->content.len);
 	if (obj->content.value && obj->content.len)   {
 		/* public key data is present as 'direct' value of pkcs#15 object */
 		data = calloc(1, obj->content.len);
@@ -670,9 +671,18 @@ sc_pkcs15_read_pubkey(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_obj
 		memcpy(data, obj->content.value, obj->content.len);
 		len = obj->content.len;
 	}
-        else   {
+	else if (p15card->card->ops->read_public_key)   {
+		r = p15card->card->ops->read_public_key(p15card->card,
+				algorithm, info->key_reference, info->modulus_length,
+				&data, &len);
+		LOG_TEST_RET(ctx, r, "Card specific 'read-public' procedure failed.");
+	}
+	else if (info->path.len)   {
 		r = sc_pkcs15_read_file(p15card, &info->path, &data, &len);
 		LOG_TEST_RET(ctx, r, "Failed to read public key file.");
+	}
+	else    {
+		LOG_TEST_RET(ctx, SC_ERROR_NOT_IMPLEMENTED, "No way to get public key");
 	}
 
 	pubkey = calloc(1, sizeof(struct sc_pkcs15_pubkey));

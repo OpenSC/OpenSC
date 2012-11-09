@@ -1,8 +1,8 @@
 /*
  * card-iasecc.c: Support for IAS/ECC smart cards
  *
- * Copyright (C) 2010  Viktor Tarasov <vtarasov@opentrust.com>
- * 			OpenTrust <www.opentrust.com>
+ * Copyright (C) 2010  Viktor Tarasov <vtarasov@gmail.com>
+ *			OpenTrust <www.opentrust.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -282,19 +282,19 @@ iasecc_select_mf(struct sc_card *card, struct sc_file **file_out)
 
 	if (card->cache.valid && card->cache.current_df)
 		 sc_file_free(card->cache.current_df);
- 	card->cache.current_df = NULL;
+	card->cache.current_df = NULL;
 
 	if (card->cache.valid && card->cache.current_ef)
- 		sc_file_free(card->cache.current_ef);
- 	card->cache.current_ef = NULL;
+		sc_file_free(card->cache.current_ef);
+	card->cache.current_ef = NULL;
 
 	sc_file_dup(&card->cache.current_df, mf_file);
- 	card->cache.valid = 1;
+	card->cache.valid = 1;
 
 	if (file_out && *file_out == NULL)
 		*file_out = mf_file;
 	else
- 		sc_file_free(mf_file);
+		sc_file_free(mf_file);
 
 	LOG_FUNC_RETURN(ctx, rv);
 }
@@ -362,19 +362,19 @@ static int iasecc_parse_ef_atr(struct sc_card *card)
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Invalid pre-issuing data");
 
 	version->ic_manufacturer =	card->ef_atr->pre_issuing[0];
-	version->ic_type = 		card->ef_atr->pre_issuing[1];
-	version->os_version = 		card->ef_atr->pre_issuing[2];
-	version->iasecc_version = 	card->ef_atr->pre_issuing[3];
+	version->ic_type =		card->ef_atr->pre_issuing[1];
+	version->os_version =		card->ef_atr->pre_issuing[2];
+	version->iasecc_version =	card->ef_atr->pre_issuing[3];
 	sc_log(ctx, "EF.ATR: IC manufacturer/type %X/%X, OS/IasEcc versions %X/%X",
 		version->ic_manufacturer, version->ic_type, version->os_version, version->iasecc_version);
 
 	if (card->ef_atr->issuer_data_len < 16)
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Invalid issuer data");
 
-      	sizes->send =	 card->ef_atr->issuer_data[2] * 0x100 + card->ef_atr->issuer_data[3];
-      	sizes->send_sc = card->ef_atr->issuer_data[6] * 0x100 + card->ef_atr->issuer_data[7];
-      	sizes->recv =	 card->ef_atr->issuer_data[10] * 0x100 + card->ef_atr->issuer_data[11];
-      	sizes->recv_sc = card->ef_atr->issuer_data[14] * 0x100 + card->ef_atr->issuer_data[15];
+	sizes->send =	 card->ef_atr->issuer_data[2] * 0x100 + card->ef_atr->issuer_data[3];
+	sizes->send_sc = card->ef_atr->issuer_data[6] * 0x100 + card->ef_atr->issuer_data[7];
+	sizes->recv =	 card->ef_atr->issuer_data[10] * 0x100 + card->ef_atr->issuer_data[11];
+	sizes->recv_sc = card->ef_atr->issuer_data[14] * 0x100 + card->ef_atr->issuer_data[15];
 
 	card->max_send_size = sizes->send;
 	card->max_recv_size = sizes->recv;
@@ -855,7 +855,7 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 		sc_log(ctx, "returns current DF path %s", sc_print_path(&card->cache.current_df->path));
 		if (file_out)   {
 			if (*file_out)
-		   		sc_file_free(*file_out);
+				sc_file_free(*file_out);
 			sc_file_dup(file_out, card->cache.current_df);
 		}
 
@@ -945,7 +945,7 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 			card->cache.valid = 0;
 			sc_log(ctx, "iasecc_select_file() file not found, retry without cached DF");
 			if (file_out && *file_out)   {
-		   		sc_file_free(*file_out);
+				sc_file_free(*file_out);
 				*file_out = NULL;
 			}
 			rv = iasecc_select_file(card, path, file_out);
@@ -999,7 +999,7 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 
 			if (file_out)   {
 				if (*file_out)
-		   			sc_file_free(*file_out);
+					sc_file_free(*file_out);
 				*file_out = file;
 			}
 			else   {
@@ -1408,7 +1408,7 @@ iasecc_get_algorithm(struct sc_context *ctx, const struct sc_security_env *env,
     if (ii < SC_MAX_SUPPORTED_ALGORITHMS && env->supported_algos[ii].reference)   {
         info = &env->supported_algos[ii];
         sc_log(ctx, "found IAS/ECC algorithm %X:%X:%X:%X",
-		       	info->reference, info->mechanism, info->operations, info->algo_ref);
+			info->reference, info->mechanism, info->operations, info->algo_ref);
     }
     else   {
         sc_log(ctx, "cannot find IAS/ECC algorithm (operation:%X,mechanism:%X)", operation, mechanism);
@@ -3263,27 +3263,21 @@ iasecc_compute_signature(struct sc_card *card,
 	LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 }
 
-/*
- * FIXME: Should we implement 'read-public-key' facility, or assume that public key will be always present as
- * 'direct' PKCS#15 ObjectValue ?
 
 static int
-iasecc_read_public_key(struct sc_card *card, unsigned type, void *data,
-			unsigned char **out, size_t *out_len)
+iasecc_read_public_key(struct sc_card *card,
+		unsigned type, unsigned ref, size_t size,
+		unsigned char **out, size_t *out_len)
 {
 	struct sc_context *ctx = card->ctx;
 	struct iasecc_sdo sdo;
 	struct sc_pkcs15_bignum bn[2];
-	struct sc_pkcs15_pubkey_rsa key;
-	unsigned ref, size;
+	struct sc_pkcs15_pubkey_rsa rsa_key;
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
 	if (type != SC_ALGORITHM_RSA)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
-
-	ref = ((struct sc_pkcs15_pubkey_info *)data)->key_reference;
-	size = ((struct sc_pkcs15_pubkey_info *)data)-> modulus_length;
 
 	sc_log(ctx, "read public kay(ref:%i;size:%i)", ref, size);
 
@@ -3311,10 +3305,10 @@ iasecc_read_public_key(struct sc_card *card, unsigned type, void *data,
 	bn[1].len = sdo.data.pub_key.e.size;
 	memcpy(bn[1].data, sdo.data.pub_key.e.value, sdo.data.pub_key.e.size);
 
-	key.modulus = bn[0];
-	key.exponent = bn[1];
+	rsa_key.modulus = bn[0];
+	rsa_key.exponent = bn[1];
 
-	rv = sc_pkcs15_encode_pubkey_rsa(card->ctx, &key, out, out_len);
+	rv = sc_pkcs15_encode_pubkey_rsa(ctx, &rsa_key, out, out_len);
 	LOG_TEST_RET(ctx, rv, "failed to read public key: cannot encode RSA public key");
 
 	sc_log(ctx, "encoded public key: %s", sc_dump_hex(*out, *out_len));
@@ -3326,9 +3320,9 @@ iasecc_read_public_key(struct sc_card *card, unsigned type, void *data,
 
 	iasecc_sdo_free_fields(card, &sdo);
 
-	SC_FUNC_RETURN(ctx, 1, rv);
+	SC_FUNC_RETURN(ctx, SC_SUCCESS, rv);
 }
-*/
+
 
 static int
 iasecc_get_free_reference(struct sc_card *card, struct iasecc_ctl_get_free_reference *ctl_data)
@@ -3474,7 +3468,7 @@ sc_get_driver(void)
 	/*	put_data: Not implemented	*/
 	/*	delete_record: Not implemented	*/
 
-	/* iasecc_ops.read_public_key = iasecc_read_public_key	*/
+	iasecc_ops.read_public_key = iasecc_read_public_key;
 
 	return &iasecc_drv;
 }
