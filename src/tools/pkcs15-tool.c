@@ -601,13 +601,14 @@ static void print_pubkey_info(const struct sc_pkcs15_object *obj)
 		printf("\tModLength      : %lu\n", (unsigned long)pubkey->modulus_length);
 	else
 		printf("\tFieldLength      : %lu\n", (unsigned long)pubkey->field_length);
-	printf("\tKey ref        : %d\n", pubkey->key_reference);
+	printf("\tKey ref        : %d (0x%X)\n", pubkey->key_reference,  pubkey->key_reference);
 	printf("\tNative         : %s\n", pubkey->native ? "yes" : "no");
-	if (pubkey->path.len)
+	if (pubkey->path.len || pubkey->path.aid.len)
 		printf("\tPath           : %s\n", sc_print_path(&pubkey->path));
 	if (obj->auth_id.len != 0)
 		printf("\tAuth ID        : %s\n", sc_pkcs15_print_id(&obj->auth_id));
 	printf("\tID             : %s\n", sc_pkcs15_print_id(&pubkey->id));
+	printf("\tDirectValue    : <%s>\n", obj->content.len ? "present" : "absent");
 }
 
 static int list_public_keys(void)
