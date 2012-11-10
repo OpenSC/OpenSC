@@ -397,6 +397,9 @@ int main(int argc, char * const argv[])
 	if (action_count == 0)
 		util_print_usage_and_die(app_name, options, option_help, NULL);
 
+	if (!(opt_crypt_flags & SC_ALGORITHM_RSA_HASHES))
+		opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_NONE;
+
 	memset(&ctx_param, 0, sizeof(ctx_param));
 	ctx_param.ver      = 0;
 	ctx_param.app_name = app_name;
