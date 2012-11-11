@@ -788,7 +788,8 @@ static int read_ssh_key(void)
 		r = authenticate(obj);
 		if (r >= 0)
 			r = sc_pkcs15_read_pubkey(p15card, obj, &pubkey);
-	} else if (r == SC_ERROR_OBJECT_NOT_FOUND) {
+	}
+	else if (r == SC_ERROR_OBJECT_NOT_FOUND) {
 		/* No pubkey - try if there's a certificate */
 		r = sc_pkcs15_find_cert_by_id(p15card, &id, &obj);
 		if (r >= 0) {

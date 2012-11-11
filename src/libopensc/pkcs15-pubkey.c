@@ -685,6 +685,9 @@ sc_pkcs15_read_pubkey(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_obj
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_IMPLEMENTED, "No way to get public key");
 	}
 
+	if (!data || !len)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_OBJECT_NOT_VALID);
+
 	pubkey = calloc(1, sizeof(struct sc_pkcs15_pubkey));
 	if (pubkey == NULL) {
 		free(data);
