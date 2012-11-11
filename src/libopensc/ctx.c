@@ -718,9 +718,8 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 	ctx->reader_driver = sc_get_pcsc_driver();
 /* XXX: remove cardmod pseudoreader driver */
 #ifdef ENABLE_MINIDRIVER
-	if(strcmp(ctx->app_name, "cardmod") == 0) {
+	if(strcmp(ctx->app_name, "cardmod") == 0)
 		ctx->reader_driver = sc_get_cardmod_driver();
-	}
 #endif
 #elif defined(ENABLE_CTAPI)
 	ctx->reader_driver = sc_get_ctapi_driver();
@@ -729,7 +728,11 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 #endif
 
 	load_reader_driver_options(ctx);
-	ctx->reader_driver->ops->init(ctx);
+	r = ctx->reader_driver->ops->init(ctx);
+	if (r != SC_SUCCESS)   {
+		sc_release_context(ctx);
+		return r;
+	}
 
 	load_card_drivers(ctx, &opts);
 	load_card_atrs(ctx);
@@ -741,6 +744,7 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 	del_drvs(&opts);
 	sc_ctx_detect_readers(ctx);
 	*ctx_out = ctx;
+
 	return SC_SUCCESS;
 }
 
