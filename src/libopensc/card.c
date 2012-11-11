@@ -629,8 +629,10 @@ int sc_select_file(sc_card_t *card, const sc_path_t *in_path,  sc_file_t **file)
 	if (card->ops->select_file == NULL)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 	r = card->ops->select_file(card, in_path, file);
+	LOG_TEST_RET(card->ctx, r, "'SELECT' error");
+
 	/* Remember file path */
-	if (r == 0 && file && *file)
+	if (file && *file)
 		(*file)->path = *in_path;
 
 	LOG_FUNC_RETURN(card->ctx, r);
