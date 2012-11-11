@@ -47,6 +47,7 @@ openpgp_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
 iasecc_tool_SOURCES = iasecc-tool.c util.c
 iasecc_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
 sc_hsm_tool_SOURCES = sc-hsm-tool.c util.c
+sc_hsm_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
 
 if WIN32
 opensc_tool_SOURCES += $(top_builddir)/win32/versioninfo.rc
