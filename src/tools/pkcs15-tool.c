@@ -763,20 +763,21 @@ static int read_ssh_key(void)
 {
 	int r;
 	struct sc_pkcs15_id id;
-	struct sc_pkcs15_object *obj;
+	struct sc_pkcs15_object *obj = NULL;
 	sc_pkcs15_pubkey_t *pubkey = NULL;
 	sc_pkcs15_cert_t *cert = NULL;
-        FILE            *outf;
+        FILE *outf = NULL;
 
         if (opt_outfile != NULL) {
                 outf = fopen(opt_outfile, "w");
                 if (outf == NULL) {
-                        fprintf(stderr, "Error opening file '%s': %s\n",
-                                opt_outfile, strerror(errno));
+                        fprintf(stderr, "Error opening file '%s': %s\n", opt_outfile, strerror(errno));
                         goto fail2;
                 }
-        } else
+        }
+	else   {
                 outf = stdout;
+	}
 
 	id.len = SC_PKCS15_MAX_ID_SIZE;
 	sc_pkcs15_hex_string_to_id(opt_pubkey, &id);
@@ -795,9 +796,7 @@ static int read_ssh_key(void)
 		if (r >= 0) {
 			if (verbose)
 				fprintf(stderr,"Reading certificate with ID '%s'\n", opt_pubkey);
-			r = sc_pkcs15_read_certificate(p15card,
-				(sc_pkcs15_cert_info_t *) obj->data,
-				&cert);
+			r = sc_pkcs15_read_certificate(p15card, (sc_pkcs15_cert_info_t *) obj->data, &cert);
 		}
 		if (r >= 0)
 			pubkey = cert->key;
@@ -817,41 +816,45 @@ static int read_ssh_key(void)
 	}
 
 	/* rsa1 keys */
+# if 0
 	if (pubkey->algorithm == SC_ALGORITHM_RSA) {
 		int bits;
 		BIGNUM *bn;
 		char *exp,*mod;
 
 		bn = BN_new();
-		BN_bin2bn((unsigned char*)pubkey->u.rsa.modulus.data,
-				pubkey->u.rsa.modulus.len, bn);
+		BN_bin2bn((unsigned char*)pubkey->u.rsa.modulus.data, pubkey->u.rsa.modulus.len, bn);
 		bits = BN_num_bits(bn);
 		exp =  BN_bn2dec(bn);
 		BN_free(bn);
 
 		bn = BN_new();
-		BN_bin2bn((unsigned char*)pubkey->u.rsa.exponent.data,
-				pubkey->u.rsa.exponent.len, bn);
+		BN_bin2bn((unsigned char*)pubkey->u.rsa.exponent.data, pubkey->u.rsa.exponent.len, bn);
 		mod = BN_bn2dec(bn);
 		BN_free(bn);
 
-		if (bits && exp && mod) {
+		if (bits && exp && mod)
 			fprintf(outf, "%u %s %s\n", bits,mod,exp);
-		} else {
+		else
 			fprintf(stderr, "decoding rsa key failed!\n");
-		}
+
 		OPENSSL_free(exp);
 		OPENSSL_free(mod);
 	}
-
+#endif
 	/* rsa and des keys - ssh2 */
 	/* key_to_blob */
 
 	if (pubkey->algorithm == SC_ALGORITHM_RSA) {
 		unsigned char buf[2048];
 		unsigned char *uu;
-		uint32_t len;
-		uint32_t n;
+		uint32_t len, n;
+
+		if (!pubkey->u.rsa.modulus.data || !pubkey->u.rsa.modulus.len ||
+				!pubkey->u.rsa.exponent.data || !pubkey->u.rsa.exponent.len)  {
+			fprintf(stderr, "Failed to decode public RSA key.\n");
+                        goto fail2;
+		}
 
 		buf[0]=0;
 		buf[1]=0;
@@ -863,8 +866,11 @@ static int read_ssh_key(void)
 
 		if (sizeof(buf)-len < 4+pubkey->u.rsa.exponent.len)
 			goto fail;
+
 		n = pubkey->u.rsa.exponent.len;
-		if (pubkey->u.rsa.exponent.data[0] & 0x80) n++;
+		if (pubkey->u.rsa.exponent.data[0] & 0x80)
+			n++;
+
 		buf[len++]=(n >>24) & 0xff;
 		buf[len++]=(n >>16) & 0xff;
 		buf[len++]=(n >>8) & 0xff;
@@ -872,23 +878,24 @@ static int read_ssh_key(void)
 		if (pubkey->u.rsa.exponent.data[0] & 0x80)
 			buf[len++]= 0;
 
-		memcpy(buf+len,pubkey->u.rsa.exponent.data,
-			pubkey->u.rsa.exponent.len);
+		memcpy(buf+len,pubkey->u.rsa.exponent.data, pubkey->u.rsa.exponent.len);
 		len += pubkey->u.rsa.exponent.len;
 
 		if (sizeof(buf)-len < 5+pubkey->u.rsa.modulus.len)
 			goto fail;
+
 		n = pubkey->u.rsa.modulus.len;
-		if (pubkey->u.rsa.modulus.data[0] & 0x80) n++;
+		if (pubkey->u.rsa.modulus.data[0] & 0x80)
+			n++;
 		buf[len++]=(n >>24) & 0xff;
 		buf[len++]=(n >>16) & 0xff;
 		buf[len++]=(n >>8) & 0xff;
 		buf[len++]=(n) & 0xff;
+
 		if (pubkey->u.rsa.modulus.data[0] & 0x80)
 			buf[len++]= 0;
 
-		memcpy(buf+len,pubkey->u.rsa.modulus.data,
-			pubkey->u.rsa.modulus.len);
+		memcpy(buf+len,pubkey->u.rsa.modulus.data, pubkey->u.rsa.modulus.len);
 		len += pubkey->u.rsa.modulus.len;
 
 		uu = malloc(len*2);
@@ -896,7 +903,6 @@ static int read_ssh_key(void)
 
 		fprintf(outf,"ssh-rsa %s", uu);
 		free(uu);
-
 	}
 
 	if (pubkey->algorithm == SC_ALGORITHM_DSA) {
@@ -904,6 +910,14 @@ static int read_ssh_key(void)
 		unsigned char *uu;
 		uint32_t len;
 		uint32_t n;
+
+		if (!pubkey->u.dsa.p.data || !pubkey->u.dsa.p.len ||
+				!pubkey->u.dsa.q.data || !pubkey->u.dsa.q.len ||
+				!pubkey->u.dsa.g.data || !pubkey->u.dsa.g.len ||
+				!pubkey->u.dsa.pub.data || !pubkey->u.dsa.pub.len)   {
+			fprintf(stderr, "Failed to decode DSA key.\n");
+                        goto fail2;
+		}
 
 		buf[0]=0;
 		buf[1]=0;
@@ -915,8 +929,11 @@ static int read_ssh_key(void)
 
 		if (sizeof(buf)-len < 5+pubkey->u.dsa.p.len)
 			goto fail;
+
 		n = pubkey->u.dsa.p.len;
-		if (pubkey->u.dsa.p.data[0] & 0x80) n++;
+		if (pubkey->u.dsa.p.data[0] & 0x80)
+			n++;
+
 		buf[len++]=(n >>24) & 0xff;
 		buf[len++]=(n >>16) & 0xff;
 		buf[len++]=(n >>8) & 0xff;
@@ -924,14 +941,16 @@ static int read_ssh_key(void)
 		if (pubkey->u.dsa.p.data[0] & 0x80)
 			buf[len++]= 0;
 
-		memcpy(buf+len,pubkey->u.dsa.p.data,
-			pubkey->u.dsa.p.len);
+		memcpy(buf+len,pubkey->u.dsa.p.data, pubkey->u.dsa.p.len);
 		len += pubkey->u.dsa.p.len;
 
 		if (sizeof(buf)-len < 5+pubkey->u.dsa.q.len)
 			goto fail;
+
 		n = pubkey->u.dsa.q.len;
-		if (pubkey->u.dsa.q.data[0] & 0x80) n++;
+		if (pubkey->u.dsa.q.data[0] & 0x80)
+			n++;
+
 		buf[len++]=(n >>24) & 0xff;
 		buf[len++]=(n >>16) & 0xff;
 		buf[len++]=(n >>8) & 0xff;
@@ -939,14 +958,15 @@ static int read_ssh_key(void)
 		if (pubkey->u.dsa.q.data[0] & 0x80)
 			buf[len++]= 0;
 
-		memcpy(buf+len,pubkey->u.dsa.q.data,
-			pubkey->u.dsa.q.len);
+		memcpy(buf+len,pubkey->u.dsa.q.data, pubkey->u.dsa.q.len);
 		len += pubkey->u.dsa.q.len;
 
 		if (sizeof(buf)-len < 5+pubkey->u.dsa.g.len)
 			goto fail;
 		n = pubkey->u.dsa.g.len;
-		if (pubkey->u.dsa.g.data[0] & 0x80) n++;
+		if (pubkey->u.dsa.g.data[0] & 0x80)
+			n++;
+
 		buf[len++]=(n >>24) & 0xff;
 		buf[len++]=(n >>16) & 0xff;
 		buf[len++]=(n >>8) & 0xff;
@@ -954,14 +974,16 @@ static int read_ssh_key(void)
 		if (pubkey->u.dsa.g.data[0] & 0x80)
 			buf[len++]= 0;
 
-		memcpy(buf+len,pubkey->u.dsa.g.data,
-			pubkey->u.dsa.g.len);
+		memcpy(buf+len,pubkey->u.dsa.g.data, pubkey->u.dsa.g.len);
 		len += pubkey->u.dsa.g.len;
 
 		if (sizeof(buf)-len < 5+pubkey->u.dsa.pub.len)
 			goto fail;
+
 		n = pubkey->u.dsa.pub.len;
-		if (pubkey->u.dsa.pub.data[0] & 0x80) n++;
+		if (pubkey->u.dsa.pub.data[0] & 0x80)
+			n++;
+
 		buf[len++]=(n >>24) & 0xff;
 		buf[len++]=(n >>16) & 0xff;
 		buf[len++]=(n >>8) & 0xff;
@@ -969,8 +991,7 @@ static int read_ssh_key(void)
 		if (pubkey->u.dsa.pub.data[0] & 0x80)
 			buf[len++]= 0;
 
-		memcpy(buf+len,pubkey->u.dsa.pub.data,
-			pubkey->u.dsa.pub.len);
+		memcpy(buf+len,pubkey->u.dsa.pub.data, pubkey->u.dsa.pub.len);
 		len += pubkey->u.dsa.pub.len;
 
 		uu = malloc(len*2);
@@ -978,7 +999,6 @@ static int read_ssh_key(void)
 
 		fprintf(outf,"ssh-dss %s", uu);
 		free(uu);
-
 	}
 
         if (outf != stdout)
