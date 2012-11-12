@@ -4179,11 +4179,14 @@ get_bignum_bits(sc_pkcs15_bignum_t *bn, CK_ATTRIBUTE_PTR attr)
 {
 	CK_ULONG	bits, mask;
 
+	if (!bn || !bn->len || !bn->data)
+		return CKR_DEVICE_ERROR;
+
 	bits = bn->len * 8;
-	for (mask = 0x80; mask; mask >>= 1, bits--) {
+	for (mask = 0x80; mask; mask >>= 1, bits--)
 		if (bn->data[0] & mask)
 			break;
-	}
+
 	check_attribute_buffer(attr, sizeof(bits));
 	*(CK_ULONG *) attr->pValue = bits;
 	return CKR_OK;
