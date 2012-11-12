@@ -263,6 +263,58 @@ void sc_pkcs15emu_sc_hsm_free_cvc(sc_cvc_t *cvc)
 
 
 
+static int sc_pkcs15emu_sc_hsm_add_pubkey(sc_pkcs15_card_t *p15card, sc_pkcs15_prkey_info_t *key_info, char *label) {
+	sc_card_t *card = p15card->card;
+	sc_pkcs15_pubkey_info_t pubkey_info;
+	sc_pkcs15_object_t pubkey_obj;
+	struct sc_pkcs15_pubkey pubkey;
+	u8 efbin[512];
+	sc_cvc_t cvc;
+	u8 *cvcpo;
+	size_t cvclen;
+	int r;
+
+	// EF.CERT is selected
+	r = sc_read_binary(p15card->card, 0, efbin, sizeof(efbin), 0);
+	LOG_TEST_RET(card->ctx, r, "Could not read CSR from EF");
+
+	cvcpo = efbin;
+	cvclen = r;
+
+	memset(&cvc, 0, sizeof(cvc));
+	r = sc_pkcs15emu_sc_hsm_decode_cvc(p15card, (const u8 **)&cvcpo, &cvclen, &cvc);
+	LOG_TEST_RET(card->ctx, r, "Could decode certificate signing request");
+
+	if (cvc.publicPoint || cvc.publicPointlen) {
+		// ToDo implement support for EC Public Keys
+		return SC_SUCCESS;
+	} else {
+		pubkey.algorithm = SC_ALGORITHM_RSA;
+		pubkey.u.rsa.modulus.data = cvc.primeOrModulus;
+		pubkey.u.rsa.modulus.len = cvc.primeOrModuluslen;
+		pubkey.u.rsa.exponent.data = cvc.coefficientAorExponent;
+		pubkey.u.rsa.exponent.len = cvc.coefficientAorExponentlen;
+	}
+
+	memset(&pubkey_info, 0, sizeof(pubkey_info));
+	memset(&pubkey_obj, 0, sizeof(pubkey_obj));
+
+	sc_pkcs15_encode_pubkey(p15card->card->ctx, &pubkey, &pubkey_obj.content.value, &pubkey_obj.content.len);
+
+	pubkey_info.id = key_info->id;
+	strlcpy(pubkey_obj.label, label, sizeof(pubkey_obj.label));
+
+	r = sc_pkcs15emu_add_rsa_pubkey(p15card, &pubkey_obj, &pubkey_info);
+	LOG_TEST_RET(card->ctx, r, "Could not add public key");
+
+	free(pubkey_obj.content.value);
+	sc_pkcs15emu_sc_hsm_free_cvc(&cvc);
+
+	return SC_SUCCESS;
+}
+
+
+
 /*
  * Add a key and the key description in PKCS#15 format to the framework
  */
@@ -340,6 +392,11 @@ static int sc_pkcs15emu_sc_hsm_add_prkd(sc_pkcs15_card_t * p15card, u8 keyid) {
 
 	if (r < 0) {
 		return SC_SUCCESS;
+	}
+
+	if (efbin[0] == 0x67) {		// Decode CSR and create public key object
+		sc_pkcs15emu_sc_hsm_add_pubkey(p15card, key_info, prkd.label);
+		return SC_SUCCESS;		// Ignore any errors
 	}
 
 	if (efbin[0] != 0x30) {
