@@ -873,13 +873,6 @@ cardos_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 	  }
 	}
 
-	if(do_rsa_pure_sig == 1){
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "trying RSA_PURE_SIG (padded DigestInfo)\n");
-		r = do_compute_signature(card, data, datalen, out, outlen);
-		if (r >= SC_SUCCESS)
-			SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, r);
-	}		
-	
 	//check if any operation was selected
 	if(do_rsa_sig == 0 && do_rsa_pure_sig == 0){
 	  //no operation selected. we just have to try both, for the lack of any better reasoning
@@ -888,6 +881,13 @@ cardos_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 	  do_rsa_pure_sig = 1;
 	}
 
+	if(do_rsa_pure_sig == 1){
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "trying RSA_PURE_SIG (padded DigestInfo)\n");
+		r = do_compute_signature(card, data, datalen, out, outlen);
+		if (r >= SC_SUCCESS)
+			SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, r);
+	}		
+	
 	if(do_rsa_sig == 1){
 	  sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "trying RSA_SIG (just the DigestInfo)\n");
 	  /* remove padding: first try pkcs1 bt01 padding */
