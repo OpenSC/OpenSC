@@ -307,7 +307,6 @@ static int sc_pkcs15emu_sc_hsm_add_pubkey(sc_pkcs15_card_t *p15card, sc_pkcs15_p
 	r = sc_pkcs15emu_add_rsa_pubkey(p15card, &pubkey_obj, &pubkey_info);
 	LOG_TEST_RET(card->ctx, r, "Could not add public key");
 
-	free(pubkey_obj.content.value);
 	sc_pkcs15emu_sc_hsm_free_cvc(&cvc);
 
 	return SC_SUCCESS;
