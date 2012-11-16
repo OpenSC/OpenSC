@@ -144,7 +144,7 @@ static void print_info(sc_card_t *card, sc_file_t *file)
 	r = sc_pin_cmd(card, &data, &tries_left);
 
 	if (r == SC_ERROR_REF_DATA_NOT_USABLE) {
-		printf("SmartCard-HSM has never been initialized\n");
+		printf("SmartCard-HSM has never been initialized. Please use --initialize to set SO-PIN and user PIN.\n");
 	} else {
 		if (tries_left == 0) {
 			printf("User PIN locked\n");
@@ -177,19 +177,11 @@ static void initialize(sc_card_t *card, const char *so_pin, const char *user_pin
 	int r;
 
 	if (so_pin == NULL) {
-		printf("Enter SO-PIN : ");
+		printf("Enter SO-PIN (16 hexadecimal characters) : ");
 		util_getpass(&_so_pin, NULL, stdin);
 		printf("\n");
 	} else {
 		_so_pin = (char *)so_pin;
-	}
-
-	if (user_pin == NULL) {
-		printf("Enter initial User-PIN : ");
-		util_getpass(&_user_pin, NULL, stdin);
-		printf("\n");
-	} else {
-		_user_pin = (char *)user_pin;
 	}
 
 	len = sizeof(param.init_code);
@@ -200,11 +192,45 @@ static void initialize(sc_card_t *card, const char *so_pin, const char *user_pin
 	}
 
 	if (len != 8) {
-		fprintf(stderr, "Initialization code must contain 8 bytes\n");
+		fprintf(stderr, "SO-PIN must be a hexadecimal string of 16 characters\n");
 		return;
 	}
 
+	if (user_pin == NULL) {
+		printf("Enter initial User-PIN (6 - 16 characters) : ");
+		util_getpass(&_user_pin, NULL, stdin);
+		printf("\n");
+	} else {
+		_user_pin = (char *)user_pin;
+	}
+
 	param.user_pin_len = strlen(_user_pin);
+
+	if (param.user_pin_len < 6) {
+		fprintf(stderr, "PIN must be at least 6 characters long\n");
+		return;
+	}
+
+	if (param.user_pin_len > 16) {
+		fprintf(stderr, "PIN must not be longer than 16 characters\n");
+		return;
+	}
+
+	if ((param.user_pin_len == 6) && (retry_counter > 3)) {
+		fprintf(stderr, "Retry counter must not exceed 3 for a 6 digit PIN. Use a longer PIN for a higher retry counter.\n");
+		return;
+	}
+
+	if ((param.user_pin_len == 7) && (retry_counter > 5)) {
+		fprintf(stderr, "Retry counter must not exceed 5 for a 7 digit PIN. Use a longer PIN for a higher retry counter.\n");
+		return;
+	}
+
+	if (retry_counter > 10) {
+		fprintf(stderr, "Retry counter must not exceed 10\n");
+		return;
+	}
+
 	param.user_pin = (u8 *)_user_pin;
 
 	param.user_pin_retry_counter = (u8)retry_counter;
