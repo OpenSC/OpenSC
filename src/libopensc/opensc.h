@@ -653,9 +653,9 @@ struct sc_card_operations {
 
 	int (*delete_record)(struct sc_card *card, unsigned int rec_nr);
 
-	int (*read_public_key)(struct sc_card *card,
-			unsigned algorithm, unsigned reference, unsigned size,
-			unsigned char **buf, size_t *count);
+	int (*read_public_key)(struct sc_card *, unsigned,
+			struct sc_path *, unsigned, unsigned,
+			unsigned char **, size_t *);
 };
 
 typedef struct sc_card_driver {

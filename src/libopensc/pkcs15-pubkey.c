@@ -370,11 +370,9 @@ int sc_pkcs15_encode_pukdf_entry(sc_context_t *ctx,
 	return r;
 }
 
-/* this should be required, not optional. But it is missing in some siemens cards and thus causes warnings */
-/* so we silence these warnings by making it optional - the card works ok without. :/ */
 #define C_ASN1_PUBLIC_KEY_SIZE 2
 static struct sc_asn1_entry c_asn1_public_key[C_ASN1_PUBLIC_KEY_SIZE] = {
-	{ "publicKeyCoefficients", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "publicKeyCoefficients", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
 	{ NULL, 0, 0, 0, NULL, NULL }
 };
 
@@ -672,8 +670,8 @@ sc_pkcs15_read_pubkey(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_obj
 		len = obj->content.len;
 	}
 	else if (p15card->card->ops->read_public_key)   {
-		r = p15card->card->ops->read_public_key(p15card->card,
-				algorithm, info->key_reference, info->modulus_length,
+		r = p15card->card->ops->read_public_key(p15card->card, algorithm,
+				&info->path, info->key_reference, info->modulus_length,
 				&data, &len);
 		LOG_TEST_RET(ctx, r, "Card specific 'read-public' procedure failed.");
 	}
