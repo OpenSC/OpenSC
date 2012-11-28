@@ -1528,7 +1528,9 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
 		keyinfo_gostparams->gostr3411 = keyargs->params.gost.gostr3411;
 		keyinfo_gostparams->gost28147 = keyargs->params.gost.gost28147;
 	}
-
+	else if(key.algorithm == SC_ALGORITHM_EC)
+		key_info->field_length = keybits;
+	
 	/* Select a intrinsic Key ID if the user didn't specify one */
 	r = select_intrinsic_id(p15card, profile, SC_PKCS15_TYPE_PUBKEY, &keyargs->id, &key);
 	LOG_TEST_RET(ctx, r, "Get intrinsic ID error");
@@ -1974,7 +1976,8 @@ check_key_compatibility(struct sc_pkcs15_card *p15card, struct sc_pkcs15_prkey *
 
 	count = p15card->card->algorithm_count;
 	for (info = p15card->card->algorithms; count--; info++) {
-		if (info->algorithm != key->algorithm || info->key_length != key_length || (info->flags & flags) != flags)
+		/* don't check flags if none was specified */
+		if (info->algorithm != key->algorithm || info->key_length != key_length || (flags != 0 && (info->flags & flags) != flags))
 			continue;
 
 		if (key->algorithm == SC_ALGORITHM_RSA)   {
@@ -2106,7 +2109,11 @@ prkey_bits(struct sc_pkcs15_card *p15card, struct sc_pkcs15_prkey *key)
 			sc_log(ctx, "Unsupported key (keybits %u)", sc_pkcs15init_keybits(&key->u.gostr3410.d));
 			return SC_ERROR_OBJECT_NOT_VALID;
 		}
-		return SC_PKCS15_GOSTR3410_KEYSIZE;
+		return SC_PKCS15_GOSTR3410_KEYSIZE;		
+	case SC_ALGORITHM_EC:
+		/* calculation returns one bit too small, add one bu default */
+		sc_log(ctx, "Private EC key length %u", sc_pkcs15init_keybits(&key->u.ec.privateD) + 1);
+		return sc_pkcs15init_keybits(&key->u.ec.privateD) + 1;
 	}
 	sc_log(ctx, "Unsupported key algorithm.");
 	return SC_ERROR_NOT_SUPPORTED;
@@ -2197,6 +2204,8 @@ select_intrinsic_id(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 	else if (pubkey->algorithm == SC_ALGORITHM_GOSTR3410 &&
 			!pubkey->u.gostr3410.xy.data)
 		goto done;
+	else if (pubkey->algorithm == SC_ALGORITHM_EC && !pubkey->u.ec.ecpointQ.value)		
+		goto done;
 
 	/* In Mozilla 'GOST R 34.10' is not yet supported.
 	 * So, switch to the ID recommended by RFC2459 */
@@ -2208,8 +2217,11 @@ select_intrinsic_id(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 			SHA1(pubkey->u.rsa.modulus.data, pubkey->u.rsa.modulus.len, id->value);
 		else if (pubkey->algorithm == SC_ALGORITHM_DSA)
 			SHA1(pubkey->u.dsa.pub.data, pubkey->u.dsa.pub.len, id->value);
-		else if (pubkey->algorithm == SC_ALGORITHM_EC)
-			SHA1(pubkey->u.ec.ecpointQ.value, pubkey->u.ec.ecpointQ.len, id->value);
+		else if (pubkey->algorithm == SC_ALGORITHM_EC) {
+			/* ID should be SHA1 of the X coordinate according to PKCS#15 v1.1 */
+			/* skip the 04 tag and get the X component */
+			SHA1(pubkey->u.ec.ecpointQ.value+1, (pubkey->u.ec.ecpointQ.len - 1) / 2, id->value);
+		}
 		else
 			goto done;
 
