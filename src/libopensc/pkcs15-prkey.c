@@ -576,6 +576,14 @@ sc_pkcs15_free_prkey(struct sc_pkcs15_prkey *key)
 		break;
 	case SC_ALGORITHM_EC:
 		/* TODO: -DEE may not need much */
+		if (key->u.ec.params.der.value)
+			free(key->u.ec.params.der.value);
+		if (key->u.ec.params.named_curve)
+			free(key->u.ec.params.named_curve);
+		if (key->u.ec.privateD.data)
+			free(key->u.ec.privateD.data);
+		if (key->u.ec.ecpointQ.value)
+			free(key->u.ec.ecpointQ.value);
 		break;
 	}
 }
@@ -658,6 +666,53 @@ sc_pkcs15_convert_prkey(struct sc_pkcs15_prkey *pkcs15_key, void *evp_key)
 		sc_pkcs15_convert_bignum(&dst->d, EC_KEY_get0_private_key(src));
 		break;
 		}
+	case EVP_PKEY_EC: {
+		struct sc_pkcs15_prkey_ec *dst = &pkcs15_key->u.ec;
+		EC_KEY *src = EVP_PKEY_get0(pk);
+		
+		assert(src);
+		pkcs15_key->algorithm = SC_ALGORITHM_EC;
+		assert(EC_KEY_get0_private_key(src));
+		if (!sc_pkcs15_convert_bignum(&dst->privateD, EC_KEY_get0_private_key(src)))
+			return SC_ERROR_INCOMPATIBLE_KEY;
+		
+		assert(EC_KEY_get0_public_key(src));
+		
+		unsigned char buf[255];
+		size_t buflen = 255;
+		
+		const EC_GROUP *grp = EC_KEY_get0_group(src);
+		if(grp == 0) {
+			//EC_KEY_free(src);
+			return SC_ERROR_INCOMPATIBLE_KEY;
+		}
+		
+		/* get curve name */
+		int nid;
+		nid = EC_GROUP_get_curve_name(grp);
+		if(nid != 0)
+			dst->params.named_curve = strdup(OBJ_nid2sn(nid));
+		
+		/* Decode EC_POINT from a octet string */
+		buflen = EC_POINT_point2oct(grp, (const EC_POINT *) EC_KEY_get0_public_key(src), 
+				POINT_CONVERSION_UNCOMPRESSED, buf, buflen, NULL);
+		
+		/* clean up */
+		//EC_KEY_free(src);
+		
+		/* copy the public key */
+		if (buflen > 0) {
+			dst->ecpointQ.value = malloc(buflen);
+			memcpy(dst->ecpointQ.value, buf, buflen);
+			dst->ecpointQ.len = buflen;
+			/* calculate the field length */
+			dst->params.field_length = (buflen - 1) / 2 * 8;
+		}
+		else
+			return SC_ERROR_INCOMPATIBLE_KEY;	
+
+		break;
+	}
 #endif /* OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_EC) */
 	default:
 		return SC_ERROR_NOT_SUPPORTED;

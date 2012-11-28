@@ -220,6 +220,7 @@ struct sc_pkcs15_pubkey_ec {
 struct sc_pkcs15_prkey_ec {
 	struct sc_pkcs15_ec_parameters params;
 	sc_pkcs15_bignum_t	privateD; /* note this is bignum */
+	sc_pkcs15_der_t		ecpointQ; /* note this is der */
 };
 
 struct sc_pkcs15_pubkey_gostr3410 {
