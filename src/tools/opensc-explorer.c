@@ -1522,8 +1522,8 @@ static int do_put_data(int argc, char **argv)
 static int do_apdu(int argc, char **argv)
 {
 	sc_apdu_t apdu;
-	u8 buf[SC_MAX_APDU_BUFFER_SIZE];
-	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
+	u8 buf[SC_MAX_APDU_BUFFER_SIZE * 2];
+	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE * 2];
 	size_t len, i;
 	int r;
 
