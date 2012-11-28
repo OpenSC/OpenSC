@@ -61,9 +61,15 @@ static struct ec_curve_info {
 	const char *oid_encoded;
 	size_t size;
 } ec_curve_infos[] = {
-	{"prime192r1", "1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192},
-	{"prime256v1", "1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256},
-	{"secp384r1", "1.3.132.0.34", "06052B81040022", 384},
+	{"secp192r1",    "1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192},
+	{"prime192r1",   "1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192},
+	{"ansiX9p192r1", "1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192},
+	{"prime256v1",   "1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256},
+	{"secp256r1",    "1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256},
+	{"ansiX9p256r1", "1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256},
+	{"secp384r1",		"1.3.132.0.34", "06052B81040022", 384},
+	{"prime384v1",		"1.3.132.0.34", "06052B81040022", 384},
+	{"ansiX9p384r1",	"1.3.132.0.34", "06052B81040022", 384},
 	{"brainpoolP192r1", "1.3.36.3.3.2.8.1.1.3", "06092B2403030208010103", 192},
 	{"brainpoolP224r1", "1.3.36.3.3.2.8.1.1.5", "06092B2403030208010105", 224},
 	{"brainpoolP256r1", "1.3.36.3.3.2.8.1.1.7", "06092B2403030208010107", 256},
@@ -4231,9 +4237,9 @@ static void test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	data = md5_and_digestinfo;
 	data_len = 20;
 	rv = p11->C_SignInit(session, &mech, priv_key);
+	rv = p11->C_Sign(session, data, data_len, sig, &sig_len);
 	if (rv != CKR_OK)
 		p11_fatal("C_SignInit", rv);
-	rv = p11->C_Sign(session, data, data_len, sig, &sig_len);
 	if (rv != CKR_OK)
 		p11_fatal("C_Sign", rv);
 
