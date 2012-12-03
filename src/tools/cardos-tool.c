@@ -299,7 +299,7 @@ static int cardos_info(void)
 
 	if (rbuf[0] == 0x00) {
 		printf("ATR Status: 0x%d ROM-ATR\n",rbuf[0]);
-	} else if ((rbuf[0] == 0x90) || (rbuf[0] == 0x80 && is_cardos5)) {
+	} else if (rbuf[0] == 0x80)	{
 		printf("ATR Status: 0x%d EEPROM-ATR\n",rbuf[0]);
 	} else {
 		printf("ATR Status: 0x%d unknown\n",rbuf[0]);
