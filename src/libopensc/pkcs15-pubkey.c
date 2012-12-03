@@ -646,24 +646,16 @@ int
 sc_pkcs15_encode_pubkey_ec(sc_context_t *ctx, struct sc_pkcs15_pubkey_ec *key,
 		u8 **buf, size_t *buflen)
 {
-	int r;
-	/*u8 * ecpoint_data;
-	size_t ecpoint_len;*/
 	struct sc_asn1_entry asn1_ec_pointQ[C_ASN1_EC_POINTQ_SIZE];
-	
-	/*buf = malloc(key->ecpointQ.len);
-	if (*buf == NULL)
-		return SC_ERROR_OUT_OF_MEMORY;*/
-	
+	int r;
+
 	sc_copy_asn1_entry(c_asn1_ec_pointQ, asn1_ec_pointQ);
 	sc_format_asn1_entry(asn1_ec_pointQ + 0, key->ecpointQ.value, &key->ecpointQ.len, 1);
-	
-/*	memcpy(*buf, key->ecpointQ.value, key->ecpointQ.len);
-	*buflen = key->ecpointQ.len;
-*/	
-	r = sc_asn1_encode(ctx, asn1_ec_pointQ, buf, buflen);
 
-	sc_log(ctx, "DEE-EC key->ecpointQ=%p:%d *buf=%p:%d", key->ecpointQ.value, key->ecpointQ.len, *buf, *buflen);
+	r = sc_asn1_encode(ctx, asn1_ec_pointQ, buf, buflen);
+	LOG_TEST_RET(ctx, r, "ASN.1 encoding failed");
+
+	sc_log(ctx, "EC key->ecpointQ=%p:%d *buf=%p:%d", key->ecpointQ.value, key->ecpointQ.len, *buf, *buflen);
 	return 0;
 }
 
@@ -833,7 +825,6 @@ sc_pkcs15_pubkey_from_prvkey(struct sc_context *ctx, struct sc_pkcs15_prkey *prv
 		pubkey->u.ec.ecpointQ.value = malloc(prvkey->u.ec.ecpointQ.len);
 		memcpy(pubkey->u.ec.ecpointQ.value, prvkey->u.ec.ecpointQ.value, prvkey->u.ec.ecpointQ.len);
 		pubkey->u.ec.ecpointQ.len = prvkey->u.ec.ecpointQ.len;
-		rv = SC_SUCCESS;
 		break;
 	default:
 		sc_log(ctx, "Unsupported private key algorithm");
@@ -845,7 +836,7 @@ sc_pkcs15_pubkey_from_prvkey(struct sc_context *ctx, struct sc_pkcs15_prkey *prv
 	else
 		*out = pubkey;
 
-	return SC_SUCCESS;
+	return rv;
 }
 
 
@@ -984,7 +975,7 @@ out:
  * or can be called from the sc_pkcs15_pubkey_from_spki_filename
  */
 int
-sc_pkcs15_pubkey_from_spki(sc_context_t *ctx, sc_pkcs15_pubkey_t ** outpubkey, 
+sc_pkcs15_pubkey_from_spki(sc_context_t *ctx, sc_pkcs15_pubkey_t ** outpubkey,
 		u8 *buf, size_t buflen, int depth)
 {
 
@@ -1258,37 +1249,33 @@ sc_pkcs15_convert_pubkey(struct sc_pkcs15_pubkey *pkcs15_key, void *evp_key)
 		}
 	case EVP_PKEY_EC: {
 		struct sc_pkcs15_pubkey_ec *dst = &pkcs15_key->u.ec;
-		EC_KEY *src = EVP_PKEY_get0(pk);
-		
-		assert(src);
-		pkcs15_key->algorithm = SC_ALGORITHM_EC;
-		
-		assert(EC_KEY_get0_public_key(src));
-		
+		EC_KEY *src = NULL;
+		const EC_GROUP *grp = NULL;
 		unsigned char buf[255];
 		size_t buflen = 255;
-		
-		const EC_GROUP *grp = EC_KEY_get0_group(src);
-		if(grp == 0) {
-			//EC_KEY_free(src);
-			return SC_ERROR_INCOMPATIBLE_KEY;
-		}
-		
-		/* Decode EC_POINT from a octet string */
-		buflen = EC_POINT_point2oct(grp, (const EC_POINT *) EC_KEY_get0_public_key(src), 
-				POINT_CONVERSION_UNCOMPRESSED, buf, buflen, NULL);
-		
-		/* get curve name */
 		int nid;
+
+		src = EVP_PKEY_get0(pk);
+		assert(src);
+		assert(EC_KEY_get0_public_key(src));
+
+		pkcs15_key->algorithm = SC_ALGORITHM_EC;
+		grp = EC_KEY_get0_group(src);
+		if(grp == 0)
+			return SC_ERROR_INCOMPATIBLE_KEY;
+
+		/* Decode EC_POINT from a octet string */
+		buflen = EC_POINT_point2oct(grp, (const EC_POINT *) EC_KEY_get0_public_key(src),
+				POINT_CONVERSION_UNCOMPRESSED, buf, buflen, NULL);
+
+		/* get curve name */
 		nid = EC_GROUP_get_curve_name(grp);
 		if(nid != 0) {
 			const char *name = OBJ_nid2sn(nid);
 			if(sizeof(name) > 0)
 				dst->params.named_curve = strdup(name);
 		}
-		/* clean up */
-		//EC_KEY_free(src);
-		
+
 		/* copy the public key */
 		if (buflen > 0) {
 			dst->ecpointQ.value = malloc(buflen);
@@ -1298,7 +1285,7 @@ sc_pkcs15_convert_pubkey(struct sc_pkcs15_pubkey *pkcs15_key, void *evp_key)
 			dst->params.field_length = (buflen - 1) / 2 * 8;
 		}
 		else
-			return SC_ERROR_INCOMPATIBLE_KEY;	
+			return SC_ERROR_INCOMPATIBLE_KEY;
 
 		break;
 	}

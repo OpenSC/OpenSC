@@ -1123,11 +1123,12 @@ static int myeid_activate_card(struct sc_card *card)
 
 static int myeid_get_info(struct sc_card *card, u8 *rbuf, size_t buflen)
 {
-	int r;
 	sc_apdu_t apdu;
-	
+	int r;
+	u8 nameBuf[100];
+
 	LOG_FUNC_CALLED(card->ctx);
-	
+
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xca, 0x01, 0xA0);
 	apdu.resp    = rbuf;
 	apdu.resplen = buflen;
@@ -1143,13 +1144,12 @@ static int myeid_get_info(struct sc_card *card, u8 *rbuf, size_t buflen)
 	{
 		sc_log(card->ctx, "Unexpected response to GET DATA (applet info)\n");
 		return SC_ERROR_INTERNAL;
-	}	
-	
+	}
+
 	/* store the applet version */
 	card->version.fw_major = rbuf[5] * 10 + rbuf[6];
 	card->version.fw_minor = rbuf[7];
 	/* add version to name */
-	u8 nameBuf[100];
 	sprintf(nameBuf, "%s %d.%d.%d", card->name, rbuf[5], rbuf[6], rbuf[7]);
 	card->name = nameBuf;
 	//card->driver->name
@@ -1162,13 +1162,13 @@ static int myeid_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 	u8  rbuf[256];
 
 	LOG_FUNC_CALLED(card->ctx);
-	
-	/* if number cached, get it 
+
+	/* if number cached, get it
 	if(card->serialnr.value) {
 		memcpy(serial, &card->serialnr, sizeof(*serial));
 		LOG_FUNC_RETURN(card->ctx, r);
 	}*/
-	
+
 	/* get number from card */
 	r = myeid_get_info(card, rbuf, sizeof(rbuf));
 	LOG_TEST_RET(card->ctx, r,  "Get applet info failed");
