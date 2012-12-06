@@ -393,7 +393,8 @@ static int entersafe_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15ca
 	if (acl_entry->method  != SC_AC_NONE) {
 		 r = sc_pkcs15init_authenticate(profile, p15card, tfile, SC_AC_OP_UPDATE);
 		 if(r<0)
-			  r = SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
+			 SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r,\
+					 "generate key: pkcs15init_authenticate failed");
 	}
 	sc_file_free(tfile);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "cant verify pin");

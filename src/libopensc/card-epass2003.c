@@ -2076,7 +2076,7 @@ static int get_external_key_retries(struct sc_card *card, unsigned char kid,
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r,
 		    "get challenge get_external_key_retries failed");
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0x82, 0x01,
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x82, 0x01,
 		       0x80 | kid);
 	apdu.resp = NULL;
 	apdu.resplen = 0;
@@ -2096,7 +2096,7 @@ static int get_external_key_retries(struct sc_card *card, unsigned char kid,
 }
 
 static int external_key_auth(struct sc_card *card, unsigned char kid,
-			     unsigned char *data, size_t datalen)
+			     unsigned char *data, size_t datalen,int* tries_left)
 {
 	int r;
 	struct sc_apdu apdu;
@@ -2115,8 +2115,13 @@ static int external_key_auth(struct sc_card *card, unsigned char kid,
 	apdu.lc = apdu.datalen = 8;
 	apdu.data = tmp_data;
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r,
-		    "APDU external_key_auth failed");
+	if( apdu.sw1 == 0x63 && apdu.sw2 == 0x00 ){
+		u8 retries = 0;
+		int ret = get_external_key_retries(card, 0x80 | kid, &retries);
+		if (ret == SC_SUCCESS) 
+			*tries_left = retries;
+		return SC_ERROR_PIN_CODE_INCORRECT;
+	}
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r,
 		    "external_key_auth failed");
@@ -2184,13 +2189,13 @@ static int epass2003_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data,
 	if (data->cmd == SC_PIN_CMD_UNBLOCK) {
 		r = external_key_auth(card, (kid + 1),
 				      (unsigned char *)data->pin1.data,
-				      data->pin1.len);
+				      data->pin1.len,tries_left);
 		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r,
 			    "verify pin failed");
 	} else {
 		r = external_key_auth(card, kid,
 				      (unsigned char *)data->pin1.data,
-				      data->pin1.len);
+				      data->pin1.len,tries_left);
 		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r,
 			    "verify pin failed");
 
