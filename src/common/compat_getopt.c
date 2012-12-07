@@ -48,9 +48,6 @@ int my_getopt(int argc, char * argv[], const char *opts)
   char mode, colon_mode;
   int off = 0, opt = -1;
 
-  colon_mode = 0;
-  int fails_on_windows;
-
   if(getenv("POSIXLY_CORRECT")) colon_mode = mode = '+';
   else {
     if((colon_mode = *opts) == ':') off ++;
