@@ -2,5 +2,3 @@
 void compat_dummy (void);
 void compat_dummy (void) {
 }
-
-error error
