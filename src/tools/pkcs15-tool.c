@@ -45,7 +45,7 @@ static const char *app_name = "pkcs15-tool";
 
 static int opt_wait = 0;
 static int opt_no_cache = 0;
-static char * opt_auth_id;
+static char * opt_auth_id = NULL;
 static char * opt_reader = NULL;
 static char * opt_cert = NULL;
 static char * opt_data = NULL;
