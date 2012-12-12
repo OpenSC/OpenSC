@@ -114,7 +114,7 @@ const pindata gemsafe_pin[] = {
 	  8, 4, SC_PKCS15_PIN_FLAG_NEEDS_PADDING | SC_PKCS15_PIN_FLAG_LOCAL,
 	  3, 0x00, SC_PKCS15_CO_FLAG_MODIFIABLE | SC_PKCS15_CO_FLAG_PRIVATE },
 	/* default PIN policy comes last: */
-	{ { }, 0,
+	{ { 0 }, 0,
 	  "01", "DS pin", GEMSAFE_PATH, 0x01, SC_PKCS15_PIN_TYPE_BCD,
 	  16, 6, SC_PKCS15_PIN_FLAG_NEEDS_PADDING | SC_PKCS15_PIN_FLAG_LOCAL,
 	  3, 0xFF, SC_PKCS15_CO_FLAG_MODIFIABLE | SC_PKCS15_CO_FLAG_PRIVATE }
@@ -373,8 +373,9 @@ static int sc_pkcs15emu_gemsafeV1_init( sc_pkcs15_card_t *p15card)
 		sc_pkcs15_format_id(gemsafe_pin[i].id, &p15Id);
 		sc_format_path(gemsafe_pin[i].path, &path);
 		if (gemsafe_pin[i].atr_len == 0 ||
+		   (gemsafe_pin[i].atr_len == p15card->card->atr.len &&
 		    memcmp(p15card->card->atr.value, gemsafe_pin[i].atr,
-			   MIN(p15card->card->atr.len, gemsafe_pin[i].atr_len)) == 0) {
+			   p15card->card->atr.len) == 0)) {
 			sc_pkcs15emu_add_pin(p15card, &p15Id, gemsafe_pin[i].label,
 					     &path, gemsafe_pin[i].ref, gemsafe_pin[i].type,
 					     gemsafe_pin[i].minlen, gemsafe_pin[i].maxlen,
