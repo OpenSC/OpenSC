@@ -35,10 +35,8 @@
 /* Apparently, the Applet max read "quanta" is 248 bytes
  * Gemalto ClassicClient reads files in chunks of 238 bytes
  */
-const size_t	   gemsafe_read_quantum = 248;
-const size_t	   gemsafe_max_len = 28672;
-const unsigned int gemsafe_cert_max = 12;
-const unsigned int gemsafe_pin_max = 2;
+#define GEMSAFE_READ_QUANTUM    248
+#define GEMSAFE_MAX_OBJLEN      28672
 
 int sc_pkcs15emu_gemsafeV1_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
 
@@ -75,6 +73,8 @@ typedef struct cdata_st {
 	int         obj_flags;
 } cdata;
 
+const unsigned int gemsafe_cert_max = 12;
+
 cdata gemsafe_cert[] = {
 	{"DS certificate #1",  0, GEMSAFE_PATH, 0, 0, "45", SC_PKCS15_CO_FLAG_MODIFIABLE},
 	{"DS certificate #2",  0, GEMSAFE_PATH, 0, 0, "46", SC_PKCS15_CO_FLAG_MODIFIABLE},
@@ -105,6 +105,8 @@ typedef struct pdata_st {
 	const char  pad_char;
 	const int   obj_flags;
 } pindata;
+
+const unsigned int gemsafe_pin_max = 2;
 
 const pindata gemsafe_pin[] = {
 	/* ATR-specific PIN policies, first match found is used: */
@@ -160,7 +162,7 @@ prdata gemsafe_prkeys[] = {
 static int gemsafe_get_cert_len(sc_card_t *card)
 {
 	int r;
-	u8  ibuf[gemsafe_max_len];
+	u8  ibuf[GEMSAFE_MAX_OBJLEN];
 	u8 *iptr;
 	struct sc_path path;
 	struct sc_file *file;
@@ -173,7 +175,7 @@ static int gemsafe_get_cert_len(sc_card_t *card)
 		return SC_ERROR_INTERNAL;
 
 	/* Initial read */
-	r = sc_read_binary(card, 0, ibuf, gemsafe_read_quantum, 0);
+	r = sc_read_binary(card, 0, ibuf, GEMSAFE_READ_QUANTUM, 0);
 	if (r < 0)
 		return SC_ERROR_INTERNAL;
 
@@ -183,7 +185,7 @@ static int gemsafe_get_cert_len(sc_card_t *card)
 	objlen = (((size_t) ibuf[0]) << 8) | ibuf[1];
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
 		 "Stored object is of size: %d\n", objlen);
-	if (objlen < 1 || objlen > gemsafe_max_len) {
+	if (objlen < 1 || objlen > GEMSAFE_MAX_OBJLEN) {
 	    sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
 		     "Invalid object size: %d\n", objlen);
 	    return SC_ERROR_INTERNAL;
@@ -232,16 +234,16 @@ static int gemsafe_get_cert_len(sc_card_t *card)
 	/* Read entire file, then dissect in memory.
 	 * Gemalto ClassicClient seems to do it the same way.
 	 */
-	iptr = ibuf + gemsafe_read_quantum;
+	iptr = ibuf + GEMSAFE_READ_QUANTUM;
 	while ((size_t)(iptr - ibuf) < objlen) {
 		r = sc_read_binary(card, iptr - ibuf, iptr,
-				   MIN(gemsafe_read_quantum, objlen - (iptr - ibuf)), 0);
+				   MIN(GEMSAFE_READ_QUANTUM, objlen - (iptr - ibuf)), 0);
 		if (r < 0) {
 			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
 				 "Could not read cert object\n");
 			return SC_ERROR_INTERNAL;
 		}
-		iptr += gemsafe_read_quantum;
+		iptr += GEMSAFE_READ_QUANTUM;
 	}
 
 	/* Search buffer for certificates, they start with 0x3082. */
