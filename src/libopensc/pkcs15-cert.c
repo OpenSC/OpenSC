@@ -171,7 +171,7 @@ sc_pkcs15_read_certificate(struct sc_pkcs15_card *p15card, const struct sc_pkcs1
 		return SC_ERROR_INVALID_ASN1_OBJECT;
 	}
 
-	cert->data = der;
+	cert->data.value = der.value;
 	*cert_out = cert;
 	return SC_SUCCESS;
 }
