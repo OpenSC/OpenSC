@@ -47,8 +47,7 @@
 #include "libopensc/asn1.h"
 #include "libopensc/log.h"
 
-#include "sm-module.h"
-
+#include "sm-common.h"
 /*
  * From crypto/des/des_locl.h of OpenSSL .
  */
