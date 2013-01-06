@@ -1,6 +1,6 @@
 /*
  * sm-common.c: Common cryptographic procedures related to
- * 		Secure Messaging
+ *		Secure Messaging
  *
  * Copyright (C) 2010  Viktor Tarasov <vtarasov@opentrust.com>
  *                      OpenTrust <www.opentrust.com>
@@ -48,6 +48,7 @@
 #include "libopensc/log.h"
 
 #include "sm-common.h"
+
 /*
  * From crypto/des/des_locl.h of OpenSSL .
  */
@@ -97,11 +98,11 @@ DES_3cbc_encrypt(DES_cblock *input, DES_cblock *output, long length,
 				(unsigned char*)output,l8,ks2,iv,!enc);
 		DES_cbc_encrypt((unsigned char*)output,
 				(unsigned char*)output,l8,ks1,iv,enc);
-		if (length >= sizeof(DES_cblock))
+		if ((unsigned)length >= sizeof(DES_cblock))
 			memcpy(icv_out,output[off],sizeof(DES_cblock));
 	}
 	else   {
-		if (length >= sizeof(DES_cblock))
+		if ((unsigned)length >= sizeof(DES_cblock))
 			memcpy(icv_out,input[off],sizeof(DES_cblock));
 		DES_cbc_encrypt((unsigned char*)input,
 				(unsigned char*)output,l8,ks1,iv,enc);
@@ -325,14 +326,8 @@ sm_encrypt_des_cbc3(struct sc_context *ctx, unsigned char *key,
 		memcpy(data, in, in_len);
 
 	memcpy(data + in_len, "\x80\0\0\0\0\0\0\0", 8);
-	if (not_force_pad)   {
-		data_len = in_len + 7;
-		data_len -= (data_len%8);
-	}
-	else   {
-		data_len = in_len + 8;
-		data_len -= (data_len%8);
-	}
+	data_len = in_len + (not_force_pad ? 7 : 8);
+	data_len -= (data_len%8);
 	sc_log(ctx, "SM encrypt_des_cbc3: data to encrypt (len:%i,%s)", data_len, sc_dump_hex(data, data_len));
 
 	*out_len = data_len;
@@ -351,4 +346,20 @@ sm_encrypt_des_cbc3(struct sc_context *ctx, unsigned char *key,
 
 	free(data);
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+}
+
+
+void
+sm_incr_ssc(unsigned char *ssc, size_t ssc_len)
+{
+	int ii;
+
+	if (!ssc)
+		return;
+
+	for (ii = ssc_len - 1;ii >= 0; ii++)   {
+		*(ssc + ii) += 1;
+		if (*(ssc + ii) != 0)
+			break;
+	}
 }

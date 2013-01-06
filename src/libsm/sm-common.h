@@ -43,6 +43,7 @@ int sm_encrypt_des_cbc3(struct sc_context *ctx, unsigned char *key,
 		not_force_pad);
 int sm_decrypt_des_cbc3(struct sc_context *ctx, unsigned char *key,
 		unsigned char *data, size_t data_len, unsigned char **out, size_t *out_len);
+void sm_incr_ssc(unsigned char *ssc, size_t ssc_len);
 #ifdef __cplusplus
 }
 #endif
