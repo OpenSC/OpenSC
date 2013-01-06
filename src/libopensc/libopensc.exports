@@ -306,6 +306,9 @@ sc_remote_data_init
 sc_crc32
 sc_pkcs15_convert_prkey
 sc_pkcs15_convert_pubkey
+sc_sm_parse_answer
+sc_sm_update_apdu_response
+sc_sm_single_transmit
 iasecc_sdo_encode_update_field
 iasecc_sm_create_file
 iasecc_sm_delete_file

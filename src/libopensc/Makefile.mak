@@ -30,7 +30,7 @@ OBJECTS			= \
 	pkcs15-actalis.obj pkcs15-atrust-acos.obj pkcs15-tccardos.obj pkcs15-piv.obj \
 	pkcs15-esinit.obj pkcs15-westcos.obj pkcs15-pteid.obj pkcs15-oberthur.obj \
 	pkcs15-itacns.obj pkcs15-gemsafeV1.obj pkcs15-sc-hsm.obj \
-	compression.obj p15card-helper.obj \
+	compression.obj p15card-helper.obj sm.obj \
 	$(TOPDIR)\win32\versioninfo.res
 
 all: $(TOPDIR)\win32\versioninfo.res $(TARGET)

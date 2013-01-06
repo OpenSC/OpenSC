@@ -120,7 +120,6 @@ const char *sc_strerror(int error)
 	};
 	const int p15i_base = -SC_ERROR_PKCS15INIT;
 
-	const int sm_base = -SC_ERROR_SM;
 	const char *sm_errors[] = {
 		"Generic Secure Messaging error",
 		"Data enciphering error",
@@ -131,9 +130,12 @@ const char *sc_strerror(int error)
 		"Cannot authenticate card",
 		"Random generation error",
 		"Secure messaging keyset not found",
-		"IFD data missing"
+		"IFD data missing",
+		"SM not applied",
+		"SM session already active",
+		"Invalid checksum"
 	};
-
+	const int sm_base = -SC_ERROR_SM;
 
 	const char *misc_errors[] = {
 		"Unknown error",
