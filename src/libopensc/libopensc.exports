@@ -99,6 +99,8 @@ sc_file_set_sec_attr
 sc_file_set_type_attr
 sc_file_valid
 sc_format_apdu
+sc_allocate_apdu
+sc_free_apdu
 sc_bytes2apdu
 sc_format_asn1_entry
 sc_format_oid
@@ -300,6 +302,7 @@ sc_pkcs15init_verify_secret
 sc_pkcs15init_sanity_check
 sc_pkcs15init_finalize_profile
 sc_card_find_rsa_alg
+sc_check_apdu
 sc_print_cache
 sc_find_app
 sc_remote_data_init

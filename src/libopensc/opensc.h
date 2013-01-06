@@ -166,7 +166,7 @@ typedef struct sc_security_env {
 
 	unsigned int algorithm_ref;
 	struct sc_path file_ref;
-	u8 key_ref[8];
+	unsigned char key_ref[8];
 	size_t key_ref_len;
 
 	struct sc_supported_algo_info supported_algos[SC_MAX_SUPPORTED_ALGORITHMS];
@@ -719,10 +719,14 @@ typedef struct sc_context {
  *  @param  apdu  sc_apdu_t object of the APDU to be send
  *  @return SC_SUCCESS on succcess and an error code otherwise
  */
-int sc_transmit_apdu(struct sc_card *card, sc_apdu_t *apdu);
+int sc_transmit_apdu(struct sc_card *, struct sc_apdu *);
 
-void sc_format_apdu(struct sc_card *card, sc_apdu_t *apdu, int cse, int ins,
-		    int p1, int p2);
+void sc_format_apdu(struct sc_card *, struct sc_apdu *, int, int, int, int);
+
+int sc_check_apdu(struct sc_card *, const struct sc_apdu *);
+
+struct sc_apdu *sc_allocate_apdu(struct sc_apdu *,  unsigned);
+void sc_free_apdu(struct sc_apdu *);
 
 /** Transforms an APDU from binary to its @c sc_apdu_t representation
  *  @param  ctx     sc_context_t object (used for logging)

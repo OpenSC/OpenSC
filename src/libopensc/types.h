@@ -174,8 +174,11 @@ struct sc_crt {
 #define SC_AC_OP_WRITE			24
 #define SC_AC_OP_RESIZE			25
 #define SC_AC_OP_GENERATE		26
+#define SC_AC_OP_CREATE_EF		27
+#define SC_AC_OP_CREATE_DF		28
+#define SC_AC_OP_ADMIN			29
 /* If you add more OPs here, make sure you increase SC_MAX_AC_OPS*/
-#define SC_MAX_AC_OPS			27
+#define SC_MAX_AC_OPS			30
 
 /* the use of SC_AC_OP_ERASE is deprecated, SC_AC_OP_DELETE should be used
  * instead  */
@@ -263,18 +266,23 @@ typedef struct sc_file {
  */
 #define SC_APDU_FLAGS_NO_RETRY_WL	0x00000004UL
 
-typedef struct sc_apdu {
-	int cse;		/* APDU case */
-	u8 cla, ins, p1, p2;	/* CLA, INS, P1 and P2 bytes */
-	size_t lc, le;		/* Lc and Le bytes */
-	const u8 *data;		/* C-APDU data */
-	size_t datalen;		/* length of data in C-APDU */
-	u8 *resp;		/* R-APDU data buffer */
-	size_t resplen;		/* in: size of R-APDU buffer,
-				 * out: length of data returned in R-APDU */
-	u8 control;		/* Set if APDU should go to the reader */
+#define SC_APDU_ALLOCATE_FLAG		0x01
+#define SC_APDU_ALLOCATE_FLAG_DATA	0x02
+#define SC_APDU_ALLOCATE_FLAG_RESP	0x04
 
-	unsigned int sw1, sw2;	/* Status words returned in R-APDU */
+typedef struct sc_apdu {
+	int cse;			/* APDU case */
+	unsigned char cla, ins, p1, p2;	/* CLA, INS, P1 and P2 bytes */
+	size_t lc, le;			/* Lc and Le bytes */
+	unsigned char *data;		/* C-APDU data */
+	size_t datalen;			/* length of data in C-APDU */
+	unsigned char *resp;		/* R-APDU data buffer */
+	size_t resplen;			/* in: size of R-APDU buffer,
+					 * out: length of data returned in R-APDU */
+	unsigned char control;		/* Set if APDU should go to the reader */
+	unsigned allocation_flags;	/* APDU allocation flags */
+
+	unsigned int sw1, sw2;		/* Status words returned in R-APDU */
 	unsigned char mac[8];
 	size_t mac_len;
 
