@@ -896,11 +896,18 @@ int main(int argc, char * const argv[])
 	}
 
 	err = util_connect_card(ctx, &card, opt_reader, opt_wait, verbose);
-	if (err)
+	if (r != SC_SUCCESS) {
+		fprintf(stderr, "Failed to connect to card: %s\n", sc_strerror(r));
 		goto end;
+	}
 
 	sc_path_set(&path, SC_PATH_TYPE_DF_NAME, sc_hsm_aid.value, sc_hsm_aid.len, 0, 0);
 	r = sc_select_file(card, &path, &file);
+
+	if (r != SC_SUCCESS) {
+		fprintf(stderr, "Failed to select application: %s\n", sc_strerror(r));
+		goto end;
+	}
 
 	if (do_initialize) {
 		initialize(card, opt_so_pin, opt_pin, opt_retry_counter, opt_dkek_shares);
