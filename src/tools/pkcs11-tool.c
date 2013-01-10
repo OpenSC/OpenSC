@@ -395,6 +395,7 @@ int main(int argc, char * argv[])
 
 #ifdef ENABLE_OPENSSL
 #if OPENSSL_VERSION_NUMBER >= 0x00907000L
+	OPENSSL_no_config();
 	OPENSSL_config(NULL);
 #endif
 	/* OpenSSL magic */

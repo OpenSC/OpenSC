@@ -420,6 +420,7 @@ main(int argc, char **argv)
 	int			r = 0;
 
 #if OPENSSL_VERSION_NUMBER >= 0x00907000L
+	OPENSSL_no_config(void);
 	OPENSSL_config(NULL);
 #endif
 	/* OpenSSL magic */
