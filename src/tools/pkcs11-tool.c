@@ -1783,6 +1783,7 @@ static int write_object(CK_SESSION_HANDLE session)
 	struct rsakey_info rsa;
 	struct gostkey_info gost;
 	EVP_PKEY *evp_key = NULL;
+	CK_KEY_TYPE type = CKK_RSA;
 
 	memset(&cert, 0, sizeof(cert));
 	memset(&rsa,  0, sizeof(rsa));
@@ -1918,7 +1919,6 @@ static int write_object(CK_SESSION_HANDLE session)
 			n_privkey_attr++;
 		}
 		if (evp_key->type == EVP_PKEY_RSA)   {
-			CK_KEY_TYPE type = CKK_RSA;
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_KEY_TYPE, &type, sizeof(type));
 			n_privkey_attr++;
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_MODULUS, rsa.modulus, rsa.modulus_len);
