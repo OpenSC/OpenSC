@@ -201,7 +201,7 @@ filesystem {
                     acl       = READ=$PIN, UPDATE=$PIN, DELETE=$PIN;
                 }
                 EF data {
-                    file-id   = 4501;
+                    file-id   = 4601;
                     structure = transparent;
                     acl       = READ=NONE, UPDATE=$PIN, DELETE=$PIN;
                 }
