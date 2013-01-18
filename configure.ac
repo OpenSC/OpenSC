@@ -5,7 +5,7 @@ AC_PREREQ(2.60)
 define([PACKAGE_VERSION_MAJOR], [0])
 define([PACKAGE_VERSION_MINOR], [13])
 define([PACKAGE_VERSION_FIX], [0])
-define([PACKAGE_SUFFIX], [rc1])
+define([PACKAGE_SUFFIX], [])
 
 AC_INIT([opensc],[PACKAGE_VERSION_MAJOR.PACKAGE_VERSION_MINOR.PACKAGE_VERSION_FIX[]PACKAGE_SUFFIX])
 AC_CONFIG_AUX_DIR([.])
@@ -613,13 +613,14 @@ AC_CONFIG_FILES([
 	src/common/Makefile
 	src/libopensc/Makefile
 	src/libopensc/libopensc.pc
+	src/libsm/Makefile
 	src/pkcs11/Makefile
 	src/pkcs15init/Makefile
 	src/scconf/Makefile
 	src/tests/Makefile
 	src/tests/regression/Makefile
 	src/tools/Makefile
-	src/sm/Makefile
+	src/smm/Makefile
 	src/minidriver/Makefile
 	src/minidriver/opensc-minidriver.inf
 	win32/Makefile

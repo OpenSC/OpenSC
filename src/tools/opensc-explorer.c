@@ -104,6 +104,7 @@ static int do_random(int argc, char **argv);
 static int do_get_data(int argc, char **argv);
 static int do_put_data(int argc, char **argv);
 static int do_apdu(int argc, char **argv);
+static int do_sm(int argc, char **argv);
 static int do_asn1(int argc, char **argv);
 static int do_help(int argc, char **argv);
 static int do_quit(int argc, char **argv);
@@ -186,6 +187,9 @@ static struct command	cmds[] = {
 	{ do_asn1,
 		"asn1",	"[<file id>]",
 		"decode an ASN.1 file"			},
+	{ do_sm,
+		"sm",	"open|close",
+		"call SM 'open' or 'close' handlers, if available"},
 	{ do_debug,
 		"debug",	"[<value>]",
 		"get/set the debug level"		},
@@ -1522,8 +1526,8 @@ static int do_put_data(int argc, char **argv)
 static int do_apdu(int argc, char **argv)
 {
 	sc_apdu_t apdu;
-	u8 buf[SC_MAX_APDU_BUFFER_SIZE];
-	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
+	u8 buf[SC_MAX_APDU_BUFFER_SIZE * 2];
+	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE * 2];
 	size_t len, i;
 	int r;
 
@@ -1637,6 +1641,40 @@ err:
 		select_current_path_or_die();
 	}
 	return -err;
+}
+
+static int do_sm(int argc, char **argv)
+{
+	int r = SC_ERROR_NOT_SUPPORTED, ret = -1;
+
+	if (argc != 1)
+		return usage(do_sm);
+
+#ifdef ENABLE_SM
+	if (!strcmp(argv[0],"open"))   {
+		if (!card->sm_ctx.ops.open)   {
+			printf("Not supported\n");
+			return -1;
+		}
+		r = card->sm_ctx.ops.open(card);
+	}
+	else if (!strcmp(argv[0],"close"))   {
+		if (!card->sm_ctx.ops.close)   {
+			printf("Not supported\n");
+			return -1;
+		}
+		r = card->sm_ctx.ops.close(card);
+	}
+#endif
+	if (r == SC_SUCCESS)   {
+		ret = 0;
+		printf("Success!\n");
+	}
+	else   {
+		printf("Failure: %s\n", sc_strerror(r));
+	}
+
+	return ret;
 }
 
 static int do_help(int argc, char **argv)

@@ -435,11 +435,9 @@ int sc_pkcs15_encode_pukdf_entry(sc_context_t *ctx,
 	return r;
 }
 
-/* this should be required, not optional. But it is missing in some siemens cards and thus causes warnings */
-/* so we silence these warnings by making it optional - the card works ok without. :/ */
 #define C_ASN1_PUBLIC_KEY_SIZE 2
 static struct sc_asn1_entry c_asn1_public_key[C_ASN1_PUBLIC_KEY_SIZE] = {
-	{ "publicKeyCoefficients", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "publicKeyCoefficients", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
 	{ NULL, 0, 0, 0, NULL, NULL }
 };
 
@@ -648,6 +646,7 @@ int
 sc_pkcs15_encode_pubkey_ec(sc_context_t *ctx, struct sc_pkcs15_pubkey_ec *key,
 		u8 **buf, size_t *buflen)
 {
+<<<<<<< HEAD
 	int r;
 	/*u8 * ecpoint_data;
 	size_t ecpoint_len;*/
@@ -664,8 +663,18 @@ sc_pkcs15_encode_pubkey_ec(sc_context_t *ctx, struct sc_pkcs15_pubkey_ec *key,
 	*buflen = key->ecpointQ.len;
 */	
 	r = sc_asn1_encode(ctx, asn1_ec_pointQ, buf, buflen);
+=======
+	struct sc_asn1_entry asn1_ec_pointQ[C_ASN1_EC_POINTQ_SIZE];
+	int r;
 
-	sc_log(ctx, "DEE-EC key->ecpointQ=%p:%d *buf=%p:%d", key->ecpointQ.value, key->ecpointQ.len, *buf, *buflen);
+	sc_copy_asn1_entry(c_asn1_ec_pointQ, asn1_ec_pointQ);
+	sc_format_asn1_entry(asn1_ec_pointQ + 0, key->ecpointQ.value, &key->ecpointQ.len, 1);
+>>>>>>> uppstream/master
+
+	r = sc_asn1_encode(ctx, asn1_ec_pointQ, buf, buflen);
+	LOG_TEST_RET(ctx, r, "ASN.1 encoding failed");
+
+	sc_log(ctx, "EC key->ecpointQ=%p:%d *buf=%p:%d", key->ecpointQ.value, key->ecpointQ.len, *buf, *buflen);
 	return 0;
 }
 
@@ -747,8 +756,8 @@ sc_pkcs15_read_pubkey(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_obj
 		len = obj->content.len;
 	}
 	else if (p15card->card->ops->read_public_key)   {
-		r = p15card->card->ops->read_public_key(p15card->card,
-				algorithm, info->key_reference, info->modulus_length,
+		r = p15card->card->ops->read_public_key(p15card->card, algorithm,
+				&info->path, info->key_reference, info->modulus_length,
 				&data, &len);
 		LOG_TEST_RET(ctx, r, "Card specific 'read-public' procedure failed.");
 	}
@@ -835,7 +844,10 @@ sc_pkcs15_pubkey_from_prvkey(struct sc_context *ctx, struct sc_pkcs15_prkey *prv
 		pubkey->u.ec.ecpointQ.value = malloc(prvkey->u.ec.ecpointQ.len);
 		memcpy(pubkey->u.ec.ecpointQ.value, prvkey->u.ec.ecpointQ.value, prvkey->u.ec.ecpointQ.len);
 		pubkey->u.ec.ecpointQ.len = prvkey->u.ec.ecpointQ.len;
+<<<<<<< HEAD
 		rv = SC_SUCCESS;
+=======
+>>>>>>> uppstream/master
 		break;
 	default:
 		sc_log(ctx, "Unsupported private key algorithm");
@@ -847,7 +859,7 @@ sc_pkcs15_pubkey_from_prvkey(struct sc_context *ctx, struct sc_pkcs15_prkey *prv
 	else
 		*out = pubkey;
 
-	return SC_SUCCESS;
+	return rv;
 }
 
 
@@ -986,7 +998,7 @@ out:
  * or can be called from the sc_pkcs15_pubkey_from_spki_filename
  */
 int
-sc_pkcs15_pubkey_from_spki(sc_context_t *ctx, sc_pkcs15_pubkey_t ** outpubkey, 
+sc_pkcs15_pubkey_from_spki(sc_context_t *ctx, sc_pkcs15_pubkey_t ** outpubkey,
 		u8 *buf, size_t buflen, int depth)
 {
 
@@ -1260,6 +1272,7 @@ sc_pkcs15_convert_pubkey(struct sc_pkcs15_pubkey *pkcs15_key, void *evp_key)
 		}
 	case EVP_PKEY_EC: {
 		struct sc_pkcs15_pubkey_ec *dst = &pkcs15_key->u.ec;
+<<<<<<< HEAD
 		EC_KEY *src = EVP_PKEY_get0(pk);
 		
 		assert(src);
@@ -1282,15 +1295,41 @@ sc_pkcs15_convert_pubkey(struct sc_pkcs15_pubkey *pkcs15_key, void *evp_key)
 		
 		/* get curve name */
 		int nid;
+=======
+		EC_KEY *src = NULL;
+		const EC_GROUP *grp = NULL;
+		unsigned char buf[255];
+		size_t buflen = 255;
+		int nid;
+
+		src = EVP_PKEY_get0(pk);
+		assert(src);
+		assert(EC_KEY_get0_public_key(src));
+
+		pkcs15_key->algorithm = SC_ALGORITHM_EC;
+		grp = EC_KEY_get0_group(src);
+		if(grp == 0)
+			return SC_ERROR_INCOMPATIBLE_KEY;
+
+		/* Decode EC_POINT from a octet string */
+		buflen = EC_POINT_point2oct(grp, (const EC_POINT *) EC_KEY_get0_public_key(src),
+				POINT_CONVERSION_UNCOMPRESSED, buf, buflen, NULL);
+
+		/* get curve name */
+>>>>>>> uppstream/master
 		nid = EC_GROUP_get_curve_name(grp);
 		if(nid != 0) {
 			const char *name = OBJ_nid2sn(nid);
 			if(sizeof(name) > 0)
 				dst->params.named_curve = strdup(name);
 		}
+<<<<<<< HEAD
 		/* clean up */
 		//EC_KEY_free(src);
 		
+=======
+
+>>>>>>> uppstream/master
 		/* copy the public key */
 		if (buflen > 0) {
 			dst->ecpointQ.value = malloc(buflen);
@@ -1300,7 +1339,11 @@ sc_pkcs15_convert_pubkey(struct sc_pkcs15_pubkey *pkcs15_key, void *evp_key)
 			dst->params.field_length = (buflen - 1) / 2 * 8;
 		}
 		else
+<<<<<<< HEAD
 			return SC_ERROR_INCOMPATIBLE_KEY;	
+=======
+			return SC_ERROR_INCOMPATIBLE_KEY;
+>>>>>>> uppstream/master
 
 		break;
 	}

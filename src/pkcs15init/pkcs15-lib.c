@@ -1530,7 +1530,11 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
 	}
 	else if(key.algorithm == SC_ALGORITHM_EC)
 		key_info->field_length = keybits;
+<<<<<<< HEAD
 	
+=======
+
+>>>>>>> uppstream/master
 	/* Select a intrinsic Key ID if the user didn't specify one */
 	r = select_intrinsic_id(p15card, profile, SC_PKCS15_TYPE_PUBKEY, &keyargs->id, &key);
 	LOG_TEST_RET(ctx, r, "Get intrinsic ID error");
@@ -1969,7 +1973,8 @@ check_keygen_params_consistency(struct sc_card *card, struct sc_pkcs15init_keyge
  * Check whether the card has native crypto support for this key.
  */
 static int
-check_key_compatibility(struct sc_pkcs15_card *p15card, struct sc_pkcs15_prkey *key, unsigned int x509_usage, unsigned int key_length, unsigned int flags)
+check_key_compatibility(struct sc_pkcs15_card *p15card, struct sc_pkcs15_prkey *key, unsigned int x509_usage,
+		unsigned int key_length, unsigned int flags)
 {
 	struct sc_algorithm_info *info;
 	unsigned int count;
@@ -1977,7 +1982,13 @@ check_key_compatibility(struct sc_pkcs15_card *p15card, struct sc_pkcs15_prkey *
 	count = p15card->card->algorithm_count;
 	for (info = p15card->card->algorithms; count--; info++) {
 		/* don't check flags if none was specified */
+<<<<<<< HEAD
 		if (info->algorithm != key->algorithm || info->key_length != key_length || (flags != 0 && (info->flags & flags) != flags))
+=======
+		if (info->algorithm != key->algorithm || info->key_length != key_length)
+			continue;
+		if (flags != 0 && ((info->flags & flags) != flags))
+>>>>>>> uppstream/master
 			continue;
 
 		if (key->algorithm == SC_ALGORITHM_RSA)   {

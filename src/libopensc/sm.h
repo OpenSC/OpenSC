@@ -43,21 +43,22 @@ extern "C" {
 
 #define SM_TYPE_GP_SCP01	0x100
 #define SM_TYPE_CWA14890	0x400
+#define SM_TYPE_DH_RSA		0x500
 
 #define SM_MODE_NONE		0x0
 #define SM_MODE_ACL		0x100
 #define SM_MODE_TRANSMIT	0x200
 
-#define SM_CMD_INITIALIZE 		0x10
+#define SM_CMD_INITIALIZE		0x10
 #define SM_CMD_MUTUAL_AUTHENTICATION	0x20
-#define SM_CMD_RSA 			0x100
-#define SM_CMD_RSA_GENERATE 		0x101
+#define SM_CMD_RSA			0x100
+#define SM_CMD_RSA_GENERATE		0x101
 #define SM_CMD_RSA_UPDATE		0x102
-#define SM_CMD_RSA_READ_PUBLIC 		0x103
+#define SM_CMD_RSA_READ_PUBLIC		0x103
 #define SM_CMD_FILE			0x200
 #define SM_CMD_FILE_READ		0x201
-#define SM_CMD_FILE_UPDATE 		0x202
-#define SM_CMD_FILE_CREATE 		0x203
+#define SM_CMD_FILE_UPDATE		0x202
+#define SM_CMD_FILE_CREATE		0x203
 #define SM_CMD_FILE_DELETE		0x204
 #define SM_CMD_PIN			0x300
 #define SM_CMD_PIN_VERIFY		0x301
@@ -201,6 +202,26 @@ struct sm_cwa_session {
 };
 
 /*
+ * @struct sm_dh_session
+ *	DH SM session data:
+ */
+struct sm_dh_session {
+	struct sc_tlv_data g;
+	struct sc_tlv_data N;
+	struct sc_tlv_data ifd_p;
+	struct sc_tlv_data ifd_y;
+	struct sc_tlv_data icc_p;
+	struct sc_tlv_data shared_secret;
+
+	unsigned char session_enc[16];
+	unsigned char session_mac[16];
+
+	unsigned char card_challenge[32];
+
+	unsigned char ssc[8];
+};
+
+/*
  * @struct sc_info is the
  *	placehold for the secure messaging working data:
  *	- SM type;
@@ -219,6 +240,7 @@ struct sm_info   {
 	union {
 		struct sm_gp_session gp;
 		struct sm_cwa_session cwa;
+		struct sm_dh_session dh;
 	} session;
 
 	struct sc_serial_number serialnr;
@@ -328,6 +350,10 @@ typedef struct sm_context   {
 } sm_context_t;
 
 int iasecc_sm_external_authentication(struct sc_card *, unsigned, int *);
+
+int sc_sm_parse_answer(struct sc_card *, unsigned char *, size_t, struct sm_card_response *);
+int sc_sm_update_apdu_response(struct sc_card *, unsigned char *, size_t, int, struct sc_apdu *);
+int sc_sm_single_transmit(struct sc_card *, struct sc_apdu *);
 
 #ifdef __cplusplus
 }

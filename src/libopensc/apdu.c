@@ -234,95 +234,6 @@ int sc_apdu_set_resp(sc_context_t *ctx, sc_apdu_t *apdu, const u8 *buf,
 	return SC_SUCCESS;
 }
 
-#ifdef ENABLE_SM
-static const struct sc_asn1_entry c_asn1_sm_response[4] = {
-	{ "encryptedData",	SC_ASN1_OCTET_STRING,   SC_ASN1_CTX | 7,        SC_ASN1_OPTIONAL,       NULL, NULL },
-	{ "statusWord",		SC_ASN1_OCTET_STRING,   SC_ASN1_CTX | 0x19,     0,                      NULL, NULL },
-	{ "mac",		SC_ASN1_OCTET_STRING,   SC_ASN1_CTX | 0x0E,     0,                      NULL, NULL },
-	{ NULL, 0, 0, 0, NULL, NULL }
-};
-static int
-sc_sm_parse_answer(struct sc_context *ctx, unsigned char *resp_data, size_t resp_len,
-		struct sm_card_response *out)
-{
-	struct sc_asn1_entry asn1_sm_response[4];
-	unsigned char data[SC_MAX_APDU_BUFFER_SIZE];
-	size_t data_len = sizeof(data);
-	unsigned char status[2] = {0, 0};
-	size_t status_len = sizeof(status);
-	unsigned char mac[8];
-	size_t mac_len = sizeof(mac);
-	int r;
-
-	if (!resp_data || !resp_len || !out)
-		return SC_ERROR_INVALID_ARGUMENTS;
-
-	sc_copy_asn1_entry(c_asn1_sm_response, asn1_sm_response);
-
-	sc_format_asn1_entry(asn1_sm_response + 0, data, &data_len, 0);
-	sc_format_asn1_entry(asn1_sm_response + 1, status, &status_len, 0);
-	sc_format_asn1_entry(asn1_sm_response + 2, mac, &mac_len, 0);
-
-	r = sc_asn1_decode(ctx, asn1_sm_response, resp_data, resp_len, NULL, NULL);
-	if (r)
-		return r;
-
-	if (asn1_sm_response[1].flags & SC_ASN1_PRESENT)   {
-		out->sw1 = status[0];
-		out->sw2 = status[1];
-	}
-
-	if (asn1_sm_response[2].flags & SC_ASN1_PRESENT)   {
-		memcpy(out->mac, mac, mac_len);
-		out->mac_len = mac_len;
-	}
-	/* TODO: to be continued ... */
-
-	return SC_SUCCESS;
-}
-
-/**  parse answer of SM protected APDU returned by APDU or by 'GET RESPONSE'
- *  @param  card 'sc_card' smartcard object
- *  @param  resp_data 'raw data returned by SM protected APDU
- *  @param  resp_len 'length of raw data returned by SM protected APDU
- *  @param  ref_rv 'status word returned by APDU or 'GET RESPONSE' (can be different from status word encoded into SM response date)
- *  @param  apdu 'sc_apdu' object to update
- *  @return SC_SUCCESS on success and an error code otherwise
- */
-static int
-sc_sm_update_apdu_response(struct sc_card *card, unsigned char *resp_data, size_t resp_len, int ref_rv,
-		struct sc_apdu *apdu)
-{
-	struct sm_card_response sm_resp;
-	int r;
-
-	if (!apdu)
-		return SC_ERROR_INVALID_ARGUMENTS;
-	else if (!resp_data || !resp_len)
-		return SC_SUCCESS;
-
-	memset(&sm_resp, 0, sizeof(sm_resp));
-	r = sc_sm_parse_answer(card->ctx, resp_data, resp_len, &sm_resp);
-	if (r)
-		return r;
-	else if (!sm_resp.sw1 && !sm_resp.sw2)
-		return SC_ERROR_INVALID_DATA;
-	else if (ref_rv != sc_check_sw(card, sm_resp.sw1, sm_resp.sw2))
-		return SC_ERROR_INVALID_DATA;
-
-	if (sm_resp.mac_len)   {
-		if (sm_resp.mac_len > sizeof(apdu->mac))
-			return SC_ERROR_INVALID_DATA;
-		memcpy(apdu->mac, sm_resp.mac, sm_resp.mac_len);
-		apdu->mac_len = sm_resp.mac_len;
-	}
-
-	apdu->sw1 = sm_resp.sw1;
-	apdu->sw2 = sm_resp.sw2;
-
-	return SC_SUCCESS;
-}
-#endif
 
 /*********************************************************************/
 /*   higher level APDU transfer handling functions                   */
@@ -354,7 +265,8 @@ sc_sm_update_apdu_response(struct sc_card *card, unsigned char *resp_data, size_
  *  @param  apdu  sc_apdu_t object to check
  *  @return SC_SUCCESS on success and an error code otherwise
  */
-static int sc_check_apdu(sc_card_t *card, const sc_apdu_t *apdu)
+int
+sc_check_apdu(sc_card_t *card, const sc_apdu_t *apdu)
 {
 	if ((apdu->cse & ~SC_APDU_SHORT_MASK) == 0) {
 		/* length check for short APDU    */
@@ -441,7 +353,8 @@ error:
  *  APDU if one of the SC_APDU_CASE_? types is used.
  *  @param  apdu  APDU object
  */
-static void sc_detect_apdu_cse(const sc_card_t *card, sc_apdu_t *apdu)
+static void
+sc_detect_apdu_cse(const sc_card_t *card, sc_apdu_t *apdu)
 {
 	if (apdu->cse == SC_APDU_CASE_2 || apdu->cse == SC_APDU_CASE_3 ||
 	    apdu->cse == SC_APDU_CASE_4) {
@@ -458,48 +371,6 @@ static void sc_detect_apdu_cse(const sc_card_t *card, sc_apdu_t *apdu)
 }
 
 
-#ifdef ENABLE_SM
-static int
-sc_single_sm_transmit(struct sc_card *card, struct sc_apdu *apdu)
-{
-	struct sc_context *ctx  = card->ctx;
-	struct sc_apdu *sm_apdu = NULL;
-	int rv;
-
-	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "SM_MODE:%X", card->sm_ctx.sm_mode);
-	if (!card->sm_ctx.ops.get_sm_apdu || !card->sm_ctx.ops.free_sm_apdu)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
-
-	/* get SM encoded APDU */
-	rv = card->sm_ctx.ops.get_sm_apdu(card, apdu, &sm_apdu);
-	if (rv == SC_ERROR_SM_NOT_APPLIED)   {
-		/* SM wrap of this APDU is ignored by card driver.
-		 * Send plain APDU to the reader driver */
-		rv = card->reader->ops->transmit(card->reader, apdu);
-		LOG_FUNC_RETURN(ctx, rv);
-	}
-	LOG_TEST_RET(ctx, rv, "get SM APDU error");
-
-	/* check if SM APDU is still valid */
-	rv = sc_check_apdu(card, sm_apdu);
-	if (rv < 0)   {
-		card->sm_ctx.ops.free_sm_apdu(card, apdu, &sm_apdu);
-		LOG_TEST_RET(ctx, rv, "cannot validate SM encoded APDU");
-	}
-
-	/* send APDU to the reader driver */
-	rv = card->reader->ops->transmit(card->reader, sm_apdu);
-	LOG_TEST_RET(ctx, rv, "unable to transmit APDU");
-
-	/* decode SM answer and free temporary SM related data */
-	rv = card->sm_ctx.ops.free_sm_apdu(card, apdu, &sm_apdu);
-
-	LOG_FUNC_RETURN(ctx, rv);
-}
-#endif
-
-
 static int
 sc_single_transmit(struct sc_card *card, struct sc_apdu *apdu)
 {
@@ -514,7 +385,7 @@ sc_single_transmit(struct sc_card *card, struct sc_apdu *apdu)
 			apdu->cla, apdu->ins, apdu->p1, apdu->p2, apdu->datalen, apdu->data);
 #ifdef ENABLE_SM
 	if (card->sm_ctx.sm_mode == SM_MODE_TRANSMIT)
-		return sc_single_sm_transmit(card, apdu);
+		return sc_sm_single_transmit(card, apdu);
 #endif
 
 	/* send APDU to the reader driver */
@@ -523,6 +394,7 @@ sc_single_transmit(struct sc_card *card, struct sc_apdu *apdu)
 
 	LOG_FUNC_RETURN(ctx, rv);
 }
+
 
 static int
 sc_set_le_and_transmit(struct sc_card *card, struct sc_apdu *apdu, size_t olen)

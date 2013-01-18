@@ -475,6 +475,15 @@
 				</listitem>
 			</varlistentry>
 
+			<varlistentry>
+				<term>
+					<command>sm</command> <replaceable>[open]</replaceable>|<replaceable>[close]</replaceable>
+				</term>
+				<listitem>
+                                        <para>Calls the card's <replaceable>open</replaceable> or <replaceable>close</replaceable> Secure Messaging handler.</para>
+                                </listitem>
+			</varlistentry>
+
 		</variablelist>
 	</para>
 </refsect1>
