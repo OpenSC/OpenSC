@@ -268,7 +268,7 @@ static int sc_pkcs15emu_sc_hsm_add_pubkey(sc_pkcs15_card_t *p15card, sc_pkcs15_p
 	sc_pkcs15_pubkey_info_t pubkey_info;
 	sc_pkcs15_object_t pubkey_obj;
 	struct sc_pkcs15_pubkey pubkey;
-	u8 efbin[512];
+	u8 efbin[1024];
 	sc_cvc_t cvc;
 	u8 *cvcpo;
 	size_t cvclen;
