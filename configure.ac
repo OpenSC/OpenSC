@@ -614,7 +614,7 @@ if test "${enable_pedantic}" = "yes"; then
 	CFLAGS="${CFLAGS} -pedantic -Wextra"
 fi
 if test "${enable_strict}" = "yes"; then
-	CFLAGS="${CFLAGS} -Wall"
+	CFLAGS="${CFLAGS} -Wall -Wextra -Wno-unused-parameter"
 fi
 if test "$GCC" = "yes"; then
 	# This should be resolved not ignored.
