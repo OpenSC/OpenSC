@@ -35,7 +35,8 @@
 #include <openssl/opensslconf.h>
 #include <openssl/bio.h>
 #include <openssl/evp.h>
-
+#include <openssl/bn.h>
+#include <openssl/rand.h>
 
 #include "libopensc/opensc.h"
 #include "libopensc/cardctl.h"
@@ -63,25 +64,29 @@ enum {
 	OPT_SO_PIN = 0x100,
 	OPT_PIN,
 	OPT_RETRY,
-	OPT_PASSWORD
+	OPT_PASSWORD,
+	OPT_PASSWORD_SHARES_THRESHOLD,
+	OPT_PASSWORD_SHARES_TOTAL
 };
 
 static const struct option options[] = {
-	{ "initialize",			0, NULL,		'X' },
-	{ "create-dkek-share",	1, NULL,		'C' },
-	{ "import-dkek-share",	1, NULL,		'I' },
-	{ "wrap-key",			1, NULL,		'W' },
-	{ "unwrap-key",			1, NULL,		'U' },
-	{ "dkek-shares",		1, NULL,		's' },
-	{ "so-pin",				1, NULL,		OPT_SO_PIN },
-	{ "pin",				1, NULL,		OPT_PIN },
-	{ "pin-retry",			1, NULL,		OPT_RETRY },
-	{ "password",			1, NULL,		OPT_PASSWORD },
-	{ "key-reference",		1, NULL,		'i' },
-	{ "force",				0, NULL,		'f' },
-	{ "reader",				1, NULL,		'r' },
-	{ "wait",				0, NULL,		'w' },
-	{ "verbose",			0, NULL,		'v' },
+	{ "initialize",				0, NULL,		'X' },
+	{ "create-dkek-share",		1, NULL,		'C' },
+	{ "import-dkek-share",		1, NULL,		'I' },
+	{ "wrap-key",				1, NULL,		'W' },
+	{ "unwrap-key",				1, NULL,		'U' },
+	{ "dkek-shares",			1, NULL,		's' },
+	{ "so-pin",					1, NULL,		OPT_SO_PIN },
+	{ "pin",					1, NULL,		OPT_PIN },
+	{ "pin-retry",				1, NULL,		OPT_RETRY },
+	{ "password",				1, NULL,		OPT_PASSWORD },
+	{ "pwd-shares-threshold",	1, NULL,		OPT_PASSWORD_SHARES_THRESHOLD },
+	{ "pwd-shares-total",		1, NULL,		OPT_PASSWORD_SHARES_TOTAL },
+	{ "key-reference",			1, NULL,		'i' },
+	{ "force",					0, NULL,		'f' },
+	{ "reader",					1, NULL,		'r' },
+	{ "wait",					0, NULL,		'w' },
+	{ "verbose",				0, NULL,		'v' },
 	{ NULL, 0, NULL, 0 }
 };
 
@@ -96,6 +101,8 @@ static const char *option_help[] = {
 	"Define user PIN",
 	"Define user PIN retry counter",
 	"Define password for DKEK share",
+	"Define threshold for number of password shares required for reconstruction",
+	"Define number of password shares",
 	"Key reference for key wrap/unwrap",
 	"Force replacement of key and certificate",
 	"Uses reader number <arg> [0]",
@@ -103,10 +110,319 @@ static const char *option_help[] = {
 	"Verbose operation. Use several times to enable debug output.",
 };
 
+typedef struct {
+	BIGNUM x;
+	BIGNUM y;
+} secret_share_t;
 
 static sc_context_t *ctx = NULL;
 static sc_card_t *card = NULL;
 
+
+
+
+/**
+ * Generate a prime number
+ *
+ * The internal CPRNG is seeded using the provided seed value.
+ * For the bit size of the generated prime the following condition holds:
+ *
+ * num_bits(prime) > max(2^r, num_bits(n + 1))
+ *
+ * r equals the number of bits needed to encode the secret.
+ *
+ * @param prime Pointer for storage of prime number
+ * @param s Secret to share
+ * @param n Maximum number of shares
+ * @param rngSeed Seed value for CPRNG
+ *
+ */
+static void generatePrime(BIGNUM *prime, const BIGNUM *s, const unsigned int n, char *rngSeed) {
+
+	int bits = 0;
+
+	// Seed the RNG
+	RAND_seed(rngSeed, sizeof(rngSeed));
+
+	// Determine minimum number of bits for prime >= max(2^r, n + 1)
+	bits = BN_num_bits_word(n + 1) > BN_num_bits(s) ? (BN_num_bits_word(n + 1)) : (BN_num_bits(s));
+
+	// Clear the prime value
+	BN_clear(prime);
+
+	// Generate random prime
+	BN_generate_prime(prime, bits, 1, NULL, NULL, NULL, NULL );
+}
+
+
+
+/**
+ * Helper method to calculate the y-value
+ * for a given x-value and a polynomial
+ *
+ * @param x X-value
+ * @param polynomial The underlying polynomial
+ * @param t Threshold (determines the degree of the polynomial)
+ * @param prime Prime for finite field arithmetic
+ * @param y Pointer for storage of calculated y-value
+ */
+static void calculatePolynomialValue(const BIGNUM x, BIGNUM **polynomial, const unsigned char t, const BIGNUM prime, BIGNUM *y) {
+
+	BIGNUM **pp;
+	BIGNUM temp;
+	BIGNUM exponent;
+
+	unsigned long exp;
+	BN_CTX *ctx;
+
+	// Create context for temporary variables of OpenSSL engine
+	ctx = BN_CTX_new();
+	BN_CTX_init(ctx);
+
+	BN_init(&temp);
+	BN_init(&exponent);
+
+	// Set y to ZERO
+	BN_zero(y);
+
+	/* Initialize the result using the secret value at position 0 of the polynomial */
+	pp = polynomial;
+	BN_copy(y, *pp);
+
+	pp++;
+
+	for (exp = 1; exp < t; exp++) {
+
+		BN_copy(&temp, &x);
+
+		BN_set_word(&exponent, exp);
+		// temp = x^exponent mod prime
+		BN_mod_exp(&temp, &x, &exponent, &prime, ctx);
+		// exponent = temp * a = a * x^exponent mod prime
+		BN_mod_mul(&exponent, &temp, *pp, &prime, ctx);
+		// add the temp value from exponent to y
+		BN_copy(&temp, y);
+		BN_mod_add(y, &temp, &exponent, &prime, ctx);
+		pp++;
+	}
+
+	BN_clear_free(&temp);
+	BN_clear_free(&exponent);
+
+	BN_CTX_free(ctx);
+}
+
+
+
+/**
+ * Create shares depending on the provided parameters
+ *
+ * @param s Secret value to share
+ * @param t Threshold needed to reconstruct the secret
+ * @param n Total number of shares
+ * @param prime Prime for finite field arithmetic
+ * @param shares Pointer for storage of calculated shares (must be big enough to hold n shares)
+ */
+static int createShares(const BIGNUM *s, const unsigned char t, const unsigned char n,	const BIGNUM prime, secret_share_t *shares) {
+
+	// Array representing the polynomial a(x) = s + a_1 * x + ... + a_n-1 * x^n-1 mod p
+	BIGNUM **polynomial = malloc(n * sizeof(BIGNUM *));
+	BIGNUM **pp;
+	unsigned long i;
+	secret_share_t *sp;
+
+	// Set the secret value as the constant part of the polynomial
+	pp = polynomial;
+	*pp = BN_new();
+	BN_init(*pp);
+	BN_copy(*pp, s);
+	pp++;
+
+	// Initialize and generate some random values for coefficients a_x in the remaining polynomial
+	for (i = 1; i < t; i++) {
+		*pp = BN_new();
+		BN_init(*pp);
+		BN_rand_range(*pp, &prime);
+		pp++;
+	}
+
+	sp = shares;
+	// Now calculate n secret shares
+	for (i = 1; i <= n; i++) {
+		BN_init(&(sp->x));
+		BN_init(&(sp->y));
+
+		BN_set_word(&(sp->x), i);
+		calculatePolynomialValue(sp->x, polynomial, t, prime, &(sp->y));
+		sp++;
+	}
+
+	// Deallocate the resource of the polynomial
+	pp = polynomial;
+	for (i = 0; i < t; i++) {
+		BN_clear_free(*pp);
+		pp++;
+	}
+
+	free(polynomial);
+
+	return 0;
+}
+
+
+
+/**
+ * Reconstruct secret using the provided shares
+ *
+ * @param shares Shares used to reconstruct secret (should contain t entries)
+ * @param t Threshold used to reconstruct the secret
+ * @param prime Prime for finite field arithmetic
+ * @param s Pointer for storage of calculated secred
+ */
+static int reconstructSecret(secret_share_t *shares, unsigned char t, const BIGNUM prime, BIGNUM *s) {
+
+	unsigned char i;
+	unsigned char j;
+
+	// Array representing the polynomial a(x) = s + a_1 * x + ... + a_n-1 * x^n-1 mod p
+	BIGNUM **bValue = malloc(t * sizeof(BIGNUM *));
+	BIGNUM **pbValue;
+	BIGNUM numerator;
+	BIGNUM denominator;
+	BIGNUM temp;
+	secret_share_t *sp_i;
+	secret_share_t *sp_j;
+	BN_CTX *ctx;
+
+	// Initialize
+	pbValue = bValue;
+	for (i = 0; i < t; i++) {
+		*pbValue = BN_new();
+		BN_init(*pbValue);
+		pbValue++;
+	}
+
+	BN_init(&numerator);
+	BN_init(&denominator);
+	BN_init(&temp);
+
+	// Create context for temporary variables of engine
+	ctx = BN_CTX_new();
+	BN_CTX_init(ctx);
+
+	pbValue = bValue;
+	sp_i = shares;
+	for (i = 0; i < t; i++) {
+
+		BN_one(&numerator);
+		BN_one(&denominator);
+
+		sp_j = shares;
+
+		for (j = 0; j < t; j++) {
+
+			if (i == j) {
+				sp_j++;
+				continue;
+			}
+
+			BN_mul(&numerator, &numerator, &(sp_j->x), ctx);
+			BN_sub(&temp, &(sp_j->x), &(sp_i->x));
+			BN_mul(&denominator, &denominator, &temp, ctx);
+
+			sp_j++;
+		}
+
+		/*
+		 * Use the modular inverse value of the denominator for the
+		 * multiplication
+		 */
+		if (BN_mod_inverse(&denominator, &denominator, &prime, ctx) == NULL ) {
+			return -1;
+		}
+
+		BN_mod_mul(*pbValue, &numerator, &denominator, &prime, ctx);
+
+		pbValue++;
+		sp_i++;
+	}
+
+	/*
+	 * Calculate the secret by multiplying all y-values with their
+	 * corresponding intermediate values
+	 */
+	pbValue = bValue;
+	sp_i = shares;
+	BN_zero(s);
+	for (i = 0; i < t; i++) {
+
+		BN_mul(&temp, &(sp_i->y), *pbValue, ctx);
+		BN_add(s, s, &temp);
+		pbValue++;
+		sp_i++;
+	}
+
+	// Perform modulo operation and copy result
+	BN_nnmod(&temp, s, &prime, ctx);
+	BN_copy(s, &temp);
+
+	BN_clear_free(&numerator);
+	BN_clear_free(&denominator);
+	BN_clear_free(&temp);
+
+	BN_CTX_free(ctx);
+
+	// Deallocate the resource of the polynomial
+	pbValue = bValue;
+	for (i = 0; i < t; i++) {
+		BN_clear_free(*pbValue);
+		pbValue++;
+	}
+
+	free(bValue);
+
+	return 0;
+}
+
+
+
+/**
+ * Helper method to free allocated resources
+ *
+ * @param shares Shares to be freed
+ * @param n Total number of shares to freed
+ */
+static int cleanUpShares(secret_share_t *shares, unsigned char n) {
+	int i;
+	secret_share_t *sp;
+
+	sp = shares;
+	for (i = 0; i < n; i++) {
+		BN_clear_free(&(sp->x));
+		BN_clear_free(&(sp->y));
+		sp++;
+	}
+
+	free(shares);
+
+	return 0;
+}
+
+
+
+void clearScreen() {
+	if (system( "clear" )) system( "cls" );
+}
+
+
+
+void waitForEnterKeyPressed() {
+	char c;
+
+	fflush(stdout);
+	while ((c = getchar()) != '\n' && c != EOF) {
+	}
+}
 
 
 
@@ -248,14 +564,103 @@ static void initialize(sc_card_t *card, const char *so_pin, const char *user_pin
 
 
 
-static void import_dkek_share(sc_card_t *card, const char *inf, int iter, char *password)
+static int recreate_password_from_shares(char **pwd, int *pwdlen, int num_of_password_shares) {
+
+	int r, i;
+	BIGNUM prime;
+	BIGNUM secret;
+	BIGNUM *p;
+	char inbuf[64];
+	char bin[64];
+	int binlen = 0;
+	char *ip;
+	secret_share_t *shares = NULL;
+	secret_share_t *sp;
+
+	/*
+	 * Initialize prime and secret
+	 */
+	BN_init(&prime);
+	BN_init(&secret);
+
+	// Allocate data buffer for the shares
+	shares = malloc(num_of_password_shares * sizeof(secret_share_t));
+
+	printf("\nDeciphering the DKEK for import into the SmartCard-HSM requires %i key custodians", num_of_password_shares);
+	printf("\nto present their share. Only the first key custodian needs to enter the public prime.");
+	printf("\nPlease remember to present the share id as well as the share value.");
+	printf("\n\nPlease enter prime: ");
+	memset(inbuf, 0, sizeof(inbuf));
+	fgets(inbuf, sizeof(inbuf), stdin);
+	binlen = 64;
+	sc_hex_to_bin(inbuf, bin, &binlen);
+	BN_bin2bn(bin, binlen, &prime);
+
+	sp = shares;
+	for (i = 0; i < num_of_password_shares; i++) {
+		clearScreen();
+
+		printf("Press <enter> to enter share %i of %i\n\n", i + 1, num_of_password_shares);
+		waitForEnterKeyPressed();
+
+		clearScreen();
+
+		BN_init(&(sp->x));
+		BN_init(&(sp->y));
+
+		printf("Share %i of %i\n\n", i + 1, num_of_password_shares);
+
+		printf("Please enter share ID: ");
+		memset(inbuf, 0, sizeof(inbuf));
+		fgets(inbuf, sizeof(inbuf), stdin);
+		p = &(sp->x);
+		BN_hex2bn(&p, inbuf);
+
+		printf("Please enter share value: ");
+		memset(inbuf, 0, sizeof(inbuf));
+		fgets(inbuf, sizeof(inbuf), stdin);
+		binlen = 64;
+		sc_hex_to_bin(inbuf, bin, &binlen);
+		BN_bin2bn(bin, binlen, &(sp->y));
+
+		sp++;
+	}
+
+	clearScreen();
+
+	r = reconstructSecret(shares, num_of_password_shares, prime, &secret);
+
+	if (r < 0) {
+		printf("\nError during reconstruction of secret. Wrong shares?\n");
+		return r;
+	}
+
+	/*
+	 * Encode the secret value
+	 */
+	ip = inbuf;
+	*pwdlen = BN_bn2bin(&secret, ip);
+	*pwd = calloc(1, *pwdlen);
+	memcpy(*pwd, ip, *pwdlen);
+
+	cleanUpShares(shares, num_of_password_shares);
+
+	BN_clear_free(&prime);
+	BN_clear_free(&secret);
+
+	return 0;
+}
+
+
+
+static void import_dkek_share(sc_card_t *card, const char *inf, int iter, char *password, int num_of_password_shares)
 {
 	sc_cardctl_sc_hsm_dkek_t dkekinfo;
 	EVP_CIPHER_CTX ctx;
 	FILE *in = NULL;
 	u8 filebuff[64],key[EVP_MAX_KEY_LENGTH], iv[EVP_MAX_IV_LENGTH],outbuff[64];
 	char *pwd = NULL;
-	int r, outlen;
+	int r, outlen, pwdlen;
 
 	in = fopen(inf, "rb");
 
@@ -277,15 +682,26 @@ static void import_dkek_share(sc_card_t *card, const char *inf, int iter, char *
 	}
 
 	if (password == NULL) {
-		printf("Enter password to decrypt DKEK share : ");
-		util_getpass(&pwd, NULL, stdin);
-		printf("\n");
+
+		if (num_of_password_shares == -1) {
+			printf("Enter password to decrypt DKEK share : ");
+			util_getpass(&pwd, NULL, stdin);
+			pwdlen = strlen(pwd);
+			printf("\n");
+		} else {
+			r = recreate_password_from_shares(&pwd, &pwdlen, num_of_password_shares);
+			if (r < 0) {
+				return;
+			}
+		}
+
 	} else {
 		pwd = password;
+		pwdlen = strlen(password);
 	}
 
 	printf("Deciphering DKEK share, please wait...\n");
-	EVP_BytesToKey(EVP_aes_256_cbc(), EVP_md5(), filebuff + 8, (u8 *)pwd, strlen(pwd), iter, key, iv);
+	EVP_BytesToKey(EVP_aes_256_cbc(), EVP_md5(), filebuff + 8, (u8 *)pwd, pwdlen, iter, key, iv);
 	OPENSSL_cleanse(pwd, strlen(pwd));
 
 	if (password == NULL) {
@@ -316,6 +732,7 @@ static void import_dkek_share(sc_card_t *card, const char *inf, int iter, char *
 	EVP_CIPHER_CTX_cleanup(&ctx);
 
 	if (r == SC_ERROR_INS_NOT_SUPPORTED) {			// Not supported or not initialized for key shares
+		printf("Not supported by card or card not initialized for key share usage\n");
 		return;
 	}
 
@@ -329,46 +746,172 @@ static void import_dkek_share(sc_card_t *card, const char *inf, int iter, char *
 
 
 
-static void create_dkek_share(sc_card_t *card, const char *outf, int iter, char *password)
+static void ask_for_password(char **pwd, int *pwdlen)
+{
+	char *refpwd = NULL;
+
+	printf(	"\nThe DKEK share will be enciphered using a key derived from a user supplied password.\n");
+	printf(	"The security of the DKEK share relies on a well chosen and sufficiently long password.\n");
+	printf(	"The recommended length is more than 10 characters, which are mixed letters, numbers and\n");
+	printf("symbols.\n\n");
+	printf(	"Please keep the generated DKEK share file in a safe location. We also recommend to keep a\n");
+	printf(	"paper printout, in case the electronic version becomes unavailable. A printable version\n");
+	printf(	"of the file can be generated using \"openssl base64 -in <filename>\".\n");
+
+	while (1) {
+		printf("Enter password to encrypt DKEK share : ");
+		util_getpass(pwd, NULL, stdin);
+		printf("\n");
+		if (strlen(*pwd) < 6) {
+			printf("Password way to short. Please retry.\n");
+			continue;
+		}
+		printf("Please retype password to confirm : ");
+		util_getpass(&refpwd, NULL, stdin);
+		printf("\n");
+		if (strcmp(*pwd, refpwd)) {
+			printf("Passwords do not match. Please retry.\n");
+			continue;
+		}
+		*pwdlen = strlen(*pwd);
+		break;
+	}
+
+	OPENSSL_cleanse(refpwd, strlen(refpwd));
+	free(refpwd);
+}
+
+
+
+static int generate_pwd_shares(sc_card_t *card, char **pwd, int *pwdlen, int password_shares_threshold, int password_shares_total)
+{
+	int r, i;
+	BIGNUM prime;
+	BIGNUM secret;
+	char buf[64];
+	char hex[64];
+	int l;
+
+	secret_share_t *shares = NULL;
+	secret_share_t *sp;
+
+	u8 rngseed[16];
+
+	printf(	"\nThe DKEK will be enciphered using a randomly generated 64 bit password.\n");
+	printf(	"This password is split using a (%i-of-%i) threshold scheme.\n\n", password_shares_threshold, password_shares_total);
+
+	printf(	"Please keep the generated and encrypted DKEK file in a safe location. We also recommend \n");
+	printf(	"to keep a paper printout, in case the electronic version becomes unavailable. A printable version\n");
+	printf(	"of the file can be generated using \"openssl base64 -in <filename>\".\n");
+
+	printf("\n\nPress <enter> to continue");
+
+	waitForEnterKeyPressed();
+
+	*pwd = calloc(1, 8);
+	*pwdlen = 8;
+
+	r = sc_get_challenge(card, *pwd, 8);
+	if (r < 0) {
+		printf("Error generating random key failed with ", sc_strerror(r));
+		OPENSSL_cleanse(pwd, *pwdlen);
+		free(pwd);
+		return r;
+	}
+	**pwd |= 0x80;
+
+	/*
+	 * Initialize prime and secret
+	 */
+	BN_init(&prime);
+	BN_init(&secret);
+
+	/*
+	 * Encode the secret value
+	 */
+	BN_bin2bn(*pwd, *pwdlen, &secret);
+
+	/*
+	 * Generate seed and calculate a prime depending on the size of the secret
+	 */
+	r = sc_get_challenge(card, rngseed, 16);
+	if (r < 0) {
+		printf("Error generating random seed failed with ", sc_strerror(r));
+		OPENSSL_cleanse(pwd, *pwdlen);
+		free(pwd);
+		return r;
+	}
+
+	generatePrime(&prime, &secret, password_shares_total, rngseed);
+
+	// Allocate data buffer for the generated shares
+	shares = malloc(password_shares_total * sizeof(secret_share_t));
+
+	createShares(&secret, password_shares_threshold, password_shares_total, prime, shares);
+
+	sp = shares;
+	for (i = 0; i < password_shares_total; i++) {
+		clearScreen();
+
+		printf("Press <enter> to display key share %i of %i\n\n", i + 1, password_shares_total);
+		waitForEnterKeyPressed();
+
+		clearScreen();
+
+		printf("Share %i of %i\n\n", i + 1, password_shares_total);
+
+		l = BN_bn2bin(&prime, buf);
+		sc_bin_to_hex(buf, l, hex, 64, ':');
+		printf("\nPrime       : %s\n", hex);
+
+		printf("Share ID    : %s\n", BN_bn2dec(&(sp->x)));
+		l = BN_bn2bin(&(sp->y), buf);
+		sc_bin_to_hex(buf, l, hex, 64, ':');
+		printf("Share value : %s\n", hex);
+
+		printf("\n\nPlease note ALL values above and press <enter> when finished");
+		waitForEnterKeyPressed();
+
+		sp++;
+	}
+
+	clearScreen();
+
+	cleanUpShares(shares, password_shares_total);
+
+	BN_clear_free(&prime);
+	BN_clear_free(&secret);
+
+	return 0;
+}
+
+
+
+static void create_dkek_share(sc_card_t *card, const char *outf, int iter, char *password, int password_shares_threshold, int password_shares_total)
 {
 	EVP_CIPHER_CTX ctx;
 	FILE *out = NULL;
-	u8 filebuff[64],key[EVP_MAX_KEY_LENGTH], iv[EVP_MAX_IV_LENGTH],outbuff[64];
+	u8 filebuff[64], key[EVP_MAX_KEY_LENGTH], iv[EVP_MAX_IV_LENGTH],outbuff[64];
 	u8 dkek_share[32];
 	char *pwd = NULL;
-	int r, outlen;
+	int r = 0, outlen, pwdlen = 0;
 
 	if (password == NULL) {
-		char *refpwd = NULL;
 
-		printf("\nThe DKEK share will be enciphered using a key derived from a user supplied password.\n");
-		printf("The security of the DKEK share relies on a well chosen and sufficiently long password.\n");
-		printf("The recommended length is more than 10 characters, which are mixed letters, numbers and\n");
-		printf("symbols.\n\n");
-		printf("Please keep the generated DKEK share file in a save location. We also recommend to keep a\n");
-		printf("paper printout, in case the electronic version becomes unavailable. A printable version\n");
-		printf("of the file can be generated using \"openssl base64 -in <filename>\".\n");
-		while(1) {
-			printf("Enter password to encrypt DKEK share : ");
-			util_getpass(&pwd, NULL, stdin);
-			printf("\n");
-			if (strlen(pwd) < 6) {
-				printf("Password way to short. Please retry.\n");
-				continue;
-			}
-			printf("Please retype password to confirm : ");
-			util_getpass(&refpwd, NULL, stdin);
-			printf("\n");
-			if (strcmp(pwd, refpwd)) {
-				printf("Passwords do not match. Please retry.\n");
-				continue;
-			}
-			break;
+		if (password_shares_threshold == -1) {
+			ask_for_password(&pwd, &pwdlen);
+		} else { // create password using threshold scheme
+			r = generate_pwd_shares(card, &pwd, &pwdlen, password_shares_threshold, password_shares_total);
 		}
-		OPENSSL_cleanse(refpwd, strlen(refpwd));
-		free(refpwd);
+
 	} else {
 		pwd = password;
+		pwdlen = strlen(password);
+	}
+
+	if (r < 0) {
+		printf("Creating DKEK share failed");
+		return;
 	}
 
 	memcpy(filebuff, magic, sizeof(magic) - 1);
@@ -380,10 +923,10 @@ static void create_dkek_share(sc_card_t *card, const char *outf, int iter, char 
 	}
 
 	printf("Enciphering DKEK share, please wait...\n");
-	EVP_BytesToKey(EVP_aes_256_cbc(), EVP_md5(), filebuff + 8, (u8 *)pwd, strlen(pwd), iter, key, iv);
+	EVP_BytesToKey(EVP_aes_256_cbc(), EVP_md5(), filebuff + 8, (u8 *)pwd, pwdlen, iter, key, iv);
 
 	if (password == NULL) {
-		OPENSSL_cleanse(pwd, strlen(pwd));
+		OPENSSL_cleanse(pwd, pwdlen);
 		free(pwd);
 	}
 
@@ -805,6 +1348,8 @@ int main(int argc, char * const argv[])
 	int opt_retry_counter = 3;
 	int opt_dkek_shares = -1;
 	int opt_key_reference = -1;
+	int opt_password_shares_threshold = -1;
+	int opt_password_shares_total = -1;
 	int opt_force = 0;
 	int opt_iter = 10000000;
 	sc_context_param_t ctx_param;
@@ -854,6 +1399,12 @@ int main(int argc, char * const argv[])
 			break;
 		case OPT_RETRY:
 			opt_retry_counter = atol(optarg);
+			break;
+		case OPT_PASSWORD_SHARES_THRESHOLD:
+			opt_password_shares_threshold = atol(optarg);
+			break;
+		case OPT_PASSWORD_SHARES_TOTAL:
+			opt_password_shares_total = atol(optarg);
 			break;
 		case 's':
 			opt_dkek_shares = atol(optarg);
@@ -914,11 +1465,11 @@ int main(int argc, char * const argv[])
 	}
 
 	if (do_create_dkek_share) {
-		create_dkek_share(card, opt_filename, opt_iter, opt_password);
+		create_dkek_share(card, opt_filename, opt_iter, opt_password, opt_password_shares_threshold, opt_password_shares_total);
 	}
 
 	if (do_import_dkek_share) {
-		import_dkek_share(card, opt_filename, opt_iter, opt_password);
+		import_dkek_share(card, opt_filename, opt_iter, opt_password, opt_password_shares_total);
 	}
 
 	if (do_wrap_key) {
