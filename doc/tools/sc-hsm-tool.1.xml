@@ -54,9 +54,10 @@
 						<option>-C</option> <replaceable>filename</replaceable>
 					</term>
 					<listitem>
-						<para>Create a DKEK share encrypted under a user supplied password and saved to the file
+						<para>Create a DKEK share encrypted under a password and save it to the file
 						      given as parameter.</para>
 						<para>Use <option>--password</option> to provide a password for encryption rather than prompting for one.</para>
+						<para>Use <option>--pwd-shares-threshold</option> and <option>--pwd-shares-total</option> to randomly generate a password and split is using a (t, n) threshold scheme.</para>
 					</listitem>
 				</varlistentry>
 				
@@ -68,6 +69,7 @@
 					<listitem>
 						<para>Prompt for user password, read and decrypt DKEK share and import into SmartCard-HSM.</para>
 						<para>Use <option>--password</option> to provide a password for decryption rather than prompting for one.</para>
+						<para>Use <option>--pwd-shares-total</option> to specify the number of shares that should be entered to reconstruct the password.</para>
 					</listitem>
 				</varlistentry>
 				
@@ -153,6 +155,24 @@
 				
 				<varlistentry>
 					<term>
+						<option>--pwd-shares-threshold</option> <replaceable>value</replaceable>
+					</term>
+					<listitem>
+						<para>Define threshold for number of password shares required for reconstruction.</para>
+					</listitem>
+				</varlistentry>
+				
+				<varlistentry>
+					<term>
+						<option>--pwd-shares-total</option> <replaceable>value</replaceable>
+					</term>
+					<listitem>
+						<para>Define number of password shares.</para>
+					</listitem>
+				</varlistentry>
+				
+				<varlistentry>
+					<term>
 						<option>--force</option>
 					</term>
 					<listitem>
@@ -194,13 +214,17 @@
 		<title>Examples</title>
 		<para>Create a DKEK share:</para>
 		<para><command>sc-hsm-tool --create-dkek-share dkek-share-1.pbe</command></para>
-		<para>Initialize SmartCard-HSM to use a single DKEK share</para>
+		<para>Create a DKEK share with random password split up using a (3, 5) threshold scheme:</para>
+		<para><command>sc-hsm-tool --create-dkek-share dkek-share-1.pbe --pwd-shares-threshold 3 --pwd-shares-total 5</command></para>
+		<para>Initialize SmartCard-HSM to use a single DKEK share:</para>
 		<para><command>sc-hsm-tool --initialize --so-pin 3537363231383830 --pin 648219 --dkek-shares 1</command></para>
-		<para>Import DKEK share</para>
+		<para>Import DKEK share:</para>
 		<para><command>sc-hsm-tool --import-dkek-share dkek-share-1.pbe</command></para>
-		<para>Wrap referenced key, description and certificate</para>
+		<para>Import DKEK share using a password split up using a (3, 5) threshold scheme for encryption:</para>
+		<para><command>sc-hsm-tool --import-dkek-share dkek-share-1.pbe  --pwd-shares-total 3</command></para>
+		<para>Wrap referenced key, description and certificate:</para>
 		<para><command>sc-hsm-tool --wrap-key wrap-key.bin --key-reference 1 --pin 648219</command></para>
-		<para>Unwrap key into same or in different SmartCard-HSM with the same DKEK</para>
+		<para>Unwrap key into same or in different SmartCard-HSM with the same DKEK:</para>
 		<para><command>sc-hsm-tool --unwrap-key wrap-key.bin --key-reference 10 --pin 648219 --force</command></para>
 	</refsect1>
 	
