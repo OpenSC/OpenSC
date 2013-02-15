@@ -661,7 +661,9 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 			r = sc_pkcs15emu_sc_hsm_add_cd(p15card, filelist[i + 1]);
 			break;
 		}
-		LOG_TEST_RET(card->ctx, r, "Error adding elements to framework");
+		if (r != SC_SUCCESS) {
+			sc_log(card->ctx, "Error %d adding elements to framework", r);
+		}
 	}
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
