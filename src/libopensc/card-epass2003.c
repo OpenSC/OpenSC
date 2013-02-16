@@ -1858,7 +1858,6 @@ epass2003_delete_file(struct sc_card *card, const sc_path_t * path)
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
-#if 0
 static int
 epass2003_list_files(struct sc_card *card, unsigned char *buf, size_t buflen)
 {
@@ -1867,9 +1866,9 @@ epass2003_list_files(struct sc_card *card, unsigned char *buf, size_t buflen)
 	int r;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0x34, 0x00, 0x00);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x34, 0x00, 0x00);
 	apdu.cla = 0x80;
-	apdu.le = 0x40;
+	apdu.le = 0;
 	apdu.resplen = sizeof(rbuf);
 	apdu.resp = rbuf;
 
@@ -1887,7 +1886,6 @@ epass2003_list_files(struct sc_card *card, unsigned char *buf, size_t buflen)
 
 	LOG_FUNC_RETURN(card->ctx, buflen);
 }
-#endif
 
 
 static int
@@ -2376,7 +2374,7 @@ static struct sc_card_driver *sc_get_driver(void)
 	epass2003_ops.compute_signature = epass2003_decipher;
 	epass2003_ops.create_file = epass2003_create_file;
 	epass2003_ops.delete_file = epass2003_delete_file;
-	/* epass2003_ops.list_files = epass2003_list_files; */
+	epass2003_ops.list_files = epass2003_list_files;
 	epass2003_ops.card_ctl = epass2003_card_ctl;
 	epass2003_ops.process_fci = epass2003_process_fci;
 	epass2003_ops.construct_fci = epass2003_construct_fci;
