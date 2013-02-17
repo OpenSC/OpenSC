@@ -381,8 +381,10 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 		hotplug_slot->id--;
 		sc_ctx_detect_readers(context);
 	}
-
-	card_detect_all();
+	
+	if (!sc_pkcs11_conf.plug_and_play) {
+		card_detect_all();
+	}
 
 	found = malloc(list_size(&virtual_slots) * sizeof(CK_SLOT_ID));
 
@@ -477,6 +479,10 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
 		return rv;
 
 	sc_log(context, "C_GetSlotInfo(0x%lx)", slotID);
+
+	if (sc_pkcs11_conf.plug_and_play) {
+		card_detect_all();
+	}
 
 	rv = slot_get_slot(slotID, &slot);
 	if (rv == CKR_OK){
