@@ -32,6 +32,7 @@
 #include "libopensc/asn1.h"
 #include "libopensc/cards.h"
 #include "libopensc/cardctl.h"
+#include "libopensc/log.h"
 #include "util.h"
 
 #define	OPT_RAW		256
@@ -216,7 +217,7 @@ static void display_data(const struct ef_name_map *mapping, char *value)
 			} else {
 				const char *label = mapping->name;
 
-				printf("%s:%*s%s\n", label, 10-strlen(label), "", value);
+				printf("%s:%*s%s\n", label, 10 - (int)strlen(label), "", value);
 			}
 		}
 	}
@@ -390,6 +391,8 @@ int do_genkey(sc_card_t *card, u8 key_id, unsigned int key_len)
 	sc_path_t path;
 	sc_file_t *file;
 
+	LOG_FUNC_CALLED(card->ctx);
+
 	if (key_id < 1 || key_id > 3) {
 		printf("Unknown key ID %d.\n", key_id);
 		return 1;
@@ -481,8 +484,10 @@ int main(int argc, char **argv)
 
 	/* check card type */
 	if ((card->type != SC_CARD_TYPE_OPENPGP_V1) &&
-	    (card->type != SC_CARD_TYPE_OPENPGP_V2)) {
+	    (card->type != SC_CARD_TYPE_OPENPGP_V2) &&
+	    (card->type != SC_CARD_TYPE_OPENPGP_GNUK)) {
 		util_error("not an OpenPGP card");
+		sc_log(card->ctx, "Card type %X", card->type);
 		exit_status = EXIT_FAILURE;
 		goto out;
 	}
