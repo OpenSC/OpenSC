@@ -630,8 +630,7 @@ AC_CONFIG_FILES([
 	win32/OpenSC.wxs
 	MacOSX/Makefile
 	MacOSX/build-package
-	MacOSX/10.5/resources/ReadMe.html
-	MacOSX/10.6/resources/ReadMe.html
+	MacOSX/resources/ReadMe.html
 ])
 AC_OUTPUT
 
