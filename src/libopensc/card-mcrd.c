@@ -1,7 +1,7 @@
 /*
  * card-mcrd.c: Support for MICARDO cards
  *
- * Copyright (C) 2004  Martin Paljak <martin@paljak.pri.ee>
+ * Copyright (C) 2004  Martin Paljak <martin@martinpaljak.net>
  * Copyright (C) 2004  Priit Randla <priit.randla@eyp.ee>
  * Copyright (C) 2003  Marie Fischer <marie@vtl.ee> 
  * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>

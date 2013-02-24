@@ -2,7 +2,7 @@
  * slot.c: reader, smart card and slot related management functions
  *
  * Copyright (C) 2002  Timo Teräs <timo.teras@iki.fi>
- * Copyright (C) 2009 Martin Paljak <martin@paljak.pri.ee>
+ * Copyright (C) 2009 Martin Paljak <martin@martinpaljak.net>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public

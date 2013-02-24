@@ -1,7 +1,7 @@
 /*
  * PKCS15 emulation layer for EstEID card.
  *
- * Copyright (C) 2004, Martin Paljak <martin@paljak.pri.ee>
+ * Copyright (C) 2004, Martin Paljak <martin@martinpaljak.net>
  * Copyright (C) 2004, Bud P. Bruegger <bud@comune.grosseto.it>
  * Copyright (C) 2004, Antonino Iacono <ant_iacono@tin.it>
  * Copyright (C) 2003, Olaf Kirch <okir@suse.de>
