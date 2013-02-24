@@ -1134,7 +1134,7 @@ authentic_fcp_encode(struct sc_card *card, struct sc_file *file, unsigned char *
 	buf[offs++] = 1;
 	buf[offs++] = file->type == SC_FILE_TYPE_DF ? ISO7816_FILE_TYPE_DF : ISO7816_FILE_TYPE_TRANSPARENT_EF;
 
-	buf[offs++] = ISO7816_TAG_FCP_ID;
+	buf[offs++] = ISO7816_TAG_FCP_FID;
 	buf[offs++] = 2;
 	buf[offs++] = (file->id >> 8) & 0xFF;
 	buf[offs++] = file->id & 0xFF;
