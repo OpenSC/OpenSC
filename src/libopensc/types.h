@@ -218,7 +218,7 @@ typedef struct sc_acl_entry {
 						(at least for SetCOS 4.4 */
 typedef struct sc_file {
 	struct sc_path path;
-	u8 name[16];	/* DF name */
+	unsigned char name[16];	/* DF name */
 	size_t namelen; /* length of DF name */
 
 	unsigned int type, ef_structure, status; /* See constant values defined above */
@@ -230,12 +230,15 @@ typedef struct sc_file {
 	int record_length; /* In case of fixed-length or cyclic EF */
 	int record_count;  /* Valid, if not transparent EF or DF */
 
-	u8 *sec_attr;
+	unsigned char *sec_attr;	/* security data in proprietary format. tag '86' */
 	size_t sec_attr_len;
-	u8 *prop_attr;
+	unsigned char *prop_attr;	/* */
 	size_t prop_attr_len;
-	u8 *type_attr;
+	unsigned char *type_attr;
 	size_t type_attr_len;
+
+	unsigned char *encoded_content;	/* file's content encoded to be used in the file creation command */
+	size_t encoded_content_len;	/* size of file's encoded content in bytes */
 
 	unsigned int magic;
 } sc_file_t;
