@@ -232,9 +232,12 @@ typedef struct sc_file {
 
 	unsigned char *sec_attr;	/* security data in proprietary format. tag '86' */
 	size_t sec_attr_len;
-	unsigned char *prop_attr;	/* */
+
+	unsigned char *prop_attr;	/* proprietary information. tag '85'*/
 	size_t prop_attr_len;
-	unsigned char *type_attr;
+
+	unsigned char *type_attr;	/* file descriptor data. tag '82'.
+					   replaces the file's type information (DF, EF, ...) */
 	size_t type_attr_len;
 
 	unsigned char *encoded_content;	/* file's content encoded to be used in the file creation command */
