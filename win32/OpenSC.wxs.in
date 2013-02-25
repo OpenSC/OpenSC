@@ -106,6 +106,9 @@
               <Component Id="sc_hsm_tool.exe" Guid="*" Win64="$(var.Win64YesNo)">
                 <File Source="$(var.SOURCE_DIR)\src\tools\sc-hsm-tool.exe" Vital="yes"/>
               </Component>
+              <Component Id="openpgp_tool.exe" Guid="*" Win64="$(var.Win64YesNo)">
+                <File Source="$(var.SOURCE_DIR)\src\tools\openpgp-tool.exe" Vital="yes"/>
+              </Component>
             </Directory>
             <Directory Id="INSTALLDIR_PROFILES" Name="profiles">
               <Component Id="pkcs15.profile" Guid="*" Win64="$(var.Win64YesNo)">
@@ -215,6 +218,7 @@
         <ComponentRef Id="pkcs15_tool.exe"/>
         <ComponentRef Id="pkcs15_crypt.exe"/>
         <ComponentRef Id="sc_hsm_tool.exe"/>
+        <ComponentRef Id="openpgp_tool.exe"/>
         <!-- TODO: Not all profiles are listed! -->
         <ComponentRef Id="pkcs15.profile"/>
         <ComponentRef Id="asepcos.profile"/>
