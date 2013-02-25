@@ -52,7 +52,7 @@ if ! test -e OpenSC.tokend; then
 fi
 
 # Fetch binary dependencies
-curl http://martinpaljak.net/download/build-10.6.tar.gz -o build-10.6.tar.gz
+curl -O https://www.opensc-project.org/downloads/build-10.6.tar.gz
 
 # Unpack the binary building components
 if ! test -e OpenSC.tokend/build; then
