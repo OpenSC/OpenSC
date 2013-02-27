@@ -1,7 +1,10 @@
 /*
  * Support for ePass2003 smart cards
  *
+ * Copyright (C) 2008, Weitao Sun <weitao@ftsafe.com>
+ * Copyright (C) 2011, Xiaoshuo Wu <xiaoshuo@ftsafe.com>
  * Support: Riham <ruihan@ftsafe.com>
+ * Support: Shengchao niu <shengchao@ftsafe.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -2263,7 +2266,7 @@ external_key_auth(struct sc_card *card, unsigned char kid,
 	if( apdu.sw1 == 0x63 && apdu.sw2 == 0x00 ){
 		u8 retries = 0;
 		int ret = get_external_key_retries(card, 0x80 | kid, &retries);
-		if (ret == SC_SUCCESS) 
+		if (ret == SC_SUCCESS)
 			*tries_left = retries;
 		return SC_ERROR_PIN_CODE_INCORRECT;
 	}
