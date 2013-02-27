@@ -117,8 +117,8 @@ openssl_enc(const EVP_CIPHER * cipher, const unsigned char *key, const unsigned 
 
 	memcpy(iv_tmp, iv, EVP_MAX_IV_LENGTH);
 	EVP_CIPHER_CTX_init(&ctx);
-	EVP_CIPHER_CTX_set_padding(&ctx, 0);
 	EVP_EncryptInit_ex(&ctx, cipher, NULL, key, iv_tmp);
+	EVP_CIPHER_CTX_set_padding(&ctx, 0);
 
 	if (!EVP_EncryptUpdate(&ctx, output, &outl, input, length))
 		goto out;
@@ -146,8 +146,8 @@ openssl_dec(const EVP_CIPHER * cipher, const unsigned char *key, const unsigned 
 
 	memcpy(iv_tmp, iv, EVP_MAX_IV_LENGTH);
 	EVP_CIPHER_CTX_init(&ctx);
-	EVP_CIPHER_CTX_set_padding(&ctx, 0);
 	EVP_DecryptInit_ex(&ctx, cipher, NULL, key, iv_tmp);
+	EVP_CIPHER_CTX_set_padding(&ctx, 0);
 
 	if (!EVP_DecryptUpdate(&ctx, output, &outl, input, length))
 		goto out;
