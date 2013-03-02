@@ -1187,7 +1187,7 @@ sc_card_sm_load(struct sc_card *card, const char *module_path, const char *in_mo
 	}
 
 	if (!module)
-		return SC_ERROR_MEMORY_FAILURE;
+		return SC_ERROR_OUT_OF_MEMORY;
 
 	sc_log(ctx, "try to load SM module '%s'", module);
 	do  {

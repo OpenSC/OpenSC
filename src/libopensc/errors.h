@@ -124,6 +124,9 @@ extern "C" {
 #define SC_ERROR_SM_SESSION_ALREADY_ACTIVE	-1611
 #define SC_ERROR_SM_INVALID_CHECKSUM		-1612
 
+/* Warnings */
+#define SC_WARNING				-1700
+#define SC_WARNING_FILE_FILLED			-1701
 
 /* Errors that do not fit the categories above */
 #define SC_ERROR_UNKNOWN			-1900

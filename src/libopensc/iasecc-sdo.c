@@ -763,7 +763,7 @@ iasecc_sdo_allocate_and_parse(struct sc_card *card, unsigned char *data, size_t 
 
 	sdo = calloc(1, sizeof(struct iasecc_sdo));
 	if (!sdo)
-		return SC_ERROR_MEMORY_FAILURE;
+		return SC_ERROR_OUT_OF_MEMORY;
 
 	sdo->sdo_class = *(data + 1) & 0x7F;
 	sdo->sdo_ref = *(data + 2) & 0x3F;
@@ -823,7 +823,7 @@ iasecc_update_blob(struct sc_context *ctx, struct iasecc_extended_tlv *tlv,
 
 	pp = realloc(*blob, *blob_size + sz);
 	if (!pp)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_MEMORY_FAILURE);
+		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 
 	if (tlv->tag > 0xFF)
 		*(pp + *blob_size + offs++) = (tlv->tag >> 8) & 0xFF;

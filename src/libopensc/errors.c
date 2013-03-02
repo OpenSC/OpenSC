@@ -137,6 +137,12 @@ const char *sc_strerror(int error)
 	};
 	const int sm_base = -SC_ERROR_SM;
 
+	const char *warnings[] = {
+		"Warning: no information given",
+		"Warning: file filled up by last write",
+	};
+	const int warn_base = -SC_WARNING;
+
 	const char *misc_errors[] = {
 		"Unknown error",
 		"PKCS#15 compatible smart card not found",
@@ -156,6 +162,10 @@ const char *sc_strerror(int error)
 		errors = misc_errors;
 		count = DIM(misc_errors);
 		err_base = misc_base;
+	} else if (error >= warn_base) {
+		errors = warnings;
+		count = DIM(warnings);
+		err_base = warn_base;
 	} else if (error >= sm_base) {
 		errors = sm_errors;
 		count = DIM(sm_errors);
