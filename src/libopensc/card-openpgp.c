@@ -2195,6 +2195,66 @@ out:
 
 #endif /* ENABLE_OPENSSL */
 
+/**
+ * Erase card
+ **/
+static int pgp_erase_card(sc_card_t *card)
+{
+	sc_context_t *ctx = card->ctx;
+	u8 *apdustring[10] = {
+		"00:20:00:81:08:40:40:40:40:40:40:40:40",
+		"00:20:00:81:08:40:40:40:40:40:40:40:40",
+		"00:20:00:81:08:40:40:40:40:40:40:40:40",
+		"00:20:00:81:08:40:40:40:40:40:40:40:40",
+		"00:20:00:83:08:40:40:40:40:40:40:40:40",
+		"00:20:00:83:08:40:40:40:40:40:40:40:40",
+		"00:20:00:83:08:40:40:40:40:40:40:40:40",
+		"00:20:00:83:08:40:40:40:40:40:40:40:40",
+		"00:e6:00:00",
+		"00:44:00:00"
+	};
+	u8 buf[SC_MAX_APDU_BUFFER_SIZE];
+	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
+	sc_apdu_t apdu;
+	size_t len0;
+	int commandsnum = 10;
+	int i, r;
+
+	LOG_FUNC_CALLED(ctx);
+
+	/* Check card version */
+	if (card->type != SC_CARD_TYPE_OPENPGP_V2) {
+		sc_log(ctx, "Card is not OpenPGP v2");
+		LOG_FUNC_RETURN(ctx, SC_ERROR_NO_CARD_SUPPORT);
+	}
+	sc_log(ctx, "Card is OpenPGP v2. Erase card.");
+
+	/* Iterate over 10 commands above */
+	for (i = 0; i < commandsnum; i++) {
+		/* Convert the string to binary array */
+		len0 = sizeof(buf);
+		sc_hex_to_bin(apdustring[i], buf, &len0);
+		printf("Sending: ");
+		for (r = 0; r < len0; r++)
+			printf("%02X ", buf[r]);
+		printf("\n");
+
+		/* Build APDU from binary array */
+		r = sc_bytes2apdu(card->ctx, buf, len0, &apdu);
+		if (r) {
+			sc_log(ctx, "Failed to build APDU");
+			LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
+		}
+		apdu.resp = rbuf;
+		apdu.resplen = sizeof(rbuf);
+
+		/* Send APDU to card */
+		r = sc_transmit_apdu(card, &apdu);
+		LOG_TEST_RET(ctx, r, "Transmiting APDU failed");
+	}
+	LOG_FUNC_RETURN(ctx, r);
+}
+
 /* ABI: card ctl: perform special card-specific operations */
 static int pgp_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 {
@@ -2219,6 +2279,10 @@ static int pgp_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 		LOG_FUNC_RETURN(card->ctx, r);
 		break;
 #endif /* ENABLE_OPENSSL */
+	case SC_CARDCTL_ERASE_CARD:
+		r = pgp_erase_card(card);
+		LOG_FUNC_RETURN(card->ctx, r);
+		break;
 	}
 
 	LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
