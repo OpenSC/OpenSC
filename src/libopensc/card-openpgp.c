@@ -1977,7 +1977,7 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_keystore_info
 	u8 *p = NULL;
 	u8 *components[] = {key_info->e, key_info->p, key_info->q, key_info->n};
 	size_t componentlens[] = {key_info->e_len, key_info->p_len, key_info->q_len, key_info->n_len};
-	unsigned int componenttags[] = {0x91, 0x92, 0x93, 0x95};
+	unsigned int componenttags[] = {0x91, 0x92, 0x93, 0x97};
 	char *componentnames[] = {
 		"public exponent",
 		"prime p",
