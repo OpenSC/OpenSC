@@ -76,6 +76,7 @@ static int opt_verify = 0;
 static char *verifytype = NULL;
 static int opt_pin = 0;
 static char *pin = NULL;
+static int opt_erase = 0;
 
 static const char *app_name = "openpgp-tool";
 
@@ -92,6 +93,7 @@ static const struct option options[] = {
 	{ "help",      no_argument,       NULL, 'h'        },
 	{ "verbose",   no_argument,       NULL, 'v'        },
 	{ "version",   no_argument,       NULL, 'V'        },
+	{ "erase",     no_argument,       NULL, 'E'        },
 	{ "verify",    required_argument, NULL, OPT_VERIFY },
 	{ "pin",       required_argument, NULL, OPT_PIN },
 	{ NULL, 0, NULL, 0 }
@@ -110,6 +112,7 @@ static const char *option_help[] = {
 /* h */	"Print this help message",
 /* v */	"Verbose operation. Use several times to enable debug output.",
 /* V */	"Show version number",
+/* E */	"Erase (reset) the card",
 	"Verify PIN (CHV1, CHV2, CHV3...)",
 	"PIN string"
 };
@@ -228,7 +231,7 @@ static int decode_options(int argc, char **argv)
 {
 	int c;
 
-	while ((c = getopt_long(argc, argv,"r:x:CUG:L:hwvV", options, (int *) 0)) != EOF) {
+	while ((c = getopt_long(argc, argv,"r:x:CUG:L:hwvVE", options, (int *) 0)) != EOF) {
 		switch (c) {
 		case 'r':
 			opt_reader = optarg;
@@ -287,6 +290,9 @@ static int decode_options(int argc, char **argv)
 		case 'V':
 			show_version();
 			exit(EXIT_SUCCESS);
+			break;
+		case 'E':
+			opt_erase++;
 			break;
 		default:
 			util_print_usage_and_die(app_name, options, option_help, NULL);
@@ -446,6 +452,18 @@ int do_verify(sc_card_t *card, u8 *type, u8* pin)
 	return r;
 }
 
+int do_erase(sc_card_t *card)
+{
+	int r;
+	/* Check card version */
+	if (card->type != SC_CARD_TYPE_OPENPGP_V2) {
+		printf("Do not erase card which is not OpenPGP v2\n");
+	}
+	printf("Erase card\n");
+	r = sc_card_ctl(card, SC_CARDCTL_ERASE_CARD, NULL);
+	return r;
+}
+
 int main(int argc, char **argv)
 {
 	sc_context_t *ctx = NULL;
@@ -520,6 +538,9 @@ int main(int argc, char **argv)
 		perror("execv()");
 		exit(EXIT_FAILURE);
 	}
+
+	if (opt_erase)
+		exit_status != do_erase(card);
 
 out:
 	sc_unlock(card);
