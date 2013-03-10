@@ -655,7 +655,9 @@ int main(int argc, char * argv[])
 		util_fatal("Failed to load pkcs11 module");
 
 	rv = p11->C_Initialize(NULL);
-	if (rv != CKR_OK)
+	if (rv == CKR_CRYPTOKI_ALREADY_INITIALIZED)
+		printf("\n*** Cryptoki library has already been initialized ***\n");
+	else if (rv != CKR_OK)
 		p11_fatal("C_Initialize", rv);
 
 	if (do_show_info)
@@ -4273,7 +4275,9 @@ static void test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		util_fatal("Failed to load pkcs11 module");
 
 	rv = p11->C_Initialize(NULL);
-	if (rv != CKR_OK)
+	if (rv == CKR_CRYPTOKI_ALREADY_INITIALIZED)
+		printf("\n*** Cryptoki library has already been initialized ***\n");
+	else if (rv != CKR_OK)
 		p11_fatal("C_Initialize", rv);
 
 	rv = p11->C_OpenSession(opt_slot, CKF_SERIAL_SESSION| CKF_RW_SESSION,
