@@ -1719,6 +1719,7 @@ sc_pkcs15init_store_data_object(struct sc_pkcs15_card *p15card,
 		strlcpy(data_object_info->app_label, label, sizeof(data_object_info->app_label));
 
 	data_object_info->app_oid = args->app_oid;
+	sc_der_copy(&data_object_info->data, &args->der_encoded);
 
 	r = sc_pkcs15init_store_data(p15card, profile, object, &args->der_encoded, &data_object_info->path);
 	LOG_TEST_RET(ctx, r, "Store 'DATA' object error");
