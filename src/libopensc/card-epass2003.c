@@ -2263,6 +2263,7 @@ external_key_auth(struct sc_card *card, unsigned char kid,
 	apdu.data = tmp_data;
 
 	r = sc_transmit_apdu(card, &apdu);
+	LOG_TEST_RET(card->ctx, r, "APDU external_key_auth failed");
 	if( apdu.sw1 == 0x63 && apdu.sw2 == 0x00 ){
 		u8 retries = 0;
 		int ret = get_external_key_retries(card, 0x80 | kid, &retries);
