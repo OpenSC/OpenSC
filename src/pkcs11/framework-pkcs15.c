@@ -187,8 +187,8 @@ get_fw_data(struct sc_pkcs11_card *p11card, struct sc_app_info *app_info, int *o
 		if (!fw_data || !fw_data->p15_card)
 			continue;
 
-		if (app_info)   {
-			file_app = fw_data->p15_card->file_app;
+		file_app = fw_data->p15_card->file_app;
+		if (app_info && file_app)   {
 			if (file_app->path.len != app_info->path.len)
 				continue;
 			if (file_app->path.aid.len != app_info->path.aid.len)
