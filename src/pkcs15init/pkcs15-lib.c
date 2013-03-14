@@ -1614,12 +1614,11 @@ sc_pkcs15init_store_certificate(struct sc_pkcs15_card *p15card,
 	cert_info->id = args->id;
 	cert_info->authority = args->authority;
 	sc_der_copy(&object->content, &args->der_encoded);
+	sc_der_copy(&cert_info->value, &args->der_encoded);
 
 	sc_log(ctx, "Store cert(%s,ID:%s,der(%p,%i))", object->label,
 			sc_pkcs15_print_id(&cert_info->id), args->der_encoded.value, args->der_encoded.len);
-	if (profile->pkcs15.direct_certificates)
-		sc_der_copy(&cert_info->value, &args->der_encoded);
-	else
+	if (!profile->pkcs15.direct_certificates)
 		r = sc_pkcs15init_store_data(p15card, profile, object, &args->der_encoded, &cert_info->path);
 
 	/* Now update the CDF */
