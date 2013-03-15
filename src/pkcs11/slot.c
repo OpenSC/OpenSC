@@ -128,7 +128,7 @@ CK_RV initialize_reader(sc_reader_t *reader)
 			return rv;
 	}
 
-	if (sc_detect_card_presence(reader)) {
+	if (!sc_pkcs11_conf.plug_and_play && sc_detect_card_presence(reader)) {
 		card_detect(reader);
 	}
 
