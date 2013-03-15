@@ -243,15 +243,12 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs)
 	if (sc_pkcs11_conf.plug_and_play) {
 		create_slot(NULL);
 	}
-	/* Create slots for readers found on initialization */
-	for (i=0; i<sc_ctx_get_reader_count(context); i++) {
-		initialize_reader(sc_ctx_get_reader(context, i));
-	}
 
-	/* Set initial event state on slots */
-	for (i=0; i<list_size(&virtual_slots); i++) {
-		sc_pkcs11_slot_t *slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, i);
-		slot->events = 0; /* Initially there are no events */
+	/* Create slots for readers found on initialization, only if in 2.11 mode */
+	if (!sc_pkcs11_conf.plug_and_play) {
+		for (i=0; i<sc_ctx_get_reader_count(context); i++) {
+			initialize_reader(sc_ctx_get_reader(context, i));
+		}
 	}
 
 out:
