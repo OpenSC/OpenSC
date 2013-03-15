@@ -903,6 +903,14 @@ static int iso7816_build_pin_apdu(sc_card_t *card, sc_apdu_t *apdu,
 		data->pin2.offset = data->pin1.offset + len;
 		if ((r = sc_build_pin(buf+len, buf_len-len, &data->pin2, pad)) < 0)
 			return r;
+		/* Special case - where provided the old PIN on the command line
+  		 * but expect the new one to be entered on the keypad.
+		 */
+		if (data->pin1.len && data->pin2.len == 0) {
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+				"Special case - initial pin provided - but new pin asked on keypad");
+			data->flags |= SC_PIN_CMD_IMPLICIT_CHANGE;
+		};
 		len += r;
 		break;
 	case SC_PIN_CMD_UNBLOCK:
