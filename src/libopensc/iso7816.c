@@ -30,14 +30,14 @@
 #include "iso7816.h"
 
 static const struct sc_card_error iso7816_errors[] = {
-	{ 0x6200, SC_WARNING,			"warning: no information given, non-volatile memory is unchanged" },
+	{ 0x6200, SC_ERROR_CARD_CMD_FAILED,	"Warning: no information given, non-volatile memory is unchanged" },
 	{ 0x6281, SC_ERROR_CORRUPTED_DATA,	"Part of returned data may be corrupted" },
 	{ 0x6282, SC_ERROR_FILE_END_REACHED,	"End of file/record reached before reading Le bytes" },
 	{ 0x6283, SC_ERROR_CARD_CMD_FAILED,	"Selected file invalidated" },
 	{ 0x6284, SC_ERROR_CARD_CMD_FAILED,	"FCI not formatted according to ISO 7816-4" },
 
-	{ 0x6300, SC_WARNING,			"warning: no information given, non-volatile memory has changed" },
-	{ 0x6381, SC_WARNING_FILE_FILLED,	"warning: file filled up by last write" },
+	{ 0x6300, SC_ERROR_CARD_CMD_FAILED,	"Warning: no information given, non-volatile memory has changed" },
+	{ 0x6381, SC_ERROR_CARD_CMD_FAILED,	"Warning: file filled up by last write" },
 
 	{ 0x6581, SC_ERROR_MEMORY_FAILURE,	"Memory failure" },
 
@@ -67,18 +67,16 @@ static const struct sc_card_error iso7816_errors[] = {
 	{ 0x6A86, SC_ERROR_INCORRECT_PARAMETERS,"Incorrect parameters P1-P2" },
 	{ 0x6A87, SC_ERROR_INCORRECT_PARAMETERS,"Lc inconsistent with P1-P2" },
 	{ 0x6A88, SC_ERROR_DATA_OBJECT_NOT_FOUND,"Referenced data not found" },
+	{ 0x6A89, SC_ERROR_FILE_ALREADY_EXISTS,  "File already exists"},
+	{ 0x6A8A, SC_ERROR_FILE_ALREADY_EXISTS,  "DF name already exists"},	
 
 	{ 0x6B00, SC_ERROR_INCORRECT_PARAMETERS,"Wrong parameter(s) P1-P2" },
 	{ 0x6D00, SC_ERROR_INS_NOT_SUPPORTED,	"Instruction code not supported or invalid" },
 	{ 0x6E00, SC_ERROR_CLASS_NOT_SUPPORTED,	"Class not supported" },
 	{ 0x6F00, SC_ERROR_CARD_CMD_FAILED,	"No precise diagnosis" },
 
-	/* Possibly TCOS / Micardo specific errors */
-	{ 0x6600, SC_ERROR_INCORRECT_PARAMETERS, "Error setting the security env"},
-	{ 0x66F0, SC_ERROR_INCORRECT_PARAMETERS, "No space left for padding"},
-	{ 0x69F0, SC_ERROR_NOT_ALLOWED,          "Command not allowed"},
-	{ 0x6A89, SC_ERROR_FILE_ALREADY_EXISTS,  "Files exists"},
-	{ 0x6A8A, SC_ERROR_FILE_ALREADY_EXISTS,  "Application exists"},
+
+
 };
 
 
