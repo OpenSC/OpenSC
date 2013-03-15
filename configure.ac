@@ -286,12 +286,9 @@ AC_CHECK_LIB(
 
 if test "${WIN32}" = "no"; then
 	dnl dl support
-	AC_CHECK_LIB(
-		[dl],
-		[dlopen],
-		,
-		[AC_MSG_ERROR([libdl required])]
-	)
+	AC_SEARCH_LIBS([dlopen], [dl dld], [], [
+		AC_MSG_ERROR([unable to find the dlopen() function])
+	])
 
 	dnl Special check for pthread support.
 	AX_PTHREAD(
