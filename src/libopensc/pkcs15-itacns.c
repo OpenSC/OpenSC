@@ -236,8 +236,8 @@ static int itacns_add_cert(sc_pkcs15_card_t *p15card,
 		"Could not read X.509 certificate");
 
 	{
-		const u8 *throwaway = cert->data;
-		x509 = d2i_X509(NULL, &throwaway, cert->data_len);
+		const u8 *throwaway = cert->data.value;
+		x509 = d2i_X509(NULL, &throwaway, cert->data.len);
 	}
 	sc_pkcs15_free_certificate(cert);
 	if (!x509) return SC_SUCCESS;

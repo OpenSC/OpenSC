@@ -145,62 +145,98 @@ unsigned short bebytes2ushort(const u8 *buf)
 	return (unsigned short) (buf[0] << 8 | buf[1]);
 }
 
+void sc_init_oid(struct sc_object_id *oid)
+{
+	int ii;
+
+	if (!oid)
+		return;
+	for (ii=0; ii<SC_MAX_OBJECT_ID_OCTETS; ii++)
+		oid->value[ii] = -1;
+}
+
 int sc_format_oid(struct sc_object_id *oid, const char *in)
 {
-	int        ii;
+	int        ii, ret = SC_ERROR_INVALID_ARGUMENTS;
 	const char *p;
 	char       *q;
 
 	if (oid == NULL || in == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
-	/* init oid */
-	for (ii=0; ii<SC_MAX_OBJECT_ID_OCTETS; ii++)
-		oid->value[ii] = -1;
+
+	sc_init_oid(oid);
 
 	p = in;
-	
 	for (ii=0; ii < SC_MAX_OBJECT_ID_OCTETS; ii++)   {
 		oid->value[ii] = strtol(p, &q, 10);
 		if (!*q)
 			break;
-		if (!(q[0] == '.' && isdigit(q[1]))) {
-			return SC_ERROR_INVALID_ARGUMENTS;
-		}
+
+		if (!(q[0] == '.' && isdigit(q[1])))
+			goto out;
+
 		p = q + 1;
 	}
 
-	if (ii == 1)
-		/* reject too short OIDs */
-		return SC_ERROR_INVALID_ARGUMENTS;
+	if (!sc_valid_oid(oid))
+		goto out;
 
-	return SC_SUCCESS;
+	ret = SC_SUCCESS;
+out:
+	if (ret)
+		sc_init_oid(oid);
+
+	return ret;
 }
 
 int sc_compare_oid(const struct sc_object_id *oid1, const struct sc_object_id *oid2)
 {
 	int i;
+
 	assert(oid1 != NULL && oid2 != NULL);
-	for (i = 0; i < SC_MAX_OBJECT_ID_OCTETS; i++) {
+
+	for (i = 0; i < SC_MAX_OBJECT_ID_OCTETS; i++)   {
 		if (oid1->value[i] != oid2->value[i])
 			return 0;
-		if (oid1->value[i] < 0)
-			return 1;
+		if (oid1->value[i] == -1)
+			break;
 	}
+
 	return 1;
 }
+
+
+int sc_valid_oid(const struct sc_object_id *oid)
+{
+	int ii;
+
+	if (!oid)
+		return 0;
+	if (oid->value[0] == -1 || oid->value[1] == -1)
+		return 0;
+	if (oid->value[0] > 2 || oid->value[1] > 39)
+		return 0;
+	for (ii=0;ii<SC_MAX_OBJECT_ID_OCTETS;ii++)
+		if (oid->value[ii])
+			break;
+	if (ii==SC_MAX_OBJECT_ID_OCTETS)
+		return 0;
+	return 1;
+}
+
 
 int sc_detect_card_presence(sc_reader_t *reader)
 {
 	int r;
-	SC_FUNC_CALLED(reader->ctx, SC_LOG_DEBUG_VERBOSE);
+	LOG_FUNC_CALLED(reader->ctx);
 	if (reader->ops->detect_card_presence == NULL)
-		SC_FUNC_RETURN(reader->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED);
+		LOG_FUNC_RETURN(reader->ctx, SC_ERROR_NOT_SUPPORTED);
 
 	r = reader->ops->detect_card_presence(reader);
-	SC_FUNC_RETURN(reader->ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(reader->ctx, r);
 }
 
-int sc_path_set(sc_path_t *path, int type, const u8 *id, size_t id_len, 
+int sc_path_set(sc_path_t *path, int type, const u8 *id, size_t id_len,
 	int idx, int count)
 {
 	if (path == NULL || id == NULL || id_len == 0 || id_len > SC_MAX_PATH_SIZE)
@@ -212,7 +248,7 @@ int sc_path_set(sc_path_t *path, int type, const u8 *id, size_t id_len,
 	path->type  = type;
 	path->index = idx;
 	path->count = count;
-	
+
 	return SC_SUCCESS;
 }
 
@@ -340,11 +376,11 @@ int sc_compare_path_prefix(const sc_path_t *prefix, const sc_path_t *path)
 
 const sc_path_t *sc_get_mf_path(void)
 {
-	static const sc_path_t mf_path = { 
-		{0x3f, 0x00, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 2, 
-		0, 
-		0, 
-		SC_PATH_TYPE_PATH, 
+	static const sc_path_t mf_path = {
+		{0x3f, 0x00, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 2,
+		0,
+		0,
+		SC_PATH_TYPE_PATH,
 		{{0},0}
 	};
 	return &mf_path;
@@ -482,6 +518,8 @@ void sc_file_free(sc_file_t *file)
 		free(file->prop_attr);
 	if (file->type_attr)
 		free(file->type_attr);
+	if (file->encoded_content)
+		free(file->encoded_content);
 	free(file);
 }
 
@@ -643,12 +681,12 @@ int _sc_parse_atr(sc_reader_t *reader)
 	reader->atr_info.hist_bytes = NULL;
 
 	if (atr_len == 0) {
-		sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "empty ATR - card not present?\n");
+		sc_log(reader->ctx, "empty ATR - card not present?\n");
 		return SC_ERROR_INTERNAL;
 	}
 
 	if (p[0] != 0x3B && p[0] != 0x3F) {
-		sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "invalid sync byte in ATR: 0x%02X\n", p[0]);
+		sc_log(reader->ctx, "invalid sync byte in ATR: 0x%02X\n", p[0]);
 		return SC_ERROR_INTERNAL;
 	}
 	n_hist = p[1] & 0x0F;
@@ -687,7 +725,7 @@ int _sc_parse_atr(sc_reader_t *reader)
 	                        atr_len--;
 	                } else
 	                        tx[i] = -1;
-        	}
+		}
 	}
 	if (atr_len <= 0)
 		return 0;
@@ -698,21 +736,29 @@ int _sc_parse_atr(sc_reader_t *reader)
 	return 0;
 }
 
-void *sc_mem_alloc_secure(size_t len)
+void *sc_mem_alloc_secure(sc_context_t *ctx, size_t len)
 {
     void *pointer;
-    
+    int locked = 0;
+
     pointer = calloc(len, sizeof(unsigned char));
     if (!pointer)
         return NULL;
 #ifdef HAVE_SYS_MMAN_H
     /* TODO Windows support and mprotect too */
     /* Do not swap the memory */
-    if (mlock(pointer, len) == -1) {
-        free(pointer);
-        return NULL;
-    }
+    if (mlock(pointer, len) >= 0)
+        locked = 1;
 #endif
+    if (!locked) {
+        if (ctx->paranoid_memory) {
+            sc_do_log (ctx, 0, NULL, 0, NULL, "cannot lock memory, failing allocation because paranoid set");
+            free (pointer);
+            pointer = NULL;
+        } else {
+            sc_do_log (ctx, 0, NULL, 0, NULL, "cannot lock memory, sensitive data may be paged to disk");
+        }
+    }
     return pointer;
 }
 
@@ -744,8 +790,8 @@ int sc_mem_reverse(unsigned char *buf, size_t len)
 	return 0;
 }
 
-static int 
-sc_remote_apdu_allocate(struct sc_remote_data *rdata, 
+static int
+sc_remote_apdu_allocate(struct sc_remote_data *rdata,
 		struct sc_remote_apdu **new_rapdu)
 {
 	struct sc_remote_apdu *rapdu = NULL, *rr;
@@ -778,7 +824,7 @@ sc_remote_apdu_allocate(struct sc_remote_data *rdata,
 	return SC_SUCCESS;
 }
 
-static void 
+static void
 sc_remote_apdu_free (struct sc_remote_data *rdata)
 {
 	struct sc_remote_apdu *rapdu = NULL;
@@ -803,6 +849,39 @@ void sc_remote_data_init(struct sc_remote_data *rdata)
 
 	rdata->alloc = sc_remote_apdu_allocate;
 	rdata->free = sc_remote_apdu_free;
+}
+
+static unsigned long  sc_CRC_tab32[256];
+static int sc_CRC_tab32_initialized = 0;
+unsigned sc_crc32(unsigned char *value, size_t len)
+{
+	size_t ii, jj;
+	unsigned long crc;
+	unsigned long index, long_c;
+
+	if (!sc_CRC_tab32_initialized)   {
+		for (ii=0; ii<256; ii++) {
+			crc = (unsigned long) ii;
+			for (jj=0; jj<8; jj++) {
+				if ( crc & 0x00000001L )
+					crc = ( crc >> 1 ) ^ 0xEDB88320l;
+				else
+					crc =   crc >> 1;
+			}
+			sc_CRC_tab32[ii] = crc;
+		}
+		sc_CRC_tab32_initialized = 1;
+	}
+
+	crc = 0xffffffffL;
+	for (ii=0; ii<len; ii++)   {
+		long_c = 0x000000ffL & (unsigned long) (*(value + ii));
+		index = crc ^ long_c;
+		crc = (crc >> 8) ^ sc_CRC_tab32[ index & 0xff ];
+	}
+
+	crc ^= 0xffffffff;
+	return  crc%0xffff;
 }
 
 /**************************** mutex functions ************************/
@@ -849,7 +928,7 @@ int sc_mutex_destroy(const sc_context_t *ctx, void *mutex)
 
 unsigned long sc_thread_id(const sc_context_t *ctx)
 {
-	if (ctx == NULL || ctx->thread_ctx == NULL || 
+	if (ctx == NULL || ctx->thread_ctx == NULL ||
 	    ctx->thread_ctx->thread_id == NULL)
 		return 0UL;
 	else

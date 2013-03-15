@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<refentry id="pkcs15-crypt">
+	<refmeta>
+		<refentrytitle>pkcs15-crypt</refentrytitle>
+		<manvolnum>1</manvolnum>
+		<refmiscinfo class="productname">OpenSC</refmiscinfo>
+		<refmiscinfo class="manual">OpenSC Tools</refmiscinfo>
+		<refmiscinfo class="source">opensc</refmiscinfo>
+	</refmeta>
+
+	<refnamediv>
+		<refname>pkcs15-crypt</refname>
+		<refpurpose>perform crypto operations using PKCS#15 smart cards</refpurpose>
+	</refnamediv>
+
+	<refsynopsisdiv>
+		<cmdsynopsis>
+			<command>pkcs15-crypt</command>
+			<arg choice="opt"><replaceable class="option">OPTIONS</replaceable></arg>
+		</cmdsynopsis>
+	</refsynopsisdiv>
+
+	<refsect1>
+		<title>Description</title>
+		<para>
+			The <command>pkcs15-crypt</command> utility can be used from the
+			command line to perform cryptographic operations such as computing
+			digital signatures or decrypting data, using keys stored on a PKCS#15
+			compliant smart card.
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Options</title>
+		<para>
+			<variablelist>
+				<varlistentry>
+					<term>
+						<option>--aid</option> <replaceable>aid</replaceable>
+					</term>
+					<listitem><para>Specify the AID of the on-card PKCS#15 application
+					to bind to. The <replaceable>aid</replaceable> must be in hexadecimal
+					form.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--decipher</option>,
+						<option>-c</option>
+					</term>
+					<listitem><para>Decrypt the contents of the file specified by
+					the <option>--input</option> option. The result of the
+					decryption operation is written to the file specified by the
+					<option>--output</option> option. If this option is not given,
+					the decrypted data is printed to standard output, displaying
+					non-printable characters using their hex notation xNN (see also
+					<option>--raw</option>).</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--input</option> <replaceable>file</replaceable>,
+						<option>-i</option> <replaceable>file</replaceable>
+					</term>
+					<listitem><para>Specifies the input file to use.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--key</option> <replaceable>id</replaceable>,
+						<option>-k</option> <replaceable>id</replaceable>
+					</term>
+					<listitem><para>Selects the ID of the key to use.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--output</option> <replaceable>file</replaceable>,
+						<option>-o</option> <replaceable>file</replaceable>
+					</term>
+					<listitem><para>Any output will be sent to the specified file.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--pin</option> <replaceable>pin</replaceable>,
+						<option>-p</option> <replaceable>pin</replaceable>
+					</term>
+					<listitem><para>When the cryptographic operation requires a
+					PIN to access the key, <command>pkcs15-crypt</command> will
+					prompt the user for the PIN on the terminal. Using this option
+					allows you to specify the PIN on the command line.</para>
+					<para>Note that on most operating systems, the command line of
+					a process can be displayed by any user using the ps(1)
+					command. It is therefore a security risk to specify
+					secret information such as PINs on the command line.
+					If you specify '-' as PIN, it will be read from STDIN.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--pkcs1</option>
+					</term>
+					<listitem><para>By default, <command>pkcs15-crypt</command>
+					assumes that input data has been padded to the correct length
+					(i.e. when computing an RSA signature using a 1024 bit key,
+					the input must be padded to 128 bytes to match the modulus
+					length). When giving the <option>--pkcs1</option> option,
+					however, <command>pkcs15-crypt</command> will perform the
+					required padding using the algorithm outlined in the
+					PKCS #1 standard version 1.5.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--raw</option>,
+						<option>-R</option>
+					</term>
+					<listitem><para>Outputs raw 8 bit data.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--reader</option> <replaceable>N</replaceable>,
+						<option>-r</option> <replaceable>N</replaceable>
+					</term>
+					<listitem><para>Selects the <replaceable>N</replaceable>-th smart
+					card reader configured by the system. If unspecified,
+					<command>pkcs15-crypt</command> will use the first reader
+					found.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--sha-1</option>
+					</term>
+					<listitem><para>This option tells <command>pkcs15-crypt</command>
+					that the input file is the result of an SHA1 hash operation,
+					rather than an MD5 hash. Again, the data must be in binary
+					representation.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--sign</option>,
+						<option>-s</option>
+					</term>
+					<listitem><para>Perform digital signature operation on
+					the data read from a file specified using the <option>--input</option>
+					option. By default, the contents of the file are assumed to
+					be the result of an MD5 hash operation.
+					Note that <command>pkcs15-crypt</command>
+					expects the data in binary representation, not ASCII.</para>
+					<para>The digital signature is stored, in binary representation,
+					in the file specified by the <option>--output</option> option. If
+					this option is not given, the signature is printed on standard
+					output, displaying non-printable characters using their hex notation
+					<literal>x</literal><replaceable>NN</replaceable>
+					(see also <option>--raw</option>).</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--verbose</option>,
+						<option>-v</option>
+					</term>
+					<listitem><para>Causes <command>pkcs15-crypt</command> to be more
+					verbose. Specify this flag several times to enable debug output
+					in the OpenSC library.</para></listitem>
+				</varlistentry>
+
+			</variablelist>
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>See also</title>
+		<para>
+			<citerefentry>
+				<refentrytitle>pkcs15-init</refentrytitle>
+				<manvolnum>1</manvolnum>
+			</citerefentry>,
+			<citerefentry>
+				<refentrytitle>pkcs15-tool</refentrytitle>
+				<manvolnum>1</manvolnum>
+			</citerefentry>
+		</para>
+	</refsect1>
+
+</refentry>

@@ -1,7 +1,7 @@
 /*
  * PKCS15 emulation layer for EstEID card.
  *
- * Copyright (C) 2004, Martin Paljak <martin@paljak.pri.ee>
+ * Copyright (C) 2004, Martin Paljak <martin@martinpaljak.net>
  * Copyright (C) 2004, Bud P. Bruegger <bud@comune.grosseto.it>
  * Copyright (C) 2004, Antonino Iacono <ant_iacono@tin.it>
  * Copyright (C) 2003, Olaf Kirch <okir@suse.de>
@@ -100,7 +100,7 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 		
 		memset(&cert_info, 0, sizeof(cert_info));
 		memset(&cert_obj, 0, sizeof(cert_obj));
-		
+
 		cert_info.id.value[0] = esteid_cert_ids[i];
 		cert_info.id.len = 1;
 		sc_format_path(esteid_cert_paths[i], &cert_info.path);
@@ -117,7 +117,7 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 			unsigned char *tmp = NULL;
 			r = sc_pkcs15_read_certificate(p15card, &cert_info, &cert);
 			if (r == SC_SUCCESS) {
-				mem = BIO_new_mem_buf(cert->data, cert->data_len);
+				mem = BIO_new_mem_buf(cert->data.value, cert->data.len);
 				if (!mem)
 					return SC_ERROR_INTERNAL;
 				x509 = d2i_X509_bio(mem, NULL);
@@ -244,7 +244,7 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 		strlcpy(prkey_obj.label, prkey_name[i], sizeof(prkey_obj.label));
 		prkey_obj.auth_id.len = 1;
 		prkey_obj.auth_id.value[0] = prkey_pin[i];
-		prkey_obj.user_consent = (i == 1) ? 1 : 0;
+		prkey_obj.user_consent = 0;
 		prkey_obj.flags = SC_PKCS15_CO_FLAG_PRIVATE;
 
 		r = sc_pkcs15emu_add_rsa_prkey(p15card, &prkey_obj, &prkey_info);

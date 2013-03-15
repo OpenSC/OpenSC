@@ -33,13 +33,14 @@
 #include "asn1.h"
 #include "pkcs15.h"
 
-static int parse_x509_cert(sc_context_t *ctx, const u8 *buf, size_t buflen, struct sc_pkcs15_cert *cert)
+static int
+parse_x509_cert(sc_context_t *ctx, struct sc_pkcs15_der *der, struct sc_pkcs15_cert *cert)
 {
 	int r;
 	struct sc_algorithm_id sig_alg;
-	struct sc_pkcs15_pubkey  * pubkey = NULL;
-	u8 *serial = NULL;
-	size_t serial_len = 0;
+	struct sc_pkcs15_pubkey *pubkey = NULL;
+	unsigned char *serial = NULL, *buf =  der->value;
+	size_t serial_len = 0, data_len = 0, buflen = der->len;
 	struct sc_asn1_entry asn1_version[] = {
 		{ "version", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, 0, &cert->version, NULL },
 		{ NULL, 0, 0, 0, NULL, NULL }
@@ -80,39 +81,40 @@ static int parse_x509_cert(sc_context_t *ctx, const u8 *buf, size_t buflen, stru
 	};
 	const u8 *obj;
 	size_t objlen;
-	
+
 	memset(cert, 0, sizeof(*cert));
-	obj = sc_asn1_verify_tag(ctx, buf, buflen, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS,
-				 &objlen);
-	if (obj == NULL) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "X.509 certificate not found");
-		return SC_ERROR_INVALID_ASN1_OBJECT;
-	}
-	cert->data_len = objlen + (obj - buf);
+	obj = sc_asn1_verify_tag(ctx, buf, buflen, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, &objlen);
+	if (obj == NULL)
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ASN1_OBJECT, "X.509 certificate not found");
+
+	data_len = objlen + (obj - buf);
+	cert->data.value = malloc(data_len);
+	if (!cert->data.value)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+	memcpy(cert->data.value, buf, data_len);
+	cert->data.len = data_len;
+
 	r = sc_asn1_decode(ctx, asn1_cert, obj, objlen, NULL, NULL);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "ASN.1 parsing of certificate failed");
+	LOG_TEST_RET(ctx, r, "ASN.1 parsing of certificate failed");
 
 	cert->version++;
 
-	if (pubkey) {
-		cert->key = pubkey;
-		pubkey = NULL;
-	} else {
-		sc_debug(ctx,SC_LOG_DEBUG_VERBOSE, "Unable to decode subjectPublicKeyInfo from cert");
-		r = SC_ERROR_INVALID_ASN1_OBJECT;
-	}
+	if (!pubkey)
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ASN1_OBJECT, "Unable to decode subjectPublicKeyInfo from cert");
+	cert->key = pubkey;
+
 	sc_asn1_clear_algorithm_id(&sig_alg);
-	if (r < 0) 
-		return r;
 
 	if (serial && serial_len)   {
 		sc_format_asn1_entry(asn1_serial_number + 0, serial, &serial_len, 1);
 		r = sc_asn1_encode(ctx, asn1_serial_number, &cert->serial, &cert->serial_len);
 		free(serial);
+		LOG_TEST_RET(ctx, r, "ASN.1 encoding of serial failed");
 	}
 
-	return r;
+	return SC_SUCCESS;
 }
+
 
 int
 sc_pkcs15_pubkey_from_cert(struct sc_context *ctx,
@@ -124,54 +126,55 @@ sc_pkcs15_pubkey_from_cert(struct sc_context *ctx,
 	cert =  calloc(1, sizeof(struct sc_pkcs15_cert));
 	if (cert == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
-	
-	rv = parse_x509_cert(ctx, cert_blob->value, cert_blob->len, cert);
-	
+
+	rv = parse_x509_cert(ctx, cert_blob, cert);
+
 	*out = cert->key;
 	cert->key = NULL;
 	sc_pkcs15_free_certificate(cert);
 
-	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, rv);
+	LOG_FUNC_RETURN(ctx, rv);
 }
 
-int sc_pkcs15_read_certificate(struct sc_pkcs15_card *p15card,
-			       const struct sc_pkcs15_cert_info *info,
-			       struct sc_pkcs15_cert **cert_out)
-{
-	int r;
-	struct sc_pkcs15_cert *cert;
-	u8 *data = NULL;
-	size_t len;
-	
-	assert(p15card != NULL && info != NULL && cert_out != NULL);
-	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	if (info->path.len) {
-		r = sc_pkcs15_read_file(p15card, &info->path, &data, &len);
+int
+sc_pkcs15_read_certificate(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_cert_info *info,
+		struct sc_pkcs15_cert **cert_out)
+{
+	struct sc_pkcs15_cert *cert;
+	struct sc_pkcs15_der der;
+	int r;
+
+	assert(p15card != NULL && info != NULL && cert_out != NULL);
+	LOG_FUNC_CALLED(p15card->card->ctx);
+
+	if (info->value.len && info->value.value)   {
+		sc_der_copy(&der, &info->value);
+	}
+	else if (info->path.len) {
+		r = sc_pkcs15_read_file(p15card, &info->path, &der.value, &der.len);
 		if (r)
 			return r;
-	} else {
-		sc_pkcs15_der_t copy;
-
-		sc_der_copy(&copy, &info->value);
-		data = copy.value;
-		len = copy.len;
+	}
+	else   {
+		return SC_ERROR_OBJECT_NOT_FOUND;
 	}
 
 	cert = malloc(sizeof(struct sc_pkcs15_cert));
 	if (cert == NULL) {
-		free(data);
+		free(der.value);
 		return SC_ERROR_OUT_OF_MEMORY;
 	}
 	memset(cert, 0, sizeof(struct sc_pkcs15_cert));
-	if (parse_x509_cert(p15card->card->ctx, data, len, cert)) {
-		free(data);
+	if (parse_x509_cert(p15card->card->ctx, &der, cert)) {
+		free(der.value);
 		sc_pkcs15_free_certificate(cert);
 		return SC_ERROR_INVALID_ASN1_OBJECT;
 	}
-	cert->data = data;
+	free(der.value);
+
 	*cert_out = cert;
-	return 0;
+	return SC_SUCCESS;
 }
 
 static const struct sc_asn1_entry c_asn1_cred_ident[] = {
@@ -204,9 +207,10 @@ static const struct sc_asn1_entry c_asn1_cert[] = {
 	{ NULL, 0, 0, 0, NULL, NULL }
 };
 
-int sc_pkcs15_decode_cdf_entry(struct sc_pkcs15_card *p15card,
-			       struct sc_pkcs15_object *obj,
-			       const u8 ** buf, size_t *buflen)
+
+int
+sc_pkcs15_decode_cdf_entry(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *obj,
+		const u8 ** buf, size_t *buflen)
 {
         sc_context_t *ctx = p15card->card->ctx;
 	struct sc_pkcs15_cert_info info;
@@ -227,7 +231,7 @@ int sc_pkcs15_decode_cdf_entry(struct sc_pkcs15_card *p15card,
 	sc_copy_asn1_entry(c_asn1_x509_cert_value_choice, asn1_x509_cert_value_choice);
 	sc_copy_asn1_entry(c_asn1_type_cert_attr, asn1_type_cert_attr);
 	sc_copy_asn1_entry(c_asn1_cert, asn1_cert);
-	
+
 	sc_format_asn1_entry(asn1_cred_ident + 0, &id_type, NULL, 0);
 	sc_format_asn1_entry(asn1_cred_ident + 1, &id_value, &id_value_len, 0);
 	sc_format_asn1_entry(asn1_com_cert_attr + 0, &info.id, NULL, 0);
@@ -242,36 +246,37 @@ int sc_pkcs15_decode_cdf_entry(struct sc_pkcs15_card *p15card,
         /* Fill in defaults */
         memset(&info, 0, sizeof(info));
 	info.authority = 0;
-	
+
 	r = sc_asn1_decode(ctx, asn1_cert, *buf, *buflen, buf, buflen);
 	/* In case of error, trash the cert value (direct coding) */
 	if (r < 0 && der->value)
 		free(der->value);
 	if (r == SC_ERROR_ASN1_END_OF_CONTENTS)
 		return r;
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "ASN.1 decoding failed");
+	LOG_TEST_RET(ctx, r, "ASN.1 decoding failed");
 
 	if (!p15card->app || !p15card->app->ddo.aid.len)   {
 		r = sc_pkcs15_make_absolute_path(&p15card->file_app->path, &info.path);
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Cannot make absolute path");
+		LOG_TEST_RET(ctx, r, "Cannot make absolute path");
 	}
-	else   {	
+	else   {
 		info.path.aid = p15card->app->ddo.aid;
 	}
-	sc_debug(ctx, SC_LOG_DEBUG_ASN1, "Certificate path '%s'", sc_print_path(&info.path));
+	sc_log(ctx, "Certificate path '%s'", sc_print_path(&info.path));
 
 	obj->type = SC_PKCS15_TYPE_CERT_X509;
 	obj->data = malloc(sizeof(info));
 	if (obj->data == NULL)
-		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 	memcpy(obj->data, &info, sizeof(info));
 
 	return 0;
 }
 
-int sc_pkcs15_encode_cdf_entry(sc_context_t *ctx,
-			       const struct sc_pkcs15_object *obj,
-			       u8 **buf, size_t *bufsize)
+
+int
+sc_pkcs15_encode_cdf_entry(sc_context_t *ctx, const struct sc_pkcs15_object *obj,
+		u8 **buf, size_t *bufsize)
 {
 	struct sc_asn1_entry	asn1_cred_ident[3], asn1_com_cert_attr[4],
 				asn1_x509_cert_attr[2], asn1_type_cert_attr[2],
@@ -289,7 +294,7 @@ int sc_pkcs15_encode_cdf_entry(sc_context_t *ctx,
 	sc_copy_asn1_entry(c_asn1_x509_cert_value_choice, asn1_x509_cert_value_choice);
 	sc_copy_asn1_entry(c_asn1_type_cert_attr, asn1_type_cert_attr);
 	sc_copy_asn1_entry(c_asn1_cert, asn1_cert);
-	
+
 	sc_format_asn1_entry(asn1_com_cert_attr + 0, (void *) &infop->id, NULL, 1);
 	if (infop->authority)
 		sc_format_asn1_entry(asn1_com_cert_attr + 1, (void *) &infop->authority, NULL, 1);
@@ -306,7 +311,9 @@ int sc_pkcs15_encode_cdf_entry(sc_context_t *ctx,
 	return r;
 }
 
-void sc_pkcs15_free_certificate(struct sc_pkcs15_cert *cert)
+
+void
+sc_pkcs15_free_certificate(struct sc_pkcs15_cert *cert)
 {
 	assert(cert != NULL);
 
@@ -315,12 +322,14 @@ void sc_pkcs15_free_certificate(struct sc_pkcs15_cert *cert)
 	free(cert->subject);
 	free(cert->issuer);
 	free(cert->serial);
-	free(cert->data);
+	free(cert->data.value);
 	free(cert->crl);
 	free(cert);
 }
 
-void sc_pkcs15_free_cert_info(sc_pkcs15_cert_info_t *cert)
+
+void
+sc_pkcs15_free_cert_info(sc_pkcs15_cert_info_t *cert)
 {
 	if (!cert)
 		return;

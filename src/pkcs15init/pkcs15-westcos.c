@@ -1,7 +1,7 @@
 /*
  * pkcs15-westcos.c: pkcs15 support for westcos card
  *
- * Copyright (C) 2009 francois.leblanc@cev-sa.com 
+ * Copyright (C) 2009 francois.leblanc@cev-sa.com
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -38,7 +38,7 @@
 #include "pkcs15-init.h"
 #include "profile.h"
 
-static int westcos_pkcs15init_init_card(sc_profile_t *profile, 
+static int westcos_pkcs15init_init_card(sc_profile_t *profile,
 						sc_pkcs15_card_t *p15card)
 {
 	int r;
@@ -51,8 +51,8 @@ static int westcos_pkcs15init_init_card(sc_profile_t *profile,
 	return r;
 }
 
-static int westcos_pkcs15init_create_dir(sc_profile_t *profile, 
-						sc_pkcs15_card_t *p15card, 
+static int westcos_pkcs15init_create_dir(sc_profile_t *profile,
+						sc_pkcs15_card_t *p15card,
 						sc_file_t *df)
 {
 	int r;
@@ -69,7 +69,7 @@ static int westcos_pkcs15init_create_dir(sc_profile_t *profile,
 /*
  * Select the PIN reference
  */
-static int westcos_pkcs15_select_pin_reference(sc_profile_t *profile, 
+static int westcos_pkcs15_select_pin_reference(sc_profile_t *profile,
 					sc_pkcs15_card_t *p15card,
 					sc_pkcs15_auth_info_t *auth_info)
 {
@@ -89,8 +89,8 @@ static int westcos_pkcs15_select_pin_reference(sc_profile_t *profile,
 /*
  * Create a new PIN inside a DF
  */
-static int westcos_pkcs15_create_pin(sc_profile_t *profile, 
-					sc_pkcs15_card_t *p15card, 
+static int westcos_pkcs15_create_pin(sc_profile_t *profile,
+					sc_pkcs15_card_t *p15card,
 					sc_file_t *df,
 					sc_pkcs15_object_t *pin_obj,
 					const u8 *pin, size_t pin_len,
@@ -134,8 +134,8 @@ static int westcos_pkcs15_create_pin(sc_profile_t *profile,
 		pin_cmd.data = pin;
 		pin_cmd.max_length = 8;
 
-		ret = sc_build_pin(ck.new_key.key_value, 
-			sizeof(ck.new_key.key_value), &pin_cmd, 1); 
+		ret = sc_build_pin(ck.new_key.key_value,
+			sizeof(ck.new_key.key_value), &pin_cmd, 1);
 		if(ret < 0)
 			return SC_ERROR_CARD_CMD_FAILED;
 
@@ -160,8 +160,8 @@ static int westcos_pkcs15_create_pin(sc_profile_t *profile,
 		puk_cmd.data = puk;
 		puk_cmd.max_length = 8;
 
-		ret = sc_build_pin(ck.new_key.key_value, 
-			sizeof(ck.new_key.key_value), &puk_cmd, 1); 
+		ret = sc_build_pin(ck.new_key.key_value,
+			sizeof(ck.new_key.key_value), &puk_cmd, 1);
 		if(ret < 0)
 			return SC_ERROR_CARD_CMD_FAILED;
 
@@ -176,8 +176,8 @@ static int westcos_pkcs15_create_pin(sc_profile_t *profile,
 /*
  * Create a new key file
  */
-static int westcos_pkcs15init_create_key(sc_profile_t *profile, 
-						sc_pkcs15_card_t *p15card, 
+static int westcos_pkcs15init_create_key(sc_profile_t *profile,
+						sc_pkcs15_card_t *p15card,
 						sc_pkcs15_object_t *obj)
 {
 
@@ -192,7 +192,7 @@ static int westcos_pkcs15init_create_key(sc_profile_t *profile,
 /*
  * Store a private key
  */
-static int westcos_pkcs15init_store_key(sc_profile_t *profile, 
+static int westcos_pkcs15init_store_key(sc_profile_t *profile,
 						sc_pkcs15_card_t *p15card,
 						sc_pkcs15_object_t *obj,
 						sc_pkcs15_prkey_t *key)
@@ -203,7 +203,7 @@ static int westcos_pkcs15init_store_key(sc_profile_t *profile,
 /*
  * Generate key
  */
-static int westcos_pkcs15init_generate_key(sc_profile_t *profile, 
+static int westcos_pkcs15init_generate_key(sc_profile_t *profile,
 						sc_pkcs15_card_t *p15card,
 						sc_pkcs15_object_t *obj,
 						sc_pkcs15_pubkey_t *pubkey)
@@ -220,7 +220,7 @@ static int westcos_pkcs15init_generate_key(sc_profile_t *profile,
 	BIO *mem = NULL;
 
 	sc_file_t *prkf = NULL;
-	
+
 	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
 		return SC_ERROR_NOT_SUPPORTED;
 	}
@@ -230,18 +230,18 @@ static int westcos_pkcs15init_generate_key(sc_profile_t *profile,
 	bn = BN_new();
 	mem = BIO_new(BIO_s_mem());
 
-	if(rsa == NULL || bn == NULL || mem == NULL) 
+	if(rsa == NULL || bn == NULL || mem == NULL)
 	{
 		r = SC_ERROR_OUT_OF_MEMORY;
 		goto out;
 	}
 
-	if(!BN_set_word(bn, RSA_F4) || 
+	if(!BN_set_word(bn, RSA_F4) ||
 		!RSA_generate_key_ex(rsa, key_info->modulus_length, bn, NULL))
 #else
 	mem = BIO_new(BIO_s_mem());
 
-	if(mem == NULL) 
+	if(mem == NULL)
 	{
 		r = SC_ERROR_OUT_OF_MEMORY;
 		goto out;
@@ -284,7 +284,7 @@ static int westcos_pkcs15init_generate_key(sc_profile_t *profile,
 
 	/* Get the private key file */
 	r = sc_profile_get_file_by_path(profile, &key_info->path, &prkf);
-	if (r < 0) 
+	if (r < 0)
 	{
 		char pbuf[SC_MAX_PATH_STRING_SIZE];
 

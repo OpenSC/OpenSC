@@ -1,0 +1,488 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<refentry id="pkcs15-init">
+	<refmeta>
+		<refentrytitle>pkcs15-init</refentrytitle>
+		<manvolnum>1</manvolnum>
+		<refmiscinfo class="productname">OpenSC</refmiscinfo>
+		<refmiscinfo class="manual">OpenSC Tools</refmiscinfo>
+		<refmiscinfo class="source">opensc</refmiscinfo>
+	</refmeta>
+
+	<refmeta>
+		<refentrytitle>pkcs15-init</refentrytitle>
+		<manvolnum>1</manvolnum>
+		<refmiscinfo class="productname">OpenSC</refmiscinfo>
+		<refmiscinfo class="manual">OpenSC Tools</refmiscinfo>
+		<refmiscinfo class="source">opensc</refmiscinfo>
+	</refmeta>
+
+	<refnamediv>
+		<refname>pkcs15-init</refname>
+		<refpurpose>smart card personalization utility</refpurpose>
+	</refnamediv>
+
+	<refsynopsisdiv>
+		<cmdsynopsis>
+			<command>pkcs15-init</command>
+			<arg choice="opt"><replaceable class="option">OPTIONS</replaceable></arg>
+		</cmdsynopsis>
+	</refsynopsisdiv>
+
+	<refsect1>
+		<title>Description</title>
+		<para>
+			The <command>pkcs15-init</command> utility can be used to create a PKCS #15
+			structure on a smart card, and add key or certificate objects. Details of the
+			structure that will be created are controlled via profiles.
+		</para>
+		<para>
+			The profile used by default is <command>pkcs15</command>. Alternative
+			profiles can be specified via the <option>-p</option> switch.
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>PIN Usage</title>
+		<para>
+			<command>pkcs15-init</command> can be used to create a PKCS #15 structure on
+			your smart card, create PINs, and install keys and certificates on the card.
+			This process is also called <replaceable>personalization</replaceable>.
+		</para>
+		<para>
+			An OpenSC card can have one security officer PIN, and zero or more user PINs.
+			PIN stands for Personal Identification Number, and is a secret code you need
+			to present to the card before being allowed to perform certain operations,
+			such as using one of the stored RSA keys to sign a document, or modifying
+			the card itself.
+		</para>
+		<para>
+			Usually, PINs are a sequence of decimal digits, but some cards will accept
+			arbitrary ASCII characters. Be aware however that using characters other
+			than digits will make the card unusable with PIN pad readers, because those
+			usually have keys for entering digits only.
+		</para>
+		<para>
+			The security officer (SO) PIN is special; it is used to protect meta data
+			information on the card, such as the PKCS #15 structure itself. Setting
+			the SO PIN is optional, because the worst that can usually happen is that
+			someone finding your card can mess it up. To extract any of your secret
+			keys stored on the card, an attacker will still need your user PIN, at
+			least for the default OpenSC profiles. However, it is possible to create
+			card profiles that will allow the security officer to override user PINs.
+		</para>
+		<para>
+			For each PIN, you can specify a PUK (also called <replaceable>unblock PIN</replaceable>).
+			The PUK can be used to overwrite or unlock a PIN if too many incorrect values
+			have been entered in a row.
+		</para>
+		<para>
+			For some cards that use the PKCS#15 emulation, the attributes of private objects
+			are protected and cannot be parsed without authentication (usually with User PIN).
+			This authentication need to be done immediately after the card binding.
+			In such cases <option>--verify-pin</option> has to be used.
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Modes of operation</title>
+		<refsect2>
+			<title>Initialization</title>
+			<para>This is the first step during card personalization, and will create the
+				basic files on the card. To create the initial PKCS #15 structure, invoke the
+				utility as
+			</para>
+			<para>
+				<command>pkcs15-init --create-pkcs15</command></para>
+			<para>
+				You will then be asked for the security officer PIN and PUK. Simply
+				pressing return at the SO PIN prompt will skip installation of an SO PIN.
+			</para>
+			<para>
+				If the card supports it, you should erase the contents of the card with
+				<command>pkcs15-init --erase-card</command> before creating the PKCS#15 structure.
+			</para>
+		</refsect2>
+
+		<refsect2>
+			<title>User PIN Installation</title>
+			<para>
+				Before installing any user objects such as private keys, you need at least one
+				PIN to protect these objects. you can do this using
+			</para>
+			<para>
+				<command>pkcs15-init --store-pin --id " nn</command>
+			</para>
+			<para>
+				where <replaceable>nn</replaceable> is a PKCS #15 ID in hexadecimal notation. Common
+				values are 01, 02, etc.
+			</para>
+			<para>
+				Entering the command above will ask you for the user's PIN and PUK. If you do
+				not wish to install an unblock PIN, simply press return at the PUK prompt.
+			</para>
+			<para>
+				To set a label for this PIN object (which can be used by applications to display
+				a meaningful prompt to the user), use the <option>--label</option> command line option.
+			</para>
+		</refsect2>
+
+		<refsect2>
+			<title>Key generation</title>
+			<para>
+				<command>pkcs15-init</command> lets you generate a new key and store it on the card.
+				You can do this using:
+			</para>
+			<para>
+				<command>pkcs15-init --generate-key " keyspec " --auth-id " nn</command>
+			</para>
+			<para>
+				where <replaceable>keyspec</replaceable> describes the algorithm and length of the
+				key to be created, such as <literal>rsa/512</literal>. This will create a 512 bit
+				RSA key. Currently, only RSA key generation is supported. Note that cards
+				usually support just a few different key lengths. Almost all cards will support
+				512 and 1024 bit keys, some will support 768 or 2048 as well.
+			</para>
+			<para>
+				<replaceable>nn</replaceable> is the ID of a user PIN installed previously,
+				e.g. <literal>01</literal>.
+			</para>
+			<para>
+				In addition to storing the private portion of the key on the card,
+				<command>pkcs15-init</command> will also store the the public portion of the
+				key as a PKCS #15 public key object.
+			</para>
+		</refsect2>
+
+		<refsect2>
+			<title>Private Key Upload</title>
+			<para>
+				You can use a private key generated by other means and upload it to the card.
+				For instance, to upload a private key contained in a file named
+				<filename>okir.pem</filename>, which is in PEM format, you would use
+			</para>
+			<para>
+				<command>pkcs15-init --store-private-key okir.pem --id 45 --auth-id 01</command>
+			</para>
+			<para>
+				In addition to storing the private portion of the key on the card,
+				<command>pkcs15-init</command> will also store the the public portion of the
+				key as a PKCS #15 public key object.
+			</para>
+			<para>
+				Note that usage of <option>--id</option> option in the <command>pkcs15-init</command>
+                                commands to generate or to import a new key is deprecated.
+                                Better practice is to let the middleware to derive the identifier from the key material.
+                                (SHA1(modulus) for RSA, SHA1(pub) for DSA, ...).
+                                This allows easily set up relation between 'related' objects
+                                (private/public keys and certificates).
+			</para>
+			<para>
+				In addition to the PEM key file format, <command>pkcs15-init</command> also
+				supports DER encoded keys, and PKCS #12 files. The latter is the file format
+				used by Netscape Navigator (among others) when exporting certificates to
+				a file. A PKCS #12 file usually contains the X.509 certificate corresponding
+				to the private key. If that is the case, <command>pkcs15-init</command> will
+				store the certificate instead of the public key portion.
+			</para>
+		</refsect2>
+
+		<refsect2>
+			<title>Public Key Upload</title>
+			<para>
+				You can also upload individual public keys to the card using the
+				<option>--store-public-key</option> option, which takes a filename as an
+				argument. This file is supposed to contain the public key. If you don't
+				specify a key file format using the <option>--format</option> option,
+				<command>pkcs15-init</command> will assume PEM format. The only other
+				supported public key file format is DER.
+			</para>
+			<para>
+				Since the corresponding public keys are always uploaded automatically
+				when generating a new key, or when uploading a private key, you will
+				probably use this option only very rarely.
+			</para>
+		</refsect2>
+
+		<refsect2>
+			<title>Certificate Upload</title>
+			<para>
+				You can upload certificates to the card using the
+				<option>--store-certificate</option> option, which takes a filename as
+				an argument. This file is supposed to contain the PEM encoded X.509
+				certificate.
+			</para>
+		</refsect2>
+
+		<refsect2>
+			<title>Uploading PKCS #12 bags</title>
+			<para>
+				Most browsers nowadays use PKCS #12 format files when you ask them to
+				export your key and certificate to a file. <command>pkcs15-init</command>
+				is capable of parsing these files, and storing their contents on the
+				card in a single operation. This works just like storing a private key,
+				except that you need to specify the file format:
+			</para>
+			<para>
+				<command>pkcs15-init --store-private-key okir.p12 --format pkcs12 --auth-id
+				01</command>
+			</para>
+			<para>
+				This will install the private key contained in the file <filename>okir.p12</filename>,
+				and protect it with the PIN referenced by authentication ID <literal>01</literal>.
+				It will also store any X.509 certificates contained in the file, which is
+				usually the user certificate that goes with the key, as well as the CA certificate.
+			</para>
+		</refsect2>
+	</refsect1>
+
+	<refsect1>
+		<title>Options</title>
+		<para>
+			<variablelist>
+				<varlistentry>
+					<term>
+						<option>--card-profile</option> <replaceable>name</replaceable>,
+						<option>-c</option> <replaceable>name</replaceable>
+					</term>
+					<listitem>
+						<para>
+							Tells <command>pkcs15-init</command> to load the specified card
+							profile option. You will rarely need this option.
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--create-pkcs15</option>,
+						<option>-C</option>
+					</term>
+					<listitem>
+						<para>
+							This tells <command>pkcs15-init</command> to create a PKCS #15
+							structure on the card, and initialize any PINs.
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--erase-card</option>,
+						<option>-E</option>
+					</term>
+					<listitem>
+						<para>
+							This will erase the card prior to creating the PKCS #15 structure,
+							if the card supports it. If the card does not support erasing,
+							<command>pkcs15-init</command> will fail.
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--generate-key</option> <replaceable>keyspec</replaceable>,
+						<option>-G</option> <replaceable>keyspec</replaceable>
+					</term>
+					<listitem>
+						<para>
+							Tells the card to generate new key and store it on the card.
+							<replaceable>keyspec</replaceable> consists of an algorithm name
+							(currently, the only supported name is <option>RSA</option>),
+							optionally followed by a slash and the length of the key in bits.
+							It is a good idea to specify the key ID along with this command,
+							using the <option>id</option> option, otherwise an intrinsic ID
+                                                        will be calculated from the key material. Look the description of
+                                                        the 'pkcs15-id-style' attribut in the 'pkcs15.profile' for the details
+                                                        about the algorithm used to calculate intrinsic ID.
+                                                        For the multi-application cards the target PKCS#15 application can be
+                                                        specified by the hexadecimal AID value of the <option>aid</option> option.
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--options-file</option> <replaceable>filename</replaceable>
+					</term>
+					<listitem>
+						<para>
+							Tells <command>pkcs15-init</command> to read additional options
+							from <replaceable>filename</replaceable>. The file is supposed to
+							contain one long option per line, without the leading dashes,
+							for instance:
+<programlisting>
+	pin		frank
+	puk		zappa
+</programlisting>
+						</para>
+						<para>
+							You can specify <option>--options-file</option> several times.
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--pin</option>,
+						<option>--puk</option>
+						<option>--so-pin</option>,
+						<option>--so-puk</option>,
+					</term>
+					<listitem>
+						<para>
+							These options can be used to specify PIN/PUK values on the command
+							line. Note that on most operation systems, any user can display
+							the command line of any process on the system using utilities such
+							as <command>ps(1)</command>. Therefore, you should use these options
+							only on a secured system, or in an options file specified with
+							<option>--options-file</option>.
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--profile</option> <replaceable>name</replaceable>,
+						<option>-p</option> <replaceable>name</replaceable>
+					</term>
+					<listitem>
+						<para>
+							Tells <command>pkcs15-init</command> to load the specified general
+							profile. Currently, the only application profile defined is
+							<literal>pkcs15</literal>, but you can write your own profiles and
+							specify them using this option.
+						</para>
+						<para>
+							The profile name can be combined with one or more profile
+							options, which slightly modify the profile's behavior.
+							For instance, the default OpenSC profile supports the
+							<option>openpin</option> option, which installs a single PIN during
+							card initialization. This PIN is then used both as the SO PIN as
+							well as the user PIN for all keys stored on the card.
+						</para>
+						<para>
+							Profile name and options are separated by a <literal>+</literal>
+							character, as in <literal>pkcs15+onepin</literal>.
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--store-certificate</option> <replaceable>filename</replaceable>,
+						<option>-X</option> <replaceable>filename</replaceable>
+					</term>
+					<listitem>
+						<para>
+							Tells <command>pkcs15-init</command> to store the certificate given
+							in <option>filename</option> on the card, creating a certificate
+							object with the ID specified via the <option>--id</option> option.
+                                                        Without supplied ID an intrisic ID will be calculated from the
+                                                        certificate's public key. Look the description of the 'pkcs15-id-style'
+                                                        attribut in the 'pkcs15.profile' for the details
+                                                        about the algorithm used to calculate intrinsic ID.
+							The file is assumed to contain the PEM encoded certificate.
+                                                        For the multi-application cards the target application can be specified
+                                                        by the hexadecimal AID value of the <option>aid</option> option.
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--store-public-key</option> <replaceable>filename</replaceable>
+					</term>
+					<listitem>
+						<para>
+							Tells <command>pkcs15-init</command> to download the specified
+							public key to the card and create a public key object with the
+							key ID specified via the <option>--id</option>. By default,
+							the file is assumed to contain the key in PEM format. Alternative
+							formats can be specified using <option>--format</option>.
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--store-private-key</option> <replaceable>filename</replaceable>,
+						<option>-S</option> <replaceable>filename</replaceable>
+					</term>
+					<listitem>
+						<para>
+							Tells <command>pkcs15-init</command> to download the specified
+							private key to the card. This command will also create a public
+							key object containing the public key portion. By default, the
+							file is assumed to contain the key in PEM format. Alternative
+							formats can be specified using <option>--format</option>.
+							It is a good idea to specify the key ID along with this command,
+							using the <option>--id</option> option, otherwise an intrinsic ID
+                                                        will be calculated from the key material. Look the description of
+                                                        the 'pkcs15-id-style' attribut in the 'pkcs15.profile' for the details
+                                                        about the algorithm used to calculate intrinsic ID.
+                                                        For the multi-application cards the target PKCS#15 application can be
+                                                        specified by the hexadecimal AID value of the <option>aid</option> option.
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--update-certificate</option> <replaceable>filename</replaceable>,
+						<option>-U</option> <replaceable>filename</replaceable>
+					</term>
+					<listitem>
+						<para>
+							Tells <command>pkcs15-init</command> to update the certificate
+							object with the ID specified via the <option>--id</option> option
+							with the certificate in <option>filename</option>.
+							The file is assumed to contain a PEM encoded certificate.
+						</para>
+						<para>Pay extra attention when updating mail decryption certificates, as
+						missing certificates can render e-mail messages unreadable!
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--use-default-transport-keys</option>,
+						<option>-T</option>
+					</term>
+					<listitem>
+						<para>
+							Tells <command>pkcs15-init</command> to not ask for the transport
+							keys and use default keys, as known by the card driver.
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--verbose</option>,
+						<option>-v</option>
+					</term>
+					<listitem>
+						<para>
+							Causes <command>pkcs15-init</command> to be more verbose. Specify this
+							flag several times to enable debug output in the OpenSC library.
+						</para>
+					</listitem>
+				</varlistentry>
+
+			</variablelist>
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>See also</title>
+		<para>
+			<citerefentry>
+				<refentrytitle>pkcs15-profile</refentrytitle>
+				<manvolnum>5</manvolnum>
+			</citerefentry>
+		</para>
+	</refsect1>
+
+</refentry>

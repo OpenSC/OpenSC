@@ -1,0 +1,241 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<refentry id="sc-hsm-tool">
+	<refmeta>
+		<refentrytitle>sc-hsm-tool</refentrytitle>
+		<manvolnum>1</manvolnum>
+		<refmiscinfo class="productname">OpenSC</refmiscinfo>
+		<refmiscinfo class="manual">OpenSC Tools</refmiscinfo>
+		<refmiscinfo class="source">opensc</refmiscinfo>
+	</refmeta>
+
+	<refnamediv>
+		<refname>sc-hsm-tool</refname>
+		<refpurpose>smart card utility for SmartCard-HSM</refpurpose>
+	</refnamediv>
+
+	<refsynopsisdiv>
+		<cmdsynopsis>
+			<command>sc-hsm-tool</command>
+			<arg choice="opt"><replaceable class="option">OPTIONS</replaceable></arg>
+		</cmdsynopsis>
+	</refsynopsisdiv>
+
+	<refsect1>
+		<para>
+			The <command>sc-hsm-tool</command> utility can be used from the command line to perform
+			extended maintenance tasks not available via PKCS#11 or other tools in the OpenSC package.
+			It can be used to query the status of a SmartCard-HSM, initialize a device, generate and import
+			Device Key Encryption Key (DKEK) shares and to wrap and unwrap keys.
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Options</title>
+		<para>
+			<variablelist>
+				<varlistentry>
+					<term>
+						<option>--initialize</option>,
+						<option>-X</option>
+					</term>
+					<listitem>
+						<para>Initialize token, removing all existing keys, certificates and files.</para>
+						<para>Use <option>--so-pin</option> to define SO-PIN for first initialization or to verify in subsequent
+					          initializations.</para>
+						<para>Use <option>--pin</option> to define the initial user pin value.</para>
+						<para>Use <option>--pin-retry</option> to define the maximum number of wrong user PIN presentations.</para>
+						<para>Use with <option>--dkek-shares</option> to enable key wrap / unwrap.</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--create-dkek-share</option> <replaceable>filename</replaceable>,
+						<option>-C</option> <replaceable>filename</replaceable>
+					</term>
+					<listitem>
+						<para>Create a DKEK share encrypted under a password and save it to the file
+						      given as parameter.</para>
+						<para>Use <option>--password</option> to provide a password for encryption rather than prompting for one.</para>
+						<para>Use <option>--pwd-shares-threshold</option> and <option>--pwd-shares-total</option> to randomly generate a password and split is using a (t, n) threshold scheme.</para>
+					</listitem>
+				</varlistentry>
+				
+				<varlistentry>
+					<term>
+						<option>--import-dkek-share</option> <replaceable>filename</replaceable>, 
+						<option>-I</option> <replaceable>filename</replaceable>
+					</term>
+					<listitem>
+						<para>Prompt for user password, read and decrypt DKEK share and import into SmartCard-HSM.</para>
+						<para>Use <option>--password</option> to provide a password for decryption rather than prompting for one.</para>
+						<para>Use <option>--pwd-shares-total</option> to specify the number of shares that should be entered to reconstruct the password.</para>
+					</listitem>
+				</varlistentry>
+				
+				<varlistentry>
+					<term>
+						<option>--wrap-key</option> <replaceable>filename</replaceable>, 
+						<option>-W</option> <replaceable>filename</replaceable>
+					</term>
+					<listitem>
+						<para>Wrap the key referenced in <option>--key-reference</option> and save with it together with the key description
+						and certificate to the given file.</para>
+						<para>Use <option>--pin</option> to provide the user PIN on the command line.</para>
+					</listitem>
+				</varlistentry>
+				
+				<varlistentry>
+					<term>
+						<option>--unwrap-key</option> <replaceable>filename</replaceable>, 
+						<option>-U</option> <replaceable>filename</replaceable>
+					</term>
+					<listitem>
+						<para>Read wrapped key, description and certificate from file and import into SmartCard-HSM
+						     under the key reference given in <option>--key-reference</option>.</para>
+						<para>Determine the key reference using the output of <command>pkcs15-tool -D</command>.</para>				     
+						<para>Use <option>--pin</option> to provide a user PIN on the command line.</para>
+						<para>Use <option>--force</option> to remove any key, key description or certificate in the way.</para>
+					</listitem>
+				</varlistentry>
+				
+				<varlistentry>
+					<term>
+						<option>--dkek-shares</option> <replaceable>number-of-shares</replaceable>, 
+						<option>-s</option> <replaceable>number-of-shares</replaceable>
+					</term>
+					<listitem>
+						<para>Define the number of DKEK shares to use for recreating the DKEK.</para>
+						<para>This is an optional parameter. Using <option>--initialize</option> without 
+						      <option>--dkek-shares</option> will disable the DKEK completely.</para>				     
+						<para>Using <option>--dkek-shares</option> with 0 shares requests the SmartCard-HSM to
+						      generate a random DKEK. Keys wrapped with this DKEK can only be unwrapped in the
+						      same SmartCard-HSM.</para>		
+						<para>After using <option>--initialize</option> with one or more DKEK shares, the
+						      SmartCard-HSM will remain in the initialized state until all DKEK shares have
+						      been imported. During this phase no new keys can be generated or imported.</para>		     
+					</listitem>
+				</varlistentry>
+				
+				<varlistentry>
+					<term>
+						<option>--so-pin</option> <replaceable>value</replaceable>
+					</term>
+					<listitem>
+						<para>Define SO-PIN for initialization.</para>
+					</listitem>
+				</varlistentry>
+				
+				<varlistentry>
+					<term>
+						<option>--pin</option> <replaceable>value</replaceable>
+					</term>
+					<listitem>
+						<para>Define user PIN for initialization, wrap or unwrap operation.</para>
+					</listitem>
+				</varlistentry>
+				
+				<varlistentry>
+					<term>
+						<option>--pin-retry</option> <replaceable>value</replaceable>
+					</term>
+					<listitem>
+						<para>Define number of PIN retries for user PIN during initialization. Default is 3.</para>
+					</listitem>
+				</varlistentry>
+				
+				<varlistentry>
+					<term>
+						<option>--password</option> <replaceable>value</replaceable>
+					</term>
+					<listitem>
+						<para>Define password for DKEK share encryption.</para>
+					</listitem>
+				</varlistentry>
+				
+				<varlistentry>
+					<term>
+						<option>--pwd-shares-threshold</option> <replaceable>value</replaceable>
+					</term>
+					<listitem>
+						<para>Define threshold for number of password shares required for reconstruction.</para>
+					</listitem>
+				</varlistentry>
+				
+				<varlistentry>
+					<term>
+						<option>--pwd-shares-total</option> <replaceable>value</replaceable>
+					</term>
+					<listitem>
+						<para>Define number of password shares.</para>
+					</listitem>
+				</varlistentry>
+				
+				<varlistentry>
+					<term>
+						<option>--force</option>
+					</term>
+					<listitem>
+						<para>Force removal of existing key, description and certificate.</para>
+					</listitem>
+				</varlistentry>
+				
+				<varlistentry>
+					<term>
+						<option>--reader</option> <replaceable>num</replaceable>,
+						<option>-r</option> <replaceable>num</replaceable>
+					</term>
+					<listitem><para>Use the given reader number. The default is
+					<literal>0</literal>, the first reader in the system.</para></listitem>
+				</varlistentry>
+				
+				<varlistentry>
+					<term>
+						<option>--wait</option>,
+						<option>-w</option>
+					</term>
+					<listitem><para>Wait for a card to be inserted</para></listitem>
+				</varlistentry>
+				
+				<varlistentry>
+					<term>
+						<option>--verbose</option>,
+						<option>-v</option>
+					</term>
+					<listitem><para>Causes <command>sc-hsm-tool</command> to be more verbose.
+					Specify this flag several times to enable debug output in the opensc
+					library.</para></listitem>
+				</varlistentry>
+			</variablelist>
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Examples</title>
+		<para>Create a DKEK share:</para>
+		<para><command>sc-hsm-tool --create-dkek-share dkek-share-1.pbe</command></para>
+		<para>Create a DKEK share with random password split up using a (3, 5) threshold scheme:</para>
+		<para><command>sc-hsm-tool --create-dkek-share dkek-share-1.pbe --pwd-shares-threshold 3 --pwd-shares-total 5</command></para>
+		<para>Initialize SmartCard-HSM to use a single DKEK share:</para>
+		<para><command>sc-hsm-tool --initialize --so-pin 3537363231383830 --pin 648219 --dkek-shares 1</command></para>
+		<para>Import DKEK share:</para>
+		<para><command>sc-hsm-tool --import-dkek-share dkek-share-1.pbe</command></para>
+		<para>Import DKEK share using a password split up using a (3, 5) threshold scheme for encryption:</para>
+		<para><command>sc-hsm-tool --import-dkek-share dkek-share-1.pbe  --pwd-shares-total 3</command></para>
+		<para>Wrap referenced key, description and certificate:</para>
+		<para><command>sc-hsm-tool --wrap-key wrap-key.bin --key-reference 1 --pin 648219</command></para>
+		<para>Unwrap key into same or in different SmartCard-HSM with the same DKEK:</para>
+		<para><command>sc-hsm-tool --unwrap-key wrap-key.bin --key-reference 10 --pin 648219 --force</command></para>
+	</refsect1>
+	
+	<refsect1>
+		<title>See also</title>
+		<para>
+			<citerefentry>
+				<refentrytitle>opensc-tool</refentrytitle>
+				<manvolnum>1</manvolnum>
+			</citerefentry>
+		</para>
+	</refsect1>
+
+</refentry>

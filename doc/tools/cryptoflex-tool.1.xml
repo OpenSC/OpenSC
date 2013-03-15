@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<refentry id="cryptoflex-tool">
+	<refmeta>
+		<refentrytitle>cryptoflex-tool</refentrytitle>
+		<manvolnum>1</manvolnum>
+		<refmiscinfo class="productname">OpenSC</refmiscinfo>
+		<refmiscinfo class="manual">OpenSC Tools</refmiscinfo>
+		<refmiscinfo class="source">opensc</refmiscinfo>
+	</refmeta>
+
+	<refnamediv>
+		<refname>cryptoflex-tool</refname>
+		<refpurpose>utility for manipulating Schlumberger Cryptoflex data structures</refpurpose>
+	</refnamediv>
+
+	<refsynopsisdiv>
+		<cmdsynopsis>
+			<command>cryptoflex-tool</command>
+			<arg choice="opt"><replaceable class="option">OPTIONS</replaceable></arg>
+		</cmdsynopsis>
+	</refsynopsisdiv>
+
+	<refsect1>
+		<title>Description</title>
+		<para>
+			<command>cryptoflex-tool</command> is used to manipulate PKCS
+			data structures on Schlumberger Cryptoflex smart cards. Users
+			can create, list and read PINs and keys stored on the smart card.
+			User PIN authentication is performed for those operations that require it.
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Options</title>
+		<para>
+			<variablelist>
+				<varlistentry>
+					<term>
+						<option>--app-df</option> <replaceable>num</replaceable>,
+						<option>-a</option> <replaceable>num</replaceable>
+					</term>
+					<listitem><para>Specifies the DF to operate in</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--create-key-files</option> <replaceable>arg</replaceable>,
+						<option>-c</option> <replaceable>arg</replaceable>
+					</term>
+					<listitem><para>Creates new RSA key files for <replaceable>arg</replaceable> keys</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--create-pin-files</option> <replaceable>id</replaceable>,
+						<option>-P</option> <replaceable>id</replaceable>
+					</term>
+					<listitem><para>Creates new PIN file for CHV<replaceable>id</replaceable></para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--exponent</option> <replaceable>exp</replaceable>,
+						<option>-e</option> <replaceable>exp</replaceable>
+					</term>
+					<listitem><para>Specifies the RSA exponent, <replaceable>exp</replaceable>,
+					to use in key generation. The default value is 3.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--generate-key</option>,
+						<option>-g</option>
+					</term>
+					<listitem><para>Generate a new RSA key pair</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--key-num</option> <replaceable>num</replaceable>,
+						<option>-k</option> <replaceable>num</replaceable>
+					</term>
+					<listitem><para>Specifies the key number to operate on.  The default is
+					key number 1.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--list-keys</option>,
+						<option>-l</option>
+					</term>
+					<listitem><para>Lists all keys stored in a public key file</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--modulus-length</option> <replaceable>length</replaceable>,
+						<option>-m</option> <replaceable>length</replaceable>
+					</term>
+					<listitem><para>Specifies the modulus <replaceable>length</replaceable> to use
+					in key generation. The default value is 1024.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--prkey-file</option> <replaceable>id</replaceable>,
+						<option>-p</option> <replaceable>id</replaceable>
+					</term>
+					<listitem><para>Specifies the private key file id, <replaceable>id</replaceable>,
+					to use</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--pubkey-file</option> <replaceable>id</replaceable>,
+						<option>-u</option> <replaceable>id</replaceable>
+					</term>
+					<listitem><para>Specifies the public key file id, <replaceable>id</replaceable>,
+					to use</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--read-key</option>
+					</term>
+					<listitem><para>Reads a public key from the card, allowing the user to
+					extract and store or use the public key
+					</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--reader</option> <replaceable>num</replaceable>,
+						<option>-r</option> <replaceable>num</replaceable>
+					</term>
+					<listitem><para>Forces <command>cryptoflex-tool</command> to use
+					reader number <replaceable>num</replaceable> for operations. The default
+					is to use reader number 0, the first reader in the system.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--verbose</option>,
+						<option>-v</option>
+					</term>
+					<listitem><para>Causes <command>cryptoflex-tool</command> to be more
+					verbose. Specify this flag several times to enable debug output in
+					the opensc library.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--verify-pin</option>,
+						<option>-V</option>
+					</term>
+					<listitem><para>Verifies CHV1 before issuing commands</para></listitem>
+				</varlistentry>
+
+			</variablelist>
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>See also</title>
+		<para>
+			<citerefentry>
+				<refentrytitle>pkcs15-tool</refentrytitle>
+				<manvolnum>1</manvolnum>
+			</citerefentry>
+		</para>
+	</refsect1>
+
+</refentry>

@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<refentry id="westcos-tool">
+	<refmeta>
+		<refentrytitle>westcos-tool</refentrytitle>
+		<manvolnum>1</manvolnum>
+		<refmiscinfo class="productname">OpenSC</refmiscinfo>
+		<refmiscinfo class="manual">OpenSC Tools</refmiscinfo>
+		<refmiscinfo class="source">opensc</refmiscinfo>
+	</refmeta>
+
+	<refnamediv>
+		<refname>westcos-tool</refname>
+		<refpurpose>utility for manipulating data structures
+			on westcos smart cards</refpurpose>
+	</refnamediv>
+
+	<refsynopsisdiv>
+		<cmdsynopsis>
+			<command>westcos-tool</command>
+			<arg choice="opt"><replaceable class="option">OPTIONS</replaceable></arg>
+		</cmdsynopsis>
+	</refsynopsisdiv>
+
+	<refsect1>
+		<title>Description</title>
+		<para>
+			The <command>westcos-tool</command> utility is used to manipulate
+			the westcos data structures on 2 Ko smart cards / tokens. Users can create PINs,
+			keys and certificates stored on the card / token. User PIN authentication is
+			performed for those operations that require it.
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Options</title>
+		<para>
+			<variablelist>
+				<varlistentry>
+					<term>
+						<option>--change-pin</option>,
+						<option>-n</option>
+					</term>
+					<listitem><para>Changes a PIN stored on the card.
+					User authentication is required for this operation.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--certificate</option> <replaceable>file</replaceable>,
+						<option>-t</option> <replaceable>file</replaceable>
+					</term>
+					<listitem><para>Write certificate file <replaceable>file</replaceable>
+					in PEM format to the card.
+					User authentication is required for this operation.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--finalize</option>,
+						<option>-f</option>
+					</term>
+					<listitem><para>Finalize the card. Once finalized the default key is
+					invalidated, so PIN and PUK cannot be changed anymore without user
+					authentication.</para>
+					<para>Warning, un-finalized are insecure because PIN can be changed
+					without user authentication (knowledge of default key
+					is enough).</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--generate-key</option>,
+						<option>-g</option>
+					</term>
+					<listitem><para>Generate a private key on the card. The card must not have
+					been finalized and a PIN must be installed (ie. the file for ithe PIN must
+					havei been created, see option <option>-i</option>).
+					By default the key length is 1536 bits. User authentication is required for
+					this operation. </para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--help</option>,
+						<option>-h</option>
+					</term>
+					<listitem><para>Print help message on screen.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--install-pin</option>,
+						<option>-i</option>
+					</term>
+					<listitem><para>Install PIN file in on the card.
+					You must provide a PIN value with <option>-x</option>.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--key-length</option> <replaceable>length</replaceable>,
+						<option>-l</option> <replaceable>length</replaceable>
+					</term>
+					<listitem><para>Change the length of private key.
+					Use with <option>-g</option>.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--overwrite-key</option>,
+						<option>-o</option>
+					</term>
+					<listitem><para>Overwrite the key if there is already a key on the card.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--pin-value</option> <replaceable>value</replaceable>,
+						<option>-x</option> <replaceable>value</replaceable>
+					</term>
+					<listitem><para>Set value of PIN.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--puk-value</option> <replaceable>value</replaceable>,
+						<option>-y</option> <replaceable>value</replaceable>
+					</term>
+					<listitem><para>set value of PUK (or value of new PIN for change PIN
+					command see <option>-n</option>).</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--read-file</option> <replaceable>path</replaceable>,
+						<option>-j</option> <replaceable>path</replaceable>
+					</term>
+					<listitem><para>Read the file <replaceable>path</replaceable> from the card.
+					The file is written on disk with name <replaceable>path</replaceable>.
+					User authentication is required for this operation.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--reader</option> <replaceable>num</replaceable>,
+						<option>-r</option> <replaceable>num</replaceable>
+					</term>
+					<listitem><para>
+					Use the given reader. The default is the first reader with a card.
+					</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--unblock-pin</option>,
+						<option>-u</option>
+					</term>
+					<listitem><para>Unblocks a PIN stored on the card. Knowledge of the
+					PIN Unblock Key (PUK) is required for this operation.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>-v</option>
+					</term>
+					<listitem><para>Causes <command>westcos-tool</command> to be more
+					verbose. Specify this flag several times to enable debug output
+					in the OpenSC library.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--wait</option>,
+						<option>-w</option>
+					</term>
+					<listitem><para>Wait for a card to be inserted.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--write-file</option> <replaceable>path</replaceable>,
+						<option>-k</option> <replaceable>path</replaceable>
+					</term>
+					<listitem><para>Put the file with name <replaceable>path</replaceable>
+					from disk to card.
+					On the card the file is written in <replaceable>path</replaceable>.
+					User authentication is required for this operation.</para></listitem>
+				</varlistentry>
+
+			</variablelist>
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Authors</title>
+		<para><command>westcos-tool</command> was written by
+		Francois Leblanc <email>francois.leblanc@cev-sa.com</email>.</para>
+	</refsect1>
+
+</refentry>

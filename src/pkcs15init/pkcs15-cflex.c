@@ -91,7 +91,7 @@ static int cflex_erase_card(struct sc_profile *profile, sc_pkcs15_card_t *p15car
          * against other applications that use this file, but
          * extremely useful for testing :)
          * Note we need to delete if before the DF because we create
-         * it *after* the DF. 
+         * it *after* the DF.
          * */
         if (sc_profile_get_file(profile, "DIR", &dir) >= 0) {
                 r = cflex_delete_file(profile, p15card, dir);
@@ -558,7 +558,7 @@ cflex_create_pin_file(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	file->id = (ref == 1)? 0x0000 : 0x0100;
 
 	if (unprotected)   {
-		sc_file_add_acl_entry(file, SC_AC_OP_UPDATE, 
+		sc_file_add_acl_entry(file, SC_AC_OP_UPDATE,
 				SC_AC_NONE, SC_AC_KEY_REF_NONE);
 	}
 
@@ -722,7 +722,7 @@ cryptoflex_encode_private_key(sc_profile_t *profile, sc_card_t *card,
 {
         size_t base = rsa->modulus.len / 2, key_blob_size;
         int r, key_num = key_ref + 1;
-        
+
         switch (rsa->modulus.len) {
 	case  512 / 8:
 	case  768 / 8:
@@ -753,7 +753,7 @@ cryptoflex_encode_private_key(sc_profile_t *profile, sc_card_t *card,
 	*key++ = 0;
 	*key++ = 0;
 	*key = 0;
-	
+
         return 0;
 }
 
@@ -764,7 +764,7 @@ cryptoflex_encode_public_key(sc_profile_t *profile, sc_card_t *card,
 {
         size_t base;
         int r, key_num = key_ref + 1;
-        
+
         switch (rsa->modulus.len) {
 	case  512 / 8:
 	case  768 / 8:
@@ -779,14 +779,14 @@ cryptoflex_encode_public_key(sc_profile_t *profile, sc_card_t *card,
 	if (*keysize < (5 * base + 10))
 		return SC_ERROR_BUFFER_TOO_SMALL;
 	*keysize = 5 * base + 10;
-        
+
 	memset(key, 0, *keysize);
         *key++ = (5 * base + 7) >> 8;
         *key++ = (5 * base + 7) & 0xFF;
         *key++ = key_num;
 
 	/* Funny code - not sure why we do it this way:
-	 * 
+	 *
 	 * Specs say:		We store:	(Length)
 	 *  modulus		 modulus	(N bytes)
 	 *  J0 Montgomery const	 0		(N/2 bytes)
@@ -811,7 +811,7 @@ cyberflex_encode_private_key(sc_profile_t *profile, sc_card_t *card,
 {
         size_t base = rsa->modulus.len / 2, key_blob_size, bnlen;
         int r, key_num = key_ref + 1, alg_id;
-        
+
         switch (rsa->modulus.len) {
 	case  512 / 8: alg_id = 0xC4; break;
 	case  768 / 8: alg_id = 0xC6; break;
@@ -864,7 +864,7 @@ cyberflex_encode_public_key(sc_profile_t *profile, sc_card_t *card,
 {
 	size_t base = rsa->modulus.len, key_blob_size, bnlen;
         int r, key_num = key_ref + 1, alg_id;
-        
+
         switch (rsa->modulus.len) {
 	case  512 / 8: alg_id = 0xC5; break;
 	case  768 / 8: alg_id = 0xC7; break;
@@ -877,7 +877,7 @@ cyberflex_encode_public_key(sc_profile_t *profile, sc_card_t *card,
 	if (*keysize < key_blob_size)
 		return SC_ERROR_BUFFER_TOO_SMALL;
 	*keysize = key_blob_size;
-        
+
 	memset(key, 0, *keysize);
         *key++ = key_blob_size >> 8;
         *key++ = key_blob_size & 0xFF;

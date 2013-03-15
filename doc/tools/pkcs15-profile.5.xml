@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<refentry id="pkcs15-profile">
+	<refmeta>
+		<refentrytitle>pkcs15-profile</refentrytitle>
+		<manvolnum>5</manvolnum>
+		<refmiscinfo class="productname">OpenSC</refmiscinfo>
+		<refmiscinfo class="manual">OpenSC File Formats</refmiscinfo>
+		<refmiscinfo class="source">opensc</refmiscinfo>
+	</refmeta>
+
+	<refnamediv>
+		<refname>pkcs15-profile</refname>
+		<refpurpose>format of profile for <command>pkcs15-init</command></refpurpose>
+	</refnamediv>
+
+	<refsect1>
+		<title>Description</title>
+		<para>
+			The <command>pkcs15-init</command> utility for PKCS #15 smart card
+			personalization is controlled via profiles. When starting, it will read two
+			such profiles at the moment, a generic application profile, and a card
+			specific profile. The generic profile must be specified on the command line,
+			while the card-specific file is selected based on the type of card detected.
+		</para>
+		<para>
+			The generic application profile defines general information about the card
+			layout, such as the path of the application DF, various PKCS #15 files within
+			that directory, and the access conditions on these files. It also defines
+			general information about PIN, key and certificate objects. Currently, there
+			is only one such generic profile, <command>pkcs15.profile</command>.
+		</para>
+		<para>
+			The card specific profile contains additional information required during
+			card intialization, such as location of PIN files, key references etc.
+			Profiles currently reside in <command>@pkgdatadir@</command>
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Syntax</title>
+		<para>
+			This section should contain information about the profile syntax. Will add
+			this soonishly.
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>See also</title>
+		<para>
+			<citerefentry>
+				<refentrytitle>pkcs15-init</refentrytitle>
+				<manvolnum>1</manvolnum>
+			</citerefentry>,
+			<citerefentry>
+				<refentrytitle>pkcs15-crypt</refentrytitle>
+				<manvolnum>1</manvolnum>
+			</citerefentry>
+		</para>
+	</refsect1>
+
+</refentry>

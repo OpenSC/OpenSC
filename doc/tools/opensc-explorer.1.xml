@@ -1,0 +1,501 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<refentry id="opensc-explorer">
+	<refmeta>
+		<refentrytitle>opensc-explorer</refentrytitle>
+		<manvolnum>1</manvolnum>
+		<refmiscinfo class="productname">OpenSC</refmiscinfo>
+		<refmiscinfo class="manual">OpenSC Tools</refmiscinfo>
+		<refmiscinfo class="source">opensc</refmiscinfo>
+	</refmeta>
+
+	<refnamediv>
+		<refname>opensc-explorer</refname>
+		<refpurpose>
+			generic interactive utility for accessing smart card
+			and similar security token functions
+		</refpurpose>
+	</refnamediv>
+
+	<refsynopsisdiv>
+		<cmdsynopsis>
+			<command>opensc-explorer</command>
+			<arg choice="opt"><replaceable class="option">OPTIONS</replaceable></arg>
+			<arg choice="opt"><replaceable class="parameter">SCRIPT</replaceable></arg>
+		</cmdsynopsis>
+	</refsynopsisdiv>
+
+	<refsect1>
+		<title>Description</title>
+		<para>
+			The <command>opensc-explorer</command> utility can be
+			used interactively to perform miscellaneous operations
+			such as exploring the contents of or sending arbitrary
+			APDU commands to a smart card or similar security token.
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Options</title>
+		<para>
+			The following are the command-line options for
+			<command>opensc-explorer</command>.  There are additional
+			interactive commands available once it is running.
+			<variablelist>
+				<varlistentry>
+					<term>
+						<option>--card-driver</option> <replaceable>driver</replaceable>,
+						<option>-c</option> <replaceable>driver</replaceable>
+					</term>
+					<listitem><para>
+						Use the given card driver.  The default is
+						auto-detected.
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--mf</option> <replaceable>path</replaceable>,
+						<option>-m</option> <replaceable>path</replaceable>
+					</term>
+					<listitem><para>
+						Select the file referenced by the given path on
+						startup.  The default is the path to the standard master file,
+						3F00. If <replaceable>path</replaceable> is empty (e.g. <command>opensc-explorer
+						--mf ""</command>), then no file is explicitly selected.
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--reader</option> <replaceable>num</replaceable>,
+						<option>-r</option> <replaceable>num</replaceable>
+					</term>
+					<listitem><para>
+					Use the given reader number. The default
+					is 0, the first reader in the system.
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--verbose</option>, <option>-v</option>
+					</term>
+					<listitem><para>
+						Causes <command>opensc-explorer</command> to be more
+						verbose. Specify this flag several times to enable
+						debug output in the opensc library.
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--wait</option>, <option>-w</option>
+					</term>
+					<listitem><para>Wait for a card to be inserted</para></listitem>
+				</varlistentry>
+			</variablelist>
+		</para>
+	</refsect1>
+
+<refsect1>
+	<title>Commands</title>
+	<para>
+		The following commands are supported at <command>opensc-explorer</command>'s
+		interactive prompt or in script files passed via the command line parameter
+		<replaceable class="parameter">SCRIPT</replaceable>.
+		<variablelist>
+			<varlistentry>
+				<term>
+					<command>apdu</command> <replaceable>hex-data</replaceable>
+				</term>
+				<listitem>
+                                        <para>Send a custom APDU command <replaceable>hex-data</replaceable>.</para>
+                                </listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term>
+					<command>asn1</command> <replaceable>file-id</replaceable>
+				</term>
+				<listitem><para>Parse and print the ASN.1 encoded content of the file specified by
+				<replaceable>file-id</replaceable>.</para></listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term>
+					<command>cat</command> [<replaceable>file-id</replaceable> | sfi:<replaceable>short-id</replaceable>]
+				</term>
+				<listitem><para>Print the contents of the currently selected EF or the contents
+				of a file specified by <replaceable>file-id</replaceable> or the short file id
+				<replaceable>short-id</replaceable>.
+                                </para></listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term>
+					<command>cd</command> {.. | <replaceable>file-id</replaceable> | aid:<replaceable>DF-name</replaceable>}
+				</term>
+				<listitem><para>
+				Change to another DF specified by the argument passed.
+				If the argument given is <literal>..</literal>, then move up one level in the
+				file system hierarchy.
+				If it is <replaceable>file-id</replaceable>, which must be a DF directly
+				beneath the current DF, then change to that DF.
+				If it is an application identifier given as
+				<literal>aid:</literal><replaceable>DF-name</replaceable>,
+				then jump to the MF of the application denoted by
+				<replaceable>DF-name</replaceable>.
+				</para></listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term>
+					<command>change</command> CHV<replaceable>pin-ref</replaceable> [[<replaceable>old-pin</replaceable>] <replaceable>new-pin</replaceable>]
+				</term>
+				<listitem>
+				<para>Change a PIN, where <replaceable>pin-ref</replaceable> is the PIN reference.</para>
+				<para>
+				Examples:
+				<variablelist>
+					<varlistentry>
+						<term><code>change CHV2 00:00:00:00:00:00 "foobar"</code></term>
+						<listitem><para>
+						Change PIN <literal>CHV2</literal>
+						to the new value <literal>foobar</literal>,
+						giving the old value <literal>00:00:00:00:00:00</literal>.
+						</para></listitem>
+					</varlistentry>
+					<varlistentry>
+						<term><code>change CHV2 "foobar"</code></term>
+						<listitem><para>
+						Set PIN <literal>CHV2</literal>
+						to the new value <literal>foobar</literal>.
+						</para></listitem>
+					</varlistentry>
+					<varlistentry>
+						<term><code>change CHV2</code></term>
+						<listitem><para>
+						Change PIN <literal>CHV2</literal> using the card reader's pinpad.
+						</para></listitem>
+					</varlistentry>
+				</variablelist>
+				</para>
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term>
+					<command>create</command> <replaceable>file-id</replaceable> <replaceable>size</replaceable>
+				</term>
+				<listitem><para>Create a new EF.  <replaceable>file-id</replaceable> specifies the
+				id number and <replaceable>size</replaceable> is the size of the new file.
+				</para></listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term>
+					<command>debug</command> [<replaceable>level</replaceable>]
+				</term>
+				<listitem>
+                                        <para>Set OpenSC debug level to <replaceable>level</replaceable>.</para>
+                                        <para>If <replaceable>level</replaceable> is omitted the current debug level will be shown.</para>
+                                </listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term>
+					<command>delete</command> <replaceable>file-id</replaceable>
+				</term>
+				<listitem><para>Remove the EF or DF specified by <replaceable>file-id</replaceable></para></listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term>
+					<command>do_get</command> <replaceable>hex-tag</replaceable> [<replaceable>output</replaceable>]
+				</term>
+				<listitem>
+                                        <para>Copy the internal card's 'tagged' data into the local file.</para>
+                                        <para>The local file is specified by <replaceable>output</replaceable> while the tag of
+                                        the card's data is specified by <replaceable>hex-tag</replaceable>.
+                                        </para>
+                                        <para>
+                                        If <replaceable>output</replaceable> is omitted, the name of the output file will be
+                                        derived from <replaceable>hex-tag</replaceable>.
+                                        </para>
+                                </listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term>
+					<command>do_put</command> <replaceable>hex-tag</replaceable> <replaceable>input</replaceable>
+				</term>
+				<listitem>
+                                        <para>Update internal card's 'tagged' data. </para>
+                                        <para><replaceable>hex-tag</replaceable> is the tag of the card's data.
+                                        <replaceable>input</replaceable> is the filename of the source file or the literal data presented as
+                                        a sequence of hexadecimal values or <literal>"</literal> enclosed string.
+				        </para>
+                                </listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term>
+					<command>echo</command> <replaceable>string</replaceable> ...
+				</term>
+				<listitem>
+                                        <para>Print the <replaceable>string</replaceable>s given.</para>
+                                </listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term>
+					<command>erase</command>
+				</term>
+				<listitem><para>Erase the card, if the card supports it.</para></listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term>
+					<command>get</command> <replaceable>file-id</replaceable> [<replaceable>output</replaceable>]
+				</term>
+				<listitem>
+                                        <para>Copy an EF to a local file. The local file is specified
+				        by <replaceable>output</replaceable> while the card file is specified by <replaceable>file-id</replaceable>.
+                                        </para>
+                                        <para>
+                                        If <replaceable>output</replaceable> is omitted, the name of the output file will be
+                                        derived from the full card path to <replaceable>file-id</replaceable>.
+                                        </para>
+                                </listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term>
+					<command>info</command> [<replaceable>file-id</replaceable>]
+				</term>
+				<listitem><para>Display attributes of a file specified by <replaceable>file-id</replaceable>.
+				If <replaceable>file-id</replaceable> is not supplied,
+				the attributes of the current file are printed.</para></listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term>
+					<command>ls</command> [<replaceable>pattern</replaceable> ...]
+				</term>
+				<listitem><para>List files in the current DF.
+				If no <replaceable>pattern</replaceable> is given, then all files are listed.
+				If one ore more <replaceable>pattern</replaceable>s are given, only files matching
+				at least one <replaceable>pattern</replaceable> are listed.</para></listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term>
+					<command>find</command> [<replaceable>start-id</replaceable> [<replaceable>end-id</replaceable>]]
+				</term>
+                <listitem><para>Find all files in the current DF.
+                        Files are found by selecting all file identifiers in the range from <replaceable>start-fid</replaceable> to <replaceable>end-fid</replaceable> (by default from 0000 to FFFF).</para></listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term>
+					<command>mkdir</command> <replaceable>file-id</replaceable> <replaceable>size</replaceable>
+				</term>
+				<listitem><para>Create a DF. <replaceable>file-id</replaceable> specifies the id number
+				and <replaceable>size</replaceable> is the size of the new file.</para></listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term>
+					<command>put</command> <replaceable>file-id</replaceable> <replaceable>input</replaceable>
+				</term>
+				<listitem><para>Copy a local file to the card. The local file is specified
+				by <replaceable>input</replaceable> while the card file is specified by <replaceable>file-id</replaceable>.
+				</para></listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term>
+					<command>quit</command>
+				</term>
+				<listitem><para>Exit the program.</para></listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term>
+					<command>random</command> <replaceable>count</replaceable>
+				</term>
+				<listitem>
+                                        <para>Generate random sequence of <replaceable>count</replaceable> bytes.</para>
+                                </listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term>
+					<command>rm</command> <replaceable>file-id</replaceable>
+				</term>
+				<listitem><para>Remove the EF or DF specified by <replaceable>file-id</replaceable></para></listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term>
+					<command>unblock</command> CHV<replaceable>pin-ref</replaceable> [<replaceable>puk</replaceable> [<replaceable>new pin</replaceable>]]
+				</term>
+				<listitem>
+				<para>
+				Unblock the PIN denoted by <replaceable>pin-ref</replaceable>
+				using the PUK <replaceable>puk</replaceable>, and set potentially
+				change its value to <replaceable>new pin</replaceable>.
+				</para>
+				<para>
+				PUK and PIN values can be a sequence of hexadecimal values,
+				<literal>"</literal>-enclosed strings, empty (<literal>""</literal>),
+				or absent.
+				If they are absent, the values are read from the card reader's pin pad.
+				</para>
+				<para>
+				Examples:
+				<variablelist>
+					<varlistentry>
+						<term><code>unblock CHV2 00:00:00:00:00:00 "foobar"</code></term>
+						<listitem><para>
+						Unblock PIN <literal>CHV2</literal> using PUK
+						<literal>00:00:00:00:00:00</literal>
+						 and set it to the new value <literal>foobar</literal>.
+						</para></listitem>
+					</varlistentry>
+					<varlistentry>
+						<term><code>unblock CHV2 00:00:00:00:00:00 ""</code></term>
+						<listitem><para>
+						Unblock PIN <literal>CHV2</literal> using PUK
+						<literal>00:00:00:00:00:00</literal> keeping the old value.
+						</para></listitem>
+					</varlistentry>
+					<varlistentry>
+						<term><code>unblock CHV2 "" "foobar"</code></term>
+						<listitem><para>
+						Set new value of PIN <literal>CHV2</literal>
+						to <literal>foobar</literal>.
+						</para></listitem>
+					</varlistentry>
+					<varlistentry>
+						<term><code>unblock CHV2 00:00:00:00:00:00</code></term>
+						<listitem><para>
+						Unblock PIN <literal>CHV2</literal> using PUK
+						<literal>00:00:00:00:00:00</literal>.
+						The new PIN value is prompted by pinpad.
+						</para></listitem>
+					</varlistentry>
+					<varlistentry>
+						<term><code>unblock CHV2 ""</code></term>
+						<listitem><para>
+						Set PIN <literal>CHV2</literal>.
+						The new PIN value is prompted by pinpad.
+						</para></listitem>
+					</varlistentry>
+					<varlistentry>
+						<term><code>unblock CHV2</code></term>
+						<listitem><para>
+						Unblock PIN <literal>CHV2</literal>.
+						The unblock code and new PIN value are prompted by pinpad.
+						</para></listitem>
+					</varlistentry>
+				</variablelist>
+				</para>
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term>
+					<command>update_binary</command> <replaceable>file-id</replaceable> <replaceable>offs</replaceable> <replaceable>data</replaceable>
+				</term>
+				<listitem>
+					<para>Binary update of the file specified by
+					<replaceable>file-id</replaceable> with the literal data
+                                        <replaceable>data</replaceable> starting from offset specified
+					by <replaceable>offs</replaceable>.</para>
+                                        <para><replaceable>data</replaceable> can be supplied as a sequencer
+					of the hex values or as a <literal>"</literal> enclosed string. </para>
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term>
+					<command>update_record</command> <replaceable>file-id</replaceable> <replaceable>rec-nr</replaceable> <replaceable>rec-offs</replaceable> <replaceable>data</replaceable>
+				</term>
+				<listitem>
+                                        <para>Update record specified by <replaceable>rec-nr</replaceable> of the file
+                                        specified by <replaceable>file-id</replaceable> with the literal data
+                                        <replaceable>data</replaceable> starting from offset specified by
+                                        <replaceable>rec-offs</replaceable>.</para>
+                                        <para><replaceable>data</replaceable> can be supplied as a sequence of the hex values or
+                                        as a <literal>"</literal> enclosed string. </para>
+                                </listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term>
+					<command>verify</command> <replaceable>key-type</replaceable> <replaceable>key-id</replaceable> [<replaceable>key</replaceable>]
+				</term>
+				<listitem><para>Present a PIN or key to the card, where
+				<replaceable>key-type</replaceable> can be one of <literal>CHV</literal>,
+				<literal>KEY</literal>, <literal>AUT</literal> or <literal>PRO</literal>.
+				<replaceable>key-id</replaceable> is a number representing the key or PIN reference.
+				<replaceable>key</replaceable> is the key or PIN to be verified, formatted as a
+				colon-separated list of hex values or a <literal>"</literal> enclosed string.
+				</para>
+                                <para>
+                                If <replaceable>key</replaceable> is omitted, the exact action depends on the
+				card reader's features: if the card readers supports PIN input via a pin pad,
+				then the PIN will be verified using the card reader's pin pad.
+				If the card reader does not support PIN input, then the PIN will be asked
+				interactively.
+                                </para>
+				<para>
+				Examples:
+				<variablelist>
+					<varlistentry>
+						<term><code>verify CHV0 31:32:33:34:00:00:00:00</code></term>
+						<listitem><para>
+						Verify <literal>CHV2</literal> using the hex value
+						<literal>31:32:33:34:00:00:00:00</literal>
+						</para></listitem>
+					</varlistentry>
+					<varlistentry>
+						<term><code>verify CHV1 "secret"</code></term>
+						<listitem><para>
+						Verify <literal>CHV1</literal>
+						using the string value <literal>secret</literal>.
+						</para></listitem>
+					</varlistentry>
+					<varlistentry>
+						<term><code>verify KEY2</code></term>
+						<listitem><para>
+						Verify <literal>KEY2</literal>,
+						get the value from the card reader's pin pad.
+						</para></listitem>
+					</varlistentry>
+				</variablelist>
+				</para>
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term>
+					<command>sm</command> <replaceable>[open]</replaceable>|<replaceable>[close]</replaceable>
+				</term>
+				<listitem>
+                                        <para>Calls the card's <replaceable>open</replaceable> or <replaceable>close</replaceable> Secure Messaging handler.</para>
+                                </listitem>
+			</varlistentry>
+
+		</variablelist>
+	</para>
+</refsect1>
+
+	<refsect1>
+		<title>See also</title>
+		<para>
+			<citerefentry>
+				<refentrytitle>opensc-tool</refentrytitle>
+				<manvolnum>1</manvolnum>
+			</citerefentry>
+		</para>
+	</refsect1>
+
+</refentry>

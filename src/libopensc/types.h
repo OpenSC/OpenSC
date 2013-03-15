@@ -28,7 +28,7 @@ extern "C" {
 typedef unsigned char u8;
 
 /* various maximum values */
-#define SC_MAX_CARD_DRIVERS		32
+#define SC_MAX_CARD_DRIVERS		48
 #define SC_MAX_CARD_DRIVER_SNAME_SIZE	16
 #define SC_MAX_CARD_APPS		8
 #define SC_MAX_APDU_BUFFER_SIZE		261 /* takes account of: CLA INS P1 P2 Lc [255 byte of data] Le */
@@ -43,12 +43,13 @@ typedef unsigned char u8;
 #define SC_MAX_PATH_STRING_SIZE		(SC_MAX_PATH_SIZE * 2 + 3)
 #define SC_MAX_SDO_ACLS			8
 #define SC_MAX_CRTS_IN_SE		12
+#define SC_MAX_SE_NUM			8
 
-/* When changing this value, pay attention to the initialization of the ASN1 
- * static variables that use this macro, like, for example, 
- * 'c_asn1_supported_algorithms' in src/libopensc/pkcs15.c 
+/* When changing this value, pay attention to the initialization of the ASN1
+ * static variables that use this macro, like, for example,
+ * 'c_asn1_supported_algorithms' in src/libopensc/pkcs15.c
  */
-#define SC_MAX_SUPPORTED_ALGORITHMS     8
+#define SC_MAX_SUPPORTED_ALGORITHMS	8
 
 struct sc_lv_data {
 	unsigned char *value;
@@ -79,6 +80,14 @@ struct sc_atr {
 struct sc_iid {
 	unsigned char value[SC_MAX_IIN_SIZE];
 	size_t len;
+};
+
+struct sc_version {
+	unsigned char hw_major;
+	unsigned char hw_minor;
+
+	unsigned char fw_major;
+	unsigned char fw_minor;
 };
 
 /* Discretionary ASN.1 data object */
@@ -165,8 +174,11 @@ struct sc_crt {
 #define SC_AC_OP_WRITE			24
 #define SC_AC_OP_RESIZE			25
 #define SC_AC_OP_GENERATE		26
+#define SC_AC_OP_CREATE_EF		27
+#define SC_AC_OP_CREATE_DF		28
+#define SC_AC_OP_ADMIN			29
 /* If you add more OPs here, make sure you increase SC_MAX_AC_OPS*/
-#define SC_MAX_AC_OPS			27
+#define SC_MAX_AC_OPS			30
 
 /* the use of SC_AC_OP_ERASE is deprecated, SC_AC_OP_DELETE should be used
  * instead  */
@@ -206,7 +218,7 @@ typedef struct sc_acl_entry {
 						(at least for SetCOS 4.4 */
 typedef struct sc_file {
 	struct sc_path path;
-	u8 name[16];	/* DF name */
+	unsigned char name[16];	/* DF name */
 	size_t namelen; /* length of DF name */
 
 	unsigned int type, ef_structure, status; /* See constant values defined above */
@@ -218,12 +230,18 @@ typedef struct sc_file {
 	int record_length; /* In case of fixed-length or cyclic EF */
 	int record_count;  /* Valid, if not transparent EF or DF */
 
-	u8 *sec_attr;
+	unsigned char *sec_attr;	/* security data in proprietary format. tag '86' */
 	size_t sec_attr_len;
-	u8 *prop_attr;
+
+	unsigned char *prop_attr;	/* proprietary information. tag '85'*/
 	size_t prop_attr_len;
-	u8 *type_attr;
+
+	unsigned char *type_attr;	/* file descriptor data. tag '82'.
+					   replaces the file's type information (DF, EF, ...) */
 	size_t type_attr_len;
+
+	unsigned char *encoded_content;	/* file's content encoded to be used in the file creation command */
+	size_t encoded_content_len;	/* size of file's encoded content in bytes */
 
 	unsigned int magic;
 } sc_file_t;
@@ -254,18 +272,25 @@ typedef struct sc_file {
  */
 #define SC_APDU_FLAGS_NO_RETRY_WL	0x00000004UL
 
-typedef struct sc_apdu {
-	int cse;		/* APDU case */
-	u8 cla, ins, p1, p2;	/* CLA, INS, P1 and P2 bytes */
-	size_t lc, le;		/* Lc and Le bytes */
-	const u8 *data;		/* C-APDU data */
-	size_t datalen;		/* length of data in C-APDU */
-	u8 *resp;		/* R-APDU data buffer */
-	size_t resplen;		/* in: size of R-APDU buffer,
-				 * out: length of data returned in R-APDU */
-	u8 control;		/* Set if APDU should go to the reader */
+#define SC_APDU_ALLOCATE_FLAG		0x01
+#define SC_APDU_ALLOCATE_FLAG_DATA	0x02
+#define SC_APDU_ALLOCATE_FLAG_RESP	0x04
 
-	unsigned int sw1, sw2;	/* Status words returned in R-APDU */
+typedef struct sc_apdu {
+	int cse;			/* APDU case */
+	unsigned char cla, ins, p1, p2;	/* CLA, INS, P1 and P2 bytes */
+	size_t lc, le;			/* Lc and Le bytes */
+	unsigned char *data;		/* C-APDU data */
+	size_t datalen;			/* length of data in C-APDU */
+	unsigned char *resp;		/* R-APDU data buffer */
+	size_t resplen;			/* in: size of R-APDU buffer,
+					 * out: length of data returned in R-APDU */
+	unsigned char control;		/* Set if APDU should go to the reader */
+	unsigned allocation_flags;	/* APDU allocation flags */
+
+	unsigned int sw1, sw2;		/* Status words returned in R-APDU */
+	unsigned char mac[8];
+	size_t mac_len;
 
 	unsigned long flags;
 
@@ -311,13 +336,11 @@ typedef struct sc_serial_number {
 
 /**
  * @struct sc_remote_apdu data
- * Structure to supply the linked APDU data used in 
+ * Structure to supply the linked APDU data used in
  * communication with the external (SM) modules.
  */
-#define SC_REMOTE_APDU_FLAG_FATAL
-#define SC_REMOTE_APDU_FLAG_LAST
-#define SC_REMOTE_APDU_FLAG_RETURN_ANSWER
-#define SC_REMOTE_APDU_FLAG_GET_RESPONSE
+#define SC_REMOTE_APDU_FLAG_NOT_FATAL		0x01
+#define SC_REMOTE_APDU_FLAG_RETURN_ANSWER	0x02
 struct sc_remote_apdu {
 	unsigned char sbuf[2*SC_MAX_APDU_BUFFER_SIZE];
 	unsigned char rbuf[2*SC_MAX_APDU_BUFFER_SIZE];

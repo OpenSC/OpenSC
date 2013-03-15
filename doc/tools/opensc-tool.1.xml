@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<refentry id="opensc-tool">
+	<refmeta>
+		<refentrytitle>opensc-tool</refentrytitle>
+		<manvolnum>1</manvolnum>
+		<refmiscinfo class="productname">OpenSC</refmiscinfo>
+		<refmiscinfo class="manual">OpenSC Tools</refmiscinfo>
+		<refmiscinfo class="source">opensc</refmiscinfo>
+	</refmeta>
+
+	<refnamediv>
+		<refname>opensc-tool</refname>
+		<refpurpose>generic smart card utility</refpurpose>
+	</refnamediv>
+
+	<refsynopsisdiv>
+		<cmdsynopsis>
+			<command>opensc-tool</command>
+			<arg choice="opt"><replaceable class="option">OPTIONS</replaceable></arg>
+		</cmdsynopsis>
+	</refsynopsisdiv>
+
+	<refsect1>
+		<title>Description</title>
+		<para>
+			The <command>opensc-tool</command> utility can be used from the command line to perform
+			miscellaneous smart card operations such as getting the card ATR or
+			sending arbitrary APDU commands to a card.
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Options</title>
+		<para>
+			<variablelist>
+				<varlistentry>
+					<term>
+						<option>--atr</option>,
+						<option>-a</option>
+					</term>
+					<listitem><para>Print the Answer To Reset (ATR) of the card.
+					Output is in hex byte format</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--card-driver</option> <replaceable>driver</replaceable>,
+						<option>-c</option> <replaceable>driver</replaceable>
+					</term>
+					<listitem><para>Use the given card driver.
+					The default is auto-detected.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--info</option>,
+						<option>-i</option>
+					</term>
+					<listitem><para>Print information about OpenSC, such as version and enabled components.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--list-drivers</option>,
+						<option>-D</option>
+					</term>
+					<listitem><para>List all installed card drivers.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--list-files</option>,
+						<option>-f</option>
+					</term>
+					<listitem><para>Recursively list all files stored on card.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--list-readers</option>,
+						<option>-l</option>
+					</term>
+					<listitem><para>List all configured readers.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--name</option>,
+						<option>-n</option>
+					</term>
+					<listitem><para>Print the name of the inserted card (driver).</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--reader</option> <replaceable>num</replaceable>,
+						<option>-r</option> <replaceable>num</replaceable>
+					</term>
+					<listitem><para>Use the given reader number.
+					The default is <literal>0</literal>, the first reader in the system.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--send-apdu</option> <replaceable>apdu</replaceable>,
+						<option>-s</option> <replaceable>apdu</replaceable>
+					</term>
+					<listitem><para>Sends an arbitrary APDU to the card in the format
+					<code>AA:BB:CC:DD:EE:FF...</code>.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--serial</option>
+					</term>
+					<listitem><para>Print the card serial number (normally the ICCSN).
+					Output is in hex byte format</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--verbose</option>,
+						<option>-v</option>
+					</term>
+					<listitem><para>Causes <command>opensc-tool</command> to be more verbose.
+					Specify this flag several times to enable debug output in the opensc library.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--wait</option>,
+						<option>-w</option>
+					</term>
+					<listitem><para>Wait for a card to be inserted.</para></listitem>
+				</varlistentry>
+			</variablelist>
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>See also</title>
+		<para>
+			<citerefentry>
+				<refentrytitle>opensc-explorer</refentrytitle>
+				<manvolnum>1</manvolnum>
+			</citerefentry>
+		</para>
+	</refsect1>
+
+</refentry>

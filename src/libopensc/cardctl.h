@@ -21,6 +21,7 @@
 #ifndef _OPENSC_CARDCTL_H
 #define _OPENSC_CARDCTL_H
 
+#include <time.h>
 #include "libopensc/types.h"
 
 #ifdef __cplusplus
@@ -41,6 +42,8 @@ enum {
 	SC_CARDCTL_GET_SERIALNR,
 	SC_CARDCTL_GET_SE_INFO,
 	SC_CARDCTL_GET_CHV_REFERENCE_IN_SE,
+	SC_CARDCTL_PKCS11_INIT_TOKEN,
+	SC_CARDCTL_PKCS11_INIT_PIN,
 
 	/*
 	 * GPK specific calls
@@ -228,7 +231,24 @@ enum {
 	SC_CARDCTL_IASECC_SDO_GET_DATA,
 	SC_CARDCTL_IASECC_SDO_GENERATE,
 	SC_CARDCTL_IASECC_SDO_CREATE,
-	SC_CARDCTL_IASECC_SDO_DELETE
+	SC_CARDCTL_IASECC_SDO_DELETE,
+
+	/*
+	 * OpenPGP
+	 */
+	SC_CARDCTL_OPENPGP_BASE = _CTL_PREFIX('P', 'G', 'P'),
+	SC_CARDCTL_OPENPGP_GENERATE_KEY,
+	SC_CARDCTL_OPENPGP_STORE_KEY,
+
+	/*
+	 * SmartCard-HSM
+	 */
+	SC_CARDCTL_SC_HSMP_BASE = _CTL_PREFIX('S', 'C', 'H'),
+	SC_CARDCTL_SC_HSM_GENERATE_KEY,
+	SC_CARDCTL_SC_HSM_INITIALIZE,
+	SC_CARDCTL_SC_HSM_IMPORT_DKEK_SHARE,
+	SC_CARDCTL_SC_HSM_WRAP_KEY,
+	SC_CARDCTL_SC_HSM_UNWRAP_KEY
 };
 
 enum {
@@ -248,6 +268,23 @@ struct sc_cardctl_default_key {
 	size_t		len;		/* in: max size, out: actual size */
 	u8 *		key_data;	/* out: key data */
 };
+
+/*
+ * Generic cardctl - initialize token using PKCS#11 style
+ */
+typedef struct sc_cardctl_pkcs11_init_token {
+	const char *	so_pin;
+	size_t			so_pin_len;
+	const char *	label;
+} sc_cardctl_pkcs11_init_token_t;
+
+/*
+ * Generic cardctl - set pin using PKCS#11 style
+ */
+typedef struct sc_cardctl_pkcs11_init_pin {
+	const char *	pin;
+	size_t			pin_len;
+} sc_cardctl_pkcs11_init_pin_t;
 
 /*
  * GPK lock file.
@@ -709,6 +746,48 @@ typedef struct sc_entersafe_gen_key_data_st {
 	u8	*modulus;
 } sc_entersafe_gen_key_data;
 
+#define	SC_EPASS2003_KEY	0x00000010
+#define	SC_EPASS2003_KEY_RSA	0x00000011
+#define	SC_EPASS2003_SECRET	0x00000020
+#define	SC_EPASS2003_SECRET_PRE	0x00000021
+#define	SC_EPASS2003_SECRET_PIN	0x00000022
+
+#define EPASS2003_AC_EVERYONE		0x00
+#define EPASS2003_AC_USER		0x06
+#define EPASS2003_AC_SO			0x08
+#define EPASS2003_AC_NOONE		0x0F
+#define EPASS2003_AC_MAC_UNEQUAL	0x80
+#define EPASS2003_AC_MAC_NOLESS		0x90
+#define EPASS2003_AC_MAC_LESS		0xA0
+#define EPASS2003_AC_MAC_EQUAL		0xB0
+
+#define FID_STEP 0x20
+
+typedef struct sc_epass2003_wkey_data_st {
+	 u8 type;
+	 union {
+		  struct {
+			  unsigned short fid;
+			  struct sc_pkcs15_prkey_rsa* rsa;
+		  } es_key;
+		  struct {
+			  u8 kid;
+			  u8 EC;
+			  u8 ac[2];
+			  u8 key_val[256];
+			  size_t key_len;
+		  } es_secret;
+	 } key_data;
+} sc_epass2003_wkey_data;
+
+typedef struct sc_epass2003_gen_key_data_st {
+	 int prkey_id;
+	 int pukey_id;
+	 size_t key_length;
+	 u8 *modulus;
+} sc_epass2003_gen_key_data;
+
+
 #if defined(__APPLE__) || defined(sun)
 #pragma pack()
 #else
@@ -742,8 +821,16 @@ typedef struct sc_rtecp_genkey_data {
 } sc_rtecp_genkey_data_t;
 
 /*
-* MyEID stuff
-*/
+ * MyEID stuff
+ */
+	enum SC_CARDCTL_MYEID_KEY_TYPE {
+		SC_CARDCTL_MYEID_KEY_RSA = 0x11,
+		SC_CARDCTL_MYEID_KEY_EC  = 0x21,
+	/*	SC_CARDCTL_MYEID_KEY_AES = 0x?, // for future use
+		SC_CARDCTL_MYEID_KEY_DES = 0x?,
+		SC_CARDCTL_MYEID_KEY_3DES = 0x?, */
+	};
+
 	struct sc_cardctl_myeid_data_obj {
 		int     P1;
 		int     P2;
@@ -753,22 +840,28 @@ typedef struct sc_rtecp_genkey_data {
 	};
 
 	struct sc_cardctl_myeid_gen_store_key_info {
-	int             op_type;
-	unsigned int    mod_len;   
-	unsigned char  *mod;
-	unsigned int    pubexp_len;  
-	unsigned char  *pubexp;
-	unsigned int    primep_len;  
-	unsigned char  *primep;
-	unsigned int    primeq_len;  
-	unsigned char  *primeq;
-	unsigned int    dp1_len;  
-	unsigned char  *dp1;
-	unsigned int    dq1_len;  
-	unsigned char  *dq1;
-	unsigned int    invq_len;  
-	unsigned char  *invq;
-};
+		int             op_type;
+		unsigned int	key_type;			/* value of SC_CARDCTL_MYEID_KEY_TYPE */ 
+		unsigned int    key_len_bits;   
+		unsigned char  *mod;
+		unsigned int    pubexp_len;  
+		unsigned char  *pubexp;
+		unsigned int    primep_len;  
+		unsigned char  *primep;
+		unsigned int    primeq_len;  
+		unsigned char  *primeq;
+		unsigned int    dp1_len;  
+		unsigned char  *dp1;
+		unsigned int    dq1_len;  
+		unsigned char  *dq1;
+		unsigned int    invq_len;  
+		unsigned char  *invq;
+		/* new for MyEID > 3.6.0 */
+		unsigned char  *d;                  /* EC private key */
+		unsigned int    d_len;              /* EC */ 
+		unsigned char  *ecpublic_point;     /* EC public key */
+		unsigned int    ecpublic_point_len; /* EC */
+    };
 
 /*
  * PIV info
@@ -786,6 +879,75 @@ typedef struct sc_cardctl_piv_genkey_info_st {
 	unsigned int    ecpoint_len;    /* EC */
 
 } sc_cardctl_piv_genkey_info_t;
+
+/*
+ * OpenPGP
+ */
+#define SC_OPENPGP_KEY_SIGN		1
+#define SC_OPENPGP_KEY_ENCR		2
+#define SC_OPENPGP_KEY_AUTH		3
+
+#define SC_OPENPGP_KEYFORMAT_STD	0    /* See 4.3.3.6 Algorithm Attributes */
+#define SC_OPENPGP_KEYFORMAT_STDN	1    /* OpenPGP card spec v2 */
+#define SC_OPENPGP_KEYFORMAT_CRT	2
+#define SC_OPENPGP_KEYFORMAT_CRTN	3
+
+typedef struct sc_cardctl_openpgp_keygen_info {
+	u8 keytype;		      /* SC_OPENPGP_KEY_ */
+	u8 *modulus;          /* New-generated pubkey info responded from the card */
+	size_t modulus_len;   /* Length of modulus in bit */
+	u8 *exponent;
+	size_t exponent_len;
+} sc_cardctl_openpgp_keygen_info_t;
+
+typedef struct sc_cardctl_openpgp_keystore_info {
+	u8 keytype;
+	u8 keyformat;
+	u8 *e;
+	size_t e_len;
+	u8 *p;
+	size_t p_len;
+	u8 *q;
+	size_t q_len;
+	u8 *n;
+	size_t n_len;
+	time_t creationtime;
+} sc_cardctl_openpgp_keystore_info_t;
+
+/*
+ * SmartCard-HSM
+ */
+typedef struct sc_cardctl_sc_hsm_keygen_info {
+	u8 key_id;
+	u8 auth_key_id;				/* Key to use for CV request signing */
+	u8 *gakprequest;			/* GENERATE ASYMMETRIC KEY PAIR request */
+	size_t gakprequest_len;		/* Size of request */
+	u8 *gakpresponse;			/* Authenticated CV request, allocated by the driver */
+	size_t gakpresponse_len;	/* Size of response */
+} sc_cardctl_sc_hsm_keygen_info_t;
+
+typedef struct sc_cardctl_sc_hsm_init_param {
+	u8 init_code[8];			/* Initialization code */
+	u8 *user_pin;				/* Initial user PIN */
+	size_t user_pin_len;		/* Length of user PIN */
+	u8 user_pin_retry_counter;	/* Retry counter default value */
+	u8 options[2];				/* Initilization options */
+	char dkek_shares;			/* Number of DKEK shares, 0 for card generated, -1 for none */
+} sc_cardctl_sc_hsm_init_param_t;
+
+typedef struct sc_cardctl_sc_hsm_dkek {
+	int importShare;			/* True to import share, false to just query status */
+	u8 dkek_share[32];			/* AES-256 DKEK share */
+	u8 dkek_shares;				/* Total number of shares */
+	u8 outstanding_shares;		/* Number of shares to be presented */
+	u8 key_check_value[8];		/* Key check value for DKEK */
+} sc_cardctl_sc_hsm_dkek_t;
+
+typedef struct sc_cardctl_sc_hsm_wrapped_key {
+	u8 key_id;					/* Key identifier */
+	u8 *wrapped_key;			/* Binary wrapped key */
+	size_t wrapped_key_length;	/* Length of key blob */
+} sc_cardctl_sc_hsm_wrapped_key_t;
 
 #ifdef __cplusplus
 }

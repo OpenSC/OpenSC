@@ -44,16 +44,11 @@ static sc_pkcs11_mechanism_type_t openssl_sha1_mech = {
 	sc_pkcs11_openssl_md_init,
 	sc_pkcs11_openssl_md_update,
 	sc_pkcs11_openssl_md_final,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL
+	NULL, NULL, NULL, NULL,	/* sign_* */
+	NULL, NULL, NULL,	/* verif_* */
+	NULL, NULL,		/* decrypt_* */
+	NULL,			/* derive */
+	NULL			/* mech_data */
 };
 
 #if OPENSSL_VERSION_NUMBER >= 0x00908000L
@@ -66,16 +61,11 @@ static sc_pkcs11_mechanism_type_t openssl_sha256_mech = {
 	sc_pkcs11_openssl_md_init,
 	sc_pkcs11_openssl_md_update,
 	sc_pkcs11_openssl_md_final,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL
+	NULL, NULL, NULL, NULL,	/* sign_* */
+	NULL, NULL, NULL,	/* verif_* */
+	NULL, NULL,		/* decrypt_* */
+	NULL,			/* derive */
+	NULL			/* mech_data */
 };
 
 static sc_pkcs11_mechanism_type_t openssl_sha384_mech = {
@@ -87,16 +77,11 @@ static sc_pkcs11_mechanism_type_t openssl_sha384_mech = {
 	sc_pkcs11_openssl_md_init,
 	sc_pkcs11_openssl_md_update,
 	sc_pkcs11_openssl_md_final,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL
+	NULL, NULL, NULL, NULL,	/* sign_* */
+	NULL, NULL, NULL,	/* verif_* */
+	NULL, NULL,		/* decrypt_* */
+	NULL,			/* derive */
+	NULL			/* mech_data */
 };
 
 static sc_pkcs11_mechanism_type_t openssl_sha512_mech = {
@@ -108,16 +93,11 @@ static sc_pkcs11_mechanism_type_t openssl_sha512_mech = {
 	sc_pkcs11_openssl_md_init,
 	sc_pkcs11_openssl_md_update,
 	sc_pkcs11_openssl_md_final,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL
+	NULL, NULL, NULL, NULL,	/* sign_* */
+	NULL, NULL, NULL,	/* verif_* */
+	NULL, NULL,		/* decrypt_* */
+	NULL,			/* derive */
+	NULL			/* mech_data */
 };
 #endif
 
@@ -131,16 +111,11 @@ static sc_pkcs11_mechanism_type_t openssl_gostr3411_mech = {
 	sc_pkcs11_openssl_md_init,
 	sc_pkcs11_openssl_md_update,
 	sc_pkcs11_openssl_md_final,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL
+	NULL, NULL, NULL, NULL,	/* sign_* */
+	NULL, NULL, NULL,	/* verif_* */
+	NULL, NULL,		/* decrypt_* */
+	NULL,			/* derive */
+	NULL			/* mech_data */
 };
 #endif
 
@@ -153,16 +128,11 @@ static sc_pkcs11_mechanism_type_t openssl_md5_mech = {
 	sc_pkcs11_openssl_md_init,
 	sc_pkcs11_openssl_md_update,
 	sc_pkcs11_openssl_md_final,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL
+	NULL, NULL, NULL, NULL,	/* sign_* */
+	NULL, NULL, NULL,	/* verif_* */
+	NULL, NULL,		/* decrypt_* */
+	NULL,			/* derive */
+	NULL			/* mech_data */
 };
 
 static sc_pkcs11_mechanism_type_t openssl_ripemd160_mech = {
@@ -174,16 +144,11 @@ static sc_pkcs11_mechanism_type_t openssl_ripemd160_mech = {
 	sc_pkcs11_openssl_md_init,
 	sc_pkcs11_openssl_md_update,
 	sc_pkcs11_openssl_md_final,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL
+	NULL, NULL, NULL, NULL,	/* sign_* */
+	NULL, NULL, NULL,	/* verif_* */
+	NULL, NULL,		/* decrypt_* */
+	NULL,			/* derive */
+	NULL			/* mech_data */
 };
 
 void
@@ -282,7 +247,7 @@ static CK_RV sc_pkcs11_openssl_md_final(sc_pkcs11_operation_t *op,
 	EVP_MD_CTX *md_ctx = DIGEST_CTX(op);
 
 	if (*pulDigestLen < (unsigned) EVP_MD_CTX_size(md_ctx)) {
-		sc_debug(context, SC_LOG_DEBUG_NORMAL, "Provided buffer too small: %ul < %d",
+		sc_log(context, "Provided buffer too small: %ul < %d",
 			*pulDigestLen, EVP_MD_CTX_size(md_ctx));
 		*pulDigestLen = EVP_MD_CTX_size(md_ctx);
 		return CKR_BUFFER_TOO_SMALL;
@@ -322,7 +287,7 @@ static CK_RV gostr3410_verify_data(const unsigned char *pubkey, int pubkey_len,
 		unsigned char *signat, int signat_len)
 {
 	EVP_PKEY *pkey;
-	EVP_PKEY_CTX *pkey_ctx;
+	EVP_PKEY_CTX *pkey_ctx = NULL;
 	EC_POINT *P;
 	BIGNUM *X, *Y;
 	ASN1_OCTET_STRING *octet;
@@ -429,7 +394,7 @@ CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, int pubkey_len,
 		else if (res == 0)
 			return CKR_SIGNATURE_INVALID;
 		else {
-			sc_debug(context, SC_LOG_DEBUG_NORMAL, "EVP_VerifyFinal() returned %d\n", res);
+			sc_log(context, "EVP_VerifyFinal() returned %d\n", res);
 			return CKR_GENERAL_ERROR;
 		}
 	}
@@ -460,12 +425,12 @@ CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, int pubkey_len,
 			RSA_free(rsa);
 			return CKR_DEVICE_MEMORY;
 		}
-		
+
 		rsa_outlen = RSA_public_decrypt(signat_len, signat, rsa_out, rsa, pad);
 		RSA_free(rsa);
 		if(rsa_outlen <= 0) {
 			free(rsa_out);
-			sc_debug(context, SC_LOG_DEBUG_NORMAL, "RSA_public_decrypt() returned %d\n", rsa_outlen);
+			sc_log(context, "RSA_public_decrypt() returned %d\n", rsa_outlen);
 			return CKR_GENERAL_ERROR;
 		}
 

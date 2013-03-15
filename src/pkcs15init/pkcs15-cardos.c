@@ -170,8 +170,6 @@ cardos_select_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		/* PINs are even numbered, PUKs are odd */
 		if (!(preferred & 1))
 			preferred++;
-		if (preferred >= 126)
-			return SC_ERROR_TOO_MANY_OBJECTS;
 	}
 
 	if (current > preferred || preferred > CARDOS_PIN_ID_MAX)
@@ -356,7 +354,7 @@ cardos_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
-	pin_id = sc_pkcs15init_get_pin_reference(p15card, profile, 
+	pin_id = sc_pkcs15init_get_pin_reference(p15card, profile,
 			SC_AC_SYMBOLIC, SC_PKCS15INIT_USER_PIN);
 	if (pin_id >= 0) {
 		r = sc_pkcs15init_verify_secret(profile, p15card, NULL, SC_AC_CHV, pin_id);
@@ -646,7 +644,7 @@ cardos_store_key_component(sc_card_t *card,
 }
 
 
-static int 
+static int
 cardos_put_key(sc_profile_t *profile, struct sc_pkcs15_card *p15card,
 	int algorithm, sc_pkcs15_prkey_info_t *key_info,
 	struct sc_pkcs15_prkey_rsa *key)
@@ -654,7 +652,7 @@ cardos_put_key(sc_profile_t *profile, struct sc_pkcs15_card *p15card,
 	struct sc_card *card = p15card->card;
 	int	r, key_id, pin_id;
 
-	pin_id = sc_pkcs15init_get_pin_reference(p15card, profile, SC_AC_SYMBOLIC, 
+	pin_id = sc_pkcs15init_get_pin_reference(p15card, profile, SC_AC_SYMBOLIC,
 			SC_PKCS15INIT_USER_PIN);
 	if (pin_id < 0)
 		pin_id = 0;
@@ -733,7 +731,7 @@ static int parse_ext_pubkey_file(sc_card_t *card, const u8 *data, size_t len,
 		return SC_ERROR_OUT_OF_MEMORY;
 	memcpy(pubkey->u.rsa.exponent.data, p, tlen);
 
-	return SC_SUCCESS; 
+	return SC_SUCCESS;
 }
 
 static int

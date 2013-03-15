@@ -69,7 +69,8 @@ const char *sc_strerror(int error)
 		"Data object not found",
 		"Not enough memory on card",
 		"Part of returned data may be corrupted",
-		"End of file/record reached before reading Le bytes"
+		"End of file/record reached before reading Le bytes",
+		"Reference data not usable"
 	};
 	const int card_base = -SC_ERROR_CARD_CMD_FAILED;
 
@@ -89,12 +90,12 @@ const char *sc_strerror(int error)
 		"Required ASN.1 object not found",
 		"Premature end of ASN.1 stream",
 		"Out of memory",
+		"Too many objects",
 		"Object not valid",
-		"Object not found",
 		"Requested object not found",
 		"Not supported",
 		"Passphrase required",
-		"UNUSED",
+		"Inconsistent configuration",
 		"Decryption failed",
 		"Wrong padding",
 		"Unsupported card",
@@ -119,7 +120,6 @@ const char *sc_strerror(int error)
 	};
 	const int p15i_base = -SC_ERROR_PKCS15INIT;
 
-	const int sm_base = -SC_ERROR_SM;
 	const char *sm_errors[] = {
 		"Generic Secure Messaging error",
 		"Data enciphering error",
@@ -130,9 +130,12 @@ const char *sc_strerror(int error)
 		"Cannot authenticate card",
 		"Random generation error",
 		"Secure messaging keyset not found",
-		"IFD data missing"
+		"IFD data missing",
+		"SM not applied",
+		"SM session already active",
+		"Invalid checksum"
 	};
-
+	const int sm_base = -SC_ERROR_SM;
 
 	const char *misc_errors[] = {
 		"Unknown error",

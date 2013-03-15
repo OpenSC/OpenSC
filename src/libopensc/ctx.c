@@ -28,15 +28,12 @@
 #include <sys/stat.h>
 #include <limits.h>
 
-#ifdef HAVE_LTDL_H
-#include <ltdl.h>
-#endif
-
 #ifdef _WIN32
 #include <windows.h>
 #include <winreg.h>
 #endif
 
+#include "common/libscdl.h"
 #include "internal.h"
 
 int _sc_add_reader(sc_context_t *ctx, sc_reader_t *reader)
@@ -91,11 +88,15 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 	{ "akis",	(void *(*)(void)) sc_get_akis_driver },
 #ifdef ENABLE_OPENSSL
 	{ "entersafe",(void *(*)(void)) sc_get_entersafe_driver },
+#ifdef ENABLE_SM
+	{ "epass2003",(void *(*)(void)) sc_get_epass2003_driver },
+#endif
 #endif
 	{ "rutoken",	(void *(*)(void)) sc_get_rutoken_driver },
 	{ "rutoken_ecp",(void *(*)(void)) sc_get_rtecp_driver },
 	{ "westcos",	(void *(*)(void)) sc_get_westcos_driver },
 	{ "myeid",      (void *(*)(void)) sc_get_myeid_driver },
+	{ "sc-hsm",		(void *(*)(void)) sc_get_sc_hsm_driver },
 
 /* Here should be placed drivers that need some APDU transactions to
  * recognise its cards. */
@@ -147,7 +148,7 @@ static void add_drv(struct _sc_ctx_options *opts, const char *name)
 {
 	struct _sc_driver_entry *lst;
 	int *cp, max, i;
-	
+
 	lst = opts->cdrv;
 	cp = &opts->ccount;
 	max = SC_MAX_CARD_DRIVERS;
@@ -180,6 +181,7 @@ static void set_defaults(sc_context_t *ctx, struct _sc_ctx_options *opts)
 	if (ctx->debug_file && (ctx->debug_file != stderr && ctx->debug_file != stdout))
 		fclose(ctx->debug_file);
 	ctx->debug_file = stderr;
+	ctx->paranoid_memory = 0;
 #ifdef __APPLE__
 	/* Override the default debug log for OpenSC.tokend to be different from PKCS#11.
 	 * TODO: Could be moved to OpenSC.tokend */
@@ -213,22 +215,42 @@ int sc_ctx_log_to_file(sc_context_t *ctx, const char* filename)
 	return SC_SUCCESS;
 }
 
-static int load_parameters(sc_context_t *ctx, scconf_block *block,
-			   struct _sc_ctx_options *opts)
+
+static int
+load_parameters(sc_context_t *ctx, scconf_block *block, struct _sc_ctx_options *opts)
 {
 	int err = 0;
 	const scconf_list *list;
 	const char *val, *s_internal = "internal";
-    const char *debug = NULL;
+	int debug;
+	int reopen;
+#ifdef _WIN32
+	char expanded_val[PATH_MAX];
+	DWORD expanded_len;
+#endif
 
-	ctx->debug = scconf_get_int(block, "debug", ctx->debug);
-	debug = getenv("OPENSC_DEBUG");
-	if (debug)
-		ctx->debug = atoi(debug);
+	reopen = scconf_get_bool(block, "reopen_debug_file", 1);
+
+	debug = scconf_get_int(block, "debug", ctx->debug);
+	if (debug > ctx->debug)
+		ctx->debug = debug;
 
 	val = scconf_get_str(block, "debug_file", NULL);
-	if (val)
+	if (val)   {
+#ifdef _WIN32
+		expanded_len = PATH_MAX;
+		expanded_len = ExpandEnvironmentStrings(val, expanded_val, expanded_len);
+		if (expanded_len > 0)
+			val = expanded_val;
+#endif
+		if (reopen)
+			ctx->debug_filename = strdup(val);
+
 		sc_ctx_log_to_file(ctx, val);
+	}
+
+	ctx->paranoid_memory = scconf_get_bool (block, "paranoid-memory",
+		ctx->paranoid_memory);
 
 	val = scconf_get_str(block, "force_card_driver", NULL);
 	if (val) {
@@ -255,12 +277,12 @@ static void load_reader_driver_options(sc_context_t *ctx)
 {
 	struct sc_reader_driver *driver = ctx->reader_driver;
 	scconf_block *conf_block = NULL;
-	
+
 	driver->max_send_size = 0;
 	driver->max_recv_size = 0;
 
 	conf_block = sc_get_conf_block(ctx, "reader_driver", driver->short_name, 1);
-	
+
 	if (conf_block != NULL) {
 		driver->max_send_size = scconf_get_int(conf_block, "max_send_size", driver->max_send_size);
 		driver->max_recv_size = scconf_get_int(conf_block, "max_recv_size", driver->max_recv_size);
@@ -287,13 +309,11 @@ static const char *find_library(sc_context_t *ctx, const char *name)
 			continue;
 		libname = scconf_get_str(blk, "module", name);
 #ifdef _WIN32
-		if (libname && libname[0] != '\\' ) {
+		if (libname && libname[0] != '\\' )
 #else
-		if (libname && libname[0] != '/' ) {
+		if (libname && libname[0] != '/' )
 #endif
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "warning: relative path to driver '%s' used",
-				 libname);
-		}
+			sc_log(ctx, "warning: relative path to driver '%s' used", libname);
 		break;
 	}
 
@@ -317,7 +337,7 @@ static void *load_dynamic_driver(sc_context_t *ctx, void **dll, const char *name
 	const char *(**tmodv)(void) = &modversion;
 
 	if (name == NULL) { /* should not occurr, but... */
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL,"No module specified",name);
+		sc_log(ctx, "No module specified", name);
 		return NULL;
 	}
 	libname = find_library(ctx, name);
@@ -325,7 +345,7 @@ static void *load_dynamic_driver(sc_context_t *ctx, void **dll, const char *name
 		return NULL;
 	handle = sc_dlopen(libname);
 	if (handle == NULL) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Module %s: cannot load %s library: %s", name, libname, sc_dlerror());
+		sc_log(ctx, "Module %s: cannot load %s library: %s", name, libname, sc_dlerror());
 		return NULL;
 	}
 
@@ -333,7 +353,7 @@ static void *load_dynamic_driver(sc_context_t *ctx, void **dll, const char *name
 	*(void **)tmodi = sc_dlsym(handle, "sc_module_init");
 	*(void **)tmodv = sc_dlsym(handle, "sc_driver_version");
 	if (modinit == NULL || modversion == NULL) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "dynamic library '%s' is not a OpenSC module",libname);
+		sc_log(ctx, "dynamic library '%s' is not a OpenSC module",libname);
 		sc_dlclose(handle);
 		return NULL;
 	}
@@ -341,12 +361,13 @@ static void *load_dynamic_driver(sc_context_t *ctx, void **dll, const char *name
 	version = modversion();
 	/* XXX: We really need to have ABI version for each interface */
 	if (version == NULL || strncmp(version, PACKAGE_VERSION, strlen(PACKAGE_VERSION)) != 0) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL,"dynamic library '%s': invalid module version",libname);
+		sc_log(ctx, "dynamic library '%s': invalid module version", libname);
 		sc_dlclose(handle);
 		return NULL;
 	}
-	*dll = handle;
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "successfully loaded card driver '%s'", name);
+	if (dll)
+		*dll = handle;
+	sc_log(ctx, "successfully loaded card driver '%s'", name);
 	return modinit(name);
 }
 
@@ -357,9 +378,8 @@ static int load_card_driver_options(sc_context_t *ctx,
 	int i;
 
 	for (i = 0; ctx->conf_blocks[i]; i++) {
-		blocks = scconf_find_blocks(ctx->conf,
-					ctx->conf_blocks[i],
-					"card_driver", driver->short_name);
+		blocks = scconf_find_blocks(ctx->conf, ctx->conf_blocks[i],
+				"card_driver", driver->short_name);
 		if (!blocks)
 			continue;
 		blk = blocks[0];
@@ -380,13 +400,19 @@ static int load_card_drivers(sc_context_t *ctx,
 	int drv_count;
 	int i;
 
-	for (drv_count = 0; ctx->card_drivers[drv_count] != NULL; drv_count++);
+	for (drv_count = 0; ctx->card_drivers[drv_count] != NULL; drv_count++)
+		;
 
 	for (i = 0; i < opts->ccount; i++) {
 		struct sc_card_driver *(*func)(void) = NULL;
 		struct sc_card_driver *(**tfunc)(void) = &func;
 		void *dll = NULL;
 		int  j;
+
+		if (drv_count >= SC_MAX_CARD_DRIVERS - 1)   {
+			sc_log(ctx, "Not more then %i card drivers allowed.", SC_MAX_CARD_DRIVERS);
+			break;
+		}
 
 		ent = &opts->cdrv[i];
 		for (j = 0; internal_card_drivers[j].name != NULL; j++)
@@ -399,7 +425,9 @@ static int load_card_drivers(sc_context_t *ctx,
 			*(void **)(tfunc) = load_dynamic_driver(ctx, &dll, ent->name);
 		/* if still null, assume driver not found */
 		if (func == NULL) {
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Unable to load '%s'.", ent->name);
+			sc_log(ctx, "Unable to load '%s'.", ent->name);
+			if (dll)
+				sc_dlclose(dll);
 			continue;
 		}
 
@@ -410,6 +438,10 @@ static int load_card_drivers(sc_context_t *ctx,
 		ctx->card_drivers[drv_count]->natrs = 0;
 
 		load_card_driver_options(ctx, ctx->card_drivers[drv_count]);
+
+		/* Ensure that the list is always terminated by NULL */
+		ctx->card_drivers[drv_count + 1] = NULL;
+
 		drv_count++;
 	}
 	return SC_SUCCESS;
@@ -466,19 +498,18 @@ static int load_card_atrs(sc_context_t *ctx)
 			t.type = scconf_get_int(b, "type", SC_CARD_TYPE_UNKNOWN);
 			list = scconf_find_list(b, "flags");
 			while (list != NULL) {
-				unsigned int flags;
+				unsigned int flags = 0;
 
 				if (!list->data) {
 					list = list->next;
 					continue;
 				}
-				flags = 0;
-				if (!strcmp(list->data, "rng")) {
+
+				if (!strcmp(list->data, "rng"))
 					flags = SC_CARD_FLAG_RNG;
-				} else {
-					if (sscanf(list->data, "%x", &flags) != 1)
-						flags = 0;
-				}
+				else if (sscanf(list->data, "%x", &flags) != 1)
+					flags = 0;
+
 				t.flags |= flags;
 				list = list->next;
 			}
@@ -495,12 +526,18 @@ static void process_config_file(sc_context_t *ctx, struct _sc_ctx_options *opts)
 	int i, r, count = 0;
 	scconf_block **blocks;
 	const char *conf_path = NULL;
+	const char *debug = NULL;
 #ifdef _WIN32
 	char temp_path[PATH_MAX];
 	DWORD temp_len;
 	long rc;
 	HKEY hKey;
 #endif
+
+	/* Takes effect even when no config around */
+	debug = getenv("OPENSC_DEBUG");
+	if (debug)
+		ctx->debug = atoi(debug);
 
 	memset(ctx->conf_blocks, 0, sizeof(ctx->conf_blocks));
 #ifdef _WIN32
@@ -528,7 +565,7 @@ static void process_config_file(sc_context_t *ctx, struct _sc_ctx_options *opts)
 	}
 
 	if (!conf_path) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "process_config_file doesn't find opensc config file. Please set the registry key.");
+		sc_log(ctx, "process_config_file doesn't find opensc config file. Please set the registry key.");
 		return;
 	}
 
@@ -551,21 +588,21 @@ static void process_config_file(sc_context_t *ctx, struct _sc_ctx_options *opts)
 		 * there, which is not an error. Nevertheless log this
 		 * fact. */
 		if (r < 0)
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "scconf_parse failed: %s", ctx->conf->errmsg);
+			sc_log(ctx, "scconf_parse failed: %s", ctx->conf->errmsg);
 		else
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "scconf_parse failed: %s", ctx->conf->errmsg);
+			sc_log(ctx, "scconf_parse failed: %s", ctx->conf->errmsg);
 		scconf_free(ctx->conf);
 		ctx->conf = NULL;
 		return;
 	}
 	blocks = scconf_find_blocks(ctx->conf, NULL, "app", ctx->app_name);
 	if (blocks[0])
-	    	ctx->conf_blocks[count++] = blocks[0];
+		ctx->conf_blocks[count++] = blocks[0];
 	free(blocks);
 	if (strcmp(ctx->app_name, "default") != 0) {
 		blocks = scconf_find_blocks(ctx->conf, NULL, "app", "default");
 		if (blocks[0])
-		    	ctx->conf_blocks[count] = blocks[0];
+			ctx->conf_blocks[count] = blocks[0];
 		free(blocks);
 	}
 	/* Above we add 2 blocks at most, but conf_blocks has 3 elements,
@@ -583,7 +620,7 @@ int sc_ctx_detect_readers(sc_context_t *ctx)
 
 	if (drv->ops->detect_readers != NULL)
 		r = drv->ops->detect_readers(ctx);
-	
+
 	sc_mutex_unlock(ctx, ctx->mutex);
 
 	return r;
@@ -619,6 +656,24 @@ int sc_establish_context(sc_context_t **ctx_out, const char *app_name)
 	return sc_context_create(ctx_out, &ctx_param);
 }
 
+/* For multithreaded issues */
+int sc_context_repair(sc_context_t **ctx_out)
+{
+	/* Must already exist */
+	if ((ctx_out == NULL) || (*ctx_out == NULL) ||
+	    ((*ctx_out)->app_name == NULL))
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	/* The only thing that should be shared across different contexts are the
+	 * card drivers - so rebuild the ATR's
+	 */
+	load_card_atrs(*ctx_out);
+
+	/* TODO: May need to re-open any card driver DLL's */
+
+	return SC_SUCCESS;
+}
+
 int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 {
 	sc_context_t		*ctx;
@@ -642,7 +697,7 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 		sc_release_context(ctx);
 		return SC_ERROR_OUT_OF_MEMORY;
 	}
-	
+
 	set_defaults(ctx, &opts);
 	list_init(&ctx->readers);
 	list_attributes_seeker(&ctx->readers, reader_list_seeker);
@@ -656,25 +711,15 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 	}
 
 	process_config_file(ctx, &opts);
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "==================================="); /* first thing in the log */
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "opensc version: %s", sc_get_version());
-
-#ifdef HAVE_LTDL_H
-	/* initialize ltdl, if available. See scdl.c for more information */
-	if (lt_dlinit() != 0) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "lt_dlinit() failed");
-		sc_release_context(ctx);
-		return SC_ERROR_INTERNAL;
-	}
-#endif
+	sc_log(ctx, "==================================="); /* first thing in the log */
+	sc_log(ctx, "opensc version: %s", sc_get_version());
 
 #ifdef ENABLE_PCSC
 	ctx->reader_driver = sc_get_pcsc_driver();
 /* XXX: remove cardmod pseudoreader driver */
 #ifdef ENABLE_MINIDRIVER
-	if(strcmp(ctx->app_name, "cardmod") == 0) {
+	if(strcmp(ctx->app_name, "cardmod") == 0)
 		ctx->reader_driver = sc_get_cardmod_driver();
-	}
 #endif
 #elif defined(ENABLE_CTAPI)
 	ctx->reader_driver = sc_get_ctapi_driver();
@@ -683,8 +728,12 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 #endif
 
 	load_reader_driver_options(ctx);
-	ctx->reader_driver->ops->init(ctx);
-	
+	r = ctx->reader_driver->ops->init(ctx);
+	if (r != SC_SUCCESS)   {
+		sc_release_context(ctx);
+		return r;
+	}
+
 	load_card_drivers(ctx, &opts);
 	load_card_atrs(ctx);
 	if (opts.forced_card_driver) {
@@ -695,6 +744,7 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 	del_drvs(&opts);
 	sc_ctx_detect_readers(ctx);
 	*ctx_out = ctx;
+
 	return SC_SUCCESS;
 }
 
@@ -724,7 +774,7 @@ int sc_wait_for_event(sc_context_t *ctx, unsigned int event_mask, sc_reader_t **
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 	if (ctx->reader_driver->ops->wait_for_event != NULL)
 		return ctx->reader_driver->ops->wait_for_event(ctx, event_mask, event_reader, event, timeout, reader_states);
-		
+
 	return SC_ERROR_NOT_SUPPORTED;
 }
 
@@ -756,7 +806,7 @@ int sc_release_context(sc_context_t *ctx)
 	if (ctx->mutex != NULL) {
 		int r = sc_mutex_destroy(ctx, ctx->mutex);
 		if (r != SC_SUCCESS) {
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "unable to destroy mutex");
+			sc_log(ctx, "unable to destroy mutex");
 			return r;
 		}
 	}
@@ -764,9 +814,11 @@ int sc_release_context(sc_context_t *ctx)
 		scconf_free(ctx->conf);
 	if (ctx->debug_file && (ctx->debug_file != stdout && ctx->debug_file != stderr))
 		fclose(ctx->debug_file);
+	if (ctx->debug_filename != NULL)
+		free(ctx->debug_filename);
 	if (ctx->app_name != NULL)
 		free(ctx->app_name);
-		list_destroy(&ctx->readers);
+	list_destroy(&ctx->readers);
 	sc_mem_clear(ctx, sizeof(*ctx));
 	free(ctx);
 	return SC_SUCCESS;
@@ -841,9 +893,9 @@ int sc_make_cache_dir(sc_context_t *ctx)
 		if (mkdir(dirname, 0700) >= 0)
 #endif
 			break;
-		if (errno != ENOENT
-		 || (sp = strrchr(dirname, '/')) == NULL
-		 || sp == dirname)
+
+		if (errno != ENOENT || (sp = strrchr(dirname, '/')) == NULL
+				|| sp == dirname)
 			goto failed;
 		*sp = '\0';
 	}
@@ -865,6 +917,7 @@ int sc_make_cache_dir(sc_context_t *ctx)
 	return SC_SUCCESS;
 
 	/* for lack of a better return code */
-failed:	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "failed to create cache directory");
+failed:
+	sc_log(ctx, "failed to create cache directory");
 	return SC_ERROR_INTERNAL;
 }

@@ -17,17 +17,17 @@ cardinfo {
 #
 pkcs15 {
     # Put certificates into the CDF itself?
-    direct-certificates	= no;
+    direct-certificates = no;
     # Put the DF length into the ODF file?
-    encode-df-length	= no;
+    encode-df-length    = no;
     # Have a lastUpdate field in the EF(TokenInfo)?
-    do-last-update	= no;
+    do-last-update	    = no;
 }
 
 option default {
     macros {
-        #protected	= READ=NONE, UPDATE=CHV1, DELETE=CHV2;
-        #unprotected	= READ=NONE, UPDATE=CHV1, DELETE=CHV1;
+        #protected   = READ=NONE, UPDATE=CHV1, DELETE=CHV2;
+        #unprotected = READ=NONE, UPDATE=CHV1, DELETE=CHV1;
 		
 	unusedspace-size = 510;
 	odf-size	     = 255;
@@ -36,7 +36,7 @@ option default {
 	cdf-trusted-size = 510;
 	prkdf-size	     = 1530;
 	pukdf-size	     = 1530;
-	dodf-size	     = 255;
+	dodf-size	     = 1530;
     }
 }
 
@@ -192,6 +192,16 @@ filesystem {
                 # Certificate template
                 EF certificate {
                     file-id	  = 4301;
+                    structure = transparent;
+                    acl       = READ=NONE, UPDATE=$PIN, DELETE=$PIN;
+                }
+                EF privdata {
+                    file-id   = 4501;
+                    structure = transparent;
+                    acl       = READ=$PIN, UPDATE=$PIN, DELETE=$PIN;
+                }
+                EF data {
+                    file-id   = 4601;
                     structure = transparent;
                     acl       = READ=NONE, UPDATE=$PIN, DELETE=$PIN;
                 }

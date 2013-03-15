@@ -398,7 +398,7 @@ void *list_get_at(const list_t *restrict l, unsigned int pos);
  * @warning Requires a comparator function to be set for the list.
  *
  * Returns the maximum element with respect to the comparator function output.
- * 
+ *
  * @see list_attributes_comparator()
  *
  * @param l     list to operate
@@ -501,7 +501,7 @@ unsigned int list_size(const list_t *restrict l);
  *
  * @param l     list to operate
  * @return      0 iff the list is not empty
- * 
+ *
  * @see list_size()
  */
 int list_empty(const list_t *restrict l);
@@ -519,7 +519,7 @@ int list_empty(const list_t *restrict l);
  * @param l     list to operate
  * @param data  reference of the element to search for
  * @return      position of element in the list, or <0 if not found
- * 
+ *
  * @see list_attributes_comparator()
  * @see list_get_at()
  */
@@ -552,7 +552,7 @@ void *list_seek(list_t *restrict l, const void *indicator);
  * function has been set previously, with list_attributes_comparator();
  * in which case, the given data reference is believed to be in list iff
  * comparator_fun(elementdata, userdata) == 0 for any element in the list.
- * 
+ *
  * @param l     list to operate
  * @param data  reference to the data to search
  * @return      0 iff the list does not contain data as an element
@@ -604,7 +604,7 @@ int list_sort(list_t *restrict l, int versus);
  *
  * @param l     list to operate
  * @return 		0 if the list cannot be currently iterated. >0 otherwise
- * 
+ *
  * @see list_iterator_stop()
  */
 int list_iterator_start(list_t *restrict l);
@@ -731,7 +731,7 @@ int list_dump_filedescriptor(const list_t *restrict l, int fd, size_t *restrict 
  * @see list_dump_filedescriptor()
  * @see list_restore_file()
  *
- * This function stores a representation of the list 
+ * This function stores a representation of the list
  */
 int list_dump_file(const list_t *restrict l, const char *restrict filename, size_t *restrict len);
 

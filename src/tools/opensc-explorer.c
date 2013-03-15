@@ -28,11 +28,20 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 #endif
+#if !defined(_WIN32)
+#include <arpa/inet.h>  /* for htons() */
+#endif
+
+#ifdef HAVE_IO_H
+#include <io.h>
+#endif
 
 #include "libopensc/opensc.h"
 #include "libopensc/asn1.h"
 #include "libopensc/cardctl.h"
 #include "libopensc/cards.h"
+#include "common/compat_strlcpy.h"
+#include "common/compat_getopt.h"
 #include "util.h"
 
 #define DIM(v) (sizeof(v)/sizeof((v)[0]))
@@ -73,7 +82,9 @@ static const char *option_help[] = {
 
 
 /* declare functions called by user commands */
+static int do_echo(int argc, char **argv);
 static int do_ls(int argc, char **argv);
+static int do_find(int argc, char **argv);
 static int do_cd(int argc, char **argv);
 static int do_cat(int argc, char **argv);
 static int do_info(int argc, char **argv);
@@ -93,6 +104,7 @@ static int do_random(int argc, char **argv);
 static int do_get_data(int argc, char **argv);
 static int do_put_data(int argc, char **argv);
 static int do_apdu(int argc, char **argv);
+static int do_sm(int argc, char **argv);
 static int do_asn1(int argc, char **argv);
 static int do_help(int argc, char **argv);
 static int do_quit(int argc, char **argv);
@@ -106,9 +118,15 @@ struct command {
 };
 
 static struct command	cmds[] = {
+	{ do_echo,
+		"echo",	"[<string> ..]",
+		"display arguments"			},
 	{ do_ls,
-		"ls",	"",
-		"list all files in the current DF"	},
+		"ls",	"[<pattern> ..]",
+		"list files in the current DF"		},
+	{ do_find,
+		"find",	"[<start id> [<end id>]]",
+		"find all files in the current DF"	},
 	{ do_cd,
 		"cd",	"{.. | <file id> | aid:<DF name>}",
 		"change to another DF"			},
@@ -131,7 +149,7 @@ static struct command	cmds[] = {
 		"rm",	"<file id>",
 		"remove an EF/DF"			},
 	{ do_verify,
-		"verify",	"<key type><key ref> [<pin>]",
+		"verify",	"{CHV|KEY|AUT|PRO}<key ref> [<pin>]",
 		"present a PIN or key to the card"	},
 	{ do_change,
 		"change",	"CHV<pin ref> [[<old pin>] <new pin>]",
@@ -168,7 +186,10 @@ static struct command	cmds[] = {
 		"send a custom apdu command"		},
 	{ do_asn1,
 		"asn1",	"[<file id>]",
-		"decode an asn1 file"			},
+		"decode an ASN.1 file"			},
+	{ do_sm,
+		"sm",	"open|close",
+		"call SM 'open' or 'close' handlers, if available"},
 	{ do_debug,
 		"debug",	"[<value>]",
 		"get/set the debug level"		},
@@ -283,6 +304,19 @@ static void check_ret(int r, int op, const char *err, const sc_file_t *file)
 		fprintf(stderr, "ACL for operation: %s\n", util_acl_to_str(sc_file_get_acl_entry(file, op)));
 }
 
+static int arg_to_fid(const char *arg, u8 *fid)
+{
+    if (strlen(arg) != 4) {
+        printf("Wrong ID length.\n");
+        return -1;
+    }
+    if (sscanf(arg, "%02X%02X", &fid[0], &fid[1]) != 2) {
+        printf("Invalid ID.\n");
+        return -1;
+    }
+
+    return 0;
+}
 static int arg_to_path(const char *arg, sc_path_t *path, int is_id)
 {
 	memset(path, 0, sizeof(sc_path_t));
@@ -300,19 +334,10 @@ static int arg_to_path(const char *arg, sc_path_t *path, int is_id)
 		}
 	} else {
 		/* file id */
-		unsigned int buf[2];
 		u8 cbuf[2];
+        if (arg_to_fid(arg, cbuf) < 0)
+			return -1;
 
-		if (strlen(arg) != 4) {
-			printf("Wrong ID length.\n");
-			return -1;
-		}
-		if (sscanf(arg, "%02X%02X", &buf[0], &buf[1]) != 2) {
-			printf("Invalid ID.\n");
-			return -1;
-		}
-		cbuf[0] = buf[0];
-		cbuf[1] = buf[1];
 		if ((cbuf[0] == 0x3F && cbuf[1] == 0x00) || is_id) {
 			path->len = 2;
 			memcpy(path->value, cbuf, 2);
@@ -366,13 +391,62 @@ static void print_file(const sc_file_t *file)
 	return;
 }
 
+static int do_echo(int argc, char **argv)
+{
+	int i;
+
+	for (i = 0; i < argc; i++) {
+		printf("%s%s", argv[i], (i < argc) ? " " : "");
+	}
+	printf("\n");
+	return 0;
+}
+
+static int pattern_match(const char *pattern, const char *string)
+{
+	if (pattern == NULL || string == NULL)
+		return 0;
+
+	while (*pattern != '\0' && *string != '\0') {
+		/* wildcard matching multple characters */
+		if (*pattern == '*') {
+			for (pattern++; *string != '\0' ; string++)
+				if (pattern_match(pattern, string))
+					return 1;
+			return 0;
+		}
+		/* simple character class matching a single character */
+		else if (*pattern == '[') {
+			char *end = strchr(pattern, ']');
+			int match = 0;
+
+			for (pattern++; end != NULL && pattern != end; pattern++) {
+				if (tolower(*pattern) == tolower(*string))
+					match++;
+			}
+			if (!match)
+				return 0;
+			pattern++;
+			string++;
+		}
+		/* single character comparison / wildcard matching a single character */
+		else if (tolower(*pattern) == tolower(*string) || *pattern == '?') {
+			pattern++;
+			string++;
+		}
+		else
+			return 0;
+
+		if (*string == '\0' || *pattern == '\0')
+			break;
+	}
+	return (*pattern != '\0' || *string != '\0' || tolower(*pattern) != tolower(*string)) ? 0 : 1;
+}
+
 static int do_ls(int argc, char **argv)
 {
 	u8 buf[256], *cur = buf;
 	int r, count;
-
-	if (argc)
-		return usage(do_ls);
 
 	r = sc_list_files(card, buf, sizeof(buf));
 	if (r < 0) {
@@ -384,28 +458,110 @@ static int do_ls(int argc, char **argv)
 	while (count >= 2) {
 		sc_path_t path;
 		sc_file_t *file = NULL;
+		char filename[10];
+		int i = 0;
+		int matches = 0;
+
+		/* construct file name */
+		sprintf(filename, "%02X%02X", cur[0], cur[1]);
+
+		 /* compare file name against patterns */
+		for (i = 0; i < argc; i++) {
+			if (pattern_match(argv[i], filename)) {
+				matches = 1;
+				break;
+			}
+		}
+
+		/* if any filename pattern were given, filter only matching file names */
+		if (argc == 0 || matches) {
+			if (current_path.type != SC_PATH_TYPE_DF_NAME) {
+				path = current_path;
+				sc_append_path_id(&path, cur, 2);
+			} else {
+				if (sc_path_set(&path, SC_PATH_TYPE_FILE_ID, cur, 2, 0, 0) != SC_SUCCESS) {
+					printf("unable to set path.\n");
+					die(1);
+				}
+			}
+
+			r = sc_select_file(card, &path, &file);
+			if (r) {
+				printf(" %02X%02X unable to select file, %s\n", cur[0], cur[1], sc_strerror(r));
+			} else {
+				file->id = (cur[0] << 8) | cur[1];
+					print_file(file);
+				sc_file_free(file);
+			}
+		}
+		cur += 2;
+		count -= 2;
+		select_current_path_or_die();
+	}
+	return 0;
+}
+
+static int do_find(int argc, char **argv)
+{
+	u8 fid[2], end[2];
+	sc_path_t path;
+	int r;
+
+	fid[0] = 0;
+	fid[1] = 0;
+	end[0] = 0xFF;
+	end[1] = 0xFF;
+	switch (argc) {
+	case 2:
+		if (arg_to_fid(argv[1], end) != 0)
+			return usage(do_find);
+		/* fall through */
+	case 1:
+		if (arg_to_fid(argv[0], fid) != 0)
+			return usage(do_find);
+		/* fall through */
+	case 0:
+		break;
+	default:
+		return usage(do_find);
+	}
+
+	printf("FileID\tType  Size\n");
+	while (1) {
+		sc_file_t *file = NULL;
+
+		printf("(%02X%02X)\r", fid[0], fid[1]);
+		fflush(stdout);
 
 		if (current_path.type != SC_PATH_TYPE_DF_NAME) {
 			path = current_path;
-			sc_append_path_id(&path, cur, 2);
+			sc_append_path_id(&path, fid, sizeof fid);
 		} else {
-			if (sc_path_set(&path, SC_PATH_TYPE_FILE_ID, cur, 2, 0, 0) != SC_SUCCESS) {
+			if (sc_path_set(&path, SC_PATH_TYPE_FILE_ID, fid, 2, 0, 0) != SC_SUCCESS) {
 				printf("unable to set path.\n");
 				die(1);
 			}
 		}
 
 		r = sc_select_file(card, &path, &file);
-		if (r) {
-			printf(" %02X%02X unable to select file, %s\n", cur[0], cur[1], sc_strerror(r));
-		} else {
-			file->id = (cur[0] << 8) | cur[1];
+		switch (r) {
+		case SC_SUCCESS:
+			file->id = (fid[0] << 8) | fid[1];
 			print_file(file);
 			sc_file_free(file);
+			select_current_path_or_die();
+			break;
+		case SC_ERROR_NOT_ALLOWED:
+		case SC_ERROR_SECURITY_STATUS_NOT_SATISFIED:
+			printf("(%02X%02X)\t%s\n", fid[0], fid[1], sc_strerror(r));
+			break;
 		}
-		cur += 2;
-		count -= 2;
-		select_current_path_or_die();
+
+		if (fid[0] == end[0] && fid[1] == end[1])
+			break;
+		fid[1] = fid[1] + 1;
+		if (fid[1] == 0)
+			fid[0] = fid[0] + 1;
 	}
 	return 0;
 }
@@ -444,7 +600,7 @@ static int do_cd(int argc, char **argv)
 		current_path = path;
 		return 0;
 	}
-	if (arg_to_path(argv[0], &path, 0) != 0) 
+	if (arg_to_path(argv[0], &path, 0) != 0)
 		return usage(do_cd);
 
 	r = sc_select_file(card, &path, &file);
@@ -468,30 +624,28 @@ static int do_cd(int argc, char **argv)
 
 static int read_and_util_print_binary_file(sc_file_t *file)
 {
-	unsigned int idx = 0;
-	u8 buf[128];
-	size_t count;
+	unsigned char *buf = NULL;
 	int r;
 
-	count = file->size;
-	while (count) {
-		int c = count > sizeof(buf) ? sizeof(buf) : count;
+	buf = malloc(file->size);
+	if (!buf)
+		return -1;
 
-		r = sc_read_binary(card, idx, buf, c, 0);
-		if (r < 0) {
-			check_ret(r, SC_AC_OP_READ, "read failed", file);
-			return -1;
-		}
-		if ((r != c) && (card->type != SC_CARD_TYPE_BELPIC_EID)) {
-			printf("expecting %d, got only %d bytes.\n", c, r);
-			return -1;
-		}
-		if ((r == 0) && (card->type == SC_CARD_TYPE_BELPIC_EID))
-			break;
-		util_hex_dump_asc(stdout, buf, r, idx);
-		idx += r;
-		count -= r;
+	r = sc_read_binary(card, 0, buf, file->size, 0);
+	if (r < 0)   {
+		check_ret(r, SC_AC_OP_READ, "read failed", file);
+		return -1;
 	}
+	if ((r != file->size) && (card->type != SC_CARD_TYPE_BELPIC_EID))   {
+		printf("expecting %d, got only %d bytes.\n", file->size, r);
+		return -1;
+	}
+	if ((r == 0) && (card->type == SC_CARD_TYPE_BELPIC_EID))
+		return -1;
+
+	util_hex_dump_asc(stdout, buf, r, 0);
+
+	free(buf);
 	return 0;
 }
 
@@ -594,7 +748,7 @@ static int do_info(int argc, char **argv)
 		file = current_file;
 		not_current = 0;
 	} else if (argc == 1) {
-		if (arg_to_path(argv[0], &path, 0) != 0) 
+		if (arg_to_path(argv[0], &path, 0) != 0)
 			return usage(do_info);
 
 		r = sc_select_file(card, &path, &file);
@@ -602,7 +756,7 @@ static int do_info(int argc, char **argv)
 			printf("unable to select file: %s\n", sc_strerror(r));
 			return -1;
 		}
-	} else 
+	} else
 		return usage(do_info);
 
 	switch (file->type) {
@@ -803,42 +957,61 @@ static int do_verify(int argc, char **argv)
 	u8 buf[64];
 	size_t buflen = sizeof(buf), i;
 	struct sc_pin_cmd_data data;
+	int prefix_len = 0;
 
 	if (argc < 1 || argc > 2)
-		goto usage;
+		return usage(do_verify);
 
 	memset(&data, 0, sizeof(data));
 	data.cmd = SC_PIN_CMD_VERIFY;
 
 	data.pin_type = SC_AC_NONE;
 	for (i = 0; typeNames[i].str; i++) {
-		if (strncasecmp(argv[0], typeNames[i].str, 3) == 0) {
+		prefix_len = strlen(typeNames[i].str);
+		if (strncasecmp(argv[0], typeNames[i].str, prefix_len) == 0) {
 			data.pin_type = typeNames[i].id;
 			break;
 		}
 	}
 	if (data.pin_type == SC_AC_NONE) {
 		printf("Invalid type.\n");
-		goto usage;
+		return usage(do_verify);
 	}
-	if (sscanf(argv[0] + 3, "%d", &data.pin_reference) != 1) {
+	if (sscanf(argv[0] + prefix_len, "%d", &data.pin_reference) != 1) {
 		printf("Invalid key reference.\n");
-		goto usage;
+		return usage(do_verify);
 	}
 
 	if (argc < 2) {
-		if (!(card->reader->capabilities & SC_READER_CAP_PIN_PAD)) {
-			printf("Card reader or driver doesn't support PIN PAD\n");
-			return -1;
+		if (card->reader->capabilities & SC_READER_CAP_PIN_PAD) {
+			printf("Please enter PIN on the reader's pin pad.\n");
+			data.pin1.prompt = "Please enter PIN";
+			data.flags |= SC_PIN_CMD_USE_PINPAD;
 		}
-		printf("Please enter PIN on the reader's pin pad.\n");
-		data.pin1.prompt = "Please enter PIN";
-		data.flags |= SC_PIN_CMD_USE_PINPAD;
+		else {
+			char *pin = NULL;
+			size_t len = 0;
+
+			printf("Please enter PIN: ");
+			r = util_getpass(&pin, &len, stdin);
+			if (r < 0) {
+				printf("No PIN entered - aborting VERIFY.\n");
+				return -1;
+			}
+			if (strlcpy(buf, pin, sizeof(buf)) >= sizeof(buf)) {
+				free(pin);
+				printf("PIN too long - aborting VERIFY.\n");
+				return -1;
+			}
+			free(pin);
+			data.pin1.data = buf;
+			data.pin1.len = strlen(buf);
+		}
 	} else {
 		r = parse_string_or_hexdata(argv[1], buf, &buflen);
 		if (0 != r) {
 			printf("Invalid key value.\n");
-			goto usage;
+			return usage(do_verify);
 		}
 		data.pin1.data = buf;
 		data.pin1.len = buflen;
@@ -847,7 +1020,7 @@ static int do_verify(int argc, char **argv)
 
 	if (r) {
 		if (r == SC_ERROR_PIN_CODE_INCORRECT) {
-			if (tries_left >= 0) 
+			if (tries_left >= 0)
 				printf("Incorrect code, %d tries left.\n", tries_left);
 			else
 				printf("Incorrect code.\n");
@@ -857,41 +1030,36 @@ static int do_verify(int argc, char **argv)
 	}
 	printf("Code correct.\n");
 	return 0;
-usage:
-	printf("Usage: verify <key type><key ref> [<pin>]\n");
-	printf("Possible values of <key type>:\n");
-	for (i = 0; typeNames[i].str; i++)
-		printf("\t%s\n", typeNames[i].str);
-	printf("Example: verify CHV2 31:32:33:34:00:00:00:00\n");
-	printf("If key is omitted, card reader's keypad will be used to collect PIN.\n");
-	return -1;
 }
-
 
 static int do_change(int argc, char **argv)
 {
 	int ref, r, tries_left = -1;
-	u8 oldpin[30];
-	u8 newpin[30];
+	u8 oldpin[64];
+	u8 newpin[64];
 	size_t oldpinlen = 0;
 	size_t newpinlen = 0;
+	struct sc_pin_cmd_data data;
+
+	memset(&data, 0, sizeof(data));
+	data.cmd = SC_PIN_CMD_CHANGE;
 
 	if (argc < 1 || argc > 3)
-		goto usage;
+		return usage(do_change);
 	if (strncasecmp(argv[0], "CHV", 3)) {
 		printf("Invalid type.\n");
-		goto usage;
+		return usage(do_change);
 	}
 	if (sscanf(argv[0] + 3, "%d", &ref) != 1) {
 		printf("Invalid key reference.\n");
-		goto usage;
+		return usage(do_change);
 	}
 
 	if (argc == 3) {
 		oldpinlen = sizeof(oldpin);
 		if (parse_string_or_hexdata(argv[1], oldpin, &oldpinlen) != 0) {
 			printf("Invalid key value.\n");
-			goto usage;
+			return usage(do_change);
 		}
 	}
 
@@ -899,17 +1067,21 @@ static int do_change(int argc, char **argv)
 		newpinlen = sizeof(newpin);
 		if (parse_string_or_hexdata(argv[argc-1], newpin, &newpinlen) != 0) {
 			printf("Invalid key value.\n");
-			goto usage;
+			return usage(do_change);
 		}
 	}
 
-	r = sc_change_reference_data (card, SC_AC_CHV, ref,
-                                      oldpinlen ? oldpin : NULL, oldpinlen,
-                                      newpinlen ? newpin : NULL, newpinlen,
-                                      &tries_left);
+	data.pin_type = SC_AC_CHV;
+	data.pin_reference = ref;
+	data.pin1.data = oldpinlen ? oldpin : NULL;
+	data.pin1.len = oldpinlen;
+	data.pin2.data = newpinlen ? newpin : NULL;
+	data.pin2.len = newpinlen;
+
+	r = sc_pin_cmd(card, &data, &tries_left);
 	if (r) {
 		if (r == SC_ERROR_PIN_CODE_INCORRECT) {
-			if (tries_left >= 0) 
+			if (tries_left >= 0)
 				printf("Incorrect code, %d tries left.\n", tries_left);
 			else
 				printf("Incorrect code.\n");
@@ -919,40 +1091,37 @@ static int do_change(int argc, char **argv)
 	}
 	printf("PIN changed.\n");
 	return 0;
-usage:
-	printf("Usage: change CHV<pin ref> [[<old pin>] <new pin>]\n");
-	printf("Examples: \n");
-	printf("\tChange PIN: change CHV2 00:00:00:00:00:00 \"foobar\"\n");
-	printf("\tSet PIN: change CHV2 \"foobar\"\n");
-	printf("\tChange PIN with pinpad': change CHV2\n");
-	return -1;
 }
 
 
 static int do_unblock(int argc, char **argv)
 {
 	int ref, r;
-	u8 puk[30];
-	u8 newpin[30];
+	u8 puk[64];
+	u8 newpin[64];
 	size_t puklen = 0;
 	size_t newpinlen = 0;
+	struct sc_pin_cmd_data data;
+
+	memset(&data, 0, sizeof(data));
+	data.cmd = SC_PIN_CMD_UNBLOCK;
 
 	if (argc < 1 || argc > 3)
-		goto usage;
+		return usage(do_unblock);
 	if (strncasecmp(argv[0], "CHV", 3)) {
 		printf("Invalid type.\n");
-		goto usage;
+		return usage(do_unblock);
 	}
 	if (sscanf(argv[0] + 3, "%d", &ref) != 1) {
 		printf("Invalid key reference.\n");
-		goto usage;
+		return usage(do_unblock);
 	}
 
 	if (argc > 1) {
 		puklen = sizeof(puk);
 		if (parse_string_or_hexdata(argv[1], puk, &puklen) != 0) {
 			printf("Invalid key value.\n");
-			goto usage;
+			return usage(do_unblock);
 		}
 	}
 
@@ -960,13 +1129,18 @@ static int do_unblock(int argc, char **argv)
 		newpinlen = sizeof(newpin);
 		if (parse_string_or_hexdata(argv[2], newpin, &newpinlen) != 0) {
 			printf("Invalid key value.\n");
-			goto usage;
+			return usage(do_unblock);
 		}
 	}
 
-	r = sc_reset_retry_counter (card, SC_AC_CHV, ref,
-                                      puklen ? puk : NULL, puklen,
-                                      newpinlen ? newpin : NULL, newpinlen);
+	data.pin_type = SC_AC_CHV;
+	data.pin_reference = ref;
+	data.pin1.data = puklen ? puk : NULL;
+	data.pin1.len = puklen;
+	data.pin2.data = newpinlen ? newpin : NULL;
+	data.pin2.len = newpinlen;
+
+	r = sc_pin_cmd(card, &data, NULL);
 	if (r) {
 		if (r == SC_ERROR_PIN_CODE_INCORRECT)
 			printf("Incorrect code.\n");
@@ -975,18 +1149,6 @@ static int do_unblock(int argc, char **argv)
 	}
 	printf("PIN unblocked.\n");
 	return 0;
-usage:
-	printf("Usage: unblock CHV<pin ref> [<puk> [<new pin>]]\n");
-	printf("PUK and PIN values can be hexadecimal, ASCII, empty (\"\") or absent\n");
-	printf("Examples:\n");
-	printf("\tUnblock PIN and set a new value:   unblock CHV2 00:00:00:00:00:00 \"foobar\"\n");
-	printf("\tUnblock PIN keeping the old value: unblock CHV2 00:00:00:00:00:00 \"\"\n");
-	printf("\tSet new PIN value:                 unblock CHV2 \"\" \"foobar\"\n");
-	printf("Examples with pinpad:\n");
-	printf("\tUnblock PIN: new PIN value is prompted by pinpad:                   unblock CHV2 00:00:00:00:00:00\n");
-	printf("\tSet PIN: new PIN value is prompted by pinpad:                       unblock CHV2 \"\"\n");
-	printf("\tUnblock PIN: unblock code and new PIN value are prompted by pinpad: unblock CHV2\n");
-	return -1;
 }
 
 static int do_get(int argc, char **argv)
@@ -1099,7 +1261,7 @@ static int do_update_binary(int argc, char **argv)
 		goto err;
 	}
 
-	printf("Total of %d bytes written to %04X at %i offset.\n", 
+	printf("Total of %d bytes written to %04X at %i offset.\n",
 	       r, file->id, offs);
 
 	err = 0;
@@ -1160,7 +1322,7 @@ static int do_update_record(int argc, char **argv)
 		goto err;
 	}
 
-	printf("Total of %d bytes written to record %i at %i offset.\n", 
+	printf("Total of %d bytes written to record %i at %i offset.\n",
 	       i, rec, offs);
 
 	err = 0;
@@ -1269,15 +1431,15 @@ static int do_erase(int argc, char **argv)
 
 static int do_random(int argc, char **argv)
 {
-	unsigned char buffer[128];
+	unsigned char buffer[256];
 	int r, count;
 
 	if (argc != 1)
 		return usage(do_random);
 
 	count = atoi(argv[0]);
-	if (count < 0 || count > 128) {
-		printf("Number must be in range 0..128\n");
+	if (count < 0 || count > 256) {
+		printf("Number must be in range 0..256\n");
 		return -1;
 	}
 
@@ -1325,16 +1487,47 @@ static int do_get_data(int argc, char **argv)
 	return 0;
 }
 
+/**
+ * Use PUT DATA command to write to Data Object.
+ **/
 static int do_put_data(int argc, char **argv)
 {
-	return usage(do_put_data);
+	unsigned int tag;
+	u8 buf[8192];
+	size_t buflen = sizeof(buf);
+	int r;
+
+	if (argc != 2)
+		return usage(do_put_data);
+
+	/* Extract DO's tag */
+	tag = strtoul(argv[0], NULL, 16);
+
+	/* Extract the new content */
+	/* buflen is the max length of reception buffer */
+	r = parse_string_or_hexdata(argv[1], buf, &buflen);
+	if (r < 0) {
+		printf("unable to parse data\n");
+		return -1;
+	}
+
+	/* Call OpenSC to do put data */
+	r = sc_put_data(card, tag, buf, buflen);
+	if (r < 0) {
+		printf("Cannot put data to %04X; return %i\n", tag, r);
+		return -1;
+	}
+
+	printf("Total of %d bytes written.\n", r);
+
+	return 0;
 }
 
 static int do_apdu(int argc, char **argv)
 {
 	sc_apdu_t apdu;
-	u8 buf[SC_MAX_APDU_BUFFER_SIZE];
-	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
+	u8 buf[SC_MAX_APDU_BUFFER_SIZE * 2];
+	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE * 2];
 	size_t len, i;
 	int r;
 
@@ -1372,6 +1565,12 @@ static int do_apdu(int argc, char **argv)
 	       apdu.resplen ? ":" : "");
 	if (apdu.resplen)
 		util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	if (r)
+		printf("Failure: %s\n", sc_strerror(r));
+	else
+		printf("Success!\n");
 
 	return 0;
 }
@@ -1444,6 +1643,40 @@ err:
 	return -err;
 }
 
+static int do_sm(int argc, char **argv)
+{
+	int r = SC_ERROR_NOT_SUPPORTED, ret = -1;
+
+	if (argc != 1)
+		return usage(do_sm);
+
+#ifdef ENABLE_SM
+	if (!strcmp(argv[0],"open"))   {
+		if (!card->sm_ctx.ops.open)   {
+			printf("Not supported\n");
+			return -1;
+		}
+		r = card->sm_ctx.ops.open(card);
+	}
+	else if (!strcmp(argv[0],"close"))   {
+		if (!card->sm_ctx.ops.close)   {
+			printf("Not supported\n");
+			return -1;
+		}
+		r = card->sm_ctx.ops.close(card);
+	}
+#endif
+	if (r == SC_SUCCESS)   {
+		ret = 0;
+		printf("Success!\n");
+	}
+	else   {
+		printf("Failure: %s\n", sc_strerror(r));
+	}
+
+	return ret;
+}
+
 static int do_help(int argc, char **argv)
 {
 	struct command	*cmd;
@@ -1468,7 +1701,7 @@ static int do_quit(int argc, char **argv)
 	return 0;
 }
 
-static int parse_line(char *in, char **argv, int maxargc)
+static int parse_cmdline(char *in, char **argv, int maxargc)
 {
 	int	argc;
 
@@ -1476,7 +1709,7 @@ static int parse_line(char *in, char **argv, int maxargc)
 		in += strspn(in, " \t\n");
 		if (*in == '\0')
 			return argc;
- 		if (*in == '"') {
+		if (*in == '"') {
 			/* Parse quoted string */
 			argv[argc] = in++;
 			in += strcspn(in, "\"");
@@ -1484,16 +1717,16 @@ static int parse_line(char *in, char **argv, int maxargc)
 				return 0;
 		} else {
 			/* White space delimited word */
- 			argv[argc] = in;
+			argv[argc] = in;
 			in += strcspn(in, " \t\n");
 		}
 		if (*in != '\0')
 			*in++ = '\0';
- 	}
+	}
 	return argc;
 }
 
-static char * my_readline(char *prompt)
+static char *read_cmdline(FILE *script, char *prompt)
 {
 	static char buf[256];
 	static int initialized;
@@ -1501,10 +1734,10 @@ static char * my_readline(char *prompt)
 
 	if (!initialized) {
 		initialized = 1;
-		interactive = isatty(fileno(stdin));
+		interactive = isatty(fileno(script));
 #ifdef ENABLE_READLINE
 		if (interactive)
-			using_history ();
+			using_history();
 #endif
 	}
 #ifdef ENABLE_READLINE
@@ -1518,10 +1751,11 @@ static char * my_readline(char *prompt)
 	/* Either we don't have readline or we are not running
 	   interactively */
 #ifndef ENABLE_READLINE
-	printf("%s", prompt);
+	if (interactive)
+		printf("%s", prompt);
 #endif
 	fflush(stdout);
-	if (fgets(buf, sizeof(buf), stdin) == NULL)
+	if (fgets(buf, sizeof(buf), script) == NULL)
 		return NULL;
 	if (strlen(buf) == 0)
 		return NULL;
@@ -1538,6 +1772,7 @@ int main(int argc, char * const argv[])
 	char *cargv[260];
 	sc_context_param_t ctx_param;
 	int lcycle = SC_CARDCTRL_LIFECYCLE_ADMIN;
+	FILE *script;
 
 	printf("OpenSC Explorer version %s\n", sc_get_version());
 
@@ -1546,7 +1781,7 @@ int main(int argc, char * const argv[])
 		if (c == -1)
 			break;
 		if (c == '?')
-			util_print_usage_and_die(app_name, options, option_help);
+			util_print_usage_and_die(app_name, options, option_help, "[SCRIPT]");
 		switch (c) {
 		case 'r':
 			opt_reader = optarg;
@@ -1620,16 +1855,33 @@ int main(int argc, char * const argv[])
 	if (r && r != SC_ERROR_NOT_SUPPORTED)
 		printf("unable to change lifecycle: %s\n", sc_strerror(r));
 
-	while (1) {
+	switch (argc - optind) {
+	default:
+		util_print_usage_and_die(app_name, options, option_help, "[SCRIPT]");
+		break;
+	case 0:
+		script = stdin;
+		break;
+	case 1:
+		if (strcmp(argv[optind], "-") == 0) {
+			script = stdin;
+		}
+		else if ((script = fopen(argv[optind], "r")) == NULL) {
+			util_print_usage_and_die(app_name, options, option_help, "[SCRIPT]");
+		}
+		break;
+	}
+
+	while (!feof(script)) {
 		struct command *cmd;
 		char prompt[3*SC_MAX_PATH_STRING_SIZE];
 
 		sprintf(prompt, "OpenSC [%s]> ", path_to_filename(&current_path, '/'));
-		line = my_readline(prompt);
+		line = read_cmdline(script, prompt);
 		if (line == NULL)
 			break;
-		cargc = parse_line(line, cargv, DIM(cargv));
-		if (cargc < 1)
+		cargc = parse_cmdline(line, cargv, DIM(cargv));
+		if ((cargc < 1) || (*cargv[0] == '#'))
 			continue;
 		for (r=cargc; r < (int)DIM(cargv); r++)
 			cargv[r] = "";

@@ -29,7 +29,7 @@
 
 #ifndef strnicmp
 #define strnicmp _strnicmp
-#endif 
+#endif
 
 #ifndef stricmp
 #define stricmp _stricmp
@@ -66,11 +66,11 @@
 #define F_OK  0		/* test whether exist.  */
 #endif
 
-#ifndef S_IRUSR 
+#ifndef S_IRUSR
 #define S_IRUSR S_IREAD
 #endif
 
-#ifndef S_IWUSR 
+#ifndef S_IWUSR
 #define S_IWUSR S_IWRITE
 #endif
 
@@ -79,7 +79,7 @@
 #define HAVE_WINSCARD_H
 #define DEFAULT_PCSC_PROVIDER "winscard.dll"
 
-#define SC_PKCS15_PROFILE_DIRECTORY "C:\\Program Files\\OpenSC\\profiles"
+#define SC_PKCS15_PROFILE_DIRECTORY "C:\\Program Files\\OpenSC Project\\OpenSC\\profiles"
 
 #define PATH_MAX FILENAME_MAX
 

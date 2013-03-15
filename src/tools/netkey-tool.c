@@ -350,7 +350,7 @@ static void handle_readcert(sc_card_t *card, int cert, char *file)
 	}
 	X509_free(c);
 }
-	
+
 
 static void handle_writecert(sc_card_t *card, int cert, char *file)
 {
@@ -395,7 +395,7 @@ static void handle_writecert(sc_card_t *card, int cert, char *file)
 	}
 	printf("OK\n");
 }
-	
+
 
 static int pin_string2int(char *s) {
 	size_t i;
@@ -577,7 +577,7 @@ int main(
 	show_card(card);
 
 	if(do_unblock || do_change){
-		int i1=pinlist[pin_nr].p1, i2=pinlist[pin_nr].p2; 
+		int i1=pinlist[pin_nr].p1, i2=pinlist[pin_nr].p2;
 
 		if((do_unblock || !pinlist[pin_nr].len) &&
 		   (i1<0 || !pinlist[i1].len) && (i2<0 || !pinlist[i2].len)

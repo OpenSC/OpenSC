@@ -6,8 +6,10 @@ EXTRA_DIST = Makefile.mak
 SUBDIRS = regression
 noinst_PROGRAMS = base64 lottery p15dump pintest prngtest
 
-INCLUDES = -I$(top_srcdir)/src
-LIBS = $(top_builddir)/src/libopensc/libopensc.la \
+AM_CPPFLAGS = -I$(top_srcdir)/src
+LIBS = \
+	$(top_builddir)/src/libopensc/libopensc.la \
+	$(top_builddir)/src/common/libscdl.la \
 	$(top_builddir)/src/common/libcompat.la
 
 COMMON_SRC = sc-test.c

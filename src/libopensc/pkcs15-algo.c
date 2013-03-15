@@ -271,7 +271,7 @@ asn1_decode_ec_params(sc_context_t *ctx, void **paramp,
 	ecp = malloc(sizeof(struct sc_ec_params));
 	if (ecp == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
-	memset(ecp,9,sizeof(struct sc_ec_params));
+	memset(ecp,0,sizeof(struct sc_ec_params));
 
 
 	/* We only want to copy the parms if they are a namedCurve 
@@ -335,131 +335,122 @@ asn1_free_ec_params(void *params)
 static struct sc_asn1_pkcs15_algorithm_info algorithm_table[] = {
 #ifdef SC_ALGORITHM_SHA1
 	/* hmacWithSHA1 */
-	{ SC_ALGORITHM_SHA1, {{ 1, 2, 840, 113549, 2, 7 }}, NULL, NULL, NULL },
-	{ SC_ALGORITHM_SHA1, {{ 1, 3, 6, 1, 5, 5, 8, 1, 2 }}, NULL, NULL, NULL },
+	{ SC_ALGORITHM_SHA1, {{ 1, 2, 840, 113549, 2, 7, -1}}, NULL, NULL, NULL },
+	{ SC_ALGORITHM_SHA1, {{ 1, 3, 6, 1, 5, 5, 8, 1, 2, -1}}, NULL, NULL, NULL },
 	/* SHA1 */
-	{ SC_ALGORITHM_SHA1, {{ 1, 3, 14, 3, 2, 26, }}, NULL, NULL, NULL },
+	{ SC_ALGORITHM_SHA1, {{ 1, 3, 14, 3, 2, 26, -1}}, NULL, NULL, NULL },
 #endif
 #ifdef SC_ALGORITHM_MD5
-	{ SC_ALGORITHM_MD5, {{ 1, 2, 840, 113549, 2, 5, }}, NULL, NULL, NULL },
+	{ SC_ALGORITHM_MD5, {{ 1, 2, 840, 113549, 2, 5, -1}}, NULL, NULL, NULL },
 #endif
 #ifdef SC_ALGORITHM_DSA
-	{ SC_ALGORITHM_DSA, {{ 1, 2, 840, 10040, 4, 3 }}, NULL, NULL, NULL },
+	{ SC_ALGORITHM_DSA, {{ 1, 2, 840, 10040, 4, 3, -1}}, NULL, NULL, NULL },
 #endif
 #ifdef SC_ALGORITHM_RSA /* really rsaEncryption */
-	{ SC_ALGORITHM_RSA, {{ 1, 2, 840, 113549, 1, 1, 1 }}, NULL, NULL, NULL },
+	{ SC_ALGORITHM_RSA, {{ 1, 2, 840, 113549, 1, 1, 1, -1}}, NULL, NULL, NULL },
 #endif
 #ifdef SC_ALGORITHM_DH
-	{ SC_ALGORITHM_DH, {{ 1, 2, 840, 10046, 2, 1 }}, NULL, NULL, NULL },
+	{ SC_ALGORITHM_DH, {{ 1, 2, 840, 10046, 2, 1, -1}}, NULL, NULL, NULL },
 #endif
 #ifdef SC_ALGORITHM_RC2_WRAP /* from CMS */
-	{ SC_ALGORITHM_RC2_WRAP,  {{ 1, 2, 840, 113549, 1, 9, 16, 3, 7 }}, NULL, NULL, NULL },
+	{ SC_ALGORITHM_RC2_WRAP,  {{ 1, 2, 840, 113549, 1, 9, 16, 3, 7, -1}}, NULL, NULL, NULL },
 #endif
 #ifdef SC_ALGORITHM_RC2 /* CBC mode */
-	{ SC_ALGORITHM_RC2, {{ 1, 2, 840, 113549, 3, 2 }},
+	{ SC_ALGORITHM_RC2, {{ 1, 2, 840, 113549, 3, 2, -1}},
 			asn1_decode_rc2_params,
 			asn1_encode_rc2_params },
 #endif
 #ifdef SC_ALGORITHM_DES /* CBC mode */
-	{ SC_ALGORITHM_DES, {{ 1, 3, 14, 3, 2, 7 }},
+	{ SC_ALGORITHM_DES, {{ 1, 3, 14, 3, 2, 7, -1}},
 			asn1_decode_des_params,
 			asn1_encode_des_params,
 			free },
 #endif
 #ifdef SC_ALGORITHM_3DES_WRAP /* from CMS */
-	{ SC_ALGORITHM_3DES_WRAP, {{ 1, 2, 840, 113549, 1, 9, 16, 3, 6 }}, NULL, NULL, NULL },
+	{ SC_ALGORITHM_3DES_WRAP, {{ 1, 2, 840, 113549, 1, 9, 16, 3, 6, -1}}, NULL, NULL, NULL },
 #endif
 #ifdef SC_ALGORITHM_3DES /* EDE CBC mode */
-	{ SC_ALGORITHM_3DES, {{ 1, 2, 840, 113549, 3, 7 }},
+	{ SC_ALGORITHM_3DES, {{ 1, 2, 840, 113549, 3, 7, -1}},
 			asn1_decode_des_params,
 			asn1_encode_des_params,
 			free },
 #endif
 #ifdef SC_ALGORITHM_GOST /* EDE CBC mode */
-	{ SC_ALGORITHM_GOST, {{ 1, 2, 4434, 66565, 3, 7 }},
-			NULL,
-			NULL,
-			NULL },
+	{ SC_ALGORITHM_GOST, {{ 1, 2, 4434, 66565, 3, 7, -1}}, NULL, NULL, NULL },
 #endif
 #ifdef SC_ALGORITHM_GOSTR3410
-	{ SC_ALGORITHM_GOSTR3410, {{ 1, 2, 643, 2, 2, 19 }},
+	{ SC_ALGORITHM_GOSTR3410, {{ 1, 2, 643, 2, 2, 19, -1}},
 			asn1_decode_gostr3410_params,
 			asn1_encode_gostr3410_params,
 			NULL },
 #endif
 /* We do not support PBES1 because the encryption is weak */
 #ifdef SC_ALGORITHM_PBKDF2
-	{ SC_ALGORITHM_PBKDF2, {{ 1, 2, 840, 113549, 1, 5, 12 }},
+	{ SC_ALGORITHM_PBKDF2, {{ 1, 2, 840, 113549, 1, 5, 12, -1}},
 			asn1_decode_pbkdf2_params,
 			asn1_encode_pbkdf2_params,
 			free },
 #endif
 #ifdef SC_ALGORITHM_PBES2
-	{ SC_ALGORITHM_PBES2, {{ 1, 2, 840, 113549, 1, 5, 13 }},
+	{ SC_ALGORITHM_PBES2, {{ 1, 2, 840, 113549, 1, 5, 13, -1}},
 			asn1_decode_pbes2_params,
 			asn1_encode_pbes2_params,
 			asn1_free_pbes2_params },
 #endif
 
 #ifdef SC_ALGORITHM_EC
-	{ SC_ALGORITHM_EC, {{ 1, 2, 840, 10045, 2, 1 }},
-			asn1_decode_ec_params, asn1_encode_ec_params, asn1_free_ec_params },
+	{ SC_ALGORITHM_EC, {{ 1, 2, 840, 10045, 2, 1, -1}},
+			asn1_decode_ec_params,
+			asn1_encode_ec_params,
+			asn1_free_ec_params },
 #endif
 /* TODO: -DEE Not clear of we need the next five or not */
 #ifdef SC_ALGORITHM_ECDSA_SHA1
 	/* Note RFC 3279 says no ecParameters */
-	{ SC_ALGORITHM_ECDSA_SHA1, {{ 1, 2, 840, 10045, 4, 1 }}, NULL, NULL, NULL}, 
+	{ SC_ALGORITHM_ECDSA_SHA1, {{ 1, 2, 840, 10045, 4, 1, -1}}, NULL, NULL, NULL},
 #endif
 #ifdef SC_ALGORITHM_ECDSA_SHA224
 /* These next 4 are defined in RFC 5758 */
-	{ SC_ALGORITHM_ECDSA_SHA224, {{ 1, 2, 840, 10045, 4, 3, 1 }}, 
-			asn1_decode_ec_params, asn1_encode_ec_params, asn1_free_ec_params },
+	{ SC_ALGORITHM_ECDSA_SHA224, {{ 1, 2, 840, 10045, 4, 3, 1, -1}},
+			asn1_decode_ec_params,
+			asn1_encode_ec_params,
+			asn1_free_ec_params },
 #endif
 #ifdef SC_ALGORITHM_ECDSA_SHA256
-	{ SC_ALGORITHM_ECDSA_SHA256, {{ 1, 2, 840, 10045, 4, 3, 2 }},
-			asn1_decode_ec_params, asn1_encode_ec_params, asn1_free_ec_params },
+	{ SC_ALGORITHM_ECDSA_SHA256, {{ 1, 2, 840, 10045, 4, 3, 2, -1}},
+			asn1_decode_ec_params,
+			asn1_encode_ec_params,
+			asn1_free_ec_params },
 #endif
 #ifdef SC_ALGORITHM_ECDSA_SHA384
-	{ SC_ALGORITHM_ECDSA_SHA384, {{ 1, 2, 840, 10045, 4, 3, 3 }},
-			asn1_decode_ec_params, asn1_encode_ec_params, asn1_free_ec_params },
+	{ SC_ALGORITHM_ECDSA_SHA384, {{ 1, 2, 840, 10045, 4, 3, 3, -1}},
+			asn1_decode_ec_params,
+			asn1_encode_ec_params,
+			asn1_free_ec_params },
 #endif
 #ifdef SC_ALGORITHM_ECDSA_SHA512
-	{ SC_ALGORITHM_ECDSA_SHA512, {{ 1, 2, 840, 10045, 4, 3, 4 }},
-			asn1_decode_ec_params, asn1_encode_ec_params, asn1_free_ec_params },
+	{ SC_ALGORITHM_ECDSA_SHA512, {{ 1, 2, 840, 10045, 4, 3, 4, -1}},
+			asn1_decode_ec_params,
+			asn1_encode_ec_params,
+			asn1_free_ec_params },
 #endif
 	{ -1, {{ -1 }}, NULL, NULL, NULL }
 };
 
+
 static struct sc_asn1_pkcs15_algorithm_info *
 sc_asn1_get_algorithm_info(const struct sc_algorithm_id *id)
 {
-	struct sc_asn1_pkcs15_algorithm_info *aip;
+	struct sc_asn1_pkcs15_algorithm_info *aip = NULL;
 
-	aip = algorithm_table;
-	if ((int) id->algorithm < 0) {
-		while (aip->id >= 0) {
-			const int	*oid1, *oid2;
-			int		m;
-			
-			oid1 = aip->oid.value;
-	                oid2 = id->obj_id.value;
-			for (m = 0; m < SC_MAX_OBJECT_ID_OCTETS; m++) {
-				if (oid1[m] == oid2[m])
-					continue;
-				if (oid1[m] > 0 || oid2[m] > 0)
-					break;
-				/* We have a match */
-				return aip;
-			}
-			aip++;
-		}
-	} else {
-		while (aip->id >= 0) {
-			if (aip->id == (int)id->algorithm)
-				return aip;
-			aip++;
-		}
+	for (aip = algorithm_table; aip->id >= 0; aip++)   {
+		if ((int) id->algorithm < 0 && sc_compare_oid(&id->oid, &aip->oid))
+			return aip;
+
+		if (aip->id == (int)id->algorithm)
+			return aip;
 	}
+
 	return NULL;
 }
 
@@ -479,7 +470,7 @@ sc_asn1_decode_algorithm_id(sc_context_t *ctx, const u8 *in,
 	int r;
 
 	sc_copy_asn1_entry(c_asn1_alg_id, asn1_alg_id);
-	sc_format_asn1_entry(asn1_alg_id + 0, &id->obj_id, NULL, 0);
+	sc_format_asn1_entry(asn1_alg_id + 0, &id->oid, NULL, 0);
 
 	memset(id, 0, sizeof(*id));
 	r = _sc_asn1_decode(ctx, asn1_alg_id, in, len, &in, &len, 0, depth + 1);
@@ -492,8 +483,8 @@ sc_asn1_decode_algorithm_id(sc_context_t *ctx, const u8 *in,
 	if ((alg_info = sc_asn1_get_algorithm_info(id)) != NULL) {
 		id->algorithm = alg_info->id;
 		if (alg_info->decode) {
-/* TODO: -DEE  why the test for SC_ASN1_PRESENT? 
- * If it looking for SC_ASN1_NULL, thats valid for EC, in some cases 
+/* TODO: -DEE  why the test for SC_ASN1_PRESENT?
+ * If it looking for SC_ASN1_NULL, thats valid for EC, in some cases
  */
 			if (asn1_alg_id[1].flags & SC_ASN1_PRESENT) {
 				sc_debug( ctx,SC_LOG_DEBUG_NORMAL,"SC_ASN1_PRESENT was set, so invalid");
@@ -522,20 +513,19 @@ sc_asn1_encode_algorithm_id(sc_context_t *ctx,
 
 	alg_info = sc_asn1_get_algorithm_info(id);
 	if (alg_info == NULL) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Cannot encode unknown algorithm %u.\n",
-				id->algorithm);
+		sc_log(ctx, "Cannot encode unknown algorithm %u", id->algorithm);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
 	/* Set the oid if not yet given */
-	if (id->obj_id.value[0] <= 0) {
+	if (!sc_valid_oid(&id->oid)) {
 		temp_id = *id;
-		temp_id.obj_id = alg_info->oid;
+		temp_id.oid = alg_info->oid;
 		id = &temp_id;
 	}
 
 	sc_copy_asn1_entry(c_asn1_alg_id, asn1_alg_id);
-	sc_format_asn1_entry(asn1_alg_id + 0, (void *) &id->obj_id, NULL, 1);
+	sc_format_asn1_entry(asn1_alg_id + 0, (void *) &id->oid, NULL, 1);
 
 	/* no parameters, write NULL tag */
 	if (!id->params || !alg_info->encode)

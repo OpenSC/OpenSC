@@ -97,19 +97,25 @@ static void sc_do_log_va(sc_context_t *ctx, int level, const char *file, int lin
 	left -= r;
 
 	if (file != NULL) {
-		r = snprintf(p, left, "[%s] %s:%d:%s: ", 
+		r = snprintf(p, left, "[%s] %s:%d:%s: ",
 			ctx->app_name, file, line, func ? func : "");
 		if (r < 0 || (unsigned int)r > sizeof(buf))
 			return;
-	} else {
+	}
+	else {
 		r = 0;
-	}	
+	}
 	p += r;
 	left -= r;
 
 	r = vsnprintf(p, left, format, args);
 	if (r < 0)
 		return;
+
+#ifdef _WIN32
+	if (ctx->debug_filename)
+		sc_ctx_log_to_file(ctx, ctx->debug_filename);
+#endif
 
 	outf = ctx->debug_file;
 	if (outf == NULL)
@@ -121,11 +127,19 @@ static void sc_do_log_va(sc_context_t *ctx, int level, const char *file, int lin
 		fprintf(outf, "\n");
 	fflush(outf);
 
+#ifdef _WIN32
+	if (ctx->debug_filename)   {
+		fclose(ctx->debug_file);
+		ctx->debug_file = NULL;
+	}
+#endif
+
+
 	return;
 }
 
 void _sc_debug(struct sc_context *ctx, int level, const char *format, ...)
-{	
+{
 	va_list ap;
 
         va_start(ap, format);

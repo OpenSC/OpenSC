@@ -1,3 +1,23 @@
+/*
+ * util.c: utility functions used by OpenSC command line tools.
+ *
+ * Copyright (C) 2011 OpenSC Project developers
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ */
+
 #include "config.h"
 
 #include <stdio.h>
@@ -11,12 +31,28 @@
 #include <ctype.h>
 #include "util.h"
 
-int util_connect_card(sc_context_t *ctx, sc_card_t **cardp,
+int
+is_string_valid_atr(const char *atr_str)
+{
+	unsigned char atr[SC_MAX_ATR_SIZE];
+	size_t atr_len = sizeof(atr);
+
+	if (sc_hex_to_bin(atr_str, atr, &atr_len))
+		return 0;
+	if (atr_len < 2)
+		return 0;
+	if (atr[0] != 0x3B && atr[0] != 0x3F)
+		return 0;
+	return 1;
+}
+
+int
+util_connect_card(sc_context_t *ctx, sc_card_t **cardp,
 		 const char *reader_id, int do_wait, int verbose)
 {
-	sc_reader_t *reader, *found;
-	sc_card_t *card;
-	int r, tmp_reader_num;
+	struct sc_reader *reader = NULL, *found = NULL;
+	struct sc_card *card = NULL;
+	int r;
 
 	if (do_wait) {
 		unsigned int event;
@@ -41,12 +77,12 @@ int util_connect_card(sc_context_t *ctx, sc_card_t **cardp,
 			return 3;
 		}
 		reader = found;
-	} else {
-		if (sc_ctx_get_reader_count(ctx) == 0) {
-			fprintf(stderr,
-				"No smart card readers found.\n");
-			return 1;
-		}
+	}
+	else if (sc_ctx_get_reader_count(ctx) == 0) {
+		fprintf(stderr, "No smart card readers found.\n");
+		return 1;
+	}
+	else   {
 		if (!reader_id) {
 			unsigned int i;
 			/* Automatically try to skip to a reader with a card if reader not specified */
@@ -59,34 +95,47 @@ int util_connect_card(sc_context_t *ctx, sc_card_t **cardp,
 			}
 			/* If no reader had a card, default to the first reader */
 			reader = sc_ctx_get_reader(ctx, 0);
-		} else {
-			/* If the reader identifiers looks like an ATR, try to find the reader with that card */
-			unsigned char atr_buf[SC_MAX_ATR_SIZE * 3];
-			size_t atr_buf_len = sizeof(atr_buf);
-			unsigned int i;
-			if (sc_hex_to_bin(reader_id, atr_buf, &atr_buf_len) == SC_SUCCESS) {
+		}
+		else {
+			/* If the reader identifier looks like an ATR, try to find the reader with that card */
+			if (is_string_valid_atr(reader_id))   {
+				unsigned char atr_buf[SC_MAX_ATR_SIZE * 3];
+				size_t atr_buf_len = sizeof(atr_buf);
+				unsigned int i;
+
+				sc_hex_to_bin(reader_id, atr_buf, &atr_buf_len);
 				/* Loop readers, looking for a card with ATR */
 				for (i = 0; i < sc_ctx_get_reader_count(ctx); i++) {
-					reader = sc_ctx_get_reader(ctx, i);
-					if (sc_detect_card_presence(reader) & SC_READER_CARD_PRESENT) {
-						if (!memcmp(reader->atr.value, atr_buf, reader->atr.len)) {
-							fprintf(stderr, "Matched ATR in reader: %s\n", reader->name);
-							goto autofound;
-						}	
-					}
-				}		
+					struct sc_reader *rdr = sc_ctx_get_reader(ctx, i);
+
+					if (!(sc_detect_card_presence(rdr) & SC_READER_CARD_PRESENT))
+						continue;
+					else if (rdr->atr.len != atr_buf_len)
+						continue;
+					else if (memcmp(rdr->atr.value, atr_buf, rdr->atr.len))
+						continue;
+
+					fprintf(stderr, "Matched ATR in reader: %s\n", rdr->name);
+					reader = rdr;
+					goto autofound;
+				}
 			}
-			if (!sscanf(reader_id, "%d", &tmp_reader_num)) {
-				/* Try to get the reader by name if it does not parse as a number */
-				reader = sc_ctx_get_reader_by_name(ctx, reader_id);
-			} else {
-				reader = sc_ctx_get_reader(ctx, tmp_reader_num);
+			else   {
+				char *endptr = NULL;
+				unsigned int num;
+
+				errno = 0;
+				num = strtol(reader_id, &endptr, 0);
+				if (!errno && endptr && *endptr == '\0')
+					reader = sc_ctx_get_reader(ctx, num);
+				else
+					reader = sc_ctx_get_reader_by_name(ctx, reader_id);
 			}
 		}
 autofound:
 		if (!reader) {
-			fprintf(stderr,
-				"Reader \"%s\" not found (%d reader(s) detected)\n", reader_id, sc_ctx_get_reader_count(ctx));
+			fprintf(stderr, "Reader \"%s\" not found (%d reader(s) detected)\n",
+					reader_id, sc_ctx_get_reader_count(ctx));
 			return 1;
 		}
 
@@ -98,20 +147,18 @@ autofound:
 
 	if (verbose)
 		printf("Connecting to card in reader %s...\n", reader->name);
-	if ((r = sc_connect_card(reader, &card)) < 0) {
-		fprintf(stderr,
-			"Failed to connect to card: %s\n",
-			sc_strerror(r));
+	r = sc_connect_card(reader, &card);
+	if (r < 0) {
+		fprintf(stderr, "Failed to connect to card: %s\n", sc_strerror(r));
 		return 1;
 	}
 
 	if (verbose)
 		printf("Using card driver %s.\n", card->driver->name);
 
-	if ((r = sc_lock(card)) < 0) {
-		fprintf(stderr,
-			"Failed to lock card: %s\n",
-			sc_strerror(r));
+	r = sc_lock(card);
+	if (r < 0) {
+		fprintf(stderr, "Failed to lock card: %s\n", sc_strerror(r));
 		sc_disconnect_card(card);
 		return 1;
 	}
@@ -177,25 +224,27 @@ void util_hex_dump_asc(FILE *f, const u8 *in, size_t count, int addr)
 }
 
 void util_print_usage_and_die(const char *app_name, const struct option options[],
-	const char *option_help[])
+	const char *option_help[], const char *args)
 {
-	int i = 0;
-	printf("Usage: %s [OPTIONS]\nOptions:\n", app_name);
+	int i;
+	int header_shown = 0;
 
-	while (options[i].name) {
-		char buf[40], tmp[5];
+	if (args)
+		printf("Usage: %s [OPTIONS] %s\n", app_name, args);
+	else
+		printf("Usage: %s [OPTIONS]\n", app_name);
+
+	for (i = 0; options[i].name; i++) {
+		char buf[40];
 		const char *arg_str;
 
 		/* Skip "hidden" options */
-		if (option_help[i] == NULL) {
-			i++;
+		if (option_help[i] == NULL)
 			continue;
-		}
 
-		if (options[i].val > 0 && options[i].val < 128)
-			sprintf(tmp, ", -%c", options[i].val);
-		else
-			tmp[0] = 0;
+		if (!header_shown++)
+			printf("Options:\n");
+
 		switch (options[i].has_arg) {
 		case 1:
 			arg_str = " <arg>";
@@ -207,14 +256,20 @@ void util_print_usage_and_die(const char *app_name, const struct option options[
 			arg_str = "";
 			break;
 		}
-		sprintf(buf, "--%s%s%s", options[i].name, tmp, arg_str);
-		if (strlen(buf) > 29) {
+		if (isascii(options[i].val) &&
+		    isprint(options[i].val) && !isspace(options[i].val))
+			sprintf(buf, "-%c, --%s%s", options[i].val, options[i].name, arg_str);
+		else
+			sprintf(buf, "    --%s%s", options[i].name, arg_str);
+
+		/* print the line - wrap if necessary */
+		if (strlen(buf) > 28) {
 			printf("  %s\n", buf);
 			buf[0] = '\0';
 		}
-		printf("  %-29s %s\n", buf, option_help[i]);
-		i++;
+		printf("  %-28s  %s\n", buf, option_help[i]);
 	}
+
 	exit(2);
 }
 

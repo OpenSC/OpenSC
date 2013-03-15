@@ -40,10 +40,15 @@ extern "C" {
 #include "scconf/scconf.h"
 #include "libopensc/errors.h"
 #include "libopensc/types.h"
+#ifdef ENABLE_SM
+#include "libopensc/sm.h"
+#endif
+
 
 #define SC_SEC_OPERATION_DECIPHER	0x0001
 #define SC_SEC_OPERATION_SIGN		0x0002
 #define SC_SEC_OPERATION_AUTHENTICATE	0x0003
+#define SC_SEC_OPERATION_DERIVE         0x0004
 
 /* sc_security_env flags */
 #define SC_SEC_ENV_ALG_REF_PRESENT	0x0001
@@ -110,10 +115,11 @@ extern "C" {
 /* Or should the HASH_NONE be 0x00000010  and HASHES be 0x00008010 */
 
 /* May need more bits if card can do more hashes */
-/* TODO: -DEE Will overload RSA_HASHES with EC_HASHES */ 
+/* TODO: -DEE Will overload RSA_HASHES with EC_HASHES */
 /* Not clear if these need their own bits or not */
 /* The PIV card does not support and hashes */
-#define SC_ALGORITHM_ECDSA_RAW				0x00010000
+#define SC_ALGORITHM_ECDSA_RAW		0x00010000
+#define SC_ALGORITHM_ECDH_CDH_RAW	0x00020000
 #define SC_ALGORITHM_ECDSA_HASH_NONE		SC_ALGORITHM_RSA_HASH_NONE
 #define SC_ALGORITHM_ECDSA_HASH_SHA1		SC_ALGORITHM_RSA_HASH_SHA1
 #define SC_ALGORITHM_ECDSA_HASH_SHA224		SC_ALGORITHM_RSA_HASH_SHA224
@@ -160,7 +166,7 @@ typedef struct sc_security_env {
 
 	unsigned int algorithm_ref;
 	struct sc_path file_ref;
-	u8 key_ref[8];
+	unsigned char key_ref[8];
 	size_t key_ref_len;
 
 	struct sc_supported_algo_info supported_algos[SC_MAX_SUPPORTED_ALGORITHMS];
@@ -168,7 +174,7 @@ typedef struct sc_security_env {
 
 struct sc_algorithm_id {
 	unsigned int algorithm;
-	struct sc_object_id obj_id;
+	struct sc_object_id oid;
 	void *params;
 };
 
@@ -270,6 +276,10 @@ struct sc_reader_driver {
 /* reader capabilities */
 #define SC_READER_CAP_DISPLAY	0x00000001
 #define SC_READER_CAP_PIN_PAD	0x00000002
+#define SC_READER_CAP_PACE_GENERIC         0x00000003
+#define SC_READER_CAP_PACE_EID             0x00000004
+#define SC_READER_CAP_PACE_ESIGN           0x00000008
+#define SC_READER_CAP_PACE_DESTROY_CHANNEL 0x00000010
 
 typedef struct sc_reader {
 	struct sc_context *ctx;
@@ -277,7 +287,7 @@ typedef struct sc_reader {
 	const struct sc_reader_operations *ops;
 	void *drv_data;
 	char *name;
-	
+
 	unsigned long flags, capabilities;
 	unsigned int supported_protocols, active_protocol;
 
@@ -320,7 +330,7 @@ struct sc_pin_cmd_pin {
 	u8 pad_char;
 	size_t offset;		/* PIN offset in the APDU */
 	size_t length_offset;	/* Effective PIN length offset in the APDU */
-	
+
 	int max_tries;	/* Used for signaling back from SC_PIN_CMD_GET_INFO */
 	int tries_left;	/* Used for signaling back from SC_PIN_CMD_GET_INFO */
 
@@ -338,6 +348,73 @@ struct sc_pin_cmd_data {
 
 	struct sc_apdu *apdu;		/* APDU of the PIN command */
 };
+
+#if 0
+#define PACE_PIN_ID_MRZ 0x01
+#define PACE_PIN_ID_CAN 0x02
+#define PACE_PIN_ID_PIN 0x03
+#define PACE_PIN_ID_PUK 0x04
+/** 
+ * Input data for EstablishPACEChannel()
+ */
+struct establish_pace_channel_input {
+    /** Type of secret (CAN, MRZ, PIN or PUK). */
+    unsigned char pin_id;
+
+    /** Length of \a chat */
+    size_t chat_length;
+    /** Card holder authorization template */
+    const unsigned char *chat;
+
+    /** Length of \a pin */
+    size_t pin_length;
+    /** Secret */
+    const unsigned char *pin;
+
+    /** Length of \a certificate_description */
+    size_t certificate_description_length;
+    /** Certificate description */
+    const unsigned char *certificate_description;
+};
+
+/** 
+ * Output data for EstablishPACEChannel()
+ */
+struct establish_pace_channel_output {
+    /** PACE result (TR-03119) */
+    unsigned int result;
+
+    /** MSE: Set AT status byte */
+    unsigned char mse_set_at_sw1;
+    /** MSE: Set AT status byte */
+    unsigned char mse_set_at_sw2;
+
+    /** Length of \a ef_cardaccess */
+    size_t ef_cardaccess_length;
+    /** EF.CardAccess */
+    unsigned char *ef_cardaccess;
+
+    /** Length of \a recent_car */
+    size_t recent_car_length;
+    /** Most recent certificate authority reference */
+    unsigned char *recent_car;
+
+    /** Length of \a previous_car */
+    size_t previous_car_length;
+    /** Previous certificate authority reference */
+    unsigned char *previous_car;
+
+    /** Length of \a id_icc */
+    size_t id_icc_length;
+    /** ICC identifier */
+    unsigned char *id_icc;
+
+    /** Length of \a id_pcd */
+    size_t id_pcd_length;
+    /** PCD identifier */
+    unsigned char *id_pcd;
+};
+#endif
 
 struct sc_reader_operations {
 	/* Called during sc_establish_context(), when the driver
@@ -365,9 +442,13 @@ struct sc_reader_operations {
 	/* Pin pad functions */
 	int (*display_message)(struct sc_reader *, const char *);
 	int (*perform_verify)(struct sc_reader *, struct sc_pin_cmd_data *);
+	int (*perform_pace)(struct sc_reader *reader,
+			void *establish_pace_channel_input,
+			void *establish_pace_channel_output);
 
 	/* Wait for an event */
-	int (*wait_for_event)(struct sc_context *ctx, unsigned int event_mask, sc_reader_t **event_reader, unsigned int *event, 
+	int (*wait_for_event)(struct sc_context *ctx, unsigned int event_mask,
+			sc_reader_t **event_reader, unsigned int *event,
 			int timeout, void **reader_states);
 	/* Reset a reader */
 	int (*reset)(struct sc_reader *, int);
@@ -445,9 +526,13 @@ typedef struct sc_card {
 
 	struct sc_card_cache cache;
 
-	sc_serial_number_t serialnr;
+	struct sc_serial_number serialnr;
+	struct sc_version version;
 
 	void *mutex;
+#ifdef ENABLE_SM
+	struct sm_context sm_ctx;
+#endif
 
 	unsigned int magic;
 } sc_card_t;
@@ -563,10 +648,14 @@ struct sc_card_operations {
 	int (*pin_cmd)(struct sc_card *, struct sc_pin_cmd_data *,
 				int *tries_left);
 
-	int (*get_data)(sc_card_t *, unsigned int, u8 *, size_t);
-	int (*put_data)(sc_card_t *, unsigned int, const u8 *, size_t);
+	int (*get_data)(struct sc_card *, unsigned int, u8 *, size_t);
+	int (*put_data)(struct sc_card *, unsigned int, const u8 *, size_t);
 
-	int (*delete_record)(sc_card_t *card, unsigned int rec_nr);
+	int (*delete_record)(struct sc_card *card, unsigned int rec_nr);
+
+	int (*read_public_key)(struct sc_card *, unsigned,
+			struct sc_path *, unsigned, unsigned,
+			unsigned char **, size_t *);
 };
 
 typedef struct sc_card_driver {
@@ -603,12 +692,14 @@ typedef struct sc_context {
 	scconf_block *conf_blocks[3];
 	char *app_name;
 	int debug;
+	int paranoid_memory;
 
 	FILE *debug_file;
+	char *debug_filename;
 	char *preferred_language;
 
 	list_t readers;
-	
+
 	struct sc_reader_driver *reader_driver;
 	void *reader_drv_data;
 
@@ -624,14 +715,18 @@ typedef struct sc_context {
 /* APDU handling functions */
 
 /** Sends a APDU to the card
- *  @param  card  sc_card_t object to which the APDU should be send
+ *  @param  card  struct sc_card object to which the APDU should be send
  *  @param  apdu  sc_apdu_t object of the APDU to be send
  *  @return SC_SUCCESS on succcess and an error code otherwise
  */
-int sc_transmit_apdu(sc_card_t *card, sc_apdu_t *apdu);
+int sc_transmit_apdu(struct sc_card *, struct sc_apdu *);
 
-void sc_format_apdu(sc_card_t *card, sc_apdu_t *apdu, int cse, int ins,
-		    int p1, int p2);
+void sc_format_apdu(struct sc_card *, struct sc_apdu *, int, int, int, int);
+
+int sc_check_apdu(struct sc_card *, const struct sc_apdu *);
+
+struct sc_apdu *sc_allocate_apdu(struct sc_apdu *,  unsigned);
+void sc_free_apdu(struct sc_apdu *);
 
 /** Transforms an APDU from binary to its @c sc_apdu_t representation
  *  @param  ctx     sc_context_t object (used for logging)
@@ -679,13 +774,23 @@ typedef struct {
 	/** mutex functions to use (optional) */
 	sc_thread_context_t *thread_ctx;
 } sc_context_param_t;
+
+/**
+ * Repairs an already existing sc_context_t object. This may occur if
+ * multithreaded issues mean that another context in the same heap is deleted.
+ * @param  ctx   pointer to a sc_context_t pointer containing the (partial)
+ *               context.
+ * @return SC_SUCCESS or an error value if an error occurred.
+ */
+int sc_context_repair(sc_context_t **ctx);
+
 /**
  * Creates a new sc_context_t object.
  * @param  ctx   pointer to a sc_context_t pointer for the newly
  *               created sc_context_t object.
- * @param  parm  parameters for the sc_context_t creation (see 
+ * @param  parm  parameters for the sc_context_t creation (see
  *               sc_context_param_t for a description of the supported
- *               options). This parameter is optional and can be NULL.
+ *               options)..
  * @return SC_SUCCESS on success and an error code otherwise.
  */
 int sc_context_create(sc_context_t **ctx, const sc_context_param_t *parm);
@@ -767,7 +872,7 @@ int sc_set_card_driver(sc_context_t *ctx, const char *short_name);
  * The ATR (Answer to Reset) string of the card is also retrieved.
  * @param reader Reader structure
  * @param card The allocated card object will go here */
-int sc_connect_card(sc_reader_t *reader, sc_card_t **card);
+int sc_connect_card(sc_reader_t *reader, struct sc_card **card);
 /**
  * Disconnects from a card, and frees the card structure. Any locks
  * made by the application must be released before calling this function.
@@ -775,7 +880,7 @@ int sc_connect_card(sc_reader_t *reader, sc_card_t **card);
  * @param  card  The card to disconnect
  * @return SC_SUCCESS on success and an error code otherwise
  */
-int sc_disconnect_card(sc_card_t *card);
+int sc_disconnect_card(struct sc_card *card);
 
 /**
  * Checks if a card is present in a reader
@@ -818,7 +923,7 @@ int sc_wait_for_event(sc_context_t *ctx, unsigned int event_mask,
  * @param do_cold_reset 0 for a warm reset, 1 for a cold reset (unpower)
  * @retval SC_SUCCESS on success
  */
-int sc_reset(sc_card_t *card, int do_cold_reset);
+int sc_reset(struct sc_card *card, int do_cold_reset);
 
 /**
  * Cancel all pending PC/SC calls
@@ -833,13 +938,13 @@ int sc_cancel(sc_context_t *ctx);
  * @param  card  The card to lock
  * @retval SC_SUCCESS on success
  */
-int sc_lock(sc_card_t *card);
+int sc_lock(struct sc_card *card);
 /**
  * Unlocks a previously acquired reader lock.
  * @param  card  The card to unlock
  * @retval SC_SUCCESS on success
  */
-int sc_unlock(sc_card_t *card);
+int sc_unlock(struct sc_card *card);
 
 
 /********************************************************************/
@@ -848,59 +953,59 @@ int sc_unlock(sc_card_t *card);
 
 /**
  * Does the equivalent of ISO 7816-4 command SELECT FILE.
- * @param  card  sc_card_t object on which to issue the command
+ * @param  card  struct sc_card object on which to issue the command
  * @param  path  The path, file id or name of the desired file
  * @param  file  If not NULL, will receive a pointer to a new structure
  * @return SC_SUCCESS on success and an error code otherwise
  */
-int sc_select_file(sc_card_t *card, const sc_path_t *path,
+int sc_select_file(struct sc_card *card, const sc_path_t *path,
 		   sc_file_t **file);
 /**
  * List file ids within a DF
- * @param  card    sc_card_t object on which to issue the command
+ * @param  card    struct sc_card object on which to issue the command
  * @param  buf     buffer for the read file ids (the filed ids are
  *                 stored in the buffer as a sequence of 2 byte values)
  * @param  buflen  length of the supplied buffer
  * @return number of files ids read or an error code
  */
-int sc_list_files(sc_card_t *card, u8 *buf, size_t buflen);
+int sc_list_files(struct sc_card *card, u8 *buf, size_t buflen);
 /**
  * Read data from a binary EF
- * @param  card   sc_card_t object on which to issue the command
+ * @param  card   struct sc_card object on which to issue the command
  * @param  idx    index within the file with the data to read
  * @param  buf    buffer to the read data
  * @param  count  number of bytes to read
  * @param  flags  flags for the READ BINARY command (currently not used)
  * @return number of bytes read or an error code
  */
-int sc_read_binary(sc_card_t *card, unsigned int idx, u8 * buf,
+int sc_read_binary(struct sc_card *card, unsigned int idx, u8 * buf,
 		   size_t count, unsigned long flags);
 /**
  * Write data to a binary EF
- * @param  card   sc_card_t object on which to issue the command 
+ * @param  card   struct sc_card object on which to issue the command 
  * @param  idx    index within the file for the data to be written 
  * @param  buf    buffer with the data
  * @param  count  number of bytes to write
  * @param  flags  flags for the WRITE BINARY command (currently not used)
  * @return number of bytes writen or an error code
  */
-int sc_write_binary(sc_card_t *card, unsigned int idx, const u8 * buf,
+int sc_write_binary(struct sc_card *card, unsigned int idx, const u8 * buf,
 		    size_t count, unsigned long flags);
 /**
  * Updates the content of a binary EF
- * @param  card   sc_card_t object on which to issue the command
+ * @param  card   struct sc_card object on which to issue the command
  * @param  idx    index within the file for the data to be updated
  * @param  buf    buffer with the new data
  * @param  count  number of bytes to update
  * @param  flags  flags for the UPDATE BINARY command (currently not used)
  * @return number of bytes writen or an error code
  */
-int sc_update_binary(sc_card_t *card, unsigned int idx, const u8 * buf,
+int sc_update_binary(struct sc_card *card, unsigned int idx, const u8 * buf,
 		     size_t count, unsigned long flags);
 
 /**
  * Sets (part of) the content fo an EF to its logical erased state
- * @param  card   sc_card_t object on which to issue the command
+ * @param  card   struct sc_card object on which to issue the command
  * @param  idx    index within the file for the data to be erased
  * @param  count  number of bytes to erase
  * @param  flags  flags for the ERASE BINARY command (currently not used)
@@ -920,90 +1025,90 @@ int sc_erase_binary(struct sc_card *card, unsigned int idx,
 
 /**
  * Reads a record from the current (i.e. selected) file.
- * @param  card    sc_card_t object on which to issue the command
+ * @param  card    struct sc_card object on which to issue the command
  * @param  rec_nr  SC_READ_RECORD_CURRENT or a record number starting from 1
  * @param  buf     Pointer to a buffer for storing the data
  * @param  count   Number of bytes to read
  * @param  flags   flags (may contain a short file id of a file to select)
  * @retval number of bytes read or an error value
  */
-int sc_read_record(sc_card_t *card, unsigned int rec_nr, u8 * buf,
+int sc_read_record(struct sc_card *card, unsigned int rec_nr, u8 * buf,
 		   size_t count, unsigned long flags);
 /**
  * Writes data to a record from the current (i.e. selected) file.
- * @param  card    sc_card_t object on which to issue the command
+ * @param  card    struct sc_card object on which to issue the command
  * @param  rec_nr  SC_READ_RECORD_CURRENT or a record number starting from 1
  * @param  buf     buffer with to the data to be writen
  * @param  count   number of bytes to write
  * @param  flags   flags (may contain a short file id of a file to select)
  * @retval number of bytes writen or an error value
  */
-int sc_write_record(sc_card_t *card, unsigned int rec_nr, const u8 * buf,
+int sc_write_record(struct sc_card *card, unsigned int rec_nr, const u8 * buf,
 		    size_t count, unsigned long flags);
 /**
  * Appends a record to the current (i.e. selected) file.
- * @param  card    sc_card_t object on which to issue the command
+ * @param  card    struct sc_card object on which to issue the command
  * @param  buf     buffer with to the data for the new record
  * @param  count   length of the data
  * @param  flags   flags (may contain a short file id of a file to select)
  * @retval number of bytes writen or an error value
  */
-int sc_append_record(sc_card_t *card, const u8 * buf, size_t count,
+int sc_append_record(struct sc_card *card, const u8 * buf, size_t count,
 		     unsigned long flags);
 /**
  * Updates the data of a record from the current (i.e. selected) file.
- * @param  card    sc_card_t object on which to issue the command
+ * @param  card    struct sc_card object on which to issue the command
  * @param  rec_nr  SC_READ_RECORD_CURRENT or a record number starting from 1
  * @param  buf     buffer with to the new data to be writen
  * @param  count   number of bytes to update
  * @param  flags   flags (may contain a short file id of a file to select)
  * @retval number of bytes writen or an error value
  */
-int sc_update_record(sc_card_t *card, unsigned int rec_nr, const u8 * buf,
+int sc_update_record(struct sc_card *card, unsigned int rec_nr, const u8 * buf,
 		     size_t count, unsigned long flags);
-int sc_delete_record(sc_card_t *card, unsigned int rec_nr);
+int sc_delete_record(struct sc_card *card, unsigned int rec_nr);
 
 /* get/put data functions */
-int sc_get_data(sc_card_t *, unsigned int, u8 *, size_t);
-int sc_put_data(sc_card_t *, unsigned int, const u8 *, size_t);
+int sc_get_data(struct sc_card *, unsigned int, u8 *, size_t);
+int sc_put_data(struct sc_card *, unsigned int, const u8 *, size_t);
 
 /**
  * Gets challenge from the card (normally random data).
- * @param  card    sc_card_t object on which to issue the command
+ * @param  card    struct sc_card object on which to issue the command
  * @param  rndout  buffer for the returned random challenge
  * @param  len     length of the challenge
  * @return SC_SUCCESS on success and an error code otherwise
  */
-int sc_get_challenge(sc_card_t *card, u8 * rndout, size_t len);
+int sc_get_challenge(struct sc_card *card, u8 * rndout, size_t len);
 
 /********************************************************************/
 /*              ISO 7816-8 related functions                        */
 /********************************************************************/
 
-int sc_restore_security_env(sc_card_t *card, int se_num);
-int sc_set_security_env(sc_card_t *card,
+int sc_restore_security_env(struct sc_card *card, int se_num);
+int sc_set_security_env(struct sc_card *card,
 			const struct sc_security_env *env, int se_num);
-int sc_decipher(sc_card_t *card, const u8 * crgram, size_t crgram_len,
+int sc_decipher(struct sc_card *card, const u8 * crgram, size_t crgram_len,
 		u8 * out, size_t outlen);
-int sc_compute_signature(sc_card_t *card, const u8 * data,
+int sc_compute_signature(struct sc_card *card, const u8 * data,
 			 size_t data_len, u8 * out, size_t outlen);
-int sc_verify(sc_card_t *card, unsigned int type, int ref, const u8 *buf,
+int sc_verify(struct sc_card *card, unsigned int type, int ref, const u8 *buf,
 	      size_t buflen, int *tries_left);
 /**
  * Resets the security status of the card (i.e. withdraw all granted
  * access rights). Note: not all card operating systems support a logout
  * command and in this case SC_ERROR_NOT_SUPPORTED is returned.
- * @param  card  sc_card_t object
+ * @param  card  struct sc_card object
  * @return SC_SUCCESS on success, SC_ERROR_NOT_SUPPORTED if the card
  *         doesn't support a logout command and an error code otherwise
  */
-int sc_logout(sc_card_t *card);
-int sc_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *, int *tries_left);
-int sc_change_reference_data(sc_card_t *card, unsigned int type,
+int sc_logout(struct sc_card *card);
+int sc_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *, int *tries_left);
+int sc_change_reference_data(struct sc_card *card, unsigned int type,
 			     int ref, const u8 *old, size_t oldlen,
 			     const u8 *newref, size_t newlen,
 			     int *tries_left);
-int sc_reset_retry_counter(sc_card_t *card, unsigned int type,
+int sc_reset_retry_counter(struct sc_card *card, unsigned int type,
 			   int ref, const u8 *puk, size_t puklen,
 			   const u8 *newref, size_t newlen);
 int sc_build_pin(u8 *buf, size_t buflen, struct sc_pin_cmd_pin *pin, int pad);
@@ -1013,11 +1118,11 @@ int sc_build_pin(u8 *buf, size_t buflen, struct sc_pin_cmd_pin *pin, int pad);
 /*               ISO 7816-9 related functions                       */
 /********************************************************************/
 
-int sc_create_file(sc_card_t *card, sc_file_t *file);
-int sc_delete_file(sc_card_t *card, const sc_path_t *path);
+int sc_create_file(struct sc_card *card, sc_file_t *file);
+int sc_delete_file(struct sc_card *card, const sc_path_t *path);
 
 /* Card controls */
-int sc_card_ctl(sc_card_t *card, unsigned long command, void *arg);
+int sc_card_ctl(struct sc_card *card, unsigned long command, void *arg);
 
 int sc_file_valid(const sc_file_t *file);
 sc_file_t * sc_file_new(void);
@@ -1120,6 +1225,12 @@ const sc_path_t *sc_get_mf_path(void);
 int sc_hex_to_bin(const char *in, u8 *out, size_t *outlen);
 int sc_bin_to_hex(const u8 *, size_t, char *, size_t, int separator);
 scconf_block *sc_get_conf_block(sc_context_t *ctx, const char *name1, const char *name2, int priority);
+
+/**
+ * Initializes a given OID
+ * @param  oid  sc_object_id object to be initialized
+ */
+void sc_init_oid(struct sc_object_id *oid);
 /**
  * Converts a given OID in ascii form to a internal sc_object_id object
  * @param  oid  OUT sc_object_id object for the result
@@ -1134,6 +1245,11 @@ int sc_format_oid(struct sc_object_id *oid, const char *in);
  * @return 1 if the oids are equal and a non-zero value otherwise
  */
 int sc_compare_oid(const struct sc_object_id *oid1, const struct sc_object_id *oid2);
+/**
+ * Validates a given OID
+ * @param  oid  sc_object_id object to be validated
+ */
+int sc_valid_oid(const struct sc_object_id *oid);
 
 /* Base64 encoding/decoding functions */
 int sc_base64_encode(const u8 *in, size_t inlen, u8 *out, size_t outlen,
@@ -1147,32 +1263,39 @@ int sc_base64_decode(const char *in, u8 *out, size_t outlen);
  * @param  len  length of the memory buffer
  */
 void sc_mem_clear(void *ptr, size_t len);
-void *sc_mem_alloc_secure(size_t len);
+void *sc_mem_alloc_secure(sc_context_t *ctx, size_t len);
 int sc_mem_reverse(unsigned char *buf, size_t len);
 
 int sc_get_cache_dir(sc_context_t *ctx, char *buf, size_t bufsize);
 int sc_make_cache_dir(sc_context_t *ctx);
 
-int sc_enum_apps(sc_card_t *card);
+int sc_enum_apps(struct sc_card *card);
 struct sc_app_info *sc_find_app(struct sc_card *card, struct sc_aid *aid);
-void sc_free_apps(sc_card_t *card);
-int sc_parse_ef_atr(sc_card_t *card);
-void sc_free_ef_atr(sc_card_t *card);
-int sc_update_dir(sc_card_t *card, sc_app_info_t *app);
+void sc_free_apps(struct sc_card *card);
+int sc_parse_ef_atr(struct sc_card *card);
+void sc_free_ef_atr(struct sc_card *card);
+int sc_update_dir(struct sc_card *card, sc_app_info_t *app);
 
 void sc_print_cache(struct sc_card *card);
 
-struct sc_algorithm_info * sc_card_find_rsa_alg(sc_card_t *card,
+struct sc_algorithm_info * sc_card_find_rsa_alg(struct sc_card *card,
 		unsigned int key_length);
-struct sc_algorithm_info * sc_card_find_ec_alg(sc_card_t *card,
+struct sc_algorithm_info * sc_card_find_ec_alg(struct sc_card *card,
 		unsigned int field_length);
-struct sc_algorithm_info * sc_card_find_gostr3410_alg(sc_card_t *card,
+struct sc_algorithm_info * sc_card_find_gostr3410_alg(struct sc_card *card,
 		unsigned int key_length);
 
 /**
- * Used to initialize the @c sc_remote_data structure -- 
- * reset the header of the 'remote APDUs' list, set the handlers 
- * to manipulate the list. 
+ * Get CRC-32 digest
+ * @param value pointer to data used for CRC calculation
+ * @param len length of data used for CRC calculation
+ */
+unsigned sc_crc32(unsigned char *value, size_t len);
+
+/**
+ * Used to initialize the @c sc_remote_data structure --
+ * reset the header of the 'remote APDUs' list, set the handlers
+ * to manipulate the list.
  */
 void sc_remote_data_init(struct sc_remote_data *rdata);
 

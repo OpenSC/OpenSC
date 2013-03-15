@@ -199,14 +199,14 @@ sc_oberthur_get_certificate_authority(struct sc_pkcs15_der *der, int *out_author
 
 	buf_mem.data = malloc(der->len);
 	if (!buf_mem.data)
-		return SC_ERROR_MEMORY_FAILURE;
+		return SC_ERROR_OUT_OF_MEMORY;
 
 	memcpy(buf_mem.data, der->value, der->len);
 	buf_mem.max = buf_mem.length = der->len;
 
    	bio = BIO_new(BIO_s_mem());
 	if(!bio)
-		return SC_ERROR_MEMORY_FAILURE;
+		return SC_ERROR_OUT_OF_MEMORY;
 	
 	BIO_set_mem_buf(bio, &buf_mem, BIO_NOCLOSE);
 	x = d2i_X509_bio(bio, 0);
@@ -259,7 +259,7 @@ sc_oberthur_read_file(struct sc_pkcs15_card *p15card, const char *in_path,
 	
 	*out = calloc(sz, 1);
 	if (*out == NULL)
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_MEMORY_FAILURE, "Cannot read oberthur file");
+		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY, "Cannot read oberthur file");
 
 	if (file->ef_structure == SC_FILE_EF_TRANSPARENT)   {
 		rv = sc_read_binary(card, 0, *out, sz, 0);
@@ -395,7 +395,7 @@ sc_oberthur_parse_containers (struct sc_pkcs15_card *p15card,
 		
 		cont = (struct container *)calloc(sizeof(struct container), 1);
 		if (!cont)
-			return SC_ERROR_MEMORY_FAILURE;
+			return SC_ERROR_OUT_OF_MEMORY;
 		
 		cont->exchange.id_pub = *ptr * 0x100 + *(ptr + 1);  ptr += 2;
 		cont->exchange.id_prv = *ptr * 0x100 + *(ptr + 1);  ptr += 2;
@@ -787,7 +787,7 @@ sc_pkcs15emu_oberthur_add_prvkey(struct sc_pkcs15_card *p15card,
 	if (len)   {
 		kinfo.subject.value = malloc(len);
 		if (!kinfo.subject.value)
-			SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_MEMORY_FAILURE, "Failed to add private key: memory allocation error");
+			SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY, "Failed to add private key: memory allocation error");
 		kinfo.subject.len = len;
 		memcpy(kinfo.subject.value, info_blob + offs + 2, len);
 	}

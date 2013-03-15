@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<refentry id="netkey-tool">
+  <refmeta>
+    <refentrytitle>netkey-tool</refentrytitle>
+    <manvolnum>1</manvolnum>
+    <refmiscinfo class="productname">OpenSC</refmiscinfo>
+    <refmiscinfo class="manual">OpenSC Tools</refmiscinfo>
+    <refmiscinfo class="source">opensc</refmiscinfo>
+  </refmeta>
+
+  <refnamediv>
+    <refname>netkey-tool</refname>
+    <refpurpose>administrative utility for Netkey E4 cards</refpurpose>
+  </refnamediv>
+
+  <refsynopsisdiv>
+    <cmdsynopsis>
+      <command>netkey-tool</command>
+      <arg choice="opt"><replaceable class="option">OPTIONS</replaceable></arg>
+      <arg choice="opt"><replaceable class="parameter">COMMAND</replaceable></arg>
+    </cmdsynopsis>
+  </refsynopsisdiv>
+
+  <refsect1>
+    <title>Description</title>
+    <para>The <command>netkey-tool</command> utility can be used from the
+    command line to perform some smart card operations with NetKey E4 cards
+    that cannot be done easily with other OpenSC-tools, such as changing local
+    PINs, storing certificates into empty NetKey E4 cert-files or displaying
+    the initial PUK-value.</para>
+  </refsect1>
+
+  <refsect1>
+    <title>Options</title>
+    <para>
+      <variablelist>
+        <varlistentry>
+          <term>
+            <option>--help</option>,
+            <option>-h</option>
+          </term>
+          <listitem><para>Displays a short help message.</para></listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
+            <option>--pin</option> <replaceable>pin-value</replaceable>,
+            <option>-p</option> <replaceable>pin-value</replaceable>
+          </term>
+          <listitem><para>Specifies the current value of the global PIN.</para></listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
+            <option>--puk</option> <replaceable>pin-value</replaceable>,
+            <option>-u</option> <replaceable>pin-value</replaceable>
+          </term>
+          <listitem><para>Specifies the current value of the global PUK.</para></listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
+            <option>--pin0</option> <replaceable>pin-value</replaceable>,
+            <option>-0</option> <replaceable>pin-value</replaceable>
+          </term>
+          <listitem><para>Specifies the current value of the local PIN0 (aka local PIN).</para></listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
+            <option>--pin1</option> <replaceable>pin-value</replaceable>,
+            <option>-1</option> <replaceable>pin-value</replaceable>
+          </term>
+          <listitem><para>Specifies the current value of the local PIN1 (aka local PUK).</para></listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
+            <option>--reader</option> <replaceable>number</replaceable>,
+            <option>-r</option> <replaceable>number</replaceable>
+          </term>
+          <listitem><para>Use smart card in specified reader. Default is reader 0.</para></listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
+            <option>-v</option>
+          </term>
+          <listitem><para>Causes <command>netkey-tool</command> to be more verbose. This
+          options may be specified multiple times to increase verbosity.</para></listitem>
+        </varlistentry>
+      </variablelist>
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title>PIN format</title>
+    <para>With the <option>-p</option>, <option>-u</option>, <option>-0</option> or the <option>-1</option>
+    one of the cards pins may be specified. You may use plain ascii-strings (i.e. 123456) or a hex-string
+    (i.e. 31:32:33:34:35:36). A hex-string must consists of exacly n 2-digit hexnumbers separated by n-1 colons.
+    Otherwise it will be interpreted as an ascii string. For example :12:34: and 1:2:3:4 are both pins of
+    length 7, while 12:34 and 01:02:03:04 are pins of length 2 and 4.</para>
+  </refsect1>
+
+  <refsect1>
+    <title>Commands</title>
+    <para>When used without any options or commands, <command>netkey-tool</command> will
+    display information about the smart cards pins and certificates. This will not change
+    your card in any aspect (assumed there are no bugs in <command>netkey-tool</command>).
+    In particular the tries-left counters of the pins are investigated without doing
+    actual pin-verifications.</para>
+
+    <para>If you specify the global PIN via the <option>--pin</option> option,
+    <command>netkey-tool</command> will also display the initial value of the cards
+    global PUK. If your global PUK was changed <command>netkey-tool</command> will still
+    display its initial value. There's no way to recover a lost global PUK once it was changed.
+    There's also no way to display the initial value of your global PUK without knowing the
+    current value of your global PIN. </para>
+
+    <para>For most of the commands that <command>netkey-tool</command> can execute, you have
+    to specify one pin. One notable exeption is the <command>nullpin</command> command, but
+    this command can only be executed once in the lifetime of a NetKey E4 card.</para>
+
+    <para>
+      <variablelist>
+        <varlistentry>
+          <term>
+            <command>cert</command> <replaceable>number</replaceable> <replaceable>filename</replaceable>
+          </term>
+          <listitem><para>This command will read one of your cards certificates (as specified by
+          <replaceable>number</replaceable>) and save this certificate into file <replaceable>filename</replaceable>
+          in PEM-format.  Certificates on a NetKey E4 card are readable without a pin, so you don't
+          have to specify one.</para></listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
+            <command>cert</command> <replaceable>filename</replaceable> <replaceable>number</replaceable>
+          </term>
+          <listitem><para>This command will read the first PEM-encoded certificate from file
+          <replaceable>filename</replaceable> and store this into your smart cards certificate file
+          <replaceable>number</replaceable>. Some of your smart cards certificate files might be readonly, so
+          this will not work with all values of <replaceable>number</replaceable>. If a certificate file is
+          writable you must specify a pin in order to change it. If you try to use this command
+          without specifying a pin, <command>netkey-tool</command> will tell you which one is
+          needed.</para></listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
+            <command>change</command> { <parameter>pin</parameter> | <parameter>puk</parameter> |
+          <parameter>pin0</parameter> | <parameter>pin1</parameter> } <replaceable>new-pin</replaceable>
+          </term>
+          <listitem><para>This changes the value of the specified pin to the given new value.
+          You must specify either the current value of the pin or another pin to be able to do
+          this and if you don't specify a correct one, <command>netkey-tool</command> will tell
+          you which one is needed.</para></listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
+            <command>nullpin</command> <replaceable>initial-pin</replaceable>
+          </term>
+          <listitem><para>This command can be executed only if the global PIN of your card is
+          in nullpin-state. There's no way to return back to nullpin-state once you have changed
+          your global PIN. You don't need a pin to execute the nullpin-command. After a succesfull
+          nullpin-command <command>netkey-tool</command> will display your cards initial
+          PUK-value.</para></listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
+            <command>unblock</command> { <parameter>pin</parameter> | <parameter>pin0</parameter> | <parameter>pin1</parameter> }
+          </term>
+          <listitem><para>This unblocks the specified pin. You must specify another pin
+          to be able to do this and if you don't specify a correct one,
+          <command>netkey-tool</command> will tell you which one is needed.</para></listitem>
+        </varlistentry>
+      </variablelist>
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title>See also</title>
+    <para>
+      <citerefentry>
+        <refentrytitle>opensc-explorer</refentrytitle>
+        <manvolnum>1</manvolnum>
+      </citerefentry>
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title>Authors</title>
+    <para><command>netkey-tool</command> was written by
+    Peter Koch <email>pk_opensc@web.de</email>.</para>
+  </refsect1>
+</refentry>

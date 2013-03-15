@@ -353,10 +353,11 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 
 	static const pindata pins[] = {
 		{ "1", "PIV Card Holder pin", "", 0x80,
-		  /* label and ref will change if using global pin */
+		  /* label, flag  and ref will change if using global pin */
 		  SC_PKCS15_PIN_TYPE_ASCII_NUMERIC,
 		  8, 4, 8, 
 		  SC_PKCS15_PIN_FLAG_NEEDS_PADDING |
+		  SC_PKCS15_PIN_FLAG_INITIALIZED |
 		  SC_PKCS15_PIN_FLAG_LOCAL, 
 		  -1, 0xFF,
 		  SC_PKCS15_CO_FLAG_PRIVATE },
@@ -364,6 +365,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 		  SC_PKCS15_PIN_TYPE_ASCII_NUMERIC,
 		  8, 4, 8, 
 		  SC_PKCS15_PIN_FLAG_NEEDS_PADDING |
+		  SC_PKCS15_PIN_FLAG_INITIALIZED |
 		  SC_PKCS15_PIN_FLAG_LOCAL | SC_PKCS15_PIN_FLAG_SO_PIN |
 		  SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN, 
 		  -1, 0xFF, 
@@ -510,7 +512,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 		{ "3", "KEY MAN key", 
 				/*RSA*/SC_PKCS15_PRKEY_USAGE_DECRYPT | SC_PKCS15_PRKEY_USAGE_UNWRAP,
 				/*EC*/SC_PKCS15_PRKEY_USAGE_DERIVE,
-			"", 0x9D, "1", SC_PKCS15_CO_FLAG_PRIVATE, 1},
+			"", 0x9D, "1", SC_PKCS15_CO_FLAG_PRIVATE, 0},
 		{ "4", "CARD AUTH key", 
 				/*RSA*/SC_PKCS15_PRKEY_USAGE_SIGN |
 				SC_PKCS15_PRKEY_USAGE_SIGNRECOVER,
@@ -662,15 +664,17 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 		if (r < 0)
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 /* TODO
- * PIV keys 9C and 9D require the pin verify be done just befor any
- * crypto operation using these keys. 
+ * PIV key 9C requires the pin verify be done just before any
+ * crypto operation using the key. 
  * 
  * Nss 3.12.7 does not check the CKA_ALWAYS_AUTHENTICATE attribute of a key
  * and will do a C_FindObjects with only CKA_VALUE looking for a certificate
  * it had found earlier after c_Login. The template does not add CKA_TYPE=cert.
  * This will cause the card-piv to read all the objects and will reset
- * the security status for the 9C and 9D keys.
- * Mozilla Bug 457025 
+ * the security status for the 9C key.
+ * Mozilla Bug 357025 
+ * Mozilla Bug 613507
+ * on 5/16/2012, both scheduled for NSS 3.14 
  * 
  * We can not read all the objects, as some need the PIN!
  */  
@@ -789,6 +793,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 					&pin_ref) == 0 &&
 				pin_ref == 0x00) { /* must be 80 for PIV pin, or 00 for Global PIN */
 			pin_info.attrs.pin.reference = pin_ref;
+			pin_info.attrs.pin.flags &= ~SC_PKCS15_PIN_FLAG_LOCAL;
 			label = "Global PIN";
 		} 
 sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "DEE Adding pin %d label=%s",i, label);

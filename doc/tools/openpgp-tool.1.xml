@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<refentry id="openpgp-tool">
+	<refmeta>
+		<refentrytitle>openpgp-tool</refentrytitle>
+		<manvolnum>1</manvolnum>
+		<refmiscinfo class="productname">OpenSC</refmiscinfo>
+		<refmiscinfo class="manual">OpenSC Tools</refmiscinfo>
+		<refmiscinfo class="source">opensc</refmiscinfo>
+	</refmeta>
+
+	<refnamediv>
+		<refname>openpgp-tool</refname>
+		<refpurpose>utility for accessing visible data OpenPGP smart cards
+		and compatible tokens</refpurpose>
+	</refnamediv>
+
+	<refsynopsisdiv>
+		<cmdsynopsis>
+			<command>openpgp-tool</command>
+			<arg choice="opt"><replaceable class="option">OPTIONS</replaceable></arg>
+		</cmdsynopsis>
+	</refsynopsisdiv>
+
+	<refsect1>
+		<title>Description</title>
+		<para>
+			The <command>openpgp-tool</command> utility is used for
+			accessing data from the OpenPGP v1.1 and v2.0 smart cards
+			and compatible tokens like e.g. GPF CryptoStick v1.x,
+			which might not be present in
+			PKCS#15 objects but available in custom files on the
+			card. The data can be printed on screen or used by
+			other programs via environment variables.
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Options</title>
+		<para>
+			<variablelist>
+				<varlistentry>
+					<term>
+						<option>--exec</option> <replaceable>prog</replaceable>,
+						<option>-x</option> <replaceable>prog</replaceable>
+					</term>
+					<listitem><para>
+					Execute the given program with data in environment variables.
+					</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--help</option>,
+						<option>-h</option>
+					</term>
+					<listitem><para>
+					Print help message on screen.
+					</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--raw</option>
+					</term>
+					<listitem><para>
+					Print values in raw format, as they are stored on the card.
+					</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--pretty</option>
+					</term>
+					<listitem><para>
+					Print values in pretty format.
+					</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--user-info</option>,
+						<option>-U</option>
+					</term>
+					<listitem><para>
+					Show card holder information.
+					</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--reader</option> <replaceable>num</replaceable>,
+						<option>-r</option> <replaceable>num</replaceable>
+					</term>
+					<listitem><para>
+					Use the given reader.  The default is the first reader with a card.
+					</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--verify</option> <replaceable>pintype</replaceable>
+					</term>
+					<listitem>
+						<para>
+						Verify PIN (CHV1, CHV2 or CHV3).
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--pin</option> <replaceable>string</replaceable>
+					</term>
+					<listitem>
+						<para>
+						The PIN text to verify.
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--gen-key</option> <replaceable>ID</replaceable>,
+						<option>-G</option> <replaceable>ID</replaceable>
+					</term>
+					<listitem>
+						<para>
+						Generate key. Specify key ID (1, 2 or 3) to generate.
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--key-length</option> <replaceable>bitlength</replaceable>,
+						<option>-L</option> <replaceable>bitlength</replaceable>
+					</term>
+					<listitem>
+						<para>
+						Length (default 2048 bit) of the key to be generated.
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--version</option>,
+						<option>-V</option>
+					</term>
+					<listitem><para>
+					Print the version of the utility and exit.
+					</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--verbose</option>,
+						<option>-v</option>
+					</term>
+					<listitem><para>
+					Verbose operation. Use several times to enable debug output.
+					</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--wait</option>,
+						<option>-w</option>
+					</term>
+					<listitem><para>
+					Wait for a card to be inserted.
+					</para></listitem>
+				</varlistentry>
+
+			</variablelist>
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Authors</title>
+		<para><command>openpgp-tool</command> utility was written by
+		Peter Marschall <email>peter@adpm.de</email>.</para>
+	</refsect1>
+
+</refentry>
