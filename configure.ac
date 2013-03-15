@@ -243,7 +243,7 @@ AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
 AC_HEADER_ASSERT
 AC_CHECK_HEADERS([ \
-	errno.h fcntl.h malloc.h stdlib.h \
+	errno.h fcntl.h stdlib.h \
 	inttypes.h string.h strings.h \
 	sys/time.h unistd.h getopt.h sys/mman.h
 ])

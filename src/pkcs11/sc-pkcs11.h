@@ -23,10 +23,6 @@
 
 #include "config.h"
 
-#ifdef HAVE_MALLOC_H
-#include <malloc.h>
-#endif
-
 #include "libopensc/opensc.h"
 #include "libopensc/pkcs15.h"
 #include "libopensc/log.h"

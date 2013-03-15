@@ -4052,13 +4052,12 @@ static int pkcs15_skey_get_value(struct sc_pkcs11_session *session,
 	 * but for now we only work with session objects
 	 * derived from other keys
 	 */
-	skey_data= malloc(sizeof(struct sc_pkcs15_skey));
+	skey_data= calloc(1, sizeof(struct sc_pkcs15_skey));
 	if (skey_data == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
-	memset(skey_data, 0, sizeof(struct sc_pkcs15_skey));
 
 	if (skey->value && skey->value->data_len) {
-		skey_data->data = malloc(skey_data->data_len);
+		skey_data->data = calloc(1, skey_data->data_len);
 		if (skey_data->data == NULL) {
 			free(skey_data);
 			return SC_ERROR_OUT_OF_MEMORY;

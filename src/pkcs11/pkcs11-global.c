@@ -42,7 +42,7 @@ extern CK_FUNCTION_LIST pkcs11_function_list;
 #include <pthread.h>
 CK_RV mutex_create(void **mutex)
 {
-	pthread_mutex_t *m = malloc(sizeof(*mutex));
+	pthread_mutex_t *m = calloc(1, sizeof(*mutex));
 	if (m == NULL)
 		return CKR_GENERAL_ERROR;;
 	pthread_mutex_init(m, NULL);
@@ -80,7 +80,7 @@ CK_RV mutex_create(void **mutex)
 {
 	CRITICAL_SECTION *m;
 
-	m = malloc(sizeof(*m));
+	m = calloc(1, sizeof(*m));
 	if (m == NULL)
 		return CKR_GENERAL_ERROR;
 	InitializeCriticalSection(m);
@@ -385,7 +385,7 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 
 	card_detect_all();
 
-	found = malloc(list_size(&virtual_slots) * sizeof(CK_SLOT_ID));
+	found = calloc(list_size(&virtual_slots), sizeof(CK_SLOT_ID));
 
 	if (found == NULL) {
 		rv = CKR_HOST_MEMORY;
