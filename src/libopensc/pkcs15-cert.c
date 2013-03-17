@@ -39,8 +39,8 @@ parse_x509_cert(sc_context_t *ctx, struct sc_pkcs15_der *der, struct sc_pkcs15_c
 	int r;
 	struct sc_algorithm_id sig_alg;
 	struct sc_pkcs15_pubkey *pubkey = NULL;
-	unsigned char *serial = NULL, *buf =  der->value;
-	size_t serial_len = 0, data_len = 0, buflen = der->len;
+	unsigned char *serial = NULL, *issuer = NULL, *subject = NULL, *buf =  der->value;
+	size_t serial_len = 0, issuer_len = 0, subject_len = 0, data_len = 0, buflen = der->len;
 	struct sc_asn1_entry asn1_version[] = {
 		{ "version", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, 0, &cert->version, NULL },
 		{ NULL, 0, 0, 0, NULL, NULL }
@@ -61,9 +61,9 @@ parse_x509_cert(sc_context_t *ctx, struct sc_pkcs15_der *der, struct sc_pkcs15_c
 		{ "version",		SC_ASN1_STRUCT,    SC_ASN1_CTX | 0 | SC_ASN1_CONS, SC_ASN1_OPTIONAL, asn1_version, NULL },
 		{ "serialNumber",	SC_ASN1_OCTET_STRING, SC_ASN1_TAG_INTEGER, SC_ASN1_ALLOC, &serial, &serial_len },
 		{ "signature",		SC_ASN1_STRUCT,    SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
-		{ "issuer",		SC_ASN1_OCTET_STRING, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_ALLOC, &cert->issuer, &cert->issuer_len },
+		{ "issuer",		SC_ASN1_OCTET_STRING, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_ALLOC, &issuer, &issuer_len },
 		{ "validity",		SC_ASN1_STRUCT,    SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
-		{ "subject",		SC_ASN1_OCTET_STRING, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_ALLOC, &cert->subject, &cert->subject_len },
+		{ "subject",		SC_ASN1_OCTET_STRING, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_ALLOC, &subject, &subject_len },
 		/* Use a callback to get the algorithm, parameters and pubkey into sc_pkcs15_pubkey */
 		{ "subjectPublicKeyInfo",SC_ASN1_CALLBACK, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, sc_pkcs15_pubkey_from_spki,  &pubkey },
 		{ "extensions",		SC_ASN1_STRUCT,    SC_ASN1_CTX | 3 | SC_ASN1_CONS, SC_ASN1_OPTIONAL, asn1_extensions, NULL },
@@ -79,6 +79,15 @@ parse_x509_cert(sc_context_t *ctx, struct sc_pkcs15_der *der, struct sc_pkcs15_c
 		{ "serialNumber", SC_ASN1_OCTET_STRING, SC_ASN1_TAG_INTEGER, SC_ASN1_ALLOC, NULL, NULL },
 		{ NULL, 0, 0, 0, NULL, NULL }
 	};
+	struct sc_asn1_entry asn1_subject[] = {
+		{ "subject", SC_ASN1_OCTET_STRING, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_ALLOC, NULL, NULL },
+		{ NULL, 0, 0, 0, NULL, NULL }
+	};
+	struct sc_asn1_entry asn1_issuer[] = {
+		{ "issuer", SC_ASN1_OCTET_STRING, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_ALLOC, NULL, NULL },
+		{ NULL, 0, 0, 0, NULL, NULL }
+	};
+
 	const u8 *obj;
 	size_t objlen;
 
@@ -110,6 +119,20 @@ parse_x509_cert(sc_context_t *ctx, struct sc_pkcs15_der *der, struct sc_pkcs15_c
 		r = sc_asn1_encode(ctx, asn1_serial_number, &cert->serial, &cert->serial_len);
 		free(serial);
 		LOG_TEST_RET(ctx, r, "ASN.1 encoding of serial failed");
+	}
+
+	if (subject && subject_len)   {
+		sc_format_asn1_entry(asn1_subject + 0, subject, &subject_len, 1);
+		r = sc_asn1_encode(ctx, asn1_subject, &cert->subject, &cert->subject_len);
+		free(subject);
+		LOG_TEST_RET(ctx, r, "ASN.1 encoding of subject");
+	}
+
+	if (issuer && issuer_len)   {
+		sc_format_asn1_entry(asn1_issuer + 0, issuer, &issuer_len, 1);
+		r = sc_asn1_encode(ctx, asn1_issuer, &cert->issuer, &cert->issuer_len);
+		free(issuer);
+		LOG_TEST_RET(ctx, r, "ASN.1 encoding of issuer");
 	}
 
 	return SC_SUCCESS;
