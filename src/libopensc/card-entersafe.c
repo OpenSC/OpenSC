@@ -1,4 +1,8 @@
 /*
+ * Support for entersafe smart cards 
+ *   
+ * Support: Riham <ruihan@ftsafe.com>
+ *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
@@ -954,10 +958,7 @@ static int entersafe_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 	 data->flags |= SC_PIN_CMD_NEED_PADDING;
 
 	 if(data->cmd!=SC_PIN_CMD_UNBLOCK)
-	 {
-		  r = iso_ops->pin_cmd(card,data,tries_left);
-		  sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Verify rv:%i", r);
-	 }
+		 SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, iso_ops->pin_cmd(card, data, tries_left));
 	 else
 	 {
 		  {/*verify*/
@@ -970,7 +971,12 @@ static int entersafe_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 			   apdu.data = sbuf;
 
 			   r = entersafe_transmit_apdu(card, &apdu,0,0,0,0);
-			   SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+			   if ( !(apdu.sw1 == 0x90 && apdu.sw2 == 0x00)){
+				   if( 0x63 == (apdu.sw1 & 0xff) && 0xC0 == (apdu.sw2 & 0xf0) ){
+					   *tries_left = (apdu.sw2 & 0x0f);
+					   SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_PIN_CODE_INCORRECT);
+				   }
+			   }
 		  }
 
 		  {/*change*/
@@ -986,7 +992,6 @@ static int entersafe_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 			   apdu.data = sbuf;
 
 			   r = entersafe_transmit_apdu(card, &apdu,key_maintain,sizeof(key_maintain),1,1);
-			   SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 		  }
 	 }
 	 SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);

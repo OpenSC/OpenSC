@@ -1,8 +1,7 @@
 /*
  * Support for ePass2003 smart cards
  *
- * Copyright (C) 2008, Weitao Sun <weitao@ftsafe.com>
- * Copyright (C) 2011, Xiaoshuo Wu <xiaoshuo@ftsafe.com>
+ * Support: Riham <ruihan@ftsafe.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -2216,7 +2215,7 @@ get_external_key_retries(struct sc_card *card, unsigned char kid, unsigned char 
 	r = sc_get_challenge(card, random, 8);
 	LOG_TEST_RET(card->ctx, r, "get challenge get_external_key_retries failed");
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0x82, 0x01, 0x80 | kid);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x82, 0x01, 0x80 | kid);
 	apdu.resp = NULL;
 	apdu.resplen = 0;
 
@@ -2238,7 +2237,7 @@ get_external_key_retries(struct sc_card *card, unsigned char kid, unsigned char 
 
 static int
 external_key_auth(struct sc_card *card, unsigned char kid,
-		unsigned char *data, size_t datalen)
+		unsigned char *data, size_t datalen,int* tries_left)
 {
 	int r;
 	struct sc_apdu apdu;
@@ -2259,7 +2258,13 @@ external_key_auth(struct sc_card *card, unsigned char kid,
 	apdu.data = tmp_data;
 
 	r = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(card->ctx, r, "APDU external_key_auth failed");
+	if( apdu.sw1 == 0x63 && apdu.sw2 == 0x00 ){
+		u8 retries = 0;
+		int ret = get_external_key_retries(card, 0x80 | kid, &retries);
+		if (ret == SC_SUCCESS) 
+			*tries_left = retries;
+		return SC_ERROR_PIN_CODE_INCORRECT;
+	}
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(card->ctx, r, "external_key_auth failed");
 
@@ -2334,12 +2339,12 @@ epass2003_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries
 	/* verify */
 	if (data->cmd == SC_PIN_CMD_UNBLOCK) {
 		r = external_key_auth(card, (kid + 1), (unsigned char *)data->pin1.data,
-				data->pin1.len);
+				data->pin1.len,tries_left);
 		LOG_TEST_RET(card->ctx, r, "verify pin failed");
 	}
 	else {
 		r = external_key_auth(card, kid, (unsigned char *)data->pin1.data,
-				data->pin1.len);
+				data->pin1.len,tries_left);
 		LOG_TEST_RET(card->ctx, r, "verify pin failed");
 	}
 
