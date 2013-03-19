@@ -2264,16 +2264,22 @@ external_key_auth(struct sc_card *card, unsigned char kid,
 
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU external_key_auth failed");
+
 	if( apdu.sw1 == 0x63 && apdu.sw2 == 0x00 ){
 		u8 retries = 0;
 		int ret = get_external_key_retries(card, 0x80 | kid, &retries);
 		if (ret == SC_SUCCESS)
+		{
 			*tries_left = retries;
-		return SC_ERROR_PIN_CODE_INCORRECT;
+			/*
+			 * Bcoz external authentication is just expected to behave as a PIN method 
+			 * SC_ERROR_PIN_CODE_INCORRECT is most close to the current situation 
+			 */		
+			return SC_ERROR_PIN_CODE_INCORRECT;
+		}
 	}
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(card->ctx, r, "external_key_auth failed");
-
 	return r;
 }
 
