@@ -357,7 +357,7 @@ pgp_init(sc_card_t *card)
 
 	/* Populate MF - add matching blobs listed in the pgp_objects table. */
 	for (info = priv->pgp_objects; (info != NULL) && (info->id > 0); info++) {
-		if (((info->access & READ_MASK) == READ_ALWAYS) &&
+		if (((info->access & READ_MASK) != READ_NEVER) &&
 		    (info->get_fn != NULL)) {
 			child = pgp_new_blob(card, priv->mf, info->id, sc_file_new());
 
