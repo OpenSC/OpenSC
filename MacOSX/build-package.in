@@ -67,7 +67,7 @@ if [ "${BUILDTOKEND}" == "true" ]; then
 	fi
 
 # Fetch binary dependencies
-	curl -O --insecure https://www.opensc-project.org/downloads/build-10.6.tar.gz
+	curl -O https://www.opensc-project.org/downloads/build-10.6.tar.gz
 
 # Unpack the binary building components
 	if ! test -e OpenSC.tokend/build; then
