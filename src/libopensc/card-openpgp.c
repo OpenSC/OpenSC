@@ -815,6 +815,23 @@ pgp_get_blob(sc_card_t *card, struct blob *blob, unsigned int id,
 		}
 	}
 
+	/* This part is for "NOT FOUND" cases */
+
+	/* Special case:
+	 * Gnuk does not have default value for children of DO 65 (DOs 5B, 5F2D, 5F35)
+	 * So, if these blob was not found, we create it. */
+	if (blob->id == 0x65 && (id == 0x5B || id == 0x5F2D || id == 0x5F35)) {
+		sc_log(card->ctx, "Create blob %X under %X", id, blob->id);
+		child = pgp_new_blob(card, blob, id, sc_file_new());
+		if (child) {
+			pgp_set_blob(child, NULL, 0);
+			*ret = child;
+			return SC_SUCCESS;
+		}
+		else
+			sc_log(card->ctx, "Not enough memory to create blob for DO %X");
+	}
+
 	return SC_ERROR_FILE_NOT_FOUND;
 }
 
@@ -1149,6 +1166,14 @@ pgp_get_data(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+
+	/* For Gnuk card, if there is no certificate, it returns error instead of empty data.
+	 * So, for this case, we ignore error and consider success */
+	if (r == SC_ERROR_DATA_OBJECT_NOT_FOUND && card->type == SC_CARD_TYPE_OPENPGP_GNUK
+        && (tag == DO_CERT || tag == 0x0101 || tag == 0x0102 || tag == 0x0103 || tag == 0x0104)) {
+		r = SC_SUCCESS;
+		apdu.resplen = 0;
+	}
 	LOG_TEST_RET(card->ctx, r, "Card returned error");
 
 	LOG_FUNC_RETURN(card->ctx, apdu.resplen);
