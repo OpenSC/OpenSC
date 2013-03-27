@@ -393,7 +393,7 @@ sc_pkcs15emu_openpgp_add_data(sc_pkcs15_card_t *p15card)
 		 */
 		r = read_file(p15card->card, path, content, sizeof(content));
 		if (r <= 0 ) {
-			sc_log(ctx, "Cannot read DO 010%d or there is no data in it", i);
+			sc_log(ctx, "No data get from DO 010%d", i);
 			/* Skip */
 			continue;
 		}
