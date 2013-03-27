@@ -381,15 +381,33 @@ sc_pkcs15emu_openpgp_add_data(sc_pkcs15_card_t *p15card)
 		sc_pkcs15_object_t dat_obj;
 		char name[8];
 		char path[9];
+		u8 content[254];
 		memset(&dat_info, 0, sizeof(dat_info));
 		memset(&dat_obj, 0, sizeof(dat_obj));
 
 		sprintf(name, "PrivDO%d", i);
 		sprintf(path, "3F00010%d", i);
 
+		/* Check if the DO can be read.
+		 * We won't expose pkcs15 DATA object if DO is empty.
+		 */
+		r = read_file(p15card->card, path, content, sizeof(content));
+		if (r <= 0 ) {
+			sc_log(ctx, "Cannot read DO 010%d or there is no data in it", i);
+			/* Skip */
+			continue;
+		}
 		sc_format_path(path, &dat_info.path);
 		strlcpy(dat_obj.label, name, sizeof(dat_obj.label));
 		strlcpy(dat_info.app_label, name, sizeof(dat_info.app_label));
+
+		/* Add DATA object to slot protected by PIN2 (PW1 with Ref 0x82) */
+		dat_obj.flags = SC_PKCS15_CO_FLAG_PRIVATE | SC_PKCS15_CO_FLAG_MODIFIABLE;
+		dat_obj.auth_id.len = 1;
+		if (i == 1 || i == 3)
+			dat_obj.auth_id.value[0] = 2;
+		else
+			dat_obj.auth_id.value[0] = 3;
 
 		sc_log(ctx, "Add %s data object", name);
 		r = sc_pkcs15emu_add_data_object(p15card, &dat_obj, &dat_info);
