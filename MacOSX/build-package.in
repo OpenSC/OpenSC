@@ -1,24 +1,26 @@
 #!/bin/bash
-# Building is only tested on 10.7 but package targets 10.6, 10.7 and 10.8
+# Building the installer is only tested and supported on 10.7 with Xcode 4.2.1
+# Built package targets 10.6, 10.7 and 10.8
+# Building should also work on other versions, YMMV
 
 set -ex
 test -x ./configure || ./bootstrap
 BUILDPATH=${PWD}
+
+# Use new locations for SDK on 10.8 with Xcode 4.6 (?)
 OSX_RELEASE=`sw_vers -productVersion`
 case ${OSX_RELEASE:0:4} in
-        "10.6")
-                SYSROOT="/Developer/SDKs/MacOSX10.6.sdk"
-		PCKGMAKER="/Developer/Applications/Utilities/PackageMaker.app/Contents/MacOS/PackageMaker"
-                BUILDTOKEND="true"
-        ;;
-        "10.8")
-                SYSROOT="/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.8.sdk"
-		PCKGMAKER="/Applications/PackageMaker.app/Contents/MacOS/PackageMaker"
-                BUILDTOKEND="false"
-        ;;
+	"10.8")
+		SYSROOT="/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.8.sdk"
+		PKGMAKER="/Applications/PackageMaker.app/Contents/MacOS/PackageMaker"		
+	;;
+	*)
+		SYSROOT="/Developer/SDKs/MacOSX10.6.sdk"
+		PKGMAKER="/Developer/Applications/Utilities/PackageMaker.app/Contents/MacOS/PackageMaker"
+	;;
 esac
 
-export CFLAGS="-isysroot ${SYSROOT} -arch i386 -arch x86_64 -mmacosx-version-min=10.6 -g"
+export CFLAGS="-isysroot $SYSROOT -arch i386 -arch x86_64 -mmacosx-version-min=10.6"
 
 export SED=/usr/bin/sed
 PREFIX=/Library/OpenSC
@@ -30,8 +32,8 @@ export PKG_CONFIG_PATH=/usr/lib/pkgconfig
 --enable-shared \
 --disable-static \
 --enable-strict \
---disable-assert
-
+--disable-assert \
+--enable-sm # TODO: remove this
 
 # always make clean
 make clean
@@ -53,42 +55,47 @@ rm -f target/Library/OpenSC/lib/*.la
 test -d libp11 || git clone http://github.com/OpenSC/libp11.git
 (cd libp11
 test -x confiure || ./bootstrap
-./configure --enable-static --disable-shared --disable-dependency-tracking --prefix=${BUILDPATH}/build && make && make install
-cd ..)
+./configure --enable-static --disable-shared --disable-dependency-tracking --prefix=${BUILDPATH}/build && make && make install)
 test -d engine_pkcs11 || git clone http://github.com/OpenSC/engine_pkcs11.git
 (cd engine_pkcs11
 test -x configure || ./bootstrap
 PKG_CONFIG_PATH=${BUILDPATH}/build/lib/pkgconfig:${PKG_CONFIG_PATH} ./configure --disable-dependency-tracking --prefix=/Library/OpenSC && make install DESTDIR=${BUILDPATH}/target)
 
-if [ "${BUILDTOKEND}" == "true" ]; then
 # Check out OpenSC.tokend, if not already fetched.
-	if ! test -e OpenSC.tokend; then
-		git clone http://github.com/OpenSC/OpenSC.tokend.git
-	fi
+if ! test -e OpenSC.tokend; then
+	git clone http://github.com/OpenSC/OpenSC.tokend.git
+fi
 
 # Fetch binary dependencies
+if ! test -f build-10.6.tar.gz; then
 	curl -O https://www.opensc-project.org/downloads/build-10.6.tar.gz
+fi
+
+# Check for correctness
+if ! test $(md5 -q build-10.6.tar.gz) == "5686fb4dda6e9f1f07d06293a25fdd37"; then
+	echo "MD5 of binary components does not match!"
+	exit 1
+fi
 
 # Unpack the binary building components
-	if ! test -e OpenSC.tokend/build; then
-		tar -C OpenSC.tokend -xzvf build-10.6.tar.gz
-	fi
+if ! test -e OpenSC.tokend/build; then
+	tar -C OpenSC.tokend -xzvf build-10.6.tar.gz
+fi
 
 # Create the symlink to OpenSC sources
-	test -L OpenSC.tokend/build/opensc-src || ln -sf ${BUILDPATH}/src OpenSC.tokend/build/opensc-src
+test -L OpenSC.tokend/build/opensc-src || ln -sf ${BUILDPATH}/src OpenSC.tokend/build/opensc-src
 
 # build and copy OpenSC.tokend
-	xcodebuild -configuration Deployment -project OpenSC.tokend/Tokend.xcodeproj
-	mkdir -p target/System/Library/Security/tokend
-	mv OpenSC.tokend/build/OpenSC.tokend target/System/Library/Security/tokend
-fi
+xcodebuild -configuration Deployment -project OpenSC.tokend/Tokend.xcodeproj
+mkdir -p target/System/Library/Security/tokend
+mv OpenSC.tokend/build/OpenSC.tokend target/System/Library/Security/tokend
 
 # The "UnInstaller"
 mkdir -p target/usr/local/bin
 cp MacOSX/opensc-uninstall target/usr/local/bin
 
 # Build installer package
-${PCKGMAKER} \
+${PKGMAKER} \
 -r target \
 -o OpenSC-@PACKAGE_VERSION@.pkg \
 -t "OpenSC @PACKAGE_VERSION@ for Mac OS X 10.6+" \
