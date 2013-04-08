@@ -1184,10 +1184,15 @@ md_set_cardcf(PCARD_DATA pCardData, struct md_file *file)
 	empty.bVersion = CARD_CACHE_FILE_CURRENT_VERSION;
 
 	last_update = sc_pkcs15_get_lastupdate(vs->p15card);
-	if (last_update)   {
+	if (vs->p15card->md_data)    {
+		logprintf(pCardData, 2, "Set 'cardcf' using internal MD data\n");
+		empty.wContainersFreshness = vs->p15card->md_data->cardcf.cont_freshness;
+		empty.wFilesFreshness = vs->p15card->md_data->cardcf.files_freshness;
+	}
+	else if (last_update)   {
 		unsigned crc32 = sc_crc32(last_update, strlen(last_update));
-		logprintf(pCardData, 2, "Set 'cardcf' using lastUpdate '%s'; CRC32 %X\n", last_update, crc32);
 
+		logprintf(pCardData, 2, "Set 'cardcf' using lastUpdate '%s'; CRC32 %X\n", last_update, crc32);
 		empty.wContainersFreshness = crc32;
 		empty.wFilesFreshness = crc32;
 	}
