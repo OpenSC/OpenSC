@@ -412,6 +412,30 @@ struct sc_md_cmap_record {
 	unsigned keysize_keyexchange;
 };
 
+/* From Windows Smart Card Minidriver Specification
+ * Version 7.06
+ *
+ * typedef struct _CARD_CACHE_FILE_FORMAT
+ * {
+ *	BYTE bVersion;		// Cache version
+ *	BYTE bPinsFreshness;	// Card PIN
+ *	WORD wContainersFreshness;
+ *	WORD wFilesFreshness;
+ * } CARD_CACHE_FILE_FORMAT, *PCARD_CACHE_FILE_FORMAT;
+ */
+struct sc_md_cardcf {
+	unsigned char version;
+	unsigned char pin_freshness;
+	unsigned cont_freshness;
+	unsigned files_freshness;
+
+};
+
+struct sc_md_data {
+	struct sc_md_cardcf cardcf;
+	void *prop_data;
+};
+
 struct sc_pkcs15_prkey_info {
 	struct sc_pkcs15_id id;	/* correlates to public certificate id */
 	unsigned int usage, access_flags;
@@ -628,7 +652,8 @@ typedef struct sc_pkcs15_card {
 
 	unsigned int magic;
 
-	void *dll_handle;		/* shared lib for emulated cards */
+	void *dll_handle;	/* shared lib for emulated cards */
+	struct sc_md_data *md_data;	/* minidriver specific data */
 
 	struct sc_pkcs15_operations ops;
 

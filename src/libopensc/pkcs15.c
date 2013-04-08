@@ -778,6 +778,11 @@ void sc_pkcs15_card_free(struct sc_pkcs15_card *p15card)
 	if (p15card->ops.clear)
 		p15card->ops.clear(p15card);
 
+	/* For more complicated MD data a dedicated release procedure
+	 * has to be implemented. */
+	if (p15card->md_data)
+		free(p15card->md_data);
+
 	sc_pkcs15_remove_objects(p15card);
 	sc_pkcs15_remove_dfs(p15card);
 	sc_pkcs15_free_unusedspace(p15card);
