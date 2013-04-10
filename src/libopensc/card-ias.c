@@ -31,9 +31,6 @@
 #include "asn1.h"
 #include "cardctl.h"
 
-/* Portugal eID uses 1024 bit keys */
-#define PTEID_RSA_KEYSIZE 128
-
 #define DRVDATA(card)	((struct ias_priv_data *) ((card)->drv_data))
 
 static struct sc_card_operations ias_ops;
@@ -315,8 +312,9 @@ static int ias_compute_signature(sc_card_t *card, const u8 * data,
 	int 			r;
 	size_t 			len = 0;
 	sc_apdu_t 		apdu;
-	u8 				sbuf[SC_MAX_APDU_BUFFER_SIZE];
-	sc_context_t 	*ctx = card->ctx;
+	u8			sbuf[SC_MAX_APDU_BUFFER_SIZE];
+	u8			rbuf[SC_MAX_APDU_BUFFER_SIZE];
+	sc_context_t		*ctx = card->ctx;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -325,24 +323,22 @@ static int ias_compute_signature(sc_card_t *card, const u8 * data,
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
-	/* Send the data */
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x88, 0x02, 0x00);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x88, 0x02, 0x00);
 	memcpy(sbuf, data, data_len);
 	apdu.data = sbuf;
 	apdu.lc = data_len;
 	apdu.datalen = data_len;
+	apdu.resp = rbuf;
+	apdu.resplen = sizeof(rbuf); 
+	apdu.le = 0x100;
 
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 
-	/* Get the result */
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
-		len = card->type == SC_CARD_TYPE_IAS_PTEID ? PTEID_RSA_KEYSIZE : outlen;
-		r = iso_ops->get_response(card, &len, out);
-		if (r == 0)
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, len);
-		else
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
+		size_t len = apdu.resplen > outlen ? outlen : apdu.resplen;
+		memcpy(out, apdu.resp, len);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, apdu.resplen);	
 	}
 
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
