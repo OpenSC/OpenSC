@@ -13,6 +13,8 @@ extern "C" {
 
 #include "libopensc/pkcs15.h"
 
+#define DEFAULT_PRIVATE_KEY_LABEL "Private Key"
+
 #define SC_PKCS15INIT_X509_DIGITAL_SIGNATURE     0x0080UL
 #define SC_PKCS15INIT_X509_NON_REPUDIATION       0x0040UL
 #define SC_PKCS15INIT_X509_KEY_ENCIPHERMENT      0x0020UL
@@ -81,8 +83,8 @@ struct sc_pkcs15init_operations {
 	 * Create an empty key object.
 	 * @index is the number key objects already on the card.
 	 * @pin_info contains information on the PIN protecting
-	 * 		the key. NULL if the key should be
-	 * 		unprotected.
+	 *		the key. NULL if the key should be
+	 *		unprotected.
 	 * @key_info should be filled in by the function
 	 */
 	int	(*create_key)(struct sc_profile *, struct sc_pkcs15_card *,
@@ -145,9 +147,9 @@ struct sc_pkcs15init_operations {
 };
 
 /* Do not change these or reorder these */
-#define SC_PKCS15INIT_ID_STYLE_NATIVE 	0
-#define SC_PKCS15INIT_ID_STYLE_MOZILLA	1
-#define SC_PKCS15INIT_ID_STYLE_RFC2459	2
+#define SC_PKCS15INIT_ID_STYLE_NATIVE		0
+#define SC_PKCS15INIT_ID_STYLE_MOZILLA		1
+#define SC_PKCS15INIT_ID_STYLE_RFC2459		2
 
 #define SC_PKCS15INIT_SO_PIN		0
 #define SC_PKCS15INIT_SO_PUK		1
@@ -369,6 +371,8 @@ extern int	sc_pkcs15init_delete_by_path(struct sc_profile *,
 				struct sc_pkcs15_card *, const struct sc_path *);
 extern int	sc_pkcs15init_update_any_df(struct sc_pkcs15_card *, struct sc_profile *,
 			struct sc_pkcs15_df *, int);
+extern int	sc_pkcs15init_select_intrinsic_id(struct sc_pkcs15_card *, struct sc_profile *,
+			int, struct sc_pkcs15_id *, void *);
 
 /* Erasing the card structure via rm -rf */
 extern int	sc_pkcs15init_erase_card_recursively(struct sc_pkcs15_card *,

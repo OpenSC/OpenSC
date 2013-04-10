@@ -122,7 +122,7 @@ static int	select_object_path(struct sc_pkcs15_card *, struct sc_profile *,
 static int	sc_pkcs15init_get_pin_path(struct sc_pkcs15_card *,
 			struct sc_pkcs15_id *, struct sc_path *);
 static int	sc_pkcs15init_qualify_pin(struct sc_card *, const char *,
-		unsigned int, struct sc_pkcs15_auth_info *);
+			unsigned int, struct sc_pkcs15_auth_info *);
 static struct	sc_pkcs15_df * find_df_by_type(struct sc_pkcs15_card *,
 			unsigned int);
 static int	sc_pkcs15init_read_info(struct sc_card *card, struct sc_profile *);
@@ -1146,10 +1146,8 @@ sc_pkcs15init_encode_prvkey_content(struct sc_pkcs15_card *p15card, struct sc_pk
  * Prepare private key download, and initialize a prkdf entry
  */
 static int
-sc_pkcs15init_init_prkdf(struct sc_pkcs15_card *p15card,
-		struct sc_profile *profile,
-		struct sc_pkcs15init_prkeyargs *keyargs,
-		struct sc_pkcs15_prkey *key, int keybits,
+sc_pkcs15init_init_prkdf(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
+		struct sc_pkcs15init_prkeyargs *keyargs, struct sc_pkcs15_prkey *key, int keybits,
 		struct sc_pkcs15_object **res_obj)
 {
 	struct sc_context *ctx = p15card->card->ctx;
@@ -1173,7 +1171,7 @@ sc_pkcs15init_init_prkdf(struct sc_pkcs15_card *p15card,
 	}
 
 	if ((label = keyargs->label) == NULL)
-		label = "Private Key";
+		label = DEFAULT_PRIVATE_KEY_LABEL;
 
 	/* Create the prkey object now.
 	 * If we find out below that we're better off reusing an
@@ -1328,7 +1326,8 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 		/* Caller not supplied ID, so,
 		 * if intrinsic ID can be calculated -- overwrite the native one */
 		memset(&iid, 0, sizeof(iid));
-		r = select_intrinsic_id(p15card, profile, SC_PKCS15_TYPE_PUBKEY, &iid, &pubkey_args.key);
+		r = sc_pkcs15init_select_intrinsic_id(p15card, profile, SC_PKCS15_TYPE_PUBKEY,
+				&iid, &pubkey_args.key);
 		LOG_TEST_RET(ctx, r, "Select intrinsic ID error");
 
 		if (iid.len)
@@ -1367,10 +1366,8 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
  * Store private key
  */
 int
-sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
-		struct sc_profile *profile,
-		struct sc_pkcs15init_prkeyargs *keyargs,
-		struct sc_pkcs15_object **res_obj)
+sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
+		struct sc_pkcs15init_prkeyargs *keyargs, struct sc_pkcs15_object **res_obj)
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15_object *object;
@@ -1396,7 +1393,8 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
 	}
 
 	/* Select a intrinsic Key ID if user didn't specify one */
-	r = select_intrinsic_id(p15card, profile, SC_PKCS15_TYPE_PRKEY, &keyargs->id, &keyargs->key);
+	r = sc_pkcs15init_select_intrinsic_id(p15card, profile, SC_PKCS15_TYPE_PRKEY,
+			&keyargs->id, &keyargs->key);
 	LOG_TEST_RET(ctx, r, "Get intrinsic ID error");
 
 	/* Make sure that private key's ID is the unique inside the PKCS#15 application */
@@ -1539,7 +1537,8 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
 		key_info->field_length = keybits;
 
 	/* Select a intrinsic Key ID if the user didn't specify one */
-	r = select_intrinsic_id(p15card, profile, SC_PKCS15_TYPE_PUBKEY, &keyargs->id, &key);
+	r = sc_pkcs15init_select_intrinsic_id(p15card, profile, SC_PKCS15_TYPE_PUBKEY,
+			&keyargs->id, &key);
 	LOG_TEST_RET(ctx, r, "Get intrinsic ID error");
 
 	/* Select a Key ID if the user didn't specify one and there is no intrinsic ID,
@@ -1605,7 +1604,8 @@ sc_pkcs15init_store_certificate(struct sc_pkcs15_card *p15card,
 	if (!label)
 		label = "Certificate";
 
-	r = select_intrinsic_id(p15card, profile, SC_PKCS15_TYPE_CERT_X509, &args->id, &args->der_encoded);
+	r = sc_pkcs15init_select_intrinsic_id(p15card, profile, SC_PKCS15_TYPE_CERT_X509,
+			&args->id, &args->der_encoded);
 	LOG_TEST_RET(ctx, r, "Get certificate 'intrinsic ID' error");
 
 	/* Select an ID if the user didn't specify one, otherwise
@@ -2162,44 +2162,48 @@ find_df_by_type(struct sc_pkcs15_card *p15card, unsigned int type)
 }
 
 
-static int
-select_intrinsic_id(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
-			int type, struct sc_pkcs15_id *id, void *data)
+int
+sc_pkcs15init_select_intrinsic_id(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
+		int type, struct sc_pkcs15_id *id_out, void *data)
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15_pubkey *pubkey = NULL;
 	unsigned id_style = profile->id_style;
+	struct sc_pkcs15_id id;
+	unsigned char *id_data = NULL;
+	size_t id_data_len = 0;
 	int rv, allocated = 0;
 
 	LOG_FUNC_CALLED(ctx);
 #ifndef ENABLE_OPENSSL
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 #else
+	if (!id_out)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+
 	/* ID already exists */
-	if (id->len)
+	if (id_out->len)
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 
-	/* Native ID style is not an intrisic one */
+	/* Native ID style is not intrisic one */
 	if (profile->id_style == SC_PKCS15INIT_ID_STYLE_NATIVE)
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 
+	memset(&id, 0, sizeof(id));
 	/* Get PKCS15 public key */
 	switch(type)   {
 	case SC_PKCS15_TYPE_CERT_X509:
 		rv = sc_pkcs15_pubkey_from_cert(ctx, (struct sc_pkcs15_der *)data, &pubkey);
 		LOG_TEST_RET(ctx, rv, "X509 parse error");
-
 		allocated = 1;
 		break;
 	case SC_PKCS15_TYPE_PRKEY:
 		rv = sc_pkcs15_pubkey_from_prvkey(ctx, (struct sc_pkcs15_prkey *)data, &pubkey);
 		LOG_TEST_RET(ctx, rv, "Cannot get public key");
-
 		allocated = 1;
 		break;
 	case SC_PKCS15_TYPE_PUBKEY:
 		pubkey = (struct sc_pkcs15_pubkey *)data;
-
 		allocated = 0;
 		break;
 	default:
@@ -2223,46 +2227,45 @@ select_intrinsic_id(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 	if (pubkey->algorithm == SC_ALGORITHM_GOSTR3410 && id_style == SC_PKCS15INIT_ID_STYLE_MOZILLA)
 		id_style = SC_PKCS15INIT_ID_STYLE_RFC2459;
 
-	if (id_style == SC_PKCS15INIT_ID_STYLE_MOZILLA)   {
+	switch (id_style)  {
+	case SC_PKCS15INIT_ID_STYLE_MOZILLA:
 		if (pubkey->algorithm == SC_ALGORITHM_RSA)
-			SHA1(pubkey->u.rsa.modulus.data, pubkey->u.rsa.modulus.len, id->value);
+			SHA1(pubkey->u.rsa.modulus.data, pubkey->u.rsa.modulus.len, id.value);
 		else if (pubkey->algorithm == SC_ALGORITHM_DSA)
-			SHA1(pubkey->u.dsa.pub.data, pubkey->u.dsa.pub.len, id->value);
-		else if (pubkey->algorithm == SC_ALGORITHM_EC) {
+			SHA1(pubkey->u.dsa.pub.data, pubkey->u.dsa.pub.len, id.value);
+		else if (pubkey->algorithm == SC_ALGORITHM_EC)
 			/* ID should be SHA1 of the X coordinate according to PKCS#15 v1.1 */
 			/* skip the 04 tag and get the X component */
-			SHA1(pubkey->u.ec.ecpointQ.value+1, (pubkey->u.ec.ecpointQ.len - 1) / 2, id->value);
-		}
+			SHA1(pubkey->u.ec.ecpointQ.value+1, (pubkey->u.ec.ecpointQ.len - 1) / 2, id.value);
 		else
 			goto done;
 
-		id->len = SHA_DIGEST_LENGTH;
-	}
-	else if (id_style == SC_PKCS15INIT_ID_STYLE_RFC2459)  {
-		unsigned char *id_data = NULL;
-		size_t id_data_len = 0;
-
+		id.len = SHA_DIGEST_LENGTH;
+		break;
+	case SC_PKCS15INIT_ID_STYLE_RFC2459:
 		rv = sc_pkcs15_encode_pubkey(ctx, pubkey, &id_data, &id_data_len);
 		LOG_TEST_RET(ctx, rv, "Encoding public key error");
 
 		if (!id_data || !id_data_len)
 			LOG_TEST_RET(ctx, SC_ERROR_INTERNAL, "Encoding public key error");
 
-		SHA1(id_data, id_data_len, id->value);
-		id->len = SHA_DIGEST_LENGTH;
+		SHA1(id_data, id_data_len, id.value);
+		id.len = SHA_DIGEST_LENGTH;
 
-		free(id_data);
-	}
-	else   {
+		break;
+	default:
 		sc_log(ctx, "Unsupported ID style: %i", profile->id_style);
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Non supported ID style");
 	}
 
 done:
+	memcpy(id_out, &id, sizeof(*id_out));
+	if (id_data)
+		free(id_data);
 	if (allocated)
 		sc_pkcs15_free_pubkey(pubkey);
 
-	LOG_FUNC_RETURN(ctx, id->len);
+	LOG_FUNC_RETURN(ctx, id_out->len);
 #endif
 }
 
