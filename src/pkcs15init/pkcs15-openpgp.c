@@ -279,10 +279,9 @@ static int openpgp_store_data(struct sc_pkcs15_card *p15card, struct sc_profile 
 		r = sc_select_file(card, path, &file);
 		LOG_TEST_RET(card->ctx, r, "Cannot select cert file");
 		r = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_UPDATE);
+		sc_log(card->ctx, "Data to write is %d long", content->len);
 		if (r >= 0 && content->len)
-			r = sc_update_binary(p15card->card, 0,
-			                     (const unsigned char *) content->value,
-			                     content->len, 0);
+			r = sc_put_data(p15card->card, 0x7F21, (const unsigned char *) content->value, content->len);
 		break;
 
 	case SC_PKCS15_TYPE_DATA_OBJECT:
