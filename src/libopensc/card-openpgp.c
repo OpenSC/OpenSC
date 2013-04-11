@@ -1208,6 +1208,10 @@ static int gnuk_write_certificate(sc_card_t *card, const u8 *buf, size_t length)
 	sc_apdu_t apdu;
 	u8 *part;
 	size_t plen;
+	/* Two round_ variables below are to build APDU data
+	 * with even length for Gnuk */
+	u8 roundbuf[256];
+	size_t roundlen = 0;
 	int r = SC_SUCCESS;
 
 	LOG_FUNC_CALLED(ctx);
@@ -1238,8 +1242,20 @@ static int gnuk_write_certificate(sc_card_t *card, const u8 *buf, size_t length)
 			sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xD6, i, 0);
 		}
 		apdu.flags |= SC_APDU_FLAGS_CHAINING;
-		apdu.data = part;
-		apdu.datalen = apdu.lc = plen;
+
+		/* If the last part has odd length, we add zero padding to make it even.
+		 * Gnuk does not allow data with odd length */
+		if (plen < 256 && (plen % 2) != 0) {
+			roundlen = plen + 1;
+			memset(roundbuf, 0, roundlen);
+			memcpy(roundbuf, part, plen);
+			apdu.data = roundbuf;
+			apdu.datalen = apdu.lc = roundlen;
+		}
+		else {
+			apdu.data = part;
+			apdu.datalen = apdu.lc = plen;
+		}
 
 		r = sc_transmit_apdu(card, &apdu);
 		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
