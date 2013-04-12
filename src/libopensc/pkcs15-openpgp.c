@@ -151,7 +151,8 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 	u8		c4data[10];
 	u8		c5data[70];
 	int		r, i;
-	const pgp_pin_cfg_t *pin_cfg = (card->type == SC_CARD_TYPE_OPENPGP_V2) ? pin_cfg_v2 : pin_cfg_v1;
+	const pgp_pin_cfg_t *pin_cfg = (card->type == SC_CARD_TYPE_OPENPGP_V2 || card->type == SC_CARD_TYPE_OPENPGP_GNUK)
+	                               ? pin_cfg_v2 : pin_cfg_v1;
 	sc_path_t path;
 	sc_file_t *file;
 
@@ -363,7 +364,8 @@ failed:	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Failed to initialize OpenPGP e
 
 static int openpgp_detect_card(sc_pkcs15_card_t *p15card)
 {
-	if (p15card->card->type == SC_CARD_TYPE_OPENPGP_V1 || p15card->card->type == SC_CARD_TYPE_OPENPGP_V2)
+	if (p15card->card->type == SC_CARD_TYPE_OPENPGP_V1 || p15card->card->type == SC_CARD_TYPE_OPENPGP_V2
+	    || p15card->card->type == SC_CARD_TYPE_OPENPGP_GNUK)
 		return SC_SUCCESS;
 	else
 		return SC_ERROR_WRONG_CARD;
