@@ -2435,6 +2435,44 @@ static int pgp_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 	LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 }
 
+
+/* Internal: Delete key */
+static int
+gnuk_delete_key(sc_card_t *card, u8 key_id)
+{
+	sc_context_t *ctx = card->ctx;
+	int r = SC_SUCCESS;
+	u8 *data = NULL;
+
+	LOG_FUNC_CALLED(ctx);
+
+	/* Delete fingerprint */
+	sc_log(ctx, "Delete fingerprints");
+	r = pgp_put_data(card, 0xC6 + key_id, NULL, 0);
+	LOG_TEST_RET(ctx, r, "Failed to delete fingerprints");
+	/* Delete creation time */
+	sc_log(ctx, "Delete creation time");
+	r = pgp_put_data(card, 0xCD + key_id, NULL, 0);
+	LOG_TEST_RET(ctx, r, "Failed to delete creation time");
+
+	/* Rewrite Extended Header List */
+	sc_log(ctx, "Rewrite Extended Header List");
+
+	if (key_id == 1)
+		data = "\x4D\x02\xB6";
+	else if (key_id == 2)
+		data = "\x4D\x02\xB8";
+	else if (key_id == 3)
+		data = "\x4D\x02\xA4";
+	else
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+
+	r = pgp_put_data(card, 0x4D, data, strlen(data) + 1);
+
+	LOG_FUNC_RETURN(ctx, r);
+}
+
+
 /* ABI: DELETE FILE */
 static int
 pgp_delete_file(sc_card_t *card, const sc_path_t *path)
@@ -2442,6 +2480,7 @@ pgp_delete_file(sc_card_t *card, const sc_path_t *path)
 	struct pgp_priv_data *priv = DRVDATA(card);
 	struct blob *blob;
 	sc_file_t *file;
+	u8 key_id;
 	int r;
 
 	LOG_FUNC_CALLED(card->ctx);
@@ -2457,9 +2496,19 @@ pgp_delete_file(sc_card_t *card, const sc_path_t *path)
 	if (blob == priv->mf)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 
-	if (file->id == 0xB601 || file->id == 0xB801 || file->id == 0xA401) {
+	if (card->type != SC_CARD_TYPE_OPENPGP_GNUK &&
+	    (file->id == 0xB601 || file->id == 0xB801 || file->id == 0xA401)) {
 		/* These tags are just symbolic. We don't really delete it. */
 		r = SC_SUCCESS;
+	}
+	else if (card->type == SC_CARD_TYPE_OPENPGP_GNUK && file->id == 0xB601) {
+		r = gnuk_delete_key(card, 1);
+	}
+	else if (card->type == SC_CARD_TYPE_OPENPGP_GNUK && file->id == 0xB801) {
+		r = gnuk_delete_key(card, 2);
+	}
+	else if (card->type == SC_CARD_TYPE_OPENPGP_GNUK && file->id == 0xA401) {
+		r = gnuk_delete_key(card, 3);
 	}
 	else {
 		/* call pgp_put_data() with zero-sized NULL-buffer to zap the DO contents */
