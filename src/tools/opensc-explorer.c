@@ -892,13 +892,14 @@ static int do_create(int argc, char **argv)
 	unsigned int size;
 	int r, op;
 
-	if (argc != 2)
+	if (argc < 2)
 		return usage(do_create);
 	if (arg_to_path(argv[0], &path, 1) != 0)
 		return usage(do_create);
 	/* %z isn't supported everywhere */
 	if (sscanf(argv[1], "%u", &size) != 1)
 		return usage(do_create);
+
 	file = sc_file_new();
 	file->id = (path.value[0] << 8) | path.value[1];
 	file->type = SC_FILE_TYPE_WORKING_EF;
@@ -907,6 +908,11 @@ static int do_create(int argc, char **argv)
 	file->status = SC_FILE_STATUS_ACTIVATED;
 	for (op = 0; op < SC_MAX_AC_OPS; op++)
 		sc_file_add_acl_entry(file, op, SC_AC_NONE, 0);
+
+	if (argc > 2)   {
+		snprintf((char *)file->name, sizeof(file->name), "%s", argv[2]);
+		file->namelen = strlen((char *)file->name);
+	}
 
 	r = create_file(file);
 	sc_file_free(file);
