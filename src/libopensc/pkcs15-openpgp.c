@@ -390,8 +390,8 @@ sc_pkcs15emu_openpgp_add_data(sc_pkcs15_card_t *p15card)
 		memset(&dat_info, 0, sizeof(dat_info));
 		memset(&dat_obj, 0, sizeof(dat_obj));
 
-		sprintf(name, "PrivDO%d", i);
-		sprintf(path, "3F00010%d", i);
+		snprintf(name, 8, "PrivDO%d", i);
+		snprintf(path, 9, "3F00010%d", i);
 
 		/* Check if the DO can be read.
 		 * We won't expose pkcs15 DATA object if DO is empty.
