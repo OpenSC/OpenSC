@@ -307,7 +307,7 @@ static int openpgp_store_data(struct sc_pkcs15_card *p15card, struct sc_profile 
 		}
 		if (r > 0) {
 			sc_log(ctx, "DO 0101 is full.");
-			r = SC_ERROR_TOO_MANY_OBJECTS;
+			r = SC_ERROR_NOT_ENOUGH_MEMORY;
 			break;
 		}
 		r = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_UPDATE);
