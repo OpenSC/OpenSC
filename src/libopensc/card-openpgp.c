@@ -1222,10 +1222,7 @@ static int gnuk_write_certificate(sc_card_t *card, const u8 *buf, size_t length)
 		r = sc_transmit_apdu(card, &apdu);
 		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 		/* Check response */
-		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-		if (r < 0)
-			LOG_FUNC_RETURN(card->ctx, r);
-		LOG_FUNC_RETURN(card->ctx, length);
+		LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2), "Certificate writing failed");
 	}
 
 	/* Ref: gnuk_put_binary_libusb.py and gnuk_token.py in Gnuk source tree */
@@ -1262,8 +1259,7 @@ static int gnuk_write_certificate(sc_card_t *card, const u8 *buf, size_t length)
 		r = sc_transmit_apdu(card, &apdu);
 		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 		/* Check response */
-		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-		LOG_TEST_RET(card->ctx, r, "UPDATE BINARY returned error");
+		LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2), "UPDATE BINARY returned error");
 
 		/* To next part */
 		i++;
