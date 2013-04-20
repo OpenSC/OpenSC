@@ -686,9 +686,7 @@ static int dnie_transmit_apdu(sc_card_t * card, sc_apdu_t * apdu)
 			}
 		}
 		/* call std sc_transmit_apdu */
-#ifdef _EMPTY_STUB
 		res = sc_transmit(card, apdu);
-#endif
 		/* and restore original apdu type */
 		apdu->cse = tmp;
 	} else {
@@ -1391,9 +1389,7 @@ static int dnie_get_response(sc_card_t * card, size_t * count, u8 * buf)
 	/* don't call GET RESPONSE recursively */
 	apdu.flags |= SC_APDU_FLAGS_NO_GET_RESP;
 
-#ifdef _EMPTY_STUB
 	r = sc_transmit(card, &apdu);	/* bypass wrapping */
-#endif
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 	if (apdu.resplen == 0)
 		LOG_FUNC_RETURN(card->ctx,
