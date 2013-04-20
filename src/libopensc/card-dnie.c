@@ -200,8 +200,14 @@ static sc_card_driver_t dnie_driver = {
  */
 static int dnie_get_environment(
 	sc_card_t * card, 
+#ifdef _EMPTY_STUBS
 	sc_card_ui_context_t * ui_context)
+#else
+	void * ui_context)
+#endif
 {
+	/* empty stubs for now ... */
+#ifdef _EMPTY_STUBS
 	int i;
 	scconf_block **blocks, *blk;
 	sc_context_t *ctx;
@@ -227,6 +233,7 @@ static int dnie_get_environment(
 		ui_context->user_consent_enabled =	/* user consent is enabled by default */
 		    scconf_get_bool(blk, "user_consent_enabled", 1);
 	}
+#endif
 	return SC_SUCCESS;
 }
 
@@ -519,6 +526,7 @@ int dnie_match_card(struct sc_card *card)
 static int dnie_init(struct sc_card *card)
 {
 	int result = SC_SUCCESS;
+#ifdef _EMPTY_STUBS
 	unsigned long algoflags;
 	sm_context_t *dnie_sm_context=NULL;
 	sc_card_ui_context_t *dnie_ui_context=NULL;
@@ -602,6 +610,7 @@ static int dnie_init(struct sc_card *card)
 	/* result = cwa_create_secure_channel(card, p, CWA_SM_COLD); */
 	result=cwa_create_secure_channel(card,provider,CWA_SM_OFF);
 
+#endif
  dnie_init_error:
 	LOG_FUNC_RETURN(card->ctx, result);
 }
@@ -618,11 +627,12 @@ static int dnie_init(struct sc_card *card)
 static int dnie_finish(struct sc_card *card)
 {
 	int result = SC_SUCCESS;
+#ifdef _EMPTY_STUBS
 	LOG_FUNC_CALLED(card->ctx);
 
 	/* disable sm channel if stablished */
 	result = cwa_create_secure_channel(card, card->sm_context->sm_driver->sm_data, CWA_SM_OFF);
-
+#endif
 	LOG_FUNC_RETURN(card->ctx, result);
 }
 
@@ -649,6 +659,7 @@ static int dnie_transmit_apdu(sc_card_t * card, sc_apdu_t * apdu)
 	u8 *buf = NULL;		/* use for store partial le responses */
 	int res = SC_SUCCESS;
 	cwa_provider_t *provider = NULL;
+#ifdef _EMPTY_STUBS
 	if ((card == NULL) || (card->ctx == NULL) || (apdu == NULL))
 		return SC_ERROR_INVALID_ARGUMENTS;
 	LOG_FUNC_CALLED(card->ctx);
@@ -675,7 +686,9 @@ static int dnie_transmit_apdu(sc_card_t * card, sc_apdu_t * apdu)
 			}
 		}
 		/* call std sc_transmit_apdu */
-		res = do_single_transmit(card, apdu);
+#ifdef _EMPTY_STUB
+		res = sc_transmit(card, apdu);
+#endif
 		/* and restore original apdu type */
 		apdu->cse = tmp;
 	} else {
@@ -733,7 +746,7 @@ static int dnie_transmit_apdu(sc_card_t * card, sc_apdu_t * apdu)
 				}
 			}
 			/* send data chunk bypassing apdu wrapping */
-			res = do_single_transmit(card, e_apdu);
+			res = sc_transmit(card, e_apdu);
 			LOG_TEST_RET(card->ctx, res,
 				     "Error in envelope() send apdu");
 		}		/* for */
@@ -742,6 +755,7 @@ static int dnie_transmit_apdu(sc_card_t * card, sc_apdu_t * apdu)
 		apdu->resplen = e_apdu->resplen;
 		res = SC_SUCCESS;
 	}
+#endif
 	LOG_FUNC_RETURN(card->ctx, res);
 }
 
@@ -751,7 +765,7 @@ static int dnie_transmit_apdu(sc_card_t * card, sc_apdu_t * apdu)
  * Called before sc_transmit_apdu() to allowing APDU wrapping
  * If set to NULL no wrapping process will be done
  * Usefull on Secure Messaging APDU encode/decode
- * If returned value is greater than zero, do_single_transmit() 
+ * If returned value is greater than zero, sc_transmit() 
  * will be called, else means either SC_SUCCESS or error code 
  *
  * NOTE:
@@ -776,6 +790,7 @@ static int dnie_wrap_apdu(sc_card_t * card, sc_apdu_t * apdu)
 	cwa_provider_t *provider = NULL;
 	int retries = 3;
 
+#ifdef _EMPTY_STUBS
 	if ((card == NULL) || (card->ctx == NULL) || (apdu == NULL))
 		return SC_ERROR_INVALID_ARGUMENTS;
 	ctx=card->ctx;
@@ -827,6 +842,7 @@ static int dnie_wrap_apdu(sc_card_t * card, sc_apdu_t * apdu)
 		}
 		LOG_FUNC_RETURN(ctx, res);
 	}
+#endif
 	sc_log(ctx,"Too many retransmissions. Abort and return");
 	LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
 }
@@ -1350,7 +1366,7 @@ static int dnie_select_file(struct sc_card *card,
  * card, storing result and new length into provided pointers
  *
  * Just a copy of iso7816.c::get_response(), but calling 
- * do_single_transmit to avoid wrap/unwrap response
+ * sc_transmit to avoid wrap/unwrap response
  *
  * @param card Pointer to card structure
  * @param count pointer to get expected data length / return received length
@@ -1375,7 +1391,9 @@ static int dnie_get_response(sc_card_t * card, size_t * count, u8 * buf)
 	/* don't call GET RESPONSE recursively */
 	apdu.flags |= SC_APDU_FLAGS_NO_GET_RESP;
 
-	r = do_single_transmit(card, &apdu);	/* bypass wrapping */
+#ifdef _EMPTY_STUB
+	r = sc_transmit(card, &apdu);	/* bypass wrapping */
+#endif
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 	if (apdu.resplen == 0)
 		LOG_FUNC_RETURN(card->ctx,
@@ -1469,6 +1487,7 @@ static int dnie_logout(struct sc_card *card)
 {
 	int result = SC_SUCCESS;
 
+#ifdef _EMPTY_STUBS
 	if ((card == NULL) || (card->ctx == NULL))
 		return SC_ERROR_INVALID_ARGUMENTS;
 	LOG_FUNC_CALLED(card->ctx);
@@ -1476,6 +1495,7 @@ static int dnie_logout(struct sc_card *card)
 	result =
 	    cwa_create_secure_channel(card, card->sm_context->sm_driver->sm_data, CWA_SM_OFF);
 	/* TODO: _logout() see comments.txt on what to do here */
+#endif
 	LOG_FUNC_RETURN(card->ctx, result);
 }
 
@@ -1755,13 +1775,14 @@ static int dnie_compute_signature(struct sc_card *card,
 	LOG_TEST_RET(card->ctx, result,
 		     "compute_signature(); Cannot establish SM");
 	*/
+#ifdef _EMPTY_STUBS
 
 	/* (Requested by DGP): on signature operation, ask user consent */
 	if (dnie_priv.rsa_key_ref == 0x02) {	/* TODO: revise key ID handling */
 		result = sc_ask_user_consent(card,user_consent_title,user_consent_message);
 		LOG_TEST_RET(card->ctx, result, "User consent denied");
 	}
-
+#endif
 	/*
 	   Seems that OpenSC already provides pkcs#1 v1.5 DigestInfo structure 
 	   with pre-calculated hash. So no need to to any Hash calculation, 
@@ -1961,6 +1982,7 @@ static int dnie_card_ctl(struct sc_card *card,
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 	switch (request) {
+#ifdef _EMPTY_STUBS
 		/* obtain lifecycle status by reading card->type */
 	case SC_CARDCTL_LIFECYCLE_GET:
 		switch (card->type) {
@@ -1989,6 +2011,7 @@ static int dnie_card_ctl(struct sc_card *card,
 		/* retrieve name, surname and eid number */
 		result = dnie_get_info(card, data);
 		LOG_FUNC_RETURN(card->ctx, result);
+#endif
 	default:
 		/* default: unsupported function */
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
@@ -2278,11 +2301,13 @@ static int dnie_process_fci(struct sc_card *card,
 static int dnie_pin_change(struct sc_card *card, struct sc_pin_cmd_data *data)
 {
 	int res=SC_SUCCESS;
+#ifdef _EMPTY_STUBS
 	LOG_FUNC_CALLED(card->ctx);
 
         /* Ensure that secure channel is established from reset */
         res = cwa_create_secure_channel(card, card->sm_context->sm_driver->sm_data, CWA_SM_COLD);
         LOG_TEST_RET(card->ctx, res, "Establish SM failed");
+#endif
 
 	LOG_FUNC_RETURN(card->ctx,SC_ERROR_NOT_SUPPORTED);
 }
@@ -2301,6 +2326,7 @@ static int dnie_pin_verify(struct sc_card *card,
                         struct sc_pin_cmd_data *data, int *tries_left)
 {
 	int res=SC_SUCCESS;
+#ifdef _EMPTY_STUBS
 	sc_apdu_t apdu;
 
 	u8 pinbuffer[SC_MAX_APDU_BUFFER_SIZE];
@@ -2351,6 +2377,7 @@ static int dnie_pin_verify(struct sc_card *card,
 	/* the end: a bit of Mister Proper and return */
 	memset(&apdu, 0, sizeof(apdu));	/* clear buffer */
 	data->apdu = NULL;
+#endif
 	LOG_FUNC_RETURN(card->ctx, res);
 }
 

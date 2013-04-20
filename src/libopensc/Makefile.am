@@ -40,7 +40,7 @@ libopensc_la_SOURCES = \
 	card-rtecp.c card-westcos.c card-myeid.c card-ias.c \
 	card-javacard.c card-itacns.c card-authentic.c \
 	card-iasecc.c iasecc-sdo.c iasecc-sm.c card-sc-hsm.c \
-	card-dnie.c \
+	card-dnie.c cwa14890.c cwa-dnie.c \
 	\
 	pkcs15-openpgp.c pkcs15-infocamere.c pkcs15-starcert.c \
 	pkcs15-tcos.c pkcs15-esteid.c pkcs15-postecert.c pkcs15-gemsafeGPK.c \
