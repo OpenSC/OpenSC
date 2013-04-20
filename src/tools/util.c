@@ -307,6 +307,21 @@ const char * util_acl_to_str(const sc_acl_entry_t *e)
 			if (e->key_ref != SC_AC_KEY_REF_NONE)
 				sprintf(buf + 4, "%d", e->key_ref);
 			break;
+		case SC_AC_SEN:
+			strcpy(buf, "Sec.Env. ");
+			if (e->key_ref != SC_AC_KEY_REF_NONE)
+				sprintf(buf + 3, "#%d", e->key_ref);
+			break;
+		case SC_AC_SCB:
+			strcpy(buf, "Sec.ControlByte ");
+			if (e->key_ref != SC_AC_KEY_REF_NONE)
+				sprintf(buf + 3, "Ox%X", e->key_ref);
+			break;
+		case SC_AC_IDA:
+			strcpy(buf, "PKCS#15 AuthID ");
+			if (e->key_ref != SC_AC_KEY_REF_NONE)
+				sprintf(buf + 3, "#%d", e->key_ref);
+			break;
 		default:
 			strcpy(buf, "????");
 			break;
