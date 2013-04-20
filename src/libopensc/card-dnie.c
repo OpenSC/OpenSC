@@ -526,11 +526,11 @@ int dnie_match_card(struct sc_card *card)
 static int dnie_init(struct sc_card *card)
 {
 	int result = SC_SUCCESS;
-#ifdef _EMPTY_STUBS
 	unsigned long algoflags;
-	sm_context_t *dnie_sm_context=NULL;
-	sc_card_ui_context_t *dnie_ui_context=NULL;
+	sm_context_t dnie_sm_context;
 	cwa_provider_t *provider=NULL;
+#ifdef _EMPTY_STUBS
+	sc_card_ui_context_t *dnie_ui_context=NULL;
 
 	if ((card == NULL) || (card->ctx == NULL))
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -557,23 +557,12 @@ static int dnie_init(struct sc_card *card)
 	if (result != SC_SUCCESS)
 		goto dnie_init_error;
 	card->ui_context = dnie_ui_context;
+#endif
 
 	/** Secure messaging initialization section **/
 
 	/* initialize sm_context */
-	dnie_sm_context=calloc(1,sizeof(sm_context_t));
-	if (!dnie_sm_context) {
-		sc_log(card->ctx, "Error in allocate dnie sm_context");
-		result = SC_ERROR_OUT_OF_MEMORY;
-		goto dnie_init_error;
-	}
-	/* allocate dnie sm_driver space */
-	dnie_sm_context->sm_driver=calloc(1,sizeof(sc_card_sm_driver_t));
-	if (!dnie_sm_context->sm_driver ) {
-		sc_log(card->ctx, "Error in allocate dnie sm_driver");
-		result = SC_ERROR_OUT_OF_MEMORY;
-		goto dnie_init_error;
-	}
+	memset(&dnie_sm_context, 0, sizeof(sm_context_t));
 	/* create and initialize cwa-dnie provider*/
 	provider = dnie_get_cwa_provider(card);
 	if (!provider) {
@@ -582,13 +571,16 @@ static int dnie_init(struct sc_card *card)
 		goto dnie_init_error;
 	}
 	/* setup dnie sm driver properly */
-	dnie_sm_context->sm_driver->initialize=NULL;
-	dnie_sm_context->sm_driver->finalize=NULL;
-	dnie_sm_context->sm_driver->wrap_apdu=dnie_wrap_apdu;
-	dnie_sm_context->sm_driver->sm_data=provider;
+	dnie_sm_context.module.ops.initialize=NULL;
+	dnie_sm_context.module.ops.finalize=NULL;
+	dnie_sm_context.module.ops.test=NULL;
+	dnie_sm_context.module.ops.module_init=NULL;
+	dnie_sm_context.module.ops.module_cleanup=NULL;
+	dnie_sm_context.module.ops.get_apdus=dnie_wrap_apdu;
+	dnie_sm_context.module.handle=provider;
 
-	/* all sm related init done: store pointer into card structure */
-	card->sm_context=dnie_sm_context;
+	/* all sm related init done: store record into card structure */
+	card->sm_ctx=dnie_sm_context;
 
 	/* store private data into card driver structure */
 	card->drv_data = &dnie_priv;
@@ -610,7 +602,6 @@ static int dnie_init(struct sc_card *card)
 	/* result = cwa_create_secure_channel(card, p, CWA_SM_COLD); */
 	result=cwa_create_secure_channel(card,provider,CWA_SM_OFF);
 
-#endif
  dnie_init_error:
 	LOG_FUNC_RETURN(card->ctx, result);
 }
@@ -627,12 +618,11 @@ static int dnie_init(struct sc_card *card)
 static int dnie_finish(struct sc_card *card)
 {
 	int result = SC_SUCCESS;
-#ifdef _EMPTY_STUBS
 	LOG_FUNC_CALLED(card->ctx);
 
-	/* disable sm channel if stablished */
-	result = cwa_create_secure_channel(card, card->sm_context->sm_driver->sm_data, CWA_SM_OFF);
-#endif
+	/* disable sm channel if established */
+	result = cwa_create_secure_channel(card, card->sm_ctx.module.handle, CWA_SM_OFF);
+
 	LOG_FUNC_RETURN(card->ctx, result);
 }
 
@@ -659,11 +649,11 @@ static int dnie_transmit_apdu(sc_card_t * card, sc_apdu_t * apdu)
 	u8 *buf = NULL;		/* use for store partial le responses */
 	int res = SC_SUCCESS;
 	cwa_provider_t *provider = NULL;
-#ifdef _EMPTY_STUBS
+
 	if ((card == NULL) || (card->ctx == NULL) || (apdu == NULL))
 		return SC_ERROR_INVALID_ARGUMENTS;
 	LOG_FUNC_CALLED(card->ctx);
-	provider = (cwa_provider_t *) card->sm_context->sm_driver->sm_data;
+	provider = (cwa_provider_t *) card->sm_ctx.module.handle;
 	buf = calloc(2048, sizeof(u8));
 	if (!buf)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
@@ -753,7 +743,6 @@ static int dnie_transmit_apdu(sc_card_t * card, sc_apdu_t * apdu)
 		apdu->resplen = e_apdu->resplen;
 		res = SC_SUCCESS;
 	}
-#endif
 	LOG_FUNC_RETURN(card->ctx, res);
 }
 
@@ -788,12 +777,11 @@ static int dnie_wrap_apdu(sc_card_t * card, sc_apdu_t * apdu)
 	cwa_provider_t *provider = NULL;
 	int retries = 3;
 
-#ifdef _EMPTY_STUBS
 	if ((card == NULL) || (card->ctx == NULL) || (apdu == NULL))
 		return SC_ERROR_INVALID_ARGUMENTS;
 	ctx=card->ctx;
 	LOG_FUNC_CALLED(ctx);
-	provider = (cwa_provider_t *) card->sm_context->sm_driver->sm_data;
+	provider = (cwa_provider_t *) card->sm_ctx.module.handle;
 	for (retries=3; retries>0; retries--) {
 		/* preserve original apdu to take care of retransmission */
 		memcpy(&wrapped, apdu, sizeof(sc_apdu_t));
@@ -840,7 +828,6 @@ static int dnie_wrap_apdu(sc_card_t * card, sc_apdu_t * apdu)
 		}
 		LOG_FUNC_RETURN(ctx, res);
 	}
-#endif
 	sc_log(ctx,"Too many retransmissions. Abort and return");
 	LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
 }
@@ -1483,15 +1470,13 @@ static int dnie_logout(struct sc_card *card)
 {
 	int result = SC_SUCCESS;
 
-#ifdef _EMPTY_STUBS
 	if ((card == NULL) || (card->ctx == NULL))
 		return SC_ERROR_INVALID_ARGUMENTS;
 	LOG_FUNC_CALLED(card->ctx);
 	/* disable and free any sm channel related data */
 	result =
-	    cwa_create_secure_channel(card, card->sm_context->sm_driver->sm_data, CWA_SM_OFF);
+	    cwa_create_secure_channel(card, card->sm_ctx.module.handle, CWA_SM_OFF);
 	/* TODO: _logout() see comments.txt on what to do here */
-#endif
 	LOG_FUNC_RETURN(card->ctx, result);
 }
 
@@ -1978,7 +1963,6 @@ static int dnie_card_ctl(struct sc_card *card,
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 	switch (request) {
-#ifdef _EMPTY_STUBS
 		/* obtain lifecycle status by reading card->type */
 	case SC_CARDCTL_LIFECYCLE_GET:
 		switch (card->type) {
@@ -2007,7 +1991,6 @@ static int dnie_card_ctl(struct sc_card *card,
 		/* retrieve name, surname and eid number */
 		result = dnie_get_info(card, data);
 		LOG_FUNC_RETURN(card->ctx, result);
-#endif
 	default:
 		/* default: unsupported function */
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
