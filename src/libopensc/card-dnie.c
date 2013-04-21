@@ -54,7 +54,11 @@ typedef struct dnie_private_data_st {
 	size_t cachelen;	/**< length of cache buffer */
 } dnie_private_data_t;
 
-static int dnie_wrap_apdu(sc_card_t * card, sc_apdu_t * apdu);
+#ifdef ENABLE_SM
+static int dnie_wrap_apdu(sc_card_t *card, sc_apdu_t *apdu, sc_apdu_t **sm_apdu);
+static int dnie_free_wrapped_apdu(sc_card_t *card, sc_apdu_t *apdu, sc_apdu_t **sm_apdu);
+#endif
+
 extern cwa_provider_t *dnie_get_cwa_provider(sc_card_t * card);
 extern int dnie_read_file(
 	sc_card_t * card, 
@@ -200,20 +204,20 @@ static sc_card_driver_t dnie_driver = {
  */
 static int dnie_get_environment(
 	sc_card_t * card, 
-#ifdef _EMPTY_STUBS
+#ifdef ENABLE_UI /* disabling ui related code for now ... */
 	sc_card_ui_context_t * ui_context)
 #else
-	void * ui_context)
+	void * p)
 #endif
 {
-	/* empty stubs for now ... */
-#ifdef _EMPTY_STUBS
 	int i;
 	scconf_block **blocks, *blk;
 	sc_context_t *ctx;
+#ifdef ENABLE_UI /* disabling ui related code for now ... */
 	/* set default values */
 	ui_context->user_consent_app = USER_CONSENT_CMD;
 	ui_context->user_consent_enabled = 1;
+#endif
 	/* look for sc block in opensc.conf */
 	ctx = card->ctx;
 	for (i = 0; ctx->conf_blocks[i]; i++) {
@@ -226,14 +230,15 @@ static int dnie_get_environment(
 		free(blocks);
 		if (blk == NULL)
 			continue;
+#ifdef ENABLE_UI /* disabling ui related code for now ... */
 		/* fill private data with configuration parameters */
 		ui_context->user_consent_app =	/* def user consent app is "pinentry" */
 		    (char *)scconf_get_str(blk, "user_consent_app",
 					   USER_CONSENT_CMD);
 		ui_context->user_consent_enabled =	/* user consent is enabled by default */
 		    scconf_get_bool(blk, "user_consent_enabled", 1);
-	}
 #endif
+	}
 	return SC_SUCCESS;
 }
 
@@ -244,7 +249,7 @@ static int dnie_get_environment(
  * Generate a public/private key pair.
  *
  * Manual says that generate_keys() is a reserved operation; that is: 
- * only can be done at DGP offices. But several authors talks about 
+ * only can be done at DGP offices. But several authors talk about 
  * this operation is available also outside. So need to test :-)
  * Notice that write operations are not supported, so we can't use 
  * created keys to generate and store new certificates into the card.
@@ -527,10 +532,13 @@ static int dnie_init(struct sc_card *card)
 {
 	int result = SC_SUCCESS;
 	unsigned long algoflags;
+#ifdef ENABLE_SM
 	sm_context_t dnie_sm_context;
 	cwa_provider_t *provider=NULL;
-#ifdef _EMPTY_STUBS
+#endif
+#ifdef ENABLE_UI /* disabling ui related code for now ... */
 	sc_card_ui_context_t *dnie_ui_context=NULL;
+#endif
 
 	if ((card == NULL) || (card->ctx == NULL))
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -546,6 +554,7 @@ static int dnie_init(struct sc_card *card)
 	/* initialize private data */
 	memset(&dnie_priv, 0, sizeof(dnie_private_data_t));
 
+#ifdef ENABLE_UI /* disabling ui related code for now ... */
 	/* read environment from configuration file */
 	dnie_ui_context=calloc(1,sizeof(sc_card_ui_context_t));
 	if (!dnie_ui_context) {
@@ -560,7 +569,7 @@ static int dnie_init(struct sc_card *card)
 #endif
 
 	/** Secure messaging initialization section **/
-
+#ifdef ENABLE_SM
 	/* initialize sm_context */
 	memset(&dnie_sm_context, 0, sizeof(sm_context_t));
 	/* create and initialize cwa-dnie provider*/
@@ -570,17 +579,15 @@ static int dnie_init(struct sc_card *card)
 		result = SC_ERROR_OUT_OF_MEMORY;
 		goto dnie_init_error;
 	}
-	/* setup dnie sm driver properly */
-	dnie_sm_context.module.ops.initialize=NULL;
-	dnie_sm_context.module.ops.finalize=NULL;
-	dnie_sm_context.module.ops.test=NULL;
-	dnie_sm_context.module.ops.module_init=NULL;
-	dnie_sm_context.module.ops.module_cleanup=NULL;
-	dnie_sm_context.module.ops.get_apdus=dnie_wrap_apdu;
-	dnie_sm_context.module.handle=provider;
+	/* setup dnie sm driver *im*properly */
+	/* TODO: at the moment this is a wild guess, based on card-authentic.c */
+	dnie_sm_context.ops.get_sm_apdu = dnie_wrap_apdu;
+	dnie_sm_context.ops.free_sm_apdu = dnie_free_wrapped_apdu;
+	dnie_sm_context.info.cmd_data = provider;
 
 	/* all sm related init done: store record into card structure */
 	card->sm_ctx=dnie_sm_context;
+#endif
 
 	/* store private data into card driver structure */
 	card->drv_data = &dnie_priv;
@@ -600,7 +607,9 @@ static int dnie_init(struct sc_card *card)
 	/* initialize SM state to NONE */
 	/* TODO: change to CWA_SM_OFF when SM testing get done */
 	/* result = cwa_create_secure_channel(card, p, CWA_SM_COLD); */
+#ifdef ENABLE_SM
 	result=cwa_create_secure_channel(card,provider,CWA_SM_OFF);
+#endif
 
  dnie_init_error:
 	LOG_FUNC_RETURN(card->ctx, result);
@@ -619,10 +628,10 @@ static int dnie_finish(struct sc_card *card)
 {
 	int result = SC_SUCCESS;
 	LOG_FUNC_CALLED(card->ctx);
-
+#ifdef ENABLE_SM
 	/* disable sm channel if established */
 	result = cwa_create_secure_channel(card, card->sm_ctx.module.handle, CWA_SM_OFF);
-
+#endif
 	LOG_FUNC_RETURN(card->ctx, result);
 }
 
@@ -648,12 +657,16 @@ static int dnie_transmit_apdu(sc_card_t * card, sc_apdu_t * apdu)
 {
 	u8 *buf = NULL;		/* use for store partial le responses */
 	int res = SC_SUCCESS;
+#ifdef ENABLE_SM
 	cwa_provider_t *provider = NULL;
+#endif
 
 	if ((card == NULL) || (card->ctx == NULL) || (apdu == NULL))
 		return SC_ERROR_INVALID_ARGUMENTS;
 	LOG_FUNC_CALLED(card->ctx);
-	provider = (cwa_provider_t *) card->sm_ctx.module.handle;
+#ifdef ENABLE_SM
+	provider = (cwa_provider_t *) card->sm_ctx.info.cmd_data;
+#endif
 	buf = calloc(2048, sizeof(u8));
 	if (!buf)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
@@ -665,6 +678,7 @@ static int dnie_transmit_apdu(sc_card_t * card, sc_apdu_t * apdu)
 		sc_log(card->ctx, "envelope tx is not required");
 
 		tmp = apdu->cse;	/* save original apdu type */
+#ifdef ENABLE_SM
 		/* if SM is on, assure rx buffer exists and force get_response */
 		if (provider->status.session.state == CWA_SM_ACTIVE) {
 			if (tmp == SC_APDU_CASE_3_SHORT)
@@ -675,6 +689,7 @@ static int dnie_transmit_apdu(sc_card_t * card, sc_apdu_t * apdu)
 				apdu->le = card->max_recv_size;
 			}
 		}
+#endif
 		/* call std sc_transmit_apdu */
 		res = sc_transmit(card, apdu);
 		/* and restore original apdu type */
@@ -722,6 +737,7 @@ static int dnie_transmit_apdu(sc_card_t * card, sc_apdu_t * apdu)
 			e_apdu->resp = apdu->resp;
 			e_apdu->resplen = apdu->resplen;
 			/* if SM is ON, ensure resp exists, and force getResponse() */
+#ifdef ENABLE_SM
 			if (provider->status.session.state == CWA_SM_ACTIVE) {
 				/* set up proper apdu type */
 				if (e_apdu->cse == SC_APDU_CASE_3_SHORT)
@@ -733,6 +749,7 @@ static int dnie_transmit_apdu(sc_card_t * card, sc_apdu_t * apdu)
 					e_apdu->le = card->max_recv_size;
 				}
 			}
+#endif
 			/* send data chunk bypassing apdu wrapping */
 			res = sc_transmit(card, e_apdu);
 			LOG_TEST_RET(card->ctx, res,
@@ -769,7 +786,11 @@ static int dnie_transmit_apdu(sc_card_t * card, sc_apdu_t * apdu)
  * - negative: error
  * - zero: success: no need to further transmission
  */
-static int dnie_wrap_apdu(sc_card_t * card, sc_apdu_t * apdu)
+#ifdef ENABLE_SM /* TODO: This is the code in 0.12.2, needs to be modified to work at all */
+static int dnie_free_wrapped_apdu(sc_card_t *card, sc_apdu_t *apdu, sc_apdu_t **sm_apdu)
+{
+}
+static int dnie_wrap_apdu(sc_card_t *card, sc_apdu_t *apdu, sc_apdu_t **sm_apdu)
 {
 	int res = SC_SUCCESS;
 	sc_apdu_t wrapped;
@@ -781,10 +802,13 @@ static int dnie_wrap_apdu(sc_card_t * card, sc_apdu_t * apdu)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	ctx=card->ctx;
 	LOG_FUNC_CALLED(ctx);
-	provider = (cwa_provider_t *) card->sm_ctx.module.handle;
+
+	provider = (cwa_provider_t *) card->sm_ctx.info.cmd_data;
+
 	for (retries=3; retries>0; retries--) {
 		/* preserve original apdu to take care of retransmission */
 		memcpy(&wrapped, apdu, sizeof(sc_apdu_t));
+
 		/* SM is active, encode apdu */
 		if (provider->status.session.state == CWA_SM_ACTIVE) {
 			wrapped.resp = NULL;
@@ -793,6 +817,7 @@ static int dnie_wrap_apdu(sc_card_t * card, sc_apdu_t * apdu)
 			LOG_TEST_RET(ctx, res,
 				     "Error in cwa_encode_apdu process");
 		}
+
 		/* send apdu via envelope() cmd if needed */
 		res = dnie_transmit_apdu(card, &wrapped);
 		/* check for tx errors */
@@ -831,6 +856,7 @@ static int dnie_wrap_apdu(sc_card_t * card, sc_apdu_t * apdu)
 	sc_log(ctx,"Too many retransmissions. Abort and return");
 	LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
 }
+#endif
 
 /* ISO 7816-4 functions */
 
@@ -1473,9 +1499,11 @@ static int dnie_logout(struct sc_card *card)
 	if ((card == NULL) || (card->ctx == NULL))
 		return SC_ERROR_INVALID_ARGUMENTS;
 	LOG_FUNC_CALLED(card->ctx);
+#ifdef ENABLE_SM
 	/* disable and free any sm channel related data */
 	result =
 	    cwa_create_secure_channel(card, card->sm_ctx.module.handle, CWA_SM_OFF);
+#endif
 	/* TODO: _logout() see comments.txt on what to do here */
 	LOG_FUNC_RETURN(card->ctx, result);
 }
@@ -1756,7 +1784,7 @@ static int dnie_compute_signature(struct sc_card *card,
 	LOG_TEST_RET(card->ctx, result,
 		     "compute_signature(); Cannot establish SM");
 	*/
-#ifdef _EMPTY_STUBS
+#if 0
 
 	/* (Requested by DGP): on signature operation, ask user consent */
 	if (dnie_priv.rsa_key_ref == 0x02) {	/* TODO: revise key ID handling */
@@ -2280,14 +2308,12 @@ static int dnie_process_fci(struct sc_card *card,
 static int dnie_pin_change(struct sc_card *card, struct sc_pin_cmd_data *data)
 {
 	int res=SC_SUCCESS;
-#ifdef _EMPTY_STUBS
 	LOG_FUNC_CALLED(card->ctx);
-
-        /* Ensure that secure channel is established from reset */
-        res = cwa_create_secure_channel(card, card->sm_context->sm_driver->sm_data, CWA_SM_COLD);
-        LOG_TEST_RET(card->ctx, res, "Establish SM failed");
+#ifdef ENABLE_SM
+    /* Ensure that secure channel is established from reset */
+    res = cwa_create_secure_channel(card, card->sm_ctx.module.handle, CWA_SM_COLD);
+    LOG_TEST_RET(card->ctx, res, "Establish SM failed");
 #endif
-
 	LOG_FUNC_RETURN(card->ctx,SC_ERROR_NOT_SUPPORTED);
 }
 
@@ -2304,8 +2330,8 @@ static int dnie_pin_change(struct sc_card *card, struct sc_pin_cmd_data *data)
 static int dnie_pin_verify(struct sc_card *card,
                         struct sc_pin_cmd_data *data, int *tries_left)
 {
+#ifdef ENABLE_SM
 	int res=SC_SUCCESS;
-#ifdef _EMPTY_STUBS
 	sc_apdu_t apdu;
 
 	u8 pinbuffer[SC_MAX_APDU_BUFFER_SIZE];
@@ -2314,7 +2340,7 @@ static int dnie_pin_verify(struct sc_card *card,
 
 	LOG_FUNC_CALLED(card->ctx);
 	/* ensure that secure channel is established from reset */
-	res = cwa_create_secure_channel(card, card->sm_context->sm_driver->sm_data, CWA_SM_COLD);
+	res = cwa_create_secure_channel(card, card->sm_ctx.module.handle, CWA_SM_COLD);
 	LOG_TEST_RET(card->ctx, res, "Establish SM failed");
 
 	data->apdu = &apdu;	/* prepare apdu struct */
@@ -2356,8 +2382,11 @@ static int dnie_pin_verify(struct sc_card *card,
 	/* the end: a bit of Mister Proper and return */
 	memset(&apdu, 0, sizeof(apdu));	/* clear buffer */
 	data->apdu = NULL;
-#endif
 	LOG_FUNC_RETURN(card->ctx, res);
+#else
+    LOG_TEST_RET(card->ctx, SC_ERROR_NOT_SUPPORTED, "built without support of SM and External Authentication");
+    return SC_ERROR_NOT_SUPPORTED;
+#endif
 }
 
 /* pin_cmd: verify/change/unblock command; optionally using the
