@@ -218,10 +218,10 @@ int sc_ask_user_consent(struct sc_card * card, const char *title, const char *me
 	LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ALLOWED);
 #elif linux
 	/* check that user_consent_app exists. TODO: check if executable */
-	res = stat(card->ui_ctx->user_consent_app, &st_file);
+	res = stat(card->ui_ctx.user_consent_app, &st_file);
 	if (res != 0) {
 		sc_log(card->ctx, "Invalid pinentry application: %s\n",
-		       card->ui_ctx->user_consent_app);
+		       card->ui_ctx.user_consent_app);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 
@@ -250,7 +250,7 @@ int sc_ask_user_consent(struct sc_card * card, const char *title, const char *me
 		close(srv_recv[0]);
 		close(srv_recv[1]);
 		/* call exec() with proper user_consent_app from configuration */
-		execlp(card->ui_ctx->user_consent_app, ui_context->user_consent_app, (char *)NULL);	/* if ok should never return */
+		execlp(card->ui_ctx.user_consent_app, card->ui_ctx.user_consent_app, (char *)NULL);	/* if ok should never return */
 		res = SC_ERROR_INTERNAL;
 		msg = "execlp() error";	/* exec() failed */
 		goto do_error;
