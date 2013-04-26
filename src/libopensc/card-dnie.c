@@ -202,7 +202,7 @@ static sc_card_driver_t dnie_driver = {
  * TODO: Code should be revised in order to store user consent info
  * in a card-independent way at configuration file
  */
-#ifdef ENABLE_UI /* disabling ui related code for now ... */
+#ifdef ENABLE_UI
 static int dnie_get_environment(
 	sc_card_t * card, 
 	ui_context_t * ui_context)
@@ -778,7 +778,12 @@ static int dnie_transmit_apdu(sc_card_t * card, sc_apdu_t * apdu)
 #ifdef ENABLE_SM /* TODO: This is the code in 0.12.2, needs to be modified to work at all */
 static int dnie_free_wrapped_apdu(sc_card_t *card, sc_apdu_t *apdu, sc_apdu_t **sm_apdu)
 {
+    struct sc_context *ctx = card->ctx;
+
+    LOG_FUNC_CALLED(ctx);
+    LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
+
 static int dnie_wrap_apdu(sc_card_t *card, sc_apdu_t *apdu, sc_apdu_t **sm_apdu)
 {
 	int res = SC_SUCCESS;
@@ -787,7 +792,7 @@ static int dnie_wrap_apdu(sc_card_t *card, sc_apdu_t *apdu, sc_apdu_t **sm_apdu)
 	cwa_provider_t *provider = NULL;
 	int retries = 3;
 
-	if ((card == NULL) || (card->ctx == NULL) || (apdu == NULL))
+	if ((card == NULL) || (card->ctx == NULL) || (apdu == NULL) || (sm_apdu == NULL))
 		return SC_ERROR_INVALID_ARGUMENTS;
 	ctx=card->ctx;
 	LOG_FUNC_CALLED(ctx);

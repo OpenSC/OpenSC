@@ -41,10 +41,6 @@
 #ifdef __APPLE__
 #include <Carbon/Carbon.h>
 #endif
-#ifdef linux
-/* default user consent program (if required) */
-#define USER_CONSENT_CMD "/usr/bin/pinentry"
-#endif 
 /* default titles */
 #define USER_CONSENT_TITLE "Confirm"
 #define USER_PIN_TITLE "PIN Request"

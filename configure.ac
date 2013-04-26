@@ -333,6 +333,18 @@ if test "${enable_sm}" = "yes"; then
 	AC_DEFINE_UNQUOTED([DEFAULT_SM_MODULE], ["${DEFAULT_SM_MODULE}"], [Default SM module])
 fi
 
+if test "${enable_ui}" = "yes"; then
+	AC_DEFINE([ENABLE_UI], [1], [Enable the use of external user interface program to request user pin])
+
+	case "${host}" in
+		*-apple-*)
+			if test "${enable_ui}" = "yes"; then
+				LDFLAGS="${LDFLAGS} -framework Carbon"
+			fi
+		;;
+	esac
+fi
+
 AC_ARG_VAR([ZLIB_CFLAGS], [C compiler flags for zlib])
 AC_ARG_VAR([ZLIB_LIBS], [linker flags for zlib])
 if test -z "${ZLIB_LIBS}"; then
@@ -367,10 +379,6 @@ if test "${enable_zlib}" = "yes"; then
 	else
 		AC_MSG_ERROR([zlib linkage required, but no zlib was found])
 	fi
-fi
-
-if test "${enable_ui}" = "yes"; then
-	AC_DEFINE([ENABLE_UI], [1], [Enable the use of external user interface program to request user pin])
 fi
 
 AC_ARG_VAR([READLINE_CFLAGS], [C compiler flags for readline])
@@ -599,6 +607,7 @@ AM_CONDITIONAL([WIN32], [test "${WIN32}" = "yes"])
 AM_CONDITIONAL([CYGWIN], [test "${CYGWIN}" = "yes"])
 AM_CONDITIONAL([ENABLE_MINIDRIVER], [test "${enable_minidriver}" = "yes"])
 AM_CONDITIONAL([ENABLE_SM], [test "${enable_sm}" = "yes"])
+AM_CONDITIONAL([ENABLE_UI], [test "${enable_ui}" = "yes"])
 
 if test "${enable_pedantic}" = "yes"; then
 	enable_strict="yes";
@@ -663,6 +672,7 @@ CT-API support:          ${enable_ctapi}
 minidriver support:      ${enable_minidriver}
 SM support:              ${enable_sm}
 SM default module:       ${DEFAULT_SM_MODULE}
+UI support:              ${enable_ui}
 Debug file:              ${DEBUG_FILE}
 
 PC/SC default provider:  ${DEFAULT_PCSC_PROVIDER}

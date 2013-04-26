@@ -20,7 +20,7 @@ case ${OSX_RELEASE:0:4} in
 	;;
 esac
 
-export CFLAGS="-isysroot $SYSROOT -arch i386 -arch x86_64 -mmacosx-version-min=10.6 -framework Carbon"
+export CFLAGS="-isysroot $SYSROOT -arch i386 -arch x86_64 -mmacosx-version-min=10.6"
 
 export SED=/usr/bin/sed
 PREFIX=/Library/OpenSC
