@@ -20,7 +20,7 @@ case ${OSX_RELEASE:0:4} in
 	;;
 esac
 
-export CFLAGS="-isysroot $SYSROOT -arch i386 -arch x86_64 -mmacosx-version-min=10.6"
+export CFLAGS="-isysroot $SYSROOT -arch i386 -arch x86_64 -mmacosx-version-min=10.6 -framework Carbon"
 
 export SED=/usr/bin/sed
 PREFIX=/Library/OpenSC
@@ -33,7 +33,8 @@ export PKG_CONFIG_PATH=/usr/lib/pkgconfig
 --disable-static \
 --enable-strict \
 --disable-assert \
---enable-sm # TODO: remove this
+--enable-sm \
+--enable-ui # TODO: remove this line and the previous line
 
 # always make clean
 make clean

@@ -54,6 +54,7 @@
 #include "libopensc/log.h"
 #include "libopensc/user-interface.h"
 
+#ifdef ENABLE_UI 
 /**
  * Messages used on pinentry protocol
  */
@@ -82,7 +83,7 @@ static int ui_ask_user_pin(
  * @param pin Structure to handle/store pin related data
  * @return SC_SUCCESS if user accepts , else error code
  */
-int sc_ask_user_pin(sc_card_t * card, const char *title, struct sc_pin_cmd_pin *pin) {
+int sc_ask_user_pin(struct sc_card * card, const char *title, struct sc_pin_cmd_pin *pin) {
 	char *pinbuf=NULL;
 	size_t pinlen=0;
 	int res=SC_ERROR_INTERNAL;
@@ -144,9 +145,8 @@ ask_user_pin_end:
  * @param text Message to show to the user
  * @return SC_SUCCESS on user consent OK , else error code
  */
-int sc_ask_user_consent(sc_card_t * card, const char *title, const char *message)
+int sc_ask_user_consent(struct sc_card * card, const char *title, const char *message)
 {
-	sc_card_ui_context_t *ui_context;
 #ifdef __APPLE__
 	CFOptionFlags result;  /* result code from the message box */
 	/* convert the strings from char* to CFStringRef */
@@ -174,14 +174,7 @@ int sc_ask_user_consent(sc_card_t * card, const char *title, const char *message
 	if ((title==NULL) || (message==NULL)) 
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
-	ui_context=card->ui_context;
-	if (ui_context==NULL) {
-		sc_log(card->ctx,
-		       "Warning: User Consent Called, but no configuration data");
-		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
-	} 
-
-	if (ui_context->user_consent_enabled == 0) {
+	if (card->ui_ctx.user_consent_enabled == 0) {
 		sc_log(card->ctx,
 		       "User Consent is disabled in configuration file");
 		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
@@ -229,10 +222,10 @@ int sc_ask_user_consent(sc_card_t * card, const char *title, const char *message
 	LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ALLOWED);
 #elif linux
 	/* check that user_consent_app exists. TODO: check if executable */
-	res = stat(ui_context->user_consent_app, &st_file);
+	res = stat(card->ui_ctx->user_consent_app, &st_file);
 	if (res != 0) {
 		sc_log(card->ctx, "Invalid pinentry application: %s\n",
-		       ui_context->user_consent_app);
+		       card->ui_ctx->user_consent_app);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 
@@ -261,7 +254,7 @@ int sc_ask_user_consent(sc_card_t * card, const char *title, const char *message
 		close(srv_recv[0]);
 		close(srv_recv[1]);
 		/* call exec() with proper user_consent_app from configuration */
-		execlp(ui_context->user_consent_app, ui_context->user_consent_app, (char *)NULL);	/* if ok should never return */
+		execlp(card->ui_ctx->user_consent_app, ui_context->user_consent_app, (char *)NULL);	/* if ok should never return */
 		res = SC_ERROR_INTERNAL;
 		msg = "execlp() error";	/* exec() failed */
 		goto do_error;
@@ -323,3 +316,4 @@ do_error:
 	LOG_FUNC_RETURN(card->ctx, res);
 }
 
+#endif

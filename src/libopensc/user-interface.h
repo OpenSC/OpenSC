@@ -26,7 +26,16 @@
 #ifndef __USER_INTERFACE_H__
 #define __USER_INTERFACE_H__
 
-#include "libopensc/opensc.h"
+/**
+ * To handle user interface routines
+ */
+typedef struct ui_context {
+    int user_consent_enabled;
+    char *user_consent_app;
+} ui_context_t;
+
+struct sc_card;
+struct sc_pin_cmd_pin;
 
 /**
  * Ask for user consent.
@@ -39,7 +48,7 @@
  * @param text Message to show to the user
  * @return SC_SUCCESS if user accepts , else error code
  */
-int sc_ask_user_consent(sc_card_t * card, const char *title, const char *message);
+int sc_ask_user_consent(struct sc_card * card, const char *title, const char *message);
 
 /**
  * Ask user for pin.
@@ -52,6 +61,6 @@ int sc_ask_user_consent(sc_card_t * card, const char *title, const char *message
  * @param pin Structure to handle/store pin related data
  * @return SC_SUCCESS if user accepts , else error code
  */
-int sc_ask_user_pin(sc_card_t * card, const char *title, struct sc_pin_cmd_pin *pin);
+int sc_ask_user_pin(struct sc_card * card, const char *title, struct sc_pin_cmd_pin *pin);
 
 #endif

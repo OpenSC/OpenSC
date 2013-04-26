@@ -205,7 +205,7 @@ static sc_card_driver_t dnie_driver = {
 #ifdef ENABLE_UI /* disabling ui related code for now ... */
 static int dnie_get_environment(
 	sc_card_t * card, 
-	sc_card_ui_context_t * ui_context)
+	ui_context_t * ui_context)
 {
 	int i;
 	scconf_block **blocks, *blk;
@@ -529,8 +529,8 @@ static int dnie_init(struct sc_card *card)
 	sm_context_t dnie_sm_context;
 	cwa_provider_t *provider=NULL;
 #endif
-#ifdef ENABLE_UI /* disabling ui related code for now ... */
-	sc_card_ui_context_t *dnie_ui_context=NULL;
+#ifdef ENABLE_UI
+	ui_context_t dnie_ui_context;
 #endif
 
 	if ((card == NULL) || (card->ctx == NULL))
@@ -547,18 +547,14 @@ static int dnie_init(struct sc_card *card)
 	/* initialize private data */
 	memset(&dnie_priv, 0, sizeof(dnie_private_data_t));
 
-#ifdef ENABLE_UI /* disabling ui related code for now ... */
+#ifdef ENABLE_UI
+	/* initialize sm_context */
+	memset(&dnie_ui_context, 0, sizeof(ui_context_t));
 	/* read environment from configuration file */
-	dnie_ui_context=calloc(1,sizeof(sc_card_ui_context_t));
-	if (!dnie_ui_context) {
-		sc_log(card->ctx, "Error in allocate dnie ui_context");
-		result = SC_ERROR_OUT_OF_MEMORY;
-		goto dnie_init_error;
-	}
-	result = dnie_get_environment(card,dnie_ui_context);
+	result = dnie_get_environment(card,&dnie_ui_context);
 	if (result != SC_SUCCESS)
 		goto dnie_init_error;
-	card->ui_context = dnie_ui_context;
+	card->ui_ctx = dnie_ui_context;
 #endif
 
 	/** Secure messaging initialization section **/

@@ -168,6 +168,13 @@ AC_ARG_ENABLE(
 	[enable_doc="no"]
 )
 
+AC_ARG_ENABLE(
+	[ui],
+	[AS_HELP_STRING([--enable-ui],[enable use of external user interface program to request pin@<:@disabled@:>@])],
+	,
+	[enable_ui="no"]
+)
+
 AC_ARG_WITH(
 	[xsl-stylesheetsdir],
 	[AS_HELP_STRING([--with-xsl-stylesheetsdir=PATH],[docbook xsl-stylesheets for svn build @<:@detect@:>@])],
@@ -360,6 +367,10 @@ if test "${enable_zlib}" = "yes"; then
 	else
 		AC_MSG_ERROR([zlib linkage required, but no zlib was found])
 	fi
+fi
+
+if test "${enable_ui}" = "yes"; then
+	AC_DEFINE([ENABLE_UI], [1], [Enable the use of external user interface program to request user pin])
 fi
 
 AC_ARG_VAR([READLINE_CFLAGS], [C compiler flags for readline])
