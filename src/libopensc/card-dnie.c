@@ -202,22 +202,17 @@ static sc_card_driver_t dnie_driver = {
  * TODO: Code should be revised in order to store user consent info
  * in a card-independent way at configuration file
  */
+#ifdef ENABLE_UI /* disabling ui related code for now ... */
 static int dnie_get_environment(
 	sc_card_t * card, 
-#ifdef ENABLE_UI /* disabling ui related code for now ... */
 	sc_card_ui_context_t * ui_context)
-#else
-	void * p)
-#endif
 {
 	int i;
 	scconf_block **blocks, *blk;
 	sc_context_t *ctx;
-#ifdef ENABLE_UI /* disabling ui related code for now ... */
 	/* set default values */
 	ui_context->user_consent_app = USER_CONSENT_CMD;
 	ui_context->user_consent_enabled = 1;
-#endif
 	/* look for sc block in opensc.conf */
 	ctx = card->ctx;
 	for (i = 0; ctx->conf_blocks[i]; i++) {
@@ -230,18 +225,16 @@ static int dnie_get_environment(
 		free(blocks);
 		if (blk == NULL)
 			continue;
-#ifdef ENABLE_UI /* disabling ui related code for now ... */
 		/* fill private data with configuration parameters */
 		ui_context->user_consent_app =	/* def user consent app is "pinentry" */
 		    (char *)scconf_get_str(blk, "user_consent_app",
 					   USER_CONSENT_CMD);
 		ui_context->user_consent_enabled =	/* user consent is enabled by default */
 		    scconf_get_bool(blk, "user_consent_enabled", 1);
-#endif
 	}
 	return SC_SUCCESS;
 }
-
+#endif
 
 /************************** cardctl defined operations *******************/
 
