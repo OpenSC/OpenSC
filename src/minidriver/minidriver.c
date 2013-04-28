@@ -1718,8 +1718,11 @@ md_pkcs15_generate_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, DWORD ke
 
 	sc_pkcs15init_set_p15card(profile, vs->p15card);
 	cont = &(vs->p15_containers[idx]);
-	if (strlen(cont->guid))
+	if (strlen(cont->guid))   {
+		logprintf(pCardData, 3, "MdGenerateKey(): generate key(idx:%i,guid:%s)\n", idx, cont->guid);
 		keygen_args.prkey_args.guid = cont->guid;
+		keygen_args.prkey_args.guid_len = strlen(cont->guid);
+	}
 
 	rv = sc_pkcs15init_generate_key(vs->p15card, profile, &keygen_args, key_size, &cont->prkey_obj);
 	if (rv < 0) {
@@ -1830,8 +1833,11 @@ md_pkcs15_store_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, BYTE *blob,
 
 	sc_pkcs15init_set_p15card(profile, vs->p15card);
 	cont = &(vs->p15_containers[idx]);
-	if (strlen(cont->guid))
+	if (strlen(cont->guid))   {
+		logprintf(pCardData, 3, "MdStoreKey(): store key(idx:%i,id:%s,guid:%s)\n", idx, sc_pkcs15_print_id(&cont->id), cont->guid);
 		prkey_args.guid = cont->guid;
+		prkey_args.guid_len = strlen(cont->guid);
+	}
 
 	rv = sc_pkcs15init_store_private_key(vs->p15card, profile, &prkey_args, &cont->prkey_obj);
 	if (rv < 0) {
