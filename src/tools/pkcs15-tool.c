@@ -502,7 +502,8 @@ static void print_prkey_info(const struct sc_pkcs15_object *obj)
 		"neverExtract", "local"
 	};
 	const unsigned int af_count = NELEMENTS(access_flags);
-	char guid[39];
+	unsigned char guid[40];
+	size_t guid_len;
 
 	printf("Private %s Key [%s]\n", types[7 & obj->type], obj->label);
 	print_common_flags(obj);
@@ -533,11 +534,20 @@ static void print_prkey_info(const struct sc_pkcs15_object *obj)
 		printf("\tAuth ID        : %s\n", sc_pkcs15_print_id(&obj->auth_id));
 	printf("\tID             : %s\n", sc_pkcs15_print_id(&prkey->id));
 
-	if (!sc_pkcs15_get_object_guid(p15card, obj, 0, guid, sizeof(guid)))   {
-		printf("\tMD guid        : %s\n", guid);
-		printf("\t   cmap-flags  : 0x%X\n", prkey->cmap_record.flags);
-		printf("\t   sign key    : %i\n", prkey->cmap_record.keysize_sign);
-		printf("\t   key-exchange: %i\n", prkey->cmap_record.keysize_keyexchange);
+	guid_len = sizeof(guid);
+	if (!sc_pkcs15_get_object_guid(p15card, obj, 0, guid, &guid_len))   {
+		printf("\tMD:guid        : ");
+		if (strlen((char *)guid) == guid_len)   {
+			printf("%s\n", (char *)guid);
+		}
+		else  {
+			printf("0x'");
+			util_hex_dump(stdout, guid, guid_len, "");
+			printf("'\n");
+		}
+		printf("\t  :cmap flags  : 0x%X\n", prkey->cmap_record.flags);
+		printf("\t  :sign        : %i\n", prkey->cmap_record.keysize_sign);
+		printf("\t  :key-exchange: %i\n", prkey->cmap_record.keysize_keyexchange);
 	}
 }
 
@@ -719,7 +729,8 @@ static void print_skey_info(const struct sc_pkcs15_object *obj)
 		"neverExtract", "local"
 	};
 	const unsigned int af_count = NELEMENTS(access_flags);
-	char guid[39];
+	unsigned char guid[40];
+	size_t guid_len;
 
 	printf("Secret %s Key [%s]\n", types[3 & obj->type], obj->label);
 	print_common_flags(obj);
@@ -744,8 +755,11 @@ static void print_skey_info(const struct sc_pkcs15_object *obj)
 
 	if (skey->path.len || skey->path.aid.len)
 		printf("\tPath           : %s\n", sc_print_path(&skey->path));
-	if (!sc_pkcs15_get_object_guid(p15card, obj, 0, guid, sizeof(guid)))
-		printf("\tGUID           : %s\n", guid);
+
+	guid_len = sizeof(guid);
+	if (!sc_pkcs15_get_object_guid(p15card, obj, 0, guid, &guid_len))   {
+		printf("\tGUID           : %s\n", (char *)guid);
+	}
 
 }
 

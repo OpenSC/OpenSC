@@ -406,7 +406,8 @@ struct sc_pkcs15_key_params {
 #define SC_MD_CONTAINER_MAP_VALID_CONTAINER	0x01
 #define SC_MD_CONTAINER_MAP_DEFAULT_CONTAINER	0x02
 struct sc_md_cmap_record {
-	char *guid;
+	unsigned char *guid;
+	size_t guid_len;
 	unsigned flags;
 	unsigned keysize_sign;
 	unsigned keysize_keyexchange;
@@ -625,7 +626,7 @@ struct sc_pkcs15_operations   {
 	int (*parse_df)(struct sc_pkcs15_card *, struct sc_pkcs15_df *);
 	void (*clear)(struct sc_pkcs15_card *);
 	int (*get_guid)(struct sc_pkcs15_card *, const struct sc_pkcs15_object *,
-			char *, size_t);
+			unsigned char *, size_t *);
 };
 
 typedef struct sc_pkcs15_card {
@@ -935,7 +936,7 @@ int sc_pkcs15_hex_string_to_id(const char *in, struct sc_pkcs15_id *out);
 int sc_der_copy(struct sc_pkcs15_der *, const struct sc_pkcs15_der *);
 int sc_pkcs15_get_object_id(const struct sc_pkcs15_object *, struct sc_pkcs15_id *);
 int sc_pkcs15_get_object_guid(struct sc_pkcs15_card *, const struct sc_pkcs15_object *, unsigned,
-		char *, size_t);
+		unsigned char *, size_t *);
 int sc_pkcs15_serialize_guid(unsigned char *, size_t, unsigned, char *, size_t);
 int sc_encode_oid (struct sc_context *, struct sc_object_id *,
 		unsigned char **, size_t *);

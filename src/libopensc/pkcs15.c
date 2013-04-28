@@ -2550,7 +2550,7 @@ sc_pkcs15_serialize_guid(unsigned char *in, size_t in_size, unsigned flags,
 
 int
 sc_pkcs15_get_object_guid(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_object *obj,
-		                unsigned flags, char *out, size_t out_size)
+		                unsigned flags, unsigned char *out, size_t *out_size)
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_serial_number serialnr;
@@ -2559,19 +2559,24 @@ sc_pkcs15_get_object_guid(struct sc_pkcs15_card *p15card, const struct sc_pkcs15
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
+	if(!out || !out_size)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+
 	if (p15card->ops.get_guid)   {
 		rv = p15card->ops.get_guid(p15card, obj, out, out_size);
 		LOG_FUNC_RETURN(ctx, rv);
 	}
 
-	memset(out, 0, out_size);
+	memset(out, 0, *out_size);
 	if ((obj->type & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_PRKEY)   {
 		struct sc_pkcs15_prkey_info *info = (struct sc_pkcs15_prkey_info *)obj->data;
 
-		if (info->cmap_record.guid && strlen(info->cmap_record.guid))   {
-			if (out_size < strlen(info->cmap_record.guid) + 1)
-				return SC_ERROR_BUFFER_TOO_SMALL;
-			memcpy(out, info->cmap_record.guid, strlen(info->cmap_record.guid));
+		if (info->cmap_record.guid && info->cmap_record.guid_len)   {
+			if (*out_size < info->cmap_record.guid_len)
+				LOG_FUNC_RETURN(ctx, SC_ERROR_BUFFER_TOO_SMALL);
+
+			memcpy(out, info->cmap_record.guid, info->cmap_record.guid_len);
+			*out_size = info->cmap_record.guid_len;
 			LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 		}
 	}
@@ -2594,7 +2599,10 @@ sc_pkcs15_get_object_guid(struct sc_pkcs15_card *p15card, const struct sc_pkcs15
         serialnr.len = 0;
 #endif
 
-	rv = sc_pkcs15_serialize_guid(guid_bin, id.len + serialnr.len, flags, out, out_size);
+	rv = sc_pkcs15_serialize_guid(guid_bin, id.len + serialnr.len, flags, (char *)out, *out_size);
+	LOG_TEST_RET(ctx, rv, "Serialize GUID error");
+
+	*out_size = strlen((char *)out);
 	LOG_FUNC_RETURN(ctx, rv);
 }
 

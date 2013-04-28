@@ -1321,7 +1321,12 @@ md_set_cmapfile(PCARD_DATA pCardData, struct md_file *file)
 				found_default = 1;
 		}
 		else   {
-			rv = sc_pkcs15_get_object_guid(vs->p15card, key_obj, 0, cont->guid, sizeof(cont->guid));
+			size_t guid_len;
+
+			memset(cont->guid, 0, sizeof(cont->guid));
+			guid_len = sizeof(cont->guid);
+
+			rv = sc_pkcs15_get_object_guid(vs->p15card, key_obj, 0, cont->guid, &guid_len);
 			if (rv)   {
 				logprintf(pCardData, 2, "sc_pkcs15_get_object_guid() error %d\n", rv);
 				return SCARD_F_INTERNAL_ERROR;
