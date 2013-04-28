@@ -205,9 +205,9 @@ struct sc_pkcs15init_keyarg_gost_params {
 struct sc_pkcs15init_prkeyargs {
 	struct sc_pkcs15_id	id;
 	struct sc_pkcs15_id	auth_id;
-	const char *		label;
-	const unsigned char *	guid;
-	const size_t		guid_len;
+	char *label;
+	unsigned char *guid;
+	size_t guid_len;
 	unsigned long		usage;
 	unsigned long		x509_usage;
 	unsigned int		flags;
