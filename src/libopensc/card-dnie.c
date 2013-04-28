@@ -162,7 +162,7 @@ const char *user_consent_message="Esta a punto de realizar una firma digital\nco
 /**
  * DNIe Card Driver private data
  */
-#define GET_DNIE_PRIV_DATA(card) (((dnie_private_data_t *) (card)->drv_data))
+#define GET_DNIE_PRIV_DATA(card) (((dnie_private_data_t *) ((card)->drv_data)))
 
 /**
  * DNIe specific card driver operations
@@ -486,12 +486,13 @@ static int dnie_get_serialnr(sc_card_t * card, sc_serial_number_t * serial)
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
-static inline void dnie_clear_cache(sc_card_t * card)
+static void dnie_clear_cache(dnie_private_data_t * data)
 {
-	if (GET_DNIE_PRIV_DATA(card)->cache != NULL)
-		free(GET_DNIE_PRIV_DATA(card)->cache);
-	GET_DNIE_PRIV_DATA(card)->cache = NULL;
-	GET_DNIE_PRIV_DATA(card)->cachelen = 0;
+	if (data == NULL) return;
+	if (data->cache != NULL)
+		free(data->cache);
+	data->cache = NULL;
+	data->cachelen = 0;
 }
 
 /**************************** sc_card_operations **********************/
@@ -553,14 +554,6 @@ static int dnie_init(struct sc_card *card)
 		goto dnie_init_error;
 	}
 
-	/* initialize private data */
-	card->drv_data = malloc(sizeof(dnie_private_data_t));
-	if (card->drv_data == NULL) {
-		result = SC_ERROR_OUT_OF_MEMORY;
-		goto dnie_init_error;
-	}
-	memset(card->drv_data, 0, sizeof(dnie_private_data_t));
-
 #ifdef ENABLE_UI
 	/* initialize sm_context */
 	memset(&dnie_ui_context, 0, sizeof(ui_context_t));
@@ -571,6 +564,14 @@ static int dnie_init(struct sc_card *card)
 	card->ui_ctx = dnie_ui_context;
 #endif
 
+	/* initialize private data */
+	card->drv_data = malloc(sizeof(dnie_private_data_t));
+	if (card->drv_data == NULL) {
+		result = SC_ERROR_OUT_OF_MEMORY;
+		goto dnie_init_error;
+	}
+	memset(card->drv_data, 0, sizeof(dnie_private_data_t));
+
 	/** Secure messaging initialization section **/
 #ifdef ENABLE_SM
 	/* initialize sm_context */
@@ -580,6 +581,8 @@ static int dnie_init(struct sc_card *card)
 	if (!provider) {
 		sc_log(card->ctx, "Error in initialize cwa-dnie provider");
 		result = SC_ERROR_INTERNAL;
+		if (card->drv_data != NULL)
+			free(card->drv_data);
 		goto dnie_init_error;
 	}
 	/* setup dnie sm driver *im*properly */
@@ -612,8 +615,6 @@ static int dnie_init(struct sc_card *card)
 #endif
 
 dnie_init_error:
-	if (card->drv_data != NULL)
-		free(card->drv_data);
 	LOG_FUNC_RETURN(card->ctx, result);
 }
 
@@ -630,7 +631,7 @@ static int dnie_finish(struct sc_card *card)
 {
 	int result = SC_SUCCESS;
 	LOG_FUNC_CALLED(card->ctx);
-	dnie_clear_cache(card);
+	dnie_clear_cache(GET_DNIE_PRIV_DATA(card));
 #ifdef ENABLE_SM
 	/* disable sm channel if established */
 	result = cwa_create_secure_channel(card, GET_DNIE_PRIV_DATA(card)->cwa_provider, CWA_SM_OFF);
@@ -921,7 +922,7 @@ static int dnie_fill_cache(sc_card_t * card)
 	LOG_FUNC_CALLED(ctx);
 
 	/* mark cache empty */
-	dnie_clear_cache(card);
+	dnie_clear_cache(GET_DNIE_PRIV_DATA(card));
 
 	/* initialize apdu */
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xB0, 0x00, 0x00);
@@ -1304,7 +1305,7 @@ static int dnie_select_file(struct sc_card *card,
         /* if file is a DF, store it into DF cache */
 	if (file->type==SC_FILE_TYPE_DF) dnie_cache_path(card,file);
 	/* as last step clear data cache and return */
-	dnie_clear_cache(card);
+	dnie_clear_cache(GET_DNIE_PRIV_DATA(card));
 	LOG_FUNC_RETURN(ctx, res);
 }
 
@@ -2381,7 +2382,7 @@ static sc_card_driver_t *get_dnie_driver(void)
 	dnie_ops.append_record	= NULL;
 	dnie_ops.update_record	= NULL;
 	dnie_ops.select_file	= dnie_select_file;
-	dnie_ops.get_response	= NULL;
+	/* dnie_ops.get_response	= dnie_get_response; Trying iso implementation */
 	dnie_ops.get_challenge	= dnie_get_challenge;
 
 	/* iso7816-8 functions */
