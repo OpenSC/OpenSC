@@ -516,7 +516,7 @@ sc_get_response(struct sc_card *card, struct sc_apdu *apdu, size_t olen)
  *  @param  apdu  APDU to be sent
  *  @return SC_SUCCESS on success and an error value otherwise
  */
-int
+static int
 sc_transmit(sc_card_t *card, sc_apdu_t *apdu)
 {
 	struct sc_context *ctx  = card->ctx;
