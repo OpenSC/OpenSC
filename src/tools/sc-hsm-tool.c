@@ -57,7 +57,7 @@ static int	verbose = 0;
 // Some reasonable maximums
 #define MAX_CERT		4096
 #define MAX_PRKD		256
-#define MAX_KEY			512
+#define MAX_KEY			1024
 #define MAX_WRAPPED_KEY	(MAX_CERT + MAX_PRKD + MAX_KEY)
 
 enum {
@@ -572,7 +572,7 @@ static int recreate_password_from_shares(char **pwd, int *pwdlen, int num_of_pas
 	BIGNUM *p;
 	char inbuf[64];
 	char bin[64];
-	int binlen = 0;
+	size_t binlen = 0;
 	char *ip;
 	secret_share_t *shares = NULL;
 	secret_share_t *sp;
@@ -985,6 +985,50 @@ static size_t determineLength(const u8 *tlv, size_t buflen)
 
 
 
+/**
+ * Encapsulate data object as TLV object
+ *
+ * @param tag the one byte tag
+ * @param indata the value field
+ * @param inlen the length of the value field
+ * @param outdata pointer to the allocated memory buffer
+ * @param outlen the size of the TLV object
+ */
+int wrap_with_tag(u8 tag, u8 *indata, size_t inlen, u8 **outdata, size_t *outlen)
+{
+	int nlc = 0;
+	u8 *ptr;
+
+	if (inlen > 127) {
+		do	{
+			nlc++;
+		} while (inlen >= (1 << (nlc << 3)));
+	}
+
+	*outlen = 2 + nlc + inlen;
+	ptr = malloc(*outlen);
+	if (ptr == NULL) {
+		return SC_ERROR_OUT_OF_MEMORY;
+	}
+
+	*outdata = ptr;
+	*ptr++ = tag;
+
+	if (nlc) {
+		*ptr++ = 0x80 | nlc;
+		while (nlc--) {
+			*ptr++ = (inlen >> (nlc << 3)) & 0xFF;
+		}
+	} else {
+		*ptr++ = inlen & 0x7F;
+	}
+
+	memcpy(ptr, indata, inlen);
+	return 0;
+}
+
+
+
 static void wrap_key(sc_card_t *card, u8 keyid, const char *outf, const char *pin)
 {
 	sc_cardctl_sc_hsm_wrapped_key_t wrapped_key;
@@ -995,6 +1039,7 @@ static void wrap_key(sc_card_t *card, u8 keyid, const char *outf, const char *pi
 	u8 fid[2];
 	u8 ef_prkd[MAX_PRKD];
 	u8 ef_cert[MAX_CERT];
+	u8 wrapped_key_buff[MAX_KEY];
 	u8 keyblob[MAX_WRAPPED_KEY];
 	u8 *key;
 	u8 *ptr;
@@ -1029,6 +1074,8 @@ static void wrap_key(sc_card_t *card, u8 keyid, const char *outf, const char *pi
 	}
 
 	wrapped_key.key_id = keyid;
+	wrapped_key.wrapped_key = wrapped_key_buff;
+	wrapped_key.wrapped_key_length = sizeof(wrapped_key_buff);
 
 	r = sc_card_ctl(card, SC_CARDCTL_SC_HSM_WRAP_KEY, (void *)&wrapped_key);
 
@@ -1080,13 +1127,12 @@ static void wrap_key(sc_card_t *card, u8 keyid, const char *outf, const char *pi
 		}
 	}
 
-
 	ptr = keyblob;
 
 	// Encode key in octet string object
-	sc_asn1_write_element(card->ctx, SC_ASN1_OCTET_STRING,
-			wrapped_key.wrapped_key, wrapped_key.wrapped_key_length,
-			&key, &key_len);
+	key_len = 0;
+	wrap_with_tag(0x04, wrapped_key.wrapped_key, wrapped_key.wrapped_key_length,
+						&key, &key_len);
 
 	memcpy(ptr, key, key_len);
 	ptr += key_len;
@@ -1104,10 +1150,9 @@ static void wrap_key(sc_card_t *card, u8 keyid, const char *outf, const char *pi
 		ptr += ef_cert_len;
 	}
 
-	// Encode key in octet string object
-	sc_asn1_write_element(card->ctx, SC_ASN1_SEQUENCE|SC_ASN1_CONS,
-			keyblob, ptr - keyblob,
-			&key, &key_len);
+	// Encode key, key decription and certificate object in sequence
+	key_len = 0;
+	wrap_with_tag(0x30, keyblob, ptr - keyblob, &key, &key_len);
 
 	out = fopen(outf, "wb");
 
