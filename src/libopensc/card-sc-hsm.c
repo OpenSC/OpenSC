@@ -557,7 +557,7 @@ static int sc_hsm_decipher(sc_card_t *card, const u8 * crgram, size_t crgram_len
 	apdu.resplen = sizeof(rbuf);
 	apdu.le = 256;
 
-	apdu.data = crgram;
+	apdu.data = (u8 *)crgram;
 	apdu.lc = crgram_len;
 	apdu.datalen = crgram_len;
 
@@ -718,7 +718,7 @@ static int sc_hsm_wrap_key(sc_card_t *card, sc_cardctl_sc_hsm_wrapped_key_t *par
 {
 	sc_context_t *ctx = card->ctx;
 	sc_apdu_t apdu;
-	u8 data[SC_MAX_EXT_APDU_BUFFER_SIZE];
+	u8 data[MAX_EXT_APDU_LENGTH];
 	int r;
 
 	LOG_FUNC_CALLED(card->ctx);
@@ -736,10 +736,17 @@ static int sc_hsm_wrap_key(sc_card_t *card, sc_cardctl_sc_hsm_wrapped_key_t *par
 
 	LOG_TEST_RET(ctx, r, "Check SW error");
 
-	params->wrapped_key_length = apdu.resplen;
-	params->wrapped_key = malloc(apdu.resplen);
 	if (params->wrapped_key == NULL) {
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+		params->wrapped_key_length = apdu.resplen;
+		params->wrapped_key = malloc(apdu.resplen);
+		if (params->wrapped_key == NULL) {
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+		}
+	} else {
+		if (apdu.resplen > params->wrapped_key_length) {
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_BUFFER_TOO_SMALL);
+		}
+		params->wrapped_key_length = apdu.resplen;
 	}
 	memcpy(params->wrapped_key, data, apdu.resplen);
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
