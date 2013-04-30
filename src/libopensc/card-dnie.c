@@ -565,12 +565,11 @@ static int dnie_init(struct sc_card *card)
 #endif
 
 	/* initialize private data */
-	card->drv_data = malloc(sizeof(dnie_private_data_t));
+	card->drv_data = calloc(1, sizeof(dnie_private_data_t));
 	if (card->drv_data == NULL) {
 		result = SC_ERROR_OUT_OF_MEMORY;
 		goto dnie_init_error;
 	}
-	memset(card->drv_data, 0, sizeof(dnie_private_data_t));
 
 	/** Secure messaging initialization section **/
 #ifdef ENABLE_SM
