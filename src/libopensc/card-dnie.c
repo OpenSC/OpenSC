@@ -40,20 +40,8 @@
 #include "internal.h"
 #include "compression.h"
 #include "cwa14890.h"
+#include "cwa-dnie.h"
 #include "user-interface.h"
-
-/**
- * OpenDNIe private data declaration
- *
- * Defines internal data used in OpenDNIe code
- */
-typedef struct dnie_private_data_st {
-/*	sc_serial_number_t *serialnumber; < Cached copy of card serial number NOT USED AT THE MOMENT */
-	int rsa_key_ref;	/**< Key id reference being used in sec operation */
-	u8 *cache;		/**< Cache buffer for read_binary() operation */
-	size_t cachelen;	/**< length of cache buffer */
-	cwa_provider_t *cwa_provider;
-} dnie_private_data_t;
 
 #ifdef ENABLE_SM
 static int dnie_sm_get_wrapped_apdu(sc_card_t *card, sc_apdu_t *apdu, sc_apdu_t **sm_apdu);
@@ -158,11 +146,6 @@ const char *user_consent_message="Está a punto de realizar una firma electróni
 #else
 const char *user_consent_message="Esta a punto de realizar una firma digital\ncon su clave de FIRMA del DNI electronico.\nDesea permitir esta operacion?";
 #endif
-
-/**
- * DNIe Card Driver private data
- */
-#define GET_DNIE_PRIV_DATA(card) (((dnie_private_data_t *) ((card)->drv_data)))
 
 /**
  * DNIe specific card driver operations
@@ -466,7 +449,7 @@ static int dnie_get_serialnr(sc_card_t * card, sc_serial_number_t * serial)
 	apdu.lc = 0;
 	apdu.datalen = 0;
 	/* send apdu */
-	result = sc_transmit_apdu(card, &apdu);
+	result = dnie_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, result, "APDU transmit failed");
 	if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
 		return SC_ERROR_INTERNAL;
@@ -621,193 +604,6 @@ static int dnie_finish(struct sc_card *card)
 	LOG_FUNC_RETURN(card->ctx, result);
 }
 
-static int dnie_transmit_apdu(sc_card_t * card, sc_apdu_t * apdu)
-{
-	u8 *buf = NULL;		/* use for store partial le responses */
-	int res = SC_SUCCESS;
-	cwa_provider_t *provider = NULL;
-	if ((card == NULL) || (card->ctx == NULL) || (apdu == NULL))
-		return SC_ERROR_INVALID_ARGUMENTS;
-	LOG_FUNC_CALLED(card->ctx);
-	provider = GET_DNIE_PRIV_DATA(card)->cwa_provider;
-	buf = calloc(2048, sizeof(u8));
-	if (!buf)
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
-
-	/* check if envelope is needed */
-	if (apdu->lc <= card->max_send_size) {
-		int tmp;
-		/* no envelope needed */
-		sc_log(card->ctx, "envelope tx is not required");
-
-		tmp = apdu->cse;	/* save original apdu type */
-		/* if SM is on, assure rx buffer exists and force get_response */
-		if (provider->status.session.state == CWA_SM_ACTIVE) {
-			if (tmp == SC_APDU_CASE_3_SHORT)
-				apdu->cse = SC_APDU_CASE_4_SHORT;
-			if (apdu->resplen == 0) {	/* no response buffer: create */
-				apdu->resp = buf;
-				apdu->resplen = 2048;
-				apdu->le = card->max_recv_size;
-			}
-		}
-		/* call std sc_transmit_apdu */
-		res = sc_transmit(card, apdu);
-		/* and restore original apdu type */
-		apdu->cse = tmp;
-	} else {
-
-		size_t e_txlen = 0;
-		size_t index = 0;
-		sc_apdu_t *e_apdu = NULL;
-		u8 *e_tx = NULL;
-
-		/* envelope needed */
-		sc_log(card->ctx, "envelope tx required: lc:%d", apdu->lc);
-
-		e_apdu = calloc(1, sizeof(sc_apdu_t));	/* enveloped apdu */
-		e_tx = calloc(7 + apdu->datalen, sizeof(u8));	/* enveloped data */
-		if (!e_apdu || !e_tx)
-			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
-
-		/* copy apdu info into enveloped data */
-		*(e_tx + 0) = apdu->cla;	/* apdu header */
-		*(e_tx + 1) = apdu->ins;
-		*(e_tx + 2) = apdu->p1;
-		*(e_tx + 3) = apdu->p2;
-		*(e_tx + 4) = 0x00;	/* length in extended format */
-		*(e_tx + 5) = 0xff & (apdu->lc >> 8);
-		*(e_tx + 6) = 0xff & apdu->lc;
-		memcpy(e_tx + 7, apdu->data, apdu->lc);
-		e_txlen = 7 + apdu->lc;
-		/* sc_log(card->ctx, "Data to be enveloped & sent: (%d bytes)\n%s\n===============================================================",e_txlen,sc_dump_hex(e_tx,e_txlen)); */
-		/* split apdu in n chunks of max_send_size len */
-		for (index = 0; index < e_txlen; index += card->max_send_size) {
-			size_t len = MIN(card->max_send_size, e_txlen - index);
-			sc_log(card->ctx, "envelope tx offset:%04X size:%02X",
-			       index, len);
-
-			/* compose envelope apdu command */
-			sc_format_apdu(card, e_apdu, apdu->cse, 0xC2, 0x00,
-				       0x00);
-			e_apdu->cla = 0x90;	/* propietary CLA */
-			e_apdu->data = e_tx + index;
-			e_apdu->lc = len;
-			e_apdu->datalen = len;
-			e_apdu->le = apdu->le;
-			e_apdu->resp = apdu->resp;
-			e_apdu->resplen = apdu->resplen;
-			/* if SM is ON, ensure resp exists, and force getResponse() */
-			if (provider->status.session.state == CWA_SM_ACTIVE) {
-				/* set up proper apdu type */
-				if (e_apdu->cse == SC_APDU_CASE_3_SHORT)
-					e_apdu->cse = SC_APDU_CASE_4_SHORT;
-				/* if no response buffer: create */
-				if (apdu->resplen == 0) {
-					e_apdu->resp = buf;
-					e_apdu->resplen = 2048;
-					e_apdu->le = card->max_recv_size;
-				}
-			}
-			/* send data chunk bypassing apdu wrapping */
-			res = sc_transmit(card, e_apdu);
-			LOG_TEST_RET(card->ctx, res,
-				     "Error in envelope() send apdu");
-		}		/* for */
-		/* last apdu sent contains response to enveloped cmd */
-		apdu->resp = e_apdu->resp;
-		apdu->resplen = e_apdu->resplen;
-		res = SC_SUCCESS;
-	}
-	LOG_FUNC_RETURN(card->ctx, res);
-}
-
-/**
- * APDU Wrapping routine.
- *
- * Called before sc_transmit_apdu() to allowing APDU wrapping
- * If set to NULL no wrapping process will be done
- * Usefull on Secure Messaging APDU encode/decode
- * If returned value is greater than zero, do_single_transmit() 
- * will be called, else means either SC_SUCCESS or error code 
- *
- * NOTE:
- * DNIe doesn't handle apdu chaining; instead apdus with
- * lc>max_send_size are sent by mean of envelope() apdu command
- * So we use this method for
- * - encode and decode SM if SM is on
- * - use envelope instead of apdu chain if lc>max_send_size
- *
- * @param card Pointer to Card Structure
- * @param apdu to be wrapped
- * @return 
- * - positive: use OpenSC's sc_transmit_apdu()
- * - negative: error
- * - zero: success: no need to further transmission
- */
-int dnie_wrap_apdu(sc_card_t * card, sc_apdu_t * apdu)
-{
-	int res = SC_SUCCESS;
-	sc_apdu_t wrapped;
-	sc_context_t *ctx;
-	cwa_provider_t *provider = NULL;
-	int retries = 3;
-
-	if ((card == NULL) || (card->ctx == NULL) || (apdu == NULL))
-		return SC_ERROR_INVALID_ARGUMENTS;
-	ctx=card->ctx;
-	LOG_FUNC_CALLED(ctx);
-	provider = GET_DNIE_PRIV_DATA(card)->cwa_provider;
-	for (retries=3; retries>0; retries--) {
-		/* preserve original apdu to take care of retransmission */
-		memcpy(&wrapped, apdu, sizeof(sc_apdu_t));
-		/* SM is active, encode apdu */
-		if (provider->status.session.state == CWA_SM_ACTIVE) {
-			wrapped.resp = NULL;
-			wrapped.resplen = 0;	/* let get_response() assign space */
-			res = cwa_encode_apdu(card, provider, apdu, &wrapped);
-			LOG_TEST_RET(ctx, res,
-				     "Error in cwa_encode_apdu process");
-		}
-		/* send apdu via envelope() cmd if needed */
-		res = dnie_transmit_apdu(card, &wrapped);
-		/* check for tx errors */
-		LOG_TEST_RET(ctx, res, "Error in dnie_transmit_apdu process");
-
-		/* parse response and handle SM related errors */
-		res=card->ops->check_sw(card,wrapped.sw1,wrapped.sw2);
-		if ( res == SC_ERROR_SM ) {
-			sc_log(ctx,"Detected SM error/collision. Try %d",retries);
-			switch(provider->status.session.state) {
-				/* No SM or creating: collision with other process
-				   just retry as SM error reset ICC SM state */
-				case CWA_SM_NONE: 
-				case CWA_SM_INPROGRESS: 
-					continue;
-				/* SM was active: force restart SM and retry */
-				case CWA_SM_ACTIVE:
-					res=cwa_create_secure_channel(card, provider, CWA_SM_COLD);
-					LOG_TEST_RET(ctx,res,"Cannot re-enable SM");
-					continue;
-			}
-		}
-
-		/* if SM is active; decode apdu */
-		if (provider->status.session.state == CWA_SM_ACTIVE) {
-			apdu->resp = NULL;
-			apdu->resplen = 0;	/* let cwa_decode_response() eval & create size */
-			res = cwa_decode_response(card, provider, &wrapped, apdu);
-			LOG_TEST_RET(ctx, res, "Error in cwa_decode_response process");
-		} else {
-			/* memcopy result to original apdu */
-			memcpy(apdu, &wrapped, sizeof(sc_apdu_t));
-		}
-		LOG_FUNC_RETURN(ctx, res);
-	}
-	sc_log(ctx,"Too many retransmissions. Abort and return");
-	LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
-}
-
 /* ISO 7816-4 functions */
 
 /**
@@ -941,7 +737,7 @@ static int dnie_fill_cache(sc_card_t * card)
 		apdu.resplen = count;
 		apdu.resp = tmp;
 		/* transmit apdu */
-		r = sc_transmit_apdu(card, &apdu);
+		r = dnie_transmit_apdu(card, &apdu);
 		if (r != SC_SUCCESS) {
 			if (buffer)
 				free(buffer);
@@ -1275,7 +1071,7 @@ static int dnie_select_file(struct sc_card *card,
 		apdu.cse =
 		    (apdu.lc == 0) ? SC_APDU_CASE_1 : SC_APDU_CASE_3_SHORT;
 	}
-	res = sc_transmit_apdu(card, &apdu);
+	res = dnie_transmit_apdu(card, &apdu);
 	if (res!=SC_SUCCESS) 
 		dnie_invalidate_path(card); /* failed: invalidate cache */
 	LOG_TEST_RET(ctx, res, "SelectFile() APDU transmit failed");
@@ -1356,7 +1152,7 @@ static int dnie_get_challenge(struct sc_card *card, u8 * rnd, size_t len)
 	*/
 	while (len > 0) {
 		size_t n = len > 8 ? 8 : len;
-		result = sc_transmit_apdu(card, &apdu);
+		result = dnie_transmit_apdu(card, &apdu);
 		LOG_TEST_RET(card->ctx, result, "APDU transmit failed");
 		if (apdu.resplen != 8) {
 			result = sc_check_sw(card, apdu.sw1, apdu.sw2);
@@ -1540,7 +1336,7 @@ static int dnie_set_security_env(struct sc_card *card,
 	 * store sec env apdu (00 22 F2 se_num) command will not be issued */
 
 	/* send composed apdu and parse result */
-	result = sc_transmit_apdu(card, &apdu);
+	result = dnie_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, result, "Set Security Environment failed");
 	result = sc_check_sw(card, apdu.sw1, apdu.sw2);
 
@@ -1608,7 +1404,7 @@ static int dnie_decipher(struct sc_card *card,
 	apdu.datalen = crgram_len + 1;
 	apdu.le = 256;
 	/* send apdu */
-	result = sc_transmit_apdu(card, &apdu);
+	result = dnie_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, result, "APDU transmit failed");
 	/* check response */
 	result = sc_check_sw(card, apdu.sw1, apdu.sw2);
@@ -1719,7 +1515,7 @@ static int dnie_compute_signature(struct sc_card *card,
 	apdu.lc = sbuflen;	/* 15 SHA1 DigestInfo + 20 SHA1 computed Hash */
 	apdu.datalen = sizeof(sbuf);
 	/* tell card to compute signature */
-	result = sc_transmit_apdu(card, &apdu);
+	result = dnie_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, result, "compute_signature() failed");
 	/* check response */
 	result = sc_check_sw(card, apdu.sw1, apdu.sw2);
@@ -1800,7 +1596,7 @@ static int dnie_list_files(sc_card_t * card, u8 * buf, size_t buflen)
 			/* compose and transmit select_file() cmd */
 			data[0] = (u8) (0xff & id1);
 			data[1] = (u8) (0xff & id2);
-			res = sc_transmit_apdu(card, &apdu);
+			res = dnie_transmit_apdu(card, &apdu);
 			if (res != SC_SUCCESS) {
 				sc_log(card->ctx, "List file '%02X%02X' failed",
 				       id1, id2);
@@ -1955,7 +1751,7 @@ static int dnie_read_header(struct sc_card *card)
 	apdu.resplen = SC_MAX_APDU_BUFFER_SIZE;
 	apdu.resp = buf;
 	/* transmit apdu */
-	r = sc_transmit_apdu(card, &apdu);
+	r = dnie_transmit_apdu(card, &apdu);
 	if (r != SC_SUCCESS) {
 		sc_log(ctx, "read_header() APDU transmit failed");
 		LOG_FUNC_RETURN(ctx, r);
@@ -2258,7 +2054,7 @@ static int dnie_pin_verify(struct sc_card *card,
 	apdu.le = 0;
 
 	/* and send to card throught virtual channel */
-	res = sc_transmit_apdu(card, &apdu);
+	res = dnie_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, res, "VERIFY APDU Transmit fail");
 
 	/* check response and if requested setup tries_left */
@@ -2347,58 +2143,6 @@ static int dnie_pin_cmd(struct sc_card *card,
 	LOG_FUNC_RETURN(card->ctx, res);
 }
 
-/**
- * OpenDNIe implementation of Get_Response() command.
- *
- * Get Response: Retrieve min(card_recv_size,count) bytes from 
- * card, storing result and new length into provided pointers
- *
- * Just a copy of iso7816.c::get_response(), but calling 
- * do_single_transmit to avoid wrap/unwrap response
- *
- * @param card Pointer to card structure
- * @param count pointer to get expected data length / return received length
- * @return error code (negative) or number of bytes left
- */
-static int dnie_get_response(sc_card_t * card, size_t * count, u8 * buf)
-{
-	sc_apdu_t apdu;
-	int r;
-	size_t rlen;
-
-	/* request at most max_recv_size bytes */
-	if ((card->max_recv_size > 0) && (*count > card->max_recv_size))
-		rlen = card->max_recv_size;
-	else
-		rlen = *count;
-
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xC0, 0x00, 0x00);
-	apdu.le = rlen;
-	apdu.resplen = rlen;
-	apdu.resp = buf;
-	/* don't call GET RESPONSE recursively */
-	apdu.flags |= SC_APDU_FLAGS_NO_GET_RESP;
-
-	r = sc_transmit(card, &apdu);	/* bypass wrapping */
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
-	if (apdu.resplen == 0)
-		LOG_FUNC_RETURN(card->ctx,
-				sc_check_sw(card, apdu.sw1, apdu.sw2));
-
-	*count = apdu.resplen;
-
-	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
-		r = 0;		/* no more data to read */
-	else if (apdu.sw1 == 0x61)
-		r = (apdu.sw2 == 0) ? 256 : apdu.sw2;	/*more data to read */
-	else if (apdu.sw1 == 0x62 && apdu.sw2 == 0x82)
-		r = 0;		/* Le not reached but file/record ended */
-	else
-		r = sc_check_sw(card, apdu.sw1, apdu.sw2);	/* check for other errors */
-	return r;
-}
-
-
 /**********************************************************************/
 
 /**
@@ -2437,7 +2181,6 @@ static sc_card_driver_t *get_dnie_driver(void)
 	dnie_ops.append_record	= NULL;
 	dnie_ops.update_record	= NULL;
 	dnie_ops.select_file	= dnie_select_file;
-	dnie_ops.get_response	= dnie_get_response; /* TODO: Trying iso implementation */
 	dnie_ops.get_challenge	= dnie_get_challenge;
 
 	/* iso7816-8 functions */

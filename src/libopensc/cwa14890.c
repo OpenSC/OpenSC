@@ -39,6 +39,7 @@
 #include <openssl/x509.h>
 #include <openssl/des.h>
 #include <openssl/rand.h>
+#include "cwa-dnie.h"
 
 #include "cwa14890.h"
 
@@ -434,7 +435,7 @@ static int cwa_verify_cvc_certificate(sc_card_t * card,
 	apdu.resp = NULL;
 
 	/* send composed apdu and parse result */
-	result = sc_transmit_apdu(card, &apdu);
+	result = dnie_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(ctx, result, "Verify CVC certificate failed");
 	result = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_FUNC_RETURN(ctx, result);
@@ -479,7 +480,7 @@ static int cwa_set_security_env(sc_card_t * card,
 	apdu.le = 0;
 
 	/* send composed apdu and parse result */
-	result = sc_transmit_apdu(card, &apdu);
+	result = dnie_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(ctx, result, "SM Set Security Environment failed");
 	result = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_FUNC_RETURN(ctx, result);
@@ -522,7 +523,7 @@ static int cwa_internal_auth(sc_card_t * card,
 	apdu.resplen = sizeof(rbuf);
 
 	/* send composed apdu and parse result */
-	result = sc_transmit_apdu(card, &apdu);
+	result = dnie_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(ctx, result, "SM internal auth failed");
 
 	result = sc_check_sw(card, apdu.sw1, apdu.sw2);
@@ -731,7 +732,7 @@ static int cwa_external_auth(sc_card_t * card, cwa_sm_status_t * sm)
 	apdu.resplen = 0;
 
 	/* send composed apdu and parse result */
-	result = sc_transmit_apdu(card, &apdu);
+	result = dnie_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(ctx, result, "SM external auth failed");
 	result = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(ctx, result, "SM external auth invalid response");

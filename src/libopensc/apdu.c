@@ -516,7 +516,7 @@ sc_get_response(struct sc_card *card, struct sc_apdu *apdu, size_t olen)
  *  @param  apdu  APDU to be sent
  *  @return SC_SUCCESS on success and an error value otherwise
  */
-int /* TODO: GBB change to static */
+static int
 sc_transmit(sc_card_t *card, sc_apdu_t *apdu)
 {
 	struct sc_context *ctx  = card->ctx;
@@ -556,9 +556,6 @@ int sc_transmit_apdu(sc_card_t *card, sc_apdu_t *apdu)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	LOG_FUNC_CALLED(card->ctx);
-
-	r = dnie_wrap_apdu(card, apdu); /* DELETE THIS GBB */
-	if (r <= 0) return r;
 
 	/* determine the APDU type if necessary, i.e. to use
 	 * short or extended APDUs  */
