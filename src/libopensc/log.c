@@ -210,22 +210,23 @@ sc_dump_hex(const u8 * in, size_t count)
         	return dump_buf;
 
 	for (ii=0; ii<count; ii++) {
-		if (!(ii%16))   {
+		if (!(ii%16)) {
 			if (!(ii%48))
 				snprintf(dump_buf + offs, size - offs, "\n");
 			else
 				snprintf(dump_buf + offs, size - offs, " ");
+			offs = strlen(dump_buf);
 		}
 
 		snprintf(dump_buf + offs, size - offs, "%02X", *(in + ii));
-		offs = strlen(dump_buf);
+		offs += 2;
 
 		if (offs > size)
-            		break;
-    	}
+           	break;
+   	}
 
-    	if (ii<count)
-        	snprintf(dump_buf + offs, sizeof(dump_buf) - offs, "....\n");
+   	if (ii<count)
+       	snprintf(dump_buf + offs, sizeof(dump_buf) - offs, "....\n");
 
 	return dump_buf;
 }
