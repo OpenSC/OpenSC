@@ -507,6 +507,12 @@ static int epass2003_pkcs15_generate_key(struct sc_profile *profile,
 		 sc_print_path(&file->path));
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "private key_info path: %s",
 		 sc_print_path(&(key_info->path)));
+
+	r = sc_pkcs15init_authenticate(profile, p15card, file,
+				       SC_AC_OP_DELETE);
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r,
+		    "generate key: pkcs15init_authenticate(SC_AC_OP_DELETE) failed");
+
 	r = sc_delete_file(p15card->card, &file->path);
 	/* create */
 	r = sc_pkcs15init_create_file(profile, p15card, file);
@@ -558,6 +564,11 @@ static int epass2003_pkcs15_generate_key(struct sc_profile *profile,
 	r = sc_select_file(p15card->card, &pukf->path, NULL);
 	/* if exist, delete */
 	if (r == SC_SUCCESS) {
+		r = sc_pkcs15init_authenticate(profile, p15card, pukf,
+		       SC_AC_OP_DELETE);
+		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r,
+		    "generate key - pubkey: pkcs15init_authenticate(SC_AC_OP_DELETE) failed");
+
 		r = sc_pkcs15init_delete_by_path(profile, p15card, &pukf->path);
 		if (r != SC_SUCCESS) {
 			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
@@ -572,6 +583,11 @@ static int epass2003_pkcs15_generate_key(struct sc_profile *profile,
 			 "generate key: pukf create file failed\n");
 		goto failed;
 	}
+
+	r = sc_pkcs15init_authenticate(profile, p15card, pukf,
+				       SC_AC_OP_UPDATE);
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r,
+		    "generate key - pubkey: pkcs15init_authenticate(SC_AC_OP_UPDATE) failed");
 
 	/* generate key pair */
 	fidl = (file->id & 0xff) * FID_STEP;
