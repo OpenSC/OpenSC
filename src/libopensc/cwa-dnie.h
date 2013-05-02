@@ -27,6 +27,9 @@
 
 #include "libopensc/opensc.h"
 #include "cwa14890.h"
+#ifdef ENABLE_UI
+#include "user-interface.h"
+#endif
 
 /**
   * OpenDNIe private data declaration
@@ -39,12 +42,16 @@
      u8 *cache;      /**< Cache buffer for read_binary() operation */
      size_t cachelen;    /**< length of cache buffer */
      cwa_provider_t *cwa_provider;
+#ifdef ENABLE_UI
+	 struct ui_context ui_ctx;
+#endif
  } dnie_private_data_t;
  
 /**
  * DNIe Card Driver private data
  */
-#define GET_DNIE_PRIV_DATA(card) (((dnie_private_data_t *) ((card)->drv_data)))
+#define GET_DNIE_PRIV_DATA(card) ((dnie_private_data_t *) ((card)->drv_data))
+#define GET_DNIE_UI_CTX(card) (((dnie_private_data_t *) ((card)->drv_data))->ui_ctx)
 
 int dnie_transmit_apdu(sc_card_t * card, sc_apdu_t * apdu);
 

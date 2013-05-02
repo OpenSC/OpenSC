@@ -542,14 +542,6 @@ static int dnie_init(struct sc_card *card)
 	if (card->type == SC_CARD_TYPE_DNIE_TERMINATED)
 	    LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_CARD, "DNIe card is terminated.");
 
-#ifdef ENABLE_UI
-	/* initialize ui context */
-	memset(&(card->ui_ctx), 0, sizeof(ui_context_t));
-	/* read environment from configuration file */
-	res = dnie_get_environment(card, &(card->ui_ctx));
-	LOG_TEST_RET(card->ctx, res, "Failure reading DNIe environment.");
-#endif
-
 	/* create and initialize cwa-dnie provider*/
 	provider = dnie_get_cwa_provider(card);
 	if (!provider) 
@@ -575,6 +567,15 @@ static int dnie_init(struct sc_card *card)
 	card->drv_data = calloc(1, sizeof(dnie_private_data_t));
 	if (card->drv_data == NULL)
 	    LOG_TEST_RET(card->ctx, SC_ERROR_OUT_OF_MEMORY, "Could not allocate DNIe private data.");
+
+#ifdef ENABLE_UI
+	/* read environment from configuration file */
+	res = dnie_get_environment(card, &(GET_DNIE_UI_CTX(card)));
+	if (res != SC_SUCCESS) {
+		free(card->drv_data);
+		LOG_TEST_RET(card->ctx, res, "Failure reading DNIe environment.");
+	}
+#endif
 
 	GET_DNIE_PRIV_DATA(card)->cwa_provider = provider;
 
@@ -673,6 +674,8 @@ static u8 *dnie_uncompress(sc_card_t * card, u8 * from, size_t *len)
 	}
 	/* Done; update buffer len and return pt to uncompressed data */
 	*len = uncompressed;
+	sc_log(card->ctx, "Compressed data:\n%s\n",
+	       sc_dump_hex(from + 8, compressed));
 	sc_log(card->ctx, "Uncompress() done. Before:'%lu' After: '%lu'",
 	       compressed, uncompressed);
 	sc_log(card->ctx, "Uncompressed data:\n%s\n",

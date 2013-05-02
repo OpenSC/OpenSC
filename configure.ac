@@ -170,9 +170,9 @@ AC_ARG_ENABLE(
 
 AC_ARG_ENABLE(
 	[ui],
-	[AS_HELP_STRING([--enable-ui],[enable use of external user interface program to request pin@<:@disabled@:>@])],
+	[AS_HELP_STRING([--enable-dnie-ui],[enable use of external user interface program to request DNIe pin@<:@disabled@:>@])],
 	,
-	[enable_ui="no"]
+	[enable_dnie_ui="no"]
 )
 
 AC_ARG_WITH(
@@ -333,12 +333,12 @@ if test "${enable_sm}" = "yes"; then
 	AC_DEFINE_UNQUOTED([DEFAULT_SM_MODULE], ["${DEFAULT_SM_MODULE}"], [Default SM module])
 fi
 
-if test "${enable_ui}" = "yes"; then
-	AC_DEFINE([ENABLE_UI], [1], [Enable the use of external user interface program to request user pin])
+if test "${enable_dnie_ui}" = "yes"; then
+	AC_DEFINE([ENABLE_DNIE_UI], [1], [Enable the use of external user interface program to request DNIe user pin])
 
 	case "${host}" in
 		*-apple-*)
-			if test "${enable_ui}" = "yes"; then
+			if test "${enable_dnie_ui}" = "yes"; then
 				LDFLAGS="${LDFLAGS} -framework Carbon"
 			fi
 		;;
@@ -607,7 +607,7 @@ AM_CONDITIONAL([WIN32], [test "${WIN32}" = "yes"])
 AM_CONDITIONAL([CYGWIN], [test "${CYGWIN}" = "yes"])
 AM_CONDITIONAL([ENABLE_MINIDRIVER], [test "${enable_minidriver}" = "yes"])
 AM_CONDITIONAL([ENABLE_SM], [test "${enable_sm}" = "yes"])
-AM_CONDITIONAL([ENABLE_UI], [test "${enable_ui}" = "yes"])
+AM_CONDITIONAL([ENABLE_DNIE_UI], [test "${enable_dnie_ui}" = "yes"])
 
 if test "${enable_pedantic}" = "yes"; then
 	enable_strict="yes";
@@ -672,7 +672,7 @@ CT-API support:          ${enable_ctapi}
 minidriver support:      ${enable_minidriver}
 SM support:              ${enable_sm}
 SM default module:       ${DEFAULT_SM_MODULE}
-UI support:              ${enable_ui}
+DNIe UI support:         ${enable_dnie_ui}
 Debug file:              ${DEBUG_FILE}
 
 PC/SC default provider:  ${DEFAULT_PCSC_PROVIDER}

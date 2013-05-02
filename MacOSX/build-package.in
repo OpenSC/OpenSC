@@ -34,7 +34,7 @@ export PKG_CONFIG_PATH=/usr/lib/pkgconfig
 --enable-strict \
 --disable-assert \
 --enable-sm \
---enable-ui # TODO: remove this line and the previous line
+--enable-dnie-ui # TODO: remove this line and the previous line
 
 # always make clean
 make clean

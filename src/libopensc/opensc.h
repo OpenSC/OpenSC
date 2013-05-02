@@ -43,9 +43,6 @@ extern "C" {
 #ifdef ENABLE_SM
 #include "libopensc/sm.h"
 #endif
-#ifdef ENABLE_UI
-#include "libopensc/user-interface.h"
-#endif
 
 #define SC_SEC_OPERATION_DECIPHER	0x0001
 #define SC_SEC_OPERATION_SIGN		0x0002
@@ -534,9 +531,6 @@ typedef struct sc_card {
 	void *mutex;
 #ifdef ENABLE_SM
 	struct sm_context sm_ctx;
-#endif
-#ifdef ENABLE_SM
-	struct ui_context ui_ctx;
 #endif
 
 	unsigned int magic;

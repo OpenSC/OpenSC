@@ -49,6 +49,7 @@
 #include "libopensc/opensc.h"
 #include "libopensc/log.h"
 #include "libopensc/user-interface.h"
+#include "libopensc/cwa-dnie.h"
 
 #ifdef ENABLE_UI 
 /**
@@ -170,7 +171,7 @@ int sc_ask_user_consent(struct sc_card * card, const char *title, const char *me
 	if ((title==NULL) || (message==NULL)) 
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
-	if (card->ui_ctx.user_consent_enabled == 0) {
+	if (GET_DNIE_UI_CTX(card).user_consent_enabled == 0) {
 		sc_log(card->ctx,
 		       "User Consent is disabled in configuration file");
 		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
@@ -218,10 +219,10 @@ int sc_ask_user_consent(struct sc_card * card, const char *title, const char *me
 	LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ALLOWED);
 #elif linux
 	/* check that user_consent_app exists. TODO: check if executable */
-	res = stat(card->ui_ctx.user_consent_app, &st_file);
+	res = stat(GET_DNIE_UI_CTX(card).user_consent_app, &st_file);
 	if (res != 0) {
 		sc_log(card->ctx, "Invalid pinentry application: %s\n",
-		       card->ui_ctx.user_consent_app);
+		       GET_DNIE_UI_CTX(card).user_consent_app);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 
@@ -250,7 +251,8 @@ int sc_ask_user_consent(struct sc_card * card, const char *title, const char *me
 		close(srv_recv[0]);
 		close(srv_recv[1]);
 		/* call exec() with proper user_consent_app from configuration */
-		execlp(card->ui_ctx.user_consent_app, card->ui_ctx.user_consent_app, (char *)NULL);	/* if ok should never return */
+		/* if ok should never return */
+		execlp(GET_DNIE_UI_CTX(card).user_consent_app, GET_DNIE_UI_CTX(card).user_consent_app, (char *)NULL);
 		res = SC_ERROR_INTERNAL;
 		msg = "execlp() error";	/* exec() failed */
 		goto do_error;
