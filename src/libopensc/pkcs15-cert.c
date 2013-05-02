@@ -61,9 +61,9 @@ parse_x509_cert(sc_context_t *ctx, struct sc_pkcs15_der *der, struct sc_pkcs15_c
 		{ "version",		SC_ASN1_STRUCT,    SC_ASN1_CTX | 0 | SC_ASN1_CONS, SC_ASN1_OPTIONAL, asn1_version, NULL },
 		{ "serialNumber",	SC_ASN1_OCTET_STRING, SC_ASN1_TAG_INTEGER, SC_ASN1_ALLOC, &serial, &serial_len },
 		{ "signature",		SC_ASN1_STRUCT,    SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
-		{ "issuer",		SC_ASN1_OCTET_STRING, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_ALLOC, &cert->issuer, &cert->issuer_len },
+		{ "issuer",		SC_ASN1_OCTET_STRING, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_ALLOC, &issuer, &issuer_len },
 		{ "validity",		SC_ASN1_STRUCT,    SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
-		{ "subject",		SC_ASN1_OCTET_STRING, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_ALLOC, &cert->subject, &cert->subject_len },
+		{ "subject",		SC_ASN1_OCTET_STRING, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_ALLOC, &subject, &subject_len },
 		/* Use a callback to get the algorithm, parameters and pubkey into sc_pkcs15_pubkey */
 		{ "subjectPublicKeyInfo",SC_ASN1_CALLBACK, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, sc_pkcs15_pubkey_from_spki,  &pubkey },
 		{ "extensions",		SC_ASN1_STRUCT,    SC_ASN1_CTX | 3 | SC_ASN1_CONS, SC_ASN1_OPTIONAL, asn1_extensions, NULL },
@@ -91,7 +91,6 @@ parse_x509_cert(sc_context_t *ctx, struct sc_pkcs15_der *der, struct sc_pkcs15_c
 	const u8 *obj;
 	size_t objlen;
 
-	LOG_FUNC_CALLED(ctx);
 	memset(cert, 0, sizeof(*cert));
 	obj = sc_asn1_verify_tag(ctx, buf, buflen, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, &objlen);
 	if (obj == NULL)
@@ -122,7 +121,21 @@ parse_x509_cert(sc_context_t *ctx, struct sc_pkcs15_der *der, struct sc_pkcs15_c
 		LOG_TEST_RET(ctx, r, "ASN.1 encoding of serial failed");
 	}
 
-	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+	if (subject && subject_len)   {
+		sc_format_asn1_entry(asn1_subject + 0, subject, &subject_len, 1);
+		r = sc_asn1_encode(ctx, asn1_subject, &cert->subject, &cert->subject_len);
+		free(subject);
+		LOG_TEST_RET(ctx, r, "ASN.1 encoding of subject");
+	}
+
+	if (issuer && issuer_len)   {
+		sc_format_asn1_entry(asn1_issuer + 0, issuer, &issuer_len, 1);
+		r = sc_asn1_encode(ctx, asn1_issuer, &cert->issuer, &cert->issuer_len);
+		free(issuer);
+		LOG_TEST_RET(ctx, r, "ASN.1 encoding of issuer");
+	}
+
+	return SC_SUCCESS;
 }
 
 
@@ -163,27 +176,28 @@ sc_pkcs15_read_certificate(struct sc_pkcs15_card *p15card, const struct sc_pkcs1
 	}
 	else if (info->path.len) {
 		r = sc_pkcs15_read_file(p15card, &info->path, &der.value, &der.len);
-		LOG_TEST_RET(p15card->card->ctx, r, "Unable to read certificate file.");
+		if (r)
+			return r;
 	}
 	else   {
-		LOG_FUNC_RETURN(p15card->card->ctx, SC_ERROR_OBJECT_NOT_FOUND);
+		return SC_ERROR_OBJECT_NOT_FOUND;
 	}
 
 	cert = malloc(sizeof(struct sc_pkcs15_cert));
 	if (cert == NULL) {
 		free(der.value);
-		LOG_FUNC_RETURN(p15card->card->ctx, SC_ERROR_OUT_OF_MEMORY);
+		return SC_ERROR_OUT_OF_MEMORY;
 	}
 	memset(cert, 0, sizeof(struct sc_pkcs15_cert));
 	if (parse_x509_cert(p15card->card->ctx, &der, cert)) {
 		free(der.value);
 		sc_pkcs15_free_certificate(cert);
-		LOG_FUNC_RETURN(p15card->card->ctx, SC_ERROR_INVALID_ASN1_OBJECT);
+		return SC_ERROR_INVALID_ASN1_OBJECT;
 	}
 	free(der.value);
 
 	*cert_out = cert;
-	LOG_FUNC_RETURN(p15card->card->ctx, SC_SUCCESS);
+	return SC_SUCCESS;
 }
 
 static const struct sc_asn1_entry c_asn1_cred_ident[] = {
