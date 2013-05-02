@@ -176,28 +176,27 @@ sc_pkcs15_read_certificate(struct sc_pkcs15_card *p15card, const struct sc_pkcs1
 	}
 	else if (info->path.len) {
 		r = sc_pkcs15_read_file(p15card, &info->path, &der.value, &der.len);
-		if (r)
-			return r;
+		LOG_TEST_RET(p15card->card->ctx, r, "Unable to read certificate file.");
 	}
 	else   {
-		return SC_ERROR_OBJECT_NOT_FOUND;
+		LOG_FUNC_RETURN(p15card->card->ctx, SC_ERROR_OBJECT_NOT_FOUND);
 	}
 
 	cert = malloc(sizeof(struct sc_pkcs15_cert));
 	if (cert == NULL) {
 		free(der.value);
-		return SC_ERROR_OUT_OF_MEMORY;
+		LOG_FUNC_RETURN(p15card->card->ctx, SC_ERROR_OUT_OF_MEMORY);
 	}
 	memset(cert, 0, sizeof(struct sc_pkcs15_cert));
 	if (parse_x509_cert(p15card->card->ctx, &der, cert)) {
 		free(der.value);
 		sc_pkcs15_free_certificate(cert);
-		return SC_ERROR_INVALID_ASN1_OBJECT;
+		LOG_FUNC_RETURN(p15card->card->ctx, SC_ERROR_INVALID_ASN1_OBJECT);
 	}
 	free(der.value);
 
 	*cert_out = cert;
-	return SC_SUCCESS;
+	LOG_FUNC_RETURN(p15card->card->ctx, SC_SUCCESS);
 }
 
 static const struct sc_asn1_entry c_asn1_cred_ident[] = {
