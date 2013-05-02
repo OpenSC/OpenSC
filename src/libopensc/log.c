@@ -60,7 +60,7 @@ void sc_do_log_noframe(sc_context_t *ctx, int level, const char *format, va_list
 
 static void sc_do_log_va(sc_context_t *ctx, int level, const char *file, int line, const char *func, const char *format, va_list args)
 {
-	char	buf[1836], *p;
+	char	buf[4096], *p;
 	int	r;
 	size_t	left;
 #ifdef _WIN32
