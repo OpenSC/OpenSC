@@ -44,6 +44,7 @@ extern "C" {
 #include "libopensc/sm.h"
 #endif
 
+
 #define SC_SEC_OPERATION_DECIPHER	0x0001
 #define SC_SEC_OPERATION_SIGN		0x0002
 #define SC_SEC_OPERATION_AUTHENTICATE	0x0003

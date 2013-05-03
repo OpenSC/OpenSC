@@ -548,6 +548,7 @@ sc_transmit(sc_card_t *card, sc_apdu_t *apdu)
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
+
 int sc_transmit_apdu(sc_card_t *card, sc_apdu_t *apdu)
 {
 	int r = SC_SUCCESS;

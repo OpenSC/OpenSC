@@ -908,7 +908,7 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 					reader->capabilities |= SC_READER_CAP_DISPLAY;
 				} else
 					sc_log(ctx, "Reader does not have a display.");
-			} else
+			}
 #endif
 			if (rcount == sizeof(PIN_PROPERTIES_STRUCTURE)) {
 				PIN_PROPERTIES_STRUCTURE *caps = (PIN_PROPERTIES_STRUCTURE *)rbuf;
