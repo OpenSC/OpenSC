@@ -1,4 +1,4 @@
- /*
+/*
  * log.c: Miscellaneous logging functions
  *
  * Copyright (C) 2001, 2002  Juha Yrjölä <juha.yrjola@iki.fi>
