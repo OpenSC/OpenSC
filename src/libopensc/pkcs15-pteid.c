@@ -226,7 +226,6 @@ static int sc_pkcs15emu_pteid_init(sc_pkcs15_card_t * p15card)
 	/* Add objects */
 	for (i = 0; i < 3; i++) {
 		static const char *object_ids[3] = {"1", "2", "3"};
-		static const char *object_oids[3] = {"-1", "-1", "-1"};
 		static const char *object_labels[3] = {"Citizen Data",
 											   "Citizen Address Data",
 											   "Citizen Notepad"};
@@ -245,7 +244,6 @@ static int sc_pkcs15emu_pteid_init(sc_pkcs15_card_t * p15card)
 
 		sc_pkcs15_format_id(object_ids[i], &obj_info.id);
 		sc_format_path(object_paths[i], &obj_info.path);
-		r = sc_format_oid(&obj_info.app_oid, object_oids[i]);
 		if (r != SC_SUCCESS)
 			goto end;
 		strlcpy(obj_info.app_label, object_labels[i], SC_PKCS15_MAX_LABEL_SIZE);
