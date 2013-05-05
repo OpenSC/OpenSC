@@ -306,15 +306,16 @@ static int ias_set_security_env(sc_card_t *card,
 	return r;
 }
  
-static int ias_compute_signature(sc_card_t *card, const u8 * data,
-		size_t data_len, u8 * out, size_t outlen)
+static int ias_compute_signature(sc_card_t *card, const u8 *data,
+		size_t data_len, u8 *out, size_t outlen)
 {
-	int 			r;
-	size_t 			len = 0;
-	sc_apdu_t 		apdu;
-	u8			sbuf[SC_MAX_APDU_BUFFER_SIZE];
-	u8			rbuf[SC_MAX_APDU_BUFFER_SIZE];
-	sc_context_t		*ctx = card->ctx;
+	sc_apdu_t	apdu;
+	/*
+	** XXX: Ensure sufficient space exists for the card's response
+	** as the caller's buffer size may not be sufficient
+	*/
+	u8		rbuf[SC_MAX_APDU_BUFFER_SIZE];
+	sc_context_t	*ctx = card->ctx;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -322,26 +323,22 @@ static int ias_compute_signature(sc_card_t *card, const u8 * data,
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "error: input data too long: %lu bytes\n", data_len);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
-
+	
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x88, 0x02, 0x00);
-	memcpy(sbuf, data, data_len);
-	apdu.data = sbuf;
+	apdu.data = (u8 *) data;
 	apdu.lc = data_len;
 	apdu.datalen = data_len;
 	apdu.resp = rbuf;
-	apdu.resplen = sizeof(rbuf); 
-	apdu.le = 0x100;
+	apdu.resplen = sizeof(rbuf);
+	apdu.le = 256;
 
-	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, sc_transmit_apdu(card, &apdu), "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2), "INTERNAL AUTHENTICATE failed");
 
-	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
-		size_t len = apdu.resplen > outlen ? outlen : apdu.resplen;
-		memcpy(out, apdu.resp, len);
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, apdu.resplen);	
-	}
-
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
+	size_t len = apdu.resplen > outlen ? outlen : apdu.resplen;
+	memcpy(out, apdu.resp, len);
+	
+	LOG_FUNC_RETURN(card->ctx, apdu.resplen);
 }
 
 static int ias_select_file(sc_card_t *card, const sc_path_t *in_path,
