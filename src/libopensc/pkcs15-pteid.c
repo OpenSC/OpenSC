@@ -244,8 +244,6 @@ static int sc_pkcs15emu_pteid_init(sc_pkcs15_card_t * p15card)
 
 		sc_pkcs15_format_id(object_ids[i], &obj_info.id);
 		sc_format_path(object_paths[i], &obj_info.path);
-		if (r != SC_SUCCESS)
-			goto end;
 		strlcpy(obj_info.app_label, object_labels[i], SC_PKCS15_MAX_LABEL_SIZE);
 		if (object_authids[i] != NULL)
 			sc_pkcs15_format_id(object_authids[i], &obj_obj.auth_id);
