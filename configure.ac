@@ -601,6 +601,8 @@ if test "$GCC" = "yes"; then
 	CFLAGS="-fno-strict-aliasing ${CFLAGS}"
 fi
 
+CFLAGS="${CFLAGS} -Werror=declaration-after-statement"
+
 AC_CONFIG_FILES([
 	Makefile
 	doc/Makefile
