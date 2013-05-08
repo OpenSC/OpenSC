@@ -57,7 +57,7 @@
 				<varlistentry>
 					<term>
 						<option>--print</option>,
-						<option>-n</option>
+						<option>-p</option>
 					</term>
 					<listitem><para>Prints all data
 					fields from the card, like validity
