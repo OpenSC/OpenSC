@@ -164,40 +164,43 @@ int
 sc_pkcs15_read_certificate(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_cert_info *info,
 		struct sc_pkcs15_cert **cert_out)
 {
-	struct sc_pkcs15_cert *cert;
+	struct sc_context *ctx = NULL;
+	struct sc_pkcs15_cert *cert = NULL;
 	struct sc_pkcs15_der der;
 	int r;
 
 	assert(p15card != NULL && info != NULL && cert_out != NULL);
-	LOG_FUNC_CALLED(p15card->card->ctx);
+	ctx = p15card->card->ctx;
+	LOG_FUNC_CALLED(ctx);
 
 	if (info->value.len && info->value.value)   {
 		sc_der_copy(&der, &info->value);
 	}
 	else if (info->path.len) {
 		r = sc_pkcs15_read_file(p15card, &info->path, &der.value, &der.len);
-		LOG_TEST_RET(p15card->card->ctx, r, "Unable to read certificate file.");
+		LOG_TEST_RET(ctx, r, "Unable to read certificate file.");
 	}
 	else   {
-		LOG_FUNC_RETURN(p15card->card->ctx, SC_ERROR_OBJECT_NOT_FOUND);
+		LOG_FUNC_RETURN(ctx, SC_ERROR_OBJECT_NOT_FOUND);
 	}
 
 	cert = malloc(sizeof(struct sc_pkcs15_cert));
 	if (cert == NULL) {
 		free(der.value);
-		LOG_FUNC_RETURN(p15card->card->ctx, SC_ERROR_OUT_OF_MEMORY);
+		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 	}
 	memset(cert, 0, sizeof(struct sc_pkcs15_cert));
-	if (parse_x509_cert(p15card->card->ctx, &der, cert)) {
+	if (parse_x509_cert(ctx, &der, cert)) {
 		free(der.value);
 		sc_pkcs15_free_certificate(cert);
-		LOG_FUNC_RETURN(p15card->card->ctx, SC_ERROR_INVALID_ASN1_OBJECT);
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ASN1_OBJECT);
 	}
 	free(der.value);
 
 	*cert_out = cert;
-	LOG_FUNC_RETURN(p15card->card->ctx, SC_SUCCESS);
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
+
 
 static const struct sc_asn1_entry c_asn1_cred_ident[] = {
 	{ "idType",	SC_ASN1_INTEGER,      SC_ASN1_TAG_INTEGER, 0, NULL, NULL },
