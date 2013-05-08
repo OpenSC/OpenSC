@@ -738,6 +738,7 @@ pgp_read_blob(sc_card_t *card, struct blob *blob)
 		u8 	buffer[2048];
 		size_t	buf_len = (card->caps & SC_CARD_CAP_APDU_EXT)
 				  ? sizeof(buffer) : 256;
+		int r = SC_SUCCESS;
 
 		/* Buffer length for certificate */
 		if (blob->id == DO_CERT && priv->max_cert_size > 0) {
@@ -751,7 +752,7 @@ pgp_read_blob(sc_card_t *card, struct blob *blob)
 			buf_len = MAXLEN_RESP_PUBKEY_GNUK;
 		}
 
-		int	r = blob->info->get_fn(card, blob->id, buffer, buf_len);
+		r = blob->info->get_fn(card, blob->id, buffer, buf_len);
 
 		if (r < 0) {	/* an error occurred */
 			blob->status = r;
