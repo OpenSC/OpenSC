@@ -51,7 +51,7 @@
 #include "libopensc/user-interface.h"
 #include "libopensc/cwa-dnie.h"
 
-#ifdef ENABLE_UI 
+#ifdef ENABLE_DNIE_UI 
 /**
  * Messages used on pinentry protocol
  */

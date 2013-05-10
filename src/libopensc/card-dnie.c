@@ -186,7 +186,7 @@ static sc_card_driver_t dnie_driver = {
  * TODO: Code should be revised in order to store user consent info
  * in a card-independent way at configuration file
  */
-#ifdef ENABLE_UI
+#ifdef ENABLE_DNIE_UI
 static int dnie_get_environment(
 	sc_card_t * card, 
 	ui_context_t * ui_context)
@@ -568,7 +568,7 @@ static int dnie_init(struct sc_card *card)
 	if (card->drv_data == NULL)
 	    LOG_TEST_RET(card->ctx, SC_ERROR_OUT_OF_MEMORY, "Could not allocate DNIe private data.");
 
-#ifdef ENABLE_UI
+#ifdef ENABLE_DNIE_UI
 	/* read environment from configuration file */
 	res = dnie_get_environment(card, &(GET_DNIE_UI_CTX(card)));
 	if (res != SC_SUCCESS) {
@@ -1289,21 +1289,6 @@ static int dnie_set_security_env(struct sc_card *card,
 		/* store key reference into private data */
 		GET_DNIE_PRIV_DATA(card)->rsa_key_ref = 0xff & env->key_ref[0];
 	}
-#if 0
-	/* seems that DNIe does not support file references; so comment */
-	/* revisited:
-	 * really DNIe uses file references as key references. see above */
-
-	/* check for file references */
-	if (env->flags & SC_SEC_ENV_FILE_REF_PRESENT) {
-		sc_log(card->ctx, "checking file references");
-		/* insert file reference into buffer */
-		*p++ = 0x81;
-		*p++ = env->file_ref.len;
-		memcpy(p, env->file_ref.value, env->file_ref.len);
-		p += env->file_ref.len;
-	}
-#endif
 
 	/* create and format apdu */
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0x00, 0x00);
@@ -1467,21 +1452,14 @@ static int dnie_compute_signature(struct sc_card *card,
 	if (outlen<256) /* enought space to store 2048 bit response */
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
-	/* Secure channel should be stablished. if not error will be thrown */
-	/*
-	result =
-	    cwa_create_secure_channel(card, dnie_priv.provider, CWA_SM_WARM);
-	LOG_TEST_RET(card->ctx, result,
-		     "compute_signature(); Cannot establish SM");
-	*/
-#if 0
-
+#ifdef ENABLE_DNIE_UI
 	/* (Requested by DGP): on signature operation, ask user consent */
-	if (dnie_priv.rsa_key_ref == 0x02) {	/* TODO: revise key ID handling */
+	if (GET_DNIE_PRIV_DATA(card)->rsa_key_ref == 0x02) {	/* TODO: revise key ID handling */
 		result = sc_ask_user_consent(card,user_consent_title,user_consent_message);
 		LOG_TEST_RET(card->ctx, result, "User consent denied");
 	}
-#endif
+#endif    
+
 	/*
 	   Seems that OpenSC already provides pkcs#1 v1.5 DigestInfo structure 
 	   with pre-calculated hash. So no need to to any Hash calculation, 
@@ -1923,27 +1901,6 @@ static int dnie_process_fci(struct sc_card *card,
 			sc_file_add_acl_entry(file, *(op + n), SC_AC_TERM,
 					      key_ref);
 			break;
-			/* these tags are omitted in official code 
-			   case 0x50:
-			   sc_file_add_acl_entry(file,*(op+n),SC_AC_AUT,SC_AC_KEY_REF_NONE); 
-			   break;
-			   case 0x60: 
-			   sc_file_add_acl_entry(file,*(op+n),SC_AC_CHV,key_ref); 
-			   sc_file_add_acl_entry(file,*(op+n),SC_AC_PRO,SC_AC_KEY_REF_NONE); 
-			   break;
-			   case 0x70: 
-			   sc_file_add_acl_entry(file,*(op+n),SC_AC_CHV,key_ref); 
-			   sc_file_add_acl_entry(file,*(op+n),SC_AC_PRO,SC_AC_KEY_REF_NONE); 
-			   break;
-			   case 0x80: 
-			   sc_file_add_acl_entry(file,*(op+n),SC_AC_CHV,key_ref); 
-			   sc_file_add_acl_entry(file,*(op+n),SC_AC_AUT,key_ref);
-			   break;
-			   case 0x90: 
-			   sc_file_add_acl_entry(file,*(op+n),SC_AC_CHV,key_ref); 
-			   sc_file_add_acl_entry(file,*(op+n),SC_AC_AUT,key_ref); 
-			   break;
-			 */
 		case 0xF0:
 			sc_file_add_acl_entry(file, *(op + n), SC_AC_NEVER,
 					      SC_AC_KEY_REF_NONE);

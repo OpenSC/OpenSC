@@ -169,7 +169,7 @@ AC_ARG_ENABLE(
 )
 
 AC_ARG_ENABLE(
-	[ui],
+	[dnie-ui],
 	[AS_HELP_STRING([--enable-dnie-ui],[enable use of external user interface program to request DNIe pin@<:@disabled@:>@])],
 	,
 	[enable_dnie_ui="no"]
