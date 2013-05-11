@@ -310,6 +310,7 @@ static int ias_compute_signature(sc_card_t *card, const u8 *data,
 		size_t data_len, u8 *out, size_t outlen)
 {
 	sc_apdu_t	apdu;
+	size_t		len;
 	/*
 	** XXX: Ensure sufficient space exists for the card's response
 	** as the caller's buffer size may not be sufficient
@@ -335,7 +336,7 @@ static int ias_compute_signature(sc_card_t *card, const u8 *data,
 	LOG_TEST_RET(card->ctx, sc_transmit_apdu(card, &apdu), "APDU transmit failed");
 	LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2), "INTERNAL AUTHENTICATE failed");
 
-	size_t len = apdu.resplen > outlen ? outlen : apdu.resplen;
+	len = apdu.resplen > outlen ? outlen : apdu.resplen;
 	memcpy(out, apdu.resp, len);
 	
 	LOG_FUNC_RETURN(card->ctx, apdu.resplen);
