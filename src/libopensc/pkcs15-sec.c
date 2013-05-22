@@ -169,7 +169,7 @@ int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 	/* Strip any padding */
 	if (pad_flags & SC_ALGORITHM_RSA_PAD_PKCS1) {
 		size_t s = r;
-		r = sc_pkcs1_strip_02_padding(out, s, out, &s);
+		r = sc_pkcs1_strip_02_padding(ctx, out, s, out, &s);
 		LOG_TEST_RET(ctx, r, "Invalid PKCS#1 padding");
 	}
 
@@ -276,7 +276,7 @@ int sc_pkcs15_derive(struct sc_pkcs15_card *p15card,
 	/* Strip any padding */
 	if (pad_flags & SC_ALGORITHM_RSA_PAD_PKCS1) {
 		size_t s = r;
-		r = sc_pkcs1_strip_02_padding(out, s, out, &s);
+		r = sc_pkcs1_strip_02_padding(ctx, out, s, out, &s);
 		LOG_TEST_RET(ctx, r, "Invalid PKCS#1 padding");
 	}
 

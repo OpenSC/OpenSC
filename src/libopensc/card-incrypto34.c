@@ -551,7 +551,7 @@ incrypto34_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
 		"trying RSA_SIG (just the DigestInfo)\n");
 	/* remove padding: first try pkcs1 bt01 padding */
-	r = sc_pkcs1_strip_01_padding(data, datalen, buf, &tmp_len);
+	r = sc_pkcs1_strip_01_padding(ctx, data, datalen, buf, &tmp_len);
 	if (r != SC_SUCCESS) {
 		const u8 *p = data;
 		/* no pkcs1 bt01 padding => let's try zero padding.

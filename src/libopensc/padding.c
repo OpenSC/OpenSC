@@ -103,8 +103,9 @@ static int sc_pkcs1_add_01_padding(const u8 *in, size_t in_len,
 	return SC_SUCCESS;
 }
 
-int sc_pkcs1_strip_01_padding(const u8 *in_dat, size_t in_len,
-	u8 *out, size_t *out_len)
+int
+sc_pkcs1_strip_01_padding(struct sc_context *ctx, const u8 *in_dat, size_t in_len,
+		u8 *out, size_t *out_len)
 {
 	const u8 *tmp = in_dat;
 	size_t    len;
@@ -134,37 +135,43 @@ int sc_pkcs1_strip_01_padding(const u8 *in_dat, size_t in_len,
 	return SC_SUCCESS;
 }
 
+
 /* remove pkcs1 BT02 padding (adding BT02 padding is currently not
  * needed/implemented) */
-int sc_pkcs1_strip_02_padding(const u8 *data, size_t len, u8 *out,
-	size_t *out_len)
+int
+sc_pkcs1_strip_02_padding(sc_context_t *ctx, const u8 *data, size_t len, u8 *out, size_t *out_len)
 {
 	unsigned int	n = 0;
 
+	LOG_FUNC_CALLED(ctx);
 	if (data == NULL || len < 3)
-		return SC_ERROR_INTERNAL;
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
+
 	/* skip leading zero byte */
 	if (*data == 0) {
 		data++;
 		len--;
 	}
 	if (data[0] != 0x02)
-		return SC_ERROR_WRONG_PADDING;
+		LOG_FUNC_RETURN(ctx, SC_ERROR_WRONG_PADDING);
 	/* skip over padding bytes */
 	for (n = 1; n < len && data[n]; n++)
 		;
 	/* Must be at least 8 pad bytes */
 	if (n >= len || n < 9)
-		return SC_ERROR_WRONG_PADDING;
+		LOG_FUNC_RETURN(ctx, SC_ERROR_WRONG_PADDING);
 	n++;
 	if (out == NULL)
 		/* just check the padding */
-		return SC_SUCCESS;
+		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+
 	/* Now move decrypted contents to head of buffer */
 	if (*out_len < len -  n)
-		return SC_ERROR_INTERNAL;
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
 	memmove(out, data + n, len - n);
-	return len - n;
+
+	sc_log(ctx, "stripped output(%i): %s", len - n, sc_dump_hex(out, len - n));
+	LOG_FUNC_RETURN(ctx, len - n);
 }
 
 /* add/remove DigestInfo prefix */
