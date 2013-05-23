@@ -203,11 +203,11 @@ static int load_cert(const char * cert_id, const char * cert_file,
 
 	switch (buf[0]) {
 		case 0x9a: sc_format_path("0101",&path); break;
-		case 0x9b: sc_format_path("0500",&path); break;
 		case 0x9c: sc_format_path("0100",&path); break;
 		case 0x9d: sc_format_path("0102",&path); break;
+		case 0x9e: sc_format_path("0500",&path); break;
 		default:
-			fprintf(stderr,"cert must be 9A, 9B, 9C or 9D\n");
+			fprintf(stderr,"cert must be 9A, 9C, 9D or 9E\n");
 			return 2;
 	}
 
