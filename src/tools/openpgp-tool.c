@@ -33,6 +33,7 @@
 #include "libopensc/cards.h"
 #include "libopensc/cardctl.h"
 #include "util.h"
+#include "libopensc/log.h"
 
 #define	OPT_RAW		256
 #define	OPT_PRETTY	257
@@ -345,40 +346,6 @@ static int do_userinfo(sc_card_t *card)
 	return EXIT_SUCCESS;
 }
 
-
-/* Select and read a transparent EF */
-static int read_transp(sc_card_t *card, const char *pathstring, unsigned char *buf, int buflen)
-{
-	sc_path_t path;
-	int r;
-
-	sc_format_path(pathstring, &path);
-	r = sc_select_file(card, &path, NULL);
-	if (r < 0)
-		fprintf(stderr, "\nFailed to select file %s: %s\n", pathstring, sc_strerror(r));
-	else {
-		r = sc_read_binary(card, 0, buf, buflen, 0);
-		if (r < 0)
-			fprintf(stderr, "\nFailed to read %s: %s\n", pathstring, sc_strerror(r));
-	}
-
-	return r;
-}
-
-
-/* Hex-encode the buf, 2*len+1 bytes must be reserved. E.g. {'1','2'} -> {'3','1','3','2','\0'} */
-static void bintohex(char *buf, int len)
-{
-	static const char hextable[] = "0123456789ABCDEF";
-	int i;
-
-	for (i = len - 1; i >= 0; i--) {
-		unsigned char c = (unsigned char) buf[i];
-
-		buf[2 * i + 1] = hextable[c % 16];
-		buf[2 * i] = hextable[c / 16];
-	}
-}
 
 int do_genkey(sc_card_t *card, u8 key_id, unsigned int key_len)
 {

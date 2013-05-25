@@ -324,6 +324,9 @@ iasecc_file_convert_acls(struct sc_context *ctx, struct sc_profile *profile, str
 	int ii;
 
 	for (ii=0; ii<SC_MAX_AC_OPS;ii++)   {
+		/* FIXME the acl object must not be modified, it is only defined in
+		 * sc_file_get_acl_entry. Accessing it here means we have a race
+		 * condition. */
 		struct sc_acl_entry *acl = sc_file_get_acl_entry(file, ii);
 
 		if (acl)   {
@@ -1314,8 +1317,8 @@ iasecc_pkcs15_delete_object (struct sc_profile *profile, struct sc_pkcs15_card *
 
 	switch(object->type & SC_PKCS15_TYPE_CLASS_MASK)   {
 	case SC_PKCS15_TYPE_PUBKEY:
-		sc_log(ctx, "Ignore delete of SDO-PubKey(ref:%X) '%s', path %s", key_ref, object->label, sc_print_path(path));
 		key_ref = ((struct sc_pkcs15_pubkey_info *)object->data)->key_reference;
+		sc_log(ctx, "Ignore delete of SDO-PubKey(ref:%X) '%s', path %s", key_ref, object->label, sc_print_path(path));
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 	case SC_PKCS15_TYPE_PRKEY:
 		sc_log(ctx, "delete PrivKey '%s', path %s", object->label, sc_print_path(path));
@@ -1655,12 +1658,9 @@ iasecc_store_data_object(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 	LOG_TEST_RET(ctx, nn_objs, "IasEcc get pkcs15 DATA objects error");
 
 	for(indx = 1; indx < MAX_DATA_OBJS; indx++)   {
-		struct sc_path fpath;
-
 		rv = iasecc_pkcs15_new_file(profile, card, SC_PKCS15_TYPE_DATA_OBJECT, indx, &file);
 		LOG_TEST_RET(ctx, rv, "iasecc_store_data_object() pkcs15 new DATA file error");
 
-		fpath = file->path;
 		for (ii=0; ii<nn_objs; ii++)   {
 			struct sc_pkcs15_data_info *info = (struct sc_pkcs15_data_info *)p15objects[ii]->data;
 			int file_id = info->path.value[info->path.len - 2] * 0x100 + info->path.value[info->path.len - 1];
@@ -1785,14 +1785,6 @@ iasecc_emu_store_data(struct sc_pkcs15_card *p15card, struct sc_profile *profile
 	}
 
 	LOG_FUNC_RETURN(ctx, rv);
-}
-
-
-static int
-iasecc_emu_update_tokeninfo(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
-		struct sc_pkcs15_tokeninfo *tinfo)
-{
-	LOG_FUNC_RETURN(p15card->card->ctx, SC_SUCCESS);
 }
 
 

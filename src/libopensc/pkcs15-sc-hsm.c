@@ -147,13 +147,13 @@ int sc_pkcs15emu_sc_hsm_decode_cvc(sc_pkcs15_card_t * p15card,
 
 	sc_format_asn1_entry(asn1_req , &asn1_authreq, NULL, 0);
 
-//	sc_asn1_print_tags(*buf, *buflen);
+/*	sc_asn1_print_tags(*buf, *buflen); */
 
 	tbuf = *buf;
 	r = sc_asn1_read_tag(&tbuf, *buflen, &cla, &tag, &taglen);
 	LOG_TEST_RET(card->ctx, r, "Could not decode card verifiable certificate");
 
-	// Determine if we deal with an authenticated request, plain request or certificate
+	/*  Determine if we deal with an authenticated request, plain request or certificate */
 	if ((cla == (SC_ASN1_TAG_APPLICATION|SC_ASN1_TAG_CONSTRUCTED)) && (tag == 7)) {
 		r = sc_asn1_decode(card->ctx, asn1_req, *buf, *buflen, buf, buflen);
 	} else {
@@ -179,8 +179,6 @@ int sc_pkcs15emu_sc_hsm_encode_cvc(sc_pkcs15_card_t * p15card,
 	struct sc_asn1_entry asn1_cvcert[C_ASN1_CVCERT_SIZE];
 	struct sc_asn1_entry asn1_cvc_body[C_ASN1_CVC_BODY_SIZE];
 	struct sc_asn1_entry asn1_cvc_pubkey[C_ASN1_CVC_PUBKEY_SIZE];
-	unsigned int cla,tag;
-	size_t taglen;
 	size_t lenchr;
 	size_t lencar;
 	int r;
@@ -274,7 +272,7 @@ static int sc_pkcs15emu_sc_hsm_add_pubkey(sc_pkcs15_card_t *p15card, sc_pkcs15_p
 	size_t cvclen;
 	int r;
 
-	// EF.CERT is selected
+	/* EF.CERT is selected */
 	r = sc_read_binary(p15card->card, 0, efbin, sizeof(efbin), 0);
 	LOG_TEST_RET(card->ctx, r, "Could not read CSR from EF");
 
@@ -286,7 +284,7 @@ static int sc_pkcs15emu_sc_hsm_add_pubkey(sc_pkcs15_card_t *p15card, sc_pkcs15_p
 	LOG_TEST_RET(card->ctx, r, "Could decode certificate signing request");
 
 	if (cvc.publicPoint || cvc.publicPointlen) {
-		// ToDo implement support for EC Public Keys
+		/* ToDo implement support for EC Public Keys */
 		return SC_SUCCESS;
 	} else {
 		pubkey.algorithm = SC_ALGORITHM_RSA;
@@ -330,7 +328,7 @@ static int sc_pkcs15emu_sc_hsm_add_prkd(sc_pkcs15_card_t * p15card, u8 keyid) {
 	u8 efbin[512];
 	u8 *ptr;
 	size_t len;
-	int r, i;
+	int r;
 
 	fid[0] = PRKD_PREFIX;
 	fid[1] = keyid;
@@ -393,9 +391,9 @@ static int sc_pkcs15emu_sc_hsm_add_prkd(sc_pkcs15_card_t * p15card, u8 keyid) {
 		return SC_SUCCESS;
 	}
 
-	if (efbin[0] == 0x67) {		// Decode CSR and create public key object
+	if (efbin[0] == 0x67) {		/* Decode CSR and create public key object */
 		sc_pkcs15emu_sc_hsm_add_pubkey(p15card, key_info, prkd.label);
-		return SC_SUCCESS;		// Ignore any errors
+		return SC_SUCCESS;		/* Ignore any errors */
 	}
 
 	if (efbin[0] != 0x30) {
@@ -432,7 +430,7 @@ static int sc_pkcs15emu_sc_hsm_add_dcod(sc_pkcs15_card_t * p15card, u8 id) {
 	u8 efbin[512];
 	const u8 *ptr;
 	size_t len;
-	int r, i;
+	int r;
 
 	fid[0] = DCOD_PREFIX;
 	fid[1] = id;
@@ -481,7 +479,7 @@ static int sc_pkcs15emu_sc_hsm_add_cd(sc_pkcs15_card_t * p15card, u8 id) {
 	u8 efbin[512];
 	const u8 *ptr;
 	size_t len;
-	int r, i;
+	int r;
 
 	fid[0] = CD_PREFIX;
 	fid[1] = id;
@@ -532,7 +530,6 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 	struct sc_app_info *appinfo;
 	struct sc_pkcs15_auth_info pin_info;
 	struct sc_pkcs15_object pin_obj;
-	u8 fid[2];
 	u8 efbin[512];
 	u8 *ptr;
 	size_t len;
@@ -558,15 +555,15 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 	r = sc_select_file(card, &path, &file);
 	LOG_TEST_RET(card->ctx, r, "Could not select SmartCard-HSM application");
 
-	p15card->card->version.hw_major = 24;	// JCOP 2.4.1r3
+	p15card->card->version.hw_major = 24;	/* JCOP 2.4.1r3 */
 	p15card->card->version.hw_minor = 13;
 	p15card->card->version.fw_major = file->prop_attr[file->prop_attr_len - 2];
 	p15card->card->version.fw_minor = file->prop_attr[file->prop_attr_len - 1];
 
 	sc_file_free(file);
 
-	// Read device certificate to determine serial number
-	sc_path_set(&path, SC_PATH_TYPE_FILE_ID, "\x2F\x02", 2, 0, 0);
+	/* Read device certificate to determine serial number */
+	sc_path_set(&path, SC_PATH_TYPE_FILE_ID, (u8 *) "\x2F\x02", 2, 0, 0);
 	r = sc_select_file(card, &path, &file);
 	LOG_TEST_RET(card->ctx, r, "Could not select EF.C_DevAut");
 	sc_file_free(file);
@@ -581,7 +578,7 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 	r = sc_pkcs15emu_sc_hsm_decode_cvc(p15card, (const u8 **)&ptr, &len, &devcert);
 	LOG_TEST_RET(card->ctx, r, "Could not decode EF.C_DevAut");
 
-	len = strlen(devcert.chr);		// Strip last 5 digit sequence number from CHR
+	len = strlen(devcert.chr);		/* Strip last 5 digit sequence number from CHR */
 	assert(len >= 8);
 	len -= 5;
 

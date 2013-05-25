@@ -137,7 +137,6 @@ static int sc_hsm_match_card(struct sc_card *card)
 static int sc_hsm_pin_info(sc_card_t *card, struct sc_pin_cmd_data *data,
 			   int *tries_left)
 {
-	sc_hsm_private_data_t *priv = (sc_hsm_private_data_t *) card->drv_data;
 	sc_apdu_t apdu;
 	int r;
 
@@ -234,7 +233,6 @@ static int sc_hsm_update_binary(sc_card_t *card,
 {
 	sc_context_t *ctx = card->ctx;
 	sc_apdu_t apdu;
-	u8 recvbuf[SC_MAX_APDU_BUFFER_SIZE];
 	u8 *cmdbuff, *p;
 	size_t len;
 	int r;
@@ -621,7 +619,7 @@ static int sc_hsm_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 static int sc_hsm_initialize(sc_card_t *card, sc_cardctl_sc_hsm_init_param_t *params)
 {
 	sc_context_t *ctx = card->ctx;
-	int r, i;
+	int r;
 	sc_apdu_t apdu;
 	u8 ibuff[50], *p;
 
@@ -760,7 +758,6 @@ static int sc_hsm_unwrap_key(sc_card_t *card, sc_cardctl_sc_hsm_wrapped_key_t *p
 {
 	sc_context_t *ctx = card->ctx;
 	sc_apdu_t apdu;
-	u8 status[MAX_EXT_APDU_LENGTH];
 	int r;
 
 	LOG_FUNC_CALLED(card->ctx);
@@ -888,7 +885,6 @@ static int sc_hsm_init_pin(sc_card_t *card, sc_cardctl_pkcs11_init_pin_t *params
 
 static int sc_hsm_generate_keypair(sc_card_t *card, sc_cardctl_sc_hsm_keygen_info_t *keyinfo)
 {
-	sc_hsm_private_data_t *priv = (sc_hsm_private_data_t *) card->drv_data;
 	u8 rbuf[1024];
 	int r;
 	sc_apdu_t apdu;

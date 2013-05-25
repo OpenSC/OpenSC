@@ -549,7 +549,6 @@ pgp_set_blob(struct blob *blob, const u8 *data, size_t len)
 static void
 pgp_attach_acl(sc_card_t *card, sc_file_t *file, struct do_info *info)
 {
-	sc_acl_entry_t *acl;
 	unsigned int method = SC_AC_NONE;
 	unsigned long key_ref = SC_AC_KEY_REF_NONE;
 
@@ -1676,7 +1675,6 @@ static int
 pgp_parse_and_set_pubkey_output(sc_card_t *card, u8* data, size_t data_len,
                                 sc_cardctl_openpgp_keygen_info_t *key_info)
 {
-	unsigned int blob_id;
 	time_t ctime = 0;
 	u8 *in = data;
 	u8 *modulus = NULL;
@@ -1772,10 +1770,7 @@ static int pgp_update_card_algorithms(sc_card_t *card, sc_cardctl_openpgp_keygen
  **/
 static int pgp_gen_key(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_info)
 {
-	struct pgp_priv_data *priv = DRVDATA(card);
-	struct blob *algo_blob;
 	sc_apdu_t apdu;
-	unsigned int modulus_bitlen;
 	/* Temporary variables to hold APDU params */
 	u8 apdu_case;
 	u8 *apdu_data;
@@ -1784,6 +1779,8 @@ static int pgp_gen_key(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_in
 
 	LOG_FUNC_CALLED(card->ctx);
 
+	/* FIXME the compilers doesn't assure that the buffers set here as
+	 * apdu_data are present until the end of the function */
 	/* Set Control Reference Template for key */
 	if (key_info->keytype == SC_OPENPGP_KEY_SIGN)
 		apdu_data = (unsigned char *) "\xb6";
@@ -1921,7 +1918,6 @@ static int
 pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_keystore_info_t *key_info,
                                u8 **result, size_t *resultlen)
 {
-	struct pgp_priv_data *priv = DRVDATA(card);
 	sc_context_t *ctx = card->ctx;
 	/* The Cardholder private key template (7F48) part */
 	const size_t max_prtem_len = 7*(1 + 3);     /* 7 components */
@@ -2078,7 +2074,6 @@ out2:
  **/
 static int pgp_store_key(sc_card_t *card, sc_cardctl_openpgp_keystore_info_t *key_info)
 {
-	struct pgp_priv_data *priv = DRVDATA(card);
 	sc_context_t *ctx = card->ctx;
 	sc_cardctl_openpgp_keygen_info_t pubkey;
 	u8 *data;

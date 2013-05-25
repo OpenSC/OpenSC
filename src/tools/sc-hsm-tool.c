@@ -37,6 +37,7 @@
 #include <openssl/evp.h>
 #include <openssl/bn.h>
 #include <openssl/rand.h>
+#include <openssl/err.h>
 
 #include "libopensc/opensc.h"
 #include "libopensc/cardctl.h"
@@ -922,7 +923,7 @@ static void create_dkek_share(sc_card_t *card, const char *outf, int iter, char 
 
 	r = sc_get_challenge(card, filebuff + 8, 8);
 	if (r < 0) {
-		printf("Error generating random number failed with ", sc_strerror(r));
+		printf("Error generating random number failed with %s", sc_strerror(r));
 		return;
 	}
 
@@ -936,7 +937,7 @@ static void create_dkek_share(sc_card_t *card, const char *outf, int iter, char 
 
 	r = sc_get_challenge(card, dkek_share, sizeof(dkek_share));
 	if (r < 0) {
-		printf("Error generating random number failed with ", sc_strerror(r));
+		printf("Error generating random number failed with %s", sc_strerror(r));
 		return;
 	}
 
@@ -1037,7 +1038,6 @@ static void wrap_key(sc_card_t *card, u8 keyid, const char *outf, const char *pi
 {
 	sc_cardctl_sc_hsm_wrapped_key_t wrapped_key;
 	struct sc_pin_cmd_data data;
-	sc_file_t *file = NULL;
 	sc_path_t path;
 	FILE *out = NULL;
 	u8 fid[2];

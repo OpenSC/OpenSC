@@ -1368,9 +1368,8 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15_object *object;
-	struct sc_pkcs15_prkey_info *key_info;
 	struct sc_pkcs15_prkey key;
-	int keybits, idx, r = 0;
+	int keybits, r = 0;
 
 	LOG_FUNC_CALLED(ctx);
 	/* Create a copy of the key first */
@@ -1404,13 +1403,13 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
 	/* Set up the PrKDF object */
 	r = sc_pkcs15init_init_prkdf(p15card, profile, keyargs, &key, keybits, &object);
 	LOG_TEST_RET(ctx, r, "Failed to initialize private key object");
-	key_info = (struct sc_pkcs15_prkey_info *) object->data;
+	/*key_info = (struct sc_pkcs15_prkey_info *) object->data;*/
 
 	r = sc_pkcs15init_encode_prvkey_content(p15card, &key, object);
 	LOG_TEST_RET(ctx, r, "Failed to encode public key");
 
 	/* Get the number of private keys already on this card */
-	idx = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PRKEY, NULL, 0);
+	/*idx = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PRKEY, NULL, 0);*/
 
 	r = profile->ops->create_key(profile, p15card, object);
 	LOG_TEST_RET(ctx, r, "Card specific 'create key' failed");

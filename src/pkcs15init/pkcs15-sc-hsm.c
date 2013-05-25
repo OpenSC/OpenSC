@@ -153,7 +153,6 @@ static int sc_hsm_update_ef(sc_pkcs15_card_t *p15card, u8 prefix, u8 id, int era
 {
 	sc_card_t *card = p15card->card;
 	sc_file_t *file = NULL;
-	sc_file_t newfile;
 	sc_path_t path;
 	u8 fid[2];
 	int r;
@@ -264,10 +263,9 @@ static int sc_hsm_get_curve(struct sc_pkcs15_card *p15card, struct ec_curve **cu
 static int sc_hsm_encode_gakp_ec(struct sc_pkcs15_card *p15card, sc_cvc_t *cvc, struct sc_pkcs15_prkey_info *key_info) {
 	struct sc_object_id ecdsaWithSHA256 = { { 0,4,0,127,0,7,2,2,2,2,3,-1 } };
 	struct sc_pkcs15_ec_parameters *ecparams = (struct sc_pkcs15_ec_parameters *)key_info->params.data;
-	struct ec_curve *curve;
+	struct ec_curve *curve = NULL;
 	u8 *curveoid;
-	int curveoidlen;
-	int r;
+	int curveoidlen, r;
 
 	LOG_FUNC_CALLED(p15card->card->ctx);
 
@@ -335,10 +333,6 @@ static int sc_hsm_decode_gakp_rsa(struct sc_pkcs15_card *p15card,
 									struct sc_pkcs15_prkey_info *key_info,
 									struct sc_pkcs15_pubkey *pubkey)
 {
-	u8 *buf;
-	size_t buflen;
-	int r;
-
 	LOG_FUNC_CALLED(p15card->card->ctx);
 
 	if (((key_info->modulus_length + 7) / 8) != cvc->primeOrModuluslen) {
@@ -367,13 +361,8 @@ static int sc_hsm_decode_gakp_ec(struct sc_pkcs15_card *p15card,
 									struct sc_pkcs15_prkey_info *key_info,
 									struct sc_pkcs15_pubkey *pubkey)
 {
-	struct sc_asn1_entry asn1_ec_pointQ[C_ASN1_EC_POINTQ_SIZE];
 	struct sc_pkcs15_ec_parameters *ecparams = (struct sc_pkcs15_ec_parameters *)(key_info->params.data);
 	struct sc_ec_params *ecp;
-	u8 *buf;
-	size_t buflen;
-	int r;
-
 	LOG_FUNC_CALLED(p15card->card->ctx);
 
 	pubkey->algorithm = SC_ALGORITHM_EC;
@@ -417,7 +406,6 @@ static int sc_hsm_generate_key(struct sc_profile *profile, struct sc_pkcs15_card
 															struct sc_pkcs15_object *object,
 															struct sc_pkcs15_pubkey *pubkey)
 {
-	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_card *card = p15card->card;
 	struct sc_pkcs15_prkey_info *key_info = (struct sc_pkcs15_prkey_info *)object->data;
 	sc_cardctl_sc_hsm_keygen_info_t sc_hsm_keyinfo;
@@ -523,7 +511,6 @@ static int sc_hsm_emu_store_cert(struct sc_pkcs15_card *p15card, struct sc_profi
 		struct sc_pkcs15_der *data)
 
 {
-	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15_cert_info *cert_info = (struct sc_pkcs15_cert_info *) object->data;
 	struct sc_pkcs15_object *prkey;
 	sc_path_t path;
@@ -558,7 +545,6 @@ static int sc_hsm_emu_delete_cert(struct sc_pkcs15_card *p15card, struct sc_prof
 		struct sc_pkcs15_object *object)
 
 {
-	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15_cert_info *cert_info = (struct sc_pkcs15_cert_info *) object->data;
 	struct sc_pkcs15_object *prkey;
 	int r;
@@ -581,7 +567,6 @@ static int sc_hsm_emu_store_binary(struct sc_pkcs15_card *p15card, struct sc_pro
 		struct sc_pkcs15_der *data)
 
 {
-	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15_data_info *data_info = (struct sc_pkcs15_data_info *) object->data;
 	sc_path_t path;
 	u8 id[2];
@@ -671,7 +656,6 @@ static int sc_hsm_emu_delete_object(struct sc_profile *profile, struct sc_pkcs15
 static int sc_hsm_emu_update_prkd(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 		struct sc_pkcs15_object *object)
 {
-	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15_prkey_info *key_info = (struct sc_pkcs15_prkey_info *)object->data;
 	u8 *buf;
 	size_t buflen;
@@ -690,7 +674,6 @@ static int sc_hsm_emu_update_prkd(struct sc_profile *profile, struct sc_pkcs15_c
 static int sc_hsm_emu_update_dcod(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 		struct sc_pkcs15_object *object)
 {
-	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15_data_info *data_info = (struct sc_pkcs15_data_info *) object->data;
 	u8 *buf;
 	size_t buflen;
@@ -709,7 +692,6 @@ static int sc_hsm_emu_update_dcod(struct sc_profile *profile, struct sc_pkcs15_c
 static int sc_hsm_emu_update_cd(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 		struct sc_pkcs15_object *object)
 {
-	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15_cert_info *cert_info = (struct sc_pkcs15_cert_info *) object->data;
 	u8 *buf;
 	size_t buflen;
@@ -734,11 +716,7 @@ static int sc_hsm_emu_update_cd(struct sc_profile *profile, struct sc_pkcs15_car
 static int sc_hsm_emu_delete_cd(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 		struct sc_pkcs15_object *object)
 {
-	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15_cert_info *cert_info = (struct sc_pkcs15_cert_info *) object->data;
-	u8 *buf;
-	size_t buflen;
-	int r;
 
 	if ((cert_info->path.len < 2) ||
 		((cert_info->path.value[cert_info->path.len - 2]) != CA_CERTIFICATE_PREFIX)) {

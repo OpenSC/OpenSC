@@ -864,7 +864,7 @@ cardos_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 	 *   and www.crysys.hu/infsec/M40_Manual_E_2001_10.pdf)
 	 */
 
-        if (card->caps & SC_CARD_CAP_ONLY_RAW_HASH_STRIPPED){
+	if (card->caps & SC_CARD_CAP_ONLY_RAW_HASH_STRIPPED){
 		sc_log(ctx, "Forcing RAW_HASH_STRIPPED");
 		do_rsa_sig = 1;
 	}
@@ -873,7 +873,7 @@ cardos_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 		do_rsa_sig = 1;
 	}
 	else  {
-		//check the the algorithmIDs from the AlgorithmInfo
+		/* check the the algorithmIDs from the AlgorithmInfo */
 		int i;
 		for(i=0; i<algorithm_ids_in_tokeninfo_count;++i){
 			unsigned int id = algorithm_ids_in_tokeninfo[i];
@@ -884,10 +884,10 @@ cardos_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 		}
 	}
 
-	//check if any operation was selected
+	/* check if any operation was selected */
 	if(do_rsa_sig == 0 && do_rsa_pure_sig == 0)  {
-		//no operation selected. we just have to try both, for the lack of any better reasoning
-		sc_log(ctx, "I was unable to determine, wether this key can be used with RSA_SIG or RSA_PURE_SIG. I will just try both.");
+		/* no operation selected. we just have to try both, for the lack of any better reasoning */
+		sc_log(ctx, "I was unable to determine, whether this key can be used with RSA_SIG or RSA_PURE_SIG. I will just try both.");
 		do_rsa_sig = 1;
 		do_rsa_pure_sig = 1;
 	}
@@ -931,6 +931,8 @@ cardos_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 			LOG_FUNC_RETURN(ctx, r);
 		return do_compute_signature(card, buf, buf_len, out, outlen);
 	}
+
+	LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
 }
 
 static int

@@ -1150,7 +1150,7 @@ static int myeid_get_info(struct sc_card *card, u8 *rbuf, size_t buflen)
 	card->version.fw_major = rbuf[5] * 10 + rbuf[6];
 	card->version.fw_minor = rbuf[7];
 	/* add version to name */
-	sprintf(nameBuf, "%s %d.%d.%d", card->name, rbuf[5], rbuf[6], rbuf[7]);
+	sprintf((char *) nameBuf, "%s %d.%d.%d", card->name, rbuf[5], rbuf[6], rbuf[7]);
 	card->name = nameBuf;
 	//card->driver->name
 	LOG_FUNC_RETURN(card->ctx, r);
