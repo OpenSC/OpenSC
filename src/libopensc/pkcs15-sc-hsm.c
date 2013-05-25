@@ -179,8 +179,6 @@ int sc_pkcs15emu_sc_hsm_encode_cvc(sc_pkcs15_card_t * p15card,
 	struct sc_asn1_entry asn1_cvcert[C_ASN1_CVCERT_SIZE];
 	struct sc_asn1_entry asn1_cvc_body[C_ASN1_CVC_BODY_SIZE];
 	struct sc_asn1_entry asn1_cvc_pubkey[C_ASN1_CVC_PUBKEY_SIZE];
-	unsigned int cla,tag;
-	size_t taglen;
 	size_t lenchr;
 	size_t lencar;
 	int r;
@@ -330,7 +328,7 @@ static int sc_pkcs15emu_sc_hsm_add_prkd(sc_pkcs15_card_t * p15card, u8 keyid) {
 	u8 efbin[512];
 	u8 *ptr;
 	size_t len;
-	int r, i;
+	int r;
 
 	fid[0] = PRKD_PREFIX;
 	fid[1] = keyid;
@@ -432,7 +430,7 @@ static int sc_pkcs15emu_sc_hsm_add_dcod(sc_pkcs15_card_t * p15card, u8 id) {
 	u8 efbin[512];
 	const u8 *ptr;
 	size_t len;
-	int r, i;
+	int r;
 
 	fid[0] = DCOD_PREFIX;
 	fid[1] = id;
@@ -481,7 +479,7 @@ static int sc_pkcs15emu_sc_hsm_add_cd(sc_pkcs15_card_t * p15card, u8 id) {
 	u8 efbin[512];
 	const u8 *ptr;
 	size_t len;
-	int r, i;
+	int r;
 
 	fid[0] = CD_PREFIX;
 	fid[1] = id;
@@ -532,7 +530,6 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 	struct sc_app_info *appinfo;
 	struct sc_pkcs15_auth_info pin_info;
 	struct sc_pkcs15_object pin_obj;
-	u8 fid[2];
 	u8 efbin[512];
 	u8 *ptr;
 	size_t len;
@@ -566,7 +563,7 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 	sc_file_free(file);
 
 	// Read device certificate to determine serial number
-	sc_path_set(&path, SC_PATH_TYPE_FILE_ID, "\x2F\x02", 2, 0, 0);
+	sc_path_set(&path, SC_PATH_TYPE_FILE_ID, (u8 *) "\x2F\x02", 2, 0, 0);
 	r = sc_select_file(card, &path, &file);
 	LOG_TEST_RET(card->ctx, r, "Could not select EF.C_DevAut");
 	sc_file_free(file);

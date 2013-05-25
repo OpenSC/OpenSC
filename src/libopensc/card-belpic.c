@@ -981,14 +981,12 @@ static int belpic_init(sc_card_t *card)
 static int belpic_select_file(sc_card_t *card,
 			      const sc_path_t *in_path, sc_file_t **file_out)
 {
-	sc_context_t *ctx;
 	sc_apdu_t apdu;
 	u8 pathbuf[SC_MAX_PATH_SIZE], *path = pathbuf;
 	int r, pathlen;
 	sc_file_t *file = NULL;
 
 	assert(card != NULL && in_path != NULL);
-	ctx = card->ctx;
 	memcpy(path, in_path->value, in_path->len);
 	pathlen = in_path->len;
 

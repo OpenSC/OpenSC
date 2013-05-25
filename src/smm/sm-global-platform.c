@@ -343,7 +343,7 @@ sm_gp_external_authentication(struct sc_context *ctx, struct sm_info *sm_info,
 	unsigned char host_cryptogram[8], raw_apdu[SC_MAX_APDU_BUFFER_SIZE];
 	struct sm_gp_session *gp_session = &sm_info->session.gp;
 	DES_cblock mac;
-	int rv, idx = 0, offs = 0;
+	int rv, offs = 0;
 
 	LOG_FUNC_CALLED(ctx);
 	if (!sm_info || !init_data || !rdata || !rdata->alloc)
