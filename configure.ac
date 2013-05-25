@@ -86,9 +86,9 @@ AC_DEFINE_UNQUOTED([DEBUG_FILE], ["${DEBUG_FILE}"], [Debug file])
 
 AC_ARG_ENABLE(
 	[strict],
-	[AS_HELP_STRING([--enable-strict],[enable strict compile mode @<:@disabled@:>@])],
+	[AS_HELP_STRING([--disable-strict],[disable strict compile mode @<:@disabled@:>@])],
 	,
-	[enable_strict="no"]
+	[enable_strict="yes"]
 )
 
 AC_ARG_ENABLE(
@@ -591,10 +591,10 @@ AM_CONDITIONAL([ENABLE_SM], [test "${enable_sm}" = "yes"])
 
 if test "${enable_pedantic}" = "yes"; then
 	enable_strict="yes";
-	CFLAGS="${CFLAGS} -pedantic"
+	CFLAGS="${CFLAGS} -pedantic -Wextra"
 fi
 if test "${enable_strict}" = "yes"; then
-	CFLAGS="${CFLAGS} -Wall -Wextra"
+	CFLAGS="${CFLAGS} -Wall"
 fi
 if test "$GCC" = "yes"; then
 	# This should be resolved not ignored.
