@@ -609,6 +609,8 @@ static int sc_hsm_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 	}
 
 	serial->len = strlen(priv->serialno);
+	/* FIXME the length to copy should be dependant on the size of
+	 * serial->value *and* priv->serialno */
 	strncpy(serial->value, priv->serialno, sizeof(serial->value));
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
