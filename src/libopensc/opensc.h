@@ -726,9 +726,6 @@ void sc_format_apdu(struct sc_card *, struct sc_apdu *, int, int, int, int);
 
 int sc_check_apdu(struct sc_card *, const struct sc_apdu *);
 
-struct sc_apdu *sc_allocate_apdu(struct sc_apdu *,  unsigned);
-void sc_free_apdu(struct sc_apdu *);
-
 /** Transforms an APDU from binary to its @c sc_apdu_t representation
  *  @param  ctx     sc_context_t object (used for logging)
  *  @param  buf     APDU to be encoded as an @c sc_apdu_t object

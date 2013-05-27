@@ -280,7 +280,7 @@ typedef struct sc_apdu {
 	int cse;			/* APDU case */
 	unsigned char cla, ins, p1, p2;	/* CLA, INS, P1 and P2 bytes */
 	size_t lc, le;			/* Lc and Le bytes */
-	unsigned char *data;		/* C-APDU data */
+	const unsigned char *data;		/* C-APDU data */
 	size_t datalen;			/* length of data in C-APDU */
 	unsigned char *resp;		/* R-APDU data buffer */
 	size_t resplen;			/* in: size of R-APDU buffer,

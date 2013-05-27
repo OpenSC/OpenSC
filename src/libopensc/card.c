@@ -61,55 +61,6 @@ void sc_format_apdu(sc_card_t *card, sc_apdu_t *apdu,
 	apdu->p2 = (u8) p2;
 }
 
-struct sc_apdu *
-sc_allocate_apdu(struct sc_apdu *copy_from, unsigned flags)
-{
-	struct sc_apdu *apdu = NULL;
-
-	assert(copy_from != NULL);
-	apdu = (struct sc_apdu *)malloc(sizeof(struct sc_apdu));
-	if (!copy_from || !apdu)
-		return apdu;
-	memcpy(apdu, copy_from, sizeof(struct sc_apdu));
-	apdu->data = apdu->resp = NULL;
-	apdu->next = NULL;
-	apdu->datalen = apdu->resplen = 0;
-	apdu->allocation_flags = SC_APDU_ALLOCATE_FLAG;
-
-	if ((flags & SC_APDU_ALLOCATE_FLAG_DATA) && copy_from->data && copy_from->datalen)   {
-		apdu->data = malloc(copy_from->datalen);
-		if (!apdu->data)
-			return NULL;
-		memcpy(apdu->data, copy_from->data, copy_from->datalen);
-		apdu->datalen = copy_from->datalen;
-		apdu->allocation_flags |= SC_APDU_ALLOCATE_FLAG_DATA;
-	}
-
-	if ((flags & SC_APDU_ALLOCATE_FLAG_RESP) && copy_from->resp && copy_from->resplen)   {
-		apdu->resp = malloc(copy_from->resplen);
-		if (!apdu->resp)
-			return NULL;
-		memcpy(apdu->resp, copy_from->resp, copy_from->resplen);
-		apdu->resplen = copy_from->resplen;
-		apdu->allocation_flags |= SC_APDU_ALLOCATE_FLAG_RESP;
-	}
-	return apdu;
-}
-
-void
-sc_free_apdu(struct sc_apdu *apdu)
-{
-	if (!apdu)
-		return;
-	if (apdu->allocation_flags & SC_APDU_ALLOCATE_FLAG_DATA)
-		free (apdu->data);
-	if (apdu->allocation_flags & SC_APDU_ALLOCATE_FLAG_RESP)
-		free (apdu->resp);
-	if (apdu->allocation_flags & SC_APDU_ALLOCATE_FLAG)
-		free (apdu);
-}
-
-
 static sc_card_t * sc_card_new(sc_context_t *ctx)
 {
 	sc_card_t *card;
