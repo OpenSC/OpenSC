@@ -240,7 +240,7 @@ typedef struct
 	uint8_t bMsgIndex; /**< Message index (should be 00) */
 	uint8_t bTeoPrologue[3]; /**< T=1 block prologue field to use (fill with 00) */
 	uint32_t ulDataLength; /**< length of Data to be sent to the ICC */
-	uint8_t abData[1]; /**< Data to send to the ICC */
+	uint8_t abData[261]; /**< Data to send to the ICC, short APDUs only */
 } PIN_VERIFY_STRUCTURE;
 
 /** structure used with \ref FEATURE_MODIFY_PIN_DIRECT */
@@ -273,7 +273,7 @@ typedef struct
 	uint8_t bMsgIndex3; /**< index of 3d prompting message */
 	uint8_t bTeoPrologue[3]; /**< T=1 block prologue field to use (fill with 00) */
 	uint32_t ulDataLength; /**< length of Data to be sent to the ICC */
-	uint8_t abData[1]; /**< Data to send to the ICC */
+	uint8_t abData[261]; /**< Data to send to the ICC, short APDUs only */
 } PIN_MODIFY_STRUCTURE;
 
 /* PIN_PROPERTIES as defined (in/up to?) PC/SC 2.02.05 */
