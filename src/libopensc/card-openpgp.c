@@ -648,6 +648,9 @@ pgp_new_blob(sc_card_t *card, struct blob *parent, unsigned int file_id,
 			u8 id_str[2];
 
 			/* no parent: set file's path = file's id */
+			/* FIXME sc_format_path expects an hex string of an file
+			 * identifier. ushort2bebytes instead delivers a two bytes binary
+			 * string */
 			sc_format_path(ushort2bebytes(id_str, file_id), &blob->file->path);
 		}
 
@@ -1674,8 +1677,8 @@ pgp_parse_and_set_pubkey_output(sc_card_t *card, u8* data, size_t data_len,
 {
 	time_t ctime = 0;
 	u8 *in = data;
-	u8 *modulus;
-	u8 *exponent;
+	u8 *modulus = NULL;
+	u8 *exponent = NULL;
 	int r;
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -1780,12 +1783,12 @@ static int pgp_gen_key(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_in
 	 * apdu_data are present until the end of the function */
 	/* Set Control Reference Template for key */
 	if (key_info->keytype == SC_OPENPGP_KEY_SIGN)
-		apdu_data = "\xb6";
+		apdu_data = (unsigned char *) "\xb6";
 		/* As a string, apdu_data will end with '\0' (B6 00) */
 	else if (key_info->keytype == SC_OPENPGP_KEY_ENCR)
-		apdu_data = "\xb8";
+		apdu_data = (unsigned char *) "\xb8";
 	else if (key_info->keytype == SC_OPENPGP_KEY_AUTH)
-		apdu_data = "\xa4";
+		apdu_data = (unsigned char *) "\xa4";
 	else {
 		sc_log(card->ctx, "Unknown key type %X.", key_info->keytype);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);

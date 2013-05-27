@@ -56,8 +56,6 @@ static char *prettify_gender(char *str);
 static void display_data(const struct ef_name_map *mapping, char *value);
 static int decode_options(int argc, char **argv);
 static int do_userinfo(sc_card_t *card);
-static int read_transp(sc_card_t *card, const char *pathstring, unsigned char *buf, int buflen);
-static void bintohex(char *buf, int len);
 
 /* define global variables */
 static int actions = 0;
@@ -382,7 +380,7 @@ int do_genkey(sc_card_t *card, u8 key_id, unsigned int key_len)
 	return 0;
 }
 
-int do_verify(sc_card_t *card, u8 *type, u8* pin)
+int do_verify(sc_card_t *card, char *type, char *pin)
 {
 	struct sc_pin_cmd_data data;
 	int tries_left;
