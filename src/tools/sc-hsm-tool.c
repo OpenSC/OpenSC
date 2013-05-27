@@ -572,9 +572,9 @@ static int recreate_password_from_shares(char **pwd, int *pwdlen, int num_of_pas
 	BIGNUM secret;
 	BIGNUM *p;
 	char inbuf[64];
-	char bin[64];
-	int binlen = 0;
-	char *ip;
+	unsigned char bin[64];
+	size_t binlen = 0;
+	unsigned char *ip;
 	secret_share_t *shares = NULL;
 	secret_share_t *sp;
 
@@ -639,7 +639,7 @@ static int recreate_password_from_shares(char **pwd, int *pwdlen, int num_of_pas
 	/*
 	 * Encode the secret value
 	 */
-	ip = inbuf;
+	ip = (unsigned char *) inbuf;
 	*pwdlen = BN_bn2bin(&secret, ip);
 	*pwd = calloc(1, *pwdlen);
 	memcpy(*pwd, ip, *pwdlen);
@@ -789,7 +789,7 @@ static int generate_pwd_shares(sc_card_t *card, char **pwd, int *pwdlen, int pas
 	int r, i;
 	BIGNUM prime;
 	BIGNUM secret;
-	char buf[64];
+	unsigned char buf[64];
 	char hex[64];
 	int l;
 
@@ -814,7 +814,7 @@ static int generate_pwd_shares(sc_card_t *card, char **pwd, int *pwdlen, int pas
 
 	r = sc_get_challenge(card, *pwd, 8);
 	if (r < 0) {
-		printf("Error generating random key failed with ", sc_strerror(r));
+		printf("Error generating random key failed with %s", sc_strerror(r));
 		OPENSSL_cleanse(*pwd, *pwdlen);
 		free(*pwd);
 		return r;
@@ -837,7 +837,7 @@ static int generate_pwd_shares(sc_card_t *card, char **pwd, int *pwdlen, int pas
 	 */
 	r = sc_get_challenge(card, rngseed, 16);
 	if (r < 0) {
-		printf("Error generating random seed failed with ", sc_strerror(r));
+		printf("Error generating random seed failed with %s", sc_strerror(r));
 		OPENSSL_cleanse(*pwd, *pwdlen);
 		free(*pwd);
 		return r;
@@ -1007,7 +1007,7 @@ static void wrap_key(sc_card_t *card, u8 keyid, const char *outf, const char *pi
 		util_getpass(&lpin, NULL, stdin);
 		printf("\n");
 	} else {
-		lpin = (u8 *)pin;
+		lpin = pin;
 	}
 
 	memset(&data, 0, sizeof(data));
