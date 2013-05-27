@@ -815,8 +815,8 @@ static int generate_pwd_shares(sc_card_t *card, char **pwd, int *pwdlen, int pas
 	r = sc_get_challenge(card, *pwd, 8);
 	if (r < 0) {
 		printf("Error generating random key failed with ", sc_strerror(r));
-		OPENSSL_cleanse(pwd, *pwdlen);
-		free(pwd);
+		OPENSSL_cleanse(*pwd, *pwdlen);
+		free(*pwd);
 		return r;
 	}
 	**pwd |= 0x80;
@@ -838,8 +838,8 @@ static int generate_pwd_shares(sc_card_t *card, char **pwd, int *pwdlen, int pas
 	r = sc_get_challenge(card, rngseed, 16);
 	if (r < 0) {
 		printf("Error generating random seed failed with ", sc_strerror(r));
-		OPENSSL_cleanse(pwd, *pwdlen);
-		free(pwd);
+		OPENSSL_cleanse(*pwd, *pwdlen);
+		free(*pwd);
 		return r;
 	}
 
