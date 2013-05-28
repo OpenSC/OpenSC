@@ -1610,7 +1610,11 @@ static int
 pcsc_pin_cmd(sc_reader_t *reader, struct sc_pin_cmd_data *data)
 {
 	struct pcsc_private_data *priv = GET_PRIV_DATA(reader);
-	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE], sbuf[SC_MAX_APDU_BUFFER_SIZE];
+	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
+	/* sbuf holds a pin verification/modification structure plus an APDU. */
+	u8 sbuf[sizeof(PIN_VERIFY_STRUCTURE)>sizeof(PIN_MODIFY_STRUCTURE)?
+		sizeof(PIN_VERIFY_STRUCTURE)+SC_MAX_APDU_BUFFER_SIZE:
+		sizeof(PIN_MODIFY_STRUCTURE)+SC_MAX_APDU_BUFFER_SIZE];
 	size_t rcount = sizeof(rbuf), scount = 0;
 	int r;
 	DWORD ioctl = 0;
