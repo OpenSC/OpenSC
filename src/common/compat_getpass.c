@@ -6,6 +6,7 @@
 #include "compat_getpass.h"
 
 #ifdef _WIN32
+#include <conio.h>
 char *getpass(const char *prompt)
 {
 	static char buf[128];

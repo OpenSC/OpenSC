@@ -238,7 +238,6 @@ sm_authentic_get_apdu_create_file(struct sc_context *ctx, struct sm_info *sm_inf
 
 	LOG_FUNC_RETURN(ctx, rv);
 }
-#endif
 
 static int
 sm_authentic_get_apdu_release(struct sc_context *ctx, struct sm_info *sm_info,
@@ -267,6 +266,7 @@ sm_authentic_get_apdu_release(struct sc_context *ctx, struct sm_info *sm_info,
 
 	LOG_FUNC_RETURN(ctx, rv);
 }
+#endif
 
 
 int

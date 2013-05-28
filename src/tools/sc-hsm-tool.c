@@ -37,6 +37,7 @@
 #include <openssl/evp.h>
 #include <openssl/bn.h>
 #include <openssl/rand.h>
+#include <openssl/err.h>
 
 #include "libopensc/opensc.h"
 #include "libopensc/cardctl.h"
@@ -571,9 +572,9 @@ static int recreate_password_from_shares(char **pwd, int *pwdlen, int num_of_pas
 	BIGNUM secret;
 	BIGNUM *p;
 	char inbuf[64];
-	char bin[64];
-	int binlen = 0;
-	char *ip;
+	unsigned char bin[64];
+	size_t binlen = 0;
+	unsigned char *ip;
 	secret_share_t *shares = NULL;
 	secret_share_t *sp;
 
@@ -638,7 +639,7 @@ static int recreate_password_from_shares(char **pwd, int *pwdlen, int num_of_pas
 	/*
 	 * Encode the secret value
 	 */
-	ip = inbuf;
+	ip = (unsigned char *) inbuf;
 	*pwdlen = BN_bn2bin(&secret, ip);
 	*pwd = calloc(1, *pwdlen);
 	memcpy(*pwd, ip, *pwdlen);
@@ -788,7 +789,7 @@ static int generate_pwd_shares(sc_card_t *card, char **pwd, int *pwdlen, int pas
 	int r, i;
 	BIGNUM prime;
 	BIGNUM secret;
-	char buf[64];
+	unsigned char buf[64];
 	char hex[64];
 	int l;
 
@@ -813,9 +814,9 @@ static int generate_pwd_shares(sc_card_t *card, char **pwd, int *pwdlen, int pas
 
 	r = sc_get_challenge(card, *pwd, 8);
 	if (r < 0) {
-		printf("Error generating random key failed with ", sc_strerror(r));
-		OPENSSL_cleanse(pwd, *pwdlen);
-		free(pwd);
+		printf("Error generating random key failed with %s", sc_strerror(r));
+		OPENSSL_cleanse(*pwd, *pwdlen);
+		free(*pwd);
 		return r;
 	}
 	**pwd |= 0x80;
@@ -836,9 +837,9 @@ static int generate_pwd_shares(sc_card_t *card, char **pwd, int *pwdlen, int pas
 	 */
 	r = sc_get_challenge(card, rngseed, 16);
 	if (r < 0) {
-		printf("Error generating random seed failed with ", sc_strerror(r));
-		OPENSSL_cleanse(pwd, *pwdlen);
-		free(pwd);
+		printf("Error generating random seed failed with %s", sc_strerror(r));
+		OPENSSL_cleanse(*pwd, *pwdlen);
+		free(*pwd);
 		return r;
 	}
 
@@ -891,7 +892,7 @@ static void create_dkek_share(sc_card_t *card, const char *outf, int iter, char 
 {
 	EVP_CIPHER_CTX ctx;
 	FILE *out = NULL;
-	u8 filebuff[64], key[EVP_MAX_KEY_LENGTH], iv[EVP_MAX_IV_LENGTH],outbuff[64];
+	u8 filebuff[64], key[EVP_MAX_KEY_LENGTH], iv[EVP_MAX_IV_LENGTH];
 	u8 dkek_share[32];
 	char *pwd = NULL;
 	int r = 0, outlen, pwdlen = 0;
@@ -918,7 +919,7 @@ static void create_dkek_share(sc_card_t *card, const char *outf, int iter, char 
 
 	r = sc_get_challenge(card, filebuff + 8, 8);
 	if (r < 0) {
-		printf("Error generating random number failed with ", sc_strerror(r));
+		printf("Error generating random number failed with %s", sc_strerror(r));
 		return;
 	}
 
@@ -932,7 +933,7 @@ static void create_dkek_share(sc_card_t *card, const char *outf, int iter, char 
 
 	r = sc_get_challenge(card, dkek_share, sizeof(dkek_share));
 	if (r < 0) {
-		printf("Error generating random number failed with ", sc_strerror(r));
+		printf("Error generating random number failed with %s", sc_strerror(r));
 		return;
 	}
 
@@ -989,7 +990,6 @@ static void wrap_key(sc_card_t *card, u8 keyid, const char *outf, const char *pi
 {
 	sc_cardctl_sc_hsm_wrapped_key_t wrapped_key;
 	struct sc_pin_cmd_data data;
-	sc_file_t *file = NULL;
 	sc_path_t path;
 	FILE *out = NULL;
 	u8 fid[2];
@@ -1007,7 +1007,7 @@ static void wrap_key(sc_card_t *card, u8 keyid, const char *outf, const char *pi
 		util_getpass(&lpin, NULL, stdin);
 		printf("\n");
 	} else {
-		lpin = (u8 *)pin;
+		lpin = pin;
 	}
 
 	memset(&data, 0, sizeof(data));
@@ -1132,7 +1132,6 @@ static void wrap_key(sc_card_t *card, u8 keyid, const char *outf, const char *pi
 static int update_ef(sc_card_t *card, u8 prefix, u8 id, int erase, const u8 *buf, size_t buflen)
 {
 	sc_file_t *file = NULL;
-	sc_file_t newfile;
 	sc_path_t path;
 	u8 fid[2];
 	int r;

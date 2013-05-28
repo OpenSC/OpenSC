@@ -320,7 +320,7 @@ static int miocos_get_acl(sc_card_t *card, sc_file_t *file)
 	u8 rbuf[256];
 	const u8 *seq = rbuf;
 	size_t left;
-	int acl_types[16], r;
+	int r;
 	unsigned int i;
 	
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xCA, 0x01, 0x01);
@@ -331,8 +331,6 @@ static int miocos_get_acl(sc_card_t *card, sc_file_t *file)
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 	if (apdu.resplen == 0)
 		return sc_check_sw(card, apdu.sw1, apdu.sw2);
-	for (i = 0; i < 16; i++)
-		acl_types[i] = SC_AC_KEY_REF_NONE;
 	left = apdu.resplen;
 	seq = sc_asn1_skip_tag(card->ctx, &seq, &left,
 			       SC_ASN1_SEQUENCE | SC_ASN1_CONS, &left);

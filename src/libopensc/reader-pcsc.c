@@ -1708,7 +1708,6 @@ static int transform_pace_input(
         struct establish_pace_channel_input *pace_input,
         u8 *sbuf, size_t *scount)
 {
-	char dbuf[SC_MAX_APDU_BUFFER_SIZE * 3];
     u8 *p = sbuf;
     uint16_t lengthInputData, lengthCertificateDescription;
     uint8_t lengthCHAT, lengthPIN;
@@ -1910,7 +1909,7 @@ pcsc_perform_pace(struct sc_reader *reader, void *input_pace, void *output_pace)
 	u8 rbuf[SC_MAX_EXT_APDU_BUFFER_SIZE], sbuf[SC_MAX_EXT_APDU_BUFFER_SIZE];
 	size_t rcount = sizeof rbuf, scount = sizeof sbuf;
 
-    if (!reader || !reader->capabilities & SC_READER_CAP_PACE_GENERIC)
+    if (!reader || !(reader->capabilities & SC_READER_CAP_PACE_GENERIC))
         return SC_ERROR_INVALID_ARGUMENTS;
     priv = GET_PRIV_DATA(reader);
     if (!priv)

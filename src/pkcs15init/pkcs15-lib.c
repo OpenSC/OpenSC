@@ -125,9 +125,11 @@ static int	sc_pkcs15init_qualify_pin(struct sc_card *, const char *,
 	       		unsigned int, struct sc_pkcs15_auth_info *);
 static struct sc_pkcs15_df * find_df_by_type(struct sc_pkcs15_card *,
 			unsigned int);
+#if USE_SC_PKCS15INIT_READ_INFO
 static int	sc_pkcs15init_read_info(struct sc_card *card, struct sc_profile *);
 static int	sc_pkcs15init_parse_info(struct sc_card *, const unsigned char *, size_t,
 			struct sc_profile *);
+#endif
 static int	sc_pkcs15init_write_info(struct sc_pkcs15_card *, struct sc_profile *,
 			struct sc_pkcs15_object *);
 
@@ -341,7 +343,8 @@ sc_pkcs15init_bind(struct sc_card *card, const char *name, const char *profile_o
 				profile->options[i++] = strdup(s);
 		}
 	}
-#if 0
+ 
+#if USE_SC_PKCS15INIT_READ_INFO
 	r = sc_pkcs15init_read_info(card, profile);
 	if (r < 0) {
 		sc_profile_free(profile);
@@ -1368,9 +1371,8 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15_object *object;
-	struct sc_pkcs15_prkey_info *key_info;
 	struct sc_pkcs15_prkey key;
-	int keybits, idx, r = 0;
+	int keybits, r = 0;
 
 	LOG_FUNC_CALLED(ctx);
 	/* Create a copy of the key first */
@@ -1404,13 +1406,13 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card,
 	/* Set up the PrKDF object */
 	r = sc_pkcs15init_init_prkdf(p15card, profile, keyargs, &key, keybits, &object);
 	LOG_TEST_RET(ctx, r, "Failed to initialize private key object");
-	key_info = (struct sc_pkcs15_prkey_info *) object->data;
+	/*key_info = (struct sc_pkcs15_prkey_info *) object->data;*/
 
 	r = sc_pkcs15init_encode_prvkey_content(p15card, &key, object);
 	LOG_TEST_RET(ctx, r, "Failed to encode public key");
 
 	/* Get the number of private keys already on this card */
-	idx = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PRKEY, NULL, 0);
+	/*idx = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PRKEY, NULL, 0);*/
 
 	r = profile->ops->create_key(profile, p15card, object);
 	LOG_TEST_RET(ctx, r, "Card specific 'create key' failed");
@@ -3741,7 +3743,8 @@ sc_pkcs15init_qualify_pin(struct sc_card *card, const char *pin_name,
 	return SC_SUCCESS;
 }
 
-
+ 
+#if USE_SC_PKCS15INIT_READ_INFO
 /*
  * Get the list of options from the card, if it specifies them
  */
@@ -3855,6 +3858,7 @@ error:
 	sc_log(card->ctx, "OpenSC info file corrupted");
 	return SC_ERROR_PKCS15INIT;
 }
+#endif
 
 
 static int

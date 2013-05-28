@@ -117,8 +117,10 @@ static int iasecc_pin_is_verified(struct sc_card *card, struct sc_pin_cmd_data *
 static int iasecc_get_free_reference(struct sc_card *card, struct iasecc_ctl_get_free_reference *ctl_data);
 static int iasecc_sdo_put_data(struct sc_card *card, struct iasecc_sdo_update *update);
 
+#ifdef ENABLE_SM
 static int _iasecc_sm_read_binary(struct sc_card *card, unsigned int offs, unsigned char *buf, size_t count);
 static int _iasecc_sm_update_binary(struct sc_card *card, unsigned int offs, const unsigned char *buff, size_t count);
+#endif
 
 static int
 iasecc_chv_cache_verified(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd)
@@ -680,6 +682,7 @@ iasecc_erase_binary(struct sc_card *card, unsigned int offs, size_t count, unsig
 }
 
 
+#if ENABLE_SM
 static int
 _iasecc_sm_read_binary(struct sc_card *card, unsigned int offs,
 		unsigned char *buff, size_t count)
@@ -747,6 +750,7 @@ _iasecc_sm_update_binary(struct sc_card *card, unsigned int offs,
 
 	LOG_FUNC_RETURN(ctx, 0);
 }
+#endif
 
 
 static int
