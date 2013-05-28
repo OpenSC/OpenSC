@@ -1185,7 +1185,7 @@ static int entersafe_write_large_rsa_key(sc_card_t *card,u8 key_id,struct sc_pkc
 		  sbuff[0]=0x83;
 		  sbuff[1]=0x02;
 		  sbuff[2]=key_id;
-		  sbuff[3]=0xA2;
+		  sbuff[3]=0x2A;
 		  sbuff[4]=0x89;
 		  sbuff[5]=0x40;
 		  memcpy(sbuff+6,rsa->modulus.data,0x40);
