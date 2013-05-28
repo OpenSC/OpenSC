@@ -389,8 +389,12 @@ int main(int argc, char * argv[])
 	CK_RV rv;
 
 #ifdef _WIN32
+#ifdef _MSC_VER
 	if (_set_fmode(_O_BINARY) == EINVAL)
 		util_fatal("Cannot set FMODE to O_BINARY");
+#elif __MINGW32__
+	_fmode = _O_BINARY;
+#endif
 #endif
 
 #ifdef ENABLE_OPENSSL

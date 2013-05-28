@@ -1125,7 +1125,7 @@ static int myeid_get_info(struct sc_card *card, u8 *rbuf, size_t buflen)
 {
 	sc_apdu_t apdu;
 	int r;
-	u8 nameBuf[100];
+	char nameBuf[100];
 
 	LOG_FUNC_CALLED(card->ctx);
 

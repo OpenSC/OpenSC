@@ -549,7 +549,6 @@ pgp_set_blob(struct blob *blob, const u8 *data, size_t len)
 static void
 pgp_attach_acl(sc_card_t *card, sc_file_t *file, struct do_info *info)
 {
-	sc_acl_entry_t *acl;
 	unsigned int method = SC_AC_NONE;
 	unsigned long key_ref = SC_AC_KEY_REF_NONE;
 
@@ -649,6 +648,9 @@ pgp_new_blob(sc_card_t *card, struct blob *parent, unsigned int file_id,
 			u8 id_str[2];
 
 			/* no parent: set file's path = file's id */
+			/* FIXME sc_format_path expects an hex string of an file
+			 * identifier. ushort2bebytes instead delivers a two bytes binary
+			 * string */
 			sc_format_path(ushort2bebytes(id_str, file_id), &blob->file->path);
 		}
 
@@ -1673,11 +1675,10 @@ static int
 pgp_parse_and_set_pubkey_output(sc_card_t *card, u8* data, size_t data_len,
                                 sc_cardctl_openpgp_keygen_info_t *key_info)
 {
-	unsigned int blob_id;
 	time_t ctime = 0;
 	u8 *in = data;
-	u8 *modulus;
-	u8 *exponent;
+	u8 *modulus = NULL;
+	u8 *exponent = NULL;
 	int r;
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -1769,10 +1770,7 @@ static int pgp_update_card_algorithms(sc_card_t *card, sc_cardctl_openpgp_keygen
  **/
 static int pgp_gen_key(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_info)
 {
-	struct pgp_priv_data *priv = DRVDATA(card);
-	struct blob *algo_blob;
 	sc_apdu_t apdu;
-	unsigned int modulus_bitlen;
 	/* Temporary variables to hold APDU params */
 	u8 apdu_case;
 	u8 *apdu_data;
@@ -1781,14 +1779,16 @@ static int pgp_gen_key(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_in
 
 	LOG_FUNC_CALLED(card->ctx);
 
+	/* FIXME the compilers doesn't assure that the buffers set here as
+	 * apdu_data are present until the end of the function */
 	/* Set Control Reference Template for key */
 	if (key_info->keytype == SC_OPENPGP_KEY_SIGN)
-		apdu_data = "\xb6";
+		apdu_data = (unsigned char *) "\xb6";
 		/* As a string, apdu_data will end with '\0' (B6 00) */
 	else if (key_info->keytype == SC_OPENPGP_KEY_ENCR)
-		apdu_data = "\xb8";
+		apdu_data = (unsigned char *) "\xb8";
 	else if (key_info->keytype == SC_OPENPGP_KEY_AUTH)
-		apdu_data = "\xa4";
+		apdu_data = (unsigned char *) "\xa4";
 	else {
 		sc_log(card->ctx, "Unknown key type %X.", key_info->keytype);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
@@ -1918,7 +1918,6 @@ static int
 pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_keystore_info_t *key_info,
                                u8 **result, size_t *resultlen)
 {
-	struct pgp_priv_data *priv = DRVDATA(card);
 	sc_context_t *ctx = card->ctx;
 	/* The Cardholder private key template (7F48) part */
 	const size_t max_prtem_len = 7*(1 + 3);     /* 7 components */
@@ -2075,7 +2074,6 @@ out2:
  **/
 static int pgp_store_key(sc_card_t *card, sc_cardctl_openpgp_keystore_info_t *key_info)
 {
-	struct pgp_priv_data *priv = DRVDATA(card);
 	sc_context_t *ctx = card->ctx;
 	sc_cardctl_openpgp_keygen_info_t pubkey;
 	u8 *data;

@@ -858,7 +858,7 @@ epass2003_sm_free_wrapped_apdu(struct sc_card *card,
 	free(*sm_apdu);
 	*sm_apdu = NULL;
 
-	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+	LOG_FUNC_RETURN(ctx, rv);
 }
 
 
@@ -1059,14 +1059,12 @@ epass2003_hook_file(struct sc_file *file, int inc)
 static int
 epass2003_select_fid_(struct sc_card *card, sc_path_t * in_path, sc_file_t ** file_out)
 {
-	sc_context_t *ctx;
 	struct sc_apdu apdu;
 	u8 buf[SC_MAX_APDU_BUFFER_SIZE] = { 0 };
 	u8 pathbuf[SC_MAX_PATH_SIZE], *path = pathbuf;
 	int r, pathlen;
 	sc_file_t *file = NULL;
 
-	ctx = card->ctx;
 	epass2003_hook_path(in_path, 1);
 	memcpy(path, in_path->value, in_path->len);
 	pathlen = in_path->len;

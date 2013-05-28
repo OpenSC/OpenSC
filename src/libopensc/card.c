@@ -80,7 +80,7 @@ sc_allocate_apdu(struct sc_apdu *copy_from, unsigned flags)
 		apdu->data = malloc(copy_from->datalen);
 		if (!apdu->data)
 			return NULL;
-		memcpy(apdu->data, copy_from->data, copy_from->datalen);
+		memcpy((unsigned char *) apdu->data, copy_from->data, copy_from->datalen);
 		apdu->datalen = copy_from->datalen;
 		apdu->allocation_flags |= SC_APDU_ALLOCATE_FLAG_DATA;
 	}
@@ -102,7 +102,7 @@ sc_free_apdu(struct sc_apdu *apdu)
 	if (!apdu)
 		return;
 	if (apdu->allocation_flags & SC_APDU_ALLOCATE_FLAG_DATA)
-		free (apdu->data);
+		free ((unsigned char *) apdu->data);
 	if (apdu->allocation_flags & SC_APDU_ALLOCATE_FLAG_RESP)
 		free (apdu->resp);
 	if (apdu->allocation_flags & SC_APDU_ALLOCATE_FLAG)
