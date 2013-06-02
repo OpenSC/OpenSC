@@ -1346,6 +1346,7 @@ pkcs15_login(struct sc_pkcs11_slot *slot, CK_USER_TYPE userType,
 		return sc_to_cryptoki_error(SC_ERROR_INTERNAL, "C_Login");
 	p15card = fw_data->p15_card;
 
+	sc_log(context, "pkcs15-login: userType 0x%lX, PIN length %li", userType, ulPinLen);
 	switch (userType) {
 	case CKU_USER:
 		auth_object = slot_data_auth(slot->fw_data);
@@ -1356,6 +1357,7 @@ pkcs15_login(struct sc_pkcs11_slot *slot, CK_USER_TYPE userType,
 		/* A card with no SO PIN is treated as if no SO login
 		 * is required */
 		rc = sc_pkcs15_find_so_pin(p15card, &auth_object);
+		sc_log(context, "pkcs15-login: find SO PIN: rc %i", rc);
 
 		/* If there's no SO PIN on the card, silently
 		 * accept any PIN, and lock the card if required */
