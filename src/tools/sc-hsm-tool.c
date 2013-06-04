@@ -137,8 +137,8 @@ static sc_card_t *card = NULL;
  * @param rngSeed Seed value for CPRNG
  *
  */
-static void generatePrime(BIGNUM *prime, const BIGNUM *s, const unsigned int n, char *rngSeed) {
-
+static void generatePrime(BIGNUM *prime, const BIGNUM *s, const unsigned int n, char *rngSeed)
+{
 	int bits = 0;
 
 	// Seed the RNG
@@ -166,8 +166,8 @@ static void generatePrime(BIGNUM *prime, const BIGNUM *s, const unsigned int n, 
  * @param prime Prime for finite field arithmetic
  * @param y Pointer for storage of calculated y-value
  */
-static void calculatePolynomialValue(const BIGNUM x, BIGNUM **polynomial, const unsigned char t, const BIGNUM prime, BIGNUM *y) {
-
+static void calculatePolynomialValue(const BIGNUM x, BIGNUM **polynomial, const unsigned char t, const BIGNUM prime, BIGNUM *y)
+{
 	BIGNUM **pp;
 	BIGNUM temp;
 	BIGNUM exponent;
@@ -223,8 +223,8 @@ static void calculatePolynomialValue(const BIGNUM x, BIGNUM **polynomial, const 
  * @param prime Prime for finite field arithmetic
  * @param shares Pointer for storage of calculated shares (must be big enough to hold n shares)
  */
-static int createShares(const BIGNUM *s, const unsigned char t, const unsigned char n,	const BIGNUM prime, secret_share_t *shares) {
-
+static int createShares(const BIGNUM *s, const unsigned char t, const unsigned char n,	const BIGNUM prime, secret_share_t *shares)
+{
 	// Array representing the polynomial a(x) = s + a_1 * x + ... + a_n-1 * x^n-1 mod p
 	BIGNUM **polynomial = malloc(n * sizeof(BIGNUM *));
 	BIGNUM **pp;
@@ -279,8 +279,8 @@ static int createShares(const BIGNUM *s, const unsigned char t, const unsigned c
  * @param prime Prime for finite field arithmetic
  * @param s Pointer for storage of calculated secred
  */
-static int reconstructSecret(secret_share_t *shares, unsigned char t, const BIGNUM prime, BIGNUM *s) {
-
+static int reconstructSecret(secret_share_t *shares, unsigned char t, const BIGNUM prime, BIGNUM *s)
+{
 	unsigned char i;
 	unsigned char j;
 
@@ -392,7 +392,8 @@ static int reconstructSecret(secret_share_t *shares, unsigned char t, const BIGN
  * @param shares Shares to be freed
  * @param n Total number of shares to freed
  */
-static int cleanUpShares(secret_share_t *shares, unsigned char n) {
+static int cleanUpShares(secret_share_t *shares, unsigned char n)
+{
 	int i;
 	secret_share_t *sp;
 
@@ -410,13 +411,15 @@ static int cleanUpShares(secret_share_t *shares, unsigned char n) {
 
 
 
-void clearScreen() {
+void clearScreen()
+{
 	if (system( "clear" )) system( "cls" );
 }
 
 
 
-void waitForEnterKeyPressed() {
+void waitForEnterKeyPressed()
+{
 	char c;
 
 	fflush(stdout);
@@ -426,7 +429,8 @@ void waitForEnterKeyPressed() {
 
 
 
-static void print_dkek_info(sc_cardctl_sc_hsm_dkek_t *dkekinfo) {
+static void print_dkek_info(sc_cardctl_sc_hsm_dkek_t *dkekinfo)
+{
 	printf("DKEK shares          : %d\n", dkekinfo->dkek_shares);
 	if (dkekinfo->outstanding_shares > 0) {
 		printf("DKEK import pending, %d share(s) still missing\n",dkekinfo->outstanding_shares);
@@ -564,8 +568,8 @@ static void initialize(sc_card_t *card, const char *so_pin, const char *user_pin
 
 
 
-static int recreate_password_from_shares(char **pwd, int *pwdlen, int num_of_password_shares) {
-
+static int recreate_password_from_shares(char **pwd, int *pwdlen, int num_of_password_shares)
+{
 	int r, i;
 	BIGNUM prime;
 	BIGNUM secret;
@@ -891,7 +895,7 @@ static void create_dkek_share(sc_card_t *card, const char *outf, int iter, char 
 {
 	EVP_CIPHER_CTX ctx;
 	FILE *out = NULL;
-	u8 filebuff[64], key[EVP_MAX_KEY_LENGTH], iv[EVP_MAX_IV_LENGTH],outbuff[64];
+	u8 filebuff[64], key[EVP_MAX_KEY_LENGTH], iv[EVP_MAX_IV_LENGTH];
 	u8 dkek_share[32];
 	char *pwd = NULL;
 	int r = 0, outlen, pwdlen = 0;
@@ -994,7 +998,7 @@ static size_t determineLength(const u8 *tlv, size_t buflen)
  * @param outdata pointer to the allocated memory buffer
  * @param outlen the size of the TLV object
  */
-int wrap_with_tag(u8 tag, u8 *indata, size_t inlen, u8 **outdata, size_t *outlen)
+static int wrap_with_tag(u8 tag, u8 *indata, size_t inlen, u8 **outdata, size_t *outlen)
 {
 	int nlc = 0;
 	u8 *ptr;
@@ -1024,7 +1028,7 @@ int wrap_with_tag(u8 tag, u8 *indata, size_t inlen, u8 **outdata, size_t *outlen
 	}
 
 	memcpy(ptr, indata, inlen);
-	return 0;
+	return SC_SUCCESS;
 }
 
 
@@ -1177,7 +1181,6 @@ static void wrap_key(sc_card_t *card, u8 keyid, const char *outf, const char *pi
 static int update_ef(sc_card_t *card, u8 prefix, u8 id, int erase, const u8 *buf, size_t buflen)
 {
 	sc_file_t *file = NULL;
-	sc_file_t newfile;
 	sc_path_t path;
 	u8 fid[2];
 	int r;
