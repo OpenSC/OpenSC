@@ -174,7 +174,7 @@ static int sc_hsm_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 	if (data->cmd == SC_PIN_CMD_GET_INFO) {
 		return sc_hsm_pin_info(card, data, tries_left);
 	}
-	if (data->pin_reference == 0x88) {
+	if ((data->cmd == SC_PIN_CMD_VERIFY) && (data->pin_reference == 0x88)) {
 		// Save SO PIN for later use in init pin
 		memcpy(priv->initpw, data->pin1.data, sizeof(priv->initpw));
 		return SC_SUCCESS;
