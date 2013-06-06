@@ -1067,6 +1067,16 @@ iso7816_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_l
 
 
 static int
+iso7816_init(struct sc_card *card)
+{
+#if ENABLE_SM
+	memset(&card->sm_ctx, 0, sizeof card->sm_ctx);
+#endif
+	return SC_SUCCESS;
+}
+
+
+static int
 no_match(struct sc_card *card)
 {
 	return 0;
@@ -1074,7 +1084,7 @@ no_match(struct sc_card *card)
 
 static struct sc_card_operations iso_ops = {
 	no_match,
-	NULL,			/* init   */
+	iso7816_init,	/* init   */
 	NULL,			/* finish */
 	iso7816_read_binary,
 	iso7816_write_binary,
