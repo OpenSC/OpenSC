@@ -276,10 +276,10 @@ struct sc_reader_driver {
 /* reader capabilities */
 #define SC_READER_CAP_DISPLAY	0x00000001
 #define SC_READER_CAP_PIN_PAD	0x00000002
-#define SC_READER_CAP_PACE_GENERIC         0x00000003
 #define SC_READER_CAP_PACE_EID             0x00000004
 #define SC_READER_CAP_PACE_ESIGN           0x00000008
 #define SC_READER_CAP_PACE_DESTROY_CHANNEL 0x00000010
+#define SC_READER_CAP_PACE_GENERIC         0x00000020
 
 typedef struct sc_reader {
 	struct sc_context *ctx;
