@@ -1462,7 +1462,8 @@ static int part10_build_modify_pin_block(struct sc_reader *reader, u8 * buf, siz
 		pin_modify->bInsertionOffsetNew = 0x00;
 	}
 
-	if (!data->pin1.min_length || !data->pin1.max_length)
+	if (!(data->flags & SC_PIN_CMD_IMPLICIT_CHANGE)
+			&& (!data->pin1.min_length || !data->pin1.max_length))
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	tmp16 = (data->pin1.min_length << 8 ) + data->pin1.max_length;
