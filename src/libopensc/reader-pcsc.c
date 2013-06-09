@@ -1408,6 +1408,9 @@ static int part10_build_modify_pin_block(struct sc_reader *reader, u8 * buf, siz
 	u8 tmp;
 	unsigned int tmp16;
 	PIN_MODIFY_STRUCTURE *pin_modify  = (PIN_MODIFY_STRUCTURE *)buf;
+	struct sc_pin_cmd_pin *pin_ref =
+	   	data->flags & SC_PIN_CMD_IMPLICIT_CHANGE ?
+	   	&data->pin2 : &data->pin1;
 
 	/* PIN verification control message */
 	pin_modify->bTimerOut = SC_CCID_PIN_TIMEOUT;	/* bTimeOut */
@@ -1415,18 +1418,18 @@ static int part10_build_modify_pin_block(struct sc_reader *reader, u8 * buf, siz
 
 	/* bmFormatString */
 	tmp = 0x00;
-	if (data->pin1.encoding == SC_PIN_ENCODING_ASCII) {
+	if (pin_ref->encoding == SC_PIN_ENCODING_ASCII) {
 		tmp |= SC_CCID_PIN_ENCODING_ASCII;
 
 		/* if the effective PIN length offset is specified, use it */
-		if (data->pin1.length_offset > 4) {
+		if (pin_ref->length_offset > 4) {
 			tmp |= SC_CCID_PIN_UNITS_BYTES;
-			tmp |= (data->pin1.length_offset - 5) << 3;
+			tmp |= (pin_ref->length_offset - 5) << 3;
 		}
-	} else if (data->pin1.encoding == SC_PIN_ENCODING_BCD) {
+	} else if (pin_ref->encoding == SC_PIN_ENCODING_BCD) {
 		tmp |= SC_CCID_PIN_ENCODING_BCD;
 		tmp |= SC_CCID_PIN_UNITS_BYTES;
-	} else if (data->pin1.encoding == SC_PIN_ENCODING_GLP) {
+	} else if (pin_ref->encoding == SC_PIN_ENCODING_GLP) {
 		/* see comment about GLP PINs in sec.c */
 		tmp |= SC_CCID_PIN_ENCODING_BCD;
 		tmp |= 0x08 << 3;
@@ -1437,24 +1440,24 @@ static int part10_build_modify_pin_block(struct sc_reader *reader, u8 * buf, siz
 
 	/* bmPINBlockString */
 	tmp = 0x00;
-	if (data->pin1.encoding == SC_PIN_ENCODING_GLP) {
+	if (pin_ref->encoding == SC_PIN_ENCODING_GLP) {
 		/* GLP PIN length is encoded in 4 bits and block size is always 8 bytes */
 		tmp |= 0x40 | 0x08;
-	} else if (data->pin1.encoding == SC_PIN_ENCODING_ASCII && data->pin1.pad_length) {
-		tmp |= data->pin1.pad_length;
+	} else if (pin_ref->encoding == SC_PIN_ENCODING_ASCII && pin_ref->pad_length) {
+		tmp |= pin_ref->pad_length;
 	}
 	pin_modify->bmPINBlockString = tmp; /* bmPINBlockString */
 
 	/* bmPINLengthFormat */
 	tmp = 0x00;
-	if (data->pin1.encoding == SC_PIN_ENCODING_GLP) {
+	if (pin_ref->encoding == SC_PIN_ENCODING_GLP) {
 		/* GLP PINs expect the effective PIN length from bit 4 */
 		tmp |= 0x04;
 	}
 	pin_modify->bmPINLengthFormat = tmp;	/* bmPINLengthFormat */
 
 	/* Set offsets if not Case 1 APDU */
-	if (data->pin1.length_offset != 4) {
+	if (pin_ref->length_offset != 4) {
 		pin_modify->bInsertionOffsetOld = data->pin1.offset - 5;
 		pin_modify->bInsertionOffsetNew = data->pin2.offset - 5;
 	} else {
@@ -1462,11 +1465,10 @@ static int part10_build_modify_pin_block(struct sc_reader *reader, u8 * buf, siz
 		pin_modify->bInsertionOffsetNew = 0x00;
 	}
 
-	if (!(data->flags & SC_PIN_CMD_IMPLICIT_CHANGE)
-			&& (!data->pin1.min_length || !data->pin1.max_length))
+	if (!pin_ref->min_length || !pin_ref->max_length)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
-	tmp16 = (data->pin1.min_length << 8 ) + data->pin1.max_length;
+	tmp16 = (pin_ref->min_length << 8 ) + pin_ref->max_length;
 	pin_modify->wPINMaxExtraDigit = HOST_TO_CCID_16(tmp16); /* Min Max */
 
 	/* bConfirmPIN flags
@@ -1502,7 +1504,7 @@ static int part10_build_modify_pin_block(struct sc_reader *reader, u8 * buf, siz
 	pin_modify->abData[offset++] = apdu->p2;
 
 	/* Copy data if not Case 1 */
-	if (data->pin1.length_offset != 4) {
+	if (pin_ref->length_offset != 4) {
 		pin_modify->abData[offset++] = apdu->lc;
 		memcpy(&pin_modify->abData[offset], apdu->data, apdu->datalen);
 		offset += apdu->datalen;
@@ -1569,6 +1571,9 @@ part10_check_pin_min_max(sc_reader_t *reader, struct sc_pin_cmd_data *data)
 	unsigned char buffer[256];
 	size_t length = sizeof buffer;
 	struct pcsc_private_data *priv = GET_PRIV_DATA(reader);
+	struct sc_pin_cmd_pin *pin_ref =
+	   	data->flags & SC_PIN_CMD_IMPLICIT_CHANGE ?
+	   	&data->pin1 : &data->pin2;
 
 	r = pcsc_internal_transmit(reader, NULL, 0, buffer, &length,
 		priv->get_tlv_properties);
@@ -1582,8 +1587,8 @@ part10_check_pin_min_max(sc_reader_t *reader, struct sc_pin_cmd_data *data)
 	{
 		unsigned int value = r;
 
-		if (data->pin1.min_length < value)
-			data->pin1.min_length = r;
+		if (pin_ref->min_length < value)
+			pin_ref->min_length = r;
 	}
 
 	/* maximum pin size */
@@ -1593,8 +1598,8 @@ part10_check_pin_min_max(sc_reader_t *reader, struct sc_pin_cmd_data *data)
 	{
 		unsigned int value = r;
 
-		if (data->pin1.max_length > value)
-			data->pin1.max_length = r;
+		if (pin_ref->max_length > value)
+			pin_ref->max_length = r;
 	}
 
 	return 0;
