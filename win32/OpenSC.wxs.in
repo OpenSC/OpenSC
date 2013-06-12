@@ -19,7 +19,7 @@
            UpgradeCode="$(var.PlatformUpgradeCode)"
            Language="1033"
            Codepage="1252"
-           Version="0.13.0.0"
+           Version="@OPENSC_VERSION_MAJOR@.@OPENSC_VERSION_MINOR@.@OPENSC_VERSION_FIX@.0"
            Manufacturer="OpenSC Project">
     <Package Platform="$(var.Platform)"
              Description="OpenSC Installer"
