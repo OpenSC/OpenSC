@@ -86,7 +86,7 @@ static const char *option_help[] = {
 	"authenticate using default 3des key",
 	"Generate key <ref>:<alg> 9A:06 on card, and output pubkey",
 	"Load an object <containerID> containerID as defined in 800-73 without leading 0x",
-	"Load a cert <ref> where <ref> is 9A,9B,9C or 9D",
+	"Load a cert <ref> where <ref> is 9A,9C,9D or 9E",
 	"Load a cert that has been gziped <ref>",
 	"Output file for cert or key",
 	"Inout file for cert",
@@ -268,13 +268,13 @@ static int gen_key(const char * key_info)
 	}
 	switch (buf[0]) {
 		case 0x9a:
-		case 0x9b:
 		case 0x9c:
 		case 0x9d:
+		case 0x9e:
 			keydata.key_num = buf[0];
 			break;
 		default:
-			fprintf(stderr, "<keyref>:<algid> must be 9A, 9B, 9C or 9D\n");
+			fprintf(stderr, "<keyref>:<algid> must be 9A, 9C, 9D or 9E\n");
 			return 2;
 	}
 
