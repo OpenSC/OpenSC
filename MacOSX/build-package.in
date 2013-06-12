@@ -33,7 +33,8 @@ export PKG_CONFIG_PATH=/usr/lib/pkgconfig
 --disable-static \
 --enable-strict \
 --disable-assert \
---enable-sm # TODO: remove this
+--enable-sm \
+--enable-dnie-ui # TODO: remove this line and the previous line
 
 # always make clean
 make clean

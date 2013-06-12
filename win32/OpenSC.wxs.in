@@ -106,6 +106,9 @@
               <Component Id="sc_hsm_tool.exe" Guid="*" Win64="$(var.Win64YesNo)">
                 <File Source="$(var.SOURCE_DIR)\src\tools\sc-hsm-tool.exe" Vital="yes"/>
               </Component>
+	      <Component Id="dnie_tool.exe" Guid="*" Win64="$(var.Win64YesNo)">
+                <File Source="$(var.SOURCE_DIR)\src\tools\dnie-tool.exe" Vital="yes"/>
+              </Component>
               <Component Id="openpgp_tool.exe" Guid="*" Win64="$(var.Win64YesNo)">
                 <File Source="$(var.SOURCE_DIR)\src\tools\openpgp-tool.exe" Vital="yes"/>
               </Component>
@@ -215,6 +218,7 @@
         <ComponentRef Id="opensc_tool.exe"/>
         <ComponentRef Id="pkcs11_tool.exe"/>
         <ComponentRef Id="pkcs15_init.exe"/>
+	<ComponentRef Id="dnie_tool.exe"/>
         <ComponentRef Id="pkcs15_tool.exe"/>
         <ComponentRef Id="pkcs15_crypt.exe"/>
         <ComponentRef Id="sc_hsm_tool.exe"/>

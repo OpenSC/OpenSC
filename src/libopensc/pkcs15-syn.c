@@ -67,6 +67,8 @@ extern int sc_pkcs15emu_itacns_init_ex(sc_pkcs15_card_t *,
 					sc_pkcs15emu_opt_t *);
 extern int sc_pkcs15emu_sc_hsm_init_ex(sc_pkcs15_card_t *,
 					sc_pkcs15emu_opt_t *);
+extern int sc_pkcs15emu_dnie_init_ex(sc_pkcs15_card_t *,
+					sc_pkcs15emu_opt_t *);
 
 static struct {
 	const char *		name;
@@ -90,6 +92,7 @@ static struct {
 	{ "pteid",	sc_pkcs15emu_pteid_init_ex	},
 	{ "oberthur",   sc_pkcs15emu_oberthur_init_ex	},
 	{ "sc-hsm",   sc_pkcs15emu_sc_hsm_init_ex	},
+	{ "dnie",       sc_pkcs15emu_dnie_init_ex   },
 	{ NULL, NULL }
 };
 
@@ -113,6 +116,11 @@ int sc_pkcs15_is_emulation_only(sc_card_t *card)
 		case SC_CARD_TYPE_OPENPGP_V1:
 		case SC_CARD_TYPE_OPENPGP_V2:
 		case SC_CARD_TYPE_SC_HSM:
+		case SC_CARD_TYPE_DNIE_BASE:
+		case SC_CARD_TYPE_DNIE_BLANK:
+		case SC_CARD_TYPE_DNIE_ADMIN:
+		case SC_CARD_TYPE_DNIE_USER:
+		case SC_CARD_TYPE_DNIE_TERMINATED:
 			return 1;
 		default:
 			return 0;
