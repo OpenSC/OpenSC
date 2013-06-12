@@ -19,7 +19,7 @@
            UpgradeCode="$(var.PlatformUpgradeCode)"
            Language="1033"
            Codepage="1252"
-           Version="@OPENSC_VERSION_MAJOR@.@OPENSC_VERSION_MINOR@.@OPENSC_VERSION_FIX@.0"
+           Version="0.13.0.0"
            Manufacturer="OpenSC Project">
     <Package Platform="$(var.Platform)"
              Description="OpenSC Installer"
@@ -105,6 +105,9 @@
               </Component>
               <Component Id="sc_hsm_tool.exe" Guid="*" Win64="$(var.Win64YesNo)">
                 <File Source="$(var.SOURCE_DIR)\src\tools\sc-hsm-tool.exe" Vital="yes"/>
+              </Component>
+	      <Component Id="dnie_tool.exe" Guid="*" Win64="$(var.Win64YesNo)">
+                <File Source="$(var.SOURCE_DIR)\src\tools\dnie-tool.exe" Vital="yes"/>
               </Component>
               <Component Id="openpgp_tool.exe" Guid="*" Win64="$(var.Win64YesNo)">
                 <File Source="$(var.SOURCE_DIR)\src\tools\openpgp-tool.exe" Vital="yes"/>
@@ -215,6 +218,7 @@
         <ComponentRef Id="opensc_tool.exe"/>
         <ComponentRef Id="pkcs11_tool.exe"/>
         <ComponentRef Id="pkcs15_init.exe"/>
+	<ComponentRef Id="dnie_tool.exe"/>
         <ComponentRef Id="pkcs15_tool.exe"/>
         <ComponentRef Id="pkcs15_crypt.exe"/>
         <ComponentRef Id="sc_hsm_tool.exe"/>
