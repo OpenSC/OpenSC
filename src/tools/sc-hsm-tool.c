@@ -57,7 +57,7 @@ static int	verbose = 0;
 // Some reasonable maximums
 #define MAX_CERT		4096
 #define MAX_PRKD		256
-#define MAX_KEY			512
+#define MAX_KEY			1024
 #define MAX_WRAPPED_KEY	(MAX_CERT + MAX_PRKD + MAX_KEY)
 
 enum {
@@ -137,8 +137,8 @@ static sc_card_t *card = NULL;
  * @param rngSeed Seed value for CPRNG
  *
  */
-static void generatePrime(BIGNUM *prime, const BIGNUM *s, const unsigned int n, char *rngSeed) {
-
+static void generatePrime(BIGNUM *prime, const BIGNUM *s, const unsigned int n, char *rngSeed)
+{
 	int bits = 0;
 
 	// Seed the RNG
@@ -166,8 +166,8 @@ static void generatePrime(BIGNUM *prime, const BIGNUM *s, const unsigned int n, 
  * @param prime Prime for finite field arithmetic
  * @param y Pointer for storage of calculated y-value
  */
-static void calculatePolynomialValue(const BIGNUM x, BIGNUM **polynomial, const unsigned char t, const BIGNUM prime, BIGNUM *y) {
-
+static void calculatePolynomialValue(const BIGNUM x, BIGNUM **polynomial, const unsigned char t, const BIGNUM prime, BIGNUM *y)
+{
 	BIGNUM **pp;
 	BIGNUM temp;
 	BIGNUM exponent;
@@ -223,8 +223,8 @@ static void calculatePolynomialValue(const BIGNUM x, BIGNUM **polynomial, const 
  * @param prime Prime for finite field arithmetic
  * @param shares Pointer for storage of calculated shares (must be big enough to hold n shares)
  */
-static int createShares(const BIGNUM *s, const unsigned char t, const unsigned char n,	const BIGNUM prime, secret_share_t *shares) {
-
+static int createShares(const BIGNUM *s, const unsigned char t, const unsigned char n,	const BIGNUM prime, secret_share_t *shares)
+{
 	// Array representing the polynomial a(x) = s + a_1 * x + ... + a_n-1 * x^n-1 mod p
 	BIGNUM **polynomial = malloc(n * sizeof(BIGNUM *));
 	BIGNUM **pp;
@@ -279,8 +279,8 @@ static int createShares(const BIGNUM *s, const unsigned char t, const unsigned c
  * @param prime Prime for finite field arithmetic
  * @param s Pointer for storage of calculated secred
  */
-static int reconstructSecret(secret_share_t *shares, unsigned char t, const BIGNUM prime, BIGNUM *s) {
-
+static int reconstructSecret(secret_share_t *shares, unsigned char t, const BIGNUM prime, BIGNUM *s)
+{
 	unsigned char i;
 	unsigned char j;
 
@@ -392,7 +392,8 @@ static int reconstructSecret(secret_share_t *shares, unsigned char t, const BIGN
  * @param shares Shares to be freed
  * @param n Total number of shares to freed
  */
-static int cleanUpShares(secret_share_t *shares, unsigned char n) {
+static int cleanUpShares(secret_share_t *shares, unsigned char n)
+{
 	int i;
 	secret_share_t *sp;
 
@@ -410,13 +411,15 @@ static int cleanUpShares(secret_share_t *shares, unsigned char n) {
 
 
 
-void clearScreen() {
+void clearScreen()
+{
 	if (system( "clear" )) system( "cls" );
 }
 
 
 
-void waitForEnterKeyPressed() {
+void waitForEnterKeyPressed()
+{
 	char c;
 
 	fflush(stdout);
@@ -426,7 +429,8 @@ void waitForEnterKeyPressed() {
 
 
 
-static void print_dkek_info(sc_cardctl_sc_hsm_dkek_t *dkekinfo) {
+static void print_dkek_info(sc_cardctl_sc_hsm_dkek_t *dkekinfo)
+{
 	printf("DKEK shares          : %d\n", dkekinfo->dkek_shares);
 	if (dkekinfo->outstanding_shares > 0) {
 		printf("DKEK import pending, %d share(s) still missing\n",dkekinfo->outstanding_shares);
@@ -564,15 +568,15 @@ static void initialize(sc_card_t *card, const char *so_pin, const char *user_pin
 
 
 
-static int recreate_password_from_shares(char **pwd, int *pwdlen, int num_of_password_shares) {
-
+static int recreate_password_from_shares(char **pwd, int *pwdlen, int num_of_password_shares)
+{
 	int r, i;
 	BIGNUM prime;
 	BIGNUM secret;
 	BIGNUM *p;
 	char inbuf[64];
 	char bin[64];
-	int binlen = 0;
+	size_t binlen = 0;
 	char *ip;
 	secret_share_t *shares = NULL;
 	secret_share_t *sp;
@@ -891,7 +895,7 @@ static void create_dkek_share(sc_card_t *card, const char *outf, int iter, char 
 {
 	EVP_CIPHER_CTX ctx;
 	FILE *out = NULL;
-	u8 filebuff[64], key[EVP_MAX_KEY_LENGTH], iv[EVP_MAX_IV_LENGTH],outbuff[64];
+	u8 filebuff[64], key[EVP_MAX_KEY_LENGTH], iv[EVP_MAX_IV_LENGTH];
 	u8 dkek_share[32];
 	char *pwd = NULL;
 	int r = 0, outlen, pwdlen = 0;
@@ -985,6 +989,50 @@ static size_t determineLength(const u8 *tlv, size_t buflen)
 
 
 
+/**
+ * Encapsulate data object as TLV object
+ *
+ * @param tag the one byte tag
+ * @param indata the value field
+ * @param inlen the length of the value field
+ * @param outdata pointer to the allocated memory buffer
+ * @param outlen the size of the TLV object
+ */
+static int wrap_with_tag(u8 tag, u8 *indata, size_t inlen, u8 **outdata, size_t *outlen)
+{
+	int nlc = 0;
+	u8 *ptr;
+
+	if (inlen > 127) {
+		do	{
+			nlc++;
+		} while (inlen >= (1 << (nlc << 3)));
+	}
+
+	*outlen = 2 + nlc + inlen;
+	ptr = malloc(*outlen);
+	if (ptr == NULL) {
+		return SC_ERROR_OUT_OF_MEMORY;
+	}
+
+	*outdata = ptr;
+	*ptr++ = tag;
+
+	if (nlc) {
+		*ptr++ = 0x80 | nlc;
+		while (nlc--) {
+			*ptr++ = (inlen >> (nlc << 3)) & 0xFF;
+		}
+	} else {
+		*ptr++ = inlen & 0x7F;
+	}
+
+	memcpy(ptr, indata, inlen);
+	return SC_SUCCESS;
+}
+
+
+
 static void wrap_key(sc_card_t *card, u8 keyid, const char *outf, const char *pin)
 {
 	sc_cardctl_sc_hsm_wrapped_key_t wrapped_key;
@@ -995,6 +1043,7 @@ static void wrap_key(sc_card_t *card, u8 keyid, const char *outf, const char *pi
 	u8 fid[2];
 	u8 ef_prkd[MAX_PRKD];
 	u8 ef_cert[MAX_CERT];
+	u8 wrapped_key_buff[MAX_KEY];
 	u8 keyblob[MAX_WRAPPED_KEY];
 	u8 *key;
 	u8 *ptr;
@@ -1029,6 +1078,8 @@ static void wrap_key(sc_card_t *card, u8 keyid, const char *outf, const char *pi
 	}
 
 	wrapped_key.key_id = keyid;
+	wrapped_key.wrapped_key = wrapped_key_buff;
+	wrapped_key.wrapped_key_length = sizeof(wrapped_key_buff);
 
 	r = sc_card_ctl(card, SC_CARDCTL_SC_HSM_WRAP_KEY, (void *)&wrapped_key);
 
@@ -1080,13 +1131,12 @@ static void wrap_key(sc_card_t *card, u8 keyid, const char *outf, const char *pi
 		}
 	}
 
-
 	ptr = keyblob;
 
 	// Encode key in octet string object
-	sc_asn1_write_element(card->ctx, SC_ASN1_OCTET_STRING,
-			wrapped_key.wrapped_key, wrapped_key.wrapped_key_length,
-			&key, &key_len);
+	key_len = 0;
+	wrap_with_tag(0x04, wrapped_key.wrapped_key, wrapped_key.wrapped_key_length,
+						&key, &key_len);
 
 	memcpy(ptr, key, key_len);
 	ptr += key_len;
@@ -1104,10 +1154,9 @@ static void wrap_key(sc_card_t *card, u8 keyid, const char *outf, const char *pi
 		ptr += ef_cert_len;
 	}
 
-	// Encode key in octet string object
-	sc_asn1_write_element(card->ctx, SC_ASN1_SEQUENCE|SC_ASN1_CONS,
-			keyblob, ptr - keyblob,
-			&key, &key_len);
+	// Encode key, key decription and certificate object in sequence
+	key_len = 0;
+	wrap_with_tag(0x30, keyblob, ptr - keyblob, &key, &key_len);
 
 	out = fopen(outf, "wb");
 
@@ -1132,7 +1181,6 @@ static void wrap_key(sc_card_t *card, u8 keyid, const char *outf, const char *pi
 static int update_ef(sc_card_t *card, u8 prefix, u8 id, int erase, const u8 *buf, size_t buflen)
 {
 	sc_file_t *file = NULL;
-	sc_file_t newfile;
 	sc_path_t path;
 	u8 fid[2];
 	int r;
