@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<refentry id="dnie-tool">
+	<refmeta>
+		<refentrytitle>dnie-tool</refentrytitle>
+		<manvolnum>1</manvolnum>
+		<refmiscinfo>opensc</refmiscinfo>
+	</refmeta>
+
+	<refnamediv>
+		<refname>dnie-tool</refname>
+		<refpurpose>displays information about DNIe based security tokens</refpurpose>
+	</refnamediv>
+
+	<refsect1>
+		<title>Synopsis</title>
+		<para>
+			<command>dnie-tool</command> [OPTIONS]
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Description</title>
+		<para>
+			The <command>dnie-tool</command> utility is used to display additional information about DNIe, the Spanish National eID card.
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Options</title>
+		<para>
+			<variablelist>
+				<varlistentry>
+					<term><option>--idesp, -i </option></term>
+					<listitem><para>Show the DNIe IDESP value.
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term><option>--data, -d </option></term>
+					<listitem><para>Show DNIe personal information.
+					Reads and print DNIe number and User Name and SurName</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term><option>--all, -a </option></term>
+					<listitem><para>Displays every available information.
+					This command is equivalent to -d -i -s 
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term><option>--serial, -s </option></term>
+					<listitem><para>Displays DNIe Serial Number
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term><option>--version, -V </option></term>
+					<listitem><para>Show DNIe sw version.
+					Displays sofware version for in-card DNIe OS</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term><option>--pin</option> pin, <option>-p</option> pin</term>
+					<listitem><para>Specify the user pin <varname>value</varname> to use.
+					The default is do not enter pin</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term><option>--reader</option> number, <option>-r</option> number</term>
+					<listitem><para>Specify the reader <varname>number</varname> to use.
+					The default is reader 0.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term><option>--driver</option> number, <option>-c</option> driver</term>
+					<listitem><para>Specify the reader driver <varname>name</varname> to use.
+					Default is use driver from configuration file, or auto-detect if absent</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term><option>--wait, -w</option></term>
+					<listitem><para>Causes <command>dnie-tool</command> to wait for the token to be inserted into reader.</para>
+					</listitem>
+				</varlistentry>
+				<varlistentry>
+					<term><option>--verbose, -v</option></term>
+					<listitem><para>Causes <command>dnie-tool</command> to be more verbose. 
+					Specify this flag several times
+to enable debug output in the opensc library.</para></listitem>
+				</varlistentry>
+			</variablelist>
+		</para>
+	</refsect1>
+	
+	<refsect1>
+		<title>See also</title>
+		<para>opensc(7)</para>
+	</refsect1>
+	<refsect1>
+		<title>Authors</title>
+		<para><command>dnie-tool</command> was written by
+		Juan Antonio Martinez <email>jonsito@terra.es</email>.</para>
+	</refsect1>
+
+</refentry>
