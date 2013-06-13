@@ -203,29 +203,32 @@ sc_dump_hex(const u8 * in, size_t count)
 {
 	static char dump_buf[0x1000];
 	size_t ii, size = sizeof(dump_buf) - 0x10;
-    	size_t offs = 0;
+	size_t offs = 0;
 
 	memset(dump_buf, 0, sizeof(dump_buf));
 	if (in == NULL)
-        	return dump_buf;
+		return dump_buf;
 
 	for (ii=0; ii<count; ii++) {
 		if (!(ii%16))   {
-			if (!(ii%48))
+			if (!ii)
+				snprintf(dump_buf + offs, size - offs, ":\n");
+			else if (!(ii%48))
 				snprintf(dump_buf + offs, size - offs, "\n");
 			else
 				snprintf(dump_buf + offs, size - offs, " ");
+			offs = strlen(dump_buf);
 		}
 
 		snprintf(dump_buf + offs, size - offs, "%02X", *(in + ii));
-		offs = strlen(dump_buf);
+		offs += 2;
 
 		if (offs > size)
-            		break;
-    	}
+			break;
+	}
 
-    	if (ii<count)
-        	snprintf(dump_buf + offs, sizeof(dump_buf) - offs, "....\n");
+	if (ii<count)
+		snprintf(dump_buf + offs, sizeof(dump_buf) - offs, "....\n");
 
 	return dump_buf;
 }
