@@ -368,6 +368,24 @@ static int cardos_info(void)
 	else
 		printf("Free eeprom memory: %d\n", rbuf[0]<<8|rbuf[1]);
 
+	apdu.p2 = 0x8d;
+	apdu.resplen = sizeof(rbuf);
+	r = sc_transmit_apdu(card, &apdu);
+	if (r) {
+		fprintf(stderr, "APDU transmit failed: %s\n",
+			sc_strerror(r));
+		return 1;
+	}
+	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || verbose) {
+		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
+			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
+		if (apdu.resplen)
+			util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+		return 1;
+	}
+
+	printf("Current Maximum Data Field Length: %d\n", rbuf[0]<<8|rbuf[1]);
+
 	if (is_cardos5)	{
 		apdu.p2 = 0x8B;
 		apdu.resplen = sizeof(rbuf);
