@@ -157,7 +157,6 @@ static CK_RV	get_modulus(struct sc_pkcs15_pubkey *,
 static CK_RV	get_modulus_bits(struct sc_pkcs15_pubkey *,
 					CK_ATTRIBUTE_PTR);
 static CK_RV	get_usage_bit(unsigned int usage, CK_ATTRIBUTE_PTR attr);
-static CK_RV	asn1_sequence_wrapper(const u8 *, size_t, CK_ATTRIBUTE_PTR);
 static CK_RV	get_gostr3410_params(const u8 *, size_t, CK_ATTRIBUTE_PTR);
 static CK_RV	get_ec_pubkey_point(struct sc_pkcs15_pubkey *, CK_ATTRIBUTE_PTR);
 static CK_RV	get_ec_pubkey_params(struct sc_pkcs15_pubkey *, CK_ATTRIBUTE_PTR);
@@ -187,8 +186,8 @@ get_fw_data(struct sc_pkcs11_card *p11card, struct sc_app_info *app_info, int *o
 		if (!fw_data || !fw_data->p15_card)
 			continue;
 
-		if (app_info)   {
-			file_app = fw_data->p15_card->file_app;
+		file_app = fw_data->p15_card->file_app;
+		if (app_info && file_app)   {
 			if (file_app->path.len != app_info->path.len)
 				continue;
 			if (file_app->path.aid.len != app_info->path.aid.len)
@@ -3037,13 +3036,17 @@ pkcs15_cert_get_attribute(struct sc_pkcs11_session *session, void *object, CK_AT
 			attr->ulValueLen = 0;
 			return CKR_OK;
 		}
-		return asn1_sequence_wrapper(cert->cert_data->subject, cert->cert_data->subject_len, attr);
+		check_attribute_buffer(attr, cert->cert_data->subject_len);
+		memcpy(attr->pValue, cert->cert_data->subject, cert->cert_data->subject_len);
+		return CKR_OK;
 	case CKA_ISSUER:
 		if (check_cert_data_read(fw_data, cert) != 0) {
 			attr->ulValueLen = 0;
 			return CKR_OK;
 		}
-		return asn1_sequence_wrapper(cert->cert_data->issuer, cert->cert_data->issuer_len, attr);
+		check_attribute_buffer(attr, cert->cert_data->issuer_len);
+		memcpy(attr->pValue, cert->cert_data->issuer, cert->cert_data->issuer_len);
+		return CKR_OK;
 	default:
 		return CKR_ATTRIBUTE_TYPE_INVALID;
 	}
@@ -4052,13 +4055,12 @@ static int pkcs15_skey_get_value(struct sc_pkcs11_session *session,
 	 * but for now we only work with session objects
 	 * derived from other keys
 	 */
-	skey_data= malloc(sizeof(struct sc_pkcs15_skey));
+	skey_data= calloc(1, sizeof(struct sc_pkcs15_skey));
 	if (skey_data == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
-	memset(skey_data, 0, sizeof(struct sc_pkcs15_skey));
 
 	if (skey->value && skey->value->data_len) {
-		skey_data->data = malloc(skey_data->data_len);
+		skey_data->data = calloc(1, skey_data->data_len);
 		if (skey_data->data == NULL) {
 			free(skey_data);
 			return SC_ERROR_OUT_OF_MEMORY;
@@ -4324,42 +4326,8 @@ get_usage_bit(unsigned int usage, CK_ATTRIBUTE_PTR attr)
 }
 
 
-static CK_RV
-asn1_sequence_wrapper(const u8 *data, size_t len, CK_ATTRIBUTE_PTR attr)
-{
-	u8		*dest;
-	unsigned int	n;
-	size_t		len2;
-	size_t		lenb = 1;
-
-	len2 = len;
-	/* calculate the number of bytes needed for the length */
-	if (len > 127) {
-		unsigned int i;
-		for (i = 0; (len & (0xff << i)) != 0 && (0xff << i) != 0; i++)
-			lenb++;
-	}
-	check_attribute_buffer(attr, 1 + lenb + len);
-
-	dest = (u8 *) attr->pValue;
-	*dest++ = 0x30;	/* SEQUENCE tag */
-	if (len <= 127) {
-		*dest++ = len;
-	} else {
-		for (n = 4; (len & 0xFF000000) == 0; n--)
-			len <<= 8;
-		*dest++ = 0x80 + n;
-		while (n--) {
-			*dest++ = len >> 24;
-			len <<= 8;
-		}
-	}
-	memcpy(dest, data, len2);
-	attr->ulValueLen = (dest - (u8 *) attr->pValue) + len2;
-	return CKR_OK;
-}
-
-static int register_gost_mechanisms(struct sc_pkcs11_card *p11card, int flags)
+static int
+register_gost_mechanisms(struct sc_pkcs11_card *p11card, int flags)
 {
 	CK_MECHANISM_INFO mech_info;
 	sc_pkcs11_mechanism_type_t *mt;

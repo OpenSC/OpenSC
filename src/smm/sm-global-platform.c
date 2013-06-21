@@ -248,7 +248,7 @@ sm_gp_get_mac(unsigned char *key, DES_cblock *icv,
 
 	block = malloc(in_len + 8);
 	if (!block)
-		return SC_ERROR_MEMORY_FAILURE;
+		return SC_ERROR_OUT_OF_MEMORY;
 
 	memcpy(block, in, in_len);
 	memcpy(block + in_len, "\x80\0\0\0\0\0\0\0", 8);

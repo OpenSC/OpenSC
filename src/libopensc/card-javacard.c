@@ -1,7 +1,7 @@
 /*
  * card-javacard.c: Recognize known blank JavaCards
  *
- * Copyright (C) 2010 Martin Paljak <martin@paljak.pri.ee>
+ * Copyright (C) 2010 Martin Paljak <martin@martinpaljak.net>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public

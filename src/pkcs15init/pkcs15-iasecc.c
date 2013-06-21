@@ -415,7 +415,7 @@ iasecc_sdo_set_key_acls_from_profile(struct sc_profile *profile, struct sc_card 
 	sdo->docp.acls_contact.size = cntr + 1;
 	sdo->docp.acls_contact.value = calloc(1, sdo->docp.acls_contact.size);
 	if (!sdo->docp.acls_contact.value)
-		return SC_ERROR_MEMORY_FAILURE;
+		return SC_ERROR_OUT_OF_MEMORY;
 	*(sdo->docp.acls_contact.value + 0) = amb;
 	memcpy(sdo->docp.acls_contact.value + 1, scb, cntr);
 
@@ -438,7 +438,7 @@ iasecc_sdo_allocate_prvkey(struct sc_profile *profile, struct sc_card *card,
 
 	sdo = calloc(1, sizeof(struct iasecc_sdo));
 	if (!sdo)
-		LOG_TEST_RET(ctx, SC_ERROR_MEMORY_FAILURE, "Cannot allocate 'iasecc_sdo'");
+		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate 'iasecc_sdo'");
 
 	sdo->magic = SC_CARDCTL_IASECC_SDO_MAGIC;
 	sdo->sdo_ref = key_info->key_reference & 0x3F;
@@ -458,19 +458,19 @@ iasecc_sdo_allocate_prvkey(struct sc_profile *profile, struct sc_card *card,
 
 		sdo->docp.non_repudiation.value = calloc(1, 1);
 		if (!sdo->docp.non_repudiation.value)
-			LOG_FUNC_RETURN(ctx, SC_ERROR_MEMORY_FAILURE);
+			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 		sdo->docp.non_repudiation.tag = IASECC_DOCP_TAG_NON_REPUDATION;
 		sdo->docp.non_repudiation.size = 1;
 
 		sdo->data.prv_key.compulsory.value = calloc(1, 1);
 		if (!sdo->data.prv_key.compulsory.value)
-			LOG_FUNC_RETURN(ctx, SC_ERROR_MEMORY_FAILURE);
+			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 		sdo->data.prv_key.compulsory.tag = IASECC_SDO_PRVKEY_TAG_COMPULSORY;
 		sdo->data.prv_key.compulsory.size = 1;
 
 		sdo->docp.size.value = calloc(1, 2);
 		if (!sdo->docp.size.value)
-			LOG_FUNC_RETURN(ctx, SC_ERROR_MEMORY_FAILURE);
+			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 		sdo->docp.size.tag = IASECC_DOCP_TAG_SIZE;
 		sdo->docp.size.size = 2;
 		*(sdo->docp.size.value + 0) = (sz >> 8) & 0xFF;
@@ -517,7 +517,7 @@ iasecc_sdo_allocate_pubkey(struct sc_profile *profile, struct sc_card *card, str
 	LOG_FUNC_CALLED(ctx);
 	sdo = calloc(1, sizeof(struct iasecc_sdo));
 	if (!sdo)
-		return SC_ERROR_MEMORY_FAILURE;
+		return SC_ERROR_OUT_OF_MEMORY;
 
 	sdo->magic = SC_CARDCTL_IASECC_SDO_MAGIC;
 	sdo->sdo_ref = key_info->key_reference & 0x3F;
@@ -533,7 +533,7 @@ iasecc_sdo_allocate_pubkey(struct sc_profile *profile, struct sc_card *card, str
 
 		sdo->docp.size.value = calloc(1, 2);
 		if (!sdo->docp.size.value)
-			LOG_FUNC_RETURN(ctx, SC_ERROR_MEMORY_FAILURE);
+			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 		sdo->docp.size.size = 2;
 		sdo->docp.size.tag = IASECC_DOCP_TAG_SIZE;
 		*(sdo->docp.size.value + 0) = (sz >> 8) & 0xFF;
@@ -545,14 +545,14 @@ iasecc_sdo_allocate_pubkey(struct sc_profile *profile, struct sc_card *card, str
 		else   {
 			sdo->data.pub_key.cha.value = calloc(1, 2);
 			if (!sdo->data.pub_key.cha.value)
-				LOG_FUNC_RETURN(ctx, SC_ERROR_MEMORY_FAILURE);
+				LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 			sdo->data.pub_key.cha.size = 2;
 			sdo->data.pub_key.cha.tag = IASECC_SDO_PUBKEY_TAG_CHA;
 		}
 
 		sdo->data.pub_key.compulsory.value = calloc(1, 1);
 		if (!sdo->data.pub_key.compulsory.value)
-			LOG_FUNC_RETURN(ctx, SC_ERROR_MEMORY_FAILURE);
+			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 		sdo->data.pub_key.compulsory.tag = IASECC_SDO_PUBKEY_TAG_COMPULSORY;
 		sdo->data.pub_key.compulsory.size = 1;
 	}
@@ -1137,13 +1137,13 @@ iasecc_pkcs15_generate_key(struct sc_profile *profile, sc_pkcs15_card_t *p15card
 	pubkey->u.rsa.modulus.len = sdo_pubkey->data.pub_key.n.size;
 	pubkey->u.rsa.modulus.data  = (unsigned char *) malloc(pubkey->u.rsa.modulus.len);
 	if (!pubkey->u.rsa.modulus.data)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_MEMORY_FAILURE);
+		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 	memcpy(pubkey->u.rsa.modulus.data, sdo_pubkey->data.pub_key.n.value, pubkey->u.rsa.modulus.len);
 
 	pubkey->u.rsa.exponent.len = sdo_pubkey->data.pub_key.e.size;
 	pubkey->u.rsa.exponent.data = (unsigned char *) malloc(pubkey->u.rsa.exponent.len);
 	if (!pubkey->u.rsa.exponent.data)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_MEMORY_FAILURE);
+		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 	memcpy(pubkey->u.rsa.exponent.data, sdo_pubkey->data.pub_key.e.value, pubkey->u.rsa.exponent.len);
 
 	rv = sc_pkcs15_encode_pubkey(ctx, pubkey, &pubkey->data.value, &pubkey->data.len);
@@ -1236,7 +1236,7 @@ iasecc_pkcs15_delete_sdo (struct sc_profile *profile, struct sc_pkcs15_card *p15
 
 	sdo = calloc(1, sizeof(struct iasecc_sdo));
 	if (!sdo)
-		return SC_ERROR_MEMORY_FAILURE;
+		return SC_ERROR_OUT_OF_MEMORY;
 
 	sdo->magic = SC_CARDCTL_IASECC_SDO_MAGIC;
 	sdo->sdo_class = sdo_class;

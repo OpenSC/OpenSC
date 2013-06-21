@@ -243,7 +243,7 @@ AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
 AC_HEADER_ASSERT
 AC_CHECK_HEADERS([ \
-	errno.h fcntl.h malloc.h stdlib.h \
+	errno.h fcntl.h stdlib.h \
 	inttypes.h string.h strings.h \
 	sys/time.h unistd.h getopt.h sys/mman.h
 ])
@@ -286,12 +286,9 @@ AC_CHECK_LIB(
 
 if test "${WIN32}" = "no"; then
 	dnl dl support
-	AC_CHECK_LIB(
-		[dl],
-		[dlopen],
-		,
-		[AC_MSG_ERROR([libdl required])]
-	)
+	AC_SEARCH_LIBS([dlopen], [dl dld], [], [
+		AC_MSG_ERROR([unable to find the dlopen() function])
+	])
 
 	dnl Special check for pthread support.
 	AX_PTHREAD(
@@ -604,6 +601,8 @@ if test "$GCC" = "yes"; then
 	CFLAGS="-fno-strict-aliasing ${CFLAGS}"
 fi
 
+CFLAGS="${CFLAGS} -Werror=declaration-after-statement"
+
 AC_CONFIG_FILES([
 	Makefile
 	doc/Makefile
@@ -613,13 +612,14 @@ AC_CONFIG_FILES([
 	src/common/Makefile
 	src/libopensc/Makefile
 	src/libopensc/libopensc.pc
+	src/libsm/Makefile
 	src/pkcs11/Makefile
 	src/pkcs15init/Makefile
 	src/scconf/Makefile
 	src/tests/Makefile
 	src/tests/regression/Makefile
 	src/tools/Makefile
-	src/sm/Makefile
+	src/smm/Makefile
 	src/minidriver/Makefile
 	src/minidriver/opensc-minidriver.inf
 	win32/Makefile
@@ -629,8 +629,7 @@ AC_CONFIG_FILES([
 	win32/OpenSC.wxs
 	MacOSX/Makefile
 	MacOSX/build-package
-	MacOSX/10.5/resources/ReadMe.html
-	MacOSX/10.6/resources/ReadMe.html
+	MacOSX/resources/ReadMe.html
 ])
 AC_OUTPUT
 

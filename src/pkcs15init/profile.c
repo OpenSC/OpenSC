@@ -110,7 +110,7 @@ static struct map		fileOpNames[] = {
 	{ "SELECT",	SC_AC_OP_SELECT	},
 	{ "LOCK",	SC_AC_OP_LOCK	},
 	{ "DELETE",	SC_AC_OP_DELETE	},
-	{ "DELETE_SELF",SC_AC_OP_DELETE_SELF },
+	{ "DELETE-SELF",SC_AC_OP_DELETE_SELF },
 	{ "CREATE",	SC_AC_OP_CREATE	},
 	{ "REHABILITATE",SC_AC_OP_REHABILITATE	},
 	{ "INVALIDATE",	SC_AC_OP_INVALIDATE	},
@@ -128,6 +128,7 @@ static struct map		fileOpNames[] = {
 	{ "INTERNAL-AUTHENTICATE",	SC_AC_OP_INTERNAL_AUTHENTICATE },
 	{ "PSO-DECRYPT",		SC_AC_OP_PSO_DECRYPT },
 	{ "RESIZE",	SC_AC_OP_RESIZE },
+	{ "ADMIN",	SC_AC_OP_ADMIN	},
 	{ NULL, 0 }
 };
 static struct map		fileTypeNames[] = {

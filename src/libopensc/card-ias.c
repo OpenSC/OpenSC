@@ -31,9 +31,6 @@
 #include "asn1.h"
 #include "cardctl.h"
 
-/* Portugal eID uses 1024 bit keys */
-#define PTEID_RSA_KEYSIZE 128
-
 #define DRVDATA(card)	((struct ias_priv_data *) ((card)->drv_data))
 
 static struct sc_card_operations ias_ops;
@@ -309,14 +306,17 @@ static int ias_set_security_env(sc_card_t *card,
 	return r;
 }
  
-static int ias_compute_signature(sc_card_t *card, const u8 * data,
-		size_t data_len, u8 * out, size_t outlen)
+static int ias_compute_signature(sc_card_t *card, const u8 *data,
+		size_t data_len, u8 *out, size_t outlen)
 {
-	int 			r;
-	size_t 			len = 0;
-	sc_apdu_t 		apdu;
-	u8 				sbuf[SC_MAX_APDU_BUFFER_SIZE];
-	sc_context_t 	*ctx = card->ctx;
+	sc_apdu_t	apdu;
+	size_t		len;
+	/*
+	** XXX: Ensure sufficient space exists for the card's response
+	** as the caller's buffer size may not be sufficient
+	*/
+	u8		rbuf[SC_MAX_APDU_BUFFER_SIZE];
+	sc_context_t	*ctx = card->ctx;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -324,28 +324,22 @@ static int ias_compute_signature(sc_card_t *card, const u8 * data,
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "error: input data too long: %lu bytes\n", data_len);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
-
-	/* Send the data */
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x88, 0x02, 0x00);
-	memcpy(sbuf, data, data_len);
-	apdu.data = sbuf;
+	
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x88, 0x02, 0x00);
+	apdu.data = (u8 *) data;
 	apdu.lc = data_len;
 	apdu.datalen = data_len;
+	apdu.resp = rbuf;
+	apdu.resplen = sizeof(rbuf);
+	apdu.le = 256;
 
-	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, sc_transmit_apdu(card, &apdu), "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2), "INTERNAL AUTHENTICATE failed");
 
-	/* Get the result */
-	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
-		len = card->type == SC_CARD_TYPE_IAS_PTEID ? PTEID_RSA_KEYSIZE : outlen;
-		r = iso_ops->get_response(card, &len, out);
-		if (r == 0)
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, len);
-		else
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
-	}
-
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
+	len = apdu.resplen > outlen ? outlen : apdu.resplen;
+	memcpy(out, apdu.resp, len);
+	
+	LOG_FUNC_RETURN(card->ctx, apdu.resplen);
 }
 
 static int ias_select_file(sc_card_t *card, const sc_path_t *in_path,

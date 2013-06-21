@@ -117,8 +117,8 @@ openssl_enc(const EVP_CIPHER * cipher, const unsigned char *key, const unsigned 
 
 	memcpy(iv_tmp, iv, EVP_MAX_IV_LENGTH);
 	EVP_CIPHER_CTX_init(&ctx);
-	EVP_CIPHER_CTX_set_padding(&ctx, 0);
 	EVP_EncryptInit_ex(&ctx, cipher, NULL, key, iv_tmp);
+	EVP_CIPHER_CTX_set_padding(&ctx, 0);
 
 	if (!EVP_EncryptUpdate(&ctx, output, &outl, input, length))
 		goto out;
@@ -146,8 +146,8 @@ openssl_dec(const EVP_CIPHER * cipher, const unsigned char *key, const unsigned 
 
 	memcpy(iv_tmp, iv, EVP_MAX_IV_LENGTH);
 	EVP_CIPHER_CTX_init(&ctx);
-	EVP_CIPHER_CTX_set_padding(&ctx, 0);
 	EVP_DecryptInit_ex(&ctx, cipher, NULL, key, iv_tmp);
+	EVP_CIPHER_CTX_set_padding(&ctx, 0);
 
 	if (!EVP_DecryptUpdate(&ctx, output, &outl, input, length))
 		goto out;
@@ -1003,10 +1003,10 @@ epass2003_init(struct sc_card *card)
 
 	flags = SC_ALGORITHM_ONBOARD_KEY_GEN | SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_HASH_NONE;
 
-	_sc_card_add_rsa_alg(card, 512, flags, 0x10001);
-	_sc_card_add_rsa_alg(card, 768, flags, 0x10001);
-	_sc_card_add_rsa_alg(card, 1024, flags, 0x10001);
-	_sc_card_add_rsa_alg(card, 2048, flags, 0x10001);
+	_sc_card_add_rsa_alg(card, 512, flags, 0);
+	_sc_card_add_rsa_alg(card, 768, flags, 0);
+	_sc_card_add_rsa_alg(card, 1024, flags, 0);
+	_sc_card_add_rsa_alg(card, 2048, flags, 0);
 
 	card->caps = SC_CARD_CAP_RNG | SC_CARD_CAP_APDU_EXT;
 
@@ -1858,7 +1858,6 @@ epass2003_delete_file(struct sc_card *card, const sc_path_t * path)
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
-#if 0
 static int
 epass2003_list_files(struct sc_card *card, unsigned char *buf, size_t buflen)
 {
@@ -1867,9 +1866,9 @@ epass2003_list_files(struct sc_card *card, unsigned char *buf, size_t buflen)
 	int r;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0x34, 0x00, 0x00);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x34, 0x00, 0x00);
 	apdu.cla = 0x80;
-	apdu.le = 0x40;
+	apdu.le = 0;
 	apdu.resplen = sizeof(rbuf);
 	apdu.resp = rbuf;
 
@@ -1887,7 +1886,6 @@ epass2003_list_files(struct sc_card *card, unsigned char *buf, size_t buflen)
 
 	LOG_FUNC_RETURN(card->ctx, buflen);
 }
-#endif
 
 
 static int
@@ -2376,7 +2374,7 @@ static struct sc_card_driver *sc_get_driver(void)
 	epass2003_ops.compute_signature = epass2003_decipher;
 	epass2003_ops.create_file = epass2003_create_file;
 	epass2003_ops.delete_file = epass2003_delete_file;
-	/* epass2003_ops.list_files = epass2003_list_files; */
+	epass2003_ops.list_files = epass2003_list_files;
 	epass2003_ops.card_ctl = epass2003_card_ctl;
 	epass2003_ops.process_fci = epass2003_process_fci;
 	epass2003_ops.construct_fci = epass2003_construct_fci;

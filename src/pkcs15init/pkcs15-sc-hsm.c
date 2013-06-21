@@ -401,11 +401,12 @@ static int sc_hsm_decode_gakp_ec(struct sc_pkcs15_card *p15card,
 	pubkey->alg_id->algorithm = SC_ALGORITHM_EC;
 	pubkey->alg_id->params = ecp;
 
-	sc_copy_asn1_entry(c_asn1_ec_pointQ, asn1_ec_pointQ);
-	sc_format_asn1_entry(asn1_ec_pointQ + 0, cvc->publicPoint, &cvc->publicPointlen, 1);
-
-	r = sc_asn1_encode(p15card->card->ctx, asn1_ec_pointQ, &pubkey->u.ec.ecpointQ.value, &pubkey->u.ec.ecpointQ.len);
-	LOG_TEST_RET(p15card->card->ctx, r, "ASN.1 encoding failed");
+	pubkey->u.ec.ecpointQ.value = malloc(cvc->publicPointlen);
+	if (!pubkey->u.ec.ecpointQ.value) {
+		LOG_FUNC_RETURN(p15card->card->ctx, SC_ERROR_OUT_OF_MEMORY);
+	}
+	memcpy(pubkey->u.ec.ecpointQ.value, cvc->publicPoint, cvc->publicPointlen);
+	pubkey->u.ec.ecpointQ.len = cvc->publicPointlen;
 
 	LOG_FUNC_RETURN(p15card->card->ctx, SC_SUCCESS);
 }
@@ -698,7 +699,7 @@ static int sc_hsm_emu_update_dcod(struct sc_profile *profile, struct sc_pkcs15_c
 	r = sc_pkcs15_encode_dodf_entry(p15card->card->ctx, object, &buf, &buflen);
 	LOG_TEST_RET(p15card->card->ctx, r, "Error encoding DCOD entry");
 
-	r = sc_hsm_update_ef(p15card, DCOD_PREFIX, data_info->path.value[1], 0, buf, buflen);
+	r = sc_hsm_update_ef(p15card, DCOD_PREFIX, data_info->path.value[data_info->path.len - 1], 0, buf, buflen);
 	free(buf);
 	return r;
 }
@@ -723,7 +724,7 @@ static int sc_hsm_emu_update_cd(struct sc_profile *profile, struct sc_pkcs15_car
 	r = sc_pkcs15_encode_cdf_entry(p15card->card->ctx, object, &buf, &buflen);
 	LOG_TEST_RET(p15card->card->ctx, r, "Error encoding CD entry");
 
-	r = sc_hsm_update_ef(p15card, CD_PREFIX, cert_info->path.value[1], 0, buf, buflen);
+	r = sc_hsm_update_ef(p15card, CD_PREFIX, cert_info->path.value[cert_info->path.len - 1], 0, buf, buflen);
 	free(buf);
 	return r;
 }
@@ -745,7 +746,7 @@ static int sc_hsm_emu_delete_cd(struct sc_profile *profile, struct sc_pkcs15_car
 		return SC_SUCCESS;
 	}
 
-	return sc_hsm_delete_ef(p15card, CD_PREFIX, ((struct sc_pkcs15_data_info *)object->data)->path.value[1]);
+	return sc_hsm_delete_ef(p15card, CD_PREFIX, cert_info->path.value[cert_info->path.len - 1]);
 }
 
 

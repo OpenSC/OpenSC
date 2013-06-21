@@ -673,7 +673,7 @@ sc_pkcs11_verify_final(sc_pkcs11_operation_t *operation,
 	rv = key->ops->get_attribute(operation->session, key, &attr);
 	if (rv != CKR_OK)
 		return rv;
-	pubkey_value = malloc(attr.ulValueLen);
+	pubkey_value = calloc(1, attr.ulValueLen);
 	attr.pValue = pubkey_value;
 	rv = key->ops->get_attribute(operation->session, key, &attr);
 	if (rv != CKR_OK)

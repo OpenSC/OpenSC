@@ -420,7 +420,7 @@ CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, int pubkey_len,
 		if (rsa == NULL)
 			return CKR_DEVICE_MEMORY;
 
-		rsa_out = malloc(RSA_size(rsa));
+		rsa_out = calloc(1, RSA_size(rsa));
 		if (rsa_out == NULL) {
 			RSA_free(rsa);
 			return CKR_DEVICE_MEMORY;

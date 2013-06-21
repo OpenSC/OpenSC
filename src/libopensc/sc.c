@@ -518,6 +518,8 @@ void sc_file_free(sc_file_t *file)
 		free(file->prop_attr);
 	if (file->type_attr)
 		free(file->type_attr);
+	if (file->encoded_content)
+		free(file->encoded_content);
 	free(file);
 }
 

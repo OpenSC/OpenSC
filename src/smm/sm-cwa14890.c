@@ -229,22 +229,6 @@ sm_cwa_init_session_keys(struct sc_context *ctx, struct sm_cwa_session *session_
 }
 
 
-void
-sm_cwa_incr_ssc(struct sm_cwa_session *session_data)
-{
-	int ii;
-
-	if (!session_data)
-		return;
-
-	for (ii=7; ii>=0; ii--)   {
-		session_data->ssc[ii] += 1;
-		if (session_data->ssc[ii])
-			break;
-	}
-}
-
-
 int
 sm_cwa_initialize(struct sc_context *ctx, struct sm_info *sm_info, struct sc_remote_data *rdata)
 {
@@ -335,7 +319,7 @@ sm_cwa_securize_apdu(struct sc_context *ctx, struct sm_info *sm_info, struct sc_
 	sc_log(ctx, "securize APDU (cla:%X,ins:%X,p1:%X,p2:%X,data(%i):%p)",
 			apdu->cla, apdu->ins, apdu->p1, apdu->p2, apdu->datalen, apdu->data);
 
-	sm_cwa_incr_ssc(session_data);
+	sm_incr_ssc(session_data->ssc, sizeof(session_data->ssc));
 
 	rv = sm_encrypt_des_cbc3(ctx, session_data->session_enc, apdu->data, apdu->datalen, &encrypted, &encrypted_len, 0);
 	LOG_TEST_RET(ctx, rv, "securize APDU: DES CBC3 encryption failed");
@@ -419,7 +403,7 @@ sm_cwa_securize_apdu(struct sc_context *ctx, struct sm_info *sm_info, struct sc_
 	apdu->datalen = offs;
 	memcpy((unsigned char *)apdu->data, sbuf, offs);
 
-	sm_cwa_incr_ssc(session_data);
+	sm_incr_ssc(session_data->ssc, sizeof(session_data->ssc));
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }

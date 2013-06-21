@@ -61,6 +61,55 @@ void sc_format_apdu(sc_card_t *card, sc_apdu_t *apdu,
 	apdu->p2 = (u8) p2;
 }
 
+struct sc_apdu *
+sc_allocate_apdu(struct sc_apdu *copy_from, unsigned flags)
+{
+	struct sc_apdu *apdu = NULL;
+
+	assert(copy_from != NULL);
+	apdu = (struct sc_apdu *)malloc(sizeof(struct sc_apdu));
+	if (!copy_from || !apdu)
+		return apdu;
+	memcpy(apdu, copy_from, sizeof(struct sc_apdu));
+	apdu->data = apdu->resp = NULL;
+	apdu->next = NULL;
+	apdu->datalen = apdu->resplen = 0;
+	apdu->allocation_flags = SC_APDU_ALLOCATE_FLAG;
+
+	if ((flags & SC_APDU_ALLOCATE_FLAG_DATA) && copy_from->data && copy_from->datalen)   {
+		apdu->data = malloc(copy_from->datalen);
+		if (!apdu->data)
+			return NULL;
+		memcpy(apdu->data, copy_from->data, copy_from->datalen);
+		apdu->datalen = copy_from->datalen;
+		apdu->allocation_flags |= SC_APDU_ALLOCATE_FLAG_DATA;
+	}
+
+	if ((flags & SC_APDU_ALLOCATE_FLAG_RESP) && copy_from->resp && copy_from->resplen)   {
+		apdu->resp = malloc(copy_from->resplen);
+		if (!apdu->resp)
+			return NULL;
+		memcpy(apdu->resp, copy_from->resp, copy_from->resplen);
+		apdu->resplen = copy_from->resplen;
+		apdu->allocation_flags |= SC_APDU_ALLOCATE_FLAG_RESP;
+	}
+	return apdu;
+}
+
+void
+sc_free_apdu(struct sc_apdu *apdu)
+{
+	if (!apdu)
+		return;
+	if (apdu->allocation_flags & SC_APDU_ALLOCATE_FLAG_DATA)
+		free (apdu->data);
+	if (apdu->allocation_flags & SC_APDU_ALLOCATE_FLAG_RESP)
+		free (apdu->resp);
+	if (apdu->allocation_flags & SC_APDU_ALLOCATE_FLAG)
+		free (apdu);
+}
+
+
 static sc_card_t * sc_card_new(sc_context_t *ctx)
 {
 	sc_card_t *card;
@@ -968,31 +1017,39 @@ int _sc_add_atr(sc_context_t *ctx, struct sc_card_driver *driver, struct sc_atr_
 	if (!map)
 		return SC_ERROR_OUT_OF_MEMORY;
 	driver->atr_map = map;
+
 	dst = &driver->atr_map[driver->natrs++];
 	memset(dst, 0, sizeof(*dst));
 	memset(&driver->atr_map[driver->natrs], 0, sizeof(struct sc_atr_table));
 	dst->atr = strdup(src->atr);
 	if (!dst->atr)
 		return SC_ERROR_OUT_OF_MEMORY;
+
 	if (src->atrmask) {
 		dst->atrmask = strdup(src->atrmask);
 		if (!dst->atrmask)
 			return SC_ERROR_OUT_OF_MEMORY;
-	} else {
+	}
+	else {
 		dst->atrmask = NULL;
 	}
+
 	if (src->name) {
 		dst->name = strdup(src->name);
 		if (!dst->name)
 			return SC_ERROR_OUT_OF_MEMORY;
-	} else {
+	}
+	else {
 		dst->name = NULL;
 	}
+
 	dst->type = src->type;
 	dst->flags = src->flags;
 	dst->card_atr = src->card_atr;
+
 	return SC_SUCCESS;
 }
+
 
 int _sc_free_atr(sc_context_t *ctx, struct sc_card_driver *driver)
 {
@@ -1130,7 +1187,7 @@ sc_card_sm_load(struct sc_card *card, const char *module_path, const char *in_mo
 	}
 
 	if (!module)
-		return SC_ERROR_MEMORY_FAILURE;
+		return SC_ERROR_OUT_OF_MEMORY;
 
 	sc_log(ctx, "try to load SM module '%s'", module);
 	do  {
@@ -1197,6 +1254,7 @@ sc_card_sm_check(struct sc_card *card)
 	int rv, ii;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
+	sc_log(ctx, "card->sm_ctx.ops.open %p", card->sm_ctx.ops.open);
 
 	/* get the name of card specific SM configuration section */
 	atrblock = _sc_match_atr_block(ctx, card->driver, &card->atr);

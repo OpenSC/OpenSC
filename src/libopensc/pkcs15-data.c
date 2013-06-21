@@ -39,34 +39,38 @@ static const struct sc_asn1_entry     c_asn1_data_object[] = {
         { NULL, 0, 0, 0, NULL, NULL }
 };
 
-int sc_pkcs15_read_data_object(struct sc_pkcs15_card *p15card,
-			       const struct sc_pkcs15_data_info *info,
-			       struct sc_pkcs15_data **data_object_out)
+
+int
+sc_pkcs15_read_data_object(struct sc_pkcs15_card *p15card,
+		const struct sc_pkcs15_data_info *info,
+		struct sc_pkcs15_data **data_object_out)
 {
-	int r;
+        struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15_data *data_object;
-	u8 *data = NULL;
-	size_t len;
+	struct sc_pkcs15_der der;
+	int r;
 
-	if (p15card == NULL || info == NULL || data_object_out == NULL)
-		return SC_ERROR_INVALID_ARGUMENTS;
-	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
+	LOG_FUNC_CALLED(ctx);
+	if (!info || !data_object_out)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
-	r = sc_pkcs15_read_file(p15card, &info->path, &data, &len);
-	if (r)
-		return r;
-	data_object = malloc(sizeof(struct sc_pkcs15_data));
-	if (data_object == NULL) {
-		free(data);
-		return SC_ERROR_OUT_OF_MEMORY;
+	if (!info->data.value)   {
+		r = sc_pkcs15_read_file(p15card, &info->path, &info->data.value, &info->data.len);
+		LOG_TEST_RET(ctx, r, "Cannot get DATA object data");
 	}
-	memset(data_object, 0, sizeof(struct sc_pkcs15_data));
 
-	data_object->data = data;
-	data_object->data_len = len;
+	sc_der_copy(&der, &info->data);
+	data_object = calloc(sizeof(struct sc_pkcs15_data), 1);
+	if (!data_object && !der.value)
+		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate memory for data object");
+
+	data_object->data = der.value;
+	data_object->data_len = der.len;
 	*data_object_out = data_object;
-	return SC_SUCCESS;
+
+	LOG_FUNC_RETURN(ctx,SC_SUCCESS);
 }
+
 
 static const struct sc_asn1_entry c_asn1_data[] = {
 	{ "data", SC_ASN1_PKCS15_OBJECT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
@@ -173,7 +177,10 @@ void sc_pkcs15_free_data_object(struct sc_pkcs15_data *data_object)
 	free(data_object);
 }
 
-void sc_pkcs15_free_data_info(sc_pkcs15_data_info_t *data)
+void sc_pkcs15_free_data_info(struct sc_pkcs15_data_info *info)
 {
-	free(data);
+	if (info && info->data.value && info->data.len)
+		free(info->data.value);
+
+	free(info);
 }

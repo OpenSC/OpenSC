@@ -42,7 +42,7 @@ extern CK_FUNCTION_LIST pkcs11_function_list;
 #include <pthread.h>
 CK_RV mutex_create(void **mutex)
 {
-	pthread_mutex_t *m = malloc(sizeof(*mutex));
+	pthread_mutex_t *m = calloc(1, sizeof(*mutex));
 	if (m == NULL)
 		return CKR_GENERAL_ERROR;;
 	pthread_mutex_init(m, NULL);
@@ -80,7 +80,7 @@ CK_RV mutex_create(void **mutex)
 {
 	CRITICAL_SECTION *m;
 
-	m = malloc(sizeof(*m));
+	m = calloc(1, sizeof(*m));
 	if (m == NULL)
 		return CKR_GENERAL_ERROR;
 	InitializeCriticalSection(m);
@@ -243,15 +243,12 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs)
 	if (sc_pkcs11_conf.plug_and_play) {
 		create_slot(NULL);
 	}
-	/* Create slots for readers found on initialization */
-	for (i=0; i<sc_ctx_get_reader_count(context); i++) {
-		initialize_reader(sc_ctx_get_reader(context, i));
-	}
 
-	/* Set initial event state on slots */
-	for (i=0; i<list_size(&virtual_slots); i++) {
-		sc_pkcs11_slot_t *slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, i);
-		slot->events = 0; /* Initially there are no events */
+	/* Create slots for readers found on initialization, only if in 2.11 mode */
+	if (!sc_pkcs11_conf.plug_and_play) {
+		for (i=0; i<sc_ctx_get_reader_count(context); i++) {
+			initialize_reader(sc_ctx_get_reader(context, i));
+		}
 	}
 
 out:
@@ -330,7 +327,11 @@ CK_RV C_GetInfo(CK_INFO_PTR pInfo)
 
 	memset(pInfo, 0, sizeof(CK_INFO));
 	pInfo->cryptokiVersion.major = 2;
-	pInfo->cryptokiVersion.minor = 20;
+	if (sc_pkcs11_conf.plug_and_play) {
+		pInfo->cryptokiVersion.minor = 20;
+	} else {
+		pInfo->cryptokiVersion.minor = 11;
+	}
 	strcpy_bp(pInfo->manufacturerID,
 		  "OpenSC (www.opensc-project.org)",
 		  sizeof(pInfo->manufacturerID));
@@ -384,7 +385,7 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 
 	card_detect_all();
 
-	found = malloc(list_size(&virtual_slots) * sizeof(CK_SLOT_ID));
+	found = calloc(list_size(&virtual_slots), sizeof(CK_SLOT_ID));
 
 	if (found == NULL) {
 		rv = CKR_HOST_MEMORY;

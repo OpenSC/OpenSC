@@ -31,20 +31,7 @@ extern "C" {
 #include <openssl/sha.h>
 
 #include "libopensc/sm.h"
-
-DES_LONG DES_cbc_cksum_3des(const unsigned char *in, DES_cblock *output, long length,
-		DES_key_schedule *schedule, DES_key_schedule *schedule2, const_DES_cblock *ivec);
-DES_LONG DES_cbc_cksum_3des_emv96(const unsigned char *in, DES_cblock *output,
-		long length, DES_key_schedule *schedule, DES_key_schedule *schedule2,
-		const_DES_cblock *ivec);
-int sm_encrypt_des_ecb3(unsigned char *key, unsigned char *data, int data_len,
-		unsigned char **out, int *out_len);
-int sm_encrypt_des_cbc3(struct sc_context *ctx, unsigned char *key,
-		const unsigned char *in, size_t in_len,
-		unsigned char **out, size_t *out_len, int
-		not_force_pad);
-int sm_decrypt_des_cbc3(struct sc_context *ctx, unsigned char *key,
-		unsigned char *data, size_t data_len, unsigned char **out, size_t *out_len);
+#include "libsm/sm-common.h"
 
 /* Global Platform definitions */
 int sm_gp_get_mac(unsigned char *key, DES_cblock *icv, unsigned char *in, int in_len,

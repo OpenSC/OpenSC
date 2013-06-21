@@ -292,6 +292,7 @@ static const char *action_names[] = {
 	"verify that card is pristine",
 	"erase card",
 	"create PKCS #15 meta structure",
+	"delete object(s)",
 	"store PIN",
 	"generate key",
 	"store private key",
@@ -300,9 +301,10 @@ static const char *action_names[] = {
 	"update certificate",
 	"store data object",
 	"finalizing card",
-	"delete object(s)",
 	"change attribute(s)",
 	"check card's sanity",
+	"update 'last-update'",
+	"erase application"
 };
 
 #define MAX_CERTS		4
@@ -1200,6 +1202,10 @@ do_store_data_object(struct sc_profile *profile)
 	args.app_label = opt_application_name ? opt_application_name : "pkcs15-init";
 
 	sc_format_oid(&args.app_oid, opt_application_id);
+	if (opt_application_id && (args.app_oid.value[0] == -1))   {
+		util_error("Invalid OID \"%s\"", opt_application_id);
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
 
 	r = do_read_data_object(opt_infile, &data, &datalen);
 	if (r >= 0) {

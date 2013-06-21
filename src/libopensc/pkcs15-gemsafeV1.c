@@ -14,7 +14,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-/* Initially written by David Mattes (david.mattes@boeing.com) */
+/* Initially written by David Mattes <david.mattes@boeing.com> */
+/* Support for multiple key containers by Lukas Wunner <lukas@wunner.de> */
 
 #include "config.h"
 
@@ -28,6 +29,14 @@
 #define MANU_ID			"Gemplus"
 #define APPLET_NAME		"GemSAFE V1"
 #define DRIVER_SERIAL_NUMBER	"v0.9"
+#define GEMSAFE_APP_PATH	"3F001600"
+#define GEMSAFE_PATH		"3F0016000004"
+
+/* Apparently, the Applet max read "quanta" is 248 bytes
+ * Gemalto ClassicClient reads files in chunks of 238 bytes
+ */
+#define GEMSAFE_READ_QUANTUM    248
+#define GEMSAFE_MAX_OBJLEN      28672
 
 int sc_pkcs15emu_gemsafeV1_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
 
@@ -55,43 +64,67 @@ sc_pkcs15emu_add_prkey(sc_pkcs15_card_t *p15card,
 	const sc_pkcs15_id_t *auth_id, int obj_flags);
 
 typedef struct cdata_st {
-	const char *label;
+	char	   *label;
 	int	    authority;
 	const char *path;
+	size_t	    index;
+	size_t	    count;
 	const char *id;
 	int         obj_flags;
 } cdata;
 
-const cdata gemsafe_cert[] = {
-	{"DS certificate", 0, "3F0016000004","45", SC_PKCS15_CO_FLAG_MODIFIABLE},
-	{NULL, 0, NULL, 0, 0}
+const unsigned int gemsafe_cert_max = 12;
+
+cdata gemsafe_cert[] = {
+	{"DS certificate #1",  0, GEMSAFE_PATH, 0, 0, "45", SC_PKCS15_CO_FLAG_MODIFIABLE},
+	{"DS certificate #2",  0, GEMSAFE_PATH, 0, 0, "46", SC_PKCS15_CO_FLAG_MODIFIABLE},
+	{"DS certificate #3",  0, GEMSAFE_PATH, 0, 0, "47", SC_PKCS15_CO_FLAG_MODIFIABLE},
+	{"DS certificate #4",  0, GEMSAFE_PATH, 0, 0, "48", SC_PKCS15_CO_FLAG_MODIFIABLE},
+	{"DS certificate #5",  0, GEMSAFE_PATH, 0, 0, "49", SC_PKCS15_CO_FLAG_MODIFIABLE},
+	{"DS certificate #6",  0, GEMSAFE_PATH, 0, 0, "50", SC_PKCS15_CO_FLAG_MODIFIABLE},
+	{"DS certificate #7",  0, GEMSAFE_PATH, 0, 0, "51", SC_PKCS15_CO_FLAG_MODIFIABLE},
+	{"DS certificate #8",  0, GEMSAFE_PATH, 0, 0, "52", SC_PKCS15_CO_FLAG_MODIFIABLE},
+	{"DS certificate #9",  0, GEMSAFE_PATH, 0, 0, "53", SC_PKCS15_CO_FLAG_MODIFIABLE},
+	{"DS certificate #10", 0, GEMSAFE_PATH, 0, 0, "54", SC_PKCS15_CO_FLAG_MODIFIABLE},
+	{"DS certificate #11", 0, GEMSAFE_PATH, 0, 0, "55", SC_PKCS15_CO_FLAG_MODIFIABLE},
+	{"DS certificate #12", 0, GEMSAFE_PATH, 0, 0, "56", SC_PKCS15_CO_FLAG_MODIFIABLE},
 };
 
 typedef struct pdata_st {
+	const u8    atr[SC_MAX_ATR_SIZE];
+	const size_t atr_len;
 	const char *id;
 	const char *label;
 	const char *path;
-	int         ref;
-	int         type;
-	unsigned int maxlen;
-	unsigned int minlen;
-	int         flags;
-	int         tries_left;
+	const int   ref;
+	const int   type;
+	const unsigned int maxlen;
+	const unsigned int minlen;
+	const int   flags;
+	const int   tries_left;
 	const char  pad_char;
-	int         obj_flags;
+	const int   obj_flags;
 } pindata;
 
+const unsigned int gemsafe_pin_max = 2;
+
 const pindata gemsafe_pin[] = {
-	{ "01", "DS pin", NULL, 0x01, SC_PKCS15_PIN_TYPE_BCD,
+	/* ATR-specific PIN policies, first match found is used: */
+	{ {0x3B, 0x7D, 0x96, 0x00, 0x00, 0x80, 0x31, 0x80, 0x65,
+	   0xB0, 0x83, 0x11, 0x48, 0xC8, 0x83, 0x00, 0x90, 0x00}, 18,
+	  "01", "DS pin", GEMSAFE_PATH, 0x01, SC_PKCS15_PIN_TYPE_ASCII_NUMERIC,
+	  8, 4, SC_PKCS15_PIN_FLAG_NEEDS_PADDING | SC_PKCS15_PIN_FLAG_LOCAL,
+	  3, 0x00, SC_PKCS15_CO_FLAG_MODIFIABLE | SC_PKCS15_CO_FLAG_PRIVATE },
+	/* default PIN policy comes last: */
+	{ { 0 }, 0,
+	  "01", "DS pin", GEMSAFE_PATH, 0x01, SC_PKCS15_PIN_TYPE_BCD,
 	  16, 6, SC_PKCS15_PIN_FLAG_NEEDS_PADDING | SC_PKCS15_PIN_FLAG_LOCAL,
-	  3, 0xFF,
-	  SC_PKCS15_CO_FLAG_MODIFIABLE | SC_PKCS15_CO_FLAG_PRIVATE },
-	{ NULL, NULL, NULL, 0, 0, 0, 0, 0, 0, 0, 0 }
+	  3, 0xFF, SC_PKCS15_CO_FLAG_MODIFIABLE | SC_PKCS15_CO_FLAG_PRIVATE }
 };
 
 typedef struct prdata_st {
 	const char *id;
-	const char *label;
+	char	   *label;
 	unsigned int modulus_len;
 	int         usage;
 	const char *path;
@@ -111,100 +144,146 @@ typedef struct prdata_st {
 			SC_PKCS15_PRKEY_USAGE_UNWRAP  | \
 			SC_PKCS15_PRKEY_USAGE_SIGN
 
-const prdata gemsafe_prkeys[] = {
-	{ "45", "DS key", 1024, USAGE_AUT, NULL,
-	  0x03, "01", SC_PKCS15_CO_FLAG_PRIVATE},
-	{ NULL, NULL, 0, 0, NULL, 0, NULL, 0}
+prdata gemsafe_prkeys[] = {
+	{ "45", "DS key #1",  1024, USAGE_AUT, GEMSAFE_PATH, 0x03, "01", SC_PKCS15_CO_FLAG_PRIVATE},
+	{ "46", "DS key #2",  1024, USAGE_AUT, GEMSAFE_PATH, 0x04, "01", SC_PKCS15_CO_FLAG_PRIVATE},
+	{ "47", "DS key #3",  1024, USAGE_AUT, GEMSAFE_PATH, 0x05, "01", SC_PKCS15_CO_FLAG_PRIVATE},
+	{ "48", "DS key #4",  1024, USAGE_AUT, GEMSAFE_PATH, 0x06, "01", SC_PKCS15_CO_FLAG_PRIVATE},
+	{ "49", "DS key #5",  1024, USAGE_AUT, GEMSAFE_PATH, 0x07, "01", SC_PKCS15_CO_FLAG_PRIVATE},
+	{ "50", "DS key #6",  1024, USAGE_AUT, GEMSAFE_PATH, 0x08, "01", SC_PKCS15_CO_FLAG_PRIVATE},
+	{ "51", "DS key #7",  1024, USAGE_AUT, GEMSAFE_PATH, 0x09, "01", SC_PKCS15_CO_FLAG_PRIVATE},
+	{ "52", "DS key #8",  1024, USAGE_AUT, GEMSAFE_PATH, 0x0a, "01", SC_PKCS15_CO_FLAG_PRIVATE},
+	{ "53", "DS key #9",  1024, USAGE_AUT, GEMSAFE_PATH, 0x0b, "01", SC_PKCS15_CO_FLAG_PRIVATE},
+	{ "54", "DS key #10", 1024, USAGE_AUT, GEMSAFE_PATH, 0x0c, "01", SC_PKCS15_CO_FLAG_PRIVATE},
+	{ "55", "DS key #11", 1024, USAGE_AUT, GEMSAFE_PATH, 0x0d, "01", SC_PKCS15_CO_FLAG_PRIVATE},
+	{ "56", "DS key #12", 1024, USAGE_AUT, GEMSAFE_PATH, 0x0e, "01", SC_PKCS15_CO_FLAG_PRIVATE},
 };
 
-static int gemsafe_get_cert_len(sc_card_t *card, sc_path_t *path, 
-	int *key_ref)
+static int gemsafe_get_cert_len(sc_card_t *card)
 {
-	const char *fn_name = "gemsafe_get_cert_len";
 	int r;
-	int ind;
-	u8  ibuf[248];
+	u8  ibuf[GEMSAFE_MAX_OBJLEN];
+	u8 *iptr;
+	struct sc_path path;
 	struct sc_file *file;
 	size_t objlen, certlen;
-	unsigned int block=0;
-	int found = 0;
-	unsigned int offset=0, index_local, i=0;
+	unsigned int ind, i=0;
 
-	r = sc_select_file(card, path, &file);
-	if (r < 0)
-		return 0;
+	sc_format_path(GEMSAFE_PATH, &path);
+	r = sc_select_file(card, &path, &file);
+	if (r != SC_SUCCESS || !file)
+		return SC_ERROR_INTERNAL;
 
-	/* Apparently, the Applet max read "quanta" is 248 bytes */
 	/* Initial read */
-	r = sc_read_binary(card, offset, ibuf, 248, 0);
+	r = sc_read_binary(card, 0, ibuf, GEMSAFE_READ_QUANTUM, 0);
 	if (r < 0)
-		return 0;
+		return SC_ERROR_INTERNAL;
 
 	/* Actual stored object size is encoded in first 2 bytes
 	 * (allocated EF space is much greater!)
 	 */
 	objlen = (((size_t) ibuf[0]) << 8) | ibuf[1];
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "%s: Certificate object is of size: %d\n", fn_name, objlen);
-
-	if (objlen < 1 || objlen > 10240) {
-	    sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "%s: Invalid object size: %d\n", fn_name, objlen);
-	    return 0;
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+		 "Stored object is of size: %d\n", objlen);
+	if (objlen < 1 || objlen > GEMSAFE_MAX_OBJLEN) {
+	    sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+		     "Invalid object size: %d\n", objlen);
+	    return SC_ERROR_INTERNAL;
 	}
 
-	/*
-	 * We need to find the private key associated with the cert
-	 * It looks like the first thing in the block is a table of
-	 * which keys are allocated. 
-	 * We will look for the first allocated key, and save the 
-	 * key_ref. The table is small and is in the first 248 bytes.
-	 * If for some reason this is not true, we can still override
-	 * the key_ref in the opensc.conf with flag = n.
+	/* It looks like the first thing in the block is a table of
+	 * which keys are allocated. The table is small and is in the
+	 * first 248 bytes. Example for a card with 10 key containers:
+	 * 01 f0 00 03 03 b0 00 03     <=  1st key unallocated
+	 * 01 f0 00 04 03 b0 00 04     <=  2nd key unallocated
+	 * 01 fe 14 00 05 03 b0 00 05  <=  3rd key allocated
+	 * 01 fe 14 01 06 03 b0 00 06  <=  4th key allocated
+	 * 01 f0 00 07 03 b0 00 07     <=  5th key unallocated
+	 * ...
+	 * 01 f0 00 0c 03 b0 00 0c     <= 10th key unallocated
+	 * For allocated keys, the fourth byte seems to indicate the
+	 * default key and the fifth byte indicates the key_ref of
+	 * the private key.
 	 */
 	ind = 2; /* skip length */
 	while (ibuf[ind] == 0x01) {
 		if (ibuf[ind+1] == 0xFE) {
-			*key_ref = ibuf[ind+4];
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Using key_ref %d found at offset %d\n",
-					*key_ref, ind);
-			break;
+			gemsafe_prkeys[i].ref = ibuf[ind+4];
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+				 "Key container %d is allocated and uses key_ref %d\n", i+1,
+				 gemsafe_prkeys[i].ref);
+			ind += 9;
+		} else {
+			gemsafe_prkeys[i].label = NULL;
+			gemsafe_cert[i].label = NULL;
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+				 "Key container %d is unallocated\n", i+1);
+			ind += 8;
 		}
-		ind = ind + 8;
+		i++;
 	}
 
-	/* Using (block+1) in while loop avoids using final cert object data block */
-	while (!found && ( (block+1) * 248 < objlen) ) {
-	    /* Check current buffer */
-	    for (i = 0; i < 247; i++) {
-	    	if (ibuf[i] == 0x30 && ibuf[i+1] == 0x82) {
-		    found = 1;
-		    break;
-		}
-	    }
+	/* Delete additional key containers from the data structures if
+	 * this card can't accomodate them.
+	 */
+	for (; i < gemsafe_cert_max; i++) {
+		gemsafe_prkeys[i].label = NULL;
+		gemsafe_cert[i].label = NULL;
+	}
 
-	    /* Grab another buffer */
-	    if (!found) {
-		block++;
-		offset = block*248;
-		r = sc_read_binary(card, offset, ibuf, 248, 0);
+	/* Read entire file, then dissect in memory.
+	 * Gemalto ClassicClient seems to do it the same way.
+	 */
+	iptr = ibuf + GEMSAFE_READ_QUANTUM;
+	while ((size_t)(iptr - ibuf) < objlen) {
+		r = sc_read_binary(card, iptr - ibuf, iptr,
+				   MIN(GEMSAFE_READ_QUANTUM, objlen - (iptr - ibuf)), 0);
 		if (r < 0) {
-		    sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "%s: Could not read cert object\n", fn_name);
-		    return 0;
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+				 "Could not read cert object\n");
+			return SC_ERROR_INTERNAL;
 		}
-	    }
-
+		iptr += GEMSAFE_READ_QUANTUM;
 	}
 
-	index_local = block*248 + i;
+	/* Search buffer for certificates, they start with 0x3082. */
+	i = 0;
+	while (ind < objlen - 1) {
+		if (ibuf[ind] == 0x30 && ibuf[ind+1] == 0x82) {
+			/* Find next allocated key container */
+			while (i < gemsafe_cert_max && gemsafe_cert[i].label == NULL)
+				i++;
+			if (i == gemsafe_cert_max) {
+				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+					 "Warning: Found orphaned certificate at offset %d\n", ind);
+				return SC_SUCCESS;
+			}
+			/* DER cert len is encoded this way */
+			certlen = ((((size_t) ibuf[ind+2]) << 8) | ibuf[ind+3]) + 4;
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+				 "Found certificate of key container %d at offset %d, len %d\n",
+				 i+1, ind, certlen);
+			gemsafe_cert[i].index = ind;
+			gemsafe_cert[i].count = certlen;
+			ind += certlen;
+			i++;
+		} else
+			ind++;
+	}
 
-	/* DER Cert len is encoded this way */
-	certlen = ((((size_t) ibuf[i+2]) << 8) | ibuf[i+3]) + 4;
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "%s: certlen: %04X\n", fn_name, certlen);
+	/* Delete additional key containers from the data structures if
+	 * they're missing on the card.
+	 */
+	for (; i < gemsafe_cert_max; i++) {
+		if (gemsafe_cert[i].label) {
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+				 "Warning: Certificate of key container %d is missing\n", i+1);
+			gemsafe_prkeys[i].label = NULL;
+			gemsafe_cert[i].label = NULL;
+		}
+	}
 
-	path->index = index_local;
-	path->count = certlen;
-
-	return 1;
-
+	return SC_SUCCESS;
 }
 
 static int gemsafe_detect_card( sc_pkcs15_card_t *p15card)
@@ -212,142 +291,162 @@ static int gemsafe_detect_card( sc_pkcs15_card_t *p15card)
 	if (strcmp(p15card->card->name, "GemSAFE V1"))
 		return SC_ERROR_WRONG_CARD;
 
-    return SC_SUCCESS;
+	return SC_SUCCESS;
 }
 
 static int sc_pkcs15emu_gemsafeV1_init( sc_pkcs15_card_t *p15card)
 {
-    const char *fn_name = "sc_pkcs15emu_gemsafe_init";
+	int		    r;
+	unsigned int    i;
+	struct sc_path  path;
+	struct sc_file *file = NULL;
+	struct sc_card *card = p15card->card;
+	struct sc_apdu  apdu;
+	u8		    rbuf[SC_MAX_APDU_BUFFER_SIZE];
 
-    int    r, i;
-	int	   key_ref = 0x03; 
-    struct sc_path path;
-    struct sc_file *file = NULL;
-    struct sc_card *card = p15card->card;
-    struct sc_apdu apdu;
-    u8     rbuf[SC_MAX_APDU_BUFFER_SIZE];
+	sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "Setting pkcs15 parameters\n");
 
-    sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "%s: Setting pkcs15 parameters\n", fn_name);
+	if (p15card->tokeninfo->label)
+		free(p15card->tokeninfo->label);
+	p15card->tokeninfo->label = malloc(strlen(APPLET_NAME) + 1);
+	if (!p15card->tokeninfo->label)
+		return SC_ERROR_INTERNAL;
+	strcpy(p15card->tokeninfo->label, APPLET_NAME);
 
-    if (p15card->tokeninfo->label)
-    	free(p15card->tokeninfo->label);
-    p15card->tokeninfo->label = malloc(strlen(APPLET_NAME) + 1);
-    if (!p15card->tokeninfo->label)
-    	return SC_ERROR_INTERNAL;
-    strcpy(p15card->tokeninfo->label, APPLET_NAME);
+	if (p15card->tokeninfo->serial_number)
+		free(p15card->tokeninfo->serial_number);
+	p15card->tokeninfo->serial_number = malloc(strlen(DRIVER_SERIAL_NUMBER) + 1);
+	if (!p15card->tokeninfo->serial_number)
+		return SC_ERROR_INTERNAL;
+	strcpy(p15card->tokeninfo->serial_number, DRIVER_SERIAL_NUMBER);
 
-    if (p15card->tokeninfo->serial_number)
-	    free(p15card->tokeninfo->serial_number);
-    p15card->tokeninfo->serial_number = malloc(strlen(DRIVER_SERIAL_NUMBER) + 1);
-    if (!p15card->tokeninfo->serial_number)
-	    return SC_ERROR_INTERNAL;
-    strcpy(p15card->tokeninfo->serial_number, DRIVER_SERIAL_NUMBER);
+	/* the GemSAFE applet version number */
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xca, 0xdf, 0x03);
+	apdu.cla = 0x80;
+	apdu.resp = rbuf;
+	apdu.resplen = sizeof(rbuf);
+	/* Manual says Le=0x05, but should be 0x08 to return full version numer */
+	apdu.le = 0x08;
+	apdu.lc = 0;
+	apdu.datalen = 0;
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
+		return SC_ERROR_INTERNAL;
+	if (r != SC_SUCCESS)
+		return SC_ERROR_INTERNAL;
 
-    /* the GemSAFE applet version number */
-    sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xca, 0xdf, 0x03);
-    apdu.cla = 0x80;
-    apdu.resp = rbuf;
-    apdu.resplen = sizeof(rbuf);
-    /* Manual says Le=0x05, but should be 0x08 to return full version numer */
-    apdu.le = 0x08;
-    apdu.lc = 0;
-    apdu.datalen = 0;
-    r = sc_transmit_apdu(card, &apdu);
-    SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
-    if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
-	    return SC_ERROR_INTERNAL;
-    if (r != SC_SUCCESS)
-	    return SC_ERROR_INTERNAL;
+	/* the manufacturer ID, in this case GemPlus */
+	if (p15card->tokeninfo->manufacturer_id)
+		free(p15card->tokeninfo->manufacturer_id);
+	p15card->tokeninfo->manufacturer_id = malloc(strlen(MANU_ID) + 1);
+	if (!p15card->tokeninfo->manufacturer_id)
+		return SC_ERROR_INTERNAL;
+	strcpy(p15card->tokeninfo->manufacturer_id, MANU_ID);
 
-    /* the manufacturer ID, in this case GemPlus */
-    if (p15card->tokeninfo->manufacturer_id)
-	    free(p15card->tokeninfo->manufacturer_id);
-    p15card->tokeninfo->manufacturer_id = malloc(strlen(MANU_ID) + 1);
-    if (!p15card->tokeninfo->manufacturer_id)
-	    return SC_ERROR_INTERNAL;
-    strcpy(p15card->tokeninfo->manufacturer_id, MANU_ID);
+	/* determine allocated key containers and length of certificates */
+	r = gemsafe_get_cert_len(card);
+	if (r != SC_SUCCESS)
+		return SC_ERROR_INTERNAL;
 
-    /* set certs */
-    sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "%s: Setting certificate\n", fn_name);
-    for (i = 0; gemsafe_cert[i].label; i++) {
-	    struct sc_pkcs15_id  p15Id;
+	/* set certs */
+	sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "Setting certificates\n");
+	for (i = 0; i < gemsafe_cert_max; i++) {
+		struct sc_pkcs15_id p15Id;
+		struct sc_path path;
 
-	    sc_format_path(gemsafe_cert[i].path, &path);
-	    if (!gemsafe_get_cert_len(card, &path, &key_ref))
-		    /* skip errors */
-		    continue;
-	    sc_pkcs15_format_id(gemsafe_cert[i].id, &p15Id);
-	    sc_pkcs15emu_add_cert(p15card, SC_PKCS15_TYPE_CERT_X509,
-			    gemsafe_cert[i].authority, &path, &p15Id,
-			    gemsafe_cert[i].label, gemsafe_cert[i].obj_flags);
-    }
-    /* set gemsafe_pin */
-    sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "%s: Setting PIN\n", fn_name);
-    for (i = 0; gemsafe_pin[i].label; i++) {
-	    struct sc_pkcs15_id  p15Id;
+		if (gemsafe_cert[i].label == NULL)
+			continue;
+		sc_format_path(gemsafe_cert[i].path, &path);
+		sc_pkcs15_format_id(gemsafe_cert[i].id, &p15Id);
+		path.index = gemsafe_cert[i].index;
+		path.count = gemsafe_cert[i].count;
+		sc_pkcs15emu_add_cert(p15card, SC_PKCS15_TYPE_CERT_X509,
+				      gemsafe_cert[i].authority, &path, &p15Id,
+				      gemsafe_cert[i].label, gemsafe_cert[i].obj_flags);
+	}
 
-	    sc_pkcs15_format_id(gemsafe_pin[i].id, &p15Id);
-	    sc_pkcs15emu_add_pin(p15card, &p15Id, gemsafe_pin[i].label,
-			    &path, gemsafe_pin[i].ref, gemsafe_pin[i].type,
-			    gemsafe_pin[i].minlen, gemsafe_pin[i].maxlen,
-			    gemsafe_pin[i].flags,
-			    gemsafe_pin[i].tries_left, gemsafe_pin[i].pad_char,
-			    gemsafe_pin[i].obj_flags);
-    }
-    /* set private keys */
-    sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "%s: Setting private key\n", fn_name);
-    for (i = 0; gemsafe_prkeys[i].label; i++) {
-	    struct sc_pkcs15_id p15Id,
-				authId, *pauthId;
-	    sc_pkcs15_format_id(gemsafe_prkeys[i].id, &p15Id);
-	    if (gemsafe_prkeys[i].auth_id) {
-		    sc_pkcs15_format_id(gemsafe_prkeys[i].auth_id, &authId);
-		    pauthId = &authId;
-	    } else
-		    pauthId = NULL;
-			/*
-			 * the key ref may be different for different sites 
-			 * by adding flags=n where the low order 4 bits can be
-			 * the key ref we can force it. 
-			 */
-			if ( p15card->card->flags & 0x0F) {
-				key_ref = p15card->card->flags & 0x0F;
-				sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL,
-					"Overriding key_ref  with %d\n", key_ref);
-			} 
-	    sc_pkcs15emu_add_prkey(p15card, &p15Id, gemsafe_prkeys[i].label,
-			    SC_PKCS15_TYPE_PRKEY_RSA,
-			    gemsafe_prkeys[i].modulus_len, gemsafe_prkeys[i].usage,
-			    &path, key_ref, pauthId,
-			    gemsafe_prkeys[i].obj_flags);
-    }
+	/* set gemsafe_pin */
+	sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "Setting PIN\n");
+	for (i=0; i < gemsafe_pin_max; i++) {
+		struct sc_pkcs15_id	p15Id;
+		struct sc_path path;
 
-    /* select the application DF */
-    sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL,"%s: Selecting application DF\n", fn_name);
-    sc_format_path("3F001600", &path);
-    r = sc_select_file(card, &path, &file);
-    if (r != SC_SUCCESS || !file)
-	    return SC_ERROR_INTERNAL;
-    /* set the application DF */
-    if (p15card->file_app)
-	    free(p15card->file_app);
-    p15card->file_app = file;
+		sc_pkcs15_format_id(gemsafe_pin[i].id, &p15Id);
+		sc_format_path(gemsafe_pin[i].path, &path);
+		if (gemsafe_pin[i].atr_len == 0 ||
+		   (gemsafe_pin[i].atr_len == p15card->card->atr.len &&
+		    memcmp(p15card->card->atr.value, gemsafe_pin[i].atr,
+			   p15card->card->atr.len) == 0)) {
+			sc_pkcs15emu_add_pin(p15card, &p15Id, gemsafe_pin[i].label,
+					     &path, gemsafe_pin[i].ref, gemsafe_pin[i].type,
+					     gemsafe_pin[i].minlen, gemsafe_pin[i].maxlen,
+					     gemsafe_pin[i].flags, gemsafe_pin[i].tries_left,
+					     gemsafe_pin[i].pad_char, gemsafe_pin[i].obj_flags);
+			break;
+		}
+	};
 
-    return SC_SUCCESS;
+	/* set private keys */
+	sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "Setting private keys\n");
+	for (i = 0; i < gemsafe_cert_max; i++) {
+		struct sc_pkcs15_id p15Id, authId, *pauthId;
+		struct sc_path path;
+		int key_ref = 0x03; 
 
+		if (gemsafe_prkeys[i].label == NULL)
+			continue;
+		sc_pkcs15_format_id(gemsafe_prkeys[i].id, &p15Id);
+		if (gemsafe_prkeys[i].auth_id) {
+			sc_pkcs15_format_id(gemsafe_prkeys[i].auth_id, &authId);
+			pauthId = &authId;
+		} else
+			pauthId = NULL;
+		sc_format_path(gemsafe_prkeys[i].path, &path);
+		/* 
+		 * The key ref may be different for different sites;
+		 * by adding flags=n where the low order 4 bits can be
+		 * the key ref we can force it.
+		 */
+		if ( p15card->card->flags & 0x0F) {
+			key_ref = p15card->card->flags & 0x0F;
+			sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL,
+				 "Overriding key_ref %d with %d\n",
+				 gemsafe_prkeys[i].ref, key_ref);
+		} else
+			key_ref = gemsafe_prkeys[i].ref;
+		sc_pkcs15emu_add_prkey(p15card, &p15Id, gemsafe_prkeys[i].label,
+				       SC_PKCS15_TYPE_PRKEY_RSA,
+				       gemsafe_prkeys[i].modulus_len, gemsafe_prkeys[i].usage,
+				       &path, key_ref, pauthId,
+				       gemsafe_prkeys[i].obj_flags);
+	}
+
+	/* select the application DF */
+	sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL,"Selecting application DF\n");
+	sc_format_path(GEMSAFE_APP_PATH, &path);
+	r = sc_select_file(card, &path, &file);
+	if (r != SC_SUCCESS || !file)
+		return SC_ERROR_INTERNAL;
+	/* set the application DF */
+	if (p15card->file_app)
+		free(p15card->file_app);
+	p15card->file_app = file;
+
+	return SC_SUCCESS;
 }
 
 int sc_pkcs15emu_gemsafeV1_init_ex( sc_pkcs15_card_t *p15card,
 			sc_pkcs15emu_opt_t *opts)
 {
-    if (opts && opts->flags & SC_PKCS15EMU_FLAGS_NO_CHECK)
-	    return sc_pkcs15emu_gemsafeV1_init(p15card);
-    else {
-	    int r = gemsafe_detect_card(p15card);
-	    if (r)
-		    return SC_ERROR_WRONG_CARD;
-	    return sc_pkcs15emu_gemsafeV1_init(p15card);
-    }
+	if (opts && opts->flags & SC_PKCS15EMU_FLAGS_NO_CHECK)
+		return sc_pkcs15emu_gemsafeV1_init(p15card);
+	else {
+		int r = gemsafe_detect_card(p15card);
+		if (r)
+			return SC_ERROR_WRONG_CARD;
+		return sc_pkcs15emu_gemsafeV1_init(p15card);
+	}
 }
 
 static sc_pkcs15_df_t *
@@ -462,7 +561,6 @@ sc_pkcs15emu_add_cert(sc_pkcs15_card_t *p15card,
 		const sc_pkcs15_id_t *id,
                 const char *label, int obj_flags)
 {
-	/* const char *label = "Certificate"; */
 	sc_pkcs15_cert_info_t *info;
 	info = calloc(1, sizeof(*info));
 	info->id		= *id;

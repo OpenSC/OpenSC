@@ -2,7 +2,7 @@
  * reader-pcsc.c: Reader driver for PC/SC interface
  *
  * Copyright (C) 2002  Juha Yrjölä <juha.yrjola@iki.fi>
- * Copyright (C) 2009,2010 Martin Paljak <martin@paljak.pri.ee>
+ * Copyright (C) 2009,2010 Martin Paljak <martin@martinpaljak.net>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public

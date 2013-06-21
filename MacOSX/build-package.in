@@ -1,33 +1,30 @@
 #!/bin/bash
+# Building the installer is only tested and supported on 10.7 with Xcode 4.2.1
+# Built package targets 10.6, 10.7 and 10.8
+# Building should also work on other versions, YMMV
+
 set -ex
-OSX_RELEASE=${1:-10.6}
-INTEL_ONLY=${INTEL_ONLY:-no}
 test -x ./configure || ./bootstrap
 BUILDPATH=${PWD}
-case ${OSX_RELEASE} in
-	"10.5")
-		if test ${INTEL_ONLY} = "yes"; then
-			export CFLAGS="-isysroot /Developer/SDKs/MacOSX10.5.sdk -arch i386 -mmacosx-version-min=10.5 -g"
-		else
-			export CFLAGS="-isysroot /Developer/SDKs/MacOSX10.5.sdk -arch i386 -arch ppc7400 -mmacosx-version-min=10.5 -g"
-		fi
-	;;
-	"10.6")
-		export CFLAGS="-isysroot /Developer/SDKs/MacOSX10.6.sdk -arch i386 -arch x86_64 -mmacosx-version-min=10.6 -g"
+
+# Use new locations for SDK on 10.8 with Xcode 4.6 (?)
+OSX_RELEASE=`sw_vers -productVersion`
+case ${OSX_RELEASE:0:4} in
+	"10.8")
+		SYSROOT="/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.8.sdk"
+		PKGMAKER="/Applications/PackageMaker.app/Contents/MacOS/PackageMaker"		
 	;;
 	*)
-		echo "OSX ${OSX_RELEASE} is not supported!"
-		exit 1
+		SYSROOT="/Developer/SDKs/MacOSX10.6.sdk"
+		PKGMAKER="/Developer/Applications/Utilities/PackageMaker.app/Contents/MacOS/PackageMaker"
 	;;
 esac
+
+export CFLAGS="-isysroot $SYSROOT -arch i386 -arch x86_64 -mmacosx-version-min=10.6"
 
 export SED=/usr/bin/sed
 PREFIX=/Library/OpenSC
 export PKG_CONFIG_PATH=/usr/lib/pkgconfig
-
-# In case of OSX 10.5, link against static libltdl to work around
-# missing libltdl.3.dylib in 10.5 PPC version
-test ${OSX_RELEASE} = "10.5" && export LTLIB_LIBS="/Developer/SDKs/MacOSX10.5.sdk/usr/lib/libltdl.a"
 
 ./configure --prefix=$PREFIX \
 --sysconfdir=$PREFIX/etc \
@@ -35,18 +32,11 @@ test ${OSX_RELEASE} = "10.5" && export LTLIB_LIBS="/Developer/SDKs/MacOSX10.5.sd
 --enable-shared \
 --disable-static \
 --enable-strict \
---disable-assert
+--disable-assert \
+--enable-sm # TODO: remove this
 
-
-# check if make install is required
-case "${OSX_RELEASE}" in
-	"10.5") if test ${INTEL_ONLY} = "yes"; then required_arch="i386"; else required_arch="ppc7400"; fi ;;
-	"10.6") required_arch="x86_64" ;;
-esac
-
-if !(test -e src/libopensc/.libs/libopensc.dylib && (file src/libopensc/.libs/libopensc.dylib | grep $required_arch)); then
-	make clean
-fi
+# always make clean
+make clean
 
 # compile
 make -j 2
@@ -61,52 +51,35 @@ rm -f target/Library/OpenSC/lib/*.la
 # generate .bundle (required by Adobe Acrobat)
 ./MacOSX/libtool-bundle target/Library/OpenSC/lib/opensc-pkcs11.so target/Library/OpenSC/lib
 
-if test ${OSX_RELEASE} = "10.6"; then
-	# Build libp11+engine_pkcs11. Attention! Uses modified branches from github!
-	test -d libp11 || git clone http://github.com/martinpaljak/libp11.git -b martin
-	(cd libp11
-	test -x confiure || ./bootstrap
-	./configure --enable-static --disable-shared --disable-dependency-tracking --prefix=${BUILDPATH}/build && make && make install
-	cd ..)
-	test -d engine_pkcs11 || git clone http://github.com/martinpaljak/engine_pkcs11.git -b martin
-	(cd engine_pkcs11
-	git checkout origin/martin
-	test -x configure || ./bootstrap
-	PKG_CONFIG_PATH=${BUILDPATH}/build/lib/pkgconfig:${PKG_CONFIG_PATH} ./configure --disable-dependency-tracking --prefix=/Library/OpenSC && make
-	make install DESTDIR=${BUILDPATH}/target)
-fi
+# Build engine_pkcs11 + libp11
+test -d libp11 || git clone http://github.com/OpenSC/libp11.git
+(cd libp11
+test -x confiure || ./bootstrap
+./configure --enable-static --disable-shared --disable-dependency-tracking --prefix=${BUILDPATH}/build && make && make install)
+test -d engine_pkcs11 || git clone http://github.com/OpenSC/engine_pkcs11.git
+(cd engine_pkcs11
+test -x configure || ./bootstrap
+PKG_CONFIG_PATH=${BUILDPATH}/build/lib/pkgconfig:${PKG_CONFIG_PATH} ./configure --disable-dependency-tracking --prefix=/Library/OpenSC && make install DESTDIR=${BUILDPATH}/target)
 
+# Check out OpenSC.tokend, if not already fetched.
 if ! test -e OpenSC.tokend; then
-	git clone http://github.com/martinpaljak/OpenSC.tokend.git
+	git clone http://github.com/OpenSC/OpenSC.tokend.git
 fi
 
-# refresh remote branches, in case the script has changed the active branch and existing buildslave checkout is used.
-git --git-dir OpenSC.tokend/.git --work-tree OpenSC.tokend fetch --all
+# Fetch binary dependencies
+if ! test -f build-10.6.tar.gz; then
+	curl -O https://www.opensc-project.org/downloads/build-10.6.tar.gz
+fi
 
-case "${OSX_RELEASE}" in
-	"10.5") git --git-dir OpenSC.tokend/.git --work-tree OpenSC.tokend checkout --force origin/10.5-0.12.2; rm -rf OpenSC.tokend/build
-		if test ${INTEL_ONLY} = "yes"; then
-			sed -e 's/ ppc7400//g' OpenSC.tokend/Tokend.xcodeproj/project.pbxproj > project.tmp
-			mv project.tmp OpenSC.tokend/Tokend.xcodeproj/project.pbxproj
-		fi
-	;;
-	"10.6") git --git-dir OpenSC.tokend/.git --work-tree OpenSC.tokend checkout --force origin/10.6-0.12.2; rm -rf OpenSC.tokend/build ;;
-esac
-
-if ! test -e build-${OSX_RELEASE}.tar.gz; then
-	case ${OSX_RELEASE} in
-	"10.5")
-		curl http://martinpaljak.net/download/build-10.5.tar.gz -o build-${OSX_RELEASE}.tar.gz
-	;;
-	"10.6")
-		curl http://martinpaljak.net/download/build-10.6.tar.gz -o build-${OSX_RELEASE}.tar.gz
-	;;
-	esac
+# Check for correctness
+if ! test $(md5 -q build-10.6.tar.gz) == "5686fb4dda6e9f1f07d06293a25fdd37"; then
+	echo "MD5 of binary components does not match!"
+	exit 1
 fi
 
 # Unpack the binary building components
 if ! test -e OpenSC.tokend/build; then
-	tar -C OpenSC.tokend -xzvf build-${OSX_RELEASE}.tar.gz
+	tar -C OpenSC.tokend -xzvf build-10.6.tar.gz
 fi
 
 # Create the symlink to OpenSC sources
@@ -122,20 +95,20 @@ mkdir -p target/usr/local/bin
 cp MacOSX/opensc-uninstall target/usr/local/bin
 
 # Build installer package
-/Developer/Applications/Utilities/PackageMaker.app/Contents/MacOS/PackageMaker \
+${PKGMAKER} \
 -r target \
--o OpenSC-@PACKAGE_VERSION@-${OSX_RELEASE}.pkg \
--t "OpenSC @PACKAGE_VERSION@ for Mac OS X ${OSX_RELEASE}" \
+-o OpenSC-@PACKAGE_VERSION@.pkg \
+-t "OpenSC @PACKAGE_VERSION@ for Mac OS X 10.6+" \
 -i org.opensc-project.mac \
 -n @PACKAGE_VERSION@ \
 -g 10.4 \
 -b \
 -v \
 --no-relocate \
--e MacOSX/${OSX_RELEASE}/resources \
--s MacOSX/${OSX_RELEASE}/scripts
+-e MacOSX/resources \
+-s MacOSX/scripts
 
 # Create .dmg
-rm -f OpenSC-@PACKAGE_VERSION@-${OSX_RELEASE}.dmg
+rm -f OpenSC-@PACKAGE_VERSION@.dmg
 TIMESTAMP=$(date +%Y.%m.%d)
-hdiutil create -srcfolder OpenSC-@PACKAGE_VERSION@-${OSX_RELEASE}.pkg -volname "OpenSC @PACKAGE_VERSION@ for Mac OS X ${OSX_RELEASE} (${TIMESTAMP})" OpenSC-@PACKAGE_VERSION@-${OSX_RELEASE}.dmg
+hdiutil create -srcfolder OpenSC-@PACKAGE_VERSION@.pkg -volname "OpenSC @PACKAGE_VERSION@ for Mac OS X 10.6+ (${TIMESTAMP})" OpenSC-@PACKAGE_VERSION@.dmg
