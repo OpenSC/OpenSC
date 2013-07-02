@@ -129,7 +129,7 @@ static void sc_do_log_va(sc_context_t *ctx, int level, const char *file, int lin
 
 #ifdef _WIN32
 	if (ctx->debug_filename)   {
-		fclose(ctx->debug_file);
+		if(ctx->debug_file) fclose(ctx->debug_file);
 		ctx->debug_file = NULL;
 	}
 #endif
