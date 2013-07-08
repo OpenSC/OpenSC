@@ -177,8 +177,9 @@ struct sc_crt {
 #define SC_AC_OP_CREATE_EF		27
 #define SC_AC_OP_CREATE_DF		28
 #define SC_AC_OP_ADMIN			29
+#define SC_AC_OP_PIN_USE		30
 /* If you add more OPs here, make sure you increase SC_MAX_AC_OPS*/
-#define SC_MAX_AC_OPS			30
+#define SC_MAX_AC_OPS			31
 
 /* the use of SC_AC_OP_ERASE is deprecated, SC_AC_OP_DELETE should be used
  * instead  */

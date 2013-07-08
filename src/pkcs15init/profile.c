@@ -112,6 +112,8 @@ static struct map		fileOpNames[] = {
 	{ "DELETE",	SC_AC_OP_DELETE	},
 	{ "DELETE-SELF",SC_AC_OP_DELETE_SELF },
 	{ "CREATE",	SC_AC_OP_CREATE	},
+	{ "CREATE-EF",	SC_AC_OP_CREATE_EF	},
+	{ "CREATE-DF",	SC_AC_OP_CREATE_DF	},
 	{ "REHABILITATE",SC_AC_OP_REHABILITATE	},
 	{ "INVALIDATE",	SC_AC_OP_INVALIDATE	},
 	{ "FILES",	SC_AC_OP_LIST_FILES	},
@@ -123,12 +125,15 @@ static struct map		fileOpNames[] = {
         { "PIN-DEFINE", SC_AC_OP_PIN_DEFINE },
         { "PIN-CHANGE", SC_AC_OP_PIN_CHANGE },
         { "PIN-RESET",  SC_AC_OP_PIN_RESET },
+        { "PIN-USE",	SC_AC_OP_PIN_USE },
 	{ "GENERATE",	SC_AC_OP_GENERATE },
 	{ "PSO-COMPUTE-SIGNATURE",	SC_AC_OP_PSO_COMPUTE_SIGNATURE },
 	{ "INTERNAL-AUTHENTICATE",	SC_AC_OP_INTERNAL_AUTHENTICATE },
 	{ "PSO-DECRYPT",		SC_AC_OP_PSO_DECRYPT },
 	{ "RESIZE",	SC_AC_OP_RESIZE },
 	{ "ADMIN",	SC_AC_OP_ADMIN	},
+	{ "ACTIVATE",	SC_AC_OP_ACTIVATE },
+	{ "DEACTIVATE",	SC_AC_OP_DEACTIVATE },
 	{ NULL, 0 }
 };
 static struct map		fileTypeNames[] = {
@@ -501,6 +506,9 @@ sc_profile_get_pin_info(struct sc_profile *profile,
 	pi = new_pin(profile, id);
 	if (pi == NULL)
 		return;
+
+	pi->pin.tries_left = pi->pin.tries_left;
+	pi->pin.max_tries = pi->pin.tries_left;
 	*info = pi->pin;
 }
 
@@ -1440,9 +1448,10 @@ do_acl(struct state *cur, int argc, char **argv)
 			method = SC_AC_SYMBOLIC;
 			if (map_str2int(cur, what+1, &id, pinIdNames))
 				return 1;
-		} else
-		if (get_authid(cur, what, &method, &id))
+		}
+		else if (get_authid(cur, what, &method, &id))
 			goto bad;
+
 
 		if (!strcmp(oper, "*")) {
 			for (op = 0; op < SC_MAX_AC_OPS; op++) {
@@ -1459,6 +1468,7 @@ do_acl(struct state *cur, int argc, char **argv)
 			 || acl->method == SC_AC_NONE
 			 || acl->method == SC_AC_UNKNOWN)
 				sc_file_clear_acl_entries(file, op);
+
 			sc_file_add_acl_entry(file, op, method, id);
 		}
 	}
