@@ -807,7 +807,6 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 			pin_attrs->flags |= SC_PKCS15_PIN_FLAG_UNBLOCK_DISABLED;
 
 		pin_obj = sc_pkcs15init_new_object(SC_PKCS15_TYPE_AUTH_PIN, pin_label, NULL, &pin_ainfo);
-
 		if (pin_obj)   {
 			/* When composing ACLs to create 'DIR' DF,
 			 *	the references of the not-yet-existing PINs can be requested.
@@ -2838,6 +2837,7 @@ sc_pkcs15init_change_attrib(struct sc_pkcs15_card *p15card, struct sc_profile *p
 	struct sc_pkcs15_df *df;
 	struct sc_pkcs15_id new_id = *((struct sc_pkcs15_id *) new_value);
 
+	LOG_FUNC_CALLED(ctx);
 	if (object == NULL || object->df == NULL)
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Cannot change attribute");
 	df_type = object->df->type;
@@ -2846,6 +2846,7 @@ sc_pkcs15init_change_attrib(struct sc_pkcs15_card *p15card, struct sc_profile *p
 	if (df == NULL)
 		LOG_TEST_RET(ctx, SC_ERROR_OBJECT_NOT_FOUND, "Cannot change attribute");
 
+	sc_log(ctx, "type of attribute to change %i; DF type %i", new_attrib_type, df_type);
 	switch(new_attrib_type)   {
 	case P15_ATTR_TYPE_LABEL:
 		if (new_len >= SC_PKCS15_MAX_LABEL_SIZE)
@@ -2893,7 +2894,9 @@ sc_pkcs15init_change_attrib(struct sc_pkcs15_card *p15card, struct sc_profile *p
 		}
 	}
 
-	return r < 0 ? r : 0;
+	if (r > 0)
+		r = 0;
+	LOG_FUNC_RETURN(ctx, r);
 }
 
 
@@ -3734,21 +3737,22 @@ sc_pkcs15init_qualify_pin(struct sc_card *card, const char *pin_name,
 	struct sc_context *ctx = card->ctx;
 	struct sc_pkcs15_pin_attributes *pin_attrs;
 
+	LOG_FUNC_CALLED(ctx);
 	if (pin_len == 0 || auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
-		return SC_SUCCESS;
+		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 
 	pin_attrs = &auth_info->attrs.pin;
 
 	if (pin_len < pin_attrs->min_length) {
 		sc_log(ctx, "%s too short (min length %u)", pin_name, pin_attrs->min_length);
-		return SC_ERROR_WRONG_LENGTH;
+		LOG_FUNC_RETURN(ctx, SC_ERROR_WRONG_LENGTH);
 	}
 	if (pin_len > pin_attrs->max_length) {
 		sc_log(ctx, "%s too long (max length %u)", pin_name, pin_attrs->max_length);
-		return SC_ERROR_WRONG_LENGTH;
+		LOG_FUNC_RETURN(ctx, SC_ERROR_WRONG_LENGTH);
 	}
 
-	return SC_SUCCESS;
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
 
