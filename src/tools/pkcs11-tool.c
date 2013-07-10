@@ -389,7 +389,9 @@ int main(int argc, char * argv[])
 	CK_RV rv;
 
 #ifdef _WIN32
-	if (_set_fmode(_O_BINARY) == EINVAL)
+	if(_setmode(_fileno(stdout), _O_BINARY ) == -1)
+		util_fatal("Cannot set FMODE to O_BINARY");
+	if(_setmode(_fileno(stdin), _O_BINARY ) == -1)
 		util_fatal("Cannot set FMODE to O_BINARY");
 #endif
 
@@ -1458,7 +1460,7 @@ static void hash_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 
 	if (opt_input == NULL)
 		fd = 0;
-	else if ((fd = open(opt_input, O_RDONLY)) < 0)
+	else if ((fd = open(opt_input, O_RDONLY|O_BINARY)) < 0)
 		util_fatal("Cannot open %s: %m", opt_input);
 
 	while ((r = read(fd, buffer, sizeof(buffer))) > 0) {
