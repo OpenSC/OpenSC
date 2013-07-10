@@ -164,12 +164,14 @@ static int	lock_card(struct pkcs15_fw_data *);
 static int	unlock_card(struct pkcs15_fw_data *);
 static int	reselect_app_df(sc_pkcs15_card_t *p15card);
 
+#ifdef USE_PKCS15_INIT
 static CK_RV	set_gost_params(struct sc_pkcs15init_keyarg_gost_params *,
 			struct sc_pkcs15init_keyarg_gost_params *,
 			CK_ATTRIBUTE_PTR, CK_ULONG, CK_ATTRIBUTE_PTR, CK_ULONG);
 static CK_RV	pkcs15_create_slot(struct sc_pkcs11_card *p11card, struct pkcs15_fw_data *fw_data,
 			struct sc_pkcs15_object *auth, struct sc_app_info *app,
 			struct sc_pkcs11_slot **out);
+#endif
 
 /* Returns WF data corresponding to the given application or,
  * if application info is not supplied, returns first available WF data. */
@@ -2721,6 +2723,9 @@ kpgen_done:
 static CK_RV
 pkcs15_skey_destroy(struct sc_pkcs11_session *session, void *object)
 {
+#ifndef USE_PKCS15_INIT
+	return CKR_FUNCTION_NOT_SUPPORTED;
+#else
 	struct pkcs15_any_object *any_obj = (struct pkcs15_any_object*) object;
 	struct sc_pkcs11_card *p11card = session->slot->card;
 	struct pkcs15_fw_data *fw_data = NULL;
@@ -2746,6 +2751,7 @@ pkcs15_skey_destroy(struct sc_pkcs11_session *session, void *object)
 		return sc_to_cryptoki_error(rv, "C_DestroyObject");
 
 	return CKR_OK;
+#endif
 }
 
 static CK_RV
@@ -2852,12 +2858,13 @@ struct sc_pkcs11_framework_ops framework_pkcs15 = {
 	pkcs15_login,
 	pkcs15_logout,
 	pkcs15_change_pin,
-	pkcs15_initialize,
 #ifdef USE_PKCS15_INIT
+	pkcs15_initialize,
 	pkcs15_init_pin,
 	pkcs15_create_object,
 	pkcs15_gen_keypair,
 #else
+	NULL,
 	NULL,
 	NULL,
 	NULL,
