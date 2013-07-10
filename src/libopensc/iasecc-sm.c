@@ -26,16 +26,13 @@
 #include "asn1.h"
 #include "cardctl.h"
 
-#ifndef ENABLE_OPENSSL
-#error "Need OpenSSL"
-#endif
-
 #include "sm.h"
 #include "iasecc.h"
 #include "authentic.h"
 
 
 #ifdef ENABLE_SM
+
 static int
 sm_save_sc_context (struct sc_card *card, struct sm_info *sm_info)
 {
