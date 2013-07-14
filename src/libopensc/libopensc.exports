@@ -97,6 +97,7 @@ sc_file_new
 sc_file_set_prop_attr
 sc_file_set_sec_attr
 sc_file_set_type_attr
+sc_file_set_content
 sc_file_valid
 sc_format_apdu
 sc_bytes2apdu

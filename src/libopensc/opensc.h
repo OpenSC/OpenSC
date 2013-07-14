@@ -1139,6 +1139,8 @@ int sc_file_set_prop_attr(sc_file_t *file, const u8 *prop_attr,
 			  size_t prop_attr_len);
 int sc_file_set_type_attr(sc_file_t *file, const u8 *type_attr,
 			  size_t type_attr_len);
+int sc_file_set_content(sc_file_t *file, const u8 *content,
+			  size_t content_len);
 
 
 /********************************************************************/

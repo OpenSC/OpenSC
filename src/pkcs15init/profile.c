@@ -1349,6 +1349,36 @@ do_reclength(struct state *cur, int argc, char **argv)
 }
 
 static int
+do_content(struct state *cur, int argc, char **argv)
+{
+	struct sc_file *file = cur->file->file;
+	size_t len = (strlen(argv[0]) + 1) / 2;
+	int rv = 0;
+
+	file->encoded_content = malloc(len);
+	if (!file->encoded_content)
+		return 1;
+	rv = sc_hex_to_bin(argv[0], file->encoded_content, &len);
+	file->encoded_content_len = len;
+	return rv;
+}
+
+static int
+do_prop_attr(struct state *cur, int argc, char **argv)
+{
+	struct sc_file *file = cur->file->file;
+	size_t len = (strlen(argv[0]) + 1) / 2;
+	int rv = 0;
+
+	file->prop_attr = malloc(len);
+	if (!file->prop_attr)
+		return 1;
+	rv = sc_hex_to_bin(argv[0], file->prop_attr, &len);
+	file->prop_attr_len = len;
+	return rv;
+}
+
+static int
 do_aid(struct state *cur, int argc, char **argv)
 {
 	struct sc_file	*file = cur->file->file;
@@ -1765,6 +1795,8 @@ static struct command	fs_commands[] = {
  { "profile-extension",	1,	1,	do_profile_extension	},
 /* AID of the DFs without file-id */
  { "exclusive-aid",	1,	1,	do_exclusive_aid	},
+ { "content",		1,	1,	do_content	},
+ { "prop-attr",		1,	1,	do_prop_attr	},
 
  { NULL, 0, 0, NULL }
 };
