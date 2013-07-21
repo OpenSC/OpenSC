@@ -2528,7 +2528,6 @@ static int
 sc_pkcs15init_update_tokeninfo(struct sc_pkcs15_card *p15card, struct sc_profile *profile)
 {
 	struct sc_context *ctx = p15card->card->ctx;
-	struct sc_card	*card = p15card->card;
 	struct sc_pkcs15_tokeninfo tokeninfo;
 	unsigned char	*buf = NULL;
 	size_t		size;
