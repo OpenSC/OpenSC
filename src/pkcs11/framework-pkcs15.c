@@ -1113,6 +1113,10 @@ _add_pin_related_objects(struct sc_pkcs11_slot *slot, struct sc_pkcs15_object *p
 			continue;
 		sc_log(context, "ObjID(%p,%s,%x):%s", obj, obj->p15_object->label,
 				obj->p15_object->type, sc_pkcs15_print_id(&obj->p15_object->auth_id));
+		/* fix problems related to entersafe cards formatted in Windows */
+		if ((strcmp(slot->card->card->driver->short_name,"entersafe") == 0) &&
+			(obj->p15_object->auth_id.len > pin_info->auth_id.len))
+			obj->p15_object->auth_id.len = pin_info->auth_id.len;
 		if (!sc_pkcs15_compare_id(&pin_info->auth_id, &obj->p15_object->auth_id))   {
 			sc_log(context, "Ignoring object %d", i);
 			continue;
