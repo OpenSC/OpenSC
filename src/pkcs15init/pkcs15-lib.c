@@ -114,7 +114,7 @@ static int	check_key_compatibility(struct sc_pkcs15_card *,
 static int	prkey_fixup(struct sc_pkcs15_card *, struct sc_pkcs15_prkey *);
 static int	prkey_bits(struct sc_pkcs15_card *, struct sc_pkcs15_prkey *);
 static int	prkey_pkcs15_algo(struct sc_pkcs15_card *, struct sc_pkcs15_prkey *);
-static int 	select_intrinsic_id(struct sc_pkcs15_card *, struct sc_profile *,
+static int	select_intrinsic_id(struct sc_pkcs15_card *, struct sc_profile *,
 			int, struct sc_pkcs15_id *, void *);
 static int	select_id(struct sc_pkcs15_card *, int, struct sc_pkcs15_id *);
 static int	select_object_path(struct sc_pkcs15_card *, struct sc_profile *,
@@ -122,8 +122,8 @@ static int	select_object_path(struct sc_pkcs15_card *, struct sc_profile *,
 static int	sc_pkcs15init_get_pin_path(struct sc_pkcs15_card *,
 			struct sc_pkcs15_id *, struct sc_path *);
 static int	sc_pkcs15init_qualify_pin(struct sc_card *, const char *,
-	       		unsigned int, struct sc_pkcs15_auth_info *);
-static struct sc_pkcs15_df * find_df_by_type(struct sc_pkcs15_card *,
+		unsigned int, struct sc_pkcs15_auth_info *);
+static struct	sc_pkcs15_df * find_df_by_type(struct sc_pkcs15_card *,
 			unsigned int);
 static int	sc_pkcs15init_read_info(struct sc_card *card, struct sc_profile *);
 static int	sc_pkcs15init_parse_info(struct sc_card *, const unsigned char *, size_t,
@@ -341,13 +341,13 @@ sc_pkcs15init_bind(struct sc_card *card, const char *name, const char *profile_o
 				profile->options[i++] = strdup(s);
 		}
 	}
-#if 0
+
 	r = sc_pkcs15init_read_info(card, profile);
 	if (r < 0) {
 		sc_profile_free(profile);
 		LOG_TEST_RET(ctx, r, "Read info error");
 	}
-#endif
+
 	/* Check the config file for a profile name.
 	 * If none is defined, use the default profile name.
 	 */
@@ -545,7 +545,7 @@ sc_pkcs15init_erase_card_recursively(struct sc_pkcs15_card *p15card,
 
 
 int
-sc_pkcs15init_delete_by_path(struct sc_profile *profile, struct sc_pkcs15_card *p15card, 
+sc_pkcs15init_delete_by_path(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 		const struct sc_path *file_path)
 {
 	struct sc_context *ctx = p15card->card->ctx;
@@ -800,7 +800,7 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 
 		if (pin_obj)   {
 			/* When composing ACLs to create 'DIR' DF,
-			 * 	the references of the not-yet-existing PINs can be requested.
+			 *	the references of the not-yet-existing PINs can be requested.
 			 * For this, create a 'virtual' AUTH object 'SO PIN', accessible by the card specific part,
 			 * but not yet written into the on-card PKCS#15.
 			 */
@@ -1463,7 +1463,7 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
 	struct sc_pkcs15_pubkey_info *key_info;
 	struct sc_pkcs15_keyinfo_gostparams *keyinfo_gostparams;
 	struct sc_pkcs15_pubkey key;
-	struct sc_path 	*path;
+	struct sc_path	*path;
 	const char	*label;
 	unsigned int	keybits, type, usage;
 	int		r;
@@ -1807,7 +1807,7 @@ sc_pkcs15init_get_pin_reference(struct sc_pkcs15_card *p15card,
 	}
 
 	/* 2. No existing pkcs15 PIN object
-	 * 	-- check if profile defines some PIN with 'reference' as PIN reference. */
+	 *	-- check if profile defines some PIN with 'reference' as PIN reference. */
 	r = sc_profile_get_pin_id_by_reference(profile, auth_method, reference, &auth_info);
 	if (r < 0)
 		LOG_TEST_RET(ctx, SC_ERROR_OBJECT_NOT_FOUND, "PIN template not found");
@@ -2113,7 +2113,7 @@ prkey_bits(struct sc_pkcs15_card *p15card, struct sc_pkcs15_prkey *key)
 			sc_log(ctx, "Unsupported key (keybits %u)", sc_pkcs15init_keybits(&key->u.gostr3410.d));
 			return SC_ERROR_OBJECT_NOT_VALID;
 		}
-		return SC_PKCS15_GOSTR3410_KEYSIZE;		
+		return SC_PKCS15_GOSTR3410_KEYSIZE;
 	case SC_ALGORITHM_EC:
 		/* calculation returns one bit too small, add one bu default */
 		sc_log(ctx, "Private EC key length %u", sc_pkcs15init_keybits(&key->u.ec.privateD) + 1);
@@ -2208,7 +2208,7 @@ select_intrinsic_id(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 	else if (pubkey->algorithm == SC_ALGORITHM_GOSTR3410 &&
 			!pubkey->u.gostr3410.xy.data)
 		goto done;
-	else if (pubkey->algorithm == SC_ALGORITHM_EC && !pubkey->u.ec.ecpointQ.value)		
+	else if (pubkey->algorithm == SC_ALGORITHM_EC && !pubkey->u.ec.ecpointQ.value)
 		goto done;
 
 	/* In Mozilla 'GOST R 34.10' is not yet supported.
@@ -2320,14 +2320,14 @@ select_id(struct sc_pkcs15_card *p15card, int type, struct sc_pkcs15_id *id)
 /*
  * Select a path for a new object
  *  1.	If the object is to be protected by a PIN, use the path
- *  	given in the PIN auth object
+ *	given in the PIN auth object
  *  2.	Otherwise, use the path of the application DF
  *  3.	If the profile defines a key-dir template, the new object
- *  	should go into a subdirectory of the selected DF:
- *  	Instantiate the template, using the ID of the new object
- *  	to uniquify the path. Inside the instantiated template,
- *  	look for a file corresponding to the type of object we
- *  	wish to create ("private-key", "public-key" etc).
+ *	should go into a subdirectory of the selected DF:
+ *	Instantiate the template, using the ID of the new object
+ *	to uniquify the path. Inside the instantiated template,
+ *	look for a file corresponding to the type of object we
+ *	wish to create ("private-key", "public-key" etc).
  */
 static const char *
 get_template_name_from_object (struct sc_pkcs15_object *obj)
@@ -3004,8 +3004,8 @@ sc_pkcs15init_update_certificate(struct sc_pkcs15_card *p15card,
 		if (r < 0 && r != SC_ERROR_NOT_SUPPORTED)
 			goto done;
 
- 		r = sc_create_file(p15card->card, file);
- 		if (r < 0)   {
+		r = sc_create_file(p15card->card, file);
+		if (r < 0)   {
 			sc_log(ctx, "Cannot create cert file");
 			goto done;
 		}
@@ -3016,7 +3016,7 @@ sc_pkcs15init_update_certificate(struct sc_pkcs15_card *p15card,
 
 		/* FCI of selected cert file do not contains ACLs.
 		 * For the 'UPDATE' authentication use instead sc_file
-		 * 	instantiated from card profile with default ACLs. */
+		 *	instantiated from card profile with default ACLs. */
 		sc_file_free(file);
 
 		r = select_object_path(p15card, profile, obj, &tmp_path);
