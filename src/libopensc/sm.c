@@ -27,6 +27,7 @@
 
 #include "internal.h"
 #include "asn1.h"
+#include "sm.h"
 
 static const struct sc_asn1_entry c_asn1_sm_response[4] = {
 	{ "encryptedData",	SC_ASN1_OCTET_STRING,   SC_ASN1_CTX | 7,        SC_ASN1_OPTIONAL,       NULL, NULL },
@@ -160,14 +161,14 @@ sc_sm_single_transmit(struct sc_card *card, struct sc_apdu *apdu)
 }
 #else
 int
-sc_sm_parse_answer(struct sc_context *ctx, unsigned char *resp_data, size_t resp_len,
+sc_sm_parse_answer(struct sc_card *card, unsigned char *resp_data, size_t resp_len,
 		struct sm_card_response *out)
 {
 	return SC_ERROR_NOT_SUPPORTED;
 }
 int
-sc_sm_update_apdu_response(struct sc_card *card, unsigned char *resp_data, size_t resp_len, int ref_rv,
-		struct sc_apdu *apdu)
+sc_sm_update_apdu_response(struct sc_card *card, unsigned char *resp_data, size_t resp_len,
+		int ref_rv, struct sc_apdu *apdu)
 {
 	return SC_ERROR_NOT_SUPPORTED;
 }
