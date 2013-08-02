@@ -6,6 +6,6 @@ SUBDIRS = common scconf pkcs15init libopensc pkcs11 \
 	tools tests minidriver
 
 if ENABLE_SM
-SUBDIRS += smm libsm
+SUBDIRS += libsm smm
 endif
 
