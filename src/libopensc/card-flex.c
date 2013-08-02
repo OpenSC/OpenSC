@@ -539,10 +539,8 @@ static int select_file_id(sc_card_t *card, const u8 *buf, size_t buflen,
 	sc_apdu_t apdu;
         u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
         sc_file_t *file;
-	char	debug_buf[32];
 
-	sc_bin_to_hex(buf, buflen, debug_buf, sizeof(debug_buf), 0);
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "called, p1=%u, path=%s\n", p1, debug_buf);
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "called, p1=%u, path=%s\n", p1, sc_dump_hex(buf, buflen));
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xA4, p1, 0);
 	apdu.resp = rbuf;

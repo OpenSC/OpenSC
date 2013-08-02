@@ -172,7 +172,7 @@ void sc_hex_dump(struct sc_context *ctx, int level, const u8 * in, size_t count,
 	if (ctx->debug < level)
 		return;
 
-	assert(buf != NULL && in != NULL);
+	assert(buf != NULL && (in != NULL || count == 0));
 	buf[0] = 0;
 	if ((count * 5) > len)
 		return;
