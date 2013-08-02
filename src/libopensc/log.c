@@ -113,8 +113,11 @@ static void sc_do_log_va(sc_context_t *ctx, int level, const char *file, int lin
 		return;
 
 #ifdef _WIN32
-	if (ctx->debug_filename)
-		sc_ctx_log_to_file(ctx, ctx->debug_filename);
+	if (ctx->debug_filename)   {
+		r = sc_ctx_log_to_file(ctx, ctx->debug_filename);
+		if (r < 0)
+			return;
+	}
 #endif
 
 	outf = ctx->debug_file;
@@ -129,8 +132,10 @@ static void sc_do_log_va(sc_context_t *ctx, int level, const char *file, int lin
 
 #ifdef _WIN32
 	if (ctx->debug_filename)   {
-		fclose(ctx->debug_file);
-		ctx->debug_file = NULL;
+		if (ctx->debug_file && (ctx->debug_file != stderr && ctx->debug_file != stdout))   {
+			fclose(ctx->debug_file);
+			ctx->debug_file = NULL;
+		}
 	}
 #endif
 

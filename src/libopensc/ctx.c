@@ -199,8 +199,10 @@ static void set_defaults(sc_context_t *ctx, struct _sc_ctx_options *opts)
 int sc_ctx_log_to_file(sc_context_t *ctx, const char* filename)
 {
 	/* Close any existing handles */
-	if (ctx->debug_file && (ctx->debug_file != stderr && ctx->debug_file != stdout))
+	if (ctx->debug_file && (ctx->debug_file != stderr && ctx->debug_file != stdout))   {
 		fclose(ctx->debug_file);
+		ctx->debug_file = NULL;
+	}
 
 	/* Handle special names */
 	if (!strcmp(filename, "stdout"))
