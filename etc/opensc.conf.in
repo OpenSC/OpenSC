@@ -45,6 +45,12 @@ app default {
 	#
 	# paranoid_memory = false;
 
+        # Enable default card driver
+        # Default card driver is explicitely enabled for the 'opensc-explorer' and 'opensc-tool'.
+        #
+        # Default: false
+        # enable_default_driver = true;
+
 	# CT-API module configuration.
 	reader_driver ctapi {
 		# module @libdir@/libtowitoko.so {

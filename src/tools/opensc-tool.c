@@ -751,6 +751,8 @@ int main(int argc, char * const argv[])
 		return 1;
 	}
 
+	ctx->enable_default_driver = 1;
+
 	if (verbose > 1) {
 		ctx->debug = verbose;
 		sc_ctx_log_to_file(ctx, "stderr");

@@ -229,15 +229,22 @@ int sc_connect_card(sc_reader_t *reader, sc_card_t **card_out)
 				goto err;
 			}
 		}
-	} else {
-		sc_debug(ctx, SC_LOG_DEBUG_MATCH, "matching built-in ATRs");
+	}
+	else {
+		sc_log(ctx, "matching built-in ATRs");
 		for (i = 0; ctx->card_drivers[i] != NULL; i++) {
 			struct sc_card_driver *drv = ctx->card_drivers[i];
 			const struct sc_card_operations *ops = drv->ops;
 
 			sc_log(ctx, "trying driver '%s'", drv->short_name);
-			if (ops == NULL || ops->match_card == NULL)
+			if (ops == NULL || ops->match_card == NULL)   {
 				continue;
+			}
+			else if (!ctx->enable_default_driver && !strcmp("default", drv->short_name))   {
+				sc_log(ctx , "ignore 'default' card driver");
+				continue;
+			}
+
 			/* Needed if match_card() needs to talk with the card (e.g. card-muscle) */
 			*card->ops = *ops;
 			if (ops->match_card(card) != 1)

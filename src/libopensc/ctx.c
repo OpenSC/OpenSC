@@ -182,6 +182,8 @@ static void set_defaults(sc_context_t *ctx, struct _sc_ctx_options *opts)
 		fclose(ctx->debug_file);
 	ctx->debug_file = stderr;
 	ctx->paranoid_memory = 0;
+	ctx->enable_default_driver = 0;
+
 #ifdef __APPLE__
 	/* Override the default debug log for OpenSC.tokend to be different from PKCS#11.
 	 * TODO: Could be moved to OpenSC.tokend */
@@ -253,6 +255,9 @@ load_parameters(sc_context_t *ctx, scconf_block *block, struct _sc_ctx_options *
 
 	ctx->paranoid_memory = scconf_get_bool (block, "paranoid-memory",
 		ctx->paranoid_memory);
+
+	ctx->enable_default_driver = scconf_get_bool (block, "enable_default_driver",
+			ctx->enable_default_driver);
 
 	val = scconf_get_str(block, "force_card_driver", NULL);
 	if (val) {

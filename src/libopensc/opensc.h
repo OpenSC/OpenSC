@@ -693,6 +693,7 @@ typedef struct sc_context {
 	char *app_name;
 	int debug;
 	int paranoid_memory;
+	int enable_default_driver;
 
 	FILE *debug_file;
 	char *debug_filename;
