@@ -79,6 +79,7 @@ static int cardos_info(void)
 {
 	sc_apdu_t apdu;
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
+	int is_cardos5 = 0;
 	int r;
 
 	if (verbose) {
@@ -115,6 +116,24 @@ static int cardos_info(void)
 	}
 	printf("Info : %s\n", apdu.resp);
 
+	apdu.p2 = 0x82;
+	apdu.resplen = sizeof(rbuf);
+	r = sc_transmit_apdu(card, &apdu);
+	if (r) {
+		fprintf(stderr, "APDU transmit failed: %s\n",
+			sc_strerror(r));
+		return 1;
+	}
+	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || verbose) {
+		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
+			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
+		if (apdu.resplen)
+			util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+		return 1;
+	}
+	if (apdu.resp[0] == 0xc9)
+		is_cardos5 = 1;
+	
 	apdu.p2 = 0x81;
 	apdu.resplen = sizeof(rbuf);
 	r = sc_transmit_apdu(card, &apdu);
@@ -130,15 +149,20 @@ static int cardos_info(void)
 			util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
 		return 1;
 	}
-
-	printf("Chip type: %d\n", apdu.resp[8]);
-	printf("Serial number: %02x %02x %02x %02x %02x %02x\n",
-	       apdu.resp[10], apdu.resp[11], apdu.resp[12],
-	       apdu.resp[13], apdu.resp[14], apdu.resp[15]);
-	printf("Full prom dump:\n");
-	if (apdu.resplen)
-		util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
-
+	if (is_cardos5)	{
+		printf("Serial number: %02x %02x %02x %02x %02x %02x %02x %02x\n",	
+			apdu.resp[0], apdu.resp[1], apdu.resp[2], apdu.resp[3],
+			apdu.resp[4], apdu.resp[5], apdu.resp[6], apdu.resp[7]);
+	} else	{
+		printf("Chip type: %d\n", apdu.resp[8]);
+		printf("Serial number: %02x %02x %02x %02x %02x %02x\n",
+			   apdu.resp[10], apdu.resp[11], apdu.resp[12],
+			   apdu.resp[13], apdu.resp[14], apdu.resp[15]);
+		printf("Full prom dump:\n");
+		if (apdu.resplen)
+			util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+	}
+	
 	apdu.p2 = 0x82;
 	apdu.resplen = sizeof(rbuf);
 	r = sc_transmit_apdu(card, &apdu);
@@ -173,6 +197,8 @@ static int cardos_info(void)
 		printf(" (that's CardOS M4.2C)\n");
 	} else if (apdu.resp[0] == 0xc8 && apdu.resp[1] == 0x0D) {
 		printf(" (that's CardOS M4.4)\n");
+	} else if (apdu.resp[0] == 0xc9 && apdu.resp[1] == 0x01) {
+		printf(" (that's CardOS V5.0)\n");
 	} else {
 		printf(" (unknown Version)\n");
 	}
@@ -198,7 +224,12 @@ static int cardos_info(void)
 	if (rbuf[0] == 0x34) {
 		printf("%d (manufacturing)\n", rbuf[0]);
 	} else if (rbuf[0] == 0x26) {
-		printf("%d (initialization)\n", rbuf[0]);
+		if (is_cardos5)
+			printf("%d (physinit)\n", rbuf[0]);
+		else
+			printf("%d (initialization)\n", rbuf[0]);
+	} else if (rbuf[0] == 0x23) {
+		printf("%d (physpers)\n", rbuf[0]);
 	} else if (rbuf[0] == 0x24) {
 		printf("%d (personalization)\n", rbuf[0]);
 	} else if (rbuf[0] == 0x20) {
@@ -207,6 +238,8 @@ static int cardos_info(void)
 		printf("%d (operational)\n", rbuf[0]);
 	} else if (rbuf[0] == 0x29) {
 		printf("%d (erase in progress)\n", rbuf[0]);
+	} else if (rbuf[0] == 0x3F) {
+		printf("%d (death)\n", rbuf[0]);
 	} else {
 		printf("%d (unknown)\n", rbuf[0]);
 	}
@@ -266,7 +299,7 @@ static int cardos_info(void)
 
 	if (rbuf[0] == 0x00) {
 		printf("ATR Status: 0x%d ROM-ATR\n",rbuf[0]);
-	} else if (rbuf[0] == 0x90) {
+	} else if (rbuf[0] == 0x80)	{
 		printf("ATR Status: 0x%d EEPROM-ATR\n",rbuf[0]);
 	} else {
 		printf("ATR Status: 0x%d unknown\n",rbuf[0]);
@@ -307,7 +340,11 @@ static int cardos_info(void)
 		return 1;
 	}
 
-	printf("Ram size: %d, Eeprom size: %d, cpu type: %x, chip config: %d\n",
+	if (is_cardos5)
+		printf("Ram size: %d, Eeprom size: %d, cpu type: %x, chip config: %d, chip manufacturer: %d\n",
+			rbuf[0]<<8|rbuf[1], rbuf[2]<<8|rbuf[3], rbuf[4], rbuf[6], rbuf[7]);	
+	else
+		printf("Ram size: %d, Eeprom size: %d, cpu type: %x, chip config: %d\n",
 			rbuf[0]<<8|rbuf[1], rbuf[2]<<8|rbuf[3], rbuf[4], rbuf[5]);
 
 	apdu.p2 = 0x8a;
@@ -326,8 +363,50 @@ static int cardos_info(void)
 		return 1;
 	}
 
-	printf("Free eeprom memory: %d\n", rbuf[0]<<8|rbuf[1]);
+	if (is_cardos5)
+		printf("Free eeprom memory: %d\n", rbuf[0]<<24|rbuf[1]<<16|rbuf[2]<<8|rbuf[3]);
+	else
+		printf("Free eeprom memory: %d\n", rbuf[0]<<8|rbuf[1]);
 
+	apdu.p2 = 0x8d;
+	apdu.resplen = sizeof(rbuf);
+	r = sc_transmit_apdu(card, &apdu);
+	if (r) {
+		fprintf(stderr, "APDU transmit failed: %s\n",
+			sc_strerror(r));
+		return 1;
+	}
+	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || verbose) {
+		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
+			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
+		if (apdu.resplen)
+			util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+		return 1;
+	}
+
+	printf("Current Maximum Data Field Length: %d\n", rbuf[0]<<8|rbuf[1]);
+
+	if (is_cardos5)	{
+		apdu.p2 = 0x8B;
+		apdu.resplen = sizeof(rbuf);
+		r = sc_transmit_apdu(card, &apdu);
+		if (r) {
+			fprintf(stderr, "APDU transmit failed: %s\n",
+				sc_strerror(r));
+			return 1;
+		}
+		if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || verbose) {
+			fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
+				apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
+			if (apdu.resplen)
+				util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+			return 1;
+		}
+	
+		printf("Complete chip production data:\n");
+		util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+	}
+	
 	apdu.p2 = 0x96;
 	apdu.resplen = sizeof(rbuf);
 	r = sc_transmit_apdu(card, &apdu);

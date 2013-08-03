@@ -1,6 +1,6 @@
 /*
- * card-cardos.c: Support for Siemens CardOS based cards and tokens
- * 	(for example Aladdin eToken PRO, Eutron CryptoIdentity IT-SEC)
+ * card-cardos.c: Support for CardOS (from Siemens or Atos) based cards and
+ * tokens (for example Aladdin eToken PRO, Eutron CryptoIdentity IT-SEC)
  *
  * Copyright (c) 2005  Nils Larsch <nils@larsch.net>
  * Copyright (C) 2002  Andreas Jellinghaus <aj@dungeon.inka.de>
@@ -54,6 +54,8 @@ static struct sc_atr_table cardos_atrs[] = {
 	{ "3b:f2:18:00:ff:c1:0a:31:fe:55:c8:06:8a", "ff:ff:0f:ff:00:ff:00:ff:ff:00:00:00:00", NULL, SC_CARD_TYPE_CARDOS_M4_2, 0, NULL },
 	/* CardOS 4.4 */
 	{ "3b:d2:18:02:c1:0a:31:fe:58:c8:0d:51", NULL, NULL, SC_CARD_TYPE_CARDOS_M4_4, 0, NULL},
+	/* CardOS v5.0 */
+	{ "3b:d2:18:00:81:31:fe:58:c9:01:14", NULL, NULL, SC_CARD_TYPE_CARDOS_V5_0, 0, NULL},
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
@@ -75,6 +77,8 @@ static int cardos_match_card(sc_card_t *card)
 	if (card->type == SC_CARD_TYPE_CARDOS_CIE_V1)
 		return 1;
 	if (card->type == SC_CARD_TYPE_CARDOS_M4_4)
+		return 1;
+	if (card->type == SC_CARD_TYPE_CARDOS_V5_0)
 		return 1;
 	if (card->type == SC_CARD_TYPE_CARDOS_M4_2) {
 		int rv;
@@ -110,9 +114,9 @@ static int cardos_match_card(sc_card_t *card)
 		} else if (atr[11] == 0x09) {
 			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "found cardos v4.2b");
 			card->type = SC_CARD_TYPE_CARDOS_M4_2B;
-                } else if (atr[11] >= 0x0B) {
-                        sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "found cardos v4.2c or higher");
-                        card->type = SC_CARD_TYPE_CARDOS_M4_2C;
+		} else if (atr[11] >= 0x0B) {
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "found cardos v4.2c or higher");
+			card->type = SC_CARD_TYPE_CARDOS_M4_2C;
 		} else {
 			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "found cardos m4.2");
 		}
@@ -183,7 +187,8 @@ static int cardos_init(sc_card_t *card)
 	} else if (card->type == SC_CARD_TYPE_CARDOS_M4_3 
 		|| card->type == SC_CARD_TYPE_CARDOS_M4_2B
 		|| card->type == SC_CARD_TYPE_CARDOS_M4_2C
-		|| card->type == SC_CARD_TYPE_CARDOS_M4_4) {
+		|| card->type == SC_CARD_TYPE_CARDOS_M4_4
+		|| card->type == SC_CARD_TYPE_CARDOS_V5_0) {
 		rsa_2048 = 1;
 		card->caps |= SC_CARD_CAP_APDU_EXT;
 	}
