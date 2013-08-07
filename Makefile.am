@@ -18,7 +18,14 @@ SUBDIRS = etc src win32 doc MacOSX
 dist_noinst_SCRIPTS = bootstrap
 dist_noinst_DATA = README \
 	solaris/Makefile solaris/README solaris/checkinstall.in \
-	solaris/opensc.conf-dist solaris/pkginfo.in solaris/proto
+	solaris/opensc.conf-dist solaris/pkginfo.in solaris/proto \
+	packaging/debian.templates/changelog \
+	packaging/debian.templates/compat \
+	packaging/debian.templates/control \
+	packaging/debian.templates/copyright \
+	packaging/debian.templates/docs \
+	packaging/debian.templates/opensc.install \
+	packaging/debian.templates/rules
 dist_doc_DATA = NEWS
 
 Generate-ChangeLog:

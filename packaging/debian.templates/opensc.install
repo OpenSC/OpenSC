@@ -1,0 +1,14 @@
+debian/tmp/usr/bin/pkcs15-*
+debian/tmp/usr/bin/*-tool
+debian/tmp/usr/bin/eidenv
+debian/tmp/usr/bin/opensc-explorer
+
+debian/tmp/usr/lib/*.so.*
+debian/tmp/usr/lib/*.so
+debian/tmp/usr/lib/pkcs11/*.so
+debian/tmp/usr/share/opensc/*.profile
+etc/opensc.conf etc/opensc
+
+debian/tmp/usr/share/man/man5/*.5
+debian/tmp/usr/share/man/man1/*.1
+
