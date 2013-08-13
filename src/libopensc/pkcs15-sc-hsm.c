@@ -113,7 +113,7 @@ int sc_pkcs15emu_sc_hsm_decode_cvc(sc_pkcs15_card_t * p15card,
 	const u8 *tbuf;
 	int r;
 
-	memset(cvc, 0, sizeof(cvc));
+	memset(cvc, 0, sizeof(*cvc));
 	sc_copy_asn1_entry(c_asn1_req, asn1_req);
 	sc_copy_asn1_entry(c_asn1_authreq, asn1_authreq);
 	sc_copy_asn1_entry(c_asn1_cvc, asn1_cvc);
