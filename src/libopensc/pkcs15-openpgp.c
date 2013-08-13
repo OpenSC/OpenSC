@@ -31,10 +31,6 @@
 #include "pkcs15.h"
 #include "log.h"
 
-#ifdef _WIN32
-typedef USHORT ushort;
-#endif
-
 int sc_pkcs15emu_openpgp_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
 
 
@@ -100,7 +96,7 @@ static const pgp_key_cfg_t key_cfg[3] = {
 
 
 typedef struct _pgp_manuf_map {
-	ushort		id;
+	unsigned short		id;
 	const char	*name;
 } pgp_manuf_map_t;
 
@@ -164,7 +160,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 
 	/* card->serialnr = 2 byte manufacturer_id + 4 byte serial_number */
 	if (card->serialnr.len > 0) {
-		ushort manuf_id = bebytes2ushort(card->serialnr.value);
+		unsigned short manuf_id = bebytes2ushort(card->serialnr.value);
 		int j;
 
 		sc_bin_to_hex(card->serialnr.value, card->serialnr.len, string, sizeof(string)-1, 0);
