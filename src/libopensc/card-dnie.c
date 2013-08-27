@@ -1478,7 +1478,7 @@ static int dnie_compute_signature(struct sc_card *card,
 	/* try to strip pkcs1 padding */
 	sbuflen = sizeof(sbuf);
 	memset(sbuf, 0, sbuflen);
-	result = sc_pkcs1_strip_01_padding(data, datalen, sbuf, &sbuflen);
+	result = sc_pkcs1_strip_01_padding(card->ctx, data, datalen, sbuf, &sbuflen);
 	if (result != SC_SUCCESS) {
 		sc_log(card->ctx, "Provided data is not pkcs#1 padded");
 		/* TODO: study what to do on plain data */
