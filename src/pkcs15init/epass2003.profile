@@ -109,7 +109,7 @@ filesystem {
 			BSO SKey-AppDF {
 				file-id		= 5301;
 				ACL		= $sf_acl
-				size	= 32;
+				size	= 2;
 			}
 
 			EF MAXPIN {

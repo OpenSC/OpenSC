@@ -1790,8 +1790,10 @@ epass2003_construct_fci(struct sc_card *card, const sc_file_t * file,
 	}
 
 	out[1] = p - out - 2;
-
 	*outlen = p - out;
+
+	if( file->ef_structure == SC_CARDCTL_OBERTHUR_KEY_RSA_CRT )
+		out[*outlen-5] = out[*outlen-6] = out[*outlen-7] = 0xB6 ;
 	return 0;
 }
 
