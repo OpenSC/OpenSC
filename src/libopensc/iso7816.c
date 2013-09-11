@@ -338,6 +338,7 @@ iso7816_process_fci(struct sc_card *card, struct sc_file *file,
 		sc_log(ctx, "  file identifier: 0x%02X%02X", tag[0], tag[1]);
 	}
 
+	/* search for the file size either with or without structural information */
 	tag = sc_asn1_find_tag(ctx, p, len, 0x80, &taglen);
 	if (tag != NULL && taglen > 0 && taglen < 3) {
 		file->size = tag[0];
@@ -347,12 +348,19 @@ iso7816_process_fci(struct sc_card *card, struct sc_file *file,
 	}
 	if (tag == NULL) {
 		tag = sc_asn1_find_tag(ctx, p, len, 0x81, &taglen);
-		if (tag != NULL && taglen >= 2) {
-			int bytes = (tag[0] << 8) + tag[1];
-
-			sc_log(ctx, "  bytes in file: %d", bytes);
-			file->size = bytes;
+		if (tag != NULL && taglen > 0 && taglen < 3) {
+			file->size = tag[0];
+			if (taglen == 2)
+				file->size = (file->size << 8) + tag[1];
+			sc_log(ctx, "  bytes in file: %d", file->size);
 		}
+	}
+	if (tag == NULL) {
+		/* no file size has been found. we choose a reasonable high value to
+		 * force a malloc in the application that can hold all data of the
+		 * actual file. the real file size will be returned by sc_read_binary
+		 * and sc_read_record */
+		file->size = 1024;
 	}
 
 	tag = sc_asn1_find_tag(ctx, p, len, 0x82, &taglen);

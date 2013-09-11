@@ -145,7 +145,7 @@ int sc_parse_ef_atr(struct sc_card *card)
 	rv = sc_read_binary(card, 0, buf, file->size, 0);
 	LOG_TEST_RET(ctx, rv, "Cannot read EF(ATR) file");
 	
-	rv = sc_parse_ef_atr_content(card, buf, file->size);
+	rv = sc_parse_ef_atr_content(card, buf, rv);
 	LOG_TEST_RET(ctx, rv, "EF(ATR) parse error");
 
 	free(buf);
