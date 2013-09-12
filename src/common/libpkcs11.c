@@ -36,8 +36,10 @@ C_LoadModule(const char *mspec, CK_FUNCTION_LIST_PTR_PTR funcs)
 	mod = calloc(1, sizeof(*mod));
 	mod->_magic = MAGIC;
 
-	if (mspec == NULL)
+	if (mspec == NULL) {
+		free(mod);
 		return NULL;
+	}
 	mod->handle = sc_dlopen(mspec);
 	if (mod->handle == NULL) {
 		fprintf(stderr, "sc_dlopen failed: %s\n", sc_dlerror());

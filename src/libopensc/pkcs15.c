@@ -1848,7 +1848,7 @@ int sc_pkcs15_encode_df(sc_context_t *ctx,
 			struct sc_pkcs15_df *df,
 			u8 **buf_out, size_t *bufsize_out)
 {
-	u8 *buf = NULL, *tmp = NULL;
+	u8 *buf = NULL, *tmp = NULL, *p;
 	size_t bufsize = 0, tmpsize;
 	const struct sc_pkcs15_object *obj;
 	int (* func)(sc_context_t *, const struct sc_pkcs15_object *nobj,
@@ -1891,7 +1891,13 @@ int sc_pkcs15_encode_df(sc_context_t *ctx,
 			free(buf);
 			return r;
 		}
-		buf = (u8 *) realloc(buf, bufsize + tmpsize);
+		p = (u8 *) realloc(buf, bufsize + tmpsize);
+		if (!p) {
+			free(tmp);
+			free(buf);
+			return SC_ERROR_OUT_OF_MEMORY;
+		}
+		buf = p;
 		memcpy(buf + bufsize, tmp, tmpsize);
 		free(tmp);
 		bufsize += tmpsize;

@@ -2082,6 +2082,7 @@ pkcs15_create_secret_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 	rv = CKR_OK;
 
 out:
+	free(key_obj);
 	return rv;
 }
 

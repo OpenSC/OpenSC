@@ -660,6 +660,11 @@ static int recreate_password_from_shares(char **pwd, int *pwdlen, int num_of_pas
 
 static void import_dkek_share(sc_card_t *card, const char *inf, int iter, char *password, int num_of_password_shares)
 {
+	/* FIXME do proper error handling
+	 * in case of errors
+	 * - use OPENSSL_cleanse on private bufferSize
+	 * - free allocated resources
+	 * - close opened file descriptors */
 	sc_cardctl_sc_hsm_dkek_t dkekinfo;
 	EVP_CIPHER_CTX ctx;
 	FILE *in = NULL;
@@ -676,6 +681,7 @@ static void import_dkek_share(sc_card_t *card, const char *inf, int iter, char *
 
 	if (fread(filebuff, 1, sizeof(filebuff), in) != sizeof(filebuff)) {
 		perror(inf);
+		fclose(in);
 		return;
 	}
 
@@ -894,6 +900,11 @@ static int generate_pwd_shares(sc_card_t *card, char **pwd, int *pwdlen, int pas
 
 static void create_dkek_share(sc_card_t *card, const char *outf, int iter, char *password, int password_shares_threshold, int password_shares_total)
 {
+	/* FIXME do proper error handling
+	 * in case of errors
+	 * - use OPENSSL_cleanse on private bufferSize
+	 * - free allocated resources
+	 * - close opened file descriptors */
 	EVP_CIPHER_CTX ctx;
 	FILE *out = NULL;
 	u8 filebuff[64], key[EVP_MAX_KEY_LENGTH], iv[EVP_MAX_IV_LENGTH];
@@ -1219,6 +1230,11 @@ static int update_ef(sc_card_t *card, u8 prefix, u8 id, int erase, const u8 *buf
 
 static void unwrap_key(sc_card_t *card, u8 keyid, const char *inf, const char *pin, int force)
 {
+	/* FIXME do proper error handling
+	 * in case of errors
+	 * - use OPENSSL_cleanse on private bufferSize
+	 * - free allocated resources
+	 * - close opened file descriptors */
 	sc_cardctl_sc_hsm_wrapped_key_t wrapped_key;
 	struct sc_pin_cmd_data data;
 	u8 keyblob[MAX_WRAPPED_KEY];

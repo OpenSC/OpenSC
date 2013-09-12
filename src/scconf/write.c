@@ -83,10 +83,12 @@ static char *scconf_list_get_string(scconf_list * list)
 	}
 	len = 0;
 	alloc_len = 1024;
-	buffer = (char *) realloc(buffer, alloc_len);
-	if (!buffer) {
+	tmp = (char *) realloc(buffer, alloc_len);
+	if (!tmp) {
+		free(buffer);
 		return strdup("");
 	}
+	buffer = tmp;
 	memset(buffer, 0, alloc_len);
 	while (list) {
 		datalen = strlen(list->data);

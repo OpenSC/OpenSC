@@ -386,8 +386,11 @@ static int ctapi_load_module(sc_context_t *ctx,
 		
 		reader = calloc(1, sizeof(sc_reader_t));
 		priv = calloc(1, sizeof(struct ctapi_private_data));
-		if (!priv)
+		if (!priv || !reader) {
+			free(reader);
+			free(priv);
 			return SC_ERROR_OUT_OF_MEMORY;
+		}
 		reader->drv_data = priv;
 		reader->ops = &ctapi_ops;
 		reader->driver = &ctapi_drv;

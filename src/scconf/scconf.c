@@ -97,7 +97,12 @@ scconf_block **scconf_find_blocks(const scconf_context * config, const scconf_bl
 	}
 	size = 0;
 	alloc_size = 10;
-	blocks = (scconf_block **) realloc(blocks, sizeof(scconf_block *) * alloc_size);
+	tmp = (scconf_block **) realloc(blocks, sizeof(scconf_block *) * alloc_size);
+	if (!tmp) {
+		free(blocks);
+		return NULL;
+	}
+	blocks = tmp;
 
 	for (item = block->items; item; item = item->next) {
 		if (item->type == SCCONF_ITEM_TYPE_BLOCK &&

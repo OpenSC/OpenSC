@@ -768,7 +768,7 @@ static DWORD
 md_pkcs15_encode_cmapfile(PCARD_DATA pCardData, unsigned char **out, size_t *out_len)
 {
 	VENDOR_SPECIFIC *vs;
-	unsigned char *encoded, *ret;
+	unsigned char *encoded, *ret, *p;
 	size_t guid_len, encoded_len, flags_len, ret_len;
 	int idx;
 
@@ -808,11 +808,13 @@ md_pkcs15_encode_cmapfile(PCARD_DATA pCardData, unsigned char **out, size_t *out
 			return SCARD_F_INTERNAL_ERROR;
 		}
 
-		ret = realloc(ret, ret_len + encoded_len);
-		if (!ret)   {
+		p = realloc(ret, ret_len + encoded_len);
+		if (!p)   {
 			logprintf(pCardData, 3, "MdEncodeCMapFile(): realloc failed\n");
+			free(ret);
 			return SCARD_E_NO_MEMORY;
 		}
+		ret = p;
 		memcpy(ret + ret_len, encoded, encoded_len);
 		free(encoded);
 		ret_len += encoded_len;

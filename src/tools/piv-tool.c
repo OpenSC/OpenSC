@@ -104,7 +104,7 @@ static EVP_PKEY * evpkey = NULL;
 
 static int load_object(const char * object_id, const char * object_file)
 {
-	FILE *fp;
+	FILE *fp = NULL;
 	sc_path_t path;
 	size_t derlen;
 	u8 *der = NULL;
@@ -116,7 +116,8 @@ static int load_object(const char * object_id, const char * object_file)
     if((fp=fopen(object_file, "r"))==NULL){
         printf("Cannot open object file, %s %s\n",
 			(object_file)?object_file:"", strerror(errno));
-        return -1;
+        r = -1;
+		goto end;
     }
 
 	stat(object_file, &stat_buf);
@@ -125,7 +126,8 @@ static int load_object(const char * object_id, const char * object_file)
 	if (der == NULL) {
 		printf("file %s is too big, %lu\n",
 		object_file, (unsigned long)derlen);
-		return-1 ;
+		r = -1 ;
+		goto end;
 	}
 	if (1 != fread(der, derlen, 1, fp)) {
 		printf("unable to read file %s\n",object_file);
@@ -135,7 +137,8 @@ static int load_object(const char * object_id, const char * object_file)
 	body = (u8 *)sc_asn1_find_tag(card->ctx, der, derlen, 0x53, &bodylen);
 	if (body == NULL || derlen != body  - der +  bodylen) {
 		fprintf(stderr, "object tag or length not valid\n");
-		return -1;
+		r = -1;
+		goto end;
 	}
 
 	sc_format_path(object_id, &path);
@@ -143,10 +146,14 @@ static int load_object(const char * object_id, const char * object_file)
 	r = sc_select_file(card, &path, NULL);
 	if (r < 0) {
 		fprintf(stderr, "select file failed\n");
-		return -1;
+		goto end;
 	}
 	/* leave 8 bits for flags, and pass in total length */
 	r = sc_write_binary(card, 0, der, derlen, derlen<<8);
+
+end:
+	free(der);
+	fclose(fp);
 
 	return r;
 }
@@ -179,10 +186,13 @@ static int load_cert(const char * cert_id, const char * cert_file,
 		if (der == NULL) {
 			printf("file %s is too big, %lu\n",
 				cert_file, (unsigned long)derlen);
+			fclose(fp);
 			return-1 ;
 		}
 		if (1 != fread(der, derlen, 1, fp)) {
 			printf("unable to read file %s\n",cert_file);
+			fclose(fp);
+			free(der);
 			return -1;
 		}
 	} else {
@@ -190,6 +200,7 @@ static int load_cert(const char * cert_id, const char * cert_file,
     	if(cert == NULL){
         	printf("file %s does not conatin PEM-encoded certificate\n",
 				 cert_file);
+			fclose(fp);
         	return -1 ;
     	}
 
@@ -208,17 +219,20 @@ static int load_cert(const char * cert_id, const char * cert_file,
 		case 0x9e: sc_format_path("0500",&path); break;
 		default:
 			fprintf(stderr,"cert must be 9A, 9C, 9D or 9E\n");
+			free(der);
 			return 2;
 	}
 
 	r = sc_select_file(card, &path, NULL);
 	if (r < 0) {
 		fprintf(stderr, "select file failed\n");
-		 return -1;
+		free(der);
+		return -1;
 	}
 	/* we pass length  and  8 bits of flag to card-piv.c write_binary */
 	/* pass in its a cert and if needs compress */
 	r = sc_write_binary(card, 0, der, derlen, (derlen<<8) | (compress<<4) | 1);
+	free(der);
 
 	return r;
 
@@ -438,6 +452,7 @@ int main(int argc, char * const argv[])
 	const char *object_id = NULL;
 	const char *key_info = NULL;
 	const char *admin_info = NULL;
+	char **p;
 	sc_context_param_t ctx_param;
 
 	setbuf(stderr, NULL);
@@ -455,8 +470,14 @@ int main(int argc, char * const argv[])
 			action_count++;
 			break;
 		case 's':
-			opt_apdus = (char **) realloc(opt_apdus,
+			p = (char **) realloc(opt_apdus,
 					(opt_apdu_count + 1) * sizeof(char *));
+			if (!p) {
+				err = 1;
+				fprintf(stderr, "Not enough memory\n");
+				goto end;
+			}
+			opt_apdus = p;
 			opt_apdus[opt_apdu_count] = optarg;
 			do_send_apdu++;
 			if (opt_apdu_count == 0)

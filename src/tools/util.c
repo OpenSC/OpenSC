@@ -275,7 +275,7 @@ void util_print_usage_and_die(const char *app_name, const struct option options[
 
 const char * util_acl_to_str(const sc_acl_entry_t *e)
 {
-	static char line[80], buf[10];
+	static char line[80], buf[20];
 	unsigned int acl;
 
 	if (e == NULL)
