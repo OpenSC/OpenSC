@@ -545,6 +545,7 @@ sc_pkcs15_get_lastupdate(struct sc_pkcs15_card *p15card)
         unsigned char *content, last_update[32];
         size_t lupdate_len = sizeof(last_update) - 1;
 	int r, content_len;
+	size_t size;
 
 	if (p15card->tokeninfo->last_update.gtime)
 		goto done;
@@ -556,11 +557,16 @@ sc_pkcs15_get_lastupdate(struct sc_pkcs15_card *p15card)
 	if (r < 0)
 		return NULL;
 
-	content = calloc(file->size, 1);
+	if (file->size) {
+		size = 1024;
+	} else {
+		size = file->size;
+	}
+	content = calloc(size, 1);
 	if (!content)
 		return NULL;
 
-	r = sc_read_binary(p15card->card, 0, content, file->size, 0);
+	r = sc_read_binary(p15card->card, 0, content, size, 0);
 	if (r < 0)
 		return NULL;
 	content_len = r;
@@ -2212,7 +2218,11 @@ int sc_pkcs15_read_file(struct sc_pkcs15_card *p15card,
 		/* Handle the case where the ASN.1 Path object specified
 		 * index and length values */
 		if (in_path->count < 0) {
-			len = file->size;
+			if (file->size) {
+				len = file->size;
+			} else {
+				len = 1024;
+			}
 			offset = 0;
 		}
 		else {
