@@ -1471,6 +1471,7 @@ static int read_and_cache_file(const sc_path_t *path)
 	const sc_acl_entry_t *e;
 	u8 *buf;
 	int r;
+	size_t size;
 
 	if (verbose) {
 		printf("Reading file ");
@@ -1488,12 +1489,17 @@ static int read_and_cache_file(const sc_path_t *path)
 			printf("Skipping; ACL for read operation is not NONE.\n");
 		return -1;
 	}
-	buf = malloc(tfile->size);
+	if (tfile->size) {
+		size = 1024;
+	} else {
+		size = tfile->size;
+	}
+	buf = malloc(size);
 	if (!buf) {
 		printf("out of memory!");
 		return -1;
 	}
-	r = sc_read_binary(card, 0, buf, tfile->size, 0);
+	r = sc_read_binary(card, 0, buf, size, 0);
 	if (r < 0) {
 		fprintf(stderr, "sc_read_binary() failed: %s\n", sc_strerror(r));
 		free(buf);

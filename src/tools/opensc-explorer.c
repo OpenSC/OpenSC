@@ -639,18 +639,20 @@ static int read_and_util_print_binary_file(sc_file_t *file)
 {
 	unsigned char *buf = NULL;
 	int r;
+	size_t size;
 
-	buf = malloc(file->size);
+	if (file->size) {
+		size = file->size;
+	} else {
+		size = 1024;
+	}
+	buf = malloc(size);
 	if (!buf)
 		return -1;
 
-	r = sc_read_binary(card, 0, buf, file->size, 0);
+	r = sc_read_binary(card, 0, buf, size, 0);
 	if (r < 0)   {
 		check_ret(r, SC_AC_OP_READ, "read failed", file);
-		return -1;
-	}
-	if ((r != file->size) && (card->type != SC_CARD_TYPE_BELPIC_EID))   {
-		printf("expecting %d, got only %d bytes.\n", file->size, r);
 		return -1;
 	}
 	if ((r == 0) && (card->type == SC_CARD_TYPE_BELPIC_EID))
@@ -1200,6 +1202,7 @@ static int do_get(int argc, char **argv)
 	}
 	count = file->size;
 	while (count) {
+		/* FIXME sc_read_binary does this kind of fetching in a loop already */
 		int c = count > sizeof(buf) ? sizeof(buf) : count;
 
 		r = sc_read_binary(card, idx, buf, c, 0);

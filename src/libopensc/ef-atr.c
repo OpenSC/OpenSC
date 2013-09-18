@@ -132,6 +132,7 @@ int sc_parse_ef_atr(struct sc_card *card)
 	struct sc_file *file;
 	int rv;
 	unsigned char *buf = NULL;
+	size_t size;
 
 	LOG_FUNC_CALLED(ctx);
 
@@ -139,13 +140,18 @@ int sc_parse_ef_atr(struct sc_card *card)
 	rv = sc_select_file(card, &path, &file);
 	LOG_TEST_RET(ctx, rv, "Cannot select EF(ATR) file");
 
-	buf = malloc(file->size);
+	if (file->size) {
+		size = file->size;
+	} else {
+		size = 1024;
+	}
+	buf = malloc(size);
 	if (!buf)
 		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Memory allocation error");
-	rv = sc_read_binary(card, 0, buf, file->size, 0);
+	rv = sc_read_binary(card, 0, buf, size, 0);
 	LOG_TEST_RET(ctx, rv, "Cannot read EF(ATR) file");
 	
-	rv = sc_parse_ef_atr_content(card, buf, file->size);
+	rv = sc_parse_ef_atr_content(card, buf, rv);
 	LOG_TEST_RET(ctx, rv, "EF(ATR) parse error");
 
 	free(buf);
