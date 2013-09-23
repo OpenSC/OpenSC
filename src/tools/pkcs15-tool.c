@@ -1832,6 +1832,7 @@ int main(int argc, char * const argv[])
 			break;
 		case OPT_VERIFY_PIN:
 			do_verify_pin = 1;
+			action_count++;
 			break;
 		case OPT_CHANGE_PIN:
 			do_change_pin = 1;
