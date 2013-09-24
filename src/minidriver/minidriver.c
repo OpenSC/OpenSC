@@ -2712,7 +2712,6 @@ DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 					logprintf(pCardData, 2, "Cannot strip PKCS1 padding: %i\n", r);
 					return SCARD_F_INTERNAL_ERROR;
 				}
-				pInfo->cbData = r;
 			}
 			else if (pInfo->dwPaddingType == CARD_PADDING_OAEP)   {
 				/* TODO: Handle OAEP padding if present - can call PFN_CSP_UNPAD_DATA */
