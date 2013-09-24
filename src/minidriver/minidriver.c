@@ -149,6 +149,12 @@ typedef struct _VENDOR_SPECIFIC
 
 	SCARDCONTEXT hSCardCtx;
 	SCARDHANDLE hScard;
+
+	/* These will be used in CardAuthenticateEx to display a dialog box when doing
+	 * external PIN verification.
+	 */
+	HWND hwndParent;
+	LPWSTR wszPinContext;
 }VENDOR_SPECIFIC;
 
 /*
@@ -3012,13 +3018,15 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 
 	check_reader_status(pCardData);
 
-	if (dwFlags == CARD_AUTHENTICATE_GENERATE_SESSION_PIN || dwFlags == CARD_AUTHENTICATE_SESSION_PIN)
-		return SCARD_E_UNSUPPORTED_FEATURE;
+	if (dwFlags == CARD_AUTHENTICATE_GENERATE_SESSION_PIN || dwFlags == CARD_AUTHENTICATE_SESSION_PIN) {
+		if (! (vs->reader->capabilities & SC_READER_CAP_PIN_PAD))
+			return SCARD_E_UNSUPPORTED_FEATURE;
+  }
 
-	if (dwFlags && dwFlags != CARD_PIN_SILENT_CONTEXT)
+	if (dwFlags && (dwFlags & CARD_PIN_SILENT_CONTEXT) && NULL == pbPinData)
 		return SCARD_E_INVALID_PARAMETER;
 
-	if (NULL == pbPinData)
+	if (!(vs->reader->capabilities & SC_READER_CAP_PIN_PAD) && NULL == pbPinData)
 		return SCARD_E_INVALID_PARAMETER;
 
 	if (PinId != ROLE_USER)
@@ -3029,6 +3037,26 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 		logprintf(pCardData, 2, "Cannot get User PIN object");
 		return r;
 	}
+
+	/* Do we need to display a prompt to enter PIN on pin pad? */
+	logprintf(pCardData, 7, "PIN pad=%s, pbPinData=%p, hwndParent=%d\n",
+		vs->reader->capabilities & SC_READER_CAP_PIN_PAD ? "yes" : "no", pbPinData, vs->hwndParent);
+	if ((vs->reader->capabilities & SC_READER_CAP_PIN_PAD) && NULL == pbPinData) {
+		char buf[200];
+		snprintf(buf, sizeof(buf), "Please enter PIN %s",
+			NULL == vs->wszPinContext ? "on reader pinpad." : vs->wszPinContext);
+		logprintf(pCardData, 7, "About to display message box for external PIN verification\n");
+		/* @TODO: Ideally, this should probably be a non-modal dialog with just a cancel button
+		 * that goes away as soon as a key is pressed on the pinpad.
+		 */
+		r = MessageBox(vs->hwndParent, buf, "PIN Entry Required",
+				MB_OKCANCEL | MB_ICONINFORMATION);
+		if (IDCANCEL == r) {
+			logprintf(pCardData, 2, "User canceled PIN verification\n");
+			/* @TODO: is this the right code to return? */
+			return SCARD_E_INVALID_PARAMETER;
+		}
+}
 
 	r = sc_pkcs15_verify_pin(vs->p15card, pin_obj, (const u8 *) pbPinData, cbPinData);
 	if (r)   {
@@ -3282,7 +3310,7 @@ DWORD WINAPI CardGetProperty(__in PCARD_DATA pCardData,
 		if (pdwDataLen) *pdwDataLen = sizeof(*p);
 		if (cbData < sizeof(*p)) return ERROR_INSUFFICIENT_BUFFER;
 		if (p->dwVersion != PIN_INFO_CURRENT_VERSION) return ERROR_REVISION_MISMATCH;
-		p->PinType = AlphaNumericPinType;
+		p->PinType = vs->reader->capabilities & SC_READER_CAP_PIN_PAD ? ExternalPinType : AlphaNumericPinType;
 		p->dwFlags = 0;
 		switch (dwFlags)   {
 			case ROLE_USER:
@@ -3354,14 +3382,18 @@ DWORD WINAPI CardSetProperty(__in   PCARD_DATA pCardData,
 	__in DWORD cbDataLen,
 	__in DWORD dwFlags)
 {
+	VENDOR_SPECIFIC *vs;
+
 	logprintf(pCardData, 1, "\nP:%d T:%d pCardData:%p ",GetCurrentProcessId(), GetCurrentThreadId(), pCardData);
 	logprintf(pCardData, 1, "CardSetProperty\n");
 
 	if (!pCardData)
 		return SCARD_E_INVALID_PARAMETER;
 
-	logprintf(pCardData, 2, "CardSetProperty wszProperty=%S, cbDataLen=%u, dwFlags=%u",\
-		NULLWSTR(wszProperty),cbDataLen,dwFlags);
+	logprintf(pCardData, 2, "CardSetProperty wszProperty=%S, pbData=%p, cbDataLen=%u, dwFlags=%u",\
+		NULLWSTR(wszProperty),pbData,cbDataLen,dwFlags);
+
+	vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
 
 	if (!wszProperty)
 		return SCARD_E_INVALID_PARAMETER;
@@ -3373,8 +3405,11 @@ DWORD WINAPI CardSetProperty(__in   PCARD_DATA pCardData,
 	if (dwFlags)
 		return SCARD_E_INVALID_PARAMETER;
 
-	if (wcscmp(CP_PIN_CONTEXT_STRING, wszProperty) == 0)
+	if (wcscmp(CP_PIN_CONTEXT_STRING, wszProperty) == 0) {
+		vs->wszPinContext = (LPWSTR) pbData;
+		logprintf(pCardData, 3, "Saved PIN context string: %S\n", pbData);
 		return SCARD_S_SUCCESS;
+	}
 
 	if (wcscmp(CP_CARD_CACHE_MODE, wszProperty) == 0 ||
 			wcscmp(CP_SUPPORTS_WIN_X509_ENROLLMENT, wszProperty) == 0 ||
@@ -3386,15 +3421,20 @@ DWORD WINAPI CardSetProperty(__in   PCARD_DATA pCardData,
 	if (!pbData || !cbDataLen)
 		return SCARD_E_INVALID_PARAMETER;
 
+	/* This property and CP_PIN_CONTEXT_STRING are set just prior to a call to
+	 * CardAuthenticateEx if the PIN required is declared of type ExternalPinType.
+	 */
 	if (wcscmp(CP_PARENT_WINDOW, wszProperty) == 0) {
-		if (cbDataLen != sizeof(DWORD))   {
+		if (cbDataLen != sizeof(HWND))   {
 			return SCARD_E_INVALID_PARAMETER;
 		}
 		else   {
 			HWND cp = *((HWND *) pbData);
 			if (cp!=0 && !IsWindow(cp))
 				return SCARD_E_INVALID_PARAMETER;
+			vs->hwndParent = cp;
 		}
+		logprintf(pCardData, 3, "Saved parent window (%u)\n", vs->hwndParent);
 		return SCARD_S_SUCCESS;
 	}
 
