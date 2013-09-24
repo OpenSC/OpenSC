@@ -166,9 +166,10 @@ sc_pkcs1_strip_02_padding(sc_context_t *ctx, const u8 *data, size_t len, u8 *out
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 
 	/* Now move decrypted contents to head of buffer */
-	if (*out_len < len -  n)
+	if (*out_len < len - n)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
-	memmove(out, data + n, len - n);
+	*out_len = len - n;
+	memmove(out, data + n, *out_len);
 
 	sc_log(ctx, "stripped output(%i): %s", len - n, sc_dump_hex(out, len - n));
 	LOG_FUNC_RETURN(ctx, len - n);
