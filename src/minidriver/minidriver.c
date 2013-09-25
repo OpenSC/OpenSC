@@ -2036,7 +2036,8 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 	__in PCONTAINER_INFO pContainerInfo)
 {
 	VENDOR_SPECIFIC *vs = NULL;
-	DWORD sz = 0, ret;
+	DWORD sz = 0;
+	DWORD ret = SCARD_F_UNKNOWN_ERROR;
 	struct md_pkcs15_container *cont = NULL;
 	struct sc_pkcs15_der pubkey_der;
 	int rv;
@@ -2073,9 +2074,10 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 	pubkey_der.value = NULL;
 	pubkey_der.len = 0;
 
-	ret = SCARD_S_SUCCESS;
-	if ((cont->prkey_obj->content.value != NULL) && (cont->prkey_obj->content.len > 0))
+	if ((cont->prkey_obj->content.value != NULL) && (cont->prkey_obj->content.len > 0))   {
 		sc_der_copy(&pubkey_der, &cont->prkey_obj->content);
+		ret = SCARD_S_SUCCESS;
+	}
 
 	if (!pubkey_der.value && cont->pubkey_obj)   {
 		struct sc_pkcs15_pubkey *pubkey = NULL;
@@ -2083,10 +2085,13 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 		logprintf(pCardData, 1, "now read public key '%s'\n", cont->pubkey_obj->label);
 		rv = sc_pkcs15_read_pubkey(vs->p15card, cont->pubkey_obj, &pubkey);
 		if (!rv)   {
-			if(pubkey->algorithm == SC_ALGORITHM_RSA)
+			if(pubkey->algorithm == SC_ALGORITHM_RSA)   {
 				sc_der_copy(&pubkey_der, &pubkey->data);
-			else
+				ret = SCARD_S_SUCCESS;
+			}
+			else   {
 				ret = SCARD_E_UNSUPPORTED_FEATURE;
+			}
 			sc_pkcs15_free_pubkey(pubkey);
 		}
 		else {
@@ -2101,10 +2106,13 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 		logprintf(pCardData, 1, "now read certificate '%s'\n", cont->cert_obj->label);
 		rv = sc_pkcs15_read_certificate(vs->p15card, (struct sc_pkcs15_cert_info *)(cont->cert_obj->data), &cert);
 		if(!rv)   {
-			if(cert->key->algorithm == SC_ALGORITHM_RSA)
+			if(cert->key->algorithm == SC_ALGORITHM_RSA) {
 				sc_der_copy(&pubkey_der, &cert->key->data);
-			else
+				ret = SCARD_S_SUCCESS;
+			}
+			else   {
 				ret = SCARD_E_UNSUPPORTED_FEATURE;
+			}
 			sc_pkcs15_free_certificate(cert);
 		}
 		else   {
