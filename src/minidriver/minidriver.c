@@ -2101,8 +2101,10 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 		logprintf(pCardData, 1, "now read certificate '%s'\n", cont->cert_obj->label);
 		rv = sc_pkcs15_read_certificate(vs->p15card, (struct sc_pkcs15_cert_info *)(cont->cert_obj->data), &cert);
 		if(!rv)   {
-			if(cert->key->algorithm == SC_ALGORITHM_RSA)
+			if(cert->key->algorithm == SC_ALGORITHM_RSA) {
 				sc_der_copy(&pubkey_der, &cert->key->data);
+				ret = SCARD_S_SUCCESS;
+			}
 			else
 				ret = SCARD_E_UNSUPPORTED_FEATURE;
 			sc_pkcs15_free_certificate(cert);
