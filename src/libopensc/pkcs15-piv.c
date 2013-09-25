@@ -102,6 +102,7 @@ typedef struct common_key_info_st {
 	int pubkey_from_file;
 	int key_alg;
 	unsigned int pubkey_len;
+	struct sc_pkcs15_pubkey *pubkey_from_cert;
 	int not_present;
 } common_key_info;
 
@@ -703,6 +704,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 		ckis[i].pubkey_found = 0;
 		ckis[i].pubkey_from_file = 0;
 		ckis[i].pubkey_len = 0;
+		ckis[i].pubkey_from_cert = NULL;
 
 		memset(&cert_info, 0, sizeof(cert_info));
 		memset(&cert_obj,  0, sizeof(cert_obj));
@@ -755,6 +757,8 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Unsuported key.algorithm %d", cert_out->key->algorithm);
 				ckis[i].pubkey_len = 0; /* set some value for now */
 		}
+		ckis[i].pubkey_from_cert = cert_out->key;
+		cert_out->key = NULL;
 		sc_pkcs15_free_certificate(cert_out);
 
 		r = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
@@ -905,6 +909,10 @@ sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "DEE Adding pin %d label=%s",i, label);
 			}
 			pubkey_obj.emulated = p15_key;
 			p15_key = NULL;
+		}
+		else if (ckis[i].pubkey_from_cert && ckis[i].pubkey_from_cert->data.value) {
+		    sc_der_copy(&pubkey_obj.content, &ckis[i].pubkey_from_cert->data);
+		    sc_pkcs15_free_pubkey(ckis[i].pubkey_from_cert);
 		}
 
 		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"adding pubkey for %d keyalg=%d",i, ckis[i].key_alg);
