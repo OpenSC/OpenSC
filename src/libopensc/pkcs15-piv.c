@@ -906,35 +906,6 @@ sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "DEE Adding pin %d label=%s",i, label);
 			pubkey_obj.emulated = p15_key;
 			p15_key = NULL;
 		}
-		else { /* cert found - extract pub key from cert */
-			sc_path_t cert_path;
-			struct sc_pkcs15_pubkey *pubkey_data = NULL;
-			sc_pkcs15_der_t cert_der;
-
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Adding pubkey from certificate '%s'", certs[i].label);
-
-			memset(&cert_path, 0, sizeof(cert_path));
-			sc_format_path(certs[i].path, &cert_path);
-			r = sc_pkcs15_read_file(p15card, &cert_path, &cert_der.value, &cert_der.len);
-			if (r)
-				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Failed to read cert for key: %s", pubkey_obj.label);
-			r = sc_pkcs15_pubkey_from_cert(card->ctx, &cert_der, &pubkey_data);
-			if (r || !pubkey_data) {
-				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Failed to extract public key from cert: %s", certs[i].label);
-			} else {
-				/* set the der encoded key data in the emulation object */
-				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Length of der encoded pubkey: %d", pubkey_data->data.len);
-				{
-					size_t blen = pubkey_data->data.len * 5 + 128;
-					char *buf = malloc(blen);
-					sc_hex_dump(card->ctx, SC_LOG_DEBUG_NORMAL, pubkey_data->data.value, pubkey_data->data.len, buf, blen);
-					sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "%s", buf);
-					free(buf);
-				}
-				sc_der_copy(&pubkey_obj.content, &pubkey_data->data);
-				sc_pkcs15_free_pubkey(pubkey_data);
-			}
-		}
 
 		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"adding pubkey for %d keyalg=%d",i, ckis[i].key_alg);
 		switch (ckis[i].key_alg) {
