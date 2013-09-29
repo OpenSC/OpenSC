@@ -209,7 +209,8 @@ static void sc_asn1_print_object_id(const u8 * buf, size_t buflen)
 {
 	struct sc_object_id oid;
 	int i = 0;
-	char sbuf[256];
+	char tmp[12];
+	char sbuf[(sizeof tmp)*SC_MAX_OBJECT_ID_OCTETS];
 
 	if (sc_asn1_decode_object_id(buf, buflen, &oid)) {
 		printf("decode error");
@@ -218,7 +219,6 @@ static void sc_asn1_print_object_id(const u8 * buf, size_t buflen)
 
 	sbuf[0] = 0;
 	for (i = 0; (i < SC_MAX_OBJECT_ID_OCTETS) && (oid.value[i] != -1); i++)   {
-		char tmp[12];
 
 		if (i)
 			strcat(sbuf, ".");
@@ -1016,7 +1016,7 @@ static int asn1_encode_se_info(sc_context_t *ctx,
 		struct sc_pkcs15_sec_env_info **se, size_t se_num,
 		unsigned char **buf, size_t *bufsize, int depth)
 {
-	unsigned char *ptr = NULL, *out = NULL;
+	unsigned char *ptr = NULL, *out = NULL, *p;
 	size_t ptrlen = 0, outlen = 0, idx;
 	int ret;
 
@@ -1038,11 +1038,12 @@ static int asn1_encode_se_info(sc_context_t *ctx,
 		if (ret != SC_SUCCESS)
 			goto err;
 
-		out = (unsigned char *) realloc(out, outlen + ptrlen);
-		if (!out)   {
+		p = (unsigned char *) realloc(out, outlen + ptrlen);
+		if (!p)   {
 			ret = SC_ERROR_OUT_OF_MEMORY;
 			goto err;
 		}
+		out = p;
 		memcpy(out + outlen, ptr, ptrlen);
 		outlen += ptrlen;
 		free(ptr);

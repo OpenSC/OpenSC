@@ -1520,8 +1520,10 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
 		/* FIXME: malloc() call in pkcs15init, but free() call
 		 * in libopensc (sc_pkcs15_free_prkey_info) */
 		key_info->params.data = malloc(key_info->params.len);
-		if (!key_info->params.data)
+		if (!key_info->params.data) {
+			/* FIXME free object with sc_pkcs15init_delete_object */
 			return SC_ERROR_OUT_OF_MEMORY;
+		}
 		keyinfo_gostparams = key_info->params.data;
 		keyinfo_gostparams->gostr3410 = keyargs->params.gost.gostr3410;
 		keyinfo_gostparams->gostr3411 = keyargs->params.gost.gostr3411;

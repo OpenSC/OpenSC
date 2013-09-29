@@ -1342,6 +1342,7 @@ static int unblock_pin(void)
 	if (puk == NULL && verbose)
 		printf("PUK value will be prompted with pinpad.\n");
 
+	/* FIXME should OPENSSL_cleanse on pin/puk data */
 	pin = opt_pin ? opt_pin : opt_newpin;
 	while (pin == NULL) {
 		u8 *pin2;
@@ -1369,6 +1370,7 @@ static int unblock_pin(void)
 	r = sc_pkcs15_unblock_pin(p15card, pin_obj,
 			puk, puk ? strlen((char *) puk) : 0,
 			pin, pin ? strlen((char *) pin) : 0);
+	/* FIXME must free the puk somewhere */
 	if (r == SC_ERROR_PIN_CODE_INCORRECT) {
 		fprintf(stderr, "PUK code incorrect; tries left: %d\n", pinfo->tries_left);
 		return 3;
@@ -1462,6 +1464,7 @@ static int change_pin(void)
 	}
 	if (verbose)
 		printf("PIN code changed successfully.\n");
+	/* FIXME must free the pincode somewhere */
 	return 0;
 }
 

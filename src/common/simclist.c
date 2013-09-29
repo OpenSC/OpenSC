@@ -178,6 +178,7 @@ static inline struct list_entry_s *list_findpos(const list_t *restrict l, int po
 #define READ_ERRCHECK(fd, msgbuf, msglen)      do {                                                     \
                                                     if (read(fd, msgbuf, msglen) != msglen) {           \
                                                         /*errno = EPROTO;*/                             \
+                                                        free(buf);                                      \
                                                         return -1;                                      \
                                                     }                                                   \
                                                 } while (0);
@@ -1199,7 +1200,7 @@ int list_dump_filedescriptor(const list_t *restrict l, int fd, size_t *restrict 
 int list_restore_filedescriptor(list_t *restrict l, int fd, size_t *restrict len) {
     struct list_dump_header_s header;
     unsigned long cnt;
-    void *buf;
+    void *buf = NULL;
     uint32_t elsize, totreadlen, totmemorylen;
 
     memset(& header, 0, sizeof(header));
