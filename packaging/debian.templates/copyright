@@ -5,10 +5,10 @@ Source: https://github.com/OpenSC/OpenSC.git
 Files: *
 Copyright: 2001-2013 OpenSC developers <opensc-devel@lists.sourceforge.net>
 
-License: LGPL-3.0+
+License: LGPL-2.1
 
 
-License: LGPL-3.0+
+License: LGPL-2.1
  This package is free software; you can redistribute it and/or
  modify it under the terms of the GNU Lesser General Public
  License as published by the Free Software Foundation; either
