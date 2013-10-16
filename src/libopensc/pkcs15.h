@@ -195,14 +195,15 @@ struct sc_pkcs15_prkey_dsa {
 
 /*
  * The ecParameters can be presented as
- * - named curve;
- * - OID of named curve;
- * - implicit parameters.
+ * - ecparameters - type = 0, not implemented
+ * - named curve type = 1;
+ * - implicit parameters type = 2 not implemented
  */
 struct sc_pkcs15_ec_parameters {
-	char *named_curve;
+	int    type;
 	struct sc_object_id id;
-	struct sc_pkcs15_der der;
+	char   *named_curve;
+	struct sc_pkcs15_der der; /* either ecparametrers or name curve */
 	size_t field_length; /* in bits */
 };
 
@@ -213,12 +214,12 @@ struct sc_pkcs15_gost_parameters {
 };
 
 struct sc_pkcs15_pubkey_ec {
-	struct sc_pkcs15_ec_parameters params;
+	struct sc_pkcs15_ec_parameters *params;
 	struct sc_pkcs15_der		ecpointQ; /* note this is der */
 };
 
 struct sc_pkcs15_prkey_ec {
-	struct sc_pkcs15_ec_parameters params;
+	struct sc_pkcs15_ec_parameters *params;
 	sc_pkcs15_bignum_t	privateD; /* note this is bignum */
 	struct sc_pkcs15_der		ecpointQ; /* note this is der */
 };
@@ -684,8 +685,11 @@ int sc_pkcs15_decode_pubkey(struct sc_context *,
 		struct sc_pkcs15_pubkey *, const u8 *, size_t);
 int sc_pkcs15_encode_pubkey(struct sc_context *,
 		struct sc_pkcs15_pubkey *, u8 **, size_t *);
+int sc_pkcs15_encode_pubkey_spki(struct sc_context *,
+		struct sc_pkcs15_pubkey *, u8 **, size_t *);
 void sc_pkcs15_erase_pubkey(struct sc_pkcs15_pubkey *);
 void sc_pkcs15_free_pubkey(struct sc_pkcs15_pubkey *);
+void sc_pkcs15_free_ec_parameters(struct sc_pkcs15_ec_parameters *);
 int sc_pkcs15_pubkey_from_prvkey(struct sc_context *, struct sc_pkcs15_prkey *,
 		struct sc_pkcs15_pubkey **);
 int sc_pkcs15_pubkey_from_cert(struct sc_context *, struct sc_pkcs15_der *,

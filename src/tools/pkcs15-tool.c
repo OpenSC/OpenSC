@@ -637,7 +637,7 @@ static int read_public_key(void)
 	struct sc_pkcs15_object *obj;
 	sc_pkcs15_pubkey_t *pubkey = NULL;
 	sc_pkcs15_cert_t *cert = NULL;
-	sc_pkcs15_der_t pem_key;
+	sc_pkcs15_der_t pem_key = {NULL, 0};
 
 	id.len = SC_PKCS15_MAX_ID_SIZE;
 	sc_pkcs15_hex_string_to_id(opt_pubkey, &id);
@@ -2095,23 +2095,5 @@ static const struct sc_asn1_entry	c_asn1_pem_key[] = {
 
 static int pubkey_pem_encode(sc_pkcs15_pubkey_t *pubkey, sc_pkcs15_der_t *key, sc_pkcs15_der_t *out)
 {
-	struct sc_asn1_entry	asn1_pem_key[2],
-				asn1_pem_key_items[3];
-	struct sc_algorithm_id algorithm;
-	size_t key_len;
-
-	memset(&algorithm, 0, sizeof(algorithm));
-	sc_init_oid(&algorithm.oid);
-	algorithm.algorithm = pubkey->algorithm;
-	if (algorithm.algorithm == SC_ALGORITHM_GOSTR3410)
-		algorithm.params = &pubkey->u.gostr3410.params;
-
-	sc_copy_asn1_entry(c_asn1_pem_key, asn1_pem_key);
-	sc_copy_asn1_entry(c_asn1_pem_key_items, asn1_pem_key_items);
-	sc_format_asn1_entry(asn1_pem_key + 0, asn1_pem_key_items, NULL, 1);
-	sc_format_asn1_entry(asn1_pem_key_items + 0, &algorithm, NULL, 1);
-	key_len = 8 * key->len;
-	sc_format_asn1_entry(asn1_pem_key_items + 1, key->value, &key_len, 1);
-
-	return sc_asn1_encode(ctx, asn1_pem_key, &out->value, &out->len);
+	return sc_pkcs15_encode_pubkey_spki(ctx,pubkey, &out->value, &out->len);
 }
