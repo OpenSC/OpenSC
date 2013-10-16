@@ -149,7 +149,6 @@ sc_pkcs15_decode_pubkey_dsa
 sc_pkcs15_decode_pubkey_rsa
 sc_pkcs15_decode_pubkey_ec
 sc_pkcs15_decode_pubkey_gostr3410
-sc_pkcs15_decode_pubkey_spki
 sc_pkcs15_decode_pukdf_entry
 sc_pkcs15_decode_skdf_entry
 sc_pkcs15_derive
