@@ -141,6 +141,14 @@
 
 				<varlistentry>
 					<term>
+						<option>--list-token-slots</option>,
+						<option>-T</option>
+					</term>
+					<listitem><para>List slots with tokens.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
 						<option>--login</option>,
 						<option>-l</option>
 					</term>
