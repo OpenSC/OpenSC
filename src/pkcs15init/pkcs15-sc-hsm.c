@@ -384,6 +384,8 @@ static int sc_hsm_decode_gakp_ec(struct sc_pkcs15_card *p15card,
 
 	pubkey->alg_id = (struct sc_algorithm_id *)calloc(1, sizeof(struct sc_algorithm_id));
 	if (!pubkey->alg_id) {
+		free(ecp->der);
+		free(ecp);
 		LOG_FUNC_RETURN(p15card->card->ctx, SC_ERROR_OUT_OF_MEMORY);
 	}
 
