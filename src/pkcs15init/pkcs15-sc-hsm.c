@@ -265,7 +265,7 @@ static int sc_hsm_encode_gakp_ec(struct sc_pkcs15_card *p15card, sc_cvc_t *cvc, 
 	struct sc_pkcs15_ec_parameters *ecparams = (struct sc_pkcs15_ec_parameters *)key_info->params.data;
 	struct ec_curve *curve = NULL;
 	u8 *curveoid;
-	int curveoidlen, r;
+	int curveoidlen;
 
 	LOG_FUNC_CALLED(p15card->card->ctx);
 
@@ -277,7 +277,7 @@ static int sc_hsm_encode_gakp_ec(struct sc_pkcs15_card *p15card, sc_cvc_t *cvc, 
 
 	curveoidlen = *curveoid++;
 
-	r = sc_hsm_get_curve(p15card, &curve, curveoid, curveoidlen);
+	sc_hsm_get_curve(p15card, &curve, curveoid, curveoidlen);
 
 	cvc->primeOrModuluslen = curve->prime.len;
 	cvc->primeOrModulus = malloc(cvc->primeOrModuluslen);
