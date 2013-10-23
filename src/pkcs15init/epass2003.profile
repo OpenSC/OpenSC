@@ -35,7 +35,6 @@ option default {
 option onepin {
 	macros {
 		pin-flags		 = local, initialized, needs-padding;
-#		df_acl			 = *=$PIN;
 		df_acl			 = *=NEVER, CRYPTO=NONE, FILES=NONE, CREATE=NONE, DELETE=NONE;
 		ef_acl			 = *=NEVER, READ=NONE, UPDATE=NONE, WRITE=NONE, DELETE=NONE;
 		sf_acl			 = *=NEVER, UPDATE=NONE;
@@ -164,7 +163,8 @@ filesystem {
 #type	= internal-ef;
 					structure = 0xA3;
 #ACL = READ=CHV1,UPDATE=CHV1,CRYPTO=CHV1;
-					ACL = *=NONE;
+#					ACL = *=NONE;
+					ACL = *=$PIN;
 				}
 
         		EF public-key {
@@ -177,7 +177,7 @@ filesystem {
         		EF certificate {
             	    file-id	   = 3100;
             		structure  = transparent;
-					ACL = READ=NONE,UPDATE=NONE;
+					ACL = *=NEVER,DELETE=NONE ,READ=NONE,UPDATE=NONE;
         		}
 
         		# Extractable private keys are stored in transparent EFs.
@@ -192,13 +192,13 @@ filesystem {
         		EF data {
             	    file-id		= 3300;
             		structure	= transparent;
-					ACL	  	  	= *=NEVER,READ=NONE,UPDATE=NONE;
+					ACL	  	  	= *=NEVER , DELETE=NONE , READ=NONE , UPDATE=NONE;
         		}
         		# data objects are stored in transparent EFs.
         		EF privdata {
             	    file-id		= 3400;
             		structure	= transparent;
-					ACL	  	  	= *=NEVER,READ=$PIN,UPDATE=$PIN;
+					ACL	  	  	= *=$PIN;
         		}
 
 			}
