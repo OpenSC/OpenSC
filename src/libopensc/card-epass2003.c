@@ -1103,7 +1103,7 @@ epass2003_select_fid_(struct sc_card *card, sc_path_t * in_path, sc_file_t ** fi
 		/* 62 16 82 02 11 00 83 02 29 00 85 02 08 00 86 08 FF 90 90 90 FF FF FF FF */
 		apdu.resplen = 0x18;
 		memcpy(apdu.resp,
-		       "\x6f\x16\x82\x02\x11\x00\x83\x02\x29\x00\x85\x02\x08\x00\x86\x08\xff\x90\xB6\x90\xff\xff\xff\xff",
+		       "\x6f\x16\x82\x02\x11\x00\x83\x02\x29\x00\x85\x02\x08\x00\x86\x08\xff\x96\xB6\x96\xff\xff\xff\xff",
 		       apdu.resplen);
 		apdu.resp[9] = path[1];
 		apdu.sw1 = 0x90;
@@ -1776,9 +1776,13 @@ epass2003_construct_fci(struct sc_card *card, const sc_file_t * file,
 
 			rv = acl_to_ac_byte(card, entry);
 			LOG_TEST_RET(card->ctx, rv, "Invalid ACL");
-
 			buf[ii] = rv;
 		}
+
+		// Change a AC byte  
+		if( file->ef_structure == SC_CARDCTL_OBERTHUR_KEY_RSA_CRT )
+			buf[2] = EPASS2003_AC_MAC_EQUAL | EPASS2003_AC_USER;	
+
 		sc_asn1_put_tag(0x86, buf, sizeof(ops), p, *outlen - (p - out), &p);
 
 	}
@@ -1791,9 +1795,6 @@ epass2003_construct_fci(struct sc_card *card, const sc_file_t * file,
 
 	out[1] = p - out - 2;
 	*outlen = p - out;
-
-	if( file->ef_structure == SC_CARDCTL_OBERTHUR_KEY_RSA_CRT )
-		out[*outlen-6]  = 0xB6 ;
 
 	return 0;
 }
