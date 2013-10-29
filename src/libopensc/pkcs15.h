@@ -678,13 +678,15 @@ int sc_pkcs15_decode_pubkey_gostr3410(struct sc_context *,
 int sc_pkcs15_encode_pubkey_gostr3410(struct sc_context *,
 		struct sc_pkcs15_pubkey_gostr3410 *, u8 **, size_t *);
 int sc_pkcs15_decode_pubkey_ec(struct sc_context *,
-		struct sc_pkcs15_pubkey_ec *, const u8 *, size_t);
+		struct sc_pkcs15_pubkey *, const u8 *, size_t);
 int sc_pkcs15_encode_pubkey_ec(struct sc_context *,
-		struct sc_pkcs15_pubkey_ec *, u8 **, size_t *);
+		struct sc_pkcs15_pubkey *, u8 **, size_t *, int format);
 int sc_pkcs15_decode_pubkey(struct sc_context *,
 		struct sc_pkcs15_pubkey *, const u8 *, size_t);
 int sc_pkcs15_encode_pubkey(struct sc_context *,
 		struct sc_pkcs15_pubkey *, u8 **, size_t *);
+int sc_pkcs15_encode_pubkey_ext(struct sc_context *,
+		struct sc_pkcs15_pubkey *, u8 **, size_t *, int);
 int sc_pkcs15_encode_pubkey_spki(struct sc_context *,
 		struct sc_pkcs15_pubkey *, u8 **, size_t *);
 void sc_pkcs15_erase_pubkey(struct sc_pkcs15_pubkey *);

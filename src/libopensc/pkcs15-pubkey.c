@@ -607,7 +607,7 @@ sc_pkcs15_encode_pubkey_gostr3410(sc_context_t *ctx,
 }
 
 /*
- * We are storing the ec_pointQ as a octet string.
+ * We are storing the ec_pointQ as a OCTET STRING.
  * Thus we will just copy the string.
  * But to get the field length we decode it.
  * The EC key can be the point or a SPKI that may also include the ec_parameters.
@@ -616,27 +616,34 @@ sc_pkcs15_encode_pubkey_gostr3410(sc_context_t *ctx,
  */
 int
 sc_pkcs15_decode_pubkey_ec(sc_context_t *ctx,
-		struct sc_pkcs15_pubkey_ec *key,
+		struct sc_pkcs15_pubkey *pubkey,
 		const u8 *buf, size_t buflen)
 {
 	int r;
 	u8 * ecpoint_data = NULL;
 	size_t ecpoint_len = 0;
+	struct sc_pkcs15_pubkey_ec *key;
 	struct sc_pkcs15_pubkey * spki_pubkey = NULL;
 	struct sc_asn1_entry asn1_ec_pointQ[C_ASN1_EC_POINTQ_SIZE];
 	struct sc_asn1_entry asn1_spki[SC_ASN1_SPKI_ATTR_SIZE];
 
-	sc_log(ctx, "DEE-EC key=%p, buf=%p, buflen=%d", key, buf, buflen);
+	sc_log(ctx, "DEE-EC pubkey=%p, buf=%p, buflen=%d", pubkey, buf, buflen);
+	key = &pubkey->u.ec;
 
 	sc_copy_asn1_entry(c_asn1_ec_pointQ, asn1_ec_pointQ);
 	sc_format_asn1_entry(asn1_ec_pointQ + 0, &ecpoint_data, &ecpoint_len, 0);
 	r = sc_asn1_decode(ctx, asn1_ec_pointQ, buf, buflen, NULL, NULL);
+
+	/*
+	 * Note we will not save the ecpoint_data, but do use
+	 * the ecpoint_len to get the field_length later
+	 */ 
+
 	if (r < 0)
 		LOG_TEST_RET(ctx, r, "ASN.1 encoding failed");
 
 	if (!ecpoint_data && buflen > 0) {
 	    /* must be an SPKI */
-	    struct sc_asn1_entry asn1_spki[SC_ASN1_SPKI_ATTR_SIZE];
 	    sc_copy_asn1_entry(c_asn1_spki, asn1_spki);
 	    sc_format_asn1_entry(asn1_spki + 0, sc_pkcs15_pubkey_from_spki, &spki_pubkey, 0);
 	    r = sc_asn1_decode(ctx, asn1_spki, buf, buflen, NULL, NULL);
@@ -645,9 +652,20 @@ sc_pkcs15_decode_pubkey_ec(sc_context_t *ctx,
 		LOG_TEST_RET(ctx, r, "ASN.1 encoding of EC pubkey from spki failed");
 	}
 
-	/* found an SPKI version steal the ec_parameters from it  */
+	/* 
+	 * Found an SPKI version steal the ec_parameters and ecpointQ 
+	 * from the spki_pubkey and put in to pubkey, then delete spki_pubkey later.  
+	 */
 	if (spki_pubkey) {
 	   if (spki_pubkey->algorithm == SC_ALGORITHM_EC) {
+		if (spki_pubkey->alg_id->params) {
+		    if (pubkey->alg_id->params) 
+			    sc_pkcs15_free_ec_parameters(pubkey->alg_id->params);
+
+		    pubkey->alg_id->params = spki_pubkey->alg_id->params;
+		    spki_pubkey->alg_id->params = NULL;
+		}
+
 		if (spki_pubkey->u.ec.params) {
 		    if (key->params) /* free any existing ec_paramters */
 			    sc_pkcs15_free_ec_parameters(key->params);
@@ -668,7 +686,11 @@ sc_pkcs15_decode_pubkey_ec(sc_context_t *ctx,
 	    } else
 		sc_log(ctx, "DEE-EC SPKI was not for EC");
 	} else 
-	/* not from SPKI, we just have the ecpointQ */ 
+	/* 
+	 * Not from SPKI, we just have the ecpointQ 
+	 * which is the OCTET STRING in buf. We store its as the
+	 * OCTET STRING, so therte is nothing to decode
+	 */ 
 	if (ecpoint_data) {
 
 	    sc_log(ctx, "DEE-EC key=%p, buf=%p, buflen=%d", key, buf, buflen);
@@ -681,10 +703,15 @@ sc_pkcs15_decode_pubkey_ec(sc_context_t *ctx,
 
 	    /* An uncompressed ecpoint is of the form 04||x||y
 	     * The 04 indicates uncompressed
-	     * x and y are same size, and field_length = sizeof(x) in bits. */
+	     * x and y are same size, and field_length = sizeof(x) in bits.
+	     * field_length can also be derived from the ec_parameters.
+	     */
 	    /* TODO: -DEE  support more then uncompressed */
 	    if (key->params) 
 	        key->params->field_length = (ecpoint_len - 1)/2 * 8;
+
+	    if (pubkey->alg_id && pubkey->alg_id->params)
+		    ((struct sc_pkcs15_ec_parameters *)pubkey->alg_id->params)->field_length = (ecpoint_len - 1)/2 * 8;
 	}
 
 	if (ecpoint_data)
@@ -698,16 +725,29 @@ sc_pkcs15_decode_pubkey_ec(sc_context_t *ctx,
 
 
 int
-sc_pkcs15_encode_pubkey_ec(sc_context_t *ctx, struct sc_pkcs15_pubkey_ec *key,
-		u8 **buf, size_t *buflen)
+sc_pkcs15_encode_pubkey_ec(sc_context_t *ctx, struct sc_pkcs15_pubkey *pubkey,
+		u8 **buf, size_t *buflen, int format)
 {
+	struct sc_pkcs15_pubkey_ec *key;
 	struct sc_asn1_entry asn1_ec_pointQ[C_ASN1_EC_POINTQ_SIZE];
-	int r;
+	struct sc_pkcs15_der tmp;
+	int r = 0;
+	
+	key = &pubkey->u.ec;
+	/* format == 0 is OCTET STRING. We are storing the ecpoint in this format,
+	 * so just copy it */
+	if (format == 0) {
+	    sc_der_copy(&tmp, &key->ecpointQ);
+	    *buf = tmp.value;
+	    *buflen = tmp.len;
+	} else {
+	    /* get internal string, bu decoding the OCTET STRING */
+	
+	    sc_copy_asn1_entry(c_asn1_ec_pointQ, asn1_ec_pointQ);
+	    sc_format_asn1_entry(asn1_ec_pointQ + 0, buf, buflen, 1);
 
-	sc_copy_asn1_entry(c_asn1_ec_pointQ, asn1_ec_pointQ);
-	sc_format_asn1_entry(asn1_ec_pointQ + 0, buf, buflen, 1);
-
-	r = sc_asn1_decode(ctx, asn1_ec_pointQ, key->ecpointQ.value, key->ecpointQ.len, NULL, NULL);
+	    r = sc_asn1_decode(ctx, asn1_ec_pointQ, key->ecpointQ.value, key->ecpointQ.len, NULL, NULL);
+	}
 
 	LOG_TEST_RET(ctx, r, "ASN.1 encoding failed");
 
@@ -721,14 +761,22 @@ int
 sc_pkcs15_encode_pubkey(sc_context_t *ctx, struct sc_pkcs15_pubkey *key,
 		u8 **buf, size_t *len)
 {
+	return sc_pkcs15_encode_pubkey_ext(ctx, key, buf, len, 0);
+}
+
+int
+sc_pkcs15_encode_pubkey_ext(sc_context_t *ctx, struct sc_pkcs15_pubkey *key,
+		u8 **buf, size_t *len, int format)
+{
 	if (key->algorithm == SC_ALGORITHM_RSA)
 		return sc_pkcs15_encode_pubkey_rsa(ctx, &key->u.rsa, buf, len);
 	if (key->algorithm == SC_ALGORITHM_DSA)
 		return sc_pkcs15_encode_pubkey_dsa(ctx, &key->u.dsa, buf, len);
 	if (key->algorithm == SC_ALGORITHM_GOSTR3410)
 		return sc_pkcs15_encode_pubkey_gostr3410(ctx, &key->u.gostr3410, buf, len);
+	/* for EC at least, pass in the full key, so the algorithm_id as accessible */
 	if (key->algorithm == SC_ALGORITHM_EC)
-		return sc_pkcs15_encode_pubkey_ec(ctx, &key->u.ec, buf, len);
+		return sc_pkcs15_encode_pubkey_ec(ctx, key, buf, len, format);
 	sc_log(ctx, "Encoding of public key type %u not supported", key->algorithm);
 	return SC_ERROR_NOT_SUPPORTED;
 }
@@ -743,8 +791,9 @@ sc_pkcs15_decode_pubkey(sc_context_t *ctx, struct sc_pkcs15_pubkey *key,
 		return sc_pkcs15_decode_pubkey_dsa(ctx, &key->u.dsa, buf, len);
 	if (key->algorithm == SC_ALGORITHM_GOSTR3410)
 		return sc_pkcs15_decode_pubkey_gostr3410(ctx, &key->u.gostr3410, buf, len);
+	/* for EC at least, pass in the full key, so the algorithm_id as accessible */
 	if (key->algorithm == SC_ALGORITHM_EC)
-		return sc_pkcs15_decode_pubkey_ec(ctx, &key->u.ec, buf, len);
+		return sc_pkcs15_decode_pubkey_ec(ctx, key, buf, len);
 	sc_log(ctx, "Decoding of public key type %u not supported", key->algorithm);
 	return SC_ERROR_NOT_SUPPORTED;
 }
@@ -780,7 +829,7 @@ u8 **buf, size_t *len)
 		algorithm.params =pubkey->u.ec.params;
 
 	/* encode the raw version of the pubkey */
-	sc_pkcs15_encode_pubkey(ctx, pubkey, &key.value, &key.len);  
+	sc_pkcs15_encode_pubkey_ext(ctx, pubkey, &key.value, &key.len, 1);
 	key_len = key.len *8;
 
 	sc_copy_asn1_entry(c_asn1_spki_key, asn1_spki_key);
@@ -1295,6 +1344,17 @@ sc_pkcs15_convert_pubkey(struct sc_pkcs15_pubkey *pkcs15_key, void *evp_key)
 {
 #ifdef ENABLE_OPENSSL
 	EVP_PKEY *pk = (EVP_PKEY *)evp_key;
+
+/* TODO Looks like most or all of this routine is duplicated
+ * in sc_pkcs15_encode_pubkey routines that are used by sc_pkcs15_encode_pubkey_spki
+ * to produce the ASN1 equivelent of the OpenSSL EVP_KEY
+ * So could be replaced with something like:
+ *
+ *   sc_pkcs15_encode_pubkey_spki(ctx, pkcs15_key, &buf, &buflen);
+ *   type = OBJ_obj2nid(pkcs15_key->alg_id);
+ *   d2i_PublicKey(type, evp_key, &buf, buflen);
+ *
+ */
 
 	switch (pk->type) {
 	case EVP_PKEY_RSA: {
