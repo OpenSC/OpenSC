@@ -751,7 +751,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 				ckis[i].pubkey_len = cert_out->key->u.rsa.modulus.len * 8;
 				break;
 			case SC_ALGORITHM_EC:
-				ckis[i].pubkey_len = cert_out->key->u.ec.params.field_length;
+				ckis[i].pubkey_len = cert_out->key->u.ec.params->field_length;
 				break;
 			default:
 				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Unsuported key.algorithm %d", cert_out->key->algorithm);
@@ -885,6 +885,7 @@ sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "DEE Adding pin %d label=%s",i, label);
 			 * env PIV_9A_KEY or 9C, 9D, 9E to point at the file. 
 			 *
 			 * We will cache it using the PKCS15 emulation objects
+			 * and the pubkey_obj.content
 			 */
 
 			pubkey_info.path.len = 0;
@@ -899,7 +900,7 @@ sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "DEE Adding pin %d label=%s",i, label);
 					break;
 				case SC_ALGORITHM_EC:
 					ckis[i].key_alg = SC_ALGORITHM_EC;
-					ckis[i].pubkey_len = p15_key->u.ec.params.field_length;
+					ckis[i].pubkey_len = p15_key->u.ec.params->field_length;
 					ckis[i].pubkey_found = 1;
 					ckis[i].pubkey_from_file = 1;
 					break;
@@ -907,13 +908,21 @@ sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "DEE Adding pin %d label=%s",i, label);
 					sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"Unsupported key_alg %d",p15_key->algorithm);
 					continue;
 			}
-			pubkey_obj.emulated = p15_key;
-			p15_key = NULL;
 		}
 		else if (ckis[i].pubkey_from_cert && ckis[i].pubkey_from_cert->data.value) {
-		    sc_der_copy(&pubkey_obj.content, &ckis[i].pubkey_from_cert->data);
-		    sc_pkcs15_free_pubkey(ckis[i].pubkey_from_cert);
+		    p15_key = ckis[i].pubkey_from_cert;
+		    
 		}
+		switch (p15_key->algorithm) {
+		    /* EC pubkey can be ec_poointQ or SPKI. we want SPKI because it has parameters */
+		    case SC_ALGORITHM_EC:
+			sc_pkcs15_encode_pubkey_spki(card->ctx, p15_key, &pubkey_obj.content.value, &pubkey_obj.content.len);
+			break;
+		    default:
+			sc_der_copy(&pubkey_obj.content, &p15_key->data);
+		}
+		pubkey_obj.emulated = p15_key;
+		p15_key = NULL;
 
 		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"adding pubkey for %d keyalg=%d",i, ckis[i].key_alg);
 		switch (ckis[i].key_alg) {

@@ -575,10 +575,8 @@ sc_pkcs15_free_prkey(struct sc_pkcs15_prkey *key)
 		free(key->u.gostr3410.d.data);
 		break;
 	case SC_ALGORITHM_EC:
-		if (key->u.ec.params.der.value)
-			free(key->u.ec.params.der.value);
-		if (key->u.ec.params.named_curve)
-			free(key->u.ec.params.named_curve);
+		if (key->u.ec.params)
+			sc_pkcs15_free_ec_parameters(key->u.ec.params);
 		if (key->u.ec.privateD.data)
 			free(key->u.ec.privateD.data);
 		if (key->u.ec.ecpointQ.value)
@@ -689,7 +687,7 @@ sc_pkcs15_convert_prkey(struct sc_pkcs15_prkey *pkcs15_key, void *evp_key)
 		/* get curve name */
 		nid = EC_GROUP_get_curve_name(grp);
 		if(nid != 0)
-			dst->params.named_curve = strdup(OBJ_nid2sn(nid));
+			dst->params->named_curve = strdup(OBJ_nid2sn(nid));
 
 		/* Decode EC_POINT from a octet string */
 		buflen = EC_POINT_point2oct(grp, (const EC_POINT *) EC_KEY_get0_public_key(src),
@@ -701,7 +699,7 @@ sc_pkcs15_convert_prkey(struct sc_pkcs15_prkey *pkcs15_key, void *evp_key)
 			memcpy(dst->ecpointQ.value, buf, buflen);
 			dst->ecpointQ.len = buflen;
 			/* calculate the field length */
-			dst->params.field_length = (buflen - 1) / 2 * 8;
+			dst->params->field_length = (buflen - 1) / 2 * 8;
 		}
 		else   {
 			return SC_ERROR_INCOMPATIBLE_KEY;

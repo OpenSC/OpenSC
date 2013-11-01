@@ -257,28 +257,25 @@ static const struct sc_asn1_entry c_asn1_ec_params[] = {
 };
 
 static int
-asn1_decode_ec_params(sc_context_t *ctx, void **paramp,
+asn1_decode_ec_parameters(sc_context_t *ctx, void **paramp,
 	const u8 *buf, size_t buflen, int depth)
 {
 	int r;
-	struct sc_object_id curve;
 	struct sc_asn1_entry asn1_ec_params[4];
-	struct sc_ec_params * ecp;
+	struct sc_pkcs15_ec_parameters * ecp;
 
-	sc_debug(ctx, SC_LOG_DEBUG_ASN1, "DEE - asn1_decode_ec_params %p:%d %d", buf, buflen, depth);
+	sc_debug(ctx, SC_LOG_DEBUG_ASN1, "DEE - asn1_decode_ec_parameters %p:%d %d", buf, buflen, depth);
 
-	memset(&curve, 0, sizeof(curve));
-	ecp = malloc(sizeof(struct sc_ec_params));
+	ecp = calloc(1, sizeof(struct sc_pkcs15_ec_parameters));
 	if (ecp == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
-	memset(ecp,0,sizeof(struct sc_ec_params));
-
 
 	/* We only want to copy the parms if they are a namedCurve 
-	 * or ecParameters  nullParam aka implicityCA is not to be 
+	 * TODO handle ecParameters
+	 * nullParam aka implicityCA is not to be 
 	 * used with PKCS#11 2.20 */
 	sc_copy_asn1_entry(c_asn1_ec_params, asn1_ec_params);
-	sc_format_asn1_entry(asn1_ec_params + 1, &curve, 0, 0);
+	sc_format_asn1_entry(asn1_ec_params + 1, &ecp->id, 0, 0);
 
 	/* Some signature algorithms will not have any data */
 	if (buflen == 0 || buf == NULL) {
@@ -288,51 +285,69 @@ asn1_decode_ec_params(sc_context_t *ctx, void **paramp,
 
 	r = sc_asn1_decode_choice(ctx, asn1_ec_params, buf, buflen, NULL, NULL);
 	/* r = index into asn1_ec_params */
-	sc_debug(ctx, SC_LOG_DEBUG_ASN1, "DEE - asn1_decode_ec_params r=%d", r);
+	sc_debug(ctx, SC_LOG_DEBUG_ASN1, "DEE - asn1_decode_ec_parameters r=%d", r);
 	if (r < 0) {
 		free(ecp);
 		return r;
 	}
-	if (r <= 1) {
-		ecp->der = malloc(buflen);
+	if (r == 1) {
+		ecp->der.value = malloc(buflen);
 
-		if (ecp->der == NULL)
+		if (ecp->der.value == NULL)
 			return SC_ERROR_OUT_OF_MEMORY;
 
-		ecp->der_len = buflen;
+		ecp->der.len = buflen;
 
-		sc_debug(ctx, SC_LOG_DEBUG_ASN1, "DEE - asn1_decode_ec_params paramp=%p %p:%d %d",
-		ecp, ecp->der, ecp->der_len, ecp->type);
-		memcpy(ecp->der, buf, buflen); /* copy der parameters */
+		sc_debug(ctx, SC_LOG_DEBUG_ASN1, "DEE - asn1_decode_ec_parameters paramp=%p %p:%d %d",
+		ecp, ecp->der.value, ecp->der.len, ecp->type);
+		memcpy(ecp->der.value, buf, buflen); /* copy der parameters */
 	} else 
-		r = 0;
-	ecp->type = r; /* but 0 = ecparams if any, 1=named curve */
+		r = -1;
+	ecp->type = r; /* -1= none, 0=ecparams, 1=named curve  2=implicityCA */
 	*paramp = ecp;
 	return 0;
 };
 
 static int
-asn1_encode_ec_params(sc_context_t *ctx, void *params,
+asn1_encode_ec_parameters(sc_context_t *ctx, void *params,
 u8 **buf, size_t *buflen, int depth) 
 {
-	int r;
-	/* TODO: -DEE EC paramameters are DER so is there anything to do? */
-	/* I have not needed this yet */
-	sc_debug(ctx, SC_LOG_DEBUG_ASN1, "DEE - asn1_encode_ec_params");
-	r = SC_ERROR_NOT_IMPLEMENTED;
+	 struct sc_pkcs15_ec_parameters * ecp = (struct sc_pkcs15_ec_parameters *) params;
 
-	return r;
+	/* Only handle named curves. They may be absent too */
+	sc_debug(ctx, SC_LOG_DEBUG_ASN1, "DEE - asn1_encode_ec_params");
+	*buf = NULL;
+	*buflen = 0;
+	if (ecp && ecp->type == 1 && ecp->der.value) { /* named curve */
+	    *buf = malloc(ecp->der.len);
+	    if (*buf == NULL)
+		    return SC_ERROR_OUT_OF_MEMORY;
+
+	    memcpy(*buf, ecp->der.value, ecp->der.len);
+	    *buflen = ecp->der.len;
+	} else
+	    sc_debug(ctx, SC_LOG_DEBUG_ASN1, "DEE - Not named curve");
+
+	return 0;
 }
 
 static void
-asn1_free_ec_params(void *params)
+asn1_free_ec_parameters(void *params)
 {
-	struct sc_ec_params * ecp = (struct sc_ec_params *) params;
+	struct sc_pkcs15_ec_parameters * ecp = (struct sc_pkcs15_ec_parameters *) params;
 	if (ecp) {
-		if (ecp->der)
-			free(ecp->der);
+		if (ecp->named_curve)
+			free(ecp->named_curve);
+		if (ecp->der.value)
+			free(ecp->der.value);
 		free(ecp);
 	}
+}
+
+void 
+sc_pkcs15_free_ec_parameters( struct sc_pkcs15_ec_parameters *ecp)
+{
+    asn1_free_ec_parameters((void*) ecp);
 }
 
 
@@ -404,9 +419,9 @@ static struct sc_asn1_pkcs15_algorithm_info algorithm_table[] = {
 
 #ifdef SC_ALGORITHM_EC
 	{ SC_ALGORITHM_EC, {{ 1, 2, 840, 10045, 2, 1, -1}},
-			asn1_decode_ec_params,
-			asn1_encode_ec_params,
-			asn1_free_ec_params },
+			asn1_decode_ec_parameters,
+			asn1_encode_ec_parameters,
+			asn1_free_ec_parameters },
 #endif
 /* TODO: -DEE Not clear of we need the next five or not */
 #ifdef SC_ALGORITHM_ECDSA_SHA1
@@ -416,27 +431,27 @@ static struct sc_asn1_pkcs15_algorithm_info algorithm_table[] = {
 #ifdef SC_ALGORITHM_ECDSA_SHA224
 /* These next 4 are defined in RFC 5758 */
 	{ SC_ALGORITHM_ECDSA_SHA224, {{ 1, 2, 840, 10045, 4, 3, 1, -1}},
-			asn1_decode_ec_params,
-			asn1_encode_ec_params,
-			asn1_free_ec_params },
+			asn1_decode_ec_parameters,
+			asn1_encode_ec_parameters,
+			asn1_free_ec_parameters },
 #endif
 #ifdef SC_ALGORITHM_ECDSA_SHA256
 	{ SC_ALGORITHM_ECDSA_SHA256, {{ 1, 2, 840, 10045, 4, 3, 2, -1}},
-			asn1_decode_ec_params,
-			asn1_encode_ec_params,
-			asn1_free_ec_params },
+			asn1_decode_ec_parameters,
+			asn1_encode_ec_parameters,
+			asn1_free_ec_parameters },
 #endif
 #ifdef SC_ALGORITHM_ECDSA_SHA384
 	{ SC_ALGORITHM_ECDSA_SHA384, {{ 1, 2, 840, 10045, 4, 3, 3, -1}},
-			asn1_decode_ec_params,
-			asn1_encode_ec_params,
-			asn1_free_ec_params },
+			asn1_decode_ec_parameters,
+			asn1_encode_ec_parameters,
+			asn1_free_ec_parameters },
 #endif
 #ifdef SC_ALGORITHM_ECDSA_SHA512
 	{ SC_ALGORITHM_ECDSA_SHA512, {{ 1, 2, 840, 10045, 4, 3, 4, -1}},
-			asn1_decode_ec_params,
-			asn1_encode_ec_params,
-			asn1_free_ec_params },
+			asn1_decode_ec_parameters,
+			asn1_encode_ec_parameters,
+			asn1_free_ec_parameters },
 #endif
 	{ -1, {{ -1 }}, NULL, NULL, NULL }
 };

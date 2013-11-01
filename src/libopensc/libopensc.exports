@@ -163,6 +163,7 @@ sc_pkcs15_encode_pubkey_dsa
 sc_pkcs15_encode_pubkey_rsa
 sc_pkcs15_encode_pubkey_ec
 sc_pkcs15_encode_pubkey_gostr3410
+sc_pkcs15_encode_pubkey_spki
 sc_pkcs15_encode_pukdf_entry
 sc_pkcs15_encode_tokeninfo
 sc_pkcs15_encode_unusedspace
@@ -216,6 +217,7 @@ sc_pkcs15_read_file
 sc_pkcs15_read_pubkey
 sc_pkcs15_pubkey_from_prvkey
 sc_pkcs15_pubkey_from_cert
+sc_pkcs15_pubkey_from_spki
 sc_pkcs15_remove_object
 sc_pkcs15_remove_unusedspace
 sc_pkcs15_search_objects

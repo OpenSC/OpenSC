@@ -1490,7 +1490,8 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
 		type = SC_PKCS15_TYPE_PUBKEY_GOSTR3410;
 		break;
 	case SC_ALGORITHM_EC:
-		keybits = key.u.ec.params.field_length;
+		if (key.u.ec.params)
+		    keybits = key.u.ec.params->field_length;
 		type = SC_PKCS15_TYPE_PUBKEY_EC;
 		break;
 	default:

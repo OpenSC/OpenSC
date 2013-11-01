@@ -45,16 +45,6 @@
 
 static u8 pubexp[] = { 0x01, 0x00, 0x01 };
 
-
-
-#define C_ASN1_EC_POINTQ_SIZE 2
-static struct sc_asn1_entry c_asn1_ec_pointQ[C_ASN1_EC_POINTQ_SIZE] = {
-	{ "ecpointQ", SC_ASN1_OCTET_STRING, SC_ASN1_TAG_OCTET_STRING, SC_ASN1_ALLOC, NULL, NULL },
-	{ NULL, 0, 0, 0, NULL, NULL }
-};
-
-
-
 struct ec_curve {
 	const struct sc_lv_data oid;
 	const struct sc_lv_data prime;
@@ -362,33 +352,18 @@ static int sc_hsm_decode_gakp_ec(struct sc_pkcs15_card *p15card,
 									struct sc_pkcs15_pubkey *pubkey)
 {
 	struct sc_pkcs15_ec_parameters *ecparams = (struct sc_pkcs15_ec_parameters *)(key_info->params.data);
-	struct sc_ec_params *ecp;
 	LOG_FUNC_CALLED(p15card->card->ctx);
 
 	pubkey->algorithm = SC_ALGORITHM_EC;
-	pubkey->u.ec.params.named_curve = strdup(ecparams->named_curve);
-	sc_pkcs15_fix_ec_parameters(p15card->card->ctx, &pubkey->u.ec.params);
-
-	ecp = calloc(1, sizeof(struct sc_ec_params));
-	if (!ecp) {
+	if (pubkey->u.ec.params == NULL) 
+	    pubkey->u.ec.params = calloc(1, sizeof(struct sc_pkcs15_ec_parameters));
+	if (pubkey->u.ec.params == NULL) {
 		LOG_FUNC_RETURN(p15card->card->ctx, SC_ERROR_OUT_OF_MEMORY);
 	}
-
-	ecp->der = malloc(ecparams->der.len);
-	if (!ecp->der) {
-		LOG_FUNC_RETURN(p15card->card->ctx, SC_ERROR_OUT_OF_MEMORY);
-	}
-
-	ecp->der_len = ecparams->der.len;
-	memcpy(ecp->der, ecparams->der.value, ecp->der_len);
-
-	pubkey->alg_id = (struct sc_algorithm_id *)calloc(1, sizeof(struct sc_algorithm_id));
-	if (!pubkey->alg_id) {
-		LOG_FUNC_RETURN(p15card->card->ctx, SC_ERROR_OUT_OF_MEMORY);
-	}
+	pubkey->u.ec.params->named_curve = strdup(ecparams->named_curve);
+	sc_pkcs15_fix_ec_parameters(p15card->card->ctx, pubkey->u.ec.params);
 
 	pubkey->alg_id->algorithm = SC_ALGORITHM_EC;
-	pubkey->alg_id->params = ecp;
 
 	pubkey->u.ec.ecpointQ.value = malloc(cvc->publicPointlen);
 	if (!pubkey->u.ec.ecpointQ.value) {

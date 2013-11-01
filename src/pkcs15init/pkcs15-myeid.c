@@ -536,7 +536,8 @@ myeid_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 		args.d_len = prkey->u.ec.privateD.len;
 		args.ecpublic_point = prkey->u.ec.ecpointQ.value;
 		args.ecpublic_point_len = prkey->u.ec.ecpointQ.len;
-		args.key_len_bits = prkey->u.ec.params.field_length;
+		if (prkey->u.ec.params)
+		    args.key_len_bits = prkey->u.ec.params->field_length;
 	}
 	/* Store RSA key  */
 	r = sc_card_ctl(card, SC_CARDCTL_MYEID_GENERATE_STORE_KEY, &args);
@@ -655,7 +656,8 @@ myeid_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 			pubkey->u.ec.ecpointQ.len = data_obj.DataLen - 2;
 			pubkey->data.value = malloc(data_obj.DataLen);
 			pubkey->data.len = data_obj.DataLen;
-			pubkey->u.ec.params.field_length = keybits;
+			if (pubkey->u.ec.params)
+			    pubkey->u.ec.params->field_length = keybits;
 			/* Omit the first 2 bytes (0x86??) */
 			memcpy(pubkey->u.ec.ecpointQ.value, data_obj.Data + 2, data_obj.DataLen - 2);
 			memcpy(pubkey->data.value, data_obj.Data, data_obj.DataLen);

@@ -191,11 +191,7 @@ struct sc_pbes2_params {
 	struct sc_algorithm_id key_encr_alg;
 };
 
-struct sc_ec_params {
-	int type;
-	u8 * der;
-	size_t der_len;
-};
+/* sc_ec_params is now sc_pkcs15_ec_parameters in pkcs15.h */
 
 typedef struct sc_algorithm_info {
 	unsigned int algorithm;
