@@ -62,7 +62,7 @@ rm -f target/Library/OpenSC/lib/*.la
 # Build engine_pkcs11 + libp11
 test -d libp11 || git clone http://github.com/OpenSC/libp11.git
 (cd libp11
-test -x confiure || ./bootstrap
+test -x configure || ./bootstrap
 ./configure --enable-static --disable-shared --disable-dependency-tracking --prefix=${BUILDPATH}/build && make && make install)
 test -d engine_pkcs11 || git clone http://github.com/OpenSC/engine_pkcs11.git
 (cd engine_pkcs11
