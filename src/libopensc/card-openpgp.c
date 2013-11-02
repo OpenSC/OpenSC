@@ -192,12 +192,12 @@ static struct do_info		pgp1_objects[] = {	/* OpenPGP card spec 1.1 */
 	{ 0x5f35, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  NULL,               sc_put_data },
 	{ 0x5f50, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  sc_get_data,        sc_put_data },
 	{ 0x7f49, CONSTRUCTED, READ_ALWAYS | WRITE_NEVER, NULL,               NULL        },
-	{ 0xa400, CONSTRUCTED, READ_ALWAYS | WRITE_NEVER,  pgp_get_pubkey,     NULL        },
-	{ 0xa401, SIMPLE,      READ_ALWAYS | WRITE_PIN3, pgp_get_pubkey_pem, NULL        },
-	{ 0xb600, CONSTRUCTED, READ_ALWAYS | WRITE_NEVER,  pgp_get_pubkey,     NULL        },
-	{ 0xb601, SIMPLE,      READ_ALWAYS | WRITE_PIN3, pgp_get_pubkey_pem, NULL        },
-	{ 0xb800, CONSTRUCTED, READ_ALWAYS | WRITE_NEVER,  pgp_get_pubkey,     NULL        },
-	{ 0xb801, SIMPLE,      READ_ALWAYS | WRITE_PIN3, pgp_get_pubkey_pem, NULL        },
+	{ 0xa400, CONSTRUCTED, READ_ALWAYS | WRITE_NEVER, pgp_get_pubkey,     NULL        },
+	{ 0xa401, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  pgp_get_pubkey_pem, NULL        },
+	{ 0xb600, CONSTRUCTED, READ_ALWAYS | WRITE_NEVER, pgp_get_pubkey,     NULL        },
+	{ 0xb601, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  pgp_get_pubkey_pem, NULL        },
+	{ 0xb800, CONSTRUCTED, READ_ALWAYS | WRITE_NEVER, pgp_get_pubkey,     NULL        },
+	{ 0xb801, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  pgp_get_pubkey_pem, NULL        },
 	{ 0, 0, 0, NULL, NULL },
 };
 
@@ -253,11 +253,11 @@ static struct do_info		pgp2_objects[] = {	/* OpenPGP card spec 2.0 */
 	/* The 0xA401, 0xB601, 0xB801 are just symbolic, it does not represent any real DO.
 	 * However, their R/W access condition may block the process of importing key in pkcs15init.
 	 * So we set their accesses condition as WRITE_PIN3 (writable). */
-	{ 0xa401, SIMPLE,      READ_ALWAYS | WRITE_PIN3, pgp_get_pubkey_pem, NULL        },
-	{ 0xb600, CONSTRUCTED, READ_ALWAYS | WRITE_NEVER,  pgp_get_pubkey,     NULL        },
-	{ 0xb601, SIMPLE,      READ_ALWAYS | WRITE_PIN3, pgp_get_pubkey_pem, NULL        },
-	{ 0xb800, CONSTRUCTED, READ_ALWAYS | WRITE_NEVER,  pgp_get_pubkey,     NULL        },
-	{ 0xb801, SIMPLE,      READ_ALWAYS | WRITE_PIN3, pgp_get_pubkey_pem, NULL        },
+	{ 0xa401, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  pgp_get_pubkey_pem, NULL        },
+	{ 0xb600, CONSTRUCTED, READ_ALWAYS | WRITE_NEVER, pgp_get_pubkey,     NULL        },
+	{ 0xb601, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  pgp_get_pubkey_pem, NULL        },
+	{ 0xb800, CONSTRUCTED, READ_ALWAYS | WRITE_NEVER, pgp_get_pubkey,     NULL        },
+	{ 0xb801, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  pgp_get_pubkey_pem, NULL        },
 	{ 0, 0, 0, NULL, NULL },
 };
 

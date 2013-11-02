@@ -36,11 +36,11 @@
 #include "util.h"
 #include "libopensc/log.h"
 
-#define	OPT_RAW		256
-#define	OPT_PRETTY	257
-#define	OPT_VERIFY	258
-#define	OPT_PIN	    259
-#define	OPT_DELKEY  260
+#define OPT_RAW     256
+#define OPT_PRETTY  257
+#define OPT_VERIFY  258
+#define OPT_PIN     259
+#define OPT_DELKEY  260
 
 /* define structures */
 struct ef_name_map {
@@ -137,10 +137,10 @@ static const struct ef_name_map openpgp_data[] = {
 static void show_version(void)
 {
 	fprintf(stderr,
-		"openpgp-tool - OpenPGP card utility version " PACKAGE_VERSION "\n"
-		"\n"
-		"Copyright (c) 2012 Peter Marschall <peter@adpm.de>\n"
-		"Licensed under LGPL v2\n");
+	        "openpgp-tool - OpenPGP card utility version " PACKAGE_VERSION "\n"
+	        "\n"
+	        "Copyright (c) 2012 Peter Marschall <peter@adpm.de>\n"
+	        "Licensed under LGPL v2\n");
 }
 
 
@@ -171,16 +171,16 @@ static char *prettify_language(char *str)
 {
 	if (str != NULL) {
 		switch (strlen(str)) {
-			case 8:	memmove(str+7, str+6, 1+strlen(str+6));
+			case 8: memmove(str+7, str+6, 1+strlen(str+6));
 				str[6] = ',';
 				/* fall through */
-			case 6:	memmove(str+5, str+4, 1+strlen(str+4));
+			case 6: memmove(str+5, str+4, 1+strlen(str+4));
 				str[4] = ',';
 				/* fall through */
-			case 4:	memmove(str+3, str+2, 1+strlen(str+2));
+			case 4: memmove(str+3, str+2, 1+strlen(str+2));
 				str[2] = ',';
 				/* fall through */
-			case 2:  return str;
+			case 2: return str;
 		}
 	}
 	return NULL;
@@ -192,10 +192,10 @@ static char *prettify_gender(char *str)
 {
 	if (str != NULL) {
 		switch (*str) {
-			case '0':  return "unknown";
-			case '1':  return "male";
-			case '2':  return "female";
-			case '9':  return "not applicable";
+			case '0': return "unknown";
+			case '1': return "male";
+			case '2': return "female";
+			case '9': return "not applicable";
 		}
 	}
 	return NULL;
@@ -213,7 +213,7 @@ static void display_data(const struct ef_name_map *mapping, char *value)
 				char *envvar;
 
 				envvar = malloc(strlen(mapping->env_name) +
-						strlen(value) + 2);
+				                strlen(value) + 2);
 				if (envvar != NULL) {
 					strcpy(envvar, mapping->env_name);
 					strcat(envvar, "=");
@@ -337,20 +337,20 @@ static int do_userinfo(sc_card_t *card)
 		if (!count)
 			continue;
 
-		if (count > (int)sizeof(buf) - 1)   {
+		if (count > (int)sizeof(buf) - 1) {
 			fprintf(stderr, "Too small buffer to read the OpenPGP data\n");
 			return EXIT_FAILURE;
 		}
-	
-        	r = sc_read_binary(card, 0, buf, count, 0);
-               	if (r < 0) {
+
+		r = sc_read_binary(card, 0, buf, count, 0);
+		if (r < 0) {
 			fprintf(stderr, "%s: read failed - %s\n", openpgp_data[i].ef, sc_strerror(r));
 			return EXIT_FAILURE;
-        	}
-               	if (r != count) {
-                        fprintf(stderr, "%s: expecting %d, got only %d bytes\n", openpgp_data[i].ef, count, r);
+		}
+		if (r != count) {
+			fprintf(stderr, "%s: expecting %d, got only %d bytes\n", openpgp_data[i].ef, count, r);
 			return EXIT_FAILURE;
-        	}
+		}
 
 		buf[count] = '\0';
 
@@ -583,7 +583,7 @@ int main(int argc, char **argv)
 	r = sc_context_create(&ctx, &ctx_param);
 	if (r) {
 		util_fatal("failed to establish context: %s\n",
-			sc_strerror(r));
+		           sc_strerror(r));
 		return EXIT_FAILURE;
 	}
 
@@ -595,7 +595,7 @@ int main(int argc, char **argv)
 	r = util_connect_card(ctx, &card, opt_reader, opt_wait, verbose);
 	if (r) {
 		util_fatal("failed to connect to card: %s\n",
-			sc_strerror(r));
+		           sc_strerror(r));
 		return EXIT_FAILURE;
 	}
 
