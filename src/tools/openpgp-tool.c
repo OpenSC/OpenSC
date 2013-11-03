@@ -423,38 +423,6 @@ int do_verify(sc_card_t *card, char *type, char *pin)
 }
 
 /**
- * Delete key, for Gnuk.
- **/
-int delete_key_gnuk(sc_card_t *card, u8 key_id)
-{
-	sc_context_t *ctx = card->ctx;
-	int r = SC_SUCCESS;
-	u8 *data = NULL;
-
-	/* Delete fingerprint */
-	fprintf(stdout, "Delete fingerprints");
-	r |= sc_put_data(card, 0xC6 + key_id, NULL, 0);
-	/* Delete creation time */
-	fprintf(stdout, "Delete creation time");
-	r |= sc_put_data(card, 0xCD + key_id, NULL, 0);
-
-	/* Rewrite Extended Header List */
-	fprintf(stdout, "Rewrite Extended Header List");
-
-	if (key_id == 1)
-		data = "\x4D\x02\xB6";
-	else if (key_id == 2)
-		data = "\x4D\x02\xB8";
-	else if (key_id == 3)
-		data = "\x4D\x02\xA4";
-	else
-		return SC_ERROR_INVALID_ARGUMENTS;
-
-	r |= sc_put_data(card, 0x4D, data, strlen(data) + 1);
-	return r;
-}
-
-/**
  * Delete key, for OpenPGP card.
  * This function is not complete and is reserved for future version (> 2) of OpenPGP card.
  **/
@@ -502,32 +470,13 @@ int delete_key_openpgp(sc_card_t *card, u8 key_id)
 	}
 	/* TODO: Rewrite Extended Header List.
 	 * Not support by OpenGPG v2 yet */
-	LOG_FUNC_RETURN(ctx, r);
-}
-
-int delete_key(sc_card_t *card, u8 key_id)
-{
-	sc_context_t *ctx = card->ctx;
-	int r;
-
-	LOG_FUNC_CALLED(ctx);
-	/* Check key ID */
-	if (key_id < 1 || key_id > 3) {
-		fprintf(stderr, "Invalid key ID %d", key_id);
-		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
-	}
-
-	if (card->type == SC_CARD_TYPE_OPENPGP_GNUK)
-		r = delete_key_gnuk(card, key_id);
-	else
-		r = delete_key_openpgp(card, key_id);
-
-	LOG_FUNC_RETURN(ctx, r);
+	return r;
 }
 
 int do_delete_key(sc_card_t *card, u8 key_id)
 {
 	sc_context_t *ctx = card->ctx;
+	sc_path_t path;
 	int r = SC_SUCCESS;
 
 	/* Currently, only Gnuk supports deleting keys */
@@ -541,13 +490,16 @@ int do_delete_key(sc_card_t *card, u8 key_id)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	if (key_id == 1 || key_id == 'a') {
-		r |= delete_key(card, 1);
+		sc_format_path("B601", &path);
+		r |= sc_delete_file(card, &path);
 	}
 	if (key_id == 2 || key_id == 'a') {
-		r |= delete_key(card, 2);
+		sc_format_path("B801", &path);
+		r |= sc_delete_file(card, &path);
 	}
 	if (key_id == 3 || key_id == 'a') {
-		r |= delete_key(card, 3);
+		sc_format_path("A401", &path);
+		r |= sc_delete_file(card, &path);
 	}
 	return r;
 }
