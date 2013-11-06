@@ -912,7 +912,7 @@ sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "DEE Adding pin %d label=%s",i, label);
 		}
 		else if (ckis[i].pubkey_from_cert && ckis[i].pubkey_from_cert->data.value) {
 		    sc_der_copy(&pubkey_obj.content, &ckis[i].pubkey_from_cert->data);
-		    sc_pkcs15_free_pubkey(ckis[i].pubkey_from_cert);
+		    pubkey_obj.emulated = ckis[i].pubkey_from_cert;
 		}
 
 		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"adding pubkey for %d keyalg=%d",i, ckis[i].key_alg);

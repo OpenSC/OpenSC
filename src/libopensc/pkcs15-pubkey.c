@@ -602,9 +602,7 @@ sc_pkcs15_encode_pubkey_gostr3410(sc_context_t *ctx,
 }
 
 /*
- * We are storing the ec_pointQ as a octet string.
- * Thus we will just copy the string.
- * But to get the field length we decode it.
+ * We are storing the ec_pointQ as u8 string. not as DER
  */
 int
 sc_pkcs15_decode_pubkey_ec(sc_context_t *ctx,
@@ -620,23 +618,18 @@ sc_pkcs15_decode_pubkey_ec(sc_context_t *ctx,
 	sc_format_asn1_entry(asn1_ec_pointQ + 0, &ecpoint_data, &ecpoint_len, 1);
 	r = sc_asn1_decode(ctx, asn1_ec_pointQ, buf, buflen, NULL, NULL);
 	if (r < 0)
-		LOG_TEST_RET(ctx, r, "ASN.1 encoding failed");
+		LOG_TEST_RET(ctx, r, "ASN.1 decoding failed");
 
-	sc_log(ctx, "DEE-EC key=%p, buf=%p, buflen=%d", key, buf, buflen);
-	key->ecpointQ.value = malloc(buflen);
-	if (key->ecpointQ.value == NULL)
-		return SC_ERROR_OUT_OF_MEMORY;
+	sc_log(ctx, "decode-EC key=%p, buf=%p, buflen=%d", key, buf, buflen);
 
-	key->ecpointQ.len = buflen;
-	memcpy(key->ecpointQ.value, buf, buflen);
+	key->ecpointQ.len = ecpoint_len;
+	key->ecpointQ.value = ecpoint_data; 
 
 	/* An uncompressed ecpoint is of the form 04||x||y
 	 * The 04 indicates uncompressed
 	 * x and y are same size, and field_length = sizeof(x) in bits. */
 	/* TODO: -DEE  support more then uncompressed */
 	key->params.field_length = (ecpoint_len - 1)/2 * 8;
-	if (ecpoint_data)
-		free (ecpoint_data);
 
 	return r;
 }
@@ -1010,6 +1003,7 @@ sc_pkcs15_pubkey_from_spki(sc_context_t *ctx, sc_pkcs15_pubkey_t ** outpubkey,
 	}
 	memcpy(pubkey->alg_id, &pk_alg, sizeof(struct sc_algorithm_id));
 	pubkey->algorithm = pk_alg.algorithm;
+	pk_alg.params = NULL;
 
 	sc_log(ctx, "DEE pk_alg.algorithm=%d", pk_alg.algorithm);
 
@@ -1017,18 +1011,36 @@ sc_pkcs15_pubkey_from_spki(sc_context_t *ctx, sc_pkcs15_pubkey_t ** outpubkey,
 	switch (pk_alg.algorithm) {
 	case SC_ALGORITHM_EC:
 		/*
+		 * TODO we really should only have params in one place!
+		 * The alg_id may have the sc_ec_params, 
+		 * we want to get the curve OID into the 
+		 * u.ec.params and get the field length too.  
+		 */
+		if (pubkey->alg_id->params) {
+		    struct sc_ec_params  * ecp = (struct sc_ec_params *)pubkey->alg_id->params;
+		    pubkey->u.ec.params.der.value = malloc(ecp->der_len);
+		    if (pubkey->u.ec.params.der.value) {
+			memcpy(&pubkey->u.ec.params.der.value, &ecp->der, ecp->der_len);
+			pubkey->u.ec.params.der.len = ecp->der_len;
+			sc_pkcs15_fix_ec_parameters(ctx,&pubkey->u.ec.params);
+		    }
+		}
+		/*
 		 * For most keys, the above ASN.1 parsing of a key works, but for EC keys,
-		 * the ec_pointQ in a certificate is stored in a bitstring, but
-		 * in PKCS#11 it is an octet string and we just decoded its
-		 * contents from the bitstring in the certificate. So we need to encode it
-		 * back to an octet string so we can store it as an octet string.
+		 * the ec_pointQ in a certificate is stored in the bitstring, in its raw format.
+		 * RSA for example is stored in the  bitstring, as a ASN1 DER 
+		 * So we encoded the raw ecpointQ  into ASN1 DER as the pubkey->data 
+		 * and let the sc_pkcs15_decode_pubkey below get the ecpointQ out later. 
 		 */
 		pk.len >>= 3;  /* Assume it is multiple of 8 */
-/*		pubkey->u.ec.field_length = (pk.len - 1)/2 * 8;  */
+		if (pubkey->u.ec.params.field_length == 0) 
+		    pubkey->u.ec.params.field_length = (pk.len - 1)/2 * 8;
 
 		sc_copy_asn1_entry(c_asn1_ec_pointQ, asn1_ec_pointQ);
 		sc_format_asn1_entry(&asn1_ec_pointQ[0], pk.value, &pk.len, 1);
 		r = sc_asn1_encode(ctx, asn1_ec_pointQ, &pubkey->data.value, &pubkey->data.len);
+
+		pk.value = NULL;
 
 		sc_log(ctx, "DEE r=%d data=%p:%d", r, pubkey->data.value, pubkey->data.len);
 		break;
