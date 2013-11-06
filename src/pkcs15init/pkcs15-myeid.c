@@ -651,6 +651,17 @@ myeid_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 			r = sc_card_ctl(card, SC_CARDCTL_MYEID_GETDATA, &data_obj);
 			LOG_TEST_RET(ctx, r, "Cannot get EC public key: 'MYEID_GETDATA' failed");
 
+			/*
+			 * TODO DEE - this looks like a bug... 
+			 * pubkey->u.ec.ecpointQ.value is just value. "04||X||Y" 
+			 * pubkey->data.value should be DER OCTET STRING
+			 * but 
+			 * pubkey->data.value looks like TLV with TAG if 0x86
+			 * and single byte length.  
+			 * Could call sc_pkcs15_encode_pubkey
+			 * to set pubkey->data.value
+			 */
+
 			pubkey->u.ec.ecpointQ.value = malloc(data_obj.DataLen - 2);
 			pubkey->u.ec.ecpointQ.len = data_obj.DataLen - 2;
 			pubkey->data.value = malloc(data_obj.DataLen);

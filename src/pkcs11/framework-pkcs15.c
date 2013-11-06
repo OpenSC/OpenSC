@@ -3294,10 +3294,10 @@ pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
 		check_attribute_buffer(attr, sizeof(CK_ULONG));
 		switch (prkey->prv_p15obj->type) {
 			case SC_PKCS15_TYPE_PRKEY_EC:
-				if (key)
+				if (key && key->u.ec.params.field_length > 0)
 					*(CK_ULONG *) attr->pValue = key->u.ec.params.field_length;
 				else
-					*(CK_ULONG *) attr->pValue = 384; /* TODO -DEE needs work */
+					*(CK_ULONG *) attr->pValue = (key->u.ec.ecpointQ.len - 1) / 2 *8;
 				return CKR_OK;
 			default:
 				*(CK_ULONG *) attr->pValue = prkey->prv_info->modulus_length;
@@ -4251,6 +4251,13 @@ get_ec_pubkey_params(struct sc_pkcs15_pubkey *key, CK_ATTRIBUTE_PTR attr)
 
 	switch (key->algorithm) {
 	case SC_ALGORITHM_EC:
+		/* TODO parms should not be in two places */
+		/* ec_params may be in key->alg_id or in key->u.ec */
+		if (key->u.ec.params.der.value) {
+		    check_attribute_buffer(attr,key->u.ec.params.der.len);
+		    memcpy(attr->pValue, key->u.ec.params.der.value, key->u.ec.params.der.len);
+		    return CKR_OK;
+		}
 		check_attribute_buffer(attr, ecp->der_len);
 		memcpy(attr->pValue, ecp->der, ecp->der_len);
 		return CKR_OK;
@@ -4266,8 +4273,16 @@ get_ec_pubkey_point(struct sc_pkcs15_pubkey *key, CK_ATTRIBUTE_PTR attr)
 
 	switch (key->algorithm) {
 	case SC_ALGORITHM_EC:
-		check_attribute_buffer(attr, key->u.ec.ecpointQ.len);
-		memcpy(attr->pValue, key->u.ec.ecpointQ.value, key->u.ec.ecpointQ.len);
+		/*
+		 * TODO Verify that pubkey->data is DER encoded ecpointQ
+		 * It should be. If not we need to encode the ecpointQ to
+		 * DER. But can not use sc_pkcs15_encode_pubkey as it
+		 * needs ctx, and ctx is not available here. 
+		 * Original ECC code stored ecpointQ as DER, so there was
+		 * no issue.
+		 */
+		check_attribute_buffer(attr, key->data.len);
+		memcpy(attr->pValue, key->data.value, key->data.len);
 		return CKR_OK;
 	}
 	return CKR_ATTRIBUTE_TYPE_INVALID;

@@ -154,6 +154,12 @@ struct sc_pkcs15_der {
 };
 typedef struct sc_pkcs15_der sc_pkcs15_der_t;
 
+struct sc_pkcs15_u8 {
+	u8 *		value;
+	size_t		len;
+};
+typedef struct sc_pkcs15_u8 sc_pkcs15_u8_t;
+
 struct sc_pkcs15_pubkey_rsa {
 	sc_pkcs15_bignum_t modulus;
 	sc_pkcs15_bignum_t exponent;
@@ -214,13 +220,13 @@ struct sc_pkcs15_gost_parameters {
 
 struct sc_pkcs15_pubkey_ec {
 	struct sc_pkcs15_ec_parameters params;
-	struct sc_pkcs15_der		ecpointQ; /* note this is der */
+	struct sc_pkcs15_u8		ecpointQ; /* This is NOT DER, just value and length */
 };
 
 struct sc_pkcs15_prkey_ec {
 	struct sc_pkcs15_ec_parameters params;
 	sc_pkcs15_bignum_t	privateD; /* note this is bignum */
-	struct sc_pkcs15_der		ecpointQ; /* note this is der */
+	struct sc_pkcs15_u8		ecpointQ; /* This is NOT DER, just value and length */
 };
 
 struct sc_pkcs15_pubkey_gostr3410 {
