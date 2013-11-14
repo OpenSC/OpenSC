@@ -1020,7 +1020,7 @@ sc_pkcs15_pubkey_from_spki(sc_context_t *ctx, sc_pkcs15_pubkey_t ** outpubkey,
 		    struct sc_ec_params  * ecp = (struct sc_ec_params *)pubkey->alg_id->params;
 		    pubkey->u.ec.params.der.value = malloc(ecp->der_len);
 		    if (pubkey->u.ec.params.der.value) {
-			memcpy(&pubkey->u.ec.params.der.value, &ecp->der, ecp->der_len);
+			memcpy(pubkey->u.ec.params.der.value, ecp->der, ecp->der_len);
 			pubkey->u.ec.params.der.len = ecp->der_len;
 			sc_pkcs15_fix_ec_parameters(ctx,&pubkey->u.ec.params);
 		    }
