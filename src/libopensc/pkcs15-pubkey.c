@@ -669,6 +669,58 @@ sc_pkcs15_encode_pubkey(sc_context_t *ctx, struct sc_pkcs15_pubkey *key,
 	return SC_ERROR_NOT_SUPPORTED;
 }
 
+
+static const struct sc_asn1_entry       c_asn1_spki_key_items[] = {
+		{ "algorithm",  SC_ASN1_ALGORITHM_ID, SC_ASN1_CONS| SC_ASN1_TAG_SEQUENCE, 0, NULL, NULL},
+		{ "key",        SC_ASN1_BIT_STRING_NI, SC_ASN1_TAG_BIT_STRING, 0, NULL, NULL },
+		{ NULL, 0, 0, 0, NULL, NULL }
+};
+
+static const struct sc_asn1_entry       c_asn1_spki_key[] = {
+		{ "publicKey",  SC_ASN1_STRUCT, SC_ASN1_CONS | SC_ASN1_TAG_SEQUENCE, 0, NULL, NULL},
+		{ NULL, 0, 0, 0, NULL, NULL }
+};
+
+
+int
+sc_pkcs15_encode_pubkey_ec_spki(sc_context_t *ctx, struct sc_pkcs15_pubkey *pubkey,
+		u8 **buf, size_t *len)
+{
+	int r;
+	struct sc_asn1_entry  asn1_spki_key[2],
+	asn1_spki_key_items[3];
+	size_t key_len;
+
+	key_len = pubkey->u.ec.ecpointQ.len * 8;
+
+	sc_copy_asn1_entry(c_asn1_spki_key, asn1_spki_key);
+	sc_copy_asn1_entry(c_asn1_spki_key_items, asn1_spki_key_items);
+	sc_format_asn1_entry(asn1_spki_key + 0, asn1_spki_key_items, NULL, 1);
+	sc_format_asn1_entry(asn1_spki_key_items + 0, pubkey->alg_id, NULL, 1);
+	sc_format_asn1_entry(asn1_spki_key_items + 1, pubkey->u.ec.ecpointQ.value, &key_len, 1);
+
+	r =  sc_asn1_encode(ctx, asn1_spki_key, buf, len);
+
+	return r;
+}
+
+
+/*
+ * Encode public key in a format that preserves key parameter
+ *
+ * EC key are encoded as Subject Public Key Info per RFC5280
+ */
+int
+sc_pkcs15_encode_pubkey_with_param(sc_context_t *ctx, struct sc_pkcs15_pubkey *key,
+		u8 **buf, size_t *len)
+{
+	if (key->algorithm != SC_ALGORITHM_EC)
+		return sc_pkcs15_encode_pubkey(ctx, key, buf, len);
+	else
+		return sc_pkcs15_encode_pubkey_ec_spki(ctx, key, buf, len);
+}
+
+
 int
 sc_pkcs15_decode_pubkey(sc_context_t *ctx, struct sc_pkcs15_pubkey *key,
 		const u8 *buf, size_t len)
@@ -681,9 +733,28 @@ sc_pkcs15_decode_pubkey(sc_context_t *ctx, struct sc_pkcs15_pubkey *key,
 		return sc_pkcs15_decode_pubkey_gostr3410(ctx, &key->u.gostr3410, buf, len);
 	if (key->algorithm == SC_ALGORITHM_EC)
 		return sc_pkcs15_decode_pubkey_ec(ctx, &key->u.ec, buf, len);
+
 	sc_log(ctx, "Decoding of public key type %u not supported", key->algorithm);
 	return SC_ERROR_NOT_SUPPORTED;
 }
+
+
+int sc_pkcs15_copy_pubkey_from_spki_object(sc_context_t *ctx, const u8 *buf, size_t buflen,sc_pkcs15_pubkey_t *pubkey);
+
+int
+sc_pkcs15_decode_pubkey_with_param(sc_context_t *ctx, struct sc_pkcs15_pubkey *key,
+		const u8 *buf, size_t len)
+{
+	if ((key->algorithm == SC_ALGORITHM_EC) && (*buf == 0x30)) {
+		// Decode EC Public Key from SPKI
+		return sc_pkcs15_copy_pubkey_from_spki_object(ctx, buf, len, key);
+	} else {
+		key->data.value = (u8 *)buf;
+		key->data.len = len;
+		return sc_pkcs15_decode_pubkey(ctx, key, buf, len);
+	}
+}
+
 
 /*
  * Read public key.
@@ -723,6 +794,7 @@ sc_pkcs15_read_pubkey(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_obj
 	sc_log(ctx, "Content (%p, %i)", obj->content.value, obj->content.len);
 	if (obj->content.value && obj->content.len)   {
 		/* public key data is present as 'direct' value of pkcs#15 object */
+		/* For EC keys this can be either ECPoint or SPKI */
 		data = calloc(1, obj->content.len);
 		if (!data)
 			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
@@ -731,7 +803,7 @@ sc_pkcs15_read_pubkey(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_obj
 	}
 	else if (p15card->card->ops->read_public_key)   {
 		r = p15card->card->ops->read_public_key(p15card->card, algorithm,
-				&info->path, info->key_reference, info->modulus_length,
+				(struct sc_path *)&info->path, info->key_reference, info->modulus_length,
 				&data, &len);
 		LOG_TEST_RET(ctx, r, "Card specific 'read-public' procedure failed.");
 	}
@@ -739,7 +811,7 @@ sc_pkcs15_read_pubkey(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_obj
 		r = sc_pkcs15_read_file(p15card, &info->path, &data, &len);
 		LOG_TEST_RET(ctx, r, "Failed to read public key file.");
 	}
-	else    {
+	else {
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_IMPLEMENTED, "No way to get public key");
 	}
 
@@ -751,10 +823,9 @@ sc_pkcs15_read_pubkey(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_obj
 		free(data);
 		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 	}
+
 	pubkey->algorithm = algorithm;
-	pubkey->data.value = data;
-	pubkey->data.len = len;
-	if (sc_pkcs15_decode_pubkey(ctx, pubkey, data, len)) {
+	if (sc_pkcs15_decode_pubkey_with_param(ctx, pubkey, data, len)) {
 		free(data);
 		free(pubkey);
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ASN1_OBJECT);
@@ -1051,7 +1122,7 @@ sc_pkcs15_pubkey_from_spki(sc_context_t *ctx, sc_pkcs15_pubkey_t ** outpubkey,
 		break;
 	}
 
-	/* Now decode what every is in pk as it depends on the key algorthim */
+	/* Now decode what ever is in pk as it depends on the key algorithm */
 
 	r = sc_pkcs15_decode_pubkey(ctx, pubkey, pubkey->data.value, pubkey->data.len);
 	if (r < 0)
@@ -1067,8 +1138,27 @@ err:
 	if (pk.value)
 		free(pk.value);
 
-	LOG_TEST_RET(ctx, r, "ASN.1 parsing of  subjectPubkeyInfo failed");
+	LOG_TEST_RET(ctx, r, "ASN.1 parsing of subjectPubkeyInfo failed");
 	LOG_FUNC_RETURN(ctx, r);
+}
+
+
+int
+sc_pkcs15_pubkey_from_spki_object(sc_context_t *ctx, const u8 *buf, size_t buflen,
+		sc_pkcs15_pubkey_t ** outpubkey)
+{
+	int r;
+	sc_pkcs15_pubkey_t * pubkey = NULL;
+	struct sc_asn1_entry asn1_spki[] = {
+		{ "PublicKeyInfo",SC_ASN1_CALLBACK, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, sc_pkcs15_pubkey_from_spki, &pubkey},
+		{ NULL, 0, 0, 0, NULL, NULL } };
+
+	*outpubkey = NULL;
+
+	r = sc_asn1_decode(ctx, asn1_spki, buf, buflen, NULL, NULL);
+
+	*outpubkey = pubkey;
+	return r;
 }
 
 
@@ -1079,22 +1169,33 @@ sc_pkcs15_pubkey_from_spki_filename(sc_context_t *ctx, char * filename,
 	int r;
 	u8 * buf = NULL;
 	size_t buflen = 0;
-	sc_pkcs15_pubkey_t * pubkey = NULL;
-	struct sc_asn1_entry asn1_spki[] = {
-		{ "PublicKeyInfo",SC_ASN1_CALLBACK, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, sc_pkcs15_pubkey_from_spki, &pubkey},
-		{ NULL, 0, 0, 0, NULL, NULL } };
 
-	*outpubkey = NULL;
 	r = sc_pkcs15_read_der_file(ctx, filename, &buf, &buflen);
 	if (r < 0)
 		return r;
 
-	r = sc_asn1_decode(ctx, asn1_spki, buf, buflen, NULL, NULL);
+	r = sc_pkcs15_pubkey_from_spki_object(ctx, buf, buflen, outpubkey);
 
 	if (buf)
 		free(buf);
-	*outpubkey = pubkey;
+
 	return r;
+}
+
+
+int
+sc_pkcs15_copy_pubkey_from_spki_object(sc_context_t *ctx, const u8 *buf, size_t buflen, sc_pkcs15_pubkey_t *pubkey)
+{
+	int r;
+	sc_pkcs15_pubkey_t *outpubkey = NULL;
+
+	r = sc_pkcs15_pubkey_from_spki_object(ctx, buf, buflen, &outpubkey);
+	if (r < 0)
+		return r;
+
+	sc_pkcs15_erase_pubkey(pubkey);
+	*pubkey = *outpubkey;
+	return 0;
 }
 
 
@@ -1311,4 +1412,3 @@ sc_pkcs15_convert_pubkey(struct sc_pkcs15_pubkey *pkcs15_key, void *evp_key)
 	return SC_ERROR_NOT_IMPLEMENTED;
 #endif
 }
-
