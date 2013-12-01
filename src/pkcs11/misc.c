@@ -112,8 +112,7 @@ static CK_RV sc_to_cryptoki_error_common(int rc)
 
 CK_RV sc_to_cryptoki_error(int rc, const char *ctx)
 {
-	if (ctx)
-	{
+	if (ctx)   {
 		int ii;
 
 		for (ii = 0; sc_to_cryptoki_error_map[ii].context; ii++) {

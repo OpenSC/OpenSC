@@ -1660,10 +1660,6 @@ pkcs15_initialize(struct sc_pkcs11_slot *slot, void *ptr,
 	args.label = (const char *) pLabel;
 
 	rv = sc_card_ctl(p11card->card, SC_CARDCTL_PKCS11_INIT_TOKEN, &args);
-
-	if (rv == SC_ERROR_NOT_SUPPORTED)
-		return CKR_FUNCTION_NOT_SUPPORTED;
-
 	if (rv < 0)
 		return sc_to_cryptoki_error(rv, "C_InitToken");
 
