@@ -54,6 +54,8 @@ static struct sc_atr_table gemsafe_atrs[] = {
     {"3B:7D:95:00:00:80:31:80:65:B0:83:11:C0:A9:83:00:90:00", NULL, NULL, SC_CARD_TYPE_GEMSAFEV1_PTEID, 0, NULL},
     {"3B:7D:95:00:00:80:31:80:65:B0:83:11:00:C8:83:00", NULL, NULL, SC_CARD_TYPE_GEMSAFEV1_PTEID, 0, NULL},
     {"3B:7D:95:00:00:80:31:80:65:B0:83:11:00:C8:83:00:90:00", NULL, NULL, SC_CARD_TYPE_GEMSAFEV1_PTEID, 0, NULL},
+    /* Swedish eID card */
+    {"3B:7D:96:00:00:80:31:80:65:B0:83:11:00:C8:83:00:90:00", NULL, NULL, SC_CARD_TYPE_GEMSAFEV1_SEEID, 0, NULL},
     {NULL, NULL, NULL, 0, 0, NULL}
 };
 
@@ -61,6 +63,9 @@ static const u8 gemsafe_def_aid[] = {0xA0, 0x00, 0x00, 0x00, 0x18, 0x0A,
 	0x00, 0x00, 0x01, 0x63, 0x42, 0x00};
 
 static const u8 gemsafe_pteid_aid[] = {0x60, 0x46, 0x32, 0xFF, 0x00, 0x00, 0x02};
+
+static const u8 gemsafe_seeid_aid[] = {0xA0, 0x00, 0x00, 0x00, 0x18, 0x0C,
+                                       0x00, 0x00, 0x01, 0x63, 0x42, 0x00};
 
 /*
 static const u8 gemsafe_def_aid[] = {0xA0, 0x00, 0x00, 0x00, 0x63, 0x50,
@@ -165,7 +170,10 @@ static int gemsafe_init(struct sc_card *card)
 	} else if (card->type == SC_CARD_TYPE_GEMSAFEV1_PTEID) {
 		memcpy(exdata->aid, gemsafe_pteid_aid, sizeof(gemsafe_pteid_aid));
 		exdata->aid_len = sizeof(gemsafe_pteid_aid);
-	}
+	} else if (card->type == SC_CARD_TYPE_GEMSAFEV1_SEEID) {
+                memcpy(exdata->aid, gemsafe_seeid_aid, sizeof(gemsafe_seeid_aid));
+                exdata->aid_len = sizeof(gemsafe_seeid_aid);
+        }
 
 	/* increase lock_count here to prevent sc_unlock to select
 	 * applet twice in gp_select_applet */
@@ -354,12 +362,14 @@ static u8 gemsafe_flags2algref(struct sc_card *card, const struct sc_security_en
 
 	if (env->operation == SC_SEC_OPERATION_SIGN) {
 		if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1)
-			ret = card->type == SC_CARD_TYPE_GEMSAFEV1_PTEID ? 0x02 : 0x12;
+			ret = (card->type == SC_CARD_TYPE_GEMSAFEV1_PTEID ||
+			       card->type == SC_CARD_TYPE_GEMSAFEV1_SEEID) ? 0x02 : 0x12;
 		else if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_ISO9796)
 			ret = 0x11;
 	} else if (env->operation == SC_SEC_OPERATION_DECIPHER) {
 		if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1)
-			ret = card->type == SC_CARD_TYPE_GEMSAFEV1_PTEID ? 0x02 : 0x12;
+			ret = (card->type == SC_CARD_TYPE_GEMSAFEV1_PTEID ||
+			       card->type == SC_CARD_TYPE_GEMSAFEV1_PTEID) ? 0x02 : 0x12;
 	}
 
 	return ret;
@@ -423,7 +433,9 @@ static int gemsafe_compute_signature(struct sc_card *card, const u8 * data,
 	}
 
 	/* the Portuguese eID card requires a two-phase exchange */
-	if(card->type == SC_CARD_TYPE_GEMSAFEV1_PTEID) {
+	/* and so does the Swedish one */
+	if(card->type == SC_CARD_TYPE_GEMSAFEV1_PTEID ||
+	   card->type == SC_CARD_TYPE_GEMSAFEV1_SEEID) {
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x2A, 0x90, 0xA0);
 	} else {
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x9E, 0xAC);
@@ -443,12 +455,17 @@ static int gemsafe_compute_signature(struct sc_card *card, const u8 * data,
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
-		if(card->type == SC_CARD_TYPE_GEMSAFEV1_PTEID) {
+		if(card->type == SC_CARD_TYPE_GEMSAFEV1_PTEID ||
+		   card->type == SC_CARD_TYPE_GEMSAFEV1_SEEID) {
 			/* finalize the exchange */
 			sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0x2A, 0x9E, 0x9A);
 			apdu.le = 128; /* 1024 bit keys */
 			apdu.resp = rbuf;
 			apdu.resplen = sizeof(rbuf);
+			if(card->type == SC_CARD_TYPE_GEMSAFEV1_SEEID) {
+			  /* cla 0x80 not supported */
+			  apdu.cla = 0x00;
+			}
 			r = sc_transmit_apdu(card, &apdu);
 			SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 			if(apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
