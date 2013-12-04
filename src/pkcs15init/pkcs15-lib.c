@@ -490,9 +490,13 @@ int
 sc_pkcs15init_erase_card(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 		struct sc_aid *aid)
 {
-	struct sc_context *ctx = p15card->card->ctx;
+	struct sc_context *ctx = NULL;
 	int rv;
 
+	if (!p15card)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	ctx = p15card->card->ctx;
 	LOG_FUNC_CALLED(ctx);
 	/* Needs the 'SOPIN' AUTH pkcs15 object.
 	 * So that, SOPIN can be found by it's reference. */
