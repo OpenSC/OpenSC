@@ -75,6 +75,8 @@ static CK_RV sc_to_cryptoki_error_common(int rc)
 	case SC_ERROR_CARD_NOT_PRESENT:
 		return CKR_TOKEN_NOT_PRESENT;
 	case SC_ERROR_INVALID_CARD:
+	case SC_ERROR_WRONG_CARD:
+	case SC_ERROR_NO_CARD_SUPPORT:
 		return CKR_TOKEN_NOT_RECOGNIZED;
 	case SC_ERROR_WRONG_LENGTH:
 		return CKR_DATA_LEN_RANGE;
