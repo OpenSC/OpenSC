@@ -1075,6 +1075,11 @@ void sc_print_cache(struct sc_card *card)   {
 				sc_print_path(&card->cache.current_df->path));
 }
 
+scconf_block *
+sc_match_atr_block(sc_context_t *ctx, struct sc_card_driver *driver, struct sc_atr *atr)
+{
+	return _sc_match_atr_block(ctx, driver, atr);
+}
 
 #ifdef ENABLE_SM
 static int

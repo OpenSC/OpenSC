@@ -280,16 +280,16 @@ struct sc_cardctl_default_key {
  * Generic cardctl - initialize token using PKCS#11 style
  */
 typedef struct sc_cardctl_pkcs11_init_token {
-	const char *	so_pin;
+	const unsigned char *	so_pin;
 	size_t			so_pin_len;
-	const char *	label;
+	const char *		label;
 } sc_cardctl_pkcs11_init_token_t;
 
 /*
  * Generic cardctl - set pin using PKCS#11 style
  */
 typedef struct sc_cardctl_pkcs11_init_pin {
-	const char *	pin;
+	const unsigned char *	pin;
 	size_t			pin_len;
 } sc_cardctl_pkcs11_init_pin_t;
 

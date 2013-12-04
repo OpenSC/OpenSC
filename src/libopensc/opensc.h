@@ -1283,6 +1283,7 @@ struct sc_algorithm_info * sc_card_find_ec_alg(struct sc_card *card,
 struct sc_algorithm_info * sc_card_find_gostr3410_alg(struct sc_card *card,
 		unsigned int key_length);
 
+scconf_block *sc_match_atr_block(sc_context_t *ctx, struct sc_card_driver *driver, struct sc_atr *atr);
 /**
  * Get CRC-32 digest
  * @param value pointer to data used for CRC calculation
