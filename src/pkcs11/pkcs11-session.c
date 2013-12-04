@@ -260,7 +260,7 @@ CK_RV C_Login(CK_SESSION_HANDLE hSession,	/* the session's handle */
 
 	slot = session->slot;
 
-	if (!(slot->token_info.flags & CKF_USER_PIN_INITIALIZED)) {
+	if (!(slot->token_info.flags & CKF_USER_PIN_INITIALIZED) && userType == CKU_USER) {
 		rv = CKR_USER_PIN_NOT_INITIALIZED;
 		goto out;
 	}
@@ -270,9 +270,13 @@ CK_RV C_Login(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		if (slot->login_user == -1) {
 			rv = CKR_OPERATION_NOT_INITIALIZED;
 			goto out;
-		} else
-		rv = slot->card->framework->login(slot, userType, pPin, ulPinLen);
-	} else {
+		}
+		else   {
+			rv = slot->card->framework->login(slot, userType, pPin, ulPinLen);
+		}
+	}
+	else {
+		sc_log(context, "C_Login() slot->login_user %li", slot->login_user);
 		if (slot->login_user >= 0) {
 			if ((CK_USER_TYPE) slot->login_user == userType)
 				rv = CKR_USER_ALREADY_LOGGED_IN;
@@ -281,12 +285,15 @@ CK_RV C_Login(CK_SESSION_HANDLE hSession,	/* the session's handle */
 			goto out;
 		}
 
+		sc_log(context, "C_Login() userType %li", userType);
 		rv = slot->card->framework->login(slot, userType, pPin, ulPinLen);
+		sc_log(context, "fLogin() rv %li", rv);
 		if (rv == CKR_OK)
 			slot->login_user = userType;
 	}
 
-      out:sc_pkcs11_unlock();
+out:
+	sc_pkcs11_unlock();
 	return rv;
 }
 
@@ -326,6 +333,7 @@ CK_RV C_InitPIN(CK_SESSION_HANDLE hSession, CK_CHAR_PTR pPin, CK_ULONG ulPinLen)
 	struct sc_pkcs11_session *session;
 	struct sc_pkcs11_slot *slot;
 
+	sc_log(context, "C_InitPIN() called, pin '%s'", pPin ? pPin : "<null>");
 	if (pPin == NULL_PTR && ulPinLen > 0)
 		return CKR_ARGUMENTS_BAD;
 
@@ -351,9 +359,11 @@ CK_RV C_InitPIN(CK_SESSION_HANDLE hSession, CK_CHAR_PTR pPin, CK_ULONG ulPinLen)
 		rv = CKR_FUNCTION_NOT_SUPPORTED;
 	} else {
 		rv = slot->card->framework->init_pin(slot, pPin, ulPinLen);
+		sc_log(context, "C_InitPIN() init-pin result %li", rv);
 	}
 
-      out:sc_pkcs11_unlock();
+out:
+	sc_pkcs11_unlock();
 	return rv;
 }
 
