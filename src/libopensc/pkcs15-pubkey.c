@@ -1122,7 +1122,7 @@ sc_pkcs15_pubkey_from_spki(sc_context_t *ctx, sc_pkcs15_pubkey_t ** outpubkey,
 		break;
 	}
 
-	/* Now decode what ever is in pk as it depends on the key algorithm */
+	/* Now decode whatever is in pk as it depends on the key algorithm */
 
 	r = sc_pkcs15_decode_pubkey(ctx, pubkey, pubkey->data.value, pubkey->data.len);
 	if (r < 0)
