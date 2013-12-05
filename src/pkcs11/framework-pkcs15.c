@@ -1644,10 +1644,11 @@ pkcs15_change_pin(struct sc_pkcs11_slot *slot,
 
 #ifdef USE_PKCS15_INIT
 static CK_RV
-pkcs15_initialize(struct sc_pkcs11_card *p11card, void *ptr,
+pkcs15_initialize(struct sc_pkcs11_slot *slot, void *ptr,
 		CK_UTF8CHAR_PTR pPin, CK_ULONG ulPinLen,
 		CK_UTF8CHAR_PTR pLabel)
 {
+	struct sc_pkcs11_card *p11card = slot->card;
 	struct sc_cardctl_pkcs11_init_token args;
 	int rv;
 

@@ -159,12 +159,10 @@ struct sc_pkcs11_framework_ops {
 	CK_RV (*change_pin)(struct sc_pkcs11_slot *,
 				CK_CHAR_PTR, CK_ULONG,
 				CK_CHAR_PTR, CK_ULONG);
-
 	/*
-	 * In future: functions to create new objects
-	 * (ie. certificates, private keys)
+	 * In future: functions to create new objects (ie. certificates, private keys)
 	 */
-	CK_RV (*init_token)(struct sc_pkcs11_card *, void *,
+	CK_RV (*init_token)(struct sc_pkcs11_slot *, void *,
 				CK_UTF8CHAR_PTR, CK_ULONG,
 				CK_UTF8CHAR_PTR);
 	CK_RV (*init_pin)(struct sc_pkcs11_slot *,

@@ -368,9 +368,9 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 	if (pulCount == NULL_PTR)
 		return CKR_ARGUMENTS_BAD;
 
-	if ((rv = sc_pkcs11_lock()) != CKR_OK) {
+	rv = sc_pkcs11_lock();
+	if (rv != CKR_OK)
 		return rv;
-	}
 
 	sc_log(context, "C_GetSlotList(token=%d, %s)", tokenPresent,
 		 (pSlotList==NULL_PTR && sc_pkcs11_conf.plug_and_play)? "plug-n-play":"refresh");
@@ -480,26 +480,35 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
 	sc_log(context, "C_GetSlotInfo(0x%lx)", slotID);
 
 	rv = slot_get_slot(slotID, &slot);
-	if (rv == CKR_OK){
-		if (slot->reader == NULL)
+	sc_log(context, "C_GetSlotInfo() get slot rv %i", rv);
+	if (rv == CKR_OK)   {
+		if (slot->reader == NULL)   {
 			rv = CKR_TOKEN_NOT_PRESENT;
+		}
 		else {
 			now = get_current_time();
 			if (now >= slot->slot_state_expires || now == 0) {
 				/* Update slot status */
 				rv = card_detect(slot->reader);
+				sc_log(context, "C_GetSlotInfo() card detect rv 0x%X", rv);
+
+				if (rv == CKR_TOKEN_NOT_RECOGNIZED || rv == CKR_OK)
+					slot->slot_info.flags |= CKF_TOKEN_PRESENT;
+
 				/* Don't ask again within the next second */
 				slot->slot_state_expires = now + 1000;
 			}
 		}
 	}
+
 	if (rv == CKR_TOKEN_NOT_PRESENT || rv == CKR_TOKEN_NOT_RECOGNIZED)
 		rv = CKR_OK;
 
 	if (rv == CKR_OK)
 		memcpy(pInfo, &slot->slot_info, sizeof(CK_SLOT_INFO));
 
-	sc_log(context, "C_GetSlotInfo(0x%lx) = %s", slotID, lookup_enum ( RV_T, rv ));
+	sc_log(context, "C_GetSlotInfo() flags 0x%X", pInfo->flags);
+	sc_log(context, "C_GetSlotInfo(0x%lx) = %s", slotID, lookup_enum( RV_T, rv));
 	sc_pkcs11_unlock();
 	return rv;
 }
@@ -558,13 +567,22 @@ CK_RV C_InitToken(CK_SLOT_ID slotID,
 	CK_RV rv;
 	unsigned int i;
 
+	sc_log(context, "C_InitToken(pLabel='%s') called", pLabel);
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
 		return rv;
 
 	rv = slot_get_token(slotID, &slot);
-	if (rv != CKR_OK)
+	if (rv != CKR_OK)   {
+		sc_log(context, "C_InitToken() get token error 0x%lX", rv);
 		goto out;
+	}
+
+	if (slot->card->framework->init_token == NULL) {
+		sc_log(context, "C_InitToken() not supported by framework");
+		rv = CKR_FUNCTION_NOT_SUPPORTED;
+		goto out;
+	}
 
 	/* Make sure there's no open session for this token */
 	for (i=0; i<list_size(&sessions); i++) {
@@ -575,19 +593,15 @@ CK_RV C_InitToken(CK_SLOT_ID slotID,
 		}
 	}
 
-	if (slot->card->framework->init_token == NULL) {
-		rv = CKR_FUNCTION_NOT_SUPPORTED;
-		goto out;
-	}
-	rv = slot->card->framework->init_token(slot->card,
-				 slot->fw_data, pPin, ulPinLen, pLabel);
-
+	rv = slot->card->framework->init_token(slot,slot->fw_data, pPin, ulPinLen, pLabel);
 	if (rv == CKR_OK) {
 		/* Now we should re-bind all tokens so they get the
 		 * corresponding function vector and flags */
 	}
 
-out:	sc_pkcs11_unlock();
+out:
+	sc_pkcs11_unlock();
+	sc_log(context, "C_InitToken(pLabel='%s') returns 0x%lX", pLabel, rv);
 	return rv;
 }
 
