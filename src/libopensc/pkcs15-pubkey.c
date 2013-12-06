@@ -36,124 +36,124 @@
 #include <openssl/evp.h>
 #include <openssl/err.h>
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L
-	#ifndef OPENSSL_NO_EC
-	#include <openssl/ec.h>
-	#endif
+#ifndef OPENSSL_NO_EC
+#include <openssl/ec.h>
+#endif
 #endif
 #endif
 
 #define C_ASN1_PKINFO_ATTR_SIZE 3
 static const struct sc_asn1_entry c_asn1_pkinfo[C_ASN1_PKINFO_ATTR_SIZE] = {
-	{ "algorithm", SC_ASN1_ALGORITHM_ID,  SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
-	{ "subjectPublicKey", SC_ASN1_BIT_STRING_NI, SC_ASN1_TAG_BIT_STRING, SC_ASN1_ALLOC, NULL, NULL},
-	{ NULL, 0, 0, 0, NULL, NULL }
+		{ "algorithm", SC_ASN1_ALGORITHM_ID,  SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
+		{ "subjectPublicKey", SC_ASN1_BIT_STRING_NI, SC_ASN1_TAG_BIT_STRING, SC_ASN1_ALLOC, NULL, NULL},
+		{ NULL, 0, 0, 0, NULL, NULL }
 };
 
 #define C_ASN1_COM_KEY_ATTR_SIZE 6
 static const struct sc_asn1_entry c_asn1_com_key_attr[C_ASN1_COM_KEY_ATTR_SIZE] = {
-	{ "iD",		 SC_ASN1_PKCS15_ID, SC_ASN1_TAG_OCTET_STRING, 0, NULL, NULL },
-	{ "usage",	 SC_ASN1_BIT_FIELD, SC_ASN1_TAG_BIT_STRING, 0, NULL, NULL },
-	{ "native",	 SC_ASN1_BOOLEAN, SC_ASN1_TAG_BOOLEAN, SC_ASN1_OPTIONAL, NULL, NULL },
-	{ "accessFlags", SC_ASN1_BIT_FIELD, SC_ASN1_TAG_BIT_STRING, SC_ASN1_OPTIONAL, NULL, NULL },
-	{ "keyReference",SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL },
-	{ NULL, 0, 0, 0, NULL, NULL }
+		{ "iD",		 SC_ASN1_PKCS15_ID, SC_ASN1_TAG_OCTET_STRING, 0, NULL, NULL },
+		{ "usage",	 SC_ASN1_BIT_FIELD, SC_ASN1_TAG_BIT_STRING, 0, NULL, NULL },
+		{ "native",	 SC_ASN1_BOOLEAN, SC_ASN1_TAG_BOOLEAN, SC_ASN1_OPTIONAL, NULL, NULL },
+		{ "accessFlags", SC_ASN1_BIT_FIELD, SC_ASN1_TAG_BIT_STRING, SC_ASN1_OPTIONAL, NULL, NULL },
+		{ "keyReference",SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL },
+		{ NULL, 0, 0, 0, NULL, NULL }
 };
 
 #define C_ASN1_COM_PUBKEY_ATTR_SIZE 2
 static const struct sc_asn1_entry c_asn1_com_pubkey_attr[C_ASN1_COM_PUBKEY_ATTR_SIZE] = {
-	{ "subjectName", SC_ASN1_OCTET_STRING, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS,
-		SC_ASN1_EMPTY_ALLOWED | SC_ASN1_ALLOC | SC_ASN1_OPTIONAL, NULL, NULL },
-	{ NULL, 0, 0, 0, NULL, NULL }
+		{ "subjectName", SC_ASN1_OCTET_STRING, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS,
+				SC_ASN1_EMPTY_ALLOWED | SC_ASN1_ALLOC | SC_ASN1_OPTIONAL, NULL, NULL },
+				{ NULL, 0, 0, 0, NULL, NULL }
 };
 
 #define C_ASN1_RSAKEY_VALUE_CHOICE_SIZE 3
 static const struct sc_asn1_entry c_asn1_rsakey_value_choice[C_ASN1_RSAKEY_VALUE_CHOICE_SIZE] = {
-	{ "path",       SC_ASN1_PATH,      SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_EMPTY_ALLOWED, NULL, NULL },
-	{ "direct",     SC_ASN1_OCTET_STRING, SC_ASN1_CTX | 0 | SC_ASN1_CONS, SC_ASN1_OPTIONAL | SC_ASN1_ALLOC, NULL, NULL },
-	{ NULL, 0, 0, 0, NULL, NULL }
+		{ "path",       SC_ASN1_PATH,      SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_EMPTY_ALLOWED, NULL, NULL },
+		{ "direct",     SC_ASN1_OCTET_STRING, SC_ASN1_CTX | 0 | SC_ASN1_CONS, SC_ASN1_OPTIONAL | SC_ASN1_ALLOC, NULL, NULL },
+		{ NULL, 0, 0, 0, NULL, NULL }
 };
 
 #define C_ASN1_RSAKEY_ATTR_SIZE 4
 static const struct sc_asn1_entry c_asn1_rsakey_attr[C_ASN1_RSAKEY_ATTR_SIZE] = {
-	{ "value",         SC_ASN1_CHOICE, 0, 0, NULL, NULL },
-	{ "modulusLength", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, 0, NULL, NULL },
-	{ "keyInfo",	   SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL },
-	{ NULL, 0, 0, 0, NULL, NULL }
+		{ "value",         SC_ASN1_CHOICE, 0, 0, NULL, NULL },
+		{ "modulusLength", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, 0, NULL, NULL },
+		{ "keyInfo",	   SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL },
+		{ NULL, 0, 0, 0, NULL, NULL }
 };
 
 #define C_ASN1_ECKEY_VALUE_CHOICE_SIZE 3
 static const struct sc_asn1_entry c_asn1_eckey_value_choice[C_ASN1_ECKEY_VALUE_CHOICE_SIZE] = {
-	{ "path",       SC_ASN1_PATH, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_EMPTY_ALLOWED, NULL, NULL },
-	{ "direct",     SC_ASN1_OCTET_STRING, SC_ASN1_CTX | 0 | SC_ASN1_CONS, SC_ASN1_OPTIONAL | SC_ASN1_ALLOC, NULL, NULL },
-	{ NULL, 0, 0, 0, NULL, NULL }
+		{ "path",       SC_ASN1_PATH, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_EMPTY_ALLOWED, NULL, NULL },
+		{ "direct",     SC_ASN1_OCTET_STRING, SC_ASN1_CTX | 0 | SC_ASN1_CONS, SC_ASN1_OPTIONAL | SC_ASN1_ALLOC, NULL, NULL },
+		{ NULL, 0, 0, 0, NULL, NULL }
 };
 
 #define C_ASN1_ECKEY_ATTR_SIZE 4
 static const struct sc_asn1_entry c_asn1_eckey_attr[C_ASN1_ECKEY_ATTR_SIZE] = {
-	{ "value",         SC_ASN1_CHOICE, 0, 0, NULL, NULL },
-	{ "fieldSize",	   SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL },
-	{ "keyInfo",	   SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL },
-	{ NULL, 0, 0, 0, NULL, NULL }
+		{ "value",         SC_ASN1_CHOICE, 0, 0, NULL, NULL },
+		{ "fieldSize",	   SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL },
+		{ "keyInfo",	   SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL },
+		{ NULL, 0, 0, 0, NULL, NULL }
 };
 
 #define C_ASN1_RSA_TYPE_ATTR_SIZE 2
 static const struct sc_asn1_entry c_asn1_rsa_type_attr[C_ASN1_RSA_TYPE_ATTR_SIZE] = {
-	{ "publicRSAKeyAttributes", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
-	{ NULL, 0, 0, 0, NULL, NULL }
+		{ "publicRSAKeyAttributes", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
+		{ NULL, 0, 0, 0, NULL, NULL }
 };
 
 #define C_ASN1_EC_TYPE_ATTR_SIZE 2
 static const struct sc_asn1_entry c_asn1_ec_type_attr[C_ASN1_EC_TYPE_ATTR_SIZE] = {
-	{ "publicECKeyAttributes", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
-	{ NULL, 0, 0, 0, NULL, NULL }
+		{ "publicECKeyAttributes", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
+		{ NULL, 0, 0, 0, NULL, NULL }
 };
 
 #define C_ASN1_DSAKEY_ATTR_SIZE 2
 static const struct sc_asn1_entry c_asn1_dsakey_attr[C_ASN1_DSAKEY_ATTR_SIZE] = {
-	{ "value", SC_ASN1_PATH, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
-	{ NULL, 0, 0, 0, NULL, NULL }
+		{ "value", SC_ASN1_PATH, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
+		{ NULL, 0, 0, 0, NULL, NULL }
 };
 
 #define C_ASN1_DSA_TYPE_ATTR_SIZE 2
 static const struct sc_asn1_entry c_asn1_dsa_type_attr[C_ASN1_DSA_TYPE_ATTR_SIZE] = {
-	{ "publicDSAKeyAttributes", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
-	{ NULL, 0, 0, 0, NULL, NULL }
+		{ "publicDSAKeyAttributes", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
+		{ NULL, 0, 0, 0, NULL, NULL }
 };
 
 #define C_ASN1_GOST3410KEY_ATTR_SIZE 5
 static const struct sc_asn1_entry c_asn1_gostr3410key_attr[C_ASN1_GOST3410KEY_ATTR_SIZE] = {
-	{ "value", SC_ASN1_PATH, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
-	{ "params_r3410", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, 0, NULL, NULL },
-	{ "params_r3411", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL },
-	{ "params_28147", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL },
-	{ NULL, 0, 0, 0, NULL, NULL }
+		{ "value", SC_ASN1_PATH, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
+		{ "params_r3410", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, 0, NULL, NULL },
+		{ "params_r3411", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL },
+		{ "params_28147", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL },
+		{ NULL, 0, 0, 0, NULL, NULL }
 };
 
 #define C_ASN1_GOST3410_TYPE_ATTR_SIZE 2
 static const struct sc_asn1_entry c_asn1_gostr3410_type_attr[C_ASN1_GOST3410_TYPE_ATTR_SIZE] = {
-	{ "publicGOSTR3410KeyAttributes", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
-	{ NULL, 0, 0, 0, NULL, NULL }
+		{ "publicGOSTR3410KeyAttributes", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
+		{ NULL, 0, 0, 0, NULL, NULL }
 };
 
 #define C_ASN1_PUBKEY_CHOICE_SIZE 5
 static const struct sc_asn1_entry c_asn1_pubkey_choice[C_ASN1_PUBKEY_CHOICE_SIZE] = {
-	{ "publicRSAKey", SC_ASN1_PKCS15_OBJECT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
-	{ "publicDSAKey", SC_ASN1_PKCS15_OBJECT, 2 | SC_ASN1_CTX | SC_ASN1_CONS, 0, NULL, NULL },
-	{ "publicGOSTR3410Key", SC_ASN1_PKCS15_OBJECT, 4 | SC_ASN1_CTX | SC_ASN1_CONS, 0, NULL, NULL },
-	{ "publicECKey", SC_ASN1_PKCS15_OBJECT, 0 | SC_ASN1_CTX | SC_ASN1_CONS, 0, NULL, NULL },
-/*TODO: -DEE not clear EC is needed here  as look like it is for pukdf */
-	{ NULL, 0, 0, 0, NULL, NULL }
+		{ "publicRSAKey", SC_ASN1_PKCS15_OBJECT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
+		{ "publicDSAKey", SC_ASN1_PKCS15_OBJECT, 2 | SC_ASN1_CTX | SC_ASN1_CONS, 0, NULL, NULL },
+		{ "publicGOSTR3410Key", SC_ASN1_PKCS15_OBJECT, 4 | SC_ASN1_CTX | SC_ASN1_CONS, 0, NULL, NULL },
+		{ "publicECKey", SC_ASN1_PKCS15_OBJECT, 0 | SC_ASN1_CTX | SC_ASN1_CONS, 0, NULL, NULL },
+		/*TODO: -DEE not clear EC is needed here  as look like it is for pukdf */
+		{ NULL, 0, 0, 0, NULL, NULL }
 };
 
 #define C_ASN1_PUBKEY_SIZE 2
 static const struct sc_asn1_entry c_asn1_pubkey[C_ASN1_PUBKEY_SIZE] = {
-	{ "publicKey",	SC_ASN1_CHOICE, 0, 0, NULL, NULL },
-	{ NULL, 0, 0, 0, NULL, NULL }
+		{ "publicKey",	SC_ASN1_CHOICE, 0, 0, NULL, NULL },
+		{ NULL, 0, 0, 0, NULL, NULL }
 };
 
 int sc_pkcs15_decode_pukdf_entry(struct sc_pkcs15_card *p15card,
-				 struct sc_pkcs15_object *obj,
-				 const u8 ** buf, size_t *buflen)
+		struct sc_pkcs15_object *obj,
+		const u8 ** buf, size_t *buflen)
 {
 	sc_context_t *ctx = p15card->card->ctx;
 	struct sc_pkcs15_pubkey_info info;
@@ -177,13 +177,13 @@ int sc_pkcs15_decode_pukdf_entry(struct sc_pkcs15_card *p15card,
 	struct sc_asn1_entry asn1_pubkey_choice[C_ASN1_PUBKEY_CHOICE_SIZE];
 	struct sc_asn1_entry asn1_pubkey[C_ASN1_PUBKEY_SIZE];
 	struct sc_asn1_pkcs15_object rsakey_obj = { obj, asn1_com_key_attr,
-						    asn1_com_pubkey_attr, asn1_rsa_type_attr };
+			asn1_com_pubkey_attr, asn1_rsa_type_attr };
 	struct sc_asn1_pkcs15_object eckey_obj = { obj, asn1_com_key_attr,
-						    asn1_com_pubkey_attr, asn1_ec_type_attr };
+			asn1_com_pubkey_attr, asn1_ec_type_attr };
 	struct sc_asn1_pkcs15_object dsakey_obj = { obj, asn1_com_key_attr,
-						    asn1_com_pubkey_attr, asn1_dsa_type_attr };
+			asn1_com_pubkey_attr, asn1_dsa_type_attr };
 	struct sc_asn1_pkcs15_object gostr3410key_obj =  { obj, asn1_com_key_attr,
-						    asn1_com_pubkey_attr, asn1_gostr3410_type_attr };
+			asn1_com_pubkey_attr, asn1_gostr3410_type_attr };
 
 	sc_copy_asn1_entry(c_asn1_pubkey, asn1_pubkey);
 	sc_copy_asn1_entry(c_asn1_pubkey_choice, asn1_pubkey_choice);
@@ -287,7 +287,7 @@ int sc_pkcs15_decode_pukdf_entry(struct sc_pkcs15_card *p15card,
 	}
 	sc_log(ctx, "PubKey path '%s'", sc_print_path(&info.path));
 
-        /* OpenSC 0.11.4 and older encoded "keyReference" as a negative
+	/* OpenSC 0.11.4 and older encoded "keyReference" as a negative
            value. Fixed in 0.11.5 we need to add a hack, so old cards
            continue to work. */
 	if (info.key_reference < -1)
@@ -304,8 +304,8 @@ int sc_pkcs15_decode_pukdf_entry(struct sc_pkcs15_card *p15card,
 }
 
 int sc_pkcs15_encode_pukdf_entry(sc_context_t *ctx,
-				 const struct sc_pkcs15_object *obj,
-				 u8 **buf, size_t *buflen)
+		const struct sc_pkcs15_object *obj,
+		u8 **buf, size_t *buflen)
 {
 	struct sc_asn1_entry asn1_com_key_attr[C_ASN1_COM_KEY_ATTR_SIZE];
 	struct sc_asn1_entry asn1_com_pubkey_attr[C_ASN1_COM_PUBKEY_ATTR_SIZE];
@@ -323,19 +323,19 @@ int sc_pkcs15_encode_pukdf_entry(sc_context_t *ctx,
 	struct sc_asn1_entry asn1_pubkey[C_ASN1_PUBKEY_SIZE];
 
 	struct sc_pkcs15_pubkey_info *pubkey =
-		(struct sc_pkcs15_pubkey_info *) obj->data;
+			(struct sc_pkcs15_pubkey_info *) obj->data;
 	struct sc_asn1_pkcs15_object rsakey_obj = { (struct sc_pkcs15_object *) obj,
-						    asn1_com_key_attr,
-						    asn1_com_pubkey_attr, asn1_rsa_type_attr };
+			asn1_com_key_attr,
+			asn1_com_pubkey_attr, asn1_rsa_type_attr };
 	struct sc_asn1_pkcs15_object eckey_obj = { (struct sc_pkcs15_object *) obj,
-						    asn1_com_key_attr,
-						    asn1_com_pubkey_attr, asn1_ec_type_attr };
+			asn1_com_key_attr,
+			asn1_com_pubkey_attr, asn1_ec_type_attr };
 	struct sc_asn1_pkcs15_object dsakey_obj = { (struct sc_pkcs15_object *) obj,
-						    asn1_com_key_attr,
-						    asn1_com_pubkey_attr, asn1_dsa_type_attr };
+			asn1_com_key_attr,
+			asn1_com_pubkey_attr, asn1_dsa_type_attr };
 	struct sc_asn1_pkcs15_object gostr3410key_obj =  { (struct sc_pkcs15_object *) obj,
-						    asn1_com_key_attr,
-						    asn1_com_pubkey_attr, asn1_gostr3410_type_attr };
+			asn1_com_key_attr,
+			asn1_com_pubkey_attr, asn1_gostr3410_type_attr };
 	struct sc_pkcs15_keyinfo_gostparams *keyinfo_gostparams;
 	int r;
 	size_t af_len, usage_len;
@@ -395,7 +395,7 @@ int sc_pkcs15_encode_pukdf_entry(sc_context_t *ctx,
 	case SC_PKCS15_TYPE_PUBKEY_EC:
 		/* MyEID is a PKCS15 card with ECC */
 		sc_format_asn1_entry(asn1_pubkey_choice + 3, &eckey_obj, NULL, 1);
-		
+
 		sc_format_asn1_entry(asn1_ec_type_attr + 0, asn1_eckey_attr, NULL, 1);
 		if (pubkey->path.len || !obj->content.value)
 			sc_format_asn1_entry(asn1_eckey_value_choice + 0, &pubkey->path, NULL, 1);
@@ -403,7 +403,7 @@ int sc_pkcs15_encode_pukdf_entry(sc_context_t *ctx,
 			sc_format_asn1_entry(asn1_eckey_value_choice + 1, obj->content.value, (void *)&obj->content.len, 1);
 		sc_format_asn1_entry(asn1_eckey_attr + 0, asn1_eckey_value_choice, NULL, 1);
 		sc_format_asn1_entry(asn1_eckey_attr + 1, &pubkey->field_length, NULL, 1);
-		
+
 		break;
 	default:
 		sc_log(ctx,  "Unsupported public key type: %X", obj->type);
@@ -437,36 +437,36 @@ int sc_pkcs15_encode_pukdf_entry(sc_context_t *ctx,
 
 #define C_ASN1_PUBLIC_KEY_SIZE 2
 static struct sc_asn1_entry c_asn1_public_key[C_ASN1_PUBLIC_KEY_SIZE] = {
-	{ "publicKeyCoefficients", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
-	{ NULL, 0, 0, 0, NULL, NULL }
+		{ "publicKeyCoefficients", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
+		{ NULL, 0, 0, 0, NULL, NULL }
 };
 
 #define C_ASN1_RSA_PUB_COEFFICIENTS_SIZE 3
 static struct sc_asn1_entry c_asn1_rsa_pub_coefficients[C_ASN1_RSA_PUB_COEFFICIENTS_SIZE] = {
-	{ "modulus",  SC_ASN1_OCTET_STRING, SC_ASN1_TAG_INTEGER, SC_ASN1_ALLOC|SC_ASN1_UNSIGNED, NULL, NULL },
-	{ "exponent", SC_ASN1_OCTET_STRING, SC_ASN1_TAG_INTEGER, SC_ASN1_ALLOC|SC_ASN1_UNSIGNED, NULL, NULL },
-	{ NULL, 0, 0, 0, NULL, NULL }
+		{ "modulus",  SC_ASN1_OCTET_STRING, SC_ASN1_TAG_INTEGER, SC_ASN1_ALLOC|SC_ASN1_UNSIGNED, NULL, NULL },
+		{ "exponent", SC_ASN1_OCTET_STRING, SC_ASN1_TAG_INTEGER, SC_ASN1_ALLOC|SC_ASN1_UNSIGNED, NULL, NULL },
+		{ NULL, 0, 0, 0, NULL, NULL }
 };
 
 #define C_ASN1_DSA_PUB_COEFFICIENTS_SIZE 5
 static struct sc_asn1_entry c_asn1_dsa_pub_coefficients[C_ASN1_DSA_PUB_COEFFICIENTS_SIZE] = {
-	{ "publicKey",SC_ASN1_OCTET_STRING, SC_ASN1_TAG_INTEGER, SC_ASN1_ALLOC|SC_ASN1_UNSIGNED, NULL, NULL },
-	{ "paramP",   SC_ASN1_OCTET_STRING, SC_ASN1_TAG_INTEGER, SC_ASN1_ALLOC|SC_ASN1_UNSIGNED, NULL, NULL },
-	{ "paramQ",   SC_ASN1_OCTET_STRING, SC_ASN1_TAG_INTEGER, SC_ASN1_ALLOC|SC_ASN1_UNSIGNED, NULL, NULL },
-	{ "paramG",   SC_ASN1_OCTET_STRING, SC_ASN1_TAG_INTEGER, SC_ASN1_ALLOC|SC_ASN1_UNSIGNED, NULL, NULL },
-	{ NULL, 0, 0, 0, NULL, NULL },
+		{ "publicKey",SC_ASN1_OCTET_STRING, SC_ASN1_TAG_INTEGER, SC_ASN1_ALLOC|SC_ASN1_UNSIGNED, NULL, NULL },
+		{ "paramP",   SC_ASN1_OCTET_STRING, SC_ASN1_TAG_INTEGER, SC_ASN1_ALLOC|SC_ASN1_UNSIGNED, NULL, NULL },
+		{ "paramQ",   SC_ASN1_OCTET_STRING, SC_ASN1_TAG_INTEGER, SC_ASN1_ALLOC|SC_ASN1_UNSIGNED, NULL, NULL },
+		{ "paramG",   SC_ASN1_OCTET_STRING, SC_ASN1_TAG_INTEGER, SC_ASN1_ALLOC|SC_ASN1_UNSIGNED, NULL, NULL },
+		{ NULL, 0, 0, 0, NULL, NULL },
 };
 
 #define C_ASN1_GOSTR3410_PUB_COEFFICIENTS_SIZE 2
 static struct sc_asn1_entry c_asn1_gostr3410_pub_coefficients[C_ASN1_GOSTR3410_PUB_COEFFICIENTS_SIZE] = {
-	{ "xy", SC_ASN1_OCTET_STRING, SC_ASN1_TAG_OCTET_STRING, SC_ASN1_ALLOC, NULL, NULL },
-	{ NULL, 0, 0, 0, NULL, NULL }
+		{ "xy", SC_ASN1_OCTET_STRING, SC_ASN1_TAG_OCTET_STRING, SC_ASN1_ALLOC, NULL, NULL },
+		{ NULL, 0, 0, 0, NULL, NULL }
 };
 
 #define C_ASN1_EC_POINTQ_SIZE 2
 static struct sc_asn1_entry c_asn1_ec_pointQ[C_ASN1_EC_POINTQ_SIZE] = {
-	{ "ecpointQ", SC_ASN1_OCTET_STRING, SC_ASN1_TAG_OCTET_STRING, SC_ASN1_ALLOC, NULL, NULL },
-	{ NULL, 0, 0, 0, NULL, NULL }
+		{ "ecpointQ", SC_ASN1_OCTET_STRING, SC_ASN1_TAG_OCTET_STRING, SC_ASN1_ALLOC, NULL, NULL },
+		{ NULL, 0, 0, 0, NULL, NULL }
 };
 
 
@@ -681,43 +681,64 @@ static const struct sc_asn1_entry       c_asn1_spki_key[] = {
 		{ NULL, 0, 0, 0, NULL, NULL }
 };
 
+/*
+ * Encode a pubkey as a SPKI, useful for pkcs15-tool, and for PKCS#15 files. 
+ */
 
 int
-sc_pkcs15_encode_pubkey_ec_spki(sc_context_t *ctx, struct sc_pkcs15_pubkey *pubkey,
+sc_pkcs15_encode_pubkey_as_spki(sc_context_t *ctx, struct sc_pkcs15_pubkey *pubkey,
 		u8 **buf, size_t *len)
 {
 	int r;
 	struct sc_asn1_entry  asn1_spki_key[2],
 	asn1_spki_key_items[3];
+	struct sc_pkcs15_u8 pkey;
 	size_t key_len;
 
-	key_len = pubkey->u.ec.ecpointQ.len * 8;
+	pkey.value =  NULL;
+	pkey.len = 0;
 
-	sc_copy_asn1_entry(c_asn1_spki_key, asn1_spki_key);
-	sc_copy_asn1_entry(c_asn1_spki_key_items, asn1_spki_key_items);
-	sc_format_asn1_entry(asn1_spki_key + 0, asn1_spki_key_items, NULL, 1);
-	sc_format_asn1_entry(asn1_spki_key_items + 0, pubkey->alg_id, NULL, 1);
-	sc_format_asn1_entry(asn1_spki_key_items + 1, pubkey->u.ec.ecpointQ.value, &key_len, 1);
+	switch (pubkey->algorithm) {
+	case SC_ALGORITHM_EC:
+		/*
+		 * most keys, but not EC have only one encoding.
+		 * For a SPKI, the ecpoint is placed directly in the
+		 * BIT STRING
+		 */
 
-	r =  sc_asn1_encode(ctx, asn1_spki_key, buf, len);
+		key_len = pubkey->u.ec.ecpointQ.len * 8;
+		pkey.value = pubkey->u.ec.ecpointQ.value;
+		pkey.len = 0; /* flag as do not delete */
+		/* TODO make sure algorithm params are available*/
+		/* if not can we copy them from the u.ec */
+		r = 0;
+		break;
+	case SC_ALGORITHM_GOSTR3410:
+		/* TODO is this needed?  does it cause mem leak? */
+		pubkey->alg_id->params = &pubkey->u.gostr3410.params;
+		r = sc_pkcs15_encode_pubkey(ctx, pubkey, &pkey.value, &pkey.len);
+		key_len = pkey.len * 8;
+		break;
+	default:
+		r = sc_pkcs15_encode_pubkey(ctx, pubkey, &pkey.value, &pkey.len);
+		key_len = pkey.len * 8;
+		break;
+	}
+
+	if (r == 0) {
+		sc_copy_asn1_entry(c_asn1_spki_key, asn1_spki_key);
+		sc_copy_asn1_entry(c_asn1_spki_key_items, asn1_spki_key_items);
+		sc_format_asn1_entry(asn1_spki_key + 0, asn1_spki_key_items, NULL, 1);
+		sc_format_asn1_entry(asn1_spki_key_items + 0, pubkey->alg_id, NULL, 1);
+		sc_format_asn1_entry(asn1_spki_key_items + 1, pkey.value, &key_len, 1);
+
+		r =  sc_asn1_encode(ctx, asn1_spki_key, buf, len);
+	}
+
+	if (pkey.len && pkey.value)
+		free(pkey.value);
 
 	return r;
-}
-
-
-/*
- * Encode public key in a format that preserves key parameter
- *
- * EC key are encoded as Subject Public Key Info per RFC5280
- */
-int
-sc_pkcs15_encode_pubkey_with_param(sc_context_t *ctx, struct sc_pkcs15_pubkey *key,
-		u8 **buf, size_t *len)
-{
-	if (key->algorithm != SC_ALGORITHM_EC)
-		return sc_pkcs15_encode_pubkey(ctx, key, buf, len);
-	else
-		return sc_pkcs15_encode_pubkey_ec_spki(ctx, key, buf, len);
 }
 
 
@@ -745,8 +766,10 @@ int
 sc_pkcs15_decode_pubkey_with_param(sc_context_t *ctx, struct sc_pkcs15_pubkey *key,
 		const u8 *buf, size_t len)
 {
-	if ((key->algorithm == SC_ALGORITHM_EC) && (*buf == 0x30)) {
-		// Decode EC Public Key from SPKI
+	/* We assume all algrothims allow SPKI  which starts with a sequence*/
+
+	if (*buf == 0x30) {
+		/* Decode  Public Key from SPKI */
 		return sc_pkcs15_copy_pubkey_from_spki_object(ctx, buf, len, key);
 	} else {
 		key->data.value = (u8 *)buf;
@@ -1025,7 +1048,7 @@ sc_pkcs15_read_der_file(sc_context_t *ctx, char * filename,
 	*buf = rbuf;
 	rbuf = NULL;
 	r = rbuflen;
-out:
+	out:
 	if (rbuf)
 		free(rbuf);
 	if (f > 0)
@@ -1088,13 +1111,13 @@ sc_pkcs15_pubkey_from_spki(sc_context_t *ctx, sc_pkcs15_pubkey_t ** outpubkey,
 		 * u.ec.params and get the field length too.  
 		 */
 		if (pubkey->alg_id->params) {
-		    struct sc_ec_params  * ecp = (struct sc_ec_params *)pubkey->alg_id->params;
-		    pubkey->u.ec.params.der.value = malloc(ecp->der_len);
-		    if (pubkey->u.ec.params.der.value) {
-			memcpy(pubkey->u.ec.params.der.value, ecp->der, ecp->der_len);
-			pubkey->u.ec.params.der.len = ecp->der_len;
-			sc_pkcs15_fix_ec_parameters(ctx,&pubkey->u.ec.params);
-		    }
+			struct sc_ec_params  * ecp = (struct sc_ec_params *)pubkey->alg_id->params;
+			pubkey->u.ec.params.der.value = malloc(ecp->der_len);
+			if (pubkey->u.ec.params.der.value) {
+				memcpy(pubkey->u.ec.params.der.value, ecp->der, ecp->der_len);
+				pubkey->u.ec.params.der.len = ecp->der_len;
+				sc_pkcs15_fix_ec_parameters(ctx,&pubkey->u.ec.params);
+			}
 		}
 		/*
 		 * For most keys, the above ASN.1 parsing of a key works, but for EC keys,
@@ -1105,7 +1128,7 @@ sc_pkcs15_pubkey_from_spki(sc_context_t *ctx, sc_pkcs15_pubkey_t ** outpubkey,
 		 */
 		pk.len >>= 3;  /* Assume it is multiple of 8 */
 		if (pubkey->u.ec.params.field_length == 0) 
-		    pubkey->u.ec.params.field_length = (pk.len - 1)/2 * 8;
+			pubkey->u.ec.params.field_length = (pk.len - 1)/2 * 8;
 
 		sc_copy_asn1_entry(c_asn1_ec_pointQ, asn1_ec_pointQ);
 		sc_format_asn1_entry(&asn1_ec_pointQ[0], pk.value, &pk.len, 1);
@@ -1132,7 +1155,7 @@ sc_pkcs15_pubkey_from_spki(sc_context_t *ctx, sc_pkcs15_pubkey_t ** outpubkey,
 	pubkey = NULL;
 	return 0;
 
-err:
+	err:
 	if (pubkey)
 		free(pubkey);
 	if (pk.value)
@@ -1150,8 +1173,8 @@ sc_pkcs15_pubkey_from_spki_object(sc_context_t *ctx, const u8 *buf, size_t bufle
 	int r;
 	sc_pkcs15_pubkey_t * pubkey = NULL;
 	struct sc_asn1_entry asn1_spki[] = {
-		{ "PublicKeyInfo",SC_ASN1_CALLBACK, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, sc_pkcs15_pubkey_from_spki, &pubkey},
-		{ NULL, 0, 0, 0, NULL, NULL } };
+			{ "PublicKeyInfo",SC_ASN1_CALLBACK, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, sc_pkcs15_pubkey_from_spki, &pubkey},
+			{ NULL, 0, 0, 0, NULL, NULL } };
 
 	*outpubkey = NULL;
 
@@ -1205,20 +1228,20 @@ static struct ec_curve_info {
 	const char *oid_encoded;
 	size_t size;
 } ec_curve_infos[] = {
-	{"secp192r1",		"1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192},
-	{"prime192r1",		"1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192},
-	{"ansiX9p192r1",	"1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192},
-	{"prime256v1",		"1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256},
-	{"secp256r1",		"1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256},
-	{"ansiX9p256r1",	"1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256},
-	{"secp384r1",		"1.3.132.0.34", "06052B81040022", 384},
-	{"prime384v1",		"1.3.132.0.34", "06052B81040022", 384},
-	{"ansiX9p384r1",	"1.3.132.0.34", "06052B81040022", 384},
-	{"brainpoolP192r1",	"1.3.36.3.3.2.8.1.1.3", "06092B2403030208010103", 192},
-	{"brainpoolP224r1",	"1.3.36.3.3.2.8.1.1.5", "06092B2403030208010105", 224},
-	{"brainpoolP256r1",	"1.3.36.3.3.2.8.1.1.7", "06092B2403030208010107", 256},
-	{"brainpoolP320r1",	"1.3.36.3.3.2.8.1.1.9", "06092B2403030208010109", 320},
-	{NULL, NULL, NULL, 0},
+		{"secp192r1",		"1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192},
+		{"prime192r1",		"1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192},
+		{"ansiX9p192r1",	"1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192},
+		{"prime256v1",		"1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256},
+		{"secp256r1",		"1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256},
+		{"ansiX9p256r1",	"1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256},
+		{"secp384r1",		"1.3.132.0.34", "06052B81040022", 384},
+		{"prime384v1",		"1.3.132.0.34", "06052B81040022", 384},
+		{"ansiX9p384r1",	"1.3.132.0.34", "06052B81040022", 384},
+		{"brainpoolP192r1",	"1.3.36.3.3.2.8.1.1.3", "06092B2403030208010103", 192},
+		{"brainpoolP224r1",	"1.3.36.3.3.2.8.1.1.5", "06092B2403030208010105", 224},
+		{"brainpoolP256r1",	"1.3.36.3.3.2.8.1.1.7", "06092B2403030208010107", 256},
+		{"brainpoolP320r1",	"1.3.36.3.3.2.8.1.1.9", "06092B2403030208010109", 320},
+		{NULL, NULL, NULL, 0},
 };
 
 
@@ -1310,7 +1333,7 @@ sc_pkcs15_convert_pubkey(struct sc_pkcs15_pubkey *pkcs15_key, void *evp_key)
 			return SC_ERROR_INVALID_DATA;
 		RSA_free(src);
 		break;
-		}
+	}
 	case EVP_PKEY_DSA: {
 		struct sc_pkcs15_pubkey_dsa *dst = &pkcs15_key->u.dsa;
 		DSA *src = EVP_PKEY_get1_DSA(pk);
@@ -1322,7 +1345,7 @@ sc_pkcs15_convert_pubkey(struct sc_pkcs15_pubkey *pkcs15_key, void *evp_key)
 		sc_pkcs15_convert_bignum(&dst->g, src->g);
 		DSA_free(src);
 		break;
-		}
+	}
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_EC)
 	case NID_id_GostR3410_2001: {
 		struct sc_pkcs15_pubkey_gostr3410 *dst = &pkcs15_key->u.gostr3410;
@@ -1359,7 +1382,7 @@ sc_pkcs15_convert_pubkey(struct sc_pkcs15_pubkey *pkcs15_key, void *evp_key)
 		if (r != 1)
 			return SC_ERROR_INTERNAL;
 		break;
-		}
+	}
 	case EVP_PKEY_EC: {
 		struct sc_pkcs15_pubkey_ec *dst = &pkcs15_key->u.ec;
 		EC_KEY *src = NULL;

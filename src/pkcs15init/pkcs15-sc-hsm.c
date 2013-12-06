@@ -341,6 +341,14 @@ static int sc_hsm_decode_gakp_rsa(struct sc_pkcs15_card *p15card,
 	}
 
 	pubkey->algorithm = SC_ALGORITHM_RSA;
+
+	pubkey->alg_id = (struct sc_algorithm_id *)calloc(1, sizeof(struct sc_algorithm_id));
+	if (!pubkey->alg_id) {
+		LOG_FUNC_RETURN(p15card->card->ctx, SC_ERROR_OUT_OF_MEMORY);
+	}
+
+	pubkey->alg_id->algorithm = SC_ALGORITHM_RSA;
+
 	pubkey->u.rsa.modulus.len	= cvc->primeOrModuluslen;
 	pubkey->u.rsa.modulus.data	= malloc(pubkey->u.rsa.modulus.len);
 	pubkey->u.rsa.exponent.len	= sizeof(pubexp);

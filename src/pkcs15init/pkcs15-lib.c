@@ -1552,7 +1552,7 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
 
 	/* DER encode public key components */
 	/* EC key are encoded as SPKI to preserve domain parameter */
-	r = sc_pkcs15_encode_pubkey_with_param(p15card->card->ctx, &key, &object->content.value, &object->content.len);
+	r = sc_pkcs15_encode_pubkey_as_spki(p15card->card->ctx, &key, &object->content.value, &object->content.len);
 	LOG_TEST_RET(ctx, r, "Encode public key error");
 
 	/* Now create key file and store key */
