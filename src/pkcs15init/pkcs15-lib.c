@@ -2528,7 +2528,6 @@ static int
 sc_pkcs15init_update_tokeninfo(struct sc_pkcs15_card *p15card, struct sc_profile *profile)
 {
 	struct sc_context *ctx = p15card->card->ctx;
-	struct sc_pkcs15_tokeninfo tokeninfo;
 	unsigned char	*buf = NULL;
 	size_t		size;
 	int		rv;
@@ -2536,17 +2535,17 @@ sc_pkcs15init_update_tokeninfo(struct sc_pkcs15_card *p15card, struct sc_profile
 	LOG_FUNC_CALLED(ctx);
 
 	/* set lastUpdate field */
-	if (p15card->tokeninfo->last_update.gtime != NULL)
+	if (p15card->tokeninfo->last_update.gtime != NULL)   {
 		free(p15card->tokeninfo->last_update.gtime);
+		p15card->tokeninfo->last_update.gtime = NULL;
+	}
 	rv = sc_pkcs15_get_generalized_time(ctx, &p15card->tokeninfo->last_update.gtime);
 	LOG_TEST_RET(ctx, rv, "Cannot allocate generalized time string");
 
-	tokeninfo = *(p15card->tokeninfo);
-
 	if (profile->ops->emu_update_tokeninfo)
-		return profile->ops->emu_update_tokeninfo(profile, p15card, &tokeninfo);
+		return profile->ops->emu_update_tokeninfo(profile, p15card, p15card->tokeninfo);
 
-	rv = sc_pkcs15_encode_tokeninfo(ctx, &tokeninfo, &buf, &size);
+	rv = sc_pkcs15_encode_tokeninfo(ctx, p15card->tokeninfo, &buf, &size);
 	if (rv >= 0)
 		rv = sc_pkcs15init_update_file(profile, p15card, p15card->file_tokeninfo, buf, size);
 	if (buf)
