@@ -4442,6 +4442,8 @@ static const char *p11_token_info_flags(CK_FLAGS value)
 		{ CKF_USER_PIN_COUNT_LOW, "user PIN count low" },
 		{ CKF_USER_PIN_FINAL_TRY, "final user PIN try" },
 		{ CKF_USER_PIN_LOCKED, "user PIN locked" },
+		{ CKF_USER_PIN_TO_BE_CHANGED, "user PIN to be changed"},
+		{ CKF_SO_PIN_TO_BE_CHANGED, "SO PIN to be changed"},
 		{ 0, NULL }
 	};
 
