@@ -639,6 +639,9 @@ static int read_public_key(void)
 	sc_pkcs15_cert_t *cert = NULL;
 	sc_pkcs15_der_t pem_key;
 
+	pem_key.value = NULL;
+	pem_key.len = 0;
+
 	id.len = SC_PKCS15_MAX_ID_SIZE;
 	sc_pkcs15_hex_string_to_id(opt_pubkey, &id);
 
@@ -674,6 +677,17 @@ static int read_public_key(void)
 		return 1;
 	}
 
+	fprintf(stderr, "Using sc_pkcs15_encode_pubkey_as_spki:\n");
+	r = sc_pkcs15_encode_pubkey_as_spki(ctx, pubkey, &pem_key.value, &pem_key.len);
+	if (r < 0) {
+		fprintf(stderr, "Error encoding PEM key: %s\n", sc_strerror(r));
+		r = 1;
+	} else {
+		r = print_pem_object("PUBLIC KEY", pem_key.value, pem_key.len);
+		free(pem_key.value);
+	}
+
+	fprintf(stderr, "Using pubkey_pem_encode:\n");
 	r = pubkey_pem_encode(pubkey, &pubkey->data, &pem_key);
 	if (r < 0) {
 		fprintf(stderr, "Error encoding PEM key: %s\n", sc_strerror(r));

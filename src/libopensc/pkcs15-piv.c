@@ -878,6 +878,10 @@ sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "DEE Adding pin %d label=%s",i, label);
 						&p15_key);
 			if (r < 0) 
 				continue;
+
+			/* Lets also try another method. */
+			sc_pkcs15_encode_pubkey_as_spki(card->ctx,p15_key, 
+				&pubkey_obj.content.value, &pubkey_obj.content.len);
 			
 			/* Only get here if no cert, and the the above found the
 			 * pub key file (actually the SPKI version). This only 
@@ -911,7 +915,9 @@ sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "DEE Adding pin %d label=%s",i, label);
 			p15_key = NULL;
 		}
 		else if (ckis[i].pubkey_from_cert && ckis[i].pubkey_from_cert->data.value) {
-		    sc_der_copy(&pubkey_obj.content, &ckis[i].pubkey_from_cert->data);
+		    sc_pkcs15_encode_pubkey_as_spki(card->ctx,ckis[i].pubkey_from_cert,
+				&pubkey_obj.content.value, &pubkey_obj.content.len);
+//		    sc_der_copy(&pubkey_obj.content, &ckis[i].pubkey_from_cert->data);
 		    pubkey_obj.emulated = ckis[i].pubkey_from_cert;
 		}
 

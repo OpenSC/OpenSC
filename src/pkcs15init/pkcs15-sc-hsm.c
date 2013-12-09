@@ -265,7 +265,7 @@ static int sc_hsm_encode_gakp_ec(struct sc_pkcs15_card *p15card, sc_cvc_t *cvc, 
 	struct sc_pkcs15_ec_parameters *ecparams = (struct sc_pkcs15_ec_parameters *)key_info->params.data;
 	struct ec_curve *curve = NULL;
 	u8 *curveoid;
-	int curveoidlen, r;
+	int curveoidlen;
 
 	LOG_FUNC_CALLED(p15card->card->ctx);
 
@@ -277,7 +277,7 @@ static int sc_hsm_encode_gakp_ec(struct sc_pkcs15_card *p15card, sc_cvc_t *cvc, 
 
 	curveoidlen = *curveoid++;
 
-	r = sc_hsm_get_curve(p15card, &curve, curveoid, curveoidlen);
+	sc_hsm_get_curve(p15card, &curve, curveoid, curveoidlen);
 
 	cvc->primeOrModuluslen = curve->prime.len;
 	cvc->primeOrModulus = malloc(cvc->primeOrModuluslen);
@@ -341,6 +341,14 @@ static int sc_hsm_decode_gakp_rsa(struct sc_pkcs15_card *p15card,
 	}
 
 	pubkey->algorithm = SC_ALGORITHM_RSA;
+
+	pubkey->alg_id = (struct sc_algorithm_id *)calloc(1, sizeof(struct sc_algorithm_id));
+	if (!pubkey->alg_id) {
+		LOG_FUNC_RETURN(p15card->card->ctx, SC_ERROR_OUT_OF_MEMORY);
+	}
+
+	pubkey->alg_id->algorithm = SC_ALGORITHM_RSA;
+
 	pubkey->u.rsa.modulus.len	= cvc->primeOrModuluslen;
 	pubkey->u.rsa.modulus.data	= malloc(pubkey->u.rsa.modulus.len);
 	pubkey->u.rsa.exponent.len	= sizeof(pubexp);
@@ -381,6 +389,7 @@ static int sc_hsm_decode_gakp_ec(struct sc_pkcs15_card *p15card,
 
 	ecp->der_len = ecparams->der.len;
 	memcpy(ecp->der, ecparams->der.value, ecp->der_len);
+	ecp->type = 1;		// Named curve
 
 	pubkey->alg_id = (struct sc_algorithm_id *)calloc(1, sizeof(struct sc_algorithm_id));
 	if (!pubkey->alg_id) {
