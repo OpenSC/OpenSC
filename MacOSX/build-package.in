@@ -1,6 +1,6 @@
 #!/bin/bash
 # Building the installer is only tested and supported on 10.9 with Xcode 5.0.1
-# Command line tools for Xcode required, isntall with "xcode-select --install"
+# Command line tools for Xcode required, install with "xcode-select --install"
 # PackageMaker comes from Auxiliary Tools for Xcode - Late July 2012
 # Download from https://developer.apple.com/downloads/index.action?name=packagemaker#
 # Built package targets 10.9+
@@ -29,6 +29,11 @@ case ${OSX_RELEASE:0:4} in
 		export CFLAGS="-isysroot $SYSROOT -arch x86_64 -mmacosx-version-min=10.6"
 	;;
 esac
+
+# OpenSSL is deprecated on OSX since 10.7 and that generates lots of
+# "false positive" warnings and there is no alternative option.
+# Just ignore these warning for now by silencing them.
+CFLAGS="$CFLAGS -Wno-deprecated-declarations"
 
 export SED=/usr/bin/sed
 PREFIX=/Library/OpenSC
