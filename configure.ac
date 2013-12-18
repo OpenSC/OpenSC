@@ -649,7 +649,9 @@ AC_CONFIG_FILES([
 	win32/OpenSC.wxs
 	MacOSX/Makefile
 	MacOSX/build-package
+	MacOSX/Distribution.xml
 	MacOSX/resources/ReadMe.html
+	MacOSX/resources/Welcome.html
 ])
 AC_OUTPUT
 
