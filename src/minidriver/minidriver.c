@@ -2313,8 +2313,9 @@ DWORD WINAPI CardAuthenticatePin(__in PCARD_DATA pCardData,
 	__in DWORD cbPin,
 	__out_opt PDWORD pcAttemptsRemaining)
 {
-	int r, tries_left, pin_min_length = 0;
-	sc_pkcs15_object_t *pin_obj;
+	int r, pin_min_length = 0;
+	struct sc_pkcs15_object *pin_obj = NULL;
+	struct sc_pkcs15_auth_info *auth_info = NULL;
 	char type[256];
 	VENDOR_SPECIFIC *vs;
 	struct md_file *cardcf_file = NULL;
@@ -2348,6 +2349,9 @@ DWORD WINAPI CardAuthenticatePin(__in PCARD_DATA pCardData,
 	if (wcscmp(wszCARD_USER_ADMIN,pwszUserId) == 0)
 		return SCARD_W_WRONG_CHV;
 
+	if(pcAttemptsRemaining)
+		(*pcAttemptsRemaining) = 0;
+
 	wcstombs(type, pwszUserId, 100);
 	type[10] = 0;
 
@@ -2360,29 +2364,27 @@ DWORD WINAPI CardAuthenticatePin(__in PCARD_DATA pCardData,
 		return r;
 	}
 
-	if (md_is_ignore_pin_length(pCardData))   {
-		struct sc_pkcs15_auth_info *auth_info = (struct sc_pkcs15_auth_info *)pin_obj->data;
+	if (!pin_obj)
+		return SCARD_F_INTERNAL_ERROR;
+	auth_info = (struct sc_pkcs15_auth_info *)pin_obj->data;
 
-		logprintf(pCardData, 2, "Accept PIN with length less then minimal.");
+	if (md_is_ignore_pin_length(pCardData))   {
+		logprintf(pCardData, 2, "Accept PIN with length less then minimal.\n");
 		pin_min_length = auth_info->attrs.pin.min_length;
 		auth_info->attrs.pin.min_length = 1;
 	}
 
 	r = sc_pkcs15_verify_pin(vs->p15card, pin_obj, (const u8 *) pbPin, cbPin);
-	if (pin_min_length)   {
-		struct sc_pkcs15_auth_info *auth_info = (struct sc_pkcs15_auth_info *)pin_obj->data;
-
+	if (pin_min_length)
 		auth_info->attrs.pin.min_length = pin_min_length;
-	}
-
 	if (r)   {
-		logprintf(pCardData, 1, "PIN code verification failed: %s\n", sc_strerror(r));
-		tries_left = ((struct sc_pkcs15_auth_info *)pin_obj->data)->tries_left;
+		logprintf(pCardData, 1, "PIN code verification failed: %s; tries left %i\n", sc_strerror(r), auth_info->tries_left);
+
 		if (r == SC_ERROR_AUTH_METHOD_BLOCKED)
 			return SCARD_W_CHV_BLOCKED;
-		if(pcAttemptsRemaining)
-			(*pcAttemptsRemaining) = tries_left;
 
+		if(pcAttemptsRemaining)
+			(*pcAttemptsRemaining) = auth_info->tries_left;
 		return SCARD_W_WRONG_CHV;
 	}
 
@@ -3137,11 +3139,12 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 	__out_opt PDWORD pcbSessionPin,
 	__out_opt PDWORD pcAttemptsRemaining)
 {
-	int r, tries_left, pin_min_length = 0;
+	int r, pin_min_length = 0;
 	VENDOR_SPECIFIC *vs;
 	CARD_CACHE_FILE_FORMAT *cardcf = NULL;
 	DWORD dwret;
-	sc_pkcs15_object_t *pin_obj = NULL;
+	struct sc_pkcs15_object *pin_obj = NULL;
+	struct sc_pkcs15_auth_info *auth_info = NULL;
 
 	logprintf(pCardData, 1, "\nP:%d T:%d pCardData:%p ",GetCurrentProcessId(), GetCurrentThreadId(), pCardData);
 	logprintf(pCardData, 1, "CardAuthenticateEx\n");
@@ -3159,7 +3162,7 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 	if (dwFlags == CARD_AUTHENTICATE_GENERATE_SESSION_PIN || dwFlags == CARD_AUTHENTICATE_SESSION_PIN) {
 		if (! (vs->reader->capabilities & SC_READER_CAP_PIN_PAD))
 			return SCARD_E_UNSUPPORTED_FEATURE;
-  }
+	}
 
 	if (dwFlags && (dwFlags & CARD_PIN_SILENT_CONTEXT) && NULL == pbPinData)
 		return SCARD_E_INVALID_PARAMETER;
@@ -3170,11 +3173,18 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 	if (PinId != ROLE_USER)
 		return SCARD_E_INVALID_PARAMETER;
 
+	if(pcAttemptsRemaining)
+		(*pcAttemptsRemaining) = 0;
+
 	r = md_get_pin_by_role(pCardData, PinId, &pin_obj);
 	if (r != SCARD_S_SUCCESS)   {
 		logprintf(pCardData, 2, "Cannot get User PIN object");
 		return r;
 	}
+
+	if (!pin_obj)
+		return SCARD_F_INTERNAL_ERROR;
+	auth_info = (struct sc_pkcs15_auth_info *)pin_obj->data;
 
 	/* Do we need to display a prompt to enter PIN on pin pad? */
 	logprintf(pCardData, 7, "PIN pad=%s, pbPinData=%p, hwndParent=%d\n",
@@ -3195,29 +3205,25 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 			return SCARD_E_INVALID_PARAMETER;
 		}
 	}
-	if (md_is_ignore_pin_length(pCardData))   {
-		struct sc_pkcs15_auth_info *auth_info = (struct sc_pkcs15_auth_info *)pin_obj->data;
 
-		logprintf(pCardData, 2, "Accept PIN with length less then minimal.");
+	if (md_is_ignore_pin_length(pCardData))   {
+		logprintf(pCardData, 2, "Accept PIN with length less then minimal.\n");
 		pin_min_length = auth_info->attrs.pin.min_length;
 		auth_info->attrs.pin.min_length = 1;
 	}
 
 	r = sc_pkcs15_verify_pin(vs->p15card, pin_obj, (const u8 *) pbPinData, cbPinData);
-
-	if (pin_min_length)   {
-		struct sc_pkcs15_auth_info *auth_info = (struct sc_pkcs15_auth_info *)pin_obj->data;
+	if (pin_min_length)
 		auth_info->attrs.pin.min_length = pin_min_length;
-	}
 
 	if (r)   {
-		logprintf(pCardData, 2, "PIN code verification failed: %s\n", sc_strerror(r));
-		tries_left = ((struct sc_pkcs15_auth_info *)pin_obj->data)->tries_left;
-		logprintf(pCardData, 7, "PIN retries left: %i\n", tries_left);
+		logprintf(pCardData, 1, "PIN code verification failed: %s; tries left %i\n", sc_strerror(r), auth_info->tries_left);
+
 		if (r == SC_ERROR_AUTH_METHOD_BLOCKED)
 			return SCARD_W_CHV_BLOCKED;
+
 		if(pcAttemptsRemaining)
-			(*pcAttemptsRemaining) = tries_left;
+			(*pcAttemptsRemaining) = auth_info->tries_left;
 		return SCARD_W_WRONG_CHV;
 	}
 
@@ -3456,11 +3462,18 @@ DWORD WINAPI CardGetProperty(__in PCARD_DATA pCardData,
 
 		CopyMemory(pbData, buf, buf_len);
 	}
-	else if (wcscmp(CP_CARD_PIN_INFO,wszProperty) == 0)   {
+	else if (wcscmp(CP_CARD_PIN_INFO, wszProperty) == 0)   {
 		PPIN_INFO p = (PPIN_INFO) pbData;
-		if (pdwDataLen) *pdwDataLen = sizeof(*p);
-		if (cbData < sizeof(*p)) return ERROR_INSUFFICIENT_BUFFER;
-		if (p->dwVersion != PIN_INFO_CURRENT_VERSION) return ERROR_REVISION_MISMATCH;
+
+		if (pdwDataLen)
+			*pdwDataLen = sizeof(*p);
+
+		if (cbData < sizeof(*p))
+			return ERROR_INSUFFICIENT_BUFFER;
+
+		if (p->dwVersion != PIN_INFO_CURRENT_VERSION)
+			return ERROR_REVISION_MISMATCH;
+
 		p->PinType = vs->reader->capabilities & SC_READER_CAP_PIN_PAD ? ExternalPinType : AlphaNumericPinType;
 		p->dwFlags = 0;
 		switch (dwFlags)   {
