@@ -5,8 +5,8 @@
     </allowed-os-versions>
     <background file="background.jpg" mime-type="image/jpeg" scaling="tofit"/>
     <readme file="Readme.html" mime-type="text/html"/>
-    <license file="License.html" mime-type="text.html"/>
-    <welcome file="Welcome.html" mime-type="text.html"/>
+    <license file="License.html" mime-type="text/html"/>
+    <welcome file="Welcome.html" mime-type="text/html"/>
     <title>OpenSC @PACKAGE_VERSION@ for OS X 10.9+</title>
 
     <pkg-ref id="com.apple.tokend.opensc"/>
