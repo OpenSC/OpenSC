@@ -2346,7 +2346,7 @@ DWORD WINAPI CardAuthenticatePin(__in PCARD_DATA pCardData,
 	if (cbPin < 4 || cbPin > 12)
 		return SCARD_W_WRONG_CHV;
 
-	if (wcscmp(wszCARD_USER_ADMIN,pwszUserId) == 0)
+	if (wcscmp(wszCARD_USER_ADMIN, pwszUserId) == 0)
 		return SCARD_W_WRONG_CHV;
 
 	if(pcAttemptsRemaining)
@@ -2395,14 +2395,64 @@ DWORD WINAPI CardAuthenticatePin(__in PCARD_DATA pCardData,
 	return SCARD_S_SUCCESS;
 }
 
+
 DWORD WINAPI CardGetChallenge(__in PCARD_DATA pCardData,
 	__deref_out_bcount(*pcbChallengeData) PBYTE *ppbChallengeData,
 	__out                                 PDWORD pcbChallengeData)
 {
+	VENDOR_SPECIFIC *vs;
+	unsigned char *random = NULL;
+	size_t random_len;
+	int rv;
+
 	logprintf(pCardData, 1, "\nP:%d T:%d pCardData:%p ",GetCurrentProcessId(), GetCurrentThreadId(), pCardData);
-	logprintf(pCardData, 1, "CardGetChallenge - unsupported\n");
-	return SCARD_E_UNSUPPORTED_FEATURE;
+	logprintf(pCardData, 1, "CardGetChallenge\n");
+
+	if(!pCardData)
+		return SCARD_E_INVALID_PARAMETER;
+	if (!ppbChallengeData || !pcbChallengeData)
+		return SCARD_E_INVALID_PARAMETER;
+
+	logprintf(pCardData, 1, "Asked challenge length %i, buffer %p\n", *pcbChallengeData, *ppbChallengeData);
+	if (pcbChallengeData == 0)   {
+		*ppbChallengeData = NULL;
+
+		logprintf(pCardData, 7, "returns zero bytes\n");
+		return SCARD_S_SUCCESS;
+	}
+
+	vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
+
+	check_reader_status(pCardData);
+
+	random_len = (size_t)(*pcbChallengeData);
+	if(random_len < 8)
+		random_len = 8;
+	*pcbChallengeData = 0;
+
+	random = malloc(random_len);
+	if (!random)
+		return SCARD_E_NO_MEMORY;
+
+	rv = sc_get_challenge(vs->p15card->card, random, random_len);
+	if (rv)   {
+		logprintf(pCardData, 1, "Get challenge failed: %s\n", sc_strerror(rv));
+		return SCARD_E_UNEXPECTED;
+	}
+
+	*ppbChallengeData = pCardData->pfnCspAlloc(random_len);
+	if(!*ppbChallengeData)
+		return SCARD_E_NO_MEMORY;
+
+	memcpy(*ppbChallengeData, random, random_len);
+	*pcbChallengeData = random_len;
+	free(random);
+
+	logprintf(pCardData, 7, "returns %i bytes:\n", *pcbChallengeData);
+	loghex(pCardData, 7, *ppbChallengeData, *pcbChallengeData);
+	return SCARD_S_SUCCESS;
 }
+
 
 DWORD WINAPI CardAuthenticateChallenge(__in PCARD_DATA  pCardData,
 	__in_bcount(cbResponseData) PBYTE  pbResponseData,
@@ -2413,6 +2463,7 @@ DWORD WINAPI CardAuthenticateChallenge(__in PCARD_DATA  pCardData,
 	logprintf(pCardData, 1, "CardAuthenticateChallenge - unsupported\n");
 	return SCARD_E_UNSUPPORTED_FEATURE;
 }
+
 
 DWORD WINAPI CardUnblockPin(__in PCARD_DATA  pCardData,
 	__in LPWSTR pwszUserId,
@@ -3691,6 +3742,8 @@ DWORD WINAPI CardAcquireContext(IN PCARD_DATA pCardData, __in DWORD dwFlags)
 		pCardData->pfnCspGetDHAgreement = CspGetDHAgreement;
 
 		if (suppliedVersion > 5 ) {
+			logprintf(pCardData, 1, "Supplied version %i.\n", suppliedVersion);
+
 			pCardData->pfnCardGetChallengeEx = CardGetChallengeEx;
 			pCardData->pfnCardAuthenticateEx = CardAuthenticateEx;
 			pCardData->pfnCardChangeAuthenticatorEx = CardChangeAuthenticatorEx;
