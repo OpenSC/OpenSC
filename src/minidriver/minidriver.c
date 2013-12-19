@@ -2474,10 +2474,52 @@ DWORD WINAPI CardUnblockPin(__in PCARD_DATA  pCardData,
 	__in DWORD  cRetryCount,
 	__in DWORD  dwFlags)
 {
+	VENDOR_SPECIFIC *vs = NULL;
+	DWORD dw_rv;
+	struct sc_pkcs15_object *pin_obj = NULL;
+	int rv;
+
+	if(!pCardData)
+		return SCARD_E_INVALID_PARAMETER;
+
 	logprintf(pCardData, 1, "\nP:%d T:%d pCardData:%p ",GetCurrentProcessId(), GetCurrentThreadId(), pCardData);
-	logprintf(pCardData, 1, "CardUnblockPin - unsupported\n");
-	return SCARD_E_UNSUPPORTED_FEATURE;
+	logprintf(pCardData, 1, "CardUnblockPin\n");
+
+	if (pwszUserId == NULL)
+		return SCARD_E_INVALID_PARAMETER;
+	if (pbAuthenticationData == NULL)
+		return SCARD_E_INVALID_PARAMETER;
+	if (wcscmp(wszCARD_USER_USER, pwszUserId) != 0 && wcscmp(wszCARD_USER_ADMIN,pwszUserId) != 0)
+		return SCARD_E_INVALID_PARAMETER;
+	if (wcscmp(wszCARD_USER_ADMIN, pwszUserId) == 0)
+		return SCARD_W_WRONG_CHV;
+
+	logprintf(pCardData, 1, "UserID('%s'), AuthData(%p, %li), NewPIN(%p, %li), Retry(%li), dwFlags(0x%lX)\n",
+			pwszUserId, pbAuthenticationData, cbAuthenticationData, pbNewPinData, cbNewPinData,
+			cRetryCount, dwFlags);
+
+	vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
+
+	dw_rv = md_get_pin_by_role(pCardData, ROLE_USER, &pin_obj);
+	if (dw_rv != SCARD_S_SUCCESS)   {
+		logprintf(pCardData, 2, "Cannot get User PIN object");
+		return dw_rv;
+	}
+	if (!pin_obj)
+		return SCARD_F_INTERNAL_ERROR;
+
+	rv = sc_pkcs15_unblock_pin(vs->p15card, pin_obj,
+			pbAuthenticationData, cbAuthenticationData,
+			pbNewPinData, cbNewPinData);
+	if (rv)   {
+		logprintf(pCardData, 2, "Failed to unblock User PIN: '%s' (%i)\n", sc_strerror(rv), rv);
+		return SCARD_F_INTERNAL_ERROR;
+	}
+
+	logprintf(pCardData, 7, "returns success\n");
+	return SCARD_S_SUCCESS;
 }
+
 
 DWORD WINAPI CardChangeAuthenticator(__in PCARD_DATA  pCardData,
 	__in LPWSTR pwszUserId,
