@@ -2531,9 +2531,71 @@ DWORD WINAPI CardChangeAuthenticator(__in PCARD_DATA  pCardData,
 	__in DWORD dwFlags,
 	__out_opt PDWORD pcAttemptsRemaining)
 {
+	VENDOR_SPECIFIC *vs = NULL;
+	DWORD dw_rv;
+	struct sc_pkcs15_object *pin_obj = NULL;
+	int rv;
+
+	if(!pCardData)
+		return SCARD_E_INVALID_PARAMETER;
+
 	logprintf(pCardData, 1, "\nP:%d T:%d pCardData:%p ",GetCurrentProcessId(), GetCurrentThreadId(), pCardData);
-	logprintf(pCardData, 1, "CardChangeAuthenticator - unsupported\n");
-	return SCARD_E_UNSUPPORTED_FEATURE;
+	logprintf(pCardData, 1, "CardChangeAuthenticator\n");
+
+	if (pwszUserId == NULL)
+		return SCARD_E_INVALID_PARAMETER;
+
+	if (pbCurrentAuthenticator == NULL  || cbCurrentAuthenticator == 0)    {
+		logprintf(pCardData, 1, "Invalid current PIN data\n");
+		return SCARD_E_INVALID_PARAMETER;
+	}
+
+	if (pbNewAuthenticator == NULL  || cbNewAuthenticator == 0)   {
+		logprintf(pCardData, 1, "Invalid new PIN data\n");
+		return SCARD_E_INVALID_PARAMETER;
+	}
+
+	if (dwFlags != CARD_AUTHENTICATE_PIN_PIN)   {
+		logprintf(pCardData, 1, "Other then 'authentication' the PIN are not supported\n");
+		return SCARD_E_UNSUPPORTED_FEATURE;
+	}
+
+	if (wcscmp(wszCARD_USER_USER, pwszUserId) != 0 && wcscmp(wszCARD_USER_ADMIN, pwszUserId) != 0)
+		return SCARD_E_INVALID_PARAMETER;
+
+	if(pcAttemptsRemaining)
+		(*pcAttemptsRemaining) = 0;
+
+	logprintf(pCardData, 1, "UserID('%s'), CurrentPIN(%p, %li), NewPIN(%p, %li), Retry(%li), dwFlags(0x%lX)\n",
+			pwszUserId, pbCurrentAuthenticator, cbCurrentAuthenticator, pbNewAuthenticator, cbNewAuthenticator,
+			cRetryCount, dwFlags);
+
+	vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
+
+	if (wcscmp(wszCARD_USER_USER, pwszUserId) == 0)
+		dw_rv = md_get_pin_by_role(pCardData, ROLE_USER, &pin_obj);
+	else if (wcscmp(wszCARD_USER_ADMIN,pwszUserId) == 0)
+		dw_rv = md_get_pin_by_role(pCardData, ROLE_ADMIN, &pin_obj);
+	else
+		return SCARD_F_INTERNAL_ERROR;
+
+	if (dw_rv != SCARD_S_SUCCESS)   {
+		logprintf(pCardData, 2, "Cannot get %s PIN by role", pwszUserId);
+		return dw_rv;
+	}
+	if (!pin_obj)
+		return SCARD_F_INTERNAL_ERROR;
+
+	rv = sc_pkcs15_change_pin(vs->p15card, pin_obj,
+			pbCurrentAuthenticator, cbCurrentAuthenticator,
+			pbNewAuthenticator, cbNewAuthenticator);
+	if (rv)   {
+		logprintf(pCardData, 2, "Failed to change %s PIN: '%s' (%i)\n", pwszUserId, sc_strerror(rv), rv);
+		return SCARD_F_INTERNAL_ERROR;
+	}
+
+	logprintf(pCardData, 7, "returns success\n");
+	return SCARD_S_SUCCESS;
 }
 
 
@@ -3246,7 +3308,7 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 		return SCARD_E_INVALID_PARAMETER;
 
 	logprintf(pCardData, 2, "CardAuthenticateEx: PinId=%u, dwFlags=0x%08X, cbPinData=%u, Attempts %s\n",
-		PinId,dwFlags,cbPinData,pcAttemptsRemaining ? "YES" : "NO");
+		PinId, dwFlags, cbPinData, pcAttemptsRemaining ? "YES" : "NO");
 
 	vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
 
