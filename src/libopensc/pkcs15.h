@@ -331,6 +331,7 @@ struct sc_pkcs15_data_info {
 };
 typedef struct sc_pkcs15_data_info sc_pkcs15_data_info_t;
 
+/* keyUsageFlags are the same for all key types */
 #define SC_PKCS15_PRKEY_USAGE_ENCRYPT		0x01
 #define SC_PKCS15_PRKEY_USAGE_DECRYPT		0x02
 #define SC_PKCS15_PRKEY_USAGE_SIGN		0x04
@@ -341,18 +342,6 @@ typedef struct sc_pkcs15_data_info sc_pkcs15_data_info_t;
 #define SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER	0x80
 #define SC_PKCS15_PRKEY_USAGE_DERIVE		0x100
 #define SC_PKCS15_PRKEY_USAGE_NONREPUDIATION	0x200
-
-/* keyUsageFlags  are the same for all key types */
-#define SC_PKCS15_KEY_USAGE_ENCRYPT		0x01
-#define SC_PKCS15_KEY_USAGE_DECRYPT		0x02
-#define SC_PKCS15_KEY_USAGE_SIGN		0x04
-#define SC_PKCS15_KEY_USAGE_SIGNRECOVER		0x08
-#define SC_PKCS15_KEY_USAGE_WRAP		0x10
-#define SC_PKCS15_KEY_USAGE_UNWRAP		0x20
-#define SC_PKCS15_KEY_USAGE_VERIFY		0x40
-#define SC_PKCS15_KEY_USAGE_VERIFYRECOVER	0x80
-#define SC_PKCS15_KEY_USAGE_DERIVE		0x100
-#define SC_PKCS15_KEY_USAGE_NONREPUDIATION	0x200
 
 #define SC_PKCS15_PRKEY_ACCESS_SENSITIVE	0x01
 #define SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE	0x02
