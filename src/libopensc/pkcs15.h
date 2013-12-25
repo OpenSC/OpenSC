@@ -511,7 +511,8 @@ struct sc_pkcs15_object {
 	struct sc_pkcs15_der content;
 
 	/* Used by minidriver and its on-card support */
-	char *guid;
+	char *md_guid;
+	unsigned md_flags;
 };
 typedef struct sc_pkcs15_object sc_pkcs15_object_t;
 
