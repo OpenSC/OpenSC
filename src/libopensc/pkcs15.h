@@ -128,7 +128,8 @@ struct sc_pkcs15_auth_info {
 	/* authentication method: CHV, SEN, SYMBOLIC, ... */
 	unsigned int  auth_method;
 
-	int  tries_left, max_tries;
+	int tries_left, max_tries;
+	int max_unlocks;
  };
 typedef struct sc_pkcs15_auth_info sc_pkcs15_auth_info_t;
 

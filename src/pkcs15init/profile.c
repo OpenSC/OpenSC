@@ -1610,6 +1610,18 @@ do_pin_attempts(struct state *cur, int argc, char **argv)
 }
 
 static int
+do_pin_maxunlocks(struct state *cur, int argc, char **argv)
+{
+	struct pin_info	*pi = cur->pin;
+	unsigned int	count;
+
+	if (get_uint(cur, argv[0], &count))
+		return 1;
+	pi->pin.max_unlocks = count;
+	return 0;
+}
+
+static int
 do_pin_type(struct state *cur, int argc, char **argv)
 {
 	unsigned int	type;
@@ -1814,16 +1826,17 @@ static struct block	fs_blocks[] = {
  * Pin section
  */
 static struct command	pi_commands[] = {
- { "file",		1,	1,	do_pin_file	},
- { "offset",		1,	1,	do_pin_offset	},
- { "attempts",		1,	2,	do_pin_attempts	},
- { "encoding",		1,	1,	do_pin_type	},
- { "reference",		1,	1,	do_pin_reference},
- { "auth-id",		1,	1,	do_pin_authid	},
- { "max-length",	1,	1,	do_pin_maxlength},
- { "min-length",	1,	1,	do_pin_minlength},
- { "stored-length",	1,	1,	do_pin_storedlength},
- { "flags",		1,	-1,	do_pin_flags	},
+ { "file",		1,	1,	do_pin_file		},
+ { "offset",		1,	1,	do_pin_offset		},
+ { "attempts",		1,	2,	do_pin_attempts		},
+ { "encoding",		1,	1,	do_pin_type		},
+ { "reference",		1,	1,	do_pin_reference	},
+ { "auth-id",		1,	1,	do_pin_authid		},
+ { "max-length",	1,	1,	do_pin_maxlength	},
+ { "min-length",	1,	1,	do_pin_minlength	},
+ { "stored-length",	1,	1,	do_pin_storedlength	},
+ { "max-unlocks",	1,	1,	do_pin_maxunlocks	},
+ { "flags",		1,	-1,	do_pin_flags		},
  { NULL, 0, 0, NULL }
 };
 
