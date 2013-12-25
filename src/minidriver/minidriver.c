@@ -1305,26 +1305,39 @@ md_set_cmapfile(PCARD_DATA pCardData, struct md_file *file)
 			continue;
 		}
 
-		rv = sc_pkcs15_get_guid(vs->p15card, key_obj, 0, cont->guid, sizeof(cont->guid));
-		if (rv)   {
-			logprintf(pCardData, 2, "sc_pkcs15_get_guid() error %d\n", rv);
-			return SCARD_F_INTERNAL_ERROR;
+		if (prkey_info->cmap_record.guid)   {
+			strncpy(cont->guid, prkey_info->cmap_record.guid, sizeof(cont->guid));
+
+			cont->size_key_exchange = prkey_info->cmap_record.keysize_keyexchange;
+			cont->size_sign = prkey_info->cmap_record.keysize_sign;
+
+			cont->flags = prkey_info->cmap_record.flags;
+			if (cont->flags & CONTAINER_MAP_DEFAULT_CONTAINER)
+				found_default = 1;
+		}
+		else   {
+			rv = sc_pkcs15_get_guid(vs->p15card, key_obj, 0, cont->guid, sizeof(cont->guid));
+			if (rv)   {
+				logprintf(pCardData, 2, "sc_pkcs15_get_guid() error %d\n", rv);
+				return SCARD_F_INTERNAL_ERROR;
+			}
+
+			cont->flags = CONTAINER_MAP_VALID_CONTAINER;
+
+			/* AT_KEYEXCHANGE is more general key usage,
+			 *	it allows 'decryption' as well as 'signature' key usage.
+			 * AT_SIGNATURE allows only 'signature' usage.
+			 */
+			cont->size_key_exchange = cont->size_sign = 0;
+			if (prkey_info->usage & USAGE_ANY_DECIPHER)
+				cont->size_key_exchange = prkey_info->modulus_length;
+			else if (prkey_info->usage & USAGE_ANY_SIGN)
+				cont->size_sign = prkey_info->modulus_length;
+			else
+				cont->size_key_exchange = prkey_info->modulus_length;
 		}
 
 		logprintf(pCardData, 7, "Container[%i]'s guid=%s\n", ii, cont->guid);
-		cont->flags = CONTAINER_MAP_VALID_CONTAINER;
-
-		/* AT_KEYEXCHANGE is more general key usage,
-		 * 	it allows 'decryption' as well as 'signature' key usage.
-		 * AT_SIGNATURE allows only 'signature' usage.
-		 */
-		cont->size_key_exchange = cont->size_sign = 0;
-		if (prkey_info->usage & USAGE_ANY_DECIPHER)
-			cont->size_key_exchange = prkey_info->modulus_length;
-		else if (prkey_info->usage & USAGE_ANY_SIGN)
-			cont->size_sign = prkey_info->modulus_length;
-		else
-			cont->size_key_exchange = prkey_info->modulus_length;
 		logprintf(pCardData, 7, "Container[%i]'s key-exchange:%i, sign:%i\n", ii, cont->size_key_exchange, cont->size_sign);
 
 		cont->id = prkey_info->id;
@@ -1339,7 +1352,7 @@ md_set_cmapfile(PCARD_DATA pCardData, struct md_file *file)
 	}
 
 	if (conts_num)   {
-		/* Read 'CMAPFILE' and update the attributes of P15 containers */
+		/* Read 'CMAPFILE' (Gemalto style) and update the attributes of P15 containers */
 		struct sc_pkcs15_object *dobjs[MD_MAX_KEY_CONTAINERS + 1], *default_cont = NULL;
 		int num_dobjs = MD_MAX_KEY_CONTAINERS + 1;
 

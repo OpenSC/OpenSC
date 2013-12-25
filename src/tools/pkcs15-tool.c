@@ -536,6 +536,8 @@ static void print_prkey_info(const struct sc_pkcs15_object *obj)
 	if (!sc_pkcs15_get_guid(p15card, obj, 0, guid, sizeof(guid)))   {
 		printf("\tGUID           : %s\n", guid);
 		printf("\tMD cmap flags  : 0x%X\n", prkey->cmap_record.flags);
+		printf("\tsign key size  : 0x%X\n", prkey->cmap_record.keysize_sign);
+		printf("\tkey-exchange   : 0x%X\n", prkey->cmap_record.keysize_keyexchange);
 	}
 }
 

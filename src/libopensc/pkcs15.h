@@ -408,8 +408,8 @@ struct sc_pkcs15_key_params {
 struct sc_md_cmap_record {
 	char *guid;
 	unsigned flags;
-	unsigned key_size_sign;
-	unsigned key_size_keyexchange;
+	unsigned keysize_sign;
+	unsigned keysize_keyexchange;
 };
 
 struct sc_pkcs15_prkey_info {
