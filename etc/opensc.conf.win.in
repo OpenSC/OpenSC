@@ -610,26 +610,38 @@ app opensc-pkcs11 {
 		# Default: empty
 		# ignored_readers = "CardMan 1021", "SPR 532";
 
-                # Symbolic names of PINs for which slots are created
-                # Card can contain more then one PINs or more then one on-card application with
-                #   its own PINs. Normally, to access all of them with the PKCS#11 API a slot has to be
-                #   created for all of them. Many slots could be ennoying for some of widely used application,
-                #   like FireFox. This configuration parameter allows to select the PINs or on-card application
-                #   for which PKCS#11 slot will be created.
-                # Actually recognised following symbolic names:
-                #  'user', 'sign', 'application', all
-                # Only PINs initialised, non-SoPIN, non-unblocking are associated with symbolic name.
-                # 'user' is identified as first global or first local PIN.
-                # 'sign' is identified as second PIN: first local, second global or second local.
-                # 'application' slot created for each on-card application,
-                #   even if they use a common global PIN.
-                # 'all' slot created for all non-sopin, non-unblocking PINs,
-                #   optionally for PUK (see option 'create_puk_slot')
+		# Symbolic names of PINs for which slots are created
+		# Card can contain more then one PINs or more then one on-card application with
+		#   its own PINs. Normally, to access all of them with the PKCS#11 API a slot has to be
+		#   created for all of them. Many slots could be ennoying for some of widely used application,
+		#   like FireFox. This configuration parameter allows to select the PINs or on-card application
+		#   for which PKCS#11 slot will be created.
+		# Actually recognised following symbolic names:
+		#  'user', 'sign', 'application', all
+		# Only PINs initialised, non-SoPIN, non-unblocking are associated with symbolic name.
+		# 'user' is identified as first global or first local PIN.
+		# 'sign' is identified as second PIN: first local, second global or second local.
+		# 'application' slot created for each on-card application,
+		#   even if they use a common global PIN.
+		# 'all' slot created for all non-sopin, non-unblocking PINs,
+		#   optionally for PUK (see option 'create_puk_slot')
+		#
+		# Default: all
+		# create_slots_for_pins = "user,sign";
+		# create_slots_for_pins = application;
+		# create_slots_for_pins = "application,sign";
+
+                # Enable C_Login to accept all PIN's lengths.
                 #
-                # Default: all
-                # create_slots_for_pins = "user,sign";
-                # create_slots_for_pins = application;
-                # create_slots_for_pins = "application,sign";
+                # Normally when length of applied PIN is less then value of 'min-length' PKCS15 pin attribute,
+                # PIN is rejected by pkcs#15 framework and is not really verified by card.
+                # Thus the on-card 'retry' PIN value remains unchanged.
+                # Pkcs#15 framework of pksc#11 module returns CKR_INCORRECT_PIN.
+                # That's default behavior.
+                # With following option enabled all applied PINs will be verified by card.
+                #
+                # Default: false
+                ignore_pin_length = true;
 	}
 }
 
