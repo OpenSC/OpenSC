@@ -300,6 +300,7 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t * ctx)
 	conf->create_puk_slot = 0;
 	conf->zero_ckaid_for_ca_certs = 0;
 	conf->create_slots_flags = 0;
+	conf->ignore_pin_length = 0;
 
 	conf_block = sc_get_conf_block(ctx, "pkcs11", NULL, 1);
 	if (!conf_block)
@@ -322,6 +323,8 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t * ctx)
 
 	conf->create_puk_slot = scconf_get_bool(conf_block, "create_puk_slot", conf->create_puk_slot);
 	conf->zero_ckaid_for_ca_certs = scconf_get_bool(conf_block, "zero_ckaid_for_ca_certs", conf->zero_ckaid_for_ca_certs);
+
+	conf->ignore_pin_length = scconf_get_bool(conf_block, "ignore_pin_length", conf->ignore_pin_length);
 
 	create_slots_for_pins = (char *)scconf_get_str(conf_block, "create_slots_for_pins", "all");
 	tmp = strdup(create_slots_for_pins);
