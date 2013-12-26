@@ -26,6 +26,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <assert.h>
+#include <ctype.h>
 
 #include "cardctl.h"
 #include "internal.h"
@@ -2516,7 +2517,7 @@ sc_pkcs15_get_object_id(const struct sc_pkcs15_object *obj, struct sc_pkcs15_id 
  * There is no variant, version number and other special meaning fields
  *  that are described in RFC-4122 .
  */
-static int
+int
 sc_pkcs15_serialize_guid(unsigned char *in, size_t in_size, unsigned flags,
 		char *out, size_t out_size)
 {
@@ -2546,38 +2547,40 @@ sc_pkcs15_serialize_guid(unsigned char *in, size_t in_size, unsigned flags,
 	return SC_SUCCESS;
 }
 
+
 int
-sc_pkcs15_get_guid(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_object *obj,
+sc_pkcs15_get_object_guid(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_object *obj,
 		                unsigned flags, char *out, size_t out_size)
 {
+	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_serial_number serialnr;
 	struct sc_pkcs15_id  id;
 	unsigned char guid_bin[SC_PKCS15_MAX_ID_SIZE + SC_MAX_SERIALNR];
 	int rv;
 
-	if (p15card->ops.get_guid)
-		return p15card->ops.get_guid(p15card, obj, out, out_size);
+	LOG_FUNC_CALLED(ctx);
+	if (p15card->ops.get_guid)   {
+		rv = p15card->ops.get_guid(p15card, obj, out, out_size);
+		LOG_FUNC_RETURN(ctx, rv);
+	}
 
+	memset(out, 0, out_size);
 	if ((obj->type & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_PRKEY)   {
 		struct sc_pkcs15_prkey_info *info = (struct sc_pkcs15_prkey_info *)obj->data;
 
 		if (info->cmap_record.guid && strlen(info->cmap_record.guid))   {
 			if (out_size < strlen(info->cmap_record.guid) + 1)
 				return SC_ERROR_BUFFER_TOO_SMALL;
-			memset(out, 0, out_size);
 			memcpy(out, info->cmap_record.guid, strlen(info->cmap_record.guid));
-
-			return SC_SUCCESS;
+			LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 		}
 	}
 
 	rv = sc_pkcs15_get_object_id(obj, &id);
-	if (rv)
-		return rv;
+	LOG_TEST_RET(ctx, rv, "Cannot get object's ID");
 
 	rv = sc_card_ctl(p15card->card, SC_CARDCTL_GET_SERIALNR, &serialnr);
-	if (rv)
-		return rv;
+	LOG_TEST_RET(ctx, rv, "'GET_SERIALNR' failed");
 
 	memset(guid_bin, 0, sizeof(guid_bin));
 	memcpy(guid_bin, id.value, id.len);
@@ -2591,7 +2594,8 @@ sc_pkcs15_get_guid(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_object
         serialnr.len = 0;
 #endif
 
-	return sc_pkcs15_serialize_guid(guid_bin, id.len + serialnr.len, flags, out, out_size);
+	rv = sc_pkcs15_serialize_guid(guid_bin, id.len + serialnr.len, flags, out, out_size);
+	LOG_FUNC_RETURN(ctx, rv);
 }
 
 void sc_pkcs15_free_key_params(struct sc_pkcs15_key_params *params)

@@ -533,11 +533,11 @@ static void print_prkey_info(const struct sc_pkcs15_object *obj)
 		printf("\tAuth ID        : %s\n", sc_pkcs15_print_id(&obj->auth_id));
 	printf("\tID             : %s\n", sc_pkcs15_print_id(&prkey->id));
 
-	if (!sc_pkcs15_get_guid(p15card, obj, 0, guid, sizeof(guid)))   {
-		printf("\tGUID           : %s\n", guid);
-		printf("\tMD cmap flags  : 0x%X\n", prkey->cmap_record.flags);
-		printf("\tsign key size  : 0x%X\n", prkey->cmap_record.keysize_sign);
-		printf("\tkey-exchange   : 0x%X\n", prkey->cmap_record.keysize_keyexchange);
+	if (!sc_pkcs15_get_object_guid(p15card, obj, 0, guid, sizeof(guid)))   {
+		printf("\tMD guid        : %s\n", guid);
+		printf("\t   cmap-flags  : 0x%X\n", prkey->cmap_record.flags);
+		printf("\t   sign key    : %i\n", prkey->cmap_record.keysize_sign);
+		printf("\t   key-exchange: %i\n", prkey->cmap_record.keysize_keyexchange);
 	}
 }
 
@@ -744,7 +744,7 @@ static void print_skey_info(const struct sc_pkcs15_object *obj)
 
 	if (skey->path.len || skey->path.aid.len)
 		printf("\tPath           : %s\n", sc_print_path(&skey->path));
-	if (!sc_pkcs15_get_guid(p15card, obj, 0, guid, sizeof(guid)))
+	if (!sc_pkcs15_get_object_guid(p15card, obj, 0, guid, sizeof(guid)))
 		printf("\tGUID           : %s\n", guid);
 
 }
