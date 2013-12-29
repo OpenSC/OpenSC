@@ -10,7 +10,7 @@ VS_VERSION_INFO VERSIONINFO
 	FILEFLAGS 0x20L
 #endif
 	FILEOS 0x40004L
-	FILETYPE 0x2L
+	FILETYPE 0x1L
 	FILESUBTYPE 0x0L
 BEGIN
 	BLOCK "StringFileInfo"
@@ -24,7 +24,7 @@ BEGIN
 			VALUE "LegalCopyright", "OpenSC Project"
 			VALUE "LegalTrademarks", ""
 			VALUE "PrivateBuild", ""
-			VALUE "ProductName", "OpenSC"
+			VALUE "ProductName", "OpenSC command line tools"
 			VALUE "ProductVersion", "@OPENSC_VERSION_MAJOR@,@OPENSC_VERSION_MINOR@,@OPENSC_VERSION_FIX@,@OPENSC_VERSION_REVISION@"
 			VALUE "SpecialBuild", ""
 		END

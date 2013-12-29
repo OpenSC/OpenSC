@@ -24,7 +24,7 @@ BEGIN
 			VALUE "LegalCopyright", "OpenSC Project"
 			VALUE "LegalTrademarks", ""
 			VALUE "PrivateBuild", ""
-			VALUE "ProductName", "OpenSC"
+			VALUE "ProductName", "OpenSC PKCS#11 spy"
 			VALUE "ProductVersion", "@OPENSC_VERSION_MAJOR@,@OPENSC_VERSION_MINOR@,@OPENSC_VERSION_FIX@,@OPENSC_VERSION_REVISION@"
 			VALUE "SpecialBuild", ""
 		END

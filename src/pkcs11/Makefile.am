@@ -1,7 +1,7 @@
 include $(top_srcdir)/win32/ltrc.inc
 
-MAINTAINERCLEANFILES = $(srcdir)/Makefile.in
-EXTRA_DIST = Makefile.mak
+MAINTAINERCLEANFILES = $(srcdir)/Makefile.in $(srcdir)/versioninfo-pkcs11.rc $(srcdir)/versioninfo-pkcs11-spy.rc
+EXTRA_DIST = Makefile.mak versioninfo-pkcs11.rc.in versioninfo-pkcs11-spy.rc.in
 
 dist_noinst_SCRIPTS = opensc_pkcs11_install.js
 lib_LTLIBRARIES = opensc-pkcs11.la pkcs11-spy.la
@@ -36,8 +36,8 @@ pkcs11_spy_la_LDFLAGS = $(AM_LDFLAGS) \
 	-module -shared -avoid-version -no-undefined
 
 if WIN32
-opensc_pkcs11_la_SOURCES += $(top_builddir)/win32/versioninfo.rc
-pkcs11_spy_la_SOURCES += $(top_builddir)/win32/versioninfo.rc
+opensc_pkcs11_la_SOURCES += versioninfo-pkcs11.rc
+pkcs11_spy_la_SOURCES += versioninfo-pkcs11-spy.rc
 endif
 
 jar-dir:

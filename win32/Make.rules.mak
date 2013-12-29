@@ -95,4 +95,4 @@ CANDLEFLAGS = -dPlatform=x86
 	rc /l 0x0409 $<
 
 clean::
-	del /Q *.obj *.dll *.exe *.pdb *.lib *.def *.manifest
+	del /Q *.obj *.dll *.exe *.pdb *.lib *.def *.manifest *.res

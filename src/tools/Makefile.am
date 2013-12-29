@@ -1,7 +1,7 @@
 include $(top_srcdir)/win32/ltrc.inc
 
-MAINTAINERCLEANFILES = $(srcdir)/Makefile.in
-EXTRA_DIST = Makefile.mak
+MAINTAINERCLEANFILES = $(srcdir)/Makefile.in $(srcdir)/versioninfo-tools.rc
+EXTRA_DIST = Makefile.mak versioninfo-tools.rc.in
 
 noinst_HEADERS = util.h
 bin_PROGRAMS = opensc-tool opensc-explorer pkcs15-tool pkcs15-crypt \
@@ -53,20 +53,19 @@ dnie_tool_SOURCES = dnie-tool.c util.c
 dnie_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
 
 if WIN32
-opensc_tool_SOURCES += $(top_builddir)/win32/versioninfo.rc
-piv_tool_SOURCES += $(top_builddir)/win32/versioninfo.rc
-opensc_explorer_SOURCES += $(top_builddir)/win32/versioninfo.rc
-pkcs15_tool_SOURCES += $(top_builddir)/win32/versioninfo.rc
-pkcs11_tool_SOURCES += $(top_builddir)/win32/versioninfo.rc
-pkcs15_crypt_SOURCES += $(top_builddir)/win32/versioninfo.rc
-cryptoflex_tool_SOURCES += $(top_builddir)/win32/versioninfo.rc
-pkcs15_init_SOURCES += $(top_builddir)/win32/versioninfo.rc
-cardos_tool_SOURCES += $(top_builddir)/win32/versioninfo.rc
-eidenv_SOURCES += $(top_builddir)/win32/versioninfo.rc
-netkey_tool_SOURCES += $(top_builddir)/win32/versioninfo.rc
-westcos_tool_SOURCES += $(top_builddir)/win32/versioninfo.rc
-openpgp_tool_SOURCES += $(top_builddir)/win32/versioninfo.rc
-iasecc_tool_SOURCES += $(top_builddir)/win32/versioninfo.rc
-sc_hsm_tool_SOURCES += $(top_builddir)/win32/versioninfo.rc
-sc_hsm_tool_SOURCES += $(top_builddir)/win32/versioninfo.rc
+opensc_tool_SOURCES += versioninfo-tools.rc
+piv_tool_SOURCES += versioninfo-tools.rc
+opensc_explorer_SOURCES += versioninfo-tools.rc
+pkcs15_tool_SOURCES += versioninfo-tools.rc
+pkcs11_tool_SOURCES += versioninfo-tools.rc
+pkcs15_crypt_SOURCES += versioninfo-tools.rc
+cryptoflex_tool_SOURCES += versioninfo-tools.rc
+pkcs15_init_SOURCES += versioninfo-tools.rc
+cardos_tool_SOURCES += versioninfo-tools.rc
+eidenv_SOURCES += versioninfo-tools.rc
+netkey_tool_SOURCES += versioninfo-tools.rc
+westcos_tool_SOURCES += versioninfo-tools.rc
+openpgp_tool_SOURCES += versioninfo-tools.rc
+iasecc_tool_SOURCES += versioninfo-tools.rc
+sc_hsm_tool_SOURCES += versioninfo-tools.rc
 endif

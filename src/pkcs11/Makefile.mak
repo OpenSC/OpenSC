@@ -4,13 +4,11 @@ TARGET1                 = opensc-pkcs11.dll
 TARGET3			= pkcs11-spy.dll
 
 OBJECTS			= pkcs11-global.obj pkcs11-session.obj pkcs11-object.obj misc.obj slot.obj \
-			  mechanism.obj openssl.obj framework-pkcs15.obj \
-			  framework-pkcs15init.obj debug.obj pkcs11-display.obj \
-				$(TOPDIR)\win32\versioninfo.res
-OBJECTS3		= pkcs11-spy.obj pkcs11-display.obj \
-				$(TOPDIR)\win32\versioninfo.res
+			  mechanism.obj openssl.obj framework-pkcs15.obj framework-pkcs15init.obj \
+			  debug.obj pkcs11-display.obj versioninfo-pkcs11.res
+OBJECTS3		= pkcs11-spy.obj pkcs11-display.obj versioninfo-pkcs11-spy.res
 
-all: $(TOPDIR)\win32\versioninfo.res $(TARGET1) $(TARGET3)
+all: versioninfo-pkcs11.res $(TARGET1) $(TARGET3) versioninfo-pkcs11-spy.res
 
 !INCLUDE $(TOPDIR)\win32\Make.rules.mak
 
