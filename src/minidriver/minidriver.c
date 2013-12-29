@@ -165,13 +165,13 @@ typedef struct _VENDOR_SPECIFIC
  *
  * TODO: resolve multi-thread issues on the OpenSC side
  */
-#define MD_STATIC_FLAG_READ_ONLY		1
-#define MD_STATIC_FLAG_SUPPORTS_X509_ENROLLMENT	2
-#define MD_STATIC_FLAG_CONTEXT_DELETED		4
-#define MD_STATIC_FLAG_GUID_AS_ID		8
-#define MD_STATIC_FLAG_GUID_AS_LABEL		16
-#define MD_STATIC_FLAG_CONTAINER_NO_KEY_IMPORT	32
-#define MD_STATIC_FLAG_CONTAINER_NO_KEY_GEN	64
+#define MD_STATIC_FLAG_READ_ONLY			1
+#define MD_STATIC_FLAG_SUPPORTS_X509_ENROLLMENT		2
+#define MD_STATIC_FLAG_CONTEXT_DELETED			4
+#define MD_STATIC_FLAG_GUID_AS_ID			8
+#define MD_STATIC_FLAG_GUID_AS_LABEL			16
+#define MD_STATIC_FLAG_CREATE_CONTAINER_KEY_IMPORT	32
+#define MD_STATIC_FLAG_CREATE_CONTAINER_KEY_GEN		64
 
 #define MD_STATIC_PROCESS_ATTACHED		0xA11AC4EDL
 struct md_opensc_static_data {
@@ -435,41 +435,8 @@ md_get_config_bool(PCARD_DATA pCardData, char *flag_name, unsigned flag, BOOL re
 static BOOL
 md_is_read_only(PCARD_DATA pCardData)
 {
-	BOOL ret = TRUE;
-
 	logprintf(pCardData, 2, "Is read-only?\n");
-#if 0
-	if (md_static_data.flags_checked & MD_STATIC_FLAG_READ_ONLY)   {
-		ret = (md_static_data.flags & MD_STATIC_FLAG_READ_ONLY) ? TRUE : FALSE;
-		logprintf(pCardData, 2, "Returns checked flag: %s\n", ret ? "TRUE" : "FALSE");
-		return ret;
-	}
-
-	vs = pCardData->pvVendorSpecific;
-	if (vs->ctx && vs->reader)   {
-		/* TODO: use atr from pCardData */
-		scconf_block *atrblock = _sc_match_atr_block(vs->ctx, NULL, &vs->reader->atr);
-		logprintf(pCardData, 2, "Match ATR:\n");
-		loghex(pCardData, 3, vs->reader->atr.value, vs->reader->atr.len);
-
-		if (atrblock)
-			if (scconf_get_bool(atrblock, "md_read_only", 1) == 0)
-				ret = FALSE;
-	}
-
-	md_static_data.flags_checked |= MD_STATIC_FLAG_READ_ONLY;
-	if (ret == TRUE)
-		md_static_data.flags |= MD_STATIC_FLAG_READ_ONLY;
-	else
-		md_static_data.flags &= ~MD_STATIC_FLAG_READ_ONLY;
-
-	logprintf(pCardData, 2, "Returns read-only flag '%s', static flags %X/%X\n",
-			ret ? "TRUE" : "FALSE",
-			md_static_data.flags, md_static_data.flags_checked);
-#else
-	ret = md_get_config_bool(pCardData, "md_read_only", MD_STATIC_FLAG_READ_ONLY, TRUE);
-#endif
-	return ret;
+	return md_get_config_bool(pCardData, "md_read_only", MD_STATIC_FLAG_READ_ONLY, TRUE);
 }
 
 
@@ -477,41 +444,8 @@ md_is_read_only(PCARD_DATA pCardData)
 static BOOL
 md_is_supports_X509_enrollment(PCARD_DATA pCardData)
 {
-	BOOL ret = FALSE;
-
 	logprintf(pCardData, 2, "Is supports X509 enrollment?\n");
-#if 0
-	if (md_static_data.flags_checked & MD_STATIC_FLAG_SUPPORTS_X509_ENROLLMENT)   {
-		ret = (md_static_data.flags & MD_STATIC_FLAG_SUPPORTS_X509_ENROLLMENT) ? TRUE : FALSE;
-		logprintf(pCardData, 2, "Returns checked flag: %s\n", ret ? "TRUE" : "FALSE");
-		return ret;
-	}
-
-	vs = pCardData->pvVendorSpecific;
-	if (vs->ctx && vs->reader)   {
-		/* TODO: use atr from pCardData */
-		scconf_block *atrblock = _sc_match_atr_block(vs->ctx, NULL, &vs->reader->atr);
-		logprintf(pCardData, 2, "Match ATR:\n");
-		loghex(pCardData, 3, vs->reader->atr.value, vs->reader->atr.len);
-
-		if (atrblock)
-			if (scconf_get_bool(atrblock, "md_supports_X509_enrollment", 0))
-				ret = TRUE;
-	}
-
-	md_static_data.flags_checked |= MD_STATIC_FLAG_SUPPORTS_X509_ENROLLMENT;
-	if (ret == TRUE)
-		md_static_data.flags |= MD_STATIC_FLAG_SUPPORTS_X509_ENROLLMENT;
-	else
-		md_static_data.flags &= ~MD_STATIC_FLAG_SUPPORTS_X509_ENROLLMENT;
-
-	logprintf(pCardData, 2, "Returns x509-enrollment flag '%s', static flags %X/%X\n",
-			ret ? "TRUE" : "FALSE",
-			md_static_data.flags, md_static_data.flags_checked);
-#else
-	ret = md_get_config_bool(pCardData, "md_supports_X509_enrollment", MD_STATIC_FLAG_SUPPORTS_X509_ENROLLMENT, FALSE);
-#endif
-	return ret;
+	return md_get_config_bool(pCardData, "md_supports_X509_enrollment", MD_STATIC_FLAG_SUPPORTS_X509_ENROLLMENT, FALSE);
 }
 
 
@@ -519,41 +453,8 @@ md_is_supports_X509_enrollment(PCARD_DATA pCardData)
 static BOOL
 md_is_guid_as_id(PCARD_DATA pCardData)
 {
-	BOOL ret = FALSE;
-
 	logprintf(pCardData, 2, "Is GUID has to be used as ID of crypto objects?\n");
-#if 0
-	if (md_static_data.flags_checked & MD_STATIC_FLAG_GUID_AS_ID)   {
-		ret = (md_static_data.flags & MD_STATIC_FLAG_GUID_AS_ID) ? TRUE : FALSE;
-		logprintf(pCardData, 2, "Returns checked flag: %s\n", ret ? "TRUE" : "FALSE");
-		return ret;
-	}
-
-	vs = pCardData->pvVendorSpecific;
-	if (vs->ctx && vs->reader)   {
-		/* TODO: use atr from pCardData */
-		scconf_block *atrblock = _sc_match_atr_block(vs->ctx, NULL, &vs->reader->atr);
-		logprintf(pCardData, 2, "Match ATR:\n");
-		loghex(pCardData, 3, vs->reader->atr.value, vs->reader->atr.len);
-
-		if (atrblock)
-			if (scconf_get_bool(atrblock, "md_guid_as_id", 0))
-				ret = TRUE;
-	}
-
-	md_static_data.flags_checked |= MD_STATIC_FLAG_GUID_AS_ID;
-	if (ret == TRUE)
-		md_static_data.flags |= MD_STATIC_FLAG_GUID_AS_ID;
-	else
-		md_static_data.flags &= ~MD_STATIC_FLAG_GUID_AS_ID;
-
-	logprintf(pCardData, 2, "Returns GUID-as-ID '%s', static flags %X/%X\n",
-			ret ? "TRUE" : "FALSE",
-			md_static_data.flags, md_static_data.flags_checked);
-#else
-	ret = md_get_config_bool(pCardData, "md_guid_as_id", MD_STATIC_FLAG_GUID_AS_ID, FALSE);
-#endif
-	return ret;
+	return md_get_config_bool(pCardData, "md_guid_as_id", MD_STATIC_FLAG_GUID_AS_ID, FALSE);
 }
 
 
@@ -561,41 +462,8 @@ md_is_guid_as_id(PCARD_DATA pCardData)
 static BOOL
 md_is_guid_as_label(PCARD_DATA pCardData)
 {
-	BOOL ret = FALSE;
-
 	logprintf(pCardData, 2, "Is GUID has to be used as label of crypto objects?\n");
-#if 0
-	if (md_static_data.flags_checked & MD_STATIC_FLAG_GUID_AS_LABEL)   {
-		ret = (md_static_data.flags & MD_STATIC_FLAG_GUID_AS_LABEL) ? TRUE : FALSE;
-		logprintf(pCardData, 2, "Returns checked flag: %s\n", ret ? "TRUE" : "FALSE");
-		return ret;
-	}
-
-	vs = pCardData->pvVendorSpecific;
-	if (vs->ctx && vs->reader)   {
-		/* TODO: use atr from pCardData */
-		scconf_block *atrblock = _sc_match_atr_block(vs->ctx, NULL, &vs->reader->atr);
-		logprintf(pCardData, 2, "Match ATR:\n");
-		loghex(pCardData, 3, vs->reader->atr.value, vs->reader->atr.len);
-
-		if (atrblock)
-			if (scconf_get_bool(atrblock, "md_guid_as_label", 0))
-				ret = TRUE;
-	}
-
-	md_static_data.flags_checked |= MD_STATIC_FLAG_GUID_AS_LABEL;
-	if (ret == TRUE)
-		md_static_data.flags |= MD_STATIC_FLAG_GUID_AS_LABEL;
-	else
-		md_static_data.flags &= ~MD_STATIC_FLAG_GUID_AS_LABEL;
-
-	logprintf(pCardData, 2, "Returns GUID-as-LABEL '%s', static flags %X/%X\n",
-			ret ? "TRUE" : "FALSE",
-			md_static_data.flags, md_static_data.flags_checked);
-#else
-	ret = md_get_config_bool(pCardData, "md_guid_as_label", MD_STATIC_FLAG_GUID_AS_LABEL, FALSE);
-#endif
-	return ret;
+	return md_get_config_bool(pCardData, "md_guid_as_label", MD_STATIC_FLAG_GUID_AS_LABEL, FALSE);
 }
 
 
@@ -604,8 +472,7 @@ static BOOL
 md_is_supports_container_key_gen(PCARD_DATA pCardData)
 {
 	logprintf(pCardData, 2, "Is supports 'key generation' create_container mechanism?\n");
-	return md_get_config_bool(pCardData, "md_supports_container_key_gen",
-			MD_STATIC_FLAG_CONTAINER_NO_KEY_GEN, TRUE);
+	return md_get_config_bool(pCardData, "md_supports_container_key_gen", MD_STATIC_FLAG_CREATE_CONTAINER_KEY_GEN, TRUE);
 }
 
 
@@ -614,8 +481,7 @@ static BOOL
 md_is_supports_container_key_import(PCARD_DATA pCardData)
 {
 	logprintf(pCardData, 2, "Is supports 'key import' create container mechanism?\n");
-	return md_get_config_bool(pCardData, "md_supports_container_key_import",
-			MD_STATIC_FLAG_CONTAINER_NO_KEY_GEN, TRUE);
+	return md_get_config_bool(pCardData, "md_supports_container_key_import", MD_STATIC_FLAG_CREATE_CONTAINER_KEY_IMPORT, TRUE);
 }
 
 
@@ -1652,7 +1518,7 @@ md_fs_init(PCARD_DATA pCardData)
 	if (dwret != SCARD_S_SUCCESS)
 		return dwret;
 
-	logprintf(pCardData, 3, "MD virtual file system initialized\n");
+	logprintf(pCardData, 3, "MD virtual file system initialized; OPENSSL_VERSION_NUMBER 0x%Xl\n", OPENSSL_VERSION_NUMBER);
 	return SCARD_S_SUCCESS;
 }
 
@@ -2240,43 +2106,43 @@ DWORD WINAPI CardCreateContainer(__in PCARD_DATA pCardData,
 
 	dwret = md_check_key_compatibility(pCardData, dwFlags, dwKeySpec, dwKeySize, pbKeyData);
 	if (dwret != SCARD_S_SUCCESS)   {
-		logprintf(pCardData, 1, "check key compatibility failed");
+		logprintf(pCardData, 1, "check key compatibility failed\n");
 		return dwret;
 	}
 
 	if (!md_is_supports_container_key_gen(pCardData))   {
-		logprintf(pCardData, 1, "Denied 'generate key' mechanism to create container.");
+		logprintf(pCardData, 1, "Denied 'generate key' mechanism to create container.\n");
 		dwFlags &= ~CARD_CREATE_CONTAINER_KEY_GEN;
 	}
 
 	if (!md_is_supports_container_key_import(pCardData))   {
-		logprintf(pCardData, 1, "Denied 'import key' mechanism to create container.");
+		logprintf(pCardData, 1, "Denied 'import key' mechanism to create container.\n");
 		dwFlags &= ~CARD_CREATE_CONTAINER_KEY_IMPORT;
 	}
 
 	if (!dwFlags)   {
-		logprintf(pCardData, 1, "Unsupported create container mechanism");
+		logprintf(pCardData, 1, "Unsupported create container mechanism.\n");
 		return SCARD_E_UNSUPPORTED_FEATURE;
 	}
 
 	if (dwFlags & CARD_CREATE_CONTAINER_KEY_GEN)   {
 		dwret = md_pkcs15_generate_key(pCardData, bContainerIndex, dwKeySpec, dwKeySize);
 		if (dwret != SCARD_S_SUCCESS)   {
-			logprintf(pCardData, 1, "key generation failed");
+			logprintf(pCardData, 1, "key generation failed\n");
 			return dwret;
 		}
-		logprintf(pCardData, 1, "key generated");
+		logprintf(pCardData, 1, "key generated\n");
 	}
 	else if ((dwFlags & CARD_CREATE_CONTAINER_KEY_IMPORT) && (pbKeyData != NULL)) {
 		dwret = md_pkcs15_store_key(pCardData, bContainerIndex, dwKeySpec, pbKeyData, dwKeySize);
 		if (dwret != SCARD_S_SUCCESS)   {
-			logprintf(pCardData, 1, "key store failed");
+			logprintf(pCardData, 1, "key store failed\n");
 			return dwret;
 		}
-		logprintf(pCardData, 1, "key imported");
+		logprintf(pCardData, 1, "key imported\n");
 	}
 	else   {
-		logprintf(pCardData, 1, "Invalid dwFlags value: 0x%X", dwFlags);
+		logprintf(pCardData, 1, "Invalid dwFlags value: 0x%X\n", dwFlags);
 		return SCARD_E_INVALID_PARAMETER;
 	}
 
