@@ -1299,6 +1299,7 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 	LOG_TEST_RET(ctx, r, "Set up private key object error");
 
 	key_info = (struct sc_pkcs15_prkey_info *) object->data;
+
 	if (keygen_args->prkey_args.guid && keygen_args->prkey_args.guid_len)   {
 		key_info->cmap_record.guid = malloc(keygen_args->prkey_args.guid_len);
 		if (!key_info->cmap_record.guid)
@@ -1434,18 +1435,6 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card, struct sc_profil
 	/* Now update the PrKDF */
 	r = sc_pkcs15init_add_object(p15card, profile, SC_PKCS15_PRKDF, object);
 	LOG_TEST_RET(ctx, r, "Failed to add new private key PKCS#15 object");
-
-	if (keyargs->guid)   {
-		struct sc_pkcs15_prkey_info *key_info = (struct sc_pkcs15_prkey_info *) object->data;
-
-		key_info->cmap_record.guid = strdup(keyargs->guid);
-		if (!key_info->cmap_record.guid)
-			LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate guid");
-		memcpy(key_info->cmap_record.guid, keyargs->guid, keyargs->guid_len);
-		key_info->cmap_record.guid_len = keyargs->guid_len;
-		sc_log(ctx, "new key GUID: 0x'%s'", sc_dump_hex(key_info->cmap_record.guid, key_info->cmap_record.guid_len));
-		key_info->cmap_record.flags = SC_MD_CONTAINER_MAP_VALID_CONTAINER;
-	}
 
 	if (!r && profile->ops->emu_store_data)   {
 		r = profile->ops->emu_store_data(p15card, profile, object, NULL, NULL);
