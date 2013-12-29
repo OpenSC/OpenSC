@@ -168,6 +168,7 @@ typedef struct _VENDOR_SPECIFIC
 #define MD_STATIC_FLAG_READ_ONLY		1
 #define MD_STATIC_FLAG_SUPPORTS_X509_ENROLLMENT	2
 #define MD_STATIC_FLAG_CONTEXT_DELETED		4
+#define MD_STATIC_FLAG_GUID_AS_ID		8
 #define MD_STATIC_PROCESS_ATTACHED		0xA11AC4EDL
 struct md_opensc_static_data {
 	unsigned flags, flags_checked;
@@ -407,7 +408,7 @@ md_is_read_only(PCARD_DATA pCardData)
 	if (vs->ctx && vs->reader)   {
 		/* TODO: use atr from pCardData */
 		scconf_block *atrblock = _sc_match_atr_block(vs->ctx, NULL, &vs->reader->atr);
-		logprintf(pCardData, 2, "Match ATR:\n", atrblock);
+		logprintf(pCardData, 2, "Match ATR:\n");
 		loghex(pCardData, 3, vs->reader->atr.value, vs->reader->atr.len);
 
 		if (atrblock)
@@ -467,6 +468,48 @@ md_is_supports_X509_enrollment(PCARD_DATA pCardData)
 			md_static_data.flags, md_static_data.flags_checked);
 	return ret;
 }
+
+/* Get know if the ID of crypto objects has to be set to GUID */
+static BOOL
+md_is_id_as_guid(PCARD_DATA pCardData)
+{
+	VENDOR_SPECIFIC *vs;
+	BOOL ret = FALSE;
+
+	if (!pCardData)
+		return FALSE;
+
+	logprintf(pCardData, 2, "Is GUID has to be used as ID of crypto objects?\n");
+	if (md_static_data.flags_checked & MD_STATIC_FLAG_GUID_AS_ID)   {
+		ret = (md_static_data.flags & MD_STATIC_FLAG_GUID_AS_ID) ? TRUE : FALSE;
+		logprintf(pCardData, 2, "Returns checked flag: %s\n", ret ? "TRUE" : "FALSE");
+		return ret;
+	}
+
+	vs = pCardData->pvVendorSpecific;
+	if (vs->ctx && vs->reader)   {
+		/* TODO: use atr from pCardData */
+		scconf_block *atrblock = _sc_match_atr_block(vs->ctx, NULL, &vs->reader->atr);
+		logprintf(pCardData, 2, "Match ATR:\n");
+		loghex(pCardData, 3, vs->reader->atr.value, vs->reader->atr.len);
+
+		if (atrblock)
+			if (scconf_get_bool(atrblock, "md_id_as_guid", 0))
+				ret = TRUE;
+	}
+
+	md_static_data.flags_checked |= MD_STATIC_FLAG_GUID_AS_ID;
+	if (ret == TRUE)
+		md_static_data.flags |= MD_STATIC_FLAG_GUID_AS_ID;
+	else
+		md_static_data.flags &= ~MD_STATIC_FLAG_GUID_AS_ID;
+
+	logprintf(pCardData, 2, "Returns GUID-as-ID '%s', static flags %X/%X\n",
+			ret ? "TRUE" : "FALSE",
+			md_static_data.flags, md_static_data.flags_checked);
+	return ret;
+}
+
 
 /* Check if specified PIN has been verified */
 static BOOL
@@ -1724,6 +1767,17 @@ md_pkcs15_generate_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, DWORD ke
 		keygen_args.prkey_args.guid_len = strlen(cont->guid);
 	}
 
+	if (md_is_id_as_guid(pCardData))  {
+		if (strlen(cont->guid) > sizeof(keygen_args.prkey_args.id.value))   {
+			logprintf(pCardData, 3, "MdGenerateKey(): cannot set ID -- invalid GUID length\n");
+			goto done;
+		}
+
+		memcpy(keygen_args.prkey_args.id.value, cont->guid, strlen(cont->guid));
+		keygen_args.prkey_args.id.len = strlen(cont->guid);
+		logprintf(pCardData, 3, "MdGenerateKey(): use ID:%s\n", sc_pkcs15_print_id(&keygen_args.prkey_args.id));
+	}
+
 	rv = sc_pkcs15init_generate_key(vs->p15card, profile, &keygen_args, key_size, &cont->prkey_obj);
 	if (rv < 0) {
 		logprintf(pCardData, 3, "MdGenerateKey(): key generation failed: sc-error %i\n", rv);
@@ -1761,6 +1815,7 @@ md_pkcs15_store_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, BYTE *blob,
 	EVP_PKEY *pkey=NULL;
 	int rv;
 	DWORD dw, dwret = SCARD_F_INTERNAL_ERROR;
+	BOOL is_guid_as_id = FALSE;
 
 	if (!pCardData)
 		return SCARD_E_INVALID_PARAMETER;
@@ -1839,6 +1894,21 @@ md_pkcs15_store_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, BYTE *blob,
 		prkey_args.guid_len = strlen(cont->guid);
 	}
 
+	if (md_is_id_as_guid(pCardData))  {
+		if (strlen(cont->guid) > sizeof(prkey_args.id.value))   {
+			logprintf(pCardData, 3, "MdStoreKey(): cannot set ID -- invalid GUID length\n");
+			goto done;
+		}
+
+		memcpy(prkey_args.id.value, cont->guid, strlen(cont->guid));
+		prkey_args.id.len = strlen(cont->guid);
+
+		memcpy(pubkey_args.id.value, cont->guid, strlen(cont->guid));
+		pubkey_args.id.len = strlen(cont->guid);
+
+		logprintf(pCardData, 3, "MdStoreKey(): use ID:%s\n", sc_pkcs15_print_id(&prkey_args.id));
+	}
+
 	rv = sc_pkcs15init_store_private_key(vs->p15card, profile, &prkey_args, &cont->prkey_obj);
 	if (rv < 0) {
 		logprintf(pCardData, 3, "MdStoreKey(): private key store failed: sc-error %i\n", rv);
@@ -1873,23 +1943,38 @@ static DWORD
 md_pkcs15_store_certificate(PCARD_DATA pCardData, char *file_name, unsigned char *blob, size_t len)
 {
 	VENDOR_SPECIFIC *vs;
+	struct md_pkcs15_container *cont = NULL;
 	struct sc_card *card = NULL;
 	struct sc_profile *profile = NULL;
 	struct sc_app_info *app_info = NULL;
 	struct sc_pkcs15_object *cert_obj;
 	struct sc_pkcs15init_certargs args;
-	int rv;
+	int rv, idx;
 	DWORD dwret = SCARD_F_INTERNAL_ERROR;
 
 	if (!pCardData)
 		return SCARD_E_INVALID_PARAMETER;
 
+	logprintf(pCardData, 1, "MdStoreCert(): store certificate '%s'\n", file_name);
 	vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
 	card = vs->p15card->card;
 
 	memset(&args, 0, sizeof(args));
 	args.der_encoded.value = blob;
 	args.der_encoded.len = len;
+
+	/* use container's ID as ID of certificate to store */
+	idx = -1;
+	if(sscanf(file_name, "ksc%d", &idx) > 0)
+		;
+	else if(sscanf(file_name, "kxc%d", &idx) > 0)
+		;
+
+	if (idx >= 0 && idx < MD_MAX_KEY_CONTAINERS)   {
+		cont = &(vs->p15_containers[idx]);
+		args.id = cont->id;
+		logprintf(pCardData, 3, "MdStoreCert(): store certificate(idx:%i,id:%s)\n", idx, sc_pkcs15_print_id(&cont->id));
+	}
 
 	rv = sc_lock(card);
 	if (rv)   {
@@ -2503,9 +2588,7 @@ DWORD WINAPI CardWriteFile(__in PCARD_DATA pCardData,
 	}
 
 	if (pszDirectoryName && !strcmp(pszDirectoryName, "mscp"))   {
-		if (strlen(pszFileName) == 5 &&
-			(strstr(pszFileName, "kxc") == pszFileName || strstr(pszFileName, "ksc") == pszFileName))	{
-
+		if ((strstr(pszFileName, "kxc") == pszFileName) || (strstr(pszFileName, "ksc") == pszFileName))	{
 			dwret = md_pkcs15_store_certificate(pCardData, pszFileName, pbData, cbData);
 			if (dwret != SCARD_S_SUCCESS)
 				return dwret;
