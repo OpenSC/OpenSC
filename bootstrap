@@ -47,30 +47,33 @@ do
      esac
 done
 
+if [ ! -f configure.ac ]; then
+    cp configure.ac.in configure.ac
+fi
+
 set -e
 set -x
 if [ -f Makefile ]; then
   make distclean
 fi
-rm -rf *~ *.cache *.m4 config.guess config.log config.status config.sub depcomp ltmain.sh
+rm -rf *~ *.cache *.m4 config.guess config.log config.status config.sub depcomp ltmain.sh configure.ac
 
+cp configure.ac.in configure.ac
 
 if [ -n "$SUFFIX" ] || [ -n "$REVISION" ]
 then
-    cp configure.ac configure.ac.orig
-
     if [ -n "$SUFFIX" ]
     then
         echo Set package suffix "$SUFFIX"
-        cp configure.ac configure.ac.prev
-        sed 's/^define(\[PACKAGE_SUFFIX\],\s*\[\([-~]*[0-9a-zA-Z]*\)\])$/define(\[PACKAGE_SUFFIX\], \['$SUFFIX'\])/g' configure.ac.prev > configure.ac
+        sed 's/^define(\[PACKAGE_SUFFIX\],\s*\[\([-~]*[0-9a-zA-Z]*\)\])$/define(\[PACKAGE_SUFFIX\], \['$SUFFIX'\])/g' configure.ac > configure.ac.next
+        mv configure.ac.next configure.ac
     fi
 
     if [ -n "$REVISION" ]
     then
         echo Set package revision "$REVISION"
-        cp configure.ac configure.ac.prev
-        sed 's/^define(\[PACKAGE_VERSION_REVISION\],\s*\[\([-~]*[0-9a-zA-Z]*\)\])$/define(\[PACKAGE_VERSION_REVISION\], \['$REVISION'\])/g' configure.ac.prev > configure.ac
+        sed 's/^define(\[PACKAGE_VERSION_REVISION\],\s*\[\([-~]*[0-9a-zA-Z]*\)\])$/define(\[PACKAGE_VERSION_REVISION\], \['$REVISION'\])/g' configure.ac > configure.ac.next
+        mv configure.ac.next configure.ac
     fi
 fi
 
