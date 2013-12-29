@@ -1082,7 +1082,7 @@ md_set_cardid(PCARD_DATA pCardData, struct md_file *file)
 			}
 			memcpy(sn_bin, vs->p15card->tokeninfo->serial_number, sn_len);
 		}
-		
+
 		for (offs=0; offs < MD_CARDID_SIZE; )   {
 			wr = MD_CARDID_SIZE - offs;
 			if (wr > sn_len)

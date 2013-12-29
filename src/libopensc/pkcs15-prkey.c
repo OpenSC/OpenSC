@@ -592,6 +592,8 @@ void sc_pkcs15_free_prkey_info(sc_pkcs15_prkey_info_t *key)
 {
 	if (key->subject.value)
 		free(key->subject.value);
+	if (key->cmap_record.guid)
+		free(key->cmap_record.guid);
 
 	sc_pkcs15_free_key_params(&key->params);
 

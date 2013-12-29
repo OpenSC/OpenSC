@@ -77,11 +77,11 @@ typedef struct sc_pkcs15_id sc_pkcs15_id_t;
 	( SC_PKCS15_PIN_FLAG_INITIALIZED | SC_PKCS15_PIN_FLAG_LOCAL)
 
 #define SC_PKCS15_PIN_TYPE_FLAGS_PUK_GLOBAL				\
-	( SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN 				\
+	( SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN				\
 	| SC_PKCS15_PIN_FLAG_INITIALIZED )
 
 #define SC_PKCS15_PIN_TYPE_FLAGS_PUK_LOCAL				\
-	( SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN 				\
+	( SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN				\
 	| SC_PKCS15_PIN_FLAG_INITIALIZED | SC_PKCS15_PIN_FLAG_LOCAL)
 
 #define SC_PKCS15_PIN_TYPE_BCD				0
@@ -387,6 +387,31 @@ struct sc_pkcs15_key_params {
 	void (*free_params)(void *);
 };
 
+/* From Windows Smart Card Minidriver Specification
+ * Version 7.06
+ *
+ * #define MAX_CONTAINER_NAME_LEN       39
+ * #define CONTAINER_MAP_VALID_CONTAINER        1
+ * #define CONTAINER_MAP_DEFAULT_CONTAINER      2
+ * typedef struct _CONTAINER_MAP_RECORD
+ * {
+ *      WCHAR wszGuid [MAX_CONTAINER_NAME_LEN + 1];
+ *      BYTE bFlags;
+ *      BYTE bReserved;
+ *      WORD wSigKeySizeBits;
+ *      WORD wKeyExchangeKeySizeBits;
+ * } CONTAINER_MAP_RECORD, *PCONTAINER_MAP_RECORD;
+ */
+#define SC_MD_MAX_CONTAINER_NAME_LEN 39
+#define SC_MD_CONTAINER_MAP_VALID_CONTAINER	0x01
+#define SC_MD_CONTAINER_MAP_DEFAULT_CONTAINER	0x02
+struct sc_md_cmap_record {
+	char *guid;
+	unsigned flags;
+	unsigned key_size_sign;
+	unsigned key_size_keyexchange;
+};
+
 struct sc_pkcs15_prkey_info {
 	struct sc_pkcs15_id id;	/* correlates to public certificate id */
 	unsigned int usage, access_flags;
@@ -402,6 +427,9 @@ struct sc_pkcs15_prkey_info {
 	struct sc_pkcs15_key_params params;
 
 	struct sc_path path;
+
+	/* Used by minidriver and its on-card support */
+	struct sc_md_cmap_record cmap_record;
 };
 typedef struct sc_pkcs15_prkey_info sc_pkcs15_prkey_info_t;
 
@@ -498,10 +526,6 @@ struct sc_pkcs15_object {
 	struct sc_pkcs15_object *next, *prev; /* used only internally */
 
 	struct sc_pkcs15_der content;
-
-	/* Used by minidriver and its on-card support */
-	char *md_guid;
-	unsigned md_flags;
 };
 typedef struct sc_pkcs15_object sc_pkcs15_object_t;
 

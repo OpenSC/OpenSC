@@ -1801,9 +1801,6 @@ void sc_pkcs15_free_object(struct sc_pkcs15_object *obj)
 		free(obj->data);
 	}
 
-	if (obj->md_guid != NULL)
-		free(obj->md_guid);
-
 	sc_pkcs15_free_object_content(obj);
 
 	free(obj);
@@ -2556,16 +2553,17 @@ sc_pkcs15_get_guid(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_object
 	if (p15card->ops.get_guid)
 		return p15card->ops.get_guid(p15card, obj, out, out_size);
 
-	if (obj->md_guid)   {
-		if (out_size < strlen(obj->md_guid))
-			return SC_ERROR_BUFFER_TOO_SMALL;
-		memset(out, 0, out_size);
+	if ((obj->type & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_PRKEY)   {
+		struct sc_pkcs15_prkey_info *info = (struct sc_pkcs15_prkey_info *)obj->data;
 
-		if (out_size > strlen(obj->md_guid))
-			out_size = strlen(obj->md_guid);
-		memcpy(out, obj->md_guid, out_size);
+		if (info->cmap_record.guid && strlen(info->cmap_record.guid))   {
+			if (out_size < strlen(info->cmap_record.guid) + 1)
+				return SC_ERROR_BUFFER_TOO_SMALL;
+			memset(out, 0, out_size);
+			memcpy(out, info->cmap_record.guid, strlen(info->cmap_record.guid));
 
-		return SC_SUCCESS;
+			return SC_SUCCESS;
+		}
 	}
 
 	rv = sc_pkcs15_get_object_id(obj, &id);
