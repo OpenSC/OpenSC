@@ -6,6 +6,7 @@ define([PACKAGE_VERSION_MAJOR], [0])
 define([PACKAGE_VERSION_MINOR], [13])
 define([PACKAGE_VERSION_FIX], [0])
 define([PACKAGE_SUFFIX], [])
+define([PACKAGE_VERSION_REVISION], [0])
 
 AC_INIT([opensc],[PACKAGE_VERSION_MAJOR.PACKAGE_VERSION_MINOR.PACKAGE_VERSION_FIX[]PACKAGE_SUFFIX])
 AC_CONFIG_AUX_DIR([.])
@@ -16,6 +17,7 @@ AM_INIT_AUTOMAKE(foreign 1.10)
 OPENSC_VERSION_MAJOR="PACKAGE_VERSION_MAJOR"
 OPENSC_VERSION_MINOR="PACKAGE_VERSION_MINOR"
 OPENSC_VERSION_FIX="PACKAGE_VERSION_FIX"
+OPENSC_VERSION_REVISION="PACKAGE_VERSION_REVISION"
 
 # LT Version numbers, remember to change them just *before* a release.
 #   (Code changed:                      REVISION++)
@@ -569,6 +571,7 @@ fi
 AC_DEFINE_UNQUOTED([OPENSC_VERSION_MAJOR], [${OPENSC_VERSION_MAJOR}], [OpenSC version major component])
 AC_DEFINE_UNQUOTED([OPENSC_VERSION_MINOR], [${OPENSC_VERSION_MINOR}], [OpenSC version minor component])
 AC_DEFINE_UNQUOTED([OPENSC_VERSION_FIX], [${OPENSC_VERSION_FIX}], [OpenSC version fix component])
+AC_DEFINE_UNQUOTED([OPENSC_VERSION_REVISION], [${OPENSC_VERSION_REVISION}], [OpenSC version Git describe revision])
 AC_DEFINE_UNQUOTED([OPENSC_FEATURES], ["${OPENSC_FEATURES}"], [Enabled OpenSC features])
 
 pkcs11dir="\$(libdir)/pkcs11"
@@ -578,6 +581,7 @@ AC_SUBST([xslstylesheetsdir])
 AC_SUBST([OPENSC_VERSION_MAJOR])
 AC_SUBST([OPENSC_VERSION_MINOR])
 AC_SUBST([OPENSC_VERSION_FIX])
+AC_SUBST([OPENSC_VERSION_REVISION])
 AC_SUBST([OPENSC_LT_CURRENT])
 AC_SUBST([OPENSC_LT_REVISION])
 AC_SUBST([OPENSC_LT_AGE])
@@ -661,6 +665,9 @@ OpenSC has been configured with the following options:
 
 
 Version:                 ${PACKAGE_VERSION}
+Version fix:		 ${OPENSC_VERSION_FIX}
+Version revision:	 ${OPENSC_VERSION_REVISION}
+
 User binaries:           $(eval eval eval echo "${bindir}")
 Configuration files:     $(eval eval eval echo "${sysconfdir}")
 XSL stylesheets:         ${xslstylesheetsdir}
