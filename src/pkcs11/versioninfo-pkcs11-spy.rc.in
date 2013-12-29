@@ -17,16 +17,17 @@ BEGIN
 	BEGIN
 		BLOCK "040904b0"
 		BEGIN
-			VALUE "Comments", "Provided under the terms of the GNU Lesser General Public License (LGPLv2.1+)."
-			VALUE "CompanyName", "OpenSC Project"
+			VALUE "Comments", "@OPENSC_VS_FF_COMMENTS@"
+			VALUE "CompanyName", "@OPENSC_VS_FF_COMPANY_NAME@"
 			VALUE "FileVersion", "@OPENSC_VERSION_MAJOR@.@OPENSC_VERSION_MINOR@.@OPENSC_VERSION_FIX@.@OPENSC_VERSION_REVISION@"
 			VALUE "InternalName", "@PACKAGE_NAME@"
-			VALUE "LegalCopyright", "OpenSC Project"
+			VALUE "LegalCopyright", "@OPENSC_VS_FF_LEGAL_COPYRIGHT@"
 			VALUE "LegalTrademarks", ""
 			VALUE "PrivateBuild", ""
-			VALUE "ProductName", "OpenSC PKCS#11 spy"
+			VALUE "ProductName", "@OPENSC_VS_FF_PRODUCT_NAME@"
 			VALUE "ProductVersion", "@OPENSC_VERSION_MAJOR@,@OPENSC_VERSION_MINOR@,@OPENSC_VERSION_FIX@,@OPENSC_VERSION_REVISION@"
 			VALUE "SpecialBuild", ""
+			VALUE "FileDescription", "OpenSC PKCS#11 spy module"
 		END
 	END
 	BLOCK "VarFileInfo"
