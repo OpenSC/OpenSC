@@ -169,6 +169,8 @@ typedef struct _VENDOR_SPECIFIC
 #define MD_STATIC_FLAG_SUPPORTS_X509_ENROLLMENT	2
 #define MD_STATIC_FLAG_CONTEXT_DELETED		4
 #define MD_STATIC_FLAG_GUID_AS_ID		8
+#define MD_STATIC_FLAG_GUID_AS_LABEL		16
+
 #define MD_STATIC_PROCESS_ATTACHED		0xA11AC4EDL
 struct md_opensc_static_data {
 	unsigned flags, flags_checked;
@@ -469,9 +471,10 @@ md_is_supports_X509_enrollment(PCARD_DATA pCardData)
 	return ret;
 }
 
-/* Get know if the ID of crypto objects has to be set to GUID */
+
+/* Get know if the GUID has to used as ID of crypto objects */
 static BOOL
-md_is_id_as_guid(PCARD_DATA pCardData)
+md_is_guid_as_id(PCARD_DATA pCardData)
 {
 	VENDOR_SPECIFIC *vs;
 	BOOL ret = FALSE;
@@ -494,7 +497,7 @@ md_is_id_as_guid(PCARD_DATA pCardData)
 		loghex(pCardData, 3, vs->reader->atr.value, vs->reader->atr.len);
 
 		if (atrblock)
-			if (scconf_get_bool(atrblock, "md_id_as_guid", 0))
+			if (scconf_get_bool(atrblock, "md_guid_as_id", 0))
 				ret = TRUE;
 	}
 
@@ -505,6 +508,48 @@ md_is_id_as_guid(PCARD_DATA pCardData)
 		md_static_data.flags &= ~MD_STATIC_FLAG_GUID_AS_ID;
 
 	logprintf(pCardData, 2, "Returns GUID-as-ID '%s', static flags %X/%X\n",
+			ret ? "TRUE" : "FALSE",
+			md_static_data.flags, md_static_data.flags_checked);
+	return ret;
+}
+
+
+/* Get know if the GUID has to used as label of crypto objects */
+static BOOL
+md_is_guid_as_label(PCARD_DATA pCardData)
+{
+	VENDOR_SPECIFIC *vs;
+	BOOL ret = FALSE;
+
+	if (!pCardData)
+		return FALSE;
+
+	logprintf(pCardData, 2, "Is GUID has to be used as label of crypto objects?\n");
+	if (md_static_data.flags_checked & MD_STATIC_FLAG_GUID_AS_LABEL)   {
+		ret = (md_static_data.flags & MD_STATIC_FLAG_GUID_AS_LABEL) ? TRUE : FALSE;
+		logprintf(pCardData, 2, "Returns checked flag: %s\n", ret ? "TRUE" : "FALSE");
+		return ret;
+	}
+
+	vs = pCardData->pvVendorSpecific;
+	if (vs->ctx && vs->reader)   {
+		/* TODO: use atr from pCardData */
+		scconf_block *atrblock = _sc_match_atr_block(vs->ctx, NULL, &vs->reader->atr);
+		logprintf(pCardData, 2, "Match ATR:\n");
+		loghex(pCardData, 3, vs->reader->atr.value, vs->reader->atr.len);
+
+		if (atrblock)
+			if (scconf_get_bool(atrblock, "md_guid_as_label", 0))
+				ret = TRUE;
+	}
+
+	md_static_data.flags_checked |= MD_STATIC_FLAG_GUID_AS_LABEL;
+	if (ret == TRUE)
+		md_static_data.flags |= MD_STATIC_FLAG_GUID_AS_LABEL;
+	else
+		md_static_data.flags &= ~MD_STATIC_FLAG_GUID_AS_LABEL;
+
+	logprintf(pCardData, 2, "Returns GUID-as-LABEL '%s', static flags %X/%X\n",
 			ret ? "TRUE" : "FALSE",
 			md_static_data.flags, md_static_data.flags_checked);
 	return ret;
@@ -1767,7 +1812,7 @@ md_pkcs15_generate_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, DWORD ke
 		keygen_args.prkey_args.guid_len = strlen(cont->guid);
 	}
 
-	if (md_is_id_as_guid(pCardData))  {
+	if (md_is_guid_as_id(pCardData))  {
 		if (strlen(cont->guid) > sizeof(keygen_args.prkey_args.id.value))   {
 			logprintf(pCardData, 3, "MdGenerateKey(): cannot set ID -- invalid GUID length\n");
 			goto done;
@@ -1776,6 +1821,11 @@ md_pkcs15_generate_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, DWORD ke
 		memcpy(keygen_args.prkey_args.id.value, cont->guid, strlen(cont->guid));
 		keygen_args.prkey_args.id.len = strlen(cont->guid);
 		logprintf(pCardData, 3, "MdGenerateKey(): use ID:%s\n", sc_pkcs15_print_id(&keygen_args.prkey_args.id));
+	}
+
+	if (md_is_guid_as_label(pCardData))  {
+		keygen_args.prkey_args.label =  cont->guid;
+		logprintf(pCardData, 3, "MdGenerateKey(): use label '%s'\n", keygen_args.prkey_args.label);
 	}
 
 	rv = sc_pkcs15init_generate_key(vs->p15card, profile, &keygen_args, key_size, &cont->prkey_obj);
@@ -1811,6 +1861,7 @@ md_pkcs15_store_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, BYTE *blob,
 	struct md_pkcs15_container *cont = NULL;
 	struct sc_pkcs15init_prkeyargs prkey_args;
 	struct sc_pkcs15init_pubkeyargs pubkey_args;
+	char *label = NULL;
 	BYTE *ptr = blob;
 	EVP_PKEY *pkey=NULL;
 	int rv;
@@ -1894,7 +1945,7 @@ md_pkcs15_store_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, BYTE *blob,
 		prkey_args.guid_len = strlen(cont->guid);
 	}
 
-	if (md_is_id_as_guid(pCardData))  {
+	if (md_is_guid_as_id(pCardData))  {
 		if (strlen(cont->guid) > sizeof(prkey_args.id.value))   {
 			logprintf(pCardData, 3, "MdStoreKey(): cannot set ID -- invalid GUID length\n");
 			goto done;
@@ -1907,6 +1958,12 @@ md_pkcs15_store_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, BYTE *blob,
 		pubkey_args.id.len = strlen(cont->guid);
 
 		logprintf(pCardData, 3, "MdStoreKey(): use ID:%s\n", sc_pkcs15_print_id(&prkey_args.id));
+	}
+
+	if (md_is_guid_as_label(pCardData))  {
+		prkey_args.label =  cont->guid;
+		pubkey_args.label =  cont->guid;
+		logprintf(pCardData, 3, "MdStoreKey(): use label '%s'\n", prkey_args.label);
 	}
 
 	rv = sc_pkcs15init_store_private_key(vs->p15card, profile, &prkey_args, &cont->prkey_obj);
