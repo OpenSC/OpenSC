@@ -2524,74 +2524,36 @@ sc_pkcs15init_update_dir(struct sc_pkcs15_card *p15card,
 }
 
 
-static char *
-get_generalized_time(struct sc_context *ctx)
-{
-#ifdef HAVE_GETTIMEOFDAY
-	struct timeval tv;
-#endif
-	struct tm *tm_time;
-	time_t t;
-	char*  ret;
-	size_t r;
-
-#ifdef HAVE_GETTIMEOFDAY
-	gettimeofday(&tv, NULL);
-	t = tv.tv_sec;
-#else
-	t = time(NULL);
-#endif
-	tm_time = gmtime(&t);
-	if (tm_time == NULL) {
-		sc_log(ctx, "error: gmtime failed");
-		return NULL;
-	}
-
-	ret = calloc(1, 16);
-	if (ret == NULL) {
-		sc_log(ctx, "error: calloc failed");
-		return NULL;
-	}
-	/* print time in generalized time format */
-	r = strftime(ret, 16, "%Y%m%d%H%M%SZ", tm_time);
-	if (r == 0) {
-		sc_log(ctx, "error: strftime failed");
-		free(ret);
-		return NULL;
-	}
-
-	return ret;
-}
-
-
 static int
 sc_pkcs15init_update_tokeninfo(struct sc_pkcs15_card *p15card, struct sc_profile *profile)
 {
+	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_card	*card = p15card->card;
 	struct sc_pkcs15_tokeninfo tokeninfo;
 	unsigned char	*buf = NULL;
 	size_t		size;
-	int		r;
+	int		rv;
 
-	LOG_FUNC_CALLED(p15card->card->ctx);
+	LOG_FUNC_CALLED(ctx);
+
 	/* set lastUpdate field */
 	if (p15card->tokeninfo->last_update.gtime != NULL)
 		free(p15card->tokeninfo->last_update.gtime);
-	p15card->tokeninfo->last_update.gtime = get_generalized_time(card->ctx);
-	if (p15card->tokeninfo->last_update.gtime == NULL)
-		return SC_ERROR_INTERNAL;
+	rv = sc_pkcs15_get_generalized_time(ctx, &p15card->tokeninfo->last_update.gtime);
+	LOG_TEST_RET(ctx, rv, "Cannot allocate generalized time string");
 
 	tokeninfo = *(p15card->tokeninfo);
 
 	if (profile->ops->emu_update_tokeninfo)
 		return profile->ops->emu_update_tokeninfo(profile, p15card, &tokeninfo);
 
-	r = sc_pkcs15_encode_tokeninfo(card->ctx, &tokeninfo, &buf, &size);
-	if (r >= 0)
-		r = sc_pkcs15init_update_file(profile, p15card, p15card->file_tokeninfo, buf, size);
+	rv = sc_pkcs15_encode_tokeninfo(ctx, &tokeninfo, &buf, &size);
+	if (rv >= 0)
+		rv = sc_pkcs15init_update_file(profile, p15card, p15card->file_tokeninfo, buf, size);
 	if (buf)
 		free(buf);
-	LOG_FUNC_RETURN(p15card->card->ctx, r);
+
+	LOG_FUNC_RETURN(ctx, rv);
 }
 
 
@@ -2617,9 +2579,8 @@ sc_pkcs15init_update_lastupdate(struct sc_pkcs15_card *p15card, struct sc_profil
 		/* update 'lastUpdate' file */
 		if (last_update->gtime != NULL)
 			free(last_update->gtime);
-		last_update->gtime = get_generalized_time(ctx);
-		if (last_update->gtime == NULL)
-			return SC_ERROR_INTERNAL;
+		r = sc_pkcs15_get_generalized_time(ctx, &last_update->gtime);
+		LOG_TEST_RET(ctx, r, "Cannot allocate generalized time string");
 
 		sc_copy_asn1_entry(c_asn1_last_update, asn1_last_update);
 		lupdate_len = strlen(last_update->gtime);

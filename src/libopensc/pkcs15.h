@@ -969,6 +969,9 @@ int sc_pkcs15_convert_pubkey(struct sc_pkcs15_pubkey *key, void *evp_key);
 /* Get 'LastUpdate' string */
 char *sc_pkcs15_get_lastupdate(struct sc_pkcs15_card *p15card);
 
+/* Allocate generalized time string */
+int sc_pkcs15_get_generalized_time(struct sc_context *ctx, char **out);
+
 /* New object search API.
  * More complex, but also more powerful.
  */

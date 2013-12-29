@@ -2431,12 +2431,49 @@ sc_pkcs15_get_supported_algo(struct sc_pkcs15_card *p15card,
 			break;
 
 	if (ii < SC_MAX_SUPPORTED_ALGORITHMS && p15card->tokeninfo->supported_algos[ii].reference)   {
-        	info = &p15card->tokeninfo->supported_algos[ii];
-        	sc_log(ctx, "found supported algorithm (ref:%X,mech:%X,ops:%X,algo_ref:%X)",
+		info = &p15card->tokeninfo->supported_algos[ii];
+		sc_log(ctx, "found supported algorithm (ref:%X,mech:%X,ops:%X,algo_ref:%X)",
 				info->reference, info->mechanism, info->operations, info->algo_ref);
 	}
 
 	return info;
+}
+
+
+int
+sc_pkcs15_get_generalized_time(struct sc_context *ctx, char **out)
+{
+#ifdef HAVE_GETTIMEOFDAY
+	struct timeval tv;
+#endif
+	struct tm *tm_time;
+	time_t t;
+
+	if (!ctx || !out)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	*out = NULL;
+
+#ifdef HAVE_GETTIMEOFDAY
+	gettimeofday(&tv, NULL);
+	t = tv.tv_sec;
+#else
+	t = time(NULL);
+#endif
+	tm_time = gmtime(&t);
+	if (!tm_time)
+		LOG_TEST_RET(ctx, SC_ERROR_INTERNAL, "gmtime failed");
+
+	*out = calloc(1, 16);
+	if (*out == NULL)
+		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "memory failure");
+
+	/* print time in generalized time format */
+	if (!strftime(*out, 16, "%Y%m%d%H%M%SZ", tm_time)) {
+		free(*out);
+		LOG_TEST_RET(ctx, SC_ERROR_INTERNAL, "strftime failed");
+	}
+
+	return SC_SUCCESS;
 }
 
 
