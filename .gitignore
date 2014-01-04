@@ -84,6 +84,8 @@ win32/OpenSC.wxs
 win32/winconfig.h
 
 MacOSX/build-package
+MacOSX/Distribution.xml
+
 *.dmg
 *.pkg
 OpenSC.tokend/
