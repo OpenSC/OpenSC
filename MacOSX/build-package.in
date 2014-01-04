@@ -41,7 +41,7 @@ export PKG_CONFIG_PATH=/usr/lib/pkgconfig
 --disable-static \
 --enable-strict \
 --disable-assert \
---enable-sm # TODO: remove this
+--enable-sm # TODO: remove this (must be sensible default in master)
 
 # always make clean
 make clean
@@ -93,7 +93,10 @@ pkgbuild --root target --scripts MacOSX/scripts --identifier org.opensc-project.
 # Build product
 productbuild --distribution MacOSX/Distribution.xml --package-path . --resources MacOSX/resources OpenSC-@PACKAGE_VERSION@.pkg
 
+# Build "uninstaller"
+pkgbuild --nopayload --identifier org.opensc-project.mac.uninstall --scripts MacOSX/uninstaller-scripts Uninstall_OpenSC.pkg
+
 # Create .dmg
 rm -f OpenSC-@PACKAGE_VERSION@.dmg
 TIMESTAMP=$(date +%Y.%m.%d)
-hdiutil create -srcfolder OpenSC-@PACKAGE_VERSION@.pkg -volname "OpenSC @PACKAGE_VERSION@ for Mac OS X 10.9+ (${TIMESTAMP})" OpenSC-@PACKAGE_VERSION@.dmg
+hdiutil create -srcfolder Uninstall_OpenSC.pkg -srcfolder OpenSC-@PACKAGE_VERSION@.pkg -volname "OpenSC @PACKAGE_VERSION@ for Mac OS X 10.9+ (${TIMESTAMP})" OpenSC-@PACKAGE_VERSION@.dmg

@@ -6,4 +6,6 @@ EXTRA_DIST = build build-package.in Distribution.xml.in libtool-bundle opensc-un
 	resources/ReadMe.html.in \
 	resources/Welcome.html.in
 	scripts \
-	scripts/postinstall
+	scripts/postinstall \
+	uninstaller-scripts \
+	uninstaller-scripts/postinstall
