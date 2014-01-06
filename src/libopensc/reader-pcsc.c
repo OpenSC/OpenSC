@@ -1393,7 +1393,7 @@ static int part10_build_verify_pin_block(struct sc_reader *reader, u8 * buf, siz
 
 	pin_verify->ulDataLength = HOST_TO_CCID_32(offset); /* APDU size */
 
-	count = sizeof(PIN_VERIFY_STRUCTURE) + offset -1;
+	count = sizeof(PIN_VERIFY_STRUCTURE) + offset;
 	*size = count;
 	return SC_SUCCESS;
 }
@@ -1512,7 +1512,7 @@ static int part10_build_modify_pin_block(struct sc_reader *reader, u8 * buf, siz
 
 	pin_modify->ulDataLength = HOST_TO_CCID_32(offset); /* APDU size */
 
-	count = sizeof(PIN_MODIFY_STRUCTURE) + offset -1;
+	count = sizeof(PIN_MODIFY_STRUCTURE) + offset;
 	*size = count;
 	return SC_SUCCESS;
 }
