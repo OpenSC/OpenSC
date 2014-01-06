@@ -923,7 +923,7 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 	}
 
 	if (priv->pace_ioctl) {
-		char *log_text = "Reader supports PACE";
+		const char *log_text = "Reader supports PACE";
 		if (priv->gpriv->enable_pace) {
 			reader->capabilities |= part10_detect_pace_capabilities(reader);
 
