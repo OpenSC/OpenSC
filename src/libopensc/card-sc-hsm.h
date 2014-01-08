@@ -56,7 +56,7 @@ typedef struct sc_hsm_private_data {
 	u8 algorithm;
 	int noExtLength;
 	char *serialno;
-	char initpw[6];						// Initial user PIN set at initialization (first 6 digits of token pin)
+	u8 sopin[8];
 } sc_hsm_private_data_t;
 
 

@@ -47,14 +47,6 @@ static u8 pubexp[] = { 0x01, 0x00, 0x01 };
 
 
 
-#define C_ASN1_EC_POINTQ_SIZE 2
-static struct sc_asn1_entry c_asn1_ec_pointQ[C_ASN1_EC_POINTQ_SIZE] = {
-	{ "ecpointQ", SC_ASN1_OCTET_STRING, SC_ASN1_TAG_OCTET_STRING, SC_ASN1_ALLOC, NULL, NULL },
-	{ NULL, 0, 0, 0, NULL, NULL }
-};
-
-
-
 struct ec_curve {
 	const struct sc_lv_data oid;
 	const struct sc_lv_data prime;
@@ -123,6 +115,12 @@ static struct ec_curve curves[] = {
 				{ (unsigned char *) "\x01", 1}
 		},
 		{
+				{ NULL, 0},
+				{ NULL, 0},
+				{ NULL, 0},
+				{ NULL, 0},
+				{ NULL, 0},
+				{ NULL, 0},
 				{ NULL, 0}
 		}
 };

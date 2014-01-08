@@ -24,6 +24,7 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <ctype.h>
 
 #include "internal.h"
 #include "asn1.h"
@@ -165,18 +166,56 @@ static int sc_hsm_pin_info(sc_card_t *card, struct sc_pin_cmd_data *data,
 
 
 
+/*
+ * Encode 16 hexadecimals of SO-PIN into binary form
+ * Caller must check length of sopin and provide an 8 byte buffer
+ */
+static int sc_hsm_encode_sopin(const u8 *sopin, u8 *sopinbin)
+{
+	int i;
+	char digit;
+
+	memset(sopinbin, 0, 8);
+	for (i = 0; i < 16; i++) {
+		*sopinbin <<= 4;
+		digit = *sopin++;
+
+		if (!isxdigit(digit))
+			return SC_ERROR_PIN_CODE_INCORRECT;
+		digit = toupper(digit);
+
+		if (digit >= 'A')
+			digit = digit - 'A' + 10;
+		else
+			digit = digit & 0xF;
+
+		*sopinbin |= digit & 0xf;
+		if (i & 1)
+			sopinbin++;
+	}
+	return SC_SUCCESS;
+}
+
+
+
 static int sc_hsm_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 			   int *tries_left)
 {
 	sc_hsm_private_data_t *priv = (sc_hsm_private_data_t *) card->drv_data;
+	int r;
 
 	if (data->cmd == SC_PIN_CMD_GET_INFO) {
 		return sc_hsm_pin_info(card, data, tries_left);
 	}
 	if ((data->cmd == SC_PIN_CMD_VERIFY) && (data->pin_reference == 0x88)) {
-		// Save SO PIN for later use in init pin
-		memcpy(priv->initpw, data->pin1.data, sizeof(priv->initpw));
-		return SC_SUCCESS;
+		if (data->pin1.len != 16)
+			return SC_ERROR_INVALID_PIN_LENGTH;
+
+		// Save SO PIN for later use in sc_hsm_init_pin()
+		r = sc_hsm_encode_sopin(data->pin1.data, priv->sopin);
+		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+
+		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 	}
 	return (*iso_ops->pin_cmd)(card, data, tries_left);
 }
@@ -811,8 +850,7 @@ static int sc_hsm_init_token(sc_card_t *card, sc_cardctl_pkcs11_init_token_t *pa
 {
 	sc_context_t *ctx = card->ctx;
 	sc_cardctl_sc_hsm_init_param_t ip;
-	int r, i;
-	u8 *p;
+	int r;
 	char label[33],*cpo;
 
 	LOG_FUNC_CALLED(ctx);
@@ -826,17 +864,12 @@ static int sc_hsm_init_token(sc_card_t *card, sc_cardctl_pkcs11_init_token_t *pa
 	ip.options[0] = 0x00;
 	ip.options[0] = 0x01;
 
-	ip.user_pin = (unsigned char *)params->so_pin;	// Use the first 6 digits of the SO-PIN as initial User-PIN value
+	r = sc_hsm_encode_sopin(params->so_pin, ip.init_code);
+	LOG_TEST_RET(ctx, r, "SO PIN wrong format");
+
+	ip.user_pin = ip.init_code;		// Use the first 6 bytes of the SO-PIN as initial User-PIN value
 	ip.user_pin_len = 6;
 	ip.user_pin_retry_counter = 3;
-
-	p = ip.init_code;
-	for (i = 0; i < 16; i++) {
-		*p <<= 4;
-		*p |= params->so_pin[i] & 0xf;
-		if (i & 1)
-			p++;
-	}
 
 	if (params->label) {
 		// Strip trailing spaces
@@ -874,14 +907,13 @@ static int sc_hsm_init_pin(sc_card_t *card, sc_cardctl_pkcs11_init_pin_t *params
 
 	p = ibuff;
 
-	// We use only 6 of the 8 bytes init password for the initial user PIN
-	memcpy(p, priv->initpw, 6);
-	p += 6;
+	memcpy(p, priv->sopin, sizeof(priv->sopin));
+	p += sizeof(priv->sopin);
 
 	memcpy(p, params->pin, params->pin_len);
 	p += params->pin_len;
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x24, 0x00, 0x81);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x2C, 0x00, 0x81);
 	apdu.data = ibuff;
 	apdu.datalen = p - ibuff;
 	apdu.lc = apdu.datalen;
@@ -890,9 +922,31 @@ static int sc_hsm_init_pin(sc_card_t *card, sc_cardctl_pkcs11_init_pin_t *params
 	LOG_TEST_RET(ctx, r, "APDU transmit failed");
 
 	r =  sc_check_sw(card, apdu.sw1, apdu.sw2);
+
+	// Cards before version 1.0 do not implement RESET_RETRY_COUNTER
+	// For those cards the CHANGE REFERENCE DATA command is used instead
+	if (r == SC_ERROR_INS_NOT_SUPPORTED) {
+		p = ibuff;
+		memcpy(p, priv->sopin, 6);
+		p += 6;
+
+		memcpy(p, params->pin, params->pin_len);
+		p += params->pin_len;
+
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x24, 0x00, 0x81);
+		apdu.data = ibuff;
+		apdu.datalen = p - ibuff;
+		apdu.lc = apdu.datalen;
+
+		r = sc_transmit_apdu(card, &apdu);
+		LOG_TEST_RET(ctx, r, "APDU transmit failed");
+
+		r =  sc_check_sw(card, apdu.sw1, apdu.sw2);
+	}
+
 	LOG_TEST_RET(ctx, r, "Check SW error");
 
-	memset(priv->initpw, 0, sizeof(priv->initpw));
+	memset(priv->sopin, 0, sizeof(priv->sopin));
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
