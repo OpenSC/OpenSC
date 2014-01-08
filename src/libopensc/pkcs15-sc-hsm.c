@@ -514,6 +514,33 @@ static int sc_pkcs15emu_sc_hsm_add_cd(sc_pkcs15_card_t * p15card, u8 id) {
 
 
 
+static int sc_pkcs15emu_sc_hsm_read_tokeninfo (sc_pkcs15_card_t * p15card)
+{
+	sc_card_t *card = p15card->card;
+	sc_file_t *file = NULL;
+	sc_path_t path;
+	int r;
+	u8 efbin[512];
+
+	LOG_FUNC_CALLED(card->ctx);
+
+	/* Read token info */
+	sc_path_set(&path, SC_PATH_TYPE_FILE_ID, (u8 *) "\x2F\x03", 2, 0, 0);
+	r = sc_select_file(card, &path, &file);
+	LOG_TEST_RET(card->ctx, r, "Could not select EF.TokenInfo");
+	sc_file_free(file);
+
+	r = sc_read_binary(p15card->card, 0, efbin, sizeof(efbin), 0);
+	LOG_TEST_RET(card->ctx, r, "Could not read EF.TokenInfo");
+
+	r = sc_pkcs15_parse_tokeninfo(card->ctx, p15card->tokeninfo, efbin, r);
+	LOG_TEST_RET(card->ctx, r, "Could not decode EF.TokenInfo");
+
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+}
+
+
+
 /*
  * Initialize PKCS#15 emulation with user PIN, private keys, certificate and data objects
  *
@@ -536,16 +563,12 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 
 	LOG_FUNC_CALLED(card->ctx);
 
-	p15card->tokeninfo->label = strdup("SmartCard-HSM");
-	p15card->tokeninfo->manufacturer_id = strdup("www.CardContact.de");
-
 	appinfo = calloc(1, sizeof(struct sc_app_info));
 
 	if (appinfo == NULL) {
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 	}
 
-	appinfo->label = strdup(p15card->tokeninfo->label);
 	appinfo->aid = sc_hsm_aid;
 
 	appinfo->ddo.aid = sc_hsm_aid;
@@ -578,14 +601,36 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 	r = sc_pkcs15emu_sc_hsm_decode_cvc(p15card, (const u8 **)&ptr, &len, &devcert);
 	LOG_TEST_RET(card->ctx, r, "Could not decode EF.C_DevAut");
 
+	sc_pkcs15emu_sc_hsm_read_tokeninfo(p15card);
+
+	if (p15card->tokeninfo->label == NULL) {
+		p15card->tokeninfo->label = strdup("SmartCard-HSM");
+		if (p15card->tokeninfo->label == NULL)
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+	}
+
+	if ((p15card->tokeninfo->manufacturer_id != NULL) && !strcmp("(unknown)", p15card->tokeninfo->manufacturer_id)) {
+		free(p15card->tokeninfo->manufacturer_id);
+		p15card->tokeninfo->manufacturer_id = NULL;
+	}
+
+	if (p15card->tokeninfo->manufacturer_id == NULL) {
+		p15card->tokeninfo->manufacturer_id = strdup("www.CardContact.de");
+		if (p15card->tokeninfo->manufacturer_id == NULL)
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+	}
+
+	appinfo->label = strdup(p15card->tokeninfo->label);
+	if (appinfo->label == NULL)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+
 	len = strlen(devcert.chr);		/* Strip last 5 digit sequence number from CHR */
 	assert(len >= 8);
 	len -= 5;
 
 	p15card->tokeninfo->serial_number = calloc(len + 1, 1);
-	if (p15card->tokeninfo->serial_number == NULL) {
+	if (p15card->tokeninfo->serial_number == NULL)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
-	}
 
 	memcpy(p15card->tokeninfo->serial_number, devcert.chr, len);
 	*(p15card->tokeninfo->serial_number + len) = 0;
@@ -593,7 +638,6 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 	sc_hsm_set_serialnr(card, p15card->tokeninfo->serial_number);
 
 	sc_pkcs15emu_sc_hsm_free_cvc(&devcert);
-
 
 	memset(&pin_info, 0, sizeof(pin_info));
 	memset(&pin_obj, 0, sizeof(pin_obj));
