@@ -47,86 +47,6 @@ static u8 pubexp[] = { 0x01, 0x00, 0x01 };
 
 
 
-struct ec_curve {
-	const struct sc_lv_data oid;
-	const struct sc_lv_data prime;
-	const struct sc_lv_data coefficientA;
-	const struct sc_lv_data coefficientB;
-	const struct sc_lv_data basePointG;
-	const struct sc_lv_data order;
-	const struct sc_lv_data coFactor;
-};
-
-
-
-static struct ec_curve curves[] = {
-		{
-				{ (unsigned char *) "\x2A\x86\x48\xCE\x3D\x03\x01\x01", 8},	// secp192r1 aka prime192r1
-				{ (unsigned char *) "\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFE\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF", 24},
-				{ (unsigned char *) "\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFE\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFC", 24},
-				{ (unsigned char *) "\x64\x21\x05\x19\xE5\x9C\x80\xE7\x0F\xA7\xE9\xAB\x72\x24\x30\x49\xFE\xB8\xDE\xEC\xC1\x46\xB9\xB1", 24},
-				{ (unsigned char *) "\x04\x18\x8D\xA8\x0E\xB0\x30\x90\xF6\x7C\xBF\x20\xEB\x43\xA1\x88\x00\xF4\xFF\x0A\xFD\x82\xFF\x10\x12\x07\x19\x2B\x95\xFF\xC8\xDA\x78\x63\x10\x11\xED\x6B\x24\xCD\xD5\x73\xF9\x77\xA1\x1E\x79\x48\x11", 49},
-				{ (unsigned char *) "\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\x99\xDE\xF8\x36\x14\x6B\xC9\xB1\xB4\xD2\x28\x31", 24},
-				{ (unsigned char *) "\x01", 1}
-		},
-		{
-				{ (unsigned char *) "\x2A\x86\x48\xCE\x3D\x03\x01\x07", 8},	// secp256r1 aka prime256r1
-				{ (unsigned char *) "\xFF\xFF\xFF\xFF\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF", 32},
-				{ (unsigned char *) "\xFF\xFF\xFF\xFF\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFC", 32},
-				{ (unsigned char *) "\x5A\xC6\x35\xD8\xAA\x3A\x93\xE7\xB3\xEB\xBD\x55\x76\x98\x86\xBC\x65\x1D\x06\xB0\xCC\x53\xB0\xF6\x3B\xCE\x3C\x3E\x27\xD2\x60\x4B", 32},
-				{ (unsigned char *) "\x04\x6B\x17\xD1\xF2\xE1\x2C\x42\x47\xF8\xBC\xE6\xE5\x63\xA4\x40\xF2\x77\x03\x7D\x81\x2D\xEB\x33\xA0\xF4\xA1\x39\x45\xD8\x98\xC2\x96\x4F\xE3\x42\xE2\xFE\x1A\x7F\x9B\x8E\xE7\xEB\x4A\x7C\x0F\x9E\x16\x2B\xCE\x33\x57\x6B\x31\x5E\xCE\xCB\xB6\x40\x68\x37\xBF\x51\xF5", 65},
-				{ (unsigned char *) "\xFF\xFF\xFF\xFF\x00\x00\x00\x00\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xBC\xE6\xFA\xAD\xA7\x17\x9E\x84\xF3\xB9\xCA\xC2\xFC\x63\x25\x51", 32},
-				{ (unsigned char *) "\x01", 1}
-		},
-		{
-				{ (unsigned char *) "\x2B\x24\x03\x03\x02\x08\x01\x01\x03", 9},	// brainpoolP192r1
-				{ (unsigned char *) "\xC3\x02\xF4\x1D\x93\x2A\x36\xCD\xA7\xA3\x46\x30\x93\xD1\x8D\xB7\x8F\xCE\x47\x6D\xE1\xA8\x62\x97", 24},
-				{ (unsigned char *) "\x6A\x91\x17\x40\x76\xB1\xE0\xE1\x9C\x39\xC0\x31\xFE\x86\x85\xC1\xCA\xE0\x40\xE5\xC6\x9A\x28\xEF", 24},
-				{ (unsigned char *) "\x46\x9A\x28\xEF\x7C\x28\xCC\xA3\xDC\x72\x1D\x04\x4F\x44\x96\xBC\xCA\x7E\xF4\x14\x6F\xBF\x25\xC9", 24},
-				{ (unsigned char *) "\x04\xC0\xA0\x64\x7E\xAA\xB6\xA4\x87\x53\xB0\x33\xC5\x6C\xB0\xF0\x90\x0A\x2F\x5C\x48\x53\x37\x5F\xD6\x14\xB6\x90\x86\x6A\xBD\x5B\xB8\x8B\x5F\x48\x28\xC1\x49\x00\x02\xE6\x77\x3F\xA2\xFA\x29\x9B\x8F", 49},
-				{ (unsigned char *) "\xC3\x02\xF4\x1D\x93\x2A\x36\xCD\xA7\xA3\x46\x2F\x9E\x9E\x91\x6B\x5B\xE8\xF1\x02\x9A\xC4\xAC\xC1", 24},
-				{ (unsigned char *) "\x01", 1}
-		},
-		{
-				{ (unsigned char *) "\x2B\x24\x03\x03\x02\x08\x01\x01\x05", 9},	// brainpoolP224r1
-				{ (unsigned char *) "\xD7\xC1\x34\xAA\x26\x43\x66\x86\x2A\x18\x30\x25\x75\xD1\xD7\x87\xB0\x9F\x07\x57\x97\xDA\x89\xF5\x7E\xC8\xC0\xFF", 28},
-				{ (unsigned char *) "\x68\xA5\xE6\x2C\xA9\xCE\x6C\x1C\x29\x98\x03\xA6\xC1\x53\x0B\x51\x4E\x18\x2A\xD8\xB0\x04\x2A\x59\xCA\xD2\x9F\x43", 28},
-				{ (unsigned char *) "\x25\x80\xF6\x3C\xCF\xE4\x41\x38\x87\x07\x13\xB1\xA9\x23\x69\xE3\x3E\x21\x35\xD2\x66\xDB\xB3\x72\x38\x6C\x40\x0B", 28},
-				{ (unsigned char *) "\x04\x0D\x90\x29\xAD\x2C\x7E\x5C\xF4\x34\x08\x23\xB2\xA8\x7D\xC6\x8C\x9E\x4C\xE3\x17\x4C\x1E\x6E\xFD\xEE\x12\xC0\x7D\x58\xAA\x56\xF7\x72\xC0\x72\x6F\x24\xC6\xB8\x9E\x4E\xCD\xAC\x24\x35\x4B\x9E\x99\xCA\xA3\xF6\xD3\x76\x14\x02\xCD", 57},
-				{ (unsigned char *) "\xD7\xC1\x34\xAA\x26\x43\x66\x86\x2A\x18\x30\x25\x75\xD0\xFB\x98\xD1\x16\xBC\x4B\x6D\xDE\xBC\xA3\xA5\xA7\x93\x9F", 28},
-				{ (unsigned char *) "\x01", 1}
-		},
-		{
-				{ (unsigned char *) "\x2B\x24\x03\x03\x02\x08\x01\x01\x07", 9},	// brainpoolP256r1
-				{ (unsigned char *) "\xA9\xFB\x57\xDB\xA1\xEE\xA9\xBC\x3E\x66\x0A\x90\x9D\x83\x8D\x72\x6E\x3B\xF6\x23\xD5\x26\x20\x28\x20\x13\x48\x1D\x1F\x6E\x53\x77", 32},
-				{ (unsigned char *) "\x7D\x5A\x09\x75\xFC\x2C\x30\x57\xEE\xF6\x75\x30\x41\x7A\xFF\xE7\xFB\x80\x55\xC1\x26\xDC\x5C\x6C\xE9\x4A\x4B\x44\xF3\x30\xB5\xD9", 32},
-				{ (unsigned char *) "\x26\xDC\x5C\x6C\xE9\x4A\x4B\x44\xF3\x30\xB5\xD9\xBB\xD7\x7C\xBF\x95\x84\x16\x29\x5C\xF7\xE1\xCE\x6B\xCC\xDC\x18\xFF\x8C\x07\xB6", 32},
-				{ (unsigned char *) "\x04\x8B\xD2\xAE\xB9\xCB\x7E\x57\xCB\x2C\x4B\x48\x2F\xFC\x81\xB7\xAF\xB9\xDE\x27\xE1\xE3\xBD\x23\xC2\x3A\x44\x53\xBD\x9A\xCE\x32\x62\x54\x7E\xF8\x35\xC3\xDA\xC4\xFD\x97\xF8\x46\x1A\x14\x61\x1D\xC9\xC2\x77\x45\x13\x2D\xED\x8E\x54\x5C\x1D\x54\xC7\x2F\x04\x69\x97", 65},
-				{ (unsigned char *) "\xA9\xFB\x57\xDB\xA1\xEE\xA9\xBC\x3E\x66\x0A\x90\x9D\x83\x8D\x71\x8C\x39\x7A\xA3\xB5\x61\xA6\xF7\x90\x1E\x0E\x82\x97\x48\x56\xA7", 32},
-				{ (unsigned char *) "\x01", 1}
-		},
-		{
-				{ (unsigned char *) "\x2B\x24\x03\x03\x02\x08\x01\x01\x09", 9},	// brainpoolP320r1
-				{ (unsigned char *) "\xD3\x5E\x47\x20\x36\xBC\x4F\xB7\xE1\x3C\x78\x5E\xD2\x01\xE0\x65\xF9\x8F\xCF\xA6\xF6\xF4\x0D\xEF\x4F\x92\xB9\xEC\x78\x93\xEC\x28\xFC\xD4\x12\xB1\xF1\xB3\x2E\x27", 40},
-				{ (unsigned char *) "\x3E\xE3\x0B\x56\x8F\xBA\xB0\xF8\x83\xCC\xEB\xD4\x6D\x3F\x3B\xB8\xA2\xA7\x35\x13\xF5\xEB\x79\xDA\x66\x19\x0E\xB0\x85\xFF\xA9\xF4\x92\xF3\x75\xA9\x7D\x86\x0E\xB4", 40},
-				{ (unsigned char *) "\x52\x08\x83\x94\x9D\xFD\xBC\x42\xD3\xAD\x19\x86\x40\x68\x8A\x6F\xE1\x3F\x41\x34\x95\x54\xB4\x9A\xCC\x31\xDC\xCD\x88\x45\x39\x81\x6F\x5E\xB4\xAC\x8F\xB1\xF1\xA6", 40},
-				{ (unsigned char *) "\x04\x43\xBD\x7E\x9A\xFB\x53\xD8\xB8\x52\x89\xBC\xC4\x8E\xE5\xBF\xE6\xF2\x01\x37\xD1\x0A\x08\x7E\xB6\xE7\x87\x1E\x2A\x10\xA5\x99\xC7\x10\xAF\x8D\x0D\x39\xE2\x06\x11\x14\xFD\xD0\x55\x45\xEC\x1C\xC8\xAB\x40\x93\x24\x7F\x77\x27\x5E\x07\x43\xFF\xED\x11\x71\x82\xEA\xA9\xC7\x78\x77\xAA\xAC\x6A\xC7\xD3\x52\x45\xD1\x69\x2E\x8E\xE1", 81},
-				{ (unsigned char *) "\xD3\x5E\x47\x20\x36\xBC\x4F\xB7\xE1\x3C\x78\x5E\xD2\x01\xE0\x65\xF9\x8F\xCF\xA5\xB6\x8F\x12\xA3\x2D\x48\x2E\xC7\xEE\x86\x58\xE9\x86\x91\x55\x5B\x44\xC5\x93\x11", 40},
-				{ (unsigned char *) "\x01", 1}
-		},
-		{
-				{ NULL, 0},
-				{ NULL, 0},
-				{ NULL, 0},
-				{ NULL, 0},
-				{ NULL, 0},
-				{ NULL, 0},
-				{ NULL, 0}
-		}
-};
-
-
-
 static int sc_hsm_delete_ef(sc_pkcs15_card_t *p15card, u8 prefix, u8 id)
 {
 	sc_card_t *card = p15card->card;
@@ -242,22 +162,6 @@ static int sc_hsm_encode_gakp_rsa(struct sc_pkcs15_card *p15card, sc_cvc_t *cvc,
 
 
 
-static int sc_hsm_get_curve(struct sc_pkcs15_card *p15card, struct ec_curve **curve, u8 *oid, size_t oidlen) {
-	int i;
-
-	LOG_FUNC_CALLED(p15card->card->ctx);
-	for (i = 0; curves[i].oid.value; i++) {
-		if ((curves[i].oid.len == oidlen) && !memcmp(curves[i].oid.value, oid, oidlen)) {
-			*curve = &curves[i];
-			return SC_SUCCESS;
-		}
-	}
-	sc_log(p15card->card->ctx, "Unknown curve");
-	LOG_FUNC_RETURN(p15card->card->ctx, SC_ERROR_INVALID_DATA);
-}
-
-
-
 static int sc_hsm_encode_gakp_ec(struct sc_pkcs15_card *p15card, sc_cvc_t *cvc, struct sc_pkcs15_prkey_info *key_info) {
 	struct sc_object_id ecdsaWithSHA256 = { { 0,4,0,127,0,7,2,2,2,2,3,-1 } };
 	struct sc_pkcs15_ec_parameters *ecparams = (struct sc_pkcs15_ec_parameters *)key_info->params.data;
@@ -275,7 +179,7 @@ static int sc_hsm_encode_gakp_ec(struct sc_pkcs15_card *p15card, sc_cvc_t *cvc, 
 
 	curveoidlen = *curveoid++;
 
-	sc_hsm_get_curve(p15card, &curve, curveoid, curveoidlen);
+	sc_pkcs15emu_sc_hsm_get_curve(&curve, curveoid, curveoidlen);
 
 	cvc->primeOrModuluslen = curve->prime.len;
 	cvc->primeOrModulus = malloc(cvc->primeOrModuluslen);
@@ -320,89 +224,6 @@ static int sc_hsm_encode_gakp_ec(struct sc_pkcs15_card *p15card, sc_cvc_t *cvc, 
 	memcpy(cvc->cofactor, curve->coFactor.value, cvc->cofactorlen);
 
 	cvc->pukoid = ecdsaWithSHA256;
-
-	LOG_FUNC_RETURN(p15card->card->ctx, SC_SUCCESS);
-}
-
-
-
-static int sc_hsm_decode_gakp_rsa(struct sc_pkcs15_card *p15card,
-									sc_cvc_t *cvc,
-									struct sc_pkcs15_prkey_info *key_info,
-									struct sc_pkcs15_pubkey *pubkey)
-{
-	LOG_FUNC_CALLED(p15card->card->ctx);
-
-	if (((key_info->modulus_length + 7) / 8) != cvc->primeOrModuluslen) {
-		sc_log(p15card->card->ctx, "Modulus size in request does not match generated public key");
-		LOG_FUNC_RETURN(p15card->card->ctx, SC_ERROR_OUT_OF_MEMORY);
-	}
-
-	pubkey->algorithm = SC_ALGORITHM_RSA;
-
-	pubkey->alg_id = (struct sc_algorithm_id *)calloc(1, sizeof(struct sc_algorithm_id));
-	if (!pubkey->alg_id) {
-		LOG_FUNC_RETURN(p15card->card->ctx, SC_ERROR_OUT_OF_MEMORY);
-	}
-
-	pubkey->alg_id->algorithm = SC_ALGORITHM_RSA;
-
-	pubkey->u.rsa.modulus.len	= cvc->primeOrModuluslen;
-	pubkey->u.rsa.modulus.data	= malloc(pubkey->u.rsa.modulus.len);
-	pubkey->u.rsa.exponent.len	= sizeof(pubexp);
-	pubkey->u.rsa.exponent.data	= malloc(pubkey->u.rsa.exponent.len);
-	if (!pubkey->u.rsa.modulus.data || !pubkey->u.rsa.exponent.data) {
-		LOG_FUNC_RETURN(p15card->card->ctx, SC_ERROR_OUT_OF_MEMORY);
-	}
-	memcpy(pubkey->u.rsa.exponent.data, pubexp, pubkey->u.rsa.exponent.len);
-	memcpy(pubkey->u.rsa.modulus.data, cvc->primeOrModulus, pubkey->u.rsa.modulus.len);
-
-	LOG_FUNC_RETURN(p15card->card->ctx, SC_SUCCESS);
-}
-
-
-
-static int sc_hsm_decode_gakp_ec(struct sc_pkcs15_card *p15card,
-									sc_cvc_t *cvc,
-									struct sc_pkcs15_prkey_info *key_info,
-									struct sc_pkcs15_pubkey *pubkey)
-{
-	struct sc_pkcs15_ec_parameters *ecparams = (struct sc_pkcs15_ec_parameters *)(key_info->params.data);
-	struct sc_ec_params *ecp;
-	LOG_FUNC_CALLED(p15card->card->ctx);
-
-	pubkey->algorithm = SC_ALGORITHM_EC;
-	pubkey->u.ec.params.named_curve = strdup(ecparams->named_curve);
-	sc_pkcs15_fix_ec_parameters(p15card->card->ctx, &pubkey->u.ec.params);
-
-	ecp = calloc(1, sizeof(struct sc_ec_params));
-	if (!ecp) {
-		LOG_FUNC_RETURN(p15card->card->ctx, SC_ERROR_OUT_OF_MEMORY);
-	}
-
-	ecp->der = malloc(ecparams->der.len);
-	if (!ecp->der) {
-		LOG_FUNC_RETURN(p15card->card->ctx, SC_ERROR_OUT_OF_MEMORY);
-	}
-
-	ecp->der_len = ecparams->der.len;
-	memcpy(ecp->der, ecparams->der.value, ecp->der_len);
-	ecp->type = 1;		// Named curve
-
-	pubkey->alg_id = (struct sc_algorithm_id *)calloc(1, sizeof(struct sc_algorithm_id));
-	if (!pubkey->alg_id) {
-		LOG_FUNC_RETURN(p15card->card->ctx, SC_ERROR_OUT_OF_MEMORY);
-	}
-
-	pubkey->alg_id->algorithm = SC_ALGORITHM_EC;
-	pubkey->alg_id->params = ecp;
-
-	pubkey->u.ec.ecpointQ.value = malloc(cvc->publicPointlen);
-	if (!pubkey->u.ec.ecpointQ.value) {
-		LOG_FUNC_RETURN(p15card->card->ctx, SC_ERROR_OUT_OF_MEMORY);
-	}
-	memcpy(pubkey->u.ec.ecpointQ.value, cvc->publicPoint, cvc->publicPointlen);
-	pubkey->u.ec.ecpointQ.len = cvc->publicPointlen;
 
 	LOG_FUNC_RETURN(p15card->card->ctx, SC_SUCCESS);
 }
@@ -482,14 +303,7 @@ static int sc_hsm_generate_key(struct sc_profile *profile, struct sc_pkcs15_card
 	}
 
 	if (pubkey != NULL) {
-		switch(object->type) {
-		case SC_PKCS15_TYPE_PRKEY_RSA:
-			r = sc_hsm_decode_gakp_rsa(p15card, &cvc, key_info, pubkey);
-			break;
-		case SC_PKCS15_TYPE_PRKEY_EC:
-			r = sc_hsm_decode_gakp_ec(p15card, &cvc, key_info, pubkey);
-			break;
-		}
+		r = sc_pkcs15emu_sc_hsm_get_public_key(&cvc, pubkey);
 	}
 
 	out:
