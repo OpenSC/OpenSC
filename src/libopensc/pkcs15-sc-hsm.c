@@ -39,6 +39,74 @@ void sc_hsm_set_serialnr(sc_card_t *card, char *serial);
 
 
 
+static struct ec_curve curves[] = {
+		{
+				{ (unsigned char *) "\x2A\x86\x48\xCE\x3D\x03\x01\x01", 8},	// secp192r1 aka prime192r1
+				{ (unsigned char *) "\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFE\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF", 24},
+				{ (unsigned char *) "\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFE\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFC", 24},
+				{ (unsigned char *) "\x64\x21\x05\x19\xE5\x9C\x80\xE7\x0F\xA7\xE9\xAB\x72\x24\x30\x49\xFE\xB8\xDE\xEC\xC1\x46\xB9\xB1", 24},
+				{ (unsigned char *) "\x04\x18\x8D\xA8\x0E\xB0\x30\x90\xF6\x7C\xBF\x20\xEB\x43\xA1\x88\x00\xF4\xFF\x0A\xFD\x82\xFF\x10\x12\x07\x19\x2B\x95\xFF\xC8\xDA\x78\x63\x10\x11\xED\x6B\x24\xCD\xD5\x73\xF9\x77\xA1\x1E\x79\x48\x11", 49},
+				{ (unsigned char *) "\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\x99\xDE\xF8\x36\x14\x6B\xC9\xB1\xB4\xD2\x28\x31", 24},
+				{ (unsigned char *) "\x01", 1}
+		},
+		{
+				{ (unsigned char *) "\x2A\x86\x48\xCE\x3D\x03\x01\x07", 8},	// secp256r1 aka prime256r1
+				{ (unsigned char *) "\xFF\xFF\xFF\xFF\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF", 32},
+				{ (unsigned char *) "\xFF\xFF\xFF\xFF\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFC", 32},
+				{ (unsigned char *) "\x5A\xC6\x35\xD8\xAA\x3A\x93\xE7\xB3\xEB\xBD\x55\x76\x98\x86\xBC\x65\x1D\x06\xB0\xCC\x53\xB0\xF6\x3B\xCE\x3C\x3E\x27\xD2\x60\x4B", 32},
+				{ (unsigned char *) "\x04\x6B\x17\xD1\xF2\xE1\x2C\x42\x47\xF8\xBC\xE6\xE5\x63\xA4\x40\xF2\x77\x03\x7D\x81\x2D\xEB\x33\xA0\xF4\xA1\x39\x45\xD8\x98\xC2\x96\x4F\xE3\x42\xE2\xFE\x1A\x7F\x9B\x8E\xE7\xEB\x4A\x7C\x0F\x9E\x16\x2B\xCE\x33\x57\x6B\x31\x5E\xCE\xCB\xB6\x40\x68\x37\xBF\x51\xF5", 65},
+				{ (unsigned char *) "\xFF\xFF\xFF\xFF\x00\x00\x00\x00\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xBC\xE6\xFA\xAD\xA7\x17\x9E\x84\xF3\xB9\xCA\xC2\xFC\x63\x25\x51", 32},
+				{ (unsigned char *) "\x01", 1}
+		},
+		{
+				{ (unsigned char *) "\x2B\x24\x03\x03\x02\x08\x01\x01\x03", 9},	// brainpoolP192r1
+				{ (unsigned char *) "\xC3\x02\xF4\x1D\x93\x2A\x36\xCD\xA7\xA3\x46\x30\x93\xD1\x8D\xB7\x8F\xCE\x47\x6D\xE1\xA8\x62\x97", 24},
+				{ (unsigned char *) "\x6A\x91\x17\x40\x76\xB1\xE0\xE1\x9C\x39\xC0\x31\xFE\x86\x85\xC1\xCA\xE0\x40\xE5\xC6\x9A\x28\xEF", 24},
+				{ (unsigned char *) "\x46\x9A\x28\xEF\x7C\x28\xCC\xA3\xDC\x72\x1D\x04\x4F\x44\x96\xBC\xCA\x7E\xF4\x14\x6F\xBF\x25\xC9", 24},
+				{ (unsigned char *) "\x04\xC0\xA0\x64\x7E\xAA\xB6\xA4\x87\x53\xB0\x33\xC5\x6C\xB0\xF0\x90\x0A\x2F\x5C\x48\x53\x37\x5F\xD6\x14\xB6\x90\x86\x6A\xBD\x5B\xB8\x8B\x5F\x48\x28\xC1\x49\x00\x02\xE6\x77\x3F\xA2\xFA\x29\x9B\x8F", 49},
+				{ (unsigned char *) "\xC3\x02\xF4\x1D\x93\x2A\x36\xCD\xA7\xA3\x46\x2F\x9E\x9E\x91\x6B\x5B\xE8\xF1\x02\x9A\xC4\xAC\xC1", 24},
+				{ (unsigned char *) "\x01", 1}
+		},
+		{
+				{ (unsigned char *) "\x2B\x24\x03\x03\x02\x08\x01\x01\x05", 9},	// brainpoolP224r1
+				{ (unsigned char *) "\xD7\xC1\x34\xAA\x26\x43\x66\x86\x2A\x18\x30\x25\x75\xD1\xD7\x87\xB0\x9F\x07\x57\x97\xDA\x89\xF5\x7E\xC8\xC0\xFF", 28},
+				{ (unsigned char *) "\x68\xA5\xE6\x2C\xA9\xCE\x6C\x1C\x29\x98\x03\xA6\xC1\x53\x0B\x51\x4E\x18\x2A\xD8\xB0\x04\x2A\x59\xCA\xD2\x9F\x43", 28},
+				{ (unsigned char *) "\x25\x80\xF6\x3C\xCF\xE4\x41\x38\x87\x07\x13\xB1\xA9\x23\x69\xE3\x3E\x21\x35\xD2\x66\xDB\xB3\x72\x38\x6C\x40\x0B", 28},
+				{ (unsigned char *) "\x04\x0D\x90\x29\xAD\x2C\x7E\x5C\xF4\x34\x08\x23\xB2\xA8\x7D\xC6\x8C\x9E\x4C\xE3\x17\x4C\x1E\x6E\xFD\xEE\x12\xC0\x7D\x58\xAA\x56\xF7\x72\xC0\x72\x6F\x24\xC6\xB8\x9E\x4E\xCD\xAC\x24\x35\x4B\x9E\x99\xCA\xA3\xF6\xD3\x76\x14\x02\xCD", 57},
+				{ (unsigned char *) "\xD7\xC1\x34\xAA\x26\x43\x66\x86\x2A\x18\x30\x25\x75\xD0\xFB\x98\xD1\x16\xBC\x4B\x6D\xDE\xBC\xA3\xA5\xA7\x93\x9F", 28},
+				{ (unsigned char *) "\x01", 1}
+		},
+		{
+				{ (unsigned char *) "\x2B\x24\x03\x03\x02\x08\x01\x01\x07", 9},	// brainpoolP256r1
+				{ (unsigned char *) "\xA9\xFB\x57\xDB\xA1\xEE\xA9\xBC\x3E\x66\x0A\x90\x9D\x83\x8D\x72\x6E\x3B\xF6\x23\xD5\x26\x20\x28\x20\x13\x48\x1D\x1F\x6E\x53\x77", 32},
+				{ (unsigned char *) "\x7D\x5A\x09\x75\xFC\x2C\x30\x57\xEE\xF6\x75\x30\x41\x7A\xFF\xE7\xFB\x80\x55\xC1\x26\xDC\x5C\x6C\xE9\x4A\x4B\x44\xF3\x30\xB5\xD9", 32},
+				{ (unsigned char *) "\x26\xDC\x5C\x6C\xE9\x4A\x4B\x44\xF3\x30\xB5\xD9\xBB\xD7\x7C\xBF\x95\x84\x16\x29\x5C\xF7\xE1\xCE\x6B\xCC\xDC\x18\xFF\x8C\x07\xB6", 32},
+				{ (unsigned char *) "\x04\x8B\xD2\xAE\xB9\xCB\x7E\x57\xCB\x2C\x4B\x48\x2F\xFC\x81\xB7\xAF\xB9\xDE\x27\xE1\xE3\xBD\x23\xC2\x3A\x44\x53\xBD\x9A\xCE\x32\x62\x54\x7E\xF8\x35\xC3\xDA\xC4\xFD\x97\xF8\x46\x1A\x14\x61\x1D\xC9\xC2\x77\x45\x13\x2D\xED\x8E\x54\x5C\x1D\x54\xC7\x2F\x04\x69\x97", 65},
+				{ (unsigned char *) "\xA9\xFB\x57\xDB\xA1\xEE\xA9\xBC\x3E\x66\x0A\x90\x9D\x83\x8D\x71\x8C\x39\x7A\xA3\xB5\x61\xA6\xF7\x90\x1E\x0E\x82\x97\x48\x56\xA7", 32},
+				{ (unsigned char *) "\x01", 1}
+		},
+		{
+				{ (unsigned char *) "\x2B\x24\x03\x03\x02\x08\x01\x01\x09", 9},	// brainpoolP320r1
+				{ (unsigned char *) "\xD3\x5E\x47\x20\x36\xBC\x4F\xB7\xE1\x3C\x78\x5E\xD2\x01\xE0\x65\xF9\x8F\xCF\xA6\xF6\xF4\x0D\xEF\x4F\x92\xB9\xEC\x78\x93\xEC\x28\xFC\xD4\x12\xB1\xF1\xB3\x2E\x27", 40},
+				{ (unsigned char *) "\x3E\xE3\x0B\x56\x8F\xBA\xB0\xF8\x83\xCC\xEB\xD4\x6D\x3F\x3B\xB8\xA2\xA7\x35\x13\xF5\xEB\x79\xDA\x66\x19\x0E\xB0\x85\xFF\xA9\xF4\x92\xF3\x75\xA9\x7D\x86\x0E\xB4", 40},
+				{ (unsigned char *) "\x52\x08\x83\x94\x9D\xFD\xBC\x42\xD3\xAD\x19\x86\x40\x68\x8A\x6F\xE1\x3F\x41\x34\x95\x54\xB4\x9A\xCC\x31\xDC\xCD\x88\x45\x39\x81\x6F\x5E\xB4\xAC\x8F\xB1\xF1\xA6", 40},
+				{ (unsigned char *) "\x04\x43\xBD\x7E\x9A\xFB\x53\xD8\xB8\x52\x89\xBC\xC4\x8E\xE5\xBF\xE6\xF2\x01\x37\xD1\x0A\x08\x7E\xB6\xE7\x87\x1E\x2A\x10\xA5\x99\xC7\x10\xAF\x8D\x0D\x39\xE2\x06\x11\x14\xFD\xD0\x55\x45\xEC\x1C\xC8\xAB\x40\x93\x24\x7F\x77\x27\x5E\x07\x43\xFF\xED\x11\x71\x82\xEA\xA9\xC7\x78\x77\xAA\xAC\x6A\xC7\xD3\x52\x45\xD1\x69\x2E\x8E\xE1", 81},
+				{ (unsigned char *) "\xD3\x5E\x47\x20\x36\xBC\x4F\xB7\xE1\x3C\x78\x5E\xD2\x01\xE0\x65\xF9\x8F\xCF\xA5\xB6\x8F\x12\xA3\x2D\x48\x2E\xC7\xEE\x86\x58\xE9\x86\x91\x55\x5B\x44\xC5\x93\x11", 40},
+				{ (unsigned char *) "\x01", 1}
+		},
+		{
+				{ NULL, 0},
+				{ NULL, 0},
+				{ NULL, 0},
+				{ NULL, 0},
+				{ NULL, 0},
+				{ NULL, 0},
+				{ NULL, 0}
+		}
+};
+
+
+
 #define C_ASN1_CVC_PUBKEY_SIZE 10
 static const struct sc_asn1_entry c_asn1_cvc_pubkey[C_ASN1_CVC_PUBKEY_SIZE] = {
 	{ "publicKeyOID", SC_ASN1_OBJECT, SC_ASN1_UNI | SC_ASN1_OBJECT, 0, NULL, NULL },
@@ -231,6 +299,117 @@ int sc_pkcs15emu_sc_hsm_encode_cvc(sc_pkcs15_card_t * p15card,
 
 
 
+int sc_pkcs15emu_sc_hsm_get_curve(struct ec_curve **curve, u8 *oid, size_t oidlen)
+{
+	int i;
+
+	for (i = 0; curves[i].oid.value; i++) {
+		if ((curves[i].oid.len == oidlen) && !memcmp(curves[i].oid.value, oid, oidlen)) {
+			*curve = &curves[i];
+			return SC_SUCCESS;
+		}
+	}
+	return SC_ERROR_INVALID_DATA;
+}
+
+
+
+int sc_pkcs15emu_sc_hsm_get_curve_oid(sc_cvc_t *cvc, const struct sc_lv_data **oid)
+{
+	int i;
+
+	for (i = 0; curves[i].oid.value; i++) {
+		if ((curves[i].prime.len == cvc->primeOrModuluslen) && !memcmp(curves[i].prime.value, cvc->primeOrModulus, cvc->primeOrModuluslen)) {
+			*oid = &curves[i].oid;
+			return SC_SUCCESS;
+		}
+	}
+	return SC_ERROR_INVALID_DATA;
+}
+
+
+
+static int sc_pkcs15emu_sc_hsm_get_rsa_public_key(sc_cvc_t *cvc, struct sc_pkcs15_pubkey *pubkey)
+{
+	pubkey->algorithm = SC_ALGORITHM_RSA;
+
+	pubkey->alg_id = (struct sc_algorithm_id *)calloc(1, sizeof(struct sc_algorithm_id));
+	if (!pubkey->alg_id)
+		return SC_ERROR_OUT_OF_MEMORY;
+
+	pubkey->alg_id->algorithm = SC_ALGORITHM_RSA;
+
+	pubkey->u.rsa.modulus.len	= cvc->primeOrModuluslen;
+	pubkey->u.rsa.modulus.data	= malloc(pubkey->u.rsa.modulus.len);
+	pubkey->u.rsa.exponent.len	= cvc->coefficientAorExponentlen;
+	pubkey->u.rsa.exponent.data	= malloc(pubkey->u.rsa.exponent.len);
+	if (!pubkey->u.rsa.modulus.data || !pubkey->u.rsa.exponent.data)
+		return SC_ERROR_OUT_OF_MEMORY;
+
+	memcpy(pubkey->u.rsa.exponent.data, cvc->coefficientAorExponent, pubkey->u.rsa.exponent.len);
+	memcpy(pubkey->u.rsa.modulus.data, cvc->primeOrModulus, pubkey->u.rsa.modulus.len);
+
+	return SC_SUCCESS;
+}
+
+
+
+static int sc_pkcs15emu_sc_hsm_get_ec_public_key(sc_cvc_t *cvc, struct sc_pkcs15_pubkey *pubkey)
+{
+	struct sc_ec_params *ecp;
+	const struct sc_lv_data *oid;
+	int r;
+
+	pubkey->algorithm = SC_ALGORITHM_EC;
+
+	r = sc_pkcs15emu_sc_hsm_get_curve_oid(cvc, &oid);
+	if (r != SC_SUCCESS)
+		return r;
+
+	ecp = calloc(1, sizeof(struct sc_ec_params));
+	if (!ecp)
+		return SC_ERROR_OUT_OF_MEMORY;
+
+	ecp->der_len = oid->len + 2;
+	ecp->der = calloc(ecp->der_len, 1);
+	if (!ecp->der)
+		return SC_ERROR_OUT_OF_MEMORY;
+
+	ecp->der[0] = 0x06;
+	ecp->der[1] = (u8)oid->len;
+	memcpy(ecp->der + 2, oid->value, oid->len);
+	ecp->type = 1;		// Named curve
+
+	pubkey->alg_id = (struct sc_algorithm_id *)calloc(1, sizeof(struct sc_algorithm_id));
+	if (!pubkey->alg_id)
+		return SC_ERROR_OUT_OF_MEMORY;
+
+	pubkey->alg_id->algorithm = SC_ALGORITHM_EC;
+	pubkey->alg_id->params = ecp;
+
+	pubkey->u.ec.ecpointQ.value = malloc(cvc->publicPointlen);
+	if (!pubkey->u.ec.ecpointQ.value)
+		return SC_ERROR_OUT_OF_MEMORY;
+
+	memcpy(pubkey->u.ec.ecpointQ.value, cvc->publicPoint, cvc->publicPointlen);
+	pubkey->u.ec.ecpointQ.len = cvc->publicPointlen;
+
+	return SC_SUCCESS;
+}
+
+
+
+int sc_pkcs15emu_sc_hsm_get_public_key(sc_cvc_t *cvc, struct sc_pkcs15_pubkey *pubkey)
+{
+	if (cvc->publicPoint || cvc->publicPointlen) {
+		return sc_pkcs15emu_sc_hsm_get_ec_public_key(cvc, pubkey);
+	} else {
+		return sc_pkcs15emu_sc_hsm_get_rsa_public_key(cvc, pubkey);
+	}
+}
+
+
+
 void sc_pkcs15emu_sc_hsm_free_cvc(sc_cvc_t *cvc)
 {
 	if (cvc->signature) {
@@ -283,29 +462,29 @@ static int sc_pkcs15emu_sc_hsm_add_pubkey(sc_pkcs15_card_t *p15card, sc_pkcs15_p
 	r = sc_pkcs15emu_sc_hsm_decode_cvc(p15card, (const u8 **)&cvcpo, &cvclen, &cvc);
 	LOG_TEST_RET(card->ctx, r, "Could decode certificate signing request");
 
-	if (cvc.publicPoint || cvc.publicPointlen) {
-		/* ToDo implement support for EC Public Keys */
-		return SC_SUCCESS;
-	} else {
-		pubkey.algorithm = SC_ALGORITHM_RSA;
-		pubkey.u.rsa.modulus.data = cvc.primeOrModulus;
-		pubkey.u.rsa.modulus.len = cvc.primeOrModuluslen;
-		pubkey.u.rsa.exponent.data = cvc.coefficientAorExponent;
-		pubkey.u.rsa.exponent.len = cvc.coefficientAorExponentlen;
-	}
+	memset(&pubkey, 0, sizeof(pubkey));
+	r = sc_pkcs15emu_sc_hsm_get_public_key(&cvc, &pubkey);
+	LOG_TEST_RET(card->ctx, r, "Could not extract public key");
 
 	memset(&pubkey_info, 0, sizeof(pubkey_info));
 	memset(&pubkey_obj, 0, sizeof(pubkey_obj));
 
-	sc_pkcs15_encode_pubkey(p15card->card->ctx, &pubkey, &pubkey_obj.content.value, &pubkey_obj.content.len);
+	sc_pkcs15_encode_pubkey_as_spki(p15card->card->ctx, &pubkey, &pubkey_obj.content.value, &pubkey_obj.content.len);
 
 	pubkey_info.id = key_info->id;
 	strlcpy(pubkey_obj.label, label, sizeof(pubkey_obj.label));
 
-	r = sc_pkcs15emu_add_rsa_pubkey(p15card, &pubkey_obj, &pubkey_info);
+	if (pubkey.algorithm == SC_ALGORITHM_RSA) {
+		pubkey_info.modulus_length = pubkey.u.rsa.modulus.len << 3;
+		r = sc_pkcs15emu_add_rsa_pubkey(p15card, &pubkey_obj, &pubkey_info);
+	} else {
+		pubkey_info.field_length = cvc.primeOrModuluslen << 3;
+		r = sc_pkcs15emu_add_ec_pubkey(p15card, &pubkey_obj, &pubkey_info);
+	}
 	LOG_TEST_RET(card->ctx, r, "Could not add public key");
 
 	sc_pkcs15emu_sc_hsm_free_cvc(&cvc);
+	sc_pkcs15_erase_pubkey(&pubkey);
 
 	return SC_SUCCESS;
 }
@@ -514,6 +693,33 @@ static int sc_pkcs15emu_sc_hsm_add_cd(sc_pkcs15_card_t * p15card, u8 id) {
 
 
 
+static int sc_pkcs15emu_sc_hsm_read_tokeninfo (sc_pkcs15_card_t * p15card)
+{
+	sc_card_t *card = p15card->card;
+	sc_file_t *file = NULL;
+	sc_path_t path;
+	int r;
+	u8 efbin[512];
+
+	LOG_FUNC_CALLED(card->ctx);
+
+	/* Read token info */
+	sc_path_set(&path, SC_PATH_TYPE_FILE_ID, (u8 *) "\x2F\x03", 2, 0, 0);
+	r = sc_select_file(card, &path, &file);
+	LOG_TEST_RET(card->ctx, r, "Could not select EF.TokenInfo");
+	sc_file_free(file);
+
+	r = sc_read_binary(p15card->card, 0, efbin, sizeof(efbin), 0);
+	LOG_TEST_RET(card->ctx, r, "Could not read EF.TokenInfo");
+
+	r = sc_pkcs15_parse_tokeninfo(card->ctx, p15card->tokeninfo, efbin, r);
+	LOG_TEST_RET(card->ctx, r, "Could not decode EF.TokenInfo");
+
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+}
+
+
+
 /*
  * Initialize PKCS#15 emulation with user PIN, private keys, certificate and data objects
  *
@@ -536,16 +742,12 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 
 	LOG_FUNC_CALLED(card->ctx);
 
-	p15card->tokeninfo->label = strdup("SmartCard-HSM");
-	p15card->tokeninfo->manufacturer_id = strdup("www.CardContact.de");
-
 	appinfo = calloc(1, sizeof(struct sc_app_info));
 
 	if (appinfo == NULL) {
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 	}
 
-	appinfo->label = strdup(p15card->tokeninfo->label);
 	appinfo->aid = sc_hsm_aid;
 
 	appinfo->ddo.aid = sc_hsm_aid;
@@ -578,14 +780,36 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 	r = sc_pkcs15emu_sc_hsm_decode_cvc(p15card, (const u8 **)&ptr, &len, &devcert);
 	LOG_TEST_RET(card->ctx, r, "Could not decode EF.C_DevAut");
 
+	sc_pkcs15emu_sc_hsm_read_tokeninfo(p15card);
+
+	if (p15card->tokeninfo->label == NULL) {
+		p15card->tokeninfo->label = strdup("SmartCard-HSM");
+		if (p15card->tokeninfo->label == NULL)
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+	}
+
+	if ((p15card->tokeninfo->manufacturer_id != NULL) && !strcmp("(unknown)", p15card->tokeninfo->manufacturer_id)) {
+		free(p15card->tokeninfo->manufacturer_id);
+		p15card->tokeninfo->manufacturer_id = NULL;
+	}
+
+	if (p15card->tokeninfo->manufacturer_id == NULL) {
+		p15card->tokeninfo->manufacturer_id = strdup("www.CardContact.de");
+		if (p15card->tokeninfo->manufacturer_id == NULL)
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+	}
+
+	appinfo->label = strdup(p15card->tokeninfo->label);
+	if (appinfo->label == NULL)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+
 	len = strlen(devcert.chr);		/* Strip last 5 digit sequence number from CHR */
 	assert(len >= 8);
 	len -= 5;
 
 	p15card->tokeninfo->serial_number = calloc(len + 1, 1);
-	if (p15card->tokeninfo->serial_number == NULL) {
+	if (p15card->tokeninfo->serial_number == NULL)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
-	}
 
 	memcpy(p15card->tokeninfo->serial_number, devcert.chr, len);
 	*(p15card->tokeninfo->serial_number + len) = 0;
@@ -593,7 +817,6 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 	sc_hsm_set_serialnr(card, p15card->tokeninfo->serial_number);
 
 	sc_pkcs15emu_sc_hsm_free_cvc(&devcert);
-
 
 	memset(&pin_info, 0, sizeof(pin_info));
 	memset(&pin_obj, 0, sizeof(pin_obj));

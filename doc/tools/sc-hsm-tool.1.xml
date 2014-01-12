@@ -45,6 +45,7 @@
 						<para>Use <option>--pin</option> to define the initial user pin value.</para>
 						<para>Use <option>--pin-retry</option> to define the maximum number of wrong user PIN presentations.</para>
 						<para>Use with <option>--dkek-shares</option> to enable key wrap / unwrap.</para>
+						<para>Use with <option>--label</option> to define a token label</para>
 					</listitem>
 				</varlistentry>
 
@@ -182,6 +183,14 @@
 				
 				<varlistentry>
 					<term>
+						<option>--label</option> <replaceable>label</replaceable>,
+						<option>-l</option> <replaceable>label</replaceable>
+					</term>
+					<listitem><para>Define the token label to be used in --initialize.</para></listitem>
+				</varlistentry>
+				
+				<varlistentry>
+					<term>
 						<option>--reader</option> <replaceable>num</replaceable>,
 						<option>-r</option> <replaceable>num</replaceable>
 					</term>
@@ -217,7 +226,7 @@
 		<para>Create a DKEK share with random password split up using a (3, 5) threshold scheme:</para>
 		<para><command>sc-hsm-tool --create-dkek-share dkek-share-1.pbe --pwd-shares-threshold 3 --pwd-shares-total 5</command></para>
 		<para>Initialize SmartCard-HSM to use a single DKEK share:</para>
-		<para><command>sc-hsm-tool --initialize --so-pin 3537363231383830 --pin 648219 --dkek-shares 1</command></para>
+		<para><command>sc-hsm-tool --initialize --so-pin 3537363231383830 --pin 648219 --dkek-shares 1 --label mytoken</command></para>
 		<para>Import DKEK share:</para>
 		<para><command>sc-hsm-tool --import-dkek-share dkek-share-1.pbe</command></para>
 		<para>Import DKEK share using a password split up using a (3, 5) threshold scheme for encryption:</para>

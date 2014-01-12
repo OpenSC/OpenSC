@@ -52,7 +52,8 @@ static const char magic[] = "Salted__";
 static struct sc_aid sc_hsm_aid = { { 0xE8,0x2B,0x06,0x01,0x04,0x01,0x81,0xC3,0x1F,0x02,0x01 }, 11 };
 
 static int	opt_wait = 0;
-static char *opt_reader;
+static char *opt_reader = NULL;
+static char *opt_label = NULL;
 static int	verbose = 0;
 
 // Some reasonable maximums
@@ -84,6 +85,7 @@ static const struct option options[] = {
 	{ "pwd-shares-threshold",	1, NULL,		OPT_PASSWORD_SHARES_THRESHOLD },
 	{ "pwd-shares-total",		1, NULL,		OPT_PASSWORD_SHARES_TOTAL },
 	{ "key-reference",			1, NULL,		'i' },
+	{ "label",					1, NULL,		'l' },
 	{ "force",					0, NULL,		'f' },
 	{ "reader",					1, NULL,		'r' },
 	{ "wait",					0, NULL,		'w' },
@@ -105,6 +107,7 @@ static const char *option_help[] = {
 	"Define threshold for number of password shares required for reconstruction",
 	"Define number of password shares",
 	"Key reference for key wrap/unwrap",
+	"Token label for --initialize",
 	"Force replacement of key and certificate",
 	"Uses reader number <arg> [0]",
 	"Wait for a card to be inserted",
@@ -138,7 +141,7 @@ static sc_card_t *card = NULL;
  * @param rngSeed Seed value for CPRNG
  *
  */
-static void generatePrime(BIGNUM *prime, const BIGNUM *s, const unsigned int n, char *rngSeed)
+static void generatePrime(BIGNUM *prime, const BIGNUM *s, const unsigned int n, unsigned char *rngSeed)
 {
 	int bits = 0;
 
@@ -490,7 +493,7 @@ static void print_info(sc_card_t *card, sc_file_t *file)
 
 
 
-static void initialize(sc_card_t *card, const char *so_pin, const char *user_pin, int retry_counter, int dkek_shares)
+static void initialize(sc_card_t *card, const char *so_pin, const char *user_pin, int retry_counter, int dkek_shares, const char *label)
 {
 	sc_cardctl_sc_hsm_init_param_t param;
 	size_t len;
@@ -560,6 +563,7 @@ static void initialize(sc_card_t *card, const char *so_pin, const char *user_pin
 	param.options[1] = 0x01;
 
 	param.dkek_shares = (char)dkek_shares;
+	param.label = (char *)label;
 
 	r = sc_card_ctl(card, SC_CARDCTL_SC_HSM_INITIALIZE, (void *)&param);
 	if (r < 0) {
@@ -816,7 +820,7 @@ static int generate_pwd_shares(sc_card_t *card, char **pwd, int *pwdlen, int pas
 	*pwd = calloc(1, 8);
 	*pwdlen = 8;
 
-	r = sc_get_challenge(card, *pwd, 8);
+	r = sc_get_challenge(card, (unsigned char *)*pwd, 8);
 	if (r < 0) {
 		printf("Error generating random key failed with %s", sc_strerror(r));
 		OPENSSL_cleanse(*pwd, *pwdlen);
@@ -834,7 +838,7 @@ static int generate_pwd_shares(sc_card_t *card, char **pwd, int *pwdlen, int pas
 	/*
 	 * Encode the secret value
 	 */
-	BN_bin2bn(*pwd, *pwdlen, &secret);
+	BN_bin2bn((unsigned char *)*pwd, *pwdlen, &secret);
 
 	/*
 	 * Generate seed and calculate a prime depending on the size of the secret
@@ -1007,7 +1011,7 @@ static int wrap_with_tag(u8 tag, u8 *indata, size_t inlen, u8 **outdata, size_t 
 	if (inlen > 127) {
 		do	{
 			nlc++;
-		} while (inlen >= (1 << (nlc << 3)));
+		} while (inlen >= (unsigned)(1 << (nlc << 3)));
 	}
 
 	*outlen = 2 + nlc + inlen;
@@ -1056,14 +1060,14 @@ static void wrap_key(sc_card_t *card, u8 keyid, const char *outf, const char *pi
 		util_getpass(&lpin, NULL, stdin);
 		printf("\n");
 	} else {
-		lpin = pin;
+		lpin = (char *)pin;
 	}
 
 	memset(&data, 0, sizeof(data));
 	data.cmd = SC_PIN_CMD_VERIFY;
 	data.pin_type = SC_AC_CHV;
 	data.pin_reference = ID_USER_PIN;
-	data.pin1.data = lpin;
+	data.pin1.data = (unsigned char *)lpin;
 	data.pin1.len = strlen(lpin);
 
 	r = sc_pin_cmd(card, &data, NULL);
@@ -1313,14 +1317,14 @@ static void unwrap_key(sc_card_t *card, u8 keyid, const char *inf, const char *p
 		util_getpass(&lpin, NULL, stdin);
 		printf("\n");
 	} else {
-		lpin = (u8 *)pin;
+		lpin = (char *)pin;
 	}
 
 	memset(&data, 0, sizeof(data));
 	data.cmd = SC_PIN_CMD_VERIFY;
 	data.pin_type = SC_AC_CHV;
 	data.pin_reference = ID_USER_PIN;
-	data.pin1.data = lpin;
+	data.pin1.data = (u8 *)lpin;
 	data.pin1.len = strlen(lpin);
 
 	r = sc_pin_cmd(card, &data, NULL);
@@ -1466,6 +1470,9 @@ int main(int argc, char * const argv[])
 		case 'r':
 			opt_reader = optarg;
 			break;
+		case 'l':
+			opt_label = optarg;
+			break;
 		case 'v':
 			verbose++;
 			break;
@@ -1509,7 +1516,7 @@ int main(int argc, char * const argv[])
 	}
 
 	if (do_initialize) {
-		initialize(card, opt_so_pin, opt_pin, opt_retry_counter, opt_dkek_shares);
+		initialize(card, opt_so_pin, opt_pin, opt_retry_counter, opt_dkek_shares, opt_label);
 	}
 
 	if (do_create_dkek_share) {
