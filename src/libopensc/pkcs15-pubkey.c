@@ -478,6 +478,7 @@ sc_pkcs15_decode_pubkey_rsa(sc_context_t *ctx, struct sc_pkcs15_pubkey_rsa *key,
 	struct sc_asn1_entry asn1_rsa_pub_coefficients[C_ASN1_RSA_PUB_COEFFICIENTS_SIZE];
 	int r;
 
+	LOG_FUNC_CALLED(ctx);
 	sc_copy_asn1_entry(c_asn1_public_key, asn1_public_key);
 	sc_format_asn1_entry(asn1_public_key + 0, asn1_rsa_pub_coefficients, NULL, 0);
 
@@ -488,7 +489,7 @@ sc_pkcs15_decode_pubkey_rsa(sc_context_t *ctx, struct sc_pkcs15_pubkey_rsa *key,
 	r = sc_asn1_decode(ctx, asn1_public_key, buf, buflen, NULL, NULL);
 	LOG_TEST_RET(ctx, r, "ASN.1 parsing of public key failed");
 
-	return SC_SUCCESS;
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
 
@@ -500,6 +501,7 @@ sc_pkcs15_encode_pubkey_rsa(sc_context_t *ctx, struct sc_pkcs15_pubkey_rsa *key,
 	struct sc_asn1_entry asn1_rsa_pub_coefficients[C_ASN1_RSA_PUB_COEFFICIENTS_SIZE];
 	int r;
 
+	LOG_FUNC_CALLED(ctx);
 	sc_copy_asn1_entry(c_asn1_public_key, asn1_public_key);
 	sc_format_asn1_entry(asn1_public_key + 0, asn1_rsa_pub_coefficients, NULL, 1);
 
@@ -510,7 +512,7 @@ sc_pkcs15_encode_pubkey_rsa(sc_context_t *ctx, struct sc_pkcs15_pubkey_rsa *key,
 	r = sc_asn1_encode(ctx, asn1_public_key, buf, buflen);
 	LOG_TEST_RET(ctx, r, "ASN.1 encoding failed");
 
-	return 0;
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
 
@@ -522,6 +524,7 @@ sc_pkcs15_decode_pubkey_dsa(sc_context_t *ctx, struct sc_pkcs15_pubkey_dsa *key,
 	struct sc_asn1_entry asn1_dsa_pub_coefficients[C_ASN1_DSA_PUB_COEFFICIENTS_SIZE];
 	int r;
 
+	LOG_FUNC_CALLED(ctx);
 	sc_copy_asn1_entry(c_asn1_public_key, asn1_public_key);
 	sc_copy_asn1_entry(c_asn1_dsa_pub_coefficients, asn1_dsa_pub_coefficients);
 
@@ -534,7 +537,7 @@ sc_pkcs15_decode_pubkey_dsa(sc_context_t *ctx, struct sc_pkcs15_pubkey_dsa *key,
 	r = sc_asn1_decode(ctx, asn1_public_key, buf, buflen, NULL, NULL);
 	LOG_TEST_RET(ctx, r, "ASN.1 decoding failed");
 
-	return 0;
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
 
@@ -546,6 +549,7 @@ sc_pkcs15_encode_pubkey_dsa(sc_context_t *ctx, struct sc_pkcs15_pubkey_dsa *key,
 	struct sc_asn1_entry asn1_dsa_pub_coefficients[C_ASN1_DSA_PUB_COEFFICIENTS_SIZE];
 	int r;
 
+	LOG_FUNC_CALLED(ctx);
 	sc_copy_asn1_entry(c_asn1_public_key, asn1_public_key);
 	sc_copy_asn1_entry(c_asn1_dsa_pub_coefficients, asn1_dsa_pub_coefficients);
 
@@ -558,7 +562,7 @@ sc_pkcs15_encode_pubkey_dsa(sc_context_t *ctx, struct sc_pkcs15_pubkey_dsa *key,
 	r = sc_asn1_encode(ctx, asn1_public_key, buf, buflen);
 	LOG_TEST_RET(ctx, r, "ASN.1 encoding failed");
 
-	return 0;
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
 
@@ -571,6 +575,7 @@ sc_pkcs15_decode_pubkey_gostr3410(sc_context_t *ctx, struct sc_pkcs15_pubkey_gos
 	struct sc_object_id param_key = {{ 1, 2, 643, 2, 2, 35, 1, -1}};
 	struct sc_object_id param_hash = {{ 1, 2, 643, 2, 2, 30, 1, -1}};
 
+	LOG_FUNC_CALLED(ctx);
 	sc_copy_asn1_entry(c_asn1_gostr3410_pub_coefficients, asn1_gostr3410_pub_coeff);
 	sc_format_asn1_entry(asn1_gostr3410_pub_coeff + 0, &key->xy.data, &key->xy.len, 0);
 
@@ -580,7 +585,7 @@ sc_pkcs15_decode_pubkey_gostr3410(sc_context_t *ctx, struct sc_pkcs15_pubkey_gos
 	key->params.key = param_key;
 	key->params.hash = param_hash;
 
-	return 0;
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
 int
@@ -614,6 +619,7 @@ sc_pkcs15_decode_pubkey_ec(sc_context_t *ctx,
 	size_t ecpoint_len;
 	struct sc_asn1_entry asn1_ec_pointQ[C_ASN1_EC_POINTQ_SIZE];
 
+	LOG_FUNC_CALLED(ctx);
 	sc_copy_asn1_entry(c_asn1_ec_pointQ, asn1_ec_pointQ);
 	sc_format_asn1_entry(asn1_ec_pointQ + 0, &ecpoint_data, &ecpoint_len, 1);
 	r = sc_asn1_decode(ctx, asn1_ec_pointQ, buf, buflen, NULL, NULL);
@@ -623,7 +629,7 @@ sc_pkcs15_decode_pubkey_ec(sc_context_t *ctx,
 	sc_log(ctx, "decode-EC key=%p, buf=%p, buflen=%d", key, buf, buflen);
 
 	key->ecpointQ.len = ecpoint_len;
-	key->ecpointQ.value = ecpoint_data; 
+	key->ecpointQ.value = ecpoint_data;
 
 	/* An uncompressed ecpoint is of the form 04||x||y
 	 * The 04 indicates uncompressed
@@ -631,7 +637,7 @@ sc_pkcs15_decode_pubkey_ec(sc_context_t *ctx,
 	/* TODO: -DEE  support more then uncompressed */
 	key->params.field_length = (ecpoint_len - 1)/2 * 8;
 
-	return r;
+	LOG_FUNC_RETURN(ctx, r);
 }
 
 
@@ -649,7 +655,7 @@ sc_pkcs15_encode_pubkey_ec(sc_context_t *ctx, struct sc_pkcs15_pubkey_ec *key,
 	LOG_TEST_RET(ctx, r, "ASN.1 encoding failed");
 
 	sc_log(ctx, "EC key->ecpointQ=%p:%d *buf=%p:%d", key->ecpointQ.value, key->ecpointQ.len, *buf, *buflen);
-	return 0;
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
 
@@ -682,9 +688,8 @@ static const struct sc_asn1_entry       c_asn1_spki_key[] = {
 };
 
 /*
- * Encode a pubkey as a SPKI, useful for pkcs15-tool, and for PKCS#15 files. 
+ * Encode a pubkey as a SPKI, useful for pkcs15-tool, and for PKCS#15 files.
  */
-
 int
 sc_pkcs15_encode_pubkey_as_spki(sc_context_t *ctx, struct sc_pkcs15_pubkey *pubkey,
 		u8 **buf, size_t *len)
@@ -695,8 +700,19 @@ sc_pkcs15_encode_pubkey_as_spki(sc_context_t *ctx, struct sc_pkcs15_pubkey *pubk
 	struct sc_pkcs15_u8 pkey;
 	size_t key_len;
 
+	LOG_FUNC_CALLED(ctx);
 	pkey.value =  NULL;
 	pkey.len = 0;
+
+	sc_log(ctx, "Encoding public key with algorithm %i", pubkey->algorithm);
+	if (!pubkey->alg_id)   {
+		pubkey->alg_id = calloc(1, sizeof(struct sc_algorithm_id));
+		if (!pubkey->alg_id)
+			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+
+		sc_init_oid(&pubkey->alg_id->oid);
+		pubkey->alg_id->algorithm = pubkey->algorithm;
+	}
 
 	switch (pubkey->algorithm) {
 	case SC_ALGORITHM_EC:
@@ -705,7 +721,6 @@ sc_pkcs15_encode_pubkey_as_spki(sc_context_t *ctx, struct sc_pkcs15_pubkey *pubk
 		 * For a SPKI, the ecpoint is placed directly in the
 		 * BIT STRING
 		 */
-
 		key_len = pubkey->u.ec.ecpointQ.len * 8;
 		pkey.value = pubkey->u.ec.ecpointQ.value;
 		pkey.len = 0; /* flag as do not delete */
@@ -738,7 +753,7 @@ sc_pkcs15_encode_pubkey_as_spki(sc_context_t *ctx, struct sc_pkcs15_pubkey *pubk
 	if (pkey.len && pkey.value)
 		free(pkey.value);
 
-	return r;
+	LOG_FUNC_RETURN(ctx, r);
 }
 
 
@@ -768,14 +783,13 @@ sc_pkcs15_decode_pubkey_with_param(sc_context_t *ctx, struct sc_pkcs15_pubkey *k
 {
 	/* We assume all algrothims allow SPKI  which starts with a sequence*/
 
-	if (*buf == 0x30) {
+	if (*buf == 0x30)
 		/* Decode  Public Key from SPKI */
 		return sc_pkcs15_copy_pubkey_from_spki_object(ctx, buf, len, key);
-	} else {
-		key->data.value = (u8 *)buf;
-		key->data.len = len;
-		return sc_pkcs15_decode_pubkey(ctx, key, buf, len);
-	}
+
+	key->data.value = (u8 *)buf;
+	key->data.len = len;
+	return sc_pkcs15_decode_pubkey(ctx, key, buf, len);
 }
 
 

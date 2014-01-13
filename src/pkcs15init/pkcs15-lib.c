@@ -1265,8 +1265,9 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15init_pubkeyargs pubkey_args;
-	struct sc_pkcs15_object *object;
-	struct sc_pkcs15_prkey_info *key_info;
+	struct sc_pkcs15_object *object = NULL;
+	struct sc_pkcs15_prkey_info *key_info = NULL;
+	struct sc_pkcs15_pubkey *pubkey = NULL;
 	int r, caller_supplied_id = 0;
 
 	LOG_FUNC_CALLED(ctx);
@@ -1333,16 +1334,25 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 		/* Caller not supplied ID, so,
 		 * if intrinsic ID can be calculated -- overwrite the native one */
 		memset(&iid, 0, sizeof(iid));
-		r = sc_pkcs15init_select_intrinsic_id(p15card, profile, SC_PKCS15_TYPE_PUBKEY,
-				&iid, &pubkey_args.key);
+		r = sc_pkcs15init_select_intrinsic_id(p15card, profile, SC_PKCS15_TYPE_PUBKEY, &iid, &pubkey_args.key);
 		LOG_TEST_RET(ctx, r, "Select intrinsic ID error");
 
 		if (iid.len)
 			key_info->id = iid;
 	}
 
+	pubkey = &pubkey_args.key;
+	if (!pubkey->alg_id)   {
+		pubkey->alg_id = calloc(1, sizeof(struct sc_algorithm_id));
+		if (!pubkey->alg_id)
+			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+
+		sc_init_oid(&pubkey->alg_id->oid);
+		pubkey->alg_id->algorithm = pubkey->algorithm;
+	}
+
 	pubkey_args.id = key_info->id;
-	r = sc_pkcs15_encode_pubkey(ctx, &pubkey_args.key, &object->content.value, &object->content.len);
+	r = sc_pkcs15_encode_pubkey(ctx, pubkey, &object->content.value, &object->content.len);
 	LOG_TEST_RET(ctx, r, "Failed to encode public key");
 
 	r = sc_pkcs15init_add_object(p15card, profile, SC_PKCS15_PRKDF, object);
@@ -1536,8 +1546,7 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
 		key_info->field_length = keybits;
 
 	/* Select a intrinsic Key ID if the user didn't specify one */
-	r = sc_pkcs15init_select_intrinsic_id(p15card, profile, SC_PKCS15_TYPE_PUBKEY,
-			&keyargs->id, &key);
+	r = sc_pkcs15init_select_intrinsic_id(p15card, profile, SC_PKCS15_TYPE_PUBKEY, &keyargs->id, &key);
 	LOG_TEST_RET(ctx, r, "Get intrinsic ID error");
 
 	/* Select a Key ID if the user didn't specify one and there is no intrinsic ID,
