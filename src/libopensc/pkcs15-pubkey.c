@@ -714,6 +714,11 @@ sc_pkcs15_encode_pubkey_as_spki(sc_context_t *ctx, struct sc_pkcs15_pubkey *pubk
 		pubkey->alg_id->algorithm = pubkey->algorithm;
 	}
 
+	/* make sure we have a der encoded value first */
+	if (pubkey->data.value == NULL){
+	    r = sc_pkcs15_encode_pubkey(ctx, pubkey, &pubkey->data.value, &pubkey->data.len);
+	}
+
 	switch (pubkey->algorithm) {
 	case SC_ALGORITHM_EC:
 		/*
