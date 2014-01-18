@@ -24,7 +24,7 @@
 #include "libopensc/log.h"
 #include "libopensc/asn1.h"
 #include "libopensc/cardctl.h"
-#include "libopensc/quirks-reader.h"
+#include "libopensc/reader-quirks.h"
 
 #include "sc-pkcs11.h"
 #ifdef USE_PKCS15_INIT

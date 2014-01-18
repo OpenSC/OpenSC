@@ -28,6 +28,7 @@
 #include "internal.h"
 #include "asn1.h"
 #include "pkcs15.h"
+#include "reader-quirks.h"
 
 static const struct sc_asn1_entry c_asn1_com_ao_attr[] = {
 	{ "authId",       SC_ASN1_PKCS15_ID, SC_ASN1_TAG_OCTET_STRING, 0, NULL, NULL },

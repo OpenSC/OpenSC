@@ -1,5 +1,5 @@
 /*
- * quirks-reader.c: Reader quirks
+ * reader-quirks.c: Reader quirks
  *
  * Copyright (C) 2014  Javier Serrano Polo <javier@jasp.net>
  *
@@ -25,7 +25,7 @@
 #include "log.h"
 #include "opensc.h"
 #include "pkcs15.h"
-#include "quirks-reader.h"
+#include "reader-quirks.h"
 
 static int _vendor_specific_problem(struct sc_reader *reader,
                                     struct sc_pkcs15_auth_info *pkcs15_pin_info)

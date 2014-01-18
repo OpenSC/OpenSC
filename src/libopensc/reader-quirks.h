@@ -1,5 +1,5 @@
 /*
- * quirks-reader.h: Reader quirks header file
+ * reader-quirks.h: Reader quirks header file
  *
  * Copyright (C) 2014  Javier Serrano Polo <javier@jasp.net>
  *
