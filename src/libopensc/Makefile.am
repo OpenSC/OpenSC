@@ -26,6 +26,8 @@ libopensc_la_SOURCES = \
 	pkcs15-prkey.c pkcs15-pubkey.c pkcs15-skey.c \
 	pkcs15-sec.c pkcs15-algo.c pkcs15-cache.c pkcs15-syn.c \
 	\
+	quirks-reader.c \
+	\
 	muscle.c muscle-filesystem.c \
 	\
 	ctbcs.c reader-ctapi.c reader-pcsc.c reader-openct.c \
