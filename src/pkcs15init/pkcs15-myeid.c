@@ -174,10 +174,10 @@ myeid_init_card(sc_profile_t *profile,
 
         r = sc_card_ctl(p15card->card, SC_CARDCTL_GET_SERIALNR, &rbuf);
 	LOG_TEST_RET(p15card->card->ctx, r,  "Get applet info failed");
-        
+
         sc_format_path("3F00", &path);
 	r = sc_select_file(p15card->card, &path, &file);
-        
+
 	if (file)
 		sc_file_free(file);
 
@@ -474,7 +474,7 @@ myeid_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	int r, keybits = key_info->modulus_length;
 
 	LOG_FUNC_CALLED(ctx);
-	
+
 	switch (object->type) {
 		case SC_PKCS15_TYPE_PRKEY_RSA:
 			if (sc_card_find_rsa_alg(p15card->card, keybits) == NULL)
@@ -485,15 +485,15 @@ myeid_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 				LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Unsupported EC key size");
 			if(key_info->field_length != 0)
 				keybits = key_info->field_length;
-			else 
+			else
 				key_info->field_length = keybits;
-				
+
 			break;
 		default:
 			LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Store key failed: Unsupported key type");
 			break;
 	}
-	
+
 	sc_log(ctx, "store MyEID key with ID:%s and path:%s",
 			sc_pkcs15_print_id(&key_info->id), sc_print_path(&key_info->path));
 
@@ -573,9 +573,9 @@ myeid_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 				LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Unsupported EC key size");
 			if(key_info->field_length != 0)
 				keybits = key_info->field_length;
-			else 
+			else
 				key_info->field_length = keybits;
-				
+
 			break;
 		default:
 			LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Unsupported key type");
@@ -635,7 +635,7 @@ myeid_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 				LOG_TEST_RET(ctx, SC_ERROR_PKCS15INIT, "Cannot get RSA key modulus: invalid key-size");
 
 			memcpy(pubkey->u.rsa.modulus.data, raw_pubkey, pubkey->u.rsa.modulus.len);
-		} 
+		}
 		else if (object->type == SC_PKCS15_TYPE_PRKEY_EC) {
 
 			pubkey->algorithm = SC_ALGORITHM_EC;
@@ -652,12 +652,12 @@ myeid_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 			LOG_TEST_RET(ctx, r, "Cannot get EC public key: 'MYEID_GETDATA' failed");
 
 			/*
-			 * TODO DEE - this looks like a bug... 
-			 * pubkey->u.ec.ecpointQ.value is just value. "04||X||Y" 
+			 * TODO DEE - this looks like a bug...
+			 * pubkey->u.ec.ecpointQ.value is just value. "04||X||Y"
 			 * pubkey->data.value should be DER OCTET STRING
-			 * but 
+			 * but
 			 * pubkey->data.value looks like TLV with TAG if 0x86
-			 * and single byte length.  
+			 * and single byte length.
 			 * Could call sc_pkcs15_encode_pubkey
 			 * to set pubkey->data.value
 			 */
