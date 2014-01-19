@@ -290,13 +290,11 @@ int sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card,
 	sc_card_t *card;
 	struct sc_pin_cmd_data data;
 
-	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "PIN(%p;len:%i)", pincode, pinlen);
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Auth(type:%X;method:%X)", auth_info->auth_type, auth_info->auth_method);
+	LOG_FUNC_CALLED(ctx);
+	sc_log(ctx, "PIN(type:%X;method:%X;len:)", auth_info->auth_type, auth_info->auth_method, pinlen);
 
-	r = _validate_pin(p15card, auth_info, pinlen);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "PIN value do not conforms the PIN policy");
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "PIN value validated");
+	if (pinlen > SC_MAX_PIN_SIZE)
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_PIN_LENGTH, "Invalid PIN size");
 
 	card = p15card->card;
 

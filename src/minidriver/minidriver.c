@@ -486,15 +486,6 @@ md_is_supports_container_key_import(PCARD_DATA pCardData)
 }
 
 
-/* Get know if PIN with the length less then PIN's min.length has to be applied to card */
-static BOOL
-md_is_ignore_pin_length(PCARD_DATA pCardData)
-{
-	logprintf(pCardData, 2, "Is short PIN has to be applied to card?\n");
-	return md_get_config_bool(pCardData, "md_ignore_pin_length", MD_STATIC_FLAG_IGNORE_PIN_LENGTH, FALSE);
-}
-
-
 /* Check if specified PIN has been verified */
 static BOOL
 md_is_pin_set(PCARD_DATA pCardData, DWORD role)
@@ -2313,7 +2304,6 @@ DWORD WINAPI CardAuthenticatePin(__in PCARD_DATA pCardData,
 	__in DWORD cbPin,
 	__out_opt PDWORD pcAttemptsRemaining)
 {
-	int r, pin_min_length = 0;
 	struct sc_pkcs15_object *pin_obj = NULL;
 	struct sc_pkcs15_auth_info *auth_info = NULL;
 	char type[256];
@@ -2321,6 +2311,7 @@ DWORD WINAPI CardAuthenticatePin(__in PCARD_DATA pCardData,
 	struct md_file *cardcf_file = NULL;
 	CARD_CACHE_FILE_FORMAT *cardcf = NULL;
 	DWORD dwret;
+	int r;
 
 	if(!pCardData)
 		return SCARD_E_INVALID_PARAMETER;
@@ -2368,15 +2359,7 @@ DWORD WINAPI CardAuthenticatePin(__in PCARD_DATA pCardData,
 		return SCARD_F_INTERNAL_ERROR;
 	auth_info = (struct sc_pkcs15_auth_info *)pin_obj->data;
 
-	if (md_is_ignore_pin_length(pCardData))   {
-		logprintf(pCardData, 2, "Accept PIN with length less then minimal.\n");
-		pin_min_length = auth_info->attrs.pin.min_length;
-		auth_info->attrs.pin.min_length = 1;
-	}
-
 	r = sc_pkcs15_verify_pin(vs->p15card, pin_obj, (const u8 *) pbPin, cbPin);
-	if (pin_min_length)
-		auth_info->attrs.pin.min_length = pin_min_length;
 	if (r)   {
 		logprintf(pCardData, 1, "PIN code verification failed: %s; tries left %i\n", sc_strerror(r), auth_info->tries_left);
 
@@ -3294,12 +3277,12 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 	__out_opt PDWORD pcbSessionPin,
 	__out_opt PDWORD pcAttemptsRemaining)
 {
-	int r, pin_min_length = 0;
 	VENDOR_SPECIFIC *vs;
 	CARD_CACHE_FILE_FORMAT *cardcf = NULL;
 	DWORD dwret;
 	struct sc_pkcs15_object *pin_obj = NULL;
 	struct sc_pkcs15_auth_info *auth_info = NULL;
+	int r;
 
 	logprintf(pCardData, 1, "\nP:%d T:%d pCardData:%p ",GetCurrentProcessId(), GetCurrentThreadId(), pCardData);
 	logprintf(pCardData, 1, "CardAuthenticateEx\n");
@@ -3361,16 +3344,7 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 		}
 	}
 
-	if (md_is_ignore_pin_length(pCardData))   {
-		logprintf(pCardData, 2, "Accept PIN with length less then minimal.\n");
-		pin_min_length = auth_info->attrs.pin.min_length;
-		auth_info->attrs.pin.min_length = 1;
-	}
-
 	r = sc_pkcs15_verify_pin(vs->p15card, pin_obj, (const u8 *) pbPinData, cbPinData);
-	if (pin_min_length)
-		auth_info->attrs.pin.min_length = pin_min_length;
-
 	if (r)   {
 		logprintf(pCardData, 1, "PIN code verification failed: %s; tries left %i\n", sc_strerror(r), auth_info->tries_left);
 

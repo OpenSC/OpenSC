@@ -1396,7 +1396,7 @@ pkcs15_login(struct sc_pkcs11_slot *slot, CK_USER_TYPE userType,
 	struct sc_pkcs15_card *p15card = NULL;
 	struct sc_pkcs15_object *auth_object = NULL;
 	struct sc_pkcs15_auth_info *pin_info = NULL;
-	int rc, pin_min_length = 0;
+	int rc;
 
 	fw_data = (struct pkcs15_fw_data *) p11card->fws_data[slot->fw_data_idx];
 	if (!fw_data)
@@ -1493,21 +1493,9 @@ pkcs15_login(struct sc_pkcs11_slot *slot, CK_USER_TYPE userType,
 		 * a valid pin (which is processed normally). --okir */
 		if (ulPinLen == 0)
 			pPin = NULL;
-	} else {
-		/*
-		 * If PIN is out of range, it cannot be correct.
-		 */
-		if (sc_pkcs11_conf.ignore_pin_length)   {
-			sc_log(context, "Ignore minimal PIN length");
-			pin_min_length = pin_info->attrs.pin.min_length;
-			pin_info->attrs.pin.min_length = 1;
-		}
-
-		if (ulPinLen < pin_info->attrs.pin.min_length || ulPinLen > pin_info->attrs.pin.max_length)   {
-			if (pin_min_length)
-				pin_info->attrs.pin.min_length = pin_min_length;
-			return CKR_PIN_INCORRECT;
-		}
+	}
+	else if (ulPinLen > pin_info->attrs.pin.max_length)   {
+		return CKR_ARGUMENTS_BAD;
 	}
 
 
@@ -1524,17 +1512,12 @@ pkcs15_login(struct sc_pkcs11_slot *slot, CK_USER_TYPE userType,
 	 */
 	if (userType != CKU_CONTEXT_SPECIFIC) {
 		if (sc_pkcs11_conf.lock_login && (rc = lock_card(fw_data)) < 0)   {
-			if (pin_min_length)
-				pin_info->attrs.pin.min_length = pin_min_length;
 			return sc_to_cryptoki_error(rc, "C_Login");
 		}
 	}
 
 	rc = sc_pkcs15_verify_pin(p15card, auth_object, pPin, ulPinLen);
 	sc_log(context, "PKCS15 verify PIN returned %d", rc);
-
-	if (pin_min_length)
-		pin_info->attrs.pin.min_length = pin_min_length;
 
 	if (rc != SC_SUCCESS)
 		return sc_to_cryptoki_error(rc, "C_Login");

@@ -625,18 +625,6 @@ app opensc-pkcs11 {
 		# create_slots_for_pins = "user,sign";
 		# create_slots_for_pins = application;
 		# create_slots_for_pins = "application,sign";
-
-                # Enable C_Login to accept all PIN's lengths.
-                #
-                # Normally when length of applied PIN is less then value of 'min-length' PKCS15 pin attribute,
-                # PIN is rejected by pkcs#15 framework and is not really verified by card.
-                # Thus the on-card 'retry' PIN value remains unchanged.
-                # Pkcs#15 framework of pksc#11 module returns CKR_INCORRECT_PIN.
-                # That's default behavior.
-                # With following option enabled all applied PINs will be verified by card.
-                #
-                # Default: false
-                ignore_pin_length = true;
 	}
 }
 
