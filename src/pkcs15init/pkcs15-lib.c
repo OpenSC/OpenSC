@@ -1318,7 +1318,11 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 	pubkey_args.label = keygen_args->pubkey_label ? keygen_args->pubkey_label : object->label;
 	pubkey_args.usage = keygen_args->prkey_args.usage;
 	pubkey_args.x509_usage = keygen_args->prkey_args.x509_usage;
-	pubkey_args.params.gost = keygen_args->prkey_args.params.gost;
+
+	if (keygen_args->prkey_args.key.algorithm == SC_ALGORITHM_GOSTR3410)
+		pubkey_args.params.gost = keygen_args->prkey_args.params.gost;
+	else if (keygen_args->prkey_args.key.algorithm == SC_ALGORITHM_EC)
+		pubkey_args.params.ec = keygen_args->prkey_args.params.ec;
 
 	/* Generate the private key on card */
 	r = profile->ops->create_key(profile, p15card, object);
@@ -1467,10 +1471,8 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card, struct sc_profil
  * Store a public key
  */
 int
-sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
-		struct sc_profile *profile,
-		struct sc_pkcs15init_pubkeyargs *keyargs,
-		struct sc_pkcs15_object **res_obj)
+sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
+		struct sc_pkcs15init_pubkeyargs *keyargs, struct sc_pkcs15_object **res_obj)
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15_object *object;
@@ -1505,8 +1507,12 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
 		type = SC_PKCS15_TYPE_PUBKEY_GOSTR3410;
 		break;
 	case SC_ALGORITHM_EC:
-		keybits = key.u.ec.params.field_length;
 		type = SC_PKCS15_TYPE_PUBKEY_EC;
+
+		key.u.ec.params = keyargs->params.ec;
+		sc_pkcs15_fix_ec_parameters(ctx, &key.u.ec.params);
+
+		keybits = key.u.ec.params.field_length;
 		break;
 	default:
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Unsupported key algorithm.");
@@ -1537,15 +1543,16 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card,
 		key_info->params.data = malloc(key_info->params.len);
 		if (!key_info->params.data) {
 			/* FIXME free object with sc_pkcs15init_delete_object */
-			return SC_ERROR_OUT_OF_MEMORY;
+			LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate GOST params");
 		}
 		keyinfo_gostparams = key_info->params.data;
 		keyinfo_gostparams->gostr3410 = keyargs->params.gost.gostr3410;
 		keyinfo_gostparams->gostr3411 = keyargs->params.gost.gostr3411;
 		keyinfo_gostparams->gost28147 = keyargs->params.gost.gost28147;
 	}
-	else if(key.algorithm == SC_ALGORITHM_EC)
+	else if (key.algorithm == SC_ALGORITHM_EC)   {
 		key_info->field_length = keybits;
+	}
 
 	/* Select a intrinsic Key ID if the user didn't specify one */
 	r = sc_pkcs15init_select_intrinsic_id(p15card, profile, SC_PKCS15_TYPE_PUBKEY, &keyargs->id, &key);
