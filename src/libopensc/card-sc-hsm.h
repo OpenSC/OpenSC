@@ -116,6 +116,6 @@ int sc_pkcs15emu_sc_hsm_encode_cvc(sc_pkcs15_card_t * p15card,
 		u8 ** buf, size_t *buflen);
 void sc_pkcs15emu_sc_hsm_free_cvc(sc_cvc_t *cvc);
 int sc_pkcs15emu_sc_hsm_get_curve(struct ec_curve **curve, u8 *oid, size_t oidlen);
-int sc_pkcs15emu_sc_hsm_get_public_key(sc_cvc_t *cvc, struct sc_pkcs15_pubkey *pubkey);
+int sc_pkcs15emu_sc_hsm_get_public_key(struct sc_context *ctx, sc_cvc_t *cvc, struct sc_pkcs15_pubkey *pubkey);
 
 #endif /* SC_HSM_H_ */
