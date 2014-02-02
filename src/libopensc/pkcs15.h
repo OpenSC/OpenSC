@@ -221,7 +221,7 @@ struct sc_pkcs15_gost_parameters {
 
 struct sc_pkcs15_pubkey_ec {
 	struct sc_pkcs15_ec_parameters params;
-	struct sc_pkcs15_u8		ecpointQ; /* This is NOT DER, just value and length */
+	struct sc_pkcs15_u8 ecpointQ; /* This is NOT DER, just value and length */
 };
 
 struct sc_pkcs15_prkey_ec {
@@ -251,9 +251,6 @@ struct sc_pkcs15_pubkey {
 		struct sc_pkcs15_pubkey_ec ec;
 		struct sc_pkcs15_pubkey_gostr3410 gostr3410;
 	} u;
-
-	/* DER encoded raw key */
-	struct sc_pkcs15_der data;
 };
 typedef struct sc_pkcs15_pubkey sc_pkcs15_pubkey_t;
 
@@ -474,6 +471,11 @@ struct sc_pkcs15_pubkey_info {
 	struct sc_pkcs15_key_params params;
 
 	struct sc_path path;
+
+	struct {
+		struct sc_pkcs15_der raw;
+		struct sc_pkcs15_der spki;
+	} direct;
 };
 typedef struct sc_pkcs15_pubkey_info sc_pkcs15_pubkey_info_t;
 

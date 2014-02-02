@@ -914,11 +914,8 @@ sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "DEE Adding pin %d label=%s",i, label);
 			pubkey_obj.emulated = p15_key;
 			p15_key = NULL;
 		}
-		else if (ckis[i].pubkey_from_cert && ckis[i].pubkey_from_cert->data.value) {
-		    sc_pkcs15_encode_pubkey_as_spki(card->ctx,ckis[i].pubkey_from_cert,
-				&pubkey_obj.content.value, &pubkey_obj.content.len);
-//		    sc_der_copy(&pubkey_obj.content, &ckis[i].pubkey_from_cert->data);
-		    pubkey_obj.emulated = ckis[i].pubkey_from_cert;
+		else if (ckis[i].pubkey_from_cert && ckis[i].pubkey_from_cert) {
+			pubkey_obj.emulated = ckis[i].pubkey_from_cert;
 		}
 
 		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"adding pubkey for %d keyalg=%d",i, ckis[i].key_alg);
