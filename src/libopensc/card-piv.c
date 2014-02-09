@@ -1790,10 +1790,11 @@ static int piv_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 	piv_private_data_t * priv = PIV_DATA(card);
 	u8 * opts; /*  A or M, key_ref, alg_id */
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"cmd=%ld ptr=%p");
+	LOG_FUNC_CALLED(card->ctx);
+	sc_log(card->ctx, "cmd=%ld ptr=%p", cmd, ptr);
+
 	if (priv == NULL) {
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INTERNAL);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 	}
 	switch(cmd) {
 		case SC_CARDCTL_PIV_AUTHENTICATE:
@@ -1824,7 +1825,7 @@ static int piv_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 			break;
 	}
 
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED);
+	LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 }
 
 static int piv_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
