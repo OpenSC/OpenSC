@@ -787,11 +787,17 @@ int
 sc_pkcs15_decode_pubkey_with_param(sc_context_t *ctx, struct sc_pkcs15_pubkey *key,
 		const u8 *buf, size_t len)
 {
-	/* We assume all algrothims allow SPKI  which starts with a sequence*/
+	int r;
 
-	if (*buf == 0x30)
+	/* We assume all algorithms allow SPKI which starts with a sequence */
+
+	if (*buf == 0x30) {			/* Is SPKI or encoded RSA public key */
 		/* Decode  Public Key from SPKI */
-		return sc_pkcs15_copy_pubkey_from_spki_object(ctx, buf, len, key);
+		r = sc_pkcs15_copy_pubkey_from_spki_object(ctx, buf, len, key);
+		if (r == SC_SUCCESS)
+			return r;
+		/* Fallback to plain public key format */
+	}
 
 	key->data.value = (u8 *)buf;
 	key->data.len = len;
