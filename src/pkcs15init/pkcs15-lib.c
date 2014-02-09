@@ -2554,6 +2554,11 @@ sc_pkcs15init_update_tokeninfo(struct sc_pkcs15_card *p15card, struct sc_profile
 	if (profile->ops->emu_update_tokeninfo)
 		return profile->ops->emu_update_tokeninfo(profile, p15card, p15card->tokeninfo);
 
+	if (!p15card->file_tokeninfo)   {
+		sc_log(ctx, "No TokenInfo to update");
+		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+	}
+
 	rv = sc_pkcs15_encode_tokeninfo(ctx, p15card->tokeninfo, &buf, &size);
 	if (rv >= 0)
 		rv = sc_pkcs15init_update_file(profile, p15card, p15card->file_tokeninfo, buf, size);
@@ -3461,6 +3466,9 @@ sc_pkcs15init_update_file(struct sc_profile *profile,
 	int		r, need_to_zap = 0;
 
 	LOG_FUNC_CALLED(ctx);
+	if (!file)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+
 	sc_log(ctx, "path:%s; datalen:%i", sc_print_path(&file->path), datalen);
 
 	r = sc_select_file(p15card->card, &file->path, &selected_file);
