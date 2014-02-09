@@ -1431,10 +1431,12 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card, struct sc_profil
 	/* Get the number of private keys already on this card */
 	/*idx = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PRKEY, NULL, 0);*/
 
-	r = profile->ops->create_key(profile, p15card, object);
+	if (profile->ops->create_key)
+		r = profile->ops->create_key(profile, p15card, object);
 	LOG_TEST_RET(ctx, r, "Card specific 'create key' failed");
 
-	r = profile->ops->store_key(profile, p15card, object, &key);
+	if (profile->ops->store_key)
+		r = profile->ops->store_key(profile, p15card, object, &key);
 	LOG_TEST_RET(ctx, r, "Card specific 'store key' failed");
 
 	sc_pkcs15_free_object_content(object);
