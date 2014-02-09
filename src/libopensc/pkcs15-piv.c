@@ -120,7 +120,7 @@ typedef struct common_key_info_st {
  */
 
 static int piv_get_guid(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_object *obj,
-		char *out, size_t out_size)
+		unsigned char *out, size_t out_size)
 {
 	struct sc_serial_number serialnr;
 	struct sc_pkcs15_id  id;
@@ -875,15 +875,13 @@ sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "DEE Adding pin %d label=%s",i, label);
 			
 			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"Adding pubkey from file %s",filename);
 
-			r = sc_pkcs15_pubkey_from_spki_filename(card->ctx, 
-						filename,
-						&p15_key);
+			r = sc_pkcs15_pubkey_from_spki_filename(card->ctx,  filename, &p15_key);
 			if (r < 0) 
 				continue;
 
 			/* Lets also try another method. */
-			sc_pkcs15_encode_pubkey_as_spki(card->ctx,p15_key, 
-				&pubkey_obj.content.value, &pubkey_obj.content.len);
+			r = sc_pkcs15_encode_pubkey_as_spki(card->ctx, p15_key, &pubkey_info.direct.spki.value, &pubkey_info.direct.spki.len);
+        		LOG_TEST_RET(card->ctx, r, "SPKI encode public key error");
 			
 			/* Only get here if no cert, and the the above found the
 			 * pub key file (actually the SPKI version). This only 
@@ -916,7 +914,10 @@ sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "DEE Adding pin %d label=%s",i, label);
 			pubkey_obj.emulated = p15_key;
 			p15_key = NULL;
 		}
-		else if (ckis[i].pubkey_from_cert && ckis[i].pubkey_from_cert) {
+		else if (ckis[i].pubkey_from_cert)   {
+			r = sc_pkcs15_encode_pubkey_as_spki(card->ctx, ckis[i].pubkey_from_cert, &pubkey_info.direct.spki.value, &pubkey_info.direct.spki.len);
+        		LOG_TEST_RET(card->ctx, r, "SPKI encode public key error");
+
 			pubkey_obj.emulated = ckis[i].pubkey_from_cert;
 		}
 
