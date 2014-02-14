@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2004  Martin Paljak <martin@martinpaljak.net>
  * Copyright (C) 2004  Priit Randla <priit.randla@eyp.ee>
- * Copyright (C) 2003  Marie Fischer <marie@vtl.ee> 
+ * Copyright (C) 2003  Marie Fischer <marie@vtl.ee>
  * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
  * Copyright (C) 2002  g10 Code GmbH
  *
@@ -272,11 +272,28 @@ int is_esteid_card(sc_card_t *card) {
 }
 static int mcrd_match_card(sc_card_t * card)
 {
-	int i = 0;
+	int i = 0, r = 0;
+	sc_apdu_t apdu;
+
 	i = _sc_match_atr(card, mcrd_atrs, &card->type);
 	if (i >= 0) {
 		card->name = mcrd_atrs[i].name;
 		return 1;
+	}
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3, 0xA4, 0x04, 0x00);
+	apdu.lc = sizeof(EstEID_v35_AID);
+	apdu.data = EstEID_v35_AID;
+	apdu.datalen = sizeof(EstEID_v35_AID);
+	apdu.resplen = 0;
+	apdu.le = 0;
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "SELECT AID: %02X%02X", apdu.sw1, apdu.sw2);
+	if(apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
+	        sc_log(card->ctx, "AID found");
+	        card->type = SC_CARD_TYPE_MCRD_ESTEID_V30;
+	        return 1;
 	}
 	return 0;
 }
