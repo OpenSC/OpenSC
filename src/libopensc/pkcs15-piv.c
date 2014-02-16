@@ -875,7 +875,7 @@ sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "DEE Adding pin %d label=%s",i, label);
 			
 			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"Adding pubkey from file %s",filename);
 
-			r = sc_pkcs15_pubkey_from_spki_filename(card->ctx,  filename, &p15_key);
+			r = sc_pkcs15_pubkey_from_spki_file(card->ctx,  filename, &p15_key);
 			if (r < 0) 
 				continue;
 

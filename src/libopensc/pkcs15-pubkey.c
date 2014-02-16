@@ -152,7 +152,7 @@ static const struct sc_asn1_entry c_asn1_pubkey[C_ASN1_PUBKEY_SIZE] = {
 		{ NULL, 0, 0, 0, NULL, NULL }
 };
 
-int sc_pkcs15_pubkey_from_spki_object(sc_context_t *ctx, const u8 *buf, size_t buflen, sc_pkcs15_pubkey_t ** outpubkey);
+int sc_pkcs15_pubkey_from_spki_sequence(sc_context_t *ctx, const u8 *buf, size_t buflen, sc_pkcs15_pubkey_t ** outpubkey);
 
 int
 sc_pkcs15_decode_pubkey_direct_value(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *obj)
@@ -188,7 +188,7 @@ sc_pkcs15_decode_pubkey_direct_value(struct sc_pkcs15_card *p15card, struct sc_p
 		memcpy(info->direct.spki.value, obj->content.value, obj->content.len);
 		info->direct.spki.len = obj->content.len;
 
-		rv = sc_pkcs15_pubkey_from_spki_object(ctx, info->direct.spki.value, info->direct.spki.len, &pubkey);
+		rv = sc_pkcs15_pubkey_from_spki_sequence(ctx, info->direct.spki.value, info->direct.spki.len, &pubkey);
 		LOG_TEST_RET(ctx, rv, "Failed to decode 'SPKI' direct value");
 
 		rv = sc_pkcs15_encode_pubkey(ctx, pubkey, &info->direct.raw.value, &info->direct.raw.len);
@@ -914,7 +914,7 @@ sc_pkcs15_read_pubkey(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_obj
 	   in a compact form it presents complete public key data */
 	if (info->direct.spki.value && info->direct.spki.len)   {
 		sc_log(ctx, "Using direct SPKI value,  tag 0x%X", *(info->direct.spki.value));
-		r = sc_pkcs15_pubkey_from_spki_object(ctx, info->direct.spki.value, info->direct.spki.len, &pubkey);
+		r = sc_pkcs15_pubkey_from_spki_sequence(ctx, info->direct.spki.value, info->direct.spki.len, &pubkey);
 		LOG_TEST_RET(ctx, r, "Failed to decode 'SPKI' direct value");
 	}
 	else if (info->direct.raw.value && info->direct.raw.len)   {
@@ -1154,10 +1154,10 @@ sc_pkcs15_read_der_file(sc_context_t *ctx, char * filename,
 
 /*
  * can be used as an SC_ASN1_CALLBACK while parsing a certificate,
- * or can be called from the sc_pkcs15_pubkey_from_spki_filename
+ * or can be called from the sc_pkcs15_pubkey_from_spki_file
  */
 int
-sc_pkcs15_pubkey_from_spki(struct sc_context *ctx, struct sc_pkcs15_pubkey **outpubkey,
+sc_pkcs15_pubkey_from_spki_fields(struct sc_context *ctx, struct sc_pkcs15_pubkey **outpubkey,
 		unsigned char *buf, size_t buflen, int depth)
 {
 
@@ -1168,7 +1168,7 @@ sc_pkcs15_pubkey_from_spki(struct sc_context *ctx, struct sc_pkcs15_pubkey **out
 	unsigned char *tmp_buf = NULL;
 	int r;
 
-	sc_log(ctx, "sc_pkcs15_pubkey_from_spki %p:%d %s", buf, buflen, sc_dump_hex(buf, buflen));
+	sc_log(ctx, "sc_pkcs15_pubkey_from_spki_fields %p:%d %s", buf, buflen, sc_dump_hex(buf, buflen));
 
 	tmp_buf = malloc(buflen);
 	if (!tmp_buf)
@@ -1240,13 +1240,13 @@ sc_pkcs15_pubkey_from_spki(struct sc_context *ctx, struct sc_pkcs15_pubkey **out
 
 
 int
-sc_pkcs15_pubkey_from_spki_object(sc_context_t *ctx, const u8 *buf, size_t buflen,
+sc_pkcs15_pubkey_from_spki_sequence(sc_context_t *ctx, const u8 *buf, size_t buflen,
 		sc_pkcs15_pubkey_t ** outpubkey)
 {
 	int r;
 	sc_pkcs15_pubkey_t * pubkey = NULL;
 	struct sc_asn1_entry asn1_spki[] = {
-			{ "subjectPublicKeyInfo", SC_ASN1_CALLBACK, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, sc_pkcs15_pubkey_from_spki, &pubkey},
+			{ "subjectPublicKeyInfo", SC_ASN1_CALLBACK, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, sc_pkcs15_pubkey_from_spki_fields, &pubkey},
 			{ NULL, 0, 0, 0, NULL, NULL } };
 
 	*outpubkey = NULL;
@@ -1259,7 +1259,7 @@ sc_pkcs15_pubkey_from_spki_object(sc_context_t *ctx, const u8 *buf, size_t bufle
 
 
 int
-sc_pkcs15_pubkey_from_spki_filename(sc_context_t *ctx, char * filename,
+sc_pkcs15_pubkey_from_spki_file(sc_context_t *ctx, char * filename,
 		sc_pkcs15_pubkey_t ** outpubkey)
 {
 	int r;
@@ -1270,7 +1270,7 @@ sc_pkcs15_pubkey_from_spki_filename(sc_context_t *ctx, char * filename,
 	if (r < 0)
 		return r;
 
-	r = sc_pkcs15_pubkey_from_spki_object(ctx, buf, buflen, outpubkey);
+	r = sc_pkcs15_pubkey_from_spki_sequence(ctx, buf, buflen, outpubkey);
 
 	if (buf)
 		free(buf);
