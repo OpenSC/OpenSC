@@ -152,7 +152,6 @@ static const struct sc_asn1_entry c_asn1_pubkey[C_ASN1_PUBKEY_SIZE] = {
 		{ NULL, 0, 0, 0, NULL, NULL }
 };
 
-int sc_pkcs15_copy_pubkey_from_spki_object(sc_context_t *ctx, const u8 *buf, size_t buflen,sc_pkcs15_pubkey_t *pubkey);
 int sc_pkcs15_pubkey_from_spki_object(sc_context_t *ctx, const u8 *buf, size_t buflen, sc_pkcs15_pubkey_t ** outpubkey);
 
 int
@@ -789,8 +788,7 @@ sc_pkcs15_encode_pubkey_as_spki(sc_context_t *ctx, struct sc_pkcs15_pubkey *pubk
 		u8 **buf, size_t *len)
 {
 	int r;
-	struct sc_asn1_entry  asn1_spki_key[2],
-	asn1_spki_key_items[3];
+	struct sc_asn1_entry  asn1_spki_key[2], asn1_spki_key_items[3];
 	struct sc_pkcs15_u8 pkey;
 	size_t key_len;
 
@@ -1278,22 +1276,6 @@ sc_pkcs15_pubkey_from_spki_filename(sc_context_t *ctx, char * filename,
 		free(buf);
 
 	return r;
-}
-
-
-int
-sc_pkcs15_copy_pubkey_from_spki_object(sc_context_t *ctx, const u8 *buf, size_t buflen, sc_pkcs15_pubkey_t *pubkey)
-{
-	int r;
-	sc_pkcs15_pubkey_t *outpubkey = NULL;
-
-	r = sc_pkcs15_pubkey_from_spki_object(ctx, buf, buflen, &outpubkey);
-	if (r < 0)
-		return r;
-
-	sc_pkcs15_erase_pubkey(pubkey);
-	*pubkey = *outpubkey;
-	return 0;
 }
 
 
