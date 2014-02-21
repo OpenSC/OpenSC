@@ -599,6 +599,8 @@ authentic_pkcs15_generate_key(struct sc_profile *profile, sc_pkcs15_card_t *p15c
 	struct sc_pkcs15_prkey_info *key_info = (struct sc_pkcs15_prkey_info *) object->data;
 	size_t keybits = key_info->modulus_length;
 	struct sc_authentic_sdo *sdo = NULL;
+	unsigned char *tmp = NULL;
+	size_t tmp_len;
 	unsigned long caps;
 	int rv;
 
@@ -635,18 +637,20 @@ authentic_pkcs15_generate_key(struct sc_profile *profile, sc_pkcs15_card_t *p15c
 	pubkey->u.rsa.exponent = sdo->data.prvkey->u.rsa.exponent;
 	sdo->data.prvkey = NULL;
 
-	rv = sc_pkcs15_encode_pubkey(ctx, pubkey, &pubkey->data.value, &pubkey->data.len);
+	rv = sc_pkcs15_encode_pubkey(ctx, pubkey, &tmp, &tmp_len);
 	LOG_TEST_RET(ctx, rv, "encode public key failed");
 
-	/* Here fix the key's supported algorithms, if these ones will be implemented
+	/*
+	 * Here algorithms supported by key have to be fixed, if it will be implemented
 	 * (see src/libopensc/pkcs15-prkey.c).
 	 */
 
 	authentic_free_sdo_data(sdo);
 
-	rv = sc_pkcs15_allocate_object_content(ctx, object, pubkey->data.value, pubkey->data.len);
+	rv = sc_pkcs15_allocate_object_content(ctx, object, tmp, tmp_len);
 	LOG_TEST_RET(ctx, rv, "Failed to allocate public key as object content");
 
+	free(tmp);
 	LOG_FUNC_RETURN(ctx, rv);
 }
 

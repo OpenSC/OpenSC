@@ -421,6 +421,7 @@ myeid_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 					"Unsupported RSA key size");
 			break;
 		case SC_PKCS15_TYPE_PRKEY_EC:
+			LOG_TEST_RET(ctx, SC_ERROR_NOT_IMPLEMENTED, "20140202: waiting for cards and specification from Aventra. VTA");
 			if (sc_card_find_ec_alg(p15card->card, keybits) == NULL)
 				LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS,
 					"Unsupported EC key size");
@@ -481,6 +482,7 @@ myeid_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 				LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Unsupported RSA key size");
 			break;
 		case SC_PKCS15_TYPE_PRKEY_EC:
+			LOG_TEST_RET(ctx, SC_ERROR_NOT_IMPLEMENTED, "20140202: waiting for cards and specification from Aventra. VTA");
 			if (sc_card_find_ec_alg(p15card->card, keybits) == NULL)
 				LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Unsupported EC key size");
 			if(key_info->field_length != 0)
@@ -569,6 +571,8 @@ myeid_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 				LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Unsupported RSA key size");
 			break;
 		case SC_PKCS15_TYPE_PRKEY_EC:
+			LOG_TEST_RET(ctx, SC_ERROR_NOT_IMPLEMENTED, "20140202: waiting for cards and specification from Aventra. VTA");
+
 			if (sc_card_find_ec_alg(p15card->card, keybits) == NULL)
 				LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Unsupported EC key size");
 			if(key_info->field_length != 0)
@@ -664,12 +668,12 @@ myeid_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 
 			pubkey->u.ec.ecpointQ.value = malloc(data_obj.DataLen - 2);
 			pubkey->u.ec.ecpointQ.len = data_obj.DataLen - 2;
-			pubkey->data.value = malloc(data_obj.DataLen);
-			pubkey->data.len = data_obj.DataLen;
+			//pubkey->data.value = malloc(data_obj.DataLen);
+			//pubkey->data.len = data_obj.DataLen;
 			pubkey->u.ec.params.field_length = keybits;
 			/* Omit the first 2 bytes (0x86??) */
 			memcpy(pubkey->u.ec.ecpointQ.value, data_obj.Data + 2, data_obj.DataLen - 2);
-			memcpy(pubkey->data.value, data_obj.Data, data_obj.DataLen);
+			//memcpy(pubkey->data.value, data_obj.Data, data_obj.DataLen);
 		}
 	}
 

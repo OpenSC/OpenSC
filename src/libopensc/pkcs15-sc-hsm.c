@@ -329,7 +329,7 @@ int sc_pkcs15emu_sc_hsm_get_curve_oid(sc_cvc_t *cvc, const struct sc_lv_data **o
 
 
 
-static int sc_pkcs15emu_sc_hsm_get_rsa_public_key(sc_cvc_t *cvc, struct sc_pkcs15_pubkey *pubkey)
+static int sc_pkcs15emu_sc_hsm_get_rsa_public_key(struct sc_context *ctx, sc_cvc_t *cvc, struct sc_pkcs15_pubkey *pubkey)
 {
 	pubkey->algorithm = SC_ALGORITHM_RSA;
 
@@ -354,7 +354,7 @@ static int sc_pkcs15emu_sc_hsm_get_rsa_public_key(sc_cvc_t *cvc, struct sc_pkcs1
 
 
 
-static int sc_pkcs15emu_sc_hsm_get_ec_public_key(sc_cvc_t *cvc, struct sc_pkcs15_pubkey *pubkey)
+static int sc_pkcs15emu_sc_hsm_get_ec_public_key(struct sc_context *ctx, sc_cvc_t *cvc, struct sc_pkcs15_pubkey *pubkey)
 {
 	struct sc_ec_params *ecp;
 	const struct sc_lv_data *oid;
@@ -390,21 +390,28 @@ static int sc_pkcs15emu_sc_hsm_get_ec_public_key(sc_cvc_t *cvc, struct sc_pkcs15
 	pubkey->u.ec.ecpointQ.value = malloc(cvc->publicPointlen);
 	if (!pubkey->u.ec.ecpointQ.value)
 		return SC_ERROR_OUT_OF_MEMORY;
-
 	memcpy(pubkey->u.ec.ecpointQ.value, cvc->publicPoint, cvc->publicPointlen);
 	pubkey->u.ec.ecpointQ.len = cvc->publicPointlen;
+
+	pubkey->u.ec.params.der.value = malloc(ecp->der_len);
+	if (!pubkey->u.ec.params.der.value)
+		return SC_ERROR_OUT_OF_MEMORY;
+	memcpy(pubkey->u.ec.params.der.value, ecp->der, ecp->der_len);
+	pubkey->u.ec.params.der.len = ecp->der_len;
+
+	sc_pkcs15_fix_ec_parameters(ctx, &pubkey->u.ec.params);
 
 	return SC_SUCCESS;
 }
 
 
 
-int sc_pkcs15emu_sc_hsm_get_public_key(sc_cvc_t *cvc, struct sc_pkcs15_pubkey *pubkey)
+int sc_pkcs15emu_sc_hsm_get_public_key(struct sc_context *ctx, sc_cvc_t *cvc, struct sc_pkcs15_pubkey *pubkey)
 {
 	if (cvc->publicPoint || cvc->publicPointlen) {
-		return sc_pkcs15emu_sc_hsm_get_ec_public_key(cvc, pubkey);
+		return sc_pkcs15emu_sc_hsm_get_ec_public_key(ctx, cvc, pubkey);
 	} else {
-		return sc_pkcs15emu_sc_hsm_get_rsa_public_key(cvc, pubkey);
+		return sc_pkcs15emu_sc_hsm_get_rsa_public_key(ctx, cvc, pubkey);
 	}
 }
 
@@ -440,7 +447,9 @@ void sc_pkcs15emu_sc_hsm_free_cvc(sc_cvc_t *cvc)
 
 
 
-static int sc_pkcs15emu_sc_hsm_add_pubkey(sc_pkcs15_card_t *p15card, sc_pkcs15_prkey_info_t *key_info, char *label) {
+static int sc_pkcs15emu_sc_hsm_add_pubkey(sc_pkcs15_card_t *p15card, sc_pkcs15_prkey_info_t *key_info, char *label)
+{
+	struct sc_context *ctx = p15card->card->ctx;
 	sc_card_t *card = p15card->card;
 	sc_pkcs15_pubkey_info_t pubkey_info;
 	sc_pkcs15_object_t pubkey_obj;
@@ -453,23 +462,25 @@ static int sc_pkcs15emu_sc_hsm_add_pubkey(sc_pkcs15_card_t *p15card, sc_pkcs15_p
 
 	/* EF.CERT is selected */
 	r = sc_read_binary(p15card->card, 0, efbin, sizeof(efbin), 0);
-	LOG_TEST_RET(card->ctx, r, "Could not read CSR from EF");
+	LOG_TEST_RET(ctx, r, "Could not read CSR from EF");
 
 	cvcpo = efbin;
 	cvclen = r;
 
 	memset(&cvc, 0, sizeof(cvc));
 	r = sc_pkcs15emu_sc_hsm_decode_cvc(p15card, (const u8 **)&cvcpo, &cvclen, &cvc);
-	LOG_TEST_RET(card->ctx, r, "Could decode certificate signing request");
+	LOG_TEST_RET(ctx, r, "Could decode certificate signing request");
 
 	memset(&pubkey, 0, sizeof(pubkey));
-	r = sc_pkcs15emu_sc_hsm_get_public_key(&cvc, &pubkey);
+	r = sc_pkcs15emu_sc_hsm_get_public_key(ctx, &cvc, &pubkey);
 	LOG_TEST_RET(card->ctx, r, "Could not extract public key");
 
 	memset(&pubkey_info, 0, sizeof(pubkey_info));
 	memset(&pubkey_obj, 0, sizeof(pubkey_obj));
 
-	sc_pkcs15_encode_pubkey_as_spki(p15card->card->ctx, &pubkey, &pubkey_obj.content.value, &pubkey_obj.content.len);
+	sc_pkcs15_encode_pubkey(ctx, &pubkey, &pubkey_obj.content.value, &pubkey_obj.content.len);
+	sc_pkcs15_encode_pubkey(ctx, &pubkey, &pubkey_info.direct.raw.value, &pubkey_info.direct.raw.len);
+	sc_pkcs15_encode_pubkey_as_spki(ctx, &pubkey, &pubkey_info.direct.spki.value, &pubkey_info.direct.spki.len);
 
 	pubkey_info.id = key_info->id;
 	strlcpy(pubkey_obj.label, label, sizeof(pubkey_obj.label));
@@ -481,7 +492,7 @@ static int sc_pkcs15emu_sc_hsm_add_pubkey(sc_pkcs15_card_t *p15card, sc_pkcs15_p
 		pubkey_info.field_length = cvc.primeOrModuluslen << 3;
 		r = sc_pkcs15emu_add_ec_pubkey(p15card, &pubkey_obj, &pubkey_info);
 	}
-	LOG_TEST_RET(card->ctx, r, "Could not add public key");
+	LOG_TEST_RET(ctx, r, "Could not add public key");
 
 	sc_pkcs15emu_sc_hsm_free_cvc(&cvc);
 	sc_pkcs15_erase_pubkey(&pubkey);

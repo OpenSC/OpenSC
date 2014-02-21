@@ -303,7 +303,7 @@ static int sc_hsm_generate_key(struct sc_profile *profile, struct sc_pkcs15_card
 	}
 
 	if (pubkey != NULL) {
-		r = sc_pkcs15emu_sc_hsm_get_public_key(&cvc, pubkey);
+		r = sc_pkcs15emu_sc_hsm_get_public_key(p15card->card->ctx, &cvc, pubkey);
 	}
 
 	out:

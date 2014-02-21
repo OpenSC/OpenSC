@@ -2571,6 +2571,7 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 			unsigned char *bytes = NULL;
 			unsigned int n;
 			int ksize;
+
 			bytes = getEC_POINT(sess, obj, &size);
 			/*
 			 * (We only support uncompressed for now)
@@ -2586,10 +2587,10 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 			else
 				ksize = (size - 5) * 4;
 
-			printf(" EC_POINT %d bits\n", ksize);
+			printf("  EC_POINT %d bits\n", ksize);
 			if (bytes) {
 				if ((CK_LONG)size > 0) { /* Will print the point here */
-					printf(" EC_POINT:  ");
+					printf("  EC_POINT:   ");
 					for (n = 0; n < size; n++)
 						printf("%02x", bytes[n]);
 					printf("\n");

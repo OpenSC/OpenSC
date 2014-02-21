@@ -605,8 +605,8 @@ static int
 __pkcs15_create_pubkey_object(struct pkcs15_fw_data *fw_data,
 	struct sc_pkcs15_object *pubkey, struct pkcs15_any_object **pubkey_object)
 {
-	struct pkcs15_pubkey_object *object;
-	struct sc_pkcs15_pubkey *p15_key;
+	struct pkcs15_pubkey_object *object = NULL;
+	struct sc_pkcs15_pubkey *p15_key = NULL;
 	int rv;
 
 	/* Read public key from card */
@@ -615,15 +615,17 @@ __pkcs15_create_pubkey_object(struct pkcs15_fw_data *fw_data,
 	 * and saved as a file before the certificate has been created.
 	 */
 	if (pubkey->flags & SC_PKCS15_CO_FLAG_PRIVATE)   {	/* is the key private? */
+		sc_log(context, "No pubkey");
 		p15_key = NULL;					/* will read key when needed */
 	}
 	else {
 		/* if emulation already created pubkey use it */
 		if (pubkey->emulated && (fw_data->p15_card->flags & SC_PKCS15_CARD_FLAG_EMULATED)) {
+			sc_log(context, "Use emulated pubkey");
 			p15_key = (struct sc_pkcs15_pubkey *) pubkey->emulated;
-			sc_log(context, "Using emulated pubkey %p", p15_key);
 		}
 		else {
+			sc_log(context, "Get pubkey from PKCS#15 object");
 			rv = sc_pkcs15_read_pubkey(fw_data->p15_card, pubkey, &p15_key);
 			if (rv < 0)
 				 p15_key = NULL;
@@ -2761,11 +2763,17 @@ pkcs15_gen_keypair(struct sc_pkcs11_slot *slot, CK_MECHANISM_PTR pMechanism,
 		pub_args.key.algorithm               = SC_ALGORITHM_GOSTR3410;
 		set_gost_params(&keygen_args.prkey_args.params.gost, &pub_args.params.gost,
 				pPubTpl, ulPubCnt, pPrivTpl, ulPrivCnt);
+		keybits = SC_PKCS15_GOSTR3410_KEYSIZE;
 	}
 	else if (keytype == CKK_RSA)   {
 		/* default value (CKA_KEY_TYPE isn't set) or CKK_RSA is set */
 		keygen_args.prkey_args.key.algorithm = SC_ALGORITHM_RSA;
 		pub_args.key.algorithm               = SC_ALGORITHM_RSA;
+
+		rv = attr_find2(pPubTpl, ulPubCnt, pPrivTpl, ulPrivCnt,	CKA_MODULUS_BITS, &keybits, NULL);
+		if (rv != CKR_OK)
+			keybits = 1024; /* Default key size */
+		/* TODO: check allowed values of keybits */
 	}
 	else if (keytype == CKK_EC)   {
 		struct sc_pkcs15_der *der = &keygen_args.prkey_args.params.ec.der;
@@ -2785,20 +2793,9 @@ pkcs15_gen_keypair(struct sc_pkcs11_slot *slot, CK_MECHANISM_PTR pMechanism,
 		rv = CKR_ATTRIBUTE_VALUE_INVALID;
 		goto kpgen_done;
 	}
-	if (keytype == CKK_GOSTR3410)
-		keybits = SC_PKCS15_GOSTR3410_KEYSIZE;
-	else if (keytype == CKK_RSA)
-	{
-		rv = attr_find2(pPubTpl, ulPubCnt, pPrivTpl, ulPrivCnt,	CKA_MODULUS_BITS,
-			&keybits, NULL);
-		if (rv != CKR_OK)
-			keybits = 1024; /* Default key size */
-		/* TODO: check allowed values of keybits */
-	}
 
 	id.len = SC_PKCS15_MAX_ID_SIZE;
-	rv = attr_find2(pPubTpl, ulPubCnt, pPrivTpl, ulPrivCnt,	CKA_ID,
-		&id.value, &id.len);
+	rv = attr_find2(pPubTpl, ulPubCnt, pPrivTpl, ulPrivCnt,	CKA_ID, &id.value, &id.len);
 	if (rv == CKR_OK)
 		keygen_args.prkey_args.id = pub_args.id = id;
 
@@ -2828,8 +2825,7 @@ pkcs15_gen_keypair(struct sc_pkcs11_slot *slot, CK_MECHANISM_PTR pMechanism,
 	sc_pkcs15init_set_p15card(profile, fw_data->p15_card);
 
 	sc_log(context, "Try on-card key pair generation");
-	rc = sc_pkcs15init_generate_key(fw_data->p15_card, profile,
-		&keygen_args, keybits, &priv_key_obj);
+	rc = sc_pkcs15init_generate_key(fw_data->p15_card, profile, &keygen_args, keybits, &priv_key_obj);
 	if (rc >= 0) {
 		id = ((struct sc_pkcs15_prkey_info *) priv_key_obj->data)->id;
 		rc = sc_pkcs15_find_pubkey_by_id(fw_data->p15_card, &id, &pub_key_obj);
@@ -3812,11 +3808,14 @@ static void
 pkcs15_pubkey_release(void *object)
 {
 	struct pkcs15_pubkey_object *pubkey = (struct pkcs15_pubkey_object*) object;
-	struct sc_pkcs15_pubkey *key_data = pubkey->pub_data;
 
-	if (__pkcs15_release_object((struct pkcs15_any_object *) object) == 0)
+	if (__pkcs15_release_object((struct pkcs15_any_object *) object) == 0)   {
+		struct sc_pkcs15_pubkey *key_data = pubkey->pub_data;
+
 		if (key_data)
 			sc_pkcs15_free_pubkey(key_data);
+		pubkey->pub_data = NULL;
+	}
 }
 
 
@@ -3830,8 +3829,7 @@ pkcs15_pubkey_set_attribute(struct sc_pkcs11_session *session,
 
 
 static CK_RV
-pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session,
-		void *object, CK_ATTRIBUTE_PTR attr)
+pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session, void *object, CK_ATTRIBUTE_PTR attr)
 {
 	struct sc_pkcs11_card *p11card = session->slot->card;
 	struct pkcs15_pubkey_object *pubkey = (struct pkcs15_pubkey_object*) object;
@@ -3950,24 +3948,29 @@ pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session,
 	case CKA_PUBLIC_EXPONENT:
 		return get_public_exponent(pubkey->pub_data, attr);
 	case CKA_VALUE:
-		if (pubkey->pub_data) {
-			/* TODO: -DEE  Not all pubkeys have CKA_VALUE attribute. RSA and EC
-			 * for example don't. So why is this here?
-			 * Why checking for cert in this pkcs15_pubkey_get_attribute?
-			 */
-			check_attribute_buffer(attr, pubkey->pub_data->data.len);
-			memcpy(attr->pValue, pubkey->pub_data->data.value,
-					      pubkey->pub_data->data.len);
+		if (pubkey->pub_info->direct.raw.value && pubkey->pub_info->direct.raw.len)   {
+			check_attribute_buffer(attr, pubkey->pub_info->direct.raw.len);
+			memcpy(attr->pValue, pubkey->pub_info->direct.raw.value, pubkey->pub_info->direct.raw.len);
 		}
-		else if (cert && cert->cert_data) {
+		else if (pubkey->pub_info->direct.spki.value && pubkey->pub_info->direct.spki.len)   {
+			check_attribute_buffer(attr, pubkey->pub_info->direct.spki.len);
+			memcpy(attr->pValue, pubkey->pub_info->direct.spki.value, pubkey->pub_info->direct.spki.len);
+		}
+		else if (pubkey->base.p15_object->content.value && pubkey->base.p15_object->content.len)   {
+			check_attribute_buffer(attr, pubkey->base.p15_object->content.len);
+			memcpy(attr->pValue, pubkey->base.p15_object->content.value, pubkey->base.p15_object->content.len);
+		}
+		else  if (cert && cert->cert_data) {
 			check_attribute_buffer(attr, cert->cert_data->data.len);
 			memcpy(attr->pValue, cert->cert_data->data.value, cert->cert_data->data.len);
+		}
+		else   {
+			return CKR_ATTRIBUTE_TYPE_INVALID;
 		}
 		break;
 	case CKA_GOSTR3410_PARAMS:
 		if (pubkey->pub_info && pubkey->pub_info->params.len)
-			return get_gostr3410_params(pubkey->pub_info->params.data,
-					pubkey->pub_info->params.len, attr);
+			return get_gostr3410_params(pubkey->pub_info->params.data, pubkey->pub_info->params.len, attr);
 		else
 			return CKR_ATTRIBUTE_TYPE_INVALID;
 	case CKA_EC_PARAMS:
@@ -4383,6 +4386,7 @@ get_public_exponent(struct sc_pkcs15_pubkey *key, CK_ATTRIBUTE_PTR attr)
 	case SC_ALGORITHM_RSA:
 		return get_bignum(&key->u.rsa.exponent, attr);
 	}
+
 	return CKR_ATTRIBUTE_TYPE_INVALID;
 }
 
@@ -4395,44 +4399,50 @@ get_ec_pubkey_params(struct sc_pkcs15_pubkey *key, CK_ATTRIBUTE_PTR attr)
 		return CKR_ATTRIBUTE_TYPE_INVALID;
 	if (key->alg_id == NULL)
 		return CKR_ATTRIBUTE_TYPE_INVALID;
-	ecp = (struct sc_ec_params *) key->alg_id->params;
 
 	switch (key->algorithm) {
 	case SC_ALGORITHM_EC:
 		/* TODO parms should not be in two places */
 		/* ec_params may be in key->alg_id or in key->u.ec */
 		if (key->u.ec.params.der.value) {
-		    check_attribute_buffer(attr,key->u.ec.params.der.len);
-		    memcpy(attr->pValue, key->u.ec.params.der.value, key->u.ec.params.der.len);
-		    return CKR_OK;
+			check_attribute_buffer(attr,key->u.ec.params.der.len);
+			memcpy(attr->pValue, key->u.ec.params.der.value, key->u.ec.params.der.len);
+			return CKR_OK;
 		}
-		check_attribute_buffer(attr, ecp->der_len);
-		memcpy(attr->pValue, ecp->der, ecp->der_len);
-		return CKR_OK;
+
+		ecp = (struct sc_ec_params *) key->alg_id->params;
+		if (ecp && ecp->der && ecp->der_len)   {
+			check_attribute_buffer(attr, ecp->der_len);
+			memcpy(attr->pValue, ecp->der, ecp->der_len);
+			return CKR_OK;
+		}
 	}
+
 	return CKR_ATTRIBUTE_TYPE_INVALID;
 }
 
 static CK_RV
 get_ec_pubkey_point(struct sc_pkcs15_pubkey *key, CK_ATTRIBUTE_PTR attr)
 {
+	unsigned char *value = NULL;
+	size_t value_len = 0;
+	int rc;
+
 	if (key == NULL)
 		return CKR_ATTRIBUTE_TYPE_INVALID;
 
 	switch (key->algorithm) {
 	case SC_ALGORITHM_EC:
-		/*
-		 * TODO Verify that pubkey->data is DER encoded ecpointQ
-		 * It should be. If not we need to encode the ecpointQ to
-		 * DER. But can not use sc_pkcs15_encode_pubkey as it
-		 * needs ctx, and ctx is not available here. 
-		 * Original ECC code stored ecpointQ as DER, so there was
-		 * no issue.
-		 */
-		check_attribute_buffer(attr, key->data.len);
-		memcpy(attr->pValue, key->data.value, key->data.len);
+		rc = sc_pkcs15_encode_pubkey_ec(context, &key->u.ec, &value, &value_len);
+		if (rc != SC_SUCCESS)
+			return sc_to_cryptoki_error(rc, NULL);
+
+		check_attribute_buffer(attr, value_len);
+		memcpy(attr->pValue, value, value_len);
+		free(value);
 		return CKR_OK;
 	}
+
 	return CKR_ATTRIBUTE_TYPE_INVALID;
 }
 
@@ -4444,8 +4454,7 @@ get_gostr3410_params(const u8 *params, size_t params_len, CK_ATTRIBUTE_PTR attr)
 	if (!params || params_len == sizeof(int))
 		return CKR_ATTRIBUTE_TYPE_INVALID;
 
-	for (i = 0; i < sizeof(gostr3410_param_oid)/
-			sizeof(gostr3410_param_oid[0]); ++i) {
+	for (i = 0; i < sizeof(gostr3410_param_oid)/sizeof(gostr3410_param_oid[0]); ++i) {
 		if (gostr3410_param_oid[i].param == ((int*)params)[0]) {
 			check_attribute_buffer(attr, sizeof(gostr3410_param_oid[i].oid));
 			memcpy(attr->pValue, gostr3410_param_oid[i].oid,

@@ -203,6 +203,7 @@ struct sc_pkcs15init_keyarg_gost_params {
 };
 
 struct sc_pkcs15init_prkeyargs {
+	/* TODO: member for private key algorithm: currently is used algorithm from 'key' member */
 	struct sc_pkcs15_id	id;
 	struct sc_pkcs15_id	auth_id;
 	char *label;

@@ -1088,6 +1088,8 @@ iasecc_pkcs15_generate_key(struct sc_profile *profile, sc_pkcs15_card_t *p15card
 	struct iasecc_sdo *sdo_prvkey = NULL;
 	struct iasecc_sdo *sdo_pubkey = NULL;
 	struct sc_file	*file = NULL;
+	unsigned char *tmp = NULL;
+	size_t tmp_len;
 	unsigned long caps;
 	int rv;
 
@@ -1149,18 +1151,19 @@ iasecc_pkcs15_generate_key(struct sc_profile *profile, sc_pkcs15_card_t *p15card
 		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 	memcpy(pubkey->u.rsa.exponent.data, sdo_pubkey->data.pub_key.e.value, pubkey->u.rsa.exponent.len);
 
-	rv = sc_pkcs15_encode_pubkey(ctx, pubkey, &pubkey->data.value, &pubkey->data.len);
+	rv = sc_pkcs15_encode_pubkey(ctx, pubkey, &tmp, &tmp_len);
 	LOG_TEST_RET(ctx, rv, "encode public key failed");
 
 	rv = iasecc_pkcs15_encode_supported_algos(p15card, object);
 	LOG_TEST_RET(ctx, rv, "encode private key access rules failed");
 
 	/* SDO PrvKey data replaced by public part of generated key */
-	rv = sc_pkcs15_allocate_object_content(ctx, object, pubkey->data.value, pubkey->data.len);
+	rv = sc_pkcs15_allocate_object_content(ctx, object, tmp, tmp_len);
 	LOG_TEST_RET(ctx, rv, "Failed to allocate public key as object content");
 
 	iasecc_sdo_free(card, sdo_pubkey);
 
+	free(tmp);
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
