@@ -1782,12 +1782,14 @@ static int write_object(CK_SESSION_HANDLE session)
 	CK_RV rv;
 	int need_to_parse_certdata = 0;
 	unsigned char *oid_buf = NULL;
+	CK_OBJECT_CLASS clazz;
+	CK_CERTIFICATE_TYPE cert_type;
+	CK_KEY_TYPE type = CKK_RSA;
 #ifdef ENABLE_OPENSSL
 	struct x509cert_info cert;
 	struct rsakey_info rsa;
 	struct gostkey_info gost;
 	EVP_PKEY *evp_key = NULL;
-	CK_KEY_TYPE type = CKK_RSA;
 
 	memset(&cert, 0, sizeof(cert));
 	memset(&rsa,  0, sizeof(rsa));
@@ -1863,8 +1865,8 @@ static int write_object(CK_SESSION_HANDLE session)
 	}
 
 	if (opt_object_class == CKO_CERTIFICATE) {
-		CK_OBJECT_CLASS clazz = CKO_CERTIFICATE;
-		CK_CERTIFICATE_TYPE cert_type = CKC_X_509;
+		clazz = CKO_CERTIFICATE;
+		cert_type = CKC_X_509;
 
 		FILL_ATTR(cert_templ[0], CKA_TOKEN, &_true, sizeof(_true));
 		FILL_ATTR(cert_templ[1], CKA_VALUE, contents, contents_len);
@@ -1897,7 +1899,7 @@ static int write_object(CK_SESSION_HANDLE session)
 	}
 	else
 	if (opt_object_class == CKO_PRIVATE_KEY) {
-		CK_OBJECT_CLASS clazz = CKO_PRIVATE_KEY;
+		clazz = CKO_PRIVATE_KEY;
 
 		n_privkey_attr = 0;
 		FILL_ATTR(privkey_templ[n_privkey_attr], CKA_CLASS, &clazz, sizeof(clazz));
@@ -1944,7 +1946,7 @@ static int write_object(CK_SESSION_HANDLE session)
 		}
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_EC)
 		else if (evp_key->type == NID_id_GostR3410_2001)   {
-			CK_KEY_TYPE type = CKK_GOSTR3410;
+			type = CKK_GOSTR3410;
 
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_KEY_TYPE, &type, sizeof(type));
 			n_privkey_attr++;
@@ -1962,8 +1964,8 @@ static int write_object(CK_SESSION_HANDLE session)
 	}
 	else
 	if (opt_object_class == CKO_PUBLIC_KEY) {
-		CK_OBJECT_CLASS clazz = CKO_PUBLIC_KEY;
-		CK_KEY_TYPE type = CKK_RSA;
+		clazz = CKO_PUBLIC_KEY;
+		type = CKK_RSA;
 
 		FILL_ATTR(pubkey_templ[0], CKA_CLASS, &clazz, sizeof(clazz));
 		FILL_ATTR(pubkey_templ[1], CKA_KEY_TYPE, &type, sizeof(type));
@@ -2002,7 +2004,7 @@ static int write_object(CK_SESSION_HANDLE session)
 	}
 	else
 	if (opt_object_class == CKO_DATA) {
-		CK_OBJECT_CLASS clazz = CKO_DATA;
+		clazz = CKO_DATA;
 		FILL_ATTR(data_templ[0], CKA_CLASS, &clazz, sizeof(clazz));
 		FILL_ATTR(data_templ[1], CKA_TOKEN, &_true, sizeof(_true));
 		FILL_ATTR(data_templ[2], CKA_VALUE, &contents, contents_len);
