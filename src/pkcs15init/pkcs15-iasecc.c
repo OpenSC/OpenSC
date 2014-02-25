@@ -327,7 +327,7 @@ iasecc_file_convert_acls(struct sc_context *ctx, struct sc_profile *profile, str
 		/* FIXME the acl object must not be modified, it is only defined in
 		 * sc_file_get_acl_entry. Accessing it here means we have a race
 		 * condition. */
-		struct sc_acl_entry *acl = sc_file_get_acl_entry(file, ii);
+		struct sc_acl_entry *acl = (struct sc_acl_entry *) sc_file_get_acl_entry(file, ii);
 
 		if (acl)   {
 			switch (acl->method)   {

@@ -43,7 +43,7 @@
 #include "cwa-dnie.h"
 #include "user-interface.h"
 
-#ifdef ENABLE_SM
+#if ENABLE_SM && 0
 static int dnie_sm_get_wrapped_apdu(sc_card_t *card, sc_apdu_t *apdu, sc_apdu_t **sm_apdu);
 static int dnie_sm_free_and_unwrap_apdu(sc_card_t *card, sc_apdu_t *apdu, sc_apdu_t **sm_apdu);
 #endif
@@ -551,7 +551,7 @@ static int dnie_init(struct sc_card *card)
 	/** Secure messaging initialization section **/
 	memset(&(card->sm_ctx), 0, sizeof(sm_context_t));
 	/* setup dnie sm driver *im*properly */
-	/* TODO: at the moment this is a wild guess, based on card-authentic.c */
+	/* FIXME: at the moment this is a wild guess, based on card-authentic.c */
 	card->sm_ctx.ops.get_sm_apdu = NULL; /*dnie_sm_get_wrapped_apdu;*/
 	card->sm_ctx.ops.free_sm_apdu = NULL; /*dnie_sm_free_and_unwrap_apdu;*/
 #endif
@@ -951,7 +951,6 @@ static int dnie_select_file(struct sc_card *card,
 	char pbuf[SC_MAX_PATH_STRING_SIZE];
         u8 *path = pathbuf;
 	size_t pathlen;
-        int cached=0;
 
 	sc_file_t *file = NULL;
 	int res = SC_SUCCESS;
@@ -1006,7 +1005,7 @@ static int dnie_select_file(struct sc_card *card,
 		* - path starts with cache
 		* remember that only DF's are cached
 		*/
-		cached = dnie_check_path(card, &path, &pathlen, file_out != NULL);
+		dnie_check_path(card, &path, &pathlen, file_out != NULL);
                 if (pathlen == 0) {
 			/* request to select_file on current df */
 			sc_log(ctx,"Cache hit: already on cached DF");
@@ -1954,9 +1953,9 @@ static int dnie_process_fci(struct sc_card *card,
  */
 static int dnie_pin_change(struct sc_card *card, struct sc_pin_cmd_data * data)
 {
-	int res=SC_SUCCESS;
-	LOG_FUNC_CALLED(card->ctx);
 #ifdef ENABLE_SM
+	int res;
+	LOG_FUNC_CALLED(card->ctx);
     /* Ensure that secure channel is established from reset */
     res = cwa_create_secure_channel(card, GET_DNIE_PRIV_DATA(card)->cwa_provider, CWA_SM_COLD);
     LOG_TEST_RET(card->ctx, res, "Establish SM failed");
@@ -2103,7 +2102,7 @@ static int dnie_pin_cmd(struct sc_card *card,
 	LOG_FUNC_RETURN(card->ctx, res);
 }
 
-#ifdef ENABLE_SM
+#if ENABLE_SM && 0
 static int dnie_sm_wrap_apdu(struct sc_card *card, struct sc_apdu *plain, struct sc_apdu *wrapped)
 {
 	int res = SC_SUCCESS;
@@ -2126,7 +2125,7 @@ static int dnie_sm_wrap_apdu(struct sc_card *card, struct sc_apdu *plain, struct
 	wrapped->le = plain->le;
 	wrapped->control = plain->control;
 	wrapped->flags = plain->flags;
-	memcpy(wrapped->data, plain->data, plain->datalen);
+	memcpy((unsigned char *) wrapped->data, plain->data, plain->datalen);
 	
 	/* if SM is ON, ensure resp exists, and force getResponse() */
 	if (provider->status.session.state == CWA_SM_ACTIVE) {
@@ -2139,6 +2138,7 @@ static int dnie_sm_wrap_apdu(struct sc_card *card, struct sc_apdu *plain, struct
 	LOG_FUNC_RETURN(ctx, res);
 }
 
+#if ENABLE_SM && 0
 static int dnie_sm_get_wrapped_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t **sm_apdu)
 {
 	struct sc_context *ctx = card->ctx;
@@ -2172,16 +2172,14 @@ static int dnie_sm_get_wrapped_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t
 	*sm_apdu = apdu;
 	LOG_FUNC_RETURN(ctx, rv);
 }
+#endif
 
 static int dnie_sm_unwrap_apdu(sc_card_t *card, sc_apdu_t *wrapped, sc_apdu_t *plain)
 {
 	int res = SC_SUCCESS;
     struct sc_context *ctx = card->ctx;
-	cwa_provider_t *provider = NULL;
 
     LOG_FUNC_CALLED(ctx);
-
-	provider = GET_DNIE_PRIV_DATA(card)->cwa_provider;
 
 	/* parse response and handle SM related errors */
 	res = sc_check_sw(card, wrapped->sw1, wrapped->sw2);
@@ -2217,10 +2215,10 @@ static int dnie_sm_free_and_unwrap_apdu(sc_card_t *card, sc_apdu_t *plain, sc_ap
 		rv = dnie_sm_unwrap_apdu(card, *sm_apdu, plain);
 
 	if ((*sm_apdu)->data)
-		free((*sm_apdu)->data);
+		free((unsigned char *) (*sm_apdu)->data);
 	if ((*sm_apdu)->resp)
 		free((*sm_apdu)->resp);
-	free(*sm_apdu);
+	free((unsigned char *) *sm_apdu);
 	*sm_apdu = NULL;
 
     LOG_FUNC_RETURN(ctx, SC_SUCCESS);

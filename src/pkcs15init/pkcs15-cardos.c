@@ -172,10 +172,11 @@ cardos_select_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 			preferred++;
 	}
 
-	if (current > preferred || preferred > CARDOS_PIN_ID_MAX)
+	if (preferred > CARDOS_PIN_ID_MAX)
 		return SC_ERROR_TOO_MANY_OBJECTS;
 	auth_info->attrs.pin.reference = preferred;
-	return 0;
+
+	return SC_SUCCESS;
 }
 
 /*

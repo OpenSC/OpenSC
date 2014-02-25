@@ -85,7 +85,7 @@ int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 {
 	sc_context_t *ctx = p15card->card->ctx;
 	int r;
-	sc_algorithm_info_t *alg_info;
+	sc_algorithm_info_t *alg_info = NULL;
 	sc_security_env_t senv;
 	const struct sc_pkcs15_prkey_info *prkey = (const struct sc_pkcs15_prkey_info *) obj->data;
 	unsigned long pad_flags = 0, sec_flags = 0;
@@ -190,7 +190,7 @@ int sc_pkcs15_derive(struct sc_pkcs15_card *p15card,
 {
 	sc_context_t *ctx = p15card->card->ctx;
 	int r;
-	sc_algorithm_info_t *alg_info;
+	sc_algorithm_info_t *alg_info = NULL;
 	sc_security_env_t senv;
 	const struct sc_pkcs15_prkey_info *prkey = (const struct sc_pkcs15_prkey_info *) obj->data;
 	unsigned long pad_flags = 0, sec_flags = 0;

@@ -1822,6 +1822,8 @@ int main(int argc, char * const argv[])
 	int action_count = 0;
 	sc_context_param_t ctx_param;
 
+	c = OPT_PUK;
+
 	while (1) {
 		c = getopt_long(argc, argv, "r:cuko:va:LR:CwDTU", options, &long_optind);
 		if (c == -1)

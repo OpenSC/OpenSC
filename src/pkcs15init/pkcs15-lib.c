@@ -114,8 +114,10 @@ static int	check_key_compatibility(struct sc_pkcs15_card *,
 static int	prkey_fixup(struct sc_pkcs15_card *, struct sc_pkcs15_prkey *);
 static int	prkey_bits(struct sc_pkcs15_card *, struct sc_pkcs15_prkey *);
 static int	prkey_pkcs15_algo(struct sc_pkcs15_card *, struct sc_pkcs15_prkey *);
+#if 0
 static int	select_intrinsic_id(struct sc_pkcs15_card *, struct sc_profile *,
 			int, struct sc_pkcs15_id *, void *);
+#endif
 static int	select_id(struct sc_pkcs15_card *, int, struct sc_pkcs15_id *);
 static int	select_object_path(struct sc_pkcs15_card *, struct sc_profile *,
 			struct sc_pkcs15_object *, struct sc_path *);
@@ -555,7 +557,7 @@ sc_pkcs15init_delete_by_path(struct sc_profile *profile, struct sc_pkcs15_card *
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_file *parent = NULL, *file = NULL;
 	struct sc_path path;
-	int rv, file_type = SC_FILE_TYPE_DF;
+	int rv;
 
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx, "trying to delete '%s'", sc_print_path(file_path));
@@ -584,7 +586,6 @@ sc_pkcs15init_delete_by_path(struct sc_profile *profile, struct sc_pkcs15_card *
 	}
 	else    {
 		sc_log(ctx, "Try to get the parent's 'DELETE' access");
-		file_type = file->type;
 		if (file_path->len >= 2) {
 			/* Select the parent DF */
 			path.len -= 2;
@@ -607,14 +608,6 @@ sc_pkcs15init_delete_by_path(struct sc_profile *profile, struct sc_pkcs15_card *
 	path.value[0] = file_path->value[file_path->len - 2];
 	path.value[1] = file_path->value[file_path->len - 1];
 	path.len = 2;
-
-	/* Reselect file to delete if the parent DF was selected and it's not DF. */
-/*
-	if (file_type != SC_FILE_TYPE_DF)   {
-		rv = sc_select_file(p15card->card, &path, &file);
-		LOG_TEST_RET(ctx, rv, "cannot select file to delete");
-	}
-*/
 
 	sc_log(ctx, "Now really delete file");
 	rv = sc_delete_file(p15card->card, &path);
@@ -1481,7 +1474,7 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card, struct sc_profile
 	struct sc_pkcs15_pubkey key;
 	struct sc_path	*path;
 	const char	*label;
-	unsigned int	keybits, type, usage;
+	unsigned int	keybits, type = 0, usage;
 	int		r;
 
 	LOG_FUNC_CALLED(ctx);

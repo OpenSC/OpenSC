@@ -125,8 +125,8 @@ static int piv_get_guid(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_o
 	struct sc_serial_number serialnr;
 	struct sc_pkcs15_id  id;
 	unsigned char guid_bin[SC_PKCS15_MAX_ID_SIZE + SC_MAX_SERIALNR];
-	size_t bin_size, offs, tlen;
-	int r, i;
+	size_t bin_size, offs, tlen, i;
+	int r;
 	unsigned char fbit, fbits, fbyte, fbyte2, fnibble;
 	unsigned char *f5p, *f8p;
 
@@ -219,7 +219,7 @@ static int piv_get_guid(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_o
 	offs = tlen - bin_size;
 
 	for (i=0; i<bin_size; i++)
-		sprintf(out + i*2, "%02x", guid_bin[offs + i]);
+		sprintf((char *) out + i*2, "%02x", guid_bin[offs + i]);
 
 	return SC_SUCCESS;
 }

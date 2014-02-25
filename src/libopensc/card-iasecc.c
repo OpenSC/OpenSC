@@ -2219,12 +2219,14 @@ iasecc_keyset_change(struct sc_card *card, struct sc_pin_cmd_data *data, int *tr
 
 	update.fields[0].parent_tag = IASECC_SDO_KEYSET_TAG;
 	update.fields[0].tag = IASECC_SDO_KEYSET_TAG_MAC;
-	update.fields[0].value = data->pin2.data;
+	/* FIXME race condition */
+	update.fields[0].value = (unsigned char *) data->pin2.data;
 	update.fields[0].size = 16;
 
 	update.fields[1].parent_tag = IASECC_SDO_KEYSET_TAG;
 	update.fields[1].tag = IASECC_SDO_KEYSET_TAG_ENC;
-	update.fields[1].value = data->pin2.data + 16;
+	/* FIXME race condition */
+	update.fields[1].value = (unsigned char *) data->pin2.data + 16;
 	update.fields[1].size = 16;
 
 	rv = iasecc_sm_sdo_update(card, (scb & IASECC_SCB_METHOD_MASK_REF), &update);
@@ -3110,7 +3112,7 @@ iasecc_compute_signature_dst(struct sc_card *card,
 	size_t offs = 0, hash_len = 0;
 	unsigned char sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	unsigned char rbuf[SC_MAX_APDU_BUFFER_SIZE];
-	int rv;
+	int rv = SC_ERROR_INTERNAL;
 
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx, "iasecc_compute_signature_dst() input length %i", in_len);
