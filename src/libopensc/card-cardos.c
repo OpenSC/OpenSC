@@ -874,7 +874,7 @@ cardos_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 	}
 	else  {
 		/* check the the algorithmIDs from the AlgorithmInfo */
-		int i;
+		size_t i;
 		for(i=0; i<algorithm_ids_in_tokeninfo_count;++i){
 			unsigned int id = algorithm_ids_in_tokeninfo[i];
 			if(id == 0x86 || id == 0x88)

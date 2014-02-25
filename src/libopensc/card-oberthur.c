@@ -1758,7 +1758,7 @@ auth_pin_change(struct sc_card *card, unsigned int type,
 		struct sc_pin_cmd_data *data, int *tries_left)
 {
 	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
-	int rv;
+	int rv = SC_ERROR_INTERNAL;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -1905,7 +1905,7 @@ auth_pin_reset(struct sc_card *card, unsigned int type,
 static int
 auth_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left)
 {
-	int rv;
+	int rv = SC_ERROR_INTERNAL;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	if (data->pin_type != SC_AC_CHV)

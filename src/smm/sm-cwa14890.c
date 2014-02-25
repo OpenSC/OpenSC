@@ -312,8 +312,8 @@ sm_cwa_securize_apdu(struct sc_context *ctx, struct sm_info *sm_info, struct sc_
 	unsigned char sbuf[0x400];
 	DES_cblock cblock, icv;
 	unsigned char *encrypted = NULL, edfb_data[0x200], mac_data[0x200];
-	size_t encrypted_len, edfb_len = 0, mac_len = 0;
-	int rv, offs;
+	size_t encrypted_len, edfb_len = 0, mac_len = 0, offs;
+	int rv;
 
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx, "securize APDU (cla:%X,ins:%X,p1:%X,p2:%X,data(%i):%p)",

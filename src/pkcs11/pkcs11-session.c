@@ -333,7 +333,7 @@ CK_RV C_InitPIN(CK_SESSION_HANDLE hSession, CK_CHAR_PTR pPin, CK_ULONG ulPinLen)
 	struct sc_pkcs11_session *session;
 	struct sc_pkcs11_slot *slot;
 
-	sc_log(context, "C_InitPIN() called, pin '%s'", pPin ? pPin : "<null>");
+	sc_log(context, "C_InitPIN() called, pin '%s'", pPin ? (char *) pPin : "<null>");
 	if (pPin == NULL_PTR && ulPinLen > 0)
 		return CKR_ARGUMENTS_BAD;
 

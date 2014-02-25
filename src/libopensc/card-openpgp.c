@@ -651,7 +651,7 @@ pgp_new_blob(sc_card_t *card, struct blob *parent, unsigned int file_id,
 			/* FIXME sc_format_path expects an hex string of an file
 			 * identifier. ushort2bebytes instead delivers a two bytes binary
 			 * string */
-			sc_format_path(ushort2bebytes(id_str, file_id), &blob->file->path);
+			sc_format_path((char *) ushort2bebytes(id_str, file_id), &blob->file->path);
 		}
 
 		/* find matching DO info: set file type depending on it */
@@ -1687,7 +1687,7 @@ pgp_parse_and_set_pubkey_output(sc_card_t *card, u8* data, size_t data_len,
 	LOG_TEST_RET(card->ctx, r, "Cannot store creation time");
 
 	/* Parse response. Ref: pgp_enumerate_blob() */
-	while (data_len > (in - data)) {
+	while (data_len > (size_t) (in - data)) {
 		unsigned int cla, tag, tmptag;
 		size_t		len;
 		u8	*part = in;

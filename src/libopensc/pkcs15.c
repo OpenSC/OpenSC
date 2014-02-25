@@ -38,6 +38,10 @@
 #include <openssl/sha.h>
 #endif
 
+#ifdef HAVE_SYS_TIME_H
+#include <sys/time.h>
+#endif
+
 static const struct sc_asn1_entry c_asn1_twlabel[] = {
 	{ "twlabel", SC_ASN1_UTF8STRING, SC_ASN1_TAG_UTF8STRING, 0, NULL, NULL },
 	{ NULL, 0, 0, 0, NULL, NULL }
@@ -1261,7 +1265,6 @@ __sc_pkcs15_search_objects(struct sc_pkcs15_card *p15card, unsigned int class_ma
 	struct sc_pkcs15_df	*df = NULL;
 	unsigned int	df_mask = 0;
 	size_t		match_count = 0;
-	int		r = 0;
 
 	if (type)
 		class_mask |= SC_PKCS15_TYPE_TO_CLASS(type);
@@ -1300,7 +1303,8 @@ __sc_pkcs15_search_objects(struct sc_pkcs15_card *p15card, unsigned int class_ma
 			continue;
 		/* Enumerate the DF's, so p15card->obj_list is
 		 * populated. */
-		r = sc_pkcs15_parse_df(p15card, df);
+		/* FIXME dont ignore errors */
+		sc_pkcs15_parse_df(p15card, df);
 	}
 
 	/* And now loop over all objects */
@@ -2532,7 +2536,6 @@ sc_pkcs15_get_supported_algo(struct sc_pkcs15_card *p15card, unsigned operation,
 
 	return info;
 }
-
 
 int
 sc_pkcs15_get_generalized_time(struct sc_context *ctx, char **out)

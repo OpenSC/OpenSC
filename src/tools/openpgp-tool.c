@@ -298,6 +298,7 @@ static int decode_options(int argc, char **argv)
 static int do_userinfo(sc_card_t *card)
 {
 	int i;
+	/* FIXME there are no length checks on buf. */
 	unsigned char buf[2048];
 
 	for (i = 0; openpgp_data[i].ef != NULL; i++) {
@@ -339,7 +340,7 @@ static int do_userinfo(sc_card_t *card)
 		buf[file->size] = '\0';
 
 		if (file->size > 0) {
-			display_data(openpgp_data + i, buf);
+			display_data(openpgp_data + i, (char *) buf);
 		}
 	}
 
@@ -402,7 +403,7 @@ int do_verify(sc_card_t *card, char *type, char *pin)
 	data.cmd = SC_PIN_CMD_VERIFY;
 	data.pin_type = SC_AC_CHV;
 	data.pin_reference = type[3] - '0';
-	data.pin1.data = pin;
+	data.pin1.data = (unsigned char *) pin;
 	data.pin1.len = strlen(pin);
 	r = sc_pin_cmd(card, &data, &tries_left);
 	return r;

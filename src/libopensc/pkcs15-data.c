@@ -55,7 +55,7 @@ sc_pkcs15_read_data_object(struct sc_pkcs15_card *p15card,
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	if (!info->data.value)   {
-		r = sc_pkcs15_read_file(p15card, &info->path, &info->data.value, &info->data.len);
+		r = sc_pkcs15_read_file(p15card, &info->path, (unsigned char **) &info->data.value, (size_t *) &info->data.len);
 		LOG_TEST_RET(ctx, r, "Cannot get DATA object data");
 	}
 

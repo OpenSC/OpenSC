@@ -856,9 +856,7 @@ cyberflex_construct_file_attrs(sc_card_t *card, const sc_file_t *file,
 				 u8 *buf, size_t *buflen)
 {
 	u8 *p = buf;
-	int i;
 	size_t size = file->size;
-	int ops[6];
 
 	/* cyberflex wants input parameters length added */
 	switch (file->type) {
@@ -903,20 +901,6 @@ cyberflex_construct_file_attrs(sc_card_t *card, const sc_file_t *file,
 			return -1;
 		}
 	p[5] = 0x01;	/* status?? */
-	for (i = 0; i < 6; i++)
-		ops[i] = -1;
-	if (file->type == SC_FILE_TYPE_DF) {
-		ops[0] = SC_AC_OP_LIST_FILES;
-		ops[2] = SC_AC_OP_DELETE;
-		ops[3] = SC_AC_OP_CREATE;
-	} else {
-		ops[0] = SC_AC_OP_READ;
-		ops[1] = SC_AC_OP_UPDATE;
-		ops[2] = SC_AC_OP_READ;
-		ops[3] = SC_AC_OP_UPDATE;
-		ops[4] = SC_AC_OP_REHABILITATE;
-		ops[5] = SC_AC_OP_INVALIDATE;
-	}
 	p[6] = p[7] = 0;
 	
 	*buflen = 16;

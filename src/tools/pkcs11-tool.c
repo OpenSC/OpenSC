@@ -4154,7 +4154,7 @@ static void test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	CK_OBJECT_HANDLE	pub_key, priv_key;
 	CK_ULONG		i, num_mechs = 0;
 	CK_RV			rv;
-	CK_BYTE			buf[20], *tmp, *mod;
+	CK_BYTE			buf[20], *tmp;
 	CK_BYTE			md5_and_digestinfo[34] = "\x30\x20\x30\x0c\x06\x08\x2a\x86\x48\x86\xf7\x0d\x02\x05\x05\x00\x04\x10";
 	CK_BYTE			*data, sig[512];
 	CK_ULONG		data_len, sig_len;
@@ -4203,7 +4203,7 @@ static void test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	memcpy(opt_object_id, tmp, opt_object_id_len);
 
 	/* This is done in NSS */
-	mod = getMODULUS(session, priv_key, &mod_len);
+	getMODULUS(session, priv_key, &mod_len);
 	if (mod_len < 5 || mod_len > 10000) { /* should be resonable limits */
 		printf("ERR: GetAttribute(privkey, CKA_MODULUS) doesn't seem to work\n");
 		return;
@@ -4321,7 +4321,7 @@ static void test_ec(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	CK_OBJECT_HANDLE	pub_key, priv_key;
 	CK_ULONG		i, num_mechs = 0;
 	CK_RV			rv;
-	CK_BYTE			*tmp, *ec_params, *ec_point;
+	CK_BYTE			*tmp;
 	CK_BYTE			*data_to_sign = (CK_BYTE *)"My Heart's in the Highland";
 	CK_BYTE			*data, sig[512];
 	CK_ULONG		data_len, sig_len;
@@ -4358,12 +4358,12 @@ static void test_ec(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	memcpy(opt_object_id, tmp, opt_object_id_len);
 
 	/* This is done in NSS */
-	ec_params = getEC_PARAMS(session, priv_key, &ec_params_len);
+	getEC_PARAMS(session, priv_key, &ec_params_len);
 	if (ec_params_len < 5 || ec_params_len > 10000) {
 		printf("ERR: GetAttribute(privkey, CKA_EC_PARAMS) doesn't seem to work\n");
 		return;
 	}
-	ec_point = getEC_POINT(session, pub_key, &ec_point_len);
+	getEC_POINT(session, pub_key, &ec_point_len);
 	if (ec_point_len < 5 || ec_point_len > 10000) {
 		printf("ERR: GetAttribute(pubkey, CKA_EC_POINT) doesn't seem to work\n");
 		return;

@@ -1001,7 +1001,7 @@ static int asn1_decode_se_info(sc_context_t *ctx, const u8 *obj, size_t objlen,
 	ret = SC_SUCCESS;
 err:
 	if (ret != SC_SUCCESS) {
-		int i;
+		size_t i;
 		for (i = 0; i < idx; i++)
 			if (ses[i])
 				free(ses[i]);

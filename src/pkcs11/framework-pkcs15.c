@@ -1939,7 +1939,6 @@ pkcs15_create_private_key(struct sc_pkcs11_slot *slot, struct sc_profile *profil
 	struct sc_pkcs15_auth_info *pin = NULL;
 	CK_KEY_TYPE key_type;
 	struct sc_pkcs15_prkey_rsa *rsa = NULL;
-	struct sc_pkcs15_prkey_ec *ec = NULL;
 	struct sc_pkcs15_prkey_gostr3410 *gost = NULL;
 	int rc, rv;
 	char label[SC_PKCS15_MAX_LABEL_SIZE];
@@ -1969,7 +1968,6 @@ pkcs15_create_private_key(struct sc_pkcs11_slot *slot, struct sc_profile *profil
 			break;
 		case CKK_EC:
 			args.key.algorithm = SC_ALGORITHM_EC;
-			ec = &args.key.u.ec;
 			/* TODO: -DEE Do not have PKCS15 card with EC to test this */
 			/* fall through */
 		default:

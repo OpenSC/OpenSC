@@ -1565,7 +1565,7 @@ awp_update_df_create(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 		struct sc_pkcs15_object *object)
 {
 	struct sc_context *ctx = p15card->card->ctx;
-	int rv;
+	int rv = SC_ERROR_INTERNAL;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 	if (!object)
@@ -1891,7 +1891,7 @@ awp_update_df_delete(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 		struct sc_pkcs15_object *object)
 {
 	struct sc_context *ctx = p15card->card->ctx;
-	int rv;
+	int rv = SC_ERROR_INTERNAL;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 	if (!object)

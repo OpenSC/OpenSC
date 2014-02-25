@@ -852,7 +852,7 @@ epass2003_sm_free_wrapped_apdu(struct sc_card *card,
 		rv = epass2003_sm_unwrap_apdu(card, *sm_apdu, plain);
 
 	if ((*sm_apdu)->data)
-		free((*sm_apdu)->data);
+		free((unsigned char *) (*sm_apdu)->data);
 	if ((*sm_apdu)->resp)
 		free((*sm_apdu)->resp);
 	free(*sm_apdu);

@@ -114,8 +114,6 @@ static int	check_key_compatibility(struct sc_pkcs15_card *,
 static int	prkey_fixup(struct sc_pkcs15_card *, struct sc_pkcs15_prkey *);
 static int	prkey_bits(struct sc_pkcs15_card *, struct sc_pkcs15_prkey *);
 static int	prkey_pkcs15_algo(struct sc_pkcs15_card *, struct sc_pkcs15_prkey *);
-static int	select_intrinsic_id(struct sc_pkcs15_card *, struct sc_profile *,
-			int, struct sc_pkcs15_id *, void *);
 static int	select_id(struct sc_pkcs15_card *, int, struct sc_pkcs15_id *);
 static int	select_object_path(struct sc_pkcs15_card *, struct sc_profile *,
 			struct sc_pkcs15_object *, struct sc_path *);
@@ -1481,7 +1479,7 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card, struct sc_profile
 	struct sc_pkcs15_pubkey key;
 	struct sc_path	*path;
 	const char	*label;
-	unsigned int	keybits, type, usage;
+	unsigned int	keybits, type = 0, usage;
 	int		r;
 
 	LOG_FUNC_CALLED(ctx);
