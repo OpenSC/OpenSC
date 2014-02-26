@@ -1339,7 +1339,7 @@ static int unblock_pin(void)
 		if (puk_obj)   {
 			struct sc_pkcs15_auth_info *puk_info = (sc_pkcs15_auth_info_t *) puk_obj->data;
 
-			if (puk_info->auth_type == SC_PKCS15_TYPE_AUTH_PIN)    {
+			if (puk_info->auth_type == SC_PKCS15_PIN_AUTH_TYPE_PIN)    {
 				/* TODO: Print PUK's label */
 				puk = get_pin("Enter PUK", puk_obj);
 				if (!pinpad_present && puk == NULL)
