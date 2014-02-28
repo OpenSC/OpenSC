@@ -74,7 +74,7 @@ C_UnloadModule(void *module)
 	if (!mod || mod->_magic != MAGIC)
 		return CKR_ARGUMENTS_BAD;
 
-	if (sc_dlclose(mod->handle) < 0)
+	if (mod->handle != NULL && sc_dlclose(mod->handle) < 0)
 		return CKR_FUNCTION_FAILED;
 
 	memset(mod, 0, sizeof(*mod));
