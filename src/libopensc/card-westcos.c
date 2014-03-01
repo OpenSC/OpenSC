@@ -215,7 +215,7 @@ static int westcos_init(sc_card_t * card)
 	card->drv_data = malloc(sizeof(priv_data_t));
 	if (card->drv_data == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
-	memset(card->drv_data, 0, sizeof(card->drv_data));
+	memset(card->drv_data, 0, sizeof(priv_data_t));
 	
 	priv_data = (priv_data_t *) card->drv_data;
 
