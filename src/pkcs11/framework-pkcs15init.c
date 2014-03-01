@@ -122,6 +122,8 @@ pkcs15init_change_pin(struct sc_pkcs11_slot *slot,
 	return CKR_CRYPTOKI_NOT_INITIALIZED;
 }
 
+#if 0
+/* FIXME this function should take a `struct sc_pkcs11_card`, not a `struct sc_pkcs11_card` */
 static CK_RV
 pkcs15init_initialize(struct sc_pkcs11_card *p11card, void *ptr,
 		CK_UTF8CHAR_PTR pPin, CK_ULONG ulPinLen,
@@ -167,6 +169,7 @@ pkcs15init_initialize(struct sc_pkcs11_card *p11card, void *ptr,
 	sc_pkcs15init_unbind(profile);
 	return CKR_OK;
 }
+#endif
 
 struct sc_pkcs11_framework_ops framework_pkcs15init = {
 	pkcs15init_bind,
@@ -176,7 +179,12 @@ struct sc_pkcs11_framework_ops framework_pkcs15init = {
 	pkcs15init_login,
 	pkcs15init_logout,
 	pkcs15init_change_pin,
+#if 0
+	/* FIXME see above */
 	pkcs15init_initialize,
+#else
+	NULL,
+#endif
 	NULL, /* init_pin */
 	NULL, /* create_object */
 	NULL, /* gen_keypair */
