@@ -2221,7 +2221,7 @@ static int dnie_sm_free_and_unwrap_apdu(sc_card_t *card, sc_apdu_t *plain, sc_ap
 	free((unsigned char *) *sm_apdu);
 	*sm_apdu = NULL;
 
-    LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+    LOG_FUNC_RETURN(ctx, rv);
 }
 
 #endif
