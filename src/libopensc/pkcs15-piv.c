@@ -120,7 +120,7 @@ typedef struct common_key_info_st {
  */
 
 static int piv_get_guid(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_object *obj,
-		unsigned char *out, size_t out_size)
+		unsigned char *out, size_t *out_size)
 {
 	struct sc_serial_number serialnr;
 	struct sc_pkcs15_id  id;
@@ -130,7 +130,7 @@ static int piv_get_guid(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_o
 	unsigned char fbit, fbits, fbyte, fbyte2, fnibble;
 	unsigned char *f5p, *f8p;
 
-	if (!p15card || !obj || !out || out_size < 3)
+	if (!p15card || !obj || !out || *out_size < 3)
 		return SC_ERROR_INCORRECT_PARAMETERS;
 
 	r = sc_pkcs15_get_object_id(obj, &id);
@@ -142,7 +142,7 @@ static int piv_get_guid(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_o
 		return r;
 
 	memset(guid_bin, 0, sizeof(guid_bin));
-	memset(out, 0, out_size);
+	memset(out, 0, *out_size);
 
 	if (id.len == 1 && serialnr.len == 25) {
 
@@ -212,7 +212,7 @@ static int piv_get_guid(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_o
 	}
 
 	/* reserve one byte for the 'C' line ending */
-	bin_size = (out_size - 1)/2;
+	bin_size = (*out_size - 1)/2;
 	if (bin_size > tlen)
 		bin_size = tlen;
 
