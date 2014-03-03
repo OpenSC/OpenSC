@@ -310,7 +310,7 @@ get_apdus(struct sc_context *ctx, struct sm_info *sm_info, unsigned char *init_d
 int
 finalize(struct sc_context *ctx, struct sm_info *sm_info, struct sc_remote_data *rdata, unsigned char *out, size_t out_len)
 {
-	int rv;
+	int rv = SC_ERROR_INTERNAL;
 
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx, "SM finalize: out buffer(%i) %p", out_len, out);
