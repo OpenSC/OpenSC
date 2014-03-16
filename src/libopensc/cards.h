@@ -231,7 +231,6 @@ extern sc_card_driver_t *sc_get_westcos_driver(void);
 extern sc_card_driver_t *sc_get_myeid_driver(void);
 extern sc_card_driver_t *sc_get_ias_driver(void);
 extern sc_card_driver_t *sc_get_sc_hsm_driver(void);
-extern sc_card_driver_t *sc_get_javacard_driver(void);
 extern sc_card_driver_t *sc_get_itacns_driver(void);
 extern sc_card_driver_t *sc_get_authentic_driver(void);
 extern sc_card_driver_t *sc_get_iasecc_driver(void);
