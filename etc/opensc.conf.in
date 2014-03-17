@@ -625,6 +625,10 @@ app opensc-pkcs11 {
 		# create_slots_for_pins = "user,sign";
 		# create_slots_for_pins = application;
 		# create_slots_for_pins = "application,sign";
+		#
+		# For the module to simulate the opensc-onepin module behavior the following option
+		# must be set:
+		# create_slots_for_pins = "user"
 	}
 }
 
