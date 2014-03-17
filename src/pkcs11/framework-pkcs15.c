@@ -25,6 +25,10 @@
 #include "libopensc/asn1.h"
 #include "libopensc/cardctl.h"
 
+#ifdef ENABLE_OPENSSL
+#include <openssl/opensslv.h>
+#endif
+
 #include "sc-pkcs11.h"
 #ifdef USE_PKCS15_INIT
 #include "pkcs15init/pkcs15-init.h"
@@ -4776,11 +4780,13 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 			if (rc != CKR_OK)
 				return rc;
 		}
+#if OPENSSL_VERSION_NUMBER >= 0x00908000L
 		if (flags & SC_ALGORITHM_RSA_HASH_SHA256) {
 			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card, CKM_SHA256_RSA_PKCS, CKM_SHA256, mt);
 			if (rc != CKR_OK)
 				return rc;
 		}
+#endif
 		if (flags & SC_ALGORITHM_RSA_HASH_MD5) {
 			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card, CKM_MD5_RSA_PKCS, CKM_MD5, mt);
 			if (rc != CKR_OK)
