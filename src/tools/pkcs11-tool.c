@@ -1621,28 +1621,37 @@ static void	parse_certificate(struct x509cert_info *cert,
 	if (!x) {
 		util_fatal("OpenSSL error during X509 certificate parsing");
 	}
-	p = cert->subject;
-	n = i2d_X509_NAME(x->cert_info->subject, &p);
+	/* check length first */
+	n = i2d_X509_NAME(x->cert_info->subject, NULL);
 	if (n < 0)
 		util_fatal("OpenSSL error while encoding subject name");
 	if (n > (int)sizeof (cert->subject))
 		util_fatal("subject name too long");
+	/* green light, actually do it */
+	p = cert->subject;
+	n = i2d_X509_NAME(x->cert_info->subject, &p);
 	cert->subject_len = n;
 
-	p = cert->issuer;
-	n = i2d_X509_NAME(x->cert_info->issuer, &p);
+	/* check length first */
+	n = i2d_X509_NAME(x->cert_info->issuer, NULL);
 	if (n < 0)
 		util_fatal("OpenSSL error while encoding issuer name");
 	if (n > (int)sizeof (cert->issuer))
 		util_fatal("issuer name too long");
+	/* green light, actually do it */
+	p = cert->issuer;
+	n = i2d_X509_NAME(x->cert_info->issuer, &p);
 	cert->issuer_len = n;
 
-	p = cert->serialnum;
-	n = i2d_ASN1_INTEGER(x->cert_info->serialNumber, &p);
+	/* check length first */
+	n = i2d_ASN1_INTEGER(x->cert_info->serialNumber, NULL);
 	if (n < 0)
 		util_fatal("OpenSSL error while encoding serial number");
 	if (n > (int)sizeof (cert->serialnum))
 		util_fatal("serial number too long");
+	/* green light, actually do it */
+	p = cert->serialnum;
+	n = i2d_ASN1_INTEGER(x->cert_info->serialNumber, &p);
 	cert->serialnum_len = n;
 }
 
