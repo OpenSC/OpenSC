@@ -632,6 +632,12 @@ app opensc-pkcs11 {
 	}
 }
 
+app onepin-opensc-pkcs11 {
+	pkcs11 {
+		slots_per_card = 1;
+	}
+}
+
 # Used by OpenSC.tokend on Mac OS X only.
 app tokend {
 	# The file to which debug log will be written
