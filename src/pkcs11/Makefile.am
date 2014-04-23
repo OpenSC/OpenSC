@@ -4,7 +4,7 @@ MAINTAINERCLEANFILES = $(srcdir)/Makefile.in $(srcdir)/versioninfo-pkcs11.rc $(s
 EXTRA_DIST = Makefile.mak versioninfo-pkcs11.rc.in versioninfo-pkcs11-spy.rc.in
 
 dist_noinst_SCRIPTS = opensc_pkcs11_install.js
-lib_LTLIBRARIES = opensc-pkcs11.la pkcs11-spy.la
+lib_LTLIBRARIES = opensc-pkcs11.la pkcs11-spy.la onepin-opensc-pkcs11.la
 
 AM_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(PTHREAD_CFLAGS)
 AM_CPPFLAGS = -I$(top_srcdir)/src
@@ -25,6 +25,13 @@ opensc_pkcs11_la_LIBADD = $(OPENSC_PKCS11_LIBS)
 opensc_pkcs11_la_LDFLAGS = $(AM_LDFLAGS) \
 	-export-symbols "$(srcdir)/opensc-pkcs11.exports" \
 	-module -shared -avoid-version -no-undefined
+
+onepin_opensc_pkcs11_la_SOURCES = $(OPENSC_PKCS11_SRC) $(OPENSC_PKCS11_INC)
+onepin_opensc_pkcs11_la_CFLAGS = -DMODULE_APP_NAME=\"onepin-opensc-pkcs11\"
+onepin_opensc_pkcs11_la_LIBADD = $(OPENSC_PKCS11_LIBS)
+onepin_opensc_pkcs11_la_LDFLAGS = $(AM_LDFLAGS) \
+        -export-symbols "$(srcdir)/opensc-pkcs11.exports" \
+        -module -shared -avoid-version -no-undefined
 
 pkcs11_spy_la_SOURCES = pkcs11-spy.c pkcs11-display.c pkcs11-display.h pkcs11-spy.exports
 pkcs11_spy_la_LIBADD = \
@@ -64,7 +71,7 @@ PKCS11_SUFFIX=.so
 endif
 install-exec-hook:
 	$(MKDIR_P) "$(DESTDIR)$(pkcs11dir)"
-	for l in opensc-pkcs11$(PKCS11_SUFFIX) pkcs11-spy$(PKCS11_SUFFIX); do \
+	for l in opensc-pkcs11$(PKCS11_SUFFIX) onepin-opensc-pkcs11$(PKCS11_SUFFIX) pkcs11-spy$(PKCS11_SUFFIX); do \
 		rm -f "$(DESTDIR)$(pkcs11dir)/$$l"; \
 		$(LN_S) ../$$l "$(DESTDIR)$(pkcs11dir)/$$l"; \
 	done
