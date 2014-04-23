@@ -28,6 +28,10 @@
 
 #include "sc-pkcs11.h"
 
+#ifndef MODULE_APP_NAME
+#define MODULE_APP_NAME "opensc-pkcs11"
+#endif
+
 sc_context_t *context = NULL;
 struct sc_pkcs11_config sc_pkcs11_conf;
 list_t sessions;
@@ -219,7 +223,7 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs)
 	/* set context options */
 	memset(&ctx_opts, 0, sizeof(sc_context_param_t));
 	ctx_opts.ver        = 0;
-	ctx_opts.app_name   = "opensc-pkcs11";
+	ctx_opts.app_name   = MODULE_APP_NAME;
 	ctx_opts.thread_ctx = &sc_thread_ctx;
 
 	rc = sc_context_create(&context, &ctx_opts);
