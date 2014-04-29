@@ -2,13 +2,23 @@ dnl -*- mode: m4; -*-
 
 AC_PREREQ(2.60)
 
+define([PRODUCT_NAME], [OpenSC])
+define([PRODUCT_TARNAME], [opensc])
+define([PRODUCT_BUGREPORT], [opensc-devel@lists.sourceforge.net])
 define([PACKAGE_VERSION_MAJOR], [0])
 define([PACKAGE_VERSION_MINOR], [13])
 define([PACKAGE_VERSION_FIX], [0])
 define([PACKAGE_SUFFIX], [])
 define([PACKAGE_VERSION_REVISION], [0])
 
-AC_INIT([opensc],[PACKAGE_VERSION_MAJOR.PACKAGE_VERSION_MINOR.PACKAGE_VERSION_FIX[]PACKAGE_SUFFIX])
+define([VS_FF_LEGAL_COPYRIGHT], [OpenSC Project])
+define([VS_FF_LEGAL_COMPANY_NAME], [OpenSC Project])
+define([VS_FF_COMMENTS], [Provided under the terms of the GNU Lesser General Public License (LGPLv2.1+).])
+define([VS_FF_PRODUCT_NAME], [OpenSC smartcard framework])
+
+m4_include(version.m4)
+
+AC_INIT([PRODUCT_NAME],[PACKAGE_VERSION_MAJOR.PACKAGE_VERSION_MINOR.PACKAGE_VERSION_FIX[]PACKAGE_SUFFIX],[PRODUCT_BUGREPORT],[PRODUCT_TARNAME])
 AC_CONFIG_AUX_DIR([.])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_MACRO_DIR([m4])
@@ -19,10 +29,10 @@ OPENSC_VERSION_MINOR="PACKAGE_VERSION_MINOR"
 OPENSC_VERSION_FIX="PACKAGE_VERSION_FIX"
 OPENSC_VERSION_REVISION="PACKAGE_VERSION_REVISION"
 
-OPENSC_VS_FF_LEGAL_COPYRIGHT="OpenSC Project"
-OPENSC_VS_FF_COMPANY_NAME="OpenSC Project"
-OPENSC_VS_FF_COMMENTS="Provided under the terms of the GNU Lesser General Public License (LGPLv2.1+)."
-OPENSC_VS_FF_PRODUCT_NAME="OpenSC smartcard framework"
+OPENSC_VS_FF_LEGAL_COPYRIGHT="VS_FF_LEGAL_COPYRIGHT"
+OPENSC_VS_FF_COMPANY_NAME="VS_FF_LEGAL_COMPANY_NAME"
+OPENSC_VS_FF_COMMENTS="VS_FF_COMMENTS"
+OPENSC_VS_FF_PRODUCT_NAME="VS_FF_PRODUCT_NAME"
 
 # LT Version numbers, remember to change them just *before* a release.
 #   (Code changed:                      REVISION++)
@@ -215,7 +225,7 @@ done
 if test "${reader_count}" != "x"; then
 	AC_MSG_ERROR([Only one of --enable-pcsc, --enable-openct, --enable-ctapi can be specified!])
 fi
-	 
+
 dnl Checks for programs.
 AC_PROG_CPP
 AC_PROG_INSTALL
@@ -260,6 +270,15 @@ elif test "${xslstylesheetsdir}" != "no"; then
 	test -e "${xslstylesheetsdir}/html/docbook.xsl" || AC_MSG_ERROR([invalid])
 fi
 AC_MSG_RESULT([${xslstylesheetsdir}])
+
+AC_MSG_CHECKING([git checkout])
+GIT_CHECKOUT="no"
+if test -n "${GIT}" -a -d "${srcdir}/.git"; then
+        AC_DEFINE([HAVE_CONFIG_VERSION_H], [1], [extra version available in config-version.h])
+        GIT_CHECKOUT="yes"
+fi
+AC_MSG_RESULT([${GIT_CHECKOUT}])
+
 
 dnl C Compiler features
 AC_C_INLINE
@@ -638,6 +657,7 @@ AM_CONDITIONAL([CYGWIN], [test "${CYGWIN}" = "yes"])
 AM_CONDITIONAL([ENABLE_MINIDRIVER], [test "${enable_minidriver}" = "yes"])
 AM_CONDITIONAL([ENABLE_SM], [test "${enable_sm}" = "yes"])
 AM_CONDITIONAL([ENABLE_DNIE_UI], [test "${enable_dnie_ui}" = "yes"])
+AM_CONDITIONAL([GIT_CHECKOUT], [test "${GIT_CHECKOUT}" = "yes"])
 
 if test "${enable_pedantic}" = "yes"; then
 	enable_strict="yes";
@@ -697,6 +717,11 @@ OpenSC has been configured with the following options:
 Version:                 ${PACKAGE_VERSION}
 Version fix:		 ${OPENSC_VERSION_FIX}
 Version revision:	 ${OPENSC_VERSION_REVISION}
+
+Copyright:               ${OPENSC_VS_FF_LEGAL_COPYRIGHT}
+Company:                 ${OPENSC_VS_FF_COMPANY_NAME}
+Comments:                ${OPENSC_VS_FF_COMMENTS}
+Product name:            ${OPENSC_VS_FF_PRODUCT_NAME}
 
 User binaries:           $(eval eval eval echo "${bindir}")
 Configuration files:     $(eval eval eval echo "${sysconfdir}")
