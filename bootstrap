@@ -9,7 +9,7 @@ OpenSC bootstrap
 OPTIONS:
    -h      Show this message
    -s      Package suffix
-   -S      Use package suffix as 'git' appended with the date of last commit
+   -S      Use package suffix as 'g' appended with the date of last commit
    -r      Package version revision
    -R      Use package version revision as Git commit number from 'git describe' result
    -b      Package branch
@@ -32,7 +32,7 @@ do
              SUFFIX=$OPTARG
              ;;
          S)
-             SUFFIX=git`git log -1 --pretty=fuller --date=iso | grep CommitDate: | sed -E 's/^CommitDate:\s(.*)/\1/' | sed -E 's/(.*)-(.*)-(.*) (.*):(.*):(.*)\s+.*/\1\2\3\4\5\6/'`
+             SUFFIX=g`git log -1 --pretty=fuller --date=iso | grep CommitDate: | sed -E 's/^CommitDate:\s(.*)/\1/' | sed -E 's/(.*)-(.*)-(.*) (.*):(.*):(.*)\s+.*/\1\2\3\4\5\6/'`
              ;;
          r)
              REVISION=$OPTARG
@@ -47,34 +47,33 @@ do
      esac
 done
 
-if [ ! -f configure.ac ]; then
-    cp configure.ac.in configure.ac
-fi
-
 set -e
 set -x
 if [ -f Makefile ]; then
   make distclean
 fi
-rm -rf *~ *.cache *.m4 config.guess config.log config.status config.sub depcomp ltmain.sh configure.ac
+rm -rf *~ *.cache config.guess config.log config.status config.sub depcomp ltmain.sh
 
-cp configure.ac.in configure.ac
 
 if [ -n "$SUFFIX" ] || [ -n "$REVISION" ]
 then
+    cp version.m4 version.m4.orig
+
     if [ -n "$SUFFIX" ]
     then
         echo Set package suffix "$SUFFIX"
-        sed 's/^define(\[PACKAGE_SUFFIX\],\s*\[\([-~]*[0-9a-zA-Z]*\)\])$/define(\[PACKAGE_SUFFIX\], \['$SUFFIX'\])/g' configure.ac > configure.ac.next
-        mv configure.ac.next configure.ac
+        sed 's/^define(\[PACKAGE_SUFFIX\],\s*\[\([-~]*[0-9a-zA-Z]*\)\])$/define(\[PACKAGE_SUFFIX\], \['$SUFFIX'\])/g' version.m4.orig > version.m4
     fi
 
     if [ -n "$REVISION" ]
     then
         echo Set package revision "$REVISION"
-        sed 's/^define(\[PACKAGE_VERSION_REVISION\],\s*\[\([-~]*[0-9a-zA-Z]*\)\])$/define(\[PACKAGE_VERSION_REVISION\], \['$REVISION'\])/g' configure.ac > configure.ac.next
-        mv configure.ac.next configure.ac
+        sed 's/^define(\[PACKAGE_VERSION_REVISION\],\s*\[\([-~]*[0-9a-zA-Z]*\)\])$/define(\[PACKAGE_VERSION_REVISION\], \['$REVISION'\])/g' version.m4.orig > version.m4
     fi
 fi
 
-autoreconf --verbose --install --force
+autoreconf --verbose --install --force || true
+
+if [ -f version.m4.orig ]; then
+    mv version.m4.orig version.m4
+fi
