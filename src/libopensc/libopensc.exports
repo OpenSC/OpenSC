@@ -324,3 +324,4 @@ iasecc_sm_rsa_generate
 iasecc_sm_rsa_update
 iasecc_sm_update_binary
 iasecc_sm_sdo_update
+iasecc_sdo_encode_update_field
