@@ -15,7 +15,7 @@ EXTRA_DIST = Makefile.mak
 
 SUBDIRS = etc src win32 doc MacOSX
 
-dist_noinst_SCRIPTS = bootstrap
+dist_noinst_SCRIPTS = bootstrap bootstrap.ci
 dist_noinst_DATA = README \
 	solaris/Makefile solaris/README solaris/checkinstall.in \
 	solaris/opensc.conf-dist solaris/pkginfo.in solaris/proto \

@@ -17,6 +17,7 @@ define([VS_FF_COMMENTS], [Provided under the terms of the GNU Lesser General Pub
 define([VS_FF_PRODUCT_NAME], [OpenSC smartcard framework])
 
 m4_include(version.m4)
+m4_sinclude(version.m4.ci)
 
 AC_INIT([PRODUCT_NAME],[PACKAGE_VERSION_MAJOR.PACKAGE_VERSION_MINOR.PACKAGE_VERSION_FIX[]PACKAGE_SUFFIX],[PRODUCT_BUGREPORT],[PRODUCT_TARNAME])
 AC_CONFIG_AUX_DIR([.])
