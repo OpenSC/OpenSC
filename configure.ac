@@ -179,9 +179,9 @@ AC_ARG_ENABLE(
 
 AC_ARG_ENABLE(
 	[sm],
-	[AS_HELP_STRING([--enable-sm],[enable secure messaging support and modules @<:@disabled@:>@])],
+	[AS_HELP_STRING([--disable-sm],[disable secure messaging support and SM modules @<:@enabled@:>@])],
 	,
-	[enable_sm="no"]
+	[enable_sm="yes"]
 )
 
 AC_ARG_ENABLE(
