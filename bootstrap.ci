@@ -58,17 +58,22 @@ rm -rf *~ *.cache config.guess config.log config.status config.sub depcomp ltmai
 
 if [ -n "$SUFFIX" ] || [ -n "$REVISION" ]
 then
+    cp -a version.m4 version.m4.tmp
+
     if [ -n "$SUFFIX" ]
     then
         echo Set package suffix "$SUFFIX"
-        sed 's/^define(\[PACKAGE_SUFFIX\],\s*\[\([-~]*[0-9a-zA-Z]*\)\])$/define(\[PACKAGE_SUFFIX\], \['$SUFFIX'\])/g' version.m4 > version.m4.ci
+        sed 's/^define(\[PACKAGE_SUFFIX\],\s*\[\([-~]*[0-9a-zA-Z]*\)\])$/define(\[PACKAGE_SUFFIX\], \['$SUFFIX'\])/g' version.m4.tmp > version.m4.ci
+        cp version.m4.ci version.m4.tmp
     fi
 
     if [ -n "$REVISION" ]
     then
         echo Set package revision "$REVISION"
-        sed 's/^define(\[PACKAGE_VERSION_REVISION\],\s*\[\([-~]*[0-9a-zA-Z]*\)\])$/define(\[PACKAGE_VERSION_REVISION\], \['$REVISION'\])/g' version.m4 > version.m4.ci
+        sed 's/^define(\[PACKAGE_VERSION_REVISION\],\s*\[\([-~]*[0-9a-zA-Z]*\)\])$/define(\[PACKAGE_VERSION_REVISION\], \['$REVISION'\])/g' version.m4.tmp > version.m4.ci
     fi
+
+    rm -f version.m4.tmp
 fi
 
 autoreconf --verbose --install --force || true
