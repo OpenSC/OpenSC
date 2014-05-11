@@ -30,3 +30,6 @@ install-exec-hook: opensc.conf
 	else \
 		$(INSTALL_DATA) opensc.conf "$(DESTDIR)$(sysconfdir)/opensc.conf"; \
 	fi
+
+uninstall-hook: opensc.conf
+	rm -f "$(DESTDIR)$(sysconfdir)/opensc.conf.new" "$(DESTDIR)$(sysconfdir)/opensc.conf"
