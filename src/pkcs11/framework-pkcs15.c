@@ -609,6 +609,7 @@ __pkcs15_create_pubkey_object(struct pkcs15_fw_data *fw_data,
 	struct sc_pkcs15_pubkey *p15_key = NULL;
 	int rv;
 
+	sc_log(context, "__pkcs15_create_pubkey_object() called, pubkey %p, data %p", pubkey, pubkey->data);
 	/* Read public key from card */
 	/* Attempt to read pubkey from card or file.
 	 * During initialization process, the key may have been created
@@ -645,6 +646,7 @@ __pkcs15_create_pubkey_object(struct pkcs15_fw_data *fw_data,
 	if (pubkey_object != NULL)
 		*pubkey_object = (struct pkcs15_any_object *) object;
 
+	sc_log(context, "__pkcs15_create_pubkey_object() returns pubkey object %p", object);
 	return rv;
 }
 
@@ -3116,11 +3118,13 @@ pkcs15_cert_set_attribute(struct sc_pkcs11_session *session, void *object, CK_AT
 static CK_RV
 pkcs15_cert_get_attribute(struct sc_pkcs11_session *session, void *object, CK_ATTRIBUTE_PTR attr)
 {
-	struct sc_pkcs11_card *p11card = session->slot->card;
+	struct sc_pkcs11_card *p11card = NULL;
 	struct pkcs15_cert_object *cert = (struct pkcs15_cert_object*) object;
 	struct pkcs15_fw_data *fw_data = NULL;
 	size_t len;
 
+	sc_log(context, "pkcs15_cert_get_attribute() called");
+	p11card = session->slot->card;
 	fw_data = (struct pkcs15_fw_data *) p11card->fws_data[session->slot->fw_data_idx];
 	if (!fw_data)
 		return sc_to_cryptoki_error(SC_ERROR_INTERNAL, "C_GetAttributeValue");
@@ -3217,9 +3221,12 @@ pkcs15_cert_cmp_attribute(struct sc_pkcs11_session *session,
 	const unsigned char *data = NULL, *_data = NULL;
 	size_t	len, _len;
 
+	sc_log(context, "pkcs15_cert_cmp_attribute() called");
 	fw_data = (struct pkcs15_fw_data *) p11card->fws_data[session->slot->fw_data_idx];
-	if (!fw_data)
+	if (!fw_data)   {
+		sc_log(context, "pkcs15_cert_cmp_attribute() returns SC_ERROR_INTERNAL");
 		return sc_to_cryptoki_error(SC_ERROR_INTERNAL, "C_GetAttributeValue");
+	}
 
 	switch (attr->type) {
 	/* Check the issuer/subject. Some pkcs11 callers (i.e. netscape) will pass
@@ -3236,8 +3243,10 @@ pkcs15_cert_cmp_attribute(struct sc_pkcs11_session *session,
 		if (cert->cert_data->issuer[0] == ASN1_SET_TAG && data[0] == ASN1_SEQ_TAG && len >= 2)
 			data = sc_asn1_skip_tag(context, &_data, &_len, SC_ASN1_CONS | SC_ASN1_TAG_SEQUENCE, &len);
 
-		if (len == cert->cert_data->issuer_len && !memcmp(cert->cert_data->issuer, data, len))
+		if (len == cert->cert_data->issuer_len && !memcmp(cert->cert_data->issuer, data, len))   {
+			sc_log(context, "pkcs15_cert_cmp_attribute() returns CKA_ISSUER matched");
 			return 1;
+		}
 		break;
 	case CKA_SUBJECT:
 		if (check_cert_data_read(fw_data, cert) != 0)
@@ -3250,12 +3259,15 @@ pkcs15_cert_cmp_attribute(struct sc_pkcs11_session *session,
 		if (cert->cert_data->subject[0] == ASN1_SET_TAG && data[0] == ASN1_SEQ_TAG && len >= 2)
 			data = sc_asn1_skip_tag(context, &_data, &_len, SC_ASN1_CONS | SC_ASN1_TAG_SEQUENCE, &len);
 
-		if (len == cert->cert_data->subject_len && !memcmp(cert->cert_data->subject, data, len))
+		if (len == cert->cert_data->subject_len && !memcmp(cert->cert_data->subject, data, len))   {
+			sc_log(context, "pkcs15_cert_cmp_attribute() returns CKA_SUBJECT matched");
 			return 1;
+		}
 		break;
 	default:
 		return sc_pkcs11_any_cmp_attribute(session, object, attr);
 	}
+	sc_log(context, "pkcs15_cert_cmp_attribute() returns not matched");
 	return 0;
 }
 
@@ -3295,12 +3307,14 @@ pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
 		void *object, CK_ATTRIBUTE_PTR attr)
 {
 	struct pkcs15_prkey_object *prkey = (struct pkcs15_prkey_object*) object;
-	struct sc_pkcs11_card *p11card = session->slot->card;
+	struct sc_pkcs11_card *p11card = NULL;
 	struct pkcs15_fw_data *fw_data = NULL;
 	struct sc_pkcs15_pubkey *key = NULL;
 	unsigned int usage;
 	size_t len;
 
+	sc_log(context, "pkcs15_prkey_get_attribute() called");
+	p11card = session->slot->card;
 	fw_data = (struct pkcs15_fw_data *) p11card->fws_data[session->slot->fw_data_idx];
 	if (!fw_data)
 		return sc_to_cryptoki_error(SC_ERROR_INTERNAL, "C_GetAttributeValue");
@@ -3829,11 +3843,16 @@ pkcs15_pubkey_set_attribute(struct sc_pkcs11_session *session,
 static CK_RV
 pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session, void *object, CK_ATTRIBUTE_PTR attr)
 {
-	struct sc_pkcs11_card *p11card = session->slot->card;
+	struct sc_pkcs11_card *p11card = NULL;
 	struct pkcs15_pubkey_object *pubkey = (struct pkcs15_pubkey_object*) object;
-	struct pkcs15_cert_object *cert = pubkey->pub_genfrom;
+	struct pkcs15_cert_object *cert = NULL;
 	struct pkcs15_fw_data *fw_data = NULL;
 	size_t len;
+
+	sc_log(context, "pkcs15_pubkey_get_attribute() called");
+
+	p11card = session->slot->card;
+	cert = pubkey->pub_genfrom;
 
 	fw_data = (struct pkcs15_fw_data *) p11card->fws_data[session->slot->fw_data_idx];
 	if (!fw_data)
@@ -3931,14 +3950,10 @@ pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session, void *object, CK_
 	case CKA_VERIFY:
 	case CKA_VERIFY_RECOVER:
 	case CKA_DERIVE:
-		if (pubkey->pub_info) {
+		if (pubkey->pub_info)
 			return get_usage_bit(pubkey->pub_info->usage, attr);
-		} else {
-			return get_usage_bit(SC_PKCS15_PRKEY_USAGE_ENCRYPT
-					|SC_PKCS15_PRKEY_USAGE_VERIFY
-					|SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER,
-					attr);
-		}
+		else
+			return get_usage_bit(SC_PKCS15_PRKEY_USAGE_ENCRYPT |SC_PKCS15_PRKEY_USAGE_VERIFY | SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER, attr);
 	case CKA_MODULUS:
 		return get_modulus(pubkey->pub_data, attr);
 	case CKA_MODULUS_BITS:
@@ -4070,6 +4085,7 @@ pkcs15_dobj_get_attribute(struct sc_pkcs11_session *session, void *object, CK_AT
 	int r;
 	unsigned char *buf = NULL;
 
+	sc_log(context, "pkcs15_dobj_get_attribute() called");
 	switch (attr->type) {
 	case CKA_CLASS:
 		check_attribute_buffer(attr, sizeof(CK_OBJECT_CLASS));
@@ -4239,6 +4255,7 @@ pkcs15_skey_get_attribute(struct sc_pkcs11_session *session,
 	struct pkcs15_skey_object *skey = (struct pkcs15_skey_object*) object;
 	size_t len;
 
+	sc_log(context, "pkcs15_skey_get_attribute() called");
 	switch (attr->type) {
 	case CKA_CLASS:
 		check_attribute_buffer(attr, sizeof(CK_OBJECT_CLASS));
