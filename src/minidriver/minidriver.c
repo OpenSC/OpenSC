@@ -2214,6 +2214,11 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 				logprintf(pCardData, 1, "encode public key error %d\n", rv);
 				ret = SCARD_F_INTERNAL_ERROR;
 			}
+			else   {
+				logprintf(pCardData, 1, "public key encoded\n");
+				ret = SCARD_S_SUCCESS;
+			}
+
 			sc_pkcs15_free_pubkey(pubkey);
 		}
 		else {
@@ -2232,6 +2237,10 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 			if (rv)   {
 				logprintf(pCardData, 1, "encode certificate public key error %d\n", rv);
 				ret = SCARD_F_INTERNAL_ERROR;
+			}
+			else   {
+				logprintf(pCardData, 1, "certificate public key encoded\n");
+				ret = SCARD_S_SUCCESS;
 			}
 
 			sc_pkcs15_free_certificate(cert);
