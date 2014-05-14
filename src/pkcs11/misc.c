@@ -293,7 +293,11 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t * ctx)
 	/* Set defaults */
 	conf->plug_and_play = 1;
 	conf->max_virtual_slots = 16;
-	conf->slots_per_card = 4;
+	if (strcmp(ctx->app_name, "onepin-opensc-pkcs11") == 0) {
+		conf->slots_per_card = 1;
+	} else {
+		conf->slots_per_card = 4;
+	}
 	conf->hide_empty_tokens = 1;
 	conf->lock_login = 0;
 	conf->pin_unblock_style = SC_PKCS11_PIN_UNBLOCK_NOT_ALLOWED;
