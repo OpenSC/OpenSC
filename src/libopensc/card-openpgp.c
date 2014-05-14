@@ -43,6 +43,7 @@
 static struct sc_atr_table pgp_atrs[] = {
 	{ "3b:fa:13:00:ff:81:31:80:45:00:31:c1:73:c0:01:00:00:90:00:b1", NULL, "OpenPGP card v1.0/1.1", SC_CARD_TYPE_OPENPGP_V1, 0, NULL },
 	{ "3b:da:18:ff:81:b1:fe:75:1f:03:00:31:c5:73:c0:01:40:00:90:00:0c", NULL, "CryptoStick v1.2 (OpenPGP v2.0)", SC_CARD_TYPE_OPENPGP_V2, 0, NULL },
+	{ "3b:da:11:ff:81:b1:fe:55:1f:03:00:31:84:73:80:01:80:00:90:00:e4", NULL, "Gnuk v1.0.x (OpenPGP v2.0)", SC_CARD_TYPE_OPENPGP_GNUK, 0, NULL },
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
@@ -262,7 +263,12 @@ static struct do_info		pgp2_objects[] = {	/* OpenPGP card spec 2.0 */
 
 /* The DO holding X.509 certificate is constructed but does not contain child DO.
  * We should notice this when building fake file system later. */
-#define DO_CERT		0x7f21
+#define DO_CERT                  0x7f21
+/* Maximum length for response buffer when reading pubkey. This value is calculated with
+ * 4096-bit key length */
+#define MAXLEN_RESP_PUBKEY       527
+/* Gnuk only support 1 key length (2048 bit) */
+#define MAXLEN_RESP_PUBKEY_GNUK  271
 
 #define DRVDATA(card)        ((struct pgp_priv_data *) ((card)->drv_data))
 struct pgp_priv_data {
@@ -307,6 +313,8 @@ pgp_init(sc_card_t *card)
 	int		r;
 	struct blob 	*child = NULL;
 
+	LOG_FUNC_CALLED(card->ctx);
+
 	priv = calloc (1, sizeof *priv);
 	if (!priv)
 		return SC_ERROR_OUT_OF_MEMORY;
@@ -315,11 +323,11 @@ pgp_init(sc_card_t *card)
 	card->cla = 0x00;
 
 	/* set pointer to correct list of card objects */
-	priv->pgp_objects = (card->type == SC_CARD_TYPE_OPENPGP_V2)
+	priv->pgp_objects = (card->type == SC_CARD_TYPE_OPENPGP_V2 || card->type == SC_CARD_TYPE_OPENPGP_GNUK)
 				? pgp2_objects : pgp1_objects;
 
 	/* set detailed card version */
-	priv->bcd_version = (card->type == SC_CARD_TYPE_OPENPGP_V2)
+	priv->bcd_version = (card->type == SC_CARD_TYPE_OPENPGP_V2 || card->type == SC_CARD_TYPE_OPENPGP_GNUK)
 				? OPENPGP_CARD_2_0 : OPENPGP_CARD_1_1;
 
 	/* select application "OpenPGP" */
@@ -354,7 +362,7 @@ pgp_init(sc_card_t *card)
 
 	/* Populate MF - add matching blobs listed in the pgp_objects table. */
 	for (info = priv->pgp_objects; (info != NULL) && (info->id > 0); info++) {
-		if (((info->access & READ_MASK) == READ_ALWAYS) &&
+		if (((info->access & READ_MASK) != READ_NEVER) &&
 		    (info->get_fn != NULL)) {
 			child = pgp_new_blob(card, priv->mf, info->id, sc_file_new());
 
@@ -428,7 +436,8 @@ pgp_get_card_features(sc_card_t *card)
 		if ((pgp_get_blob(card, blob73, 0x00c0, &blob) >= 0) &&
 		    (blob->data != NULL) && (blob->len > 0)) {
 			/* in v2.0 bit 0x04 in first byte means "algorithm attributes changeable */
-			if ((blob->data[0] & 0x04) && (card->type == SC_CARD_TYPE_OPENPGP_V2))
+			if ((blob->data[0] & 0x04) &&
+			    (card->type == SC_CARD_TYPE_OPENPGP_V2 || card->type == SC_CARD_TYPE_OPENPGP_GNUK))
 				priv->ext_caps |= EXT_CAP_ALG_ATTR_CHANGEABLE;
 			/* bit 0x08 in first byte means "support for private use DOs" */
 			if (blob->data[0] & 0x08)
@@ -445,7 +454,8 @@ pgp_get_card_features(sc_card_t *card)
 				priv->ext_caps |= EXT_CAP_GET_CHALLENGE;
 			}
 			/* in v2.0 bit 0x80 in first byte means "support Secure Messaging" */
-			if ((blob->data[0] & 0x80) && (card->type == SC_CARD_TYPE_OPENPGP_V2))
+			if ((blob->data[0] & 0x80) &&
+			    (card->type == SC_CARD_TYPE_OPENPGP_V2 || card->type == SC_CARD_TYPE_OPENPGP_GNUK))
 				priv->ext_caps |= EXT_CAP_SM;
 
 			if ((priv->bcd_version >= OPENPGP_CARD_2_0) && (blob->len >= 10)) {
@@ -717,6 +727,8 @@ pgp_iterate_blobs(struct blob *blob, int level, void (*func)())
 static int
 pgp_read_blob(sc_card_t *card, struct blob *blob)
 {
+	struct pgp_priv_data *priv = DRVDATA (card);
+
 	if (blob->data != NULL)
 		return SC_SUCCESS;
 	if (blob->info == NULL)
@@ -726,7 +738,21 @@ pgp_read_blob(sc_card_t *card, struct blob *blob)
 		u8 	buffer[2048];
 		size_t	buf_len = (card->caps & SC_CARD_CAP_APDU_EXT)
 				  ? sizeof(buffer) : 256;
-		int	r = blob->info->get_fn(card, blob->id, buffer, buf_len);
+		int r = SC_SUCCESS;
+
+		/* Buffer length for certificate */
+		if (blob->id == DO_CERT && priv->max_cert_size > 0) {
+			buf_len = MIN(priv->max_cert_size, sizeof(buffer));
+		}
+
+		/* Buffer length for Gnuk pubkey */
+		if (card->type == SC_CARD_TYPE_OPENPGP_GNUK &&
+		    (blob->id == 0xa400 || blob->id == 0xb600 || blob->id == 0xb800
+		     || blob->id == 0xa401 || blob->id == 0xb601 || blob->id == 0xb801)) {
+			buf_len = MAXLEN_RESP_PUBKEY_GNUK;
+		}
+
+		r = blob->info->get_fn(card, blob->id, buffer, buf_len);
 
 		if (r < 0) {	/* an error occurred */
 			blob->status = r;
@@ -808,6 +834,23 @@ pgp_get_blob(sc_card_t *card, struct blob *blob, unsigned int id,
 			*ret = child;
 			return SC_SUCCESS;
 		}
+	}
+
+	/* This part is for "NOT FOUND" cases */
+
+	/* Special case:
+	 * Gnuk does not have default value for children of DO 65 (DOs 5B, 5F2D, 5F35)
+	 * So, if these blob was not found, we create it. */
+	if (blob->id == 0x65 && (id == 0x5B || id == 0x5F2D || id == 0x5F35)) {
+		sc_log(card->ctx, "Create blob %X under %X", id, blob->id);
+		child = pgp_new_blob(card, blob, id, sc_file_new());
+		if (child) {
+			pgp_set_blob(child, NULL, 0);
+			*ret = child;
+			return SC_SUCCESS;
+		}
+		else
+			sc_log(card->ctx, "Not enough memory to create blob for DO %X");
 	}
 
 	return SC_ERROR_FILE_NOT_FOUND;
@@ -1057,12 +1100,18 @@ static int
 pgp_get_pubkey(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 {
 	sc_apdu_t	apdu;
+	u8 apdu_case = SC_APDU_CASE_4;
 	u8		idbuf[2];
 	int		r;
 
 	sc_log(card->ctx, "called, tag=%04x\n", tag);
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_4, 0x47, 0x81, 0);
+	/* With Gnuk token, force to use short APDU */
+	if (card->type == SC_CARD_TYPE_OPENPGP_GNUK) {
+		apdu_case = SC_APDU_CASE_4_SHORT;
+	}
+
+	sc_format_apdu(card, &apdu, apdu_case, 0x47, 0x81, 0);
 	apdu.lc = 2;
 	apdu.data = ushort2bebytes(idbuf, tag);
 	apdu.datalen = 2;
@@ -1138,28 +1187,157 @@ pgp_get_data(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+
+	/* For Gnuk card, if there is no certificate, it returns error instead of empty data.
+	 * So, for this case, we ignore error and consider success */
+	if (r == SC_ERROR_DATA_OBJECT_NOT_FOUND && card->type == SC_CARD_TYPE_OPENPGP_GNUK
+        && (tag == DO_CERT || tag == 0x0101 || tag == 0x0102 || tag == 0x0103 || tag == 0x0104)) {
+		r = SC_SUCCESS;
+		apdu.resplen = 0;
+	}
 	LOG_TEST_RET(card->ctx, r, "Card returned error");
 
 	LOG_FUNC_RETURN(card->ctx, apdu.resplen);
+}
+
+
+/* Internal: Write certificate for Gnuk */
+static int gnuk_write_certificate(sc_card_t *card, const u8 *buf, size_t length)
+{
+	sc_context_t *ctx = card->ctx;
+	size_t i = 0;
+	sc_apdu_t apdu;
+	u8 *part;
+	size_t plen;
+	/* Two round_ variables below are to build APDU data
+	 * with even length for Gnuk */
+	u8 roundbuf[256];
+	size_t roundlen = 0;
+	int r = SC_SUCCESS;
+
+	LOG_FUNC_CALLED(ctx);
+
+	/* If null data is passed, delete certificate */
+	if (buf == NULL || length == 0) {
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0xD6, 0x85, 0);
+		r = sc_transmit_apdu(card, &apdu);
+		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+		/* Check response */
+		LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2), "Certificate writing failed");
+	}
+
+	/* Ref: gnuk_put_binary_libusb.py and gnuk_token.py in Gnuk source tree */
+	/* Split data to segments of 256 bytes. Send each segment via command chaining,
+	 * with particular P1 byte for each segment */
+	while (i*256 < length) {
+		part = (u8 *)buf + i*256;
+		plen = MIN(length - i*256, 256);
+
+		sc_log(card->ctx, "Write part %d from offset 0x%X, len %d", i+1, part, plen);
+
+		if (i == 0) {
+			sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xD6, 0x85, 0);
+		}
+		else {
+			sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xD6, i, 0);
+		}
+		apdu.flags |= SC_APDU_FLAGS_CHAINING;
+
+		/* If the last part has odd length, we add zero padding to make it even.
+		 * Gnuk does not allow data with odd length */
+		if (plen < 256 && (plen % 2) != 0) {
+			roundlen = plen + 1;
+			memset(roundbuf, 0, roundlen);
+			memcpy(roundbuf, part, plen);
+			apdu.data = roundbuf;
+			apdu.datalen = apdu.lc = roundlen;
+		}
+		else {
+			apdu.data = part;
+			apdu.datalen = apdu.lc = plen;
+		}
+
+		r = sc_transmit_apdu(card, &apdu);
+		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+		/* Check response */
+		LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2), "UPDATE BINARY returned error");
+
+		/* To next part */
+		i++;
+	}
+	LOG_FUNC_RETURN(card->ctx, length);
+}
+
+
+/* Internal: Use PUT DATA command to write */
+static int
+pgp_put_data_plain(sc_card_t *card, unsigned int tag, const u8 *buf, size_t buf_len)
+{
+	struct pgp_priv_data *priv = DRVDATA(card);
+	sc_context_t *ctx = card->ctx;
+	sc_apdu_t apdu;
+	u8 ins = 0xDA;
+	u8 p1 = tag >> 8;
+	u8 p2 = tag & 0xFF;
+	u8 apdu_case = SC_APDU_CASE_3;
+	int r;
+
+	LOG_FUNC_CALLED(ctx);
+
+	/* Extended Header list (004D DO) needs a variant of PUT DATA command */
+	if (tag == 0x004D) {
+		ins = 0xDB;
+		p1 = 0x3F;
+		p2 = 0xFF;
+	}
+
+	/* Build APDU */
+	if (buf != NULL && buf_len > 0) {
+		/* Force short APDU for Gnuk */
+		if (card->type == SC_CARD_TYPE_OPENPGP_GNUK) {
+			apdu_case = SC_APDU_CASE_3_SHORT;
+		}
+		sc_format_apdu(card, &apdu, apdu_case, ins, p1, p2);
+
+		/* if card/reader does not support extended APDUs, but chaining, then set it */
+		if (((card->caps & SC_CARD_CAP_APDU_EXT) == 0) && (priv->ext_caps & EXT_CAP_CHAINING))
+			apdu.flags |= SC_APDU_FLAGS_CHAINING;
+
+		apdu.data = (u8 *)buf;
+		apdu.datalen = buf_len;
+		apdu.lc = buf_len;
+	}
+	else {
+		/* This case is to empty DO */
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_1, ins, p1, p2);
+	}
+
+	/* Send APDU to card */
+	r = sc_transmit_apdu(card, &apdu);
+	LOG_TEST_RET(ctx, r, "APDU transmit failed");
+	/* Check response */
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+
+	if (r < 0)
+		LOG_FUNC_RETURN(ctx, r);
+
+	LOG_FUNC_RETURN(ctx, buf_len);
 }
 
 /* ABI: PUT DATA */
 static int
 pgp_put_data(sc_card_t *card, unsigned int tag, const u8 *buf, size_t buf_len)
 {
-	sc_apdu_t apdu;
 	struct pgp_priv_data *priv = DRVDATA(card);
 	struct blob *affected_blob = NULL;
 	struct do_info *dinfo = NULL;
-	u8 ins = 0xDA;
-	u8 p1 = tag >> 8;
-	u8 p2 = tag & 0xFF;
 	int r;
 
 	LOG_FUNC_CALLED(card->ctx);
 
 	/* Check if the tag is writable */
-	affected_blob = pgp_find_blob(card, tag);
+	if (priv->current->id != tag)
+		affected_blob = pgp_find_blob(card, tag);
 
 	/* Non-readable DOs have no represented blob, we have to check from pgp_get_info_by_tag */
 	if (affected_blob == NULL)
@@ -1186,34 +1364,13 @@ pgp_put_data(sc_card_t *card, unsigned int tag, const u8 *buf, size_t buf_len)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_WRONG_LENGTH);
 	}
 
-	/* Extended Header list (004D DO) needs a variant of PUT DATA command */
-	if (tag == 0x004D) {
-		ins = 0xDB;
-		p1 = 0x3F;
-		p2 = 0xFF;
-	}
-
-	/* Build APDU */
-	if (buf != NULL && buf_len > 0) {
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_3, ins, p1, p2);
-
-		/* if card/reader does not support extended APDUs, but chaining, then set it */
-		if (((card->caps & SC_CARD_CAP_APDU_EXT) == 0) && (priv->ext_caps & EXT_CAP_CHAINING))
-			apdu.flags |= SC_APDU_FLAGS_CHAINING;
-
-		apdu.data = buf;
-		apdu.datalen = buf_len;
-		apdu.lc = buf_len;
+	if (tag == DO_CERT && card->type == SC_CARD_TYPE_OPENPGP_GNUK) {
+		/* Gnuk need a special way to write certificate. */
+		r = gnuk_write_certificate(card, buf, buf_len);
 	}
 	else {
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_1, ins, p1, p2);
+		r = pgp_put_data_plain(card, tag, buf, buf_len);
 	}
-
-	/* Send APDU to card */
-	r = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
-	/* Check response */
-	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 
 	/* Instruct more in case of error */
 	if (r == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED) {
@@ -1328,6 +1485,7 @@ pgp_compute_signature(sc_card_t *card, const u8 *data,
 	struct pgp_priv_data	*priv = DRVDATA(card);
 	sc_security_env_t	*env = &priv->sec_env;
 	sc_apdu_t		apdu;
+	u8 apdu_case = SC_APDU_CASE_4;
 	int			r;
 
 	LOG_FUNC_CALLED(card->ctx);
@@ -1336,14 +1494,19 @@ pgp_compute_signature(sc_card_t *card, const u8 *data,
 		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
 				"invalid operation");
 
+	/* Force short APDU for Gnuk Token */
+	if (card->type == SC_CARD_TYPE_OPENPGP_GNUK) {
+		apdu_case = SC_APDU_CASE_4_SHORT;
+	}
+
 	switch (env->key_ref[0]) {
 	case 0x00: /* signature key */
 		/* PSO SIGNATURE */
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_4, 0x2A, 0x9E, 0x9A);
+		sc_format_apdu(card, &apdu, apdu_case, 0x2A, 0x9E, 0x9A);
 		break;
 	case 0x02: /* authentication key */
 		/* INTERNAL AUTHENTICATE */
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_4, 0x88, 0, 0);
+		sc_format_apdu(card, &apdu, apdu_case, 0x88, 0, 0);
 		break;
 	case 0x01:
 	default:
@@ -1352,7 +1515,7 @@ pgp_compute_signature(sc_card_t *card, const u8 *data,
 	}
 
 	apdu.lc = data_len;
-	apdu.data = data;
+	apdu.data = (u8 *)data;
 	apdu.datalen = data_len;
 	apdu.le = ((outlen >= 256) && !(card->caps & SC_CARD_CAP_APDU_EXT)) ? 256 : outlen;
 	apdu.resp    = out;
@@ -1376,6 +1539,7 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 	struct pgp_priv_data	*priv = DRVDATA(card);
 	sc_security_env_t	*env = &priv->sec_env;
 	sc_apdu_t	apdu;
+	u8 apdu_case = SC_APDU_CASE_4;
 	u8		*temp = NULL;
 	int		r;
 
@@ -1400,7 +1564,7 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 	case 0x01: /* Decryption key */
 	case 0x02: /* authentication key */
 		/* PSO DECIPHER */
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_4, 0x2A, 0x80, 0x86);
+		sc_format_apdu(card, &apdu, apdu_case, 0x2A, 0x80, 0x86);
 		break;
 	case 0x00: /* signature key */
 	default:
@@ -1409,8 +1573,13 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 				"invalid key reference");
 	}
 
+	/* Gnuk only supports short APDU, so we need to use command chaining */
+	if (card->type == SC_CARD_TYPE_OPENPGP_GNUK) {
+		apdu.flags |= SC_APDU_FLAGS_CHAINING;
+	}
+
 	apdu.lc = inlen;
-	apdu.data = in;
+	apdu.data = (u8 *)in;
 	apdu.datalen = inlen;
 	apdu.le = ((outlen >= 256) && !(card->caps & SC_CARD_CAP_APDU_EXT)) ? 256 : outlen;
 	apdu.resp = out;
@@ -1775,6 +1944,7 @@ static int pgp_gen_key(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_in
 	u8 apdu_case;
 	u8 *apdu_data;
 	size_t apdu_le;
+	size_t resplen = 0;
 	int r = SC_SUCCESS;
 
 	LOG_FUNC_CALLED(card->ctx);
@@ -1794,6 +1964,11 @@ static int pgp_gen_key(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_in
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 
+	if (card->type == SC_CARD_TYPE_OPENPGP_GNUK && key_info->modulus_len != 2048) {
+		sc_log(card->ctx, "Gnuk does not support other key length than 2048.");
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+	}
+
 	/* Set attributes for new-generated key */
 	r = pgp_update_new_algo_attr(card, key_info);
 	LOG_TEST_RET(card->ctx, r, "Cannot set attributes for new-generated key");
@@ -1801,30 +1976,36 @@ static int pgp_gen_key(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_in
 	/* Test whether we will need extended APDU. 1900 is an
 	 * arbitrary modulus length which for sure fits into a short APDU.
 	 * This idea is borrowed from GnuPG code.  */
-	if (card->caps & SC_CARD_CAP_APDU_EXT && key_info->modulus_len > 1900) {
+	if (card->caps & SC_CARD_CAP_APDU_EXT
+	    && key_info->modulus_len > 1900
+	    && card->type != SC_CARD_TYPE_OPENPGP_GNUK) {
 		/* We won't store to apdu variable yet, because it will be reset in
 		 * sc_format_apdu() */
 		apdu_le = card->max_recv_size;
 		apdu_case = SC_APDU_CASE_4_EXT;
 	}
 	else {
-		apdu_le = 256;
 		apdu_case = SC_APDU_CASE_4_SHORT;
+		apdu_le = 256;
+		resplen = MAXLEN_RESP_PUBKEY;
+	}
+	if (card->type == SC_CARD_TYPE_OPENPGP_GNUK) {
+		resplen = MAXLEN_RESP_PUBKEY_GNUK;
 	}
 
 	/* Prepare APDU */
-	sc_format_apdu(card, &apdu, apdu_case, 0x47, 0x80,  0);
+	sc_format_apdu(card, &apdu, apdu_case, 0x47, 0x80, 0);
 	apdu.data = apdu_data;
 	apdu.datalen = 2;  /* Data = B600 */
 	apdu.lc = 2;
 	apdu.le = apdu_le;
 
 	/* Buffer to receive response */
-	apdu.resp = calloc(apdu.le, 1);
+	apdu.resplen = (resplen > 0) ? resplen : apdu_le;
+	apdu.resp = calloc(apdu.resplen, 1);
 	if (apdu.resp == NULL) {
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
 	}
-	apdu.resplen = apdu.le;
 
 	/* Send */
 	sc_log(card->ctx, "Waiting for the card to generate key...");
@@ -1942,7 +2123,7 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_keystore_info
 	u8 *p = NULL;
 	u8 *components[] = {key_info->e, key_info->p, key_info->q, key_info->n};
 	size_t componentlens[] = {key_info->e_len, key_info->p_len, key_info->q_len, key_info->n_len};
-	unsigned int componenttags[] = {0x91, 0x92, 0x93, 0x95};
+	unsigned int componenttags[] = {0x91, 0x92, 0x93, 0x97};
 	char *componentnames[] = {
 		"public exponent",
 		"prime p",
@@ -2160,6 +2341,66 @@ out:
 
 #endif /* ENABLE_OPENSSL */
 
+/**
+ * Erase card
+ **/
+static int pgp_erase_card(sc_card_t *card)
+{
+	sc_context_t *ctx = card->ctx;
+	u8 *apdustring[10] = {
+		"00:20:00:81:08:40:40:40:40:40:40:40:40",
+		"00:20:00:81:08:40:40:40:40:40:40:40:40",
+		"00:20:00:81:08:40:40:40:40:40:40:40:40",
+		"00:20:00:81:08:40:40:40:40:40:40:40:40",
+		"00:20:00:83:08:40:40:40:40:40:40:40:40",
+		"00:20:00:83:08:40:40:40:40:40:40:40:40",
+		"00:20:00:83:08:40:40:40:40:40:40:40:40",
+		"00:20:00:83:08:40:40:40:40:40:40:40:40",
+		"00:e6:00:00",
+		"00:44:00:00"
+	};
+	u8 buf[SC_MAX_APDU_BUFFER_SIZE];
+	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
+	sc_apdu_t apdu;
+	size_t len0;
+	int commandsnum = 10;
+	int i, r;
+
+	LOG_FUNC_CALLED(ctx);
+
+	/* Check card version */
+	if (card->type != SC_CARD_TYPE_OPENPGP_V2) {
+		sc_log(ctx, "Card is not OpenPGP v2");
+		LOG_FUNC_RETURN(ctx, SC_ERROR_NO_CARD_SUPPORT);
+	}
+	sc_log(ctx, "Card is OpenPGP v2. Erase card.");
+
+	/* Iterate over 10 commands above */
+	for (i = 0; i < commandsnum; i++) {
+		/* Convert the string to binary array */
+		len0 = sizeof(buf);
+		sc_hex_to_bin(apdustring[i], buf, &len0);
+		printf("Sending: ");
+		for (r = 0; r < len0; r++)
+			printf("%02X ", buf[r]);
+		printf("\n");
+
+		/* Build APDU from binary array */
+		r = sc_bytes2apdu(card->ctx, buf, len0, &apdu);
+		if (r) {
+			sc_log(ctx, "Failed to build APDU");
+			LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
+		}
+		apdu.resp = rbuf;
+		apdu.resplen = sizeof(rbuf);
+
+		/* Send APDU to card */
+		r = sc_transmit_apdu(card, &apdu);
+		LOG_TEST_RET(ctx, r, "Transmiting APDU failed");
+	}
+	LOG_FUNC_RETURN(ctx, r);
+}
+
 /* ABI: card ctl: perform special card-specific operations */
 static int pgp_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 {
@@ -2184,10 +2425,55 @@ static int pgp_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 		LOG_FUNC_RETURN(card->ctx, r);
 		break;
 #endif /* ENABLE_OPENSSL */
+	case SC_CARDCTL_ERASE_CARD:
+		r = pgp_erase_card(card);
+		LOG_FUNC_RETURN(card->ctx, r);
+		break;
 	}
 
 	LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 }
+
+
+/* Internal: Delete key */
+static int
+gnuk_delete_key(sc_card_t *card, u8 key_id)
+{
+	sc_context_t *ctx = card->ctx;
+	int r = SC_SUCCESS;
+	u8 *data = NULL;
+
+	LOG_FUNC_CALLED(ctx);
+
+	if (key_id < 1 || key_id > 3) {
+		sc_log(ctx, "Key ID %d is invalid. Should be 1, 2 or 3.", key_id);
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+	}
+
+	/* Delete fingerprint */
+	sc_log(ctx, "Delete fingerprints");
+	r = pgp_put_data(card, 0xC6 + key_id, NULL, 0);
+	LOG_TEST_RET(ctx, r, "Failed to delete fingerprints");
+	/* Delete creation time */
+	sc_log(ctx, "Delete creation time");
+	r = pgp_put_data(card, 0xCD + key_id, NULL, 0);
+	LOG_TEST_RET(ctx, r, "Failed to delete creation time");
+
+	/* Rewrite Extended Header List */
+	sc_log(ctx, "Rewrite Extended Header List");
+
+	if (key_id == 1)
+		data = "\x4D\x02\xB6";
+	else if (key_id == 2)
+		data = "\x4D\x02\xB8";
+	else if (key_id == 3)
+		data = "\x4D\x02\xA4";
+
+	r = pgp_put_data(card, 0x4D, data, strlen(data) + 1);
+
+	LOG_FUNC_RETURN(ctx, r);
+}
+
 
 /* ABI: DELETE FILE */
 static int
@@ -2196,6 +2482,7 @@ pgp_delete_file(sc_card_t *card, const sc_path_t *path)
 	struct pgp_priv_data *priv = DRVDATA(card);
 	struct blob *blob;
 	sc_file_t *file;
+	u8 key_id;
 	int r;
 
 	LOG_FUNC_CALLED(card->ctx);
@@ -2211,9 +2498,19 @@ pgp_delete_file(sc_card_t *card, const sc_path_t *path)
 	if (blob == priv->mf)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 
-	if (file->id == 0xB601 || file->id == 0xB801 || file->id == 0xA401) {
+	if (card->type != SC_CARD_TYPE_OPENPGP_GNUK &&
+	    (file->id == 0xB601 || file->id == 0xB801 || file->id == 0xA401)) {
 		/* These tags are just symbolic. We don't really delete it. */
 		r = SC_SUCCESS;
+	}
+	else if (card->type == SC_CARD_TYPE_OPENPGP_GNUK && file->id == 0xB601) {
+		r = gnuk_delete_key(card, 1);
+	}
+	else if (card->type == SC_CARD_TYPE_OPENPGP_GNUK && file->id == 0xB801) {
+		r = gnuk_delete_key(card, 2);
+	}
+	else if (card->type == SC_CARD_TYPE_OPENPGP_GNUK && file->id == 0xA401) {
+		r = gnuk_delete_key(card, 3);
 	}
 	else {
 		/* call pgp_put_data() with zero-sized NULL-buffer to zap the DO contents */

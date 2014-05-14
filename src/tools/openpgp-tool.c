@@ -32,6 +32,7 @@
 #include "libopensc/asn1.h"
 #include "libopensc/cards.h"
 #include "libopensc/cardctl.h"
+#include "libopensc/log.h"
 #include "util.h"
 #include "libopensc/log.h"
 
@@ -39,6 +40,7 @@
 #define	OPT_PRETTY	257
 #define	OPT_VERIFY	258
 #define	OPT_PIN	    259
+#define	OPT_DELKEY  260
 
 /* define structures */
 struct ef_name_map {
@@ -74,6 +76,8 @@ static int opt_verify = 0;
 static char *verifytype = NULL;
 static int opt_pin = 0;
 static char *pin = NULL;
+static int opt_erase = 0;
+static int opt_delkey = 0;
 
 static const char *app_name = "openpgp-tool";
 
@@ -90,8 +94,10 @@ static const struct option options[] = {
 	{ "help",      no_argument,       NULL, 'h'        },
 	{ "verbose",   no_argument,       NULL, 'v'        },
 	{ "version",   no_argument,       NULL, 'V'        },
+	{ "erase",     no_argument,       NULL, 'E'        },
 	{ "verify",    required_argument, NULL, OPT_VERIFY },
 	{ "pin",       required_argument, NULL, OPT_PIN },
+	{ "del-key",   required_argument, NULL, OPT_DELKEY },
 	{ NULL, 0, NULL, 0 }
 };
 
@@ -108,8 +114,10 @@ static const char *option_help[] = {
 /* h */	"Print this help message",
 /* v */	"Verbose operation. Use several times to enable debug output.",
 /* V */	"Show version number",
+/* E */	"Erase (reset) the card",
 	"Verify PIN (CHV1, CHV2, CHV3...)",
-	"PIN string"
+	"PIN string",
+	"Delete key (1, 2, 3 or all)"
 };
 
 static const struct ef_name_map openpgp_data[] = {
@@ -215,7 +223,7 @@ static void display_data(const struct ef_name_map *mapping, char *value)
 			} else {
 				const char *label = mapping->name;
 
-				printf("%s:%*s%s\n", label, 10-strlen(label), "", value);
+				printf("%s:%*s%s\n", label, 10 - (int)strlen(label), "", value);
 			}
 		}
 	}
@@ -226,7 +234,7 @@ static int decode_options(int argc, char **argv)
 {
 	int c;
 
-	while ((c = getopt_long(argc, argv,"r:x:CUG:L:hwvV", options, (int *) 0)) != EOF) {
+	while ((c = getopt_long(argc, argv,"r:x:CUG:L:hwvVE", options, (int *) 0)) != EOF) {
 		switch (c) {
 		case 'r':
 			opt_reader = optarg;
@@ -285,6 +293,17 @@ static int decode_options(int argc, char **argv)
 		case 'V':
 			show_version();
 			exit(EXIT_SUCCESS);
+			break;
+		case 'E':
+			opt_erase++;
+			break;
+		case OPT_DELKEY:
+			opt_delkey++;
+			if (strcmp(optarg, "all") != 0)   /* Arg string is not 'all' */
+				key_id = optarg[0] - '0';
+			else                              /* Arg string is 'all' */
+				key_id = 'a';
+			actions++;
 			break;
 		default:
 			util_print_usage_and_die(app_name, options, option_help, NULL);
@@ -356,6 +375,8 @@ int do_genkey(sc_card_t *card, u8 key_id, unsigned int key_len)
 	sc_path_t path;
 	sc_file_t *file;
 
+	LOG_FUNC_CALLED(card->ctx);
+
 	if (key_id < 1 || key_id > 3) {
 		printf("Unknown key ID %d.\n", key_id);
 		return 1;
@@ -409,6 +430,145 @@ int do_verify(sc_card_t *card, char *type, char *pin)
 	return r;
 }
 
+/**
+ * Delete key, for Gnuk.
+ **/
+int delete_key_gnuk(sc_card_t *card, u8 key_id)
+{
+	sc_context_t *ctx = card->ctx;
+	int r = SC_SUCCESS;
+	u8 *data = NULL;
+
+	/* Delete fingerprint */
+	sc_log(ctx, "Delete fingerprints");
+	r |= sc_put_data(card, 0xC6 + key_id, NULL, 0);
+	/* Delete creation time */
+	sc_log(ctx, "Delete creation time");
+	r |= sc_put_data(card, 0xCD + key_id, NULL, 0);
+
+	/* Rewrite Extended Header List */
+	sc_log(ctx, "Rewrite Extended Header List");
+
+	if (key_id == 1)
+		data = "\x4D\x02\xB6";
+	else if (key_id == 2)
+		data = "\x4D\x02\xB8";
+	else if (key_id == 3)
+		data = "\x4D\x02\xA4";
+	else
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	r |= sc_put_data(card, 0x4D, data, strlen(data) + 1);
+	return r;
+}
+
+/**
+ * Delete key, for OpenPGP card.
+ * This function is not complete and is reserved for future version (> 2) of OpenPGP card.
+ **/
+int delete_key_openpgp(sc_card_t *card, u8 key_id)
+{
+	sc_context_t *ctx = card->ctx;
+	char *del_fingerprint = "00:DA:00:C6:14:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00";
+	char *del_creationtime = "00:DA:00:CD:04:00:00:00:00";
+	/* We need to replace the 4th byte later */
+	char *apdustring = NULL;
+	u8 buf[SC_MAX_APDU_BUFFER_SIZE];
+	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
+	sc_apdu_t apdu;
+	size_t len0;
+	int i;
+	int r = SC_SUCCESS;
+
+	for (i = 0; i < 2; i++) {
+		if (i == 0)    /* Reset fingerprint */
+			apdustring = del_fingerprint;
+		else           /* Reset creation time */
+			apdustring = del_creationtime;
+		/* Convert the string to binary array */
+		len0 = sizeof(buf);
+		sc_hex_to_bin(apdustring, buf, &len0);
+
+		/* Replace DO tag, subject to key ID */
+		buf[3] = buf[3] + key_id;
+
+		/* Build APDU from binary array */
+		r = sc_bytes2apdu(card->ctx, buf, len0, &apdu);
+		if (r) {
+			sc_log(ctx, "Failed to build APDU");
+			LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
+		}
+		apdu.resp = rbuf;
+		apdu.resplen = sizeof(rbuf);
+
+		/* Send APDU to card */
+		r = sc_transmit_apdu(card, &apdu);
+		LOG_TEST_RET(ctx, r, "Transmiting APDU failed");
+	}
+	/* TODO: Rewrite Extended Header List.
+	 * Not support by OpenGPG v2 yet */
+	LOG_FUNC_RETURN(ctx, r);
+}
+
+int delete_key(sc_card_t *card, u8 key_id)
+{
+	sc_context_t *ctx = card->ctx;
+	int r;
+
+	LOG_FUNC_CALLED(ctx);
+	/* Check key ID */
+	if (key_id < 1 || key_id > 3) {
+		sc_log(ctx, "Invalid key ID %d", key_id);
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+	}
+
+	if (card->type == SC_CARD_TYPE_OPENPGP_GNUK)
+		r = delete_key_gnuk(card, key_id);
+	else
+		r = delete_key_openpgp(card, key_id);
+
+	LOG_FUNC_RETURN(ctx, r);
+}
+
+int do_delete_key(sc_card_t *card, u8 key_id)
+{
+	sc_context_t *ctx = card->ctx;
+	int r = SC_SUCCESS;
+
+	/* Currently, only Gnuk supports deleting keys */
+	if (card->type != SC_CARD_TYPE_OPENPGP_GNUK) {
+		printf("Only Gnuk supports deleting keys. General OpenPGP doesn't.");
+		return SC_ERROR_NOT_SUPPORTED;
+	}
+
+	if (key_id < 1 || (key_id > 3 && key_id != 'a')) {
+		printf("Error: Invalid key id %d", key_id);
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+	if (key_id == 1 || key_id == 'a') {
+		r |= delete_key(card, 1);
+	}
+	if (key_id == 2 || key_id == 'a') {
+		r |= delete_key(card, 2);
+	}
+	if (key_id == 3 || key_id == 'a') {
+		r |= delete_key(card, 3);
+	}
+	return r;
+}
+
+int do_erase(sc_card_t *card)
+{
+	int r;
+	/* Check card version */
+	if (card->type != SC_CARD_TYPE_OPENPGP_V2) {
+		printf("Do not erase card which is not OpenPGP v2\n");
+	}
+	printf("Erase card\n");
+	r = sc_card_ctl(card, SC_CARDCTL_ERASE_CARD, NULL);
+	return r;
+}
+
 int main(int argc, char **argv)
 {
 	sc_context_t *ctx = NULL;
@@ -447,8 +607,10 @@ int main(int argc, char **argv)
 
 	/* check card type */
 	if ((card->type != SC_CARD_TYPE_OPENPGP_V1) &&
-	    (card->type != SC_CARD_TYPE_OPENPGP_V2)) {
+	    (card->type != SC_CARD_TYPE_OPENPGP_V2) &&
+	    (card->type != SC_CARD_TYPE_OPENPGP_GNUK)) {
 		util_error("not an OpenPGP card");
+		sc_log(card->ctx, "Card type %X", card->type);
 		exit_status = EXIT_FAILURE;
 		goto out;
 	}
@@ -481,6 +643,12 @@ int main(int argc, char **argv)
 		perror("execv()");
 		exit(EXIT_FAILURE);
 	}
+
+	if (opt_delkey)
+		exit_status != do_delete_key(card, key_id);
+
+	if (opt_erase)
+		exit_status != do_erase(card);
 
 out:
 	sc_unlock(card);
