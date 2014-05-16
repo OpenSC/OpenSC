@@ -55,7 +55,6 @@ stamp-h*
 *.tmp
 ChangeLog
 
-
 etc/opensc.conf.win
 etc/opensc.conf
 src/common/compat_getopt_main
@@ -101,3 +100,5 @@ src/tests/lottery
 src/tests/p15dump
 src/tests/pintest
 src/tests/prngtest
+
+version.m4.ci
