@@ -3824,14 +3824,11 @@ static void
 pkcs15_pubkey_release(void *object)
 {
 	struct pkcs15_pubkey_object *pubkey = (struct pkcs15_pubkey_object*) object;
+	struct sc_pkcs15_pubkey *key_data = pubkey->pub_data;
 
-	if (__pkcs15_release_object((struct pkcs15_any_object *) object) == 0)   {
-		struct sc_pkcs15_pubkey *key_data = pubkey->pub_data;
-
+	if (__pkcs15_release_object((struct pkcs15_any_object *) object) == 0)
 		if (key_data)
 			sc_pkcs15_free_pubkey(key_data);
-		pubkey->pub_data = NULL;
-	}
 }
 
 
