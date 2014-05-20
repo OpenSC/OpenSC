@@ -3,6 +3,8 @@
  *
  * Copyright (C) 2008, Weitao Sun <weitao@ftsafe.com>
  * Copyright (C) 2011, Xiaoshuo Wu <xiaoshuo@ftsafe.com>
+ * Support: Riham <ruihan@ftsafe.com>
+ * Support: Shengchao niu <shengchao@ftsafe.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -1099,7 +1101,7 @@ epass2003_select_fid_(struct sc_card *card, sc_path_t * in_path, sc_file_t ** fi
 		/* 62 16 82 02 11 00 83 02 29 00 85 02 08 00 86 08 FF 90 90 90 FF FF FF FF */
 		apdu.resplen = 0x18;
 		memcpy(apdu.resp,
-		       "\x6f\x16\x82\x02\x11\x00\x83\x02\x29\x00\x85\x02\x08\x00\x86\x08\xff\x90\x90\x90\xff\xff\xff\xff",
+		       "\x6f\x16\x82\x02\x11\x00\x83\x02\x29\x00\x85\x02\x08\x00\x86\x08\xff\x96\xB6\x96\xff\xff\xff\xff",
 		       apdu.resplen);
 		apdu.resp[9] = path[1];
 		apdu.sw1 = 0x90;
@@ -1772,9 +1774,13 @@ epass2003_construct_fci(struct sc_card *card, const sc_file_t * file,
 
 			rv = acl_to_ac_byte(card, entry);
 			LOG_TEST_RET(card->ctx, rv, "Invalid ACL");
-
 			buf[ii] = rv;
 		}
+
+		// Change a AC byte  
+		if( file->ef_structure == SC_CARDCTL_OBERTHUR_KEY_RSA_CRT )
+			buf[2] = EPASS2003_AC_MAC_EQUAL | EPASS2003_AC_USER;	
+
 		sc_asn1_put_tag(0x86, buf, sizeof(ops), p, *outlen - (p - out), &p);
 
 	}
@@ -1786,8 +1792,8 @@ epass2003_construct_fci(struct sc_card *card, const sc_file_t * file,
 	}
 
 	out[1] = p - out - 2;
-
 	*outlen = p - out;
+
 	return 0;
 }
 
@@ -2214,7 +2220,7 @@ get_external_key_retries(struct sc_card *card, unsigned char kid, unsigned char 
 	r = sc_get_challenge(card, random, 8);
 	LOG_TEST_RET(card->ctx, r, "get challenge get_external_key_retries failed");
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0x82, 0x01, 0x80 | kid);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x82, 0x01, 0x80 | kid);
 	apdu.resp = NULL;
 	apdu.resplen = 0;
 
@@ -2236,7 +2242,7 @@ get_external_key_retries(struct sc_card *card, unsigned char kid, unsigned char 
 
 static int
 external_key_auth(struct sc_card *card, unsigned char kid,
-		unsigned char *data, size_t datalen)
+		unsigned char *data, size_t datalen,int* tries_left)
 {
 	int r;
 	struct sc_apdu apdu;
@@ -2258,9 +2264,22 @@ external_key_auth(struct sc_card *card, unsigned char kid,
 
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU external_key_auth failed");
+
+	if( apdu.sw1 == 0x63 && apdu.sw2 == 0x00 ){
+		u8 retries = 0;
+		int ret = get_external_key_retries(card, 0x80 | kid, &retries);
+		if (ret == SC_SUCCESS)
+		{
+			*tries_left = retries;
+			/*
+			 * Bcoz external authentication is just expected to behave as a PIN method 
+			 * SC_ERROR_PIN_CODE_INCORRECT is most close to the current situation 
+			 */		
+			return SC_ERROR_PIN_CODE_INCORRECT;
+		}
+	}
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(card->ctx, r, "external_key_auth failed");
-
 	return r;
 }
 
@@ -2332,12 +2351,12 @@ epass2003_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries
 	/* verify */
 	if (data->cmd == SC_PIN_CMD_UNBLOCK) {
 		r = external_key_auth(card, (kid + 1), (unsigned char *)data->pin1.data,
-				data->pin1.len);
+				data->pin1.len,tries_left);
 		LOG_TEST_RET(card->ctx, r, "verify pin failed");
 	}
 	else {
 		r = external_key_auth(card, kid, (unsigned char *)data->pin1.data,
-				data->pin1.len);
+				data->pin1.len,tries_left);
 		LOG_TEST_RET(card->ctx, r, "verify pin failed");
 	}
 

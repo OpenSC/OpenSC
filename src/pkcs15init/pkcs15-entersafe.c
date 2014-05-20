@@ -1,4 +1,11 @@
 /*
+ * Support for entersafe smart cards
+ *
+ * Copyright (C) 2008, Weitao Sun <weitao@ftsafe.com>
+ * Copyright (C) 2011, Xiaoshuo Wu <xiaoshuo@ftsafe.com>
+ * Support: Riham <ruihan@ftsafe.com>
+ * Support: Shengchao niu <shengchao@ftsafe.com>
+ *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
@@ -378,7 +385,8 @@ static int entersafe_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	if (acl_entry->method  != SC_AC_NONE) {
 		 r = sc_pkcs15init_authenticate(profile, p15card, tfile, SC_AC_OP_UPDATE);
 		 if(r<0)
-			  r = SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
+			 SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r,\
+										 "generate key: pkcs15init_authenticate failed");
 	}
 	sc_file_free(tfile);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "cant verify pin");
@@ -428,7 +436,8 @@ static int entersafe_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15ca
 	if (acl_entry->method  != SC_AC_NONE) {
 		 r = sc_pkcs15init_authenticate(profile, p15card, tfile, SC_AC_OP_UPDATE);
 		 if(r<0)
-			  r = SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
+			 SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r,\
+										 "generate key: pkcs15init_authenticate failed");
 	}
 	sc_file_free(tfile);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "cant verify pin");
