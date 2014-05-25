@@ -577,12 +577,20 @@ static int asepcos_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	                   kinfo->path.value[kinfo->path.len-1];
 
 	if (obj->auth_id.len != 0) {
-		/* the key is proctected by a PIN */
-		/* XXX use the pkcs15 structures for this */
+		/* the key is protected by a PIN */
+		sc_pkcs15_object_t *pin;
+		struct sc_pkcs15_auth_info *auth_info;
 		sc_cardctl_asepcos_akn2fileid_t st;
 
-		st.akn = sc_pkcs15init_get_pin_reference(p15card, profile,
-			                        SC_AC_SYMBOLIC, SC_PKCS15INIT_USER_PIN);
+		r = sc_pkcs15_find_pin_by_auth_id(p15card, &obj->auth_id, &pin);
+		if (r != SC_SUCCESS) {
+			sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "unable to determine reference for the PIN");
+			return r;
+		}
+
+		auth_info = (struct sc_pkcs15_auth_info *)pin->data;
+
+		st.akn = auth_info->attrs.pin.reference;
 		r = sc_card_ctl(p15card->card, SC_CARDCTL_ASEPCOS_AKN2FILEID, &st);
 		if (r != SC_SUCCESS) {
 			sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "unable to determine file id of the PIN");
