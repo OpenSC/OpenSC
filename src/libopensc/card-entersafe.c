@@ -47,7 +47,7 @@ static struct sc_atr_table entersafe_atrs[] = {
 	 { 
 		"3b:fc:18:00:00:81:31:80:45:90:67:46:4a:00:64:18:14:00:00:00:00:02",
 		"ff:00:00:00:00:00:00:00:00:ff:ff:ff:ff:00:00:00:00:ff:ff:ff:ff:00",
-		"eJAVA/PK-01C", SC_CARD_TYPE_ENTERSAFE_eJAVA_PK_01C, 0, NULL },
+		"EJAVA/PK-01C", SC_CARD_TYPE_ENTERSAFE_EJAVA_PK_01C, 0, NULL },
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
@@ -700,7 +700,7 @@ static int entersafe_create_mf(sc_card_t *card, sc_entersafe_create_data * data)
 		 r = entersafe_transmit_apdu(card, &apdu,trans_code_3k,sizeof(trans_code_3k),0,1);
 	}break;
 	case SC_CARD_TYPE_ENTERSAFE_FTCOS_PK_01C:
-	case SC_CARD_TYPE_ENTERSAFE_eJAVA_PK_01C:	
+	case SC_CARD_TYPE_ENTERSAFE_EJAVA_PK_01C:	
 	{
 		 r = entersafe_transmit_apdu(card, &apdu,trans_code_ftcos_pk_01c,sizeof(trans_code_ftcos_pk_01c),0,1);
 	}break;
@@ -1038,7 +1038,7 @@ static int entersafe_erase_card(sc_card_t *card)
 		 r = entersafe_transmit_apdu(card, &apdu,trans_code_3k,sizeof(trans_code_3k),0,1);
 	}break;
 	case SC_CARD_TYPE_ENTERSAFE_FTCOS_PK_01C:
-	case SC_CARD_TYPE_ENTERSAFE_eJAVA_PK_01C:	
+	case SC_CARD_TYPE_ENTERSAFE_EJAVA_PK_01C:	
 	{
 		 r = entersafe_transmit_apdu(card, &apdu,trans_code_ftcos_pk_01c,sizeof(trans_code_ftcos_pk_01c),0,1);
 	}break;
