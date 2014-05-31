@@ -1,6 +1,6 @@
 NEWS for OpenSC -- History of user visible changes
 
-New in 0.13.1; 2014-05-16
+New in 0.14.0; 2014-05-31
 * new card driver DNIe
 * extended existing drivers by support of
     Swedish eID card (gemsafeV1)
