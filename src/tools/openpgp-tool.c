@@ -215,7 +215,7 @@ static void display_data(const struct ef_name_map *mapping, char *value)
 			} else {
 				const char *label = mapping->name;
 
-				printf("%s:%*s%s\n", label, 10-strlen(label), "", value);
+				printf("%s:%*s%s\n", label, (int)(10-strlen(label)), "", value);
 			}
 		}
 	}
@@ -304,44 +304,38 @@ static int do_userinfo(sc_card_t *card)
 	for (i = 0; openpgp_data[i].ef != NULL; i++) {
 		sc_path_t path;
 		sc_file_t *file;
-		size_t count;
-		size_t offset = 0;
+		int count;
 		int r;
 
 		sc_format_path(openpgp_data[i].ef, &path);
 		r = sc_select_file(card, &path, &file);
-
 		if (r) {
-			fprintf(stderr, "Failed to select EF %s: %s\n",
-				openpgp_data[i].ef, sc_strerror(r));
+			fprintf(stderr, "Failed to select EF %s: %s\n", openpgp_data[i].ef, sc_strerror(r));
 			return EXIT_FAILURE;
 		}
 
 		count = file->size;
-		while (count > 0) {
-	                int c = count > sizeof(buf) ? sizeof(buf) : count;
+		if (!count)
+			continue;
 
-        	        r = sc_read_binary(card, offset, buf+offset, c, 0);
-                	if (r < 0) {
-				fprintf(stderr, "%s: read failed - %s\n",
-					openpgp_data[i].ef, sc_strerror(r));
-	                        return EXIT_FAILURE;
-        	        }
-                	if (r != c) {
-                        	fprintf(stderr, "%s: expecting %d, got only %d bytes\n",
-					openpgp_data[i].ef, c, r);
-	                        return EXIT_FAILURE;
-        	        }
-
-        	        offset += r;
-                	count -= r;
-	        }
-
-		buf[file->size] = '\0';
-
-		if (file->size > 0) {
-			display_data(openpgp_data + i, (char *) buf);
+		if (count > (int)sizeof(buf) - 1)   {
+			fprintf(stderr, "Too small buffer to read the OpenPGP data\n");
+			return EXIT_FAILURE;
 		}
+	
+        	r = sc_read_binary(card, 0, buf, count, 0);
+               	if (r < 0) {
+			fprintf(stderr, "%s: read failed - %s\n", openpgp_data[i].ef, sc_strerror(r));
+			return EXIT_FAILURE;
+        	}
+               	if (r != count) {
+                        fprintf(stderr, "%s: expecting %d, got only %d bytes\n", openpgp_data[i].ef, count, r);
+			return EXIT_FAILURE;
+        	}
+
+		buf[count] = '\0';
+
+		display_data(openpgp_data + i, (char *) buf);
 	}
 
 	return EXIT_SUCCESS;
