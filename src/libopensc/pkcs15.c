@@ -444,6 +444,13 @@ fix_starcos_pkcs15_card(struct sc_pkcs15_card *p15card)
 				sc_log(ctx, "D-TRUST 2ca card detected");
 			}
 
+			/* D-TRUST card 2.4 2ce (cards working with all types of hashes
+			 * and no addition of prefix) */
+			else if (strstr(p15card->tokeninfo->label, "2ce") != NULL) {
+				p15card->card->caps |= SC_CARD_CAP_ONLY_RAW_HASH;
+				sc_log(ctx, "D-TRUST 2ce card detected");
+			}
+
 			/* XXX: probably there are more D-Trust card in the wild,
 			 *      which also need these flags to produce valid signatures
 			 */
