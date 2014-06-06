@@ -1117,7 +1117,7 @@ static int westcos_sign_decipher(int mode, sc_card_t *card,
 		
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x00, mode);
 		apdu.datalen = data_len;
-		apdu.data = data;
+		apdu.data = (u8 *) data;
 		apdu.lc = data_len;
 		apdu.le = outlen > 240 ? 240 : outlen;
 		apdu.resp = out;

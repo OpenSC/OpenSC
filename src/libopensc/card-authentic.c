@@ -967,7 +967,7 @@ authentic_write_binary(struct sc_card *card, unsigned int idx,
 		sc_format_apdu(card, cur_apdu, SC_APDU_CASE_3_SHORT, 0xD0, (idx >> 8) & 0x7F, idx & 0xFF);
 		cur_apdu->lc = sz;
 		cur_apdu->datalen = sz;
-		cur_apdu->data = buf + count - rest;
+		cur_apdu->data = (u8 *) (buf + count - rest);
 
 		idx += sz;
 		rest -= sz;
@@ -1016,7 +1016,7 @@ authentic_update_binary(struct sc_card *card, unsigned int idx,
 		sc_format_apdu(card, cur_apdu, SC_APDU_CASE_3_SHORT, 0xD6, (idx >> 8) & 0x7F, idx & 0xFF);
 		cur_apdu->lc = sz;
 		cur_apdu->datalen = sz;
-		cur_apdu->data = buf + count - rest;
+		cur_apdu->data = (u8 *) ( buf + count - rest );
 
 		idx += sz;
 		rest -= sz;
@@ -1243,7 +1243,7 @@ authentic_delete_file(struct sc_card *card, const struct sc_path *path)
 
 	for (ii=0, p1 = 0x02; ii<2; ii++, p1 = 0x01)   {
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xE4, p1, 0x00);
-		apdu.data = path->value + path->len - 2;
+		apdu.data = (u8 *) (path->value + path->len - 2);
 		apdu.datalen = 2;
 		apdu.lc = 2;
 
@@ -2103,7 +2103,7 @@ authentic_decipher(struct sc_card *card, const unsigned char *in, size_t in_len,
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x80, 0x86);
 	apdu.flags |= SC_APDU_FLAGS_CHAINING;
-	apdu.data = in;
+	apdu.data = (u8 *) in;
 	apdu.datalen = in_len;
 	apdu.lc = in_len;
 	apdu.resp = resp;

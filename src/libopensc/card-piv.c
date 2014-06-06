@@ -471,7 +471,7 @@ static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 
 	apdu.lc = sendbuflen;
 	apdu.datalen = sendbuflen;
-	apdu.data = sendbuf;
+	apdu.data = (u8 *) sendbuf;
 
 	if (recvbuf) {
 		apdu.resp = rbuf;
@@ -683,7 +683,7 @@ static int piv_select_aid(sc_card_t* card, u8* aid, size_t aidlen, u8* response,
 	sc_format_apdu(card, &apdu,
 		response == NULL ? SC_APDU_CASE_3_SHORT : SC_APDU_CASE_4_SHORT, 0xA4, 0x04, 0x00);
 	apdu.lc = aidlen;
-	apdu.data = aid;
+	apdu.data = (u8 *) aid;
 	apdu.datalen = aidlen;
 	apdu.resp = response;
 	apdu.resplen = responselen ? *responselen : 0;

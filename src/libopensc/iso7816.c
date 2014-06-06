@@ -198,7 +198,7 @@ iso7816_write_record(struct sc_card *card, unsigned int rec_nr,
 
 	apdu.lc = count;
 	apdu.datalen = count;
-	apdu.data = buf;
+	apdu.data = (u8 *) buf;
 
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
@@ -226,7 +226,7 @@ iso7816_append_record(struct sc_card *card,
 
 	apdu.lc = count;
 	apdu.datalen = count;
-	apdu.data = buf;
+	apdu.data = (u8 *) buf;
 
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
@@ -255,7 +255,7 @@ iso7816_update_record(struct sc_card *card, unsigned int rec_nr,
 
 	apdu.lc = count;
 	apdu.datalen = count;
-	apdu.data = buf;
+	apdu.data = (u8 *) buf;
 
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
@@ -284,7 +284,7 @@ iso7816_write_binary(struct sc_card *card,
 		       (idx >> 8) & 0x7F, idx & 0xFF);
 	apdu.lc = count;
 	apdu.datalen = count;
-	apdu.data = buf;
+	apdu.data = (u8 *) buf;
 
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
@@ -312,7 +312,7 @@ iso7816_update_binary(struct sc_card *card,
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xD6, (idx >> 8) & 0x7F, idx & 0xFF);
 	apdu.lc = count;
 	apdu.datalen = count;
-	apdu.data = buf;
+	apdu.data = (u8 *) buf;
 
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");

@@ -427,7 +427,7 @@ static int cwa_verify_cvc_certificate(sc_card_t * card,
 
 	/* compose apdu for Perform Security Operation (Verify cert) cmd */
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x2A, 0x00, 0xAE);
-	apdu.data = cert;
+	apdu.data = (u8 *) cert;
 	apdu.datalen = len;
 	apdu.lc = len;
 	apdu.le = 0;

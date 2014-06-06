@@ -860,7 +860,11 @@ int main(int argc, char *argv[])
 		memset(b, 0, file->size);
 
 		fp = fopen(put_filename, "rb");
-		fread(b, 1, file->size, fp);
+		r = fread(b, 1, file->size, fp);
+        if (r < 0) {
+            printf("Error reading file.\n");
+            goto out; // ??
+        }
 		fclose(fp);
 
 		r = sc_update_binary(card, 0, b, file->size, 0);

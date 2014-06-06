@@ -546,7 +546,7 @@ static int select_file_id(sc_card_t *card, const u8 *buf, size_t buflen,
 	apdu.resp = rbuf;
 	apdu.resplen = sizeof(rbuf);
 	apdu.datalen = buflen;
-	apdu.data = buf;
+	apdu.data = (u8 *) buf;
 	apdu.lc = buflen;
 	apdu.le = 252;
 
@@ -724,7 +724,7 @@ static int flex_delete_file(sc_card_t *card, const sc_path_t *path)
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xE4, 0x00, 0x00);
 	if (!IS_CYBERFLEX(card))
 		apdu.cla = 0xF0;	/* Override CLA byte */
-	apdu.data = path->value;
+	apdu.data = (u8 *) path->value;
 	apdu.lc = 2;
 	apdu.datalen = 2;
 	
@@ -1079,7 +1079,7 @@ cyberflex_compute_signature(sc_card_t *card, const u8 *data,
 
 	apdu.lc = data_len;
 	apdu.datalen = data_len;
-	apdu.data = data;
+	apdu.data = (u8 *) data;
 	apdu.resplen = outlen;
 	apdu.resp = out;
 	r = sc_transmit_apdu(card, &apdu);

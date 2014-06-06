@@ -528,7 +528,7 @@ gpk_select(sc_card_t *card, int kind,
 	apdu.ins = 0xA4;
 	apdu.p1 = kind;
 	apdu.p2 = 0;
-	apdu.data = buf;
+	apdu.data = (u8 *) buf;
 	apdu.datalen = buflen;
 	apdu.lc = apdu.datalen;
 
@@ -1340,7 +1340,7 @@ gpk_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x1C, 0x00, 0x00);
 	apdu.cla |= 0x80;
 	apdu.lc   = inlen;
-	apdu.data = in;
+	apdu.data = (u8 *) in;
 	apdu.datalen = inlen;
 	apdu.le   = 256;		/* give me all you got :) */
 	apdu.resp = buffer;

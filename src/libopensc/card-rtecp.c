@@ -296,7 +296,7 @@ static int rtecp_verify(sc_card_t *card, unsigned int type, int ref_qualifier,
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT,
 				0x20, 0, ref_qualifier);
 		apdu.lc = data_len;
-		apdu.data = data;
+		apdu.data = (u8 *) data;
 		apdu.datalen = data_len;
 		r = sc_transmit_apdu(card, &apdu);
 		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");

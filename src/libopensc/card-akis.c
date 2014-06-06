@@ -86,7 +86,7 @@ select_file(sc_card_t *card, sc_apdu_t *apdu, const sc_path_t *path,
 	apdu->resp = rbuf;
 	apdu->resplen = sizeof(rbuf);
 	apdu->datalen = path->len;
-	apdu->data = path->value;
+	apdu->data = (u8 *) path->value;
 	apdu->lc = path->len;
 	apdu->le = 256;
 
@@ -324,7 +324,7 @@ akis_delete_file(sc_card_t *card, const sc_path_t *path)
         apdu.cla = 0x80;
 	apdu.lc = buflen;
 	apdu.datalen = buflen;
-	apdu.data = buf;
+	apdu.data = (u8 *) buf;
 
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
