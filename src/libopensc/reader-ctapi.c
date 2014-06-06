@@ -256,26 +256,6 @@ static int ctapi_connect(sc_reader_t *reader)
 	memcpy(reader->atr.value, rbuf, lr);
 	r = _sc_parse_atr(reader);
 
-#if 0	
-	if (reader->atr_info.Fi > 0) {
-		/* Perform PPS negotiation */
-		cmd[1] = CTBCS_INS_RESET;
-		cmd[4] = 0x03;
-		cmd[5] = 0xFF;
-		cmd[6] = 0x10;
-		cmd[7] = (reader->atr_info.FI << 4) | reader->atr_info.DI;
-		cmd[8] = 0x00;
-		dad = 1;
-		sad = 2;
-		lr = 256;
-
-		rv = priv->funcs.CT_data(priv->ctn, &dad, &sad, 9, cmd, &lr, rbuf);
-		if (rv) {
-			sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "Error negotiating PPS: %d\n", rv);
-			return SC_ERROR_TRANSMIT_FAILED;
-		}
-	}
-#endif	
 	return 0;
 }
 
