@@ -829,36 +829,6 @@ static int read_ssh_key(void)
 		return 1;
 	}
 
-	/* rsa1 keys */
-# if 0
-	if (pubkey->algorithm == SC_ALGORITHM_RSA) {
-		int bits;
-		BIGNUM *bn;
-		char *exp,*mod;
-
-		bn = BN_new();
-		BN_bin2bn((unsigned char*)pubkey->u.rsa.modulus.data, pubkey->u.rsa.modulus.len, bn);
-		bits = BN_num_bits(bn);
-		exp =  BN_bn2dec(bn);
-		BN_free(bn);
-
-		bn = BN_new();
-		BN_bin2bn((unsigned char*)pubkey->u.rsa.exponent.data, pubkey->u.rsa.exponent.len, bn);
-		mod = BN_bn2dec(bn);
-		BN_free(bn);
-
-		if (bits && exp && mod)
-			fprintf(outf, "%u %s %s\n", bits,mod,exp);
-		else
-			fprintf(stderr, "decoding rsa key failed!\n");
-
-		OPENSSL_free(exp);
-		OPENSSL_free(mod);
-	}
-#endif
-	/* rsa and des keys - ssh2 */
-	/* key_to_blob */
-
 	if (pubkey->algorithm == SC_ALGORITHM_RSA) {
 		unsigned char buf[2048];
 		unsigned char *uu;

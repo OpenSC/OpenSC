@@ -981,12 +981,6 @@ pkcs15_init_slot(struct sc_pkcs15_card *p15card, struct sc_pkcs11_slot *slot,
 		slot->token_info.ulMinPinLen = 4;
 	}
 
-#if 0
-FIXME: configurable option
-	if (p15card->flags & SC_PKCS15_CARD_FLAG_EMULATED)
-	        slot->token_info.flags |= CKF_WRITE_PROTECTED;
-#endif
-
 	slot->app_info = app_info;
 	sc_log(context, "Initialized token '%s' in slot 0x%lx", label, slot->id);
 }
@@ -1384,14 +1378,8 @@ pkcs15_create_tokens(struct sc_pkcs11_card *p11card, struct sc_app_info *app_inf
 static CK_RV
 pkcs15_release_token(struct sc_pkcs11_card *p11card, void *fw_token)
 {
-#if 0
-	unlock_card((struct pkcs15_fw_data *) p11card->fws_data[0]);
-	free(fw_token);
-	return CKR_OK;
-#else
 	sc_log(context, "pkcs15_release_token() not implemented");
 	return CKR_FUNCTION_REJECTED;
-#endif
 }
 
 
@@ -1468,16 +1456,6 @@ pkcs15_login(struct sc_pkcs11_slot *slot, CK_USER_TYPE userType,
 		rc = 0;
 		if (sc_pkcs11_conf.lock_login)
 			rc = lock_card(fw_data);
-#if 0
-		/* TODO: Look for pkcs15 auth object with 'unblockingPin' flag activated.
-		 * If exists, do verification of PIN (in fact PUK). */
-		if (sc_pkcs11_conf.pin_unblock_style == SC_PKCS11_PIN_UNBLOCK_SCONTEXT_SETPIN)   {
-			if (ulPinLen && ulPinLen < sizeof(fw_data->user_puk))   {
-				memcpy(fw_data->user_puk, pPin, ulPinLen);
-				fw_data->user_puk_len = ulPinLen;
-			}
-		}
-#endif
 		sc_log(context, "context specific login returns %d", rc);
 		return sc_to_cryptoki_error(rc, "C_Login");
 	default:
@@ -2106,12 +2084,6 @@ pkcs15_create_secret_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 	fw_data = (struct pkcs15_fw_data *) p11card->fws_data[slot->fw_data_idx];
 	if (!fw_data)
 		return sc_to_cryptoki_error(SC_ERROR_INTERNAL, "C_CreateObject");
-#if 0
-	/* See if the "slot" is pin protected. If so, get the
-	 * PIN id */
-	if ((pin = slot_data_auth_info(slot->fw_data)) != NULL)
-		args.auth_id = pin->auth_id;
-#endif
 
 	/* Get the key type */
 	rv = attr_find(pTemplate, ulCount, CKA_KEY_TYPE, &key_type, NULL);
@@ -3558,20 +3530,6 @@ pkcs15_prkey_sign(struct sc_pkcs11_session *session, void *obj,
 	case CKM_ECDSA_SHA1:
 		flags = SC_ALGORITHM_ECDSA_HASH_SHA1;
 		break;
-#if 0
-	case CKM_ECDSA_SHA224:
-		flags = SC_ALGORITHM_ECDSA_HASH_SHA224;
-		break;
-	case CKM_ECDSA_SHA256:
-		flags = SC_ALGORITHM_ECDSA_HASH_SHA256;
-		break;
-	case CKM_ECDSA_SHA384:
-		flags = SC_ALGORITHM_ECDSA_HASH_SHA384;
-		break;
-	case CKM_ECDSA_SHA512:
-		flags = SC_ALGORITHM_ECDSA_HASH_SHA512;
-		break;
-#endif
 	default:
 		sc_log(context, "DEE - need EC for %d",pMechanism->mechanism);
 		return CKR_MECHANISM_INVALID;
@@ -4223,43 +4181,6 @@ pkcs15_skey_set_attribute(struct sc_pkcs11_session *session,
 	}
 	return CKR_OK;
 }
-
-#if 0
-static int pkcs15_skey_get_value(struct sc_pkcs11_session *session,
-		struct pkcs15_skey_object *skey,
-		struct sc_pkcs15_skey **out_data)
-{
-	int rv;
-	struct sc_pkcs15_skey * skey_data = NULL;
-	struct pkcs15_fw_data *fw_data =
-			(struct pkcs15_fw_data *) session->slot->card->fw_data;
-	sc_card_t *card = session->slot->card->card;
-
-	if (!out_data)
-		return SC_ERROR_INVALID_ARGUMENTS;
-
-	/*TODO could try and read extractable secret keys
-	 * but for now we only work with session objects
-	 * derived from other keys
-	 */
-	skey_data= calloc(1, sizeof(struct sc_pkcs15_skey));
-	if (skey_data == NULL)
-		return SC_ERROR_OUT_OF_MEMORY;
-
-	if (skey->value && skey->value->data_len) {
-		skey_data->data = calloc(1, skey_data->data_len);
-		if (skey_data->data == NULL) {
-			free(skey_data);
-			return SC_ERROR_OUT_OF_MEMORY;
-		}
-		skey_data->data_len = skey->value->data_len;
-		memcpy(skey_data->data, skey->value->data, skey->value->data_len);
-		return 0;
-	}
-	*out_data = skey_data;
-	return 0;
-}
-#endif
 
 
 static CK_RV

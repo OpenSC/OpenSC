@@ -24,14 +24,6 @@ static const struct option	options[] = {
 	{ NULL, 0, NULL, 0 }
 };
 
-#if 0
-const char *		option_help[] = {
-	"Uses reader number <arg> [0]",
-	"Forces the use of driver <arg> [auto-detect]",
-	"Debug output -- may be supplied several times",
-};
-#endif
-
 int sc_test_init(int *argc, char *argv[])
 {
 	char	*opt_driver = NULL, *app_name;

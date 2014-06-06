@@ -838,10 +838,6 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 		r = profile->ops->create_pin(profile, p15card, df, pin_obj,
 				args->so_pin, args->so_pin_len,
 				args->so_puk, args->so_puk_len);
-#if 0
-	if (r > 0 && profile->ops->finalize_dir)
-		r = profile->ops->finalize_dir(profile, p15card);
-#endif
 
 	if (pin_obj)
 		/* Remove 'virtual' AUTH object . */

@@ -44,28 +44,12 @@ jcop_erase_card(struct sc_profile *pro, sc_pkcs15_card_t *p15card) {
      return SC_ERROR_NOT_SUPPORTED;
 }
 
-#if 0
-/*
- * Create a new DF
- * This will usually be the application DF
- * for JCOP, it must be the application DF. no other DF's may exist.
- */
-static int
-jcop_init_app(sc_profile_t *profile, sc_card_t *card,
-	      struct sc_pkcs15_pin_info *pin_info,
-	      const u8 *pin, size_t pin_len, const u8 *puk, size_t puk_len) {
-     return SC_ERROR_NOT_SUPPORTED;
-}
-
-#else
 
 static int
 jcop_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *file)
 {
      return SC_ERROR_NOT_SUPPORTED;
 };
-
-#endif
 
 
 /*

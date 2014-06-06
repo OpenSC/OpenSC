@@ -253,20 +253,6 @@ auth_init(struct sc_card *card)
 	_sc_card_add_rsa_alg(card, 512, flags, 0);
 	_sc_card_add_rsa_alg(card, 1024, flags, 0);
 	_sc_card_add_rsa_alg(card, 2048, flags, 0);
-#if 0
-	flags = SC_ALGORITHM_SKEY_CBC | SC_ALGORITHM_SKEY_ECB;
-	memset(&info, 0, sizeof(info));
-	info.algorithm = SC_ALGORITHM_DES;
-	info.flags = flags;
-	info.key_length = 64;
-	_sc_card_add_algorithm(card, &info);
-
-	flags = SC_ALGORITHM_SKEY_CBC | SC_ALGORITHM_SKEY_ECB;
-	info.algorithm = SC_ALGORITHM_3DES;
-	info.flags = flags;
-	info.key_length = 192;
-	_sc_card_add_algorithm(card, &info);
-#endif
 
 	sc_format_path("3F00", &path);
    	rv = auth_select_file(card, &path, NULL);
@@ -1199,17 +1185,6 @@ auth_decipher(struct sc_card *card, const unsigned char *in, size_t inlen,
 
 		apdu.cla &= ~0x10;
 	}
-
-#if 0
-	case SC_ALGORITHM_DES:
-	case SC_ALGORITHM_3DES:
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"algorithm SC_ALGORITHM_DES\n");
-		if (crgram_len == 0 || (crgram_len%8) != 0)  {
-			rv = SC_ERROR_INVALID_ARGUMENTS;
-			goto done;
-		}
-		break;
-#endif
 
 	apdu.data = in;
 	apdu.datalen = _inlen;

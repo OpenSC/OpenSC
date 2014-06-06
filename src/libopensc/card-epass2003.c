@@ -591,31 +591,6 @@ construct_mac_tlv(unsigned char *apdu_buf, size_t data_tlv_len, size_t le_tlv_le
 	return 0;
 }
 
-#if 0
-static size_t calc_le(size_t le)
-{
-	size_t le_new = 0;
-	size_t resp_len = 0;
-	size_t sw_len = 4;	/* T 1 L 1 V 2 */
-	size_t mac_len = 10;	/* T 1 L 1 V 8 */
-	size_t mod = 16;
-	/* padding first */
-	resp_len = 1 + ((le + (mod - 1)) / mod) * mod;
-
-	if (0x7f < resp_len) {
-		resp_len += 0;
-
-	} else if (0x7f <= resp_len && resp_len < 0xff) {
-		resp_len += 1;
-	} else if (0xff <= resp_len) {
-		resp_len += 2;
-	}
-	resp_len += 2;		/* +T+L */
-	le_new = resp_len + sw_len + mac_len;
-	return le_new;
-}
-#endif
-
 
 /* According to GlobalPlatform Card Specification's SCP01
  * encode APDU from

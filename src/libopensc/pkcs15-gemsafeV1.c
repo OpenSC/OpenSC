@@ -599,29 +599,4 @@ sc_pkcs15emu_add_prkey(sc_pkcs15_card_t *p15card,
 			info, auth_id, obj_flags);
 }
 
-#if 0
-static int
-sc_pkcs15emu_add_pubkey(sc_pkcs15_card_t *p15card,
-		const sc_pkcs15_id_t *id,
-		const char *label, int type,
-		unsigned int modulus_length, int usage,
-		const sc_path_t *path, int ref,
-		const sc_pkcs15_id_t *auth_id, int obj_flags)
-{
-	sc_pkcs15_pubkey_info_t *info;
-
-	info = calloc(1, sizeof(*info));
-	info->id		= *id;
-	info->modulus_length	= modulus_length;
-	info->usage		= usage;
-	info->access_flags	= SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE;
-	info->key_reference	= ref;
-
-	if (path)
-		info->path = *path;
-
-	return sc_pkcs15emu_add_object(p15card, type, label, info, auth_id, obj_flags);
-}
-#endif
-
 /* SC_IMPLEMENT_DRIVER_VERSION("0.9.4") */

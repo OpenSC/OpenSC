@@ -317,76 +317,7 @@ static int asepcos_select_file(sc_card_t *card, const sc_path_t *in_path,
 static int asepcos_set_security_env(sc_card_t *card,
 	const sc_security_env_t *env, int se_num)
 {
-#if 0
-	/* this function doesn't seem to be necessary if RSA ENCRYPT DECRYPT
-	 * is used.  */
-
-	sc_apdu_t apdu;
-	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE], *p = sbuf;
-	int r, locked = 0;
-
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0, 0);
-	switch (env->operation) {
-	case SC_SEC_OPERATION_DECIPHER:
-		apdu.p1 = 0x41;
-		apdu.p2 = 0xB8;
-		break;
-	case SC_SEC_OPERATION_SIGN:
-		apdu.p1 = 0x41;
-		apdu.p2 = 0xB6;
-		break;
-	default:
-		return SC_ERROR_INVALID_ARGUMENTS;
-	}
-	if (env->flags & SC_SEC_ENV_ALG_REF_PRESENT) {
-		*p++ = 0x80;	/* algorithm reference */
-		*p++ = 0x01;
-		*p++ = env->algorithm_ref & 0xFF;
-	}
-	if (env->flags & SC_SEC_ENV_FILE_REF_PRESENT) {
-		*p++ = 0x84;
-		*p++ = env->file_ref.len;
-		memcpy(p, env->file_ref.value, env->file_ref.len);
-		p += env->file_ref.len;
-	}
-
-	apdu.lc      = p - sbuf;
-	apdu.datalen = p - sbuf;
-	apdu.data    = sbuf;
-	if (se_num > 0) {
-		r = sc_lock(card);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "sc_lock() failed");
-		locked = 1;
-	}
-	if (apdu.datalen != 0) {
-		r = sc_transmit_apdu(card, &apdu);
-		if (r) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
-				"%s: APDU transmit failed", sc_strerror(r));
-			goto err;
-		}
-		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-		if (r) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
-				 "%s: Card returned error", sc_strerror(r));
-			goto err;
-		}
-	}
-	if (se_num <= 0)
-		return 0;
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0xF2, se_num);
-	r = sc_transmit_apdu(card, &apdu);
-	sc_unlock(card);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
-	return sc_check_sw(card, apdu.sw1, apdu.sw2);
-err:
-	if (locked)
-		sc_unlock(card);
-	return r;
-#else
 	return SC_SUCCESS;
-#endif
 }
 
 
@@ -799,14 +730,6 @@ static int asepcos_delete_file(sc_card_t *card, const sc_path_t *path)
 	sc_apdu_t apdu;
 	u8        buf[SC_MAX_APDU_BUFFER_SIZE];
 
-#if 0
-	/* select the file (note: if the file is already selected we do
-	 * not re-select it as we might otherwise lose the necessary
-	 * credential */
-	r = sc_select_file(card, path, NULL);
-	if (r != SC_SUCCESS)
-		return r;
-#endif
 	/* use GET DATA to determine whether it is a DF or EF */
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xca, 0x01, 0x84);
 	apdu.le      = 256;

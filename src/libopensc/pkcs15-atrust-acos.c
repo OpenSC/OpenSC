@@ -112,9 +112,6 @@ static int sc_pkcs15emu_atrust_acos_init(sc_pkcs15_card_t *p15card)
 {
 	const cdata certs[] = {
 		{"C.CH.EKEY", 0, "DF71C001","1", 0},/* Decryption Certificate */
-#if 0
-		{"C.CH.DS",   0, "DF70C002","2", 0},/* Signature Certificate */
-#endif
 		{NULL, 0, NULL, NULL, 0}
 	};
 
@@ -124,18 +121,6 @@ static int sc_pkcs15emu_atrust_acos_init(sc_pkcs15_card_t *p15card)
 		  4, 4, 8, SC_PKCS15_PIN_FLAG_NEEDS_PADDING |
 		  SC_PKCS15_PIN_FLAG_LOCAL, -1, 0x00,
 		  SC_PKCS15_CO_FLAG_MODIFIABLE | SC_PKCS15_CO_FLAG_PRIVATE },
-#if 0
-		{ "02", "PIN.SIG", "3F00DF70", 0x81, /* Signature PIN */
-		  SC_PKCS15_PIN_TYPE_ASCII_NUMERIC,
-		  6, 6, 8, SC_PKCS15_PIN_FLAG_NEEDS_PADDING |
-		  SC_PKCS15_PIN_FLAG_LOCAL, -1, 0x00,
-		  SC_PKCS15_CO_FLAG_MODIFIABLE | SC_PKCS15_CO_FLAG_PRIVATE }, 
-		{ "03", "PIN.INF", "3F00DF71", 0x83, /* Infobox PIN */
-		  SC_PKCS15_PIN_TYPE_ASCII_NUMERIC,
-		  4, 4, 8, SC_PKCS15_PIN_FLAG_NEEDS_PADDING |
-		  SC_PKCS15_PIN_FLAG_LOCAL, -1, 0x00,
-		  SC_PKCS15_CO_FLAG_MODIFIABLE | SC_PKCS15_CO_FLAG_PRIVATE },
-#endif
 		{ NULL, NULL, NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0} 
 	};
 
@@ -144,12 +129,6 @@ static int sc_pkcs15emu_atrust_acos_init(sc_pkcs15_card_t *p15card)
 			SC_PKCS15_PRKEY_USAGE_SIGN | SC_PKCS15_PRKEY_USAGE_DECRYPT | SC_PKCS15_PRKEY_USAGE_UNWRAP,
 		  "", /* do not specify file here to prevent reset of security state */
 		  0x88, "01", SC_PKCS15_CO_FLAG_PRIVATE},
-#if 0
-		{ "2", "SK.CH.DS", 192,
-			SC_PKCS15_PRKEY_USAGE_SIGN,
-		  "", /* do not specify file here to prevent reset of security state */
-		  0x88, "02", SC_PKCS15_CO_FLAG_PRIVATE},
-#endif
 		{ NULL, NULL, 0, 0, NULL, 0, NULL, 0}
 	};
 

@@ -40,45 +40,6 @@ ctbcs_init_apdu(sc_apdu_t *apdu, int cse, int ins, int p1, int p2)
 	apdu->control = 1;
 }
 
-#if 0
-static int
-ctbcs_build_input_apdu(sc_apdu_t *apdu, int echo, const char *prompt,
-			u8 *rbuf, size_t rbuflen)
-{
-	ctbcs_init_apdu(apdu, SC_APDU_CASE_2_SHORT,
-			CTBCS_INS_INPUT,
-			CTBCS_P1_KEYPAD,
-			echo? CTBCS_P2_INPUT_ECHO : CTBCS_P2_INPUT_ASTERISKS);
-
-	if (prompt && *prompt) {
-		apdu->cse = SC_APDU_CASE_4_SHORT;
-		apdu->data = (u8 *) prompt;
-		apdu->lc = apdu->datalen = strlen(prompt);
-	}
-
-	apdu->le = apdu->resplen = rbuflen;
-	apdu->resp = rbuf;
-	return 0;
-}
-
-static int
-ctbcs_build_output_apdu(sc_apdu_t *apdu, const char *message)
-{
-	ctbcs_init_apdu(apdu,
-			SC_APDU_CASE_3_SHORT,
-			CTBCS_INS_INPUT,
-			CTBCS_P1_DISPLAY,
-			0);
-
-	if (!message || !*message)
-		message = " ";
-
-	apdu->lc = apdu->datalen = strlen(message);
-
-	return 0;
-}
-#endif
-
 static int
 ctbcs_build_perform_verification_apdu(sc_apdu_t *apdu, struct sc_pin_cmd_data *data)
 {

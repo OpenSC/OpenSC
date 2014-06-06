@@ -159,11 +159,6 @@ static int setcos_init(sc_card_t *card)
 	/* Handle unknown or forced cards */
 	if (card->type < 0) {
 		card->type = SC_CARD_TYPE_SETCOS_GENERIC;
-#if 0
-		/* Hmm. For now, assume it's a bank card with FinEID application */
-		if (match_hist_bytes(card, "AVANT", 0))
-			card->type = SC_CARD_TYPE_SETCOS_FINEID_V2;
-#endif
 	}
 
 	switch (card->type) {
