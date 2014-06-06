@@ -99,12 +99,6 @@
 #include "scr.h"
 #endif
 
-/* These defines are disabled for OpenSC */
-#if 0
-#define GET_LANG_FROM_CARD
-#define HAVE_ALLOW_SSO
-#endif
-
 #ifdef HAVE_GUI
 #include "scgui.h"
 #ifndef SCR_USAGE_SIGN
@@ -143,12 +137,6 @@ static struct sc_atr_table belpic_atrs[] = {
 	{ "3B:98:94:40:0A:A5:03:01:01:01:AD:13:10", NULL, NULL, SC_CARD_TYPE_BELPIC_EID, 0, NULL },
 	/* Applet beta 5 + V1.0 */
 	{ "3B:98:94:40:FF:A5:03:01:01:01:AD:13:10", NULL, NULL, SC_CARD_TYPE_BELPIC_EID, 0, NULL },
-#if 0
-	/* Applet beta 3 + 4 */
-	{ "3B:98:11:40:FF:A5:03:01:01:01:AD:13:04", NULL, NULL, SC_CARD_TYPE_BELPIC_EID, 0, NULL },
-	/* Applet beta 2 */
-	{ "3B:68:00:00:29:05:01:02:01:AD:13:03", NULL, NULL, SC_CARD_TYPE_BELPIC_EID, 0, NULL },
-#endif
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
@@ -381,18 +369,6 @@ static char *pin_blocked_msgs[4] = {
 };
 
 #endif	/* HAVE_GUI */
-
-/* To be removed */
-#if 0
-static void dumphex(char *msg, const u8 * buf, int len)
-{
-	int i;
-	printf("%s", msg);
-	for (i = 0; i < len; i++)
-		printf("%02X ", buf[i]);
-	printf(" (%d bytes)\n", len);
-}
-#endif
 
 #ifdef BELPIC_PIN_PAD
 
@@ -702,9 +678,6 @@ static int get_language(sc_card_t *card)
 		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Read_Binary[prefs_file] returned %d\n", r);
 		goto prefs_error;
 	}
-#if 0
-	dumphex("Prefs: ", prefs, r);
-#endif
 	i = get_pref(prefs, r, "[gen]", "lg", &len);
 	if (i <= 0 || len < 2) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Couldn't find language in prefs file: %d\n", i);
@@ -809,41 +782,6 @@ static int belpic_load_pin_pad_lib(sc_card_t *card, struct belpic_priv_data *pri
 				 "Initialization of library returned UNSUPPORTED");
 		return SC_ERROR_READER;
 	}
-#if 0
-	HINSTANCE dll = LoadLibrary(pp_reader_lib);
-
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Pin pad reader \"%s\" found, now loading corresponding lib \"%s\"\n",
-		 reader_name, pp_reader_lib);
-	if (dll == NULL) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Unable to load library \"%s\", err = 0x%0x\n",
-			 pp_reader_lib, GetLastError());
-		load_pin_pad_err(reader_name, pp_reader_lib,
-				 "library not found or unable to load it");
-		return SC_ERROR_READER;
-	}
-	priv_data->scr_init = GetProcAddress(dll, "SCR_Init");
-	priv_data->scr_verify_pin = GetProcAddress(dll, "SCR_VerifyPIN");
-	priv_data->scr_change_pin = GetProcAddress(dll, "SCR_ChangePIN");
-	if (priv_data->scr_init == NULL || priv_data->scr_verify_pin == NULL) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Function not found in \"%s\" err = 0x%0x\n",
-			 pp_reader_lib, GetLastError());
-		load_pin_pad_err(reader_name, pp_reader_lib,
-				 "unsufficient functionality found in library");
-		return SC_ERROR_READER;
-	}
-	r = priv_data->scr_init(reader_name, 1, &supported);
-	if (r != SCARD_S_SUCCESS) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "SCR_Init() returned 0x%0x\n", r);
-		load_pin_pad_err(reader_name, pp_reader_lib, "Initialization of library failed");
-		return SC_ERROR_READER;
-	}
-	if (supported) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "SCR_init() returned not supported code 0x%0x\n", supported);
-		load_pin_pad_err(reader_name, pp_reader_lib,
-				 "Initialization of library returned UNSUPPORTED");
-		return SC_ERROR_READER;
-	}
-#endif
 	return 1;
 }
 
@@ -1051,9 +989,6 @@ static int belpic_read_binary(sc_card_t *card,
 	dur = t2 - t1;
 	tot_dur += dur;
 	tot_read += r;
-#if 0
-	printf("%d bytes: %d ms - %d bytes total: %d ms\n", r, dur, tot_read, tot_dur);
-#endif
 	return r;
 }
 
@@ -1062,9 +997,6 @@ static int belpic_read_binary(sc_card_t *card,
 /* Test the result code of the pin pad reader + the card's status bytes */
 static int belpic_pp_test_res(sc_card_t *card, int r, const u8 * card_status, int *tries_left)
 {
-#if 0
-	printf("PP res: 0x%0x (%d), SW1-SW2 = %02x %02x\n", r, r, card_status[0], card_status[1]);
-#endif
 	if (r != SCARD_S_SUCCESS) {
 		switch (r) {
 		case SCARD_E_CANCELLED:
@@ -1136,10 +1068,6 @@ static int belpic_pp_verify(sc_card_t *card, SCR_Card * scr_card,
 			scgui_display_message(app_msg[lang], pp_msg_login_sh, pp_msg_login,
 					      NULL, &hDlg, icon, reader_name);
 		}
-#if 0
-		printf("belpic_pp_verify(): reader=%s, hCard=0x%0x\n", card->reader->name,
-		       scr_card->hCard);
-#endif
 		r = priv->scr_verify_pin(priv->szPinPadDll, scr_card, pin_ref,
 					 &scr_pin_usage, &scr_app_belpic, card_status);
 		if (mesg_on_screen)
@@ -1469,25 +1397,6 @@ static int belpic_update_binary(sc_card_t *card,
 
        return r;
 }
-
-#if 0
-static int belpic_logout(sc_card_t *card)
-{
-	sc_apdu_t apdu;
-	int r;
-
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0xE6, 0x00, 0x00);
-	apdu.cla = 0x80;
-
-	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "LOGOFF: APDU transmit failed");
-
-	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "LOGOFF returned error");
-
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
-}
-#endif
 
 static struct sc_card_driver *sc_get_driver(void)
 {
