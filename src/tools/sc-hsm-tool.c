@@ -1502,8 +1502,10 @@ int main(int argc, char * const argv[])
 	}
 
 	err = util_connect_card(ctx, &card, opt_reader, opt_wait, verbose);
-	if (r != SC_SUCCESS) {
-		fprintf(stderr, "Failed to connect to card: %s\n", sc_strerror(r));
+	if (err != SC_SUCCESS) {
+		if (err < 0) {
+			fprintf(stderr, "Failed to connect to card: %s\n", sc_strerror(err));
+		}
 		goto end;
 	}
 
