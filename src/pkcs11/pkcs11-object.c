@@ -113,13 +113,6 @@ CK_RV sc_create_object_int(CK_SESSION_HANDLE hSession,	/* the session's handle *
 		goto out;
 	}
 
-#if 0
-/* TODO DEE what should we check here */
-	if (!(session->flags & CKF_RW_SESSION)) {
-		rv = CKR_SESSION_READ_ONLY;
-		goto out;
-	}
-#endif
 	card = session->slot->card;
 	if (card->framework->create_object == NULL)
 		rv = CKR_FUNCTION_NOT_SUPPORTED;
@@ -1188,10 +1181,6 @@ CK_RV C_VerifyInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 #ifndef ENABLE_OPENSSL
 	return CKR_FUNCTION_NOT_SUPPORTED;
 #else
-#if 0
-	CK_BBOOL can_verify;
-	CK_ATTRIBUTE verify_attribute = { CKA_VERIFY, &can_verify, sizeof(can_verify) };
-#endif
 	CK_KEY_TYPE key_type;
 	CK_ATTRIBUTE key_type_attr = { CKA_KEY_TYPE, &key_type, sizeof(key_type) };
 	CK_RV rv;
@@ -1212,13 +1201,6 @@ CK_RV C_VerifyInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 			rv = CKR_KEY_HANDLE_INVALID;
 		goto out;
 	}
-#if 0
-	rv = object->ops->get_attribute(session, object, &verify_attribute);
-	if (rv != CKR_OK || !can_verify) {
-		rv = CKR_KEY_TYPE_INCONSISTENT;
-		goto out;
-	}
-#endif
 	rv = object->ops->get_attribute(session, object, &key_type_attr);
 	if (rv != CKR_OK) {
 		rv = CKR_KEY_TYPE_INCONSISTENT;
