@@ -350,13 +350,6 @@ void scconf_parse_token(scconf_parser * parser, int token_type, const char *toke
 			parser->state = STATE_VALUE;
 			break;
 		case ';':
-#if 0
-			if ((parser->state & STATE_VALUE) == 0 ||
-			    (parser->state & STATE_SET) == 0) {
-				scconf_parse_error_not_expect(parser, ";");
-				break;
-			}
-#endif
 			scconf_parse_reset_state(parser);
 			break;
 		default:
