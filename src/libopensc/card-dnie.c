@@ -43,11 +43,6 @@
 #include "cwa-dnie.h"
 #include "user-interface.h"
 
-#ifdef ENABLE_SM
-static int dnie_sm_get_wrapped_apdu(sc_card_t *card, sc_apdu_t *apdu, sc_apdu_t **sm_apdu);
-static int dnie_sm_free_and_unwrap_apdu(sc_card_t *card, sc_apdu_t *apdu, sc_apdu_t **sm_apdu);
-#endif
-
 extern cwa_provider_t *dnie_get_cwa_provider(sc_card_t * card);
 extern int dnie_read_file(
 	sc_card_t * card, 
@@ -550,10 +545,8 @@ static int dnie_init(struct sc_card *card)
 #ifdef ENABLE_SM
 	/** Secure messaging initialization section **/
 	memset(&(card->sm_ctx), 0, sizeof(sm_context_t));
-	/* setup dnie sm driver *im*properly */
-	/* TODO: at the moment this is a wild guess, based on card-authentic.c */
-	card->sm_ctx.ops.get_sm_apdu = NULL; /*dnie_sm_get_wrapped_apdu;*/
-	card->sm_ctx.ops.free_sm_apdu = NULL; /*dnie_sm_free_and_unwrap_apdu;*/
+	card->sm_ctx.ops.get_sm_apdu = NULL;
+	card->sm_ctx.ops.free_sm_apdu = NULL;
 #endif
 
 	init_flags(card);
@@ -2103,130 +2096,6 @@ static int dnie_pin_cmd(struct sc_card *card,
 	LOG_FUNC_RETURN(card->ctx, res);
 }
 
-#ifdef ENABLE_SM
-static int dnie_sm_wrap_apdu(struct sc_card *card, struct sc_apdu *plain, struct sc_apdu *wrapped)
-{
-	int res = SC_SUCCESS;
-	sc_context_t *ctx = card->ctx;
-	cwa_provider_t *provider = NULL;
-
-	LOG_FUNC_CALLED(ctx);
-
-	if ((plain == NULL) || (wrapped == NULL))
-		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
-
-	provider = GET_DNIE_PRIV_DATA(card)->cwa_provider;
-
-	wrapped->cse = plain->cse;
-	wrapped->cla = plain->cla;
-	wrapped->ins = plain->ins;
-	wrapped->p1 = plain->p1;
-	wrapped->p2 = plain->p2;
-	wrapped->lc = plain->lc;
-	wrapped->le = plain->le;
-	wrapped->control = plain->control;
-	wrapped->flags = plain->flags;
-	memcpy(wrapped->data, plain->data, plain->datalen);
-	
-	/* if SM is ON, ensure resp exists, and force getResponse() */
-	if (provider->status.session.state == CWA_SM_ACTIVE) {
-		/* set up proper apdu type */
-		if (wrapped->cse == SC_APDU_CASE_3_SHORT)
-			wrapped->cse = SC_APDU_CASE_4_SHORT;
-	}
-	sc_log(card->ctx, "Data to be enveloped & sent: (%d bytes)\n%s\n==================",wrapped->lc,sc_dump_hex(wrapped->data,wrapped->lc));
-
-	LOG_FUNC_RETURN(ctx, res);
-}
-
-static int dnie_sm_get_wrapped_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t **sm_apdu)
-{
-	struct sc_context *ctx = card->ctx;
-	struct sc_apdu *apdu = NULL;
-	int rv;
-
-	LOG_FUNC_CALLED(ctx);
-
-	if (!plain || !sm_apdu)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
-
-	*sm_apdu = NULL;
-	apdu = calloc(1, sizeof(struct sc_apdu));
-	if (!apdu)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
-	apdu->data = calloc (1, SC_MAX_EXT_APDU_BUFFER_SIZE);
-	if (!apdu->data)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
-	apdu->datalen = SC_MAX_EXT_APDU_BUFFER_SIZE;
-	apdu->resp = calloc (1, SC_MAX_EXT_APDU_BUFFER_SIZE);
-	if (!apdu->resp)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
-	apdu->resplen = SC_MAX_EXT_APDU_BUFFER_SIZE;
-
-	rv = dnie_sm_wrap_apdu(card, plain, apdu);
-	if (rv)   {
-		rv = dnie_sm_free_and_unwrap_apdu(card, NULL, &apdu);
-		LOG_FUNC_RETURN(ctx, rv);
-	}
-
-	*sm_apdu = apdu;
-	LOG_FUNC_RETURN(ctx, rv);
-}
-
-static int dnie_sm_unwrap_apdu(sc_card_t *card, sc_apdu_t *wrapped, sc_apdu_t *plain)
-{
-	int res = SC_SUCCESS;
-    struct sc_context *ctx = card->ctx;
-	cwa_provider_t *provider = NULL;
-
-    LOG_FUNC_CALLED(ctx);
-
-	provider = GET_DNIE_PRIV_DATA(card)->cwa_provider;
-
-	/* parse response and handle SM related errors */
-	res = sc_check_sw(card, wrapped->sw1, wrapped->sw2);
-
-	if (res == SC_SUCCESS) {
-		/* memcopy result to original apdu */
-		memcpy(plain->resp, wrapped->resp, wrapped->resplen);
-		plain->resplen = wrapped->resplen;
-		plain->sw1 = wrapped->sw1;
-		plain->sw2 = wrapped->sw2;
-	} else {
-		sc_log(ctx, "Detected SM error/collision (%d).", res);
-	}
-
-	sc_log(card->ctx, "unwrapped APDU: resplen %i, SW %02X%02X", plain->resplen, plain->sw1, plain->sw2);
-    LOG_FUNC_RETURN(ctx, SC_SUCCESS);
-}
-
-static int dnie_sm_free_and_unwrap_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t **sm_apdu)
-{
-    struct sc_context *ctx = card->ctx;
-	int rv = SC_SUCCESS;
-
-	LOG_FUNC_CALLED(ctx);
-
-	if (sm_apdu == NULL)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
-
-	if ((*sm_apdu) == NULL)
-		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
-
-	if (plain)
-		rv = dnie_sm_unwrap_apdu(card, *sm_apdu, plain);
-
-	if ((*sm_apdu)->data)
-		free((*sm_apdu)->data);
-	if ((*sm_apdu)->resp)
-		free((*sm_apdu)->resp);
-	free(*sm_apdu);
-	*sm_apdu = NULL;
-
-    LOG_FUNC_RETURN(ctx, rv);
-}
-
-#endif
 
 /**********************************************************************/
 
