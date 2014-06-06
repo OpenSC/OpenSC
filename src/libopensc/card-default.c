@@ -42,8 +42,6 @@ default_match_card(struct sc_card *card)
 static int
 default_init(struct sc_card *card)
 {
-	int r;
-
 	LOG_FUNC_CALLED(card->ctx);
 
 	card->name = "Unsupported card";

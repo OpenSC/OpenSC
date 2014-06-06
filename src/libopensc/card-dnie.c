@@ -2096,7 +2096,6 @@ static int dnie_pin_cmd(struct sc_card *card,
 	LOG_FUNC_RETURN(card->ctx, res);
 }
 
-
 /**********************************************************************/
 
 /**

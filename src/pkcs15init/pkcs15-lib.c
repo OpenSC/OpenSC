@@ -553,7 +553,8 @@ sc_pkcs15init_delete_by_path(struct sc_profile *profile, struct sc_pkcs15_card *
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_file *parent = NULL, *file = NULL;
 	struct sc_path path;
-	int rv, file_type = SC_FILE_TYPE_DF;
+	int rv;
+	/*int file_type = SC_FILE_TYPE_DF;*/
 
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx, "trying to delete '%s'", sc_print_path(file_path));
@@ -582,7 +583,7 @@ sc_pkcs15init_delete_by_path(struct sc_profile *profile, struct sc_pkcs15_card *
 	}
 	else    {
 		sc_log(ctx, "Try to get the parent's 'DELETE' access");
-		file_type = file->type;
+		/*file_type = file->type;*/
 		if (file_path->len >= 2) {
 			/* Select the parent DF */
 			path.len -= 2;
