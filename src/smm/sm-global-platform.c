@@ -42,9 +42,6 @@
 #include "libopensc/sm.h"
 #include "libopensc/log.h"
 #include "libopensc/asn1.h"
-#if 0
-#include "libopensc/hash-strings.h"
-#endif
 
 #include "sm-module.h"
 
@@ -62,78 +59,7 @@ static const struct sc_asn1_entry c_asn1_card_response[2] = {
 int
 sm_gp_decode_card_answer(struct sc_context *ctx, struct sc_remote_data *rdata, unsigned char *out, size_t out_len)
 {
-#if 0
-	struct sc_asn1_entry asn1_authentic_card_response[4], asn1_card_response[2];
-	struct sc_hash *hash = NULL;
-	unsigned char *hex = NULL;
-	size_t hex_len;
-	int rv, offs;
-	unsigned char card_data[SC_MAX_APDU_BUFFER_SIZE];
-	size_t card_data_len = sizeof(card_data), len_left = 0;
-
-	LOG_FUNC_CALLED(ctx);
-
-	if (!out || !out_len)
-		LOG_FUNC_RETURN(ctx, 0);
-	if (strstr(str_data, "DATA="))   {
-		rv = sc_hash_parse(ctx, str_data, strlen(str_data), &hash);
-		LOG_TEST_RET(ctx, rv, "SM GP decode card answer: parse input data error");
-
-		str_data = sc_hash_get(hash, "DATA");
-	}
-
-	if (!strlen(str_data))
-		LOG_FUNC_RETURN(ctx, 0);
-
-	hex_len = strlen(str_data) / 2;
-	hex = calloc(1, hex_len);
-	if (!hex)
-		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "SM GP decode card answer: hex allocate error");
-
-	sc_log(ctx, "SM GP decode card answer: hex length %i", hex_len);
-	rv = sc_hex_to_bin(str_data, hex, &hex_len);
-	LOG_TEST_RET(ctx, rv, "SM GP decode card answer: data 'HEX to BIN' conversion error");
-	sc_log(ctx, "SM GP decode card answer: hex length %i", hex_len);
-
-	if (hash)
-		sc_hash_free(hash);
-
-	for (offs = 0, len_left = hex_len; len_left; )   {
-		int num, status;
-
-		sc_copy_asn1_entry(c_asn1_authentic_card_response, asn1_authentic_card_response);
-		sc_copy_asn1_entry(c_asn1_card_response, asn1_card_response);
-		sc_format_asn1_entry(asn1_authentic_card_response + 0, &num, NULL, 0);
-		sc_format_asn1_entry(asn1_authentic_card_response + 1, &status, NULL, 0);
-		card_data_len = sizeof(card_data);
-		sc_format_asn1_entry(asn1_authentic_card_response + 2, &card_data, &card_data_len, 0);
-		sc_format_asn1_entry(asn1_card_response + 0, asn1_authentic_card_response, NULL, 0);
-
-		rv = sc_asn1_decode(ctx, asn1_card_response, hex + hex_len - len_left, len_left, NULL, &len_left);
-		if (rv) {
-			sc_log(ctx, "SM GP decode card answer: ASN.1 parse error: %s", sc_strerror(rv));
-			return rv;
-		}
-		if (status != 0x9000)
-			continue;
-
-		if (asn1_authentic_card_response[2].flags & SC_ASN1_PRESENT)   {
-			sc_log(ctx, "SM GP decode card answer: card_data_len %i", card_data_len);
-			if (out_len < offs + card_data_len)
-				LOG_TEST_RET(ctx, SC_ERROR_BUFFER_TOO_SMALL, "SM GP decode card answer: buffer too small");
-
-			memcpy(out + offs, card_data, card_data_len);
-			offs += card_data_len;
-		}
-
-		sc_log(ctx, "SM GP decode card answer: offs:%i,left:%i", offs, len_left);
-	}
-
-	free(hex);
-	LOG_FUNC_RETURN(ctx, offs);
-#else
 	LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
-#endif
 }
 
 
