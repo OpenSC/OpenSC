@@ -119,7 +119,7 @@ static int gp_select_applet(sc_card_t *card, const u8 *aid, size_t aid_len)
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xa4, 0x04, 0x00);
 	apdu.lc      = aid_len;
-	apdu.data    = aid;
+	apdu.data    = (u8 *) aid;
 	apdu.datalen = aid_len;
 	apdu.resp    = buf;
 	apdu.le      = 256;
@@ -497,7 +497,7 @@ static int gemsafe_decipher(struct sc_card *card, const u8 * crgram,
 	apdu.resplen = sizeof(rbuf);
 	apdu.le      = crgram_len;
 
-	apdu.data = crgram;
+	apdu.data = (u8 *) crgram;
 	apdu.lc   = crgram_len;
 	apdu.datalen = crgram_len;
 	r = sc_transmit_apdu(card, &apdu);

@@ -605,7 +605,7 @@ int sc_transmit_apdu(sc_card_t *card, sc_apdu_t *apdu)
 				plen = len;
 				last = 1;
 			}
-			tapdu.data    = buf;
+			tapdu.data    = (u8 *) buf;
 			tapdu.datalen = tapdu.lc = plen;
 
 			r = sc_check_apdu(card, &tapdu);
@@ -693,7 +693,7 @@ sc_bytes2apdu(sc_context_t *ctx, const u8 *buf, size_t len, sc_apdu_t *apdu)
 				sc_log(ctx, "APDU too short (need %lu more bytes)", (unsigned long) apdu->lc - len);
 				return SC_ERROR_INVALID_DATA;
 			}
-			apdu->data = p;
+			apdu->data = (u8 *) p;
 			apdu->datalen = apdu->lc;
 			len -= apdu->lc;
 			p += apdu->lc;
@@ -731,7 +731,7 @@ sc_bytes2apdu(sc_context_t *ctx, const u8 *buf, size_t len, sc_apdu_t *apdu)
 				sc_log(ctx, "APDU too short (need %lu more bytes)", (unsigned long) apdu->lc - len);
 				return SC_ERROR_INVALID_DATA;
 			}
-			apdu->data = p;
+			apdu->data = (u8 *) p;
 			apdu->datalen = apdu->lc;
 			len -= apdu->lc;
 			p += apdu->lc;

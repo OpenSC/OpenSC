@@ -769,7 +769,7 @@ do_select(sc_card_t * card, u8 kind,
 	if (kind == MCRD_SEL_DF) p2 = 0x0C;
 
 	sc_format_apdu(card, &apdu, buflen?SC_APDU_CASE_4_SHORT:SC_APDU_CASE_2_SHORT, 0xA4, kind, p2);
-	apdu.data = buf;
+	apdu.data = (u8 *) buf;
 	apdu.datalen = buflen;
 	apdu.lc = apdu.datalen;
 	apdu.resp = resbuf;
@@ -1349,7 +1349,7 @@ static int mcrd_compute_signature(sc_card_t * card,
 
 	}
 	apdu.lc = datalen;
-	apdu.data = data;
+	apdu.data = (u8 *) data;
 	apdu.datalen = datalen;
 	apdu.le = 0x80;
 	apdu.resp = out;

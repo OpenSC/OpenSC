@@ -42,7 +42,7 @@ default_match_card(struct sc_card *card)
 static int
 default_init(struct sc_card *card)
 {
-	int r;
+	/* int r; */ // unsused, avoid warnings at all cost (this is security software)
 
 	LOG_FUNC_CALLED(card->ctx);
 

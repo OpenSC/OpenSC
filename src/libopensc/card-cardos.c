@@ -815,7 +815,7 @@ do_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 	apdu.le      = outlen;
 	apdu.resplen = outlen;
 
-	apdu.data    = data;
+	apdu.data    = (u8 *) data;
 	apdu.lc      = datalen;
 	apdu.datalen = datalen;
 	r = sc_transmit_apdu(card, &apdu);
@@ -1031,7 +1031,7 @@ cardos_put_data_oci(sc_card_t *card,
 	apdu.p1  = 0x01;
 	apdu.p2  = 0x6e;
 	apdu.lc  = args->len;
-	apdu.data = args->data;
+	apdu.data = (u8 *) args->data;
 	apdu.datalen = args->len;
 
 	r = sc_transmit_apdu(card, &apdu);
@@ -1057,7 +1057,7 @@ cardos_put_data_seci(sc_card_t *card,
 	apdu.p1  = 0x01;
 	apdu.p2  = 0x6d;
 	apdu.lc  = args->len;
-	apdu.data = args->data;
+	apdu.data = (u8 *) args->data;
 	apdu.datalen = args->len;
 
 	r = sc_transmit_apdu(card, &apdu);

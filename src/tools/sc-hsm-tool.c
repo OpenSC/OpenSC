@@ -417,7 +417,10 @@ static int cleanUpShares(secret_share_t *shares, unsigned char n)
 
 void clearScreen()
 {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-result"
 	if (system( "clear" )) system( "cls" );
+#pragma GCC diagnostic pop
 }
 
 
@@ -600,7 +603,10 @@ static int recreate_password_from_shares(char **pwd, int *pwdlen, int num_of_pas
 	printf("\nPlease remember to present the share id as well as the share value.");
 	printf("\n\nPlease enter prime: ");
 	memset(inbuf, 0, sizeof(inbuf));
-	fgets(inbuf, sizeof(inbuf), stdin);
+#pragma GCC diagnostic push	
+#pragma GCC diagnostic ignored "-Wunused-result"
+    fgets(inbuf, sizeof(inbuf), stdin);
+#pragma GCC diagnostic pop
 	binlen = 64;
 	sc_hex_to_bin(inbuf, bin, &binlen);
 	BN_bin2bn(bin, binlen, &prime);
@@ -621,13 +627,19 @@ static int recreate_password_from_shares(char **pwd, int *pwdlen, int num_of_pas
 
 		printf("Please enter share ID: ");
 		memset(inbuf, 0, sizeof(inbuf));
-		fgets(inbuf, sizeof(inbuf), stdin);
+#pragma GCC diagnostic push	
+#pragma GCC diagnostic ignored "-Wunused-result"
+        fgets(inbuf, sizeof(inbuf), stdin);
+#pragma GCC diagnostic pop
 		p = &(sp->x);
 		BN_hex2bn(&p, inbuf);
 
 		printf("Please enter share value: ");
 		memset(inbuf, 0, sizeof(inbuf));
+#pragma GCC diagnostic push	
+#pragma GCC diagnostic ignored "-Wunused-result"
 		fgets(inbuf, sizeof(inbuf), stdin);
+#pragma GCC diagnostic pop
 		binlen = 64;
 		sc_hex_to_bin(inbuf, bin, &binlen);
 		BN_bin2bn(bin, binlen, &(sp->y));

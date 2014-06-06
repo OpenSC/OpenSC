@@ -1325,7 +1325,7 @@ static int starcos_logout(sc_card_t *card)
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, 0x00, 0x0C);
 	apdu.le = 0;
 	apdu.lc = 2;
-	apdu.data    = mf_buf;
+	apdu.data    = (u8 *) mf_buf;
 	apdu.datalen = 2;
 	apdu.resplen = 0;
 	

@@ -1134,7 +1134,7 @@ auth_compute_signature(struct sc_card *card, const unsigned char *in, size_t ile
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x9E, 0x9A);
 	apdu.datalen = ilen;
-	apdu.data = in;
+	apdu.data = (u8 *) in;
 	apdu.lc = ilen;
 	apdu.le = olen > 256 ? 256 : olen;
 	apdu.resp = resp;
@@ -1181,7 +1181,7 @@ auth_decipher(struct sc_card *card, const unsigned char *in, size_t inlen,
 	_inlen = inlen;
 	if (_inlen == 256)   {
 		apdu.cla |= 0x10;
-		apdu.data = in;
+		apdu.data = (u8 *) in;
 		apdu.datalen = 8;
 		apdu.resp = resp;
 		apdu.resplen = SC_MAX_APDU_BUFFER_SIZE;
@@ -1211,7 +1211,7 @@ auth_decipher(struct sc_card *card, const unsigned char *in, size_t inlen,
 		break;
 #endif
 
-	apdu.data = in;
+	apdu.data = (u8 *) in;
 	apdu.datalen = _inlen;
 	apdu.resp = resp;
 	apdu.resplen = SC_MAX_APDU_BUFFER_SIZE;

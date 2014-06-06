@@ -215,7 +215,7 @@ static void display_data(const struct ef_name_map *mapping, char *value)
 			} else {
 				const char *label = mapping->name;
 
-				printf("%s:%*s%s\n", label, 10-strlen(label), "", value);
+				printf("%s:%*s%s\n", label, (int) 10-strlen(label), "", value);
 			}
 		}
 	}

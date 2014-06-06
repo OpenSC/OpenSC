@@ -1201,7 +1201,7 @@ pgp_put_data(sc_card_t *card, unsigned int tag, const u8 *buf, size_t buf_len)
 		if (((card->caps & SC_CARD_CAP_APDU_EXT) == 0) && (priv->ext_caps & EXT_CAP_CHAINING))
 			apdu.flags |= SC_APDU_FLAGS_CHAINING;
 
-		apdu.data = buf;
+		apdu.data = (u8 *) buf;
 		apdu.datalen = buf_len;
 		apdu.lc = buf_len;
 	}
@@ -1352,7 +1352,7 @@ pgp_compute_signature(sc_card_t *card, const u8 *data,
 	}
 
 	apdu.lc = data_len;
-	apdu.data = data;
+	apdu.data = (u8 *) data;
 	apdu.datalen = data_len;
 	apdu.le = ((outlen >= 256) && !(card->caps & SC_CARD_CAP_APDU_EXT)) ? 256 : outlen;
 	apdu.resp    = out;
@@ -1410,7 +1410,7 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 	}
 
 	apdu.lc = inlen;
-	apdu.data = in;
+	apdu.data = (u8 *) in;
 	apdu.datalen = inlen;
 	apdu.le = ((outlen >= 256) && !(card->caps & SC_CARD_CAP_APDU_EXT)) ? 256 : outlen;
 	apdu.resp = out;

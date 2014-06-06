@@ -690,7 +690,11 @@ iasecc_sm_delete_file(struct sc_card *card, unsigned se_num, unsigned int file_i
 	rv = iasecc_sm_initialize(card, se_num, SM_CMD_FILE_DELETE);
 	LOG_TEST_RET(ctx, rv, "iasecc_sm_delete_file() SM INITIALIZE failed");
 
+    /* probably correct so we push gcc ignore flags */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
 	sm_info->cmd_data = (void *)file_id;
+#pragma GCC diagnostic pop
 
 	sc_remote_data_init(&rdata);
 	rv = iasecc_sm_cmd(card, &rdata);

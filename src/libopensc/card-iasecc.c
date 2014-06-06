@@ -1791,7 +1791,7 @@ iasecc_chv_verify(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd,
 	}
 	else if (pin_cmd->pin1.data && pin_cmd->pin1.len)   {
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x20, 0, pin_cmd->pin_reference);
-		apdu.data = pin_cmd->pin1.data;
+		apdu.data = (u8 *) pin_cmd->pin1.data;
 		apdu.datalen = pin_cmd->pin1.len;
 		apdu.lc = pin_cmd->pin1.len;
 	}
@@ -2219,12 +2219,12 @@ iasecc_keyset_change(struct sc_card *card, struct sc_pin_cmd_data *data, int *tr
 
 	update.fields[0].parent_tag = IASECC_SDO_KEYSET_TAG;
 	update.fields[0].tag = IASECC_SDO_KEYSET_TAG_MAC;
-	update.fields[0].value = data->pin2.data;
+	update.fields[0].value = (u8 *) data->pin2.data;
 	update.fields[0].size = 16;
 
 	update.fields[1].parent_tag = IASECC_SDO_KEYSET_TAG;
 	update.fields[1].tag = IASECC_SDO_KEYSET_TAG_ENC;
-	update.fields[1].value = data->pin2.data + 16;
+	update.fields[1].value = (u8 *) (data->pin2.data + 16);
 	update.fields[1].size = 16;
 
 	rv = iasecc_sm_sdo_update(card, (scb & IASECC_SCB_METHOD_MASK_REF), &update);
@@ -2356,7 +2356,7 @@ iasecc_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_
 
 	if (data->pin2.len)   {
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x2C, 0x02, reference);
-		apdu.data = data->pin2.data;
+		apdu.data = (u8 *) data->pin2.data;
 		apdu.datalen = data->pin2.len;
 		apdu.lc = apdu.datalen;
 
@@ -3208,7 +3208,7 @@ iasecc_compute_signature_at(struct sc_card *card,
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x88, 0x00, 0x00);
 	apdu.datalen = in_len;
-	apdu.data = in;
+	apdu.data = (u8 *) in;
 	apdu.lc = in_len;
 	apdu.resp = rbuf;
 	apdu.resplen = sizeof(rbuf);
@@ -3270,7 +3270,7 @@ iasecc_compute_signature(struct sc_card *card,
 
 static int
 iasecc_read_public_key(struct sc_card *card, unsigned type,
-		struct sc_path *key_path, unsigned ref, size_t size,
+		struct sc_path *key_path, unsigned ref, unsigned size,
 		unsigned char **out, size_t *out_len)
 {
 	struct sc_context *ctx = card->ctx;

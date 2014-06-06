@@ -951,7 +951,10 @@ static int dnie_select_file(struct sc_card *card,
 	char pbuf[SC_MAX_PATH_STRING_SIZE];
         u8 *path = pathbuf;
 	size_t pathlen;
-        int cached=0;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
+    int cached = 0;
+#pragma GCC diagnostic pop
 
 	sc_file_t *file = NULL;
 	int res = SC_SUCCESS;
@@ -2141,6 +2144,7 @@ static int dnie_sm_wrap_apdu(struct sc_card *card, struct sc_apdu *plain, struct
 
 static int dnie_sm_get_wrapped_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t **sm_apdu)
 {
+
 	struct sc_context *ctx = card->ctx;
 	struct sc_apdu *apdu = NULL;
 	int rv;
@@ -2177,7 +2181,10 @@ static int dnie_sm_unwrap_apdu(sc_card_t *card, sc_apdu_t *wrapped, sc_apdu_t *p
 {
 	int res = SC_SUCCESS;
     struct sc_context *ctx = card->ctx;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
 	cwa_provider_t *provider = NULL;
+#pragma GCC diagnostic pop
 
     LOG_FUNC_CALLED(ctx);
 

@@ -429,7 +429,7 @@ static int asepcos_set_sec_attributes(sc_card_t *card, const u8 *data, size_t le
 	apdu.cla    |= 0x80;
 	apdu.lc      = len;
 	apdu.datalen = len;
-	apdu.data    = data;
+	apdu.data    = (u8 *) data;
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 	return sc_check_sw(card, apdu.sw1, apdu.sw2);
@@ -515,7 +515,7 @@ static int asepcos_decipher(sc_card_t *card, const u8 * crgram, size_t crgram_le
 	 * always have Le <= crgram_len) */
 	apdu.le      = (outlen >= 256 && crgram_len < 256) ? 256 : outlen;
 	
-	apdu.data    = crgram;
+	apdu.data    = (u8 *)crgram;
 	apdu.lc      = crgram_len;
 	apdu.datalen = crgram_len;
 	r = sc_transmit_apdu(card, &apdu);
@@ -546,7 +546,7 @@ static int asepcos_compute_signature(sc_card_t *card, const u8 *data, size_t dat
 	apdu.cla    |= 0x80;
 	apdu.lc      = datalen;
 	apdu.datalen = datalen;
-	apdu.data    = data;
+	apdu.data    = (u8 *) data;
 	apdu.resp    = rbuf;
 	apdu.resplen = sizeof(rbuf);
 	apdu.le      = 256;
@@ -893,7 +893,7 @@ static int asepcos_change_key(sc_card_t *card, sc_cardctl_asepcos_change_key_t *
 	sc_format_apdu(card, &apdu, atype, 0x24, 0x01, 0x80);
 	apdu.lc      = p->datalen;
 	apdu.datalen = p->datalen;
-	apdu.data    = p->data;
+	apdu.data    = (u8 *) p->data;
 
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");

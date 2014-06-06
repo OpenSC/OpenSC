@@ -642,7 +642,7 @@ static int rutoken_verify(sc_card_t *card, unsigned int type, int ref_qualifier,
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x20, 0x00, ref_qualifier);
 	apdu.lc = data_len;
 	apdu.datalen = data_len;
-	apdu.data = data;
+	apdu.data = (u8 *) data;
 	ret = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "APDU transmit failed");
 	ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
@@ -693,7 +693,7 @@ static int rutoken_change_reference_data(sc_card_t *card, unsigned int type,
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x24, 0x01, ref_qualifier);
 	apdu.lc = newlen;
 	apdu.datalen = newlen;
-	apdu.data = newref;
+	apdu.data = (u8 *) newref;
 	ret = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "APDU transmit failed");
 	ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
@@ -767,7 +767,7 @@ static int rutoken_set_security_env(sc_card_t *card,
 	/*  select component  */
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 1, 0);
 	apdu.lc = apdu.datalen = sizeof(data);
-	apdu.data = data;
+	apdu.data = (u8 *) data;
 	switch (env->operation)
 	{
 		case SC_SEC_OPERATION_AUTHENTICATE:
@@ -990,7 +990,7 @@ static int rutoken_cipher_p(sc_card_t *card, const u8 * crgram, size_t crgram_le
 		len = (crgram_len > sizeof(buf)) ? sizeof(buf) : crgram_len;
 		apdu.lc = len;
 		apdu.datalen = len;
-		apdu.data = crgram;
+		apdu.data = (u8 *) crgram;
 		crgram += len;
 		crgram_len -= len;
 
@@ -1071,7 +1071,7 @@ static int rutoken_compute_mac_gost(sc_card_t *card,
 		len = (ilen > signing_chunk) ? signing_chunk : ilen;
 		apdu.lc = len;
 		apdu.datalen = len;
-		apdu.data = in;
+		apdu.data = (u8 *) in;
 		in += len;
 		ilen -= len;
 		if (ilen == 0)
