@@ -252,22 +252,6 @@ app default {
 	card_atr 3b:6e:00:00:45:73:74:45:49:44:20:76:65:72:20:31:2e:30 {
 		force_protocol = t0;
 	}
-	# Cold ATR v3 dev1
-	card_atr 3b:fe:18:00:00:80:31:fe:45:45:73:74:45:49:44:20:76:65:72:20:31:2e:30:a8 {
-		force_protocol = t0;
-	}
-	# Warm ATR v3 dev1
-	card_atr 3b:fe:18:00:00:80:31:fe:45:80:31:80:66:40:90:a4:56:1b:16:83:01:90:00:86 {
-		force_protocol = t0;
-	}
-	# Warm ATR v3 dev2
-	card_atr 3b:fe:18:00:00:80:31:fe:45:80:31:80:66:40:90:a4:16:2a:00:83:01:90:00:e1 {
-		force_protocol = t0;
-	}
-	# Warm ATR v3 (18.01.2011)
-	card_atr 3b:fe:18:00:00:80:31:fe:45:80:31:80:66:40:90:a4:16:2a:00:83:0f:90:00:ef {
-		force_protocol = t0;
-	}
 
 	# D-Trust cards are also based on micardo and need T=0 for some reason
 	card_atr 3b:ff:94:00:ff:80:b1:fe:45:1f:03:00:68:d2:76:00:00:28:ff:05:1e:31:80:00:90:00:23 {
