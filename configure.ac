@@ -8,7 +8,7 @@ define([PRODUCT_BUGREPORT], [opensc-devel@lists.sourceforge.net])
 define([PACKAGE_VERSION_MAJOR], [0])
 define([PACKAGE_VERSION_MINOR], [14])
 define([PACKAGE_VERSION_FIX], [0])
-define([PACKAGE_SUFFIX], [rc1])
+define([PACKAGE_SUFFIX], [rtm])
 define([PACKAGE_VERSION_REVISION], [0])
 
 define([VS_FF_LEGAL_COPYRIGHT], [OpenSC Project])
