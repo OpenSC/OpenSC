@@ -13,11 +13,11 @@ OSX_RELEASE=`sw_vers -productVersion`
 case ${OSX_RELEASE:0:4} in
 	"10.8")
 		SYSROOT="/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.8.sdk"
-		export CFLAGS="-isysroot $SYSROOT -arch i386 -arch x86_64 -mmacosx-version-min=10.8"
+		export CFLAGS="-isysroot $SYSROOT -arch i386 -arch x86_64 -mmacosx-version-min=10.7"
 	;;
 	"10.9")
 		SYSROOT="/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.9.sdk"
-		export CFLAGS="-isysroot $SYSROOT -arch i386 -arch x86_64 -mmacosx-version-min=10.9"
+		export CFLAGS="-isysroot $SYSROOT -arch i386 -arch x86_64 -mmacosx-version-min=10.7"
 	;;
 	*)
 		SYSROOT="/Developer/SDKs/MacOSX10.6.sdk"
