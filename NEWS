@@ -25,6 +25,7 @@ New in 0.14.0; 2014-05-31
     new tool and SDK paths for OS X 10.8
     improved opensc-installer from distribution
     osx: target 10.9 (a free upgrade to anyone using 10.6+) from now on
+    build 'fat' binaries i386
 * common
     added getpass implementation for non windows
 * libopensc
