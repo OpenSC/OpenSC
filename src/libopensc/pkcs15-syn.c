@@ -256,6 +256,7 @@ static int parse_emu_block(sc_pkcs15_card_t *p15card, scconf_block *conf)
 		const char *(*get_version)(void);
 		const char *name = NULL;
 		void	*address;
+		unsigned int major = 0, minor = 0, fix = 0;
 
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Loading %s\n", module_name);
 		
@@ -266,9 +267,14 @@ static int parse_emu_block(sc_pkcs15_card_t *p15card, scconf_block *conf)
 			         module_name, sc_dlerror());
 			return SC_ERROR_INTERNAL;
 		}
+
 		/* try to get version of the driver/api */
 		get_version =  (const char *(*)(void)) sc_dlsym(handle, "sc_driver_version");
-		if (!get_version || strcmp(get_version(), "0.9.3") < 0) {
+		if (get_version) {
+			sscanf(get_version(), "%u.%u.%u", &major, &minor, &fix);
+		}
+
+		if (!get_version || (major == 0 && minor <= 9 && fix < 3) < 0) {
 			/* no sc_driver_version function => assume old style
 			 * init function (note: this should later give an error
 			 */
