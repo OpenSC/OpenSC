@@ -1367,21 +1367,58 @@ static int piv_write_binary(sc_card_t *card, unsigned int idx,
 }
 
 /*
- * Card initialization is not standard.
- * Some cards use mutual or external authentication using s 3des key. We
- * will read in the key from a file.
+ * Card initialization is NOT standard.
+ * Some cards use mutual or external authentication usings 3des or aes key. We
+ * will read in the key from a file either binary or hex encided.
  * This is only needed during initialization/personalization of the card
  */
 
-static int piv_get_3des_key(sc_card_t *card, u8 *key)
+#ifdef ENABLE_OPENSSL
+static const EVP_CIPHER *get_cipher_for_algo(int alg_id)
+{
+	switch (alg_id) {
+		case 0x0: return EVP_des_ede3_ecb();
+		case 0x1: return EVP_des_ede3_ecb(); /* 2TDES */
+		case 0x3: return EVP_des_ede3_ecb();
+		case 0x8: return EVP_aes_128_ecb();
+		case 0xA: return EVP_aes_192_ecb();
+		case 0xC: return EVP_aes_256_ecb();
+		default: return NULL;
+	}
+}
+#endif
+
+static int get_keylen(unsigned int alg_id, size_t *size)
+{
+	switch(alg_id) {
+	case 0x01: *size = 192/8; /* 2TDES still has 3 single des keys  phase out by 12/31/2010 */
+		break;
+	case 0x00:
+	case 0x03: *size = 192/8;
+		break;
+	case 0x08: *size = 128/8;
+		break;
+	case 0x0A: *size = 192/8;
+		break;
+	case 0x0C: *size = 256/8;
+		break;
+	default:
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+	return SC_SUCCESS;
+}
+
+static int piv_get_key(sc_card_t *card, unsigned int alg_id, u8 **key, size_t *len)
 {
 
 	int r;
-	int f = -1;
-	char keybuf[24*3];  /* 3des key as three sets of xx:xx:xx:xx:xx:xx:xx:xx
-		                   * with a : between which is 71 bytes */
+	size_t fsize;
+	FILE *f = NULL;
 	char * keyfilename = NULL;
-	size_t outlen;
+	size_t expected_keylen;
+	size_t keylen;
+	u8 * keybuf = NULL;
+	u8 * tkey = NULL;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -1389,38 +1426,82 @@ static int piv_get_3des_key(sc_card_t *card, u8 *key)
 
 	if (keyfilename == NULL) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
-			"Unable to get PIV_EXT_AUTH_KEY=filename for general_external_authenticate\n");
+			"Unable to get PIV_EXT_AUTH_KEY=(null) for general_external_authenticate\n");
 		r = SC_ERROR_FILE_NOT_FOUND;
 		goto err;
 	}
-	if ((f = open(keyfilename, O_RDONLY)) < 0) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL," Unable to load 3des key for general_external_authenticate\n");
+
+	r = get_keylen(alg_id, &expected_keylen);
+	if(r) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Invalid cipher selector, none found for:  %02x\n", alg_id);
+		r = SC_ERROR_INVALID_ARGUMENTS;
+		goto err;
+	}
+
+	f = fopen(keyfilename, "rb");
+	if (!f) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL," Unable to load key from file\n");
 		r = SC_ERROR_FILE_NOT_FOUND;
 		goto err;
 	}
-	if (read(f, keybuf, 71) != 71) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL," Unable to read 3des key for general_external_authenticate\n");
+
+	fseek(f, 0L, SEEK_END);
+	fsize = ftell(f);
+	fseek(f, 0L, SEEK_SET);
+
+	keybuf = malloc(fsize+1); /* if not binary, need null to make it a string */
+	if (!keybuf) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL," Unable to allocate key memory");
+		r = SC_ERROR_OUT_OF_MEMORY;
+		goto err;
+	}
+	keybuf[fsize] = 0x00;    /* incase it is text need null */
+
+	if (fread(keybuf, 1, fsize, f) != fsize) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL," Unable to read key\n");
 		r = SC_ERROR_WRONG_LENGTH;
 		goto err;
 	}
-	keybuf[23] = '\0';
-	keybuf[47] = '\0';
-	keybuf[71] = '\0';
-	outlen = 8;
-	r = sc_hex_to_bin(keybuf, key, &outlen);
-	if (r) goto err;
-	outlen = 8;
-	r = sc_hex_to_bin(keybuf+24, key+8, &outlen);
-	if (r) goto err;
-	outlen = 8;
-	r = sc_hex_to_bin(keybuf+48, key+16, &outlen);
-	if (r) goto err;
+
+	tkey = malloc(expected_keylen);
+	if (!tkey) {
+	    sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL," Unable to allocate key memory");
+	    r = SC_ERROR_OUT_OF_MEMORY;
+	    goto err;
+	}
+
+	if (fsize == expected_keylen) { /* it must be binary */
+		memcpy(tkey, keybuf, expected_keylen);
+	} else {
+		/* if the key-length is larger then binary length, we assume hex encoded */
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Treating key as hex-encoded!\n");
+		sc_right_trim(keybuf, fsize);
+		keylen = expected_keylen;
+		r = sc_hex_to_bin((char *)keybuf, tkey, &keylen);
+		if (keylen !=expected_keylen || r != 0 ) {
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Error formatting key\n");
+			if (r == 0)
+				r = SC_ERROR_INCOMPATIBLE_KEY;
+			goto err;
+		}
+	}
+	*key = tkey;
+	tkey = NULL;
+	*len = expected_keylen;
+	r = SC_SUCCESS;
 
 err:
-	if (f >=0)
-		close(f);
+	if (f)
+		fclose(f);
+	if (keybuf) {
+		free(keybuf);
+	}
+	if (tkey) {
+		free(tkey);
+	}
 
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	return r;
 }
 
 /*
@@ -1440,26 +1521,28 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 	u8  *rbuf = NULL;
 	size_t rbuflen;
 	u8 nonce[8] = {0xDE, 0xE0, 0xDE, 0xE1, 0xDE, 0xE2, 0xDE, 0xE3};
-	u8 sbuf[255], key[24];
+	u8 sbuf[255];
 	u8 *p, *q;
+	u8 *key = NULL;
+	size_t keylen;
 	EVP_CIPHER_CTX ctx;
 	const EVP_CIPHER *cipher;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	EVP_CIPHER_CTX_init(&ctx);
-
-	switch (alg_id) {
-		case 1: cipher=EVP_des_ede3_ecb(); break;
-		case 2: cipher=EVP_des_ede3_cbc(); break;
-		case 3: cipher=EVP_des_ede3_ecb(); break;
-		case 4: cipher=EVP_des_ede3_cbc(); break;
-		default: cipher=EVP_des_ede3_ecb(); break;
+	cipher = get_cipher_for_algo(alg_id);
+	if(!cipher) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Invalid cipher selector, none found for:  %02x\n", alg_id);
+		r = SC_ERROR_INVALID_ARGUMENTS;
+		goto err;
 	}
 
-	r = piv_get_3des_key(card, key);
-	if (r != SC_SUCCESS)
+	r = piv_get_key(card, alg_id, &key, &keylen);
+	if (r) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Error  geting General Auth key\n");
 		goto err;
+	}
 
 	r = sc_lock(card);
 	if (r != SC_SUCCESS)
@@ -1578,19 +1661,30 @@ err:
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 }
 
+
 /* Currently only used for card administration */
 static int piv_general_external_authenticate(sc_card_t *card,
 		unsigned int key_ref, unsigned int alg_id)
 {
 	int r;
 #ifdef ENABLE_OPENSSL
-	int outl, outl2;
-	int N;
+	int tmplen;
+	int outlen;
 	int locked = 0;
-	u8  *rbuf = NULL;
+	u8 *p;
+	u8 *rbuf = NULL;
+	u8 *key = NULL;
+	u8 *cypher_text = NULL;
+	u8 *output_buf = NULL;
+	const u8 *body = NULL;
+	const u8 *challenge_data = NULL;
 	size_t rbuflen;
-	u8 sbuf[255], key[24];
-	u8 *p, *q;
+	size_t body_len;
+	size_t output_len;
+	size_t challenge_len;
+	size_t keylen = 0;
+	size_t cypher_text_len = 0;
+	u8 sbuf[255];
 	EVP_CIPHER_CTX ctx;
 	const EVP_CIPHER *cipher;
 
@@ -1598,17 +1692,20 @@ static int piv_general_external_authenticate(sc_card_t *card,
 
 	EVP_CIPHER_CTX_init(&ctx);
 
-	switch (alg_id) {
-		case 1: cipher=EVP_des_ede3_ecb(); break;
-		case 2: cipher=EVP_des_ede3_cbc(); break;
-		case 3: cipher=EVP_des_ede3_ecb(); break;
-		case 4: cipher=EVP_des_ede3_cbc(); break;
-		default: cipher=EVP_des_ede3_ecb(); break;
+	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Selected cipher for algorithm id: %02x\n", alg_id);
+
+	cipher = get_cipher_for_algo(alg_id);
+	if(!cipher) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Invalid cipher selector, none found for:  %02x\n", alg_id);
+		r = SC_ERROR_INVALID_ARGUMENTS;
+		goto err;
 	}
 
-	r = piv_get_3des_key(card, key);
-	if (r != SC_SUCCESS)
+	r = piv_get_key(card, alg_id, &key, &keylen);
+	if (r) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Error  geting General Auth key\n");
 		goto err;
+	}
 
 	r = sc_lock(card);
 	if (r != SC_SUCCESS)
@@ -1623,53 +1720,140 @@ static int piv_general_external_authenticate(sc_card_t *card,
 
 	/* get a challenge */
 	r = piv_general_io(card, 0x87, alg_id, key_ref, sbuf, p - sbuf, &rbuf, &rbuflen);
+	if (r < 0) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Error getting Challenge\n");
+		goto err;
+	}
 
- 	if (r < 0) goto err;
-	q = rbuf;
-	if ( (*q++ != 0x7C)
-		|| (*q++ != rbuflen - 2)
-		|| (*q++ != 0x81)
-		|| (*q++ != rbuflen - 4)) {
+	/*
+	 * the value here corresponds with the response size, so we use this
+	 * to alloc the response buffer, rather than re-computing it.
+	 */
+	output_len = r;
+
+	/* Remove the encompassing outer TLV of 0x7C and get the data */
+	body = sc_asn1_find_tag(card->ctx, rbuf,
+		r, 0x7C, &body_len);
+	if (!body) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Invalid Challenge Data response of NULL\n");
 		r =  SC_ERROR_INVALID_DATA;
 		goto err;
 	}
 
-	/* assuming challenge and response are same size  i.e. des3 */
-	p = sbuf;
-	*p++ = 0x7c;
-	*p++ = *(rbuf + 1);
-	*p++ = 0x82;
-	*p++ = *(rbuf + 3);
-	N = *(rbuf + 3); /* assuming 2 * N + 6 < 128 */
+	/* Get the challenge data indicated by the TAG 0x81 */
+	challenge_data = sc_asn1_find_tag(card->ctx, body,
+		body_len, 0x81, &challenge_len);
+	if (!challenge_data) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Invalid Challenge Data none found in TLV\n");
+		r =  SC_ERROR_INVALID_DATA;
+		goto err;
+	}
 
+	/* Store this to sanity check that plaintext length and cyphertext lengths match */
+	/* TODO is this required */
+	tmplen = challenge_len;
+
+	/* Encrypt the challenge with the secret */
 	if (!EVP_EncryptInit(&ctx, cipher, key, NULL)) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Encrypt fail\n");
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
-	EVP_CIPHER_CTX_set_padding(&ctx,0);
-	if (!EVP_EncryptUpdate(&ctx, p, &outl, q, N)) {
-		r = SC_ERROR_INTERNAL;
-		goto err;
-	}
-	if(!EVP_EncryptFinal(&ctx, p+outl, &outl2)) {
-		r = SC_ERROR_INTERNAL;
-		goto err;
-	}
-	if (outl+outl2 != N) {
-		r = SC_ERROR_INTERNAL;
-		goto err;
-	}
-	p += N;
 
-	r = piv_general_io(card, 0x87, alg_id, key_ref, sbuf, p - sbuf, NULL, NULL);
+	cypher_text = malloc(challenge_len);
+	if (!cypher_text) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not allocate buffer for cipher text\n");
+		r = SC_ERROR_INTERNAL;
+		goto err;
+	}
+
+	EVP_CIPHER_CTX_set_padding(&ctx,0);
+	if (!EVP_EncryptUpdate(&ctx, cypher_text, &outlen, challenge_data, challenge_len)) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Encrypt update fail\n");
+		r = SC_ERROR_INTERNAL;
+		goto err;
+	}
+	cypher_text_len += outlen;
+
+	if (!EVP_EncryptFinal(&ctx, cypher_text + cypher_text_len, &outlen)) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Final fail\n");
+		r = SC_ERROR_INTERNAL;
+		goto err;
+	}
+	cypher_text_len += outlen;
+
+	/*
+	 * Actually perform the sanity check on lengths plaintext length vs
+	 * encrypted length
+	 */
+	if (cypher_text_len != (size_t)tmplen) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Length test fail\n");
+		r = SC_ERROR_INTERNAL;
+		goto err;
+	}
+
+	output_buf = malloc(output_len);
+	if(!output_buf) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not allocate output buffer: %s\n",
+				strerror(errno));
+		r = SC_ERROR_INTERNAL;
+		goto err;
+	}
+
+	p = output_buf;
+
+	/*
+	 * Build: 7C<len>[82<len><challenge>]
+	 * Start off by capturing the data of the response:
+	 *     - 82<len><encrypted challenege response>
+	 * Build the outside TLV (7C)
+	 * Advance past that tag + len
+	 * Build the body (82)
+	 * memcopy the body past the 7C<len> portion
+	 * Transmit
+	 */
+	tmplen = put_tag_and_len(0x82, cypher_text_len, NULL);
+
+	tmplen = put_tag_and_len(0x7C, tmplen, &p);
+	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Tmplen2: %zd\n", tmplen);
+
+	/* Build the 0x82 TLV and append to the 7C<len> tag */
+	tmplen += put_tag_and_len(0x82, cypher_text_len, &p);
+	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Tmplen1: %zd\n", tmplen);
+	memcpy(p, cypher_text, cypher_text_len);
+	p += cypher_text_len;
+	tmplen += cypher_text_len;
+
+	/* Sanity check the lengths again */
+	if(output_len != (size_t)tmplen) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Allocated and computed lengths do not match! "
+				"Expected %zd, found: %d\n", output_len, tmplen);
+		r = SC_ERROR_INTERNAL;
+		goto err;
+	}
+
+	r = piv_general_io(card, 0x87, alg_id, key_ref, output_buf, output_len, NULL, NULL);
+	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Got response  challenge\n");
 
 err:
+	EVP_CIPHER_CTX_cleanup(&ctx);
+
 	if (locked)
 		sc_unlock(card);
-	EVP_CIPHER_CTX_cleanup(&ctx);
-	sc_mem_clear(key, sizeof(key));
+
+	if (key) {
+		sc_mem_clear(key, keylen);
+		free(key);
+	}
+
 	if (rbuf)
 		free(rbuf);
+
+	if (cypher_text)
+		free(cypher_text);
+
+	if (output_buf)
+		free(output_buf);
 #else
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"OpenSSL Required");
 	r = SC_ERROR_NOT_SUPPORTED;
