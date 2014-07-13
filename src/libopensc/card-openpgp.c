@@ -973,7 +973,6 @@ pgp_select_file(sc_card_t *card, const sc_path_t *path, sc_file_t **ret)
 			 * So we set its size to be the same as max certificate size the card supports. */
 			(*ret)->size = priv->max_cert_size;
 		}
-		priv->current = NULL;
 		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 	}
 
@@ -990,7 +989,6 @@ pgp_select_file(sc_card_t *card, const sc_path_t *path, sc_file_t **ret)
 		/* This file ID is refered when importing key&certificate via pkcs15init, like above.
 		 * We pretend to successfully find this inexistent file. */
 		if (id == 0x4402 || id == 0x5f48) {
-			priv->current = NULL;
 			if (ret == NULL)
 				/* No need to return file */
 				LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
@@ -1002,7 +1000,6 @@ pgp_select_file(sc_card_t *card, const sc_path_t *path, sc_file_t **ret)
 		}
 
 		if (r < 0) {	/* failure */
-			priv->current = NULL;
 			LOG_FUNC_RETURN(card->ctx, r);
 		}
 	}
