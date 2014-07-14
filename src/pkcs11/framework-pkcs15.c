@@ -1602,23 +1602,32 @@ pkcs15_change_pin(struct sc_pkcs11_slot *slot,
 		CK_CHAR_PTR pNewPin, CK_ULONG ulNewLen)
 {
 	struct sc_pkcs11_card *p11card = slot->card;
+	struct sc_pkcs15_card *p15card = NULL;
 	struct pkcs15_fw_data *fw_data = NULL;
 	struct sc_pkcs15_auth_info *auth_info = NULL;
 	struct sc_pkcs15_object *pin_obj = NULL;
 	int login_user = slot->login_user;
 	int rc;
 
-	pin_obj = slot_data_auth(slot->fw_data);
-	if (!pin_obj)
-		return CKR_USER_PIN_NOT_INITIALIZED;
-
-	auth_info = slot_data_auth_info(slot->fw_data);
-	if (!auth_info)
-		return CKR_USER_PIN_NOT_INITIALIZED;
-
 	fw_data = (struct pkcs15_fw_data *) p11card->fws_data[slot->fw_data_idx];
 	if (!fw_data)
 		return sc_to_cryptoki_error(SC_ERROR_INTERNAL, "C_SetPin");
+
+	p15card = fw_data->p15_card;
+
+	if (login_user == CKU_SO) {
+		rc = sc_pkcs15_find_so_pin(p15card, &pin_obj);
+		sc_log(context, "pkcs15-login: find SO PIN: rc %i", rc);
+	} else {
+		pin_obj = slot_data_auth(slot->fw_data);
+	}
+
+	if (!pin_obj)
+		return CKR_USER_PIN_NOT_INITIALIZED;
+
+	auth_info = (struct sc_pkcs15_auth_info *)pin_obj->data;
+	if (!auth_info)
+		return CKR_USER_PIN_NOT_INITIALIZED;
 
 	sc_log(context, "Change '%s' (ref:%i,type:%i)", pin_obj->label, auth_info->attrs.pin.reference, login_user);
 	if (p11card->card->reader->capabilities & SC_READER_CAP_PIN_PAD) {
@@ -1635,44 +1644,24 @@ pkcs15_change_pin(struct sc_pkcs11_slot *slot,
 		return CKR_PIN_LEN_RANGE;
 	}
 
-	if (login_user < 0)   {
-		if (sc_pkcs11_conf.pin_unblock_style != SC_PKCS11_PIN_UNBLOCK_UNLOGGED_SETPIN)   {
+	if (login_user < 0) {
+		if (sc_pkcs11_conf.pin_unblock_style != SC_PKCS11_PIN_UNBLOCK_UNLOGGED_SETPIN) {
 			sc_log(context, "PIN unlock is not allowed in unlogged session");
 			return CKR_FUNCTION_NOT_SUPPORTED;
 		}
 		rc = sc_pkcs15_unblock_pin(fw_data->p15_card, pin_obj, pOldPin, ulOldLen, pNewPin, ulNewLen);
 	}
 	else if (login_user == CKU_CONTEXT_SPECIFIC)   {
-		if (sc_pkcs11_conf.pin_unblock_style != SC_PKCS11_PIN_UNBLOCK_SCONTEXT_SETPIN)   {
+		if (sc_pkcs11_conf.pin_unblock_style != SC_PKCS11_PIN_UNBLOCK_SCONTEXT_SETPIN) {
 			sc_log(context, "PIN unlock is not allowed with CKU_CONTEXT_SPECIFIC login");
 			return CKR_FUNCTION_NOT_SUPPORTED;
 		}
 		rc = sc_pkcs15_unblock_pin(fw_data->p15_card, pin_obj, pOldPin, ulOldLen, pNewPin, ulNewLen);
 	}
-	else if (login_user == CKU_USER)   {
+	else if ((login_user == CKU_USER) || (login_user == CKU_SO)) {
 		rc = sc_pkcs15_change_pin(fw_data->p15_card, pin_obj, pOldPin, ulOldLen, pNewPin, ulNewLen);
 	}
-	else if (login_user == CKU_SO)   {
-		struct sc_pkcs15_object *auths[SC_PKCS15_MAX_PINS];
-		int i, auth_count;
-
-		rc = sc_pkcs15_get_objects(fw_data->p15_card, SC_PKCS15_TYPE_AUTH_PIN, auths, SC_PKCS15_MAX_PINS);
-		if (rc < 0)
-			return sc_to_cryptoki_error(rc, "C_SetPIN");
-		auth_count = rc;
-		for (i = 0; i < auth_count; i++)   {
-			auth_info = (struct sc_pkcs15_auth_info*) auths[i]->data;
-			if ((auth_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN))
-	                        break;
-		}
-		if (i == auth_count)   {
-			sc_log(context, "Change SoPIN non supported");
-			return CKR_FUNCTION_NOT_SUPPORTED;
-		}
-
-		rc = sc_pkcs15_change_pin(fw_data->p15_card, auths[i], pOldPin, ulOldLen, pNewPin, ulNewLen);
-	}
-	else   {
+	else {
 		sc_log(context, "cannot change PIN: non supported login type: %i", login_user);
 		return CKR_FUNCTION_NOT_SUPPORTED;
 	}
