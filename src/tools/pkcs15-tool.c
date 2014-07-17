@@ -1477,9 +1477,9 @@ static int read_and_cache_file(const sc_path_t *path)
 		return -1;
 	}
 	if (tfile->size) {
-		size = 1024;
-	} else {
 		size = tfile->size;
+	} else {
+		size = 1024;
 	}
 	buf = malloc(size);
 	if (!buf) {
