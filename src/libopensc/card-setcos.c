@@ -613,7 +613,9 @@ static int setcos_set_security_env2(sc_card_t *card,
 		memcpy(p, env->file_ref.value, env->file_ref.len);
 		p += env->file_ref.len;
 	}
-	if (env->flags & SC_SEC_ENV_KEY_REF_PRESENT) {
+	if (env->flags & SC_SEC_ENV_KEY_REF_PRESENT &&
+	    !(card->type == SC_CARD_TYPE_SETCOS_NIDEL ||
+	      card->type == SC_CARD_TYPE_SETCOS_FINEID_V2_2048)) {
 		if (env->flags & SC_SEC_ENV_KEY_REF_ASYMMETRIC)
 			*p++ = 0x83;
 		else
