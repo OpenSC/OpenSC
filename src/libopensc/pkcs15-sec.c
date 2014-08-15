@@ -447,7 +447,7 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	if (pad_flags != 0) {
 		size_t tmplen = sizeof(buf);
 
-		r = sc_pkcs1_encode(ctx, pad_flags, tmp, inlen, tmp, &tmplen, modlen);
+		r = sc_pkcs1_encode(ctx, flags, tmp, inlen, tmp, &tmplen, modlen);
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Unable to add padding");
 
 		inlen = tmplen;
