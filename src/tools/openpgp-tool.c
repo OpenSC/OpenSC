@@ -74,7 +74,8 @@ static int opt_verify = 0;
 static char *verifytype = NULL;
 static int opt_pin = 0;
 static char *pin = NULL;
-static int opt_dump_do3 = 0;
+static int opt_dump_do = 0;
+static u8 do_dump_idx;
 
 static const char *app_name = "openpgp-tool";
 
@@ -93,7 +94,7 @@ static const struct option options[] = {
 	{ "version",   no_argument,       NULL, 'V'        },
 	{ "verify",    required_argument, NULL, OPT_VERIFY },
 	{ "pin",       required_argument, NULL, OPT_PIN },
-	{ "do3",       no_argument,       NULL, 'd' },
+	{ "do",        required_argument, NULL, 'd' },
 	{ NULL, 0, NULL, 0 }
 };
 
@@ -112,7 +113,7 @@ static const char *option_help[] = {
 /* V */	"Show version number",
 	"Verify PIN (CHV1, CHV2, CHV3...)",
 	"PIN string",
-/* d */ "Dump the private-do-3 data object."
+/* d */ "Dump private data object number <arg> (i.e. PRIVATE-DO-<arg>)"
 };
 
 static const struct ef_name_map openpgp_data[] = {
@@ -229,7 +230,7 @@ static int decode_options(int argc, char **argv)
 {
 	int c;
 
-	while ((c = getopt_long(argc, argv,"r:x:CUG:L:hwvVd", options, (int *) 0)) != EOF) {
+	while ((c = getopt_long(argc, argv,"r:x:CUG:L:hwvVd:", options, (int *) 0)) != EOF) {
 		switch (c) {
 		case 'r':
 			opt_reader = optarg;
@@ -290,8 +291,9 @@ static int decode_options(int argc, char **argv)
 			exit(EXIT_SUCCESS);
 			break;
 		case 'd':
+			do_dump_idx = optarg[0] - '0';
+			opt_dump_do++;
 			actions++;
-			opt_dump_do3++;
 			break;
 		default:
 			util_print_usage_and_die(app_name, options, option_help, NULL);
@@ -498,8 +500,8 @@ int main(int argc, char **argv)
 		exit_status |= do_verify(card, verifytype, pin);
 	}
 
-	if (opt_dump_do3) {
-		exit_status |= do_dump_do(card, 0x0103);
+	if (opt_dump_do) {
+		exit_status |= do_dump_do(card, 0x0100 + do_dump_idx);
 	}
 
 	if (opt_genkey)
