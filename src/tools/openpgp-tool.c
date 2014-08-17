@@ -350,7 +350,9 @@ static int do_userinfo(sc_card_t *card)
 
 static int do_dump_do(sc_card_t *card, unsigned int tag)
 {
-	int r;
+	int r, tmp;
+	FILE *fp;
+
 	// Private DO are specified up to 254 bytes
 	unsigned char buffer[254];
 	memset(buffer, '\0', sizeof(buffer));
@@ -360,9 +362,19 @@ static int do_dump_do(sc_card_t *card, unsigned int tag)
 		printf("Failed to get data object: %s\n", sc_strerror(r));
 		return r;
 	}
-	
-	fwrite(buffer, sizeof(char), sizeof(buffer), stdout);
 
+	r = 0;
+	tmp = dup(fileno(stdout));
+	fp = freopen(NULL, "wb", stdout);
+	if(fp) {
+		r = fwrite(buffer, sizeof(char), sizeof(buffer), fp);
+	}
+	dup2(tmp, fileno(stdout));
+	clearerr(stdout);
+
+	if (sizeof(buffer) != r) {
+		return EXIT_FAILURE;
+	}
 	return EXIT_SUCCESS;
 }
 
