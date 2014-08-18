@@ -365,18 +365,22 @@ static int do_dump_do(sc_card_t *card, unsigned int tag)
 		return r;
 	}
 
-	r = 0;
-	tmp = dup(fileno(stdout));
-	fp = freopen(NULL, "wb", stdout);
-	if(fp) {
-		r = fwrite(buffer, sizeof(char), sizeof(buffer), fp);
+	if(isatty(fileno(stdout))) {
+		util_hex_dump_asc(stdout, buffer, sizeof(buffer), -1);
+	} else {
+		r = 0;
+		tmp = dup(fileno(stdout));
+		fp = freopen(NULL, "wb", stdout);
+		if(fp) {
+			r = fwrite(buffer, sizeof(char), sizeof(buffer), fp);
+		}
+		dup2(tmp, fileno(stdout));
+		clearerr(stdout);
+		if (sizeof(buffer) != r) {
+			return EXIT_FAILURE;
+		}
 	}
-	dup2(tmp, fileno(stdout));
-	clearerr(stdout);
 
-	if (sizeof(buffer) != r) {
-		return EXIT_FAILURE;
-	}
 	return EXIT_SUCCESS;
 }
 
