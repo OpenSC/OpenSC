@@ -32,6 +32,7 @@
 #include "libopensc/asn1.h"
 #include "libopensc/cards.h"
 #include "libopensc/cardctl.h"
+#include "libopensc/errors.h"
 #include "util.h"
 #include "libopensc/log.h"
 
@@ -362,6 +363,9 @@ static int do_dump_do(sc_card_t *card, unsigned int tag)
 	r = sc_get_data(card, tag, buffer, sizeof(buffer));
 	if (r < 0) {
 		printf("Failed to get data object: %s\n", sc_strerror(r));
+		if(SC_ERROR_SECURITY_STATUS_NOT_SATISFIED == r) {
+			printf("Make sure the 'verify' and 'pin' parameters are correct.\n");
+		}
 		return r;
 	}
 
