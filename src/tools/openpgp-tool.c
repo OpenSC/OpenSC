@@ -369,9 +369,7 @@ static int do_dump_do(sc_card_t *card, unsigned int tag)
 		return r;
 	}
 
-	if(isatty(fileno(stdout))) {
-		util_hex_dump_asc(stdout, buffer, sizeof(buffer), -1);
-	} else {
+	if(opt_raw) {
 		r = 0;
 		tmp = dup(fileno(stdout));
 		fp = freopen(NULL, "wb", stdout);
@@ -383,6 +381,8 @@ static int do_dump_do(sc_card_t *card, unsigned int tag)
 		if (sizeof(buffer) != r) {
 			return EXIT_FAILURE;
 		}
+	} else {
+		util_hex_dump_asc(stdout, buffer, sizeof(buffer), -1);
 	}
 
 	return EXIT_SUCCESS;
