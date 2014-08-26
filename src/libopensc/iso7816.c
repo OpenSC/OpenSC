@@ -831,6 +831,9 @@ iso7816_compute_signature(struct sc_card *card,
 	apdu.datalen = datalen;
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
+		LOG_FUNC_RETURN(card->ctx, apdu.resplen);
+	}
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(card->ctx, r, "Card returned error");
