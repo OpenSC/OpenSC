@@ -255,7 +255,14 @@ enum {
 	 */
     SC_CARDCTL_DNIE_BASE = _CTL_PREFIX('D', 'N', 'I'),
 	SC_CARDCTL_DNIE_GENERATE_KEY,
-	SC_CARDCTL_DNIE_GET_INFO
+	SC_CARDCTL_DNIE_GET_INFO,
+
+	/*
+	 * isoApplet Java Card Applet
+	 */
+	SC_CARDCTL_ISOAPPLET_BASE = _CTL_PREFIX('I','S','O'),
+	SC_CARDCTL_ISOAPPLET_GENERATE_KEY,
+	SC_CARDCTL_ISOAPPLET_IMPORT_KEY
 };
 
 enum {
@@ -956,6 +963,30 @@ typedef struct sc_cardctl_sc_hsm_wrapped_key {
 	u8 *wrapped_key;			/* Binary wrapped key */
 	size_t wrapped_key_length;	/* Length of key blob */
 } sc_cardctl_sc_hsm_wrapped_key_t;
+
+/*
+ * isoApplet
+ */
+
+#define SC_ISOAPPLET_ALG_REF_RSA_GEN_2048 0xF3
+#define SC_ISOAPPLET_ALG_REF_EC_GEN_BRAINPOOLP192R1 0xE0
+#define SC_ISOAPPLET_ALG_REF_EC_GEN_PRIME256V1 0xE1
+
+typedef struct sc_cardctl_isoApplet_genkey {
+	u8 algorithm_ref;			/* Algorithm reference sent to card */
+	unsigned char *exponent;	/* RSA public key exponent */
+	unsigned int exponent_len;	
+	unsigned int priv_key_ref;	/* Private key refernce sent to card */
+	unsigned char *pubkey;		/* RSA public key modulus (or EC tlv-encoded public key) */
+	unsigned int pubkey_len;
+} sc_cardctl_isoApplet_genkey_t;
+
+typedef struct sc_cardctl_isoApplet_import_key {
+	u8 algorithm_ref;			/*Algorithm reference sent to card */
+	unsigned int priv_key_ref;	/* Private key refernce sent to card */
+	struct sc_pkcs15_prkey *prkey;
+} sc_cardctl_isoApplet_import_key_t;
+
 
 #ifdef __cplusplus
 }
