@@ -199,7 +199,11 @@ enum {
 	SC_CARD_TYPE_DNIE_BLANK, /* ATR LC byte: 00 */
 	SC_CARD_TYPE_DNIE_ADMIN, /* ATR LC byte: 01 */
 	SC_CARD_TYPE_DNIE_USER,  /* ATR LC byte: 03 */
-	SC_CARD_TYPE_DNIE_TERMINATED /* ATR LC byte: 0F */
+	SC_CARD_TYPE_DNIE_TERMINATED, /* ATR LC byte: 0F */
+
+	/* JavaCards with isoApplet */
+	SC_CARD_TYPE_ISO_APPLET_BASE = 28000,
+	SC_CARD_TYPE_ISO_APPLET_GENERIC
 };
 
 extern sc_card_driver_t *sc_get_default_driver(void);
@@ -236,6 +240,7 @@ extern sc_card_driver_t *sc_get_authentic_driver(void);
 extern sc_card_driver_t *sc_get_iasecc_driver(void);
 extern sc_card_driver_t *sc_get_epass2003_driver(void);
 extern sc_card_driver_t *sc_get_dnie_driver(void);
+extern sc_card_driver_t *sc_get_isoApplet_driver(void);
 
 #ifdef __cplusplus
 }

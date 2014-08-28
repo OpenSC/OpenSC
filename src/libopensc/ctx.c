@@ -108,6 +108,7 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 	{ "atrust-acos",(void *(*)(void)) sc_get_atrust_acos_driver },
 	{ "PIV-II",	(void *(*)(void)) sc_get_piv_driver },
 	{ "itacns",	(void *(*)(void)) sc_get_itacns_driver },
+	{ "isoApplet",	(void *(*)(void)) sc_get_isoApplet_driver },
 	/* The default driver should be last, as it handles all the
 	 * unrecognized cards. */
 	{ "default",	(void *(*)(void)) sc_get_default_driver },
