@@ -116,6 +116,15 @@ static int sc_hsm_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 
 
 
+static int sc_hsm_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
+	sc_pkcs15_object_t *obj)
+{
+	LOG_FUNC_CALLED(p15card->card->ctx);
+	LOG_FUNC_RETURN(p15card->card->ctx, SC_ERROR_NOT_SUPPORTED);
+}
+
+
+
 static int sc_hsm_determine_free_id(struct sc_pkcs15_card *p15card, u8 range)
 {
 	struct sc_card *card = p15card->card;
@@ -609,7 +618,7 @@ sc_pkcs15init_sc_hsm_operations = {
 	NULL,						/* create_pin */
 	NULL,						/* select key reference */
 	sc_hsm_create_key,
-	NULL,						/* store_key */
+	sc_hsm_store_key,
 	sc_hsm_generate_key,
 	NULL,						/* encode private key */
 	NULL,						/* encode public key */
