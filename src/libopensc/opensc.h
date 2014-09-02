@@ -354,7 +354,7 @@ struct sc_pin_cmd_data {
 #define PACE_PIN_ID_CAN 0x02
 #define PACE_PIN_ID_PIN 0x03
 #define PACE_PIN_ID_PUK 0x04
-/** 
+/**
  * Input data for EstablishPACEChannel()
  */
 struct establish_pace_channel_input {
@@ -377,7 +377,7 @@ struct establish_pace_channel_input {
     const unsigned char *certificate_description;
 };
 
-/** 
+/**
  * Output data for EstablishPACEChannel()
  */
 struct establish_pace_channel_output {
@@ -821,12 +821,12 @@ sc_reader_t *sc_ctx_get_reader(sc_context_t *ctx, unsigned int i);
  *
  * @param  ctx   pointer to a sc_context_t
  * @param  pcsc_context_handle pointer to the  new context_handle to use
- * @param  pcsc_card_handle pointer to the new card_handle to use 
+ * @param  pcsc_card_handle pointer to the new card_handle to use
  * @return SC_SUCCESS on success and an error code otherwise.
  */
 int sc_ctx_use_reader(sc_context_t *ctx, void * pcsc_context_handle, void * pcsc_card_handle);
 
-/** 
+/**
  * Returns a pointer to the specified sc_reader_t object
  * @param  ctx  OpenSC context
  * @param  name name of the reader to look for
@@ -835,7 +835,7 @@ int sc_ctx_use_reader(sc_context_t *ctx, void * pcsc_context_handle, void * pcsc
  */
 sc_reader_t *sc_ctx_get_reader_by_name(sc_context_t *ctx, const char *name);
 
-/** 
+/**
  * Returns a pointer to the specified sc_reader_t object
  * @param  ctx  OpenSC context
  * @param  id id of the reader (starting from 0)
@@ -911,7 +911,7 @@ int sc_detect_card_presence(sc_reader_t *reader);
  * @retval = 1 if the timeout occured
  */
 int sc_wait_for_event(sc_context_t *ctx, unsigned int event_mask,
-                      sc_reader_t **event_reader, unsigned int *event, 
+                      sc_reader_t **event_reader, unsigned int *event,
 		      int timeout, void **reader_states);
 
 /**
@@ -980,8 +980,8 @@ int sc_read_binary(struct sc_card *card, unsigned int idx, u8 * buf,
 		   size_t count, unsigned long flags);
 /**
  * Write data to a binary EF
- * @param  card   struct sc_card object on which to issue the command 
- * @param  idx    index within the file for the data to be written 
+ * @param  card   struct sc_card object on which to issue the command
+ * @param  idx    index within the file for the data to be written
  * @param  buf    buffer with the data
  * @param  count  number of bytes to write
  * @param  flags  flags for the WRITE BINARY command (currently not used)
@@ -1151,8 +1151,8 @@ int sc_file_set_content(sc_file_t *file, const u8 *content,
  * Sets the content of a sc_path_t object.
  * @param  path    sc_path_t object to set
  * @param  type    type of path
- * @param  id      value of the path 
- * @param  id_len  length of the path value 
+ * @param  id      value of the path
+ * @param  id_len  length of the path value
  * @param  index   index within the file
  * @param  count   number of bytes
  * @return SC_SUCCESS on success and an error code otherwise
@@ -1163,7 +1163,7 @@ int sc_path_set(sc_path_t *path, int type, const u8 *id, size_t id_len,
 void sc_format_path(const char *path_in, sc_path_t *path_out);
 /**
  * Return string representation of the given sc_path_t object
- * Warning: as static memory is used for the return value 
+ * Warning: as static memory is used for the return value
  *          this function is not thread-safe !!!
  * @param  path  sc_path_t object of the path to be printed
  * @return pointer to a const buffer with the string representation
@@ -1179,7 +1179,7 @@ const char *sc_print_path(const sc_path_t *path);
  */
 int sc_path_print(char *buf, size_t buflen, const sc_path_t *path);
 /**
- * Compares two sc_path_t objects 
+ * Compares two sc_path_t objects
  * @param  patha  sc_path_t object of the first path
  * @param  pathb  sc_path_t object of the second path
  * @return 1 if both paths are equal and 0 otherwise
@@ -1203,7 +1203,7 @@ int sc_concatenate_path(sc_path_t *d, const sc_path_t *p1, const sc_path_t *p2);
  */
 int sc_append_path(sc_path_t *dest, const sc_path_t *src);
 /**
- * Checks whether one path is a prefix of another path 
+ * Checks whether one path is a prefix of another path
  * @param  prefix  sc_path_t object with the prefix
  * @param  path    sc_path_t object with the path which should start
  *                 with the given prefix
@@ -1224,6 +1224,7 @@ const sc_path_t *sc_get_mf_path(void);
 
 int sc_hex_to_bin(const char *in, u8 *out, size_t *outlen);
 int sc_bin_to_hex(const u8 *, size_t, char *, size_t, int separator);
+size_t sc_right_trim(u8 *buf, size_t len);
 scconf_block *sc_get_conf_block(sc_context_t *ctx, const char *name1, const char *name2, int priority);
 
 /**

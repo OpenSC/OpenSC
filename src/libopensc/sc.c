@@ -111,6 +111,24 @@ int sc_bin_to_hex(const u8 *in, size_t in_len, char *out, size_t out_len,
 	return 0;
 }
 
+/*
+ * Right trim all non-printable characters
+ */
+size_t sc_right_trim(u8 *buf, size_t len) {
+
+	size_t i;
+
+	for(i=len-1; i >=0; i--) {
+		if(!isprint(buf[i])) {
+			buf[i] = '\0';
+			len--;
+			continue;
+		}
+		break;
+	}
+	return len;
+}
+
 u8 *ulong2bebytes(u8 *buf, unsigned long x)
 {
 	if (buf != NULL) {
