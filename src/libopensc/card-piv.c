@@ -34,6 +34,7 @@
 #include <openssl/evp.h>
 #include <openssl/bio.h>
 #include <openssl/pem.h>
+#include <openssl/rand.h>
 #include <openssl/rsa.h>
 #endif /* ENABLE_OPENSSL */
 
@@ -1517,15 +1518,31 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 	int r;
 #ifdef ENABLE_OPENSSL
 	int N;
-	int locked = 0, outl, outl2;
+	int locked = 0;
 	u8  *rbuf = NULL;
 	size_t rbuflen;
-	u8 nonce[8] = {0xDE, 0xE0, 0xDE, 0xE1, 0xDE, 0xE2, 0xDE, 0xE3};
-	u8 sbuf[255];
-	u8 *p, *q;
+	u8 *nonce = NULL;
+	size_t nonce_len;
+	u8 *p;
 	u8 *key = NULL;
 	size_t keylen;
+	u8 *plain_text = NULL;
+	size_t plain_text_len = 0;
+	u8 *tmp;
+	size_t tmplen, tmplen2;
+	u8 *built = NULL;
+	size_t built_len;
+	const u8 *body = NULL;
+	size_t body_len;
+	const u8 *witness_data = NULL;
+	size_t witness_len;
+	const u8 *challenge_response = NULL;
+	size_t challenge_response_len;
+	u8 *decrypted_reponse = NULL;
+	size_t decrypted_reponse_len;
 	EVP_CIPHER_CTX ctx;
+
+	u8 sbuf[255];
 	const EVP_CIPHER *cipher;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
@@ -1540,7 +1557,7 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 
 	r = piv_get_key(card, alg_id, &key, &keylen);
 	if (r) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Error  geting General Auth key\n");
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Error  getting General Auth key\n");
 		goto err;
 	}
 
@@ -1556,26 +1573,35 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 	*p++ = 0x00;
 
 	/* get the encrypted nonce */
-
 	r = piv_general_io(card, 0x87, alg_id, key_ref, sbuf, p - sbuf, &rbuf, &rbuflen);
 
  	if (r < 0) goto err;
-	q = rbuf;
-	if ( (*q++ != 0x7C)
-		|| (*q++ != rbuflen - 2)
-		|| (*q++ != 0x80)
-		|| (*q++ != rbuflen - 4)) {
+
+	/* Remove the encompassing outer TLV of 0x7C and get the data */
+	body = sc_asn1_find_tag(card->ctx, rbuf,
+		r, 0x7C, &body_len);
+	if (!body) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Invalid Witness Data response of NULL\n");
 		r =  SC_ERROR_INVALID_DATA;
 		goto err;
 	}
-	N = *(rbuf + 3); /* assuming N + sizeof(nonce) + 6 < 128 */
 
-	/* prepare the response */
-	p = sbuf;
-	*p++ = 0x7c;
-	*p++ = N + sizeof(nonce)+ 4;
-	*p++ = 0x80;
-	*p++ = (u8)N;
+	/* Get the witness data indicated by the TAG 0x80 */
+	witness_data = sc_asn1_find_tag(card->ctx, body,
+		body_len, 0x80, &witness_len);
+	if (!witness_len) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Invalid Challenge Data none found in TLV\n");
+		r =  SC_ERROR_INVALID_DATA;
+		goto err;
+	}
+
+	/* Allocate an output buffer for openssl */
+	plain_text = malloc(witness_len);
+	if (!plain_text) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not allocate buffer for plain text\n");
+		r = SC_ERROR_INTERNAL;
+		goto err;
+	}
 
 	/* decrypt the data from the card */
 	if (!EVP_DecryptInit(&ctx, cipher, key, NULL)) {
@@ -1584,43 +1610,123 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 		goto err;
 	}
 	EVP_CIPHER_CTX_set_padding(&ctx,0);
-	if (!EVP_DecryptUpdate(&ctx, p, &outl, q, N)) {
+
+	p = plain_text;
+	if (!EVP_DecryptUpdate(&ctx, p, &N, witness_data, witness_len)) {
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
-	if(!EVP_DecryptFinal(&ctx, p+outl, &outl2)) {
+	plain_text_len = tmplen = N;
+	p += tmplen;
+
+	if(!EVP_DecryptFinal(&ctx, p, &N)) {
+		r = SC_ERROR_INTERNAL;
+		goto err;
+	}
+	tmplen = N;
+	plain_text_len += tmplen;
+
+	if (plain_text_len != witness_len) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Encrypted and decrypted lengths do not match: %zu:%zu\n",
+				witness_len, plain_text_len);
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
 
-	if (outl+outl2 != N) {
+	/* Build a response to the card of:
+	 * [GEN AUTH][ 80<decrypted witness>81 <challenge> ]
+	 * Start by computing the nonce for <challenge> the
+	 * nonce length should match the witness length of
+	 * the card.
+	 */
+	nonce = malloc(witness_len);
+	if(!nonce) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "OOM allocating nonce\n",
+				witness_len, plain_text_len);
+		r = SC_ERROR_INTERNAL;
+		goto err;
+	}
+	nonce_len = witness_len;
+
+	r = RAND_bytes(nonce, witness_len);
+	if(!r) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Generating random for nonce\n",
+				witness_len, plain_text_len);
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
 
-	p += N;
+	/* nonce for challenge */
+	tmplen = put_tag_and_len(0x81, witness_len, NULL);
 
-	*p++ = 0x81;
-	*p++ = sizeof(nonce);
-	memcpy(p, &nonce, sizeof(nonce)); /* we use a fixed nonce for now */
-	p += sizeof(nonce);
+	/* plain text witness keep a length separate for the 0x7C tag */
+	tmplen += put_tag_and_len(0x80, witness_len, NULL);
+	tmplen2 = tmplen;
 
+	/* outside 7C tag with 81:80 as innards */
+	tmplen = put_tag_and_len(0x7C, tmplen, NULL);
+
+	built_len = tmplen;
+
+	/* Build the response buffer */
+	p = built = malloc(built_len);
+	if(!built) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "OOM Building witness response and challenge\n");
+		r = SC_ERROR_INTERNAL;
+		goto err;
+	}
+
+	p = built;
+
+	/* Start with the 7C Tag */
+	put_tag_and_len(0x7C, tmplen2, &p);
+
+	/* Add the DECRYPTED witness, tag 0x80 */
+	put_tag_and_len(0x80, witness_len, &p);
+	memcpy(p, plain_text, witness_len);
+	p += witness_len;
+
+	/* Add the challenge, tag 0x81 */
+	put_tag_and_len(0x81, witness_len, &p);
+	memcpy(p, nonce, witness_len);
+
+	/* Don't leak rbuf from above */
 	free(rbuf);
 	rbuf = NULL;
 
-	r = piv_general_io(card, 0x87, alg_id, key_ref, sbuf, p - sbuf, &rbuf, &rbuflen);
+	/* Send constructed data */
+	r = piv_general_io(card, 0x87, alg_id, key_ref, built,built_len, &rbuf, &rbuflen);
  	if (r < 0) goto err;
-	q = rbuf;
-	if ( (*q++ != 0x7C)
-		|| (*q++ != rbuflen - 2)
-		|| ((*q++ | 0x02) != 0x82)    /* SP800-73 not clear if  80 or 82 */
-		|| (*q++ != rbuflen - 4)) {
+
+	/* Remove the encompassing outer TLV of 0x7C and get the data */
+	body = sc_asn1_find_tag(card->ctx, rbuf,
+		r, 0x7C, &body_len);
+	if(!body) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not find outer tag 0x7C in response");
 		r =  SC_ERROR_INVALID_DATA;
 		goto err;
 	}
-	N = *(rbuf + 3);
 
-	p = sbuf;
+	/* SP800-73 not clear if  80 or 82 */
+	challenge_response = sc_asn1_find_tag(card->ctx, body,
+		body_len, 0x82, &challenge_response_len);
+	if(!challenge_response) {
+		challenge_response = sc_asn1_find_tag(card->ctx, body,
+				body_len, 0x80, &challenge_response_len);
+		if(!challenge_response) {
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not find tag 0x82 or 0x80 in response");
+			r =  SC_ERROR_INVALID_DATA;
+			goto err;
+		}
+	}
+
+	/* Decrypt challenge and check against nonce */
+	decrypted_reponse = malloc(challenge_response_len);
+	if(!decrypted_reponse) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "OOM Allocating decryption buffer");
+		r =  SC_ERROR_INVALID_DATA;
+		goto err;
+	}
 
 	EVP_CIPHER_CTX_cleanup(&ctx);
 	EVP_CIPHER_CTX_init(&ctx);
@@ -1630,17 +1736,25 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 		goto err;
 	}
 	EVP_CIPHER_CTX_set_padding(&ctx,0);
-	if (!EVP_DecryptUpdate(&ctx, p, &outl, q, N)) {
-		r = SC_ERROR_INTERNAL;
-		goto err;
-	}
-	if(!EVP_DecryptFinal(&ctx, p+outl, &outl2)) {
-		r = SC_ERROR_INTERNAL;
-		goto err;
-	}
 
-	if (outl+outl2 != sizeof(nonce) || memcmp(nonce, p, sizeof(nonce)) != 0) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "mutual authentication failed, card returned wrong value");
+	tmp = decrypted_reponse;
+	if (!EVP_DecryptUpdate(&ctx, tmp, &N, challenge_response, challenge_response_len)) {
+		r = SC_ERROR_INTERNAL;
+		goto err;
+	}
+	decrypted_reponse_len = tmplen = N;
+	tmp += tmplen;
+
+	if(!EVP_DecryptFinal(&ctx, tmp, &N)) {
+		r = SC_ERROR_INTERNAL;
+		goto err;
+	}
+	tmplen = N;
+	decrypted_reponse_len += tmplen;
+
+	if (decrypted_reponse_len != nonce_len || memcmp(nonce, decrypted_reponse, nonce_len) != 0) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "mutual authentication failed, card returned wrong value %zu:%zu",
+				decrypted_reponse_len, nonce_len);
 		r = SC_ERROR_DECRYPT_FAILED;
 		goto err;
 	}
@@ -1652,6 +1766,16 @@ err:
 		sc_unlock(card);
 	if (rbuf)
 		free(rbuf);
+	if (decrypted_reponse)
+		free(decrypted_reponse);
+	if (built)
+		free(built);
+	if (plain_text)
+		free(plain_text);
+	if (nonce)
+		free(nonce);
+	if (key)
+		free(key);
 
 #else
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"OpenSSL Required");
@@ -1815,11 +1939,10 @@ static int piv_general_external_authenticate(sc_card_t *card,
 	tmplen = put_tag_and_len(0x82, cypher_text_len, NULL);
 
 	tmplen = put_tag_and_len(0x7C, tmplen, &p);
-	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Tmplen2: %zd\n", tmplen);
 
 	/* Build the 0x82 TLV and append to the 7C<len> tag */
 	tmplen += put_tag_and_len(0x82, cypher_text_len, &p);
-	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Tmplen1: %zd\n", tmplen);
+
 	memcpy(p, cypher_text, cypher_text_len);
 	p += cypher_text_len;
 	tmplen += cypher_text_len;
