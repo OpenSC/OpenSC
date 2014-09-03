@@ -89,6 +89,7 @@ struct pkcs15_prkey_object {
 	struct pkcs15_any_object	base;
 
 	struct sc_pkcs15_prkey_info *	prv_info;
+	struct sc_pkcs15_pubkey *	pub_data;
 };
 #define prv_flags		base.base.flags
 #define prv_p15obj		base.p15_object
@@ -766,6 +767,7 @@ __pkcs15_prkey_bind_related(struct pkcs15_fw_data *fw_data, struct pkcs15_prkey_
 			if (sc_pkcs15_compare_id(&pubkey->pub_info->id, id)) {
 				sc_log(context, "Associating object %d as public key", i);
 				pk->prv_pubkey = pubkey;
+				sc_pkcs15_dup_pubkey(context, pubkey->pub_data, &pk->pub_data);
 				if (pk->prv_info->modulus_length == 0)
 					pk->prv_info->modulus_length = pubkey->pub_info->modulus_length;
 			}
@@ -2666,6 +2668,7 @@ pkcs15_gen_keypair(struct sc_pkcs11_slot *slot, CK_MECHANISM_PTR pMechanism,
 	struct sc_pkcs15init_pubkeyargs pub_args;
 	struct sc_pkcs15_object	 *priv_key_obj = NULL, *pub_key_obj = NULL;
 	struct pkcs15_any_object *priv_any_obj = NULL, *pub_any_obj = NULL;
+	struct pkcs15_prkey_object *priv_prk_obj = NULL;
 	struct sc_pkcs15_id id;
 	size_t		len;
 	CK_KEY_TYPE	keytype;
@@ -2818,8 +2821,13 @@ pkcs15_gen_keypair(struct sc_pkcs11_slot *slot, CK_MECHANISM_PTR pMechanism,
 	}
 	pkcs15_add_object(slot, priv_any_obj, phPrivKey);
 	pkcs15_add_object(slot, pub_any_obj, phPubKey);
-	((struct pkcs15_prkey_object *) priv_any_obj)->prv_pubkey =
-		(struct pkcs15_pubkey_object *)pub_any_obj;
+
+	priv_prk_obj = (struct pkcs15_prkey_object *) priv_any_obj;
+
+	priv_prk_obj->prv_pubkey = (struct pkcs15_pubkey_object *)pub_any_obj;
+
+	/* Duplicate public key so that parameters can be retrieved even if public key object is deleted */
+	rv = sc_pkcs15_dup_pubkey(context, ((struct pkcs15_pubkey_object *)pub_any_obj)->pub_data, &priv_prk_obj->pub_data);
 
 kpgen_done:
 	sc_pkcs15init_unbind(profile);
@@ -2906,19 +2914,26 @@ pkcs15_any_destroy(struct sc_pkcs11_session *session, void *object)
 		struct pkcs15_any_object *ao_pubkey = (struct pkcs15_any_object *)any_obj->related_pubkey;
 		struct pkcs15_pubkey_object *pubkey = any_obj->related_pubkey;
 
-		/* Delete reference to related certificate of the public key PKCS#11 object */
-		pubkey->pub_genfrom = NULL;
-		if (ao_pubkey->p15_object == NULL)   {
-			/* Unlink related public key FW object if it has no corresponding PKCS#15 object
-			 * and was created from certificate. */
-			--ao_pubkey->refcount;
-			list_delete(&session->slot->objects, ao_pubkey);
-			/* Delete public key object in pkcs15 */
-			if (pubkey->pub_data)   {
-				sc_pkcs15_free_pubkey(pubkey->pub_data);
-				pubkey->pub_data = NULL;
+		/* Check if key is not removed in between */
+		if (list_locate(&session->slot->objects, ao_pubkey) > 0) {
+			sc_log(context, "Found related pubkey %p", any_obj->related_pubkey);
+
+			/* Delete reference to related certificate of the public key PKCS#11 object */
+			pubkey->pub_genfrom = NULL;
+			if (ao_pubkey->p15_object == NULL)   {
+				sc_log(context, "Found related p15 object %p", ao_pubkey->p15_object);
+				/* Unlink related public key FW object if it has no corresponding PKCS#15 object
+				 * and was created from certificate. */
+				--ao_pubkey->refcount;
+				list_delete(&session->slot->objects, ao_pubkey);
+				/* Delete public key object in pkcs15 */
+				if (pubkey->pub_data)   {
+					sc_log(context, "Found pub_data %p", pubkey->pub_data);
+					sc_pkcs15_free_pubkey(pubkey->pub_data);
+					pubkey->pub_data = NULL;
+				}
+				__pkcs15_delete_object(fw_data, ao_pubkey);
 			}
-			__pkcs15_delete_object(fw_data, ao_pubkey);
 		}
 	}
 
@@ -3255,7 +3270,12 @@ struct sc_pkcs11_object_ops pkcs15_cert_ops = {
  */
 static void pkcs15_prkey_release(void *object)
 {
-	__pkcs15_release_object((struct pkcs15_any_object *) object);
+	struct pkcs15_prkey_object *prkey = (struct pkcs15_prkey_object*) object;
+	struct sc_pkcs15_pubkey *key_data = prkey->pub_data;
+
+	if (__pkcs15_release_object((struct pkcs15_any_object *) object) == 0)
+		if (key_data)
+			sc_pkcs15_free_pubkey(key_data);
 }
 
 static CK_RV pkcs15_prkey_set_attribute(struct sc_pkcs11_session *session,
@@ -3299,12 +3319,10 @@ pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
 	if ((attr->type == CKA_MODULUS) || (attr->type == CKA_PUBLIC_EXPONENT) ||
 		((attr->type == CKA_MODULUS_BITS) && (prkey->prv_p15obj->type == SC_PKCS15_TYPE_PRKEY_EC)) ||
 		(attr->type == CKA_ECDSA_PARAMS)) {
-		/* First see if we have a associated public key */
-		if (prkey->prv_pubkey && prkey->prv_pubkey->pub_data)   {
-			key = prkey->prv_pubkey->pub_data;
-			sc_log(context, "use friend public key data %p", key);
-		}
-		else {
+		/* First see if we have an associated public key */
+		if (prkey->pub_data) {
+			key = prkey->pub_data;
+		} else {
 			/* Try to find public key or certificate with the public key */
 			unsigned int i;
 

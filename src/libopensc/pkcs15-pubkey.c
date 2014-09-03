@@ -1024,6 +1024,86 @@ sc_pkcs15_pubkey_from_prvkey(struct sc_context *ctx, struct sc_pkcs15_prkey *prv
 }
 
 
+int
+sc_pkcs15_dup_pubkey(struct sc_context *ctx, struct sc_pkcs15_pubkey *key, struct sc_pkcs15_pubkey **out)
+{
+	struct sc_pkcs15_pubkey *pubkey = NULL;
+	int rv = SC_SUCCESS;
+	u8* alg;
+	size_t alglen;
+
+	assert(key && out);
+
+	*out = NULL;
+	pubkey = calloc(1, sizeof(struct sc_pkcs15_pubkey));
+	if (!pubkey)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+
+	pubkey->algorithm = key->algorithm;
+
+	if (key->alg_id) {
+		rv = sc_asn1_encode_algorithm_id(ctx, &alg, &alglen,key->alg_id, 0);
+		if (rv == SC_SUCCESS) {
+			pubkey->alg_id = (struct sc_algorithm_id *)calloc(1, sizeof(struct sc_algorithm_id));
+			rv = sc_asn1_decode_algorithm_id(ctx, alg, alglen, pubkey->alg_id, 0);
+			free(alg);
+		}
+	}
+
+	switch (key->algorithm) {
+	case SC_ALGORITHM_RSA:
+		rv = sc_pkcs15_dup_bignum(&pubkey->u.rsa.modulus, &key->u.rsa.modulus);
+		if (!rv)
+			rv = sc_pkcs15_dup_bignum(&pubkey->u.rsa.exponent, &key->u.rsa.exponent);
+		break;
+	case SC_ALGORITHM_DSA:
+		rv = sc_pkcs15_dup_bignum(&pubkey->u.dsa.pub, &key->u.dsa.pub);
+		if (!rv)
+			rv = sc_pkcs15_dup_bignum(&pubkey->u.dsa.p, &key->u.dsa.p);
+		if (!rv)
+			rv = sc_pkcs15_dup_bignum(&pubkey->u.dsa.q, &key->u.dsa.q);
+		if (!rv)
+			rv = sc_pkcs15_dup_bignum(&pubkey->u.dsa.g, &key->u.dsa.g);
+		break;
+	case SC_ALGORITHM_GOSTR3410:
+		break;
+	case SC_ALGORITHM_EC:
+		pubkey->u.ec.ecpointQ.value = malloc(key->u.ec.ecpointQ.len);
+		if (!pubkey->u.ec.ecpointQ.value) {
+			rv = SC_ERROR_OUT_OF_MEMORY;
+			break;
+		}
+		memcpy(pubkey->u.ec.ecpointQ.value, key->u.ec.ecpointQ.value, key->u.ec.ecpointQ.len);
+		pubkey->u.ec.ecpointQ.len = key->u.ec.ecpointQ.len;
+
+		pubkey->u.ec.params.der.value = malloc(key->u.ec.params.der.len);
+		if (!pubkey->u.ec.params.der.value) {
+			rv = SC_ERROR_OUT_OF_MEMORY;
+			break;
+		}
+		memcpy(pubkey->u.ec.params.der.value, key->u.ec.params.der.value, key->u.ec.params.der.len);
+		pubkey->u.ec.params.der.len = key->u.ec.params.der.len;
+
+		pubkey->u.ec.params.named_curve = strdup(key->u.ec.params.named_curve);
+		if (!pubkey->u.ec.params.named_curve)
+			rv = SC_ERROR_OUT_OF_MEMORY;
+
+		break;
+	default:
+		sc_log(ctx, "Unsupported private key algorithm");
+		rv = SC_ERROR_NOT_SUPPORTED;
+	}
+
+	if (rv)
+		sc_pkcs15_free_pubkey(pubkey);
+	else
+		*out = pubkey;
+
+	LOG_FUNC_RETURN(ctx, rv);
+}
+
+
+
 void
 sc_pkcs15_erase_pubkey(struct sc_pkcs15_pubkey *key)
 {
