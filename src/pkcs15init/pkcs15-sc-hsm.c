@@ -117,7 +117,7 @@ static int sc_hsm_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 
 
 static int sc_hsm_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
-	sc_pkcs15_object_t *obj)
+	sc_pkcs15_object_t *obj, sc_pkcs15_prkey_t *key)
 {
 	LOG_FUNC_CALLED(p15card->card->ctx);
 	LOG_FUNC_RETURN(p15card->card->ctx, SC_ERROR_NOT_SUPPORTED);
@@ -376,18 +376,8 @@ static int sc_hsm_emu_delete_cert(struct sc_pkcs15_card *p15card, struct sc_prof
 
 {
 	struct sc_pkcs15_cert_info *cert_info = (struct sc_pkcs15_cert_info *) object->data;
-	struct sc_pkcs15_object *prkey;
-	int r;
 
-	r = sc_pkcs15_find_object_by_id(p15card, SC_PKCS15_TYPE_PRKEY, &cert_info->id , &prkey);
-
-	if (r == SC_ERROR_OBJECT_NOT_FOUND) {
-		r = sc_hsm_delete_ef(p15card, CA_CERTIFICATE_PREFIX, cert_info->path.value[1]);
-	} else {
-		LOG_TEST_RET(p15card->card->ctx, r, "Error locating matching private key");
-		r = sc_hsm_delete_ef(p15card, EE_CERTIFICATE_PREFIX, ((struct sc_pkcs15_prkey_info *)prkey->data)->key_reference);
-	}
-	return r;
+	return sc_hsm_delete_ef(p15card, cert_info->path.value[0], cert_info->path.value[1]);
 }
 
 
