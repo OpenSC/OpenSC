@@ -2866,7 +2866,7 @@ pkcs15_gen_keypair(struct sc_pkcs11_slot *slot, CK_MECHANISM_PTR pMechanism,
 	priv_prk_obj->prv_pubkey = (struct pkcs15_pubkey_object *)pub_any_obj;
 
 	/* Duplicate public key so that parameters can be retrieved even if public key object is deleted */
-	sc_pkcs15_dup_pubkey(context, ((struct pkcs15_pubkey_object *)pub_any_obj)->pub_data, &priv_prk_obj->pub_data);
+	rv = sc_pkcs15_dup_pubkey(context, ((struct pkcs15_pubkey_object *)pub_any_obj)->pub_data, &priv_prk_obj->pub_data);
 
 kpgen_done:
 	sc_pkcs15init_unbind(profile);

@@ -1037,7 +1037,7 @@ sc_pkcs15_dup_pubkey(struct sc_context *ctx, struct sc_pkcs15_pubkey *key, struc
 	*out = NULL;
 	pubkey = calloc(1, sizeof(struct sc_pkcs15_pubkey));
 	if (!pubkey)
-		return SC_ERROR_OUT_OF_MEMORY;
+		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 
 	pubkey->algorithm = key->algorithm;
 
@@ -1069,27 +1069,29 @@ sc_pkcs15_dup_pubkey(struct sc_context *ctx, struct sc_pkcs15_pubkey *key, struc
 		break;
 	case SC_ALGORITHM_EC:
 		pubkey->u.ec.ecpointQ.value = malloc(key->u.ec.ecpointQ.len);
-		if (!pubkey->u.ec.ecpointQ.value)
-			return SC_ERROR_OUT_OF_MEMORY;
-
+		if (!pubkey->u.ec.ecpointQ.value) {
+			rv = SC_ERROR_OUT_OF_MEMORY;
+			break;
+		}
 		memcpy(pubkey->u.ec.ecpointQ.value, key->u.ec.ecpointQ.value, key->u.ec.ecpointQ.len);
 		pubkey->u.ec.ecpointQ.len = key->u.ec.ecpointQ.len;
 
 		pubkey->u.ec.params.der.value = malloc(key->u.ec.params.der.len);
-		if (!pubkey->u.ec.params.der.value)
-			return SC_ERROR_OUT_OF_MEMORY;
-
+		if (!pubkey->u.ec.params.der.value) {
+			rv = SC_ERROR_OUT_OF_MEMORY;
+			break;
+		}
 		memcpy(pubkey->u.ec.params.der.value, key->u.ec.params.der.value, key->u.ec.params.der.len);
 		pubkey->u.ec.params.der.len = key->u.ec.params.der.len;
 
 		pubkey->u.ec.params.named_curve = strdup(key->u.ec.params.named_curve);
 		if (!pubkey->u.ec.params.named_curve)
-			return SC_ERROR_OUT_OF_MEMORY;
+			rv = SC_ERROR_OUT_OF_MEMORY;
 
 		break;
 	default:
 		sc_log(ctx, "Unsupported private key algorithm");
-		return SC_ERROR_NOT_SUPPORTED;
+		rv = SC_ERROR_NOT_SUPPORTED;
 	}
 
 	if (rv)
@@ -1097,7 +1099,7 @@ sc_pkcs15_dup_pubkey(struct sc_context *ctx, struct sc_pkcs15_pubkey *key, struc
 	else
 		*out = pubkey;
 
-	return rv;
+	LOG_FUNC_RETURN(ctx, rv);
 }
 
 
