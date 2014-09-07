@@ -512,12 +512,12 @@ static void initialize(sc_card_t *card, const char *so_pin, const char *user_pin
 	r = sc_hex_to_bin(_so_pin, param.init_code, &len);
 	if (r < 0) {
 		fprintf(stderr, "Error decoding initialization code (%s)\n", sc_strerror(r));
-		return;
+		exit(1);
 	}
 
 	if (len != 8) {
 		fprintf(stderr, "SO-PIN must be a hexadecimal string of 16 characters\n");
-		return;
+		exit(1);
 	}
 
 	if (user_pin == NULL) {
@@ -532,27 +532,27 @@ static void initialize(sc_card_t *card, const char *so_pin, const char *user_pin
 
 	if (param.user_pin_len < 6) {
 		fprintf(stderr, "PIN must be at least 6 characters long\n");
-		return;
+		exit(1);
 	}
 
 	if (param.user_pin_len > 16) {
 		fprintf(stderr, "PIN must not be longer than 16 characters\n");
-		return;
+		exit(1);
 	}
 
 	if ((param.user_pin_len == 6) && (retry_counter > 3)) {
 		fprintf(stderr, "Retry counter must not exceed 3 for a 6 digit PIN. Use a longer PIN for a higher retry counter.\n");
-		return;
+		exit(1);
 	}
 
 	if ((param.user_pin_len == 7) && (retry_counter > 5)) {
 		fprintf(stderr, "Retry counter must not exceed 5 for a 7 digit PIN. Use a longer PIN for a higher retry counter.\n");
-		return;
+		exit(1);
 	}
 
 	if (retry_counter > 10) {
 		fprintf(stderr, "Retry counter must not exceed 10\n");
-		return;
+		exit(1);
 	}
 
 	param.user_pin = (u8 *)_user_pin;
@@ -568,6 +568,7 @@ static void initialize(sc_card_t *card, const char *so_pin, const char *user_pin
 	r = sc_card_ctl(card, SC_CARDCTL_SC_HSM_INITIALIZE, (void *)&param);
 	if (r < 0) {
 		fprintf(stderr, "sc_card_ctl(*, SC_CARDCTL_SC_HSM_INITIALIZE, *) failed with %s\n", sc_strerror(r));
+		exit(1);
 	}
 }
 
