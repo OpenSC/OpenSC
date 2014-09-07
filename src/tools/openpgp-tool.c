@@ -73,7 +73,8 @@ static unsigned int key_len = 2048;
 static int opt_verify = 0;
 static char *verifytype = NULL;
 static int opt_pin = 0;
-static char *pin = NULL;
+/* PIN length can be expressed in one byte (See tag C4)*/
+static char pin[256];
 
 static const char *app_name = "openpgp-tool";
 
@@ -109,7 +110,7 @@ static const char *option_help[] = {
 /* v */	"Verbose operation. Use several times to enable debug output.",
 /* V */	"Show version number",
 	"Verify PIN (CHV1, CHV2, CHV3...)",
-	"PIN string"
+	"PIN string. If '-' is supplied, the pin is read from stdin (beware: blocking!)"
 };
 
 static const struct ef_name_map openpgp_data[] = {
@@ -225,6 +226,7 @@ static void display_data(const struct ef_name_map *mapping, char *value)
 static int decode_options(int argc, char **argv)
 {
 	int c;
+	char *get;
 
 	while ((c = getopt_long(argc, argv,"r:x:CUG:L:hwvV", options, (int *) 0)) != EOF) {
 		switch (c) {
@@ -251,9 +253,20 @@ static int decode_options(int argc, char **argv)
 			break;
 		case OPT_PIN:
 			opt_pin++;
-			if (pin)
-				free(pin);
-			pin = strdup(optarg);
+			if(pin[0]) {
+				memset(pin, '\0', sizeof(pin) - 1);
+			}
+			strncpy(pin, optarg, sizeof(pin) - 1);
+			if(0 == strcmp(pin, "-")) {
+				get = fgets(pin, sizeof(pin) - 1, stdin);
+				if (NULL == get) {
+					printf("Error reading PIN from stdin.\n");
+					exit(EXIT_FAILURE);
+				}
+				if(pin[strlen(pin) - 1] == '\n') {
+					pin[strlen(pin) - 1] = '\0';
+				}
+			}
 			break;
 		case 'C':
 			opt_cardinfo++;
