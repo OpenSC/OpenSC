@@ -365,6 +365,9 @@ if test "${enable_sm}" = "yes"; then
 		*-mingw*|*-winnt*|*-cygwin*)
 			DEFAULT_SM_MODULE="smm-local.dll"
 		;;
+		*-apple-*)
+			DEFAULT_SM_MODULE="libsmm-local.3.dylib"
+		;;
 		*)
 			DEFAULT_SM_MODULE="libsmm-local.so.3"
 		;;
