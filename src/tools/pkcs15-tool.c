@@ -55,8 +55,8 @@ static char * opt_bind_to_aid = NULL;
 static u8 * opt_newpin = NULL;
 static u8 * opt_pin = NULL;
 static u8 * opt_puk = NULL;
-
 static int	verbose = 0;
+static int opt_no_prompt = 0;
 
 enum {
 	OPT_CHANGE_PIN = 0x100,
@@ -75,7 +75,8 @@ enum {
 	OPT_VERIFY_PIN,
 	OPT_BIND_TO_AID,
 	OPT_LIST_APPLICATIONS,
-	OPT_LIST_SKEYS
+	OPT_LIST_SKEYS,
+	OPT_NO_PROMPT
 };
 
 #define NELEMENTS(x)	(sizeof(x)/sizeof((x)[0]))
@@ -113,6 +114,7 @@ static const struct option options[] = {
 	{ "aid",		required_argument, NULL,	OPT_BIND_TO_AID },
 	{ "wait",		no_argument, NULL,		'w' },
 	{ "verbose",		no_argument, NULL,		'v' },
+	{ "no-prompt",		no_argument, NULL,		OPT_NO_PROMPT },
 	{ NULL, 0, NULL, 0 }
 };
 
@@ -147,6 +149,7 @@ static const char *option_help[] = {
 	"Specify AID of the on-card PKCS#15 application to bind to (in hexadecimal form)",
 	"Wait for card insertion",
 	"Verbose operation. Use several times to enable debug output.",
+	"Do not prompt the user; if no PINs supplied, pinpad will be used.",
 };
 
 static sc_context_t *ctx = NULL;
@@ -1044,6 +1047,13 @@ static u8 * get_pin(const char *prompt, sc_pkcs15_object_t *pin_obj)
 	size_t len = 0;
 	int r;
 
+	if (opt_no_prompt) {
+		// defer entry of the PIN to the readers pinpad.
+		if (verbose)
+			printf("%s [%s]: entry deferred to the reader keypad\n", prompt, pin_obj->label);
+		return NULL;
+	}
+
 	printf("%s [%s]: ", prompt, pin_obj->label);
 	if (pinfo->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
 		return NULL;
@@ -1109,6 +1119,7 @@ static int verify_pin(void)
 		pin = opt_pin;
 	else
 		pin = get_pin("Please enter PIN", pin_obj);
+
 
 	r = sc_pkcs15_verify_pin(p15card, pin_obj, pin, pin ? strlen((char *) pin) : 0);
 	if (r < 0)   {
@@ -1908,6 +1919,9 @@ int main(int argc, char * const argv[])
 			break;
 		case 'w':
 			opt_wait = 1;
+			break;
+		case OPT_NO_PROMPT:
+			opt_no_prompt = 1;
 			break;
 		}
 	}
