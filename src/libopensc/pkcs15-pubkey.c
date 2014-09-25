@@ -944,7 +944,10 @@ sc_pkcs15_read_pubkey(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_obj
 		r = sc_pkcs15_read_file(p15card, &info->path, &data, &len);
 		LOG_TEST_RET(ctx, r, "Failed to read public key file.");
 
-		r = sc_pkcs15_decode_pubkey(ctx, pubkey, data, len);
+		if (algorithm == SC_ALGORITHM_EC && *data == (SC_ASN1_TAG_SEQUENCE | SC_ASN1_TAG_CONSTRUCTED))
+			r = sc_pkcs15_pubkey_from_spki_sequence(ctx, data, len, &pubkey);
+		else
+			r = sc_pkcs15_decode_pubkey(ctx, pubkey, data, len);
 		LOG_TEST_RET(ctx, r, "Decode public key error");
 	}
 	else {
