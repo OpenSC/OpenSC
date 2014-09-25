@@ -1579,7 +1579,10 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card, struct sc_profile
 	LOG_TEST_RET(ctx, r, "SPKI encode public key error");
 
 	/* Now create key file and store key */
-	r = sc_pkcs15init_store_data(p15card, profile, object, &object->content, &key_info->path);
+	if (type == SC_PKCS15_TYPE_PUBKEY_EC && (profile->key_encoding_flags & SC_PKCS15INIT_KEY_ENCODING_FLAG_ECC_SPKI))
+		r = sc_pkcs15init_store_data(p15card, profile, object, &key_info->direct.spki, &key_info->path);
+	else
+		r = sc_pkcs15init_store_data(p15card, profile, object, &object->content, &key_info->path);
 
 	path = &key_info->path;
 	if (path->count == 0) {

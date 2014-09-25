@@ -127,6 +127,11 @@ struct sc_profile {
 
 	/* Minidriver support style */
 	unsigned int md_style;
+
+	/* Key encoding flags
+	 * Currently used to distinguish between RAW/SPKI encoding
+	 * of EC public keys in the EF. */
+	unsigned int key_encoding_flags;
 };
 
 struct sc_profile *sc_profile_new(void);

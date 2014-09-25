@@ -210,6 +210,11 @@ static struct map              mdStyleNames[] = {
 	{ "gemalto",            SC_PKCS15INIT_MD_STYLE_GEMALTO },
 	{ NULL, 0 }
 };
+static struct map		keyEncodingFlagNames[] = {
+	{ "ECC-SPKI",		SC_PKCS15INIT_KEY_ENCODING_FLAG_ECC_SPKI },
+	{ "ECC-RAW",		SC_PKCS15INIT_KEY_ENCODING_FLAG_ECC_RAW },
+	{ NULL, 0 }
+};
 static struct {
 	const char *		name;
 	struct map *		addr;
@@ -917,6 +922,23 @@ static int
 do_minidriver_support_style(struct state *cur, int argc, char **argv)
 {
 	return map_str2int(cur, argv[0], &cur->profile->md_style, mdStyleNames);
+}
+
+static int
+do_key_encoding_flags(struct state *cur, int argc, char **argv)
+{
+	unsigned int	flags;
+	int		i, r;
+
+	cur->profile->key_encoding_flags = 0;
+
+	for (i = 0; i < argc; i++) {
+		if ((r = map_str2int(cur, argv[i], &flags, keyEncodingFlagNames)) < 0)
+			return r;
+		cur->profile->key_encoding_flags |= flags;
+	}
+
+	return 0;
 }
 
 /*
@@ -1849,6 +1871,7 @@ static struct command	p15_commands[] = {
  { "do-last-update",		1,	1,	do_encode_update_field },
  { "pkcs15-id-style",		1,	1,	do_pkcs15_id_style },
  { "minidriver-support-style",	1,	1,	do_minidriver_support_style },
+ { "key-encoding-flags",	1,	1,	do_key_encoding_flags },
  { NULL, 0, 0, NULL }
 };
 

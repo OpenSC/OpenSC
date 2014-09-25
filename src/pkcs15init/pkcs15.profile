@@ -28,6 +28,12 @@ pkcs15 {
     #     rfc2459: SHA1(SequenceASN1 of public key components as ASN1 integers)
     # default value: 'native'
     pkcs15-id-style	= mozilla;
+    # Flags to encode keys in the filesystem. Options:
+    # ECC:
+    #     ECC-RAW: Raw encoding of the EC point Q
+    #     ECC-SPKI: SPKI encoding, including the EC point Q and at least the curve OID
+    #     default value: 'ECC-RAW'
+    key-encoding-flags = ECC-RAW;
 }
 
 # Default settings.
