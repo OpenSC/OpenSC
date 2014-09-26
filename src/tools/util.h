@@ -37,6 +37,8 @@ int util_connect_card(struct sc_context *, struct sc_card **, const char *reader
 
 int util_getpass (char **lineptr, size_t *n, FILE *stream);
 
+int util_get_pin(char *input, char **pin);
+
 #ifdef __cplusplus
 }
 #endif
