@@ -74,7 +74,7 @@ static unsigned int key_len = 2048;
 static int opt_verify = 0;
 static char *verifytype = NULL;
 static int opt_pin = 0;
-static char *pin = NULL;
+static const char *pin = NULL;
 static int opt_dump_do = 0;
 static u8 do_dump_idx;
 
@@ -113,7 +113,7 @@ static const char *option_help[] = {
 /* v */	"Verbose operation. Use several times to enable debug output.",
 /* V */	"Show version number",
 	"Verify PIN (CHV1, CHV2, CHV3...)",
-	"PIN string",
+	"PIN string. <arg> can be: 'env:<var>' to get PIN from the environment, otherwise <arg> is used.",
 /* d */ "Dump private data object number <arg> (i.e. PRIVATE-DO-<arg>)"
 };
 
@@ -256,9 +256,7 @@ static int decode_options(int argc, char **argv)
 			break;
 		case OPT_PIN:
 			opt_pin++;
-			if (pin)
-				free(pin);
-			pin = strdup(optarg);
+			util_get_pin(optarg, (const char **) &pin);
 			break;
 		case 'C':
 			opt_cardinfo++;
@@ -421,7 +419,7 @@ int do_genkey(sc_card_t *card, u8 key_id, unsigned int key_len)
 	return 0;
 }
 
-int do_verify(sc_card_t *card, char *type, char *pin)
+int do_verify(sc_card_t *card, char *type, const char *pin)
 {
 	struct sc_pin_cmd_data data;
 	int tries_left;
