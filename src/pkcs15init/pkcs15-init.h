@@ -160,9 +160,6 @@ struct sc_pkcs15init_operations {
 #define SC_PKCS15INIT_MD_STYLE_NONE	0
 #define SC_PKCS15INIT_MD_STYLE_GEMALTO	1
 
-#define SC_PKCS15INIT_KEY_ENCODING_FLAG_ECC_RAW 	0
-#define SC_PKCS15INIT_KEY_ENCODING_FLAG_ECC_SPKI 	1
-
 struct sc_pkcs15init_callbacks {
 	/*
 	 * Get a PIN from the front-end. The first argument is
