@@ -1547,12 +1547,14 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card, struct sc_profile
 	}
 	else if (key.algorithm == SC_ALGORITHM_EC)   {
 		key_info->field_length = keybits;
-		key_info->params.data = malloc(key.u.ec.params.der.len);
-		if (!key_info->params.data) {
-			LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate EC params");
+		if (key.u.ec.params.der.value) {
+			key_info->params.data = malloc(key.u.ec.params.der.len);
+			if (!key_info->params.data) {
+				LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate EC params");
+			}
+			key_info->params.len = key.u.ec.params.der.len;
+			memcpy(key_info->params.data, key.u.ec.params.der.value, key.u.ec.params.der.len);
 		}
-		key_info->params.len = key.u.ec.params.der.len;
-		memcpy(key_info->params.data, key.u.ec.params.der.value, key.u.ec.params.der.len);
 	}
 
 	/* Select a intrinsic Key ID if the user didn't specify one */
