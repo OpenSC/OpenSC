@@ -1117,8 +1117,9 @@ static int verify_pin(void)
 
 	if (opt_pin != NULL)
 		pin = opt_pin;
-	else
+        else 
 		pin = get_pin("Please enter PIN", pin_obj);
+	
 
 
 	r = sc_pkcs15_verify_pin(p15card, pin_obj, pin, pin ? strlen((char *) pin) : 0);
@@ -1144,7 +1145,7 @@ static int authenticate(sc_pkcs15_object_t *obj)
 
 	if (opt_pin != NULL)
 		pin = opt_pin;
-	else
+	else 
 		pin = get_pin("Please enter PIN", pin_obj);
 
 	return sc_pkcs15_verify_pin(p15card, pin_obj, pin, pin? strlen((char *) pin) : 0);
