@@ -358,23 +358,6 @@ if test "${enable_minidriver}" = "yes"; then
 	AC_DEFINE([ENABLE_MINIDRIVER], [1], [Enable minidriver support])
 fi
 
-if test "${enable_sm}" = "yes"; then
-	AC_DEFINE([ENABLE_SM], [1], [Enable secure messaging support])
-
-	case "${host}" in
-		*-mingw*|*-winnt*|*-cygwin*)
-			DEFAULT_SM_MODULE="smm-local.dll"
-		;;
-		*-apple-*)
-			DEFAULT_SM_MODULE="libsmm-local.3.dylib"
-		;;
-		*)
-			DEFAULT_SM_MODULE="libsmm-local.so.3"
-		;;
-	esac
-	AC_DEFINE_UNQUOTED([DEFAULT_SM_MODULE], ["${DEFAULT_SM_MODULE}"], [Default SM module])
-fi
-
 if test "${enable_dnie_ui}" = "yes"; then
 	AC_DEFINE([ENABLE_DNIE_UI], [1], [Enable the use of external user interface program to request DNIe user pin])
 
@@ -488,12 +471,14 @@ PKG_CHECK_MODULES(
 case "${enable_openssl}" in
 	no)
 		have_openssl="no"
+		enable_sm="no"
 	;;
 	detect)
 		if test "${have_openssl}" = "yes"; then
 			enable_openssl="yes"
 		else
 			enable_openssl="no"
+			enable_sm="no"
 		fi
 	;;
 esac
@@ -504,6 +489,23 @@ if test "${enable_openssl}" = "yes"; then
 	else
 		AC_MSG_ERROR([OpenSSL linkage required, but no OpenSSL was found])
 	fi
+fi
+
+if test "${enable_sm}" = "yes"; then
+	AC_DEFINE([ENABLE_SM], [1], [Enable secure messaging support])
+
+	case "${host}" in
+		*-mingw*|*-winnt*|*-cygwin*)
+			DEFAULT_SM_MODULE="smm-local.dll"
+		;;
+		*-apple-*)
+			DEFAULT_SM_MODULE="libsmm-local.3.dylib"
+		;;
+		*)
+			DEFAULT_SM_MODULE="libsmm-local.so.3"
+		;;
+	esac
+	AC_DEFINE_UNQUOTED([DEFAULT_SM_MODULE], ["${DEFAULT_SM_MODULE}"], [Default SM module])
 fi
 
 if test "${enable_openct}" = "yes"; then
