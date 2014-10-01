@@ -27,7 +27,11 @@
 #include "libopensc/pkcs15.h"
 
 /* Card driver related */
+#ifdef ENABLE_OPENSSL
 extern int dnie_match_card(struct sc_card *card);
+#else
+#define dnie_match_card(card) 0
+#endif
 
 /* Helper functions to get the pkcs15 stuff bound. */
 
