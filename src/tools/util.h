@@ -37,6 +37,13 @@ int util_connect_card(struct sc_context *, struct sc_card **, const char *reader
 
 int util_getpass (char **lineptr, size_t *n, FILE *stream);
 
+/* Get a PIN (technically just a string). The source depends on the value of *input:
+ * env:<var> - get from the environment variable <var>
+ * -         - read until a linebreak or a maximum of 128 (MAX_PASS_SIZE) characters from stdin
+ * otherwise - copy *input
+ *
+ * All pins are freeable
+ */
 int util_get_pin(char *input, char **pin);
 
 #ifdef __cplusplus

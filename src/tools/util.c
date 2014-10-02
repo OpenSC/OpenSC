@@ -435,23 +435,27 @@ util_getpass (char **lineptr, size_t *len, FILE *stream)
 int
 util_get_pin(char *input, char **pin)
 {
-    size_t inputlen = strlen(input);
-    size_t pinlen = 0;
-    size_t passlen = 0;
+	size_t inputlen = strlen(input);
+	size_t pinlen = 0;
+	size_t passlen = 0;
 
-    // Get a PIN from a environment variable
-    if(inputlen >= 4 && strncasecmp(input, "env:", 4) == 0) {
-        *pin = getenv(input + 4);
-        if(*pin != NULL) {
-            pinlen = strlen(*pin);
-        }
-    } else if(inputlen == 1 && strncmp(input, "-", 1) == 0){
-        // Get a PIN from stdin
-        pinlen = util_getpass(pin, &passlen, stdin);
-    } else {
-        //Just use the input
-        *pin = strdup(input);
-        pinlen = inputlen;
-    }
-    return pinlen;
+	if(inputlen >= 4 && strncasecmp(input, "env:", 4) == 0) {
+		// Get a PIN from a environment variable
+		*pin = getenv(input + 4);
+		if(*pin != NULL) {
+			pinlen = strlen(*pin);
+		} else {
+			pinlen = 0;
+			*pin = calloc(1, 1);
+		}
+	} else if(inputlen == 1 && strncmp(input, "-", 1) == 0){
+		// Get a PIN from stdin
+		*pin = NULL;
+		pinlen = util_getpass(pin, &passlen, stdin);
+	} else {
+		//Just use the input
+		*pin = strdup(input);
+		pinlen = inputlen;
+	}
+	return pinlen;
 }

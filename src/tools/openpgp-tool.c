@@ -259,7 +259,7 @@ static int decode_options(int argc, char **argv)
 			opt_pin++;
 			if (pin)
 				free(pin);
-			pinlen = util_get_pin(optarg, &pin);
+			util_get_pin(optarg, &pin);
 			break;
 		case 'C':
 			opt_cardinfo++;
