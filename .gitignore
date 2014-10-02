@@ -55,6 +55,22 @@ stamp-h*
 *.tmp
 ChangeLog
 
+doc/tools/cardos-tool
+doc/tools/cryptoflex-tool
+doc/tools/eidenv
+doc/tools/iasecc-tool
+doc/tools/netkey-tool
+doc/tools/openpgp-tool
+doc/tools/opensc-explorer
+doc/tools/opensc-tool
+doc/tools/piv-tool
+doc/tools/pkcs11-tool
+doc/tools/pkcs15-crypt
+doc/tools/pkcs15-init
+doc/tools/pkcs15-tool
+doc/tools/sc-hsm-tool
+doc/tools/westcos-tool
+
 etc/opensc.conf.win
 etc/opensc.conf
 src/common/compat_getopt_main
