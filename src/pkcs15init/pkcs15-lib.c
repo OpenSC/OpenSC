@@ -838,10 +838,6 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 		r = profile->ops->create_pin(profile, p15card, df, pin_obj,
 				args->so_pin, args->so_pin_len,
 				args->so_puk, args->so_puk_len);
-#if 0
-	if (r > 0 && profile->ops->finalize_dir)
-		r = profile->ops->finalize_dir(profile, p15card);
-#endif
 
 	if (pin_obj)
 		/* Remove 'virtual' AUTH object . */
@@ -1551,6 +1547,14 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card, struct sc_profile
 	}
 	else if (key.algorithm == SC_ALGORITHM_EC)   {
 		key_info->field_length = keybits;
+		if (key.u.ec.params.der.value) {
+			key_info->params.data = malloc(key.u.ec.params.der.len);
+			if (!key_info->params.data) {
+				LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate EC params");
+			}
+			key_info->params.len = key.u.ec.params.der.len;
+			memcpy(key_info->params.data, key.u.ec.params.der.value, key.u.ec.params.der.len);
+		}
 	}
 
 	/* Select a intrinsic Key ID if the user didn't specify one */
@@ -1583,7 +1587,10 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card, struct sc_profile
 	LOG_TEST_RET(ctx, r, "SPKI encode public key error");
 
 	/* Now create key file and store key */
-	r = sc_pkcs15init_store_data(p15card, profile, object, &object->content, &key_info->path);
+	if (type == SC_PKCS15_TYPE_PUBKEY_EC)
+		r = sc_pkcs15init_store_data(p15card, profile, object, &key_info->direct.spki, &key_info->path);
+	else
+		r = sc_pkcs15init_store_data(p15card, profile, object, &object->content, &key_info->path);
 
 	path = &key_info->path;
 	if (path->count == 0) {

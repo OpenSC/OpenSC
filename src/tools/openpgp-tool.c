@@ -32,6 +32,7 @@
 #include "libopensc/asn1.h"
 #include "libopensc/cards.h"
 #include "libopensc/cardctl.h"
+#include "libopensc/errors.h"
 #include "util.h"
 #include "libopensc/log.h"
 
@@ -74,6 +75,8 @@ static int opt_verify = 0;
 static char *verifytype = NULL;
 static int opt_pin = 0;
 static char *pin = NULL;
+static int opt_dump_do = 0;
+static u8 do_dump_idx;
 
 static const char *app_name = "openpgp-tool";
 
@@ -92,6 +95,7 @@ static const struct option options[] = {
 	{ "version",   no_argument,       NULL, 'V'        },
 	{ "verify",    required_argument, NULL, OPT_VERIFY },
 	{ "pin",       required_argument, NULL, OPT_PIN },
+	{ "do",        required_argument, NULL, 'd' },
 	{ NULL, 0, NULL, 0 }
 };
 
@@ -109,7 +113,8 @@ static const char *option_help[] = {
 /* v */	"Verbose operation. Use several times to enable debug output.",
 /* V */	"Show version number",
 	"Verify PIN (CHV1, CHV2, CHV3...)",
-	"PIN string"
+	"PIN string",
+/* d */ "Dump private data object number <arg> (i.e. PRIVATE-DO-<arg>)"
 };
 
 static const struct ef_name_map openpgp_data[] = {
@@ -226,7 +231,7 @@ static int decode_options(int argc, char **argv)
 {
 	int c;
 
-	while ((c = getopt_long(argc, argv,"r:x:CUG:L:hwvV", options, (int *) 0)) != EOF) {
+	while ((c = getopt_long(argc, argv,"r:x:CUG:L:hwvVd:", options, (int *) 0)) != EOF) {
 		switch (c) {
 		case 'r':
 			opt_reader = optarg;
@@ -286,6 +291,11 @@ static int decode_options(int argc, char **argv)
 			show_version();
 			exit(EXIT_SUCCESS);
 			break;
+		case 'd':
+			do_dump_idx = optarg[0] - '0';
+			opt_dump_do++;
+			actions++;
+			break;
 		default:
 			util_print_usage_and_die(app_name, options, option_help, NULL);
 		}
@@ -341,6 +351,42 @@ static int do_userinfo(sc_card_t *card)
 	return EXIT_SUCCESS;
 }
 
+static int do_dump_do(sc_card_t *card, unsigned int tag)
+{
+	int r, tmp;
+	FILE *fp;
+
+	// Private DO are specified up to 254 bytes
+	unsigned char buffer[254];
+	memset(buffer, '\0', sizeof(buffer));
+	
+	r = sc_get_data(card, tag, buffer, sizeof(buffer));
+	if (r < 0) {
+		printf("Failed to get data object: %s\n", sc_strerror(r));
+		if(SC_ERROR_SECURITY_STATUS_NOT_SATISFIED == r) {
+			printf("Make sure the 'verify' and 'pin' parameters are correct.\n");
+		}
+		return r;
+	}
+
+	if(opt_raw) {
+		r = 0;
+		tmp = dup(fileno(stdout));
+		fp = freopen(NULL, "wb", stdout);
+		if(fp) {
+			r = fwrite(buffer, sizeof(char), sizeof(buffer), fp);
+		}
+		dup2(tmp, fileno(stdout));
+		clearerr(stdout);
+		if (sizeof(buffer) != r) {
+			return EXIT_FAILURE;
+		}
+	} else {
+		util_hex_dump_asc(stdout, buffer, sizeof(buffer), -1);
+	}
+
+	return EXIT_SUCCESS;
+}
 
 int do_genkey(sc_card_t *card, u8 key_id, unsigned int key_len)
 {
@@ -460,6 +506,10 @@ int main(int argc, char **argv)
 
 	if (opt_verify && opt_pin) {
 		exit_status |= do_verify(card, verifytype, pin);
+	}
+
+	if (opt_dump_do) {
+		exit_status |= do_dump_do(card, 0x0100 + do_dump_idx);
 	}
 
 	if (opt_genkey)

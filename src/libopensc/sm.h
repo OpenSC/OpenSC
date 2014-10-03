@@ -349,8 +349,6 @@ typedef struct sm_context   {
 	void (*app_unlock)(void);
 } sm_context_t;
 
-int iasecc_sm_external_authentication(struct sc_card *, unsigned, int *);
-
 int sc_sm_parse_answer(struct sc_card *, unsigned char *, size_t, struct sm_card_response *);
 int sc_sm_update_apdu_response(struct sc_card *, unsigned char *, size_t, int, struct sc_apdu *);
 int sc_sm_single_transmit(struct sc_card *, struct sc_apdu *);

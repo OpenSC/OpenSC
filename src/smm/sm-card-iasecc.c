@@ -499,100 +499,6 @@ sm_iasecc_get_apdu_update_rsa(struct sc_context *ctx, struct sm_info *sm_info, s
 }
 
 
-#if 0
-static int
-sm_iasecc_get_apdu_pso_dst(struct sc_context *ctx, struct sm_info *sm_info, struct sc_remote_apdu **rapdus)
-{
-	struct sm_info_iasecc_pso_dst *ipd = &sm_info->cmd_params.iasecc_pso_dst;
-	struct sc_remote_apdu *rapdu = NULL;
-	int rv;
-
-	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "SM get 'PSO DST' APDU");
-
-	if (ipd->pso_data_len > SM_MAX_DATA_SIZE)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
-
-	rv = sc_remote_apdu_allocate(rapdus, &rapdu);
-	LOG_TEST_RET(ctx, rv, "SM get 'PSO HASH' APDU: cannot allocate remote apdu");
-
-	rapdu->apdu.cse = SC_APDU_CASE_3_SHORT;
-	rapdu->apdu.cla = 0x00;
-	rapdu->apdu.ins = 0x2A;
-	rapdu->apdu.p1 = 0x90;
-	rapdu->apdu.p2 = 0xA0;
-	memcpy((unsigned char *)rapdu->apdu.data, ipd->pso_data, ipd->pso_data_len);
-	rapdu->apdu.datalen = ipd->pso_data_len;
-	rapdu->apdu.lc = ipd->pso_data_len;
-
-	rv = sm_iasecc_securize_apdu(ctx, sm_info, rapdu);
-	LOG_TEST_RET(ctx, rv, "SM get 'PSO HASH' APDU: securize error");
-
-	rapdu->get_response = 1;
-
-	rv = sc_remote_apdu_allocate(rapdus, &rapdu);
-	LOG_TEST_RET(ctx, rv, "SM get 'PSO DST' APDU: cannot allocate remote apdu");
-
-	rapdu->apdu.cse = SC_APDU_CASE_2_SHORT;
-	rapdu->apdu.cla = 0x00;
-	rapdu->apdu.ins = 0x2A;
-	rapdu->apdu.p1 = 0x9E;
-	rapdu->apdu.p2 = 0x9A;
-	rapdu->apdu.le = ipd->key_size;
-
-	rv = sm_iasecc_securize_apdu(ctx, sm_info, rapdu);
-	LOG_TEST_RET(ctx, rv, "SM get 'PSO DST' APDU: securize error");
-
-	rapdu->get_response = 1;
-
-
-	LOG_FUNC_RETURN(ctx, rv);
-}
-#endif
-
-
-#if 0
-static int
-sm_iasecc_get_apdu_raw_apdu(struct sc_context *ctx, struct sm_info *sm_info, struct sc_remote_apdu **rapdus)
-{
-	struct sc_apdu *apdu = sm_info->cmd_params.raw_apdu.apdu;
-	size_t data_offs, data_len = apdu->datalen;
-	int rv = SC_ERROR_INVALID_ARGUMENTS;
-
-	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "SM get 'RAW APDU' APDU");
-
-	data_offs = 0;
-	data_len = apdu->datalen;
-	for (; data_len; )   {
-		int sz = data_len > SM_MAX_DATA_SIZE ? SM_MAX_DATA_SIZE : data_len;
-		struct sc_remote_apdu *rapdu = NULL;
-
-		rv = sc_remote_apdu_allocate(rapdus, &rapdu);
-		LOG_TEST_RET(ctx, rv, "SM get 'RAW APDU' APDUs: cannot allocate remote apdu");
-
-		rapdu->apdu.cse = apdu->cse;
-		rapdu->apdu.cla = apdu->cla | ((data_offs + sz) < data_len ? 0x10 : 0x00);
-		rapdu->apdu.ins = apdu->ins;
-		rapdu->apdu.p1 = apdu->p1;
-		rapdu->apdu.p2 = apdu->p2;
-		memcpy((unsigned char *)rapdu->apdu.data, apdu->data + data_offs, sz);
-		rapdu->apdu.datalen = sz;
-		rapdu->apdu.lc = sz;
-
-		rv = sm_iasecc_securize_apdu(ctx, sm_info, rapdu);
-		LOG_TEST_RET(ctx, rv, "SM get 'UPDATE BINARY' APDUs: securize error");
-
-		rapdu->get_response = 1;
-
-		data_offs += sz;
-		data_len -= sz;
-	}
-
-	LOG_FUNC_RETURN(ctx, rv);
-}
-#endif
-
 int
 sm_iasecc_get_apdus(struct sc_context *ctx, struct sm_info *sm_info,
 	       unsigned char *init_data, size_t init_len, struct sc_remote_data *rdata, int release_sm)
@@ -652,16 +558,6 @@ sm_iasecc_get_apdus(struct sc_context *ctx, struct sm_info *sm_info,
 		rv = sm_iasecc_get_apdu_sdo_update(ctx, sm_info, rdata);
 		LOG_TEST_RET(ctx, rv, "SM IAS/ECC get APDUs: 'SDO UPDATE' failed");
 		break;
-#if 0
-	case SM_CMD_PSO_DST:
-		rv = sm_iasecc_get_apdu_pso_dst(ctx, sm_info, &rapdus);
-		LOG_TEST_RET(ctx, rv, "SM IAS/ECC get APDUs: 'PSO DST' failed");
-		break;
-	case SM_CMD_APDU_RAW:
-		rv = sm_iasecc_get_apdu_raw_apdu(ctx, sm_info, &rapdus);
-		LOG_TEST_RET(ctx, rv, "SM IAS/ECC get APDUs: 'RAW APDU' failed");
-		break;
-#endif
 	case SM_CMD_PIN_VERIFY:
 		rv = sm_iasecc_get_apdu_verify_pin(ctx, sm_info, rdata);
 		LOG_TEST_RET(ctx, rv, "SM IAS/ECC get APDUs: 'RAW APDU' failed");

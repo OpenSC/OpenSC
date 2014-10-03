@@ -20,7 +20,7 @@
 
 #include "config.h"
 
-#if ENABLE_OPENSSL	/* empty file without openssl */
+#ifdef ENABLE_OPENSSL	/* empty file without openssl */
 #include <string.h>
 #include <stdlib.h>
 #include <openssl/bio.h>

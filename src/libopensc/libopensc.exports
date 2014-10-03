@@ -170,6 +170,7 @@ sc_pkcs15_encode_pukdf_entry
 sc_pkcs15_encode_tokeninfo
 sc_pkcs15_encode_unusedspace
 sc_pkcs15_erase_pubkey
+sc_pkcs15_dup_pubkey
 sc_pkcs15_find_cert_by_id
 sc_pkcs15_find_data_object_by_app_oid
 sc_pkcs15_find_data_object_by_id

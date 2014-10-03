@@ -259,22 +259,6 @@ add_acl_entry(sc_card_t *card, sc_file_t *file, unsigned int op, u8 nibble)
 static int
 cryptoflex_get_ac_keys(sc_card_t *card, sc_file_t *file)
 {
-#if 0
-	sc_apdu_t apdu;
-	u8 rbuf[3];
-	int r;
-	
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xC4, 0x00, 0x00);
-	apdu.cla = 0xF0 /* 0x00 for Cyberflex */;
-	apdu.le = 3;
-	apdu.resplen = 3;
-	apdu.resp = rbuf;
-	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
-	if (apdu.sw1 != 0x90 && apdu.sw2 != 0x00)
-		return 0;
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "AC Keys: %02X %02X %02X\n", rbuf[0], rbuf[1], rbuf[2]);
-#endif
 	return 0;
 }
 
@@ -337,10 +321,6 @@ cryptoflex_process_file_attrs(sc_card_t *card, sc_file_t *file,
 			add_acl_entry(card, file, SC_AC_OP_UPDATE, (u8)(p[0] & 0x0F));
 			break;
 		case SC_FILE_EF_CYCLIC:
-#if 0
-			/* FIXME */
-			file->acl[SC_AC_OP_DECREASE] = ac_to_acl(p[0] & 0x0F);
-#endif
 			break;
 		}
 	}
@@ -431,9 +411,6 @@ cyberflex_process_file_attrs(sc_card_t *card, sc_file_t *file,
 			file->ef_structure = SC_FILE_EF_CYCLIC;
 			break;
 		case  0x04:
-#if 0
-			file->ef_structure = SC_FILE_EF_PROGRAM;
-#endif
 			break;
 		default:
 			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "invalid file type: 0x%02X\n", *p);
@@ -448,10 +425,6 @@ cyberflex_process_file_attrs(sc_card_t *card, sc_file_t *file,
 			add_acl_entry(card, file, SC_AC_OP_UPDATE, (u8)(pos[0] & 0x0F));
 			break;
 		case SC_FILE_EF_CYCLIC:
-#if 0
-			/* FIXME */
-			file->acl[SC_AC_OP_DECREASE] = ac_to_acl(pos[0] & 0x0F);
-#endif
 			break;
 		}
 	}

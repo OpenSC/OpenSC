@@ -38,9 +38,6 @@
 
 #include "libopensc/opensc.h"
 #include "libopensc/log.h"
-#if 0
-#include "libopensc/hash-strings.h"
-#endif
 
 #include "sm-module.h"
 
@@ -135,140 +132,6 @@ sm_authentic_encode_apdu(struct sc_context *ctx, struct sm_info *sm_info)
 }
 
 
-#if 0
-static int
-sm_authentic_get_apdu_read_binary(struct sc_context *ctx, struct sm_info *sm_info,
-		char *init_data, struct sc_remote_apdu **rapdus)
-{
-	struct sm_info_read_binary *rb = &sm_info->cmd_params.read_binary;
-	size_t offs = rb->offset, size = rb->size;
-	int rv = SC_ERROR_INVALID_ARGUMENTS;
-
-	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "SM get 'READ BINARY' APDUs: offset:%i,size:%i", offs, size);
-	while (size)   {
-		int sz = size > SM_MAX_DATA_SIZE ? SM_MAX_DATA_SIZE : size;
-		struct sc_remote_apdu *rapdu = NULL;
-
-		rv = sc_remote_apdu_allocate(rapdus, &rapdu);
-		LOG_TEST_RET(ctx, rv, "SM get 'READ BINARY' APDUs: cannot allocate remote apdu");
-
-		rapdu->apdu.cse = SC_APDU_CASE_2_SHORT;
-		rapdu->apdu.cla = 0x00;
-		rapdu->apdu.ins = 0xB0;
-		rapdu->apdu.p1 = (offs>>8)&0xFF;
-		rapdu->apdu.p2 = offs&0xFF;
-		rapdu->apdu.resplen = sz;
-		rapdu->apdu.le = sz;
-
-		rv = sm_gp_securize_apdu(ctx, sm_info, init_data, &rapdu->apdu);
-		LOG_TEST_RET(ctx, rv, "SM get 'READ BINARY' APDUs: securize error");
-
-		offs += sz;
-		size -= sz;
-	}
-
-	LOG_FUNC_RETURN(ctx, rv);
-}
-
-
-static int
-sm_authentic_get_apdu_update_binary(struct sc_context *ctx, struct sm_info *sm_info,
-		char *init_data, struct sc_remote_apdu **rapdus)
-{
-	struct sm_info_update_binary *ub = &sm_info->cmd_params.update_binary;
-	size_t offs = ub->offset, size = ub->size, data_offs = 0;
-	int rv = SC_ERROR_INVALID_ARGUMENTS;
-
-	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "SM get 'UPDATE BINARY' APDUs: offset:%i,size:%i", offs, size);
-	while (size)   {
-		int sz = size > SM_MAX_DATA_SIZE ? SM_MAX_DATA_SIZE : size;
-		struct sc_remote_apdu *rapdu = NULL;
-
-		rv = sc_remote_apdu_allocate(rapdus, &rapdu);
-		LOG_TEST_RET(ctx, rv, "SM get 'UPDATE BINARY' APDUs: cannot allocate remote apdu");
-
-		rapdu->apdu.cse = SC_APDU_CASE_3_SHORT;
-		rapdu->apdu.cla = 0x00;
-		rapdu->apdu.ins = 0xD6;
-		rapdu->apdu.p1 = (offs>>8)&0xFF;
-		rapdu->apdu.p2 = offs&0xFF;
-		memcpy((unsigned char *)rapdu->apdu.data, ub->data + data_offs, sz);
-		rapdu->apdu.datalen = sz;
-		rapdu->apdu.lc = sz;
-
-		rv = sm_gp_securize_apdu(ctx, sm_info, init_data, &rapdu->apdu);
-		LOG_TEST_RET(ctx, rv, "SM get 'READ BINARY' APDUs: securize error");
-
-		offs += sz;
-		data_offs += sz;
-		size -= sz;
-	}
-
-	LOG_FUNC_RETURN(ctx, rv);
-}
-
-
-static int
-sm_authentic_get_apdu_create_file(struct sc_context *ctx, struct sm_info *sm_info,
-		char *init_data, struct sc_remote_apdu **rapdus)
-{
-	struct sm_info_create_file *cf = &sm_info->cmd_params.create_file;
-	struct sc_remote_apdu *rapdu = NULL;
-	int rv;
-
-	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "SM get 'CREATE FILE' APDU: FCP(%i) %p", cf->fcp_len, cf->fcp);
-
-	rv = sc_remote_apdu_allocate(rapdus, &rapdu);
-	LOG_TEST_RET(ctx, rv, "SM get 'CREATE FILE' APDU: cannot allocate remote apdu");
-
-	rapdu->apdu.cse = SC_APDU_CASE_3_SHORT;
-	rapdu->apdu.cla = 0x00;
-	rapdu->apdu.ins = 0xE0;
-	rapdu->apdu.p1 = 0x00;
-	rapdu->apdu.p2 = 0x00;
-	memcpy((unsigned char *)rapdu->apdu.data, cf->fcp, cf->fcp_len);
-	rapdu->apdu.datalen = cf->fcp_len;
-	rapdu->apdu.lc = cf->fcp_len;
-
-	rv = sm_gp_securize_apdu(ctx, sm_info, init_data, &rapdu->apdu);
-	LOG_TEST_RET(ctx, rv, "SM get 'CREATE FILE' APDU: securize error");
-
-	LOG_FUNC_RETURN(ctx, rv);
-}
-
-static int
-sm_authentic_get_apdu_release(struct sc_context *ctx, struct sm_info *sm_info,
-		char *init_data, struct sc_remote_data *rdata)
-{
-	struct sc_remote_apdu *rapdu = NULL;
-	int rv;
-
-	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "SM get 'SM RELEASE' APDU");
-
-	if (!rdata || !rdata->alloc)
-		LOG_TEST_RET(ctx, SC_ERROR_INTERNAL, "SM get 'SM RELEASE' APDU: invalid remote data");
-
-	rv = rdata->alloc(rdata, &rapdu);
-	LOG_TEST_RET(ctx, rv, "SM get 'SM RELEASE' APDU: cannot allocate remote apdu");
-
-	rapdu->apdu.cse = SC_APDU_CASE_1;
-	rapdu->apdu.cla = 0x00;
-	rapdu->apdu.ins = 0x20;
-	rapdu->apdu.p1 = 0x00;
-	rapdu->apdu.p2 = 0xC0;
-
-	rv = sm_gp_securize_apdu(ctx, sm_info, init_data, &rapdu->apdu);
-	LOG_TEST_RET(ctx, rv, "SM get 'SM RELEASE' APDUs: securize error");
-
-	LOG_FUNC_RETURN(ctx, rv);
-}
-#endif
-
-
 int
 sm_authentic_get_apdus(struct sc_context *ctx, struct sm_info *sm_info,
 		unsigned char *init_data, size_t init_len, struct sc_remote_data *rdata,
@@ -289,32 +152,6 @@ sm_authentic_get_apdus(struct sc_context *ctx, struct sm_info *sm_info,
 	}
 
 	switch (sm_info->cmd)  {
-#if 0
-	case SM_CMD_FILE_READ:
-		rv = sm_authentic_get_apdu_read_binary(ctx, sm_info, init_data, &rapdus);
-		LOG_TEST_RET(ctx, rv, "SM get APDUs: add 'READ BINARY' failed");
-		break;
-	case SM_CMD_FILE_UPDATE:
-		rv = sm_authentic_get_apdu_update_binary(ctx, sm_info, init_data, &rapdus);
-		LOG_TEST_RET(ctx, rv, "SM get APDUs: add 'UPDATE BINARY' failed");
-		break;
-	case SM_CMD_FILE_CREATE:
-		rv = sm_authentic_get_apdu_create_file(ctx, sm_info, init_data, &rapdus);
-		LOG_TEST_RET(ctx, rv, "SM get APDUs: add 'FILE CREATE' failed");
-		break;
-	case SM_CMD_PIN_VERIFY:
-		rv = sm_authentic_get_apdu_verify_pin(ctx, sm_info, init_data, &rapdus);
-		LOG_TEST_RET(ctx, rv, "SM get APDUs: add 'VERIFY PIN' failed");
-		break;
-	case SM_CMD_PIN_RESET:
-		break;
-	case SM_CMD_PIN_CREATE:
-		break;
-	case SM_CMD_RSA_GENERATE:
-		break;
-	case SM_CMD_RSA_UPDATE:
-		break;
-#endif
 	case SM_CMD_APDU_TRANSMIT:
 		rv = sm_authentic_encode_apdu(ctx, sm_info);
 		LOG_TEST_RET(ctx, rv, "SM get APDUs: cannot encode APDU");
@@ -325,13 +162,5 @@ sm_authentic_get_apdus(struct sc_context *ctx, struct sm_info *sm_info,
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "unsupported SM command");
 	}
 
-#if 0
-	if (release_sm)   {
-		rv = sm_authentic_get_apdu_release(ctx, sm_info, init_data, init_len, out, out_num);
-		LOG_TEST_RET(ctx, rv, "SM get APDUs: add 'release' failed");
-
-		sm_gp_close_session(ctx, &sm_info->session.gp);
-	}
-#endif
 	LOG_FUNC_RETURN(ctx, rv);
 }

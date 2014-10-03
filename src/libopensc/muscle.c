@@ -680,63 +680,6 @@ int msc_compute_crypt_init(sc_card_t *card,
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_CARD_CMD_FAILED);
 }
 
-#if 0
-int msc_compute_crypt_process(
-			sc_card_t *card, 
-			int keyLocation,
-			const u8* inputData,
-			u8* outputData,
-			size_t dataLength,
-			size_t* outputDataLength)
-{
-	sc_apdu_t apdu;
-	u8 buffer[MSC_MAX_APDU];
-	u8 outputBuffer[MSC_MAX_APDU];
-	u8 *ptr;
-	int r;
-
-	if(dataLength > MSC_MAX_SEND - 3)
-		return SC_ERROR_INVALID_ARGUMENTS;
-
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x36, keyLocation, 0x02); /* Process */
-	
-	apdu.data = buffer;
-	apdu.datalen = dataLength + 3;
-	apdu.lc = dataLength + 3;
-/* Specs say crypt returns data all the time??? But... its not implemented that way */
-	
-	memset(outputBuffer, 0, sizeof(outputBuffer));
-	apdu.resp = outputBuffer;
-	apdu.resplen = MSC_MAX_READ;
-	apdu.le = dataLength;
-	ptr = buffer;
-	*ptr = 0x01; ptr++; /* DATA LOCATION: APDU */
-	*ptr = (dataLength >> 8) & 0xFF; ptr++;
-	*ptr = dataLength & 0xFF; ptr++;
-	memcpy(ptr, inputData, dataLength);
-	
-	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
-	if(apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
-		short receivedData = outputBuffer[0] << 8 | outputBuffer[1];
-		 *outputDataLength = receivedData;
-		*outputDataLength = 0;
-		assert(receivedData <= MSC_MAX_APDU);
-		memcpy(outputData, outputBuffer + 2, receivedData);
-		return 0;
-	}
-	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	if (r) {
-		if (card->ctx->debug >= 2) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "process: got strange SWs: 0x%02X 0x%02X\n",
-			     apdu.sw1, apdu.sw2);
-		}
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
-	}
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_CARD_CMD_FAILED);
-}
-#endif
-
 int msc_compute_crypt_final(
 			sc_card_t *card, 
 			int keyLocation,

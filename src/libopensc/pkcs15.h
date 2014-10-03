@@ -739,6 +739,8 @@ void sc_pkcs15_erase_pubkey(struct sc_pkcs15_pubkey *);
 void sc_pkcs15_free_pubkey(struct sc_pkcs15_pubkey *);
 int sc_pkcs15_pubkey_from_prvkey(struct sc_context *, struct sc_pkcs15_prkey *,
 		struct sc_pkcs15_pubkey **);
+int sc_pkcs15_dup_pubkey(struct sc_context *, struct sc_pkcs15_pubkey *,
+		struct sc_pkcs15_pubkey **);
 int sc_pkcs15_pubkey_from_cert(struct sc_context *, struct sc_pkcs15_der *,
 		struct sc_pkcs15_pubkey **);
 int sc_pkcs15_pubkey_from_spki_file(struct sc_context *,

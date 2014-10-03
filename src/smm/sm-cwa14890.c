@@ -43,9 +43,6 @@
 #include "libopensc/asn1.h"
 #include "libopensc/iasecc.h"
 #include "libopensc/iasecc-sdo.h"
-#if 0
-#include "libopensc/hash-strings.h"
-#endif
 #include "sm-module.h"
 
 static const struct sc_asn1_entry c_asn1_card_response[2] = {
