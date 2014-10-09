@@ -890,13 +890,15 @@ iso7816_decipher(struct sc_card *card,
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4, 0x2A, 0x80, 0x86);
 	apdu.resp    = out;
 	apdu.resplen = outlen;
-	/* if less than 256 bytes are expected than set Le to 0x00
+	/* if up to 256 bytes are expected than set Le to 0x00
 	 * to tell the card the we want everything available (note: we
 	 * always have Le <= crgram_len) */
-	apdu.le      = (outlen >= 256 && crgram_len < 256) ? 256 : outlen;
+	apdu.le      = (outlen >= 256 && crgram_len <= 256) ? 256 : outlen;
 	/* Use APDU chaining with 2048bit RSA keys if the card does not do extended APDU-s */
-	if ((crgram_len+1 > 255) && !(card->caps & SC_CARD_CAP_APDU_EXT))
+	if ((crgram_len+1 > 255) && !(card->caps & SC_CARD_CAP_APDU_EXT)) {
 		apdu.flags |= SC_APDU_FLAGS_CHAINING;
+		apdu.le = apdu.le >= 256 ? 256 : apdu.le;
+	}
 
 	sbuf[0] = 0; /* padding indicator byte, 0x00 = No further indication */
 	memcpy(sbuf + 1, crgram, crgram_len);
