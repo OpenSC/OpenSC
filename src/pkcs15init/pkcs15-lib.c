@@ -2138,6 +2138,7 @@ static int
 prkey_bits(struct sc_pkcs15_card *p15card, struct sc_pkcs15_prkey *key)
 {
 	struct sc_context *ctx = p15card->card->ctx;
+	int rv;
 
 	switch (key->algorithm) {
 	case SC_ALGORITHM_RSA:
@@ -2151,9 +2152,13 @@ prkey_bits(struct sc_pkcs15_card *p15card, struct sc_pkcs15_prkey *key)
 		}
 		return SC_PKCS15_GOSTR3410_KEYSIZE;
 	case SC_ALGORITHM_EC:
-		/* calculation returns one bit too small, add one bu default */
-		sc_log(ctx, "Private EC key length %u", sc_pkcs15init_keybits(&key->u.ec.privateD) + 1);
-		return sc_pkcs15init_keybits(&key->u.ec.privateD) + 1;
+		if (!key->u.ec.params.field_length) {
+			rv = sc_pkcs15_fix_ec_parameters(ctx, &key->u.ec.params);
+			if (rv < 0)
+				return rv;
+		}
+		sc_log(ctx, "Private EC key length %u", key->u.ec.params.field_length);
+		return key->u.ec.params.field_length;
 	}
 	sc_log(ctx, "Unsupported key algorithm.");
 	return SC_ERROR_NOT_SUPPORTED;
