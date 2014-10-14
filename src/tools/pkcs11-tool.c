@@ -94,7 +94,7 @@ enum {
 	OPT_KEY_TYPE,
 	OPT_KEY_USAGE_SIGN,
 	OPT_KEY_USAGE_DECRYPT,
-	OPT_KEY_USAGE_NONREPUDIATION,
+	OPT_KEY_USAGE_DERIVE,
 	OPT_PRIVATE,
 	OPT_TEST_HOTPLUG,
 	OPT_UNLOCK_PIN,
@@ -132,7 +132,7 @@ static const struct option options[] = {
 	{ "key-type",		1, NULL,		OPT_KEY_TYPE },
 	{ "usage-sign",		0, NULL,		OPT_KEY_USAGE_SIGN },
 	{ "usage-decrypt",	0, NULL,		OPT_KEY_USAGE_DECRYPT },
-	{ "usage-nonrepudiation",0, NULL,		OPT_KEY_USAGE_NONREPUDIATION },
+	{ "usage-derive",	0, NULL,		OPT_KEY_USAGE_DERIVE },
 	{ "write-object",	1, NULL,		'w' },
 	{ "read-object",	0, NULL,		'r' },
 	{ "delete-object",	0, NULL,		'b' },
@@ -187,9 +187,9 @@ static const char *option_help[] = {
 	"Unlock User PIN (without '--login' unlock in logged in session; otherwise '--login-type' has to be 'context-specific')",
 	"Key pair generation",
 	"Specify the type and length of the key to create, for example rsa:1024 or EC:prime256v1",
-	"Specify 'sign' key usage flag",
-	"Specify 'decrypt' key usage flag",
-	"Specify 'nonrepudiation' key usage flag",
+	"Specify 'sign' key usage flag (sets SIGN in privkey, sets VERIFY in pubkey)",
+	"Specify 'decrypt' key usage flag (RSA only, set DECRYPT privkey, ENCRYPT in pubkey)",
+	"Specify 'derive' key usage flag (EC only)",
 	"Write an object (key, cert, data) to the card",
 	"Get object's CKA_VALUE attribute (use with --type)",
 	"Delete an object",
@@ -252,7 +252,8 @@ static int		opt_test_hotplug = 0;
 static int		opt_login_type = -1;
 static int		opt_key_usage_sign = 0;
 static int		opt_key_usage_decrypt = 0;
-static int		opt_key_usage_nonrepudiation = 0;
+static int		opt_key_usage_derive = 0;
+static int		opt_key_usage_default = 1; /* uses defaults if no opt_key_usage options */
 
 static void *module = NULL;
 static CK_FUNCTION_LIST_PTR p11 = NULL;
@@ -618,12 +619,15 @@ int main(int argc, char * argv[])
 			break;
 		case OPT_KEY_USAGE_SIGN:
 			opt_key_usage_sign = 1;
+			opt_key_usage_default = 0;
 			break;
 		case OPT_KEY_USAGE_DECRYPT:
 			opt_key_usage_decrypt = 1;
+			opt_key_usage_default = 0;
 			break;
-		case OPT_KEY_USAGE_NONREPUDIATION:
-			opt_key_usage_nonrepudiation = 1;
+		case OPT_KEY_USAGE_DERIVE:
+			opt_key_usage_derive = 1;
+			opt_key_usage_default = 0;
 			break;
 		case OPT_PRIVATE:
 			opt_is_private = 1;
@@ -1503,21 +1507,15 @@ static int gen_keypair(CK_SESSION_HANDLE session,
 	CK_ATTRIBUTE publicKeyTemplate[20] = {
 		{CKA_CLASS, &pubkey_class, sizeof(pubkey_class)},
 		{CKA_TOKEN, &_true, sizeof(_true)},
-		{CKA_ENCRYPT, &_true, sizeof(_true)},
-		{CKA_VERIFY, &_true, sizeof(_true)},
-		{CKA_WRAP, &_true, sizeof(_true)},
 	};
-	int n_pubkey_attr = 5;
+	int n_pubkey_attr = 2;
 	CK_ATTRIBUTE privateKeyTemplate[20] = {
 		{CKA_CLASS, &privkey_class, sizeof(privkey_class)},
 		{CKA_TOKEN, &_true, sizeof(_true)},
 		{CKA_PRIVATE, &_true, sizeof(_true)},
 		{CKA_SENSITIVE, &_true, sizeof(_true)},
-		{CKA_DECRYPT, &_true, sizeof(_true)},
-		{CKA_SIGN, &_true, sizeof(_true)},
-		{CKA_UNWRAP, &_true, sizeof(_true)}
 	};
-	int n_privkey_attr = 7;
+	int n_privkey_attr = 4;
 	unsigned char *ecparams = NULL;
 	size_t ecparams_size;
 	CK_RV rv;
@@ -1538,6 +1536,26 @@ static int gen_keypair(CK_SESSION_HANDLE session,
 			n_pubkey_attr++;
 			FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_PUBLIC_EXPONENT, publicExponent, sizeof(publicExponent));
 			n_pubkey_attr++;
+
+			if (opt_key_usage_default || opt_key_usage_sign) {
+				FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_VERIFY, &_true, sizeof(_true));
+				n_pubkey_attr++;
+				FILL_ATTR(privateKeyTemplate[n_privkey_attr], CKA_SIGN, &_true, sizeof(_true));
+				n_privkey_attr++;
+			}
+
+			if (opt_key_usage_default || opt_key_usage_decrypt) {
+				FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_ENCRYPT, &_true, sizeof(_true));
+				n_pubkey_attr++;
+				FILL_ATTR(privateKeyTemplate[n_privkey_attr], CKA_DECRYPT, &_true, sizeof(_true));
+				n_privkey_attr++;
+			}
+
+			FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_WRAP, &_true, sizeof(_true));
+			n_pubkey_attr++;
+			FILL_ATTR(privateKeyTemplate[n_privkey_attr], CKA_UNWRAP, &_true, sizeof(_true));
+			n_privkey_attr++;
+
 
 			mechanism.mechanism = CKM_RSA_PKCS_KEY_PAIR_GEN;
 		}
@@ -1561,6 +1579,21 @@ static int gen_keypair(CK_SESSION_HANDLE session,
 				printf("Cannot convert \"%s\"\n", ec_curve_infos[ii].oid_encoded);
 				util_print_usage_and_die(app_name, options, option_help, NULL);
 			}
+
+			if (opt_key_usage_default || opt_key_usage_sign) {
+				FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_VERIFY, &_true, sizeof(_true));
+				n_pubkey_attr++;
+				FILL_ATTR(privateKeyTemplate[n_privkey_attr], CKA_SIGN, &_true, sizeof(_true));
+				n_privkey_attr++;
+			}
+
+			if (opt_key_usage_default || opt_key_usage_derive) {
+				FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_DERIVE, &_true, sizeof(_true));
+				n_pubkey_attr++;
+				FILL_ATTR(privateKeyTemplate[n_privkey_attr], CKA_DERIVE, &_true, sizeof(_true));
+				n_privkey_attr++;
+			}
+
 
 			FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_EC_PARAMS, ecparams, ecparams_size);
 			n_pubkey_attr++;
