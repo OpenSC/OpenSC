@@ -4678,10 +4678,6 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 		 * FIXME?  This may force us to support these in software
 		 */
 		flags |= SC_ALGORITHM_RSA_PAD_PKCS1;
-#ifdef ENABLE_OPENSSL
-		/* all our software hashes are in OpenSSL */
-		flags |= SC_ALGORITHM_RSA_HASHES;
-#endif
 	}
 
 	/* Check for PKCS1 */
@@ -4691,14 +4687,10 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 		if (rc != CKR_OK)
 			return rc;
 
-		/* if the driver doesn't say what hashes it supports,
-		 * claim we will do all of them */
-		/* FIXME?  This may force us to support these in software */
-		/* FIXME?  and we only do hashes if OpenSSL is enabled */
-		if (!(flags & (SC_ALGORITHM_RSA_HASHES|SC_ALGORITHM_RSA_HASH_NONE)))
-			flags |= SC_ALGORITHM_RSA_HASHES;
-
 #ifdef ENABLE_OPENSSL
+		/* We always do the hashes in software */
+		flags |= SC_ALGORITHM_RSA_HASHES;
+
 		/* sc_pkcs11_register_sign_and_hash_mechanism expects software hash */
 		if (flags & SC_ALGORITHM_RSA_HASH_SHA1) {
 			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card, CKM_SHA1_RSA_PKCS, CKM_SHA_1, mt);
