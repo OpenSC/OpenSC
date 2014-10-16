@@ -816,8 +816,27 @@ sc_pkcs15_encode_pubkey_as_spki(sc_context_t *ctx, struct sc_pkcs15_pubkey *pubk
 		key_len = pubkey->u.ec.ecpointQ.len * 8;
 		pkey.value = pubkey->u.ec.ecpointQ.value;
 		pkey.len = 0; /* flag as do not delete */
-		/* TODO make sure algorithm params are available*/
-		/* if not can we copy them from the u.ec */
+
+		/*
+		 * If the algorithm parameters are not present, we try to compose them
+		 * from the key.
+		 * This might happen when trying to import EC keys onto the card.
+		 */
+		if(!pubkey->alg_id->params && pubkey->u.ec.params.der.len) {
+			struct sc_ec_params* params_new = malloc(sizeof *params_new);
+			if(!params_new)
+				LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+
+			params_new->der = malloc(pubkey->u.ec.params.der.len);
+			if (!params_new->der)
+				LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+
+			memcpy(params_new->der, pubkey->u.ec.params.der.value, pubkey->u.ec.params.der.len);
+			params_new->der_len = pubkey->u.ec.params.der.len;
+			params_new->type = 1; /* Named curve (FIXME?) */
+			pubkey->alg_id->params = params_new;
+		}
+
 		r = 0;
 		break;
 	case SC_ALGORITHM_GOSTR3410:

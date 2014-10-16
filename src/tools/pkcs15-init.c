@@ -100,6 +100,7 @@ static int	do_sanity_check(struct sc_profile *profile);
 
 static int	init_keyargs(struct sc_pkcs15init_prkeyargs *);
 static void	init_gost_params(struct sc_pkcs15init_keyarg_gost_params *, EVP_PKEY *);
+static void	init_ec_params(struct sc_pkcs15_ec_parameters *, EVP_PKEY *);
 static int	get_pin_callback(struct sc_profile *profile,
 			int id, const struct sc_pkcs15_auth_info *info,
 			const char *label,
@@ -888,6 +889,7 @@ do_store_private_key(struct sc_profile *profile)
 	if (r < 0)
 		return r;
 	init_gost_params(&args.params.gost, pkey);
+	init_ec_params(&args.params.ec, pkey);
 
 	if (ncerts) {
 		unsigned int	usage;
@@ -1040,8 +1042,10 @@ do_store_public_key(struct sc_profile *profile, EVP_PKEY *pkey)
 		r = do_read_public_key(opt_infile, opt_format, &pkey);
 	if (r >= 0) {
 		r = sc_pkcs15_convert_pubkey(&args.key, pkey);
-		if (r >= 0)
+		if (r >= 0) {
 			init_gost_params(&args.params.gost, pkey);
+			init_ec_params(&args.params.ec, pkey);
+		}
 	}
 	if (r >= 0)
 		r = sc_pkcs15init_store_public_key(p15card, profile, &args, &dummy);
@@ -1578,6 +1582,41 @@ init_gost_params(struct sc_pkcs15init_keyarg_gost_params *params, EVP_PKEY *pkey
 #else
 	(void)params, (void)pkey; /* no warning */
 #endif
+}
+
+
+static void
+init_ec_params(struct sc_pkcs15_ec_parameters *params, EVP_PKEY *pkey)
+{
+#if defined(ENABLE_OPENSSL) && OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_EC)
+	EC_KEY *key;
+
+	assert(pkey);
+	if (pkey->type == EVP_PKEY_EC) {
+		const EC_GROUP *grp = NULL;
+		int nid;
+
+		key = EVP_PKEY_get0(pkey);
+		assert(key);
+		assert(params);
+
+		grp = EC_KEY_get0_group(key);
+		assert(grp);
+
+		/* get curve name */
+		nid = EC_GROUP_get_curve_name(grp);
+		if(nid != 0) {
+			const char *name = OBJ_nid2sn(nid);
+			if(sizeof(name) > 0)
+				params->named_curve = strdup(name);
+		}
+
+		sc_pkcs15_fix_ec_parameters(ctx, params);
+	}
+#else
+	(void)params, (void)pkey; /* no warning */
+#endif
+
 }
 
 /*
