@@ -4560,13 +4560,15 @@ static int register_ec_mechanisms(struct sc_pkcs11_card *p11card, int flags,
 	mech_info.flags |= CKF_DERIVE;
 
 	mt = sc_pkcs11_new_fw_mechanism(CKM_ECDH1_COFACTOR_DERIVE, &mech_info, CKK_EC, NULL);
-
+	if (!mt)
+		return CKR_HOST_MEMORY;
 	rc = sc_pkcs11_register_mechanism(p11card, mt);
 	if (rc != CKR_OK)
 	    return rc;
 
 	mt = sc_pkcs11_new_fw_mechanism(CKM_ECDH1_DERIVE, &mech_info, CKK_EC, NULL);
-
+	if (!mt)
+		return CKR_HOST_MEMORY;
 	rc = sc_pkcs11_register_mechanism(p11card, mt);
 	if (rc != CKR_OK)
 	    return rc;
@@ -4672,46 +4674,59 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 		if (rc != CKR_OK)
 			return rc;
 
-		/* If the card supports RAW, it should by all means
-		 * have registered everything else, too. If it didn't
-		 * we help it a little
-		 * FIXME?  This may force us to support these in software
-		 */
-		flags |= SC_ALGORITHM_RSA_PAD_PKCS1;
-#ifdef ENABLE_OPENSSL
-		/* all our software hashes are in OpenSSL */
-		flags |= SC_ALGORITHM_RSA_HASHES;
-#endif
 	}
 
-	/* Check for PKCS1 */
+	/* We support PKCS1 padding in software */
+	/* either the card supports it or OpenSC does */
+	flags |= SC_ALGORITHM_RSA_PAD_PKCS1;
+
+#ifdef ENABLE_OPENSSL
+		/* all our software hashes are in OpenSSL */
+		/* Only if card did not lists the hashs, will we 
+		 * help it a little, by adding all the OpenSSL hashes
+		 * that have PKCS#11 mechanisms.
+		 */ 
+		if (!(flags & SC_ALGORITHM_RSA_HASHES)) {
+			flags |= SC_ALGORITHM_RSA_HASHES;
+#if OPENSSL_VERSION_NUMBER <  0x00908000L
+		/* turn off hashes not in openssl 0.9.8 */
+			flags &= ~(SC_ALGORITHM_RSA_HASH_SHA256 | SC_ALGORITHM_RSA_HASH_SHA384 | SC_ALGORITHM_RSA_HASH_SHA512 | SC_ALGORITHM_RSA_HASH_SHA224);
+#endif
+		}
+#endif
+
+	/* No need to Check for PKCS1  We support it in software and turned it on above so always added it */
 	if (flags & SC_ALGORITHM_RSA_PAD_PKCS1) {
 		mt = sc_pkcs11_new_fw_mechanism(CKM_RSA_PKCS, &mech_info, CKK_RSA, NULL);
 		rc = sc_pkcs11_register_mechanism(p11card, mt);
 		if (rc != CKR_OK)
 			return rc;
 
-		/* if the driver doesn't say what hashes it supports,
-		 * claim we will do all of them */
-		/* FIXME?  This may force us to support these in software */
-		/* FIXME?  and we only do hashes if OpenSSL is enabled */
-		if (!(flags & (SC_ALGORITHM_RSA_HASHES|SC_ALGORITHM_RSA_HASH_NONE)))
-			flags |= SC_ALGORITHM_RSA_HASHES;
-
 #ifdef ENABLE_OPENSSL
 		/* sc_pkcs11_register_sign_and_hash_mechanism expects software hash */
+		/* All hashes are in OpenSSL
+		 * Either the card set the hashes or we helped it above */
+
 		if (flags & SC_ALGORITHM_RSA_HASH_SHA1) {
 			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card, CKM_SHA1_RSA_PKCS, CKM_SHA_1, mt);
 			if (rc != CKR_OK)
 				return rc;
 		}
-#if OPENSSL_VERSION_NUMBER >= 0x00908000L
 		if (flags & SC_ALGORITHM_RSA_HASH_SHA256) {
 			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card, CKM_SHA256_RSA_PKCS, CKM_SHA256, mt);
 			if (rc != CKR_OK)
 				return rc;
 		}
-#endif
+		if (flags & SC_ALGORITHM_RSA_HASH_SHA384) {
+			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card, CKM_SHA384_RSA_PKCS, CKM_SHA384, mt);
+			if (rc != CKR_OK)
+				return rc;
+		}
+		if (flags & SC_ALGORITHM_RSA_HASH_SHA512) {
+			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card, CKM_SHA512_RSA_PKCS, CKM_SHA512, mt);
+			if (rc != CKR_OK)
+				return rc;
+		}
 		if (flags & SC_ALGORITHM_RSA_HASH_MD5) {
 			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card, CKM_MD5_RSA_PKCS, CKM_MD5, mt);
 			if (rc != CKR_OK)
@@ -4722,7 +4737,10 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 			if (rc != CKR_OK)
 				return rc;
 		}
-#endif
+#endif /* ENABLE_OPENSSL */
+	}
+
+	/* TODO support other padding mechanisms */
 
 		if (flags & SC_ALGORITHM_ONBOARD_KEY_GEN) {
 			mech_info.flags = CKF_GENERATE_KEY_PAIR;
@@ -4733,7 +4751,6 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 			if (rc != CKR_OK)
 				return rc;
 		}
-	}
 
 	return CKR_OK;
 }
