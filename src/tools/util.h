@@ -39,7 +39,7 @@ int util_getpass (char **lineptr, size_t *n, FILE *stream);
 
 /* Get a PIN (technically just a string). The source depends on the value of *input:
  * env:<var> - get from the environment variable <var>
- * -         - read until a linebreak or a maximum of 128 (MAX_PASS_SIZE) characters from stdin
+ * -         - read from stdin (uses util_getpass)
  * otherwise - copy *input
  *
  * All pins are freeable
