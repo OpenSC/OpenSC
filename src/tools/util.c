@@ -443,6 +443,7 @@ util_get_pin(char *input, char **pin)
 		// Get a PIN from a environment variable
 		*pin = getenv(input + 4);
 		if(*pin != NULL) {
+			*pin = strdup(*pin);
 			pinlen = strlen(*pin);
 		} else {
 			pinlen = 0;
