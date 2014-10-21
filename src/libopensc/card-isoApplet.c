@@ -707,6 +707,7 @@ isoApplet_put_data_prkey_rsa(sc_card_t *card, struct sc_pkcs15_prkey_rsa *rsa)
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	u8 *p = NULL;
 	int r;
+	int locked = 0;
 	size_t tags_len;
 
 	LOG_FUNC_CALLED(card->ctx);
@@ -743,6 +744,10 @@ isoApplet_put_data_prkey_rsa(sc_card_t *card, struct sc_pkcs15_prkey_rsa *rsa)
 	LOG_TEST_RET(card->ctx, r, "Error in handling TLV.");
 	p += r;
 
+	r = sc_lock(card); /* We will use several apdus */
+	LOG_TEST_RET(card->ctx, r, "sc_lock() failed");
+	locked = 1;
+
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xDB, 0x3F, 0xFF);
 	apdu.cla |= 0x10; /* Chaining */
 	apdu.data = sbuf;
@@ -756,12 +761,20 @@ isoApplet_put_data_prkey_rsa(sc_card_t *card, struct sc_pkcs15_prkey_rsa *rsa)
 		sc_log(card->ctx, "The applet returned that the PUT DATA instruction byte is not supported."
 		       "If you are using an older applet version and are trying to import keys, please update your applet first.");
 	}
-	LOG_TEST_RET(card->ctx, r, "Card returned error");
+	if(r < 0)
+	{
+		sc_log(card->ctx, "Card returned error");
+		goto out;
+	}
 
 	/* q */
 	p = sbuf;
 	r = tlv_add_tlv(p, sbuf_len - (p - sbuf), 0x93, rsa->q.data, rsa->q.len);
-	LOG_TEST_RET(card->ctx, r, "Error in handling TLV.");
+	if(r < 0)
+	{
+		sc_log(card->ctx, "%s: Error in handling TLV.", strerror(r));
+		goto out;
+	}
 	p += r;
 
 	apdu.data = sbuf;
@@ -769,42 +782,78 @@ isoApplet_put_data_prkey_rsa(sc_card_t *card, struct sc_pkcs15_prkey_rsa *rsa)
 	apdu.lc = p - sbuf;
 	r = sc_check_apdu(card, &apdu);
 	r = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(card->ctx, r, "%s: APDU transmit failed");
+	if(r < 0)
+	{
+		sc_log(card->ctx, "%s: APDU transmit failed.", strerror(r));
+		goto out;
+	}
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	LOG_TEST_RET(card->ctx, r, "Card returned error");
+	if(r < 0)
+	{
+		sc_log(card->ctx, "%s: Card returned error.", strerror(r));
+		goto out;
+	}
 
 	/* 1/q mod p */
 	p = sbuf;
 	r = tlv_add_tlv(p, sbuf_len - (p - sbuf), 0x94, rsa->iqmp.data, rsa->iqmp.len);
-	LOG_TEST_RET(card->ctx, r, "Error in handling TLV.");
+	if(r < 0)
+	{
+		sc_log(card->ctx, "%s: Error in handling TLV.", strerror(r));
+		goto out;
+	}
 	p += r;
 
 	apdu.data = sbuf;
 	apdu.datalen = p - sbuf;
 	apdu.lc = p - sbuf;
 	r = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(card->ctx, r, "%s: APDU transmit failed");
+	if(r < 0)
+	{
+		sc_log(card->ctx, "%s: APDU transmit failed.", strerror(r));
+		goto out;
+	}
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	LOG_TEST_RET(card->ctx, r, "Card returned error");
+	if(r < 0)
+	{
+		sc_log(card->ctx, "%s: Card returned error.", strerror(r));
+		goto out;
+	}
 
 	/* d mod (p-1) */
 	p = sbuf;
 	r = tlv_add_tlv(p, sbuf_len - (p - sbuf), 0x95, rsa->dmp1.data, rsa->dmp1.len);
-	LOG_TEST_RET(card->ctx, r, "Error in handling TLV.");
+	if(r < 0)
+	{
+		sc_log(card->ctx, "%s: Error in handling TLV.", strerror(r));
+		goto out;
+	}
 	p += r;
 
 	apdu.data = sbuf;
 	apdu.datalen = p - sbuf;
 	apdu.lc = p - sbuf;
 	r = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(card->ctx, r, "%s: APDU transmit failed");
+	if(r < 0)
+	{
+		sc_log(card->ctx, "%s: APDU transmit failed.", strerror(r));
+		goto out;
+	}
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	LOG_TEST_RET(card->ctx, r, "Card returned error");
+	if(r < 0)
+	{
+		sc_log(card->ctx, "%s: Card returned error.", strerror(r));
+		goto out;
+	}
 
 	/* d mod (q-1) */
 	p = sbuf;
 	r = tlv_add_tlv(p, sbuf_len - (p - sbuf), 0x96, rsa->dmq1.data, rsa->dmq1.len);
-	LOG_TEST_RET(card->ctx, r, "Error in handling TLV.");
+	if(r < 0)
+	{
+		sc_log(card->ctx, "%s: Error in handling TLV.", strerror(r));
+		goto out;
+	}
 	p += r;
 
 	apdu.cla = 0x00; /* Last part of the chain. */
@@ -812,10 +861,21 @@ isoApplet_put_data_prkey_rsa(sc_card_t *card, struct sc_pkcs15_prkey_rsa *rsa)
 	apdu.datalen = p - sbuf;
 	apdu.lc = p - sbuf;
 	r = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(card->ctx, r, "%s: APDU transmit failed");
+	if(r < 0)
+	{
+		sc_log(card->ctx, "%s: APDU transmit failed.", strerror(r));
+		goto out;
+	}
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	LOG_TEST_RET(card->ctx, r, "Card returned error");
+	if(r < 0)
+	{
+		sc_log(card->ctx, "%s: Card returned error.", strerror(r));
+		goto out;
+	}
 
+out:
+	if(locked)
+		sc_unlock(card);
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
