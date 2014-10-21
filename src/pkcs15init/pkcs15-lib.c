@@ -1503,8 +1503,10 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card, struct sc_profile
 		break;
 	case SC_ALGORITHM_EC:
 		type = SC_PKCS15_TYPE_PUBKEY_EC;
+		/* if key does not have curve... */
+		if (!key.u.ec.params.named_curve)
+			key.u.ec.params = keyargs->params.ec;
 
-		key.u.ec.params = keyargs->params.ec;
 		sc_pkcs15_fix_ec_parameters(ctx, &key.u.ec.params);
 
 		keybits = key.u.ec.params.field_length;
