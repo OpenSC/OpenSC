@@ -8,22 +8,12 @@ set -ex
 test -x ./configure || ./bootstrap
 BUILDPATH=${PWD}
 
-# Use new locations for SDK on 10.8+
-OSX_RELEASE=`sw_vers -productVersion`
-case ${OSX_RELEASE:0:4} in
-	"10.8")
-		SYSROOT="/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.8.sdk"
-		export CFLAGS="-isysroot $SYSROOT -arch i386 -arch x86_64 -mmacosx-version-min=10.7"
-	;;
-	"10.9")
-		SYSROOT="/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.9.sdk"
-		export CFLAGS="-isysroot $SYSROOT -arch i386 -arch x86_64 -mmacosx-version-min=10.7"
-	;;
-	*)
-		SYSROOT="/Developer/SDKs/MacOSX10.6.sdk"
-		export CFLAGS="-isysroot $SYSROOT -arch i386 -arch x86_64 -mmacosx-version-min=10.6"
-	;;
-esac
+# Locate the latest OSX SDK present
+SDKS_PATH="$(xcode-select -p)/Platforms/MacOSX.platform/Developer/SDKs"
+SDK_PATH="${SDK_PATH:-$SDKS_PATH/$(ls -1 ${SDKS_PATH} | sort -n -k2 -t. -r | head -1)}"
+
+# Set SDK path
+export CFLAGS="-isysroot $SDK_PATH -arch i386 -arch x86_64 -mmacosx-version-min=10.7"
 
 # OpenSSL is deprecated on OSX since 10.7 and that generates lots of
 # "false positive" warnings and there is no alternative option.
