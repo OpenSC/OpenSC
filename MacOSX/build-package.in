@@ -1,14 +1,16 @@
 #!/bin/bash
-# Building the installer is only tested and supported on 10.9 with Xcode 5.0.1
-# Command line tools for Xcode required, install with "xcode-select --install"
+# Building the installer is only tested and supported on 10.9+ with Xcode 6.0.1
 # Built package targets 10.9+
 # Building should also work on older versions with older revisions or slight changes, YMMV
+
+# You need to have  the following from homebrew or macports or fink:
+# autoconf automake libtool pkg-config
 
 set -ex
 test -x ./configure || ./bootstrap
 BUILDPATH=${PWD}
 
-# Locate the latest OSX SDK present
+# Locate the latest OSX SDK
 SDKS_PATH="$(xcode-select -p)/Platforms/MacOSX.platform/Developer/SDKs"
 SDK_PATH="${SDK_PATH:-$SDKS_PATH/$(ls -1 ${SDKS_PATH} | sort -n -k2 -t. -r | head -1)}"
 
