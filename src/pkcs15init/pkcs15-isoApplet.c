@@ -37,10 +37,10 @@
 #define ISOAPPLET_KEY_ID_MIN 0
 #define ISOAPPLET_KEY_ID_MAX 15
 
-
+/* Curve parameters of a curve specified by the OID. */
 struct ec_curve
 {
-	const struct sc_lv_data oid;
+	const struct sc_lv_data oid; /* Object ID in hex, including structural information */
 	const struct sc_lv_data prime;
 	const struct sc_lv_data coefficientA;
 	const struct sc_lv_data coefficientB;
@@ -49,26 +49,84 @@ struct ec_curve
 	const struct sc_lv_data coFactor;
 };
 
-static struct ec_curve curves[] =
+/* OpenSC only works with named curves, but we need the
+ * explicit parameters for ECC key generation or import. */
+static const struct ec_curve curves[] =
 {
-
 	{
-		{ (unsigned char *) "\x2B\x24\x03\x03\x02\x08\x01\x01\x03", 9},	/* brainpoolP192r1 */
+		/* brainpoolP192r1 */
+		{ (unsigned char *) "\x06\x09\x2B\x24\x03\x03\x02\x08\x01\x01\x03", 11},
 		{ (unsigned char *) "\xC3\x02\xF4\x1D\x93\x2A\x36\xCD\xA7\xA3\x46\x30\x93\xD1\x8D\xB7\x8F\xCE\x47\x6D\xE1\xA8\x62\x97", 24},
 		{ (unsigned char *) "\x6A\x91\x17\x40\x76\xB1\xE0\xE1\x9C\x39\xC0\x31\xFE\x86\x85\xC1\xCA\xE0\x40\xE5\xC6\x9A\x28\xEF", 24},
 		{ (unsigned char *) "\x46\x9A\x28\xEF\x7C\x28\xCC\xA3\xDC\x72\x1D\x04\x4F\x44\x96\xBC\xCA\x7E\xF4\x14\x6F\xBF\x25\xC9", 24},
-		{ (unsigned char *) "\xC0\xA0\x64\x7E\xAA\xB6\xA4\x87\x53\xB0\x33\xC5\x6C\xB0\xF0\x90\x0A\x2F\x5C\x48\x53\x37\x5F\xD6\x14\xB6\x90\x86\x6A\xBD\x5B\xB8\x8B\x5F\x48\x28\xC1\x49\x00\x02\xE6\x77\x3F\xA2\xFA\x29\x9B\x8F", 48},
+		{ (unsigned char *) "\x04\xC0\xA0\x64\x7E\xAA\xB6\xA4\x87\x53\xB0\x33\xC5\x6C\xB0\xF0\x90\x0A\x2F\x5C\x48\x53\x37\x5F\xD6\x14\xB6\x90\x86\x6A\xBD\x5B\xB8\x8B\x5F\x48\x28\xC1\x49\x00\x02\xE6\x77\x3F\xA2\xFA\x29\x9B\x8F", 49},
 		{ (unsigned char *) "\xC3\x02\xF4\x1D\x93\x2A\x36\xCD\xA7\xA3\x46\x2F\x9E\x9E\x91\x6B\x5B\xE8\xF1\x02\x9A\xC4\xAC\xC1", 24},
 		{ (unsigned char *) "\x00\x01", 2}
 	},
 
 	{
-		{ (unsigned char *) "\x2A\x86\x48\xCE\x3D\x03\x01\x07", 8},	/* secp256r1 aka prime256v1 */
+		/* brainpoolP224r1 */
+		{ (unsigned char *) "\x06\x09\x2B\x24\x03\x03\x02\x08\x01\x01\x05", 11},
+		{ (unsigned char *) "\xD7\xC1\x34\xAA\x26\x43\x66\x86\x2A\x18\x30\x25\x75\xD1\xD7\x87\xB0\x9F\x07\x57\x97\xDA\x89\xF5\x7E\xC8\xC0\xFF", 28},
+		{ (unsigned char *) "\x68\xA5\xE6\x2C\xA9\xCE\x6C\x1C\x29\x98\x03\xA6\xC1\x53\x0B\x51\x4E\x18\x2A\xD8\xB0\x04\x2A\x59\xCA\xD2\x9F\x43", 28},
+		{ (unsigned char *) "\x25\x80\xF6\x3C\xCF\xE4\x41\x38\x87\x07\x13\xB1\xA9\x23\x69\xE3\x3E\x21\x35\xD2\x66\xDB\xB3\x72\x38\x6C\x40\x0B", 28},
+		{ (unsigned char *) "\x04\x0D\x90\x29\xAD\x2C\x7E\x5C\xF4\x34\x08\x23\xB2\xA8\x7D\xC6\x8C\x9E\x4C\xE3\x17\x4C\x1E\x6E\xFD\xEE\x12\xC0\x7D\x58\xAA\x56\xF7\x72\xC0\x72\x6F\x24\xC6\xB8\x9E\x4E\xCD\xAC\x24\x35\x4B\x9E\x99\xCA\xA3\xF6\xD3\x76\x14\x02\xCD", 57},
+		{ (unsigned char *) "\xD7\xC1\x34\xAA\x26\x43\x66\x86\x2A\x18\x30\x25\x75\xD0\xFB\x98\xD1\x16\xBC\x4B\x6D\xDE\xBC\xA3\xA5\xA7\x93\x9F", 28},
+		{ (unsigned char *) "\x00\x01", 2}
+	},
+
+	{
+		/* brainpoolP256r1 */
+		{ (unsigned char *) "\x06\x09\x2B\x24\x03\x03\x02\x08\x01\x01\x07", 11},
+		{ (unsigned char *) "\xA9\xFB\x57\xDB\xA1\xEE\xA9\xBC\x3E\x66\x0A\x90\x9D\x83\x8D\x72\x6E\x3B\xF6\x23\xD5\x26\x20\x28\x20\x13\x48\x1D\x1F\x6E\x53\x77", 32},
+		{ (unsigned char *) "\x7D\x5A\x09\x75\xFC\x2C\x30\x57\xEE\xF6\x75\x30\x41\x7A\xFF\xE7\xFB\x80\x55\xC1\x26\xDC\x5C\x6C\xE9\x4A\x4B\x44\xF3\x30\xB5\xD9", 32},
+		{ (unsigned char *) "\x26\xDC\x5C\x6C\xE9\x4A\x4B\x44\xF3\x30\xB5\xD9\xBB\xD7\x7C\xBF\x95\x84\x16\x29\x5C\xF7\xE1\xCE\x6B\xCC\xDC\x18\xFF\x8C\x07\xB6", 32},
+		{ (unsigned char *) "\x04\x8B\xD2\xAE\xB9\xCB\x7E\x57\xCB\x2C\x4B\x48\x2F\xFC\x81\xB7\xAF\xB9\xDE\x27\xE1\xE3\xBD\x23\xC2\x3A\x44\x53\xBD\x9A\xCE\x32\x62\x54\x7E\xF8\x35\xC3\xDA\xC4\xFD\x97\xF8\x46\x1A\x14\x61\x1D\xC9\xC2\x77\x45\x13\x2D\xED\x8E\x54\x5C\x1D\x54\xC7\x2F\x04\x69\x97", 65},
+		{ (unsigned char *) "\xA9\xFB\x57\xDB\xA1\xEE\xA9\xBC\x3E\x66\x0A\x90\x9D\x83\x8D\x71\x8C\x39\x7A\xA3\xB5\x61\xA6\xF7\x90\x1E\x0E\x82\x97\x48\x56\xA7", 32},
+		{ (unsigned char *) "\x00\x01", 2}
+	},
+
+	{
+		/* brainpoolP320r1 */
+		{ (unsigned char *) "\x06\x09\x2B\x24\x03\x03\x02\x08\x01\x01\x09", 11},
+		{ (unsigned char *) "\xD3\x5E\x47\x20\x36\xBC\x4F\xB7\xE1\x3C\x78\x5E\xD2\x01\xE0\x65\xF9\x8F\xCF\xA6\xF6\xF4\x0D\xEF\x4F\x92\xB9\xEC\x78\x93\xEC\x28\xFC\xD4\x12\xB1\xF1\xB3\x2E\x27", 40},
+		{ (unsigned char *) "\x3E\xE3\x0B\x56\x8F\xBA\xB0\xF8\x83\xCC\xEB\xD4\x6D\x3F\x3B\xB8\xA2\xA7\x35\x13\xF5\xEB\x79\xDA\x66\x19\x0E\xB0\x85\xFF\xA9\xF4\x92\xF3\x75\xA9\x7D\x86\x0E\xB4", 40},
+		{ (unsigned char *) "\x52\x08\x83\x94\x9D\xFD\xBC\x42\xD3\xAD\x19\x86\x40\x68\x8A\x6F\xE1\x3F\x41\x34\x95\x54\xB4\x9A\xCC\x31\xDC\xCD\x88\x45\x39\x81\x6F\x5E\xB4\xAC\x8F\xB1\xF1\xA6", 40},
+		{ (unsigned char *) "\x04\x43\xBD\x7E\x9A\xFB\x53\xD8\xB8\x52\x89\xBC\xC4\x8E\xE5\xBF\xE6\xF2\x01\x37\xD1\x0A\x08\x7E\xB6\xE7\x87\x1E\x2A\x10\xA5\x99\xC7\x10\xAF\x8D\x0D\x39\xE2\x06\x11\x14\xFD\xD0\x55\x45\xEC\x1C\xC8\xAB\x40\x93\x24\x7F\x77\x27\x5E\x07\x43\xFF\xED\x11\x71\x82\xEA\xA9\xC7\x78\x77\xAA\xAC\x6A\xC7\xD3\x52\x45\xD1\x69\x2E\x8E\xE1", 81},
+		{ (unsigned char *) "\xD3\x5E\x47\x20\x36\xBC\x4F\xB7\xE1\x3C\x78\x5E\xD2\x01\xE0\x65\xF9\x8F\xCF\xA5\xB6\x8F\x12\xA3\x2D\x48\x2E\xC7\xEE\x86\x58\xE9\x86\x91\x55\x5B\x44\xC5\x93\x11", 40},
+		{ (unsigned char *) "\x00\x01", 2}
+	},
+
+	{
+		/* prime192r1, secp192r1, ansiX9p192r1 */
+		{ (unsigned char *) "\x06\x08\x2A\x86\x48\xCE\x3D\x03\x01\x01", 10},
+		{ (unsigned char *) "\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFE\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF", 24},
+		{ (unsigned char *) "\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFE\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFC", 24},
+		{ (unsigned char *) "\x64\x21\x05\x19\xE5\x9C\x80\xE7\x0F\xA7\xE9\xAB\x72\x24\x30\x49\xFE\xB8\xDE\xEC\xC1\x46\xB9\xB1", 24},
+		{ (unsigned char *) "\x04\x18\x8D\xA8\x0E\xB0\x30\x90\xF6\x7C\xBF\x20\xEB\x43\xA1\x88\x00\xF4\xFF\x0A\xFD\x82\xFF\x10\x12\x07\x19\x2B\x95\xFF\xC8\xDA\x78\x63\x10\x11\xED\x6B\x24\xCD\xD5\x73\xF9\x77\xA1\x1E\x79\x48\x11", 49},
+		{ (unsigned char *) "\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\x99\xDE\xF8\x36\x14\x6B\xC9\xB1\xB4\xD2\x28\x31", 24},
+		{ (unsigned char *) "\x00\x01", 1}
+	},
+
+	{
+		/* prime256v1, secp256r1, ansiX9p256r1 */
+		{ (unsigned char *) "\x06\x08\x2A\x86\x48\xCE\x3D\x03\x01\x07", 10},
 		{ (unsigned char *) "\xFF\xFF\xFF\xFF\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF", 32},
 		{ (unsigned char *) "\xFF\xFF\xFF\xFF\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFC", 32},
 		{ (unsigned char *) "\x5A\xC6\x35\xD8\xAA\x3A\x93\xE7\xB3\xEB\xBD\x55\x76\x98\x86\xBC\x65\x1D\x06\xB0\xCC\x53\xB0\xF6\x3B\xCE\x3C\x3E\x27\xD2\x60\x4B", 32},
-		{ (unsigned char *) "\x6B\x17\xD1\xF2\xE1\x2C\x42\x47\xF8\xBC\xE6\xE5\x63\xA4\x40\xF2\x77\x03\x7D\x81\x2D\xEB\x33\xA0\xF4\xA1\x39\x45\xD8\x98\xC2\x96\x4F\xE3\x42\xE2\xFE\x1A\x7F\x9B\x8E\xE7\xEB\x4A\x7C\x0F\x9E\x16\x2B\xCE\x33\x57\x6B\x31\x5E\xCE\xCB\xB6\x40\x68\x37\xBF\x51\xF5", 64},
+		{ (unsigned char *) "\x04\x6B\x17\xD1\xF2\xE1\x2C\x42\x47\xF8\xBC\xE6\xE5\x63\xA4\x40\xF2\x77\x03\x7D\x81\x2D\xEB\x33\xA0\xF4\xA1\x39\x45\xD8\x98\xC2\x96\x4F\xE3\x42\xE2\xFE\x1A\x7F\x9B\x8E\xE7\xEB\x4A\x7C\x0F\x9E\x16\x2B\xCE\x33\x57\x6B\x31\x5E\xCE\xCB\xB6\x40\x68\x37\xBF\x51\xF5", 65},
 		{ (unsigned char *) "\xFF\xFF\xFF\xFF\x00\x00\x00\x00\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xBC\xE6\xFA\xAD\xA7\x17\x9E\x84\xF3\xB9\xCA\xC2\xFC\x63\x25\x51", 32},
+		{ (unsigned char *) "\x00\x01", 2}
+	},
+
+	{
+		/* prime384v1, secp384r1, ansiX9p384r1 */
+		{ (unsigned char *) "\x06\x05\x2B\x81\x04\x00\x22", 7},
+		{ (unsigned char *) "\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFE\xFF\xFF\xFF\xFF\x00\x00\x00\x00\x00\x00\x00\x00\xFF\xFF\xFF\xFF", 48},
+		{ (unsigned char *) "\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFE\xFF\xFF\xFF\xFF\x00\x00\x00\x00\x00\x00\x00\x00\xFF\xFF\xFF\xFC", 48},
+		{ (unsigned char *) "\xB3\x31\x2F\xA7\xE2\x3E\xE7\xE4\x98\x8E\x05\x6B\xE3\xF8\x2D\x19\x18\x1D\x9C\x6E\xFE\x81\x41\x12\x03\x14\x08\x8F\x50\x13\x87\x5A\xC6\x56\x39\x8D\x8A\x2E\xD1\x9D\x2A\x85\xC8\xED\xD3\xEC\x2A\xEF", 48},
+		{ (unsigned char *) "\x04\xAA\x87\xCA\x22\xBE\x8B\x05\x37\x8E\xB1\xC7\x1E\xF3\x20\xAD\x74\x6E\x1D\x3B\x62\x8B\xA7\x9B\x98\x59\xF7\x41\xE0\x82\x54\x2A\x38\x55\x02\xF2\x5D\xBF\x55\x29\x6C\x3A\x54\x5E\x38\x72\x76\x0A\xB7\x36\x17\xDE\x4A\x96\x26\x2C\x6F\x5D\x9E\x98\xBF\x92\x92\xDC\x29\xF8\xF4\x1D\xBD\x28\x9A\x14\x7C\xE9\xDA\x31\x13\xB5\xF0\xB8\xC0\x0A\x60\xB1\xCE\x1D\x7E\x81\x9D\x7A\x43\x1D\x7C\x90\xEA\x0E\x5F", 97},
+		{ (unsigned char *) "\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xC7\x63\x4D\x81\xF4\x37\x2D\xDF\x58\x1A\x0D\xB2\x48\xB0\xA7\x7A\xEC\xEC\x19\x6A\xCC\xC5\x29\x73", 48},
 		{ (unsigned char *) "\x00\x01", 2}
 	},
 
@@ -117,7 +175,8 @@ isoApplet_select_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
                                sc_pkcs15_auth_info_t *auth_info)
 {
 	sc_card_t *card = p15card->card;
-	int		preferred, current;
+	int	preferred;
+	int current;
 
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -208,155 +267,37 @@ isoApplet_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t
 }
 
 /*
- * @brief Get the OID of the curve specified by a curve name.
+ * @brief Get the curve parameters associated with the curve specified by an OID.
  *
- * @param[in] named_curve 	The name of the curve to search the OID of.
- *							Supported values are: brainpoolP192r1, prime256v1.
- * @param[out] oid			The OID of the curve.
+ * @param[in]	oid			The DER encoded OID of the curve.
+ * @param[in]	oid_len		The length of oid.
+ * @param[out]	curve_out	The ec_curve containing the set of parameters.
  *
  * @returns	SC_SUCCESS: If the curve was found.
  *			SC_ERROR_INVALID_ARGUMENTS: If named_curve was null or the curve
  *										was not found
  */
 static int
-isoApplet_get_curve_oid(const char* named_curve, const struct sc_lv_data **oid)
+isoApplet_get_curve(u8 *oid, size_t oid_len, const struct ec_curve **curve_out)
 {
-	if(!named_curve)
+	int i;
+
+	if(!oid)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
-	if(strncmp(named_curve, "brainpoolP192r1", 15) == 0)
+	/* Search the curve parameters. */
+	for (i = 0; curves[i].oid.value; i++)
 	{
-		*oid = &curves[0].oid;
-		return SC_SUCCESS;
+		if (oid_len == curves[i].oid.len && memcmp(oid, curves[i].oid.value, curves[i].oid.len) == 0)
+		{
+			*curve_out = &curves[i];
+			return SC_SUCCESS;
+		}
 	}
-	else if(strncmp(named_curve, "prime256v1", 10) == 0)
-	{
-		*oid = &curves[1].oid;
-		return SC_SUCCESS;
-	}
+
 	return SC_ERROR_INVALID_ARGUMENTS;
 }
 
-/*
- * @brief Check the consistency of TLV-encoded EC curve parameters.
- *
- * Check the EC params in buf (length: len) that are structured according
- * to ISO 7816-8 table 3 - Public key data objects.
- * The params are compared with the ones given in the curve struct.
- *
- * @param[in] ctx
- * @param[in] buf	The buffer containing the TLV-encoded (ISO 7816-8 table 3)
- *					EC parameters.
- * @param[in] len 	The length of buf.
- * @param[in] curve	An ec_curve struct that should be used to check the
- *					parameters in buf.
- *
- * @return	SC_SUCCESS: If the EC parameters are consistent.
- *			SC_ERROR_INCOMPATIBLE_KEY: If the curve is unknown or the EC
- *										parameters are not consistent.
- */
-static int
-checkEcParams(sc_context_t* ctx, const u8* buf, size_t len, const struct ec_curve curve)
-{
-	const u8 *curr_pos = NULL;
-	size_t tag_len;
-	int r = SC_SUCCESS;
-
-	LOG_FUNC_CALLED(ctx);
-
-	/* Check the field. */
-	curr_pos = sc_asn1_find_tag(ctx, buf, len, (unsigned int) 0x81, &tag_len);
-	if(curr_pos == NULL || tag_len != curve.prime.len)
-	{
-		r = SC_ERROR_INCOMPATIBLE_KEY;
-		LOG_TEST_RET(ctx, r,
-		             "Could not find any EC field tag in the response template or the length was unexpected.");
-	}
-	if(memcmp(curr_pos, curve.prime.value, curve.prime.len) != 0)
-	{
-		r = SC_ERROR_INCOMPATIBLE_KEY;
-		LOG_TEST_RET(ctx, r,
-		             "The EC field by the smartcard was unexpected.");
-	}
-
-	/* Check the coefficient A. */
-	curr_pos = sc_asn1_find_tag(ctx, buf, len, (unsigned int) 0x82, &tag_len);
-	if(curr_pos == NULL || tag_len != curve.coefficientA.len)
-	{
-		r = SC_ERROR_INCOMPATIBLE_KEY;
-		LOG_TEST_RET(ctx, r,
-		             "Could not find any EC coefficient A tag in the response template or the length was unexpected.");
-	}
-	if(memcmp(curr_pos, curve.coefficientA.value, curve.coefficientA.len) != 0)
-	{
-		r = SC_ERROR_INCOMPATIBLE_KEY;
-		LOG_TEST_RET(ctx, r,
-		             "The EC coefficient A returned by the smartcard was unexpected.");
-	}
-
-	/* Check the coefficient B. */
-	curr_pos = sc_asn1_find_tag(ctx, buf, len, (unsigned int) 0x83, &tag_len);
-	if(curr_pos == NULL || tag_len != curve.coefficientB.len)
-	{
-		r = SC_ERROR_INCOMPATIBLE_KEY;
-		LOG_TEST_RET(ctx, r,
-		             "Could not find any EC coefficient B tag in the response template or the length was unexpected.");
-	}
-	if(memcmp(curr_pos, curve.coefficientB.value, curve.coefficientB.len) != 0)
-	{
-		r = SC_ERROR_INCOMPATIBLE_KEY;
-		LOG_TEST_RET(ctx, r,
-		             "The EC coefficient B returned by the smartcard was unexpected.");
-	}
-
-	/* Check the basepoint G.
-	 * Note: The IsoApplet omits the 0x04 (uncompressed) tag. */
-	curr_pos = sc_asn1_find_tag(ctx, buf, len, (unsigned int) 0x84, &tag_len);
-	if(curr_pos == NULL || tag_len != curve.basePointG.len)
-	{
-		r = SC_ERROR_INCOMPATIBLE_KEY;
-		LOG_TEST_RET(ctx, r,
-		             "Could not find any EC basepoint G tag in the response template or the length was unexpected.");
-	}
-	if(memcmp(curr_pos, curve.basePointG.value, curve.basePointG.len) != 0)
-	{
-		r = SC_ERROR_INCOMPATIBLE_KEY;
-		LOG_TEST_RET(ctx, r,
-		             "The EC basepoint G returned by the smartcard was unexpected.");
-	}
-
-	/* Check the order. */
-	curr_pos = sc_asn1_find_tag(ctx, buf, len, (unsigned int) 0x85, &tag_len);
-	if(curr_pos == NULL || tag_len != curve.order.len)
-	{
-		r = SC_ERROR_INCOMPATIBLE_KEY;
-		LOG_TEST_RET(ctx, r,
-		             "Could not find any EC order tag in the response template or the length was unexpected.");
-	}
-	if(memcmp(curr_pos, curve.order.value, curve.order.len) != 0)
-	{
-		r = SC_ERROR_INCOMPATIBLE_KEY;
-		LOG_TEST_RET(ctx, r,
-		             "The EC order returned by the smartcard was unexpected.");
-	}
-
-	/* Check the coFactor. */
-	curr_pos = sc_asn1_find_tag(ctx, buf, len, (unsigned int) 0x87, &tag_len);
-	if(curr_pos == NULL || tag_len != curve.coFactor.len)
-	{
-		r = SC_ERROR_INCOMPATIBLE_KEY;
-		LOG_TEST_RET(ctx, r,
-		             "Could not find any EC cofactor tag in the response template or the length was unexpected.");
-	}
-	if(memcmp(curr_pos, curve.coFactor.value, curve.coFactor.len) != 0)
-	{
-		r = SC_ERROR_INCOMPATIBLE_KEY;
-		LOG_TEST_RET(ctx, r,
-		             "The EC cofactor returned by the smartcards was unexpected.");
-	}
-
-	LOG_FUNC_RETURN(ctx, r);
-}
 
 /*
  * @brief Generate a RSA private key on the card.
@@ -373,8 +314,8 @@ checkEcParams(sc_context_t* ctx, const u8* buf, size_t len, const struct ec_curv
  *			SC_ERROR_OUT_OF_MEMORY
  */
 static int
-generate_key_rsa(sc_pkcs15_prkey_info_t *key_info, sc_card_t *card,
-                 sc_pkcs15_pubkey_t *pubkey)
+isoApplet_generate_key_rsa(sc_pkcs15_prkey_info_t *key_info, sc_card_t *card,
+                           sc_pkcs15_pubkey_t *pubkey)
 {
 	int rv;
 	size_t keybits;
@@ -392,23 +333,23 @@ generate_key_rsa(sc_pkcs15_prkey_info_t *key_info, sc_card_t *card,
 	}
 
 	/* Generate the key.
-	 * Note: keysize is not explicitly passed to the card. It assumes 2048 along with the algorithm reference. */
+	 * Note: key size is not explicitly passed to the card. It assumes 2048 along with the algorithm reference. */
 	memset(&args, 0, sizeof(args));
 	args.algorithm_ref = SC_ISOAPPLET_ALG_REF_RSA_GEN_2048;
 	args.priv_key_ref = key_info->key_reference;
 
-	args.pubkey_len = keybits / 8;
-	args.pubkey = malloc(args.pubkey_len);
-	if (!args.pubkey)
+	args.pubkey.rsa.modulus.len = keybits / 8;
+	args.pubkey.rsa.modulus.value = malloc(args.pubkey.rsa.modulus.len);
+	if (!args.pubkey.rsa.modulus.value)
 	{
 		rv = SC_ERROR_OUT_OF_MEMORY;
 		sc_log(card->ctx, "%s: Unable to allocate public key buffer.", sc_strerror(rv));
 		goto err;
 	}
 
-	args.exponent_len = 3;
-	args.exponent = malloc(args.exponent_len);
-	if(!args.exponent)
+	args.pubkey.rsa.exponent.len = 3;
+	args.pubkey.rsa.exponent.value = malloc(args.pubkey.rsa.exponent.len);
+	if(!args.pubkey.rsa.exponent.value)
 	{
 		rv = SC_ERROR_OUT_OF_MEMORY;
 		sc_log(card->ctx, "%s: Unable to allocate public key exponent buffer.", sc_strerror(rv));
@@ -422,24 +363,24 @@ generate_key_rsa(sc_pkcs15_prkey_info_t *key_info, sc_card_t *card,
 		goto err;
 	}
 
-	/* extract public key */
+	/* extract the public key */
 	pubkey->algorithm = SC_ALGORITHM_RSA;
-	pubkey->u.rsa.modulus.len   = args.pubkey_len;
-	pubkey->u.rsa.modulus.data  = args.pubkey;
-	pubkey->u.rsa.exponent.len  = args.exponent_len;
-	pubkey->u.rsa.exponent.data = args.exponent;
+	pubkey->u.rsa.modulus.len	= args.pubkey.rsa.modulus.len;
+	pubkey->u.rsa.modulus.data	= args.pubkey.rsa.modulus.value;
+	pubkey->u.rsa.exponent.len	= args.pubkey.rsa.exponent.len;
+	pubkey->u.rsa.exponent.data	= args.pubkey.rsa.exponent.value;
 	rv = SC_SUCCESS;
 	LOG_FUNC_RETURN(card->ctx, rv);
 err:
-	if (args.pubkey)
+	if (args.pubkey.rsa.modulus.value)
 	{
-		free(args.pubkey);
+		free(args.pubkey.rsa.modulus.value);
 		pubkey->u.rsa.modulus.data = NULL;
 		pubkey->u.rsa.modulus.len = 0;
 	}
-	if (args.exponent)
+	if (args.pubkey.rsa.exponent.value)
 	{
-		free(args.exponent);
+		free(args.pubkey.rsa.exponent.value);
 		pubkey->u.rsa.exponent.data = NULL;
 		pubkey->u.rsa.exponent.len = 0;
 	}
@@ -452,10 +393,10 @@ err:
  * A MANAGE SECURITY ENVIRONMENT apdu must have been sent before.
  * This function uses card_ctl to access the card-isoApplet driver.
  *
- * @param[in]	key_info
- * @param[in]	card
- * @param[in]	pubkey	The public key of the generated key pair
- *						returned by the card.
+ * @param[in]		key_info
+ * @param[in]		card
+ * @param[in/out]	pubkey	The public key of the generated key pair
+ *							returned by the card.
  *
  * @return	SC_ERROR_INVALID_ARGURMENTS: Invalid key length or curve.
  *			SC_ERROR_OUT_OF_MEMORY
@@ -464,199 +405,127 @@ err:
  *										handled.
  */
 static int
-generate_key_ec(const sc_pkcs15_prkey_info_t *key_info, sc_card_t *card,
-                sc_pkcs15_pubkey_t *pubkey)
+isoApplet_generate_key_ec(const sc_pkcs15_prkey_info_t *key_info, sc_card_t *card,
+                          sc_pkcs15_pubkey_t *pubkey)
 {
-	int		r;
-	u8*		p = NULL;
-	u8* 	ecPubKeyPoint = NULL;
-	size_t 	tag_len;
-	size_t 	all_tags_len;
-	const u8*					curr_pos = NULL;
-	struct sc_ec_params*		ecp = NULL;
-	const struct sc_lv_data*	oid = NULL;
-	sc_cardctl_isoApplet_genkey_t			args;
-	const struct sc_pkcs15_ec_parameters*	info_ecp =
+	int	r;
+	const struct ec_curve *curve = NULL;
+	struct sc_ec_params *alg_id_params = NULL;
+	sc_cardctl_isoApplet_genkey_t args;
+	const struct sc_pkcs15_ec_parameters *info_ecp =
 	    (struct sc_pkcs15_ec_parameters *) key_info->params.data;
 
 	LOG_FUNC_CALLED(card->ctx);
 
 	/* Check key size: */
-	if(key_info->field_length != 192
-	        && key_info->field_length != 256)
+	if(key_info->field_length == 0)
 	{
-		sc_log(card->ctx, "EC field length is unsupported, length provided was: %d.", key_info->field_length);
+		sc_log(card->ctx, "Unknown field length.");
 		r = SC_ERROR_INVALID_ARGUMENTS;
-		goto err;
+		goto out;
 	}
 
-	if(info_ecp->named_curve && strncmp(info_ecp->named_curve, "brainpoolP192r1", 15) != 0
-	        && strncmp(info_ecp->named_curve, "prime256v1", 10) != 0)
+	r = isoApplet_get_curve(info_ecp->der.value, info_ecp->der.len, &curve);
+	if(r < 0)
 	{
 		sc_log(card->ctx, "EC key generation failed: Unsupported curve: [%s].", info_ecp->named_curve);
-		r = SC_ERROR_INVALID_ARGUMENTS;
-		goto err;
+		goto out;
 	}
 
 	/* Generate the key.
-	 * Note: THe field size is not explicitly passed to the card.
-	 *		 It assumes it along with the algorithm reference. */
+	 * Note: The field size is not explicitly passed to the card.
+	 *		 As we only support FP curves, the field length can be calculated from any parameter. */
 	memset(&args, 0, sizeof(args));
 
-	args.pubkey_len = 512;
-	args.pubkey = malloc(args.pubkey_len);
-	if(!args.pubkey)
+	args.pubkey.ec.params.prime.value			= curve->prime.value;
+	args.pubkey.ec.params.prime.len				= curve->prime.len;
+	args.pubkey.ec.params.coefficientA.value	= curve->coefficientA.value;
+	args.pubkey.ec.params.coefficientA.len		= curve->coefficientA.len;
+	args.pubkey.ec.params.coefficientB.value	= curve->coefficientB.value;
+	args.pubkey.ec.params.coefficientB.len		= curve->coefficientB.len;
+	args.pubkey.ec.params.basePointG.value 		= curve->basePointG.value;
+	args.pubkey.ec.params.basePointG.len		= curve->basePointG.len;
+	args.pubkey.ec.params.order.value 			= curve->order.value;
+	args.pubkey.ec.params.order.len				= curve->order.len;
+	args.pubkey.ec.params.coFactor.value 		= curve->coFactor.value;
+	args.pubkey.ec.params.coFactor.len			= curve->coFactor.len;
+	/* The length of the public key point will be:
+	 * Uncompressed tag + 2 * field length in bytes. */
+	args.pubkey.ec.ecPointQ.len = 1 + 2 * key_info->field_length / 8;
+	args.pubkey.ec.ecPointQ.value = malloc(args.pubkey.ec.ecPointQ.len);
+	if(!args.pubkey.ec.ecPointQ.value)
 	{
 		r = SC_ERROR_OUT_OF_MEMORY;
-		sc_log(card->ctx, "%s: Unable to allocate public key buffer.", sc_strerror(r));
-		goto err;
+		goto out;
 	}
 
-	if(strncmp(info_ecp->named_curve, "brainpoolP192r1", 15) == 0)
-	{
-		args.algorithm_ref = SC_ISOAPPLET_ALG_REF_EC_GEN_BRAINPOOLP192R1;
-	}
-	else if(strncmp(info_ecp->named_curve, "prime256v1", 10) == 0)
-	{
-		args.algorithm_ref = SC_ISOAPPLET_ALG_REF_EC_GEN_PRIME256V1;
-	}
+	args.algorithm_ref = SC_ISOAPPLET_ALG_REF_EC_GEN;
 	args.priv_key_ref = key_info->key_reference;
 
+	/* On-card key generation */
 	r = sc_card_ctl(card, SC_CARDCTL_ISOAPPLET_GENERATE_KEY, &args);
 	if (r < 0)
 	{
 		sc_log(card->ctx, "%s: Error in card_ctl.", sc_strerror(r));
-		goto err;
+		goto out;
 	}
 
-	/* Extract the public key. */
+	/* Extract and compose the public key. */
 	pubkey->algorithm = SC_ALGORITHM_EC;
 
-	/* Get the curves OID. */
-	r = isoApplet_get_curve_oid(info_ecp->named_curve, &oid);
-	if(r < 0)
-	{
-		sc_log(card->ctx, "Error obtaining the curve OID.", sc_strerror(r));
-		goto err;
-	}
-
 	/* der-encoded parameters */
-	ecp = calloc(1, sizeof(struct sc_ec_params));
-	if(!ecp)
+	alg_id_params = calloc(1, sizeof(*alg_id_params));
+	if(!alg_id_params)
 	{
 		r = SC_ERROR_OUT_OF_MEMORY;
-		goto err;
+		goto out;
 	}
-	ecp->der_len = oid->len + 2;
-	ecp->der = calloc(ecp->der_len, 1);
-	if(!ecp->der)
+	alg_id_params->der_len = curve->oid.len;
+	alg_id_params->der = malloc(alg_id_params->der_len);
+	if(!alg_id_params->der)
 	{
 		r = SC_ERROR_OUT_OF_MEMORY;
-		sc_log(card->ctx, "%s: Unable to allocate public key buffer.", sc_strerror(r));
-		goto err;
+		goto out;
 	}
-	ecp->der[0] = 0x06;
-	ecp->der[1] = (u8)oid->len;
-	memcpy(ecp->der + 2, oid->value, oid->len);
-	ecp->type = 1; /* named curve */
+	memcpy(alg_id_params->der, curve->oid.value, curve->oid.len);
+	alg_id_params->type = 1; /* named curve */
 
-	pubkey->alg_id = (struct sc_algorithm_id *)calloc(1, sizeof(struct sc_algorithm_id));
+	pubkey->alg_id = malloc(sizeof(*pubkey->alg_id));
 	if(!pubkey->alg_id)
 	{
 		r = SC_ERROR_OUT_OF_MEMORY;
-		sc_log(card->ctx, "%s: Unable to allocate public key sc_algorithm_id.", sc_strerror(r));
-		goto err;
+		goto out;
 	}
 	pubkey->alg_id->algorithm = SC_ALGORITHM_EC;
-	pubkey->alg_id->params = ecp;
-
-	p = args.pubkey;
-	if(memcmp(info_ecp->named_curve, "brainpoolP192r1", 15) == 0)
-	{
-		/* The applet returns the public key encoded according to
-		 * ISO 7816-8 table 3 - Public key data objects. This is a
-		 * 2-byte tag. A length of 0xD0 = 208 is expected for BrainpoolP192r1. */
-		if(memcmp(p, "\x7F\x49\x81\xD0", 4) != 0)
-		{
-			r = SC_ERROR_INCOMPATIBLE_KEY;
-			sc_log(card->ctx, "%s: Key generation error: Unexpected EC public key received length.", sc_strerror(r));
-			goto err;
-		}
-		else
-		{
-			p += 4; /* p points to the value field of the outer (7F 49) tag.
-					 * This value field is a TLV-structure again. */
-			all_tags_len = 208; /* 0xD0 bytes */
-		}
-
-		/* Check EC params. */
-		r = checkEcParams(card->ctx, p, all_tags_len, curves[0]);
-		if(r != SC_SUCCESS)
-		{
-			goto err;
-		}
-	}
-	else if(memcmp(info_ecp->named_curve, "prime256v1", 10) == 0)
-	{
-		/* The applet returns the public key encoded according to
-		 * ISO 7816-8 table 3 - Public key data objects. This is a
-		 * 2-byte tag. A length of 0x011A = 282 is expected for Prime256v1. */
-		if(memcmp(p, "\x7F\x49\x82\x01\x1A", 5) != 0)
-		{
-			r = SC_ERROR_INCOMPATIBLE_KEY;
-			sc_log(card->ctx, "%s: Key generation error: Unexpected EC public key parameters.", sc_strerror(r));
-			goto err;
-		}
-		else
-		{
-			p += 5; /* p points to the value field of the outer (7F 49) tag.
-					 * This value field is a TLV-structure again. */
-			all_tags_len = 282; /* 0x011A bytes */
-		}
-
-		/* Check EC params. */
-		r = checkEcParams(card->ctx, p, all_tags_len, curves[1]);
-		if(r != SC_SUCCESS)
-		{
-			goto err;
-		}
-	}
+	pubkey->alg_id->params = alg_id_params;
 
 	/* Extract ecpointQ */
-	curr_pos = sc_asn1_find_tag(card->ctx, p, all_tags_len, (unsigned int) 0x86, &tag_len);
-	if(curr_pos == NULL || tag_len == 0)
-	{
-		r = SC_ERROR_INCOMPATIBLE_KEY;
-		sc_log(card->ctx, "%s: Could not find any EC pointQ tag in the response template.", sc_strerror(r));
-		goto err;
-	}
-	ecPubKeyPoint = malloc(tag_len+1);
-	if(!ecPubKeyPoint)
+	pubkey->u.ec.ecpointQ.len = args.pubkey.ec.ecPointQ.len;
+	pubkey->u.ec.ecpointQ.value = malloc(pubkey->u.ec.ecpointQ.len);
+	if(!pubkey->u.ec.ecpointQ.value)
 	{
 		r = SC_ERROR_OUT_OF_MEMORY;
-		sc_log(card->ctx, "%s: Unable to allocate public key ecpointQ buffer.", sc_strerror(r));
-		goto err;
+		goto out;
 	}
-	*ecPubKeyPoint = 0x04; /* uncompressed */
-	memcpy(ecPubKeyPoint+1, curr_pos, tag_len);
-	pubkey->u.ec.ecpointQ.value = ecPubKeyPoint;
-	pubkey->u.ec.ecpointQ.len = tag_len+1;
+	memcpy(pubkey->u.ec.ecpointQ.value, args.pubkey.ec.ecPointQ.value, args.pubkey.ec.ecPointQ.len);
 
-	/* OID for the public key */
-	pubkey->u.ec.params.der.value = malloc(ecp->der_len);
+	/* The OID is also written to the pubkey->u.ec.params */
+	pubkey->u.ec.params.der.value = malloc(alg_id_params->der_len);
 	if(!pubkey->u.ec.params.der.value)
 	{
 		r = SC_ERROR_OUT_OF_MEMORY;
-		sc_log(card->ctx, "%s: Unable to allocate public key ec params buffer.", sc_strerror(r));
-		goto err;
+		goto out;
 	}
-	memcpy(pubkey->u.ec.params.der.value, ecp->der, ecp->der_len);
-	pubkey->u.ec.params.der.len = ecp->der_len;
-
+	memcpy(pubkey->u.ec.params.der.value, alg_id_params->der, alg_id_params->der_len);
+	pubkey->u.ec.params.der.len = alg_id_params->der_len;
 	r = sc_pkcs15_fix_ec_parameters(card->ctx, &pubkey->u.ec.params);
-	LOG_FUNC_RETURN(card->ctx, r);
-err:
-	if(pubkey)
+out:
+	if(args.pubkey.ec.ecPointQ.value)
+	{
+		free(args.pubkey.ec.ecPointQ.value);
+		args.pubkey.ec.ecPointQ.value = NULL;
+	}
+	if(r < 0 && pubkey)
 	{
 		if(pubkey->alg_id)
 		{
@@ -669,28 +538,23 @@ err:
 			pubkey->u.ec.params.der.value = NULL;
 			pubkey->u.ec.params.der.len = 0;
 		}
+		if(r < 0 && pubkey->u.ec.ecpointQ.value)
+		{
+			free(pubkey->u.ec.ecpointQ.value);
+			pubkey->u.ec.ecpointQ.value = NULL;
+			pubkey->u.ec.ecpointQ.len = 0;
+		}
 		memset(pubkey, 0, sizeof(sc_pkcs15_pubkey_t));
 	}
-	if(args.pubkey)
+	if(r < 0 && alg_id_params)
 	{
-		free(args.pubkey);
-		args.pubkey = NULL;
-		args.pubkey_len = 0;
-	}
-	if(ecPubKeyPoint)
-	{
-		free(ecPubKeyPoint);
-		ecPubKeyPoint = NULL;
-	}
-	if(ecp)
-	{
-		if(ecp->der)
+		if(alg_id_params->der)
 		{
-			free(ecp->der);
-			ecp->der = NULL;
+			free(alg_id_params->der);
+			alg_id_params->der = NULL;
 		}
-		free(ecp);
-		ecp = NULL;
+		free(alg_id_params);
+		pubkey->alg_id->params = NULL;
 	}
 	LOG_FUNC_RETURN(card->ctx, r);
 }
@@ -700,10 +564,10 @@ isoApplet_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
                        sc_pkcs15_object_t *obj,
                        sc_pkcs15_pubkey_t *pubkey)
 {
-	int			 r;
-	sc_pkcs15_prkey_info_t* key_info = (sc_pkcs15_prkey_info_t *) obj->data;
-	sc_file_t*		privKeyFile=NULL;
-	sc_card_t*		card = p15card->card;
+	int r;
+	sc_pkcs15_prkey_info_t *key_info = (sc_pkcs15_prkey_info_t *) obj->data;
+	sc_file_t *privKeyFile=NULL;
+	sc_card_t *card = p15card->card;
 
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -725,11 +589,11 @@ isoApplet_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	switch(obj->type)
 	{
 	case SC_PKCS15_TYPE_PRKEY_RSA:
-		r = generate_key_rsa(key_info, card, pubkey);
+		r = isoApplet_generate_key_rsa(key_info, card, pubkey);
 		break;
 
 	case SC_PKCS15_TYPE_PRKEY_EC:
-		r = generate_key_ec(key_info, card, pubkey);
+		r = isoApplet_generate_key_ec(key_info, card, pubkey);
 		break;
 
 	default:
@@ -783,11 +647,10 @@ isoApplet_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_pkcs15_
                     sc_pkcs15_prkey_t *key)
 {
 	sc_card_t *card = p15card->card;
-	sc_pkcs15_prkey_info_t* key_info = (sc_pkcs15_prkey_info_t *) object->data;
-	sc_file_t*			  privKeyFile=NULL;
+	sc_pkcs15_prkey_info_t *key_info = (sc_pkcs15_prkey_info_t *) object->data;
+	sc_file_t *privKeyFile=NULL;
 	sc_cardctl_isoApplet_import_key_t args;
 	int r;
-	char *p = NULL;
 
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -810,30 +673,58 @@ isoApplet_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_pkcs15_
 	{
 	case SC_PKCS15_TYPE_PRKEY_RSA:
 		args.algorithm_ref = SC_ISOAPPLET_ALG_REF_RSA_GEN_2048;
+		if(!key->u.rsa.p.data
+		        ||!key->u.rsa.q.data
+		        ||!key->u.rsa.iqmp.data
+		        ||!key->u.rsa.dmp1.data
+		        ||!key->u.rsa.dmq1.data)
+		{
+			LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS, "Only CRT RSA keys may be imported.");
+		}
+		args.privkey.rsa.p.value	= key->u.rsa.p.data;
+		args.privkey.rsa.p.len		= key->u.rsa.p.len;
+		args.privkey.rsa.q.value	= key->u.rsa.q.data;
+		args.privkey.rsa.q.len		= key->u.rsa.q.len;
+		args.privkey.rsa.iqmp.value	= key->u.rsa.iqmp.data;
+		args.privkey.rsa.iqmp.len	= key->u.rsa.iqmp.len;
+		args.privkey.rsa.dmp1.value	= key->u.rsa.dmp1.data;
+		args.privkey.rsa.dmp1.len	= key->u.rsa.dmp1.len;
+		args.privkey.rsa.dmq1.value	= key->u.rsa.dmq1.data;
+		args.privkey.rsa.dmq1.len	= key->u.rsa.dmq1.len;
 		break;
 
 	case SC_PKCS15_TYPE_PRKEY_EC:
-		p = key->u.ec.params.named_curve;
-		if(!p)
-		{
-			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
-		}
+	{
+		const struct ec_curve *curve = NULL;
 
-		if(strncmp(p, "brainpoolP192r1", 15) == 0)
+		args.algorithm_ref = SC_ISOAPPLET_ALG_REF_EC_GEN;
+		if(!key->u.ec.params.named_curve)
 		{
-			args.algorithm_ref = SC_ISOAPPLET_ALG_REF_EC_GEN_BRAINPOOLP192R1;
+			LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS, "Unspecified curve / no curve name.");
 		}
-		else if(strncmp(p, "prime256v1", 10) == 0)
-		{
-			args.algorithm_ref = SC_ISOAPPLET_ALG_REF_EC_GEN_PRIME256V1;
-		}
-		break;
+		r = isoApplet_get_curve(key->u.ec.params.der.value, key->u.ec.params.der.len, &curve);
+		LOG_TEST_RET(card->ctx, r, "EC key generation failed: Unsupported curve");
+		args.privkey.ec.params.prime.value			= curve->prime.value;
+		args.privkey.ec.params.prime.len			= curve->prime.len;
+		args.privkey.ec.params.coefficientA.value	= curve->coefficientA.value;
+		args.privkey.ec.params.coefficientA.len		= curve->coefficientA.len;
+		args.privkey.ec.params.coefficientB.value	= curve->coefficientB.value;
+		args.privkey.ec.params.coefficientB.len		= curve->coefficientB.len;
+		args.privkey.ec.params.basePointG.value		= curve->basePointG.value;
+		args.privkey.ec.params.basePointG.len		= curve->basePointG.len;
+		args.privkey.ec.params.order.value			= curve->order.value;
+		args.privkey.ec.params.order.len			= curve->order.len;
+		args.privkey.ec.params.coFactor.value		= curve->coFactor.value;
+		args.privkey.ec.params.coFactor.len			= curve->coFactor.len;
+		args.privkey.ec.privateD.value				= key->u.ec.privateD.data;
+		args.privkey.ec.privateD.len				= key->u.ec.privateD.len;
+	}
+	break;
 
 	default:
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 	}
 	args.priv_key_ref = key_info->key_reference;
-	args.prkey = key;
 
 	r = sc_card_ctl(card, SC_CARDCTL_ISOAPPLET_IMPORT_KEY, &args);
 	if (r < 0)

@@ -969,24 +969,53 @@ typedef struct sc_cardctl_sc_hsm_wrapped_key {
  */
 
 #define SC_ISOAPPLET_ALG_REF_RSA_GEN_2048 0xF3
-#define SC_ISOAPPLET_ALG_REF_EC_GEN_BRAINPOOLP192R1 0xE0
-#define SC_ISOAPPLET_ALG_REF_EC_GEN_PRIME256V1 0xE1
+#define SC_ISOAPPLET_ALG_REF_EC_GEN 0xEC
+
+typedef struct sc_cardctl_isoApplet_ec_parameters {
+	struct sc_lv_data prime;
+	struct sc_lv_data coefficientA;
+	struct sc_lv_data coefficientB;
+	struct sc_lv_data basePointG;
+	struct sc_lv_data order;
+	struct sc_lv_data coFactor;
+} sc_cardctl_isoApplet_ec_parameters_t;
 
 typedef struct sc_cardctl_isoApplet_genkey {
 	u8 algorithm_ref;			/* Algorithm reference sent to card */
-	unsigned char *exponent;	/* RSA public key exponent */
-	unsigned int exponent_len;	
 	unsigned int priv_key_ref;	/* Private key refernce sent to card */
-	unsigned char *pubkey;		/* RSA public key modulus (or EC tlv-encoded public key) */
-	unsigned int pubkey_len;
+	union {
+		struct
+		{
+			struct sc_lv_data modulus;
+			struct sc_lv_data exponent;
+		} rsa;
+		struct
+		{
+			sc_cardctl_isoApplet_ec_parameters_t params;
+			struct sc_lv_data ecPointQ;
+		} ec;
+	} pubkey;
 } sc_cardctl_isoApplet_genkey_t;
 
 typedef struct sc_cardctl_isoApplet_import_key {
-	u8 algorithm_ref;			/*Algorithm reference sent to card */
+	u8 algorithm_ref;			/* Algorithm reference sent to card */
 	unsigned int priv_key_ref;	/* Private key refernce sent to card */
-	struct sc_pkcs15_prkey *prkey;
+	union {
+		struct
+		{
+			struct sc_lv_data p;
+			struct sc_lv_data q;
+			struct sc_lv_data iqmp;
+			struct sc_lv_data dmp1;
+			struct sc_lv_data dmq1;
+		} rsa;
+		struct
+		{
+			sc_cardctl_isoApplet_ec_parameters_t params;
+			struct sc_lv_data privateD;
+		} ec;
+	} privkey;
 } sc_cardctl_isoApplet_import_key_t;
-
 
 #ifdef __cplusplus
 }
