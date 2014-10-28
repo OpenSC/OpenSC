@@ -216,16 +216,8 @@ isoApplet_init(sc_card_t *card)
 	flags = 0;
 	/* Padding schemes: */
 	flags |= SC_ALGORITHM_RSA_PAD_PKCS1;
-	/* Hashes: */
+	/* Hashes are to be done by the host for RSA */
 	flags |= SC_ALGORITHM_RSA_HASH_NONE;
-	flags |= SC_ALGORITHM_RSA_HASH_SHA1;
-	flags |= SC_ALGORITHM_RSA_HASH_MD5;
-	flags |= SC_ALGORITHM_RSA_HASH_MD5_SHA1;
-	flags |= SC_ALGORITHM_RSA_HASH_SHA224;
-	flags |= SC_ALGORITHM_RSA_HASH_SHA256;
-	flags |= SC_ALGORITHM_RSA_HASH_SHA384;
-	flags |= SC_ALGORITHM_RSA_HASH_SHA512;
-	flags |= SC_ALGORITHM_RSA_HASH_RIPEMD160;
 	/* Key-generation: */
 	flags |= SC_ALGORITHM_ONBOARD_KEY_GEN;
 	/* Modulus lengths: */
