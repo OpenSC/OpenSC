@@ -1240,8 +1240,9 @@ isoApplet_compute_signature(struct sc_card *card,
 		xlen = *p++;
 		if(xlen > outlen - (p - out))
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_BUFFER_TOO_SMALL);
-		/* Java Cards might return a leading zero, which needs to be stripped. */
-		if(*p == 0x00)
+		/* Java Cards might return a leading zero, 
+		 * which needs to be stripped when not using the ASN1 structural information. */
+		if(*p == 0x00 && (xlen == 192/8+1 || xlen == 224/8+1 || xlen == 256/8+1 || xlen == 320/8+1 || xlen == 384/8+1))
 		{
 			p++;
 			xlen--;
@@ -1255,8 +1256,9 @@ isoApplet_compute_signature(struct sc_card *card,
 		ylen = *p++;
 		if(ylen > outlen - (p - out))
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_BUFFER_TOO_SMALL);
-		/* Java Cards might return a leading zero, which needs to be stripped. */
-		if(*p == 0x00)
+		/* Java Cards might return a leading zero, 
+		 * which needs to be stripped when not using the ASN1 structural information. */
+		if(*p == 0x00 && (ylen == 192/8+1 || ylen == 224/8+1 || ylen == 256/8+1 || ylen == 320/8+1 || ylen == 384/8+1))
 		{
 			p++;
 			ylen--;
