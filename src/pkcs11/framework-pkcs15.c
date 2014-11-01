@@ -1217,10 +1217,15 @@ _add_public_objects(struct sc_pkcs11_slot *slot, struct pkcs15_fw_data *fw_data,
 		/* Ignore seen object */
 		if (obj->base.flags & SC_PKCS11_OBJECT_SEEN)
 			continue;
-		/* Ignore 'private' object and the ones with 'auth_id' defined */
+		/* Ignore 'private' object */
 		if (obj->p15_object->flags & SC_PKCS15_CO_FLAG_PRIVATE)
 			continue;
-		if (obj->p15_object->auth_id.len)
+		/* PKCS#15 4.1.3 is a little vague, but implies if not PRIVATE it is readable
+		 * even if there is an auth_id to allow writting for example.
+		 * See bug issue #291
+		 * treat pubkey and cert as readable.a
+		 */ 
+		if (obj->p15_object->auth_id.len && !(is_pubkey(obj) || is_cert(obj)))
 			continue;
 
 		sc_log(context, "Add public object(%p,%s,%x)", obj, obj->p15_object->label, obj->p15_object->type);
