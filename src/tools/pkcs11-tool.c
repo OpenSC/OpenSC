@@ -1138,8 +1138,10 @@ static void init_token(CK_SLOT_ID slot)
 			opt_object_label);
 
 	get_token_info(slot, &info);
-	if (!(info.flags & CKF_PROTECTED_AUTHENTICATION_PATH)) {
-		if (opt_so_pin == NULL) {
+	if (opt_so_pin != NULL) {
+		new_pin = opt_so_pin;
+	} else {
+		if (!(info.flags & CKF_PROTECTED_AUTHENTICATION_PATH)) {
 			printf("Please enter the new SO PIN: ");
 			r = util_getpass(&new_pin, &len, stdin);
 			if (r < 0)
@@ -1156,11 +1158,7 @@ static void init_token(CK_SLOT_ID slot)
 					strcmp(new_buf, new_pin) != 0)
 				util_fatal("Different new SO PINs, exiting\n");
 			pin_allocated = 1;
-		} else {
-			new_pin = (char *) opt_so_pin;
 		}
-		if (!new_pin || !*new_pin)
-			util_fatal("Invalid SO PIN\n");
 	}
 
 	rv = p11->C_InitToken(slot, (CK_UTF8CHAR *) new_pin,
