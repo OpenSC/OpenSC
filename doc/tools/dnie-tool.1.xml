@@ -56,21 +56,21 @@
 					Displays sofware version for in-card DNIe OS</para></listitem>
 				</varlistentry>
 				<varlistentry>
-					<term><option>--pin</option> pin, <option>-p</option> pin</term>
-					<listitem><para>Specify the user pin <varname>value</varname> to use.
+					<term><option>--pin</option> <replaceable>pin</replaceable>, <option>-p</option> <replaceable>pin</replaceable></term>
+					<listitem><para>Specify the user pin <replaceable>pin</replaceable> to use.
 					If set to env:<replaceable>VARIABLE</replaceable>, the
 					value of the environment variable
 					<replaceable>VARIABLE</replaceable> is used.
 					The default is do not enter pin</para></listitem>
 				</varlistentry>
 				<varlistentry>
-					<term><option>--reader</option> number, <option>-r</option> number</term>
-					<listitem><para>Specify the reader <varname>number</varname> to use.
+					<term><option>--reader</option> <replaceable>number</replaceable>, <option>-r</option> <replaceable>number</replaceable></term>
+					<listitem><para>Specify the reader <replaceable>number</replaceable> to use.
 					The default is reader 0.</para></listitem>
 				</varlistentry>
 				<varlistentry>
-					<term><option>--driver</option> number, <option>-c</option> driver</term>
-					<listitem><para>Specify the reader driver <varname>name</varname> to use.
+					<term><option>--driver</option> <replaceable>driver</replaceable>, <option>-c</option> <replaceable>driver</replaceable></term>
+					<listitem><para>Specify the card driver <replaceable>driver</replaceable> to use.
 					Default is use driver from configuration file, or auto-detect if absent</para></listitem>
 				</varlistentry>
 				<varlistentry>

@@ -68,7 +68,7 @@ static const struct option options[] = {
 
 static const char *option_help[] = {
 	"Uses reader number <arg> [0]",
-	"Uses reader driver <arg> [auto-detect]",
+	"Uses card driver <arg> [auto-detect]",
 	"Wait for a card to be inserted",
 	"Specify PIN",
 	"Retrieve IDESP",
