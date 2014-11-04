@@ -1043,9 +1043,10 @@ static int sc_hsm_init(struct sc_card *card)
 		SC_ALGORITHM_ONBOARD_KEY_GEN;
 
 	ext_flags = SC_ALGORITHM_EXT_EC_F_P|
-		    SC_ALGORITHM_EXT_EC_ECPARAMETERS|
-		    SC_ALGORITHM_EXT_EC_UNCOMPRESES|
-		    SC_ALGORITHM_ONBOARD_KEY_GEN;
+			SC_ALGORITHM_EXT_EC_ECPARAMETERS|
+			SC_ALGORITHM_EXT_EC_NAMEDCURVE|
+			SC_ALGORITHM_EXT_EC_UNCOMPRESES|
+			SC_ALGORITHM_ONBOARD_KEY_GEN;
 	_sc_card_add_ec_alg(card, 192, flags, ext_flags);
 	_sc_card_add_ec_alg(card, 224, flags, ext_flags);
 	_sc_card_add_ec_alg(card, 256, flags, ext_flags);
