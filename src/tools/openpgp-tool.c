@@ -113,7 +113,8 @@ static const char *option_help[] = {
 /* v */	"Verbose operation. Use several times to enable debug output.",
 /* V */	"Show version number",
 	"Verify PIN (CHV1, CHV2, CHV3...)",
-	"PIN string",
+	"PIN string. <arg> can be: 'env:<var>' to get PIN from the environment"
+	" or '-' to read stdin, otherwise <arg> is used.",
 /* d */ "Dump private data object number <arg> (i.e. PRIVATE-DO-<arg>)"
 };
 
@@ -229,7 +230,7 @@ static void display_data(const struct ef_name_map *mapping, char *value)
 
 static int decode_options(int argc, char **argv)
 {
-	int c;
+	int c, pinlen;
 
 	while ((c = getopt_long(argc, argv,"r:x:CUG:L:hwvVd:", options, (int *) 0)) != EOF) {
 		switch (c) {
@@ -258,7 +259,7 @@ static int decode_options(int argc, char **argv)
 			opt_pin++;
 			if (pin)
 				free(pin);
-			pin = strdup(optarg);
+			util_get_pin(optarg, &pin);
 			break;
 		case 'C':
 			opt_cardinfo++;
