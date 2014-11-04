@@ -113,7 +113,7 @@ static const char *option_help[] = {
 /* v */	"Verbose operation. Use several times to enable debug output.",
 /* V */	"Show version number",
 	"Verify PIN (CHV1, CHV2, CHV3...)",
-	"PIN string. <arg> can be: 'env:<var>' to get PIN from the environment, otherwise <arg> is used.",
+	"PIN string",
 /* d */ "Dump private data object number <arg> (i.e. PRIVATE-DO-<arg>)"
 };
 
@@ -256,7 +256,7 @@ static int decode_options(int argc, char **argv)
 			break;
 		case OPT_PIN:
 			opt_pin++;
-			util_get_pin(optarg, (const char **) &pin);
+			util_get_pin(optarg, &pin);
 			break;
 		case 'C':
 			opt_cardinfo++;

@@ -199,9 +199,15 @@
 						<option>-p</option> <replaceable>pin</replaceable>
 					</term>
 					<listitem><para>Use the given <replaceable>pin</replaceable> for
-					token operations. WARNING: Be careful using this option
+					token operations. If set to
+					env:<replaceable>VARIABLE</replaceable>, the value of the
+					environment variable <replaceable>VARIABLE</replaceable> is
+					used. WARNING: Be careful using this option
 					as other users may be able to read the command line from
-					the system or if it is embedded in a script.</para>
+					the system or if it is embedded in a script. If set to
+					env:<replaceable>VARIABLE</replaceable>, the value of the
+					environment variable <replaceable>VARIABLE</replaceable> is
+					used.</para>
 					<para>This option will also set
 					the <option>--login</option> option.</para></listitem>
 				</varlistentry>
@@ -266,8 +272,11 @@
 					</term>
 					<listitem><para>Use the given <replaceable>pin</replaceable> as the
 					Security Officer PIN for some token operations (token
-					initialization, user PIN initialization, etc). The same
-					warning as <option>--pin</option> also applies here.</para></listitem>
+					initialization, user PIN initialization, etc). If set to
+					env:<replaceable>VARIABLE</replaceable>, the value of the
+					environment variable <replaceable>VARIABLE</replaceable> is
+					used. The same warning as <option>--pin</option> also
+					applies here.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>

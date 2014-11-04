@@ -1484,13 +1484,19 @@ int main(int argc, char * const argv[])
 			action_count++;
 			break;
 		case OPT_PASSWORD:
-			opt_password = optarg;
+			free(opt_password);
+			opt_password = NULL;
+			util_get_pin(optarg, &opt_password);
 			break;
 		case OPT_SO_PIN:
-			opt_so_pin = optarg;
+			free(opt_so_pin);
+			opt_so_pin = NULL;
+			util_get_pin(optarg, &opt_so_pin);
 			break;
 		case OPT_PIN:
-			opt_pin = optarg;
+			free(opt_pin);
+			opt_pin = NULL;
+			util_get_pin(optarg, &opt_pin);
 			break;
 		case OPT_RETRY:
 			opt_retry_counter = atol(optarg);

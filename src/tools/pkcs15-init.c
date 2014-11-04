@@ -347,7 +347,7 @@ static char *			opt_label = NULL;
 static char *			opt_puk_label = NULL;
 static char *			opt_pubkey_label = NULL;
 static char *			opt_cert_label = NULL;
-static char *			opt_pins[4];
+static const char *		opt_pins[4];
 static char *			opt_serial = NULL;
 static char *			opt_passphrase = NULL;
 static char *			opt_newkey = NULL;
@@ -2446,13 +2446,15 @@ handle_option(const struct option *opt)
 		break;
 	case OPT_PIN1: case OPT_PUK1:
 	case OPT_PIN2: case OPT_PUK2:
-		opt_pins[opt->val & 3] = optarg;
+		util_get_pin(optarg, &(opt_pins[opt->val & 3]));
 		break;
 	case OPT_SERIAL:
 		opt_serial = optarg;
 		break;
 	case OPT_PASSPHRASE:
-		opt_passphrase = optarg;
+		free(opt_passphrase);
+		opt_passphrase = NULL;
+		util_get_pin(optarg, &opt_passphrase);
 		break;
 	case OPT_PUBKEY:
 		this_action = ACTION_STORE_PUBKEY;
@@ -2844,4 +2846,3 @@ static int verify_pin(struct sc_pkcs15_card *p15card, char *auth_id_str)
 
 	return r;
 }
-

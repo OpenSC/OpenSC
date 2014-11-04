@@ -90,8 +90,8 @@ static int finalize = 0;
 static int install_pin = 0;
 static int overwrite = 0;
 
-static char *pin = NULL;
-static char *puk = NULL;
+static const char *pin = NULL;
+static const char *puk = NULL;
 static char *cert = NULL;
 
 static int keylen = 0;
@@ -400,10 +400,10 @@ int main(int argc, char *argv[])
 				install_pin = 1;
 				break;
 			case 'x':
-				pin = optarg;
+				util_get_pin(optarg, &pin);
 				break;
 			case 'y':
-				puk = optarg;
+				util_get_pin(optarg, &puk);
 				break;
 			case 'n':
 				new_pin = 1;

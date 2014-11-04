@@ -52,9 +52,9 @@ static char * opt_data = NULL;
 static char * opt_pubkey = NULL;
 static char * opt_outfile = NULL;
 static char * opt_bind_to_aid = NULL;
-static u8 * opt_newpin = NULL;
-static u8 * opt_pin = NULL;
-static u8 * opt_puk = NULL;
+static const u8 * opt_newpin = NULL;
+static const u8 * opt_pin = NULL;
+static const u8 * opt_puk = NULL;
 static int	verbose = 0;
 static int opt_no_prompt = 0;
 
@@ -1890,13 +1890,13 @@ int main(int argc, char * const argv[])
 			opt_reader = optarg;
 			break;
 		case OPT_PIN:
-			opt_pin = (u8 *) optarg;
+			util_get_pin(optarg, (const u8 **) &opt_pin);
 			break;
 		case OPT_NEWPIN:
-			opt_newpin = (u8 *) optarg;
+			util_get_pin(optarg, (const u8 **) &opt_newpin);
 			break;
 		case OPT_PUK:
-			opt_puk = (u8 *) optarg;
+			util_get_pin(optarg, (const u8 **) &opt_puk);
 			break;
 		case 'o':
 			opt_outfile = optarg;

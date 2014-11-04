@@ -58,6 +58,9 @@
 				<varlistentry>
 					<term><option>--pin</option> pin, <option>-p</option> pin</term>
 					<listitem><para>Specify the user pin <varname>value</varname> to use.
+					If set to env:<replaceable>VARIABLE</replaceable>, the
+					value of the environment variable
+					<replaceable>VARIABLE</replaceable> is used.
 					The default is do not enter pin</para></listitem>
 				</varlistentry>
 				<varlistentry>
