@@ -456,7 +456,7 @@ int main(int argc, char **argv)
 	sc_card_t *card = NULL;
 	int r;
 	int argind = 0;
-	int exit_status = EXIT_FAILURE;
+	int exit_status = EXIT_SUCCESS;
 
 	/* decode options */
 	argind = decode_options(argc, argv);
