@@ -479,6 +479,38 @@ static int itacns_select_file(sc_card_t *card,
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 }
 
+static int itacns_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
+{
+	sc_path_t path;
+        sc_file_t *file;		
+	int r;
+	unsigned char ef_id_carta[16];
+	sc_format_path("3F0010001003", &path);
+
+	r = sc_select_file(card, &path, &file);
+
+	if (r != SC_SUCCESS || file->size > 16) {
+		return SC_ERROR_WRONG_CARD;
+	}
+
+	sc_read_binary(card, 0, ef_id_carta, file->size, 0);
+	/* cache serial number */
+	memcpy(card->serialnr.value, ef_id_carta, 16);
+	card->serialnr.len = 16;
+	/* copy and return serial number */
+	memcpy(serial, &card->serialnr, sizeof(*serial));
+	return SC_SUCCESS;
+}
+
+static int
+itacns_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
+{
+	switch (cmd) {
+		case SC_CARDCTL_GET_SERIALNR:
+		return itacns_get_serialnr(card, ptr);
+	}
+	return SC_ERROR_NOT_SUPPORTED;
+}
 
 static struct sc_card_driver * sc_get_driver(void)
 {
@@ -494,6 +526,7 @@ static struct sc_card_driver * sc_get_driver(void)
 	itacns_ops.read_binary = itacns_read_binary;
 	itacns_ops.list_files = itacns_list_files;
 	itacns_ops.select_file = itacns_select_file;
+	itacns_ops.card_ctl = itacns_card_ctl;
 	return &itacns_drv;
 }
 
