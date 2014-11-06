@@ -84,8 +84,10 @@ const u8 *sc_asn1_skip_tag(struct sc_context *ctx, const u8 ** buf,
 /* DER encoding */
 
 /* Argument 'ptr' is set to the location of the next possible ASN.1 object.
- * If NULL, no action on 'ptr' is performed. */
-int sc_asn1_put_tag(int tag, const u8 * data, size_t datalen, u8 * out, size_t outlen, u8 ** ptr);
+ * If NULL, no action on 'ptr' is performed.
+ * If out is NULL or outlen is zero, the length that would be written is returned.
+ * If data is NULL, the data field will not be written. This is helpful for constructed structures. */
+int sc_asn1_put_tag(unsigned int tag, const u8 * data, size_t datalen, u8 * out, size_t outlen, u8 ** ptr);
 
 /* ASN.1 printing functions */
 void sc_asn1_print_tags(const u8 * buf, size_t buflen);
