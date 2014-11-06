@@ -482,14 +482,15 @@ static int itacns_select_file(sc_card_t *card,
 static int itacns_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 {
 	sc_path_t path;
-        sc_file_t *file;		
+	sc_file_t *file;
 	int r;
 	unsigned char ef_id_carta[16];
+
 	sc_format_path("3F0010001003", &path);
 
 	r = sc_select_file(card, &path, &file);
 
-	if (r != SC_SUCCESS || file->size > 16) {
+	if (r != SC_SUCCESS || file->size != 16) {
 		return SC_ERROR_WRONG_CARD;
 	}
 
