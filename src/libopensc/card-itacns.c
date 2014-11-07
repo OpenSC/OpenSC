@@ -483,23 +483,49 @@ static int itacns_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 {
 	sc_path_t path;
 	sc_file_t *file;
+	size_t    len;
 	int r;
-	unsigned char ef_id_carta[16];
+	u8        rbuf[256];
+
+	if (!serial) return SC_ERROR_INVALID_ARGUMENTS;
+
+	/* see if we have cached serial number */
+	if (card->serialnr.len) {
+		memcpy(serial, &card->serialnr, sizeof(*serial));
+		return SC_SUCCESS;
+	}
+
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Reading EF_IDCarta.\n");
 
 	sc_format_path("3F0010001003", &path);
 
 	r = sc_select_file(card, &path, &file);
+	if (r != SC_SUCCESS) {
+		return SC_ERROR_WRONG_CARD;
+	}
+	len = file->size;
 
-	if (r != SC_SUCCESS || file->size != 16) {
+	//Returned file->size should be 16. 
+	//We choose to not consider it as critical, because some cards 
+	//do not return FCI/FCP templates that include the file size.
+	//Notify abnormal lenght anyway.
+	if (len != 16) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, 
+				"Unexpected file length of EF_IDCarta (%lu)\n",
+				(unsigned long) len);
+	}
+
+	sc_read_binary(card, 0, rbuf, 256, 0);
+	if (r != SC_SUCCESS) {
 		return SC_ERROR_WRONG_CARD;
 	}
 
-	sc_read_binary(card, 0, ef_id_carta, file->size, 0);
 	/* cache serial number */
-	memcpy(card->serialnr.value, ef_id_carta, 16);
+	memcpy(card->serialnr.value, rbuf, 16);
 	card->serialnr.len = 16;
 	/* copy and return serial number */
 	memcpy(serial, &card->serialnr, sizeof(*serial));
+
 	return SC_SUCCESS;
 }
 
