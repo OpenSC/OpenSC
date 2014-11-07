@@ -516,7 +516,7 @@ static int itacns_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 	}
 
 	r = sc_read_binary(card, 0, rbuf, 256, 0);
-	if (r != SC_SUCCESS || r != 16 ) {
+	if ( r!=16 ) {
 		return SC_ERROR_WRONG_CARD;
 	}
 
