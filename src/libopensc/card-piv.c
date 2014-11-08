@@ -1036,6 +1036,7 @@ static int piv_cache_internal_data(sc_card_t *card, int enumtag)
 
 		tag = sc_asn1_find_tag(card->ctx, body, bodylen, 0x71, &taglen);
 		/* 800-72-1 not clear if this is 80 or 01 Sent comment to NIST for 800-72-2 */
+		/* 800-73-3 says it is 01, keep dual test so old cards still work */
 		if (tag && (((*tag) & 0x80) || ((*tag) & 0x01))) {
 			compressed = 1;
 		}
@@ -1241,7 +1242,8 @@ static int piv_write_certificate(sc_card_t *card,
 	memcpy(p, buf, count);
 	p += count;
 	put_tag_and_len(0x71, 1, &p);
-	*p++ = (flags)? 0x80:0x00; /* certinfo, i.e. gziped? */
+	/* Use 01 as per NIST 800-73-3 */
+	*p++ = (flags)? 0x01:0x00; /* certinfo, i.e. gziped? */
 	put_tag_and_len(0xFE,0,&p); /* LRC tag */
 
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"DEE buf %p len %d %d", sbuf, p -sbuf, sbuflen);
