@@ -82,22 +82,20 @@ static struct sc_card_driver isoApplet_drv =
  *						not present.
  */
 static int
-isoApplet_select_applet(sc_card_t *card, const u8 aid[], const size_t aid_len, u8 *resp, size_t *resp_len)
+isoApplet_select_applet(sc_card_t *card, const u8 *aid, const size_t aid_len, u8 *resp, size_t *resp_len)
 {
 	int rv;
 	sc_context_t *ctx = card->ctx;
 	sc_apdu_t apdu;
-	u8 aid_wc[SC_MAX_APDU_BUFFER_SIZE];
 
 	LOG_FUNC_CALLED(card->ctx);
 
 	if(aid_len > SC_MAX_APDU_BUFFER_SIZE)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_BUFFER_TOO_SMALL);
-	memcpy(aid_wc, aid, aid_len);
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xa4, 0x04, 0x00);
 	apdu.lc = aid_len;
-	apdu.data = aid_wc;
+	apdu.data = aid;
 	apdu.datalen = aid_len;
 	apdu.resp = resp;
 	apdu.resplen = *resp_len;
