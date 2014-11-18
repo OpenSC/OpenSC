@@ -195,6 +195,25 @@ done:
 }
 
 CK_RV
+sc_pkcs11_md_size(struct sc_pkcs11_session *session,
+			CK_BYTE_PTR pData, CK_ULONG_PTR pulDataLen)
+{
+	sc_pkcs11_operation_t *op;
+	CK_RV rv;
+
+	rv = session_get_operation(session, SC_PKCS11_OPERATION_DIGEST, &op);
+	if (rv != CKR_OK)
+		LOG_FUNC_RETURN(context, rv);
+
+	rv = op->type->md_size(op, pData, pulDataLen);
+	if (rv == CKR_BUFFER_TOO_SMALL || rv == CKR_OK)
+		LOG_FUNC_RETURN(context, rv);
+
+	session_stop_operation(session, SC_PKCS11_OPERATION_DIGEST);
+	LOG_FUNC_RETURN(context, rv);
+}
+
+CK_RV
 sc_pkcs11_md_final(struct sc_pkcs11_session *session,
 			CK_BYTE_PTR pData, CK_ULONG_PTR pulDataLen)
 {
