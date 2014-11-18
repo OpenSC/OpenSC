@@ -37,6 +37,7 @@ static sc_pkcs11_mechanism_type_t find_mechanism = {
 	NULL,		/* md_init */
 	NULL,		/* md_update */
 	NULL,		/* md_final */
+	NULL,           /* md_size */
 	NULL,		/* sign_init */
 	NULL,		/* sign_update */
 	NULL,		/* sign_final */
@@ -520,6 +521,13 @@ C_Digest(CK_SESSION_HANDLE hSession,		/* the session's handle */
 	rv = get_session(hSession, &session);
 	if (rv != CKR_OK)
 		goto out;
+
+	/*
+	 * Issue #327 PKCS#11 2.20 11.2 Must check size before doing the update
+	 */
+	rv  = sc_pkcs11_md_size(session, pDigest, pulDigestLen);
+	if (rv == CKR_BUFFER_TOO_SMALL || !pDigest)
+	    return rv;
 
 	rv = sc_pkcs11_md_update(session, pData, ulDataLen);
 	if (rv == CKR_OK)

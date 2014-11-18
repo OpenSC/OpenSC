@@ -33,6 +33,8 @@ static CK_RV	sc_pkcs11_openssl_md_update(sc_pkcs11_operation_t *,
 					CK_BYTE_PTR, CK_ULONG);
 static CK_RV	sc_pkcs11_openssl_md_final(sc_pkcs11_operation_t *,
 					CK_BYTE_PTR, CK_ULONG_PTR);
+static CK_RV	sc_pkcs11_openssl_md_size(sc_pkcs11_operation_t *,
+					CK_BYTE_PTR, CK_ULONG_PTR);
 static void	sc_pkcs11_openssl_md_release(sc_pkcs11_operation_t *);
 
 static sc_pkcs11_mechanism_type_t openssl_sha1_mech = {
@@ -44,6 +46,7 @@ static sc_pkcs11_mechanism_type_t openssl_sha1_mech = {
 	sc_pkcs11_openssl_md_init,
 	sc_pkcs11_openssl_md_update,
 	sc_pkcs11_openssl_md_final,
+	sc_pkcs11_openssl_md_size,
 	NULL, NULL, NULL, NULL,	/* sign_* */
 	NULL, NULL, NULL,	/* verif_* */
 	NULL, NULL,		/* decrypt_* */
@@ -61,6 +64,7 @@ static sc_pkcs11_mechanism_type_t openssl_sha256_mech = {
 	sc_pkcs11_openssl_md_init,
 	sc_pkcs11_openssl_md_update,
 	sc_pkcs11_openssl_md_final,
+	sc_pkcs11_openssl_md_size,
 	NULL, NULL, NULL, NULL,	/* sign_* */
 	NULL, NULL, NULL,	/* verif_* */
 	NULL, NULL,		/* decrypt_* */
@@ -77,6 +81,7 @@ static sc_pkcs11_mechanism_type_t openssl_sha384_mech = {
 	sc_pkcs11_openssl_md_init,
 	sc_pkcs11_openssl_md_update,
 	sc_pkcs11_openssl_md_final,
+	sc_pkcs11_openssl_md_size,
 	NULL, NULL, NULL, NULL,	/* sign_* */
 	NULL, NULL, NULL,	/* verif_* */
 	NULL, NULL,		/* decrypt_* */
@@ -93,6 +98,7 @@ static sc_pkcs11_mechanism_type_t openssl_sha512_mech = {
 	sc_pkcs11_openssl_md_init,
 	sc_pkcs11_openssl_md_update,
 	sc_pkcs11_openssl_md_final,
+	sc_pkcs11_openssl_md_size,
 	NULL, NULL, NULL, NULL,	/* sign_* */
 	NULL, NULL, NULL,	/* verif_* */
 	NULL, NULL,		/* decrypt_* */
@@ -111,6 +117,7 @@ static sc_pkcs11_mechanism_type_t openssl_gostr3411_mech = {
 	sc_pkcs11_openssl_md_init,
 	sc_pkcs11_openssl_md_update,
 	sc_pkcs11_openssl_md_final,
+	sc_pkcs11_openssl_md_size,
 	NULL, NULL, NULL, NULL,	/* sign_* */
 	NULL, NULL, NULL,	/* verif_* */
 	NULL, NULL,		/* decrypt_* */
@@ -128,6 +135,7 @@ static sc_pkcs11_mechanism_type_t openssl_md5_mech = {
 	sc_pkcs11_openssl_md_init,
 	sc_pkcs11_openssl_md_update,
 	sc_pkcs11_openssl_md_final,
+	sc_pkcs11_openssl_md_size,
 	NULL, NULL, NULL, NULL,	/* sign_* */
 	NULL, NULL, NULL,	/* verif_* */
 	NULL, NULL,		/* decrypt_* */
@@ -144,6 +152,7 @@ static sc_pkcs11_mechanism_type_t openssl_ripemd160_mech = {
 	sc_pkcs11_openssl_md_init,
 	sc_pkcs11_openssl_md_update,
 	sc_pkcs11_openssl_md_final,
+	sc_pkcs11_openssl_md_size,
 	NULL, NULL, NULL, NULL,	/* sign_* */
 	NULL, NULL, NULL,	/* verif_* */
 	NULL, NULL,		/* decrypt_* */
@@ -241,17 +250,37 @@ static CK_RV sc_pkcs11_openssl_md_update(sc_pkcs11_operation_t *op,
 	return CKR_OK;
 }
 
-static CK_RV sc_pkcs11_openssl_md_final(sc_pkcs11_operation_t *op,
+static CK_RV sc_pkcs11_openssl_md_size(sc_pkcs11_operation_t *op,
 				CK_BYTE_PTR pDigest, CK_ULONG_PTR pulDigestLen)
 {
 	EVP_MD_CTX *md_ctx = DIGEST_CTX(op);
+
+	if (!pulDigestLen)
+		return CKR_ARGUMENTS_BAD;
+
+	if (!pDigest)
+		*pulDigestLen = 0;
 
 	if (*pulDigestLen < (unsigned) EVP_MD_CTX_size(md_ctx)) {
 		sc_log(context, "Provided buffer too small: %ul < %d",
 			*pulDigestLen, EVP_MD_CTX_size(md_ctx));
 		*pulDigestLen = EVP_MD_CTX_size(md_ctx);
-		return CKR_BUFFER_TOO_SMALL;
+		return pDigest? CKR_BUFFER_TOO_SMALL : CKR_OK;
 	}
+
+	return CKR_OK;
+}
+
+static CK_RV sc_pkcs11_openssl_md_final(sc_pkcs11_operation_t *op,
+				CK_BYTE_PTR pDigest, CK_ULONG_PTR pulDigestLen)
+{
+	EVP_MD_CTX *md_ctx = DIGEST_CTX(op);
+	CK_RV rv;
+
+	
+	rv = sc_pkcs11_openssl_md_size(op, pDigest, pulDigestLen);
+	if (rv == CKR_BUFFER_TOO_SMALL || !pDigest) 
+	    return rv;
 
 	EVP_DigestFinal(md_ctx, pDigest, (unsigned *) pulDigestLen);
 
