@@ -208,7 +208,6 @@ isoApplet_init(sc_card_t *card)
 	_sc_card_add_ec_alg(card, 256, flags, ext_flags);
 	_sc_card_add_ec_alg(card, 320, flags, ext_flags);
 	_sc_card_add_ec_alg(card, 384, flags, ext_flags);
-	_sc_card_add_ec_alg(card, 512, flags, ext_flags);
 
 	/* RSA */
 	flags = 0;
