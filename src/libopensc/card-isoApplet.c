@@ -32,7 +32,7 @@
 #define ISOAPPLET_ALG_REF_RSA_PAD_PKCS1 0x11
 
 #define ISOAPPLET_API_VERSION_MAJOR 0x00
-#define ISOAPPLET_API_VERSION_MINOR 0x04
+#define ISOAPPLET_API_VERSION_MINOR 0x05
 #define ISOAPPLET_API_FEATURE_EXT_APDU 0x01
 
 #define ISOAPPLET_AID_LEN 12
@@ -480,6 +480,11 @@ isoApplet_put_ec_params(sc_card_t *card, sc_cardctl_isoApplet_ec_parameters_t *p
 		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS, "Error: EC params not present.");
 	}
 
+	if(out == NULL || out_len == 0)
+	{
+		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS, "Error: Parameter out is NULL or outlen is zero.");
+	}
+
 	r = sc_asn1_put_tag(0x81, params->prime.value, params->prime.len, p, out_len - (p - out), &p);
 	LOG_TEST_RET(card->ctx, r, "Error in handling TLV.");
 	r = sc_asn1_put_tag(0x82, params->coefficientA.value, params->coefficientA.len, p, out_len - (p - out), &p);
@@ -699,10 +704,9 @@ static int
 isoApplet_put_data_prkey_rsa(sc_card_t *card, sc_cardctl_isoApplet_import_key_t *args)
 {
 	sc_apdu_t apdu;
-	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
+	u8 sbuf[SC_MAX_EXT_APDU_BUFFER_SIZE];
 	u8 *p = NULL;
 	int r;
-	int locked = 0;
 	size_t tags_len;
 
 	LOG_FUNC_CALLED(card->ctx);
@@ -716,154 +720,65 @@ isoApplet_put_data_prkey_rsa(sc_card_t *card, sc_cardctl_isoApplet_import_key_t 
 		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS, "RSA key is missing information.");
 	}
 
-	p = sbuf;
-	/* Note: The format is according to ISO 2-byte tag 7F48 */
-	*p++ = 0x7F;		/* T-L pair to indicate a private key data object */
-	*p++ = 0x48;
-	/* Calculate the length of all inner tag-length-value entries.
-	 * One entry consists of: tag (1 byte) + length (1 byte if < 128, 2 if >= 128) + value (len)
-	 * It may actually happen that a parameter is 127 byte (leading zero) */
-	tags_len =	1 + (args->privkey.rsa.p.len 	< 128 ? 1 : 2) + args->privkey.rsa.p.len +
-	            1 + (args->privkey.rsa.q.len	< 128 ? 1 : 2) + args->privkey.rsa.q.len +
-	            1 + (args->privkey.rsa.iqmp.len	< 128 ? 1 : 2) + args->privkey.rsa.iqmp.len +
-	            1 + (args->privkey.rsa.dmp1.len	< 128 ? 1 : 2) + args->privkey.rsa.dmp1.len +
-	            1 + (args->privkey.rsa.dmq1.len	< 128 ? 1 : 2) + args->privkey.rsa.dmq1.len;
-	*p++ = 0x82;
-	*p++ = (tags_len >> 8) & 0xFF;	/* MSB */
-	*p++ = tags_len & 0xFF;			/* LSB */
+	/* Note: The format is according to ISO 2-byte tag 7F48
+	 * "T-L pair to indicate a private key data object" */
 
+	/* Calculate the length of all inner tag-length-value entries, but do not write anything yet. */
+	tags_len = 0;
+	r = sc_asn1_put_tag(0x92, NULL, args->privkey.rsa.p.len, NULL, 0, NULL);
+	LOG_TEST_RET(card->ctx, r, "Error handling TLV.");
+	tags_len += r;
+	r = sc_asn1_put_tag(0x93, NULL, args->privkey.rsa.q.len, NULL, 0, NULL);
+	LOG_TEST_RET(card->ctx, r, "Error handling TLV.");
+	tags_len += r;
+	r = sc_asn1_put_tag(0x94, NULL, args->privkey.rsa.iqmp.len, NULL, 0, NULL);
+	LOG_TEST_RET(card->ctx, r, "Error handling TLV.");
+	tags_len += r;
+	r = sc_asn1_put_tag(0x95, NULL, args->privkey.rsa.dmp1.len, NULL, 0, NULL);
+	LOG_TEST_RET(card->ctx, r, "Error handling TLV.");
+	tags_len += r;
+	r = sc_asn1_put_tag(0x96, NULL, args->privkey.rsa.dmq1.len, NULL, 0, NULL);
+	LOG_TEST_RET(card->ctx, r, "Error handling TLV.");
+	tags_len += r;
+
+	/* Write the outer tag and length information. */
+	p = sbuf;
+	r = sc_asn1_put_tag(0x7F48, NULL, tags_len, p, sizeof(sbuf), &p);
+	LOG_TEST_RET(card->ctx, r, "Error handling TLV.");
+
+	/* Write inner tags. */
 	/* p */
 	r = sc_asn1_put_tag(0x92, args->privkey.rsa.p.value, args->privkey.rsa.p.len, p, sizeof(sbuf) - (p - sbuf), &p);
 	LOG_TEST_RET(card->ctx, r, "Error handling TLV.");
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xDB, 0x3F, 0xFF);
-	apdu.cla |= 0x10; /* Chaining */
-	apdu.data = sbuf;
-	apdu.datalen = p - sbuf;
-	apdu.lc = p - sbuf;
-
-	r = sc_lock(card); /* We will use several apdus */
-	LOG_TEST_RET(card->ctx, r, "sc_lock() failed");
-	locked = 1;
-
-	r = sc_transmit_apdu(card, &apdu);
-	if(r < 0)
-	{
-		sc_log(card->ctx, "%s: APDU transmit failed", strerror(r));
-		goto out;
-	}
-	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	if(apdu.sw1 == 0x6D && apdu.sw2 == 0x00)
-	{
-		sc_log(card->ctx, "The applet returned that the PUT DATA instruction byte is not supported."
-		       "If you are using an older applet version and are trying to import keys, please update your applet first.");
-	}
-	if(r < 0)
-	{
-		sc_log(card->ctx, "%s: Card returned error", strerror(r));
-		goto out;
-	}
-
 	/* q */
-	p = sbuf;
 	r = sc_asn1_put_tag(0x93, args->privkey.rsa.q.value, args->privkey.rsa.q.len, p, sizeof(sbuf) - (p - sbuf), &p);
-	if(r < 0)
-	{
-		sc_log(card->ctx, "%s: Error in handling TLV.", strerror(r));
-		goto out;
-	}
-	apdu.data = sbuf;
-	apdu.datalen = p - sbuf;
-	apdu.lc = p - sbuf;
-	r = sc_transmit_apdu(card, &apdu);
-	if(r < 0)
-	{
-		sc_log(card->ctx, "%s: APDU transmit failed.", strerror(r));
-		goto out;
-	}
-	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	if(r < 0)
-	{
-		sc_log(card->ctx, "%s: Card returned error.", strerror(r));
-		goto out;
-	}
-
+	LOG_TEST_RET(card->ctx, r, "Error handling TLV.");
 	/* 1/q mod p */
-	p = sbuf;
 	r = sc_asn1_put_tag(0x94, args->privkey.rsa.iqmp.value, args->privkey.rsa.iqmp.len, p, sizeof(sbuf) - (p - sbuf), &p);
-	if(r < 0)
-	{
-		sc_log(card->ctx, "%s: Error in handling TLV.", strerror(r));
-		goto out;
-	}
-	apdu.data = sbuf;
-	apdu.datalen = p - sbuf;
-	apdu.lc = p - sbuf;
-	r = sc_transmit_apdu(card, &apdu);
-	if(r < 0)
-	{
-		sc_log(card->ctx, "%s: APDU transmit failed.", strerror(r));
-		goto out;
-	}
-	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	if(r < 0)
-	{
-		sc_log(card->ctx, "%s: Card returned error.", strerror(r));
-		goto out;
-	}
-
+	LOG_TEST_RET(card->ctx, r, "Error handling TLV.");
 	/* d mod (p-1) */
-	p = sbuf;
 	r = sc_asn1_put_tag(0x95, args->privkey.rsa.dmp1.value, args->privkey.rsa.dmp1.len, p, sizeof(sbuf) - (p - sbuf), &p);
-	if(r < 0)
-	{
-		sc_log(card->ctx, "%s: Error in handling TLV.", strerror(r));
-		goto out;
-	}
-	apdu.data = sbuf;
-	apdu.datalen = p - sbuf;
-	apdu.lc = p - sbuf;
-	r = sc_transmit_apdu(card, &apdu);
-	if(r < 0)
-	{
-		sc_log(card->ctx, "%s: APDU transmit failed.", strerror(r));
-		goto out;
-	}
-	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	if(r < 0)
-	{
-		sc_log(card->ctx, "%s: Card returned error.", strerror(r));
-		goto out;
-	}
-
+	LOG_TEST_RET(card->ctx, r, "Error handling TLV.");
 	/* d mod (q-1) */
-	p = sbuf;
 	r = sc_asn1_put_tag(0x96, args->privkey.rsa.dmq1.value, args->privkey.rsa.dmq1.len, p, sizeof(sbuf) - (p - sbuf), &p);
-	if(r < 0)
-	{
-		sc_log(card->ctx, "%s: Error in handling TLV.", strerror(r));
-		goto out;
-	}
-	apdu.cla = 0x00; /* Last part of the chain. */
+	LOG_TEST_RET(card->ctx, r, "Error handling TLV.");
+
+	/* Send to card, using chaining or extended APDUs. */
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3, 0xDB, 0x3F, 0xFF);
 	apdu.data = sbuf;
 	apdu.datalen = p - sbuf;
 	apdu.lc = p - sbuf;
+	if ((card->caps & SC_CARD_CAP_APDU_EXT) == 0)
+	{
+		/* The lower layers will automatically do chaining */
+		apdu.flags |= SC_APDU_FLAGS_CHAINING;
+	}
 	r = sc_transmit_apdu(card, &apdu);
-	if(r < 0)
-	{
-		sc_log(card->ctx, "%s: APDU transmit failed.", strerror(r));
-		goto out;
-	}
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed.");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	if(r < 0)
-	{
-		sc_log(card->ctx, "%s: Card returned error.", strerror(r));
-		goto out;
-	}
+	LOG_TEST_RET(card->ctx, r, "Card returned error.");
 
-out:
-	if(locked)
-		sc_unlock(card);
-	LOG_FUNC_RETURN(card->ctx, r);
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
 /*
@@ -909,28 +824,36 @@ isoApplet_put_data_prkey_ec(sc_card_t *card, sc_cardctl_isoApplet_import_key_t *
 		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS, "Missing information about EC private key.");
 	}
 
+	/* Calculate the length of all inner tag-length-value entries, but do not write anything yet. */
+	tags_len = 0;
+	r = sc_asn1_put_tag(0x81, NULL, args->privkey.ec.params.prime.len, NULL, 0, NULL);
+	LOG_TEST_RET(card->ctx, r, "Error handling TLV.");
+	tags_len += r;
+	r = sc_asn1_put_tag(0x82, NULL, args->privkey.ec.params.coefficientA.len, NULL, 0, NULL);
+	LOG_TEST_RET(card->ctx, r, "Error handling TLV.");
+	tags_len += r;
+	r = sc_asn1_put_tag(0x83, NULL, args->privkey.ec.params.coefficientB.len, NULL, 0, NULL);
+	LOG_TEST_RET(card->ctx, r, "Error handling TLV.");
+	tags_len += r;
+	r = sc_asn1_put_tag(0x84, NULL, args->privkey.ec.params.basePointG.len, NULL, 0, NULL);
+	LOG_TEST_RET(card->ctx, r, "Error handling TLV.");
+	tags_len += r;
+	r = sc_asn1_put_tag(0x85, NULL, args->privkey.ec.params.order.len, NULL, 0, NULL);
+	LOG_TEST_RET(card->ctx, r, "Error handling TLV.");
+	tags_len += r;
+	r = sc_asn1_put_tag(0x87, NULL, args->privkey.ec.params.coFactor.len, NULL, 0, NULL);
+	LOG_TEST_RET(card->ctx, r, "Error handling TLV.");
+	tags_len += r;
+	r = sc_asn1_put_tag(0x88, NULL, args->privkey.ec.privateD.len, NULL, 0, NULL);
+	LOG_TEST_RET(card->ctx, r, "Error handling TLV.");
+	tags_len += r;
+
+	/* Write the outer tag and length information. */
 	p = sbuf;
-	*p++ = 0xE0;
-	tags_len =	1 + (args->privkey.ec.params.prime.len 	< 128 ? 1 : 2) 			+ args->privkey.ec.params.prime.len +
-	            1 + (args->privkey.ec.params.coefficientA.len < 128 ? 1 : 2)	+ args->privkey.ec.params.coefficientA.len +
-	            1 + (args->privkey.ec.params.coefficientB.len < 128 ? 1 : 2)	+ args->privkey.ec.params.coefficientB.len +
-	            1 + (args->privkey.ec.params.basePointG.len < 128 ? 1 : 2)		+ args->privkey.ec.params.basePointG.len +
-	            1 + (args->privkey.ec.params.order.len < 128 ? 1 : 2)			+ args->privkey.ec.params.order.len +
-	            1 + (args->privkey.ec.params.coFactor.len < 128 ? 1 : 2)		+ args->privkey.ec.params.coFactor.len +
-	            1 + (args->privkey.ec.privateD.len < 128 ? 1 : 2)				+ args->privkey.ec.privateD.len;
-	if(tags_len < 127)
-		*p++ = (tags_len & 0xFF);
-	else if (tags_len < 255)
-	{
-		*p++ = 0x81;
-		*p++ = (tags_len & 0xFF);
-	}
-	else
-	{
-		*p++ = 0x82;
-		*p++ = (tags_len >> 8) & 0xFF;	/* MSB */
-		*p++ = tags_len & 0xFF;			/* LSB */
-	}
+	r = sc_asn1_put_tag(0xE0, NULL, tags_len, p, sizeof(sbuf), &p);
+	LOG_TEST_RET(card->ctx, r, "Error handling TLV.");
+
+	/* Write inner tags. */
 	r = isoApplet_put_ec_params(card, &args->privkey.ec.params, p, sizeof(sbuf) - (p - sbuf), &p);
 	LOG_TEST_RET(card->ctx, r, "Error composing EC params.");
 	r = sc_asn1_put_tag(0x88, args->privkey.ec.privateD.value, args->privkey.ec.privateD.len, p, sizeof(sbuf) - (p - sbuf), &p);
@@ -1238,7 +1161,7 @@ isoApplet_compute_signature(struct sc_card *card,
 		xlen = *p++;
 		if(xlen > outlen - (p - out))
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_BUFFER_TOO_SMALL);
-		/* Java Cards might return a leading zero, 
+		/* Java Cards might return a leading zero,
 		 * which needs to be stripped when not using the ASN1 structural information. */
 		if(*p == 0x00 && (xlen == 192/8+1 || xlen == 224/8+1 || xlen == 256/8+1 || xlen == 320/8+1 || xlen == 384/8+1))
 		{
@@ -1254,7 +1177,7 @@ isoApplet_compute_signature(struct sc_card *card,
 		ylen = *p++;
 		if(ylen > outlen - (p - out))
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_BUFFER_TOO_SMALL);
-		/* Java Cards might return a leading zero, 
+		/* Java Cards might return a leading zero,
 		 * which needs to be stripped when not using the ASN1 structural information. */
 		if(*p == 0x00 && (ylen == 192/8+1 || ylen == 224/8+1 || ylen == 256/8+1 || ylen == 320/8+1 || ylen == 384/8+1))
 		{
