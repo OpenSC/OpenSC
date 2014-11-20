@@ -511,6 +511,7 @@ C_Digest(CK_SESSION_HANDLE hSession,		/* the session's handle */
 {
 	CK_RV rv;
 	struct sc_pkcs11_session *session;
+	CK_ULONG  ulBuflen = 0;
 
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
@@ -521,7 +522,21 @@ C_Digest(CK_SESSION_HANDLE hSession,		/* the session's handle */
 	if (rv != CKR_OK)
 		goto out;
 
-	rv = sc_pkcs11_md_update(session, pData, ulDataLen);
+	/* if pDigest == NULL, buffer size request */
+	if (pDigest) {
+	    /* As per PKCS#11 2.20 we need to check if buffer too small before update */
+	    rv = sc_pkcs11_md_final(session, NULL, &ulBuflen);
+	    if (rv != CKR_OK)
+		goto out;
+
+	    if (ulBuflen > *pulDigestLen) {
+	        *pulDigestLen = ulBuflen;
+		rv = CKR_BUFFER_TOO_SMALL;
+		goto out;
+	    }
+
+	    rv = sc_pkcs11_md_update(session, pData, ulDataLen);
+	}
 	if (rv == CKR_OK)
 		rv = sc_pkcs11_md_final(session, pDigest, pulDigestLen);
 
