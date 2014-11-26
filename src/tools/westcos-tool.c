@@ -112,7 +112,7 @@ static int do_convert_bignum(sc_pkcs15_bignum_t *dst, BIGNUM *src)
 }
 
 static int	charge = 0;
-static void print_openssl_erreur(void)
+static void print_openssl_error(void)
 {
 	long r;
 
@@ -302,7 +302,7 @@ static int cert2der(X509 *cert, u8 **value)
 	return len;
 }
 
-static int creation_fichier_cert(sc_card_t *card)
+static int create_file_cert(sc_card_t *card)
 {
 	int r;
 	int size;
@@ -677,7 +677,7 @@ int main(int argc, char *argv[])
 		if(r<0) goto out;
 		printf("Private key correctly written.\n");
 
-		r = creation_fichier_cert(card);
+		r = create_file_cert(card);
 		if(r) goto out;
 
 		if (!do_convert_bignum(&dst->modulus, rsa->n)
@@ -717,7 +717,7 @@ int main(int argc, char *argv[])
 		BIO_free(bio);
 		if (xp == NULL)
 		{
-			print_openssl_erreur();
+			print_openssl_error();
 			goto out;
 		}
 		else
@@ -728,7 +728,7 @@ int main(int argc, char *argv[])
 			r = sc_select_file(card, &path, NULL);
 			if(r) goto out;
 
-			/* FIXME: verifier taille fichier compatible... */
+			/* FIXME: verify if the file has a compatible size... */
 			printf("Write certificate %s.\n", cert);
 
 			r = sc_update_binary(card,0,pdata,lg,0);
