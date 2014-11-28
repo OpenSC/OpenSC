@@ -166,7 +166,7 @@ isoApplet_match_card(sc_card_t *card)
 	if(rbuf[1] != ISOAPPLET_API_VERSION_MINOR)
 	{
 		sc_log(card->ctx, "IsoApplet: Mismatching minor API version. Proceeding anyway. "
-		       "API versions: Driver (%02X-%02X), applet (%02X-%02X)."
+		       "API versions: Driver (%02X-%02X), applet (%02X-%02X). "
 		       "Please update accordingly whenever possible.",
 		       ISOAPPLET_API_VERSION_MAJOR, ISOAPPLET_API_VERSION_MINOR, rbuf[0], rbuf[1]);
 	}
@@ -545,13 +545,6 @@ isoApplet_ctl_generate_key(sc_card_t *card, sc_cardctl_isoApplet_genkey_t *args)
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	if(apdu.sw1 == 0x6A && apdu.sw2 == 0x81)
-	{
-		sc_log(card->ctx, "Key generation not supported by the card with that particular key type."
-		       "Your card may not support the specified algorithm used by the applet / specified by you."
-		       "In most cases, this happens when trying to generate EC keys not supported by your java card."
-		       "In this case, look for supported field lengths and whether FP and/or F2M are supported.");
-	}
 	LOG_TEST_RET(card->ctx, r, "Card returned error");
 
 
@@ -591,6 +584,13 @@ isoApplet_ctl_generate_key(sc_card_t *card, sc_cardctl_isoApplet_genkey_t *args)
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	if(apdu.sw1 == 0x6A && apdu.sw2 == 0x81)
+	{
+		sc_log(card->ctx, "Key generation not supported by the card with that particular key type. "
+		       "Your card may not support the specified algorithm used by the applet / specified by you. "
+		       "In most cases, this happens when trying to generate EC keys not supported by your java card. "
+		       "In this case, look for supported field lengths and whether FP and/or F2M are supported.");
+	}
 	LOG_TEST_RET(card->ctx, r, "Card returned error");
 
 	/* Parse the public key / response. */
@@ -781,6 +781,20 @@ isoApplet_put_data_prkey_rsa(sc_card_t *card, sc_cardctl_isoApplet_import_key_t 
 	if(r < 0)
 		goto out;
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	if(apdu.sw1 == 0x6A && apdu.sw2 == 0x81)
+	{
+		sc_log(card->ctx, "Key import not supported by the card with that particular key type. "
+		       "Your card may not support the specified algorithm used by the applet / specified by you. "
+		       "In most cases, this happens when trying to import EC keys not supported by your java card. "
+		       "In this case, look for supported field lengths and whether FP and/or F2M are supported. "
+		       "If you tried to import a private RSA key, check the key length.");
+	}
+	if(apdu.sw1 == 0x69 && apdu.sw2 == 0x00)
+	{
+		sc_log(card->ctx, "Key import not allowed by the applet's security policy. "
+		       "If you want to allow key import, set DEF_PRIVATE_KEY_IMPORT_ALLOWED in the IsoApplet,"
+		       " rebuild and reinstall the applet.");
+	}
 	if(r < 0)
 		goto out;
 
@@ -888,8 +902,22 @@ isoApplet_put_data_prkey_ec(sc_card_t *card, sc_cardctl_isoApplet_import_key_t *
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	if(apdu.sw1 == 0x6D && apdu.sw2 == 0x00)
 	{
-		sc_log(card->ctx, "The applet returned that the PUT DATA instruction byte is not supported."
+		sc_log(card->ctx, "The applet returned that the PUT DATA instruction byte is not supported. "
 		       "If you are using an older applet version and are trying to import keys, please update your applet first.");
+	}
+	else if(apdu.sw1 == 0x6A && apdu.sw2 == 0x81)
+	{
+		sc_log(card->ctx, "Key import not supported by the card with that particular key type. "
+		       "Your card may not support the specified algorithm used by the applet / specified by you. "
+		       "In most cases, this happens when trying to import EC keys not supported by your java card. "
+		       "In this case, look for supported field lengths and whether FP and/or F2M are supported. "
+		       "If you tried to import a private RSA key, check the key length.");
+	}
+	else if(apdu.sw1 == 0x69 && apdu.sw2 == 0x00)
+	{
+		sc_log(card->ctx, "Key import not allowed by the applet's security policy. "
+		       "If you want to allow key import, set DEF_PRIVATE_KEY_IMPORT_ALLOWED in the IsoApplet,"
+		       " rebuild and reinstall the applet.");
 	}
 	if(r < 0)
 	{
@@ -950,20 +978,6 @@ isoApplet_ctl_import_key(sc_card_t *card, sc_cardctl_isoApplet_import_key_t *arg
 	LOG_TEST_RET(card->ctx, r, "%s: APDU transmit failed");
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	if(apdu.sw1 == 0x6A && apdu.sw2 == 0x81)
-	{
-		sc_log(card->ctx, "Key import not supported by the card with that particular key type."
-		       "Your card may not support the specified algorithm used by the applet / specified by you."
-		       "In most cases, this happens when trying to import EC keys not supported by your java card."
-		       "In this case, look for supported field lengths and whether FP and/or F2M are supported."
-		       "If you tried to import a private RSA key, check the key length.");
-	}
-	if(apdu.sw1 == 0x69 && apdu.sw2 == 0x00)
-	{
-		sc_log(card->ctx, "Key import not allowed by the applet's security policy."
-		       "If you want to allow key import, set DEF_PRIVATE_KEY_IMPORT_ALLOWED in the IsoApplet,"
-		       " rebuild and reinstall the applet.");
-	}
 	LOG_TEST_RET(card->ctx, r, "Card returned error");
 
 
