@@ -748,19 +748,24 @@ isoApplet_put_data_prkey_rsa(sc_card_t *card, sc_cardctl_isoApplet_import_key_t 
 	/* Write inner tags. */
 	/* p */
 	r = sc_asn1_put_tag(0x92, args->privkey.rsa.p.value, args->privkey.rsa.p.len, p, sizeof(sbuf) - (p - sbuf), &p);
-	LOG_TEST_RET(card->ctx, r, "Error handling TLV.");
+	if(r < 0)
+		goto out;
 	/* q */
 	r = sc_asn1_put_tag(0x93, args->privkey.rsa.q.value, args->privkey.rsa.q.len, p, sizeof(sbuf) - (p - sbuf), &p);
-	LOG_TEST_RET(card->ctx, r, "Error handling TLV.");
+	if(r < 0)
+		goto out;
 	/* 1/q mod p */
 	r = sc_asn1_put_tag(0x94, args->privkey.rsa.iqmp.value, args->privkey.rsa.iqmp.len, p, sizeof(sbuf) - (p - sbuf), &p);
-	LOG_TEST_RET(card->ctx, r, "Error handling TLV.");
+	if(r < 0)
+		goto out;
 	/* d mod (p-1) */
 	r = sc_asn1_put_tag(0x95, args->privkey.rsa.dmp1.value, args->privkey.rsa.dmp1.len, p, sizeof(sbuf) - (p - sbuf), &p);
-	LOG_TEST_RET(card->ctx, r, "Error handling TLV.");
+	if(r < 0)
+		goto out;
 	/* d mod (q-1) */
 	r = sc_asn1_put_tag(0x96, args->privkey.rsa.dmq1.value, args->privkey.rsa.dmq1.len, p, sizeof(sbuf) - (p - sbuf), &p);
-	LOG_TEST_RET(card->ctx, r, "Error handling TLV.");
+	if(r < 0)
+		goto out;
 
 	/* Send to card, using chaining or extended APDUs. */
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3, 0xDB, 0x3F, 0xFF);
@@ -773,11 +778,16 @@ isoApplet_put_data_prkey_rsa(sc_card_t *card, sc_cardctl_isoApplet_import_key_t 
 		apdu.flags |= SC_APDU_FLAGS_CHAINING;
 	}
 	r = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(card->ctx, r, "APDU transmit failed.");
+	if(r < 0)
+		goto out;
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	LOG_TEST_RET(card->ctx, r, "Card returned error.");
+	if(r < 0)
+		goto out;
 
-	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+	r = SC_SUCCESS;
+out:
+	sc_mem_clear(sbuf, sizeof(sbuf));
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 /*
@@ -854,9 +864,14 @@ isoApplet_put_data_prkey_ec(sc_card_t *card, sc_cardctl_isoApplet_import_key_t *
 
 	/* Write inner tags. */
 	r = isoApplet_put_ec_params(card, &args->privkey.ec.params, p, sizeof(sbuf) - (p - sbuf), &p);
-	LOG_TEST_RET(card->ctx, r, "Error composing EC params.");
+	if(r < 0)
+	{
+		sc_log(card->ctx, "Error composing EC params.");
+		goto out;
+	}
 	r = sc_asn1_put_tag(0x88, args->privkey.ec.privateD.value, args->privkey.ec.privateD.len, p, sizeof(sbuf) - (p - sbuf), &p);
-	LOG_TEST_RET(card->ctx, r, "Error in handling TLV.");
+	if(r < 0)
+		goto out;
 
 	/* Send to card. */
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3, 0xDB, 0x3F, 0xFF);
@@ -864,7 +879,11 @@ isoApplet_put_data_prkey_ec(sc_card_t *card, sc_cardctl_isoApplet_import_key_t *
 	apdu.datalen = p - sbuf;
 	apdu.data = sbuf;
 	r = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(card->ctx, r, "%s: APDU transmit failed");
+	if(r < 0)
+	{
+		sc_log(card->ctx, "APDU transmit failed");
+		goto out;
+	}
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	if(apdu.sw1 == 0x6D && apdu.sw2 == 0x00)
@@ -872,10 +891,16 @@ isoApplet_put_data_prkey_ec(sc_card_t *card, sc_cardctl_isoApplet_import_key_t *
 		sc_log(card->ctx, "The applet returned that the PUT DATA instruction byte is not supported."
 		       "If you are using an older applet version and are trying to import keys, please update your applet first.");
 	}
-	LOG_TEST_RET(card->ctx, r, "Card returned error");
+	if(r < 0)
+	{
+		sc_log(card->ctx, "Card returned error");
+		goto out;
+	}
 
+	r = SC_SUCCESS;
+out:
+	sc_mem_clear(sbuf, sizeof(sbuf));
 	LOG_FUNC_RETURN(card->ctx, r);
-
 }
 
 /*
