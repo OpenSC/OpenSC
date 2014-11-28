@@ -269,9 +269,9 @@ isoApplet_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t
 /*
  * @brief Get the curve parameters associated with the curve specified by an OID.
  *
- * @param[in]	oid			The DER encoded OID of the curve.
- * @param[in]	oid_len		The length of oid.
- * @param[out]	curve_out	The ec_curve containing the set of parameters.
+ * @param[in]  oid       The DER encoded OID of the curve.
+ * @param[in]  oid_len   The length of oid.
+ * @param[out] curve_out The ec_curve containing the set of parameters.
  *
  * @returns	SC_SUCCESS: If the curve was found.
  *			SC_ERROR_INVALID_ARGUMENTS: If named_curve was null or the curve
@@ -305,13 +305,13 @@ isoApplet_get_curve(u8 *oid, size_t oid_len, const struct ec_curve **curve_out)
  * A MANAGE SECURITY ENVIRONMENT apdu must have been sent before.
  * This function uses card_ctl to access the card-isoApplet driver.
  *
- * @param[in]	key_info
- * @param[in]	card
- * @param[in]	pubkey	The public key of the generated key pair
- *						returned by the card.
+ * @param[in] key_info
+ * @param[in] card
+ * @param[in] pubkey The public key of the generated key pair
+ *                   returned by the card.
  *
  * @return	SC_ERROR_INVALID_ARGURMENTS: Invalid key length.
- *			SC_ERROR_OUT_OF_MEMORY
+ *          SC_ERROR_OUT_OF_MEMORY
  */
 static int
 isoApplet_generate_key_rsa(sc_pkcs15_prkey_info_t *key_info, sc_card_t *card,
@@ -333,7 +333,8 @@ isoApplet_generate_key_rsa(sc_pkcs15_prkey_info_t *key_info, sc_card_t *card,
 	}
 
 	/* Generate the key.
-	 * Note: key size is not explicitly passed to the card. It assumes 2048 along with the algorithm reference. */
+	 * Note: key size is not explicitly passed to the card.
+	 * It assumes 2048 along with the algorithm reference. */
 	memset(&args, 0, sizeof(args));
 	args.algorithm_ref = SC_ISOAPPLET_ALG_REF_RSA_GEN_2048;
 	args.priv_key_ref = key_info->key_reference;
@@ -393,16 +394,16 @@ err:
  * A MANAGE SECURITY ENVIRONMENT apdu must have been sent before.
  * This function uses card_ctl to access the card-isoApplet driver.
  *
- * @param[in]		key_info
- * @param[in]		card
- * @param[in/out]	pubkey	The public key of the generated key pair
- *							returned by the card.
+ * @param[in]     key_info
+ * @param[in]     card
+ * @param[in/out] pubkey The public key of the generated key pair
+ *						 returned by the card.
  *
- * @return	SC_ERROR_INVALID_ARGURMENTS: Invalid key length or curve.
- *			SC_ERROR_OUT_OF_MEMORY
- *			SC_ERROR_INCOMPATIBLE_KEY: The data returned by the card
- *										was unexpected and can not be
- *										handled.
+ * @return SC_ERROR_INVALID_ARGURMENTS: Invalid key length or curve.
+ *         SC_ERROR_OUT_OF_MEMORY
+ *         SC_ERROR_INCOMPATIBLE_KEY: The data returned by the card
+ *                                    was unexpected and can not be
+ *                                    handled.
  */
 static int
 isoApplet_generate_key_ec(const sc_pkcs15_prkey_info_t *key_info, sc_card_t *card,
@@ -434,7 +435,7 @@ isoApplet_generate_key_ec(const sc_pkcs15_prkey_info_t *key_info, sc_card_t *car
 
 	/* Generate the key.
 	 * Note: The field size is not explicitly passed to the card.
-	 *		 As we only support FP curves, the field length can be calculated from any parameter. */
+	 *       As we only support FP curves, the field length can be calculated from any parameter. */
 	memset(&args, 0, sizeof(args));
 
 	args.pubkey.ec.params.prime.value			= curve->prime.value;

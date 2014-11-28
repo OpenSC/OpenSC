@@ -70,16 +70,16 @@ static struct sc_card_driver isoApplet_drv =
  * SELECT an applet on the smartcard. (Not in the emulated filesystem.)
  * The response will be written to resp.
  *
- * @param[in] 		card
- * @param[in] 		aid			The applet ID.
- * @param[in] 		aid_len		The legth of aid.
- * @param[out] 		resp		The response of the applet upon selection.
- * @param[in,out] 	resp_len	In: The buffer size of resp. Out: The length of the response.
+ * @param[in]     card
+ * @param[in]     aid      The applet ID.
+ * @param[in]     aid_len  The legth of aid.
+ * @param[out]    resp     The response of the applet upon selection.
+ * @param[in,out] resp_len In: The buffer size of resp. Out: The length of the response.
  *
- * @return	SC_SUCCESS:	The applet is present and could be selected.
- *			any other: 	Transmit failure or the card returned an error.
- *						The card will return an error when the applet is
- *						not present.
+ * @return SC_SUCCESS: The applet is present and could be selected.
+ *         any other:  Transmit failure or the card returned an error.
+ *                     The card will return an error when the applet is
+ *                     not present.
  */
 static int
 isoApplet_select_applet(sc_card_t *card, const u8 *aid, const size_t aid_len, u8 *resp, size_t *resp_len)
@@ -232,8 +232,8 @@ isoApplet_init(sc_card_t *card)
  *
  * @param entry The OpenSC ACL entry.
  *
- * @return 	The security condition byte. No restriction (0x00)
- *			if unknown operation.
+ * @return The security condition byte. No restriction (0x00)
+ *         if unknown operation.
  */
 static u8
 isoApplet_acl_to_security_condition_byte(const sc_acl_entry_t *entry)
@@ -267,8 +267,8 @@ isoApplet_acl_to_security_condition_byte(const sc_acl_entry_t *entry)
  * Note: IsoApplet currently only supports a "onepin" option.
  *
  * Format of the sec_attr: 8 Bytes:
- *		7 		- ISO 7816-4 table 16 or 17
- *	  	6 to 0 	- ISO 7816-4 table 20
+ *  7      - ISO 7816-4 table 16 or 17
+ *  6 to 0 - ISO 7816-4 table 20
  */
 static int
 isoApplet_create_file(sc_card_t *card, sc_file_t *file)
@@ -284,34 +284,34 @@ isoApplet_create_file(sc_card_t *card, sc_file_t *file)
 
 		if(file->type == SC_FILE_TYPE_DF)
 		{
-			const int df_idx[8] =   /* These are the SC operations. */
+			const int df_idx[8] = /* These are the SC operations. */
 			{
 				0, /* Reserved. */
-				SC_AC_OP_DELETE_SELF, 	//b6
-				SC_AC_OP_LOCK, 			//b5
-				SC_AC_OP_ACTIVATE, 		//b4
-				SC_AC_OP_DEACTIVATE, 	//b3
-				SC_AC_OP_CREATE_DF, 	//b2
-				SC_AC_OP_CREATE_EF, 	//b1
-				SC_AC_OP_DELETE 		//b0
+				SC_AC_OP_DELETE_SELF, /* b6 */
+				SC_AC_OP_LOCK,        /* b5 */
+				SC_AC_OP_ACTIVATE,    /* b4 */
+				SC_AC_OP_DEACTIVATE,  /* b3 */
+				SC_AC_OP_CREATE_DF,   /* b2 */
+				SC_AC_OP_CREATE_EF,   /* b1 */
+				SC_AC_OP_DELETE       /* b0 */
 			};
 			for(i=0; i<8; i++)
 			{
 				idx[i] = df_idx[i];
 			}
 		}
-		else   //EF
+		else   /* EF */
 		{
 			const int ef_idx[8] =
 			{
 				0, /* Reserved. */
-				SC_AC_OP_DELETE_SELF, 	//b6
-				SC_AC_OP_LOCK, 			//b5
-				SC_AC_OP_ACTIVATE, 		//b4
-				SC_AC_OP_DEACTIVATE,	//b3
-				SC_AC_OP_WRITE, 		//b2
-				SC_AC_OP_UPDATE, 		//b1
-				SC_AC_OP_READ 			//b0
+				SC_AC_OP_DELETE_SELF, /* b6 */
+				SC_AC_OP_LOCK,        /* b5 */
+				SC_AC_OP_ACTIVATE,    /* b4 */
+				SC_AC_OP_DEACTIVATE,  /* b3 */
+				SC_AC_OP_WRITE,       /* b2 */
+				SC_AC_OP_UPDATE,      /* b1 */
+				SC_AC_OP_READ         /* b0 */
 			};
 			for(i=0; i<8; i++)
 			{
@@ -341,9 +341,9 @@ isoApplet_create_file(sc_card_t *card, sc_file_t *file)
  * and the saByte (Encoded according to IsoApplet FCI proprietary security
  * information, see also ISO 7816-4 table 20).
  *
- * @param[in,out]	file
- * @param[in] 		operation	The OpenSC operation.
- * @param[in]		saByte		The security condition byte returned by the applet.
+ * @param[in,out] file
+ * @param[in]     operation The OpenSC operation.
+ * @param[in]     saByte    The security condition byte returned by the applet.
  */
 static int
 isoApplet_add_sa_to_acl(sc_file_t *file, unsigned int operation, u8 saByte)
@@ -446,19 +446,19 @@ isoApplet_process_fci(sc_card_t *card, sc_file_t *file,
  * @brief Encode the EC parameters as a concatenation of TLV enrties.
  *
  * The format is:
- * 	81 - prime
- * 	82 - coefficient A
- * 	83 - coefficient B
- *	84 - base point G
- *	85 - order
- *	87 - cofactor
+ *  81 - prime
+ *  82 - coefficient A
+ *  83 - coefficient B
+ *  84 - base point G
+ *  85 - order
+ *  87 - cofactor
  *
- *	@param[in]	card
- *	@param[in]	params	The ECparameters containing the information of the curve.
- *	@param[out]	out		The array the encoded parameters are written to.
- *	@param[in]	out_len	The size of out
- *	@param[out] ptr		A pointer pointing to the end of the parameters in out
- *						(the first untouched byte behind the parameters).
+ *	@param[in]  card
+ *	@param[in]  params  The ECparameters containing the information of the curve.
+ *	@param[out] out     The array the encoded parameters are written to.
+ *	@param[in]  out_len The size of out
+ *	@param[out] ptr     A pointer pointing to the end of the parameters in out
+ *                      (the first untouched byte behind the parameters).
  */
 static int
 isoApplet_put_ec_params(sc_card_t *card, sc_cardctl_isoApplet_ec_parameters_t *params, u8 *out, size_t out_len, u8 **ptr)
@@ -551,11 +551,11 @@ isoApplet_ctl_generate_key(sc_card_t *card, sc_cardctl_isoApplet_genkey_t *args)
 	/* GENERATE ASYMMETRIC KEY PAIR
 	 * We use a larger buffer here, even if the card does not support extended apdus.
 	 * There are two cases:
-	 *		1) The card can do ext. apdus: The data fits in one apdu.
-	 *		2) The card can't do ext. apdus: sc_transmit_apdu will handle that - the
-	 *			card will send SW_BYTES_REMAINING, OpenSC will automaticall do a
-	 *			GET RESPONSE to get the remaining data, and will append it to the data
-	 *			buffer. */
+	 *  1) The card can do ext. apdus: The data fits in one apdu.
+	 *  2) The card can't do ext. apdus: sc_transmit_apdu will handle that - the
+	 *     card will send SW_BYTES_REMAINING, OpenSC will automaticall do a
+	 *     GET RESPONSE to get the remaining data, and will append it to the data
+	 *     buffer. */
 	if(args->algorithm_ref == SC_ISOAPPLET_ALG_REF_EC_GEN)
 	{
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_4, 0x46, 0x00, 0x00);
@@ -694,10 +694,10 @@ isoApplet_ctl_generate_key(sc_card_t *card, sc_cardctl_isoApplet_genkey_t *args)
  * one RSA field (P, Q, etc.). The first apdu must contain the outer tag (7F48).
  *
  * @param card
- * @param rsa	The RSA private key to import.
+ * @param rsa The RSA private key to import.
  *
- * @return	SC_ERROR_INVALID_ARGUMENTS:	The RSA key does not contain CRT fields.
- *			other errors:				Transmit errors / errors returned by card.
+ * @return SC_ERROR_INVALID_ARGUMENTS: The RSA key does not contain CRT fields.
+ *		   other errors:               Transmit errors / errors returned by card.
  */
 static int
 isoApplet_put_data_prkey_rsa(sc_card_t *card, sc_cardctl_isoApplet_import_key_t *args)
@@ -808,21 +808,21 @@ out:
  * @brief Use PUT DATA to import a private EC key.
  *
  * Format of transmitted data:
- * 0xE0 - Private class, constructed encoding, number one.
- * 		0x81 - prime
- * 		0x82 - coefficient A
- * 		0x83 - coefficient B
- * 		0x84 - base point G
- * 		0x85 - order
- * 		0x87 - cofactor
- *		0x88 - private D (private key)
+ *  0xE0 - Private class, constructed encoding, number one.
+ *  0x81 - prime
+ *  0x82 - coefficient A
+ *  0x83 - coefficient B
+ *  0x84 - base point G
+ *  0x85 - order
+ *  0x87 - cofactor
+ *  0x88 - private D (private key)
  *
  * @param card
- * @param ec	The EC private key to import.
+ * @param ec   The EC private key to import.
  *
- * @return	SC_ERROR_INVALID_ARGUMENTS:	Curve parameters or private component is missing.
- *			other errors:				Transmit errors / errors returned by card.
- *										ASN1 errors.
+ * @return SC_ERROR_INVALID_ARGUMENTS: Curve parameters or private component is missing.
+ *         other errors:               Transmit errors / errors returned by card.
+ *                                     ASN1 errors.
  */
 static int
 isoApplet_put_data_prkey_ec(sc_card_t *card, sc_cardctl_isoApplet_import_key_t *args)
@@ -1088,7 +1088,7 @@ isoApplet_set_security_env(sc_card_t *card,
 			LOG_TEST_RET(card->ctx, SC_ERROR_NOT_SUPPORTED, "Unsupported algorithm.");
 		}
 
-		*p++ = 0x80;	/* algorithm reference */
+		*p++ = 0x80; /* algorithm reference */
 		*p++ = 0x01;
 		*p++ = drvdata->sec_env_alg_ref;
 	}
