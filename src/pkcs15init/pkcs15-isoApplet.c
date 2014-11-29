@@ -682,16 +682,16 @@ isoApplet_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_pkcs15_
 		{
 			LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS, "Only CRT RSA keys may be imported.");
 		}
-		args.privkey.rsa.p.value	= key->u.rsa.p.data;
-		args.privkey.rsa.p.len		= key->u.rsa.p.len;
-		args.privkey.rsa.q.value	= key->u.rsa.q.data;
-		args.privkey.rsa.q.len		= key->u.rsa.q.len;
-		args.privkey.rsa.iqmp.value	= key->u.rsa.iqmp.data;
-		args.privkey.rsa.iqmp.len	= key->u.rsa.iqmp.len;
-		args.privkey.rsa.dmp1.value	= key->u.rsa.dmp1.data;
-		args.privkey.rsa.dmp1.len	= key->u.rsa.dmp1.len;
-		args.privkey.rsa.dmq1.value	= key->u.rsa.dmq1.data;
-		args.privkey.rsa.dmq1.len	= key->u.rsa.dmq1.len;
+		args.privkey.rsa.p.value    = key->u.rsa.p.data;
+		args.privkey.rsa.p.len      = key->u.rsa.p.len;
+		args.privkey.rsa.q.value    = key->u.rsa.q.data;
+		args.privkey.rsa.q.len      = key->u.rsa.q.len;
+		args.privkey.rsa.iqmp.value = key->u.rsa.iqmp.data;
+		args.privkey.rsa.iqmp.len   = key->u.rsa.iqmp.len;
+		args.privkey.rsa.dmp1.value = key->u.rsa.dmp1.data;
+		args.privkey.rsa.dmp1.len   = key->u.rsa.dmp1.len;
+		args.privkey.rsa.dmq1.value = key->u.rsa.dmq1.data;
+		args.privkey.rsa.dmq1.len   = key->u.rsa.dmq1.len;
 		break;
 
 	case SC_PKCS15_TYPE_PRKEY_EC:
@@ -705,20 +705,20 @@ isoApplet_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_pkcs15_
 		}
 		r = isoApplet_get_curve(key->u.ec.params.der.value, key->u.ec.params.der.len, &curve);
 		LOG_TEST_RET(card->ctx, r, "EC key generation failed: Unsupported curve");
-		args.privkey.ec.params.prime.value			= curve->prime.value;
-		args.privkey.ec.params.prime.len			= curve->prime.len;
-		args.privkey.ec.params.coefficientA.value	= curve->coefficientA.value;
-		args.privkey.ec.params.coefficientA.len		= curve->coefficientA.len;
-		args.privkey.ec.params.coefficientB.value	= curve->coefficientB.value;
-		args.privkey.ec.params.coefficientB.len		= curve->coefficientB.len;
-		args.privkey.ec.params.basePointG.value		= curve->basePointG.value;
-		args.privkey.ec.params.basePointG.len		= curve->basePointG.len;
-		args.privkey.ec.params.order.value			= curve->order.value;
-		args.privkey.ec.params.order.len			= curve->order.len;
-		args.privkey.ec.params.coFactor.value		= curve->coFactor.value;
-		args.privkey.ec.params.coFactor.len			= curve->coFactor.len;
-		args.privkey.ec.privateD.value				= key->u.ec.privateD.data;
-		args.privkey.ec.privateD.len				= key->u.ec.privateD.len;
+		args.privkey.ec.params.prime.value        = curve->prime.value;
+		args.privkey.ec.params.prime.len          = curve->prime.len;
+		args.privkey.ec.params.coefficientA.value = curve->coefficientA.value;
+		args.privkey.ec.params.coefficientA.len   = curve->coefficientA.len;
+		args.privkey.ec.params.coefficientB.value = curve->coefficientB.value;
+		args.privkey.ec.params.coefficientB.len   = curve->coefficientB.len;
+		args.privkey.ec.params.basePointG.value   = curve->basePointG.value;
+		args.privkey.ec.params.basePointG.len     = curve->basePointG.len;
+		args.privkey.ec.params.order.value        = curve->order.value;
+		args.privkey.ec.params.order.len          = curve->order.len;
+		args.privkey.ec.params.coFactor.value     = curve->coFactor.value;
+		args.privkey.ec.params.coFactor.len       = curve->coFactor.len;
+		args.privkey.ec.privateD.value            = key->u.ec.privateD.data;
+		args.privkey.ec.privateD.len              = key->u.ec.privateD.len;
 	}
 	break;
 
@@ -739,21 +739,21 @@ isoApplet_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_pkcs15_
 
 static struct sc_pkcs15init_operations sc_pkcs15init_isoApplet_operations =
 {
-	NULL,							/* erase_card */
-	NULL,							/* init_card */
-	isoApplet_create_dir,			/* create_dir */
-	NULL,							/* create_domain */
-	isoApplet_select_pin_reference,	/* pin_reference*/
-	isoApplet_create_pin,			/* create_pin */
-	isoApplet_select_key_reference,	/* key_reference */
-	isoApplet_create_key,			/* create_key */
-	isoApplet_store_key,			/* store_key */
-	isoApplet_generate_key,			/* generate_key */
-	NULL, NULL,						/* encode private/public key */
-	NULL,	  						/* finalize */
-	NULL, 							/* delete_object */
-	NULL, NULL, NULL, NULL, NULL, 	/* pkcs15init emulation */
-	NULL,							/* sanity_check*/
+	NULL,                           /* erase_card */
+	NULL,                           /* init_card */
+	isoApplet_create_dir,           /* create_dir */
+	NULL,                           /* create_domain */
+	isoApplet_select_pin_reference, /* pin_reference*/
+	isoApplet_create_pin,           /* create_pin */
+	isoApplet_select_key_reference, /* key_reference */
+	isoApplet_create_key,           /* create_key */
+	isoApplet_store_key,            /* store_key */
+	isoApplet_generate_key,         /* generate_key */
+	NULL, NULL,                     /* encode private/public key */
+	NULL,                           /* finalize */
+	NULL,                           /* delete_object */
+	NULL, NULL, NULL, NULL, NULL,   /* pkcs15init emulation */
+	NULL,                           /* sanity_check*/
 };
 
 struct
