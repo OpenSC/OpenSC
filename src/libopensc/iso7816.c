@@ -854,6 +854,9 @@ iso7816_decipher(struct sc_card *card,
 	assert(card != NULL && crgram != NULL && out != NULL);
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
 
+	if (outlen < crgram_len)
+	    return SC_ERROR_BUFFER_TOO_SMALL;
+
 	sbuf = malloc(crgram_len + 1);
 	if (sbuf == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
@@ -864,10 +867,11 @@ iso7816_decipher(struct sc_card *card,
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4, 0x2A, 0x80, 0x86);
 	apdu.resp    = out;
 	apdu.resplen = outlen;
-	/* if less than 256 bytes are expected than set Le to 0x00
+	/* if outlen >= 256 and not using extended apdus, set Le to 256
 	 * to tell the card the we want everything available (note: we
 	 * always have Le <= crgram_len) */
-	apdu.le      = (outlen >= 256 && crgram_len < 256) ? 256 : outlen;
+	apdu.le      = (outlen >= 256 && !(card->caps & SC_CARD_CAP_APDU_EXT)) ? 256 : outlen;
+
 	/* Use APDU chaining with 2048bit RSA keys if the card does not do extended APDU-s */
 	if ((crgram_len+1 > 255) && !(card->caps & SC_CARD_CAP_APDU_EXT))
 		apdu.flags |= SC_APDU_FLAGS_CHAINING;
