@@ -889,8 +889,6 @@ iasecc_pkcs15_fix_private_key_attributes(struct sc_profile *profile, struct sc_p
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Unsupported object type");
 
 	key_info->access_flags |= SC_PKCS15_PRKEY_ACCESS_SENSITIVE;
-	key_info->access_flags |= SC_PKCS15_PRKEY_ACCESS_ALWAYSSENSITIVE;
-	key_info->access_flags |= SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE;
 
 	sc_log(ctx, "SDO(class:%X,ref:%X,usage:%X)",
 			sdo_prvkey->sdo_class, sdo_prvkey->sdo_ref, sdo_prvkey->usage);
@@ -1129,6 +1127,8 @@ iasecc_pkcs15_generate_key(struct sc_profile *profile, sc_pkcs15_card_t *p15card
 	LOG_TEST_RET(ctx, rv, "SC_AC_OP_GENERATE authentication failed");
 
 	key_info->access_flags |= SC_PKCS15_PRKEY_ACCESS_LOCAL;
+	key_info->access_flags |= SC_PKCS15_PRKEY_ACCESS_ALWAYSSENSITIVE;
+	key_info->access_flags |= SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE;
 
 	rv = sc_card_ctl(card, SC_CARDCTL_IASECC_SDO_GENERATE, sdo_prvkey);
 	LOG_TEST_RET(ctx, rv, "generate key failed");
