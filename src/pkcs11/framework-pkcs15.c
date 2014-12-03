@@ -3368,14 +3368,26 @@ pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
 		*(CK_OBJECT_CLASS*)attr->pValue = CKO_PRIVATE_KEY;
 		break;
 	case CKA_TOKEN:
-	case CKA_LOCAL:
-	case CKA_SENSITIVE:
-	case CKA_ALWAYS_SENSITIVE:
-	case CKA_NEVER_EXTRACTABLE:
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
 		*(CK_BBOOL*)attr->pValue = TRUE;
 		break;
-        case CKA_ALWAYS_AUTHENTICATE:
+	case CKA_ALWAYS_SENSITIVE:
+		check_attribute_buffer(attr, sizeof(CK_BBOOL));
+		*(CK_BBOOL*)attr->pValue = (prkey->prv_info->access_flags & SC_PKCS15_PRKEY_ACCESS_ALWAYSSENSITIVE) != 0;
+		break;
+	case CKA_NEVER_EXTRACTABLE:
+		check_attribute_buffer(attr, sizeof(CK_BBOOL));
+		*(CK_BBOOL*)attr->pValue = (prkey->prv_info->access_flags & SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE) != 0;
+		break;
+	case CKA_SENSITIVE:
+		check_attribute_buffer(attr, sizeof(CK_BBOOL));
+		*(CK_BBOOL*)attr->pValue = (prkey->prv_info->access_flags & SC_PKCS15_PRKEY_ACCESS_SENSITIVE) != 0;
+		break;
+	case CKA_LOCAL:
+		check_attribute_buffer(attr, sizeof(CK_BBOOL));
+		*(CK_BBOOL*)attr->pValue = (prkey->prv_info->access_flags & SC_PKCS15_PRKEY_ACCESS_LOCAL) != 0;
+		break;
+    case CKA_ALWAYS_AUTHENTICATE:
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
 		*(CK_BBOOL*)attr->pValue = prkey->prv_p15obj->user_consent;
 		break;
