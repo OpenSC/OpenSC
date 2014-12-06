@@ -176,7 +176,7 @@ static int sc_hsm_encode_gakp_ec(struct sc_pkcs15_card *p15card, sc_cvc_t *cvc, 
 	struct sc_pkcs15_ec_parameters *ecparams = (struct sc_pkcs15_ec_parameters *)key_info->params.data;
 	struct ec_curve *curve = NULL;
 	u8 *curveoid;
-	int curveoidlen;
+	int curveoidlen,r;
 
 	LOG_FUNC_CALLED(p15card->card->ctx);
 
@@ -188,7 +188,8 @@ static int sc_hsm_encode_gakp_ec(struct sc_pkcs15_card *p15card, sc_cvc_t *cvc, 
 
 	curveoidlen = *curveoid++;
 
-	sc_pkcs15emu_sc_hsm_get_curve(&curve, curveoid, curveoidlen);
+	r = sc_pkcs15emu_sc_hsm_get_curve(&curve, curveoid, curveoidlen);
+	LOG_TEST_RET(p15card->card->ctx, r, "Unsupported named curve");
 
 	cvc->primeOrModuluslen = curve->prime.len;
 	cvc->primeOrModulus = malloc(cvc->primeOrModuluslen);
