@@ -118,7 +118,10 @@
 						<option>--pin-value</option> <replaceable>value</replaceable>,
 						<option>-x</option> <replaceable>value</replaceable>
 					</term>
-					<listitem><para>Set value of PIN.</para></listitem>
+					<listitem><para>Set value of PIN. If set to
+					env:<replaceable>VARIABLE</replaceable>, the value of
+					the environment variable
+					<replaceable>VARIABLE</replaceable> is used.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -127,7 +130,10 @@
 						<option>-y</option> <replaceable>value</replaceable>
 					</term>
 					<listitem><para>set value of PUK (or value of new PIN for change PIN
-					command see <option>-n</option>).</para></listitem>
+					command see <option>-n</option>). If set to
+					env:<replaceable>VARIABLE</replaceable>, the value of
+					the environment variable
+					<replaceable>VARIABLE</replaceable> is used.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>

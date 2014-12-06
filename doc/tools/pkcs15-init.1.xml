@@ -331,11 +331,17 @@
 					</term>
 					<listitem>
 						<para>
-							These options can be used to specify PIN/PUK values on the command
-							line. Note that on most operation systems, any user can display
-							the command line of any process on the system using utilities such
-							as <command>ps(1)</command>. Therefore, you should use these options
-							only on a secured system, or in an options file specified with
+							These options can be used to specify PIN/PUK values
+							on the command line. If set to
+							env:<replaceable>VARIABLE</replaceable>, the value
+							of the environment variable
+							<replaceable>VARIABLE</replaceable> is used. Note
+							that on most operation systems, any user can
+							display the command line of any process on the
+							system using utilities such as
+							<command>ps(1)</command>. Therefore, you should use
+							these options only on a secured system, or in an
+							options file specified with
 							<option>--options-file</option>.
 						</para>
 					</listitem>
