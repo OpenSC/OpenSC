@@ -77,13 +77,9 @@ static sc_card_t *card = NULL;
 
 static int check_apdu(const sc_apdu_t *apdu)
 {
-	if (apdu->sw1 != 0x90 || apdu->sw2 != 00 || verbose) {
-		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
-			apdu->sw1, apdu->sw2, apdu->resplen ? ":" : "");
-		if (apdu->resplen)
-			util_hex_dump_asc(stdout, apdu->resp, apdu->resplen, -1);
-		if (apdu->sw1 != 0x90 || apdu->sw2 != 0x00)
-			return 1;
+	if (apdu->sw1 != 0x90 || apdu->sw2 != 0x00) {
+		fprintf(stderr, "Some error occurred. Use '-v' several times to enable debug output.");
+		return 1;
 	}
 	return 0;
 }
