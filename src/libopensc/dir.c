@@ -91,7 +91,7 @@ parse_dir_record(sc_card_t *card, u8 ** buf, size_t *buflen, int rec_nr)
 	else
 		app->label = NULL;
 
-	if (asn1_dirrecord[2].flags & SC_ASN1_PRESENT) {
+	if (asn1_dirrecord[2].flags & SC_ASN1_PRESENT && path_len > 0) {
 		/* application path present: ignore AID */
 		if (path_len > SC_MAX_PATH_SIZE) {
 			free(app);
