@@ -52,9 +52,9 @@ static char * opt_data = NULL;
 static char * opt_pubkey = NULL;
 static char * opt_outfile = NULL;
 static char * opt_bind_to_aid = NULL;
-static const u8 * opt_newpin = NULL;
-static const u8 * opt_pin = NULL;
-static const u8 * opt_puk = NULL;
+static const char * opt_newpin = NULL;
+static const char * opt_pin = NULL;
+static const char * opt_puk = NULL;
 static int	verbose = 0;
 static int opt_no_prompt = 0;
 
@@ -1116,7 +1116,7 @@ static int verify_pin(void)
 	}
 
 	if (opt_pin != NULL)
-		pin = opt_pin;
+		pin = (unsigned char *) opt_pin;
 	else
 		pin = get_pin("Please enter PIN", pin_obj);
 
@@ -1127,13 +1127,16 @@ static int verify_pin(void)
 		return -1;
 	}
 
+	if (opt_pin == NULL)
+		free(pin);
+
 	return 0;
 }
 
 static int authenticate(sc_pkcs15_object_t *obj)
 {
 	sc_pkcs15_object_t	*pin_obj;
-	u8			*pin;
+	u8			*pin = NULL;
 	int			r;
 
 	if (obj->auth_id.len == 0)
@@ -1143,11 +1146,16 @@ static int authenticate(sc_pkcs15_object_t *obj)
 		return r;
 
 	if (opt_pin != NULL)
-		pin = opt_pin;
+		pin = (u8 *) opt_pin;
 	else
 		pin = get_pin("Please enter PIN", pin_obj);
 
-	return sc_pkcs15_verify_pin(p15card, pin_obj, pin, pin? strlen((char *) pin) : 0);
+	r = sc_pkcs15_verify_pin(p15card, pin_obj, pin, pin? strlen((char *) pin) : 0);
+
+	if (opt_pin == NULL)
+		free(pin);
+
+	return r;
 }
 
 static void print_pin_info(const struct sc_pkcs15_object *obj)
@@ -1307,7 +1315,7 @@ static int unblock_pin(void)
 	if (pinfo->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
 		return 1;
 
-	puk = opt_puk;
+	puk = (u8 *) opt_puk;
 	if (puk == NULL) {
 		sc_pkcs15_object_t *puk_obj = NULL;
 
@@ -1338,7 +1346,7 @@ static int unblock_pin(void)
 		printf("PUK value will be prompted with pinpad.\n");
 
 	/* FIXME should OPENSSL_cleanse on pin/puk data */
-	pin = opt_pin ? opt_pin : opt_newpin;
+	pin = opt_pin ? (u8 *) opt_pin : (u8 *) opt_newpin;
 	while (pin == NULL) {
 		u8 *pin2;
 
@@ -1365,7 +1373,12 @@ static int unblock_pin(void)
 	r = sc_pkcs15_unblock_pin(p15card, pin_obj,
 			puk, puk ? strlen((char *) puk) : 0,
 			pin, pin ? strlen((char *) pin) : 0);
-	/* FIXME must free the puk somewhere */
+
+	if (NULL == opt_puk)
+		free(puk);
+	if (NULL == opt_pin && NULL == opt_newpin)
+		free(pin);
+
 	if (r == SC_ERROR_PIN_CODE_INCORRECT) {
 		fprintf(stderr, "PUK code incorrect; tries left: %d\n", pinfo->tries_left);
 		return 3;
@@ -1405,7 +1418,7 @@ static int change_pin(void)
 		}
 	}
 
-	pincode = opt_pin;
+	pincode = (u8 *) opt_pin;
 	if (pincode == NULL) {
 		pincode = get_pin("Enter old PIN", pin_obj);
 		if (!pinpad_present && pincode == NULL)
@@ -1420,7 +1433,7 @@ static int change_pin(void)
 	if (pincode == NULL && verbose)
 		printf("Old PIN value will be prompted with pinpad.\n");
 
-	newpin = opt_newpin;
+	newpin = (u8 *) opt_newpin;
 	while (newpin == NULL) {
 		u8 *newpin2;
 
@@ -1459,7 +1472,12 @@ static int change_pin(void)
 	}
 	if (verbose)
 		printf("PIN code changed successfully.\n");
-	/* FIXME must free the pincode somewhere */
+
+	if (opt_pin == NULL)
+		free(pincode);
+	if (opt_newpin == NULL)
+		free(newpin);
+
 	return 0;
 }
 
@@ -1890,13 +1908,13 @@ int main(int argc, char * const argv[])
 			opt_reader = optarg;
 			break;
 		case OPT_PIN:
-			util_get_pin(optarg, (const u8 **) &opt_pin);
+			util_get_pin(optarg, &opt_pin);
 			break;
 		case OPT_NEWPIN:
-			util_get_pin(optarg, (const u8 **) &opt_newpin);
+			util_get_pin(optarg, &opt_newpin);
 			break;
 		case OPT_PUK:
-			util_get_pin(optarg, (const u8 **) &opt_puk);
+			util_get_pin(optarg, &opt_puk);
 			break;
 		case 'o':
 			opt_outfile = optarg;

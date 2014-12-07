@@ -664,7 +664,7 @@ static int recreate_password_from_shares(char **pwd, int *pwdlen, int num_of_pas
 
 
 
-static int import_dkek_share(sc_card_t *card, const char *inf, int iter, char *password, int num_of_password_shares)
+static int import_dkek_share(sc_card_t *card, const char *inf, int iter, const char *password, int num_of_password_shares)
 {
 	sc_cardctl_sc_hsm_dkek_t dkekinfo;
 	EVP_CIPHER_CTX ctx;
@@ -712,7 +712,7 @@ static int import_dkek_share(sc_card_t *card, const char *inf, int iter, char *p
 		}
 
 	} else {
-		pwd = password;
+		pwd = (char *) password;
 		pwdlen = strlen(password);
 	}
 
@@ -904,7 +904,7 @@ static int generate_pwd_shares(sc_card_t *card, char **pwd, int *pwdlen, int pas
 
 
 
-static int create_dkek_share(sc_card_t *card, const char *outf, int iter, char *password, int password_shares_threshold, int password_shares_total)
+static int create_dkek_share(sc_card_t *card, const char *outf, int iter, const char *password, int password_shares_threshold, int password_shares_total)
 {
 	EVP_CIPHER_CTX ctx;
 	FILE *out = NULL;
@@ -927,7 +927,7 @@ static int create_dkek_share(sc_card_t *card, const char *outf, int iter, char *
 		}
 
 	} else {
-		pwd = password;
+		pwd = (char *) password;
 		pwdlen = strlen(password);
 	}
 
@@ -1439,7 +1439,7 @@ int main(int argc, char * const argv[])
 	const char *opt_so_pin = NULL;
 	const char *opt_pin = NULL;
 	const char *opt_filename = NULL;
-	char *opt_password = NULL;
+	const char *opt_password = NULL;
 	int opt_retry_counter = 3;
 	int opt_dkek_shares = -1;
 	int opt_key_reference = -1;
@@ -1484,18 +1484,12 @@ int main(int argc, char * const argv[])
 			action_count++;
 			break;
 		case OPT_PASSWORD:
-			free(opt_password);
-			opt_password = NULL;
 			util_get_pin(optarg, &opt_password);
 			break;
 		case OPT_SO_PIN:
-			free(opt_so_pin);
-			opt_so_pin = NULL;
 			util_get_pin(optarg, &opt_so_pin);
 			break;
 		case OPT_PIN:
-			free(opt_pin);
-			opt_pin = NULL;
 			util_get_pin(optarg, &opt_pin);
 			break;
 		case OPT_RETRY:
