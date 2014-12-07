@@ -452,17 +452,36 @@ iso7816_select_file(struct sc_card *card, const struct sc_path *in_path, struct 
 	struct sc_apdu apdu;
 	unsigned char buf[SC_MAX_APDU_BUFFER_SIZE];
 	unsigned char pathbuf[SC_MAX_PATH_SIZE], *path = pathbuf;
-	int r, pathlen;
+	int r, pathlen, pathtype;
 	struct sc_file *file = NULL;
 
 	assert(card != NULL && in_path != NULL);
 	ctx = card->ctx;
 	memcpy(path, in_path->value, in_path->len);
 	pathlen = in_path->len;
+	pathtype = in_path->type;
+
+	if (in_path->aid.len) {
+		/* First, select the application */
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, 4, 0);
+		apdu.data = in_path->aid.value;
+		apdu.datalen = in_path->aid.len;
+		apdu.lc = in_path->aid.len;
+
+		r = sc_transmit_apdu(card, &apdu);
+		LOG_TEST_RET(ctx, r, "APDU transmit failed");
+		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+		if (r)
+			LOG_FUNC_RETURN(ctx, r);
+
+		if (pathtype == SC_PATH_TYPE_PATH
+				|| pathtype == SC_PATH_TYPE_DF_NAME)
+			pathtype = SC_PATH_TYPE_FROM_CURRENT;
+	}
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xA4, 0, 0);
 
-	switch (in_path->type) {
+	switch (pathtype) {
 	case SC_PATH_TYPE_FILE_ID:
 		apdu.p1 = 0;
 		if (pathlen != 2)
