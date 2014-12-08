@@ -57,9 +57,6 @@ static void buf_addch(BUFHAN * bp, char ch)
 		bp->bufmax += 256;
 		bp->buf = (char *) realloc(bp->buf, bp->bufmax);
 	}
-#if 0
-	printf("pushback %c\n", ch);
-#endif
 	bp->buf[bp->bufcur++] = ch;
 	bp->buf[bp->bufcur] = '\0';
 }

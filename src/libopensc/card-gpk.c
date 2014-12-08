@@ -220,47 +220,6 @@ gpk_finish(sc_card_t *card)
 }
 
 /*
- * Error code handling for the GPK4000.
- * sc_check_sw doesn't seem to handle all of the
- * status words the GPK is capable of returning
- */
-#if 0
-static int
-gpk_check_sw(sc_card_t *card, u8 sw1, u8 sw2)
-{
-	unsigned short int	sw = (sw1 << 8) | sw2;
-
-	if ((sw & 0xFFF0) == 0x63C0) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "wrong PIN, %u tries left\n", sw&0xf);
-		return SC_ERROR_PIN_CODE_INCORRECT;
-	}
-
-	switch (sw) {
-	case 0x6400:
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "wrong crypto context\n");
-		return SC_ERROR_OBJECT_NOT_VALID; /* XXX ??? */
-
-	/* The following are handled by iso7816_check_sw
-	 * but all return SC_ERROR_UNKNOWN_DATA_RECEIVED
-	 * XXX: fix in the iso driver? */
-	case 0x6983:
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "PIN is blocked\n");
-		return SC_ERROR_PIN_CODE_INCORRECT;
-	case 0x6581:
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "out of space on card or file\n");
-		return SC_ERROR_OUT_OF_MEMORY;
-	case 0x6981:
-		return SC_ERROR_FILE_NOT_FOUND;
-	case 0x6A80:
-	case 0x6b00:
-		return SC_ERROR_INVALID_ARGUMENTS;
-	}
-
-	return iso7816_check_sw(card, sw1, sw2);
-}
-#endif
-
-/*
  * Select a DF/EF
  */
 static int
@@ -1283,14 +1242,7 @@ gpk_compute_signature(sc_card_t *card, const u8 *data,
 	apdu.cse = SC_APDU_CASE_2_SHORT;
 	apdu.cla = 0x80;
 	apdu.ins = 0x86;
-#if 0
-	/* Don't know why I did this. It conflicts with the spec
-	 * (but it worked with the gpk4k, strange). --okir */
-	apdu.p1  = priv->sec_padding;
-	apdu.p2  = priv->sec_mod_len;
-#else
 	apdu.p2  = priv->sec_padding;
-#endif
 	apdu.resp= cardsig;
 	apdu.resplen = sizeof(cardsig);
 	apdu.le  = priv->sec_mod_len;
@@ -1625,33 +1577,6 @@ gpk_get_default_key(sc_card_t *card, struct sc_cardctl_default_key *data)
 	}
 	return SC_ERROR_NO_DEFAULT_KEY;
 }
-
-/*
- * Get the maximum size of a session key the card is
- * willing to decrypt
- */
-#if 0
-static int
-gpk_max_session_key(sc_card_t *card)
-{
-	struct gpk_private_data *priv = DRVDATA(card);
-	sc_path_t	path;
-	u8		value;
-	int		r;
-
-	if (priv->max_session_key)
-		return priv->max_session_key;
-
-	/* GPK cards limit the amount of data they're willing
-	 * to RSA decrypt. This data is stored in EFMaxSessionKey */
-	sc_format_path("01000001", &path);
-	if ((r = sc_select_file(card, &path, NULL)) < 0
-	 || (r = sc_read_binary(card, 0, &value, 1, 0)) < 0)
-		return r;
-	priv->max_session_key = value;
-	return value;
-}
-#endif
 
 /*
  * GetInfo call

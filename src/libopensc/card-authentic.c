@@ -519,41 +519,6 @@ authentic_erase_binary(struct sc_card *card, unsigned int offs, size_t count, un
 }
 
 
-#if 0
-static int
-authentic_resize_file(struct sc_card *card, unsigned file_id, unsigned new_size)
-{
-	struct sc_context *ctx = card->ctx;
-	struct sc_apdu apdu;
-	unsigned char data[6] = {
-		0x62, 0x04, 0x80, 0x02, 0xFF, 0xFF
-	};
-	int rv;
-
-	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "try to set file size to %i bytes", new_size);
-
-	data[4] = (new_size >> 8) & 0xFF;
-	data[5] = new_size & 0xFF;
-
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xDB, (file_id >> 8) & 0xFF, file_id & 0xFF);
-	apdu.data = data;
-	apdu.datalen = sizeof(data);
-	apdu.lc = sizeof(data);
-
-	rv = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(ctx, rv, "APDU transmit failed");
-	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	LOG_TEST_RET(ctx, rv, "resize file failed");
-
-	if (card->cache.valid && card->cache.current_ef && card->cache.current_ef->id == file_id)
-		card->cache.current_ef->size = new_size;
-
-	LOG_FUNC_RETURN(ctx, rv);
-}
-#endif
-
-
 static int
 authentic_set_current_files(struct sc_card *card, struct sc_path *path,
 		unsigned char *resp, size_t resplen, struct sc_file **file_out)
@@ -2074,9 +2039,6 @@ authentic_set_security_env(struct sc_card *card,
 	default:
 		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 	}
-#if 0
-	apdu.flags |= SC_APDU_FLAGS_CAN_WAIT;
-#endif
 
 	rv = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(ctx, rv, "APDU transmit failed");

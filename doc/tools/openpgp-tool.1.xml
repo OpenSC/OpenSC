@@ -113,7 +113,10 @@
 					</term>
 					<listitem>
 						<para>
-						The PIN text to verify.
+						The PIN text to verify. If set to
+						env:<replaceable>VARIABLE</replaceable>, the value of
+						the environment variable
+						<replaceable>VARIABLE</replaceable> is used.
 						</para>
 					</listitem>
 				</varlistentry>

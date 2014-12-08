@@ -612,11 +612,7 @@ cardos_store_key_component(sc_card_t *card,
 	tlv_add(&tlv, 0);	/* rfu */
 	tlv_add(&tlv, 0);	/* rfu */
 	tlv_add(&tlv, 0);	/* rfu */
-#if 0
-	tlv_add(&tlv, pin_id);	/* AC GENKEY */
-#else
 	tlv_add(&tlv, 0);
-#endif
 
 #ifdef SET_SM_BYTES
 	/* it shouldn't be necessary to set the default value */

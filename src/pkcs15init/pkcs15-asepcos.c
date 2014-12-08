@@ -245,11 +245,7 @@ static int asepcos_do_store_pin(sc_profile_t *profile, sc_card_t *card,
 	*p++ = 0x00;
 	*p++ = 0x00;
 	/* key attributes (SO PIN) */
-#if 0
-	*p++ = (pinfo->flags & SC_PKCS15_PIN_FLAG_SO_PIN) ? 0x08 : 0x00;
-#else
 	*p++ = 0x00;
-#endif
 	/* the PIN */
 	*p++ = 0x81;
 	*p++ = pinlen & 0xff;
@@ -598,12 +594,6 @@ static int asepcos_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		}
 		afileid = st.fileid;
 	}
-#if 0
-	/* select the DF */
-	r = sc_select_file(card, &profile->df_info->file->path, NULL);
-	if (r != SC_SUCCESS)
-		return r;
-#endif
 
 	/* authenticate if necessary */
 	r = asepcos_do_authenticate(profile, p15card, &profile->df_info->file->path, SC_AC_OP_CREATE);
@@ -615,19 +605,11 @@ static int asepcos_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	*p++ = 0xc1;
 	*p++ = 0x82;
 	p   += 2;
-#if 0
-	/* private exponent */
-	*p++ = 0x92;
-	SET_TLV_LENGTH(p, blen);
-	memset(p, 0xff, blen);
-	p   += blen;
-#else
 	/* public exponent */
 	*p++ = 0x90;
 	SET_TLV_LENGTH(p, 3);
 	memset(p, 0xff, 3);
 	p   += 3;
-#endif
 	/* primes p, q */
 	*p++ = 0x93;
 	SET_TLV_LENGTH(p, blen);
@@ -700,19 +682,11 @@ static int asepcos_do_store_rsa_key(sc_pkcs15_card_t *p15card, sc_profile_t *pro
 	*p++ = 0xc1;
 	*p++ = 0x82;
 	p   += 2;
-#if 0
-	/* private exponent */
-	*p++ = 0x92;
-	SET_TLV_LENGTH(p, key->d.len);
-	memcpy(p, key->d.data, key->d.len);
-	p += key->d.len;
-#else
 	/* public exponent */
 	*p++ = 0x90;
 	SET_TLV_LENGTH(p, key->exponent.len);
 	memcpy(p, key->exponent.data, key->exponent.len);
 	p   += key->exponent.len;
-#endif
 	/* primes p, q */
 	*p++ = 0x93;
 	SET_TLV_LENGTH(p, (key->p.len + key->q.len));

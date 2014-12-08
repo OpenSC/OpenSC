@@ -123,7 +123,10 @@
 						<option>--so-pin</option> <replaceable>value</replaceable>
 					</term>
 					<listitem>
-						<para>Define SO-PIN for initialization.</para>
+						<para>Define SO-PIN for initialization. If set to
+						env:<replaceable>VARIABLE</replaceable>, the value of
+						the environment variable
+						<replaceable>VARIABLE</replaceable> is used.</para>
 					</listitem>
 				</varlistentry>
 				
@@ -132,7 +135,11 @@
 						<option>--pin</option> <replaceable>value</replaceable>
 					</term>
 					<listitem>
-						<para>Define user PIN for initialization, wrap or unwrap operation.</para>
+						<para>Define user PIN for initialization, wrap or
+						unwrap operation. If set to
+						env:<replaceable>VARIABLE</replaceable>, the value of
+						the environment variable
+						<replaceable>VARIABLE</replaceable> is used.</para>
 					</listitem>
 				</varlistentry>
 				
@@ -150,7 +157,10 @@
 						<option>--password</option> <replaceable>value</replaceable>
 					</term>
 					<listitem>
-						<para>Define password for DKEK share encryption.</para>
+						<para>Define password for DKEK share encryption. If set to
+						env:<replaceable>VARIABLE</replaceable>, the value of
+						the environment variable
+						<replaceable>VARIABLE</replaceable> is used.</para>
 					</listitem>
 				</varlistentry>
 				

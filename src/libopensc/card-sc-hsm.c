@@ -217,6 +217,12 @@ static int sc_hsm_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 
 		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 	}
+
+	data->pin1.offset = 5;
+	data->pin1.length_offset = 4;
+	data->pin2.offset = 5;
+	data->pin2.length_offset = 4;
+
 	return (*iso_ops->pin_cmd)(card, data, tries_left);
 }
 
@@ -1043,9 +1049,10 @@ static int sc_hsm_init(struct sc_card *card)
 		SC_ALGORITHM_ONBOARD_KEY_GEN;
 
 	ext_flags = SC_ALGORITHM_EXT_EC_F_P|
-		    SC_ALGORITHM_EXT_EC_ECPARAMETERS|
-		    SC_ALGORITHM_EXT_EC_UNCOMPRESES|
-		    SC_ALGORITHM_ONBOARD_KEY_GEN;
+			SC_ALGORITHM_EXT_EC_ECPARAMETERS|
+			SC_ALGORITHM_EXT_EC_NAMEDCURVE|
+			SC_ALGORITHM_EXT_EC_UNCOMPRESES|
+			SC_ALGORITHM_ONBOARD_KEY_GEN;
 	_sc_card_add_ec_alg(card, 192, flags, ext_flags);
 	_sc_card_add_ec_alg(card, 224, flags, ext_flags);
 	_sc_card_add_ec_alg(card, 256, flags, ext_flags);

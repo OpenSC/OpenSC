@@ -27,7 +27,11 @@
 #include "libopensc/pkcs15.h"
 
 /* Card driver related */
+#ifdef ENABLE_OPENSSL
 extern int dnie_match_card(struct sc_card *card);
+#else
+#define dnie_match_card(card) 0
+#endif
 
 /* Helper functions to get the pkcs15 stuff bound. */
 
@@ -235,7 +239,7 @@ static int sc_pkcs15emu_dnie_init(sc_pkcs15_card_t * p15card)
 /* Public Functions When called as DLL Module*/
 /********************************************/
 
-const char *sc_driver_version()
+const char *sc_driver_version(void)
 {
 	return "0.12.3-svn";	/* defined in config.h of OpenSC */
 }

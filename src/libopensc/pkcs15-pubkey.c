@@ -944,7 +944,10 @@ sc_pkcs15_read_pubkey(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_obj
 		r = sc_pkcs15_read_file(p15card, &info->path, &data, &len);
 		LOG_TEST_RET(ctx, r, "Failed to read public key file.");
 
-		r = sc_pkcs15_decode_pubkey(ctx, pubkey, data, len);
+		if (algorithm == SC_ALGORITHM_EC && *data == (SC_ASN1_TAG_SEQUENCE | SC_ASN1_TAG_CONSTRUCTED))
+			r = sc_pkcs15_pubkey_from_spki_sequence(ctx, data, len, &pubkey);
+		else
+			r = sc_pkcs15_decode_pubkey(ctx, pubkey, data, len);
 		LOG_TEST_RET(ctx, r, "Decode public key error");
 	}
 	else {
@@ -1022,6 +1025,86 @@ sc_pkcs15_pubkey_from_prvkey(struct sc_context *ctx, struct sc_pkcs15_prkey *prv
 
 	return rv;
 }
+
+
+int
+sc_pkcs15_dup_pubkey(struct sc_context *ctx, struct sc_pkcs15_pubkey *key, struct sc_pkcs15_pubkey **out)
+{
+	struct sc_pkcs15_pubkey *pubkey = NULL;
+	int rv = SC_SUCCESS;
+	u8* alg;
+	size_t alglen;
+
+	assert(key && out);
+
+	*out = NULL;
+	pubkey = calloc(1, sizeof(struct sc_pkcs15_pubkey));
+	if (!pubkey)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+
+	pubkey->algorithm = key->algorithm;
+
+	if (key->alg_id) {
+		rv = sc_asn1_encode_algorithm_id(ctx, &alg, &alglen,key->alg_id, 0);
+		if (rv == SC_SUCCESS) {
+			pubkey->alg_id = (struct sc_algorithm_id *)calloc(1, sizeof(struct sc_algorithm_id));
+			rv = sc_asn1_decode_algorithm_id(ctx, alg, alglen, pubkey->alg_id, 0);
+			free(alg);
+		}
+	}
+
+	switch (key->algorithm) {
+	case SC_ALGORITHM_RSA:
+		rv = sc_pkcs15_dup_bignum(&pubkey->u.rsa.modulus, &key->u.rsa.modulus);
+		if (!rv)
+			rv = sc_pkcs15_dup_bignum(&pubkey->u.rsa.exponent, &key->u.rsa.exponent);
+		break;
+	case SC_ALGORITHM_DSA:
+		rv = sc_pkcs15_dup_bignum(&pubkey->u.dsa.pub, &key->u.dsa.pub);
+		if (!rv)
+			rv = sc_pkcs15_dup_bignum(&pubkey->u.dsa.p, &key->u.dsa.p);
+		if (!rv)
+			rv = sc_pkcs15_dup_bignum(&pubkey->u.dsa.q, &key->u.dsa.q);
+		if (!rv)
+			rv = sc_pkcs15_dup_bignum(&pubkey->u.dsa.g, &key->u.dsa.g);
+		break;
+	case SC_ALGORITHM_GOSTR3410:
+		break;
+	case SC_ALGORITHM_EC:
+		pubkey->u.ec.ecpointQ.value = malloc(key->u.ec.ecpointQ.len);
+		if (!pubkey->u.ec.ecpointQ.value) {
+			rv = SC_ERROR_OUT_OF_MEMORY;
+			break;
+		}
+		memcpy(pubkey->u.ec.ecpointQ.value, key->u.ec.ecpointQ.value, key->u.ec.ecpointQ.len);
+		pubkey->u.ec.ecpointQ.len = key->u.ec.ecpointQ.len;
+
+		pubkey->u.ec.params.der.value = malloc(key->u.ec.params.der.len);
+		if (!pubkey->u.ec.params.der.value) {
+			rv = SC_ERROR_OUT_OF_MEMORY;
+			break;
+		}
+		memcpy(pubkey->u.ec.params.der.value, key->u.ec.params.der.value, key->u.ec.params.der.len);
+		pubkey->u.ec.params.der.len = key->u.ec.params.der.len;
+
+		pubkey->u.ec.params.named_curve = strdup(key->u.ec.params.named_curve);
+		if (!pubkey->u.ec.params.named_curve)
+			rv = SC_ERROR_OUT_OF_MEMORY;
+
+		break;
+	default:
+		sc_log(ctx, "Unsupported private key algorithm");
+		rv = SC_ERROR_NOT_SUPPORTED;
+	}
+
+	if (rv)
+		sc_pkcs15_free_pubkey(pubkey);
+	else
+		*out = pubkey;
+
+	LOG_FUNC_RETURN(ctx, rv);
+}
+
 
 
 void
@@ -1298,6 +1381,8 @@ static struct ec_curve_info {
 		{"brainpoolP224r1",	"1.3.36.3.3.2.8.1.1.5", "06092B2403030208010105", 224},
 		{"brainpoolP256r1",	"1.3.36.3.3.2.8.1.1.7", "06092B2403030208010107", 256},
 		{"brainpoolP320r1",	"1.3.36.3.3.2.8.1.1.9", "06092B2403030208010109", 320},
+		{"secp192k1",		"1.3.132.0.31", "06052B8104001F", 192},
+		{"secp256k1",		"1.3.132.0.10", "06052B8104000A", 256},
 		{NULL, NULL, NULL, 0},
 };
 

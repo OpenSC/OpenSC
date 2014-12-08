@@ -113,13 +113,6 @@ CK_RV sc_create_object_int(CK_SESSION_HANDLE hSession,	/* the session's handle *
 		goto out;
 	}
 
-#if 0
-/* TODO DEE what should we check here */
-	if (!(session->flags & CKF_RW_SESSION)) {
-		rv = CKR_SESSION_READ_ONLY;
-		goto out;
-	}
-#endif
 	card = session->slot->card;
 	if (card->framework->create_object == NULL)
 		rv = CKR_FUNCTION_NOT_SUPPORTED;
@@ -518,6 +511,7 @@ C_Digest(CK_SESSION_HANDLE hSession,		/* the session's handle */
 {
 	CK_RV rv;
 	struct sc_pkcs11_session *session;
+	CK_ULONG  ulBuflen = 0;
 
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
@@ -528,7 +522,21 @@ C_Digest(CK_SESSION_HANDLE hSession,		/* the session's handle */
 	if (rv != CKR_OK)
 		goto out;
 
-	rv = sc_pkcs11_md_update(session, pData, ulDataLen);
+	/* if pDigest == NULL, buffer size request */
+	if (pDigest) {
+	    /* As per PKCS#11 2.20 we need to check if buffer too small before update */
+	    rv = sc_pkcs11_md_final(session, NULL, &ulBuflen);
+	    if (rv != CKR_OK)
+		goto out;
+
+	    if (ulBuflen > *pulDigestLen) {
+	        *pulDigestLen = ulBuflen;
+		rv = CKR_BUFFER_TOO_SMALL;
+		goto out;
+	    }
+
+	    rv = sc_pkcs11_md_update(session, pData, ulDataLen);
+	}
 	if (rv == CKR_OK)
 		rv = sc_pkcs11_md_final(session, pDigest, pulDigestLen);
 
@@ -1188,10 +1196,6 @@ CK_RV C_VerifyInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 #ifndef ENABLE_OPENSSL
 	return CKR_FUNCTION_NOT_SUPPORTED;
 #else
-#if 0
-	CK_BBOOL can_verify;
-	CK_ATTRIBUTE verify_attribute = { CKA_VERIFY, &can_verify, sizeof(can_verify) };
-#endif
 	CK_KEY_TYPE key_type;
 	CK_ATTRIBUTE key_type_attr = { CKA_KEY_TYPE, &key_type, sizeof(key_type) };
 	CK_RV rv;
@@ -1212,13 +1216,6 @@ CK_RV C_VerifyInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 			rv = CKR_KEY_HANDLE_INVALID;
 		goto out;
 	}
-#if 0
-	rv = object->ops->get_attribute(session, object, &verify_attribute);
-	if (rv != CKR_OK || !can_verify) {
-		rv = CKR_KEY_TYPE_INCONSISTENT;
-		goto out;
-	}
-#endif
 	rv = object->ops->get_attribute(session, object, &key_type_attr);
 	if (rv != CKR_OK) {
 		rv = CKR_KEY_TYPE_INCONSISTENT;

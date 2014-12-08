@@ -204,11 +204,10 @@
       <Feature Id="OpenSC_pkcs11" Level="1" Title="OpenSC PKCS#11 module" Description="PKCS#11 module usd by most open source and cross-platform software (like Firefox, Putty, TrueCrypt, OpenVPN etc)" TypicalDefault="install">
         <ComponentRef Id="opensc_pkcs11.dll"/>
       </Feature>
-      <Feature Id="PKCS11_spy" Level="1" Title="PKCS#11 Spy module" Description="Module of the PKCS#11 spy." Absent="disallow">
+      <Feature Id="PKCS11_spy" Level="1" Title="PKCS#11 Spy module" Description="Module of the PKCS#11 spy." Absent="allow">
         <ComponentRef Id="pkcs11_spy.dll"/>
       </Feature>
-      <!-- Minidriver is only installed if selected via Custom install (level == 4) -->
-      <Feature Id="OpenSC_minidriver" Level="4" Title="OpenSC minidriver (EXPERIMENTAL)" Description="OpenSC minidriver for using smart cards with native Windows CSP applications (like Internet Explorer)" AllowAdvertise="no" Absent="allow">
+      <Feature Id="OpenSC_minidriver" Level="1" Title="OpenSC minidriver" Description="OpenSC minidriver for using smart cards with native Windows CSP applications (like Internet Explorer)" Absent="allow">
         <ComponentRef Id="opensc_minidriver.dll"/>
       </Feature>
       <!-- Tools and profiles are for personalization -->

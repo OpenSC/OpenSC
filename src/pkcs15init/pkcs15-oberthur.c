@@ -228,24 +228,11 @@ cosm_create_dir(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 		COSM_TITLE"-container-list",
 		COSM_TITLE"-public-list",
 		COSM_TITLE"-private-list",
-#if 0
-		"PKCS15-AppDF",
-		"PKCS15-ODF",
-		"PKCS15-AODF",
-		"PKCS15-PrKDF",
-		"PKCS15-PuKDF",
-		"PKCS15-CDF",
-		"PKCS15-DODF",
-#endif
 		NULL
 	};
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 
-#if 0
-	rv = sc_pkcs15init_create_file(profile, p15card, df);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Failed to create DIR DF");
-#endif
 	/* Oberthur AWP file system is expected.*/
 	/* Create private objects DF */
 	for (ii = 0; create_dfs[ii]; ii++)   {
