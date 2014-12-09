@@ -374,7 +374,7 @@ static int do_dump_do(sc_card_t *card, unsigned int tag)
 	// Private DO are specified up to 254 bytes
 	unsigned char buffer[254];
 	memset(buffer, '\0', sizeof(buffer));
-	
+
 	r = sc_get_data(card, tag, buffer, sizeof(buffer));
 	if (r < 0) {
 		printf("Failed to get data object: %s\n", sc_strerror(r));
@@ -470,7 +470,6 @@ int do_verify(sc_card_t *card, char *type, const char *pin)
  **/
 int delete_key_openpgp(sc_card_t *card, u8 key_id)
 {
-	sc_context_t *ctx = card->ctx;
 	char *del_fingerprint = "00:DA:00:C6:14:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00";
 	char *del_creationtime = "00:DA:00:CD:04:00:00:00:00";
 	/* We need to replace the 4th byte later */
@@ -517,7 +516,6 @@ int delete_key_openpgp(sc_card_t *card, u8 key_id)
 
 int do_delete_key(sc_card_t *card, u8 key_id)
 {
-	sc_context_t *ctx = card->ctx;
 	sc_path_t path;
 	int r = SC_SUCCESS;
 

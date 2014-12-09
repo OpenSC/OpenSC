@@ -1958,8 +1958,6 @@ static int pgp_update_card_algorithms(sc_card_t *card, sc_cardctl_openpgp_keygen
  **/
 static int pgp_gen_key(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_info)
 {
-	struct pgp_priv_data *priv = DRVDATA(card);
-	pgp_blob_t *algo_blob;
 	sc_apdu_t apdu;
 	/* Temporary variables to hold APDU params */
 	u8 apdu_case;
@@ -2385,10 +2383,9 @@ static int pgp_erase_card(sc_card_t *card)
 		{0, 0x44, 0, 0}
 	};
 	u8 apdu_lens[10] = {13, 13, 13, 13, 13, 13, 13, 13, 4, 4};
-	u8 buf[SC_MAX_APDU_BUFFER_SIZE];
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	sc_apdu_t apdu;
-	int i, l, r;
+	u8 i, l, r;
 
 	LOG_FUNC_CALLED(ctx);
 
@@ -2465,7 +2462,7 @@ gnuk_delete_key(sc_card_t *card, u8 key_id)
 {
 	sc_context_t *ctx = card->ctx;
 	int r = SC_SUCCESS;
-	u8 *data = NULL;
+	char *data = NULL;
 
 	LOG_FUNC_CALLED(ctx);
 
@@ -2493,7 +2490,7 @@ gnuk_delete_key(sc_card_t *card, u8 key_id)
 	else if (key_id == 3)
 		data = "\x4D\x02\xA4";
 
-	r = pgp_put_data(card, 0x4D, data, strlen(data) + 1);
+	r = pgp_put_data(card, 0x4D, (const u8 *)data, strlen((const char *)data) + 1);
 
 	LOG_FUNC_RETURN(ctx, r);
 }
@@ -2506,7 +2503,6 @@ pgp_delete_file(sc_card_t *card, const sc_path_t *path)
 	struct pgp_priv_data *priv = DRVDATA(card);
 	pgp_blob_t *blob;
 	sc_file_t *file;
-	u8 key_id;
 	int r;
 
 	LOG_FUNC_CALLED(card->ctx);
