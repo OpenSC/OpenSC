@@ -462,21 +462,27 @@ iso7816_select_file(struct sc_card *card, const struct sc_path *in_path, struct 
 	pathtype = in_path->type;
 
 	if (in_path->aid.len) {
-		/* First, select the application */
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, 4, 0);
-		apdu.data = in_path->aid.value;
-		apdu.datalen = in_path->aid.len;
-		apdu.lc = in_path->aid.len;
+		if (!pathlen) {
+			memcpy(path, in_path->aid.value, in_path->aid.len);
+			pathlen = in_path->aid.len;
+			pathtype = SC_PATH_TYPE_DF_NAME;
+		} else {
+			/* First, select the application */
+			sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, 4, 0);
+			apdu.data = in_path->aid.value;
+			apdu.datalen = in_path->aid.len;
+			apdu.lc = in_path->aid.len;
 
-		r = sc_transmit_apdu(card, &apdu);
-		LOG_TEST_RET(ctx, r, "APDU transmit failed");
-		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-		if (r)
-			LOG_FUNC_RETURN(ctx, r);
+			r = sc_transmit_apdu(card, &apdu);
+			LOG_TEST_RET(ctx, r, "APDU transmit failed");
+			r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+			if (r)
+				LOG_FUNC_RETURN(ctx, r);
 
-		if (pathtype == SC_PATH_TYPE_PATH
-				|| pathtype == SC_PATH_TYPE_DF_NAME)
-			pathtype = SC_PATH_TYPE_FROM_CURRENT;
+			if (pathtype == SC_PATH_TYPE_PATH
+					|| pathtype == SC_PATH_TYPE_DF_NAME)
+				pathtype = SC_PATH_TYPE_FROM_CURRENT;
+		}
 	}
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xA4, 0, 0);
