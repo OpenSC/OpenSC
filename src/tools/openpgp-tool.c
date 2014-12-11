@@ -636,10 +636,10 @@ int main(int argc, char **argv)
 	}
 
 	if (opt_delkey)
-		exit_status != do_delete_key(card, key_id);
+		exit_status |= do_delete_key(card, key_id);
 
 	if (opt_erase)
-		exit_status != do_erase(card);
+		exit_status |= do_erase(card);
 
 out:
 	sc_unlock(card);
