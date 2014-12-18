@@ -527,6 +527,19 @@ iso7816_select_file(struct sc_card *card, const struct sc_path *in_path, struct 
 	if (r)
 		LOG_FUNC_RETURN(ctx, r);
 
+	if (apdu.resplen == 0) {
+		file = sc_file_new();
+		if (file == NULL)
+			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+		file->path = *in_path;
+		if (card->ops->process_fci == NULL) {
+			sc_file_free(file);
+			LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
+		}
+		*file_out = file;
+		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+	}
+
 	if (apdu.resplen < 2)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
 	switch (apdu.resp[0]) {
