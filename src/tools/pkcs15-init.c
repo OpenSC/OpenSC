@@ -459,7 +459,7 @@ main(int argc, char **argv)
 		return 1;
 	}
 
-	for (n = 0; n < sizeof pins; n++) {
+	for (n = 0; n < sizeof(pins)/sizeof(pins[0]); n++) {
 		pins[n] = NULL;
 	}
 
@@ -582,7 +582,7 @@ main(int argc, char **argv)
 		}
 	}
 
-	for (n = 0; n < sizeof pins; n++) {
+	for (n = 0; n < sizeof(pins)/sizeof(pins[0]); n++) {
 		free(pins[n]);
 	}
 
