@@ -218,6 +218,13 @@ AC_ARG_WITH(
 	,
 	[with_pcsc_provider="detect"]
 )
+
+AC_ARG_WITH(
+	[pkcs11-provider],
+	[AS_HELP_STRING([--with-pkcs11-provider=PATH],[Path to the default PKCS11 provider @<:@default=OpenSC@:>@])],
+	,
+	[with_pkcs11_provider="detect"]
+)
 dnl ./configure check
 reader_count=""
 for rdriver in "${enable_pcsc}" "${enable_openct}" "${enable_ctapi}"; do
@@ -568,6 +575,24 @@ if test "${enable_pcsc}" = "yes"; then
 	AC_DEFINE([ENABLE_PCSC], [1], [Define if PC/SC is to be enabled])
 fi
 
+
+if test "${with_pkcs11_provider}" = "detect"; then
+	case "${host}" in
+		*-*-darwin*)
+			DEFAULT_PKCS11_PROVIDER="opensc-pkcs11.dylib"
+		;;
+		*-mingw*|*-winnt*|*-cygwin*)
+			DEFAULT_PKCS11_PROVIDER="opensc-pkcs11.dll"
+		;;
+		*)
+			DEFAULT_PKCS11_PROVIDER="opensc-pkcs11.so"
+		;;
+	esac
+else
+	DEFAULT_PKCS11_PROVIDER="${with_pkcs11_provider}"
+fi
+AC_DEFINE_UNQUOTED([DEFAULT_PKCS11_PROVIDER], ["${DEFAULT_PKCS11_PROVIDER}"], [Default PKCS11 provider])
+
 if test "${enable_man}" = "detect"; then
 	if test "${WIN32}" = "yes"; then
 		enable_man="no"
@@ -643,6 +668,7 @@ AC_SUBST([OPENSC_LT_AGE])
 AC_SUBST([OPENSC_LT_OLDEST])
 AC_SUBST([WIN_LIBPREFIX])
 AC_SUBST([DEFAULT_PCSC_PROVIDER])
+AC_SUBST([DEFAULT_PKCS11_PROVIDER])
 AC_SUBST([OPTIONAL_ZLIB_CFLAGS])
 AC_SUBST([OPTIONAL_ZLIB_LIBS])
 AC_SUBST([OPTIONAL_READLINE_CFLAGS])
@@ -752,6 +778,7 @@ DNIe UI support:         ${enable_dnie_ui}
 Debug file:              ${DEBUG_FILE}
 
 PC/SC default provider:  ${DEFAULT_PCSC_PROVIDER}
+PKCS11 default provider: ${DEFAULT_PKCS11_PROVIDER}
 
 Host:                    ${host}
 Compiler:                ${CC}
