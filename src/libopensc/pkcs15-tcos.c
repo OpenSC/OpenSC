@@ -112,6 +112,11 @@ static int insert_key(
 	prkey_info.id.len         = 1;
 	prkey_info.id.value[0]    = id;
 	prkey_info.native         = 1;
+	/* Add default access_flags, see Issues #335 and #336 */
+	prkey_info.access_flags  = SC_PKCS15_PRKEY_ACCESS_SENSITIVE
+						| SC_PKCS15_PRKEY_ACCESS_ALWAYSSENSITIVE
+						| SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE
+						| SC_PKCS15_PRKEY_ACCESS_LOCAL;
 	prkey_info.key_reference  = key_reference;
 	prkey_info.modulus_length = key_length;
 	sc_format_path(path, &prkey_info.path);
