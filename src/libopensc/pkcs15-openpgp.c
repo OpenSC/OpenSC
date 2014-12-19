@@ -271,6 +271,11 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 			prkey_info.id.value[0]    = i + 1;
 			prkey_info.usage          = key_cfg[i].prkey_usage;
 			prkey_info.native         = 1;
+			/* Add default access_flags, see Issues #335 and #336 */
+			prkey_info.access_flags  = SC_PKCS15_PRKEY_ACCESS_SENSITIVE
+							| SC_PKCS15_PRKEY_ACCESS_ALWAYSSENSITIVE
+							| SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE
+							| SC_PKCS15_PRKEY_ACCESS_LOCAL;
 			prkey_info.key_reference  = i;
 			prkey_info.modulus_length = bebytes2ushort(cxdata + 1);
 

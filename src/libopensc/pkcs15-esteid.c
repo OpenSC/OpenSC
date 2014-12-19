@@ -238,6 +238,11 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 		prkey_info.id.value[0] = prkey_pin[i];
 		prkey_info.usage  = prkey_usage[i];
 		prkey_info.native = 1;
+		/* Add default access_flags, see Issues #335 and #336 */
+		prkey_info.access_flags  = SC_PKCS15_PRKEY_ACCESS_SENSITIVE
+						| SC_PKCS15_PRKEY_ACCESS_ALWAYSSENSITIVE
+						| SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE
+						| SC_PKCS15_PRKEY_ACCESS_LOCAL;
 		prkey_info.key_reference = i + 1;
 		if (card->type == SC_CARD_TYPE_MCRD_ESTEID_V30)
 			prkey_info.modulus_length = 2048;
