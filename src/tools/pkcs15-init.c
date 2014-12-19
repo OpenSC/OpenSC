@@ -348,8 +348,9 @@ static char *			opt_puk_label = NULL;
 static char *			opt_pubkey_label = NULL;
 static char *			opt_cert_label = NULL;
 static const char *		opt_pins[4];
+static char *			pins[4];
 static char *			opt_serial = NULL;
-static char *			opt_passphrase = NULL;
+static const char *		opt_passphrase = NULL;
 static char *			opt_newkey = NULL;
 static char *			opt_outkey = NULL;
 static char *			opt_application_id = NULL;
@@ -456,6 +457,10 @@ main(int argc, char **argv)
 	if (r < 0) {
 		printf("Couldn't bind to the card: %s\n", sc_strerror(r));
 		return 1;
+	}
+
+	for (n = 0; n < sizeof pins; n++) {
+		pins[n] = NULL;
 	}
 
 	for (n = 0; n < ACTION_MAX; n++) {
@@ -575,6 +580,10 @@ main(int argc, char **argv)
 				action_names[action], sc_strerror(r));
 			break;
 		}
+	}
+
+	for (n = 0; n < sizeof pins; n++) {
+		free(pins[n]);
 	}
 
 out:
@@ -754,9 +763,10 @@ do_init_app(struct sc_profile *profile)
 
 
 	if (!opt_pins[2] && !opt_no_prompt && !opt_no_sopin) {
-		r = get_new_pin(&hints, role, "pin", &opt_pins[2]);
+		r = get_new_pin(&hints, role, "pin", &pins[2]);
 		if (r < 0)
 			goto failed;
+		opt_pins[2] = pins[2];
 	}
 
 	if (!so_puk_disabled && opt_pins[2] && !opt_pins[3] && !opt_no_prompt) {
@@ -766,9 +776,10 @@ do_init_app(struct sc_profile *profile)
 			role = "user";
 
 		hints.flags |= SC_UI_PIN_OPTIONAL;
-		r = get_new_pin(&hints, role, "puk", &opt_pins[3]);
+		r = get_new_pin(&hints, role, "puk", &pins[3]);
 		if (r < 0)
 			goto failed;
+		opt_pins[3] = pins[3];
 	}
 
 	args.so_pin = (const u8 *) opt_pins[2];
@@ -819,9 +830,11 @@ do_store_pin(struct sc_profile *profile)
 	}
 
 	sc_pkcs15init_get_pin_info(profile, SC_PKCS15INIT_USER_PIN, &info);
-	if (opt_pins[0] == NULL)
-		if ((r = get_new_pin(&hints, "user", "pin", &opt_pins[0])) < 0)
+	if (opt_pins[0] == NULL) {
+		if ((r = get_new_pin(&hints, "user", "pin", &pins[0])) < 0)
 			goto failed;
+		opt_pins[0] = pins[0];
+	}
 
 	if (*opt_pins[0] == '\0') {
 		util_error("You must specify a PIN\n");
@@ -839,9 +852,9 @@ do_store_pin(struct sc_profile *profile)
 		sc_pkcs15init_get_pin_info(profile, SC_PKCS15INIT_USER_PUK, &info);
 
 		hints.flags |= SC_UI_PIN_OPTIONAL;
-		if ((r = get_new_pin(&hints, "user", "puk", &opt_pins[1])) < 0)
+		if ((r = get_new_pin(&hints, "user", "puk", &pins[1])) < 0)
 			goto failed;
-
+		opt_pins[1] = pins[1];
 	}
 
 	if (opt_puk_authid && opt_pins[1])
@@ -1693,19 +1706,19 @@ get_pin_callback(struct sc_profile *profile,
 			switch (id) {
 			case SC_PKCS15INIT_USER_PIN:
 				name = "User PIN";
-				secret = opt_pins[OPT_PIN1 & 3];
+				secret = (char *) opt_pins[OPT_PIN1 & 3];
 				break;
 			case SC_PKCS15INIT_USER_PUK:
 				name = "User PIN unlock key";
-				secret = opt_pins[OPT_PUK1 & 3];
+				secret = (char *) opt_pins[OPT_PUK1 & 3];
 				break;
 			case SC_PKCS15INIT_SO_PIN:
 				name = "Security officer PIN";
-				secret = opt_pins[OPT_PIN2 & 3];
+				secret = (char *) opt_pins[OPT_PIN2 & 3];
 				break;
 			case SC_PKCS15INIT_SO_PUK:
 				name = "Security officer PIN unlock key";
-				secret = opt_pins[OPT_PUK2 & 3];
+				secret = (char *) opt_pins[OPT_PUK2 & 3];
 				break;
 			}
 		}
@@ -1713,22 +1726,22 @@ get_pin_callback(struct sc_profile *profile,
 			if (!(info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN)
 					&& !(info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN))    {
 				name = "User PIN";
-				secret = opt_pins[OPT_PIN1 & 3];
+				secret = (char *) opt_pins[OPT_PIN1 & 3];
 			}
 			else if (!(info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN)
 					&& (info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN))    {
 				name = "User PUK";
-				secret = opt_pins[OPT_PUK1 & 3];
+				secret = (char *) opt_pins[OPT_PUK1 & 3];
 			}
 			else if ((info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN)
 					&& !(info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN))    {
 				name = "Security officer PIN";
-				secret = opt_pins[OPT_PIN2 & 3];
+				secret = (char *) opt_pins[OPT_PIN2 & 3];
 			}
 			else if ((info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN)
 					&& (info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN))    {
 				name = "Security officer PIN unlock key";
-				secret = opt_pins[OPT_PUK2 & 3];
+				secret = (char *) opt_pins[OPT_PUK2 & 3];
 			}
 		}
 		if (secret)
@@ -1997,7 +2010,7 @@ do_read_private_key(const char *filename, const char *format,
 	int	r;
 
 	if (opt_passphrase)
-		passphrase = opt_passphrase;
+		passphrase = (char *) opt_passphrase;
 
 	if (!format || !strcasecmp(format, "pem")) {
 		r = do_read_pem_private_key(filename, passphrase, pk);
@@ -2026,8 +2039,12 @@ do_read_private_key(const char *filename, const char *format,
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
+	if (NULL == opt_passphrase)
+		free(passphrase);
+
 	if (r < 0)
 		util_fatal("Unable to read private key from %s\n", filename);
+
 	return r;
 }
 
@@ -2157,7 +2174,7 @@ static size_t determine_filesize(const char *filename)
 static int
 do_read_data_object(const char *name, u8 **out, size_t *outlen)
 {
-        FILE *inf;
+	FILE *inf;
 	size_t filesize = determine_filesize(name);
 	int c;
 
@@ -2452,8 +2469,6 @@ handle_option(const struct option *opt)
 		opt_serial = optarg;
 		break;
 	case OPT_PASSPHRASE:
-		free(opt_passphrase);
-		opt_passphrase = NULL;
 		util_get_pin(optarg, &opt_passphrase);
 		break;
 	case OPT_PUBKEY:
@@ -2773,7 +2788,7 @@ static int verify_pin(struct sc_pkcs15_card *p15card, char *auth_id_str)
 {
 	struct sc_pkcs15_object	*pin_obj = NULL;
 	char pin_label[64];
-	char *pin;
+	char *pin = NULL;
 	int r;
 
 	if (!auth_id_str)   {
@@ -2817,7 +2832,7 @@ static int verify_pin(struct sc_pkcs15_card *p15card, char *auth_id_str)
 	}
 
 	if (opt_pins[0] != NULL)   {
-		pin = opt_pins[0];
+		pin = (char *) opt_pins[0];
 	}
 	else   {
 		sc_ui_hints_t   hints;
@@ -2843,6 +2858,9 @@ static int verify_pin(struct sc_pkcs15_card *p15card, char *auth_id_str)
 	r = sc_pkcs15_verify_pin(p15card, pin_obj, (unsigned char *)pin, pin ? strlen((char *) pin) : 0);
 	if (r < 0)
 		fprintf(stderr, "Operation failed: %s\n", sc_strerror(r));
+
+	if (NULL == opt_pins[0])
+		free(pin);
 
 	return r;
 }

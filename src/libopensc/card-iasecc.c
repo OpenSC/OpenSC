@@ -2219,12 +2219,14 @@ iasecc_keyset_change(struct sc_card *card, struct sc_pin_cmd_data *data, int *tr
 
 	update.fields[0].parent_tag = IASECC_SDO_KEYSET_TAG;
 	update.fields[0].tag = IASECC_SDO_KEYSET_TAG_MAC;
-	update.fields[0].value = data->pin2.data;
+	/* FIXME is it safe to modify the const value here? */
+	update.fields[0].value = (unsigned char *) data->pin2.data;
 	update.fields[0].size = 16;
 
 	update.fields[1].parent_tag = IASECC_SDO_KEYSET_TAG;
 	update.fields[1].tag = IASECC_SDO_KEYSET_TAG_ENC;
-	update.fields[1].value = data->pin2.data + 16;
+	/* FIXME is it safe to modify the const value here? */
+	update.fields[1].value = (unsigned char *) data->pin2.data + 16;
 	update.fields[1].size = 16;
 
 	rv = iasecc_sm_sdo_update(card, (scb & IASECC_SCB_METHOD_MASK_REF), &update);

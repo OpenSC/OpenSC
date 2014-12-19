@@ -126,7 +126,7 @@ static void print_openssl_error(void)
 		printf("%s\n", ERR_error_string(r, NULL));
 }
 
-static int verify_pin(sc_card_t *card, int pin_reference, char *pin_value)
+static int verify_pin(sc_card_t *card, int pin_reference, const char *pin_value)
 {
 	int r, tries_left = -1;
 	struct sc_pin_cmd_data data;
@@ -178,8 +178,8 @@ static int verify_pin(sc_card_t *card, int pin_reference, char *pin_value)
 
 static int change_pin(sc_card_t *card,
 		int pin_reference,
-		char *pin_value1,
-		char *pin_value2)
+		const char *pin_value1,
+		const char *pin_value2)
 {
 	int r, tries_left = -1;
 	struct sc_pin_cmd_data data;
@@ -236,8 +236,8 @@ static int change_pin(sc_card_t *card,
 
 static int unlock_pin(sc_card_t *card,
 			int pin_reference,
-			char *puk_value,
-			char *pin_value)
+			const char *puk_value,
+			const char *pin_value)
 {
 	int r, tries_left = -1;
 	struct sc_pin_cmd_data data;
