@@ -1805,26 +1805,36 @@ static void	parse_certificate(struct x509cert_info *cert,
 }
 
 static int
-do_read_private_key(unsigned char *data, size_t data_len, EVP_PKEY **key)
+do_read_key(unsigned char *data, size_t data_len, int private, EVP_PKEY **key)
 {
-	BIO	*mem;
+	BIO *mem;
 	BUF_MEM buf_mem;
 
 	if (!key)
 		return -1;
 	buf_mem.data = malloc(data_len);
-        if (!buf_mem.data)
+	if (!buf_mem.data)
 		return -1;
 
-        memcpy(buf_mem.data, data, data_len);
-        buf_mem.max = buf_mem.length = data_len;
+	memcpy(buf_mem.data, data, data_len);
+	buf_mem.max = buf_mem.length = data_len;
 
 	mem = BIO_new(BIO_s_mem());
 	BIO_set_mem_buf(mem, &buf_mem, BIO_NOCLOSE);
-	if (!strstr((char *)data, "-----BEGIN PRIVATE KEY-----") && !strstr((char *)data, "-----BEGIN EC PRIVATE KEY-----"))
-		*key = d2i_PrivateKey_bio(mem, NULL);
-	else
-		*key = PEM_read_bio_PrivateKey(mem, NULL, NULL, NULL);
+
+	if (private) {
+		if (!strstr((char *)data, "-----BEGIN PRIVATE KEY-----") && !strstr((char *)data, "-----BEGIN EC PRIVATE KEY-----"))
+			*key = d2i_PrivateKey_bio(mem, NULL);
+		else
+			*key = PEM_read_bio_PrivateKey(mem, NULL, NULL, NULL);
+	}
+	else {
+		if (!strstr((char *)data, "-----BEGIN PUBLIC KEY-----") && !strstr((char *)data, "-----BEGIN EC PUBLIC KEY-----"))
+			*key = d2i_PUBKEY_bio(mem, NULL);
+		else
+			*key = PEM_read_bio_PUBKEY(mem, NULL, NULL, NULL);
+	}
+
 	BIO_free(mem);
 	if (*key == NULL)
 		return -1;
@@ -1841,60 +1851,49 @@ do_read_private_key(unsigned char *data, size_t data_len, EVP_PKEY **key)
 	} while (0)
 
 static int
-parse_rsa_private_key(struct rsakey_info *rsa, unsigned char *data, int len)
+parse_rsa_pkey(EVP_PKEY *pkey, int private, struct rsakey_info *rsa)
 {
-	RSA *r = NULL;
-	const unsigned char *p;
+	RSA *r;
 
-	p = data;
-	r = d2i_RSAPrivateKey(NULL, &p, len);
+	r = EVP_PKEY_get1_RSA(pkey);
 	if (!r) {
-		util_fatal("OpenSSL error during RSA private key parsing");
+		if (private)
+			util_fatal("OpenSSL error during RSA private key parsing");
+		else
+			util_fatal("OpenSSL error during RSA public key parsing");
 	}
+
 	RSA_GET_BN(modulus, r->n);
 	RSA_GET_BN(public_exponent, r->e);
-	RSA_GET_BN(private_exponent, r->d);
-	RSA_GET_BN(prime_1, r->p);
-	RSA_GET_BN(prime_2, r->q);
-	RSA_GET_BN(exponent_1, r->dmp1);
-	RSA_GET_BN(exponent_2, r->dmq1);
-	RSA_GET_BN(coefficient, r->iqmp);
+	if (private) {
+		RSA_GET_BN(private_exponent, r->d);
+		RSA_GET_BN(prime_1, r->p);
+		RSA_GET_BN(prime_2, r->q);
+		RSA_GET_BN(exponent_1, r->dmp1);
+		RSA_GET_BN(exponent_2, r->dmq1);
+		RSA_GET_BN(coefficient, r->iqmp);
+	}
+
+	RSA_free(r);
 
 	return 0;
 }
 
-static void parse_rsa_public_key(struct rsakey_info *rsa,
-		unsigned char *data, int len)
-{
-	RSA *r = NULL;
-	const unsigned char *p;
-
-	p = data;
-	r = d2i_RSA_PUBKEY(NULL, &p, len);
-
-	if (!r) {
-		r = d2i_RSAPublicKey(NULL, &p, len);
-	}
-
-	if (!r) {
-		util_fatal("OpenSSL error during RSA public key parsing");
-	}
-	RSA_GET_BN(modulus, r->n);
-	RSA_GET_BN(public_exponent, r->e);
-}
-
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_EC)
-static int parse_gost_private_key(EVP_PKEY *evp_key, struct gostkey_info *gost)
+static int
+parse_gost_pkey(EVP_PKEY *pkey, int private, struct gostkey_info *gost)
 {
-	EC_KEY *src = EVP_PKEY_get0(evp_key);
+	EC_KEY *src = EVP_PKEY_get0(pkey);
 	unsigned char *pder;
 	const BIGNUM *bignum;
+	BIGNUM *X, *Y;
+	const EC_POINT *point;
 	int nid, rv;
 
 	if (!src)
 		return -1;
 
-	nid = EC_GROUP_get_curve_name(EC_KEY_get0_group(EVP_PKEY_get0(evp_key)));
+	nid = EC_GROUP_get_curve_name(EC_KEY_get0_group(EVP_PKEY_get0(pkey)));
 	rv = i2d_ASN1_OBJECT(OBJ_nid2obj(nid), NULL);
 	if (rv < 0)
 		return -1;
@@ -1907,13 +1906,39 @@ static int parse_gost_private_key(EVP_PKEY *evp_key, struct gostkey_info *gost)
 	rv = i2d_ASN1_OBJECT(OBJ_nid2obj(nid), &pder);
 	gost->param_oid.len = rv;
 
-	bignum = EC_KEY_get0_private_key(EVP_PKEY_get0(evp_key));
+	if (private) {
+		bignum = EC_KEY_get0_private_key(EVP_PKEY_get0(pkey));
 
-	gost->private.len = BN_num_bytes(bignum);
-	gost->private.value = malloc(gost->private.len);
-	if (!gost->private.value)
-		return -1;
-	BN_bn2bin(bignum, gost->private.value);
+		gost->private.len = BN_num_bytes(bignum);
+		gost->private.value = malloc(gost->private.len);
+		if (!gost->private.value)
+			return -1;
+		BN_bn2bin(bignum, gost->private.value);
+	}
+	else {
+		X = BN_new();
+		Y = BN_new();
+		point = EC_KEY_get0_public_key(src);
+		rv = -1;
+		if (X && Y && point && EC_KEY_get0_group(src))
+			rv = EC_POINT_get_affine_coordinates_GFp(EC_KEY_get0_group(src),
+					point, X, Y, NULL);
+		if (rv == 1) {
+			gost->public.len = BN_num_bytes(X) + BN_num_bytes(Y);
+			gost->public.value = malloc(gost->public.len);
+			if (!gost->public.value)
+				rv = -1;
+			else
+			{
+				BN_bn2bin(Y, gost->public.value);
+				BN_bn2bin(X, gost->public.value + BN_num_bytes(Y));
+			}
+		}
+		BN_free(X);
+		BN_free(Y);
+		if (rv != 1)
+			return -1;
+	}
 
 	return 0;
 }
@@ -1923,8 +1948,7 @@ static int parse_gost_private_key(EVP_PKEY *evp_key, struct gostkey_info *gost)
 #define MAX_OBJECT_SIZE	5000
 
 /* Currently for certificates (-type cert), private keys (-type privkey),
-   public keys (-type pubkey) and data objects (-type data).
-   Note: only RSA private keys are supported. */
+   public keys (-type pubkey) and data objects (-type data). */
 static int write_object(CK_SESSION_HANDLE session)
 {
 	CK_BBOOL _true = TRUE;
@@ -1989,38 +2013,35 @@ static int write_object(CK_SESSION_HANDLE session)
 		util_fatal("No OpenSSL support, cannot parse certificate\n");
 #endif
 	}
-	if (opt_object_class == CKO_PRIVATE_KEY) {
+	if (opt_object_class == CKO_PRIVATE_KEY || opt_object_class == CKO_PUBLIC_KEY) {
+		int is_private = opt_object_class == CKO_PRIVATE_KEY;
 #ifdef ENABLE_OPENSSL
 		int rv;
 
-		rv = do_read_private_key(contents, contents_len, &evp_key);
-		if (rv)
-			util_fatal("Cannot read private key\n");
+		rv = do_read_key(contents, contents_len, is_private, &evp_key);
+		if (rv) {
+			if (is_private)
+				util_fatal("Cannot read private key\n");
+			else
+				util_fatal("Cannot read public key\n");
+		}
 
-		if (evp_key->type == EVP_PKEY_RSA)   {
-			rv = parse_rsa_private_key(&rsa, contents, contents_len);
+		if (evp_key->type == EVP_PKEY_RSA) {
+			rv = parse_rsa_pkey(evp_key, is_private, &rsa);
 		}
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_EC)
 		else if (evp_key->type == NID_id_GostR3410_2001 || evp_key->type == EVP_PKEY_EC)   {
 			/* parsing ECDSA is identical to GOST */
-			rv = parse_gost_private_key(evp_key, &gost);
+			rv = parse_gost_pkey(evp_key, is_private, &gost);
 		}
 #endif
-		else   {
+		else
 			util_fatal("Unsupported key type: 0x%X\n", evp_key->type);
-		}
 
 		if (rv)
-			util_fatal("Cannot parse private key\n");
+			util_fatal("Cannot parse key\n");
 #else
-		util_fatal("No OpenSSL support, cannot parse private key\n");
-#endif
-	}
-	if (opt_object_class == CKO_PUBLIC_KEY) {
-#ifdef ENABLE_OPENSSL
-		parse_rsa_public_key(&rsa, contents, contents_len);
-#else
-		util_fatal("No OpenSSL support, cannot parse RSA public key\n");
+		util_fatal("No OpenSSL support, cannot parse key\n");
 #endif
 	}
 
@@ -2146,10 +2167,11 @@ static int write_object(CK_SESSION_HANDLE session)
 		clazz = CKO_PUBLIC_KEY;
 		type = CKK_RSA;
 
-		FILL_ATTR(pubkey_templ[0], CKA_CLASS, &clazz, sizeof(clazz));
-		FILL_ATTR(pubkey_templ[1], CKA_KEY_TYPE, &type, sizeof(type));
-		FILL_ATTR(pubkey_templ[2], CKA_TOKEN, &_true, sizeof(_true));
-		n_pubkey_attr = 3;
+		n_pubkey_attr = 0;
+		FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_CLASS, &clazz, sizeof(clazz));
+		n_pubkey_attr++;
+		FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_TOKEN, &_true, sizeof(_true));
+		n_pubkey_attr++;
 
 		if (opt_is_private != 0) {
 			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_PRIVATE, &_true, sizeof(_true));
@@ -2188,10 +2210,42 @@ static int write_object(CK_SESSION_HANDLE session)
 			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_SUBJECT, cert.subject, cert.subject_len);
 			n_pubkey_attr++;
 		}
-		FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_MODULUS, rsa.modulus, rsa.modulus_len);
-		n_pubkey_attr++;
-		FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_PUBLIC_EXPONENT, rsa.public_exponent, rsa.public_exponent_len);
-		n_pubkey_attr++;
+		if (evp_key->type == EVP_PKEY_RSA) {
+			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_KEY_TYPE, &type, sizeof(type));
+			n_pubkey_attr++;
+			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_MODULUS,
+				rsa.modulus, rsa.modulus_len);
+			n_pubkey_attr++;
+			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_PUBLIC_EXPONENT,
+				rsa.public_exponent, rsa.public_exponent_len);
+			n_pubkey_attr++;
+		}
+#if OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_EC)
+		else if (evp_key->type == EVP_PKEY_EC)   {
+			type = CKK_EC;
+
+			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_KEY_TYPE, &type, sizeof(type));
+			n_pubkey_attr++;
+			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_EC_PARAMS, gost.param_oid.value, gost.param_oid.len);
+			n_pubkey_attr++;
+			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_VALUE, gost.public.value, gost.public.len);
+			n_pubkey_attr++;
+		}
+		else if (evp_key->type == NID_id_GostR3410_2001) {
+			type = CKK_GOSTR3410;
+
+			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_KEY_TYPE, &type, sizeof(type));
+			n_pubkey_attr++;
+			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_GOSTR3410_PARAMS, gost.param_oid.value, gost.param_oid.len);
+			n_pubkey_attr++;
+			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_VALUE, gost.public.value, gost.public.len);
+			/* CKA_VALUE of the GOST key has to be in the little endian order */
+			rv = sc_mem_reverse(pubkey_templ[n_pubkey_attr].pValue, pubkey_templ[n_pubkey_attr].ulValueLen);
+			if (rv)
+				return rv;
+			n_pubkey_attr++;
+		}
+#endif
 #endif
 	}
 	else
