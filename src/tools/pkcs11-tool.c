@@ -1823,13 +1823,13 @@ do_read_key(unsigned char *data, size_t data_len, int private, EVP_PKEY **key)
 	BIO_set_mem_buf(mem, &buf_mem, BIO_NOCLOSE);
 
 	if (private) {
-		if (!strstr((char *)data, "-----BEGIN PRIVATE KEY-----") && !strstr((char *)data, "-----BEGIN EC PRIVATE KEY-----"))
+		if (!strstr((char *)data, "-----BEGIN "))
 			*key = d2i_PrivateKey_bio(mem, NULL);
 		else
 			*key = PEM_read_bio_PrivateKey(mem, NULL, NULL, NULL);
 	}
 	else {
-		if (!strstr((char *)data, "-----BEGIN PUBLIC KEY-----") && !strstr((char *)data, "-----BEGIN EC PUBLIC KEY-----"))
+		if (!strstr((char *)data, "-----BEGIN "))
 			*key = d2i_PUBKEY_bio(mem, NULL);
 		else
 			*key = PEM_read_bio_PUBKEY(mem, NULL, NULL, NULL);
