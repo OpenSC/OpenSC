@@ -464,6 +464,14 @@ static int dnie_get_serialnr(sc_card_t * card, sc_serial_number_t * serial)
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
+/**
+ * Remove the binary data in the cache.
+ *
+ * It frees memory if allocated and resets pointer and length.
+ * It only touches the private binary cache variables, not the sc_card information.
+ *
+ * @param data pointer to dnie private data
+ */
 static void dnie_clear_cache(dnie_private_data_t * data)
 {
 	if (data == NULL) return;
@@ -473,6 +481,13 @@ static void dnie_clear_cache(dnie_private_data_t * data)
 	data->cachelen = 0;
 }
 
+/**
+ * Set sc_card flags according to DNIe requirements.
+ *
+ * Used in card initialization.
+ *
+ * @param card pointer to card data
+ */
 static inline void init_flags(struct sc_card *card)
 {
 	unsigned long algoflags;
@@ -814,10 +829,8 @@ static int dnie_read_binary(struct sc_card *card,
 		/* on first block or no cache, try to fill */
 		res = dnie_fill_cache(card);
 		if (res < 0) {
-			sc_log(ctx,
-			       "Cannot fill cache. using iso_read_binary()");
-			return iso_ops->read_binary(card, idx, buf, count,
-						    flags);
+			sc_log(ctx, "Cannot fill cache. using iso_read_binary()");
+			return iso_ops->read_binary(card, idx, buf, count, flags);
 		}
 	}
 	if (idx >= GET_DNIE_PRIV_DATA(card)->cachelen)
@@ -829,82 +842,72 @@ static int dnie_read_binary(struct sc_card *card,
 }
 
 /**
- * Invalidate pathfile cache.
+ * Send apdu to the card
  *
- * Marks cache path invalid, so next select_file() will traverse
- * the entire card filesystem
- *
- * @param card pointer to card structure
+ * @param card pointer to sc_card_t structure
+ * @param path
+ * @param pathlen
+ * @param p1
+ * @param file_out
+ * @return result
  */
-static inline void dnie_invalidate_path(sc_card_t *card) {
-	memset(&card->cache, 0, sizeof(card->cache));
-        card->cache.valid = 0;
-}
-
-/**
- * Tracks current path to avoid extra filesystem operation.
- *
- * Tracks selected DF's to let card know their current working directory
- *
- * TODO: use common opensc file cache structure and functions
- *
- * @param card card pointer structure
- * @param file current DF to be cached
- */
-static int dnie_cache_path(sc_card_t *card, struct sc_file *file)
+static int dnie_compose_and_send_apdu(sc_card_t *card, const u8 *path, size_t pathlen,
+					u8 p1, sc_file_t **file_out)
 {
-	u8 path[] = {0x00,0x00};
-	LOG_FUNC_CALLED(card->ctx);
-        path[0]=(u8) (0xff & (file->id >>8));
-        path[1]=(u8) (0xff & (file->id >>0));
-        if (path[0]==0x3F && path[1]==0x00) {
-        	/* if absolute path, just copy data */
-		dnie_invalidate_path(card);
-		card->cache.current_path.value[0]=path[0];
-		card->cache.current_path.value[1]=path[1];
-		card->cache.current_path.len=2;
-	} else {
-		/* if relative path add to current */
-		size_t curlen=card->cache.current_path.len;
-		card->cache.current_path.value[curlen+0] =path[0];
-		card->cache.current_path.value[curlen+1] =path[1];
-		card->cache.current_path.len += 2;
+	int res = 0;
+	sc_apdu_t apdu;
+	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
+	sc_file_t *file = NULL;
+
+	sc_context_t *ctx = NULL;
+
+	if (!card || !card->ctx)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	ctx = card->ctx;
+
+	LOG_FUNC_CALLED(ctx);
+
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "called, p1=%u, path=%s\n", p1, sc_dump_hex(path, pathlen));
+
+	/* Arriving here means need to compose and send apdu */
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xA4, p1, 0);
+	apdu.resp = rbuf;
+	apdu.resplen = sizeof(rbuf);
+	apdu.lc = pathlen;
+	apdu.data = path;
+	apdu.datalen = pathlen;
+	apdu.le = card->max_recv_size > 0 ? card->max_recv_size : 256;
+	if (p1 == 3)
+		apdu.cse= SC_APDU_CASE_1;
+
+	if (file_out == NULL) {
+		apdu.cse = (apdu.lc == 0) ? SC_APDU_CASE_1 : SC_APDU_CASE_3_SHORT;
+		apdu.le = 0;
 	}
-	card->cache.current_path.type=SC_PATH_TYPE_PATH;
-        card->cache.valid=1;
-	LOG_FUNC_RETURN(card->ctx,SC_SUCCESS);
-}
+	res = dnie_transmit_apdu(card, &apdu);
+	LOG_TEST_RET(ctx, res, "SelectFile() APDU transmit failed");
+	if (file_out == NULL) {
+		if (apdu.sw1 == 0x61)
+			SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, 0);
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE,
+			       sc_check_sw(card, apdu.sw1, apdu.sw2));
+	}
 
-/**
- * Check proposed path against current (cached) one.
- *
- * This code compares proposed path to stored one, evaluating required path
- * ID to be selected if finally select_file() is required,
- *
- * @param card card pointer structure
- * @param pathptr pointer to proposed path
- * @param pathlen len of proposed path
- * @param need_info set if process_fci is needed
- * @return 1 on match; 0 on fail
- */
-static int dnie_check_path(sc_card_t *card, u8 **pathptr, size_t *pathlen,
-                      int need_info)
-{
-        u8 *cacheptr = card->cache.current_path.value;
-        size_t cachelen = card->cache.current_path.len;
-        size_t len = *pathlen;
-        u8 *ptr = *pathptr;
-        int hit=1;
-        if (card->cache.valid==0) hit = 0; /* no valid cache */
-        if (cachelen < 2)         hit = 0; /* no data cached */
-        if (len < 2)              hit = 0; /* no proposed path */
-        if (len<cachelen)         hit = 0; /* length missmatch */
-        if (memcmp(ptr,cacheptr,cachelen)!=0 ) hit = 0; /* path missmatch */
-        if (!hit) return 0;
-	*pathptr = ptr + cachelen;
-        *pathlen = len - cachelen;
-	if (need_info) return 0;
-	return 1;
+	/* analyze response. if FCI, try to parse */
+	res = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	LOG_TEST_RET(ctx, res, "SelectFile() check_sw failed");
+	if (apdu.resplen < 2)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
+	if (apdu.resp[0] == 0x00)	/* proprietary coding */
+		LOG_FUNC_RETURN(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
+
+	/* finally process FCI response */
+	file = sc_file_new();
+	if (file == NULL)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+	res = card->ops->process_fci(card, file, apdu.resp + 2, apdu.resp[1]);
+	*file_out = file;
+	LOG_FUNC_RETURN(ctx, res);
 }
 
 /**
@@ -938,29 +941,16 @@ static int dnie_select_file(struct sc_card *card,
 			    const struct sc_path *in_path,
 			    struct sc_file **file_out)
 {
-
-	u8 buf[SC_MAX_APDU_BUFFER_SIZE];
-	u8 pathbuf[SC_MAX_PATH_SIZE];
-	char pbuf[SC_MAX_PATH_STRING_SIZE];
-        u8 *path = pathbuf;
-	size_t pathlen;
-        int cached=0;
-
-	sc_file_t *file = NULL;
 	int res = SC_SUCCESS;
-	sc_apdu_t apdu;
 	sc_context_t *ctx = NULL;
+	unsigned char tmp_path[sizeof(DNIE_MF_NAME)];
+	int reminder = 0;
 
 	if (!card || !card->ctx || !in_path)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	ctx = card->ctx;
 
 	LOG_FUNC_CALLED(ctx);
-
-	memcpy(path, in_path->value, in_path->len);
-	pathlen = in_path->len;
-
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xA4, 0, 0);
 
 	switch (in_path->type) {
 	case SC_PATH_TYPE_FILE_ID:
@@ -973,132 +963,71 @@ static int dnie_select_file(struct sc_card *card,
 		 * According iso7816-4 sect 7.1.1  pathlen==0 implies
 		 * select MF, but this case is not supported by DNIe
 		 */
-		if (pathlen != 2)
+		if (in_path->len != 2)
 			LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
-		sc_log(ctx, "select_file(ID): %s", sc_dump_hex(path, pathlen));
-		apdu.p1 = 0;
+		sc_log(ctx, "select_file(ID): %s", sc_dump_hex(in_path->value, in_path->len));
+		res = dnie_compose_and_send_apdu(card, in_path->value, in_path->len, 0, file_out);
 		break;
 	case SC_PATH_TYPE_DF_NAME:
-		sc_log(ctx, "select_file(NAME): %s",
-		       sc_dump_hex(path, pathlen));
-		apdu.p1 = 4;
+		sc_log(ctx, "select_file(NAME): %s", sc_dump_hex(in_path->value, in_path->len));
+		res = dnie_compose_and_send_apdu(card, in_path->value, in_path->len, 4, file_out);
 		break;
 	case SC_PATH_TYPE_PATH:
-		if ((pathlen & 1) != 0) /* not divisible by 2 */
+		if ((in_path->len == 0) || ((in_path->len & 1) != 0)) /* not divisible by 2 */
 			LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
-                /* evaluate current patch from cache */
-		res = sc_path_print(pbuf, sizeof(pbuf), &card->cache.current_path);
-        	if (res != SC_SUCCESS) pbuf[0] = '\0';
-		sc_log(ctx, "select_file(PATH): requested:%s cached:%s",
-		       sc_dump_hex(path, pathlen),pbuf);
+		sc_log(ctx, "select_file(PATH): requested:%s ", sc_dump_hex(in_path->value, in_path->len));
 
-                /* check pathfile cache 
-		* cached returns true if:
-		* - path matches cache
-		* - path starts with cache
-		* remember that only DF's are cached
-		*/
-		cached = dnie_check_path(card, &path, &pathlen, file_out != NULL);
-                if (pathlen == 0) {
-			/* request to select_file on current df */
-			sc_log(ctx,"Cache hit: already on cached DF");
-			LOG_FUNC_RETURN(ctx,SC_SUCCESS);
-		}
 
 		/* convert to SC_PATH_TYPE_FILE_ID */
 		res = sc_lock(card); /* lock to ensure path traversal */
 		LOG_TEST_RET(ctx, res, "sc_lock() failed");
-		while (pathlen > 0) {
-			sc_path_t tmpp;
-			if ( memcmp(path, "\x3F\x00", 2) == 0) {
-				/* if MF, use their name as path */
-				tmpp.type = SC_PATH_TYPE_DF_NAME;
-				strcpy((char *)tmpp.value, DNIE_MF_NAME);
-				tmpp.len = sizeof(DNIE_MF_NAME) - 1;
-			} else {
-				/* else use 2-byte file id */
-				tmpp.type = SC_PATH_TYPE_FILE_ID;
-				tmpp.value[0] = path[0];
-				tmpp.value[1] = path[1];
-				tmpp.len = 2;
-			}
-			/* recursively call to select_file */
-			res = card->ops->select_file(card, &tmpp, file_out);
+		if (memcmp(in_path->value, "\x3F\x00", 2) == 0) {
+			/* if MF, use the name as path */
+			strcpy((char *)tmp_path, DNIE_MF_NAME);
+			sc_log(ctx, "select_file(NAME): requested:%s ", sc_dump_hex(tmp_path, sizeof(DNIE_MF_NAME) - 1));
+			res = dnie_compose_and_send_apdu(card, tmp_path, sizeof(DNIE_MF_NAME) - 1, 4, file_out);
 			if (res != SC_SUCCESS) {
 				sc_unlock(card);
-				sc_log(ctx,"select_file(PATH) failed");
-				LOG_FUNC_RETURN(ctx,res);
+				LOG_TEST_RET(ctx, res, "select_file(NAME) failed");
 			}
-			pathlen -= 2;
-			path += 2;
+			tmp_path[2] = 0;
+			reminder = in_path->len - 2;
+		} else {
+			tmp_path[2] = 0;
+			reminder = in_path->len;
+		}
+		while (reminder > 0) {
+			tmp_path[0] = in_path->value[in_path->len - reminder];
+			tmp_path[1] = in_path->value[1 + in_path->len - reminder];
+			sc_log(ctx, "select_file(PATH): requested:%s ", sc_dump_hex(tmp_path, 2));
+			res = dnie_compose_and_send_apdu(card, tmp_path, 2, 0, file_out);
+			if (res != SC_SUCCESS) {
+				sc_unlock(card);
+				LOG_TEST_RET(ctx, res, "select_file(PATH) failed");
+			}
+			reminder -= 2;
 		}
 		sc_unlock(card);
-		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 		break;
 	case SC_PATH_TYPE_FROM_CURRENT:
 		LOG_FUNC_RETURN(ctx, SC_ERROR_NO_CARD_SUPPORT);
+		break;
 	case SC_PATH_TYPE_PARENT:
 		/* Hey!! Manual doesn't says anything on this, but
 		 * gscriptor shows that this type is supported
 		 */
 		sc_log(ctx, "select_file(PARENT)");
 		/* according iso7816-4 sect 7.1.1 shouldn't have any parameters */
-		if (pathlen != 0)
+		if (in_path->len != 0)
 			LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
-		apdu.cse= SC_APDU_CASE_1;
-		apdu.p1 = 3;
+		res = dnie_compose_and_send_apdu(card, NULL, 0, 3, file_out);
 		break;
 	default:
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 		break;
 	}
-	/* Arriving here means need to compose and send apdu */
-	apdu.p2 = 0;		/* first record, return FCI */
-	apdu.lc = pathlen;
-	apdu.data = path;
-	apdu.datalen = pathlen;
 
-	if (file_out != NULL) {
-		apdu.resp = buf;
-		apdu.resplen = sizeof(buf);
-		apdu.le = card->max_recv_size > 0 ? card->max_recv_size : 256;
-	} else {
-		apdu.cse =
-		    (apdu.lc == 0) ? SC_APDU_CASE_1 : SC_APDU_CASE_3_SHORT;
-	}
-	res = dnie_transmit_apdu(card, &apdu);
-	if (res!=SC_SUCCESS) 
-		dnie_invalidate_path(card); /* failed: invalidate cache */
-	LOG_TEST_RET(ctx, res, "SelectFile() APDU transmit failed");
-	if (file_out == NULL) {
-		if (apdu.sw1 == 0x61)
-			SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, 0);
-		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE,
-			       sc_check_sw(card, apdu.sw1, apdu.sw2));
-	}
-
-	/* analyze response. if FCI, try to parse */
-	res = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	LOG_TEST_RET(ctx, res, "SelectFile() check_sw failed");
-	if (apdu.resplen < 2)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
-	if (apdu.resp[0] == 0x00)	/* proprietary coding */
-		LOG_FUNC_RETURN(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
-
-	/* finally process FCI response */
-	file = sc_file_new();
-	if (file == NULL)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
-	if (!card->ops->process_fci) {	/* hey! DNIe MUST have process_fci */
-		if (file)
-			sc_file_free(file);
-		LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
-	}
-	res = card->ops->process_fci(card, file, apdu.resp + 2, apdu.resp[1]);
-	*file_out = file;
-        /* if file is a DF, store it into DF cache */
-	if (file->type==SC_FILE_TYPE_DF) dnie_cache_path(card,file);
 	/* as last step clear data cache and return */
 	dnie_clear_cache(GET_DNIE_PRIV_DATA(card));
 	LOG_FUNC_RETURN(ctx, res);
@@ -1824,8 +1753,7 @@ static int dnie_process_fci(struct sc_card *card,
 		}
 		/* FCI response for Keys EF returns 3 additional bytes */
 		if (file->prop_attr_len < 13) {
-			sc_log(ctx,
-			       "FCI response len for Keys EF should be 13 bytes");
+			sc_log(ctx, "FCI response len for Keys EF should be 13 bytes");
 			res = SC_ERROR_WRONG_LENGTH;
 			goto dnie_process_fci_end;
 		}

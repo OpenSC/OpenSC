@@ -63,6 +63,7 @@ static struct ec_curve_info {
 } ec_curve_infos[] = {
 	{"secp192r1",    "1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192},
 	{"prime192r1",   "1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192},
+	{"prime192v1",   "1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192},
 	{"ansiX9p192r1", "1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192},
 	{"prime256v1",   "1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256},
 	{"secp256r1",    "1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256},
@@ -74,6 +75,8 @@ static struct ec_curve_info {
 	{"brainpoolP224r1", "1.3.36.3.3.2.8.1.1.5", "06092B2403030208010105", 224},
 	{"brainpoolP256r1", "1.3.36.3.3.2.8.1.1.7", "06092B2403030208010107", 256},
 	{"brainpoolP320r1", "1.3.36.3.3.2.8.1.1.9", "06092B2403030208010109", 320},
+	{"secp192k1",		"1.3.132.0.31", "06052B8104001F", 192},
+	{"secp256k1",		"1.3.132.0.10", "06052B8104000A", 256},
 	{NULL, NULL, NULL, 0},
 };
 
@@ -238,10 +241,10 @@ static CK_BYTE		opt_object_id[100], new_object_id[100];
 static const char *	opt_attr_from_file = NULL;
 static size_t		opt_object_id_len = 0, new_object_id_len = 0;
 static char *		opt_object_label = NULL;
-static char *		opt_pin = NULL;
-static char *		opt_so_pin = NULL;
-static char *		opt_puk = NULL;
-static char *		opt_new_pin = NULL;
+static const char *	opt_pin = NULL;
+static const char *	opt_so_pin = NULL;
+static const char *	opt_puk = NULL;
+static const char *	opt_new_pin = NULL;
 static char *		opt_application_label = NULL;
 static char *		opt_application_id = NULL;
 static char *		opt_issuer = NULL;
@@ -511,7 +514,7 @@ int main(int argc, char * argv[])
 			opt_output = optarg;
 			break;
 		case 'p':
-			opt_pin = optarg;
+			util_get_pin(optarg, &opt_pin);
 			break;
 		case 'c':
 			do_change_pin = 1;
@@ -585,10 +588,10 @@ int main(int argc, char * argv[])
 			opt_subject = optarg;
 			break;
 		case OPT_NEW_PIN:
-			opt_new_pin = optarg;
+			util_get_pin(optarg, &opt_new_pin);
 			break;
 		case OPT_PUK:
-			opt_puk = optarg;
+			util_get_pin(optarg, &opt_puk);
 			break;
 		case OPT_LOGIN_TYPE:
 			if (!strcmp(optarg, "so"))
@@ -603,7 +606,7 @@ int main(int argc, char * argv[])
 			}
 			break;
 		case OPT_SO_PIN:
-			opt_so_pin = optarg;
+			util_get_pin(optarg, &opt_so_pin);
 			break;
 		case OPT_INIT_TOKEN:
 			do_init_token = 1;
@@ -1085,11 +1088,11 @@ static int login(CK_SESSION_HANDLE session, int login_type)
 	/* Identify which pin to enter */
 
 	if (login_type == CKU_SO)
-		pin = opt_so_pin;
+		pin = (char *) opt_so_pin;
 	else if (login_type == CKU_USER)
-		pin = opt_pin;
+		pin = (char *) opt_pin;
 	else if (login_type == CKU_CONTEXT_SPECIFIC)
-		pin = opt_pin ? opt_pin : opt_puk;
+		pin = opt_pin ? (char *) opt_pin : (char *) opt_puk;
 
 	if (!pin && !(info.flags & CKF_PROTECTED_AUTHENTICATION_PATH)) {
 			printf("Logging in to \"%s\".\n", p11_utf8_to_local(info.label, sizeof(info.label)));
@@ -1135,8 +1138,10 @@ static void init_token(CK_SLOT_ID slot)
 			opt_object_label);
 
 	get_token_info(slot, &info);
-	if (!(info.flags & CKF_PROTECTED_AUTHENTICATION_PATH)) {
-		if (opt_so_pin == NULL) {
+	if (opt_so_pin != NULL) {
+		new_pin = opt_so_pin;
+	} else {
+		if (!(info.flags & CKF_PROTECTED_AUTHENTICATION_PATH)) {
 			printf("Please enter the new SO PIN: ");
 			r = util_getpass(&new_pin, &len, stdin);
 			if (r < 0)
@@ -1153,11 +1158,7 @@ static void init_token(CK_SLOT_ID slot)
 					strcmp(new_buf, new_pin) != 0)
 				util_fatal("Different new SO PINs, exiting\n");
 			pin_allocated = 1;
-		} else {
-			new_pin = opt_so_pin;
 		}
-		if (!new_pin || !*new_pin)
-			util_fatal("Invalid SO PIN\n");
 	}
 
 	rv = p11->C_InitToken(slot, (CK_UTF8CHAR *) new_pin,
@@ -1199,8 +1200,8 @@ static void init_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess)
 		}
 	}
 
-	pin = opt_pin;
-	if (!pin) pin = opt_new_pin;
+	pin = (char *) opt_pin;
+	if (!pin) pin = (char *) opt_new_pin;
 	if (!pin) pin = new_pin1;
 
 	rv = p11->C_InitPIN(sess, (CK_UTF8CHAR *) pin, pin == NULL ? 0 : strlen(pin));
@@ -1243,9 +1244,9 @@ static int change_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess)
 		}
 		else   {
 			if (opt_so_pin)
-				old_pin = opt_so_pin;
+				old_pin = (char *) opt_so_pin;
 			else
-				old_pin = opt_pin;
+				old_pin = (char *) opt_pin;
 		}
 
 		if (!opt_new_pin) {
@@ -1265,7 +1266,7 @@ static int change_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess)
 				return 1;
 		}
 		else   {
-			new_pin = opt_new_pin;
+			new_pin = (char *) opt_new_pin;
 		}
 	}
 
@@ -1292,9 +1293,9 @@ static int unlock_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess, int login_type)
 	get_token_info(slot, &info);
 
 	if (login_type == CKU_CONTEXT_SPECIFIC)
-		unlock_code = opt_pin ? opt_pin : opt_puk;
+		unlock_code = opt_pin ? (char *) opt_pin : (char *) opt_puk;
 	else if (login_type == -1)
-		unlock_code = opt_puk;
+		unlock_code = (char *) opt_puk;
 	else
 		return 1;
 
@@ -1314,7 +1315,7 @@ static int unlock_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess, int login_type)
 		unlock_code = unlock_buf;
 	}
 
-	new_pin = opt_new_pin;
+	new_pin = (char *) opt_new_pin;
 	if (!(info.flags & CKF_PROTECTED_AUTHENTICATION_PATH) && !new_pin)   {
 		printf("Please enter the new PIN: ");
 		r = util_getpass(&new_pin, &len, stdin);
