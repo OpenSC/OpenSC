@@ -3429,14 +3429,10 @@ pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
 		check_attribute_buffer(attr, sizeof(CK_MECHANISM_TYPE));
 		*(CK_MECHANISM_TYPE*)attr->pValue = CK_UNAVAILABLE_INFORMATION;
 		break;
-	case CKA_ENCRYPT:
 	case CKA_DECRYPT:
 	case CKA_SIGN:
 	case CKA_SIGN_RECOVER:
-	case CKA_WRAP:
 	case CKA_UNWRAP:
-	case CKA_VERIFY:
-	case CKA_VERIFY_RECOVER:
 	case CKA_DERIVE:
 	case CKA_OPENSC_NON_REPUDIATION:
 		/* TODO seems to be obsolete */
@@ -3862,8 +3858,6 @@ pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session, void *object, CK_
 	case CKA_TOKEN:
 	case CKA_LOCAL:
 	case CKA_SENSITIVE:
-	case CKA_ALWAYS_SENSITIVE:
-	case CKA_NEVER_EXTRACTABLE:
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
 		*(CK_BBOOL*)attr->pValue = TRUE;
 		break;
@@ -3925,11 +3919,7 @@ pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session, void *object, CK_
 		*(CK_MECHANISM_TYPE*)attr->pValue = CK_UNAVAILABLE_INFORMATION;
 		break;
 	case CKA_ENCRYPT:
-	case CKA_DECRYPT:
-	case CKA_SIGN:
-	case CKA_SIGN_RECOVER:
 	case CKA_WRAP:
-	case CKA_UNWRAP:
 	case CKA_VERIFY:
 	case CKA_VERIFY_RECOVER:
 	case CKA_DERIVE:
