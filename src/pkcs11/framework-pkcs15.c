@@ -3856,10 +3856,16 @@ pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session, void *object, CK_
 		*(CK_OBJECT_CLASS*)attr->pValue = CKO_PUBLIC_KEY;
 		break;
 	case CKA_TOKEN:
-	case CKA_LOCAL:
 	case CKA_SENSITIVE:
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
 		*(CK_BBOOL*)attr->pValue = TRUE;
+		break;
+	case CKA_LOCAL:
+		check_attribute_buffer(attr, sizeof(CK_BBOOL));
+		if (pubkey->pub_info)
+		    *(CK_BBOOL*)attr->pValue = (pubkey->pub_info->access_flags & SC_PKCS15_PRKEY_ACCESS_LOCAL) != 0;
+		else /* no pub_info structure, falling back to TRUE */
+		    *(CK_BBOOL*)attr->pValue = TRUE;
 		break;
 	case CKA_PRIVATE:
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
