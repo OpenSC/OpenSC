@@ -94,6 +94,7 @@ enum {
 	/* starcos driver */
 	SC_CARD_TYPE_STARCOS_BASE = 7000,
 	SC_CARD_TYPE_STARCOS_GENERIC,
+	SC_CARD_TYPE_STARCOS_V3_4,
 
 	/* tcos driver */
 	SC_CARD_TYPE_TCOS_BASE = 8000,
