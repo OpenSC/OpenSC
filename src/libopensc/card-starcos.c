@@ -1492,8 +1492,8 @@ static int starcos_compute_signature(sc_card_t *card,
 			apdu.data = sbuf;
 			apdu.datalen = tmp_len;
 			apdu.lc = tmp_len;
-			apdu.resp = out;
-			apdu.resplen = outlen;
+			apdu.resp = rbuf;
+			apdu.resplen = sizeof(rbuf);
 			apdu.le = 0;
 			r = sc_transmit_apdu(card, &apdu);
 			SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
