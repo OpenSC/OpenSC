@@ -1335,7 +1335,12 @@ static int starcos_set_security_env(sc_card_t *card,
 		if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 
-		ex_data->fix_digestInfo = env->algorithm_flags;
+		if (env->algorithm_flags == SC_ALGORITHM_RSA_PAD_PKCS1) {
+			// input data will be already padded
+			ex_data->fix_digestInfo = 0;
+		} else {
+			ex_data->fix_digestInfo = env->algorithm_flags;
+		}
 		ex_data->sec_ops        = SC_SEC_OPERATION_SIGN;
 		return SC_SUCCESS;
 	}
