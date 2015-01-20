@@ -166,7 +166,7 @@ static const struct option options[] = {
 };
 
 static const char *option_help[] = {
-	"Specify the module to load (mandatory)",
+	"Specify the module to load (default:" DEFAULT_PKCS11_PROVIDER ")",
 	"Show global token information",
 	"List available slots",
 	"List slots with tokens",
@@ -225,7 +225,7 @@ static const char *	app_name = "pkcs11-tool"; /* for utils.c */
 static int		verbose = 0;
 static const char *	opt_input = NULL;
 static const char *	opt_output = NULL;
-static const char *	opt_module = NULL;
+static const char *	opt_module = DEFAULT_PKCS11_PROVIDER;
 static int		opt_slot_set = 0;
 static CK_SLOT_ID	opt_slot = 0;
 static const char *	opt_slot_description = NULL;
@@ -652,9 +652,6 @@ int main(int argc, char * argv[])
 			util_print_usage_and_die(app_name, options, option_help, NULL);
 		}
 	}
-
-	if (opt_module == NULL)
-		util_print_usage_and_die(app_name, options, option_help, NULL);
 
 	if (action_count == 0)
 		util_print_usage_and_die(app_name, options, option_help, NULL);
