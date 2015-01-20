@@ -965,11 +965,6 @@ sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "DEE Adding pin %d label=%s",i, label);
 		
 		sc_pkcs15_format_id(prkeys[i].id, &prkey_info.id);
 		prkey_info.native        = 1;
-		/* Add default access_flags, see Issues #335 and #336 */
-		prkey_info.access_flags  = SC_PKCS15_PRKEY_ACCESS_SENSITIVE
-						| SC_PKCS15_PRKEY_ACCESS_ALWAYSSENSITIVE
-						| SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE
-						| SC_PKCS15_PRKEY_ACCESS_LOCAL;
 		prkey_info.key_reference = prkeys[i].ref;
 		sc_format_path(prkeys[i].path, &prkey_info.path);
 

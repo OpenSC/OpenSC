@@ -319,11 +319,6 @@ static int itacns_add_prkey(sc_pkcs15_card_t *p15card,
 	info.usage		= usage;
 	info.native		= 1;
 	info.key_reference	= ref;
-	info.access_flags	=
-			SC_PKCS15_PRKEY_ACCESS_SENSITIVE
-			| SC_PKCS15_PRKEY_ACCESS_ALWAYSSENSITIVE
-			| SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE
-			| SC_PKCS15_PRKEY_ACCESS_LOCAL;
 
 	if (path)
 	        info.path = *path;

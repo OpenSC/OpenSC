@@ -206,11 +206,6 @@ static int sc_pkcs15emu_pteid_init(sc_pkcs15_card_t * p15card)
 		prkey_info.id.value[0] = pteid_prkey_ids[i];
 		prkey_info.usage = pteid_prkey_usage[i];
 		prkey_info.native = 1;
-		/* Add default access_flags, see Issues #335 and #336 */
-		prkey_info.access_flags  = SC_PKCS15_PRKEY_ACCESS_SENSITIVE
-						| SC_PKCS15_PRKEY_ACCESS_ALWAYSSENSITIVE
-						| SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE
-						| SC_PKCS15_PRKEY_ACCESS_LOCAL;
 		prkey_info.key_reference = pteid_prkey_keyref[type][i];
 		prkey_info.modulus_length = 1024;
 		if (pteid_prkey_paths[type][i] != NULL)
