@@ -4541,7 +4541,7 @@ static int register_ec_mechanisms(struct sc_pkcs11_card *p11card, int flags,
 	if (ext_flags & SC_ALGORITHM_EXT_EC_NAMEDCURVE)
 		ec_flags |= CKF_EC_NAMEDCURVE;
 	if (ext_flags & SC_ALGORITHM_EXT_EC_UNCOMPRESES)
-		ec_flags |= CKF_EC_UNCOMPRESES;
+		ec_flags |= CKF_EC_UNCOMPRESS;
 	if (ext_flags & SC_ALGORITHM_EXT_EC_COMPRESS)
 		ec_flags |= CKF_EC_COMPRESS;
 
