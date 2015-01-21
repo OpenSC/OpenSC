@@ -919,7 +919,9 @@ print_mech_info(FILE *f, CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_PTR minfo)
 	const char *name = lookup_enum(MEC_T, type);
 	CK_ULONG known_flags = CKF_HW | CKF_ENCRYPT | CKF_DECRYPT | CKF_DIGEST |
 			CKF_SIGN | CKF_SIGN_RECOVER | CKF_VERIFY | CKF_VERIFY_RECOVER |
-			CKF_GENERATE | CKF_GENERATE_KEY_PAIR | CKF_WRAP | CKF_UNWRAP | CKF_DERIVE;
+			CKF_GENERATE | CKF_GENERATE_KEY_PAIR | CKF_WRAP | CKF_UNWRAP |
+			CKF_DERIVE | CKF_EC_F_P | CKF_EC_F_2M |CKF_EC_ECPARAMETERS |
+			CKF_EC_NAMEDCURVE | CKF_EC_UNCOMPRESS | CKF_EC_COMPRESS;
 
 	if (name)
 		fprintf(f, "%s : ", name);
@@ -929,7 +931,7 @@ print_mech_info(FILE *f, CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_PTR minfo)
 	fprintf(f, "min:%lu max:%lu flags:0x%lX ",
 			(unsigned long) minfo->ulMinKeySize,
 			(unsigned long) minfo->ulMaxKeySize, minfo->flags);
-	fprintf(f, "( %s%s%s%s%s%s%s%s%s%s%s%s%s%s)\n",
+	fprintf(f, "( %s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s)\n",
 			(minfo->flags & CKF_HW)                ? "Hardware " : "",
 			(minfo->flags & CKF_ENCRYPT)           ? "Encrypt "  : "",
 			(minfo->flags & CKF_DECRYPT)           ? "Decrypt "  : "",
@@ -943,6 +945,12 @@ print_mech_info(FILE *f, CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_PTR minfo)
 			(minfo->flags & CKF_WRAP)              ? "Wrap "     : "",
 			(minfo->flags & CKF_UNWRAP)            ? "Unwrap "   : "",
 			(minfo->flags & CKF_DERIVE)            ? "Derive "   : "",
+            (minfo->flags & CKF_EC_F_P)            ? "F(P) "     : "",
+            (minfo->flags & CKF_EC_F_2M)           ? "F(2^M) "   : "",
+            (minfo->flags & CKF_EC_ECPARAMETERS)   ? "EcParams " : "",
+            (minfo->flags & CKF_EC_NAMEDCURVE)     ? "NamedCurve " : "",
+            (minfo->flags & CKF_EC_UNCOMPRESS)     ? "Uncompress " : "",
+            (minfo->flags & CKF_EC_COMPRESS)       ? "Compress " : "",
 			(minfo->flags & ~known_flags)          ? "Unknown "  : "");
 }
 
