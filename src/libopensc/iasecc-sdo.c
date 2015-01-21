@@ -1287,4 +1287,15 @@ iasecc_docp_copy(struct sc_context *ctx, struct iasecc_sdo_docp *in, struct iase
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
+#else
+
+/* we need to define the functions below to export them */
+#include "errors.h"
+
+int
+iasecc_sdo_encode_update_field()
+{
+	return SC_ERROR_NOT_SUPPORTED;
+}
+
 #endif /* ENABLE_OPENSSL */
