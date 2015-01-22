@@ -403,10 +403,11 @@ int sc_create_file(sc_card_t *card, sc_file_t *file)
 {
 	int r;
 	char pbuf[SC_MAX_PATH_STRING_SIZE];
-	const sc_path_t *in_path = &file->path;
+	const sc_path_t *in_path;
 
-	assert(card != NULL);
+	assert(card != NULL && file != NULL);
 
+	in_path = &file->path;
 	r = sc_path_print(pbuf, sizeof(pbuf), in_path);
 	if (r != SC_SUCCESS)
 		pbuf[0] = '\0';
@@ -864,14 +865,16 @@ sc_algorithm_info_t * sc_card_find_gostr3410_alg(sc_card_t *card,
 
 static int match_atr_table(sc_context_t *ctx, struct sc_atr_table *table, struct sc_atr *atr)
 {
-	u8 *card_atr_bin = atr->value;
-	size_t card_atr_bin_len = atr->len;
+	u8 *card_atr_bin;
+	size_t card_atr_bin_len;
 	char card_atr_hex[3 * SC_MAX_ATR_SIZE];
 	size_t card_atr_hex_len;
 	unsigned int i = 0;
 
 	if (ctx == NULL || table == NULL || atr == NULL)
 		return -1;
+	card_atr_bin = atr->value;
+	card_atr_bin_len = atr->len;
 	sc_bin_to_hex(card_atr_bin, card_atr_bin_len, card_atr_hex, sizeof(card_atr_hex), ':');
 	card_atr_hex_len = strlen(card_atr_hex);
 

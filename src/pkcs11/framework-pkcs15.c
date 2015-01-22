@@ -3446,10 +3446,12 @@ pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
 		check_attribute_buffer(attr, sizeof(CK_ULONG));
 		switch (prkey->prv_p15obj->type) {
 			case SC_PKCS15_TYPE_PRKEY_EC:
-				if (key && key->u.ec.params.field_length > 0)
-					*(CK_ULONG *) attr->pValue = key->u.ec.params.field_length;
-				else
-					*(CK_ULONG *) attr->pValue = (key->u.ec.ecpointQ.len - 1) / 2 *8;
+				if (key) {
+					if (key->u.ec.params.field_length > 0)
+						*(CK_ULONG *) attr->pValue = key->u.ec.params.field_length;
+					else
+						*(CK_ULONG *) attr->pValue = (key->u.ec.ecpointQ.len - 1) / 2 *8;
+				}
 				return CKR_OK;
 			default:
 				*(CK_ULONG *) attr->pValue = prkey->prv_info->modulus_length;

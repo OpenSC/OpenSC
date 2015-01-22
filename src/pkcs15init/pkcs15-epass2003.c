@@ -470,8 +470,7 @@ static int epass2003_pkcs15_store_key(struct sc_profile *profile,
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r,
 		    "store key: cannot update private key");
 
-	if (file)
-		sc_file_free(file);
+	sc_file_free(file);
 
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 }

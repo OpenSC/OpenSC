@@ -330,12 +330,10 @@ awp_create_container(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 
 	rv = awp_create_container_record(p15card, profile, file, acc);
 
-	if (clist)
-		sc_file_free(clist);
-	if (file)
-		sc_file_free(file);
 	if (list)
 		free(list);
+	sc_file_free(file);
+	sc_file_free(clist);
 
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, rv);
 }
@@ -1669,8 +1667,8 @@ awp_delete_from_container(struct sc_pkcs15_card *p15card,
 		rv = 0;
 
 	if (buff)		free(buff);
-	if (file)		sc_file_free(file);
 	if (clist)		sc_file_free(clist);
+	sc_file_free(file);
 
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, rv);
 }
@@ -1744,8 +1742,7 @@ awp_remove_from_object_list( struct sc_pkcs15_card *p15card, struct sc_profile *
 done:
 	if (buff)
 		free(buff);
-	if (lst)
-		sc_file_free(lst);
+	sc_file_free(lst);
 	if (lst_file)
 		sc_file_free(lst_file);
 

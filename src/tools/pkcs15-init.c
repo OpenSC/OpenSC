@@ -1296,8 +1296,7 @@ static int get_cert_info(sc_pkcs15_card_t *myp15card, sc_pkcs15_object_t *certob
 	}
 
 done:
-	if (cert)
-		sc_pkcs15_free_certificate(cert);
+	sc_pkcs15_free_certificate(cert);
 	if (othercert)
 		sc_pkcs15_free_certificate(othercert);
 

@@ -189,7 +189,7 @@ myeid_init_card(sc_profile_t *profile,
  */
 static int
 myeid_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *df) {
-	struct sc_context *ctx = p15card->card->ctx;
+	struct sc_context *ctx;
 	struct sc_file *file = NULL;
 	int r = 0, ii;
 	static const char *create_dfs[] = {
@@ -209,9 +209,10 @@ myeid_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *df
 		SC_PKCS15_DODF
 	};
 
-	if (!profile || !p15card || !df)
+	if (!profile || !p15card || !p15card->card || !df)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
+	ctx = p15card->card->ctx;
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx, "id (%x)", df->id);
 

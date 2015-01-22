@@ -1434,10 +1434,6 @@ int cwa_encode_apdu(sc_card_t * card,
 	u8 *msgbuf = NULL;	/* to encrypt apdu data */
 	u8 *cryptbuf = NULL;
 
-	/* reserve extra bytes for padding and tlv header */
-	msgbuf = calloc(12 + from->lc, sizeof(u8));	/* to encrypt apdu data */
-	cryptbuf = calloc(12 + from->lc, sizeof(u8));
-
 	/* mandatory check */
 	if (!card || !card->ctx || !provider)
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -1450,6 +1446,10 @@ int cwa_encode_apdu(sc_card_t * card,
 		LOG_FUNC_RETURN(ctx, SC_ERROR_SM_NOT_INITIALIZED);
 	if (sm_session->state != CWA_SM_ACTIVE)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_SM_INVALID_LEVEL);
+
+	/* reserve extra bytes for padding and tlv header */
+	msgbuf = calloc(12 + from->lc, sizeof(u8));	/* to encrypt apdu data */
+	cryptbuf = calloc(12 + from->lc, sizeof(u8));
 	if (!msgbuf || !cryptbuf)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 

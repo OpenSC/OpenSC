@@ -783,17 +783,17 @@ static int read_ssh_key(void)
 	struct sc_pkcs15_object *obj = NULL;
 	sc_pkcs15_pubkey_t *pubkey = NULL;
 	sc_pkcs15_cert_t *cert = NULL;
-        FILE *outf = NULL;
+	FILE *outf = NULL;
 
-        if (opt_outfile != NULL) {
-                outf = fopen(opt_outfile, "w");
-                if (outf == NULL) {
-                        fprintf(stderr, "Error opening file '%s': %s\n", opt_outfile, strerror(errno));
-                        goto fail2;
-                }
-        }
+	if (opt_outfile != NULL) {
+		outf = fopen(opt_outfile, "w");
+		if (outf == NULL) {
+			fprintf(stderr, "Error opening file '%s': %s\n", opt_outfile, strerror(errno));
+			goto fail2;
+		}
+	}
 	else   {
-                outf = stdout;
+		outf = stdout;
 	}
 
 	id.len = SC_PKCS15_MAX_ID_SIZE;
@@ -988,8 +988,8 @@ static int read_ssh_key(void)
 		free(uu);
 	}
 
-        if (outf != stdout)
-                fclose(outf);
+	if (outf != stdout)
+		fclose(outf);
 	if (cert)
 		sc_pkcs15_free_certificate(cert);
 	else if (pubkey)
@@ -999,8 +999,8 @@ static int read_ssh_key(void)
 fail:
 	printf("can't convert key: buffer too small\n");
 fail2:
-        if (outf != stdout)
-                fclose(outf);
+	if (outf && outf != stdout)
+		fclose(outf);
 	if (cert)
 		sc_pkcs15_free_certificate(cert);
 	else if (pubkey)

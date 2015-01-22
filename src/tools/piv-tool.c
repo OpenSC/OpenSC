@@ -113,7 +113,7 @@ static int load_object(const char * object_id, const char * object_file)
 	int r;
 	struct stat stat_buf;
 
-    if((fp=fopen(object_file, "r"))==NULL){
+    if(!object_file || (fp=fopen(object_file, "r")) == NULL){
         printf("Cannot open object file, %s %s\n",
 			(object_file)?object_file:"", strerror(errno));
         return -1;

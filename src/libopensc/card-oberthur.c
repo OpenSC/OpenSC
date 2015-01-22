@@ -1108,15 +1108,16 @@ auth_compute_signature(struct sc_card *card, const unsigned char *in, size_t ile
 	unsigned char resp[SC_MAX_APDU_BUFFER_SIZE];
 	int rv;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "inlen %i, outlen %i\n", ilen, olen);
 	if (!card || !in || !out)   {
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
+		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	else if (ilen > 96)   {
 		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Illegal input length %d\n", ilen);
 		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS, "Illegal input length");
 	}
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "inlen %i, outlen %i\n", ilen, olen);
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x9E, 0x9A);
 	apdu.datalen = ilen;

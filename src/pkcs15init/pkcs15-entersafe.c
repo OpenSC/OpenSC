@@ -292,10 +292,9 @@ static int entersafe_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 		 data.key_data.symmetric.key_len=16;
 
 		 r = sc_card_ctl(card, SC_CARDCTL_ENTERSAFE_WRITE_KEY, &data);
-		 if (pin_obj)   {
-			 /* Cache new PIN value. */
-			 sc_pkcs15_pincache_add(p15card, pin_obj, pin, pin_len);
-		 }
+
+		 /* Cache new PIN value. */
+		 sc_pkcs15_pincache_add(p15card, pin_obj, pin, pin_len);
 	}
 
 	{/*puk*/

@@ -650,7 +650,7 @@ authentic_reduce_path(struct sc_card *card, struct sc_path *path)
 
 	LOG_FUNC_CALLED(ctx);
 
-	if (path->len <= 2 || path->type == SC_PATH_TYPE_DF_NAME || !path)
+	if (!path || path->len <= 2 || path->type == SC_PATH_TYPE_DF_NAME)
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 
 	if (!card->cache.valid || !card->cache.current_df)

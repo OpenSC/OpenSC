@@ -2565,7 +2565,8 @@ iasecc_sdo_create(struct sc_card *card, struct iasecc_sdo *sdo)
 		rv = iasecc_sdo_put_data(card, &update);
 		LOG_TEST_RET(ctx, rv, "failed to update 'Compulsory usage' data");
 
-		field->on_card = 1;
+		if (field)
+			field->on_card = 1;
 	}
 
 	free(data);
@@ -3252,14 +3253,19 @@ static int
 iasecc_compute_signature(struct sc_card *card,
 		const unsigned char *in, size_t in_len, unsigned char *out, size_t out_len)
 {
-	struct sc_context *ctx = card->ctx;
-	struct iasecc_private_data *prv = (struct iasecc_private_data *) card->drv_data;
-	struct sc_security_env *env = &prv->security_env;
+	struct sc_context *ctx;
+	struct iasecc_private_data *prv;
+	struct sc_security_env *env;
+
+	if (!card || !in || !out)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	ctx = card->ctx;
+	prv = (struct iasecc_private_data *) card->drv_data;
+	env = &prv->security_env;
 
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx, "inlen %i, outlen %i", in_len, out_len);
-	if (!card || !in || !out)
-		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Invalid compute signature arguments");
 
 	if (env->operation == SC_SEC_OPERATION_SIGN)
 		return iasecc_compute_signature_dst(card, in, in_len, out,  out_len);
