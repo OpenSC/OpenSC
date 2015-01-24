@@ -2836,7 +2836,7 @@ get_mechanisms(CK_SLOT_ID slot, CK_MECHANISM_TYPE_PTR *pList, CK_FLAGS flags)
 	CK_RV		rv;
 
 	rv = p11->C_GetMechanismList(slot, *pList, &ulCount);
-	*pList = calloc(ulCount, sizeof(*pList));
+	*pList = calloc(ulCount, sizeof(**pList));
 	if (*pList == NULL)
 		util_fatal("calloc failed: %m");
 
