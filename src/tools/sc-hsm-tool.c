@@ -1169,7 +1169,10 @@ static int wrap_key(sc_card_t *card, int keyid, const char *outf, const char *pi
 
 	memcpy(ptr, key, key_len);
 	ptr += key_len;
+
 	free(key);
+	key = NULL;
+	key_len = 0;
 
 	// Add private key description
 	if (ef_prkd_len > 0) {
@@ -1184,7 +1187,6 @@ static int wrap_key(sc_card_t *card, int keyid, const char *outf, const char *pi
 	}
 
 	// Encode key, key decription and certificate object in sequence
-	key_len = 0;
 	wrap_with_tag(0x30, keyblob, ptr - keyblob, &key, &key_len);
 
 	out = fopen(outf, "wb");
