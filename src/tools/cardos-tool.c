@@ -593,7 +593,7 @@ static int cardos_format(const char *opt_startkey)
 	if (check_apdu(&apdu))
 		return 1;
 	if (apdu.resplen < 0x04) {
-		printf("expected 4-6 bytes form GET DATA for startkey data, but got only %u\n", apdu.resplen);
+		printf("expected 4-6 bytes form GET DATA for startkey data, but got only %zu\n", apdu.resplen);
 		printf("aborting\n");
 		return 1;
 	}
@@ -914,7 +914,7 @@ static int cardos_change_startkey(const char *change_startkey_apdu)
 	if (check_apdu(&apdu))
 		return 1;
 	if (apdu.resplen < 0x04) {
-		printf("expected 4-6 bytes form GET DATA for startkey data, but got only %u\n", apdu.resplen);
+		printf("expected 4-6 bytes form GET DATA for startkey data, but got only %zu\n", apdu.resplen);
 		printf("aborting\n");
 		return 1;
 	}
@@ -999,7 +999,7 @@ change_startkey:
 	if (check_apdu(&apdu))
 		return 1;
 	if (apdu.resplen < 0x04) {
-		printf("expected 4-6 bytes form GET DATA for startkey data, but got only %u\n", apdu.resplen);
+		printf("expected 4-6 bytes form GET DATA for startkey data, but got only %zu\n", apdu.resplen);
 		printf("aborting\n");
 		return 1;
 	}
