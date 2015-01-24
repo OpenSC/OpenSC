@@ -1564,11 +1564,47 @@ static int read_and_cache_file(const sc_path_t *path)
 		printf("out of memory!");
 		return -1;
 	}
-	r = sc_read_binary(card, 0, buf, size, 0);
-	if (r < 0) {
-		fprintf(stderr, "sc_read_binary() failed: %s\n", sc_strerror(r));
-		free(buf);
-		return -1;
+	if (tfile->ef_structure == SC_FILE_EF_LINEAR_VARIABLE_TLV) {
+		int i;
+		size_t l, record_len;
+		unsigned char *head = buf;
+
+		for (i=1;  ; i++) {
+			l = size - (head - buf);
+			if (l > 256) { l = 256; }
+			r = sc_read_record(p15card->card, i, head, l, SC_RECORD_BY_REC_NR);
+			if (r == SC_ERROR_RECORD_NOT_FOUND) {
+				r = 0;
+				break;
+			}
+			if (r < 0) {
+				free(buf);
+				return -1;
+			}
+			if (r < 2)
+				break;
+			record_len = head[1];
+			if (record_len != 0xff) {
+				memmove(head,head+2,r-2);
+				head += (r-2);
+			}
+			else {
+				if (r < 4)
+					break;
+				memmove(head,head+4,r-4);
+				head += (r-4);
+			}
+		}
+		r = head - buf;
+
+	} else {		
+
+		r = sc_read_binary(card, 0, buf, size, 0);
+		if (r < 0) {
+			fprintf(stderr, "sc_read_binary() failed: %s\n", sc_strerror(r));
+			free(buf);
+			return -1;
+		}
 	}
 	r = sc_pkcs15_cache_file(p15card, path, buf, r);
 	if (r) {
