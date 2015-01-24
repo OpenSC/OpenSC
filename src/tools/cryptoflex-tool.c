@@ -28,6 +28,7 @@
 
 #include "libopensc/pkcs15.h"
 #include "common/compat_strlcpy.h"
+#include "common/compat_strlcat.h"
 #include "util.h"
 
 static const char *app_name = "cryptoflex-tool";
@@ -145,7 +146,7 @@ static int select_app_df(void)
 
 	strcpy(str, "3F00");
 	if (opt_appdf != NULL)
-		strcat(str, opt_appdf);
+		strlcat(str, opt_appdf, sizeof str);
 	sc_format_path(str, &path);
 	r = sc_select_file(card, &path, &file);
 	if (r) {
@@ -945,7 +946,7 @@ static int create_pin(void)
 	}
 	strcpy(buf, "3F00");
 	if (opt_appdf != NULL)
-		strcat(buf, opt_appdf);
+		strlcat(buf, opt_appdf, sizeof buf);
 	sc_format_path(buf, &path);
 
 	return create_pin_file(&path, opt_pin_num, "");

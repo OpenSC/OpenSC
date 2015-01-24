@@ -47,6 +47,8 @@
 #include "pkcs11/pkcs11.h"
 #include "pkcs11/pkcs11-opensc.h"
 #include "libopensc/asn1.h"
+#include "common/compat_strlcat.h"
+#include "common/compat_strlcpy.h"
 #include "util.h"
 
 extern void *C_LoadModule(const char *name, CK_FUNCTION_LIST_PTR_PTR);
@@ -1145,7 +1147,7 @@ static void init_token(CK_SLOT_ID slot)
 				util_fatal("No PIN entered, exiting\n");
 			if (!new_pin || !*new_pin || strlen(new_pin) > 20)
 				util_fatal("Invalid SO PIN\n");
-			strcpy(new_buf, new_pin);
+			strlcpy(new_buf, new_pin, sizeof new_buf);
 			free(new_pin); new_pin = NULL;
 			printf("Please enter the new SO PIN (again): ");
 			r = util_getpass(&new_pin, &len, stdin);
@@ -1318,7 +1320,7 @@ static int unlock_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess, int login_type)
 		r = util_getpass(&new_pin, &len, stdin);
 		if (r < 0)
 			return 1;
-		strcpy(new_buf, new_pin);
+		strlcpy(new_buf, new_pin, sizeof new_buf);
 
 		printf("Please enter the new PIN again: ");
 		r = util_getpass(&new_pin, &len, stdin);
@@ -4434,8 +4436,8 @@ static const char *p11_flag_names(struct flag_info *list, CK_FLAGS value)
 	buffer[0] = '\0';
 	while (list->value) {
 		if (list->value & value) {
-			strcat(buffer, sepa);
-			strcat(buffer, list->name);
+			strlcat(buffer, sepa, sizeof buffer);
+			strlcat(buffer, list->name, sizeof buffer);
 			value &= ~list->value;
 			sepa = ", ";
 		}
