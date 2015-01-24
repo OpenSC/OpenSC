@@ -222,18 +222,17 @@ int sc_connect_card(sc_reader_t *reader, sc_card_t **card_out)
 	}
 	if (card->name == NULL)
 		card->name = card->driver->name;
-	*card_out = card;
 
-        /*  Override card limitations with reader limitations.
-         *  Note that zero means no limitations at all.
+	/*  Override card limitations with reader limitations.
+	 *  Note that zero means no limitations at all.
 	 */
-        if ((card->max_recv_size == 0) ||
-           ((reader->driver->max_recv_size != 0) && (reader->driver->max_recv_size < card->max_recv_size)))
-                card->max_recv_size = reader->driver->max_recv_size;
+	if ((card->max_recv_size == 0) ||
+			((reader->driver->max_recv_size != 0) && (reader->driver->max_recv_size < card->max_recv_size)))
+		card->max_recv_size = reader->driver->max_recv_size;
 
-        if ((card->max_send_size == 0) ||
-           ((reader->driver->max_send_size != 0) && (reader->driver->max_send_size < card->max_send_size)))
-                card->max_send_size = reader->driver->max_send_size;
+	if ((card->max_send_size == 0) ||
+			((reader->driver->max_send_size != 0) && (reader->driver->max_send_size < card->max_send_size)))
+		card->max_send_size = reader->driver->max_send_size;
 
 	sc_log(ctx, "card info name:'%s', type:%i, flags:0x%X, max_send/recv_size:%i/%i",
 		card->name, card->type, card->flags, card->max_send_size, card->max_recv_size);
@@ -246,6 +245,7 @@ int sc_connect_card(sc_reader_t *reader, sc_card_t **card_out)
 		goto err;
 	}
 #endif
+	*card_out = card;
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 err:
