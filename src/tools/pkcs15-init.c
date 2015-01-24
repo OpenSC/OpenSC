@@ -1311,7 +1311,7 @@ done:
  */
 static int do_delete_crypto_objects(sc_pkcs15_card_t *myp15card,
 				struct sc_profile *profile,
-				const sc_pkcs15_id_t id,
+				const sc_pkcs15_id_t *id,
 				unsigned int which)
 {
 	sc_pkcs15_object_t *objs[10]; /* 1 priv + 1 pub + chain of at most 8 certs, should be enough */
@@ -1327,23 +1327,23 @@ static int do_delete_crypto_objects(sc_pkcs15_card_t *myp15card,
 		}
 
 		for (i = 0; i< r; i++)
-			if (sc_pkcs15_compare_id(&id, &((struct sc_pkcs15_prkey_info *)key_objs[i]->data)->id))
+			if (sc_pkcs15_compare_id(id, &((struct sc_pkcs15_prkey_info *)key_objs[i]->data)->id))
 				objs[count++] = key_objs[i];
 
 		if (!count)
-			fprintf(stderr, "NOTE: couldn't find privkey %s to delete\n", sc_pkcs15_print_id(&id));
+			fprintf(stderr, "NOTE: couldn't find privkey %s to delete\n", sc_pkcs15_print_id(id));
 	}
 
 	if (which & SC_PKCS15INIT_TYPE_PUBKEY) {
-	    if (sc_pkcs15_find_pubkey_by_id(myp15card, &id, &objs[count]) != 0)
-			fprintf(stderr, "NOTE: couldn't find pubkey %s to delete\n", sc_pkcs15_print_id(&id));
+	    if (sc_pkcs15_find_pubkey_by_id(myp15card, id, &objs[count]) != 0)
+			fprintf(stderr, "NOTE: couldn't find pubkey %s to delete\n", sc_pkcs15_print_id(id));
 		else
 			count++;
 	}
 
 	if (which & SC_PKCS15INIT_TYPE_CERT) {
-	    if (sc_pkcs15_find_cert_by_id(myp15card, &id, &objs[count]) != 0)
-			fprintf(stderr, "NOTE: couldn't find cert %s to delete\n", sc_pkcs15_print_id(&id));
+	    if (sc_pkcs15_find_cert_by_id(myp15card, id, &objs[count]) != 0)
+			fprintf(stderr, "NOTE: couldn't find cert %s to delete\n", sc_pkcs15_print_id(id));
 		else {
 			count++;
 			del_cert = 1;
@@ -1416,7 +1416,7 @@ do_delete_objects(struct sc_profile *profile, unsigned int myopt_delete_flags)
 				util_fatal("Specify the --id for key(s) or cert(s) to be deleted\n");
 		sc_pkcs15_format_id(opt_objectid, &id);
 
-		r = do_delete_crypto_objects(p15card, profile, id, myopt_delete_flags);
+		r = do_delete_crypto_objects(p15card, profile, &id, myopt_delete_flags);
 		if (r >= 0)
 			count += r;
 	}
