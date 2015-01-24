@@ -424,7 +424,7 @@ void clearScreen()
 
 void waitForEnterKeyPressed()
 {
-	char c;
+	int c;
 
 	fflush(stdout);
 	while ((c = getchar()) != '\n' && c != EOF) {
