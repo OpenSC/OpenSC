@@ -3,6 +3,7 @@ OpenSC documentation wiki is available online at
 
 Please take a look at the documentation before trying to use OpenSC.
 
+
 Coverity Scan:
 [![Coverity Scan Build Status](https://scan.coverity.com/projects/4011/badge.svg)](https://scan.coverity.com/projects/4026)
 
