@@ -662,8 +662,7 @@ int msc_compute_crypt_init(sc_card_t *card,
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 	if(apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 		short receivedData = outputBuffer[0] << 8 | outputBuffer[1];
-		 *outputDataLength = receivedData;
-		*outputDataLength = 0;
+		*outputDataLength = receivedData;
 
 		assert(receivedData <= MSC_MAX_APDU);
 		memcpy(outputData, outputBuffer + 2, receivedData);
