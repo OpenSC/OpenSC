@@ -227,7 +227,7 @@ des3_encrypt_cbc(const unsigned char *key, int keysize, unsigned char iv[8],
 
 
 static int
-des3_decrypt_cbc(const unsigned char *key, int keysize, unsigned char iv[8],
+des3_decrypt_cbc(const unsigned char *key, int keysize, unsigned char iv[EVP_MAX_IV_LENGTH],
 		const unsigned char *input, size_t length, unsigned char *output)
 {
 	unsigned char bKey[24] = { 0 };

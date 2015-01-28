@@ -716,7 +716,7 @@ static int encode_private_key(RSA *rsa, u8 *key, size_t *keysize)
 
 static int encode_public_key(RSA *rsa, u8 *key, size_t *keysize)
 {
-	u8 buf[512], *p = buf;
+	u8 buf[1024], *p = buf;
 	u8 bnbuf[256];
 	int base = 0;
 	int r;
