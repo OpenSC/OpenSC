@@ -782,10 +782,8 @@ awp_encode_key_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *obj
 	if (obj->type == COSM_TYPE_PUBKEY_RSA || obj->type == COSM_TYPE_PRKEY_RSA)
 		ki->flags |= COSM_GENERATED;
 
-	if (obj->label)   {
-		ki->label.value = (unsigned char *)strdup(obj->label);
-		ki->label.len = strlen(obj->label);
-	}
+	ki->label.value = (unsigned char *)strdup(obj->label);
+	ki->label.len = strlen(obj->label);
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "cosm_encode_key_info() label(%i):%s",ki->label.len, ki->label.value);
 
 	/*
@@ -1088,10 +1086,8 @@ awp_encode_data_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *ob
 
 	di->flags = 0x0000;
 
-	if (obj->label)   {
-		di->label.value = (unsigned char *)strdup(obj->label);
-		di->label.len = strlen(obj->label);
-	}
+	di->label.value = (unsigned char *)strdup(obj->label);
+	di->label.len = strlen(obj->label);
 
 	di->app.len = strlen(data_info->app_label);
 	if (di->app.len)   {

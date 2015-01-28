@@ -4217,7 +4217,7 @@ static void test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		return;
 
 	tmp = getID(session, priv_key, (CK_ULONG *) &opt_object_id_len);
-	if (opt_object_id == NULL || opt_object_id_len == 0) {
+	if (opt_object_id_len == 0) {
 		printf("ERR: newly generated private key has no (or an empty) CKA_ID\n");
 		return;
 	}
@@ -4372,7 +4372,7 @@ static void test_ec(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		return;
 
 	tmp = getID(session, priv_key, (CK_ULONG *) &opt_object_id_len);
-	if (opt_object_id == NULL || opt_object_id_len == 0) {
+	if (opt_object_id_len == 0) {
 		printf("ERR: newly generated private key has no (or an empty) CKA_ID\n");
 		return;
 	}

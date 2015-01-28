@@ -455,7 +455,7 @@ static int list_data_objects(void)
 		int idx;
 		struct sc_pkcs15_data_info *cinfo = (struct sc_pkcs15_data_info *) objs[i]->data;
 
-		if (objs[i]->label)
+		if (0 < strnlen(objs[i]->label, sizeof objs[i]->label))
 			printf("Data object '%s'\n", objs[i]->label);
 		else
 			printf("Data object <%i>\n", i);

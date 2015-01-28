@@ -784,8 +784,6 @@ static int piv_find_aid(sc_card_t * card, sc_file_t *aid_file)
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_NO_CARD_SUPPORT);
 
 		card->ops->process_fci(card, aid_file, apdu.resp+2, apdu.resp[1]);
-		if (aid_file->name == NULL)
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NO_CARD_SUPPORT);
 
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, i);
 	}
