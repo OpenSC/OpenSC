@@ -768,7 +768,7 @@ static unsigned long part10_detect_pace_capabilities(sc_reader_t *reader)
         PACE_FUNCTION_GetReaderPACECapabilities, /* idxFunction */
         0, 0,                                    /* lengthInputData */
     };
-    u8 rbuf[6];
+    u8 rbuf[7];
     u8 *p = rbuf;
     size_t rcount = sizeof rbuf;
     struct pcsc_private_data *priv;
