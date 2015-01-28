@@ -271,7 +271,11 @@ static int parse_emu_block(sc_pkcs15_card_t *p15card, scconf_block *conf)
 		/* try to get version of the driver/api */
 		get_version =  (const char *(*)(void)) sc_dlsym(handle, "sc_driver_version");
 		if (get_version) {
-			sscanf(get_version(), "%u.%u.%u", &major, &minor, &fix);
+			if (3 != sscanf(get_version(), "%u.%u.%u", &major, &minor, &fix)) {
+				sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
+					   	"unable to get modules version number\n");
+				return SC_ERROR_INTERNAL;
+			}
 		}
 
 		if (!get_version || (major == 0 && minor <= 9 && fix < 3) < 0) {

@@ -781,9 +781,13 @@ static unsigned long part10_detect_pace_capabilities(sc_reader_t *reader)
         goto err;
 
     if (priv->pace_ioctl) {
-        pcsc_internal_transmit(reader, pace_capabilities_buf,
-                sizeof pace_capabilities_buf, rbuf, &rcount,
-                priv->pace_ioctl);
+		if (0 > pcsc_internal_transmit(reader, pace_capabilities_buf,
+					sizeof pace_capabilities_buf, rbuf, &rcount,
+					priv->pace_ioctl)) {
+			sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL,
+				   	"PC/SC v2 part 10 amd1: Get PACE properties failed!");
+			goto err;
+		}
 
         if (rcount != 7)
             goto err;

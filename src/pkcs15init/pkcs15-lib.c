@@ -2673,7 +2673,8 @@ sc_pkcs15init_update_any_df(struct sc_pkcs15_card *p15card,
 	int		update_odf = is_new, r = 0;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_profile_get_file_by_path(profile, &df->path, &file);
+	r = sc_profile_get_file_by_path(profile, &df->path, &file);
+	LOG_TEST_RET(ctx, r, "Failed get file path");
 	if (file == NULL)
 		sc_select_file(card, &df->path, &file);
 

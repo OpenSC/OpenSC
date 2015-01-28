@@ -867,7 +867,7 @@ check_cert_data_read(struct pkcs15_fw_data *fw_data, struct pkcs15_cert_object *
 	/* now that we have the cert and pub key, lets see if we can bind anything else */
 	pkcs15_bind_related_objects(fw_data);
 
-	return 0;
+	return rv;
 }
 
 
@@ -2087,7 +2087,9 @@ pkcs15_create_secret_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 		return rv;
 
 	/* CKA_TOKEN defaults to false */
-	attr_find(pTemplate, ulCount, CKA_TOKEN, &_token, NULL);
+	rv = attr_find(pTemplate, ulCount, CKA_TOKEN, &_token, NULL);
+	if (rv != CKR_OK)
+		return rv;
 
 	switch (key_type) {
 		/* Only support GENERIC_SECRET for now */
@@ -3847,8 +3849,8 @@ pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session, void *object, CK_
 		case CKA_EC_PARAMS:
 		case CKA_EC_POINT:
 			if (pubkey->pub_data == NULL)
-				/* FIXME: check the return value? */
-				check_cert_data_read(fw_data, cert);
+				if (SC_SUCCESS != check_cert_data_read(fw_data, cert))
+					return sc_to_cryptoki_error(SC_ERROR_INTERNAL, "check_cert_data_read");
 			break;
 	}
 

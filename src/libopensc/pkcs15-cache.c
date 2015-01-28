@@ -112,8 +112,10 @@ int sc_pkcs15_read_cached_file(struct sc_pkcs15_card *p15card,
 			free(data);
 		return SC_ERROR_FILE_NOT_FOUND;
 	}
-	if (offset)
-		fseek(f, (long)offset, SEEK_SET);
+	if (offset) {
+		if (0 != fseek(f, (long)offset, SEEK_SET))
+			return SC_ERROR_FILE_NOT_FOUND;
+	}
 	if (data)
 		*buf = data;
 	got = fread(*buf, 1, count, f);

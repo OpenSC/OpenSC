@@ -119,7 +119,10 @@ static int load_object(const char * object_id, const char * object_file)
         return -1;
     }
 
-	stat(object_file, &stat_buf);
+	if (0 != stat(object_file, &stat_buf)) {
+		printf("unable to read file %s\n",object_file);
+		return -1;
+	}
 	derlen = stat_buf.st_size;
 	der = malloc(derlen);
 	if (der == NULL) {
@@ -173,13 +176,16 @@ static int load_cert(const char * cert_id, const char * cert_file,
 	if (compress) { /* file is gziped already */
 		struct stat stat_buf;
 
-		stat(cert_file, &stat_buf);
+		if (0 != stat(cert_file, &stat_buf)) {
+			printf("unable to read file %s\n",cert_file);
+			return -1;
+		}
 		derlen = stat_buf.st_size;
 		der = malloc(derlen);
 		if (der == NULL) {
 			printf("file %s is too big, %lu\n",
 				cert_file, (unsigned long)derlen);
-			return-1 ;
+			return -1 ;
 		}
 		if (1 != fread(der, derlen, 1, fp)) {
 			printf("unable to read file %s\n",cert_file);

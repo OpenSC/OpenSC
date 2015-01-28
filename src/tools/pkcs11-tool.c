@@ -3846,7 +3846,8 @@ static int wrap_unwrap(CK_SESSION_HANDLE session,
 		return 1;
 	}
 
-	EVP_DecryptInit(&seal_ctx, algo, key, iv);
+	if (!EVP_DecryptInit(&seal_ctx, algo, key, iv))
+		return 1;
 
 	len = sizeof(cleartext);
 	EVP_DecryptUpdate(&seal_ctx, cleartext, &len, ciphered, ciphered_len);

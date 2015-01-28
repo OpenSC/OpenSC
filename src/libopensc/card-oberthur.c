@@ -397,7 +397,8 @@ auth_process_fci(struct sc_card *card, struct sc_file *file,
 	case 0x38:
 		file->type = SC_FILE_TYPE_DF;
 		file->size = attr[0];
-		sc_file_set_type_attr(file,attr,attr_len);
+		if (SC_SUCCESS != sc_file_set_type_attr(file,attr,attr_len))
+			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_UNKNOWN_DATA_RECEIVED);
 		break;
 	default:
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_UNKNOWN_DATA_RECEIVED);

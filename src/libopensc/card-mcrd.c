@@ -379,13 +379,13 @@ static int mcrd_init(sc_card_t * card)
 	priv->curpathlen = 1;
 
 	sc_format_path ("3f00", &tmppath);
-	sc_select_file (card, &tmppath, NULL);
+	r = sc_select_file (card, &tmppath, NULL);
 
 	/* Not needed for the fixed EstEID profile */
 	if (!is_esteid_card(card))
 		load_special_files(card);
 
-	return SC_SUCCESS;
+	return r;
 }
 
 static int mcrd_finish(sc_card_t * card)
@@ -1188,7 +1188,9 @@ static int mcrd_set_security_env(sc_card_t * card,
 
 		/* Make sure we always start from MF */
 		sc_format_path ("3f00", &tmppath);
-		sc_select_file (card, &tmppath, NULL);
+		r = sc_select_file (card, &tmppath, NULL);
+		if (r < 0)
+			return r;
 		/* We now know that cache is not valid */
 		select_esteid_df(card);
 		switch (env->operation) {

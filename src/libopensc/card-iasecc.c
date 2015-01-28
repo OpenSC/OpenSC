@@ -414,7 +414,8 @@ iasecc_init_gemalto(struct sc_card *card)
 	card->caps |= SC_CARD_CAP_USE_FCI_AC;
 
 	sc_format_path("3F00", &path);
-	sc_select_file(card, &path, NULL);
+	rv = sc_select_file(card, &path, NULL);
+	LOG_TEST_RET(ctx, rv, "MF selection error");
 
 	rv = iasecc_parse_ef_atr(card);
 	sc_log(ctx, "rv %i", rv);

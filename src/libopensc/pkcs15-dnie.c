@@ -41,7 +41,9 @@ int dump_ef(sc_card_t * card, const char *path, u8 * buf, size_t * buf_len)
 	int rv;
 	sc_file_t *file = sc_file_new();
 	sc_format_path(path, &file->path);
-	sc_select_file(card, &file->path, &file);
+	rv = sc_select_file(card, &file->path, &file);
+	if (rv < 0)
+		return rv;
 	if (file->size > *buf_len)
 		return SC_ERROR_BUFFER_TOO_SMALL;
 	rv = sc_read_binary(card, 0, buf, file->size, 0);

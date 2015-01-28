@@ -1557,7 +1557,7 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 
 	r = sc_lock(card);
 	if (r != SC_SUCCESS)
-		goto err;
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 	locked = 1;
 
 	p = sbuf;
@@ -1827,7 +1827,7 @@ static int piv_general_external_authenticate(sc_card_t *card,
 
 	r = sc_lock(card);
 	if (r != SC_SUCCESS)
-		goto err;
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 	locked = 1;
 
 	p = sbuf;
@@ -2141,7 +2141,9 @@ static int piv_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"challenge len=%d",len);
 
-	sc_lock(card);
+	r = sc_lock(card);
+	if (r != SC_SUCCESS)
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 
 	p = sbuf;
 	*p++ = 0x7c;
@@ -2177,9 +2179,9 @@ static int piv_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 		rbuf = NULL;
 	}
 
-	sc_unlock(card);
+	r = sc_unlock(card);
 
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, 0);
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 
 }
 
