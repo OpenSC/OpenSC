@@ -29,6 +29,7 @@
 
 #include "internal.h"
 #include "asn1.h"
+#include "common/compat_strlcpy.h"
 
 /*
 #define INVALIDATE_CARD_CACHE_IN_UNLOCK
@@ -1258,8 +1259,8 @@ sc_card_sm_check(struct sc_card *card)
 	rv = sc_card_sm_load(card, module_path, module_name);
 	LOG_TEST_RET(ctx, rv, "Failed to load SM module");
 
-	strncpy(card->sm_ctx.module.filename, module_name, sizeof(card->sm_ctx.module.filename));
-	strncpy(card->sm_ctx.config_section, sm, sizeof(card->sm_ctx.config_section));
+	strlcpy(card->sm_ctx.module.filename, module_name, sizeof(card->sm_ctx.module.filename));
+	strlcpy(card->sm_ctx.config_section, sm, sizeof(card->sm_ctx.config_section));
 
 	/* allocate resources for the external SM module */
 	sc_log(ctx, "'module_init' handler %p", card->sm_ctx.module.ops.module_init);
