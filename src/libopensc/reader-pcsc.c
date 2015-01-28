@@ -1797,7 +1797,7 @@ static int transform_pace_output(u8 *rbuf, size_t rbuflen,
     if (parsed+2 > rbuflen)
         return SC_ERROR_UNKNOWN_DATA_RECEIVED;
     pace_output->mse_set_at_sw1 = rbuf[parsed+0];
-    pace_output->mse_set_at_sw1 = rbuf[parsed+1];
+    pace_output->mse_set_at_sw2 = rbuf[parsed+1];
     parsed += 2;
 
     /* length_CardAccess */
