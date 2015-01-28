@@ -335,6 +335,10 @@ int sc_lock(sc_card_t *card)
 				/* invalidate cache */
 				memset(&card->cache, 0, sizeof(card->cache));
 				card->cache.valid = 0;
+#ifdef ENABLE_SM
+				if (card->sm_ctx.ops.open)
+					card->sm_ctx.ops.open(card);
+#endif
 				r = card->reader->ops->lock(card->reader);
 			}
 		}

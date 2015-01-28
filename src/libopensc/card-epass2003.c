@@ -450,7 +450,9 @@ epass2003_refresh(struct sc_card *card)
 	int r = SC_SUCCESS;
 
 	if (g_sm) {
+		card->sm_ctx.sm_mode = 0;
 		r = mutual_auth(card, g_init_key_enc, g_init_key_mac);
+		card->sm_ctx.sm_mode = SM_MODE_TRANSMIT;
 		LOG_TEST_RET(card->ctx, r, "mutual_auth failed");
 	}
 
@@ -947,9 +949,6 @@ epass2003_init(struct sc_card *card)
 	card->name = "epass2003";
 	card->cla = 0x00;
 	card->drv_data = NULL;
-/* VT
-	card->ctx->use_sm = 1;
-*/
 
 	g_sm = SM_SCP01;
 	/* g_sm = SM_PLAIN; */
