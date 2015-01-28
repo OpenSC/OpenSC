@@ -350,7 +350,7 @@ sc_pkcs15init_bind(struct sc_card *card, const char *name, const char *profile_o
 	 * If none is defined, use the default profile name.
 	 */
 	if (!get_profile_from_config(card, card_profile, sizeof(card_profile)))
-		strcpy(card_profile, driver);
+		strclpy(card_profile, driver, sizeof card_profile);
 	if (profile_option != NULL)
 		strlcpy(card_profile, profile_option, sizeof(card_profile));
 
