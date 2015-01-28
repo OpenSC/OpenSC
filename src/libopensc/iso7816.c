@@ -657,7 +657,7 @@ iso7816_construct_fci(struct sc_card *card, const sc_file_t *file,
 				p, *outlen - (p - out), &p);
 	}
 	if (file->sec_attr_len) {
-		assert(sizeof(buf) >= file->prop_attr_len);
+		assert(sizeof(buf) >= file->sec_attr_len);
 		memcpy(buf, file->sec_attr, file->sec_attr_len);
 		sc_asn1_put_tag(0x86, buf, file->sec_attr_len,
 				p, *outlen - (p - out), &p);
