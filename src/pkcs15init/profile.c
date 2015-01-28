@@ -507,7 +507,6 @@ sc_profile_get_pin_info(struct sc_profile *profile,
 	if (pi == NULL)
 		return;
 
-	pi->pin.tries_left = pi->pin.tries_left;
 	pi->pin.max_tries = pi->pin.tries_left;
 	*info = pi->pin;
 }
