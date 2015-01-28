@@ -4669,8 +4669,11 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 		alg_info++;
 	}
 
-	if (flags & SC_ALGORITHM_ECDSA_RAW)
+	if (flags & SC_ALGORITHM_ECDSA_RAW) {
 		rc = register_ec_mechanisms(p11card, flags, ec_ext_flags, ec_min_key_size, ec_max_key_size);
+		if (rc != CKR_OK)
+			return rc;
+	}
 
 	if (flags & (SC_ALGORITHM_GOSTR3410_RAW
 				| SC_ALGORITHM_GOSTR3410_HASH_NONE

@@ -394,7 +394,7 @@ C_FindObjectsInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 					sizeof(CK_OBJECT_HANDLE) * operation->allocated_handles);
 				if (operation->handles == NULL) {
 					rv = CKR_HOST_MEMORY;
-					break;
+					goto out;
 				}
 			}
 			operation->handles[operation->num_handles++] = object->handle;

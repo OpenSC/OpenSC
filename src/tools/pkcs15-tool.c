@@ -306,7 +306,7 @@ print_pem_object(const char *kind, const u8*data, size_t data_len)
 	return 0;
 }
 
-static int
+static void
 list_data_object(const char *kind, const unsigned char *data, size_t data_len)
 {
 	char title[0x100];
@@ -321,8 +321,6 @@ list_data_object(const char *kind, const unsigned char *data, size_t data_len)
 		printf("%02X", data[i]);
 	}
 	printf("\n");
-
-	return 0;
 }
 
 static int
@@ -478,7 +476,7 @@ static int list_data_objects(void)
 					 continue; /* DEE emulation may say there is a file */
 				return 1;
 			}
-			r = list_data_object("\tData", data_object->data, data_object->data_len);
+			list_data_object("\tData", data_object->data, data_object->data_len);
 			sc_pkcs15_free_data_object(data_object);
 		}
 		else {

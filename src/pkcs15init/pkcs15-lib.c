@@ -350,7 +350,7 @@ sc_pkcs15init_bind(struct sc_card *card, const char *name, const char *profile_o
 	 * If none is defined, use the default profile name.
 	 */
 	if (!get_profile_from_config(card, card_profile, sizeof(card_profile)))
-		strclpy(card_profile, driver, sizeof card_profile);
+		strlcpy(card_profile, driver, sizeof card_profile);
 	if (profile_option != NULL)
 		strlcpy(card_profile, profile_option, sizeof(card_profile));
 
@@ -3159,6 +3159,7 @@ sc_pkcs15init_get_transport_key(struct sc_profile *profile, struct sc_pkcs15_car
 
 	if (callbacks.get_key)   {
 		rv = callbacks.get_key(profile, type, reference, defbuf, defsize, pinbuf, pinsize);
+		LOG_TEST_RET(ctx, rv, "Cannot get key");
 	}
 	else if (rv >= 0)  {
 		if (*pinsize < defsize)
