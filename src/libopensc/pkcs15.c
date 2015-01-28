@@ -2725,19 +2725,36 @@ sc_pkcs15_get_object_guid(struct sc_pkcs15_card *p15card, const struct sc_pkcs15
 	rv = sc_pkcs15_get_object_id(obj, &id);
 	LOG_TEST_RET(ctx, rv, "Cannot get object's ID");
 
-	rv = sc_card_ctl(p15card->card, SC_CARDCTL_GET_SERIALNR, &serialnr);
-	LOG_TEST_RET(ctx, rv, "'GET_SERIALNR' failed");
+	if (p15card->tokeninfo && p15card->tokeninfo->serial_number)   {
+		/* The serial from EF(TokenInfo) is preferred because of the
+		 * "--serial" parameter of pkcs15-init. */
+		serialnr.len = SC_MAX_SERIALNR;
+		rv = sc_hex_to_bin(p15card->tokeninfo->serial_number, serialnr.value, &serialnr.len);
+		if (rv) {
+			/* Fallback in case hex_to_bin fails due to unexpected characters */
+			serialnr.len = strlen(p15card->tokeninfo->serial_number);
+			if (serialnr.len > SC_MAX_SERIALNR)
+				serialnr.len = SC_MAX_SERIALNR;
+
+			memcpy(serialnr.value, p15card->tokeninfo->serial_number, serialnr.len);
+		}
+	} else if (p15card->card->serialnr.len)   {
+		serialnr = p15card->card->serialnr;
+	} else   {
+		rv = sc_card_ctl(p15card->card, SC_CARDCTL_GET_SERIALNR, &serialnr);
+		LOG_TEST_RET(ctx, rv, "'GET_SERIALNR' CTL failed and other serial numbers not present");
+	}
 
 	memset(guid_bin, 0, sizeof(guid_bin));
 	memcpy(guid_bin, id.value, id.len);
 	memcpy(guid_bin + id.len, serialnr.value, serialnr.len);
 
-        // If OpenSSL is available (SHA1), then rather use the hash of the data
-        // - this also protects against data being too short
+	// If OpenSSL is available (SHA1), then rather use the hash of the data
+	// - this also protects against data being too short
 #ifdef ENABLE_OPENSSL
-        SHA1(guid_bin, id.len + serialnr.len, guid_bin);
-        id.len = SHA_DIGEST_LENGTH;
-        serialnr.len = 0;
+	SHA1(guid_bin, id.len + serialnr.len, guid_bin);
+	id.len = SHA_DIGEST_LENGTH;
+	serialnr.len = 0;
 #endif
 
 	rv = sc_pkcs15_serialize_guid(guid_bin, id.len + serialnr.len, flags, (char *)out, *out_size);
