@@ -813,7 +813,7 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 		LOG_TEST_RET(ctx, rv, "MF selection error");
 
 		if (lpath.len >= 2 && lpath.value[0] == 0x3F && lpath.value[1] == 0x00)	   {
-			memcpy(&lpath.value[0], &lpath.value[2], lpath.len - 2);
+			memmove(&lpath.value[0], &lpath.value[2], lpath.len - 2);
 			lpath.len -=  2;
 		}
 	}

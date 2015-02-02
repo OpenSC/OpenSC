@@ -749,7 +749,7 @@ authentic_select_file(struct sc_card *card, const struct sc_path *path,
 		rv = authentic_select_mf(card, file_out);
 		LOG_TEST_RET(ctx, rv, "cannot select MF");
 
-		memcpy(&lpath.value[0], &lpath.value[2], lpath.len - 2);
+		memmove(&lpath.value[0], &lpath.value[2], lpath.len - 2);
 		lpath.len -=  2;
 
 		if (!lpath.len)
