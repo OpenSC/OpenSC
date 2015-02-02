@@ -781,7 +781,7 @@ int
 sc_pkcs15_encode_pubkey_as_spki(sc_context_t *ctx, struct sc_pkcs15_pubkey *pubkey,
 		u8 **buf, size_t *len)
 {
-	int r;
+	int r = 0;
 	struct sc_asn1_entry  asn1_spki_key[2], asn1_spki_key_items[3];
 	struct sc_pkcs15_u8 pkey;
 	size_t key_len;
@@ -810,9 +810,24 @@ sc_pkcs15_encode_pubkey_as_spki(sc_context_t *ctx, struct sc_pkcs15_pubkey *pubk
 		key_len = pubkey->u.ec.ecpointQ.len * 8;
 		pkey.value = pubkey->u.ec.ecpointQ.value;
 		pkey.len = 0; /* flag as do not delete */
-		/* TODO make sure algorithm params are available*/
-		/* if not can we copy them from the u.ec */
-		r = 0;
+
+	        if (pubkey->u.ec.params.named_curve || pubkey->u.ec.params.der.value)   {
+			struct sc_ec_params *ec_params = NULL;
+
+			r = sc_pkcs15_fix_ec_parameters(ctx, &pubkey->u.ec.params);
+			LOG_TEST_RET(ctx, r, "failed to fix EC parameters");
+
+			ec_params  = calloc(1, sizeof(struct sc_ec_params));
+			if (!ec_params)
+				LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+			ec_params->type = 1;
+			ec_params->der = calloc(pubkey->u.ec.params.der.len, 1);
+			if (!ec_params->der)
+				LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+			memcpy(ec_params->der, pubkey->u.ec.params.der.value, pubkey->u.ec.params.der.len);
+			ec_params->der_len = pubkey->u.ec.params.der.len;
+			pubkey->alg_id->params = ec_params;
+		}
 		break;
 	case SC_ALGORITHM_GOSTR3410:
 		/* TODO is this needed?  does it cause mem leak? */
