@@ -941,10 +941,8 @@ awp_encode_cert_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *ob
 			sc_pkcs15_print_id(&cert_info->id), obj->content.value, obj->content.len);
 	memset(&pubkey, 0, sizeof(pubkey));
 
-	if (obj->label)   {
-		ci->label.value = (unsigned char *)strdup(obj->label);
-		ci->label.len = strlen(obj->label);
-	}
+	ci->label.value = (unsigned char *)strdup(obj->label);
+	ci->label.len = strlen(obj->label);
 
 	mem = BIO_new_mem_buf(obj->content.value, obj->content.len);
 	if (!mem)
