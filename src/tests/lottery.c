@@ -4,6 +4,8 @@
 
 #include "config.h"
 
+#include <errno.h>
+#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #ifdef HAVE_UNISTD_H
@@ -34,7 +36,7 @@ int main(int argc, char *argv[])
 		}
 		if (c == 0) {
 			if (0 != gettimeofday(&tv1, NULL)) {
-				fprintf(stderr, "gettimeofday() failed: %s\n", sc_strerror(r));
+				fprintf(stderr, "gettimeofday() failed: %s\n", strerror(errno));
 				return 1;
 			}
 		}
