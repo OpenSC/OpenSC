@@ -266,7 +266,6 @@ cosm_create_reference_data(struct sc_profile *profile, struct sc_pkcs15_card *p1
 	struct sc_card *card = p15card->card;
 	struct sc_pkcs15_auth_info profile_auth_pin, profile_auth_puk;
 	struct sc_cardctl_oberthur_createpin_info args;
-	unsigned char *puk_buff = NULL;
 	int rv;
 	unsigned char oberthur_puk[16] = {
 		0x6F, 0x47, 0xD9, 0x88, 0x4B, 0x6F, 0x9D, 0xC5,
@@ -322,9 +321,6 @@ cosm_create_reference_data(struct sc_profile *profile, struct sc_pkcs15_card *p1
 		if (file)
 			sc_file_free(file);
 	}
-
-	if (puk_buff)
-		free(puk_buff);
 
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, rv);
 }

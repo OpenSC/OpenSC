@@ -3802,17 +3802,26 @@ static int wrap_unwrap(CK_SESSION_HANDLE session,
 
 	printf("    %s: ", OBJ_nid2sn(EVP_CIPHER_nid(algo)));
 
-	EVP_SealInit(&seal_ctx, algo,
+	if (!EVP_SealInit(&seal_ctx, algo,
 			&key, &key_len,
-			iv, &pkey, 1);
+			iv, &pkey, 1)) {
+		printf("Internal error.\n");
+		return 1;
+	}
 
 	/* Encrypt something */
 	len = sizeof(ciphered);
-	EVP_SealUpdate(&seal_ctx, ciphered, &len, (const unsigned char *) "hello world", 11);
+	if (!EVP_SealUpdate(&seal_ctx, ciphered, &len, (const unsigned char *) "hello world", 11)) {
+		printf("Internal error.\n");
+		return 1;
+	}
 	ciphered_len = len;
 
 	len = sizeof(ciphered) - ciphered_len;
-	EVP_SealFinal(&seal_ctx, ciphered + ciphered_len, &len);
+	if (!EVP_SealFinal(&seal_ctx, ciphered + ciphered_len, &len)) {
+		printf("Internal error.\n");
+		return 1;
+	}
 	ciphered_len += len;
 
 	EVP_PKEY_free(pkey);
@@ -3846,15 +3855,23 @@ static int wrap_unwrap(CK_SESSION_HANDLE session,
 		return 1;
 	}
 
-	if (!EVP_DecryptInit(&seal_ctx, algo, key, iv))
+	if (!EVP_DecryptInit(&seal_ctx, algo, key, iv)) {
+		printf("Internal error.\n");
 		return 1;
+	}
 
 	len = sizeof(cleartext);
-	EVP_DecryptUpdate(&seal_ctx, cleartext, &len, ciphered, ciphered_len);
+	if (!EVP_DecryptUpdate(&seal_ctx, cleartext, &len, ciphered, ciphered_len)) {
+		printf("Internal error.\n");
+		return 1;
+	}
 
 	cleartext_len = len;
 	len = sizeof(cleartext) - len;
-	EVP_DecryptFinal(&seal_ctx, cleartext + cleartext_len, &len);
+	if (!EVP_DecryptFinal(&seal_ctx, cleartext + cleartext_len, &len)) {
+		printf("Internal error.\n");
+		return 1;
+	}
 	cleartext_len += len;
 
 	if (cleartext_len != 11

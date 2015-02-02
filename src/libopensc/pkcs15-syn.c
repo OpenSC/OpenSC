@@ -226,7 +226,7 @@ static int parse_emu_block(sc_pkcs15_card_t *p15card, scconf_block *conf)
 	void *handle = NULL;
 	int		(*init_func)(sc_pkcs15_card_t *);
 	int		(*init_func_ex)(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
-	int		r, force = 0;
+	int		r;
 	const char	*driver, *module_name;
 
 	driver = conf->name->data;
@@ -236,8 +236,6 @@ static int parse_emu_block(sc_pkcs15_card_t *p15card, scconf_block *conf)
 
 	memset(&opts, 0, sizeof(opts));
 	opts.blk     = conf;
-	if (force != 0)
-		opts.flags   = SC_PKCS15EMU_FLAGS_NO_CHECK;
 
 	module_name = scconf_get_str(conf, "module", builtin_name);
 	if (!strcmp(module_name, "builtin")) {

@@ -1654,9 +1654,7 @@ authentic_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data, int *tri
 	}
 
 	if (save_current)   {
-		struct sc_file *dummy_file = NULL;
-
-		rv = authentic_select_file(card, &save_current->path, &dummy_file);
+		rv = authentic_select_file(card, &save_current->path, NULL);
 		LOG_TEST_RET(ctx, rv, "Cannot return to saved PATH");
 	}
 	LOG_FUNC_RETURN(ctx, rv);
