@@ -32,8 +32,12 @@ int main(int argc, char *argv[])
 		for (i = 0; i < 39; i++) {
 			nbuf[i] = i + 1;
 		}
-		if (c == 0)
-			gettimeofday(&tv1, NULL);
+		if (c == 0) {
+			if (0 != gettimeofday(&tv1, NULL)) {
+				fprintf(stderr, "gettimeofday() failed: %s\n", sc_strerror(r));
+				return 1;
+			}
+		}
 		sc_lock(card);
 		r = sc_get_challenge(card, buf, 14);
 		sc_unlock(card);

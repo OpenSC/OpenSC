@@ -369,7 +369,7 @@ static u8 gemsafe_flags2algref(struct sc_card *card, const struct sc_security_en
 	} else if (env->operation == SC_SEC_OPERATION_DECIPHER) {
 		if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1)
 			ret = (card->type == SC_CARD_TYPE_GEMSAFEV1_PTEID ||
-			       card->type == SC_CARD_TYPE_GEMSAFEV1_PTEID) ? 0x02 : 0x12;
+			       card->type == SC_CARD_TYPE_GEMSAFEV1_SEEID) ? 0x02 : 0x12;
 	}
 
 	return ret;

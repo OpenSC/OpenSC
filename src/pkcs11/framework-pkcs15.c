@@ -867,7 +867,7 @@ check_cert_data_read(struct pkcs15_fw_data *fw_data, struct pkcs15_cert_object *
 	/* now that we have the cert and pub key, lets see if we can bind anything else */
 	pkcs15_bind_related_objects(fw_data);
 
-	return 0;
+	return rv;
 }
 
 
@@ -2087,7 +2087,9 @@ pkcs15_create_secret_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 		return rv;
 
 	/* CKA_TOKEN defaults to false */
-	attr_find(pTemplate, ulCount, CKA_TOKEN, &_token, NULL);
+	rv = attr_find(pTemplate, ulCount, CKA_TOKEN, &_token, NULL);
+	if (rv != CKR_OK)
+		return rv;
 
 	switch (key_type) {
 		/* Only support GENERIC_SECRET for now */
@@ -3446,10 +3448,12 @@ pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
 		check_attribute_buffer(attr, sizeof(CK_ULONG));
 		switch (prkey->prv_p15obj->type) {
 			case SC_PKCS15_TYPE_PRKEY_EC:
-				if (key && key->u.ec.params.field_length > 0)
-					*(CK_ULONG *) attr->pValue = key->u.ec.params.field_length;
-				else
-					*(CK_ULONG *) attr->pValue = (key->u.ec.ecpointQ.len - 1) / 2 *8;
+				if (key) {
+					if (key->u.ec.params.field_length > 0)
+						*(CK_ULONG *) attr->pValue = key->u.ec.params.field_length;
+					else
+						*(CK_ULONG *) attr->pValue = (key->u.ec.ecpointQ.len - 1) / 2 *8;
+				}
 				return CKR_OK;
 			default:
 				*(CK_ULONG *) attr->pValue = prkey->prv_info->modulus_length;
@@ -3845,8 +3849,8 @@ pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session, void *object, CK_
 		case CKA_EC_PARAMS:
 		case CKA_EC_POINT:
 			if (pubkey->pub_data == NULL)
-				/* FIXME: check the return value? */
-				check_cert_data_read(fw_data, cert);
+				if (SC_SUCCESS != check_cert_data_read(fw_data, cert))
+					return sc_to_cryptoki_error(SC_ERROR_INTERNAL, "check_cert_data_read");
 			break;
 	}
 
@@ -4667,8 +4671,11 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 		alg_info++;
 	}
 
-	if (flags & SC_ALGORITHM_ECDSA_RAW)
+	if (flags & SC_ALGORITHM_ECDSA_RAW) {
 		rc = register_ec_mechanisms(p11card, flags, ec_ext_flags, ec_min_key_size, ec_max_key_size);
+		if (rc != CKR_OK)
+			return rc;
+	}
 
 	if (flags & (SC_ALGORITHM_GOSTR3410_RAW
 				| SC_ALGORITHM_GOSTR3410_HASH_NONE

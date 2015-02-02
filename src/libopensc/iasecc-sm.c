@@ -25,6 +25,7 @@
 #include "internal.h"
 #include "asn1.h"
 #include "cardctl.h"
+#include "common/compat_strlcpy.h"
 
 #include "sm.h"
 #include "iasecc.h"
@@ -156,7 +157,7 @@ iasecc_sm_external_authentication(struct sc_card *card, unsigned skey_ref, int *
 	if (card->sm_ctx.sm_mode == SM_MODE_NONE)
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Cannot do 'External Authentication' without SM activated ");
 
-	strncpy(sm_info->config_section, card->sm_ctx.config_section, sizeof(sm_info->config_section));
+	strlcpy(sm_info->config_section, card->sm_ctx.config_section, sizeof(sm_info->config_section));
 	sm_info->cmd = SM_CMD_EXTERNAL_AUTH;
 	sm_info->serialnr = card->serialnr;
 	sm_info->card_type = card->type;
@@ -296,7 +297,7 @@ iasecc_sm_initialize(struct sc_card *card, unsigned se_num, unsigned cmd)
 
 	LOG_FUNC_CALLED(ctx);
 
-	strncpy(sm_info->config_section, card->sm_ctx.config_section, sizeof(sm_info->config_section));
+	strlcpy(sm_info->config_section, card->sm_ctx.config_section, sizeof(sm_info->config_section));
 	sm_info->cmd = cmd;
 	sm_info->serialnr = card->serialnr;
 	sm_info->card_type = card->type;

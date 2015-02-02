@@ -63,14 +63,16 @@ static int
 cosm_write_tokeninfo (struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 		char *label, unsigned flags)
 {
-	struct sc_context *ctx = p15card->card->ctx;
+	struct sc_context *ctx;
 	struct sc_file *file = NULL;
 	int rv;
 	size_t sz;
 	char *buffer = NULL;
 
-	if (!p15card || !profile)
+	if (!p15card || !p15card->card || !profile)
 		return SC_ERROR_INVALID_ARGUMENTS;
+
+	ctx = p15card->card->ctx;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "cosm_write_tokeninfo() label '%s'; flags 0x%X", label, flags);

@@ -265,8 +265,10 @@ int dnie_read_file(sc_card_t * card,
 	res = SC_SUCCESS;
 	goto dnie_read_file_end;
  dnie_read_file_err:
-	if (*file)
+	if (*file) {
 		sc_file_free(*file);
+		*file = NULL;
+	}
  dnie_read_file_end:
 	if (msg)
 		sc_log(ctx, msg);

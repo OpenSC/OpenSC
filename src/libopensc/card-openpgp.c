@@ -883,7 +883,7 @@ static unsigned int pgp_strip_path(sc_card_t *card, const sc_path_t *path)
 {
 	unsigned int start_point = 0;
 	/* start_point will move through the path string */
-	if (path->value == NULL || path->len == 0)
+	if (path->len == 0)
 		return 0;
 
 	/* Ignore 3F00 (MF) at the beginning */

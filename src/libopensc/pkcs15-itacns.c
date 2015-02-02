@@ -499,6 +499,8 @@ static int itacns_add_data_files(sc_pkcs15_card_t *p15card)
 			sizeof(obj.label));
 		data.path = path;
 		rv = sc_pkcs15emu_add_data_object(p15card, &obj, &data);
+		SC_TEST_RET(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, rv,
+			"Could not add data file");
 	}
 
 	/*

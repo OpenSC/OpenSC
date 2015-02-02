@@ -38,6 +38,7 @@ int main(int argc, char *argv[])
 	fwrite(outbuf, len, 1, stdout);
 	r = 0;
 err:
-	fclose(inf);
+	if (inf)
+		fclose(inf);
 	return r;
 }

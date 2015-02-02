@@ -305,7 +305,7 @@ static int cert2der(X509 *cert, u8 **value)
 static int create_file_cert(sc_card_t *card)
 {
 	int r;
-	int size;
+	int size = 0;
 	sc_path_t path;
 	sc_file_t *file = NULL;
 
@@ -313,12 +313,13 @@ static int create_file_cert(sc_card_t *card)
 	r = sc_select_file(card, &path, &file);
 	if(r) goto out;
 
-	size = (file->size) - 32;
-
 	if(file)
 	{
+		size = (file->size) - 32;
 		sc_file_free(file);
 		file = NULL;
+	} else {
+		size = 2048;
 	}
 
 	sc_format_path("0002", &path);
@@ -903,8 +904,7 @@ out:
 		sc_disconnect_card(card);
 	}
 
-	if (ctx)
-		sc_release_context(ctx);
+	sc_release_context(ctx);
 
 	return EXIT_SUCCESS;
 }

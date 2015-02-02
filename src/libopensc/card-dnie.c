@@ -346,7 +346,6 @@ static int dnie_get_info(sc_card_t * card, char *data[])
 	}
 	res = dnie_read_file(card, path, &file, &buffer, &bufferlen);
 	if (res != SC_SUCCESS) {
-		msg = "Cannot read IDESP EF";
 		data[3]=NULL;
 		goto get_info_ph3;
 	}
@@ -1195,7 +1194,7 @@ static int dnie_set_security_env(struct sc_card *card,
 		sc_log(card->ctx, "checking key references");
 		if (env->key_ref_len != 1) {
 			sc_log(card->ctx, "Null or invalid key ID reference");
-			result = SC_ERROR_INVALID_ARGUMENTS;
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 		}
 		sc_log(card->ctx, "Using key reference '%s'",
 		       sc_dump_hex(env->key_ref, env->key_ref_len));
@@ -1747,7 +1746,7 @@ static int dnie_process_fci(struct sc_card *card,
 	case 0x15:		/* EF for keys: linear variable simple TLV */
 		file->type = SC_FILE_TYPE_WORKING_EF;
 		/* pin file 3F000000 has also this EF type */
-		if ( ( file->prop_attr[3] == 0x00 ) && (file->prop_attr[3] == 0x00 ) ) {
+		if ( ( file->prop_attr[2] == 0x00 ) && (file->prop_attr[3] == 0x00 ) ) {
 			sc_log(ctx,"Processing pin EF");
 			break;
 		}

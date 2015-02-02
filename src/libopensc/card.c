@@ -29,6 +29,7 @@
 
 #include "internal.h"
 #include "asn1.h"
+#include "common/compat_strlcpy.h"
 
 /*
 #define INVALIDATE_CARD_CACHE_IN_UNLOCK
@@ -222,18 +223,17 @@ int sc_connect_card(sc_reader_t *reader, sc_card_t **card_out)
 	}
 	if (card->name == NULL)
 		card->name = card->driver->name;
-	*card_out = card;
 
-        /*  Override card limitations with reader limitations.
-         *  Note that zero means no limitations at all.
+	/*  Override card limitations with reader limitations.
+	 *  Note that zero means no limitations at all.
 	 */
-        if ((card->max_recv_size == 0) ||
-           ((reader->driver->max_recv_size != 0) && (reader->driver->max_recv_size < card->max_recv_size)))
-                card->max_recv_size = reader->driver->max_recv_size;
+	if ((card->max_recv_size == 0) ||
+			((reader->driver->max_recv_size != 0) && (reader->driver->max_recv_size < card->max_recv_size)))
+		card->max_recv_size = reader->driver->max_recv_size;
 
-        if ((card->max_send_size == 0) ||
-           ((reader->driver->max_send_size != 0) && (reader->driver->max_send_size < card->max_send_size)))
-                card->max_send_size = reader->driver->max_send_size;
+	if ((card->max_send_size == 0) ||
+			((reader->driver->max_send_size != 0) && (reader->driver->max_send_size < card->max_send_size)))
+		card->max_send_size = reader->driver->max_send_size;
 
 	sc_log(ctx, "card info name:'%s', type:%i, flags:0x%X, max_send/recv_size:%i/%i",
 		card->name, card->type, card->flags, card->max_send_size, card->max_recv_size);
@@ -246,6 +246,7 @@ int sc_connect_card(sc_reader_t *reader, sc_card_t **card_out)
 		goto err;
 	}
 #endif
+	*card_out = card;
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 err:
@@ -403,10 +404,11 @@ int sc_create_file(sc_card_t *card, sc_file_t *file)
 {
 	int r;
 	char pbuf[SC_MAX_PATH_STRING_SIZE];
-	const sc_path_t *in_path = &file->path;
+	const sc_path_t *in_path;
 
-	assert(card != NULL);
+	assert(card != NULL && file != NULL);
 
+	in_path = &file->path;
 	r = sc_path_print(pbuf, sizeof(pbuf), in_path);
 	if (r != SC_SUCCESS)
 		pbuf[0] = '\0';
@@ -864,14 +866,16 @@ sc_algorithm_info_t * sc_card_find_gostr3410_alg(sc_card_t *card,
 
 static int match_atr_table(sc_context_t *ctx, struct sc_atr_table *table, struct sc_atr *atr)
 {
-	u8 *card_atr_bin = atr->value;
-	size_t card_atr_bin_len = atr->len;
+	u8 *card_atr_bin;
+	size_t card_atr_bin_len;
 	char card_atr_hex[3 * SC_MAX_ATR_SIZE];
 	size_t card_atr_hex_len;
 	unsigned int i = 0;
 
 	if (ctx == NULL || table == NULL || atr == NULL)
 		return -1;
+	card_atr_bin = atr->value;
+	card_atr_bin_len = atr->len;
 	sc_bin_to_hex(card_atr_bin, card_atr_bin_len, card_atr_hex, sizeof(card_atr_hex), ':');
 	card_atr_hex_len = strlen(card_atr_hex);
 
@@ -1255,8 +1259,8 @@ sc_card_sm_check(struct sc_card *card)
 	rv = sc_card_sm_load(card, module_path, module_name);
 	LOG_TEST_RET(ctx, rv, "Failed to load SM module");
 
-	strncpy(card->sm_ctx.module.filename, module_name, sizeof(card->sm_ctx.module.filename));
-	strncpy(card->sm_ctx.config_section, sm, sizeof(card->sm_ctx.config_section));
+	strlcpy(card->sm_ctx.module.filename, module_name, sizeof(card->sm_ctx.module.filename));
+	strlcpy(card->sm_ctx.config_section, sm, sizeof(card->sm_ctx.config_section));
 
 	/* allocate resources for the external SM module */
 	sc_log(ctx, "'module_init' handler %p", card->sm_ctx.module.ops.module_init);

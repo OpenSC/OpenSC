@@ -270,6 +270,8 @@ static int westcos_pkcs15init_generate_key(sc_profile_t *profile,
 		pubkey->algorithm = SC_ALGORITHM_RSA;
 
 		r = sc_pkcs15_decode_pubkey(p15card->card->ctx, pubkey, p, lg);
+		if (r < 0)
+			goto out;
 	}
 
 	(void) BIO_reset(mem);
