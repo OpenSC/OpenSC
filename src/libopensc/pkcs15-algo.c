@@ -468,52 +468,51 @@ sc_asn1_get_algorithm_info(const struct sc_algorithm_id *id)
 	return NULL;
 }
 
-static const struct sc_asn1_entry c_asn1_alg_id[6] = {
+static const struct sc_asn1_entry c_asn1_alg_id[3] = {
 	{ "algorithm",  SC_ASN1_OBJECT, SC_ASN1_TAG_OBJECT, 0, NULL, NULL },
 	{ "nullParam",  SC_ASN1_NULL, SC_ASN1_TAG_NULL, SC_ASN1_OPTIONAL, NULL, NULL },
 	{ NULL, 0, 0, 0, NULL, NULL }
 };
 
 int
-sc_asn1_decode_algorithm_id(sc_context_t *ctx, const u8 *in,
+sc_asn1_decode_algorithm_id(struct sc_context *ctx, const unsigned char *in,
 			    size_t len, struct sc_algorithm_id *id,
 			    int depth)
 {
-	struct sc_asn1_pkcs15_algorithm_info *alg_info;
+	struct sc_asn1_pkcs15_algorithm_info *alg_info = NULL;
 	struct sc_asn1_entry asn1_alg_id[3];
 	int r;
 
+	LOG_FUNC_CALLED(ctx);
 	sc_copy_asn1_entry(c_asn1_alg_id, asn1_alg_id);
 	sc_format_asn1_entry(asn1_alg_id + 0, &id->oid, NULL, 0);
 
 	memset(id, 0, sizeof(*id));
 	r = _sc_asn1_decode(ctx, asn1_alg_id, in, len, &in, &len, 0, depth + 1);
-	if (r < 0)
-		return r;
+	LOG_TEST_RET(ctx, r, "ASN.1 parsing of algo ID failed");
+
+        sc_log(ctx, "decoded OID '%s'", sc_dump_oid(&(id->oid)));
 
 	/* See if we understand the algorithm, and if we do, check
 	 * whether we know how to decode any additional parameters */
 	id->algorithm = (unsigned int ) -1;
-	if ((alg_info = sc_asn1_get_algorithm_info(id)) != NULL) {
+	alg_info = sc_asn1_get_algorithm_info(id);
+	if (alg_info != NULL) {
 		id->algorithm = alg_info->id;
 		if (alg_info->decode) {
-/* TODO: -DEE  why the test for SC_ASN1_PRESENT?
- * If it looking for SC_ASN1_NULL, thats valid for EC, in some cases
- */
 			if (asn1_alg_id[1].flags & SC_ASN1_PRESENT) {
-				sc_debug( ctx,SC_LOG_DEBUG_NORMAL,"SC_ASN1_PRESENT was set, so invalid");
-				return SC_ERROR_INVALID_ASN1_OBJECT;
+				sc_log(ctx, "SC_ASN1_PRESENT was set, so invalid");
+				LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ASN1_OBJECT);
 			}
 			r = alg_info->decode(ctx, &id->params, in, len, depth);
 		}
 	}
 
-	return r;
+	LOG_FUNC_RETURN(ctx, r);
 }
 
 int
-sc_asn1_encode_algorithm_id(sc_context_t *ctx,
-			    u8 **buf, size_t *len,
+sc_asn1_encode_algorithm_id(struct sc_context *ctx, u8 **buf, size_t *len,
 			    const struct sc_algorithm_id *id,
 			    int depth)
 {
@@ -525,10 +524,12 @@ sc_asn1_encode_algorithm_id(sc_context_t *ctx,
 	int r;
 	u8 *tmp;
 
+	LOG_FUNC_CALLED(ctx);
+        sc_log(ctx, "type of algorithm to encode: %i", id->algorithm);
 	alg_info = sc_asn1_get_algorithm_info(id);
 	if (alg_info == NULL) {
 		sc_log(ctx, "Cannot encode unknown algorithm %u", id->algorithm);
-		return SC_ERROR_INVALID_ARGUMENTS;
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 
 	/* Set the oid if not yet given */
@@ -538,6 +539,7 @@ sc_asn1_encode_algorithm_id(sc_context_t *ctx,
 		id = &temp_id;
 	}
 
+        sc_log(ctx, "encode algo %s", sc_dump_oid(&(id->oid)));
 	sc_copy_asn1_entry(c_asn1_alg_id, asn1_alg_id);
 	sc_format_asn1_entry(asn1_alg_id + 0, (void *) &id->oid, NULL, 1);
 
@@ -546,8 +548,7 @@ sc_asn1_encode_algorithm_id(sc_context_t *ctx,
 		asn1_alg_id[1].flags |= SC_ASN1_PRESENT;
 
 	r = _sc_asn1_encode(ctx, asn1_alg_id, buf, len, depth + 1);
-	if (r < 0)
-		return r;
+	LOG_TEST_RET(ctx, r, "ASN.1 encode of algorithm failed");
 
 	/* Encode any parameters */
 	if (id->params && alg_info->encode) {
@@ -555,7 +556,7 @@ sc_asn1_encode_algorithm_id(sc_context_t *ctx,
 		if (r < 0) {
 			if (obj)
 				free(obj);
-			return r;
+			LOG_FUNC_RETURN(ctx, r);
 		}
 	}
 
@@ -565,7 +566,7 @@ sc_asn1_encode_algorithm_id(sc_context_t *ctx,
 			free(*buf);
 			*buf = NULL;
 			free(obj);
-			return SC_ERROR_OUT_OF_MEMORY;
+			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 		}
 		*buf = tmp;
 		memcpy(*buf + *len, obj, obj_len);
@@ -574,7 +575,7 @@ sc_asn1_encode_algorithm_id(sc_context_t *ctx,
 	}
 
 	sc_log(ctx, "return encoded algorithm ID: %s", sc_dump_hex(*buf, *len));
-	return 0;
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
 void
