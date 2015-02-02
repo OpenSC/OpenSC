@@ -589,6 +589,7 @@ static void print_pubkey_info(const struct sc_pkcs15_object *obj)
 		"neverExtract", "local"
 	};
 	const unsigned int af_count = NELEMENTS(access_flags);
+        int have_path = (pubkey->path.len != 0) || (pubkey->path.aid.len != 0);
 
 	printf("Public %s Key [%s]\n", types[7 & obj->type], obj->label);
 	print_common_flags(obj);
@@ -607,18 +608,29 @@ static void print_pubkey_info(const struct sc_pkcs15_object *obj)
 
 	print_access_rules(obj->access_rules, SC_PKCS15_MAX_ACCESS_RULES);
 
-	if (pubkey->modulus_length)
+	if (pubkey->modulus_length)   {
 		printf("\tModLength      : %lu\n", (unsigned long)pubkey->modulus_length);
-	else
-		printf("\tFieldLength      : %lu\n", (unsigned long)pubkey->field_length);
+        }
+	else if (pubkey->field_length)   {
+		printf("\tFieldLength    : %lu\n", (unsigned long)pubkey->field_length);
+        }
+        else if (obj->type == SC_PKCS15_TYPE_PUBKEY_EC && have_path)   {
+		sc_pkcs15_pubkey_t *pkey = NULL;
+		if (!sc_pkcs15_read_pubkey(p15card, obj, &pkey))   {
+			printf("\tFieldLength    : %lu\n", (unsigned long)pkey->u.ec.params.field_length);
+			sc_pkcs15_free_pubkey(pkey);
+		}
+	}
+
 	printf("\tKey ref        : %d (0x%X)\n", pubkey->key_reference,  pubkey->key_reference);
 	printf("\tNative         : %s\n", pubkey->native ? "yes" : "no");
-	if (pubkey->path.len || pubkey->path.aid.len)
+	if (have_path)
 		printf("\tPath           : %s\n", sc_print_path(&pubkey->path));
 	if (obj->auth_id.len != 0)
 		printf("\tAuth ID        : %s\n", sc_pkcs15_print_id(&obj->auth_id));
 	printf("\tID             : %s\n", sc_pkcs15_print_id(&pubkey->id));
-	printf("\tDirectValue    : <%s>\n", obj->content.len ? "present" : "absent");
+        if (!have_path || obj->content.len)
+		printf("\tDirectValue    : <%s>\n", obj->content.len ? "present" : "absent");
 }
 
 static int list_public_keys(void)
