@@ -45,7 +45,7 @@ ctbcs_build_perform_verification_apdu(sc_apdu_t *apdu, struct sc_pin_cmd_data *d
 {
 	const char *prompt;
 	size_t buflen, count = 0, j = 0, len;
-	static u8 buf[254];
+	static u8 buf[256];
 	u8 control;
 
 	ctbcs_init_apdu(apdu,
@@ -113,7 +113,7 @@ ctbcs_build_modify_verification_apdu(sc_apdu_t *apdu, struct sc_pin_cmd_data *da
 {
 	const char *prompt;
 	size_t buflen, count = 0, j = 0, len;
-	static u8 buf[254];
+	static u8 buf[256];
 	u8 control;
 
 	ctbcs_init_apdu(apdu,

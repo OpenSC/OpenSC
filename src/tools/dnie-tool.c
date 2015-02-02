@@ -146,7 +146,7 @@ int main(int argc, char* argv[])
 	if (r) {
 		fprintf(stderr, "Error: Failed to establish context: %s\n",
 			sc_strerror(r));
-		return -1;
+		goto dnie_tool_end;
 	}
 
 	if (verbose > 1) {

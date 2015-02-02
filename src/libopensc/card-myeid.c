@@ -305,8 +305,8 @@ static int encode_file_structure(sc_card_t *card, const sc_file_t *file,
 		u8 *out, size_t *outlen)
 {
 	const sc_acl_entry_t *read, *update, *delete, *generate;
-	u8 buf[40];
-	int i;
+	u8 buf[41];
+	size_t i;
 
 	LOG_FUNC_CALLED(card->ctx);
 	/* PrivateKey
@@ -412,7 +412,7 @@ static int encode_file_structure(sc_card_t *card, const sc_file_t *file,
 			buf[25] = 0x84;
 			buf[26] = (u8)file->namelen;
 
-			for(i=0;i < (int)file->namelen;i++)
+			for(i=0;i < file->namelen;i++)
 				buf[i + 26] = file->name[i];
 
 			buf[1] = 0x19 + file->namelen + 2;

@@ -507,7 +507,6 @@ sc_profile_get_pin_info(struct sc_profile *profile,
 	if (pi == NULL)
 		return;
 
-	pi->pin.tries_left = pi->pin.tries_left;
 	pi->pin.max_tries = pi->pin.tries_left;
 	*info = pi->pin;
 }
@@ -2059,7 +2058,7 @@ sc_profile_find_file_by_path(struct sc_profile *pro, const sc_path_t *path)
 	sc_log(ctx, "find profile file by path:%s", sc_print_path(path));
 #endif
 
-	if (!path->len && !path->aid.len)
+	if (!path || (!path->len && !path->aid.len))
 		return NULL;
 
 	for (fi = pro->ef_list; fi; fi = fi->next) {

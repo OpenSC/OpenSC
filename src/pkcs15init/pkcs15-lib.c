@@ -350,7 +350,7 @@ sc_pkcs15init_bind(struct sc_card *card, const char *name, const char *profile_o
 	 * If none is defined, use the default profile name.
 	 */
 	if (!get_profile_from_config(card, card_profile, sizeof(card_profile)))
-		strcpy(card_profile, driver);
+		strlcpy(card_profile, driver, sizeof card_profile);
 	if (profile_option != NULL)
 		strlcpy(card_profile, profile_option, sizeof(card_profile));
 
@@ -1888,8 +1888,7 @@ sc_pkcs15init_store_data(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 
 	*path = file->path;
 
-	if (file)
-		sc_file_free(file);
+	sc_file_free(file);
 	LOG_FUNC_RETURN(ctx, r);
 }
 
@@ -2197,7 +2196,7 @@ sc_pkcs15init_select_intrinsic_id(struct sc_pkcs15_card *p15card, struct sc_prof
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15_pubkey *pubkey = NULL;
-	unsigned id_style = profile->id_style;
+	unsigned id_style;
 	struct sc_pkcs15_id id;
 	unsigned char *id_data = NULL;
 	size_t id_data_len = 0;
@@ -2207,15 +2206,17 @@ sc_pkcs15init_select_intrinsic_id(struct sc_pkcs15_card *p15card, struct sc_prof
 #ifndef ENABLE_OPENSSL
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 #else
-	if (!id_out)
+	if (!id_out || !profile)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+
+	id_style = profile->id_style;
 
 	/* ID already exists */
 	if (id_out->len)
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 
 	/* Native ID style is not intrisic one */
-	if (profile->id_style == SC_PKCS15INIT_ID_STYLE_NATIVE)
+	if (id_style == SC_PKCS15INIT_ID_STYLE_NATIVE)
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 
 	memset(&id, 0, sizeof(id));
@@ -2283,7 +2284,7 @@ sc_pkcs15init_select_intrinsic_id(struct sc_pkcs15_card *p15card, struct sc_prof
 
 		break;
 	default:
-		sc_log(ctx, "Unsupported ID style: %i", profile->id_style);
+		sc_log(ctx, "Unsupported ID style: %i", id_style);
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Non supported ID style");
 	}
 
@@ -2672,7 +2673,8 @@ sc_pkcs15init_update_any_df(struct sc_pkcs15_card *p15card,
 	int		update_odf = is_new, r = 0;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_profile_get_file_by_path(profile, &df->path, &file);
+	r = sc_profile_get_file_by_path(profile, &df->path, &file);
+	LOG_TEST_RET(ctx, r, "Failed get file path");
 	if (file == NULL)
 		sc_select_file(card, &df->path, &file);
 
@@ -3158,6 +3160,7 @@ sc_pkcs15init_get_transport_key(struct sc_profile *profile, struct sc_pkcs15_car
 
 	if (callbacks.get_key)   {
 		rv = callbacks.get_key(profile, type, reference, defbuf, defsize, pinbuf, pinsize);
+		LOG_TEST_RET(ctx, rv, "Cannot get key");
 	}
 	else if (rv >= 0)  {
 		if (*pinsize < defsize)
@@ -3238,25 +3241,23 @@ sc_pkcs15init_verify_secret(struct sc_profile *profile, struct sc_pkcs15_card *p
 		sc_log(ctx, "Symbolic PIN resolved to PIN(type:CHV,reference:%i)", type, reference);
 	}
 
-	if (p15card) {
-		if (path && path->len)   {
-			struct sc_path tmp_path = *path;
-			int iter;
+	if (path && path->len)   {
+		struct sc_path tmp_path = *path;
+		int iter;
 
-			r = SC_ERROR_OBJECT_NOT_FOUND;
-			for (iter = tmp_path.len/2; iter >= 0 && r == SC_ERROR_OBJECT_NOT_FOUND; iter--, tmp_path.len -= 2)
-				r = sc_pkcs15_find_pin_by_type_and_reference(p15card,
-						tmp_path.len ? &tmp_path : NULL,
-						type, reference, &pin_obj);
-		}
-		else   {
-			r = sc_pkcs15_find_pin_by_type_and_reference(p15card, NULL, type, reference, &pin_obj);
-		}
+		r = SC_ERROR_OBJECT_NOT_FOUND;
+		for (iter = tmp_path.len/2; iter >= 0 && r == SC_ERROR_OBJECT_NOT_FOUND; iter--, tmp_path.len -= 2)
+			r = sc_pkcs15_find_pin_by_type_and_reference(p15card,
+					tmp_path.len ? &tmp_path : NULL,
+					type, reference, &pin_obj);
+	}
+	else {
+		r = sc_pkcs15_find_pin_by_type_and_reference(p15card, NULL, type, reference, &pin_obj);
+	}
 
-		if (!r && pin_obj)   {
-			memcpy(&auth_info, pin_obj->data, sizeof(auth_info));
-			sc_log(ctx, "found PIN object '%s'", pin_obj->label);
-		}
+	if (!r && pin_obj)   {
+		memcpy(&auth_info, pin_obj->data, sizeof(auth_info));
+		sc_log(ctx, "found PIN object '%s'", pin_obj->label);
 	}
 
 	if (pin_obj)   {

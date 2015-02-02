@@ -306,7 +306,7 @@ print_pem_object(const char *kind, const u8*data, size_t data_len)
 	return 0;
 }
 
-static int
+static void
 list_data_object(const char *kind, const unsigned char *data, size_t data_len)
 {
 	char title[0x100];
@@ -321,8 +321,6 @@ list_data_object(const char *kind, const unsigned char *data, size_t data_len)
 		printf("%02X", data[i]);
 	}
 	printf("\n");
-
-	return 0;
 }
 
 static int
@@ -457,7 +455,7 @@ static int list_data_objects(void)
 		int idx;
 		struct sc_pkcs15_data_info *cinfo = (struct sc_pkcs15_data_info *) objs[i]->data;
 
-		if (objs[i]->label)
+		if (0 < strnlen(objs[i]->label, sizeof objs[i]->label))
 			printf("Data object '%s'\n", objs[i]->label);
 		else
 			printf("Data object <%i>\n", i);
@@ -478,7 +476,7 @@ static int list_data_objects(void)
 					 continue; /* DEE emulation may say there is a file */
 				return 1;
 			}
-			r = list_data_object("\tData", data_object->data, data_object->data_len);
+			list_data_object("\tData", data_object->data, data_object->data_len);
 			sc_pkcs15_free_data_object(data_object);
 		}
 		else {
@@ -795,17 +793,17 @@ static int read_ssh_key(void)
 	struct sc_pkcs15_object *obj = NULL;
 	sc_pkcs15_pubkey_t *pubkey = NULL;
 	sc_pkcs15_cert_t *cert = NULL;
-        FILE *outf = NULL;
+	FILE *outf = NULL;
 
-        if (opt_outfile != NULL) {
-                outf = fopen(opt_outfile, "w");
-                if (outf == NULL) {
-                        fprintf(stderr, "Error opening file '%s': %s\n", opt_outfile, strerror(errno));
-                        goto fail2;
-                }
-        }
+	if (opt_outfile != NULL) {
+		outf = fopen(opt_outfile, "w");
+		if (outf == NULL) {
+			fprintf(stderr, "Error opening file '%s': %s\n", opt_outfile, strerror(errno));
+			goto fail2;
+		}
+	}
 	else   {
-                outf = stdout;
+		outf = stdout;
 	}
 
 	id.len = SC_PKCS15_MAX_ID_SIZE;
@@ -1000,8 +998,8 @@ static int read_ssh_key(void)
 		free(uu);
 	}
 
-        if (outf != stdout)
-                fclose(outf);
+	if (outf != stdout)
+		fclose(outf);
 	if (cert)
 		sc_pkcs15_free_certificate(cert);
 	else if (pubkey)
@@ -1011,8 +1009,8 @@ static int read_ssh_key(void)
 fail:
 	printf("can't convert key: buffer too small\n");
 fail2:
-        if (outf != stdout)
-                fclose(outf);
+	if (outf && outf != stdout)
+		fclose(outf);
 	if (cert)
 		sc_pkcs15_free_certificate(cert);
 	else if (pubkey)

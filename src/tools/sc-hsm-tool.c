@@ -62,6 +62,8 @@ static int	verbose = 0;
 #define MAX_KEY			1024
 #define MAX_WRAPPED_KEY	(MAX_CERT + MAX_PRKD + MAX_KEY)
 
+#define SEED_LENGTH 16
+
 enum {
 	OPT_SO_PIN = 0x100,
 	OPT_PIN,
@@ -139,14 +141,15 @@ static sc_card_t *card = NULL;
  * @param s Secret to share
  * @param n Maximum number of shares
  * @param rngSeed Seed value for CPRNG
+ * @param rngSeedLength Lenght of Seed value for CPRNG
  *
  */
-static void generatePrime(BIGNUM *prime, const BIGNUM *s, const unsigned int n, unsigned char *rngSeed)
+static void generatePrime(BIGNUM *prime, const BIGNUM *s, const unsigned int n, unsigned char *rngSeed, const unsigned int rngSeedLength)
 {
 	int bits = 0;
 
 	// Seed the RNG
-	RAND_seed(rngSeed, sizeof(rngSeed));
+	RAND_seed(rngSeed, rngSeedLength);
 
 	// Determine minimum number of bits for prime >= max(2^r, n + 1)
 	bits = BN_num_bits_word(n + 1) > BN_num_bits(s) ? (BN_num_bits_word(n + 1)) : (BN_num_bits(s));
@@ -424,7 +427,7 @@ void clearScreen()
 
 void waitForEnterKeyPressed()
 {
-	char c;
+	int c;
 
 	fflush(stdout);
 	while ((c = getchar()) != '\n' && c != EOF) {
@@ -851,7 +854,7 @@ static int generate_pwd_shares(sc_card_t *card, char **pwd, int *pwdlen, int pas
 	/*
 	 * Generate seed and calculate a prime depending on the size of the secret
 	 */
-	r = sc_get_challenge(card, rngseed, 16);
+	r = sc_get_challenge(card, rngseed, SEED_LENGTH);
 	if (r < 0) {
 		printf("Error generating random seed failed with %s", sc_strerror(r));
 		OPENSSL_cleanse(*pwd, *pwdlen);
@@ -859,7 +862,7 @@ static int generate_pwd_shares(sc_card_t *card, char **pwd, int *pwdlen, int pas
 		return r;
 	}
 
-	generatePrime(&prime, &secret, password_shares_total, rngseed);
+	generatePrime(&prime, &secret, password_shares_total, rngseed, SEED_LENGTH);
 
 	// Allocate data buffer for the generated shares
 	shares = malloc(password_shares_total * sizeof(secret_share_t));
@@ -1169,7 +1172,10 @@ static int wrap_key(sc_card_t *card, int keyid, const char *outf, const char *pi
 
 	memcpy(ptr, key, key_len);
 	ptr += key_len;
+
 	free(key);
+	key = NULL;
+	key_len = 0;
 
 	// Add private key description
 	if (ef_prkd_len > 0) {
@@ -1184,7 +1190,6 @@ static int wrap_key(sc_card_t *card, int keyid, const char *outf, const char *pi
 	}
 
 	// Encode key, key decription and certificate object in sequence
-	key_len = 0;
 	wrap_with_tag(0x30, keyblob, ptr - keyblob, &key, &key_len);
 
 	out = fopen(outf, "wb");

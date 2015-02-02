@@ -370,6 +370,8 @@ static int do_dump_do(sc_card_t *card, unsigned int tag)
 	if(opt_raw) {
 		r = 0;
 		tmp = dup(fileno(stdout));
+		if (tmp < 0)
+			return EXIT_FAILURE;
 		fp = freopen(NULL, "wb", stdout);
 		if(fp) {
 			r = fwrite(buffer, sizeof(char), sizeof(buffer), fp);

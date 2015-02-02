@@ -68,7 +68,7 @@ init_spy(void)
 	if (pkcs11_spy) {
 		/* with our own pkcs11.h we need to maintain this ourself */
 		pkcs11_spy->version.major = 2;
-		pkcs11_spy->version.major = 11;
+		pkcs11_spy->version.minor = 11;
 		pkcs11_spy->C_Initialize = C_Initialize;
 		pkcs11_spy->C_Finalize = C_Finalize;
 		pkcs11_spy->C_GetInfo = C_GetInfo;

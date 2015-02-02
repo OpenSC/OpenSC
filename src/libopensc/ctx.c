@@ -840,7 +840,7 @@ int sc_set_card_driver(sc_context_t *ctx, const char *short_name)
 	if (short_name == NULL) {
 		ctx->forced_driver = NULL;
 		match = 1;
-	} else while (ctx->card_drivers[i] != NULL && i < SC_MAX_CARD_DRIVERS) {
+	} else while (i < SC_MAX_CARD_DRIVERS && ctx->card_drivers[i] != NULL) {
 		struct sc_card_driver *drv = ctx->card_drivers[i];
 
 		if (strcmp(short_name, drv->short_name) == 0) {

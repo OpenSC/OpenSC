@@ -438,7 +438,7 @@ static int setcos_create_file_44(sc_card_t *card, sc_file_t *file)
 		const int* p_idx;
 		int	       i;
 		int	       len = 0;
-		u8         bBuf[32];
+		u8         bBuf[64];
 
 		/* Get specific operation groups for specified file-type */
 		switch (file->type){

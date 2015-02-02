@@ -872,8 +872,8 @@ static int asepcos_build_pin_apdu(sc_card_t *card, sc_apdu_t *apdu,
 			memcpy(p, data->pin1.data, data->pin1.len);
 			p += data->pin1.len;
 		} else {
-			memcpy(p, data->pin1.data, data->pin1.len);
-			p += data->pin1.len;
+			memcpy(p, data->pin2.data, data->pin2.len);
+			p += data->pin2.len;
 		}
 		apdu->lc       = p - buf;
 		apdu->datalen  = p - buf;

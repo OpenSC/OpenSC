@@ -140,10 +140,10 @@ jcop_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_pkcs15_obje
         size_t          bytes, mod_len, prv_len;
         int             r;
 
-	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
-	     sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "JCOP supports only RSA keys.");
-	     return SC_ERROR_NOT_SUPPORTED;
-	}
+        if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
+                sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "JCOP supports only RSA keys.");
+                return SC_ERROR_NOT_SUPPORTED;
+        }
         /* The caller is supposed to have chosen a key file path for us */
         if (key_info->path.len == 0 || key_info->modulus_length == 0)
                 return SC_ERROR_INVALID_ARGUMENTS;
@@ -155,7 +155,7 @@ jcop_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_pkcs15_obje
 
         mod_len = key_info->modulus_length / 8;
         bytes   = mod_len / 2;
-	prv_len = 2 + 5 * bytes;
+        prv_len = 2 + 5 * bytes;
         keyfile->size = prv_len;
 
         /* Fix up PIN references in file ACL */
@@ -164,8 +164,7 @@ jcop_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_pkcs15_obje
         if (r >= 0)
                 r = sc_pkcs15init_create_file(profile, p15card, keyfile);
 
-        if (keyfile)
-                sc_file_free(keyfile);
+        sc_file_free(keyfile);
         return r;
 }
 
