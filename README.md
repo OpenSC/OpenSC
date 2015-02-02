@@ -8,5 +8,5 @@ Coverity Scan:
 [![Coverity Scan Build Status](https://scan.coverity.com/projects/4011/badge.svg)](https://scan.coverity.com/projects/4026)
 
 Travis CI:
-[![Build Status](https://api.travis-ci.org/OpenSC/OpenSC.png?branch=coverity_scan)](https://travis-ci.org/OpenSC/OpenSC)
+[![Build Status](https://api.travis-ci.org/OpenSC/OpenSC.png)](https://travis-ci.org/OpenSC/OpenSC)
 
