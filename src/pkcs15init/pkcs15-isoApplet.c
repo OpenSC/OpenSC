@@ -699,9 +699,9 @@ isoApplet_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_pkcs15_
 		const struct ec_curve *curve = NULL;
 
 		args.algorithm_ref = SC_ISOAPPLET_ALG_REF_EC_GEN;
-		if(!key->u.ec.params.named_curve)
-		{
-			LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS, "Unspecified curve / no curve name.");
+		if(key->u.ec.params.der.len == 0 || key->u.ec.params.der.value == NULL) {
+			r = sc_pkcs15_fix_ec_parameters(card->ctx, &key->u.ec.params);
+			LOG_TEST_RET(card->ctx, r, "EC key storing failed: Unkown curve.");
 		}
 		r = isoApplet_get_curve(key->u.ec.params.der.value, key->u.ec.params.der.len, &curve);
 		LOG_TEST_RET(card->ctx, r, "EC key generation failed: Unsupported curve");
