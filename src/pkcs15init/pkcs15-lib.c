@@ -1214,8 +1214,8 @@ sc_pkcs15init_init_prkdf(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 		keyinfo_gostparams->gost28147 = keyargs->params.gost.gost28147;
 	}
 	else if (key->algorithm == SC_ALGORITHM_EC)  {
-		struct sc_pkcs15_ec_parameters *ecparams = &keyargs->params.ec;
-		key_info->params.data = &keyargs->params.ec;
+		struct sc_pkcs15_ec_parameters *ecparams = &keyargs->key.u.ec.params;
+		key_info->params.data = &keyargs->key.u.ec.params;
 		key_info->params.free_params = sc_pkcs15init_empty_callback;
 		key_info->field_length = ecparams->field_length;
 	}
@@ -1317,7 +1317,7 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 	if (keygen_args->prkey_args.key.algorithm == SC_ALGORITHM_GOSTR3410)
 		pubkey_args.params.gost = keygen_args->prkey_args.params.gost;
 	else if (keygen_args->prkey_args.key.algorithm == SC_ALGORITHM_EC)
-		pubkey_args.params.ec = keygen_args->prkey_args.params.ec;
+		pubkey_args.key.u.ec.params = keygen_args->prkey_args.key.u.ec.params;
 
 	/* Generate the private key on card */
 	r = profile->ops->create_key(profile, p15card, object);
@@ -1504,8 +1504,9 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card, struct sc_profile
 	case SC_ALGORITHM_EC:
 		type = SC_PKCS15_TYPE_PUBKEY_EC;
 
-		key.u.ec.params = keyargs->params.ec;
-		sc_pkcs15_fix_ec_parameters(ctx, &key.u.ec.params);
+		key.u.ec.params = keyargs->key.u.ec.params;
+		r = sc_pkcs15_fix_ec_parameters(ctx, &key.u.ec.params);
+		LOG_TEST_RET(ctx, r, "Failed to fix EC public key parameters");
 
 		keybits = key.u.ec.params.field_length;
 		break;
@@ -1974,7 +1975,7 @@ check_keygen_params_consistency(struct sc_card *card, struct sc_pkcs15init_keyge
 	int i, rv;
 
 	if (alg == SC_ALGORITHM_EC)   {
-		struct sc_pkcs15_ec_parameters *ecparams = &params->prkey_args.params.ec;
+		struct sc_pkcs15_ec_parameters *ecparams = &params->prkey_args.key.u.ec.params;
 
 		rv = sc_pkcs15_fix_ec_parameters(ctx, ecparams);
 		LOG_TEST_RET(ctx, rv, "Cannot fix EC parameters");
@@ -2152,9 +2153,12 @@ prkey_bits(struct sc_pkcs15_card *p15card, struct sc_pkcs15_prkey *key)
 		}
 		return SC_PKCS15_GOSTR3410_KEYSIZE;
 	case SC_ALGORITHM_EC:
-		/* calculation returns one bit too small, add one bu default */
-		sc_log(ctx, "Private EC key length %u", sc_pkcs15init_keybits(&key->u.ec.privateD) + 1);
-		return sc_pkcs15init_keybits(&key->u.ec.privateD) + 1;
+		sc_log(ctx, "Private EC key length %u", key->u.ec.params.field_length);
+		if (key->u.ec.params.field_length == 0)   {
+			sc_log(ctx, "Invalid EC key length");
+			return SC_ERROR_OBJECT_NOT_VALID;
+		}
+		return key->u.ec.params.field_length;
 	}
 	sc_log(ctx, "Unsupported key algorithm.");
 	return SC_ERROR_NOT_SUPPORTED;

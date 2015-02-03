@@ -216,7 +216,6 @@ struct sc_pkcs15init_prkeyargs {
 
 	union {
 		struct sc_pkcs15init_keyarg_gost_params gost;
-		struct sc_pkcs15_ec_parameters ec;
 	} params;
 
 	struct sc_pkcs15_prkey	key;
@@ -236,7 +235,6 @@ struct sc_pkcs15init_pubkeyargs {
 
 	union {
 		struct sc_pkcs15init_keyarg_gost_params gost;
-		struct sc_pkcs15_ec_parameters ec;
 	} params;
 
 	struct sc_pkcs15_pubkey	key;
