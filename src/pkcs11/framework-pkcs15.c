@@ -2751,7 +2751,7 @@ pkcs15_gen_keypair(struct sc_pkcs11_slot *slot, CK_MECHANISM_PTR pMechanism,
 		/* TODO: check allowed values of keybits */
 	}
 	else if (keytype == CKK_EC)   {
-		struct sc_pkcs15_der *der = &keygen_args.prkey_args.params.ec.der;
+		struct sc_pkcs15_der *der = &keygen_args.prkey_args.key.u.ec.params.der;
 
 		der->len = sizeof(struct sc_object_id);
 		rv = attr_find_ptr(pPubTpl, ulPubCnt, CKA_EC_PARAMS, (void **)&der->value, &der->len);
