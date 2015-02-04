@@ -276,7 +276,7 @@ static int parse_emu_block(sc_pkcs15_card_t *p15card, scconf_block *conf)
 			}
 		}
 
-		if (!get_version || (major == 0 && minor <= 9 && fix < 3) < 0) {
+		if (!get_version || (major == 0 && minor <= 9 && fix < 3)) {
 			/* no sc_driver_version function => assume old style
 			 * init function (note: this should later give an error
 			 */
