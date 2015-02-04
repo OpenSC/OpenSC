@@ -278,7 +278,7 @@ void scconf_parse_token(scconf_parser * parser, int token_type, const char *toke
 					scconf_parse_warning_expect(parser, "\"");
 				} else {
 					/* stoken */
-					stoken = token ? strdup(token) : NULL;
+					stoken = strdup(token);
 					if (stoken) {
 						stoken[len - 1] = '\0';
 					}

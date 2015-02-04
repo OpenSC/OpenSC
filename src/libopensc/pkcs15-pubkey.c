@@ -1227,8 +1227,6 @@ sc_pkcs15_read_der_file(sc_context_t *ctx, char * filename,
 	rbuf = NULL;
 	r = rbuflen;
 	out:
-	if (rbuf)
-		free(rbuf);
 	if (f > 0)
 		close(f);
 

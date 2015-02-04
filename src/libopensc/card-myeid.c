@@ -508,7 +508,7 @@ static int myeid_set_security_env_rsa(sc_card_t *card, const sc_security_env_t *
 	sc_apdu_t apdu;
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	u8 *p;
-	int r, locked = 0;
+	int r;
 
 	assert(card != NULL && env != NULL);
 	LOG_FUNC_CALLED(card->ctx);
@@ -564,11 +564,6 @@ static int myeid_set_security_env_rsa(sc_card_t *card, const sc_security_env_t *
 	apdu.datalen = r;
 	apdu.data = sbuf;
 	apdu.resplen = 0;
-	if (se_num > 0) {
-		r = sc_lock(card);
-		LOG_TEST_RET(card->ctx, r, "sc_lock() failed");
-		locked = 1;
-	}
 	if (apdu.datalen != 0)
 	{
 		r = sc_transmit_apdu(card, &apdu);
@@ -586,16 +581,7 @@ static int myeid_set_security_env_rsa(sc_card_t *card, const sc_security_env_t *
 			goto err;
 		}
 	}
-	if (se_num <= 0)
-		return 0;
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0xF2, se_num);
-	r = sc_transmit_apdu(card, &apdu);
-	sc_unlock(card);
-	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
-	return sc_check_sw(card, apdu.sw1, apdu.sw2);
 err:
-	if (locked)
-		sc_unlock(card);
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
@@ -605,7 +591,7 @@ static int myeid_set_security_env_ec(sc_card_t *card, const sc_security_env_t *e
 	sc_apdu_t apdu;
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	u8 *p;
-	int r, locked = 0;
+	int r;
 
 	assert(card != NULL && env != NULL);
 	LOG_FUNC_CALLED(card->ctx);
@@ -661,11 +647,6 @@ static int myeid_set_security_env_ec(sc_card_t *card, const sc_security_env_t *e
 	apdu.datalen = r;
 	apdu.data = sbuf;
 	apdu.resplen = 0;
-	if (se_num > 0) {
-		r = sc_lock(card);
-		LOG_TEST_RET(card->ctx, r, "sc_lock() failed");
-		locked = 1;
-	}
 	if (apdu.datalen != 0) 
 	{
 		r = sc_transmit_apdu(card, &apdu);
@@ -683,16 +664,7 @@ static int myeid_set_security_env_ec(sc_card_t *card, const sc_security_env_t *e
 			goto err;
 		}
 	}
-	if (se_num <= 0)
-		return 0;
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0xF2, se_num);
-	r = sc_transmit_apdu(card, &apdu);
-	sc_unlock(card);
-	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
-	return sc_check_sw(card, apdu.sw1, apdu.sw2);
 err:
-	if (locked)
-		sc_unlock(card);
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 

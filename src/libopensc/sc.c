@@ -108,7 +108,7 @@ int sc_bin_to_hex(const u8 *in, size_t in_len, char *out, size_t out_len,
 		pos += 2;
 	}
 	*pos = '\0';
-	return 0;
+	return SC_SUCCESS;
 }
 
 /*
@@ -299,7 +299,7 @@ int sc_append_path_id(sc_path_t *dest, const u8 *id, size_t idlen)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	memcpy(dest->value + dest->len, id, idlen);
 	dest->len += idlen;
-	return 0;
+	return SC_SUCCESS;
 }
 
 int sc_append_file_id(sc_path_t *dest, unsigned int fid)
@@ -417,21 +417,21 @@ int sc_file_add_acl_entry(sc_file_t *file, unsigned int operation,
 	case SC_AC_NEVER:
 		sc_file_clear_acl_entries(file, operation);
 		file->acl[operation] = (sc_acl_entry_t *) 1;
-		return 0;
+		return SC_SUCCESS;
 	case SC_AC_NONE:
 		sc_file_clear_acl_entries(file, operation);
 		file->acl[operation] = (sc_acl_entry_t *) 2;
-		return 0;
+		return SC_SUCCESS;
 	case SC_AC_UNKNOWN:
 		sc_file_clear_acl_entries(file, operation);
 		file->acl[operation] = (sc_acl_entry_t *) 3;
-		return 0;
+		return SC_SUCCESS;
 	default:
 		/* NONE and UNKNOWN get zapped when a new AC is added.
 		 * If the ACL is NEVER, additional entries will be
 		 * dropped silently. */
 		if (file->acl[operation] == (sc_acl_entry_t *) 1)
-			return 0;
+			return SC_SUCCESS;
 		if (file->acl[operation] == (sc_acl_entry_t *) 2
 		 || file->acl[operation] == (sc_acl_entry_t *) 3)
 			file->acl[operation] = NULL;
@@ -441,7 +441,7 @@ int sc_file_add_acl_entry(sc_file_t *file, unsigned int operation,
 	 * of the card's AC with OpenSC's), don't add it again. */
 	for (p = file->acl[operation]; p != NULL; p = p->next) {
 		if ((p->method == method) && (p->key_ref == key_ref))
-			return 0;
+			return SC_SUCCESS;
 	}
 
 	_new = malloc(sizeof(sc_acl_entry_t));
@@ -454,13 +454,13 @@ int sc_file_add_acl_entry(sc_file_t *file, unsigned int operation,
 	p = file->acl[operation];
 	if (p == NULL) {
 		file->acl[operation] = _new;
-		return 0;
+		return SC_SUCCESS;
 	}
 	while (p->next != NULL)
 		p = p->next;
 	p->next = _new;
 
-	return 0;
+	return SC_SUCCESS;
 }
 
 const sc_acl_entry_t * sc_file_get_acl_entry(const sc_file_t *file,
@@ -629,7 +629,7 @@ int sc_file_set_prop_attr(sc_file_t *file, const u8 *prop_attr,
 			free(file->prop_attr);
 		file->prop_attr = NULL;
 		file->prop_attr_len = 0;
-		return 0;
+		return SC_SUCCESS;
 	 }
 	tmp = (u8 *) realloc(file->prop_attr, prop_attr_len);
 	if (!tmp) {
@@ -643,7 +643,7 @@ int sc_file_set_prop_attr(sc_file_t *file, const u8 *prop_attr,
 	memcpy(file->prop_attr, prop_attr, prop_attr_len);
 	file->prop_attr_len = prop_attr_len;
 
-	return 0;
+	return SC_SUCCESS;
 }
 
 int sc_file_set_type_attr(sc_file_t *file, const u8 *type_attr,
@@ -657,7 +657,7 @@ int sc_file_set_type_attr(sc_file_t *file, const u8 *type_attr,
 			free(file->type_attr);
 		file->type_attr = NULL;
 		file->type_attr_len = 0;
-		return 0;
+		return SC_SUCCESS;
 	 }
 	tmp = (u8 *) realloc(file->type_attr, type_attr_len);
 	if (!tmp) {
@@ -671,7 +671,7 @@ int sc_file_set_type_attr(sc_file_t *file, const u8 *type_attr,
 	memcpy(file->type_attr, type_attr, type_attr_len);
 	file->type_attr_len = type_attr_len;
 
-	return 0;
+	return SC_SUCCESS;
 }
 
 
@@ -781,12 +781,12 @@ int _sc_parse_atr(sc_reader_t *reader)
 		}
 	}
 	if (atr_len <= 0)
-		return 0;
+		return SC_SUCCESS;
 	if (n_hist > atr_len)
 		n_hist = atr_len;
 	reader->atr_info.hist_bytes_len = n_hist;
 	reader->atr_info.hist_bytes = p;
-	return 0;
+	return SC_SUCCESS;
 }
 
 void *sc_mem_alloc_secure(sc_context_t *ctx, size_t len)
@@ -840,7 +840,7 @@ int sc_mem_reverse(unsigned char *buf, size_t len)
 		*(buf + len - 1 - ii) = ch;
 	}
 
-	return 0;
+	return SC_SUCCESS;
 }
 
 static int

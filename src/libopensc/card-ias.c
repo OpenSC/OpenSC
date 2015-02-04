@@ -473,8 +473,6 @@ static int ias_select_file(sc_card_t *card, const sc_path_t *in_path,
 		r = sc_transmit_apdu(card, &apdu);
 		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 		if (file_out == NULL) {
-			if (apdu.sw1 == 0x61)
-				SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, 0);
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 		}
 	}

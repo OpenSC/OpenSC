@@ -2343,7 +2343,7 @@ iasecc_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_
 
 		if (scb & IASECC_SCB_METHOD_SM)   {
 			rv = iasecc_sm_pin_reset(card, se_num, data);
-			LOG_FUNC_RETURN(ctx, rv);
+			LOG_TEST_RET(ctx, rv, "iasecc_sm_pin_reset() reset PUK error");
 
 			if (!need_all)
 				break;
@@ -2396,7 +2396,6 @@ static int
 iasecc_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left)
 {
 	struct sc_context *ctx = card->ctx;
-	struct sc_apdu apdu;
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
@@ -2407,28 +2406,23 @@ iasecc_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_le
 	switch (data->cmd)   {
 	case SC_PIN_CMD_VERIFY:
 		rv = iasecc_pin_verify(card, data->pin_type, data->pin_reference, data->pin1.data, data->pin1.len, tries_left);
-		LOG_FUNC_RETURN(ctx, rv);
+		break;
 	case SC_PIN_CMD_CHANGE:
 		if (data->pin_type == SC_AC_AUT)
 			rv = iasecc_keyset_change(card, data, tries_left);
 		else
 			rv = iasecc_pin_change(card, data, tries_left);
-		LOG_FUNC_RETURN(ctx, rv);
+		break;
 	case SC_PIN_CMD_UNBLOCK:
 		rv = iasecc_pin_reset(card, data, tries_left);
-		LOG_FUNC_RETURN(ctx, rv);
+		break;
 	case SC_PIN_CMD_GET_INFO:
 		rv = iasecc_pin_get_policy(card, data);
-		LOG_FUNC_RETURN(ctx, rv);
+		break;
 	default:
 		sc_log(ctx, "Other pin commands not supported yet: 0x%X", data->cmd);
-		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Non-supported PIN command");
+		rv = SC_ERROR_NOT_SUPPORTED;
 	}
-
-	rv = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(ctx, rv, "APDU transmit failed");
-	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	LOG_TEST_RET(ctx, rv, "PIN cmd failed");
 
 	LOG_FUNC_RETURN(ctx, rv);
 }

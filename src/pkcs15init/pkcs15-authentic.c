@@ -363,10 +363,7 @@ authentic_sdo_allocate_prvkey(struct sc_profile *profile, struct sc_card *card,
 
 	sc_log(ctx, "sdo(mech:%X,id:%X,acls:%s)", sdo->docp.mech, sdo->docp.id,
 			sc_dump_hex(sdo->docp.acl_data, sdo->docp.acl_data_len));
-	if (out)
-		*out = sdo;
-	else
-		free(sdo);
+	*out = sdo;
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }

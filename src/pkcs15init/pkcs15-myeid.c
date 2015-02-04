@@ -423,9 +423,6 @@ myeid_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 			break;
 		case SC_PKCS15_TYPE_PRKEY_EC:
 			LOG_TEST_RET(ctx, SC_ERROR_NOT_IMPLEMENTED, "20140202: waiting for cards and specification from Aventra. VTA");
-			if (sc_card_find_ec_alg(p15card->card, keybits) == NULL)
-				LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS,
-					"Unsupported EC key size");
 			break;
 		default:
 			LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS,
@@ -487,13 +484,6 @@ myeid_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 			break;
 		case SC_PKCS15_TYPE_PRKEY_EC:
 			LOG_TEST_RET(ctx, SC_ERROR_NOT_IMPLEMENTED, "20140202: waiting for cards and specification from Aventra. VTA");
-			if (sc_card_find_ec_alg(p15card->card, keybits) == NULL)
-				LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Unsupported EC key size");
-			if(key_info->field_length != 0)
-				keybits = key_info->field_length;
-			else
-				key_info->field_length = keybits;
-
 			break;
 		default:
 			LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Store key failed: Unsupported key type");
@@ -576,14 +566,6 @@ myeid_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 			break;
 		case SC_PKCS15_TYPE_PRKEY_EC:
 			LOG_TEST_RET(ctx, SC_ERROR_NOT_IMPLEMENTED, "20140202: waiting for cards and specification from Aventra. VTA");
-
-			if (sc_card_find_ec_alg(p15card->card, keybits) == NULL)
-				LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Unsupported EC key size");
-			if(key_info->field_length != 0)
-				keybits = key_info->field_length;
-			else
-				key_info->field_length = keybits;
-
 			break;
 		default:
 			LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Unsupported key type");

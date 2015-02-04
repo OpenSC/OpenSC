@@ -203,15 +203,13 @@ sc_pkcs15_bind_synthetic(sc_pkcs15_card_t *p15card)
 			free(blocks);
 	}
 
-	/* Total failure */
-	LOG_FUNC_RETURN(ctx, SC_ERROR_WRONG_CARD);
-
-out:	if (r == SC_SUCCESS) {
+out:
+	if (r == SC_SUCCESS) {
 		p15card->magic  = SC_PKCS15_CARD_MAGIC;
 		p15card->flags |= SC_PKCS15_CARD_FLAG_EMULATED;
-	}
-	else if (r != SC_ERROR_WRONG_CARD) {
-		sc_log(ctx, "Failed to load card emulator: %s", sc_strerror(r));
+	} else {
+		if (r != SC_ERROR_WRONG_CARD)
+			sc_log(ctx, "Failed to load card emulator: %s", sc_strerror(r));
 	}
 
 	LOG_FUNC_RETURN(ctx, r);

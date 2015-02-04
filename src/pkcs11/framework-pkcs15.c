@@ -2031,7 +2031,7 @@ pkcs15_create_private_key(struct sc_pkcs11_slot *slot, struct sc_profile *profil
 		}
 		/* CKA_VALUE arrives in little endian form. pkcs15init framework expects it in a big endian one. */
 		rc = sc_mem_reverse(gost->d.data, gost->d.len);
-		if (rv)  {
+		if (rc != SC_SUCCESS)  {
 			rv = sc_to_cryptoki_error(rc, "C_CreateObject");
 			goto out;
 		}
