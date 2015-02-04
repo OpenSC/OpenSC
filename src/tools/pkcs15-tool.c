@@ -1002,8 +1002,7 @@ static int read_ssh_key(void)
 		fclose(outf);
 	if (cert)
 		sc_pkcs15_free_certificate(cert);
-	else if (pubkey)
-		sc_pkcs15_free_pubkey(pubkey);
+	sc_pkcs15_free_pubkey(pubkey);
 
 	return 0;
 fail:

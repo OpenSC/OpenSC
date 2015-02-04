@@ -3324,7 +3324,8 @@ iasecc_read_public_key(struct sc_card *card, unsigned type,
 	rv = sc_pkcs15_encode_pubkey_rsa(ctx, &rsa_key, out, out_len);
 	LOG_TEST_RET(ctx, rv, "failed to read public key: cannot encode RSA public key");
 
-	sc_log(ctx, "encoded public key: %s", sc_dump_hex(*out, *out_len));
+	if (out && out_len)
+		sc_log(ctx, "encoded public key: %s", sc_dump_hex(*out, *out_len));
 
 	if (bn[0].data)
 		free(bn[0].data);

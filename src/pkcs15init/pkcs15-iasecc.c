@@ -573,16 +573,20 @@ iasecc_sdo_allocate_pubkey(struct sc_profile *profile, struct sc_card *card, str
 static int
 iasecc_sdo_convert_to_file(struct sc_card *card, struct iasecc_sdo *sdo, struct sc_file **out)
 {
-	struct sc_context *ctx = card->ctx;
-	struct sc_file *file = sc_file_new();
+	struct sc_context *ctx;
+	struct sc_file *file;
 	unsigned ii;
 	int rv;
 
+	if (!card || !sdo)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	ctx = card->ctx;
 	LOG_FUNC_CALLED(ctx);
-	if (file == NULL)
+
+	file = sc_file_new();
+	if (!file)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
-	else if (!card || !sdo)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	sc_log(ctx, "SDO class 0x%X", sdo->sdo_class);
 
@@ -1761,8 +1765,7 @@ iasecc_store_data_object(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 	if (parent)
 		sc_file_free(parent);
 
-	if (file)
-		sc_file_free(file);
+	sc_file_free(file);
 
 	if (cfile)
 		sc_file_free(cfile);

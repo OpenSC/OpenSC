@@ -168,9 +168,14 @@ static int load_cert(const char * cert_id, const char * cert_file,
 	size_t derlen;
 	int r;
 
+	if (!cert_file) {
+        printf("Missing cert file\n");
+		return -1;
+	}
+
     if((fp=fopen(cert_file, "r"))==NULL){
         printf("Cannot open cert file, %s %s\n",
-			cert_file?cert_file:"", strerror(errno));
+				cert_file, strerror(errno));
         return -1;
     }
 	if (compress) { /* file is gziped already */

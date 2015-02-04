@@ -419,6 +419,8 @@ static int load_special_files(sc_card_t * card)
 	if (dfi && dfi->rule_file)
 		return 0;	/* yes. */
 	clear_special_files(dfi);
+	if (!dfi)
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INTERNAL);
 
 	/* Read rule file. Note that we bypass our cache here. */
 	r = select_part(card, MCRD_SEL_EF, EF_Rule, NULL);

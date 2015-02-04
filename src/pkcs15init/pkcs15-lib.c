@@ -1712,6 +1712,8 @@ sc_pkcs15init_store_data_object(struct sc_pkcs15_card *p15card,
 	unsigned int    tid = 0x01;
 
 	LOG_FUNC_CALLED(ctx);
+	if (!profile)
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Missing profile");
 	label = args->label;
 
 	if (!args->id.len) {
@@ -2673,6 +2675,9 @@ sc_pkcs15init_update_any_df(struct sc_pkcs15_card *p15card,
 	int		update_odf = is_new, r = 0;
 
 	LOG_FUNC_CALLED(ctx);
+	if (!df)
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "DF missing");
+
 	r = sc_profile_get_file_by_path(profile, &df->path, &file);
 	LOG_TEST_RET(ctx, r, "Failed get file path");
 	if (file == NULL)
