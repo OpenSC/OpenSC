@@ -2014,7 +2014,7 @@ write_publickey (struct sc_card *card, unsigned int offset,
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
 		"write_publickey in %d bytes :\n%s", count, debug_buf);
 
-	if (offset > sizeof(rsa_der))
+	if (1+offset > sizeof(rsa_der))
 		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS, "Invalid offset value");
 
 	len = offset+count > sizeof(rsa_der) ? sizeof(rsa_der) - offset : count;
@@ -2113,7 +2113,7 @@ auth_read_binary(struct sc_card *card, unsigned int offset,
 	if (auth_current_ef->magic==SC_FILE_MAGIC &&
              auth_current_ef->ef_structure == SC_CARDCTL_OBERTHUR_KEY_RSA_PUBLIC)   {
 		int jj;
-		unsigned char resp[0x100], *out = NULL;
+		unsigned char resp[SC_MAX_APDU_BUFFER_SIZE], *out = NULL;
 		size_t resp_len, out_len;
 		struct sc_pkcs15_bignum bn[2];
 		struct sc_pkcs15_pubkey_rsa key;

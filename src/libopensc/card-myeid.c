@@ -407,7 +407,7 @@ static int encode_file_structure(sc_card_t *card, const sc_file_t *file,
 
 	case SC_FILE_TYPE_DF:
 		buf[8] = 0x38;
-		if(file->namelen > 0 && file->namelen <= 16)
+		if(file->namelen > 0 && file->namelen < 16)
 		{
 			buf[25] = 0x84;
 			buf[26] = (u8)file->namelen;

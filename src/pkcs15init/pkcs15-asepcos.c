@@ -512,7 +512,7 @@ static int asepcos_do_create_key(sc_card_t *card, size_t ksize, int fileid,
 	sc_file_t *nfile = NULL;
 	u8        buf[1024], *p = buf;
 
-	if (sizeof(buf) < kdlen + 11)
+	if (sizeof(buf) < kdlen + 12)
 		return SC_ERROR_BUFFER_TOO_SMALL;
 
 	*p++ = 0x85;

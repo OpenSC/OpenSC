@@ -221,7 +221,7 @@ static int sc_pkcs15emu_postecert_init(sc_pkcs15_card_t * p15card)
 			count_cert[o] =
 			    (*(certi + i + 2) << 8) + *(certi + i + 3) + 4;
 			o++;
-			if (o > 4)
+			if (o >= 4)
 				break;
 			i += (*(certi + i + 2) << 8) + *(certi + i + 3);
 		}

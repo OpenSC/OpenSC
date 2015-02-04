@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
 			printf("Lottery: ");
 			for (i = 0; i < 7; i++) {
 				unsigned short s = buf[2 * i] + (buf[2 * i + 1] << 8);
-				int lot = s % (left + 1);
+				int lot = s % left;
 				int num = nbuf[lot];
 
 				nbuf[lot] = nbuf[left - 1];

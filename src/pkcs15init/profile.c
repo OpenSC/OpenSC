@@ -1301,7 +1301,7 @@ do_fileid(struct state *cur, int argc, char **argv)
 			parse_error(cur, "No path/fileid set for parent DF\n");
 			return 1;
 		}
-		if (df->path.len + 2 > sizeof(df->path)) {
+		if (df->path.len + 2 > sizeof(df->path.value)) {
 			parse_error(cur, "File path too long\n");
 			return 1;
 		}

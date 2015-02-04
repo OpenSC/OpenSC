@@ -209,7 +209,7 @@ des3_encrypt_ecb(const unsigned char *key, int keysize,
 
 
 static int
-des3_encrypt_cbc(const unsigned char *key, int keysize, unsigned char iv[8],
+des3_encrypt_cbc(const unsigned char *key, int keysize, unsigned char iv[EVP_MAX_IV_LENGTH],
 		const unsigned char *input, size_t length, unsigned char *output)
 {
 	unsigned char bKey[24] = { 0 };
@@ -244,7 +244,7 @@ des3_decrypt_cbc(const unsigned char *key, int keysize, unsigned char iv[EVP_MAX
 
 
 static int
-des_encrypt_cbc(const unsigned char *key, int keysize, unsigned char iv[8],
+des_encrypt_cbc(const unsigned char *key, int keysize, unsigned char iv[EVP_MAX_IV_LENGTH],
 		const unsigned char *input, size_t length, unsigned char *output)
 {
 	return openssl_enc(EVP_des_cbc(), key, iv, input, length, output);
@@ -252,7 +252,7 @@ des_encrypt_cbc(const unsigned char *key, int keysize, unsigned char iv[8],
 
 
 static int
-des_decrypt_cbc(const unsigned char *key, int keysize, unsigned char iv[8],
+des_decrypt_cbc(const unsigned char *key, int keysize, unsigned char iv[EVP_MAX_IV_LENGTH],
 		const unsigned char *input, size_t length, unsigned char *output)
 {
 	return openssl_dec(EVP_des_cbc(), key, iv, input, length, output);
