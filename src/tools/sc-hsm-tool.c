@@ -803,9 +803,10 @@ static void ask_for_password(char **pwd, int *pwdlen)
 
 
 
-static int generate_pwd_shares(sc_card_t *card, char **pwd, int *pwdlen, int password_shares_threshold, int password_shares_total)
+static int generate_pwd_shares(sc_card_t *card, char **pwd, int *pwdlen, int password_shares_threshold, unsigned int password_shares_total)
 {
-	int r, i;
+	int r;
+	unsigned int i;
 	BIGNUM prime;
 	BIGNUM secret;
 	unsigned char buf[64];
@@ -907,7 +908,7 @@ static int generate_pwd_shares(sc_card_t *card, char **pwd, int *pwdlen, int pas
 
 
 
-static int create_dkek_share(sc_card_t *card, const char *outf, int iter, const char *password, int password_shares_threshold, int password_shares_total)
+static int create_dkek_share(sc_card_t *card, const char *outf, int iter, const char *password, int password_shares_threshold, unsigned int password_shares_total)
 {
 	EVP_CIPHER_CTX ctx;
 	FILE *out = NULL;
@@ -1568,8 +1569,15 @@ int main(int argc, char * const argv[])
 	if (do_initialize && initialize(card, opt_so_pin, opt_pin, opt_retry_counter, opt_dkek_shares, opt_label))
 		goto fail;
 
-	if (do_create_dkek_share && create_dkek_share(card, opt_filename, opt_iter, opt_password, opt_password_shares_threshold, opt_password_shares_total))
-		goto fail;
+	if (do_create_dkek_share) {
+		if (opt_password_shares_total <= 0) {
+			fprintf(stderr, "The number of password shares must be bigger than 0.");
+			goto fail;
+		}
+
+	   	if (create_dkek_share(card, opt_filename, opt_iter, opt_password, opt_password_shares_threshold, opt_password_shares_total))
+			goto fail;
+	}
 
 	if (do_import_dkek_share && import_dkek_share(card, opt_filename, opt_iter, opt_password, opt_password_shares_total))
 		goto fail;
