@@ -495,6 +495,7 @@ int main(int argc, char * const argv[])
 			break;
 		case 'Z':
 			compress_cert = 1;
+			break;
 		case 'C':
 			do_load_cert = 1;
 			cert_id = optarg;

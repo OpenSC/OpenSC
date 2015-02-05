@@ -258,6 +258,8 @@ authentic_pkcs15_new_file(struct sc_profile *profile, struct sc_card *card,
 			file->path.type, sc_print_path(&file->path));
 	if (out)
 		*out = file;
+	else
+		sc_file_free(file);
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }

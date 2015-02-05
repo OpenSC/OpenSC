@@ -381,6 +381,7 @@ static int do_dump_do(sc_card_t *card, unsigned int tag)
 		if (sizeof(buffer) != r) {
 			return EXIT_FAILURE;
 		}
+		close(tmp);
 	} else {
 		util_hex_dump_asc(stdout, buffer, sizeof(buffer), -1);
 	}

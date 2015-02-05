@@ -1327,12 +1327,17 @@ static int unlock_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess, int login_type)
 		if (r < 0)
 			return 1;
 		if (!new_pin || !*new_pin || strcmp(new_buf, new_pin) != 0) {
+			if (new_pin != opt_new_pin)
+				free(new_pin);
 			printf("  different new PINs, exiting\n");
 			return -1;
 		}
 
-		if (!new_pin || !*new_pin || strlen(new_pin) > 20)
+		if (!new_pin || !*new_pin || strlen(new_pin) > 20) {
+			if (new_pin != opt_new_pin)
+				free(new_pin);
 			return 1;
+		}
 	}
 
 	rv = p11->C_SetPIN(sess,

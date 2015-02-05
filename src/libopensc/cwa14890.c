@@ -324,6 +324,7 @@ static int cwa_parse_tlv(sc_card_t * card,
 		/* set index to next Tag to jump to */
 		next = tlv->buflen;
 	}
+	free(buffer);
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);	/* mark no error */
 }
 
@@ -1418,9 +1419,9 @@ int cwa_create_secure_channel(sc_card_t * card,
 int cwa_encode_apdu(sc_card_t * card,
 		    cwa_provider_t * provider, sc_apdu_t * from, sc_apdu_t * to)
 {
-	u8 *apdubuf;		/* to store resulting apdu */
+	u8 *apdubuf = NULL;		/* to store resulting apdu */
 	size_t apdulen;
-	u8 *ccbuf;		/* where to store data to eval cryptographic checksum CC */
+	u8 *ccbuf = NULL;		/* where to store data to eval cryptographic checksum CC */
 	size_t cclen = 0;
 	u8 macbuf[8];		/* to store and compute CC */
 	DES_key_schedule k1;
@@ -1594,9 +1595,13 @@ int cwa_encode_apdu(sc_card_t * card,
 	/* that's all folks */
 	res = SC_SUCCESS;
 
- encode_end:
+encode_end:
 	if (msg)
 		sc_log(ctx, msg);
+	free(msgbuf);
+	free(cryptbuf);
+	free(ccbuf);
+	free(apdubuf);
 	LOG_FUNC_RETURN(ctx, res);
 }
 

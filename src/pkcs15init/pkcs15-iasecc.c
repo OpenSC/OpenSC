@@ -246,6 +246,8 @@ iasecc_pkcs15_new_file(struct sc_profile *profile, struct sc_card *card,
 
 	if (out)
 		*out = file;
+	else
+		sc_file_free(file);
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
@@ -503,6 +505,8 @@ iasecc_sdo_allocate_prvkey(struct sc_profile *profile, struct sc_card *card,
 
 	if (out)
 		*out = sdo;
+	else
+		free(sdo);
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
@@ -565,6 +569,8 @@ iasecc_sdo_allocate_pubkey(struct sc_profile *profile, struct sc_card *card, str
 
 	if (out)
 		*out = sdo;
+	else
+		free(sdo);
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
@@ -609,6 +615,9 @@ iasecc_sdo_convert_to_file(struct sc_card *card, struct iasecc_sdo *sdo, struct 
 
 	if (out)
 		*out = file;
+	else
+		sc_file_free(file);
+
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 

@@ -1227,7 +1227,7 @@ sc_pkcs15_read_der_file(sc_context_t *ctx, char * filename,
 	rbuf = NULL;
 	r = rbuflen;
 	out:
-	if (f > 0)
+	if (f >= 0)
 		close(f);
 
 	LOG_FUNC_RETURN(ctx, r);

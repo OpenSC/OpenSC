@@ -684,10 +684,10 @@ do_erase(sc_card_t *in_card, struct sc_profile *profile)
 		struct sc_aid aid;
 
 		aid.len = sizeof(aid.value);
-		if (sc_hex_to_bin(opt_bind_to_aid, aid.value, &aid.len))   {
+		r = sc_hex_to_bin(opt_bind_to_aid, aid.value, &aid.len);
+		if (r < 0)   {
 			fprintf(stderr, "Invalid AID value: '%s'\n", opt_bind_to_aid);
-			return 1;
-
+			goto err;
 		}
 
 		r = sc_pkcs15init_erase_card(p15card, profile, &aid);
@@ -697,6 +697,7 @@ do_erase(sc_card_t *in_card, struct sc_profile *profile)
 	}
 	ignore_cmdline_pins--;
 
+err:
 	sc_pkcs15_card_free(p15card);
 	return r;
 }

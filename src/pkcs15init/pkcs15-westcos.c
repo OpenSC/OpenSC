@@ -352,6 +352,3 @@ struct sc_pkcs15init_operations* sc_pkcs15init_get_westcos_ops(void)
 {
 	return &sc_pkcs15init_westcos_operations;
 }
-
-
-

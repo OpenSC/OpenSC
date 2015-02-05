@@ -690,16 +690,14 @@ cwa_provider_t *dnie_get_cwa_provider(sc_card_t * card)
 
 static int dnie_transmit_apdu_internal(sc_card_t * card, sc_apdu_t * apdu)
 {
-	u8 *buf = NULL;		/* use for store partial le responses */
+	u8 buf[2048];		/* use for store partial le responses */
 	int res = SC_SUCCESS;
 	cwa_provider_t *provider = NULL;
 	if ((card == NULL) || (card->ctx == NULL) || (apdu == NULL))
 		return SC_ERROR_INVALID_ARGUMENTS;
 	LOG_FUNC_CALLED(card->ctx);
 	provider = GET_DNIE_PRIV_DATA(card)->cwa_provider;
-	buf = calloc(2048, sizeof(u8));
-	if (!buf)
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+	memset(buf, 0, sizeof(buf));
 
 	/* check if envelope is needed */
 	if (apdu->lc <= card->max_send_size) {

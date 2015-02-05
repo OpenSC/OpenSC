@@ -47,7 +47,7 @@ const char *sc_get_version(void)
 
 int sc_hex_to_bin(const char *in, u8 *out, size_t *outlen)
 {
-	int err = 0;
+	int err = SC_SUCCESS;
 	size_t left, count = 0;
 
 	assert(in != NULL && out != NULL && outlen != NULL);

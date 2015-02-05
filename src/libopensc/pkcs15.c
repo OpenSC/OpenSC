@@ -957,6 +957,7 @@ sc_pkcs15_get_application_by_type(struct sc_card * card, char *app_type)
 				char *type = (char *)scconf_get_str(blocks[0], "type", app_type);
 				if (!strcmp(type, app_type))   {
 					out = app_info;
+					free(blocks);
 					break;
 				}
 			}
