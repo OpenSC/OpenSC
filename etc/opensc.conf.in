@@ -431,6 +431,12 @@ app default {
 		# Default: false
 		# use_file_caching = true;
 		#
+		# set a path for caching 
+		# so you do not use the env variables and for pam_pkcs11
+		# (with certificate check)  where $HOME is not set
+		# Default: path in user home
+		# file_cache_dir = /var/lib/opensc/cache	
+                #
 		# Use PIN caching?
 		# Default: true
 		# use_pin_caching = false;
