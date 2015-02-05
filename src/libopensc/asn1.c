@@ -89,9 +89,10 @@ int sc_asn1_read_tag(const u8 ** buf, size_t buflen, unsigned int *cla_out,
 			 * unsigned int */
 			return SC_ERROR_INVALID_ASN1_OBJECT;
 
+	} else {
+		if (left == 0)
+			return SC_ERROR_INVALID_ASN1_OBJECT;
 	}
-	if (left == 0)
-		return SC_ERROR_INVALID_ASN1_OBJECT;
 	/* parse length byte(s) */
 	len = *p & 0x7f;
 	if (*p++ & 0x80) {

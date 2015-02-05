@@ -2031,14 +2031,16 @@ static int piv_get_serial_nr_from_CHUI(sc_card_t* card, sc_serial_number_t* seri
 				/* test if guid and the fascn starts with ;9999 (in ISO 4bit + partiy code) */
 				if (!(gbits && fascn[0] == 0xD4 && fascn[1] == 0xE7
 						    && fascn[2] == 0x39 && (fascn[3] | 0x7F) == 0xFF)) {
-					serial->len = fascnlen < SC_MAX_SERIALNR ? fascnlen : SC_MAX_SERIALNR;
+					/* fascnlen==25 < SC_MAX_SERIALNR */
+					serial->len = fascnlen;
 					memcpy (serial->value, fascn, serial->len);
 					r = SC_SUCCESS;
 					gbits = 0; /* set to skip using guid below */
 				}
 			}
 			if (guid && gbits) {
-				serial->len = guidlen < SC_MAX_SERIALNR ? guidlen : SC_MAX_SERIALNR;
+				/* with gbits != 0 guidlen==16 < SC_MAX_SERIALNR */
+				serial->len = guidlen;
 				memcpy (serial->value, guid, serial->len);
 				r = SC_SUCCESS;
 			}
