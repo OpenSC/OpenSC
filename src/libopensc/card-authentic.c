@@ -660,7 +660,7 @@ authentic_reduce_path(struct sc_card *card, struct sc_path *path)
 	cur_path = card->cache.current_df->path;
 
 	if (!memcmp(cur_path.value, "\x3F\x00", 2) && memcmp(in_path.value, "\x3F\x00", 2))   {
-		memcpy(in_path.value + 2, in_path.value, in_path.len);
+		memmove(in_path.value + 2, in_path.value, in_path.len);
 		memcpy(in_path.value, "\x3F\x00", 2);
 		in_path.len += 2;
 	}
@@ -672,7 +672,7 @@ authentic_reduce_path(struct sc_card *card, struct sc_path *path)
 			break;
 	}
 
-	memcpy(in_path.value, in_path.value + offs, sizeof(in_path.value) - offs);
+	memmove(in_path.value, in_path.value + offs, sizeof(in_path.value) - offs);
 	in_path.len -= offs;
 	*path = in_path;
 
