@@ -1440,6 +1440,8 @@ static int asn1_decode(sc_context_t *ctx, struct sc_asn1_entry *asn1,
 				left, depth,
 				choice ? ", choice" : "");
 
+	if (!p)
+		return SC_ERROR_ASN1_OBJECT_NOT_FOUND;
 	if (left < 2) {
 		while (asn1->name && (asn1->flags & SC_ASN1_OPTIONAL))
 			asn1++;
@@ -1788,6 +1790,8 @@ _sc_asn1_decode(sc_context_t *ctx, struct sc_asn1_entry *asn1,
 int
 sc_der_copy(sc_pkcs15_der_t *dst, const sc_pkcs15_der_t *src)
 {
+	if (!dst)
+		return SC_ERROR_INVALID_ARGUMENTS;
 	memset(dst, 0, sizeof(*dst));
 	if (src->len) {
 		dst->value = malloc(src->len);
