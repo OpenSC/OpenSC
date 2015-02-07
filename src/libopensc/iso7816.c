@@ -453,6 +453,7 @@ iso7816_select_file(struct sc_card *card, const struct sc_path *in_path, struct 
 	unsigned char buf[SC_MAX_APDU_BUFFER_SIZE];
 	unsigned char pathbuf[SC_MAX_PATH_SIZE], *path = pathbuf;
 	int r, pathlen, pathtype;
+	int select_mf = 0;
 	struct sc_file *file = NULL;
 
 	assert(card != NULL && in_path != NULL);
@@ -500,6 +501,7 @@ iso7816_select_file(struct sc_card *card, const struct sc_path *in_path, struct 
 		apdu.p1 = 8;
 		if (pathlen >= 2 && memcmp(path, "\x3F\x00", 2) == 0) {
 			if (pathlen == 2) {	/* only 3F00 supplied */
+				select_mf = 1;
 				apdu.p1 = 0;
 				break;
 			}
@@ -551,6 +553,19 @@ iso7816_select_file(struct sc_card *card, const struct sc_path *in_path, struct 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	if (r)
 		LOG_FUNC_RETURN(ctx, r);
+
+	if (file_out && (apdu.resplen == 0))   {
+		/* For some cards 'SELECT' MF or DF_NAME do not return FCI. */
+		if (select_mf || pathtype == SC_PATH_TYPE_DF_NAME)   {
+			file = sc_file_new();
+			if (file == NULL)
+				LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+			file->path = *in_path;
+
+			*file_out = file;
+			LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+		}
+	}
 
 	if (apdu.resplen < 2)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
