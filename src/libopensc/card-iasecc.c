@@ -415,7 +415,7 @@ iasecc_init_gemalto(struct sc_card *card)
 
 	sc_format_path("3F00", &path);
 	rv = sc_select_file(card, &path, NULL);
-	LOG_TEST_RET(ctx, rv, "MF selection error");
+	/* Result ignored*/
 
 	rv = iasecc_parse_ef_atr(card);
 	sc_log(ctx, "rv %i", rv);
@@ -2343,10 +2343,7 @@ iasecc_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_
 
 		if (scb & IASECC_SCB_METHOD_SM)   {
 			rv = iasecc_sm_pin_reset(card, se_num, data);
-			LOG_TEST_RET(ctx, rv, "iasecc_sm_pin_reset() reset PUK error");
-
-			if (!need_all)
-				break;
+			LOG_FUNC_RETURN(ctx, rv);
 		}
 
 		if (scb & IASECC_SCB_METHOD_EXT_AUTH)   {

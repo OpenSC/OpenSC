@@ -436,6 +436,8 @@ myeid_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	r = myeid_new_file(profile, card, object->type, key_info->key_reference, &file);
 	LOG_TEST_RET(ctx, r, "Cannot get new MyEID private key file");
 
+	if (file || !file->path.len)
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Cannot determine private key file");
 	sc_log(ctx, "Key file size %d", keybits);
 	file->size = keybits;
 
@@ -445,9 +447,6 @@ myeid_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 		file->ef_structure = SC_CARDCTL_MYEID_KEY_EC;
 
 	memcpy(&key_info->path.value, &file->path.value, file->path.len);
-	if (!file->path.len)
-		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS,
-			   	"Cannot determine private key file");
 	key_info->key_reference = file->path.value[file->path.len - 1] & 0xFF;
 
 	sc_log(ctx, "Path of MyEID private key file to create %s",

@@ -183,7 +183,7 @@ CK_RV card_removed(sc_reader_t * reader)
 CK_RV card_detect(sc_reader_t *reader)
 {
 	struct sc_pkcs11_card *p11card = NULL;
-	int rc, free_p11card = 0;
+	int rc;
 	CK_RV rv;
 	unsigned int i;
 	int j;
@@ -228,7 +228,6 @@ again:
 	/* Detect the card if it's not known already */
 	if (p11card == NULL) {
 		sc_log(context, "%s: First seen the card ", reader->name);
-		free_p11card = 1;
 		p11card = (struct sc_pkcs11_card *)calloc(1, sizeof(struct sc_pkcs11_card));
 		if (!p11card)
 			return CKR_HOST_MEMORY;
@@ -316,9 +315,6 @@ again:
 			}
 		}
 	}
-
-	if (free_p11card)
-		free(p11card);
 
 	sc_log(context, "%s: Detection ended", reader->name);
 	return CKR_OK;

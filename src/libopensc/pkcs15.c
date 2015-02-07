@@ -1311,7 +1311,6 @@ __sc_pkcs15_search_objects(struct sc_pkcs15_card *p15card, unsigned int class_ma
 			continue;
 		/* Enumerate the DF's, so p15card->obj_list is
 		 * populated. */
-		/* FIXME dont ignore errors */
 		if (SC_SUCCESS != sc_pkcs15_parse_df(p15card, df))
 			continue;
 	}
