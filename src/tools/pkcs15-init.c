@@ -901,6 +901,10 @@ do_store_private_key(struct sc_profile *profile)
 	r = sc_pkcs15_convert_prkey(&args.key, pkey);
 	if (r < 0)
 		return r;
+	if (args.key.algorithm == SC_ALGORITHM_EC) {
+		sc_pkcs15_fix_ec_parameters(ctx, &args.key.u.ec.params);
+		args.params.ec = args.key.u.ec.params;
+	}
 	init_gost_params(&args.params.gost, pkey);
 
 	if (ncerts) {
