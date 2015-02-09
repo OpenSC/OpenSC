@@ -1078,8 +1078,8 @@ CK_RV C_DeriveKey(CK_SESSION_HANDLE hSession,	/* the session's handle */
 
 		rv = get_object_from_session(hSession, *phKey, &session, &key_object);
 		if (rv != CKR_OK) {
-		if (rv == CKR_OBJECT_HANDLE_INVALID)
-			rv = CKR_KEY_HANDLE_INVALID;
+			if (rv == CKR_OBJECT_HANDLE_INVALID)
+				rv = CKR_KEY_HANDLE_INVALID;
 			goto out;
 		}
 
