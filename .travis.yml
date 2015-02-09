@@ -57,3 +57,6 @@ script:
       make check;
       make dist;
     fi
+  - if [ $TRAVIS_OS_NAME == osx ]; then
+      ./MacOSX/build;
+    fi
