@@ -1138,7 +1138,7 @@ static void init_token(CK_SLOT_ID slot)
 
 	get_token_info(slot, &info);
 	if (opt_so_pin != NULL) {
-		new_pin = opt_so_pin;
+		new_pin = (char *) opt_so_pin;
 	} else {
 		if (!(info.flags & CKF_PROTECTED_AUTHENTICATION_PATH)) {
 			printf("Please enter the new SO PIN: ");
