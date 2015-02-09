@@ -423,11 +423,9 @@ myeid_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 			break;
 		case SC_PKCS15_TYPE_PRKEY_EC:
 			LOG_TEST_RET(ctx, SC_ERROR_NOT_IMPLEMENTED, "20140202: waiting for cards and specification from Aventra. VTA");
-			break;
 		default:
 			LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS,
 					"Unsupported key type");
-			break;
 	}
 
 	sc_log(ctx, "create MyEID private key ID:%s", sc_pkcs15_print_id(&key_info->id));
@@ -483,10 +481,8 @@ myeid_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 			break;
 		case SC_PKCS15_TYPE_PRKEY_EC:
 			LOG_TEST_RET(ctx, SC_ERROR_NOT_IMPLEMENTED, "20140202: waiting for cards and specification from Aventra. VTA");
-			break;
 		default:
 			LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Store key failed: Unsupported key type");
-			break;
 	}
 
 	sc_log(ctx, "store MyEID key with ID:%s and path:%s",
@@ -565,10 +561,8 @@ myeid_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 			break;
 		case SC_PKCS15_TYPE_PRKEY_EC:
 			LOG_TEST_RET(ctx, SC_ERROR_NOT_IMPLEMENTED, "20140202: waiting for cards and specification from Aventra. VTA");
-			break;
 		default:
 			LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Unsupported key type");
-			break;
 	}
 
 	sc_log(ctx, "Generate key with ID:%s and path:%s",
