@@ -1557,7 +1557,8 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 
 	r = sc_lock(card);
 	if (r != SC_SUCCESS)
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "sc_lock failed\n");
+		goto err; /* cleanup */
 	locked = 1;
 
 	p = sbuf;
@@ -1827,7 +1828,8 @@ static int piv_general_external_authenticate(sc_card_t *card,
 
 	r = sc_lock(card);
 	if (r != SC_SUCCESS)
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "sc_lock failed\n");
+		goto err; /* cleanup */
 	locked = 1;
 
 	p = sbuf;
