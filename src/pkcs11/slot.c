@@ -152,7 +152,7 @@ CK_RV initialize_reader(sc_reader_t *reader)
 CK_RV card_removed(sc_reader_t * reader)
 {
 	unsigned int i;
-	struct sc_pkcs11_card *card = NULL;
+	struct sc_pkcs11_card *p11card = NULL;
 	/* Mark all slots as "token not present" */
 	sc_log(context, "%s: card removed", reader->name);
 
@@ -161,23 +161,23 @@ CK_RV card_removed(sc_reader_t * reader)
 		sc_pkcs11_slot_t *slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, i);
 		if (slot->reader == reader) {
 			/* Save the "card" object */
-			if (slot->card)
-				card = slot->card;
+			if (slot->p11card)
+				p11card = slot->p11card;
 			slot_token_removed(slot->id);
 		}
 	}
 
-	if (card) {
-		card->framework->unbind(card);
-		sc_disconnect_card(card->card);
-		for (i=0; i < card->nmechanisms; ++i) {
-			if (card->mechanisms[i]->free_mech_data) {
-				card->mechanisms[i]->free_mech_data(card->mechanisms[i]->mech_data);
+	if (p11card) {
+		p11card->framework->unbind(p11card);
+		sc_disconnect_card(p11card->card);
+		for (i=0; i < p11card->nmechanisms; ++i) {
+			if (p11card->mechanisms[i]->free_mech_data) {
+				p11card->mechanisms[i]->free_mech_data(p11card->mechanisms[i]->mech_data);
 			}
-			free(card->mechanisms[i]);
+			free(p11card->mechanisms[i]);
 		}
-		free(card->mechanisms);
-		free(card);
+		free(p11card->mechanisms);
+		free(p11card);
 	}
 
 	return CKR_OK;
@@ -224,7 +224,7 @@ again:
 	for (i=0; i<list_size(&virtual_slots); i++) {
 		sc_pkcs11_slot_t *slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, i);
 		if (slot->reader == reader) {
-			p11card = slot->card;
+			p11card = slot->p11card;
 			break;
 		}
 	}
@@ -353,7 +353,7 @@ card_detect_all(void)
 }
 
 /* Allocates an existing slot to a card */
-CK_RV slot_allocate(struct sc_pkcs11_slot ** slot, struct sc_pkcs11_card * card)
+CK_RV slot_allocate(struct sc_pkcs11_slot ** slot, struct sc_pkcs11_card * p11card)
 {
 	unsigned int i;
 	struct sc_pkcs11_slot *tmp_slot = NULL;
@@ -361,13 +361,13 @@ CK_RV slot_allocate(struct sc_pkcs11_slot ** slot, struct sc_pkcs11_card * card)
 	/* Locate a free slot for this reader */
 	for (i=0; i< list_size(&virtual_slots); i++) {
 		tmp_slot = (struct sc_pkcs11_slot *)list_get_at(&virtual_slots, i);
-		if (tmp_slot->reader == card->reader && tmp_slot->card == NULL)
+		if (tmp_slot->reader == p11card->reader && tmp_slot->p11card == NULL)
 			break;
 	}
 	if (!tmp_slot || (i == list_size(&virtual_slots)))
 		return CKR_FUNCTION_FAILED;
-	sc_log(context, "Allocated slot 0x%lx for card in reader %s", tmp_slot->id, card->reader->name);
-	tmp_slot->card = card;
+	sc_log(context, "Allocated slot 0x%lx for card in reader %s", tmp_slot->id, p11card->reader->name);
+	tmp_slot->p11card = p11card;
 	tmp_slot->events = SC_EVENT_CARD_INSERTED;
 	*slot = tmp_slot;
 	return CKR_OK;
@@ -432,16 +432,16 @@ CK_RV slot_token_removed(CK_SLOT_ID id)
 	}
 
 	/* Release framework stuff */
-	if (slot->card != NULL) {
+	if (slot->p11card != NULL) {
 		if (slot->fw_data != NULL &&
-				slot->card->framework != NULL && slot->card->framework->release_token != NULL)
-			slot->card->framework->release_token(slot->card, slot->fw_data);
+				slot->p11card->framework != NULL && slot->p11card->framework->release_token != NULL)
+			slot->p11card->framework->release_token(slot->p11card, slot->fw_data);
 	}
 
 	/* Reset relevant slot properties */
 	slot->slot_info.flags &= ~CKF_TOKEN_PRESENT;
 	slot->login_user = -1;
-	slot->card = NULL;
+	slot->p11card = NULL;
 
 	if (token_was_present)
 		slot->events = SC_EVENT_CARD_REMOVED;

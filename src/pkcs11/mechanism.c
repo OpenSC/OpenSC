@@ -155,7 +155,7 @@ sc_pkcs11_md_init(struct sc_pkcs11_session *session,
 	int rv;
 
 	LOG_FUNC_CALLED(context);
-	if (!session || !session->slot || !(p11card = session->slot->card))
+	if (!session || !session->slot || !(p11card = session->slot->p11card))
 		LOG_FUNC_RETURN(context, CKR_ARGUMENTS_BAD);
 
 	/* See if we support this mechanism type */
@@ -234,7 +234,7 @@ sc_pkcs11_sign_init(struct sc_pkcs11_session *session, CK_MECHANISM_PTR pMechani
 	int rv;
 
 	LOG_FUNC_CALLED(context);
-	if (!session || !session->slot || !(p11card = session->slot->card))
+	if (!session || !session->slot || !(p11card = session->slot->p11card))
 		LOG_FUNC_RETURN(context, CKR_ARGUMENTS_BAD);
 
 	/* See if we support this mechanism type */
@@ -518,7 +518,7 @@ sc_pkcs11_verif_init(struct sc_pkcs11_session *session, CK_MECHANISM_PTR pMechan
 	int rv;
 
 	if (!session || !session->slot
-	 || !(p11card = session->slot->card))
+	 || !(p11card = session->slot->p11card))
 		return CKR_ARGUMENTS_BAD;
 
 	/* See if we support this mechanism type */
@@ -729,7 +729,7 @@ sc_pkcs11_decr_init(struct sc_pkcs11_session *session,
 	CK_RV rv;
 
 	if (!session || !session->slot
-	 || !(p11card = session->slot->card))
+	 || !(p11card = session->slot->p11card))
 		return CKR_ARGUMENTS_BAD;
 
 	/* See if we support this mechanism type */
@@ -799,7 +799,7 @@ sc_pkcs11_deri(struct sc_pkcs11_session *session,
 
 
 	if (!session || !session->slot
-	 || !(p11card = session->slot->card))
+	 || !(p11card = session->slot->p11card))
 		return CKR_ARGUMENTS_BAD;
 
 	/* See if we support this mechanism type */
