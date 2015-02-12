@@ -533,7 +533,7 @@ CK_RV C_GetMechanismList(CK_SLOT_ID slotID,
 
 	rv = slot_get_token(slotID, &slot);
 	if (rv == CKR_OK)
-		rv = sc_pkcs11_get_mechanism_list(slot->card, pMechanismList, pulCount);
+		rv = sc_pkcs11_get_mechanism_list(slot->p11card, pMechanismList, pulCount);
 
 	sc_pkcs11_unlock();
 	return rv;
@@ -555,7 +555,7 @@ CK_RV C_GetMechanismInfo(CK_SLOT_ID slotID,
 
 	rv = slot_get_token(slotID, &slot);
 	if (rv == CKR_OK)
-		rv = sc_pkcs11_get_mechanism_info(slot->card, type, pInfo);
+		rv = sc_pkcs11_get_mechanism_info(slot->p11card, type, pInfo);
 
 	sc_pkcs11_unlock();
 	return rv;
@@ -582,7 +582,7 @@ CK_RV C_InitToken(CK_SLOT_ID slotID,
 		goto out;
 	}
 
-	if (slot->card->framework->init_token == NULL) {
+	if (slot->p11card->framework->init_token == NULL) {
 		sc_log(context, "C_InitToken() not supported by framework");
 		rv = CKR_FUNCTION_NOT_SUPPORTED;
 		goto out;
@@ -597,7 +597,7 @@ CK_RV C_InitToken(CK_SLOT_ID slotID,
 		}
 	}
 
-	rv = slot->card->framework->init_token(slot,slot->fw_data, pPin, ulPinLen, pLabel);
+	rv = slot->p11card->framework->init_token(slot,slot->fw_data, pPin, ulPinLen, pLabel);
 	if (rv == CKR_OK) {
 		/* Now we should re-bind all tokens so they get the
 		 * corresponding function vector and flags */
