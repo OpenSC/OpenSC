@@ -191,10 +191,23 @@ struct sc_pbes2_params {
 	struct sc_algorithm_id key_encr_alg;
 };
 
-struct sc_ec_params {
+/*
+ * The ecParameters can be presented as
+ * - name of curve;
+ * - OID of named curve;
+ * - implicit parameters.
+ *
+ * type - type(choice) of 'EC domain parameters' as it present in CKA_EC_PARAMS (PKCS#11).
+          Recommended value '1' -- namedCurve.
+ * field_length - EC key size in bits.
+ */
+struct sc_ec_parameters {
+	char *named_curve;
+	struct sc_object_id id;
+	struct sc_lv_data der;
+
 	int type;
-	u8 * der;
-	size_t der_len;
+	size_t field_length;
 };
 
 typedef struct sc_algorithm_info {
@@ -208,6 +221,7 @@ typedef struct sc_algorithm_info {
 		} _rsa;
 		struct sc_ec_info {
 			unsigned ext_flags;
+			struct sc_ec_parameters params;
 		} _ec;
 	} u;
 } sc_algorithm_info_t;
@@ -1282,7 +1296,7 @@ void sc_print_cache(struct sc_card *card);
 struct sc_algorithm_info * sc_card_find_rsa_alg(struct sc_card *card,
 		unsigned int key_length);
 struct sc_algorithm_info * sc_card_find_ec_alg(struct sc_card *card,
-		unsigned int field_length);
+		unsigned int field_length, struct sc_object_id *curve_oid);
 struct sc_algorithm_info * sc_card_find_gostr3410_alg(struct sc_card *card,
 		unsigned int key_length);
 

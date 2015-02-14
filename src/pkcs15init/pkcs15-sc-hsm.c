@@ -173,7 +173,7 @@ static int sc_hsm_encode_gakp_rsa(struct sc_pkcs15_card *p15card, sc_cvc_t *cvc,
 
 static int sc_hsm_encode_gakp_ec(struct sc_pkcs15_card *p15card, sc_cvc_t *cvc, struct sc_pkcs15_prkey_info *key_info) {
 	struct sc_object_id ecdsaWithSHA256 = { { 0,4,0,127,0,7,2,2,2,2,3,-1 } };
-	struct sc_pkcs15_ec_parameters *ecparams = (struct sc_pkcs15_ec_parameters *)key_info->params.data;
+	struct sc_ec_parameters *ecparams = (struct sc_ec_parameters *)key_info->params.data;
 	struct ec_curve *curve = NULL;
 	u8 *curveoid;
 	int curveoidlen,r;

@@ -212,7 +212,7 @@ int sc_pkcs15_derive(struct sc_pkcs15_card *p15card,
 
 	switch (obj->type) {
 		case SC_PKCS15_TYPE_PRKEY_EC:
-			alg_info = sc_card_find_ec_alg(p15card->card, prkey->field_length);
+			alg_info = sc_card_find_ec_alg(p15card->card, prkey->field_length, NULL);
 			if (alg_info == NULL) {
 				sc_log(ctx, "Card does not support EC with field_size %d", prkey->field_length);
 				LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
@@ -352,7 +352,7 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 
 		case SC_PKCS15_TYPE_PRKEY_EC:
 			modlen = ((prkey->field_length +7) / 8) * 2;  /* 2*nLen */ 
-			alg_info = sc_card_find_ec_alg(p15card->card, prkey->field_length);
+			alg_info = sc_card_find_ec_alg(p15card->card, prkey->field_length, NULL);
 			if (alg_info == NULL) {
 				sc_log(ctx, "Card does not support EC with field_size %d", prkey->field_length);
 				LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
