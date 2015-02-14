@@ -1804,7 +1804,7 @@ sc_encode_oid (struct sc_context *ctx, struct sc_object_id *id,
 		unsigned char **out, size_t *size)
 {
 	static const struct sc_asn1_entry c_asn1_object_id[2] = {
-        	{ "oid", SC_ASN1_OBJECT, SC_ASN1_TAG_OBJECT, SC_ASN1_ALLOC, NULL, NULL },
+		{ "oid", SC_ASN1_OBJECT, SC_ASN1_TAG_OBJECT, SC_ASN1_ALLOC, NULL, NULL },
 		{ NULL, 0, 0, 0, NULL, NULL }
 	};
 	struct sc_asn1_entry asn1_object_id[2];

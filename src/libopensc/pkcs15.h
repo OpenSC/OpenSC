@@ -200,19 +200,6 @@ struct sc_pkcs15_prkey_dsa {
 	sc_pkcs15_bignum_t priv;
 };
 
-/*
- * The ecParameters can be presented as
- * - named curve;
- * - OID of named curve;
- * - implicit parameters.
- */
-struct sc_pkcs15_ec_parameters {
-	char *named_curve;
-	struct sc_object_id id;
-	struct sc_pkcs15_der der;
-	size_t field_length; /* in bits */
-};
-
 struct sc_pkcs15_gost_parameters {
 	struct sc_object_id key;
 	struct sc_object_id hash;
@@ -220,12 +207,12 @@ struct sc_pkcs15_gost_parameters {
 };
 
 struct sc_pkcs15_pubkey_ec {
-	struct sc_pkcs15_ec_parameters params;
+	struct sc_ec_parameters params;
 	struct sc_pkcs15_u8 ecpointQ; /* This is NOT DER, just value and length */
 };
 
 struct sc_pkcs15_prkey_ec {
-	struct sc_pkcs15_ec_parameters params;
+	struct sc_ec_parameters params;
 	sc_pkcs15_bignum_t	privateD; /* note this is bignum */
 	struct sc_pkcs15_u8		ecpointQ; /* This is NOT DER, just value and length */
 };
@@ -964,7 +951,7 @@ struct sc_supported_algo_info *sc_pkcs15_get_supported_algo(struct sc_pkcs15_car
 int sc_pkcs15_add_supported_algo_ref(struct sc_pkcs15_object *,
 		struct sc_supported_algo_info *);
 
-int sc_pkcs15_fix_ec_parameters(struct sc_context *, struct sc_pkcs15_ec_parameters *);
+int sc_pkcs15_fix_ec_parameters(struct sc_context *, struct sc_ec_parameters *);
 
 /* Convert the OpenSSL key data type into the OpenSC key */
 int sc_pkcs15_convert_bignum(sc_pkcs15_bignum_t *dst, const void *bignum);

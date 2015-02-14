@@ -249,8 +249,8 @@ asn1_free_pbes2_params(void *ptr)
 	free(params);
 }
 
-static const struct sc_asn1_entry c_asn1_ec_params[] = { 
-	{ "ecParameters", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL }, 
+static const struct sc_asn1_entry c_asn1_ec_params[] = {
+	{ "ecParameters", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
 	{ "namedCurve", SC_ASN1_OBJECT, SC_ASN1_TAG_OBJECT, 0, NULL, NULL},
 	{ "implicityCA",  SC_ASN1_NULL, SC_ASN1_TAG_NULL, 0, NULL, NULL },
 	{ NULL, 0, 0, 0, NULL, NULL }
@@ -263,49 +263,43 @@ asn1_decode_ec_params(sc_context_t *ctx, void **paramp,
 	int r;
 	struct sc_object_id curve;
 	struct sc_asn1_entry asn1_ec_params[4];
-	struct sc_ec_params * ecp;
+	struct sc_ec_parameters *ecp;
 
 	sc_debug(ctx, SC_LOG_DEBUG_ASN1, "DEE - asn1_decode_ec_params %p:%d %d", buf, buflen, depth);
 
 	memset(&curve, 0, sizeof(curve));
-	ecp = malloc(sizeof(struct sc_ec_params));
-	if (ecp == NULL)
-		return SC_ERROR_OUT_OF_MEMORY;
-	memset(ecp,0,sizeof(struct sc_ec_params));
 
-
-	/* We only want to copy the parms if they are a namedCurve 
-	 * or ecParameters  nullParam aka implicityCA is not to be 
+	/* We only want to copy the parms if they are a namedCurve
+	 * or ecParameters  nullParam aka implicityCA is not to be
 	 * used with PKCS#11 2.20 */
 	sc_copy_asn1_entry(c_asn1_ec_params, asn1_ec_params);
 	sc_format_asn1_entry(asn1_ec_params + 1, &curve, 0, 0);
 
 	/* Some signature algorithms will not have any data */
-	if (buflen == 0 || buf == NULL) {
-		free(ecp);
+	if (buflen == 0 || buf == NULL)
 		return 0;
-	}
+
+	ecp = calloc(sizeof(struct sc_ec_parameters), 1);
+	if (ecp == NULL)
+		return SC_ERROR_OUT_OF_MEMORY;
 
 	r = sc_asn1_decode_choice(ctx, asn1_ec_params, buf, buflen, NULL, NULL);
-	/* r = index into asn1_ec_params */
-	sc_debug(ctx, SC_LOG_DEBUG_ASN1, "DEE - asn1_decode_ec_params r=%d", r);
-	if (r < 0) {
-		free(ecp);
+	/* r = index in asn1_ec_params */
+	sc_debug(ctx, SC_LOG_DEBUG_ASN1, "asn1_decode_ec_params r=%d", r);
+	if (r < 0)
 		return r;
-	}
+
 	if (r <= 1) {
-		ecp->der = malloc(buflen);
-
-		if (ecp->der == NULL)
+		ecp->der.value = malloc(buflen);
+		if (ecp->der.value == NULL)
 			return SC_ERROR_OUT_OF_MEMORY;
-
-		ecp->der_len = buflen;
-
-		sc_debug(ctx, SC_LOG_DEBUG_ASN1, "DEE - asn1_decode_ec_params paramp=%p %p:%d %d",
-		ecp, ecp->der, ecp->der_len, ecp->type);
-		memcpy(ecp->der, buf, buflen); /* copy der parameters */
-	} else 
+		ecp->der.len = buflen;
+		memcpy(ecp->der.value, buf, buflen);
+	}
+	else    {
 		r = 0;
+	}
+
 	ecp->type = r; /* but 0 = ecparams if any, 1=named curve */
 	*paramp = ecp;
 	return 0;
@@ -313,23 +307,25 @@ asn1_decode_ec_params(sc_context_t *ctx, void **paramp,
 
 static int
 asn1_encode_ec_params(sc_context_t *ctx, void *params,
-u8 **buf, size_t *buflen, int depth) 
+u8 **buf, size_t *buflen, int depth)
 {
-	 struct sc_ec_params * ecp = (struct sc_ec_params *) params;
+	 struct sc_ec_parameters *ecp = (struct sc_ec_parameters *) params;
 
 	/* Only handle named curves. They may be absent too */
-	sc_debug(ctx, SC_LOG_DEBUG_ASN1, "DEE - asn1_encode_ec_params");
+	sc_debug(ctx, SC_LOG_DEBUG_ASN1, "asn1_encode_ec_params() called");
 	*buf = NULL;
 	*buflen = 0;
-	if (ecp && ecp->type == 1 && ecp->der) { /* named curve */
-		*buf = malloc(ecp->der_len);
+	if (ecp && ecp->type == 1 && ecp->der.value) { /* named curve */
+		*buf = malloc(ecp->der.len);
 		if (*buf == NULL)
 			return SC_ERROR_OUT_OF_MEMORY;
 
-		memcpy(*buf, ecp->der, ecp->der_len);
-		*buflen = ecp->der_len;
-	} else
-		sc_debug(ctx, SC_LOG_DEBUG_ASN1, "DEE - Not named curve");
+		memcpy(*buf, ecp->der.value, ecp->der.len);
+		*buflen = ecp->der.len;
+	}
+	else   {
+		sc_debug(ctx, SC_LOG_DEBUG_ASN1, "Not named curve");
+	}
 
 	return 0;
 }
@@ -337,10 +333,13 @@ u8 **buf, size_t *buflen, int depth)
 static void
 asn1_free_ec_params(void *params)
 {
-	struct sc_ec_params * ecp = (struct sc_ec_params *) params;
+	struct sc_ec_parameters *ecp = (struct sc_ec_parameters *) params;
+
 	if (ecp) {
-		if (ecp->der)
-			free(ecp->der);
+		if (ecp->der.value)
+			free(ecp->der.value);
+		if (ecp->named_curve)
+			free(ecp->named_curve);
 		free(ecp);
 	}
 }

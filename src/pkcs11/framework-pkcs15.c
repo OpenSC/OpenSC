@@ -2763,7 +2763,7 @@ pkcs15_gen_keypair(struct sc_pkcs11_slot *slot, CK_MECHANISM_PTR pMechanism,
 		/* TODO: check allowed values of keybits */
 	}
 	else if (keytype == CKK_EC)   {
-		struct sc_pkcs15_der *der = &keygen_args.prkey_args.key.u.ec.params.der;
+		struct sc_lv_data *der = &keygen_args.prkey_args.key.u.ec.params.der;
 
 		der->len = sizeof(struct sc_object_id);
 		rv = attr_find_ptr(pPubTpl, ulPubCnt, CKA_EC_PARAMS, (void **)&der->value, &der->len);
@@ -4379,7 +4379,7 @@ get_public_exponent(struct sc_pkcs15_pubkey *key, CK_ATTRIBUTE_PTR attr)
 static CK_RV
 get_ec_pubkey_params(struct sc_pkcs15_pubkey *key, CK_ATTRIBUTE_PTR attr)
 {
-	struct sc_ec_params * ecp;
+	struct sc_ec_parameters *ecp;
 
 	if (key == NULL)
 		return CKR_ATTRIBUTE_TYPE_INVALID;
@@ -4396,10 +4396,10 @@ get_ec_pubkey_params(struct sc_pkcs15_pubkey *key, CK_ATTRIBUTE_PTR attr)
 			return CKR_OK;
 		}
 
-		ecp = (struct sc_ec_params *) key->alg_id->params;
-		if (ecp && ecp->der && ecp->der_len)   {
-			check_attribute_buffer(attr, ecp->der_len);
-			memcpy(attr->pValue, ecp->der, ecp->der_len);
+		ecp = (struct sc_ec_parameters *) key->alg_id->params;
+		if (ecp && ecp->der.value && ecp->der.len)   {
+			check_attribute_buffer(attr, ecp->der.len);
+			memcpy(attr->pValue, ecp->der.value, ecp->der.len);
 			return CKR_OK;
 		}
 	}

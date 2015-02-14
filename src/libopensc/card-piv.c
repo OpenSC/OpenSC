@@ -2882,8 +2882,8 @@ static int piv_init(sc_card_t *card)
 	flags = SC_ALGORITHM_ECDSA_RAW;
 	ext_flags = SC_ALGORITHM_EXT_EC_NAMEDCURVE | SC_ALGORITHM_EXT_EC_UNCOMPRESES;
 
-	_sc_card_add_ec_alg(card, 256, flags, ext_flags);
-	_sc_card_add_ec_alg(card, 384, flags, ext_flags);
+	_sc_card_add_ec_alg(card, 256, flags, ext_flags, NULL);
+	_sc_card_add_ec_alg(card, 384, flags, ext_flags, NULL);
 
 	card->caps |= SC_CARD_CAP_RNG;
 

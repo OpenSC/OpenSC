@@ -95,15 +95,34 @@ static void sc_card_free(sc_card_t *card)
 {
 	sc_free_apps(card);
 	sc_free_ef_atr(card);
+
 	if (card->ef_dir != NULL)
 		sc_file_free(card->ef_dir);
+
 	free(card->ops);
-	if (card->algorithms != NULL)
+
+	if (card->algorithms != NULL)   {
+		int i;
+		for (i=0; i<card->algorithm_count; i++)   {
+			struct sc_algorithm_info *info = (card->algorithms + i);
+			if (info->algorithm == SC_ALGORITHM_EC)   {
+				struct sc_ec_parameters ep = info->u._ec.params;
+
+				free(ep.named_curve);
+				free(ep.der.value);
+			}
+		}
+		card->algorithms = NULL;
+		card->algorithm_count = 0;
 		free(card->algorithms);
+	}
+
 	if (card->cache.current_ef)
 		sc_file_free(card->cache.current_ef);
+
 	if (card->cache.current_df)
 		sc_file_free(card->cache.current_df);
+
 	if (card->mutex != NULL) {
 		int r = sc_mutex_destroy(card->ctx, card->mutex);
 		if (r != SC_SUCCESS)
@@ -806,21 +825,27 @@ int _sc_card_add_algorithm(sc_card_t *card, const sc_algorithm_info_t *info)
 }
 
 int  _sc_card_add_ec_alg(sc_card_t *card, unsigned int key_length,
-			unsigned long flags, unsigned long ext_flags)
+			unsigned long flags, unsigned long ext_flags,
+			struct sc_object_id *curve_oid)
 {
 	sc_algorithm_info_t info;
 
 	memset(&info, 0, sizeof(info));
+	sc_init_oid(&info.u._ec.params.id);
+
 	info.algorithm = SC_ALGORITHM_EC;
 	info.key_length = key_length;
 	info.flags = flags;
+
 	info.u._ec.ext_flags = ext_flags;
+	if (curve_oid)
+		info.u._ec.params.id = *curve_oid;
 
 	return _sc_card_add_algorithm(card, &info);
 }
 
 static sc_algorithm_info_t * sc_card_find_alg(sc_card_t *card,
-		unsigned int algorithm, unsigned int key_length)
+		unsigned int algorithm, unsigned int key_length, void *param)
 {
 	int i;
 
@@ -831,15 +856,20 @@ static sc_algorithm_info_t * sc_card_find_alg(sc_card_t *card,
 			continue;
 		if (info->key_length != key_length)
 			continue;
+		if (param)   {
+			if (info->algorithm == SC_ALGORITHM_EC)
+				if(sc_compare_oid((struct sc_object_id *)param, &info->u._ec.params.id))
+					continue;
+		}
 		return info;
 	}
 	return NULL;
 }
 
 sc_algorithm_info_t * sc_card_find_ec_alg(sc_card_t *card,
-		unsigned int key_length)
+		unsigned int key_length, struct sc_object_id *curve_name)
 {
-	return sc_card_find_alg(card, SC_ALGORITHM_EC, key_length);
+	return sc_card_find_alg(card, SC_ALGORITHM_EC, key_length, curve_name);
 }
 
 int _sc_card_add_rsa_alg(sc_card_t *card, unsigned int key_length,
@@ -859,13 +889,13 @@ int _sc_card_add_rsa_alg(sc_card_t *card, unsigned int key_length,
 sc_algorithm_info_t * sc_card_find_rsa_alg(sc_card_t *card,
 		unsigned int key_length)
 {
-	return sc_card_find_alg(card, SC_ALGORITHM_RSA, key_length);
+	return sc_card_find_alg(card, SC_ALGORITHM_RSA, key_length, NULL);
 }
 
 sc_algorithm_info_t * sc_card_find_gostr3410_alg(sc_card_t *card,
 		unsigned int key_length)
 {
-	return sc_card_find_alg(card, SC_ALGORITHM_GOSTR3410, key_length);
+	return sc_card_find_alg(card, SC_ALGORITHM_GOSTR3410, key_length, NULL);
 }
 
 static int match_atr_table(sc_context_t *ctx, struct sc_atr_table *table, struct sc_atr *atr)

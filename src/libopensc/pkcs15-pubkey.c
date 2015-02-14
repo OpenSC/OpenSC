@@ -812,20 +812,20 @@ sc_pkcs15_encode_pubkey_as_spki(sc_context_t *ctx, struct sc_pkcs15_pubkey *pubk
 		pkey.len = 0; /* flag as do not delete */
 
 	        if (pubkey->u.ec.params.named_curve || pubkey->u.ec.params.der.value)   {
-			struct sc_ec_params *ec_params = NULL;
+			struct sc_ec_parameters *ec_params = NULL;
 
 			r = sc_pkcs15_fix_ec_parameters(ctx, &pubkey->u.ec.params);
 			LOG_TEST_RET(ctx, r, "failed to fix EC parameters");
 
-			ec_params  = calloc(1, sizeof(struct sc_ec_params));
+			ec_params  = calloc(1, sizeof(struct sc_ec_parameters));
 			if (!ec_params)
 				LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 			ec_params->type = 1;
-			ec_params->der = calloc(pubkey->u.ec.params.der.len, 1);
-			if (!ec_params->der)
+			ec_params->der.value = calloc(pubkey->u.ec.params.der.len, 1);
+			if (!ec_params->der.value)
 				LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
-			memcpy(ec_params->der, pubkey->u.ec.params.der.value, pubkey->u.ec.params.der.len);
-			ec_params->der_len = pubkey->u.ec.params.der.len;
+			memcpy(ec_params->der.value, pubkey->u.ec.params.der.value, pubkey->u.ec.params.der.len);
+			ec_params->der.len = pubkey->u.ec.params.der.len;
 			pubkey->alg_id->params = ec_params;
 		}
 		break;
@@ -1295,14 +1295,14 @@ sc_pkcs15_pubkey_from_spki_fields(struct sc_context *ctx, struct sc_pkcs15_pubke
 	if (pk_alg.algorithm == SC_ALGORITHM_EC)   {
 		/* EC public key is not encapsulated into BIT STRING -- it's a BIT STRING */
 		if (pubkey->alg_id->params) {
-			struct sc_ec_params *ecp = (struct sc_ec_params *)pubkey->alg_id->params;
+			struct sc_ec_parameters *ecp = (struct sc_ec_parameters *)pubkey->alg_id->params;
 
-			pubkey->u.ec.params.der.value = malloc(ecp->der_len);
+			pubkey->u.ec.params.der.value = malloc(ecp->der.len);
 			if (pubkey->u.ec.params.der.value == NULL)
 				LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 
-			memcpy(pubkey->u.ec.params.der.value, ecp->der, ecp->der_len);
-			pubkey->u.ec.params.der.len = ecp->der_len;
+			memcpy(pubkey->u.ec.params.der.value, ecp->der.value, ecp->der.len);
+			pubkey->u.ec.params.der.len = ecp->der.len;
 			r = sc_pkcs15_fix_ec_parameters(ctx, &pubkey->u.ec.params);
 			LOG_TEST_RET(ctx, r, "failed to fix EC parameters");
 		}
@@ -1399,7 +1399,7 @@ static struct ec_curve_info {
 
 
 int
-sc_pkcs15_fix_ec_parameters(struct sc_context *ctx, struct sc_pkcs15_ec_parameters *ecparams)
+sc_pkcs15_fix_ec_parameters(struct sc_context *ctx, struct sc_ec_parameters *ecparams)
 {
 	int rv, ii;
 
