@@ -839,10 +839,7 @@ typedef struct sc_rtecp_genkey_data {
  */
 	enum SC_CARDCTL_MYEID_KEY_TYPE {
 		SC_CARDCTL_MYEID_KEY_RSA = 0x11,
-		SC_CARDCTL_MYEID_KEY_EC  = 0x21,
-	/*	SC_CARDCTL_MYEID_KEY_AES = 0x?, // for future use
-		SC_CARDCTL_MYEID_KEY_DES = 0x?,
-		SC_CARDCTL_MYEID_KEY_3DES = 0x?, */
+		SC_CARDCTL_MYEID_KEY_EC  = 0x22
 	};
 
 	struct sc_cardctl_myeid_data_obj {

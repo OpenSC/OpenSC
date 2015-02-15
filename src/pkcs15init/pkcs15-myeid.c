@@ -48,7 +48,7 @@ myeid_delete_object(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 
 /*
  * Get 'Initialize Applet' data
- * 	using the ACLs defined in card profile.
+ * using the ACLs defined in card profile.
  */
 static int
 myeid_get_init_applet_data(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
@@ -189,7 +189,7 @@ myeid_init_card(sc_profile_t *profile,
  */
 static int
 myeid_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *df) {
-	struct sc_context *ctx;
+	struct sc_context *ctx = NULL;
 	struct sc_file *file = NULL;
 	int r = 0, ii;
 	static const char *create_dfs[] = {
@@ -422,7 +422,10 @@ myeid_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 					"Unsupported RSA key size");
 			break;
 		case SC_PKCS15_TYPE_PRKEY_EC:
-			LOG_TEST_RET(ctx, SC_ERROR_NOT_IMPLEMENTED, "20140202: waiting for cards and specification from Aventra. VTA");
+			/* Here the information about curve is not available, that's why algorithm is checked
+			   without curve OID. */
+			if (sc_card_find_ec_alg(p15card->card, keybits, NULL) == NULL)
+				LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Unsupported EC key size");
 			break;
 		default:
 			LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS,
@@ -436,8 +439,9 @@ myeid_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	r = myeid_new_file(profile, card, object->type, key_info->key_reference, &file);
 	LOG_TEST_RET(ctx, r, "Cannot get new MyEID private key file");
 
-	if (file || !file->path.len)
+	if (!file || !file->path.len)
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Cannot determine private key file");
+
 	sc_log(ctx, "Key file size %d", keybits);
 	file->size = keybits;
 
@@ -482,7 +486,15 @@ myeid_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 				LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Unsupported RSA key size");
 			break;
 		case SC_PKCS15_TYPE_PRKEY_EC:
-			LOG_TEST_RET(ctx, SC_ERROR_NOT_IMPLEMENTED, "20140202: waiting for cards and specification from Aventra. VTA");
+			if (!sc_valid_oid(&prkey->u.ec.params.id))
+                                if (sc_pkcs15_fix_ec_parameters(ctx, &prkey->u.ec.params))
+                                        LOG_FUNC_RETURN(ctx, SC_ERROR_OBJECT_NOT_VALID);
+			if (sc_card_find_ec_alg(p15card->card, keybits, &prkey->u.ec.params.id) == NULL)
+				LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Unsupported algorithm or key size");
+			if(key_info->field_length != 0)
+				keybits = key_info->field_length;
+			else
+				key_info->field_length = keybits;
 			break;
 		default:
 			LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Store key failed: Unsupported key type");
@@ -564,7 +576,15 @@ myeid_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 				LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Unsupported RSA key size");
 			break;
 		case SC_PKCS15_TYPE_PRKEY_EC:
-			LOG_TEST_RET(ctx, SC_ERROR_NOT_IMPLEMENTED, "20140202: waiting for cards and specification from Aventra. VTA");
+			/* EC is supported in MyEID v > 3.5. TODO: set correct return value if older MyEID version. */
+			/* Here the information about curve is not available, that's why supported algorithm is checked
+			   without curve OID. */
+			if (sc_card_find_ec_alg(p15card->card, keybits, NULL) == NULL)
+				LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Unsupported EC key size");
+			if(key_info->field_length != 0)
+				keybits = key_info->field_length;
+			else
+				key_info->field_length = keybits;
 			break;
 		default:
 			LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Unsupported key type");
@@ -626,7 +646,9 @@ myeid_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 			memcpy(pubkey->u.rsa.modulus.data, raw_pubkey, pubkey->u.rsa.modulus.len);
 		}
 		else if (object->type == SC_PKCS15_TYPE_PRKEY_EC) {
+			struct sc_ec_parameters *ecparams = (struct sc_pkcs15_ec_parameters *)key_info->params.data;
 
+			sc_log(ctx, "curve '%s', len %i, oid '%s'", ecparams->named_curve, ecparams->field_length, sc_dump_oid(&(ecparams->id)));
 			pubkey->algorithm = SC_ALGORITHM_EC;
 
 			r = sc_select_file(card, &file->path, NULL);
@@ -640,25 +662,27 @@ myeid_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 			r = sc_card_ctl(card, SC_CARDCTL_MYEID_GETDATA, &data_obj);
 			LOG_TEST_RET(ctx, r, "Cannot get EC public key: 'MYEID_GETDATA' failed");
 
-			/*
-			 * TODO DEE - this looks like a bug...
-			 * pubkey->u.ec.ecpointQ.value is just value. "04||X||Y"
-			 * pubkey->data.value should be DER OCTET STRING
-			 * but
-			 * pubkey->data.value looks like TLV with TAG if 0x86
-			 * and single byte length.
-			 * Could call sc_pkcs15_encode_pubkey
-			 * to set pubkey->data.value
-			 */
-
+			if (pubkey->u.ec.ecpointQ.value)
+				free(pubkey->u.ec.ecpointQ.value);
 			pubkey->u.ec.ecpointQ.value = malloc(data_obj.DataLen - 2);
-			pubkey->u.ec.ecpointQ.len = data_obj.DataLen - 2;
-			//pubkey->data.value = malloc(data_obj.DataLen);
-			//pubkey->data.len = data_obj.DataLen;
-			pubkey->u.ec.params.field_length = keybits;
-			/* Omit the first 2 bytes (0x86??) */
+                        if (pubkey->u.ec.ecpointQ.value == NULL)
+				LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 			memcpy(pubkey->u.ec.ecpointQ.value, data_obj.Data + 2, data_obj.DataLen - 2);
-			//memcpy(pubkey->data.value, data_obj.Data, data_obj.DataLen);
+			pubkey->u.ec.ecpointQ.len = data_obj.DataLen - 2;
+
+			if (pubkey->u.ec.params.named_curve)
+				free(pubkey->u.ec.params.named_curve);
+			pubkey->u.ec.params.named_curve = NULL;
+			if (pubkey->u.ec.params.der.value)
+				free(pubkey->u.ec.params.der.value);
+			pubkey->u.ec.params.der.value = NULL;
+			pubkey->u.ec.params.der.len = 0;
+
+			pubkey->u.ec.params.named_curve = strdup(ecparams->named_curve);
+			if (!pubkey->u.ec.params.named_curve)
+				LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+			r = sc_pkcs15_fix_ec_parameters(ctx, &pubkey->u.ec.params);
+			LOG_TEST_RET(ctx, r, "Cannot fix EC parameters");
 		}
 	}
 
