@@ -51,6 +51,8 @@ sc_asn1_put_tag
 sc_asn1_skip_tag
 sc_asn1_verify_tag
 sc_asn1_write_element
+sc_asn1_sig_value_sequence_to_rs
+sc_asn1_sig_value_rs_to_sequence
 sc_base64_decode
 sc_base64_encode
 sc_bin_to_hex
