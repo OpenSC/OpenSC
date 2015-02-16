@@ -494,8 +494,8 @@ int main(int argc, char * const argv[])
 			action_count++;
 			break;
 		case 'Z':
-			/* fall through */
 			compress_cert = 1;
+			/* fall through */
 		case 'C':
 			do_load_cert = 1;
 			cert_id = optarg;
