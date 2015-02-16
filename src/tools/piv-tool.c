@@ -494,11 +494,8 @@ int main(int argc, char * const argv[])
 			action_count++;
 			break;
 		case 'Z':
-			/*
-			-Z is the same as -C but -Z says the cert is compressed.
-			https://github.com/OpenSC/OpenSC/commit/3a92bf7af5aaa85fdbc0434d0a55393e68e0f98d#commitcomment-9636487
-			*/
 			compress_cert = 1;
+			/* fall through */
 		case 'C':
 			do_load_cert = 1;
 			cert_id = optarg;
