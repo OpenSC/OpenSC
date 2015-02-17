@@ -1162,11 +1162,7 @@ isoApplet_compute_signature(struct sc_card *card,
                             u8 *out, size_t outlen)
 {
 	struct isoApplet_drv_data *drvdata = DRVDATA(card);
-	const u8 * p;
 	int r;
-	size_t len;
-	size_t xlen;
-	size_t ylen;
 
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -1183,48 +1179,18 @@ isoApplet_compute_signature(struct sc_card *card,
 	 * which will be added again later.*/
 	if(drvdata->sec_env_alg_ref == ISOAPPLET_ALG_REF_ECDSA)
 	{
-		len = r;
-		p = out;
-		if(*p++ != (SC_ASN1_TAG_SEQUENCE|SC_ASN1_TAG_CONSTRUCTED))
-		{
-			LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
-		}
-		len = *p++;
-		if(len > outlen - (p - out))
-			LOG_FUNC_RETURN(card->ctx, SC_ERROR_BUFFER_TOO_SMALL);
+		u8* p = NULL;
+		size_t len;
 
-		/* X */
-		if(*p++ != SC_ASN1_TAG_INTEGER)
-			LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
-		xlen = *p++;
-		if(xlen > outlen - (p - out))
-			LOG_FUNC_RETURN(card->ctx, SC_ERROR_BUFFER_TOO_SMALL);
-		/* Java Cards might return a leading zero,
-		 * which needs to be stripped when not using the ASN1 structural information. */
-		if(*p == 0x00 && (xlen == 192/8+1 || xlen == 224/8+1 || xlen == 256/8+1 || xlen == 320/8+1 || xlen == 384/8+1))
-		{
-			p++;
-			xlen--;
+		r = sc_asn1_sig_value_sequence_to_rs(card->ctx, out, r, &p, &len);
+		if(r < 0) {
+			if(p)
+				free(p);
+			LOG_FUNC_RETURN(card->ctx, r);
 		}
-		memmove(out, p, xlen);
-		p += xlen;
-
-		/* Y */
-		if(*p++ != SC_ASN1_TAG_INTEGER)
-			LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
-		ylen = *p++;
-		if(ylen > outlen - (p - out))
-			LOG_FUNC_RETURN(card->ctx, SC_ERROR_BUFFER_TOO_SMALL);
-		/* Java Cards might return a leading zero,
-		 * which needs to be stripped when not using the ASN1 structural information. */
-		if(*p == 0x00 && (ylen == 192/8+1 || ylen == 224/8+1 || ylen == 256/8+1 || ylen == 320/8+1 || ylen == 384/8+1))
-		{
-			p++;
-			ylen--;
-		}
-		memmove(out+xlen, p, ylen);
-
-		r = xlen + ylen;
+		memcpy(out, p, len);
+		r = len;
+		free(p);
 	}
 	LOG_FUNC_RETURN(card->ctx, r);
 }
