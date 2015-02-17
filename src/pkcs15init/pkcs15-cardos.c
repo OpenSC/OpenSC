@@ -403,6 +403,74 @@ out:
 }
 
 /*
+ * Object deletion.
+ */
+static int
+cardos_delete_object(sc_profile_t *profile, struct sc_pkcs15_card *p15card,
+    struct sc_pkcs15_object *obj, const struct sc_path *path)
+{
+	int r, stored_in_ef = 0, algorithm = 0;
+	size_t keybits;
+	sc_file_t *file = NULL;
+	struct sc_pkcs15_prkey_info *key_info;
+	struct sc_pkcs15_prkey_rsa key_obj;
+	struct sc_context *ctx = p15card->card->ctx;
+	uint8_t abignum[256];
+
+	/*
+	 * If we are deleting a private key, overwrite it so it can't be used.
+	 */
+	if ((obj->type & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_PRKEY) {
+		key_info = obj->data;
+		keybits = key_info->modulus_length & ~7UL;
+		init_key_object(&key_obj, abignum, keybits >> 3);
+		r = cardos_key_algorithm(key_info->usage, keybits, &algorithm);
+		if (r < 0) {
+			sc_log(ctx, "cardos_key_algorithm failed");
+			return r;
+		}
+		r = sc_select_file(p15card->card, &key_info->path, &file);
+		if (r) {
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
+			    "Failed to store key: cannot select parent DF");
+			return r;
+		}
+
+		r = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_UPDATE);
+		sc_file_free(file);
+		if (r) {
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
+			    "Failed to store key: UPDATE authentication failed");
+			return r;
+		}
+		r = cardos_put_key(profile, p15card, algorithm, key_info,
+		    &key_obj);
+		if (r < 0) {
+			sc_log(ctx, "cardos_put_key failed");
+			return r;
+		}
+	}
+
+	/* Delete object from the PKCS15 file system. */
+	if (path->len || path->aid.len)   {
+		r = sc_select_file(p15card->card, path, &file);
+		if (r != SC_ERROR_FILE_NOT_FOUND)
+			LOG_TEST_RET(ctx, r, "select object path failed");
+
+		stored_in_ef = (file->type != SC_FILE_TYPE_DF);
+		sc_file_free(file);
+	}
+
+	/* If the object is stored in a normal EF, try to delete the EF. */
+	if (r == SC_SUCCESS && stored_in_ef) {
+		r = sc_pkcs15init_delete_by_path(profile, p15card, path);
+		LOG_TEST_RET(ctx, r, "Failed to delete object by path");
+	}
+
+	return SC_SUCCESS;
+}
+
+/*
  * Store a PIN or PUK
  */
 static int
@@ -851,7 +919,7 @@ static struct sc_pkcs15init_operations sc_pkcs15init_cardos_operations = {
 	cardos_generate_key,
 	NULL, NULL, 			/* encode private/public key */
 	NULL,				/* finalize_card */
-	NULL, 				/* delete_object */
+	cardos_delete_object,
 	NULL, NULL, NULL, NULL, NULL, 	/* pkcs15init emulation */
 	NULL				/* sanity_check */
 };
