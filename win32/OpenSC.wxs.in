@@ -180,6 +180,9 @@
               <Component Id="openpgp.profile" Guid="*" Win64="$(var.Win64YesNo)">
                 <File Source="$(var.SOURCE_DIR)\src\pkcs15init\openpgp.profile"/>
               </Component>
+              <Component Id="isoApplet.profile" Guid="*" Win64="$(var.Win64YesNo)">
+                <File Source="$(var.SOURCE_DIR)\src\pkcs15init\isoApplet.profile"/>
+              </Component>
             </Directory>
           </Directory>
         </Directory>
@@ -245,6 +248,7 @@
         <ComponentRef Id="iasecc.profile"/>
         <ComponentRef Id="schsm.profile"/>
         <ComponentRef Id="openpgp.profile"/>
+        <ComponentRef Id="isoApplet.profile"/>
       </Feature>
       <Feature Id="OpenSC_menu" Level="1" Title="Start menu entries" Description="Start menu entries: link to documentation">
         <ComponentRef Id="ProgramMenuDir"/>
