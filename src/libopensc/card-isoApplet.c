@@ -511,7 +511,7 @@ isoApplet_ctl_generate_key(sc_card_t *card, sc_cardctl_isoApplet_genkey_t *args)
 	int r;
 	sc_apdu_t apdu;
 	u8 rbuf[SC_MAX_EXT_APDU_BUFFER_SIZE];
-	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
+	u8 sbuf[SC_MAX_EXT_APDU_BUFFER_SIZE];
 	u8 *p;
 	const u8 *inner_tag_value;
 	const u8 *outer_tag_value;
