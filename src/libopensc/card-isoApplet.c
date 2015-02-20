@@ -203,11 +203,11 @@ isoApplet_init(sc_card_t *card)
 	flags |= SC_ALGORITHM_ONBOARD_KEY_GEN;
 	ext_flags =  SC_ALGORITHM_EXT_EC_NAMEDCURVE;
 	ext_flags |= SC_ALGORITHM_EXT_EC_F_P;
-	_sc_card_add_ec_alg(card, 192, flags, ext_flags);
-	_sc_card_add_ec_alg(card, 224, flags, ext_flags);
-	_sc_card_add_ec_alg(card, 256, flags, ext_flags);
-	_sc_card_add_ec_alg(card, 320, flags, ext_flags);
-	_sc_card_add_ec_alg(card, 384, flags, ext_flags);
+	_sc_card_add_ec_alg(card, 192, flags, ext_flags, NULL);
+	_sc_card_add_ec_alg(card, 224, flags, ext_flags, NULL);
+	_sc_card_add_ec_alg(card, 256, flags, ext_flags, NULL);
+	_sc_card_add_ec_alg(card, 320, flags, ext_flags, NULL);
+	_sc_card_add_ec_alg(card, 384, flags, ext_flags, NULL);
 
 	/* RSA */
 	flags = 0;
