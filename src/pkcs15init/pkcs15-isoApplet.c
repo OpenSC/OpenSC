@@ -411,10 +411,10 @@ isoApplet_generate_key_ec(const sc_pkcs15_prkey_info_t *key_info, sc_card_t *car
 {
 	int	r;
 	const struct ec_curve *curve = NULL;
-	struct sc_ec_params *alg_id_params = NULL;
+	struct sc_ec_parameters *alg_id_params = NULL;
 	sc_cardctl_isoApplet_genkey_t args;
-	const struct sc_pkcs15_ec_parameters *info_ecp =
-	    (struct sc_pkcs15_ec_parameters *) key_info->params.data;
+	const struct sc_ec_parameters *info_ecp =
+	    (struct sc_ec_parameters *) key_info->params.data;
 
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -481,14 +481,14 @@ isoApplet_generate_key_ec(const sc_pkcs15_prkey_info_t *key_info, sc_card_t *car
 		r = SC_ERROR_OUT_OF_MEMORY;
 		goto out;
 	}
-	alg_id_params->der_len = curve->oid.len;
-	alg_id_params->der = malloc(alg_id_params->der_len);
-	if(!alg_id_params->der)
+	alg_id_params->der.len = curve->oid.len;
+	alg_id_params->der.value = malloc(alg_id_params->der.len);
+	if(!alg_id_params->der.value)
 	{
 		r = SC_ERROR_OUT_OF_MEMORY;
 		goto out;
 	}
-	memcpy(alg_id_params->der, curve->oid.value, curve->oid.len);
+	memcpy(alg_id_params->der.value, curve->oid.value, curve->oid.len);
 	alg_id_params->type = 1; /* named curve */
 
 	pubkey->alg_id = malloc(sizeof(*pubkey->alg_id));
@@ -511,14 +511,14 @@ isoApplet_generate_key_ec(const sc_pkcs15_prkey_info_t *key_info, sc_card_t *car
 	memcpy(pubkey->u.ec.ecpointQ.value, args.pubkey.ec.ecPointQ.value, args.pubkey.ec.ecPointQ.len);
 
 	/* The OID is also written to the pubkey->u.ec.params */
-	pubkey->u.ec.params.der.value = malloc(alg_id_params->der_len);
+	pubkey->u.ec.params.der.value = malloc(alg_id_params->der.len);
 	if(!pubkey->u.ec.params.der.value)
 	{
 		r = SC_ERROR_OUT_OF_MEMORY;
 		goto out;
 	}
-	memcpy(pubkey->u.ec.params.der.value, alg_id_params->der, alg_id_params->der_len);
-	pubkey->u.ec.params.der.len = alg_id_params->der_len;
+	memcpy(pubkey->u.ec.params.der.value, alg_id_params->der.value, alg_id_params->der.len);
+	pubkey->u.ec.params.der.len = alg_id_params->der.len;
 	r = sc_pkcs15_fix_ec_parameters(card->ctx, &pubkey->u.ec.params);
 out:
 	if(args.pubkey.ec.ecPointQ.value)
@@ -549,10 +549,10 @@ out:
 	}
 	if(r < 0 && alg_id_params)
 	{
-		if(alg_id_params->der)
+		if(alg_id_params->der.value)
 		{
-			free(alg_id_params->der);
-			alg_id_params->der = NULL;
+			free(alg_id_params->der.value);
+			alg_id_params->der.value = NULL;
 		}
 		free(alg_id_params);
 		pubkey->alg_id->params = NULL;
