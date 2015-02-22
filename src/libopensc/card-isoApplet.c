@@ -21,12 +21,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "internal.h"
-#include "opensc.h"
-#include "cardctl.h"
-#include "log.h"
 #include "asn1.h"
+#include "cardctl.h"
+#include "internal.h"
+#include "log.h"
+#include "opensc.h"
 #include "pkcs15.h"
+#include "types.h"
 
 #define ISOAPPLET_ALG_REF_ECDSA 0x21
 #define ISOAPPLET_ALG_REF_RSA_PAD_PKCS1 0x11
@@ -182,9 +183,11 @@ isoApplet_match_card(sc_card_t *card)
 static int
 isoApplet_init(sc_card_t *card)
 {
+	int r;
 	unsigned long flags = 0;
 	unsigned long ext_flags = 0;
 	struct isoApplet_drv_data *drvdata;
+	struct sc_object_id curve_oid;
 
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -197,17 +200,43 @@ isoApplet_init(sc_card_t *card)
 	card->drv_data = drvdata;
 	card->cla = 0x00;
 
-	/* ECDSA */
+	/* ECDSA 
+	 * Curves supported by the pkcs15-init driver are indicated per curve. This
+	 * should be kept in sync with the explicit parameters in the pkcs15-init
+	 * driver. */
 	flags = 0;
 	flags |= SC_ALGORITHM_ECDSA_RAW;
 	flags |= SC_ALGORITHM_ONBOARD_KEY_GEN;
 	ext_flags =  SC_ALGORITHM_EXT_EC_NAMEDCURVE;
 	ext_flags |= SC_ALGORITHM_EXT_EC_F_P;
-	_sc_card_add_ec_alg(card, 192, flags, ext_flags, NULL);
-	_sc_card_add_ec_alg(card, 224, flags, ext_flags, NULL);
-	_sc_card_add_ec_alg(card, 256, flags, ext_flags, NULL);
-	_sc_card_add_ec_alg(card, 320, flags, ext_flags, NULL);
-	_sc_card_add_ec_alg(card, 384, flags, ext_flags, NULL);
+	/* secp192r1, prime192r1, ansiX9p192r1*/
+	r =  sc_format_oid(&curve_oid, "1.2.840.10045.3.1.1"); 	
+	LOG_TEST_RET(card->ctx, r, "Error obtaining EC curve OID");
+	_sc_card_add_ec_alg(card, 192, flags, ext_flags, &curve_oid);
+	/* prime256v1, secp256r1, ansiX9p256r1 */
+	r =  sc_format_oid(&curve_oid, "1.2.840.10045.3.1.7"); 	
+	LOG_TEST_RET(card->ctx, r, "Error obtaining EC curve OID");
+	_sc_card_add_ec_alg(card, 256, flags, ext_flags, &curve_oid);
+	/* secp384r1, prime384v1, ansiX9p384r1 */
+	r =  sc_format_oid(&curve_oid, "1.3.132.0.34"); 	
+	LOG_TEST_RET(card->ctx, r, "Error obtaining EC curve OID");
+	_sc_card_add_ec_alg(card, 384, flags, ext_flags, &curve_oid);
+	/* brainpoolP192r1 */
+	r =  sc_format_oid(&curve_oid, "1.3.36.3.3.2.8.1.1.3"); 	
+	LOG_TEST_RET(card->ctx, r, "Error obtaining EC curve OID");
+	_sc_card_add_ec_alg(card, 192, flags, ext_flags, &curve_oid);
+	/* brainpoolP224r1 */
+	r =  sc_format_oid(&curve_oid, "1.3.36.3.3.2.8.1.1.5"); 	
+	LOG_TEST_RET(card->ctx, r, "Error obtaining EC curve OID");
+	_sc_card_add_ec_alg(card, 224, flags, ext_flags, &curve_oid);
+	/* brainpoolP256r1 */
+	r =  sc_format_oid(&curve_oid, "1.3.36.3.3.2.8.1.1.7"); 	
+	LOG_TEST_RET(card->ctx, r, "Error obtaining EC curve OID");
+	_sc_card_add_ec_alg(card, 256, flags, ext_flags, &curve_oid);
+	/* brainpoolP320r1 */
+	r =  sc_format_oid(&curve_oid, "1.3.36.3.3.2.8.1.1.9"); 	
+	LOG_TEST_RET(card->ctx, r, "Error obtaining EC curve OID");
+	_sc_card_add_ec_alg(card, 320, flags, ext_flags, &curve_oid);
 
 	/* RSA */
 	flags = 0;
