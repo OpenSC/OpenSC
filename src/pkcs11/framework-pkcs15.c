@@ -2766,7 +2766,7 @@ pkcs15_gen_keypair(struct sc_pkcs11_slot *slot, CK_MECHANISM_PTR pMechanism,
 		struct sc_lv_data *der = &keygen_args.prkey_args.key.u.ec.params.der;
 
 		der->len = sizeof(struct sc_object_id);
-		rv = attr_find_ptr(pPubTpl, ulPubCnt, CKA_EC_PARAMS, (void **)&der->value, &der->len);
+		rv = attr_find_and_allocate_ptr(pPubTpl, ulPubCnt, CKA_EC_PARAMS, (void **)&der->value, &der->len);
 		if (rv != CKR_OK)   {
 			sc_unlock(p11card->card);
 			return sc_to_cryptoki_error(rc, "C_GenerateKeyPair");
