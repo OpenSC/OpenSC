@@ -112,9 +112,10 @@ static void sc_card_free(sc_card_t *card)
 				free(ep.der.value);
 			}
 		}
+		free(card->algorithms);
+
 		card->algorithms = NULL;
 		card->algorithm_count = 0;
-		free(card->algorithms);
 	}
 
 	if (card->cache.current_ef)
