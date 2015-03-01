@@ -1114,6 +1114,31 @@ void sc_print_cache(struct sc_card *card)   {
 				sc_print_path(&card->cache.current_df->path));
 }
 
+int sc_copy_ec_params(struct sc_ec_parameters *dst, struct sc_ec_parameters *src)
+{
+	if (!dst || !src)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	memset(dst, 0, sizeof(*dst));
+	if (src->named_curve)   {
+		dst->named_curve = strdup(src->named_curve);
+		if (!dst->named_curve)
+			return SC_ERROR_OUT_OF_MEMORY;
+	}
+	dst->id = src->id;
+	if (src->der.value && src->der.len)   {
+		dst->der.value = malloc(src->der.len);
+		if (!dst->der.value)
+			return SC_ERROR_OUT_OF_MEMORY;
+		memcpy(dst->der.value, src->der.value, src->der.len);
+		dst->der.len = src->der.len;
+	}
+	src->type = dst->type;
+	src->field_length = dst->field_length;
+
+	return SC_SUCCESS;
+}
+
 scconf_block *
 sc_match_atr_block(sc_context_t *ctx, struct sc_card_driver *driver, struct sc_atr *atr)
 {

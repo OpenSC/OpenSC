@@ -1315,6 +1315,15 @@ unsigned sc_crc32(unsigned char *value, size_t len);
  */
 void sc_remote_data_init(struct sc_remote_data *rdata);
 
+
+/**
+ * Copy and allocate if needed EC parameters data
+ * @dst destination
+ * @src source
+ */
+int sc_copy_ec_params(struct sc_ec_parameters *, struct sc_ec_parameters *);
+
+
 struct sc_card_error {
 	unsigned int SWs;
 	int errorno;

@@ -1314,10 +1314,14 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 	pubkey_args.usage = keygen_args->prkey_args.usage;
 	pubkey_args.x509_usage = keygen_args->prkey_args.x509_usage;
 
-	if (keygen_args->prkey_args.key.algorithm == SC_ALGORITHM_GOSTR3410)
+	if (keygen_args->prkey_args.key.algorithm == SC_ALGORITHM_GOSTR3410)   {
 		pubkey_args.params.gost = keygen_args->prkey_args.params.gost;
-	else if (keygen_args->prkey_args.key.algorithm == SC_ALGORITHM_EC)
+	}
+	else if (keygen_args->prkey_args.key.algorithm == SC_ALGORITHM_EC)   {
 		pubkey_args.key.u.ec.params = keygen_args->prkey_args.key.u.ec.params;
+		r = sc_copy_ec_params(&pubkey_args.key.u.ec.params, &keygen_args->prkey_args.key.u.ec.params);
+		LOG_TEST_RET(ctx, r, "Cannot allocate EC parameters");
+	}
 
 	/* Generate the private key on card */
 	r = profile->ops->create_key(profile, p15card, object);
