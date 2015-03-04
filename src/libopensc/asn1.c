@@ -1870,7 +1870,7 @@ sc_asn1_sig_value_sequence_to_rs(struct sc_context *ctx, unsigned char *in, size
 	struct sc_asn1_entry asn1_sig_value[C_ASN1_SIG_VALUE_SIZE];
 	struct sc_asn1_entry asn1_sig_value_coefficients[C_ASN1_SIG_VALUE_COEFFICIENTS_SIZE];
 	unsigned char *r, *s;
-	size_t r_len, s_len;
+	size_t r_len, s_len, len;
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
@@ -1884,16 +1884,18 @@ sc_asn1_sig_value_sequence_to_rs(struct sc_context *ctx, unsigned char *in, size
 	rv = sc_asn1_decode(ctx, asn1_sig_value, in, inlen, NULL, NULL);
 	LOG_TEST_RET(ctx, rv, "ASN.1 decoding ECDSA-Sig-Value failed");
 
-	sc_log(ctx, "r(%i): %s", r_len, sc_dump_hex(r, r_len));
-	sc_log(ctx, "s(%i): %s", s_len, sc_dump_hex(s, s_len));
+	len = r_len > s_len ? r_len : s_len;
 
-	*buf = malloc(r_len + s_len);
+	*buf = calloc(2 * len, 1);
 	if (*buf == NULL)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 
-	memcpy(*buf, r, r_len);
-	memcpy(*buf + r_len, s, s_len);
-	*buflen = r_len + s_len;
+	memcpy(*buf + len - r_len, r, r_len);
+	memcpy(*buf + 2*len - s_len, s, s_len);
+	*buflen = 2 * len;
+
+	sc_log(ctx, "r(%i): %s", len, sc_dump_hex(*buf, len));
+	sc_log(ctx, "s(%i): %s", len, sc_dump_hex(*buf + len, len));
 
 	free(r);
 	free(s);
