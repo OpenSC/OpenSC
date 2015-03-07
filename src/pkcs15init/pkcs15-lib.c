@@ -154,6 +154,7 @@ static struct profile_operations {
 	{ "westcos", (void *) sc_pkcs15init_get_westcos_ops },
 	{ "myeid", (void *) sc_pkcs15init_get_myeid_ops },
 	{ "sc-hsm", (void *) sc_pkcs15init_get_sc_hsm_ops },
+	{ "isoApplet", (void *) sc_pkcs15init_get_isoApplet_ops },
 #ifdef ENABLE_OPENSSL
 	{ "authentic", (void *) sc_pkcs15init_get_authentic_ops },
 	{ "iasecc", (void *) sc_pkcs15init_get_iasecc_ops },
