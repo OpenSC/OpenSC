@@ -1577,7 +1577,6 @@ authentic_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data, int *tri
 {
 	struct sc_context *ctx = card->ctx;
 	struct authentic_private_data *prv_data = (struct authentic_private_data *) card->drv_data;
-	struct sc_file *save_current = NULL;
 	struct sc_pin_cmd_data pin_cmd, puk_cmd;
 	struct sc_apdu apdu;
 	unsigned reference;
@@ -1653,10 +1652,6 @@ authentic_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data, int *tri
 		LOG_TEST_RET(ctx, rv, "Failed to set PIN with pin-pad");
 	}
 
-	if (save_current)   {
-		rv = authentic_select_file(card, &save_current->path, NULL);
-		LOG_TEST_RET(ctx, rv, "Cannot return to saved PATH");
-	}
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
