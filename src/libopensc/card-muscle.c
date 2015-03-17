@@ -81,7 +81,7 @@ static int muscle_match_card(sc_card_t *card)
 	 * however it's not always properly nulled out... */
 	card->ops->logout = NULL;
 
-	if (msc_select_applet(card, muscleAppletId, 5) == 1) {
+	if (msc_select_applet(card, muscleAppletId, sizeof muscleAppletId) == 1) {
 		/* Muscle applet is present, check the protocol version to be sure */		
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_2, 0x3C, 0x00, 0x00);
 		apdu.cla = 0xB0;
@@ -472,7 +472,9 @@ static int muscle_init(sc_card_t *card)
 	card->caps |= SC_CARD_CAP_RNG;
 
 	/* Card type detection */
-	_sc_match_atr(card, muscle_atrs, &card->type);
+	if (SC_SUCCESS != _sc_match_atr(card, muscle_atrs, &card->type))
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_CARD);
+
 	if(card->type == SC_CARD_TYPE_MUSCLE_ETOKEN_72K) {
 		card->caps |= SC_CARD_CAP_APDU_EXT;
 	}

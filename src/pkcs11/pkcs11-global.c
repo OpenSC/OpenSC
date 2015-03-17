@@ -688,7 +688,7 @@ out:
 		sc_wait_for_event(context, 0, NULL, NULL, -1, &reader_states);
 	}
 
-	sc_log(context, "C_WaitForSlotEvent() = %s, event in 0x%lx", lookup_enum (RV_T, rv), *pSlot);
+	sc_log(context, "C_WaitForSlotEvent() = %s", lookup_enum (RV_T, rv));
 	sc_pkcs11_unlock();
 	return rv;
 }

@@ -458,8 +458,7 @@ gpk_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_pkcs15_objec
 #endif
 
 done:
-	if (keyfile)
-		sc_file_free(keyfile);
+	sc_file_free(keyfile);
 	return r;
 }
 

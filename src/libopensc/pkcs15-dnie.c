@@ -27,7 +27,11 @@
 #include "libopensc/pkcs15.h"
 
 /* Card driver related */
+#ifdef ENABLE_OPENSSL
 extern int dnie_match_card(struct sc_card *card);
+#else
+#define dnie_match_card(card) 0
+#endif
 
 /* Helper functions to get the pkcs15 stuff bound. */
 
@@ -37,7 +41,9 @@ int dump_ef(sc_card_t * card, const char *path, u8 * buf, size_t * buf_len)
 	int rv;
 	sc_file_t *file = sc_file_new();
 	sc_format_path(path, &file->path);
-	sc_select_file(card, &file->path, &file);
+	rv = sc_select_file(card, &file->path, &file);
+	if (rv < 0)
+		return rv;
 	if (file->size > *buf_len)
 		return SC_ERROR_BUFFER_TOO_SMALL;
 	rv = sc_read_binary(card, 0, buf, file->size, 0);
@@ -96,8 +102,9 @@ int parse_odf(const u8 * buf, size_t buflen, struct sc_pkcs15_card *p15card)
 	};
 	struct sc_asn1_entry asn1_odf[10];
 
-	sc_path_t *path_prefix = calloc(1, sizeof(sc_path_t));
-	sc_format_path("3F005015", path_prefix);
+	sc_path_t path_prefix;
+
+	sc_format_path("3F005015", &path_prefix);
 
 	sc_copy_asn1_entry(c_asn1_odf, asn1_odf);
 	for (i = 0; asn1_odf[i].name != NULL; i++)
@@ -110,7 +117,7 @@ int parse_odf(const u8 * buf, size_t buflen, struct sc_pkcs15_card *p15card)
 		if (r < 0)
 			return r;
 		type = r;
-		r = sc_pkcs15_make_absolute_path(path_prefix, &path);
+		r = sc_pkcs15_make_absolute_path(&path_prefix, &path);
 		if (r < 0)
 			return r;
 		r = sc_pkcs15_add_df(p15card, odf_indexes[type], &path);
@@ -235,7 +242,7 @@ static int sc_pkcs15emu_dnie_init(sc_pkcs15_card_t * p15card)
 /* Public Functions When called as DLL Module*/
 /********************************************/
 
-const char *sc_driver_version()
+const char *sc_driver_version(void)
 {
 	return "0.12.3-svn";	/* defined in config.h of OpenSC */
 }

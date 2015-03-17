@@ -394,7 +394,7 @@ C_FindObjectsInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 					sizeof(CK_OBJECT_HANDLE) * operation->allocated_handles);
 				if (operation->handles == NULL) {
 					rv = CKR_HOST_MEMORY;
-					break;
+					goto out;
 				}
 			}
 			operation->handles[operation->num_handles++] = object->handle;
@@ -511,6 +511,7 @@ C_Digest(CK_SESSION_HANDLE hSession,		/* the session's handle */
 {
 	CK_RV rv;
 	struct sc_pkcs11_session *session;
+	CK_ULONG  ulBuflen = 0;
 
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
@@ -521,7 +522,21 @@ C_Digest(CK_SESSION_HANDLE hSession,		/* the session's handle */
 	if (rv != CKR_OK)
 		goto out;
 
-	rv = sc_pkcs11_md_update(session, pData, ulDataLen);
+	/* if pDigest == NULL, buffer size request */
+	if (pDigest) {
+	    /* As per PKCS#11 2.20 we need to check if buffer too small before update */
+	    rv = sc_pkcs11_md_final(session, NULL, &ulBuflen);
+	    if (rv != CKR_OK)
+		goto out;
+
+	    if (ulBuflen > *pulDigestLen) {
+	        *pulDigestLen = ulBuflen;
+		rv = CKR_BUFFER_TOO_SMALL;
+		goto out;
+	    }
+
+	    rv = sc_pkcs11_md_update(session, pData, ulDataLen);
+	}
 	if (rv == CKR_OK)
 		rv = sc_pkcs11_md_final(session, pDigest, pulDigestLen);
 
@@ -745,57 +760,7 @@ C_SignRecoverInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		CK_MECHANISM_PTR pMechanism,	/* the signature mechanism */
 		CK_OBJECT_HANDLE hKey)		/* handle of the signature key */
 {
-	CK_RV rv;
-	CK_BBOOL can_sign;
-	CK_KEY_TYPE key_type;
-	CK_ATTRIBUTE sign_attribute = { CKA_SIGN, &can_sign, sizeof(can_sign) };
-	CK_ATTRIBUTE key_type_attr = { CKA_KEY_TYPE, &key_type, sizeof(key_type) };
-	struct sc_pkcs11_session *session;
-	struct sc_pkcs11_object *object;
-
-	/* FIXME #47: C_SignRecover is not implemented */
 	return CKR_FUNCTION_NOT_SUPPORTED;
-
-	if (pMechanism == NULL_PTR)
-		return CKR_ARGUMENTS_BAD;
-
-	rv = sc_pkcs11_lock();
-	if (rv != CKR_OK)
-		return rv;
-
-	rv = get_object_from_session(hSession, hKey, &session, &object);
-	if (rv != CKR_OK) {
-		if (rv == CKR_OBJECT_HANDLE_INVALID)
-			rv = CKR_KEY_HANDLE_INVALID;
-		goto out;
-	}
-
-	if (object->ops->sign == NULL_PTR) {
-		rv = CKR_KEY_TYPE_INCONSISTENT;
-		goto out;
-	}
-
-	rv = object->ops->get_attribute(session, object, &sign_attribute);
-	if (rv != CKR_OK || !can_sign) {
-		rv = CKR_KEY_TYPE_INCONSISTENT;
-		goto out;
-	}
-	rv = object->ops->get_attribute(session, object, &key_type_attr);
-	if (rv != CKR_OK) {
-		rv = CKR_KEY_TYPE_INCONSISTENT;
-		goto out;
-	}
-
-	/* XXX: need to tell the signature algorithm that we want
-	 * to recover the signature */
-	sc_log(context, "SignRecover operation initialized\n");
-
-	rv = sc_pkcs11_sign_init(session, pMechanism, object, key_type);
-
-out:
-	sc_log(context, "C_SignRecoverInit() = %sn", lookup_enum ( RV_T, rv ));
-	sc_pkcs11_unlock();
-	return rv;
 }
 
 
@@ -1113,8 +1078,8 @@ CK_RV C_DeriveKey(CK_SESSION_HANDLE hSession,	/* the session's handle */
 
 		rv = get_object_from_session(hSession, *phKey, &session, &key_object);
 		if (rv != CKR_OK) {
-		if (rv == CKR_OBJECT_HANDLE_INVALID)
-			rv = CKR_KEY_HANDLE_INVALID;
+			if (rv == CKR_OBJECT_HANDLE_INVALID)
+				rv = CKR_KEY_HANDLE_INVALID;
 			goto out;
 		}
 

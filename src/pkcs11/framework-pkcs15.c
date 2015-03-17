@@ -867,7 +867,7 @@ check_cert_data_read(struct pkcs15_fw_data *fw_data, struct pkcs15_cert_object *
 	/* now that we have the cert and pub key, lets see if we can bind anything else */
 	pkcs15_bind_related_objects(fw_data);
 
-	return 0;
+	return rv;
 }
 
 
@@ -1217,10 +1217,15 @@ _add_public_objects(struct sc_pkcs11_slot *slot, struct pkcs15_fw_data *fw_data,
 		/* Ignore seen object */
 		if (obj->base.flags & SC_PKCS11_OBJECT_SEEN)
 			continue;
-		/* Ignore 'private' object and the ones with 'auth_id' defined */
+		/* Ignore 'private' object */
 		if (obj->p15_object->flags & SC_PKCS15_CO_FLAG_PRIVATE)
 			continue;
-		if (obj->p15_object->auth_id.len)
+		/* PKCS#15 4.1.3 is a little vague, but implies if not PRIVATE it is readable
+		 * even if there is an auth_id to allow writting for example.
+		 * See bug issue #291
+		 * treat pubkey and cert as readable.a
+		 */ 
+		if (obj->p15_object->auth_id.len && !(is_pubkey(obj) || is_cert(obj)))
 			continue;
 
 		sc_log(context, "Add public object(%p,%s,%x)", obj, obj->p15_object->label, obj->p15_object->type);
@@ -2026,7 +2031,7 @@ pkcs15_create_private_key(struct sc_pkcs11_slot *slot, struct sc_profile *profil
 		}
 		/* CKA_VALUE arrives in little endian form. pkcs15init framework expects it in a big endian one. */
 		rc = sc_mem_reverse(gost->d.data, gost->d.len);
-		if (rv)  {
+		if (rc != SC_SUCCESS)  {
 			rv = sc_to_cryptoki_error(rc, "C_CreateObject");
 			goto out;
 		}
@@ -2082,7 +2087,9 @@ pkcs15_create_secret_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 		return rv;
 
 	/* CKA_TOKEN defaults to false */
-	attr_find(pTemplate, ulCount, CKA_TOKEN, &_token, NULL);
+	rv = attr_find(pTemplate, ulCount, CKA_TOKEN, &_token, NULL);
+	if (rv != CKR_OK)
+		return rv;
 
 	switch (key_type) {
 		/* Only support GENERIC_SECRET for now */
@@ -2269,6 +2276,18 @@ pkcs15_create_public_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 			bn = &rsa->modulus; break;
 		case CKA_PUBLIC_EXPONENT:
 			bn = &rsa->exponent; break;
+		case CKA_VERIFY:
+			args.usage |= pkcs15_check_bool_cka(attr, SC_PKCS15_PRKEY_USAGE_VERIFY);
+			break;
+		case CKA_VERIFY_RECOVER:
+			args.usage |= pkcs15_check_bool_cka(attr, SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER);
+			break;
+		case CKA_ENCRYPT:
+			args.usage |= pkcs15_check_bool_cka(attr, SC_PKCS15_PRKEY_USAGE_ENCRYPT);
+			break;
+		case CKA_WRAP:
+			args.usage |= pkcs15_check_bool_cka(attr, SC_PKCS15_PRKEY_USAGE_WRAP);
+			break;
 		default:
 			/* ignore unknown attrs, or flag error? */
 			continue;
@@ -2744,10 +2763,10 @@ pkcs15_gen_keypair(struct sc_pkcs11_slot *slot, CK_MECHANISM_PTR pMechanism,
 		/* TODO: check allowed values of keybits */
 	}
 	else if (keytype == CKK_EC)   {
-		struct sc_pkcs15_der *der = &keygen_args.prkey_args.params.ec.der;
+		struct sc_lv_data *der = &keygen_args.prkey_args.key.u.ec.params.der;
 
 		der->len = sizeof(struct sc_object_id);
-		rv = attr_find_ptr(pPubTpl, ulPubCnt, CKA_EC_PARAMS, (void **)&der->value, &der->len);
+		rv = attr_find_and_allocate_ptr(pPubTpl, ulPubCnt, CKA_EC_PARAMS, (void **)&der->value, &der->len);
 		if (rv != CKR_OK)   {
 			sc_unlock(p11card->card);
 			return sc_to_cryptoki_error(rc, "C_GenerateKeyPair");
@@ -3363,14 +3382,26 @@ pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
 		*(CK_OBJECT_CLASS*)attr->pValue = CKO_PRIVATE_KEY;
 		break;
 	case CKA_TOKEN:
-	case CKA_LOCAL:
-	case CKA_SENSITIVE:
-	case CKA_ALWAYS_SENSITIVE:
-	case CKA_NEVER_EXTRACTABLE:
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
 		*(CK_BBOOL*)attr->pValue = TRUE;
 		break;
-        case CKA_ALWAYS_AUTHENTICATE:
+	case CKA_ALWAYS_SENSITIVE:
+		check_attribute_buffer(attr, sizeof(CK_BBOOL));
+		*(CK_BBOOL*)attr->pValue = (prkey->prv_info->access_flags & SC_PKCS15_PRKEY_ACCESS_ALWAYSSENSITIVE) != 0;
+		break;
+	case CKA_NEVER_EXTRACTABLE:
+		check_attribute_buffer(attr, sizeof(CK_BBOOL));
+		*(CK_BBOOL*)attr->pValue = (prkey->prv_info->access_flags & SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE) != 0;
+		break;
+	case CKA_SENSITIVE:
+		check_attribute_buffer(attr, sizeof(CK_BBOOL));
+		*(CK_BBOOL*)attr->pValue = (prkey->prv_info->access_flags & SC_PKCS15_PRKEY_ACCESS_SENSITIVE) != 0;
+		break;
+	case CKA_LOCAL:
+		check_attribute_buffer(attr, sizeof(CK_BBOOL));
+		*(CK_BBOOL*)attr->pValue = (prkey->prv_info->access_flags & SC_PKCS15_PRKEY_ACCESS_LOCAL) != 0;
+		break;
+    case CKA_ALWAYS_AUTHENTICATE:
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
 		*(CK_BBOOL*)attr->pValue = prkey->prv_p15obj->user_consent;
 		break;
@@ -3412,14 +3443,10 @@ pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
 		check_attribute_buffer(attr, sizeof(CK_MECHANISM_TYPE));
 		*(CK_MECHANISM_TYPE*)attr->pValue = CK_UNAVAILABLE_INFORMATION;
 		break;
-	case CKA_ENCRYPT:
 	case CKA_DECRYPT:
 	case CKA_SIGN:
 	case CKA_SIGN_RECOVER:
-	case CKA_WRAP:
 	case CKA_UNWRAP:
-	case CKA_VERIFY:
-	case CKA_VERIFY_RECOVER:
 	case CKA_DERIVE:
 	case CKA_OPENSC_NON_REPUDIATION:
 		/* TODO seems to be obsolete */
@@ -3433,10 +3460,12 @@ pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
 		check_attribute_buffer(attr, sizeof(CK_ULONG));
 		switch (prkey->prv_p15obj->type) {
 			case SC_PKCS15_TYPE_PRKEY_EC:
-				if (key && key->u.ec.params.field_length > 0)
-					*(CK_ULONG *) attr->pValue = key->u.ec.params.field_length;
-				else
-					*(CK_ULONG *) attr->pValue = (key->u.ec.ecpointQ.len - 1) / 2 *8;
+				if (key) {
+					if (key->u.ec.params.field_length > 0)
+						*(CK_ULONG *) attr->pValue = key->u.ec.params.field_length;
+					else
+						*(CK_ULONG *) attr->pValue = (key->u.ec.ecpointQ.len - 1) / 2 *8;
+				}
 				return CKR_OK;
 			default:
 				*(CK_ULONG *) attr->pValue = prkey->prv_info->modulus_length;
@@ -3832,8 +3861,8 @@ pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session, void *object, CK_
 		case CKA_EC_PARAMS:
 		case CKA_EC_POINT:
 			if (pubkey->pub_data == NULL)
-				/* FIXME: check the return value? */
-				check_cert_data_read(fw_data, cert);
+				if (SC_SUCCESS != check_cert_data_read(fw_data, cert))
+					return sc_to_cryptoki_error(SC_ERROR_INTERNAL, "check_cert_data_read");
 			break;
 	}
 
@@ -3843,12 +3872,16 @@ pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session, void *object, CK_
 		*(CK_OBJECT_CLASS*)attr->pValue = CKO_PUBLIC_KEY;
 		break;
 	case CKA_TOKEN:
-	case CKA_LOCAL:
 	case CKA_SENSITIVE:
-	case CKA_ALWAYS_SENSITIVE:
-	case CKA_NEVER_EXTRACTABLE:
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
 		*(CK_BBOOL*)attr->pValue = TRUE;
+		break;
+	case CKA_LOCAL:
+		check_attribute_buffer(attr, sizeof(CK_BBOOL));
+		if (pubkey->pub_info)
+		    *(CK_BBOOL*)attr->pValue = (pubkey->pub_info->access_flags & SC_PKCS15_PRKEY_ACCESS_LOCAL) != 0;
+		else /* no pub_info structure, falling back to TRUE */
+		    *(CK_BBOOL*)attr->pValue = TRUE;
 		break;
 	case CKA_PRIVATE:
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
@@ -3908,11 +3941,7 @@ pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session, void *object, CK_
 		*(CK_MECHANISM_TYPE*)attr->pValue = CK_UNAVAILABLE_INFORMATION;
 		break;
 	case CKA_ENCRYPT:
-	case CKA_DECRYPT:
-	case CKA_SIGN:
-	case CKA_SIGN_RECOVER:
 	case CKA_WRAP:
-	case CKA_UNWRAP:
 	case CKA_VERIFY:
 	case CKA_VERIFY_RECOVER:
 	case CKA_DERIVE:
@@ -4350,7 +4379,7 @@ get_public_exponent(struct sc_pkcs15_pubkey *key, CK_ATTRIBUTE_PTR attr)
 static CK_RV
 get_ec_pubkey_params(struct sc_pkcs15_pubkey *key, CK_ATTRIBUTE_PTR attr)
 {
-	struct sc_ec_params * ecp;
+	struct sc_ec_parameters *ecp;
 
 	if (key == NULL)
 		return CKR_ATTRIBUTE_TYPE_INVALID;
@@ -4367,10 +4396,10 @@ get_ec_pubkey_params(struct sc_pkcs15_pubkey *key, CK_ATTRIBUTE_PTR attr)
 			return CKR_OK;
 		}
 
-		ecp = (struct sc_ec_params *) key->alg_id->params;
-		if (ecp && ecp->der && ecp->der_len)   {
-			check_attribute_buffer(attr, ecp->der_len);
-			memcpy(attr->pValue, ecp->der, ecp->der_len);
+		ecp = (struct sc_ec_parameters *) key->alg_id->params;
+		if (ecp && ecp->der.value && ecp->der.len)   {
+			check_attribute_buffer(attr, ecp->der.len);
+			memcpy(attr->pValue, ecp->der.value, ecp->der.len);
 			return CKR_OK;
 		}
 	}
@@ -4528,7 +4557,7 @@ static int register_ec_mechanisms(struct sc_pkcs11_card *p11card, int flags,
 	if (ext_flags & SC_ALGORITHM_EXT_EC_NAMEDCURVE)
 		ec_flags |= CKF_EC_NAMEDCURVE;
 	if (ext_flags & SC_ALGORITHM_EXT_EC_UNCOMPRESES)
-		ec_flags |= CKF_EC_UNCOMPRESES;
+		ec_flags |= CKF_EC_UNCOMPRESS;
 	if (ext_flags & SC_ALGORITHM_EXT_EC_COMPRESS)
 		ec_flags |= CKF_EC_COMPRESS;
 
@@ -4560,13 +4589,15 @@ static int register_ec_mechanisms(struct sc_pkcs11_card *p11card, int flags,
 	mech_info.flags |= CKF_DERIVE;
 
 	mt = sc_pkcs11_new_fw_mechanism(CKM_ECDH1_COFACTOR_DERIVE, &mech_info, CKK_EC, NULL);
-
+	if (!mt)
+		return CKR_HOST_MEMORY;
 	rc = sc_pkcs11_register_mechanism(p11card, mt);
 	if (rc != CKR_OK)
 	    return rc;
 
 	mt = sc_pkcs11_new_fw_mechanism(CKM_ECDH1_DERIVE, &mech_info, CKK_EC, NULL);
-
+	if (!mt)
+		return CKR_HOST_MEMORY;
 	rc = sc_pkcs11_register_mechanism(p11card, mt);
 	if (rc != CKR_OK)
 	    return rc;
@@ -4652,8 +4683,11 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 		alg_info++;
 	}
 
-	if (flags & SC_ALGORITHM_ECDSA_RAW)
+	if (flags & SC_ALGORITHM_ECDSA_RAW) {
 		rc = register_ec_mechanisms(p11card, flags, ec_ext_flags, ec_min_key_size, ec_max_key_size);
+		if (rc != CKR_OK)
+			return rc;
+	}
 
 	if (flags & (SC_ALGORITHM_GOSTR3410_RAW
 				| SC_ALGORITHM_GOSTR3410_HASH_NONE
@@ -4672,46 +4706,59 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 		if (rc != CKR_OK)
 			return rc;
 
-		/* If the card supports RAW, it should by all means
-		 * have registered everything else, too. If it didn't
-		 * we help it a little
-		 * FIXME?  This may force us to support these in software
-		 */
-		flags |= SC_ALGORITHM_RSA_PAD_PKCS1;
-#ifdef ENABLE_OPENSSL
-		/* all our software hashes are in OpenSSL */
-		flags |= SC_ALGORITHM_RSA_HASHES;
-#endif
 	}
 
-	/* Check for PKCS1 */
+	/* We support PKCS1 padding in software */
+	/* either the card supports it or OpenSC does */
+	flags |= SC_ALGORITHM_RSA_PAD_PKCS1;
+
+#ifdef ENABLE_OPENSSL
+		/* all our software hashes are in OpenSSL */
+		/* Only if card did not lists the hashs, will we 
+		 * help it a little, by adding all the OpenSSL hashes
+		 * that have PKCS#11 mechanisms.
+		 */ 
+		if (!(flags & SC_ALGORITHM_RSA_HASHES)) {
+			flags |= SC_ALGORITHM_RSA_HASHES;
+#if OPENSSL_VERSION_NUMBER <  0x00908000L
+		/* turn off hashes not in openssl 0.9.8 */
+			flags &= ~(SC_ALGORITHM_RSA_HASH_SHA256 | SC_ALGORITHM_RSA_HASH_SHA384 | SC_ALGORITHM_RSA_HASH_SHA512 | SC_ALGORITHM_RSA_HASH_SHA224);
+#endif
+		}
+#endif
+
+	/* No need to Check for PKCS1  We support it in software and turned it on above so always added it */
 	if (flags & SC_ALGORITHM_RSA_PAD_PKCS1) {
 		mt = sc_pkcs11_new_fw_mechanism(CKM_RSA_PKCS, &mech_info, CKK_RSA, NULL);
 		rc = sc_pkcs11_register_mechanism(p11card, mt);
 		if (rc != CKR_OK)
 			return rc;
 
-		/* if the driver doesn't say what hashes it supports,
-		 * claim we will do all of them */
-		/* FIXME?  This may force us to support these in software */
-		/* FIXME?  and we only do hashes if OpenSSL is enabled */
-		if (!(flags & (SC_ALGORITHM_RSA_HASHES|SC_ALGORITHM_RSA_HASH_NONE)))
-			flags |= SC_ALGORITHM_RSA_HASHES;
-
 #ifdef ENABLE_OPENSSL
 		/* sc_pkcs11_register_sign_and_hash_mechanism expects software hash */
+		/* All hashes are in OpenSSL
+		 * Either the card set the hashes or we helped it above */
+
 		if (flags & SC_ALGORITHM_RSA_HASH_SHA1) {
 			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card, CKM_SHA1_RSA_PKCS, CKM_SHA_1, mt);
 			if (rc != CKR_OK)
 				return rc;
 		}
-#if OPENSSL_VERSION_NUMBER >= 0x00908000L
 		if (flags & SC_ALGORITHM_RSA_HASH_SHA256) {
 			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card, CKM_SHA256_RSA_PKCS, CKM_SHA256, mt);
 			if (rc != CKR_OK)
 				return rc;
 		}
-#endif
+		if (flags & SC_ALGORITHM_RSA_HASH_SHA384) {
+			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card, CKM_SHA384_RSA_PKCS, CKM_SHA384, mt);
+			if (rc != CKR_OK)
+				return rc;
+		}
+		if (flags & SC_ALGORITHM_RSA_HASH_SHA512) {
+			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card, CKM_SHA512_RSA_PKCS, CKM_SHA512, mt);
+			if (rc != CKR_OK)
+				return rc;
+		}
 		if (flags & SC_ALGORITHM_RSA_HASH_MD5) {
 			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card, CKM_MD5_RSA_PKCS, CKM_MD5, mt);
 			if (rc != CKR_OK)
@@ -4722,7 +4769,10 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 			if (rc != CKR_OK)
 				return rc;
 		}
-#endif
+#endif /* ENABLE_OPENSSL */
+	}
+
+	/* TODO support other padding mechanisms */
 
 		if (flags & SC_ALGORITHM_ONBOARD_KEY_GEN) {
 			mech_info.flags = CKF_GENERATE_KEY_PAIR;
@@ -4733,7 +4783,6 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 			if (rc != CKR_OK)
 				return rc;
 		}
-	}
 
 	return CKR_OK;
 }

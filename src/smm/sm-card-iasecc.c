@@ -152,13 +152,11 @@ sm_iasecc_get_apdu_create_file(struct sc_context *ctx, struct sm_info *sm_info, 
 	int rv = 0;
 
 	LOG_FUNC_CALLED(ctx);
+
+	if (!cmd_data || !cmd_data->data || !rdata || !rdata->alloc)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+
 	sc_log(ctx, "SM get 'CREATE FILE' APDU: FCP(%i) %s", cmd_data->size, sc_dump_hex(cmd_data->data,cmd_data->size));
-
-	if (!cmd_data || !cmd_data->data)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
-
-        if (!rdata || !rdata->alloc)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
  	rv = rdata->alloc(rdata, &rapdu);
 	LOG_TEST_RET(ctx, rv, "SM get 'UPDATE BINARY' APDUs: cannot allocate remote APDU");
@@ -229,13 +227,10 @@ sm_iasecc_get_apdu_verify_pin(struct sc_context *ctx, struct sm_info *sm_info, s
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
+	if (!pin_data || !rdata || !rdata->alloc)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+
 	sc_log(ctx, "SM get 'VERIFY PIN' APDU: ", pin_data->pin_reference);
-
-	if (!pin_data)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
-
-        if (!rdata || !rdata->alloc)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
  	rv = rdata->alloc(rdata, &rapdu);
 	LOG_TEST_RET(ctx, rv, "SM get 'VERIFY PIN' APDUs: cannot allocate remote APDU");
@@ -272,13 +267,11 @@ sm_iasecc_get_apdu_reset_pin(struct sc_context *ctx, struct sm_info *sm_info, st
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
+
+	if (!pin_data || !rdata || !rdata->alloc)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+
 	sc_log(ctx, "SM get 'RESET PIN' APDU; reference %i", pin_data->pin_reference);
-
-	if (!pin_data)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
-
-        if (!rdata || !rdata->alloc)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
  	rv = rdata->alloc(rdata, &rapdu);
 	LOG_TEST_RET(ctx, rv, "SM get 'RESET PIN' APDUs: cannot allocate remote APDU");

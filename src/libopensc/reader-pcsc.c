@@ -768,7 +768,7 @@ static unsigned long part10_detect_pace_capabilities(sc_reader_t *reader)
         PACE_FUNCTION_GetReaderPACECapabilities, /* idxFunction */
         0, 0,                                    /* lengthInputData */
     };
-    u8 rbuf[6];
+    u8 rbuf[7];
     u8 *p = rbuf;
     size_t rcount = sizeof rbuf;
     struct pcsc_private_data *priv;
@@ -781,9 +781,13 @@ static unsigned long part10_detect_pace_capabilities(sc_reader_t *reader)
         goto err;
 
     if (priv->pace_ioctl) {
-        pcsc_internal_transmit(reader, pace_capabilities_buf,
-                sizeof pace_capabilities_buf, rbuf, &rcount,
-                priv->pace_ioctl);
+		if (0 > pcsc_internal_transmit(reader, pace_capabilities_buf,
+					sizeof pace_capabilities_buf, rbuf, &rcount,
+					priv->pace_ioctl)) {
+			sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL,
+				   	"PC/SC v2 part 10 amd1: Get PACE properties failed!");
+			goto err;
+		}
 
         if (rcount != 7)
             goto err;
@@ -1797,7 +1801,7 @@ static int transform_pace_output(u8 *rbuf, size_t rbuflen,
     if (parsed+2 > rbuflen)
         return SC_ERROR_UNKNOWN_DATA_RECEIVED;
     pace_output->mse_set_at_sw1 = rbuf[parsed+0];
-    pace_output->mse_set_at_sw1 = rbuf[parsed+1];
+    pace_output->mse_set_at_sw2 = rbuf[parsed+1];
     parsed += 2;
 
     /* length_CardAccess */

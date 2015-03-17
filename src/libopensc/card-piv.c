@@ -784,8 +784,6 @@ static int piv_find_aid(sc_card_t * card, sc_file_t *aid_file)
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_NO_CARD_SUPPORT);
 
 		card->ops->process_fci(card, aid_file, apdu.resp+2, apdu.resp[1]);
-		if (aid_file->name == NULL)
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NO_CARD_SUPPORT);
 
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, i);
 	}
@@ -1036,6 +1034,7 @@ static int piv_cache_internal_data(sc_card_t *card, int enumtag)
 
 		tag = sc_asn1_find_tag(card->ctx, body, bodylen, 0x71, &taglen);
 		/* 800-72-1 not clear if this is 80 or 01 Sent comment to NIST for 800-72-2 */
+		/* 800-73-3 says it is 01, keep dual test so old cards still work */
 		if (tag && (((*tag) & 0x80) || ((*tag) & 0x01))) {
 			compressed = 1;
 		}
@@ -1241,7 +1240,8 @@ static int piv_write_certificate(sc_card_t *card,
 	memcpy(p, buf, count);
 	p += count;
 	put_tag_and_len(0x71, 1, &p);
-	*p++ = (flags)? 0x80:0x00; /* certinfo, i.e. gziped? */
+	/* Use 01 as per NIST 800-73-3 */
+	*p++ = (flags)? 0x01:0x00; /* certinfo, i.e. gziped? */
 	put_tag_and_len(0xFE,0,&p); /* LRC tag */
 
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"DEE buf %p len %d %d", sbuf, p -sbuf, sbuflen);
@@ -1556,8 +1556,10 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 	}
 
 	r = sc_lock(card);
-	if (r != SC_SUCCESS)
-		goto err;
+	if (r != SC_SUCCESS) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "sc_lock failed\n");
+		goto err; /* cleanup */
+	}
 	locked = 1;
 
 	p = sbuf;
@@ -1826,8 +1828,10 @@ static int piv_general_external_authenticate(sc_card_t *card,
 	}
 
 	r = sc_lock(card);
-	if (r != SC_SUCCESS)
-		goto err;
+	if (r != SC_SUCCESS) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "sc_lock failed\n");
+		goto err; /* cleanup */
+	}
 	locked = 1;
 
 	p = sbuf;
@@ -2141,7 +2145,9 @@ static int piv_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"challenge len=%d",len);
 
-	sc_lock(card);
+	r = sc_lock(card);
+	if (r != SC_SUCCESS)
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 
 	p = sbuf;
 	*p++ = 0x7c;
@@ -2177,9 +2183,9 @@ static int piv_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 		rbuf = NULL;
 	}
 
-	sc_unlock(card);
+	r = sc_unlock(card);
 
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, 0);
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 
 }
 
@@ -2876,8 +2882,8 @@ static int piv_init(sc_card_t *card)
 	flags = SC_ALGORITHM_ECDSA_RAW;
 	ext_flags = SC_ALGORITHM_EXT_EC_NAMEDCURVE | SC_ALGORITHM_EXT_EC_UNCOMPRESES;
 
-	_sc_card_add_ec_alg(card, 256, flags, ext_flags);
-	_sc_card_add_ec_alg(card, 384, flags, ext_flags);
+	_sc_card_add_ec_alg(card, 256, flags, ext_flags, NULL);
+	_sc_card_add_ec_alg(card, 384, flags, ext_flags, NULL);
 
 	card->caps |= SC_CARD_CAP_RNG;
 

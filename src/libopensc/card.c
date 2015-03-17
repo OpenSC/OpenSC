@@ -29,6 +29,7 @@
 
 #include "internal.h"
 #include "asn1.h"
+#include "common/compat_strlcpy.h"
 
 /*
 #define INVALIDATE_CARD_CACHE_IN_UNLOCK
@@ -94,15 +95,35 @@ static void sc_card_free(sc_card_t *card)
 {
 	sc_free_apps(card);
 	sc_free_ef_atr(card);
+
 	if (card->ef_dir != NULL)
 		sc_file_free(card->ef_dir);
+
 	free(card->ops);
-	if (card->algorithms != NULL)
+
+	if (card->algorithms != NULL)   {
+		int i;
+		for (i=0; i<card->algorithm_count; i++)   {
+			struct sc_algorithm_info *info = (card->algorithms + i);
+			if (info->algorithm == SC_ALGORITHM_EC)   {
+				struct sc_ec_parameters ep = info->u._ec.params;
+
+				free(ep.named_curve);
+				free(ep.der.value);
+			}
+		}
 		free(card->algorithms);
+
+		card->algorithms = NULL;
+		card->algorithm_count = 0;
+	}
+
 	if (card->cache.current_ef)
 		sc_file_free(card->cache.current_ef);
+
 	if (card->cache.current_df)
 		sc_file_free(card->cache.current_df);
+
 	if (card->mutex != NULL) {
 		int r = sc_mutex_destroy(card->ctx, card->mutex);
 		if (r != SC_SUCCESS)
@@ -222,18 +243,17 @@ int sc_connect_card(sc_reader_t *reader, sc_card_t **card_out)
 	}
 	if (card->name == NULL)
 		card->name = card->driver->name;
-	*card_out = card;
 
-        /*  Override card limitations with reader limitations.
-         *  Note that zero means no limitations at all.
+	/*  Override card limitations with reader limitations.
+	 *  Note that zero means no limitations at all.
 	 */
-        if ((card->max_recv_size == 0) ||
-           ((reader->driver->max_recv_size != 0) && (reader->driver->max_recv_size < card->max_recv_size)))
-                card->max_recv_size = reader->driver->max_recv_size;
+	if ((card->max_recv_size == 0) ||
+			((reader->driver->max_recv_size != 0) && (reader->driver->max_recv_size < card->max_recv_size)))
+		card->max_recv_size = reader->driver->max_recv_size;
 
-        if ((card->max_send_size == 0) ||
-           ((reader->driver->max_send_size != 0) && (reader->driver->max_send_size < card->max_send_size)))
-                card->max_send_size = reader->driver->max_send_size;
+	if ((card->max_send_size == 0) ||
+			((reader->driver->max_send_size != 0) && (reader->driver->max_send_size < card->max_send_size)))
+		card->max_send_size = reader->driver->max_send_size;
 
 	sc_log(ctx, "card info name:'%s', type:%i, flags:0x%X, max_send/recv_size:%i/%i",
 		card->name, card->type, card->flags, card->max_send_size, card->max_recv_size);
@@ -246,6 +266,7 @@ int sc_connect_card(sc_reader_t *reader, sc_card_t **card_out)
 		goto err;
 	}
 #endif
+	*card_out = card;
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 err:
@@ -334,6 +355,10 @@ int sc_lock(sc_card_t *card)
 				/* invalidate cache */
 				memset(&card->cache, 0, sizeof(card->cache));
 				card->cache.valid = 0;
+#ifdef ENABLE_SM
+				if (card->sm_ctx.ops.open)
+					card->sm_ctx.ops.open(card);
+#endif
 				r = card->reader->ops->lock(card->reader);
 			}
 		}
@@ -403,10 +428,11 @@ int sc_create_file(sc_card_t *card, sc_file_t *file)
 {
 	int r;
 	char pbuf[SC_MAX_PATH_STRING_SIZE];
-	const sc_path_t *in_path = &file->path;
+	const sc_path_t *in_path;
 
-	assert(card != NULL);
+	assert(card != NULL && file != NULL);
 
+	in_path = &file->path;
 	r = sc_path_print(pbuf, sizeof(pbuf), in_path);
 	if (r != SC_SUCCESS)
 		pbuf[0] = '\0';
@@ -800,21 +826,27 @@ int _sc_card_add_algorithm(sc_card_t *card, const sc_algorithm_info_t *info)
 }
 
 int  _sc_card_add_ec_alg(sc_card_t *card, unsigned int key_length,
-			unsigned long flags, unsigned long ext_flags)
+			unsigned long flags, unsigned long ext_flags,
+			struct sc_object_id *curve_oid)
 {
 	sc_algorithm_info_t info;
 
 	memset(&info, 0, sizeof(info));
+	sc_init_oid(&info.u._ec.params.id);
+
 	info.algorithm = SC_ALGORITHM_EC;
 	info.key_length = key_length;
 	info.flags = flags;
+
 	info.u._ec.ext_flags = ext_flags;
+	if (curve_oid)
+		info.u._ec.params.id = *curve_oid;
 
 	return _sc_card_add_algorithm(card, &info);
 }
 
 static sc_algorithm_info_t * sc_card_find_alg(sc_card_t *card,
-		unsigned int algorithm, unsigned int key_length)
+		unsigned int algorithm, unsigned int key_length, void *param)
 {
 	int i;
 
@@ -825,15 +857,20 @@ static sc_algorithm_info_t * sc_card_find_alg(sc_card_t *card,
 			continue;
 		if (info->key_length != key_length)
 			continue;
+		if (param)   {
+			if (info->algorithm == SC_ALGORITHM_EC)
+				if(sc_compare_oid((struct sc_object_id *)param, &info->u._ec.params.id))
+					continue;
+		}
 		return info;
 	}
 	return NULL;
 }
 
 sc_algorithm_info_t * sc_card_find_ec_alg(sc_card_t *card,
-		unsigned int key_length)
+		unsigned int key_length, struct sc_object_id *curve_name)
 {
-	return sc_card_find_alg(card, SC_ALGORITHM_EC, key_length);
+	return sc_card_find_alg(card, SC_ALGORITHM_EC, key_length, curve_name);
 }
 
 int _sc_card_add_rsa_alg(sc_card_t *card, unsigned int key_length,
@@ -853,25 +890,27 @@ int _sc_card_add_rsa_alg(sc_card_t *card, unsigned int key_length,
 sc_algorithm_info_t * sc_card_find_rsa_alg(sc_card_t *card,
 		unsigned int key_length)
 {
-	return sc_card_find_alg(card, SC_ALGORITHM_RSA, key_length);
+	return sc_card_find_alg(card, SC_ALGORITHM_RSA, key_length, NULL);
 }
 
 sc_algorithm_info_t * sc_card_find_gostr3410_alg(sc_card_t *card,
 		unsigned int key_length)
 {
-	return sc_card_find_alg(card, SC_ALGORITHM_GOSTR3410, key_length);
+	return sc_card_find_alg(card, SC_ALGORITHM_GOSTR3410, key_length, NULL);
 }
 
 static int match_atr_table(sc_context_t *ctx, struct sc_atr_table *table, struct sc_atr *atr)
 {
-	u8 *card_atr_bin = atr->value;
-	size_t card_atr_bin_len = atr->len;
+	u8 *card_atr_bin;
+	size_t card_atr_bin_len;
 	char card_atr_hex[3 * SC_MAX_ATR_SIZE];
 	size_t card_atr_hex_len;
 	unsigned int i = 0;
 
 	if (ctx == NULL || table == NULL || atr == NULL)
 		return -1;
+	card_atr_bin = atr->value;
+	card_atr_bin_len = atr->len;
 	sc_bin_to_hex(card_atr_bin, card_atr_bin_len, card_atr_hex, sizeof(card_atr_hex), ':');
 	card_atr_hex_len = strlen(card_atr_hex);
 
@@ -1075,6 +1114,31 @@ void sc_print_cache(struct sc_card *card)   {
 				sc_print_path(&card->cache.current_df->path));
 }
 
+int sc_copy_ec_params(struct sc_ec_parameters *dst, struct sc_ec_parameters *src)
+{
+	if (!dst || !src)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	memset(dst, 0, sizeof(*dst));
+	if (src->named_curve)   {
+		dst->named_curve = strdup(src->named_curve);
+		if (!dst->named_curve)
+			return SC_ERROR_OUT_OF_MEMORY;
+	}
+	dst->id = src->id;
+	if (src->der.value && src->der.len)   {
+		dst->der.value = malloc(src->der.len);
+		if (!dst->der.value)
+			return SC_ERROR_OUT_OF_MEMORY;
+		memcpy(dst->der.value, src->der.value, src->der.len);
+		dst->der.len = src->der.len;
+	}
+	src->type = dst->type;
+	src->field_length = dst->field_length;
+
+	return SC_SUCCESS;
+}
+
 scconf_block *
 sc_match_atr_block(sc_context_t *ctx, struct sc_card_driver *driver, struct sc_atr *atr)
 {
@@ -1255,8 +1319,8 @@ sc_card_sm_check(struct sc_card *card)
 	rv = sc_card_sm_load(card, module_path, module_name);
 	LOG_TEST_RET(ctx, rv, "Failed to load SM module");
 
-	strncpy(card->sm_ctx.module.filename, module_name, sizeof(card->sm_ctx.module.filename));
-	strncpy(card->sm_ctx.config_section, sm, sizeof(card->sm_ctx.config_section));
+	strlcpy(card->sm_ctx.module.filename, module_name, sizeof(card->sm_ctx.module.filename));
+	strlcpy(card->sm_ctx.config_section, sm, sizeof(card->sm_ctx.config_section));
 
 	/* allocate resources for the external SM module */
 	sc_log(ctx, "'module_init' handler %p", card->sm_ctx.module.ops.module_init);

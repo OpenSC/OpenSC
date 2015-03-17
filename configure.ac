@@ -218,6 +218,13 @@ AC_ARG_WITH(
 	,
 	[with_pcsc_provider="detect"]
 )
+
+AC_ARG_WITH(
+	[pkcs11-provider],
+	[AS_HELP_STRING([--with-pkcs11-provider=PATH],[Path to the default PKCS11 provider @<:@default=OpenSC@:>@])],
+	,
+	[with_pkcs11_provider="detect"]
+)
 dnl ./configure check
 reader_count=""
 for rdriver in "${enable_pcsc}" "${enable_openct}" "${enable_ctapi}"; do
@@ -358,23 +365,6 @@ if test "${enable_minidriver}" = "yes"; then
 	AC_DEFINE([ENABLE_MINIDRIVER], [1], [Enable minidriver support])
 fi
 
-if test "${enable_sm}" = "yes"; then
-	AC_DEFINE([ENABLE_SM], [1], [Enable secure messaging support])
-
-	case "${host}" in
-		*-mingw*|*-winnt*|*-cygwin*)
-			DEFAULT_SM_MODULE="smm-local.dll"
-		;;
-		*-apple-*)
-			DEFAULT_SM_MODULE="libsmm-local.3.dylib"
-		;;
-		*)
-			DEFAULT_SM_MODULE="libsmm-local.so.3"
-		;;
-	esac
-	AC_DEFINE_UNQUOTED([DEFAULT_SM_MODULE], ["${DEFAULT_SM_MODULE}"], [Default SM module])
-fi
-
 if test "${enable_dnie_ui}" = "yes"; then
 	AC_DEFINE([ENABLE_DNIE_UI], [1], [Enable the use of external user interface program to request DNIe user pin])
 
@@ -488,12 +478,14 @@ PKG_CHECK_MODULES(
 case "${enable_openssl}" in
 	no)
 		have_openssl="no"
+		enable_sm="no"
 	;;
 	detect)
 		if test "${have_openssl}" = "yes"; then
 			enable_openssl="yes"
 		else
 			enable_openssl="no"
+			enable_sm="no"
 		fi
 	;;
 esac
@@ -504,6 +496,23 @@ if test "${enable_openssl}" = "yes"; then
 	else
 		AC_MSG_ERROR([OpenSSL linkage required, but no OpenSSL was found])
 	fi
+fi
+
+if test "${enable_sm}" = "yes"; then
+	AC_DEFINE([ENABLE_SM], [1], [Enable secure messaging support])
+
+	case "${host}" in
+		*-mingw*|*-winnt*|*-cygwin*)
+			DEFAULT_SM_MODULE="smm-local.dll"
+		;;
+		*-apple-*)
+			DEFAULT_SM_MODULE="libsmm-local.3.dylib"
+		;;
+		*)
+			DEFAULT_SM_MODULE="libsmm-local.so.3"
+		;;
+	esac
+	AC_DEFINE_UNQUOTED([DEFAULT_SM_MODULE], ["${DEFAULT_SM_MODULE}"], [Default SM module])
 fi
 
 if test "${enable_openct}" = "yes"; then
@@ -528,7 +537,11 @@ if test "${enable_pcsc}" = "yes"; then
 		if test -z "${PCSC_CFLAGS}"; then
 			case "${host}" in
 				*-*-darwin*)
-					PCSC_CFLAGS="-I/System/Library/Frameworks/PCSC.framework/Headers"
+					# Locate the latest SDK.
+					SDKS_PATH="$(xcode-select -p)/Platforms/MacOSX.platform/Developer/SDKs"
+					SDK_PATH="${SDK_PATH:-$SDKS_PATH/$(ls -1 ${SDKS_PATH} | sort -n -t. -k2 -r | head -1)}"
+					# and set the PC/SC include path
+					PCSC_CFLAGS="-I$SDK_PATH/System/Library/Frameworks/PCSC.framework/Versions/Current/Headers"
 				;;
 				*)
 					PCSC_CFLAGS="-I/usr/include/PCSC"
@@ -561,6 +574,24 @@ if test "${enable_pcsc}" = "yes"; then
 	AC_DEFINE_UNQUOTED([DEFAULT_PCSC_PROVIDER], ["${DEFAULT_PCSC_PROVIDER}"], [Default PC/SC provider])
 	AC_DEFINE([ENABLE_PCSC], [1], [Define if PC/SC is to be enabled])
 fi
+
+
+if test "${with_pkcs11_provider}" = "detect"; then
+	case "${host}" in
+		*-*-darwin*)
+			DEFAULT_PKCS11_PROVIDER="opensc-pkcs11.dylib"
+		;;
+		*-mingw*|*-winnt*|*-cygwin*)
+			DEFAULT_PKCS11_PROVIDER="opensc-pkcs11.dll"
+		;;
+		*)
+			DEFAULT_PKCS11_PROVIDER="opensc-pkcs11.so"
+		;;
+	esac
+else
+	DEFAULT_PKCS11_PROVIDER="${with_pkcs11_provider}"
+fi
+AC_DEFINE_UNQUOTED([DEFAULT_PKCS11_PROVIDER], ["${DEFAULT_PKCS11_PROVIDER}"], [Default PKCS11 provider])
 
 if test "${enable_man}" = "detect"; then
 	if test "${WIN32}" = "yes"; then
@@ -637,6 +668,7 @@ AC_SUBST([OPENSC_LT_AGE])
 AC_SUBST([OPENSC_LT_OLDEST])
 AC_SUBST([WIN_LIBPREFIX])
 AC_SUBST([DEFAULT_PCSC_PROVIDER])
+AC_SUBST([DEFAULT_PKCS11_PROVIDER])
 AC_SUBST([OPTIONAL_ZLIB_CFLAGS])
 AC_SUBST([OPTIONAL_ZLIB_LIBS])
 AC_SUBST([OPTIONAL_READLINE_CFLAGS])
@@ -746,6 +778,7 @@ DNIe UI support:         ${enable_dnie_ui}
 Debug file:              ${DEBUG_FILE}
 
 PC/SC default provider:  ${DEFAULT_PCSC_PROVIDER}
+PKCS11 default provider: ${DEFAULT_PKCS11_PROVIDER}
 
 Host:                    ${host}
 Compiler:                ${CC}

@@ -29,6 +29,43 @@
 #include "asn1.h"
 #include "iso7816.h"
 
+
+static void fixup_transceive_length(const struct sc_card *card,
+	   	struct sc_apdu *apdu)
+{
+	size_t max_send_size;
+	size_t max_recv_size;
+
+	assert(card != NULL && apdu != NULL);
+
+	max_send_size = card->max_send_size;
+	max_recv_size = card->max_recv_size;
+
+	if (card->caps & SC_CARD_CAP_APDU_EXT) {
+		if (!max_send_size)
+			max_send_size = 65535;
+		if (!max_recv_size)
+			max_recv_size = 65536;
+	} else {
+		if (!max_send_size)
+			max_send_size = 255;
+		if (!max_recv_size)
+			max_recv_size = 256;
+	}
+
+	if (apdu->lc > max_send_size) {
+		/* The lower layers will automatically do chaining */
+		apdu->flags |= SC_APDU_FLAGS_CHAINING;
+	}
+
+	if (apdu->le > max_recv_size) {
+		/* The lower layers will automatically do a GET RESPONSE, if possible.
+		 * All other workarounds must be carried out by the upper layers. */
+		apdu->le = max_recv_size;
+	}
+}
+
+
 static const struct sc_card_error iso7816_errors[] = {
 	{ 0x6200, SC_ERROR_CARD_CMD_FAILED,	"Warning: no information given, non-volatile memory is unchanged" },
 	{ 0x6281, SC_ERROR_CORRUPTED_DATA,	"Part of returned data may be corrupted" },
@@ -114,7 +151,6 @@ iso7816_read_binary(struct sc_card *card, unsigned int idx, u8 *buf, size_t coun
 {
 	struct sc_context *ctx = card->ctx;
 	struct sc_apdu apdu;
-	u8 recvbuf[SC_MAX_APDU_BUFFER_SIZE];
 	int r;
 
 	if (idx > 0x7fff) {
@@ -122,17 +158,16 @@ iso7816_read_binary(struct sc_card *card, unsigned int idx, u8 *buf, size_t coun
 		return SC_ERROR_OFFSET_TOO_LARGE;
 	}
 
-	assert(count <= (card->max_recv_size > 0 ? card->max_recv_size : 256));
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xB0, (idx >> 8) & 0x7F, idx & 0xFF);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_2, 0xB0, (idx >> 8) & 0x7F, idx & 0xFF);
 	apdu.le = count;
 	apdu.resplen = count;
-	apdu.resp = recvbuf;
+	apdu.resp = buf;
 
+	fixup_transceive_length(card, &apdu);
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(ctx, r, "APDU transmit failed");
 	if (apdu.resplen == 0)
 		LOG_FUNC_RETURN(ctx, sc_check_sw(card, apdu.sw1, apdu.sw2));
-	memcpy(buf, recvbuf, apdu.resplen);
 
 	r =  sc_check_sw(card, apdu.sw1, apdu.sw2);
 	if (r == SC_ERROR_FILE_END_REACHED)
@@ -157,23 +192,22 @@ iso7816_read_record(struct sc_card *card,
 		unsigned int rec_nr, u8 *buf, size_t count, unsigned long flags)
 {
 	struct sc_apdu apdu;
-	u8 recvbuf[SC_MAX_APDU_BUFFER_SIZE];
 	int r;
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xB2, rec_nr, 0);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_2, 0xB2, rec_nr, 0);
 	apdu.p2 = (flags & SC_RECORD_EF_ID_MASK) << 3;
 	if (flags & SC_RECORD_BY_REC_NR)
 		apdu.p2 |= 0x04;
 
 	apdu.le = count;
 	apdu.resplen = count;
-	apdu.resp = recvbuf;
+	apdu.resp = buf;
 
+	fixup_transceive_length(card, &apdu);
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.resplen == 0)
 		LOG_FUNC_RETURN(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2));
-	memcpy(buf, recvbuf, apdu.resplen);
 
 	LOG_FUNC_RETURN(card->ctx, apdu.resplen);
 }
@@ -186,12 +220,7 @@ iso7816_write_record(struct sc_card *card, unsigned int rec_nr,
 	struct sc_apdu apdu;
 	int r;
 
-	if (count > 256) {
-		sc_log(card->ctx, "Trying to send too many bytes");
-		return SC_ERROR_INVALID_ARGUMENTS;
-	}
-
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xD2, rec_nr, 0);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3, 0xD2, rec_nr, 0);
 	apdu.p2 = (flags & SC_RECORD_EF_ID_MASK) << 3;
 	if (flags & SC_RECORD_BY_REC_NR)
 		apdu.p2 |= 0x04;
@@ -200,6 +229,7 @@ iso7816_write_record(struct sc_card *card, unsigned int rec_nr,
 	apdu.datalen = count;
 	apdu.data = buf;
 
+	fixup_transceive_length(card, &apdu);
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
@@ -216,18 +246,14 @@ iso7816_append_record(struct sc_card *card,
 	struct sc_apdu apdu;
 	int r;
 
-	if (count > 256) {
-		sc_log(card->ctx, "Trying to send too many bytes");
-		return SC_ERROR_INVALID_ARGUMENTS;
-	}
-
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xE2, 0, 0);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3, 0xE2, 0, 0);
 	apdu.p2 = (flags & SC_RECORD_EF_ID_MASK) << 3;
 
 	apdu.lc = count;
 	apdu.datalen = count;
 	apdu.data = buf;
 
+	fixup_transceive_length(card, &apdu);
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
@@ -244,11 +270,7 @@ iso7816_update_record(struct sc_card *card, unsigned int rec_nr,
 	struct sc_apdu apdu;
 	int r;
 
-	if (count > 256) {
-		sc_log(card->ctx, "Trying to send too many bytes");
-		return SC_ERROR_INVALID_ARGUMENTS;
-	}
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xDC, rec_nr, 0);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3, 0xDC, rec_nr, 0);
 	apdu.p2 = (flags & SC_RECORD_EF_ID_MASK) << 3;
 	if (flags & SC_RECORD_BY_REC_NR)
 		apdu.p2 |= 0x04;
@@ -257,6 +279,7 @@ iso7816_update_record(struct sc_card *card, unsigned int rec_nr,
 	apdu.datalen = count;
 	apdu.data = buf;
 
+	fixup_transceive_length(card, &apdu);
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
@@ -273,19 +296,18 @@ iso7816_write_binary(struct sc_card *card,
 	struct sc_apdu apdu;
 	int r;
 
-	assert(count <= (card->max_send_size > 0 ? card->max_send_size : 255));
-
 	if (idx > 0x7fff) {
 		sc_log(card->ctx, "invalid EF offset: 0x%X > 0x7FFF", idx);
 		return SC_ERROR_OFFSET_TOO_LARGE;
 	}
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xD0,
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3, 0xD0,
 		       (idx >> 8) & 0x7F, idx & 0xFF);
 	apdu.lc = count;
 	apdu.datalen = count;
 	apdu.data = buf;
 
+	fixup_transceive_length(card, &apdu);
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
@@ -302,18 +324,17 @@ iso7816_update_binary(struct sc_card *card,
 	struct sc_apdu apdu;
 	int r;
 
-	assert(count <= (card->max_send_size > 0 ? card->max_send_size : 255));
-
 	if (idx > 0x7fff) {
 		sc_log(card->ctx, "invalid EF offset: 0x%X > 0x7FFF", idx);
 		return SC_ERROR_OFFSET_TOO_LARGE;
 	}
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xD6, (idx >> 8) & 0x7F, idx & 0xFF);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3, 0xD6, (idx >> 8) & 0x7F, idx & 0xFF);
 	apdu.lc = count;
 	apdu.datalen = count;
 	apdu.data = buf;
 
+	fixup_transceive_length(card, &apdu);
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
@@ -431,17 +452,43 @@ iso7816_select_file(struct sc_card *card, const struct sc_path *in_path, struct 
 	struct sc_apdu apdu;
 	unsigned char buf[SC_MAX_APDU_BUFFER_SIZE];
 	unsigned char pathbuf[SC_MAX_PATH_SIZE], *path = pathbuf;
-	int r, pathlen;
+	int r, pathlen, pathtype;
+	int select_mf = 0;
 	struct sc_file *file = NULL;
 
 	assert(card != NULL && in_path != NULL);
 	ctx = card->ctx;
 	memcpy(path, in_path->value, in_path->len);
 	pathlen = in_path->len;
+	pathtype = in_path->type;
+
+	if (in_path->aid.len) {
+		if (!pathlen) {
+			memcpy(path, in_path->aid.value, in_path->aid.len);
+			pathlen = in_path->aid.len;
+			pathtype = SC_PATH_TYPE_DF_NAME;
+		} else {
+			/* First, select the application */
+			sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, 4, 0);
+			apdu.data = in_path->aid.value;
+			apdu.datalen = in_path->aid.len;
+			apdu.lc = in_path->aid.len;
+
+			r = sc_transmit_apdu(card, &apdu);
+			LOG_TEST_RET(ctx, r, "APDU transmit failed");
+			r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+			if (r)
+				LOG_FUNC_RETURN(ctx, r);
+
+			if (pathtype == SC_PATH_TYPE_PATH
+					|| pathtype == SC_PATH_TYPE_DF_NAME)
+				pathtype = SC_PATH_TYPE_FROM_CURRENT;
+		}
+	}
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xA4, 0, 0);
 
-	switch (in_path->type) {
+	switch (pathtype) {
 	case SC_PATH_TYPE_FILE_ID:
 		apdu.p1 = 0;
 		if (pathlen != 2)
@@ -454,6 +501,7 @@ iso7816_select_file(struct sc_card *card, const struct sc_path *in_path, struct 
 		apdu.p1 = 8;
 		if (pathlen >= 2 && memcmp(path, "\x3F\x00", 2) == 0) {
 			if (pathlen == 2) {	/* only 3F00 supplied */
+				select_mf = 1;
 				apdu.p1 = 0;
 				break;
 			}
@@ -480,7 +528,7 @@ iso7816_select_file(struct sc_card *card, const struct sc_path *in_path, struct 
 		apdu.p2 = 0;		/* first record, return FCI */
 		apdu.resp = buf;
 		apdu.resplen = sizeof(buf);
-		apdu.le = card->max_recv_size > 0 ? card->max_recv_size : 256;
+		apdu.le = card->max_recv_size > 0 && card->max_recv_size < 256 ? card->max_recv_size : 256;
 	}
 	else {
 		apdu.p2 = 0x0C;		/* first record, return nothing */
@@ -505,6 +553,19 @@ iso7816_select_file(struct sc_card *card, const struct sc_path *in_path, struct 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	if (r)
 		LOG_FUNC_RETURN(ctx, r);
+
+	if (file_out && (apdu.resplen == 0))   {
+		/* For some cards 'SELECT' MF or DF_NAME do not return FCI. */
+		if (select_mf || pathtype == SC_PATH_TYPE_DF_NAME)   {
+			file = sc_file_new();
+			if (file == NULL)
+				LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+			file->path = *in_path;
+
+			*file_out = file;
+			LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+		}
+	}
 
 	if (apdu.resplen < 2)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
@@ -611,7 +672,7 @@ iso7816_construct_fci(struct sc_card *card, const sc_file_t *file,
 				p, *outlen - (p - out), &p);
 	}
 	if (file->sec_attr_len) {
-		assert(sizeof(buf) >= file->prop_attr_len);
+		assert(sizeof(buf) >= file->sec_attr_len);
 		memcpy(buf, file->sec_attr, file->sec_attr_len);
 		sc_asn1_put_tag(0x86, buf, file->sec_attr_len,
 				p, *outlen - (p - out), &p);
@@ -665,7 +726,7 @@ iso7816_get_response(struct sc_card *card, size_t *count, u8 *buf)
 	else
 		rlen = *count;
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xC0, 0x00, 0x00);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_2, 0xC0, 0x00, 0x00);
 	apdu.le      = rlen;
 	apdu.resplen = rlen;
 	apdu.resp    = buf;
@@ -833,32 +894,26 @@ iso7816_compute_signature(struct sc_card *card,
 {
 	int r;
 	struct sc_apdu apdu;
-	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
-	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 
 	assert(card != NULL && data != NULL && out != NULL);
-	if (datalen > 255)
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	/* INS: 0x2A  PERFORM SECURITY OPERATION
 	 * P1:  0x9E  Resp: Digital Signature
 	 * P2:  0x9A  Cmd: Input for Digital Signature */
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x9E, 0x9A);
-	apdu.resp = rbuf;
-	apdu.resplen = sizeof(rbuf); /* FIXME */
-	apdu.le = 256;
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_4, 0x2A, 0x9E, 0x9A);
+	apdu.resp = out;
+	apdu.resplen = outlen;
+	apdu.le = outlen;
 
-	memcpy(sbuf, data, datalen);
-	apdu.data = sbuf;
+	apdu.data = data;
 	apdu.lc = datalen;
 	apdu.datalen = datalen;
+
+	fixup_transceive_length(card, &apdu);
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
-		size_t len = apdu.resplen > outlen ? outlen : apdu.resplen;
-
-		memcpy(out, apdu.resp, len);
-		LOG_FUNC_RETURN(card->ctx, len);
+		LOG_FUNC_RETURN(card->ctx, apdu.resplen);
 	}
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
@@ -890,19 +945,15 @@ iso7816_decipher(struct sc_card *card,
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4, 0x2A, 0x80, 0x86);
 	apdu.resp    = out;
 	apdu.resplen = outlen;
-	/* if less than 256 bytes are expected than set Le to 0x00
-	 * to tell the card the we want everything available (note: we
-	 * always have Le <= crgram_len) */
-	apdu.le      = (outlen >= 256 && crgram_len < 256) ? 256 : outlen;
-	/* Use APDU chaining with 2048bit RSA keys if the card does not do extended APDU-s */
-	if ((crgram_len+1 > 255) && !(card->caps & SC_CARD_CAP_APDU_EXT))
-		apdu.flags |= SC_APDU_FLAGS_CHAINING;
+	apdu.le      = outlen;
 
 	sbuf[0] = 0; /* padding indicator byte, 0x00 = No further indication */
 	memcpy(sbuf + 1, crgram, crgram_len);
 	apdu.data = sbuf;
 	apdu.lc = crgram_len + 1;
 	apdu.datalen = crgram_len + 1;
+
+	fixup_transceive_length(card, &apdu);
 	r = sc_transmit_apdu(card, &apdu);
 	sc_mem_clear(sbuf, crgram_len + 1);
 	free(sbuf);

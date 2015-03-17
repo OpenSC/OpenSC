@@ -235,3 +235,17 @@ sc_dump_hex(const u8 * in, size_t count)
 
 	return dump_buf;
 }
+
+char *
+sc_dump_oid(const struct sc_object_id *oid)
+{
+	static char dump_buf[SC_MAX_OBJECT_ID_OCTETS * 20];
+        size_t ii;
+
+	memset(dump_buf, 0, sizeof(dump_buf));
+	if (oid)
+		for (ii=0; ii<SC_MAX_OBJECT_ID_OCTETS && oid->value[ii] != -1; ii++)
+			snprintf(dump_buf + strlen(dump_buf), sizeof(dump_buf) - strlen(dump_buf), "%s%i", (ii ? "." : ""), oid->value[ii]);
+
+	return dump_buf;
+}

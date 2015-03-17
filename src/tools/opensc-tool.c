@@ -149,7 +149,7 @@ static int opensc_get_conf_entry(const char *config)
 	}
 
 	section = buffer;
-	name = section == NULL ? NULL : strchr(section+1, ':');
+	name = strchr(section+1, ':');
 	key = name == NULL ? NULL : strchr(name+1, ':');
 	if (key == NULL) {
 		r = EINVAL;
@@ -203,7 +203,7 @@ static int opensc_set_conf_entry(const char *config)
 	}
 
 	section = buffer;
-	name = section == NULL ? NULL : strchr(section+1, ':');
+	name = strchr(section+1, ':');
 	key = name == NULL ? NULL : strchr(name+1, ':');
 	value = key == NULL ? NULL : strchr(key+1, ':');
 	if (value == NULL) {

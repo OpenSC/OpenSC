@@ -283,12 +283,6 @@ muscle_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	pubkey->u.rsa.exponent.len  = extArgs.expLength;
 	pubkey->u.rsa.exponent.data = extArgs.expValue;
 
-	if (r < 0) {
-		if (pubkey->u.rsa.modulus.data)
-			free (pubkey->u.rsa.modulus.data);
-		if (pubkey->u.rsa.exponent.data)
-			free (pubkey->u.rsa.exponent.data);
-	}
 	return r;
 }
 

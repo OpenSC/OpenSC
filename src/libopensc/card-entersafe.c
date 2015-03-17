@@ -339,7 +339,7 @@ static int entersafe_transmit_apdu(sc_card_t *card, sc_apdu_t *apdu,
 		  blocks=(apdu->lc+2)/8+1;
 		  cipher_data_size=blocks*8;
 		  cipher_data=malloc(cipher_data_size);
-		  if(!cipher)
+		  if(!cipher_data)
 		  {
 			   r = SC_ERROR_OUT_OF_MEMORY;
 			   goto out;

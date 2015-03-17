@@ -108,6 +108,7 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 	{ "atrust-acos",(void *(*)(void)) sc_get_atrust_acos_driver },
 	{ "PIV-II",	(void *(*)(void)) sc_get_piv_driver },
 	{ "itacns",	(void *(*)(void)) sc_get_itacns_driver },
+	{ "isoApplet",	(void *(*)(void)) sc_get_isoApplet_driver },
 	/* The default driver should be last, as it handles all the
 	 * unrecognized cards. */
 	{ "default",	(void *(*)(void)) sc_get_default_driver },
@@ -840,7 +841,7 @@ int sc_set_card_driver(sc_context_t *ctx, const char *short_name)
 	if (short_name == NULL) {
 		ctx->forced_driver = NULL;
 		match = 1;
-	} else while (ctx->card_drivers[i] != NULL && i < SC_MAX_CARD_DRIVERS) {
+	} else while (i < SC_MAX_CARD_DRIVERS && ctx->card_drivers[i] != NULL) {
 		struct sc_card_driver *drv = ctx->card_drivers[i];
 
 		if (strcmp(short_name, drv->short_name) == 0) {

@@ -95,6 +95,24 @@ static struct ec_curve curves[] = {
 				{ (unsigned char *) "\x01", 1}
 		},
 		{
+				{ (unsigned char *) "\x2B\x81\x04\x00\x1F", 5},	// secp192k1
+				{ (unsigned char *) "\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFE\xFF\xFF\xEE\x37", 24},
+				{ (unsigned char *) "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00", 24},
+				{ (unsigned char *) "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x03", 24},
+				{ (unsigned char *) "\x04\xDB\x4F\xF1\x0E\xC0\x57\xE9\xAE\x26\xB0\x7D\x02\x80\xB7\xF4\x34\x1D\xA5\xD1\xB1\xEA\xE0\x6C\x7D\x9B\x2F\x2F\x6D\x9C\x56\x28\xA7\x84\x41\x63\xD0\x15\xBE\x86\x34\x40\x82\xAA\x88\xD9\x5E\x2F\x9D", 49},
+				{ (unsigned char *) "\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFE\x26\xF2\xFC\x17\x0F\x69\x46\x6A\x74\xDE\xFD\x8D", 24},
+				{ (unsigned char *) "\x01", 1}
+		},
+		{
+				{ (unsigned char *) "\x2B\x81\x04\x00\x0A", 5},	// secp256k1
+				{ (unsigned char *) "\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFE\xFF\xFF\xFC\x2F", 32},
+				{ (unsigned char *) "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00", 32},
+				{ (unsigned char *) "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x07", 32},
+				{ (unsigned char *) "\x04\x79\xBE\x66\x7E\xF9\xDC\xBB\xAC\x55\xA0\x62\x95\xCE\x87\x0B\x07\x02\x9B\xFC\xDB\x2D\xCE\x28\xD9\x59\xF2\x81\x5B\x16\xF8\x17\x98\x48\x3A\xDA\x77\x26\xA3\xC4\x65\x5D\xA4\xFB\xFC\x0E\x11\x08\xA8\xFD\x17\xB4\x48\xA6\x85\x54\x19\x9C\x47\xD0\x8F\xFB\x10\xD4\xB8", 65},
+				{ (unsigned char *) "\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFE\xBA\xAE\xDC\xE6\xAF\x48\xA0\x3B\xBF\xD2\x5E\x8C\xD0\x36\x41\x41", 32},
+				{ (unsigned char *) "\x01", 1}
+		},
+		{
 				{ NULL, 0},
 				{ NULL, 0},
 				{ NULL, 0},
@@ -356,7 +374,7 @@ static int sc_pkcs15emu_sc_hsm_get_rsa_public_key(struct sc_context *ctx, sc_cvc
 
 static int sc_pkcs15emu_sc_hsm_get_ec_public_key(struct sc_context *ctx, sc_cvc_t *cvc, struct sc_pkcs15_pubkey *pubkey)
 {
-	struct sc_ec_params *ecp;
+	struct sc_ec_parameters *ecp;
 	const struct sc_lv_data *oid;
 	int r;
 
@@ -366,18 +384,18 @@ static int sc_pkcs15emu_sc_hsm_get_ec_public_key(struct sc_context *ctx, sc_cvc_
 	if (r != SC_SUCCESS)
 		return r;
 
-	ecp = calloc(1, sizeof(struct sc_ec_params));
+	ecp = calloc(1, sizeof(struct sc_ec_parameters));
 	if (!ecp)
 		return SC_ERROR_OUT_OF_MEMORY;
 
-	ecp->der_len = oid->len + 2;
-	ecp->der = calloc(ecp->der_len, 1);
-	if (!ecp->der)
+	ecp->der.len = oid->len + 2;
+	ecp->der.value = calloc(ecp->der.len, 1);
+	if (!ecp->der.value)
 		return SC_ERROR_OUT_OF_MEMORY;
 
-	ecp->der[0] = 0x06;
-	ecp->der[1] = (u8)oid->len;
-	memcpy(ecp->der + 2, oid->value, oid->len);
+	*(ecp->der.value + 0) = 0x06;
+	*(ecp->der.value + 1) = (u8)oid->len;
+	memcpy(ecp->der.value + 2, oid->value, oid->len);
 	ecp->type = 1;		// Named curve
 
 	pubkey->alg_id = (struct sc_algorithm_id *)calloc(1, sizeof(struct sc_algorithm_id));
@@ -393,11 +411,11 @@ static int sc_pkcs15emu_sc_hsm_get_ec_public_key(struct sc_context *ctx, sc_cvc_
 	memcpy(pubkey->u.ec.ecpointQ.value, cvc->publicPoint, cvc->publicPointlen);
 	pubkey->u.ec.ecpointQ.len = cvc->publicPointlen;
 
-	pubkey->u.ec.params.der.value = malloc(ecp->der_len);
+	pubkey->u.ec.params.der.value = malloc(ecp->der.len);
 	if (!pubkey->u.ec.params.der.value)
 		return SC_ERROR_OUT_OF_MEMORY;
-	memcpy(pubkey->u.ec.params.der.value, ecp->der, ecp->der_len);
-	pubkey->u.ec.params.der.len = ecp->der_len;
+	memcpy(pubkey->u.ec.params.der.value, ecp->der.value, ecp->der.len);
+	pubkey->u.ec.params.der.len = ecp->der.len;
 
 	sc_pkcs15_fix_ec_parameters(ctx, &pubkey->u.ec.params);
 
@@ -408,7 +426,7 @@ static int sc_pkcs15emu_sc_hsm_get_ec_public_key(struct sc_context *ctx, sc_cvc_
 
 int sc_pkcs15emu_sc_hsm_get_public_key(struct sc_context *ctx, sc_cvc_t *cvc, struct sc_pkcs15_pubkey *pubkey)
 {
-	if (cvc->publicPoint || cvc->publicPointlen) {
+	if (cvc->publicPoint && cvc->publicPointlen) {
 		return sc_pkcs15emu_sc_hsm_get_ec_public_key(ctx, cvc, pubkey);
 	} else {
 		return sc_pkcs15emu_sc_hsm_get_rsa_public_key(ctx, cvc, pubkey);
@@ -486,9 +504,12 @@ static int sc_pkcs15emu_sc_hsm_add_pubkey(sc_pkcs15_card_t *p15card, sc_pkcs15_p
 	memset(&pubkey_info, 0, sizeof(pubkey_info));
 	memset(&pubkey_obj, 0, sizeof(pubkey_obj));
 
-	sc_pkcs15_encode_pubkey(ctx, &pubkey, &pubkey_obj.content.value, &pubkey_obj.content.len);
-	sc_pkcs15_encode_pubkey(ctx, &pubkey, &pubkey_info.direct.raw.value, &pubkey_info.direct.raw.len);
-	sc_pkcs15_encode_pubkey_as_spki(ctx, &pubkey, &pubkey_info.direct.spki.value, &pubkey_info.direct.spki.len);
+	r = sc_pkcs15_encode_pubkey(ctx, &pubkey, &pubkey_obj.content.value, &pubkey_obj.content.len);
+	LOG_TEST_RET(ctx, r, "Could not encode public key");
+	r = sc_pkcs15_encode_pubkey(ctx, &pubkey, &pubkey_info.direct.raw.value, &pubkey_info.direct.raw.len);
+	LOG_TEST_RET(ctx, r, "Could not encode public key");
+	r = sc_pkcs15_encode_pubkey_as_spki(ctx, &pubkey, &pubkey_info.direct.spki.value, &pubkey_info.direct.spki.len);
+	LOG_TEST_RET(ctx, r, "Could not encode public key");
 
 	pubkey_info.id = key_info->id;
 	strlcpy(pubkey_obj.label, label, sizeof(pubkey_obj.label));

@@ -2,7 +2,7 @@
 #define PKCS11_DISPLAY_H
 
 /*
- * Copyright (C) 2003 Mathias Brossard <mathias.brossard@idealx.com>
+ * Copyright (C) 2015 Mathias Brossard <mathias@brossard.org>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public

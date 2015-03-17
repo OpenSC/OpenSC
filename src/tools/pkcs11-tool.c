@@ -47,6 +47,8 @@
 #include "pkcs11/pkcs11.h"
 #include "pkcs11/pkcs11-opensc.h"
 #include "libopensc/asn1.h"
+#include "common/compat_strlcat.h"
+#include "common/compat_strlcpy.h"
 #include "util.h"
 
 extern void *C_LoadModule(const char *name, CK_FUNCTION_LIST_PTR_PTR);
@@ -63,6 +65,7 @@ static struct ec_curve_info {
 } ec_curve_infos[] = {
 	{"secp192r1",    "1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192},
 	{"prime192r1",   "1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192},
+	{"prime192v1",   "1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192},
 	{"ansiX9p192r1", "1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192},
 	{"prime256v1",   "1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256},
 	{"secp256r1",    "1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256},
@@ -74,6 +77,8 @@ static struct ec_curve_info {
 	{"brainpoolP224r1", "1.3.36.3.3.2.8.1.1.5", "06092B2403030208010105", 224},
 	{"brainpoolP256r1", "1.3.36.3.3.2.8.1.1.7", "06092B2403030208010107", 256},
 	{"brainpoolP320r1", "1.3.36.3.3.2.8.1.1.9", "06092B2403030208010109", 320},
+	{"secp192k1",		"1.3.132.0.31", "06052B8104001F", 192},
+	{"secp256k1",		"1.3.132.0.10", "06052B8104000A", 256},
 	{NULL, NULL, NULL, 0},
 };
 
@@ -94,7 +99,7 @@ enum {
 	OPT_KEY_TYPE,
 	OPT_KEY_USAGE_SIGN,
 	OPT_KEY_USAGE_DECRYPT,
-	OPT_KEY_USAGE_NONREPUDIATION,
+	OPT_KEY_USAGE_DERIVE,
 	OPT_PRIVATE,
 	OPT_TEST_HOTPLUG,
 	OPT_UNLOCK_PIN,
@@ -132,7 +137,7 @@ static const struct option options[] = {
 	{ "key-type",		1, NULL,		OPT_KEY_TYPE },
 	{ "usage-sign",		0, NULL,		OPT_KEY_USAGE_SIGN },
 	{ "usage-decrypt",	0, NULL,		OPT_KEY_USAGE_DECRYPT },
-	{ "usage-nonrepudiation",0, NULL,		OPT_KEY_USAGE_NONREPUDIATION },
+	{ "usage-derive",	0, NULL,		OPT_KEY_USAGE_DERIVE },
 	{ "write-object",	1, NULL,		'w' },
 	{ "read-object",	0, NULL,		'r' },
 	{ "delete-object",	0, NULL,		'b' },
@@ -163,7 +168,7 @@ static const struct option options[] = {
 };
 
 static const char *option_help[] = {
-	"Specify the module to load (mandatory)",
+	"Specify the module to load (default:" DEFAULT_PKCS11_PROVIDER ")",
 	"Show global token information",
 	"List available slots",
 	"List slots with tokens",
@@ -187,9 +192,9 @@ static const char *option_help[] = {
 	"Unlock User PIN (without '--login' unlock in logged in session; otherwise '--login-type' has to be 'context-specific')",
 	"Key pair generation",
 	"Specify the type and length of the key to create, for example rsa:1024 or EC:prime256v1",
-	"Specify 'sign' key usage flag",
-	"Specify 'decrypt' key usage flag",
-	"Specify 'nonrepudiation' key usage flag",
+	"Specify 'sign' key usage flag (sets SIGN in privkey, sets VERIFY in pubkey)",
+	"Specify 'decrypt' key usage flag (RSA only, set DECRYPT privkey, ENCRYPT in pubkey)",
+	"Specify 'derive' key usage flag (EC only)",
 	"Write an object (key, cert, data) to the card",
 	"Get object's CKA_VALUE attribute (use with --type)",
 	"Delete an object",
@@ -222,7 +227,7 @@ static const char *	app_name = "pkcs11-tool"; /* for utils.c */
 static int		verbose = 0;
 static const char *	opt_input = NULL;
 static const char *	opt_output = NULL;
-static const char *	opt_module = NULL;
+static const char *	opt_module = DEFAULT_PKCS11_PROVIDER;
 static int		opt_slot_set = 0;
 static CK_SLOT_ID	opt_slot = 0;
 static const char *	opt_slot_description = NULL;
@@ -238,10 +243,10 @@ static CK_BYTE		opt_object_id[100], new_object_id[100];
 static const char *	opt_attr_from_file = NULL;
 static size_t		opt_object_id_len = 0, new_object_id_len = 0;
 static char *		opt_object_label = NULL;
-static char *		opt_pin = NULL;
-static char *		opt_so_pin = NULL;
-static char *		opt_puk = NULL;
-static char *		opt_new_pin = NULL;
+static const char *	opt_pin = NULL;
+static const char *	opt_so_pin = NULL;
+static const char *	opt_puk = NULL;
+static const char *	opt_new_pin = NULL;
 static char *		opt_application_label = NULL;
 static char *		opt_application_id = NULL;
 static char *		opt_issuer = NULL;
@@ -252,7 +257,8 @@ static int		opt_test_hotplug = 0;
 static int		opt_login_type = -1;
 static int		opt_key_usage_sign = 0;
 static int		opt_key_usage_decrypt = 0;
-static int		opt_key_usage_nonrepudiation = 0;
+static int		opt_key_usage_derive = 0;
+static int		opt_key_usage_default = 1; /* uses defaults if no opt_key_usage options */
 
 static void *module = NULL;
 static CK_FUNCTION_LIST_PTR p11 = NULL;
@@ -510,7 +516,7 @@ int main(int argc, char * argv[])
 			opt_output = optarg;
 			break;
 		case 'p':
-			opt_pin = optarg;
+			util_get_pin(optarg, &opt_pin);
 			break;
 		case 'c':
 			do_change_pin = 1;
@@ -584,10 +590,10 @@ int main(int argc, char * argv[])
 			opt_subject = optarg;
 			break;
 		case OPT_NEW_PIN:
-			opt_new_pin = optarg;
+			util_get_pin(optarg, &opt_new_pin);
 			break;
 		case OPT_PUK:
-			opt_puk = optarg;
+			util_get_pin(optarg, &opt_puk);
 			break;
 		case OPT_LOGIN_TYPE:
 			if (!strcmp(optarg, "so"))
@@ -602,7 +608,7 @@ int main(int argc, char * argv[])
 			}
 			break;
 		case OPT_SO_PIN:
-			opt_so_pin = optarg;
+			util_get_pin(optarg, &opt_so_pin);
 			break;
 		case OPT_INIT_TOKEN:
 			do_init_token = 1;
@@ -618,12 +624,15 @@ int main(int argc, char * argv[])
 			break;
 		case OPT_KEY_USAGE_SIGN:
 			opt_key_usage_sign = 1;
+			opt_key_usage_default = 0;
 			break;
 		case OPT_KEY_USAGE_DECRYPT:
 			opt_key_usage_decrypt = 1;
+			opt_key_usage_default = 0;
 			break;
-		case OPT_KEY_USAGE_NONREPUDIATION:
-			opt_key_usage_nonrepudiation = 1;
+		case OPT_KEY_USAGE_DERIVE:
+			opt_key_usage_derive = 1;
+			opt_key_usage_default = 0;
 			break;
 		case OPT_PRIVATE:
 			opt_is_private = 1;
@@ -645,9 +654,6 @@ int main(int argc, char * argv[])
 			util_print_usage_and_die(app_name, options, option_help, NULL);
 		}
 	}
-
-	if (opt_module == NULL)
-		util_print_usage_and_die(app_name, options, option_help, NULL);
 
 	if (action_count == 0)
 		util_print_usage_and_die(app_name, options, option_help, NULL);
@@ -1081,11 +1087,11 @@ static int login(CK_SESSION_HANDLE session, int login_type)
 	/* Identify which pin to enter */
 
 	if (login_type == CKU_SO)
-		pin = opt_so_pin;
+		pin = (char *) opt_so_pin;
 	else if (login_type == CKU_USER)
-		pin = opt_pin;
+		pin = (char *) opt_pin;
 	else if (login_type == CKU_CONTEXT_SPECIFIC)
-		pin = opt_pin ? opt_pin : opt_puk;
+		pin = opt_pin ? (char *) opt_pin : (char *) opt_puk;
 
 	if (!pin && !(info.flags & CKF_PROTECTED_AUTHENTICATION_PATH)) {
 			printf("Logging in to \"%s\".\n", p11_utf8_to_local(info.label, sizeof(info.label)));
@@ -1131,15 +1137,17 @@ static void init_token(CK_SLOT_ID slot)
 			opt_object_label);
 
 	get_token_info(slot, &info);
-	if (!(info.flags & CKF_PROTECTED_AUTHENTICATION_PATH)) {
-		if (opt_so_pin == NULL) {
+	if (opt_so_pin != NULL) {
+		new_pin = (char *) opt_so_pin;
+	} else {
+		if (!(info.flags & CKF_PROTECTED_AUTHENTICATION_PATH)) {
 			printf("Please enter the new SO PIN: ");
 			r = util_getpass(&new_pin, &len, stdin);
 			if (r < 0)
 				util_fatal("No PIN entered, exiting\n");
 			if (!new_pin || !*new_pin || strlen(new_pin) > 20)
 				util_fatal("Invalid SO PIN\n");
-			strcpy(new_buf, new_pin);
+			strlcpy(new_buf, new_pin, sizeof new_buf);
 			free(new_pin); new_pin = NULL;
 			printf("Please enter the new SO PIN (again): ");
 			r = util_getpass(&new_pin, &len, stdin);
@@ -1149,11 +1157,7 @@ static void init_token(CK_SLOT_ID slot)
 					strcmp(new_buf, new_pin) != 0)
 				util_fatal("Different new SO PINs, exiting\n");
 			pin_allocated = 1;
-		} else {
-			new_pin = opt_so_pin;
 		}
-		if (!new_pin || !*new_pin)
-			util_fatal("Invalid SO PIN\n");
 	}
 
 	rv = p11->C_InitToken(slot, (CK_UTF8CHAR *) new_pin,
@@ -1195,8 +1199,8 @@ static void init_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess)
 		}
 	}
 
-	pin = opt_pin;
-	if (!pin) pin = opt_new_pin;
+	pin = (char *) opt_pin;
+	if (!pin) pin = (char *) opt_new_pin;
 	if (!pin) pin = new_pin1;
 
 	rv = p11->C_InitPIN(sess, (CK_UTF8CHAR *) pin, pin == NULL ? 0 : strlen(pin));
@@ -1239,9 +1243,9 @@ static int change_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess)
 		}
 		else   {
 			if (opt_so_pin)
-				old_pin = opt_so_pin;
+				old_pin = (char *) opt_so_pin;
 			else
-				old_pin = opt_pin;
+				old_pin = (char *) opt_pin;
 		}
 
 		if (!opt_new_pin) {
@@ -1261,7 +1265,7 @@ static int change_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess)
 				return 1;
 		}
 		else   {
-			new_pin = opt_new_pin;
+			new_pin = (char *) opt_new_pin;
 		}
 	}
 
@@ -1288,9 +1292,9 @@ static int unlock_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess, int login_type)
 	get_token_info(slot, &info);
 
 	if (login_type == CKU_CONTEXT_SPECIFIC)
-		unlock_code = opt_pin ? opt_pin : opt_puk;
+		unlock_code = opt_pin ? (char *) opt_pin : (char *) opt_puk;
 	else if (login_type == -1)
-		unlock_code = opt_puk;
+		unlock_code = (char *) opt_puk;
 	else
 		return 1;
 
@@ -1310,25 +1314,30 @@ static int unlock_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess, int login_type)
 		unlock_code = unlock_buf;
 	}
 
-	new_pin = opt_new_pin;
+	new_pin = (char *) opt_new_pin;
 	if (!(info.flags & CKF_PROTECTED_AUTHENTICATION_PATH) && !new_pin)   {
 		printf("Please enter the new PIN: ");
 		r = util_getpass(&new_pin, &len, stdin);
 		if (r < 0)
 			return 1;
-		strcpy(new_buf, new_pin);
+		strlcpy(new_buf, new_pin, sizeof new_buf);
 
 		printf("Please enter the new PIN again: ");
 		r = util_getpass(&new_pin, &len, stdin);
 		if (r < 0)
 			return 1;
 		if (!new_pin || !*new_pin || strcmp(new_buf, new_pin) != 0) {
+			if (new_pin != opt_new_pin)
+				free(new_pin);
 			printf("  different new PINs, exiting\n");
 			return -1;
 		}
 
-		if (!new_pin || !*new_pin || strlen(new_pin) > 20)
+		if (!new_pin || !*new_pin || strlen(new_pin) > 20) {
+			if (new_pin != opt_new_pin)
+				free(new_pin);
 			return 1;
+		}
 	}
 
 	rv = p11->C_SetPIN(sess,
@@ -1503,21 +1512,15 @@ static int gen_keypair(CK_SESSION_HANDLE session,
 	CK_ATTRIBUTE publicKeyTemplate[20] = {
 		{CKA_CLASS, &pubkey_class, sizeof(pubkey_class)},
 		{CKA_TOKEN, &_true, sizeof(_true)},
-		{CKA_ENCRYPT, &_true, sizeof(_true)},
-		{CKA_VERIFY, &_true, sizeof(_true)},
-		{CKA_WRAP, &_true, sizeof(_true)},
 	};
-	int n_pubkey_attr = 5;
+	int n_pubkey_attr = 2;
 	CK_ATTRIBUTE privateKeyTemplate[20] = {
 		{CKA_CLASS, &privkey_class, sizeof(privkey_class)},
 		{CKA_TOKEN, &_true, sizeof(_true)},
 		{CKA_PRIVATE, &_true, sizeof(_true)},
 		{CKA_SENSITIVE, &_true, sizeof(_true)},
-		{CKA_DECRYPT, &_true, sizeof(_true)},
-		{CKA_SIGN, &_true, sizeof(_true)},
-		{CKA_UNWRAP, &_true, sizeof(_true)}
 	};
-	int n_privkey_attr = 7;
+	int n_privkey_attr = 4;
 	unsigned char *ecparams = NULL;
 	size_t ecparams_size;
 	CK_RV rv;
@@ -1538,6 +1541,26 @@ static int gen_keypair(CK_SESSION_HANDLE session,
 			n_pubkey_attr++;
 			FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_PUBLIC_EXPONENT, publicExponent, sizeof(publicExponent));
 			n_pubkey_attr++;
+
+			if (opt_key_usage_default || opt_key_usage_sign) {
+				FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_VERIFY, &_true, sizeof(_true));
+				n_pubkey_attr++;
+				FILL_ATTR(privateKeyTemplate[n_privkey_attr], CKA_SIGN, &_true, sizeof(_true));
+				n_privkey_attr++;
+			}
+
+			if (opt_key_usage_default || opt_key_usage_decrypt) {
+				FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_ENCRYPT, &_true, sizeof(_true));
+				n_pubkey_attr++;
+				FILL_ATTR(privateKeyTemplate[n_privkey_attr], CKA_DECRYPT, &_true, sizeof(_true));
+				n_privkey_attr++;
+			}
+
+			FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_WRAP, &_true, sizeof(_true));
+			n_pubkey_attr++;
+			FILL_ATTR(privateKeyTemplate[n_privkey_attr], CKA_UNWRAP, &_true, sizeof(_true));
+			n_privkey_attr++;
+
 
 			mechanism.mechanism = CKM_RSA_PKCS_KEY_PAIR_GEN;
 		}
@@ -1561,6 +1584,21 @@ static int gen_keypair(CK_SESSION_HANDLE session,
 				printf("Cannot convert \"%s\"\n", ec_curve_infos[ii].oid_encoded);
 				util_print_usage_and_die(app_name, options, option_help, NULL);
 			}
+
+			if (opt_key_usage_default || opt_key_usage_sign) {
+				FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_VERIFY, &_true, sizeof(_true));
+				n_pubkey_attr++;
+				FILL_ATTR(privateKeyTemplate[n_privkey_attr], CKA_SIGN, &_true, sizeof(_true));
+				n_privkey_attr++;
+			}
+
+			if (opt_key_usage_default || opt_key_usage_derive) {
+				FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_DERIVE, &_true, sizeof(_true));
+				n_pubkey_attr++;
+				FILL_ATTR(privateKeyTemplate[n_privkey_attr], CKA_DERIVE, &_true, sizeof(_true));
+				n_privkey_attr++;
+			}
+
 
 			FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_EC_PARAMS, ecparams, ecparams_size);
 			n_pubkey_attr++;
@@ -2805,7 +2843,7 @@ get_mechanisms(CK_SLOT_ID slot, CK_MECHANISM_TYPE_PTR *pList, CK_FLAGS flags)
 	CK_RV		rv;
 
 	rv = p11->C_GetMechanismList(slot, *pList, &ulCount);
-	*pList = calloc(ulCount, sizeof(*pList));
+	*pList = calloc(ulCount, sizeof(**pList));
 	if (*pList == NULL)
 		util_fatal("calloc failed: %m");
 
@@ -3769,17 +3807,26 @@ static int wrap_unwrap(CK_SESSION_HANDLE session,
 
 	printf("    %s: ", OBJ_nid2sn(EVP_CIPHER_nid(algo)));
 
-	EVP_SealInit(&seal_ctx, algo,
+	if (!EVP_SealInit(&seal_ctx, algo,
 			&key, &key_len,
-			iv, &pkey, 1);
+			iv, &pkey, 1)) {
+		printf("Internal error.\n");
+		return 1;
+	}
 
 	/* Encrypt something */
 	len = sizeof(ciphered);
-	EVP_SealUpdate(&seal_ctx, ciphered, &len, (const unsigned char *) "hello world", 11);
+	if (!EVP_SealUpdate(&seal_ctx, ciphered, &len, (const unsigned char *) "hello world", 11)) {
+		printf("Internal error.\n");
+		return 1;
+	}
 	ciphered_len = len;
 
 	len = sizeof(ciphered) - ciphered_len;
-	EVP_SealFinal(&seal_ctx, ciphered + ciphered_len, &len);
+	if (!EVP_SealFinal(&seal_ctx, ciphered + ciphered_len, &len)) {
+		printf("Internal error.\n");
+		return 1;
+	}
 	ciphered_len += len;
 
 	EVP_PKEY_free(pkey);
@@ -3813,14 +3860,23 @@ static int wrap_unwrap(CK_SESSION_HANDLE session,
 		return 1;
 	}
 
-	EVP_DecryptInit(&seal_ctx, algo, key, iv);
+	if (!EVP_DecryptInit(&seal_ctx, algo, key, iv)) {
+		printf("Internal error.\n");
+		return 1;
+	}
 
 	len = sizeof(cleartext);
-	EVP_DecryptUpdate(&seal_ctx, cleartext, &len, ciphered, ciphered_len);
+	if (!EVP_DecryptUpdate(&seal_ctx, cleartext, &len, ciphered, ciphered_len)) {
+		printf("Internal error.\n");
+		return 1;
+	}
 
 	cleartext_len = len;
 	len = sizeof(cleartext) - len;
-	EVP_DecryptFinal(&seal_ctx, cleartext + cleartext_len, &len);
+	if (!EVP_DecryptFinal(&seal_ctx, cleartext + cleartext_len, &len)) {
+		printf("Internal error.\n");
+		return 1;
+	}
 	cleartext_len += len;
 
 	if (cleartext_len != 11
@@ -4184,7 +4240,7 @@ static void test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		return;
 
 	tmp = getID(session, priv_key, (CK_ULONG *) &opt_object_id_len);
-	if (opt_object_id == NULL || opt_object_id_len == 0) {
+	if (opt_object_id_len == 0) {
 		printf("ERR: newly generated private key has no (or an empty) CKA_ID\n");
 		return;
 	}
@@ -4339,7 +4395,7 @@ static void test_ec(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		return;
 
 	tmp = getID(session, priv_key, (CK_ULONG *) &opt_object_id_len);
-	if (opt_object_id == NULL || opt_object_id_len == 0) {
+	if (opt_object_id_len == 0) {
 		printf("ERR: newly generated private key has no (or an empty) CKA_ID\n");
 		return;
 	}
@@ -4403,8 +4459,8 @@ static const char *p11_flag_names(struct flag_info *list, CK_FLAGS value)
 	buffer[0] = '\0';
 	while (list->value) {
 		if (list->value & value) {
-			strcat(buffer, sepa);
-			strcat(buffer, list->name);
+			strlcat(buffer, sepa, sizeof buffer);
+			strlcat(buffer, list->name, sizeof buffer);
 			value &= ~list->value;
 			sepa = ", ";
 		}

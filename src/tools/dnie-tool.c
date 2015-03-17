@@ -68,7 +68,7 @@ static const struct option options[] = {
 
 static const char *option_help[] = {
 	"Uses reader number <arg> [0]",
-	"Uses reader driver <arg> [auto-detect]",
+	"Uses card driver <arg> [auto-detect]",
 	"Wait for a card to be inserted",
 	"Specify PIN",
 	"Retrieve IDESP",
@@ -117,7 +117,7 @@ int main(int argc, char* argv[])
 			opt_wait = 1;
 			break;
 		case 'p':
-			opt_pin = optarg;
+			util_get_pin(optarg, &opt_pin);
 			break;
 		case 'i':
 			opt_operation |= OP_GET_IDESP;
@@ -146,7 +146,7 @@ int main(int argc, char* argv[])
 	if (r) {
 		fprintf(stderr, "Error: Failed to establish context: %s\n",
 			sc_strerror(r));
-		return -1;
+		goto dnie_tool_end;
 	}
 
 	if (verbose > 1) {

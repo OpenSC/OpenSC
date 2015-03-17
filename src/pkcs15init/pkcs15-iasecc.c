@@ -246,6 +246,8 @@ iasecc_pkcs15_new_file(struct sc_profile *profile, struct sc_card *card,
 
 	if (out)
 		*out = file;
+	else
+		sc_file_free(file);
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
@@ -503,6 +505,8 @@ iasecc_sdo_allocate_prvkey(struct sc_profile *profile, struct sc_card *card,
 
 	if (out)
 		*out = sdo;
+	else
+		free(sdo);
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
@@ -565,6 +569,8 @@ iasecc_sdo_allocate_pubkey(struct sc_profile *profile, struct sc_card *card, str
 
 	if (out)
 		*out = sdo;
+	else
+		free(sdo);
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
@@ -573,16 +579,20 @@ iasecc_sdo_allocate_pubkey(struct sc_profile *profile, struct sc_card *card, str
 static int
 iasecc_sdo_convert_to_file(struct sc_card *card, struct iasecc_sdo *sdo, struct sc_file **out)
 {
-	struct sc_context *ctx = card->ctx;
-	struct sc_file *file = sc_file_new();
+	struct sc_context *ctx;
+	struct sc_file *file;
 	unsigned ii;
 	int rv;
 
+	if (!card || !sdo)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	ctx = card->ctx;
 	LOG_FUNC_CALLED(ctx);
-	if (file == NULL)
+
+	file = sc_file_new();
+	if (!file)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
-	else if (!card || !sdo)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	sc_log(ctx, "SDO class 0x%X", sdo->sdo_class);
 
@@ -605,6 +615,9 @@ iasecc_sdo_convert_to_file(struct sc_card *card, struct iasecc_sdo *sdo, struct 
 
 	if (out)
 		*out = file;
+	else
+		sc_file_free(file);
+
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
@@ -889,8 +902,6 @@ iasecc_pkcs15_fix_private_key_attributes(struct sc_profile *profile, struct sc_p
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Unsupported object type");
 
 	key_info->access_flags |= SC_PKCS15_PRKEY_ACCESS_SENSITIVE;
-	key_info->access_flags |= SC_PKCS15_PRKEY_ACCESS_ALWAYSSENSITIVE;
-	key_info->access_flags |= SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE;
 
 	sc_log(ctx, "SDO(class:%X,ref:%X,usage:%X)",
 			sdo_prvkey->sdo_class, sdo_prvkey->sdo_ref, sdo_prvkey->usage);
@@ -1129,6 +1140,8 @@ iasecc_pkcs15_generate_key(struct sc_profile *profile, sc_pkcs15_card_t *p15card
 	LOG_TEST_RET(ctx, rv, "SC_AC_OP_GENERATE authentication failed");
 
 	key_info->access_flags |= SC_PKCS15_PRKEY_ACCESS_LOCAL;
+	key_info->access_flags |= SC_PKCS15_PRKEY_ACCESS_ALWAYSSENSITIVE;
+	key_info->access_flags |= SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE;
 
 	rv = sc_card_ctl(card, SC_CARDCTL_IASECC_SDO_GENERATE, sdo_prvkey);
 	LOG_TEST_RET(ctx, rv, "generate key failed");
@@ -1761,8 +1774,7 @@ iasecc_store_data_object(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 	if (parent)
 		sc_file_free(parent);
 
-	if (file)
-		sc_file_free(file);
+	sc_file_free(file);
 
 	if (cfile)
 		sc_file_free(cfile);

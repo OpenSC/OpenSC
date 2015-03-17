@@ -236,8 +236,7 @@ setcos_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Cannot set MF into the activated state");
 	}
 
-	if(pinfile)
-		sc_file_free(pinfile);
+	sc_file_free(pinfile);
 
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, r);
 }

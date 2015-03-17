@@ -650,7 +650,7 @@ authentic_reduce_path(struct sc_card *card, struct sc_path *path)
 
 	LOG_FUNC_CALLED(ctx);
 
-	if (path->len <= 2 || path->type == SC_PATH_TYPE_DF_NAME || !path)
+	if (!path || path->len <= 2 || path->type == SC_PATH_TYPE_DF_NAME)
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 
 	if (!card->cache.valid || !card->cache.current_df)
@@ -660,7 +660,7 @@ authentic_reduce_path(struct sc_card *card, struct sc_path *path)
 	cur_path = card->cache.current_df->path;
 
 	if (!memcmp(cur_path.value, "\x3F\x00", 2) && memcmp(in_path.value, "\x3F\x00", 2))   {
-		memcpy(in_path.value + 2, in_path.value, in_path.len);
+		memmove(in_path.value + 2, in_path.value, in_path.len);
 		memcpy(in_path.value, "\x3F\x00", 2);
 		in_path.len += 2;
 	}
@@ -672,7 +672,7 @@ authentic_reduce_path(struct sc_card *card, struct sc_path *path)
 			break;
 	}
 
-	memcpy(in_path.value, in_path.value + offs, sizeof(in_path.value) - offs);
+	memmove(in_path.value, in_path.value + offs, sizeof(in_path.value) - offs);
 	in_path.len -= offs;
 	*path = in_path;
 
@@ -749,7 +749,7 @@ authentic_select_file(struct sc_card *card, const struct sc_path *path,
 		rv = authentic_select_mf(card, file_out);
 		LOG_TEST_RET(ctx, rv, "cannot select MF");
 
-		memcpy(&lpath.value[0], &lpath.value[2], lpath.len - 2);
+		memmove(&lpath.value[0], &lpath.value[2], lpath.len - 2);
 		lpath.len -=  2;
 
 		if (!lpath.len)
@@ -1654,9 +1654,7 @@ authentic_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data, int *tri
 	}
 
 	if (save_current)   {
-		struct sc_file *dummy_file = NULL;
-
-		rv = authentic_select_file(card, &save_current->path, &dummy_file);
+		rv = authentic_select_file(card, &save_current->path, NULL);
 		LOG_TEST_RET(ctx, rv, "Cannot return to saved PATH");
 	}
 	LOG_FUNC_RETURN(ctx, rv);
@@ -2112,14 +2110,16 @@ static int
 authentic_sm_acl_init (struct sc_card *card, struct sm_info *sm_info, int cmd,
 		unsigned char *resp, size_t *resp_len)
 {
-	struct sc_context *ctx = card->ctx;
-	struct sm_type_params_gp *params_gp = &sm_info->session.gp.params;
+	struct sc_context *ctx;
+	struct sm_type_params_gp *params_gp;
 	struct sc_remote_data rdata;
 	int rv;
 
-	sc_log(ctx, "called; command 0x%X\n", cmd);
 	if (!card || !sm_info || !resp || !resp_len)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	ctx = card->ctx;
+	params_gp = &sm_info->session.gp.params;
 
 	if (!card->sm_ctx.module.ops.initialize || !card->sm_ctx.module.ops.get_apdus)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);

@@ -234,7 +234,7 @@ main(int argc, char * argv[])
       case 'o': /* -output=FILE */
         outfilename = optarg;
         /* we allow "-" as a synonym for stdout here */
-        if (! strcmp(optarg, "-"))
+        if (optarg && !strcmp(optarg, "-"))
           {
             outfilename = 0;
           }

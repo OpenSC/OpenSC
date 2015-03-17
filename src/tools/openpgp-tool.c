@@ -74,7 +74,7 @@ static unsigned int key_len = 2048;
 static int opt_verify = 0;
 static char *verifytype = NULL;
 static int opt_pin = 0;
-static char *pin = NULL;
+static const char *pin = NULL;
 static int opt_dump_do = 0;
 static u8 do_dump_idx;
 
@@ -256,9 +256,7 @@ static int decode_options(int argc, char **argv)
 			break;
 		case OPT_PIN:
 			opt_pin++;
-			if (pin)
-				free(pin);
-			pin = strdup(optarg);
+			util_get_pin(optarg, &pin);
 			break;
 		case 'C':
 			opt_cardinfo++;
@@ -372,6 +370,8 @@ static int do_dump_do(sc_card_t *card, unsigned int tag)
 	if(opt_raw) {
 		r = 0;
 		tmp = dup(fileno(stdout));
+		if (tmp < 0)
+			return EXIT_FAILURE;
 		fp = freopen(NULL, "wb", stdout);
 		if(fp) {
 			r = fwrite(buffer, sizeof(char), sizeof(buffer), fp);
@@ -381,6 +381,7 @@ static int do_dump_do(sc_card_t *card, unsigned int tag)
 		if (sizeof(buffer) != r) {
 			return EXIT_FAILURE;
 		}
+		close(tmp);
 	} else {
 		util_hex_dump_asc(stdout, buffer, sizeof(buffer), -1);
 	}
@@ -421,7 +422,7 @@ int do_genkey(sc_card_t *card, u8 key_id, unsigned int key_len)
 	return 0;
 }
 
-int do_verify(sc_card_t *card, char *type, char *pin)
+int do_verify(sc_card_t *card, char *type, const char *pin)
 {
 	struct sc_pin_cmd_data data;
 	int tries_left;
@@ -456,7 +457,7 @@ int main(int argc, char **argv)
 	sc_card_t *card = NULL;
 	int r;
 	int argind = 0;
-	int exit_status = EXIT_FAILURE;
+	int exit_status = EXIT_SUCCESS;
 
 	/* decode options */
 	argind = decode_options(argc, argv);

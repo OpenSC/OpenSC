@@ -82,8 +82,9 @@ static scconf_item *scconf_item_find(scconf_parser * parser)
 	scconf_item *item;
 
 	for (item = parser->block->items; item; item = item->next) {
-		if (item->type == SCCONF_ITEM_TYPE_VALUE &&
-		    strcasecmp(item->key, parser->key) == 0) {
+		if (item && item->type == SCCONF_ITEM_TYPE_VALUE
+			   	&& item->key && parser->key
+			   	&& strcasecmp(item->key, parser->key) == 0) {
 			return item;
 		}
 	}
@@ -148,20 +149,24 @@ scconf_item *scconf_item_add(scconf_context * config, scconf_block * block, scco
 		scconf_list_copy(dst->name, &parser.name);
 	}
 	scconf_item_add_internal(&parser, type);
-	switch (parser.current_item->type) {
-	case SCCONF_ITEM_TYPE_COMMENT:
-		parser.current_item->value.comment = strdup((const char *) data);
-		break;
-	case SCCONF_ITEM_TYPE_BLOCK:
-		if (!dst)
-			return NULL;
-		dst->parent = parser.block;
-		parser.current_item->value.block = dst;
-		scconf_list_destroy(parser.name);
-		break;
-	case SCCONF_ITEM_TYPE_VALUE:
-		scconf_list_copy((const scconf_list *) data, &parser.current_item->value.list);
-		break;
+	if (parser.current_item) {
+		switch (parser.current_item->type) {
+			case SCCONF_ITEM_TYPE_COMMENT:
+				parser.current_item->value.comment = strdup((const char *) data);
+				break;
+			case SCCONF_ITEM_TYPE_BLOCK:
+				if (!dst)
+					return NULL;
+				dst->parent = parser.block;
+				parser.current_item->value.block = dst;
+				scconf_list_destroy(parser.name);
+				break;
+			case SCCONF_ITEM_TYPE_VALUE:
+				scconf_list_copy((const scconf_list *) data, &parser.current_item->value.list);
+				break;
+		}
+	} else {
+		/* FIXME is it an error if item is NULL? */
 	}
 	return parser.current_item;
 }
@@ -273,7 +278,7 @@ void scconf_parse_token(scconf_parser * parser, int token_type, const char *toke
 					scconf_parse_warning_expect(parser, "\"");
 				} else {
 					/* stoken */
-					stoken = token ? strdup(token) : NULL;
+					stoken = strdup(token);
 					if (stoken) {
 						stoken[len - 1] = '\0';
 					}

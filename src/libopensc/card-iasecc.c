@@ -71,7 +71,7 @@ static struct sc_card_driver iasecc_drv = {
 
 static struct sc_atr_table iasecc_known_atrs[] = {
 	{ "3B:7F:96:00:00:00:31:B8:64:40:70:14:10:73:94:01:80:82:90:00",
-	  "FF:FF:FF:FF:FF:FF:FF:FE:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF",
+	  "FF:FF:FF:FF:FF:FF:FF:FE:FF:FF:00:00:FF:FF:FF:FF:FF:FF:FF:FF",
 		"IAS/ECC Gemalto", SC_CARD_TYPE_IASECC_GEMALTO,  0, NULL },
         { "3B:DD:18:00:81:31:FE:45:80:F9:A0:00:00:00:77:01:08:00:07:90:00:FE", NULL,
 		"IAS/ECC v1.0.1 Oberthur", SC_CARD_TYPE_IASECC_OBERTHUR,  0, NULL },
@@ -414,7 +414,8 @@ iasecc_init_gemalto(struct sc_card *card)
 	card->caps |= SC_CARD_CAP_USE_FCI_AC;
 
 	sc_format_path("3F00", &path);
-	sc_select_file(card, &path, NULL);
+	rv = sc_select_file(card, &path, NULL);
+	/* Result ignored*/
 
 	rv = iasecc_parse_ef_atr(card);
 	sc_log(ctx, "rv %i", rv);
@@ -812,7 +813,7 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 		LOG_TEST_RET(ctx, rv, "MF selection error");
 
 		if (lpath.len >= 2 && lpath.value[0] == 0x3F && lpath.value[1] == 0x00)	   {
-			memcpy(&lpath.value[0], &lpath.value[2], lpath.len - 2);
+			memmove(&lpath.value[0], &lpath.value[2], lpath.len - 2);
 			lpath.len -=  2;
 		}
 	}
@@ -2219,12 +2220,14 @@ iasecc_keyset_change(struct sc_card *card, struct sc_pin_cmd_data *data, int *tr
 
 	update.fields[0].parent_tag = IASECC_SDO_KEYSET_TAG;
 	update.fields[0].tag = IASECC_SDO_KEYSET_TAG_MAC;
-	update.fields[0].value = data->pin2.data;
+	/* FIXME is it safe to modify the const value here? */
+	update.fields[0].value = (unsigned char *) data->pin2.data;
 	update.fields[0].size = 16;
 
 	update.fields[1].parent_tag = IASECC_SDO_KEYSET_TAG;
 	update.fields[1].tag = IASECC_SDO_KEYSET_TAG_ENC;
-	update.fields[1].value = data->pin2.data + 16;
+	/* FIXME is it safe to modify the const value here? */
+	update.fields[1].value = (unsigned char *) data->pin2.data + 16;
 	update.fields[1].size = 16;
 
 	rv = iasecc_sm_sdo_update(card, (scb & IASECC_SCB_METHOD_MASK_REF), &update);
@@ -2341,9 +2344,6 @@ iasecc_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_
 		if (scb & IASECC_SCB_METHOD_SM)   {
 			rv = iasecc_sm_pin_reset(card, se_num, data);
 			LOG_FUNC_RETURN(ctx, rv);
-
-			if (!need_all)
-				break;
 		}
 
 		if (scb & IASECC_SCB_METHOD_EXT_AUTH)   {
@@ -2393,7 +2393,6 @@ static int
 iasecc_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left)
 {
 	struct sc_context *ctx = card->ctx;
-	struct sc_apdu apdu;
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
@@ -2404,28 +2403,23 @@ iasecc_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_le
 	switch (data->cmd)   {
 	case SC_PIN_CMD_VERIFY:
 		rv = iasecc_pin_verify(card, data->pin_type, data->pin_reference, data->pin1.data, data->pin1.len, tries_left);
-		LOG_FUNC_RETURN(ctx, rv);
+		break;
 	case SC_PIN_CMD_CHANGE:
 		if (data->pin_type == SC_AC_AUT)
 			rv = iasecc_keyset_change(card, data, tries_left);
 		else
 			rv = iasecc_pin_change(card, data, tries_left);
-		LOG_FUNC_RETURN(ctx, rv);
+		break;
 	case SC_PIN_CMD_UNBLOCK:
 		rv = iasecc_pin_reset(card, data, tries_left);
-		LOG_FUNC_RETURN(ctx, rv);
+		break;
 	case SC_PIN_CMD_GET_INFO:
 		rv = iasecc_pin_get_policy(card, data);
-		LOG_FUNC_RETURN(ctx, rv);
+		break;
 	default:
 		sc_log(ctx, "Other pin commands not supported yet: 0x%X", data->cmd);
-		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Non-supported PIN command");
+		rv = SC_ERROR_NOT_SUPPORTED;
 	}
-
-	rv = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(ctx, rv, "APDU transmit failed");
-	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	LOG_TEST_RET(ctx, rv, "PIN cmd failed");
 
 	LOG_FUNC_RETURN(ctx, rv);
 }
@@ -2563,7 +2557,8 @@ iasecc_sdo_create(struct sc_card *card, struct iasecc_sdo *sdo)
 		rv = iasecc_sdo_put_data(card, &update);
 		LOG_TEST_RET(ctx, rv, "failed to update 'Compulsory usage' data");
 
-		field->on_card = 1;
+		if (field)
+			field->on_card = 1;
 	}
 
 	free(data);
@@ -3250,14 +3245,19 @@ static int
 iasecc_compute_signature(struct sc_card *card,
 		const unsigned char *in, size_t in_len, unsigned char *out, size_t out_len)
 {
-	struct sc_context *ctx = card->ctx;
-	struct iasecc_private_data *prv = (struct iasecc_private_data *) card->drv_data;
-	struct sc_security_env *env = &prv->security_env;
+	struct sc_context *ctx;
+	struct iasecc_private_data *prv;
+	struct sc_security_env *env;
+
+	if (!card || !in || !out)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	ctx = card->ctx;
+	prv = (struct iasecc_private_data *) card->drv_data;
+	env = &prv->security_env;
 
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx, "inlen %i, outlen %i", in_len, out_len);
-	if (!card || !in || !out)
-		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Invalid compute signature arguments");
 
 	if (env->operation == SC_SEC_OPERATION_SIGN)
 		return iasecc_compute_signature_dst(card, in, in_len, out,  out_len);
@@ -3315,7 +3315,8 @@ iasecc_read_public_key(struct sc_card *card, unsigned type,
 	rv = sc_pkcs15_encode_pubkey_rsa(ctx, &rsa_key, out, out_len);
 	LOG_TEST_RET(ctx, rv, "failed to read public key: cannot encode RSA public key");
 
-	sc_log(ctx, "encoded public key: %s", sc_dump_hex(*out, *out_len));
+	if (out && out_len)
+		sc_log(ctx, "encoded public key: %s", sc_dump_hex(*out, *out_len));
 
 	if (bn[0].data)
 		free(bn[0].data);

@@ -312,7 +312,6 @@ awp_create_container(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_file *clist = NULL, *file = NULL;
 	int rv = 0;
-	unsigned char *list = NULL;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "create container(%X:%X:%X)", acc->prkey_id, acc->cert_id, acc->pubkey_id);
@@ -330,12 +329,8 @@ awp_create_container(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 
 	rv = awp_create_container_record(p15card, profile, file, acc);
 
-	if (clist)
-		sc_file_free(clist);
-	if (file)
-		sc_file_free(file);
-	if (list)
-		free(list);
+	sc_file_free(file);
+	sc_file_free(clist);
 
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, rv);
 }
@@ -784,10 +779,8 @@ awp_encode_key_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *obj
 	if (obj->type == COSM_TYPE_PUBKEY_RSA || obj->type == COSM_TYPE_PRKEY_RSA)
 		ki->flags |= COSM_GENERATED;
 
-	if (obj->label)   {
-		ki->label.value = (unsigned char *)strdup(obj->label);
-		ki->label.len = strlen(obj->label);
-	}
+	ki->label.value = (unsigned char *)strdup(obj->label);
+	ki->label.len = strlen(obj->label);
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "cosm_encode_key_info() label(%i):%s",ki->label.len, ki->label.value);
 
 	/*
@@ -945,10 +938,8 @@ awp_encode_cert_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *ob
 			sc_pkcs15_print_id(&cert_info->id), obj->content.value, obj->content.len);
 	memset(&pubkey, 0, sizeof(pubkey));
 
-	if (obj->label)   {
-		ci->label.value = (unsigned char *)strdup(obj->label);
-		ci->label.len = strlen(obj->label);
-	}
+	ci->label.value = (unsigned char *)strdup(obj->label);
+	ci->label.len = strlen(obj->label);
 
 	mem = BIO_new_mem_buf(obj->content.value, obj->content.len);
 	if (!mem)
@@ -1090,10 +1081,8 @@ awp_encode_data_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *ob
 
 	di->flags = 0x0000;
 
-	if (obj->label)   {
-		di->label.value = (unsigned char *)strdup(obj->label);
-		di->label.len = strlen(obj->label);
-	}
+	di->label.value = (unsigned char *)strdup(obj->label);
+	di->label.len = strlen(obj->label);
 
 	di->app.len = strlen(data_info->app_label);
 	if (di->app.len)   {
@@ -1669,8 +1658,8 @@ awp_delete_from_container(struct sc_pkcs15_card *p15card,
 		rv = 0;
 
 	if (buff)		free(buff);
-	if (file)		sc_file_free(file);
 	if (clist)		sc_file_free(clist);
+	sc_file_free(file);
 
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, rv);
 }
@@ -1744,8 +1733,7 @@ awp_remove_from_object_list( struct sc_pkcs15_card *p15card, struct sc_profile *
 done:
 	if (buff)
 		free(buff);
-	if (lst)
-		sc_file_free(lst);
+	sc_file_free(lst);
 	if (lst_file)
 		sc_file_free(lst_file);
 

@@ -251,6 +251,30 @@ CK_RV attr_find2(CK_ATTRIBUTE_PTR pTemp1, CK_ULONG ulCount1,
 	return rv;
 }
 
+CK_RV attr_find_and_allocate_ptr(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, CK_ULONG type, void **out, size_t *out_len)
+{
+	void *ptr;
+	size_t len;
+	CK_RV rv;
+
+	if (!out || !out_len)
+		return CKR_ARGUMENTS_BAD;
+	len = *out_len;
+
+	rv = attr_find_ptr(pTemplate, ulCount, type, &ptr, &len);
+	if (rv != CKR_OK)
+		return rv;
+
+	*out = calloc(1, len);
+	if (*out == NULL)
+		return CKR_HOST_MEMORY;
+
+	memcpy(*out, ptr, len);
+	*out_len = len;
+
+	return CKR_OK;
+}
+
 CK_RV attr_find_ptr(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, CK_ULONG type, void **ptr, size_t * sizep)
 {
 	unsigned int n;

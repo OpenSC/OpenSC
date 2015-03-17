@@ -25,6 +25,7 @@
 #include "internal.h"
 #include "asn1.h"
 #include "cardctl.h"
+#include "common/compat_strlcpy.h"
 
 #include "sm.h"
 #include "iasecc.h"
@@ -36,11 +37,14 @@
 static int
 sm_save_sc_context (struct sc_card *card, struct sm_info *sm_info)
 {
-	struct sc_context *ctx = card->ctx;
-	struct sc_card_cache *cache = &card->cache;
+	struct sc_context *ctx;
+	struct sc_card_cache *cache;
 
 	if (!card || !sm_info)
 		return SC_ERROR_INVALID_ARGUMENTS;
+
+	ctx = card->ctx;
+	cache = &card->cache;
 
 	sc_log(ctx, "SM save context: cache(valid:%i,current_df:%p)", cache->valid, cache->current_df);
 	if (cache->valid && cache->current_df)   {
@@ -156,7 +160,7 @@ iasecc_sm_external_authentication(struct sc_card *card, unsigned skey_ref, int *
 	if (card->sm_ctx.sm_mode == SM_MODE_NONE)
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Cannot do 'External Authentication' without SM activated ");
 
-	strncpy(sm_info->config_section, card->sm_ctx.config_section, sizeof(sm_info->config_section));
+	strlcpy(sm_info->config_section, card->sm_ctx.config_section, sizeof(sm_info->config_section));
 	sm_info->cmd = SM_CMD_EXTERNAL_AUTH;
 	sm_info->serialnr = card->serialnr;
 	sm_info->card_type = card->type;
@@ -296,7 +300,7 @@ iasecc_sm_initialize(struct sc_card *card, unsigned se_num, unsigned cmd)
 
 	LOG_FUNC_CALLED(ctx);
 
-	strncpy(sm_info->config_section, card->sm_ctx.config_section, sizeof(sm_info->config_section));
+	strlcpy(sm_info->config_section, card->sm_ctx.config_section, sizeof(sm_info->config_section));
 	sm_info->cmd = cmd;
 	sm_info->serialnr = card->serialnr;
 	sm_info->card_type = card->type;

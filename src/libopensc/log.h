@@ -60,7 +60,7 @@ void _sc_log(struct sc_context *ctx, const char *format, ...);
 
 void sc_hex_dump(struct sc_context *ctx, int level, const u8 * buf, size_t len, char *out, size_t outlen);
 char * sc_dump_hex(const u8 * in, size_t count);
-
+char * sc_dump_oid(const struct sc_object_id *oid);
 #define SC_FUNC_CALLED(ctx, level) do { \
 	 sc_do_log(ctx, level, __FILE__, __LINE__, __FUNCTION__, "called\n"); \
 } while (0)

@@ -209,7 +209,7 @@ des3_encrypt_ecb(const unsigned char *key, int keysize,
 
 
 static int
-des3_encrypt_cbc(const unsigned char *key, int keysize, unsigned char iv[8],
+des3_encrypt_cbc(const unsigned char *key, int keysize, unsigned char iv[EVP_MAX_IV_LENGTH],
 		const unsigned char *input, size_t length, unsigned char *output)
 {
 	unsigned char bKey[24] = { 0 };
@@ -227,7 +227,7 @@ des3_encrypt_cbc(const unsigned char *key, int keysize, unsigned char iv[8],
 
 
 static int
-des3_decrypt_cbc(const unsigned char *key, int keysize, unsigned char iv[8],
+des3_decrypt_cbc(const unsigned char *key, int keysize, unsigned char iv[EVP_MAX_IV_LENGTH],
 		const unsigned char *input, size_t length, unsigned char *output)
 {
 	unsigned char bKey[24] = { 0 };
@@ -244,7 +244,7 @@ des3_decrypt_cbc(const unsigned char *key, int keysize, unsigned char iv[8],
 
 
 static int
-des_encrypt_cbc(const unsigned char *key, int keysize, unsigned char iv[8],
+des_encrypt_cbc(const unsigned char *key, int keysize, unsigned char iv[EVP_MAX_IV_LENGTH],
 		const unsigned char *input, size_t length, unsigned char *output)
 {
 	return openssl_enc(EVP_des_cbc(), key, iv, input, length, output);
@@ -252,7 +252,7 @@ des_encrypt_cbc(const unsigned char *key, int keysize, unsigned char iv[8],
 
 
 static int
-des_decrypt_cbc(const unsigned char *key, int keysize, unsigned char iv[8],
+des_decrypt_cbc(const unsigned char *key, int keysize, unsigned char iv[EVP_MAX_IV_LENGTH],
 		const unsigned char *input, size_t length, unsigned char *output)
 {
 	return openssl_dec(EVP_des_cbc(), key, iv, input, length, output);
@@ -450,7 +450,9 @@ epass2003_refresh(struct sc_card *card)
 	int r = SC_SUCCESS;
 
 	if (g_sm) {
+		card->sm_ctx.sm_mode = 0;
 		r = mutual_auth(card, g_init_key_enc, g_init_key_mac);
+		card->sm_ctx.sm_mode = SM_MODE_TRANSMIT;
 		LOG_TEST_RET(card->ctx, r, "mutual_auth failed");
 	}
 
@@ -947,9 +949,6 @@ epass2003_init(struct sc_card *card)
 	card->name = "epass2003";
 	card->cla = 0x00;
 	card->drv_data = NULL;
-/* VT
-	card->ctx->use_sm = 1;
-*/
 
 	g_sm = SM_SCP01;
 	/* g_sm = SM_PLAIN; */
@@ -1141,7 +1140,7 @@ epass2003_select_fid(struct sc_card *card, unsigned int id_hi, unsigned int id_l
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	/* update cache */
-	if (file->type == SC_FILE_TYPE_DF) {
+	if (file && file->type == SC_FILE_TYPE_DF) {
 		card->cache.current_path.type = SC_PATH_TYPE_PATH;
 		card->cache.current_path.value[0] = 0x3f;
 		card->cache.current_path.value[1] = 0x00;
