@@ -57,6 +57,9 @@ static const char * opt_pin = NULL;
 static const char * opt_puk = NULL;
 static int	verbose = 0;
 static int opt_no_prompt = 0;
+#if defined(ENABLE_OPENSSL) && (defined(_WIN32) || defined(HAVE_INTTYPES_H))
+static int opt_rfc4716 = 0;
+#endif
 
 enum {
 	OPT_CHANGE_PIN = 0x100,
@@ -68,6 +71,7 @@ enum {
 	OPT_READ_PUB,
 #if defined(ENABLE_OPENSSL) && (defined(_WIN32) || defined(HAVE_INTTYPES_H))
 	OPT_READ_SSH,
+	OPT_RFC4716,
 #endif
 	OPT_PIN,
 	OPT_NEWPIN,
@@ -76,7 +80,7 @@ enum {
 	OPT_BIND_TO_AID,
 	OPT_LIST_APPLICATIONS,
 	OPT_LIST_SKEYS,
-	OPT_NO_PROMPT
+	OPT_NO_PROMPT,
 };
 
 #define NELEMENTS(x)	(sizeof(x)/sizeof((x)[0]))
@@ -100,6 +104,7 @@ static const struct option options[] = {
 	{ "read-public-key",	required_argument, NULL,	OPT_READ_PUB },
 #if defined(ENABLE_OPENSSL) && (defined(_WIN32) || defined(HAVE_INTTYPES_H))
 	{ "read-ssh-key",	required_argument, NULL,	OPT_READ_SSH },
+	{ "rfc4716",		no_argument, NULL,		OPT_RFC4716 },
 #endif
 	{ "test-update",	no_argument, NULL,		'T' },
 	{ "update",		no_argument, NULL,		'U' },
@@ -786,6 +791,36 @@ static int list_skeys(void)
 
 
 #if defined(ENABLE_OPENSSL) && (defined(_WIN32) || defined(HAVE_INTTYPES_H))
+
+static void print_ssh_key(FILE *outf, const char * alg, struct sc_pkcs15_object *obj, unsigned char * buf, uint32_t len) {
+	unsigned char *uu;
+	int r;
+
+	uu = malloc(len*2); // Way over - even if we have extra LFs; as each 6 bits take one byte.
+
+	if (opt_rfc4716) {
+		r = sc_base64_encode(buf, len, uu, 2*len, 64);
+
+		fprintf(outf,"---- BEGIN SSH2 PUBLIC KEY ----\n");
+
+		if (obj->label && strlen(obj->label))
+			fprintf(outf,"Comment: \"%s\"\n", obj->label);
+
+		fprintf(outf,"%s", uu);
+		fprintf(outf,"---- END SSH2 PUBLIC KEY ----\n");
+	} else {
+		// Old style openssh - [<quote protected options> <whitespace> <keytype> <whitespace> <key> [<whitespace> anything else]
+		//
+		r = sc_base64_encode(buf, len, uu, 2*len, 0);
+		if (obj->label && strlen(obj->label)) 
+			fprintf(outf,"ssh-%s %s %s\n", alg, uu, obj->label);
+		else
+			fprintf(outf,"ssh-%s %s\n", alg, uu);
+	}
+	free(uu);
+	return;
+}
+
 static int read_ssh_key(void)
 {
 	int r;
@@ -844,7 +879,6 @@ static int read_ssh_key(void)
 
 	if (pubkey->algorithm == SC_ALGORITHM_RSA) {
 		unsigned char buf[2048];
-		unsigned char *uu;
 		uint32_t len, n;
 
 		if (!pubkey->u.rsa.modulus.data || !pubkey->u.rsa.modulus.len ||
@@ -895,16 +929,11 @@ static int read_ssh_key(void)
 		memcpy(buf+len,pubkey->u.rsa.modulus.data, pubkey->u.rsa.modulus.len);
 		len += pubkey->u.rsa.modulus.len;
 
-		uu = malloc(len*2);
-		r = sc_base64_encode(buf, len, uu, 2*len, 2*len);
-
-		fprintf(outf,"ssh-rsa %s", uu);
-		free(uu);
+		print_ssh_key(outf, "rsa", obj, buf, len);
 	}
 
 	if (pubkey->algorithm == SC_ALGORITHM_DSA) {
 		unsigned char buf[2048];
-		unsigned char *uu;
 		uint32_t len;
 		uint32_t n;
 
@@ -991,11 +1020,7 @@ static int read_ssh_key(void)
 		memcpy(buf+len,pubkey->u.dsa.pub.data, pubkey->u.dsa.pub.len);
 		len += pubkey->u.dsa.pub.len;
 
-		uu = malloc(len*2);
-		r = sc_base64_encode(buf, len, uu, 2*len, 2*len);
-
-		fprintf(outf,"ssh-dss %s", uu);
-		free(uu);
+		print_ssh_key(outf, "dss", obj, buf, len);
 	}
 
 	if (outf != stdout)
@@ -1016,6 +1041,7 @@ fail2:
 		sc_pkcs15_free_pubkey(pubkey);
 	return SC_ERROR_OUT_OF_MEMORY;
 }
+
 #endif
 
 static sc_pkcs15_object_t *
@@ -1899,6 +1925,9 @@ int main(int argc, char * const argv[])
 			opt_pubkey = optarg;
 			do_read_sshkey = 1;
 			action_count++;
+			break;
+		case OPT_RFC4716:
+			opt_rfc4716 = 1;
 			break;
 #endif
 		case 'L':

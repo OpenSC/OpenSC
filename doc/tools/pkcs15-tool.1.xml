@@ -185,7 +185,21 @@
 					</term>
 					<listitem><para>Reads the public key with id <replaceable>id</replaceable>,
 					writing the output in format suitable for
-					<filename>$HOME/.ssh/authorized_keys</filename>.</para></listitem>
+					<filename>$HOME/.ssh/authorized_keys</filename>.</para> 
+
+					<para>The key label, if any will be shown in the 'Comment' field.</para>
+
+
+					<varlistentry>
+						<term>
+							<option>--rfc4716</option>
+						</term>
+						<listitem><para>When used in conjunction with option <option>--read-ssh-key</option> the
+						output format of the public key follows rfc4716.</para></listitem>
+					</varlistentry>
+					<para></para>
+					<para> The default output format is a single line (openssh).</para>
+					</listitem>
 				</varlistentry>
 
 				<varlistentry>
