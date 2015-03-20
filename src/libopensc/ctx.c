@@ -70,7 +70,6 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 #endif
 	{ "gemsafeV1",	(void *(*)(void)) sc_get_gemsafeV1_driver },
 	{ "miocos",	(void *(*)(void)) sc_get_miocos_driver },
-	{ "mcrd",	(void *(*)(void)) sc_get_mcrd_driver },
 	{ "asepcos",	(void *(*)(void)) sc_get_asepcos_driver },
 	{ "starcos",	(void *(*)(void)) sc_get_starcos_driver },
 	{ "tcos",	(void *(*)(void)) sc_get_tcos_driver },
@@ -103,6 +102,7 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 
 /* Here should be placed drivers that need some APDU transactions to
  * recognise its cards. */
+	{ "mcrd",	(void *(*)(void)) sc_get_mcrd_driver },
 	{ "setcos",	(void *(*)(void)) sc_get_setcos_driver },
 	{ "muscle",	(void *(*)(void)) sc_get_muscle_driver },
 	{ "atrust-acos",(void *(*)(void)) sc_get_atrust_acos_driver },
