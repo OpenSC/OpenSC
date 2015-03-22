@@ -420,7 +420,11 @@ static int cleanUpShares(secret_share_t *shares, unsigned char n)
 
 void clearScreen()
 {
-	if (system( "clear" )) system( "cls" );
+	if (system( "clear" )) {
+		if (system( "cls" )) {
+			fprintf(stderr, "Clearing the screen failed\n");
+		}
+	}
 }
 
 
@@ -591,6 +595,11 @@ static int recreate_password_from_shares(char **pwd, int *pwdlen, int num_of_pas
 	secret_share_t *shares = NULL;
 	secret_share_t *sp;
 
+	if (num_of_password_shares < 2) {
+		fprintf(stderr, "--pwd-shares-total must 2 or larger\n");
+		return -1;
+	}
+
 	/*
 	 * Initialize prime and secret
 	 */
@@ -605,7 +614,10 @@ static int recreate_password_from_shares(char **pwd, int *pwdlen, int num_of_pas
 	printf("\nPlease remember to present the share id as well as the share value.");
 	printf("\n\nPlease enter prime: ");
 	memset(inbuf, 0, sizeof(inbuf));
-	fgets(inbuf, sizeof(inbuf), stdin);
+	if (fgets(inbuf, sizeof(inbuf), stdin) == NULL) {
+		fprintf(stderr, "Input aborted\n");
+		return -1;
+	}
 	binlen = 64;
 	sc_hex_to_bin(inbuf, bin, &binlen);
 	BN_bin2bn(bin, binlen, &prime);
@@ -626,13 +638,19 @@ static int recreate_password_from_shares(char **pwd, int *pwdlen, int num_of_pas
 
 		printf("Please enter share ID: ");
 		memset(inbuf, 0, sizeof(inbuf));
-		fgets(inbuf, sizeof(inbuf), stdin);
+		if (fgets(inbuf, sizeof(inbuf), stdin) == NULL) {
+			fprintf(stderr, "Input aborted\n");
+			return -1;
+		}
 		p = &(sp->x);
 		BN_hex2bn(&p, inbuf);
 
 		printf("Please enter share value: ");
 		memset(inbuf, 0, sizeof(inbuf));
-		fgets(inbuf, sizeof(inbuf), stdin);
+		if (fgets(inbuf, sizeof(inbuf), stdin) == NULL) {
+			fprintf(stderr, "Input aborted\n");
+			return -1;
+		}
 		binlen = 64;
 		sc_hex_to_bin(inbuf, bin, &binlen);
 		BN_bin2bn(bin, binlen, &(sp->y));
@@ -803,10 +821,9 @@ static void ask_for_password(char **pwd, int *pwdlen)
 
 
 
-static int generate_pwd_shares(sc_card_t *card, char **pwd, int *pwdlen, int password_shares_threshold, unsigned int password_shares_total)
+static int generate_pwd_shares(sc_card_t *card, char **pwd, int *pwdlen, int password_shares_threshold, int password_shares_total)
 {
-	int r;
-	unsigned int i;
+	int r, i;
 	BIGNUM prime;
 	BIGNUM secret;
 	unsigned char buf[64];
@@ -817,6 +834,26 @@ static int generate_pwd_shares(sc_card_t *card, char **pwd, int *pwdlen, int pas
 	secret_share_t *sp;
 
 	u8 rngseed[16];
+
+	if ((password_shares_threshold == -1) || (password_shares_total == -1)) {
+		fprintf(stderr, "Must specify both, --pwd-shares-total and --pwd-shares-threshold\n");
+		return -1;
+	}
+
+	if (password_shares_total < 3) {
+		fprintf(stderr, "--pwd-shares-total must be 3 or larger\n");
+		return -1;
+	}
+
+	if (password_shares_threshold < 2) {
+		fprintf(stderr, "--pwd-shares-threshold must 2 or larger\n");
+		return -1;
+	}
+
+	if (password_shares_threshold > password_shares_total) {
+		fprintf(stderr, "--pwd-shares-threshold must be smaller or equal to --pwd-shares-total\n");
+		return -1;
+	}
 
 	printf(	"\nThe DKEK will be enciphered using a randomly generated 64 bit password.\n");
 	printf(	"This password is split using a (%i-of-%i) threshold scheme.\n\n", password_shares_threshold, password_shares_total);
@@ -908,7 +945,7 @@ static int generate_pwd_shares(sc_card_t *card, char **pwd, int *pwdlen, int pas
 
 
 
-static int create_dkek_share(sc_card_t *card, const char *outf, int iter, const char *password, int password_shares_threshold, unsigned int password_shares_total)
+static int create_dkek_share(sc_card_t *card, const char *outf, int iter, const char *password, int password_shares_threshold, int password_shares_total)
 {
 	EVP_CIPHER_CTX ctx;
 	FILE *out = NULL;
@@ -923,8 +960,7 @@ static int create_dkek_share(sc_card_t *card, const char *outf, int iter, const 
 	}
 
 	if (password == NULL) {
-
-		if (password_shares_threshold == -1) {
+		if ((password_shares_threshold == -1) && (password_shares_total == -1)) {
 			ask_for_password(&pwd, &pwdlen);
 		} else { // create password using threshold scheme
 			r = generate_pwd_shares(card, &pwd, &pwdlen, password_shares_threshold, password_shares_total);
@@ -1569,15 +1605,8 @@ int main(int argc, char * const argv[])
 	if (do_initialize && initialize(card, opt_so_pin, opt_pin, opt_retry_counter, opt_dkek_shares, opt_label))
 		goto fail;
 
-	if (do_create_dkek_share) {
-		if (opt_password_shares_total <= 0) {
-			fprintf(stderr, "The number of password shares must be bigger than 0.");
-			goto fail;
-		}
-
-	   	if (create_dkek_share(card, opt_filename, opt_iter, opt_password, opt_password_shares_threshold, opt_password_shares_total))
-			goto fail;
-	}
+	if (do_create_dkek_share && create_dkek_share(card, opt_filename, opt_iter, opt_password, opt_password_shares_threshold, opt_password_shares_total))
+		goto fail;
 
 	if (do_import_dkek_share && import_dkek_share(card, opt_filename, opt_iter, opt_password, opt_password_shares_total))
 		goto fail;
