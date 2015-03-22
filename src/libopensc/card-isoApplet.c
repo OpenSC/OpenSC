@@ -48,6 +48,7 @@ struct isoApplet_drv_data
 	 * have to be modified. */
 	unsigned int sec_env_alg_ref;
 	unsigned int sec_env_ec_field_length;
+	unsigned int isoapplet_version;
 };
 #define DRVDATA(card)	((struct isoApplet_drv_data *) ((card)->drv_data))
 
@@ -142,19 +143,12 @@ isoApplet_match_card(sc_card_t *card)
 	}
 
 	/* The IsoApplet should return an API version (major and minor) and a feature bitmap.
+	 * We expect 3 bytes: MAJOR API version - MINOR API version - API feature bitmap.
 	 * If applet does not return API version, versions 0x00 will match */
-	if(rlen == 0)
+	if(rlen < 3)
 	{
-		rbuf[0] = 0x00;
-		rbuf[1] = 0x00;
-		rbuf[2] = 0x00;
-		rlen = 3;
-	}
-
-	/* We expect 3 bytes: MAJOR API version - MINOR API version - API feature bitmap */
-	if(rlen != 3)
-	{
-		return 0;
+		assert(sizeof(rbuf) >= 3);
+		memset(rbuf, 0x00, 3);
 	}
 
 	if(rbuf[0] != ISOAPPLET_API_VERSION_MAJOR)
@@ -173,11 +167,6 @@ isoApplet_match_card(sc_card_t *card)
 		       ISOAPPLET_API_VERSION_MAJOR, ISOAPPLET_API_VERSION_MINOR, rbuf[0], rbuf[1]);
 	}
 
-	if(rbuf[2] & ISOAPPLET_API_FEATURE_EXT_APDU)
-	{
-		card->caps |=  SC_CARD_CAP_APDU_EXT;
-	}
-
 	return 1;
 }
 
@@ -187,6 +176,8 @@ isoApplet_init(sc_card_t *card)
 	int r;
 	unsigned long flags = 0;
 	unsigned long ext_flags = 0;
+	size_t rlen = SC_MAX_APDU_BUFFER_SIZE;
+	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	struct isoApplet_drv_data *drvdata;
 	struct sc_object_id curve_oid;
 
@@ -198,6 +189,18 @@ isoApplet_init(sc_card_t *card)
 
 	card->drv_data = drvdata;
 	card->cla = 0x00;
+
+	/* Obtain applet version and specific features */
+	r = isoApplet_select_applet(card, isoApplet_aid, ISOAPPLET_AID_LEN, rbuf, &rlen);
+	LOG_TEST_RET(card->ctx, r, "Error obtaining applet version.");
+	if(rlen < 3)
+	{
+		assert(sizeof(rbuf) >= 3);
+		memset(rbuf, 0x00, 3);
+	}
+	drvdata->isoapplet_version = ((unsigned int)rbuf[0] << 8) | rbuf[1];
+	if(rbuf[2] & ISOAPPLET_API_FEATURE_EXT_APDU)
+		card->caps |=  SC_CARD_CAP_APDU_EXT;
 
 	/* ECDSA
 	 * Curves supported by the pkcs15-init driver are indicated per curve. This
