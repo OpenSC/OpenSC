@@ -37,6 +37,7 @@
 
 #define ISOAPPLET_API_FEATURE_EXT_APDU 0x01
 #define ISOAPPLET_API_FEATURE_SECURE_RANDOM 0x02
+#define ISOAPPLET_API_FEATURE_ECC 0x04
 
 #define ISOAPPLET_AID_LEN 12
 static const u8 isoApplet_aid[] = {0xf2,0x76,0xa2,0x88,0xbc,0xfb,0xa6,0x9d,0x34,0xf3,0x10,0x01};
@@ -222,20 +223,25 @@ isoApplet_init(sc_card_t *card)
 		card->caps |=  SC_CARD_CAP_APDU_EXT;
 	if(rbuf[2] & ISOAPPLET_API_FEATURE_SECURE_RANDOM)
 		card->caps |=  SC_CARD_CAP_RNG;
-
-	/* ECDSA
-	 * Curves supported by the pkcs15-init driver are indicated per curve. This
-	 * should be kept in sync with the explicit parameters in the pkcs15-init
-	 * driver. */
-	flags = 0;
-	flags |= SC_ALGORITHM_ECDSA_RAW;
-	flags |= SC_ALGORITHM_ONBOARD_KEY_GEN;
-	ext_flags =  SC_ALGORITHM_EXT_EC_NAMEDCURVE;
-	ext_flags |= SC_ALGORITHM_EXT_EC_F_P;
-	for (i=0; ec_curves[i].oid.value[0] >= 0; i++)
+	if(drvdata->isoapplet_version <= 0x0005 || rbuf[2] & ISOAPPLET_API_FEATURE_ECC)
 	{
-		if(drvdata->isoapplet_version >= ec_curves[i].min_applet_version)
-			_sc_card_add_ec_alg(card, ec_curves[i].size, flags, ext_flags, &ec_curves[i].oid);
+		/* There are Java Cards that do not support ECDSA at all. The IsoApplet
+		 * started to report this with version 00.06.
+		 *
+		 * Curves supported by the pkcs15-init driver are indicated per curve. This
+		 * should be kept in sync with the explicit parameters in the pkcs15-init
+		 * driver. */
+		flags = 0;
+		flags |= SC_ALGORITHM_ECDSA_RAW;
+		flags |= SC_ALGORITHM_ONBOARD_KEY_GEN;
+		flags |= SC_ALGORITHM_EXT_EC_UNCOMPRESES;
+		ext_flags =  SC_ALGORITHM_EXT_EC_NAMEDCURVE;
+		ext_flags |= SC_ALGORITHM_EXT_EC_F_P;
+		for (i=0; ec_curves[i].oid.value[0] >= 0; i++)
+		{
+			if(drvdata->isoapplet_version >= ec_curves[i].min_applet_version)
+				_sc_card_add_ec_alg(card, ec_curves[i].size, flags, ext_flags, &ec_curves[i].oid);
+		}
 	}
 
 	/* RSA */
