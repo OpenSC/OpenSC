@@ -34,7 +34,9 @@
 
 #define ISOAPPLET_API_VERSION_MAJOR 0x00
 #define ISOAPPLET_API_VERSION_MINOR 0x05
+
 #define ISOAPPLET_API_FEATURE_EXT_APDU 0x01
+#define ISOAPPLET_API_FEATURE_SECURE_RANDOM 0x02
 
 #define ISOAPPLET_AID_LEN 12
 static const u8 isoApplet_aid[] = {0xf2,0x76,0xa2,0x88,0xbc,0xfb,0xa6,0x9d,0x34,0xf3,0x10,0x01};
@@ -218,6 +220,8 @@ isoApplet_init(sc_card_t *card)
 	drvdata->isoapplet_version = ((unsigned int)rbuf[0] << 8) | rbuf[1];
 	if(rbuf[2] & ISOAPPLET_API_FEATURE_EXT_APDU)
 		card->caps |=  SC_CARD_CAP_APDU_EXT;
+	if(rbuf[2] & ISOAPPLET_API_FEATURE_SECURE_RANDOM)
+		card->caps |=  SC_CARD_CAP_RNG;
 
 	/* ECDSA
 	 * Curves supported by the pkcs15-init driver are indicated per curve. This
@@ -1224,6 +1228,22 @@ isoApplet_compute_signature(struct sc_card *card,
 	LOG_FUNC_RETURN(ctx, r);
 }
 
+static int
+isoApplet_get_challenge(struct sc_card *card, u8 *rnd, size_t len)
+{
+	struct sc_context *ctx = card->ctx;
+	int r;
+
+	LOG_FUNC_CALLED(ctx);
+
+	if(card->caps & SC_CARD_CAP_RNG)   {
+		r = iso_ops->get_challenge(card, rnd, len);
+	} else   {
+		r = SC_ERROR_NOT_SUPPORTED;
+	}
+	LOG_FUNC_RETURN(ctx, r);
+}
+
 static struct sc_card_driver *sc_get_driver(void)
 {
 	sc_card_driver_t *iso_drv = sc_get_iso7816_driver();
@@ -1245,6 +1265,7 @@ static struct sc_card_driver *sc_get_driver(void)
 	isoApplet_ops.process_fci = isoApplet_process_fci;
 	isoApplet_ops.set_security_env = isoApplet_set_security_env;
 	isoApplet_ops.compute_signature = isoApplet_compute_signature;
+	isoApplet_ops.get_challenge = isoApplet_get_challenge;
 
 	/* unsupported functions */
 	isoApplet_ops.write_binary = NULL;
@@ -1252,7 +1273,6 @@ static struct sc_card_driver *sc_get_driver(void)
 	isoApplet_ops.write_record = NULL;
 	isoApplet_ops.append_record = NULL;
 	isoApplet_ops.update_record = NULL;
-	isoApplet_ops.get_challenge = NULL;
 	isoApplet_ops.restore_security_env = NULL;
 
 	return &isoApplet_drv;
