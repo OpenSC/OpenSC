@@ -68,6 +68,23 @@ static struct sc_card_driver isoApplet_drv =
 	NULL, 0, NULL
 };
 
+static struct isoapplet_supported_ec_curves {
+		struct sc_object_id oid;
+		size_t size;
+		unsigned int min_applet_version;
+} ec_curves[] = {
+	{{{1, 2, 840, 10045, 3, 1, 1, -1}},     192, 0x0000}, /* secp192r1, nistp192, prime192v1, ansiX9p192r1 */
+	{{{1, 3, 132, 0, 33, -1}},              224, 0x0000}, /* secp224r1, nistp224 */
+	{{{1, 2, 840, 10045, 3, 1, 7, -1}},     256, 0x0000}, /* secp256r1, nistp256, prime256v1, ansiX9p256r1 */
+	{{{1, 3, 132, 0, 34, -1}},              384, 0x0000}, /* secp384r1, nistp384, prime384v1, ansiX9p384r1 */
+	{{{1, 3, 36, 3, 3, 2, 8, 1, 1, 3, -1}}, 192, 0x0000}, /* brainpoolP192r1 */
+	{{{1, 3, 36, 3, 3, 2, 8, 1, 1, 5, -1}}, 224, 0x0000}, /* brainpoolP224r1 */
+	{{{1, 3, 36, 3, 3, 2, 8, 1, 1, 7, -1}}, 256, 0x0000}, /* brainpoolP256r1 */
+	{{{1, 3, 36, 3, 3, 2, 8, 1, 1, 9, -1}}, 320, 0x0000}, /* brainpoolP320r1 */
+	{{{1, 3, 132, 0, 31, -1}},              192, 0x0006}, /* secp192k1 */
+	{{{1, 3, 132, 0, 10, -1}},              256, 0x0006}, /* secp256k1 */
+	{{{-1}}, 0, 0} /* This entry must not be touched. */
+};
 
 /*
  * SELECT an applet on the smartcard. (Not in the emulated filesystem.)
@@ -174,12 +191,12 @@ static int
 isoApplet_init(sc_card_t *card)
 {
 	int r;
+	int i;
 	unsigned long flags = 0;
 	unsigned long ext_flags = 0;
 	size_t rlen = SC_MAX_APDU_BUFFER_SIZE;
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	struct isoApplet_drv_data *drvdata;
-	struct sc_object_id curve_oid;
 
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -211,34 +228,11 @@ isoApplet_init(sc_card_t *card)
 	flags |= SC_ALGORITHM_ONBOARD_KEY_GEN;
 	ext_flags =  SC_ALGORITHM_EXT_EC_NAMEDCURVE;
 	ext_flags |= SC_ALGORITHM_EXT_EC_F_P;
-	/* secp192r1, prime192r1, ansiX9p192r1*/
-	r =  sc_format_oid(&curve_oid, "1.2.840.10045.3.1.1");
-	LOG_TEST_RET(card->ctx, r, "Error obtaining EC curve OID");
-	_sc_card_add_ec_alg(card, 192, flags, ext_flags, &curve_oid);
-	/* prime256v1, secp256r1, ansiX9p256r1 */
-	r =  sc_format_oid(&curve_oid, "1.2.840.10045.3.1.7");
-	LOG_TEST_RET(card->ctx, r, "Error obtaining EC curve OID");
-	_sc_card_add_ec_alg(card, 256, flags, ext_flags, &curve_oid);
-	/* secp384r1, prime384v1, ansiX9p384r1 */
-	r =  sc_format_oid(&curve_oid, "1.3.132.0.34");
-	LOG_TEST_RET(card->ctx, r, "Error obtaining EC curve OID");
-	_sc_card_add_ec_alg(card, 384, flags, ext_flags, &curve_oid);
-	/* brainpoolP192r1 */
-	r =  sc_format_oid(&curve_oid, "1.3.36.3.3.2.8.1.1.3");
-	LOG_TEST_RET(card->ctx, r, "Error obtaining EC curve OID");
-	_sc_card_add_ec_alg(card, 192, flags, ext_flags, &curve_oid);
-	/* brainpoolP224r1 */
-	r =  sc_format_oid(&curve_oid, "1.3.36.3.3.2.8.1.1.5");
-	LOG_TEST_RET(card->ctx, r, "Error obtaining EC curve OID");
-	_sc_card_add_ec_alg(card, 224, flags, ext_flags, &curve_oid);
-	/* brainpoolP256r1 */
-	r =  sc_format_oid(&curve_oid, "1.3.36.3.3.2.8.1.1.7");
-	LOG_TEST_RET(card->ctx, r, "Error obtaining EC curve OID");
-	_sc_card_add_ec_alg(card, 256, flags, ext_flags, &curve_oid);
-	/* brainpoolP320r1 */
-	r =  sc_format_oid(&curve_oid, "1.3.36.3.3.2.8.1.1.9");
-	LOG_TEST_RET(card->ctx, r, "Error obtaining EC curve OID");
-	_sc_card_add_ec_alg(card, 320, flags, ext_flags, &curve_oid);
+	for (i=0; ec_curves[i].oid.value[0] >= 0; i++)
+	{
+		if(drvdata->isoapplet_version >= ec_curves[i].min_applet_version)
+			_sc_card_add_ec_alg(card, ec_curves[i].size, flags, ext_flags, &ec_curves[i].oid);
+	}
 
 	/* RSA */
 	flags = 0;
