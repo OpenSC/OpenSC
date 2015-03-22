@@ -840,8 +840,8 @@ static int generate_pwd_shares(sc_card_t *card, char **pwd, int *pwdlen, int pas
 		return -1;
 	}
 
-	if (password_shares_total < 2) {
-		fprintf(stderr, "--pwd-shares-total must be 2 or larger\n");
+	if (password_shares_total < 3) {
+		fprintf(stderr, "--pwd-shares-total must be 3 or larger\n");
 		return -1;
 	}
 
