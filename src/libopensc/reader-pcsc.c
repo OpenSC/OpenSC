@@ -762,7 +762,7 @@ static int pcsc_finish(sc_context_t *ctx)
  *
  * @return Bitmask of \c SC_READER_CAP_PACE_GENERIC, \c SC_READER_CAP_PACE_EID and \c * SC_READER_CAP_PACE_ESIGN logically OR'ed if supported
  */
-static unsigned long part10_detect_pace_capabilities(sc_reader_t *reader)
+static unsigned long part10_detect_pace_capabilities(sc_reader_t *reader, SCARDHANDLE card_handle)
 {
     u8 pace_capabilities_buf[] = {
         PACE_FUNCTION_GetReaderPACECapabilities, /* idxFunction */
@@ -770,7 +770,7 @@ static unsigned long part10_detect_pace_capabilities(sc_reader_t *reader)
     };
     u8 rbuf[7];
     u8 *p = rbuf;
-    size_t rcount = sizeof rbuf;
+    DWORD rcount = sizeof rbuf;
     struct pcsc_private_data *priv;
     unsigned long flags = 0;
 
@@ -780,10 +780,11 @@ static unsigned long part10_detect_pace_capabilities(sc_reader_t *reader)
     if (!priv)
         goto err;
 
-    if (priv->pace_ioctl) {
-		if (0 > pcsc_internal_transmit(reader, pace_capabilities_buf,
-					sizeof pace_capabilities_buf, rbuf, &rcount,
-					priv->pace_ioctl)) {
+    if (priv->pace_ioctl && priv->gpriv) {
+		if (SCARD_S_SUCCESS != priv->gpriv->SCardControl(card_handle,
+					priv->pace_ioctl, pace_capabilities_buf,
+					sizeof pace_capabilities_buf, rbuf, sizeof(rbuf),
+					&rcount)) {
 			sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL,
 				   	"PC/SC v2 part 10 amd1: Get PACE properties failed!");
 			goto err;
@@ -929,7 +930,7 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 	if (priv->pace_ioctl) {
 		const char *log_text = "Reader supports PACE";
 		if (priv->gpriv->enable_pace) {
-			reader->capabilities |= part10_detect_pace_capabilities(reader);
+			reader->capabilities |= part10_detect_pace_capabilities(reader, card_handle);
 
 			if (reader->capabilities & SC_READER_CAP_PACE_GENERIC)
 				sc_log(ctx, log_text);
