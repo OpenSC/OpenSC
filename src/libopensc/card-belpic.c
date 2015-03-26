@@ -577,6 +577,41 @@ static int str2lang(sc_context_t *ctx, char *lang)
 	return -1;
 }
 
+static int get_applet_version(sc_card_t *card)
+{
+	sc_apdu_t apdu;
+	u8 carddata[28];
+	u8 carddata_cmd[] = { 0x80, 0xE4, 0x00, 0x00, 0x1C };
+	int r;
+
+	r = sc_bytes2apdu(card->ctx, carddata_cmd, sizeof(carddata_cmd), &apdu);
+	if(r) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "bytes to APDU conversion failed: %d\n", r);
+		return r;
+	}
+
+	apdu.resp = carddata;
+	apdu.resplen = sizeof(carddata);
+
+	r = sc_transmit_apdu(card, &apdu);
+	if(r) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "GetCardData command failed: %d\n", r);
+		return r;
+	}
+
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	if(r) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "GetCardData: card returned %d\n", r);
+		return r;
+	}
+	if(apdu.resplen < sizeof(carddata)) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "GetCardData: card returned %d bytes rather than expected %d\n", apdu.resplen, sizeof(carddata));
+		return SC_ERROR_WRONG_LENGTH;
+	}
+
+	return (int)(carddata[21]);
+}
+
 #ifdef GET_LANG_FROM_CARD
 
 /* str is in lower case, the case of buf can be both, and buf is large enough */
@@ -843,6 +878,8 @@ static int belpic_init(sc_card_t *card)
 {
 	struct belpic_priv_data *priv = NULL;
 	scconf_block *conf_block;
+	int applet_version;
+	int key_size = 1024;
 #ifdef BELPIC_PIN_PAD
 	int r;
 #endif
@@ -865,7 +902,15 @@ static int belpic_init(sc_card_t *card)
 	card->drv_data = priv;
 	card->cla = 0x00;
 	if (card->type == SC_CARD_TYPE_BELPIC_EID) {
-		_sc_card_add_rsa_alg(card, 1024,
+		applet_version = get_applet_version(card);
+		if(applet_version < 0) {
+			// error occurred
+			return applet_version;
+		}
+		if(applet_version >= 0x17) {
+			key_size = 2048;
+		}
+		_sc_card_add_rsa_alg(card, key_size,
 				     SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE, 0);
 	}
 
