@@ -127,6 +127,40 @@ static long t1, t2, tot_read = 0, tot_dur = 0, dur;
 #define BELPIC_PAD_CHAR			0xFF
 #define BELPIC_KEY_REF_NONREP		0x83
 
+/* Data in the return value for the GET CARD DATA command:
+ * All fields are one byte, except when noted otherwise.
+ *
+ * See §6.9 in
+ * https://github.com/Fedict/eid-mw/blob/master/doc/sdk/documentation/Public_Belpic_Applet_v1%207_Ref_Manual%20-%20A01.pdf
+ * for the full documentation on the GET CARD DATA command.
+ */
+// Card serial number (16 bytes)
+#define BELPIC_CARDDATA_OFF_SERIALNUM 0
+// "Component code"
+#define BELPIC_CARDDATA_OFF_COMPCODE 16
+// "OS number"
+#define BELPIC_CARDDATA_OFF_OSNUM 17
+// "OS version"
+#define BELPIC_CARDDATA_OFF_OSVER 18
+// "Softmask number"
+#define BELPIC_CARDDATA_OFF_SMNUM 19
+// "Softmask version"
+#define BELPIC_CARDDATA_OFF_SMVER 20
+// Applet version
+#define BELPIC_CARDDATA_OFF_APPLETVERS 21
+// Global OS version (2 bytes)
+#define BELPIC_CARDDATA_OFF_GL_OSVE 22
+// Applet interface version
+#define BELPIC_CARDDATA_OFF_APPINTVERS 24
+// PKCS#1 support version
+#define BELPIC_CARDDATA_OFF_PKCS1 25
+// Key exchange version
+#define BELPIC_CARDDATA_OFF_KEYX 26
+// Applet life cycle (Should always be 0F for released cards, is 07 when not issued yet)
+#define BELPIC_CARDDATA_OFF_APPLCYCLE 27
+// Full length of reply
+#define BELPIC_CARDDATA_RESP_LEN 28
+
 /* Used for a trick in select file and read binary */
 static size_t next_idx = (size_t)-1;
 
@@ -577,12 +611,13 @@ static int str2lang(sc_context_t *ctx, char *lang)
 	return -1;
 }
 
-static int get_applet_version(sc_card_t *card)
+static int get_carddata(sc_card_t *card, u8* carddata_loc, unsigned int carddataloc_len)
 {
 	sc_apdu_t apdu;
-	u8 carddata[28];
 	u8 carddata_cmd[] = { 0x80, 0xE4, 0x00, 0x00, 0x1C };
 	int r;
+
+	assert(carddataloc_len == BELPIC_CARDDATA_RESP_LEN);
 
 	r = sc_bytes2apdu(card->ctx, carddata_cmd, sizeof(carddata_cmd), &apdu);
 	if(r) {
@@ -590,8 +625,8 @@ static int get_applet_version(sc_card_t *card)
 		return r;
 	}
 
-	apdu.resp = carddata;
-	apdu.resplen = sizeof(carddata);
+	apdu.resp = carddata_loc;
+	apdu.resplen = carddataloc_len;
 
 	r = sc_transmit_apdu(card, &apdu);
 	if(r) {
@@ -604,12 +639,12 @@ static int get_applet_version(sc_card_t *card)
 		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "GetCardData: card returned %d\n", r);
 		return r;
 	}
-	if(apdu.resplen < sizeof(carddata)) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "GetCardData: card returned %d bytes rather than expected %d\n", apdu.resplen, sizeof(carddata));
+	if(apdu.resplen < carddataloc_len) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "GetCardData: card returned %d bytes rather than expected %d\n", apdu.resplen, carddataloc_len);
 		return SC_ERROR_WRONG_LENGTH;
 	}
 
-	return (int)(carddata[21]);
+	return 0;
 }
 
 #ifdef GET_LANG_FROM_CARD
@@ -878,11 +913,10 @@ static int belpic_init(sc_card_t *card)
 {
 	struct belpic_priv_data *priv = NULL;
 	scconf_block *conf_block;
-	int applet_version;
+	u8 applet_version;
+	u8 carddata[BELPIC_CARDDATA_RESP_LEN];
 	int key_size = 1024;
-#ifdef BELPIC_PIN_PAD
 	int r;
-#endif
 
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Belpic V%s", BELPIC_VERSION);
 #ifdef HAVE_GUI
@@ -902,11 +936,10 @@ static int belpic_init(sc_card_t *card)
 	card->drv_data = priv;
 	card->cla = 0x00;
 	if (card->type == SC_CARD_TYPE_BELPIC_EID) {
-		applet_version = get_applet_version(card);
-		if(applet_version < 0) {
-			// error occurred
-			return applet_version;
+		if((r = get_carddata(card, carddata, sizeof(carddata))) < 0) {
+			return r;
 		}
+		applet_version = carddata[BELPIC_CARDDATA_OFF_APPLETVERS];
 		if(applet_version >= 0x17) {
 			key_size = 2048;
 		}
