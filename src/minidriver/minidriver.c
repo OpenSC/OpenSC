@@ -323,12 +323,12 @@ check_reader_status(PCARD_DATA pCardData)
 	if (pCardData->hSCardCtx != vs->hSCardCtx || pCardData->hScard != vs->hScard) {
 		logprintf (pCardData, 1, "HANDLES CHANGED from 0x%08X 0x%08X\n", vs->hSCardCtx, vs->hScard);
 
-		// Basically a mini AcquireContext
+		/* Basically a mini AcquireContext */
 		r = disassociate_card(pCardData);
 		logprintf(pCardData, 1, "disassociate_card r = 0x%08X\n", r);
 		r = associate_card(pCardData); /* need to check return codes */
 		logprintf(pCardData, 1, "associate_card r = 0x%08X\n", r);
-		// Rebuild 'soft' fs - in case changed
+		/* Rebuild 'soft' fs - in case changed */
 		r = md_fs_init(pCardData);
 		logprintf(pCardData, 1, "md_fs_init r = 0x%08X\n", r);
 	}
@@ -1519,7 +1519,11 @@ md_fs_init(PCARD_DATA pCardData)
 	if (dwret != SCARD_S_SUCCESS)
 		return dwret;
 
+#ifdef OPENSSL_VERSION_NUMBER
 	logprintf(pCardData, 3, "MD virtual file system initialized; OPENSSL_VERSION_NUMBER 0x%Xl\n", OPENSSL_VERSION_NUMBER);
+#else
+	logprintf(pCardData, 3, "MD virtual file system initialized; Without OPENSSL\n");
+#endif
 	return SCARD_S_SUCCESS;
 }
 
@@ -3001,7 +3005,7 @@ DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 		}
 		logprintf(pCardData, 2, "sc_pkcs15_decipher returned %d\n", r);
 
-		// Need to handle padding
+		/* Need to handle padding */
 		if (pInfo->dwVersion >= CARD_RSA_KEY_DECRYPT_INFO_VERSION_TWO) {
 			logprintf(pCardData, 2, "sc_pkcs15_decipher: DECRYPT-INFO dwVersion=%u\n", pInfo->dwVersion);
 			if (pInfo->dwPaddingType == CARD_PADDING_PKCS1)   {
@@ -3025,7 +3029,7 @@ DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 				pbuf, pInfo->cbData, pbuf2, pInfo->cbData);
 		logprintf(pCardData, 2, "sc_pkcs15_decipher returned %d\n", r);
 		if (r > 0) {
-			// No padding info, or padding info none
+			/* No padding info, or padding info none */
 			if ((pInfo->dwVersion < CARD_RSA_KEY_DECRYPT_INFO_VERSION_TWO) ||
 			    ((pInfo->dwVersion >= CARD_RSA_KEY_DECRYPT_INFO_VERSION_TWO) &&
 			    (pInfo->dwPaddingType == CARD_PADDING_NONE))) {
@@ -3041,7 +3045,7 @@ DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 				}
 			}
 			else if (pInfo->dwPaddingType == CARD_PADDING_PKCS1) {
-				// PKCS1 padding is already handled by the card...
+				/* PKCS1 padding is already handled by the card... */
 				pInfo->cbData = r;
 			}
 			/* TODO: Handle OAEP padding if present - can call PFN_CSP_UNPAD_DATA */
@@ -3335,13 +3339,18 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 		vs->reader->capabilities & SC_READER_CAP_PIN_PAD ? "yes" : "no", pbPinData, vs->hwndParent);
 	if ((vs->reader->capabilities & SC_READER_CAP_PIN_PAD) && NULL == pbPinData) {
 		char buf[200];
-		snprintf(buf, sizeof(buf), "Please enter PIN %s",
-			NULL == vs->wszPinContext ? "on reader pinpad." : vs->wszPinContext);
+		if (NULL == vs->wszPinContext )   {
+			strcpy(buf, "Please enter PIN on reader pinpad.");
+		}
+		else   {
+			/* %S enable the use of UNICODE string (wsPinContext) inside an ANSI string (buf) */
+			snprintf(buf, sizeof(buf), "Please enter PIN %S", vs->wszPinContext);
+		}
 		logprintf(pCardData, 7, "About to display message box for external PIN verification\n");
 		/* @TODO: Ideally, this should probably be a non-modal dialog with just a cancel button
 		 * that goes away as soon as a key is pressed on the pinpad.
 		 */
-		r = MessageBox(vs->hwndParent, buf, "PIN Entry Required",
+		r = MessageBoxA(vs->hwndParent, buf, "PIN Entry Required",
 				MB_OKCANCEL | MB_ICONINFORMATION);
 		if (IDCANCEL == r) {
 			logprintf(pCardData, 2, "User canceled PIN verification\n");
@@ -3961,7 +3970,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 	CHAR name[MAX_PATH + 1] = "\0";
 	char *reason = "";
 
-	GetModuleFileName(GetModuleHandle(NULL),name,MAX_PATH);
+	GetModuleFileNameA(GetModuleHandle(NULL),name,MAX_PATH);
 
 	switch (ul_reason_for_call)   {
 	case DLL_PROCESS_ATTACH:
