@@ -1519,7 +1519,11 @@ md_fs_init(PCARD_DATA pCardData)
 	if (dwret != SCARD_S_SUCCESS)
 		return dwret;
 
+#ifdef OPENSSL_VERSION_NUMBER
 	logprintf(pCardData, 3, "MD virtual file system initialized; OPENSSL_VERSION_NUMBER 0x%Xl\n", OPENSSL_VERSION_NUMBER);
+#else
+	logprintf(pCardData, 3, "MD virtual file system initialized; Without OPENSSL\n");
+#endif
 	return SCARD_S_SUCCESS;
 }
 
@@ -3335,13 +3339,20 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 		vs->reader->capabilities & SC_READER_CAP_PIN_PAD ? "yes" : "no", pbPinData, vs->hwndParent);
 	if ((vs->reader->capabilities & SC_READER_CAP_PIN_PAD) && NULL == pbPinData) {
 		char buf[200];
-		snprintf(buf, sizeof(buf), "Please enter PIN %s",
-			NULL == vs->wszPinContext ? "on reader pinpad." : vs->wszPinContext);
+		if (NULL == vs->wszPinContext )
+		{
+			strcpy(buf, "Please enter PIN on reader pinpad.");
+		}
+		else
+		{
+			// %S enable the use of UNICODE string inside an ANSI string
+			snprintf(buf, sizeof(buf), "Please enter PIN %S", vs->wszPinContext);
+		}
 		logprintf(pCardData, 7, "About to display message box for external PIN verification\n");
 		/* @TODO: Ideally, this should probably be a non-modal dialog with just a cancel button
 		 * that goes away as soon as a key is pressed on the pinpad.
 		 */
-		r = MessageBox(vs->hwndParent, buf, "PIN Entry Required",
+		r = MessageBoxA(vs->hwndParent, buf, "PIN Entry Required",
 				MB_OKCANCEL | MB_ICONINFORMATION);
 		if (IDCANCEL == r) {
 			logprintf(pCardData, 2, "User canceled PIN verification\n");
@@ -3961,7 +3972,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 	CHAR name[MAX_PATH + 1] = "\0";
 	char *reason = "";
 
-	GetModuleFileName(GetModuleHandle(NULL),name,MAX_PATH);
+	GetModuleFileNameA(GetModuleHandle(NULL),name,MAX_PATH);
 
 	switch (ul_reason_for_call)   {
 	case DLL_PROCESS_ATTACH:
