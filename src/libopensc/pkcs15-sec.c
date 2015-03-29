@@ -218,8 +218,8 @@ int sc_pkcs15_derive(struct sc_pkcs15_card *p15card,
 				LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 			}
 
-			if (out == NULL || *poutlen < (prkey->field_length +7) / 8) {
-			    *poutlen = (prkey->field_length +7) / 8;
+			if (out == NULL || *poutlen < (prkey->field_length + 7) / 8) {
+			    *poutlen = (prkey->field_length + 7) / 8;
 			    r = 0; /* say no data to return */
 			    goto out;
 			}

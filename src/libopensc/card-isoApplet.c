@@ -1207,7 +1207,7 @@ isoApplet_compute_signature(struct sc_card *card,
 	if(drvdata->sec_env_alg_ref == ISOAPPLET_ALG_REF_ECDSA)
 	{
 		u8* p = NULL;
-		size_t len = drvdata->sec_env_ec_field_length / 4;
+		size_t len = (drvdata->sec_env_ec_field_length + 7) / 8 * 2;
 
 		if (len > outlen)
 			LOG_FUNC_RETURN(ctx, SC_ERROR_BUFFER_TOO_SMALL);
