@@ -305,7 +305,7 @@ pgp_init(sc_card_t *card)
 	sc_file_t	*file = NULL;
 	struct do_info	*info;
 	int		r;
-	struct blob 	*child = NULL;
+	struct blob	*child = NULL;
 
 	priv = calloc (1, sizeof *priv);
 	if (!priv)
@@ -330,8 +330,14 @@ pgp_init(sc_card_t *card)
 		return r;
 	}
 
+	/* defensive programming check */
+	if (!file)   {
+		pgp_finish(card);
+		return SC_ERROR_OBJECT_NOT_FOUND;
+	}
+
 	/* read information from AID */
-	if (file && file->namelen == 16) {
+	if (file->namelen == 16) {
 		/* OpenPGP card spec 1.1 & 2.0, section 4.2.1 & 4.1.2.1 */
 		priv->bcd_version = bebytes2ushort(file->name + 6);
 		/* kludge: get card's serial number from manufacturer ID + serial number */
@@ -2166,7 +2172,9 @@ out:
 /* ABI: card ctl: perform special card-specific operations */
 static int pgp_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 {
+#ifdef ENABLE_OPENSSL
 	int r;
+#endif /* ENABLE_OPENSSL */
 
 	LOG_FUNC_CALLED(card->ctx);
 
