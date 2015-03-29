@@ -33,8 +33,11 @@
 #define ISOAPPLET_ALG_REF_RSA_PAD_PKCS1 0x11
 
 #define ISOAPPLET_API_VERSION_MAJOR 0x00
-#define ISOAPPLET_API_VERSION_MINOR 0x05
+#define ISOAPPLET_API_VERSION_MINOR 0x06
+
 #define ISOAPPLET_API_FEATURE_EXT_APDU 0x01
+#define ISOAPPLET_API_FEATURE_SECURE_RANDOM 0x02
+#define ISOAPPLET_API_FEATURE_ECC 0x04
 
 #define ISOAPPLET_AID_LEN 12
 static const u8 isoApplet_aid[] = {0xf2,0x76,0xa2,0x88,0xbc,0xfb,0xa6,0x9d,0x34,0xf3,0x10,0x01};
@@ -48,6 +51,7 @@ struct isoApplet_drv_data
 	 * have to be modified. */
 	unsigned int sec_env_alg_ref;
 	unsigned int sec_env_ec_field_length;
+	unsigned int isoapplet_version;
 };
 #define DRVDATA(card)	((struct isoApplet_drv_data *) ((card)->drv_data))
 
@@ -67,6 +71,23 @@ static struct sc_card_driver isoApplet_drv =
 	NULL, 0, NULL
 };
 
+static struct isoapplet_supported_ec_curves {
+		struct sc_object_id oid;
+		size_t size;
+		unsigned int min_applet_version;
+} ec_curves[] = {
+	{{{1, 2, 840, 10045, 3, 1, 1, -1}},     192, 0x0000}, /* secp192r1, nistp192, prime192v1, ansiX9p192r1 */
+	{{{1, 3, 132, 0, 33, -1}},              224, 0x0000}, /* secp224r1, nistp224 */
+	{{{1, 2, 840, 10045, 3, 1, 7, -1}},     256, 0x0000}, /* secp256r1, nistp256, prime256v1, ansiX9p256r1 */
+	{{{1, 3, 132, 0, 34, -1}},              384, 0x0000}, /* secp384r1, nistp384, prime384v1, ansiX9p384r1 */
+	{{{1, 3, 36, 3, 3, 2, 8, 1, 1, 3, -1}}, 192, 0x0000}, /* brainpoolP192r1 */
+	{{{1, 3, 36, 3, 3, 2, 8, 1, 1, 5, -1}}, 224, 0x0000}, /* brainpoolP224r1 */
+	{{{1, 3, 36, 3, 3, 2, 8, 1, 1, 7, -1}}, 256, 0x0000}, /* brainpoolP256r1 */
+	{{{1, 3, 36, 3, 3, 2, 8, 1, 1, 9, -1}}, 320, 0x0000}, /* brainpoolP320r1 */
+	{{{1, 3, 132, 0, 31, -1}},              192, 0x0006}, /* secp192k1 */
+	{{{1, 3, 132, 0, 10, -1}},              256, 0x0006}, /* secp256k1 */
+	{{{-1}}, 0, 0} /* This entry must not be touched. */
+};
 
 /*
  * SELECT an applet on the smartcard. (Not in the emulated filesystem.)
@@ -142,19 +163,12 @@ isoApplet_match_card(sc_card_t *card)
 	}
 
 	/* The IsoApplet should return an API version (major and minor) and a feature bitmap.
+	 * We expect 3 bytes: MAJOR API version - MINOR API version - API feature bitmap.
 	 * If applet does not return API version, versions 0x00 will match */
-	if(rlen == 0)
+	if(rlen < 3)
 	{
-		rbuf[0] = 0x00;
-		rbuf[1] = 0x00;
-		rbuf[2] = 0x00;
-		rlen = 3;
-	}
-
-	/* We expect 3 bytes: MAJOR API version - MINOR API version - API feature bitmap */
-	if(rlen != 3)
-	{
-		return 0;
+		assert(sizeof(rbuf) >= 3);
+		memset(rbuf, 0x00, 3);
 	}
 
 	if(rbuf[0] != ISOAPPLET_API_VERSION_MAJOR)
@@ -173,11 +187,6 @@ isoApplet_match_card(sc_card_t *card)
 		       ISOAPPLET_API_VERSION_MAJOR, ISOAPPLET_API_VERSION_MINOR, rbuf[0], rbuf[1]);
 	}
 
-	if(rbuf[2] & ISOAPPLET_API_FEATURE_EXT_APDU)
-	{
-		card->caps |=  SC_CARD_CAP_APDU_EXT;
-	}
-
 	return 1;
 }
 
@@ -185,10 +194,12 @@ static int
 isoApplet_init(sc_card_t *card)
 {
 	int r;
+	int i;
 	unsigned long flags = 0;
 	unsigned long ext_flags = 0;
+	size_t rlen = SC_MAX_APDU_BUFFER_SIZE;
+	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	struct isoApplet_drv_data *drvdata;
-	struct sc_object_id curve_oid;
 
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -199,43 +210,39 @@ isoApplet_init(sc_card_t *card)
 	card->drv_data = drvdata;
 	card->cla = 0x00;
 
-	/* ECDSA
-	 * Curves supported by the pkcs15-init driver are indicated per curve. This
-	 * should be kept in sync with the explicit parameters in the pkcs15-init
-	 * driver. */
-	flags = 0;
-	flags |= SC_ALGORITHM_ECDSA_RAW;
-	flags |= SC_ALGORITHM_ONBOARD_KEY_GEN;
-	ext_flags =  SC_ALGORITHM_EXT_EC_NAMEDCURVE;
-	ext_flags |= SC_ALGORITHM_EXT_EC_F_P;
-	/* secp192r1, prime192r1, ansiX9p192r1*/
-	r =  sc_format_oid(&curve_oid, "1.2.840.10045.3.1.1");
-	LOG_TEST_RET(card->ctx, r, "Error obtaining EC curve OID");
-	_sc_card_add_ec_alg(card, 192, flags, ext_flags, &curve_oid);
-	/* prime256v1, secp256r1, ansiX9p256r1 */
-	r =  sc_format_oid(&curve_oid, "1.2.840.10045.3.1.7");
-	LOG_TEST_RET(card->ctx, r, "Error obtaining EC curve OID");
-	_sc_card_add_ec_alg(card, 256, flags, ext_flags, &curve_oid);
-	/* secp384r1, prime384v1, ansiX9p384r1 */
-	r =  sc_format_oid(&curve_oid, "1.3.132.0.34");
-	LOG_TEST_RET(card->ctx, r, "Error obtaining EC curve OID");
-	_sc_card_add_ec_alg(card, 384, flags, ext_flags, &curve_oid);
-	/* brainpoolP192r1 */
-	r =  sc_format_oid(&curve_oid, "1.3.36.3.3.2.8.1.1.3");
-	LOG_TEST_RET(card->ctx, r, "Error obtaining EC curve OID");
-	_sc_card_add_ec_alg(card, 192, flags, ext_flags, &curve_oid);
-	/* brainpoolP224r1 */
-	r =  sc_format_oid(&curve_oid, "1.3.36.3.3.2.8.1.1.5");
-	LOG_TEST_RET(card->ctx, r, "Error obtaining EC curve OID");
-	_sc_card_add_ec_alg(card, 224, flags, ext_flags, &curve_oid);
-	/* brainpoolP256r1 */
-	r =  sc_format_oid(&curve_oid, "1.3.36.3.3.2.8.1.1.7");
-	LOG_TEST_RET(card->ctx, r, "Error obtaining EC curve OID");
-	_sc_card_add_ec_alg(card, 256, flags, ext_flags, &curve_oid);
-	/* brainpoolP320r1 */
-	r =  sc_format_oid(&curve_oid, "1.3.36.3.3.2.8.1.1.9");
-	LOG_TEST_RET(card->ctx, r, "Error obtaining EC curve OID");
-	_sc_card_add_ec_alg(card, 320, flags, ext_flags, &curve_oid);
+	/* Obtain applet version and specific features */
+	r = isoApplet_select_applet(card, isoApplet_aid, ISOAPPLET_AID_LEN, rbuf, &rlen);
+	LOG_TEST_RET(card->ctx, r, "Error obtaining applet version.");
+	if(rlen < 3)
+	{
+		assert(sizeof(rbuf) >= 3);
+		memset(rbuf, 0x00, 3);
+	}
+	drvdata->isoapplet_version = ((unsigned int)rbuf[0] << 8) | rbuf[1];
+	if(rbuf[2] & ISOAPPLET_API_FEATURE_EXT_APDU)
+		card->caps |=  SC_CARD_CAP_APDU_EXT;
+	if(rbuf[2] & ISOAPPLET_API_FEATURE_SECURE_RANDOM)
+		card->caps |=  SC_CARD_CAP_RNG;
+	if(drvdata->isoapplet_version <= 0x0005 || rbuf[2] & ISOAPPLET_API_FEATURE_ECC)
+	{
+		/* There are Java Cards that do not support ECDSA at all. The IsoApplet
+		 * started to report this with version 00.06.
+		 *
+		 * Curves supported by the pkcs15-init driver are indicated per curve. This
+		 * should be kept in sync with the explicit parameters in the pkcs15-init
+		 * driver. */
+		flags = 0;
+		flags |= SC_ALGORITHM_ECDSA_RAW;
+		flags |= SC_ALGORITHM_ONBOARD_KEY_GEN;
+		flags |= SC_ALGORITHM_EXT_EC_UNCOMPRESES;
+		ext_flags =  SC_ALGORITHM_EXT_EC_NAMEDCURVE;
+		ext_flags |= SC_ALGORITHM_EXT_EC_F_P;
+		for (i=0; ec_curves[i].oid.value[0] >= 0; i++)
+		{
+			if(drvdata->isoapplet_version >= ec_curves[i].min_applet_version)
+				_sc_card_add_ec_alg(card, ec_curves[i].size, flags, ext_flags, &ec_curves[i].oid);
+		}
+	}
 
 	/* RSA */
 	flags = 0;
@@ -1207,7 +1214,7 @@ isoApplet_compute_signature(struct sc_card *card,
 	if(drvdata->sec_env_alg_ref == ISOAPPLET_ALG_REF_ECDSA)
 	{
 		u8* p = NULL;
-		size_t len = drvdata->sec_env_ec_field_length / 4;
+		size_t len = (drvdata->sec_env_ec_field_length + 7) / 8 * 2;
 
 		if (len > outlen)
 			LOG_FUNC_RETURN(ctx, SC_ERROR_BUFFER_TOO_SMALL);
@@ -1223,6 +1230,22 @@ isoApplet_compute_signature(struct sc_card *card,
 		}
 
 		free(p);
+	}
+	LOG_FUNC_RETURN(ctx, r);
+}
+
+static int
+isoApplet_get_challenge(struct sc_card *card, u8 *rnd, size_t len)
+{
+	struct sc_context *ctx = card->ctx;
+	int r;
+
+	LOG_FUNC_CALLED(ctx);
+
+	if(card->caps & SC_CARD_CAP_RNG)   {
+		r = iso_ops->get_challenge(card, rnd, len);
+	} else   {
+		r = SC_ERROR_NOT_SUPPORTED;
 	}
 	LOG_FUNC_RETURN(ctx, r);
 }
@@ -1248,6 +1271,7 @@ static struct sc_card_driver *sc_get_driver(void)
 	isoApplet_ops.process_fci = isoApplet_process_fci;
 	isoApplet_ops.set_security_env = isoApplet_set_security_env;
 	isoApplet_ops.compute_signature = isoApplet_compute_signature;
+	isoApplet_ops.get_challenge = isoApplet_get_challenge;
 
 	/* unsupported functions */
 	isoApplet_ops.write_binary = NULL;
@@ -1255,7 +1279,6 @@ static struct sc_card_driver *sc_get_driver(void)
 	isoApplet_ops.write_record = NULL;
 	isoApplet_ops.append_record = NULL;
 	isoApplet_ops.update_record = NULL;
-	isoApplet_ops.get_challenge = NULL;
 	isoApplet_ops.restore_security_env = NULL;
 
 	return &isoApplet_drv;
