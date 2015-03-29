@@ -330,7 +330,7 @@ pgp_init(sc_card_t *card)
 		return r;
 	}
 
-	/* defensive programming check */
+	/* defensive programming check  */
 	if (!file)
 	{
 		pgp_finish(card);
