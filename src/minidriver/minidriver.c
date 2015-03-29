@@ -3345,7 +3345,7 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 		}
 		else
 		{
-			// %S enable the use of UNICODE string inside an ANSI string
+			// %S enable the use of UNICODE string (wsPinContext) inside an ANSI string (buf)
 			snprintf(buf, sizeof(buf), "Please enter PIN %S", vs->wszPinContext);
 		}
 		logprintf(pCardData, 7, "About to display message box for external PIN verification\n");
