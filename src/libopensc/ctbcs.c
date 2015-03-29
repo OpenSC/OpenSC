@@ -58,7 +58,7 @@ ctbcs_build_perform_verification_apdu(sc_apdu_t *apdu, struct sc_pin_cmd_data *d
 	prompt = data->pin1.prompt;
 	if (prompt && *prompt) {
 		len = strlen(prompt);
-		if (count + len + 2 > buflen || len > 254)
+		if (len + 2 > buflen)
 			return SC_ERROR_BUFFER_TOO_SMALL;
 		buf[count++] = CTBCS_TAG_PROMPT;
 		buf[count++] = len;
@@ -126,7 +126,7 @@ ctbcs_build_modify_verification_apdu(sc_apdu_t *apdu, struct sc_pin_cmd_data *da
 	prompt = data->pin1.prompt;
 	if (prompt && *prompt) {
 		len = strlen(prompt);
-		if (count + len + 2 > buflen || len > 254)
+		if (len + 2 > buflen)
 			return SC_ERROR_BUFFER_TOO_SMALL;
 		buf[count++] = CTBCS_TAG_PROMPT;
 		buf[count++] = len;
