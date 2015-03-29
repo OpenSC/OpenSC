@@ -1183,20 +1183,20 @@ sc_card_sm_load(struct sc_card *card, const char *module_path, const char *in_mo
 
 #ifdef _WIN32
 	if (!module_path) {
-		rc = RegOpenKeyEx( HKEY_CURRENT_USER, "Software\\OpenSC Project\\OpenSC", 0, KEY_QUERY_VALUE, &hKey );
+		rc = RegOpenKeyExA( HKEY_CURRENT_USER, "Software\\OpenSC Project\\OpenSC", 0, KEY_QUERY_VALUE, &hKey );
 		if( rc == ERROR_SUCCESS ) {
 			temp_len = PATH_MAX;
-			rc = RegQueryValueEx( hKey, "SmDir", NULL, NULL, (LPBYTE) temp_path, &temp_len);
+			rc = RegQueryValueExA( hKey, "SmDir", NULL, NULL, (LPBYTE) temp_path, &temp_len);
 			if( (rc == ERROR_SUCCESS) && (temp_len < PATH_MAX) )
 				module_path = temp_path;
 			RegCloseKey( hKey );
 		}
 	}
 	if (!module_path) {
-		rc = RegOpenKeyEx( HKEY_LOCAL_MACHINE, "Software\\OpenSC Project\\OpenSC", 0, KEY_QUERY_VALUE, &hKey );
+		rc = RegOpenKeyExA( HKEY_LOCAL_MACHINE, "Software\\OpenSC Project\\OpenSC", 0, KEY_QUERY_VALUE, &hKey );
 		if( rc == ERROR_SUCCESS ) {
 			temp_len = PATH_MAX;
-			rc = RegQueryValueEx( hKey, "SmDir", NULL, NULL, (LPBYTE) temp_path, &temp_len);
+			rc = RegQueryValueExA( hKey, "SmDir", NULL, NULL, (LPBYTE) temp_path, &temp_len);
 			if(rc == ERROR_SUCCESS && temp_len < PATH_MAX)
 				module_path = temp_path;
 			RegCloseKey( hKey );

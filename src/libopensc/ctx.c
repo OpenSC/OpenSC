@@ -245,7 +245,7 @@ load_parameters(sc_context_t *ctx, scconf_block *block, struct _sc_ctx_options *
 	if (val)   {
 #ifdef _WIN32
 		expanded_len = PATH_MAX;
-		expanded_len = ExpandEnvironmentStrings(val, expanded_val, expanded_len);
+		expanded_len = ExpandEnvironmentStringsA(val, expanded_val, expanded_len);
 		if (expanded_len > 0)
 			val = expanded_val;
 #endif
@@ -552,7 +552,7 @@ static void process_config_file(sc_context_t *ctx, struct _sc_ctx_options *opts)
 #ifdef _WIN32
 	conf_path = getenv("OPENSC_CONF");
 	if (!conf_path) {
-		rc = RegOpenKeyEx(HKEY_CURRENT_USER, "Software\\OpenSC Project\\OpenSC", 0, KEY_QUERY_VALUE, &hKey);
+		rc = RegOpenKeyExA(HKEY_CURRENT_USER, "Software\\OpenSC Project\\OpenSC", 0, KEY_QUERY_VALUE, &hKey);
 		if (rc == ERROR_SUCCESS) {
 			temp_len = PATH_MAX;
 			rc = RegQueryValueEx( hKey, "ConfigFile", NULL, NULL, (LPBYTE) temp_path, &temp_len);
@@ -563,7 +563,7 @@ static void process_config_file(sc_context_t *ctx, struct _sc_ctx_options *opts)
 	}
 
 	if (!conf_path) {
-		rc = RegOpenKeyEx( HKEY_LOCAL_MACHINE, "Software\\OpenSC Project\\OpenSC", 0, KEY_QUERY_VALUE, &hKey );
+		rc = RegOpenKeyExA( HKEY_LOCAL_MACHINE, "Software\\OpenSC Project\\OpenSC", 0, KEY_QUERY_VALUE, &hKey );
 		if (rc == ERROR_SUCCESS) {
 			temp_len = PATH_MAX;
 			rc = RegQueryValueEx( hKey, "ConfigFile", NULL, NULL, (LPBYTE) temp_path, &temp_len);
@@ -874,7 +874,7 @@ int sc_get_cache_dir(sc_context_t *ctx, char *buf, size_t bufsize)
 	/* If USERPROFILE isn't defined, assume it's a single-user OS
 	 * and put the cache dir in the Windows dir (usually C:\\WINDOWS) */
 	if (homedir == NULL || homedir[0] == '\0') {
-		GetWindowsDirectory(temp_path, sizeof(temp_path));
+		GetWindowsDirectoryA(temp_path, sizeof(temp_path));
 		homedir = temp_path;
 	}
 #endif
