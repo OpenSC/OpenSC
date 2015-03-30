@@ -79,6 +79,8 @@ static struct sc_atr_table iasecc_known_atrs[] = {
 		"IAS/ECC v1.0.1 Sagem MDW-IAS-CARD2", SC_CARD_TYPE_IASECC_SAGEM,  0, NULL },
 	{ "3B:7F:18:00:00:00:31:B8:64:50:23:EC:C1:73:94:01:80:82:90:00", NULL,
 		"IAS/ECC v1.0.1 Sagem ypsID S3", SC_CARD_TYPE_IASECC_SAGEM,  0, NULL },
+	{ "3B:DF:96:00:80:31:FE:45:00:31:B8:64:04:1F:EC:C1:73:94:01:80:82:90:00:EC", NULL,
+		"IAS/ECC Morpho MinInt - Agent Card", SC_CARD_TYPE_IASECC_MI, 0, NULL },
 	{ "3B:DF:18:FF:81:91:FE:1F:C3:00:31:B8:64:0C:01:EC:C1:73:94:01:80:82:90:00:B3", NULL,
 		"IAS/ECC v1.0.1 Amos", SC_CARD_TYPE_IASECC_AMOS, 0, NULL },
 	{ "3B:DC:18:FF:81:91:FE:1F:C3:80:73:C8:21:13:66:02:04:03:55:00:02:34", NULL,
@@ -96,6 +98,10 @@ static struct sc_aid GlobalPlatform_ISD_Default_RID = {
 };
 static struct sc_aid OberthurIASECC_AID = {
 	{0xA0,0x00,0x00,0x00,0x77,0x01,0x08,0x00,0x07,0x00,0x00,0xFE,0x00,0x00,0x01,0x00}, 16
+};
+
+static struct sc_aid MIIASECC_AID = {
+	{ 0x4D, 0x49, 0x4F, 0x4D, 0x43, 0x54}, 6
 };
 
 struct iasecc_pin_status  {
@@ -566,6 +572,53 @@ iasecc_init_amos(struct sc_card *card)
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
+iasecc_mi_match(struct sc_card *card)
+{
+	struct sc_context *ctx = card->ctx;
+
+	LOG_FUNC_CALLED(ctx);
+
+    if (!card->ef_atr)
+		card->ef_atr = calloc(1, sizeof(struct sc_ef_atr));
+	if (!card->ef_atr)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+
+	memcpy(card->ef_atr->aid.value, MIIASECC_AID.value, MIIASECC_AID.len);
+	card->ef_atr->aid.len = MIIASECC_AID.len;
+
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+}
+
+static int
+iasecc_init_mi(struct sc_card *card)
+{
+	struct sc_context *ctx = card->ctx;
+	unsigned int flags;
+	unsigned char resp[0x100];
+	size_t resp_len;
+	int rv = 0;
+
+	LOG_FUNC_CALLED(ctx);
+
+	flags = IASECC_CARD_DEFAULT_FLAGS;
+
+	_sc_card_add_rsa_alg(card, 1024, flags, 0x10001);
+	_sc_card_add_rsa_alg(card, 2048, flags, 0x10001);
+
+	card->caps = SC_CARD_CAP_RNG;
+	card->caps |= SC_CARD_CAP_APDU_EXT;
+	card->caps |= SC_CARD_CAP_USE_FCI_AC;
+
+    resp_len = sizeof(resp);
+    rv = iasecc_select_aid(card, &MIIASECC_AID, resp, &resp_len);
+    LOG_TEST_RET(ctx, rv, "Could not select MI's AID");
+
+	rv = iasecc_mi_match(card);
+    LOG_TEST_RET(ctx, rv, "Could not match MI's AID");
+
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+}
+
 static int
 iasecc_init(struct sc_card *card)
 {
@@ -589,6 +642,8 @@ iasecc_init(struct sc_card *card)
 		rv = iasecc_init_sagem(card);
 	else if (card->type == SC_CARD_TYPE_IASECC_AMOS)
 		rv = iasecc_init_amos(card);
+	else if (card->type == SC_CARD_TYPE_IASECC_MI)
+		rv = iasecc_init_mi(card);
 	else
 		LOG_FUNC_RETURN(ctx, SC_ERROR_NO_CARD_SUPPORT);
 
@@ -879,7 +934,8 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 		if (card->type != SC_CARD_TYPE_IASECC_GEMALTO
 				&& card->type != SC_CARD_TYPE_IASECC_OBERTHUR
 				&& card->type != SC_CARD_TYPE_IASECC_SAGEM
-				&& card->type != SC_CARD_TYPE_IASECC_AMOS)
+				&& card->type != SC_CARD_TYPE_IASECC_AMOS
+				&& card->type != SC_CARD_TYPE_IASECC_MI)
 			LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Unsupported card");
 
 		if (lpath.type == SC_PATH_TYPE_FILE_ID)   {
@@ -890,12 +946,16 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 			}
 			if (card->type == SC_CARD_TYPE_IASECC_AMOS)
 				apdu.p2 = 0x04;
+			if (card->type == SC_CARD_TYPE_IASECC_MI)
+				apdu.p2 = 0x04;
 		}
 		else if (lpath.type == SC_PATH_TYPE_FROM_CURRENT)  {
 			apdu.p1 = 0x09;
 			if (card->type == SC_CARD_TYPE_IASECC_OBERTHUR)
 				apdu.p2 = 0x04;
 			if (card->type == SC_CARD_TYPE_IASECC_AMOS)
+				apdu.p2 = 0x04;
+			if (card->type == SC_CARD_TYPE_IASECC_MI)
 				apdu.p2 = 0x04;
 		}
 		else if (lpath.type == SC_PATH_TYPE_PARENT)   {

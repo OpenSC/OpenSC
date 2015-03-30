@@ -301,6 +301,14 @@ app default {
         #        name = "Morpho YpsID S3 IAS/ECC";
         #        # secure_messaging = local_morpho_YpsID_S3;
         #}
+        #card_atr 3B:DF:96:00:80:31:FE:45:00:31:B8:64:04:1F:EC:C1:73:94:01:80:82:90:00:EC {
+        #        type = 25005;
+        #        driver = "iasecc";
+        #        name = "Morpho MI IAS/ECC v1.0.1";
+        #        md_read_only = false;
+        #        md_supports_X509_enrollment = true;
+        #        secure_messaging = local_morpho_mi;
+        #}
         card_atr 3B:DF:18:FF:81:91:FE:1F:C3:00:31:B8:64:0C:01:EC:C1:73:94:01:80:82:90:00:B3 {
                 type = 25004;
                 driver = "iasecc";

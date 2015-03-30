@@ -816,10 +816,10 @@ myeid_convert_ec_signature(struct sc_context *ctx, size_t s_len, unsigned char *
 	if (*data != 0x30 || *(data + 1) != (datalen - 2) || *(data + 2) != 0x02)
 		return SC_ERROR_INVALID_DATA;
 
-	buf = calloc(1, s_len/4);
+	buf = calloc(1, (s_len + 7)/8*2);
 	if (!buf)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
-	buflen = s_len/4;
+	buflen = (s_len + 7)/8*2;
 
 	r = sc_asn1_sig_value_sequence_to_rs(ctx, data, datalen, buf, buflen);
         LOG_TEST_RET(ctx, r, "Failed to cenvert Sig-Value to the raw RS format");
