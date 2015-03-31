@@ -786,8 +786,10 @@ static int do_info(int argc, char **argv)
 		st = "Unknown File";
 		break;
 	}
-	printf("\n%s  ID %04X\n\n", st, file->id);
-	printf("%-15s%s\n", "File path:", path_to_filename(&path, '/'));
+	printf("\n%s  ID %04X", st, file->id);
+	if (file->sid)
+		printf(", SFI %02X", file->sid);
+	printf("\n\n%-15s%s\n", "File path:", path_to_filename(&path, '/'));
 	printf("%-15s%lu bytes\n", "File size:", (unsigned long) file->size);
 
 	if (file->type == SC_FILE_TYPE_DF) {

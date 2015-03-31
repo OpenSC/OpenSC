@@ -430,6 +430,10 @@ iso7816_process_fci(struct sc_card *card, struct sc_file *file,
 	if (tag != NULL && taglen)
 		sc_file_set_sec_attr(file, tag, taglen);
 
+	tag = sc_asn1_find_tag(ctx, p, len, 0x88, &taglen);
+	if (tag != NULL && taglen == 1)
+		file->sid = *tag;
+
 	tag = sc_asn1_find_tag(ctx, p, len, 0x8A, &taglen);
 	if (tag != NULL && taglen==1) {
 		if (tag[0] == 0x01)
