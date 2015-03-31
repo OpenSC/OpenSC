@@ -3385,7 +3385,7 @@ iasecc_read_public_key(struct sc_card *card, unsigned type,
 
 	iasecc_sdo_free_fields(card, &sdo);
 
-	SC_FUNC_RETURN(ctx, SC_SUCCESS, rv);
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
 
