@@ -4701,11 +4701,12 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 
 	/* Check if we support raw RSA */
 	if (flags & SC_ALGORITHM_RSA_RAW) {
+		mech_info.flags &= ~CKF_SIGN;
 		mt = sc_pkcs11_new_fw_mechanism(CKM_RSA_X_509, &mech_info, CKK_RSA, NULL);
 		rc = sc_pkcs11_register_mechanism(p11card, mt);
 		if (rc != CKR_OK)
 			return rc;
-
+		mech_info.flags |= CKF_SIGN;
 	}
 
 	/* We support PKCS1 padding in software */
@@ -4729,6 +4730,7 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 
 	/* No need to Check for PKCS1  We support it in software and turned it on above so always added it */
 	if (flags & SC_ALGORITHM_RSA_PAD_PKCS1) {
+		mech_info.flags &= ~CKF_DECRYPT;
 		mt = sc_pkcs11_new_fw_mechanism(CKM_RSA_PKCS, &mech_info, CKK_RSA, NULL);
 		rc = sc_pkcs11_register_mechanism(p11card, mt);
 		if (rc != CKR_OK)
@@ -4770,6 +4772,7 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 				return rc;
 		}
 #endif /* ENABLE_OPENSSL */
+		mech_info.flags |= CKF_DECRYPT;
 	}
 
 	/* TODO support other padding mechanisms */
