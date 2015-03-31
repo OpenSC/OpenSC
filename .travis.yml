@@ -39,11 +39,11 @@ install:
 before_script:
   - ./bootstrap
   - if [ -z "$HOST" ]; then
-      ./configure --enable-pedantic --disable-strict $ENABLE_DOC --enable-dnie-ui;
+      ./configure $ENABLE_DOC --enable-dnie-ui;
     else
       unset CC;
       unset CXX;
-      ./configure --enable-pedantic --disable-strict --host=$HOST --disable-openssl;
+      ./configure --host=$HOST --disable-openssl;
     fi
 
 addons:
