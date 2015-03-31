@@ -1,4 +1,7 @@
 language: C
+os:
+  - linux
+  - osx
 
 env:
   global:
@@ -53,4 +56,7 @@ script:
   - if [ -z "$HOST" -a "${COVERITY_SCAN_BRANCH}" != 1 ]; then
       make check;
       make dist;
+    fi
+  - if [ $TRAVIS_OS_NAME == osx ]; then
+      ./MacOSX/build;
     fi
