@@ -9,8 +9,17 @@ env:
 matrix:
   include:
     - compiler: clang
+      os: osx
     - compiler: gcc
+      os: osx
+    - compiler: clang
+      os: linux
+      env: ENABLE_DOC=--enable-doc
     - compiler: gcc
+      os: linux
+      env: ENABLE_DOC=--enable-doc
+    - compiler: gcc
+      os: linux
       env: HOST=i686-w64-mingw32
 
 before_install:
@@ -30,11 +39,11 @@ install:
 before_script:
   - ./bootstrap
   - if [ -z "$HOST" ]; then
-      ./configure --enable-pedantic --disable-strict --enable-doc --enable-dnie-ui;
+      ./configure $ENABLE_DOC --enable-dnie-ui;
     else
       unset CC;
       unset CXX;
-      ./configure --enable-pedantic --disable-strict --host=$HOST --disable-openssl;
+      ./configure --host=$HOST --disable-openssl;
     fi
 
 addons:
@@ -48,9 +57,13 @@ addons:
 
 script:
   - if [ "${COVERITY_SCAN_BRANCH}" != 1 ]; then
-      make;
+      if [ $TRAVIS_OS_NAME == osx ]; then
+        ./MacOSX/build;
+      else
+        make;
+      fi;
     fi
-  - if [ -z "$HOST" -a "${COVERITY_SCAN_BRANCH}" != 1 ]; then
+  - if [ -z "$HOST" -a "${COVERITY_SCAN_BRANCH}" != 1 -a "$TRAVIS_OS_NAME" != "osx" ]; then
       make check;
       make dist;
     fi
