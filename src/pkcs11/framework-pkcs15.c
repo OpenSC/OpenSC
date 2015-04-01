@@ -4573,7 +4573,7 @@ static int register_ec_mechanisms(struct sc_pkcs11_card *p11card, int flags,
 	if (rc != CKR_OK)
 		return rc;
 
-#if ENABLE_OPENSSL
+#ifdef ENABLE_OPENSSL
 	mt = sc_pkcs11_new_fw_mechanism(CKM_ECDSA_SHA1,
 		&mech_info, CKK_EC, NULL);
 	if (!mt)
@@ -4585,22 +4585,24 @@ static int register_ec_mechanisms(struct sc_pkcs11_card *p11card, int flags,
 
 	/* ADD ECDH mechanisms */
 	/* The PIV uses curves where CKM_ECDH1_DERIVE and CKM_ECDH1_COFACTOR_DERIVE produce the same results */
-	mech_info.flags &= ~CKF_SIGN;
-	mech_info.flags |= CKF_DERIVE;
+	if(flags & SC_ALGORITHM_ECDH_CDH_RAW) {
+		mech_info.flags &= ~CKF_SIGN;
+		mech_info.flags |= CKF_DERIVE;
 
-	mt = sc_pkcs11_new_fw_mechanism(CKM_ECDH1_COFACTOR_DERIVE, &mech_info, CKK_EC, NULL);
-	if (!mt)
-		return CKR_HOST_MEMORY;
-	rc = sc_pkcs11_register_mechanism(p11card, mt);
-	if (rc != CKR_OK)
-	    return rc;
+		mt = sc_pkcs11_new_fw_mechanism(CKM_ECDH1_COFACTOR_DERIVE, &mech_info, CKK_EC, NULL);
+		if (!mt)
+			return CKR_HOST_MEMORY;
+		rc = sc_pkcs11_register_mechanism(p11card, mt);
+		if (rc != CKR_OK)
+			return rc;
 
-	mt = sc_pkcs11_new_fw_mechanism(CKM_ECDH1_DERIVE, &mech_info, CKK_EC, NULL);
-	if (!mt)
-		return CKR_HOST_MEMORY;
-	rc = sc_pkcs11_register_mechanism(p11card, mt);
-	if (rc != CKR_OK)
-	    return rc;
+		mt = sc_pkcs11_new_fw_mechanism(CKM_ECDH1_DERIVE, &mech_info, CKK_EC, NULL);
+		if (!mt)
+			return CKR_HOST_MEMORY;
+		rc = sc_pkcs11_register_mechanism(p11card, mt);
+		if (rc != CKR_OK)
+			return rc;
+	}
 
 	if (flags & SC_ALGORITHM_ONBOARD_KEY_GEN) {
 		mech_info.flags = CKF_HW | CKF_GENERATE_KEY_PAIR;
