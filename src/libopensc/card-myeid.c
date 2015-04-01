@@ -347,7 +347,7 @@ static int encode_file_structure(sc_card_t *card, const sc_file_t *file,
 		u8 *out, size_t *outlen)
 {
 	const sc_acl_entry_t *read, *update, *delete, *generate;
-	u8 buf[42];
+	u8 buf[45];
 	size_t i;
 
 	LOG_FUNC_CALLED(card->ctx);
@@ -453,9 +453,9 @@ static int encode_file_structure(sc_card_t *card, const sc_file_t *file,
 			buf[26] = (u8)file->namelen;
 
 			for(i=0;i < file->namelen;i++)
-				buf[i + 26] = file->name[i];
+				buf[i + 27] = file->name[i];
 
-			buf[1] = 0x19 + file->namelen + 2;
+			buf[1] = 27 + file->namelen;
 		}
 		break;
 	default:
@@ -472,7 +472,7 @@ static int encode_file_structure(sc_card_t *card, const sc_file_t *file,
 static int myeid_create_file(struct sc_card *card, struct sc_file *file)
 {
 	sc_apdu_t apdu;
-	u8 sbuf[32];
+	u8 sbuf[45];
 	size_t buflen;
 	int r;
 
