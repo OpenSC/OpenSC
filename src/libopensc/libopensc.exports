@@ -317,6 +317,7 @@ sc_pkcs15_convert_pubkey
 sc_sm_parse_answer
 sc_sm_update_apdu_response
 sc_sm_single_transmit
+sc_sm_stop
 iasecc_sm_create_file
 iasecc_sm_delete_file
 iasecc_sm_external_authentication
