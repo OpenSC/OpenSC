@@ -969,7 +969,7 @@ sc_pkcs15_get_application_by_type(struct sc_card * card, char *app_type)
 }
 
 
-static int
+int
 sc_pkcs15_bind_internal(struct sc_pkcs15_card *p15card, struct sc_aid *aid)
 {
 	struct sc_path tmppath;

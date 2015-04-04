@@ -668,6 +668,7 @@ int sc_pkcs15_bind(struct sc_card *card, struct sc_aid *aid,
 /* sc_pkcs15_unbind:  Releases a PKCS #15 card object, and frees any
  * memory allocations done on the card object. */
 int sc_pkcs15_unbind(struct sc_pkcs15_card *card);
+int sc_pkcs15_bind_internal(struct sc_pkcs15_card *p15card, struct sc_aid *aid);
 
 int sc_pkcs15_get_objects(struct sc_pkcs15_card *card, unsigned int type,
 			  struct sc_pkcs15_object **ret, size_t ret_count);
