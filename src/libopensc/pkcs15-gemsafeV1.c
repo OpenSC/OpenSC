@@ -534,6 +534,10 @@ sc_pkcs15emu_add_pin(sc_pkcs15_card_t *p15card,
 	sc_pkcs15_auth_info_t *info;
 
 	info = calloc(1, sizeof(*info));
+	if (!info)
+	{
+		LOG_FUNC_RETURN(p15card->card->ctx, SC_ERROR_OUT_OF_MEMORY);
+	}
 	info->auth_type = SC_PKCS15_PIN_AUTH_TYPE_PIN;
 	info->auth_method = SC_AC_CHV;
 	info->auth_id           = *id;
@@ -563,6 +567,10 @@ sc_pkcs15emu_add_cert(sc_pkcs15_card_t *p15card,
 {
 	sc_pkcs15_cert_info_t *info;
 	info = calloc(1, sizeof(*info));
+	if (!info)
+	{
+		LOG_FUNC_RETURN(p15card->card->ctx, SC_ERROR_OUT_OF_MEMORY);
+	}
 	info->id		= *id;
 	info->authority		= authority;
 	if (path)
@@ -582,6 +590,10 @@ sc_pkcs15emu_add_prkey(sc_pkcs15_card_t *p15card,
 	sc_pkcs15_prkey_info_t *info;
 
 	info = calloc(1, sizeof(*info));
+	if (!info)
+	{
+		LOG_FUNC_RETURN(p15card->card->ctx, SC_ERROR_OUT_OF_MEMORY);
+	}
 	info->id                = *id;
 	info->modulus_length    = modulus_length;
 	info->usage             = usage;

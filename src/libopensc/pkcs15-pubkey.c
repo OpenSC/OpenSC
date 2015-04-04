@@ -1019,6 +1019,8 @@ sc_pkcs15_pubkey_from_prvkey(struct sc_context *ctx, struct sc_pkcs15_prkey *prv
 		break;
 	case SC_ALGORITHM_EC:
 		pubkey->u.ec.ecpointQ.value = malloc(prvkey->u.ec.ecpointQ.len);
+		if (!pubkey->u.ec.ecpointQ.value)
+			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 		memcpy(pubkey->u.ec.ecpointQ.value, prvkey->u.ec.ecpointQ.value, prvkey->u.ec.ecpointQ.len);
 		pubkey->u.ec.ecpointQ.len = prvkey->u.ec.ecpointQ.len;
 		break;
@@ -1583,6 +1585,8 @@ sc_pkcs15_convert_pubkey(struct sc_pkcs15_pubkey *pkcs15_key, void *evp_key)
 		/* copy the public key */
 		if (buflen > 0) {
 			dst->ecpointQ.value = malloc(buflen);
+			if (!dst->ecpointQ.value)
+				return SC_ERROR_OUT_OF_MEMORY;
 			memcpy(dst->ecpointQ.value, buf, buflen);
 			dst->ecpointQ.len = buflen;
 			/* calculate the field length */
