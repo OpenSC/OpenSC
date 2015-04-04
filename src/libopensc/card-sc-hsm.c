@@ -1044,6 +1044,7 @@ static int sc_hsm_init(struct sc_card *card)
 	_sc_card_add_rsa_alg(card, 2048, flags, 0);
 
 	flags = SC_ALGORITHM_ECDSA_RAW|
+		SC_ALGORITHM_ECDH_CDH_RAW|
 		SC_ALGORITHM_ECDSA_HASH_NONE|
 		SC_ALGORITHM_ECDSA_HASH_SHA1|
 		SC_ALGORITHM_ECDSA_HASH_SHA224|

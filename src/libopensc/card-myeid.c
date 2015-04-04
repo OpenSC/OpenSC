@@ -160,7 +160,7 @@ static int myeid_init(struct sc_card *card)
 			card->version.fw_major >= 4)   {
 		int i;
 
-	        flags |= SC_ALGORITHM_ECDSA_RAW;
+		flags |= SC_ALGORITHM_ECDSA_RAW | SC_ALGORITHM_ECDH_CDH_RAW;
 		ext_flags = SC_ALGORITHM_EXT_EC_NAMEDCURVE | SC_ALGORITHM_EXT_EC_UNCOMPRESES;
 
 		for (i=0; ec_curves[i].curve_name != NULL; i++)
