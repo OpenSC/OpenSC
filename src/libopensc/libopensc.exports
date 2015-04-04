@@ -237,6 +237,7 @@ sc_pkcs15emu_add_ec_prkey
 sc_pkcs15emu_add_ec_pubkey
 sc_pkcs15emu_add_x509_cert
 sc_pkcs15emu_object_add
+sc_pkcs15_bind_internal
 sc_print_path
 sc_put_data
 sc_read_binary
