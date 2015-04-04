@@ -4700,11 +4700,11 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 		rc = sc_pkcs11_register_mechanism(p11card, mt);
 		if (rc != CKR_OK)
 			return rc;
-	}
 
-	/* We support PKCS1 padding in software */
-	/* either the card supports it or OpenSC does */
-	rsa_flags |= SC_ALGORITHM_RSA_PAD_PKCS1;
+		/* We support PKCS1 padding in software */
+		/* either the card supports it or OpenSC does */
+		rsa_flags |= SC_ALGORITHM_RSA_PAD_PKCS1;
+	}
 
 #ifdef ENABLE_OPENSSL
 		/* all our software hashes are in OpenSSL */
