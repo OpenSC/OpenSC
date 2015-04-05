@@ -344,17 +344,20 @@ static int myeid_process_fci(struct sc_card *card, struct sc_file *file,
 }
 
 static int encode_file_structure(sc_card_t *card, const sc_file_t *file,
-		u8 *out, size_t *outlen)
+		u8 *buf, size_t *outlen)
 {
 	const sc_acl_entry_t *read, *update, *delete, *generate;
-	u8 buf[42];
 	size_t i;
 
 	LOG_FUNC_CALLED(card->ctx);
+
+	if (!buf || !outlen || *outlen < 45)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
+
 	/* PrivateKey
 	 * 0E0000019 6217 81020400 820111 83024B01 8603000000 85028000 8A0100 RESULT 6984
 	 *	   6217 81020400 820111 83024B01 8603000000 85021000 8A0100 */
-	memset(buf, 0x0, sizeof(buf));
+	memset(buf, 0x0, *outlen);
 
 	buf[0] = 0x62;
 	buf[1] = 0x17;
@@ -453,9 +456,9 @@ static int encode_file_structure(sc_card_t *card, const sc_file_t *file,
 			buf[26] = (u8)file->namelen;
 
 			for(i=0;i < file->namelen;i++)
-				buf[i + 26] = file->name[i];
+				buf[i + 27] = file->name[i];
 
-			buf[1] = 0x19 + file->namelen + 2;
+			buf[1] = 27 + file->namelen;
 		}
 		break;
 	default:
@@ -464,16 +467,15 @@ static int encode_file_structure(sc_card_t *card, const sc_file_t *file,
 	}
 
 	*outlen = buf[1]+2;
-	memcpy(out, buf, *outlen);
 
-	LOG_FUNC_RETURN(card->ctx, 0);
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
 static int myeid_create_file(struct sc_card *card, struct sc_file *file)
 {
 	sc_apdu_t apdu;
-	u8 sbuf[32];
-	size_t buflen;
+	u8 sbuf[45];
+	size_t buflen = sizeof sbuf;
 	int r;
 
 	LOG_FUNC_CALLED(card->ctx);
@@ -808,7 +810,7 @@ static int
 myeid_convert_ec_signature(struct sc_context *ctx, size_t s_len, unsigned char *data, size_t datalen)
 {
 	unsigned char *buf;
-	size_t i, buflen;
+	size_t buflen;
 	int r;
 
 	assert(data && datalen);

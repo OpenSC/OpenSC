@@ -990,6 +990,9 @@ sc_pkcs11_register_sign_and_hash_mechanism(struct sc_pkcs11_card *p11card,
 	mech_info.flags &= (CKF_SIGN | CKF_SIGN_RECOVER | CKF_VERIFY | CKF_VERIFY_RECOVER);
 
 	info = calloc(1, sizeof(*info));
+	if (!info)
+		LOG_FUNC_RETURN(p11card->card->ctx, SC_ERROR_OUT_OF_MEMORY);
+
 	info->mech = mech;
 	info->sign_type = sign_type;
 	info->hash_type = hash_type;

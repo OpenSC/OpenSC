@@ -166,6 +166,7 @@ static const struct option options[] = {
 	{ "attr-from",		1, NULL,		OPT_ATTR_FROM },
 	{ "input-file",		1, NULL,		'i' },
 	{ "output-file",	1, NULL,		'o' },
+	{ "signature-format",	1, NULL,		'f' },
 
 	{ "test",		0, NULL,		't' },
 	{ "test-hotplug",	0, NULL,		OPT_TEST_HOTPLUG },
@@ -223,6 +224,7 @@ static const char *option_help[] = {
 	"Use <arg> to create some attributes when writing an object",
 	"Specify the input file",
 	"Specify the output file",
+	"Format for ECDSA signature <arg>: 'rs' (default), 'sequence', 'openssl'",
 
 	"Test (best used with the --login or --pin option)",
 	"Test hotplug capabilities (C_GetSlotList + C_WaitForSlotEvent)",
@@ -262,6 +264,7 @@ static char *		opt_application_id = NULL;
 static char *		opt_issuer = NULL;
 static char *		opt_subject = NULL;
 static char *		opt_key_type = NULL;
+static char *		opt_sig_format = NULL;
 static int		opt_is_private = 0;
 static int		opt_test_hotplug = 0;
 static int		opt_login_type = -1;
@@ -420,7 +423,7 @@ int main(int argc, char * argv[])
 	CRYPTO_malloc_init();
 #endif
 	while (1) {
-		c = getopt_long(argc, argv, "ILMOTa:bd:e:hi:klm:o:p:scvty:w:z:r",
+		c = getopt_long(argc, argv, "ILMOTa:bd:e:hi:klm:o:p:scvf:ty:w:z:r",
 		                options, &long_optind);
 		if (c == -1)
 			break;
@@ -542,6 +545,9 @@ int main(int argc, char * argv[])
 			need_session |= NEED_SESSION_RW;
 			do_sign = 1;
 			action_count++;
+			break;
+		case 'f':
+			opt_sig_format = optarg;
 			break;
 		case 't':
 			need_session |= NEED_SESSION_RO;
@@ -1424,33 +1430,23 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		util_fatal("failed to open %s: %m", opt_output);
 	}
 
-#if defined(ENABLE_OPENSSL) && OPENSSL_VERSION_NUMBER >= 0x00908000L && !defined(OPENSSL_NO_EC) && !defined(OPENSSL_NO_ECDSA)
-/*
- * PKCS11 implies the ECDSA sig is 2nLen,
- * OpenSSL expects sequence of {integer, integer}
- * so we will write it for OpenSSL if built with OpenSSL
- */
-	if (opt_mechanism == CKM_ECDSA) {
-		int nLen;
-		ECDSA_SIG * ecsig = NULL;
-		unsigned char *p = NULL;
-		int der_len;
+	if (opt_mechanism == CKM_ECDSA || opt_mechanism == CKM_ECDSA_SHA1) {
+		if (opt_sig_format &&  (!strcmp(opt_sig_format, "openssl") || !strcmp(opt_sig_format, "sequence"))) {
+			unsigned char *seq;
+			size_t seqlen;
 
-		nLen = sig_len/2;
+			if (sc_asn1_sig_value_rs_to_sequence(NULL, sig_buffer, sig_len, &seq, &seqlen)) {
+				util_fatal("Failed to convert signature to ASN.1 sequence format.");
+			}
 
-		ecsig = ECDSA_SIG_new();
-		ecsig->r = BN_bin2bn(sig_buffer, nLen, ecsig->r);
-		ecsig->s = BN_bin2bn(sig_buffer + nLen, nLen, ecsig->s);
+			memcpy(sig_buffer, seq, seqlen);
+			sig_len = seqlen;
 
-		der_len = i2d_ECDSA_SIG(ecsig, &p);
-		printf("Writing OpenSSL ECDSA_SIG\n");
-		r = write(fd, p, der_len);
-		free(p);
-		ECDSA_SIG_free(ecsig);
-
-	} else
-#endif /* ENABLE_OPENSSL  && !OPENSSL_NO_EC && !OPENSSL_NO_ECDSA */
+			free(seq);
+		}
+	}
 	r = write(fd, sig_buffer, sig_len);
+
 	if (r < 0)
 		util_fatal("Failed to write to %s: %m", opt_output);
 	if (fd != 1)

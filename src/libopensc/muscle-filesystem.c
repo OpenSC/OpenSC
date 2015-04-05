@@ -42,6 +42,8 @@ static const u8* ignoredFiles[] = {
 
 mscfs_t *mscfs_new(void) {
 	mscfs_t *fs = malloc(sizeof(mscfs_t));
+	if (!fs)
+		return NULL;
 	memset(fs, 0, sizeof(mscfs_t));
 	memcpy(fs->currentPath, "\x3F\x00", 2);
 	return fs;

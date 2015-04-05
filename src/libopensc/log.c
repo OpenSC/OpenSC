@@ -73,9 +73,7 @@ static void sc_do_log_va(sc_context_t *ctx, int level, const char *file, int lin
 	FILE		*outf = NULL;
 	int		n;
 
-	assert(ctx != NULL);
-
-	if (ctx->debug < level)
+	if (!ctx || ctx->debug < level)
 		return;
 
 	p = buf;
@@ -167,9 +165,7 @@ void sc_hex_dump(struct sc_context *ctx, int level, const u8 * in, size_t count,
 	char *p = buf;
 	int lines = 0;
 
-	assert(ctx != NULL);
-
-	if (ctx->debug < level)
+	if (!ctx || ctx->debug < level)
 		return;
 
 	assert(buf != NULL && (in != NULL || count == 0));
