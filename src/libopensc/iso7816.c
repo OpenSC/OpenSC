@@ -430,6 +430,10 @@ iso7816_process_fci(struct sc_card *card, struct sc_file *file,
 	if (tag != NULL && taglen)
 		sc_file_set_sec_attr(file, tag, taglen);
 
+	tag = sc_asn1_find_tag(ctx, p, len, 0x88, &taglen);
+	if (tag != NULL && taglen == 1)
+		file->sid = *tag;
+
 	tag = sc_asn1_find_tag(ctx, p, len, 0x8A, &taglen);
 	if (tag != NULL && taglen==1) {
 		if (tag[0] == 0x01)
@@ -1012,8 +1016,7 @@ iso7816_build_pin_apdu(struct sc_card *card, struct sc_apdu *apdu,
 		 * but expect the new one to be entered on the keypad.
 		 */
 		if (data->pin1.len && data->pin2.len == 0) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
-				"Special case - initial pin provided - but new pin asked on keypad");
+			sc_log(card->ctx, "Special case - initial pin provided - but new pin asked on keypad");
 			data->flags |= SC_PIN_CMD_IMPLICIT_CHANGE;
 		};
 		len += r;

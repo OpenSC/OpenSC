@@ -305,7 +305,7 @@ pgp_init(sc_card_t *card)
 	sc_file_t	*file = NULL;
 	struct do_info	*info;
 	int		r;
-	struct blob 	*child = NULL;
+	struct blob	*child = NULL;
 
 	priv = calloc (1, sizeof *priv);
 	if (!priv)
@@ -330,9 +330,8 @@ pgp_init(sc_card_t *card)
 		return r;
 	}
 
-	/* defensive programming check  */
-	if (!file)
-	{
+	/* defensive programming check */
+	if (!file)   {
 		pgp_finish(card);
 		return SC_ERROR_OBJECT_NOT_FOUND;
 	}

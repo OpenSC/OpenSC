@@ -70,7 +70,7 @@ fi
 test -L OpenSC.tokend/build/opensc-src || ln -sf ${BUILDPATH}/src OpenSC.tokend/build/opensc-src
 
 # Build and copy OpenSC.tokend
-xcodebuild -configuration Deployment -project OpenSC.tokend/Tokend.xcodeproj
+xcodebuild -target OpenSC -configuration Deployment -project OpenSC.tokend/Tokend.xcodeproj
 
 # Prepare target root
 # Copy Tokend

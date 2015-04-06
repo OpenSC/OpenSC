@@ -140,6 +140,9 @@ sc_sm_single_transmit(struct sc_card *card, struct sc_apdu *apdu)
 		 * Send plain APDU to the reader driver */
 		rv = card->reader->ops->transmit(card->reader, apdu);
 		LOG_FUNC_RETURN(ctx, rv);
+	} else {
+		if (rv < 0)
+			sc_sm_stop(card);
 	}
 	LOG_TEST_RET(ctx, rv, "get SM APDU error");
 
@@ -147,34 +150,66 @@ sc_sm_single_transmit(struct sc_card *card, struct sc_apdu *apdu)
 	rv = sc_check_apdu(card, sm_apdu);
 	if (rv < 0)   {
 		card->sm_ctx.ops.free_sm_apdu(card, apdu, &sm_apdu);
+		sc_sm_stop(card);
 		LOG_TEST_RET(ctx, rv, "cannot validate SM encoded APDU");
 	}
 
 	/* send APDU to the reader driver */
 	rv = card->reader->ops->transmit(card->reader, sm_apdu);
-	LOG_TEST_RET(ctx, rv, "unable to transmit APDU");
+	if (rv < 0) {
+		card->sm_ctx.ops.free_sm_apdu(card, apdu, &sm_apdu);
+		sc_sm_stop(card);
+		LOG_TEST_RET(ctx, rv, "unable to transmit APDU");
+	}
 
 	/* decode SM answer and free temporary SM related data */
 	rv = card->sm_ctx.ops.free_sm_apdu(card, apdu, &sm_apdu);
+	if (rv < 0)
+		sc_sm_stop(card);
 
 	LOG_FUNC_RETURN(ctx, rv);
 }
+
+int
+sc_sm_stop(struct sc_card *card)
+{
+    int r = SC_SUCCESS;
+
+    if (card) {
+        if (card->sm_ctx.sm_mode == SM_MODE_TRANSMIT
+                && card->sm_ctx.ops.close)
+            r = card->sm_ctx.ops.close(card);
+        card->sm_ctx.sm_mode = SM_MODE_NONE;
+    }
+
+    return r;
+}
+
 #else
+
 int
 sc_sm_parse_answer(struct sc_card *card, unsigned char *resp_data, size_t resp_len,
 		struct sm_card_response *out)
 {
 	return SC_ERROR_NOT_SUPPORTED;
 }
+
 int
 sc_sm_update_apdu_response(struct sc_card *card, unsigned char *resp_data, size_t resp_len,
 		int ref_rv, struct sc_apdu *apdu)
 {
 	return SC_ERROR_NOT_SUPPORTED;
 }
+
 int
 sc_sm_single_transmit(struct sc_card *card, struct sc_apdu *apdu)
 {
 	return SC_ERROR_NOT_SUPPORTED;
+}
+
+int
+sc_sm_stop(struct sc_card *card)
+{
+    return SC_ERROR_NOT_SUPPORTED;
 }
 #endif

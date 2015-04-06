@@ -950,9 +950,7 @@ iasecc_pkcs15_fix_private_key_attributes(struct sc_profile *profile, struct sc_p
 					IASECC_ALGORITHM_RSA_PKCS | IASECC_ALGORITHM_SHA2);
 			LOG_TEST_RET(ctx, rv, "Cannot add RSA_PKCS SHA2 supported mechanism");
 
-			key_info->usage |= SC_PKCS15_PRKEY_USAGE_SIGN;
 			if (sdo_prvkey->docp.non_repudiation.value && sdo_prvkey->docp.non_repudiation.value[0])   {
-				key_info->usage |= SC_PKCS15_PRKEY_USAGE_NONREPUDIATION;
 				object->user_consent = 1;
 			}
 		}
@@ -960,14 +958,12 @@ iasecc_pkcs15_fix_private_key_attributes(struct sc_profile *profile, struct sc_p
 			rv = iasecc_pkcs15_add_algorithm_reference(p15card, key_info, IASECC_ALGORITHM_RSA_PKCS);
 			LOG_TEST_RET(ctx, rv, "Cannot add RSA_PKCS supported mechanism");
 
- 			key_info->usage |= SC_PKCS15_PRKEY_USAGE_SIGN | SC_PKCS15_PRKEY_USAGE_SIGNRECOVER;
 		}
 		else if (ii == IASECC_ACLS_RSAKEY_PSO_DECIPHER)   {
 			rv = iasecc_pkcs15_add_algorithm_reference(p15card, key_info,
 					IASECC_ALGORITHM_RSA_PKCS_DECRYPT | IASECC_ALGORITHM_SHA1);
 			LOG_TEST_RET(ctx, rv, "Cannot add decipher RSA_PKCS supported mechanism");
 
-			key_info->usage |= SC_PKCS15_PRKEY_USAGE_DECRYPT | SC_PKCS15_PRKEY_USAGE_UNWRAP;
 		}
 	}
 

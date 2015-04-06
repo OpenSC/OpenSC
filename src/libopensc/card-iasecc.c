@@ -1801,12 +1801,14 @@ iasecc_chv_verify_pinpad(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd, 
 		LOG_FUNC_RETURN(ctx, SC_ERROR_READER);
 	}
 
-	if (pin_cmd->pin1.min_length != pin_cmd->pin1.max_length)   {
-		sc_log(ctx, "Different values for PIN min and max lengths is not actually compatible with PinPAD.");
-		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED,
-				"Different values for PIN min and max lengths is not actually compatible with PinPAD.");
+	sc_log(ctx, "reader %s", card->reader->name);
+	if (strstr(card->reader->name, "Gemalto GemPC Pinpad") == card->reader->name)   {
+		sc_log(ctx, "reader %s", card->reader->name);
+		if (pin_cmd->pin1.min_length != pin_cmd->pin1.max_length)   {
+			sc_log(ctx, "Bogus Gemalto GemPC Pinpad do not accept different values for min and max PIN lengths.");
+			LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
+		}
 	}
-
 	pin_cmd->pin1.len = pin_cmd->pin1.min_length;
 
 	memset(buffer, 0xFF, sizeof(buffer));
@@ -2037,8 +2039,10 @@ iasecc_chv_change_pinpad(struct sc_card *card, unsigned reference, int *tries_le
 	rv = iasecc_pin_get_policy(card, &pin_cmd);
 	LOG_TEST_RET(ctx, rv, "Get 'PIN policy' error");
 
-	if (pin_cmd.pin1.min_length != pin_cmd.pin1.max_length)
-		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Different values for PIN min and max lengths is not allowed with PinPAD.");
+	if (strstr(card->reader->name, "Gemalto GemPC Pinpad") == card->reader->name)
+		if (pin_cmd.pin1.min_length != pin_cmd.pin1.max_length)
+			LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED,
+					"Bogus Gemalto GemPC Pinpad do not accept different values for min and max PIN lengths.");
 
 	if (pin_cmd.pin1.min_length < 4)
 		pin_cmd.pin1.min_length = 4;
@@ -2083,8 +2087,10 @@ iasecc_chv_set_pinpad(struct sc_card *card, unsigned char reference)
 	rv = iasecc_pin_get_policy(card, &pin_cmd);
 	LOG_TEST_RET(ctx, rv, "Get 'PIN policy' error");
 
-	if (pin_cmd.pin1.min_length != pin_cmd.pin1.max_length)
-		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Different values for PIN min and max lengths is not allowed with PinPAD.");
+	if (strstr(card->reader->name, "Gemalto GemPC Pinpad") == card->reader->name)
+		if (pin_cmd.pin1.min_length != pin_cmd.pin1.max_length)
+			LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED,
+					"Bogus Gemalto GemPC Pinpad do not accept different values for min and max PIN lengths.");
 
 	if (pin_cmd.pin1.min_length < 4)
 		pin_cmd.pin1.min_length = 4;
@@ -3385,7 +3391,7 @@ iasecc_read_public_key(struct sc_card *card, unsigned type,
 
 	iasecc_sdo_free_fields(card, &sdo);
 
-	SC_FUNC_RETURN(ctx, SC_SUCCESS, rv);
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
 
