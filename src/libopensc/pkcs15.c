@@ -2697,7 +2697,7 @@ sc_pkcs15_get_object_guid(struct sc_pkcs15_card *p15card, const struct sc_pkcs15
 	struct sc_serial_number serialnr;
 	struct sc_pkcs15_id  id;
 	unsigned char guid_bin[SC_PKCS15_MAX_ID_SIZE + SC_MAX_SERIALNR];
-	int rv;
+	int rv, guid_bin_size;
 
 	LOG_FUNC_CALLED(ctx);
 	if(!out || !out_size)
@@ -2748,23 +2748,34 @@ sc_pkcs15_get_object_guid(struct sc_pkcs15_card *p15card, const struct sc_pkcs15
 	memset(guid_bin, 0, sizeof(guid_bin));
 	memcpy(guid_bin, id.value, id.len);
 	memcpy(guid_bin + id.len, serialnr.value, serialnr.len);
+	guid_bin_size = id.len + serialnr.len;
 
-	// If OpenSSL is available (SHA1), then rather use the hash of the data
-	// - this also protects against data being too short
+        /*
+	 * If OpenSSL is available (SHA1), then rather use the hash of the data
+         * - this also protects against data being too short
+	 */
 #ifdef ENABLE_OPENSSL
-	SHA1(guid_bin, id.len + serialnr.len, guid_bin);
-	id.len = SHA_DIGEST_LENGTH;
-	serialnr.len = 0;
+	SHA1(guid_bin, guid_bin_size, guid_bin);
+	guid_bin_size = SHA_DIGEST_LENGTH;
+#else
+	/* If guid_bin has a size larger than 16 bytes
+	 * force the remaining bytes up to 16 bytes to be zero
+	 * so sc_pkcs15_serialize_guid won't fail because the size is less than 16
+	 */
+	if (guid_bin_size < 16)
+		guid_bin_size = 16;
 #endif
 
-	rv = sc_pkcs15_serialize_guid(guid_bin, id.len + serialnr.len, flags, (char *)out, *out_size);
+	rv = sc_pkcs15_serialize_guid(guid_bin, guid_bin_size, flags, (char *)out, *out_size);
 	LOG_TEST_RET(ctx, rv, "Serialize GUID error");
 
 	*out_size = strlen((char *)out);
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
-void sc_pkcs15_free_key_params(struct sc_pkcs15_key_params *params)
+
+void
+sc_pkcs15_free_key_params(struct sc_pkcs15_key_params *params)
 {
 	if (!params)
 		return;
