@@ -21,6 +21,7 @@
 
 #include "config.h"
 #include <ctype.h>
+#include <assert.h>
 
 #ifdef ENABLE_OPENSSL
 #if defined(HAVE_INTTYPES_H)
@@ -140,6 +141,7 @@ static const char *option_help[] = {
 	"Reads public key with ID <arg>",
 #if defined(ENABLE_OPENSSL) && (defined(_WIN32) || defined(HAVE_INTTYPES_H))
 	"Reads public key with ID <arg>, outputs ssh format",
+	"Outputs the public key in RFC 4716 format (requires --read-ssh-key)",
 #endif
 	"Test if the card needs a security update",
 	"Update the card with a security update",
@@ -155,6 +157,7 @@ static const char *option_help[] = {
 	"Wait for card insertion",
 	"Verbose operation. Use several times to enable debug output.",
 	"Do not prompt the user; if no PINs supplied, pinpad will be used.",
+	NULL
 };
 
 static sc_context_t *ctx = NULL;
@@ -1855,6 +1858,8 @@ int main(int argc, char * const argv[])
 	int do_update = 0;
 	int action_count = 0;
 	sc_context_param_t ctx_param;
+
+	assert(sizeof(option_help)/sizeof(char *)==sizeof(options)/sizeof(struct option));
 
 	c = OPT_PUK;
 
