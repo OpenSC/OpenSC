@@ -324,7 +324,7 @@ static int cwa_parse_tlv(sc_card_t * card,
 		/* set index to next Tag to jump to */
 		next = tlv->buflen;
 	}
-	free(buffer);
+/*	free(buffer); temporary fix. TODO: free this buffer correctly */
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);	/* mark no error */
 }
 
@@ -1601,7 +1601,7 @@ encode_end:
 	free(msgbuf);
 	free(cryptbuf);
 	free(ccbuf);
-	free(apdubuf);
+/*	free(apdubuf); Temporary fix. TODO: free this buffer correctly */
 	LOG_FUNC_RETURN(ctx, res);
 }
 
