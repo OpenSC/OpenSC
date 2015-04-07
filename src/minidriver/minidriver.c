@@ -3703,6 +3703,14 @@ DWORD WINAPI CardGetProperty(__in PCARD_DATA pCardData,
 			return ERROR_INSUFFICIENT_BUFFER;
 		*p = CARD_PIN_STRENGTH_PLAINTEXT;
 	}
+	else if (wcscmp(CP_KEY_IMPORT_SUPPORT, wszProperty) == 0)   {
+		DWORD *p = (DWORD *)pbData;
+		if (pdwDataLen)
+			*pdwDataLen = sizeof(*p);
+		if (cbData < sizeof(*p))
+			return ERROR_INSUFFICIENT_BUFFER;
+		*p = 0;
+	}
 	else   {
 		logprintf(pCardData, 3, "Unsupported property '%S'\n", wszProperty);
 		return SCARD_E_INVALID_PARAMETER;
@@ -3736,28 +3744,35 @@ DWORD WINAPI CardSetProperty(__in   PCARD_DATA pCardData,
 	if (!wszProperty)
 		return SCARD_E_INVALID_PARAMETER;
 
-	if (wcscmp(CP_CARD_PIN_STRENGTH_VERIFY, wszProperty) == 0 ||
-			wcscmp(CP_CARD_PIN_INFO, wszProperty) == 0)
-		return SCARD_E_INVALID_PARAMETER;
-
 	if (dwFlags)
 		return SCARD_E_INVALID_PARAMETER;
 
-	if (wcscmp(CP_PIN_CONTEXT_STRING, wszProperty) == 0) {
-		vs->wszPinContext = (LPWSTR) pbData;
-		logprintf(pCardData, 3, "Saved PIN context string: %S\n", pbData);
-		return SCARD_S_SUCCESS;
-	}
-
-	if (wcscmp(CP_CARD_CACHE_MODE, wszProperty) == 0 ||
-			wcscmp(CP_SUPPORTS_WIN_X509_ENROLLMENT, wszProperty) == 0 ||
-			wcscmp(CP_CARD_GUID, wszProperty) == 0 ||
-			wcscmp(CP_CARD_SERIAL_NO, wszProperty) == 0)   {
-		return SCARD_E_INVALID_PARAMETER;
-	}
-
 	if (!pbData || !cbDataLen)
 		return SCARD_E_INVALID_PARAMETER;
+
+	/* the following properties cannot be set according to the minidriver specifications */
+	if (wcscmp(wszProperty,CP_CARD_FREE_SPACE) == 0 ||
+			wcscmp(wszProperty,CP_CARD_CAPABILITIES) == 0 ||
+			wcscmp(wszProperty,CP_CARD_KEYSIZES) == 0 ||
+			wcscmp(wszProperty,CP_CARD_LIST_PINS) == 0 ||
+			wcscmp(wszProperty,CP_CARD_AUTHENTICATED_STATE) == 0 ||
+			wcscmp(wszProperty,CP_KEY_IMPORT_SUPPORT) == 0 ||
+			wcscmp(wszProperty,CP_ENUM_ALGORITHMS) == 0 ||
+			wcscmp(wszProperty,CP_PADDING_SCHEMES) == 0 ||
+			wcscmp(wszProperty,CP_CHAINING_MODES) == 0 ||
+			wcscmp(wszProperty,CP_SUPPORTS_WIN_X509_ENROLLMENT) == 0 ||
+			wcscmp(wszProperty,CP_CARD_CACHE_MODE) == 0 ||
+			wcscmp(wszProperty,CP_CARD_SERIAL_NO) == 0
+			)   {
+		return SCARD_E_UNSUPPORTED_FEATURE;
+	}
+
+	/* the following properties can be set, but are not implemented by the minidriver */
+	if (wcscmp(CP_CARD_PIN_STRENGTH_VERIFY, wszProperty) == 0 ||
+			wcscmp(CP_CARD_PIN_INFO, wszProperty) == 0 ||
+			wcscmp(CP_CARD_GUID, wszProperty) == 0 ) {
+		return SCARD_E_UNSUPPORTED_FEATURE;
+	}
 
 	/* This property and CP_PIN_CONTEXT_STRING are set just prior to a call to
 	 * CardAuthenticateEx if the PIN required is declared of type ExternalPinType.
@@ -3775,7 +3790,12 @@ DWORD WINAPI CardSetProperty(__in   PCARD_DATA pCardData,
 		logprintf(pCardData, 3, "Saved parent window (%u)\n", vs->hwndParent);
 		return SCARD_S_SUCCESS;
 	}
-
+	
+	if (wcscmp(CP_PIN_CONTEXT_STRING, wszProperty) == 0) {
+		vs->wszPinContext = (LPWSTR) pbData;
+		logprintf(pCardData, 3, "Saved PIN context string: %S\n", pbData);
+		return SCARD_S_SUCCESS;
+	}
 	logprintf(pCardData, 3, "INVALID PARAMETER\n");
 	return SCARD_E_INVALID_PARAMETER;
 }
