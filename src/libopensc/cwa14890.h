@@ -52,23 +52,6 @@
 #include <openssl/des.h>
 
 /**
- * Structure used to compose BER-TLV encoded data
- * according to iso7816-4 sect 5.2.2.
- *
- * Notice that current implementation does not handle properly
- * multibyte tag id. Just asume that tag is 1-byte lenght
- * Also, encodings for data lenght longer than 0x01000000 bytes
- * are not supported (tag 0x84)
- */
-typedef struct cwa_tlv_st {
-	u8 *buf;		/** local copy of TLV byte array */
-	size_t buflen;		/** lengt of buffer */
-	unsigned int tag;	/** tag ID */
-	size_t len;		/** lenght of data field */
-	u8 *data;		/** pointer to start of data in buf buffer */
-} cwa_tlv_t;
-
-/**
  * Structure used to handle keys and sequence counter once SM session
  * is stablished
  */
