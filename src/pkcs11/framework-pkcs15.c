@@ -4566,21 +4566,25 @@ static int register_ec_mechanisms(struct sc_pkcs11_card *p11card, int flags,
 	mech_info.ulMinKeySize = min_key_size;
 	mech_info.ulMaxKeySize = max_key_size;
 
-	mt = sc_pkcs11_new_fw_mechanism(CKM_ECDSA, &mech_info, CKK_EC, NULL);
-	if (!mt)
-		return CKR_HOST_MEMORY;
-	rc = sc_pkcs11_register_mechanism(p11card, mt);
-	if (rc != CKR_OK)
-		return rc;
+	if(flags & SC_ALGORITHM_ECDSA_HASH_NONE) {
+		mt = sc_pkcs11_new_fw_mechanism(CKM_ECDSA, &mech_info, CKK_EC, NULL);
+		if (!mt)
+			return CKR_HOST_MEMORY;
+		rc = sc_pkcs11_register_mechanism(p11card, mt);
+		if (rc != CKR_OK)
+			return rc;
+	}
 
 #ifdef ENABLE_OPENSSL
-	mt = sc_pkcs11_new_fw_mechanism(CKM_ECDSA_SHA1,
-		&mech_info, CKK_EC, NULL);
-	if (!mt)
-		return CKR_HOST_MEMORY;
-	rc = sc_pkcs11_register_mechanism(p11card, mt);
-	if (rc != CKR_OK)
-		return rc;
+	if(flags & SC_ALGORITHM_ECDSA_HASH_SHA1) {
+		mt = sc_pkcs11_new_fw_mechanism(CKM_ECDSA_SHA1,
+			&mech_info, CKK_EC, NULL);
+		if (!mt)
+			return CKR_HOST_MEMORY;
+		rc = sc_pkcs11_register_mechanism(p11card, mt);
+		if (rc != CKR_OK)
+			return rc;
+	}
 #endif
 
 	/* ADD ECDH mechanisms */
