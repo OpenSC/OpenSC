@@ -859,7 +859,7 @@ static sc_algorithm_info_t * sc_card_find_alg(sc_card_t *card,
 			continue;
 		if (param)   {
 			if (info->algorithm == SC_ALGORITHM_EC)
-				if(sc_compare_oid((struct sc_object_id *)param, &info->u._ec.params.id))
+				if(!sc_compare_oid((struct sc_object_id *)param, &info->u._ec.params.id))
 					continue;
 		}
 		return info;
