@@ -2591,7 +2591,10 @@ DWORD WINAPI CardChangeAuthenticator(__in PCARD_DATA  pCardData,
 	return SCARD_S_SUCCESS;
 }
 
-
+/* this function is not called on purpose.
+If a deauthentication is not possible, it should be set to NULL in CardAcquireContext.
+Because this function do nothing - it is not called.
+Note: the PIN freshnesh will be managed by the Base CSP*/
 DWORD WINAPI CardDeauthenticate(__in PCARD_DATA pCardData,
 	__in LPWSTR pwszUserId,
 	__in DWORD dwFlags)
@@ -2625,7 +2628,9 @@ DWORD WINAPI CardDeauthenticate(__in PCARD_DATA pCardData,
 	logprintf(pCardData, 5, "PinsFreshness = %d\n",  cardcf->bPinsFreshness);
 
 	/* TODO Reset PKCS#15 PIN object 'validated' flag */
-	return SCARD_S_SUCCESS;
+
+	/* force a reset of a card - SCARD_S_SUCCESS do not lead to the reset of the card and leave it still authenticated */
+	return SCARD_E_UNSUPPORTED_FEATURE;
 }
 
 DWORD WINAPI CardCreateDirectory(__in PCARD_DATA pCardData,
@@ -3468,7 +3473,9 @@ DWORD WINAPI CardDeauthenticateEx(__in PCARD_DATA pCardData,
 	logprintf(pCardData, 1, "CardDeauthenticateEx bPinsFreshness:%d\n", cardcf->bPinsFreshness);
 
 	/* TODO Reset PKCS#15 PIN object 'validated' flag */
-	return SCARD_S_SUCCESS;
+
+	/* force a reset of a card - SCARD_S_SUCCESS does not lead to the reset of the card and leave it still authenticated */
+	return SCARD_E_UNSUPPORTED_FEATURE;
 }
 
 DWORD WINAPI CardGetContainerProperty(__in PCARD_DATA pCardData,
@@ -4153,7 +4160,8 @@ DWORD WINAPI CardAcquireContext(IN PCARD_DATA pCardData, __in DWORD dwFlags)
 	pCardData->pfnCardAuthenticateChallenge = CardAuthenticateChallenge;
 	pCardData->pfnCardUnblockPin = CardUnblockPin;
 	pCardData->pfnCardChangeAuthenticator = CardChangeAuthenticator;
-	pCardData->pfnCardDeauthenticate = CardDeauthenticate; /* NULL */
+	/* the minidriver does not perform a deauthentication - set it to NULL according to the specification */
+	pCardData->pfnCardDeauthenticate = NULL;
 	pCardData->pfnCardCreateDirectory = CardCreateDirectory;
 	pCardData->pfnCardDeleteDirectory = CardDeleteDirectory;
 	pCardData->pvUnused3 = NULL;
