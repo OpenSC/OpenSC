@@ -3089,6 +3089,15 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __in PCARD_SIGNING_INFO pIn
 
 	if (!pCardData || !pInfo)
 		return SCARD_E_INVALID_PARAMETER;
+	if ( ( pInfo->dwVersion != CARD_SIGNING_INFO_BASIC_VERSION   ) &&
+			( pInfo->dwVersion != CARD_SIGNING_INFO_CURRENT_VERSION ) )
+		return ERROR_REVISION_MISMATCH;
+	if ( pInfo->pbData == NULL )
+		return SCARD_E_INVALID_PARAMETER;
+	if (pInfo->dwKeySpec != AT_SIGNATURE && pInfo->dwKeySpec != AT_KEYEXCHANGE)
+		return SCARD_E_INVALID_PARAMETER;
+	if (pInfo->dwSigningFlags & ~(CARD_PADDING_INFO_PRESENT | CARD_PADDING_NONE))
+		return SCARD_E_INVALID_PARAMETER;
 
 	logprintf(pCardData, 2, "CardSignData dwVersion=%u, bContainerIndex=%u, dwKeySpec=%u, dwSigningFlags=0x%08X, aiHashAlg=0x%08X\n",
 		pInfo->dwVersion,pInfo->bContainerIndex ,pInfo->dwKeySpec, pInfo->dwSigningFlags, pInfo->aiHashAlg);
@@ -3118,10 +3127,15 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __in PCARD_SIGNING_INFO pIn
 
 	if (CARD_PADDING_INFO_PRESENT & pInfo->dwSigningFlags)   {
 		BCRYPT_PKCS1_PADDING_INFO *pinf = (BCRYPT_PKCS1_PADDING_INFO *)pInfo->pPaddingInfo;
-		if (CARD_PADDING_PKCS1 != pInfo->dwPaddingType)   {
-			logprintf(pCardData, 0, "unsupported paddingtype\n");
+		if (CARD_PADDING_PSS == pInfo->dwPaddingType)   {
+			logprintf(pCardData, 0, "unsupported paddingtype CARD_PADDING_PSS\n");
 			return SCARD_E_UNSUPPORTED_FEATURE;
 		}
+		else if (CARD_PADDING_PKCS1 != pInfo->dwPaddingType)   {
+			logprintf(pCardData, 0, "unsupported paddingtype\n");
+			return SCARD_E_INVALID_PARAMETER;
+		}
+			
 		if (!pinf->pszAlgId)   {
 			/* hashAlg = CALG_SSL3_SHAMD5; */
 			logprintf(pCardData, 3, "Using CALG_SSL3_SHAMD5  hashAlg\n");
