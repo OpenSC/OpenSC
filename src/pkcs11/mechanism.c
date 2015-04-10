@@ -609,6 +609,18 @@ sc_pkcs11_verify_init(sc_pkcs11_operation_t *operation,
 	data->info = NULL;
 	data->key = key;
 
+	if (key->ops->can_do)   {
+		rv = key->ops->can_do(operation->session, key, operation->type->mech, CKF_SIGN);
+		if (rv == CKR_OK)   {
+			/* Mechanism recognised and can be performed by pkcs#15 card */
+		}
+		else  {
+			/* Mechanism cannot be performed by pkcs#15 card, or some general error. */
+			free(data);
+			LOG_FUNC_RETURN(context, rv);
+		}
+	}
+
 	/* If this is a verify with hash operation, set up the
 	 * hash operation */
 	info = (struct hash_signature_info *) operation->type->mech_data;
@@ -869,11 +881,24 @@ sc_pkcs11_decrypt_init(sc_pkcs11_operation_t *operation,
 			struct sc_pkcs11_object *key)
 {
 	struct signature_data *data;
+	CK_RV rv;
 
 	if (!(data = calloc(1, sizeof(*data))))
 		return CKR_HOST_MEMORY;
 
 	data->key = key;
+
+	if (key->ops->can_do)   {
+		rv = key->ops->can_do(operation->session, key, operation->type->mech, CKF_DECRYPT);
+		if (rv == CKR_OK)   {
+			/* Mechanism recognised and can be performed by pkcs#15 card */
+		}
+	   	else  {
+			/* Mechanism cannot be performed by pkcs#15 card, or some general error. */
+			free(data);
+			LOG_FUNC_RETURN(context, rv);
+		}
+	}
 
 	operation->priv_data = data;
 	return CKR_OK;
