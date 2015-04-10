@@ -3494,6 +3494,9 @@ static int test_signature(CK_SESSION_HANDLE sess)
 
 	ck_mech.mechanism = firstMechType;
 	rv = p11->C_SignInit(sess, &ck_mech, privKeyObject);
+	/* mechanism not implemented, don't test */
+	if (rv == CKR_MECHANISM_INVALID)
+		return errors;
 	if (rv != CKR_OK)
 		p11_fatal("C_SignInit", rv);
 
