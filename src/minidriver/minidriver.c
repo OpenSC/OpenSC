@@ -2591,7 +2591,10 @@ DWORD WINAPI CardChangeAuthenticator(__in PCARD_DATA  pCardData,
 	return SCARD_S_SUCCESS;
 }
 
-
+/* this function is not called on purpose.
+If a deauthentication is not possible, it should be set to NULL in CardAcquireContext.
+Because this function do nothing - it is not called.
+Note: the PIN freshnesh will be managed by the Base CSP*/
 DWORD WINAPI CardDeauthenticate(__in PCARD_DATA pCardData,
 	__in LPWSTR pwszUserId,
 	__in DWORD dwFlags)
@@ -2625,7 +2628,9 @@ DWORD WINAPI CardDeauthenticate(__in PCARD_DATA pCardData,
 	logprintf(pCardData, 5, "PinsFreshness = %d\n",  cardcf->bPinsFreshness);
 
 	/* TODO Reset PKCS#15 PIN object 'validated' flag */
-	return SCARD_S_SUCCESS;
+
+	/* force a reset of a card - SCARD_S_SUCCESS do not lead to the reset of the card and leave it still authenticated */
+	return SCARD_E_UNSUPPORTED_FEATURE;
 }
 
 DWORD WINAPI CardCreateDirectory(__in PCARD_DATA pCardData,
@@ -3089,6 +3094,15 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __in PCARD_SIGNING_INFO pIn
 
 	if (!pCardData || !pInfo)
 		return SCARD_E_INVALID_PARAMETER;
+	if ( ( pInfo->dwVersion != CARD_SIGNING_INFO_BASIC_VERSION   ) &&
+			( pInfo->dwVersion != CARD_SIGNING_INFO_CURRENT_VERSION ) )
+		return ERROR_REVISION_MISMATCH;
+	if ( pInfo->pbData == NULL )
+		return SCARD_E_INVALID_PARAMETER;
+	if (pInfo->dwKeySpec != AT_SIGNATURE && pInfo->dwKeySpec != AT_KEYEXCHANGE)
+		return SCARD_E_INVALID_PARAMETER;
+	if (pInfo->dwSigningFlags & ~(CARD_PADDING_INFO_PRESENT | CARD_PADDING_NONE))
+		return SCARD_E_INVALID_PARAMETER;
 
 	logprintf(pCardData, 2, "CardSignData dwVersion=%u, bContainerIndex=%u, dwKeySpec=%u, dwSigningFlags=0x%08X, aiHashAlg=0x%08X\n",
 		pInfo->dwVersion,pInfo->bContainerIndex ,pInfo->dwKeySpec, pInfo->dwSigningFlags, pInfo->aiHashAlg);
@@ -3118,10 +3132,15 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __in PCARD_SIGNING_INFO pIn
 
 	if (CARD_PADDING_INFO_PRESENT & pInfo->dwSigningFlags)   {
 		BCRYPT_PKCS1_PADDING_INFO *pinf = (BCRYPT_PKCS1_PADDING_INFO *)pInfo->pPaddingInfo;
-		if (CARD_PADDING_PKCS1 != pInfo->dwPaddingType)   {
-			logprintf(pCardData, 0, "unsupported paddingtype\n");
+		if (CARD_PADDING_PSS == pInfo->dwPaddingType)   {
+			logprintf(pCardData, 0, "unsupported paddingtype CARD_PADDING_PSS\n");
 			return SCARD_E_UNSUPPORTED_FEATURE;
 		}
+		else if (CARD_PADDING_PKCS1 != pInfo->dwPaddingType)   {
+			logprintf(pCardData, 0, "unsupported paddingtype\n");
+			return SCARD_E_INVALID_PARAMETER;
+		}
+			
 		if (!pinf->pszAlgId)   {
 			/* hashAlg = CALG_SSL3_SHAMD5; */
 			logprintf(pCardData, 3, "Using CALG_SSL3_SHAMD5  hashAlg\n");
@@ -3394,9 +3413,39 @@ DWORD WINAPI CardChangeAuthenticatorEx(__in PCARD_DATA pCardData,
 	__in   DWORD cRetryCount,
 	__out_opt PDWORD pcAttemptsRemaining)
 {
+
 	logprintf(pCardData, 1, "\nP:%d T:%d pCardData:%p ",GetCurrentProcessId(), GetCurrentThreadId(), pCardData);
-	logprintf(pCardData, 1, "CardChangeAuthenticatorEx - unsupported\n");
-	return SCARD_E_UNSUPPORTED_FEATURE;
+	logprintf(pCardData, 1, "CardAuthenticateEx\n");
+
+	if (!pCardData)
+		return SCARD_E_INVALID_PARAMETER;
+	if (dwFlags != PIN_CHANGE_FLAG_UNBLOCK && dwFlags != PIN_CHANGE_FLAG_CHANGEPIN)
+		return SCARD_E_INVALID_PARAMETER;
+	if (dwFlags == PIN_CHANGE_FLAG_UNBLOCK && dwAuthenticatingPinId == dwTargetPinId)
+		return SCARD_E_INVALID_PARAMETER;
+	if (dwAuthenticatingPinId != ROLE_USER && dwAuthenticatingPinId != ROLE_ADMIN)
+		return SCARD_E_INVALID_PARAMETER;
+	if (dwTargetPinId != ROLE_USER && dwTargetPinId != ROLE_ADMIN)
+		return SCARD_E_INVALID_PARAMETER;
+	/* according to the spec: cRetryCount MUST be zero */
+	if (cRetryCount)
+		return SCARD_E_INVALID_PARAMETER;
+
+	logprintf(pCardData, 2, "CardChangeAuthenticatorEx: AuthenticatingPinId=%u, dwFlags=0x%08X, cbAuthenticatingPinData=%u, TargetPinId=%u, cbTargetData=%u, Attempts %s\n",
+		dwAuthenticatingPinId, dwFlags, cbAuthenticatingPinData, dwTargetPinId, cbTargetData, pcAttemptsRemaining ? "YES" : "NO");
+
+	if (dwFlags == PIN_CHANGE_FLAG_UNBLOCK)
+	{
+		return CardUnblockPin(pCardData, (dwTargetPinId == ROLE_USER ? wszCARD_USER_USER: wszCARD_USER_ADMIN), pbAuthenticatingPinData, cbAuthenticatingPinData, pbTargetData, cbTargetData, cRetryCount, CARD_AUTHENTICATE_PIN_PIN);
+	}
+	else if ( dwFlags == PIN_CHANGE_FLAG_CHANGEPIN)
+	{
+		return CardChangeAuthenticator(pCardData, (dwTargetPinId == ROLE_USER ? wszCARD_USER_USER: wszCARD_USER_ADMIN), pbAuthenticatingPinData, cbAuthenticatingPinData, pbTargetData, cbTargetData, cRetryCount, CARD_AUTHENTICATE_PIN_PIN, pcAttemptsRemaining);
+	}
+	else
+	{
+		return SCARD_E_UNSUPPORTED_FEATURE;
+	}
 }
 
 DWORD WINAPI CardDeauthenticateEx(__in PCARD_DATA pCardData,
@@ -3424,7 +3473,9 @@ DWORD WINAPI CardDeauthenticateEx(__in PCARD_DATA pCardData,
 	logprintf(pCardData, 1, "CardDeauthenticateEx bPinsFreshness:%d\n", cardcf->bPinsFreshness);
 
 	/* TODO Reset PKCS#15 PIN object 'validated' flag */
-	return SCARD_S_SUCCESS;
+
+	/* force a reset of a card - SCARD_S_SUCCESS does not lead to the reset of the card and leave it still authenticated */
+	return SCARD_E_UNSUPPORTED_FEATURE;
 }
 
 DWORD WINAPI CardGetContainerProperty(__in PCARD_DATA pCardData,
@@ -3673,6 +3724,14 @@ DWORD WINAPI CardGetProperty(__in PCARD_DATA pCardData,
 			return ERROR_INSUFFICIENT_BUFFER;
 		*p = CARD_PIN_STRENGTH_PLAINTEXT;
 	}
+	else if (wcscmp(CP_KEY_IMPORT_SUPPORT, wszProperty) == 0)   {
+		DWORD *p = (DWORD *)pbData;
+		if (pdwDataLen)
+			*pdwDataLen = sizeof(*p);
+		if (cbData < sizeof(*p))
+			return ERROR_INSUFFICIENT_BUFFER;
+		*p = 0;
+	}
 	else   {
 		logprintf(pCardData, 3, "Unsupported property '%S'\n", wszProperty);
 		return SCARD_E_INVALID_PARAMETER;
@@ -3706,28 +3765,35 @@ DWORD WINAPI CardSetProperty(__in   PCARD_DATA pCardData,
 	if (!wszProperty)
 		return SCARD_E_INVALID_PARAMETER;
 
-	if (wcscmp(CP_CARD_PIN_STRENGTH_VERIFY, wszProperty) == 0 ||
-			wcscmp(CP_CARD_PIN_INFO, wszProperty) == 0)
-		return SCARD_E_INVALID_PARAMETER;
-
 	if (dwFlags)
 		return SCARD_E_INVALID_PARAMETER;
 
-	if (wcscmp(CP_PIN_CONTEXT_STRING, wszProperty) == 0) {
-		vs->wszPinContext = (LPWSTR) pbData;
-		logprintf(pCardData, 3, "Saved PIN context string: %S\n", pbData);
-		return SCARD_S_SUCCESS;
-	}
-
-	if (wcscmp(CP_CARD_CACHE_MODE, wszProperty) == 0 ||
-			wcscmp(CP_SUPPORTS_WIN_X509_ENROLLMENT, wszProperty) == 0 ||
-			wcscmp(CP_CARD_GUID, wszProperty) == 0 ||
-			wcscmp(CP_CARD_SERIAL_NO, wszProperty) == 0)   {
-		return SCARD_E_INVALID_PARAMETER;
-	}
-
 	if (!pbData || !cbDataLen)
 		return SCARD_E_INVALID_PARAMETER;
+
+	/* the following properties cannot be set according to the minidriver specifications */
+	if (wcscmp(wszProperty,CP_CARD_FREE_SPACE) == 0 ||
+			wcscmp(wszProperty,CP_CARD_CAPABILITIES) == 0 ||
+			wcscmp(wszProperty,CP_CARD_KEYSIZES) == 0 ||
+			wcscmp(wszProperty,CP_CARD_LIST_PINS) == 0 ||
+			wcscmp(wszProperty,CP_CARD_AUTHENTICATED_STATE) == 0 ||
+			wcscmp(wszProperty,CP_KEY_IMPORT_SUPPORT) == 0 ||
+			wcscmp(wszProperty,CP_ENUM_ALGORITHMS) == 0 ||
+			wcscmp(wszProperty,CP_PADDING_SCHEMES) == 0 ||
+			wcscmp(wszProperty,CP_CHAINING_MODES) == 0 ||
+			wcscmp(wszProperty,CP_SUPPORTS_WIN_X509_ENROLLMENT) == 0 ||
+			wcscmp(wszProperty,CP_CARD_CACHE_MODE) == 0 ||
+			wcscmp(wszProperty,CP_CARD_SERIAL_NO) == 0
+			)   {
+		return SCARD_E_UNSUPPORTED_FEATURE;
+	}
+
+	/* the following properties can be set, but are not implemented by the minidriver */
+	if (wcscmp(CP_CARD_PIN_STRENGTH_VERIFY, wszProperty) == 0 ||
+			wcscmp(CP_CARD_PIN_INFO, wszProperty) == 0 ||
+			wcscmp(CP_CARD_GUID, wszProperty) == 0 ) {
+		return SCARD_E_UNSUPPORTED_FEATURE;
+	}
 
 	/* This property and CP_PIN_CONTEXT_STRING are set just prior to a call to
 	 * CardAuthenticateEx if the PIN required is declared of type ExternalPinType.
@@ -3745,9 +3811,272 @@ DWORD WINAPI CardSetProperty(__in   PCARD_DATA pCardData,
 		logprintf(pCardData, 3, "Saved parent window (%u)\n", vs->hwndParent);
 		return SCARD_S_SUCCESS;
 	}
-
+	
+	if (wcscmp(CP_PIN_CONTEXT_STRING, wszProperty) == 0) {
+		vs->wszPinContext = (LPWSTR) pbData;
+		logprintf(pCardData, 3, "Saved PIN context string: %S\n", pbData);
+		return SCARD_S_SUCCESS;
+	}
 	logprintf(pCardData, 3, "INVALID PARAMETER\n");
 	return SCARD_E_INVALID_PARAMETER;
+}
+
+
+// 4.8 Secure key injection
+
+
+/** The CardImportSessionKey function imports a temporary session key to the card.
+The session key is encrypted with a key exchange key, and the function returns a
+handle of the imported session key to the caller.*/
+
+DWORD WINAPI CardImportSessionKey(
+    __in PCARD_DATA  pCardData,
+    __in BYTE  bContainerIndex,
+    __in VOID  *pPaddingInfo,
+    __in LPCWSTR  pwszBlobType,
+    __in LPCWSTR  pwszAlgId,
+    __out CARD_KEY_HANDLE  *phKey,
+    __in_bcount(cbInput) PBYTE  pbInput,
+    __in DWORD  cbInput,
+    __in DWORD  dwFlags
+)
+{
+	UNREFERENCED_PARAMETER(pCardData);
+	UNREFERENCED_PARAMETER(bContainerIndex);
+	UNREFERENCED_PARAMETER(pCardData);
+	UNREFERENCED_PARAMETER(pPaddingInfo);
+	UNREFERENCED_PARAMETER(pwszBlobType);
+	UNREFERENCED_PARAMETER(pwszAlgId);
+	UNREFERENCED_PARAMETER(phKey);
+	UNREFERENCED_PARAMETER(pbInput);
+	UNREFERENCED_PARAMETER(cbInput);
+	UNREFERENCED_PARAMETER(dwFlags);
+	logprintf(pCardData, 1, "\nP:%d T:%d pCardData:%p ",GetCurrentProcessId(), GetCurrentThreadId(), pCardData);
+	logprintf(pCardData, 1, "CardImportSessionKey - unsupported\n");
+	return SCARD_E_UNSUPPORTED_FEATURE;
+}
+
+/** The MDImportSessionKey function imports a temporary session key to the card minidriver
+and returns a key handle to the caller.*/
+
+DWORD WINAPI MDImportSessionKey(
+    __in PCARD_DATA  pCardData,
+    __in LPCWSTR  pwszBlobType,
+    __in LPCWSTR  pwszAlgId,
+    __out PCARD_KEY_HANDLE  phKey,
+    __in_bcount(cbInput) PBYTE  pbInput,
+    __in DWORD  cbInput
+)
+{
+	UNREFERENCED_PARAMETER(pCardData);
+	UNREFERENCED_PARAMETER(pwszBlobType);
+	UNREFERENCED_PARAMETER(pwszAlgId);
+	UNREFERENCED_PARAMETER(phKey);
+	UNREFERENCED_PARAMETER(pbInput);
+	UNREFERENCED_PARAMETER(cbInput);
+	logprintf(pCardData, 1, "\nP:%d T:%d pCardData:%p ",GetCurrentProcessId(), GetCurrentThreadId(), pCardData);
+	logprintf(pCardData, 1, "MDImportSessionKey - unsupported\n");
+	return SCARD_E_UNSUPPORTED_FEATURE;
+}
+
+/** The MDEncryptData function uses a key handle to encrypt data with a symmetric key.
+The data is encrypted in a format that the smart card supports.*/
+
+DWORD WINAPI MDEncryptData(
+    __in PCARD_DATA  pCardData,
+    __in CARD_KEY_HANDLE  hKey,
+    __in LPCWSTR  pwszSecureFunction,
+    __in_bcount(cbInput) PBYTE  pbInput,
+    __in DWORD  cbInput,
+    __in DWORD  dwFlags,
+    __deref_out_ecount(*pcEncryptedData)
+        PCARD_ENCRYPTED_DATA  *ppEncryptedData,
+    __out PDWORD  pcEncryptedData
+)
+{
+	UNREFERENCED_PARAMETER(pCardData);
+	UNREFERENCED_PARAMETER(hKey);
+	UNREFERENCED_PARAMETER(pwszSecureFunction);
+	UNREFERENCED_PARAMETER(pbInput);
+	UNREFERENCED_PARAMETER(cbInput);
+	UNREFERENCED_PARAMETER(dwFlags);
+	UNREFERENCED_PARAMETER(ppEncryptedData);
+	UNREFERENCED_PARAMETER(pcEncryptedData);
+	logprintf(pCardData, 1, "\nP:%d T:%d pCardData:%p ",GetCurrentProcessId(), GetCurrentThreadId(), pCardData);
+	logprintf(pCardData, 1, "MDEncryptData - unsupported\n");
+	return SCARD_E_UNSUPPORTED_FEATURE;
+}
+
+
+/** The CardGetSharedKeyHandle function returns a session key handle to the caller.
+Note:  The manner in which this session key has been established is outside the
+scope of this specification. For example, the session key could be established
+by either a permanent shared key or a key derivation algorithm that has occurred
+before the call to CardGetSharedKeyHandle.*/
+
+DWORD WINAPI CardGetSharedKeyHandle(
+    __in PCARD_DATA  pCardData,
+    __in_bcount(cbInput) PBYTE  pbInput,
+    __in DWORD  cbInput,
+    __deref_opt_out_bcount(*pcbOutput)
+        PBYTE  *ppbOutput,
+    __out_opt PDWORD  pcbOutput,
+    __out PCARD_KEY_HANDLE  phKey
+)
+{
+	UNREFERENCED_PARAMETER(pCardData);
+	UNREFERENCED_PARAMETER(pbInput);
+	UNREFERENCED_PARAMETER(cbInput);
+	UNREFERENCED_PARAMETER(ppbOutput);
+	UNREFERENCED_PARAMETER(pcbOutput);
+	UNREFERENCED_PARAMETER(phKey);
+	logprintf(pCardData, 1, "\nP:%d T:%d pCardData:%p ",GetCurrentProcessId(), GetCurrentThreadId(), pCardData);
+	logprintf(pCardData, 1, "CardGetSharedKeyHandle - unsupported\n");
+	return SCARD_E_UNSUPPORTED_FEATURE;
+}
+
+/** The CardDestroyKey function releases a temporary key on the card. The card
+should delete all of the key material that is associated with that key handle.*/
+
+DWORD WINAPI CardDestroyKey(
+    __in PCARD_DATA  pCardData,
+    __in CARD_KEY_HANDLE  hKey
+)
+{
+	UNREFERENCED_PARAMETER(pCardData);
+	UNREFERENCED_PARAMETER(hKey);
+	logprintf(pCardData, 1, "\nP:%d T:%d pCardData:%p ",GetCurrentProcessId(), GetCurrentThreadId(), pCardData);
+	logprintf(pCardData, 1, "CardDestroyKey - unsupported\n");
+	return SCARD_E_UNSUPPORTED_FEATURE;
+}
+
+/** This function can be used to get properties for a cryptographic algorithm.*/
+DWORD WINAPI CardGetAlgorithmProperty (
+    __in PCARD_DATA  pCardData,
+    __in LPCWSTR   pwszAlgId,
+    __in LPCWSTR   pwszProperty,
+    __out_bcount_part_opt(cbData, *pdwDataLen)
+        PBYTE  pbData,
+    __in DWORD  cbData,
+    __out PDWORD  pdwDataLen,
+    __in DWORD  dwFlags
+)
+{
+	UNREFERENCED_PARAMETER(pCardData);
+	UNREFERENCED_PARAMETER(pwszAlgId);
+	UNREFERENCED_PARAMETER(pwszProperty);
+	UNREFERENCED_PARAMETER(pbData);
+	UNREFERENCED_PARAMETER(cbData);
+	UNREFERENCED_PARAMETER(pdwDataLen);
+	UNREFERENCED_PARAMETER(dwFlags);
+	logprintf(pCardData, 1, "\nP:%d T:%d pCardData:%p ",GetCurrentProcessId(), GetCurrentThreadId(), pCardData);
+	logprintf(pCardData, 1, "CardGetAlgorithmProperty - unsupported\n");
+	return SCARD_E_UNSUPPORTED_FEATURE;
+}
+
+/** This function is used to get the properties of a key.*/
+DWORD WINAPI CardGetKeyProperty(
+    __in PCARD_DATA  pCardData,
+    __in CARD_KEY_HANDLE  hKey,
+    __in LPCWSTR  pwszProperty,
+    __out_bcount_part_opt(cbData, *pdwDataLen) PBYTE  pbData,
+    __in DWORD  cbData,
+    __out PDWORD  pdwDataLen,
+    __in DWORD  dwFlags
+    )
+{
+	UNREFERENCED_PARAMETER(pCardData);
+	UNREFERENCED_PARAMETER(hKey);
+	UNREFERENCED_PARAMETER(pwszProperty);
+	UNREFERENCED_PARAMETER(pbData);
+	UNREFERENCED_PARAMETER(cbData);
+	UNREFERENCED_PARAMETER(pdwDataLen);
+	UNREFERENCED_PARAMETER(dwFlags);
+	logprintf(pCardData, 1, "\nP:%d T:%d pCardData:%p ",GetCurrentProcessId(), GetCurrentThreadId(), pCardData);
+	logprintf(pCardData, 1, "CardGetKeyProperty - unsupported\n");
+	return SCARD_E_UNSUPPORTED_FEATURE;
+}
+
+/** This function is used to set the properties of a key.*/
+DWORD WINAPI CardSetKeyProperty(
+    __in PCARD_DATA  pCardData,
+    __in CARD_KEY_HANDLE  hKey,
+    __in LPCWSTR  pwszProperty,
+    __in_bcount(cbInput) PBYTE  pbInput,
+    __in DWORD  cbInput,
+    __in DWORD  dwFlags
+)
+{
+	UNREFERENCED_PARAMETER(pCardData);
+	UNREFERENCED_PARAMETER(dwFlags);
+	UNREFERENCED_PARAMETER(hKey);
+	UNREFERENCED_PARAMETER(pwszProperty);
+	UNREFERENCED_PARAMETER(pbInput);
+	UNREFERENCED_PARAMETER(cbInput);
+	UNREFERENCED_PARAMETER(dwFlags);
+	logprintf(pCardData, 1, "\nP:%d T:%d pCardData:%p ",GetCurrentProcessId(), GetCurrentThreadId(), pCardData);
+	logprintf(pCardData, 1, "CardSetKeyProperty - unsupported\n");
+	return SCARD_E_UNSUPPORTED_FEATURE;
+}
+
+/** CardProcessEncryptedData processes a set of encrypted data BLOBs by
+sending them to the card where the data BLOBs are decrypted.*/
+
+DWORD WINAPI CardProcessEncryptedData(
+    __in PCARD_DATA  pCardData,
+    __in CARD_KEY_HANDLE  hKey,
+    __in LPCWSTR  pwszSecureFunction,
+    __in_ecount(cEncryptedData)
+        PCARD_ENCRYPTED_DATA  pEncryptedData,
+    __in DWORD  cEncryptedData,
+    __out_bcount_part_opt(cbOutput, *pdwOutputLen)
+        PBYTE  pbOutput,
+    __in DWORD  cbOutput,
+    __out_opt PDWORD  pdwOutputLen,
+    __in DWORD  dwFlags
+)
+{
+	UNREFERENCED_PARAMETER(pCardData);
+	UNREFERENCED_PARAMETER(hKey);
+	UNREFERENCED_PARAMETER(pwszSecureFunction);
+	UNREFERENCED_PARAMETER(pEncryptedData);
+	UNREFERENCED_PARAMETER(cEncryptedData);
+	UNREFERENCED_PARAMETER(pbOutput);
+	UNREFERENCED_PARAMETER(cbOutput);
+	UNREFERENCED_PARAMETER(pdwOutputLen);
+	UNREFERENCED_PARAMETER(dwFlags);
+	logprintf(pCardData, 1, "\nP:%d T:%d pCardData:%p ",GetCurrentProcessId(), GetCurrentThreadId(), pCardData);
+	logprintf(pCardData, 1, "CardProcessEncryptedData - unsupported\n");
+	return SCARD_E_UNSUPPORTED_FEATURE;
+}
+
+/** The CardCreateContainerEx function creates a new key container that the
+container index identifies and the bContainerIndex parameter specifies. The function
+associates the key container with the PIN that the PinId parameter specified.
+This function is useful if the card-edge does not allow for changing the key attributes
+after the key container is created. This function replaces the need to call
+CardSetContainerProperty to set the CCP_PIN_IDENTIFIER property CardCreateContainer
+is called.
+The caller of this function can provide the key material that the card imports.
+This is useful in those situations in which the card either does not support internal
+key generation or the caller requests that the key be archived in the card.*/
+
+DWORD WINAPI CardCreateContainerEx(
+    __in PCARD_DATA  pCardData,
+    __in BYTE  bContainerIndex,
+    __in DWORD  dwFlags,
+    __in DWORD  dwKeySpec,
+    __in DWORD  dwKeySize,
+    __in PBYTE  pbKeyData,
+    __in PIN_ID  PinId
+)
+{
+	if (PinId == ROLE_ADMIN)
+		return SCARD_W_SECURITY_VIOLATION;
+	if (PinId != ROLE_USER)
+		return SCARD_E_INVALID_PARAMETER;
+	/* basically CardCreateContainerEx is CardCreateContainer + the PinId */
+	return CardCreateContainer(pCardData, bContainerIndex, dwFlags, dwKeySpec, dwKeySize, pbKeyData);
 }
 
 DWORD WINAPI CardAcquireContext(IN PCARD_DATA pCardData, __in DWORD dwFlags)
@@ -3759,9 +4088,44 @@ DWORD WINAPI CardAcquireContext(IN PCARD_DATA pCardData, __in DWORD dwFlags)
 		return SCARD_E_INVALID_PARAMETER;
 	if (dwFlags)
 		return SCARD_E_INVALID_PARAMETER;
+	if (!(dwFlags & CARD_SECURE_KEY_INJECTION_NO_CARD_MODE)) {
+		if( pCardData->hSCardCtx == 0)   {
+			logprintf(pCardData, 0, "Invalide handle.\n");
+			return SCARD_E_INVALID_HANDLE;
+		}
+		if( pCardData->hScard == 0)   {
+			logprintf(pCardData, 0, "Invalide handle.\n");
+			return SCARD_E_INVALID_HANDLE;
+		}
+	}
+	else
+	{
+		/* secure key injection not supported */
+		return SCARD_E_UNSUPPORTED_FEATURE;
+	}
+
+	if (pCardData->pbAtr == NULL)
+		return SCARD_E_INVALID_PARAMETER;
+	if ( pCardData->pwszCardName == NULL )
+		return SCARD_E_INVALID_PARAMETER;
+	/* <2 lenght or >=0x22 are not ISO compliant */
+	if (pCardData->cbAtr >= 0x22 || pCardData->cbAtr <= 0x2)
+		return SCARD_E_INVALID_PARAMETER;
+	/* ATR beginning by 0x00 or 0xFF are not ISO compliant */
+	if (pCardData->pbAtr[0] == 0xFF || pCardData->pbAtr[0] == 0x00)
+		return SCARD_E_UNKNOWN_CARD;
+	/* Memory management functions */
+	if ( ( pCardData->pfnCspAlloc   == NULL ) ||
+		( pCardData->pfnCspReAlloc == NULL ) ||
+		( pCardData->pfnCspFree    == NULL ) )
+		return SCARD_E_INVALID_PARAMETER;
+
+	/* The lowest supported version is 4 - maximum is 7. */
+	if (pCardData->dwVersion < MD_MINIMUM_VERSION_SUPPORTED)
+		return (DWORD) ERROR_REVISION_MISMATCH;
 
 	suppliedVersion = pCardData->dwVersion;
-
+	
 	/* VENDOR SPECIFIC */
 	vs = pCardData->pvVendorSpecific = pCardData->pfnCspAlloc(sizeof(VENDOR_SPECIFIC));
 	memset(vs, 0, sizeof(VENDOR_SPECIFIC));
@@ -3774,22 +4138,16 @@ DWORD WINAPI CardAcquireContext(IN PCARD_DATA pCardData, __in DWORD dwFlags)
 	vs->hScard = pCardData->hScard;
 	vs->hSCardCtx = pCardData->hSCardCtx;
 
-	/* The lowest supported version is 4. */
-	if (pCardData->dwVersion < MD_MINIMUM_VERSION_SUPPORTED)
-		return (DWORD) ERROR_REVISION_MISMATCH;
-
-	if( pCardData->hScard == 0)   {
-		logprintf(pCardData, 0, "Invalide handle.\n");
-		return SCARD_E_INVALID_HANDLE;
-	}
-
 	logprintf(pCardData, 2, "request version pCardData->dwVersion = %d\n", pCardData->dwVersion);
 	pCardData->dwVersion = min(pCardData->dwVersion, MD_CURRENT_VERSION_SUPPORTED);
 	logprintf(pCardData, 2, "pCardData->dwVersion = %d\n", pCardData->dwVersion);
 
 	dwret = md_create_context(pCardData, vs);
-	if (dwret != SCARD_S_SUCCESS)
+	if (dwret != SCARD_S_SUCCESS) {
+		pCardData->pfnCspFree(pCardData->pvVendorSpecific);
+		pCardData->pvVendorSpecific = NULL;
 		return dwret;
+	}
 	md_static_data.flags &= ~MD_STATIC_FLAG_CONTEXT_DELETED;
 
 	pCardData->pfnCardDeleteContext = CardDeleteContext;
@@ -3802,7 +4160,8 @@ DWORD WINAPI CardAcquireContext(IN PCARD_DATA pCardData, __in DWORD dwFlags)
 	pCardData->pfnCardAuthenticateChallenge = CardAuthenticateChallenge;
 	pCardData->pfnCardUnblockPin = CardUnblockPin;
 	pCardData->pfnCardChangeAuthenticator = CardChangeAuthenticator;
-	pCardData->pfnCardDeauthenticate = CardDeauthenticate; /* NULL */
+	/* the minidriver does not perform a deauthentication - set it to NULL according to the specification */
+	pCardData->pfnCardDeauthenticate = NULL;
 	pCardData->pfnCardCreateDirectory = CardCreateDirectory;
 	pCardData->pfnCardDeleteDirectory = CardDeleteDirectory;
 	pCardData->pvUnused3 = NULL;
@@ -3820,22 +4179,28 @@ DWORD WINAPI CardAcquireContext(IN PCARD_DATA pCardData, __in DWORD dwFlags)
 	pCardData->pfnCardConstructDHAgreement = CardConstructDHAgreement;
 
 	dwret = associate_card(pCardData);
-	if (dwret != SCARD_S_SUCCESS)
+	if (dwret != SCARD_S_SUCCESS) {
+		pCardData->pfnCspFree(pCardData->pvVendorSpecific);
+		pCardData->pvVendorSpecific = NULL;
 		return dwret;
+	}
 
 	dwret = md_fs_init(pCardData);
-	if (dwret != SCARD_S_SUCCESS)
+	if (dwret != SCARD_S_SUCCESS) {
+		pCardData->pfnCspFree(pCardData->pvVendorSpecific);
+		pCardData->pvVendorSpecific = NULL;
 		return dwret;
+	}
 
 	logprintf(pCardData, 1, "OpenSC init done.\n");
+	logprintf(pCardData, 1, "Supplied version %u - version used %u.\n", suppliedVersion, pCardData->dwVersion);
 
-	if (suppliedVersion > 4) {
+	if (pCardData->dwVersion >= CARD_DATA_VERSION_FIVE) {
 		pCardData->pfnCardDeriveKey = CardDeriveKey;
 		pCardData->pfnCardDestroyDHAgreement = CardDestroyDHAgreement;
 		pCardData->pfnCspGetDHAgreement = CspGetDHAgreement;
 
-		if (suppliedVersion > 5 ) {
-			logprintf(pCardData, 1, "Supplied version %i.\n", suppliedVersion);
+		if (pCardData->dwVersion >= CARD_DATA_VERSION_SIX) {
 
 			pCardData->pfnCardGetChallengeEx = CardGetChallengeEx;
 			pCardData->pfnCardAuthenticateEx = CardAuthenticateEx;
@@ -3845,6 +4210,19 @@ DWORD WINAPI CardAcquireContext(IN PCARD_DATA pCardData, __in DWORD dwFlags)
 			pCardData->pfnCardSetContainerProperty = CardSetContainerProperty;
 			pCardData->pfnCardGetProperty = CardGetProperty;
 			pCardData->pfnCardSetProperty = CardSetProperty;
+			if (pCardData->dwVersion >= CARD_DATA_VERSION_SEVEN) {
+
+				pCardData->pfnMDImportSessionKey         = MDImportSessionKey;
+				pCardData->pfnMDEncryptData              = MDEncryptData;
+				pCardData->pfnCardImportSessionKey       = CardImportSessionKey;
+				pCardData->pfnCardGetSharedKeyHandle     = CardGetSharedKeyHandle;
+				pCardData->pfnCardGetAlgorithmProperty   = CardGetAlgorithmProperty;
+				pCardData->pfnCardGetKeyProperty         = CardGetKeyProperty;
+				pCardData->pfnCardSetKeyProperty         = CardSetKeyProperty;
+				pCardData->pfnCardProcessEncryptedData   = CardProcessEncryptedData;
+				pCardData->pfnCardDestroyKey             = CardDestroyKey;
+				pCardData->pfnCardCreateContainerEx      = CardCreateContainerEx;
+			}
 		}
 	}
 
