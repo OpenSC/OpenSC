@@ -3180,8 +3180,16 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __in PCARD_SIGNING_INFO pIn
 				opt_hash_flags = SC_ALGORITHM_RSA_HASH_SHA1;
 			else if (wcscmp(pinf->pszAlgId, L"SHAMD5") == 0)
 				opt_hash_flags = SC_ALGORITHM_RSA_HASH_MD5_SHA1;
+			else if (wcscmp(pinf->pszAlgId, L"SHA224") == 0)
+				opt_hash_flags = SC_ALGORITHM_RSA_HASH_SHA224;
 			else if (wcscmp(pinf->pszAlgId, L"SHA256") == 0)
 				opt_hash_flags = SC_ALGORITHM_RSA_HASH_SHA256;
+			else if (wcscmp(pinf->pszAlgId, L"SHA384") == 0)
+				opt_hash_flags = SC_ALGORITHM_RSA_HASH_SHA384;
+			else if (wcscmp(pinf->pszAlgId, L"SHA512") == 0)
+				opt_hash_flags = SC_ALGORITHM_RSA_HASH_SHA512;
+			else if (wcscmp(pinf->pszAlgId, L"RIPEMD160") == 0)
+				opt_hash_flags = SC_ALGORITHM_RSA_HASH_RIPEMD160;
 			else
 						{
 				logprintf(pCardData, 0,"unknown AlgId %S\n",NULLWSTR(pinf->pszAlgId));
@@ -3205,6 +3213,12 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __in PCARD_SIGNING_INFO pIn
 			opt_hash_flags = SC_ALGORITHM_RSA_HASH_MD5_SHA1;
 		else if (hashAlg == CALG_SHA_256)
 			opt_hash_flags = SC_ALGORITHM_RSA_HASH_SHA256;
+		else if (hashAlg == CALG_SHA_384)
+			opt_hash_flags = SC_ALGORITHM_RSA_HASH_SHA384;
+		else if (hashAlg == CALG_SHA_512)
+			opt_hash_flags = SC_ALGORITHM_RSA_HASH_SHA512;
+		else if (hashAlg == (ALG_CLASS_HASH | ALG_TYPE_ANY | ALG_SID_RIPEMD160))
+			opt_hash_flags = SC_ALGORITHM_RSA_HASH_RIPEMD160;
 		else if (hashAlg !=0)
 			return SCARD_E_UNSUPPORTED_FEATURE;
 	}
