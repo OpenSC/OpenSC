@@ -2961,8 +2961,21 @@ DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 		return SCARD_E_INVALID_PARAMETER;
 	if (!pInfo)
 		return SCARD_E_INVALID_PARAMETER;
+	if ( pInfo->pbData == NULL )
+		return SCARD_E_INVALID_PARAMETER;
+	if (pInfo->dwVersion > CARD_RSA_KEY_DECRYPT_INFO_CURRENT_VERSION)
+		return ERROR_REVISION_MISMATCH;
+	if ( pInfo->dwVersion < CARD_RSA_KEY_DECRYPT_INFO_CURRENT_VERSION
+			&& pCardData->dwVersion == CARD_DATA_CURRENT_VERSION)
+		return ERROR_REVISION_MISMATCH;
+	if (pInfo->dwKeySpec != AT_KEYEXCHANGE)
+		return SCARD_E_INVALID_PARAMETER;
 
 	vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
+
+	/* check if the container exists */
+	if (pInfo->bContainerIndex >= MD_MAX_KEY_CONTAINERS)
+		return SCARD_E_NO_KEY_CONTAINER;
 
 	check_reader_status(pCardData);
 
@@ -2975,7 +2988,7 @@ DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 	pkey = vs->p15_containers[pInfo->bContainerIndex].prkey_obj;
 	if (!pkey)   {
 		logprintf(pCardData, 2, "CardRSADecrypt prkey not found\n");
-		return SCARD_E_INVALID_PARAMETER;
+		return SCARD_E_NO_KEY_CONTAINER;
 	}
 
 	/* input and output buffers are always the same size */
@@ -3001,30 +3014,36 @@ DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 		return SCARD_F_INTERNAL_ERROR;
 	}
 
+	/* filter boggus input: the data to decrypt is shorter than the RSA key ? */
+	if ( pInfo->cbData < prkey_info->modulus_length / 8)
+	{
+		/* according to the minidriver specs, this is the error code to return
+		(instead of invalid parameter when the call is forwarded to the card implementation) */
+		return SCARD_E_INSUFFICIENT_BUFFER;
+	}
+
 	if (alg_info->flags & SC_ALGORITHM_RSA_RAW)   {
 		logprintf(pCardData, 2, "sc_pkcs15_decipher: using RSA-RAW mechanism\n");
 		r = sc_pkcs15_decipher(vs->p15card, pkey, opt_crypt_flags, pbuf, pInfo->cbData, pbuf2, pInfo->cbData);
-		if (r < 0)   {
-			logprintf(pCardData, 2, "PKCS#15 decipher failed: %i\n", r);
-			return SCARD_F_INTERNAL_ERROR;
-		}
 		logprintf(pCardData, 2, "sc_pkcs15_decipher returned %d\n", r);
 
-		/* Need to handle padding */
-		if (pInfo->dwVersion >= CARD_RSA_KEY_DECRYPT_INFO_VERSION_TWO) {
-			logprintf(pCardData, 2, "sc_pkcs15_decipher: DECRYPT-INFO dwVersion=%u\n", pInfo->dwVersion);
-			if (pInfo->dwPaddingType == CARD_PADDING_PKCS1)   {
-				logprintf(pCardData, 2, "sc_pkcs15_decipher: stripping PKCS1 padding\n");
-				r = sc_pkcs1_strip_02_padding(vs->ctx, pbuf2, pInfo->cbData, pbuf2, &pInfo->cbData);
-				if (r < 0)   {
-					logprintf(pCardData, 2, "Cannot strip PKCS1 padding: %i\n", r);
+		if (r > 0) {
+			/* Need to handle padding */
+			if (pInfo->dwVersion >= CARD_RSA_KEY_DECRYPT_INFO_VERSION_TWO) {
+				logprintf(pCardData, 2, "sc_pkcs15_decipher: DECRYPT-INFO dwVersion=%u\n", pInfo->dwVersion);
+				if (pInfo->dwPaddingType == CARD_PADDING_PKCS1)   {
+					logprintf(pCardData, 2, "sc_pkcs15_decipher: stripping PKCS1 padding\n");
+					r = sc_pkcs1_strip_02_padding(vs->ctx, pbuf2, pInfo->cbData, pbuf2, &pInfo->cbData);
+					if (r < 0)   {
+						logprintf(pCardData, 2, "Cannot strip PKCS1 padding: %i\n", r);
+						return SCARD_F_INTERNAL_ERROR;
+					}
+				}
+				else if (pInfo->dwPaddingType == CARD_PADDING_OAEP)   {
+					/* TODO: Handle OAEP padding if present - can call PFN_CSP_UNPAD_DATA */
+					logprintf(pCardData, 2, "OAEP padding not implemented\n");
 					return SCARD_F_INTERNAL_ERROR;
 				}
-			}
-			else if (pInfo->dwPaddingType == CARD_PADDING_OAEP)   {
-				/* TODO: Handle OAEP padding if present - can call PFN_CSP_UNPAD_DATA */
-				logprintf(pCardData, 2, "OAEP padding not implemented\n");
-				return SCARD_F_INTERNAL_ERROR;
 			}
 		}
 	}
@@ -3063,7 +3082,15 @@ DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 
 	if ( r < 0)   {
 		logprintf(pCardData, 2, "sc_pkcs15_decipher error(%i): %s\n", r, sc_strerror(r));
-		return SCARD_E_INVALID_VALUE;
+		switch (r)
+		{
+		case SC_ERROR_NOT_ALLOWED:
+			return SCARD_W_SECURITY_VIOLATION;
+		case SC_ERROR_NOT_SUPPORTED:
+			return SCARD_E_UNSUPPORTED_FEATURE;
+		default:
+			return SCARD_E_INVALID_VALUE;
+		}
 	}
 
 	logprintf(pCardData, 2, "decrypted data(%i):\n", pInfo->cbData);
@@ -3245,6 +3272,8 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __in PCARD_SIGNING_INFO pIn
 			{
 			case SC_ERROR_NOT_SUPPORTED:
 				return SCARD_E_UNSUPPORTED_FEATURE;
+			case SC_ERROR_NOT_ALLOWED:
+				return SCARD_W_SECURITY_VIOLATION;
 			default:
 				return SCARD_F_INTERNAL_ERROR;
 			}
