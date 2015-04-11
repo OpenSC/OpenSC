@@ -324,7 +324,7 @@ typedef struct sc_reader {
 #define SC_PIN_CMD_GET_INFO	3
 
 #define SC_PIN_CMD_USE_PINPAD		0x0001
-#define SC_PIN_CMD_NEED_PADDING 	0x0002
+#define SC_PIN_CMD_NEED_PADDING		0x0002
 #define SC_PIN_CMD_IMPLICIT_CHANGE	0x0004
 
 #define SC_PIN_ENCODING_ASCII	0
@@ -334,14 +334,18 @@ typedef struct sc_reader {
 struct sc_pin_cmd_pin {
 	const char *prompt;	/* Prompt to display */
 
-	const u8 *data;		/* PIN, if given by the appliction */
+	const unsigned char *data;		/* PIN, if given by the appliction */
 	int len;		/* set to -1 to get pin from pin pad */
 
-	size_t min_length;	/* min/max length of PIN */
-	size_t max_length;
+	size_t min_length;	/* min length of PIN */
+	size_t max_length;	/* max length of PIN */
+	size_t stored_length;	/* stored length of PIN */
+
 	unsigned int encoding;	/* ASCII-numeric, BCD, etc */
+
 	size_t pad_length;	/* filled in by the card driver */
-	u8 pad_char;
+	unsigned char pad_char;
+
 	size_t offset;		/* PIN offset in the APDU */
 	size_t length_offset;	/* Effective PIN length offset in the APDU */
 
@@ -362,73 +366,6 @@ struct sc_pin_cmd_data {
 
 	struct sc_apdu *apdu;		/* APDU of the PIN command */
 };
-
-#if 0
-#define PACE_PIN_ID_MRZ 0x01
-#define PACE_PIN_ID_CAN 0x02
-#define PACE_PIN_ID_PIN 0x03
-#define PACE_PIN_ID_PUK 0x04
-/**
- * Input data for EstablishPACEChannel()
- */
-struct establish_pace_channel_input {
-    /** Type of secret (CAN, MRZ, PIN or PUK). */
-    unsigned char pin_id;
-
-    /** Length of \a chat */
-    size_t chat_length;
-    /** Card holder authorization template */
-    const unsigned char *chat;
-
-    /** Length of \a pin */
-    size_t pin_length;
-    /** Secret */
-    const unsigned char *pin;
-
-    /** Length of \a certificate_description */
-    size_t certificate_description_length;
-    /** Certificate description */
-    const unsigned char *certificate_description;
-};
-
-/**
- * Output data for EstablishPACEChannel()
- */
-struct establish_pace_channel_output {
-    /** PACE result (TR-03119) */
-    unsigned int result;
-
-    /** MSE: Set AT status byte */
-    unsigned char mse_set_at_sw1;
-    /** MSE: Set AT status byte */
-    unsigned char mse_set_at_sw2;
-
-    /** Length of \a ef_cardaccess */
-    size_t ef_cardaccess_length;
-    /** EF.CardAccess */
-    unsigned char *ef_cardaccess;
-
-    /** Length of \a recent_car */
-    size_t recent_car_length;
-    /** Most recent certificate authority reference */
-    unsigned char *recent_car;
-
-    /** Length of \a previous_car */
-    size_t previous_car_length;
-    /** Previous certificate authority reference */
-    unsigned char *previous_car;
-
-    /** Length of \a id_icc */
-    size_t id_icc_length;
-    /** ICC identifier */
-    unsigned char *id_icc;
-
-    /** Length of \a id_pcd */
-    size_t id_pcd_length;
-    /** PCD identifier */
-    unsigned char *id_pcd;
-};
-#endif
 
 struct sc_reader_operations {
 	/* Called during sc_establish_context(), when the driver
