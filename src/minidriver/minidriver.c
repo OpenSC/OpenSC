@@ -3181,6 +3181,16 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __in PCARD_SIGNING_INFO pIn
 		else if (hashAlg !=0)
 			return SCARD_E_UNSUPPORTED_FEATURE;
 	}
+	
+	if (pInfo->dwSigningFlags & CARD_PADDING_NONE)
+	{
+		/* do not add the digest info when called from CryptSignHash(CRYPT_NOHASHOID)
+
+		Note: SC_ALGORITHM_RSA_HASH_MD5_SHA1 aka CALG_SSL3_SHAMD5 do not have a digest info to be added
+		      CryptSignHash(CALG_SSL3_SHAMD5,CRYPT_NOHASHOID) is the same than CryptSignHash(CALG_SSL3_SHAMD5)
+		*/
+		opt_hash_flags = 0;
+	}
 
 	/* From sc-minidriver_specs_v7.docx pp.76:
 	 * 'The Base CSP/KSP performs the hashing operation on the data before passing it
