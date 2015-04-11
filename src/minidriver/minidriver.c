@@ -3432,8 +3432,7 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 				MB_OKCANCEL | MB_ICONINFORMATION);
 		if (IDCANCEL == r) {
 			logprintf(pCardData, 2, "User canceled PIN verification\n");
-			/* @TODO: is this the right code to return? */
-			return SCARD_E_INVALID_PARAMETER;
+			return ERROR_CANCELLED;
 		}
 	}
 
@@ -3827,7 +3826,7 @@ DWORD WINAPI CardSetProperty(__in   PCARD_DATA pCardData,
 	if (dwFlags)
 		return SCARD_E_INVALID_PARAMETER;
 
-	if (!pbData || !cbDataLen)
+	if (!cbDataLen)
 		return SCARD_E_INVALID_PARAMETER;
 
 	/* the following properties cannot be set according to the minidriver specifications */
@@ -3858,7 +3857,7 @@ DWORD WINAPI CardSetProperty(__in   PCARD_DATA pCardData,
 	 * CardAuthenticateEx if the PIN required is declared of type ExternalPinType.
 	 */
 	if (wcscmp(CP_PARENT_WINDOW, wszProperty) == 0) {
-		if (cbDataLen != sizeof(HWND))   {
+		if (cbDataLen != sizeof(HWND) || !pbData)   {
 			return SCARD_E_INVALID_PARAMETER;
 		}
 		else   {
