@@ -3241,7 +3241,13 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __in PCARD_SIGNING_INFO pIn
 		logprintf(pCardData, 2, "sc_pkcs15_compute_signature return %d\n", r);
 		if(r < 0)   {
 			logprintf(pCardData, 2, "sc_pkcs15_compute_signature erreur %s\n", sc_strerror(r));
-			return SCARD_F_INTERNAL_ERROR;
+			switch (r)
+			{
+			case SC_ERROR_NOT_SUPPORTED:
+				return SCARD_E_UNSUPPORTED_FEATURE;
+			default:
+				return SCARD_F_INTERNAL_ERROR;
+			}
 		}
 
 		pInfo->cbSignedData = r;
