@@ -32,10 +32,14 @@
              InstallScope="perMachine"/>
     <!-- OpenSC is covered by LGPL. Extend the license as required with other EULA notes -->
     <WixVariable Id="WixUILicenseRtf" Value="license.rtf"/>
+    <!-- Setup background images -->
+    <WixVariable Id="WixUIBannerBmp" Value="bannrbmp.bmp"/>
+    <WixVariable Id="WixUIDialogBmp" Value="dlgbmp.bmp"/>
     <!-- Links in info -->
     <Property Id="ARPHELPLINK" Value="http://www.opensc-project.org/opensc/wiki/ReportingBugs"/>
     <Property Id="ARPURLINFOABOUT" Value="http://www.opensc-project.org/"/>
     <Property Id="ARPURLUPDATEINFO" Value="http://www.opensc-project.org/opensc/wiki/WindowsInstaller"/>
+    <Property Id="ARPCONTACT" Value="OpenSC"/>
 
 	<Icon Id="OpenSC.ico" SourceFile="OpenSC.ico" />
 	<Property Id="ARPPRODUCTICON" Value="OpenSC.ico" />
