@@ -2963,10 +2963,27 @@ DWORD WINAPI CardQueryKeySizes(__in PCARD_DATA pCardData,
 	DWORD dwret;
 
 	logprintf(pCardData, 1, "\nP:%d T:%d pCardData:%p ",GetCurrentProcessId(), GetCurrentThreadId(), pCardData);
-	logprintf(pCardData, 1, "CardQueryKeySizes dwKeySpec=%X, dwFlags=%X, version=%X\n",  dwKeySpec, dwFlags, pKeySizes->dwVersion);
+	logprintf(pCardData, 1, "CardQueryKeySizes dwKeySpec=%X, dwFlags=%X, version=%X\n",  dwKeySpec, dwFlags, (pKeySizes?pKeySizes->dwVersion:0));
 
 	if (!pCardData)
 		return SCARD_E_INVALID_PARAMETER;
+	if ( dwFlags != 0 )
+		return SCARD_E_INVALID_PARAMETER;
+	switch(dwKeySpec)
+	{
+		case AT_ECDHE_P256 :
+		case AT_ECDHE_P384 :
+		case AT_ECDHE_P521 :
+		case AT_ECDSA_P256 :
+		case AT_ECDSA_P384 :
+		case AT_ECDSA_P521 :
+			return SCARD_E_UNSUPPORTED_FEATURE;
+		case AT_KEYEXCHANGE:
+		case AT_SIGNATURE  :
+			break;
+		default:
+			return SCARD_E_INVALID_PARAMETER;
+	}
 
 	dwret = md_query_key_sizes(pKeySizes);
 	if (dwret != SCARD_S_SUCCESS)
@@ -3595,6 +3612,9 @@ DWORD WINAPI CardGetContainerProperty(__in PCARD_DATA pCardData,
 	__out PDWORD pdwDataLen,
 	__in DWORD dwFlags)
 {
+	VENDOR_SPECIFIC *vs = NULL;
+	struct md_pkcs15_container *cont = NULL;
+
 	logprintf(pCardData, 1, "\nP:%d T:%d pCardData:%p ",GetCurrentProcessId(), GetCurrentThreadId(), pCardData);
 	logprintf(pCardData, 1, "CardGetContainerProperty\n");
 
@@ -3609,6 +3629,17 @@ DWORD WINAPI CardGetContainerProperty(__in PCARD_DATA pCardData,
 		return SCARD_E_INVALID_PARAMETER;
 	if (!pbData || !pdwDataLen)
 		return SCARD_E_INVALID_PARAMETER;
+	if (bContainerIndex >= MD_MAX_KEY_CONTAINERS)
+		return SCARD_E_NO_KEY_CONTAINER;
+
+	/* the test for the existence of containers is redondant with the one made in CardGetContainerInfo but CCP_PIN_IDENTIFIER does not do it */
+	vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
+	cont = &vs->p15_containers[bContainerIndex];
+
+	if (!cont->prkey_obj)   {
+		logprintf(pCardData, 7, "Container %i is empty\n", bContainerIndex);
+		return SCARD_E_NO_KEY_CONTAINER;
+	}
 
 	if (wcscmp(CCP_CONTAINER_INFO,wszProperty)  == 0)   {
 		PCONTAINER_INFO p = (PCONTAINER_INFO) pbData;
