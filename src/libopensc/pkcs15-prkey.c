@@ -681,6 +681,7 @@ sc_pkcs15_convert_prkey(struct sc_pkcs15_prkey *pkcs15_key, void *evp_key)
 		assert(EC_KEY_get0_public_key(src));
 
 		pkcs15_key->algorithm = SC_ALGORITHM_EC;
+
 		if (!sc_pkcs15_convert_bignum(&dst->privateD, EC_KEY_get0_private_key(src)))
 			return SC_ERROR_INCOMPATIBLE_KEY;
 
@@ -696,17 +697,29 @@ sc_pkcs15_convert_prkey(struct sc_pkcs15_prkey *pkcs15_key, void *evp_key)
 		/* Decode EC_POINT from a octet string */
 		buflen = EC_POINT_point2oct(grp, (const EC_POINT *) EC_KEY_get0_public_key(src),
 				POINT_CONVERSION_UNCOMPRESSED, buf, buflen, NULL);
+		if (!buflen)
+			return SC_ERROR_INCOMPATIBLE_KEY;
 
 		/* copy the public key */
-		if (buflen > 0) {
-			dst->ecpointQ.value = malloc(buflen);
-			memcpy(dst->ecpointQ.value, buf, buflen);
-			dst->ecpointQ.len = buflen;
-			/* calculate the field length */
-			dst->params.field_length = (buflen - 1) / 2 * 8;
-		}
-		else   {
-			return SC_ERROR_INCOMPATIBLE_KEY;
+		dst->ecpointQ.value = malloc(buflen);
+		memcpy(dst->ecpointQ.value, buf, buflen);
+		dst->ecpointQ.len = buflen;
+
+		/* calculate the field length */
+		dst->params.field_length = (buflen - 1) / 2 * 8;
+
+		/* Octetstring may need leading zeros if BN is to short */
+		if (dst->privateD.len < dst->params.field_length/8)   {
+			size_t d = dst->params.field_length/8 - dst->privateD.len;
+
+			dst->privateD.data = realloc(dst->privateD.data, dst->privateD.len + d);
+			if (!dst->privateD.data)
+				return SC_ERROR_OUT_OF_MEMORY;
+
+			memmove(dst->privateD.data + d, dst->privateD.data, dst->privateD.len);
+			memset(dst->privateD.data, 0, d);
+
+			dst->privateD.len += d;
 		}
 
 		break;
