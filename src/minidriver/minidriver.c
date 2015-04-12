@@ -679,6 +679,7 @@ md_fs_free_file(PCARD_DATA pCardData, struct md_file *file)
 		pCardData->pfnCspFree(file->blob);
 	file->blob = NULL;
 	file->size = 0;
+	pCardData->pfnCspFree(file);
 }
 
 
@@ -748,6 +749,40 @@ md_fs_delete_file(PCARD_DATA pCardData, char *parent, char *name)
 	}
 
 	return dwret;
+}
+
+static DWORD
+md_fs_finalize(PCARD_DATA pCardData)
+{
+	VENDOR_SPECIFIC *vs;
+	struct md_file *file = NULL, *file_to_rm;
+	struct md_directory *dir = NULL, *dir_to_rm;
+
+	if (!pCardData)
+		return SCARD_E_INVALID_PARAMETER;
+
+	vs = pCardData->pvVendorSpecific;
+
+	file = vs->root.files;
+	while (file != NULL) {
+		file_to_rm = file;
+		file = file->next;
+		md_fs_free_file(pCardData, file_to_rm);
+	}
+
+	dir = vs->root.subdirs;
+	while(dir)   {
+		file = dir->files;
+		while (file != NULL) {
+			file_to_rm = file;
+			file = file->next;
+			md_fs_free_file(pCardData, file_to_rm);
+		}
+		dir_to_rm = dir;
+		dir = dir->next;
+		pCardData->pfnCspFree(dir_to_rm);
+	}
+	return 0;
 }
 
 static DWORD
@@ -2048,6 +2083,7 @@ DWORD WINAPI CardDeleteContext(__inout PCARD_DATA  pCardData)
 
 	logprintf(pCardData, 1, "**********************************************************************\n");
 
+	md_fs_finalize(pCardData);
 	pCardData->pfnCspFree(pCardData->pvVendorSpecific);
 	pCardData->pvVendorSpecific = NULL;
 
@@ -2423,7 +2459,7 @@ DWORD WINAPI CardGetChallenge(__in PCARD_DATA pCardData,
 		random_len = 8;
 	*pcbChallengeData = 0;
 
-	random = malloc(random_len);
+	random = pCardData->pfnCspAlloc(random_len);
 	if (!random)
 		return SCARD_E_NO_MEMORY;
 
@@ -2439,7 +2475,7 @@ DWORD WINAPI CardGetChallenge(__in PCARD_DATA pCardData,
 
 	memcpy(*ppbChallengeData, random, random_len);
 	*pcbChallengeData = random_len;
-	free(random);
+	pCardData->pfnCspFree(random);
 
 	logprintf(pCardData, 7, "returns %i bytes:\n", *pcbChallengeData);
 	loghex(pCardData, 7, *ppbChallengeData, *pcbChallengeData);
@@ -2998,8 +3034,10 @@ DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 
 	lg2 = pInfo->cbData;
 	pbuf2 = pCardData->pfnCspAlloc(pInfo->cbData);
-	if (!pbuf2)
+	if (!pbuf2) {
+		pCardData->pfnCspFree(pbuf);
 		return SCARD_E_NO_MEMORY;
+	}
 
 	/*inversion donnees*/
 	for(ui = 0; ui < pInfo->cbData; ui++)
@@ -3011,6 +3049,8 @@ DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 	alg_info = sc_card_find_rsa_alg(vs->p15card->card, prkey_info->modulus_length);
 	if (!alg_info)   {
 		logprintf(pCardData, 2, "Cannot get appropriate RSA card algorithm for key size %i\n", prkey_info->modulus_length);
+		pCardData->pfnCspFree(pbuf);
+		pCardData->pfnCspFree(pbuf2);
 		return SCARD_F_INTERNAL_ERROR;
 	}
 
@@ -3019,6 +3059,8 @@ DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 	{
 		/* according to the minidriver specs, this is the error code to return
 		(instead of invalid parameter when the call is forwarded to the card implementation) */
+		pCardData->pfnCspFree(pbuf);
+		pCardData->pfnCspFree(pbuf2);
 		return SCARD_E_INSUFFICIENT_BUFFER;
 	}
 
@@ -3036,12 +3078,16 @@ DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 					r = sc_pkcs1_strip_02_padding(vs->ctx, pbuf2, pInfo->cbData, pbuf2, &pInfo->cbData);
 					if (r < 0)   {
 						logprintf(pCardData, 2, "Cannot strip PKCS1 padding: %i\n", r);
+						pCardData->pfnCspFree(pbuf);
+						pCardData->pfnCspFree(pbuf2);
 						return SCARD_F_INTERNAL_ERROR;
 					}
 				}
 				else if (pInfo->dwPaddingType == CARD_PADDING_OAEP)   {
 					/* TODO: Handle OAEP padding if present - can call PFN_CSP_UNPAD_DATA */
 					logprintf(pCardData, 2, "OAEP padding not implemented\n");
+					pCardData->pfnCspFree(pbuf);
+					pCardData->pfnCspFree(pbuf2);
 					return SCARD_F_INTERNAL_ERROR;
 				}
 			}
@@ -3077,11 +3123,15 @@ DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 	}
 	else    {
 		logprintf(pCardData, 2, "CardRSADecrypt: no usable RSA algorithm\n");
+		pCardData->pfnCspFree(pbuf);
+		pCardData->pfnCspFree(pbuf2);
 		return SCARD_E_INVALID_PARAMETER;
 	}
 
 	if ( r < 0)   {
 		logprintf(pCardData, 2, "sc_pkcs15_decipher error(%i): %s\n", r, sc_strerror(r));
+		pCardData->pfnCspFree(pbuf);
+		pCardData->pfnCspFree(pbuf2);
 		switch (r)
 		{
 		case SC_ERROR_NOT_ALLOWED:
@@ -3282,6 +3332,7 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __in PCARD_SIGNING_INFO pIn
 		logprintf(pCardData, 2, "sc_pkcs15_compute_signature return %d\n", r);
 		if(r < 0)   {
 			logprintf(pCardData, 2, "sc_pkcs15_compute_signature erreur %s\n", sc_strerror(r));
+			pCardData->pfnCspFree(pbuf);
 			switch (r)
 			{
 			case SC_ERROR_NOT_SUPPORTED:
