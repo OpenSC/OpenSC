@@ -679,6 +679,7 @@ md_fs_free_file(PCARD_DATA pCardData, struct md_file *file)
 		pCardData->pfnCspFree(file->blob);
 	file->blob = NULL;
 	file->size = 0;
+	pCardData->pfnCspFree(file);
 }
 
 
@@ -748,6 +749,40 @@ md_fs_delete_file(PCARD_DATA pCardData, char *parent, char *name)
 	}
 
 	return dwret;
+}
+
+static DWORD
+md_fs_finalize(PCARD_DATA pCardData)
+{
+	VENDOR_SPECIFIC *vs;
+	struct md_file *file = NULL, *file_to_rm;
+	struct md_directory *dir = NULL, *dir_to_rm;
+
+	if (!pCardData)
+		return SCARD_E_INVALID_PARAMETER;
+
+	vs = pCardData->pvVendorSpecific;
+
+	file = vs->root.files;
+	while (file != NULL) {
+		file_to_rm = file;
+		file = file->next;
+		md_fs_free_file(pCardData, file_to_rm);
+	}
+
+	dir = vs->root.subdirs;
+	while(dir)   {
+		file = dir->files;
+		while (file != NULL) {
+			file_to_rm = file;
+			file = file->next;
+			md_fs_free_file(pCardData, file_to_rm);
+		}
+		dir_to_rm = dir;
+		dir = dir->next;
+		pCardData->pfnCspFree(dir_to_rm);
+	}
+	return 0;
 }
 
 static DWORD
@@ -2048,6 +2083,7 @@ DWORD WINAPI CardDeleteContext(__inout PCARD_DATA  pCardData)
 
 	logprintf(pCardData, 1, "**********************************************************************\n");
 
+	md_fs_finalize(pCardData);
 	pCardData->pfnCspFree(pCardData->pvVendorSpecific);
 	pCardData->pvVendorSpecific = NULL;
 
@@ -2423,7 +2459,7 @@ DWORD WINAPI CardGetChallenge(__in PCARD_DATA pCardData,
 		random_len = 8;
 	*pcbChallengeData = 0;
 
-	random = malloc(random_len);
+	random = pCardData->pfnCspAlloc(random_len);
 	if (!random)
 		return SCARD_E_NO_MEMORY;
 
@@ -2439,7 +2475,7 @@ DWORD WINAPI CardGetChallenge(__in PCARD_DATA pCardData,
 
 	memcpy(*ppbChallengeData, random, random_len);
 	*pcbChallengeData = random_len;
-	free(random);
+	pCardData->pfnCspFree(random);
 
 	logprintf(pCardData, 7, "returns %i bytes:\n", *pcbChallengeData);
 	loghex(pCardData, 7, *ppbChallengeData, *pcbChallengeData);
@@ -2927,10 +2963,27 @@ DWORD WINAPI CardQueryKeySizes(__in PCARD_DATA pCardData,
 	DWORD dwret;
 
 	logprintf(pCardData, 1, "\nP:%d T:%d pCardData:%p ",GetCurrentProcessId(), GetCurrentThreadId(), pCardData);
-	logprintf(pCardData, 1, "CardQueryKeySizes dwKeySpec=%X, dwFlags=%X, version=%X\n",  dwKeySpec, dwFlags, pKeySizes->dwVersion);
+	logprintf(pCardData, 1, "CardQueryKeySizes dwKeySpec=%X, dwFlags=%X, version=%X\n",  dwKeySpec, dwFlags, (pKeySizes?pKeySizes->dwVersion:0));
 
 	if (!pCardData)
 		return SCARD_E_INVALID_PARAMETER;
+	if ( dwFlags != 0 )
+		return SCARD_E_INVALID_PARAMETER;
+	switch(dwKeySpec)
+	{
+		case AT_ECDHE_P256 :
+		case AT_ECDHE_P384 :
+		case AT_ECDHE_P521 :
+		case AT_ECDSA_P256 :
+		case AT_ECDSA_P384 :
+		case AT_ECDSA_P521 :
+			return SCARD_E_UNSUPPORTED_FEATURE;
+		case AT_KEYEXCHANGE:
+		case AT_SIGNATURE  :
+			break;
+		default:
+			return SCARD_E_INVALID_PARAMETER;
+	}
 
 	dwret = md_query_key_sizes(pKeySizes);
 	if (dwret != SCARD_S_SUCCESS)
@@ -2961,8 +3014,21 @@ DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 		return SCARD_E_INVALID_PARAMETER;
 	if (!pInfo)
 		return SCARD_E_INVALID_PARAMETER;
+	if ( pInfo->pbData == NULL )
+		return SCARD_E_INVALID_PARAMETER;
+	if (pInfo->dwVersion > CARD_RSA_KEY_DECRYPT_INFO_CURRENT_VERSION)
+		return ERROR_REVISION_MISMATCH;
+	if ( pInfo->dwVersion < CARD_RSA_KEY_DECRYPT_INFO_CURRENT_VERSION
+			&& pCardData->dwVersion == CARD_DATA_CURRENT_VERSION)
+		return ERROR_REVISION_MISMATCH;
+	if (pInfo->dwKeySpec != AT_KEYEXCHANGE)
+		return SCARD_E_INVALID_PARAMETER;
 
 	vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
+
+	/* check if the container exists */
+	if (pInfo->bContainerIndex >= MD_MAX_KEY_CONTAINERS)
+		return SCARD_E_NO_KEY_CONTAINER;
 
 	check_reader_status(pCardData);
 
@@ -2975,7 +3041,7 @@ DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 	pkey = vs->p15_containers[pInfo->bContainerIndex].prkey_obj;
 	if (!pkey)   {
 		logprintf(pCardData, 2, "CardRSADecrypt prkey not found\n");
-		return SCARD_E_INVALID_PARAMETER;
+		return SCARD_E_NO_KEY_CONTAINER;
 	}
 
 	/* input and output buffers are always the same size */
@@ -2985,8 +3051,10 @@ DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 
 	lg2 = pInfo->cbData;
 	pbuf2 = pCardData->pfnCspAlloc(pInfo->cbData);
-	if (!pbuf2)
+	if (!pbuf2) {
+		pCardData->pfnCspFree(pbuf);
 		return SCARD_E_NO_MEMORY;
+	}
 
 	/*inversion donnees*/
 	for(ui = 0; ui < pInfo->cbData; ui++)
@@ -2998,33 +3066,47 @@ DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 	alg_info = sc_card_find_rsa_alg(vs->p15card->card, prkey_info->modulus_length);
 	if (!alg_info)   {
 		logprintf(pCardData, 2, "Cannot get appropriate RSA card algorithm for key size %i\n", prkey_info->modulus_length);
+		pCardData->pfnCspFree(pbuf);
+		pCardData->pfnCspFree(pbuf2);
 		return SCARD_F_INTERNAL_ERROR;
+	}
+
+	/* filter boggus input: the data to decrypt is shorter than the RSA key ? */
+	if ( pInfo->cbData < prkey_info->modulus_length / 8)
+	{
+		/* according to the minidriver specs, this is the error code to return
+		(instead of invalid parameter when the call is forwarded to the card implementation) */
+		pCardData->pfnCspFree(pbuf);
+		pCardData->pfnCspFree(pbuf2);
+		return SCARD_E_INSUFFICIENT_BUFFER;
 	}
 
 	if (alg_info->flags & SC_ALGORITHM_RSA_RAW)   {
 		logprintf(pCardData, 2, "sc_pkcs15_decipher: using RSA-RAW mechanism\n");
 		r = sc_pkcs15_decipher(vs->p15card, pkey, opt_crypt_flags, pbuf, pInfo->cbData, pbuf2, pInfo->cbData);
-		if (r < 0)   {
-			logprintf(pCardData, 2, "PKCS#15 decipher failed: %i\n", r);
-			return SCARD_F_INTERNAL_ERROR;
-		}
 		logprintf(pCardData, 2, "sc_pkcs15_decipher returned %d\n", r);
 
-		/* Need to handle padding */
-		if (pInfo->dwVersion >= CARD_RSA_KEY_DECRYPT_INFO_VERSION_TWO) {
-			logprintf(pCardData, 2, "sc_pkcs15_decipher: DECRYPT-INFO dwVersion=%u\n", pInfo->dwVersion);
-			if (pInfo->dwPaddingType == CARD_PADDING_PKCS1)   {
-				logprintf(pCardData, 2, "sc_pkcs15_decipher: stripping PKCS1 padding\n");
-				r = sc_pkcs1_strip_02_padding(vs->ctx, pbuf2, pInfo->cbData, pbuf2, &pInfo->cbData);
-				if (r < 0)   {
-					logprintf(pCardData, 2, "Cannot strip PKCS1 padding: %i\n", r);
+		if (r > 0) {
+			/* Need to handle padding */
+			if (pInfo->dwVersion >= CARD_RSA_KEY_DECRYPT_INFO_VERSION_TWO) {
+				logprintf(pCardData, 2, "sc_pkcs15_decipher: DECRYPT-INFO dwVersion=%u\n", pInfo->dwVersion);
+				if (pInfo->dwPaddingType == CARD_PADDING_PKCS1)   {
+					logprintf(pCardData, 2, "sc_pkcs15_decipher: stripping PKCS1 padding\n");
+					r = sc_pkcs1_strip_02_padding(vs->ctx, pbuf2, pInfo->cbData, pbuf2, &pInfo->cbData);
+					if (r < 0)   {
+						logprintf(pCardData, 2, "Cannot strip PKCS1 padding: %i\n", r);
+						pCardData->pfnCspFree(pbuf);
+						pCardData->pfnCspFree(pbuf2);
+						return SCARD_F_INTERNAL_ERROR;
+					}
+				}
+				else if (pInfo->dwPaddingType == CARD_PADDING_OAEP)   {
+					/* TODO: Handle OAEP padding if present - can call PFN_CSP_UNPAD_DATA */
+					logprintf(pCardData, 2, "OAEP padding not implemented\n");
+					pCardData->pfnCspFree(pbuf);
+					pCardData->pfnCspFree(pbuf2);
 					return SCARD_F_INTERNAL_ERROR;
 				}
-			}
-			else if (pInfo->dwPaddingType == CARD_PADDING_OAEP)   {
-				/* TODO: Handle OAEP padding if present - can call PFN_CSP_UNPAD_DATA */
-				logprintf(pCardData, 2, "OAEP padding not implemented\n");
-				return SCARD_F_INTERNAL_ERROR;
 			}
 		}
 	}
@@ -3058,12 +3140,24 @@ DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 	}
 	else    {
 		logprintf(pCardData, 2, "CardRSADecrypt: no usable RSA algorithm\n");
+		pCardData->pfnCspFree(pbuf);
+		pCardData->pfnCspFree(pbuf2);
 		return SCARD_E_INVALID_PARAMETER;
 	}
 
 	if ( r < 0)   {
 		logprintf(pCardData, 2, "sc_pkcs15_decipher error(%i): %s\n", r, sc_strerror(r));
-		return SCARD_E_INVALID_VALUE;
+		pCardData->pfnCspFree(pbuf);
+		pCardData->pfnCspFree(pbuf2);
+		switch (r)
+		{
+		case SC_ERROR_NOT_ALLOWED:
+			return SCARD_W_SECURITY_VIOLATION;
+		case SC_ERROR_NOT_SUPPORTED:
+			return SCARD_E_UNSUPPORTED_FEATURE;
+		default:
+			return SCARD_E_INVALID_VALUE;
+		}
 	}
 
 	logprintf(pCardData, 2, "decrypted data(%i):\n", pInfo->cbData);
@@ -3153,8 +3247,16 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __in PCARD_SIGNING_INFO pIn
 				opt_hash_flags = SC_ALGORITHM_RSA_HASH_SHA1;
 			else if (wcscmp(pinf->pszAlgId, L"SHAMD5") == 0)
 				opt_hash_flags = SC_ALGORITHM_RSA_HASH_MD5_SHA1;
+			else if (wcscmp(pinf->pszAlgId, L"SHA224") == 0)
+				opt_hash_flags = SC_ALGORITHM_RSA_HASH_SHA224;
 			else if (wcscmp(pinf->pszAlgId, L"SHA256") == 0)
 				opt_hash_flags = SC_ALGORITHM_RSA_HASH_SHA256;
+			else if (wcscmp(pinf->pszAlgId, L"SHA384") == 0)
+				opt_hash_flags = SC_ALGORITHM_RSA_HASH_SHA384;
+			else if (wcscmp(pinf->pszAlgId, L"SHA512") == 0)
+				opt_hash_flags = SC_ALGORITHM_RSA_HASH_SHA512;
+			else if (wcscmp(pinf->pszAlgId, L"RIPEMD160") == 0)
+				opt_hash_flags = SC_ALGORITHM_RSA_HASH_RIPEMD160;
 			else
 						{
 				logprintf(pCardData, 0,"unknown AlgId %S\n",NULLWSTR(pinf->pszAlgId));
@@ -3178,8 +3280,24 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __in PCARD_SIGNING_INFO pIn
 			opt_hash_flags = SC_ALGORITHM_RSA_HASH_MD5_SHA1;
 		else if (hashAlg == CALG_SHA_256)
 			opt_hash_flags = SC_ALGORITHM_RSA_HASH_SHA256;
+		else if (hashAlg == CALG_SHA_384)
+			opt_hash_flags = SC_ALGORITHM_RSA_HASH_SHA384;
+		else if (hashAlg == CALG_SHA_512)
+			opt_hash_flags = SC_ALGORITHM_RSA_HASH_SHA512;
+		else if (hashAlg == (ALG_CLASS_HASH | ALG_TYPE_ANY | ALG_SID_RIPEMD160))
+			opt_hash_flags = SC_ALGORITHM_RSA_HASH_RIPEMD160;
 		else if (hashAlg !=0)
 			return SCARD_E_UNSUPPORTED_FEATURE;
+	}
+	
+	if (pInfo->dwSigningFlags & CARD_PADDING_NONE)
+	{
+		/* do not add the digest info when called from CryptSignHash(CRYPT_NOHASHOID)
+
+		Note: SC_ALGORITHM_RSA_HASH_MD5_SHA1 aka CALG_SSL3_SHAMD5 do not have a digest info to be added
+		      CryptSignHash(CALG_SSL3_SHAMD5,CRYPT_NOHASHOID) is the same than CryptSignHash(CALG_SSL3_SHAMD5)
+		*/
+		opt_hash_flags = 0;
 	}
 
 	/* From sc-minidriver_specs_v7.docx pp.76:
@@ -3231,7 +3349,16 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __in PCARD_SIGNING_INFO pIn
 		logprintf(pCardData, 2, "sc_pkcs15_compute_signature return %d\n", r);
 		if(r < 0)   {
 			logprintf(pCardData, 2, "sc_pkcs15_compute_signature erreur %s\n", sc_strerror(r));
-			return SCARD_F_INTERNAL_ERROR;
+			pCardData->pfnCspFree(pbuf);
+			switch (r)
+			{
+			case SC_ERROR_NOT_SUPPORTED:
+				return SCARD_E_UNSUPPORTED_FEATURE;
+			case SC_ERROR_NOT_ALLOWED:
+				return SCARD_W_SECURITY_VIOLATION;
+			default:
+				return SCARD_F_INTERNAL_ERROR;
+			}
 		}
 
 		pInfo->cbSignedData = r;
@@ -3373,8 +3500,7 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 				MB_OKCANCEL | MB_ICONINFORMATION);
 		if (IDCANCEL == r) {
 			logprintf(pCardData, 2, "User canceled PIN verification\n");
-			/* @TODO: is this the right code to return? */
-			return SCARD_E_INVALID_PARAMETER;
+			return ERROR_CANCELLED;
 		}
 	}
 
@@ -3486,6 +3612,9 @@ DWORD WINAPI CardGetContainerProperty(__in PCARD_DATA pCardData,
 	__out PDWORD pdwDataLen,
 	__in DWORD dwFlags)
 {
+	VENDOR_SPECIFIC *vs = NULL;
+	struct md_pkcs15_container *cont = NULL;
+
 	logprintf(pCardData, 1, "\nP:%d T:%d pCardData:%p ",GetCurrentProcessId(), GetCurrentThreadId(), pCardData);
 	logprintf(pCardData, 1, "CardGetContainerProperty\n");
 
@@ -3500,6 +3629,17 @@ DWORD WINAPI CardGetContainerProperty(__in PCARD_DATA pCardData,
 		return SCARD_E_INVALID_PARAMETER;
 	if (!pbData || !pdwDataLen)
 		return SCARD_E_INVALID_PARAMETER;
+	if (bContainerIndex >= MD_MAX_KEY_CONTAINERS)
+		return SCARD_E_NO_KEY_CONTAINER;
+
+	/* the test for the existence of containers is redondant with the one made in CardGetContainerInfo but CCP_PIN_IDENTIFIER does not do it */
+	vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
+	cont = &vs->p15_containers[bContainerIndex];
+
+	if (!cont->prkey_obj)   {
+		logprintf(pCardData, 7, "Container %i is empty\n", bContainerIndex);
+		return SCARD_E_NO_KEY_CONTAINER;
+	}
 
 	if (wcscmp(CCP_CONTAINER_INFO,wszProperty)  == 0)   {
 		PCONTAINER_INFO p = (PCONTAINER_INFO) pbData;
@@ -3768,7 +3908,7 @@ DWORD WINAPI CardSetProperty(__in   PCARD_DATA pCardData,
 	if (dwFlags)
 		return SCARD_E_INVALID_PARAMETER;
 
-	if (!pbData || !cbDataLen)
+	if (!cbDataLen)
 		return SCARD_E_INVALID_PARAMETER;
 
 	/* the following properties cannot be set according to the minidriver specifications */
@@ -3799,7 +3939,7 @@ DWORD WINAPI CardSetProperty(__in   PCARD_DATA pCardData,
 	 * CardAuthenticateEx if the PIN required is declared of type ExternalPinType.
 	 */
 	if (wcscmp(CP_PARENT_WINDOW, wszProperty) == 0) {
-		if (cbDataLen != sizeof(HWND))   {
+		if (cbDataLen != sizeof(HWND) || !pbData)   {
 			return SCARD_E_INVALID_PARAMETER;
 		}
 		else   {
