@@ -194,6 +194,11 @@ int sc_connect_card(sc_reader_t *reader, sc_card_t **card_out)
 		 * config file */
 		card->driver = driver;
 		memcpy(card->ops, card->driver->ops, sizeof(struct sc_card_operations));
+		if (card->ops->match_card != NULL) {
+			if (card->ops->match_card(card) != 1) {
+				sc_log(ctx, "driver '%s' match_card() failed: %s (will continue anyway)", card->driver->name, sc_strerror(r));
+			}
+		}
 		if (card->ops->init != NULL) {
 			r = card->ops->init(card);
 			if (r) {
