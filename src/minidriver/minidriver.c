@@ -3415,7 +3415,7 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 			return SCARD_E_INVALID_PARAMETER;
 		if (dwFlags & CARD_PIN_SILENT_CONTEXT) {
 			if (!md_is_supports_use_pinpad_in_silent_context(pCardData))
-				return SCARD_E_UNSUPPORTED_FEATURE;
+				return NTE_SILENT_CONTEXT;
 			DisplayPinpadUI = FALSE;
 		}
 	}
