@@ -2377,17 +2377,17 @@ DWORD WINAPI CardAuthenticatePin(__in PCARD_DATA pCardData,
 		return SCARD_E_INVALID_PARAMETER;
 	if (wcscmp(wszCARD_USER_USER,pwszUserId) != 0 && wcscmp(wszCARD_USER_ADMIN,pwszUserId) != 0)
 		return SCARD_E_INVALID_PARAMETER;
-	if (NULL == pbPin)
+	if (!(vs->reader->capabilities & SC_READER_CAP_PIN_PAD) && NULL == pbPin)
 		return SCARD_E_INVALID_PARAMETER;
 
-	if (cbPin < 4 || cbPin > 12)
+	if (!(vs->reader->capabilities & SC_READER_CAP_PIN_PAD) && (cbPin < 4 || cbPin > 12))
 		return SCARD_W_WRONG_CHV;
 
 	if (wcscmp(wszCARD_USER_ADMIN, pwszUserId) == 0)
 		return SCARD_W_WRONG_CHV;
 
 	if(pcAttemptsRemaining)
-		(*pcAttemptsRemaining) = 0;
+		(*pcAttemptsRemaining) = (DWORD) -1;
 
 	wcstombs(type, pwszUserId, 100);
 	type[10] = 0;
@@ -2516,8 +2516,6 @@ DWORD WINAPI CardUnblockPin(__in PCARD_DATA  pCardData,
 
 	if (pwszUserId == NULL)
 		return SCARD_E_INVALID_PARAMETER;
-	if (pbAuthenticationData == NULL)
-		return SCARD_E_INVALID_PARAMETER;
 	if (wcscmp(wszCARD_USER_USER, pwszUserId) != 0 && wcscmp(wszCARD_USER_ADMIN,pwszUserId) != 0)
 		return SCARD_E_INVALID_PARAMETER;
 	if (wcscmp(wszCARD_USER_ADMIN, pwszUserId) == 0)
@@ -2528,6 +2526,9 @@ DWORD WINAPI CardUnblockPin(__in PCARD_DATA  pCardData,
 			cRetryCount, dwFlags);
 
 	vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
+
+	if ((!(vs->reader->capabilities & SC_READER_CAP_PIN_PAD)) && pbAuthenticationData == NULL)
+		return SCARD_E_INVALID_PARAMETER;
 
 	dw_rv = md_get_pin_by_role(pCardData, ROLE_USER, &pin_obj);
 	if (dw_rv != SCARD_S_SUCCESS)   {
@@ -2574,14 +2575,19 @@ DWORD WINAPI CardChangeAuthenticator(__in PCARD_DATA  pCardData,
 	if (pwszUserId == NULL)
 		return SCARD_E_INVALID_PARAMETER;
 
-	if (pbCurrentAuthenticator == NULL  || cbCurrentAuthenticator == 0)    {
-		logprintf(pCardData, 1, "Invalid current PIN data\n");
-		return SCARD_E_INVALID_PARAMETER;
-	}
+	vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
+	if (!vs) return SCARD_E_INVALID_PARAMETER;
 
-	if (pbNewAuthenticator == NULL  || cbNewAuthenticator == 0)   {
-		logprintf(pCardData, 1, "Invalid new PIN data\n");
-		return SCARD_E_INVALID_PARAMETER;
+	if (!(vs->reader->capabilities & SC_READER_CAP_PIN_PAD)) {
+		if (pbCurrentAuthenticator == NULL  || cbCurrentAuthenticator == 0)    {
+			logprintf(pCardData, 1, "Invalid current PIN data\n");
+			return SCARD_E_INVALID_PARAMETER;
+		}
+
+		if (pbNewAuthenticator == NULL  || cbNewAuthenticator == 0)   {
+			logprintf(pCardData, 1, "Invalid new PIN data\n");
+			return SCARD_E_INVALID_PARAMETER;
+		}
 	}
 
 	if (dwFlags != CARD_AUTHENTICATE_PIN_PIN)   {
@@ -2598,8 +2604,6 @@ DWORD WINAPI CardChangeAuthenticator(__in PCARD_DATA  pCardData,
 	logprintf(pCardData, 1, "UserID('%s'), CurrentPIN(%p, %li), NewPIN(%p, %li), Retry(%li), dwFlags(0x%lX)\n",
 			pwszUserId, pbCurrentAuthenticator, cbCurrentAuthenticator, pbNewAuthenticator, cbNewAuthenticator,
 			cRetryCount, dwFlags);
-
-	vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
 
 	if (wcscmp(wszCARD_USER_USER, pwszUserId) == 0)
 		dw_rv = md_get_pin_by_role(pCardData, ROLE_USER, &pin_obj);
@@ -3468,7 +3472,7 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 		return SCARD_E_INVALID_PARAMETER;
 
 	if(pcAttemptsRemaining)
-		(*pcAttemptsRemaining) = 0;
+		(*pcAttemptsRemaining) = (DWORD) -1;
 
 	r = md_get_pin_by_role(pCardData, PinId, &pin_obj);
 	if (r != SCARD_S_SUCCESS)   {
