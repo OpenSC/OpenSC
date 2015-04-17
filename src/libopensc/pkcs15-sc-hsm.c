@@ -520,6 +520,7 @@ static int sc_pkcs15emu_sc_hsm_add_pubkey(sc_pkcs15_card_t *p15card, sc_pkcs15_p
 		pubkey_info.modulus_length = pubkey.u.rsa.modulus.len << 3;
 		r = sc_pkcs15emu_add_rsa_pubkey(p15card, &pubkey_obj, &pubkey_info);
 	} else {
+		/* TODO fix if support of non multiple of 8 curves are added */
 		pubkey_info.field_length = cvc.primeOrModuluslen << 3;
 		r = sc_pkcs15emu_add_ec_pubkey(p15card, &pubkey_obj, &pubkey_info);
 	}

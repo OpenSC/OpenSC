@@ -707,12 +707,16 @@ sc_pkcs15_convert_prkey(struct sc_pkcs15_prkey *pkcs15_key, void *evp_key)
 		memcpy(dst->ecpointQ.value, buf, buflen);
 		dst->ecpointQ.len = buflen;
 
-		/* calculate the field length */
-		dst->params.field_length = (buflen - 1) / 2 * 8;
+		/*
+		 * In OpenSC the field_length is in bits. Not all curves are a mutiple of 8.
+		 * EC_POINT_point2oct handles this and returns octstrings that can handle
+		 * these curves. Get real field_length from OpenSSL. 
+		 */
+		dst->params.field_length = EC_GROUP_get_degree(grp);
 
 		/* Octetstring may need leading zeros if BN is to short */
-		if (dst->privateD.len < dst->params.field_length/8)   {
-			size_t d = dst->params.field_length/8 - dst->privateD.len;
+		if (dst->privateD.len < (dst->params.field_length + 7) / 8)   {
+			size_t d = (dst->params.field_length + 7) / 8 - dst->privateD.len;
 
 			dst->privateD.data = realloc(dst->privateD.data, dst->privateD.len + d);
 			if (!dst->privateD.data)
