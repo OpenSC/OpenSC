@@ -3464,8 +3464,10 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 	if (r)   {
 		logprintf(pCardData, 1, "PIN code verification failed: %s; tries left %i\n", sc_strerror(r), auth_info->tries_left);
 
-		if (r == SC_ERROR_AUTH_METHOD_BLOCKED)
+		if (r == SC_ERROR_AUTH_METHOD_BLOCKED) {
+			(*pcAttemptsRemaining) = 0;
 			return SCARD_W_CHV_BLOCKED;
+		}
 
 		if(pcAttemptsRemaining)
 			(*pcAttemptsRemaining) = auth_info->tries_left;
