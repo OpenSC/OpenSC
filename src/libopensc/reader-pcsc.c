@@ -1495,8 +1495,8 @@ static int part10_build_modify_pin_block(struct sc_reader *reader, u8 * buf, siz
 
 	/* Ignore language and T=1 parameters. */
 	pin_modify->wLangId = HOST_TO_CCID_16(0x0000);
-	pin_modify->bMsgIndex1 = 0x00; /* Default message indexes */
-	pin_modify->bMsgIndex2 = 0x01;
+	pin_modify->bMsgIndex1 = (data->flags & SC_PIN_CMD_IMPLICIT_CHANGE ? 0x01: 0x00); /* Default message indexes */
+	pin_modify->bMsgIndex2 = (data->flags & SC_PIN_CMD_IMPLICIT_CHANGE ? 0x02: 0x01);
 	pin_modify->bMsgIndex3 = 0x02;
 	pin_modify->bTeoPrologue[0] = 0x00;
 	pin_modify->bTeoPrologue[1] = 0x00;

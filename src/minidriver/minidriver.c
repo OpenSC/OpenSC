@@ -173,6 +173,7 @@ typedef struct _VENDOR_SPECIFIC
 #define MD_STATIC_FLAG_CREATE_CONTAINER_KEY_IMPORT	32
 #define MD_STATIC_FLAG_CREATE_CONTAINER_KEY_GEN		64
 #define MD_STATIC_FLAG_IGNORE_PIN_LENGTH		128
+#define MD_STATIC_FLAG_ALLOW_PINPAD_IF_SILENT_CONTEXT 256
 
 #define MD_STATIC_PROCESS_ATTACHED		0xA11AC4EDL
 struct md_opensc_static_data {
@@ -485,6 +486,13 @@ md_is_supports_container_key_import(PCARD_DATA pCardData)
 	return md_get_config_bool(pCardData, "md_supports_container_key_import", MD_STATIC_FLAG_CREATE_CONTAINER_KEY_IMPORT, TRUE);
 }
 
+/* Get know if the minidriver can request a pin from the pinpad if the minidriver can't display a UI - typically windows smart card logon*/
+static BOOL
+md_is_supports_use_pinpad_in_silent_context(PCARD_DATA pCardData)
+{
+	logprintf(pCardData, 2, "Can the minidriver request a pin from the pinpad if the minidriver can't display a UI?\n");
+	return md_get_config_bool(pCardData, "md_supports_pinpad_in_silent_context", MD_STATIC_FLAG_ALLOW_PINPAD_IF_SILENT_CONTEXT, FALSE);
+}
 
 /* Check if specified PIN has been verified */
 static BOOL
@@ -2351,78 +2359,23 @@ DWORD WINAPI CardAuthenticatePin(__in PCARD_DATA pCardData,
 	__in DWORD cbPin,
 	__out_opt PDWORD pcAttemptsRemaining)
 {
-	struct sc_pkcs15_object *pin_obj = NULL;
-	struct sc_pkcs15_auth_info *auth_info = NULL;
-	char type[256];
-	VENDOR_SPECIFIC *vs;
-	struct md_file *cardcf_file = NULL;
-	CARD_CACHE_FILE_FORMAT *cardcf = NULL;
-	DWORD dwret;
-	int r;
-
-	if(!pCardData)
-		return SCARD_E_INVALID_PARAMETER;
-
-	vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
-
+	PIN_ID PinId = 0;
 	logprintf(pCardData, 1, "\nP:%d T:%d pCardData:%p ",GetCurrentProcessId(), GetCurrentThreadId(), pCardData);
 	logprintf(pCardData, 1, "CardAuthenticatePin '%S':%d\n", NULLWSTR(pwszUserId), cbPin);
 
-	check_reader_status(pCardData);
-
-	dwret = md_get_cardcf(pCardData, &cardcf);
-	if (dwret != SCARD_S_SUCCESS)
-		return dwret;
-
-	if (NULL == pwszUserId)
-		return SCARD_E_INVALID_PARAMETER;
-	if (wcscmp(wszCARD_USER_USER,pwszUserId) != 0 && wcscmp(wszCARD_USER_ADMIN,pwszUserId) != 0)
-		return SCARD_E_INVALID_PARAMETER;
-	if (!(vs->reader->capabilities & SC_READER_CAP_PIN_PAD) && NULL == pbPin)
-		return SCARD_E_INVALID_PARAMETER;
-
-	if (!(vs->reader->capabilities & SC_READER_CAP_PIN_PAD) && (cbPin < 4 || cbPin > 12))
-		return SCARD_W_WRONG_CHV;
-
-	if (wcscmp(wszCARD_USER_ADMIN, pwszUserId) == 0)
-		return SCARD_W_WRONG_CHV;
-
-	if(pcAttemptsRemaining)
-		(*pcAttemptsRemaining) = (DWORD) -1;
-
-	wcstombs(type, pwszUserId, 100);
-	type[10] = 0;
-
-	logprintf(pCardData, 1, "CardAuthenticatePin %.20s, %d, %d\n", NULLSTR(type),
-		cbPin, (pcAttemptsRemaining==NULL?-2:*pcAttemptsRemaining));
-
-	r = md_get_pin_by_role(pCardData, ROLE_USER, &pin_obj);
-	if (r != SCARD_S_SUCCESS)   {
-		logprintf(pCardData, 2, "Cannot get User PIN object");
-		return r;
+	if (wcscmp(pwszUserId, wszCARD_USER_USER) == 0)	{
+		PinId = ROLE_USER;
 	}
-
-	if (!pin_obj)
-		return SCARD_F_INTERNAL_ERROR;
-	auth_info = (struct sc_pkcs15_auth_info *)pin_obj->data;
-
-	r = sc_pkcs15_verify_pin(vs->p15card, pin_obj, (const u8 *) pbPin, cbPin);
-	if (r)   {
-		logprintf(pCardData, 1, "PIN code verification failed: %s; tries left %i\n", sc_strerror(r), auth_info->tries_left);
-
-		if (r == SC_ERROR_AUTH_METHOD_BLOCKED)
-			return SCARD_W_CHV_BLOCKED;
-
-		if(pcAttemptsRemaining)
-			(*pcAttemptsRemaining) = auth_info->tries_left;
-		return SCARD_W_WRONG_CHV;
+	else if (wcscmp(pwszUserId, wszCARD_USER_ADMIN) == 0) {
+		PinId = ROLE_ADMIN;
 	}
+	else {
+		return SCARD_E_INVALID_PARAMETER;
+	}
+	if (pbPin == NULL)
+		return SCARD_E_INVALID_PARAMETER;
 
-	logprintf(pCardData, 3, "Pin code correct.\n");
-
-	SET_PIN(cardcf->bPinsFreshness, ROLE_USER);
-	logprintf(pCardData, 3, "PinsFreshness = %d\n", cardcf->bPinsFreshness);
-	return SCARD_S_SUCCESS;
+	return CardAuthenticateEx(pCardData, PinId, 0, pbPin, cbPin, NULL, NULL, pcAttemptsRemaining);
 }
 
 
@@ -3444,6 +3397,7 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 	struct sc_pkcs15_object *pin_obj = NULL;
 	struct sc_pkcs15_auth_info *auth_info = NULL;
 	int r;
+	BOOL DisplayPinpadUI = TRUE;
 
 	logprintf(pCardData, 1, "\nP:%d T:%d pCardData:%p ",GetCurrentProcessId(), GetCurrentThreadId(), pCardData);
 	logprintf(pCardData, 1, "CardAuthenticateEx\n");
@@ -3463,11 +3417,19 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 			return SCARD_E_UNSUPPORTED_FEATURE;
 	}
 
-	if (dwFlags && (dwFlags & CARD_PIN_SILENT_CONTEXT) && NULL == pbPinData)
+	if (dwFlags & ~(CARD_AUTHENTICATE_GENERATE_SESSION_PIN | CARD_AUTHENTICATE_SESSION_PIN | CARD_PIN_SILENT_CONTEXT))
 		return SCARD_E_INVALID_PARAMETER;
 
-	if (!(vs->reader->capabilities & SC_READER_CAP_PIN_PAD) && NULL == pbPinData)
-		return SCARD_E_INVALID_PARAMETER;
+	/* using a pin pad */
+	if (NULL == pbPinData) {
+		if (!(vs->reader->capabilities & SC_READER_CAP_PIN_PAD))
+			return SCARD_E_INVALID_PARAMETER;
+		if (dwFlags & CARD_PIN_SILENT_CONTEXT) {
+			if (!md_is_supports_use_pinpad_in_silent_context(pCardData))
+				return SCARD_E_UNSUPPORTED_FEATURE;
+			DisplayPinpadUI = FALSE;
+		}
+	}
 
 	if (PinId != ROLE_USER)
 		return SCARD_E_INVALID_PARAMETER;
@@ -3488,7 +3450,7 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 	/* Do we need to display a prompt to enter PIN on pin pad? */
 	logprintf(pCardData, 7, "PIN pad=%s, pbPinData=%p, hwndParent=%d\n",
 		vs->reader->capabilities & SC_READER_CAP_PIN_PAD ? "yes" : "no", pbPinData, vs->hwndParent);
-	if ((vs->reader->capabilities & SC_READER_CAP_PIN_PAD) && NULL == pbPinData) {
+	if (DisplayPinpadUI && NULL == pbPinData) {
 		char buf[200];
 		if (NULL == vs->wszPinContext )   {
 			strcpy(buf, "Please enter PIN on reader pinpad.");
