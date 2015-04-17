@@ -1600,7 +1600,8 @@ md_card_capabilities(PCARD_CAPABILITIES  pCardCapabilities)
 
 	pCardCapabilities->dwVersion = CARD_CAPABILITIES_CURRENT_VERSION;
 	pCardCapabilities->fCertificateCompression = TRUE;
-	pCardCapabilities->fKeyGen = TRUE;
+	/* a read only card cannot generate new keys */
+	pCardCapabilities->fKeyGen = ! md_is_read_only(pCardData);
 
 	return SCARD_S_SUCCESS;
 }
@@ -2101,7 +2102,7 @@ DWORD WINAPI CardQueryCapabilities(__in PCARD_DATA pCardData,
 	if (!pCardData || !pCardCapabilities)
 		return SCARD_E_INVALID_PARAMETER;
 
-	dwret = md_card_capabilities(pCardCapabilities);
+	dwret = md_card_capabilities(pCardData, pCardCapabilities);
 	if (dwret != SCARD_S_SUCCESS)
 		return dwret;
 
@@ -3725,7 +3726,7 @@ DWORD WINAPI CardGetProperty(__in PCARD_DATA pCardData,
 			*pdwDataLen = sizeof(*pCardCapabilities);
 		if (cbData < sizeof(*pCardCapabilities))
 			return ERROR_INSUFFICIENT_BUFFER;
-		dwret = md_card_capabilities(pCardCapabilities);
+		dwret = md_card_capabilities(pCardData, pCardCapabilities);
 		if (dwret != SCARD_S_SUCCESS)
 			return dwret;
 	}
