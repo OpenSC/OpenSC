@@ -498,15 +498,10 @@ int sc_pkcs15_unblock_pin(struct sc_pkcs15_card *p15card,
 	if (!puk_info) {
 		sc_log(ctx, "Unable to get puk object, using pin object instead!");
 		puk_info = auth_info;
-
-		/* make sure the puk is in valid range */
-		r = _validate_pin(p15card, puk_info, puklen);
-		LOG_TEST_RET(ctx, r, "PIN do not conforms PIN policy");
 	}
-	else   {
-		r = sc_pkcs15_verify_pin(p15card, puk_obj, puk, puklen);
-		LOG_TEST_RET(ctx, r, "cannot verify PUK");
-	}
+	/* make sure the puk is in valid range */
+	r = _validate_pin(p15card, puk_info, puklen);
+	LOG_TEST_RET(ctx, r, "PIN do not conforms PIN policy");
 
 	r = sc_lock(card);
 	LOG_TEST_RET(ctx, r, "sc_lock() failed");
