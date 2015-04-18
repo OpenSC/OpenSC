@@ -2446,11 +2446,6 @@ DWORD WINAPI CardUnblockPin(__in PCARD_DATA  pCardData,
 	__in DWORD  cRetryCount,
 	__in DWORD  dwFlags)
 {
-	VENDOR_SPECIFIC *vs = NULL;
-	DWORD dw_rv;
-	struct sc_pkcs15_object *pin_obj = NULL;
-	int rv;
-
 	if(!pCardData)
 		return SCARD_E_INVALID_PARAMETER;
 
@@ -2462,35 +2457,17 @@ DWORD WINAPI CardUnblockPin(__in PCARD_DATA  pCardData,
 	if (wcscmp(wszCARD_USER_USER, pwszUserId) != 0 && wcscmp(wszCARD_USER_ADMIN,pwszUserId) != 0)
 		return SCARD_E_INVALID_PARAMETER;
 	if (wcscmp(wszCARD_USER_ADMIN, pwszUserId) == 0)
-		return SCARD_W_WRONG_CHV;
+		return SCARD_E_UNSUPPORTED_FEATURE;
+	if (dwFlags & CARD_AUTHENTICATE_PIN_CHALLENGE_RESPONSE)
+		return SCARD_E_UNSUPPORTED_FEATURE;
+	if (dwFlags)
+		return SCARD_E_INVALID_PARAMETER;
 
 	logprintf(pCardData, 1, "UserID('%S'), AuthData(%p, %u), NewPIN(%p, %u), Retry(%u), dwFlags(0x%X)\n",
 			pwszUserId, pbAuthenticationData, cbAuthenticationData, pbNewPinData, cbNewPinData,
 			cRetryCount, dwFlags);
 
-	vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
-
-	if ((!(vs->reader->capabilities & SC_READER_CAP_PIN_PAD)) && pbAuthenticationData == NULL)
-		return SCARD_E_INVALID_PARAMETER;
-
-	dw_rv = md_get_pin_by_role(pCardData, ROLE_USER, &pin_obj);
-	if (dw_rv != SCARD_S_SUCCESS)   {
-		logprintf(pCardData, 2, "Cannot get User PIN object");
-		return dw_rv;
-	}
-	if (!pin_obj)
-		return SCARD_F_INTERNAL_ERROR;
-
-	rv = sc_pkcs15_unblock_pin(vs->p15card, pin_obj,
-			pbAuthenticationData, cbAuthenticationData,
-			pbNewPinData, cbNewPinData);
-	if (rv)   {
-		logprintf(pCardData, 2, "Failed to unblock User PIN: '%s' (%i)\n", sc_strerror(rv), rv);
-		return SCARD_F_INTERNAL_ERROR;
-	}
-
-	logprintf(pCardData, 7, "returns success\n");
-	return SCARD_S_SUCCESS;
+	return CardChangeAuthenticatorEx(pCardData, PIN_CHANGE_FLAG_UNBLOCK, ROLE_ADMIN, pbAuthenticationData, cbAuthenticationData, ROLE_USER, pbNewPinData, cbNewPinData, cRetryCount, NULL);
 }
 
 
@@ -2504,11 +2481,7 @@ DWORD WINAPI CardChangeAuthenticator(__in PCARD_DATA  pCardData,
 	__in DWORD dwFlags,
 	__out_opt PDWORD pcAttemptsRemaining)
 {
-	VENDOR_SPECIFIC *vs = NULL;
-	DWORD dw_rv;
-	struct sc_pkcs15_object *pin_obj = NULL;
-	int rv;
-
+	PIN_ID pinid;
 	if(!pCardData)
 		return SCARD_E_INVALID_PARAMETER;
 
@@ -2518,60 +2491,27 @@ DWORD WINAPI CardChangeAuthenticator(__in PCARD_DATA  pCardData,
 	if (pwszUserId == NULL)
 		return SCARD_E_INVALID_PARAMETER;
 
-	vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
-	if (!vs) return SCARD_E_INVALID_PARAMETER;
-
-	if (!(vs->reader->capabilities & SC_READER_CAP_PIN_PAD)) {
-		if (pbCurrentAuthenticator == NULL  || cbCurrentAuthenticator == 0)    {
-			logprintf(pCardData, 1, "Invalid current PIN data\n");
-			return SCARD_E_INVALID_PARAMETER;
-		}
-
-		if (pbNewAuthenticator == NULL  || cbNewAuthenticator == 0)   {
-			logprintf(pCardData, 1, "Invalid new PIN data\n");
-			return SCARD_E_INVALID_PARAMETER;
-		}
-	}
-
-	if (dwFlags != CARD_AUTHENTICATE_PIN_PIN)   {
+	if (dwFlags == CARD_AUTHENTICATE_PIN_CHALLENGE_RESPONSE)   {
 		logprintf(pCardData, 1, "Other then 'authentication' the PIN are not supported\n");
 		return SCARD_E_UNSUPPORTED_FEATURE;
+	}
+	else if (dwFlags != CARD_AUTHENTICATE_PIN_PIN){
+		return SCARD_E_INVALID_PARAMETER;
 	}
 
 	if (wcscmp(wszCARD_USER_USER, pwszUserId) != 0 && wcscmp(wszCARD_USER_ADMIN, pwszUserId) != 0)
 		return SCARD_E_INVALID_PARAMETER;
-
-	if(pcAttemptsRemaining)
-		(*pcAttemptsRemaining) = 0;
 
 	logprintf(pCardData, 1, "UserID('%S'), CurrentPIN(%p, %u), NewPIN(%p, %u), Retry(%u), dwFlags(0x%X)\n",
 			pwszUserId, pbCurrentAuthenticator, cbCurrentAuthenticator, pbNewAuthenticator, cbNewAuthenticator,
 			cRetryCount, dwFlags);
 
 	if (wcscmp(wszCARD_USER_USER, pwszUserId) == 0)
-		dw_rv = md_get_pin_by_role(pCardData, ROLE_USER, &pin_obj);
-	else if (wcscmp(wszCARD_USER_ADMIN,pwszUserId) == 0)
-		dw_rv = md_get_pin_by_role(pCardData, ROLE_ADMIN, &pin_obj);
+		pinid = ROLE_USER;
 	else
-		return SCARD_F_INTERNAL_ERROR;
+		pinid = ROLE_ADMIN;
 
-	if (dw_rv != SCARD_S_SUCCESS)   {
-		logprintf(pCardData, 2, "Cannot get %S PIN by role", pwszUserId);
-		return dw_rv;
-	}
-	if (!pin_obj)
-		return SCARD_F_INTERNAL_ERROR;
-
-	rv = sc_pkcs15_change_pin(vs->p15card, pin_obj,
-			pbCurrentAuthenticator, cbCurrentAuthenticator,
-			pbNewAuthenticator, cbNewAuthenticator);
-	if (rv)   {
-		logprintf(pCardData, 2, "Failed to change %S PIN: '%s' (%i)\n", pwszUserId, sc_strerror(rv), rv);
-		return SCARD_F_INTERNAL_ERROR;
-	}
-
-	logprintf(pCardData, 7, "returns success\n");
-	return SCARD_S_SUCCESS;
+	return CardChangeAuthenticatorEx(pCardData, PIN_CHANGE_FLAG_CHANGEPIN, pinid, pbCurrentAuthenticator, cbCurrentAuthenticator, pinid, pbNewAuthenticator, cbNewAuthenticator, cRetryCount, pcAttemptsRemaining);
 }
 
 /* this function is not called on purpose.
@@ -3498,20 +3438,32 @@ DWORD WINAPI CardChangeAuthenticatorEx(__in PCARD_DATA pCardData,
 	__in   DWORD cRetryCount,
 	__out_opt PDWORD pcAttemptsRemaining)
 {
+	VENDOR_SPECIFIC *vs = NULL;
+	DWORD dw_rv;
+	struct sc_pkcs15_object *pin_obj = NULL;
+	int rv;
+	struct sc_pkcs15_auth_info *auth_info;
+	BOOL DisplayPinpadUI = TRUE;
 
 	logprintf(pCardData, 1, "\nP:%d T:%d pCardData:%p ",GetCurrentProcessId(), GetCurrentThreadId(), pCardData);
-	logprintf(pCardData, 1, "CardAuthenticateEx\n");
+	logprintf(pCardData, 1, "CardChangeAuthenticatorEx\n");
 
 	if (!pCardData)
 		return SCARD_E_INVALID_PARAMETER;
-	if (dwFlags != PIN_CHANGE_FLAG_UNBLOCK && dwFlags != PIN_CHANGE_FLAG_CHANGEPIN)
+	if (!(dwFlags & PIN_CHANGE_FLAG_UNBLOCK) && !(dwFlags & PIN_CHANGE_FLAG_CHANGEPIN)){
+		logprintf(pCardData, 1, "Unknown flag\n");
 		return SCARD_E_INVALID_PARAMETER;
-	if (dwFlags == PIN_CHANGE_FLAG_UNBLOCK && dwAuthenticatingPinId == dwTargetPinId)
+	}
+	if ((dwFlags & PIN_CHANGE_FLAG_UNBLOCK) && (dwFlags & PIN_CHANGE_FLAG_CHANGEPIN))
+		return SCARD_E_INVALID_PARAMETER;
+	if (dwFlags & PIN_CHANGE_FLAG_UNBLOCK && dwAuthenticatingPinId == dwTargetPinId)
 		return SCARD_E_INVALID_PARAMETER;
 	if (dwAuthenticatingPinId != ROLE_USER && dwAuthenticatingPinId != ROLE_ADMIN)
 		return SCARD_E_INVALID_PARAMETER;
-	if (dwTargetPinId != ROLE_USER && dwTargetPinId != ROLE_ADMIN)
+	if (dwTargetPinId != ROLE_USER && dwTargetPinId != ROLE_ADMIN) {
+		logprintf(pCardData, 1, "Only ROLE_USER or ROLE_ADMIN is supported\n");
 		return SCARD_E_INVALID_PARAMETER;
+	}
 	/* according to the spec: cRetryCount MUST be zero */
 	if (cRetryCount)
 		return SCARD_E_INVALID_PARAMETER;
@@ -3519,18 +3471,101 @@ DWORD WINAPI CardChangeAuthenticatorEx(__in PCARD_DATA pCardData,
 	logprintf(pCardData, 2, "CardChangeAuthenticatorEx: AuthenticatingPinId=%u, dwFlags=0x%08X, cbAuthenticatingPinData=%u, TargetPinId=%u, cbTargetData=%u, Attempts %s\n",
 		dwAuthenticatingPinId, dwFlags, cbAuthenticatingPinData, dwTargetPinId, cbTargetData, pcAttemptsRemaining ? "YES" : "NO");
 
-	if (dwFlags == PIN_CHANGE_FLAG_UNBLOCK)
-	{
-		return CardUnblockPin(pCardData, (dwTargetPinId == ROLE_USER ? wszCARD_USER_USER: wszCARD_USER_ADMIN), pbAuthenticatingPinData, cbAuthenticatingPinData, pbTargetData, cbTargetData, cRetryCount, CARD_AUTHENTICATE_PIN_PIN);
+
+	check_reader_status(pCardData);
+
+	vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
+
+	if (!(vs->reader->capabilities & SC_READER_CAP_PIN_PAD)) {
+		if (pbAuthenticatingPinData == NULL  || cbAuthenticatingPinData == 0)    {
+			logprintf(pCardData, 1, "Invalid current PIN data\n");
+			return SCARD_E_INVALID_PARAMETER;
+		}
+
+		if (pbTargetData == NULL  || cbTargetData == 0)   {
+			logprintf(pCardData, 1, "Invalid new PIN data\n");
+			return SCARD_E_INVALID_PARAMETER;
+		}
 	}
-	else if ( dwFlags == PIN_CHANGE_FLAG_CHANGEPIN)
-	{
-		return CardChangeAuthenticator(pCardData, (dwTargetPinId == ROLE_USER ? wszCARD_USER_USER: wszCARD_USER_ADMIN), pbAuthenticatingPinData, cbAuthenticatingPinData, pbTargetData, cbTargetData, cRetryCount, CARD_AUTHENTICATE_PIN_PIN, pcAttemptsRemaining);
+	/* using a pin pad */
+	if (NULL == pbAuthenticatingPinData) {
+		if (dwFlags & CARD_PIN_SILENT_CONTEXT) {
+			if (!md_is_supports_use_pinpad_in_silent_context(pCardData))
+				return NTE_SILENT_CONTEXT;
+			DisplayPinpadUI = FALSE;
+		}
 	}
-	else
-	{
+
+	dw_rv = md_get_pin_by_role(pCardData, dwTargetPinId, &pin_obj);
+	if (dw_rv != SCARD_S_SUCCESS)   {
+		logprintf(pCardData, 2, "Cannot get User PIN object %s", (dwTargetPinId==ROLE_ADMIN?"admin":"user"));
+		return dw_rv;
+	}
+	if (!pin_obj)
+		return SCARD_F_INTERNAL_ERROR;
+
+	if(pcAttemptsRemaining)
+		(*pcAttemptsRemaining) = (DWORD) -1;
+
+	if (DisplayPinpadUI && NULL == pbAuthenticatingPinData) {
+		char buf[200];
+		PSTR title = NULL;
+		if (NULL == vs->wszPinContext )   {
+			strcpy(buf, "Please enter PIN on reader pinpad.");
+		}
+		else   {
+			/* %S enable the use of UNICODE string (wsPinContext) inside an ANSI string (buf) */
+			snprintf(buf, sizeof(buf), "Please enter PIN %S", vs->wszPinContext);
+		}
+		if (dwFlags & PIN_CHANGE_FLAG_UNBLOCK)	{
+			title = "Unblock PIN - PIN Entry Required";
+		}
+		else {
+			title = "Change PIN - PIN Entry Required";
+		}
+		logprintf(pCardData, 7, "About to display message box for external PIN verification\n");
+		/* @TODO: Ideally, this should probably be a non-modal dialog with just a cancel button
+		 * that goes away as soon as a key is pressed on the pinpad.
+		 */
+		rv = MessageBoxA(vs->hwndParent, buf, title,
+				MB_OKCANCEL | MB_ICONINFORMATION);
+		if (IDCANCEL == rv) {
+			logprintf(pCardData, 2, "User canceled PIN verification\n");
+			return ERROR_CANCELLED;
+		}
+	}
+
+	if (dwFlags & PIN_CHANGE_FLAG_UNBLOCK)	{
+		rv = sc_pkcs15_unblock_pin(vs->p15card, pin_obj,
+			pbAuthenticatingPinData, cbAuthenticatingPinData,
+			pbTargetData, cbTargetData);
+	}
+	else if ( dwFlags & PIN_CHANGE_FLAG_CHANGEPIN)	{
+		rv = sc_pkcs15_change_pin(vs->p15card, pin_obj,
+				pbAuthenticatingPinData, cbAuthenticatingPinData,
+				pbTargetData, cbTargetData);
+	}
+	else {
 		return SCARD_E_UNSUPPORTED_FEATURE;
 	}
+	if (rv)   {
+		logprintf(pCardData, 2, "Failed to %s %s PIN: '%s' (%i)\n",
+																(dwFlags & PIN_CHANGE_FLAG_CHANGEPIN?"change":"unblock"),
+																(dwTargetPinId==ROLE_ADMIN?"admin":"user"), sc_strerror(rv), rv);
+		auth_info = (struct sc_pkcs15_auth_info *)pin_obj->data;
+		if (rv == SC_ERROR_AUTH_METHOD_BLOCKED) {
+			if(pcAttemptsRemaining)
+				(*pcAttemptsRemaining) = 0;
+			return SCARD_W_CHV_BLOCKED;
+		}
+
+		if(pcAttemptsRemaining)
+			(*pcAttemptsRemaining) = auth_info->tries_left;
+		return SCARD_W_WRONG_CHV;
+	}
+
+	logprintf(pCardData, 7, "returns success\n");
+	return SCARD_S_SUCCESS;
 }
 
 DWORD WINAPI CardDeauthenticateEx(__in PCARD_DATA pCardData,
