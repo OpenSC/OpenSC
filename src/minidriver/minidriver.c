@@ -1162,6 +1162,89 @@ md_set_cardid(PCARD_DATA pCardData, struct md_file *file)
 	return SCARD_S_SUCCESS;
 }
 
+/* fill the msroot file from root certificates */
+static void
+md_fs_read_msroot_file(PCARD_DATA pCardData, char *parent, struct md_file *file)
+{
+	CERT_BLOB dbStore = {0};
+	HCERTSTORE hCertStore = NULL;
+	DWORD dwret = 0;
+	VENDOR_SPECIFIC *vs;
+	int rv, ii, cert_num;
+	struct sc_pkcs15_object *prkey_objs[MD_MAX_KEY_CONTAINERS];
+
+	hCertStore = CertOpenStore(CERT_STORE_PROV_MEMORY, X509_ASN_ENCODING, NULL, 0, NULL);
+	if (!hCertStore) {
+		dwret = GetLastError();
+		goto Ret;
+	}
+
+	vs = (VENDOR_SPECIFIC *) pCardData->pvVendorSpecific;
+
+	rv = sc_pkcs15_get_objects(vs->p15card, SC_PKCS15_TYPE_CERT_X509, prkey_objs, MD_MAX_KEY_CONTAINERS);
+	if (rv < 0)   {
+		logprintf(pCardData, 0, "certificate enumeration failed: %s\n", sc_strerror(rv));
+		goto Ret;
+	}
+	cert_num = rv;
+	for(ii = 0; ii < cert_num; ii++)   {
+		struct sc_pkcs15_cert_info *cert_info = (struct sc_pkcs15_cert_info *) prkey_objs[ii]->data;
+		struct sc_pkcs15_cert *cert = NULL;
+		PCCERT_CONTEXT wincert = NULL;
+		if (cert_info->authority) {
+			rv = sc_pkcs15_read_certificate(vs->p15card, cert_info, &cert);
+			if(rv)   {
+				logprintf(pCardData, 2, "Cannot read certificate idx:%i: sc-error %d\n", ii, rv);
+				continue;
+			}
+			wincert = CertCreateCertificateContext(X509_ASN_ENCODING, cert->data.value, cert->data.len);
+			if (wincert) {
+				CertAddCertificateContextToStore(hCertStore, wincert, CERT_STORE_ADD_REPLACE_EXISTING, NULL);
+				CertFreeCertificateContext(wincert);
+			}
+			else {
+				logprintf(pCardData, 2, "unable to load the certificate from windows 0x%08X\n", GetLastError());
+			}
+			sc_pkcs15_free_certificate(cert);
+		}
+	}
+	if (FALSE == CertSaveStore(	hCertStore,
+		PKCS_7_ASN_ENCODING | X509_ASN_ENCODING,
+			CERT_STORE_SAVE_AS_PKCS7,
+			CERT_STORE_SAVE_TO_MEMORY,
+				&dbStore,
+		0)) {
+		dwret = GetLastError();
+		goto Ret;
+	}
+
+	dbStore.pbData = (PBYTE) pCardData->pfnCspAlloc(dbStore.cbData);
+
+	if (NULL == dbStore.pbData) {
+		dwret = ERROR_NOT_ENOUGH_MEMORY;
+		goto Ret;
+	}
+
+	if (FALSE == CertSaveStore(	hCertStore,
+			PKCS_7_ASN_ENCODING | X509_ASN_ENCODING,
+				CERT_STORE_SAVE_AS_PKCS7,
+				CERT_STORE_SAVE_TO_MEMORY,
+				&dbStore,
+				0))
+	{
+		dwret = GetLastError();
+		goto Ret;
+	}
+	file->size = dbStore.cbData;
+	file->blob = dbStore.pbData;
+	dbStore.pbData = NULL;
+Ret:
+	if (dbStore.pbData)
+		pCardData->pfnCspFree(dbStore.pbData);
+	if (hCertStore)
+		CertCloseStore(hCertStore, CERT_CLOSE_STORE_FORCE_FLAG);
+}
+
 /*
  * Return content of the 'soft' file.
  */
@@ -1214,6 +1297,9 @@ md_fs_read_content(PCARD_DATA pCardData, char *parent, struct md_file *file)
 			file->blob = pCardData->pfnCspAlloc(cert->data.len);
 			CopyMemory(file->blob, cert->data.value, cert->data.len);
 			sc_pkcs15_free_certificate(cert);
+		}
+		if (!strcmp(file->name, "msroot")) {
+			md_fs_read_msroot_file(pCardData, parent, file);
 		}
 	}
 	else   {
@@ -1313,6 +1399,37 @@ md_set_cardapps(PCARD_DATA pCardData, struct md_file *file)
 
 	logprintf(pCardData, 3, "mscp(%i)\n", file->size);
 	loghex(pCardData, 3, file->blob, file->size);
+	return SCARD_S_SUCCESS;
+}
+
+/* check if the card has root certificates. If yes, notify the base csp by creating the msroot file */
+static DWORD
+md_fs_add_msroot(PCARD_DATA pCardData, struct md_file **head)
+{
+	VENDOR_SPECIFIC *vs;
+	int rv, ii, cert_num;
+	DWORD dwret;
+	struct sc_pkcs15_object *prkey_objs[MD_MAX_KEY_CONTAINERS];
+	if (!pCardData || !head)
+		return SCARD_E_INVALID_PARAMETER;
+
+	vs = (VENDOR_SPECIFIC *) pCardData->pvVendorSpecific;
+
+	rv = sc_pkcs15_get_objects(vs->p15card, SC_PKCS15_TYPE_CERT_X509, prkey_objs, MD_MAX_KEY_CONTAINERS);
+	if (rv < 0)   {
+		logprintf(pCardData, 0, "certificate enumeration failed: %s\n", sc_strerror(rv));
+		return SCARD_S_SUCCESS;
+	}
+	cert_num = rv;
+	for(ii = 0; ii < cert_num; ii++)   {
+		struct sc_pkcs15_cert_info *cert_info = (struct sc_pkcs15_cert_info *) prkey_objs[ii]->data;
+		if (cert_info->authority) {
+			dwret = md_fs_add_file(pCardData, head, "msroot", EveryoneReadUserWriteAc, NULL, 0, NULL);
+			if (dwret != SCARD_S_SUCCESS)
+				return dwret;
+			return SCARD_S_SUCCESS;
+		}
+	}
 	return SCARD_S_SUCCESS;
 }
 
@@ -1503,6 +1620,10 @@ md_set_cmapfile(PCARD_DATA pCardData, struct md_file *file)
 			loghex(pCardData, 7, (PBYTE) (p+ii), sizeof(CONTAINER_MAP_RECORD));
 		}
 	}
+	
+	dwret = md_fs_add_msroot(pCardData, &(file->next));
+	if (dwret != SCARD_S_SUCCESS)
+		return dwret;
 
 	dwret = md_fs_set_content(pCardData, file, cmap_buf, cmap_len);
 	pCardData->pfnCspFree(cmap_buf);
