@@ -56,6 +56,9 @@
 #include "cardmod-mingw-compat.h"
 #endif
 
+/* store the instance given at DllMain when attached to access internal resources */
+HINSTANCE g_inst;
+
 #define MD_MINIMUM_VERSION_SUPPORTED 4
 #define MD_CURRENT_VERSION_SUPPORTED 7
 
@@ -99,6 +102,12 @@
 #define SCARD_E_UNKNOWN_CARD		0x8010000DL
 #define SCARD_F_UNKNOWN_ERROR		0x80100014L
 #endif
+
+ /* defined twice: in versioninfo-minidriver.rc.in and in minidriver.c */
+#define IDD_PINPAD      101
+#define IDC_PINPAD_TEXT 1001
+#define IDC_PINPAD_ICON 1000
+
 
 struct md_directory {
 	unsigned char parent[9];
@@ -173,7 +182,6 @@ typedef struct _VENDOR_SPECIFIC
 #define MD_STATIC_FLAG_CREATE_CONTAINER_KEY_IMPORT	32
 #define MD_STATIC_FLAG_CREATE_CONTAINER_KEY_GEN		64
 #define MD_STATIC_FLAG_IGNORE_PIN_LENGTH		128
-#define MD_STATIC_FLAG_ALLOW_PINPAD_IF_SILENT_CONTEXT 256
 
 #define MD_STATIC_PROCESS_ATTACHED		0xA11AC4EDL
 struct md_opensc_static_data {
@@ -486,13 +494,6 @@ md_is_supports_container_key_import(PCARD_DATA pCardData)
 	return md_get_config_bool(pCardData, "md_supports_container_key_import", MD_STATIC_FLAG_CREATE_CONTAINER_KEY_IMPORT, TRUE);
 }
 
-/* Get know if the minidriver can request a pin from the pinpad if the minidriver can't display a UI - typically windows smart card logon*/
-static BOOL
-md_is_supports_use_pinpad_in_silent_context(PCARD_DATA pCardData)
-{
-	logprintf(pCardData, 2, "Can the minidriver request a pin from the pinpad if the minidriver can't display a UI?\n");
-	return md_get_config_bool(pCardData, "md_supports_pinpad_in_silent_context", MD_STATIC_FLAG_ALLOW_PINPAD_IF_SILENT_CONTEXT, FALSE);
-}
 
 /* Check if specified PIN has been verified */
 static BOOL
@@ -2185,6 +2186,211 @@ md_query_key_sizes(CARD_KEY_SIZES *pKeySizes)
 	return SCARD_S_SUCCESS;
 }
 
+static VOID CenterWindow(HWND hwndWindow, HWND hwndParent)
+{
+	RECT rectWindow, rectParent;
+	int nWidth,nHeight, nScreenWidth, nScreenHeight;
+	int nX, nY;
+	GetWindowRect(hwndWindow, &rectWindow);
+
+	nWidth = rectWindow.right - rectWindow.left;
+	nHeight = rectWindow.bottom - rectWindow.top;
+
+	nScreenWidth = GetSystemMetrics(SM_CXSCREEN);
+	nScreenHeight = GetSystemMetrics(SM_CYSCREEN);
+
+     // make the window relative to its parent
+     if (hwndParent != NULL) {
+		 GetWindowRect(hwndParent, &rectParent);
+         nX = ((rectParent.right - rectParent.left) - nWidth) / 2 + rectParent.left;
+         nY = ((rectParent.bottom - rectParent.top) - nHeight) / 2 + rectParent.top;
+	 }
+	 else {
+		 nX = (nScreenWidth - nWidth) /2;
+		 nY = (nScreenHeight - nHeight) /2;
+	 }
+	// make sure that the dialog box never moves outside of the screen
+	if (nX < 0) nX = 0;
+	if (nY < 0) nY = 0;
+	if (nX + nWidth > nScreenWidth) nX = nScreenWidth - nWidth;
+	if (nY + nHeight > nScreenHeight) nY = nScreenHeight - nHeight;
+ 
+    MoveWindow(hwndWindow, nX, nY, nWidth, nHeight, TRUE);
+}
+
+
+static DWORD WINAPI
+md_dialog_perform_pin_operation_thread(PVOID lpParameter)
+{
+	/* unstack the parameters */
+	LONG_PTR* parameter = (LONG_PTR*) lpParameter;
+	int operation = parameter[0];
+	struct sc_pkcs15_card *p15card = (struct sc_pkcs15_card *) parameter[1];
+	struct sc_pkcs15_object *pin_obj = (struct sc_pkcs15_object *) parameter[2];
+	const u8 *pin1 = (const u8 *) parameter[3];
+	size_t pin1len = parameter[4];
+	const u8 *pin2 = (const u8 *) parameter[5];
+	size_t pin2len = parameter[6];
+	int rv = 0;
+	switch (operation)
+	{
+	case SC_PIN_CMD_VERIFY:
+		rv = sc_pkcs15_verify_pin(p15card, pin_obj, pin1, pin1len);
+		break;
+	case SC_PIN_CMD_CHANGE:
+		rv = sc_pkcs15_change_pin(p15card, pin_obj, pin1, pin1len,pin2, pin2len);
+		break;
+	case SC_PIN_CMD_UNBLOCK:
+		rv = sc_pkcs15_unblock_pin(p15card, pin_obj, pin1, pin1len,pin2, pin2len);
+		break;
+	default:
+		rv = (DWORD) ERROR_INVALID_PARAMETER;
+		break;
+	}
+	if (parameter[9] != 0) {
+		EndDialog((HWND) parameter[9], rv);
+	}
+	return (DWORD) rv;
+}
+
+static INT_PTR CALLBACK md_dialog_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+	UNREFERENCED_PARAMETER(wParam);
+	switch (message)
+	{
+	case WM_INITDIALOG:
+		{
+			HICON hIcon = NULL;
+			PCARD_DATA pCardData = (PCARD_DATA) (((LONG_PTR*)lParam)[7]);
+			VENDOR_SPECIFIC* vs = (VENDOR_SPECIFIC*) pCardData->pvVendorSpecific;
+			/* store parameter like pCardData for further use if needed */
+			SetWindowLongPtr(hWnd, GWLP_USERDATA, lParam);
+			/* change the text shown on the screen */
+			if (vs->wszPinContext )   {
+				SetWindowTextW(GetDlgItem(hWnd, IDC_PINPAD_TEXT), vs->wszPinContext );
+			}
+			CenterWindow(hWnd, vs->hwndParent);
+			/* load the information icon */
+			hIcon = (HICON) LoadImage(0, IDI_INFORMATION, IMAGE_ICON, 0, 0, LR_SHARED);
+			SendMessage(GetDlgItem(hWnd, IDC_PINPAD_ICON),STM_SETIMAGE,IMAGE_ICON, (LPARAM) hIcon);
+			/* launch the function in another thread context store the thread handle */
+			((LONG_PTR*)lParam)[9] = (LONG_PTR) hWnd;
+			((LONG_PTR*)lParam)[8] = (LONG_PTR) CreateThread(NULL, 0, md_dialog_perform_pin_operation_thread, (PVOID) lParam, 0, NULL);
+		}
+		return TRUE;
+	case WM_DESTROY:
+		{
+			/* clean resources used */
+			LPARAM param = GetWindowLongPtr(hWnd, GWLP_USERDATA);
+			if (param) {
+				HANDLE hThread = (HANDLE)((LONG_PTR*)param)[8];
+				CloseHandle(hThread);
+			}
+		}
+		break;
+	}
+	return FALSE;
+}
+
+
+
+static int 
+md_dialog_perform_pin_operation(PCARD_DATA pCardData, int operation, struct sc_pkcs15_card *p15card,
+			 struct sc_pkcs15_object *pin_obj,
+			 const u8 *pin1, size_t pin1len,
+			 const u8 *pin2, size_t pin2len, BOOL displayUI)
+{
+	LONG_PTR parameter[10];
+	INT_PTR result = 0;
+	HWND hWndDlg = 0;
+	int rv = 0;
+	VENDOR_SPECIFIC* pv = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
+	/* stack the parameters */
+	parameter[0] = (LONG_PTR)operation;
+	parameter[1] = (LONG_PTR)p15card;
+	parameter[2] = (LONG_PTR)pin_obj;
+	parameter[3] = (LONG_PTR)pin1;
+	parameter[4] = (LONG_PTR)pin1len;
+	parameter[5] = (LONG_PTR)pin2;
+	parameter[6] = (LONG_PTR)pin2len;
+	parameter[7] = (LONG_PTR)pCardData;
+	parameter[8] = 0; /* place holder for thread handle */
+	parameter[9] = 0; /* place holder for window handle */
+	/* launch the function to perform in the same thread context */
+	if (!displayUI) {
+		rv = md_dialog_perform_pin_operation_thread(parameter);
+		SecureZeroMemory(parameter, sizeof(parameter));
+		return rv;
+	}
+	/* launch the UI in the same thread context than the parent and the function to perform in another thread context 
+	this is the only way to display a modal dialog attached to a parent (hwndParent != 0) */
+	result = DialogBoxParam(g_inst, MAKEINTRESOURCE(IDD_PINPAD), pv->hwndParent, md_dialog_proc, (LPARAM) parameter);
+	SecureZeroMemory(parameter, sizeof(parameter));
+	return result;
+}
+
+DWORD md_translate_OpenSC_to_Windows_error(int OpenSCerror, DWORD dwDefaulCode)
+{
+	switch(OpenSCerror)
+	{
+		/* Errors related to reader operation */
+		case SC_ERROR_READER:
+			return SCARD_E_PROTO_MISMATCH;
+		case SC_ERROR_NO_READERS_FOUND:
+			return SCARD_E_NO_READERS_AVAILABLE;
+		case SC_ERROR_CARD_NOT_PRESENT:
+			return SCARD_E_NO_SMARTCARD;
+		case SC_ERROR_TRANSMIT_FAILED:
+			return SCARD_E_NOT_TRANSACTED;
+		case SC_ERROR_CARD_REMOVED:
+			return SCARD_W_REMOVED_CARD;
+		case SC_ERROR_CARD_RESET:
+			return SCARD_W_RESET_CARD;
+		case SC_ERROR_KEYPAD_CANCELLED:
+			return SCARD_W_CANCELLED_BY_USER;
+		case SC_ERROR_KEYPAD_MSG_TOO_LONG:
+			return SCARD_W_CARD_NOT_AUTHENTICATED;
+		case SC_ERROR_KEYPAD_PIN_MISMATCH:
+			return SCARD_E_INVALID_CHV;
+		case SC_ERROR_KEYPAD_TIMEOUT:
+			return ERROR_TIMEOUT;
+		case SC_ERROR_EVENT_TIMEOUT:
+			return SCARD_E_TIMEOUT;
+		case SC_ERROR_CARD_UNRESPONSIVE:
+			return SCARD_W_UNRESPONSIVE_CARD;
+		case SC_ERROR_READER_LOCKED:
+			return SCARD_E_SHARING_VIOLATION;
+
+		/* Resulting from a card command or related to the card*/
+		case SC_ERROR_INCORRECT_PARAMETERS:
+			return SCARD_E_INVALID_PARAMETER;
+		case SC_ERROR_MEMORY_FAILURE:
+		case SC_ERROR_NOT_ENOUGH_MEMORY:
+			return SCARD_E_NO_MEMORY;
+		case SC_ERROR_NOT_ALLOWED:
+			return SCARD_W_SECURITY_VIOLATION;
+		case SC_ERROR_AUTH_METHOD_BLOCKED:
+			return SCARD_W_CHV_BLOCKED;
+		case SC_ERROR_PIN_CODE_INCORRECT:
+			return SCARD_W_WRONG_CHV;
+		
+		/* Returned by OpenSC library when called with invalid arguments */
+		case SC_ERROR_BUFFER_TOO_SMALL:
+			return NTE_BUFFER_TOO_SMALL;
+
+		/* Resulting from OpenSC internal operation */
+		case SC_ERROR_INTERNAL:
+			return ERROR_INTERNAL_ERROR;
+		case SC_ERROR_NOT_SUPPORTED:
+			return SCARD_E_UNSUPPORTED_FEATURE;
+		case SC_ERROR_NOT_IMPLEMENTED:
+			return ERROR_CALL_NOT_IMPLEMENTED;
+
+		default:
+			return dwDefaulCode;
+	}
+}
+
 DWORD WINAPI CardDeleteContext(__inout PCARD_DATA  pCardData)
 {
 	VENDOR_SPECIFIC *vs = NULL;
@@ -2496,7 +2702,7 @@ DWORD WINAPI CardAuthenticatePin(__in PCARD_DATA pCardData,
 	if (pbPin == NULL)
 		return SCARD_E_INVALID_PARAMETER;
 
-	return CardAuthenticateEx(pCardData, PinId, 0, pbPin, cbPin, NULL, NULL, pcAttemptsRemaining);
+	return CardAuthenticateEx(pCardData, PinId, CARD_PIN_SILENT_CONTEXT, pbPin, cbPin, NULL, NULL, pcAttemptsRemaining);
 }
 
 
@@ -2588,7 +2794,7 @@ DWORD WINAPI CardUnblockPin(__in PCARD_DATA  pCardData,
 			pwszUserId, pbAuthenticationData, cbAuthenticationData, pbNewPinData, cbNewPinData,
 			cRetryCount, dwFlags);
 
-	return CardChangeAuthenticatorEx(pCardData, PIN_CHANGE_FLAG_UNBLOCK, ROLE_ADMIN, pbAuthenticationData, cbAuthenticationData, ROLE_USER, pbNewPinData, cbNewPinData, cRetryCount, NULL);
+	return CardChangeAuthenticatorEx(pCardData, PIN_CHANGE_FLAG_UNBLOCK | CARD_PIN_SILENT_CONTEXT, ROLE_ADMIN, pbAuthenticationData, cbAuthenticationData, ROLE_USER, pbNewPinData, cbNewPinData, cRetryCount, NULL);
 }
 
 
@@ -2632,7 +2838,7 @@ DWORD WINAPI CardChangeAuthenticator(__in PCARD_DATA  pCardData,
 	else
 		pinid = ROLE_ADMIN;
 
-	return CardChangeAuthenticatorEx(pCardData, PIN_CHANGE_FLAG_CHANGEPIN, pinid, pbCurrentAuthenticator, cbCurrentAuthenticator, pinid, pbNewAuthenticator, cbNewAuthenticator, cRetryCount, pcAttemptsRemaining);
+	return CardChangeAuthenticatorEx(pCardData, PIN_CHANGE_FLAG_CHANGEPIN | CARD_PIN_SILENT_CONTEXT, pinid, pbCurrentAuthenticator, cbCurrentAuthenticator, pinid, pbNewAuthenticator, cbNewAuthenticator, cRetryCount, pcAttemptsRemaining);
 }
 
 /* this function is not called on purpose.
@@ -3157,15 +3363,7 @@ DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 		logprintf(pCardData, 2, "sc_pkcs15_decipher error(%i): %s\n", r, sc_strerror(r));
 		pCardData->pfnCspFree(pbuf);
 		pCardData->pfnCspFree(pbuf2);
-		switch (r)
-		{
-		case SC_ERROR_NOT_ALLOWED:
-			return SCARD_W_SECURITY_VIOLATION;
-		case SC_ERROR_NOT_SUPPORTED:
-			return SCARD_E_UNSUPPORTED_FEATURE;
-		default:
-			return SCARD_E_INVALID_VALUE;
-		}
+		return md_translate_OpenSC_to_Windows_error(r, SCARD_E_INVALID_VALUE);
 	}
 
 	logprintf(pCardData, 2, "decrypted data(%i):\n", pInfo->cbData);
@@ -3358,15 +3556,7 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 		if(r < 0)   {
 			logprintf(pCardData, 2, "sc_pkcs15_compute_signature erreur %s\n", sc_strerror(r));
 			pCardData->pfnCspFree(pbuf);
-			switch (r)
-			{
-			case SC_ERROR_NOT_SUPPORTED:
-				return SCARD_E_UNSUPPORTED_FEATURE;
-			case SC_ERROR_NOT_ALLOWED:
-				return SCARD_W_SECURITY_VIOLATION;
-			default:
-				return SCARD_F_INTERNAL_ERROR;
-			}
+			return md_translate_OpenSC_to_Windows_error(r, SCARD_F_INTERNAL_ERROR);
 		}
 
 		pInfo->cbSignedData = r;
@@ -3447,7 +3637,7 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 	struct sc_pkcs15_object *pin_obj = NULL;
 	struct sc_pkcs15_auth_info *auth_info = NULL;
 	int r;
-	BOOL DisplayPinpadUI = TRUE;
+	BOOL DisplayPinpadUI = FALSE;
 
 	logprintf(pCardData, 1, "\nP:%d T:%d pCardData:%p ",GetCurrentProcessId(), GetCurrentThreadId(), pCardData);
 	logprintf(pCardData, 1, "CardAuthenticateEx\n");
@@ -3474,10 +3664,8 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 	if (NULL == pbPinData) {
 		if (!(vs->reader->capabilities & SC_READER_CAP_PIN_PAD))
 			return SCARD_E_INVALID_PARAMETER;
-		if (dwFlags & CARD_PIN_SILENT_CONTEXT) {
-			if (!md_is_supports_use_pinpad_in_silent_context(pCardData))
-				return NTE_SILENT_CONTEXT;
-			DisplayPinpadUI = FALSE;
+		if (!(dwFlags & CARD_PIN_SILENT_CONTEXT)) {
+			DisplayPinpadUI = TRUE;
 		}
 	}
 
@@ -3500,28 +3688,9 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 	/* Do we need to display a prompt to enter PIN on pin pad? */
 	logprintf(pCardData, 7, "PIN pad=%s, pbPinData=%p, hwndParent=%p\n",
 		vs->reader->capabilities & SC_READER_CAP_PIN_PAD ? "yes" : "no", pbPinData, vs->hwndParent);
-	if (DisplayPinpadUI && NULL == pbPinData) {
-		char buf[200];
-		if (NULL == vs->wszPinContext )   {
-			strcpy(buf, "Please enter PIN on reader pinpad.");
-		}
-		else   {
-			/* %S enable the use of UNICODE string (wsPinContext) inside an ANSI string (buf) */
-			snprintf(buf, sizeof(buf), "Please enter PIN %S", vs->wszPinContext);
-		}
-		logprintf(pCardData, 7, "About to display message box for external PIN verification\n");
-		/* @TODO: Ideally, this should probably be a non-modal dialog with just a cancel button
-		 * that goes away as soon as a key is pressed on the pinpad.
-		 */
-		r = MessageBoxA(vs->hwndParent, buf, "PIN Entry Required",
-				MB_OKCANCEL | MB_ICONINFORMATION);
-		if (IDCANCEL == r) {
-			logprintf(pCardData, 2, "User canceled PIN verification\n");
-			return ERROR_CANCELLED;
-		}
-	}
 
-	r = sc_pkcs15_verify_pin(vs->p15card, pin_obj, (const u8 *) pbPinData, cbPinData);
+	r = md_dialog_perform_pin_operation(pCardData, SC_PIN_CMD_VERIFY, vs->p15card, pin_obj, (const u8 *) pbPinData, cbPinData, NULL, 0, DisplayPinpadUI);
+
 	if (r)   {
 		logprintf(pCardData, 1, "PIN code verification failed: %s; tries left %i\n", sc_strerror(r), auth_info->tries_left);
 
@@ -3533,7 +3702,7 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 
 		if(pcAttemptsRemaining)
 			(*pcAttemptsRemaining) = auth_info->tries_left;
-		return SCARD_W_WRONG_CHV;
+		return md_translate_OpenSC_to_Windows_error(r, SCARD_W_WRONG_CHV);
 	}
 
 	logprintf(pCardData, 2, "Pin code correct.\n");
@@ -3564,7 +3733,7 @@ DWORD WINAPI CardChangeAuthenticatorEx(__in PCARD_DATA pCardData,
 	struct sc_pkcs15_object *pin_obj = NULL;
 	int rv;
 	struct sc_pkcs15_auth_info *auth_info;
-	BOOL DisplayPinpadUI = TRUE;
+	BOOL DisplayPinpadUI = FALSE;
 
 	logprintf(pCardData, 1, "\nP:%d T:%d pCardData:%p ",GetCurrentProcessId(), GetCurrentThreadId(), pCardData);
 	logprintf(pCardData, 1, "CardChangeAuthenticatorEx\n");
@@ -3610,10 +3779,8 @@ DWORD WINAPI CardChangeAuthenticatorEx(__in PCARD_DATA pCardData,
 	}
 	/* using a pin pad */
 	if (NULL == pbAuthenticatingPinData) {
-		if (dwFlags & CARD_PIN_SILENT_CONTEXT) {
-			if (!md_is_supports_use_pinpad_in_silent_context(pCardData))
-				return NTE_SILENT_CONTEXT;
-			DisplayPinpadUI = FALSE;
+		if (!(dwFlags & CARD_PIN_SILENT_CONTEXT)) {
+			DisplayPinpadUI = TRUE;
 		}
 	}
 
@@ -3628,47 +3795,9 @@ DWORD WINAPI CardChangeAuthenticatorEx(__in PCARD_DATA pCardData,
 	if(pcAttemptsRemaining)
 		(*pcAttemptsRemaining) = (DWORD) -1;
 
-	if (DisplayPinpadUI && NULL == pbAuthenticatingPinData) {
-		char buf[200];
-		PSTR title = NULL;
-		if (NULL == vs->wszPinContext )   {
-			strcpy(buf, "Please enter PIN on reader pinpad.");
-		}
-		else   {
-			/* %S enable the use of UNICODE string (wsPinContext) inside an ANSI string (buf) */
-			snprintf(buf, sizeof(buf), "Please enter PIN %S", vs->wszPinContext);
-		}
-		if (dwFlags & PIN_CHANGE_FLAG_UNBLOCK)	{
-			title = "Unblock PIN - PIN Entry Required";
-		}
-		else {
-			title = "Change PIN - PIN Entry Required";
-		}
-		logprintf(pCardData, 7, "About to display message box for external PIN verification\n");
-		/* @TODO: Ideally, this should probably be a non-modal dialog with just a cancel button
-		 * that goes away as soon as a key is pressed on the pinpad.
-		 */
-		rv = MessageBoxA(vs->hwndParent, buf, title,
-				MB_OKCANCEL | MB_ICONINFORMATION);
-		if (IDCANCEL == rv) {
-			logprintf(pCardData, 2, "User canceled PIN verification\n");
-			return ERROR_CANCELLED;
-		}
-	}
-
-	if (dwFlags & PIN_CHANGE_FLAG_UNBLOCK)	{
-		rv = sc_pkcs15_unblock_pin(vs->p15card, pin_obj,
-			pbAuthenticatingPinData, cbAuthenticatingPinData,
-			pbTargetData, cbTargetData);
-	}
-	else if ( dwFlags & PIN_CHANGE_FLAG_CHANGEPIN)	{
-		rv = sc_pkcs15_change_pin(vs->p15card, pin_obj,
-				pbAuthenticatingPinData, cbAuthenticatingPinData,
-				pbTargetData, cbTargetData);
-	}
-	else {
-		return SCARD_E_UNSUPPORTED_FEATURE;
-	}
+	rv = md_dialog_perform_pin_operation(pCardData, (dwFlags & PIN_CHANGE_FLAG_UNBLOCK ? SC_PIN_CMD_UNBLOCK:SC_PIN_CMD_CHANGE), 
+		vs->p15card, pin_obj, (const u8 *) pbAuthenticatingPinData, cbAuthenticatingPinData, pbTargetData, cbTargetData, DisplayPinpadUI);
+	
 	if (rv)   {
 		logprintf(pCardData, 2, "Failed to %s %s PIN: '%s' (%i)\n",
 																(dwFlags & PIN_CHANGE_FLAG_CHANGEPIN?"change":"unblock"),
@@ -3682,7 +3811,7 @@ DWORD WINAPI CardChangeAuthenticatorEx(__in PCARD_DATA pCardData,
 
 		if(pcAttemptsRemaining)
 			(*pcAttemptsRemaining) = auth_info->tries_left;
-		return SCARD_W_WRONG_CHV;
+		return md_translate_OpenSC_to_Windows_error(rv, SCARD_W_WRONG_CHV);
 	}
 
 	logprintf(pCardData, 7, "returns success\n");
@@ -4594,7 +4723,7 @@ static int disassociate_card(PCARD_DATA pCardData)
 }
 
 
-BOOL APIENTRY DllMain( HMODULE hModule,
+BOOL APIENTRY DllMain( HINSTANCE hinstDLL,
 	DWORD  ul_reason_for_call,
 	LPVOID lpReserved
 )
@@ -4621,11 +4750,12 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 	}
 
 	logprintf(NULL,8,"\n********** DllMain Module(handle:0x%p) '%s'; reason='%s'; Reserved=%p; P:%d; T:%d\n",
-			hModule, name, reason, lpReserved, GetCurrentProcessId(), GetCurrentThreadId());
+			hinstDLL, name, reason, lpReserved, GetCurrentProcessId(), GetCurrentThreadId());
 #endif
 	switch (ul_reason_for_call)
 	{
 	case DLL_PROCESS_ATTACH:
+		g_inst = hinstDLL;
 		md_static_data.attach_check = MD_STATIC_PROCESS_ATTACHED;
 		break;
 	case DLL_PROCESS_DETACH:
