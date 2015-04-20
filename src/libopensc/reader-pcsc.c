@@ -979,6 +979,13 @@ static int pcsc_detect_readers(sc_context_t *ctx)
 		else {
 			rv = gpriv->SCardListReaders(gpriv->pcsc_ctx, NULL, NULL,
 					      (LPDWORD) &reader_buf_size);
+			if (rv == SCARD_E_NO_SERVICE) {
+				gpriv->SCardReleaseContext(gpriv->pcsc_ctx);
+				gpriv->pcsc_ctx = -1;
+				gpriv->pcsc_wait_ctx = -1;
+				/* reconnecting below may may restart PC/SC service */
+				rv = SCARD_E_INVALID_HANDLE;
+			}
 		}
 		if (rv != SCARD_S_SUCCESS) {
 			if (rv != (LONG)SCARD_E_INVALID_HANDLE) {
