@@ -330,9 +330,13 @@ card_detect_all(void)
 	/* Detect cards in all initialized readers */
 	for (i=0; i< sc_ctx_get_reader_count(context); i++) {
 		sc_reader_t *reader = sc_ctx_get_reader(context, i);
-		if (!reader_get_slot(reader))
-			initialize_reader(reader);
-		card_detect(sc_ctx_get_reader(context, i));
+		if (reader->flags & SC_READER_REMOVED) {
+			card_removed(reader);
+		} else {
+			if (!reader_get_slot(reader))
+				initialize_reader(reader);
+			card_detect(sc_ctx_get_reader(context, i));
+		}
 	}
 	sc_log(context, "All cards detected");
 	return CKR_OK;
@@ -420,7 +424,7 @@ CK_RV slot_token_removed(CK_SLOT_ID id)
 	/* Release framework stuff */
 	if (slot->card != NULL) {
 		if (slot->fw_data != NULL &&
-		    slot->card->framework != NULL && slot->card->framework->release_token != NULL)
+				slot->card->framework != NULL && slot->card->framework->release_token != NULL)
 			slot->card->framework->release_token(slot->card, slot->fw_data);
 	}
 
@@ -446,7 +450,7 @@ CK_RV slot_find_changed(CK_SLOT_ID_PTR idp, int mask)
 		sc_pkcs11_slot_t *slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, i);
 		sc_log(context, "slot 0x%lx token: %d events: 0x%02X",slot->id, (slot->slot_info.flags & CKF_TOKEN_PRESENT), slot->events);
 		if ((slot->events & SC_EVENT_CARD_INSERTED)
-		    && !(slot->slot_info.flags & CKF_TOKEN_PRESENT)) {
+				&& !(slot->slot_info.flags & CKF_TOKEN_PRESENT)) {
 			/* If a token has not been initialized, clear the inserted event */
 			slot->events &= ~SC_EVENT_CARD_INSERTED;
 		}
