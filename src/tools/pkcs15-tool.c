@@ -803,6 +803,8 @@ static void print_ssh_key(FILE *outf, const char * alg, struct sc_pkcs15_object 
 
 	if (opt_rfc4716) {
 		r = sc_base64_encode(buf, len, uu, 2*len, 64);
+		if (r < 0)
+			return;
 
 		fprintf(outf,"---- BEGIN SSH2 PUBLIC KEY ----\n");
 
@@ -815,6 +817,9 @@ static void print_ssh_key(FILE *outf, const char * alg, struct sc_pkcs15_object 
 		// Old style openssh - [<quote protected options> <whitespace> <keytype> <whitespace> <key> [<whitespace> anything else]
 		//
 		r = sc_base64_encode(buf, len, uu, 2*len, 0);
+		if (r < 0)
+			return;
+
 		if (obj->label && strlen(obj->label)) 
 			fprintf(outf,"ssh-%s %s %s\n", alg, uu, obj->label);
 		else
