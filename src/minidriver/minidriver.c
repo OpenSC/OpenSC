@@ -2283,7 +2283,7 @@ static INT_PTR CALLBACK md_dialog_proc(HWND hWnd, UINT message, WPARAM wParam, L
 			/* clean resources used */
 			LPARAM param = GetWindowLongPtr(hWnd, GWLP_USERDATA);
 			if (param) {
-				HANDLE hThread = (HANDLE)((LONG_PTR*)lParam)[8];
+				HANDLE hThread = (HANDLE)((LONG_PTR*)param)[8];
 				CloseHandle(hThread);
 			}
 		}
