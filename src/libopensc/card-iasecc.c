@@ -572,6 +572,7 @@ iasecc_init_amos(struct sc_card *card)
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
+static int
 iasecc_mi_match(struct sc_card *card)
 {
 	struct sc_context *ctx = card->ctx;
@@ -2060,6 +2061,7 @@ iasecc_chv_change_pinpad(struct sc_card *card, unsigned reference, int *tries_le
 }
 
 
+#if 0
 static int
 iasecc_chv_set_pinpad(struct sc_card *card, unsigned char reference)
 {
@@ -2105,6 +2107,7 @@ iasecc_chv_set_pinpad(struct sc_card *card, unsigned char reference)
 	rv = iso_ops->pin_cmd(card, &pin_cmd, NULL);
 	LOG_FUNC_RETURN(ctx, rv);
 }
+#endif
 
 
 static int
