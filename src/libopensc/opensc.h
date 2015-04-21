@@ -803,6 +803,8 @@ sc_reader_t *sc_ctx_get_reader_by_id(sc_context_t *ctx, unsigned int id);
  */
 unsigned int sc_ctx_get_reader_count(sc_context_t *ctx);
 
+int _sc_delete_reader(sc_context_t *ctx, sc_reader_t *reader);
+
 /**
  * Redirects OpenSC debug log to the specified file
  * @param  ctx existing OpenSC context

@@ -20,6 +20,7 @@
  */
 
 #include "config.h"
+#include "libopensc/opensc.h"
 
 #include <string.h>
 #include <stdlib.h>
@@ -98,6 +99,15 @@ CK_RV create_slot(sc_reader_t *reader)
 	}
 
 	return CKR_OK;
+}
+
+void delete_slot(struct sc_pkcs11_slot *slot)
+{
+	if (slot) {
+		list_destroy(&slot->objects);
+		list_delete(&virtual_slots, slot);
+		free(slot);
+	}
 }
 
 
@@ -331,7 +341,13 @@ card_detect_all(void)
 	for (i=0; i< sc_ctx_get_reader_count(context); i++) {
 		sc_reader_t *reader = sc_ctx_get_reader(context, i);
 		if (reader->flags & SC_READER_REMOVED) {
+			struct sc_pkcs11_slot *slot;
 			card_removed(reader);
+			while ((slot = reader_get_slot(reader))) {
+				delete_slot(slot);
+			}
+			_sc_delete_reader(context, reader);
+			i--;
 		} else {
 			if (!reader_get_slot(reader))
 				initialize_reader(reader);
