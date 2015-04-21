@@ -1,5 +1,6 @@
 #include <winresrc.h>
 
+#define IDC_STATIC -1
 /* defined twice: in versioninfo-minidriver.rc.in and in minidriver.c */
 #define IDD_PINPAD      101
 #define IDC_PINPAD_TEXT 1001
