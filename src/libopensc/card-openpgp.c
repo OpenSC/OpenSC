@@ -25,7 +25,9 @@
  * http://www.g10code.de/docs/openpgp-card-2.0.pdf
  */
 
+#if HAVE_CONFIG_H
 #include "config.h"
+#endif
 
 #include <stdlib.h>
 #include <string.h>

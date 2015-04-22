@@ -4,7 +4,9 @@
  * Copyright (C) 2003  Olaf Kirch <okir@suse.de>
  */
 
+#if HAVE_CONFIG_H
 #include "config.h"
+#endif
 
 #ifdef ENABLE_OPENCT	/* empty file without openct */
 #include <errno.h>

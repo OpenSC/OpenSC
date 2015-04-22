@@ -23,7 +23,9 @@
  *  DEALINGS IN THE SOFTWARE.
  */
 
+#if HAVE_CONFIG_H
 #include "config.h"
+#endif
 
 #if ! ( defined(HAVE_GETOPT_H) && defined(HAVE_GETOPT_LONG) && defined(HAVE_GETOPT_LONG_ONLY) )
 

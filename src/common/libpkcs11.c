@@ -5,7 +5,9 @@
  * Copyright (C) 2002  Olaf Kirch <okir@lst.de>
  */
 
+#if HAVE_CONFIG_H
 #include "config.h"
+#endif
 
 #include <stdlib.h>
 #include <stdio.h>

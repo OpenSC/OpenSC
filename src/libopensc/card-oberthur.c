@@ -23,7 +23,9 @@
  * best view with tabstop=4
  */
 
+#if HAVE_CONFIG_H
 #include "config.h"
+#endif
 
 #ifdef ENABLE_OPENSSL	/* empty file without openssl */
 #include <stdlib.h>
