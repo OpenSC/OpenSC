@@ -1973,6 +1973,19 @@ static int write_object(CK_SESSION_HANDLE session)
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_ID, opt_object_id, opt_object_id_len);
 			n_privkey_attr++;
 		}
+		if (opt_key_usage_sign != 0) {
+			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_SIGN, &_true, sizeof(_true));
+			n_privkey_attr++;
+		}
+		if (opt_key_usage_decrypt != 0) {
+			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_DECRYPT, &_true, sizeof(_true));
+			n_privkey_attr++;
+		}
+		if (opt_key_usage_derive != 0) {
+			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_DERIVE, &_true, sizeof(_true));
+			n_privkey_attr++;
+		}
+
 #ifdef ENABLE_OPENSSL
 		if (cert.subject_len != 0) {
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_SUBJECT, cert.subject, cert.subject_len);
@@ -2052,6 +2065,19 @@ static int write_object(CK_SESSION_HANDLE session)
 				opt_object_id, opt_object_id_len);
 			n_pubkey_attr++;
 		}
+		if (opt_key_usage_sign != 0) {
+			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_VERIFY, &_true, sizeof(_true));
+			n_pubkey_attr++;
+		}
+		if (opt_key_usage_decrypt != 0) {
+			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_ENCRYPT, &_true, sizeof(_true));
+			n_pubkey_attr++;
+		}
+		if (opt_key_usage_derive != 0) {
+			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_DERIVE, &_true, sizeof(_true));
+			n_pubkey_attr++;
+		}
+
 #ifdef ENABLE_OPENSSL
 		if (cert.subject_len != 0) {
 			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_SUBJECT,
