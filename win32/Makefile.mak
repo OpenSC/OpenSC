@@ -8,7 +8,11 @@ config.h: winconfig.h
 	copy /y winconfig.h config.h
 
 customactions.dll: customactions.obj
-        link /dll $(LINKFLAGS) /out:customactions.dll customactions.obj msi.lib $(WIX_LIB)\dutil.lib $(WIX_LIB)\wcautil.lib
+	echo LIBRARY $* > $*.def
+	echo EXPORTS >> $*.def
+	type customactions.exports >> $*.def
+        link /dll $(LINKFLAGS) /def:$*.def /out:customactions.dll customactions.obj msi.lib $(WIX_LIB)\dutil.lib $(WIX_LIB)\wcautil.lib
+
 
 OpenSC.msi: OpenSC.wixobj
         $(WIX_PATH)\bin\light.exe -sh -ext WixUIExtension -ext WiXUtilExtension $?
