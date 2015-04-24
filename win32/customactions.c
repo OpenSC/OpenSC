@@ -38,7 +38,7 @@
 // first version - do nothing - see if it can compile
 
 // DllMain - Initialize and cleanup WiX custom action utils.
-extern "C" BOOL WINAPI DllMain(
+BOOL APIENTRY DllMain(
 	__in HINSTANCE hInst,
 	__in ULONG ulReason,
 	__in LPVOID
@@ -57,3 +57,5 @@ extern "C" BOOL WINAPI DllMain(
 
 	return TRUE;
 }
+
+#endif
