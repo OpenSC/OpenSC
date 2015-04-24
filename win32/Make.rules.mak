@@ -10,6 +10,12 @@ WIX_PATH = "C:\Program Files (x86)\Windows Installer XML v3.6"
 WIX_PATH = "C:\Program Files\Windows Installer XML v3.6"
 !ENDIF
 
+!IF "$(BUILD_ON)" == "WIN64"
+WIX_LIB = "C:\Program Files (x86)\Windows Installer XML v3.6\SDK\VS2012\lib\x64"
+!ELSE
+WIX_LIB = "C:\Program Files\Windows Installer XML v3.6\SDK\VS2012\lib\x86"
+!ENDIF
+
 #Include support for Secure Messaging
 SM_DEF = /DENABLE_SM
 
