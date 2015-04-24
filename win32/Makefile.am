@@ -12,13 +12,12 @@ lib_LTLIBRARIES = opensc-setup-custom-action@LIBRARY_BITNESS@.la
 
 AM_CPPFLAGS = -I$(top_srcdir)/win32
 
-endif
 
 opensc-setup-custom-action@LIBRARY_BITNESS@_la_SOURCES = opensc-setup-custom-action.c opensc-setup-custom-action.exports
 opensc-setup-custom-action@LIBRARY_BITNESS@_la_LIBADD =  \
-	$(top_builddir)/src/win32/opensc-setup-custom-action.la
+	$(top_builddir)/win32/opensc-setup-custom-action.la
 opensc-setup-custom-action@LIBRARY_BITNESS@_la_LDFLAGS = $(AM_LDFLAGS) \
-	-export-symbols "$(srcdir)/opensc-setup-custom-action.exports" \
+	-export-symbols "$(srcdir)/win32/opensc-setup-custom-action.exports" \
 	-module -avoid-version -no-undefined
 
 if ENABLE_MINIDRIVER
