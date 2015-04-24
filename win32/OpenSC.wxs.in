@@ -33,8 +33,8 @@
     <!-- OpenSC is covered by LGPL. Extend the license as required with other EULA notes -->
     <WixVariable Id="WixUILicenseRtf" Value="license.rtf"/>
     <!-- Setup background images -->
-    <WixVariable Id="WixUIBannerBmp" Value="bannrbmp.bmp"/>
-    <WixVariable Id="WixUIDialogBmp" Value="dlgbmp.bmp"/>
+    <WixVariable Id="WixUIBannerBmp" Value="$(var.SOURCE_DIR)\win32\bannrbmp.bmp"/>
+    <WixVariable Id="WixUIDialogBmp" Value="$(var.SOURCE_DIR)\win32\dlgbmp.bmp"/>
     <!-- Links in info -->
     <Property Id="ARPHELPLINK" Value="http://www.opensc-project.org/opensc/wiki/ReportingBugs"/>
     <Property Id="ARPURLINFOABOUT" Value="http://www.opensc-project.org/"/>
