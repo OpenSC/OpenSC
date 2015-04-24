@@ -17,7 +17,7 @@ customactions.dll: customactions.obj
 OpenSC.msi: OpenSC.wixobj
         $(WIX_PATH)\bin\light.exe -sh -ext WixUIExtension -ext WiXUtilExtension $?
 
-OpenSC.wixobj: OpenSC.wxs opensc-setup-custom-action.dll
+OpenSC.wixobj: OpenSC.wxs customactions.dll
         $(WIX_PATH)\bin\candle.exe -ext WiXUtilExtension -dSOURCE_DIR=$(TOPDIR) $(CANDLEFLAGS) $?
 
 clean::
