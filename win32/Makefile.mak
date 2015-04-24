@@ -7,8 +7,8 @@ all: config.h
 config.h: winconfig.h
 	copy /y winconfig.h config.h
 
-opensc-setup-custom-action.dll: opensc-setup-custom-action.obj
-        link /dll $(LINKFLAGS) /out:opensc-setup-custom-action.dll opensc-setup-custom-action.obj msi.lib $(WIX_LIB)\dutil.lib $(WIX_LIB)\wcautil.lib
+customactions.dll: customactions.obj
+        link /dll $(LINKFLAGS) /out:customactions.dll customactions.obj msi.lib $(WIX_LIB)\dutil.lib $(WIX_LIB)\wcautil.lib
 
 OpenSC.msi: OpenSC.wixobj
         $(WIX_PATH)\bin\light.exe -sh -ext WixUIExtension -ext WiXUtilExtension $?
