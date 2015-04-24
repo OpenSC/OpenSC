@@ -89,6 +89,16 @@ char * sc_dump_oid(const struct sc_object_id *oid);
 } while(0)
 #define LOG_TEST_RET(ctx, r, text) SC_TEST_RET((ctx), SC_LOG_DEBUG_NORMAL, (r), (text))
 
+#define SC_TEST_GOTO_ERR(ctx, level, r, text) do { \
+	int _ret = (r); \
+	if (_ret < 0) { \
+		sc_do_log(ctx, level, __FILE__, __LINE__, __FUNCTION__, \
+			"%s: %d (%s)\n", (text), _ret, sc_strerror(_ret)); \
+		goto err; \
+	} \
+} while(0)
+#define LOG_TEST_GOTO_ERR(ctx, r, text) SC_TEST_GOTO_ERR((ctx), SC_LOG_DEBUG_NORMAL, (r), (text))
+
 #ifdef __cplusplus
 }
 #endif
