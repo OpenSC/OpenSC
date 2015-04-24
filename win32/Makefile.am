@@ -12,14 +12,14 @@ endif
 if ENABLE_MINIDRIVER
 lib_LTLIBRARIES = customactions@LIBRARY_BITNESS@.la
 
-AM_CPPFLAGS = -I$(top_srcdir)/win32
+AM_CPPFLAGS = -I$(top_srcdir)
 
 
 customactions@LIBRARY_BITNESS@_la_SOURCES = customactions.c customactions.exports
 customactions@LIBRARY_BITNESS@_la_LIBADD =  \
 	$(top_builddir)/win32/customactions.la
 customactions@LIBRARY_BITNESS@_la_LDFLAGS = $(AM_LDFLAGS) \
-	-export-symbols "$(srcdir)/win32/customactions.exports" \
+	-export-symbols "$(srcdir)/customactions.exports" \
 	-module -avoid-version -no-undefined
 
 install-exec-hook:
