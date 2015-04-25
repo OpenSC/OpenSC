@@ -6,20 +6,20 @@ MINIDRIVER_DEF = /DENABLE_MINIDRIVER
 #Build MSI with the Windows Installer XML (WIX) toolkit, requires WIX >= 3.6
 !IF "$(BUILD_ON)" == "WIN64"
 WIX_PATH = "C:\Program Files (x86)\Windows Installer XML v3.6"
-WIX_INCL_DIR = "/IC:\Program Files (x86)\Windows Installer XML v3.6\SDK\VS2010\inc"
+WIX_INCL_DIR = "/IC:\Program Files (x86)\Windows Installer XML v3.6\SDK\inc"
 !IF "$(BUILD_FOR)" == "WIN64"
-WIX_LIB = "C:\Program Files (x86)\Windows Installer XML v3.6\SDK\VS2010\lib\x64"
+WIX_LIBS = "C:\Program Files (x86)\Windows Installer XML v3.6\SDK\lib\dutil_2010_x64.lib" "C:\Program Files (x86)\Windows Installer XML v3.6\SDK\lib\wcautil_2010_x64.lib"
 !ELSE
-WIX_LIB = "C:\Program Files (x86)\Windows Installer XML v3.6\SDK\VS2010\lib\x86"
+WIX_LIBS = "C:\Program Files (x86)\Windows Installer XML v3.6\SDK\lib\dutil_2010.lib" "C:\Program Files (x86)\Windows Installer XML v3.6\SDK\lib\wcautil_2010.lib"
 !ENDIF
 
 !ELSE
 WIX_PATH = "C:\Program Files\Windows Installer XML v3.6"
-WIX_INCL_DIR = "/IC:\Program Files\Windows Installer XML v3.6\SDK\VS2010\inc"
+WIX_INCL_DIR = "/IC:\Program Files\Windows Installer XML v3.6\SDK\inc"
 !IF "$(BUILD_FOR)" == "WIN64"
-WIX_LIB = "C:\Program Files\Windows Installer XML v3.6\SDK\VS2010\lib\x64"
+WIX_LIBS = "C:\Program Files\Windows Installer XML v3.6\SDK\lib\dutil_2010_x64.lib" "C:\Program Files\Windows Installer XML v3.6\SDK\lib\wcautil_2010_x64.lib"
 !ELSE
-WIX_LIB = "C:\Program Files\Windows Installer XML v3.6\SDK\VS2010\lib\x86"
+WIX_LIBS = "C:\Program Files\Windows Installer XML v3.6\SDK\lib\dutil_2010.lib" "C:\Program Files\Windows Installer XML v3.6\SDK\lib\wcautil_2010.lib"
 !ENDIF
 
 !ENDIF
