@@ -242,6 +242,7 @@ sc_print_path
 sc_put_data
 sc_read_binary
 sc_read_record
+sc_reader_can_handle_pin
 sc_release_context
 sc_reset
 sc_reset_retry_counter

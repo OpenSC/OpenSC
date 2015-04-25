@@ -24,6 +24,7 @@
 #include "libopensc/log.h"
 #include "libopensc/asn1.h"
 #include "libopensc/cardctl.h"
+#include "libopensc/reader-quirks.h"
 
 #ifdef ENABLE_OPENSSL
 #include <openssl/opensslv.h>
@@ -945,9 +946,6 @@ pkcs15_init_slot(struct sc_pkcs15_card *p15card, struct sc_pkcs11_slot *slot,
 	if (auth != NULL)
 		slot->token_info.flags |= CKF_USER_PIN_INITIALIZED;
 
-	if (p15card->card->reader->capabilities & SC_READER_CAP_PIN_PAD)
-		slot->token_info.flags |= CKF_PROTECTED_AUTHENTICATION_PATH;
-
 	if (p15card->card->caps & SC_CARD_CAP_RNG && p15card->card->ops->get_challenge != NULL)
 		slot->token_info.flags |= CKF_RNG;
 
@@ -972,6 +970,9 @@ pkcs15_init_slot(struct sc_pkcs15_card *p15card, struct sc_pkcs11_slot *slot,
 		snprintf(label, sizeof(label), "%s", p15card->tokeninfo->label);
 	}
 	strcpy_bp(slot->token_info.label, label, 32);
+
+	if (sc_reader_can_handle_pin(p15card->card->reader, pin_info))
+		slot->token_info.flags |= CKF_PROTECTED_AUTHENTICATION_PATH;
 
 	if (pin_info) {
 		slot->token_info.ulMaxPinLen = pin_info->attrs.pin.max_length;
@@ -1472,7 +1473,7 @@ pkcs15_login(struct sc_pkcs11_slot *slot, CK_USER_TYPE userType,
 	if (pin_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
 		return CKR_FUNCTION_REJECTED;
 
-	if (p11card->card->reader->capabilities & SC_READER_CAP_PIN_PAD) {
+	if (sc_reader_can_handle_pin(p11card->card->reader, pin_info)) {
 		/* pPin should be NULL in case of a pin pad reader, but
 		 * some apps (e.g. older Netscapes) don't know about it.
 		 * So we don't require that pPin == NULL, but set it to
@@ -1637,7 +1638,7 @@ pkcs15_change_pin(struct sc_pkcs11_slot *slot,
 		return CKR_USER_PIN_NOT_INITIALIZED;
 
 	sc_log(context, "Change '%s' (ref:%i,type:%i)", pin_obj->label, auth_info->attrs.pin.reference, login_user);
-	if (p11card->card->reader->capabilities & SC_READER_CAP_PIN_PAD) {
+	if (sc_reader_can_handle_pin(p11card->card->reader, auth_info)) {
 		/* pPin should be NULL in case of a pin pad reader, but
 		 * some apps (e.g. older Netscapes) don't know about it.
 		 * So we don't require that pPin == NULL, but set it to

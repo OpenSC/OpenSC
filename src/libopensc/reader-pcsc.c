@@ -54,6 +54,7 @@ struct pcsc_global_private_data {
 	SCARDCONTEXT pcsc_ctx;
 	SCARDCONTEXT pcsc_wait_ctx;
 	int enable_pinpad;
+	int enable_pinpad_auto;
 	int enable_pace;
 	int connect_exclusive;
 	DWORD disconnect_action;
@@ -642,6 +643,7 @@ static int pcsc_init(sc_context_t *ctx)
 	gpriv->transaction_end_action = SCARD_LEAVE_CARD;
 	gpriv->reconnect_action = SCARD_LEAVE_CARD;
 	gpriv->enable_pinpad = 1;
+	gpriv->enable_pinpad_auto = 1;
 	gpriv->enable_pace = 1;
 	gpriv->provider_library = DEFAULT_PCSC_PROVIDER;
 	gpriv->pcsc_ctx = -1;
@@ -649,6 +651,8 @@ static int pcsc_init(sc_context_t *ctx)
 
 	conf_block = sc_get_conf_block(ctx, "reader_driver", "pcsc", 1);
 	if (conf_block) {
+		int not_default;
+
 		gpriv->connect_exclusive =
 		    scconf_get_bool(conf_block, "connect_exclusive", gpriv->connect_exclusive);
 		gpriv->disconnect_action =
@@ -657,15 +661,19 @@ static int pcsc_init(sc_context_t *ctx)
 		    pcsc_reset_action(scconf_get_str(conf_block, "transaction_end_action", "leave"));
 		gpriv->reconnect_action =
 		    pcsc_reset_action(scconf_get_str(conf_block, "reconnect_action", "leave"));
+		not_default =
+		    scconf_get_bool(conf_block, "enable_pinpad", !gpriv->enable_pinpad);
 		gpriv->enable_pinpad =
 		    scconf_get_bool(conf_block, "enable_pinpad", gpriv->enable_pinpad);
+		gpriv->enable_pinpad_auto =
+		    gpriv->enable_pinpad != not_default;
 		gpriv->enable_pace =
 		    scconf_get_bool(conf_block, "enable_pace", gpriv->enable_pace);
 		gpriv->provider_library =
 		    scconf_get_str(conf_block, "provider_library", gpriv->provider_library);
 	}
-	sc_log(ctx, "PC/SC options: connect_exclusive=%d disconnect_action=%d transaction_end_action=%d reconnect_action=%d enable_pinpad=%d enable_pace=%d",
-		gpriv->connect_exclusive, gpriv->disconnect_action, gpriv->transaction_end_action, gpriv->reconnect_action, gpriv->enable_pinpad, gpriv->enable_pace);
+	sc_log(ctx, "PC/SC options: connect_exclusive=%d disconnect_action=%d transaction_end_action=%d reconnect_action=%d enable_pinpad=%d enable_pinpad_auto=%d enable_pace=%d",
+		gpriv->connect_exclusive, gpriv->disconnect_action, gpriv->transaction_end_action, gpriv->reconnect_action, gpriv->enable_pinpad, gpriv->enable_pinpad_auto, gpriv->enable_pace);
 
 	gpriv->dlhandle = sc_dlopen(gpriv->provider_library);
 	if (gpriv->dlhandle == NULL) {
@@ -901,6 +909,9 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 			reader->capabilities &= ~SC_READER_CAP_PIN_PAD;
 		}
 	}
+
+	if (priv->gpriv->enable_pinpad_auto)
+		reader->flags |= SC_READER_AUTO_PIN_PAD;
 
 	/* Detect display */
 	if (priv->pin_properties_ioctl) {
@@ -1947,6 +1958,54 @@ pcsc_perform_pace(struct sc_reader *reader, void *input_pace, void *output_pace)
     return SC_SUCCESS;
 }
 
+static int part10_get_vendor_product(struct sc_reader *reader, int *id_vendor,
+                                     int *id_product)
+{
+	int r;
+	unsigned char buffer[256];
+	size_t length = sizeof buffer;
+	struct pcsc_private_data *priv;
+
+	if (!reader)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	priv = GET_PRIV_DATA(reader);
+	if (!priv)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	r = pcsc_internal_transmit(reader, NULL, 0, buffer, &length,
+		priv->get_tlv_properties);
+	SC_TEST_RET(reader->ctx, SC_LOG_DEBUG_NORMAL, r,
+		"PC/SC v2 part 10: Get TLV properties failed!");
+
+	*id_vendor = part10_find_property_by_tag(buffer, length,
+		PCSCv2_PART10_PROPERTY_wIdVendor);
+	*id_product = part10_find_property_by_tag(buffer, length,
+		PCSCv2_PART10_PROPERTY_wIdProduct);
+
+	sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "id_vendor=%04x id_product=%04x", *id_vendor, *id_product);
+
+	return SC_SUCCESS;
+}
+
+static int pcsc_get_vendor_product(struct sc_reader *reader, int *id_vendor,
+                                   int *id_product)
+{
+	int r;
+	int this_id_vendor = -1;
+	int this_id_product = -1;
+
+	r = part10_get_vendor_product(reader, &this_id_vendor, &this_id_product);
+
+	if (id_vendor)
+		*id_vendor = this_id_vendor;
+
+	if (id_product)
+		*id_product = this_id_product;
+
+	return r;
+}
+
 struct sc_reader_driver * sc_get_pcsc_driver(void)
 {
 	pcsc_ops.init = pcsc_init;
@@ -1965,6 +2024,7 @@ struct sc_reader_driver * sc_get_pcsc_driver(void)
 	pcsc_ops.reset = pcsc_reset;
 	pcsc_ops.use_reader = NULL;
 	pcsc_ops.perform_pace = pcsc_perform_pace;
+	pcsc_ops.get_vendor_product = pcsc_get_vendor_product;
 
 	return &pcsc_drv;
 }
@@ -2265,6 +2325,9 @@ int cardmod_use_reader(sc_context_t *ctx, void * pcsc_context_handle, void * pcs
 							sc_log(ctx, "%s %s", log_text, log_disabled);
 						}
 					}
+
+					if (priv->gpriv->enable_pinpad_auto)
+						reader->flags |= SC_READER_AUTO_PIN_PAD;
 
 					if (display_ioctl)
 					{

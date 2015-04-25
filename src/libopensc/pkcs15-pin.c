@@ -30,6 +30,7 @@
 #include "internal.h"
 #include "asn1.h"
 #include "pkcs15.h"
+#include "reader-quirks.h"
 
 static const struct sc_asn1_entry c_asn1_com_ao_attr[] = {
 	{ "authId",       SC_ASN1_PKCS15_ID, SC_ASN1_TAG_OCTET_STRING, 0, NULL, NULL },
@@ -264,7 +265,7 @@ static int _validate_pin(struct sc_pkcs15_card *p15card,
 		return SC_ERROR_BUFFER_TOO_SMALL;
 
 	/* if we use pinpad, no more checks are needed */
-	if (p15card->card->reader->capabilities & SC_READER_CAP_PIN_PAD)
+	if (sc_reader_can_handle_pin(p15card->card->reader, auth_info))
 		return SC_SUCCESS;
 
 	/* If pin is given, make sure it is within limits */
@@ -345,7 +346,7 @@ int sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card,
 		data.pin_reference = skey_info->key_reference;
 	}
 
-	if(p15card->card->reader->capabilities & SC_READER_CAP_PIN_PAD) {
+	if(sc_reader_can_handle_pin(p15card->card->reader, auth_info)) {
 		if (!pincode && !pinlen)
 			data.flags |= SC_PIN_CMD_USE_PINPAD;
 		if (auth_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN)
@@ -441,7 +442,7 @@ int sc_pkcs15_change_pin(struct sc_pkcs15_card *p15card,
 	}
 
 	if((!oldpin || !newpin)
-			&& p15card->card->reader->capabilities & SC_READER_CAP_PIN_PAD) {
+			&& sc_reader_can_handle_pin(p15card->card->reader, auth_info)) {
 		data.flags |= SC_PIN_CMD_USE_PINPAD;
 		if (auth_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN) {
 			data.pin1.prompt = "Please enter SO PIN";
@@ -559,7 +560,7 @@ int sc_pkcs15_unblock_pin(struct sc_pkcs15_card *p15card,
 		break;
 	}
 
-	if(p15card->card->reader->capabilities & SC_READER_CAP_PIN_PAD) {
+	if(sc_reader_can_handle_pin(p15card->card->reader, auth_info)) {
 		data.flags |= SC_PIN_CMD_USE_PINPAD;
 		if (auth_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN) {
 			data.pin1.prompt = "Please enter PUK";
@@ -657,14 +658,14 @@ int sc_pkcs15_pincache_revalidate(struct sc_pkcs15_card *p15card, const sc_pkcs1
 		return SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
 	}
 
-	if (p15card->card->reader->capabilities & SC_READER_CAP_PIN_PAD)
-		return SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
-
 	r = sc_pkcs15_find_pin_by_auth_id(p15card, &obj->auth_id, &pin_obj);
 	if (r != SC_SUCCESS) {
 		sc_log(ctx, "Could not find pin object for auth_id %s", sc_pkcs15_print_id(&obj->auth_id));
 		return SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
 	}
+
+	if (sc_reader_can_handle_pin(p15card->card->reader, pin_obj->data))
+		return SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
 
 	if (pin_obj->usage_counter >= p15card->opts.pin_cache_counter) {
 		sc_pkcs15_free_object_content(pin_obj);

@@ -286,6 +286,7 @@ struct sc_reader_driver {
 #define SC_READER_CARD_INUSE		0x00000004
 #define SC_READER_CARD_EXCLUSIVE	0x00000008
 #define SC_READER_HAS_WAITING_AREA	0x00000010
+#define SC_READER_AUTO_PIN_PAD		0x00000020
 
 /* reader capabilities */
 #define SC_READER_CAP_DISPLAY	0x00000001
@@ -405,6 +406,10 @@ struct sc_reader_operations {
 	int (*reset)(struct sc_reader *, int);
 	/* Used to pass in PC/SC handles to minidriver */
 	int (*use_reader)(struct sc_context *ctx, void *pcsc_context_handle, void *pcsc_card_handle);
+
+	/* Get vendor and product identifiers */
+	int (*get_vendor_product)(struct sc_reader *reader, int *id_vendor,
+                                  int *id_product);
 };
 
 /*
