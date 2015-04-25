@@ -52,6 +52,8 @@ m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
 AC_CANONICAL_HOST
 AC_PROG_CC
+# AC_PROG_CXX is needed to built the win32 custom action. Indeed dutil.h use [extern "C"] definition which fails on pure c compiler
+AC_PROG_CXX
 PKG_PROG_PKG_CONFIG
 AC_C_BIGENDIAN
 
