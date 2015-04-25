@@ -2,12 +2,12 @@ TOPDIR = ..
 
 !INCLUDE $(TOPDIR)\win32\Make.rules.mak
 
-all: config.h
+all: versioninfo-customactions.res config.h
 
 config.h: winconfig.h
 	copy /y winconfig.h config.h
 
-customactions.dll: customactions.obj
+customactions.dll: versioninfo-customactions.res customactions.obj
 	echo LIBRARY $* > $*.def
 	echo EXPORTS >> $*.def
 	type customactions.exports >> $*.def

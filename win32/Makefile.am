@@ -2,7 +2,7 @@ MAINTAINERCLEANFILES = $(srcdir)/Makefile.in $(srcdir)/versioninfo.rc $(srcdir)/
 		$(srcdir)/OpenSC.iss $(srcdir)/OpenSC.wxs $(srcdir)/OpenSC.ico $(srcdir)/license.rtf \
                 $(srcdir)/dlgbmp.bmp $(srcdir)/bannrbmp.bmp
 EXTRA_DIST = ltrc.inc Makefile.mak Make.rules.mak opensc-install.bat \
-		versioninfo.rc.in winconfig.h.in OpenSC.iss.in OpenSC.wxs.in
+		versioninfo.rc.in winconfig.h.in OpenSC.iss.in OpenSC.wxs.in versioninfo-customactions.rc
 dist_noinst_HEADERS = versioninfo.rc winconfig.h OpenSC.iss OpenSC.wxs license.rtf OpenSC.ico dlgbmp.bmp bannrbmp.bmp
 
 if WIN32
