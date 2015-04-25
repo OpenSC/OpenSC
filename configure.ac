@@ -736,6 +736,7 @@ AC_CONFIG_FILES([
 	src/minidriver/opensc-minidriver.inf
 	win32/Makefile
 	win32/versioninfo.rc
+	win32/versioninfo-customactions.rc
 	win32/winconfig.h
 	win32/OpenSC.iss
 	win32/OpenSC.wxs
