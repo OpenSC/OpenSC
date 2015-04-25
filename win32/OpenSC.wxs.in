@@ -44,6 +44,10 @@
 	<Icon Id="OpenSC.ico" SourceFile="OpenSC.ico" />
 	<Property Id="ARPPRODUCTICON" Value="OpenSC.ico" />
 
+    <!--Custom actions-->
+    <Binary Id="customactions" SourceFile="$(var.SOURCE_DIR)\win32\customactions.dll" />
+    <CustomAction Id="RemoveSmartCardConfiguration" BinaryKey="customactions" DllEntry="RemoveSmartCardConfiguration" Execute="deferred" Impersonate="no"/>
+    <CustomAction Id="AddSmartCardConfiguration" BinaryKey="customactions" DllEntry="AddSmartCardConfiguration" Execute="commit" Impersonate="no"/>
 
     <Media Id="1" Cabinet="OpenSC.cab" EmbedCab="yes" CompressionLevel="high"/>
     <MajorUpgrade DowngradeErrorMessage="Can't downgrade." AllowSameVersionUpgrades="yes"/>
@@ -55,6 +59,23 @@
         </Component>
         <Component Id="opensc_minidriver.dll" Guid="*" Win64="$(var.Win64YesNo)">
           <File Source="$(var.SOURCE_DIR)\src\minidriver\opensc-minidriver.dll" Vital="yes"/>
+        </Component>
+        <!-- install an alias for the Base smart card CSP. Using a different CSP in minidriver installation deactivate the plug and play feature
+            but not all other components like the pin change screen available after ctrl+alt+del.
+            It is because the "80000001" entry is still returning the minidriver dll.-->
+        <Component Id="openscBaseCSP" Guid="*" Win64="$(var.Win64YesNo)">
+          <RegistryKey Root="HKLM" Key="SOFTWARE\Microsoft\Cryptography\Defaults\Provider\OpenSC CSP">
+            <RegistryValue Type="string" Name="Image Path" Value="basecsp.dll" KeyPath="yes"/>
+            <RegistryValue Type="integer" Name="Type" Value="1"/>
+          </RegistryKey>
+          <!-- when the x64 installer will install x86 components on x64 plateform too
+              <?if $(var.Platform) = x64 ?>
+              <RegistryKey Root="HKLM" Key="SOFTWARE\Wow6432Node\Microsoft\Cryptography\Defaults\Provider\OpenSC CSP">
+                <RegistryValue Type="string" Name="Image Path" Value="basecsp.dll"/>
+                <RegistryValue Type="integer" Name="Type" Value="1"/>
+              </RegistryKey>
+              <?endif?>
+              -->
         </Component>
       </Directory>
       <!-- Install tools and profiles to Program Files -->
@@ -81,6 +102,7 @@
                 <RegistryValue Type="string" Name="SmDir" Value="[INSTALLDIR]tools"/>
               </RegistryKey>
             </Component>
+
             <!-- Tools have their own folder -->
             <Directory Id="INSTALLDIR_TOOLS" Name="tools">
               <Component Id="opensc.dll" Guid="*" Win64="$(var.Win64YesNo)">
@@ -216,6 +238,7 @@
       </Feature>
       <Feature Id="OpenSC_minidriver" Level="1" Title="OpenSC minidriver" Description="OpenSC minidriver for using smart cards with native Windows CSP applications (like Internet Explorer)" Absent="allow">
         <ComponentRef Id="opensc_minidriver.dll"/>
+        <ComponentRef Id="openscBaseCSP"/>
       </Feature>
       <!-- Tools and profiles are for personalization -->
       <Feature Id="OpenSC_tools" Level="1" Title="Tools and profiles" Description="Tools for debugging and personalization. Includes profiles needed for running pkcs15-init.exe">
@@ -260,5 +283,20 @@
     </Feature>
     <UIRef Id="WixUI_Mondo"/>
     <UIRef Id="WixUI_ErrorProgressText"/>
+
+    <InstallExecuteSequence>
+      <!-- UnInstall sequence -->
+      <!-- clean the smart card registration (only at uninstall of the feature OpenSC_minidriver) -->
+      <Custom Action='RemoveSmartCardConfiguration' Before="RemoveFiles">
+        <![CDATA[(NOT UPGRADINGPRODUCTCODE) AND (&OpenSC_minidriver=2) AND (!OpenSC_minidriver=3) ]]>
+      </Custom>
+
+      <!-- Install sequence -->
+      <!-- add the smart card registration (only at install of the feature OpenSC_minidriver) -->
+      <Custom Action='AddSmartCardConfiguration' Before="RemoveSmartCardConfiguration">
+        <![CDATA[ (NOT (REMOVE="ALL")) AND (NOT UPGRADINGPRODUCTCODE) AND (&OpenSC_minidriver=3) AND (!OpenSC_minidriver=2) ]]>
+      </Custom>
+
+    </InstallExecuteSequence>
   </Product>
 </Wix>

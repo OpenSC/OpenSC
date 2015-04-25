@@ -11,7 +11,7 @@ customactions.dll: customactions.obj
 	echo LIBRARY $* > $*.def
 	echo EXPORTS >> $*.def
 	type customactions.exports >> $*.def
-    link /dll $(LINKFLAGS) /def:$*.def /out:customactions.dll customactions.obj msi.lib $(WIX_LIBS)
+        link /dll $(LINKFLAGS) /def:$*.def /out:customactions.dll customactions.obj msi.lib $(WIX_LIBS) Advapi32.lib User32.lib Version.lib Shell32.lib
 
 OpenSC.msi: OpenSC.wixobj
         $(WIX_PATH)\bin\light.exe -sh -ext WixUIExtension -ext WiXUtilExtension $?

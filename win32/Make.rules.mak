@@ -107,6 +107,9 @@ CANDLEFLAGS = -dPlatform=x86
 .c.obj::
 	cl $(CODE_OPTIMIZATION) $(COPTS) /c $<
 
+.cpp.obj::
+	cl $(CODE_OPTIMIZATION) $(COPTS) /c $<
+
 .rc.res::
 	rc /l 0x0409 $<
 
