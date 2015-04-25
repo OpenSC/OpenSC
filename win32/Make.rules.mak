@@ -104,7 +104,10 @@ LINKFLAGS = /NOLOGO /INCREMENTAL:NO /MACHINE:X86 /MANIFEST:NO /NODEFAULTLIB:MSVC
 LIBFLAGS =  /nologo /machine:x86
 CANDLEFLAGS = -dPlatform=x86
 !ENDIF
-.c.obj.cpp::
+.c.obj::
+	cl $(CODE_OPTIMIZATION) $(COPTS) /c $<
+
+.cpp.obj::
 	cl $(CODE_OPTIMIZATION) $(COPTS) /c $<
 
 .rc.res::
