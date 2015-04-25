@@ -238,5 +238,15 @@ BOOL APIENTRY DllMain(
 
 	return TRUE;
 }
+#else
 
+UINT WINAPI AddSmartCardConfiguration(unsigned long hInstall)
+{
+	return 0;
+}
+
+UINT WINAPI RemoveSmartCardConfiguration(unsigned long hInstall)
+{
+	return 0;
+}
 #endif
