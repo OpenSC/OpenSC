@@ -5,18 +5,19 @@ MINIDRIVER_DEF = /DENABLE_MINIDRIVER
 
 #Build MSI with the Windows Installer XML (WIX) toolkit, requires WIX >= 3.6
 !IF "$(BUILD_ON)" == "WIN64"
-WIX_PATH = "C:\Program Files (x86)\Windows Installer XML v3.6"
+WIX_PATH = C:\Program Files (x86)\Windows Installer XML v3.6
 !ELSE
-WIX_PATH = "C:\Program Files\Windows Installer XML v3.6"
+WIX_PATH = C:\Program Files\Windows Installer XML v3.6
 !ENDIF
 
 !IF "$(BUILD_FOR)" == "WIN64"
-WIX_LIB = $(WIX_PATH)\SDK\VS2012\lib\x64
+WIX_LIB = "$(WIX_PATH)\SDK\VS2012\lib\x64"
 !ELSE
-WIX_LIB = $(WIX_PATH)\SDK\VS2012\lib\x86
+WIX_LIB = "$(WIX_PATH)\SDK\VS2012\lib\x86"
 !ENDIF
 
-WIX_INCL_DIR = /I$(WIX_PATH)\SDK\VS2012\inc
+WIX_INCL_DIR = "/I$(WIX_PATH)\SDK\VS2012\inc"
+WIX_PATH = "$(WIX_PATH)"
 
 #Include support for Secure Messaging
 SM_DEF = /DENABLE_SM
