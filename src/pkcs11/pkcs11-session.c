@@ -120,17 +120,17 @@ static CK_RV sc_pkcs11_close_session(CK_SESSION_HANDLE hSession)
  * the global lock held */
 CK_RV sc_pkcs11_close_all_sessions(CK_SLOT_ID slotID)
 {
-	CK_RV rv = CKR_OK;
+	CK_RV rv = CKR_OK, error;
 	struct sc_pkcs11_session *session;
 	unsigned int i;
 	sc_log(context, "real C_CloseAllSessions(0x%lx) %d", slotID, list_size(&sessions));
 	for (i = 0; i < list_size(&sessions); i++) {
 		session = list_get_at(&sessions, i);
 		if (session->slot->id == slotID)
-			if ((rv = sc_pkcs11_close_session(session->handle)) != CKR_OK)
-				return rv;
+			if ((error = sc_pkcs11_close_session(session->handle)) != CKR_OK)
+				rv = error;
 	}
-	return CKR_OK;
+	return rv;
 }
 
 CK_RV C_CloseSession(CK_SESSION_HANDLE hSession)

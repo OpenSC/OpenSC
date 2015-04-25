@@ -646,7 +646,7 @@ myeid_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 			memcpy(pubkey->u.rsa.modulus.data, raw_pubkey, pubkey->u.rsa.modulus.len);
 		}
 		else if (object->type == SC_PKCS15_TYPE_PRKEY_EC) {
-			struct sc_ec_parameters *ecparams = (struct sc_pkcs15_ec_parameters *)key_info->params.data;
+			struct sc_ec_parameters *ecparams = (struct sc_ec_parameters *)key_info->params.data;
 
 			sc_log(ctx, "curve '%s', len %i, oid '%s'", ecparams->named_curve, ecparams->field_length, sc_dump_oid(&(ecparams->id)));
 			pubkey->algorithm = SC_ALGORITHM_EC;

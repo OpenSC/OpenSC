@@ -951,6 +951,7 @@ static int pcsc_detect_readers(sc_context_t *ctx)
 	char *reader_buf = NULL, *reader_name;
 	const char *mszGroups = NULL;
 	int ret = SC_ERROR_INTERNAL;
+	size_t i;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 
@@ -960,7 +961,13 @@ static int pcsc_detect_readers(sc_context_t *ctx)
 		goto out;
 	}
 
-	sc_log(ctx, "Probing pcsc readers");
+	/* temporarily mark all readers as removed */
+	for (i=0;i < sc_ctx_get_reader_count(ctx);i++) {
+		sc_reader_t *reader = sc_ctx_get_reader(ctx, i);
+		reader->flags |= SC_READER_REMOVED;
+	}
+
+	sc_log(ctx, "Probing PC/SC readers");
 
 	do {
 		if (gpriv->pcsc_ctx == -1) {
@@ -974,6 +981,13 @@ static int pcsc_detect_readers(sc_context_t *ctx)
 		else {
 			rv = gpriv->SCardListReaders(gpriv->pcsc_ctx, NULL, NULL,
 					      (LPDWORD) &reader_buf_size);
+			if (rv == SCARD_E_NO_SERVICE) {
+				gpriv->SCardReleaseContext(gpriv->pcsc_ctx);
+				gpriv->pcsc_ctx = -1;
+				gpriv->pcsc_wait_ctx = -1;
+				/* reconnecting below may may restart PC/SC service */
+				rv = SCARD_E_INVALID_HANDLE;
+			}
 		}
 		if (rv != SCARD_S_SUCCESS) {
 			if (rv != (LONG)SCARD_E_INVALID_HANDLE) {
@@ -982,7 +996,7 @@ static int pcsc_detect_readers(sc_context_t *ctx)
 				goto out;
 			}
 
-			sc_log(ctx, "Establish pcsc context");
+			sc_log(ctx, "Establish PC/SC context");
 
 			rv = gpriv->SCardEstablishContext(SCARD_SCOPE_USER,
 					      NULL, NULL, &gpriv->pcsc_ctx);
@@ -1009,28 +1023,28 @@ static int pcsc_detect_readers(sc_context_t *ctx)
 		goto out;
 	}
 	for (reader_name = reader_buf; *reader_name != '\x0'; reader_name += strlen(reader_name) + 1) {
-		sc_reader_t *reader = NULL;
+		sc_reader_t *reader = NULL, *old_reader;
 		struct pcsc_private_data *priv = NULL;
-		unsigned int i;
 		int found = 0;
 
 		for (i=0;i < sc_ctx_get_reader_count(ctx) && !found;i++) {
-			sc_reader_t *reader2 = sc_ctx_get_reader(ctx, i);
-			if (reader2 == NULL) {
+			old_reader = sc_ctx_get_reader(ctx, i);
+			if (old_reader == NULL) {
 				ret = SC_ERROR_INTERNAL;
 				goto err1;
 			}
-			if (!strcmp(reader2->name, reader_name)) {
+			if (!strcmp(old_reader->name, reader_name)) {
 				found = 1;
 			}
 		}
 
 		/* Reader already available, skip */
 		if (found) {
+			old_reader->flags &= ~SC_READER_REMOVED;
 			continue;
 		}
 
-		sc_log(ctx, "Found new pcsc reader '%s'", reader_name);
+		sc_log(ctx, "Found new PC/SC reader '%s'", reader_name);
 
 		if ((reader = calloc(1, sizeof(sc_reader_t))) == NULL) {
 			ret = SC_ERROR_OUT_OF_MEMORY;

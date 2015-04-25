@@ -286,6 +286,7 @@ struct sc_reader_driver {
 #define SC_READER_CARD_INUSE		0x00000004
 #define SC_READER_CARD_EXCLUSIVE	0x00000008
 #define SC_READER_HAS_WAITING_AREA	0x00000010
+#define SC_READER_REMOVED			0x00000020
 
 /* reader capabilities */
 #define SC_READER_CAP_DISPLAY	0x00000001
@@ -801,6 +802,8 @@ sc_reader_t *sc_ctx_get_reader_by_id(sc_context_t *ctx, unsigned int id);
  * @return the number of available reader objects
  */
 unsigned int sc_ctx_get_reader_count(sc_context_t *ctx);
+
+int _sc_delete_reader(sc_context_t *ctx, sc_reader_t *reader);
 
 /**
  * Redirects OpenSC debug log to the specified file
