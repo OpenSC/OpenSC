@@ -34,6 +34,8 @@
 
 #include <windows.h>
 
+// WiX Header Files:
+#include <wcautil.h>
 
 // first version - do nothing - see if it can compile
 
