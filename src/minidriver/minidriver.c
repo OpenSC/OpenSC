@@ -1,4 +1,4 @@
-/*
+﻿/*
  * minidriver.c: OpenSC minidriver
  *
  * Copyright (C) 2009,2010 francois.leblanc@cev-sa.com
@@ -140,7 +140,7 @@ struct md_pkcs15_container {
 	struct sc_pkcs15_id id;
 	char guid[MAX_CONTAINER_NAME_LEN + 1];
 	unsigned flags;
-	unsigned size_key_exchange, size_sign;
+	size_t size_key_exchange, size_sign;
 
 	struct sc_pkcs15_object *cert_obj, *prkey_obj, *pubkey_obj;
 };
@@ -261,7 +261,7 @@ static void logprintf(PCARD_DATA pCardData, int level, _Printf_format_string_ co
 	va_end(arg);
 }
 
-static void loghex(PCARD_DATA pCardData, int level, PBYTE data, int len)
+static void loghex(PCARD_DATA pCardData, int level, PBYTE data, size_t len)
 {
 	char line[74];
 	char *c;
@@ -917,7 +917,7 @@ md_pkcs15_update_containers(PCARD_DATA pCardData, unsigned char *blob, size_t si
 
 	vs = pCardData->pvVendorSpecific;
 
-	nn_records = size/sizeof(CONTAINER_MAP_RECORD);
+	nn_records = (int) size/sizeof(CONTAINER_MAP_RECORD);
 	if (nn_records > MD_MAX_KEY_CONTAINERS)
 		nn_records = MD_MAX_KEY_CONTAINERS;
 
@@ -969,7 +969,7 @@ md_pkcs15_update_container_from_do(PCARD_DATA pCardData, struct sc_pkcs15_object
 	}
 	id.len = *(ddata->data + offs++);
 	memcpy(id.value, ddata->data + offs, id.len);
-	offs += id.len;
+	offs += (int) id.len;
 
 	if (*(ddata->data + offs++) != 0x02)   {
 		sc_pkcs15_free_data_object(ddata);
@@ -1176,7 +1176,7 @@ md_fs_read_msroot_file(PCARD_DATA pCardData, char *parent, struct md_file *file)
 	int rv, ii, cert_num;
 	struct sc_pkcs15_object *prkey_objs[MD_MAX_KEY_CONTAINERS];
 
-	hCertStore = CertOpenStore(CERT_STORE_PROV_MEMORY, X509_ASN_ENCODING, NULL, 0, NULL);
+	hCertStore = CertOpenStore(CERT_STORE_PROV_MEMORY, X509_ASN_ENCODING, (HCRYPTPROV_LEGACY) NULL, 0, NULL);
 	if (!hCertStore) {
 		dwret = GetLastError();
 		goto Ret;
@@ -1200,7 +1200,7 @@ md_fs_read_msroot_file(PCARD_DATA pCardData, char *parent, struct md_file *file)
 				logprintf(pCardData, 2, "Cannot read certificate idx:%i: sc-error %d\n", ii, rv);
 				continue;
 			}
-			wincert = CertCreateCertificateContext(X509_ASN_ENCODING, cert->data.value, cert->data.len);
+			wincert = CertCreateCertificateContext(X509_ASN_ENCODING, cert->data.value, (DWORD) cert->data.len);
 			if (wincert) {
 				CertAddCertificateContextToStore(hCertStore, wincert, CERT_STORE_ADD_REPLACE_EXISTING, NULL);
 				CertFreeCertificateContext(wincert);
@@ -1598,8 +1598,8 @@ md_set_cmapfile(PCARD_DATA pCardData, struct md_file *file)
 
 			mbstowcs((p+ii)->wszGuid, vs->p15_containers[ii].guid, MAX_CONTAINER_NAME_LEN + 1);
 			(p+ii)->bFlags = vs->p15_containers[ii].flags;
-			(p+ii)->wSigKeySizeBits = vs->p15_containers[ii].size_sign;
-			(p+ii)->wKeyExchangeKeySizeBits = vs->p15_containers[ii].size_key_exchange;
+			(p+ii)->wSigKeySizeBits = (WORD) vs->p15_containers[ii].size_sign;
+			(p+ii)->wKeyExchangeKeySizeBits = (WORD) vs->p15_containers[ii].size_key_exchange;
 
 			if (vs->p15_containers[ii].cert_obj)   {
 				char k_name[6];
@@ -1858,7 +1858,8 @@ md_pkcs15_generate_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, DWORD ke
 
 	memset(&pub_args, 0, sizeof(pub_args));
 	memset(&keygen_args, 0, sizeof(keygen_args));
-	keygen_args.prkey_args.label = keygen_args.pubkey_label = "TODO: key label";
+	keygen_args.prkey_args.label = "TODO: key label";
+	keygen_args.pubkey_label = "TODO: key label";
 
 	if (key_type == AT_SIGNATURE)   {
 		keygen_args.prkey_args.key.algorithm = SC_ALGORITHM_RSA;
@@ -2226,7 +2227,7 @@ md_dialog_perform_pin_operation_thread(PVOID lpParameter)
 {
 	/* unstack the parameters */
 	LONG_PTR* parameter = (LONG_PTR*) lpParameter;
-	int operation = parameter[0];
+	int operation = (int) parameter[0];
 	struct sc_pkcs15_card *p15card = (struct sc_pkcs15_card *) parameter[1];
 	struct sc_pkcs15_object *pin_obj = (struct sc_pkcs15_object *) parameter[2];
 	const u8 *pin1 = (const u8 *) parameter[3];
@@ -2328,7 +2329,7 @@ md_dialog_perform_pin_operation(PCARD_DATA pCardData, int operation, struct sc_p
 	this is the only way to display a modal dialog attached to a parent (hwndParent != 0) */
 	result = DialogBoxParam(g_inst, MAKEINTRESOURCE(IDD_PINPAD), pv->hwndParent, md_dialog_proc, (LPARAM) parameter);
 	SecureZeroMemory(parameter, sizeof(parameter));
-	return result;
+	return (int) result;
 }
 
 DWORD md_translate_OpenSC_to_Windows_error(int OpenSCerror, DWORD dwDefaulCode)
@@ -2647,7 +2648,7 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 	if (pubkey_der.len && pubkey_der.value)   {
 		sz = 0; /* get size */
 		CryptDecodeObject(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING, RSA_CSP_PUBLICKEYBLOB,
-				pubkey_der.value, pubkey_der.len, 0, NULL, &sz);
+				pubkey_der.value, (DWORD) pubkey_der.len, 0, NULL, &sz);
 
 		if (cont->size_sign)   {
 			PUBKEYSTRUCT_BASE *oh = (PUBKEYSTRUCT_BASE *)pCardData->pfnCspAlloc(sz);
@@ -2655,7 +2656,7 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 				return SCARD_E_NO_MEMORY;
 
 			CryptDecodeObject(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING, RSA_CSP_PUBLICKEYBLOB,
-					pubkey_der.value, pubkey_der.len, 0, oh, &sz);
+					pubkey_der.value, (DWORD) pubkey_der.len, 0, oh, &sz);
 
 			oh->publickeystruc.aiKeyAlg = CALG_RSA_SIGN;
 			pContainerInfo->cbSigPublicKey = sz;
@@ -2670,7 +2671,7 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 				return SCARD_E_NO_MEMORY;
 
 			CryptDecodeObject(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING, RSA_CSP_PUBLICKEYBLOB,
-					pubkey_der.value, pubkey_der.len, 0, oh, &sz);
+					pubkey_der.value, (DWORD) pubkey_der.len, 0, oh, &sz);
 
 			oh->publickeystruc.aiKeyAlg = CALG_RSA_KEYX;
 			pContainerInfo->cbKeyExPublicKey = sz;
@@ -2974,7 +2975,7 @@ DWORD WINAPI CardReadFile(__in PCARD_DATA pCardData,
 	*ppbData = pCardData->pfnCspAlloc(file->size);
 	if(!*ppbData)
 		return SCARD_E_NO_MEMORY;
-	*pcbData = file->size;
+	*pcbData = (DWORD) file->size;
 	memcpy(*ppbData, file->blob, file->size);
 
 	logprintf(pCardData, 7, "returns '%s' content:\n",  NULLSTR(pszFileName));
@@ -3111,7 +3112,7 @@ DWORD WINAPI CardEnumFiles(__in PCARD_DATA pCardData,
 		return SCARD_E_NO_MEMORY;
 
 	CopyMemory(*pmszFileNames, mstr, offs);
-	*pdwcbFileName = offs;
+	*pdwcbFileName = (DWORD) offs;
 	return SCARD_S_SUCCESS;
 }
 
@@ -3137,7 +3138,7 @@ DWORD WINAPI CardGetFileInfo(__in PCARD_DATA pCardData,
 	}
 
 	pCardFileInfo->dwVersion = CARD_FILE_INFO_CURRENT_VERSION;
-	pCardFileInfo->cbFileSize = file->size;
+	pCardFileInfo->cbFileSize = (DWORD) file->size;
 	pCardFileInfo->AccessCondition = file->acl;
 
 	return SCARD_S_SUCCESS;
@@ -3281,7 +3282,7 @@ DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 	loghex(pCardData, 7, pbuf, pInfo->cbData);
 
 	prkey_info = (struct sc_pkcs15_prkey_info *)(pkey->data);
-	alg_info = sc_card_find_rsa_alg(vs->p15card->card, prkey_info->modulus_length);
+	alg_info = sc_card_find_rsa_alg(vs->p15card->card, (unsigned int) prkey_info->modulus_length);
 	if (!alg_info)   {
 		logprintf(pCardData, 2, "Cannot get appropriate RSA card algorithm for key size %i\n", prkey_info->modulus_length);
 		pCardData->pfnCspFree(pbuf);
@@ -3309,8 +3310,10 @@ DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 			if (pInfo->dwVersion >= CARD_RSA_KEY_DECRYPT_INFO_VERSION_TWO) {
 				logprintf(pCardData, 2, "sc_pkcs15_decipher: DECRYPT-INFO dwVersion=%u\n", pInfo->dwVersion);
 				if (pInfo->dwPaddingType == CARD_PADDING_PKCS1)   {
+					size_t temp = pInfo->cbData;
 					logprintf(pCardData, 2, "sc_pkcs15_decipher: stripping PKCS1 padding\n");
-					r = sc_pkcs1_strip_02_padding(vs->ctx, pbuf2, pInfo->cbData, pbuf2, &pInfo->cbData);
+					r = sc_pkcs1_strip_02_padding(vs->ctx, pbuf2, pInfo->cbData, pbuf2, &temp);
+					pInfo->cbData = (DWORD) temp;
 					if (r < 0)   {
 						logprintf(pCardData, 2, "Cannot strip PKCS1 padding: %i\n", r);
 						pCardData->pfnCspFree(pbuf);
@@ -3532,7 +3535,7 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 	}
 	opt_crypt_flags = SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE;
 
-	pInfo->cbSignedData = prkey_info->modulus_length / 8;
+	pInfo->cbSignedData = (DWORD) prkey_info->modulus_length / 8;
 	logprintf(pCardData, 3, "pInfo->cbSignedData = %d\n", pInfo->cbSignedData);
 
 	if(!(pInfo->dwSigningFlags&CARD_BUFFER_SIZE_ONLY))   {
@@ -4038,7 +4041,7 @@ DWORD WINAPI CardGetProperty(__in PCARD_DATA pCardData,
 		}
 
 		if (pdwDataLen)
-			*pdwDataLen = cardid->size;
+			*pdwDataLen = (DWORD) cardid->size;
 		if (cbData < cardid->size)
 			return ERROR_INSUFFICIENT_BUFFER;
 
@@ -4058,7 +4061,7 @@ DWORD WINAPI CardGetProperty(__in PCARD_DATA pCardData,
 		}
 
 		if (pdwDataLen)
-			*pdwDataLen = buf_len;
+			*pdwDataLen = (DWORD) buf_len;
 		if (cbData < buf_len)
 			return ERROR_INSUFFICIENT_BUFFER;
 
