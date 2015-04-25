@@ -33,6 +33,10 @@
 #include <stdlib.h>
 
 #include <windows.h>
+#include <tchar.h>
+#include <strsafe.h>
+
+#include <msiquery.h>
 
 // WiX Header Files:
 #include <wcautil.h>
