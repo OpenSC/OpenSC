@@ -6,7 +6,7 @@ all: config.h
 
 config.h: winconfig.h
 	copy /y winconfig.h config.h
-	dir /s WIX_PATH
+	dir /s $(WIX_PATH)
 
 customactions.dll: customactions.obj
 	echo LIBRARY $* > $*.def
