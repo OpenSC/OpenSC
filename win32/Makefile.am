@@ -1,3 +1,5 @@
+include $(top_srcdir)/win32/ltrc.inc
+
 MAINTAINERCLEANFILES = $(srcdir)/Makefile.in $(srcdir)/versioninfo.rc $(srcdir)/winconfig.h \
 		$(srcdir)/OpenSC.iss $(srcdir)/OpenSC.wxs $(srcdir)/OpenSC.ico $(srcdir)/license.rtf \
                 $(srcdir)/dlgbmp.bmp $(srcdir)/bannrbmp.bmp $(srcdir)\versioninfo-customactions.rc
