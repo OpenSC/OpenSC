@@ -15,7 +15,7 @@ lib_LTLIBRARIES = customactions@LIBRARY_BITNESS@.la
 AM_CPPFLAGS = -I$(top_srcdir)
 
 
-customactions@LIBRARY_BITNESS@_la_SOURCES = customactions.c customactions.exports
+customactions@LIBRARY_BITNESS@_la_SOURCES = customactions.cpp customactions.exports
 customactions@LIBRARY_BITNESS@_la_LIBADD =  \
 	$(top_builddir)/win32/customactions.la
 customactions@LIBRARY_BITNESS@_la_LDFLAGS = $(AM_LDFLAGS) \
