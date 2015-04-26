@@ -23,7 +23,7 @@
            Manufacturer="OpenSC Project">
     <Package Platform="$(var.Platform)"
              Description="OpenSC Installer"
-             Comments="OpenSC Project home page http://www.opensc-project.org/opensc/"
+             Comments="OpenSC Project home page https://github.com/OpenSC/OpenSC/wiki"
              Manufacturer="OpenSC Project"
              InstallerVersion="300"
              Languages="1033"
@@ -216,7 +216,7 @@
       <Directory Id="ProgramMenuFolder" Name="Programs">
         <Directory Id="ProgramMenuDir" Name="OpenSC Project">
           <Component Id="ProgramMenuDir" Guid="*">
-            <util:InternetShortcut Id="OnlineDocumentationShortcut" Name="OpenSC wiki" Target="http://www.opensc-project.org/opensc/"/>
+            <util:InternetShortcut Id="OnlineDocumentationShortcut" Name="OpenSC wiki" Target="https://github.com/OpenSC/OpenSC/wiki"/>
             <RemoveFolder Id="ProgramMenuDir" On="uninstall"/>
             <RegistryValue Root="HKCU" Key="Software\[Manufacturer]\[ProductName]" Name="installed" Type="integer" Value="1" KeyPath="yes"/>
           </Component>
