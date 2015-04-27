@@ -485,7 +485,7 @@ isoApplet_generate_key_ec(const sc_pkcs15_prkey_info_t *key_info, sc_card_t *car
 	args.pubkey.ec.params.coFactor.len			= curve->coFactor.len;
 	/* The length of the public key point will be:
 	 * Uncompressed tag + 2 * field length in bytes. */
-	args.pubkey.ec.ecPointQ.len = 1 + 2 * key_info->field_length / 8;
+	args.pubkey.ec.ecPointQ.len = 1 + (key_info->field_length + 7) / 8 * 2;
 	args.pubkey.ec.ecPointQ.value = malloc(args.pubkey.ec.ecPointQ.len);
 	if(!args.pubkey.ec.ecPointQ.value)
 	{

@@ -15,7 +15,7 @@ force:
 opensc.conf: opensc.conf.in force
 
 .in:
-	sed \
+	@sed \
 		-e 's|@pkgdatadir[@]|$(pkgdatadir)|g' \
 		-e 's|@libdir[@]|$(libdir)|g' \
 		-e 's|@DEFAULT_PCSC_PROVIDER[@]|$(DEFAULT_PCSC_PROVIDER)|g' \

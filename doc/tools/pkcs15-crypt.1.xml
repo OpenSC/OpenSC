@@ -161,6 +161,18 @@
 
 				<varlistentry>
 					<term>
+						<option>--signature-format</option>,
+						<option>--f</option>
+					</term>
+					<listitem><para>When signing with ECDSA key this option indicates
+					to <command>pkcs15-crypt</command> the signature output format.
+					Possible values are 'rs'(default) -- two concatanated
+					integers (PKCS#11), 'sequence' or 'openssl' -- DER encoded sequence
+					of two integeres (OpenSSL).</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
 						<option>--verbose</option>,
 						<option>-v</option>
 					</term>
@@ -168,7 +180,6 @@
 					verbose. Specify this flag several times to enable debug output
 					in the OpenSC library.</para></listitem>
 				</varlistentry>
-
 			</variablelist>
 		</para>
 	</refsect1>

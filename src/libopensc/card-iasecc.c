@@ -572,6 +572,7 @@ iasecc_init_amos(struct sc_card *card)
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
+static int
 iasecc_mi_match(struct sc_card *card)
 {
 	struct sc_context *ctx = card->ctx;
@@ -1801,15 +1802,14 @@ iasecc_chv_verify_pinpad(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd, 
 		LOG_FUNC_RETURN(ctx, SC_ERROR_READER);
 	}
 
-	sc_log(ctx, "reader %s", card->reader->name);
-	if (strstr(card->reader->name, "Gemalto GemPC Pinpad") == card->reader->name)   {
-		sc_log(ctx, "reader %s", card->reader->name);
-		if (pin_cmd->pin1.min_length != pin_cmd->pin1.max_length)   {
-			sc_log(ctx, "Bogus Gemalto GemPC Pinpad do not accept different values for min and max PIN lengths.");
-			LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
-		}
-	}
-	pin_cmd->pin1.len = pin_cmd->pin1.min_length;
+	/* When PIN stored length available
+	 *     P10 verify data contains full template of 'VERIFY PIN' APDU.
+	 * Without PIN stored length
+	 *     pin-pad has to set the Lc and fill PIN data itself.
+	 *     Not all pin-pads support this case
+	 */
+	pin_cmd->pin1.len = pin_cmd->pin1.stored_length;
+	pin_cmd->pin1.length_offset = 5;
 
 	memset(buffer, 0xFF, sizeof(buffer));
 	pin_cmd->pin1.data = buffer;
@@ -2039,27 +2039,29 @@ iasecc_chv_change_pinpad(struct sc_card *card, unsigned reference, int *tries_le
 	rv = iasecc_pin_get_policy(card, &pin_cmd);
 	LOG_TEST_RET(ctx, rv, "Get 'PIN policy' error");
 
-	if (strstr(card->reader->name, "Gemalto GemPC Pinpad") == card->reader->name)
-		if (pin_cmd.pin1.min_length != pin_cmd.pin1.max_length)
-			LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED,
-					"Bogus Gemalto GemPC Pinpad do not accept different values for min and max PIN lengths.");
+	/* Some pin-pads do not support mode with Lc=0.
+	 * Give them a chance to work with some cards.
+	 */
+	if ((pin_cmd.pin1.min_length == pin_cmd.pin1.stored_length) && (pin_cmd.pin1.max_length == pin_cmd.pin1.min_length))
+		pin_cmd.pin1.len = pin_cmd.pin1.stored_length;
+	else
+		pin_cmd.pin1.len = 0;
 
-	if (pin_cmd.pin1.min_length < 4)
-		pin_cmd.pin1.min_length = 4;
-	pin_cmd.pin1.len = pin_cmd.pin1.min_length;
+	pin_cmd.pin1.length_offset = 5;
 	pin_cmd.pin1.data = pin1_data;
 
 	memcpy(&pin_cmd.pin2, &pin_cmd.pin1, sizeof(pin_cmd.pin1));
 	pin_cmd.pin2.data = pin2_data;
 
-	sc_log(ctx, "PIN1 max/min: %i/%i", pin_cmd.pin1.max_length, pin_cmd.pin1.min_length);
-	sc_log(ctx, "PIN2 max/min: %i/%i", pin_cmd.pin2.max_length, pin_cmd.pin2.min_length);
+	sc_log(ctx, "PIN1 max/min/stored: %i/%i/%i", pin_cmd.pin1.max_length, pin_cmd.pin1.min_length, pin_cmd.pin1.stored_length);
+	sc_log(ctx, "PIN2 max/min/stored: %i/%i/%i", pin_cmd.pin2.max_length, pin_cmd.pin2.min_length, pin_cmd.pin2.stored_length);
 	rv = iso_ops->pin_cmd(card, &pin_cmd, tries_left);
 
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
 
+#if 0
 static int
 iasecc_chv_set_pinpad(struct sc_card *card, unsigned char reference)
 {
@@ -2087,18 +2089,17 @@ iasecc_chv_set_pinpad(struct sc_card *card, unsigned char reference)
 	rv = iasecc_pin_get_policy(card, &pin_cmd);
 	LOG_TEST_RET(ctx, rv, "Get 'PIN policy' error");
 
-	if (strstr(card->reader->name, "Gemalto GemPC Pinpad") == card->reader->name)
-		if (pin_cmd.pin1.min_length != pin_cmd.pin1.max_length)
-			LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED,
-					"Bogus Gemalto GemPC Pinpad do not accept different values for min and max PIN lengths.");
+	if ((pin_cmd.pin1.min_length == pin_cmd.pin1.stored_length) && (pin_cmd.pin1.max_length == pin_cmd.pin1.min_length))
+		pin_cmd.pin1.len = pin_cmd.pin1.stored_length;
+	else
+		pin_cmd.pin1.len = 0;
 
-	if (pin_cmd.pin1.min_length < 4)
-		pin_cmd.pin1.min_length = 4;
-	pin_cmd.pin1.len = pin_cmd.pin1.min_length;
+	pin_cmd.pin1.length_offset = 5;
 	pin_cmd.pin1.data = pin_data;
 
 	memcpy(&pin_cmd.pin2, &pin_cmd.pin1, sizeof(pin_cmd.pin1));
 	memset(&pin_cmd.pin1, 0, sizeof(pin_cmd.pin1));
+	pin_cmd.flags |= SC_PIN_CMD_IMPLICIT_CHANGE;
 
 	sc_log(ctx, "PIN1(max:%i,min:%i)", pin_cmd.pin1.max_length, pin_cmd.pin1.min_length);
 	sc_log(ctx, "PIN2(max:%i,min:%i)", pin_cmd.pin2.max_length, pin_cmd.pin2.min_length);
@@ -2106,6 +2107,7 @@ iasecc_chv_set_pinpad(struct sc_card *card, unsigned char reference)
 	rv = iso_ops->pin_cmd(card, &pin_cmd, NULL);
 	LOG_FUNC_RETURN(ctx, rv);
 }
+#endif
 
 
 static int
@@ -2158,6 +2160,7 @@ iasecc_pin_get_policy (struct sc_card *card, struct sc_pin_cmd_data *data)
 	if (sdo.docp.acls_contact.size == 0)
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Extremely strange ... there is no ACLs");
 
+	sc_log(ctx, "iasecc_pin_get_policy() sdo.docp.size.size %i %02X:%02X", sdo.docp.size.size, *(sdo.docp.size.value + 0),  *(sdo.docp.size.value + 1));
 	for (ii=0; ii<sizeof(sdo.docp.scbs); ii++)   {
 		struct iasecc_se_info se;
 		unsigned char scb = sdo.docp.scbs[ii];
@@ -2214,6 +2217,10 @@ iasecc_pin_get_policy (struct sc_card *card, struct sc_pin_cmd_data *data)
 		data->pin1.max_tries = *sdo.docp.tries_maximum.value;
 	if (sdo.docp.tries_remaining.value)
 		data->pin1.tries_left = *sdo.docp.tries_remaining.value;
+	if (sdo.docp.size.value)   {
+		for (ii=0; ii<sdo.docp.size.size; ii++)
+			data->pin1.stored_length = ((data->pin1.stored_length) << 8) + *(sdo.docp.size.value + ii);
+	}
 
 	data->pin1.encoding = SC_PIN_ENCODING_ASCII;
 	data->pin1.offset = 5;
@@ -2400,6 +2407,7 @@ iasecc_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_
 		unsigned char se_num = scb & IASECC_SCB_METHOD_MASK_REF;
 
 		if (scb & IASECC_SCB_METHOD_USER_AUTH)   {
+			sc_log(ctx, "Verify PIN in SE %X", se_num);
 			rv = iasecc_pin_verify(card, SC_AC_SEN, se_num, data->pin1.data, data->pin1.len, tries_left);
 			LOG_TEST_RET(ctx, rv, "iasecc_pin_reset() verify PUK error");
 
@@ -2421,6 +2429,7 @@ iasecc_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_
 	iasecc_sdo_free_fields(card, &sdo);
 
 	if (data->pin2.len)   {
+		sc_log(ctx, "Reset PIN %X and set new value", reference);
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x2C, 0x02, reference);
 		apdu.data = data->pin2.data;
 		apdu.datalen = data->pin2.len;
@@ -2432,6 +2441,7 @@ iasecc_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_
 		LOG_TEST_RET(ctx, rv, "PIN cmd failed");
 	}
 	else if (data->pin2.data) {
+		sc_log(ctx, "Reset PIN %X and set new value", reference);
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x2C, 3, reference);
 
 		rv = sc_transmit_apdu(card, &apdu);
@@ -2440,8 +2450,13 @@ iasecc_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_
 		LOG_TEST_RET(ctx, rv, "PIN cmd failed");
 	}
 	else   {
+		sc_log(ctx, "Reset PIN %X and set new value with PIN-PAD", reference);
+#if 0
 		rv = iasecc_chv_set_pinpad(card, reference);
-		sc_log(ctx, "Set CHV with PIN pad returned %i", rv);
+		LOG_TEST_RET(ctx, rv, "Reset PIN failed");
+#else
+		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Reset retry counter with PIN PAD not supported ");
+#endif
 	}
 
 	if (save_current)   {

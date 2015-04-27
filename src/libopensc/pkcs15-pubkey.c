@@ -18,7 +18,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#if HAVE_CONFIG_H
 #include "config.h"
+#endif
 
 #include <stdlib.h>
 #include <string.h>
@@ -721,6 +723,11 @@ sc_pkcs15_decode_pubkey_ec(sc_context_t *ctx,
 	key->ecpointQ.len = ecpoint_len;
 	key->ecpointQ.value = ecpoint_data;
 
+	/*
+	 * Only get here if raw point is stored in pkcs15 without curve name
+	 * spki has the curvename, so we can get the field_length
+	 * Following only true for curves that are multiple of 8 
+	 */
 	key->params.field_length = (ecpoint_len - 1)/2 * 8;
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
@@ -1296,6 +1303,12 @@ sc_pkcs15_pubkey_from_spki_fields(struct sc_context *ctx, struct sc_pkcs15_pubke
 
 	if (pk_alg.algorithm == SC_ALGORITHM_EC)   {
 		/* EC public key is not encapsulated into BIT STRING -- it's a BIT STRING */
+		/*
+		 * sc_pkcs15_fix_ec_parameters below will set field_length from curve.
+		 * if no alg_id->params, assume field_length is multiple of 8 
+		 */
+		pubkey->u.ec.params.field_length = (pk.len - 1) / 2 * 8;
+
 		if (pubkey->alg_id->params) {
 			struct sc_ec_parameters *ecp = (struct sc_ec_parameters *)pubkey->alg_id->params;
 
@@ -1309,7 +1322,6 @@ sc_pkcs15_pubkey_from_spki_fields(struct sc_context *ctx, struct sc_pkcs15_pubke
 			LOG_TEST_RET(ctx, r, "failed to fix EC parameters");
 		}
 
-		pubkey->u.ec.params.field_length = (pk.len - 1)/2 * 8;
 		pubkey->u.ec.ecpointQ.value = malloc(pk.len);
 		if (pubkey->u.ec.ecpointQ.value == NULL)
 			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);

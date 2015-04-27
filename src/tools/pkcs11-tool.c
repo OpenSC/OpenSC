@@ -1716,7 +1716,7 @@ do_read_private_key(unsigned char *data, size_t data_len, EVP_PKEY **key)
 
 	mem = BIO_new(BIO_s_mem());
 	BIO_set_mem_buf(mem, &buf_mem, BIO_NOCLOSE);
-	if (!strstr((char *)data, "-----BEGIN PRIVATE KEY-----"))
+	if (!strstr((char *)data, "-----BEGIN PRIVATE KEY-----") && !strstr((char *)data, "-----BEGIN EC PRIVATE KEY-----"))
 		*key = d2i_PrivateKey_bio(mem, NULL);
 	else
 		*key = PEM_read_bio_PrivateKey(mem, NULL, NULL, NULL);
@@ -1895,7 +1895,8 @@ static int write_object(CK_SESSION_HANDLE session)
 			rv = parse_rsa_private_key(&rsa, contents, contents_len);
 		}
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_EC)
-		else if (evp_key->type == NID_id_GostR3410_2001)   {
+		else if (evp_key->type == NID_id_GostR3410_2001 || evp_key->type == EVP_PKEY_EC)   {
+			/* parsing ECDSA is identical to GOST */
 			rv = parse_gost_private_key(evp_key, &gost);
 		}
 #endif
@@ -1972,6 +1973,19 @@ static int write_object(CK_SESSION_HANDLE session)
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_ID, opt_object_id, opt_object_id_len);
 			n_privkey_attr++;
 		}
+		if (opt_key_usage_sign != 0) {
+			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_SIGN, &_true, sizeof(_true));
+			n_privkey_attr++;
+		}
+		if (opt_key_usage_decrypt != 0) {
+			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_DECRYPT, &_true, sizeof(_true));
+			n_privkey_attr++;
+		}
+		if (opt_key_usage_derive != 0) {
+			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_DERIVE, &_true, sizeof(_true));
+			n_privkey_attr++;
+		}
+
 #ifdef ENABLE_OPENSSL
 		if (cert.subject_len != 0) {
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_SUBJECT, cert.subject, cert.subject_len);
@@ -1998,6 +2012,16 @@ static int write_object(CK_SESSION_HANDLE session)
 			n_privkey_attr++;
 		}
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_EC)
+		else if (evp_key->type == EVP_PKEY_EC)   {
+			type = CKK_EC;
+
+			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_KEY_TYPE, &type, sizeof(type));
+			n_privkey_attr++;
+			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_EC_PARAMS, gost.param_oid.value, gost.param_oid.len);
+			n_privkey_attr++;
+			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_VALUE, gost.private.value, gost.private.len);
+			n_privkey_attr++;
+		}
 		else if (evp_key->type == NID_id_GostR3410_2001)   {
 			type = CKK_GOSTR3410;
 
@@ -2041,6 +2065,19 @@ static int write_object(CK_SESSION_HANDLE session)
 				opt_object_id, opt_object_id_len);
 			n_pubkey_attr++;
 		}
+		if (opt_key_usage_sign != 0) {
+			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_VERIFY, &_true, sizeof(_true));
+			n_pubkey_attr++;
+		}
+		if (opt_key_usage_decrypt != 0) {
+			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_ENCRYPT, &_true, sizeof(_true));
+			n_pubkey_attr++;
+		}
+		if (opt_key_usage_derive != 0) {
+			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_DERIVE, &_true, sizeof(_true));
+			n_pubkey_attr++;
+		}
+
 #ifdef ENABLE_OPENSSL
 		if (cert.subject_len != 0) {
 			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_SUBJECT,
@@ -3494,6 +3531,9 @@ static int test_signature(CK_SESSION_HANDLE sess)
 
 	ck_mech.mechanism = firstMechType;
 	rv = p11->C_SignInit(sess, &ck_mech, privKeyObject);
+	/* mechanism not implemented, don't test */
+	if (rv == CKR_MECHANISM_INVALID)
+		return errors;
 	if (rv != CKR_OK)
 		p11_fatal("C_SignInit", rv);
 

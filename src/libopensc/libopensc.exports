@@ -77,6 +77,7 @@ sc_ctx_get_reader_by_name
 sc_ctx_get_reader_count
 sc_ctx_log_to_file
 sc_ctx_use_reader
+_sc_delete_reader
 sc_decipher
 sc_delete_file
 sc_delete_record
@@ -237,6 +238,7 @@ sc_pkcs15emu_add_ec_prkey
 sc_pkcs15emu_add_ec_pubkey
 sc_pkcs15emu_add_x509_cert
 sc_pkcs15emu_object_add
+sc_pkcs15_bind_internal
 sc_print_path
 sc_put_data
 sc_read_binary

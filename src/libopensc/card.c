@@ -18,7 +18,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#if HAVE_CONFIG_H
 #include "config.h"
+#endif
 
 #include <assert.h>
 #include <stdlib.h>
@@ -190,10 +192,14 @@ int sc_connect_card(sc_reader_t *reader, sc_card_t **card_out)
 	}
 
 	if (driver != NULL) {
-		/* Forced driver, or matched via ATR mapping from
-		 * config file */
+		/* Forced driver, or matched via ATR mapping from config file */
 		card->driver = driver;
+
 		memcpy(card->ops, card->driver->ops, sizeof(struct sc_card_operations));
+		if (card->ops->match_card != NULL)
+			if (card->ops->match_card(card) != 1)
+				sc_log(ctx, "driver '%s' match_card() failed: %s (will continue anyway)", card->driver->name, sc_strerror(r));
+
 		if (card->ops->init != NULL) {
 			r = card->ops->init(card);
 			if (r) {
@@ -859,7 +865,7 @@ static sc_algorithm_info_t * sc_card_find_alg(sc_card_t *card,
 			continue;
 		if (param)   {
 			if (info->algorithm == SC_ALGORITHM_EC)
-				if(sc_compare_oid((struct sc_object_id *)param, &info->u._ec.params.id))
+				if(!sc_compare_oid((struct sc_object_id *)param, &info->u._ec.params.id))
 					continue;
 		}
 		return info;
