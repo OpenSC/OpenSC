@@ -593,7 +593,7 @@ done:
 }
 
 /*
- * Initialize a signature operation
+ * Initialize a verify operation
  */
 static CK_RV
 sc_pkcs11_verify_init(sc_pkcs11_operation_t *operation,
@@ -611,10 +611,10 @@ sc_pkcs11_verify_init(sc_pkcs11_operation_t *operation,
 
 	if (key->ops->can_do)   {
 		rv = key->ops->can_do(operation->session, key, operation->type->mech, CKF_SIGN);
-		if (rv == CKR_OK)   {
-			/* Mechanism recognised and can be performed by pkcs#15 card */
+		if ((rv == CKR_OK) || (rv == CKR_FUNCTION_NOT_SUPPORTED))   {
+			/* Mechanism recognized and can be performed by pkcs#15 card or algorithm references not supported */
 		}
-		else  {
+		else {
 			/* Mechanism cannot be performed by pkcs#15 card, or some general error. */
 			free(data);
 			LOG_FUNC_RETURN(context, rv);
@@ -874,7 +874,7 @@ out:
 
 
 /*
- * Initialize a signature operation
+ * Initialize a decrypt operation
  */
 static CK_RV
 sc_pkcs11_decrypt_init(sc_pkcs11_operation_t *operation,
@@ -890,10 +890,10 @@ sc_pkcs11_decrypt_init(sc_pkcs11_operation_t *operation,
 
 	if (key->ops->can_do)   {
 		rv = key->ops->can_do(operation->session, key, operation->type->mech, CKF_DECRYPT);
-		if (rv == CKR_OK)   {
-			/* Mechanism recognised and can be performed by pkcs#15 card */
+		if ((rv == CKR_OK) || (rv == CKR_FUNCTION_NOT_SUPPORTED))   {
+			/* Mechanism recognized and can be performed by pkcs#15 card or algorithm references not supported */
 		}
-	   	else  {
+		else {
 			/* Mechanism cannot be performed by pkcs#15 card, or some general error. */
 			free(data);
 			LOG_FUNC_RETURN(context, rv);
