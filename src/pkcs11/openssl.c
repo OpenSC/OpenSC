@@ -227,7 +227,7 @@ static CK_RV sc_pkcs11_openssl_md_init(sc_pkcs11_operation_t *op)
 	if (!op || !(mt = op->type) || !(md = (EVP_MD *) mt->mech_data))
 		return CKR_ARGUMENTS_BAD;
 
-	if (!(md_ctx = calloc(1, sizeof(*md_ctx))))
+	if (!(md_ctx = EVP_MD_CTX_create()))
 		return CKR_HOST_MEMORY;
 	EVP_DigestInit(md_ctx, md);
 	op->priv_data = md_ctx;
@@ -263,7 +263,7 @@ static void sc_pkcs11_openssl_md_release(sc_pkcs11_operation_t *op)
 	EVP_MD_CTX	*md_ctx = DIGEST_CTX(op);
 
 	if (md_ctx)
-		free(md_ctx);
+		EVP_MD_CTX_destroy(md_ctx);
 	op->priv_data = NULL;
 }
 
