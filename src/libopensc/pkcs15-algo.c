@@ -281,20 +281,22 @@ asn1_decode_ec_params(sc_context_t *ctx, void **paramp,
 	if (buflen == 0 || buf == NULL)
 		return 0;
 
-	ecp = calloc(sizeof(struct sc_ec_parameters), 1);
-	if (ecp == NULL)
-		return SC_ERROR_OUT_OF_MEMORY;
-
 	r = sc_asn1_decode_choice(ctx, asn1_ec_params, buf, buflen, NULL, NULL);
 	/* r = index in asn1_ec_params */
 	sc_debug(ctx, SC_LOG_DEBUG_ASN1, "asn1_decode_ec_params r=%d", r);
 	if (r < 0)
 		return r;
 
+	ecp = calloc(sizeof(struct sc_ec_parameters), 1);
+	if (ecp == NULL)
+		return SC_ERROR_OUT_OF_MEMORY;
+
 	if (r <= 1) {
 		ecp->der.value = malloc(buflen);
-		if (ecp->der.value == NULL)
+		if (ecp->der.value == NULL) {
+			free(ecp);
 			return SC_ERROR_OUT_OF_MEMORY;
+		}
 		ecp->der.len = buflen;
 		memcpy(ecp->der.value, buf, buflen);
 	}
@@ -304,7 +306,7 @@ asn1_decode_ec_params(sc_context_t *ctx, void **paramp,
 
 	ecp->type = r; /* but 0 = ecparams if any, 1=named curve */
 	*paramp = ecp;
-	return 0;
+	return SC_SUCCESS;
 };
 
 static int
