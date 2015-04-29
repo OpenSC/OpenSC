@@ -4509,7 +4509,7 @@ register_gost_mechanisms(struct sc_pkcs11_card *p11card, int flags)
 
 	if (flags & SC_ALGORITHM_GOSTR3410_HASH_NONE) {
 		mt = sc_pkcs11_new_fw_mechanism(CKM_GOSTR3410,
-				&mech_info, CKK_GOSTR3410, NULL);
+				&mech_info, CKK_GOSTR3410, NULL, NULL);
 		if (!mt)
 			return CKR_HOST_MEMORY;
 		rc = sc_pkcs11_register_mechanism(p11card, mt);
@@ -4518,7 +4518,7 @@ register_gost_mechanisms(struct sc_pkcs11_card *p11card, int flags)
 	}
 	if (flags & SC_ALGORITHM_GOSTR3410_HASH_GOSTR3411) {
 		mt = sc_pkcs11_new_fw_mechanism(CKM_GOSTR3410_WITH_GOSTR3411,
-				&mech_info, CKK_GOSTR3410, NULL);
+				&mech_info, CKK_GOSTR3410, NULL, NULL);
 		if (!mt)
 			return CKR_HOST_MEMORY;
 		rc = sc_pkcs11_register_mechanism(p11card, mt);
@@ -4528,7 +4528,7 @@ register_gost_mechanisms(struct sc_pkcs11_card *p11card, int flags)
 	if (flags & SC_ALGORITHM_ONBOARD_KEY_GEN) {
 		mech_info.flags = CKF_HW | CKF_GENERATE_KEY_PAIR;
 		mt = sc_pkcs11_new_fw_mechanism(CKM_GOSTR3410_KEY_PAIR_GEN,
-				&mech_info, CKK_GOSTR3410, NULL);
+				&mech_info, CKK_GOSTR3410, NULL, NULL);
 		if (!mt)
 			return CKR_HOST_MEMORY;
 		rc = sc_pkcs11_register_mechanism(p11card, mt);
@@ -4566,7 +4566,7 @@ static int register_ec_mechanisms(struct sc_pkcs11_card *p11card, int flags,
 	mech_info.ulMinKeySize = min_key_size;
 	mech_info.ulMaxKeySize = max_key_size;
 
-	mt = sc_pkcs11_new_fw_mechanism(CKM_ECDSA, &mech_info, CKK_EC, NULL);
+	mt = sc_pkcs11_new_fw_mechanism(CKM_ECDSA, &mech_info, CKK_EC, NULL, NULL);
 	if (!mt)
 		return CKR_HOST_MEMORY;
 	rc = sc_pkcs11_register_mechanism(p11card, mt);
@@ -4575,7 +4575,7 @@ static int register_ec_mechanisms(struct sc_pkcs11_card *p11card, int flags,
 
 #if ENABLE_OPENSSL
 	mt = sc_pkcs11_new_fw_mechanism(CKM_ECDSA_SHA1,
-		&mech_info, CKK_EC, NULL);
+		&mech_info, CKK_EC, NULL, NULL);
 	if (!mt)
 		return CKR_HOST_MEMORY;
 	rc = sc_pkcs11_register_mechanism(p11card, mt);
@@ -4588,14 +4588,14 @@ static int register_ec_mechanisms(struct sc_pkcs11_card *p11card, int flags,
 	mech_info.flags &= ~CKF_SIGN;
 	mech_info.flags |= CKF_DERIVE;
 
-	mt = sc_pkcs11_new_fw_mechanism(CKM_ECDH1_COFACTOR_DERIVE, &mech_info, CKK_EC, NULL);
+	mt = sc_pkcs11_new_fw_mechanism(CKM_ECDH1_COFACTOR_DERIVE, &mech_info, CKK_EC, NULL, NULL);
 	if (!mt)
 		return CKR_HOST_MEMORY;
 	rc = sc_pkcs11_register_mechanism(p11card, mt);
 	if (rc != CKR_OK)
 	    return rc;
 
-	mt = sc_pkcs11_new_fw_mechanism(CKM_ECDH1_DERIVE, &mech_info, CKK_EC, NULL);
+	mt = sc_pkcs11_new_fw_mechanism(CKM_ECDH1_DERIVE, &mech_info, CKK_EC, NULL, NULL);
 	if (!mt)
 		return CKR_HOST_MEMORY;
 	rc = sc_pkcs11_register_mechanism(p11card, mt);
@@ -4605,7 +4605,7 @@ static int register_ec_mechanisms(struct sc_pkcs11_card *p11card, int flags,
 	if (flags & SC_ALGORITHM_ONBOARD_KEY_GEN) {
 		mech_info.flags = CKF_HW | CKF_GENERATE_KEY_PAIR;
 		mech_info.flags |= ec_flags;
-		mt = sc_pkcs11_new_fw_mechanism(CKM_EC_KEY_PAIR_GEN, &mech_info, CKK_EC, NULL);
+		mt = sc_pkcs11_new_fw_mechanism(CKM_EC_KEY_PAIR_GEN, &mech_info, CKK_EC, NULL, NULL);
 		if (!mt)
 			return CKR_HOST_MEMORY;
 		rc = sc_pkcs11_register_mechanism(p11card, mt);
@@ -4701,7 +4701,7 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 
 	/* Check if we support raw RSA */
 	if (flags & SC_ALGORITHM_RSA_RAW) {
-		mt = sc_pkcs11_new_fw_mechanism(CKM_RSA_X_509, &mech_info, CKK_RSA, NULL);
+		mt = sc_pkcs11_new_fw_mechanism(CKM_RSA_X_509, &mech_info, CKK_RSA, NULL, NULL);
 		rc = sc_pkcs11_register_mechanism(p11card, mt);
 		if (rc != CKR_OK)
 			return rc;
@@ -4729,7 +4729,7 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 
 	/* No need to Check for PKCS1  We support it in software and turned it on above so always added it */
 	if (flags & SC_ALGORITHM_RSA_PAD_PKCS1) {
-		mt = sc_pkcs11_new_fw_mechanism(CKM_RSA_PKCS, &mech_info, CKK_RSA, NULL);
+		mt = sc_pkcs11_new_fw_mechanism(CKM_RSA_PKCS, &mech_info, CKK_RSA, NULL, NULL);
 		rc = sc_pkcs11_register_mechanism(p11card, mt);
 		if (rc != CKR_OK)
 			return rc;
@@ -4776,7 +4776,7 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 
 		if (flags & SC_ALGORITHM_ONBOARD_KEY_GEN) {
 			mech_info.flags = CKF_GENERATE_KEY_PAIR;
-			mt = sc_pkcs11_new_fw_mechanism(CKM_RSA_PKCS_KEY_PAIR_GEN, &mech_info, CKK_RSA, NULL);
+			mt = sc_pkcs11_new_fw_mechanism(CKM_RSA_PKCS_KEY_PAIR_GEN, &mech_info, CKK_RSA, NULL, NULL);
 			if (!mt)
 				return CKR_HOST_MEMORY;
 			rc = sc_pkcs11_register_mechanism(p11card, mt);

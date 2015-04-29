@@ -942,7 +942,8 @@ sc_pkcs11_mechanism_type_t *
 sc_pkcs11_new_fw_mechanism(CK_MECHANISM_TYPE mech,
 				CK_MECHANISM_INFO_PTR pInfo,
 				CK_KEY_TYPE key_type,
-				void *priv_data)
+				const void *priv_data,
+				void (*free_priv_data)(const void *priv_data))
 {
 	sc_pkcs11_mechanism_type_t *mt;
 
@@ -953,6 +954,7 @@ sc_pkcs11_new_fw_mechanism(CK_MECHANISM_TYPE mech,
 	mt->mech_info = *pInfo;
 	mt->key_type = key_type;
 	mt->mech_data = priv_data;
+	mt->free_mech_data = free_priv_data;
 	mt->obj_size = sizeof(sc_pkcs11_operation_t);
 
 	mt->release = sc_pkcs11_signature_release;
@@ -994,6 +996,11 @@ sc_pkcs11_register_generic_mechanisms(struct sc_pkcs11_card *p11card)
 	return CKR_OK;
 }
 
+void free_info(const void *info)
+{
+	free((void *) info);
+}
+
 /*
  * Register a sign+hash algorithm derived from an algorithm supported
  * by the token + a software hash mechanism
@@ -1024,7 +1031,7 @@ sc_pkcs11_register_sign_and_hash_mechanism(struct sc_pkcs11_card *p11card,
 	info->sign_mech = sign_type->mech;
 	info->hash_mech = hash_mech;
 
-	new_type = sc_pkcs11_new_fw_mechanism(mech, &mech_info, sign_type->key_type, info);
+	new_type = sc_pkcs11_new_fw_mechanism(mech, &mech_info, sign_type->key_type, info, free_info);
 
 	if (!new_type)
 		return CKR_HOST_MEMORY;

@@ -2425,9 +2425,8 @@ find_mechanism(CK_SLOT_ID slot, CK_FLAGS flags,
 		else   {
 			*result = mechs[0];
 		}
-
-		free(mechs);
 	}
+	free(mechs);
 
 	return count;
 }
