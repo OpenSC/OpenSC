@@ -3367,9 +3367,9 @@ static EVP_PKEY *get_public_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE priv
 			if ( !pkey || !rsa || !mod || !exp) {
 				printf("public key not extractable\n");
 				if (pkey)
-					free(pkey);
+					EVP_PKEY_free(pkey);
 				if (rsa)
-					free(rsa);
+					RSA_free(rsa);
 				if (mod)
 					free(mod);
 				if (exp)
@@ -3424,7 +3424,7 @@ static int sign_verify_openssl(CK_SESSION_HANDLE session,
 #ifdef ENABLE_OPENSSL
 	int             err;
 	EVP_PKEY       *pkey;
-	EVP_MD_CTX      md_ctx;
+	EVP_MD_CTX      *md_ctx;
 
 	const EVP_MD         *evp_mds[] = {
 		EVP_sha1(),
@@ -3468,9 +3468,16 @@ static int sign_verify_openssl(CK_SESSION_HANDLE session,
 	if (!(pkey = get_public_key(session, privKeyObject)))
 		return errors;
 
-	EVP_VerifyInit(&md_ctx, evp_mds[evp_md_index]);
-	EVP_VerifyUpdate(&md_ctx, verifyData, verifyDataLen);
-	err = EVP_VerifyFinal(&md_ctx, sig1, sigLen1, pkey);
+	md_ctx = EVP_MD_CTX_create();
+	if (!md_ctx)
+		err = -1;
+	else {
+		EVP_VerifyInit(md_ctx, evp_mds[evp_md_index]);
+		EVP_VerifyUpdate(md_ctx, verifyData, verifyDataLen);
+		err = EVP_VerifyFinal(md_ctx, sig1, sigLen1, pkey);
+		EVP_MD_CTX_destroy(md_ctx);
+		EVP_PKEY_free(pkey);
+	}
 	if (err == 0) {
 		printf("ERR: verification failed\n");
 		errors++;
