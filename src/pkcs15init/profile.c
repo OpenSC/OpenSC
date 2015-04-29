@@ -380,11 +380,15 @@ sc_profile_load(struct sc_profile *profile, const char *filename)
 
 	sc_log(ctx, "profile %s loaded ok", path);
 
-	if (res < 0)
+	if (res < 0) {
+		scconf_free(conf);
 		LOG_FUNC_RETURN(ctx, SC_ERROR_FILE_NOT_FOUND);
+	}
 
-	if (res == 0)
+	if (res == 0) {
+		scconf_free(conf);
 		LOG_FUNC_RETURN(ctx, SC_ERROR_SYNTAX_ERROR);
+	}
 
 	res = process_conf(profile, conf);
 	scconf_free(conf);
