@@ -345,6 +345,7 @@ static int reconstructSecret(secret_share_t *shares, unsigned char t, const BIGN
 		 * multiplication
 		 */
 		if (BN_mod_inverse(&denominator, &denominator, &prime, ctx) == NULL ) {
+			free(bValue);
 			return -1;
 		}
 
@@ -664,6 +665,7 @@ static int recreate_password_from_shares(char **pwd, int *pwdlen, int num_of_pas
 
 	if (r < 0) {
 		printf("\nError during reconstruction of secret. Wrong shares?\n");
+		cleanUpShares(shares, num_of_password_shares);
 		return r;
 	}
 
@@ -708,6 +710,7 @@ static int import_dkek_share(sc_card_t *card, const char *inf, int iter, const c
 
 	if (fread(filebuff, 1, sizeof(filebuff), in) != sizeof(filebuff)) {
 		perror(inf);
+		fclose(in);
 		return -1;
 	}
 
@@ -1019,6 +1022,7 @@ static int create_dkek_share(sc_card_t *card, const char *outf, int iter, const 
 
 	if (fwrite(filebuff, 1, sizeof(filebuff), out) != sizeof(filebuff)) {
 		perror(outf);
+		fclose(out);
 		return -1;
 	}
 
@@ -1240,6 +1244,7 @@ static int wrap_key(sc_card_t *card, int keyid, const char *outf, const char *pi
 	if (fwrite(key, 1, key_len, out) != key_len) {
 		perror(outf);
 		free(key);
+		fclose(out);
 		return -1;
 	}
 
