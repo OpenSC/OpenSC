@@ -2302,13 +2302,19 @@ authentic_sm_get_wrapped_apdu(struct sc_card *card, struct sc_apdu *plain, struc
 		memcpy((unsigned char *) apdu->data, plain->data, plain->datalen);
 
 	apdu->resp = calloc (1, plain->resplen + 32);
-	if (!apdu->resp)
+	if (!apdu->resp) {
+		free(apdu);
 		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+	}
 
 	card->sm_ctx.info.cmd = SM_CMD_APDU_TRANSMIT;
 	card->sm_ctx.info.cmd_data = (void *)apdu;
 
 	rv = card->sm_ctx.module.ops.get_apdus(ctx, &card->sm_ctx.info, NULL, 0, NULL);
+	if (rv < 0) {
+		free(apdu->resp);
+		free(apdu);
+	}
 	LOG_TEST_RET(ctx, rv, "SM: GET_APDUS failed");
 
 	*sm_apdu = apdu;
