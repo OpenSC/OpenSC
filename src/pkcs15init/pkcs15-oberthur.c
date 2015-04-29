@@ -76,15 +76,21 @@ cosm_write_tokeninfo (struct sc_pkcs15_card *p15card, struct sc_profile *profile
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "cosm_write_tokeninfo() label '%s'; flags 0x%X", label, flags);
-	if (sc_profile_get_file(profile, COSM_TITLE"-token-info", &file))
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INCONSISTENT_PROFILE, "Cannot find "COSM_TITLE"-token-info");
+	if (sc_profile_get_file(profile, COSM_TITLE"-token-info", &file)) {
+		rv = SC_ERROR_INCONSISTENT_PROFILE;
+		SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_NORMAL, rv, "Cannot find "COSM_TITLE"-token-info");
+	}
 
-	if (file->size < 16)
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INCONSISTENT_PROFILE, "Unsufficient size of the "COSM_TITLE"-token-info file");
+	if (file->size < 16) {
+		rv = SC_ERROR_INCONSISTENT_PROFILE;
+		SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_NORMAL, rv, "Unsufficient size of the "COSM_TITLE"-token-info file");
+	}
 
 	buffer = calloc(1, file->size);
-	if (!buffer)
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY, "Allocation error in cosm_write_tokeninfo()");
+	if (!buffer) {
+		rv = SC_ERROR_OUT_OF_MEMORY;
+		SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_NORMAL, rv, "Allocation error in cosm_write_tokeninfo()");
+	}
 
 	if (label)
 		strncpy(buffer, label, file->size - 4);
@@ -109,6 +115,9 @@ cosm_write_tokeninfo (struct sc_pkcs15_card *p15card, struct sc_profile *profile
 	if (rv > 0)
 		rv = 0;
 
+err:
+	if (file)
+		sc_file_free(file);
 	free(buffer);
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, rv);
 }
@@ -574,6 +583,8 @@ cosm_get_temporary_public_key_file(struct sc_card *card,
 		rv = sc_file_add_acl_entry(file, SC_AC_OP_PSO_VERIFY_SIGNATURE, SC_AC_NONE, 0);
 	if (!rv)
 		rv = sc_file_add_acl_entry(file, SC_AC_OP_EXTERNAL_AUTHENTICATE, SC_AC_NONE, 0);
+	if (rv < 0)
+		sc_file_free(file);
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Failed to add ACL entry to the temporary public key file");
 
 	*pubkey_file = file;
@@ -696,18 +707,20 @@ cosm_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	rv = sc_select_file(p15card->card, &file->path, NULL);
 	if (rv == 0)   {
 		rv = cosm_delete_file(p15card, profile, file);
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Failed to delete private key file");
+		SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_NORMAL, rv, "Failed to delete private key file");
 	}
 	else if (rv != SC_ERROR_FILE_NOT_FOUND)    {
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Select private key file error");
+		SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_NORMAL, rv, "Select private key file error");
 	}
 
 	rv = sc_pkcs15init_create_file(profile, p15card, file);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Failed to create private key file");
+	SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_NORMAL, rv, "Failed to create private key file");
 
 	key_info->key_reference = file->path.value[file->path.len - 1];
 
-	sc_file_free(file);
+err:
+	if (file)
+		sc_file_free(file);
 
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, rv);
 }
@@ -809,8 +822,10 @@ cosm_emu_update_tokeninfo(struct sc_profile *profile, struct sc_pkcs15_card *p15
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INCONSISTENT_PROFILE, "cannot find "COSM_TITLE"-token-info");
 
 	buf = calloc(1, file->size);
-	if (!buf)
+	if (!buf) {
+		sc_file_free(file);
 		SC_FUNC_RETURN(ctx, 1, SC_ERROR_OUT_OF_MEMORY);
+	}
 
 	label_len = strlen(tinfo->label) > (file->size - 4) ? (file->size - 4) : strlen(tinfo->label);
 	memcpy(buf, tinfo->label, label_len);
@@ -831,6 +846,7 @@ cosm_emu_update_tokeninfo(struct sc_profile *profile, struct sc_pkcs15_card *p15
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Update token info (label:'%s',flags:%X,p15card->flags:%X)", buf, flags, p15card->flags);
 	rv = sc_pkcs15init_update_file(profile, p15card, file, buf, file->size);
 	free(buf);
+	sc_file_free(file);
 
 	if (rv > 0)
 		rv = 0;
