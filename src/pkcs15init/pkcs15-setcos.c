@@ -123,12 +123,16 @@ setcos_init_card(sc_profile_t *profile, sc_pkcs15_card_t *p15card)
 
 		/* Fix up the file's ACLs */
 		r = sc_pkcs15init_fixup_file(profile, p15card, pinfile);
+		if (r < 0)
+			sc_file_free(pinfile);
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Pinfile fixup failed");
 
 		/* Set life cycle state to SC_FILE_STATUS_CREATION,
 		 * which means that all ACs are ignored. */
 		pinfile->status = SC_FILE_STATUS_CREATION;
 		r = sc_create_file(p15card->card, pinfile);
+		if (r < 0)
+			sc_file_free(pinfile);
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Pinfile creation failed");
 	}
 	sc_file_free(pinfile);
