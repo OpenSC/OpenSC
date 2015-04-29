@@ -2328,6 +2328,8 @@ sc_pkcs15init_select_intrinsic_id(struct sc_pkcs15_card *p15card, struct sc_prof
 		break;
 	default:
 		sc_log(ctx, "Unsupported ID style: %i", id_style);
+		if (allocated)
+			sc_pkcs15_free_pubkey(pubkey);
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Non supported ID style");
 	}
 
@@ -3406,6 +3408,7 @@ sc_pkcs15init_authenticate(struct sc_profile *profile, struct sc_pkcs15_card *p1
 	int  r = 0;
 
 	LOG_FUNC_CALLED(ctx);
+	assert(file != NULL);
 	sc_log(ctx, "path '%s', op=%u", sc_print_path(&file->path), op);
 
 	if (p15card->card->caps & SC_CARD_CAP_USE_FCI_AC) {
