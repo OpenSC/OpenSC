@@ -1798,8 +1798,11 @@ get_pin_callback(struct sc_profile *profile,
 		allocated = 1;
 	}
 
-	if (len > *pinsize)
+	if (len > *pinsize) {
+		if (allocated)
+			free(secret);
 		return SC_ERROR_BUFFER_TOO_SMALL;
+	}
 	memcpy(pinbuf, secret, len + 1);
 	*pinsize = len;
 	if (allocated)
