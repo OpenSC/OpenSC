@@ -3972,7 +3972,17 @@ pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session, void *object, CK_
 			if (sc_pkcs15_encode_pubkey(context, pubkey->pub_data, &value, &len))
 				return sc_to_cryptoki_error(SC_ERROR_INTERNAL, "C_GetAttributeValue");
 
-			check_attribute_buffer(attr, len);
+			if (attr->pValue == NULL_PTR) {
+				attr->ulValueLen = len;
+				free(value);
+				return CKR_OK;
+			}
+			if (attr->ulValueLen < len) {
+				attr->ulValueLen = len;
+				free(value);
+				return CKR_BUFFER_TOO_SMALL;
+			}
+			attr->ulValueLen = len;
 			memcpy(attr->pValue, value, len);
 
 			free(value);
