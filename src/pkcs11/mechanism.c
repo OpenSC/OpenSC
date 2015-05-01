@@ -934,6 +934,7 @@ sc_pkcs11_derive(sc_pkcs11_operation_t *operation,
 		    pmechParam, ulmechParamLen,
 		    pData, pulDataLen);
 }
+
 /*
  * Create new mechanism type for a mechanism supported by
  * the card

@@ -158,6 +158,14 @@ static sc_pkcs11_mechanism_type_t openssl_ripemd160_mech = {
 	NULL,			/* free_mech_data */
 };
 
+static void * dup_mem(void *in, size_t in_len)
+{
+	void *out = malloc(in_len);
+	if (out)
+		memcpy(out, in, in_len);
+	return out;
+}
+
 void
 sc_pkcs11_register_openssl_mechanisms(struct sc_pkcs11_card *card)
 {
@@ -199,22 +207,22 @@ sc_pkcs11_register_openssl_mechanisms(struct sc_pkcs11_card *card)
 #endif /* OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_ENGINE) */
 
 	openssl_sha1_mech.mech_data = EVP_sha1();
-	sc_pkcs11_register_mechanism(card, &openssl_sha1_mech);
+	sc_pkcs11_register_mechanism(card, dup_mem(&openssl_sha1_mech, sizeof openssl_sha1_mech));
 #if OPENSSL_VERSION_NUMBER >= 0x00908000L
 	openssl_sha256_mech.mech_data = EVP_sha256();
-	sc_pkcs11_register_mechanism(card, &openssl_sha256_mech);
+	sc_pkcs11_register_mechanism(card, dup_mem(&openssl_sha256_mech, sizeof openssl_sha256_mech));
 	openssl_sha384_mech.mech_data = EVP_sha384();
-	sc_pkcs11_register_mechanism(card, &openssl_sha384_mech);
+	sc_pkcs11_register_mechanism(card, dup_mem(&openssl_sha384_mech, sizeof openssl_sha384_mech));
 	openssl_sha512_mech.mech_data = EVP_sha512();
-	sc_pkcs11_register_mechanism(card, &openssl_sha512_mech);
+	sc_pkcs11_register_mechanism(card, dup_mem(&openssl_sha512_mech, sizeof openssl_sha512_mech));
 #endif
 	openssl_md5_mech.mech_data = EVP_md5();
-	sc_pkcs11_register_mechanism(card, &openssl_md5_mech);
+	sc_pkcs11_register_mechanism(card, dup_mem(&openssl_md5_mech, sizeof openssl_md5_mech));
 	openssl_ripemd160_mech.mech_data = EVP_ripemd160();
-	sc_pkcs11_register_mechanism(card, &openssl_ripemd160_mech);
+	sc_pkcs11_register_mechanism(card, dup_mem(&openssl_ripemd160_mech, sizeof openssl_ripemd160_mech));
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L
 	openssl_gostr3411_mech.mech_data = EVP_get_digestbynid(NID_id_GostR3411_94);
-	sc_pkcs11_register_mechanism(card, &openssl_gostr3411_mech);
+	sc_pkcs11_register_mechanism(card, dup_mem(&openssl_gostr3411_mech, sizeof openssl_gostr3411_mech));
 #endif
 }
 
