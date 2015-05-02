@@ -22,6 +22,7 @@
 
 #include "config.h"
 
+#include <stdlib.h>
 #include <string.h>
 
 #include "internal.h"
@@ -56,7 +57,6 @@ static int masktech_select_aid(struct sc_card *card)
 {
 	struct sc_apdu apdu;
 	unsigned char apdu_resp[SC_MAX_APDU_BUFFER_SIZE];
-	struct auth_private_data *data =  (struct auth_private_data *) card->drv_data;
 	int rv;
 	unsigned char cm[7] = {0xA0,0x00,0x00,0x00,0x03,0x00,0x00};
 	unsigned char aid[15] = {0xE8,0x28,0xBD,0x08,0x0F,0xA0,0x00,0x00,0x01,0x67,0x45,0x53,0x49,0x47,0x4E};
@@ -386,7 +386,6 @@ static int masktech_pin_cmd(sc_card_t *card,
                             int *tries_left)
 {
 	int       rv;
-	CHAR szBuffer[256];
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	switch(data->cmd)
