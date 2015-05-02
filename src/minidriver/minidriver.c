@@ -106,6 +106,7 @@ HINSTANCE g_inst;
 
  /* defined twice: in versioninfo-minidriver.rc.in and in minidriver.c */
 #define IDD_PINPAD      101
+#define IDI_LOGO        102
 #define IDC_PINPAD_TEXT 1001
 #define IDC_PINPAD_ICON 1000
 
@@ -2277,6 +2278,13 @@ static INT_PTR CALLBACK md_dialog_proc(HWND hWnd, UINT message, WPARAM wParam, L
 			/* load the information icon */
 			hIcon = (HICON) LoadImage(0, IDI_INFORMATION, IMAGE_ICON, 0, 0, LR_SHARED);
 			SendMessage(GetDlgItem(hWnd, IDC_PINPAD_ICON),STM_SETIMAGE,IMAGE_ICON, (LPARAM) hIcon);
+			/* change the icon */
+			hIcon = LoadIcon(g_inst, MAKEINTRESOURCE(IDI_LOGO));
+			if (hIcon)
+			{
+				SendMessage(hWnd, WM_SETICON, ICON_SMALL, (LPARAM) hIcon);
+				SendMessage(hWnd, WM_SETICON, ICON_BIG, (LPARAM) hIcon);
+			}
 			/* launch the function in another thread context store the thread handle */
 			((LONG_PTR*)lParam)[9] = (LONG_PTR) hWnd;
 			((LONG_PTR*)lParam)[8] = (LONG_PTR) CreateThread(NULL, 0, md_dialog_perform_pin_operation_thread, (PVOID) lParam, 0, NULL);
