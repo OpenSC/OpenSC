@@ -123,7 +123,7 @@ static int masktech_init(sc_card_t * card)
 	_sc_card_add_rsa_alg(card, 1024, flags, 0);
 	_sc_card_add_rsa_alg(card, 2048, flags, 0);
 	_sc_card_add_rsa_alg(card, 3072, flags, 0);
-
+	card->caps |= SC_CARD_CAP_APDU_EXT;
 	return SC_SUCCESS;
 }
 
@@ -210,28 +210,27 @@ static int masktech_decipher(sc_card_t *card,
                              u8 * out,
                              size_t outlen)
 {
-	int r, cse;
+	int r;
 	sc_apdu_t apdu;
-	u8 rbuf[SC_MAX_EXT_APDU_BUFFER_SIZE];
 	u8 sbuf[SC_MAX_EXT_APDU_BUFFER_SIZE];
-	unsigned char use_ext;
+	u8 rbuf[SC_MAX_EXT_APDU_BUFFER_SIZE];
 
 	assert(card != NULL && crgram != NULL && out != NULL);
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "masktech_decipher()\n");
 	
-	use_ext = crgram_len > 255; 
-	cse = use_ext ? SC_APDU_CASE_4_EXT : SC_APDU_CASE_4_SHORT;
-	sc_format_apdu(card, &apdu, cse, 0x2A, 0x80, 0x86);
-	apdu.resp = rbuf;
-	apdu.resplen = use_ext ? sizeof(rbuf) : 256;
-	apdu.le = use_ext ? 65536 : 256;
+	if (crgram_len > sizeof(sbuf)) SC_ERROR_INVALID_ARGUMENTS;
 
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_EXT, 0x2A, 0x80, 0x86);
+	apdu.resp = rbuf;
+	apdu.resplen = sizeof(rbuf);
+	/* the card doesn't support anything else here (+1 / -1 is not working) */
+	apdu.le = 65536;
+
+	/* crgram is a const u8 while apdu.data is not a const => it cannot be used directly */
 	memcpy(&sbuf, crgram, crgram_len);
 	apdu.data = sbuf;
 	apdu.lc = crgram_len;
 	apdu.datalen = crgram_len;
-
-	card->caps |= use_ext ? SC_CARD_CAP_APDU_EXT : 0;
 
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
