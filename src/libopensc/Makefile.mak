@@ -24,6 +24,7 @@ OBJECTS			= \
 	card-itacns.obj card-authentic.obj \
 	card-iasecc.obj iasecc-sdo.obj iasecc-sm.obj cwa-dnie.obj cwa14890.obj \
 	card-sc-hsm.obj card-dnie.obj user-interface.obj card-isoApplet.obj \
+	card-masktech.obj \
 	\
 	pkcs15-openpgp.obj pkcs15-infocamere.obj pkcs15-starcert.obj \
 	pkcs15-tcos.obj pkcs15-esteid.obj pkcs15-postecert.obj pkcs15-gemsafeGPK.obj \
