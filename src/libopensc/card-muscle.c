@@ -71,7 +71,7 @@ static int muscle_finish(sc_card_t *card)
 }
 
 
-static u8 muscleAppletId[] = { 0xA0, 0x00,0x00,0x00, 0x01, 0x02 };
+static u8 muscleAppletId[] = { 0xA0, 0x00,0x00,0x00, 0x01, 0x01 };
 
 static int muscle_match_card(sc_card_t *card)
 {
