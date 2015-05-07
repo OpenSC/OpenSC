@@ -1501,12 +1501,18 @@ iasecc_se_cache_info(struct sc_card *card, struct iasecc_se_info *se)
 
 	if (card->cache.valid && card->cache.current_df)   {
 		sc_file_dup(&se_info->df, card->cache.current_df);
-		if (se_info->df == NULL)
+		if (se_info->df == NULL)   {
+			free(se_info);
 			LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot duplicate current DF file");
+		}
 	}
 
 	rv = iasecc_docp_copy(ctx, &se->docp, &se_info->docp);
-	LOG_TEST_RET(ctx, rv, "Cannot make copy of DOCP");
+	if (rv < 0)   {
+		free(se_info->df);
+		free(se_info);
+		LOG_TEST_RET(ctx, rv, "Cannot make copy of DOCP");
+	}
 
 	if (!prv->se_info)   {
 		prv->se_info = se_info;
