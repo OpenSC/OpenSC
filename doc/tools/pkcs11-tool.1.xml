@@ -238,6 +238,13 @@
 
 				<varlistentry>
 					<term>
+						<option>--decrypt</option>,
+					</term>
+					<listitem><para>Decrypt some data.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
 						<option>--slot</option> <replaceable>id</replaceable>
 					</term>
 					<listitem><para>Specify the id of the slot to use.</para></listitem>

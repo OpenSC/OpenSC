@@ -101,6 +101,7 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 #ifdef ENABLE_OPENSSL
 	{ "dnie",       (void *(*)(void)) sc_get_dnie_driver },
 #endif
+	{ "masktech",	(void *(*)(void)) sc_get_masktech_driver },
 
 /* Here should be placed drivers that need some APDU transactions to
  * recognise its cards. */

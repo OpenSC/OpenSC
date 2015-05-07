@@ -205,7 +205,11 @@ enum {
 
 	/* JavaCards with isoApplet */
 	SC_CARD_TYPE_ISO_APPLET_BASE = 28000,
-	SC_CARD_TYPE_ISO_APPLET_GENERIC
+	SC_CARD_TYPE_ISO_APPLET_GENERIC,
+
+	/* Masktech cards */
+	SC_CARD_TYPE_MASKTECH_BASE = 29000,
+	SC_CARD_TYPE_MASKTECH_GENERIC
 };
 
 extern sc_card_driver_t *sc_get_default_driver(void);
@@ -243,6 +247,7 @@ extern sc_card_driver_t *sc_get_iasecc_driver(void);
 extern sc_card_driver_t *sc_get_epass2003_driver(void);
 extern sc_card_driver_t *sc_get_dnie_driver(void);
 extern sc_card_driver_t *sc_get_isoApplet_driver(void);
+extern sc_card_driver_t *sc_get_masktech_driver(void);
 
 #ifdef __cplusplus
 }
