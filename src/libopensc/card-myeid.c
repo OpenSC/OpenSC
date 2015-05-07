@@ -826,6 +826,8 @@ myeid_convert_ec_signature(struct sc_context *ctx, size_t s_len, unsigned char *
 	buflen = (s_len + 7)/8*2;
 
 	r = sc_asn1_sig_value_sequence_to_rs(ctx, data, datalen, buf, buflen);
+	if (r < 0)
+		free(buf);
         LOG_TEST_RET(ctx, r, "Failed to cenvert Sig-Value to the raw RS format");
 
 	if (buflen > datalen)
