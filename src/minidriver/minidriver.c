@@ -306,7 +306,7 @@ static void print_werror(PCARD_DATA pCardData, char *str)
 static int
 check_reader_status(PCARD_DATA pCardData)
 {
-	int r;
+	int r = SCARD_S_SUCCESS;
 	VENDOR_SPECIFIC *vs = NULL;
 
 	logprintf(pCardData, 4, "check_reader_status\n");
@@ -327,6 +327,8 @@ check_reader_status(PCARD_DATA pCardData)
 		r = disassociate_card(pCardData);
 		logprintf(pCardData, 1, "disassociate_card r = 0x%08X\n", r);
 		r = associate_card(pCardData); /* need to check return codes */
+		if (r != SCARD_S_SUCCESS) 
+			return r;
 		logprintf(pCardData, 1, "associate_card r = 0x%08X\n", r);
 		/* Rebuild 'soft' fs - in case changed */
 		r = md_fs_init(pCardData);
@@ -338,7 +340,7 @@ check_reader_status(PCARD_DATA pCardData)
 		logprintf(pCardData, 2, "check_reader_status r=%d flags 0x%08X\n", r, vs->reader->flags);
 	}
 
-	return SCARD_S_SUCCESS;
+	return r;
 }
 
 static DWORD
@@ -1142,6 +1144,9 @@ md_fs_read_content(PCARD_DATA pCardData, char *parent, struct md_file *file)
 	else if (!dir)   {
 		logprintf(pCardData, 2, "directory '%s' not found\n", parent ? parent : "<null>");
 		return;
+	}
+	if (vs->p15card == NULL) {
+		return SCARD_F_INTERNAL_ERROR;
 	}
 
 	if (!strcmp(dir->name, "mscp"))   {
@@ -2196,6 +2201,10 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 	if (!cont->prkey_obj)   {
 		logprintf(pCardData, 7, "Container %i is empty\n", bContainerIndex);
 		return SCARD_E_NO_KEY_CONTAINER;
+	}
+
+	if (vs->p15card == NULL) {
+		return SCARD_F_INTERNAL_ERROR;
 	}
 
 	check_reader_status(pCardData);
@@ -3305,7 +3314,10 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 
 	vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
 
-	check_reader_status(pCardData);
+	r = check_reader_status(pCardData);
+
+	if ((vs->p15card) == NULL)
+		return SCARD_F_INTERNAL_ERROR;
 
 	if (dwFlags == CARD_AUTHENTICATE_GENERATE_SESSION_PIN || dwFlags == CARD_AUTHENTICATE_SESSION_PIN) {
 		if (! (vs->reader->capabilities & SC_READER_CAP_PIN_PAD))
