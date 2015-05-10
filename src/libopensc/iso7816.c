@@ -31,7 +31,7 @@
 
 
 static void fixup_transceive_length(const struct sc_card *card,
-	   	struct sc_apdu *apdu)
+		struct sc_apdu *apdu)
 {
 	size_t max_send_size;
 	size_t max_recv_size;
@@ -105,7 +105,7 @@ static const struct sc_card_error iso7816_errors[] = {
 	{ 0x6A87, SC_ERROR_INCORRECT_PARAMETERS,"Lc inconsistent with P1-P2" },
 	{ 0x6A88, SC_ERROR_DATA_OBJECT_NOT_FOUND,"Referenced data not found" },
 	{ 0x6A89, SC_ERROR_FILE_ALREADY_EXISTS,  "File already exists"},
-	{ 0x6A8A, SC_ERROR_FILE_ALREADY_EXISTS,  "DF name already exists"},	
+	{ 0x6A8A, SC_ERROR_FILE_ALREADY_EXISTS,  "DF name already exists"},
 
 	{ 0x6B00, SC_ERROR_INCORRECT_PARAMETERS,"Wrong parameter(s) P1-P2" },
 	{ 0x6D00, SC_ERROR_INS_NOT_SUPPORTED,	"Instruction code not supported or invalid" },
@@ -350,6 +350,7 @@ iso7816_process_fci(struct sc_card *card, struct sc_file *file,
 {
 	struct sc_context *ctx = card->ctx;
 	size_t taglen, len = buflen;
+	int i;
 	const unsigned char *tag = NULL, *p = buf;
 
 	sc_log(ctx, "processing FCI bytes");
@@ -359,17 +360,25 @@ iso7816_process_fci(struct sc_card *card, struct sc_file *file,
 		sc_log(ctx, "  file identifier: 0x%02X%02X", tag[0], tag[1]);
 	}
 
-	tag = sc_asn1_find_tag(ctx, p, len, 0x80, &taglen);
-	if (tag == NULL) {
-		tag = sc_asn1_find_tag(ctx, p, len, 0x81, &taglen);
-	}
-	if (tag != NULL && taglen > 0 && taglen < 3) {
-		file->size = tag[0];
-		if (taglen == 2)
-			file->size = (file->size << 8) + tag[1];
+	/* determine the file size */
+	/* try the tag 0x80 then the tag 0x81 */
+	file->size = 0;
+	for (i = 0x80; i <= 0x81; i++) {
+		int size = 0;
+		len = buflen;
+		tag = sc_asn1_find_tag(ctx, p, len, i, &taglen);
+		if (tag == NULL)
+			continue;
+		if (taglen == 0)
+			continue;
+		if (sc_asn1_decode_integer(tag, taglen, &size) < 0)
+			continue;
+		if (size <0)
+			continue;
+
+		file->size = size;
 		sc_log(ctx, "  bytes in file: %d", file->size);
-	} else {
-		file->size = 0;
+		break;
 	}
 
 	tag = sc_asn1_find_tag(ctx, p, len, 0x82, &taglen);
