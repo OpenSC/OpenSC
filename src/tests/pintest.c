@@ -42,6 +42,7 @@ static int enum_pins(struct sc_pkcs15_object ***ret)
 	}
 	if (0 > sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_AUTH_PIN, objs, n)) {
 		fprintf(stderr, "Error enumerating PIN codes\n");
+		free(objs);
 		return 1;
 	}
 	for (i = 0; i < n; i++) {

@@ -117,7 +117,8 @@ enum {
 	OPT_NEW_PIN,
 	OPT_LOGIN_TYPE,
 	OPT_TEST_EC,
-	OPT_DERIVE
+	OPT_DERIVE,
+	OPT_DECRYPT
 };
 
 static const struct option options[] = {
@@ -129,6 +130,7 @@ static const struct option options[] = {
 	{ "list-objects",	0, NULL,		'O' },
 
 	{ "sign",		0, NULL,		's' },
+	{ "decrypt",		0, NULL,		OPT_DECRYPT },
 	{ "hash",		0, NULL,		'h' },
 	{ "derive",		0, NULL,		OPT_DERIVE },
 	{ "mechanism",		1, NULL,		'm' },
@@ -187,6 +189,7 @@ static const char *option_help[] = {
 	"Show objects on token",
 
 	"Sign some data",
+	"Decrypt some data",
 	"Hash some data",
 	"Derive a secret key using another key and some data",
 	"Specify mechanism (use -M for a list of supported mechanisms)",
@@ -334,8 +337,8 @@ static void		show_object(CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static void		show_key(CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static void		show_cert(CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static void		show_dobj(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj);
-static void		sign_data(CK_SLOT_ID,
-				CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
+static void		sign_data(CK_SLOT_ID, CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
+static void		decrypt_data(CK_SLOT_ID, CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static void		hash_data(CK_SLOT_ID, CK_SESSION_HANDLE);
 static void		derive_key(CK_SLOT_ID, CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static int		gen_keypair(CK_SESSION_HANDLE,
@@ -388,6 +391,7 @@ int main(int argc, char * argv[])
 	int do_list_mechs = 0;
 	int do_list_objects = 0;
 	int do_sign = 0;
+	int do_decrypt = 0;
 	int do_hash = 0;
 	int do_derive = 0;
 	int do_gen_keypair = 0;
@@ -544,6 +548,11 @@ int main(int argc, char * argv[])
 		case 's':
 			need_session |= NEED_SESSION_RW;
 			do_sign = 1;
+			action_count++;
+			break;
+		case OPT_DECRYPT:
+			need_session |= NEED_SESSION_RW;
+			do_decrypt = 1;
 			action_count++;
 			break;
 		case 'f':
@@ -754,7 +763,7 @@ int main(int argc, char * argv[])
 	if (do_list_mechs)
 		list_mechs(opt_slot);
 
-	if (do_sign) {
+	if (do_sign || do_decrypt) {
 		CK_TOKEN_INFO	info;
 
 		get_token_info(opt_slot, &info);
@@ -811,7 +820,7 @@ int main(int argc, char * argv[])
 		goto end;
 	}
 
-	if (do_sign || do_derive) {
+	if (do_sign || do_derive || do_decrypt) {
 		if (!find_object(session, CKO_PRIVATE_KEY, &object,
 					opt_object_id_len ? opt_object_id : NULL,
 					opt_object_id_len, 0))
@@ -827,6 +836,9 @@ int main(int argc, char * argv[])
 
 	if (do_sign)
 		sign_data(opt_slot, session, object);
+
+	if (do_decrypt)
+		decrypt_data(opt_slot, session, object);
 
 	if (do_hash)
 		hash_data(opt_slot, session);
@@ -1452,6 +1464,63 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	if (fd != 1)
 		close(fd);
 }
+
+
+static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
+		CK_OBJECT_HANDLE key)
+{
+	unsigned char	in_buffer[1024], out_buffer[1024];
+	CK_MECHANISM	mech;
+	CK_RV		rv;
+	CK_ULONG	in_len, out_len;
+	int		fd, r;
+
+	if (!opt_mechanism_used)
+		if (!find_mechanism(slot, CKF_DECRYPT|CKF_HW, NULL, 0, &opt_mechanism))
+			util_fatal("Decrypt mechanism not supported\n");
+
+	printf("Using decrypt algorithm %s\n", p11_mechanism_to_name(opt_mechanism));
+	memset(&mech, 0, sizeof(mech));
+	mech.mechanism = opt_mechanism;
+
+	if (opt_input == NULL)
+		fd = 0;
+	else if ((fd = open(opt_input, O_RDONLY|O_BINARY)) < 0)
+		util_fatal("Cannot open %s: %m", opt_input);
+
+	r = read(fd, in_buffer, sizeof(in_buffer));
+	if (r < 0)
+		util_fatal("Cannot read from %s: %m", opt_input);
+	in_len = r;
+
+	rv = p11->C_DecryptInit(session, &mech, key);
+	if (rv != CKR_OK)
+		p11_fatal("C_DecryptInit", rv);
+
+	out_len = sizeof(out_buffer);
+	rv = p11->C_Decrypt(session, in_buffer, in_len, out_buffer, &out_len);
+	if (rv != CKR_OK)
+		p11_fatal("C_Decrypt", rv);
+
+	if (fd != 0)
+		close(fd);
+
+	if (opt_output == NULL)   {
+		fd = 1;
+	}
+	else  {
+		fd = open(opt_output, O_CREAT|O_TRUNC|O_WRONLY|O_BINARY, S_IRUSR|S_IWUSR);
+		if (fd < 0)
+			util_fatal("failed to open %s: %m", opt_output);
+	}
+
+	r = write(fd, out_buffer, out_len);
+	if (r < 0)
+		util_fatal("Failed to write to %s: %m", opt_output);
+	if (fd != 1)
+		close(fd);
+}
+
 
 static void hash_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 {
@@ -2356,9 +2425,8 @@ find_mechanism(CK_SLOT_ID slot, CK_FLAGS flags,
 		else   {
 			*result = mechs[0];
 		}
-
-		free(mechs);
 	}
+	free(mechs);
 
 	return count;
 }
@@ -3298,9 +3366,9 @@ static EVP_PKEY *get_public_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE priv
 			if ( !pkey || !rsa || !mod || !exp) {
 				printf("public key not extractable\n");
 				if (pkey)
-					free(pkey);
+					EVP_PKEY_free(pkey);
 				if (rsa)
-					free(rsa);
+					RSA_free(rsa);
 				if (mod)
 					free(mod);
 				if (exp)
@@ -3355,7 +3423,7 @@ static int sign_verify_openssl(CK_SESSION_HANDLE session,
 #ifdef ENABLE_OPENSSL
 	int             err;
 	EVP_PKEY       *pkey;
-	EVP_MD_CTX      md_ctx;
+	EVP_MD_CTX      *md_ctx;
 
 	const EVP_MD         *evp_mds[] = {
 		EVP_sha1(),
@@ -3399,9 +3467,16 @@ static int sign_verify_openssl(CK_SESSION_HANDLE session,
 	if (!(pkey = get_public_key(session, privKeyObject)))
 		return errors;
 
-	EVP_VerifyInit(&md_ctx, evp_mds[evp_md_index]);
-	EVP_VerifyUpdate(&md_ctx, verifyData, verifyDataLen);
-	err = EVP_VerifyFinal(&md_ctx, sig1, sigLen1, pkey);
+	md_ctx = EVP_MD_CTX_create();
+	if (!md_ctx)
+		err = -1;
+	else {
+		EVP_VerifyInit(md_ctx, evp_mds[evp_md_index]);
+		EVP_VerifyUpdate(md_ctx, verifyData, verifyDataLen);
+		err = EVP_VerifyFinal(md_ctx, sig1, sigLen1, pkey);
+		EVP_MD_CTX_destroy(md_ctx);
+		EVP_PKEY_free(pkey);
+	}
 	if (err == 0) {
 		printf("ERR: verification failed\n");
 		errors++;

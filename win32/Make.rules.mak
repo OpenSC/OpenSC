@@ -6,9 +6,25 @@ MINIDRIVER_DEF = /DENABLE_MINIDRIVER
 #Build MSI with the Windows Installer XML (WIX) toolkit, requires WIX >= 3.6
 !IF "$(BUILD_ON)" == "WIN64"
 WIX_PATH = "C:\Program Files (x86)\Windows Installer XML v3.6"
+WIX_INCL_DIR = "/IC:\Program Files (x86)\Windows Installer XML v3.6\SDK\inc"
+!IF "$(BUILD_FOR)" == "WIN64"
+WIX_LIBS = "C:\Program Files (x86)\Windows Installer XML v3.6\SDK\lib\dutil_2010_x64.lib" "C:\Program Files (x86)\Windows Installer XML v3.6\SDK\lib\wcautil_2010_x64.lib"
+!ELSE
+WIX_LIBS = "C:\Program Files (x86)\Windows Installer XML v3.6\SDK\lib\dutil_2010.lib" "C:\Program Files (x86)\Windows Installer XML v3.6\SDK\lib\wcautil_2010.lib"
+!ENDIF
+
 !ELSE
 WIX_PATH = "C:\Program Files\Windows Installer XML v3.6"
+WIX_INCL_DIR = "/IC:\Program Files\Windows Installer XML v3.6\SDK\inc"
+!IF "$(BUILD_FOR)" == "WIN64"
+WIX_LIBS = "C:\Program Files\Windows Installer XML v3.6\SDK\lib\dutil_2010_x64.lib" "C:\Program Files\Windows Installer XML v3.6\SDK\lib\wcautil_2010_x64.lib"
+!ELSE
+WIX_LIBS = "C:\Program Files\Windows Installer XML v3.6\SDK\lib\dutil_2010.lib" "C:\Program Files\Windows Installer XML v3.6\SDK\lib\wcautil_2010.lib"
 !ENDIF
+
+!ENDIF
+
+
 
 #Include support for Secure Messaging
 SM_DEF = /DENABLE_SM
@@ -67,7 +83,7 @@ CNGSDK_INCL_DIR = "/IC:\Program Files\Microsoft CNG Development Kit\Include"
 #  O1 - minimal code size
 CODE_OPTIMIZATION = /O1
 
-ALL_INCLUDES = /I$(TOPDIR)\win32 /I$(TOPDIR)\src $(OPENSSL_INCL_DIR) $(ZLIB_INCL_DIR) $(LIBLTDL_INCL) $(INTTYPES_INCL_DIR) $(CNGSDK_INCL_DIR)
+ALL_INCLUDES = /I$(TOPDIR)\win32 /I$(TOPDIR)\src $(OPENSSL_INCL_DIR) $(ZLIB_INCL_DIR) $(LIBLTDL_INCL) $(INTTYPES_INCL_DIR) $(CNGSDK_INCL_DIR) $(WIX_INCL_DIR)
 
 !IF "$(DEBUG_DEF)" == "/DDEBUG"
 LINKDEBUGFLAGS = /NODEFAULTLIB:LIBCMT /DEBUG
@@ -89,6 +105,9 @@ LIBFLAGS =  /nologo /machine:x86
 CANDLEFLAGS = -dPlatform=x86
 !ENDIF
 .c.obj::
+	cl $(CODE_OPTIMIZATION) $(COPTS) /c $<
+
+.cpp.obj::
 	cl $(CODE_OPTIMIZATION) $(COPTS) /c $<
 
 .rc.res::

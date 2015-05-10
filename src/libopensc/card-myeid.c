@@ -160,7 +160,8 @@ static int myeid_init(struct sc_card *card)
 			card->version.fw_major >= 4)   {
 		int i;
 
-	        flags |= SC_ALGORITHM_ECDSA_RAW;
+		flags = SC_ALGORITHM_ECDSA_RAW | SC_ALGORITHM_ECDH_CDH_RAW | SC_ALGORITHM_ONBOARD_KEY_GEN;
+		flags |= SC_ALGORITHM_ECDSA_HASH_NONE | SC_ALGORITHM_ECDSA_HASH_SHA1;
 		ext_flags = SC_ALGORITHM_EXT_EC_NAMEDCURVE | SC_ALGORITHM_EXT_EC_UNCOMPRESES;
 
 		for (i=0; ec_curves[i].curve_name != NULL; i++)
@@ -826,6 +827,8 @@ myeid_convert_ec_signature(struct sc_context *ctx, size_t s_len, unsigned char *
 	buflen = (s_len + 7)/8*2;
 
 	r = sc_asn1_sig_value_sequence_to_rs(ctx, data, datalen, buf, buflen);
+	if (r < 0)
+		free(buf);
         LOG_TEST_RET(ctx, r, "Failed to cenvert Sig-Value to the raw RS format");
 
 	if (buflen > datalen)

@@ -47,7 +47,8 @@ static sc_pkcs11_mechanism_type_t find_mechanism = {
 	NULL,		/* decrypt_init */
 	NULL,		/* decrypt */
 	NULL,		/* derive */
-	NULL		/* mech_data */
+	NULL,		/* mech_data */
+	NULL,		/* free_mech_data */
 };
 
 static void

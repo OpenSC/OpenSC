@@ -170,18 +170,12 @@ CK_RV card_removed(sc_reader_t * reader)
 	if (card) {
 		card->framework->unbind(card);
 		sc_disconnect_card(card->card);
-		/* FIXME: free mechanisms
-		 * spaces allocated by the
-		 * sc_pkcs11_register_sign_and_hash_mechanism
-		 * and sc_pkcs11_new_fw_mechanism.
-		 * but see sc_pkcs11_register_generic_mechanisms
 		for (i=0; i < card->nmechanisms; ++i) {
-			// if 'mech_data' is a pointer earlier returned by the ?alloc
-			free(card->mechanisms[i]->mech_data);
-			// if 'mechanisms[i]' is a pointer earlier returned by the ?alloc
+			if (card->mechanisms[i]->free_mech_data) {
+				card->mechanisms[i]->free_mech_data(card->mechanisms[i]->mech_data);
+			}
 			free(card->mechanisms[i]);
 		}
-		*/
 		free(card->mechanisms);
 		free(card);
 	}

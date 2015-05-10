@@ -999,7 +999,7 @@ iso7816_build_pin_apdu(struct sc_card *card, struct sc_apdu *apdu,
 		break;
 	case SC_PIN_CMD_CHANGE:
 		ins = 0x24;
-		if (data->pin1.len != 0 || use_pin_pad) {
+		if (data->pin1.len != 0 || (use_pin_pad && !( data->flags & SC_PIN_CMD_IMPLICIT_CHANGE))) {
 			if ((r = sc_build_pin(buf, buf_len, &data->pin1, pad)) < 0)
 				return r;
 			len += r;
@@ -1023,7 +1023,7 @@ iso7816_build_pin_apdu(struct sc_card *card, struct sc_apdu *apdu,
 		break;
 	case SC_PIN_CMD_UNBLOCK:
 		ins = 0x2C;
-		if (data->pin1.len != 0 || use_pin_pad) {
+		if (data->pin1.len != 0 || (use_pin_pad && !( data->flags & SC_PIN_CMD_IMPLICIT_CHANGE))) {
 			if ((r = sc_build_pin(buf, buf_len, &data->pin1, pad)) < 0)
 				return r;
 			len += r;

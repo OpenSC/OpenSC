@@ -70,7 +70,10 @@ myeid_get_init_applet_data(struct sc_profile *profile, struct sc_pkcs15_card *p1
 	sc_file_dup(&tmp_file, profile->mf_info->file);
 	if (tmp_file == NULL)
 		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot duplicate MF file");
+
 	r = sc_pkcs15init_fixup_file(profile, p15card, tmp_file);
+	if (r < 0)
+		sc_file_free(tmp_file);
 	LOG_TEST_RET(ctx, r, "MF fixup failed");
 
 	/* AC 'Create DF' and 'Create EF' */
@@ -100,6 +103,8 @@ myeid_get_init_applet_data(struct sc_profile *profile, struct sc_pkcs15_card *p1
 	if (tmp_file == NULL)
 		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot duplicate Application DF file");
 	r = sc_pkcs15init_fixup_file(profile, p15card, tmp_file);
+	if (r < 0)
+		sc_file_free(tmp_file);
 	LOG_TEST_RET(ctx, r, "Application DF fixup failed");
 
 	/* AC 'Create DF' and 'Create EF' */
@@ -118,8 +123,8 @@ myeid_get_init_applet_data(struct sc_profile *profile, struct sc_pkcs15_card *p1
 	else if (entry->method == SC_AC_NEVER)
 		*(data + 6) = 0xFF; /* 'NEVER'. */
 	*(data + 7) = 0xFF;
-	sc_file_free(tmp_file);
 
+	sc_file_free(tmp_file);
 	LOG_FUNC_RETURN(p15card->card->ctx, SC_SUCCESS);
 }
 

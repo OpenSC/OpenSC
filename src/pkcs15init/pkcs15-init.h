@@ -265,6 +265,7 @@ struct sc_pkcs15init_skeyargs {
 struct sc_pkcs15init_certargs {
 	struct sc_pkcs15_id	id;
 	const char *		label;
+	int update;
 
 	unsigned long		x509_usage;
 	unsigned char		authority;

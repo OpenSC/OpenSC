@@ -52,6 +52,8 @@ m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
 AC_CANONICAL_HOST
 AC_PROG_CC
+# AC_PROG_CXX is needed to built the win32 custom action. Indeed dutil.h use [extern "C"] definition which fails on pure c compiler
+AC_PROG_CXX
 PKG_PROG_PKG_CONFIG
 AC_C_BIGENDIAN
 
@@ -734,6 +736,7 @@ AC_CONFIG_FILES([
 	src/minidriver/opensc-minidriver.inf
 	win32/Makefile
 	win32/versioninfo.rc
+	win32/versioninfo-customactions.rc
 	win32/winconfig.h
 	win32/OpenSC.iss
 	win32/OpenSC.wxs

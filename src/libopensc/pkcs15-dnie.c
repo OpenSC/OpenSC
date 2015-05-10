@@ -136,6 +136,7 @@ static int sc_pkcs15emu_dnie_init(sc_pkcs15_card_t * p15card)
 	sc_pkcs15_object_t *p15_obj;
 	size_t len = sizeof(buf);
 	int rv;
+	struct sc_pkcs15_cert_info *p15_info = NULL;
 
 	sc_context_t *ctx = p15card->card->ctx;
 	LOG_FUNC_CALLED(ctx);
@@ -225,6 +226,15 @@ static int sc_pkcs15emu_dnie_init(sc_pkcs15_card_t * p15card)
 		    && (p15_obj->auth_id.len == 0)) {
 			p15_obj->auth_id.value[0] = 0x01;
 			p15_obj->auth_id.len = 1;
+		};
+		/* Set path count to -1 for public certificates, as they
+		   will need to be decompressed and read_binary()'d, so
+		   we make sure we end up reading the file->size and not the
+		   path->count which is the compressed size on newer
+                   DNIe versions  */
+		if ( p15_obj->df && (p15_obj->df->type == SC_PKCS15_CDF) ) {
+                    p15_info = (struct sc_pkcs15_cert_info *) p15_obj ->data;
+		    p15_info ->path.count = -1;
 		}
 		/* Remove found public keys as cannot be read_binary()'d */
 		if ( p15_obj->df && (p15_obj->df->type == SC_PKCS15_PUKDF) ) {

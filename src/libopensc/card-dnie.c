@@ -497,8 +497,8 @@ static inline void init_flags(struct sc_card *card)
 	card->max_send_size = (255 - 12);	/* manual says 255, but we need 12 extra bytes when encoding */
 	card->max_recv_size = 255;
 
-	algoflags = SC_ALGORITHM_RSA_RAW;	/* RSA support */
-	algoflags |= SC_ALGORITHM_RSA_HASH_NONE;
+	/* RSA Support with PKCS1.5 padding */
+	algoflags = SC_ALGORITHM_RSA_HASH_NONE | SC_ALGORITHM_RSA_PAD_PKCS1;
 	_sc_card_add_rsa_alg(card, 1024, algoflags, 0);
 	_sc_card_add_rsa_alg(card, 2048, algoflags, 0);
 }
@@ -1356,8 +1356,6 @@ static int dnie_compute_signature(struct sc_card *card,
 {
 	int result = SC_SUCCESS;
 	struct sc_apdu apdu;
-	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];	/* to compose digest+hash data */
-	size_t sbuflen = 0;
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];	/* to receive sign response */
 
 	/* some preliminar checks */
@@ -1391,20 +1389,6 @@ static int dnie_compute_signature(struct sc_card *card,
 	sc_log(card->ctx,
 	       "Compute signature len: '%d' bytes:\n%s\n============================================================",
 	       datalen, sc_dump_hex(data, datalen));
-	if (datalen != 256) {
-		sc_log(card->ctx, "Expected pkcs#1 v1.5 DigestInfo data");
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_WRONG_LENGTH);
-	}
-
-	/* try to strip pkcs1 padding */
-	sbuflen = sizeof(sbuf);
-	memset(sbuf, 0, sbuflen);
-	result = sc_pkcs1_strip_01_padding(card->ctx, data, datalen, sbuf, &sbuflen);
-	if (result != SC_SUCCESS) {
-		sc_log(card->ctx, "Provided data is not pkcs#1 padded");
-		/* TODO: study what to do on plain data */
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_WRONG_PADDING);
-	}
 
 	/*INS: 0x2A  PERFORM SECURITY OPERATION
 	 * P1:  0x9E  Resp: Digital Signature
@@ -1413,9 +1397,9 @@ static int dnie_compute_signature(struct sc_card *card,
 	apdu.resp = rbuf;
 	apdu.resplen = sizeof(rbuf);
 	apdu.le = 256;		/* signature response size */
-	apdu.data = sbuf;
-	apdu.lc = sbuflen;	/* 15 SHA1 DigestInfo + 20 SHA1 computed Hash */
-	apdu.datalen = sizeof(sbuf);
+	apdu.data = data;
+	apdu.lc = datalen;	/*  Caller determines the type of hash and its size */
+	apdu.datalen = datalen;
 	/* tell card to compute signature */
 	result = dnie_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, result, "compute_signature() failed");
