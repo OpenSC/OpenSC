@@ -2124,6 +2124,7 @@ md_pkcs15_store_certificate(PCARD_DATA pCardData, char *file_name, unsigned char
 	memset(&args, 0, sizeof(args));
 	args.der_encoded.value = blob;
 	args.der_encoded.len = len;
+	args.update = 1;
 
 	/* use container's ID as ID of certificate to store */
 	idx = -1;
