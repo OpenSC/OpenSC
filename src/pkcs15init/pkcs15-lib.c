@@ -2332,8 +2332,12 @@ select_id(struct sc_pkcs15_card *p15card, int type, struct sc_pkcs15_id *id)
 	/* If the user provided an ID, make sure we can use it */
 	if (id->len != 0) {
 		r = sc_pkcs15_find_object_by_id(p15card, type, id, &obj);
+
 		if (r == SC_ERROR_OBJECT_NOT_FOUND)
 			r = 0;
+		else if (!r)
+			r = SC_ERROR_NON_UNIQUE_ID;
+
 		LOG_FUNC_RETURN(ctx, r);
 	}
 
