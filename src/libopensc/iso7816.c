@@ -364,20 +364,23 @@ iso7816_process_fci(struct sc_card *card, struct sc_file *file,
 	/* try the tag 0x80 then the tag 0x81 */
 	file->size = 0;
 	for (i = 0x80; i <= 0x81; i++) {
+		int size = 0;
+		len = buflen;
 		tag = sc_asn1_find_tag(ctx, p, len, i, &taglen);
 		if (tag == NULL) {
 			continue;
 		}
-		if (taglen == 0 || taglen > 4) {
+		if (taglen == 0) {
 			continue;
 		}
-		file->size = tag[0];
-		if (taglen >= 2)
-			file->size = (file->size << 8) + tag[1];
-		if (taglen >= 3)
-			file->size = (file->size << 8) + tag[2];
-		if (taglen >= 4)
-			file->size = (file->size << 8) + tag[3];
+		if (sc_asn1_decode_integer(tag, taglen, &size) < 0) {
+			continue;
+		}
+		if (size <0)
+		{
+			continue;
+		}
+		file->size = size;
 		sc_log(ctx, "  bytes in file: %d", file->size);
 		break;
 	}
