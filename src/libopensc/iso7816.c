@@ -475,6 +475,9 @@ iso7816_select_file(struct sc_card *card, const struct sc_path *in_path, struct 
 	pathlen = in_path->len;
 	pathtype = in_path->type;
 
+	if (file_out != NULL) {
+		*file_out = NULL;
+	}
 	if (in_path->aid.len) {
 		if (!pathlen) {
 			memcpy(path, in_path->aid.value, in_path->aid.len);
