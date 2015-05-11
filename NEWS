@@ -1,8 +1,9 @@
 NEWS for OpenSC -- History of user visible changes
-New in 0.15.0; 2015-03-20
+New in 0.15.0; 2015-05-11
 * new card drivers
   AzeDIT 3.5
   IsoApplet
+  MaskTech
 * libopensc
   allow extended length APDUs
   accept no output for 'SELECT' MF and 'SELECT' DF_NAME APDUs
@@ -37,7 +38,8 @@ New in 0.15.0; 2015-03-20
   fixed invalid bit when writing PIV certificate object with gzipped certificate
   fixed bad caching behavior of PIV PKCS15 emulator
 * ePass2003
-  fixed failure due to re-authenticate of secure messaging when card is accessed by multiple PKCS11 sessions
+  fixed failure due to re-authenticate of secure messaging when card is accessed
+      by multiple PKCS11 sessions
 * MyEID
   EC support for MyEID-v4 card
 * openpgp
@@ -51,11 +53,16 @@ New in 0.15.0; 2015-03-20
   fix certificate delete bug
 * IAS/ECC
   fixed PKCS#11 compliance issues
+  support for Morpho IAS Agent Card
 * cardos
   overwrite content of deleted private key
-
-
-
+* win32
+  setup improuvement
+     look & feel
+     custom actions with card registration
+  minidriver impouvement
+     fixed errors and warnings returned by Microsoft quality tool
+     pin-pad support
 
 New in 0.14.0; 2014-05-31
 * new card driver DNIe
