@@ -441,6 +441,7 @@ static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 	unsigned int cla_out, tag_out;
 	const u8 *body;
 	size_t bodylen;
+	int find_len = 0;
 
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
@@ -465,6 +466,11 @@ static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 			recvbuf ? SC_APDU_CASE_4_SHORT: SC_APDU_CASE_3_SHORT,
 			ins, p1, p2);
 	apdu.flags |= SC_APDU_FLAGS_CHAINING;
+	/* if looking for length of object, dont try and read the rest of buffer here */
+	if (rbuflen == 8 && card->reader->active_protocol == SC_PROTO_T1) {
+		apdu.flags |= SC_APDU_FLAGS_NO_GET_RESP;
+		find_len = 1;
+	}
 
 	apdu.lc = sendbuflen;
 	apdu.datalen = sendbuflen;
@@ -493,7 +499,9 @@ static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 		goto err;
 	}
 
-	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	if (!(find_len && apdu.sw1 == 0x61))  {
+	    r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	}
 
 /* TODO: - DEE look later at tag vs size read too */
 	if (r < 0) {
