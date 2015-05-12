@@ -357,7 +357,7 @@ static int do_dump_do(sc_card_t *card, unsigned int tag)
 	// Private DO are specified up to 254 bytes
 	unsigned char buffer[254];
 	memset(buffer, '\0', sizeof(buffer));
-	
+
 	r = sc_get_data(card, tag, buffer, sizeof(buffer));
 	if (r < 0) {
 		printf("Failed to get data object: %s\n", sc_strerror(r));
@@ -378,10 +378,9 @@ static int do_dump_do(sc_card_t *card, unsigned int tag)
 		}
 		dup2(tmp, fileno(stdout));
 		clearerr(stdout);
-		if (sizeof(buffer) != r) {
-			return EXIT_FAILURE;
-		}
 		close(tmp);
+		if (sizeof(buffer) != r)
+			return EXIT_FAILURE;
 	} else {
 		util_hex_dump_asc(stdout, buffer, sizeof(buffer), -1);
 	}

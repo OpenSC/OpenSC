@@ -717,7 +717,8 @@ gpk_pkfile_init_public(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file
 	if (r >= 0) {
 		if (r != 7 || buffer[0] != 0) {
 			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "first record of public key file is not Lsys0");
-			return SC_ERROR_OBJECT_NOT_VALID;
+			r = SC_ERROR_OBJECT_NOT_VALID;
+			goto out;
 		}
 
 		r = sc_update_record(p15card->card, 1, sysrec, sizeof(sysrec),

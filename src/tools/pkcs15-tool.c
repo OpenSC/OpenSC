@@ -1399,12 +1399,17 @@ static int unblock_pin(void)
 				printf("New PIN value will be prompted with pinpad.\n");
 			break;
 		}
-		if (pin == NULL || strlen((char *) pin) == 0)
+		if (pin == NULL || strlen((char *) pin) == 0) {
+			free(pin);
 			return 2;
+		}
 
 		pin2 = get_pin("Enter new PIN again", pin_obj);
-		if (pin2 == NULL || strlen((char *) pin2) == 0)
+		if (pin2 == NULL || strlen((char *) pin2) == 0) {
+			free(pin);
+			free(pin2);
 			return 2;
+		}
 		if (strcmp((char *) pin, (char *) pin2) != 0) {
 			printf("PIN codes do not match, try again.\n");
 			free(pin);
@@ -1488,6 +1493,7 @@ static int change_pin(void)
 		}
 		if (newpin == NULL || strlen((char *) newpin) == 0)   {
 			fprintf(stderr, "No new PIN value supplied.\n");
+			free(newpin);
 			return 2;
 		}
 

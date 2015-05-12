@@ -224,7 +224,7 @@ cflex_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *df
 	struct sc_pkcs15_pin_attributes *pin_attrs = &auth_info->attrs.pin;
 	sc_file_t	*dummies[2];
 	int		ndummies, pin_type, puk_type, r;
-	sc_file_t       *file;
+	sc_file_t       *file = NULL;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 
@@ -250,6 +250,7 @@ cflex_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *df
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_FILE_NOT_FOUND, "profile does not define pin file ACLs");
 
 	ndummies = cflex_create_dummy_chvs(profile, p15card, file, SC_AC_OP_CREATE, dummies);
+	sc_file_free(file);
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, ndummies, "Unable to create dummy CHV file");
 
 	r = cflex_create_pin_file(profile, p15card, &df->path, pin_attrs->reference,

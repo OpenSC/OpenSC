@@ -208,11 +208,13 @@ static int rtecp_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 
 	snprintf(pin_sname, sizeof(pin_sname), "CHV%i", auth_info->attrs.pin.reference);
 	if (auth_info->attrs.pin.reference == RTECP_USER_PIN_REF)   {
-	        r = sc_profile_get_file(profile, pin_sname, &file);
+		r = sc_profile_get_file(profile, pin_sname, &file);
 		if (!r)   {
 			const struct sc_acl_entry *acl = NULL;
 
 			r = sc_pkcs15init_fixup_file(profile, p15card, file);
+			if (r < 0)
+				sc_file_free(file);
 			SC_TEST_RET(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, r, "Cannot fixup the ACLs of PIN file");
 
 			acl = sc_file_get_acl_entry(file, SC_AC_OP_PIN_RESET);

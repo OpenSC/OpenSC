@@ -911,14 +911,19 @@ sc_dup_app_info(const struct sc_app_info *info)
 
 	if (info->label) {
 		out->label = strdup(info->label);
-		if (!out->label)
+		if (!out->label) {
+			free(out);
 			return NULL;
+		}
 	} else
 		out->label = NULL;
 
 	out->ddo.value = malloc(info->ddo.len);
-	if (!out->ddo.value)
+	if (!out->ddo.value) {
+		free(out->label);
+		free(out);
 		return NULL;
+	}
 	memcpy(out->ddo.value, info->ddo.value, info->ddo.len);
 
 	return out;

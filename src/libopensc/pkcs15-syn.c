@@ -272,6 +272,7 @@ static int parse_emu_block(sc_pkcs15_card_t *p15card, scconf_block *conf)
 			if (3 != sscanf(get_version(), "%u.%u.%u", &major, &minor, &fix)) {
 				sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
 					   	"unable to get modules version number\n");
+				sc_dlclose(handle);
 				return SC_ERROR_INTERNAL;
 			}
 		}
