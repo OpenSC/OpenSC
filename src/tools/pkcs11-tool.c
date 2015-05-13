@@ -24,6 +24,11 @@
 #include <stdio.h>
 #include <errno.h>
 #include <stdlib.h>
+#ifndef _WIN32
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#endif
 #ifdef ENABLE_OPENSSL
 #include <openssl/opensslv.h>
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L
@@ -118,7 +123,8 @@ enum {
 	OPT_LOGIN_TYPE,
 	OPT_TEST_EC,
 	OPT_DERIVE,
-	OPT_DECRYPT
+	OPT_DECRYPT,
+	OPT_TEST_FORK,
 };
 
 static const struct option options[] = {
@@ -176,6 +182,9 @@ static const struct option options[] = {
 	{ "verbose",		0, NULL,		'v' },
 	{ "private",		0, NULL,		OPT_PRIVATE },
 	{ "test-ec",		0, NULL,		OPT_TEST_EC },
+#ifndef _WIN32
+	{ "test-fork",		0, NULL,		OPT_TEST_FORK },
+#endif
 
 	{ NULL, 0, NULL, 0 }
 };
@@ -234,7 +243,10 @@ static const char *option_help[] = {
 	"Test Mozilla-like keypair gen and cert req, <arg>=certfile",
 	"Verbose operation. (Set OPENSC_DEBUG to enable OpenSC specific debugging)",
 	"Set the CKA_PRIVATE attribute (object is only viewable after a login)",
-	"Test EC (best used with the --login or --pin option)"
+	"Test EC (best used with the --login or --pin option)",
+#ifndef _WIN32
+	"Test forking and calling C_Initialize() in the child",
+#endif
 };
 
 static const char *	app_name = "pkcs11-tool"; /* for utils.c */
@@ -371,6 +383,9 @@ static int test_card_detection(int);
 static int		hex_to_bin(const char *in, CK_BYTE *out, size_t *outlen);
 static void		test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE session);
 static void		test_ec(CK_SLOT_ID slot, CK_SESSION_HANDLE session);
+#ifndef _WIN32
+static void		test_fork(void);
+#endif
 static CK_RV		find_object_with_attributes(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE *out,
 				CK_ATTRIBUTE *attrs, CK_ULONG attrsLen, CK_ULONG obj_index);
 static CK_ULONG		get_private_key_length(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE prkey);
@@ -402,6 +417,9 @@ int main(int argc, char * argv[])
 	int do_test = 0;
 	int do_test_kpgen_certwrite = 0;
 	int do_test_ec = 0;
+#ifndef _WIN32
+	int do_test_fork = 0;
+#endif
 	int need_session = 0;
 	int opt_login = 0;
 	int do_init_token = 0;
@@ -675,6 +693,12 @@ int main(int argc, char * argv[])
 			do_derive = 1;
 			action_count++;
 			break;
+#ifndef _WIN32
+		case OPT_TEST_FORK:
+			do_test_fork = 1;
+			action_count++;
+			break;
+#endif
 		default:
 			util_print_usage_and_die(app_name, options, option_help, NULL);
 		}
@@ -692,6 +716,11 @@ int main(int argc, char * argv[])
 		printf("\n*** Cryptoki library has already been initialized ***\n");
 	else if (rv != CKR_OK)
 		p11_fatal("C_Initialize", rv);
+
+#ifndef _WIN32
+	if (do_test_fork)
+		test_fork();
+#endif
 
 	if (do_show_info)
 		show_cryptoki_info();
@@ -4571,6 +4600,29 @@ static void test_ec(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	printf("==> OK\n");
 }
 
+#ifndef _WIN32
+static void test_fork(void)
+{
+	CK_RV rv;
+	pid_t pid = fork();
+
+	if (!pid) {
+		printf("*** Calling C_Initialize in forked child process ***\n");
+		rv = p11->C_Initialize(NULL);
+		if (rv != CKR_OK)
+			p11_fatal("C_Initialize in child\n", rv);
+		exit(0);
+	} else if (pid < 0) {
+		util_fatal("Failed to fork for test: %s", strerror(errno));
+	} else {
+		int st;
+		waitpid(pid, &st, 0);
+		if (!WIFEXITED(st) || WEXITSTATUS(st))
+			util_fatal("Child process exited with status %d", st);
+	}
+
+}
+#endif
 
 static const char *p11_flag_names(struct flag_info *list, CK_FLAGS value)
 {
