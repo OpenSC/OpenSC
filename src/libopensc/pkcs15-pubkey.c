@@ -829,8 +829,10 @@ sc_pkcs15_encode_pubkey_as_spki(sc_context_t *ctx, struct sc_pkcs15_pubkey *pubk
 				LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 			ec_params->type = 1;
 			ec_params->der.value = calloc(pubkey->u.ec.params.der.len, 1);
-			if (!ec_params->der.value)
+			if (!ec_params->der.value) {
+				free(ec_params);
 				LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+			}
 			memcpy(ec_params->der.value, pubkey->u.ec.params.der.value, pubkey->u.ec.params.der.len);
 			ec_params->der.len = pubkey->u.ec.params.der.len;
 			pubkey->alg_id->params = ec_params;
@@ -931,18 +933,18 @@ sc_pkcs15_read_pubkey(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_obj
 	if (info->direct.spki.value && info->direct.spki.len)   {
 		sc_log(ctx, "Using direct SPKI value,  tag 0x%X", *(info->direct.spki.value));
 		r = sc_pkcs15_pubkey_from_spki_sequence(ctx, info->direct.spki.value, info->direct.spki.len, &pubkey);
-		LOG_TEST_RET(ctx, r, "Failed to decode 'SPKI' direct value");
+		LOG_TEST_GOTO_ERR(ctx, r, "Failed to decode 'SPKI' direct value");
 	}
 	else if (info->direct.raw.value && info->direct.raw.len)   {
 		sc_log(ctx, "Using direct RAW value");
 		r = sc_pkcs15_decode_pubkey(ctx, pubkey, info->direct.raw.value, info->direct.raw.len);
-		LOG_TEST_RET(ctx, r, "Failed to decode 'RAW' direct value");
+		LOG_TEST_GOTO_ERR(ctx, r, "Failed to decode 'RAW' direct value");
 		sc_log(ctx, "TODO: for EC keys 'raw' data needs to be completed with referenced algorithm from TokenInfo");
 	}
 	else if (obj->content.value && obj->content.len)   {
 		sc_log(ctx, "Using object content");
 		r = sc_pkcs15_decode_pubkey(ctx, pubkey, obj->content.value, obj->content.len);
-		LOG_TEST_RET(ctx, r, "Failed to decode object content value");
+		LOG_TEST_GOTO_ERR(ctx, r, "Failed to decode object content value");
 		sc_log(ctx, "TODO: for EC keys 'raw' data needs to be completed with referenced algorithm from TokenInfo");
 	}
 	else if (p15card->card->ops->read_public_key)   {
@@ -950,28 +952,34 @@ sc_pkcs15_read_pubkey(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_obj
 		r = p15card->card->ops->read_public_key(p15card->card, algorithm,
 				(struct sc_path *)&info->path, info->key_reference, info->modulus_length,
 				&data, &len);
-		LOG_TEST_RET(ctx, r, "Card specific 'read-public' procedure failed.");
+		LOG_TEST_GOTO_ERR(ctx, r, "Card specific 'read-public' procedure failed.");
 
 		r = sc_pkcs15_decode_pubkey(ctx, pubkey, data, len);
-		LOG_TEST_RET(ctx, r, "Decode public key error");
+		LOG_TEST_GOTO_ERR(ctx, r, "Decode public key error");
 	}
 	else if (info->path.len)   {
 		sc_log(ctx, "Read from EF and decode");
 		r = sc_pkcs15_read_file(p15card, &info->path, &data, &len);
-		LOG_TEST_RET(ctx, r, "Failed to read public key file.");
+		LOG_TEST_GOTO_ERR(ctx, r, "Failed to read public key file.");
 
 		if (algorithm == SC_ALGORITHM_EC && *data == (SC_ASN1_TAG_SEQUENCE | SC_ASN1_TAG_CONSTRUCTED))
 			r = sc_pkcs15_pubkey_from_spki_sequence(ctx, data, len, &pubkey);
 		else
 			r = sc_pkcs15_decode_pubkey(ctx, pubkey, data, len);
-		LOG_TEST_RET(ctx, r, "Decode public key error");
+		LOG_TEST_GOTO_ERR(ctx, r, "Decode public key error");
 	}
 	else {
-		LOG_TEST_RET(ctx, SC_ERROR_NOT_IMPLEMENTED, "No way to get public key");
+		r = SC_ERROR_NOT_IMPLEMENTED;
+		LOG_TEST_GOTO_ERR(ctx, r, "No way to get public key");
 	}
 
-	*out = pubkey;
-	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+err:
+	if (r)
+		sc_pkcs15_free_pubkey(pubkey);
+	else
+		*out = pubkey;
+
+	LOG_FUNC_RETURN(ctx, r);
 }
 
 
@@ -1033,7 +1041,7 @@ sc_pkcs15_pubkey_from_prvkey(struct sc_context *ctx, struct sc_pkcs15_prkey *prv
 		break;
 	default:
 		sc_log(ctx, "Unsupported private key algorithm");
-		return SC_ERROR_NOT_SUPPORTED;
+		rv = SC_ERROR_NOT_SUPPORTED;
 	}
 
 	if (rv)
@@ -1281,6 +1289,7 @@ sc_pkcs15_pubkey_from_spki_fields(struct sc_context *ctx, struct sc_pkcs15_pubke
 	pubkey = calloc(1, sizeof(sc_pkcs15_pubkey_t));
 	if (pubkey == NULL)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+	*outpubkey = pubkey;
 
 	sc_copy_asn1_entry(c_asn1_pkinfo, asn1_pkinfo);
 
@@ -1339,7 +1348,6 @@ sc_pkcs15_pubkey_from_spki_fields(struct sc_context *ctx, struct sc_pkcs15_pubke
 	if (tmp_buf)
 		free(tmp_buf);
 
-	*outpubkey = pubkey;
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 

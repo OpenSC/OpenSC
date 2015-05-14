@@ -1630,10 +1630,13 @@ sc_pkcs15init_store_certificate(struct sc_pkcs15_card *p15card,
 	struct sc_pkcs15_cert_info *cert_info = NULL;
 	struct sc_pkcs15_object *object = NULL;
 	struct sc_pkcs15_object *key_object = NULL;
+	struct sc_path existing_path;
 	const char *label = NULL;
 	int		r;
 
 	LOG_FUNC_CALLED(ctx);
+
+	memset(&existing_path, 0, sizeof(struct sc_path));
 
 	label = args->label;
 	if (!label)
@@ -1642,10 +1645,25 @@ sc_pkcs15init_store_certificate(struct sc_pkcs15_card *p15card,
 	r = sc_pkcs15init_select_intrinsic_id(p15card, profile, SC_PKCS15_TYPE_CERT_X509,
 			&args->id, &args->der_encoded);
 	LOG_TEST_RET(ctx, r, "Get certificate 'intrinsic ID' error");
+	sc_log(ctx, "Cert(ID:%s) rv %i", sc_pkcs15_print_id(&args->id), r);
 
-	/* Select an ID if the user didn't specify one, otherwise
-	 * make sure it's unique */
+	/* Select an ID if the user didn't specify one, otherwise make sure it's unique */
 	r = select_id(p15card, SC_PKCS15_TYPE_CERT, &args->id);
+	if (r == SC_ERROR_NON_UNIQUE_ID && args->update)   {
+		struct sc_pkcs15_object *existing_obj = NULL;
+
+		r = sc_pkcs15_find_object_by_id(p15card, SC_PKCS15_TYPE_CERT, &args->id, &existing_obj);
+		if (!r)   {
+			sc_log(ctx, "Found cert(ID:%s)", sc_pkcs15_print_id(&args->id));
+			existing_path = ((struct sc_pkcs15_cert_info *)existing_obj->data)->path;
+
+			sc_pkcs15_remove_object(p15card, existing_obj);
+			sc_pkcs15_free_object(existing_obj);
+		}
+
+		r = select_id(p15card, SC_PKCS15_TYPE_CERT, &args->id);
+	}
+	sc_log(ctx, "Select ID Cert(ID:%s) rv %i", sc_pkcs15_print_id(&args->id), r);
 	LOG_TEST_RET(ctx, r, "Select certificate ID error");
 
 	object = sc_pkcs15init_new_object(SC_PKCS15_TYPE_CERT_X509, label, NULL, NULL);
@@ -1657,8 +1675,14 @@ sc_pkcs15init_store_certificate(struct sc_pkcs15_card *p15card,
 	sc_der_copy(&object->content, &args->der_encoded);
 	sc_der_copy(&cert_info->value, &args->der_encoded);
 
+	if (existing_path.len)   {
+		sc_log(ctx, "Using existing path %s", sc_print_path(&existing_path));
+		cert_info->path = existing_path;
+	}
+
 	sc_log(ctx, "Store cert(%s,ID:%s,der(%p,%i))", object->label,
 			sc_pkcs15_print_id(&cert_info->id), args->der_encoded.value, args->der_encoded.len);
+
 	if (!profile->pkcs15.direct_certificates)
 		r = sc_pkcs15init_store_data(p15card, profile, object, &args->der_encoded, &cert_info->path);
 
@@ -2332,8 +2356,12 @@ select_id(struct sc_pkcs15_card *p15card, int type, struct sc_pkcs15_id *id)
 	/* If the user provided an ID, make sure we can use it */
 	if (id->len != 0) {
 		r = sc_pkcs15_find_object_by_id(p15card, type, id, &obj);
+
 		if (r == SC_ERROR_OBJECT_NOT_FOUND)
 			r = 0;
+		else if (!r)
+			r = SC_ERROR_NON_UNIQUE_ID;
+
 		LOG_FUNC_RETURN(ctx, r);
 	}
 

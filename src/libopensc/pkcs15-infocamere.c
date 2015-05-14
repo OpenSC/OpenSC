@@ -242,6 +242,8 @@ static int infocamere_1200_init(sc_pkcs15_card_t * p15card)
 	
 	if (r != SC_SUCCESS || file->size > 255) {
 		/* Not EF.GDO */
+		if (file)
+			sc_file_free(file);
 		return SC_ERROR_WRONG_CARD;
 	}
 
@@ -249,6 +251,7 @@ static int infocamere_1200_init(sc_pkcs15_card_t * p15card)
 
 	if (ef_gdo[0] != 0x5A || file->size < 3) {
 		/* Not EF.GDO */
+		sc_file_free(file);
 		return SC_ERROR_WRONG_CARD;
 	}
 
@@ -260,8 +263,10 @@ static int infocamere_1200_init(sc_pkcs15_card_t * p15card)
 
 	if (file->size < (size_t) (len_iccsn + 5)) {
 		/* Not CHN */
+		sc_file_free(file);
 		return SC_ERROR_WRONG_CARD;
 	}
+	sc_file_free(file);
 
 	if (!
 	    (ef_gdo[len_iccsn + 2] == 0x5F

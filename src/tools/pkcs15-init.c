@@ -138,6 +138,7 @@ enum {
 	OPT_UPDATE_LAST_UPDATE,
 	OPT_ERASE_APPLICATION,
 	OPT_IGNORE_CA_CERTIFICATES,
+	OPT_UPDATE_EXISTING,
 
 	OPT_PIN1     = 0x10000,	/* don't touch these values */
 	OPT_PUK1     = 0x10001,
@@ -189,6 +190,7 @@ const struct option	options[] = {
 	{ "finalize",		no_argument,       NULL,	'F' },
 	{ "update-last-update", no_argument,       NULL,        OPT_UPDATE_LAST_UPDATE},
 	{ "ignore-ca-certificates",no_argument,    NULL,	OPT_IGNORE_CA_CERTIFICATES},
+	{ "update-existing",	no_argument,       NULL,	OPT_UPDATE_EXISTING},
 
 	{ "extractable",	no_argument, NULL,		OPT_EXTRACTABLE },
 	{ "insecure",		no_argument, NULL,		OPT_INSECURE },
@@ -249,6 +251,7 @@ static const char *		option_help[] = {
 	"Finish initialization phase of the smart card",
 	"Update 'lastUpdate' attribut of tokenInfo",
 	"When storing PKCS#12 ignore CA certificates",
+	"Store or update existing certificate",
 
 	"Private key stored as an extractable key",
 	"Insecure mode: do not require a PIN for private key",
@@ -364,6 +367,7 @@ static int			ignore_cmdline_pins = 0;
 static struct secret		opt_secrets[MAX_SECRETS];
 static unsigned int		opt_secret_count;
 static int			opt_ignore_ca_certs = 0;
+static int			opt_update_existing = 0;
 static int			verbose = 0;
 
 static struct sc_pkcs15init_callbacks callbacks = {
@@ -1074,8 +1078,12 @@ do_store_certificate(struct sc_profile *profile)
 
 	memset(&args, 0, sizeof(args));
 
+	if (opt_update_existing)
+	       args.update = 1;
+
 	if (opt_objectid)
 		sc_pkcs15_format_id(opt_objectid, &args.id);
+
 	args.label = (opt_cert_label != 0 ? opt_cert_label : opt_label);
 	args.authority = opt_authority;
 
@@ -1083,8 +1091,7 @@ do_store_certificate(struct sc_profile *profile)
 	if (r >= 0)
 		r = do_convert_cert(&args.der_encoded, cert);
 	if (r >= 0)
-		r = sc_pkcs15init_store_certificate(p15card, profile,
-					&args, NULL);
+		r = sc_pkcs15init_store_certificate(p15card, profile, &args, NULL);
 
 	if (args.der_encoded.value)
 		free(args.der_encoded.value);
@@ -1798,8 +1805,11 @@ get_pin_callback(struct sc_profile *profile,
 		allocated = 1;
 	}
 
-	if (len > *pinsize)
+	if (len > *pinsize) {
+		if (allocated)
+			free(secret);
 		return SC_ERROR_BUFFER_TOO_SMALL;
+	}
 	memcpy(pinbuf, secret, len + 1);
 	*pinsize = len;
 	if (allocated)
@@ -2538,6 +2548,9 @@ handle_option(const struct option *opt)
 		break;
 	case OPT_IGNORE_CA_CERTIFICATES:
 		opt_ignore_ca_certs = 1;
+		break;
+	case OPT_UPDATE_EXISTING:
+		opt_update_existing = 1;
 		break;
 	default:
 		util_print_usage_and_die(app_name, options, option_help, NULL);

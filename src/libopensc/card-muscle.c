@@ -43,6 +43,8 @@ static struct sc_card_driver muscle_drv = {
 };
 
 static struct sc_atr_table muscle_atrs[] = {
+	/* Tyfone JCOP 2.4.2 cards */
+	{ "3b:68:00:00:4a:43:4f:50:76:32:34:31", NULL, NULL, SC_CARD_TYPE_MUSCLE_JCOP242_NO_APDU_EXT, 0, NULL },
 	/* Aladdin eToken PRO USB 72K Java */
 	{ "3b:d5:18:00:81:31:3a:7d:80:73:c8:21:10:30", NULL, NULL, SC_CARD_TYPE_MUSCLE_ETOKEN_72K, 0, NULL },
 	/* JCOP31 v2.4.1 contact interface */
@@ -59,7 +61,7 @@ typedef struct muscle_private {
 	unsigned short verifiedPins;
 	mscfs_t *fs;
 	int rsa_key_ref;
-	
+
 } muscle_private_t;
 
 static int muscle_finish(sc_card_t *card)
@@ -78,13 +80,13 @@ static int muscle_match_card(sc_card_t *card)
 	sc_apdu_t apdu;
 	u8 response[64];
 	int r;
-	
+
 	/* Since we send an APDU, the card's logout function may be called...
 	 * however it's not always properly nulled out... */
 	card->ops->logout = NULL;
 
 	if (msc_select_applet(card, muscleAppletId, sizeof muscleAppletId) == 1) {
-		/* Muscle applet is present, check the protocol version to be sure */		
+		/* Muscle applet is present, check the protocol version to be sure */
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_2, 0x3C, 0x00, 0x00);
 		apdu.cla = 0xB0;
 		apdu.le = 64;
@@ -151,16 +153,16 @@ static int muscle_create_directory(sc_card_t *card, sc_file_t *file)
 	int r;
 	if(id == 0) /* No null name files */
 		return SC_ERROR_INVALID_ARGUMENTS;
-	
+
 	/* No nesting directories */
 	if(fs->currentPath[0] != 0x3F || fs->currentPath[1] != 0x00)
 		return SC_ERROR_NOT_SUPPORTED;
 	oid[0] = ((id & 0xFF00) >> 8) & 0xFF;
 	oid[1] = id & 0xFF;
 	oid[2] = oid[3] = 0;
-	
+
 	objectSize = file->size;
-	
+
 	muscle_parse_acls(file, &read_perm, &write_perm, &delete_perm);
 	r = msc_create_object(card, objectId, objectSize, read_perm, write_perm, delete_perm);
 	mscfs_clear_cache(fs);
@@ -182,9 +184,9 @@ static int muscle_create_file(sc_card_t *card, sc_file_t *file)
 		return SC_ERROR_NOT_SUPPORTED;
 	if(file->id == 0) /* No null name files */
 		return SC_ERROR_INVALID_ARGUMENTS;
-	
+
 	muscle_parse_acls(file, &read_perm, &write_perm, &delete_perm);
-	
+
 	mscfs_lookup_local(fs, file->id, &objectId);
 	r = msc_create_object(card, objectId, objectSize, read_perm, write_perm, delete_perm);
 	mscfs_clear_cache(fs);
@@ -199,7 +201,7 @@ static int muscle_read_binary(sc_card_t *card, unsigned int idx, u8* buf, size_t
 	msc_id objectId;
 	u8* oid = objectId.id;
 	mscfs_file_t *file;
-	
+
 	r = mscfs_check_selection(fs, -1);
 	if(r < 0) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 	file = &fs->cache.array[fs->currentFileIndex];
@@ -225,7 +227,7 @@ static int muscle_update_binary(sc_card_t *card, unsigned int idx, const u8* buf
 	r = mscfs_check_selection(fs, -1);
 	if(r < 0) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 	file = &fs->cache.array[fs->currentFileIndex];
-	
+
 	objectId = file->objectId;
 	/* memcpy(objectId.id, file->objectId.id, 4); */
 	if(!file->ef) {
@@ -237,7 +239,7 @@ static int muscle_update_binary(sc_card_t *card, unsigned int idx, const u8* buf
 		int newFileSize = idx + count;
 		u8* buffer = malloc(newFileSize);
 		if(buffer == NULL) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
-		
+
 		r = msc_read_object(card, objectId, 0, buffer, file->size);
 		/* TODO: RETREIVE ACLS */
 		if(r < 0) goto update_bin_free_buffer;
@@ -272,7 +274,7 @@ static int muscle_delete_mscfs_file(sc_card_t *card, mscfs_file_t *file_data)
 		mscfs_file_t *childFile;
 		/* Delete children */
 		mscfs_check_cache(fs);
-		
+
 		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
 			"DELETING Children of: %02X%02X%02X%02X\n",
 			oid[0],oid[1],oid[2],oid[3]);
@@ -280,7 +282,7 @@ static int muscle_delete_mscfs_file(sc_card_t *card, mscfs_file_t *file_data)
 			msc_id objectId;
 			childFile = &fs->cache.array[x];
 			objectId = childFile->objectId;
-			
+
 			if(0 == memcmp(oid + 2, objectId.id, 2)) {
 				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
 					"DELETING: %02X%02X%02X%02X\n",
@@ -367,11 +369,11 @@ static int select_item(sc_card_t *card, const sc_path_t *path_in, sc_file_t ** f
 	int r = 0;
 	int objectIndex;
 	u8* oid;
-	
+
 	mscfs_check_cache(fs);
 	r = mscfs_loadFileInfo(fs, path_in->value, path_in->len, &file_data, &objectIndex);
 	if(r < 0) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,r);
-	
+
 	/* Check if its the right type */
 	if(requiredType >= 0 && requiredType != file_data->ef) {
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
@@ -389,7 +391,7 @@ static int select_item(sc_card_t *card, const sc_path_t *path_in, sc_file_t ** f
 		fs->currentFile[0] = 0;
 		fs->currentFile[1] = 0;
 	}
-	
+
 	fs->currentFileIndex = objectIndex;
 	if(file_out) {
 		sc_file_t *file;
@@ -403,7 +405,7 @@ static int select_item(sc_card_t *card, const sc_path_t *path_in, sc_file_t ** f
 			file->type = SC_FILE_TYPE_WORKING_EF;
 			file->ef_structure = SC_FILE_EF_TRANSPARENT;
 		}
-		
+
 		/* Setup ACLS */
 		if(file_data->ef) {
 			muscle_load_file_acls(file, file_data);
@@ -411,7 +413,7 @@ static int select_item(sc_card_t *card, const sc_path_t *path_in, sc_file_t ** f
 			muscle_load_dir_acls(file, file_data);
 			/* Setup directory acls... */
 		}
-		
+
 		file->magic = SC_FILE_MAGIC;
 		*file_out = file;
 	}
@@ -422,9 +424,9 @@ static int muscle_select_file(sc_card_t *card, const sc_path_t *path_in,
 			     sc_file_t **file_out)
 {
 	int r;
-	
+
 	assert(card != NULL && path_in != NULL);
-	
+
 	switch (path_in->type) {
 	case SC_PATH_TYPE_FILE_ID:
 		r = select_item(card, path_in, file_out, 1);
@@ -451,7 +453,7 @@ static int _listFile(mscfs_file_t *file, int reset, void *udata)
 static int muscle_init(sc_card_t *card)
 {
 	muscle_private_t *priv;
-	
+
 	card->name = "MuscleApplet";
 	card->drv_data = malloc(sizeof(muscle_private_t));
 	if(!card->drv_data) {
@@ -469,7 +471,7 @@ static int muscle_init(sc_card_t *card)
 	priv->fs->listFile = _listFile;
 
 	card->cla = 0xB0;
-	
+
 	card->flags |= SC_CARD_FLAG_RNG;
 	card->caps |= SC_CARD_CAP_RNG;
 
@@ -483,12 +485,15 @@ static int muscle_init(sc_card_t *card)
 	if(card->type == SC_CARD_TYPE_MUSCLE_JCOP241) {
 		card->caps |= SC_CARD_CAP_APDU_EXT;
 	}
+	if(card->type == SC_CARD_TYPE_MUSCLE_JCOP242_NO_APDU_EXT) {
+	        /* JCOP v2.4.2 card that doesn't support extended APDUs */
+	}
 
 
 	/* FIXME: Card type detection */
 	if (1) {
 		unsigned long flags;
-		
+
 		flags = SC_ALGORITHM_RSA_RAW;
 		flags |= SC_ALGORITHM_RSA_HASH_NONE;
 		flags |= SC_ALGORITHM_ONBOARD_KEY_GEN;
@@ -507,7 +512,7 @@ static int muscle_list_files(sc_card_t *card, u8 *buf, size_t bufLen)
 	int count = 0;
 
 	mscfs_check_cache(priv->fs);
-	
+
 	for(x = 0; x < fs->cache.size; x++) {
 		u8* oid= fs->cache.array[x].objectId.id;
 		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
@@ -589,7 +594,7 @@ static int muscle_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *cmd,
 		return SC_ERROR_NOT_SUPPORTED;
 
 	}
-	
+
 }
 
 static int muscle_card_extract_key(sc_card_t *card, sc_cardctl_muscle_key_info_t *info)
@@ -672,7 +677,7 @@ static int muscle_set_security_env(sc_card_t *card,
 	/* ADJUST FOR PKCS1 padding support for decryption only */
 	if ((env->algorithm_flags & SC_ALGORITHM_RSA_PADS) ||
 	    (env->algorithm_flags & SC_ALGORITHM_RSA_HASHES)) {
-	    	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Card supports only raw RSA.\n");
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Card supports only raw RSA.\n");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 	if (env->flags & SC_SEC_ENV_KEY_REF_PRESENT) {
@@ -709,21 +714,21 @@ static int muscle_decipher(sc_card_t * card,
 			 size_t out_len)
 {
 	muscle_private_t* priv = MUSCLE_DATA(card);
-	
+
 	u8 key_id;
 	int r;
 
 	/* saniti check */
 	if (priv->env.operation != SC_SEC_OPERATION_DECIPHER)
 		return SC_ERROR_INVALID_ARGUMENTS;
-	
+
 	key_id = priv->rsa_key_ref * 2; /* Private key */
 
 	if (out_len < crgram_len) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Output buffer too small");
 		return SC_ERROR_BUFFER_TOO_SMALL;
 	}
-	
+
 	r = msc_compute_crypt(card,
 		key_id,
 		0x00, /* RSA NO PADDING */
@@ -742,14 +747,14 @@ static int muscle_compute_signature(sc_card_t *card, const u8 *data,
 	muscle_private_t* priv = MUSCLE_DATA(card);
 	u8 key_id;
 	int r;
-	
+
 	key_id = priv->rsa_key_ref * 2; /* Private key */
-	
+
 	if (outlen < data_len) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Output buffer too small");
 		return SC_ERROR_BUFFER_TOO_SMALL;
 	}
-	
+
 	r = msc_compute_crypt(card,
 		key_id,
 		0x00, /* RSA NO PADDING */
@@ -815,9 +820,9 @@ static struct sc_card_driver * sc_get_driver(void)
 	muscle_ops.match_card = muscle_match_card;
 	muscle_ops.init = muscle_init;
 	muscle_ops.finish = muscle_finish;
-	
+
 	muscle_ops.get_challenge = muscle_get_challenge;
-	
+
 	muscle_ops.set_security_env = muscle_set_security_env;
 	muscle_ops.restore_security_env = muscle_restore_security_env;
 	muscle_ops.compute_signature = muscle_compute_signature;

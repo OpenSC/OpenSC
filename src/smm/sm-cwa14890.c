@@ -160,17 +160,25 @@ sm_cwa_decode_authentication_data(struct sc_context *ctx, struct sm_cwa_keyset *
 
 	sc_log(ctx, "sm_ecc_decode_auth_data() decrypted(%i) %s", decrypted_len, sc_dump_hex(decrypted, decrypted_len));
 
-	if (memcmp(decrypted, session_data->icc.rnd, 8))
+	if (memcmp(decrypted, session_data->icc.rnd, 8)) {
+		free(decrypted);
 		LOG_FUNC_RETURN(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
+	}
 
-	if (memcmp(decrypted + 8, session_data->icc.sn, 8))
+	if (memcmp(decrypted + 8, session_data->icc.sn, 8)) {
+		free(decrypted);
 		LOG_FUNC_RETURN(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
+	}
 
-	if (memcmp(decrypted + 16, session_data->ifd.rnd, 8))
+	if (memcmp(decrypted + 16, session_data->ifd.rnd, 8)) {
+		free(decrypted);
 		LOG_FUNC_RETURN(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
+	}
 
-	if (memcmp(decrypted + 24, session_data->ifd.sn, 8))
+	if (memcmp(decrypted + 24, session_data->ifd.sn, 8)) {
+		free(decrypted);
 		LOG_FUNC_RETURN(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
+	}
 
 	memcpy(session_data->icc.k, decrypted + 32, 32);
 

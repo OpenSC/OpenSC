@@ -54,54 +54,11 @@ struct masktech_private_data {
 
 };
 
-/* function not used - remains just in case the inclusion of the application inside dir.c is denied */
-static int masktech_select_aid(struct sc_card *card)
-{
-	struct sc_apdu apdu;
-	unsigned char apdu_resp[SC_MAX_APDU_BUFFER_SIZE];
-	int rv;
-	unsigned char cm[7] = {0xA0,0x00,0x00,0x00,0x03,0x00,0x00};
-	unsigned char aid[15] = {0xE8,0x28,0xBD,0x08,0x0F,0xA0,0x00,0x00,0x01,0x67,0x45,0x53,0x49,0x47,0x4E};
-	struct sc_path tmp_path;
-
-	/* Select Card Manager (to deselect previously selected application) */
-	card->cla = 0x00;
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, 0x04, 0x0C);
-	apdu.lc = sizeof(cm);
-	apdu.data = cm;
-	apdu.datalen = sizeof(cm);
-	apdu.resplen = sizeof(apdu_resp);
-	apdu.resp = apdu_resp;
-
-	rv = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, rv, "APDU transmit failed");
-
-	memset(&tmp_path, 0, sizeof(struct sc_path));
-	tmp_path.type = SC_PATH_TYPE_DF_NAME;
-	memcpy(tmp_path.value, aid, sizeof(aid));
-	tmp_path.len = sizeof(aid);
-
-	rv = iso_ops->select_file(card, &tmp_path, NULL);
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "rv %i\n", rv);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, rv, "select parent failed");
-
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "return %i\n", rv);
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, rv);
-}
-
-
 static int masktech_match_card(sc_card_t * card)
 {
 	/* check if the ATR is in the known ATR */
 	if (_sc_match_atr(card, masktech_atrs, &card->type) < 0)
 		return 0;
-
-	/* load the smart card application */
-	/* function not used - remains just in case the inclusion of the application inside dir.c is denied */
-	/*if (masktech_select_aid(card))   {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Failed to select aid\n");
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_CARD, "Failed to select aid");
-	}*/
 
 	return 1;
 }
@@ -212,13 +169,12 @@ static int masktech_decipher(sc_card_t *card,
 {
 	int r;
 	sc_apdu_t apdu;
-	u8 sbuf[SC_MAX_EXT_APDU_BUFFER_SIZE];
 	u8 rbuf[SC_MAX_EXT_APDU_BUFFER_SIZE];
 
 	assert(card != NULL && crgram != NULL && out != NULL);
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "masktech_decipher()\n");
 
-	if (crgram_len > sizeof(sbuf)) SC_ERROR_INVALID_ARGUMENTS;
+	if (crgram_len > SC_MAX_EXT_APDU_BUFFER_SIZE) SC_ERROR_INVALID_ARGUMENTS;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_EXT, 0x2A, 0x80, 0x86);
 	apdu.resp = rbuf;
@@ -226,9 +182,7 @@ static int masktech_decipher(sc_card_t *card,
 	/* the card doesn't support anything else here (+1 / -1 is not working) */
 	apdu.le = 65536;
 
-	/* crgram is a const u8 while apdu.data is not a const => it cannot be used directly */
-	memcpy(&sbuf, crgram, crgram_len);
-	apdu.data = sbuf;
+	apdu.data = crgram;
 	apdu.lc = crgram_len;
 	apdu.datalen = crgram_len;
 
@@ -243,58 +197,6 @@ static int masktech_decipher(sc_card_t *card,
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
 
-/* we built a special APDU to be compatible with pinpad readers */
-/* maybe patch opensc to strip the first pin in iso build APDU if SC_PIN_CMD_IMPLICIT_CHANGE is set */
-static int masktech_build_unblock_pin_apdu(sc_card_t *card,
-        sc_apdu_t *apdu,
-        struct sc_pin_cmd_data *data,
-        u8 *buf,
-        size_t buf_len)
-{
-	int r, len = 0;
-	int p1 = 0x02;
-	data->pin1.offset = 5;
-
-	if (data->pin2.len != 0 || data->flags & SC_PIN_CMD_USE_PINPAD) {
-		data->pin2.offset = data->pin1.offset + buf_len;
-		if ((r = sc_build_pin(buf+len, buf_len-len, &data->pin2, data->flags & SC_PIN_CMD_NEED_PADDING)) < 0)
-			return r;
-		len += r;
-	} else {
-		p1 |= 0x01;
-	}
-	sc_format_apdu(card, apdu, SC_APDU_CASE_3_SHORT, 0x2C, p1, data->pin_reference);
-	apdu->lc = len;
-	apdu->datalen = len;
-	apdu->data = buf;
-	apdu->resplen = 0;
-	return 0;
-}
-
-/* we built a special APDU to be compatible with pinpad readers */
-/* maybe patch opensc to strip the first pin in iso build APDU if SC_PIN_CMD_IMPLICIT_CHANGE is set */
-static int masktech_build_change_pin_apdu(sc_card_t *card,
-        sc_apdu_t *apdu,
-        struct sc_pin_cmd_data *data,
-        u8 *buf,
-        size_t buf_len)
-{
-	int r, len = 0;
-	int p1 = 1;
-	data->pin1.offset = 5;
-
-	data->pin2.offset = data->pin1.offset + len;
-	if ((r = sc_build_pin(buf+len, buf_len-len, &data->pin2, data->flags & SC_PIN_CMD_NEED_PADDING)) < 0)
-		return r;
-	len += r;
-	sc_format_apdu(card, apdu, SC_APDU_CASE_3_SHORT, 0x24, p1, data->pin_reference);
-	apdu->lc = len;
-	apdu->datalen = len;
-	apdu->data = buf;
-	apdu->resplen = 0;
-	return 0;
-}
-
 /* unblock pin cmd */
 static int masktech_pin_unblock(sc_card_t *card,
                             struct sc_pin_cmd_data *data,
@@ -303,8 +205,6 @@ static int masktech_pin_unblock(sc_card_t *card,
 	int rv = 0;
 	struct sc_pin_cmd_data verify_data;
 	struct sc_pin_cmd_data reset_data;
-	u8  sbuf[SC_MAX_APDU_BUFFER_SIZE];
-	sc_apdu_t reset_apdu;
 
 	/* Build a SC_PIN_CMD_VERIFY APDU on PUK */
 	memset(&verify_data, 0, sizeof(verify_data));
@@ -329,10 +229,6 @@ static int masktech_pin_unblock(sc_card_t *card,
 	reset_data.flags = data->flags | SC_PIN_CMD_IMPLICIT_CHANGE;
 	reset_data.pin2.prompt = data->pin2.prompt;
 
-	/* the APDU is overwritten to avoid requesting the UNBLOCK pin if a PIN PAD is used */
-	masktech_build_unblock_pin_apdu(card, &reset_apdu, &reset_data, sbuf, sizeof(sbuf));
-	reset_data.apdu = &reset_apdu;
-
 	rv = iso_ops->pin_cmd(card, &reset_data, tries_left);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, rv, "APDU transmit failed - reset unblock PIN");
 
@@ -346,8 +242,6 @@ static int masktech_pin_change(sc_card_t *card,
 	int rv = 0;
 	struct sc_pin_cmd_data verify_data;
 	struct sc_pin_cmd_data change_data;
-	u8  sbuf[SC_MAX_APDU_BUFFER_SIZE];
-	sc_apdu_t change_apdu;
 
 	/* Build a SC_PIN_CMD_VERIFY APDU */
 	memset(&verify_data, 0, sizeof(verify_data));
@@ -371,10 +265,6 @@ static int masktech_pin_change(sc_card_t *card,
 	change_data.pin2 = data->pin2;
 	change_data.flags = data->flags | SC_PIN_CMD_IMPLICIT_CHANGE;
 	change_data.pin2.prompt = data->pin2.prompt;
-
-	/* the APDU is overwritten to avoid requesting the INITIAL pin if a PIN PAD is used */
-	masktech_build_change_pin_apdu(card, &change_apdu, &change_data, sbuf, sizeof(sbuf));
-	change_data.apdu = &change_apdu;
 
 	rv = iso_ops->pin_cmd(card, &change_data, tries_left);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, rv, "APDU transmit failed - chnage PIN");

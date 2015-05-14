@@ -233,9 +233,10 @@ isoApplet_init(sc_card_t *card)
 		 * driver. */
 		flags = 0;
 		flags |= SC_ALGORITHM_ECDSA_RAW;
+		flags |= SC_ALGORITHM_ECDSA_HASH_SHA1;
 		flags |= SC_ALGORITHM_ONBOARD_KEY_GEN;
-		flags |= SC_ALGORITHM_EXT_EC_UNCOMPRESES;
-		ext_flags =  SC_ALGORITHM_EXT_EC_NAMEDCURVE;
+		ext_flags = SC_ALGORITHM_EXT_EC_UNCOMPRESES;
+		ext_flags |=  SC_ALGORITHM_EXT_EC_NAMEDCURVE;
 		ext_flags |= SC_ALGORITHM_EXT_EC_F_P;
 		for (i=0; ec_curves[i].oid.value[0] >= 0; i++)
 		{

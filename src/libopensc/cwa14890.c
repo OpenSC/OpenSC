@@ -1489,6 +1489,7 @@ int cwa_encode_apdu(sc_card_t * card,
 
 	/* reserve enougth space for apdulen+tlv bytes 
 	 * to-be-crypted buffer and result apdu buffer */
+	 /* TODO DEE add 4 more bytes for testing.... */
 	apdubuf =
 	    calloc(MAX(SC_MAX_APDU_BUFFER_SIZE, 20 + from->datalen),
 		   sizeof(u8));
@@ -1544,14 +1545,16 @@ int cwa_encode_apdu(sc_card_t * card,
 	}
 
 	/* if le byte is declared, compose and add Le TLV */
-	/* TODO: study why original driver checks for le>=256? */
-	if (from->le > 0) {
-		u8 le = 0xff & from->le;
-		res = cwa_compose_tlv(card, 0x97, 1, &le, &ccbuf, &cclen);
-		if (res != SC_SUCCESS) {
-			msg = "Encode APDU compose_tlv(0x97) failed";
-			goto encode_end;
-		}
+	/* FIXME: For DNIe we must not send the le bytes
+	  when le == 256 but this goes against the standard
+	  and might break other cards reusing this code */
+	if ((0xff & from->le) > 0) {
+	    u8 le = 0xff & from->le;
+	    res = cwa_compose_tlv(card, 0x97, 1, &le, &ccbuf, &cclen);
+	    if (res != SC_SUCCESS) {
+		msg = "Encode APDU compose_tlv(0x97) failed";
+		goto encode_end;
+	    }
 	}
 	/* copy current data to apdu buffer (skip header and header padding) */
 	memcpy(apdubuf, ccbuf + 8, cclen - 8);
