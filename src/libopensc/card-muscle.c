@@ -43,8 +43,8 @@ static struct sc_card_driver muscle_drv = {
 };
 
 static struct sc_atr_table muscle_atrs[] = {
-	/* Tyfone JCOP 2.4.2 cards */
-	{ "3b:68:00:00:4a:43:4f:50:76:32:34:31", NULL, NULL, SC_CARD_TYPE_MUSCLE_JCOP242_NO_APDU_EXT, 0, NULL },
+	/* Tyfone JCOP 242R2 cards */
+	{ "3b:6d:00:00:ff:54:79:66:6f:6e:65:20:32:34:32:52:32", NULL, NULL, SC_CARD_TYPE_MUSCLE_JCOP242R2_NO_EXT_APDU, 0, NULL },
 	/* Aladdin eToken PRO USB 72K Java */
 	{ "3b:d5:18:00:81:31:3a:7d:80:73:c8:21:10:30", NULL, NULL, SC_CARD_TYPE_MUSCLE_ETOKEN_72K, 0, NULL },
 	/* JCOP31 v2.4.1 contact interface */
@@ -485,8 +485,8 @@ static int muscle_init(sc_card_t *card)
 	if(card->type == SC_CARD_TYPE_MUSCLE_JCOP241) {
 		card->caps |= SC_CARD_CAP_APDU_EXT;
 	}
-	if(card->type == SC_CARD_TYPE_MUSCLE_JCOP242_NO_APDU_EXT) {
-	        /* JCOP v2.4.2 card that doesn't support extended APDUs */
+	if(card->type == SC_CARD_TYPE_MUSCLE_JCOP242R2_NO_EXT_APDU) {
+	        /* Tyfone JCOP v242R2 card that doesn't support extended APDUs */
 	}
 
 
