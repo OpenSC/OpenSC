@@ -1,4 +1,68 @@
 NEWS for OpenSC -- History of user visible changes
+New in 0.15.0; 2015-05-11
+* new card drivers
+  AzeDIT 3.5
+  IsoApplet
+  MaskTech
+* libopensc
+  allow extended length APDUs
+  accept no output for 'SELECT' MF and 'SELECT' DF_NAME APDUs
+  fixed sc_driver_version check
+  adjusted send/receive size accoriding to card capabilities
+  in iso7816 make SELECT agnosting to sc_path_t's aid
+* asn1
+  support multi-bytes tags
+* pkcs15
+  reviewed support and tool functions for public key
+  public certs and pubkeys with an auth_id are treated as private
+* pkcs11
+  introduced  default PKCS#11 provider
+  fetched real value of CKA_LOCAL for pubkey
+  removed inconsistent attributes
+  C_Digest issues
+    no check if buffer too small before update
+* added support for Travis CI
+* updated support of EC in libopensc, pkcs15 and pkcs11
+* fixed number of warnings, resource leaks, overity-scan issues
+* macosx
+  target minimum OSX version to 10.7
+  update the minimal building instructions.
+  locate and target the latest SDK to build against.
+  locate the best newest SDK present on the computer.
+* build
+  disable Secure Messaging if OpenSSL is not used
+* tools
+  util_get_pin helper function
+* PIV
+  Add AES support for PIV General Authenticate
+  fixed invalid bit when writing PIV certificate object with gzipped certificate
+  fixed bad caching behavior of PIV PKCS15 emulator
+* ePass2003
+  fixed failure due to re-authenticate of secure messaging when card is accessed
+      by multiple PKCS11 sessions
+* MyEID
+  EC support for MyEID-v4 card
+* openpgp
+  extended options for openpgp-tool
+* asepcos
+  fixed puk handling
+* sc-hsm
+  support for Koblitz curves secp192k1 and secp256k1 (Bitcoin)
+  improved error detection and reporting in sc-hsm-tool
+  fixed Lc byte in VERIFY PIN block for PC/SC PIN PAD reader
+  fix certificate delete bug
+* IAS/ECC
+  fixed PKCS#11 compliance issues
+  support for Morpho IAS Agent Card
+* cardos
+  overwrite content of deleted private key
+* win32
+  setup improuvement
+     look & feel
+     custom actions with card registration
+  minidriver impouvement
+     fixed errors and warnings returned by Microsoft quality tool
+     pin-pad support
 
 New in 0.14.0; 2014-05-31
 * new card driver DNIe
