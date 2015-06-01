@@ -392,8 +392,8 @@ get_info_end:
 		file = NULL;
 	}
 	if (buffer) {
-		free(buffer); 
-		buffer=NULL; 
+		free(buffer);
+		buffer=NULL;
 		bufferlen=0;
 	}
 	if (msg)

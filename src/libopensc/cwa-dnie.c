@@ -42,6 +42,8 @@
 #include <openssl/x509.h>
 #include <openssl/evp.h>
 
+#define MAX_RESP_BUFFER_SIZE 2048
+
 /********************* Keys and certificates as published by DGP ********/
 
 /**
@@ -209,7 +211,7 @@ int dnie_read_file(sc_card_t * card,
 		   const sc_path_t * path,
 		   sc_file_t ** file, u8 ** buffer, size_t * length)
 {
-	u8 *data;
+	u8 *data = NULL;
 	char *msg = NULL;
 	int res = SC_SUCCESS;
 	size_t fsize = 0;	/* file size */
@@ -690,7 +692,7 @@ cwa_provider_t *dnie_get_cwa_provider(sc_card_t * card)
 
 static int dnie_transmit_apdu_internal(sc_card_t * card, sc_apdu_t * apdu)
 {
-	u8 buf[2*SC_MAX_APDU_BUFFER_SIZE];		/* use for store partial le responses */
+	u8 buf[MAX_RESP_BUFFER_SIZE];		/* use for store partial le responses */
 	int res = SC_SUCCESS;
 	cwa_provider_t *provider = NULL;
 	if ((card == NULL) || (card->ctx == NULL) || (apdu == NULL))
@@ -711,10 +713,10 @@ static int dnie_transmit_apdu_internal(sc_card_t * card, sc_apdu_t * apdu)
 			if (tmp == SC_APDU_CASE_3_SHORT)
 				apdu->cse = SC_APDU_CASE_4_SHORT;
 			if (apdu->resplen == 0) {	/* no response buffer: create */
-				apdu->resp = calloc(1, 2*SC_MAX_APDU_BUFFER_SIZE);
+				apdu->resp = calloc(1, MAX_RESP_BUFFER_SIZE);
 				if (apdu->resp == NULL)
 					LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
-				apdu->resplen = 2*SC_MAX_APDU_BUFFER_SIZE;
+				apdu->resplen = MAX_RESP_BUFFER_SIZE;
 				apdu->le = card->max_recv_size;
 			}
 		}
@@ -776,7 +778,7 @@ static int dnie_transmit_apdu_internal(sc_card_t * card, sc_apdu_t * apdu)
 				     "Error in envelope() send apdu");
 		}		/* for */
 		/* last apdu sent contains response to enveloped cmd */
-		apdu->resp = calloc(1, 2*SC_MAX_APDU_BUFFER_SIZE);
+		apdu->resp = calloc(1, MAX_RESP_BUFFER_SIZE);
 		if (apdu->resp == NULL)
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 		memcpy(apdu->resp, e_apdu.resp, e_apdu.resplen);
