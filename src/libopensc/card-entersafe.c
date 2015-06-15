@@ -1,4 +1,11 @@
 /*
+ * Support for entersafe smart cards
+ *
+ * Copyright (C) 2008, Weitao Sun <weitao@ftsafe.com>
+ * Copyright (C) 2011, Xiaoshuo Wu <xiaoshuo@ftsafe.com>
+ * Support: Riham <ruihan@ftsafe.com>
+ * Support: Shengchao niu <shengchao@ftsafe.com>
+ *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
@@ -29,14 +36,22 @@
 #include "cardctl.h"
 
 static struct sc_atr_table entersafe_atrs[] = {
-	{ 
-		 "3b:0f:00:65:46:53:05:19:05:71:df:00:00:00:00:00:00", 
-		 "ff:ff:ff:ff:ff:ff:ff:00:ff:ff:ff:00:00:00:00:00:00", 
+	{
+		 "3b:0f:00:65:46:53:05:19:05:71:df:00:00:00:00:00:00",
+		 "ff:ff:ff:ff:ff:ff:ff:00:ff:ff:ff:00:00:00:00:00:00",
 		 "ePass3000", SC_CARD_TYPE_ENTERSAFE_3K, 0, NULL },
-	{ 
+	{
 		 "3b:9f:95:81:31:fe:9f:00:65:46:53:05:30:06:71:df:00:00:00:80:6a:82:5e",
 		 "FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:00:FF:FF:FF:FF:FF:FF:00:00:00:00",
 		 "FTCOS/PK-01C", SC_CARD_TYPE_ENTERSAFE_FTCOS_PK_01C, 0, NULL },
+	 { 
+		"3b:fc:18:00:00:81:31:80:45:90:67:46:4a:00:64:18:14:00:00:00:00:02",
+		"ff:00:00:00:00:00:00:00:00:ff:ff:ff:ff:00:00:00:00:ff:ff:ff:ff:00",
+		"EJAVA/PK-01C", SC_CARD_TYPE_ENTERSAFE_EJAVA_PK_01C, 0, NULL },
+	{
+		"3b:7c:18:00:00:90:67:46:4a:20:28:8c:58:00:00:00:00",
+		"ff:00:00:00:00:ff:ff:ff:ff:00:00:00:00:ff:ff:ff:ff",
+		"EJAVA/PK-01C-T0",SC_CARD_TYPE_ENTERSAFE_EJAVA_PK_01C_T0,0,NULL},
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
@@ -64,16 +79,16 @@ static u8 trans_code_ftcos_pk_01c[] =
 
 static u8 init_key[] =
 {
-	 1,  2,  3,  4, 
-	 5,  6,  7,  8, 
-	 9,  10, 11, 12, 
+	 1,  2,  3,  4,
+	 5,  6,  7,  8,
+	 9,  10, 11, 12,
 	 13, 14, 15, 16,
 };
 
 static u8 key_maintain[] =
 {
-	 0x12, 0x34, 0x56, 0x78, 
-	 0x21, 0x43, 0x65, 0x87, 
+	 0x12, 0x34, 0x56, 0x78,
+	 0x21, 0x43, 0x65, 0x87,
 	 0x11, 0x22, 0xaa, 0xbb,
 	 0x33, 0x44, 0xcd, 0xef
 };
@@ -105,7 +120,7 @@ static int entersafe_match_card(sc_card_t *card)
 
 	i = _sc_match_atr(card, entersafe_atrs, &card->type);
 	if (i < 0)
-		return 0;		
+		return 0;
 
 	return 1;
 }
@@ -129,7 +144,7 @@ static int entersafe_init(sc_card_t *card)
 	_sc_card_add_rsa_alg(card,1024, flags, 0);
 	_sc_card_add_rsa_alg(card,2048, flags, 0);
 
-	card->caps = SC_CARD_CAP_RNG; 
+	card->caps = SC_CARD_CAP_RNG;
 
 	/* we need read_binary&friends with max 224 bytes per read */
 	card->max_send_size = 224;
@@ -144,7 +159,7 @@ static int entersafe_gen_random(sc_card_t *card,u8 *buff,size_t size)
 	 sc_apdu_t apdu;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-   
+
 	 sc_format_apdu(card,&apdu,SC_APDU_CASE_2_SHORT,0x84,0x00,0x00);
 	 apdu.resp=rbuf;
 	 apdu.le=size;
@@ -186,11 +201,11 @@ static int entersafe_cipher_apdu(sc_card_t *card, sc_apdu_t *apdu,
 
 	 if(keylen == 8)
 		  EVP_EncryptInit_ex(&ctx, EVP_des_ecb(), NULL, key, iv);
-	 else if (keylen == 16) 
+	 else if (keylen == 16)
 		  EVP_EncryptInit_ex(&ctx, EVP_des_ede(), NULL, key, iv);
 	 else
 		  SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INTERNAL);
-	 
+
 	 len = apdu->lc;
 	 if(!EVP_EncryptUpdate(&ctx, buff, &len, buff, buffsize)){
 		  sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "entersafe encryption error.");
@@ -254,7 +269,7 @@ static int entersafe_mac_apdu(sc_card_t *card, sc_apdu_t *apdu,
 		  r =  SC_ERROR_OUT_OF_MEMORY;
 		  goto out;
 	 }
-	 
+
 	 /*build content and padded buffer by 0x80 0x00 0x00..... */
 	 memset(tmp_rounded,0,tmpsize_rounded);
 	 memcpy(tmp_rounded,tmp,tmpsize);
@@ -269,7 +284,7 @@ static int entersafe_mac_apdu(sc_card_t *card, sc_apdu_t *apdu,
 	 if(tmpsize_rounded>8){
 		  if(!EVP_EncryptUpdate(&ctx,tmp_rounded,&outl,tmp_rounded,tmpsize_rounded-8)){
 			   r = SC_ERROR_INTERNAL;
-			   goto out;			   
+			   goto out;
 		  }
 	 }
 	 /* last block */
@@ -277,7 +292,7 @@ static int entersafe_mac_apdu(sc_card_t *card, sc_apdu_t *apdu,
 	 {
 		  if(!EVP_EncryptUpdate(&ctx,tmp_rounded+outl,&outl,tmp_rounded+outl,8)){
 			   r = SC_ERROR_INTERNAL;
-			   goto out;			   
+			   goto out;
 		  }
 	 }
 	 else
@@ -285,13 +300,13 @@ static int entersafe_mac_apdu(sc_card_t *card, sc_apdu_t *apdu,
 		  EVP_EncryptInit_ex(&ctx, EVP_des_ede_cbc(), NULL, key,tmp_rounded+outl-8);
 		  if(!EVP_EncryptUpdate(&ctx,tmp_rounded+outl,&outl,tmp_rounded+outl,8)){
 			   r = SC_ERROR_INTERNAL;
-			   goto out;			   
+			   goto out;
 		  }
 	 }
 
 	 if (!EVP_CIPHER_CTX_cleanup(&ctx)){
 		  r = SC_ERROR_INTERNAL;
-		  goto out;			   
+		  goto out;
 	 }
 
 	 memcpy(buff,apdu->data,apdu->lc);
@@ -349,14 +364,14 @@ static int entersafe_transmit_apdu(sc_card_t *card, sc_apdu_t *apdu,
 			   goto out;
 	 }
 	 if(mac)
-	 {	 
+	 {
 		  mac_data_size=apdu->lc+4;
 		  mac_data=malloc(mac_data_size);
 		  r = entersafe_mac_apdu(card,apdu,key,keylen,mac_data,mac_data_size);
 		  if(r<0)
 			   goto out;
 	 }
-	 
+
 	 r = sc_transmit_apdu(card,apdu);
 
 out:
@@ -478,7 +493,7 @@ static int entersafe_select_fid(sc_card_t *card,
 			  card->cache.current_path.value[3] = id_lo;
 		 }
 	}
-	
+
 	if (file_out)
 		 *file_out = file;
 
@@ -491,7 +506,7 @@ static int entersafe_select_aid(sc_card_t *card,
 {
 	int r = 0;
 
-	if (card->cache.valid 
+	if (card->cache.valid
 		&& card->cache.current_path.type == SC_PATH_TYPE_DF_NAME
 		&& card->cache.current_path.len == in_path->len
 		&& memcmp(card->cache.current_path.value, in_path->value, in_path->len)==0 )
@@ -555,18 +570,18 @@ static int entersafe_select_path(sc_card_t *card,
 		  for (i=0; i< pathlen; i++)
 			   n_pathbuf[i+2] = pathbuf[i];
 		  path = n_pathbuf;
-		  pathlen += 2; 
+		  pathlen += 2;
 	 }
-	
+
 	 /* check current working directory */
-	 if (card->cache.valid 
+	 if (card->cache.valid
 		 && card->cache.current_path.type == SC_PATH_TYPE_PATH
 		 && card->cache.current_path.len >= 2
 		 && card->cache.current_path.len <= pathlen )
 	 {
 		  bMatch = 0;
 		  for (i=0; i < card->cache.current_path.len; i+=2)
-			   if (card->cache.current_path.value[i] == path[i] 
+			   if (card->cache.current_path.value[i] == path[i]
 				   && card->cache.current_path.value[i+1] == path[i+1] )
 					bMatch += 2;
 	 }
@@ -582,11 +597,11 @@ static int entersafe_select_path(sc_card_t *card,
 		  {
 			   /* two more steps to go */
 			   sc_path_t new_path;
-	
+
 			   /* first step: change directory */
 			   r = entersafe_select_fid(card, path[bMatch], path[bMatch+1], NULL);
 			   SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "SELECT FILE (DF-ID) failed");
-	
+
 		   	   memset(&new_path, 0, sizeof(sc_path_t));
 
 			   new_path.type = SC_PATH_TYPE_PATH;
@@ -646,13 +661,13 @@ static int entersafe_select_file(sc_card_t *card,
 	  r = sc_path_print(pbuf, sizeof(pbuf), &card->cache.current_path);
 	  if (r != SC_SUCCESS)
 		 pbuf[0] = '\0';
-		
+
 	  sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
 		"current path (%s, %s): %s (len: %u)\n",
 		   (card->cache.current_path.type==SC_PATH_TYPE_DF_NAME?"aid":"path"),
 		   (card->cache.valid?"valid":"invalid"), pbuf,
 		   card->cache.current_path.len);
-	 
+
 	 switch(in_path->type)
 	 {
 	 case SC_PATH_TYPE_FILE_ID:
@@ -689,6 +704,8 @@ static int entersafe_create_mf(sc_card_t *card, sc_entersafe_create_data * data)
 		 r = entersafe_transmit_apdu(card, &apdu,trans_code_3k,sizeof(trans_code_3k),0,1);
 	}break;
 	case SC_CARD_TYPE_ENTERSAFE_FTCOS_PK_01C:
+	case SC_CARD_TYPE_ENTERSAFE_EJAVA_PK_01C:
+	case SC_CARD_TYPE_ENTERSAFE_EJAVA_PK_01C_T0:			
 	{
 		 r = entersafe_transmit_apdu(card, &apdu,trans_code_ftcos_pk_01c,sizeof(trans_code_ftcos_pk_01c),0,1);
 	}break;
@@ -764,15 +781,15 @@ static u8 process_acl_entry(sc_file_t *in, unsigned int method, unsigned int in_
 }
 
 static int entersafe_create_file(sc_card_t *card, sc_file_t *file)
-{	
+{
 	 SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	 
+
 	 if (file->type == SC_FILE_TYPE_WORKING_EF) {
 		  sc_entersafe_create_data data;
 		  memset(&data,0,sizeof(data));
 
-		  data.data.ef.file_id[0] = (file->id>>8)&0xFF;	
-		  data.data.ef.file_id[1] = file->id&0xFF;	
+		  data.data.ef.file_id[0] = (file->id>>8)&0xFF;
+		  data.data.ef.file_id[1] = file->id&0xFF;
 		  data.data.ef.size[0] = (file->size>>8)&0xFF;
 		  data.data.ef.size[1] = file->size&0xFF;
 		  memset(data.data.ef.ac,ENTERSAFE_AC_ALWAYS,sizeof(data.data.ef.ac));
@@ -796,7 +813,7 @@ static int entersafe_internal_set_security_env(sc_card_t *card,
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	assert(card != NULL && env != NULL);
-	
+
 	switch (env->operation) {
 	case SC_SEC_OPERATION_DECIPHER:
 	case SC_SEC_OPERATION_SIGN:
@@ -830,7 +847,7 @@ static int entersafe_internal_set_security_env(sc_card_t *card,
 	default:
 		 SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
 	}
-	
+
 	apdu.le = 0;
 	apdu.lc = apdu.datalen = p - sbuf;
 	apdu.data = sbuf;
@@ -842,7 +859,7 @@ static int entersafe_internal_set_security_env(sc_card_t *card,
 }
 
 /**
- * We don't really set the security envirment,but cache it.It will be set when 
+ * We don't really set the security envirment,but cache it.It will be set when
  * security operation is performed later.Because we may transport partial of
  * the sign/decipher data within the security envirment apdu.
  */
@@ -898,7 +915,7 @@ static int entersafe_compute_with_prkey(sc_card_t *card,
 
 	r = entersafe_internal_set_security_env(card,card->drv_data,&p,&size);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "internal set security env failed");
-   
+
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x86,0x80);
 	apdu.data=p;
 	apdu.lc = size;
@@ -954,10 +971,7 @@ static int entersafe_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 	 data->flags |= SC_PIN_CMD_NEED_PADDING;
 
 	 if(data->cmd!=SC_PIN_CMD_UNBLOCK)
-	 {
-		  r = iso_ops->pin_cmd(card,data,tries_left);
-		  sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Verify rv:%i", r);
-	 }
+		 SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, iso_ops->pin_cmd(card, data, tries_left));
 	 else
 	 {
 		  {/*verify*/
@@ -970,13 +984,18 @@ static int entersafe_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 			   apdu.data = sbuf;
 
 			   r = entersafe_transmit_apdu(card, &apdu,0,0,0,0);
-			   SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+			   if ( !(apdu.sw1 == 0x90 && apdu.sw2 == 0x00)){
+				   if( 0x63 == (apdu.sw1 & 0xff) && 0xC0 == (apdu.sw2 & 0xf0) ){
+					   *tries_left = (apdu.sw2 & 0x0f);
+					   SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_PIN_CODE_INCORRECT);
+				   }
+			   }
 		  }
 
 		  {/*change*/
 			   sc_apdu_t apdu;
 			   u8 sbuf[0x12]={0};
-			   
+
 			   sbuf[0] = 0x33;
 			   sbuf[1] = 0x00;
 			   memcpy(sbuf+2,data->pin2.data,data->pin2.len);
@@ -986,7 +1005,6 @@ static int entersafe_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 			   apdu.data = sbuf;
 
 			   r = entersafe_transmit_apdu(card, &apdu,key_maintain,sizeof(key_maintain),1,1);
-			   SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 		  }
 	 }
 	 SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
@@ -1006,7 +1024,7 @@ static int entersafe_erase_card(sc_card_t *card)
 	apdu.lc   = 2;
 	apdu.datalen = 2;
 	apdu.data = sbuf;
-	
+
 	r = entersafe_transmit_apdu(card, &apdu,0,0,0,0);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 	/* invalidate cache */
@@ -1025,6 +1043,8 @@ static int entersafe_erase_card(sc_card_t *card)
 		 r = entersafe_transmit_apdu(card, &apdu,trans_code_3k,sizeof(trans_code_3k),0,1);
 	}break;
 	case SC_CARD_TYPE_ENTERSAFE_FTCOS_PK_01C:
+	case SC_CARD_TYPE_ENTERSAFE_EJAVA_PK_01C:
+	case SC_CARD_TYPE_ENTERSAFE_EJAVA_PK_01C_T0:		
 	{
 		 r = entersafe_transmit_apdu(card, &apdu,trans_code_ftcos_pk_01c,sizeof(trans_code_ftcos_pk_01c),0,1);
 	}break;
@@ -1135,22 +1155,47 @@ static int entersafe_write_rsa_key_factor(sc_card_t *card,
 		 sc_format_apdu(card,&apdu,SC_APDU_CASE_3_SHORT,0x22,0x01,0xB8);
 		 apdu.data=sbuff;
 		 apdu.lc=apdu.datalen=4;
-		 
+
 		 r=entersafe_transmit_apdu(card,&apdu,0,0,0,0);
 		 SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 		 SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, sc_check_sw(card, apdu.sw1, apdu.sw2),"Write prkey factor failed(MSE)");
 	}
 
 	{/* Write 'x'; */
-		u8 sbuff[SC_MAX_APDU_BUFFER_SIZE];
-
+		 u8 sbuff[SC_MAX_APDU_BUFFER_SIZE] = { 0 , };
 		 sc_format_apdu(card,&apdu,SC_APDU_CASE_3_SHORT,0x46,factor,0x00);
-
 		 memcpy(sbuff,data.data,data.len);
 		 entersafe_reverse_buffer(sbuff,data.len);
+/*
+ *  PK01C and PK13C smart card only support 1024 or 2048bit key .
+ *  Size of exponent1 exponent2 coefficient of RSA private key keep the same as size of prime1
+ *  So check factor is padded with zero or not
+ */
+		 switch(factor){
+			 case 0x3:
+			 case 0x4:
+			 case 0x5:
+				 {
+					 if( data.len > 32 && data.len < 64 )
+					 {
+						 for(r = data.len ; r < 64 ; r ++)
+							 sbuff[r] = 0;
+						 data.len = 64;
+					 }
+					 else if( data.len > 64 && data.len < 128 )
+					 {
+						 for(r = data.len ; r < 128 ; r ++)
+							 sbuff[r] = 0;
+						 data.len = 128;
+					 }
+				 }
+				 break;
+			 default:
+				 break;
+		 }
+
 		 apdu.data=sbuff;
 		 apdu.lc=apdu.datalen=data.len;
-
 		 r = entersafe_transmit_apdu(card,&apdu,0,0,0,0);
 		 SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 		 SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, sc_check_sw(card, apdu.sw1, apdu.sw2),"Write prkey factor failed");
@@ -1160,8 +1205,7 @@ static int entersafe_write_rsa_key_factor(sc_card_t *card,
 
 static int entersafe_write_large_rsa_key(sc_card_t *card,u8 key_id,struct sc_pkcs15_prkey_rsa *rsa)
 {
-	 int r;
-
+	int r;
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	 {/* write prkey */
@@ -1420,7 +1464,7 @@ static int entersafe_preinstall_rsa_2048(sc_card_t *card,u8 key_id)
 	sbuf[6] = 0x40;	/* ALGO */
 	sbuf[7] = 0x00;	/* EC */
 	sbuf[8] = 0x00;	/* VER */
-	memcpy(&sbuf[9], rsa_key_e, sizeof(rsa_key_e));		
+	memcpy(&sbuf[9], rsa_key_e, sizeof(rsa_key_e));
 	sbuf[9 + sizeof(rsa_key_e) + 0] = 'N';
 	sbuf[9 + sizeof(rsa_key_e) + 1] = 0x82;
 	sbuf[9 + sizeof(rsa_key_e) + 2] = 0x01;
@@ -1562,7 +1606,7 @@ static struct sc_card_driver * sc_get_driver(void)
 
 	if (iso_ops == NULL)
 		iso_ops = iso_drv->ops;
-  
+
 	entersafe_ops = *iso_drv->ops;
 	entersafe_ops.match_card = entersafe_match_card;
 	entersafe_ops.init   = entersafe_init;
