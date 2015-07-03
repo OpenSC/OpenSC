@@ -791,20 +791,23 @@ int sc_wait_for_event(sc_context_t *ctx, unsigned int event_mask, sc_reader_t **
 }
 
 
-int sc_release_context(sc_context_t *ctx)
+static
+int __sc_release_context(sc_context_t *ctx, unsigned after_fork)
 {
 	unsigned int i;
 
 	assert(ctx != NULL);
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
+
 	while (list_size(&ctx->readers)) {
 		sc_reader_t *rdr = (sc_reader_t *) list_get_at(&ctx->readers, 0);
 		_sc_delete_reader(ctx, rdr);
 	}
 
-	if (ctx->reader_driver->ops->finish != NULL)
-		ctx->reader_driver->ops->finish(ctx);
-
+	if (!after_fork) {
+		if (ctx->reader_driver->ops->finish != NULL)
+			ctx->reader_driver->ops->finish(ctx);
+	}
 	for (i = 0; ctx->card_drivers[i]; i++) {
 		struct sc_card_driver *drv = ctx->card_drivers[i];
 
@@ -834,6 +837,16 @@ int sc_release_context(sc_context_t *ctx)
 	sc_mem_clear(ctx, sizeof(*ctx));
 	free(ctx);
 	return SC_SUCCESS;
+}
+
+int sc_release_context(sc_context_t *ctx)
+{
+	return __sc_release_context(ctx, 0);
+}
+
+int sc_terminate_context(sc_context_t *ctx)
+{
+	return __sc_release_context(ctx, 1);
 }
 
 int sc_set_card_driver(sc_context_t *ctx, const char *short_name)

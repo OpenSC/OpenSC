@@ -752,6 +752,12 @@ int sc_context_create(sc_context_t **ctx, const sc_context_param_t *parm);
 int sc_release_context(sc_context_t *ctx);
 
 /**
+ * Releases an established OpenSC context without releasing any state that is shared with parent process
+ * @param ctx A pointer to the context structure to be released
+ */
+int sc_terminate_context(sc_context_t *ctx);
+
+/**
  * Detect new readers available on system.
  * @param  ctx  OpenSC context
  * @return SC_SUCCESS on success and an error code otherwise.

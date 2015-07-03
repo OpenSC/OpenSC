@@ -40,6 +40,7 @@ list_t virtual_slots;
 pid_t initialized_pid = (pid_t)-1;
 #endif
 static int in_finalize = 0;
+static CK_RV __sc_pkcs11_finalize(CK_VOID_PTR pReserved, unsigned after_fork);
 extern CK_FUNCTION_LIST pkcs11_function_list;
 
 #if defined(HAVE_PTHREAD) && defined(PKCS11_THREAD_LOCKING)
@@ -205,7 +206,7 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs)
 	/* Handle fork() exception */
 #if !defined(_WIN32)
 	if (current_pid != initialized_pid) {
-		C_Finalize(NULL_PTR);
+		__sc_pkcs11_finalize(NULL_PTR, 1);
 	}
 	initialized_pid = current_pid;
 	in_finalize = 0;
@@ -271,7 +272,8 @@ out:
 	return rv;
 }
 
-CK_RV C_Finalize(CK_VOID_PTR pReserved)
+static
+CK_RV __sc_pkcs11_finalize(CK_VOID_PTR pReserved, unsigned after_fork)
 {
 	int i;
 	void *p;
@@ -292,10 +294,14 @@ CK_RV C_Finalize(CK_VOID_PTR pReserved)
 
 	/* cancel pending calls */
 	in_finalize = 1;
-	sc_cancel(context);
-	/* remove all cards from readers */
-	for (i=0; i < (int)sc_ctx_get_reader_count(context); i++)
-		card_removed(sc_ctx_get_reader(context, i));
+
+	if (!after_fork) {
+		sc_cancel(context);
+
+		/* remove all cards from readers */
+		for (i=0; i < (int)sc_ctx_get_reader_count(context); i++)
+			card_removed(sc_ctx_get_reader(context, i));
+	}
 
 	while ((p = list_fetch(&sessions)))
 		free(p);
@@ -307,13 +313,27 @@ CK_RV C_Finalize(CK_VOID_PTR pReserved)
 	}
 	list_destroy(&virtual_slots);
 
-	sc_release_context(context);
+	if (after_fork)
+		sc_terminate_context(context);
+	else
+		sc_release_context(context);
 	context = NULL;
 
 	/* Release and destroy the mutex */
 	sc_pkcs11_free_lock();
 
 	return rv;
+}
+
+CK_RV C_Finalize(CK_VOID_PTR pReserved)
+{
+#if !defined(_WIN32)
+	pid_t current_pid = getpid();
+	if (current_pid != initialized_pid) {
+		return __sc_pkcs11_finalize(NULL_PTR, 1);
+	}
+#endif
+	return __sc_pkcs11_finalize(pReserved, 0);
 }
 
 CK_RV C_GetInfo(CK_INFO_PTR pInfo)

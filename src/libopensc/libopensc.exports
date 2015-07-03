@@ -244,6 +244,7 @@ sc_put_data
 sc_read_binary
 sc_read_record
 sc_release_context
+sc_terminate_context
 sc_reset
 sc_reset_retry_counter
 sc_restore_security_env
