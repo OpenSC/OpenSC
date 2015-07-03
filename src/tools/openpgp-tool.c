@@ -142,10 +142,10 @@ static const struct ef_name_map openpgp_data[] = {
 static void show_version(void)
 {
 	fprintf(stderr,
-	        "openpgp-tool - OpenPGP card utility version " PACKAGE_VERSION "\n"
-	        "\n"
-	        "Copyright (c) 2012 Peter Marschall <peter@adpm.de>\n"
-	        "Licensed under LGPL v2\n");
+		"openpgp-tool - OpenPGP card utility version " PACKAGE_VERSION "\n"
+		"\n"
+		"Copyright (c) 2012 Peter Marschall <peter@adpm.de>\n"
+		"Licensed under LGPL v2\n");
 }
 
 
@@ -218,7 +218,7 @@ static void display_data(const struct ef_name_map *mapping, char *value)
 				char *envvar;
 
 				envvar = malloc(strlen(mapping->env_name) +
-				                strlen(value) + 2);
+						strlen(value) + 2);
 				if (envvar != NULL) {
 					strcpy(envvar, mapping->env_name);
 					strcat(envvar, "=");
@@ -576,7 +576,7 @@ int main(int argc, char **argv)
 	r = sc_context_create(&ctx, &ctx_param);
 	if (r) {
 		util_fatal("failed to establish context: %s\n",
-		           sc_strerror(r));
+			sc_strerror(r));
 		return EXIT_FAILURE;
 	}
 
@@ -588,14 +588,14 @@ int main(int argc, char **argv)
 	r = util_connect_card(ctx, &card, opt_reader, opt_wait, verbose);
 	if (r) {
 		util_fatal("failed to connect to card: %s\n",
-		           sc_strerror(r));
+			sc_strerror(r));
 		return EXIT_FAILURE;
 	}
 
 	/* check card type */
 	if ((card->type != SC_CARD_TYPE_OPENPGP_V1) &&
-	    (card->type != SC_CARD_TYPE_OPENPGP_V2) &&
-	    (card->type != SC_CARD_TYPE_OPENPGP_GNUK)) {
+		(card->type != SC_CARD_TYPE_OPENPGP_V2) &&
+		(card->type != SC_CARD_TYPE_OPENPGP_GNUK)) {
 		util_error("not an OpenPGP card");
 		fprintf(stderr, "Card type %X\n", card->type);
 		exit_status = EXIT_FAILURE;

@@ -384,7 +384,7 @@ pgp_init(sc_card_t *card)
 	/* Populate MF - add matching blobs listed in the pgp_objects table. */
 	for (info = priv->pgp_objects; (info != NULL) && (info->id > 0); info++) {
 		if (((info->access & READ_MASK) != READ_NEVER) &&
-		    (info->get_fn != NULL)) {
+			(info->get_fn != NULL)) {
 			child = pgp_new_blob(card, priv->mf, info->id, sc_file_new());
 
 			/* catch out of memory condition */
@@ -458,7 +458,7 @@ pgp_get_card_features(sc_card_t *card)
 		    (blob->data != NULL) && (blob->len > 0)) {
 			/* in v2.0 bit 0x04 in first byte means "algorithm attributes changeable */
 			if ((blob->data[0] & 0x04) &&
-			    (card->type == SC_CARD_TYPE_OPENPGP_V2 || card->type == SC_CARD_TYPE_OPENPGP_GNUK))
+				(card->type == SC_CARD_TYPE_OPENPGP_V2 || card->type == SC_CARD_TYPE_OPENPGP_GNUK))
 				priv->ext_caps |= EXT_CAP_ALG_ATTR_CHANGEABLE;
 			/* bit 0x08 in first byte means "support for private use DOs" */
 			if (blob->data[0] & 0x08)
@@ -476,7 +476,7 @@ pgp_get_card_features(sc_card_t *card)
 			}
 			/* in v2.0 bit 0x80 in first byte means "support Secure Messaging" */
 			if ((blob->data[0] & 0x80) &&
-			    (card->type == SC_CARD_TYPE_OPENPGP_V2 || card->type == SC_CARD_TYPE_OPENPGP_GNUK))
+				(card->type == SC_CARD_TYPE_OPENPGP_V2 || card->type == SC_CARD_TYPE_OPENPGP_GNUK))
 				priv->ext_caps |= EXT_CAP_SM;
 
 			if ((priv->bcd_version >= OPENPGP_CARD_2_0) && (blob->len >= 10)) {
@@ -492,7 +492,7 @@ pgp_get_card_features(sc_card_t *card)
 
 		/* get max. PIN length from "CHV status bytes" DO */
 		if ((pgp_get_blob(card, blob73, 0x00c4, &blob) >= 0) &&
-		    (blob->data != NULL) && (blob->len > 1)) {
+			(blob->data != NULL) && (blob->len > 1)) {
 			/* 2nd byte in "CHV status bytes" DO means "max. PIN length" */
 			card->max_pin_len = blob->data[1];
 		}
@@ -511,7 +511,7 @@ pgp_get_card_features(sc_card_t *card)
 			flags |= SC_ALGORITHM_ONBOARD_KEY_GEN;
 
 			if ((pgp_get_blob(card, blob73, i, &blob) >= 0) &&
-			    (blob->data != NULL) && (blob->len >= 4)) {
+				(blob->data != NULL) && (blob->len >= 4)) {
 				if (blob->data[0] == 0x01) {	/* Algorithm ID [RFC4880]: RSA */
 					unsigned int keylen = bebytes2ushort(blob->data + 1);  /* Measured in bit */
 
@@ -768,9 +768,9 @@ pgp_read_blob(sc_card_t *card, pgp_blob_t *blob)
 
 		/* Buffer length for Gnuk pubkey */
 		if (card->type == SC_CARD_TYPE_OPENPGP_GNUK &&
-		    (blob->id == DO_AUTH || blob->id == DO_SIGN || blob->id == DO_ENCR
-		     || blob->id == DO_AUTH_SYM || blob->id == DO_SIGN_SYM
-		     || blob->id == DO_ENCR_SYM)) {
+			(blob->id == DO_AUTH || blob->id == DO_SIGN || blob->id == DO_ENCR
+			 || blob->id == DO_AUTH_SYM || blob->id == DO_SIGN_SYM
+			 | blob->id == DO_ENCR_SYM)) {
 			buf_len = MAXLEN_RESP_PUBKEY_GNUK;
 		}
 
@@ -1162,11 +1162,11 @@ pgp_get_pubkey_pem(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 	sc_log(card->ctx, "called, tag=%04x\n", tag);
 
 	if ((r = pgp_get_blob(card, priv->mf, tag & 0xFFFE, &blob)) < 0
-	 || (r = pgp_get_blob(card, blob, 0x7F49, &blob)) < 0
-	 || (r = pgp_get_blob(card, blob, 0x0081, &mod_blob)) < 0
-	 || (r = pgp_get_blob(card, blob, 0x0082, &exp_blob)) < 0
-	 || (r = pgp_read_blob(card, mod_blob)) < 0
-	 || (r = pgp_read_blob(card, exp_blob)) < 0)
+		|| (r = pgp_get_blob(card, blob, 0x7F49, &blob)) < 0
+		|| (r = pgp_get_blob(card, blob, 0x0081, &mod_blob)) < 0
+		|| (r = pgp_get_blob(card, blob, 0x0082, &exp_blob)) < 0
+		|| (r = pgp_read_blob(card, mod_blob)) < 0
+		|| (r = pgp_read_blob(card, exp_blob)) < 0)
 		LOG_TEST_RET(card->ctx, r, "error getting elements");
 
 	memset(&pubkey, 0, sizeof(pubkey));
@@ -1996,8 +1996,8 @@ static int pgp_gen_key(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_in
 	 * arbitrary modulus length which for sure fits into a short APDU.
 	 * This idea is borrowed from GnuPG code.  */
 	if (card->caps & SC_CARD_CAP_APDU_EXT
-	    && key_info->modulus_len > 1900
-	    && card->type != SC_CARD_TYPE_OPENPGP_GNUK) {
+		&& key_info->modulus_len > 1900
+		&& card->type != SC_CARD_TYPE_OPENPGP_GNUK) {
 		/* We won't store to apdu variable yet, because it will be reset in
 		 * sc_format_apdu() */
 		apdu_le = card->max_recv_size;
@@ -2519,7 +2519,7 @@ pgp_delete_file(sc_card_t *card, const sc_path_t *path)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 
 	if (card->type != SC_CARD_TYPE_OPENPGP_GNUK &&
-	    (file->id == DO_SIGN_SYM || file->id == DO_ENCR_SYM || file->id == DO_AUTH_SYM)) {
+		(file->id == DO_SIGN_SYM || file->id == DO_ENCR_SYM || file->id == DO_AUTH_SYM)) {
 		/* These tags are just symbolic. We don't really delete it. */
 		r = SC_SUCCESS;
 	}
