@@ -804,10 +804,9 @@ int __sc_release_context(sc_context_t *ctx, unsigned after_fork)
 		_sc_delete_reader(ctx, rdr);
 	}
 
-	if (!after_fork) {
-		if (ctx->reader_driver->ops->finish != NULL)
-			ctx->reader_driver->ops->finish(ctx);
-	}
+	if (ctx->reader_driver->ops->finish != NULL)
+		ctx->reader_driver->ops->finish(ctx, after_fork);
+
 	for (i = 0; ctx->card_drivers[i]; i++) {
 		struct sc_card_driver *drv = ctx->card_drivers[i];
 

@@ -29,7 +29,7 @@
 /* function declarations */
 static int openct_reader_init(sc_context_t *ctx);
 static int openct_add_reader(sc_context_t *ctx, unsigned int num, ct_info_t *info);
-static int openct_reader_finish(sc_context_t *ctx);
+static int openct_reader_finish(sc_context_t *ctx, unsigned after_fork);
 static int openct_reader_release(sc_reader_t *reader);
 static int openct_reader_detect_card_presence(sc_reader_t *reader);
 static int openct_reader_connect(sc_reader_t *reader);
@@ -137,7 +137,7 @@ openct_add_reader(sc_context_t *ctx, unsigned int num, ct_info_t *info)
  * Called when the driver is being unloaded.  finish() has to
  * deallocate the private data and any resources.
  */
-static int openct_reader_finish(sc_context_t *ctx)
+static int openct_reader_finish(sc_context_t *ctx, unsigned after_fork)
 {
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 	return SC_SUCCESS;

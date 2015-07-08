@@ -514,7 +514,7 @@ static int ctapi_init(sc_context_t *ctx)
 	return 0;
 }
 
-static int ctapi_finish(sc_context_t *ctx)
+static int ctapi_finish(sc_context_t *ctx, unsigned after_fork)
 {
 	struct ctapi_global_private_data *priv = (struct ctapi_global_private_data *) ctx->reader_drv_data;
 

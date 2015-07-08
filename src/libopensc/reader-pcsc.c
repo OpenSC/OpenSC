@@ -740,14 +740,14 @@ out:
 	return ret;
 }
 
-static int pcsc_finish(sc_context_t *ctx)
+static int pcsc_finish(sc_context_t *ctx, unsigned after_fork)
 {
 	struct pcsc_global_private_data *gpriv = (struct pcsc_global_private_data *) ctx->reader_drv_data;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 
 	if (gpriv) {
-		if (gpriv->pcsc_ctx != -1)
+		if (!after_fork && gpriv->pcsc_ctx != -1)
 			gpriv->SCardReleaseContext(gpriv->pcsc_ctx);
 		if (gpriv->dlhandle != NULL)
 			sc_dlclose(gpriv->dlhandle);
@@ -2096,7 +2096,7 @@ out:
 	return ret;
 }
 
-static int cardmod_finish(sc_context_t *ctx)
+static int cardmod_finish(sc_context_t *ctx, unsigned after_fork)
 {
 	struct pcsc_global_private_data *gpriv = (struct pcsc_global_private_data *) ctx->reader_drv_data;
 

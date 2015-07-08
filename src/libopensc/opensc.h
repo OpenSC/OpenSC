@@ -374,7 +374,7 @@ struct sc_reader_operations {
 	int (*init)(struct sc_context *ctx);
 	/* Called when the driver is being unloaded.  finish() has to
 	 * release any resources. */
-	int (*finish)(struct sc_context *ctx);
+	int (*finish)(struct sc_context *ctx, unsigned after_fork);
 	/* Called when library wish to detect new readers
 	 * should add only new readers. */
 	int (*detect_readers)(struct sc_context *ctx);
