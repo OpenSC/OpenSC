@@ -729,10 +729,15 @@ static int dnie_transmit_apdu_internal(sc_card_t * card, sc_apdu_t * apdu)
 		size_t e_txlen = 0;
 		size_t index = 0;
 		sc_apdu_t e_apdu;
-		u8 e_tx[2*SC_MAX_APDU_BUFFER_SIZE];
+		u8 * e_tx = NULL;
 
 		/* envelope needed */
 		sc_log(card->ctx, "envelope tx required: lc:%d", apdu->lc);
+
+		e_tx = calloc(7 + apdu->datalen, sizeof(u8));	/* enveloped data */
+
+		if (!e_tx)
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 
 		/* copy apdu info into enveloped data */
 		*(e_tx + 0) = apdu->cla;	/* apdu header */
@@ -774,9 +779,19 @@ static int dnie_transmit_apdu_internal(sc_card_t * card, sc_apdu_t * apdu)
 			}
 			/* send data chunk bypassing apdu wrapping */
 			res = sc_transmit_apdu(card, &e_apdu);
-			LOG_TEST_RET(card->ctx, res,
-				     "Error in envelope() send apdu");
+			if (res != SC_SUCCESS) {
+				if (e_tx) {
+					free(e_tx);
+					e_tx = NULL;
+				}
+				sc_log(card->ctx, "Error in envelope() send apdu");
+				LOG_FUNC_RETURN(card->ctx, res);
+			}
 		}		/* for */
+		if (e_tx) {
+			free(e_tx);
+			e_tx = NULL;
+		}
 		/* last apdu sent contains response to enveloped cmd */
 		apdu->resp = calloc(1, MAX_RESP_BUFFER_SIZE);
 		if (apdu->resp == NULL)
