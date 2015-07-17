@@ -301,6 +301,10 @@ CK_RV __sc_pkcs11_finalize(CK_VOID_PTR pReserved, unsigned after_fork)
 		/* remove all cards from readers */
 		for (i=0; i < (int)sc_ctx_get_reader_count(context); i++)
 			card_removed(sc_ctx_get_reader(context, i));
+	} else {
+		/* remove all cards from readers */
+		for (i=0; i < (int)sc_ctx_get_reader_count(context); i++)
+			card_cleared(sc_ctx_get_reader(context, i));
 	}
 
 	while ((p = list_fetch(&sessions)))

@@ -148,6 +148,41 @@ CK_RV initialize_reader(sc_reader_t *reader)
 	return CKR_OK;
 }
 
+/* This clears an state hold by the cards without calling
+ * the underlying mechanisms. It is to be used after a fork
+ * to release state. */
+CK_RV card_cleared(sc_reader_t * reader)
+{
+	unsigned int i;
+	struct sc_pkcs11_card *p11card = NULL;
+	/* Mark all slots as "token not present" */
+	sc_log(context, "%s: card cleared", reader->name);
+
+	for (i=0; i < list_size(&virtual_slots); i++) {
+		sc_pkcs11_slot_t *slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, i);
+		if (slot->reader == reader) {
+			/* Save the "card" object */
+			if (slot->p11card)
+				p11card = slot->p11card;
+			slot_token_removed(slot->id);
+		}
+	}
+
+	if (p11card) {
+		/* Calling unbind() here creates a larger leak than not.
+		p11card->framework->unbind(p11card); */
+		for (i=0; i < p11card->nmechanisms; ++i) {
+			if (p11card->mechanisms[i]->free_mech_data) {
+				p11card->mechanisms[i]->free_mech_data(p11card->mechanisms[i]->mech_data);
+			}
+			free(p11card->mechanisms[i]);
+		}
+		free(p11card->mechanisms);
+		free(p11card);
+	}
+
+	return CKR_OK;
+}
 
 CK_RV card_removed(sc_reader_t * reader)
 {
