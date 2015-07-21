@@ -639,6 +639,16 @@ typedef struct {
 	unsigned long (*thread_id)(void);
 } sc_thread_context_t;
 
+/** Stop modifing or using external resources
+ *
+ * Currently this is used to avoid freeing duplicated external resources for a
+ * process that has been forked. For example, a child process may want to leave
+ * the duplicated card handles for the parent process. With this flag the child
+ * process indicates that shall the reader shall ignore those resources when
+ * calling sc_disconnect_card.
+ */
+#define SC_TERMINATE			0x00000001
+
 typedef struct sc_context {
 	scconf_context *conf;
 	scconf_block *conf_blocks[3];

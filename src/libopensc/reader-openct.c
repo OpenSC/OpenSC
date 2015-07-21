@@ -154,7 +154,7 @@ static int openct_reader_release(sc_reader_t *reader)
 
 	SC_FUNC_CALLED(reader->ctx, SC_LOG_DEBUG_VERBOSE);
 	if (data) {
-		if (data->h)
+		if (data->h && !(reader->ctx->magic & SC_TERMINATE))
 			ct_reader_disconnect(data->h);
 		sc_mem_clear(data, sizeof(*data));
 		reader->drv_data = NULL;
@@ -173,6 +173,9 @@ static int openct_reader_detect_card_presence(sc_reader_t *reader)
 	int rc, status;
 
 	SC_FUNC_CALLED(reader->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	if (reader->ctx->magic & SC_TERMINATE)
+		return SC_ERROR_NOT_ALLOWED;
 
 	reader->flags = 0;
 	if (!data->h && !(data->h = ct_reader_connect(data->num)))
@@ -196,6 +199,9 @@ openct_reader_connect(sc_reader_t *reader)
 	int rc;
 
 	SC_FUNC_CALLED(reader->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	if (reader->ctx->magic & SC_TERMINATE)
+		return SC_ERROR_NOT_ALLOWED;
 
 	if (data->h)
 		ct_reader_disconnect(data->h);
@@ -242,7 +248,7 @@ static int openct_reader_disconnect(sc_reader_t *reader)
 	struct driver_data *data = (struct driver_data *) reader->drv_data;
 
 	SC_FUNC_CALLED(reader->ctx, SC_LOG_DEBUG_VERBOSE);
-	if (data->h)
+	if (data->h && !(reader->flags & SC_TERMINATE))
 		ct_reader_disconnect(data->h);
 	data->h = NULL;
 	return SC_SUCCESS;
@@ -255,6 +261,9 @@ openct_reader_internal_transmit(sc_reader_t *reader,
 {
 	struct driver_data *data = (struct driver_data *) reader->drv_data;
 	int rc;
+
+	if (reader->ctx->magic & SC_TERMINATE)
+		return SC_ERROR_NOT_ALLOWED;
 
 	/* Hotplug check */
 	if ((rc = openct_reader_reconnect(reader)) < 0)
@@ -324,6 +333,9 @@ static int openct_reader_perform_verify(sc_reader_t *reader, struct sc_pin_cmd_d
 	u8 buf[254];
 	int rc;
 
+	if (reader->ctx->magic & SC_TERMINATE)
+		return SC_ERROR_NOT_ALLOWED;
+
 	/* Hotplug check */
 	if ((rc = openct_reader_reconnect(reader)) < 0)
 		return rc;
@@ -382,6 +394,9 @@ static int openct_reader_lock(sc_reader_t *reader)
 
 	SC_FUNC_CALLED(reader->ctx, SC_LOG_DEBUG_VERBOSE);
 
+	if (reader->ctx->magic & SC_TERMINATE)
+		return SC_ERROR_NOT_ALLOWED;
+
 	/* Hotplug check */
 	if ((rc = openct_reader_reconnect(reader)) < 0)
 		return rc;
@@ -407,6 +422,9 @@ static int openct_reader_unlock(sc_reader_t *reader)
 	int rc;
 
 	SC_FUNC_CALLED(reader->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	if (reader->ctx->magic & SC_TERMINATE)
+		return SC_ERROR_NOT_ALLOWED;
 
 	/* Not connected */
 	if (data->h == NULL)
