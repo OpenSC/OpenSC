@@ -154,7 +154,7 @@ static int openct_reader_release(sc_reader_t *reader)
 
 	SC_FUNC_CALLED(reader->ctx, SC_LOG_DEBUG_VERBOSE);
 	if (data) {
-		if (data->h && !(reader->ctx->magic & SC_TERMINATE))
+		if (data->h && !(reader->ctx->flags & SC_CTX_FLAG_TERMINATE))
 			ct_reader_disconnect(data->h);
 		sc_mem_clear(data, sizeof(*data));
 		reader->drv_data = NULL;
@@ -174,7 +174,7 @@ static int openct_reader_detect_card_presence(sc_reader_t *reader)
 
 	SC_FUNC_CALLED(reader->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	if (reader->ctx->magic & SC_TERMINATE)
+	if (reader->ctx->flags & SC_CTX_FLAG_TERMINATE)
 		return SC_ERROR_NOT_ALLOWED;
 
 	reader->flags = 0;
@@ -200,7 +200,7 @@ openct_reader_connect(sc_reader_t *reader)
 
 	SC_FUNC_CALLED(reader->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	if (reader->ctx->magic & SC_TERMINATE)
+	if (reader->ctx->flags & SC_CTX_FLAG_TERMINATE)
 		return SC_ERROR_NOT_ALLOWED;
 
 	if (data->h)
@@ -262,7 +262,7 @@ openct_reader_internal_transmit(sc_reader_t *reader,
 	struct driver_data *data = (struct driver_data *) reader->drv_data;
 	int rc;
 
-	if (reader->ctx->magic & SC_TERMINATE)
+	if (reader->ctx->flags & SC_CTX_FLAG_TERMINATE)
 		return SC_ERROR_NOT_ALLOWED;
 
 	/* Hotplug check */
@@ -333,7 +333,7 @@ static int openct_reader_perform_verify(sc_reader_t *reader, struct sc_pin_cmd_d
 	u8 buf[254];
 	int rc;
 
-	if (reader->ctx->magic & SC_TERMINATE)
+	if (reader->ctx->flags & SC_CTX_FLAG_TERMINATE)
 		return SC_ERROR_NOT_ALLOWED;
 
 	/* Hotplug check */
@@ -394,7 +394,7 @@ static int openct_reader_lock(sc_reader_t *reader)
 
 	SC_FUNC_CALLED(reader->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	if (reader->ctx->magic & SC_TERMINATE)
+	if (reader->ctx->flags & SC_CTX_FLAG_TERMINATE)
 		return SC_ERROR_NOT_ALLOWED;
 
 	/* Hotplug check */
@@ -423,7 +423,7 @@ static int openct_reader_unlock(sc_reader_t *reader)
 
 	SC_FUNC_CALLED(reader->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	if (reader->ctx->magic & SC_TERMINATE)
+	if (reader->ctx->flags & SC_CTX_FLAG_TERMINATE)
 		return SC_ERROR_NOT_ALLOWED;
 
 	/* Not connected */

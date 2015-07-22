@@ -206,7 +206,7 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs)
 	/* Handle fork() exception */
 	if (current_pid != initialized_pid) {
 		if (context)
-			context->magic |= SC_TERMINATE;
+			context->flags |= SC_CTX_FLAG_TERMINATE;
 		C_Finalize(NULL_PTR);
 	}
 	initialized_pid = current_pid;

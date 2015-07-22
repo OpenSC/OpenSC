@@ -758,7 +758,7 @@ int main(int argc, char * const argv[])
 		return 1;
 	}
 
-	ctx->enable_default_driver = 1;
+	ctx->flags |= SC_CTX_FLAG_ENABLE_DEFAULT_DRIVER;
 
 	if (verbose > 1) {
 		ctx->debug = verbose;

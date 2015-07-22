@@ -218,7 +218,8 @@ int sc_connect_card(sc_reader_t *reader, sc_card_t **card_out)
 			if (ops == NULL || ops->match_card == NULL)   {
 				continue;
 			}
-			else if (!ctx->enable_default_driver && !strcmp("default", drv->short_name))   {
+			else if (!(ctx->flags & SC_CTX_FLAG_ENABLE_DEFAULT_DRIVER)
+				   	&& !strcmp("default", drv->short_name))   {
 				sc_log(ctx , "ignore 'default' card driver");
 				continue;
 			}

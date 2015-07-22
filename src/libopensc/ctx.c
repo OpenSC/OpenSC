@@ -186,8 +186,7 @@ static void set_defaults(sc_context_t *ctx, struct _sc_ctx_options *opts)
 	if (ctx->debug_file && (ctx->debug_file != stderr && ctx->debug_file != stdout))
 		fclose(ctx->debug_file);
 	ctx->debug_file = stderr;
-	ctx->paranoid_memory = 0;
-	ctx->enable_default_driver = 0;
+	ctx->flags = 0;
 
 #ifdef __APPLE__
 	/* Override the default debug log for OpenSC.tokend to be different from PKCS#11.
@@ -258,11 +257,13 @@ load_parameters(sc_context_t *ctx, scconf_block *block, struct _sc_ctx_options *
 		sc_ctx_log_to_file(ctx, val);
 	}
 
-	ctx->paranoid_memory = scconf_get_bool (block, "paranoid-memory",
-		ctx->paranoid_memory);
+	if (scconf_get_bool (block, "paranoid-memory",
+			   	ctx->flags & SC_CTX_FLAG_PARANOID_MEMORY))
+		ctx->flags |= SC_CTX_FLAG_PARANOID_MEMORY;
 
-	ctx->enable_default_driver = scconf_get_bool (block, "enable_default_driver",
-			ctx->enable_default_driver);
+	if (scconf_get_bool (block, "enable_default_driver",
+			   	ctx->flags & SC_CTX_FLAG_ENABLE_DEFAULT_DRIVER))
+		ctx->flags |= SC_CTX_FLAG_ENABLE_DEFAULT_DRIVER;
 
 	val = scconf_get_str(block, "force_card_driver", NULL);
 	if (val) {
@@ -710,7 +711,9 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 		return SC_ERROR_OUT_OF_MEMORY;
 	}
 
+	ctx->flags = parm->flags;
 	set_defaults(ctx, &opts);
+
 	list_init(&ctx->readers);
 	list_attributes_seeker(&ctx->readers, reader_list_seeker);
 	/* set thread context and create mutex object (if specified) */

@@ -116,7 +116,7 @@ static int refresh_attributes(sc_reader_t *reader)
 	u8 cmd[5], rbuf[256], sad, dad;
 	unsigned short lr;
 
-	if (reader->ctx->magic & SC_TERMINATE)
+	if (reader->ctx->flags & SC_CTX_FLAG_TERMINATE)
 		return SC_ERROR_NOT_ALLOWED;
 
 	cmd[0] = CTBCS_CLA;
@@ -162,7 +162,7 @@ static int ctapi_internal_transmit(sc_reader_t *reader,
 	unsigned short lr;
 	char rv;
 
-	if (reader->ctx->magic & SC_TERMINATE)
+	if (reader->ctx->flags & SC_CTX_FLAG_TERMINATE)
 		return SC_ERROR_NOT_ALLOWED;
 	
 	if (control)
@@ -241,7 +241,7 @@ static int ctapi_connect(sc_reader_t *reader)
 	unsigned short lr;
 	int r;
 
-	if (reader->ctx->magic & SC_TERMINATE)
+	if (reader->ctx->flags & SC_CTX_FLAG_TERMINATE)
 		return SC_ERROR_NOT_ALLOWED;
 
 	cmd[0] = CTBCS_CLA;
@@ -290,7 +290,7 @@ static int ctapi_release(sc_reader_t *reader)
 	struct ctapi_private_data *priv = GET_PRIV_DATA(reader);
 
 
-	if (!(reader->ctx->magic & SC_TERMINATE))
+	if (!(reader->ctx->flags & SC_CTX_FLAG_TERMINATE))
 		priv->funcs.CT_close(priv->ctn);
 
 	free(priv);

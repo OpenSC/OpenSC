@@ -184,7 +184,7 @@ static int pcsc_internal_transmit(sc_reader_t *reader,
 	SC_FUNC_CALLED(reader->ctx, SC_LOG_DEBUG_NORMAL);
 	card = priv->pcsc_card;
 
-	if (reader->ctx->magic & SC_TERMINATE)
+	if (reader->ctx->flags & SC_CTX_FLAG_TERMINATE)
 		return SC_ERROR_NOT_ALLOWED;
 
 	sSendPci.dwProtocol = opensc_proto_to_pcsc(reader->active_protocol);
@@ -287,7 +287,7 @@ static int refresh_attributes(sc_reader_t *reader)
 
 	sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "%s check", reader->name);
 
-	if (reader->ctx->magic & SC_TERMINATE)
+	if (reader->ctx->flags & SC_CTX_FLAG_TERMINATE)
 		return SC_ERROR_NOT_ALLOWED;
 
 	if (priv->reader_state.szReader == NULL) {
@@ -511,7 +511,7 @@ static int pcsc_disconnect(sc_reader_t * reader)
 
 	SC_FUNC_CALLED(reader->ctx, SC_LOG_DEBUG_NORMAL);
 
-	if (!(reader->ctx->magic & SC_TERMINATE))
+	if (!(reader->ctx->flags & SC_CTX_FLAG_TERMINATE))
 		priv->gpriv->SCardDisconnect(priv->pcsc_card, priv->gpriv->disconnect_action);
 	reader->flags = 0;
 	return SC_SUCCESS;
@@ -525,7 +525,7 @@ static int pcsc_lock(sc_reader_t *reader)
 
 	SC_FUNC_CALLED(reader->ctx, SC_LOG_DEBUG_NORMAL);
 
-	if (reader->ctx->magic & SC_TERMINATE)
+	if (reader->ctx->flags & SC_CTX_FLAG_TERMINATE)
 		return SC_ERROR_NOT_ALLOWED;
 
 	rv = priv->gpriv->SCardBeginTransaction(priv->pcsc_card);
@@ -565,7 +565,7 @@ static int pcsc_unlock(sc_reader_t *reader)
 
 	SC_FUNC_CALLED(reader->ctx, SC_LOG_DEBUG_NORMAL);
 
-	if (reader->ctx->magic & SC_TERMINATE)
+	if (reader->ctx->flags & SC_CTX_FLAG_TERMINATE)
 		return SC_ERROR_NOT_ALLOWED;
 
 	rv = priv->gpriv->SCardEndTransaction(priv->pcsc_card, priv->gpriv->transaction_end_action);
@@ -611,7 +611,7 @@ static int pcsc_cancel(sc_context_t *ctx)
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 
-	if (ctx->magic & SC_TERMINATE)
+	if (ctx->flags & SC_CTX_FLAG_TERMINATE)
 		return SC_ERROR_NOT_ALLOWED;
 
 #ifndef _WIN32
@@ -766,7 +766,7 @@ static int pcsc_finish(sc_context_t *ctx)
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 
 	if (gpriv) {
-		if (gpriv->pcsc_ctx != -1 && !(ctx->magic & SC_TERMINATE))
+		if (gpriv->pcsc_ctx != -1 && !(ctx->flags & SC_CTX_FLAG_TERMINATE))
 			gpriv->SCardReleaseContext(gpriv->pcsc_ctx);
 		if (gpriv->dlhandle != NULL)
 			sc_dlclose(gpriv->dlhandle);
@@ -1662,7 +1662,7 @@ pcsc_pin_cmd(sc_reader_t *reader, struct sc_pin_cmd_data *data)
 
 	SC_FUNC_CALLED(reader->ctx, SC_LOG_DEBUG_NORMAL);
 
-	if (reader->ctx->magic & SC_TERMINATE)
+	if (reader->ctx->flags & SC_CTX_FLAG_TERMINATE)
 		return SC_ERROR_NOT_ALLOWED;
 
 	if (priv->gpriv->SCardControl == NULL)
