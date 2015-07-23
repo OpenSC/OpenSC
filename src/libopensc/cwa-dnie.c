@@ -42,6 +42,8 @@
 #include <openssl/x509.h>
 #include <openssl/evp.h>
 
+#define MAX_RESP_BUFFER_SIZE 2048
+
 /********************* Keys and certificates as published by DGP ********/
 
 /**
@@ -209,7 +211,7 @@ int dnie_read_file(sc_card_t * card,
 		   const sc_path_t * path,
 		   sc_file_t ** file, u8 ** buffer, size_t * length)
 {
-	u8 *data;
+	u8 *data = NULL;
 	char *msg = NULL;
 	int res = SC_SUCCESS;
 	size_t fsize = 0;	/* file size */
@@ -265,6 +267,8 @@ int dnie_read_file(sc_card_t * card,
 	res = SC_SUCCESS;
 	goto dnie_read_file_end;
  dnie_read_file_err:
+	if (data)
+		free(data);
 	if (*file) {
 		sc_file_free(*file);
 		*file = NULL;
@@ -289,39 +293,37 @@ int dnie_read_file(sc_card_t * card,
 static int dnie_read_certificate(sc_card_t * card, char *certpath, X509 ** cert)
 {
 	sc_file_t *file = NULL;
-	sc_path_t *path = NULL;
-	u8 *buffer = NULL;
+	sc_path_t path;
+	u8 *buffer = NULL, *buffer2 = NULL;
 	char *msg = NULL;
 	size_t bufferlen = 0;
 	int res = SC_SUCCESS;
 
 	LOG_FUNC_CALLED(card->ctx);
-	path = (sc_path_t *) calloc(1, sizeof(sc_path_t));
-	if (!path) {
-		msg = "Cannot allocate path data for cert read";
-		res = SC_ERROR_OUT_OF_MEMORY;
-		goto read_cert_end;
-	}
-	sc_format_path(certpath, path);
-	res = dnie_read_file(card, path, &file, &buffer, &bufferlen);
+	sc_format_path(certpath, &path);
+	res = dnie_read_file(card, &path, &file, &buffer, &bufferlen);
 	if (res != SC_SUCCESS) {
 		msg = "Cannot get intermediate CA cert";
 		goto read_cert_end;
 	}
-	*cert = d2i_X509(NULL, (const unsigned char **)&buffer, bufferlen);
+	buffer2 = buffer;
+	*cert = d2i_X509(NULL, (const unsigned char **)&buffer2, bufferlen);
 	if (*cert == NULL) {	/* received data is not a certificate */
 		res = SC_ERROR_OBJECT_NOT_VALID;
-		msg = "Readed data is not a certificate";
+		msg = "Read data is not a certificate";
 		goto read_cert_end;
 	}
 	res = SC_SUCCESS;
 
  read_cert_end:
+	if (buffer) {
+		free(buffer);
+		buffer = NULL;
+		bufferlen = 0;
+	}
 	if (file) {
 		sc_file_free(file);
 		file = NULL;
-		buffer = NULL;
-		bufferlen = 0;
 	}
 	if (msg)
 		sc_log(card->ctx, msg);
@@ -690,7 +692,7 @@ cwa_provider_t *dnie_get_cwa_provider(sc_card_t * card)
 
 static int dnie_transmit_apdu_internal(sc_card_t * card, sc_apdu_t * apdu)
 {
-	u8 buf[2048];		/* use for store partial le responses */
+	u8 buf[MAX_RESP_BUFFER_SIZE];		/* use for store partial le responses */
 	int res = SC_SUCCESS;
 	cwa_provider_t *provider = NULL;
 	if ((card == NULL) || (card->ctx == NULL) || (apdu == NULL))
@@ -711,8 +713,10 @@ static int dnie_transmit_apdu_internal(sc_card_t * card, sc_apdu_t * apdu)
 			if (tmp == SC_APDU_CASE_3_SHORT)
 				apdu->cse = SC_APDU_CASE_4_SHORT;
 			if (apdu->resplen == 0) {	/* no response buffer: create */
-				apdu->resp = buf;
-				apdu->resplen = 2048;
+				apdu->resp = calloc(1, MAX_RESP_BUFFER_SIZE);
+				if (apdu->resp == NULL)
+					LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+				apdu->resplen = MAX_RESP_BUFFER_SIZE;
 				apdu->le = card->max_recv_size;
 			}
 		}
@@ -724,15 +728,15 @@ static int dnie_transmit_apdu_internal(sc_card_t * card, sc_apdu_t * apdu)
 
 		size_t e_txlen = 0;
 		size_t index = 0;
-		sc_apdu_t *e_apdu = NULL;
-		u8 *e_tx = NULL;
+		sc_apdu_t e_apdu;
+		u8 * e_tx = NULL;
 
 		/* envelope needed */
 		sc_log(card->ctx, "envelope tx required: lc:%d", apdu->lc);
 
-		e_apdu = calloc(1, sizeof(sc_apdu_t));	/* enveloped apdu */
 		e_tx = calloc(7 + apdu->datalen, sizeof(u8));	/* enveloped data */
-		if (!e_apdu || !e_tx)
+
+		if (!e_tx)
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 
 		/* copy apdu info into enveloped data */
@@ -753,35 +757,47 @@ static int dnie_transmit_apdu_internal(sc_card_t * card, sc_apdu_t * apdu)
 			       index, len);
 
 			/* compose envelope apdu command */
-			sc_format_apdu(card, e_apdu, apdu->cse, 0xC2, 0x00,
-				       0x00);
-			e_apdu->cla = 0x90;	/* propietary CLA */
-			e_apdu->data = e_tx + index;
-			e_apdu->lc = len;
-			e_apdu->datalen = len;
-			e_apdu->le = apdu->le;
-			e_apdu->resp = apdu->resp;
-			e_apdu->resplen = apdu->resplen;
+			sc_format_apdu(card, &e_apdu, apdu->cse, 0xC2, 0x00, 0x00);
+			e_apdu.cla = 0x90;	/* propietary CLA */
+			e_apdu.data = e_tx + index;
+			e_apdu.lc = len;
+			e_apdu.datalen = len;
+			e_apdu.le = apdu->le;
+			e_apdu.resp = apdu->resp;
+			e_apdu.resplen = apdu->resplen;
 			/* if SM is ON, ensure resp exists, and force getResponse() */
 			if (provider->status.session.state == CWA_SM_ACTIVE) {
 				/* set up proper apdu type */
-				if (e_apdu->cse == SC_APDU_CASE_3_SHORT)
-					e_apdu->cse = SC_APDU_CASE_4_SHORT;
+				if (e_apdu.cse == SC_APDU_CASE_3_SHORT)
+					e_apdu.cse = SC_APDU_CASE_4_SHORT;
 				/* if no response buffer: create */
 				if (apdu->resplen == 0) {
-					e_apdu->resp = buf;
-					e_apdu->resplen = 2048;
-					e_apdu->le = card->max_recv_size;
+					e_apdu.resp = buf;
+					e_apdu.resplen = 2048;
+					e_apdu.le = card->max_recv_size;
 				}
 			}
 			/* send data chunk bypassing apdu wrapping */
-			res = sc_transmit_apdu(card, e_apdu);
-			LOG_TEST_RET(card->ctx, res,
-				     "Error in envelope() send apdu");
+			res = sc_transmit_apdu(card, &e_apdu);
+			if (res != SC_SUCCESS) {
+				if (e_tx) {
+					free(e_tx);
+					e_tx = NULL;
+				}
+				sc_log(card->ctx, "Error in envelope() send apdu");
+				LOG_FUNC_RETURN(card->ctx, res);
+			}
 		}		/* for */
+		if (e_tx) {
+			free(e_tx);
+			e_tx = NULL;
+		}
 		/* last apdu sent contains response to enveloped cmd */
-		apdu->resp = e_apdu->resp;
-		apdu->resplen = e_apdu->resplen;
+		apdu->resp = calloc(1, MAX_RESP_BUFFER_SIZE);
+		if (apdu->resp == NULL)
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+		memcpy(apdu->resp, e_apdu.resp, e_apdu.resplen);
+		apdu->resplen = e_apdu.resplen;
 		res = SC_SUCCESS;
 	}
 	LOG_FUNC_RETURN(card->ctx, res);
@@ -817,6 +833,7 @@ static int dnie_wrap_apdu(sc_card_t * card, sc_apdu_t * apdu)
 	sc_context_t *ctx;
 	cwa_provider_t *provider = NULL;
 	int retries = 3;
+	char * msg = NULL;
 
 	if ((card == NULL) || (card->ctx == NULL) || (apdu == NULL))
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -831,13 +848,18 @@ static int dnie_wrap_apdu(sc_card_t * card, sc_apdu_t * apdu)
 			wrapped.resp = NULL;
 			wrapped.resplen = 0;	/* let get_response() assign space */
 			res = cwa_encode_apdu(card, provider, apdu, &wrapped);
-			LOG_TEST_RET(ctx, res,
-				     "Error in cwa_encode_apdu process");
+			if (res != SC_SUCCESS) {
+				msg = "Error in cwa_encode_apdu process";
+				goto cleanup_and_return;
+			}
 		}
 		/* send apdu via envelope() cmd if needed */
 		res = dnie_transmit_apdu_internal(card, &wrapped);
 		/* check for tx errors */
-		LOG_TEST_RET(ctx, res, "Error in dnie_transmit_apdu process");
+		if (res != SC_SUCCESS) {
+			msg = "Error in dnie_transmit_apdu process";
+			goto cleanup_and_return;
+		}
 
 		/* parse response and handle SM related errors */
 		res=card->ops->check_sw(card,wrapped.sw1,wrapped.sw2);
@@ -852,7 +874,10 @@ static int dnie_wrap_apdu(sc_card_t * card, sc_apdu_t * apdu)
 				/* SM was active: force restart SM and retry */
 				case CWA_SM_ACTIVE:
 					res=cwa_create_secure_channel(card, provider, CWA_SM_COLD);
-					LOG_TEST_RET(ctx,res,"Cannot re-enable SM");
+					if (res != SC_SUCCESS) {
+						msg = "Cannot re-enable SM";
+						goto cleanup_and_return;
+					}
 					continue;
 			}
 		}
@@ -862,15 +887,24 @@ static int dnie_wrap_apdu(sc_card_t * card, sc_apdu_t * apdu)
 			apdu->resp = NULL;
 			apdu->resplen = 0;	/* let cwa_decode_response() eval & create size */
 			res = cwa_decode_response(card, provider, &wrapped, apdu);
-			LOG_TEST_RET(ctx, res, "Error in cwa_decode_response process");
+			if (res != SC_SUCCESS)
+				msg = "Error in cwa_decode_response process";
+			goto cleanup_and_return;
 		} else {
+			if (apdu->resp != wrapped.resp) free(apdu->resp);
 			/* memcopy result to original apdu */
 			memcpy(apdu, &wrapped, sizeof(sc_apdu_t));
+			LOG_FUNC_RETURN(ctx, res);
 		}
-		LOG_FUNC_RETURN(ctx, res);
 	}
-	sc_log(ctx,"Too many retransmissions. Abort and return");
-	LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
+	msg = "Too many retransmissions. Abort and return";
+	res = SC_ERROR_INTERNAL;
+
+cleanup_and_return:
+	if (apdu->resp != wrapped.resp) free(wrapped.resp);
+	if (msg)
+		sc_log(ctx, msg);
+	LOG_FUNC_RETURN(ctx, res);
 }
 
 int dnie_transmit_apdu(sc_card_t * card, sc_apdu_t * apdu)

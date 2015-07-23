@@ -293,7 +293,7 @@ data_found:
 static int dnie_get_info(sc_card_t * card, char *data[])
 {
 	sc_file_t *file = NULL;
-        sc_path_t *path = NULL;
+        sc_path_t path;
         u8 *buffer = NULL;
 	size_t bufferlen = 0;
 	char *msg = NULL;
@@ -309,14 +309,8 @@ static int dnie_get_info(sc_card_t * card, char *data[])
 	/* phase 1: get DNIe number, Name and GivenName */
 
 	/* read EF(CDF) at 3F0050156004 */
-	path = (sc_path_t *) calloc(1, sizeof(sc_path_t));
-	if (!path) {
-		msg = "Cannot allocate path data for EF(CDF) read";
-		res = SC_ERROR_OUT_OF_MEMORY;
-		goto get_info_end;
-	}
-	sc_format_path("3F0050156004", path);
-	res = dnie_read_file(card, path, &file, &buffer, &bufferlen);
+	sc_format_path("3F0050156004", &path);
+	res = dnie_read_file(card, &path, &file, &buffer, &bufferlen);
 	if (res != SC_SUCCESS) {
 		msg = "Cannot read EF(CDF)";
 		goto get_info_end;
@@ -334,7 +328,7 @@ static int dnie_get_info(sc_card_t * card, char *data[])
         }
 
 	/* phase 2: get IDESP */
-	sc_format_path("3F000006", path);
+	sc_format_path("3F000006", &path);
 	if (file) {
 		sc_file_free(file);
 		file = NULL;
@@ -344,7 +338,7 @@ static int dnie_get_info(sc_card_t * card, char *data[])
 		buffer=NULL; 
 		bufferlen=0;
 	}
-	res = dnie_read_file(card, path, &file, &buffer, &bufferlen);
+	res = dnie_read_file(card, &path, &file, &buffer, &bufferlen);
 	if (res != SC_SUCCESS) {
 		data[3]=NULL;
 		goto get_info_ph3;
@@ -359,7 +353,7 @@ static int dnie_get_info(sc_card_t * card, char *data[])
 
 get_info_ph3:
 	/* phase 3: get DNIe software version */
-	sc_format_path("3F002F03", path);
+	sc_format_path("3F002F03", &path);
 	if (file) {
 		sc_file_free(file);
 		file = NULL;
@@ -373,7 +367,7 @@ get_info_ph3:
 	* Some old DNIe cards seems not to include SW version file,
  	* so let this code fail without notice
  	*/
-	res = dnie_read_file(card, path, &file, &buffer, &bufferlen);
+	res = dnie_read_file(card, &path, &file, &buffer, &bufferlen);
 	if (res != SC_SUCCESS) {
 		msg = "Cannot read DNIe Version EF";
 		data[4]=NULL;
@@ -395,10 +389,12 @@ get_info_ph3:
 get_info_end:
 	if (file) {
 		sc_file_free(file);
-		free(buffer);
 		file = NULL;
-		buffer = NULL;
-		bufferlen = 0;
+	}
+	if (buffer) {
+		free(buffer);
+		buffer=NULL;
+		bufferlen=0;
 	}
 	if (msg)
 		sc_log(card->ctx,msg);
@@ -905,6 +901,8 @@ static int dnie_compose_and_send_apdu(sc_card_t *card, const u8 *path, size_t pa
 	if (file == NULL)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 	res = card->ops->process_fci(card, file, apdu.resp + 2, apdu.resp[1]);
+	if (*file_out != NULL)
+		sc_file_free(*file_out);
 	*file_out = file;
 	LOG_FUNC_RETURN(ctx, res);
 }
