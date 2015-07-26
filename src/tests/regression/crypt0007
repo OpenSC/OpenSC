@@ -10,7 +10,7 @@
 
 msg <<EOF
 :::
-::: Testing on-card decryption facilities (1048 bit)
+::: Testing on-card decryption facilities (1024 bit)
 :::
 EOF
 
@@ -23,7 +23,7 @@ p15_init --no-so-pin
 p15_set_pin -a 01
 
 suppress_error_msg="Key length/algorithm not supported by card"
-if p15_gen_key rsa/1048 --id 45 --key-usage decrypt -a 01; then
+if p15_gen_key rsa/1024 --id 45 --key-usage decrypt -a 01; then
 	msg "Extracting public key"
 	run_check_status $p15tool --read-public-key 45 -o $p
 
