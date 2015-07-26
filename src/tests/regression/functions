@@ -255,7 +255,7 @@ EOF
 function p15_erase {
 
 	msg "Erasing card ($*)"
-	run_display_output $p15init --erase \
+	run_display_output $p15init --erase-card \
 			--secret @FF=999999 \
 			"$@" >&3 >&4
 	success
@@ -356,6 +356,6 @@ function p15_validate {
 	msg "Validating card using pkcs11-tool"
 	run_display_output $p11tool -t --login --pin 0000 \
 		--module $p11module \
-		--slot-label "OpenSC Test Card" $* < /dev/null
+		--token-label "OpenSC Test Card" $* < /dev/null
 	success
 }
