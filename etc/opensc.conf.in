@@ -202,6 +202,10 @@ app default {
 		#
 		# flags = "rng", "0x80000000";
 
+		# Enable pkcs11 initialization.
+		# Default: no
+		# pkcs11_enable_InitToken = yes;
+
 		#
 		# Context: PKCS#15 emulation layer
 		#
