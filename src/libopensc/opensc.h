@@ -275,8 +275,6 @@ struct sc_reader_driver {
 	const char *short_name;
 	struct sc_reader_operations *ops;
 
-	size_t max_send_size; /* Max Lc supported by the reader layer */
-	size_t max_recv_size; /* Mac Le supported by the reader layer */
 	void *dll;
 };
 
@@ -305,6 +303,8 @@ typedef struct sc_reader {
 
 	unsigned long flags, capabilities;
 	unsigned int supported_protocols, active_protocol;
+	size_t max_send_size; /* Max Lc supported by the reader layer */
+	size_t max_recv_size; /* Mac Le supported by the reader layer */
 
 	struct sc_atr atr;
 	struct _atr_info {
