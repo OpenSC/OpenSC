@@ -311,7 +311,8 @@ struct pgp_priv_data {
 	sc_security_env_t	sec_env;
 };
 
-/* ABI: check if card's ATR matches one of driver's */
+/* ABI: check if card's ATR matches one of driver's
+ * or if the OpenPGP application is present */
 static int
 pgp_match_card(sc_card_t *card)
 {
@@ -321,6 +322,24 @@ pgp_match_card(sc_card_t *card)
 	if (i >= 0) {
 		card->name = pgp_atrs[i].name;
 		return 1;
+	} else {
+		sc_path_t	partial_aid;
+		unsigned char aid[16];
+
+		/* select application "OpenPGP" */
+		sc_format_path("D276:0001:2401", &partial_aid);
+		partial_aid.type = SC_PATH_TYPE_DF_NAME;
+		if (SC_SUCCESS == iso_ops->select_file(card, &partial_aid, NULL)) {
+			/* read information from AID */
+			i = sc_get_data(card, 0x004F, aid, sizeof aid);
+			if (i == 16) {
+				if (((aid[6] << 8) | aid[7]) >= 0x0200)
+					card->type = SC_CARD_TYPE_OPENPGP_V2;
+				else
+					card->type = SC_CARD_TYPE_OPENPGP_V1;
+				return 1;
+			}
+		}
 	}
 	return 0;
 }
@@ -366,6 +385,16 @@ pgp_init(sc_card_t *card)
 	if (!file)   {
 		pgp_finish(card);
 		return SC_ERROR_OBJECT_NOT_FOUND;
+	}
+
+	if (file->namelen != 16) {
+		/* explicitly get the full aid */
+		r = sc_get_data(card, 0x004F, file->name, sizeof file->name);
+		if (r < 0) {
+			pgp_finish(card);
+			return r;
+		}
+		file->namelen = r;
 	}
 
 	/* read information from AID */
