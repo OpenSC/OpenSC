@@ -87,6 +87,7 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 	{ "incrypto34", (void *(*)(void)) sc_get_incrypto34_driver },
 	{ "acos5",	(void *(*)(void)) sc_get_acos5_driver },
 	{ "akis",	(void *(*)(void)) sc_get_akis_driver },
+	{ "aladdin", (void *(*)(void)) sc_get_aladdin_driver },
 #ifdef ENABLE_OPENSSL
 	{ "entersafe",(void *(*)(void)) sc_get_entersafe_driver },
 #ifdef ENABLE_SM
