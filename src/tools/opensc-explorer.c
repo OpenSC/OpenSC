@@ -85,6 +85,7 @@ static const char *option_help[] = {
 static int do_echo(int argc, char **argv);
 static int do_ls(int argc, char **argv);
 static int do_find(int argc, char **argv);
+static int do_find_tags(int argc, char **argv);
 static int do_cd(int argc, char **argv);
 static int do_cat(int argc, char **argv);
 static int do_info(int argc, char **argv);
@@ -127,6 +128,9 @@ static struct command	cmds[] = {
 	{ do_find,
 		"find",	"[<start id> [<end id>]]",
 		"find all files in the current DF"	},
+	{ do_find_tags,
+		"find_tags",	"[<start tag> [<end tag>]]",
+		"find all tags of data objects in the current context"	},
 	{ do_cd,
 		"cd",	"{.. | <file id> | aid:<DF name>}",
 		"change to another DF"			},
@@ -575,6 +579,73 @@ static int do_find(int argc, char **argv)
 		fid[1] = fid[1] + 1;
 		if (fid[1] == 0)
 			fid[0] = fid[0] + 1;
+	}
+	return 0;
+}
+
+static int do_find_tags(int argc, char **argv)
+{
+	u8 start[2], end[2], rbuf[256];
+	int r;
+	unsigned int tag, tag_end;
+
+	start[0] = 0x00;
+	start[1] = 0x00;
+	end[0] = 0xFF;
+	end[1] = 0xFF;
+	switch (argc) {
+	case 2:
+		if (arg_to_fid(argv[1], end) != 0)
+			return usage(do_find_tags);
+		/* fall through */
+	case 1:
+		if (arg_to_fid(argv[0], start) != 0)
+			return usage(do_find_tags);
+		/* fall through */
+	case 0:
+		break;
+	default:
+		return usage(do_find_tags);
+	}
+	tag = (start[0] << 8) | start[1];
+	tag_end = (end[0] << 8) | end[1];
+
+	printf("Tag\tType\n");
+	while (1) {
+		printf("(%04X)\r", tag);
+		fflush(stdout);
+
+		r = sc_get_data(card, tag, rbuf, sizeof rbuf);
+		if (r >= 0) {
+			printf(" %04X ", tag);
+			if (tag == 0)
+				printf("\tdump file");
+			if ((0x0001 <= tag && tag <= 0x00FE)
+					|| (0x1F1F <= tag && tag <= 0xFFFF))
+				printf("\tBER-TLV");
+			if (tag == 0x00FF || tag == 0x02FF)
+				printf("\tspecial function");
+			if (0x0100 <= tag && tag <= 0x01FF)
+				printf("\tproprietary");
+			if (tag == 0x0200)
+				printf("\tRFU");
+			if (0x0201 <= tag && tag <= 0x02FE)
+				printf("\tSIMPLE-TLV");
+			printf("\n");
+			if (r > 0)
+				util_hex_dump_asc(stdout, rbuf, r, -1);
+		} else {
+			switch (r) {
+				case SC_ERROR_NOT_ALLOWED:
+				case SC_ERROR_SECURITY_STATUS_NOT_SATISFIED:
+					printf("(%04X)\t%s\n", tag, sc_strerror(r));
+					break;
+			}
+		}
+
+		if (tag >= tag_end)
+			break;
+		tag++;
 	}
 	return 0;
 }
