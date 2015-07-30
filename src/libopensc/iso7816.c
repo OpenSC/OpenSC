@@ -1128,6 +1128,38 @@ iso7816_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_l
 }
 
 
+static int iso7816_get_data(struct sc_card *card, unsigned int tag,  u8 *buf, size_t len)
+{
+	int                             r, cse;
+	struct sc_apdu                  apdu;
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	if (buf && len)
+		cse = SC_APDU_CASE_2;
+	else
+		cse = SC_APDU_CASE_1;
+
+	sc_format_apdu(card, &apdu, cse, 0xCA, (tag >> 8) & 0xff, tag & 0xff);
+	apdu.le = len;
+	apdu.resp = buf;
+	apdu.resplen = len;
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "GET_DATA returned error");
+
+	if (apdu.resplen > len)
+		r = SC_ERROR_WRONG_LENGTH;
+	else
+		r = apdu.resplen;
+
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+}
+
+
+
 static int
 iso7816_init(struct sc_card *card)
 {
@@ -1175,7 +1207,7 @@ static struct sc_card_operations iso_ops = {
 	iso7816_process_fci,
 	iso7816_construct_fci,
 	iso7816_pin_cmd,
-	NULL,			/* get_data */
+	iso7816_get_data,
 	NULL,			/* put_data */
 	NULL,			/* delete_record */
 	NULL			/* read_public_key */
