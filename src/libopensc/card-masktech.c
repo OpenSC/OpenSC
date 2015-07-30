@@ -178,7 +178,9 @@ static int masktech_decipher(sc_card_t *card,
 	assert(card != NULL && crgram != NULL && out != NULL);
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "masktech_decipher()\n");
 
-	if (crgram_len > SC_MAX_EXT_APDU_BUFFER_SIZE) SC_ERROR_INVALID_ARGUMENTS;
+	if (crgram_len > SC_MAX_EXT_APDU_BUFFER_SIZE) {
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
+	}
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_EXT, 0x2A, 0x80, 0x86);
 	apdu.resp = rbuf;
