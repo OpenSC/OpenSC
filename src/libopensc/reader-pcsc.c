@@ -620,7 +620,7 @@ static struct sc_reader_driver pcsc_drv = {
 	"PC/SC reader",
 	"pcsc",
 	&pcsc_ops,
-	0, 0, NULL
+	NULL
 };
 
 static int pcsc_init(sc_context_t *ctx)
@@ -817,6 +817,50 @@ err:
     return flags;
 }
 
+static int
+part10_find_property_by_tag(unsigned char buffer[], int length,
+	int tag_searched);
+/**
+ * @brief Detects reader's maximum data size
+ *
+ * @param reader reader to probe (\c get_tlv_properties must be initialized)
+ *
+ * @return maximum data size
+ */
+static size_t part10_detect_max_data(sc_reader_t *reader, SCARDHANDLE card_handle)
+{
+    u8 rbuf[256];
+    DWORD rcount = sizeof rbuf;
+    struct pcsc_private_data *priv;
+	/* 0 means no limitations */
+    size_t max_data = 0;
+	int r;
+
+    if (!reader)
+        goto err;
+    priv = GET_PRIV_DATA(reader);
+    if (!priv)
+        goto err;
+
+    if (priv->get_tlv_properties && priv->gpriv) {
+		if (SCARD_S_SUCCESS != priv->gpriv->SCardControl(card_handle,
+					priv->get_tlv_properties, NULL, 0, rbuf, sizeof(rbuf),
+					&rcount)) {
+			sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL,
+				   	"PC/SC v2 part 10: Get TLV properties failed!");
+			goto err;
+		}
+
+		r = part10_find_property_by_tag(rbuf, rcount,
+				PCSCv2_PART10_PROPERTY_dwMaxAPDUDataSize);
+		if (r >= 0)
+			max_data = r;
+    }
+
+err:
+    return max_data;
+}
+
 static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle) {
 	sc_context_t *ctx = reader->ctx;
 	struct pcsc_global_private_data *gpriv = (struct pcsc_global_private_data *) ctx->reader_drv_data;
@@ -939,6 +983,12 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 		} else {
 			sc_log(ctx, "%s %s", log_text, log_disabled);
 		}
+	}
+
+	/* Set reader max_send_size and max_recv_size based on detected max_data */
+	if (priv->get_tlv_properties) {
+		reader->max_send_size = part10_detect_max_data(reader, card_handle);
+		reader->max_recv_size = reader->max_send_size;
 	}
 }
 

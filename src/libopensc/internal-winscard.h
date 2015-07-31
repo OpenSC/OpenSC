@@ -200,6 +200,7 @@ typedef LONG (PCSC_API *SCardGetAttrib_t)(SCARDHANDLE hCard, DWORD dwAttrId,\
 #define PCSCv2_PART10_PROPERTY_bMaxPINSize 7
 #define PCSCv2_PART10_PROPERTY_sFirmwareID 8
 #define PCSCv2_PART10_PROPERTY_bPPDUSupport 9
+#define PCSCv2_PART10_PROPERTY_dwMaxAPDUDataSize 10
 
 /* structures used (but not defined) in PCSC Part 10:
  * "IFDs with Secure Pin Entry Capabilities" */
