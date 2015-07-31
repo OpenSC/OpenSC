@@ -67,9 +67,12 @@ int sc_asn1_read_tag(const u8 ** buf, size_t buflen, unsigned int *cla_out,
 	if (left < 2)
 		return SC_ERROR_INVALID_ASN1_OBJECT;
 	*buf = NULL;
-	if (*p == 0xff || *p == 0)
+	if (*p == 0xff || *p == 0) {
 		/* end of data reached */
+		*taglen = 0;
+		*tag_out = SC_ASN1_TAG_EOC;
 		return SC_SUCCESS;
+	}
 	/* parse tag byte(s) */
 	cla = (*p & SC_ASN1_TAG_CLASS) | (*p & SC_ASN1_TAG_CONSTRUCTED);
 	tag = *p & SC_ASN1_TAG_PRIMITIVE;
