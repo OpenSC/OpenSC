@@ -374,7 +374,7 @@ struct sc_reader_operations {
 	int (*init)(struct sc_context *ctx);
 	/* Called when the driver is being unloaded.  finish() has to
 	 * release any resources. */
-	int (*finish)(struct sc_context *ctx);
+	int (*finish)(struct sc_context *ctx, unsigned after_fork);
 	/* Called when library wish to detect new readers
 	 * should add only new readers. */
 	int (*detect_readers)(struct sc_context *ctx);
@@ -750,6 +750,12 @@ int sc_context_create(sc_context_t **ctx, const sc_context_param_t *parm);
  * @param ctx A pointer to the context structure to be released
  */
 int sc_release_context(sc_context_t *ctx);
+
+/**
+ * Releases an established OpenSC context without releasing any state that is shared with parent process
+ * @param ctx A pointer to the context structure to be released
+ */
+int sc_terminate_context(sc_context_t *ctx);
 
 /**
  * Detect new readers available on system.
