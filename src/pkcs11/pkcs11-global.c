@@ -582,7 +582,8 @@ CK_RV C_InitToken(CK_SLOT_ID slotID,
 		goto out;
 	}
 
-	if (slot->p11card->framework->init_token == NULL) {
+	if (!slot->p11card || !slot->p11card->framework
+		   || !slot->p11card->framework->init_token) {
 		sc_log(context, "C_InitToken() not supported by framework");
 		rv = CKR_FUNCTION_NOT_SUPPORTED;
 		goto out;

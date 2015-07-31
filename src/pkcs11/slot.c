@@ -345,7 +345,8 @@ card_detect_all(void)
 		} else {
 			if (!reader_get_slot(reader))
 				initialize_reader(reader);
-			card_detect(sc_ctx_get_reader(context, i));
+			else
+				card_detect(sc_ctx_get_reader(context, i));
 		}
 	}
 	sc_log(context, "All cards detected");
