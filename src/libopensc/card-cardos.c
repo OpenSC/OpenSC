@@ -1217,35 +1217,6 @@ cardos_logout(sc_card_t *card)
 		return SC_ERROR_NOT_SUPPORTED;
 }
 
-static int cardos_get_data(struct sc_card *card, unsigned int tag,  u8 *buf, size_t len)
-{
-	int                             r;
-	struct sc_apdu                  apdu;
-
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xCA,
-			(tag >> 8) & 0xff, tag & 0xff);
-	apdu.lc = 0;
-	apdu.datalen = 0;
-	apdu.le = len;
-	apdu.resp = buf;
-	apdu.resplen = len;
-	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
-
-	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "GET_DATA returned error");
-
-	if (apdu.resplen > len)
-		r = SC_ERROR_WRONG_LENGTH;
-	else
-		r = apdu.resplen;
-
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
-}
-
-
 /* eToken R2 supports WRITE_BINARY, PRO Tokens support UPDATE_BINARY */
 
 static struct sc_card_driver * sc_get_driver(void)
@@ -1266,7 +1237,6 @@ static struct sc_card_driver * sc_get_driver(void)
 	cardos_ops.card_ctl = cardos_card_ctl;
 	cardos_ops.pin_cmd = cardos_pin_cmd;
 	cardos_ops.logout  = cardos_logout;
-	cardos_ops.get_data = cardos_get_data;
 
 	return &cardos_drv;
 }
