@@ -871,7 +871,7 @@ static int dnie_compose_and_send_apdu(sc_card_t *card, const u8 *path, size_t pa
 	apdu.lc = pathlen;
 	apdu.data = path;
 	apdu.datalen = pathlen;
-	apdu.le = card->max_recv_size > 0 ? card->max_recv_size : 256;
+	apdu.le = card->max_recv_size;
 	if (p1 == 3)
 		apdu.cse= SC_APDU_CASE_1;
 
