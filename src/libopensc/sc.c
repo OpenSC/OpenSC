@@ -806,7 +806,7 @@ void *sc_mem_alloc_secure(sc_context_t *ctx, size_t len)
         locked = 1;
 #endif
     if (!locked) {
-        if (ctx->paranoid_memory) {
+        if (ctx->flags & SC_CTX_FLAG_PARANOID_MEMORY) {
             sc_do_log (ctx, 0, NULL, 0, NULL, "cannot lock memory, failing allocation because paranoid set");
             free (pointer);
             pointer = NULL;

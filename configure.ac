@@ -39,8 +39,8 @@ OPENSC_VS_FF_PRODUCT_NAME="VS_FF_PRODUCT_NAME"
 #   (Code changed:                      REVISION++)
 #   (Oldest interface removed:          OLDEST++)
 #   (Interfaces added:                  CURRENT++, REVISION=0)
-OPENSC_LT_CURRENT="3"
-OPENSC_LT_OLDEST="3"
+OPENSC_LT_CURRENT="4"
+OPENSC_LT_OLDEST="4"
 OPENSC_LT_REVISION="0"
 OPENSC_LT_AGE="0"
 OPENSC_LT_AGE="$((${OPENSC_LT_CURRENT}-${OPENSC_LT_OLDEST}))"

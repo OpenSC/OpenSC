@@ -184,6 +184,9 @@ static int pcsc_internal_transmit(sc_reader_t *reader,
 	SC_FUNC_CALLED(reader->ctx, SC_LOG_DEBUG_NORMAL);
 	card = priv->pcsc_card;
 
+	if (reader->ctx->flags & SC_CTX_FLAG_TERMINATE)
+		return SC_ERROR_NOT_ALLOWED;
+
 	sSendPci.dwProtocol = opensc_proto_to_pcsc(reader->active_protocol);
 	sSendPci.cbPciLength = sizeof(sSendPci);
 	sRecvPci.dwProtocol = opensc_proto_to_pcsc(reader->active_protocol);
@@ -283,6 +286,9 @@ static int refresh_attributes(sc_reader_t *reader)
 	LONG rv;
 
 	sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "%s check", reader->name);
+
+	if (reader->ctx->flags & SC_CTX_FLAG_TERMINATE)
+		return SC_ERROR_NOT_ALLOWED;
 
 	if (priv->reader_state.szReader == NULL) {
 		priv->reader_state.szReader = reader->name;
@@ -505,7 +511,8 @@ static int pcsc_disconnect(sc_reader_t * reader)
 
 	SC_FUNC_CALLED(reader->ctx, SC_LOG_DEBUG_NORMAL);
 
-	priv->gpriv->SCardDisconnect(priv->pcsc_card, priv->gpriv->disconnect_action);
+	if (!(reader->ctx->flags & SC_CTX_FLAG_TERMINATE))
+		priv->gpriv->SCardDisconnect(priv->pcsc_card, priv->gpriv->disconnect_action);
 	reader->flags = 0;
 	return SC_SUCCESS;
 }
@@ -517,6 +524,9 @@ static int pcsc_lock(sc_reader_t *reader)
 	struct pcsc_private_data *priv = GET_PRIV_DATA(reader);
 
 	SC_FUNC_CALLED(reader->ctx, SC_LOG_DEBUG_NORMAL);
+
+	if (reader->ctx->flags & SC_CTX_FLAG_TERMINATE)
+		return SC_ERROR_NOT_ALLOWED;
 
 	rv = priv->gpriv->SCardBeginTransaction(priv->pcsc_card);
 
@@ -554,6 +564,9 @@ static int pcsc_unlock(sc_reader_t *reader)
 	struct pcsc_private_data *priv = GET_PRIV_DATA(reader);
 
 	SC_FUNC_CALLED(reader->ctx, SC_LOG_DEBUG_NORMAL);
+
+	if (reader->ctx->flags & SC_CTX_FLAG_TERMINATE)
+		return SC_ERROR_NOT_ALLOWED;
 
 	rv = priv->gpriv->SCardEndTransaction(priv->pcsc_card, priv->gpriv->transaction_end_action);
 
@@ -597,12 +610,18 @@ static int pcsc_cancel(sc_context_t *ctx)
 	struct pcsc_global_private_data *gpriv = (struct pcsc_global_private_data *)ctx->reader_drv_data;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
+
+	if (ctx->flags & SC_CTX_FLAG_TERMINATE)
+		return SC_ERROR_NOT_ALLOWED;
+
 #ifndef _WIN32
 	if (gpriv->pcsc_wait_ctx != -1) {
 		rv = gpriv->SCardCancel(gpriv->pcsc_wait_ctx);
-		if (rv == SCARD_S_SUCCESS)
+		if (rv == SCARD_S_SUCCESS) {
 			 /* Also close and clear the waiting context */
 			 rv = gpriv->SCardReleaseContext(gpriv->pcsc_wait_ctx);
+			 gpriv->pcsc_wait_ctx = -1;
+		}
 	}
 #else
 	rv = gpriv->SCardCancel(gpriv->pcsc_ctx);
@@ -747,7 +766,7 @@ static int pcsc_finish(sc_context_t *ctx)
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 
 	if (gpriv) {
-		if (gpriv->pcsc_ctx != -1)
+		if (gpriv->pcsc_ctx != -1 && !(ctx->flags & SC_CTX_FLAG_TERMINATE))
 			gpriv->SCardReleaseContext(gpriv->pcsc_ctx);
 		if (gpriv->dlhandle != NULL)
 			sc_dlclose(gpriv->dlhandle);
@@ -1693,6 +1712,9 @@ pcsc_pin_cmd(sc_reader_t *reader, struct sc_pin_cmd_data *data)
 
 	SC_FUNC_CALLED(reader->ctx, SC_LOG_DEBUG_NORMAL);
 
+	if (reader->ctx->flags & SC_CTX_FLAG_TERMINATE)
+		return SC_ERROR_NOT_ALLOWED;
+
 	if (priv->gpriv->SCardControl == NULL)
 		return SC_ERROR_NOT_SUPPORTED;
 
@@ -1982,8 +2004,8 @@ static int transform_pace_output(u8 *rbuf, size_t rbuflen,
 static int
 pcsc_perform_pace(struct sc_reader *reader, void *input_pace, void *output_pace)
 {
-        struct establish_pace_channel_input *pace_input = (struct establish_pace_channel_input *) input_pace;
-        struct establish_pace_channel_output *pace_output = (struct establish_pace_channel_output *) output_pace;
+	struct establish_pace_channel_input *pace_input = (struct establish_pace_channel_input *) input_pace;
+	struct establish_pace_channel_output *pace_output = (struct establish_pace_channel_output *) output_pace;
 	struct pcsc_private_data *priv;
 	u8 rbuf[SC_MAX_EXT_APDU_BUFFER_SIZE], sbuf[SC_MAX_EXT_APDU_BUFFER_SIZE];
 	size_t rcount = sizeof rbuf, scount = sizeof sbuf;

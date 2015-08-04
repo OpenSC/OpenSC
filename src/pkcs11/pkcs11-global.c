@@ -202,9 +202,11 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs)
 	unsigned int i;
 	sc_context_param_t ctx_opts;
 
-	/* Handle fork() exception */
 #if !defined(_WIN32)
+	/* Handle fork() exception */
 	if (current_pid != initialized_pid) {
+		if (context)
+			context->flags |= SC_CTX_FLAG_TERMINATE;
 		C_Finalize(NULL_PTR);
 	}
 	initialized_pid = current_pid;

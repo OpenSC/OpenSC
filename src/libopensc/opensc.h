@@ -639,13 +639,25 @@ typedef struct {
 	unsigned long (*thread_id)(void);
 } sc_thread_context_t;
 
+/** Stop modifing or using external resources
+ *
+ * Currently this is used to avoid freeing duplicated external resources for a
+ * process that has been forked. For example, a child process may want to leave
+ * the duplicated card handles for the parent process. With this flag the child
+ * process indicates that shall the reader shall ignore those resources when
+ * calling sc_disconnect_card.
+ */
+#define SC_CTX_FLAG_TERMINATE				0x00000001
+#define SC_CTX_FLAG_PARANOID_MEMORY			0x00000002
+#define SC_CTX_FLAG_DEBUG_MEMORY			0x00000004
+#define SC_CTX_FLAG_ENABLE_DEFAULT_DRIVER	0x00000008
+
 typedef struct sc_context {
 	scconf_context *conf;
 	scconf_block *conf_blocks[3];
 	char *app_name;
 	int debug;
-	int paranoid_memory;
-	int enable_default_driver;
+	unsigned long flags;
 
 	FILE *debug_file;
 	char *debug_filename;
@@ -719,7 +731,7 @@ typedef struct {
 	 *  dependend configuration data). If NULL the name "default"
 	 *  will be used. */
 	const char    *app_name;
-	/** flags, currently unused */
+	/** context flags */
 	unsigned long flags;
 	/** mutex functions to use (optional) */
 	sc_thread_context_t *thread_ctx;
