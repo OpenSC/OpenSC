@@ -236,7 +236,6 @@ static int sc_hsm_read_binary(sc_card_t *card,
 {
 	sc_context_t *ctx = card->ctx;
 	sc_apdu_t apdu;
-	u8 recvbuf[SC_MAX_APDU_BUFFER_SIZE];
 	u8 cmdbuff[4];
 	int r;
 
@@ -251,13 +250,13 @@ static int sc_hsm_read_binary(sc_card_t *card,
 	cmdbuff[3] = idx & 0xFF;
 
 	assert(count <= (card->max_recv_size > 0 ? card->max_recv_size : 256));
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xB1, 0x00, 0x00);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_4, 0xB1, 0x00, 0x00);
 	apdu.data = cmdbuff;
 	apdu.datalen = 4;
 	apdu.lc = 4;
 	apdu.le = count;
 	apdu.resplen = count;
-	apdu.resp = recvbuf;
+	apdu.resp = buf;
 
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(ctx, r, "APDU transmit failed");
@@ -266,8 +265,6 @@ static int sc_hsm_read_binary(sc_card_t *card,
 	if (r != SC_ERROR_FILE_END_REACHED) {
 		LOG_TEST_RET(ctx, r, "Check SW error");
 	}
-
-	memcpy(buf, recvbuf, apdu.resplen);
 
 	LOG_FUNC_RETURN(ctx, apdu.resplen);
 }
@@ -1064,6 +1061,7 @@ static int sc_hsm_init(struct sc_card *card)
 	card->caps |= SC_CARD_CAP_RNG|SC_CARD_CAP_APDU_EXT;
 
 	card->max_send_size = 1431;		// 1439 buffer size - 8 byte TLV because of odd ins in UPDATE BINARY
+	card->max_recv_size = 0;		// Card supports sending with extended length APDU and without limit
 	return 0;
 }
 
