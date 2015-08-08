@@ -21,8 +21,17 @@
 #include "config.h"
 
 #include <stdio.h>
+/* For dup() and dup2() functions */
 #ifndef _WIN32
 #include <unistd.h>
+#else
+/*
+ * Windows:
+ * https://msdn.microsoft.com/en-us/library/8syseb29.aspx
+ * https://msdn.microsoft.com/en-us/library/886kc0as.aspx
+ */
+#include <io.h>
+#include <process.h>
 #endif
 #include <stdlib.h>
 #include <string.h>
@@ -329,7 +338,7 @@ static int do_userinfo(sc_card_t *card)
 	for (i = 0; openpgp_data[i].ef != NULL; i++) {
 		sc_path_t path;
 		sc_file_t *file;
-		int count;
+		unsigned int count;
 		int r;
 
 		sc_format_path(openpgp_data[i].ef, &path);
@@ -339,16 +348,16 @@ static int do_userinfo(sc_card_t *card)
 			return EXIT_FAILURE;
 		}
 
-		count = file->size;
+		count = (unsigned int)file->size;
 		if (!count)
 			continue;
 
-		if (count > (int)sizeof(buf) - 1) {
+		if (count > (unsigned int)sizeof(buf) - 1) {
 			fprintf(stderr, "Too small buffer to read the OpenPGP data\n");
 			return EXIT_FAILURE;
 		}
 
-		r = sc_read_binary(card, 0, buf, count, 0);
+		r = sc_read_binary(card, 0, buf, (size_t)count, 0);
 		if (r < 0) {
 			fprintf(stderr, "%s: read failed - %s\n", openpgp_data[i].ef, sc_strerror(r));
 			return EXIT_FAILURE;
@@ -386,12 +395,20 @@ static int do_dump_do(sc_card_t *card, unsigned int tag)
 
 	if(opt_raw) {
 		r = 0;
+		#ifndef _WIN32
 		tmp = dup(fileno(stdout));
+		#else
+		tmp = _dup(_fileno(stdout));
+		#endif
 		fp = freopen(NULL, "wb", stdout);
-		if(fp) {
-			r = fwrite(buffer, sizeof(char), sizeof(buffer), fp);
+		if (fp) {
+			r = (int)fwrite(buffer, sizeof(char), sizeof(buffer), fp);
 		}
+		#ifndef _WIN32
 		dup2(tmp, fileno(stdout));
+		#else
+		_dup2(tmp, _fileno(stdout));
+		#endif
 		clearerr(stdout);
 		if (sizeof(buffer) != r) {
 			return EXIT_FAILURE;
@@ -459,7 +476,7 @@ int do_verify(sc_card_t *card, char *type, const char *pin)
 	data.pin_type = SC_AC_CHV;
 	data.pin_reference = type[3] - '0';
 	data.pin1.data = (unsigned char *) pin;
-	data.pin1.len = strlen(pin);
+	data.pin1.len = (int)strlen(pin);
 	r = sc_pin_cmd(card, &data, &tries_left);
 	return r;
 }
@@ -629,7 +646,11 @@ int main(int argc, char **argv)
 		sc_unlock(card);
 		sc_disconnect_card(card);
 		sc_release_context(ctx);
+		#ifndef _WIN32
 		execv(exec_program, largv);
+		#else
+		_execv(exec_program, largv);
+		#endif
 		/* we should not get here */
 		perror("execv()");
 		exit(EXIT_FAILURE);

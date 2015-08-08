@@ -410,6 +410,7 @@ pgp_get_card_features(sc_card_t *card)
 	unsigned char *hist_bytes = card->atr.value;
 	size_t atr_len = card->atr.len;
 	size_t i = 0;
+	unsigned int j = 0;
 	pgp_blob_t *blob, *blob6e, *blob73;
 
 	/* parse card capabilities from historical bytes */
@@ -498,7 +499,7 @@ pgp_get_card_features(sc_card_t *card)
 		}
 
 		/* get supported algorithms & key lengths from "algorithm attributes" DOs */
-		for (i = 0x00c1; i <= 0x00c3; i++) {
+		for (j = 0x00c1; j <= 0x00c3; j++) {
 			unsigned long flags;
 
 			/* Is this correct? */
@@ -510,7 +511,7 @@ pgp_get_card_features(sc_card_t *card)
 			/* Can be generated in card */
 			flags |= SC_ALGORITHM_ONBOARD_KEY_GEN;
 
-			if ((pgp_get_blob(card, blob73, i, &blob) >= 0) &&
+			if ((pgp_get_blob(card, blob73, j, &blob) >= 0) &&
 				(blob->data != NULL) && (blob->len >= 4)) {
 				if (blob->data[0] == 0x01) {	/* Algorithm ID [RFC4880]: RSA */
 					unsigned int keylen = bebytes2ushort(blob->data + 1);  /* Measured in bit */
@@ -562,7 +563,7 @@ pgp_set_blob(pgp_blob_t *blob, const u8 *data, size_t len)
 			return SC_ERROR_OUT_OF_MEMORY;
 
 		blob->data = tmp;
-		blob->len  = len;
+		blob->len  = (unsigned int)len;
 		if (data != NULL)
 			memcpy(blob->data, data, len);
 	}
@@ -770,7 +771,7 @@ pgp_read_blob(sc_card_t *card, pgp_blob_t *blob)
 		if (card->type == SC_CARD_TYPE_OPENPGP_GNUK &&
 			(blob->id == DO_AUTH || blob->id == DO_SIGN || blob->id == DO_ENCR
 			 || blob->id == DO_AUTH_SYM || blob->id == DO_SIGN_SYM
-			 | blob->id == DO_ENCR_SYM)) {
+			 || blob->id == DO_ENCR_SYM)) {
 			buf_len = MAXLEN_RESP_PUBKEY_GNUK;
 		}
 
@@ -1101,7 +1102,7 @@ pgp_read_binary(sc_card_t *card, unsigned int idx,
 		count = blob->len - idx;
 	memcpy(buf, blob->data + idx, count);
 
-	LOG_FUNC_RETURN(card->ctx, count);
+	LOG_FUNC_RETURN(card->ctx, (int)count);
 }
 
 
@@ -1144,7 +1145,7 @@ pgp_get_pubkey(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(card->ctx, r, "Card returned error");
 
-	LOG_FUNC_RETURN(card->ctx, apdu.resplen);
+	LOG_FUNC_RETURN(card->ctx, (int)apdu.resplen);
 }
 
 
@@ -1184,7 +1185,7 @@ pgp_get_pubkey_pem(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 	memcpy(buf, data, len);
 	free(data);
 
-	LOG_FUNC_RETURN(card->ctx, len);
+	LOG_FUNC_RETURN(card->ctx, (int)len);
 }
 
 
@@ -1216,7 +1217,7 @@ pgp_get_data(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 	}
 	LOG_TEST_RET(card->ctx, r, "Card returned error");
 
-	LOG_FUNC_RETURN(card->ctx, apdu.resplen);
+	LOG_FUNC_RETURN(card->ctx, (int)apdu.resplen);
 }
 
 
@@ -1284,7 +1285,7 @@ static int gnuk_write_certificate(sc_card_t *card, const u8 *buf, size_t length)
 		/* To next part */
 		i++;
 	}
-	LOG_FUNC_RETURN(card->ctx, length);
+	LOG_FUNC_RETURN(card->ctx, (int)length);
 }
 
 
@@ -1340,7 +1341,7 @@ pgp_put_data_plain(sc_card_t *card, unsigned int tag, const u8 *buf, size_t buf_
 	if (r < 0)
 		LOG_FUNC_RETURN(ctx, r);
 
-	LOG_FUNC_RETURN(ctx, buf_len);
+	LOG_FUNC_RETURN(ctx, (int)buf_len);
 }
 
 /* ABI: PUT DATA */
@@ -1406,7 +1407,7 @@ pgp_put_data(sc_card_t *card, unsigned int tag, const u8 *buf, size_t buf_len)
 		/* pgp_set_blob()'s failures do not impact pgp_put_data()'s result */
 	}
 
-	LOG_FUNC_RETURN(card->ctx, buf_len);
+	LOG_FUNC_RETURN(card->ctx, (int)buf_len);
 }
 
 
@@ -1546,7 +1547,7 @@ pgp_compute_signature(sc_card_t *card, const u8 *data,
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(card->ctx, r, "Card returned error");
 
-	LOG_FUNC_RETURN(card->ctx, apdu.resplen);
+	LOG_FUNC_RETURN(card->ctx, (int)apdu.resplen);
 }
 
 
@@ -1611,7 +1612,7 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(card->ctx, r, "Card returned error");
 
-	LOG_FUNC_RETURN(card->ctx, apdu.resplen);
+	LOG_FUNC_RETURN(card->ctx, (int)apdu.resplen);
 }
 
 #ifdef ENABLE_OPENSSL
@@ -1646,8 +1647,8 @@ pgp_update_new_algo_attr(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_
 	}
 	/* To generate key with new key size */
 	else if (old_modulus_len != key_info->modulus_len) {
-		algo_blob->data[1] = key_info->modulus_len >> 8;
-		algo_blob->data[2] = key_info->modulus_len;
+		algo_blob->data[1] = (unsigned char)key_info->modulus_len >> 8;
+		algo_blob->data[2] = (unsigned char)key_info->modulus_len;
 		changed = 1;
 	}
 
@@ -1657,8 +1658,8 @@ pgp_update_new_algo_attr(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_
 		key_info->exponent_len = old_exponent_len;
 	}
 	else if (old_exponent_len != key_info->exponent_len) {
-		algo_blob->data[3] = key_info->exponent_len >> 8;
-		algo_blob->data[4] = key_info->exponent_len;
+		algo_blob->data[3] = (unsigned char)key_info->exponent_len >> 8;
+		algo_blob->data[4] = (unsigned char)key_info->exponent_len;
 		changed = 1;
 	}
 
@@ -1702,7 +1703,7 @@ static int pgp_store_creationtime(sc_card_t *card, u8 key_id, time_t *outtime)
 	strftime(timestring, timestrlen, "%c %Z", gmtime(&createtime));
 	sc_log(card->ctx, "Creation time %s.", timestring);
 	/* Code borrowed from GnuPG */
-	ulong2bebytes(buf, createtime);
+	ulong2bebytes(buf, (unsigned long)createtime);
 	r = pgp_put_data(card, 0x00CD + key_id, buf, 4);
 	LOG_TEST_RET(card->ctx, r, "Cannot write to DO");
 	LOG_FUNC_RETURN(card->ctx, r);
@@ -1754,19 +1755,19 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 	}
 
 	p[0] = 0x99;   /* http://tools.ietf.org/html/rfc4880  page 71 */
-	ushort2bebytes(++p, pk_packet_len);
+	ushort2bebytes(++p, (unsigned short)pk_packet_len);
 	/* Start pk_packet */
 	p += 2;
 	*p = 4;        /* Version 4 key */
-	ulong2bebytes(++p, ctime);    /* Creation time */
+	ulong2bebytes(++p, (unsigned long)ctime);    /* Creation time */
 	p += 4;
 	*p = 1;        /* RSA */
 	/* Algorithm-specific fields */
-	ushort2bebytes(++p, key_info->modulus_len);
+	ushort2bebytes(++p, (unsigned short)key_info->modulus_len);
 	p += 2;
 	memcpy(p, modulus, mlen);
 	p += mlen;
-	ushort2bebytes(++p, key_info->exponent_len);
+	ushort2bebytes(++p, (unsigned short)key_info->exponent_len);
 	p += 2;
 	memcpy(p, exponent, elen);
 	p = NULL;
@@ -1946,7 +1947,7 @@ static int pgp_update_card_algorithms(sc_card_t *card, sc_cardctl_openpgp_keygen
 	/* Get the algorithm corresponding to the key ID */
 	algo = card->algorithms + (id - 1);
 	/* Update new key length attribute */
-	algo->key_length = key_info->modulus_len;
+	algo->key_length = (unsigned int)key_info->modulus_len;
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
@@ -2095,10 +2096,10 @@ set_taglength_tlv(u8 *buffer, unsigned int tag, size_t length)
 		*p++ = (tag >> 8) & 0xFF;
 	*p++ = tag;
 	if (length < 128)
-		*p++ = length;
+		*p++ = (u8)length;
 	else if (length < 256) {
 		*p++ = 0x81;
-		*p++ = length;
+		*p++ = (u8)length;
 	}
 	else {
 		if (length > 0xffff)
