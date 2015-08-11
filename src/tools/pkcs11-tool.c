@@ -1921,6 +1921,7 @@ static int parse_gost_private_key(EVP_PKEY *evp_key, struct gostkey_info *gost)
 static int write_object(CK_SESSION_HANDLE session)
 {
 	CK_BBOOL _true = TRUE;
+	CK_BBOOL _false = FALSE;
 	unsigned char contents[MAX_OBJECT_SIZE + 1];
 	int contents_len = 0;
 	unsigned char certdata[MAX_OBJECT_SIZE];
@@ -2024,7 +2025,8 @@ static int write_object(CK_SESSION_HANDLE session)
 		FILL_ATTR(cert_templ[1], CKA_VALUE, contents, contents_len);
 		FILL_ATTR(cert_templ[2], CKA_CLASS, &clazz, sizeof(clazz));
 		FILL_ATTR(cert_templ[3], CKA_CERTIFICATE_TYPE, &cert_type, sizeof(cert_type));
-		n_cert_attr = 4;
+		FILL_ATTR(cert_templ[4], CKA_PRIVATE, &_false, sizeof(_false));
+		n_cert_attr = 5;
 
 		if (opt_object_label != NULL) {
 			FILL_ATTR(cert_templ[n_cert_attr], CKA_LABEL,
@@ -2148,9 +2150,13 @@ static int write_object(CK_SESSION_HANDLE session)
 		n_pubkey_attr = 3;
 
 		if (opt_is_private != 0) {
-			FILL_ATTR(data_templ[n_data_attr], CKA_PRIVATE,
+			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_PRIVATE,
 				&_true, sizeof(_true));
-			n_data_attr++;
+			n_pubkey_attr++;
+		} else {
+			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_PRIVATE,
+				&_false, sizeof(_false));
+			n_pubkey_attr++;
 		}
 
 		if (opt_object_label != NULL) {
@@ -2202,6 +2208,10 @@ static int write_object(CK_SESSION_HANDLE session)
 		if (opt_is_private != 0) {
 			FILL_ATTR(data_templ[n_data_attr], CKA_PRIVATE,
 				&_true, sizeof(_true));
+			n_data_attr++;
+		} else {
+			FILL_ATTR(data_templ[n_data_attr], CKA_PRIVATE,
+				&_false, sizeof(_false));
 			n_data_attr++;
 		}
 
