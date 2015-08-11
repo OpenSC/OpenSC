@@ -880,6 +880,46 @@ err:
     return max_data;
 }
 
+static int part10_get_vendor_product(struct sc_reader *reader,
+		SCARDHANDLE card_handle, int *id_vendor, int *id_product)
+{
+    u8 rbuf[256];
+    DWORD rcount = sizeof rbuf;
+    struct pcsc_private_data *priv;
+	/* 0 means no limitations */
+    int this_vendor = -1, this_product = -1;
+
+    if (!reader)
+        return SC_ERROR_INVALID_ARGUMENTS;
+    priv = GET_PRIV_DATA(reader);
+    if (!priv)
+        return SC_ERROR_INVALID_ARGUMENTS;
+
+	if (priv->get_tlv_properties && priv->gpriv) {
+		if (SCARD_S_SUCCESS != priv->gpriv->SCardControl(card_handle,
+					priv->get_tlv_properties, NULL, 0, rbuf, sizeof(rbuf),
+					&rcount)) {
+			sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL,
+					"PC/SC v2 part 10: Get TLV properties failed!");
+			return SC_ERROR_TRANSMIT_FAILED;
+		}
+
+		this_vendor = part10_find_property_by_tag(rbuf, rcount,
+				PCSCv2_PART10_PROPERTY_wIdVendor);
+		this_product = part10_find_property_by_tag(rbuf, rcount,
+				PCSCv2_PART10_PROPERTY_wIdProduct);
+	}
+
+	sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "id_vendor=%04x id_product=%04x", this_vendor, this_product);
+
+	if (id_vendor)
+		*id_vendor = this_vendor;
+	if (id_product)
+		*id_product = this_product;
+
+	return SC_SUCCESS;
+}
+
 static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle) {
 	sc_context_t *ctx = reader->ctx;
 	struct pcsc_global_private_data *gpriv = (struct pcsc_global_private_data *) ctx->reader_drv_data;
@@ -1004,10 +1044,15 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 		}
 	}
 
-	/* Set reader max_send_size and max_recv_size based on detected max_data */
 	if (priv->get_tlv_properties) {
-		reader->max_send_size = part10_detect_max_data(reader, card_handle);
+		/* Set reader max_send_size and max_recv_size based on
+		 * detected max_data */
+		reader->max_send_size = part10_detect_max_data(reader,
+				card_handle);
 		reader->max_recv_size = reader->max_send_size;
+
+		/* debug the product and vendor ID of the reader */
+		part10_get_vendor_product(reader, card_handle, NULL, NULL);
 	}
 }
 
