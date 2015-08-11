@@ -251,15 +251,25 @@ int sc_connect_card(sc_reader_t *reader, sc_card_t **card_out)
 	if (card->name == NULL)
 		card->name = card->driver->name;
 
-	/*  Override card limitations with reader limitations.
-	 *  Note that zero means no limitations at all.
-	 */
-	if ((card->max_recv_size == 0) ||
-			((reader->max_recv_size != 0) && (reader->max_recv_size < card->max_recv_size)))
-		card->max_recv_size = reader->max_recv_size;
+	/* initialize max_send_size/max_recv_size to a meaningfull value */
+	if (card->caps & SC_CARD_CAP_APDU_EXT) {
+		if (!card->max_send_size)
+			card->max_send_size = 65535;
+		if (!card->max_recv_size)
+			card->max_recv_size = 65536;
+	} else {
+		if (!card->max_send_size)
+			card->max_send_size = 255;
+		if (!card->max_recv_size)
+			card->max_recv_size = 256;
+	}
 
-	if ((card->max_send_size == 0) ||
-			((reader->max_send_size != 0) && (reader->max_send_size < card->max_send_size)))
+	/*  Override card limitations with reader limitations. */
+	if (reader->max_recv_size != 0
+		   	&& (reader->max_recv_size < card->max_recv_size))
+		card->max_recv_size = reader->max_recv_size;
+	if (reader->max_send_size != 0
+		   	&& (reader->max_send_size < card->max_send_size))
 		card->max_send_size = reader->max_send_size;
 
 	sc_log(ctx, "card info name:'%s', type:%i, flags:0x%X, max_send/recv_size:%i/%i",
@@ -479,7 +489,7 @@ int sc_delete_file(sc_card_t *card, const sc_path_t *path)
 int sc_read_binary(sc_card_t *card, unsigned int idx,
 		   unsigned char *buf, size_t count, unsigned long flags)
 {
-	size_t max_le = card->max_recv_size > 0 ? card->max_recv_size : 256;
+	size_t max_le = card->max_recv_size;
 	int r;
 
 	assert(card != NULL && card->ops != NULL && buf != NULL);
@@ -529,7 +539,7 @@ int sc_read_binary(sc_card_t *card, unsigned int idx,
 int sc_write_binary(sc_card_t *card, unsigned int idx,
 		    const u8 *buf, size_t count, unsigned long flags)
 {
-	size_t max_lc = card->max_send_size > 0 ? card->max_send_size : 255;
+	size_t max_lc = card->max_send_size;
 	int r;
 
 	assert(card != NULL && card->ops != NULL && buf != NULL);
@@ -572,7 +582,7 @@ int sc_write_binary(sc_card_t *card, unsigned int idx,
 int sc_update_binary(sc_card_t *card, unsigned int idx,
 		     const u8 *buf, size_t count, unsigned long flags)
 {
-	size_t max_lc = card->max_send_size > 0 ? card->max_send_size : 255;
+	size_t max_lc = card->max_send_size;
 	int r;
 
 	assert(card != NULL && card->ops != NULL && buf != NULL);

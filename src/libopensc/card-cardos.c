@@ -165,6 +165,9 @@ static int cardos_have_2048bit_package(sc_card_t *card)
 static int cardos_init(sc_card_t *card)
 {
 	unsigned long	flags, rsa_2048 = 0;
+	size_t data_field_length;
+	sc_apdu_t apdu;
+	u8 rbuf[2];
 
 	card->name = "CardOS M4";
 	card->cla = 0x00;
@@ -194,6 +197,29 @@ static int cardos_init(sc_card_t *card)
 		rsa_2048 = 1;
 		card->caps |= SC_CARD_CAP_APDU_EXT;
 	}
+
+	/* probe DATA FIELD LENGTH with GET DATA */
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xca, 0x01, 0x8D);
+	apdu.le = sizeof rbuf;
+	apdu.resp = rbuf;
+	apdu.resplen = sizeof(rbuf);
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL,
+			sc_transmit_apdu(card, &apdu),
+			"APDU transmit failed");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL,
+			sc_check_sw(card, apdu.sw1, apdu.sw2),
+			"GET DATA command returned error");
+	if (apdu.resplen != 2)
+		return SC_ERROR_WRONG_LENGTH;
+	data_field_length = ((rbuf[0] << 8) | rbuf[1]);
+
+	/* strip the length of possible Lc and Le bytes */
+	if (card->caps & SC_CARD_CAP_APDU_EXT)
+		card->max_send_size = data_field_length - 6;
+	else
+		card->max_send_size = data_field_length - 3;
+	/* strip the length of SW bytes */
+	card->max_recv_size = data_field_length - 2;
 
 	if (rsa_2048 == 1) {
 		_sc_card_add_rsa_alg(card, 1280, flags, 0);
