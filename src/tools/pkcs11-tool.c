@@ -551,6 +551,8 @@ int main(int argc, char * argv[])
 			opt_output = optarg;
 			break;
 		case 'p':
+			need_session |= NEED_SESSION_RW;
+			opt_login = 1;
 			util_get_pin(optarg, &opt_pin);
 			break;
 		case 'c':
