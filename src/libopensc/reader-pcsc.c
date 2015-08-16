@@ -2093,7 +2093,7 @@ static struct sc_reader_driver cardmod_drv = {
 	"PC/SC cardmod reader",
 	"cardmod",
 	&cardmod_ops,
-	0, 0, NULL
+	NULL
 };
 
 static int cardmod_init(sc_context_t *ctx)
