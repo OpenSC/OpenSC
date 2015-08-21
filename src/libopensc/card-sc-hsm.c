@@ -137,37 +137,6 @@ static int sc_hsm_match_card(struct sc_card *card)
 
 
 
-static int sc_hsm_pin_info(sc_card_t *card, struct sc_pin_cmd_data *data,
-			   int *tries_left)
-{
-	sc_apdu_t apdu;
-	int r;
-
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x20, 0x00, data->pin_reference);
-
-	r = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
-
-	r =  sc_check_sw(card, apdu.sw1, apdu.sw2);
-
-	if (r == SC_ERROR_PIN_CODE_INCORRECT) {
-		data->pin1.tries_left = apdu.sw2 & 0xF;
-		r = SC_SUCCESS;
-	} else if (r == SC_ERROR_AUTH_METHOD_BLOCKED) {
-		data->pin1.tries_left = 0;
-		r = SC_SUCCESS;
-	}
-	LOG_TEST_RET(card->ctx, r, "Check SW error");
-
-	if (tries_left != NULL) {
-		*tries_left = data->pin1.tries_left;
-	}
-
-	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
-}
-
-
-
 /*
  * Encode 16 hexadecimals of SO-PIN into binary form
  * Caller must check length of sopin and provide an 8 byte buffer
@@ -206,9 +175,6 @@ static int sc_hsm_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 	sc_hsm_private_data_t *priv = (sc_hsm_private_data_t *) card->drv_data;
 	int r;
 
-	if (data->cmd == SC_PIN_CMD_GET_INFO) {
-		return sc_hsm_pin_info(card, data, tries_left);
-	}
 	if ((data->cmd == SC_PIN_CMD_VERIFY) && (data->pin_reference == 0x88)) {
 		if (data->pin1.len != 16)
 			return SC_ERROR_INVALID_PIN_LENGTH;
@@ -1058,7 +1024,7 @@ static int sc_hsm_init(struct sc_card *card)
 	_sc_card_add_ec_alg(card, 256, flags, ext_flags, NULL);
 	_sc_card_add_ec_alg(card, 320, flags, ext_flags, NULL);
 
-	card->caps |= SC_CARD_CAP_RNG|SC_CARD_CAP_APDU_EXT;
+	card->caps |= SC_CARD_CAP_RNG|SC_CARD_CAP_APDU_EXT|SC_CARD_CAP_ISO7816_PIN_INFO;
 
 	card->max_send_size = 1431;		// 1439 buffer size - 8 byte TLV because of odd ins in UPDATE BINARY
 	card->max_recv_size = 0;		// Card supports sending with extended length APDU and without limit
