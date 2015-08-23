@@ -2895,7 +2895,7 @@ static int piv_init(sc_card_t *card)
 	_sc_card_add_ec_alg(card, 256, flags, ext_flags, NULL);
 	_sc_card_add_ec_alg(card, 384, flags, ext_flags, NULL);
 
-	card->caps |= SC_CARD_CAP_RNG;
+	card->caps |= SC_CARD_CAP_RNG | SC_CARD_CAP_ISO7816_PIN_INFO;
 
 	/*
 	 * 800-73-3 cards may have a history object and/or a discovery object
@@ -2909,6 +2909,27 @@ static int piv_init(sc_card_t *card)
 	if (r > 0)
 		r = 0;
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+}
+
+
+static int piv_check_sw(struct sc_card *card, unsigned int sw1, unsigned int sw2)
+{
+	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
+
+	const u8 *yubikey_neo_atr =
+		(const u8*)"\x3B\xFC\x13\x00\x00\x81\x31\xFE\x15\x59\x75\x62\x69\x6B\x65\x79\x4E\x45\x4F\x72\x33\xE1";
+	if (card->atr.len != 22 || memcmp(card->atr.value, yubikey_neo_atr, 22) != 0)
+		return iso_drv->ops->check_sw(card, sw1, sw2);
+
+	/* Handle here the Yubikey NEO, which returns 0x0X rather than 0xCX to
+	 * indicate the number of remaining PIN retries.  Perhaps they misread the
+	 * spec and thought 0xCX meant "clear" or "don't care", not a literal 0xC! */
+	if (sw1 == 0x63U && (sw2 & ~0x0fU) == 0x00U && sw2 != 0) {
+		 sc_log(card->ctx, "Verification failed (remaining tries: %d)", (sw2 & 0x0f));
+		 return SC_ERROR_PIN_CODE_INCORRECT;
+	}
+
+	return iso_drv->ops->check_sw(card, sw1, sw2);
 }
 
 
@@ -2952,6 +2973,7 @@ static struct sc_card_driver * sc_get_driver(void)
 	piv_ops.restore_security_env = piv_restore_security_env;
 	piv_ops.compute_signature = piv_compute_signature;
 	piv_ops.decipher =  piv_decipher;
+	piv_ops.check_sw = piv_check_sw;
 	piv_ops.card_ctl = piv_card_ctl;
 	piv_ops.pin_cmd = piv_pin_cmd;
 
