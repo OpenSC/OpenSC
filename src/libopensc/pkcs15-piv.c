@@ -796,6 +796,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 		pin_info.attrs.pin.pad_char      = pins[i].pad_char;
 		sc_format_path(pins[i].path, &pin_info.path);
 		pin_info.tries_left    = -1;
+		pin_info.max_tries = 8; /* The value is up to the agency and can not be read from the card */
 
 		label = pins[i].label;
 		if (i == 0 &&
