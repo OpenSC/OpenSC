@@ -262,11 +262,20 @@ sc_pkcs11_sign_init(struct sc_pkcs11_session *session, CK_MECHANISM_PTR pMechani
 	if (mt->key_type != key_type)
 		LOG_FUNC_RETURN(context, CKR_KEY_TYPE_INCONSISTENT);
 
+	if (pMechanism->pParameter &&
+	    pMechanism->ulParameterLen > sizeof(operation->mechanism_params))
+		LOG_FUNC_RETURN(context, CKR_ARGUMENTS_BAD);
+
 	rv = session_start_operation(session, SC_PKCS11_OPERATION_SIGN, mt, &operation);
 	if (rv != CKR_OK)
 		LOG_FUNC_RETURN(context, rv);
 
 	memcpy(&operation->mechanism, pMechanism, sizeof(CK_MECHANISM));
+	if (pMechanism->pParameter) {
+		memcpy(&operation->mechanism_params, pMechanism->pParameter,
+		       pMechanism->ulParameterLen);
+		operation->mechanism.pParameter = &operation->mechanism_params;
+	}
 	rv = mt->sign_init(operation, key);
 	if (rv != CKR_OK)
 		session_stop_operation(session, SC_PKCS11_OPERATION_SIGN);
@@ -382,6 +391,16 @@ sc_pkcs11_signature_init(sc_pkcs11_operation_t *operation,
 		}
 		else  {
 			/* Mechanism recognised but cannot be performed by pkcs#15 card, or some general error. */
+			free(data);
+			LOG_FUNC_RETURN(context, rv);
+		}
+	}
+
+	/* Validate the mechanism parameters */
+	if (key->ops->init_params) {
+		rv = key->ops->init_params(operation->session, &operation->mechanism);
+		if (rv != CKR_OK) {
+			/* Probably bad arguments */
 			free(data);
 			LOG_FUNC_RETURN(context, rv);
 		}
@@ -636,6 +655,16 @@ sc_pkcs11_verify_init(sc_pkcs11_operation_t *operation,
 		}
 	}
 
+	/* Validate the mechanism parameters */
+	if (key->ops->init_params) {
+		rv = key->ops->init_params(operation->session, &operation->mechanism);
+		if (rv != CKR_OK) {
+			/* Probably bad arguments */
+			free(data);
+			LOG_FUNC_RETURN(context, rv);
+		}
+	}
+
 	/* If this is a verify with hash operation, set up the
 	 * hash operation */
 	info = (struct hash_signature_info *) operation->type->mech_data;
@@ -729,7 +758,7 @@ sc_pkcs11_verify_final(sc_pkcs11_operation_t *operation,
 
 	rv = sc_pkcs11_verify_data(pubkey_value, attr.ulValueLen,
 		params, sizeof(params),
-		operation->mechanism.mechanism, data->md,
+		&operation->mechanism, data->md,
 		data->buffer, data->buffer_len, pSignature, ulSignatureLen);
 
 done:

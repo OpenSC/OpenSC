@@ -93,19 +93,39 @@ extern "C" {
 #define SC_ALGORITHM_NEED_USAGE		0x40000000
 #define SC_ALGORITHM_SPECIFIC_FLAGS	0x001FFFFF
 
-#define SC_ALGORITHM_RSA_RAW		0x00000001
 /* If the card is willing to produce a cryptogram padded with the following
- * methods, set these flags accordingly. */
-#define SC_ALGORITHM_RSA_PADS		0x0000001E
-#define SC_ALGORITHM_RSA_PAD_NONE	0x00000000
-#define SC_ALGORITHM_RSA_PAD_PKCS1	0x00000002
+ * methods, set these flags accordingly.  These flags are exclusive: an RSA card
+ * must support at least one of them, and exactly one of them must be selected
+ * for a given operation. */
+#define SC_ALGORITHM_RSA_RAW		0x00000001
+#define SC_ALGORITHM_RSA_PADS		0x0000001F
+#define SC_ALGORITHM_RSA_PAD_NONE	0x00000001
+#define SC_ALGORITHM_RSA_PAD_PKCS1	0x00000002 /* PKCS#1 v1.5 padding */
 #define SC_ALGORITHM_RSA_PAD_ANSI	0x00000004
 #define SC_ALGORITHM_RSA_PAD_ISO9796	0x00000008
-#define SC_ALGORITHM_RSA_PAD_PSS	0x00000010
+#define SC_ALGORITHM_RSA_PAD_PSS	0x00000010 /* PKCS#1 v2.0 PSS */
 
 /* If the card is willing to produce a cryptogram with the following
- * hash values, set these flags accordingly. */
-#define SC_ALGORITHM_RSA_HASH_NONE	0x00000100
+ * hash values, set these flags accordingly.  The interpretation of the hash
+ * flags depends on the algorithm and padding chosen: for RSA, the hash flags
+ * determine how the padding is constructed and do not describe the first
+ * hash applied to the document before padding begins.
+ *
+ *   - For PAD_NONE, ANSI X9.31, (and ISO9796?), the hash value is therefore
+ *     ignored.  For ANSI X9.31, the input data must already have the hash
+ *     identifier byte appended (eg 0x33 for SHA-1).
+ *   - For PKCS1 (v1.5) the hash is recorded in the padding, and HASH_NONE is a
+ *     valid value, meaning that the hash's DigestInfo has already been
+ *     prepended to the data, otherwise the hash id is put on the front.
+ *   - For PSS (PKCS#1 v2.0) the hash is used to derive the padding from the
+ *     already-hashed message.
+ *
+ * In no case is the hash actually applied to the entire document.
+ *
+ * It's possible that the card may support different hashes for PKCS1 and PSS
+ * signatures; in this case the card driver has to pick the lowest-denominator
+ * when it sets these flags to indicate its capabilities. */
+#define SC_ALGORITHM_RSA_HASH_NONE	0x00000100 /* only applies to PKCS1 padding */
 #define SC_ALGORITHM_RSA_HASH_SHA1	0x00000200
 #define SC_ALGORITHM_RSA_HASH_MD5	0x00000400
 #define SC_ALGORITHM_RSA_HASH_MD5_SHA1	0x00000800
@@ -114,21 +134,39 @@ extern "C" {
 #define SC_ALGORITHM_RSA_HASH_SHA384	0x00004000
 #define SC_ALGORITHM_RSA_HASH_SHA512	0x00008000
 #define SC_ALGORITHM_RSA_HASH_SHA224	0x00010000
-#define SC_ALGORITHM_RSA_HASHES		0x0001FE00
+#define SC_ALGORITHM_RSA_HASHES		0x0001FF00
 
+/* This defines the hashes to be used with MGF1 in PSS padding */
+#define SC_ALGORITHM_MGF1_SHA1		0x00100000
+#define SC_ALGORITHM_MGF1_SHA256	0x00200000
+#define SC_ALGORITHM_MGF1_SHA384	0x00400000
+#define SC_ALGORITHM_MGF1_SHA512	0x00800000
+#define SC_ALGORITHM_MGF1_SHA224	0x01000000
+#define SC_ALGORITHM_MGF1_HASHES	0x01F00000
+
+/* These flags are exclusive: a GOST R34.10 card must support at least one or the
+ * other of the methods, and exactly one of them applies to any given operation.
+ * Note that the GOST R34.11 hash is actually applied to the data (ie if this
+ * algorithm is chosen the entire unhashed document is passed in). */
 #define SC_ALGORITHM_GOSTR3410_RAW		0x00020000
-#define SC_ALGORITHM_GOSTR3410_HASH_NONE	0x00040000
+#define SC_ALGORITHM_GOSTR3410_HASH_NONE	SC_ALGORITHM_GOSTR3410_RAW /*XXX*/
 #define SC_ALGORITHM_GOSTR3410_HASH_GOSTR3411	0x00080000
-#define SC_ALGORITHM_GOSTR3410_HASHES		0x00080000
-/*TODO: -DEE Should the above be 0x0000E000 */
-/* Or should the HASH_NONE be 0x00000010  and HASHES be 0x00008010 */
+#define SC_ALGORITHM_GOSTR3410_HASHES		0x000A0000
+/*TODO: -DEE Should the above be 0x000E0000 */
+/* Or should the HASH_NONE be 0x00000100  and HASHES be 0x00080010 */
 
+/* The ECDSA flags are exclusive, and exactly one of them applies to any given
+ * operation.  If ECDSA with a hash is specified, then the data passed in is
+ * the entire document, unhashed, and the hash is applied once to it before
+ * truncating and signing.  These flags are distinct from the RSA hash flags,
+ * which determine the hash ids the card is willing to put in RSA message
+ * padding. */
 /* May need more bits if card can do more hashes */
 /* TODO: -DEE Will overload RSA_HASHES with EC_HASHES */
 /* Not clear if these need their own bits or not */
 /* The PIV card does not support and hashes */
-#define SC_ALGORITHM_ECDSA_RAW		0x00100000
 #define SC_ALGORITHM_ECDH_CDH_RAW	0x00200000
+#define SC_ALGORITHM_ECDSA_RAW		0x00100000
 #define SC_ALGORITHM_ECDSA_HASH_NONE		SC_ALGORITHM_RSA_HASH_NONE
 #define SC_ALGORITHM_ECDSA_HASH_SHA1		SC_ALGORITHM_RSA_HASH_SHA1
 #define SC_ALGORITHM_ECDSA_HASH_SHA224		SC_ALGORITHM_RSA_HASH_SHA224
@@ -142,7 +180,9 @@ extern "C" {
 							SC_ALGORITHM_ECDSA_HASH_SHA512)
 
 /* define mask of all algorithms that can do raw */
-#define SC_ALGORITHM_RAW_MASK (SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_GOSTR3410_RAW | SC_ALGORITHM_ECDSA_RAW)
+#define SC_ALGORITHM_RAW_MASK (SC_ALGORITHM_RSA_RAW | \
+                               SC_ALGORITHM_GOSTR3410_RAW | \
+                               SC_ALGORITHM_ECDSA_RAW)
 
 /* extended algorithm bits for selected mechs */
 #define SC_ALGORITHM_EXT_EC_F_P          0x00000001
