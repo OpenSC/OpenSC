@@ -23,6 +23,12 @@
 #include "config.h"
 #endif
 
+#ifdef ENABLE_OPENSSL
+#include <openssl/evp.h>
+#include <openssl/rand.h>
+#include <openssl/sha.h>
+#endif
+
 #include <string.h>
 #include <stdlib.h>
 
@@ -231,22 +237,183 @@ int sc_pkcs1_strip_digest_info_prefix(unsigned int *algorithm,
 	return SC_ERROR_INTERNAL;
 }
 
+#ifdef ENABLE_OPENSSL
+
+static const EVP_MD* hash_flag2md(unsigned int hash)
+{
+	switch (hash & SC_ALGORITHM_RSA_HASHES) {
+	case SC_ALGORITHM_RSA_HASH_SHA1:
+		return EVP_sha1();
+	case SC_ALGORITHM_RSA_HASH_SHA224:
+		return EVP_sha224();
+	case SC_ALGORITHM_RSA_HASH_SHA256:
+		return EVP_sha256();
+	case SC_ALGORITHM_RSA_HASH_SHA384:
+		return EVP_sha384();
+	case SC_ALGORITHM_RSA_HASH_SHA512:
+		return EVP_sha512();
+	default:
+		return NULL;
+	}
+}
+
+static const EVP_MD* mgf1_flag2md(unsigned int mgf1)
+{
+	switch (mgf1 & SC_ALGORITHM_MGF1_HASHES) {
+	case SC_ALGORITHM_MGF1_SHA1:
+		return EVP_sha1();
+	case SC_ALGORITHM_MGF1_SHA224:
+		return EVP_sha224();
+	case SC_ALGORITHM_MGF1_SHA256:
+		return EVP_sha256();
+	case SC_ALGORITHM_MGF1_SHA384:
+		return EVP_sha384();
+	case SC_ALGORITHM_MGF1_SHA512:
+		return EVP_sha512();
+	default:
+		return NULL;
+	}
+}
+
+/* add PKCS#1 v2.0 PSS padding */
+static int sc_pkcs1_add_pss_padding(unsigned int hash, unsigned int mgf1_hash,
+    const u8 *in, size_t in_len, u8 *out, size_t *out_len, size_t mod_bits)
+{
+	/* hLen = sLen in our case */
+	int rv = SC_ERROR_INTERNAL, i, j, hlen, dblen, plen, round, mgf_rounds;
+	int mgf1_hlen;
+	const EVP_MD* md, *mgf1_md;
+	EVP_MD_CTX* ctx = NULL;
+	u8 buf[8];
+	u8 salt[EVP_MAX_MD_SIZE], mask[EVP_MAX_MD_SIZE];
+	size_t mod_length = (mod_bits + 7) / 8;
+
+	if (*out_len < mod_length)
+		return SC_ERROR_BUFFER_TOO_SMALL;
+
+	md = hash_flag2md(hash);
+	if (md == NULL)
+		return SC_ERROR_NOT_SUPPORTED;
+	hlen = EVP_MD_size(md);
+	dblen = mod_length - hlen - 1; /* emLen - hLen - 1 */
+	plen = mod_length - 2*hlen - 1;
+	if (in_len != (unsigned)hlen)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	if (2 * (unsigned)hlen + 2 > mod_length)
+		/* RSA key too small for chosen hash (1296 bits or higher needed for
+		 * signing SHA-512 hashes) */
+		return SC_ERROR_NOT_SUPPORTED;
+
+	if (RAND_bytes(salt, hlen) != 1)
+		return SC_ERROR_INTERNAL;
+
+	/* Hash M' to create H */
+	if (!(ctx = EVP_MD_CTX_create()))
+		goto done;
+	memset(buf, 0x00, 8);
+	if (EVP_DigestInit_ex(ctx, md, NULL) != 1 ||
+	    EVP_DigestUpdate(ctx, buf, 8) != 1 ||
+	    EVP_DigestUpdate(ctx, in, hlen) != 1 || /* mHash */
+	    EVP_DigestUpdate(ctx, salt, hlen) != 1) {
+		goto done;
+	}
+
+	/* Construct padding2, salt, H, and BC in the output block */
+	/* DB = PS || 0x01 || salt */
+	memset(out, 0x00, plen - 1); /* emLen - sLen - hLen - 2 */
+	out[plen - 1] = 0x01;
+	memcpy(out + plen, salt, hlen);
+	if (EVP_DigestFinal_ex(ctx, out + dblen, NULL) != 1) { /* H */
+		goto done;
+	}
+	out[dblen + hlen] = 0xBC;
+	/* EM = DB* || H || 0xbc
+	 *  *the first part is masked later */
+
+	/* Construct the DB mask block by block and XOR it in. */
+	mgf1_md = mgf1_flag2md(mgf1_hash);
+	if (mgf1_md == NULL)
+		return SC_ERROR_NOT_SUPPORTED;
+	mgf1_hlen = EVP_MD_size(mgf1_md);
+
+	mgf_rounds = (dblen + mgf1_hlen - 1) / mgf1_hlen; /* round up */
+	for (round = 0; round < mgf_rounds; ++round) {
+		buf[0] = (round&0xFF000000U) >> 24;
+		buf[1] = (round&0x00FF0000U) >> 16;
+		buf[2] = (round&0x0000FF00U) >> 8;
+		buf[3] = (round&0x000000FFU);
+		if (EVP_DigestInit_ex(ctx, mgf1_md, NULL) != 1 ||
+		    EVP_DigestUpdate(ctx, out + dblen, hlen) != 1 || /* H (Z parameter of MGF1) */
+		    EVP_DigestUpdate(ctx, buf, 4) != 1 || /* C */
+		    EVP_DigestFinal_ex(ctx, mask, NULL)) {
+			goto done;
+		}
+		/* this is no longer part of the MGF1, but actually
+		 * XORing mask with DB to create maskedDB inplace */
+		for (i = round * mgf1_hlen, j = 0; i < dblen && j < mgf1_hlen; ++i, ++j) {
+			out[i] ^= mask[j];
+		}
+	}
+
+	/* Set leftmost N bits in leftmost octet in maskedDB to zero
+	 * to make sure the result is smaller than the modulus ( +1)
+	 */
+	out[0] &= (0xff >> (8 * mod_length - mod_bits + 1));
+
+	*out_len = mod_length;
+	rv = SC_SUCCESS;
+
+done:
+	OPENSSL_cleanse(salt, sizeof(salt));
+	OPENSSL_cleanse(mask, sizeof(mask));
+	if (ctx) {
+		EVP_MD_CTX_destroy(ctx);
+	}
+	return rv;
+}
+
+static int hash_len2algo(size_t hash_len)
+{
+	switch (hash_len) {
+	case SHA_DIGEST_LENGTH:
+		return SC_ALGORITHM_RSA_HASH_SHA1;
+	case SHA224_DIGEST_LENGTH:
+		return SC_ALGORITHM_RSA_HASH_SHA224;
+	case SHA256_DIGEST_LENGTH:
+		return SC_ALGORITHM_RSA_HASH_SHA256;
+	case SHA384_DIGEST_LENGTH:
+		return SC_ALGORITHM_RSA_HASH_SHA384;
+	case SHA512_DIGEST_LENGTH:
+		return SC_ALGORITHM_RSA_HASH_SHA512;
+	}
+	/* Should never happen -- the mechanism and data should be already
+	 * verified to match one of the above. If not, we will fail later
+	 */
+	return SC_ALGORITHM_RSA_HASH_NONE;
+}
+#endif
+
 /* general PKCS#1 encoding function */
 int sc_pkcs1_encode(sc_context_t *ctx, unsigned long flags,
-	const u8 *in, size_t in_len, u8 *out, size_t *out_len, size_t mod_len)
+	const u8 *in, size_t in_len, u8 *out, size_t *out_len, size_t mod_bits)
 {
 	int    rv, i;
 	size_t tmp_len = *out_len;
 	const u8    *tmp = in;
 	unsigned int hash_algo, pad_algo;
+	size_t mod_len = (mod_bits + 7) / 8;
+#ifdef ENABLE_OPENSSL
+	unsigned int mgf1_hash;
+#endif
 
 	LOG_FUNC_CALLED(ctx);
 
-	hash_algo = flags & (SC_ALGORITHM_RSA_HASHES | SC_ALGORITHM_RSA_HASH_NONE);
+	hash_algo = flags & SC_ALGORITHM_RSA_HASHES;
 	pad_algo  = flags & SC_ALGORITHM_RSA_PADS;
 	sc_log(ctx, "hash algorithm 0x%X, pad algorithm 0x%X", hash_algo, pad_algo);
 
-	if (hash_algo != SC_ALGORITHM_RSA_HASH_NONE) {
+	if ((pad_algo == SC_ALGORITHM_RSA_PAD_PKCS1 || !pad_algo) &&
+	    hash_algo != SC_ALGORITHM_RSA_HASH_NONE) {
 		i = sc_pkcs1_add_digest_info_prefix(hash_algo, in, in_len, out, &tmp_len);
 		if (i != SC_SUCCESS) {
 			sc_log(ctx, "Unable to add digest info 0x%x", hash_algo);
@@ -268,10 +435,29 @@ int sc_pkcs1_encode(sc_context_t *ctx, unsigned long flags,
 		/* add pkcs1 bt01 padding */
 		rv = sc_pkcs1_add_01_padding(tmp, tmp_len, out, out_len, mod_len);
 		LOG_FUNC_RETURN(ctx, rv);
+	case SC_ALGORITHM_RSA_PAD_PSS:
+		/* add PSS padding */
+#ifdef ENABLE_OPENSSL
+		mgf1_hash = flags & SC_ALGORITHM_MGF1_HASHES;
+		if (hash_algo == SC_ALGORITHM_RSA_HASH_NONE) {
+			/* this is generic RSA_PKCS1_PSS mechanism with hash
+			 * already done outside of the module. The parameters
+			 * were already checked so we need to adjust the hash
+			 * algorithm to do the padding with the correct hash
+			 * function.
+			 */
+			hash_algo = hash_len2algo(tmp_len);
+		}
+		rv = sc_pkcs1_add_pss_padding(hash_algo, mgf1_hash,
+		    tmp, tmp_len, out, out_len, mod_bits);
+#else
+		rv = SC_ERROR_NOT_SUPPORTED;
+#endif
+		LOG_FUNC_RETURN(ctx, rv);
 	default:
-		/* currently only pkcs1 padding is supported */
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Unsupported padding algorithm 0x%x", pad_algo);
-		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
+		/* We shouldn't be called with an unexpected padding type, we've already
+		 * returned SC_ERROR_NOT_SUPPORTED if the card can't be used. */
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
 	}
 }
 
@@ -279,42 +465,45 @@ int sc_get_encoding_flags(sc_context_t *ctx,
 	unsigned long iflags, unsigned long caps,
 	unsigned long *pflags, unsigned long *sflags)
 {
-	size_t i;
-
 	LOG_FUNC_CALLED(ctx);
 	if (pflags == NULL || sflags == NULL)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	sc_log(ctx, "iFlags 0x%lX, card capabilities 0x%lX", iflags, caps);
-	for (i = 0; digest_info_prefix[i].algorithm != 0; i++) {
-		if (iflags & digest_info_prefix[i].algorithm) {
-			if (digest_info_prefix[i].algorithm != SC_ALGORITHM_RSA_HASH_NONE &&
-			    caps & digest_info_prefix[i].algorithm)
-				*sflags |= digest_info_prefix[i].algorithm;
-			else
-				*pflags |= digest_info_prefix[i].algorithm;
-			break;
-		}
-	}
 
-	if (iflags & SC_ALGORITHM_RSA_PAD_PKCS1) {
-		if (caps & SC_ALGORITHM_RSA_PAD_PKCS1)
-			*sflags |= SC_ALGORITHM_RSA_PAD_PKCS1;
-		else
-			*pflags |= SC_ALGORITHM_RSA_PAD_PKCS1;
-	} else if ((iflags & SC_ALGORITHM_RSA_PADS) == SC_ALGORITHM_RSA_PAD_NONE) {
-		
-		/* Work with RSA, EC and maybe GOSTR? */
-		if (!(caps & SC_ALGORITHM_RAW_MASK))
-			LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "raw encryption is not supported");
+	/* For ECDSA and GOSTR, we don't do any padding or hashing ourselves, the
+	 * card has to support the requested operation.  Similarly, for RSA with
+	 * raw padding (raw RSA) and ISO9796, we require the card to do it for us.
+	 * Finally, for PKCS1 (v1.5 and PSS) and ASNI X9.31 we can apply the padding
+	 * ourselves if the card supports raw RSA. */
 
-		*sflags |= (caps & SC_ALGORITHM_RAW_MASK); /* adds in the one raw type */
+	/* TODO: Could convert GOSTR3410_HASH_GOSTR3411 -> GOSTR3410_RAW and
+	 *       ECDSA_HASH_ -> ECDSA_RAW using OpenSSL (not much benefit though). */
+
+	if ((caps & iflags) == iflags) {
+		/* Card supports the signature operation we want to do, great, let's
+		 * go with it then. */
+		*sflags = iflags;
 		*pflags = 0;
-	} else if (iflags & SC_ALGORITHM_RSA_PAD_PSS) {
-		if (caps & SC_ALGORITHM_RSA_PAD_PSS)
-			*sflags |= SC_ALGORITHM_RSA_PAD_PSS;
-		else
-			*pflags |= SC_ALGORITHM_RSA_PAD_PSS;
+
+	} else if ((caps & SC_ALGORITHM_RSA_PAD_PSS) &&
+                   (iflags & SC_ALGORITHM_RSA_PAD_PSS)) {
+		*sflags |= SC_ALGORITHM_RSA_PAD_PSS;
+
+	} else if (((caps & SC_ALGORITHM_RSA_RAW) &&
+	            (iflags & SC_ALGORITHM_RSA_PAD_PKCS1))
+	           || iflags & SC_ALGORITHM_RSA_PAD_PSS) {
+		/* Use the card's raw RSA capability on the padded input */
+		*sflags = SC_ALGORITHM_RSA_PAD_NONE;
+		*pflags = iflags;
+
+	} else if ((caps & (SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE)) &&
+	           (iflags & SC_ALGORITHM_RSA_PAD_PKCS1)) {
+		/* A corner case - the card can partially do PKCS1, if we prepend the
+		 * DigestInfo bit it will do the rest. */
+		*sflags = SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE;
+		*pflags = iflags & SC_ALGORITHM_RSA_HASHES;
+
 	} else {
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "unsupported algorithm");
 	}

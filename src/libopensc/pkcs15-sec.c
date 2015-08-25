@@ -329,7 +329,7 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 
 	switch (obj->type) {
 		case SC_PKCS15_TYPE_PRKEY_RSA:
-			modlen = prkey->modulus_length / 8;
+			modlen = (prkey->modulus_length + 7) / 8;
 			break;
 		case SC_PKCS15_TYPE_PRKEY_GOSTR3410:
 			modlen = (prkey->modulus_length + 7) / 8 * 2;
@@ -377,7 +377,8 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 		if (modlen > tmplen)
 			LOG_TEST_RET(ctx, SC_ERROR_NOT_ALLOWED, "Buffer too small, needs recompile!");
 
-		r = sc_pkcs1_encode(ctx, flags, in, inlen, buf, &tmplen, modlen);
+		/* XXX Assuming RSA key here */
+		r = sc_pkcs1_encode(ctx, flags, in, inlen, buf, &tmplen, prkey->modulus_length);
 
 		/* no padding needed - already done */
 		flags &= ~SC_ALGORITHM_RSA_PADS;
@@ -391,10 +392,15 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	}
 
 
-	/* If the card doesn't support the requested algorithm, see if we
-	 * can strip the input so a more restrictive algo can be used */
+	/* If the card doesn't support the requested algorithm, we normally add the
+	 * padding here in software and ask the card to do a raw signature.  There's
+	 * one exception to that, where we might be able to get the signature to
+	 * succeed by stripping padding if the card only offers higher-level
+	 * signature operations.  The only thing we can strip is the DigestInfo
+	 * block from PKCS1 padding. */
 	if ((flags == (SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE)) &&
-			!(alg_info->flags & (SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_HASH_NONE))) {
+	    !(alg_info->flags & SC_ALGORITHM_RSA_RAW) &&
+	    !(alg_info->flags & (SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE))) {
 		unsigned int algo;
 		size_t tmplen = sizeof(buf);
 
@@ -420,19 +426,16 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 
 	/* add the padding bytes (if necessary) */
 	if (pad_flags != 0) {
-		if (flags & SC_ALGORITHM_RSA_PAD_PSS) {
-			// TODO PSS padding
-		} else {
-			size_t tmplen = sizeof(buf);
+		size_t tmplen = sizeof(buf);
 
-			r = sc_pkcs1_encode(ctx, pad_flags, tmp, inlen, tmp, &tmplen, modlen);
-			SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Unable to add padding");
-
-			inlen = tmplen;
-		}
+		/* XXX Assuming RSA key here */
+		r = sc_pkcs1_encode(ctx, pad_flags, tmp, inlen, tmp, &tmplen,
+		    prkey->modulus_length);
+		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Unable to add padding");
+		inlen = tmplen;
 	}
 	else if ( senv.algorithm == SC_ALGORITHM_RSA &&
-			(flags & SC_ALGORITHM_RSA_PADS) == SC_ALGORITHM_RSA_PAD_NONE) {
+	          (flags & SC_ALGORITHM_RSA_PADS) == SC_ALGORITHM_RSA_PAD_NONE) {
 		/* Add zero-padding if input is shorter than the modulus */
 		if (inlen < modlen) {
 			if (modlen > sizeof(buf))
