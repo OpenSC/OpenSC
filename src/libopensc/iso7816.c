@@ -35,15 +35,15 @@ static void fixup_transceive_length(const struct sc_card *card,
 {
 	assert(card != NULL && apdu != NULL);
 
-	if (apdu->lc > card->max_send_size) {
+	if (apdu->lc > sc_get_max_send_size(card)) {
 		/* The lower layers will automatically do chaining */
 		apdu->flags |= SC_APDU_FLAGS_CHAINING;
 	}
 
-	if (apdu->le > card->max_recv_size) {
+	if (apdu->le > sc_get_max_recv_size(card)) {
 		/* The lower layers will automatically do a GET RESPONSE, if possible.
 		 * All other workarounds must be carried out by the upper layers. */
-		apdu->le = card->max_recv_size;
+		apdu->le = sc_get_max_recv_size(card);
 	}
 }
 
@@ -526,7 +526,7 @@ iso7816_select_file(struct sc_card *card, const struct sc_path *in_path, struct 
 		apdu.p2 = 0;		/* first record, return FCI */
 		apdu.resp = buf;
 		apdu.resplen = sizeof(buf);
-		apdu.le = card->max_recv_size < 256 ? card->max_recv_size : 256;
+		apdu.le = sc_get_max_recv_size(card) < 256 ? sc_get_max_recv_size(card) : 256;
 	}
 	else {
 		apdu.p2 = 0x0C;		/* first record, return nothing */
@@ -719,8 +719,8 @@ iso7816_get_response(struct sc_card *card, size_t *count, u8 *buf)
 	size_t rlen;
 
 	/* request at most max_recv_size bytes */
-	if (*count > card->max_recv_size)
-		rlen = card->max_recv_size;
+	if (*count > sc_get_max_recv_size(card))
+		rlen = sc_get_max_recv_size(card);
 	else
 		rlen = *count;
 

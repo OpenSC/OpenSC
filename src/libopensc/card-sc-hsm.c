@@ -249,7 +249,7 @@ static int sc_hsm_read_binary(sc_card_t *card,
 	cmdbuff[2] = (idx >> 8) & 0xFF;
 	cmdbuff[3] = idx & 0xFF;
 
-	assert(count <= card->max_recv_size);
+	assert(count <= sc_get_max_recv_size(card));
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4, 0xB1, 0x00, 0x00);
 	apdu.data = cmdbuff;
 	apdu.datalen = 4;

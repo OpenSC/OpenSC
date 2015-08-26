@@ -910,6 +910,9 @@ int sc_lock(struct sc_card *card);
  */
 int sc_unlock(struct sc_card *card);
 
+size_t sc_get_max_recv_size(const sc_card_t *card);
+size_t sc_get_max_send_size(const sc_card_t *card);
+
 
 /********************************************************************/
 /*                ISO 7816-4 related functions                      */
