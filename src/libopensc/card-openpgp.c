@@ -2084,7 +2084,7 @@ pgp_build_tlv(sc_context_t *ctx, unsigned int tag, u8 *data, size_t len, u8 **ou
 	highest_order--;
 	if (highest_order >= 4)
 	   cla = 0x00;
-	else	
+	else
 		cla = tag >> 8*highest_order;
 	/* Restore class bits */
 	*out[0] |= cla;
@@ -2437,9 +2437,7 @@ static int pgp_erase_card(sc_card_t *card)
 /* ABI: card ctl: perform special card-specific operations */
 static int pgp_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 {
-#ifdef ENABLE_OPENSSL
 	int r;
-#endif /* ENABLE_OPENSSL */
 
 	LOG_FUNC_CALLED(card->ctx);
 
