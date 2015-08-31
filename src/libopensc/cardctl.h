@@ -255,7 +255,14 @@ enum {
 	 */
     SC_CARDCTL_DNIE_BASE = _CTL_PREFIX('D', 'N', 'I'),
 	SC_CARDCTL_DNIE_GENERATE_KEY,
-	SC_CARDCTL_DNIE_GET_INFO
+	SC_CARDCTL_DNIE_GET_INFO,
+
+	/*
+	 * isoApplet Java Card Applet
+	 */
+	SC_CARDCTL_ISOAPPLET_BASE = _CTL_PREFIX('I','S','O'),
+	SC_CARDCTL_ISOAPPLET_GENERATE_KEY,
+	SC_CARDCTL_ISOAPPLET_IMPORT_KEY
 };
 
 enum {
@@ -832,10 +839,7 @@ typedef struct sc_rtecp_genkey_data {
  */
 	enum SC_CARDCTL_MYEID_KEY_TYPE {
 		SC_CARDCTL_MYEID_KEY_RSA = 0x11,
-		SC_CARDCTL_MYEID_KEY_EC  = 0x21,
-	/*	SC_CARDCTL_MYEID_KEY_AES = 0x?, // for future use
-		SC_CARDCTL_MYEID_KEY_DES = 0x?,
-		SC_CARDCTL_MYEID_KEY_3DES = 0x?, */
+		SC_CARDCTL_MYEID_KEY_EC  = 0x22
 	};
 
 	struct sc_cardctl_myeid_data_obj {
@@ -939,7 +943,7 @@ typedef struct sc_cardctl_sc_hsm_init_param {
 	size_t user_pin_len;		/* Length of user PIN */
 	u8 user_pin_retry_counter;	/* Retry counter default value */
 	u8 options[2];				/* Initialization options */
-	char dkek_shares;			/* Number of DKEK shares, 0 for card generated, -1 for none */
+	signed char dkek_shares;	/* Number of DKEK shares, 0 for card generated, -1 for none */
 	char *label;				/* Token label to be set in EF.TokenInfo (2F03) */
 } sc_cardctl_sc_hsm_init_param_t;
 
@@ -956,6 +960,59 @@ typedef struct sc_cardctl_sc_hsm_wrapped_key {
 	u8 *wrapped_key;			/* Binary wrapped key */
 	size_t wrapped_key_length;	/* Length of key blob */
 } sc_cardctl_sc_hsm_wrapped_key_t;
+
+/*
+ * isoApplet
+ */
+
+#define SC_ISOAPPLET_ALG_REF_RSA_GEN_2048 0xF3
+#define SC_ISOAPPLET_ALG_REF_EC_GEN 0xEC
+
+typedef struct sc_cardctl_isoApplet_ec_parameters {
+	struct sc_lv_data prime;
+	struct sc_lv_data coefficientA;
+	struct sc_lv_data coefficientB;
+	struct sc_lv_data basePointG;
+	struct sc_lv_data order;
+	struct sc_lv_data coFactor;
+} sc_cardctl_isoApplet_ec_parameters_t;
+
+typedef struct sc_cardctl_isoApplet_genkey {
+	u8 algorithm_ref;			/* Algorithm reference sent to card */
+	unsigned int priv_key_ref;	/* Private key refernce sent to card */
+	union {
+		struct
+		{
+			struct sc_lv_data modulus;
+			struct sc_lv_data exponent;
+		} rsa;
+		struct
+		{
+			sc_cardctl_isoApplet_ec_parameters_t params;
+			struct sc_lv_data ecPointQ;
+		} ec;
+	} pubkey;
+} sc_cardctl_isoApplet_genkey_t;
+
+typedef struct sc_cardctl_isoApplet_import_key {
+	u8 algorithm_ref;			/* Algorithm reference sent to card */
+	unsigned int priv_key_ref;	/* Private key refernce sent to card */
+	union {
+		struct
+		{
+			struct sc_lv_data p;
+			struct sc_lv_data q;
+			struct sc_lv_data iqmp;
+			struct sc_lv_data dmp1;
+			struct sc_lv_data dmq1;
+		} rsa;
+		struct
+		{
+			sc_cardctl_isoApplet_ec_parameters_t params;
+			struct sc_lv_data privateD;
+		} ec;
+	} privkey;
+} sc_cardctl_isoApplet_import_key_t;
 
 #ifdef __cplusplus
 }

@@ -985,7 +985,8 @@ iasecc_sdo_encode_create(struct sc_context *ctx, struct iasecc_sdo *sdo, unsigne
 
 	rv = sc_asn1_encode(ctx, asn1_create_data, out, &out_len);
 	LOG_TEST_RET(ctx, rv, "Encode create data error");
-	sc_debug(ctx, SC_LOG_DEBUG_ASN1,"Create data: %s", sc_dump_hex(*out, out_len));
+	if (out)
+		sc_debug(ctx, SC_LOG_DEBUG_ASN1,"Create data: %s", sc_dump_hex(*out, out_len));
 
 	LOG_FUNC_RETURN(ctx, out_len);
 }
@@ -1285,6 +1286,17 @@ iasecc_docp_copy(struct sc_context *ctx, struct iasecc_sdo_docp *in, struct iase
 	memcpy(out->scbs, in->scbs, sizeof(out->scbs));
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+}
+
+#else
+
+/* we need to define the functions below to export them */
+#include "errors.h"
+
+int
+iasecc_sdo_encode_update_field()
+{
+	return SC_ERROR_NOT_SUPPORTED;
 }
 
 #endif /* ENABLE_OPENSSL */

@@ -380,11 +380,15 @@ sc_profile_load(struct sc_profile *profile, const char *filename)
 
 	sc_log(ctx, "profile %s loaded ok", path);
 
-	if (res < 0)
+	if (res < 0) {
+		scconf_free(conf);
 		LOG_FUNC_RETURN(ctx, SC_ERROR_FILE_NOT_FOUND);
+	}
 
-	if (res == 0)
+	if (res == 0) {
+		scconf_free(conf);
 		LOG_FUNC_RETURN(ctx, SC_ERROR_SYNTAX_ERROR);
+	}
 
 	res = process_conf(profile, conf);
 	scconf_free(conf);
@@ -507,7 +511,6 @@ sc_profile_get_pin_info(struct sc_profile *profile,
 	if (pi == NULL)
 		return;
 
-	pi->pin.tries_left = pi->pin.tries_left;
 	pi->pin.max_tries = pi->pin.tries_left;
 	*info = pi->pin;
 }
@@ -1302,7 +1305,7 @@ do_fileid(struct state *cur, int argc, char **argv)
 			parse_error(cur, "No path/fileid set for parent DF\n");
 			return 1;
 		}
-		if (df->path.len + 2 > sizeof(df->path)) {
+		if (df->path.len + 2 > sizeof(df->path.value)) {
 			parse_error(cur, "File path too long\n");
 			return 1;
 		}
@@ -2059,7 +2062,7 @@ sc_profile_find_file_by_path(struct sc_profile *pro, const sc_path_t *path)
 	sc_log(ctx, "find profile file by path:%s", sc_print_path(path));
 #endif
 
-	if (!path->len && !path->aid.len)
+	if (!path || (!path->len && !path->aid.len))
 		return NULL;
 
 	for (fi = pro->ef_list; fi; fi = fi->next) {

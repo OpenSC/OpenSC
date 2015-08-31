@@ -18,7 +18,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#if HAVE_CONFIG_H
 #include "config.h"
+#endif
 
 #include <assert.h>
 #include <stdlib.h>
@@ -45,7 +47,7 @@ ctbcs_build_perform_verification_apdu(sc_apdu_t *apdu, struct sc_pin_cmd_data *d
 {
 	const char *prompt;
 	size_t buflen, count = 0, j = 0, len;
-	static u8 buf[254];
+	static u8 buf[256];
 	u8 control;
 
 	ctbcs_init_apdu(apdu,
@@ -58,7 +60,7 @@ ctbcs_build_perform_verification_apdu(sc_apdu_t *apdu, struct sc_pin_cmd_data *d
 	prompt = data->pin1.prompt;
 	if (prompt && *prompt) {
 		len = strlen(prompt);
-		if (count + len + 2 > buflen || len > 255)
+		if (len + 2 > buflen)
 			return SC_ERROR_BUFFER_TOO_SMALL;
 		buf[count++] = CTBCS_TAG_PROMPT;
 		buf[count++] = len;
@@ -113,7 +115,7 @@ ctbcs_build_modify_verification_apdu(sc_apdu_t *apdu, struct sc_pin_cmd_data *da
 {
 	const char *prompt;
 	size_t buflen, count = 0, j = 0, len;
-	static u8 buf[254];
+	static u8 buf[256];
 	u8 control;
 
 	ctbcs_init_apdu(apdu,
@@ -126,7 +128,7 @@ ctbcs_build_modify_verification_apdu(sc_apdu_t *apdu, struct sc_pin_cmd_data *da
 	prompt = data->pin1.prompt;
 	if (prompt && *prompt) {
 		len = strlen(prompt);
-		if (count + len + 2 > buflen || len > 255)
+		if (len + 2 > buflen)
 			return SC_ERROR_BUFFER_TOO_SMALL;
 		buf[count++] = CTBCS_TAG_PROMPT;
 		buf[count++] = len;

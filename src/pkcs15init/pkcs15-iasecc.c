@@ -246,6 +246,8 @@ iasecc_pkcs15_new_file(struct sc_profile *profile, struct sc_card *card,
 
 	if (out)
 		*out = file;
+	else
+		sc_file_free(file);
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
@@ -396,8 +398,11 @@ iasecc_sdo_set_key_acls_from_profile(struct sc_profile *profile, struct sc_card 
 			scb[cntr++] = 0x00;
 		}
 		else if (acl->method == SC_AC_SEN || acl->method == SC_AC_PRO || acl->method == SC_AC_AUT)   {
-			if ((acl->key_ref & 0xF) == 0 || (acl->key_ref & 0xF) == 0xF)
+			if ((acl->key_ref & 0xF) == 0 || (acl->key_ref & 0xF) == 0xF)   {
+				if (file)
+					sc_file_free(file);
 				LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Invalid SE reference");
+			}
 
 			amb |= mask;
 
@@ -409,9 +414,14 @@ iasecc_sdo_set_key_acls_from_profile(struct sc_profile *profile, struct sc_card 
 				scb[cntr++] = acl->key_ref | IASECC_SCB_METHOD_EXT_AUTH;
 		}
 		else   {
+			if (file)
+				sc_file_free(file);
 			LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Unknown SCB method");
 		}
 	}
+
+	if (file)
+		sc_file_free(file);
 
 	/* Copy ACLs into the DOCP*/
 	sdo->docp.acls_contact.tag = IASECC_DOCP_TAG_ACLS_CONTACT;
@@ -503,6 +513,8 @@ iasecc_sdo_allocate_prvkey(struct sc_profile *profile, struct sc_card *card,
 
 	if (out)
 		*out = sdo;
+	else
+		free(sdo);
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
@@ -565,6 +577,8 @@ iasecc_sdo_allocate_pubkey(struct sc_profile *profile, struct sc_card *card, str
 
 	if (out)
 		*out = sdo;
+	else
+		free(sdo);
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
@@ -573,16 +587,20 @@ iasecc_sdo_allocate_pubkey(struct sc_profile *profile, struct sc_card *card, str
 static int
 iasecc_sdo_convert_to_file(struct sc_card *card, struct iasecc_sdo *sdo, struct sc_file **out)
 {
-	struct sc_context *ctx = card->ctx;
-	struct sc_file *file = sc_file_new();
+	struct sc_context *ctx;
+	struct sc_file *file;
 	unsigned ii;
 	int rv;
 
+	if (!card || !sdo)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	ctx = card->ctx;
 	LOG_FUNC_CALLED(ctx);
-	if (file == NULL)
+
+	file = sc_file_new();
+	if (!file)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
-	else if (!card || !sdo)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	sc_log(ctx, "SDO class 0x%X", sdo->sdo_class);
 
@@ -596,15 +614,21 @@ iasecc_sdo_convert_to_file(struct sc_card *card, struct iasecc_sdo *sdo, struct 
 			unsigned op_method, op_ref;
 
 			rv = iasecc_sdo_convert_acl(card, sdo, ops[ii], &op_method, &op_ref);
-			LOG_TEST_RET(ctx, rv, "IasEcc: cannot convert ACL");
-			sc_log(ctx, "ii:%i, method:%X, ref:%X", ii, op_method, op_ref);
+			if (rv < 0)   {
+				sc_file_free(file);
+				LOG_TEST_RET(ctx, rv, "IasEcc: cannot convert ACL");
+			}
 
+			sc_log(ctx, "ii:%i, method:%X, ref:%X", ii, op_method, op_ref);
 			sc_file_add_acl_entry(file, ops[ii], op_method, op_ref);
 		}
 	}
 
 	if (out)
 		*out = file;
+	else
+		sc_file_free(file);
+
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
@@ -820,16 +844,17 @@ iasecc_sdo_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 
 	if (!sdo_prvkey && !sdo_pubkey)
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "At least one SDO has to be supplied");
+
 	rv = iasecc_sdo_convert_to_file(card, sdo_prvkey ? sdo_prvkey : sdo_pubkey, &dummy_file);
 	LOG_TEST_RET(ctx, rv, "Cannot convert SDO PRIVATE KEY to file");
 
 	card->caps &= ~SC_CARD_CAP_USE_FCI_AC;
 	rv = sc_pkcs15init_authenticate(profile, p15card, dummy_file, SC_AC_OP_UPDATE);
 	card->caps = caps;
-	LOG_TEST_RET(ctx, rv, "SDO PRIVATE KEY UPDATE authentication failed");
-
 	if (dummy_file)
 		sc_file_free(dummy_file);
+
+	LOG_TEST_RET(ctx, rv, "SDO PRIVATE KEY UPDATE authentication failed");
 
 	memset(&update, 0, sizeof(update));
 
@@ -889,8 +914,6 @@ iasecc_pkcs15_fix_private_key_attributes(struct sc_profile *profile, struct sc_p
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Unsupported object type");
 
 	key_info->access_flags |= SC_PKCS15_PRKEY_ACCESS_SENSITIVE;
-	key_info->access_flags |= SC_PKCS15_PRKEY_ACCESS_ALWAYSSENSITIVE;
-	key_info->access_flags |= SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE;
 
 	sc_log(ctx, "SDO(class:%X,ref:%X,usage:%X)",
 			sdo_prvkey->sdo_class, sdo_prvkey->sdo_ref, sdo_prvkey->usage);
@@ -939,9 +962,7 @@ iasecc_pkcs15_fix_private_key_attributes(struct sc_profile *profile, struct sc_p
 					IASECC_ALGORITHM_RSA_PKCS | IASECC_ALGORITHM_SHA2);
 			LOG_TEST_RET(ctx, rv, "Cannot add RSA_PKCS SHA2 supported mechanism");
 
-			key_info->usage |= SC_PKCS15_PRKEY_USAGE_SIGN;
 			if (sdo_prvkey->docp.non_repudiation.value && sdo_prvkey->docp.non_repudiation.value[0])   {
-				key_info->usage |= SC_PKCS15_PRKEY_USAGE_NONREPUDIATION;
 				object->user_consent = 1;
 			}
 		}
@@ -949,14 +970,12 @@ iasecc_pkcs15_fix_private_key_attributes(struct sc_profile *profile, struct sc_p
 			rv = iasecc_pkcs15_add_algorithm_reference(p15card, key_info, IASECC_ALGORITHM_RSA_PKCS);
 			LOG_TEST_RET(ctx, rv, "Cannot add RSA_PKCS supported mechanism");
 
- 			key_info->usage |= SC_PKCS15_PRKEY_USAGE_SIGN | SC_PKCS15_PRKEY_USAGE_SIGNRECOVER;
 		}
 		else if (ii == IASECC_ACLS_RSAKEY_PSO_DECIPHER)   {
 			rv = iasecc_pkcs15_add_algorithm_reference(p15card, key_info,
 					IASECC_ALGORITHM_RSA_PKCS_DECRYPT | IASECC_ALGORITHM_SHA1);
 			LOG_TEST_RET(ctx, rv, "Cannot add decipher RSA_PKCS supported mechanism");
 
-			key_info->usage |= SC_PKCS15_PRKEY_USAGE_DECRYPT | SC_PKCS15_PRKEY_USAGE_UNWRAP;
 		}
 	}
 
@@ -1129,6 +1148,8 @@ iasecc_pkcs15_generate_key(struct sc_profile *profile, sc_pkcs15_card_t *p15card
 	LOG_TEST_RET(ctx, rv, "SC_AC_OP_GENERATE authentication failed");
 
 	key_info->access_flags |= SC_PKCS15_PRKEY_ACCESS_LOCAL;
+	key_info->access_flags |= SC_PKCS15_PRKEY_ACCESS_ALWAYSSENSITIVE;
+	key_info->access_flags |= SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE;
 
 	rv = sc_card_ctl(card, SC_CARDCTL_IASECC_SDO_GENERATE, sdo_prvkey);
 	LOG_TEST_RET(ctx, rv, "generate key failed");
@@ -1267,15 +1288,22 @@ iasecc_pkcs15_delete_sdo (struct sc_profile *profile, struct sc_pkcs15_card *p15
 
 	sc_log(ctx, "iasecc_pkcs15_delete_sdo() SDO class 0x%X, ref 0x%X", sdo->sdo_class, sdo->sdo_ref);
 	rv = iasecc_sdo_convert_to_file(card, sdo, &dummy_file);
-	LOG_TEST_RET(ctx, rv, "iasecc_pkcs15_delete_sdo() Cannot convert SDO to file");
+	if (rv < 0)   {
+		iasecc_sdo_free(card, sdo);
+		LOG_TEST_RET(ctx, rv, "iasecc_pkcs15_delete_sdo() Cannot convert SDO to file");
+	}
 
 	card->caps &= ~SC_CARD_CAP_USE_FCI_AC;
 	rv = sc_pkcs15init_authenticate(profile, p15card, dummy_file, SC_AC_OP_UPDATE);
 	card->caps = save_card_caps;
-	LOG_TEST_RET(ctx, rv, "iasecc_pkcs15_delete_sdo() UPDATE authentication failed for SDO");
 
 	if (dummy_file)
 		sc_file_free(dummy_file);
+
+	if (rv < 0)   {
+		iasecc_sdo_free(card, sdo);
+		LOG_TEST_RET(ctx, rv, "iasecc_pkcs15_delete_sdo() UPDATE authentication failed for SDO");
+	}
 
 	if (card->type == SC_CARD_TYPE_IASECC_OBERTHUR)   {
 		/* Oberthur's card supports creation/deletion of the key slots ... */
@@ -1300,7 +1328,6 @@ iasecc_pkcs15_delete_sdo (struct sc_profile *profile, struct sc_pkcs15_card *p15
 
 		/* Don't know why, but, clean public key do not working with Gemalto card */
 		rv = iasecc_sdo_store_key(profile, p15card, sdo, NULL, &rsa);
-		LOG_TEST_RET(ctx, rv, "iasecc_pkcs15_delete_sdo() store empty private key failed");
 	}
 
 	iasecc_sdo_free(card, sdo);
@@ -1313,7 +1340,7 @@ iasecc_pkcs15_delete_object (struct sc_profile *profile, struct sc_pkcs15_card *
 		struct sc_pkcs15_object *object, const struct sc_path *path)
 {
 	struct sc_context *ctx = p15card->card->ctx;
-	struct sc_file *file = sc_file_new();
+	struct sc_file *file = NULL;
 	int rv, key_ref;
 
 	LOG_FUNC_CALLED(ctx);
@@ -1355,6 +1382,7 @@ iasecc_pkcs15_delete_object (struct sc_profile *profile, struct sc_pkcs15_card *
 		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 	}
 
+	file = sc_file_new();
 	file->type = SC_FILE_TYPE_WORKING_EF;
 	file->ef_structure = SC_FILE_EF_TRANSPARENT;
 	file->id = path->value[path->len-2] * 0x100 + path->value[path->len-1];
@@ -1761,8 +1789,7 @@ iasecc_store_data_object(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 	if (parent)
 		sc_file_free(parent);
 
-	if (file)
-		sc_file_free(file);
+	sc_file_free(file);
 
 	if (cfile)
 		sc_file_free(cfile);

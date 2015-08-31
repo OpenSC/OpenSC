@@ -400,6 +400,8 @@ static int do_dump_do(sc_card_t *card, unsigned int tag)
 		#else
 		tmp = _dup(_fileno(stdout));
 		#endif
+		if (tmp < 0)
+			return EXIT_FAILURE;
 		fp = freopen(NULL, "wb", stdout);
 		if (fp) {
 			r = (int)fwrite(buffer, sizeof(char), sizeof(buffer), fp);
@@ -410,9 +412,9 @@ static int do_dump_do(sc_card_t *card, unsigned int tag)
 		_dup2(tmp, _fileno(stdout));
 		#endif
 		clearerr(stdout);
-		if (sizeof(buffer) != r) {
+		close(tmp);
+		if (sizeof(buffer) != r)
 			return EXIT_FAILURE;
-		}
 	} else {
 		util_hex_dump_asc(stdout, buffer, sizeof(buffer), -1);
 	}

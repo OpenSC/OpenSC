@@ -23,7 +23,9 @@
  * best view with tabstop=4
  */
 
+#if HAVE_CONFIG_H
 #include "config.h"
+#endif
 
 #ifdef ENABLE_OPENSSL	/* empty file without openssl */
 #include <stdlib.h>
@@ -397,7 +399,8 @@ auth_process_fci(struct sc_card *card, struct sc_file *file,
 	case 0x38:
 		file->type = SC_FILE_TYPE_DF;
 		file->size = attr[0];
-		sc_file_set_type_attr(file,attr,attr_len);
+		if (SC_SUCCESS != sc_file_set_type_attr(file,attr,attr_len))
+			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_UNKNOWN_DATA_RECEIVED);
 		break;
 	default:
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_UNKNOWN_DATA_RECEIVED);
@@ -1108,15 +1111,16 @@ auth_compute_signature(struct sc_card *card, const unsigned char *in, size_t ile
 	unsigned char resp[SC_MAX_APDU_BUFFER_SIZE];
 	int rv;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "inlen %i, outlen %i\n", ilen, olen);
 	if (!card || !in || !out)   {
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
+		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	else if (ilen > 96)   {
 		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Illegal input length %d\n", ilen);
 		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS, "Illegal input length");
 	}
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "inlen %i, outlen %i\n", ilen, olen);
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x9E, 0x9A);
 	apdu.datalen = ilen;
@@ -2012,7 +2016,7 @@ write_publickey (struct sc_card *card, unsigned int offset,
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
 		"write_publickey in %d bytes :\n%s", count, debug_buf);
 
-	if (offset > sizeof(rsa_der))
+	if (1+offset > sizeof(rsa_der))
 		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS, "Invalid offset value");
 
 	len = offset+count > sizeof(rsa_der) ? sizeof(rsa_der) - offset : count;
@@ -2111,7 +2115,7 @@ auth_read_binary(struct sc_card *card, unsigned int offset,
 	if (auth_current_ef->magic==SC_FILE_MAGIC &&
              auth_current_ef->ef_structure == SC_CARDCTL_OBERTHUR_KEY_RSA_PUBLIC)   {
 		int jj;
-		unsigned char resp[0x100], *out = NULL;
+		unsigned char resp[SC_MAX_APDU_BUFFER_SIZE], *out = NULL;
 		size_t resp_len, out_len;
 		struct sc_pkcs15_bignum bn[2];
 		struct sc_pkcs15_pubkey_rsa key;

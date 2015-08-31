@@ -294,6 +294,14 @@
 
 			<varlistentry>
 				<term>
+					<command>find_tags</command> [<replaceable>start-tag</replaceable> [<replaceable>end-tag</replaceable>]]
+				</term>
+                <listitem><para>Find all tags of data objects in the current context.
+                        Tags are found by using GET DATA in the range from <replaceable>start-tag</replaceable> to <replaceable>end-tag</replaceable> (by default from 0000 to FFFF).</para></listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term>
 					<command>mkdir</command> <replaceable>file-id</replaceable> <replaceable>size</replaceable>
 				</term>
 				<listitem><para>Create a DF. <replaceable>file-id</replaceable> specifies the id number

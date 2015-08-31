@@ -21,6 +21,7 @@
 
 #include "config.h"
 #include <ctype.h>
+#include <assert.h>
 
 #ifdef ENABLE_OPENSSL
 #if defined(HAVE_INTTYPES_H)
@@ -52,11 +53,14 @@ static char * opt_data = NULL;
 static char * opt_pubkey = NULL;
 static char * opt_outfile = NULL;
 static char * opt_bind_to_aid = NULL;
-static const u8 * opt_newpin = NULL;
-static const u8 * opt_pin = NULL;
-static const u8 * opt_puk = NULL;
+static const char * opt_newpin = NULL;
+static const char * opt_pin = NULL;
+static const char * opt_puk = NULL;
 static int	verbose = 0;
 static int opt_no_prompt = 0;
+#if defined(ENABLE_OPENSSL) && (defined(_WIN32) || defined(HAVE_INTTYPES_H))
+static int opt_rfc4716 = 0;
+#endif
 
 enum {
 	OPT_CHANGE_PIN = 0x100,
@@ -68,6 +72,7 @@ enum {
 	OPT_READ_PUB,
 #if defined(ENABLE_OPENSSL) && (defined(_WIN32) || defined(HAVE_INTTYPES_H))
 	OPT_READ_SSH,
+	OPT_RFC4716,
 #endif
 	OPT_PIN,
 	OPT_NEWPIN,
@@ -76,7 +81,7 @@ enum {
 	OPT_BIND_TO_AID,
 	OPT_LIST_APPLICATIONS,
 	OPT_LIST_SKEYS,
-	OPT_NO_PROMPT
+	OPT_NO_PROMPT,
 };
 
 #define NELEMENTS(x)	(sizeof(x)/sizeof((x)[0]))
@@ -100,6 +105,7 @@ static const struct option options[] = {
 	{ "read-public-key",	required_argument, NULL,	OPT_READ_PUB },
 #if defined(ENABLE_OPENSSL) && (defined(_WIN32) || defined(HAVE_INTTYPES_H))
 	{ "read-ssh-key",	required_argument, NULL,	OPT_READ_SSH },
+	{ "rfc4716",		no_argument, NULL,		OPT_RFC4716 },
 #endif
 	{ "test-update",	no_argument, NULL,		'T' },
 	{ "update",		no_argument, NULL,		'U' },
@@ -135,6 +141,7 @@ static const char *option_help[] = {
 	"Reads public key with ID <arg>",
 #if defined(ENABLE_OPENSSL) && (defined(_WIN32) || defined(HAVE_INTTYPES_H))
 	"Reads public key with ID <arg>, outputs ssh format",
+	"Outputs the public key in RFC 4716 format (requires --read-ssh-key)",
 #endif
 	"Test if the card needs a security update",
 	"Update the card with a security update",
@@ -150,6 +157,7 @@ static const char *option_help[] = {
 	"Wait for card insertion",
 	"Verbose operation. Use several times to enable debug output.",
 	"Do not prompt the user; if no PINs supplied, pinpad will be used.",
+	NULL
 };
 
 static sc_context_t *ctx = NULL;
@@ -306,7 +314,7 @@ print_pem_object(const char *kind, const u8*data, size_t data_len)
 	return 0;
 }
 
-static int
+static void
 list_data_object(const char *kind, const unsigned char *data, size_t data_len)
 {
 	char title[0x100];
@@ -321,8 +329,6 @@ list_data_object(const char *kind, const unsigned char *data, size_t data_len)
 		printf("%02X", data[i]);
 	}
 	printf("\n");
-
-	return 0;
 }
 
 static int
@@ -457,7 +463,7 @@ static int list_data_objects(void)
 		int idx;
 		struct sc_pkcs15_data_info *cinfo = (struct sc_pkcs15_data_info *) objs[i]->data;
 
-		if (objs[i]->label)
+		if (0 < strnlen(objs[i]->label, sizeof objs[i]->label))
 			printf("Data object '%s'\n", objs[i]->label);
 		else
 			printf("Data object <%i>\n", i);
@@ -478,7 +484,7 @@ static int list_data_objects(void)
 					 continue; /* DEE emulation may say there is a file */
 				return 1;
 			}
-			r = list_data_object("\tData", data_object->data, data_object->data_len);
+			list_data_object("\tData", data_object->data, data_object->data_len);
 			sc_pkcs15_free_data_object(data_object);
 		}
 		else {
@@ -589,6 +595,7 @@ static void print_pubkey_info(const struct sc_pkcs15_object *obj)
 		"neverExtract", "local"
 	};
 	const unsigned int af_count = NELEMENTS(access_flags);
+        int have_path = (pubkey->path.len != 0) || (pubkey->path.aid.len != 0);
 
 	printf("Public %s Key [%s]\n", types[7 & obj->type], obj->label);
 	print_common_flags(obj);
@@ -607,18 +614,29 @@ static void print_pubkey_info(const struct sc_pkcs15_object *obj)
 
 	print_access_rules(obj->access_rules, SC_PKCS15_MAX_ACCESS_RULES);
 
-	if (pubkey->modulus_length)
+	if (pubkey->modulus_length)   {
 		printf("\tModLength      : %lu\n", (unsigned long)pubkey->modulus_length);
-	else
-		printf("\tFieldLength      : %lu\n", (unsigned long)pubkey->field_length);
+        }
+	else if (pubkey->field_length)   {
+		printf("\tFieldLength    : %lu\n", (unsigned long)pubkey->field_length);
+        }
+        else if (obj->type == SC_PKCS15_TYPE_PUBKEY_EC && have_path)   {
+		sc_pkcs15_pubkey_t *pkey = NULL;
+		if (!sc_pkcs15_read_pubkey(p15card, obj, &pkey))   {
+			printf("\tFieldLength    : %lu\n", (unsigned long)pkey->u.ec.params.field_length);
+			sc_pkcs15_free_pubkey(pkey);
+		}
+	}
+
 	printf("\tKey ref        : %d (0x%X)\n", pubkey->key_reference,  pubkey->key_reference);
 	printf("\tNative         : %s\n", pubkey->native ? "yes" : "no");
-	if (pubkey->path.len || pubkey->path.aid.len)
+	if (have_path)
 		printf("\tPath           : %s\n", sc_print_path(&pubkey->path));
 	if (obj->auth_id.len != 0)
 		printf("\tAuth ID        : %s\n", sc_pkcs15_print_id(&obj->auth_id));
 	printf("\tID             : %s\n", sc_pkcs15_print_id(&pubkey->id));
-	printf("\tDirectValue    : <%s>\n", obj->content.len ? "present" : "absent");
+        if (!have_path || obj->content.len)
+		printf("\tDirectValue    : <%s>\n", obj->content.len ? "present" : "absent");
 }
 
 static int list_public_keys(void)
@@ -776,6 +794,41 @@ static int list_skeys(void)
 
 
 #if defined(ENABLE_OPENSSL) && (defined(_WIN32) || defined(HAVE_INTTYPES_H))
+
+static void print_ssh_key(FILE *outf, const char * alg, struct sc_pkcs15_object *obj, unsigned char * buf, uint32_t len) {
+	unsigned char *uu;
+	int r;
+
+	uu = malloc(len*2); // Way over - even if we have extra LFs; as each 6 bits take one byte.
+
+	if (opt_rfc4716) {
+		r = sc_base64_encode(buf, len, uu, 2*len, 64);
+		if (r < 0)
+			return;
+
+		fprintf(outf,"---- BEGIN SSH2 PUBLIC KEY ----\n");
+
+		if (obj->label && strlen(obj->label))
+			fprintf(outf,"Comment: \"%s\"\n", obj->label);
+
+		fprintf(outf,"%s", uu);
+		fprintf(outf,"---- END SSH2 PUBLIC KEY ----\n");
+	} else {
+		// Old style openssh - [<quote protected options> <whitespace> <keytype> <whitespace> <key> [<whitespace> anything else]
+		//
+		r = sc_base64_encode(buf, len, uu, 2*len, 0);
+		if (r < 0)
+			return;
+
+		if (obj->label && strlen(obj->label)) 
+			fprintf(outf,"ssh-%s %s %s\n", alg, uu, obj->label);
+		else
+			fprintf(outf,"ssh-%s %s\n", alg, uu);
+	}
+	free(uu);
+	return;
+}
+
 static int read_ssh_key(void)
 {
 	int r;
@@ -783,17 +836,17 @@ static int read_ssh_key(void)
 	struct sc_pkcs15_object *obj = NULL;
 	sc_pkcs15_pubkey_t *pubkey = NULL;
 	sc_pkcs15_cert_t *cert = NULL;
-        FILE *outf = NULL;
+	FILE *outf = NULL;
 
-        if (opt_outfile != NULL) {
-                outf = fopen(opt_outfile, "w");
-                if (outf == NULL) {
-                        fprintf(stderr, "Error opening file '%s': %s\n", opt_outfile, strerror(errno));
-                        goto fail2;
-                }
-        }
+	if (opt_outfile != NULL) {
+		outf = fopen(opt_outfile, "w");
+		if (outf == NULL) {
+			fprintf(stderr, "Error opening file '%s': %s\n", opt_outfile, strerror(errno));
+			goto fail2;
+		}
+	}
 	else   {
-                outf = stdout;
+		outf = stdout;
 	}
 
 	id.len = SC_PKCS15_MAX_ID_SIZE;
@@ -834,7 +887,6 @@ static int read_ssh_key(void)
 
 	if (pubkey->algorithm == SC_ALGORITHM_RSA) {
 		unsigned char buf[2048];
-		unsigned char *uu;
 		uint32_t len, n;
 
 		if (!pubkey->u.rsa.modulus.data || !pubkey->u.rsa.modulus.len ||
@@ -885,16 +937,11 @@ static int read_ssh_key(void)
 		memcpy(buf+len,pubkey->u.rsa.modulus.data, pubkey->u.rsa.modulus.len);
 		len += pubkey->u.rsa.modulus.len;
 
-		uu = malloc(len*2);
-		r = sc_base64_encode(buf, len, uu, 2*len, 2*len);
-
-		fprintf(outf,"ssh-rsa %s", uu);
-		free(uu);
+		print_ssh_key(outf, "rsa", obj, buf, len);
 	}
 
 	if (pubkey->algorithm == SC_ALGORITHM_DSA) {
 		unsigned char buf[2048];
-		unsigned char *uu;
 		uint32_t len;
 		uint32_t n;
 
@@ -981,32 +1028,28 @@ static int read_ssh_key(void)
 		memcpy(buf+len,pubkey->u.dsa.pub.data, pubkey->u.dsa.pub.len);
 		len += pubkey->u.dsa.pub.len;
 
-		uu = malloc(len*2);
-		r = sc_base64_encode(buf, len, uu, 2*len, 2*len);
-
-		fprintf(outf,"ssh-dss %s", uu);
-		free(uu);
+		print_ssh_key(outf, "dss", obj, buf, len);
 	}
 
-        if (outf != stdout)
-                fclose(outf);
+	if (outf != stdout)
+		fclose(outf);
 	if (cert)
 		sc_pkcs15_free_certificate(cert);
-	else if (pubkey)
-		sc_pkcs15_free_pubkey(pubkey);
+	sc_pkcs15_free_pubkey(pubkey);
 
 	return 0;
 fail:
 	printf("can't convert key: buffer too small\n");
 fail2:
-        if (outf != stdout)
-                fclose(outf);
+	if (outf && outf != stdout)
+		fclose(outf);
 	if (cert)
 		sc_pkcs15_free_certificate(cert);
 	else if (pubkey)
 		sc_pkcs15_free_pubkey(pubkey);
 	return SC_ERROR_OUT_OF_MEMORY;
 }
+
 #endif
 
 static sc_pkcs15_object_t *
@@ -1116,7 +1159,7 @@ static int verify_pin(void)
 	}
 
 	if (opt_pin != NULL)
-		pin = opt_pin;
+		pin = (unsigned char *) opt_pin;
 	else
 		pin = get_pin("Please enter PIN", pin_obj);
 
@@ -1127,13 +1170,16 @@ static int verify_pin(void)
 		return -1;
 	}
 
+	if (opt_pin == NULL)
+		free(pin);
+
 	return 0;
 }
 
 static int authenticate(sc_pkcs15_object_t *obj)
 {
 	sc_pkcs15_object_t	*pin_obj;
-	u8			*pin;
+	u8			*pin = NULL;
 	int			r;
 
 	if (obj->auth_id.len == 0)
@@ -1143,11 +1189,16 @@ static int authenticate(sc_pkcs15_object_t *obj)
 		return r;
 
 	if (opt_pin != NULL)
-		pin = opt_pin;
+		pin = (u8 *) opt_pin;
 	else
 		pin = get_pin("Please enter PIN", pin_obj);
 
-	return sc_pkcs15_verify_pin(p15card, pin_obj, pin, pin? strlen((char *) pin) : 0);
+	r = sc_pkcs15_verify_pin(p15card, pin_obj, pin, pin? strlen((char *) pin) : 0);
+
+	if (opt_pin == NULL)
+		free(pin);
+
+	return r;
 }
 
 static void print_pin_info(const struct sc_pkcs15_object *obj)
@@ -1307,7 +1358,7 @@ static int unblock_pin(void)
 	if (pinfo->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
 		return 1;
 
-	puk = opt_puk;
+	puk = (u8 *) opt_puk;
 	if (puk == NULL) {
 		sc_pkcs15_object_t *puk_obj = NULL;
 
@@ -1338,7 +1389,7 @@ static int unblock_pin(void)
 		printf("PUK value will be prompted with pinpad.\n");
 
 	/* FIXME should OPENSSL_cleanse on pin/puk data */
-	pin = opt_pin ? opt_pin : opt_newpin;
+	pin = opt_pin ? (u8 *) opt_pin : (u8 *) opt_newpin;
 	while (pin == NULL) {
 		u8 *pin2;
 
@@ -1348,12 +1399,17 @@ static int unblock_pin(void)
 				printf("New PIN value will be prompted with pinpad.\n");
 			break;
 		}
-		if (pin == NULL || strlen((char *) pin) == 0)
+		if (pin == NULL || strlen((char *) pin) == 0) {
+			free(pin);
 			return 2;
+		}
 
 		pin2 = get_pin("Enter new PIN again", pin_obj);
-		if (pin2 == NULL || strlen((char *) pin2) == 0)
+		if (pin2 == NULL || strlen((char *) pin2) == 0) {
+			free(pin);
+			free(pin2);
 			return 2;
+		}
 		if (strcmp((char *) pin, (char *) pin2) != 0) {
 			printf("PIN codes do not match, try again.\n");
 			free(pin);
@@ -1365,7 +1421,12 @@ static int unblock_pin(void)
 	r = sc_pkcs15_unblock_pin(p15card, pin_obj,
 			puk, puk ? strlen((char *) puk) : 0,
 			pin, pin ? strlen((char *) pin) : 0);
-	/* FIXME must free the puk somewhere */
+
+	if (NULL == opt_puk)
+		free(puk);
+	if (NULL == opt_pin && NULL == opt_newpin)
+		free(pin);
+
 	if (r == SC_ERROR_PIN_CODE_INCORRECT) {
 		fprintf(stderr, "PUK code incorrect; tries left: %d\n", pinfo->tries_left);
 		return 3;
@@ -1405,7 +1466,7 @@ static int change_pin(void)
 		}
 	}
 
-	pincode = opt_pin;
+	pincode = (u8 *) opt_pin;
 	if (pincode == NULL) {
 		pincode = get_pin("Enter old PIN", pin_obj);
 		if (!pinpad_present && pincode == NULL)
@@ -1420,7 +1481,7 @@ static int change_pin(void)
 	if (pincode == NULL && verbose)
 		printf("Old PIN value will be prompted with pinpad.\n");
 
-	newpin = opt_newpin;
+	newpin = (u8 *) opt_newpin;
 	while (newpin == NULL) {
 		u8 *newpin2;
 
@@ -1432,6 +1493,7 @@ static int change_pin(void)
 		}
 		if (newpin == NULL || strlen((char *) newpin) == 0)   {
 			fprintf(stderr, "No new PIN value supplied.\n");
+			free(newpin);
 			return 2;
 		}
 
@@ -1459,7 +1521,12 @@ static int change_pin(void)
 	}
 	if (verbose)
 		printf("PIN code changed successfully.\n");
-	/* FIXME must free the pincode somewhere */
+
+	if (opt_pin == NULL)
+		free(pincode);
+	if (opt_newpin == NULL)
+		free(newpin);
+
 	return 0;
 }
 
@@ -1803,6 +1870,8 @@ int main(int argc, char * const argv[])
 	int action_count = 0;
 	sc_context_param_t ctx_param;
 
+	assert(sizeof(option_help)/sizeof(char *)==sizeof(options)/sizeof(struct option));
+
 	c = OPT_PUK;
 
 	while (1) {
@@ -1873,6 +1942,9 @@ int main(int argc, char * const argv[])
 			do_read_sshkey = 1;
 			action_count++;
 			break;
+		case OPT_RFC4716:
+			opt_rfc4716 = 1;
+			break;
 #endif
 		case 'L':
 			do_learn_card = 1;
@@ -1890,13 +1962,13 @@ int main(int argc, char * const argv[])
 			opt_reader = optarg;
 			break;
 		case OPT_PIN:
-			util_get_pin(optarg, (const u8 **) &opt_pin);
+			util_get_pin(optarg, &opt_pin);
 			break;
 		case OPT_NEWPIN:
-			util_get_pin(optarg, (const u8 **) &opt_newpin);
+			util_get_pin(optarg, &opt_newpin);
 			break;
 		case OPT_PUK:
-			util_get_pin(optarg, (const u8 **) &opt_puk);
+			util_get_pin(optarg, &opt_puk);
 			break;
 		case 'o':
 			opt_outfile = optarg;

@@ -83,6 +83,9 @@ sc_pkcs11_get_mechanism_list(struct sc_pkcs11_card *p11card,
 	unsigned int n, count = 0;
 	int rv;
 
+	if (!p11card)
+		return CKR_TOKEN_NOT_PRESENT;
+
 	for (n = 0; n < p11card->nmechanisms; n++) {
 		if (!(mt = p11card->mechanisms[n]))
 			continue;
@@ -152,7 +155,7 @@ sc_pkcs11_md_init(struct sc_pkcs11_session *session,
 	int rv;
 
 	LOG_FUNC_CALLED(context);
-	if (!session || !session->slot || !(p11card = session->slot->card))
+	if (!session || !session->slot || !(p11card = session->slot->p11card))
 		LOG_FUNC_RETURN(context, CKR_ARGUMENTS_BAD);
 
 	/* See if we support this mechanism type */
@@ -231,7 +234,7 @@ sc_pkcs11_sign_init(struct sc_pkcs11_session *session, CK_MECHANISM_PTR pMechani
 	int rv;
 
 	LOG_FUNC_CALLED(context);
-	if (!session || !session->slot || !(p11card = session->slot->card))
+	if (!session || !session->slot || !(p11card = session->slot->p11card))
 		LOG_FUNC_RETURN(context, CKR_ARGUMENTS_BAD);
 
 	/* See if we support this mechanism type */
@@ -515,7 +518,7 @@ sc_pkcs11_verif_init(struct sc_pkcs11_session *session, CK_MECHANISM_PTR pMechan
 	int rv;
 
 	if (!session || !session->slot
-	 || !(p11card = session->slot->card))
+	 || !(p11card = session->slot->p11card))
 		return CKR_ARGUMENTS_BAD;
 
 	/* See if we support this mechanism type */
@@ -590,7 +593,7 @@ done:
 }
 
 /*
- * Initialize a signature operation
+ * Initialize a verify operation
  */
 static CK_RV
 sc_pkcs11_verify_init(sc_pkcs11_operation_t *operation,
@@ -605,6 +608,18 @@ sc_pkcs11_verify_init(sc_pkcs11_operation_t *operation,
 
 	data->info = NULL;
 	data->key = key;
+
+	if (key->ops->can_do)   {
+		rv = key->ops->can_do(operation->session, key, operation->type->mech, CKF_SIGN);
+		if ((rv == CKR_OK) || (rv == CKR_FUNCTION_NOT_SUPPORTED))   {
+			/* Mechanism recognized and can be performed by pkcs#15 card or algorithm references not supported */
+		}
+		else {
+			/* Mechanism cannot be performed by pkcs#15 card, or some general error. */
+			free(data);
+			LOG_FUNC_RETURN(context, rv);
+		}
+	}
 
 	/* If this is a verify with hash operation, set up the
 	 * hash operation */
@@ -714,7 +729,7 @@ sc_pkcs11_decr_init(struct sc_pkcs11_session *session,
 	CK_RV rv;
 
 	if (!session || !session->slot
-	 || !(p11card = session->slot->card))
+	 || !(p11card = session->slot->p11card))
 		return CKR_ARGUMENTS_BAD;
 
 	/* See if we support this mechanism type */
@@ -784,7 +799,7 @@ sc_pkcs11_deri(struct sc_pkcs11_session *session,
 
 
 	if (!session || !session->slot
-	 || !(p11card = session->slot->card))
+	 || !(p11card = session->slot->p11card))
 		return CKR_ARGUMENTS_BAD;
 
 	/* See if we support this mechanism type */
@@ -859,18 +874,31 @@ out:
 
 
 /*
- * Initialize a signature operation
+ * Initialize a decrypt operation
  */
 static CK_RV
 sc_pkcs11_decrypt_init(sc_pkcs11_operation_t *operation,
 			struct sc_pkcs11_object *key)
 {
 	struct signature_data *data;
+	CK_RV rv;
 
 	if (!(data = calloc(1, sizeof(*data))))
 		return CKR_HOST_MEMORY;
 
 	data->key = key;
+
+	if (key->ops->can_do)   {
+		rv = key->ops->can_do(operation->session, key, operation->type->mech, CKF_DECRYPT);
+		if ((rv == CKR_OK) || (rv == CKR_FUNCTION_NOT_SUPPORTED))   {
+			/* Mechanism recognized and can be performed by pkcs#15 card or algorithm references not supported */
+		}
+		else {
+			/* Mechanism cannot be performed by pkcs#15 card, or some general error. */
+			free(data);
+			LOG_FUNC_RETURN(context, rv);
+		}
+	}
 
 	operation->priv_data = data;
 	return CKR_OK;
@@ -906,6 +934,7 @@ sc_pkcs11_derive(sc_pkcs11_operation_t *operation,
 		    pmechParam, ulmechParamLen,
 		    pData, pulDataLen);
 }
+
 /*
  * Create new mechanism type for a mechanism supported by
  * the card
@@ -914,7 +943,8 @@ sc_pkcs11_mechanism_type_t *
 sc_pkcs11_new_fw_mechanism(CK_MECHANISM_TYPE mech,
 				CK_MECHANISM_INFO_PTR pInfo,
 				CK_KEY_TYPE key_type,
-				void *priv_data)
+				const void *priv_data,
+				void (*free_priv_data)(const void *priv_data))
 {
 	sc_pkcs11_mechanism_type_t *mt;
 
@@ -925,6 +955,7 @@ sc_pkcs11_new_fw_mechanism(CK_MECHANISM_TYPE mech,
 	mt->mech_info = *pInfo;
 	mt->key_type = key_type;
 	mt->mech_data = priv_data;
+	mt->free_mech_data = free_priv_data;
 	mt->obj_size = sizeof(sc_pkcs11_operation_t);
 
 	mt->release = sc_pkcs11_signature_release;
@@ -966,6 +997,11 @@ sc_pkcs11_register_generic_mechanisms(struct sc_pkcs11_card *p11card)
 	return CKR_OK;
 }
 
+void free_info(const void *info)
+{
+	free((void *) info);
+}
+
 /*
  * Register a sign+hash algorithm derived from an algorithm supported
  * by the token + a software hash mechanism
@@ -987,13 +1023,16 @@ sc_pkcs11_register_sign_and_hash_mechanism(struct sc_pkcs11_card *p11card,
 	mech_info.flags &= (CKF_SIGN | CKF_SIGN_RECOVER | CKF_VERIFY | CKF_VERIFY_RECOVER);
 
 	info = calloc(1, sizeof(*info));
+	if (!info)
+		LOG_FUNC_RETURN(p11card->card->ctx, SC_ERROR_OUT_OF_MEMORY);
+
 	info->mech = mech;
 	info->sign_type = sign_type;
 	info->hash_type = hash_type;
 	info->sign_mech = sign_type->mech;
 	info->hash_mech = hash_mech;
 
-	new_type = sc_pkcs11_new_fw_mechanism(mech, &mech_info, sign_type->key_type, info);
+	new_type = sc_pkcs11_new_fw_mechanism(mech, &mech_info, sign_type->key_type, info, free_info);
 
 	if (!new_type)
 		return CKR_HOST_MEMORY;

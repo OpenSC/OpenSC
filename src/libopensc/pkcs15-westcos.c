@@ -18,7 +18,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#if HAVE_CONFIG_H
 #include "config.h"
+#endif
 
 #include <string.h>
 #include <stdlib.h>
@@ -70,7 +72,7 @@ static int sc_pkcs15emu_westcos_init(sc_pkcs15_card_t * p15card)
 	}
 	else
 	{
-		for (i = 0; i < 1; i++) {
+		for (i = 0; i <= 1; i++) {
 			unsigned int flags;
 			struct sc_pkcs15_auth_info pin_info;
 			struct sc_pkcs15_object pin_obj;

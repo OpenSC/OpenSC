@@ -19,7 +19,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#if HAVE_CONFIG_H
 #include "config.h"
+#endif
 
 #include <stdarg.h>
 #include <stdlib.h>
@@ -73,9 +75,7 @@ static void sc_do_log_va(sc_context_t *ctx, int level, const char *file, int lin
 	FILE		*outf = NULL;
 	int		n;
 
-	assert(ctx != NULL);
-
-	if (ctx->debug < level)
+	if (!ctx || ctx->debug < level)
 		return;
 
 	p = buf;
@@ -167,9 +167,7 @@ void sc_hex_dump(struct sc_context *ctx, int level, const u8 * in, size_t count,
 	char *p = buf;
 	int lines = 0;
 
-	assert(ctx != NULL);
-
-	if (ctx->debug < level)
+	if (!ctx || ctx->debug < level)
 		return;
 
 	assert(buf != NULL && (in != NULL || count == 0));
@@ -232,6 +230,20 @@ sc_dump_hex(const u8 * in, size_t count)
 
 	if (ii<count)
 		snprintf(dump_buf + offs, sizeof(dump_buf) - offs, "....\n");
+
+	return dump_buf;
+}
+
+char *
+sc_dump_oid(const struct sc_object_id *oid)
+{
+	static char dump_buf[SC_MAX_OBJECT_ID_OCTETS * 20];
+        size_t ii;
+
+	memset(dump_buf, 0, sizeof(dump_buf));
+	if (oid)
+		for (ii=0; ii<SC_MAX_OBJECT_ID_OCTETS && oid->value[ii] != -1; ii++)
+			snprintf(dump_buf + strlen(dump_buf), sizeof(dump_buf) - strlen(dump_buf), "%s%i", (ii ? "." : ""), oid->value[ii]);
 
 	return dump_buf;
 }

@@ -18,7 +18,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#if HAVE_CONFIG_H
 #include "config.h"
+#endif
 
 #include <assert.h>
 #include <string.h>
@@ -1109,6 +1111,15 @@ static int westcos_sign_decipher(int mode, sc_card_t *card,
 		return SC_ERROR_INVALID_ARGUMENTS;
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
 		"westcos_sign_decipher outlen=%d\n", outlen);
+	
+#ifndef ENABLE_OPENSSL
+	r = SC_ERROR_NOT_SUPPORTED;
+#else
+	if (keyfile == NULL || mem == NULL || card->drv_data == NULL) {
+		r = SC_ERROR_OUT_OF_MEMORY;
+		goto out;
+	}
+
 	priv_data = (priv_data_t *) card->drv_data;
 
 	if(priv_data->flags & RSA_CRYPTO_COMPONENT)
@@ -1133,14 +1144,6 @@ static int westcos_sign_decipher(int mode, sc_card_t *card,
 		/* correct */
 		r = apdu.resplen;
 		goto out2;
-	}
-	
-#ifndef ENABLE_OPENSSL
-	r = SC_ERROR_NOT_SUPPORTED;
-#else
-	if (keyfile == NULL || mem == NULL || priv_data == NULL) {
-		r = SC_ERROR_OUT_OF_MEMORY;
-		goto out;
 	}
 	if ((priv_data->env.flags) & SC_ALGORITHM_RSA_PAD_PKCS1)
 		pad = RSA_PKCS1_PADDING;

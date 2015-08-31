@@ -18,7 +18,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#if HAVE_CONFIG_H
 #include "config.h"
+#endif
 
 #include <memory.h>
 #include <stdio.h>
@@ -42,6 +44,8 @@ static const u8* ignoredFiles[] = {
 
 mscfs_t *mscfs_new(void) {
 	mscfs_t *fs = malloc(sizeof(mscfs_t));
+	if (!fs)
+		return NULL;
 	memset(fs, 0, sizeof(mscfs_t));
 	memcpy(fs->currentPath, "\x3F\x00", 2);
 	return fs;

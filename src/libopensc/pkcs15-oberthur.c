@@ -800,10 +800,6 @@ sc_pkcs15emu_oberthur_add_prvkey(struct sc_pkcs15_card *p15card,
 
 	kinfo.modulus_length	= size;
 	kinfo.native		= 1;
-	kinfo.access_flags	= SC_PKCS15_PRKEY_ACCESS_SENSITIVE
-				| SC_PKCS15_PRKEY_ACCESS_ALWAYSSENSITIVE
-				| SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE
-				| SC_PKCS15_PRKEY_ACCESS_LOCAL;
 	kinfo.key_reference	 = file_id & 0xFF;
 
 	kinfo.usage = sc_oberthur_decode_usage(flags);

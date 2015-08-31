@@ -21,7 +21,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#if HAVE_CONFIG_H
 #include "config.h"
+#endif
 
 #include <ctype.h>
 #include <string.h>
@@ -722,7 +724,7 @@ incrypto34_generate_key(sc_card_t *card,
 	apdu.ins = 0x46;
 	apdu.p1  = 0x00;
 	apdu.p2  = args->key_id;/* doc is not clear, it just says "ID" */
-	apdu.p2  = 0x00;
+	apdu.le  = 0x00;
 	apdu.data= data;
 	apdu.datalen = apdu.lc = sizeof(data);
 

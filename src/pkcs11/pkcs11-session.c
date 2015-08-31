@@ -107,7 +107,7 @@ static CK_RV sc_pkcs11_close_session(CK_SESSION_HANDLE hSession)
 	slot->nsessions--;
 	if (slot->nsessions == 0 && slot->login_user >= 0) {
 		slot->login_user = -1;
-		slot->card->framework->logout(slot);
+		slot->p11card->framework->logout(slot);
 	}
 
 	if (list_delete(&sessions, session) != 0)
@@ -120,17 +120,17 @@ static CK_RV sc_pkcs11_close_session(CK_SESSION_HANDLE hSession)
  * the global lock held */
 CK_RV sc_pkcs11_close_all_sessions(CK_SLOT_ID slotID)
 {
-	CK_RV rv = CKR_OK;
+	CK_RV rv = CKR_OK, error;
 	struct sc_pkcs11_session *session;
 	unsigned int i;
 	sc_log(context, "real C_CloseAllSessions(0x%lx) %d", slotID, list_size(&sessions));
 	for (i = 0; i < list_size(&sessions); i++) {
 		session = list_get_at(&sessions, i);
 		if (session->slot->id == slotID)
-			if ((rv = sc_pkcs11_close_session(session->handle)) != CKR_OK)
-				return rv;
+			if ((error = sc_pkcs11_close_session(session->handle)) != CKR_OK)
+				rv = error;
 	}
-	return CKR_OK;
+	return rv;
 }
 
 CK_RV C_CloseSession(CK_SESSION_HANDLE hSession)
@@ -272,7 +272,7 @@ CK_RV C_Login(CK_SESSION_HANDLE hSession,	/* the session's handle */
 			goto out;
 		}
 		else   {
-			rv = slot->card->framework->login(slot, userType, pPin, ulPinLen);
+			rv = slot->p11card->framework->login(slot, userType, pPin, ulPinLen);
 		}
 	}
 	else {
@@ -286,7 +286,7 @@ CK_RV C_Login(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		}
 
 		sc_log(context, "C_Login() userType %li", userType);
-		rv = slot->card->framework->login(slot, userType, pPin, ulPinLen);
+		rv = slot->p11card->framework->login(slot, userType, pPin, ulPinLen);
 		sc_log(context, "fLogin() rv %li", rv);
 		if (rv == CKR_OK)
 			slot->login_user = userType;
@@ -319,7 +319,7 @@ CK_RV C_Logout(CK_SESSION_HANDLE hSession)
 
 	if (slot->login_user >= 0) {
 		slot->login_user = -1;
-		rv = slot->card->framework->logout(slot);
+		rv = slot->p11card->framework->logout(slot);
 	} else
 		rv = CKR_USER_NOT_LOGGED_IN;
 
@@ -355,10 +355,10 @@ CK_RV C_InitPIN(CK_SESSION_HANDLE hSession, CK_CHAR_PTR pPin, CK_ULONG ulPinLen)
 	slot = session->slot;
 	if (slot->login_user != CKU_SO) {
 		rv = CKR_USER_NOT_LOGGED_IN;
-	} else if (slot->card->framework->init_pin == NULL) {
+	} else if (slot->p11card->framework->init_pin == NULL) {
 		rv = CKR_FUNCTION_NOT_SUPPORTED;
 	} else {
-		rv = slot->card->framework->init_pin(slot, pPin, ulPinLen);
+		rv = slot->p11card->framework->init_pin(slot, pPin, ulPinLen);
 		sc_log(context, "C_InitPIN() init-pin result %li", rv);
 	}
 
@@ -395,7 +395,7 @@ CK_RV C_SetPIN(CK_SESSION_HANDLE hSession,
 		goto out;
 	}
 
-	rv = slot->card->framework->change_pin(slot, pOldPin, ulOldLen, pNewPin, ulNewLen);
+	rv = slot->p11card->framework->change_pin(slot, pOldPin, ulOldLen, pNewPin, ulNewLen);
 out:
 	sc_pkcs11_unlock();
 	return rv;

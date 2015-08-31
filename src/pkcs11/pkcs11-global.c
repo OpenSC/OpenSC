@@ -202,9 +202,11 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs)
 	unsigned int i;
 	sc_context_param_t ctx_opts;
 
-	/* Handle fork() exception */
 #if !defined(_WIN32)
+	/* Handle fork() exception */
 	if (current_pid != initialized_pid) {
+		if (context)
+			context->flags |= SC_CTX_FLAG_TERMINATE;
 		C_Finalize(NULL_PTR);
 	}
 	initialized_pid = current_pid;
@@ -533,7 +535,7 @@ CK_RV C_GetMechanismList(CK_SLOT_ID slotID,
 
 	rv = slot_get_token(slotID, &slot);
 	if (rv == CKR_OK)
-		rv = sc_pkcs11_get_mechanism_list(slot->card, pMechanismList, pulCount);
+		rv = sc_pkcs11_get_mechanism_list(slot->p11card, pMechanismList, pulCount);
 
 	sc_pkcs11_unlock();
 	return rv;
@@ -555,7 +557,7 @@ CK_RV C_GetMechanismInfo(CK_SLOT_ID slotID,
 
 	rv = slot_get_token(slotID, &slot);
 	if (rv == CKR_OK)
-		rv = sc_pkcs11_get_mechanism_info(slot->card, type, pInfo);
+		rv = sc_pkcs11_get_mechanism_info(slot->p11card, type, pInfo);
 
 	sc_pkcs11_unlock();
 	return rv;
@@ -582,7 +584,8 @@ CK_RV C_InitToken(CK_SLOT_ID slotID,
 		goto out;
 	}
 
-	if (slot->card->framework->init_token == NULL) {
+	if (!slot->p11card || !slot->p11card->framework
+		   || !slot->p11card->framework->init_token) {
 		sc_log(context, "C_InitToken() not supported by framework");
 		rv = CKR_FUNCTION_NOT_SUPPORTED;
 		goto out;
@@ -597,7 +600,7 @@ CK_RV C_InitToken(CK_SLOT_ID slotID,
 		}
 	}
 
-	rv = slot->card->framework->init_token(slot,slot->fw_data, pPin, ulPinLen, pLabel);
+	rv = slot->p11card->framework->init_token(slot,slot->fw_data, pPin, ulPinLen, pLabel);
 	if (rv == CKR_OK) {
 		/* Now we should re-bind all tokens so they get the
 		 * corresponding function vector and flags */
@@ -688,7 +691,7 @@ out:
 		sc_wait_for_event(context, 0, NULL, NULL, -1, &reader_states);
 	}
 
-	sc_log(context, "C_WaitForSlotEvent() = %s, event in 0x%lx", lookup_enum (RV_T, rv), *pSlot);
+	sc_log(context, "C_WaitForSlotEvent() = %s", lookup_enum (RV_T, rv));
 	sc_pkcs11_unlock();
 	return rv;
 }

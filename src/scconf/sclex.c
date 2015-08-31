@@ -57,8 +57,10 @@ static void buf_addch(BUFHAN * bp, char ch)
 		bp->bufmax += 256;
 		bp->buf = (char *) realloc(bp->buf, bp->bufmax);
 	}
-	bp->buf[bp->bufcur++] = ch;
-	bp->buf[bp->bufcur] = '\0';
+	if (bp->buf) {
+		bp->buf[bp->bufcur++] = ch;
+		bp->buf[bp->bufcur] = '\0';
+	}
 }
 
 static int buf_nextch(BUFHAN * bp)

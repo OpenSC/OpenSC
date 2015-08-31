@@ -18,7 +18,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#if HAVE_CONFIG_H
 #include "config.h"
+#endif
 
 #include <stdio.h>
 #include <string.h>
@@ -65,9 +67,12 @@ int sc_asn1_read_tag(const u8 ** buf, size_t buflen, unsigned int *cla_out,
 	if (left < 2)
 		return SC_ERROR_INVALID_ASN1_OBJECT;
 	*buf = NULL;
-	if (*p == 0xff || *p == 0)
+	if (*p == 0xff || *p == 0) {
 		/* end of data reached */
+		*taglen = 0;
+		*tag_out = SC_ASN1_TAG_EOC;
 		return SC_SUCCESS;
+	}
 	/* parse tag byte(s) */
 	cla = (*p & SC_ASN1_TAG_CLASS) | (*p & SC_ASN1_TAG_CONSTRUCTED);
 	tag = *p & SC_ASN1_TAG_PRIMITIVE;
@@ -740,23 +745,70 @@ static int sc_asn1_decode_utf8string(const u8 *inbuf, size_t inlen,
 	return 0;
 }
 
-int sc_asn1_put_tag(int tag, const u8 * data, size_t datalen, u8 * out, size_t outlen, u8 **ptr)
+int sc_asn1_put_tag(unsigned int tag, const u8 * data, size_t datalen, u8 * out, size_t outlen, u8 **ptr)
 {
+	size_t c = 0;
+	size_t tag_len;
+	size_t ii;
 	u8 *p = out;
+	u8 tag_char[4] = {0, 0, 0, 0};
 
-	if (outlen < 2)
-		return SC_ERROR_INVALID_ARGUMENTS;
-	if (datalen > 127)
-		return SC_ERROR_INVALID_ARGUMENTS;
-	*p++ = tag & 0xFF;	/* FIXME: Support longer tags */
-	outlen--;
-	*p++ = datalen;
-	outlen--;
-	if (outlen < datalen)
-		return SC_ERROR_INVALID_ARGUMENTS;
+	/* Check tag */
+	if (tag == 0 || tag > 0xFFFFFFFF) {
+		/* A tag of 0x00 is not valid and at most 4-byte tag names are supported. */
+		return SC_ERROR_INVALID_DATA;
+	}
+	for (tag_len = 0; tag; tag >>= 8) {
+		/* Note: tag char will be reversed order. */
+		tag_char[tag_len++] = tag & 0xFF;
+	}
 
-	memcpy(p, data, datalen);
-	p += datalen;
+	if (tag_len > 1)   {
+		if ((tag_char[tag_len - 1] & SC_ASN1_TAG_PRIMITIVE) != SC_ASN1_TAG_ESCAPE_MARKER) {
+			/* First byte is not escape marker. */
+			return SC_ERROR_INVALID_DATA;
+		}
+		for (ii = 1; ii < tag_len - 1; ii++) {
+			if ((tag_char[ii] & 0x80) != 0x80) {
+				/* MS bit is not 'one'. */
+				return SC_ERROR_INVALID_DATA;
+			}
+		}
+		if ((tag_char[0] & 0x80) != 0x00) {
+			/* MS bit of the last byte is not 'zero'. */
+			return SC_ERROR_INVALID_DATA;
+		}
+	}
+
+	/* Calculate the number of additional bytes necessary to encode the length. */
+	/* c+1 is the size of the length field. */
+	if (datalen > 127) {
+		c = 1;
+		while (datalen >> (c << 3))
+			c++;
+	}
+	if (outlen == 0 || out == NULL) {
+		/* Caller only asks for the length that would be written. */
+		return tag_len + (c+1) + datalen;
+	}
+	/* We will write the tag, so check the length. */
+	if (outlen < tag_len + (c+1) + datalen)
+		return SC_ERROR_BUFFER_TOO_SMALL;
+	for (ii=0;ii<tag_len;ii++)
+		*p++ = tag_char[tag_len - ii - 1];
+
+	if (c > 0) {
+		*p++ = 0x80 | c;
+		while (c--)
+			*p++ = (datalen >> (c << 3)) & 0xFF;
+	}
+	else {
+		*p++ = datalen & 0x7F;
+	}
+	if(data && datalen > 0) {
+		memcpy(p, data, datalen);
+		p += datalen;
+	}
 	if (ptr != NULL)
 		*ptr = p;
 	return 0;
@@ -955,7 +1007,7 @@ static const struct sc_asn1_entry c_asn1_se_info[4] = {
 };
 
 static int asn1_decode_se_info(sc_context_t *ctx, const u8 *obj, size_t objlen,
-                               sc_pkcs15_sec_env_info_t ***se, size_t *num, int depth)
+			       sc_pkcs15_sec_env_info_t ***se, size_t *num, int depth)
 {
 	struct sc_pkcs15_sec_env_info **ses;
 	const unsigned char *ptr = obj;
@@ -1393,6 +1445,8 @@ static int asn1_decode(sc_context_t *ctx, struct sc_asn1_entry *asn1,
 				left, depth,
 				choice ? ", choice" : "");
 
+	if (!p)
+		return SC_ERROR_ASN1_OBJECT_NOT_FOUND;
 	if (left < 2) {
 		while (asn1->name && (asn1->flags & SC_ASN1_OPTIONAL))
 			asn1++;
@@ -1741,6 +1795,8 @@ _sc_asn1_decode(sc_context_t *ctx, struct sc_asn1_entry *asn1,
 int
 sc_der_copy(sc_pkcs15_der_t *dst, const sc_pkcs15_der_t *src)
 {
+	if (!dst)
+		return SC_ERROR_INVALID_ARGUMENTS;
 	memset(dst, 0, sizeof(*dst));
 	if (src->len) {
 		dst->value = malloc(src->len);
@@ -1757,7 +1813,7 @@ sc_encode_oid (struct sc_context *ctx, struct sc_object_id *id,
 		unsigned char **out, size_t *size)
 {
 	static const struct sc_asn1_entry c_asn1_object_id[2] = {
-        	{ "oid", SC_ASN1_OBJECT, SC_ASN1_TAG_OBJECT, SC_ASN1_ALLOC, NULL, NULL },
+		{ "oid", SC_ASN1_OBJECT, SC_ASN1_TAG_OBJECT, SC_ASN1_ALLOC, NULL, NULL },
 		{ NULL, 0, 0, 0, NULL, NULL }
 	};
 	struct sc_asn1_entry asn1_object_id[2];
@@ -1772,3 +1828,86 @@ sc_encode_oid (struct sc_context *ctx, struct sc_object_id *id,
 	return SC_SUCCESS;
 }
 
+
+#define C_ASN1_SIG_VALUE_SIZE 2
+static struct sc_asn1_entry c_asn1_sig_value[C_ASN1_SIG_VALUE_SIZE] = {
+		{ "ECDSA-Sig-Value", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
+		{ NULL, 0, 0, 0, NULL, NULL }
+};
+
+#define C_ASN1_SIG_VALUE_COEFFICIENTS_SIZE 3
+static struct sc_asn1_entry c_asn1_sig_value_coefficients[C_ASN1_SIG_VALUE_COEFFICIENTS_SIZE] = {
+		{ "r", SC_ASN1_OCTET_STRING, SC_ASN1_TAG_INTEGER, SC_ASN1_ALLOC|SC_ASN1_UNSIGNED, NULL, NULL },
+		{ "s", SC_ASN1_OCTET_STRING, SC_ASN1_TAG_INTEGER, SC_ASN1_ALLOC|SC_ASN1_UNSIGNED, NULL, NULL },
+		{ NULL, 0, 0, 0, NULL, NULL }
+};
+
+
+int
+sc_asn1_sig_value_rs_to_sequence(struct sc_context *ctx, unsigned char *in, size_t inlen,
+		unsigned char **buf, size_t *buflen)
+{
+	struct sc_asn1_entry asn1_sig_value[C_ASN1_SIG_VALUE_SIZE];
+	struct sc_asn1_entry asn1_sig_value_coefficients[C_ASN1_SIG_VALUE_COEFFICIENTS_SIZE];
+	unsigned char *r = in, *s = in + inlen/2;
+	size_t r_len = inlen/2, s_len = inlen/2;
+	int rv;
+
+	LOG_FUNC_CALLED(ctx);
+	sc_copy_asn1_entry(c_asn1_sig_value, asn1_sig_value);
+	sc_format_asn1_entry(asn1_sig_value + 0, asn1_sig_value_coefficients, NULL, 1);
+
+	sc_copy_asn1_entry(c_asn1_sig_value_coefficients, asn1_sig_value_coefficients);
+	sc_format_asn1_entry(asn1_sig_value_coefficients + 0, r, &r_len, 1);
+	sc_format_asn1_entry(asn1_sig_value_coefficients + 1, s, &s_len, 1);
+
+	rv = sc_asn1_encode(ctx, asn1_sig_value, buf, buflen);
+	LOG_TEST_RET(ctx, rv, "ASN.1 encoding ECDSA-SIg-Value failed");
+
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+}
+
+
+int
+sc_asn1_sig_value_sequence_to_rs(struct sc_context *ctx, unsigned char *in, size_t inlen,
+		unsigned char *buf, size_t buflen)
+{
+	struct sc_asn1_entry asn1_sig_value[C_ASN1_SIG_VALUE_SIZE];
+	struct sc_asn1_entry asn1_sig_value_coefficients[C_ASN1_SIG_VALUE_COEFFICIENTS_SIZE];
+	unsigned char *r, *s;
+	size_t r_len, s_len, halflen = buflen/2;
+	int rv;
+
+	LOG_FUNC_CALLED(ctx);
+	if (!buf || !buflen)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+
+	sc_copy_asn1_entry(c_asn1_sig_value, asn1_sig_value);
+	sc_format_asn1_entry(asn1_sig_value + 0, asn1_sig_value_coefficients, NULL, 0);
+
+	sc_copy_asn1_entry(c_asn1_sig_value_coefficients, asn1_sig_value_coefficients);
+	sc_format_asn1_entry(asn1_sig_value_coefficients + 0, &r, &r_len, 0);
+	sc_format_asn1_entry(asn1_sig_value_coefficients + 1, &s, &s_len, 0);
+
+	rv = sc_asn1_decode(ctx, asn1_sig_value, in, inlen, NULL, NULL);
+	LOG_TEST_RET(ctx, rv, "ASN.1 decoding ECDSA-Sig-Value failed");
+
+	if (halflen < r_len || halflen < s_len)   {
+		rv = SC_ERROR_BUFFER_TOO_SMALL;
+		goto done;
+	}
+
+	memset(buf, 0, buflen);
+	memcpy(buf + (halflen - r_len), r, r_len);
+	memcpy(buf + (buflen - s_len), s, s_len);
+
+	sc_log(ctx, "r(%i): %s", halflen, sc_dump_hex(buf, halflen));
+	sc_log(ctx, "s(%i): %s", halflen, sc_dump_hex(buf + halflen, halflen));
+
+	rv = SC_SUCCESS;
+done:
+	free(r);
+	free(s);
+
+	LOG_FUNC_RETURN(ctx, rv);
+}

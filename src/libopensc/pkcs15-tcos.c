@@ -18,13 +18,16 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#if HAVE_CONFIG_H
 #include "config.h"
+#endif
 
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 
 #include "common/compat_strlcpy.h"
+#include "common/compat_strlcat.h"
 #include "internal.h"
 #include "pkcs15.h"
 #include "cardctl.h"
@@ -260,8 +263,9 @@ static int insert_pin(
 static char *dirpath(char *dir, const char *path){
 	static char buf[SC_MAX_PATH_STRING_SIZE];
 
-	strcpy(buf,dir);
-	return strcat(buf,path);
+	strlcpy(buf,dir,sizeof buf);
+	strlcat(buf,path,sizeof buf);
+	return buf;
 }
 
 static int detect_netkey(

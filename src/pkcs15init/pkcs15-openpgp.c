@@ -187,7 +187,7 @@ static int openpgp_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 
 	/* The OpenPGP supports only 32-bit exponent. */
 	key_info.exponent_len = 32;
-	key_info.exponent = calloc(4, 1);
+	key_info.exponent = calloc(key_info.exponent_len>>3, 1); /* 1/8 */
 	if (key_info.exponent == NULL)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
 
@@ -204,10 +204,10 @@ static int openpgp_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 
 	sc_log(ctx, "Set output exponent info");
 	pubkey->u.rsa.exponent.len = key_info.exponent_len;
-	pubkey->u.rsa.exponent.data = calloc(key_info.exponent_len, 1);
+	pubkey->u.rsa.exponent.data = calloc(key_info.exponent_len>>3, 1); /* 1/8 */
 	if (pubkey->u.rsa.exponent.data == NULL)
 		goto out;
-	memcpy(pubkey->u.rsa.exponent.data, key_info.exponent, key_info.exponent_len);
+	memcpy(pubkey->u.rsa.exponent.data, key_info.exponent, key_info.exponent_len>>3); /* 1/8 */
 
 out:
 	if (key_info.modulus)

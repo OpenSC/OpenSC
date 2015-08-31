@@ -18,7 +18,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#if HAVE_CONFIG_H
 #include "config.h"
+#endif
 
 #include <stdlib.h>
 #include <string.h>
@@ -374,7 +376,7 @@ static int sc_pkcs15emu_sc_hsm_get_rsa_public_key(struct sc_context *ctx, sc_cvc
 
 static int sc_pkcs15emu_sc_hsm_get_ec_public_key(struct sc_context *ctx, sc_cvc_t *cvc, struct sc_pkcs15_pubkey *pubkey)
 {
-	struct sc_ec_params *ecp;
+	struct sc_ec_parameters *ecp;
 	const struct sc_lv_data *oid;
 	int r;
 
@@ -384,18 +386,18 @@ static int sc_pkcs15emu_sc_hsm_get_ec_public_key(struct sc_context *ctx, sc_cvc_
 	if (r != SC_SUCCESS)
 		return r;
 
-	ecp = calloc(1, sizeof(struct sc_ec_params));
+	ecp = calloc(1, sizeof(struct sc_ec_parameters));
 	if (!ecp)
 		return SC_ERROR_OUT_OF_MEMORY;
 
-	ecp->der_len = oid->len + 2;
-	ecp->der = calloc(ecp->der_len, 1);
-	if (!ecp->der)
+	ecp->der.len = oid->len + 2;
+	ecp->der.value = calloc(ecp->der.len, 1);
+	if (!ecp->der.value)
 		return SC_ERROR_OUT_OF_MEMORY;
 
-	ecp->der[0] = 0x06;
-	ecp->der[1] = (u8)oid->len;
-	memcpy(ecp->der + 2, oid->value, oid->len);
+	*(ecp->der.value + 0) = 0x06;
+	*(ecp->der.value + 1) = (u8)oid->len;
+	memcpy(ecp->der.value + 2, oid->value, oid->len);
 	ecp->type = 1;		// Named curve
 
 	pubkey->alg_id = (struct sc_algorithm_id *)calloc(1, sizeof(struct sc_algorithm_id));
@@ -411,11 +413,11 @@ static int sc_pkcs15emu_sc_hsm_get_ec_public_key(struct sc_context *ctx, sc_cvc_
 	memcpy(pubkey->u.ec.ecpointQ.value, cvc->publicPoint, cvc->publicPointlen);
 	pubkey->u.ec.ecpointQ.len = cvc->publicPointlen;
 
-	pubkey->u.ec.params.der.value = malloc(ecp->der_len);
+	pubkey->u.ec.params.der.value = malloc(ecp->der.len);
 	if (!pubkey->u.ec.params.der.value)
 		return SC_ERROR_OUT_OF_MEMORY;
-	memcpy(pubkey->u.ec.params.der.value, ecp->der, ecp->der_len);
-	pubkey->u.ec.params.der.len = ecp->der_len;
+	memcpy(pubkey->u.ec.params.der.value, ecp->der.value, ecp->der.len);
+	pubkey->u.ec.params.der.len = ecp->der.len;
 
 	sc_pkcs15_fix_ec_parameters(ctx, &pubkey->u.ec.params);
 
@@ -426,7 +428,7 @@ static int sc_pkcs15emu_sc_hsm_get_ec_public_key(struct sc_context *ctx, sc_cvc_
 
 int sc_pkcs15emu_sc_hsm_get_public_key(struct sc_context *ctx, sc_cvc_t *cvc, struct sc_pkcs15_pubkey *pubkey)
 {
-	if (cvc->publicPoint || cvc->publicPointlen) {
+	if (cvc->publicPoint && cvc->publicPointlen) {
 		return sc_pkcs15emu_sc_hsm_get_ec_public_key(ctx, cvc, pubkey);
 	} else {
 		return sc_pkcs15emu_sc_hsm_get_rsa_public_key(ctx, cvc, pubkey);
@@ -504,9 +506,12 @@ static int sc_pkcs15emu_sc_hsm_add_pubkey(sc_pkcs15_card_t *p15card, sc_pkcs15_p
 	memset(&pubkey_info, 0, sizeof(pubkey_info));
 	memset(&pubkey_obj, 0, sizeof(pubkey_obj));
 
-	sc_pkcs15_encode_pubkey(ctx, &pubkey, &pubkey_obj.content.value, &pubkey_obj.content.len);
-	sc_pkcs15_encode_pubkey(ctx, &pubkey, &pubkey_info.direct.raw.value, &pubkey_info.direct.raw.len);
-	sc_pkcs15_encode_pubkey_as_spki(ctx, &pubkey, &pubkey_info.direct.spki.value, &pubkey_info.direct.spki.len);
+	r = sc_pkcs15_encode_pubkey(ctx, &pubkey, &pubkey_obj.content.value, &pubkey_obj.content.len);
+	LOG_TEST_RET(ctx, r, "Could not encode public key");
+	r = sc_pkcs15_encode_pubkey(ctx, &pubkey, &pubkey_info.direct.raw.value, &pubkey_info.direct.raw.len);
+	LOG_TEST_RET(ctx, r, "Could not encode public key");
+	r = sc_pkcs15_encode_pubkey_as_spki(ctx, &pubkey, &pubkey_info.direct.spki.value, &pubkey_info.direct.spki.len);
+	LOG_TEST_RET(ctx, r, "Could not encode public key");
 
 	pubkey_info.id = key_info->id;
 	strlcpy(pubkey_obj.label, label, sizeof(pubkey_obj.label));
@@ -515,6 +520,7 @@ static int sc_pkcs15emu_sc_hsm_add_pubkey(sc_pkcs15_card_t *p15card, sc_pkcs15_p
 		pubkey_info.modulus_length = pubkey.u.rsa.modulus.len << 3;
 		r = sc_pkcs15emu_add_rsa_pubkey(p15card, &pubkey_obj, &pubkey_info);
 	} else {
+		/* TODO fix if support of non multiple of 8 curves are added */
 		pubkey_info.field_length = cvc.primeOrModuluslen << 3;
 		r = sc_pkcs15emu_add_ec_pubkey(p15card, &pubkey_obj, &pubkey_info);
 	}

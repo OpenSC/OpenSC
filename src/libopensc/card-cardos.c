@@ -21,7 +21,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#if HAVE_CONFIG_H
 #include "config.h"
+#endif
 
 #include <ctype.h>
 #include <string.h>
@@ -47,8 +49,6 @@ static struct sc_atr_table cardos_atrs[] = {
 	{ "3b:e9:00:ff:c1:10:31:fe:55:00:64:05:00:c8:02:31:80:00:47", NULL, NULL, SC_CARD_TYPE_CARDOS_CIE_V1, 0, NULL },
 	/* Italian eID card, infocamere */
 	{ "3b:fb:98:00:ff:c1:10:31:fe:55:00:64:05:20:47:03:31:80:00:90:00:f3", NULL, NULL, SC_CARD_TYPE_CARDOS_GENERIC, 0, NULL },
-	/* Italian CNS - Prov. BZ */
-	{ "3b:ff:18:00:ff:c1:0a:31:fe:55:00:6b:05:08:c8:0c:01:11:01:43:4e:53:10:31:80:05", NULL, NULL, SC_CARD_TYPE_CARDOS_M4_2, 0, NULL },
 	/* Another Italian InfocamereCard */
 	{ "3b:fc:98:00:ff:c1:10:31:fe:55:c8:03:49:6e:66:6f:63:61:6d:65:72:65:28", NULL, NULL, SC_CARD_TYPE_CARDOS_GENERIC, 0, NULL },
 	{ "3b:f4:98:00:ff:c1:10:31:fe:55:4d:34:63:76:b4", NULL, NULL, SC_CARD_TYPE_CARDOS_GENERIC, 0, NULL},
@@ -165,6 +165,9 @@ static int cardos_have_2048bit_package(sc_card_t *card)
 static int cardos_init(sc_card_t *card)
 {
 	unsigned long	flags, rsa_2048 = 0;
+	size_t data_field_length;
+	sc_apdu_t apdu;
+	u8 rbuf[2];
 
 	card->name = "CardOS M4";
 	card->cla = 0x00;
@@ -194,6 +197,29 @@ static int cardos_init(sc_card_t *card)
 		rsa_2048 = 1;
 		card->caps |= SC_CARD_CAP_APDU_EXT;
 	}
+
+	/* probe DATA FIELD LENGTH with GET DATA */
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xca, 0x01, 0x8D);
+	apdu.le = sizeof rbuf;
+	apdu.resp = rbuf;
+	apdu.resplen = sizeof(rbuf);
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL,
+			sc_transmit_apdu(card, &apdu),
+			"APDU transmit failed");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL,
+			sc_check_sw(card, apdu.sw1, apdu.sw2),
+			"GET DATA command returned error");
+	if (apdu.resplen != 2)
+		return SC_ERROR_WRONG_LENGTH;
+	data_field_length = ((rbuf[0] << 8) | rbuf[1]);
+
+	/* strip the length of possible Lc and Le bytes */
+	if (card->caps & SC_CARD_CAP_APDU_EXT)
+		card->max_send_size = data_field_length - 6;
+	else
+		card->max_send_size = data_field_length - 3;
+	/* strip the length of SW bytes */
+	card->max_recv_size = data_field_length - 2;
 
 	if (rsa_2048 == 1) {
 		_sc_card_add_rsa_alg(card, 1280, flags, 0);
@@ -1217,35 +1243,6 @@ cardos_logout(sc_card_t *card)
 		return SC_ERROR_NOT_SUPPORTED;
 }
 
-static int cardos_get_data(struct sc_card *card, unsigned int tag,  u8 *buf, size_t len)
-{
-	int                             r;
-	struct sc_apdu                  apdu;
-
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xCA,
-			(tag >> 8) & 0xff, tag & 0xff);
-	apdu.lc = 0;
-	apdu.datalen = 0;
-	apdu.le = len;
-	apdu.resp = buf;
-	apdu.resplen = len;
-	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
-
-	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "GET_DATA returned error");
-
-	if (apdu.resplen > len)
-		r = SC_ERROR_WRONG_LENGTH;
-	else
-		r = apdu.resplen;
-
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
-}
-
-
 /* eToken R2 supports WRITE_BINARY, PRO Tokens support UPDATE_BINARY */
 
 static struct sc_card_driver * sc_get_driver(void)
@@ -1266,7 +1263,6 @@ static struct sc_card_driver * sc_get_driver(void)
 	cardos_ops.card_ctl = cardos_card_ctl;
 	cardos_ops.pin_cmd = cardos_pin_cmd;
 	cardos_ops.logout  = cardos_logout;
-	cardos_ops.get_data = cardos_get_data;
 
 	return &cardos_drv;
 }

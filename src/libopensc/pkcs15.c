@@ -911,14 +911,19 @@ sc_dup_app_info(const struct sc_app_info *info)
 
 	if (info->label) {
 		out->label = strdup(info->label);
-		if (!out->label)
+		if (!out->label) {
+			free(out);
 			return NULL;
+		}
 	} else
 		out->label = NULL;
 
 	out->ddo.value = malloc(info->ddo.len);
-	if (!out->ddo.value)
+	if (!out->ddo.value) {
+		free(out->label);
+		free(out);
 		return NULL;
+	}
 	memcpy(out->ddo.value, info->ddo.value, info->ddo.len);
 
 	return out;
@@ -957,6 +962,7 @@ sc_pkcs15_get_application_by_type(struct sc_card * card, char *app_type)
 				char *type = (char *)scconf_get_str(blocks[0], "type", app_type);
 				if (!strcmp(type, app_type))   {
 					out = app_info;
+					free(blocks);
 					break;
 				}
 			}
@@ -968,7 +974,7 @@ sc_pkcs15_get_application_by_type(struct sc_card * card, char *app_type)
 }
 
 
-static int
+int
 sc_pkcs15_bind_internal(struct sc_pkcs15_card *p15card, struct sc_aid *aid)
 {
 	struct sc_path tmppath;
@@ -1310,8 +1316,8 @@ __sc_pkcs15_search_objects(struct sc_pkcs15_card *p15card, unsigned int class_ma
 			continue;
 		/* Enumerate the DF's, so p15card->obj_list is
 		 * populated. */
-		/* FIXME dont ignore errors */
-		sc_pkcs15_parse_df(p15card, df);
+		if (SC_SUCCESS != sc_pkcs15_parse_df(p15card, df))
+			continue;
 	}
 
 	/* And now loop over all objects */
@@ -2696,7 +2702,7 @@ sc_pkcs15_get_object_guid(struct sc_pkcs15_card *p15card, const struct sc_pkcs15
 	struct sc_serial_number serialnr;
 	struct sc_pkcs15_id  id;
 	unsigned char guid_bin[SC_PKCS15_MAX_ID_SIZE + SC_MAX_SERIALNR];
-	int rv;
+	int rv, guid_bin_size;
 
 	LOG_FUNC_CALLED(ctx);
 	if(!out || !out_size)
@@ -2724,29 +2730,57 @@ sc_pkcs15_get_object_guid(struct sc_pkcs15_card *p15card, const struct sc_pkcs15
 	rv = sc_pkcs15_get_object_id(obj, &id);
 	LOG_TEST_RET(ctx, rv, "Cannot get object's ID");
 
-	rv = sc_card_ctl(p15card->card, SC_CARDCTL_GET_SERIALNR, &serialnr);
-	LOG_TEST_RET(ctx, rv, "'GET_SERIALNR' failed");
+	if (p15card->tokeninfo && p15card->tokeninfo->serial_number)   {
+		/* The serial from EF(TokenInfo) is preferred because of the
+		 * "--serial" parameter of pkcs15-init. */
+		serialnr.len = SC_MAX_SERIALNR;
+		rv = sc_hex_to_bin(p15card->tokeninfo->serial_number, serialnr.value, &serialnr.len);
+		if (rv) {
+			/* Fallback in case hex_to_bin fails due to unexpected characters */
+			serialnr.len = strlen(p15card->tokeninfo->serial_number);
+			if (serialnr.len > SC_MAX_SERIALNR)
+				serialnr.len = SC_MAX_SERIALNR;
+
+			memcpy(serialnr.value, p15card->tokeninfo->serial_number, serialnr.len);
+		}
+	} else if (p15card->card->serialnr.len)   {
+		serialnr = p15card->card->serialnr;
+	} else   {
+		rv = sc_card_ctl(p15card->card, SC_CARDCTL_GET_SERIALNR, &serialnr);
+		LOG_TEST_RET(ctx, rv, "'GET_SERIALNR' CTL failed and other serial numbers not present");
+	}
 
 	memset(guid_bin, 0, sizeof(guid_bin));
 	memcpy(guid_bin, id.value, id.len);
 	memcpy(guid_bin + id.len, serialnr.value, serialnr.len);
+	guid_bin_size = id.len + serialnr.len;
 
-        // If OpenSSL is available (SHA1), then rather use the hash of the data
-        // - this also protects against data being too short
+        /*
+	 * If OpenSSL is available (SHA1), then rather use the hash of the data
+         * - this also protects against data being too short
+	 */
 #ifdef ENABLE_OPENSSL
-        SHA1(guid_bin, id.len + serialnr.len, guid_bin);
-        id.len = SHA_DIGEST_LENGTH;
-        serialnr.len = 0;
+	SHA1(guid_bin, guid_bin_size, guid_bin);
+	guid_bin_size = SHA_DIGEST_LENGTH;
+#else
+	/* If guid_bin has a size larger than 16 bytes
+	 * force the remaining bytes up to 16 bytes to be zero
+	 * so sc_pkcs15_serialize_guid won't fail because the size is less than 16
+	 */
+	if (guid_bin_size < 16)
+		guid_bin_size = 16;
 #endif
 
-	rv = sc_pkcs15_serialize_guid(guid_bin, id.len + serialnr.len, flags, (char *)out, *out_size);
+	rv = sc_pkcs15_serialize_guid(guid_bin, guid_bin_size, flags, (char *)out, *out_size);
 	LOG_TEST_RET(ctx, rv, "Serialize GUID error");
 
 	*out_size = strlen((char *)out);
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
-void sc_pkcs15_free_key_params(struct sc_pkcs15_key_params *params)
+
+void
+sc_pkcs15_free_key_params(struct sc_pkcs15_key_params *params)
 {
 	if (!params)
 		return;

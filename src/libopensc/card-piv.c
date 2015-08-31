@@ -22,7 +22,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#if HAVE_CONFIG_H
 #include "config.h"
+#endif
 
 #include <ctype.h>
 #include <stdlib.h>
@@ -439,6 +441,7 @@ static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 	unsigned int cla_out, tag_out;
 	const u8 *body;
 	size_t bodylen;
+	int find_len = 0;
 
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
@@ -463,6 +466,11 @@ static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 			recvbuf ? SC_APDU_CASE_4_SHORT: SC_APDU_CASE_3_SHORT,
 			ins, p1, p2);
 	apdu.flags |= SC_APDU_FLAGS_CHAINING;
+	/* if looking for length of object, dont try and read the rest of buffer here */
+	if (rbuflen == 8 && card->reader->active_protocol == SC_PROTO_T1) {
+		apdu.flags |= SC_APDU_FLAGS_NO_GET_RESP;
+		find_len = 1;
+	}
 
 	apdu.lc = sendbuflen;
 	apdu.datalen = sendbuflen;
@@ -491,7 +499,9 @@ static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 		goto err;
 	}
 
-	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	if (!(find_len && apdu.sw1 == 0x61))  {
+	    r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	}
 
 /* TODO: - DEE look later at tag vs size read too */
 	if (r < 0) {
@@ -784,8 +794,6 @@ static int piv_find_aid(sc_card_t * card, sc_file_t *aid_file)
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_NO_CARD_SUPPORT);
 
 		card->ops->process_fci(card, aid_file, apdu.resp+2, apdu.resp[1]);
-		if (aid_file->name == NULL)
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NO_CARD_SUPPORT);
 
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, i);
 	}
@@ -1558,8 +1566,10 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 	}
 
 	r = sc_lock(card);
-	if (r != SC_SUCCESS)
-		goto err;
+	if (r != SC_SUCCESS) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "sc_lock failed\n");
+		goto err; /* cleanup */
+	}
 	locked = 1;
 
 	p = sbuf;
@@ -1828,8 +1838,10 @@ static int piv_general_external_authenticate(sc_card_t *card,
 	}
 
 	r = sc_lock(card);
-	if (r != SC_SUCCESS)
-		goto err;
+	if (r != SC_SUCCESS) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "sc_lock failed\n");
+		goto err; /* cleanup */
+	}
 	locked = 1;
 
 	p = sbuf;
@@ -2143,7 +2155,9 @@ static int piv_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"challenge len=%d",len);
 
-	sc_lock(card);
+	r = sc_lock(card);
+	if (r != SC_SUCCESS)
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 
 	p = sbuf;
 	*p++ = 0x7c;
@@ -2179,9 +2193,9 @@ static int piv_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 		rbuf = NULL;
 	}
 
-	sc_unlock(card);
+	r = sc_unlock(card);
 
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, 0);
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 
 }
 
@@ -2875,11 +2889,11 @@ static int piv_init(sc_card_t *card)
 	_sc_card_add_rsa_alg(card, 2048, flags, 0); /* optional */
 	_sc_card_add_rsa_alg(card, 3072, flags, 0); /* optional */
 
-	flags = SC_ALGORITHM_ECDSA_RAW;
+	flags = SC_ALGORITHM_ECDSA_RAW | SC_ALGORITHM_ECDH_CDH_RAW | SC_ALGORITHM_ECDSA_HASH_NONE;
 	ext_flags = SC_ALGORITHM_EXT_EC_NAMEDCURVE | SC_ALGORITHM_EXT_EC_UNCOMPRESES;
 
-	_sc_card_add_ec_alg(card, 256, flags, ext_flags);
-	_sc_card_add_ec_alg(card, 384, flags, ext_flags);
+	_sc_card_add_ec_alg(card, 256, flags, ext_flags, NULL);
+	_sc_card_add_ec_alg(card, 384, flags, ext_flags, NULL);
 
 	card->caps |= SC_CARD_CAP_RNG;
 

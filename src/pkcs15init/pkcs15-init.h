@@ -216,7 +216,6 @@ struct sc_pkcs15init_prkeyargs {
 
 	union {
 		struct sc_pkcs15init_keyarg_gost_params gost;
-		struct sc_pkcs15_ec_parameters ec;
 	} params;
 
 	struct sc_pkcs15_prkey	key;
@@ -236,7 +235,6 @@ struct sc_pkcs15init_pubkeyargs {
 
 	union {
 		struct sc_pkcs15init_keyarg_gost_params gost;
-		struct sc_pkcs15_ec_parameters ec;
 	} params;
 
 	struct sc_pkcs15_pubkey	key;
@@ -267,6 +265,7 @@ struct sc_pkcs15init_skeyargs {
 struct sc_pkcs15init_certargs {
 	struct sc_pkcs15_id	id;
 	const char *		label;
+	int update;
 
 	unsigned long		x509_usage;
 	unsigned char		authority;
@@ -422,6 +421,7 @@ extern struct sc_pkcs15init_operations *sc_pkcs15init_get_iasecc_ops(void);
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_piv_ops(void);
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_openpgp_ops(void);
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_sc_hsm_ops(void);
+extern struct sc_pkcs15init_operations *sc_pkcs15init_get_isoApplet_ops(void);
 
 #ifdef __cplusplus
 }

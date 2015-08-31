@@ -21,7 +21,9 @@
 
 #include <stdlib.h>
 #include <string.h>
+#if HAVE_CONFIG_H
 #include "config.h"
+#endif
 #include "libopensc/log.h"
 #include "libopensc/asn1.h"
 #include "libopensc/pkcs15.h"
@@ -40,11 +42,19 @@ int dump_ef(sc_card_t * card, const char *path, u8 * buf, size_t * buf_len)
 {
 	int rv;
 	sc_file_t *file = sc_file_new();
-	sc_format_path(path, &file->path);
-	sc_select_file(card, &file->path, &file);
-	if (file->size > *buf_len)
+	sc_path_t scpath;
+	sc_format_path(path, &scpath);
+	rv = sc_select_file(card, &scpath, &file);
+	if (rv < 0) {
+		sc_file_free(file);
+		return rv;
+	}
+	if (file->size > *buf_len) {
+		sc_file_free(file);
 		return SC_ERROR_BUFFER_TOO_SMALL;
+	}
 	rv = sc_read_binary(card, 0, buf, file->size, 0);
+	sc_file_free(file);
 	if (rv < 0)
 		return rv;
 	*buf_len = rv;
@@ -100,8 +110,9 @@ int parse_odf(const u8 * buf, size_t buflen, struct sc_pkcs15_card *p15card)
 	};
 	struct sc_asn1_entry asn1_odf[10];
 
-	sc_path_t *path_prefix = calloc(1, sizeof(sc_path_t));
-	sc_format_path("3F005015", path_prefix);
+	sc_path_t path_prefix;
+
+	sc_format_path("3F005015", &path_prefix);
 
 	sc_copy_asn1_entry(c_asn1_odf, asn1_odf);
 	for (i = 0; asn1_odf[i].name != NULL; i++)
@@ -114,7 +125,7 @@ int parse_odf(const u8 * buf, size_t buflen, struct sc_pkcs15_card *p15card)
 		if (r < 0)
 			return r;
 		type = r;
-		r = sc_pkcs15_make_absolute_path(path_prefix, &path);
+		r = sc_pkcs15_make_absolute_path(&path_prefix, &path);
 		if (r < 0)
 			return r;
 		r = sc_pkcs15_add_df(p15card, odf_indexes[type], &path);
@@ -131,6 +142,7 @@ static int sc_pkcs15emu_dnie_init(sc_pkcs15_card_t * p15card)
 	sc_pkcs15_object_t *p15_obj;
 	size_t len = sizeof(buf);
 	int rv;
+	struct sc_pkcs15_cert_info *p15_info = NULL;
 
 	sc_context_t *ctx = p15card->card->ctx;
 	LOG_FUNC_CALLED(ctx);
@@ -220,6 +232,15 @@ static int sc_pkcs15emu_dnie_init(sc_pkcs15_card_t * p15card)
 		    && (p15_obj->auth_id.len == 0)) {
 			p15_obj->auth_id.value[0] = 0x01;
 			p15_obj->auth_id.len = 1;
+		};
+		/* Set path count to -1 for public certificates, as they
+		   will need to be decompressed and read_binary()'d, so
+		   we make sure we end up reading the file->size and not the
+		   path->count which is the compressed size on newer
+                   DNIe versions  */
+		if ( p15_obj->df && (p15_obj->df->type == SC_PKCS15_CDF) ) {
+                    p15_info = (struct sc_pkcs15_cert_info *) p15_obj ->data;
+		    p15_info ->path.count = -1;
 		}
 		/* Remove found public keys as cannot be read_binary()'d */
 		if ( p15_obj->df && (p15_obj->df->type == SC_PKCS15_PUKDF) ) {

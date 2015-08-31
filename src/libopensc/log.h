@@ -60,7 +60,7 @@ void _sc_log(struct sc_context *ctx, const char *format, ...);
 
 void sc_hex_dump(struct sc_context *ctx, int level, const u8 * buf, size_t len, char *out, size_t outlen);
 char * sc_dump_hex(const u8 * in, size_t count);
-
+char * sc_dump_oid(const struct sc_object_id *oid);
 #define SC_FUNC_CALLED(ctx, level) do { \
 	 sc_do_log(ctx, level, __FILE__, __LINE__, __FUNCTION__, "called\n"); \
 } while (0)
@@ -88,6 +88,16 @@ char * sc_dump_hex(const u8 * in, size_t count);
 	} \
 } while(0)
 #define LOG_TEST_RET(ctx, r, text) SC_TEST_RET((ctx), SC_LOG_DEBUG_NORMAL, (r), (text))
+
+#define SC_TEST_GOTO_ERR(ctx, level, r, text) do { \
+	int _ret = (r); \
+	if (_ret < 0) { \
+		sc_do_log(ctx, level, __FILE__, __LINE__, __FUNCTION__, \
+			"%s: %d (%s)\n", (text), _ret, sc_strerror(_ret)); \
+		goto err; \
+	} \
+} while(0)
+#define LOG_TEST_GOTO_ERR(ctx, r, text) SC_TEST_GOTO_ERR((ctx), SC_LOG_DEBUG_NORMAL, (r), (text))
 
 #ifdef __cplusplus
 }

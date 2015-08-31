@@ -16,7 +16,9 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#if HAVE_CONFIG_H
 #include "config.h"
+#endif
 
 #ifndef HAVE_STRLCPY	/* empty file if strlcpy is available */
 #include <sys/types.h>

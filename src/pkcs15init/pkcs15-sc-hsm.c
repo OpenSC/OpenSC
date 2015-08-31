@@ -173,7 +173,7 @@ static int sc_hsm_encode_gakp_rsa(struct sc_pkcs15_card *p15card, sc_cvc_t *cvc,
 
 static int sc_hsm_encode_gakp_ec(struct sc_pkcs15_card *p15card, sc_cvc_t *cvc, struct sc_pkcs15_prkey_info *key_info) {
 	struct sc_object_id ecdsaWithSHA256 = { { 0,4,0,127,0,7,2,2,2,2,3,-1 } };
-	struct sc_pkcs15_ec_parameters *ecparams = (struct sc_pkcs15_ec_parameters *)key_info->params.data;
+	struct sc_ec_parameters *ecparams = (struct sc_ec_parameters *)key_info->params.data;
 	struct ec_curve *curve = NULL;
 	u8 *curveoid;
 	int curveoidlen,r;
@@ -271,9 +271,10 @@ static int sc_hsm_generate_key(struct sc_profile *profile, struct sc_pkcs15_card
 		r = sc_hsm_encode_gakp_ec(p15card, &cvc, key_info);
 		break;
 	default:
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_IMPLEMENTED);
+		r = SC_ERROR_NOT_IMPLEMENTED;
 		break;
 	}
+	LOG_TEST_RET(p15card->card->ctx, r, "Could not encode GAKP cdata");
 
 	r = sc_pkcs15emu_sc_hsm_encode_cvc(p15card, &cvc, &cvcbin, &cvclen);
 	sc_pkcs15emu_sc_hsm_free_cvc(&cvc);

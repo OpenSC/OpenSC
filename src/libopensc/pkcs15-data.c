@@ -20,7 +20,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#if HAVE_CONFIG_H
 #include "config.h"
+#endif
 
 #include <stdlib.h>
 #include <string.h>
@@ -60,9 +62,14 @@ sc_pkcs15_read_data_object(struct sc_pkcs15_card *p15card,
 	}
 
 	sc_der_copy(&der, &info->data);
+	if (!der.value)
+		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate memory for der value");
+
 	data_object = calloc(sizeof(struct sc_pkcs15_data), 1);
-	if (!data_object && !der.value)
+	if (!data_object)   {
+		free(der.value);
 		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate memory for data object");
+	}
 
 	data_object->data = der.value;
 	data_object->data_len = der.len;

@@ -47,7 +47,8 @@ static sc_pkcs11_mechanism_type_t find_mechanism = {
 	NULL,		/* decrypt_init */
 	NULL,		/* decrypt */
 	NULL,		/* derive */
-	NULL		/* mech_data */
+	NULL,		/* mech_data */
+	NULL,		/* free_mech_data */
 };
 
 static void
@@ -113,7 +114,7 @@ CK_RV sc_create_object_int(CK_SESSION_HANDLE hSession,	/* the session's handle *
 		goto out;
 	}
 
-	card = session->slot->card;
+	card = session->slot->p11card;
 	if (card->framework->create_object == NULL)
 		rv = CKR_FUNCTION_NOT_SUPPORTED;
 	else
@@ -394,7 +395,7 @@ C_FindObjectsInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 					sizeof(CK_OBJECT_HANDLE) * operation->allocated_handles);
 				if (operation->handles == NULL) {
 					rv = CKR_HOST_MEMORY;
-					break;
+					goto out;
 				}
 			}
 			operation->handles[operation->num_handles++] = object->handle;
@@ -760,57 +761,7 @@ C_SignRecoverInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		CK_MECHANISM_PTR pMechanism,	/* the signature mechanism */
 		CK_OBJECT_HANDLE hKey)		/* handle of the signature key */
 {
-	CK_RV rv;
-	CK_BBOOL can_sign;
-	CK_KEY_TYPE key_type;
-	CK_ATTRIBUTE sign_attribute = { CKA_SIGN, &can_sign, sizeof(can_sign) };
-	CK_ATTRIBUTE key_type_attr = { CKA_KEY_TYPE, &key_type, sizeof(key_type) };
-	struct sc_pkcs11_session *session;
-	struct sc_pkcs11_object *object;
-
-	/* FIXME #47: C_SignRecover is not implemented */
 	return CKR_FUNCTION_NOT_SUPPORTED;
-
-	if (pMechanism == NULL_PTR)
-		return CKR_ARGUMENTS_BAD;
-
-	rv = sc_pkcs11_lock();
-	if (rv != CKR_OK)
-		return rv;
-
-	rv = get_object_from_session(hSession, hKey, &session, &object);
-	if (rv != CKR_OK) {
-		if (rv == CKR_OBJECT_HANDLE_INVALID)
-			rv = CKR_KEY_HANDLE_INVALID;
-		goto out;
-	}
-
-	if (object->ops->sign == NULL_PTR) {
-		rv = CKR_KEY_TYPE_INCONSISTENT;
-		goto out;
-	}
-
-	rv = object->ops->get_attribute(session, object, &sign_attribute);
-	if (rv != CKR_OK || !can_sign) {
-		rv = CKR_KEY_TYPE_INCONSISTENT;
-		goto out;
-	}
-	rv = object->ops->get_attribute(session, object, &key_type_attr);
-	if (rv != CKR_OK) {
-		rv = CKR_KEY_TYPE_INCONSISTENT;
-		goto out;
-	}
-
-	/* XXX: need to tell the signature algorithm that we want
-	 * to recover the signature */
-	sc_log(context, "SignRecover operation initialized\n");
-
-	rv = sc_pkcs11_sign_init(session, pMechanism, object, key_type);
-
-out:
-	sc_log(context, "C_SignRecoverInit() = %sn", lookup_enum ( RV_T, rv ));
-	sc_pkcs11_unlock();
-	return rv;
 }
 
 
@@ -1032,10 +983,10 @@ CK_RV C_GenerateKeyPair(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	}
 
 	slot = session->slot;
-	if (slot->card->framework->gen_keypair == NULL)
+	if (slot->p11card->framework->gen_keypair == NULL)
 		rv = CKR_FUNCTION_NOT_SUPPORTED;
 	else
-		rv = slot->card->framework->gen_keypair(slot, pMechanism,
+		rv = slot->p11card->framework->gen_keypair(slot, pMechanism,
 				pPublicKeyTemplate, ulPublicKeyAttributeCount,
 				pPrivateKeyTemplate, ulPrivateKeyAttributeCount,
 				phPublicKey, phPrivateKey);
@@ -1128,8 +1079,8 @@ CK_RV C_DeriveKey(CK_SESSION_HANDLE hSession,	/* the session's handle */
 
 		rv = get_object_from_session(hSession, *phKey, &session, &key_object);
 		if (rv != CKR_OK) {
-		if (rv == CKR_OBJECT_HANDLE_INVALID)
-			rv = CKR_KEY_HANDLE_INVALID;
+			if (rv == CKR_OBJECT_HANDLE_INVALID)
+				rv = CKR_KEY_HANDLE_INVALID;
 			goto out;
 		}
 
@@ -1169,10 +1120,10 @@ CK_RV C_GenerateRandom(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	rv = get_session(hSession, &session);
 	if (rv == CKR_OK) {
 		slot = session->slot;
-		if (slot->card->framework->get_random == NULL)
+		if (slot->p11card->framework->get_random == NULL)
 			rv = CKR_RANDOM_NO_RNG;
 		else
-			rv = slot->card->framework->get_random(slot, RandomData, ulRandomLen);
+			rv = slot->p11card->framework->get_random(slot, RandomData, ulRandomLen);
 	}
 
 	sc_pkcs11_unlock();

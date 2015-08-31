@@ -293,7 +293,7 @@ data_found:
 static int dnie_get_info(sc_card_t * card, char *data[])
 {
 	sc_file_t *file = NULL;
-        sc_path_t *path = NULL;
+        sc_path_t path;
         u8 *buffer = NULL;
 	size_t bufferlen = 0;
 	char *msg = NULL;
@@ -309,14 +309,8 @@ static int dnie_get_info(sc_card_t * card, char *data[])
 	/* phase 1: get DNIe number, Name and GivenName */
 
 	/* read EF(CDF) at 3F0050156004 */
-	path = (sc_path_t *) calloc(1, sizeof(sc_path_t));
-	if (!path) {
-		msg = "Cannot allocate path data for EF(CDF) read";
-		res = SC_ERROR_OUT_OF_MEMORY;
-		goto get_info_end;
-	}
-	sc_format_path("3F0050156004", path);
-	res = dnie_read_file(card, path, &file, &buffer, &bufferlen);
+	sc_format_path("3F0050156004", &path);
+	res = dnie_read_file(card, &path, &file, &buffer, &bufferlen);
 	if (res != SC_SUCCESS) {
 		msg = "Cannot read EF(CDF)";
 		goto get_info_end;
@@ -334,7 +328,7 @@ static int dnie_get_info(sc_card_t * card, char *data[])
         }
 
 	/* phase 2: get IDESP */
-	sc_format_path("3F000006", path);
+	sc_format_path("3F000006", &path);
 	if (file) {
 		sc_file_free(file);
 		file = NULL;
@@ -344,9 +338,8 @@ static int dnie_get_info(sc_card_t * card, char *data[])
 		buffer=NULL; 
 		bufferlen=0;
 	}
-	res = dnie_read_file(card, path, &file, &buffer, &bufferlen);
+	res = dnie_read_file(card, &path, &file, &buffer, &bufferlen);
 	if (res != SC_SUCCESS) {
-		msg = "Cannot read IDESP EF";
 		data[3]=NULL;
 		goto get_info_ph3;
 	}
@@ -360,7 +353,7 @@ static int dnie_get_info(sc_card_t * card, char *data[])
 
 get_info_ph3:
 	/* phase 3: get DNIe software version */
-	sc_format_path("3F002F03", path);
+	sc_format_path("3F002F03", &path);
 	if (file) {
 		sc_file_free(file);
 		file = NULL;
@@ -374,7 +367,7 @@ get_info_ph3:
 	* Some old DNIe cards seems not to include SW version file,
  	* so let this code fail without notice
  	*/
-	res = dnie_read_file(card, path, &file, &buffer, &bufferlen);
+	res = dnie_read_file(card, &path, &file, &buffer, &bufferlen);
 	if (res != SC_SUCCESS) {
 		msg = "Cannot read DNIe Version EF";
 		data[4]=NULL;
@@ -396,10 +389,12 @@ get_info_ph3:
 get_info_end:
 	if (file) {
 		sc_file_free(file);
-		free(buffer);
 		file = NULL;
-		buffer = NULL;
-		bufferlen = 0;
+	}
+	if (buffer) {
+		free(buffer);
+		buffer=NULL;
+		bufferlen=0;
 	}
 	if (msg)
 		sc_log(card->ctx,msg);
@@ -498,8 +493,8 @@ static inline void init_flags(struct sc_card *card)
 	card->max_send_size = (255 - 12);	/* manual says 255, but we need 12 extra bytes when encoding */
 	card->max_recv_size = 255;
 
-	algoflags = SC_ALGORITHM_RSA_RAW;	/* RSA support */
-	algoflags |= SC_ALGORITHM_RSA_HASH_NONE;
+	/* RSA Support with PKCS1.5 padding */
+	algoflags = SC_ALGORITHM_RSA_HASH_NONE | SC_ALGORITHM_RSA_PAD_PKCS1;
 	_sc_card_add_rsa_alg(card, 1024, algoflags, 0);
 	_sc_card_add_rsa_alg(card, 2048, algoflags, 0);
 }
@@ -876,7 +871,7 @@ static int dnie_compose_and_send_apdu(sc_card_t *card, const u8 *path, size_t pa
 	apdu.lc = pathlen;
 	apdu.data = path;
 	apdu.datalen = pathlen;
-	apdu.le = card->max_recv_size > 0 ? card->max_recv_size : 256;
+	apdu.le = card->max_recv_size;
 	if (p1 == 3)
 		apdu.cse= SC_APDU_CASE_1;
 
@@ -906,6 +901,8 @@ static int dnie_compose_and_send_apdu(sc_card_t *card, const u8 *path, size_t pa
 	if (file == NULL)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 	res = card->ops->process_fci(card, file, apdu.resp + 2, apdu.resp[1]);
+	if (*file_out != NULL)
+		sc_file_free(*file_out);
 	*file_out = file;
 	LOG_FUNC_RETURN(ctx, res);
 }
@@ -1195,7 +1192,7 @@ static int dnie_set_security_env(struct sc_card *card,
 		sc_log(card->ctx, "checking key references");
 		if (env->key_ref_len != 1) {
 			sc_log(card->ctx, "Null or invalid key ID reference");
-			result = SC_ERROR_INVALID_ARGUMENTS;
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 		}
 		sc_log(card->ctx, "Using key reference '%s'",
 		       sc_dump_hex(env->key_ref, env->key_ref_len));
@@ -1357,8 +1354,6 @@ static int dnie_compute_signature(struct sc_card *card,
 {
 	int result = SC_SUCCESS;
 	struct sc_apdu apdu;
-	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];	/* to compose digest+hash data */
-	size_t sbuflen = 0;
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];	/* to receive sign response */
 
 	/* some preliminar checks */
@@ -1392,20 +1387,6 @@ static int dnie_compute_signature(struct sc_card *card,
 	sc_log(card->ctx,
 	       "Compute signature len: '%d' bytes:\n%s\n============================================================",
 	       datalen, sc_dump_hex(data, datalen));
-	if (datalen != 256) {
-		sc_log(card->ctx, "Expected pkcs#1 v1.5 DigestInfo data");
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_WRONG_LENGTH);
-	}
-
-	/* try to strip pkcs1 padding */
-	sbuflen = sizeof(sbuf);
-	memset(sbuf, 0, sbuflen);
-	result = sc_pkcs1_strip_01_padding(card->ctx, data, datalen, sbuf, &sbuflen);
-	if (result != SC_SUCCESS) {
-		sc_log(card->ctx, "Provided data is not pkcs#1 padded");
-		/* TODO: study what to do on plain data */
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_WRONG_PADDING);
-	}
 
 	/*INS: 0x2A  PERFORM SECURITY OPERATION
 	 * P1:  0x9E  Resp: Digital Signature
@@ -1414,9 +1395,9 @@ static int dnie_compute_signature(struct sc_card *card,
 	apdu.resp = rbuf;
 	apdu.resplen = sizeof(rbuf);
 	apdu.le = 256;		/* signature response size */
-	apdu.data = sbuf;
-	apdu.lc = sbuflen;	/* 15 SHA1 DigestInfo + 20 SHA1 computed Hash */
-	apdu.datalen = sizeof(sbuf);
+	apdu.data = data;
+	apdu.lc = datalen;	/*  Caller determines the type of hash and its size */
+	apdu.datalen = datalen;
 	/* tell card to compute signature */
 	result = dnie_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, result, "compute_signature() failed");
@@ -1747,7 +1728,7 @@ static int dnie_process_fci(struct sc_card *card,
 	case 0x15:		/* EF for keys: linear variable simple TLV */
 		file->type = SC_FILE_TYPE_WORKING_EF;
 		/* pin file 3F000000 has also this EF type */
-		if ( ( file->prop_attr[3] == 0x00 ) && (file->prop_attr[3] == 0x00 ) ) {
+		if ( ( file->prop_attr[2] == 0x00 ) && (file->prop_attr[3] == 0x00 ) ) {
 			sc_log(ctx,"Processing pin EF");
 			break;
 		}

@@ -127,7 +127,7 @@ pkcs15init_initialize(struct sc_pkcs11_slot *pslot, void *ptr,
 		CK_UTF8CHAR_PTR pPin, CK_ULONG ulPinLen,
 		CK_UTF8CHAR_PTR pLabel)
 {
-	struct sc_pkcs11_card *p11card = pslot->card;
+	struct sc_pkcs11_card *p11card = pslot->p11card;
 	struct sc_profile *profile = (struct sc_profile *) p11card->fws_data[0];
 	struct sc_pkcs15init_initargs args;
 	struct sc_pkcs11_slot *slot;
@@ -159,9 +159,9 @@ pkcs15init_initialize(struct sc_pkcs11_slot *pslot, void *ptr,
 	 * the flags.
 	 */
 	for (id = 0; slot_get_slot(id, &slot) == CKR_OK; id++) {
-		if (slot->card == p11card)
+		if (slot->p11card == p11card)
 			slot->token_info.flags |= CKF_TOKEN_INITIALIZED;
-		if (slot->card->card->caps & SC_CARD_CAP_RNG)
+		if (slot->p11card->card->caps & SC_CARD_CAP_RNG)
 			slot->token_info.flags |= CKF_RNG;
 	}
 

@@ -18,7 +18,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#if HAVE_CONFIG_H
 #include "config.h"
+#endif
 
 #include <stdio.h>
 #include <string.h>
@@ -249,8 +251,8 @@ asn1_free_pbes2_params(void *ptr)
 	free(params);
 }
 
-static const struct sc_asn1_entry c_asn1_ec_params[] = { 
-	{ "ecParameters", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL }, 
+static const struct sc_asn1_entry c_asn1_ec_params[] = {
+	{ "ecParameters", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
 	{ "namedCurve", SC_ASN1_OBJECT, SC_ASN1_TAG_OBJECT, 0, NULL, NULL},
 	{ "implicityCA",  SC_ASN1_NULL, SC_ASN1_TAG_NULL, 0, NULL, NULL },
 	{ NULL, 0, 0, 0, NULL, NULL }
@@ -263,73 +265,71 @@ asn1_decode_ec_params(sc_context_t *ctx, void **paramp,
 	int r;
 	struct sc_object_id curve;
 	struct sc_asn1_entry asn1_ec_params[4];
-	struct sc_ec_params * ecp;
+	struct sc_ec_parameters *ecp;
 
 	sc_debug(ctx, SC_LOG_DEBUG_ASN1, "DEE - asn1_decode_ec_params %p:%d %d", buf, buflen, depth);
 
 	memset(&curve, 0, sizeof(curve));
-	ecp = malloc(sizeof(struct sc_ec_params));
-	if (ecp == NULL)
-		return SC_ERROR_OUT_OF_MEMORY;
-	memset(ecp,0,sizeof(struct sc_ec_params));
 
-
-	/* We only want to copy the parms if they are a namedCurve 
-	 * or ecParameters  nullParam aka implicityCA is not to be 
+	/* We only want to copy the parms if they are a namedCurve
+	 * or ecParameters  nullParam aka implicityCA is not to be
 	 * used with PKCS#11 2.20 */
 	sc_copy_asn1_entry(c_asn1_ec_params, asn1_ec_params);
 	sc_format_asn1_entry(asn1_ec_params + 1, &curve, 0, 0);
 
 	/* Some signature algorithms will not have any data */
-	if (buflen == 0 || buf == NULL) {
-		free(ecp);
+	if (buflen == 0 || buf == NULL)
 		return 0;
-	}
 
 	r = sc_asn1_decode_choice(ctx, asn1_ec_params, buf, buflen, NULL, NULL);
-	/* r = index into asn1_ec_params */
-	sc_debug(ctx, SC_LOG_DEBUG_ASN1, "DEE - asn1_decode_ec_params r=%d", r);
-	if (r < 0) {
-		free(ecp);
+	/* r = index in asn1_ec_params */
+	sc_debug(ctx, SC_LOG_DEBUG_ASN1, "asn1_decode_ec_params r=%d", r);
+	if (r < 0)
 		return r;
-	}
+
+	ecp = calloc(sizeof(struct sc_ec_parameters), 1);
+	if (ecp == NULL)
+		return SC_ERROR_OUT_OF_MEMORY;
+
 	if (r <= 1) {
-		ecp->der = malloc(buflen);
-
-		if (ecp->der == NULL)
+		ecp->der.value = malloc(buflen);
+		if (ecp->der.value == NULL) {
+			free(ecp);
 			return SC_ERROR_OUT_OF_MEMORY;
-
-		ecp->der_len = buflen;
-
-		sc_debug(ctx, SC_LOG_DEBUG_ASN1, "DEE - asn1_decode_ec_params paramp=%p %p:%d %d",
-		ecp, ecp->der, ecp->der_len, ecp->type);
-		memcpy(ecp->der, buf, buflen); /* copy der parameters */
-	} else 
+		}
+		ecp->der.len = buflen;
+		memcpy(ecp->der.value, buf, buflen);
+	}
+	else    {
 		r = 0;
+	}
+
 	ecp->type = r; /* but 0 = ecparams if any, 1=named curve */
 	*paramp = ecp;
-	return 0;
+	return SC_SUCCESS;
 };
 
 static int
 asn1_encode_ec_params(sc_context_t *ctx, void *params,
-u8 **buf, size_t *buflen, int depth) 
+u8 **buf, size_t *buflen, int depth)
 {
-	 struct sc_ec_params * ecp = (struct sc_ec_params *) params;
+	 struct sc_ec_parameters *ecp = (struct sc_ec_parameters *) params;
 
 	/* Only handle named curves. They may be absent too */
-	sc_debug(ctx, SC_LOG_DEBUG_ASN1, "DEE - asn1_encode_ec_params");
+	sc_debug(ctx, SC_LOG_DEBUG_ASN1, "asn1_encode_ec_params() called");
 	*buf = NULL;
 	*buflen = 0;
-	if (ecp && ecp->type == 1 && ecp->der) { /* named curve */
-		*buf = malloc(ecp->der_len);
+	if (ecp && ecp->type == 1 && ecp->der.value) { /* named curve */
+		*buf = malloc(ecp->der.len);
 		if (*buf == NULL)
 			return SC_ERROR_OUT_OF_MEMORY;
 
-		memcpy(*buf, ecp->der, ecp->der_len);
-		*buflen = ecp->der_len;
-	} else
-		sc_debug(ctx, SC_LOG_DEBUG_ASN1, "DEE - Not named curve");
+		memcpy(*buf, ecp->der.value, ecp->der.len);
+		*buflen = ecp->der.len;
+	}
+	else   {
+		sc_debug(ctx, SC_LOG_DEBUG_ASN1, "Not named curve");
+	}
 
 	return 0;
 }
@@ -337,10 +337,13 @@ u8 **buf, size_t *buflen, int depth)
 static void
 asn1_free_ec_params(void *params)
 {
-	struct sc_ec_params * ecp = (struct sc_ec_params *) params;
+	struct sc_ec_parameters *ecp = (struct sc_ec_parameters *) params;
+
 	if (ecp) {
-		if (ecp->der)
-			free(ecp->der);
+		if (ecp->der.value)
+			free(ecp->der.value);
+		if (ecp->named_curve)
+			free(ecp->named_curve);
 		free(ecp);
 	}
 }
@@ -468,52 +471,51 @@ sc_asn1_get_algorithm_info(const struct sc_algorithm_id *id)
 	return NULL;
 }
 
-static const struct sc_asn1_entry c_asn1_alg_id[6] = {
+static const struct sc_asn1_entry c_asn1_alg_id[3] = {
 	{ "algorithm",  SC_ASN1_OBJECT, SC_ASN1_TAG_OBJECT, 0, NULL, NULL },
 	{ "nullParam",  SC_ASN1_NULL, SC_ASN1_TAG_NULL, SC_ASN1_OPTIONAL, NULL, NULL },
 	{ NULL, 0, 0, 0, NULL, NULL }
 };
 
 int
-sc_asn1_decode_algorithm_id(sc_context_t *ctx, const u8 *in,
+sc_asn1_decode_algorithm_id(struct sc_context *ctx, const unsigned char *in,
 			    size_t len, struct sc_algorithm_id *id,
 			    int depth)
 {
-	struct sc_asn1_pkcs15_algorithm_info *alg_info;
+	struct sc_asn1_pkcs15_algorithm_info *alg_info = NULL;
 	struct sc_asn1_entry asn1_alg_id[3];
 	int r;
 
+	LOG_FUNC_CALLED(ctx);
 	sc_copy_asn1_entry(c_asn1_alg_id, asn1_alg_id);
 	sc_format_asn1_entry(asn1_alg_id + 0, &id->oid, NULL, 0);
 
 	memset(id, 0, sizeof(*id));
 	r = _sc_asn1_decode(ctx, asn1_alg_id, in, len, &in, &len, 0, depth + 1);
-	if (r < 0)
-		return r;
+	LOG_TEST_RET(ctx, r, "ASN.1 parsing of algo ID failed");
+
+        sc_log(ctx, "decoded OID '%s'", sc_dump_oid(&(id->oid)));
 
 	/* See if we understand the algorithm, and if we do, check
 	 * whether we know how to decode any additional parameters */
 	id->algorithm = (unsigned int ) -1;
-	if ((alg_info = sc_asn1_get_algorithm_info(id)) != NULL) {
+	alg_info = sc_asn1_get_algorithm_info(id);
+	if (alg_info != NULL) {
 		id->algorithm = alg_info->id;
 		if (alg_info->decode) {
-/* TODO: -DEE  why the test for SC_ASN1_PRESENT?
- * If it looking for SC_ASN1_NULL, thats valid for EC, in some cases
- */
 			if (asn1_alg_id[1].flags & SC_ASN1_PRESENT) {
-				sc_debug( ctx,SC_LOG_DEBUG_NORMAL,"SC_ASN1_PRESENT was set, so invalid");
-				return SC_ERROR_INVALID_ASN1_OBJECT;
+				sc_log(ctx, "SC_ASN1_PRESENT was set, so invalid");
+				LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ASN1_OBJECT);
 			}
 			r = alg_info->decode(ctx, &id->params, in, len, depth);
 		}
 	}
 
-	return r;
+	LOG_FUNC_RETURN(ctx, r);
 }
 
 int
-sc_asn1_encode_algorithm_id(sc_context_t *ctx,
-			    u8 **buf, size_t *len,
+sc_asn1_encode_algorithm_id(struct sc_context *ctx, u8 **buf, size_t *len,
 			    const struct sc_algorithm_id *id,
 			    int depth)
 {
@@ -525,10 +527,12 @@ sc_asn1_encode_algorithm_id(sc_context_t *ctx,
 	int r;
 	u8 *tmp;
 
+	LOG_FUNC_CALLED(ctx);
+        sc_log(ctx, "type of algorithm to encode: %i", id->algorithm);
 	alg_info = sc_asn1_get_algorithm_info(id);
 	if (alg_info == NULL) {
 		sc_log(ctx, "Cannot encode unknown algorithm %u", id->algorithm);
-		return SC_ERROR_INVALID_ARGUMENTS;
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 
 	/* Set the oid if not yet given */
@@ -538,6 +542,7 @@ sc_asn1_encode_algorithm_id(sc_context_t *ctx,
 		id = &temp_id;
 	}
 
+        sc_log(ctx, "encode algo %s", sc_dump_oid(&(id->oid)));
 	sc_copy_asn1_entry(c_asn1_alg_id, asn1_alg_id);
 	sc_format_asn1_entry(asn1_alg_id + 0, (void *) &id->oid, NULL, 1);
 
@@ -546,8 +551,7 @@ sc_asn1_encode_algorithm_id(sc_context_t *ctx,
 		asn1_alg_id[1].flags |= SC_ASN1_PRESENT;
 
 	r = _sc_asn1_encode(ctx, asn1_alg_id, buf, len, depth + 1);
-	if (r < 0)
-		return r;
+	LOG_TEST_RET(ctx, r, "ASN.1 encode of algorithm failed");
 
 	/* Encode any parameters */
 	if (id->params && alg_info->encode) {
@@ -555,7 +559,7 @@ sc_asn1_encode_algorithm_id(sc_context_t *ctx,
 		if (r < 0) {
 			if (obj)
 				free(obj);
-			return r;
+			LOG_FUNC_RETURN(ctx, r);
 		}
 	}
 
@@ -565,7 +569,7 @@ sc_asn1_encode_algorithm_id(sc_context_t *ctx,
 			free(*buf);
 			*buf = NULL;
 			free(obj);
-			return SC_ERROR_OUT_OF_MEMORY;
+			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 		}
 		*buf = tmp;
 		memcpy(*buf + *len, obj, obj_len);
@@ -574,7 +578,7 @@ sc_asn1_encode_algorithm_id(sc_context_t *ctx,
 	}
 
 	sc_log(ctx, "return encoded algorithm ID: %s", sc_dump_hex(*buf, *len));
-	return 0;
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
 void

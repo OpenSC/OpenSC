@@ -16,7 +16,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#if HAVE_CONFIG_H
 #include "config.h"
+#endif
 
 #include <ctype.h>
 #include <string.h>
@@ -662,7 +664,7 @@ static int asepcos_list_files(sc_card_t *card, u8 *buf, size_t blen)
 
 	/* 1. get currently selected DF */
 	r = asepcos_get_current_df_path(card, &bpath);
-	if (rv != SC_SUCCESS)
+	if (r != SC_SUCCESS)
 		return r;
 	/* 2. re-select DF to get the FID of the child EFs/DFs */
 	r = sc_select_file(card, &bpath, &tfile);

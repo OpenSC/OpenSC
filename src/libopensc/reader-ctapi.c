@@ -18,7 +18,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#if HAVE_CONFIG_H
 #include "config.h"
+#endif
 
 #ifdef ENABLE_CTAPI
 #include <assert.h>
@@ -114,6 +116,9 @@ static int refresh_attributes(sc_reader_t *reader)
 	u8 cmd[5], rbuf[256], sad, dad;
 	unsigned short lr;
 
+	if (reader->ctx->flags & SC_CTX_FLAG_TERMINATE)
+		return SC_ERROR_NOT_ALLOWED;
+
 	cmd[0] = CTBCS_CLA;
 	cmd[1] = CTBCS_INS_STATUS;
 	cmd[2] = CTBCS_P1_CT_KERNEL;
@@ -156,7 +161,10 @@ static int ctapi_internal_transmit(sc_reader_t *reader,
 	u8 dad, sad;
 	unsigned short lr;
 	char rv;
-	
+
+	if (reader->ctx->flags & SC_CTX_FLAG_TERMINATE)
+		return SC_ERROR_NOT_ALLOWED;
+
 	if (control)
 		dad = 1;
 	else
@@ -164,14 +172,14 @@ static int ctapi_internal_transmit(sc_reader_t *reader,
 
 	sad = 2;
 	lr = *recvsize;
-	
+
 	rv = priv->funcs.CT_data(priv->ctn, &dad, &sad, (unsigned short)sendsize, (u8 *) sendbuf, &lr, recvbuf);
 	if (rv != 0) {
 		sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "Error transmitting APDU: %d\n", rv);
 		return SC_ERROR_TRANSMIT_FAILED;
 	}
 	*recvsize = lr;
-	
+
 	return 0;
 }
 
@@ -211,14 +219,14 @@ out:
 		sc_mem_clear(rbuf, rbuflen);
 		free(rbuf);
 	}
-	
+
 	return r;
 }
 
 static int ctapi_detect_card_presence(sc_reader_t *reader)
 {
 	int r;
-	
+
 	r = refresh_attributes(reader);
 	if (r)
 		return r;
@@ -232,6 +240,9 @@ static int ctapi_connect(sc_reader_t *reader)
 	u8 cmd[9], rbuf[256], sad, dad;
 	unsigned short lr;
 	int r;
+
+	if (reader->ctx->flags & SC_CTX_FLAG_TERMINATE)
+		return SC_ERROR_NOT_ALLOWED;
 
 	cmd[0] = CTBCS_CLA;
 	cmd[1] = CTBCS_INS_REQUEST;
@@ -278,7 +289,9 @@ static int ctapi_release(sc_reader_t *reader)
 {
 	struct ctapi_private_data *priv = GET_PRIV_DATA(reader);
 
-	priv->funcs.CT_close(priv->ctn);
+
+	if (!(reader->ctx->flags & SC_CTX_FLAG_TERMINATE))
+		priv->funcs.CT_close(priv->ctn);
 
 	free(priv);
 	return 0;
@@ -290,7 +303,7 @@ static struct sc_reader_driver ctapi_drv = {
 	"CT-API module",
 	"ctapi",
 	&ctapi_ops,
-	0, 0, NULL
+	NULL
 };
 
 static struct ctapi_module * add_module(struct ctapi_global_private_data *gpriv,
@@ -304,7 +317,7 @@ static struct ctapi_module * add_module(struct ctapi_global_private_data *gpriv,
 	gpriv->modules[i].dlhandle = dlhandle;
 	gpriv->modules[i].ctn_count = 0;
 	gpriv->module_count++;
-	
+
 	return &gpriv->modules[i];
 }
 
@@ -321,8 +334,8 @@ static int ctapi_load_module(sc_context_t *ctx,
 	u8 cmd[5], rbuf[256], sad, dad;
 	unsigned short lr;
 
-	
-	
+
+
 	list = scconf_find_list(conf, "ports");
 	if (list == NULL) {
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "No ports configured.\n");
@@ -353,7 +366,7 @@ static int ctapi_load_module(sc_context_t *ctx,
 		char rv;
 		sc_reader_t *reader;
 		struct ctapi_private_data *priv;
-		
+
 		if (sscanf(list->data, "%d", &port) != 1) {
 			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Port '%s' is not a number.\n", list->data);
 			continue;
@@ -363,7 +376,7 @@ static int ctapi_load_module(sc_context_t *ctx,
 			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "CT_init() failed with %d\n", rv);
 			continue;
 		}
-		
+
 		reader = calloc(1, sizeof(sc_reader_t));
 		priv = calloc(1, sizeof(struct ctapi_private_data));
 		if (!priv || !reader) {
@@ -386,9 +399,9 @@ static int ctapi_load_module(sc_context_t *ctx,
 			free(reader);
 			break;
 		}
-		
-		/* Detect functional units of the reader according to CT-BCS spec version 1.0 
-		(14.04.2004, http://www.teletrust.de/down/mct1-0_t4.zip) */	
+
+		/* Detect functional units of the reader according to CT-BCS spec version 1.0
+		(14.04.2004, http://www.teletrust.de/down/mct1-0_t4.zip) */
 		cmd[0] = CTBCS_CLA;
 		cmd[1] = CTBCS_INS_STATUS;
 		cmd[2] = CTBCS_P1_CT_KERNEL;
@@ -397,7 +410,7 @@ static int ctapi_load_module(sc_context_t *ctx,
 		dad = 1;
 		sad = 2;
 		lr = 256;
-		
+
 		rv = priv->funcs.CT_data(priv->ctn, &dad, &sad, 5, cmd, &lr, rbuf);
 		if (rv || (lr < 4) || (rbuf[lr-2] != 0x90)) {
 			sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "Error getting status of terminal: %d, using defaults\n", rv);
@@ -470,7 +483,7 @@ static int ctapi_load_module(sc_context_t *ctx,
 			if (priv->ctapi_functional_units & CTAPI_FU_DISPLAY)
 				reader->capabilities |= SC_READER_CAP_DISPLAY;
 		}
-		
+
 		ctapi_reset(reader);
 		refresh_attributes(reader);
 		mod->ctn_count++;
@@ -492,7 +505,7 @@ static int ctapi_init(sc_context_t *ctx)
 	if (gpriv == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 	ctx->reader_drv_data = gpriv;
-	
+
 	for (i = 0; ctx->conf_blocks[i] != NULL; i++) {
 		blocks = scconf_find_blocks(ctx->conf, ctx->conf_blocks[i],
 					    "reader_driver", "ctapi");
@@ -508,7 +521,7 @@ static int ctapi_init(sc_context_t *ctx)
 	for (i = 0; blocks != NULL && blocks[i] != NULL; i++)
 		ctapi_load_module(ctx, gpriv, blocks[i]);
 	free(blocks);
-	
+
 	return 0;
 }
 
@@ -518,10 +531,10 @@ static int ctapi_finish(sc_context_t *ctx)
 
 	if (priv) {
 		int i;
-		
+
 		for (i = 0; i < priv->module_count; i++) {
 			struct ctapi_module *mod = &priv->modules[i];
-			
+
 			free(mod->name);
 			sc_dlclose(mod->dlhandle);
 		}
@@ -529,7 +542,7 @@ static int ctapi_finish(sc_context_t *ctx)
 			free(priv->modules);
 		free(priv);
 	}
-	
+
 	return 0;
 }
 
@@ -548,7 +561,7 @@ struct sc_reader_driver * sc_get_ctapi_driver(void)
 	ctapi_ops.perform_verify = ctbcs_pin_cmd;
 	ctapi_ops.perform_pace = NULL;
 	ctapi_ops.use_reader = NULL;
-	
+
 	return &ctapi_drv;
 }
 #endif

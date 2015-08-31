@@ -25,7 +25,9 @@
  * http://www.g10code.de/docs/openpgp-card-2.0.pdf
  */
 
+#if HAVE_CONFIG_H
 #include "config.h"
+#endif
 
 #include <stdlib.h>
 #include <string.h>
@@ -359,8 +361,14 @@ pgp_init(sc_card_t *card)
 		return r;
 	}
 
+	/* defensive programming check */
+	if (!file)   {
+		pgp_finish(card);
+		return SC_ERROR_OBJECT_NOT_FOUND;
+	}
+
 	/* read information from AID */
-	if (file && file->namelen == 16) {
+	if (file->namelen == 16) {
 		/* OpenPGP card spec 1.1 & 2.0, section 4.2.1 & 4.1.2.1 */
 		priv->bcd_version = bebytes2ushort(file->name + 6);
 		/* kludge: get card's serial number from manufacturer ID + serial number */
@@ -949,7 +957,7 @@ static unsigned int pgp_strip_path(sc_card_t *card, const sc_path_t *path)
 {
 	unsigned int start_point = 0;
 	/* start_point will move through the path string */
-	if (path->value == NULL || path->len == 0)
+	if (path->len == 0)
 		return 0;
 
 	/* Ignore 3F00 (MF) at the beginning */
@@ -2074,7 +2082,10 @@ pgp_build_tlv(sc_context_t *ctx, unsigned int tag, u8 *data, size_t len, u8 **ou
 		highest_order++;
 	}
 	highest_order--;
-	cla = tag >> 8*highest_order;
+	if (highest_order >= 4)
+	   cla = 0x00;
+	else	
+		cla = tag >> 8*highest_order;
 	/* Restore class bits */
 	*out[0] |= cla;
 	return SC_SUCCESS;
@@ -2426,7 +2437,9 @@ static int pgp_erase_card(sc_card_t *card)
 /* ABI: card ctl: perform special card-specific operations */
 static int pgp_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 {
+#ifdef ENABLE_OPENSSL
 	int r;
+#endif /* ENABLE_OPENSSL */
 
 	LOG_FUNC_CALLED(card->ctx);
 

@@ -62,6 +62,8 @@ static int	verbose = 0;
 #define MAX_KEY			1024
 #define MAX_WRAPPED_KEY	(MAX_CERT + MAX_PRKD + MAX_KEY)
 
+#define SEED_LENGTH 16
+
 enum {
 	OPT_SO_PIN = 0x100,
 	OPT_PIN,
@@ -139,14 +141,15 @@ static sc_card_t *card = NULL;
  * @param s Secret to share
  * @param n Maximum number of shares
  * @param rngSeed Seed value for CPRNG
+ * @param rngSeedLength Lenght of Seed value for CPRNG
  *
  */
-static void generatePrime(BIGNUM *prime, const BIGNUM *s, const unsigned int n, unsigned char *rngSeed)
+static void generatePrime(BIGNUM *prime, const BIGNUM *s, const unsigned int n, unsigned char *rngSeed, const unsigned int rngSeedLength)
 {
 	int bits = 0;
 
 	// Seed the RNG
-	RAND_seed(rngSeed, sizeof(rngSeed));
+	RAND_seed(rngSeed, rngSeedLength);
 
 	// Determine minimum number of bits for prime >= max(2^r, n + 1)
 	bits = BN_num_bits_word(n + 1) > BN_num_bits(s) ? (BN_num_bits_word(n + 1)) : (BN_num_bits(s));
@@ -342,6 +345,7 @@ static int reconstructSecret(secret_share_t *shares, unsigned char t, const BIGN
 		 * multiplication
 		 */
 		if (BN_mod_inverse(&denominator, &denominator, &prime, ctx) == NULL ) {
+			free(bValue);
 			return -1;
 		}
 
@@ -417,14 +421,18 @@ static int cleanUpShares(secret_share_t *shares, unsigned char n)
 
 void clearScreen()
 {
-	if (system( "clear" )) system( "cls" );
+	if (system( "clear" )) {
+		if (system( "cls" )) {
+			fprintf(stderr, "Clearing the screen failed\n");
+		}
+	}
 }
 
 
 
 void waitForEnterKeyPressed()
 {
-	char c;
+	int c;
 
 	fflush(stdout);
 	while ((c = getchar()) != '\n' && c != EOF) {
@@ -588,6 +596,11 @@ static int recreate_password_from_shares(char **pwd, int *pwdlen, int num_of_pas
 	secret_share_t *shares = NULL;
 	secret_share_t *sp;
 
+	if (num_of_password_shares < 2) {
+		fprintf(stderr, "--pwd-shares-total must 2 or larger\n");
+		return -1;
+	}
+
 	/*
 	 * Initialize prime and secret
 	 */
@@ -602,7 +615,10 @@ static int recreate_password_from_shares(char **pwd, int *pwdlen, int num_of_pas
 	printf("\nPlease remember to present the share id as well as the share value.");
 	printf("\n\nPlease enter prime: ");
 	memset(inbuf, 0, sizeof(inbuf));
-	fgets(inbuf, sizeof(inbuf), stdin);
+	if (fgets(inbuf, sizeof(inbuf), stdin) == NULL) {
+		fprintf(stderr, "Input aborted\n");
+		return -1;
+	}
 	binlen = 64;
 	sc_hex_to_bin(inbuf, bin, &binlen);
 	BN_bin2bn(bin, binlen, &prime);
@@ -623,13 +639,19 @@ static int recreate_password_from_shares(char **pwd, int *pwdlen, int num_of_pas
 
 		printf("Please enter share ID: ");
 		memset(inbuf, 0, sizeof(inbuf));
-		fgets(inbuf, sizeof(inbuf), stdin);
+		if (fgets(inbuf, sizeof(inbuf), stdin) == NULL) {
+			fprintf(stderr, "Input aborted\n");
+			return -1;
+		}
 		p = &(sp->x);
 		BN_hex2bn(&p, inbuf);
 
 		printf("Please enter share value: ");
 		memset(inbuf, 0, sizeof(inbuf));
-		fgets(inbuf, sizeof(inbuf), stdin);
+		if (fgets(inbuf, sizeof(inbuf), stdin) == NULL) {
+			fprintf(stderr, "Input aborted\n");
+			return -1;
+		}
 		binlen = 64;
 		sc_hex_to_bin(inbuf, bin, &binlen);
 		BN_bin2bn(bin, binlen, &(sp->y));
@@ -643,6 +665,7 @@ static int recreate_password_from_shares(char **pwd, int *pwdlen, int num_of_pas
 
 	if (r < 0) {
 		printf("\nError during reconstruction of secret. Wrong shares?\n");
+		cleanUpShares(shares, num_of_password_shares);
 		return r;
 	}
 
@@ -664,7 +687,7 @@ static int recreate_password_from_shares(char **pwd, int *pwdlen, int num_of_pas
 
 
 
-static int import_dkek_share(sc_card_t *card, const char *inf, int iter, char *password, int num_of_password_shares)
+static int import_dkek_share(sc_card_t *card, const char *inf, int iter, const char *password, int num_of_password_shares)
 {
 	sc_cardctl_sc_hsm_dkek_t dkekinfo;
 	EVP_CIPHER_CTX ctx;
@@ -687,6 +710,7 @@ static int import_dkek_share(sc_card_t *card, const char *inf, int iter, char *p
 
 	if (fread(filebuff, 1, sizeof(filebuff), in) != sizeof(filebuff)) {
 		perror(inf);
+		fclose(in);
 		return -1;
 	}
 
@@ -712,7 +736,7 @@ static int import_dkek_share(sc_card_t *card, const char *inf, int iter, char *p
 		}
 
 	} else {
-		pwd = password;
+		pwd = (char *) password;
 		pwdlen = strlen(password);
 	}
 
@@ -814,6 +838,26 @@ static int generate_pwd_shares(sc_card_t *card, char **pwd, int *pwdlen, int pas
 
 	u8 rngseed[16];
 
+	if ((password_shares_threshold == -1) || (password_shares_total == -1)) {
+		fprintf(stderr, "Must specify both, --pwd-shares-total and --pwd-shares-threshold\n");
+		return -1;
+	}
+
+	if (password_shares_total < 3) {
+		fprintf(stderr, "--pwd-shares-total must be 3 or larger\n");
+		return -1;
+	}
+
+	if (password_shares_threshold < 2) {
+		fprintf(stderr, "--pwd-shares-threshold must 2 or larger\n");
+		return -1;
+	}
+
+	if (password_shares_threshold > password_shares_total) {
+		fprintf(stderr, "--pwd-shares-threshold must be smaller or equal to --pwd-shares-total\n");
+		return -1;
+	}
+
 	printf(	"\nThe DKEK will be enciphered using a randomly generated 64 bit password.\n");
 	printf(	"This password is split using a (%i-of-%i) threshold scheme.\n\n", password_shares_threshold, password_shares_total);
 
@@ -851,7 +895,7 @@ static int generate_pwd_shares(sc_card_t *card, char **pwd, int *pwdlen, int pas
 	/*
 	 * Generate seed and calculate a prime depending on the size of the secret
 	 */
-	r = sc_get_challenge(card, rngseed, 16);
+	r = sc_get_challenge(card, rngseed, SEED_LENGTH);
 	if (r < 0) {
 		printf("Error generating random seed failed with %s", sc_strerror(r));
 		OPENSSL_cleanse(*pwd, *pwdlen);
@@ -859,7 +903,7 @@ static int generate_pwd_shares(sc_card_t *card, char **pwd, int *pwdlen, int pas
 		return r;
 	}
 
-	generatePrime(&prime, &secret, password_shares_total, rngseed);
+	generatePrime(&prime, &secret, password_shares_total, rngseed, SEED_LENGTH);
 
 	// Allocate data buffer for the generated shares
 	shares = malloc(password_shares_total * sizeof(secret_share_t));
@@ -904,7 +948,7 @@ static int generate_pwd_shares(sc_card_t *card, char **pwd, int *pwdlen, int pas
 
 
 
-static int create_dkek_share(sc_card_t *card, const char *outf, int iter, char *password, int password_shares_threshold, int password_shares_total)
+static int create_dkek_share(sc_card_t *card, const char *outf, int iter, const char *password, int password_shares_threshold, int password_shares_total)
 {
 	EVP_CIPHER_CTX ctx;
 	FILE *out = NULL;
@@ -919,15 +963,14 @@ static int create_dkek_share(sc_card_t *card, const char *outf, int iter, char *
 	}
 
 	if (password == NULL) {
-
-		if (password_shares_threshold == -1) {
+		if ((password_shares_threshold == -1) && (password_shares_total == -1)) {
 			ask_for_password(&pwd, &pwdlen);
 		} else { // create password using threshold scheme
 			r = generate_pwd_shares(card, &pwd, &pwdlen, password_shares_threshold, password_shares_total);
 		}
 
 	} else {
-		pwd = password;
+		pwd = (char *) password;
 		pwdlen = strlen(password);
 	}
 
@@ -979,6 +1022,7 @@ static int create_dkek_share(sc_card_t *card, const char *outf, int iter, char *
 
 	if (fwrite(filebuff, 1, sizeof(filebuff), out) != sizeof(filebuff)) {
 		perror(outf);
+		fclose(out);
 		return -1;
 	}
 
@@ -1169,7 +1213,10 @@ static int wrap_key(sc_card_t *card, int keyid, const char *outf, const char *pi
 
 	memcpy(ptr, key, key_len);
 	ptr += key_len;
+
 	free(key);
+	key = NULL;
+	key_len = 0;
 
 	// Add private key description
 	if (ef_prkd_len > 0) {
@@ -1184,7 +1231,6 @@ static int wrap_key(sc_card_t *card, int keyid, const char *outf, const char *pi
 	}
 
 	// Encode key, key decription and certificate object in sequence
-	key_len = 0;
 	wrap_with_tag(0x30, keyblob, ptr - keyblob, &key, &key_len);
 
 	out = fopen(outf, "wb");
@@ -1198,6 +1244,7 @@ static int wrap_key(sc_card_t *card, int keyid, const char *outf, const char *pi
 	if (fwrite(key, 1, key_len, out) != key_len) {
 		perror(outf);
 		free(key);
+		fclose(out);
 		return -1;
 	}
 
@@ -1439,7 +1486,7 @@ int main(int argc, char * const argv[])
 	const char *opt_so_pin = NULL;
 	const char *opt_pin = NULL;
 	const char *opt_filename = NULL;
-	char *opt_password = NULL;
+	const char *opt_password = NULL;
 	int opt_retry_counter = 3;
 	int opt_dkek_shares = -1;
 	int opt_key_reference = -1;
@@ -1484,18 +1531,12 @@ int main(int argc, char * const argv[])
 			action_count++;
 			break;
 		case OPT_PASSWORD:
-			free(opt_password);
-			opt_password = NULL;
 			util_get_pin(optarg, &opt_password);
 			break;
 		case OPT_SO_PIN:
-			free(opt_so_pin);
-			opt_so_pin = NULL;
 			util_get_pin(optarg, &opt_so_pin);
 			break;
 		case OPT_PIN:
-			free(opt_pin);
-			opt_pin = NULL;
 			util_get_pin(optarg, &opt_pin);
 			break;
 		case OPT_RETRY:

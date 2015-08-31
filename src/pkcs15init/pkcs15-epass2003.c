@@ -470,8 +470,7 @@ static int epass2003_pkcs15_store_key(struct sc_profile *profile,
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r,
 		    "store key: cannot update private key");
 
-	if (file)
-		sc_file_free(file);
+	sc_file_free(file);
 
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 }
@@ -488,7 +487,7 @@ static int epass2003_pkcs15_generate_key(struct sc_profile *profile,
 	    (struct sc_pkcs15_prkey_info *)obj->data;
 	size_t idx = key_info->key_reference;
 	size_t keybits = key_info->modulus_length;
-	struct sc_file *tfile = NULL, *prkf = NULL, *pukf = NULL;
+	struct sc_file *tfile = NULL, *pukf = NULL;
 	struct sc_path path;
 	struct sc_file *file = NULL;
 	int fidl = 0;
@@ -628,8 +627,6 @@ static int epass2003_pkcs15_generate_key(struct sc_profile *profile,
 failed:
 	if (pukf)
 		sc_file_free(pukf);
-	if (prkf)
-		sc_file_free(prkf);
 
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 }

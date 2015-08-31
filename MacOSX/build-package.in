@@ -70,12 +70,9 @@ fi
 test -L OpenSC.tokend/build/opensc-src || ln -sf ${BUILDPATH}/src OpenSC.tokend/build/opensc-src
 
 # Build and copy OpenSC.tokend
-xcodebuild -configuration Deployment -project OpenSC.tokend/Tokend.xcodeproj
+xcodebuild -target OpenSC -configuration Deployment -project OpenSC.tokend/Tokend.xcodeproj install DSTROOT=${PWD}/target
 
 # Prepare target root
-# Copy Tokend
-mkdir -p target/System/Library/Security/tokend
-mv OpenSC.tokend/build/OpenSC.tokend target/System/Library/Security/tokend
 # The "UnInstaller"
 mkdir -p target/usr/local/bin
 cp MacOSX/opensc-uninstall target/usr/local/bin

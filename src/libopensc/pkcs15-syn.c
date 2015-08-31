@@ -19,7 +19,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#if HAVE_CONFIG_H
 #include "config.h"
+#endif
 
 #include <stdlib.h>
 #include <string.h>
@@ -204,15 +206,13 @@ sc_pkcs15_bind_synthetic(sc_pkcs15_card_t *p15card)
 			free(blocks);
 	}
 
-	/* Total failure */
-	LOG_FUNC_RETURN(ctx, SC_ERROR_WRONG_CARD);
-
-out:	if (r == SC_SUCCESS) {
+out:
+	if (r == SC_SUCCESS) {
 		p15card->magic  = SC_PKCS15_CARD_MAGIC;
 		p15card->flags |= SC_PKCS15_CARD_FLAG_EMULATED;
-	}
-	else if (r != SC_ERROR_WRONG_CARD) {
-		sc_log(ctx, "Failed to load card emulator: %s", sc_strerror(r));
+	} else {
+		if (r != SC_ERROR_WRONG_CARD)
+			sc_log(ctx, "Failed to load card emulator: %s", sc_strerror(r));
 	}
 
 	LOG_FUNC_RETURN(ctx, r);
@@ -227,7 +227,7 @@ static int parse_emu_block(sc_pkcs15_card_t *p15card, scconf_block *conf)
 	void *handle = NULL;
 	int		(*init_func)(sc_pkcs15_card_t *);
 	int		(*init_func_ex)(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
-	int		r, force = 0;
+	int		r;
 	const char	*driver, *module_name;
 
 	driver = conf->name->data;
@@ -237,8 +237,6 @@ static int parse_emu_block(sc_pkcs15_card_t *p15card, scconf_block *conf)
 
 	memset(&opts, 0, sizeof(opts));
 	opts.blk     = conf;
-	if (force != 0)
-		opts.flags   = SC_PKCS15EMU_FLAGS_NO_CHECK;
 
 	module_name = scconf_get_str(conf, "module", builtin_name);
 	if (!strcmp(module_name, "builtin")) {
@@ -272,10 +270,15 @@ static int parse_emu_block(sc_pkcs15_card_t *p15card, scconf_block *conf)
 		/* try to get version of the driver/api */
 		get_version =  (const char *(*)(void)) sc_dlsym(handle, "sc_driver_version");
 		if (get_version) {
-			sscanf(get_version(), "%u.%u.%u", &major, &minor, &fix);
+			if (3 != sscanf(get_version(), "%u.%u.%u", &major, &minor, &fix)) {
+				sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
+					   	"unable to get modules version number\n");
+				sc_dlclose(handle);
+				return SC_ERROR_INTERNAL;
+			}
 		}
 
-		if (!get_version || (major == 0 && minor <= 9 && fix < 3) < 0) {
+		if (!get_version || (major == 0 && minor <= 9 && fix < 3)) {
 			/* no sc_driver_version function => assume old style
 			 * init function (note: this should later give an error
 			 */

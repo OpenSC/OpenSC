@@ -70,6 +70,7 @@ doc/tools/pkcs15-init
 doc/tools/pkcs15-tool
 doc/tools/sc-hsm-tool
 doc/tools/westcos-tool
+doc/tools/dnie-tool
 
 etc/opensc.conf.win
 etc/opensc.conf

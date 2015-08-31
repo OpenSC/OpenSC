@@ -20,7 +20,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#if HAVE_CONFIG_H
 #include "config.h"
+#endif
 
 #include <string.h>
 #include <ctype.h>
@@ -161,8 +163,6 @@ static int tcos_construct_fci(const sc_file_t *file,
         /* Directory name */
         if (file->type == SC_FILE_TYPE_DF) {
                 if (file->namelen) {
-                        if (file->namelen > 16 || !file->name)
-                                return SC_ERROR_INVALID_ARGUMENTS;
                         sc_asn1_put_tag(0x84, file->name, file->namelen,
                                         p, 16, &p);
                 }

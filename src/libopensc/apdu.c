@@ -18,7 +18,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#if HAVE_CONFIG_H
 #include "config.h"
+#endif
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -203,8 +205,10 @@ int sc_apdu_get_octets(sc_context_t *ctx, const sc_apdu_t *apdu, u8 **buf,
 	if (nbuf == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 	/* encode the APDU in the buffer */
-	if (sc_apdu2bytes(ctx, apdu, proto, nbuf, nlen) != SC_SUCCESS)
+	if (sc_apdu2bytes(ctx, apdu, proto, nbuf, nlen) != SC_SUCCESS) {
+		free(nbuf);
 		return SC_ERROR_INTERNAL;
+	}
 	*buf = nbuf;
 	*len = nlen;
 
@@ -577,7 +581,7 @@ int sc_transmit_apdu(sc_card_t *card, sc_apdu_t *apdu)
 		 * bytes using command chaining */
 		size_t    len  = apdu->datalen;
 		const u8  *buf = apdu->data;
-		size_t    max_send_size = card->max_send_size > 0 ? card->max_send_size : 255;
+		size_t    max_send_size = card->max_send_size;
 
 		while (len != 0) {
 			size_t    plen;

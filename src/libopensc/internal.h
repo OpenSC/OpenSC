@@ -74,7 +74,6 @@ struct sc_atr_table {
 
 /* Internal use only */
 int _sc_add_reader(struct sc_context *ctx, struct sc_reader *reader);
-int _sc_delete_reader(struct sc_context *ctx, struct sc_reader *reader);
 int _sc_parse_atr(struct sc_reader *reader);
 
 /* Add an ATR to the card driver's struct sc_atr_table */
@@ -121,7 +120,8 @@ int _sc_card_add_algorithm(struct sc_card *card, const struct sc_algorithm_info 
 int _sc_card_add_rsa_alg(struct sc_card *card, unsigned int key_length,
 			 unsigned long flags, unsigned long exponent);
 int _sc_card_add_ec_alg(struct sc_card *card, unsigned int key_length,
-			 unsigned long flags, unsigned long ext_flags);
+			 unsigned long flags, unsigned long ext_flags,
+			 struct sc_object_id *curve_oid);
 
 /********************************************************************/
 /*                 pkcs1 padding/encoding functions                 */

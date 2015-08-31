@@ -22,7 +22,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#if HAVE_CONFIG_H
 #include "config.h"
+#endif
 
 #include <stdlib.h>
 #include <string.h>
@@ -379,13 +381,13 @@ static int mcrd_init(sc_card_t * card)
 	priv->curpathlen = 1;
 
 	sc_format_path ("3f00", &tmppath);
-	sc_select_file (card, &tmppath, NULL);
+	r = sc_select_file (card, &tmppath, NULL);
 
 	/* Not needed for the fixed EstEID profile */
 	if (!is_esteid_card(card))
 		load_special_files(card);
 
-	return SC_SUCCESS;
+	return r;
 }
 
 static int mcrd_finish(sc_card_t * card)
@@ -419,6 +421,8 @@ static int load_special_files(sc_card_t * card)
 	if (dfi && dfi->rule_file)
 		return 0;	/* yes. */
 	clear_special_files(dfi);
+	if (!dfi)
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INTERNAL);
 
 	/* Read rule file. Note that we bypass our cache here. */
 	r = select_part(card, MCRD_SEL_EF, EF_Rule, NULL);
@@ -1188,7 +1192,9 @@ static int mcrd_set_security_env(sc_card_t * card,
 
 		/* Make sure we always start from MF */
 		sc_format_path ("3f00", &tmppath);
-		sc_select_file (card, &tmppath, NULL);
+		r = sc_select_file (card, &tmppath, NULL);
+		if (r < 0)
+			return r;
 		/* We now know that cache is not valid */
 		select_esteid_df(card);
 		switch (env->operation) {

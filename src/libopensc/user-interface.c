@@ -29,13 +29,19 @@
 #include "config.h"
 #endif
 
+#ifdef ENABLE_OPENSSL           /* empty file without openssl */
+
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
 #include <sys/stat.h>
 
 #ifdef _WIN32
+
+#ifndef UNICODE
 #define UNICODE
+#endif
+
 #include <windows.h>
 #endif
 #ifdef __APPLE__
@@ -314,4 +320,6 @@ do_error:
 	LOG_FUNC_RETURN(card->ctx, res);
 }
 
-#endif
+#endif				/* ENABLE_DNIE_UI */
+
+#endif                          /* ENABLE_OPENSSL */

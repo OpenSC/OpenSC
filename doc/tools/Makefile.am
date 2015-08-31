@@ -1,5 +1,7 @@
 MAINTAINERCLEANFILES = $(srcdir)/Makefile.in
 
+EXTRA_DIST = completion-template
+
 dist_noinst_DATA = $(wildcard $(srcdir)/*.xml)
 if ENABLE_DOC
 html_DATA = tools.html
@@ -25,8 +27,8 @@ tools.html: $(srcdir)/tools.xml $(wildcard $(srcdir)/*.1.xml) $(wildcard $(srcdi
 	| $(XSLTPROC) --nonet --path "$(srcdir)/..:$(xslstylesheetsdir)/manpages" --xinclude -o $@ man.xsl $<
 
 %: $(srcdir)/%.1.xml
-	echo $< $@
-	cat completion-template \
+	@echo $< $@
+	@cat completion-template \
 		| sed "s,ALLOPTS,\
 			$(shell sed -n 's,\s\s\s*<option>\([^<]*\)</option>.*,\1,pg' $< \
 				| sort -u | grep -- '^\-' | tr '\n' ' ')," \

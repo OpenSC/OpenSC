@@ -113,13 +113,16 @@ static int load_object(const char * object_id, const char * object_file)
 	int r;
 	struct stat stat_buf;
 
-    if((fp=fopen(object_file, "r"))==NULL){
+    if(!object_file || (fp=fopen(object_file, "r")) == NULL){
         printf("Cannot open object file, %s %s\n",
 			(object_file)?object_file:"", strerror(errno));
         return -1;
     }
 
-	stat(object_file, &stat_buf);
+	if (0 != stat(object_file, &stat_buf)) {
+		printf("unable to read file %s\n",object_file);
+		return -1;
+	}
 	derlen = stat_buf.st_size;
 	der = malloc(derlen);
 	if (der == NULL) {
@@ -165,21 +168,29 @@ static int load_cert(const char * cert_id, const char * cert_file,
 	size_t derlen;
 	int r;
 
+	if (!cert_file) {
+        printf("Missing cert file\n");
+		return -1;
+	}
+
     if((fp=fopen(cert_file, "r"))==NULL){
         printf("Cannot open cert file, %s %s\n",
-			cert_file?cert_file:"", strerror(errno));
+				cert_file, strerror(errno));
         return -1;
     }
 	if (compress) { /* file is gziped already */
 		struct stat stat_buf;
 
-		stat(cert_file, &stat_buf);
+		if (0 != stat(cert_file, &stat_buf)) {
+			printf("unable to read file %s\n",cert_file);
+			return -1;
+		}
 		derlen = stat_buf.st_size;
 		der = malloc(derlen);
 		if (der == NULL) {
 			printf("file %s is too big, %lu\n",
 				cert_file, (unsigned long)derlen);
-			return-1 ;
+			return -1 ;
 		}
 		if (1 != fread(der, derlen, 1, fp)) {
 			printf("unable to read file %s\n",cert_file);
@@ -484,6 +495,7 @@ int main(int argc, char * const argv[])
 			break;
 		case 'Z':
 			compress_cert = 1;
+			/* fall through */
 		case 'C':
 			do_load_cert = 1;
 			cert_id = optarg;

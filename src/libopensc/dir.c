@@ -18,7 +18,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#if HAVE_CONFIG_H
 #include "config.h"
+#endif
 
 #include <assert.h>
 #include <stdlib.h>
@@ -36,7 +38,8 @@ struct app_entry {
 static const struct app_entry apps[] = {
 	{ (const u8 *) "\xA0\x00\x00\x00\x63PKCS-15", 12, "PKCS #15" },
 	{ (const u8 *) "\xA0\x00\x00\x01\x77PKCS-15", 12, "Belgian eID" },
-	{ (const u8 *) "\x44\x46\x20\x69\x73\x73\x75\x65\x72", 9, "Portugal eID" }
+	{ (const u8 *) "\x44\x46\x20\x69\x73\x73\x75\x65\x72", 9, "Portugal eID" },
+	{ (const u8 *) "\xE8\x28\xBD\x08\x0F\xA0\x00\x00\x01\x67\x45\x53\x49\x47\x4E", 15, "ESIGN"}
 };
 
 static const struct sc_asn1_entry c_asn1_dirrecord[] = {
@@ -91,7 +94,7 @@ parse_dir_record(sc_card_t *card, u8 ** buf, size_t *buflen, int rec_nr)
 	else
 		app->label = NULL;
 
-	if (asn1_dirrecord[2].flags & SC_ASN1_PRESENT) {
+	if (asn1_dirrecord[2].flags & SC_ASN1_PRESENT && path_len > 0) {
 		/* application path present: ignore AID */
 		if (path_len > SC_MAX_PATH_SIZE) {
 			free(app);

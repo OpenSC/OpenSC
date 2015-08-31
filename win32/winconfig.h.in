@@ -95,4 +95,8 @@
 #define OPENSC_FEATURES "N/A"
 #endif
 
+#ifndef DEFAULT_PKCS11_PROVIDER
+#define DEFAULT_PKCS11_PROVIDER "opensc-pkcs11.dll"
+#endif
+
 #endif

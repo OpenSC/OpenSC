@@ -6,7 +6,7 @@ define([PRODUCT_NAME], [OpenSC])
 define([PRODUCT_TARNAME], [opensc])
 define([PRODUCT_BUGREPORT], [opensc-devel@lists.sourceforge.net])
 define([PACKAGE_VERSION_MAJOR], [0])
-define([PACKAGE_VERSION_MINOR], [14])
+define([PACKAGE_VERSION_MINOR], [15])
 define([PACKAGE_VERSION_FIX], [0])
 define([PACKAGE_SUFFIX], [])
 define([PACKAGE_VERSION_REVISION], [0])
@@ -39,8 +39,8 @@ OPENSC_VS_FF_PRODUCT_NAME="VS_FF_PRODUCT_NAME"
 #   (Code changed:                      REVISION++)
 #   (Oldest interface removed:          OLDEST++)
 #   (Interfaces added:                  CURRENT++, REVISION=0)
-OPENSC_LT_CURRENT="3"
-OPENSC_LT_OLDEST="3"
+OPENSC_LT_CURRENT="4"
+OPENSC_LT_OLDEST="4"
 OPENSC_LT_REVISION="0"
 OPENSC_LT_AGE="0"
 OPENSC_LT_AGE="$((${OPENSC_LT_CURRENT}-${OPENSC_LT_OLDEST}))"
@@ -52,6 +52,8 @@ m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
 AC_CANONICAL_HOST
 AC_PROG_CC
+# AC_PROG_CXX is needed to built the win32 custom action. Indeed dutil.h use [extern "C"] definition which fails on pure c compiler
+AC_PROG_CXX
 PKG_PROG_PKG_CONFIG
 AC_C_BIGENDIAN
 
@@ -217,6 +219,13 @@ AC_ARG_WITH(
 	[AS_HELP_STRING([--with-pcsc-provider=PATH],[Path to system pcsc provider @<:@system default@:>@])],
 	,
 	[with_pcsc_provider="detect"]
+)
+
+AC_ARG_WITH(
+	[pkcs11-provider],
+	[AS_HELP_STRING([--with-pkcs11-provider=PATH],[Path to the default PKCS11 provider @<:@default=OpenSC@:>@])],
+	,
+	[with_pkcs11_provider="detect"]
 )
 dnl ./configure check
 reader_count=""
@@ -531,10 +540,13 @@ if test "${enable_pcsc}" = "yes"; then
 			case "${host}" in
 				*-*-darwin*)
 					# Locate the latest SDK.
-					SDKS_PATH="$(xcode-select -p)/Platforms/MacOSX.platform/Developer/SDKs"
-					SDK_PATH="${SDK_PATH:-$SDKS_PATH/$(ls -1 ${SDKS_PATH} | sort -n -t. -k2 -r | head -1)}"
-					# and set the PC/SC include path
-					PCSC_CFLAGS="-I$SDK_PATH/System/Library/Frameworks/PCSC.framework/Versions/Current/Headers"
+					SDKS_PATH="$(xcode-select --print-path)/Platforms/MacOSX.platform/Developer/SDKs"
+					if test -d $SDKS_PATH; then
+					    SDK_PATH="${SDK_PATH:-$SDKS_PATH/$(ls -1 ${SDKS_PATH} | sort -n -t. -k2 -r | head -1)}"
+					    PCSC_CFLAGS="-I$SDK_PATH/System/Library/Frameworks/PCSC.framework/Versions/Current/Headers"
+					else
+					    PCSC_CFLAGS="-I/System/Library/Frameworks/PCSC.framework/Headers"
+					fi
 				;;
 				*)
 					PCSC_CFLAGS="-I/usr/include/PCSC"
@@ -567,6 +579,24 @@ if test "${enable_pcsc}" = "yes"; then
 	AC_DEFINE_UNQUOTED([DEFAULT_PCSC_PROVIDER], ["${DEFAULT_PCSC_PROVIDER}"], [Default PC/SC provider])
 	AC_DEFINE([ENABLE_PCSC], [1], [Define if PC/SC is to be enabled])
 fi
+
+
+if test "${with_pkcs11_provider}" = "detect"; then
+	case "${host}" in
+		*-*-darwin*)
+			DEFAULT_PKCS11_PROVIDER="opensc-pkcs11.dylib"
+		;;
+		*-mingw*|*-winnt*|*-cygwin*)
+			DEFAULT_PKCS11_PROVIDER="opensc-pkcs11.dll"
+		;;
+		*)
+			DEFAULT_PKCS11_PROVIDER="opensc-pkcs11.so"
+		;;
+	esac
+else
+	DEFAULT_PKCS11_PROVIDER="${with_pkcs11_provider}"
+fi
+AC_DEFINE_UNQUOTED([DEFAULT_PKCS11_PROVIDER], ["${DEFAULT_PKCS11_PROVIDER}"], [Default PKCS11 provider])
 
 if test "${enable_man}" = "detect"; then
 	if test "${WIN32}" = "yes"; then
@@ -643,6 +673,7 @@ AC_SUBST([OPENSC_LT_AGE])
 AC_SUBST([OPENSC_LT_OLDEST])
 AC_SUBST([WIN_LIBPREFIX])
 AC_SUBST([DEFAULT_PCSC_PROVIDER])
+AC_SUBST([DEFAULT_PKCS11_PROVIDER])
 AC_SUBST([OPTIONAL_ZLIB_CFLAGS])
 AC_SUBST([OPTIONAL_ZLIB_LIBS])
 AC_SUBST([OPTIONAL_READLINE_CFLAGS])
@@ -708,6 +739,7 @@ AC_CONFIG_FILES([
 	src/minidriver/opensc-minidriver.inf
 	win32/Makefile
 	win32/versioninfo.rc
+	win32/versioninfo-customactions.rc
 	win32/winconfig.h
 	win32/OpenSC.iss
 	win32/OpenSC.wxs
@@ -752,6 +784,7 @@ DNIe UI support:         ${enable_dnie_ui}
 Debug file:              ${DEBUG_FILE}
 
 PC/SC default provider:  ${DEFAULT_PCSC_PROVIDER}
+PKCS11 default provider: ${DEFAULT_PKCS11_PROVIDER}
 
 Host:                    ${host}
 Compiler:                ${CC}
