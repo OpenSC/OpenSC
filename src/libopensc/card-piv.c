@@ -2920,6 +2920,35 @@ static int piv_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 	 * FIPS 140-2 (6 character minimum) requirements.
 	 */
 	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
+
+	/* do the query of tries left here as the iso7816.c does not implement this
+	 * and Neo does set return correctly 
+	 */
+	if (data->cmd == SC_PIN_CMD_GET_INFO) {
+		struct sc_apdu local_apdu, *apdu;
+		int r;
+
+		apdu = &local_apdu;
+		if (tries_left)
+		    *tries_left = -1;
+
+		sc_format_apdu(card, apdu, SC_APDU_CASE_1, 0x20, 0x00, data->pin_reference);
+		apdu->lc = 0;
+		apdu->datalen = 0;
+		apdu->data = NULL;
+
+		r = sc_transmit_apdu(card, apdu);
+		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+		if (apdu->sw1 == 0x63) {
+			/* we should be testing for 63 CX, but Neo returns 63 0X */
+			if (tries_left != NULL)
+				*tries_left = apdu->sw2 & 0x0F;
+			data->pin1.tries_left = apdu->sw2 & 0x0F;
+			return SC_SUCCESS;
+		}
+		return sc_check_sw(card, apdu->sw1, apdu->sw2);
+	}
+
 	if (data->cmd == SC_PIN_CMD_CHANGE) {
 		int i = 0;
 		if (data->pin2.len < 6) {
