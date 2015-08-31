@@ -910,6 +910,30 @@ int sc_lock(struct sc_card *card);
  */
 int sc_unlock(struct sc_card *card);
 
+/**
+ * @brief Calculate the maximum size of R-APDU payload (Ne).
+ *
+ * Takes card limitations into account such as extended length support as well
+ * as the reader's limitation for data transfer.
+ *
+ * @param card Initialized card object with its reader
+ *
+ * @return maximum Ne
+ */
+size_t sc_get_max_recv_size(const sc_card_t *card);
+
+/**
+ * @brief Calculate the maximum size of C-APDU payload (Nc).
+ *
+ * Takes card limitations into account such as extended length support as well
+ * as the reader's limitation for data transfer.
+ *
+ * @param card
+ *
+ * @return maximum Nc
+ */
+size_t sc_get_max_send_size(const sc_card_t *card);
+
 
 /********************************************************************/
 /*                ISO 7816-4 related functions                      */

@@ -135,6 +135,54 @@ static void sc_card_free(sc_card_t *card)
 	free(card);
 }
 
+size_t sc_get_max_recv_size(const sc_card_t *card)
+{
+	size_t max_recv_size;
+	assert(card != NULL && card->reader != NULL);
+	max_recv_size = card->max_recv_size;
+
+	/* initialize max_recv_size to a meaningfull value */
+	if (card->caps & SC_CARD_CAP_APDU_EXT) {
+		if (!max_recv_size)
+			max_recv_size = 65536;
+	} else {
+		if (!max_recv_size)
+			max_recv_size = 256;
+	}
+
+	/*  Override card limitations with reader limitations. */
+	if (card->reader->max_recv_size != 0
+			&& (card->reader->max_recv_size < card->max_recv_size))
+		max_recv_size = card->reader->max_recv_size;
+
+	return max_recv_size;
+}
+
+size_t sc_get_max_send_size(const sc_card_t *card)
+{
+	size_t max_send_size;
+
+	assert(card != NULL && card->reader != NULL);
+
+	max_send_size = card->max_send_size;
+
+	/* initialize max_send_size to a meaningfull value */
+	if (card->caps & SC_CARD_CAP_APDU_EXT) {
+		if (!max_send_size)
+			max_send_size = 65535;
+	} else {
+		if (!max_send_size)
+			max_send_size = 255;
+	}
+
+	/*  Override card limitations with reader limitations. */
+	if (card->reader->max_send_size != 0
+			&& (card->reader->max_send_size < card->max_send_size))
+		max_send_size = card->reader->max_send_size;
+
+	return max_send_size;
+}
+
 int sc_connect_card(sc_reader_t *reader, sc_card_t **card_out)
 {
 	sc_card_t *card;
@@ -252,25 +300,8 @@ int sc_connect_card(sc_reader_t *reader, sc_card_t **card_out)
 		card->name = card->driver->name;
 
 	/* initialize max_send_size/max_recv_size to a meaningfull value */
-	if (card->caps & SC_CARD_CAP_APDU_EXT) {
-		if (!card->max_send_size)
-			card->max_send_size = 65535;
-		if (!card->max_recv_size)
-			card->max_recv_size = 65536;
-	} else {
-		if (!card->max_send_size)
-			card->max_send_size = 255;
-		if (!card->max_recv_size)
-			card->max_recv_size = 256;
-	}
-
-	/*  Override card limitations with reader limitations. */
-	if (reader->max_recv_size != 0
-		   	&& (reader->max_recv_size < card->max_recv_size))
-		card->max_recv_size = reader->max_recv_size;
-	if (reader->max_send_size != 0
-		   	&& (reader->max_send_size < card->max_send_size))
-		card->max_send_size = reader->max_send_size;
+	card->max_recv_size = sc_get_max_recv_size(card);
+	card->max_send_size = sc_get_max_send_size(card);
 
 	sc_log(ctx, "card info name:'%s', type:%i, flags:0x%X, max_send/recv_size:%i/%i",
 		card->name, card->type, card->flags, card->max_send_size, card->max_recv_size);
@@ -489,7 +520,7 @@ int sc_delete_file(sc_card_t *card, const sc_path_t *path)
 int sc_read_binary(sc_card_t *card, unsigned int idx,
 		   unsigned char *buf, size_t count, unsigned long flags)
 {
-	size_t max_le = card->max_recv_size;
+	size_t max_le = sc_get_max_recv_size(card);
 	int r;
 
 	assert(card != NULL && card->ops != NULL && buf != NULL);
@@ -539,7 +570,7 @@ int sc_read_binary(sc_card_t *card, unsigned int idx,
 int sc_write_binary(sc_card_t *card, unsigned int idx,
 		    const u8 *buf, size_t count, unsigned long flags)
 {
-	size_t max_lc = card->max_send_size;
+	size_t max_lc = sc_get_max_send_size(card);
 	int r;
 
 	assert(card != NULL && card->ops != NULL && buf != NULL);
@@ -582,7 +613,7 @@ int sc_write_binary(sc_card_t *card, unsigned int idx,
 int sc_update_binary(sc_card_t *card, unsigned int idx,
 		     const u8 *buf, size_t count, unsigned long flags)
 {
-	size_t max_lc = card->max_send_size;
+	size_t max_lc = sc_get_max_send_size(card);
 	int r;
 
 	assert(card != NULL && card->ops != NULL && buf != NULL);
