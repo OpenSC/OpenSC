@@ -867,7 +867,7 @@ static int sc_hsm_init_token(sc_card_t *card, sc_cardctl_pkcs11_init_token_t *pa
 	memset(&ip, 0, sizeof(ip));
 	ip.dkek_shares = -1;
 	ip.options[0] = 0x00;
-	ip.options[0] = 0x01;
+	ip.options[1] = 0x01;
 
 	r = sc_hsm_encode_sopin(params->so_pin, ip.init_code);
 	LOG_TEST_RET(ctx, r, "SO PIN wrong format");
