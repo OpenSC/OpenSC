@@ -1,0 +1,7 @@
+before_build:
+    - cd "C:\Program Files\Microsoft Visual Studio 10.0\VC\"
+    - call vcvarsall.bat x86
+
+build_script:
+    - cd %APPVEYOR_BUILD_FOLDER%\win32
+    - nmake -f Makefile.mak
