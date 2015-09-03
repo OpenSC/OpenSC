@@ -50,6 +50,7 @@ static char * opt_auth_id = NULL;
 static char * opt_reader = NULL;
 static char * opt_cert = NULL;
 static char * opt_data = NULL;
+static int opt_raw = 0;
 static char * opt_pubkey = NULL;
 static char * opt_outfile = NULL;
 static char * opt_bind_to_aid = NULL;
@@ -82,6 +83,7 @@ enum {
 	OPT_LIST_APPLICATIONS,
 	OPT_LIST_SKEYS,
 	OPT_NO_PROMPT,
+	OPT_RAW,
 };
 
 #define NELEMENTS(x)	(sizeof(x)/sizeof((x)[0]))
@@ -94,6 +96,7 @@ static const struct option options[] = {
 	{ "read-certificate",	required_argument, NULL,	'r' },
 	{ "list-certificates",	no_argument, NULL,		'c' },
 	{ "read-data-object",	required_argument, NULL,	'R' },
+	{ "raw",		no_argument, NULL,		OPT_RAW },
 	{ "list-data-objects",	no_argument, NULL,		'C' },
 	{ "list-pins",		no_argument, NULL,		OPT_LIST_PINS },
 	{ "list-secret-keys",	no_argument, NULL,		OPT_LIST_SKEYS },
@@ -130,6 +133,7 @@ static const char *option_help[] = {
 	"Reads certificate with ID <arg>",
 	"Lists certificates",
 	"Reads data object with OID, applicationName or label <arg>",
+	"Outputs raw 8 bit data to stdout",
 	"Lists data objects",
 	"Lists PIN codes",
 	"Lists secret keys",
@@ -346,18 +350,28 @@ print_data_object(const char *kind, const u8*data, size_t data_len)
 			}
 		for (i=0; i < data_len; i++)
 			fprintf(outf, "%c", data[i]);
-		printf("Dumping (%lu bytes) to file <%s>: <",
-			(unsigned long) data_len, opt_outfile);
-		for (i=0; i < data_len; i++)
-			printf(" %02X", data[i]);
-		printf(" >\n");
+		if (opt_raw) {
+			for (i=0; i < data_len; i++)
+				printf("%c", data[i]);
+		} else {
+			printf("Dumping (%lu bytes) to file <%s>: <",
+				(unsigned long) data_len, opt_outfile);
+			for (i=0; i < data_len; i++)
+				printf(" %02X", data[i]);
+			printf(" >\n");
+		}
 		fclose(outf);
 	} else {
-		printf("%s (%lu bytes): <",
-			kind, (unsigned long) data_len);
-		for (i=0; i < data_len; i++)
-			printf(" %02X", data[i]);
-		printf(" >\n");
+		if (opt_raw) {
+			for (i=0; i < data_len; i++)
+				printf("%c", data[i]);
+		} else {
+			printf("%s (%lu bytes): <",
+				kind, (unsigned long) data_len);
+			for (i=0; i < data_len; i++)
+				printf(" %02X", data[i]);
+			printf(" >\n");
+		}
 	}
 	return 0;
 }
@@ -1930,6 +1944,9 @@ int main(int argc, char * const argv[])
 			opt_data = optarg;
 			do_read_data_object = 1;
 			action_count++;
+			break;
+		case OPT_RAW:
+			opt_raw = 1;
 			break;
 		case 'C':
 			do_list_data_objects = 1;
