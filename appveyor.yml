@@ -1,7 +1,71 @@
-before_build:
-    - cd "C:\Program Files\Microsoft Visual Studio 10.0\VC\"
-    - call vcvarsall.bat x86
+platform:
+  - x86
+  - x64
+
+environment:
+  matrix:
+    - VSVER: 14
+    - VSVER: 12
+    - VSVER: 10
+
+matrix:
+  allow_failures:
+    # not included in AppVeyor right now
+    - platform: x64
+      VSVER: 10
+    # does not currently work
+    - VSVER: 14
+    - VSVER: 12
+    - VSVER: 10
+
+install:
+  - date /T & time /T
+  - set PATH=C:\cygwin\bin;%PATH%
+  - ps: >-
+      If(!(Test-Path -Path "C:\cccl-1.0" )) {
+        git clone -q --depth=1 git://github.com/swig/cccl.git "C:\cccl-1.0"
+      }
+  - bash -c "cp C:/cccl-1.0/cccl /usr/bin"
+  - ps: >-
+      If ($env:Platform -Match "x86") {
+        $env:JAVA_HOME="C:/Program Files (x86)/Java/jdk1.8.0"
+        $env:VCVARS_PLATFORM="x86"
+        $env:ENV_PLATFORM="x86"
+        $env:OPENSSL="https://slproweb.com/download/Win32OpenSSL-1_0_2d.exe"
+        $env:NMAKE_FLAGS=""
+      } Else {
+        $env:JAVA_HOME="C:/Program Files/Java/jdk1.8.0"
+        $env:VCVARS_PLATFORM="amd64"
+        $env:ENV_PLATFORM="x64"
+        $env:OPENSSL="https://slproweb.com/download/Win64OpenSSL-1_0_2d.exe"
+        $env:NMAKE_FLAGS="BUILD_ON=WIN64 BUILD_FOR=WIN64"
+      }
+  - ps: $env:VSCOMNTOOLS=(Get-Content ("env:VS" + "$env:VSVER" + "0COMNTOOLS"))
+  - echo "Using Visual Studio %VSVER%.0 at %VSCOMNTOOLS%"
+  - call "%VSCOMNTOOLS%\..\..\VC\vcvarsall.bat" %VCVARS_PLATFORM%
+  - call "C:\Program Files\Microsoft SDKs\Windows\v7.1\Bin\SetEnv.cmd" /%ENV_PLATFORM% /Release
+  - appveyor DownloadFile %OPENSSL% -FileName C:\WinOpenSSL.exe
+  - C:\WinOpenSSL.exe /SILENT /VERYSILENT /SP- /SUPPRESSMSGBOXES /NORESTART /DIR="C:\OpenSSL"
+  - appveyor DownloadFile "http://prdownloads.sourceforge.net/libpng/zlib128-dll.zip"
+  - 7z x zlib128-dll.zip -oC:\zlib-1.2.8-dll
+  - bash -c "which cl.exe"
+  - bash -c "cl.exe /? 2>&1 | head -n 2"
+  - bash -c "which csc.exe"
+  - bash -c "csc.exe /? | head -n 2"
+  - bash -c "which cccl"
+  - bash -c "cccl --version"
+  - uname -a
 
 build_script:
-    - cd %APPVEYOR_BUILD_FOLDER%\win32
-    - nmake -f Makefile.mak
+  - set CCCL_OPTIONS=--cccl-muffle /W3 /D_CRT_SECURE_NO_DEPRECATE /Dsnprintf=_snprintf
+  - set CC=cccl
+  - set CXX=cccl
+  - set LD=cccl
+  - bash -c "exec 0</dev/null && find C:/zlib-1.2.8-dll"
+  - bash -c "exec 0</dev/null && find C:/OpenSSL"
+  - bash -c "exec 0</dev/null && ./bootstrap"
+  - bash -c "exec 0</dev/null && ./configure OPENSSL_LIBS='-LC:/OpenSSL/lib -llibeay32' OPENSSL_CFLAGS='-IC:/OpenSSL/include' ZLIB_CFLAGS='-IC:/zlib-1.2.8-dll/include' ZLIB_LIBS='-LC:/zlib-1.2.8-dll/lib -lzdll' LDFLAGS='-LC:/OpenSSL/bin -LC:/zlib-1.2.5-dll' --with-cygwin-native"
+  - bash -c "exec 0</dev/null && cp win32/winconfig.h config.h && make"
+  # nmake doesn't work out of the box, all Makefile.mak have way too many hard coded paths
+  #- bash -c "exec 0</dev/null && ./bootstrap >> /tmp/oscout 2>&1 && ./configure >> /tmp/oscout 2>&1"
+  #- nmake /f Makefile.mak %NMAKE_FLAGS%
