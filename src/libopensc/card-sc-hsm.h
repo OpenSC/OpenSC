@@ -50,6 +50,9 @@
 #define ID_USER_PIN				0x81		/* User PIN identifier */
 #define ID_SO_PIN				0x88		/* Security officer PIN identifier */
 
+#define INIT_RRC_ENABLED		0x01		/* Bit 1 of initialization options */
+#define INIT_TRANSPORT_PIN		0x02		/* Bit 2 of initialization options */
+
 /* Information the driver maintains between calls */
 typedef struct sc_hsm_private_data {
 	const sc_security_env_t *env;
