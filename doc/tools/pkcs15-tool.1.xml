@@ -156,6 +156,18 @@
 
 				<varlistentry>
 					<term>
+						<option>--raw</option>
+					</term>
+					<listitem><para>Changes how <option>--read-data-object</option> prints the content
+					to standard output. By default, when <option>--raw</option> is not given, it will
+					print the content in hex notation. If <option>--raw</option> is set, it will print
+					the binary data directly. This does not affect the output that is written to the
+					file specified by the <option>--output</option> option. Data written to a file will
+					always be in raw binary.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
 						<option>--read-certificate</option> <replaceable>cert</replaceable>,
 						<option>-r</option> <replaceable>cert</replaceable>
 					</term>
@@ -168,7 +180,12 @@
 						<option>-R</option> <replaceable>data</replaceable>
 					</term>
 					<listitem><para>Reads data object with OID, applicationName or label.
-                                        </para></listitem>
+					The content is printed to standard output in hex notation, unless
+					the <option>--raw</option> option is given.
+					If an output file is given with the <option>--output</option> option,
+					the content is additionally written to the file.
+					Output to the file is always written in raw binary mode, the
+					<option>--raw</option> only affects standard output behavior.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
