@@ -133,7 +133,7 @@ static const char *option_help[] = {
 	"Reads certificate with ID <arg>",
 	"Lists certificates",
 	"Reads data object with OID, applicationName or label <arg>",
-	"Outputs raw 8 bit data to stdout",
+	"Outputs raw 8 bit data to stdout. File output will not be affected by this, it always uses raw mode.",
 	"Lists data objects",
 	"Lists PIN codes",
 	"Lists secret keys",
