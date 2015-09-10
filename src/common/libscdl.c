@@ -24,7 +24,7 @@
 
 #include "libscdl.h"
 
-#ifdef WIN32
+#ifdef _WIN32
 #include <windows.h>
 void *sc_dlopen(const char *filename)
 {
