@@ -1,71 +1,69 @@
+version: 0.15.0.{build}
+
 platform:
+  # the prebuilt zlib is 32 bit only
   - x86
-  - x64
+
+configuration:
+  - Release
+  - Debug
 
 environment:
   matrix:
-    - VSVER: 14
-    - VSVER: 12
-    - VSVER: 10
-
-matrix:
-  allow_failures:
-    # not included in AppVeyor right now
-    - platform: x64
-      VSVER: 10
-    # does not currently work
-    - VSVER: 14
     - VSVER: 12
     - VSVER: 10
 
 install:
   - date /T & time /T
   - set PATH=C:\cygwin\bin;%PATH%
-  - ps: >-
-      If(!(Test-Path -Path "C:\cccl-1.0" )) {
-        git clone -q --depth=1 git://github.com/swig/cccl.git "C:\cccl-1.0"
-      }
-  - bash -c "cp C:/cccl-1.0/cccl /usr/bin"
+  - set OPENSSL_VER=1_0_2d
+  - set ZLIB_VER=128
   - ps: >-
       If ($env:Platform -Match "x86") {
-        $env:JAVA_HOME="C:/Program Files (x86)/Java/jdk1.8.0"
         $env:VCVARS_PLATFORM="x86"
         $env:ENV_PLATFORM="x86"
-        $env:OPENSSL="https://slproweb.com/download/Win32OpenSSL-1_0_2d.exe"
-        $env:NMAKE_FLAGS=""
+        $env:OPENSSL_PF="Win32"
+        $env:NMAKE_ARCH=""
+        $env:ARTIFACT="OpenSC-${env:APPVEYOR_BUILD_VERSION}-win32_vs${env:VSVER}-${env:CONFIGURATION}.msi"
       } Else {
-        $env:JAVA_HOME="C:/Program Files/Java/jdk1.8.0"
         $env:VCVARS_PLATFORM="amd64"
         $env:ENV_PLATFORM="x64"
-        $env:OPENSSL="https://slproweb.com/download/Win64OpenSSL-1_0_2d.exe"
-        $env:NMAKE_FLAGS="BUILD_ON=WIN64 BUILD_FOR=WIN64"
+        $env:OPENSSL_PF="Win64"
+        $env:NMAKE_ARCH="BUILD_ON=WIN64 BUILD_FOR=WIN64"
+        $env:ARTIFACT="OpenSC-${env:APPVEYOR_BUILD_VERSION}-win64_vs${env:VSVER}-${env:CONFIGURATION}.msi"
+      }
+  - ps: >-
+      If ($env:Configuration -Match "Debug") {
+        $env:NMAKE_DEBUG="DEBUG_DEF=/DDEBUG"
       }
   - ps: $env:VSCOMNTOOLS=(Get-Content ("env:VS" + "$env:VSVER" + "0COMNTOOLS"))
   - echo "Using Visual Studio %VSVER%.0 at %VSCOMNTOOLS%"
   - call "%VSCOMNTOOLS%\..\..\VC\vcvarsall.bat" %VCVARS_PLATFORM%
-  - call "C:\Program Files\Microsoft SDKs\Windows\v7.1\Bin\SetEnv.cmd" /%ENV_PLATFORM% /Release
-  - appveyor DownloadFile %OPENSSL% -FileName C:\WinOpenSSL.exe
-  - C:\WinOpenSSL.exe /SILENT /VERYSILENT /SP- /SUPPRESSMSGBOXES /NORESTART /DIR="C:\OpenSSL"
-  - appveyor DownloadFile "http://prdownloads.sourceforge.net/libpng/zlib128-dll.zip"
-  - 7z x zlib128-dll.zip -oC:\zlib-1.2.8-dll
-  - bash -c "which cl.exe"
-  - bash -c "cl.exe /? 2>&1 | head -n 2"
-  - bash -c "which csc.exe"
-  - bash -c "csc.exe /? | head -n 2"
-  - bash -c "which cccl"
-  - bash -c "cccl --version"
+  - ps: >-
+      If(!(Test-Path -Path "C:\OpenSSL-${env:OPENSSL_PF}" )) {
+          Start-FileDownload https://slproweb.com/download/${env:OPENSSL_PF}OpenSSL-${env:OPENSSL_VER}.exe -FileName C:\WinOpenSSL.exe
+          C:\WinOpenSSL.exe /SILENT /VERYSILENT /SP- /SUPPRESSMSGBOXES /NORESTART
+        }
+  - ps: >-
+      If(!(Test-Path -Path "C:\zlib-dll" )) {
+          appveyor DownloadFile "https://prdownloads.sourceforge.net/libpng/zlib${env:ZLIB_VER}-dll.zip" -FileName zlib-dll.zip
+          7z x zlib-dll.zip -oC:\zlib-dll
+      }
+  - appveyor DownloadFile "http://download.microsoft.com/download/2/C/9/2C93059C-0532-42DF-8C24-9AEAFF00768E/cngsdk.msi"
+  - cngsdk.msi /quiet
   - uname -a
 
 build_script:
-  - set CCCL_OPTIONS=--cccl-muffle /W3 /D_CRT_SECURE_NO_DEPRECATE /Dsnprintf=_snprintf
-  - set CC=cccl
-  - set CXX=cccl
-  - set LD=cccl
-  - bash -c "exec 0</dev/null && find C:/zlib-1.2.8-dll"
-  - bash -c "exec 0</dev/null && find C:/OpenSSL"
   - bash -c "exec 0</dev/null && ./bootstrap"
-  - bash -c "exec 0</dev/null && ./configure OPENSSL_LIBS='-LC:/OpenSSL/lib -llibeay32' OPENSSL_CFLAGS='-IC:/OpenSSL/include' ZLIB_CFLAGS='-IC:/zlib-1.2.8-dll/include' ZLIB_LIBS='-LC:/zlib-1.2.8-dll/lib -lzdll' LDFLAGS='-LC:/OpenSSL/bin -LC:/zlib-1.2.5-dll' --with-cygwin-native"
-  - bash -c "exec 0</dev/null && cp win32/winconfig.h config.h && make"
-  # nmake doesn't work out of the box, all Makefile.mak have way too many hard coded paths
-  #- bash -c "exec 0</dev/null && ./bootstrap >> /tmp/oscout 2>&1 && ./configure >> /tmp/oscout 2>&1"
-  #- nmake /f Makefile.mak %NMAKE_FLAGS%
+  # disable features to speed up the script
+  - bash -c "exec 0</dev/null && ./configure --disable-openssl --disable-readline --disable-zlib || cat config.log"
+  - cp win32/winconfig.h config.h
+  - nmake /f Makefile.mak %NMAKE_ARCH% %NMAKE_DEBUG%
+  - cd win32 && nmake /f Makefile.mak %NMAKE_ARCH% %NMAKE_DEBUG% VSVER=%VSVER% OpenSC.msi
+  - move OpenSC.msi %ARTIFACT%
+  - appveyor PushArtifact %ARTIFACT%
+
+cache:
+  - C:\OpenSSL-Win32
+  - C:\OpenSSL-Win64
+  - C:\zlib-dll
