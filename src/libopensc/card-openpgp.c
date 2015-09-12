@@ -45,6 +45,7 @@
 static struct sc_atr_table pgp_atrs[] = {
 	{ "3b:fa:13:00:ff:81:31:80:45:00:31:c1:73:c0:01:00:00:90:00:b1", NULL, "OpenPGP card v1.0/1.1", SC_CARD_TYPE_OPENPGP_V1, 0, NULL },
 	{ "3b:da:18:ff:81:b1:fe:75:1f:03:00:31:c5:73:c0:01:40:00:90:00:0c", NULL, "CryptoStick v1.2 (OpenPGP v2.0)", SC_CARD_TYPE_OPENPGP_V2, 0, NULL },
+	{ "3b:fc:13:00:00:81:31:fe:15:59:75:62:69:6b:65:79:4e:45:4f:72:33:e1", NULL, "Yubikey NEO (OpenPGP v2.0)", SC_CARD_TYPE_OPENPGP_V2, 0, NULL },
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
@@ -409,6 +410,7 @@ pgp_get_card_features(sc_card_t *card)
 		/* get card capabilities from "historical bytes" DO */
 		if ((pgp_get_blob(card, priv->mf, 0x5f52, &blob) >= 0) &&
 		    (blob->data != NULL) && (blob->data[0] == 0x00)) {
+			i = 0;
 			while ((i < blob->len) && (blob->data[i] != 0x73))
 				i++;
 			/* IS07816-4 hist bytes 3rd function table */
@@ -419,7 +421,7 @@ pgp_get_card_features(sc_card_t *card)
 					priv->ext_caps |= EXT_CAP_APDU_EXT;
 				}
 				/* bit 0x80 in byte 3 of TL 0x73 means "Command chaining" */
-				if (hist_bytes[i+3] & 0x80)
+				if (blob->data[i+3] & 0x80)
 					priv->ext_caps |= EXT_CAP_CHAINING;
 			}
 
@@ -732,8 +734,7 @@ pgp_read_blob(sc_card_t *card, struct blob *blob)
 
 	if (blob->info->get_fn) {	/* readable, top-level DO */
 		u8 	buffer[2048];
-		size_t	buf_len = (card->caps & SC_CARD_CAP_APDU_EXT)
-				  ? sizeof(buffer) : 256;
+		size_t	buf_len = sizeof(buffer);
 		int	r = blob->info->get_fn(card, blob->id, buffer, buf_len);
 
 		if (r < 0) {	/* an error occurred */
@@ -786,6 +787,14 @@ pgp_enumerate_blob(sc_card_t *card, struct blob *blob)
 			cla <<= 8;
 		}
 		tag |= cla;
+
+		/* Awful hack for composite DOs that have
+		 * a TLV with the DO's id encompassing the
+		 * entire blob. Example: Yubikey Neo */
+		if (tag == blob->id) {
+			in = data;
+			continue;
+		}
 
 		/* create fake file system hierarchy by
 		 * using constructed DOs as DF */
@@ -1359,6 +1368,10 @@ pgp_compute_signature(sc_card_t *card, const u8 *data,
 			"invalid key reference");
 	}
 
+	/* if card/reader does not support extended APDUs, but chaining, then set it */
+	if (((card->caps & SC_CARD_CAP_APDU_EXT) == 0) && (priv->ext_caps & EXT_CAP_CHAINING))
+		apdu.flags |= SC_APDU_FLAGS_CHAINING;
+
 	apdu.lc = data_len;
 	apdu.data = data;
 	apdu.datalen = data_len;
@@ -1416,6 +1429,10 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
 				"invalid key reference");
 	}
+
+	/* if card/reader does not support extended APDUs, but chaining, then set it */
+	if (((card->caps & SC_CARD_CAP_APDU_EXT) == 0) && (priv->ext_caps & EXT_CAP_CHAINING))
+		apdu.flags |= SC_APDU_FLAGS_CHAINING;
 
 	apdu.lc = inlen;
 	apdu.data = in;
