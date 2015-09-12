@@ -969,6 +969,7 @@ iso7816_build_pin_apdu(struct sc_card *card, struct sc_apdu *apdu,
 		struct sc_pin_cmd_data *data, u8 *buf, size_t buf_len)
 {
 	int r, len = 0, pad = 0, use_pin_pad = 0, ins, p1 = 0;
+	int cse = SC_APDU_CASE_3_SHORT;
 
 	switch (data->pin_type) {
 	case SC_AC_CHV:
@@ -1034,11 +1035,16 @@ iso7816_build_pin_apdu(struct sc_card *card, struct sc_apdu *apdu,
 			p1 |= 0x01;
 		}
 		break;
+	case SC_PIN_CMD_GET_INFO:
+		ins = 0x20;
+		/* No data to send or to receive */
+		cse = SC_APDU_CASE_1;
+		break;
 	default:
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
-	sc_format_apdu(card, apdu, SC_APDU_CASE_3_SHORT, ins, p1, data->pin_reference);
+	sc_format_apdu(card, apdu, cse, ins, p1, data->pin_reference);
 	apdu->lc = len;
 	apdu->datalen = len;
 	apdu->data = buf;
@@ -1058,6 +1064,16 @@ iso7816_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_l
 	if (tries_left)
 		*tries_left = -1;
 
+	/* Many cards do support PIN status queries, but some cards don't and
+	 * mistakenly count the command as a failed PIN attempt, so for now we
+	 * whitelist cards with this flag.  In future this may be reduced to a
+	 * blacklist, subject to testing more cards. */
+	if (data->cmd == SC_PIN_CMD_GET_INFO &&
+	    !(card->caps & SC_CARD_CAP_ISO7816_PIN_INFO)) {
+		sc_log(card->ctx, "Card does not support PIN status queries");
+		return SC_ERROR_NOT_SUPPORTED;
+	}
+
 	/* See if we've been called from another card driver, which is
 	 * passing an APDU to us (this allows to write card drivers
 	 * whose PIN functions behave "mostly like ISO" except in some
@@ -1071,7 +1087,7 @@ iso7816_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_l
 	}
 	apdu = data->apdu;
 
-	if (!(data->flags & SC_PIN_CMD_USE_PINPAD)) {
+	if (!(data->flags & SC_PIN_CMD_USE_PINPAD) || data->cmd == SC_PIN_CMD_GET_INFO) {
 		/* Transmit the APDU to the card */
 		r = sc_transmit_apdu(card, apdu);
 
@@ -1101,12 +1117,23 @@ iso7816_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_l
 		data->apdu = NULL;
 
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
-	if (apdu->sw1 == 0x63) {
-		if ((apdu->sw2 & 0xF0) == 0xC0 && tries_left != NULL)
-			*tries_left = apdu->sw2 & 0x0F;
-		return SC_ERROR_PIN_CODE_INCORRECT;
+	r = sc_check_sw(card, apdu->sw1, apdu->sw2);
+
+	if (data->cmd == SC_PIN_CMD_GET_INFO) {
+		if (r == SC_ERROR_PIN_CODE_INCORRECT) {
+			data->pin1.tries_left = apdu->sw2 & 0xF;
+			r = SC_SUCCESS;
+		} else if (r == SC_ERROR_AUTH_METHOD_BLOCKED) {
+			data->pin1.tries_left = 0;
+			r = SC_SUCCESS;
+		}
+
+		if (tries_left != NULL) {
+			*tries_left = data->pin1.tries_left;
+		}
 	}
-	return sc_check_sw(card, apdu->sw1, apdu->sw2);
+
+	return r;
 }
 
 
