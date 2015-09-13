@@ -34,6 +34,7 @@
 #include "log.h"
 
 int sc_pkcs15emu_openpgp_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
+static int sc_pkcs15emu_openpgp_add_data(sc_pkcs15_card_t *);
 
 
 #define	PGP_USER_PIN_FLAGS	(SC_PKCS15_PIN_FLAG_CASE_SENSITIVE \
@@ -42,6 +43,8 @@ int sc_pkcs15emu_openpgp_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
 #define PGP_ADMIN_PIN_FLAGS	(PGP_USER_PIN_FLAGS \
 				| SC_PKCS15_PIN_FLAG_UNBLOCK_DISABLED \
 				| SC_PKCS15_PIN_FLAG_SO_PIN)
+
+#define PGP_NUM_PRIVDO       4
 
 typedef struct _pgp_pin_cfg {
 	const char	*label;
@@ -153,7 +156,8 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 	u8		c4data[10];
 	u8		c5data[70];
 	int		r, i;
-	const pgp_pin_cfg_t *pin_cfg = (card->type == SC_CARD_TYPE_OPENPGP_V2) ? pin_cfg_v2 : pin_cfg_v1;
+	const pgp_pin_cfg_t *pin_cfg = (card->type == SC_CARD_TYPE_OPENPGP_V2 || card->type == SC_CARD_TYPE_OPENPGP_GNUK)
+	                               ? pin_cfg_v2 : pin_cfg_v1;
 	sc_path_t path;
 	sc_file_t *file;
 
@@ -356,6 +360,9 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 			goto failed;
 	}
 
+	/* PKCS#15 DATA object from OpenPGP private DOs */
+	r = sc_pkcs15emu_openpgp_add_data(p15card);
+
 	return 0;
 
 failed:	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Failed to initialize OpenPGP emulation: %s\n",
@@ -363,9 +370,57 @@ failed:	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Failed to initialize OpenPGP e
 	return r;
 }
 
+static int
+sc_pkcs15emu_openpgp_add_data(sc_pkcs15_card_t *p15card)
+{
+	sc_context_t *ctx = p15card->card->ctx;
+	int i, r;
+
+	LOG_FUNC_CALLED(ctx);
+	/* There is 4 private DO from 0101 to 0104 */
+	for (i = 1; i <= PGP_NUM_PRIVDO; i++) {
+		sc_pkcs15_data_info_t dat_info;
+		sc_pkcs15_object_t dat_obj;
+		char name[8];
+		char path[9];
+		u8 content[254];
+		memset(&dat_info, 0, sizeof(dat_info));
+		memset(&dat_obj, 0, sizeof(dat_obj));
+
+		sprintf(name, "PrivDO%d", i);
+		sprintf(path, "3F00010%d", i);
+
+		/* Check if the DO can be read.
+		 * We won't expose pkcs15 DATA object if DO is empty.
+		 */
+		r = read_file(p15card->card, path, content, sizeof(content));
+		if (r <= 0 ) {
+			sc_log(ctx, "No data get from DO 010%d", i);
+			/* Skip */
+			continue;
+		}
+		sc_format_path(path, &dat_info.path);
+		strlcpy(dat_obj.label, name, sizeof(dat_obj.label));
+		strlcpy(dat_info.app_label, name, sizeof(dat_info.app_label));
+
+		/* Add DATA object to slot protected by PIN2 (PW1 with Ref 0x82) */
+		dat_obj.flags = SC_PKCS15_CO_FLAG_PRIVATE | SC_PKCS15_CO_FLAG_MODIFIABLE;
+		dat_obj.auth_id.len = 1;
+		if (i == 1 || i == 3)
+			dat_obj.auth_id.value[0] = 2;
+		else
+			dat_obj.auth_id.value[0] = 3;
+
+		sc_log(ctx, "Add %s data object", name);
+		r = sc_pkcs15emu_add_data_object(p15card, &dat_obj, &dat_info);
+	}
+	LOG_FUNC_RETURN(ctx, r);
+}
+
 static int openpgp_detect_card(sc_pkcs15_card_t *p15card)
 {
-	if (p15card->card->type == SC_CARD_TYPE_OPENPGP_V1 || p15card->card->type == SC_CARD_TYPE_OPENPGP_V2)
+	if (p15card->card->type == SC_CARD_TYPE_OPENPGP_V1 || p15card->card->type == SC_CARD_TYPE_OPENPGP_V2
+	    || p15card->card->type == SC_CARD_TYPE_OPENPGP_GNUK)
 		return SC_SUCCESS;
 	else
 		return SC_ERROR_WRONG_CARD;
