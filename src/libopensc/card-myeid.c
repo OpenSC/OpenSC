@@ -170,7 +170,7 @@ static int myeid_init(struct sc_card *card)
 #endif
 
 	/* State that we have an RNG */
-	card->caps |= SC_CARD_CAP_RNG;
+	card->caps |= SC_CARD_CAP_RNG | SC_CARD_CAP_ISO7816_PIN_INFO;
 
 	card->max_recv_size = 255;
 	card->max_send_size = 255;
@@ -524,53 +524,12 @@ static int myeid_delete_file(struct sc_card *card, const struct sc_path *path)
 	LOG_FUNC_RETURN(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
 
-static int myeid_pin_info(sc_card_t *card, struct sc_pin_cmd_data *data,
-			   int *tries_left)
-{
-	sc_apdu_t apdu;
-	int r;
-
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x20, 0x00, data->pin_reference);
-
-	r = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
-
-	r =  sc_check_sw(card, apdu.sw1, apdu.sw2);
-
-	if (r == SC_ERROR_PIN_CODE_INCORRECT) {
-		data->pin1.tries_left = apdu.sw2 & 0xF;
-		r = SC_SUCCESS;
-	} else if (r == SC_ERROR_AUTH_METHOD_BLOCKED) {
-		data->pin1.tries_left = 0;
-		r = SC_SUCCESS;
-	}
-	LOG_TEST_RET(card->ctx, r, "Check SW error");
-
-	if (r == SC_SUCCESS)
-	{
-		data->pin1.pad_length = data->pin2.pad_length = 8;
-	        data->pin1.pad_char = data->pin2.pad_char = 0xFF;
-	}
-
-
-	if (tries_left != NULL) {
-		*tries_left = data->pin1.tries_left;
-	}
-
-	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
-}
-
 static int myeid_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 			 int *tries_left)
 {
 	myeid_private_data_t *priv = (myeid_private_data_t *) card->drv_data;
 
 	LOG_FUNC_CALLED(card->ctx);
-
-	if (data->cmd == SC_PIN_CMD_GET_INFO)
-	{
-	        return myeid_pin_info(card, data, tries_left);
-	}
 
 	sc_log(card->ctx, "ref (%d), pin1 len(%d), pin2 len (%d)\n",
 	              data->pin_reference, data->pin1.len, data->pin2.len);

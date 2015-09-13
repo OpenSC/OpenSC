@@ -880,9 +880,18 @@ int sc_get_cache_dir(sc_context_t *ctx, char *buf, size_t bufsize)
 {
 	char *homedir;
 	const char *cache_dir;
+        scconf_block *conf_block = NULL;
 #ifdef _WIN32
 	char temp_path[PATH_MAX];
 #endif
+	conf_block = sc_get_conf_block(ctx, "framework", "pkcs15", 1);
+	cache_dir = scconf_get_str(conf_block, "file_cache_dir", NULL);
+	if (cache_dir != NULL) {
+		if (bufsize <= strlen(cache_dir))
+			return SC_ERROR_BUFFER_TOO_SMALL;
+		strcpy(buf, cache_dir);
+		return SC_SUCCESS;
+	}
 
 #ifndef _WIN32
 	cache_dir = ".eid/cache";

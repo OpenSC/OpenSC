@@ -21,7 +21,7 @@ typedef unsigned __int8 uint8_t;
 #include <wintypes.h>
 #endif
 // allow unicode built where SCARD_READERSTATE is defined as SCARD_READERSTATEW and SCardGetStatusChange renamed to SCardGetStatusChangeW
-#ifdef WIN32
+#ifdef _WIN32
 #ifdef UNICODE
 #define SCARD_READERSTATE SCARD_READERSTATEA
 #undef SCardGetStatusChange
@@ -201,6 +201,8 @@ typedef LONG (PCSC_API *SCardGetAttrib_t)(SCARDHANDLE hCard, DWORD dwAttrId,\
 #define PCSCv2_PART10_PROPERTY_sFirmwareID 8
 #define PCSCv2_PART10_PROPERTY_bPPDUSupport 9
 #define PCSCv2_PART10_PROPERTY_dwMaxAPDUDataSize 10
+#define PCSCv2_PART10_PROPERTY_wIdVendor 11
+#define PCSCv2_PART10_PROPERTY_wIdProduct 12
 
 /* structures used (but not defined) in PCSC Part 10:
  * "IFDs with Secure Pin Entry Capabilities" */

@@ -439,6 +439,9 @@ struct sc_reader_operations {
 /* Card has on-board random number source. */
 #define SC_CARD_CAP_RNG			0x00000004
 
+/* Card supports ISO7816 PIN status queries using an empty VERIFY */
+#define SC_CARD_CAP_ISO7816_PIN_INFO	0x00000008
+
 /* Use the card's ACs in sc_pkcs15init_authenticate(),
  * instead of relying on the ACL info in the profile files. */
 #define SC_CARD_CAP_USE_FCI_AC		0x00000010
@@ -909,6 +912,30 @@ int sc_lock(struct sc_card *card);
  * @retval SC_SUCCESS on success
  */
 int sc_unlock(struct sc_card *card);
+
+/**
+ * @brief Calculate the maximum size of R-APDU payload (Ne).
+ *
+ * Takes card limitations into account such as extended length support as well
+ * as the reader's limitation for data transfer.
+ *
+ * @param card Initialized card object with its reader
+ *
+ * @return maximum Ne
+ */
+size_t sc_get_max_recv_size(const sc_card_t *card);
+
+/**
+ * @brief Calculate the maximum size of C-APDU payload (Nc).
+ *
+ * Takes card limitations into account such as extended length support as well
+ * as the reader's limitation for data transfer.
+ *
+ * @param card
+ *
+ * @return maximum Nc
+ */
+size_t sc_get_max_send_size(const sc_card_t *card);
 
 
 /********************************************************************/

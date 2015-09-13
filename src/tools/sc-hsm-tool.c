@@ -461,27 +461,75 @@ static void print_info(sc_card_t *card, sc_file_t *file)
 	struct sc_pin_cmd_data data;
 	sc_cardctl_sc_hsm_dkek_t dkekinfo;
 
-	u8 major, minor;
+	u8 major, minor, opt;
 
 	major = file->prop_attr[file->prop_attr_len - 2];
 	minor = file->prop_attr[file->prop_attr_len - 1];
 	printf("Version              : %d.%d\n", (int)major, (int)minor);
 
-	/* Try to update PIN info from card */
-	memset(&data, 0, sizeof(data));
-	data.cmd = SC_PIN_CMD_GET_INFO;
-	data.pin_type = SC_AC_CHV;
-	data.pin_reference = ID_USER_PIN;
+	if (file->prop_attr_len > 2) {	/* Version >= 2.0 */
+		opt = file->prop_attr[file->prop_attr_len - 4];
+		if (opt != 0) {
+			printf("Config options       :\n");
+			if (opt & INIT_RRC_ENABLED) {
+				printf("  User PIN reset with SO-PIN enabled\n");
+			}
+			if (opt & INIT_TRANSPORT_PIN) {
+				printf("  Transport-PIN mode enabled\n");
+			}
+		}
 
-	r = sc_pin_cmd(card, &data, &tries_left);
+		/* Try to update SO-PIN info from card */
+		memset(&data, 0, sizeof(data));
+		data.cmd = SC_PIN_CMD_GET_INFO;
+		data.pin_type = SC_AC_CHV;
+		data.pin_reference = ID_SO_PIN;
 
-	if (r == SC_ERROR_REF_DATA_NOT_USABLE) {
-		printf("SmartCard-HSM has never been initialized. Please use --initialize to set SO-PIN and user PIN.\n");
-	} else {
-		if (tries_left == 0) {
-			printf("User PIN locked\n");
+		r = sc_pin_cmd(card, &data, &tries_left);
+		if (r == SC_ERROR_DATA_OBJECT_NOT_FOUND) {
+			printf("SmartCard-HSM has never been initialized. Please use --initialize to set SO-PIN and user PIN.\n");
 		} else {
-			printf("User PIN tries left  : %d\n", tries_left);
+			if (tries_left == 0) {
+				printf("SO-PIN locked\n");
+			} else {
+				printf("SO-PIN tries left    : %d\n", tries_left);
+			}
+			/* Try to update PIN info from card */
+			memset(&data, 0, sizeof(data));
+			data.cmd = SC_PIN_CMD_GET_INFO;
+			data.pin_type = SC_AC_CHV;
+			data.pin_reference = ID_USER_PIN;
+
+			r = sc_pin_cmd(card, &data, &tries_left);
+			if (r == SC_ERROR_CARD_CMD_FAILED) {
+				printf("Public key authentication active.\n");
+			} else if (r == SC_ERROR_REF_DATA_NOT_USABLE) {
+				printf("Transport-PIN active. Please change to user selected PIN first.\n");
+			} else {
+				if (tries_left == 0) {
+					printf("User PIN locked\n");
+				} else {
+					printf("User PIN tries left  : %d\n", tries_left);
+				}
+			}
+		}
+	} else {	/* Version < 2.0 */
+		/* Try to update PIN info from card */
+		memset(&data, 0, sizeof(data));
+		data.cmd = SC_PIN_CMD_GET_INFO;
+		data.pin_type = SC_AC_CHV;
+		data.pin_reference = ID_USER_PIN;
+
+		r = sc_pin_cmd(card, &data, &tries_left);
+
+		if (r == SC_ERROR_REF_DATA_NOT_USABLE) {
+			printf("SmartCard-HSM has never been initialized. Please use --initialize to set SO-PIN and user PIN.\n");
+		} else {
+			if (tries_left == 0) {
+				printf("User PIN locked\n");
+			} else {
+				printf("User PIN tries left  : %d\n", tries_left);
+			}
 		}
 	}
 

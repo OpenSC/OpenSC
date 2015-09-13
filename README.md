@@ -12,3 +12,5 @@ Jenkins CI:
 Travis CI:
 [![Build Status](https://api.travis-ci.org/OpenSC/OpenSC.png)](https://travis-ci.org/OpenSC/OpenSC)
 
+AppVeyor CI:
+[![Build status](https://ci.appveyor.com/api/projects/status/94wjbxyfb0u3cvg9?svg=true)](https://ci.appveyor.com/project/LudovicRousseau/opensc)
