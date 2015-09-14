@@ -807,9 +807,12 @@ pgp_read_blob(sc_card_t *card, pgp_blob_t *blob)
 
 		/* Buffer length for Gnuk pubkey */
 		if (card->type == SC_CARD_TYPE_OPENPGP_GNUK &&
-			(blob->id == DO_AUTH || blob->id == DO_SIGN || blob->id == DO_ENCR
-			 || blob->id == DO_AUTH_SYM || blob->id == DO_SIGN_SYM
-			 || blob->id == DO_ENCR_SYM)) {
+		    (blob->id == DO_AUTH ||
+		     blob->id == DO_SIGN ||
+		     blob->id == DO_ENCR ||
+		     blob->id == DO_AUTH_SYM ||
+		     blob->id == DO_SIGN_SYM ||
+		     blob->id == DO_ENCR_SYM)) {
 			buf_len = MAXLEN_RESP_PUBKEY_GNUK;
 		}
 
