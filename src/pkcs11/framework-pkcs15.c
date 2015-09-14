@@ -282,10 +282,15 @@ pkcs15_bind(struct sc_pkcs11_card *p11card, struct sc_app_info *app_info)
 		return sc_to_cryptoki_error(rc, NULL);
 	}
 
-	ck_rv = register_mechanisms(p11card);
-	if (ck_rv != CKR_OK) {
-		sc_log(context, "cannot register mechanisms; CKR 0x%X", ck_rv);
-		return ck_rv;
+	/* Mechanisms are registered globally per card. Checking
+	 * p11card->nmechanisms avoids registering the same mechanisms twice for a
+	 * card with multiple slots. */
+	if (!p11card->nmechanisms) {
+		ck_rv = register_mechanisms(p11card);
+		if (ck_rv != CKR_OK) {
+			sc_log(context, "cannot register mechanisms; CKR 0x%X", ck_rv);
+			return ck_rv;
+		}
 	}
 
 	return CKR_OK;
