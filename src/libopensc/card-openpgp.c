@@ -1324,7 +1324,6 @@ static int
 pgp_put_data_plain(sc_card_t *card, unsigned int tag, const u8 *buf, size_t buf_len)
 {
 	struct pgp_priv_data *priv = DRVDATA(card);
-	sc_context_t *ctx = card->ctx;
 	sc_apdu_t apdu;
 	u8 ins = 0xDA;
 	u8 p1 = tag >> 8;
@@ -1333,7 +1332,7 @@ pgp_put_data_plain(sc_card_t *card, unsigned int tag, const u8 *buf, size_t buf_
 			? SC_APDU_CASE_3_SHORT : SC_APDU_CASE_3;
 	int r;
 
-	LOG_FUNC_CALLED(ctx);
+	LOG_FUNC_CALLED(card->ctx);
 
 	/* Extended Header list (004D DO) needs a variant of PUT DATA command */
 	if (tag == 0x004D) {
@@ -1361,14 +1360,14 @@ pgp_put_data_plain(sc_card_t *card, unsigned int tag, const u8 *buf, size_t buf_
 
 	/* Send APDU to card */
 	r = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(ctx, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	/* Check response */
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 
 	if (r < 0)
-		LOG_FUNC_RETURN(ctx, r);
+		LOG_FUNC_RETURN(card->ctx, r);
 
-	LOG_FUNC_RETURN(ctx, (int)buf_len);
+	LOG_FUNC_RETURN(card->ctx, (int)buf_len);
 }
 
 /* ABI: PUT DATA */
