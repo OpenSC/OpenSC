@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="windows-1252"?>
 <?if $(var.Platform) = x64 ?>
-  <?define ProductName = "OpenSC (64bit)" ?>
+  <?define ProductName = "@OPENSC_VS_FF_PRODUCT_NAME@ (64bit)" ?>
   <?define Win64YesNo="yes" ?>
   <?define PlatformProgramFilesFolder = "ProgramFiles64Folder" ?>
   <?define PlatformSystemFolder = "System64Folder" ?>
   <?define PlatformUpgradeCode = "{9A449570-69A2-11E0-9CC6-955B4824019B}" ?>
 <?else ?>
-  <?define ProductName = "OpenSC" ?>
+  <?define ProductName = "@OPENSC_VS_FF_PRODUCT_NAME@" ?>
   <?define Win64YesNo="no" ?>
   <?define PlatformProgramFilesFolder = "ProgramFilesFolder" ?>
   <?define PlatformSystemFolder = "SystemFolder" ?>
@@ -20,11 +20,11 @@
            Language="1033"
            Codepage="1252"
            Version="@OPENSC_VERSION_MAJOR@.@OPENSC_VERSION_MINOR@.@OPENSC_VERSION_FIX@.0"
-           Manufacturer="OpenSC Project">
+           Manufacturer="@OPENSC_VS_FF_COMPANY_NAME@">
     <Package Platform="$(var.Platform)"
-             Description="OpenSC Installer"
-             Comments="OpenSC Project home page https://github.com/OpenSC/OpenSC/wiki"
-             Manufacturer="OpenSC Project"
+             Description="@VS_FF_PRODUCT_NAME@ Installer"
+             Comments="@OPENSC_VS_FF_COMMENTS@"
+             Manufacturer="@OPENSC_VS_FF_COMPANY_NAME@"
              InstallerVersion="300"
              Languages="1033"
              Compressed="yes"
@@ -36,10 +36,10 @@
     <WixVariable Id="WixUIBannerBmp" Value="bannrbmp.bmp"/>
     <WixVariable Id="WixUIDialogBmp" Value="dlgbmp.bmp"/>
     <!-- Links in info -->
-    <Property Id="ARPHELPLINK" Value="http://www.opensc-project.org/opensc/wiki/ReportingBugs"/>
-    <Property Id="ARPURLINFOABOUT" Value="http://www.opensc-project.org/"/>
-    <Property Id="ARPURLUPDATEINFO" Value="http://www.opensc-project.org/opensc/wiki/WindowsInstaller"/>
-    <Property Id="ARPCONTACT" Value="OpenSC"/>
+    <Property Id="ARPHELPLINK" Value="@PRODUCT_BUGREPORT@"/>
+    <Property Id="ARPURLINFOABOUT" Value="@OPENSC_VS_FF_PRODUCT_URL@"/>
+    <Property Id="ARPURLUPDATEINFO" Value="@OPENSC_VS_FF_PRODUCT_UPDATES@"/>
+    <Property Id="ARPCONTACT" Value="@OPENSC_VS_FF_COMPANY_URL@"/>
 
 	<Icon Id="OpenSC.ico" SourceFile="OpenSC.ico" />
 	<Property Id="ARPPRODUCTICON" Value="OpenSC.ico" />
