@@ -1127,10 +1127,10 @@ static int flex_generate_key(sc_card_t *card, struct sc_cardctl_cryptoflex_genke
 	apdu.lc = 4;
 
 	/* Little endian representation of exponent */
-	sbuf[0] = data->exponent;
-	sbuf[1] = data->exponent >> 8;
-	sbuf[2] = data->exponent >> 16;
-	sbuf[3] = data->exponent >> 24;
+	sbuf[0] = data->exponent & 0xFF;
+	sbuf[1] = (data->exponent >> 8) & 0xFF;
+	sbuf[2] = (data->exponent >> 16) & 0xFF;
+	sbuf[3] = (data->exponent >> 24) & 0xFF;
 
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");

@@ -500,8 +500,8 @@ static int get_se_num_from_keyd(sc_card_t * card, unsigned short fid,
 	char dbgbuf[2048];
 	u8 fidbuf[2];
 
-	fidbuf[0] = fid >> 8;
-	fidbuf[1] = fid;
+	fidbuf[0] = (fid >> 8) & 0xFF;
+	fidbuf[1] = fid & 0xFF;
 
 	dfi = get_df_info(card);
 	if (!dfi || !dfi->keyd_file) {
@@ -1271,7 +1271,7 @@ static int mcrd_set_security_env(sc_card_t * card,
 
 	if (card->type == SC_CARD_TYPE_MCRD_DTRUST
 	    || card->type == SC_CARD_TYPE_MCRD_GENERIC) {
-		unsigned short fid;
+		unsigned char fid;
 
 		fid = env->key_ref[0];
 		*p = fid;

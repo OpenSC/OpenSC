@@ -18,8 +18,9 @@ matrix:
     - compiler: gcc
       os: linux
       env: ENABLE_DOC=--enable-doc
-    - compiler: gcc
-      os: linux
+    - os: linux
+      env: HOST=x86_64-w64-mingw32
+    - os: linux
       env: HOST=i686-w64-mingw32
 
 before_install:
@@ -31,8 +32,10 @@ install:
   - if [ $TRAVIS_OS_NAME == linux ]; then
       if [ -z "$HOST" ]; then
         sudo apt-get install libpcsclite-dev xsltproc docbook-xsl;
-      else
+      elif [ "${HOST}" == i686-w64-mingw32 ]; then
         sudo apt-get install mingw-w64 binutils-mingw-w64-i686 gcc-mingw-w64-i686;
+      elif [ "${HOST}" == x86_64-w64-mingw32 ]; then
+        sudo apt-get install mingw-w64 binutils-mingw-w64-x86-64 gcc-mingw-w64-x86-64;
       fi
     fi
 
