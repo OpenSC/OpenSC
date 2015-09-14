@@ -1169,16 +1169,12 @@ static int
 pgp_get_pubkey(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 {
 	sc_apdu_t	apdu;
-	u8 apdu_case = SC_APDU_CASE_4;
+	u8 apdu_case = (card->type == SC_CARD_TYPE_OPENPGP_GNUK)
+			? SC_APDU_CASE_4_SHORT : SC_APDU_CASE_4;
 	u8		idbuf[2];
 	int		r;
 
 	sc_log(card->ctx, "called, tag=%04x\n", tag);
-
-	/* With Gnuk token, force to use short APDU */
-	if (card->type == SC_CARD_TYPE_OPENPGP_GNUK) {
-		apdu_case = SC_APDU_CASE_4_SHORT;
-	}
 
 	sc_format_apdu(card, &apdu, apdu_case, 0x47, 0x81, 0);
 	apdu.lc = 2;
@@ -1348,7 +1344,8 @@ pgp_put_data_plain(sc_card_t *card, unsigned int tag, const u8 *buf, size_t buf_
 	u8 ins = 0xDA;
 	u8 p1 = tag >> 8;
 	u8 p2 = tag & 0xFF;
-	u8 apdu_case = SC_APDU_CASE_3;
+	u8 apdu_case = (card->type == SC_CARD_TYPE_OPENPGP_GNUK)
+			? SC_APDU_CASE_3_SHORT : SC_APDU_CASE_3;
 	int r;
 
 	LOG_FUNC_CALLED(ctx);
@@ -1362,10 +1359,6 @@ pgp_put_data_plain(sc_card_t *card, unsigned int tag, const u8 *buf, size_t buf_
 
 	/* Build APDU */
 	if (buf != NULL && buf_len > 0) {
-		/* Force short APDU for Gnuk */
-		if (card->type == SC_CARD_TYPE_OPENPGP_GNUK) {
-			apdu_case = SC_APDU_CASE_3_SHORT;
-		}
 		sc_format_apdu(card, &apdu, apdu_case, ins, p1, p2);
 
 		/* if card/reader does not support extended APDUs, but chaining, then set it */
@@ -1554,7 +1547,8 @@ pgp_compute_signature(sc_card_t *card, const u8 *data,
 	struct pgp_priv_data	*priv = DRVDATA(card);
 	sc_security_env_t	*env = &priv->sec_env;
 	sc_apdu_t		apdu;
-	u8 apdu_case = SC_APDU_CASE_4;
+	u8 apdu_case = (card->type == SC_CARD_TYPE_OPENPGP_GNUK)
+			? SC_APDU_CASE_4_SHORT : SC_APDU_CASE_4;
 	int			r;
 
 	LOG_FUNC_CALLED(card->ctx);
@@ -1562,11 +1556,6 @@ pgp_compute_signature(sc_card_t *card, const u8 *data,
 	if (env->operation != SC_SEC_OPERATION_SIGN)
 		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
 				"invalid operation");
-
-	/* Force short APDU for Gnuk Token */
-	if (card->type == SC_CARD_TYPE_OPENPGP_GNUK) {
-		apdu_case = SC_APDU_CASE_4_SHORT;
-	}
 
 	switch (env->key_ref[0]) {
 	case 0x00: /* signature key */
