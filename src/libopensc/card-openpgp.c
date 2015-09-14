@@ -1269,18 +1269,11 @@ pgp_get_data(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 /* Internal: Write certificate for Gnuk */
 static int gnuk_write_certificate(sc_card_t *card, const u8 *buf, size_t length)
 {
-	sc_context_t *ctx = card->ctx;
 	size_t i = 0;
 	sc_apdu_t apdu;
-	u8 *part;
-	size_t plen;
-	/* Two round_ variables below are to build APDU data
-	 * with even length for Gnuk */
-	u8 roundbuf[256];
-	size_t roundlen = 0;
 	int r = SC_SUCCESS;
 
-	LOG_FUNC_CALLED(ctx);
+	LOG_FUNC_CALLED(card->ctx);
 
 	/* If null data is passed, delete certificate */
 	if (buf == NULL || length == 0) {
@@ -1294,31 +1287,25 @@ static int gnuk_write_certificate(sc_card_t *card, const u8 *buf, size_t length)
 	/* Ref: gnuk_put_binary_libusb.py and gnuk_token.py in Gnuk source tree */
 	/* Split data to segments of 256 bytes. Send each segment via command chaining,
 	 * with particular P1 byte for each segment */
-	while (i*256 < length) {
-		part = (u8 *)buf + i*256;
-		plen = MIN(length - i*256, 256);
+	for (i = 0; i*256 < length; i++) {
+		u8 *part = (u8 *)buf + i*256;
+		size_t plen = MIN(length - i*256, 256);
+		u8 roundbuf[256];	/* space to build APDU data with even length for Gnuk */
 
 		sc_log(card->ctx, "Write part %d from offset 0x%X, len %d", i+1, part, plen);
 
-		if (i == 0) {
-			sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xD6, 0x85, 0);
-		}
-		else {
-			sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xD6, i, 0);
-		}
+		/* 1st chunk: P1 = 0x85, further chunks: P1 = chunk no */
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xD6, (i == 0) ? 0x85 : i, 0);
 		apdu.flags |= SC_APDU_FLAGS_CHAINING;
+		apdu.data = part;
+		apdu.datalen = apdu.lc = plen;
 
 		/* If the last part has odd length, we add zero padding to make it even.
 		 * Gnuk does not allow data with odd length */
 		if (plen < 256 && (plen % 2) != 0) {
-			roundlen = plen + 1;
-			memset(roundbuf, 0, roundlen);
 			memcpy(roundbuf, part, plen);
+			roundbuf[plen++] = 0;
 			apdu.data = roundbuf;
-			apdu.datalen = apdu.lc = roundlen;
-		}
-		else {
-			apdu.data = part;
 			apdu.datalen = apdu.lc = plen;
 		}
 
@@ -1326,10 +1313,8 @@ static int gnuk_write_certificate(sc_card_t *card, const u8 *buf, size_t length)
 		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 		/* Check response */
 		LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2), "UPDATE BINARY returned error");
-
-		/* To next part */
-		i++;
 	}
+
 	LOG_FUNC_RETURN(card->ctx, (int)length);
 }
 
