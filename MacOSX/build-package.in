@@ -51,16 +51,6 @@ rm -f target/Library/OpenSC/lib/*.la
 # generate .bundle (required by Adobe Acrobat)
 ./MacOSX/libtool-bundle target/Library/OpenSC/lib/opensc-pkcs11.so target/Library/OpenSC/lib
 
-# Build engine_pkcs11 + libp11
-test -d libp11 || git clone http://github.com/OpenSC/libp11.git
-(cd libp11
-test -x configure || ./bootstrap
-./configure --enable-static --disable-shared --disable-dependency-tracking --prefix=${BUILDPATH}/build && make && make install)
-test -d engine_pkcs11 || git clone http://github.com/OpenSC/engine_pkcs11.git
-(cd engine_pkcs11
-test -x configure || ./bootstrap
-PKG_CONFIG_PATH=${BUILDPATH}/build/lib/pkgconfig:${PKG_CONFIG_PATH} ./configure --disable-dependency-tracking --prefix=/Library/OpenSC && make install DESTDIR=${BUILDPATH}/target)
-
 # Check out OpenSC.tokend, if not already fetched.
 if ! test -e OpenSC.tokend; then
 	git clone http://github.com/OpenSC/OpenSC.tokend.git
