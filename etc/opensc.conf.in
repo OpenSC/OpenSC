@@ -334,9 +334,12 @@ app default {
 		#path to ans name of external SM module
 		#module_name = @DEFAULT_SM_MODULE@;
 		#module_path = @libdir@;
+		# directory with external SM module
+		# Default: defined by windows register
+		# module_path = "";
 
 		# specific data to tune the module initialization
-		#module_data = "Here can be your SM module init data";
+		# module_data = "Here can be your SM module init data";
 
 		# SM mode:
 		# 'transmit' -- in this mode the procedure to securize an APDU is called by the OpenSC general
@@ -567,6 +570,18 @@ app opensc-pkcs11 {
 		#
 		# Default: false
 		# lock_login = true;
+
+		# With this setting disabled, the OpenSC PKCS#11 module will initialize
+		# the slots available when the application calls `C_GetSlotList`. With
+		# this setting enabled, the slots will also get initialized when
+		# C_GetSlotInfo is called.
+		#
+		# This setting is a workaround for Java which does not call
+		# `C_GetSlotList` when configured with a static `slot` instead of
+		# `slotListIndex`.
+		#
+		# Default: true
+		# init_sloppy = false;
 
 		# User PIN unblock style
 		#    none:  PIN unblock is not possible with PKCS#11 API;

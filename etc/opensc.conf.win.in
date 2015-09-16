@@ -305,6 +305,14 @@ app default {
         #        name = "Morpho YpsID S3 IAS/ECC";
         #        # secure_messaging = local_morpho_YpsID_S3;
         #}
+        #card_atr 3B:DF:96:00:80:31:FE:45:00:31:B8:64:04:1F:EC:C1:73:94:01:80:82:90:00:EC {
+        #        type = 25005;
+        #        driver = "iasecc";
+        #        name = "Morpho MI IAS/ECC v1.0.1";
+        #        md_read_only = false;
+        #        md_supports_X509_enrollment = true;
+        #        secure_messaging = local_morpho_mi;
+        #}
         card_atr 3B:DF:18:FF:81:91:FE:1F:C3:00:31:B8:64:0C:01:EC:C1:73:94:01:80:82:90:00:B3 {
                 type = 25004;
                 driver = "iasecc";
@@ -559,6 +567,18 @@ app opensc-pkcs11 {
 		# Default: false
 		# lock_login = true;
 
+		# With this setting disabled, the OpenSC PKCS#11 module will initialize
+		# the slots available when the application calls `C_GetSlotList`. With
+		# this setting enabled, the slots will also get initialized when
+		# C_GetSlotInfo is called.
+		#
+		# This setting is a workaround for Java which does not call
+		# `C_GetSlotList` when configured with a static `slot` instead of
+		# `slotListIndex`.
+		#
+		# Default: true
+		# init_sloppy = false;
+
 		# User PIN unblock style
 		#    none:  PIN unblock is not possible with PKCS#11 API;
 		#    set_pin_in_unlogged_session:  C_SetPIN() in unlogged session:
@@ -618,6 +638,16 @@ app opensc-pkcs11 {
 		# create_slots_for_pins = "user,sign";
 		# create_slots_for_pins = application;
 		# create_slots_for_pins = "application,sign";
+		#
+		# For the module to simulate the opensc-onepin module behavior the following option
+		# must be set:
+		# create_slots_for_pins = "user"
+	}
+}
+
+app onepin-opensc-pkcs11 {
+	pkcs11 {
+		slots_per_card = 1;
 	}
 }
 

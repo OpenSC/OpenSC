@@ -473,6 +473,7 @@ static sc_timestamp_t get_current_time(void)
 CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
 {
 	struct sc_pkcs11_slot *slot;
+	unsigned int uninit_slotcount;
 	sc_timestamp_t now;
 	CK_RV rv;
 
@@ -485,7 +486,11 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
 
 	sc_log(context, "C_GetSlotInfo(0x%lx)", slotID);
 
-	if (1 <= list_size(&virtual_slots)) {
+	if (sc_pkcs11_conf.plug_and_play)
+		uninit_slotcount = 1;
+	else
+		uninit_slotcount = 0;
+	if (sc_pkcs11_conf.init_sloppy && uninit_slotcount <= list_size(&virtual_slots)) {
 		/* Most likely virtual_slots only contains the hotplug slot and has not
 		 * been initialized because the caller has *not* called C_GetSlotList
 		 * before C_GetSlotInfo, as required by PKCS#11.  Initialize
