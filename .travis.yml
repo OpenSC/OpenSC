@@ -1,10 +1,31 @@
-language: C
+language: c
+
+sudo: false
+
+addons:
+  apt_packages:
+    - binutils-mingw-w64-i686
+    - binutils-mingw-w64-x86-64
+    - docbook-xsl
+    - gcc-mingw-w64-i686
+    - gcc-mingw-w64-x86-64
+    - libpcsclite-dev
+    - mingw-w64
+    - wine
+    - xsltproc
+  coverity_scan:
+    project:
+      name: "OpenSC/OpenSC"
+      description: "Build submitted via Travis CI"
+    notification_email: viktor.tarasov@gmail.com
+    build_command:   "make -j 4"
+    branch_pattern: coverity_scan
 
 env:
   global:
-   # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
-   #   via the "travis encrypt" command using the project repo's public key
-   - secure: "UkHn7wy4im8V1nebCWbAetnDSOLRUbOlF6++ovk/7Bnso1/lnhXHelyzgRxfD/oI68wm9nnRV+RQEZ9+72Ug1CyvHxyyxxkwal/tPeHH4B/L+aGdPi0id+5OZSKIm77VP3m5s102sJMJgH7DFd03+nUd0K26p0tk8ad4j1geV4c="
+    # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
+    #   via the "travis encrypt" command using the project repo's public key
+    - secure: "UkHn7wy4im8V1nebCWbAetnDSOLRUbOlF6++ovk/7Bnso1/lnhXHelyzgRxfD/oI68wm9nnRV+RQEZ9+72Ug1CyvHxyyxxkwal/tPeHH4B/L+aGdPi0id+5OZSKIm77VP3m5s102sJMJgH7DFd03+nUd0K26p0tk8ad4j1geV4c="
 
 matrix:
   include:
@@ -23,40 +44,21 @@ matrix:
     - os: linux
       env: HOST=i686-w64-mingw32
 
-before_install:
-  - if [ $TRAVIS_OS_NAME == linux ]; then
-      sudo apt-get update || true;
-    fi
-
-install:
-  - if [ $TRAVIS_OS_NAME == linux ]; then
-      if [ -z "$HOST" ]; then
-        sudo apt-get install libpcsclite-dev xsltproc docbook-xsl;
-      elif [ "${HOST}" == i686-w64-mingw32 ]; then
-        sudo apt-get install mingw-w64 binutils-mingw-w64-i686 gcc-mingw-w64-i686;
-      elif [ "${HOST}" == x86_64-w64-mingw32 ]; then
-        sudo apt-get install mingw-w64 binutils-mingw-w64-x86-64 gcc-mingw-w64-x86-64;
-      fi
-    fi
-
 before_script:
   - ./bootstrap
   - if [ -z "$HOST" ]; then
       ./configure $ENABLE_DOC --enable-dnie-ui;
     else
+      if [ ! -f "$(winepath 'C:/Program Files (x86)/Inno Setup 5/ISCC.exe')" ]; then
+        /sbin/start-stop-daemon --start --quiet --pidfile /tmp/custom_xvfb_99.pid --make-pidfile --background --exec /usr/bin/Xvfb -- :99 -ac -screen 0 1280x1024x16;
+        export DISPLAY=:99.0;
+        wget http://files.jrsoftware.org/is/5/isetup-5.5.6.exe;
+        wine isetup-5.5.6.exe /SILENT /VERYSILENT /SP- /SUPPRESSMSGBOXES /NORESTART;
+      fi;
       unset CC;
       unset CXX;
-      ./configure --host=$HOST --disable-openssl;
+      ./configure --host=$HOST --disable-openssl --disable-readline --disable-zlib --prefix=${TRAVIS_BUILD_DIR}/win32/opensc || cat config.log;
     fi
-
-addons:
-  coverity_scan:
-    project:
-      name: "OpenSC/OpenSC"
-      description: "Build submitted via Travis CI"
-    notification_email: viktor.tarasov@gmail.com
-    build_command:   "make -j 4"
-    branch_pattern: coverity_scan
 
 script:
   - if [ "${COVERITY_SCAN_BRANCH}" != 1 ]; then
@@ -66,7 +68,13 @@ script:
         make;
       fi;
     fi
-  - if [ -z "$HOST" -a "${COVERITY_SCAN_BRANCH}" != 1 -a "$TRAVIS_OS_NAME" != "osx" ]; then
+  - if [ -z "$HOST" -a "${COVERITY_SCAN_BRANCH}" != 1 ]; then
       make check;
       make dist;
     fi
+  - if [ ! -z "$HOST" -a "${COVERITY_SCAN_BRANCH}" != 1 ]; then
+      make install;
+      wine "C:/Program Files (x86)/Inno Setup 5/ISCC.exe" win32/OpenSC.iss;
+    fi
+
+cache: ccache

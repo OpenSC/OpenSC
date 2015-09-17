@@ -4,7 +4,7 @@ AC_PREREQ(2.60)
 
 define([PRODUCT_NAME], [OpenSC])
 define([PRODUCT_TARNAME], [opensc])
-define([PRODUCT_BUGREPORT], [opensc-devel@lists.sourceforge.net])
+define([PRODUCT_BUGREPORT], [https://github.com/OpenSC/OpenSC/issues])
 define([PACKAGE_VERSION_MAJOR], [0])
 define([PACKAGE_VERSION_MINOR], [15])
 define([PACKAGE_VERSION_FIX], [0])
@@ -13,8 +13,11 @@ define([PACKAGE_VERSION_REVISION], [0])
 
 define([VS_FF_LEGAL_COPYRIGHT], [OpenSC Project])
 define([VS_FF_LEGAL_COMPANY_NAME], [OpenSC Project])
+define([VS_FF_LEGAL_COMPANY_URL], [https://github.com/OpenSC])
 define([VS_FF_COMMENTS], [Provided under the terms of the GNU Lesser General Public License (LGPLv2.1+).])
 define([VS_FF_PRODUCT_NAME], [OpenSC smartcard framework])
+define([VS_FF_PRODUCT_UPDATES], [https://github.com/OpenSC/OpenSC/releases])
+define([VS_FF_PRODUCT_URL], [https://github.com/OpenSC/OpenSC])
 
 m4_include(version.m4)
 m4_sinclude(version.m4.ci)
@@ -32,8 +35,11 @@ OPENSC_VERSION_REVISION="PACKAGE_VERSION_REVISION"
 
 OPENSC_VS_FF_LEGAL_COPYRIGHT="VS_FF_LEGAL_COPYRIGHT"
 OPENSC_VS_FF_COMPANY_NAME="VS_FF_LEGAL_COMPANY_NAME"
+OPENSC_VS_FF_COMPANY_URL="VS_FF_LEGAL_COMPANY_URL"
 OPENSC_VS_FF_COMMENTS="VS_FF_COMMENTS"
 OPENSC_VS_FF_PRODUCT_NAME="VS_FF_PRODUCT_NAME"
+OPENSC_VS_FF_PRODUCT_UPDATES="VS_FF_PRODUCT_UPDATES"
+OPENSC_VS_FF_PRODUCT_URL="VS_FF_PRODUCT_URL"
 
 # LT Version numbers, remember to change them just *before* a release.
 #   (Code changed:                      REVISION++)
@@ -654,6 +660,9 @@ AC_DEFINE_UNQUOTED([OPENSC_VS_FF_LEGAL_COPYRIGHT], [${OPENSC_VS_FF_LEGAL_COPYRIG
 AC_DEFINE_UNQUOTED([OPENSC_VS_FF_COMPANY_NAME], [${OPENSC_VS_FF_COMPANY_NAME}], [OpenSC version-info CompanyName value])
 AC_DEFINE_UNQUOTED([OPENSC_VS_FF_COMMENTS], [${OPENSC_VS_FF_COMMENTS}], [OpenSC version-info Comments])
 AC_DEFINE_UNQUOTED([OPENSC_VS_FF_PRODUCT_NAME], [${OPENSC_VS_FF_PRODUCT_NAME}], [OpenSC version-info ProductName])
+AC_DEFINE_UNQUOTED([OPENSC_VS_FF_PRODUCT_UPDATES], [${OPENSC_VS_FF_PRODUCT_UPDATES}], [OpenSC version-info UpdateURL])
+AC_DEFINE_UNQUOTED([OPENSC_VS_FF_PRODUCT_URL], [${OPENSC_VS_FF_PRODUCT_URL}], [OpenSC version-info ProductURL])
+AC_DEFINE_UNQUOTED([OPENSC_VS_FF_COMPANY_URL], [${OPENSC_VS_FF_COMPANY_URL}], [OpenSC version-info UpdateURL])
 
 pkcs11dir="\$(libdir)/pkcs11"
 
@@ -667,6 +676,9 @@ AC_SUBST([OPENSC_VS_FF_LEGAL_COPYRIGHT])
 AC_SUBST([OPENSC_VS_FF_COMPANY_NAME])
 AC_SUBST([OPENSC_VS_FF_COMMENTS])
 AC_SUBST([OPENSC_VS_FF_PRODUCT_NAME])
+AC_SUBST([OPENSC_VS_FF_PRODUCT_UPDATES])
+AC_SUBST([OPENSC_VS_FF_PRODUCT_URL])
+AC_SUBST([OPENSC_VS_FF_COMPANY_URL])
 AC_SUBST([OPENSC_LT_CURRENT])
 AC_SUBST([OPENSC_LT_REVISION])
 AC_SUBST([OPENSC_LT_AGE])
@@ -757,13 +769,16 @@ OpenSC has been configured with the following options:
 
 
 Version:                 ${PACKAGE_VERSION}
-Version fix:		 ${OPENSC_VERSION_FIX}
-Version revision:	 ${OPENSC_VERSION_REVISION}
+Version fix:             ${OPENSC_VERSION_FIX}
+Version revision:        ${OPENSC_VERSION_REVISION}
 
 Copyright:               ${OPENSC_VS_FF_LEGAL_COPYRIGHT}
 Company:                 ${OPENSC_VS_FF_COMPANY_NAME}
+Company URL:             ${OPENSC_VS_FF_COMPANY_URL}
 Comments:                ${OPENSC_VS_FF_COMMENTS}
 Product name:            ${OPENSC_VS_FF_PRODUCT_NAME}
+Product updates:         ${OPENSC_VS_FF_PRODUCT_UPDATES}
+Product URL:             ${OPENSC_VS_FF_PRODUCT_URL}
 
 User binaries:           $(eval eval eval echo "${bindir}")
 Configuration files:     $(eval eval eval echo "${sysconfdir}")
