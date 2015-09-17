@@ -263,7 +263,8 @@ isoApplet_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t
 	struct sc_pkcs15_pin_attributes *pin_attrs = &auth_info->attrs.pin;
 	int r;
 
-	LOG_FUNC_CALLED(card->ctx);
+	if (card)
+		LOG_FUNC_CALLED(card->ctx);
 
 	if(!pin || !pin_len || !p15card || !p15card->card || !df || !&df->path)
 	{

@@ -2166,7 +2166,7 @@ iasecc_pin_get_policy (struct sc_card *card, struct sc_pin_cmd_data *data)
 	if (sdo.docp.acls_contact.size == 0)
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Extremely strange ... there is no ACLs");
 
-	sc_log(ctx, "iasecc_pin_get_policy() sdo.docp.size.size %i %02X:%02X", sdo.docp.size.size, *(sdo.docp.size.value + 0),  *(sdo.docp.size.value + 1));
+	sc_log(ctx, "iasecc_pin_get_policy() sdo.docp.size.size %i", sdo.docp.size.size);
 	for (ii=0; ii<sizeof(sdo.docp.scbs); ii++)   {
 		struct iasecc_se_info se;
 		unsigned char scb = sdo.docp.scbs[ii];
