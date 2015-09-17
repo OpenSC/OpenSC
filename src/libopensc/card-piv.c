@@ -1450,9 +1450,17 @@ static int piv_get_key(sc_card_t *card, unsigned int alg_id, u8 **key, size_t *l
 		goto err;
 	}
 
-	fseek(f, 0L, SEEK_END);
+	if (0 > fseek(f, 0L, SEEK_END))
+		r = SC_ERROR_INTERNAL;
 	fsize = ftell(f);
-	fseek(f, 0L, SEEK_SET);
+	if (0 > (long) fsize)
+		r = SC_ERROR_INTERNAL;
+	if (0 > fseek(f, 0L, SEEK_SET))
+		r = SC_ERROR_INTERNAL;
+	if(r) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not read %s\n", keyfilename);
+		goto err;
+	}
 
 	keybuf = malloc(fsize+1); /* if not binary, need null to make it a string */
 	if (!keybuf) {
