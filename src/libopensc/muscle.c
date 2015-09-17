@@ -601,7 +601,9 @@ int msc_extract_rsa_public_key(sc_card_t *card,
 	if(buffer[0] != MSC_RSA_PUBLIC) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_UNKNOWN_DATA_RECEIVED);
 	*modLength = (buffer[3] << 8) | buffer[4];
 	/* Read the modulus and the exponent length */
-	
+
+	if (*modLength + 2 > sizeof buffer)
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
 	r = msc_read_object(card, inputId, fileLocation, buffer, *modLength + 2);
 	fileLocation += *modLength + 2;
 	if(r < 0) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
