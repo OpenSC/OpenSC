@@ -270,7 +270,7 @@ void scconf_parse_token(scconf_parser * parser, int token_type, const char *toke
 				scconf_parse_warning_expect(parser, ";");
 				scconf_parse_reset_state(parser);
 			}
-			if (*token == '"') {
+			if (token && *token == '"') {
 				/* quoted string, remove them */
 				token++;
 				len = strlen(token);
