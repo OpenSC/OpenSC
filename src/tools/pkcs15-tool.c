@@ -835,7 +835,7 @@ static void print_ssh_key(FILE *outf, const char * alg, struct sc_pkcs15_object 
 			return;
 
 		if (obj->label && strlen(obj->label)) 
-			fprintf(outf,"ssh-%s %s %s\n", alg, uu, obj->label);
+			fprintf(outf,"ssh-%s %s %.*s\n", alg, uu, sizeof obj->label, obj->label);
 		else
 			fprintf(outf,"ssh-%s %s\n", alg, uu);
 	}
