@@ -256,6 +256,8 @@ static int gemsafe_get_cert_len(sc_card_t *card)
 				return SC_SUCCESS;
 			}
 			/* DER cert len is encoded this way */
+			if (ind+3 >= sizeof ibuf)
+				return SC_ERROR_INVALID_DATA;
 			certlen = ((((size_t) ibuf[ind+2]) << 8) | ibuf[ind+3]) + 4;
 			sc_log(card->ctx, "Found certificate of key container %d at offset %d, len %d", i+1, ind, certlen);
 			gemsafe_cert[i].index = ind;
