@@ -3357,7 +3357,7 @@ iasecc_compute_signature(struct sc_card *card,
 
 static int
 iasecc_read_public_key(struct sc_card *card, unsigned type,
-		struct sc_path *key_path, unsigned ref, size_t size,
+		struct sc_path *key_path, unsigned ref, unsigned size,
 		unsigned char **out, size_t *out_len)
 {
 	struct sc_context *ctx = card->ctx;
