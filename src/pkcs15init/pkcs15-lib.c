@@ -2237,6 +2237,9 @@ int
 sc_pkcs15init_select_intrinsic_id(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 		int type, struct sc_pkcs15_id *id_out, void *data)
 {
+#ifndef ENABLE_OPENSSL
+	LOG_FUNC_RETURN(p15card->card->ctx, SC_SUCCESS);
+#else
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15_pubkey *pubkey = NULL;
 	unsigned id_style;
@@ -2246,9 +2249,7 @@ sc_pkcs15init_select_intrinsic_id(struct sc_pkcs15_card *p15card, struct sc_prof
 	int rv, allocated = 0;
 
 	LOG_FUNC_CALLED(ctx);
-#ifndef ENABLE_OPENSSL
-	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
-#else
+
 	if (!id_out || !profile)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
