@@ -186,7 +186,7 @@ isoApplet_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t
 
 	LOG_FUNC_CALLED(card->ctx);
 
-	if(!profile || !p15card || !df || !p15card->card || !p15card->card->ctx)
+	if(!profile || !df || !p15card->card->ctx)
 	{
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
@@ -263,10 +263,9 @@ isoApplet_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t
 	struct sc_pkcs15_pin_attributes *pin_attrs = &auth_info->attrs.pin;
 	int r;
 
-	if (card)
-		LOG_FUNC_CALLED(card->ctx);
+	LOG_FUNC_CALLED(card->ctx);
 
-	if(!pin || !pin_len || !p15card || !p15card->card || !df || !&df->path)
+	if(!pin || !pin_len || !df || !&df->path)
 	{
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
