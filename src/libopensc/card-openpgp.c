@@ -2196,6 +2196,8 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_keystore_info
 	if (key_info->e_len < req_e_len) {
 		/* Create new buffer */
 		p = calloc(req_e_len, 1);
+		if (!p)
+			LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
 		memcpy(p + req_e_len - key_info->e_len, key_info->e, key_info->e_len);
 		key_info->e_len = req_e_len;
 		/* Set key_info->e to new buffer */
