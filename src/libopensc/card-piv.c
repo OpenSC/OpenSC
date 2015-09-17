@@ -1391,7 +1391,6 @@ static const EVP_CIPHER *get_cipher_for_algo(int alg_id)
 		default: return NULL;
 	}
 }
-#endif
 
 static int get_keylen(unsigned int alg_id, size_t *size)
 {
@@ -1516,6 +1515,7 @@ err:
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 	return r;
 }
+#endif
 
 /*
  * will only deal with 3des for now

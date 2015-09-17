@@ -1097,12 +1097,12 @@ static int westcos_sign_decipher(int mode, sc_card_t *card,
 				 size_t outlen)
 {
 	int r;
+	sc_file_t *keyfile = sc_file_new();
+#ifdef ENABLE_OPENSSL
 	int idx = 0;
 	u8 buf[180];
-	sc_file_t *keyfile = sc_file_new();
 	priv_data_t *priv_data = NULL;
 	int pad;
-#ifdef ENABLE_OPENSSL
 	RSA *rsa = NULL;
 	BIO *mem = BIO_new(BIO_s_mem());
 #endif
@@ -1234,8 +1234,8 @@ out:
 		BIO_free(mem);
 	if (rsa)
 		RSA_free(rsa);
-#endif /* ENABLE_OPENSSL */
 out2:
+#endif /* ENABLE_OPENSSL */
 	if (keyfile)
 		sc_file_free(keyfile);
 	return r;
