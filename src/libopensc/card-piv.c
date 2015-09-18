@@ -1172,13 +1172,13 @@ static int piv_read_binary(sc_card_t *card, unsigned int idx,
 
 	if ( rbuflen < idx + count)
 		count = rbuflen - idx;
-		if (count <= 0) {
-			r = 0;
-			priv->rwb_state = 1;
-		} else {
-			memcpy(buf, rbuf + idx, count);
-			r = count;
-		}
+	if (count <= 0) {
+		r = 0;
+		priv->rwb_state = 1;
+	} else {
+		memcpy(buf, rbuf + idx, count);
+		r = count;
+	}
 err:
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 }
