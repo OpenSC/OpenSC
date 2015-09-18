@@ -1067,7 +1067,7 @@ isoApplet_set_security_env(sc_card_t *card,
 	sc_apdu_t apdu;
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	u8 *p;
-	int r, locked = 0;
+	int r;
 	struct isoApplet_drv_data *drvdata = DRVDATA(card);
 
 	LOG_FUNC_CALLED(card->ctx);
@@ -1155,41 +1155,14 @@ isoApplet_set_security_env(sc_card_t *card,
 	apdu.datalen = r;
 	apdu.data = sbuf;
 
-	if (se_num > 0)
-	{
-		r = sc_lock(card);
-		LOG_TEST_RET(card->ctx, r, "sc_lock() failed");
-		locked = 1;
-	}
-
 	if (apdu.datalen != 0)
 	{
 		r = sc_transmit_apdu(card, &apdu);
-		if (r)
-		{
-			sc_log(card->ctx, "%s: APDU transmit failed", sc_strerror(r));
-			goto err;
-		}
+		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-		if (r)
-		{
-			sc_log(card->ctx, "%s: Card returned error", sc_strerror(r));
-			goto err;
-		}
+		LOG_TEST_RET(card->ctx, r, "Card returned error");
 	}
 
-	if (se_num <= 0)
-		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0xF2, se_num);
-	r = sc_transmit_apdu(card, &apdu);
-	sc_unlock(card);
-	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
-
-	r =  sc_check_sw(card, apdu.sw1, apdu.sw2);
-	LOG_FUNC_RETURN(card->ctx, r);
-err:
-	if (locked)
-		sc_unlock(card);
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 

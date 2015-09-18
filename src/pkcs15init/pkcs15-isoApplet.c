@@ -295,8 +295,10 @@ isoApplet_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t
 	                             pin_attrs->reference,
 	                             NULL, 0,
 	                             pin, pin_len, NULL);
+	LOG_TEST_RET(card->ctx, r, "Failed to set PIN");
 
-	LOG_FUNC_RETURN(card->ctx, r);
+	sc_pkcs15_pincache_add(p15card, pin_obj, pin, pin_len);
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
 /*
