@@ -2482,61 +2482,67 @@ out:
 static int
 pgp_erase_card(sc_card_t *card)
 {
-	sc_context_t *ctx = card->ctx;
 	/* Special series of commands to erase OpenPGP card,
 	 * according to https://www.crypto-stick.com/en/faq
 	 * (How to reset a Crypto Stick? question).
 	 * Gnuk is known not to support this feature. */
-	u8 apdu_binaries[10][13] = {
-		{0, 0x20, 0, 0x81, 0x08, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40},
-		{0, 0x20, 0, 0x81, 0x08, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40},
-		{0, 0x20, 0, 0x81, 0x08, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40},
-		{0, 0x20, 0, 0x81, 0x08, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40},
-		{0, 0x20, 0, 0x83, 0x08, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40},
-		{0, 0x20, 0, 0x83, 0x08, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40},
-		{0, 0x20, 0, 0x83, 0x08, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40},
-		{0, 0x20, 0, 0x83, 0x08, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40},
-		{0, 0xe6, 0, 0},
-		{0, 0x44, 0, 0}
+	static const char *apdu_hex[] = {
+		/* block PIN1 */
+		"00:20:00:81:08:40:40:40:40:40:40:40:40",
+		"00:20:00:81:08:40:40:40:40:40:40:40:40",
+		"00:20:00:81:08:40:40:40:40:40:40:40:40",
+		"00:20:00:81:08:40:40:40:40:40:40:40:40",
+		/* block PIN3 */
+		"00:20:00:83:08:40:40:40:40:40:40:40:40",
+		"00:20:00:83:08:40:40:40:40:40:40:40:40",
+		"00:20:00:83:08:40:40:40:40:40:40:40:40",
+		"00:20:00:83:08:40:40:40:40:40:40:40:40",
+		/* TERMINATE */
+		"00:e6:00:00",
+		/* ACTIVATE */
+		"00:44:00:00",
+		NULL
 	};
-	u8 apdu_lens[10] = {13, 13, 13, 13, 13, 13, 13, 13, 4, 4};
-	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
-	sc_apdu_t apdu;
-	u8 i, l, r;
+	int i;
+	int r = SC_SUCCESS;
 
-	LOG_FUNC_CALLED(ctx);
+	LOG_FUNC_CALLED(card->ctx);
 
 	/* check card version */
 	if (card->type != SC_CARD_TYPE_OPENPGP_V2) {
-		sc_log(ctx, "Card is not OpenPGP v2");
-		LOG_FUNC_RETURN(ctx, SC_ERROR_NO_CARD_SUPPORT);
+		sc_log(card->ctx, "Card is not OpenPGP v2");
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NO_CARD_SUPPORT);
 	}
-	sc_log(ctx, "Card is OpenPGP v2. Erase card.");
+	sc_log(card->ctx, "Card is OpenPGP v2. Erase card.");
 
-	/* iterate over 10 commands above */
-	for (i = 0; i < sizeof(apdu_lens); i++) {
-		/* length of the binary array of the current command */
-		l = apdu_lens[i];
-		/* print the command to console */
-		printf("Sending %d: ", i);
-		for (r = 0; r < l; r++)
-			printf("%02X ", apdu_binaries[i][r]);
-		printf("\n");
+	/* iterate over the commands above */
+	for (i = 0; apdu_hex[i] != NULL; i++) {
+		u8 apdu_bin[25];	/* large enough to convert apdu_hex */
+		size_t apdu_bin_len = sizeof(apdu_bin);
+		sc_apdu_t apdu;
+		u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
+
+		/* convert hex array to bin array */
+		r = sc_hex_to_bin(apdu_hex[i], apdu_bin, &apdu_bin_len);
+		LOG_TEST_RET(card->ctx, r, "Failed to convert APDU bytes");
 
 		/* build APDU from binary array */
-		r = sc_bytes2apdu(card->ctx, apdu_binaries[i], l, &apdu);
+		r = sc_bytes2apdu(card->ctx, apdu_bin, apdu_bin_len, &apdu);
 		if (r) {
-			sc_log(ctx, "Failed to build APDU");
-			LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
+			sc_log(card->ctx, "Failed to build APDU");
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 		}
+
 		apdu.resp = rbuf;
 		apdu.resplen = sizeof(rbuf);
 
 		/* send APDU to card */
+		sc_log(card->ctx, "Sending APDU%d %s", i, apdu_hex[i]);
 		r = sc_transmit_apdu(card, &apdu);
-		LOG_TEST_RET(ctx, r, "Transmiting APDU failed");
+		LOG_TEST_RET(card->ctx, r, "Transmitting APDU failed");
 	}
-	LOG_FUNC_RETURN(ctx, r);
+
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 
