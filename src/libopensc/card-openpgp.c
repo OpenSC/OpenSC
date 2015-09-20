@@ -329,7 +329,8 @@ pgp_match_card(sc_card_t *card)
 	if (i >= 0) {
 		card->name = pgp_atrs[i].name;
 		return 1;
-	} else {
+	}
+	else {
 		sc_path_t	partial_aid;
 		unsigned char aid[16];
 
@@ -340,11 +341,20 @@ pgp_match_card(sc_card_t *card)
 			/* read information from AID */
 			i = sc_get_data(card, 0x004F, aid, sizeof aid);
 			if (i == 16) {
-				if (((aid[6] << 8) | aid[7]) >= 0x0200)
-					card->type = SC_CARD_TYPE_OPENPGP_V2;
-				else
+				switch ((aid[6] << 8) | aid[7]) {	/* BCD-coded bytes */
+				case 0x0101:
 					card->type = SC_CARD_TYPE_OPENPGP_V1;
-				return 1;
+					sc_log(card->ctx, "OpenPGPv1-type card found");
+					return 1;
+				case 0x0200:
+				case 0x0201:
+					card->type = SC_CARD_TYPE_OPENPGP_V2;
+					sc_log(card->ctx, "OpenPGPv2-type card found");
+					return 1;
+				default:
+					sc_log(card->ctx, "unsupported OpenPGP-type card found");
+					/* fall through */
+				}
 			}
 		}
 	}
