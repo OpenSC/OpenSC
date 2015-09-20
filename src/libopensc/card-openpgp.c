@@ -23,6 +23,8 @@
  * http://www.g10code.de/docs/openpgp-card-1.0.pdf (obsolete)
  * http://www.g10code.de/docs/openpgp-card-1.1.pdf
  * http://www.g10code.de/docs/openpgp-card-2.0.pdf
+ * http://www.g10code.de/docs/openpgp-card-2.1.pdf (minor changes to v2.0)
+ * http://www.g10code.de/docs/openpgp-card-3.0.pdf (not yet supported)
  */
 
 #if HAVE_CONFIG_H
@@ -79,7 +81,9 @@ enum _type {		/* DO type */
 enum _version {		/* 2-byte BCD-alike encoded version number */
 	OPENPGP_CARD_1_0 = 0x0100,
 	OPENPGP_CARD_1_1 = 0x0101,
-	OPENPGP_CARD_2_0 = 0x0200
+	OPENPGP_CARD_2_0 = 0x0200,
+	OPENPGP_CARD_2_1 = 0x0201,
+	OPENPGP_CARD_3_0 = 0x0300
 };
 
 enum _access {		/* access flags for the respective DO/file */
