@@ -397,13 +397,13 @@ pgp_init(sc_card_t *card)
 	aid.type = SC_PATH_TYPE_DF_NAME;
 	if ((r = iso_ops->select_file(card, &aid, &file)) < 0) {
 		pgp_finish(card);
-		return r;
+		LOG_FUNC_RETURN(card->ctx, r);
 	}
 
 	/* defensive programming check */
 	if (!file)   {
 		pgp_finish(card);
-		return SC_ERROR_OBJECT_NOT_FOUND;
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OBJECT_NOT_FOUND);
 	}
 
 	if (file->namelen != 16) {
@@ -432,7 +432,7 @@ pgp_init(sc_card_t *card)
 	priv->mf = pgp_new_blob(card, NULL, 0x3f00, file);
 	if (!priv->mf) {
 		pgp_finish(card);
-		return SC_ERROR_OUT_OF_MEMORY;
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 	}
 
 	/* select MF */
@@ -447,7 +447,7 @@ pgp_init(sc_card_t *card)
 			/* catch out of memory condition */
 			if (child == NULL) {
 				pgp_finish(card);
-				return SC_ERROR_OUT_OF_MEMORY;
+				LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 			}
 		}
 	}
@@ -455,7 +455,7 @@ pgp_init(sc_card_t *card)
 	/* get card_features from ATR & DOs */
 	pgp_get_card_features(card);
 
-	return SC_SUCCESS;
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
 
