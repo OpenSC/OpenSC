@@ -454,13 +454,12 @@ pgp_get_card_features(sc_card_t *card)
 	struct pgp_priv_data *priv = DRVDATA(card);
 	unsigned char *hist_bytes = card->atr.value;
 	size_t atr_len = card->atr.len;
-	size_t i = 0;
-	unsigned int j = 0;
+	size_t i;
 	pgp_blob_t *blob, *blob6e, *blob73;
 
 	/* parse card capabilities from historical bytes */
-	while ((i < atr_len) && (hist_bytes[i] != 0x73))
-			i++;
+	for (i = 0; (i < atr_len) && (hist_bytes[i] != 0x73); i++)
+		;
 	/* IS07816-4 hist bytes 3rd function table */
 	if ((hist_bytes[i] == 0x73) && (atr_len > i+3)) {
 		/* bit 0x40 in byte 3 of TL 0x73 means "extended Le/Lc" */
@@ -472,13 +471,15 @@ pgp_get_card_features(sc_card_t *card)
 		if (hist_bytes[i+3] & 0x80)
 			priv->ext_caps |= EXT_CAP_CHAINING;
 	}
+
 	if (priv->bcd_version >= OPENPGP_CARD_2_0) {
 		/* get card capabilities from "historical bytes" DO */
 		if ((pgp_get_blob(card, priv->mf, 0x5f52, &blob) >= 0) &&
 		    (blob->data != NULL) && (blob->data[0] == 0x00)) {
-			i = 0;
-			while ((i < blob->len) && (blob->data[i] != 0x73))
-				i++;
+
+			/* find beginning of "interesting" bytes */
+			for (i = 0; (i < blob->len) && (blob->data[i] != 0x73); i++)
+				;
 			/* IS07816-4 hist bytes 3rd function table */
 			if ((blob->data[i] == 0x73) && (blob->len > i+3)) {
 				/* bit 0x40 in byte 3 of TL 0x73 means "extended Le/Lc" */
@@ -545,7 +546,7 @@ pgp_get_card_features(sc_card_t *card)
 		}
 
 		/* get supported algorithms & key lengths from "algorithm attributes" DOs */
-		for (j = 0x00c1; j <= 0x00c3; j++) {
+		for (i = 0x00c1; i <= 0x00c3; i++) {
 			unsigned long flags;
 
 			/* Is this correct? */
@@ -557,7 +558,7 @@ pgp_get_card_features(sc_card_t *card)
 			/* Can be generated in card */
 			flags |= SC_ALGORITHM_ONBOARD_KEY_GEN;
 
-			if ((pgp_get_blob(card, blob73, j, &blob) >= 0) &&
+			if ((pgp_get_blob(card, blob73, i, &blob) >= 0) &&
 				(blob->data != NULL) && (blob->len >= 4)) {
 				if (blob->data[0] == 0x01) {	/* Algorithm ID [RFC4880]: RSA */
 					unsigned int keylen = bebytes2ushort(blob->data + 1);  /* Measured in bit */
