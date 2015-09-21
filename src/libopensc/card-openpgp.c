@@ -46,6 +46,7 @@ static struct sc_atr_table pgp_atrs[] = {
 	{ "3b:fa:13:00:ff:81:31:80:45:00:31:c1:73:c0:01:00:00:90:00:b1", NULL, "OpenPGP card v1.0/1.1", SC_CARD_TYPE_OPENPGP_V1, 0, NULL },
 	{ "3b:da:18:ff:81:b1:fe:75:1f:03:00:31:c5:73:c0:01:40:00:90:00:0c", NULL, "CryptoStick v1.2 (OpenPGP v2.0)", SC_CARD_TYPE_OPENPGP_V2, 0, NULL },
 	{ "3b:da:11:ff:81:b1:fe:55:1f:03:00:31:84:73:80:01:80:00:90:00:e4", NULL, "Gnuk v1.0.x (OpenPGP v2.0)", SC_CARD_TYPE_OPENPGP_GNUK, 0, NULL },
+	{ "3b:fc:13:00:00:81:31:fe:15:59:75:62:69:6b:65:79:4e:45:4f:72:33:e1", NULL, "Yubikey NEO (OpenPGP v2.0)", SC_CARD_TYPE_OPENPGP_V2, 0, NULL },
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
@@ -310,7 +311,8 @@ struct pgp_priv_data {
 	sc_security_env_t	sec_env;
 };
 
-/* ABI: check if card's ATR matches one of driver's */
+/* ABI: check if card's ATR matches one of driver's
+ * or if the OpenPGP application is present */
 static int
 pgp_match_card(sc_card_t *card)
 {
@@ -320,6 +322,24 @@ pgp_match_card(sc_card_t *card)
 	if (i >= 0) {
 		card->name = pgp_atrs[i].name;
 		return 1;
+	} else {
+		sc_path_t	partial_aid;
+		unsigned char aid[16];
+
+		/* select application "OpenPGP" */
+		sc_format_path("D276:0001:2401", &partial_aid);
+		partial_aid.type = SC_PATH_TYPE_DF_NAME;
+		if (SC_SUCCESS == iso_ops->select_file(card, &partial_aid, NULL)) {
+			/* read information from AID */
+			i = sc_get_data(card, 0x004F, aid, sizeof aid);
+			if (i == 16) {
+				if (((aid[6] << 8) | aid[7]) >= 0x0200)
+					card->type = SC_CARD_TYPE_OPENPGP_V2;
+				else
+					card->type = SC_CARD_TYPE_OPENPGP_V1;
+				return 1;
+			}
+		}
 	}
 	return 0;
 }
@@ -365,6 +385,16 @@ pgp_init(sc_card_t *card)
 	if (!file)   {
 		pgp_finish(card);
 		return SC_ERROR_OBJECT_NOT_FOUND;
+	}
+
+	if (file->namelen != 16) {
+		/* explicitly get the full aid */
+		r = sc_get_data(card, 0x004F, file->name, sizeof file->name);
+		if (r < 0) {
+			pgp_finish(card);
+			return r;
+		}
+		file->namelen = r;
 	}
 
 	/* read information from AID */
@@ -439,6 +469,7 @@ pgp_get_card_features(sc_card_t *card)
 		/* get card capabilities from "historical bytes" DO */
 		if ((pgp_get_blob(card, priv->mf, 0x5f52, &blob) >= 0) &&
 		    (blob->data != NULL) && (blob->data[0] == 0x00)) {
+			i = 0;
 			while ((i < blob->len) && (blob->data[i] != 0x73))
 				i++;
 			/* IS07816-4 hist bytes 3rd function table */
@@ -449,7 +480,7 @@ pgp_get_card_features(sc_card_t *card)
 					priv->ext_caps |= EXT_CAP_APDU_EXT;
 				}
 				/* bit 0x80 in byte 3 of TL 0x73 means "Command chaining" */
-				if (hist_bytes[i+3] & 0x80)
+				if (blob->data[i+3] & 0x80)
 					priv->ext_caps |= EXT_CAP_CHAINING;
 			}
 
@@ -766,8 +797,7 @@ pgp_read_blob(sc_card_t *card, pgp_blob_t *blob)
 
 	if (blob->info->get_fn) {	/* readable, top-level DO */
 		u8 	buffer[2048];
-		size_t	buf_len = (card->caps & SC_CARD_CAP_APDU_EXT)
-				  ? sizeof(buffer) : 256;
+		size_t	buf_len = sizeof(buffer);
 		int r = SC_SUCCESS;
 
 		/* Buffer length for certificate */
@@ -835,6 +865,14 @@ pgp_enumerate_blob(sc_card_t *card, pgp_blob_t *blob)
 			cla <<= 8;
 		}
 		tag |= cla;
+
+		/* Awful hack for composite DOs that have
+		 * a TLV with the DO's id encompassing the
+		 * entire blob. Example: Yubikey Neo */
+		if (tag == blob->id) {
+			in = data;
+			continue;
+		}
 
 		/* create fake file system hierarchy by
 		 * using constructed DOs as DF */
@@ -1542,6 +1580,10 @@ pgp_compute_signature(sc_card_t *card, const u8 *data,
 			"invalid key reference");
 	}
 
+	/* if card/reader does not support extended APDUs, but chaining, then set it */
+	if (((card->caps & SC_CARD_CAP_APDU_EXT) == 0) && (priv->ext_caps & EXT_CAP_CHAINING))
+		apdu.flags |= SC_APDU_FLAGS_CHAINING;
+
 	apdu.lc = data_len;
 	apdu.data = (u8 *)data;
 	apdu.datalen = data_len;
@@ -1605,6 +1647,9 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 	if (card->type == SC_CARD_TYPE_OPENPGP_GNUK) {
 		apdu.flags |= SC_APDU_FLAGS_CHAINING;
 	}
+	/* if card/reader does not support extended APDUs, but chaining, then set it */
+	if (((card->caps & SC_CARD_CAP_APDU_EXT) == 0) && (priv->ext_caps & EXT_CAP_CHAINING))
+		apdu.flags |= SC_APDU_FLAGS_CHAINING;
 
 	apdu.lc = inlen;
 	apdu.data = (u8 *)in;

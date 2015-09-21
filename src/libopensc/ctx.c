@@ -75,7 +75,6 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 	{ "asepcos",	(void *(*)(void)) sc_get_asepcos_driver },
 	{ "starcos",	(void *(*)(void)) sc_get_starcos_driver },
 	{ "tcos",	(void *(*)(void)) sc_get_tcos_driver },
-	{ "openpgp",	(void *(*)(void)) sc_get_openpgp_driver },
 	{ "jcop",	(void *(*)(void)) sc_get_jcop_driver },
 #ifdef ENABLE_OPENSSL
 	{ "oberthur",	(void *(*)(void)) sc_get_oberthur_driver },
@@ -112,6 +111,7 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 	{ "PIV-II",	(void *(*)(void)) sc_get_piv_driver },
 	{ "itacns",	(void *(*)(void)) sc_get_itacns_driver },
 	{ "isoApplet",	(void *(*)(void)) sc_get_isoApplet_driver },
+	{ "openpgp",	(void *(*)(void)) sc_get_openpgp_driver },
 	/* The default driver should be last, as it handles all the
 	 * unrecognized cards. */
 	{ "default",	(void *(*)(void)) sc_get_default_driver },
