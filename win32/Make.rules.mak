@@ -45,7 +45,8 @@ OPENSSL_LIB = $(OPENSSL_DIR)\lib\VC\$(OPENSSL_STATIC_DIR)\libeay32MTd.lib user32
 OPENSSL_LIB = $(OPENSSL_DIR)\lib\VC\$(OPENSSL_STATIC_DIR)\libeay32MT.lib user32.lib advapi32.lib crypt32.lib
 !ENDIF
 
-PROGRAMS_OPENSSL = pkcs15-init.exe cryptoflex-tool.exe netkey-tool.exe piv-tool.exe westcos-tool.exe
+PROGRAMS_OPENSSL = cryptoflex-tool.exe pkcs15-init.exe netkey-tool.exe piv-tool.exe \
+	westcos-tool.exe sc-hsm-tool.exe dnie-tool.exe
 OPENSC_FEATURES = $(OPENSC_FEATURES) openssl
 !ENDIF
 
