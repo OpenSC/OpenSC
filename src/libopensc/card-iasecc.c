@@ -3571,4 +3571,15 @@ sc_get_iasecc_driver(void)
 	return sc_get_driver();
 }
 
+#else
+
+/* we need to define the functions below to export them */
+#include "errors.h"
+
+int
+iasecc_se_get_info()
+{
+	return SC_ERROR_NOT_SUPPORTED;
+}
+
 #endif /* ENABLE_OPENSSL */
