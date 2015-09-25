@@ -402,7 +402,7 @@ int sc_pkcs15_change_pin(struct sc_pkcs15_card *p15card,
 	r = sc_lock(card);
 	LOG_TEST_RET(ctx, r, "sc_lock() failed");
 	/* the path in the pin object is optional */
-	if (auth_info->path.len > 0) {
+	if ((auth_info->path.len > 0) || ((auth_info->path.aid.len > 0))) {
 		r = sc_select_file(card, &auth_info->path, NULL);
 		if (r)
 			goto out;
@@ -509,7 +509,7 @@ int sc_pkcs15_unblock_pin(struct sc_pkcs15_card *p15card,
 	LOG_TEST_RET(ctx, r, "sc_lock() failed");
 
 	/* the path in the pin object is optional */
-	if (auth_info->path.len > 0) {
+	if ((auth_info->path.len > 0) || ((auth_info->path.aid.len > 0))) {
 		r = sc_select_file(card, &auth_info->path, NULL);
 		if (r)
 			goto out;
