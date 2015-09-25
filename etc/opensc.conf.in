@@ -112,7 +112,11 @@ app default {
 		# max_recv_size = 256;
 	};
 
-	# What card drivers to load at start-up
+	# Whitelist of card drivers to load at start-up
+	#
+	# The supported internal card driver names can be retrieved
+	# from the output of:
+	# $ opensc-tool --list-drivers
 	#
 	# A special value of 'internal' will load all
 	# statically linked drivers. If an unknown (ie. not
