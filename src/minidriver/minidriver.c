@@ -4066,7 +4066,9 @@ cleanup:
 	return dwReturn;
 }
 
-
+/* Generic function to perform hash. Could have been OpenSSL but used BCrypt* functions.
+BCrypt is loaded as a delay load library. The dll can be loaded into Windows XP until this code is called.
+Hopefully, ECC is not available in Windows XP and BCrypt functions are not called */
 DWORD HashMe(__in PCARD_DATA pCardData, BCRYPT_ALG_HANDLE hAlgorithm, 
 			 PBYTE pbOuput, DWORD dwOutputSize, PBYTE pbSecret, DWORD dwSecretSize, 
 			 PBYTE pbData1, DWORD dwDataSize1,
@@ -4127,6 +4129,7 @@ cleanup:
 	return dwReturn;
 }
 
+/* Generic function for TLS PRF. Compute the P_HASH function */
 DWORD WINAPI DoTlsPrf(__in PCARD_DATA pCardData,
 					  __in PBYTE pbOutput,
 					__in PBYTE pbSecret,
@@ -4227,6 +4230,7 @@ cleanup:
 	return dwReturn;
 }
 
+/* Implement TLS 1.0, 1.1 and 1.2 PRF */
 DWORD WINAPI CardDeriveTlsPrf(__in PCARD_DATA pCardData,
 	__inout PCARD_DERIVE_KEY pAgreementInfo,
 	__in struct md_dh_agreement* agreement,
