@@ -79,6 +79,9 @@ HINSTANCE g_inst;
 	SC_PKCS15INIT_X509_KEY_ENCIPHERMENT	| \
 	SC_PKCS15INIT_X509_DATA_ENCIPHERMENT	| \
 	SC_PKCS15INIT_X509_DIGITAL_SIGNATURE
+#define MD_KEY_USAGE_KEYEXCHANGE_ECC		\
+	SC_PKCS15INIT_X509_KEY_AGREEMENT| \
+	SC_PKCS15INIT_X509_DIGITAL_SIGNATURE
 #define MD_KEY_USAGE_SIGNATURE			\
 	SC_PKCS15INIT_X509_DIGITAL_SIGNATURE	| \
 	SC_PKCS15INIT_X509_KEY_CERT_SIGN	| \
@@ -92,6 +95,7 @@ HINSTANCE g_inst;
 /* copied from pkcs15-cardos.c */
 #define USAGE_ANY_SIGN		(SC_PKCS15_PRKEY_USAGE_SIGN | SC_PKCS15_PRKEY_USAGE_NONREPUDIATION)
 #define USAGE_ANY_DECIPHER	(SC_PKCS15_PRKEY_USAGE_DECRYPT | SC_PKCS15_PRKEY_USAGE_UNWRAP)
+#define USAGE_ANY_AGREEMENT (SC_PKCS15_PRKEY_USAGE_DERIVE)
 
 /* if use of internal-winscard.h */
 #ifndef SCARD_E_INVALID_PARAMETER
@@ -147,6 +151,11 @@ struct md_pkcs15_container {
 	struct sc_pkcs15_object *cert_obj, *prkey_obj, *pubkey_obj;
 };
 
+struct md_dh_agreement {
+	DWORD dwSize;
+	PBYTE pbAgreement;
+};
+
 typedef struct _VENDOR_SPECIFIC
 {
 	struct sc_pkcs15_object *obj_user_pin, *obj_sopin;
@@ -168,6 +177,9 @@ typedef struct _VENDOR_SPECIFIC
 	 */
 	HWND hwndParent;
 	LPWSTR wszPinContext;
+	/* these will be used to store intermediate dh agreements results */
+	struct md_dh_agreement* dh_agreements;
+	BYTE allocatedAgreements;
 }VENDOR_SPECIFIC;
 
 /*
@@ -837,73 +849,6 @@ md_pkcs15_encode_cardcf(PCARD_DATA pCardData, unsigned char *in, size_t in_size,
 	return SCARD_S_SUCCESS;
 }
 
-
-static DWORD
-md_pkcs15_encode_cmapfile(PCARD_DATA pCardData, unsigned char **out, size_t *out_len)
-{
-	VENDOR_SPECIFIC *vs;
-	unsigned char *encoded, *ret, *p;
-	size_t guid_len, encoded_len, flags_len, ret_len;
-	int idx;
-
-	if (!pCardData || !out || !out_len)
-		return SCARD_E_INVALID_PARAMETER;
-
-	vs = pCardData->pvVendorSpecific;
-	logprintf(pCardData, 2, "encode P15 'cmapfile'\n");
-
-	ret = NULL, ret_len = 0;
-	for (idx=0; idx<MD_MAX_KEY_CONTAINERS; idx++)   {
-		struct sc_asn1_entry asn1_md_container_attrs[C_ASN1_MD_CONTAINER_ATTRS_SIZE];
-		struct sc_asn1_entry asn1_md_container[C_ASN1_MD_CONTAINER_SIZE];
-		struct md_pkcs15_container cont = vs->p15_containers[idx];
-		int rv;
-
-		if (!cont.id.len && !strlen(cont.guid))
-			continue;
-
-		sc_copy_asn1_entry(c_asn1_md_container_attrs, asn1_md_container_attrs);
-		sc_copy_asn1_entry(c_asn1_md_container, asn1_md_container);
-
-		guid_len = strlen(cont.guid);
-		flags_len = sizeof(size_t);
-		sc_format_asn1_entry(asn1_md_container_attrs + 0, &cont.index, NULL, 1);
-		sc_format_asn1_entry(asn1_md_container_attrs + 1, &cont.id, NULL, 1);
-		sc_format_asn1_entry(asn1_md_container_attrs + 2, cont.guid, &guid_len, 1);
-		sc_format_asn1_entry(asn1_md_container_attrs + 3, &cont.flags, &flags_len, 1);
-		sc_format_asn1_entry(asn1_md_container_attrs + 4, &cont.size_key_exchange, NULL, 1);
-		sc_format_asn1_entry(asn1_md_container_attrs + 5, &cont.size_sign, NULL, 1);
-
-		sc_format_asn1_entry(asn1_md_container + 0, asn1_md_container_attrs, NULL, 1);
-
-		rv = sc_asn1_encode(vs->ctx, asn1_md_container, &encoded, &encoded_len);
-		if (rv < 0) {
-			logprintf(pCardData, 3, "MdEncodeCMapFile(): ASN1 encode error(%i): %s\n", rv, sc_strerror(rv));
-			return SCARD_F_INTERNAL_ERROR;
-		}
-
-		p = realloc(ret, ret_len + encoded_len);
-		if (!p)   {
-			logprintf(pCardData, 3, "MdEncodeCMapFile(): realloc failed\n");
-			free(ret);
-			return SCARD_E_NO_MEMORY;
-		}
-		ret = p;
-		memcpy(ret + ret_len, encoded, encoded_len);
-		free(encoded);
-		ret_len += encoded_len;
-	}
-
-	logprintf(pCardData, 3, "encoded P15 'cmapfile':\n");
-	loghex(pCardData, 3, ret, ret_len);
-
-	*out = ret;
-	*out_len = ret_len;
-
-	return SCARD_S_SUCCESS;
-}
-
-
 /*
  * Update 'soft' containers.
  * Called each time when 'WriteFile' is called for 'cmapfile'.
@@ -1478,7 +1423,7 @@ md_set_cmapfile(PCARD_DATA pCardData, struct md_file *file)
 		return SCARD_E_NO_MEMORY;
 	memset(cmap_buf, 0, cmap_len);
 
-	rv = sc_pkcs15_get_objects(vs->p15card, SC_PKCS15_TYPE_PRKEY_RSA, prkey_objs, MD_MAX_KEY_CONTAINERS);
+	rv = sc_pkcs15_get_objects(vs->p15card, SC_PKCS15_TYPE_PRKEY, prkey_objs, MD_MAX_KEY_CONTAINERS);
 	if (rv < 0)   {
 		logprintf(pCardData, 0, "Private key enumeration failed: %s\n", sc_strerror(rv));
 		return SCARD_F_UNKNOWN_ERROR;
@@ -1493,8 +1438,8 @@ md_set_cmapfile(PCARD_DATA pCardData, struct md_file *file)
 		struct sc_pkcs15_prkey_info *prkey_info = (struct sc_pkcs15_prkey_info *)key_obj->data;
 		struct md_pkcs15_container *cont = &vs->p15_containers[ii];
 
-		if(key_obj->type != SC_PKCS15_TYPE_PRKEY_RSA)   {
-			logprintf(pCardData, 7, "Non 'RSA' key (type:%X) are ignored\n", key_obj->type);
+		if(key_obj->type != SC_PKCS15_TYPE_PRKEY_RSA && key_obj->type != SC_PKCS15_TYPE_PRKEY_EC)   {
+			logprintf(pCardData, 7, "Non 'RSA' 'EC' key (type:%X) are ignored\n", key_obj->type);
 			continue;
 		}
 
@@ -1527,12 +1472,21 @@ md_set_cmapfile(PCARD_DATA pCardData, struct md_file *file)
 			 * AT_SIGNATURE allows only 'signature' usage.
 			 */
 			cont->size_key_exchange = cont->size_sign = 0;
-			if (prkey_info->usage & USAGE_ANY_DECIPHER)
-				cont->size_key_exchange = prkey_info->modulus_length;
-			else if (prkey_info->usage & USAGE_ANY_SIGN)
-				cont->size_sign = prkey_info->modulus_length;
-			else
-				cont->size_key_exchange = prkey_info->modulus_length;
+			if (key_obj->type == SC_PKCS15_TYPE_PRKEY_RSA) {
+				if (prkey_info->usage & USAGE_ANY_DECIPHER)
+					cont->size_key_exchange = prkey_info->modulus_length;
+				else if (prkey_info->usage & USAGE_ANY_SIGN)
+					cont->size_sign = prkey_info->modulus_length;
+				else
+					cont->size_key_exchange = prkey_info->modulus_length;
+			} else if (key_obj->type == SC_PKCS15_TYPE_PRKEY_EC) {
+				if (prkey_info->usage & USAGE_ANY_AGREEMENT)
+					cont->size_key_exchange = prkey_info->field_length;
+				else if (prkey_info->usage & USAGE_ANY_SIGN)
+					cont->size_sign = prkey_info->field_length;
+				else
+					cont->size_key_exchange = prkey_info->field_length;
+			}
 		}
 
 		logprintf(pCardData, 7, "Container[%i]'s guid=%s\n", ii, cont->guid);
@@ -1787,45 +1741,104 @@ md_check_key_compatibility(PCARD_DATA pCardData, DWORD flags, DWORD key_type,
 	if (!pCardData)
 		return SCARD_E_INVALID_PARAMETER;
 
-	if (key_type == AT_SIGNATURE || key_type == AT_KEYEXCHANGE)   {
-		key_algo = SC_ALGORITHM_RSA;
-	}
-	else   {
-		logprintf(pCardData, 3, "Unsupported key type: 0x%X\n", key_type);
-		return SCARD_E_UNSUPPORTED_FEATURE;
+	switch(key_type) {
+		case AT_SIGNATURE:
+		case AT_KEYEXCHANGE:
+			key_algo = SC_ALGORITHM_RSA;
+			break;
+		case AT_ECDHE_P256 :
+		case AT_ECDHE_P384 :
+		case AT_ECDHE_P521 :
+		case AT_ECDSA_P256 :
+		case AT_ECDSA_P384 :
+		case AT_ECDSA_P521 :
+			key_algo = SC_ALGORITHM_EC;
+			break;
+		default:
+			logprintf(pCardData, 3, "Unsupported key type: 0x%X\n", key_type);
+			return SCARD_E_UNSUPPORTED_FEATURE;
 	}
 
 	vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
 
 	if (flags & CARD_CREATE_CONTAINER_KEY_IMPORT)   {
-		PUBLICKEYSTRUC *pub_struc = (PUBLICKEYSTRUC *)pbKeyData;
-		RSAPUBKEY *pub_rsa = (RSAPUBKEY *)(pbKeyData + sizeof(PUBLICKEYSTRUC));
+		if (key_algo == SC_ALGORITHM_RSA) {
+			PUBLICKEYSTRUC *pub_struc = (PUBLICKEYSTRUC *)pbKeyData;
+			RSAPUBKEY *pub_rsa = (RSAPUBKEY *)(pbKeyData + sizeof(PUBLICKEYSTRUC));
 
-		if (!pub_struc)   {
-			logprintf(pCardData, 3, "No data for the key import operation\n");
-			return SCARD_E_INVALID_PARAMETER;
-		}
-		else if (pub_struc->bType != PRIVATEKEYBLOB)   {
-			logprintf(pCardData, 3, "Invalid blob data for the key import operation\n");
-			return SCARD_E_INVALID_PARAMETER;
-		}
-		else if ((key_type == AT_KEYEXCHANGE) && (pub_struc->aiKeyAlg != CALG_RSA_KEYX))   {
-			logprintf(pCardData, 3, "Expected KEYEXCHANGE type of blob\n");
-			return SCARD_E_INVALID_PARAMETER;
-		}
-		else if ((key_type == AT_SIGNATURE) && (pub_struc->aiKeyAlg != CALG_RSA_SIGN))   {
-			logprintf(pCardData, 3, "Expected KEYSIGN type of blob\n");
-			return SCARD_E_INVALID_PARAMETER;
-		}
+			if (!pub_struc)   {
+				logprintf(pCardData, 3, "No data for the key import operation\n");
+				return SCARD_E_INVALID_PARAMETER;
+			}
+			else if (pub_struc->bType != PRIVATEKEYBLOB)   {
+				logprintf(pCardData, 3, "Invalid blob data for the key import operation\n");
+				return SCARD_E_INVALID_PARAMETER;
+			}
+			else if ((key_type == AT_KEYEXCHANGE) && (pub_struc->aiKeyAlg != CALG_RSA_KEYX))   {
+				logprintf(pCardData, 3, "Expected KEYEXCHANGE type of blob\n");
+				return SCARD_E_INVALID_PARAMETER;
+			}
+			else if ((key_type == AT_SIGNATURE) && (pub_struc->aiKeyAlg != CALG_RSA_SIGN))   {
+				logprintf(pCardData, 3, "Expected KEYSIGN type of blob\n");
+				return SCARD_E_INVALID_PARAMETER;
+			}
 
-		if (pub_rsa->magic == 0x31415352 || pub_rsa->magic == 0x32415352)   {
-			key_size = pub_rsa->bitlen;
-		}
-		else {
-			logprintf(pCardData, 3, "'Magic' control failed\n");
-			return SCARD_E_INVALID_PARAMETER;
-		}
+			if (pub_rsa->magic == 0x31415352 || pub_rsa->magic == 0x32415352)   {
+				key_size = pub_rsa->bitlen;
+			}
+			else {
+				logprintf(pCardData, 3, "'Magic' control failed\n");
+				return SCARD_E_INVALID_PARAMETER;
+			}
 
+			logprintf(pCardData, 3, "Set key size to %i\n", key_size);
+		} else if (key_algo == SC_ALGORITHM_EC) {
+			BCRYPT_ECCKEY_BLOB *pub_ecc = (BCRYPT_ECCKEY_BLOB *)pbKeyData;
+			switch(key_type) {
+				case AT_ECDSA_P256:
+					if (pub_ecc->dwMagic != BCRYPT_ECDSA_PRIVATE_P256_MAGIC) {
+						logprintf(pCardData, 3, "Expected AT_ECDSA_P256 magic\n");
+						return SCARD_E_INVALID_PARAMETER;
+					}
+					key_size = 256;
+					break;
+				case AT_ECDSA_P384:
+					if (pub_ecc->dwMagic != BCRYPT_ECDSA_PRIVATE_P384_MAGIC) {
+						logprintf(pCardData, 3, "Expected AT_ECDSA_P384 magic\n");
+						return SCARD_E_INVALID_PARAMETER;
+					}
+					key_size = 384;
+					break;
+				case AT_ECDSA_P521:
+					if (pub_ecc->dwMagic != BCRYPT_ECDSA_PRIVATE_P521_MAGIC) {
+						logprintf(pCardData, 3, "Expected AT_ECDSA_P521 magic\n");
+						return SCARD_E_INVALID_PARAMETER;
+					}
+					key_size = 521;
+					break;
+				case AT_ECDHE_P256:
+					if (pub_ecc->dwMagic != BCRYPT_ECDH_PRIVATE_P256_MAGIC) {
+						logprintf(pCardData, 3, "Expected AT_ECDHE_P256 magic\n");
+						return SCARD_E_INVALID_PARAMETER;
+					}
+					key_size = 256;
+					break;
+				case AT_ECDHE_P384:
+					if (pub_ecc->dwMagic != BCRYPT_ECDH_PRIVATE_P384_MAGIC) {
+						logprintf(pCardData, 3, "Expected AT_ECDHE_P384 magic\n");
+						return SCARD_E_INVALID_PARAMETER;
+					}
+					key_size = 384;
+					break;
+				case AT_ECDHE_P521:
+					if (pub_ecc->dwMagic != BCRYPT_ECDH_PRIVATE_P521_MAGIC) {
+						logprintf(pCardData, 3, "Expected AT_ECDHE_P521 magic\n");
+						return SCARD_E_INVALID_PARAMETER;
+					}
+					key_size = 521;
+					break;
+			}
+		}
 		logprintf(pCardData, 3, "Set key size to %i\n", key_size);
 	}
 
@@ -1878,9 +1891,35 @@ md_pkcs15_generate_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, DWORD ke
 		pub_args.key.algorithm = SC_ALGORITHM_RSA;
 		keygen_args.prkey_args.x509_usage = MD_KEY_USAGE_KEYEXCHANGE;
 	}
+	else if ((key_type == AT_ECDSA_P256) || (key_type == AT_ECDSA_P384) || (key_type == AT_ECDSA_P521))   {
+		keygen_args.prkey_args.key.algorithm = SC_ALGORITHM_EC;
+		pub_args.key.algorithm = SC_ALGORITHM_EC;
+		keygen_args.prkey_args.x509_usage = MD_KEY_USAGE_SIGNATURE;
+	}
+	else if ((key_type == AT_ECDHE_P256) || (key_type == AT_ECDHE_P384) || (key_type == AT_ECDHE_P521))   {
+		keygen_args.prkey_args.key.algorithm = SC_ALGORITHM_EC;
+		pub_args.key.algorithm = SC_ALGORITHM_EC;
+		keygen_args.prkey_args.x509_usage = MD_KEY_USAGE_KEYEXCHANGE_ECC;
+	}
 	else    {
 		logprintf(pCardData, 3, "MdGenerateKey(): unsupported key type: 0x%X\n", key_type);
-		return SCARD_E_INVALID_PARAMETER;
+		return SCARD_E_UNSUPPORTED_FEATURE;
+	}
+	if (pub_args.key.algorithm == SC_ALGORITHM_EC) {
+		keygen_args.prkey_args.key.u.ec.params.field_length = key_size;
+		if ((key_type == AT_ECDSA_P256)|| (key_type == AT_ECDHE_P256)) {
+			keygen_args.prkey_args.key.u.ec.params.named_curve = "secp256r1";
+			keygen_args.prkey_args.key.u.ec.params.der.len = 10;
+			keygen_args.prkey_args.key.u.ec.params.der.value = "\x06\x08\x2A\x86\x48\xCE\x3D\x03\x01\x07";
+		} else if ((key_type == AT_ECDSA_P384)|| (key_type == AT_ECDHE_P384)) {
+			keygen_args.prkey_args.key.u.ec.params.named_curve = "secp384r1";
+			keygen_args.prkey_args.key.u.ec.params.der.len = 7;
+			keygen_args.prkey_args.key.u.ec.params.der.value = "\x06\x05\x2B\x81\x04\x00\x22";
+		} else if ((key_type == AT_ECDSA_P521)|| (key_type == AT_ECDHE_P521)) {
+			keygen_args.prkey_args.key.u.ec.params.named_curve = "secp521r1";
+			keygen_args.prkey_args.key.u.ec.params.der.len = 7;
+			keygen_args.prkey_args.key.u.ec.params.der.value = "\x06\x05\x2B\x81\x04\x00\x23";
+		}
 	}
 
 	keygen_args.prkey_args.access_flags = MD_KEY_ACCESS;
@@ -2180,20 +2219,114 @@ done:
 }
 
 static DWORD
-md_query_key_sizes(CARD_KEY_SIZES *pKeySizes)
+md_query_key_sizes(PCARD_DATA pCardData, DWORD dwKeySpec, CARD_KEY_SIZES *pKeySizes)
 {
+	VENDOR_SPECIFIC *vs = NULL;
+	struct sc_algorithm_info* algo_info;
+	int count = 0, i, key_algo = 0, keysize = 0, flag;
 	if (!pKeySizes)
 		return SCARD_E_INVALID_PARAMETER;
 
 	if (pKeySizes->dwVersion != CARD_KEY_SIZES_CURRENT_VERSION && pKeySizes->dwVersion != 0)
 		return ERROR_REVISION_MISMATCH;
 
-	pKeySizes->dwVersion = CARD_KEY_SIZES_CURRENT_VERSION;
-	pKeySizes->dwMinimumBitlen = 1024;
-	pKeySizes->dwDefaultBitlen = 2048;
-	pKeySizes->dwMaximumBitlen = 2048;
-	pKeySizes->dwIncrementalBitlen = 1024;
+	logprintf(pCardData, 1, "md_query_key_sizes: store dwKeySpec '%u'\n", dwKeySpec);
+	vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
+	count = vs->p15card->card->algorithm_count;
 
+	pKeySizes->dwVersion = CARD_KEY_SIZES_CURRENT_VERSION;
+	pKeySizes->dwMinimumBitlen = 0;
+	pKeySizes->dwDefaultBitlen = 0;
+	pKeySizes->dwMaximumBitlen = 0;
+	pKeySizes->dwIncrementalBitlen = 0;
+
+	/* dwKeySpec=0 is a special value when the key size is queried without specifing the algorithm.
+	Used on old minidriver version. In this case, it is RSA */
+	if ((dwKeySpec == 0) || (dwKeySpec == AT_KEYEXCHANGE) || (dwKeySpec == AT_SIGNATURE)) {
+		for (i = 0; i < count; i++) {
+			algo_info = vs->p15card->card->algorithms + i;
+			if (algo_info->algorithm == SC_ALGORITHM_RSA) {
+				
+				if (pKeySizes->dwMinimumBitlen == 0 || pKeySizes->dwMinimumBitlen > algo_info->key_length) {
+					pKeySizes->dwMinimumBitlen = algo_info->key_length;
+				}
+				if (pKeySizes->dwMaximumBitlen == 0 || pKeySizes->dwMaximumBitlen < algo_info->key_length) {
+					pKeySizes->dwMaximumBitlen = algo_info->key_length;
+				}
+				if (algo_info->key_length == 2048) {
+					pKeySizes->dwDefaultBitlen = algo_info->key_length;
+				}
+				if (algo_info->key_length == 1536) {
+					pKeySizes->dwIncrementalBitlen = 512;
+				}
+			}
+		}
+		if (pKeySizes->dwMinimumBitlen == 0) {
+			logprintf(pCardData, 0, "No RSA key found\n");
+			return SCARD_E_INVALID_PARAMETER;
+		}
+		if (pKeySizes->dwDefaultBitlen == 0) {
+			logprintf(pCardData, 3, "No 2048 key found\n");
+			pKeySizes->dwDefaultBitlen  = pKeySizes->dwMaximumBitlen;
+		}
+		if (pKeySizes->dwIncrementalBitlen == 0) {
+			pKeySizes->dwIncrementalBitlen = 1024;
+		}
+	} else {
+		keysize = 0;
+		for (i = 0; i < count; i++) {
+			algo_info = vs->p15card->card->algorithms + i;
+			if (algo_info->algorithm == SC_ALGORITHM_EC) {
+				flag = SC_ALGORITHM_ECDH_CDH_RAW | SC_ALGORITHM_EXT_EC_NAMEDCURVE;
+				/* ECDHE */
+				if ((dwKeySpec == AT_ECDHE_P256) && (algo_info->key_length == 256) && (algo_info->flags & flag)) {
+					keysize = 256;
+					break;
+				}
+				if ((dwKeySpec == AT_ECDHE_P384) && (algo_info->key_length == 384) && (algo_info->flags & flag)) {
+					keysize = 384;
+					break;
+				}
+				if ((dwKeySpec == AT_ECDHE_P521) && (algo_info->key_length == 521) && (algo_info->flags & flag)) {
+					keysize = 521;
+					break;
+				}
+				/* ECDSA */
+				flag = SC_ALGORITHM_ECDSA_HASH_NONE|
+						SC_ALGORITHM_ECDSA_HASH_SHA1|
+						SC_ALGORITHM_ECDSA_HASH_SHA224|
+						SC_ALGORITHM_ECDSA_HASH_SHA256|
+						SC_ALGORITHM_EXT_EC_NAMEDCURVE;
+				if ((dwKeySpec == AT_ECDSA_P256) && (algo_info->key_length == 256) && (algo_info->flags & flag)) {
+					keysize = 256;
+					break;
+				}
+				if ((dwKeySpec == AT_ECDSA_P384) && (algo_info->key_length == 384) && (algo_info->flags & flag)) {
+					keysize = 384;
+					break;
+				}
+				if ((dwKeySpec == AT_ECDSA_P521) && (algo_info->key_length == 521) && (algo_info->flags & flag)) {
+					keysize = 521;
+					break;
+				}
+			}
+			if (keysize) {
+				pKeySizes->dwMinimumBitlen = keysize;
+				pKeySizes->dwDefaultBitlen = keysize;
+				pKeySizes->dwMaximumBitlen = keysize;
+				pKeySizes->dwIncrementalBitlen = 1;
+			} else {
+				logprintf(pCardData, 0, "No ECC key found (keyspec=%u)\n", dwKeySpec);
+				return SCARD_E_INVALID_PARAMETER;
+			}
+		}
+	}
+	
+	logprintf(pCardData, 3, "Key compatible with the card capabilities\n");
+	logprintf(pCardData, 3, " dwMinimumBitlen: %u\n", pKeySizes->dwMinimumBitlen);
+	logprintf(pCardData, 3, " dwDefaultBitlen: %u\n", pKeySizes->dwDefaultBitlen);
+	logprintf(pCardData, 3, " dwMaximumBitlen: %u\n", pKeySizes->dwMaximumBitlen);
+	logprintf(pCardData, 3, " dwIncrementalBitlen: %u\n", pKeySizes->dwIncrementalBitlen);
 	return SCARD_S_SUCCESS;
 }
 
@@ -2550,7 +2683,7 @@ DWORD WINAPI CardCreateContainer(__in PCARD_DATA pCardData,
 typedef struct {
 	PUBLICKEYSTRUC  publickeystruc;
 	RSAPUBKEY rsapubkey;
-} PUBKEYSTRUCT_BASE;
+} PUBRSAKEYSTRUCT_BASE;
 
 DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContainerIndex, __in DWORD dwFlags,
 	__inout PCONTAINER_INFO pContainerInfo)
@@ -2560,6 +2693,7 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 	DWORD ret = SCARD_F_UNKNOWN_ERROR;
 	struct md_pkcs15_container *cont = NULL;
 	struct sc_pkcs15_der pubkey_der;
+	struct sc_pkcs15_prkey_info *prkey_info = NULL;
 	int rv;
 
 	if(!pCardData)
@@ -2590,9 +2724,7 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 		return SCARD_E_NO_KEY_CONTAINER;
 	}
 
-	if (vs->p15card == NULL) {
-		return SCARD_F_INTERNAL_ERROR;
-	}
+	prkey_info = (struct sc_pkcs15_prkey_info *)cont->prkey_obj->data;
 
 	check_reader_status(pCardData);
 	pubkey_der.value = NULL;
@@ -2664,39 +2796,114 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 	logprintf(pCardData, 7, "SubjectPublicKeyInfo:\n");
 	loghex(pCardData, 7, pubkey_der.value, pubkey_der.len);
 
-	if (pubkey_der.len && pubkey_der.value)   {
-		sz = 0; /* get size */
-		CryptDecodeObject(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING, RSA_CSP_PUBLICKEYBLOB,
-				pubkey_der.value, (DWORD) pubkey_der.len, 0, NULL, &sz);
-
-		if (cont->size_sign)   {
-			PUBKEYSTRUCT_BASE *oh = (PUBKEYSTRUCT_BASE *)pCardData->pfnCspAlloc(sz);
-			if (!oh)
-				return SCARD_E_NO_MEMORY;
-
+	if (prkey_info->modulus_length > 0) {
+		logprintf(pCardData, 7, "Encoding RSA public key");
+		if (pubkey_der.len && pubkey_der.value)   {
+			sz = 0; /* get size */
 			CryptDecodeObject(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING, RSA_CSP_PUBLICKEYBLOB,
-					pubkey_der.value, (DWORD) pubkey_der.len, 0, oh, &sz);
+					pubkey_der.value, (DWORD) pubkey_der.len, 0, NULL, &sz);
 
-			oh->publickeystruc.aiKeyAlg = CALG_RSA_SIGN;
-			pContainerInfo->cbSigPublicKey = sz;
-			pContainerInfo->pbSigPublicKey = (PBYTE)oh;
+			if (cont->size_sign)   {
+				PUBRSAKEYSTRUCT_BASE *oh = (PUBRSAKEYSTRUCT_BASE *)pCardData->pfnCspAlloc(sz);
+				if (!oh)
+					return SCARD_E_NO_MEMORY;
 
-			logprintf(pCardData, 3, "return info on SIGN_CONTAINER_INDEX %i\n", bContainerIndex);
+				CryptDecodeObject(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING, RSA_CSP_PUBLICKEYBLOB,
+						pubkey_der.value, (DWORD) pubkey_der.len, 0, oh, &sz);
+
+				oh->publickeystruc.aiKeyAlg = CALG_RSA_SIGN;
+				pContainerInfo->cbSigPublicKey = sz;
+				pContainerInfo->pbSigPublicKey = (PBYTE)oh;
+
+				logprintf(pCardData, 3, "return info on SIGN_CONTAINER_INDEX %i\n", bContainerIndex);
+			}
+
+			if (cont->size_key_exchange)   {
+				PUBRSAKEYSTRUCT_BASE *oh = (PUBRSAKEYSTRUCT_BASE*)pCardData->pfnCspAlloc(sz);
+				if (!oh)
+					return SCARD_E_NO_MEMORY;
+
+				CryptDecodeObject(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING, RSA_CSP_PUBLICKEYBLOB,
+						pubkey_der.value, (DWORD) pubkey_der.len, 0, oh, &sz);
+
+				oh->publickeystruc.aiKeyAlg = CALG_RSA_KEYX;
+				pContainerInfo->cbKeyExPublicKey = sz;
+				pContainerInfo->pbKeyExPublicKey = (PBYTE)oh;
+
+				logprintf(pCardData, 3, "return info on KEYX_CONTAINER_INDEX %i\n", bContainerIndex);
+			}
 		}
+	} else if (prkey_info->field_length > 0) {
+		logprintf(pCardData, 7, "Encoding ECC public key");
 
-		if (cont->size_key_exchange)   {
-			PUBKEYSTRUCT_BASE *oh = (PUBKEYSTRUCT_BASE*)pCardData->pfnCspAlloc(sz);
-			if (!oh)
-				return SCARD_E_NO_MEMORY;
+		if (pubkey_der.len > 2 && pubkey_der.value && pubkey_der.value[0] == 4 && pubkey_der.value[1] == pubkey_der.len -2) {
+			BCRYPT_ECCKEY_BLOB *oh = NULL;
+			DWORD dwMagic = 0;
+			if (cont->size_sign)   {
+				sz = (DWORD) (sizeof(BCRYPT_ECCKEY_BLOB) +  pubkey_der.len -3);
 
-			CryptDecodeObject(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING, RSA_CSP_PUBLICKEYBLOB,
-					pubkey_der.value, (DWORD) pubkey_der.len, 0, oh, &sz);
+				switch(cont->size_sign)
+				{
+				case 256:
+					dwMagic = BCRYPT_ECDSA_PUBLIC_P256_MAGIC;
+					break;
+				case 384:
+					dwMagic = BCRYPT_ECDSA_PUBLIC_P384_MAGIC;
+					break;
+				case 521:
+					dwMagic = BCRYPT_ECDSA_PUBLIC_P521_MAGIC;
+					break;
+				default:
+					logprintf(pCardData, 3, "Unable to match the ECC public size to one of Microsoft algorithm %i\n", cont->size_sign);
+					return SCARD_F_INTERNAL_ERROR;
+				}
 
-			oh->publickeystruc.aiKeyAlg = CALG_RSA_KEYX;
-			pContainerInfo->cbKeyExPublicKey = sz;
-			pContainerInfo->pbKeyExPublicKey = (PBYTE)oh;
+				oh = (BCRYPT_ECCKEY_BLOB *)pCardData->pfnCspAlloc(sz);
+				if (!oh)
+					return SCARD_E_NO_MEMORY;
 
-			logprintf(pCardData, 3, "return info on KEYX_CONTAINER_INDEX %i\n", bContainerIndex);
+				oh->cbKey =  (DWORD)(pubkey_der.len -3) /2;
+				oh->dwMagic = dwMagic;
+
+				pContainerInfo->cbSigPublicKey = sz;
+				pContainerInfo->pbSigPublicKey = (PBYTE)oh;
+				memcpy(((PBYTE)oh) + sizeof(BCRYPT_ECCKEY_BLOB),  pubkey_der.value + 3,  pubkey_der.len -3);
+				
+				logprintf(pCardData, 3, "return info on ECC SIGN_CONTAINER_INDEX %i\n", bContainerIndex);
+			}
+			if (cont->size_key_exchange)   {
+				sz = (DWORD) (sizeof(BCRYPT_ECCKEY_BLOB) +  pubkey_der.len -3);
+
+				switch(cont->size_key_exchange)
+				{
+				case 256:
+					dwMagic = BCRYPT_ECDH_PUBLIC_P256_MAGIC;
+					break;
+				case 384:
+					dwMagic = BCRYPT_ECDH_PUBLIC_P384_MAGIC;
+					break;
+				case 521:
+					dwMagic = BCRYPT_ECDH_PUBLIC_P521_MAGIC;
+					break;
+				default:
+					logprintf(pCardData, 3, "Unable to match the ECC public size to one of Microsoft algorithm %i\n", cont->size_key_exchange);
+					return SCARD_F_INTERNAL_ERROR;
+				}
+
+				oh = (BCRYPT_ECCKEY_BLOB *)pCardData->pfnCspAlloc(sz);
+				if (!oh)
+					return SCARD_E_NO_MEMORY;
+
+				oh->cbKey =  (DWORD)(pubkey_der.len -3) /2;
+				oh->dwMagic = dwMagic;
+
+				pContainerInfo->cbKeyExPublicKey = sz;
+				pContainerInfo->pbKeyExPublicKey = (PBYTE)oh;
+				memcpy(((PBYTE)oh) + sizeof(BCRYPT_ECCKEY_BLOB),  pubkey_der.value + 3,  pubkey_der.len -3);
+				
+				logprintf(pCardData, 3, "return info on ECC KEYX_CONTAINER_INDEX %i\n", bContainerIndex);
+			}
+			
 		}
 	}
 
@@ -3207,23 +3414,10 @@ DWORD WINAPI CardQueryKeySizes(__in PCARD_DATA pCardData,
 		return SCARD_E_INVALID_PARAMETER;
 	if ( dwFlags != 0 )
 		return SCARD_E_INVALID_PARAMETER;
-	switch(dwKeySpec)
-	{
-		case AT_ECDHE_P256 :
-		case AT_ECDHE_P384 :
-		case AT_ECDHE_P521 :
-		case AT_ECDSA_P256 :
-		case AT_ECDSA_P384 :
-		case AT_ECDSA_P521 :
-			return SCARD_E_UNSUPPORTED_FEATURE;
-		case AT_KEYEXCHANGE:
-		case AT_SIGNATURE  :
-			break;
-		default:
-			return SCARD_E_INVALID_PARAMETER;
-	}
+	if ( dwKeySpec == 0 )
+		return SCARD_E_INVALID_PARAMETER;
 
-	dwret = md_query_key_sizes(pKeySizes);
+	dwret = md_query_key_sizes(pCardData, dwKeySpec, pKeySizes);
 	if (dwret != SCARD_S_SUCCESS)
 		return dwret;
 
@@ -3425,8 +3619,20 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 		return ERROR_REVISION_MISMATCH;
 	if ( pInfo->pbData == NULL )
 		return SCARD_E_INVALID_PARAMETER;
-	if (pInfo->dwKeySpec != AT_SIGNATURE && pInfo->dwKeySpec != AT_KEYEXCHANGE)
+	switch(pInfo->dwKeySpec)
+	{
+	case AT_SIGNATURE:
+	case AT_KEYEXCHANGE:
+	case AT_ECDSA_P256:
+	case AT_ECDSA_P384:
+	case AT_ECDSA_P521:
+	case AT_ECDHE_P256:
+	case AT_ECDHE_P384:
+	case AT_ECDHE_P521:
+		break;
+	default:
 		return SCARD_E_INVALID_PARAMETER;
+	}
 	if (pInfo->dwSigningFlags & ~(CARD_PADDING_INFO_PRESENT | CARD_PADDING_NONE | CARD_BUFFER_SIZE_ONLY | CARD_PADDING_PKCS1 | CARD_PADDING_PSS | CARD_PADDING_OAEP))
 		return SCARD_E_INVALID_PARAMETER;
 
@@ -3499,11 +3705,6 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 	else   {
 		logprintf(pCardData, 3, "CARD_PADDING_INFO_PRESENT not set\n");
 
-		if (GET_ALG_CLASS(hashAlg) != ALG_CLASS_HASH)   {
-			logprintf(pCardData, 0, "bogus aiHashAlg\n");
-			return SCARD_E_INVALID_PARAMETER;
-		}
-
 		if (hashAlg == CALG_MD5)
 			opt_hash_flags = SC_ALGORITHM_RSA_HASH_MD5;
 		else if (hashAlg == CALG_SHA1)
@@ -3518,8 +3719,10 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 			opt_hash_flags = SC_ALGORITHM_RSA_HASH_SHA512;
 		else if (hashAlg == (ALG_CLASS_HASH | ALG_TYPE_ANY | ALG_SID_RIPEMD160))
 			opt_hash_flags = SC_ALGORITHM_RSA_HASH_RIPEMD160;
-		else if (hashAlg !=0)
+		else if (hashAlg !=0) {
+			logprintf(pCardData, 0, "bogus aiHashAlg %i\n", hashAlg);
 			return SCARD_E_UNSUPPORTED_FEATURE;
+		}
 	}
 	
 	if (pInfo->dwSigningFlags & CARD_PADDING_NONE)
@@ -3552,9 +3755,36 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 			return SCARD_E_INVALID_VALUE;
 		}
 	}
-	opt_crypt_flags = SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE;
 
-	pInfo->cbSignedData = (DWORD) prkey_info->modulus_length / 8;
+	/* Compute output size */
+	if ( prkey_info->modulus_length > 0) {
+		/* RSA */
+		pInfo->cbSignedData = (DWORD) prkey_info->modulus_length / 8;
+		opt_crypt_flags = SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE;
+	} else if ( prkey_info->field_length > 0) {
+		opt_crypt_flags = SC_ALGORITHM_ECDSA_HASH_NONE;
+		switch(prkey_info->field_length) {
+			case 256:
+				/* ECDSA_P256 */
+				pInfo->cbSignedData = 256 / 8 * 2;
+				break;
+			case 384:
+				/* ECDSA_P384 */
+				pInfo->cbSignedData = 384 / 8 * 2;
+				break;
+			case 512:
+				/* ECDSA_P512 : special case !!!*/
+				pInfo->cbSignedData = 132;
+				break;
+			default:
+				logprintf(pCardData, 0, "unknown ECC key size %i\n", prkey_info->field_length);
+				return SCARD_E_INVALID_VALUE;
+		}
+	} else {
+		logprintf(pCardData, 0, "invalid private key\n");
+		return SCARD_E_INVALID_VALUE;
+	}
+
 	logprintf(pCardData, 3, "pInfo->cbSignedData = %d\n", pInfo->cbSignedData);
 
 	if(!(pInfo->dwSigningFlags&CARD_BUFFER_SIZE_ONLY))   {
@@ -3571,7 +3801,7 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 		logprintf(pCardData, 7, "Data to sign: ");
 		loghex(pCardData, 7, dataToSign, dataToSignLen);
 
-		pInfo->pbSignedData = pCardData->pfnCspAlloc(pInfo->cbSignedData);
+		pInfo->pbSignedData = (PBYTE) pCardData->pfnCspAlloc(pInfo->cbSignedData);
 		if (!pInfo->pbSignedData)   {
 			pCardData->pfnCspFree(pbuf);
 			return SCARD_E_NO_MEMORY;
@@ -3587,9 +3817,16 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 
 		pInfo->cbSignedData = r;
 
-		/*inversion donnees*/
-		for(i = 0; i < r; i++)
-			pInfo->pbSignedData[i] = pbuf[r-i-1];
+		
+		/*revert data only for RSA (Microsoft uses the big endian version while everyone is using little endian*/
+		if ( prkey_info->modulus_length > 0) {
+			for(i = 0; i < r; i++)
+				pInfo->pbSignedData[i] = pbuf[r-i-1];
+		} else {
+			for(i = 0; i < r; i++)
+				pInfo->pbSignedData[i] = pbuf[i];
+		}
+
 		pCardData->pfnCspFree(pbuf);
 
 		logprintf(pCardData, 7, "Signature (inverted): ");
@@ -3605,17 +3842,663 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 DWORD WINAPI CardConstructDHAgreement(__in PCARD_DATA pCardData,
 	__inout PCARD_DH_AGREEMENT_INFO pAgreementInfo)
 {
+	VENDOR_SPECIFIC *vs;
+	struct sc_pkcs15_object *pkey = NULL;
+	int r, opt_derive_flags = 0;
+	u8* out = 0;
+	unsigned long outlen = 0;
+	PBYTE pbPublicKey = NULL;
+	DWORD dwPublicKeySize = 0;
+	struct md_dh_agreement* dh_agreement = NULL;
+	struct md_dh_agreement* temp = NULL;
+	BYTE i;
+
 	logprintf(pCardData, 1, "\nP:%d T:%d pCardData:%p ",GetCurrentProcessId(), GetCurrentThreadId(), pCardData);
-	logprintf(pCardData, 1, "CardConstructDHAgreement - unsupported\n");
-	return SCARD_E_UNSUPPORTED_FEATURE;
+	logprintf(pCardData, 1, "CardConstructDHAgreement\n");
+
+	if (!pCardData)
+		return SCARD_E_INVALID_PARAMETER;
+	if (!pAgreementInfo)
+		return SCARD_E_INVALID_PARAMETER;
+	if ( pAgreementInfo->pbPublicKey == NULL )
+		return SCARD_E_INVALID_PARAMETER;
+	if (pAgreementInfo->dwVersion > CARD_DH_AGREEMENT_INFO_VERSION)
+		return ERROR_REVISION_MISMATCH;
+	if ( pAgreementInfo->dwVersion < CARD_DH_AGREEMENT_INFO_VERSION
+			&& pCardData->dwVersion == CARD_DATA_CURRENT_VERSION)
+		return ERROR_REVISION_MISMATCH;
+
+	vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
+
+	/* check if the container exists */
+	if (pAgreementInfo->bContainerIndex >= MD_MAX_KEY_CONTAINERS)
+		return SCARD_E_NO_KEY_CONTAINER;
+
+	check_reader_status(pCardData);
+
+	logprintf(pCardData, 2, "CardConstructDHAgreement dwVersion=%u, dwKeySpec=%u pbData=%p, cbData=%u\n",
+		pAgreementInfo->dwVersion,pAgreementInfo->bContainerIndex , pAgreementInfo->pbPublicKey,  pAgreementInfo->dwPublicKey);
+
+	pkey = vs->p15_containers[pAgreementInfo->bContainerIndex].prkey_obj;
+	if (!pkey)   {
+		logprintf(pCardData, 2, "CardConstructDHAgreement prkey not found\n");
+		return SCARD_E_NO_KEY_CONTAINER;
+	}
+
+	/* convert the Windows public key into an OpenSC public key */
+	dwPublicKeySize = pAgreementInfo->dwPublicKey - sizeof(BCRYPT_ECCKEY_BLOB) + 1;
+	pbPublicKey = (PBYTE) pCardData->pfnCspAlloc(dwPublicKeySize);
+	if (!pbPublicKey) {
+		return ERROR_OUTOFMEMORY;
+	}
+
+	pbPublicKey[0] = 4;
+	memcpy(pbPublicKey+1, pAgreementInfo->pbPublicKey +  sizeof(BCRYPT_ECCKEY_BLOB), dwPublicKeySize-1);
+
+	/* derive the key using the OpenSC functions */
+	r = sc_pkcs15_derive(vs->p15card, pkey, opt_derive_flags, pbPublicKey, dwPublicKeySize, out, &outlen );
+	logprintf(pCardData, 2, "sc_pkcs15_derive returned %d\n", r);
+
+	if ( r < 0)   {
+		logprintf(pCardData, 2, "sc_pkcs15_derive error(%i): %s\n", r, sc_strerror(r));
+		pCardData->pfnCspFree(pbPublicKey);
+		return md_translate_OpenSC_to_Windows_error(r, SCARD_E_INVALID_VALUE);
+	}
+
+	out = pCardData->pfnCspAlloc(outlen);
+
+	if (!out) {
+		return ERROR_OUTOFMEMORY;
+	}
+
+	r = sc_pkcs15_derive(vs->p15card, pkey, opt_derive_flags, pbPublicKey, dwPublicKeySize, out, &outlen );
+	logprintf(pCardData, 2, "sc_pkcs15_derive returned %d\n", r);
+
+	pCardData->pfnCspFree(pbPublicKey);
+
+	if ( r < 0)   {
+		logprintf(pCardData, 2, "sc_pkcs15_derive error(%i): %s\n", r, sc_strerror(r));
+		pCardData->pfnCspFree(out);
+		return md_translate_OpenSC_to_Windows_error(r, SCARD_E_INVALID_VALUE);
+	}
+
+	/* save the dh agreement for later use */
+
+	/* try to find an empty index */
+	for (i = 0; i < vs->allocatedAgreements; i++) {
+		dh_agreement = vs->dh_agreements + i;
+		if (dh_agreement->pbAgreement == NULL) {
+			pAgreementInfo->bSecretAgreementIndex = i;
+			dh_agreement->pbAgreement = out;
+			dh_agreement->dwSize = outlen;
+			return SCARD_S_SUCCESS;
+		}
+	}
+	/* no empty space => need to allocate memory */
+	temp = (struct md_dh_agreement*) pCardData->pfnCspAlloc((vs->allocatedAgreements+1) * sizeof(struct md_dh_agreement));
+	if (!temp) {
+		pCardData->pfnCspFree(out);
+		return SCARD_E_NO_MEMORY;
+	}
+	if ((vs->allocatedAgreements) > 0) {
+		memcpy(temp, vs->dh_agreements, sizeof(struct md_dh_agreement) * (vs->allocatedAgreements));
+		pCardData->pfnCspFree(vs->dh_agreements);
+	}
+	vs->dh_agreements = temp;
+	dh_agreement = vs->dh_agreements + (vs->allocatedAgreements);
+	pAgreementInfo->bSecretAgreementIndex = (vs->allocatedAgreements);
+	dh_agreement->pbAgreement = out;
+	dh_agreement->dwSize = outlen;
+	vs->allocatedAgreements++;
+	return SCARD_S_SUCCESS;
+}
+
+
+DWORD WINAPI CardDeriveHashOrHMAC(__in PCARD_DATA pCardData,
+	__inout PCARD_DERIVE_KEY pAgreementInfo,
+	__in struct md_dh_agreement* agreement,
+	__in PWSTR szAlgorithm,
+	__in PBYTE pbHmacKey, __in DWORD dwHmacKeySize 
+	)
+{
+	DWORD dwReturn = 0;
+	/* CNG variables */
+	BCRYPT_ALG_HANDLE hAlgorithm = NULL;
+	BCRYPT_HASH_HANDLE hHash = NULL;
+	DWORD dwSize, dwHashSize;
+	PBYTE pbBuffer = NULL;
+	DWORD dwBufferSize = 0;
+	ULONG i;
+	NCryptBufferDesc* parameters = NULL;
+
+	dwReturn = BCryptOpenAlgorithmProvider(&hAlgorithm, szAlgorithm, NULL, (pbHmacKey?BCRYPT_ALG_HANDLE_HMAC_FLAG:0));
+	if (dwReturn) {
+		logprintf(pCardData, 0, "CardDeriveKey: unable to find a provider for the algorithm %S 0x%08X\n", szAlgorithm, dwReturn);
+		goto cleanup;
+	}
+	dwSize = sizeof(DWORD);
+	dwReturn = BCryptGetProperty(hAlgorithm, BCRYPT_HASH_LENGTH, (PUCHAR)&dwHashSize, dwSize, &dwSize, 0);
+	if (dwReturn) {
+		logprintf(pCardData, 0, "CardDeriveKey: unable to get the hash length\n");
+		goto cleanup;
+	}
+	pAgreementInfo->cbDerivedKey = dwHashSize;
+	if (pAgreementInfo->dwFlags & CARD_BUFFER_SIZE_ONLY) {
+		dwReturn = SCARD_S_SUCCESS;
+		goto cleanup;
+	}
+	pAgreementInfo->pbDerivedKey = (PBYTE)pCardData->pfnCspAlloc(dwHashSize);
+	if (pAgreementInfo->pbDerivedKey == NULL) {
+		dwReturn = SCARD_E_NO_MEMORY;
+		goto cleanup;
+	}
+
+	dwSize = sizeof(DWORD);
+	dwReturn = BCryptGetProperty(hAlgorithm, BCRYPT_OBJECT_LENGTH, (PUCHAR)&dwBufferSize, dwSize, &dwSize, 0);
+	if (dwReturn) {
+		logprintf(pCardData, 0, "CardDeriveKey: unable to get the buffer length 0x%08X\n", dwReturn);
+		goto cleanup;
+	}
+
+	pbBuffer = (PBYTE)LocalAlloc(0, dwBufferSize);
+	if (pbBuffer == NULL) {
+		dwReturn = SCARD_E_NO_MEMORY;
+		goto cleanup;
+	}
+	if (wcscmp(pAgreementInfo->pwszKDF, BCRYPT_KDF_HMAC) == 0) {
+		dwReturn = BCryptCreateHash(hAlgorithm, &hHash, pbBuffer, dwBufferSize, pbHmacKey, dwHmacKeySize, 0);
+	}
+	else {
+		dwReturn = BCryptCreateHash(hAlgorithm, &hHash, pbBuffer, dwBufferSize, NULL, 0, 0);
+	}
+	if (dwReturn) {
+		logprintf(pCardData, 0, "CardDeriveKey: unable to create the alg object 0x%08X\n", dwReturn);
+		goto cleanup;
+	}
+
+	parameters = (NCryptBufferDesc*) pAgreementInfo->pParameterList;
+	if (parameters) {
+		for (i = 0; i < parameters->cBuffers; i++) {
+			NCryptBuffer* buffer = parameters->pBuffers + i;
+			if (buffer->BufferType == KDF_SECRET_PREPEND) {
+				dwReturn = BCryptHashData(hHash, (PUCHAR)buffer->pvBuffer, buffer->cbBuffer, 0);
+				if (dwReturn) {
+					logprintf(pCardData, 0, "CardDeriveKey: unable to hash data 0x%08X\n", dwReturn);
+					goto cleanup;
+				}
+			}
+		}
+	}
+
+	dwReturn = BCryptHashData(hHash, (PUCHAR)agreement->pbAgreement, agreement->dwSize, 0);
+	if (dwReturn) {
+		logprintf(pCardData, 0, "CardDeriveKey: unable to hash data 0x%08X\n", dwReturn);
+		goto cleanup;
+	}
+
+	if (parameters) {
+		for (i = 0; i < parameters->cBuffers; i++) {
+			NCryptBuffer* buffer = parameters->pBuffers + i;
+			if (buffer->BufferType == KDF_SECRET_APPEND) {
+				dwReturn = BCryptHashData(hHash, (PUCHAR)buffer->pvBuffer, buffer->cbBuffer, 0);
+				if (dwReturn) {
+					logprintf(pCardData, 0, "CardDeriveKey: unable to hash data 0x%08X\n", dwReturn);
+					goto cleanup;
+				}
+			}
+		}
+	}
+
+	dwReturn = BCryptFinishHash(hHash, pAgreementInfo->pbDerivedKey, pAgreementInfo->cbDerivedKey, 0);
+	if (dwReturn) {
+		logprintf(pCardData, 0, "CardDeriveKey: unable to finish hash 0x%08X\n", dwReturn);
+		goto cleanup;
+	}
+
+cleanup:
+
+	if (hHash)
+		BCryptDestroyHash(hHash);
+	if (pbBuffer)
+		LocalFree(pbBuffer);
+	if (hAlgorithm)
+		BCryptCloseAlgorithmProvider(hAlgorithm, 0);
+	return dwReturn;
+}
+
+
+DWORD HashMe(__in PCARD_DATA pCardData, BCRYPT_ALG_HANDLE hAlgorithm, 
+			 PBYTE pbOuput, DWORD dwOutputSize, PBYTE pbSecret, DWORD dwSecretSize, 
+			 PBYTE pbData1, DWORD dwDataSize1,
+			 PBYTE pbData2, DWORD dwDataSize2, 
+			 PBYTE pbData3, DWORD dwDataSize3 )
+{
+	DWORD dwReturn, dwSize, dwBufferSize;
+	BCRYPT_HASH_HANDLE hHash = NULL;
+	PBYTE pbBuffer = NULL;
+	
+	dwSize = sizeof(DWORD);
+	dwReturn = BCryptGetProperty(hAlgorithm, BCRYPT_OBJECT_LENGTH, (PUCHAR)&dwBufferSize, dwSize, &dwSize, 0);
+	if (dwReturn) {
+		logprintf(pCardData, 0, "CardDeriveKey: unable to get the buffer length 0x%08X\n", dwReturn);
+		goto cleanup;
+	}
+	pbBuffer = (PBYTE)LocalAlloc(0, dwBufferSize);
+	if (pbBuffer == NULL) {
+		dwReturn = SCARD_E_NO_MEMORY;
+		goto cleanup;
+	}
+	dwReturn = BCryptCreateHash(hAlgorithm, &hHash, pbBuffer, dwBufferSize, pbSecret, dwSecretSize, 0);
+	if (dwReturn) {
+		logprintf(pCardData, 0, "CardDeriveKey: unable to create the alg object 0x%08X\n", dwReturn);
+		goto cleanup;
+	}
+	if (pbData1) {
+		dwReturn = BCryptHashData(hHash, pbData1, dwDataSize1, 0);
+		if (dwReturn) {
+			logprintf(pCardData, 0, "CardDeriveKey: unable to hash data 0x%08X\n", dwReturn);
+			goto cleanup;
+		}
+	}
+	if (pbData2) {
+		dwReturn = BCryptHashData(hHash, pbData2, dwDataSize2, 0);
+		if (dwReturn) {
+			logprintf(pCardData, 0, "CardDeriveKey: unable to hash data 0x%08X\n", dwReturn);
+			goto cleanup;
+		}
+	}
+	if (pbData3) {
+		dwReturn = BCryptHashData(hHash, pbData3, dwDataSize3, 0);
+		if (dwReturn) {
+			logprintf(pCardData, 0, "CardDeriveKey: unable to hash data 0x%08X\n", dwReturn);
+			goto cleanup;
+		}
+	}
+	dwReturn = BCryptFinishHash(hHash, pbOuput, dwOutputSize, 0);
+	if (dwReturn) {
+		logprintf(pCardData, 0, "CardDeriveKey: unable to finish hash 0x%08X\n", dwReturn);
+		goto cleanup;
+	}
+cleanup:
+	if (hHash)
+		BCryptDestroyHash(hHash);
+	if (pbBuffer)
+		LocalFree(pbBuffer);
+	return dwReturn;
+}
+
+DWORD WINAPI DoTlsPrf(__in PCARD_DATA pCardData,
+					  __in PBYTE pbOutput,
+					__in PBYTE pbSecret,
+					__in DWORD dwSecretSize,
+					__in PWSTR szAlgorithm,
+					__in PBYTE pbLabel, __in DWORD dwLabelSize,
+					__in PBYTE pbSeed
+	)
+{
+	DWORD dwReturn = 0, i;
+	/* CNG variables */
+	BCRYPT_ALG_HANDLE hAlgorithm = NULL;
+	DWORD dwSize, dwHashSize, dwNumberOfRounds, dwLastRoundSize;
+	PBYTE pbBuffer = NULL;
+	/* TLS intermediate results */
+	PBYTE pbAx = NULL;
+	
+	dwReturn = BCryptOpenAlgorithmProvider(&hAlgorithm, szAlgorithm, NULL, BCRYPT_ALG_HANDLE_HMAC_FLAG);
+	if (dwReturn) {
+		logprintf(pCardData, 0, "CardDeriveKey: unable to find a provider for the algorithm %S 0x%08X\n", szAlgorithm, dwReturn);
+		goto cleanup;
+	}
+	dwSize = sizeof(DWORD);
+	dwReturn = BCryptGetProperty(hAlgorithm, BCRYPT_HASH_LENGTH, (PUCHAR)&dwHashSize, dwSize, &dwSize, 0);
+	if (dwReturn) {
+		logprintf(pCardData, 0, "CardDeriveKey: unable to get the hash length\n");
+		goto cleanup;
+	}
+	
+	/* size is always 48 */
+	dwLastRoundSize = 48 % dwHashSize;
+	if (dwLastRoundSize == 0) dwLastRoundSize = dwHashSize;
+	dwNumberOfRounds = (DWORD) (48 / dwHashSize) + (dwLastRoundSize == dwHashSize?0:1);
+
+	/* store TLS A1, A2 intermediate operations */
+	pbAx = (PBYTE) LocalAlloc(0, dwNumberOfRounds * dwHashSize);
+	if (pbAx == NULL) {
+		dwReturn = SCARD_E_NO_MEMORY;
+		goto cleanup;
+	}
+
+	pbBuffer = (PBYTE) LocalAlloc(0, dwHashSize);
+	if (pbBuffer == NULL) {
+		dwReturn = SCARD_E_NO_MEMORY;
+		goto cleanup;
+	}
+	
+	for (i = 0; i<dwNumberOfRounds; i++) {
+		/* A1, A2, ... */
+		if (i == 0) {
+			/* A(1) = HMAC_hash(secret, label + seed)*/
+			dwReturn = HashMe(pCardData, hAlgorithm, 
+					 pbAx, dwHashSize, pbSecret, dwSecretSize, 
+					 pbLabel, dwLabelSize,
+					 pbSeed, 64, 
+					 NULL, 0);
+		} else {
+			/* A(i) = HMAC_hash(secret, A(i-1))*/
+			dwReturn = HashMe(pCardData, hAlgorithm, 
+					 pbAx + i * dwHashSize, dwHashSize, pbSecret, dwSecretSize, 
+					 pbAx + (i-1) * dwHashSize, dwHashSize,
+					 NULL, 0, 
+					 NULL, 0);
+		}
+		if (dwReturn) {
+			logprintf(pCardData, 0, "CardDeriveKey: unable to hash Ax 0x%08X\n", szAlgorithm, dwReturn);
+			goto cleanup;
+		}
+		if (dwNumberOfRounds -1 == i) {
+			/* last round */
+			dwReturn = HashMe(pCardData, hAlgorithm, 
+						 pbBuffer, dwHashSize, pbSecret, dwSecretSize, 
+						 pbAx + i * dwHashSize, dwHashSize,
+						 pbLabel, dwLabelSize,
+						 pbSeed, 64);
+			memcpy(pbOutput + i * dwHashSize, pbBuffer, dwLastRoundSize);
+		} else {
+			dwReturn = HashMe(pCardData, hAlgorithm, 
+						 pbOutput + i * dwHashSize, dwHashSize, pbSecret, dwSecretSize, 
+						 pbAx + i * dwHashSize, dwHashSize,
+						 pbLabel, dwLabelSize,
+						 pbSeed, 64);
+		}
+		if (dwReturn) {
+			logprintf(pCardData, 0, "CardDeriveKey: unable to hash Ax 0x%08X\n", szAlgorithm, dwReturn);
+			goto cleanup;
+		}
+	}
+	
+
+cleanup:
+	if (pbBuffer)
+		LocalFree(pbBuffer);
+	if (pbAx)
+		LocalFree(pbAx);
+	if (hAlgorithm)
+		BCryptCloseAlgorithmProvider(hAlgorithm, 0);
+	return dwReturn;
+}
+
+DWORD WINAPI CardDeriveTlsPrf(__in PCARD_DATA pCardData,
+	__inout PCARD_DERIVE_KEY pAgreementInfo,
+	__in struct md_dh_agreement* agreement,
+	__in DWORD dwProtocol,
+	__in PWSTR szAlgorithm,
+	__in PBYTE pbLabel, __in DWORD dwLabelSize,
+	__in PBYTE pbSeed
+	)
+{
+	DWORD dwReturn = 0;
+	PBYTE pbBuffer = NULL;
+	DWORD i;
+	if(dwProtocol == 0) {
+		dwProtocol = 0x301;
+	} else if (dwProtocol == 0x301 || dwProtocol == 0x302) {
+		/* TLS 1.0 & 1.1 */
+	} else if (dwProtocol == 0x303) {
+		/* TLS 1.2 */
+		if (szAlgorithm && wcscmp(szAlgorithm, BCRYPT_SHA256_ALGORITHM) != 0 && wcscmp(szAlgorithm, BCRYPT_SHA384_ALGORITHM) != 0) {
+			logprintf(pCardData, 0, "CardDeriveKey: The algorithm for TLS_PRF is invalid %S\n", szAlgorithm);
+			return SCARD_E_INVALID_PARAMETER;
+		}
+	} else {
+		logprintf(pCardData, 0, "CardDeriveTlsPrf: TLS protocol unknwon 0x%08X\n", dwReturn);
+		return SCARD_E_INVALID_PARAMETER;
+	}
+	/* size is always 48 according to msdn */
+	pAgreementInfo->cbDerivedKey = 48;
+	if (pAgreementInfo->dwFlags & CARD_BUFFER_SIZE_ONLY) {
+		return SCARD_S_SUCCESS;
+	}
+
+	pAgreementInfo->pbDerivedKey = (PBYTE)pCardData->pfnCspAlloc(48);
+	if (pAgreementInfo->pbDerivedKey == NULL) {
+		return SCARD_E_NO_MEMORY;
+	}
+
+	if (dwProtocol == 0x301 || dwProtocol == 0x302) {
+		/* TLS 1.0 & 1.1 */
+		DWORD dwNewSecretLength = (((agreement->dwSize) + (2) - 1) / (2));
+		dwReturn = DoTlsPrf(pCardData,
+						  pAgreementInfo->pbDerivedKey,
+						agreement->pbAgreement,
+						dwNewSecretLength,
+						BCRYPT_MD5_ALGORITHM,
+						pbLabel, dwLabelSize,
+						pbSeed);
+		if (dwReturn) {
+			logprintf(pCardData, 0, "CardDeriveTlsPrf: unable to DoTlsPrf with %S 0x%08X\n", szAlgorithm, dwReturn);
+			pCardData->pfnCspFree(pAgreementInfo->pbDerivedKey );
+			pAgreementInfo->pbDerivedKey  = NULL;
+			return dwReturn;
+		}
+		pbBuffer = (PBYTE) LocalAlloc(0, 48);
+		if (!pbBuffer) {
+			pCardData->pfnCspFree(pAgreementInfo->pbDerivedKey );
+			pAgreementInfo->pbDerivedKey  = NULL;
+			return SCARD_E_NO_MEMORY;
+		}
+		dwReturn = DoTlsPrf(pCardData,
+						  pbBuffer,
+						agreement->pbAgreement + dwNewSecretLength,
+						dwNewSecretLength,
+						BCRYPT_SHA1_ALGORITHM,
+						pbLabel, dwLabelSize,
+						pbSeed);
+		if (dwReturn) {
+			logprintf(pCardData, 0, "CardDeriveTlsPrf: unable to DoTlsPrf with %S 0x%08X\n", szAlgorithm, dwReturn);
+			LocalFree(pbBuffer);
+			pCardData->pfnCspFree(pAgreementInfo->pbDerivedKey );
+			pAgreementInfo->pbDerivedKey  = NULL;
+			return dwReturn;
+		}
+		for (i = 0; i< 48; i++) {
+			pAgreementInfo->pbDerivedKey[i] = pAgreementInfo->pbDerivedKey[i] ^ pbBuffer[i];
+		}
+		LocalFree(pbBuffer);
+
+	} else if (dwProtocol == 0x303) {
+		dwReturn = DoTlsPrf(pCardData,
+						  pAgreementInfo->pbDerivedKey,
+						agreement->pbAgreement,
+						agreement->dwSize,
+						szAlgorithm,
+						pbLabel, dwLabelSize,
+						pbSeed);
+		if (dwReturn) {
+			logprintf(pCardData, 0, "CardDeriveTlsPrf: unable to DoTlsPrf with %S 0x%08X\n", szAlgorithm, dwReturn);
+			pCardData->pfnCspFree(pAgreementInfo->pbDerivedKey );
+			pAgreementInfo->pbDerivedKey  = NULL;
+			return dwReturn;
+		}
+	}
+	return SCARD_S_SUCCESS;
 }
 
 DWORD WINAPI CardDeriveKey(__in PCARD_DATA pCardData,
 	__inout PCARD_DERIVE_KEY pAgreementInfo)
 {
+	VENDOR_SPECIFIC *vs;
+	DWORD dwAgreementIndex = 0;
+	struct md_dh_agreement* agreement = NULL;
+	NCryptBufferDesc* parameters = NULL;
+	ULONG i;
+	DWORD dwReturn = 0;
+	/* store parameter references */
+	PWSTR szAlgorithm = NULL;
+	PBYTE pbHmacKey = NULL;
+	DWORD dwHmacKeySize = 0;
+	PBYTE pbLabel = NULL;
+	DWORD dwLabelSize = 0;
+	PBYTE pbSeed = NULL;
+	DWORD dwProtocol = 0;
+	
+
 	logprintf(pCardData, 1, "\nP:%d T:%d pCardData:%p ",GetCurrentProcessId(), GetCurrentThreadId(), pCardData);
-	logprintf(pCardData, 1, "CardDeriveKey - unsupported\n");
-	return SCARD_E_UNSUPPORTED_FEATURE;
+	logprintf(pCardData, 1, "CardDeriveKey\n");
+	if (!pCardData)
+		return SCARD_E_INVALID_PARAMETER;
+	if (!pAgreementInfo)
+		return SCARD_E_INVALID_PARAMETER;
+	if (pAgreementInfo->dwVersion > CARD_DERIVE_KEY_CURRENT_VERSION)
+		return ERROR_REVISION_MISMATCH;
+	/* according to the documenation, CARD_DERIVE_KEY_CURRENT_VERSION should be equal to 2. 
+	In pratice it is not 2 but 1
+
+	if ( pAgreementInfo->dwVersion < CARD_DERIVE_KEY_CURRENT_VERSION
+			&& pCardData->dwVersion == CARD_DATA_CURRENT_VERSION)
+		return ERROR_REVISION_MISMATCH;*/
+
+	vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
+
+	/* check if the agreement index is ok */
+	if (pAgreementInfo->bSecretAgreementIndex >= vs->allocatedAgreements) {
+		return SCARD_E_INVALID_PARAMETER;
+	}
+
+	agreement = vs->dh_agreements + pAgreementInfo->bSecretAgreementIndex;
+	if (agreement->pbAgreement == NULL) {
+		return SCARD_E_INVALID_PARAMETER;
+	}
+
+	if (pAgreementInfo->dwFlags & CARD_RETURN_KEY_HANDLE ) {
+		return SCARD_E_UNSUPPORTED_FEATURE;
+	}
+
+	/* find the algorithm, checks parameters */
+
+	parameters = (NCryptBufferDesc*)pAgreementInfo->pParameterList;
+	
+	if (parameters) {
+		for (i = 0; i < parameters->cBuffers; i++) {
+			NCryptBuffer* buffer = parameters->pBuffers + i;
+			switch(buffer->BufferType) {
+				case KDF_HASH_ALGORITHM:
+					if (szAlgorithm != NULL) {
+						logprintf(pCardData, 0, "CardDeriveKey: got more than one algorithm\n");
+						return SCARD_E_INVALID_PARAMETER;
+					}
+					if (wcscmp((PWSTR) buffer->pvBuffer, BCRYPT_SHA1_ALGORITHM) == 0) {
+						szAlgorithm = BCRYPT_SHA1_ALGORITHM;
+					} else if (wcscmp((PWSTR) buffer->pvBuffer, BCRYPT_SHA256_ALGORITHM) == 0) {
+						szAlgorithm = BCRYPT_SHA256_ALGORITHM;
+					} else if (wcscmp((PWSTR) buffer->pvBuffer, BCRYPT_SHA384_ALGORITHM) == 0) {
+						szAlgorithm = BCRYPT_SHA256_ALGORITHM;
+					} else if (wcscmp((PWSTR) buffer->pvBuffer, BCRYPT_SHA512_ALGORITHM) == 0) {
+						szAlgorithm = BCRYPT_SHA256_ALGORITHM;
+					} else if (wcscmp((PWSTR) buffer->pvBuffer, BCRYPT_MD5_ALGORITHM) == 0) {
+						szAlgorithm = BCRYPT_MD5_ALGORITHM;
+					} else {
+						logprintf(pCardData, 0, "CardDeriveKey: unsupported algorithm %S\n", buffer->pvBuffer);
+						return SCARD_E_INVALID_PARAMETER;
+					}
+					break;
+				case KDF_HMAC_KEY:
+					if (pbHmacKey != NULL) {
+						logprintf(pCardData, 0, "CardDeriveKey: got more than one hhmac key\n");
+						return SCARD_E_INVALID_PARAMETER;
+					}
+					pbHmacKey = (PBYTE) buffer->pvBuffer;
+					dwHmacKeySize = buffer->cbBuffer;
+					break;
+				case KDF_SECRET_APPEND:
+				case KDF_SECRET_PREPEND:
+					/* do not throw an error for invalid arg*/
+					break;
+				case KDF_TLS_PRF_LABEL:
+					if (pbLabel != NULL) {
+						logprintf(pCardData, 0, "CardDeriveKey: got more than one Label\n");
+						return SCARD_E_INVALID_PARAMETER;
+					}
+					pbLabel = (PBYTE)buffer->pvBuffer;
+					dwLabelSize = buffer->cbBuffer;
+					break;
+				case KDF_TLS_PRF_SEED:
+					if (pbSeed != NULL) {
+						logprintf(pCardData, 0, "CardDeriveKey: got more than one Seed\n");
+						return SCARD_E_INVALID_PARAMETER;
+					}
+					if (buffer->cbBuffer != 64)
+					{
+						logprintf(pCardData, 0, "CardDeriveKey: invalid seed size %u\n", buffer->cbBuffer);
+						return SCARD_E_INVALID_PARAMETER;
+					}
+					pbSeed = (PBYTE)buffer->pvBuffer;
+					break;
+				case KDF_TLS_PRF_PROTOCOL:
+					dwProtocol = *((PDWORD)buffer->pvBuffer);
+					break;
+				/*case KDF_ALGORITHMID:
+				case KDF_PARTYUINFO:
+				case KDF_PARTYVINFO:
+				case KDF_SUPPPUBINFO:
+				case KDF_SUPPPRIVINFO:
+					break;*/
+				default:
+					logprintf(pCardData, 0, "CardDeriveKey: unknown buffer type %u\n", (parameters->pBuffers + i)->BufferType);
+					return SCARD_E_INVALID_PARAMETER;
+			}
+		}
+	}
+	/* default parameters */
+	if (szAlgorithm == NULL && wcscmp(pAgreementInfo->pwszKDF, BCRYPT_KDF_TLS_PRF) != 0) {
+		szAlgorithm = BCRYPT_SHA1_ALGORITHM;
+	}
+	
+	/* check the values with the KDF choosen */
+	if (wcscmp(pAgreementInfo->pwszKDF, BCRYPT_KDF_HASH) == 0) {
+	}
+	else if (wcscmp(pAgreementInfo->pwszKDF, BCRYPT_KDF_HMAC) == 0) {
+		if (pbHmacKey == NULL) {
+			logprintf(pCardData, 0, "CardDeriveKey: no hhmac key for hmac KDF\n");
+			return SCARD_E_INVALID_PARAMETER;
+		}
+	}
+	else if (wcscmp(pAgreementInfo->pwszKDF, BCRYPT_KDF_TLS_PRF) == 0) {
+		if (!pbSeed) {
+			logprintf(pCardData, 0, "CardDeriveKey: No seed was provided\n");
+			return SCARD_E_INVALID_PARAMETER;
+		}
+		if (!pbLabel) {
+			logprintf(pCardData, 0, "CardDeriveKey: No label was provided\n");
+			return SCARD_E_INVALID_PARAMETER;
+		}
+	} else {
+		logprintf(pCardData, 0, "CardDeriveKey: unsupported KDF %S\n", pAgreementInfo->pwszKDF);
+		return SCARD_E_INVALID_PARAMETER;
+	}
+
+	/* do the job for the KDF Hash & Hmac */
+	if (wcscmp(pAgreementInfo->pwszKDF, BCRYPT_KDF_HASH) == 0 ||
+		wcscmp(pAgreementInfo->pwszKDF, BCRYPT_KDF_HMAC) == 0 ) {
+		
+		dwReturn = CardDeriveHashOrHMAC(pCardData, pAgreementInfo, agreement, szAlgorithm, pbHmacKey, dwHmacKeySize);
+		if (dwReturn) {
+			logprintf(pCardData, 0, "CardDeriveKey: got an error while deriving the Key (hash or HMAC) 0x%08X\n", dwReturn);
+			return dwReturn;
+		}
+
+	} else if (wcscmp(pAgreementInfo->pwszKDF, BCRYPT_KDF_TLS_PRF) == 0) {
+		dwReturn = CardDeriveTlsPrf(pCardData, pAgreementInfo, agreement, dwProtocol, szAlgorithm, pbLabel, dwLabelSize, pbSeed);
+		if (dwReturn) {
+			logprintf(pCardData, 0, "CardDeriveKey: got an error while deriving the Key (TlsPrf) 0x%08X\n", dwReturn);
+			return dwReturn;
+		}
+	}
+	/*else if (wcscmp(pAgreementInfo->pwszKDF, BCRYPT_KDF_SP80056A_CONCAT ) == 0) {
+	}*/
+
+
+	return SCARD_S_SUCCESS;
+
 }
 
 DWORD WINAPI CardDestroyDHAgreement(
@@ -3623,18 +4506,30 @@ DWORD WINAPI CardDestroyDHAgreement(
 	__in BYTE bSecretAgreementIndex,
 	__in DWORD dwFlags)
 {
-	logprintf(pCardData, 1, "CardDestroyDHAgreement - unsupported\n");
-	return SCARD_E_UNSUPPORTED_FEATURE;
-}
+	VENDOR_SPECIFIC *vs;
+	struct md_dh_agreement* agreement = NULL;
 
-DWORD WINAPI CspGetDHAgreement(__in  PCARD_DATA pCardData,
-	__in  PVOID hSecretAgreement,
-	__out BYTE* pbSecretAgreementIndex,
-	__in  DWORD dwFlags)
-{
 	logprintf(pCardData, 1, "\nP:%d T:%d pCardData:%p ",GetCurrentProcessId(), GetCurrentThreadId(), pCardData);
-	logprintf(pCardData, 1, "CspGetDHAgreement - unsupported\n");
-	return SCARD_E_UNSUPPORTED_FEATURE;
+	logprintf(pCardData, 1, "CardDestroyDHAgreement\n");
+	if (!pCardData)
+		return SCARD_E_INVALID_PARAMETER;
+	if (dwFlags)
+		return SCARD_E_INVALID_PARAMETER;
+	vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
+
+	if (bSecretAgreementIndex >= vs->allocatedAgreements) {
+		return SCARD_E_INVALID_PARAMETER;
+	}
+
+	agreement = vs->dh_agreements + bSecretAgreementIndex;
+	if (agreement->pbAgreement == NULL) {
+		return SCARD_E_INVALID_PARAMETER;
+	}
+	SecureZeroMemory(agreement->pbAgreement, agreement->dwSize);
+	pCardData->pfnCspFree(agreement->pbAgreement);
+	agreement->pbAgreement = 0;
+	agreement->dwSize = 0;
+	return SCARD_S_SUCCESS;
 }
 
 DWORD WINAPI CardGetChallengeEx(__in PCARD_DATA pCardData,
@@ -4024,7 +4919,7 @@ DWORD WINAPI CardGetProperty(__in PCARD_DATA pCardData,
 		if (cbData < sizeof(*pKeySizes))
 			return ERROR_INSUFFICIENT_BUFFER;
 
-		dwret = md_query_key_sizes(pKeySizes);
+		dwret = md_query_key_sizes(pCardData, 0, pKeySizes);
 		if (dwret != SCARD_S_SUCCESS)
 			return dwret;
 	}
@@ -4163,6 +5058,21 @@ DWORD WINAPI CardGetProperty(__in PCARD_DATA pCardData,
 		if (cbData < sizeof(*p))
 			return ERROR_INSUFFICIENT_BUFFER;
 		*p = 0;
+	}
+	else if (wcscmp(CP_ENUM_ALGORITHMS, wszProperty) == 0)   {
+		logprintf(pCardData, 3, "Unsupported property '%S'\n", wszProperty);
+		//TODO
+		return SCARD_E_INVALID_PARAMETER;
+	}
+	else if (wcscmp(CP_PADDING_SCHEMES, wszProperty) == 0)   {
+		logprintf(pCardData, 3, "Unsupported property '%S'\n", wszProperty);
+		//TODO
+		return SCARD_E_INVALID_PARAMETER;
+	}
+	else if (wcscmp(CP_CHAINING_MODES, wszProperty) == 0)   {
+		logprintf(pCardData, 3, "Unsupported property '%S'\n", wszProperty);
+		//TODO
+		return SCARD_E_INVALID_PARAMETER;
 	}
 	else   {
 		logprintf(pCardData, 3, "Unsupported property '%S'\n", wszProperty);
@@ -4630,7 +5540,6 @@ DWORD WINAPI CardAcquireContext(__inout PCARD_DATA pCardData, __in DWORD dwFlags
 	if (pCardData->dwVersion >= CARD_DATA_VERSION_FIVE) {
 		pCardData->pfnCardDeriveKey = CardDeriveKey;
 		pCardData->pfnCardDestroyDHAgreement = CardDestroyDHAgreement;
-		pCardData->pfnCspGetDHAgreement = CspGetDHAgreement;
 
 		if (pCardData->dwVersion >= CARD_DATA_VERSION_SIX) {
 
