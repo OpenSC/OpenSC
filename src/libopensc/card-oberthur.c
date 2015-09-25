@@ -185,7 +185,7 @@ auth_select_aid(struct sc_card *card)
 	memcpy(card->serialnr.value, apdu.resp+15, 4);
 
 	for (ii=0, data->sn = 0; ii < 4; ii++)
-		data->sn += (int)(*(apdu.resp + 15 + ii)) << (3-ii)*8;
+		data->sn += (long int)(*(apdu.resp + 15 + ii)) << (3-ii)*8;
 
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "serial number %li/0x%lX\n", data->sn, data->sn);
 

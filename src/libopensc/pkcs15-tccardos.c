@@ -212,6 +212,7 @@ static int parse_EF_CardInfo(sc_pkcs15_card_t *p15card)
 	u8     *p1, *p2;
 	size_t key_num, i;
 	struct sc_context *ctx = p15card->card->ctx;
+	size_t offset;
 
 	/* read EF_CardInfo1 */
 	r = read_file(p15card->card, "3F001003b200", info1, &info1_len);
@@ -227,7 +228,10 @@ static int parse_EF_CardInfo(sc_pkcs15_card_t *p15card)
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
 		"found %d private keys\n", (int)key_num);
 	/* set p1 to the address of the first key descriptor */
-	p1 = info1 + (info1_len - 4 - key_num * 2);
+	offset = info1_len - 4 - key_num * 2;
+	if (offset >= sizeof info1)
+		return SC_ERROR_INVALID_DATA;
+	p1 = info1 + offset;
 	p2 = info2;
 	for (i=0; i<key_num; i++) {
 		u8   pinId, keyId, cert_count;

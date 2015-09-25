@@ -1391,7 +1391,6 @@ static const EVP_CIPHER *get_cipher_for_algo(int alg_id)
 		default: return NULL;
 	}
 }
-#endif
 
 static int get_keylen(unsigned int alg_id, size_t *size)
 {
@@ -1450,9 +1449,17 @@ static int piv_get_key(sc_card_t *card, unsigned int alg_id, u8 **key, size_t *l
 		goto err;
 	}
 
-	fseek(f, 0L, SEEK_END);
+	if (0 > fseek(f, 0L, SEEK_END))
+		r = SC_ERROR_INTERNAL;
 	fsize = ftell(f);
-	fseek(f, 0L, SEEK_SET);
+	if (0 > (long) fsize)
+		r = SC_ERROR_INTERNAL;
+	if (0 > fseek(f, 0L, SEEK_SET))
+		r = SC_ERROR_INTERNAL;
+	if(r) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not read %s\n", keyfilename);
+		goto err;
+	}
 
 	keybuf = malloc(fsize+1); /* if not binary, need null to make it a string */
 	if (!keybuf) {
@@ -1508,6 +1515,7 @@ err:
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 	return r;
 }
+#endif
 
 /*
  * will only deal with 3des for now

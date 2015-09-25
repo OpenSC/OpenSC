@@ -143,6 +143,8 @@ ctbcs_build_modify_verification_apdu(sc_apdu_t *apdu, struct sc_pin_cmd_data *da
 		return SC_ERROR_BUFFER_TOO_SMALL;
 
 	j = count;
+	if (j + 2 > buflen)
+		return SC_ERROR_BUFFER_TOO_SMALL;
 	buf[j++] = CTBCS_TAG_VERIFY_CMD;
 	buf[j++] = 0x00;
 
@@ -154,6 +156,8 @@ ctbcs_build_modify_verification_apdu(sc_apdu_t *apdu, struct sc_pin_cmd_data *da
 		return SC_ERROR_INVALID_ARGUMENTS;
 	if (data->pin1.min_length == data->pin1.max_length)
 		control |= data->pin1.min_length << CTBCS_PIN_CONTROL_LEN_SHIFT;
+	if (j + 7 > buflen)
+		return SC_ERROR_BUFFER_TOO_SMALL;
 	buf[j++] = control;
 	buf[j++] = data->pin1.offset+1; /* Looks like offset is 1-based in CTBCS */
 	buf[j++] = data->pin2.offset+1;
@@ -170,6 +174,8 @@ ctbcs_build_modify_verification_apdu(sc_apdu_t *apdu, struct sc_pin_cmd_data *da
 		memset(buf+j, data->pin1.pad_char, len);
 		j += len;
 	}
+	if (count > buflen)
+		return SC_ERROR_BUFFER_TOO_SMALL;
 	buf[count+1] = j - count - 2;
 	count = j;
 

@@ -760,6 +760,7 @@ cosm_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 }
 
 
+#ifdef ENABLE_OPENSSL
 static int
 cosm_emu_update_dir (struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 		struct sc_app_info *info)
@@ -778,7 +779,6 @@ cosm_emu_update_any_df(struct sc_profile *profile, struct sc_pkcs15_card *p15car
 	int rv = SC_ERROR_NOT_SUPPORTED;
 
 	SC_FUNC_CALLED(ctx, 1);
-#ifdef ENABLE_OPENSSL
 	switch(op)   {
 	case SC_AC_OP_ERASE:
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Update DF; erase object('%s',type:%X)", object->label, object->type);
@@ -789,7 +789,6 @@ cosm_emu_update_any_df(struct sc_profile *profile, struct sc_pkcs15_card *p15car
 		rv = awp_update_df_create(p15card, profile, object);
 		break;
 	}
-#endif
 	SC_FUNC_RETURN(ctx, 1, rv);
 }
 
@@ -847,6 +846,7 @@ cosm_emu_write_info(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	/* No OpenSC Info file in the native Oberthur card */
 	SC_FUNC_RETURN(p15card->card->ctx, 1, SC_SUCCESS);
 }
+#endif
 
 
 static struct sc_pkcs15init_operations

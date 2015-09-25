@@ -637,12 +637,12 @@ static unsigned long le2ulong(u8 * pt)
  */
 static u8 *dnie_uncompress(sc_card_t * card, u8 * from, size_t *len)
 {
-	int res = SC_SUCCESS;
 	u8 *upt = from;
+#ifdef ENABLE_ZLIB
+	int res = SC_SUCCESS;
 	size_t uncompressed = 0L;
 	size_t compressed = 0L;
 
-#ifdef ENABLE_ZLIB
 	if (!card || !card->ctx || !from || !len)
 		return NULL;
 	LOG_FUNC_CALLED(card->ctx);

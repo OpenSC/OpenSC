@@ -199,8 +199,8 @@ static int itacns_add_cert(sc_pkcs15_card_t *p15card,
 	sc_pkcs15_object_t    obj;
 #ifdef ENABLE_OPENSSL
 	X509 *x509;
-#endif
 	sc_pkcs15_cert_t *cert;
+#endif
 
 	SC_FUNC_CALLED(p15card->card->ctx, 1);
 	
