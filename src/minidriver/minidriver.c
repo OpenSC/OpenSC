@@ -1014,7 +1014,7 @@ md_pkcs15_delete_object(PCARD_DATA pCardData, struct sc_pkcs15_object *obj)
 	}
 
 	app_info = vs->p15card->app;
-	rv = sc_pkcs15init_bind(card, "pkcs15", NULL, app_info, &profile);
+	rv = sc_pkcs15init_bind(card, "pkcs15", NULL, NULL, &profile);
 	if (rv) {
 		logprintf(pCardData, 3, "MdDeleteObject(): PKCS#15 bind failed\n");
 		sc_unlock(card);
@@ -1940,7 +1940,7 @@ md_pkcs15_generate_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, DWORD ke
 	}
 
 	app_info = vs->p15card->app;
-	rv = sc_pkcs15init_bind(card, "pkcs15", NULL, app_info, &profile);
+	rv = sc_pkcs15init_bind(card, "pkcs15", NULL, NULL, &profile);
 	if (rv) {
 		logprintf(pCardData, 3, "MdGenerateKey(): PKCS#15 bind failed\n");
 		sc_unlock(card);
@@ -2073,7 +2073,7 @@ md_pkcs15_store_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, BYTE *blob,
 	}
 
 	app_info = vs->p15card->app;
-	rv = sc_pkcs15init_bind(card, "pkcs15", NULL, app_info, &profile);
+	rv = sc_pkcs15init_bind(card, "pkcs15", NULL, NULL, &profile);
 	if (rv) {
 		logprintf(pCardData, 3, "MdStoreKey(): PKCS#15 bind failed\n");
 		sc_unlock(card);
@@ -2190,7 +2190,7 @@ md_pkcs15_store_certificate(PCARD_DATA pCardData, char *file_name, unsigned char
 	}
 
 	app_info = vs->p15card->app;
-	rv = sc_pkcs15init_bind(card, "pkcs15", NULL, app_info, &profile);
+	rv = sc_pkcs15init_bind(card, "pkcs15", NULL, NULL, &profile);
 	if (rv) {
 		logprintf(pCardData, 3, "MdStoreCert(): PKCS#15 bind failed\n");
 		sc_unlock(card);
