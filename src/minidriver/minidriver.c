@@ -2603,11 +2603,45 @@ DWORD WINAPI CardDeleteContainer(__in PCARD_DATA pCardData,
 	__in BYTE bContainerIndex,
 	__in DWORD dwReserved)
 {
+	VENDOR_SPECIFIC *vs = NULL;
+	DWORD dwret;
+	struct md_pkcs15_container* cont;
 	logprintf(pCardData, 1, "\nP:%d T:%d pCardData:%p ",GetCurrentProcessId(), GetCurrentThreadId(), pCardData);
 	logprintf(pCardData, 1, "CardDeleteContainer(idx:%i)\n", bContainerIndex);
 
-	logprintf(pCardData, 1, "CardDeleteContainer() not supported\n");
-	return SCARD_E_UNSUPPORTED_FEATURE;
+	if (!pCardData)
+		return SCARD_E_INVALID_PARAMETER;
+
+	if (bContainerIndex >= MD_MAX_KEY_CONTAINERS)
+		return SCARD_E_INVALID_PARAMETER;
+
+	if (!md_is_supports_container_key_gen(pCardData))   {
+		logprintf(pCardData, 1, "Denied 'deletion' mechanism to delete container.\n");
+		return SCARD_E_UNSUPPORTED_FEATURE;
+	}
+
+	vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
+	if(!vs)
+		return SCARD_E_INVALID_PARAMETER;
+
+	cont = &(vs->p15_containers[bContainerIndex]);
+
+	dwret = md_pkcs15_delete_object(pCardData, cont->prkey_obj);
+	if (dwret != SCARD_S_SUCCESS)   {
+		logprintf(pCardData, 1, "private key deletion failed\n");
+		return dwret;
+	}
+
+	dwret = md_pkcs15_delete_object(pCardData, cont->pubkey_obj);
+	if (dwret != SCARD_S_SUCCESS)   {
+		logprintf(pCardData, 1, "public key deletion failed\n");
+		return dwret;
+	}
+
+	ZeroMemory(cont, sizeof(struct md_pkcs15_container));
+
+	logprintf(pCardData, 1, "key deleted\n");
+	return SCARD_S_SUCCESS;
 }
 
 
