@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="windows-1252"?>
 <?if $(var.Platform) = x64 ?>
-  <?ifdef Light ?>
+  <?ifndef OpenSSL ?>
     <?define ProductName = "@OPENSC_VS_FF_PRODUCT_NAME@ Light (64bit)" ?>
   <?else ?>
     <?define ProductName = "@OPENSC_VS_FF_PRODUCT_NAME@ (64bit)" ?>
@@ -10,7 +10,7 @@
   <?define PlatformSystemFolder = "System64Folder" ?>
   <?define PlatformUpgradeCode = "{9A449570-69A2-11E0-9CC6-955B4824019B}" ?>
 <?else ?>
-  <?ifdef Light ?>
+  <?ifndef OpenSSL ?>
     <?define ProductName = "@OPENSC_VS_FF_PRODUCT_NAME@ Light" ?>
   <?else ?>
     <?define ProductName = "@OPENSC_VS_FF_PRODUCT_NAME@" ?>
@@ -116,6 +116,11 @@
 
             <!-- Tools have their own folder -->
             <Directory Id="INSTALLDIR_TOOLS" Name="tools">
+              <?ifdef zlib ?>
+                <Component Id="zlib1.dll" Guid="*" Win64="$(var.Win64YesNo)">
+                  <File Source="$(var.zlib)\zlib1.dll" Vital="yes"/>
+                </Component>
+              <?endif ?>
               <Component Id="opensc.dll" Guid="*" Win64="$(var.Win64YesNo)">
                 <File Source="$(var.SOURCE_DIR)\src\libopensc\opensc.dll" Vital="yes"/>
               </Component>
@@ -146,7 +151,10 @@
               <Component Id="iasecc_tool.exe" Guid="*" Win64="$(var.Win64YesNo)">
                 <File Source="$(var.SOURCE_DIR)\src\tools\iasecc-tool.exe" Vital="yes"/>
               </Component>
-              <?ifndef Light ?>
+              <?ifdef OpenSSL ?>
+                <Component Id="libeay32.dll" Guid="*" Win64="$(var.Win64YesNo)">
+                  <File Source="$(var.OpenSSL)\libeay32.dll" Vital="yes"/>
+                </Component>
                 <Component Id="smm_local.dll" Guid="*" Win64="$(var.Win64YesNo)">
                   <File Source="$(var.SOURCE_DIR)\src\smm\smm-local.dll" Vital="yes"/>
                 </Component>
@@ -173,7 +181,7 @@
                 </Component>
               <?endif ?>
             </Directory>
-            <?ifndef Light ?>
+            <?ifdef OpenSSL ?>
               <Directory Id="INSTALLDIR_PROFILES" Name="profiles">
                 <Component Id="cyberflex.profile" Guid="*" Win64="$(var.Win64YesNo)">
                   <File Source="$(var.SOURCE_DIR)\src\pkcs15init\cyberflex.profile"/>
@@ -284,8 +292,12 @@
     <Feature Id="Complete" Level="1" Title="OpenSC software suite" Display="expand">
       <Feature Id="OpenSC_core" Level="1" Title="OpenSC core library" Description="Core DLL and configuration file used by all other components." Absent="disallow">
         <ComponentRef Id="opensc.dll"/>
+        <?ifdef zlib ?>
+          <ComponentRef Id="zlib1.dll"/>
+        <?endif ?>
         <ComponentRef Id="opensc.conf"/>
-        <?ifndef Light ?>
+        <?ifdef OpenSSL ?>
+          <ComponentRef Id="libeay32.dll"/>
           <ComponentRef Id="smm_local.dll"/>
         <?endif ?>
       </Feature>
@@ -311,7 +323,7 @@
         <ComponentRef Id="pkcs15_crypt.exe"/>
         <ComponentRef Id="openpgp_tool.exe"/>
         <ComponentRef Id="iasecc_tool.exe"/>
-        <?ifndef Light ?>
+        <?ifdef OpenSSL ?>
           <ComponentRef Id="cryptoflex_tool.exe"/>
           <ComponentRef Id="pkcs15_init.exe"/>
           <ComponentRef Id="netkey_tool.exe"/>
