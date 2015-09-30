@@ -4352,8 +4352,15 @@ DWORD WINAPI CardDeriveKey(__in PCARD_DATA pCardData,
 		return SCARD_E_INVALID_PARAMETER;
 	if (!pAgreementInfo)
 		return SCARD_E_INVALID_PARAMETER;
+	if (!pAgreementInfo->dwVersion)
+		return ERROR_REVISION_MISMATCH;
 	if (pAgreementInfo->dwVersion > CARD_DERIVE_KEY_CURRENT_VERSION)
 		return ERROR_REVISION_MISMATCH;
+	if (pAgreementInfo->pwszKDF == NULL)
+		return SCARD_E_INVALID_PARAMETER;
+	if (pAgreementInfo->dwFlags & ~(KDF_USE_SECRET_AS_HMAC_KEY_FLAG | CARD_RETURN_KEY_HANDLE | CARD_BUFFER_SIZE_ONLY))
+		return SCARD_E_INVALID_PARAMETER;
+
 	/* according to the documenation, CARD_DERIVE_KEY_CURRENT_VERSION should be equal to 2. 
 	In pratice it is not 2 but 1
 
@@ -4395,9 +4402,9 @@ DWORD WINAPI CardDeriveKey(__in PCARD_DATA pCardData,
 					} else if (wcscmp((PWSTR) buffer->pvBuffer, BCRYPT_SHA256_ALGORITHM) == 0) {
 						szAlgorithm = BCRYPT_SHA256_ALGORITHM;
 					} else if (wcscmp((PWSTR) buffer->pvBuffer, BCRYPT_SHA384_ALGORITHM) == 0) {
-						szAlgorithm = BCRYPT_SHA256_ALGORITHM;
+						szAlgorithm = BCRYPT_SHA384_ALGORITHM;
 					} else if (wcscmp((PWSTR) buffer->pvBuffer, BCRYPT_SHA512_ALGORITHM) == 0) {
-						szAlgorithm = BCRYPT_SHA256_ALGORITHM;
+						szAlgorithm = BCRYPT_SHA512_ALGORITHM;
 					} else if (wcscmp((PWSTR) buffer->pvBuffer, BCRYPT_MD5_ALGORITHM) == 0) {
 						szAlgorithm = BCRYPT_MD5_ALGORITHM;
 					} else {
