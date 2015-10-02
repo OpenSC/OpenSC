@@ -1299,4 +1299,10 @@ iasecc_sdo_encode_update_field()
 	return SC_ERROR_NOT_SUPPORTED;
 }
 
+int
+iasecc_se_get_crt()
+{
+	return SC_ERROR_NOT_SUPPORTED;
+}
+
 #endif /* ENABLE_OPENSSL */

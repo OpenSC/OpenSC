@@ -10,7 +10,9 @@ LIBS = $(top_builddir)/src/libsm/libsm.la \
 	$(top_builddir)/src/libopensc/libopensc.la \
 	$(top_builddir)/src/common/libcompat.la
 
+if ENABLE_OPENSSL
 lib_LTLIBRARIES = libsmm-local.la
+endif
 
 libsmm_local_la_SOURCES = smm-local.c sm-module.h \
 	sm-global-platform.c sm-cwa14890.c \

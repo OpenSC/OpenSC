@@ -3,7 +3,9 @@
 MAINTAINERCLEANFILES = Makefile.in
 EXTRA_DIST = Makefile.mak
 
+if ENABLE_OPENSSL
 noinst_LTLIBRARIES = libsm.la
+endif
 noinst_HEADERS = sm-common.h
 
 AM_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(OPTIONAL_READLINE_CFLAGS)

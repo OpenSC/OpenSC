@@ -486,14 +486,12 @@ PKG_CHECK_MODULES(
 case "${enable_openssl}" in
 	no)
 		have_openssl="no"
-		enable_sm="no"
 	;;
 	detect)
 		if test "${have_openssl}" = "yes"; then
 			enable_openssl="yes"
 		else
 			enable_openssl="no"
-			enable_sm="no"
 		fi
 	;;
 esac
@@ -504,6 +502,9 @@ if test "${enable_openssl}" = "yes"; then
 	else
 		AC_MSG_ERROR([OpenSSL linkage required, but no OpenSSL was found])
 	fi
+else
+	OPENSSL_CFLAGS=""
+	OPENSSL_LIBS=""
 fi
 
 if test "${enable_sm}" = "yes"; then
