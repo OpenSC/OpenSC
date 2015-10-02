@@ -499,7 +499,7 @@ static int epass2003_pkcs15_generate_key(struct sc_profile *profile,
 
 	/* allocate key object */
 	r = cosm_new_file(profile, card, SC_PKCS15_TYPE_PRKEY_RSA, idx, &file);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r,
+	SC_TEST_GOTO_ERR(card->ctx, SC_LOG_DEBUG_NORMAL, r,
 		    "create key: failed to allocate new key object");
 	file->size = keybits;
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "private key path: %s",
@@ -509,13 +509,13 @@ static int epass2003_pkcs15_generate_key(struct sc_profile *profile,
 
 	r = sc_pkcs15init_authenticate(profile, p15card, file,
 				       SC_AC_OP_DELETE);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r,
+	SC_TEST_GOTO_ERR(card->ctx, SC_LOG_DEBUG_NORMAL, r,
 		    "generate key: pkcs15init_authenticate(SC_AC_OP_DELETE) failed");
 
 	r = sc_delete_file(p15card->card, &file->path);
 	/* create */
 	r = sc_pkcs15init_create_file(profile, p15card, file);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r,
+	SC_TEST_GOTO_ERR(card->ctx, SC_LOG_DEBUG_NORMAL, r,
 		    "create key: failed to create key file");
 
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "index %i; keybits %i\n", idx,
@@ -523,33 +523,32 @@ static int epass2003_pkcs15_generate_key(struct sc_profile *profile,
 	if (keybits < 1024 || keybits > 2048 || (keybits % 0x20)) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE_TOOL,
 			 "Unsupported key size %u\n", keybits);
-		return SC_ERROR_INVALID_ARGUMENTS;
+		r = SC_ERROR_INVALID_ARGUMENTS;
+		goto err;
 	}
 
 	path = key_info->path;
 	path.len -= 2;
 
 	r = sc_select_file(card, &path, &tfile);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r,
+	SC_TEST_GOTO_ERR(card->ctx, SC_LOG_DEBUG_NORMAL, r,
 		    "generate key: no private object DF");
 
 	r = sc_pkcs15init_authenticate(profile, p15card, tfile,
 				       SC_AC_OP_CRYPTO);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r,
+	SC_TEST_GOTO_ERR(card->ctx, SC_LOG_DEBUG_NORMAL, r,
 		    "generate key: pkcs15init_authenticate(SC_AC_OP_CRYPTO) failed");
 
 	r = sc_pkcs15init_authenticate(profile, p15card, tfile,
 				       SC_AC_OP_CREATE);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r,
+	SC_TEST_GOTO_ERR(card->ctx, SC_LOG_DEBUG_NORMAL, r,
 		    "generate key: pkcs15init_authenticate(SC_AC_OP_CREATE) failed");
-
-	sc_file_free(tfile);
 
 	if ((r = cosm_new_file(profile, card, SC_PKCS15_TYPE_PUBKEY_RSA, idx,
 			       &pukf)) < 0) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
 			 "generate key: create temporary pukf failed\n");
-		goto failed;
+		goto err;
 	}
 	pukf->size = keybits;
 	pukf->id = pukf->path.value[pukf->path.len - 2] * 0x100
@@ -565,14 +564,14 @@ static int epass2003_pkcs15_generate_key(struct sc_profile *profile,
 	if (r == SC_SUCCESS) {
 		r = sc_pkcs15init_authenticate(profile, p15card, pukf,
 		       SC_AC_OP_DELETE);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r,
+		SC_TEST_GOTO_ERR(card->ctx, SC_LOG_DEBUG_NORMAL, r,
 		    "generate key - pubkey: pkcs15init_authenticate(SC_AC_OP_DELETE) failed");
 
 		r = sc_pkcs15init_delete_by_path(profile, p15card, &pukf->path);
 		if (r != SC_SUCCESS) {
 			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
 				 "generate key: failed to delete existing key file\n");
-			goto failed;
+			goto err;
 		}
 	}
 	/* create */
@@ -580,12 +579,12 @@ static int epass2003_pkcs15_generate_key(struct sc_profile *profile,
 	if (r != SC_SUCCESS) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
 			 "generate key: pukf create file failed\n");
-		goto failed;
+		goto err;
 	}
 
 	r = sc_pkcs15init_authenticate(profile, p15card, pukf,
 				       SC_AC_OP_UPDATE);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r,
+	SC_TEST_GOTO_ERR(card->ctx, SC_LOG_DEBUG_NORMAL, r,
 		    "generate key - pubkey: pkcs15init_authenticate(SC_AC_OP_UPDATE) failed");
 
 	/* generate key pair */
@@ -597,7 +596,7 @@ static int epass2003_pkcs15_generate_key(struct sc_profile *profile,
 	gendat.key_length = keybits;
 	gendat.modulus = NULL;
 	r = sc_card_ctl(card, SC_CARDCTL_ENTERSAFE_GENERATE_KEY, &gendat);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r,
+	SC_TEST_GOTO_ERR(card->ctx, SC_LOG_DEBUG_NORMAL, r,
 		    "generate RSA key pair failed");
 
 	/* get the modulus */
@@ -611,7 +610,7 @@ static int epass2003_pkcs15_generate_key(struct sc_profile *profile,
 		buf = (u8 *) malloc(3);
 		if (!buf) {
 			r = SC_ERROR_OUT_OF_MEMORY;
-			goto failed;
+			goto err;
 		}
 		buf[0] = 0x01;
 		buf[1] = 0x00;
@@ -624,9 +623,13 @@ static int epass2003_pkcs15_generate_key(struct sc_profile *profile,
 		/* free public key */
 		free(gendat.modulus);
 
-failed:
+err:
 	if (pukf)
 		sc_file_free(pukf);
+	if (file)
+		sc_file_free(file);
+	if (tfile)
+		sc_file_free(tfile);
 
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 }
