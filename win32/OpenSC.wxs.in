@@ -105,7 +105,7 @@
           <Directory Id="INSTALLDIR" Name="OpenSC">
             <!-- opensc.conf sample goes to installation directory -->
             <Component Id="opensc.conf" Guid="*" Win64="$(var.Win64YesNo)">
-              <File Source="$(var.SOURCE_DIR)\etc\opensc.conf.win" Name="opensc.conf" KeyPath="yes"/>
+              <File Source="$(var.SOURCE_DIR)\etc\opensc.conf" Name="opensc.conf" KeyPath="yes"/>
               <!-- -->
               <RegistryKey Id="OpenscRegs" Root="HKLM" Key="Software\[Manufacturer]\OpenSC" Action="createAndRemoveOnUninstall">
                 <RegistryValue Type="string" Name="ConfigFile" Value="[INSTALLDIR]opensc.conf"/>
