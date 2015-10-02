@@ -727,10 +727,6 @@ sc_pkcs15init_finalize_profile(struct sc_card *card, struct sc_profile *profile,
 	if (aid)   {
 		sc_log(ctx, "finalize profile for AID %s", sc_dump_hex(aid->value, aid->len));
 		app = sc_find_app(card, aid);
-		if (!app)   {
-			sc_log(ctx, "Cannot find oncard application");
-			LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
-		}
 	}
 	else if (card->app_count == 1) {
 		app = card->app[0];
