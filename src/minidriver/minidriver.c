@@ -1459,10 +1459,14 @@ md_set_cmapfile(PCARD_DATA pCardData, struct md_file *file)
 			memset(cont->guid, 0, sizeof(cont->guid));
 			guid_len = sizeof(cont->guid);
 
-			rv = sc_pkcs15_get_object_guid(vs->p15card, key_obj, 0, cont->guid, &guid_len);
-			if (rv)   {
-				logprintf(pCardData, 2, "sc_pkcs15_get_object_guid() error %d\n", rv);
-				return SCARD_F_INTERNAL_ERROR;
+			if (md_is_guid_as_label(pCardData))  {
+				strncpy(cont->guid, key_obj->label, MAX_CONTAINER_NAME_LEN);
+			} else {
+				rv = sc_pkcs15_get_object_guid(vs->p15card, key_obj, 0, cont->guid, &guid_len);
+				if (rv)   {
+					logprintf(pCardData, 2, "sc_pkcs15_get_object_guid() error %d\n", rv);
+					return SCARD_F_INTERNAL_ERROR;
+				}
 			}
 
 			cont->flags = CONTAINER_MAP_VALID_CONTAINER;
@@ -1974,6 +1978,7 @@ md_pkcs15_generate_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, DWORD ke
 
 	if (md_is_guid_as_label(pCardData))  {
 		keygen_args.prkey_args.label =  cont->guid;
+		keygen_args.pubkey_label =  cont->guid;
 		logprintf(pCardData, 3, "MdGenerateKey(): use label '%s'\n", keygen_args.prkey_args.label);
 	}
 
