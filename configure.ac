@@ -576,6 +576,7 @@ if test "${enable_pcsc}" = "yes"; then
 	CFLAGS="${CFLAGS} ${PCSC_CFLAGS}"
 	# We must cope with mingw32 that does not have winscard.h mingw64 has it.
 	AC_CHECK_HEADERS([winscard.h],,[test "${WIN32}" != "yes" && AC_MSG_ERROR([winscard.h is required for pcsc])])
+	AC_CHECK_HEADERS([pcsclite.h])
 	CFLAGS="${saved_CFLAGS}"
 
 	if test "${with_pcsc_provider}" = "detect"; then

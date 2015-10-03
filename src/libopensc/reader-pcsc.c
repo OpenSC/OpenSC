@@ -431,8 +431,10 @@ static int pcsc_reconnect(sc_reader_t * reader, DWORD action)
 	if (check_forced_protocol(reader->ctx, &reader->atr, &tmp))
 		protocol = tmp;
 
-	/* reconnect always unlocks transaction */
+#ifndef HAVE_PCSCLITE_H
+	/* reconnect unlocks transaction everywhere but in PCSC-lite */
 	priv->locked = 0;
+#endif
 
 	rv = priv->gpriv->SCardReconnect(priv->pcsc_card,
 			    priv->gpriv->connect_exclusive ? SCARD_SHARE_EXCLUSIVE : SCARD_SHARE_SHARED,
@@ -588,17 +590,21 @@ static int pcsc_release(sc_reader_t *reader)
 
 static int pcsc_reset(sc_reader_t *reader, int do_cold_reset)
 {
-	struct pcsc_private_data *priv = GET_PRIV_DATA(reader);
 	int r;
+#ifndef HAVE_PCSCLITE_H
+	struct pcsc_private_data *priv = GET_PRIV_DATA(reader);
 	int old_locked = priv->locked;
+#endif
 
 	r = pcsc_reconnect(reader, do_cold_reset ? SCARD_UNPOWER_CARD : SCARD_RESET_CARD);
 	if(r != SC_SUCCESS)
 		return r;
 
-	/* pcsc_reconnect unlocks card... try to lock it again if it was locked */
+#ifndef HAVE_PCSCLITE_H
+	/* reconnect unlocks transaction everywhere but in PCSC-lite */
 	if(old_locked)
 		r = pcsc_lock(reader);
+#endif
 
 	return r;
 }
