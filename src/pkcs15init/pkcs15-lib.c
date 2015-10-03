@@ -1219,6 +1219,7 @@ sc_pkcs15init_init_prkdf(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 		key_info->params.data = &keyargs->key.u.ec.params;
 		key_info->params.free_params = sc_pkcs15init_empty_callback;
 		key_info->field_length = ecparams->field_length;
+		key_info->modulus_length = 0;
 	}
 
 	r = select_object_path(p15card, profile, object, &key_info->path);
