@@ -1222,7 +1222,7 @@ md_fs_read_content(PCARD_DATA pCardData, char *parent, struct md_file *file)
 		return;
 	}
 	if (vs->p15card == NULL) {
-		return SCARD_F_INTERNAL_ERROR;
+		return;
 	}
 
 	if (!strcmp(dir->name, "mscp"))   {
