@@ -1700,7 +1700,7 @@ pgp_update_new_algo_attr(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_
 	}
 	/* To generate key with new key size */
 	else if (old_modulus_len != key_info->modulus_len) {
-		algo_blob->data[1] = (unsigned char)key_info->modulus_len >> 8;
+		algo_blob->data[1] = (unsigned char)(key_info->modulus_len >> 8);
 		algo_blob->data[2] = (unsigned char)key_info->modulus_len;
 		changed = 1;
 	}
@@ -1711,7 +1711,7 @@ pgp_update_new_algo_attr(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_
 		key_info->exponent_len = old_exponent_len;
 	}
 	else if (old_exponent_len != key_info->exponent_len) {
-		algo_blob->data[3] = (unsigned char)key_info->exponent_len >> 8;
+		algo_blob->data[3] = (unsigned char)(key_info->exponent_len >> 8);
 		algo_blob->data[4] = (unsigned char)key_info->exponent_len;
 		changed = 1;
 	}
