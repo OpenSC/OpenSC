@@ -822,8 +822,8 @@ static void print_ssh_key(FILE *outf, const char * alg, struct sc_pkcs15_object 
 
 		fprintf(outf,"---- BEGIN SSH2 PUBLIC KEY ----\n");
 
-		if (obj->label && strlen(obj->label))
-			fprintf(outf,"Comment: \"%s\"\n", obj->label);
+		if (strnlen(obj->label, sizeof obj->label))
+			fprintf(outf,"Comment: \"%.*s\"\n", sizeof obj->label, obj->label);
 
 		fprintf(outf,"%s", uu);
 		fprintf(outf,"---- END SSH2 PUBLIC KEY ----\n");
@@ -834,7 +834,7 @@ static void print_ssh_key(FILE *outf, const char * alg, struct sc_pkcs15_object 
 		if (r < 0)
 			return;
 
-		if (obj->label && strlen(obj->label)) 
+		if (strnlen(obj->label, sizeof obj->label))
 			fprintf(outf,"ssh-%s %s %.*s\n", alg, uu, sizeof obj->label, obj->label);
 		else
 			fprintf(outf,"ssh-%s %s\n", alg, uu);
