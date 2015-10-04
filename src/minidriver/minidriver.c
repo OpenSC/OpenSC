@@ -1459,7 +1459,10 @@ md_set_cmapfile(PCARD_DATA pCardData, struct md_file *file)
 			memset(cont->guid, 0, sizeof(cont->guid));
 			guid_len = sizeof(cont->guid);
 
-			if (md_is_guid_as_label(pCardData))  {
+			if (md_is_guid_as_id(pCardData) && prkey_info->id.len > 0 && prkey_info->id.len <= MAX_CONTAINER_NAME_LEN)  {
+				memcpy(cont->guid, prkey_info->id.value, prkey_info->id.len);
+				cont->guid[prkey_info->id.len] = 0;
+			} else if (md_is_guid_as_label(pCardData) && key_obj->label[0] != 0)  {
 				strncpy(cont->guid, key_obj->label, MAX_CONTAINER_NAME_LEN);
 			} else {
 				rv = sc_pkcs15_get_object_guid(vs->p15card, key_obj, 0, cont->guid, &guid_len);
