@@ -1015,7 +1015,7 @@ is_cacert_already_present(struct sc_pkcs15init_certargs *args)
 
 		if (!cinfo->authority)
 			continue;
-		if (strcmp(args->label, objs[i]->label))
+		if (strncmp(args->label, objs[i]->label, sizeof objs[i]->label))
 			continue;
 		/* XXX we should also match the usage field here */
 
