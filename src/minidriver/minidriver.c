@@ -962,7 +962,7 @@ md_pkcs15_update_container_from_do(PCARD_DATA pCardData, struct sc_pkcs15_object
 
 	rv = sc_pkcs15_read_data_object(vs->p15card, (struct sc_pkcs15_data_info *)dobj->data, &ddata);
 	if (rv)   {
-		logprintf(pCardData, 2, "sc_pkcs15_read_data_object('%s') returned %i\n", dobj->label, rv);
+		logprintf(pCardData, 2, "sc_pkcs15_read_data_object('%.*s') returned %i\n", (int) sizeof dobj->label, dobj->label, rv);
 		return SCARD_F_INTERNAL_ERROR;
 	}
 
@@ -989,7 +989,7 @@ md_pkcs15_update_container_from_do(PCARD_DATA pCardData, struct sc_pkcs15_object
 	for (idx=0; idx<MD_MAX_KEY_CONTAINERS && vs->p15_containers[idx].prkey_obj; idx++)   {
 		if (sc_pkcs15_compare_id(&id, &vs->p15_containers[idx].id))   {
 			snprintf(vs->p15_containers[idx].guid, sizeof(vs->p15_containers[idx].guid),
-					"%s", dobj->label);
+					"%.*s", (int) sizeof dobj->label, dobj->label);
 			vs->p15_containers[idx].flags = flags;
 			logprintf(pCardData, 2, "Set container's guid to '%s' and flags to 0x%X\n",
 					vs->p15_containers[idx].guid, flags);
@@ -1018,7 +1018,7 @@ md_pkcs15_default_container_from_do(PCARD_DATA pCardData, struct sc_pkcs15_objec
 
 	rv = sc_pkcs15_read_data_object(vs->p15card, (struct sc_pkcs15_data_info *)dobj->data, &ddata);
 	if (rv)   {
-		logprintf(pCardData, 2, "sc_pkcs15_read_data_object('%s') returned %i\n", dobj->label, rv);
+		logprintf(pCardData, 2, "sc_pkcs15_read_data_object('%.*s') returned %i\n", (int) sizeof dobj->label, dobj->label, rv);
 		return SCARD_F_INTERNAL_ERROR;
 	}
 
@@ -1060,7 +1060,7 @@ md_pkcs15_delete_object(PCARD_DATA pCardData, struct sc_pkcs15_object *obj)
 
 	if (!obj)
 		return SCARD_S_SUCCESS;
-	logprintf(pCardData, 3, "MdDeleteObject('%s',type:0x%X) called\n", obj->label, obj->type);
+	logprintf(pCardData, 3, "MdDeleteObject('%.*s',type:0x%X) called\n", (int) sizeof obj->label, obj->label, obj->type);
 
 	rv = sc_lock(card);
 	if (rv)   {
@@ -1543,10 +1543,10 @@ md_set_cmapfile(PCARD_DATA pCardData, struct md_file *file)
 
 		/* Try to find the friend objects: certficate and public key */
 		if (!sc_pkcs15_find_cert_by_id(vs->p15card, &cont->id, &cont->cert_obj))
-			logprintf(pCardData, 2, "found certificate friend '%s'\n", cont->cert_obj->label);
+			logprintf(pCardData, 2, "found certificate friend '%.*s'\n", (int) sizeof cont->cert_obj->label, cont->cert_obj->label);
 
 		if (!sc_pkcs15_find_pubkey_by_id(vs->p15card, &cont->id, &cont->pubkey_obj))
-			logprintf(pCardData, 2, "found public key friend '%s'\n", cont->pubkey_obj->label);
+			logprintf(pCardData, 2, "found public key friend '%.*s'\n", (int) sizeof cont->pubkey_obj->label, cont->pubkey_obj->label);
 	}
 
 	if (conts_num)   {
@@ -1569,8 +1569,8 @@ md_set_cmapfile(PCARD_DATA pCardData, struct md_file *file)
 			if (strcmp(dinfo->app_label, MD_DATA_APPLICAITON_NAME))
 				continue;
 
-			logprintf(pCardData, 2, "Found 'DATA' object '%s'\n", dobjs[ii]->label);
-			if (!strcmp(dobjs[ii]->label, MD_DATA_DEFAULT_CONT_LABEL))   {
+			logprintf(pCardData, 2, "Found 'DATA' object '%.*s'\n", (int) sizeof dobjs[ii]->label, dobjs[ii]->label);
+			if (!strncmp(dobjs[ii]->label, MD_DATA_DEFAULT_CONT_LABEL, sizeof dobjs[ii]->label))   {
 				default_cont = dobjs[ii];
 				continue;
 			}
@@ -2606,7 +2606,7 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 	if (!pubkey_der.value && cont->pubkey_obj)   {
 		struct sc_pkcs15_pubkey *pubkey = NULL;
 
-		logprintf(pCardData, 1, "now read public key '%s'\n", cont->pubkey_obj->label);
+		logprintf(pCardData, 1, "now read public key '%.*s'\n", (int) sizeof cont->pubkey_obj->label, cont->pubkey_obj->label);
 		rv = sc_pkcs15_read_pubkey(vs->p15card, cont->pubkey_obj, &pubkey);
 		if (!rv)   {
 			rv = sc_pkcs15_encode_pubkey(vs->ctx, pubkey, &pubkey_der.value, &pubkey_der.len);
@@ -2630,7 +2630,7 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 	if (!pubkey_der.value && cont->cert_obj)   {
 		struct sc_pkcs15_cert *cert = NULL;
 
-		logprintf(pCardData, 1, "now read certificate '%s'\n", cont->cert_obj->label);
+		logprintf(pCardData, 1, "now read certificate '%.*s'\n", (int) sizeof cont->cert_obj->label, cont->cert_obj->label);
 		rv = sc_pkcs15_read_certificate(vs->p15card, (struct sc_pkcs15_cert_info *)(cont->cert_obj->data), &cert);
 		if(!rv)   {
 			rv = sc_pkcs15_encode_pubkey(vs->ctx, cert->key, &pubkey_der.value, &pubkey_der.len);
