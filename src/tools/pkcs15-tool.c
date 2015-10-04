@@ -233,7 +233,7 @@ static void print_cert_info(const struct sc_pkcs15_object *obj)
 	struct sc_pkcs15_cert *cert_parsed = NULL;
 	int rv;
 
-	printf("X.509 Certificate [%s]\n", obj->label);
+	printf("X.509 Certificate [%.*s]\n", (int) sizeof obj->label, obj->label);
 	print_common_flags(obj);
 	printf("\tAuthority      : %s\n", cert_info->authority ? "yes" : "no");
 	printf("\tPath           : %s\n", sc_print_path(&cert_info->path));
@@ -435,7 +435,7 @@ static int read_data_object(void)
 				continue;
 		}
 		else   {
-			if (strcmp(opt_data, cinfo->app_label) && strcmp(opt_data, objs[i]->label))
+			if (strcmp(opt_data, cinfo->app_label) && strncmp(opt_data, objs[i]->label, sizeof objs[i]->label))
 				continue;
 		}
 
@@ -478,7 +478,7 @@ static int list_data_objects(void)
 		struct sc_pkcs15_data_info *cinfo = (struct sc_pkcs15_data_info *) objs[i]->data;
 
 		if (0 < strnlen(objs[i]->label, sizeof objs[i]->label))
-			printf("Data object '%s'\n", objs[i]->label);
+			printf("Data object '%.*s'\n",(int) sizeof objs[i]->label, objs[i]->label);
 		else
 			printf("Data object <%i>\n", i);
 		printf("\tapplicationName: %s\n", cinfo->app_label);
@@ -527,7 +527,7 @@ static void print_prkey_info(const struct sc_pkcs15_object *obj)
 	unsigned char guid[40];
 	size_t guid_len;
 
-	printf("Private %s Key [%s]\n", types[7 & obj->type], obj->label);
+	printf("Private %s Key [%.*s]\n", types[7 & obj->type], (int) sizeof obj->label, obj->label);
 	print_common_flags(obj);
 	printf("\tUsage          : [0x%X]", prkey->usage);
 	for (i = 0; i < usage_count; i++)
@@ -611,7 +611,7 @@ static void print_pubkey_info(const struct sc_pkcs15_object *obj)
 	const unsigned int af_count = NELEMENTS(access_flags);
         int have_path = (pubkey->path.len != 0) || (pubkey->path.aid.len != 0);
 
-	printf("Public %s Key [%s]\n", types[7 & obj->type], obj->label);
+	printf("Public %s Key [%.*s]\n", types[7 & obj->type], (int) sizeof obj->label, obj->label);
 	print_common_flags(obj);
 	printf("\tUsage          : [0x%X]", pubkey->usage);
 	for (i = 0; i < usage_count; i++)
@@ -755,7 +755,7 @@ static void print_skey_info(const struct sc_pkcs15_object *obj)
 	unsigned char guid[40];
 	size_t guid_len;
 
-	printf("Secret %s Key [%s]\n", types[3 & obj->type], obj->label);
+	printf("Secret %s Key [%.*s]\n", types[3 & obj->type], (int) sizeof obj->label, obj->label);
 	print_common_flags(obj);
 	printf("\tUsage          : [0x%X]", skey->usage);
 	for (i = 0; i < usage_count; i++)
@@ -823,7 +823,7 @@ static void print_ssh_key(FILE *outf, const char * alg, struct sc_pkcs15_object 
 		fprintf(outf,"---- BEGIN SSH2 PUBLIC KEY ----\n");
 
 		if (strnlen(obj->label, sizeof obj->label))
-			fprintf(outf,"Comment: \"%.*s\"\n", sizeof obj->label, obj->label);
+			fprintf(outf,"Comment: \"%.*s\"\n", (int) sizeof obj->label, obj->label);
 
 		fprintf(outf,"%s", uu);
 		fprintf(outf,"---- END SSH2 PUBLIC KEY ----\n");
@@ -835,7 +835,7 @@ static void print_ssh_key(FILE *outf, const char * alg, struct sc_pkcs15_object 
 			return;
 
 		if (strnlen(obj->label, sizeof obj->label))
-			fprintf(outf,"ssh-%s %s %.*s\n", alg, uu, sizeof obj->label, obj->label);
+			fprintf(outf,"ssh-%s %s %.*s\n", alg, uu, (int) sizeof obj->label, obj->label);
 		else
 			fprintf(outf,"ssh-%s %s\n", alg, uu);
 	}
@@ -1107,11 +1107,11 @@ static u8 * get_pin(const char *prompt, sc_pkcs15_object_t *pin_obj)
 	if (opt_no_prompt) {
 		// defer entry of the PIN to the readers pinpad.
 		if (verbose)
-			printf("%s [%s]: entry deferred to the reader keypad\n", prompt, pin_obj->label);
+			printf("%s [%.*s]: entry deferred to the reader keypad\n", prompt, (int) sizeof pin_obj->label, pin_obj->label);
 		return NULL;
 	}
 
-	printf("%s [%s]: ", prompt, pin_obj->label);
+	printf("%s [%.*s]: ", prompt, (int) sizeof pin_obj->label, pin_obj->label);
 	if (pinfo->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
 		return NULL;
 
@@ -1230,9 +1230,9 @@ static void print_pin_info(const struct sc_pkcs15_object *obj)
 	size_t i;
 
 	if (obj->type == SC_PKCS15_TYPE_AUTH_PIN)
-		printf("PIN [%s]\n", obj->label);
+		printf("PIN [%.*s]\n", (int) sizeof obj->label, obj->label);
 	else if (obj->type == SC_PKCS15_TYPE_AUTH_AUTHKEY)
-		printf("AuthKey [%s]\n", obj->label);
+		printf("AuthKey [%.*s]\n", (int) sizeof obj->label, obj->label);
 
 	print_common_flags(obj);
 	if (obj->auth_id.len)
@@ -1297,7 +1297,7 @@ static int list_apps(FILE *fout)
 	for (i=0; i<p15card->card->app_count; i++)   {
 		struct sc_app_info *info = p15card->card->app[i];
 
-		fprintf(fout, "Application '%s':\n", info->label);
+		fprintf(fout, "Application '%.*s':\n", (int) sizeof info->label, info->label);
 		fprintf(fout, "\tAID: ");
 		for(j=0;j<info->aid.len;j++)
 			fprintf(fout, "%02X", info->aid.value[j]);
@@ -1671,7 +1671,7 @@ static int learn_card(void)
 		sc_path_t tpath;
 		struct sc_pkcs15_cert_info *cinfo = (struct sc_pkcs15_cert_info *) certs[i]->data;
 
-		printf("[%s]\n", certs[i]->label);
+		printf("[%.*s]\n", (int) sizeof certs[i]->label, certs[i]->label);
 
 		memset(&tpath, 0, sizeof(tpath));
 		tpath = cinfo->path;
