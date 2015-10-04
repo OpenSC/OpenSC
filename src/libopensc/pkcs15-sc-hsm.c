@@ -298,10 +298,10 @@ int sc_pkcs15emu_sc_hsm_encode_cvc(sc_pkcs15_card_t * p15card,
 	}
 
 	sc_format_asn1_entry(asn1_cvc_body    , &cvc->cpi, NULL, 1);
-	lencar = strlen(cvc->car);
+	lencar = strnlen(cvc->car, sizeof cvc->car);
 	sc_format_asn1_entry(asn1_cvc_body + 1, &cvc->car, &lencar, 1);
 	sc_format_asn1_entry(asn1_cvc_body + 2, &asn1_cvc_pubkey, NULL, 1);
-	lenchr = strlen(cvc->chr);
+	lenchr = strnlen(cvc->chr, sizeof cvc->chr);
 	sc_format_asn1_entry(asn1_cvc_body + 3, &cvc->chr, &lenchr, 1);
 
 	sc_format_asn1_entry(asn1_cvcert    , &asn1_cvc_body, NULL, 1);
@@ -846,7 +846,7 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 	if (appinfo->label == NULL)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 
-	len = strlen(devcert.chr);		/* Strip last 5 digit sequence number from CHR */
+	len = strnlen(devcert.chr, sizeof devcert.chr);		/* Strip last 5 digit sequence number from CHR */
 	assert(len >= 8);
 	len -= 5;
 
