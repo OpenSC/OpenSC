@@ -1,7 +1,7 @@
 /*
  * Generic handling of PKCS11 mechanisms
  *
- * Copyright (C) 2002 Olaf Kirch <okir@lst.de>
+ * Copyright (C) 2002 Olaf Kirch <okir@suse.de>
  */
 
 #include "config.h"
