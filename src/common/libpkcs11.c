@@ -2,7 +2,7 @@
  * Convenience pkcs11 library that can be linked into an application,
  * and will bind to a specific pkcs11 module.
  *
- * Copyright (C) 2002  Olaf Kirch <okir@lst.de>
+ * Copyright (C) 2002  Olaf Kirch <okir@suse.de>
  */
 
 #if HAVE_CONFIG_H

@@ -12,7 +12,7 @@
  * a generic implementation; that is how PINs and keys are stored
  * on the card. These should be implemented in pkcs15-<cardname>.c
  *
- * Copyright (C) 2002, Olaf Kirch <okir@lst.de>
+ * Copyright (C) 2002, Olaf Kirch <okir@suse.de>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public

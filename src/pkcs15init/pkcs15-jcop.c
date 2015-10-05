@@ -2,7 +2,7 @@
  * JCOP specific operation for PKCS15 initialization
  *
  * Copyright 2003 Chaskiel Grundman <cg2v@andrew.cmu.edu>
- * Copyright (C) 2002 Olaf Kirch <okir@lst.de>
+ * Copyright (C) 2002 Olaf Kirch <okir@suse.de>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public

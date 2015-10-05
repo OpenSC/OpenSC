@@ -1,7 +1,7 @@
 /*
  * Card profile information (internal)
  *
- * Copyright (C) 2002 Olaf Kirch <okir@lst.de>
+ * Copyright (C) 2002 Olaf Kirch <okir@suse.de>
  */
 
 #ifndef _OPENSC_PROFILE_H

@@ -1,7 +1,7 @@
 /*
  * Function prototypes for pkcs15-init
  *
- * Copyright (C) 2002 Olaf Kirch <okir@lst.de>
+ * Copyright (C) 2002 Olaf Kirch <okir@suse.de>
  */
 
 #ifndef PKCS15_INIT_H
