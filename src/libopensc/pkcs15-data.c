@@ -157,7 +157,7 @@ int sc_pkcs15_encode_dodf_entry(sc_context_t *ctx,
 	size_t label_len;
 
 	info = (struct sc_pkcs15_data_info *) obj->data;
-	label_len = strlen(info->app_label);
+	label_len = strnlen(info->app_label, sizeof info->app_label);
 
 	sc_copy_asn1_entry(c_asn1_com_data_attr, asn1_com_data_attr);
 	sc_copy_asn1_entry(c_asn1_type_data_attr, asn1_type_data_attr);
