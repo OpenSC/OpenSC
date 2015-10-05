@@ -2852,7 +2852,7 @@ static int verify_pin(struct sc_pkcs15_card *p15card, char *auth_id_str)
                 if (opt_no_prompt)
 			return SC_ERROR_OBJECT_NOT_FOUND;
 
-		if (0 < strnlen(pin_obj->label, sizeof pin_obj->label))
+		if (pin_obj->label[0])
 			snprintf(pin_label, sizeof(pin_label), "User PIN [%s]", pin_obj->label);
 		else
 			snprintf(pin_label, sizeof(pin_label), "User PIN");

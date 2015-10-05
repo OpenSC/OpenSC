@@ -477,7 +477,7 @@ static int list_data_objects(void)
 		int idx;
 		struct sc_pkcs15_data_info *cinfo = (struct sc_pkcs15_data_info *) objs[i]->data;
 
-		if (0 < strnlen(objs[i]->label, sizeof objs[i]->label))
+		if (objs[i]->label[0] != '\0')
 			printf("Data object '%.*s'\n",(int) sizeof objs[i]->label, objs[i]->label);
 		else
 			printf("Data object <%i>\n", i);
@@ -822,7 +822,7 @@ static void print_ssh_key(FILE *outf, const char * alg, struct sc_pkcs15_object 
 
 		fprintf(outf,"---- BEGIN SSH2 PUBLIC KEY ----\n");
 
-		if (strnlen(obj->label, sizeof obj->label))
+		if (obj->label[0] != '\0')
 			fprintf(outf,"Comment: \"%.*s\"\n", (int) sizeof obj->label, obj->label);
 
 		fprintf(outf,"%s", uu);
@@ -834,7 +834,7 @@ static void print_ssh_key(FILE *outf, const char * alg, struct sc_pkcs15_object 
 		if (r < 0)
 			return;
 
-		if (strnlen(obj->label, sizeof obj->label))
+		if (obj->label[0] != '\0')
 			fprintf(outf,"ssh-%s %s %.*s\n", alg, uu, (int) sizeof obj->label, obj->label);
 		else
 			fprintf(outf,"ssh-%s %s\n", alg, uu);
