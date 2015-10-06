@@ -114,7 +114,6 @@ HINSTANCE g_inst;
 #define MAGIC_SESSION_PIN "opensc-minidriver"
 
 struct md_directory {
-	unsigned char parent[9];
 	unsigned char name[9];
 
 	CARD_DIRECTORY_ACCESS_CONDITION acl;
@@ -126,7 +125,6 @@ struct md_directory {
 };
 
 struct md_file {
-	unsigned char parent[9];
 	unsigned char name[9];
 
 	CARD_FILE_ACCESS_CONDITION acl;
