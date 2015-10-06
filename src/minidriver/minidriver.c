@@ -541,7 +541,8 @@ md_fs_find_directory(PCARD_DATA pCardData, struct md_directory *parent, char *na
 	else   {
 		dir = parent->subdirs;
 		while(dir)   {
-			if (!strcmp(dir->name, name))
+			if (strlen(name) > sizeof dir->name
+				   	|| !strncmp(dir->name, name, sizeof dir->name))
 				break;
 			dir = dir->next;
 		}
@@ -621,7 +622,8 @@ md_fs_find_file(PCARD_DATA pCardData, char *parent, char *name, struct md_file *
 	}
 
 	for (file = dir->files; file!=NULL;)   {
-		if (!strcmp(file->name, name))
+		if (sizeof file->name < strlen(name)
+				|| !strncmp(file->name, name, sizeof file->name))
 			break;
 		file = file->next;
 	}
@@ -726,7 +728,8 @@ md_fs_delete_file(PCARD_DATA pCardData, char *parent, char *name)
 		return SCARD_E_FILE_NOT_FOUND;
 	}
 
-	if (!strcmp(dir->files->name, name))   {
+	if (sizeof dir->files->name < strlen(name)
+			|| !strncmp(dir->files->name, name, sizeof dir->files->name))   {
 		file_to_rm = dir->files;
 		dir->files = dir->files->next;
 		md_fs_free_file(pCardData, file_to_rm);
@@ -736,7 +739,8 @@ md_fs_delete_file(PCARD_DATA pCardData, char *parent, char *name)
 		for (file = dir->files; file!=NULL; file = file->next)   {
 			if (!file->next)
 				break;
-			if (!strcmp(file->next->name, name))   {
+			if (sizeof file->next->name < strlen(name)
+					|| !strncmp(file->next->name, name, sizeof file->next->name))   {
 				file_to_rm = file->next;
 				file->next = file->next->next;
 				md_fs_free_file(pCardData, file_to_rm);
@@ -3120,8 +3124,8 @@ DWORD WINAPI CardEnumFiles(__in PCARD_DATA pCardData,
 	file = dir->files;
 	for (offs = 0; file != NULL && offs < sizeof(mstr) - 10;)   {
 		logprintf(pCardData, 2, "enum files(): file name '%s'\n", file->name);
-		strcpy(mstr+offs, file->name);
-		offs += strlen(file->name) + 1;
+		strncpy(mstr+offs, file->name, sizeof file->name);
+		offs += strnlen(file->name, sizeof file->name) + 1;
 		file = file->next;
 	}
 	offs += 1;
