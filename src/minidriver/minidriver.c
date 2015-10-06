@@ -859,13 +859,13 @@ md_pkcs15_encode_cmapfile(PCARD_DATA pCardData, unsigned char **out, size_t *out
 		struct md_pkcs15_container cont = vs->p15_containers[idx];
 		int rv;
 
-		if (!cont.id.len && !strlen(cont.guid))
+		if (!cont.id.len && cont.guid[0] == '\0')
 			continue;
 
 		sc_copy_asn1_entry(c_asn1_md_container_attrs, asn1_md_container_attrs);
 		sc_copy_asn1_entry(c_asn1_md_container, asn1_md_container);
 
-		guid_len = strlen(cont.guid);
+		guid_len = strnlen(cont.guid, sizeof cont.guid);
 		flags_len = sizeof(size_t);
 		sc_format_asn1_entry(asn1_md_container_attrs + 0, &cont.index, NULL, 1);
 		sc_format_asn1_entry(asn1_md_container_attrs + 1, &cont.id, NULL, 1);
@@ -938,8 +938,8 @@ md_pkcs15_update_containers(PCARD_DATA pCardData, unsigned char *blob, size_t si
 			cont->flags = pp->bFlags;
 			cont->size_sign = pp->wSigKeySizeBits;
 			cont->size_key_exchange = pp->wKeyExchangeKeySizeBits;
-			logprintf(pCardData, 3, "update P15 containers: touch container (idx:%i,id:%s,guid:%s,flags:%X)\n",
-				idx, sc_pkcs15_print_id(&cont->id),cont->guid,cont->flags);
+			logprintf(pCardData, 3, "update P15 containers: touch container (idx:%i,id:%s,guid:%.*s,flags:%X)\n",
+				idx, sc_pkcs15_print_id(&cont->id),(int)sizeof cont->guid,cont->guid,cont->flags);
 		}
 	}
 
@@ -1535,7 +1535,7 @@ md_set_cmapfile(PCARD_DATA pCardData, struct md_file *file)
 				cont->size_key_exchange = prkey_info->modulus_length;
 		}
 
-		logprintf(pCardData, 7, "Container[%i]'s guid=%s\n", ii, cont->guid);
+		logprintf(pCardData, 7, "Container[%i]'s guid=%.*s\n", ii, (int) sizeof cont->guid, cont->guid);
 		logprintf(pCardData, 7, "Container[%i]'s key-exchange:%i, sign:%i\n", ii, cont->size_key_exchange, cont->size_sign);
 
 		cont->id = prkey_info->id;
@@ -1916,20 +1916,20 @@ md_pkcs15_generate_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, DWORD ke
 
 	sc_pkcs15init_set_p15card(profile, vs->p15card);
 	cont = &(vs->p15_containers[idx]);
-	if (strlen(cont->guid))   {
-		logprintf(pCardData, 3, "MdGenerateKey(): generate key(idx:%i,guid:%s)\n", idx, cont->guid);
+	if (cont->guid[0] != '\0')   {
+		logprintf(pCardData, 3, "MdGenerateKey(): generate key(idx:%i,guid:%.*s)\n", idx, (int) sizeof cont->guid, cont->guid);
 		keygen_args.prkey_args.guid = cont->guid;
-		keygen_args.prkey_args.guid_len = strlen(cont->guid);
+		keygen_args.prkey_args.guid_len = strnlen(cont->guid, sizeof cont->guid);
 	}
 
 	if (md_is_guid_as_id(pCardData))  {
-		if (strlen(cont->guid) > sizeof(keygen_args.prkey_args.id.value))   {
+		if (strnlen(cont->guid, sizeof cont->guid) > sizeof(keygen_args.prkey_args.id.value))   {
 			logprintf(pCardData, 3, "MdGenerateKey(): cannot set ID -- invalid GUID length\n");
 			goto done;
 		}
 
-		memcpy(keygen_args.prkey_args.id.value, cont->guid, strlen(cont->guid));
-		keygen_args.prkey_args.id.len = strlen(cont->guid);
+		memcpy(keygen_args.prkey_args.id.value, cont->guid, strnlen(cont->guid, sizeof cont->guid));
+		keygen_args.prkey_args.id.len = strnlen(cont->guid, sizeof cont->guid);
 		logprintf(pCardData, 3, "MdGenerateKey(): use ID:%s\n", sc_pkcs15_print_id(&keygen_args.prkey_args.id));
 	}
 
@@ -1948,8 +1948,8 @@ md_pkcs15_generate_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, DWORD ke
 	cont->index = idx;
 	cont->flags = CONTAINER_MAP_VALID_CONTAINER;
 
-	logprintf(pCardData, 3, "MdGenerateKey(): generated key(idx:%i,id:%s,guid:%s)\n",
-			idx, sc_pkcs15_print_id(&cont->id),cont->guid);
+	logprintf(pCardData, 3, "MdGenerateKey(): generated key(idx:%i,id:%s,guid:%.*s)\n",
+			idx, sc_pkcs15_print_id(&cont->id),(int) sizeof cont->guid, cont->guid);
 
 	dwret = SCARD_S_SUCCESS;
 done:
@@ -2049,23 +2049,23 @@ md_pkcs15_store_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, BYTE *blob,
 
 	sc_pkcs15init_set_p15card(profile, vs->p15card);
 	cont = &(vs->p15_containers[idx]);
-	if (strlen(cont->guid))   {
+	if (cont->guid[0] != '\0')   {
 		logprintf(pCardData, 3, "MdStoreKey(): store key(idx:%i,id:%s,guid:%s)\n", idx, sc_pkcs15_print_id(&cont->id), cont->guid);
 		prkey_args.guid = cont->guid;
-		prkey_args.guid_len = strlen(cont->guid);
+		prkey_args.guid_len = strnlen(cont->guid, sizeof cont->guid);
 	}
 
 	if (md_is_guid_as_id(pCardData))  {
-		if (strlen(cont->guid) > sizeof(prkey_args.id.value))   {
+		if (strnlen(cont->guid, sizeof cont->guid) > sizeof(prkey_args.id.value))   {
 			logprintf(pCardData, 3, "MdStoreKey(): cannot set ID -- invalid GUID length\n");
 			goto done;
 		}
 
-		memcpy(prkey_args.id.value, cont->guid, strlen(cont->guid));
-		prkey_args.id.len = strlen(cont->guid);
+		memcpy(prkey_args.id.value, cont->guid, strnlen(cont->guid, sizeof cont->guid));
+		prkey_args.id.len = strnlen(cont->guid, sizeof cont->guid);
 
-		memcpy(pubkey_args.id.value, cont->guid, strlen(cont->guid));
-		pubkey_args.id.len = strlen(cont->guid);
+		memcpy(pubkey_args.id.value, cont->guid, strnlen(cont->guid, sizeof cont->guid));
+		pubkey_args.id.len = strnlen(cont->guid, sizeof cont->guid);
 
 		logprintf(pCardData, 3, "MdStoreKey(): use ID:%s\n", sc_pkcs15_print_id(&prkey_args.id));
 	}
@@ -2092,7 +2092,7 @@ md_pkcs15_store_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, BYTE *blob,
 	cont->index = idx;
 	cont->flags |= CONTAINER_MAP_VALID_CONTAINER;
 
-	logprintf(pCardData, 3, "MdStoreKey(): stored key(idx:%i,id:%s,guid:%s)\n", idx, sc_pkcs15_print_id(&cont->id),cont->guid);
+	logprintf(pCardData, 3, "MdStoreKey(): stored key(idx:%i,id:%s,guid:%.*s)\n", idx, sc_pkcs15_print_id(&cont->id),(int) sizeof cont->guid,cont->guid);
 	dwret = SCARD_S_SUCCESS;
 
 done:
