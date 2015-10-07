@@ -41,6 +41,12 @@
 
 #include "pace.h"
 
+#ifdef HAVE_PCSCLITE_H
+#if !defined (__MAC_OS_X_VERSION_MIN_REQUIRED) || __MAC_OS_X_VERSION_MIN_REQUIRED < 101000
+#define HAVE_PCSCLITE 1
+#endif
+#endif
+
 /* Logging */
 #define PCSC_TRACE(reader, desc, rv) do { sc_log(reader->ctx, "%s:" desc ": 0x%08lx\n", reader->name, rv); } while (0)
 #define PCSC_LOG(ctx, desc, rv) do { sc_log(ctx, desc ": 0x%08lx\n", rv); } while (0)
@@ -431,7 +437,7 @@ static int pcsc_reconnect(sc_reader_t * reader, DWORD action)
 	if (check_forced_protocol(reader->ctx, &reader->atr, &tmp))
 		protocol = tmp;
 
-#ifndef HAVE_PCSCLITE_H
+#ifndef HAVE_PCSCLITE
 	/* reconnect unlocks transaction everywhere but in PCSC-lite */
 	priv->locked = 0;
 #endif
@@ -591,7 +597,7 @@ static int pcsc_release(sc_reader_t *reader)
 static int pcsc_reset(sc_reader_t *reader, int do_cold_reset)
 {
 	int r;
-#ifndef HAVE_PCSCLITE_H
+#ifndef HAVE_PCSCLITE
 	struct pcsc_private_data *priv = GET_PRIV_DATA(reader);
 	int old_locked = priv->locked;
 #endif
@@ -600,7 +606,7 @@ static int pcsc_reset(sc_reader_t *reader, int do_cold_reset)
 	if(r != SC_SUCCESS)
 		return r;
 
-#ifndef HAVE_PCSCLITE_H
+#ifndef HAVE_PCSCLITE
 	/* reconnect unlocks transaction everywhere but in PCSC-lite */
 	if(old_locked)
 		r = pcsc_lock(reader);
@@ -2492,4 +2498,3 @@ struct sc_reader_driver * sc_get_cardmod_driver(void)
 #endif
 
 #endif   /* ENABLE_PCSC */
-
