@@ -535,6 +535,7 @@ static int westcos_create_file(sc_card_t *card, struct sc_file *file)
 		break;
 	case SC_FILE_TYPE_INTERNAL_EF:
 		buf[0] |= 0x80;
+		/* fall through */
 	case SC_FILE_TYPE_WORKING_EF:
 		switch (file->ef_structure) {
 		case SC_FILE_EF_TRANSPARENT:

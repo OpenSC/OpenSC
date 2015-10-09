@@ -2380,13 +2380,17 @@ expr_eval(struct num_exp_ctx *ctx, unsigned int *vp, unsigned int pri)
 		case '*':
 		case '/':
 			new_pri++;
+			/* fall through */
 		case '+':
 		case '-':
 			new_pri++;
+			/* fall through */
 		case '&':
 			new_pri++;
+			/* fall through */
 		case '|':
 			new_pri++;
+			/* fall through */
 		case ')':
 			break;
 		default:
