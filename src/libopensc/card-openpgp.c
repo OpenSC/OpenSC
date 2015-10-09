@@ -2180,6 +2180,9 @@ finish:
 
 /**
  * Internal: build TLV.
+ *
+ * FIXME use `sc_asn1_put_tag` or similar instead
+ *
  * @param[in]  data   The data ("value") part to build TLV.
  * @param[in]  len    Data length
  * @param[out] out    The buffer of overall TLV. This buffer should be freed later.
@@ -2211,6 +2214,9 @@ pgp_build_tlv(sc_context_t *ctx, unsigned int tag, u8 *data, size_t len, u8 **ou
 
 /**
  * Internal: set Tag & Length components for TLV, store them in buffer.
+ *
+ * FIXME use `sc_asn1_put_tag` or similar instead
+ *
  * Return the total length of Tag + Length.
  * Note that the Value components is not counted.
  * Ref: add_tlv() of GnuPG code.
@@ -2352,7 +2358,10 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_keystore_info
 	LOG_TEST_RET(ctx, r, "Failed to build TLV for 7F48.");
 	tlv_7f48[0] |= 0x7F;
 	r = pgp_build_tlv(ctx, 0x5f48, kdata, kdata_len, &tlv_5f48, &tlvlen_5f48);
-	LOG_TEST_RET(ctx, r, "Failed to build TLV for 5F48.");
+	if (r < 0) {
+		sc_log(ctx, "Failed to build TLV for 5F48.");
+		goto out;
+	}
 
 	/* data part's length for Extended Header list */
 	len = 2 + tlvlen_7f48 + tlvlen_5f48;
@@ -2361,7 +2370,7 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_keystore_info
 	if (data == NULL) {
 		sc_log(ctx, "Not enough memory.");
 		r = SC_ERROR_NOT_ENOUGH_MEMORY;
-		goto out2;
+		goto out;
 	}
 	switch (key_info->keytype) {
 	case SC_OPENPGP_KEY_SIGN:
@@ -2376,14 +2385,14 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_keystore_info
 	default:
 		sc_log(ctx, "Unknown key type %d.", key_info->keytype);
 		r = SC_ERROR_INVALID_ARGUMENTS;
-		goto out1;
+		goto out;
 	}
 	memcpy(data + 2, tlv_7f48, tlvlen_7f48);
 	memcpy(data + 2 + tlvlen_7f48, tlv_5f48, tlvlen_5f48);
 	r = pgp_build_tlv(ctx, 0x4D, data, len, &tlvblock, &tlvlen);
 	if (r < 0) {
 		sc_log(ctx, "Cannot build TLV for Extended Header list.");
-		goto out1;
+		goto out;
 	}
 	/* set output */
 	if (result != NULL) {
@@ -2393,12 +2402,10 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_keystore_info
 		free(tlvblock);
 	}
 
-out1:
+out:
 	free(data);
-
-out2:
-	free(tlv_7f48);
 	free(tlv_5f48);
+	free(tlv_7f48);
 	LOG_FUNC_RETURN(ctx, r);
 }
 
