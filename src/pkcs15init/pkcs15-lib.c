@@ -949,8 +949,10 @@ sc_pkcs15init_store_puk(struct sc_pkcs15_card *p15card,
 	/* Now store the PINs */
 	if (profile->ops->create_pin)
 		r = sc_pkcs15init_create_pin(p15card, profile, pin_obj, args);
-	else
+	else {
+		sc_pkcs15_free_object(pin_obj);
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "In Old API store PUK object is not supported");
+	}
 
 	if (r >= 0)
 		r = sc_pkcs15init_add_object(p15card, profile, SC_PKCS15_AODF, pin_obj);
@@ -1154,8 +1156,10 @@ sc_pkcs15init_init_prkdf(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 	int		r = 0, key_type;
 
 	LOG_FUNC_CALLED(ctx);
-	if (!res_obj || !keybits)
-		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Initialize PrKDF entry failed");
+	if (!res_obj || !keybits) {
+		r = SC_ERROR_INVALID_ARGUMENTS;
+		LOG_TEST_GOTO_ERR(ctx, r, "Initialize PrKDF entry failed");
+	}
 
 	*res_obj = NULL;
 
@@ -1172,11 +1176,12 @@ sc_pkcs15init_init_prkdf(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 	 * If we find out below that we're better off reusing an
 	 * existing object, we'll ditch this one */
 	key_type = prkey_pkcs15_algo(p15card, key);
-	LOG_TEST_RET(ctx, key_type, "Unsupported key type");
+	r = key_type;
+	LOG_TEST_GOTO_ERR(ctx, r, "Unsupported key type");
 
 	object = sc_pkcs15init_new_object(key_type, label, &keyargs->auth_id, NULL);
 	if (object == NULL)
-		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate new PrKey object");
+		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate new PrKey object");
 
 	key_info = (struct sc_pkcs15_prkey_info *) object->data;
 	key_info->usage = usage;
@@ -1194,7 +1199,7 @@ sc_pkcs15init_init_prkdf(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 	/* Select a Key ID if the user didn't specify one,
 	 * otherwise make sure it's compatible with our intended use */
 	r = select_id(p15card, SC_PKCS15_TYPE_PRKEY, &keyargs->id);
-	LOG_TEST_RET(ctx, r, "Cannot select ID for PrKey object");
+	LOG_TEST_GOTO_ERR(ctx, r, "Cannot select ID for PrKey object");
 
 	key_info->id = keyargs->id;
 
@@ -1203,8 +1208,10 @@ sc_pkcs15init_init_prkdf(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 		/* FIXME: malloc() call in pkcs15init, but free() call
 		 * in libopensc (sc_pkcs15_free_prkey_info) */
 		key_info->params.data = malloc(key_info->params.len);
-		if (!key_info->params.data)
-			LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate memory for GOST parameters");
+		if (!key_info->params.data) {
+			r = SC_ERROR_OUT_OF_MEMORY;
+			LOG_TEST_GOTO_ERR(ctx, r, "Cannot allocate memory for GOST parameters");
+		}
 		keyinfo_gostparams = key_info->params.data;
 		keyinfo_gostparams->gostr3410 = keyargs->params.gost.gostr3410;
 		keyinfo_gostparams->gostr3411 = keyargs->params.gost.gostr3411;
@@ -1219,14 +1226,14 @@ sc_pkcs15init_init_prkdf(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 	}
 
 	r = select_object_path(p15card, profile, object, &key_info->path);
-	LOG_TEST_RET(ctx, r, "Failed to select private key object path");
+	LOG_TEST_GOTO_ERR(ctx, r, "Failed to select private key object path");
 
 	/* See if we need to select a key reference for this object */
 	if (profile->ops->select_key_reference) {
 		while (1) {
 			sc_log(ctx, "Look for usable key reference starting from %i", key_info->key_reference);
 			r = profile->ops->select_key_reference(profile, p15card, key_info);
-			LOG_TEST_RET(ctx, r, "Failed to select card specific key reference");
+			LOG_TEST_GOTO_ERR(ctx, r, "Failed to select card specific key reference");
 
 			r = sc_pkcs15_find_prkey_by_reference(p15card, &key_info->path, key_info->key_reference, NULL);
 			if (r == SC_ERROR_OBJECT_NOT_FOUND)   {
@@ -1234,17 +1241,24 @@ sc_pkcs15init_init_prkdf(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 				break;
 			}
 
-			if (r != 0)
+			if (r != 0) {
 				/* Other error trying to retrieve pin obj */
-				LOG_TEST_RET(ctx, SC_ERROR_TOO_MANY_OBJECTS, "Failed to select key reference");
+				r = SC_ERROR_TOO_MANY_OBJECTS;
+				LOG_TEST_GOTO_ERR(ctx, r, "Failed to select key reference");
+			}
 
 			key_info->key_reference++;
 		}
 	}
 
 	*res_obj = object;
+	object = NULL;
+	r = SC_SUCCESS;
 
-	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+err:
+	if (object)
+		sc_pkcs15init_free_object(object);
+	LOG_FUNC_RETURN(ctx, r);
 }
 
 
@@ -1530,7 +1544,7 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card, struct sc_profile
 		 * in libopensc (sc_pkcs15_free_prkey_info) */
 		key_info->params.data = malloc(key_info->params.len);
 		if (!key_info->params.data) {
-			/* FIXME free object with sc_pkcs15init_delete_object */
+			sc_pkcs15init_free_object(object);
 			LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate GOST params");
 		}
 		keyinfo_gostparams = key_info->params.data;
@@ -1543,6 +1557,7 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card, struct sc_profile
 		if (key.u.ec.params.der.value) {
 			key_info->params.data = malloc(key.u.ec.params.der.len);
 			if (!key_info->params.data) {
+				sc_pkcs15init_free_object(object);
 				LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate EC params");
 			}
 			key_info->params.len = key.u.ec.params.der.len;
@@ -1900,8 +1915,10 @@ sc_pkcs15init_store_data(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 	}
 
 	r = sc_pkcs15init_delete_by_path(profile, p15card, &file->path);
-	if (r && r != SC_ERROR_FILE_NOT_FOUND)
+	if (r && r != SC_ERROR_FILE_NOT_FOUND) {
+		sc_file_free(file);
 		LOG_TEST_RET(ctx, r, "Cannot delete file");
+	}
 
 	r = sc_pkcs15init_update_file(profile, p15card, file, data->value, data->len);
 
@@ -2305,10 +2322,12 @@ sc_pkcs15init_select_intrinsic_id(struct sc_pkcs15_card *p15card, struct sc_prof
 		break;
 	case SC_PKCS15INIT_ID_STYLE_RFC2459:
 		rv = sc_pkcs15_encode_pubkey(ctx, pubkey, &id_data, &id_data_len);
-		LOG_TEST_RET(ctx, rv, "Encoding public key error");
+		LOG_TEST_GOTO_ERR(ctx, rv, "Encoding public key error");
 
-		if (!id_data || !id_data_len)
-			LOG_TEST_RET(ctx, SC_ERROR_INTERNAL, "Encoding public key error");
+		if (!id_data || !id_data_len) {
+			rv = SC_ERROR_INTERNAL;
+			LOG_TEST_GOTO_ERR(ctx, rv, "Encoding public key error");
+		}
 
 		SHA1(id_data, id_data_len, id.value);
 		id.len = SHA_DIGEST_LENGTH;
@@ -2316,19 +2335,20 @@ sc_pkcs15init_select_intrinsic_id(struct sc_pkcs15_card *p15card, struct sc_prof
 		break;
 	default:
 		sc_log(ctx, "Unsupported ID style: %i", id_style);
-		if (allocated)
-			sc_pkcs15_free_pubkey(pubkey);
-		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Non supported ID style");
+		rv = SC_ERROR_NOT_SUPPORTED;
+		LOG_TEST_GOTO_ERR(ctx, rv, "Non supported ID style");
 	}
 
 done:
 	memcpy(id_out, &id, sizeof(*id_out));
+	rv = id_out->len;
+err:
 	if (id_data)
 		free(id_data);
 	if (allocated)
 		sc_pkcs15_free_pubkey(pubkey);
 
-	LOG_FUNC_RETURN(ctx, id_out->len);
+	LOG_FUNC_RETURN(ctx, rv);
 #endif
 }
 
@@ -2857,6 +2877,16 @@ sc_pkcs15init_new_object(int type, const char *label, struct sc_pkcs15_id *auth_
 		object->auth_id = *auth_id;
 
 	return object;
+}
+
+
+void
+sc_pkcs15init_free_object(struct sc_pkcs15_object *object)
+{
+	if (object) {
+		free(object->data);
+		free(object);
+	}
 }
 
 
