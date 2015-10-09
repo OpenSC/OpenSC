@@ -228,7 +228,10 @@ myeid_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *df
 		for (ii = 0; create_dfs[ii]; ii++) {
 			sc_log(ctx, "Create '%s'", create_dfs[ii]);
 
-			if (sc_profile_get_file(profile, create_dfs[ii], &file)) {
+			r = sc_profile_get_file(profile, create_dfs[ii], &file);
+			if (file)
+				sc_file_free(file);
+			if (r) {
 				sc_log(ctx, "Inconsistent profile: cannot find %s", create_dfs[ii]);
 				LOG_FUNC_RETURN(ctx, SC_ERROR_INCONSISTENT_PROFILE);
 			}
