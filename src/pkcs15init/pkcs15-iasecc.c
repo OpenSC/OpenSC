@@ -376,6 +376,8 @@ iasecc_sdo_set_key_acls_from_profile(struct sc_profile *profile, struct sc_card 
 
 	/* Convert PKCS15 ACLs to SE ACLs */
 	rv = iasecc_file_convert_acls(ctx, profile, file);
+	if (rv < 0 && file)
+		sc_file_free(file);
 	LOG_TEST_RET(ctx, rv, "Cannot convert profile ACLs");
 
 	memset(scb, 0, sizeof(scb));
@@ -997,22 +999,22 @@ iasecc_pkcs15_create_key_slot(struct sc_profile *profile, struct sc_pkcs15_card 
 	LOG_FUNC_CALLED(ctx);
 
 	rv = iasecc_pkcs15_new_file(profile, card, SC_PKCS15_TYPE_PRKEY_RSA, key_info->key_reference, &file_p_prvkey);
-	LOG_TEST_RET(ctx, rv, "create key slot: cannot instantiate PRKEY_RSA file");
+	LOG_TEST_GOTO_ERR(ctx, rv, "create key slot: cannot instantiate PRKEY_RSA file");
 
 	rv = iasecc_pkcs15_new_file(profile, card, SC_PKCS15_TYPE_PUBKEY_RSA, key_info->key_reference, &file_p_pubkey);
-	LOG_TEST_RET(ctx, rv, "create key slot: cannot instantiate PUBKEY_RSA file");
+	LOG_TEST_GOTO_ERR(ctx, rv, "create key slot: cannot instantiate PUBKEY_RSA file");
 
 	rv = iasecc_file_convert_acls(ctx, profile, file_p_prvkey);
-	LOG_TEST_RET(ctx, rv, "create key slot: cannot convert ACLs of the private key file");
+	LOG_TEST_GOTO_ERR(ctx, rv, "create key slot: cannot convert ACLs of the private key file");
 
 	rv = iasecc_file_convert_acls(ctx, profile, file_p_pubkey);
-	LOG_TEST_RET(ctx, rv, "create key slot: cannot convert ACLs of the public key file");
+	LOG_TEST_GOTO_ERR(ctx, rv, "create key slot: cannot convert ACLs of the public key file");
 
 	rv = sc_profile_get_parent(profile, "private-key", &parent);
-	LOG_TEST_RET(ctx, rv, "create key slot: cannot get parent of private key file");
+	LOG_TEST_GOTO_ERR(ctx, rv, "create key slot: cannot get parent of private key file");
 
 	rv = iasecc_file_convert_acls(ctx, profile, parent);
-	LOG_TEST_RET(ctx, rv, "create key slot: cannot convert parent's ACLs");
+	LOG_TEST_GOTO_ERR(ctx, rv, "create key slot: cannot convert parent's ACLs");
 
 	/* Oberthur's card do not returns FCP for selected application DF.
 	 * That's why for the following authentication use the 'CREATE' ACL defined in the application profile. */
@@ -1020,23 +1022,27 @@ iasecc_pkcs15_create_key_slot(struct sc_profile *profile, struct sc_pkcs15_card 
 		p15card->card->caps &= ~SC_CARD_CAP_USE_FCI_AC;
 	rv = sc_pkcs15init_authenticate(profile, p15card, parent, SC_AC_OP_CREATE);
 	p15card->card->caps  = save_card_caps;
-	LOG_TEST_RET(ctx, rv, "create key slot: SC_AC_OP_CREATE authentication failed");
+	LOG_TEST_GOTO_ERR(ctx, rv, "create key slot: SC_AC_OP_CREATE authentication failed");
 
 	if (!sdo_prvkey->not_on_card)
 		sc_log(ctx, "create key slot: SDO private key already present");
 	else
 		rv = sc_card_ctl(card, SC_CARDCTL_IASECC_SDO_CREATE, sdo_prvkey);
-	LOG_TEST_RET(ctx, rv, "create key slot: cannot create private key: ctl failed");
+	LOG_TEST_GOTO_ERR(ctx, rv, "create key slot: cannot create private key: ctl failed");
 
 	if (!sdo_pubkey->not_on_card)
 		sc_log(ctx, "create key slot: SDO public key already present");
 	else
 		rv = sc_card_ctl(card, SC_CARDCTL_IASECC_SDO_CREATE, sdo_pubkey);
-	LOG_TEST_RET(ctx, rv, "create key slot: cannot create public key: ctl failed");
+	LOG_TEST_GOTO_ERR(ctx, rv, "create key slot: cannot create public key: ctl failed");
 
-	sc_file_free(file_p_prvkey);
-	sc_file_free(file_p_pubkey);
-	sc_file_free(parent);
+err:
+	if (file_p_prvkey)
+		sc_file_free(file_p_prvkey);
+	if (file_p_pubkey)
+		sc_file_free(file_p_pubkey);
+	if (parent)
+		sc_file_free(parent);
 
 	LOG_FUNC_RETURN(ctx, rv);
 }
