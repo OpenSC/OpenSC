@@ -2291,9 +2291,11 @@ authentic_sm_get_wrapped_apdu(struct sc_card *card, struct sc_apdu *plain, struc
 	memcpy((void *)apdu, (void *)plain, sizeof(struct sc_apdu));
 
 	apdu->data = calloc (1, plain->datalen + 24);
-	if (!apdu->data)
+	if (!apdu->data) {
+		free(apdu);
 		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
-	if (plain->data && plain->datalen)
+	}
+   	if (plain->data && plain->datalen)
 		memcpy((unsigned char *) apdu->data, plain->data, plain->datalen);
 
 	apdu->resp = calloc (1, plain->resplen + 32);
