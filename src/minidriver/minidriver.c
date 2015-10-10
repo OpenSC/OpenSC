@@ -593,7 +593,7 @@ md_contguid_build_cont_guid_from_key(PCARD_DATA pCardData, struct sc_pkcs15_obje
 			memcpy(szGuid, prkey_info->id.value, prkey_info->id.len);
 			szGuid[prkey_info->id.len] = 0;
 		} else if (md_is_guid_as_label(pCardData) && key_obj->label[0] != 0)  {
-			strncpy(szGuid, key_obj->label, MAX_CONTAINER_NAME_LEN);
+			strncpy_s(szGuid, MAX_CONTAINER_NAME_LEN+1, key_obj->label, MAX_CONTAINER_NAME_LEN);
 		} else {
 			md_contguid_get_guid_from_card(pCardData, key_obj, szGuid);
 		}
@@ -655,7 +655,7 @@ md_fs_add_directory(PCARD_DATA pCardData, struct md_directory **head, char *name
 		return SCARD_E_NO_MEMORY;
 	memset(new_dir, 0, sizeof(struct md_directory));
 
-	strncpy(new_dir->name, name, sizeof(new_dir->name) - 1);
+	strncpy_s(new_dir->name, sizeof(new_dir->name), name, sizeof(new_dir->name) - 1);
 	new_dir->acl = acl;
 
 	if (*head == NULL)   {
@@ -732,7 +732,7 @@ md_fs_add_file(PCARD_DATA pCardData, struct md_file **head, char *name, CARD_FIL
 		return SCARD_E_NO_MEMORY;
 	memset(new_file, 0, sizeof(struct md_file));
 
-	strncpy(new_file->name, name, sizeof(new_file->name) - 1);
+	strncpy_s(new_file->name, sizeof(new_file->name), name, sizeof(new_file->name) - 1);
 	new_file->size = size;
 	new_file->acl = acl;
 
@@ -832,9 +832,9 @@ md_fs_delete_file(PCARD_DATA pCardData, char *parent, char *name)
 	if (!strcmp(parent, "mscp"))   {
 		int idx = -1;
 
-		if(sscanf(name, "ksc%d", &idx) > 0)   {
+		if(sscanf_s(name, "ksc%d", &idx) > 0)   {
 		}
-		else if(sscanf(name, "kxc%d", &idx) > 0)   {
+		else if(sscanf_s(name, "kxc%d", &idx) > 0)   {
 		}
 
 		if (idx >= 0 && idx < MD_MAX_KEY_CONTAINERS)   {
@@ -1003,7 +1003,7 @@ md_pkcs15_update_container_from_do(PCARD_DATA pCardData, struct sc_pkcs15_object
 
 	for (idx=0; idx<MD_MAX_KEY_CONTAINERS && vs->p15_containers[idx].prkey_obj; idx++)   {
 		if (sc_pkcs15_compare_id(&id, &vs->p15_containers[idx].id))   {
-			snprintf(vs->p15_containers[idx].guid, sizeof(vs->p15_containers[idx].guid),
+			_snprintf_s(vs->p15_containers[idx].guid, MAX_CONTAINER_NAME_LEN+1, MAX_CONTAINER_NAME_LEN,
 					"%s", dobj->label);
 			vs->p15_containers[idx].flags = flags;
 			logprintf(pCardData, 2, "Set container's guid to '%s' and flags to 0x%X\n",
@@ -1298,9 +1298,9 @@ md_fs_read_content(PCARD_DATA pCardData, char *parent, struct md_file *file)
 	if (!strcmp(dir->name, "mscp"))   {
 		int idx, rv;
 
-		if(sscanf(file->name, "ksc%d", &idx) > 0)   {
+		if(sscanf_s(file->name, "ksc%d", &idx) > 0)   {
 		}
-		else if(sscanf(file->name, "kxc%d", &idx) > 0)   {
+		else if(sscanf_s(file->name, "kxc%d", &idx) > 0)   {
 		}
 		else   {
 			idx = -1;
@@ -1625,14 +1625,14 @@ md_set_cmapfile(PCARD_DATA pCardData, struct md_file *file)
 				char k_name[6];
 
 				if (vs->p15_containers[ii].size_key_exchange)   {
-					snprintf((char *)k_name, sizeof(k_name), "kxc%02i", ii);
+					_snprintf_s((char *)k_name, sizeof(k_name), sizeof(k_name)-1, "kxc%02i", ii);
 					dwret = md_fs_add_file(pCardData, &(file->next), k_name, file->acl, NULL, 0, NULL);
 					if (dwret != SCARD_S_SUCCESS)
 						return dwret;
 				}
 
 				if (vs->p15_containers[ii].size_sign)   {
-					snprintf((char *)k_name, sizeof(k_name), "ksc%02i", ii);
+					_snprintf_s((char *)k_name, sizeof(k_name), sizeof(k_name)-1, "ksc%02i", ii);
 					dwret = md_fs_add_file(pCardData, &(file->next), k_name, file->acl, NULL, 0, NULL);
 					if (dwret != SCARD_S_SUCCESS)
 						return dwret;
@@ -2206,9 +2206,9 @@ md_pkcs15_store_certificate(PCARD_DATA pCardData, char *file_name, unsigned char
 
 	/* use container's ID as ID of certificate to store */
 	idx = -1;
-	if(sscanf(file_name, "ksc%d", &idx) > 0)
+	if(sscanf_s(file_name, "ksc%d", &idx) > 0)
 		;
-	else if(sscanf(file_name, "kxc%d", &idx) > 0)
+	else if(sscanf_s(file_name, "kxc%d", &idx) > 0)
 		;
 
 	if (idx >= 0 && idx < MD_MAX_KEY_CONTAINERS)   {
@@ -3395,10 +3395,11 @@ DWORD WINAPI CardEnumFiles(__in PCARD_DATA pCardData,
 	file = dir->files;
 	for (offs = 0; file != NULL && offs < sizeof(mstr) - 10;)   {
 		logprintf(pCardData, 2, "enum files(): file name '%s'\n", file->name);
-		strcpy(mstr+offs, file->name);
+		strcpy_s(mstr+offs, sizeof(mstr) - offs, file->name);
 		offs += strlen(file->name) + 1;
 		file = file->next;
 	}
+	mstr[offs] = 0;
 	offs += 1;
 
 	*pmszFileNames = (LPSTR)(*pCardData->pfnCspAlloc)(offs);
