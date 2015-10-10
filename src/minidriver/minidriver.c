@@ -293,7 +293,7 @@ static void loghex(PCARD_DATA pCardData, int level, PBYTE data, size_t len)
 	memset(line, 0, sizeof(line));
 
 	while(i < len) {
-		sprintf(c,"%02X", *p);
+		sprintf_s(c, sizeof(line)-(size_t)(c-line),"%02X", *p);
 		p++;
 		c += 2;
 		i++;
