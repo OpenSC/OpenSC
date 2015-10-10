@@ -279,7 +279,7 @@ static void loghex(PCARD_DATA pCardData, int level, PBYTE data, size_t len)
 {
 	char line[74];
 	char *c;
-	int i, a;
+	unsigned int i, a;
 	unsigned char * p;
 
 	logprintf(pCardData, level, "--- %p:%d\n", data, len);
