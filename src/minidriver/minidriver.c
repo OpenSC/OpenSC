@@ -530,6 +530,76 @@ md_is_pin_set(PCARD_DATA pCardData, DWORD role)
 	return IS_PIN_SET(cardcf->bPinsFreshness, role);
 }
 
+
+/* generate unique key label (GUID)*/
+static VOID md_generate_guid( __in_ecount(MAX_CONTAINER_NAME_LEN+1) PSTR szGuid) {
+	RPC_CSTR szRPCGuid = NULL;
+	GUID Label = {0};
+	UuidCreate(&Label);
+	UuidToStringA(&Label, &szRPCGuid);
+	strncpy_s(szGuid, MAX_CONTAINER_NAME_LEN+1, (PSTR) szRPCGuid, MAX_CONTAINER_NAME_LEN);
+	if (szRPCGuid) RpcStringFreeA(&szRPCGuid);
+}
+
+/* build key args from the minidriver guid */
+static VOID
+md_contguid_build_key_args_from_cont_guid(PCARD_DATA pCardData, __in_ecount(MAX_CONTAINER_NAME_LEN+1) PSTR szGuid,
+											struct sc_pkcs15init_prkeyargs *prkey_args)
+{
+	/* strlen(szGuid) <= MAX_CONTAINER_NAME */
+	logprintf(pCardData, 3, "Using the guid '%s'\n", szGuid);
+	if (szGuid[0] != 0)   {
+		prkey_args->guid = (unsigned char*) szGuid;
+		prkey_args->guid_len = strlen(szGuid);
+	}
+
+	if (md_is_guid_as_id(pCardData))  {
+		memcpy(prkey_args->id.value, szGuid, strlen(szGuid));
+		prkey_args->id.len = strlen(szGuid);
+	}
+	if (md_is_guid_as_label(pCardData))  {
+		prkey_args->label =  szGuid;
+	}
+}
+
+static VOID
+md_contguid_get_guid_from_card(PCARD_DATA pCardData, struct sc_pkcs15_object *prkey, __in_ecount(MAX_CONTAINER_NAME_LEN+1) PSTR szGuid)
+{
+	int rv;
+	VENDOR_SPECIFIC *vs;
+	size_t guid_len = MAX_CONTAINER_NAME_LEN+1;
+	vs = (VENDOR_SPECIFIC*) pCardData->pvVendorSpecific;
+	rv = sc_pkcs15_get_object_guid(vs->p15card, prkey, 0, (unsigned char*) szGuid, &guid_len);
+	if (rv)   {
+		logprintf(pCardData, 2, "md_contguid_get_guid_from_card(): error %d\n", rv);
+		return;
+	}
+}
+
+/* build minidriver guid from the key */
+static VOID 
+md_contguid_build_cont_guid_from_key(PCARD_DATA pCardData, struct sc_pkcs15_object *key_obj, __in_ecount(MAX_CONTAINER_NAME_LEN+1) PSTR szGuid)
+{
+	VENDOR_SPECIFIC *vs;
+	struct sc_pkcs15_prkey_info *prkey_info = (struct sc_pkcs15_prkey_info *)key_obj->data;
+	vs = (VENDOR_SPECIFIC*) pCardData->pvVendorSpecific;
+	
+	szGuid[0] = '\0';
+	if (prkey_info->cmap_record.guid)   {
+		strncpy_s(szGuid, MAX_CONTAINER_NAME_LEN +1,(PSTR) prkey_info->cmap_record.guid, MAX_CONTAINER_NAME_LEN);
+	} else {
+		/* priorize the use of the key id over the key label as a container name */
+		if (md_is_guid_as_id(pCardData) && prkey_info->id.len > 0 && prkey_info->id.len <= MAX_CONTAINER_NAME_LEN)  {
+			memcpy(szGuid, prkey_info->id.value, prkey_info->id.len);
+			szGuid[prkey_info->id.len] = 0;
+		} else if (md_is_guid_as_label(pCardData) && key_obj->label[0] != 0)  {
+			strncpy(szGuid, key_obj->label, MAX_CONTAINER_NAME_LEN);
+		} else {
+			md_contguid_get_guid_from_card(pCardData, key_obj, szGuid);
+		}
+	}
+}
+
 /* Search directory by name and optionally by name of it's parent */
 static DWORD
 md_fs_find_directory(PCARD_DATA pCardData, struct md_directory *parent, char *name, struct md_directory **out)
@@ -1443,9 +1513,9 @@ md_set_cmapfile(PCARD_DATA pCardData, struct md_file *file)
 			continue;
 		}
 
-		if (prkey_info->cmap_record.guid)   {
-			strncpy(cont->guid, prkey_info->cmap_record.guid, sizeof(cont->guid));
+		md_contguid_build_cont_guid_from_key(pCardData, key_obj, cont->guid);
 
+		if (prkey_info->cmap_record.guid)   {
 			cont->size_key_exchange = prkey_info->cmap_record.keysize_keyexchange;
 			cont->size_sign = prkey_info->cmap_record.keysize_sign;
 
@@ -1454,24 +1524,6 @@ md_set_cmapfile(PCARD_DATA pCardData, struct md_file *file)
 				found_default = 1;
 		}
 		else   {
-			size_t guid_len;
-
-			memset(cont->guid, 0, sizeof(cont->guid));
-			guid_len = sizeof(cont->guid);
-
-			if (md_is_guid_as_id(pCardData) && prkey_info->id.len > 0 && prkey_info->id.len <= MAX_CONTAINER_NAME_LEN)  {
-				memcpy(cont->guid, prkey_info->id.value, prkey_info->id.len);
-				cont->guid[prkey_info->id.len] = 0;
-			} else if (md_is_guid_as_label(pCardData) && key_obj->label[0] != 0)  {
-				strncpy(cont->guid, key_obj->label, MAX_CONTAINER_NAME_LEN);
-			} else {
-				rv = sc_pkcs15_get_object_guid(vs->p15card, key_obj, 0, cont->guid, &guid_len);
-				if (rv)   {
-					logprintf(pCardData, 2, "sc_pkcs15_get_object_guid() error %d\n", rv);
-					return SCARD_F_INTERNAL_ERROR;
-				}
-			}
-
 			cont->flags = CONTAINER_MAP_VALID_CONTAINER;
 
 			/* AT_KEYEXCHANGE is more general key usage,
@@ -1876,6 +1928,7 @@ md_pkcs15_generate_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, DWORD ke
 	struct md_pkcs15_container *cont = NULL;
 	int rv;
 	DWORD dw, dwret = SCARD_F_INTERNAL_ERROR;
+	CHAR szGuid[MAX_CONTAINER_NAME_LEN +1] = "Default key label";
 
 	if (!pCardData)
 		return SCARD_E_INVALID_PARAMETER;
@@ -1885,8 +1938,8 @@ md_pkcs15_generate_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, DWORD ke
 
 	memset(&pub_args, 0, sizeof(pub_args));
 	memset(&keygen_args, 0, sizeof(keygen_args));
-	keygen_args.prkey_args.label = "TODO: key label";
-	keygen_args.pubkey_label = "TODO: key label";
+	keygen_args.prkey_args.label = szGuid;
+	keygen_args.pubkey_label = szGuid;
 
 	if (key_type == AT_SIGNATURE)   {
 		keygen_args.prkey_args.key.algorithm = SC_ALGORITHM_RSA;
@@ -1962,28 +2015,15 @@ md_pkcs15_generate_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, DWORD ke
 
 	sc_pkcs15init_set_p15card(profile, vs->p15card);
 	cont = &(vs->p15_containers[idx]);
-	if (strlen(cont->guid))   {
-		logprintf(pCardData, 3, "MdGenerateKey(): generate key(idx:%i,guid:%s)\n", idx, cont->guid);
-		keygen_args.prkey_args.guid = cont->guid;
-		keygen_args.prkey_args.guid_len = strlen(cont->guid);
-	}
 
-	if (md_is_guid_as_id(pCardData))  {
-		if (strlen(cont->guid) > sizeof(keygen_args.prkey_args.id.value))   {
-			logprintf(pCardData, 3, "MdGenerateKey(): cannot set ID -- invalid GUID length\n");
-			goto done;
-		}
-
-		memcpy(keygen_args.prkey_args.id.value, cont->guid, strlen(cont->guid));
-		keygen_args.prkey_args.id.len = strlen(cont->guid);
-		logprintf(pCardData, 3, "MdGenerateKey(): use ID:%s\n", sc_pkcs15_print_id(&keygen_args.prkey_args.id));
+	/* use the Windows Guid as input to determine some characteristics of the key such as the label or the id */
+	md_contguid_build_key_args_from_cont_guid(pCardData, cont->guid, &(keygen_args.prkey_args));
+	
+	if (keygen_args.prkey_args.label == NULL) {
+		md_generate_guid(szGuid);
+		keygen_args.prkey_args.label = szGuid;
 	}
-
-	if (md_is_guid_as_label(pCardData))  {
-		keygen_args.prkey_args.label =  cont->guid;
-		keygen_args.pubkey_label =  cont->guid;
-		logprintf(pCardData, 3, "MdGenerateKey(): use label '%s'\n", keygen_args.prkey_args.label);
-	}
+	keygen_args.pubkey_label = keygen_args.prkey_args.label;
 
 	rv = sc_pkcs15init_generate_key(vs->p15card, profile, &keygen_args, key_size, &cont->prkey_obj);
 	if (rv < 0) {
@@ -2018,12 +2058,11 @@ md_pkcs15_store_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, BYTE *blob,
 	struct md_pkcs15_container *cont = NULL;
 	struct sc_pkcs15init_prkeyargs prkey_args;
 	struct sc_pkcs15init_pubkeyargs pubkey_args;
-	char *label = NULL;
 	BYTE *ptr = blob;
 	EVP_PKEY *pkey=NULL;
 	int rv;
 	DWORD dw, dwret = SCARD_F_INTERNAL_ERROR;
-	BOOL is_guid_as_id = FALSE;
+	CHAR szGuid[MAX_CONTAINER_NAME_LEN +1] = "Default key label";
 
 	if (!pCardData)
 		return SCARD_E_INVALID_PARAMETER;
@@ -2096,32 +2135,19 @@ md_pkcs15_store_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, BYTE *blob,
 
 	sc_pkcs15init_set_p15card(profile, vs->p15card);
 	cont = &(vs->p15_containers[idx]);
-	if (strlen(cont->guid))   {
-		logprintf(pCardData, 3, "MdStoreKey(): store key(idx:%i,id:%s,guid:%s)\n", idx, sc_pkcs15_print_id(&cont->id), cont->guid);
-		prkey_args.guid = cont->guid;
-		prkey_args.guid_len = strlen(cont->guid);
+	
+	prkey_args.label = szGuid;
+	/* use the Windows Guid as input to determine some characteristics of the key such as the label or the id */
+	md_contguid_build_key_args_from_cont_guid(pCardData, cont->guid, &prkey_args);
+	
+	memcpy(pubkey_args.id.value, prkey_args.id.value, prkey_args.id.len);
+	pubkey_args.id.len = prkey_args.id.len;
+	pubkey_args.label = prkey_args.label;
+
+	if (prkey_args.label == szGuid) {
+		md_generate_guid(szGuid);
 	}
-
-	if (md_is_guid_as_id(pCardData))  {
-		if (strlen(cont->guid) > sizeof(prkey_args.id.value))   {
-			logprintf(pCardData, 3, "MdStoreKey(): cannot set ID -- invalid GUID length\n");
-			goto done;
-		}
-
-		memcpy(prkey_args.id.value, cont->guid, strlen(cont->guid));
-		prkey_args.id.len = strlen(cont->guid);
-
-		memcpy(pubkey_args.id.value, cont->guid, strlen(cont->guid));
-		pubkey_args.id.len = strlen(cont->guid);
-
-		logprintf(pCardData, 3, "MdStoreKey(): use ID:%s\n", sc_pkcs15_print_id(&prkey_args.id));
-	}
-
-	if (md_is_guid_as_label(pCardData))  {
-		prkey_args.label =  cont->guid;
-		pubkey_args.label =  cont->guid;
-		logprintf(pCardData, 3, "MdStoreKey(): use label '%s'\n", prkey_args.label);
-	}
+	pubkey_args.label = prkey_args.label;
 
 	rv = sc_pkcs15init_store_private_key(vs->p15card, profile, &prkey_args, &cont->prkey_obj);
 	if (rv < 0) {
