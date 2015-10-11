@@ -435,12 +435,15 @@ md_get_config_bool(PCARD_DATA pCardData, char *flag_name, unsigned flag, BOOL re
 		return ret;
 	}
 
-	vs = pCardData->pvVendorSpecific;
+	vs = (VENDOR_SPECIFIC*) pCardData->pvVendorSpecific;
 	if (vs->ctx && vs->reader)   {
-		/* TODO: use atr from pCardData */
-		scconf_block *atrblock = _sc_match_atr_block(vs->ctx, NULL, &vs->reader->atr);
+		struct sc_atr atr;
+		scconf_block *atrblock;
+		atr.len = pCardData->cbAtr;
+		memcpy(atr.value, pCardData->pbAtr, atr.len);
+		atrblock = _sc_match_atr_block(vs->ctx, NULL, &atr);
 		logprintf(pCardData, 2, "Match ATR:\n");
-		loghex(pCardData, 3, vs->reader->atr.value, vs->reader->atr.len);
+		loghex(pCardData, 3, atr.value, atr.len);
 
 		if (atrblock)
 			ret = scconf_get_bool(atrblock, flag_name, ret_default) ? TRUE : FALSE;
@@ -472,8 +475,9 @@ md_is_read_only(PCARD_DATA pCardData)
 static BOOL
 md_is_supports_X509_enrollment(PCARD_DATA pCardData)
 {
+	BOOL defaultvalue = !md_is_read_only(pCardData);
 	logprintf(pCardData, 2, "Is supports X509 enrollment?\n");
-	return md_get_config_bool(pCardData, "md_supports_X509_enrollment", MD_STATIC_FLAG_SUPPORTS_X509_ENROLLMENT, FALSE);
+	return md_get_config_bool(pCardData, "md_supports_X509_enrollment", MD_STATIC_FLAG_SUPPORTS_X509_ENROLLMENT, defaultvalue);
 }
 
 
