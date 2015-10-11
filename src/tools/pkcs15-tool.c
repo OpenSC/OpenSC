@@ -567,9 +567,11 @@ static void print_prkey_info(const struct sc_pkcs15_object *obj)
 			util_hex_dump(stdout, guid, guid_len, "");
 			printf("'\n");
 		}
+		/*
 		printf("\t  :cmap flags  : 0x%X\n", prkey->cmap_record.flags);
 		printf("\t  :sign        : %i\n", prkey->cmap_record.keysize_sign);
 		printf("\t  :key-exchange: %i\n", prkey->cmap_record.keysize_keyexchange);
+		*/
 	}
 }
 

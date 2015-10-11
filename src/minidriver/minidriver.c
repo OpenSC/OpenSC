@@ -149,12 +149,21 @@ struct md_pkcs15_container {
 	size_t size_key_exchange, size_sign;
 
 	struct sc_pkcs15_object *cert_obj, *prkey_obj, *pubkey_obj;
+	BOOL guid_overwrite;
 };
 
 struct md_dh_agreement {
 	DWORD dwSize;
 	PBYTE pbAgreement;
 };
+
+struct md_guid_conversion {
+	CHAR szOpenSCGuid[MAX_CONTAINER_NAME_LEN+1];
+	CHAR szWindowsGuid[MAX_CONTAINER_NAME_LEN+1];
+};
+
+#define MD_MAX_CONVERSIONS 50
+struct md_guid_conversion md_static_conversions[MD_MAX_CONVERSIONS] = {0};
 
 typedef struct _VENDOR_SPECIFIC
 {
@@ -545,6 +554,68 @@ static VOID md_generate_guid( __in_ecount(MAX_CONTAINER_NAME_LEN+1) PSTR szGuid)
 	if (szRPCGuid) RpcStringFreeA(&szRPCGuid);
 }
 
+static VOID
+md_contguid_get_guid_from_card(PCARD_DATA pCardData, struct sc_pkcs15_object *prkey, __in_ecount(MAX_CONTAINER_NAME_LEN+1) PSTR szGuid)
+{
+	int rv;
+	VENDOR_SPECIFIC *vs;
+	size_t guid_len = MAX_CONTAINER_NAME_LEN+1;
+	vs = (VENDOR_SPECIFIC*) pCardData->pvVendorSpecific;
+	rv = sc_pkcs15_get_object_guid(vs->p15card, prkey, 0, (unsigned char*) szGuid, &guid_len);
+	if (rv)   {
+		logprintf(pCardData, 2, "md_contguid_get_guid_from_card(): error %d\n", rv);
+		return;
+	}
+}
+
+/* add a new entry in the guid conversion table */
+static VOID
+md_contguid_add_conversion(PCARD_DATA pCardData, struct sc_pkcs15_object *prkey, 
+								__in_ecount(MAX_CONTAINER_NAME_LEN+1) PSTR szWindowsGuid)
+{
+	int i;
+	CHAR szOpenSCGuid[MAX_CONTAINER_NAME_LEN+1] = "";
+	md_contguid_get_guid_from_card(pCardData, prkey, szOpenSCGuid);
+	if (strcmp(szOpenSCGuid, szWindowsGuid) == 0) 
+		return;
+	for (i = 0; i < MD_MAX_CONVERSIONS; i++) {
+		if (md_static_conversions[i].szWindowsGuid[0] == 0) {
+			strcpy_s(md_static_conversions[i].szWindowsGuid, MAX_CONTAINER_NAME_LEN+1, szWindowsGuid);
+			strcpy_s(md_static_conversions[i].szOpenSCGuid, MAX_CONTAINER_NAME_LEN+1, szOpenSCGuid);
+			logprintf(pCardData, 0, "md_contguid_add_conversion(): Registering conversion '%s' '%s'\n", szWindowsGuid, szOpenSCGuid);
+			return;
+		}
+	}
+	logprintf(pCardData, 0, "md_contguid_add_conversion(): Unable to add a new conversion with guid %s. Further loads may trigger errors\n", szWindowsGuid);
+}
+
+/* remove an entry in the guid conversion table*/
+static VOID
+md_contguid_delete_conversion(PCARD_DATA pCardData, __in_ecount(MAX_CONTAINER_NAME_LEN+1) PSTR szWindowsGuid)
+{
+	int i;
+	for (i = 0; i < MD_MAX_CONVERSIONS; i++) {
+		if (strcmp(md_static_conversions[i].szWindowsGuid,szWindowsGuid) == 0) {
+			memset(md_static_conversions + i, 0, sizeof(struct md_guid_conversion));
+		}
+	}
+}
+
+/* this function take the guid in input and search if it should be replaced
+Return if it has been replaced or not */
+static BOOL
+md_contguid_find_conversion(PCARD_DATA pCardData, __in_ecount(MAX_CONTAINER_NAME_LEN+1) PSTR szGuid)
+{
+	int i;
+	for (i = 0; i < MD_MAX_CONVERSIONS; i++) {
+		if (strcmp(md_static_conversions[i].szOpenSCGuid,szGuid) == 0) {
+			strcpy_s(szGuid, MAX_CONTAINER_NAME_LEN+1, md_static_conversions[i].szWindowsGuid);
+			return TRUE;
+		}
+	}
+	return FALSE;
+}
+
 /* build key args from the minidriver guid */
 static VOID
 md_contguid_build_key_args_from_cont_guid(PCARD_DATA pCardData, __in_ecount(MAX_CONTAINER_NAME_LEN+1) PSTR szGuid,
@@ -566,20 +637,6 @@ md_contguid_build_key_args_from_cont_guid(PCARD_DATA pCardData, __in_ecount(MAX_
 	}
 }
 
-static VOID
-md_contguid_get_guid_from_card(PCARD_DATA pCardData, struct sc_pkcs15_object *prkey, __in_ecount(MAX_CONTAINER_NAME_LEN+1) PSTR szGuid)
-{
-	int rv;
-	VENDOR_SPECIFIC *vs;
-	size_t guid_len = MAX_CONTAINER_NAME_LEN+1;
-	vs = (VENDOR_SPECIFIC*) pCardData->pvVendorSpecific;
-	rv = sc_pkcs15_get_object_guid(vs->p15card, prkey, 0, (unsigned char*) szGuid, &guid_len);
-	if (rv)   {
-		logprintf(pCardData, 2, "md_contguid_get_guid_from_card(): error %d\n", rv);
-		return;
-	}
-}
-
 /* build minidriver guid from the key */
 static VOID 
 md_contguid_build_cont_guid_from_key(PCARD_DATA pCardData, struct sc_pkcs15_object *key_obj, __in_ecount(MAX_CONTAINER_NAME_LEN+1) PSTR szGuid)
@@ -589,18 +646,14 @@ md_contguid_build_cont_guid_from_key(PCARD_DATA pCardData, struct sc_pkcs15_obje
 	vs = (VENDOR_SPECIFIC*) pCardData->pvVendorSpecific;
 	
 	szGuid[0] = '\0';
-	if (prkey_info->cmap_record.guid)   {
-		strncpy_s(szGuid, MAX_CONTAINER_NAME_LEN +1,(PSTR) prkey_info->cmap_record.guid, MAX_CONTAINER_NAME_LEN);
+	/* priorize the use of the key id over the key label as a container name */
+	if (md_is_guid_as_id(pCardData) && prkey_info->id.len > 0 && prkey_info->id.len <= MAX_CONTAINER_NAME_LEN)  {
+		memcpy(szGuid, prkey_info->id.value, prkey_info->id.len);
+		szGuid[prkey_info->id.len] = 0;
+	} else if (md_is_guid_as_label(pCardData) && key_obj->label[0] != 0)  {
+		strncpy_s(szGuid, MAX_CONTAINER_NAME_LEN+1, key_obj->label, MAX_CONTAINER_NAME_LEN);
 	} else {
-		/* priorize the use of the key id over the key label as a container name */
-		if (md_is_guid_as_id(pCardData) && prkey_info->id.len > 0 && prkey_info->id.len <= MAX_CONTAINER_NAME_LEN)  {
-			memcpy(szGuid, prkey_info->id.value, prkey_info->id.len);
-			szGuid[prkey_info->id.len] = 0;
-		} else if (md_is_guid_as_label(pCardData) && key_obj->label[0] != 0)  {
-			strncpy_s(szGuid, MAX_CONTAINER_NAME_LEN+1, key_obj->label, MAX_CONTAINER_NAME_LEN);
-		} else {
-			md_contguid_get_guid_from_card(pCardData, key_obj, szGuid);
-		}
+		md_contguid_get_guid_from_card(pCardData, key_obj, szGuid);
 	}
 }
 
@@ -886,43 +939,6 @@ md_fs_finalize(PCARD_DATA pCardData)
 	return 0;
 }
 
-static DWORD
-md_pkcs15_encode_cardcf(PCARD_DATA pCardData, unsigned char *in, size_t in_size,
-		unsigned char *out, size_t *out_size)
-{
-	VENDOR_SPECIFIC *vs;
-	char *last_update = NULL;
-
-	if (!pCardData || !in || in_size < MD_CARDCF_LENGTH
-			|| !out || !out_size || *out_size < MD_CARDCF_LENGTH)
-		return SCARD_E_INVALID_PARAMETER;
-
-	vs = pCardData->pvVendorSpecific;
-
-	memcpy(out, in, MD_CARDCF_LENGTH);
-
-	/* write down 'cardcf' with cleared PinsFreshness */
-	((CARD_CACHE_FILE_FORMAT *)out)->bPinsFreshness = PIN_SET_NONE;
-
-	last_update = sc_pkcs15_get_lastupdate(vs->p15card);
-	if (!last_update || (*out_size < MD_CARDCF_LENGTH + MD_UTC_TIME_LENGTH_MAX))   {
-		*out_size = MD_CARDCF_LENGTH;
-	}
-	else   {
-		size_t lu_size = strlen(last_update);
-
-		if (lu_size > MD_UTC_TIME_LENGTH_MAX)
-			lu_size = MD_UTC_TIME_LENGTH_MAX;
-
-		memcpy(out + MD_CARDCF_LENGTH, last_update, lu_size);
-		if (lu_size < MD_UTC_TIME_LENGTH_MAX)
-			memset(out + MD_CARDCF_LENGTH + lu_size, 0, MD_UTC_TIME_LENGTH_MAX - lu_size);
-
-		*out_size = MD_CARDCF_LENGTH + MD_UTC_TIME_LENGTH_MAX;
-	}
-	return SCARD_S_SUCCESS;
-}
-
 /*
  * Update 'soft' containers.
  * Called each time when 'WriteFile' is called for 'cmapfile'.
@@ -947,12 +963,17 @@ md_pkcs15_update_containers(PCARD_DATA pCardData, unsigned char *blob, size_t si
 	for (idx=0, pp = (CONTAINER_MAP_RECORD *)blob; idx<nn_records; idx++, pp++)   {
 		struct md_pkcs15_container *cont = &(vs->p15_containers[idx]);
 		size_t count;
+		CHAR szGuid[MAX_CONTAINER_NAME_LEN+1] = "";
 
-		count = wcstombs(cont->guid, pp->wszGuid, sizeof(cont->guid));
+		count = wcstombs(szGuid, pp->wszGuid, sizeof(cont->guid));
 		if (!count)   {
+			if (cont->guid[0] != 0) {
+				md_contguid_delete_conversion(pCardData, cont->guid);
+			}
 			memset(cont, 0, sizeof(CONTAINER_MAP_RECORD));
 		}
 		else   {
+			strcpy_s(cont->guid,MAX_CONTAINER_NAME_LEN+1, szGuid);
 			cont->index = idx;
 			cont->flags = pp->bFlags;
 			cont->size_sign = pp->wSigKeySizeBits;
@@ -1006,6 +1027,8 @@ md_pkcs15_update_container_from_do(PCARD_DATA pCardData, struct sc_pkcs15_object
 	flags = *(ddata->data + offs);
 
 	for (idx=0; idx<MD_MAX_KEY_CONTAINERS && vs->p15_containers[idx].prkey_obj; idx++)   {
+		if (vs->p15_containers[idx].guid_overwrite)
+			continue;
 		if (sc_pkcs15_compare_id(&id, &vs->p15_containers[idx].id))   {
 			_snprintf_s(vs->p15_containers[idx].guid, MAX_CONTAINER_NAME_LEN+1, MAX_CONTAINER_NAME_LEN,
 					"%s", dobj->label);
@@ -1348,7 +1371,7 @@ md_set_cardcf(PCARD_DATA pCardData, struct md_file *file)
 {
 	VENDOR_SPECIFIC *vs;
 	char *last_update = NULL;
-	CARD_CACHE_FILE_FORMAT empty;
+	CARD_CACHE_FILE_FORMAT empty = {0};
 	size_t empty_len = sizeof(empty);
 	DWORD dwret;
 
@@ -1356,28 +1379,6 @@ md_set_cardcf(PCARD_DATA pCardData, struct md_file *file)
 		return SCARD_E_INVALID_PARAMETER;
 
 	vs = pCardData->pvVendorSpecific;
-	memset(&empty, 0, sizeof(empty));
-	empty.bVersion = CARD_CACHE_FILE_CURRENT_VERSION;
-
-	last_update = sc_pkcs15_get_lastupdate(vs->p15card);
-	if (vs->p15card->md_data)    {
-		logprintf(pCardData, 2, "Set 'cardcf' using internal MD data\n");
-		empty.wContainersFreshness = vs->p15card->md_data->cardcf.cont_freshness;
-		empty.wFilesFreshness = vs->p15card->md_data->cardcf.files_freshness;
-	}
-	else if (last_update)   {
-		unsigned crc32 = sc_crc32(last_update, strlen(last_update));
-
-		logprintf(pCardData, 2, "Set 'cardcf' using lastUpdate '%s'; CRC32 %X\n", last_update, crc32);
-		empty.wContainersFreshness = crc32;
-		empty.wFilesFreshness = crc32;
-	}
-	else   {
-		logprintf(pCardData, 2, "Set 'cardcf' using random value\n");
-		srand((unsigned)time(NULL));
-		empty.wContainersFreshness = rand()%30000;
-		empty.wFilesFreshness = rand()%30000;
-	}
 
 	dwret = md_fs_set_content(pCardData, file, (unsigned char *)(&empty), MD_CARDCF_LENGTH);
 	if (dwret != SCARD_S_SUCCESS)
@@ -1519,37 +1520,34 @@ md_set_cmapfile(PCARD_DATA pCardData, struct md_file *file)
 
 		md_contguid_build_cont_guid_from_key(pCardData, key_obj, cont->guid);
 
-		if (prkey_info->cmap_record.guid)   {
-			cont->size_key_exchange = prkey_info->cmap_record.keysize_keyexchange;
-			cont->size_sign = prkey_info->cmap_record.keysize_sign;
+		/* replace the OpenSC guid by a Windows Guid if needed
+		Typically used in the certificate enrollment process.
+		Windows create a new container with a Windows guid, close the context, then create a new context and look for the previous container.
+		If we return our guid, it fails because the Windows guid can't be found.
+		The overwrite is present to avoid this conversion been replaced by md_pkcs15_update_container_from_do*/
+		cont->guid_overwrite = md_contguid_find_conversion(pCardData, cont->guid);
 
-			cont->flags = prkey_info->cmap_record.flags;
-			if (cont->flags & CONTAINER_MAP_DEFAULT_CONTAINER)
-				found_default = 1;
-		}
-		else   {
-			cont->flags = CONTAINER_MAP_VALID_CONTAINER;
+		cont->flags = CONTAINER_MAP_VALID_CONTAINER;
 
-			/* AT_KEYEXCHANGE is more general key usage,
-			 *	it allows 'decryption' as well as 'signature' key usage.
-			 * AT_SIGNATURE allows only 'signature' usage.
-			 */
-			cont->size_key_exchange = cont->size_sign = 0;
-			if (key_obj->type == SC_PKCS15_TYPE_PRKEY_RSA) {
-				if (prkey_info->usage & USAGE_ANY_DECIPHER)
-					cont->size_key_exchange = prkey_info->modulus_length;
-				else if (prkey_info->usage & USAGE_ANY_SIGN)
-					cont->size_sign = prkey_info->modulus_length;
-				else
-					cont->size_key_exchange = prkey_info->modulus_length;
-			} else if (key_obj->type == SC_PKCS15_TYPE_PRKEY_EC) {
-				if (prkey_info->usage & USAGE_ANY_AGREEMENT)
-					cont->size_key_exchange = prkey_info->field_length;
-				else if (prkey_info->usage & USAGE_ANY_SIGN)
-					cont->size_sign = prkey_info->field_length;
-				else
-					cont->size_key_exchange = prkey_info->field_length;
-			}
+		/* AT_KEYEXCHANGE is more general key usage,
+			*	it allows 'decryption' as well as 'signature' key usage.
+			* AT_SIGNATURE allows only 'signature' usage.
+			*/
+		cont->size_key_exchange = cont->size_sign = 0;
+		if (key_obj->type == SC_PKCS15_TYPE_PRKEY_RSA) {
+			if (prkey_info->usage & USAGE_ANY_DECIPHER)
+				cont->size_key_exchange = prkey_info->modulus_length;
+			else if (prkey_info->usage & USAGE_ANY_SIGN)
+				cont->size_sign = prkey_info->modulus_length;
+			else
+				cont->size_key_exchange = prkey_info->modulus_length;
+		} else if (key_obj->type == SC_PKCS15_TYPE_PRKEY_EC) {
+			if (prkey_info->usage & USAGE_ANY_AGREEMENT)
+				cont->size_key_exchange = prkey_info->field_length;
+			else if (prkey_info->usage & USAGE_ANY_SIGN)
+				cont->size_sign = prkey_info->field_length;
+			else
+				cont->size_key_exchange = prkey_info->field_length;
 		}
 
 		logprintf(pCardData, 7, "Container[%i]'s guid=%s\n", ii, cont->guid);
@@ -2035,6 +2033,8 @@ md_pkcs15_generate_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, DWORD ke
 		goto done;
 	}
 
+	md_contguid_add_conversion(pCardData, cont->prkey_obj, cont->guid);
+
 	cont->id = ((struct sc_pkcs15_prkey_info *)cont->prkey_obj->data)->id;
 	cont->index = idx;
 	cont->flags = CONTAINER_MAP_VALID_CONTAINER;
@@ -2164,6 +2164,8 @@ md_pkcs15_store_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, BYTE *blob,
 		logprintf(pCardData, 3, "MdStoreKey(): public key store failed: sc-error %i\n", rv);
 		goto done;
 	}
+
+	md_contguid_add_conversion(pCardData, cont->prkey_obj, cont->guid);
 
 	cont->id = ((struct sc_pkcs15_prkey_info *)cont->prkey_obj->data)->id;
 	cont->index = idx;
@@ -3152,33 +3154,11 @@ DWORD WINAPI CardDeauthenticate(__in PCARD_DATA pCardData,
 	__in LPWSTR pwszUserId,
 	__in DWORD dwFlags)
 {
-	VENDOR_SPECIFIC *vs;
-	CARD_CACHE_FILE_FORMAT *cardcf = NULL;
-	struct md_file *cmapfile = NULL;
-	DWORD dwret;
-
 	logprintf(pCardData, 1, "\nP:%d T:%d pCardData:%p ",GetCurrentProcessId(), GetCurrentThreadId(), pCardData);
 	logprintf(pCardData, 1, "CardDeauthenticate(%S) %d\n", NULLWSTR(pwszUserId), dwFlags);
 
 	if(!pCardData)
 		return SCARD_E_INVALID_PARAMETER;
-
-	vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
-
-	check_reader_status(pCardData);
-
-	dwret = md_get_cardcf(pCardData, &cardcf);
-	if (dwret != SCARD_S_SUCCESS)
-		return dwret;
-	logprintf(pCardData, 1, "CardDeauthenticate bPinsFreshness:%d\n", cardcf->bPinsFreshness);
-
-	if (!wcscmp(pwszUserId, wszCARD_USER_USER))
-		CLEAR_PIN(cardcf->bPinsFreshness, ROLE_USER);
-	else if (!wcscmp(pwszUserId, wszCARD_USER_ADMIN))
-		CLEAR_PIN(cardcf->bPinsFreshness, ROLE_ADMIN);
-	else
-		return SCARD_E_INVALID_PARAMETER;
-	logprintf(pCardData, 5, "PinsFreshness = %d\n",  cardcf->bPinsFreshness);
 
 	/* TODO Reset PKCS#15 PIN object 'validated' flag */
 
@@ -4637,8 +4617,6 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 	__out_opt PDWORD pcAttemptsRemaining)
 {
 	VENDOR_SPECIFIC *vs;
-	CARD_CACHE_FILE_FORMAT *cardcf = NULL;
-	DWORD dwret;
 	struct sc_pkcs15_object *pin_obj = NULL;
 	struct sc_pkcs15_auth_info *auth_info = NULL;
 	int r;
@@ -4734,12 +4712,6 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 		if (ppbSessionPin) *ppbSessionPin = NULL;
 	}
 
-	dwret = md_get_cardcf(pCardData, &cardcf);
-	if (dwret != SCARD_S_SUCCESS)
-		return dwret;
-
-	SET_PIN(cardcf->bPinsFreshness, PinId);
-	logprintf(pCardData, 7, "PinsFreshness = %d\n", cardcf->bPinsFreshness);
 	return SCARD_S_SUCCESS;
 }
 
@@ -4849,25 +4821,11 @@ DWORD WINAPI CardDeauthenticateEx(__in PCARD_DATA pCardData,
 	__in PIN_SET PinId,
 	__in DWORD dwFlags)
 {
-	VENDOR_SPECIFIC *vs;
-	CARD_CACHE_FILE_FORMAT *cardcf = NULL;
-	struct md_file *cmapfile = NULL;
-	DWORD dwret;
 
 	logprintf(pCardData, 1, "\nP:%d T:%d pCardData:%p ",GetCurrentProcessId(), GetCurrentThreadId(), pCardData);
 	logprintf(pCardData, 1, "CardDeauthenticateEx PinId=%d dwFlags=0x%08X\n",PinId, dwFlags);
 
 	if (!pCardData) return SCARD_E_INVALID_PARAMETER;
-
-	vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
-	check_reader_status(pCardData);
-
-	dwret = md_get_cardcf(pCardData, &cardcf);
-	if (dwret != SCARD_S_SUCCESS)
-		return dwret;
-
-	CLEAR_PIN(cardcf->bPinsFreshness, PinId);
-	logprintf(pCardData, 1, "CardDeauthenticateEx bPinsFreshness:%d\n", cardcf->bPinsFreshness);
 
 	/* TODO Reset PKCS#15 PIN object 'validated' flag */
 

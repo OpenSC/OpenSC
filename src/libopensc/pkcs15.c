@@ -2715,6 +2715,7 @@ sc_pkcs15_get_object_guid(struct sc_pkcs15_card *p15card, const struct sc_pkcs15
 	}
 
 	memset(out, 0, *out_size);
+	/*
 	if ((obj->type & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_PRKEY)   {
 		struct sc_pkcs15_prkey_info *info = (struct sc_pkcs15_prkey_info *)obj->data;
 
@@ -2727,6 +2728,7 @@ sc_pkcs15_get_object_guid(struct sc_pkcs15_card *p15card, const struct sc_pkcs15
 			LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 		}
 	}
+	*/
 
 	rv = sc_pkcs15_get_object_id(obj, &id);
 	LOG_TEST_RET(ctx, rv, "Cannot get object's ID");

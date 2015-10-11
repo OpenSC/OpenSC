@@ -1297,6 +1297,7 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 
 	key_info = (struct sc_pkcs15_prkey_info *) object->data;
 
+	/*
 	if (keygen_args->prkey_args.guid && keygen_args->prkey_args.guid_len)   {
 		key_info->cmap_record.guid = malloc(keygen_args->prkey_args.guid_len);
 		if (!key_info->cmap_record.guid)
@@ -1306,6 +1307,7 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 		sc_log(ctx, "new key GUID: 0x'%s'", sc_dump_hex(key_info->cmap_record.guid, key_info->cmap_record.guid_len));
 		key_info->cmap_record.flags = SC_MD_CONTAINER_MAP_VALID_CONTAINER;
 	}
+	*/
 
 	/* Set up the PuKDF info. The public key will be filled in
 	 * by the card driver's generate_key function called below.
