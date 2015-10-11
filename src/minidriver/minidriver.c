@@ -1490,7 +1490,7 @@ md_set_cmapfile(PCARD_DATA pCardData, struct md_file *file)
 	if (!pCardData || !file)
 		return SCARD_E_INVALID_PARAMETER;
 
-	logprintf(pCardData, 0, "set 'cmapfile'\n");
+	logprintf(pCardData, 2, "set 'cmapfile'\n");
 	vs = pCardData->pvVendorSpecific;
 	cmap_len = MD_MAX_KEY_CONTAINERS*sizeof(CONTAINER_MAP_RECORD);
 	cmap_buf = pCardData->pfnCspAlloc(cmap_len);
