@@ -209,7 +209,7 @@ static char *prettify_gender(char *str)
 			case '0': return "unknown";
 			case '1': return "male";
 			case '2': return "female";
-			case '9': return "not applicable";
+			case '9': return "not announced";
 		}
 	}
 	return NULL;
