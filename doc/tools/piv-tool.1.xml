@@ -72,7 +72,7 @@
 						<option>-G</option> <replaceable>argument</replaceable>
 					</term>
 					<listitem><para>Generate a key pair on the card and output the public key.
-					The <replaceable>argument</replaceable> of th form
+					The <replaceable>argument</replaceable> of the form
 					<synopsis><replaceable>ref</replaceable>:<replaceable>alg</replaceable></synopsis>
 					is required, where <replaceable>ref</replaceable> is <literal>9A</literal>,
 					<literal>9C</literal>, <literal>9D</literal> or <literal>9E</literal> and
@@ -85,7 +85,7 @@
 						<option>--object</option> <replaceable>ContainerID</replaceable>,
 						<option>-O</option> <replaceable>ContainerID</replaceable>
 					</term>
-					<listitem><para>Load an object on to the card.
+					<listitem><para>Load an object onto the card.
 					The <replaceable>ContainerID</replaceable> is as defined in NIST 800-73-n
 					without leading <literal>0x</literal>. Example: CHUID object is 3000
 					</para></listitem>
@@ -96,7 +96,7 @@
 						<option>--cert</option> <replaceable>ref</replaceable>,
 						<option>-s</option> <replaceable>ref</replaceable>
 					</term>
-					<listitem><para>Load a certificate on to the card.
+					<listitem><para>Load a certificate onto the card.
 					<replaceable>ref</replaceable> is <literal>9A</literal>,
 					<literal>9C</literal>, <literal>9D</literal> or
 					<literal>9E</literal></para></listitem>
@@ -107,7 +107,7 @@
 						<option>--compresscert</option> <replaceable>ref</replaceable>,
 						<option>-Z</option> <replaceable>ref</replaceable>
 					</term>
-					<listitem><para>Load a certificate that has been gziped on to the card.
+					<listitem><para>Load a certificate that has been gzipped onto the card.
 					<replaceable>ref</replaceable> is <literal>9A</literal>,
 					<literal>9C</literal>, <literal>9D</literal> or
 					 <literal>9E</literal></para></listitem>
