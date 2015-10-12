@@ -35,6 +35,7 @@
 #endif
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 #include "common/compat_getopt.h"
 #include "libopensc/opensc.h"
@@ -52,22 +53,34 @@
 #define OPT_PIN     259
 #define OPT_DELKEY  260
 
+enum code_types {
+	TYPE_NULL,
+	TYPE_HEX,
+	TYPE_STRING
+};
+
 /* define structures */
 struct ef_name_map {
 	const char *name;
 	const char *env_name;
 	const char *ef;
-	char *(*prettify_value)(char *);
+	enum code_types type;
+	size_t offset;
+	size_t length;	/* 0 <=> potentially infinite */
+	char *(*prettify_value)(void *);
 };
 
 /* declare functions */
 static void show_version(void);
-static char *prettify_name(char *str);
-static char *prettify_language(char *str);
-static char *prettify_gender(char *str);
-static void display_data(const struct ef_name_map *mapping, char *value);
+static char *prettify_version(void *ptr);
+static char *prettify_manufacturer(void *ptr);
+static char *prettify_serialnumber(void *ptr);
+static char *prettify_name(void *ptr);
+static char *prettify_language(void *ptr);
+static char *prettify_gender(void *ptr);
+static void display_data(const struct ef_name_map *mapping, void *value);
 static int decode_options(int argc, char **argv);
-static int do_userinfo(sc_card_t *card);
+static int do_info(sc_card_t *card, const struct ef_name_map *map);
 
 /* define global variables */
 static int actions = 0;
@@ -120,7 +133,7 @@ static const char *option_help[] = {
 /* x */	"Execute program <arg> with data in env vars",
 	"Print values in raw format",
 	"Print values in pretty format",
-/* C */	NULL,
+/* C */	"Show card information",
 /* U */	"Show card holder information",
 /* G */ "Generate key",
 /* L */ "Key length (default 2048)",
@@ -134,17 +147,26 @@ static const char *option_help[] = {
 /* d */ "Dump private data object number <arg> (i.e. PRIVATE-DO-<arg>)",
 };
 
-static const struct ef_name_map openpgp_data[] = {
-	{ "Account",  "OPENGPG_ACCOUNT", "3F00:005E",      NULL              },
-	{ "URL",      "OPENPGP_URL",     "3F00:5F50",      NULL              },
-	{ "Name",     "OPENPGP_NAME",    "3F00:0065:005B", prettify_name     },
-	{ "Language", "OPENPGP_LANG",    "3F00:0065:5F2D", prettify_language },
-	{ "Gender",   "OPENPGP_GENDER",  "3F00:0065:5F35", prettify_gender   },
-	{ "DO 0101",  "OPENPGP_DO0101",  "3F00:0101",      NULL              },
-	{ "DO 0102",  "OPENPGP_DO0102",  "3F00:0102",      NULL              },
-//	{ "DO 0103",  "OPENPGP_DO0103",  "3F00:0103",      NULL              },
-//	{ "DO 0104",  "OPENPGP_DO0104",  "3F00:0104",      NULL              },
-	{ NULL, NULL, NULL, NULL }
+
+static const struct ef_name_map card_data[] = {
+	{ "AID",           "OPENPGP_AID",          "3F00:004F", TYPE_HEX,  0, 16, NULL                  },
+	{ "Version",       "OPENPGP_VERSION",      "3F00:004F", TYPE_HEX,  6,  2, prettify_version      },
+	{ "Manufacturer",  "OPENPGP_MANUFACTURER", "3F00:004F", TYPE_HEX,  8,  2, prettify_manufacturer },
+	{ "Serial number", "OPENPGP_SERIALNO",     "3F00:004F", TYPE_HEX, 10,  4, prettify_serialnumber },
+	{ NULL, NULL, NULL, TYPE_NULL, 0, 0, NULL }
+};
+
+static const struct ef_name_map user_data[] = {
+	{ "Account",  "OPENGPG_ACCOUNT", "3F00:005E",      TYPE_STRING, 0, 0, NULL              },
+	{ "URL",      "OPENPGP_URL",     "3F00:5F50",      TYPE_STRING, 0, 0, NULL              },
+	{ "Name",     "OPENPGP_NAME",    "3F00:0065:005B", TYPE_STRING, 0, 0, prettify_name     },
+	{ "Language", "OPENPGP_LANG",    "3F00:0065:5F2D", TYPE_STRING, 0, 0, prettify_language },
+	{ "Gender",   "OPENPGP_GENDER",  "3F00:0065:5F35", TYPE_STRING, 0, 0, prettify_gender   },
+	{ "DO 0101",  "OPENPGP_DO0101",  "3F00:0101",      TYPE_STRING, 0, 0, NULL              },
+	{ "DO 0102",  "OPENPGP_DO0102",  "3F00:0102",      TYPE_STRING, 0, 0, NULL              },
+//	{ "DO 0103",  "OPENPGP_DO0103",  "3F00:0103",      TYPE_STRING, 0, 0, NULL              },
+//	{ "DO 0104",  "OPENPGP_DO0104",  "3F00:0104",      TYPE_STRING, 0, 0, NULL              },
+	{ NULL, NULL, NULL, TYPE_NULL, 0, 0, NULL }
 };
 
 
@@ -158,12 +180,78 @@ static void show_version(void)
 }
 
 
-/* prettify card holder's name */
-static char *prettify_name(char *str)
+#define BCD2CHAR(x) (((((x) & 0xF0) >> 4) * 10) + ((x) & 0x0F))
+
+static char *prettify_version(void *ptr)
 {
-	if (str != NULL) {
-		char *src = str;
-		char *dst = str;
+	if (ptr != NULL) {
+		static char result[10];	/* large enough for even 2*3 digits + separator */
+		u8 *str = (u8 *) ptr;
+		int major = BCD2CHAR(str[0]);
+		int minor = BCD2CHAR(str[1]);
+
+		sprintf(result, "%d.%d", major, minor);
+
+		return result;
+	}
+	return ptr;
+}
+
+
+static char *prettify_manufacturer(void *ptr)
+{
+	if (ptr != NULL) {
+		u8 *str = (u8 *) ptr;
+		unsigned int manuf = (str[0] << 8) + str[1];
+
+		switch (manuf) {
+			case 0x0001: return "PPC Card Systems";
+			case 0x0002: return "Prism";
+			case 0x0003: return "OpenFortress";
+			case 0x0004: return "Wewid";
+			case 0x0005: return "ZeitControl";
+			case 0x0006: return "Yubico";
+			case 0x0007: return "OpenKMS";
+			case 0x0008: return "LogoEmail";
+
+			case 0x002A: return "Magrathea";
+
+			case 0x1337: return "Warsaw Hackerspace";
+
+			case 0xF517: return "FSIJ";
+
+			/* 0x0000 and 0xFFFF are defined as test cards per spec,
+			   0xFF00 to 0xFFFE are assigned for use with randomly created
+			   serial numbers.  */
+			case 0x0000:
+			case 0xffff: return "test card";
+			default: return (manuf & 0xff00) == 0xff00 ? "unmanaged S/N range" : "unknown";
+		}
+	}
+	return ptr;
+}
+
+
+static char *prettify_serialnumber(void *ptr)
+{
+	if (ptr != NULL) {
+		u8 *str = (u8 *) ptr;
+		static char result[15];	/* large enough for even 2*3 digits + separator */
+		unsigned int serial = (str[0] << 24) + (str[1] << 16) + (str[2] << 8) + str[3];
+
+		sprintf(result, "%08X", serial);
+		return result;
+	}
+	return ptr;
+}
+
+
+/* prettify card holder's name */
+static char *prettify_name(void *ptr)
+{
+	if (ptr != NULL) {
+		char *src = (char *) ptr;
+		char *dst = (char *) ptr;
 
 		while (*src != '\0') {
 			*dst = *src++;
@@ -176,14 +264,16 @@ static char *prettify_name(char *str)
 		}
 		*dst = '\0';
 	}
-	return str;
+	return ptr;
 }
 
 
 /* prettify language */
-static char *prettify_language(char *str)
+static char *prettify_language(void *ptr)
 {
-	if (str != NULL) {
+	if (ptr != NULL) {
+		char *str = (char *) ptr;
+
 		switch (strlen(str)) {
 			case 8: memmove(str+7, str+6, 1+strlen(str+6));
 				str[6] = ',';
@@ -202,9 +292,10 @@ static char *prettify_language(char *str)
 
 
 /* convert the raw ISO-5218 SEX value to an english word */
-static char *prettify_gender(char *str)
+static char *prettify_gender(void *ptr)
 {
-	if (str != NULL) {
+	if (ptr != NULL) {
+		u8 *str = (u8 *) ptr;
 		switch (*str) {
 			case '0': return "unknown";
 			case '1': return "male";
@@ -216,28 +307,87 @@ static char *prettify_gender(char *str)
 }
 
 
-static void display_data(const struct ef_name_map *mapping, char *value)
+static char *bin_to_hex(char *str, const u8 *data, size_t count, int indent)
 {
-	if (mapping != NULL && value != NULL) {
-		if (mapping->prettify_value != NULL && !opt_raw)
-			value = mapping->prettify_value(value);
+	if (str != NULL) {
+		int lines = 0;
+		char *ptr = str;
+
+		while (count > 0) {
+			char ascbuf[17];
+			int printed;
+			int i;
+
+			for (i = 0; i < 16 && (size_t) i < count; i++) {
+				if ((printed = sprintf(ptr, "%02X ", *data)) < 0)
+					return NULL;
+				if (indent < 0 && i < 15 && (size_t) i+1 < count)
+					ptr[2] = ':';
+				ptr += printed;
+				ascbuf[i] = (isprint(*data)) ? *data : '.';
+				data++;
+			}
+			count -= i;
+			ascbuf[i] = '\0';
+			if (indent >= 0) {
+				if (lines) {
+					if ((printed = sprintf(ptr, "%*s", 3*(16-i), "")) < 0)
+						return NULL;
+					ptr += printed;
+				}
+				if ((printed = sprintf(ptr, " %s", ascbuf)) < 0)
+					return NULL;
+				ptr += printed;
+
+				if (count > 0) {
+					if ((printed = sprintf(ptr, "\n%*s", indent, "")) < 0)
+						return NULL;
+					ptr += printed;
+					lines++;
+				}
+			}
+        	}
+        }
+	return str;
+}
+
+
+#define INDENT	16
+
+static void display_data(const struct ef_name_map *map, void *data)
+{
+	if (map != NULL && data != NULL) {
+		/* FIXME: no length checks on buffer */
+		char buffer[8192];
+		char *value;
+		
+		if (map->prettify_value != NULL && !opt_raw) {
+			value = map->prettify_value(data);
+		}
+		else {
+			value = (map->type == TYPE_HEX)
+				? bin_to_hex(buffer, data, map->length, (exec_program) ? -1 : INDENT)
+				: (char *) data;
+		}
 
 		if (value != NULL) {
 			if (exec_program) {
-				char *envvar;
+				char *envvar= malloc(strlen(map->env_name) +
+							strlen(value) + 2);
 
-				envvar = malloc(strlen(mapping->env_name) +
-						strlen(value) + 2);
 				if (envvar != NULL) {
-					strcpy(envvar, mapping->env_name);
+					strcpy(envvar, map->env_name);
 					strcat(envvar, "=");
 					strcat(envvar, value);
 					putenv(envvar);
+					/* envvar deliberately kept: see putenv(3) */
 				}
-			} else {
-				const char *label = mapping->name;
+			}
+			else {
+				const char *label = map->name;
+				int fill = (int) (INDENT - strlen(label));
 
-				printf("%s:%*s%s\n", label, (int)(10-strlen(label)), "", value);
+				printf("%s:%*s%s\n", label, fill, "", value);
 			}
 		}
 	}
@@ -331,22 +481,21 @@ static int decode_options(int argc, char **argv)
 }
 
 
-static int do_userinfo(sc_card_t *card)
+static int do_info(sc_card_t *card, const struct ef_name_map *map)
 {
 	int i;
-	/* FIXME there are no length checks on buf. */
-	unsigned char buf[2048];
+	u8 buf[2048];
 
-	for (i = 0; openpgp_data[i].ef != NULL; i++) {
+	for (i = 0; map[i].ef != NULL; i++) {
 		sc_path_t path;
 		sc_file_t *file;
 		size_t count;
 		int r;
 
-		sc_format_path(openpgp_data[i].ef, &path);
+		sc_format_path(map[i].ef, &path);
 		r = sc_select_file(card, &path, &file);
 		if (r) {
-			fprintf(stderr, "Failed to select EF %s: %s\n", openpgp_data[i].ef, sc_strerror(r));
+			fprintf(stderr, "Failed to select EF %s: %s\n", map[i].ef, sc_strerror(r));
 			return EXIT_FAILURE;
 		}
 
@@ -355,24 +504,28 @@ static int do_userinfo(sc_card_t *card)
 			continue;
 
 		if (count > sizeof(buf) - 1) {
-			fprintf(stderr, "Too small buffer to read the OpenPGP data\n");
+			fprintf(stderr, "Too small buffer to read the OpenPGP map\n");
 			return EXIT_FAILURE;
 		}
 
 		r = sc_read_binary(card, 0, buf, count, 0);
 		if (r < 0) {
-			fprintf(stderr, "%s: read failed - %s\n", openpgp_data[i].ef, sc_strerror(r));
+			fprintf(stderr, "%s: read failed - %s\n", map[i].ef, sc_strerror(r));
 			return EXIT_FAILURE;
 		}
-		if (r != (signed)count) {
+		if (r != (signed) count || (size_t) r < map[i].offset + map[i].length) {
 			fprintf(stderr, "%s: expecting %"SC_FORMAT_LEN_SIZE_T"d, got only %d bytes\n",
-				openpgp_data[i].ef, count, r);
+				map[i].ef, count, r);
 			return EXIT_FAILURE;
 		}
+		if (map[i].offset) {
+			memmove(buf, buf + map[i].offset, map[i].length);
+			count -= map[i].offset;
+		}
+		if (map[i].type == TYPE_STRING)
+			buf[count] = '\0';
 
-		buf[count] = '\0';
-
-		display_data(openpgp_data + i, (char *) buf);
+		display_data(&map[i], (void *) buf);
 	}
 
 	return EXIT_SUCCESS;
@@ -632,8 +785,11 @@ int main(int argc, char **argv)
 	if (!actions)
 		opt_userinfo = 1;
 
+	if (opt_cardinfo)
+		exit_status |= do_info(card, card_data);
+
 	if (opt_userinfo)
-		exit_status |= do_userinfo(card);
+		exit_status |= do_info(card, user_data);
 
 	if (opt_verify && opt_pin) {
 		exit_status |= do_verify(card, verifytype, pin);
