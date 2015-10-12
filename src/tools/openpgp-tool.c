@@ -277,11 +277,11 @@ static int decode_options(int argc, char **argv)
 			break;
 		case 'C':
 			opt_cardinfo++;
-			actions++;;
+			actions++;
 			break;
 		case 'U':
 			opt_userinfo++;
-			actions++;;
+			actions++;
 			break;
 		case 'G':
 			opt_genkey++;
