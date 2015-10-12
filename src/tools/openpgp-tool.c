@@ -248,7 +248,7 @@ static int decode_options(int argc, char **argv)
 {
 	int c;
 
-	while ((c = getopt_long(argc, argv,"r:x:CUG:L:hwvVd:", options, (int *) 0)) != EOF) {
+	while ((c = getopt_long(argc, argv,"r:x:CUG:L:EhwvVd:", options, (int *) 0)) != EOF) {
 		switch (c) {
 		case 'r':
 			opt_reader = optarg;
