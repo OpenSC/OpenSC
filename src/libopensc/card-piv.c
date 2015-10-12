@@ -723,9 +723,6 @@ static int piv_find_aid(sc_card_t * card, sc_file_t *aid_file)
 	 * that we know about.
 	 */
 
-	if (card->type == SC_CARD_TYPE_PIV_II_GENERIC)
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, 0);
-
 	r = piv_select_aid(card, piv_aids[0].value, piv_aids[0].len_short, rbuf, &resplen);
 	if (r >= 0 && resplen > 2 ) {
 		tag = sc_asn1_find_tag(card->ctx, rbuf, resplen, 0x61, &taglen);
