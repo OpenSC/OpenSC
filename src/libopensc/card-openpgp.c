@@ -362,6 +362,8 @@ pgp_match_card(sc_card_t *card)
 }
 
 
+#define BCD2CHAR(x) (((((x) & 0xF0) >> 4) * 10) + ((x) & 0x0F))
+
 /**
  * ABI: initialize driver.
  */
@@ -420,6 +422,9 @@ pgp_init(sc_card_t *card)
 	if (file->namelen == 16) {
 		/* OpenPGP card spec 1.1 & 2.0, section 4.2.1 & 4.1.2.1 */
 		priv->bcd_version = bebytes2ushort(file->name + 6);
+		card->version.fw_major = card->version.hw_major = BCD2CHAR(file->name[6]);
+		card->version.fw_minor = card->version.hw_minor = BCD2CHAR(file->name[7]);
+
 		/* kludge: get card's serial number from manufacturer ID + serial number */
 		memcpy(card->serialnr.value, file->name + 8, 6);
 		card->serialnr.len = 6;
