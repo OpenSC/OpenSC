@@ -2112,10 +2112,6 @@ struct sc_reader_driver * sc_get_pcsc_driver(void)
 
 static int cardmod_connect(sc_reader_t *reader)
 {
-	DWORD active_proto, protocol;
-	SCARDHANDLE card_handle;
-	LONG rv;
-	struct pcsc_private_data *priv = GET_PRIV_DATA(reader);
 	int r;
 
 	r = refresh_attributes(reader);
@@ -2239,10 +2235,7 @@ int cardmod_use_reader(sc_context_t *ctx, void * pcsc_context_handle, void * pcs
 	char reader_name[128];
 	DWORD rcount, feature_len, display_ioctl, reader_name_size = sizeof(reader_name);
 	int ret = SC_ERROR_INTERNAL;
-	HKEY key;
 	unsigned int i;
-	wchar_t b;
-	char *p;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 
