@@ -33,6 +33,7 @@
 #ifdef _WIN32
 #include <windows.h>
 #include <winreg.h>
+#include <direct.h>
 #endif
 
 #include "common/libscdl.h"
