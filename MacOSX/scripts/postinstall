@@ -1,8 +1,8 @@
 #!/bin/bash
 
-if !([ -e "/usr/lib/opensc-pkcs11.so" ])
+if !([ -e "/usr/local/lib/opensc-pkcs11.so" ])
 then
-	ln -s /Library/OpenSC/lib/opensc-pkcs11.so /usr/lib/opensc-pkcs11.so
+	ln -s /Library/OpenSC/lib/opensc-pkcs11.so /usr/local/lib/opensc-pkcs11.so
 fi
 if [ -e "/Library/OpenSC/etc/opensc.conf.md5" ]
 then
