@@ -46,10 +46,10 @@ rm -rf target
 make install DESTDIR=${BUILDPATH}/target
 
 # remove garbage
-rm -f target/Library/OpenSC/lib/*.la
+rm -f target/$PREFIX/lib/*.la
 
 # generate .bundle (required by Adobe Acrobat)
-./MacOSX/libtool-bundle target/Library/OpenSC/lib/opensc-pkcs11.so target/Library/OpenSC/lib
+./MacOSX/libtool-bundle target/$PREFIX/lib/opensc-pkcs11.so target/$PREFIX/lib
 
 # Check out OpenSC.tokend, if not already fetched.
 if ! test -e OpenSC.tokend; then
