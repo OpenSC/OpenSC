@@ -308,6 +308,7 @@ static int decode_options(int argc, char **argv)
 			break;
 		case 'E':
 			opt_erase++;
+			actions++;
 			break;
 		case OPT_DELKEY:
 			opt_delkey++;
