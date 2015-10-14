@@ -25,10 +25,7 @@
 #include "internal.h"
 #include "asn1.h"
 #include "cardctl.h"
-
-#ifndef ENABLE_OPENSSL
-#error "Need OpenSSL"
-#endif
+#include "common/compat_strlcpy.h"
 
 #include "sm.h"
 #include "iasecc.h"
@@ -36,14 +33,18 @@
 
 
 #ifdef ENABLE_SM
+
 static int
 sm_save_sc_context (struct sc_card *card, struct sm_info *sm_info)
 {
-	struct sc_context *ctx = card->ctx;
-	struct sc_card_cache *cache = &card->cache;
+	struct sc_context *ctx;
+	struct sc_card_cache *cache;
 
 	if (!card || !sm_info)
 		return SC_ERROR_INVALID_ARGUMENTS;
+
+	ctx = card->ctx;
+	cache = &card->cache;
 
 	sc_log(ctx, "SM save context: cache(valid:%i,current_df:%p)", cache->valid, cache->current_df);
 	if (cache->valid && cache->current_df)   {
@@ -82,14 +83,12 @@ sm_restore_sc_context(struct sc_card *card, struct sm_info *sm_info)
 
 	return rv;
 }
-#endif
 
 static int
 iasecc_sm_transmit_apdus(struct sc_card *card, struct sc_remote_data *rdata,
 		unsigned char *out, size_t *out_len)
 {
 	struct sc_context *ctx = card->ctx;
-#ifdef ENABLE_SM
 	struct sc_remote_apdu *rapdu = rdata->data;
 	int rv = SC_SUCCESS, offs = 0;
 
@@ -119,10 +118,6 @@ iasecc_sm_transmit_apdus(struct sc_card *card, struct sc_remote_data *rdata,
 		*out_len = offs;
 
 	LOG_FUNC_RETURN(ctx, rv);
-#else
-	LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "built without support of SM and External Authentication");
-	return SC_ERROR_NOT_SUPPORTED;
-#endif
 }
 
 
@@ -132,7 +127,6 @@ sm_release (struct sc_card *card, struct sc_remote_data *rdata,
 		unsigned char *out, size_t out_len)
 {
 	struct sc_context *ctx = card->ctx;
-#ifdef ENABLE_SM
 	struct sm_info *sm_info = &card->sm_ctx.info;
 	int rv;
 
@@ -144,11 +138,8 @@ sm_release (struct sc_card *card, struct sc_remote_data *rdata,
 
 	sm_restore_sc_context(card, sm_info);
 	LOG_FUNC_RETURN(ctx, rv);
-#else
-	LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "built without support of SM and External Authentication");
-	return SC_ERROR_NOT_SUPPORTED;
-#endif
 }
+#endif
 
 
 int
@@ -169,7 +160,7 @@ iasecc_sm_external_authentication(struct sc_card *card, unsigned skey_ref, int *
 	if (card->sm_ctx.sm_mode == SM_MODE_NONE)
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Cannot do 'External Authentication' without SM activated ");
 
-	strncpy(sm_info->config_section, card->sm_ctx.config_section, sizeof(sm_info->config_section));
+	strlcpy(sm_info->config_section, card->sm_ctx.config_section, sizeof(sm_info->config_section));
 	sm_info->cmd = SM_CMD_EXTERNAL_AUTH;
 	sm_info->serialnr = card->serialnr;
 	sm_info->card_type = card->type;
@@ -221,11 +212,11 @@ iasecc_sm_external_authentication(struct sc_card *card, unsigned skey_ref, int *
 }
 
 
+#ifdef ENABLE_SM
 static int
 iasecc_sm_se_mutual_authentication(struct sc_card *card, unsigned se_num)
 {
 	struct sc_context *ctx = card->ctx;
-#ifdef ENABLE_SM
 	struct sm_info *sm_info = &card->sm_ctx.info;
 	struct iasecc_se_info se;
 	struct sc_crt *crt =  &sm_info->session.cwa.params.crt_at;
@@ -268,10 +259,6 @@ iasecc_sm_se_mutual_authentication(struct sc_card *card, unsigned se_num)
 	LOG_TEST_RET(ctx, rv, "SM set SE mutual auth.: set SE error");
 
 	LOG_FUNC_RETURN(ctx, rv);
-#else
-	LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "built without support of Secure-Messaging");
-	return SC_ERROR_NOT_SUPPORTED;
-#endif
 }
 
 
@@ -298,6 +285,7 @@ iasecc_sm_get_challenge(struct sc_card *card, unsigned char *out, size_t len)
 
 	LOG_FUNC_RETURN(ctx, apdu.resplen);
 }
+#endif
 
 
 int
@@ -312,7 +300,7 @@ iasecc_sm_initialize(struct sc_card *card, unsigned se_num, unsigned cmd)
 
 	LOG_FUNC_CALLED(ctx);
 
-	strncpy(sm_info->config_section, card->sm_ctx.config_section, sizeof(sm_info->config_section));
+	strlcpy(sm_info->config_section, card->sm_ctx.config_section, sizeof(sm_info->config_section));
 	sm_info->cmd = cmd;
 	sm_info->serialnr = card->serialnr;
 	sm_info->card_type = card->type;
@@ -363,13 +351,13 @@ iasecc_sm_initialize(struct sc_card *card, unsigned se_num, unsigned cmd)
 }
 
 
+#ifdef ENABLE_SM
 static int
 iasecc_sm_cmd(struct sc_card *card, struct sc_remote_data *rdata)
 {
 #define AUTH_SM_APDUS_MAX 12
 #define ENCODED_APDUS_MAX_LENGTH (AUTH_SM_APDUS_MAX * (SC_MAX_APDU_BUFFER_SIZE * 2 + 64) + 32)
 	struct sc_context *ctx = card->ctx;
-#ifdef ENABLE_SM
 	struct sm_info *sm_info = &card->sm_ctx.info;
 	struct sm_cwa_session *session = &sm_info->session.cwa;
 	struct sc_remote_apdu *rapdu = NULL;
@@ -404,11 +392,8 @@ iasecc_sm_cmd(struct sc_card *card, struct sc_remote_data *rdata)
 	}
 
 	LOG_FUNC_RETURN(ctx, rv);
-#else
-	LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "built without support of Secure-Messaging");
-	return SC_ERROR_NOT_SUPPORTED;
-#endif
 }
+#endif
 
 
 int

@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<refentry id="dnie-tool">
+	<refmeta>
+		<refentrytitle>dnie-tool</refentrytitle>
+		<manvolnum>1</manvolnum>
+		<refmiscinfo class="productname">OpenSC</refmiscinfo>
+		<refmiscinfo class="manual">OpenSC Tools</refmiscinfo>
+		<refmiscinfo class="source">opensc</refmiscinfo>
+	</refmeta>
+
+	<refnamediv>
+		<refname>dnie-tool</refname>
+		<refpurpose>displays information about DNIe based security tokens</refpurpose>
+	</refnamediv>
+	
+	<refsynopsisdiv>
+		<cmdsynopsis>
+			<command>dnie-tool</command>
+			<arg choice="opt"><replaceable class="option">OPTIONS</replaceable></arg>
+		</cmdsynopsis>
+	</refsynopsisdiv>
+
+	<refsect1>
+		<title>Description</title>
+		<para>
+			The <command>dnie-tool</command> utility is used to display additional information about DNIe, the Spanish National eID card.
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Options</title>
+		<para>
+			<variablelist>
+				<varlistentry>
+					<term>
+						<option>--idesp</option>,
+						<option>-i</option>
+					</term>
+					<listitem><para>Show the DNIe IDESP value.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--data</option>,
+						<option>-d</option>
+					</term>
+					<listitem><para>Show DNIe personal information.
+					Reads and print DNIe number and User Name and SurName</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--all</option>,
+						<option>-a</option>
+					</term>
+					<listitem><para>Displays every available information.
+					This command is equivalent to -d -i -s</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--serial</option>,
+						<option>-s</option>
+					</term>
+					<listitem><para>Displays DNIe Serial Number
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--version</option>,
+						<option>-V</option>
+					</term>
+					<listitem><para>Show DNIe sw version.
+					Displays sofware version for in-card DNIe OS</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--pin</option> <replaceable>pin</replaceable>,
+						<option>-p</option> <replaceable>pin</replaceable>
+					</term>
+					<listitem><para>Specify the user pin <replaceable>pin</replaceable> to use.
+					If set to env:<replaceable>VARIABLE</replaceable>, the
+					value of the environment variable
+					<replaceable>VARIABLE</replaceable> is used.
+					The default is do not enter pin</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--reader</option> <replaceable>number</replaceable>,
+						<option>-r</option> <replaceable>number</replaceable>
+					</term>
+					<listitem><para>Specify the reader <replaceable>number</replaceable> to use.
+					The default is reader 0.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--driver</option> <replaceable>driver</replaceable>,
+						<option>-c</option> <replaceable>driver</replaceable>
+					</term>
+					<listitem><para>Specify the card driver <replaceable>driver</replaceable> to use.
+					Default is use driver from configuration file, or auto-detect if absent</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--wait</option>, 
+						<option>-w</option>
+					</term>
+					<listitem><para>Causes <command>dnie-tool</command> to wait for the token to be inserted into reader.</para>
+					</listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--verbose</option>,
+						<option>-v</option>
+					</term>
+					<listitem><para>Causes <command>dnie-tool</command> to be more verbose. 
+					Specify this flag several times
+to enable debug output in the opensc library.</para></listitem>
+				</varlistentry>
+			</variablelist>
+		</para>
+	</refsect1>
+	
+	<refsect1>
+		<title>See also</title>
+		<para>opensc(7)</para>
+	</refsect1>
+	<refsect1>
+		<title>Authors</title>
+		<para><command>dnie-tool</command> was written by
+		Juan Antonio Martinez <email>jonsito@terra.es</email>.</para>
+	</refsect1>
+
+</refentry>

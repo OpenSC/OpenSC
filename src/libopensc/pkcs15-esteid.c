@@ -21,7 +21,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#if HAVE_CONFIG_H
 #include "config.h"
+#endif
 
 #include <stdlib.h>
 #include <string.h>
@@ -118,10 +120,13 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 			r = sc_pkcs15_read_certificate(p15card, &cert_info, &cert);
 			if (r == SC_SUCCESS) {
 				mem = BIO_new_mem_buf(cert->data.value, cert->data.len);
-				if (!mem)
+				if (!mem) {
+					sc_pkcs15_free_certificate(cert);
 					return SC_ERROR_INTERNAL;
+				}
 				x509 = d2i_X509_bio(mem, NULL);
 				BIO_free(mem);
+				sc_pkcs15_free_certificate(cert);
 				if (!x509)
 					return SC_ERROR_INTERNAL;
 				r = X509_NAME_get_index_by_NID(X509_get_subject_name(x509), NID_commonName, -1);

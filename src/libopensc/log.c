@@ -19,7 +19,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#if HAVE_CONFIG_H
 #include "config.h"
+#endif
 
 #include <stdarg.h>
 #include <stdlib.h>
@@ -60,7 +62,7 @@ void sc_do_log_noframe(sc_context_t *ctx, int level, const char *format, va_list
 
 static void sc_do_log_va(sc_context_t *ctx, int level, const char *file, int line, const char *func, const char *format, va_list args)
 {
-	char	buf[1836], *p;
+	char	buf[4096], *p;
 	int	r;
 	size_t	left;
 #ifdef _WIN32
@@ -73,9 +75,7 @@ static void sc_do_log_va(sc_context_t *ctx, int level, const char *file, int lin
 	FILE		*outf = NULL;
 	int		n;
 
-	assert(ctx != NULL);
-
-	if (ctx->debug < level)
+	if (!ctx || ctx->debug < level)
 		return;
 
 	p = buf;
@@ -113,8 +113,11 @@ static void sc_do_log_va(sc_context_t *ctx, int level, const char *file, int lin
 		return;
 
 #ifdef _WIN32
-	if (ctx->debug_filename)
-		sc_ctx_log_to_file(ctx, ctx->debug_filename);
+	if (ctx->debug_filename)   {
+		r = sc_ctx_log_to_file(ctx, ctx->debug_filename);
+		if (r < 0)
+			return;
+	}
 #endif
 
 	outf = ctx->debug_file;
@@ -129,8 +132,10 @@ static void sc_do_log_va(sc_context_t *ctx, int level, const char *file, int lin
 
 #ifdef _WIN32
 	if (ctx->debug_filename)   {
-		fclose(ctx->debug_file);
-		ctx->debug_file = NULL;
+		if (ctx->debug_file && (ctx->debug_file != stderr && ctx->debug_file != stdout))   {
+			fclose(ctx->debug_file);
+			ctx->debug_file = NULL;
+		}
 	}
 #endif
 
@@ -162,12 +167,10 @@ void sc_hex_dump(struct sc_context *ctx, int level, const u8 * in, size_t count,
 	char *p = buf;
 	int lines = 0;
 
-	assert(ctx != NULL);
-
-	if (ctx->debug < level)
+	if (!ctx || ctx->debug < level)
 		return;
 
-	assert(buf != NULL && in != NULL);
+	assert(buf != NULL && (in != NULL || count == 0));
 	buf[0] = 0;
 	if ((count * 5) > len)
 		return;
@@ -203,29 +206,44 @@ sc_dump_hex(const u8 * in, size_t count)
 {
 	static char dump_buf[0x1000];
 	size_t ii, size = sizeof(dump_buf) - 0x10;
-    	size_t offs = 0;
+	size_t offs = 0;
 
 	memset(dump_buf, 0, sizeof(dump_buf));
 	if (in == NULL)
-        	return dump_buf;
+		return dump_buf;
 
 	for (ii=0; ii<count; ii++) {
-		if (!(ii%16))   {
+		if (ii && !(ii%16))   {
 			if (!(ii%48))
 				snprintf(dump_buf + offs, size - offs, "\n");
 			else
 				snprintf(dump_buf + offs, size - offs, " ");
+			offs = strlen(dump_buf);
 		}
 
 		snprintf(dump_buf + offs, size - offs, "%02X", *(in + ii));
-		offs = strlen(dump_buf);
+		offs += 2;
 
 		if (offs > size)
-            		break;
-    	}
+			break;
+	}
 
-    	if (ii<count)
-        	snprintf(dump_buf + offs, sizeof(dump_buf) - offs, "....\n");
+	if (ii<count)
+		snprintf(dump_buf + offs, sizeof(dump_buf) - offs, "....\n");
+
+	return dump_buf;
+}
+
+char *
+sc_dump_oid(const struct sc_object_id *oid)
+{
+	static char dump_buf[SC_MAX_OBJECT_ID_OCTETS * 20];
+        size_t ii;
+
+	memset(dump_buf, 0, sizeof(dump_buf));
+	if (oid)
+		for (ii=0; ii<SC_MAX_OBJECT_ID_OCTETS && oid->value[ii] != -1; ii++)
+			snprintf(dump_buf + strlen(dump_buf), sizeof(dump_buf) - strlen(dump_buf), "%s%i", (ii ? "." : ""), oid->value[ii]);
 
 	return dump_buf;
 }

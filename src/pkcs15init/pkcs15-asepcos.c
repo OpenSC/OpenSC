@@ -245,11 +245,7 @@ static int asepcos_do_store_pin(sc_profile_t *profile, sc_card_t *card,
 	*p++ = 0x00;
 	*p++ = 0x00;
 	/* key attributes (SO PIN) */
-#if 0
-	*p++ = (pinfo->flags & SC_PKCS15_PIN_FLAG_SO_PIN) ? 0x08 : 0x00;
-#else
 	*p++ = 0x00;
-#endif
 	/* the PIN */
 	*p++ = 0x81;
 	*p++ = pinlen & 0xff;
@@ -514,9 +510,9 @@ static int asepcos_do_create_key(sc_card_t *card, size_t ksize, int fileid,
 	int       r;
 	size_t    len;
 	sc_file_t *nfile = NULL;
-	u8        buf[512], *p = buf;
+	u8        buf[1024], *p = buf;
 
-	if (sizeof(buf) < kdlen + 11)
+	if (sizeof(buf) < kdlen + 12)
 		return SC_ERROR_BUFFER_TOO_SMALL;
 
 	*p++ = 0x85;
@@ -577,12 +573,20 @@ static int asepcos_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	                   kinfo->path.value[kinfo->path.len-1];
 
 	if (obj->auth_id.len != 0) {
-		/* the key is proctected by a PIN */
-		/* XXX use the pkcs15 structures for this */
+		/* the key is protected by a PIN */
+		sc_pkcs15_object_t *pin;
+		struct sc_pkcs15_auth_info *auth_info;
 		sc_cardctl_asepcos_akn2fileid_t st;
 
-		st.akn = sc_pkcs15init_get_pin_reference(p15card, profile,
-			                        SC_AC_SYMBOLIC, SC_PKCS15INIT_USER_PIN);
+		r = sc_pkcs15_find_pin_by_auth_id(p15card, &obj->auth_id, &pin);
+		if (r != SC_SUCCESS) {
+			sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "unable to determine reference for the PIN");
+			return r;
+		}
+
+		auth_info = (struct sc_pkcs15_auth_info *)pin->data;
+
+		st.akn = auth_info->attrs.pin.reference;
 		r = sc_card_ctl(p15card->card, SC_CARDCTL_ASEPCOS_AKN2FILEID, &st);
 		if (r != SC_SUCCESS) {
 			sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "unable to determine file id of the PIN");
@@ -590,12 +594,6 @@ static int asepcos_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		}
 		afileid = st.fileid;
 	}
-#if 0
-	/* select the DF */
-	r = sc_select_file(card, &profile->df_info->file->path, NULL);
-	if (r != SC_SUCCESS)
-		return r;
-#endif
 
 	/* authenticate if necessary */
 	r = asepcos_do_authenticate(profile, p15card, &profile->df_info->file->path, SC_AC_OP_CREATE);
@@ -607,19 +605,11 @@ static int asepcos_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	*p++ = 0xc1;
 	*p++ = 0x82;
 	p   += 2;
-#if 0
-	/* private exponent */
-	*p++ = 0x92;
-	SET_TLV_LENGTH(p, blen);
-	memset(p, 0xff, blen);
-	p   += blen;
-#else
 	/* public exponent */
 	*p++ = 0x90;
 	SET_TLV_LENGTH(p, 3);
 	memset(p, 0xff, 3);
 	p   += 3;
-#endif
 	/* primes p, q */
 	*p++ = 0x93;
 	SET_TLV_LENGTH(p, blen);
@@ -692,19 +682,11 @@ static int asepcos_do_store_rsa_key(sc_pkcs15_card_t *p15card, sc_profile_t *pro
 	*p++ = 0xc1;
 	*p++ = 0x82;
 	p   += 2;
-#if 0
-	/* private exponent */
-	*p++ = 0x92;
-	SET_TLV_LENGTH(p, key->d.len);
-	memcpy(p, key->d.data, key->d.len);
-	p += key->d.len;
-#else
 	/* public exponent */
 	*p++ = 0x90;
 	SET_TLV_LENGTH(p, key->exponent.len);
 	memcpy(p, key->exponent.data, key->exponent.len);
 	p   += key->exponent.len;
-#endif
 	/* primes p, q */
 	*p++ = 0x93;
 	SET_TLV_LENGTH(p, (key->p.len + key->q.len));

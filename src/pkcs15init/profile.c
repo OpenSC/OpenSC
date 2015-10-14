@@ -1,7 +1,7 @@
 /*
  * Initialize Cards according to PKCS#15
  *
- * Copyright (C) 2002 Olaf Kirch <okir@lst.de>
+ * Copyright (C) 2002 Olaf Kirch <okir@suse.de>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -112,6 +112,8 @@ static struct map		fileOpNames[] = {
 	{ "DELETE",	SC_AC_OP_DELETE	},
 	{ "DELETE-SELF",SC_AC_OP_DELETE_SELF },
 	{ "CREATE",	SC_AC_OP_CREATE	},
+	{ "CREATE-EF",	SC_AC_OP_CREATE_EF	},
+	{ "CREATE-DF",	SC_AC_OP_CREATE_DF	},
 	{ "REHABILITATE",SC_AC_OP_REHABILITATE	},
 	{ "INVALIDATE",	SC_AC_OP_INVALIDATE	},
 	{ "FILES",	SC_AC_OP_LIST_FILES	},
@@ -123,12 +125,15 @@ static struct map		fileOpNames[] = {
         { "PIN-DEFINE", SC_AC_OP_PIN_DEFINE },
         { "PIN-CHANGE", SC_AC_OP_PIN_CHANGE },
         { "PIN-RESET",  SC_AC_OP_PIN_RESET },
+        { "PIN-USE",	SC_AC_OP_PIN_USE },
 	{ "GENERATE",	SC_AC_OP_GENERATE },
 	{ "PSO-COMPUTE-SIGNATURE",	SC_AC_OP_PSO_COMPUTE_SIGNATURE },
 	{ "INTERNAL-AUTHENTICATE",	SC_AC_OP_INTERNAL_AUTHENTICATE },
 	{ "PSO-DECRYPT",		SC_AC_OP_PSO_DECRYPT },
 	{ "RESIZE",	SC_AC_OP_RESIZE },
 	{ "ADMIN",	SC_AC_OP_ADMIN	},
+	{ "ACTIVATE",	SC_AC_OP_ACTIVATE },
+	{ "DEACTIVATE",	SC_AC_OP_DEACTIVATE },
 	{ NULL, 0 }
 };
 static struct map		fileTypeNames[] = {
@@ -375,11 +380,15 @@ sc_profile_load(struct sc_profile *profile, const char *filename)
 
 	sc_log(ctx, "profile %s loaded ok", path);
 
-	if (res < 0)
+	if (res < 0) {
+		scconf_free(conf);
 		LOG_FUNC_RETURN(ctx, SC_ERROR_FILE_NOT_FOUND);
+	}
 
-	if (res == 0)
+	if (res == 0) {
+		scconf_free(conf);
 		LOG_FUNC_RETURN(ctx, SC_ERROR_SYNTAX_ERROR);
+	}
 
 	res = process_conf(profile, conf);
 	scconf_free(conf);
@@ -501,6 +510,8 @@ sc_profile_get_pin_info(struct sc_profile *profile,
 	pi = new_pin(profile, id);
 	if (pi == NULL)
 		return;
+
+	pi->pin.max_tries = pi->pin.tries_left;
 	*info = pi->pin;
 }
 
@@ -1294,7 +1305,7 @@ do_fileid(struct state *cur, int argc, char **argv)
 			parse_error(cur, "No path/fileid set for parent DF\n");
 			return 1;
 		}
-		if (df->path.len + 2 > sizeof(df->path)) {
+		if (df->path.len + 2 > sizeof(df->path.value)) {
 			parse_error(cur, "File path too long\n");
 			return 1;
 		}
@@ -1338,6 +1349,36 @@ do_reclength(struct state *cur, int argc, char **argv)
 		return 1;
 	cur->file->file->record_length = reclength;
 	return 0;
+}
+
+static int
+do_content(struct state *cur, int argc, char **argv)
+{
+	struct sc_file *file = cur->file->file;
+	size_t len = (strlen(argv[0]) + 1) / 2;
+	int rv = 0;
+
+	file->encoded_content = malloc(len);
+	if (!file->encoded_content)
+		return 1;
+	rv = sc_hex_to_bin(argv[0], file->encoded_content, &len);
+	file->encoded_content_len = len;
+	return rv;
+}
+
+static int
+do_prop_attr(struct state *cur, int argc, char **argv)
+{
+	struct sc_file *file = cur->file->file;
+	size_t len = (strlen(argv[0]) + 1) / 2;
+	int rv = 0;
+
+	file->prop_attr = malloc(len);
+	if (!file->prop_attr)
+		return 1;
+	rv = sc_hex_to_bin(argv[0], file->prop_attr, &len);
+	file->prop_attr_len = len;
+	return rv;
 }
 
 static int
@@ -1440,9 +1481,10 @@ do_acl(struct state *cur, int argc, char **argv)
 			method = SC_AC_SYMBOLIC;
 			if (map_str2int(cur, what+1, &id, pinIdNames))
 				return 1;
-		} else
-		if (get_authid(cur, what, &method, &id))
+		}
+		else if (get_authid(cur, what, &method, &id))
 			goto bad;
+
 
 		if (!strcmp(oper, "*")) {
 			for (op = 0; op < SC_MAX_AC_OPS; op++) {
@@ -1459,6 +1501,7 @@ do_acl(struct state *cur, int argc, char **argv)
 			 || acl->method == SC_AC_NONE
 			 || acl->method == SC_AC_UNKNOWN)
 				sc_file_clear_acl_entries(file, op);
+
 			sc_file_add_acl_entry(file, op, method, id);
 		}
 	}
@@ -1566,6 +1609,18 @@ do_pin_attempts(struct state *cur, int argc, char **argv)
 	if (get_uint(cur, argv[0], &count))
 		return 1;
 	pi->pin.tries_left = count;
+	return 0;
+}
+
+static int
+do_pin_maxunlocks(struct state *cur, int argc, char **argv)
+{
+	struct pin_info	*pi = cur->pin;
+	unsigned int	count;
+
+	if (get_uint(cur, argv[0], &count))
+		return 1;
+	pi->pin.max_unlocks = count;
 	return 0;
 }
 
@@ -1755,6 +1810,8 @@ static struct command	fs_commands[] = {
  { "profile-extension",	1,	1,	do_profile_extension	},
 /* AID of the DFs without file-id */
  { "exclusive-aid",	1,	1,	do_exclusive_aid	},
+ { "content",		1,	1,	do_content	},
+ { "prop-attr",		1,	1,	do_prop_attr	},
 
  { NULL, 0, 0, NULL }
 };
@@ -1772,16 +1829,17 @@ static struct block	fs_blocks[] = {
  * Pin section
  */
 static struct command	pi_commands[] = {
- { "file",		1,	1,	do_pin_file	},
- { "offset",		1,	1,	do_pin_offset	},
- { "attempts",		1,	2,	do_pin_attempts	},
- { "encoding",		1,	1,	do_pin_type	},
- { "reference",		1,	1,	do_pin_reference},
- { "auth-id",		1,	1,	do_pin_authid	},
- { "max-length",	1,	1,	do_pin_maxlength},
- { "min-length",	1,	1,	do_pin_minlength},
- { "stored-length",	1,	1,	do_pin_storedlength},
- { "flags",		1,	-1,	do_pin_flags	},
+ { "file",		1,	1,	do_pin_file		},
+ { "offset",		1,	1,	do_pin_offset		},
+ { "attempts",		1,	2,	do_pin_attempts		},
+ { "encoding",		1,	1,	do_pin_type		},
+ { "reference",		1,	1,	do_pin_reference	},
+ { "auth-id",		1,	1,	do_pin_authid		},
+ { "max-length",	1,	1,	do_pin_maxlength	},
+ { "min-length",	1,	1,	do_pin_minlength	},
+ { "stored-length",	1,	1,	do_pin_storedlength	},
+ { "max-unlocks",	1,	1,	do_pin_maxunlocks	},
+ { "flags",		1,	-1,	do_pin_flags		},
  { NULL, 0, 0, NULL }
 };
 
@@ -2004,7 +2062,7 @@ sc_profile_find_file_by_path(struct sc_profile *pro, const sc_path_t *path)
 	sc_log(ctx, "find profile file by path:%s", sc_print_path(path));
 #endif
 
-	if (!path->len && !path->aid.len)
+	if (!path || (!path->len && !path->aid.len))
 		return NULL;
 
 	for (fi = pro->ef_list; fi; fi = fi->next) {

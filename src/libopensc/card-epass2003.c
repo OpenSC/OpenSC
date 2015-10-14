@@ -19,7 +19,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#if HAVE_CONFIG_H
 #include "config.h"
+#endif
 #ifdef ENABLE_SM		/* empty file without SM enabled */
 #ifdef ENABLE_OPENSSL		/* empty file without openssl */
 
@@ -209,7 +211,7 @@ des3_encrypt_ecb(const unsigned char *key, int keysize,
 
 
 static int
-des3_encrypt_cbc(const unsigned char *key, int keysize, unsigned char iv[8],
+des3_encrypt_cbc(const unsigned char *key, int keysize, unsigned char iv[EVP_MAX_IV_LENGTH],
 		const unsigned char *input, size_t length, unsigned char *output)
 {
 	unsigned char bKey[24] = { 0 };
@@ -227,7 +229,7 @@ des3_encrypt_cbc(const unsigned char *key, int keysize, unsigned char iv[8],
 
 
 static int
-des3_decrypt_cbc(const unsigned char *key, int keysize, unsigned char iv[8],
+des3_decrypt_cbc(const unsigned char *key, int keysize, unsigned char iv[EVP_MAX_IV_LENGTH],
 		const unsigned char *input, size_t length, unsigned char *output)
 {
 	unsigned char bKey[24] = { 0 };
@@ -244,7 +246,7 @@ des3_decrypt_cbc(const unsigned char *key, int keysize, unsigned char iv[8],
 
 
 static int
-des_encrypt_cbc(const unsigned char *key, int keysize, unsigned char iv[8],
+des_encrypt_cbc(const unsigned char *key, int keysize, unsigned char iv[EVP_MAX_IV_LENGTH],
 		const unsigned char *input, size_t length, unsigned char *output)
 {
 	return openssl_enc(EVP_des_cbc(), key, iv, input, length, output);
@@ -252,7 +254,7 @@ des_encrypt_cbc(const unsigned char *key, int keysize, unsigned char iv[8],
 
 
 static int
-des_decrypt_cbc(const unsigned char *key, int keysize, unsigned char iv[8],
+des_decrypt_cbc(const unsigned char *key, int keysize, unsigned char iv[EVP_MAX_IV_LENGTH],
 		const unsigned char *input, size_t length, unsigned char *output)
 {
 	return openssl_dec(EVP_des_cbc(), key, iv, input, length, output);
@@ -450,7 +452,9 @@ epass2003_refresh(struct sc_card *card)
 	int r = SC_SUCCESS;
 
 	if (g_sm) {
+		card->sm_ctx.sm_mode = 0;
 		r = mutual_auth(card, g_init_key_enc, g_init_key_mac);
+		card->sm_ctx.sm_mode = SM_MODE_TRANSMIT;
 		LOG_TEST_RET(card->ctx, r, "mutual_auth failed");
 	}
 
@@ -590,31 +594,6 @@ construct_mac_tlv(unsigned char *apdu_buf, size_t data_tlv_len, size_t le_tlv_le
 	*mac_tlv_len = 2 + 8;
 	return 0;
 }
-
-#if 0
-static size_t calc_le(size_t le)
-{
-	size_t le_new = 0;
-	size_t resp_len = 0;
-	size_t sw_len = 4;	/* T 1 L 1 V 2 */
-	size_t mac_len = 10;	/* T 1 L 1 V 8 */
-	size_t mod = 16;
-	/* padding first */
-	resp_len = 1 + ((le + (mod - 1)) / mod) * mod;
-
-	if (0x7f < resp_len) {
-		resp_len += 0;
-
-	} else if (0x7f <= resp_len && resp_len < 0xff) {
-		resp_len += 1;
-	} else if (0xff <= resp_len) {
-		resp_len += 2;
-	}
-	resp_len += 2;		/* +T+L */
-	le_new = resp_len + sw_len + mac_len;
-	return le_new;
-}
-#endif
 
 
 /* According to GlobalPlatform Card Specification's SCP01
@@ -852,13 +831,13 @@ epass2003_sm_free_wrapped_apdu(struct sc_card *card,
 		rv = epass2003_sm_unwrap_apdu(card, *sm_apdu, plain);
 
 	if ((*sm_apdu)->data)
-		free((*sm_apdu)->data);
+		free((unsigned char *) (*sm_apdu)->data);
 	if ((*sm_apdu)->resp)
 		free((*sm_apdu)->resp);
 	free(*sm_apdu);
 	*sm_apdu = NULL;
 
-	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+	LOG_FUNC_RETURN(ctx, rv);
 }
 
 
@@ -972,9 +951,6 @@ epass2003_init(struct sc_card *card)
 	card->name = "epass2003";
 	card->cla = 0x00;
 	card->drv_data = NULL;
-/* VT
-	card->ctx->use_sm = 1;
-*/
 
 	g_sm = SM_SCP01;
 	/* g_sm = SM_PLAIN; */
@@ -1059,14 +1035,12 @@ epass2003_hook_file(struct sc_file *file, int inc)
 static int
 epass2003_select_fid_(struct sc_card *card, sc_path_t * in_path, sc_file_t ** file_out)
 {
-	sc_context_t *ctx;
 	struct sc_apdu apdu;
 	u8 buf[SC_MAX_APDU_BUFFER_SIZE] = { 0 };
 	u8 pathbuf[SC_MAX_PATH_SIZE], *path = pathbuf;
 	int r, pathlen;
 	sc_file_t *file = NULL;
 
-	ctx = card->ctx;
 	epass2003_hook_path(in_path, 1);
 	memcpy(path, in_path->value, in_path->len);
 	pathlen = in_path->len;
@@ -1168,7 +1142,7 @@ epass2003_select_fid(struct sc_card *card, unsigned int id_hi, unsigned int id_l
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	/* update cache */
-	if (file->type == SC_FILE_TYPE_DF) {
+	if (file && file->type == SC_FILE_TYPE_DF) {
 		card->cache.current_path.type = SC_PATH_TYPE_PATH;
 		card->cache.current_path.value[0] = 0x3f;
 		card->cache.current_path.value[1] = 0x00;

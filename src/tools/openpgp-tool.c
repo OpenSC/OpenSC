@@ -21,8 +21,17 @@
 #include "config.h"
 
 #include <stdio.h>
+/* For dup() and dup2() functions */
 #ifndef _WIN32
 #include <unistd.h>
+#else
+/*
+ * Windows:
+ * https://msdn.microsoft.com/en-us/library/8syseb29.aspx
+ * https://msdn.microsoft.com/en-us/library/886kc0as.aspx
+ */
+#include <io.h>
+#include <process.h>
 #endif
 #include <stdlib.h>
 #include <string.h>
@@ -32,12 +41,16 @@
 #include "libopensc/asn1.h"
 #include "libopensc/cards.h"
 #include "libopensc/cardctl.h"
+#include "libopensc/log.h"
+#include "libopensc/errors.h"
 #include "util.h"
+#include "libopensc/log.h"
 
-#define	OPT_RAW		256
-#define	OPT_PRETTY	257
-#define	OPT_VERIFY	258
-#define	OPT_PIN	    259
+#define OPT_RAW     256
+#define OPT_PRETTY  257
+#define OPT_VERIFY  258
+#define OPT_PIN     259
+#define OPT_DELKEY  260
 
 /* define structures */
 struct ef_name_map {
@@ -55,8 +68,6 @@ static char *prettify_gender(char *str);
 static void display_data(const struct ef_name_map *mapping, char *value);
 static int decode_options(int argc, char **argv);
 static int do_userinfo(sc_card_t *card);
-static int read_transp(sc_card_t *card, const char *pathstring, unsigned char *buf, int buflen);
-static void bintohex(char *buf, int len);
 
 /* define global variables */
 static int actions = 0;
@@ -74,7 +85,11 @@ static unsigned int key_len = 2048;
 static int opt_verify = 0;
 static char *verifytype = NULL;
 static int opt_pin = 0;
-static char *pin = NULL;
+static const char *pin = NULL;
+static int opt_erase = 0;
+static int opt_delkey = 0;
+static int opt_dump_do = 0;
+static u8 do_dump_idx;
 
 static const char *app_name = "openpgp-tool";
 
@@ -91,8 +106,11 @@ static const struct option options[] = {
 	{ "help",      no_argument,       NULL, 'h'        },
 	{ "verbose",   no_argument,       NULL, 'v'        },
 	{ "version",   no_argument,       NULL, 'V'        },
+	{ "erase",     no_argument,       NULL, 'E'        },
 	{ "verify",    required_argument, NULL, OPT_VERIFY },
 	{ "pin",       required_argument, NULL, OPT_PIN },
+	{ "del-key",   required_argument, NULL, OPT_DELKEY },
+	{ "do",        required_argument, NULL, 'd' },
 	{ NULL, 0, NULL, 0 }
 };
 
@@ -109,8 +127,11 @@ static const char *option_help[] = {
 /* h */	"Print this help message",
 /* v */	"Verbose operation. Use several times to enable debug output.",
 /* V */	"Show version number",
+/* E */	"Erase (reset) the card",
 	"Verify PIN (CHV1, CHV2, CHV3...)",
-	"PIN string"
+	"PIN string",
+	"Delete key (1, 2, 3 or all)",
+/* d */ "Dump private data object number <arg> (i.e. PRIVATE-DO-<arg>)",
 };
 
 static const struct ef_name_map openpgp_data[] = {
@@ -164,16 +185,16 @@ static char *prettify_language(char *str)
 {
 	if (str != NULL) {
 		switch (strlen(str)) {
-			case 8:	memmove(str+7, str+6, 1+strlen(str+6));
+			case 8: memmove(str+7, str+6, 1+strlen(str+6));
 				str[6] = ',';
 				/* fall through */
-			case 6:	memmove(str+5, str+4, 1+strlen(str+4));
+			case 6: memmove(str+5, str+4, 1+strlen(str+4));
 				str[4] = ',';
 				/* fall through */
-			case 4:	memmove(str+3, str+2, 1+strlen(str+2));
+			case 4: memmove(str+3, str+2, 1+strlen(str+2));
 				str[2] = ',';
 				/* fall through */
-			case 2:  return str;
+			case 2: return str;
 		}
 	}
 	return NULL;
@@ -185,10 +206,10 @@ static char *prettify_gender(char *str)
 {
 	if (str != NULL) {
 		switch (*str) {
-			case '0':  return "unknown";
-			case '1':  return "male";
-			case '2':  return "female";
-			case '9':  return "not applicable";
+			case '0': return "unknown";
+			case '1': return "male";
+			case '2': return "female";
+			case '9': return "not applicable";
 		}
 	}
 	return NULL;
@@ -216,7 +237,7 @@ static void display_data(const struct ef_name_map *mapping, char *value)
 			} else {
 				const char *label = mapping->name;
 
-				printf("%s:%*s%s\n", label, 10-strlen(label), "", value);
+				printf("%s:%*s%s\n", label, (int)(10-strlen(label)), "", value);
 			}
 		}
 	}
@@ -227,7 +248,7 @@ static int decode_options(int argc, char **argv)
 {
 	int c;
 
-	while ((c = getopt_long(argc, argv,"r:x:CUG:L:hwvV", options, (int *) 0)) != EOF) {
+	while ((c = getopt_long(argc, argv,"r:x:CUG:L:hwvVd:", options, (int *) 0)) != EOF) {
 		switch (c) {
 		case 'r':
 			opt_reader = optarg;
@@ -252,9 +273,7 @@ static int decode_options(int argc, char **argv)
 			break;
 		case OPT_PIN:
 			opt_pin++;
-			if (pin)
-				free(pin);
-			pin = strdup(optarg);
+			util_get_pin(optarg, &pin);
 			break;
 		case 'C':
 			opt_cardinfo++;
@@ -287,6 +306,21 @@ static int decode_options(int argc, char **argv)
 			show_version();
 			exit(EXIT_SUCCESS);
 			break;
+		case 'E':
+			opt_erase++;
+			break;
+		case OPT_DELKEY:
+			opt_delkey++;
+			if (strcmp(optarg, "all") != 0)   /* Arg string is not 'all' */
+				key_id = optarg[0] - '0';
+			else                              /* Arg string is 'all' */
+				key_id = 'a';
+			break;
+		case 'd':
+			do_dump_idx = optarg[0] - '0';
+			opt_dump_do++;
+			actions++;
+			break;
 		default:
 			util_print_usage_and_die(app_name, options, option_help, NULL);
 		}
@@ -299,87 +333,94 @@ static int decode_options(int argc, char **argv)
 static int do_userinfo(sc_card_t *card)
 {
 	int i;
+	/* FIXME there are no length checks on buf. */
 	unsigned char buf[2048];
 
 	for (i = 0; openpgp_data[i].ef != NULL; i++) {
 		sc_path_t path;
 		sc_file_t *file;
-		size_t count;
-		size_t offset = 0;
+		unsigned int count;
 		int r;
 
 		sc_format_path(openpgp_data[i].ef, &path);
 		r = sc_select_file(card, &path, &file);
-
 		if (r) {
-			fprintf(stderr, "Failed to select EF %s: %s\n",
-				openpgp_data[i].ef, sc_strerror(r));
+			fprintf(stderr, "Failed to select EF %s: %s\n", openpgp_data[i].ef, sc_strerror(r));
 			return EXIT_FAILURE;
 		}
 
-		count = file->size;
-		while (count > 0) {
-	                int c = count > sizeof(buf) ? sizeof(buf) : count;
+		count = (unsigned int)file->size;
+		if (!count)
+			continue;
 
-        	        r = sc_read_binary(card, offset, buf+offset, c, 0);
-                	if (r < 0) {
-				fprintf(stderr, "%s: read failed - %s\n",
-					openpgp_data[i].ef, sc_strerror(r));
-	                        return EXIT_FAILURE;
-        	        }
-                	if (r != c) {
-                        	fprintf(stderr, "%s: expecting %d, got only %d bytes\n",
-					openpgp_data[i].ef, c, r);
-	                        return EXIT_FAILURE;
-        	        }
-
-        	        offset += r;
-                	count -= r;
-	        }
-
-		buf[file->size] = '\0';
-
-		if (file->size > 0) {
-			display_data(openpgp_data + i, buf);
+		if (count > (unsigned int)sizeof(buf) - 1) {
+			fprintf(stderr, "Too small buffer to read the OpenPGP data\n");
+			return EXIT_FAILURE;
 		}
+
+		r = sc_read_binary(card, 0, buf, (size_t)count, 0);
+		if (r < 0) {
+			fprintf(stderr, "%s: read failed - %s\n", openpgp_data[i].ef, sc_strerror(r));
+			return EXIT_FAILURE;
+		}
+		if (r != count) {
+			fprintf(stderr, "%s: expecting %d, got only %d bytes\n", openpgp_data[i].ef, count, r);
+			return EXIT_FAILURE;
+		}
+
+		buf[count] = '\0';
+
+		display_data(openpgp_data + i, (char *) buf);
 	}
 
 	return EXIT_SUCCESS;
 }
 
-
-/* Select and read a transparent EF */
-static int read_transp(sc_card_t *card, const char *pathstring, unsigned char *buf, int buflen)
+static int do_dump_do(sc_card_t *card, unsigned int tag)
 {
-	sc_path_t path;
-	int r;
+	int r, tmp;
+	FILE *fp;
 
-	sc_format_path(pathstring, &path);
-	r = sc_select_file(card, &path, NULL);
-	if (r < 0)
-		fprintf(stderr, "\nFailed to select file %s: %s\n", pathstring, sc_strerror(r));
-	else {
-		r = sc_read_binary(card, 0, buf, buflen, 0);
-		if (r < 0)
-			fprintf(stderr, "\nFailed to read %s: %s\n", pathstring, sc_strerror(r));
+	// Private DO are specified up to 254 bytes
+	unsigned char buffer[254];
+	memset(buffer, '\0', sizeof(buffer));
+
+	r = sc_get_data(card, tag, buffer, sizeof(buffer));
+	if (r < 0) {
+		printf("Failed to get data object: %s\n", sc_strerror(r));
+		if(SC_ERROR_SECURITY_STATUS_NOT_SATISFIED == r) {
+			printf("Make sure the 'verify' and 'pin' parameters are correct.\n");
+		}
+		return r;
 	}
 
-	return r;
-}
-
-
-/* Hex-encode the buf, 2*len+1 bytes must be reserved. E.g. {'1','2'} -> {'3','1','3','2','\0'} */
-static void bintohex(char *buf, int len)
-{
-	static const char hextable[] = "0123456789ABCDEF";
-	int i;
-
-	for (i = len - 1; i >= 0; i--) {
-		unsigned char c = (unsigned char) buf[i];
-
-		buf[2 * i + 1] = hextable[c % 16];
-		buf[2 * i] = hextable[c / 16];
+	if(opt_raw) {
+		r = 0;
+		#ifndef _WIN32
+		tmp = dup(fileno(stdout));
+		#else
+		tmp = _dup(_fileno(stdout));
+		#endif
+		if (tmp < 0)
+			return EXIT_FAILURE;
+		fp = freopen(NULL, "wb", stdout);
+		if (fp) {
+			r = (int)fwrite(buffer, sizeof(char), sizeof(buffer), fp);
+		}
+		#ifndef _WIN32
+		dup2(tmp, fileno(stdout));
+		#else
+		_dup2(tmp, _fileno(stdout));
+		#endif
+		clearerr(stdout);
+		close(tmp);
+		if (sizeof(buffer) != r)
+			return EXIT_FAILURE;
+	} else {
+		util_hex_dump_asc(stdout, buffer, sizeof(buffer), -1);
 	}
+
+	return EXIT_SUCCESS;
 }
 
 int do_genkey(sc_card_t *card, u8 key_id, unsigned int key_len)
@@ -415,7 +456,7 @@ int do_genkey(sc_card_t *card, u8 key_id, unsigned int key_len)
 	return 0;
 }
 
-int do_verify(sc_card_t *card, u8 *type, u8* pin)
+int do_verify(sc_card_t *card, char *type, const char *pin)
 {
 	struct sc_pin_cmd_data data;
 	int tries_left;
@@ -437,9 +478,101 @@ int do_verify(sc_card_t *card, u8 *type, u8* pin)
 	data.cmd = SC_PIN_CMD_VERIFY;
 	data.pin_type = SC_AC_CHV;
 	data.pin_reference = type[3] - '0';
-	data.pin1.data = pin;
-	data.pin1.len = strlen(pin);
+	data.pin1.data = (unsigned char *) pin;
+	data.pin1.len = (int)strlen(pin);
 	r = sc_pin_cmd(card, &data, &tries_left);
+	return r;
+}
+
+/**
+ * Delete key, for OpenPGP card.
+ * This function is not complete and is reserved for future version (> 2) of OpenPGP card.
+ **/
+int delete_key_openpgp(sc_card_t *card, u8 key_id)
+{
+	char *del_fingerprint = "00:DA:00:C6:14:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00";
+	char *del_creationtime = "00:DA:00:CD:04:00:00:00:00";
+	/* We need to replace the 4th byte later */
+	char *apdustring = NULL;
+	u8 buf[SC_MAX_APDU_BUFFER_SIZE];
+	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
+	sc_apdu_t apdu;
+	size_t len0;
+	int i;
+	int r = SC_SUCCESS;
+
+	for (i = 0; i < 2; i++) {
+		if (i == 0)    /* Reset fingerprint */
+			apdustring = del_fingerprint;
+		else           /* Reset creation time */
+			apdustring = del_creationtime;
+		/* Convert the string to binary array */
+		len0 = sizeof(buf);
+		sc_hex_to_bin(apdustring, buf, &len0);
+
+		/* Replace DO tag, subject to key ID */
+		buf[3] = buf[3] + key_id;
+
+		/* Build APDU from binary array */
+		r = sc_bytes2apdu(card->ctx, buf, len0, &apdu);
+		if (r) {
+			fprintf(stderr, "Failed to build APDU: %s\n", sc_strerror(r));
+			return r;
+		}
+		apdu.resp = rbuf;
+		apdu.resplen = sizeof(rbuf);
+
+		/* Send APDU to card */
+		r = sc_transmit_apdu(card, &apdu);
+		if (r) {
+			fprintf(stderr, "Transmiting APDU failed: %s\n", sc_strerror(r));
+			return r;
+		}
+	}
+	/* TODO: Rewrite Extended Header List.
+	 * Not support by OpenGPG v2 yet */
+	return r;
+}
+
+int do_delete_key(sc_card_t *card, u8 key_id)
+{
+	sc_path_t path;
+	int r = SC_SUCCESS;
+
+	/* Currently, only Gnuk supports deleting keys */
+	if (card->type != SC_CARD_TYPE_OPENPGP_GNUK) {
+		printf("Only Gnuk supports deleting keys. General OpenPGP doesn't.");
+		return SC_ERROR_NOT_SUPPORTED;
+	}
+
+	if (key_id < 1 || (key_id > 3 && key_id != 'a')) {
+		printf("Error: Invalid key id %d", key_id);
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+	if (key_id == 1 || key_id == 'a') {
+		sc_format_path("B601", &path);
+		r |= sc_delete_file(card, &path);
+	}
+	if (key_id == 2 || key_id == 'a') {
+		sc_format_path("B801", &path);
+		r |= sc_delete_file(card, &path);
+	}
+	if (key_id == 3 || key_id == 'a') {
+		sc_format_path("A401", &path);
+		r |= sc_delete_file(card, &path);
+	}
+	return r;
+}
+
+int do_erase(sc_card_t *card)
+{
+	int r;
+	/* Check card version */
+	if (card->type != SC_CARD_TYPE_OPENPGP_V2) {
+		printf("Do not erase card which is not OpenPGP v2\n");
+	}
+	printf("Erase card\n");
+	r = sc_card_ctl(card, SC_CARDCTL_ERASE_CARD, NULL);
 	return r;
 }
 
@@ -450,7 +583,7 @@ int main(int argc, char **argv)
 	sc_card_t *card = NULL;
 	int r;
 	int argind = 0;
-	int exit_status = EXIT_FAILURE;
+	int exit_status = EXIT_SUCCESS;
 
 	/* decode options */
 	argind = decode_options(argc, argv);
@@ -481,8 +614,10 @@ int main(int argc, char **argv)
 
 	/* check card type */
 	if ((card->type != SC_CARD_TYPE_OPENPGP_V1) &&
-	    (card->type != SC_CARD_TYPE_OPENPGP_V2)) {
+		(card->type != SC_CARD_TYPE_OPENPGP_V2) &&
+		(card->type != SC_CARD_TYPE_OPENPGP_GNUK)) {
 		util_error("not an OpenPGP card");
+		fprintf(stderr, "Card type %X\n", card->type);
 		exit_status = EXIT_FAILURE;
 		goto out;
 	}
@@ -502,6 +637,10 @@ int main(int argc, char **argv)
 		exit_status |= do_verify(card, verifytype, pin);
 	}
 
+	if (opt_dump_do) {
+		exit_status |= do_dump_do(card, 0x0100 + do_dump_idx);
+	}
+
 	if (opt_genkey)
 		exit_status |= do_genkey(card, key_id, key_len);
 
@@ -510,11 +649,21 @@ int main(int argc, char **argv)
 		sc_unlock(card);
 		sc_disconnect_card(card);
 		sc_release_context(ctx);
+		#ifndef _WIN32
 		execv(exec_program, largv);
+		#else
+		_execv(exec_program, largv);
+		#endif
 		/* we should not get here */
 		perror("execv()");
 		exit(EXIT_FAILURE);
 	}
+
+	if (opt_delkey)
+		exit_status |= do_delete_key(card, key_id);
+
+	if (opt_erase)
+		exit_status |= do_erase(card);
 
 out:
 	sc_unlock(card);

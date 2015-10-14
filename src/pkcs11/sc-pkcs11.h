@@ -78,10 +78,12 @@ struct sc_pkcs11_config {
 	unsigned int slots_per_card;
 	unsigned char hide_empty_tokens;
 	unsigned char lock_login;
+	unsigned char init_sloppy;
 	unsigned int pin_unblock_style;
 	unsigned int create_puk_slot;
 	unsigned int zero_ckaid_for_ca_certs;
 	unsigned int create_slots_flags;
+	unsigned char ignore_pin_length;
 };
 
 /*
@@ -159,12 +161,10 @@ struct sc_pkcs11_framework_ops {
 	CK_RV (*change_pin)(struct sc_pkcs11_slot *,
 				CK_CHAR_PTR, CK_ULONG,
 				CK_CHAR_PTR, CK_ULONG);
-
 	/*
-	 * In future: functions to create new objects
-	 * (ie. certificates, private keys)
+	 * In future: functions to create new objects (ie. certificates, private keys)
 	 */
-	CK_RV (*init_token)(struct sc_pkcs11_card *, void *,
+	CK_RV (*init_token)(struct sc_pkcs11_slot *, void *,
 				CK_UTF8CHAR_PTR, CK_ULONG,
 				CK_UTF8CHAR_PTR);
 	CK_RV (*init_pin)(struct sc_pkcs11_slot *,
@@ -209,7 +209,7 @@ struct sc_pkcs11_slot {
 	CK_SLOT_INFO slot_info;		/* Slot specific information (information about reader) */
 	CK_TOKEN_INFO token_info;	/* Token specific information (information about card) */
 	sc_reader_t *reader;		/* same as card->reader if there's a card present */
-	struct sc_pkcs11_card *card;	/* The card associated with this slot */
+	struct sc_pkcs11_card *p11card;	/* The card associated with this slot */
 	unsigned int events;		/* Card events SC_EVENT_CARD_{INSERTED,REMOVED} */
 	void *fw_data;			/* Framework specific data */  /* TODO: get know how it used */
 	list_t objects;			/* Objects in this slot */
@@ -276,7 +276,9 @@ struct sc_pkcs11_mechanism_type {
 					CK_BYTE_PTR, CK_ULONG,
 					CK_BYTE_PTR, CK_ULONG_PTR);
 	/* mechanism specific data */
-	const void *		  mech_data;
+	const void *  mech_data;
+	/* free mechanism specific data */
+	void		  (*free_mech_data)(const void *mech_data);
 };
 typedef struct sc_pkcs11_mechanism_type sc_pkcs11_mechanism_type_t;
 
@@ -370,6 +372,7 @@ CK_RV attr_find(CK_ATTRIBUTE_PTR, CK_ULONG, CK_ULONG, void *, size_t *);
 CK_RV attr_find2(CK_ATTRIBUTE_PTR, CK_ULONG, CK_ATTRIBUTE_PTR, CK_ULONG,
 		CK_ULONG, void *, size_t *);
 CK_RV attr_find_ptr(CK_ATTRIBUTE_PTR, CK_ULONG, CK_ULONG, void **, size_t *);
+CK_RV attr_find_and_allocate_ptr(CK_ATTRIBUTE_PTR, CK_ULONG, CK_ULONG, void **, size_t *);
 CK_RV attr_find_var(CK_ATTRIBUTE_PTR, CK_ULONG, CK_ULONG, void *, size_t *);
 CK_RV attr_extract(CK_ATTRIBUTE_PTR, void *, size_t *);
 
@@ -403,7 +406,7 @@ sc_pkcs11_mechanism_type_t *sc_pkcs11_find_mechanism(struct sc_pkcs11_card *,
 				CK_MECHANISM_TYPE, unsigned int);
 sc_pkcs11_mechanism_type_t *sc_pkcs11_new_fw_mechanism(CK_MECHANISM_TYPE,
 				CK_MECHANISM_INFO_PTR, CK_KEY_TYPE,
-				void *);
+				const void *, void (*)(const void *));
 sc_pkcs11_operation_t *sc_pkcs11_new_operation(sc_pkcs11_session_t *,
 				sc_pkcs11_mechanism_type_t *);
 void sc_pkcs11_release_operation(sc_pkcs11_operation_t **);

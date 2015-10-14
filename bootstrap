@@ -1,15 +1,3 @@
 #!/bin/sh
 
-set -e
-set -x
-if test -f Makefile; then
-  make distclean
-fi
-rm -rf *~ *.cache *.m4 config.guess config.log config.status config.sub depcomp ltmain.sh
-
-if test ! -z "$1"; then
-    cp configure.ac configure.ac.orig
-    sed 's/^define(\[PACKAGE_SUFFIX\],\s*\[\([-~]*[0-9a-zA-Z]*\)\])$/define(\[PACKAGE_SUFFIX\], \['$1'\])/g' configure.ac.orig > configure.ac
-fi
-
 autoreconf --verbose --install --force

@@ -37,6 +37,7 @@
 #include <openssl/evp.h>
 #include <openssl/bn.h>
 #include <openssl/rand.h>
+#include <openssl/err.h>
 
 #include "libopensc/opensc.h"
 #include "libopensc/cardctl.h"
@@ -51,14 +52,17 @@ static const char magic[] = "Salted__";
 static struct sc_aid sc_hsm_aid = { { 0xE8,0x2B,0x06,0x01,0x04,0x01,0x81,0xC3,0x1F,0x02,0x01 }, 11 };
 
 static int	opt_wait = 0;
-static char *opt_reader;
+static char *opt_reader = NULL;
+static char *opt_label = NULL;
 static int	verbose = 0;
 
 // Some reasonable maximums
 #define MAX_CERT		4096
 #define MAX_PRKD		256
-#define MAX_KEY			512
+#define MAX_KEY			1024
 #define MAX_WRAPPED_KEY	(MAX_CERT + MAX_PRKD + MAX_KEY)
+
+#define SEED_LENGTH 16
 
 enum {
 	OPT_SO_PIN = 0x100,
@@ -83,6 +87,7 @@ static const struct option options[] = {
 	{ "pwd-shares-threshold",	1, NULL,		OPT_PASSWORD_SHARES_THRESHOLD },
 	{ "pwd-shares-total",		1, NULL,		OPT_PASSWORD_SHARES_TOTAL },
 	{ "key-reference",			1, NULL,		'i' },
+	{ "label",					1, NULL,		'l' },
 	{ "force",					0, NULL,		'f' },
 	{ "reader",					1, NULL,		'r' },
 	{ "wait",					0, NULL,		'w' },
@@ -104,6 +109,7 @@ static const char *option_help[] = {
 	"Define threshold for number of password shares required for reconstruction",
 	"Define number of password shares",
 	"Key reference for key wrap/unwrap",
+	"Token label for --initialize",
 	"Force replacement of key and certificate",
 	"Uses reader number <arg> [0]",
 	"Wait for a card to be inserted",
@@ -135,14 +141,15 @@ static sc_card_t *card = NULL;
  * @param s Secret to share
  * @param n Maximum number of shares
  * @param rngSeed Seed value for CPRNG
+ * @param rngSeedLength Lenght of Seed value for CPRNG
  *
  */
-static void generatePrime(BIGNUM *prime, const BIGNUM *s, const unsigned int n, char *rngSeed) {
-
+static void generatePrime(BIGNUM *prime, const BIGNUM *s, const unsigned int n, unsigned char *rngSeed, const unsigned int rngSeedLength)
+{
 	int bits = 0;
 
 	// Seed the RNG
-	RAND_seed(rngSeed, sizeof(rngSeed));
+	RAND_seed(rngSeed, rngSeedLength);
 
 	// Determine minimum number of bits for prime >= max(2^r, n + 1)
 	bits = BN_num_bits_word(n + 1) > BN_num_bits(s) ? (BN_num_bits_word(n + 1)) : (BN_num_bits(s));
@@ -166,8 +173,8 @@ static void generatePrime(BIGNUM *prime, const BIGNUM *s, const unsigned int n, 
  * @param prime Prime for finite field arithmetic
  * @param y Pointer for storage of calculated y-value
  */
-static void calculatePolynomialValue(const BIGNUM x, BIGNUM **polynomial, const unsigned char t, const BIGNUM prime, BIGNUM *y) {
-
+static void calculatePolynomialValue(const BIGNUM x, BIGNUM **polynomial, const unsigned char t, const BIGNUM prime, BIGNUM *y)
+{
 	BIGNUM **pp;
 	BIGNUM temp;
 	BIGNUM exponent;
@@ -223,8 +230,8 @@ static void calculatePolynomialValue(const BIGNUM x, BIGNUM **polynomial, const 
  * @param prime Prime for finite field arithmetic
  * @param shares Pointer for storage of calculated shares (must be big enough to hold n shares)
  */
-static int createShares(const BIGNUM *s, const unsigned char t, const unsigned char n,	const BIGNUM prime, secret_share_t *shares) {
-
+static int createShares(const BIGNUM *s, const unsigned char t, const unsigned char n,	const BIGNUM prime, secret_share_t *shares)
+{
 	// Array representing the polynomial a(x) = s + a_1 * x + ... + a_n-1 * x^n-1 mod p
 	BIGNUM **polynomial = malloc(n * sizeof(BIGNUM *));
 	BIGNUM **pp;
@@ -279,8 +286,8 @@ static int createShares(const BIGNUM *s, const unsigned char t, const unsigned c
  * @param prime Prime for finite field arithmetic
  * @param s Pointer for storage of calculated secred
  */
-static int reconstructSecret(secret_share_t *shares, unsigned char t, const BIGNUM prime, BIGNUM *s) {
-
+static int reconstructSecret(secret_share_t *shares, unsigned char t, const BIGNUM prime, BIGNUM *s)
+{
 	unsigned char i;
 	unsigned char j;
 
@@ -338,6 +345,7 @@ static int reconstructSecret(secret_share_t *shares, unsigned char t, const BIGN
 		 * multiplication
 		 */
 		if (BN_mod_inverse(&denominator, &denominator, &prime, ctx) == NULL ) {
+			free(bValue);
 			return -1;
 		}
 
@@ -392,7 +400,8 @@ static int reconstructSecret(secret_share_t *shares, unsigned char t, const BIGN
  * @param shares Shares to be freed
  * @param n Total number of shares to freed
  */
-static int cleanUpShares(secret_share_t *shares, unsigned char n) {
+static int cleanUpShares(secret_share_t *shares, unsigned char n)
+{
 	int i;
 	secret_share_t *sp;
 
@@ -410,14 +419,20 @@ static int cleanUpShares(secret_share_t *shares, unsigned char n) {
 
 
 
-void clearScreen() {
-	if (system( "clear" )) system( "cls" );
+void clearScreen()
+{
+	if (system( "clear" )) {
+		if (system( "cls" )) {
+			fprintf(stderr, "Clearing the screen failed\n");
+		}
+	}
 }
 
 
 
-void waitForEnterKeyPressed() {
-	char c;
+void waitForEnterKeyPressed()
+{
+	int c;
 
 	fflush(stdout);
 	while ((c = getchar()) != '\n' && c != EOF) {
@@ -426,7 +441,8 @@ void waitForEnterKeyPressed() {
 
 
 
-static void print_dkek_info(sc_cardctl_sc_hsm_dkek_t *dkekinfo) {
+static void print_dkek_info(sc_cardctl_sc_hsm_dkek_t *dkekinfo)
+{
 	printf("DKEK shares          : %d\n", dkekinfo->dkek_shares);
 	if (dkekinfo->outstanding_shares > 0) {
 		printf("DKEK import pending, %d share(s) still missing\n",dkekinfo->outstanding_shares);
@@ -445,27 +461,75 @@ static void print_info(sc_card_t *card, sc_file_t *file)
 	struct sc_pin_cmd_data data;
 	sc_cardctl_sc_hsm_dkek_t dkekinfo;
 
-	u8 major, minor;
+	u8 major, minor, opt;
 
 	major = file->prop_attr[file->prop_attr_len - 2];
 	minor = file->prop_attr[file->prop_attr_len - 1];
 	printf("Version              : %d.%d\n", (int)major, (int)minor);
 
-	/* Try to update PIN info from card */
-	memset(&data, 0, sizeof(data));
-	data.cmd = SC_PIN_CMD_GET_INFO;
-	data.pin_type = SC_AC_CHV;
-	data.pin_reference = ID_USER_PIN;
+	if (file->prop_attr_len > 2) {	/* Version >= 2.0 */
+		opt = file->prop_attr[file->prop_attr_len - 4];
+		if (opt != 0) {
+			printf("Config options       :\n");
+			if (opt & INIT_RRC_ENABLED) {
+				printf("  User PIN reset with SO-PIN enabled\n");
+			}
+			if (opt & INIT_TRANSPORT_PIN) {
+				printf("  Transport-PIN mode enabled\n");
+			}
+		}
 
-	r = sc_pin_cmd(card, &data, &tries_left);
+		/* Try to update SO-PIN info from card */
+		memset(&data, 0, sizeof(data));
+		data.cmd = SC_PIN_CMD_GET_INFO;
+		data.pin_type = SC_AC_CHV;
+		data.pin_reference = ID_SO_PIN;
 
-	if (r == SC_ERROR_REF_DATA_NOT_USABLE) {
-		printf("SmartCard-HSM has never been initialized. Please use --initialize to set SO-PIN and user PIN.\n");
-	} else {
-		if (tries_left == 0) {
-			printf("User PIN locked\n");
+		r = sc_pin_cmd(card, &data, &tries_left);
+		if (r == SC_ERROR_DATA_OBJECT_NOT_FOUND) {
+			printf("SmartCard-HSM has never been initialized. Please use --initialize to set SO-PIN and user PIN.\n");
 		} else {
-			printf("User PIN tries left  : %d\n", tries_left);
+			if (tries_left == 0) {
+				printf("SO-PIN locked\n");
+			} else {
+				printf("SO-PIN tries left    : %d\n", tries_left);
+			}
+			/* Try to update PIN info from card */
+			memset(&data, 0, sizeof(data));
+			data.cmd = SC_PIN_CMD_GET_INFO;
+			data.pin_type = SC_AC_CHV;
+			data.pin_reference = ID_USER_PIN;
+
+			r = sc_pin_cmd(card, &data, &tries_left);
+			if (r == SC_ERROR_CARD_CMD_FAILED) {
+				printf("Public key authentication active.\n");
+			} else if (r == SC_ERROR_REF_DATA_NOT_USABLE) {
+				printf("Transport-PIN active. Please change to user selected PIN first.\n");
+			} else {
+				if (tries_left == 0) {
+					printf("User PIN locked\n");
+				} else {
+					printf("User PIN tries left  : %d\n", tries_left);
+				}
+			}
+		}
+	} else {	/* Version < 2.0 */
+		/* Try to update PIN info from card */
+		memset(&data, 0, sizeof(data));
+		data.cmd = SC_PIN_CMD_GET_INFO;
+		data.pin_type = SC_AC_CHV;
+		data.pin_reference = ID_USER_PIN;
+
+		r = sc_pin_cmd(card, &data, &tries_left);
+
+		if (r == SC_ERROR_REF_DATA_NOT_USABLE) {
+			printf("SmartCard-HSM has never been initialized. Please use --initialize to set SO-PIN and user PIN.\n");
+		} else {
+			if (tries_left == 0) {
+				printf("User PIN locked\n");
+			} else {
+				printf("User PIN tries left  : %d\n", tries_left);
+			}
 		}
 	}
 
@@ -485,7 +549,7 @@ static void print_info(sc_card_t *card, sc_file_t *file)
 
 
 
-static void initialize(sc_card_t *card, const char *so_pin, const char *user_pin, int retry_counter, int dkek_shares)
+static int initialize(sc_card_t *card, const char *so_pin, const char *user_pin, int retry_counter, int dkek_shares, const char *label)
 {
 	sc_cardctl_sc_hsm_init_param_t param;
 	size_t len;
@@ -504,12 +568,12 @@ static void initialize(sc_card_t *card, const char *so_pin, const char *user_pin
 	r = sc_hex_to_bin(_so_pin, param.init_code, &len);
 	if (r < 0) {
 		fprintf(stderr, "Error decoding initialization code (%s)\n", sc_strerror(r));
-		return;
+		return -1;
 	}
 
 	if (len != 8) {
 		fprintf(stderr, "SO-PIN must be a hexadecimal string of 16 characters\n");
-		return;
+		return -1;
 	}
 
 	if (user_pin == NULL) {
@@ -524,27 +588,27 @@ static void initialize(sc_card_t *card, const char *so_pin, const char *user_pin
 
 	if (param.user_pin_len < 6) {
 		fprintf(stderr, "PIN must be at least 6 characters long\n");
-		return;
+		return -1;
 	}
 
 	if (param.user_pin_len > 16) {
 		fprintf(stderr, "PIN must not be longer than 16 characters\n");
-		return;
+		return -1;
 	}
 
 	if ((param.user_pin_len == 6) && (retry_counter > 3)) {
 		fprintf(stderr, "Retry counter must not exceed 3 for a 6 digit PIN. Use a longer PIN for a higher retry counter.\n");
-		return;
+		return -1;
 	}
 
 	if ((param.user_pin_len == 7) && (retry_counter > 5)) {
 		fprintf(stderr, "Retry counter must not exceed 5 for a 7 digit PIN. Use a longer PIN for a higher retry counter.\n");
-		return;
+		return -1;
 	}
 
 	if (retry_counter > 10) {
 		fprintf(stderr, "Retry counter must not exceed 10\n");
-		return;
+		return -1;
 	}
 
 	param.user_pin = (u8 *)_user_pin;
@@ -555,27 +619,35 @@ static void initialize(sc_card_t *card, const char *so_pin, const char *user_pin
 	param.options[1] = 0x01;
 
 	param.dkek_shares = (char)dkek_shares;
+	param.label = (char *)label;
 
 	r = sc_card_ctl(card, SC_CARDCTL_SC_HSM_INITIALIZE, (void *)&param);
 	if (r < 0) {
 		fprintf(stderr, "sc_card_ctl(*, SC_CARDCTL_SC_HSM_INITIALIZE, *) failed with %s\n", sc_strerror(r));
 	}
+
+	return 0;
 }
 
 
 
-static int recreate_password_from_shares(char **pwd, int *pwdlen, int num_of_password_shares) {
-
+static int recreate_password_from_shares(char **pwd, int *pwdlen, int num_of_password_shares)
+{
 	int r, i;
 	BIGNUM prime;
 	BIGNUM secret;
 	BIGNUM *p;
 	char inbuf[64];
-	char bin[64];
-	int binlen = 0;
-	char *ip;
+	unsigned char bin[64];
+	size_t binlen = 0;
+	unsigned char *ip;
 	secret_share_t *shares = NULL;
 	secret_share_t *sp;
+
+	if (num_of_password_shares < 2) {
+		fprintf(stderr, "--pwd-shares-total must 2 or larger\n");
+		return -1;
+	}
 
 	/*
 	 * Initialize prime and secret
@@ -591,7 +663,10 @@ static int recreate_password_from_shares(char **pwd, int *pwdlen, int num_of_pas
 	printf("\nPlease remember to present the share id as well as the share value.");
 	printf("\n\nPlease enter prime: ");
 	memset(inbuf, 0, sizeof(inbuf));
-	fgets(inbuf, sizeof(inbuf), stdin);
+	if (fgets(inbuf, sizeof(inbuf), stdin) == NULL) {
+		fprintf(stderr, "Input aborted\n");
+		return -1;
+	}
 	binlen = 64;
 	sc_hex_to_bin(inbuf, bin, &binlen);
 	BN_bin2bn(bin, binlen, &prime);
@@ -612,13 +687,19 @@ static int recreate_password_from_shares(char **pwd, int *pwdlen, int num_of_pas
 
 		printf("Please enter share ID: ");
 		memset(inbuf, 0, sizeof(inbuf));
-		fgets(inbuf, sizeof(inbuf), stdin);
+		if (fgets(inbuf, sizeof(inbuf), stdin) == NULL) {
+			fprintf(stderr, "Input aborted\n");
+			return -1;
+		}
 		p = &(sp->x);
 		BN_hex2bn(&p, inbuf);
 
 		printf("Please enter share value: ");
 		memset(inbuf, 0, sizeof(inbuf));
-		fgets(inbuf, sizeof(inbuf), stdin);
+		if (fgets(inbuf, sizeof(inbuf), stdin) == NULL) {
+			fprintf(stderr, "Input aborted\n");
+			return -1;
+		}
 		binlen = 64;
 		sc_hex_to_bin(inbuf, bin, &binlen);
 		BN_bin2bn(bin, binlen, &(sp->y));
@@ -632,13 +713,14 @@ static int recreate_password_from_shares(char **pwd, int *pwdlen, int num_of_pas
 
 	if (r < 0) {
 		printf("\nError during reconstruction of secret. Wrong shares?\n");
+		cleanUpShares(shares, num_of_password_shares);
 		return r;
 	}
 
 	/*
 	 * Encode the secret value
 	 */
-	ip = inbuf;
+	ip = (unsigned char *) inbuf;
 	*pwdlen = BN_bn2bin(&secret, ip);
 	*pwd = calloc(1, *pwdlen);
 	memcpy(*pwd, ip, *pwdlen);
@@ -653,7 +735,7 @@ static int recreate_password_from_shares(char **pwd, int *pwdlen, int num_of_pas
 
 
 
-static void import_dkek_share(sc_card_t *card, const char *inf, int iter, char *password, int num_of_password_shares)
+static int import_dkek_share(sc_card_t *card, const char *inf, int iter, const char *password, int num_of_password_shares)
 {
 	sc_cardctl_sc_hsm_dkek_t dkekinfo;
 	EVP_CIPHER_CTX ctx;
@@ -662,23 +744,29 @@ static void import_dkek_share(sc_card_t *card, const char *inf, int iter, char *
 	char *pwd = NULL;
 	int r, outlen, pwdlen;
 
+	if (inf == NULL) {
+		fprintf(stderr, "No file name specified for DKEK share\n");
+		return -1;
+	}
+
 	in = fopen(inf, "rb");
 
 	if (in == NULL) {
 		perror(inf);
-		return;
+		return -1;
 	}
 
 	if (fread(filebuff, 1, sizeof(filebuff), in) != sizeof(filebuff)) {
 		perror(inf);
-		return;
+		fclose(in);
+		return -1;
 	}
 
 	fclose(in);
 
 	if (memcmp(filebuff, magic, sizeof(magic) - 1)) {
-		printf("File %s is not a DKEK share\n", inf);
-		return;
+		fprintf(stderr, "File %s is not a DKEK share\n", inf);
+		return -1;
 	}
 
 	if (password == NULL) {
@@ -691,12 +779,12 @@ static void import_dkek_share(sc_card_t *card, const char *inf, int iter, char *
 		} else {
 			r = recreate_password_from_shares(&pwd, &pwdlen, num_of_password_shares);
 			if (r < 0) {
-				return;
+				return -1;
 			}
 		}
 
 	} else {
-		pwd = password;
+		pwd = (char *) password;
 		pwdlen = strlen(password);
 	}
 
@@ -711,13 +799,13 @@ static void import_dkek_share(sc_card_t *card, const char *inf, int iter, char *
 	EVP_CIPHER_CTX_init(&ctx);
 	EVP_DecryptInit_ex(&ctx, EVP_aes_256_cbc(), NULL, key, iv);
 	if (!EVP_DecryptUpdate(&ctx, outbuff, &outlen, filebuff + 16, sizeof(filebuff) - 16)) {
-		printf("Error decrypting DKEK share. Password correct ?\n");
-		return;
+		fprintf(stderr, "Error decrypting DKEK share. Password correct ?\n");
+		return -1;
 	}
 
 	if (!EVP_DecryptFinal_ex(&ctx, outbuff + outlen, &r)) {
-		printf("Error decrypting DKEK share. Password correct ?\n");
-		return;
+		fprintf(stderr, "Error decrypting DKEK share. Password correct ?\n");
+		return -1;
 	}
 
 	memset(&dkekinfo, 0, sizeof(dkekinfo));
@@ -732,16 +820,17 @@ static void import_dkek_share(sc_card_t *card, const char *inf, int iter, char *
 	EVP_CIPHER_CTX_cleanup(&ctx);
 
 	if (r == SC_ERROR_INS_NOT_SUPPORTED) {			// Not supported or not initialized for key shares
-		printf("Not supported by card or card not initialized for key share usage\n");
-		return;
+		fprintf(stderr, "Not supported by card or card not initialized for key share usage\n");
+		return -1;
 	}
 
 	if (r < 0) {
 		fprintf(stderr, "sc_card_ctl(*, SC_CARDCTL_SC_HSM_IMPORT_DKEK_SHARE, *) failed with %s\n", sc_strerror(r));
-		return;
+		return -1;
 	}
 	printf("DKEK share imported\n");
 	print_dkek_info(&dkekinfo);
+	return 0;
 }
 
 
@@ -788,7 +877,7 @@ static int generate_pwd_shares(sc_card_t *card, char **pwd, int *pwdlen, int pas
 	int r, i;
 	BIGNUM prime;
 	BIGNUM secret;
-	char buf[64];
+	unsigned char buf[64];
 	char hex[64];
 	int l;
 
@@ -796,6 +885,26 @@ static int generate_pwd_shares(sc_card_t *card, char **pwd, int *pwdlen, int pas
 	secret_share_t *sp;
 
 	u8 rngseed[16];
+
+	if ((password_shares_threshold == -1) || (password_shares_total == -1)) {
+		fprintf(stderr, "Must specify both, --pwd-shares-total and --pwd-shares-threshold\n");
+		return -1;
+	}
+
+	if (password_shares_total < 3) {
+		fprintf(stderr, "--pwd-shares-total must be 3 or larger\n");
+		return -1;
+	}
+
+	if (password_shares_threshold < 2) {
+		fprintf(stderr, "--pwd-shares-threshold must 2 or larger\n");
+		return -1;
+	}
+
+	if (password_shares_threshold > password_shares_total) {
+		fprintf(stderr, "--pwd-shares-threshold must be smaller or equal to --pwd-shares-total\n");
+		return -1;
+	}
 
 	printf(	"\nThe DKEK will be enciphered using a randomly generated 64 bit password.\n");
 	printf(	"This password is split using a (%i-of-%i) threshold scheme.\n\n", password_shares_threshold, password_shares_total);
@@ -811,11 +920,11 @@ static int generate_pwd_shares(sc_card_t *card, char **pwd, int *pwdlen, int pas
 	*pwd = calloc(1, 8);
 	*pwdlen = 8;
 
-	r = sc_get_challenge(card, *pwd, 8);
+	r = sc_get_challenge(card, (unsigned char *)*pwd, 8);
 	if (r < 0) {
-		printf("Error generating random key failed with ", sc_strerror(r));
-		OPENSSL_cleanse(pwd, *pwdlen);
-		free(pwd);
+		printf("Error generating random key failed with %s", sc_strerror(r));
+		OPENSSL_cleanse(*pwd, *pwdlen);
+		free(*pwd);
 		return r;
 	}
 	**pwd |= 0x80;
@@ -829,20 +938,20 @@ static int generate_pwd_shares(sc_card_t *card, char **pwd, int *pwdlen, int pas
 	/*
 	 * Encode the secret value
 	 */
-	BN_bin2bn(*pwd, *pwdlen, &secret);
+	BN_bin2bn((unsigned char *)*pwd, *pwdlen, &secret);
 
 	/*
 	 * Generate seed and calculate a prime depending on the size of the secret
 	 */
-	r = sc_get_challenge(card, rngseed, 16);
+	r = sc_get_challenge(card, rngseed, SEED_LENGTH);
 	if (r < 0) {
-		printf("Error generating random seed failed with ", sc_strerror(r));
-		OPENSSL_cleanse(pwd, *pwdlen);
-		free(pwd);
+		printf("Error generating random seed failed with %s", sc_strerror(r));
+		OPENSSL_cleanse(*pwd, *pwdlen);
+		free(*pwd);
 		return r;
 	}
 
-	generatePrime(&prime, &secret, password_shares_total, rngseed);
+	generatePrime(&prime, &secret, password_shares_total, rngseed, SEED_LENGTH);
 
 	// Allocate data buffer for the generated shares
 	shares = malloc(password_shares_total * sizeof(secret_share_t));
@@ -887,39 +996,43 @@ static int generate_pwd_shares(sc_card_t *card, char **pwd, int *pwdlen, int pas
 
 
 
-static void create_dkek_share(sc_card_t *card, const char *outf, int iter, char *password, int password_shares_threshold, int password_shares_total)
+static int create_dkek_share(sc_card_t *card, const char *outf, int iter, const char *password, int password_shares_threshold, int password_shares_total)
 {
 	EVP_CIPHER_CTX ctx;
 	FILE *out = NULL;
-	u8 filebuff[64], key[EVP_MAX_KEY_LENGTH], iv[EVP_MAX_IV_LENGTH],outbuff[64];
+	u8 filebuff[64], key[EVP_MAX_KEY_LENGTH], iv[EVP_MAX_IV_LENGTH];
 	u8 dkek_share[32];
 	char *pwd = NULL;
 	int r = 0, outlen, pwdlen = 0;
 
-	if (password == NULL) {
+	if (outf == NULL) {
+		fprintf(stderr, "No file name specified for DKEK share\n");
+		return -1;
+	}
 
-		if (password_shares_threshold == -1) {
+	if (password == NULL) {
+		if ((password_shares_threshold == -1) && (password_shares_total == -1)) {
 			ask_for_password(&pwd, &pwdlen);
 		} else { // create password using threshold scheme
 			r = generate_pwd_shares(card, &pwd, &pwdlen, password_shares_threshold, password_shares_total);
 		}
 
 	} else {
-		pwd = password;
+		pwd = (char *) password;
 		pwdlen = strlen(password);
 	}
 
 	if (r < 0) {
-		printf("Creating DKEK share failed");
-		return;
+		fprintf(stderr, "Creating DKEK share failed\n");
+		return -1;
 	}
 
 	memcpy(filebuff, magic, sizeof(magic) - 1);
 
 	r = sc_get_challenge(card, filebuff + 8, 8);
 	if (r < 0) {
-		printf("Error generating random number failed with ", sc_strerror(r));
-		return;
+		fprintf(stderr, "Error generating random number failed with %s\n", sc_strerror(r));
+		return -1;
 	}
 
 	printf("Enciphering DKEK share, please wait...\n");
@@ -932,32 +1045,33 @@ static void create_dkek_share(sc_card_t *card, const char *outf, int iter, char 
 
 	r = sc_get_challenge(card, dkek_share, sizeof(dkek_share));
 	if (r < 0) {
-		printf("Error generating random number failed with ", sc_strerror(r));
-		return;
+		fprintf(stderr, "Error generating random number failed with %s\n", sc_strerror(r));
+		return -1;
 	}
 
 	EVP_CIPHER_CTX_init(&ctx);
 	EVP_EncryptInit_ex(&ctx, EVP_aes_256_cbc(), NULL, key, iv);
 	if (!EVP_EncryptUpdate(&ctx, filebuff + 16, &outlen, dkek_share, sizeof(dkek_share))) {
-		printf("Error encrypting DKEK share\n");
-		return;
+		fprintf(stderr, "Error encrypting DKEK share\n");
+		return -1;
 	}
 
 	if (!EVP_EncryptFinal_ex(&ctx, filebuff + 16 + outlen, &r)) {
-		printf("Error encrypting DKEK share\n");
-		return;
+		fprintf(stderr, "Error encrypting DKEK share\n");
+		return -1;
 	}
 
 	out = fopen(outf, "wb");
 
 	if (out == NULL) {
 		perror(outf);
-		return;
+		return -1;
 	}
 
 	if (fwrite(filebuff, 1, sizeof(filebuff), out) != sizeof(filebuff)) {
 		perror(outf);
-		return;
+		fclose(out);
+		return -1;
 	}
 
 	fclose(out);
@@ -966,6 +1080,7 @@ static void create_dkek_share(sc_card_t *card, const char *outf, int iter, char 
 	EVP_CIPHER_CTX_cleanup(&ctx);
 
 	printf("DKEK share created and saved to %s\n", outf);
+	return 0;
 }
 
 
@@ -985,16 +1100,60 @@ static size_t determineLength(const u8 *tlv, size_t buflen)
 
 
 
-static void wrap_key(sc_card_t *card, u8 keyid, const char *outf, const char *pin)
+/**
+ * Encapsulate data object as TLV object
+ *
+ * @param tag the one byte tag
+ * @param indata the value field
+ * @param inlen the length of the value field
+ * @param outdata pointer to the allocated memory buffer
+ * @param outlen the size of the TLV object
+ */
+static int wrap_with_tag(u8 tag, u8 *indata, size_t inlen, u8 **outdata, size_t *outlen)
+{
+	int nlc = 0;
+	u8 *ptr;
+
+	if (inlen > 127) {
+		do	{
+			nlc++;
+		} while (inlen >= (unsigned)(1 << (nlc << 3)));
+	}
+
+	*outlen = 2 + nlc + inlen;
+	ptr = malloc(*outlen);
+	if (ptr == NULL) {
+		return SC_ERROR_OUT_OF_MEMORY;
+	}
+
+	*outdata = ptr;
+	*ptr++ = tag;
+
+	if (nlc) {
+		*ptr++ = 0x80 | nlc;
+		while (nlc--) {
+			*ptr++ = (inlen >> (nlc << 3)) & 0xFF;
+		}
+	} else {
+		*ptr++ = inlen & 0x7F;
+	}
+
+	memcpy(ptr, indata, inlen);
+	return SC_SUCCESS;
+}
+
+
+
+static int wrap_key(sc_card_t *card, int keyid, const char *outf, const char *pin)
 {
 	sc_cardctl_sc_hsm_wrapped_key_t wrapped_key;
 	struct sc_pin_cmd_data data;
-	sc_file_t *file = NULL;
 	sc_path_t path;
 	FILE *out = NULL;
 	u8 fid[2];
 	u8 ef_prkd[MAX_PRKD];
 	u8 ef_cert[MAX_CERT];
+	u8 wrapped_key_buff[MAX_KEY];
 	u8 keyblob[MAX_WRAPPED_KEY];
 	u8 *key;
 	u8 *ptr;
@@ -1002,26 +1161,36 @@ static void wrap_key(sc_card_t *card, u8 keyid, const char *outf, const char *pi
 	size_t key_len;
 	int r, ef_prkd_len, ef_cert_len;
 
+	if ((keyid < 1) || (keyid > 255)) {
+		fprintf(stderr, "Invalid key reference (must be 0 < keyid <= 255)\n");
+		return -1;
+	}
+
+	if (outf == NULL) {
+		fprintf(stderr, "No file name specified for wrapped key\n");
+		return -1;
+	}
+
 	if (pin == NULL) {
 		printf("Enter User PIN : ");
 		util_getpass(&lpin, NULL, stdin);
 		printf("\n");
 	} else {
-		lpin = (u8 *)pin;
+		lpin = (char *)pin;
 	}
 
 	memset(&data, 0, sizeof(data));
 	data.cmd = SC_PIN_CMD_VERIFY;
 	data.pin_type = SC_AC_CHV;
 	data.pin_reference = ID_USER_PIN;
-	data.pin1.data = lpin;
+	data.pin1.data = (unsigned char *)lpin;
 	data.pin1.len = strlen(lpin);
 
 	r = sc_pin_cmd(card, &data, NULL);
 
 	if (r < 0) {
 		fprintf(stderr, "PIN verification failed with %s\n", sc_strerror(r));
-		return;
+		return -1;
 	}
 
 	if (pin == NULL) {
@@ -1029,21 +1198,24 @@ static void wrap_key(sc_card_t *card, u8 keyid, const char *outf, const char *pi
 	}
 
 	wrapped_key.key_id = keyid;
+	wrapped_key.wrapped_key = wrapped_key_buff;
+	wrapped_key.wrapped_key_length = sizeof(wrapped_key_buff);
 
 	r = sc_card_ctl(card, SC_CARDCTL_SC_HSM_WRAP_KEY, (void *)&wrapped_key);
 
 	if (r == SC_ERROR_INS_NOT_SUPPORTED) {			// Not supported or not initialized for key shares
-		return;
+		fprintf(stderr, "Card not initialized for key wrap\n");
+		return -1;
 	}
 
 	if (r < 0) {
 		fprintf(stderr, "sc_card_ctl(*, SC_CARDCTL_SC_HSM_WRAP_KEY, *) failed with %s\n", sc_strerror(r));
-		return;
+		return -1;
 	}
 
 
 	fid[0] = PRKD_PREFIX;
-	fid[1] = keyid;
+	fid[1] = (unsigned char)keyid;
 	ef_prkd_len = 0;
 
 	/* Try to select a related EF containing the PKCS#15 description of the key */
@@ -1062,7 +1234,7 @@ static void wrap_key(sc_card_t *card, u8 keyid, const char *outf, const char *pi
 	}
 
 	fid[0] = EE_CERTIFICATE_PREFIX;
-	fid[1] = keyid;
+	fid[1] = (unsigned char)keyid;
 	ef_cert_len = 0;
 
 	/* Try to select a related EF containing the certificate for the key */
@@ -1080,17 +1252,19 @@ static void wrap_key(sc_card_t *card, u8 keyid, const char *outf, const char *pi
 		}
 	}
 
-
 	ptr = keyblob;
 
 	// Encode key in octet string object
-	sc_asn1_write_element(card->ctx, SC_ASN1_OCTET_STRING,
-			wrapped_key.wrapped_key, wrapped_key.wrapped_key_length,
-			&key, &key_len);
+	key_len = 0;
+	wrap_with_tag(0x04, wrapped_key.wrapped_key, wrapped_key.wrapped_key_length,
+						&key, &key_len);
 
 	memcpy(ptr, key, key_len);
 	ptr += key_len;
+
 	free(key);
+	key = NULL;
+	key_len = 0;
 
 	// Add private key description
 	if (ef_prkd_len > 0) {
@@ -1104,27 +1278,27 @@ static void wrap_key(sc_card_t *card, u8 keyid, const char *outf, const char *pi
 		ptr += ef_cert_len;
 	}
 
-	// Encode key in octet string object
-	sc_asn1_write_element(card->ctx, SC_ASN1_SEQUENCE|SC_ASN1_CONS,
-			keyblob, ptr - keyblob,
-			&key, &key_len);
+	// Encode key, key decription and certificate object in sequence
+	wrap_with_tag(0x30, keyblob, ptr - keyblob, &key, &key_len);
 
 	out = fopen(outf, "wb");
 
 	if (out == NULL) {
 		perror(outf);
 		free(key);
-		return;
+		return -1;
 	}
 
 	if (fwrite(key, 1, key_len, out) != key_len) {
 		perror(outf);
 		free(key);
-		return;
+		fclose(out);
+		return -1;
 	}
 
 	free(key);
 	fclose(out);
+	return 0;
 }
 
 
@@ -1132,7 +1306,6 @@ static void wrap_key(sc_card_t *card, u8 keyid, const char *outf, const char *pi
 static int update_ef(sc_card_t *card, u8 prefix, u8 id, int erase, const u8 *buf, size_t buflen)
 {
 	sc_file_t *file = NULL;
-	sc_file_t newfile;
 	sc_path_t path;
 	u8 fid[2];
 	int r;
@@ -1169,7 +1342,7 @@ static int update_ef(sc_card_t *card, u8 prefix, u8 id, int erase, const u8 *buf
 
 
 
-static void unwrap_key(sc_card_t *card, u8 keyid, const char *inf, const char *pin, int force)
+static int unwrap_key(sc_card_t *card, int keyid, const char *inf, const char *pin, int force)
 {
 	sc_cardctl_sc_hsm_wrapped_key_t wrapped_key;
 	struct sc_pin_cmd_data data;
@@ -1183,16 +1356,26 @@ static void unwrap_key(sc_card_t *card, u8 keyid, const char *inf, const char *p
 	int r, keybloblen;
 	size_t len, olen, prkd_len, cert_len;
 
+	if ((keyid < 1) || (keyid > 255)) {
+		fprintf(stderr, "Invalid key reference (must be 0 < keyid <= 255)\n");
+		return -1;
+	}
+
+	if (inf == NULL) {
+		fprintf(stderr, "No file name specified for wrapped key\n");
+		return -1;
+	}
+
 	in = fopen(inf, "rb");
 
 	if (in == NULL) {
 		perror(inf);
-		return;
+		return -1;
 	}
 
 	if ((keybloblen = fread(keyblob, 1, sizeof(keyblob), in)) < 0) {
 		perror(inf);
-		return;
+		return -1;
 	}
 
 	fclose(in);
@@ -1202,14 +1385,14 @@ static void unwrap_key(sc_card_t *card, u8 keyid, const char *inf, const char *p
 			((cla & SC_ASN1_TAG_CONSTRUCTED) != SC_ASN1_TAG_CONSTRUCTED) ||
 			((tag != SC_ASN1_TAG_SEQUENCE)) ){
 		fprintf(stderr, "Invalid wrapped key format (Outer sequence).\n");
-		return;
+		return -1;
 	}
 
 	if ((sc_asn1_read_tag(&ptr, len, &cla, &tag, &olen) != SC_SUCCESS) ||
 			(cla & SC_ASN1_TAG_CONSTRUCTED) ||
 			((tag != SC_ASN1_TAG_OCTET_STRING)) ){
 		fprintf(stderr, "Invalid wrapped key format (Key binary).\n");
-		return;
+		return -1;
 	}
 
 	wrapped_key.wrapped_key = (u8 *)ptr;
@@ -1234,7 +1417,7 @@ static void unwrap_key(sc_card_t *card, u8 keyid, const char *inf, const char *p
 
 	if ((prkd_len > 0) && !force) {
 		fid[0] = PRKD_PREFIX;
-		fid[1] = keyid;
+		fid[1] = (unsigned char)keyid;
 
 		/* Try to select a related EF containing the PKCS#15 description of the key */
 		sc_path_set(&path, SC_PATH_TYPE_FILE_ID, fid, sizeof(fid), 0, 0);
@@ -1242,13 +1425,13 @@ static void unwrap_key(sc_card_t *card, u8 keyid, const char *inf, const char *p
 
 		if (r == SC_SUCCESS) {
 			fprintf(stderr, "Found existing private key description in EF with fid %02x%02x. Please remove key first, select unused key reference or use --force.\n", fid[0], fid[1]);
-			return;
+			return -1;
 		}
 	}
 
 	if ((cert_len > 0) && !force) {
 		fid[0] = EE_CERTIFICATE_PREFIX;
-		fid[1] = keyid;
+		fid[1] = (unsigned char)keyid;
 
 		/* Try to select a related EF containing the certificate */
 		sc_path_set(&path, SC_PATH_TYPE_FILE_ID, fid, sizeof(fid), 0, 0);
@@ -1256,7 +1439,7 @@ static void unwrap_key(sc_card_t *card, u8 keyid, const char *inf, const char *p
 
 		if (r == SC_SUCCESS) {
 			fprintf(stderr, "Found existing certificate in EF with fid %02x%02x. Please remove certificate first, select unused key reference or use --force.\n", fid[0], fid[1]);
-			return;
+			return -1;
 		}
 	}
 
@@ -1265,21 +1448,21 @@ static void unwrap_key(sc_card_t *card, u8 keyid, const char *inf, const char *p
 		util_getpass(&lpin, NULL, stdin);
 		printf("\n");
 	} else {
-		lpin = (u8 *)pin;
+		lpin = (char *)pin;
 	}
 
 	memset(&data, 0, sizeof(data));
 	data.cmd = SC_PIN_CMD_VERIFY;
 	data.pin_type = SC_AC_CHV;
 	data.pin_reference = ID_USER_PIN;
-	data.pin1.data = lpin;
+	data.pin1.data = (u8 *)lpin;
 	data.pin1.len = strlen(lpin);
 
 	r = sc_pin_cmd(card, &data, NULL);
 
 	if (r < 0) {
 		fprintf(stderr, "PIN verification failed with %s\n", sc_strerror(r));
-		return;
+		return -1;
 	}
 
 	if (pin == NULL) {
@@ -1299,12 +1482,18 @@ static void unwrap_key(sc_card_t *card, u8 keyid, const char *inf, const char *p
 	r = sc_card_ctl(card, SC_CARDCTL_SC_HSM_UNWRAP_KEY, (void *)&wrapped_key);
 
 	if (r == SC_ERROR_INS_NOT_SUPPORTED) {			// Not supported or not initialized for key shares
-		return;
+		fprintf(stderr, "Card not initialized for key wrap\n");
+		return -1;
+	}
+
+	if (r == SC_ERROR_INCORRECT_PARAMETERS) {			// Not supported or not initialized for key shares
+		fprintf(stderr, "Wrapped key does not match DKEK\n");
+		return -1;
 	}
 
 	if (r < 0) {
 		fprintf(stderr, "sc_card_ctl(*, SC_CARDCTL_SC_HSM_UNWRAP_KEY, *) failed with %s\n", sc_strerror(r));
-		return;
+		return -1;
 	}
 
 	if (prkd_len > 0) {
@@ -1312,7 +1501,7 @@ static void unwrap_key(sc_card_t *card, u8 keyid, const char *inf, const char *p
 
 		if (r < 0) {
 			fprintf(stderr, "Updating private key description failed with %s\n", sc_strerror(r));
-			return;
+			return -1;
 		}
 	}
 
@@ -1321,11 +1510,12 @@ static void unwrap_key(sc_card_t *card, u8 keyid, const char *inf, const char *p
 
 		if (r < 0) {
 			fprintf(stderr, "Updating certificate failed with %s\n", sc_strerror(r));
-			return;
+			return -1;
 		}
 	}
 
 	printf("Key successfully imported\n");
+	return 0;
 }
 
 
@@ -1344,7 +1534,7 @@ int main(int argc, char * const argv[])
 	const char *opt_so_pin = NULL;
 	const char *opt_pin = NULL;
 	const char *opt_filename = NULL;
-	char *opt_password = NULL;
+	const char *opt_password = NULL;
 	int opt_retry_counter = 3;
 	int opt_dkek_shares = -1;
 	int opt_key_reference = -1;
@@ -1389,13 +1579,13 @@ int main(int argc, char * const argv[])
 			action_count++;
 			break;
 		case OPT_PASSWORD:
-			opt_password = optarg;
+			util_get_pin(optarg, &opt_password);
 			break;
 		case OPT_SO_PIN:
-			opt_so_pin = optarg;
+			util_get_pin(optarg, &opt_so_pin);
 			break;
 		case OPT_PIN:
-			opt_pin = optarg;
+			util_get_pin(optarg, &opt_pin);
 			break;
 		case OPT_RETRY:
 			opt_retry_counter = atol(optarg);
@@ -1418,6 +1608,9 @@ int main(int argc, char * const argv[])
 		case 'r':
 			opt_reader = optarg;
 			break;
+		case 'l':
+			opt_label = optarg;
+			break;
 		case 'v':
 			verbose++;
 			break;
@@ -1437,7 +1630,7 @@ int main(int argc, char * const argv[])
 	r = sc_context_create(&ctx, &ctx_param);
 	if (r != SC_SUCCESS) {
 		fprintf(stderr, "Failed to establish context: %s\n", sc_strerror(r));
-		return 1;
+		exit(1);
 	}
 
 	/* Only change if not in opensc.conf */
@@ -1446,9 +1639,11 @@ int main(int argc, char * const argv[])
 		sc_ctx_log_to_file(ctx, "stderr");
 	}
 
-	err = util_connect_card(ctx, &card, opt_reader, opt_wait, verbose);
+	r = util_connect_card(ctx, &card, opt_reader, opt_wait, verbose);
 	if (r != SC_SUCCESS) {
-		fprintf(stderr, "Failed to connect to card: %s\n", sc_strerror(r));
+		if (r < 0) {
+			fprintf(stderr, "Failed to connect to card: %s\n", sc_strerror(err));
+		}
 		goto end;
 	}
 
@@ -1457,33 +1652,32 @@ int main(int argc, char * const argv[])
 
 	if (r != SC_SUCCESS) {
 		fprintf(stderr, "Failed to select application: %s\n", sc_strerror(r));
-		goto end;
+		goto fail;
 	}
 
-	if (do_initialize) {
-		initialize(card, opt_so_pin, opt_pin, opt_retry_counter, opt_dkek_shares);
-	}
+	if (do_initialize && initialize(card, opt_so_pin, opt_pin, opt_retry_counter, opt_dkek_shares, opt_label))
+		goto fail;
 
-	if (do_create_dkek_share) {
-		create_dkek_share(card, opt_filename, opt_iter, opt_password, opt_password_shares_threshold, opt_password_shares_total);
-	}
+	if (do_create_dkek_share && create_dkek_share(card, opt_filename, opt_iter, opt_password, opt_password_shares_threshold, opt_password_shares_total))
+		goto fail;
 
-	if (do_import_dkek_share) {
-		import_dkek_share(card, opt_filename, opt_iter, opt_password, opt_password_shares_total);
-	}
+	if (do_import_dkek_share && import_dkek_share(card, opt_filename, opt_iter, opt_password, opt_password_shares_total))
+		goto fail;
 
-	if (do_wrap_key) {
-		wrap_key(card, opt_key_reference, opt_filename, opt_pin);
-	}
+	if (do_wrap_key && wrap_key(card, opt_key_reference, opt_filename, opt_pin))
+		goto fail;
 
-	if (do_unwrap_key) {
-		unwrap_key(card, opt_key_reference, opt_filename, opt_pin, opt_force);
-	}
+	if (do_unwrap_key && unwrap_key(card, opt_key_reference, opt_filename, opt_pin, opt_force))
+		goto fail;
 
 	if (action_count == 0) {
 		print_info(card, file);
 	}
 
+	err = 0;
+	goto end;
+fail:
+	err = 1;
 end:
 	if (card) {
 		sc_unlock(card);

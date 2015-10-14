@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2004  Martin Paljak <martin@martinpaljak.net>
  * Copyright (C) 2004  Priit Randla <priit.randla@eyp.ee>
- * Copyright (C) 2003  Marie Fischer <marie@vtl.ee> 
+ * Copyright (C) 2003  Marie Fischer <marie@vtl.ee>
  * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
  * Copyright (C) 2002  g10 Code GmbH
  *
@@ -22,7 +22,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#if HAVE_CONFIG_H
 #include "config.h"
+#endif
 
 #include <stdlib.h>
 #include <string.h>
@@ -52,10 +54,14 @@ static struct sc_atr_table mcrd_atrs[] = {
 	{"3B:FE:18:00:00:80:31:FE:45:80:31:80:66:40:90:A4:56:1B:16:83:01:90:00:86", NULL, "EstEID 3.0 (dev1) warm", SC_CARD_TYPE_MCRD_ESTEID_V30, 0, NULL},
 	{"3b:fe:18:00:00:80:31:fe:45:80:31:80:66:40:90:a4:16:2a:00:83:01:90:00:e1", NULL, "EstEID 3.0 (dev2) warm", SC_CARD_TYPE_MCRD_ESTEID_V30, 0, NULL},
 	{"3b:fe:18:00:00:80:31:fe:45:80:31:80:66:40:90:a4:16:2a:00:83:0f:90:00:ef", NULL, "EstEID 3.0 (18.01.2011) warm", SC_CARD_TYPE_MCRD_ESTEID_V30, 0, NULL},
+	{"3b:fa:18:00:00:80:31:fe:45:fe:65:49:44:20:2f:20:50:4b:49:03", NULL, "EstEID 3.5 cold", SC_CARD_TYPE_MCRD_ESTEID_V30, 0, NULL },
+	{"3b:f8:18:00:00:80:31:fe:45:fe:41:5a:45:20:44:49:54:33", NULL, "AzeDIT 3.5 cold", SC_CARD_TYPE_MCRD_ESTEID_V30, 0, NULL },
 	{NULL, NULL, NULL, 0, 0, NULL}
 };
 
 static unsigned char EstEID_v3_AID[] = {0xF0, 0x45, 0x73, 0x74, 0x45, 0x49, 0x44, 0x20, 0x76, 0x65, 0x72, 0x20, 0x31, 0x2E, 0x30};
+static unsigned char EstEID_v35_AID[] = {0xD2, 0x33, 0x00, 0x00, 0x00, 0x45, 0x73, 0x74, 0x45, 0x49, 0x44, 0x20, 0x76, 0x33, 0x35};
+static unsigned char AzeDIT_v35_AID[] = {0xD0, 0x31, 0x00, 0x00, 0x00, 0x44, 0x69, 0x67, 0x69, 0x49, 0x44};
 
 static struct sc_card_operations mcrd_ops;
 static struct sc_card_driver mcrd_drv = {
@@ -270,11 +276,28 @@ int is_esteid_card(sc_card_t *card) {
 }
 static int mcrd_match_card(sc_card_t * card)
 {
-	int i = 0;
+	int i = 0, r = 0;
+	sc_apdu_t apdu;
+
 	i = _sc_match_atr(card, mcrd_atrs, &card->type);
 	if (i >= 0) {
 		card->name = mcrd_atrs[i].name;
 		return 1;
+	}
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3, 0xA4, 0x04, 0x00);
+	apdu.lc = sizeof(EstEID_v35_AID);
+	apdu.data = EstEID_v35_AID;
+	apdu.datalen = sizeof(EstEID_v35_AID);
+	apdu.resplen = 0;
+	apdu.le = 0;
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "SELECT AID: %02X%02X", apdu.sw1, apdu.sw2);
+	if(apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
+	        sc_log(card->ctx, "AID found");
+	        card->type = SC_CARD_TYPE_MCRD_ESTEID_V30;
+	        return 1;
 	}
 	return 0;
 }
@@ -318,7 +341,30 @@ static int mcrd_init(sc_card_t * card)
 			SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "SELECT AID: %02X%02X", apdu.sw1, apdu.sw2);
 			if(apdu.sw1 != 0x90 && apdu.sw2 != 0x00)
-				SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,  SC_ERROR_CARD_CMD_FAILED);
+			{
+				sc_format_apdu(card, &apdu, SC_APDU_CASE_3, 0xA4, 0x04, 0x00);
+	                        apdu.lc = sizeof(EstEID_v35_AID);
+        	                apdu.data = EstEID_v35_AID;
+                	        apdu.datalen = sizeof(EstEID_v35_AID);
+                        	apdu.resplen = 0;
+	                        apdu.le = 0;
+				r = sc_transmit_apdu(card, &apdu);
+	                        SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+        	                sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "SELECT AID: %02X%02X", apdu.sw1, apdu.sw2);
+				if (apdu.sw1 != 0x90 && apdu.sw2 != 0x00) {
+					sc_format_apdu(card, &apdu, SC_APDU_CASE_3, 0xA4, 0x04, 0x00);
+					apdu.lc = sizeof(AzeDIT_v35_AID);
+					apdu.data = AzeDIT_v35_AID;
+					apdu.datalen = sizeof(AzeDIT_v35_AID);
+					apdu.resplen = 0;
+					apdu.le = 0;
+					r = sc_transmit_apdu(card, &apdu);
+					SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+					sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "SELECT AID: %02X%02X", apdu.sw1, apdu.sw2);
+					if (apdu.sw1 != 0x90 && apdu.sw2 != 0x00)
+						SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,  SC_ERROR_CARD_CMD_FAILED);
+				}
+			}
 		} else {
 			/* EstEID v1.0 and 1.1 have 1024 bit keys */
 			flags = SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_SHA1;
@@ -335,13 +381,13 @@ static int mcrd_init(sc_card_t * card)
 	priv->curpathlen = 1;
 
 	sc_format_path ("3f00", &tmppath);
-	sc_select_file (card, &tmppath, NULL);
+	r = sc_select_file (card, &tmppath, NULL);
 
 	/* Not needed for the fixed EstEID profile */
 	if (!is_esteid_card(card))
 		load_special_files(card);
 
-	return SC_SUCCESS;
+	return r;
 }
 
 static int mcrd_finish(sc_card_t * card)
@@ -375,6 +421,8 @@ static int load_special_files(sc_card_t * card)
 	if (dfi && dfi->rule_file)
 		return 0;	/* yes. */
 	clear_special_files(dfi);
+	if (!dfi)
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INTERNAL);
 
 	/* Read rule file. Note that we bypass our cache here. */
 	r = select_part(card, MCRD_SEL_EF, EF_Rule, NULL);
@@ -452,8 +500,8 @@ static int get_se_num_from_keyd(sc_card_t * card, unsigned short fid,
 	char dbgbuf[2048];
 	u8 fidbuf[2];
 
-	fidbuf[0] = fid >> 8;
-	fidbuf[1] = fid;
+	fidbuf[0] = (fid >> 8) & 0xFF;
+	fidbuf[1] = fid & 0xFF;
 
 	dfi = get_df_info(card);
 	if (!dfi || !dfi->keyd_file) {
@@ -1144,7 +1192,9 @@ static int mcrd_set_security_env(sc_card_t * card,
 
 		/* Make sure we always start from MF */
 		sc_format_path ("3f00", &tmppath);
-		sc_select_file (card, &tmppath, NULL);
+		r = sc_select_file (card, &tmppath, NULL);
+		if (r < 0)
+			return r;
 		/* We now know that cache is not valid */
 		select_esteid_df(card);
 		switch (env->operation) {
@@ -1221,7 +1271,7 @@ static int mcrd_set_security_env(sc_card_t * card,
 
 	if (card->type == SC_CARD_TYPE_MCRD_DTRUST
 	    || card->type == SC_CARD_TYPE_MCRD_GENERIC) {
-		unsigned short fid;
+		unsigned char fid;
 
 		fid = env->key_ref[0];
 		*p = fid;

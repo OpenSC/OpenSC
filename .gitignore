@@ -55,6 +55,22 @@ stamp-h*
 *.tmp
 ChangeLog
 
+doc/tools/cardos-tool
+doc/tools/cryptoflex-tool
+doc/tools/eidenv
+doc/tools/iasecc-tool
+doc/tools/netkey-tool
+doc/tools/openpgp-tool
+doc/tools/opensc-explorer
+doc/tools/opensc-tool
+doc/tools/piv-tool
+doc/tools/pkcs11-tool
+doc/tools/pkcs15-crypt
+doc/tools/pkcs15-init
+doc/tools/pkcs15-tool
+doc/tools/sc-hsm-tool
+doc/tools/westcos-tool
+doc/tools/dnie-tool
 
 etc/opensc.conf.win
 etc/opensc.conf
@@ -77,12 +93,15 @@ src/tools/cardos-info
 src/tools/cryptoflex-tool
 src/tools/netkey-tool
 src/tools/pkcs11-tool
+src/tools/dnie-tool
 
 win32/OpenSC.iss
 win32/OpenSC.wxs
 win32/winconfig.h
 
 MacOSX/build-package
+MacOSX/Distribution.xml
+
 *.dmg
 *.pkg
 OpenSC.tokend/
@@ -98,3 +117,5 @@ src/tests/lottery
 src/tests/p15dump
 src/tests/pintest
 src/tests/prngtest
+
+version.m4.ci

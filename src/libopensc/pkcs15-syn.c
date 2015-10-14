@@ -19,7 +19,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#if HAVE_CONFIG_H
 #include "config.h"
+#endif
 
 #include <stdlib.h>
 #include <string.h>
@@ -67,6 +69,8 @@ extern int sc_pkcs15emu_itacns_init_ex(sc_pkcs15_card_t *,
 					sc_pkcs15emu_opt_t *);
 extern int sc_pkcs15emu_sc_hsm_init_ex(sc_pkcs15_card_t *,
 					sc_pkcs15emu_opt_t *);
+extern int sc_pkcs15emu_dnie_init_ex(sc_pkcs15_card_t *,
+					sc_pkcs15emu_opt_t *);
 
 static struct {
 	const char *		name;
@@ -90,6 +94,7 @@ static struct {
 	{ "pteid",	sc_pkcs15emu_pteid_init_ex	},
 	{ "oberthur",   sc_pkcs15emu_oberthur_init_ex	},
 	{ "sc-hsm",   sc_pkcs15emu_sc_hsm_init_ex	},
+	{ "dnie",       sc_pkcs15emu_dnie_init_ex   },
 	{ NULL, NULL }
 };
 
@@ -112,7 +117,13 @@ int sc_pkcs15_is_emulation_only(sc_card_t *card)
 		case SC_CARD_TYPE_GEMSAFEV1_PTEID:
 		case SC_CARD_TYPE_OPENPGP_V1:
 		case SC_CARD_TYPE_OPENPGP_V2:
+		case SC_CARD_TYPE_OPENPGP_GNUK:
 		case SC_CARD_TYPE_SC_HSM:
+		case SC_CARD_TYPE_DNIE_BASE:
+		case SC_CARD_TYPE_DNIE_BLANK:
+		case SC_CARD_TYPE_DNIE_ADMIN:
+		case SC_CARD_TYPE_DNIE_USER:
+		case SC_CARD_TYPE_DNIE_TERMINATED:
 			return 1;
 		default:
 			return 0;
@@ -165,7 +176,7 @@ sc_pkcs15_bind_synthetic(sc_pkcs15_card_t *p15card)
 							/* we got a hit */
 							goto out;
 					}
-			}	
+			}
 		}
 		else if (builtin_enabled) {
 			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "no emulator list in config file, trying all builtin emulators\n");
@@ -179,11 +190,12 @@ sc_pkcs15_bind_synthetic(sc_pkcs15_card_t *p15card)
 		}
 
 		/* search for 'emulate foo { ... }' entries in the conf file */
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "searching for 'emulate foo { ... }' blocks\n");
+		sc_log(ctx, "searching for 'emulate foo { ... }' blocks\n");
 		blocks = scconf_find_blocks(ctx->conf, conf_block, "emulate", NULL);
+		sc_log(ctx, "Blocks: %p", blocks);
 		for (i = 0; blocks && (blk = blocks[i]) != NULL; i++) {
 			const char *name = blk->name->data;
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "trying %s\n", name);
+			sc_log(ctx, "trying %s", name);
 			r = parse_emu_block(p15card, blk);
 			if (r == SC_SUCCESS) {
 				free(blocks);
@@ -193,20 +205,19 @@ sc_pkcs15_bind_synthetic(sc_pkcs15_card_t *p15card)
 		if (blocks)
 			free(blocks);
 	}
-		
-	/* Total failure */
-	return SC_ERROR_WRONG_CARD;
 
-out:	if (r == SC_SUCCESS) {
+out:
+	if (r == SC_SUCCESS) {
 		p15card->magic  = SC_PKCS15_CARD_MAGIC;
 		p15card->flags |= SC_PKCS15_CARD_FLAG_EMULATED;
-	} else if (r != SC_ERROR_WRONG_CARD) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Failed to load card emulator: %s\n",
-				sc_strerror(r));
+	} else {
+		if (r != SC_ERROR_WRONG_CARD)
+			sc_log(ctx, "Failed to load card emulator: %s", sc_strerror(r));
 	}
 
-	return r;
+	LOG_FUNC_RETURN(ctx, r);
 }
+
 
 static int parse_emu_block(sc_pkcs15_card_t *p15card, scconf_block *conf)
 {
@@ -216,7 +227,7 @@ static int parse_emu_block(sc_pkcs15_card_t *p15card, scconf_block *conf)
 	void *handle = NULL;
 	int		(*init_func)(sc_pkcs15_card_t *);
 	int		(*init_func_ex)(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
-	int		r, force = 0;
+	int		r;
 	const char	*driver, *module_name;
 
 	driver = conf->name->data;
@@ -226,8 +237,6 @@ static int parse_emu_block(sc_pkcs15_card_t *p15card, scconf_block *conf)
 
 	memset(&opts, 0, sizeof(opts));
 	opts.blk     = conf;
-	if (force != 0)
-		opts.flags   = SC_PKCS15EMU_FLAGS_NO_CHECK;
 
 	module_name = scconf_get_str(conf, "module", builtin_name);
 	if (!strcmp(module_name, "builtin")) {
@@ -246,6 +255,7 @@ static int parse_emu_block(sc_pkcs15_card_t *p15card, scconf_block *conf)
 		const char *(*get_version)(void);
 		const char *name = NULL;
 		void	*address;
+		unsigned int major = 0, minor = 0, fix = 0;
 
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Loading %s\n", module_name);
 		
@@ -256,9 +266,19 @@ static int parse_emu_block(sc_pkcs15_card_t *p15card, scconf_block *conf)
 			         module_name, sc_dlerror());
 			return SC_ERROR_INTERNAL;
 		}
+
 		/* try to get version of the driver/api */
 		get_version =  (const char *(*)(void)) sc_dlsym(handle, "sc_driver_version");
-		if (!get_version || strcmp(get_version(), "0.9.3") < 0) {
+		if (get_version) {
+			if (3 != sscanf(get_version(), "%u.%u.%u", &major, &minor, &fix)) {
+				sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
+					   	"unable to get modules version number\n");
+				sc_dlclose(handle);
+				return SC_ERROR_INTERNAL;
+			}
+		}
+
+		if (!get_version || (major == 0 && minor <= 9 && fix < 3)) {
 			/* no sc_driver_version function => assume old style
 			 * init function (note: this should later give an error
 			 */

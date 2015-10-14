@@ -20,10 +20,13 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#if HAVE_CONFIG_H
 #include "config.h"
+#endif
 
 #include <string.h>
 #include <stdlib.h>
+#include <ctype.h>
 
 #include "internal.h"
 #include "asn1.h"
@@ -82,10 +85,6 @@ static int sc_hsm_select_file(sc_card_t *card,
 	sc_file_t *file = NULL;
 
 	if (file_out == NULL) {				// Versions before 0.16 of the SmartCard-HSM do not support P2='0C'
-		if (!in_path->len && in_path->aid.len) {
-			sc_log(card->ctx, "Preventing reselection of applet which would clear the security state");
-			return SC_SUCCESS;
-		}
 		rv = sc_hsm_select_file(card, in_path, &file);
 		if (file != NULL) {
 			sc_file_free(file);
@@ -134,34 +133,34 @@ static int sc_hsm_match_card(struct sc_card *card)
 
 
 
-static int sc_hsm_pin_info(sc_card_t *card, struct sc_pin_cmd_data *data,
-			   int *tries_left)
+/*
+ * Encode 16 hexadecimals of SO-PIN into binary form
+ * Caller must check length of sopin and provide an 8 byte buffer
+ */
+static int sc_hsm_encode_sopin(const u8 *sopin, u8 *sopinbin)
 {
-	sc_hsm_private_data_t *priv = (sc_hsm_private_data_t *) card->drv_data;
-	sc_apdu_t apdu;
-	int r;
+	int i;
+	char digit;
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x20, 0x00, data->pin_reference);
+	memset(sopinbin, 0, 8);
+	for (i = 0; i < 16; i++) {
+		*sopinbin <<= 4;
+		digit = *sopin++;
 
-	r = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+		if (!isxdigit(digit))
+			return SC_ERROR_PIN_CODE_INCORRECT;
+		digit = toupper(digit);
 
-	r =  sc_check_sw(card, apdu.sw1, apdu.sw2);
+		if (digit >= 'A')
+			digit = digit - 'A' + 10;
+		else
+			digit = digit & 0xF;
 
-	if (r == SC_ERROR_PIN_CODE_INCORRECT) {
-		data->pin1.tries_left = apdu.sw2 & 0xF;
-		r = SC_SUCCESS;
-	} else if (r == SC_ERROR_AUTH_METHOD_BLOCKED) {
-		data->pin1.tries_left = 0;
-		r = SC_SUCCESS;
+		*sopinbin |= digit & 0xf;
+		if (i & 1)
+			sopinbin++;
 	}
-	LOG_TEST_RET(card->ctx, r, "Check SW error");
-
-	if (tries_left != NULL) {
-		*tries_left = data->pin1.tries_left;
-	}
-
-	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+	return SC_SUCCESS;
 }
 
 
@@ -170,15 +169,24 @@ static int sc_hsm_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 			   int *tries_left)
 {
 	sc_hsm_private_data_t *priv = (sc_hsm_private_data_t *) card->drv_data;
+	int r;
 
-	if (data->cmd == SC_PIN_CMD_GET_INFO) {
-		return sc_hsm_pin_info(card, data, tries_left);
+	if ((data->cmd == SC_PIN_CMD_VERIFY) && (data->pin_reference == 0x88)) {
+		if (data->pin1.len != 16)
+			return SC_ERROR_INVALID_PIN_LENGTH;
+
+		// Save SO PIN for later use in sc_hsm_init_pin()
+		r = sc_hsm_encode_sopin(data->pin1.data, priv->sopin);
+		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+
+		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 	}
-	if (data->pin_reference == 0x88) {
-		// Save SO PIN for later use in init pin
-		memcpy(priv->initpw, data->pin1.data, sizeof(priv->initpw));
-		return SC_SUCCESS;
-	}
+
+	data->pin1.offset = 5;
+	data->pin1.length_offset = 4;
+	data->pin2.offset = 5;
+	data->pin2.length_offset = 4;
+
 	return (*iso_ops->pin_cmd)(card, data, tries_left);
 }
 
@@ -190,7 +198,6 @@ static int sc_hsm_read_binary(sc_card_t *card,
 {
 	sc_context_t *ctx = card->ctx;
 	sc_apdu_t apdu;
-	u8 recvbuf[SC_MAX_APDU_BUFFER_SIZE];
 	u8 cmdbuff[4];
 	int r;
 
@@ -204,14 +211,14 @@ static int sc_hsm_read_binary(sc_card_t *card,
 	cmdbuff[2] = (idx >> 8) & 0xFF;
 	cmdbuff[3] = idx & 0xFF;
 
-	assert(count <= (card->max_recv_size > 0 ? card->max_recv_size : 256));
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xB1, 0x00, 0x00);
+	assert(count <= sc_get_max_recv_size(card));
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_4, 0xB1, 0x00, 0x00);
 	apdu.data = cmdbuff;
 	apdu.datalen = 4;
 	apdu.lc = 4;
 	apdu.le = count;
 	apdu.resplen = count;
-	apdu.resp = recvbuf;
+	apdu.resp = buf;
 
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(ctx, r, "APDU transmit failed");
@@ -221,20 +228,17 @@ static int sc_hsm_read_binary(sc_card_t *card,
 		LOG_TEST_RET(ctx, r, "Check SW error");
 	}
 
-	memcpy(buf, recvbuf, apdu.resplen);
-
 	LOG_FUNC_RETURN(ctx, apdu.resplen);
 }
 
 
 
-static int sc_hsm_update_binary(sc_card_t *card,
-			       unsigned int idx, const u8 *buf, size_t count,
-			       unsigned long flags)
+static int sc_hsm_write_ef(sc_card_t *card,
+			       int fid,
+			       unsigned int idx, const u8 *buf, size_t count)
 {
 	sc_context_t *ctx = card->ctx;
 	sc_apdu_t apdu;
-	u8 recvbuf[SC_MAX_APDU_BUFFER_SIZE];
 	u8 *cmdbuff, *p;
 	size_t len;
 	int r;
@@ -269,10 +273,11 @@ static int sc_hsm_update_binary(sc_card_t *card,
 		len = 8;
 	}
 
-	memcpy(p, buf, count);
+	if (buf != NULL)
+		memcpy(p, buf, count);
 	len += count;
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3, 0xD7, 0x00, 0x00);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3, 0xD7, fid >> 8, fid & 0xFF);
 	apdu.data = cmdbuff;
 	apdu.datalen = len;
 	apdu.lc = len;
@@ -285,6 +290,15 @@ static int sc_hsm_update_binary(sc_card_t *card,
 	LOG_TEST_RET(ctx, r, "Check SW error");
 
 	LOG_FUNC_RETURN(ctx, count);
+}
+
+
+
+static int sc_hsm_update_binary(sc_card_t *card,
+			       unsigned int idx, const u8 *buf, size_t count,
+			       unsigned long flags)
+{
+	return sc_hsm_write_ef(card, 0, idx, buf, count);
 }
 
 
@@ -324,23 +338,12 @@ static int sc_hsm_list_files(sc_card_t *card, u8 * buf, size_t buflen)
 
 static int sc_hsm_create_file(sc_card_t *card, sc_file_t *file)
 {
-	sc_context_t *ctx = card->ctx;
-	sc_apdu_t apdu;
-	u8 cmdbuff[] = { 0x54, 0x02, 0x00, 0x00, 0x53, 0x00 };
 	int r;
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xD7, file->id >> 8, file->id & 0xFF);
-	apdu.data = cmdbuff;
-	apdu.datalen = sizeof(cmdbuff);
-	apdu.lc = sizeof(cmdbuff);
+	r = sc_hsm_write_ef(card, file->id, 0, NULL, 0);
+	LOG_TEST_RET(card->ctx, r, "Create file failed");
 
-	r = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(ctx, r, "APDU transmit failed");
-
-	r =  sc_check_sw(card, apdu.sw1, apdu.sw2);
-	LOG_TEST_RET(ctx, r, "Check SW error");
-
-	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
 
@@ -434,7 +437,8 @@ static int sc_hsm_decode_ecdsa_signature(sc_card_t *card,
 					const u8 * data, size_t datalen,
 					u8 * out, size_t outlen) {
 
-	int fieldsizebytes, i, r;
+	int i, r;
+	size_t fieldsizebytes;
 	const u8 *body, *tag;
 	size_t bodylen, taglen;
 
@@ -557,7 +561,7 @@ static int sc_hsm_decipher(sc_card_t *card, const u8 * crgram, size_t crgram_len
 	apdu.resplen = sizeof(rbuf);
 	apdu.le = 256;
 
-	apdu.data = crgram;
+	apdu.data = (u8 *)crgram;
 	apdu.lc = crgram_len;
 	apdu.datalen = crgram_len;
 
@@ -609,7 +613,10 @@ static int sc_hsm_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 	}
 
 	serial->len = strlen(priv->serialno);
-	strncpy(serial->value, priv->serialno, sizeof(serial->value));
+	if (serial->len > sizeof(serial->value))
+		serial->len = sizeof(serial->value);
+
+	memcpy(serial->value, priv->serialno, serial->len);
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
@@ -619,7 +626,10 @@ static int sc_hsm_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 static int sc_hsm_initialize(sc_card_t *card, sc_cardctl_sc_hsm_init_param_t *params)
 {
 	sc_context_t *ctx = card->ctx;
-	int r, i;
+	sc_pkcs15_tokeninfo_t ti;
+	struct sc_pin_cmd_data pincmd;
+	int r;
+	size_t tilen;
 	sc_apdu_t apdu;
 	u8 ibuff[50], *p;
 
@@ -667,6 +677,29 @@ static int sc_hsm_initialize(sc_card_t *card, sc_cardctl_sc_hsm_init_param_t *pa
 	}
 
 	LOG_TEST_RET(ctx, r, "Check SW error");
+
+	if (params->label) {
+		memset(&ti, 0, sizeof(ti));
+
+		ti.label = params->label;
+		ti.flags = SC_PKCS15_TOKEN_PRN_GENERATION;
+
+		r = sc_pkcs15_encode_tokeninfo(ctx, &ti, &p, &tilen);
+		LOG_TEST_RET(ctx, r, "Error encoding tokeninfo");
+
+		memset(&pincmd, 0, sizeof(pincmd));
+		pincmd.cmd = SC_PIN_CMD_VERIFY;
+		pincmd.pin_type = SC_AC_CHV;
+		pincmd.pin_reference = 0x81;
+		pincmd.pin1.data = params->user_pin;
+		pincmd.pin1.len = params->user_pin_len;
+
+		r = (*iso_ops->pin_cmd)(card, &pincmd, NULL);
+		LOG_TEST_RET(ctx, r, "Could not verify PIN");
+
+		r = sc_hsm_write_ef(card, 0x2F03, 0, p, tilen);
+		LOG_TEST_RET(ctx, r, "Could not write EF.TokenInfo");
+	}
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
@@ -718,7 +751,7 @@ static int sc_hsm_wrap_key(sc_card_t *card, sc_cardctl_sc_hsm_wrapped_key_t *par
 {
 	sc_context_t *ctx = card->ctx;
 	sc_apdu_t apdu;
-	u8 data[SC_MAX_EXT_APDU_BUFFER_SIZE];
+	u8 data[MAX_EXT_APDU_LENGTH];
 	int r;
 
 	LOG_FUNC_CALLED(card->ctx);
@@ -736,10 +769,17 @@ static int sc_hsm_wrap_key(sc_card_t *card, sc_cardctl_sc_hsm_wrapped_key_t *par
 
 	LOG_TEST_RET(ctx, r, "Check SW error");
 
-	params->wrapped_key_length = apdu.resplen;
-	params->wrapped_key = malloc(apdu.resplen);
 	if (params->wrapped_key == NULL) {
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+		params->wrapped_key_length = apdu.resplen;
+		params->wrapped_key = malloc(apdu.resplen);
+		if (params->wrapped_key == NULL) {
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+		}
+	} else {
+		if (apdu.resplen > params->wrapped_key_length) {
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_BUFFER_TOO_SMALL);
+		}
+		params->wrapped_key_length = apdu.resplen;
 	}
 	memcpy(params->wrapped_key, data, apdu.resplen);
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
@@ -751,7 +791,6 @@ static int sc_hsm_unwrap_key(sc_card_t *card, sc_cardctl_sc_hsm_wrapped_key_t *p
 {
 	sc_context_t *ctx = card->ctx;
 	sc_apdu_t apdu;
-	u8 status[MAX_EXT_APDU_LENGTH];
 	int r;
 
 	LOG_FUNC_CALLED(card->ctx);
@@ -777,61 +816,44 @@ static int sc_hsm_unwrap_key(sc_card_t *card, sc_cardctl_sc_hsm_wrapped_key_t *p
 static int sc_hsm_init_token(sc_card_t *card, sc_cardctl_pkcs11_init_token_t *params)
 {
 	sc_context_t *ctx = card->ctx;
-	int r, i;
-	sc_apdu_t apdu;
-	u8 ibuff[50], *p;
+	sc_cardctl_sc_hsm_init_param_t ip;
+	int r;
+	char label[33],*cpo;
 
-	LOG_FUNC_CALLED(card->ctx);
+	LOG_FUNC_CALLED(ctx);
 
 	if (params->so_pin_len != 16) {
-		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_DATA, "SO PIN wrong length (!=16)");
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "SO PIN wrong length (!=16)");
 	}
 
-	p = ibuff;
-	*p++ = 0x80;	// Options
-	*p++ = 0x02;
-	*p++ = 0x00;
-	*p++ = 0x01;
+	memset(&ip, 0, sizeof(ip));
+	ip.dkek_shares = -1;
+	ip.options[0] = 0x00;
+	ip.options[1] = 0x01;
 
-	*p++ = 0x81;	// User PIN
-	*p++ = 0x06;	// Default value, later changed with C_InitPIN
-	// We use only 6 of the 16 bytes init password for the initial user PIN
-	memcpy(p, params->so_pin, 6);
-	p += 6;
+	r = sc_hsm_encode_sopin(params->so_pin, ip.init_code);
+	LOG_TEST_RET(ctx, r, "SO PIN wrong format");
 
-	*p++ = 0x82;	// Initialization code
-	*p++ = 0x08;
+	ip.user_pin = ip.init_code;		// Use the first 6 bytes of the SO-PIN as initial User-PIN value
+	ip.user_pin_len = 6;
+	ip.user_pin_retry_counter = 3;
 
-	memset(p, 0, 8);
-	for (i = 0; i < 16; i++) {
-		*p <<= 4;
-		*p |= params->so_pin[i] & 0xf;
-		if (i & 1)
-			p++;
+	if (params->label) {
+		// Strip trailing spaces
+		memcpy(label, params->label, 32);
+		label[32] = 0;
+		cpo = label + 31;
+		while ((cpo >= label) && (*cpo == ' ')) {
+			*cpo = 0;
+			cpo--;
+		}
+		ip.label = label;
 	}
 
-	*p++ = 0x91;	// User PIN retry counter
-	*p++ = 0x01;
-	*p++ = 0x03;
-
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x50, 0x00, 0x00);
-	apdu.cla = 0x80;
-	apdu.data = ibuff;
-	apdu.datalen = p - ibuff;
-	apdu.lc = apdu.datalen;
-
-	r = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(ctx, r, "APDU transmit failed");
-
-	r =  sc_check_sw(card, apdu.sw1, apdu.sw2);
-
-	if (r == SC_ERROR_NOT_ALLOWED) {
-		r = SC_ERROR_PIN_CODE_INCORRECT;
-	}
-
+	r = sc_hsm_initialize(card, &ip);
 	LOG_TEST_RET(ctx, r, "Check SW error");
 
-	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
 
@@ -852,14 +874,13 @@ static int sc_hsm_init_pin(sc_card_t *card, sc_cardctl_pkcs11_init_pin_t *params
 
 	p = ibuff;
 
-	// We use only 6 of the 8 bytes init password for the initial user PIN
-	memcpy(p, priv->initpw, 6);
-	p += 6;
+	memcpy(p, priv->sopin, sizeof(priv->sopin));
+	p += sizeof(priv->sopin);
 
 	memcpy(p, params->pin, params->pin_len);
 	p += params->pin_len;
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x24, 0x00, 0x81);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x2C, 0x00, 0x81);
 	apdu.data = ibuff;
 	apdu.datalen = p - ibuff;
 	apdu.lc = apdu.datalen;
@@ -868,9 +889,31 @@ static int sc_hsm_init_pin(sc_card_t *card, sc_cardctl_pkcs11_init_pin_t *params
 	LOG_TEST_RET(ctx, r, "APDU transmit failed");
 
 	r =  sc_check_sw(card, apdu.sw1, apdu.sw2);
+
+	// Cards before version 1.0 do not implement RESET_RETRY_COUNTER
+	// For those cards the CHANGE REFERENCE DATA command is used instead
+	if (r == SC_ERROR_INS_NOT_SUPPORTED) {
+		p = ibuff;
+		memcpy(p, priv->sopin, 6);
+		p += 6;
+
+		memcpy(p, params->pin, params->pin_len);
+		p += params->pin_len;
+
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x24, 0x00, 0x81);
+		apdu.data = ibuff;
+		apdu.datalen = p - ibuff;
+		apdu.lc = apdu.datalen;
+
+		r = sc_transmit_apdu(card, &apdu);
+		LOG_TEST_RET(ctx, r, "APDU transmit failed");
+
+		r =  sc_check_sw(card, apdu.sw1, apdu.sw2);
+	}
+
 	LOG_TEST_RET(ctx, r, "Check SW error");
 
-	memset(priv->initpw, 0, sizeof(priv->initpw));
+	memset(priv->sopin, 0, sizeof(priv->sopin));
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
@@ -879,7 +922,6 @@ static int sc_hsm_init_pin(sc_card_t *card, sc_cardctl_pkcs11_init_pin_t *params
 
 static int sc_hsm_generate_keypair(sc_card_t *card, sc_cardctl_sc_hsm_keygen_info_t *keyinfo)
 {
-	sc_hsm_private_data_t *priv = (sc_hsm_private_data_t *) card->drv_data;
 	u8 rbuf[1024];
 	int r;
 	sc_apdu_t apdu;
@@ -961,6 +1003,7 @@ static int sc_hsm_init(struct sc_card *card)
 	_sc_card_add_rsa_alg(card, 2048, flags, 0);
 
 	flags = SC_ALGORITHM_ECDSA_RAW|
+		SC_ALGORITHM_ECDH_CDH_RAW|
 		SC_ALGORITHM_ECDSA_HASH_NONE|
 		SC_ALGORITHM_ECDSA_HASH_SHA1|
 		SC_ALGORITHM_ECDSA_HASH_SHA224|
@@ -968,17 +1011,19 @@ static int sc_hsm_init(struct sc_card *card)
 		SC_ALGORITHM_ONBOARD_KEY_GEN;
 
 	ext_flags = SC_ALGORITHM_EXT_EC_F_P|
-		    SC_ALGORITHM_EXT_EC_ECPARAMETERS|
-		    SC_ALGORITHM_EXT_EC_UNCOMPRESES|
-		    SC_ALGORITHM_ONBOARD_KEY_GEN;
-	_sc_card_add_ec_alg(card, 192, flags, ext_flags);
-	_sc_card_add_ec_alg(card, 224, flags, ext_flags);
-	_sc_card_add_ec_alg(card, 256, flags, ext_flags);
-	_sc_card_add_ec_alg(card, 320, flags, ext_flags);
+			SC_ALGORITHM_EXT_EC_ECPARAMETERS|
+			SC_ALGORITHM_EXT_EC_NAMEDCURVE|
+			SC_ALGORITHM_EXT_EC_UNCOMPRESES|
+			SC_ALGORITHM_ONBOARD_KEY_GEN;
+	_sc_card_add_ec_alg(card, 192, flags, ext_flags, NULL);
+	_sc_card_add_ec_alg(card, 224, flags, ext_flags, NULL);
+	_sc_card_add_ec_alg(card, 256, flags, ext_flags, NULL);
+	_sc_card_add_ec_alg(card, 320, flags, ext_flags, NULL);
 
-	card->caps |= SC_CARD_CAP_RNG|SC_CARD_CAP_APDU_EXT;
+	card->caps |= SC_CARD_CAP_RNG|SC_CARD_CAP_APDU_EXT|SC_CARD_CAP_ISO7816_PIN_INFO;
 
 	card->max_send_size = 1431;		// 1439 buffer size - 8 byte TLV because of odd ins in UPDATE BINARY
+	card->max_recv_size = 0;		// Card supports sending with extended length APDU and without limit
 	return 0;
 }
 

@@ -19,7 +19,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#if HAVE_CONFIG_H
 #include "config.h"
+#endif
 
 #include <stdlib.h>
 #include <string.h>
@@ -30,10 +32,6 @@
 #include "internal.h"
 #include "pkcs15.h"
 #include "log.h"
-
-#ifdef _WIN32
-typedef USHORT ushort;
-#endif
 
 int sc_pkcs15emu_openpgp_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
 static int sc_pkcs15emu_openpgp_add_data(sc_pkcs15_card_t *);
@@ -103,7 +101,7 @@ static const pgp_key_cfg_t key_cfg[3] = {
 
 
 typedef struct _pgp_manuf_map {
-	ushort		id;
+	unsigned short		id;
 	const char	*name;
 } pgp_manuf_map_t;
 
@@ -158,7 +156,8 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 	u8		c4data[10];
 	u8		c5data[70];
 	int		r, i;
-	const pgp_pin_cfg_t *pin_cfg = (card->type == SC_CARD_TYPE_OPENPGP_V2) ? pin_cfg_v2 : pin_cfg_v1;
+	const pgp_pin_cfg_t *pin_cfg = (card->type == SC_CARD_TYPE_OPENPGP_V2 || card->type == SC_CARD_TYPE_OPENPGP_GNUK)
+	                               ? pin_cfg_v2 : pin_cfg_v1;
 	sc_path_t path;
 	sc_file_t *file;
 
@@ -167,7 +166,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 
 	/* card->serialnr = 2 byte manufacturer_id + 4 byte serial_number */
 	if (card->serialnr.len > 0) {
-		ushort manuf_id = bebytes2ushort(card->serialnr.value);
+		unsigned short manuf_id = bebytes2ushort(card->serialnr.value);
 		int j;
 
 		sc_bin_to_hex(card->serialnr.value, card->serialnr.len, string, sizeof(string)-1, 0);
@@ -388,15 +387,15 @@ sc_pkcs15emu_openpgp_add_data(sc_pkcs15_card_t *p15card)
 		memset(&dat_info, 0, sizeof(dat_info));
 		memset(&dat_obj, 0, sizeof(dat_obj));
 
-		snprintf(name, 8, "PrivDO%d", i);
-		snprintf(path, 9, "3F00010%d", i);
+		sprintf(name, "PrivDO%d", i);
+		sprintf(path, "3F00010%d", i);
 
 		/* Check if the DO can be read.
 		 * We won't expose pkcs15 DATA object if DO is empty.
 		 */
 		r = read_file(p15card->card, path, content, sizeof(content));
 		if (r <= 0 ) {
-			sc_log(ctx, "Cannot read DO 010%d or there is no data in it", i);
+			sc_log(ctx, "No data get from DO 010%d", i);
 			/* Skip */
 			continue;
 		}
@@ -420,7 +419,8 @@ sc_pkcs15emu_openpgp_add_data(sc_pkcs15_card_t *p15card)
 
 static int openpgp_detect_card(sc_pkcs15_card_t *p15card)
 {
-	if (p15card->card->type == SC_CARD_TYPE_OPENPGP_V1 || p15card->card->type == SC_CARD_TYPE_OPENPGP_V2)
+	if (p15card->card->type == SC_CARD_TYPE_OPENPGP_V1 || p15card->card->type == SC_CARD_TYPE_OPENPGP_V2
+	    || p15card->card->type == SC_CARD_TYPE_OPENPGP_GNUK)
 		return SC_SUCCESS;
 	else
 		return SC_ERROR_WRONG_CARD;

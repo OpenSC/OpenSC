@@ -75,6 +75,8 @@ static CK_RV sc_to_cryptoki_error_common(int rc)
 	case SC_ERROR_CARD_NOT_PRESENT:
 		return CKR_TOKEN_NOT_PRESENT;
 	case SC_ERROR_INVALID_CARD:
+	case SC_ERROR_WRONG_CARD:
+	case SC_ERROR_NO_CARD_SUPPORT:
 		return CKR_TOKEN_NOT_RECOGNIZED;
 	case SC_ERROR_WRONG_LENGTH:
 		return CKR_DATA_LEN_RANGE;
@@ -110,8 +112,7 @@ static CK_RV sc_to_cryptoki_error_common(int rc)
 
 CK_RV sc_to_cryptoki_error(int rc, const char *ctx)
 {
-	if (ctx)
-	{
+	if (ctx)   {
 		int ii;
 
 		for (ii = 0; sc_to_cryptoki_error_map[ii].context; ii++) {
@@ -250,6 +251,30 @@ CK_RV attr_find2(CK_ATTRIBUTE_PTR pTemp1, CK_ULONG ulCount1,
 	return rv;
 }
 
+CK_RV attr_find_and_allocate_ptr(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, CK_ULONG type, void **out, size_t *out_len)
+{
+	void *ptr;
+	size_t len;
+	CK_RV rv;
+
+	if (!out || !out_len)
+		return CKR_ARGUMENTS_BAD;
+	len = *out_len;
+
+	rv = attr_find_ptr(pTemplate, ulCount, type, &ptr, &len);
+	if (rv != CKR_OK)
+		return rv;
+
+	*out = calloc(1, len);
+	if (*out == NULL)
+		return CKR_HOST_MEMORY;
+
+	memcpy(*out, ptr, len);
+	*out_len = len;
+
+	return CKR_OK;
+}
+
 CK_RV attr_find_ptr(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, CK_ULONG type, void **ptr, size_t * sizep)
 {
 	unsigned int n;
@@ -292,13 +317,18 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t * ctx)
 	/* Set defaults */
 	conf->plug_and_play = 1;
 	conf->max_virtual_slots = 16;
-	conf->slots_per_card = 4;
+	if (strcmp(ctx->app_name, "onepin-opensc-pkcs11") == 0) {
+		conf->slots_per_card = 1;
+	} else {
+		conf->slots_per_card = 4;
+	}
 	conf->hide_empty_tokens = 1;
 	conf->lock_login = 0;
+	conf->init_sloppy = 1;
 	conf->pin_unblock_style = SC_PKCS11_PIN_UNBLOCK_NOT_ALLOWED;
 	conf->create_puk_slot = 0;
 	conf->zero_ckaid_for_ca_certs = 0;
-	conf->create_slots_flags = 0;
+	conf->create_slots_flags = SC_PKCS11_SLOT_CREATE_ALL;
 
 	conf_block = sc_get_conf_block(ctx, "pkcs11", NULL, 1);
 	if (!conf_block)
@@ -310,6 +340,7 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t * ctx)
 	conf->slots_per_card = scconf_get_int(conf_block, "slots_per_card", conf->slots_per_card);
 	conf->hide_empty_tokens = scconf_get_bool(conf_block, "hide_empty_tokens", conf->hide_empty_tokens);
 	conf->lock_login = scconf_get_bool(conf_block, "lock_login", conf->lock_login);
+	conf->init_sloppy = scconf_get_bool(conf_block, "init_sloppy", conf->init_sloppy);
 
 	unblock_style = (char *)scconf_get_str(conf_block, "user_pin_unblock_style", NULL);
 	if (unblock_style && !strcmp(unblock_style, "set_pin_in_unlogged_session"))
@@ -323,6 +354,7 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t * ctx)
 	conf->zero_ckaid_for_ca_certs = scconf_get_bool(conf_block, "zero_ckaid_for_ca_certs", conf->zero_ckaid_for_ca_certs);
 
 	create_slots_for_pins = (char *)scconf_get_str(conf_block, "create_slots_for_pins", "all");
+	conf->create_slots_flags = 0;
 	tmp = strdup(create_slots_for_pins);
 	op = strtok(tmp, " ,");
 	while (op) {

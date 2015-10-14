@@ -1,11 +1,11 @@
 TOPDIR = ..\..
 
 TARGET = opensc-minidriver.dll
-OBJECTS = minidriver.obj
+OBJECTS = minidriver.obj versioninfo-minidriver.res
 
 !INCLUDE $(TOPDIR)\win32\Make.rules.mak
 
-all: $(TARGET)
+all: versioninfo-minidriver.res $(TARGET)
 
 $(TARGET): $(OBJECTS) ..\libopensc\opensc_a.lib ..\pkcs15init\pkcs15init.lib
 	echo LIBRARY $* > $*.def

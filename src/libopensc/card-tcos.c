@@ -20,7 +20,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#if HAVE_CONFIG_H
 #include "config.h"
+#endif
 
 #include <string.h>
 #include <ctype.h>
@@ -161,8 +163,6 @@ static int tcos_construct_fci(const sc_file_t *file,
         /* Directory name */
         if (file->type == SC_FILE_TYPE_DF) {
                 if (file->namelen) {
-                        if (file->namelen > 16 || !file->name)
-                                return SC_ERROR_INVALID_ARGUMENTS;
                         sc_asn1_put_tag(0x84, file->name, file->namelen,
                                         p, 16, &p);
                 }
@@ -402,6 +402,7 @@ static int tcos_select_file(sc_card_t *card,
 
 	file = sc_file_new();
 	if (file == NULL) SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+	*file_out = file;
 	file->path = *in_path;
 
 	for(i=2; i+1<apdu.resplen && i+1+apdu.resp[i+1]<apdu.resplen; i+=2+apdu.resp[i+1]){
@@ -440,7 +441,6 @@ static int tcos_select_file(sc_card_t *card,
 		}
 	}
 	file->magic = SC_FILE_MAGIC;
-	*file_out = file;
 
 	parse_sec_attr(card, file, file->sec_attr, file->sec_attr_len);
 

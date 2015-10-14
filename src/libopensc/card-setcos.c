@@ -20,7 +20,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#if HAVE_CONFIG_H
 #include "config.h"
+#endif
 
 #include <stdlib.h>
 #include <string.h>
@@ -159,11 +161,6 @@ static int setcos_init(sc_card_t *card)
 	/* Handle unknown or forced cards */
 	if (card->type < 0) {
 		card->type = SC_CARD_TYPE_SETCOS_GENERIC;
-#if 0
-		/* Hmm. For now, assume it's a bank card with FinEID application */
-		if (match_hist_bytes(card, "AVANT", 0))
-			card->type = SC_CARD_TYPE_SETCOS_FINEID_V2;
-#endif
 	}
 
 	switch (card->type) {
@@ -443,7 +440,7 @@ static int setcos_create_file_44(sc_card_t *card, sc_file_t *file)
 		const int* p_idx;
 		int	       i;
 		int	       len = 0;
-		u8         bBuf[32];
+		u8         bBuf[64];
 
 		/* Get specific operation groups for specified file-type */
 		switch (file->type){
@@ -618,7 +615,9 @@ static int setcos_set_security_env2(sc_card_t *card,
 		memcpy(p, env->file_ref.value, env->file_ref.len);
 		p += env->file_ref.len;
 	}
-	if (env->flags & SC_SEC_ENV_KEY_REF_PRESENT) {
+	if (env->flags & SC_SEC_ENV_KEY_REF_PRESENT &&
+	    !(card->type == SC_CARD_TYPE_SETCOS_NIDEL ||
+	      card->type == SC_CARD_TYPE_SETCOS_FINEID_V2_2048)) {
 		if (env->flags & SC_SEC_ENV_KEY_REF_ASYMMETRIC)
 			*p++ = 0x83;
 		else

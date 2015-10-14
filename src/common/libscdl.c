@@ -24,16 +24,16 @@
 
 #include "libscdl.h"
 
-#ifdef WIN32
+#ifdef _WIN32
 #include <windows.h>
 void *sc_dlopen(const char *filename)
 {
-	return (void *)LoadLibrary(filename);
+	return (void *)LoadLibraryA(filename);
 }
 
 void *sc_dlsym(void *handle, const char *symbol)
 {
-	return GetProcAddress((HANDLE)handle, symbol);
+	return GetProcAddress((HMODULE)handle, symbol);
 }
 
 const char *sc_dlerror()
@@ -43,7 +43,7 @@ const char *sc_dlerror()
 
 int sc_dlclose(void *handle)
 {
-	return FreeLibrary((HANDLE)handle);
+	return FreeLibrary((HMODULE)handle);
 }
 #else
 #include <dlfcn.h>

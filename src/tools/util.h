@@ -37,6 +37,12 @@ int util_connect_card(struct sc_context *, struct sc_card **, const char *reader
 
 int util_getpass (char **lineptr, size_t *n, FILE *stream);
 
+/* Get a PIN (technically just a string). The source depends on the value of *input:
+ * env:<var> - get from the environment variable <var>
+ * otherwise - use input
+ */
+size_t util_get_pin(const char *input, const char **pin);
+
 #ifdef __cplusplus
 }
 #endif

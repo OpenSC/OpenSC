@@ -77,11 +77,11 @@ typedef struct sc_pkcs15_id sc_pkcs15_id_t;
 	( SC_PKCS15_PIN_FLAG_INITIALIZED | SC_PKCS15_PIN_FLAG_LOCAL)
 
 #define SC_PKCS15_PIN_TYPE_FLAGS_PUK_GLOBAL				\
-	( SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN 				\
+	( SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN				\
 	| SC_PKCS15_PIN_FLAG_INITIALIZED )
 
 #define SC_PKCS15_PIN_TYPE_FLAGS_PUK_LOCAL				\
-	( SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN 				\
+	( SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN				\
 	| SC_PKCS15_PIN_FLAG_INITIALIZED | SC_PKCS15_PIN_FLAG_LOCAL)
 
 #define SC_PKCS15_PIN_TYPE_BCD				0
@@ -128,7 +128,8 @@ struct sc_pkcs15_auth_info {
 	/* authentication method: CHV, SEN, SYMBOLIC, ... */
 	unsigned int  auth_method;
 
-	int  tries_left, max_tries;
+	int tries_left, max_tries;
+	int max_unlocks;
  };
 typedef struct sc_pkcs15_auth_info sc_pkcs15_auth_info_t;
 
@@ -153,6 +154,12 @@ struct sc_pkcs15_der {
 	size_t		len;
 };
 typedef struct sc_pkcs15_der sc_pkcs15_der_t;
+
+struct sc_pkcs15_u8 {
+	u8 *		value;
+	size_t		len;
+};
+typedef struct sc_pkcs15_u8 sc_pkcs15_u8_t;
 
 struct sc_pkcs15_pubkey_rsa {
 	sc_pkcs15_bignum_t modulus;
@@ -193,19 +200,6 @@ struct sc_pkcs15_prkey_dsa {
 	sc_pkcs15_bignum_t priv;
 };
 
-/*
- * The ecParameters can be presented as
- * - named curve;
- * - OID of named curve;
- * - implicit parameters.
- */
-struct sc_pkcs15_ec_parameters {
-	char *named_curve;
-	struct sc_object_id id;
-	struct sc_pkcs15_der der;
-	size_t field_length; /* in bits */
-};
-
 struct sc_pkcs15_gost_parameters {
 	struct sc_object_id key;
 	struct sc_object_id hash;
@@ -213,14 +207,14 @@ struct sc_pkcs15_gost_parameters {
 };
 
 struct sc_pkcs15_pubkey_ec {
-	struct sc_pkcs15_ec_parameters params;
-	struct sc_pkcs15_der		ecpointQ; /* note this is der */
+	struct sc_ec_parameters params;
+	struct sc_pkcs15_u8 ecpointQ; /* This is NOT DER, just value and length */
 };
 
 struct sc_pkcs15_prkey_ec {
-	struct sc_pkcs15_ec_parameters params;
+	struct sc_ec_parameters params;
 	sc_pkcs15_bignum_t	privateD; /* note this is bignum */
-	struct sc_pkcs15_der		ecpointQ; /* note this is der */
+	struct sc_pkcs15_u8		ecpointQ; /* This is NOT DER, just value and length */
 };
 
 struct sc_pkcs15_pubkey_gostr3410 {
@@ -244,9 +238,6 @@ struct sc_pkcs15_pubkey {
 		struct sc_pkcs15_pubkey_ec ec;
 		struct sc_pkcs15_pubkey_gostr3410 gostr3410;
 	} u;
-
-	/* DER encoded raw key */
-	struct sc_pkcs15_der data;
 };
 typedef struct sc_pkcs15_pubkey sc_pkcs15_pubkey_t;
 
@@ -325,6 +316,7 @@ struct sc_pkcs15_data_info {
 };
 typedef struct sc_pkcs15_data_info sc_pkcs15_data_info_t;
 
+/* keyUsageFlags are the same for all key types */
 #define SC_PKCS15_PRKEY_USAGE_ENCRYPT		0x01
 #define SC_PKCS15_PRKEY_USAGE_DECRYPT		0x02
 #define SC_PKCS15_PRKEY_USAGE_SIGN		0x04
@@ -335,18 +327,6 @@ typedef struct sc_pkcs15_data_info sc_pkcs15_data_info_t;
 #define SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER	0x80
 #define SC_PKCS15_PRKEY_USAGE_DERIVE		0x100
 #define SC_PKCS15_PRKEY_USAGE_NONREPUDIATION	0x200
-
-/* keyUsageFlags  are the same for all key types */
-#define SC_PKCS15_KEY_USAGE_ENCRYPT		0x01
-#define SC_PKCS15_KEY_USAGE_DECRYPT		0x02
-#define SC_PKCS15_KEY_USAGE_SIGN		0x04
-#define SC_PKCS15_KEY_USAGE_SIGNRECOVER		0x08
-#define SC_PKCS15_KEY_USAGE_WRAP		0x10
-#define SC_PKCS15_KEY_USAGE_UNWRAP		0x20
-#define SC_PKCS15_KEY_USAGE_VERIFY		0x40
-#define SC_PKCS15_KEY_USAGE_VERIFYRECOVER	0x80
-#define SC_PKCS15_KEY_USAGE_DERIVE		0x100
-#define SC_PKCS15_KEY_USAGE_NONREPUDIATION	0x200
 
 #define SC_PKCS15_PRKEY_ACCESS_SENSITIVE	0x01
 #define SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE	0x02
@@ -392,6 +372,56 @@ struct sc_pkcs15_key_params {
 	void (*free_params)(void *);
 };
 
+/* From Windows Smart Card Minidriver Specification
+ * Version 7.06
+ *
+ * #define MAX_CONTAINER_NAME_LEN       39
+ * #define CONTAINER_MAP_VALID_CONTAINER        1
+ * #define CONTAINER_MAP_DEFAULT_CONTAINER      2
+ * typedef struct _CONTAINER_MAP_RECORD
+ * {
+ *      WCHAR wszGuid [MAX_CONTAINER_NAME_LEN + 1];
+ *      BYTE bFlags;
+ *      BYTE bReserved;
+ *      WORD wSigKeySizeBits;
+ *      WORD wKeyExchangeKeySizeBits;
+ * } CONTAINER_MAP_RECORD, *PCONTAINER_MAP_RECORD;
+ */
+#define SC_MD_MAX_CONTAINER_NAME_LEN 39
+#define SC_MD_CONTAINER_MAP_VALID_CONTAINER	0x01
+#define SC_MD_CONTAINER_MAP_DEFAULT_CONTAINER	0x02
+struct sc_md_cmap_record {
+	unsigned char *guid;
+	size_t guid_len;
+	unsigned flags;
+	unsigned keysize_sign;
+	unsigned keysize_keyexchange;
+};
+
+/* From Windows Smart Card Minidriver Specification
+ * Version 7.06
+ *
+ * typedef struct _CARD_CACHE_FILE_FORMAT
+ * {
+ *	BYTE bVersion;		// Cache version
+ *	BYTE bPinsFreshness;	// Card PIN
+ *	WORD wContainersFreshness;
+ *	WORD wFilesFreshness;
+ * } CARD_CACHE_FILE_FORMAT, *PCARD_CACHE_FILE_FORMAT;
+ */
+struct sc_md_cardcf {
+	unsigned char version;
+	unsigned char pin_freshness;
+	unsigned cont_freshness;
+	unsigned files_freshness;
+
+};
+
+struct sc_md_data {
+	struct sc_md_cardcf cardcf;
+	void *prop_data;
+};
+
 struct sc_pkcs15_prkey_info {
 	struct sc_pkcs15_id id;	/* correlates to public certificate id */
 	unsigned int usage, access_flags;
@@ -407,6 +437,9 @@ struct sc_pkcs15_prkey_info {
 	struct sc_pkcs15_key_params params;
 
 	struct sc_path path;
+
+	/* Used by minidriver and its on-card support */
+	struct sc_md_cmap_record cmap_record;
 };
 typedef struct sc_pkcs15_prkey_info sc_pkcs15_prkey_info_t;
 
@@ -425,6 +458,11 @@ struct sc_pkcs15_pubkey_info {
 	struct sc_pkcs15_key_params params;
 
 	struct sc_path path;
+
+	struct {
+		struct sc_pkcs15_der raw;
+		struct sc_pkcs15_der spki;
+	} direct;
 };
 typedef struct sc_pkcs15_pubkey_info sc_pkcs15_pubkey_info_t;
 
@@ -503,9 +541,6 @@ struct sc_pkcs15_object {
 	struct sc_pkcs15_object *next, *prev; /* used only internally */
 
 	struct sc_pkcs15_der content;
-
-	/* Used by minidriver and its on-card support */
-	char *guid;
 };
 typedef struct sc_pkcs15_object sc_pkcs15_object_t;
 
@@ -581,7 +616,7 @@ struct sc_pkcs15_operations   {
 	int (*parse_df)(struct sc_pkcs15_card *, struct sc_pkcs15_df *);
 	void (*clear)(struct sc_pkcs15_card *);
 	int (*get_guid)(struct sc_pkcs15_card *, const struct sc_pkcs15_object *,
-			char *, size_t);
+			unsigned char *, size_t *);
 };
 
 typedef struct sc_pkcs15_card {
@@ -608,7 +643,8 @@ typedef struct sc_pkcs15_card {
 
 	unsigned int magic;
 
-	void *dll_handle;		/* shared lib for emulated cards */
+	void *dll_handle;	/* shared lib for emulated cards */
+	struct sc_md_data *md_data;	/* minidriver specific data */
 
 	struct sc_pkcs15_operations ops;
 
@@ -632,6 +668,7 @@ int sc_pkcs15_bind(struct sc_card *card, struct sc_aid *aid,
 /* sc_pkcs15_unbind:  Releases a PKCS #15 card object, and frees any
  * memory allocations done on the card object. */
 int sc_pkcs15_unbind(struct sc_pkcs15_card *card);
+int sc_pkcs15_bind_internal(struct sc_pkcs15_card *p15card, struct sc_aid *aid);
 
 int sc_pkcs15_get_objects(struct sc_pkcs15_card *card, unsigned int type,
 			  struct sc_pkcs15_object **ret, size_t ret_count);
@@ -684,15 +721,19 @@ int sc_pkcs15_decode_pubkey(struct sc_context *,
 		struct sc_pkcs15_pubkey *, const u8 *, size_t);
 int sc_pkcs15_encode_pubkey(struct sc_context *,
 		struct sc_pkcs15_pubkey *, u8 **, size_t *);
+int sc_pkcs15_encode_pubkey_as_spki(struct sc_context *,
+		struct sc_pkcs15_pubkey *, u8 **, size_t *);
 void sc_pkcs15_erase_pubkey(struct sc_pkcs15_pubkey *);
 void sc_pkcs15_free_pubkey(struct sc_pkcs15_pubkey *);
 int sc_pkcs15_pubkey_from_prvkey(struct sc_context *, struct sc_pkcs15_prkey *,
 		struct sc_pkcs15_pubkey **);
+int sc_pkcs15_dup_pubkey(struct sc_context *, struct sc_pkcs15_pubkey *,
+		struct sc_pkcs15_pubkey **);
 int sc_pkcs15_pubkey_from_cert(struct sc_context *, struct sc_pkcs15_der *,
 		struct sc_pkcs15_pubkey **);
-int sc_pkcs15_pubkey_from_spki_filename(struct sc_context *,
+int sc_pkcs15_pubkey_from_spki_file(struct sc_context *,
 		char *, struct sc_pkcs15_pubkey ** );
-int sc_pkcs15_pubkey_from_spki(struct sc_context *,
+int sc_pkcs15_pubkey_from_spki_fields(struct sc_context *,
 		struct sc_pkcs15_pubkey **, u8 *, size_t, int);
 int sc_pkcs15_encode_prkey(struct sc_context *,
 		struct sc_pkcs15_prkey *, u8 **, size_t *);
@@ -887,8 +928,9 @@ void sc_pkcs15_format_id(const char *id_in, struct sc_pkcs15_id *id_out);
 int sc_pkcs15_hex_string_to_id(const char *in, struct sc_pkcs15_id *out);
 int sc_der_copy(struct sc_pkcs15_der *, const struct sc_pkcs15_der *);
 int sc_pkcs15_get_object_id(const struct sc_pkcs15_object *, struct sc_pkcs15_id *);
-int sc_pkcs15_get_guid(struct sc_pkcs15_card *, const struct sc_pkcs15_object *, unsigned,
-		char *, size_t);
+int sc_pkcs15_get_object_guid(struct sc_pkcs15_card *, const struct sc_pkcs15_object *, unsigned,
+		unsigned char *, size_t *);
+int sc_pkcs15_serialize_guid(unsigned char *, size_t, unsigned, char *, size_t);
 int sc_encode_oid (struct sc_context *, struct sc_object_id *,
 		unsigned char **, size_t *);
 
@@ -910,7 +952,7 @@ struct sc_supported_algo_info *sc_pkcs15_get_supported_algo(struct sc_pkcs15_car
 int sc_pkcs15_add_supported_algo_ref(struct sc_pkcs15_object *,
 		struct sc_supported_algo_info *);
 
-int sc_pkcs15_fix_ec_parameters(struct sc_context *, struct sc_pkcs15_ec_parameters *);
+int sc_pkcs15_fix_ec_parameters(struct sc_context *, struct sc_ec_parameters *);
 
 /* Convert the OpenSSL key data type into the OpenSC key */
 int sc_pkcs15_convert_bignum(sc_pkcs15_bignum_t *dst, const void *bignum);
@@ -919,6 +961,9 @@ int sc_pkcs15_convert_pubkey(struct sc_pkcs15_pubkey *key, void *evp_key);
 
 /* Get 'LastUpdate' string */
 char *sc_pkcs15_get_lastupdate(struct sc_pkcs15_card *p15card);
+
+/* Allocate generalized time string */
+int sc_pkcs15_get_generalized_time(struct sc_context *ctx, char **out);
 
 /* New object search API.
  * More complex, but also more powerful.

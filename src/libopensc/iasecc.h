@@ -134,9 +134,4 @@ struct iasecc_private_data {
 
 	struct iasecc_se_info *se_info;
 };
-
-
-int sm_iasecc_rsa_generate(struct sc_card *card, unsigned security_condition, 
-		struct iasecc_sdo *sdo);
-
 #endif

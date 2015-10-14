@@ -1,0 +1,88 @@
+version: 0.15.0.{build}
+
+platform:
+  - x86
+  - x64
+
+configuration:
+  - Release
+  - Debug
+  - Light-Release
+  - Light-Debug
+
+environment:
+  matrix:
+    - VSVER: 12
+    - VSVER: 10
+
+matrix:
+  allow_failures:
+    # not included in AppVeyor right now
+    - platform: x64
+      VSVER: 10
+
+install:
+  - ps: if ($env:APPVEYOR_PULL_REQUEST_NUMBER -and $env:APPVEYOR_BUILD_NUMBER -ne ((Invoke-RestMethod `
+        https://ci.appveyor.com/api/projects/$env:APPVEYOR_ACCOUNT_NAME/$env:APPVEYOR_PROJECT_SLUG/history?recordsNumber=50).builds | `
+        Where-Object pullRequestId -eq $env:APPVEYOR_PULL_REQUEST_NUMBER)[0].buildNumber) { `
+        throw "There are newer queued builds for this pull request, failing early." }
+  - date /T & time /T
+  - set PATH=C:\cygwin\bin;%PATH%
+  - set OPENSSL_VER=1_0_2d
+  - set ZLIB_VER=128
+  - ps: >-
+      If ($env:Platform -Match "x86") {
+        $env:VCVARS_PLATFORM="x86"
+        $env:ENV_PLATFORM="x86"
+        $env:OPENSSL_PF="Win32"
+        $env:NMAKE_ARCH=""
+        $env:ARTIFACT="OpenSC-${env:APPVEYOR_BUILD_VERSION}-win32_vs${env:VSVER}-${env:CONFIGURATION}.msi"
+      } Else {
+        $env:VCVARS_PLATFORM="amd64"
+        $env:ENV_PLATFORM="x64"
+        $env:OPENSSL_PF="Win64"
+        $env:NMAKE_ARCH="BUILD_ON=WIN64 BUILD_FOR=WIN64"
+        $env:ARTIFACT="OpenSC-${env:APPVEYOR_BUILD_VERSION}-win64_vs${env:VSVER}-${env:CONFIGURATION}.msi"
+      }
+  - ps: >-
+      If ($env:Configuration -Like "*Debug*") {
+        $env:NMAKE_EXTRA="DEBUG_DEF=/DDEBUG ${env:NMAKE_EXTRA}"
+      }
+  - ps: >-
+      If (!($env:Configuration -Like "*Light*")) {
+        If (!(Test-Path -Path "C:\OpenSSL-${env:OPENSSL_PF}" )) {
+          Start-FileDownload https://slproweb.com/download/${env:OPENSSL_PF}OpenSSL-${env:OPENSSL_VER}.exe -FileName C:\WinOpenSSL.exe
+          C:\WinOpenSSL.exe /SILENT /VERYSILENT /SP- /SUPPRESSMSGBOXES /NORESTART
+        }
+        $env:NMAKE_EXTRA="OPENSSL_DEF=/DENABLE_OPENSSL ${env:NMAKE_EXTRA}"
+        # the prebuilt zlib is 32 bit only
+        If ($env:Platform -Match "x86") {
+          If (!(Test-Path -Path "C:\zlib-dll" )) {
+            appveyor DownloadFile "https://prdownloads.sourceforge.net/libpng/zlib${env:ZLIB_VER}-dll.zip" -FileName zlib-dll.zip
+            7z x zlib-dll.zip -oC:\zlib-dll
+          }
+          $env:NMAKE_EXTRA="ZLIB_DEF=/DENABLE_ZLIB ${env:NMAKE_EXTRA}"
+        }
+      }
+  - ps: $env:VSCOMNTOOLS=(Get-Content ("env:VS" + "$env:VSVER" + "0COMNTOOLS"))
+  - echo "Using Visual Studio %VSVER%.0 at %VSCOMNTOOLS%"
+  - call "%VSCOMNTOOLS%\..\..\VC\vcvarsall.bat" %VCVARS_PLATFORM%
+  - appveyor DownloadFile "http://download.microsoft.com/download/2/C/9/2C93059C-0532-42DF-8C24-9AEAFF00768E/cngsdk.msi"
+  - cngsdk.msi /quiet
+  - uname -a
+
+build_script:
+  - bash -c "exec 0</dev/null && ./bootstrap"
+  # disable features to speed up the script
+  - bash -c "exec 0</dev/null && ./configure --disable-openssl --disable-readline --disable-zlib || cat config.log"
+  - bash -c "make -C etc opensc.conf"
+  - cp win32/winconfig.h config.h
+  - nmake /f Makefile.mak %NMAKE_ARCH% %NMAKE_EXTRA%
+  - cd win32 && nmake /f Makefile.mak %NMAKE_ARCH% %NMAKE_EXTRA% VSVER=%VSVER% OpenSC.msi
+  - move OpenSC.msi %ARTIFACT%
+  - appveyor PushArtifact %ARTIFACT%
+
+cache:
+  - C:\OpenSSL-Win32
+  - C:\OpenSSL-Win64
+  - C:\zlib-dll

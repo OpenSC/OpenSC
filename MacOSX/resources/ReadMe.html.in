@@ -13,7 +13,7 @@
 
 
 <h1>OpenSC, version @PACKAGE_VERSION@</h1>
-<p>for Mac OS X 10.6+</p>
+<p>for Mac OS X 10.9+</p>
 
 <p>OpenSC provides a set of libraries and utilities to work with smart cards. Its main focus is on cards that support cryptographic operations, and facilitate their use in security applications such as authentication, mail encryption and digital signatures.</p>
 

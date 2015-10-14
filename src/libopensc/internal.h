@@ -74,7 +74,6 @@ struct sc_atr_table {
 
 /* Internal use only */
 int _sc_add_reader(struct sc_context *ctx, struct sc_reader *reader);
-int _sc_delete_reader(struct sc_context *ctx, struct sc_reader *reader);
 int _sc_parse_atr(struct sc_reader *reader);
 
 /* Add an ATR to the card driver's struct sc_atr_table */
@@ -121,16 +120,17 @@ int _sc_card_add_algorithm(struct sc_card *card, const struct sc_algorithm_info 
 int _sc_card_add_rsa_alg(struct sc_card *card, unsigned int key_length,
 			 unsigned long flags, unsigned long exponent);
 int _sc_card_add_ec_alg(struct sc_card *card, unsigned int key_length,
-			 unsigned long flags, unsigned long ext_flags);
+			 unsigned long flags, unsigned long ext_flags,
+			 struct sc_object_id *curve_oid);
 
 /********************************************************************/
 /*                 pkcs1 padding/encoding functions                 */
 /********************************************************************/
 
-int sc_pkcs1_strip_01_padding(const u8 *in_dat, size_t in_len, u8 *out_dat,
-			      size_t *out_len);
-int sc_pkcs1_strip_02_padding(const u8 *data, size_t len, u8 *out_dat,
-			      size_t *out_len);
+int sc_pkcs1_strip_01_padding(struct sc_context *ctx, const u8 *in_dat, size_t in_len,
+		u8 *out_dat, size_t *out_len);
+int sc_pkcs1_strip_02_padding(struct sc_context *ctx, const u8 *data, size_t len,
+		u8 *out_dat, size_t *out_len);
 int sc_pkcs1_strip_digest_info_prefix(unsigned int *algorithm,
 		const u8 *in_dat, size_t in_len, u8 *out_dat, size_t *out_len);
 
@@ -140,7 +140,7 @@ int sc_pkcs1_strip_digest_info_prefix(unsigned int *algorithm,
  * @param  flags   IN  the algorithm to use
  * @param  in      IN  input buffer
  * @param  inlen   IN  length of the input
- * @param  out     OUT output buffer (in == out is allowed) 
+ * @param  out     OUT output buffer (in == out is allowed)
  * @param  outlen  OUT length of the output buffer
  * @param  modlen  IN  length of the modulus in bytes
  * @return SC_SUCCESS on success and an error code otherwise

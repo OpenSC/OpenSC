@@ -332,8 +332,10 @@ sm_encrypt_des_cbc3(struct sc_context *ctx, unsigned char *key,
 
 	*out_len = data_len;
 	*out = malloc(data_len + 8);
-	if (*out == NULL)
+	if (*out == NULL) {
+		free(data);
 		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "SM encrypt_des_cbc3: failure");
+	}
 
 	memcpy(&kk, key, 8);
 	memcpy(&k2, key + 8, 8);

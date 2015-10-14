@@ -2,12 +2,27 @@ dnl -*- mode: m4; -*-
 
 AC_PREREQ(2.60)
 
+define([PRODUCT_NAME], [OpenSC])
+define([PRODUCT_TARNAME], [opensc])
+define([PRODUCT_BUGREPORT], [https://github.com/OpenSC/OpenSC/issues])
 define([PACKAGE_VERSION_MAJOR], [0])
-define([PACKAGE_VERSION_MINOR], [13])
+define([PACKAGE_VERSION_MINOR], [15])
 define([PACKAGE_VERSION_FIX], [0])
 define([PACKAGE_SUFFIX], [])
+define([PACKAGE_VERSION_REVISION], [0])
 
-AC_INIT([opensc],[PACKAGE_VERSION_MAJOR.PACKAGE_VERSION_MINOR.PACKAGE_VERSION_FIX[]PACKAGE_SUFFIX])
+define([VS_FF_LEGAL_COPYRIGHT], [OpenSC Project])
+define([VS_FF_LEGAL_COMPANY_NAME], [OpenSC Project])
+define([VS_FF_LEGAL_COMPANY_URL], [https://github.com/OpenSC])
+define([VS_FF_COMMENTS], [Provided under the terms of the GNU Lesser General Public License (LGPLv2.1+).])
+define([VS_FF_PRODUCT_NAME], [OpenSC smartcard framework])
+define([VS_FF_PRODUCT_UPDATES], [https://github.com/OpenSC/OpenSC/releases])
+define([VS_FF_PRODUCT_URL], [https://github.com/OpenSC/OpenSC])
+
+m4_include(version.m4)
+m4_sinclude(version.m4.ci)
+
+AC_INIT([PRODUCT_NAME],[PACKAGE_VERSION_MAJOR.PACKAGE_VERSION_MINOR.PACKAGE_VERSION_FIX[]PACKAGE_SUFFIX],[PRODUCT_BUGREPORT],[PRODUCT_TARNAME])
 AC_CONFIG_AUX_DIR([.])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_MACRO_DIR([m4])
@@ -16,13 +31,22 @@ AM_INIT_AUTOMAKE(foreign 1.10)
 OPENSC_VERSION_MAJOR="PACKAGE_VERSION_MAJOR"
 OPENSC_VERSION_MINOR="PACKAGE_VERSION_MINOR"
 OPENSC_VERSION_FIX="PACKAGE_VERSION_FIX"
+OPENSC_VERSION_REVISION="PACKAGE_VERSION_REVISION"
+
+OPENSC_VS_FF_LEGAL_COPYRIGHT="VS_FF_LEGAL_COPYRIGHT"
+OPENSC_VS_FF_COMPANY_NAME="VS_FF_LEGAL_COMPANY_NAME"
+OPENSC_VS_FF_COMPANY_URL="VS_FF_LEGAL_COMPANY_URL"
+OPENSC_VS_FF_COMMENTS="VS_FF_COMMENTS"
+OPENSC_VS_FF_PRODUCT_NAME="VS_FF_PRODUCT_NAME"
+OPENSC_VS_FF_PRODUCT_UPDATES="VS_FF_PRODUCT_UPDATES"
+OPENSC_VS_FF_PRODUCT_URL="VS_FF_PRODUCT_URL"
 
 # LT Version numbers, remember to change them just *before* a release.
 #   (Code changed:                      REVISION++)
 #   (Oldest interface removed:          OLDEST++)
 #   (Interfaces added:                  CURRENT++, REVISION=0)
-OPENSC_LT_CURRENT="3"
-OPENSC_LT_OLDEST="3"
+OPENSC_LT_CURRENT="4"
+OPENSC_LT_OLDEST="4"
 OPENSC_LT_REVISION="0"
 OPENSC_LT_AGE="0"
 OPENSC_LT_AGE="$((${OPENSC_LT_CURRENT}-${OPENSC_LT_OLDEST}))"
@@ -34,8 +58,17 @@ m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
 AC_CANONICAL_HOST
 AC_PROG_CC
+# AC_PROG_CXX is needed to built the win32 custom action. Indeed dutil.h use [extern "C"] definition which fails on pure c compiler
+AC_PROG_CXX
 PKG_PROG_PKG_CONFIG
 AC_C_BIGENDIAN
+
+AC_ARG_ENABLE(
+	[optimization],
+	[AS_HELP_STRING([--disable-optimization],[disable compile optimization @<:@enabled@:>@])],
+	,
+	[enable_optimization="yes"]
+)
 
 AC_ARG_WITH(
 	[cygwin-native],
@@ -44,9 +77,14 @@ AC_ARG_WITH(
 	[with_cygwin_native="no"]
 )
 
+if test "${enable_optimization}" = "no"; then
+	CFLAGS="-O0 -g"
+fi
+
 dnl Check for some target-specific stuff
 test -z "${WIN32}" && WIN32="no"
 test -z "${CYGWIN}" && CYGWIN="no"
+
 case "${host}" in
 	*-*-solaris*)
 		CPPFLAGS="${CPPFLAGS} -I/usr/local/include"
@@ -76,19 +114,25 @@ esac
 
 case "${host}" in
 	*-mingw*|*-winnt*|*-cygwin*)
-		DEBUG_FILE="%TEMP%\opensc-debug.log"
+		DEBUG_FILE="%TEMP%\\\opensc-debug.log"
+		PROFILE_DIR_DEFAULT="obtained from windows registers"
+		PROFILE_DIR="\"\""
 	;;
 	*)
 		DEBUG_FILE="/tmp/opensc-debug.log"
+		PROFILE_DIR="\$(pkgdatadir)"
+		PROFILE_DIR_DEFAULT="\$(pkgdatadir)"
 	;;
 esac
 AC_DEFINE_UNQUOTED([DEBUG_FILE], ["${DEBUG_FILE}"], [Debug file])
+AC_DEFINE_UNQUOTED([PROFILE_DIR], ["${PROFILE_DIR}"], [Directory of profiles])
+AC_DEFINE_UNQUOTED([PROFILE_DIR_DEFAULT], ["${PROFILE_DIR_DEFAULT}"], [Default directory of profiles])
 
 AC_ARG_ENABLE(
 	[strict],
-	[AS_HELP_STRING([--enable-strict],[enable strict compile mode @<:@disabled@:>@])],
+	[AS_HELP_STRING([--disable-strict],[disable strict compile mode @<:@disabled@:>@])],
 	,
-	[enable_strict="no"]
+	[enable_strict="yes"]
 )
 
 AC_ARG_ENABLE(
@@ -149,9 +193,9 @@ AC_ARG_ENABLE(
 
 AC_ARG_ENABLE(
 	[sm],
-	[AS_HELP_STRING([--enable-sm],[enable secure messaging support and modules @<:@disabled@:>@])],
+	[AS_HELP_STRING([--disable-sm],[disable secure messaging support and SM modules @<:@enabled@:>@])],
 	,
-	[enable_sm="no"]
+	[enable_sm="yes"]
 )
 
 AC_ARG_ENABLE(
@@ -168,6 +212,13 @@ AC_ARG_ENABLE(
 	[enable_doc="no"]
 )
 
+AC_ARG_ENABLE(
+	[dnie-ui],
+	[AS_HELP_STRING([--enable-dnie-ui],[enable use of external user interface program to request DNIe pin@<:@disabled@:>@])],
+	,
+	[enable_dnie_ui="no"]
+)
+
 AC_ARG_WITH(
 	[xsl-stylesheetsdir],
 	[AS_HELP_STRING([--with-xsl-stylesheetsdir=PATH],[docbook xsl-stylesheets for svn build @<:@detect@:>@])],
@@ -181,6 +232,13 @@ AC_ARG_WITH(
 	,
 	[with_pcsc_provider="detect"]
 )
+
+AC_ARG_WITH(
+	[pkcs11-provider],
+	[AS_HELP_STRING([--with-pkcs11-provider=PATH],[Path to the default PKCS11 provider @<:@default=OpenSC@:>@])],
+	,
+	[with_pkcs11_provider="detect"]
+)
 dnl ./configure check
 reader_count=""
 for rdriver in "${enable_pcsc}" "${enable_openct}" "${enable_ctapi}"; do
@@ -189,7 +247,7 @@ done
 if test "${reader_count}" != "x"; then
 	AC_MSG_ERROR([Only one of --enable-pcsc, --enable-openct, --enable-ctapi can be specified!])
 fi
-	 
+
 dnl Checks for programs.
 AC_PROG_CPP
 AC_PROG_INSTALL
@@ -234,6 +292,15 @@ elif test "${xslstylesheetsdir}" != "no"; then
 	test -e "${xslstylesheetsdir}/html/docbook.xsl" || AC_MSG_ERROR([invalid])
 fi
 AC_MSG_RESULT([${xslstylesheetsdir}])
+
+AC_MSG_CHECKING([git checkout])
+GIT_CHECKOUT="no"
+if test -n "${GIT}" -a -d "${srcdir}/.git"; then
+        AC_DEFINE([HAVE_CONFIG_VERSION_H], [1], [extra version available in config-version.h])
+        GIT_CHECKOUT="yes"
+fi
+AC_MSG_RESULT([${GIT_CHECKOUT}])
+
 
 dnl C Compiler features
 AC_C_INLINE
@@ -312,18 +379,16 @@ if test "${enable_minidriver}" = "yes"; then
 	AC_DEFINE([ENABLE_MINIDRIVER], [1], [Enable minidriver support])
 fi
 
-if test "${enable_sm}" = "yes"; then
-	AC_DEFINE([ENABLE_SM], [1], [Enable secure messaging support])
+if test "${enable_dnie_ui}" = "yes"; then
+	AC_DEFINE([ENABLE_DNIE_UI], [1], [Enable the use of external user interface program to request DNIe user pin])
 
 	case "${host}" in
-		*-mingw*|*-winnt*|*-cygwin*)
-			DEFAULT_SM_MODULE="smm-local.dll"
-		;;
-		*)
-			DEFAULT_SM_MODULE="libsmm-local.so.3"
+		*-apple-*)
+			if test "${enable_dnie_ui}" = "yes"; then
+				LDFLAGS="${LDFLAGS} -framework Carbon"
+			fi
 		;;
 	esac
-	AC_DEFINE_UNQUOTED([DEFAULT_SM_MODULE], ["${DEFAULT_SM_MODULE}"], [Default SM module])
 fi
 
 AC_ARG_VAR([ZLIB_CFLAGS], [C compiler flags for zlib])
@@ -443,6 +508,30 @@ if test "${enable_openssl}" = "yes"; then
 	else
 		AC_MSG_ERROR([OpenSSL linkage required, but no OpenSSL was found])
 	fi
+else
+	OPENSSL_CFLAGS=""
+	OPENSSL_LIBS=""
+fi
+
+if test "${enable_sm}" = "yes"; then
+	AC_DEFINE([ENABLE_SM], [1], [Enable secure messaging support])
+
+	case "${host}" in
+		*-mingw*|*-winnt*|*-cygwin*)
+			DEFAULT_SM_MODULE="smm-local.dll"
+			DEFAULT_SM_MODULE_PATH="\# module_path = \"\";"
+		;;
+		*-apple-*)
+			DEFAULT_SM_MODULE="libsmm-local.3.dylib"
+			DEFAULT_SM_MODULE_PATH="module_path = \$(libdir);"
+		;;
+		*)
+			DEFAULT_SM_MODULE="libsmm-local.so.3"
+			DEFAULT_SM_MODULE_PATH="module_path = \$(libdir);"
+		;;
+	esac
+	AC_DEFINE_UNQUOTED([DEFAULT_SM_MODULE], ["${DEFAULT_SM_MODULE}"], [Default SM module])
+	AC_DEFINE_UNQUOTED([DEFAULT_SM_MODULE_PATH], ["${DEFAULT_SM_MODULE_PATH}"], [Default SM module path])
 fi
 
 if test "${enable_openct}" = "yes"; then
@@ -467,7 +556,14 @@ if test "${enable_pcsc}" = "yes"; then
 		if test -z "${PCSC_CFLAGS}"; then
 			case "${host}" in
 				*-*-darwin*)
-					PCSC_CFLAGS="-I/System/Library/Frameworks/PCSC.framework/Headers"
+					# Locate the latest SDK.
+					SDKS_PATH="$(xcode-select --print-path)/Platforms/MacOSX.platform/Developer/SDKs"
+					if test -d $SDKS_PATH; then
+					    SDK_PATH="${SDK_PATH:-$SDKS_PATH/$(ls -1 ${SDKS_PATH} | sort -n -t. -k2 -r | head -1)}"
+					    PCSC_CFLAGS="-I$SDK_PATH/System/Library/Frameworks/PCSC.framework/Versions/Current/Headers"
+					else
+					    PCSC_CFLAGS="-I/System/Library/Frameworks/PCSC.framework/Headers"
+					fi
 				;;
 				*)
 					PCSC_CFLAGS="-I/usr/include/PCSC"
@@ -480,6 +576,7 @@ if test "${enable_pcsc}" = "yes"; then
 	CFLAGS="${CFLAGS} ${PCSC_CFLAGS}"
 	# We must cope with mingw32 that does not have winscard.h mingw64 has it.
 	AC_CHECK_HEADERS([winscard.h],,[test "${WIN32}" != "yes" && AC_MSG_ERROR([winscard.h is required for pcsc])])
+	AC_CHECK_HEADERS([pcsclite.h])
 	CFLAGS="${saved_CFLAGS}"
 
 	if test "${with_pcsc_provider}" = "detect"; then
@@ -500,6 +597,24 @@ if test "${enable_pcsc}" = "yes"; then
 	AC_DEFINE_UNQUOTED([DEFAULT_PCSC_PROVIDER], ["${DEFAULT_PCSC_PROVIDER}"], [Default PC/SC provider])
 	AC_DEFINE([ENABLE_PCSC], [1], [Define if PC/SC is to be enabled])
 fi
+
+
+if test "${with_pkcs11_provider}" = "detect"; then
+	case "${host}" in
+		*-*-darwin*)
+			DEFAULT_PKCS11_PROVIDER="opensc-pkcs11.dylib"
+		;;
+		*-mingw*|*-winnt*|*-cygwin*)
+			DEFAULT_PKCS11_PROVIDER="opensc-pkcs11.dll"
+		;;
+		*)
+			DEFAULT_PKCS11_PROVIDER="opensc-pkcs11.so"
+		;;
+	esac
+else
+	DEFAULT_PKCS11_PROVIDER="${with_pkcs11_provider}"
+fi
+AC_DEFINE_UNQUOTED([DEFAULT_PKCS11_PROVIDER], ["${DEFAULT_PKCS11_PROVIDER}"], [Default PKCS11 provider])
 
 if test "${enable_man}" = "detect"; then
 	if test "${WIN32}" = "yes"; then
@@ -550,7 +665,16 @@ fi
 AC_DEFINE_UNQUOTED([OPENSC_VERSION_MAJOR], [${OPENSC_VERSION_MAJOR}], [OpenSC version major component])
 AC_DEFINE_UNQUOTED([OPENSC_VERSION_MINOR], [${OPENSC_VERSION_MINOR}], [OpenSC version minor component])
 AC_DEFINE_UNQUOTED([OPENSC_VERSION_FIX], [${OPENSC_VERSION_FIX}], [OpenSC version fix component])
+AC_DEFINE_UNQUOTED([OPENSC_VERSION_REVISION], [${OPENSC_VERSION_REVISION}], [OpenSC version Git describe revision])
 AC_DEFINE_UNQUOTED([OPENSC_FEATURES], ["${OPENSC_FEATURES}"], [Enabled OpenSC features])
+
+AC_DEFINE_UNQUOTED([OPENSC_VS_FF_LEGAL_COPYRIGHT], [${OPENSC_VS_FF_LEGAL_COPYRIGHT}], [OpenSC version-info LegalCopyright value])
+AC_DEFINE_UNQUOTED([OPENSC_VS_FF_COMPANY_NAME], [${OPENSC_VS_FF_COMPANY_NAME}], [OpenSC version-info CompanyName value])
+AC_DEFINE_UNQUOTED([OPENSC_VS_FF_COMMENTS], [${OPENSC_VS_FF_COMMENTS}], [OpenSC version-info Comments])
+AC_DEFINE_UNQUOTED([OPENSC_VS_FF_PRODUCT_NAME], [${OPENSC_VS_FF_PRODUCT_NAME}], [OpenSC version-info ProductName])
+AC_DEFINE_UNQUOTED([OPENSC_VS_FF_PRODUCT_UPDATES], [${OPENSC_VS_FF_PRODUCT_UPDATES}], [OpenSC version-info UpdateURL])
+AC_DEFINE_UNQUOTED([OPENSC_VS_FF_PRODUCT_URL], [${OPENSC_VS_FF_PRODUCT_URL}], [OpenSC version-info ProductURL])
+AC_DEFINE_UNQUOTED([OPENSC_VS_FF_COMPANY_URL], [${OPENSC_VS_FF_COMPANY_URL}], [OpenSC version-info UpdateURL])
 
 pkcs11dir="\$(libdir)/pkcs11"
 
@@ -559,12 +683,21 @@ AC_SUBST([xslstylesheetsdir])
 AC_SUBST([OPENSC_VERSION_MAJOR])
 AC_SUBST([OPENSC_VERSION_MINOR])
 AC_SUBST([OPENSC_VERSION_FIX])
+AC_SUBST([OPENSC_VERSION_REVISION])
+AC_SUBST([OPENSC_VS_FF_LEGAL_COPYRIGHT])
+AC_SUBST([OPENSC_VS_FF_COMPANY_NAME])
+AC_SUBST([OPENSC_VS_FF_COMMENTS])
+AC_SUBST([OPENSC_VS_FF_PRODUCT_NAME])
+AC_SUBST([OPENSC_VS_FF_PRODUCT_UPDATES])
+AC_SUBST([OPENSC_VS_FF_PRODUCT_URL])
+AC_SUBST([OPENSC_VS_FF_COMPANY_URL])
 AC_SUBST([OPENSC_LT_CURRENT])
 AC_SUBST([OPENSC_LT_REVISION])
 AC_SUBST([OPENSC_LT_AGE])
 AC_SUBST([OPENSC_LT_OLDEST])
 AC_SUBST([WIN_LIBPREFIX])
 AC_SUBST([DEFAULT_PCSC_PROVIDER])
+AC_SUBST([DEFAULT_PKCS11_PROVIDER])
 AC_SUBST([OPTIONAL_ZLIB_CFLAGS])
 AC_SUBST([OPTIONAL_ZLIB_LIBS])
 AC_SUBST([OPTIONAL_READLINE_CFLAGS])
@@ -576,7 +709,10 @@ AC_SUBST([OPTIONAL_OPENCT_LIBS])
 AC_SUBST([OPTIONAL_PCSC_CFLAGS])
 AC_SUBST([LIBRARY_BITNESS])
 AC_SUBST([DEFAULT_SM_MODULE])
+AC_SUBST([DEFAULT_SM_MODULE_PATH])
 AC_SUBST([DEBUG_FILE])
+AC_SUBST([PROFILE_DIR])
+AC_SUBST([PROFILE_DIR_DEFAULT])
 
 AM_CONDITIONAL([ENABLE_MAN], [test "${enable_man}" = "yes"])
 AM_CONDITIONAL([ENABLE_ZLIB], [test "${enable_zlib}" = "yes"])
@@ -588,18 +724,22 @@ AM_CONDITIONAL([WIN32], [test "${WIN32}" = "yes"])
 AM_CONDITIONAL([CYGWIN], [test "${CYGWIN}" = "yes"])
 AM_CONDITIONAL([ENABLE_MINIDRIVER], [test "${enable_minidriver}" = "yes"])
 AM_CONDITIONAL([ENABLE_SM], [test "${enable_sm}" = "yes"])
+AM_CONDITIONAL([ENABLE_DNIE_UI], [test "${enable_dnie_ui}" = "yes"])
+AM_CONDITIONAL([GIT_CHECKOUT], [test "${GIT_CHECKOUT}" = "yes"])
 
 if test "${enable_pedantic}" = "yes"; then
 	enable_strict="yes";
-	CFLAGS="${CFLAGS} -pedantic"
+	CFLAGS="${CFLAGS} -pedantic -Wextra"
 fi
 if test "${enable_strict}" = "yes"; then
-	CFLAGS="${CFLAGS} -Wall -Wextra"
+	CFLAGS="${CFLAGS} -Wall -Wextra -Wno-unused-parameter"
 fi
 if test "$GCC" = "yes"; then
 	# This should be resolved not ignored.
 	CFLAGS="-fno-strict-aliasing ${CFLAGS}"
 fi
+
+CFLAGS="${CFLAGS} -Werror=declaration-after-statement"
 
 AC_CONFIG_FILES([
 	Makefile
@@ -612,22 +752,29 @@ AC_CONFIG_FILES([
 	src/libopensc/libopensc.pc
 	src/libsm/Makefile
 	src/pkcs11/Makefile
+	src/pkcs11/versioninfo-pkcs11.rc
+	src/pkcs11/versioninfo-pkcs11-spy.rc
 	src/pkcs15init/Makefile
 	src/scconf/Makefile
 	src/tests/Makefile
 	src/tests/regression/Makefile
 	src/tools/Makefile
+	src/tools/versioninfo-tools.rc
 	src/smm/Makefile
 	src/minidriver/Makefile
+	src/minidriver/versioninfo-minidriver.rc
 	src/minidriver/opensc-minidriver.inf
 	win32/Makefile
 	win32/versioninfo.rc
+	win32/versioninfo-customactions.rc
 	win32/winconfig.h
 	win32/OpenSC.iss
 	win32/OpenSC.wxs
 	MacOSX/Makefile
 	MacOSX/build-package
+	MacOSX/Distribution.xml
 	MacOSX/resources/ReadMe.html
+	MacOSX/resources/Welcome.html
 ])
 AC_OUTPUT
 
@@ -637,6 +784,17 @@ OpenSC has been configured with the following options:
 
 
 Version:                 ${PACKAGE_VERSION}
+Version fix:             ${OPENSC_VERSION_FIX}
+Version revision:        ${OPENSC_VERSION_REVISION}
+
+Copyright:               ${OPENSC_VS_FF_LEGAL_COPYRIGHT}
+Company:                 ${OPENSC_VS_FF_COMPANY_NAME}
+Company URL:             ${OPENSC_VS_FF_COMPANY_URL}
+Comments:                ${OPENSC_VS_FF_COMMENTS}
+Product name:            ${OPENSC_VS_FF_PRODUCT_NAME}
+Product updates:         ${OPENSC_VS_FF_PRODUCT_UPDATES}
+Product URL:             ${OPENSC_VS_FF_PRODUCT_URL}
+
 User binaries:           $(eval eval eval echo "${bindir}")
 Configuration files:     $(eval eval eval echo "${sysconfdir}")
 XSL stylesheets:         ${xslstylesheetsdir}
@@ -652,9 +810,11 @@ CT-API support:          ${enable_ctapi}
 minidriver support:      ${enable_minidriver}
 SM support:              ${enable_sm}
 SM default module:       ${DEFAULT_SM_MODULE}
+DNIe UI support:         ${enable_dnie_ui}
 Debug file:              ${DEBUG_FILE}
 
 PC/SC default provider:  ${DEFAULT_PCSC_PROVIDER}
+PKCS11 default provider: ${DEFAULT_PKCS11_PROVIDER}
 
 Host:                    ${host}
 Compiler:                ${CC}

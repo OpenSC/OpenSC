@@ -41,9 +41,9 @@ static struct {
 	{"DF01C100", 1, "Telesec Authentifizierungs Zertifikat"},
 	{"DF014371", 0, "User Authentifizierungs Zertifikat1"},
 	{"DF014372", 0, "User Authentifizierungs Zertifikat2"},
-	{"DF01C200", 1, "Telesec Verschlüsselungs Zertifikat"},
-	{"DF0143B1", 0, "User Verschlüsselungs Zertifikat1"},
-	{"DF0143B2", 0, "User Verschlüsselungs Zertifikat2"},
+	{"DF01C200", 1, "Telesec Verschluesselungs Zertifikat"},
+	{"DF0143B1", 0, "User Verschluesselungs Zertifikat1"},
+	{"DF0143B2", 0, "User Verschluesselungs Zertifikat2"},
 };
 
 static struct {

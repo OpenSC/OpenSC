@@ -75,10 +75,20 @@ static const char *option_help[] = {
 static sc_context_t *ctx = NULL;
 static sc_card_t *card = NULL;
 
+static int check_apdu(const sc_apdu_t *apdu)
+{
+	if (apdu->sw1 != 0x90 || apdu->sw2 != 0x00) {
+		fprintf(stderr, "Some error occurred. Use '-v' several times to enable debug output.");
+		return 1;
+	}
+	return 0;
+}
+
 static int cardos_info(void)
 {
 	sc_apdu_t apdu;
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
+	int is_cardos5 = 0;
 	int r;
 
 	if (verbose) {
@@ -106,38 +116,9 @@ static int cardos_info(void)
 			sc_strerror(r));
 		return 1;
 	}
-	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || verbose) {
-		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
-			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
-		if (apdu.resplen)
-			util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+	if (check_apdu(&apdu))
 		return 1;
-	}
 	printf("Info : %s\n", apdu.resp);
-
-	apdu.p2 = 0x81;
-	apdu.resplen = sizeof(rbuf);
-	r = sc_transmit_apdu(card, &apdu);
-	if (r) {
-		fprintf(stderr, "APDU transmit failed: %s\n",
-			sc_strerror(r));
-		return 1;
-	}
-	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || verbose) {
-		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
-			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
-		if (apdu.resplen)
-			util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
-		return 1;
-	}
-
-	printf("Chip type: %d\n", apdu.resp[8]);
-	printf("Serial number: %02x %02x %02x %02x %02x %02x\n",
-	       apdu.resp[10], apdu.resp[11], apdu.resp[12],
-	       apdu.resp[13], apdu.resp[14], apdu.resp[15]);
-	printf("Full prom dump:\n");
-	if (apdu.resplen)
-		util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
 
 	apdu.p2 = 0x82;
 	apdu.resplen = sizeof(rbuf);
@@ -147,13 +128,45 @@ static int cardos_info(void)
 			sc_strerror(r));
 		return 1;
 	}
-	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || verbose) {
-		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
-			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
-		if (apdu.resplen)
-			util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+	if (check_apdu(&apdu))
+		return 1;
+	if (apdu.resp[0] == 0xc9)
+		is_cardos5 = 1;
+
+	apdu.p2 = 0x81;
+	apdu.resplen = sizeof(rbuf);
+	r = sc_transmit_apdu(card, &apdu);
+	if (r) {
+		fprintf(stderr, "APDU transmit failed: %s\n",
+			sc_strerror(r));
 		return 1;
 	}
+	if (check_apdu(&apdu))
+		return 1;
+	if (is_cardos5)	{
+		printf("Serial number: %02x %02x %02x %02x %02x %02x %02x %02x\n",
+			apdu.resp[0], apdu.resp[1], apdu.resp[2], apdu.resp[3],
+			apdu.resp[4], apdu.resp[5], apdu.resp[6], apdu.resp[7]);
+	} else	{
+		printf("Chip type: %d\n", apdu.resp[8]);
+		printf("Serial number: %02x %02x %02x %02x %02x %02x\n",
+			   apdu.resp[10], apdu.resp[11], apdu.resp[12],
+			   apdu.resp[13], apdu.resp[14], apdu.resp[15]);
+		printf("Full prom dump:\n");
+		if (apdu.resplen)
+			util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+	}
+
+	apdu.p2 = 0x82;
+	apdu.resplen = sizeof(rbuf);
+	r = sc_transmit_apdu(card, &apdu);
+	if (r) {
+		fprintf(stderr, "APDU transmit failed: %s\n",
+			sc_strerror(r));
+		return 1;
+	}
+	if (check_apdu(&apdu))
+		return 1;
 	printf("OS Version: %d.%d", apdu.resp[0], apdu.resp[1]);
 	if (apdu.resp[0] == 0xc8 && apdu.resp[1] == 0x02) {
 		printf(" (that's CardOS M4.0)\n");
@@ -173,6 +186,8 @@ static int cardos_info(void)
 		printf(" (that's CardOS M4.2C)\n");
 	} else if (apdu.resp[0] == 0xc8 && apdu.resp[1] == 0x0D) {
 		printf(" (that's CardOS M4.4)\n");
+	} else if (apdu.resp[0] == 0xc9 && apdu.resp[1] == 0x01) {
+		printf(" (that's CardOS V5.0)\n");
 	} else {
 		printf(" (unknown Version)\n");
 	}
@@ -185,20 +200,19 @@ static int cardos_info(void)
 			sc_strerror(r));
 		return 1;
 	}
-	if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00 || verbose) {
-		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
-			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
-		if (apdu.resplen)
-			util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+	if (check_apdu(&apdu))
 		return 1;
-	}
-
 
 	printf("Current life cycle: ");
 	if (rbuf[0] == 0x34) {
 		printf("%d (manufacturing)\n", rbuf[0]);
 	} else if (rbuf[0] == 0x26) {
-		printf("%d (initialization)\n", rbuf[0]);
+		if (is_cardos5)
+			printf("%d (physinit)\n", rbuf[0]);
+		else
+			printf("%d (initialization)\n", rbuf[0]);
+	} else if (rbuf[0] == 0x23) {
+		printf("%d (physpers)\n", rbuf[0]);
 	} else if (rbuf[0] == 0x24) {
 		printf("%d (personalization)\n", rbuf[0]);
 	} else if (rbuf[0] == 0x20) {
@@ -207,6 +221,8 @@ static int cardos_info(void)
 		printf("%d (operational)\n", rbuf[0]);
 	} else if (rbuf[0] == 0x29) {
 		printf("%d (erase in progress)\n", rbuf[0]);
+	} else if (rbuf[0] == 0x3F) {
+		printf("%d (death)\n", rbuf[0]);
 	} else {
 		printf("%d (unknown)\n", rbuf[0]);
 	}
@@ -219,13 +235,8 @@ static int cardos_info(void)
 			sc_strerror(r));
 		return 1;
 	}
-	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || verbose) {
-		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
-			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
-		if (apdu.resplen)
-			util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+	if (check_apdu(&apdu))
 		return 1;
-	}
 
 	printf("Security Status of current DF:\n");
 	util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
@@ -238,13 +249,8 @@ static int cardos_info(void)
 			sc_strerror(r));
 		return 1;
 	}
-	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || verbose) {
-		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
-			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
-		if (apdu.resplen)
-			util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+	if (check_apdu(&apdu))
 		return 1;
-	}
 
 	printf("Free memory : %d\n", rbuf[0]<<8|rbuf[1]);
 
@@ -256,17 +262,12 @@ static int cardos_info(void)
 			sc_strerror(r));
 		return 1;
 	}
-	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || verbose) {
-		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
-			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
-		if (apdu.resplen)
-			util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+	if (check_apdu(&apdu))
 		return 1;
-	}
 
 	if (rbuf[0] == 0x00) {
 		printf("ATR Status: 0x%d ROM-ATR\n",rbuf[0]);
-	} else if (rbuf[0] == 0x90) {
+	} else if (rbuf[0] == 0x80)	{
 		printf("ATR Status: 0x%d EEPROM-ATR\n",rbuf[0]);
 	} else {
 		printf("ATR Status: 0x%d unknown\n",rbuf[0]);
@@ -280,13 +281,8 @@ static int cardos_info(void)
 			sc_strerror(r));
 		return 1;
 	}
-	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || verbose) {
-		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
-			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
-		if (apdu.resplen)
-			util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+	if (check_apdu(&apdu))
 		return 1;
-	}
 
 	printf("Packages installed:\n");
 	util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
@@ -299,15 +295,14 @@ static int cardos_info(void)
 			sc_strerror(r));
 		return 1;
 	}
-	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || verbose) {
-		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
-			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
-		if (apdu.resplen)
-			util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+	if (check_apdu(&apdu))
 		return 1;
-	}
 
-	printf("Ram size: %d, Eeprom size: %d, cpu type: %x, chip config: %d\n",
+	if (is_cardos5)
+		printf("Ram size: %d, Eeprom size: %d, cpu type: %x, chip config: %d, chip manufacturer: %d\n",
+			rbuf[0]<<8|rbuf[1], rbuf[2]<<8|rbuf[3], rbuf[4], rbuf[6], rbuf[7]);
+	else
+		printf("Ram size: %d, Eeprom size: %d, cpu type: %x, chip config: %d\n",
 			rbuf[0]<<8|rbuf[1], rbuf[2]<<8|rbuf[3], rbuf[4], rbuf[5]);
 
 	apdu.p2 = 0x8a;
@@ -318,15 +313,42 @@ static int cardos_info(void)
 			sc_strerror(r));
 		return 1;
 	}
-	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || verbose) {
-		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
-			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
-		if (apdu.resplen)
-			util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+	if (check_apdu(&apdu))
+		return 1;
+
+	if (is_cardos5)
+		printf("Free eeprom memory: %d\n", rbuf[0]<<24|rbuf[1]<<16|rbuf[2]<<8|rbuf[3]);
+	else
+		printf("Free eeprom memory: %d\n", rbuf[0]<<8|rbuf[1]);
+
+	apdu.p2 = 0x8d;
+	apdu.resplen = sizeof(rbuf);
+	r = sc_transmit_apdu(card, &apdu);
+	if (r) {
+		fprintf(stderr, "APDU transmit failed: %s\n",
+			sc_strerror(r));
 		return 1;
 	}
+	if (check_apdu(&apdu))
+		return 1;
 
-	printf("Free eeprom memory: %d\n", rbuf[0]<<8|rbuf[1]);
+	printf("Current Maximum Data Field Length: %d\n", rbuf[0]<<8|rbuf[1]);
+
+	if (is_cardos5)	{
+		apdu.p2 = 0x8B;
+		apdu.resplen = sizeof(rbuf);
+		r = sc_transmit_apdu(card, &apdu);
+		if (r) {
+			fprintf(stderr, "APDU transmit failed: %s\n",
+				sc_strerror(r));
+			return 1;
+		}
+		if (check_apdu(&apdu))
+			return 1;
+
+		printf("Complete chip production data:\n");
+		util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+	}
 
 	apdu.p2 = 0x96;
 	apdu.resplen = sizeof(rbuf);
@@ -336,13 +358,8 @@ static int cardos_info(void)
 			sc_strerror(r));
 		return 1;
 	}
-	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || verbose) {
-		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
-			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
-		if (apdu.resplen)
-			util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+	if (check_apdu(&apdu))
 		return 1;
-	}
 
 	printf("System keys: PackageLoadKey (version 0x%02x, retries %d)\n",
 			rbuf[0], rbuf[1]);
@@ -357,14 +374,8 @@ static int cardos_info(void)
 			sc_strerror(r));
 		return 1;
 	}
-	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || verbose) {
-		fprintf(stderr, "Unable to determine current DF:\n");
-		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
-			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
-		if (apdu.resplen)
-			util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+	if (check_apdu(&apdu))
 		return 1;
-	}
 
 	printf("Path to current DF:\n");
 	util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
@@ -545,13 +556,8 @@ static int cardos_format(const char *opt_startkey)
 			sc_strerror(r));
 		return 1;
 	}
-	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || verbose) {
-		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
-			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
-		if (apdu.resplen)
-			util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+	if (check_apdu(&apdu))
 		return 1;
-	}
 	if (apdu.resplen != 0x02) {
 		printf("did not receive version info, aborting\n");
 		return 1;
@@ -584,15 +590,10 @@ static int cardos_format(const char *opt_startkey)
 			sc_strerror(r));
 		return 1;
 	}
-	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || verbose) {
-		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
-			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
-		if (apdu.resplen)
-			util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+	if (check_apdu(&apdu))
 		return 1;
-	}
 	if (apdu.resplen < 0x04) {
-		printf("expected 4-6 bytes form GET DATA for startkey data, but got only %u\n", apdu.resplen);
+		printf("expected 4-6 bytes form GET DATA for startkey data, but got only %zu\n", apdu.resplen);
 		printf("aborting\n");
 		return 1;
 	}
@@ -610,7 +611,7 @@ static int cardos_format(const char *opt_startkey)
 
 	/* first run GET DATA for lifecycle	 00 CA 01 83
 	 * returns 34 MANUFACTURING 20 ADMINISTRATION 10 OPERATIONAL
-	 * 26 INITIALITATION, 23 PERSINALIZATION 3f DEATH
+	 * 26 INITIALIZATION, 23 PERSONALIZATION 3f DEATH
 	 * 29 ERASE IN PROGRESS
  	 * */
 
@@ -630,13 +631,8 @@ static int cardos_format(const char *opt_startkey)
 			sc_strerror(r));
 		return 1;
 	}
-	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || verbose) {
-		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
-			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
-		if (apdu.resplen)
-			util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+	if (check_apdu(&apdu))
 		return 1;
-	}
 
 	if (apdu.resp[0] == 0x34) {
 		printf("card in manufacturing state\n");
@@ -645,7 +641,7 @@ static int cardos_format(const char *opt_startkey)
 		/* we can leave manufacturing mode with FORMAT,
  		 * but before we do that, we need to change the secret
  		 * siemens start key to the default 0xff start key.
- 		 * we know the APDU for that, but it is secreat and
+ 		 * we know the APDU for that, but it is secret and
  		 * siemens so far didn't allow us to publish it.
  		 */
 	}
@@ -664,7 +660,7 @@ static int cardos_format(const char *opt_startkey)
 	}
 	printf("card in operational state, need to switch to admin state\n");
 
-	/* PHASE CONTORL 80 10 00 00 */
+	/* PHASE CONTROL 80 10 00 00 */
 
 	memset(&apdu, 0, sizeof(apdu));
 	apdu.cla = 0x80;
@@ -681,15 +677,10 @@ static int cardos_format(const char *opt_startkey)
 			sc_strerror(r));
 		return 1;
 	}
-	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || verbose) {
-		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
-			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
-		if (apdu.resplen)
-			util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+	if (check_apdu(&apdu))
 		return 1;
-	}
 
-	/* use GET DATA for lifecacle one more */
+	/* use GET DATA for lifecycle once more */
 
 	memset(&apdu, 0, sizeof(apdu));
 	apdu.cla = 0x00;
@@ -707,13 +698,8 @@ static int cardos_format(const char *opt_startkey)
 			sc_strerror(r));
 		return 1;
 	}
-	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || verbose) {
-		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
-			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
-		if (apdu.resplen)
-			util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+	if (check_apdu(&apdu))
 		return 1;
-	}
 	if (apdu.resp[0] != 0x20) {
 		printf("card not in administrative state, failed\n");
 		printf("aborting\n");
@@ -744,13 +730,8 @@ admin_state:
 			sc_strerror(r));
 		return 1;
 	}
-	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || verbose) {
-		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
-			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
-		if (apdu.resplen)
-			util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+	if (check_apdu(&apdu))
 		return 1;
-	}
 	if (apdu.resplen != 0x00) {
 		printf("card has packages installed.\n");
 		printf("you would loose those, and we can't re-install them.\n");
@@ -788,13 +769,8 @@ admin_state:
 				sc_strerror(r));
 			return 1;
 		}
-		if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || verbose) {
-			fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
-				apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
-			if (apdu.resplen)
-				util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+		if (check_apdu(&apdu))
 			return 1;
-		}
 	}
 
 erase_state:
@@ -842,13 +818,8 @@ erase_state:
 				sc_strerror(r));
 			return 1;
 		}
-		if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || verbose) {
-			fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
-				apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
-			if (apdu.resplen)
-				util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+		if (check_apdu(&apdu))
 			return 1;
-		}
 	}
 	return 0;
 }
@@ -904,13 +875,8 @@ static int cardos_change_startkey(const char *change_startkey_apdu)
 			sc_strerror(r));
 		return 1;
 	}
-	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || verbose) {
-		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
-			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
-		if (apdu.resplen)
-			util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+	if (check_apdu(&apdu))
 		return 1;
-	}
 	if (apdu.resplen != 0x02) {
 		printf("did not receive version info, aborting\n");
 		return 1;
@@ -945,15 +911,10 @@ static int cardos_change_startkey(const char *change_startkey_apdu)
 			sc_strerror(r));
 		return 1;
 	}
-	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || verbose) {
-		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
-			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
-		if (apdu.resplen)
-			util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+	if (check_apdu(&apdu))
 		return 1;
-	}
 	if (apdu.resplen < 0x04) {
-		printf("expected 4-6 bytes form GET DATA for startkey data, but got only %u\n", apdu.resplen);
+		printf("expected 4-6 bytes form GET DATA for startkey data, but got only %zu\n", apdu.resplen);
 		printf("aborting\n");
 		return 1;
 	}
@@ -1010,13 +971,8 @@ change_startkey:
 			sc_strerror(r));
 		return 1;
 	}
-	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || verbose) {
-		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
-			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
-		if (apdu.resplen)
-			util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+	if (check_apdu(&apdu))
 		return 1;
-	}
 
 	printf("change startkey command issued with success\n");
 
@@ -1040,15 +996,10 @@ change_startkey:
 			sc_strerror(r));
 		return 1;
 	}
-	if (apdu.sw1 != 0x90 || apdu.sw2 != 00 || verbose) {
-		fprintf(stderr, "Received (SW1=0x%02X, SW2=0x%02X)%s\n",
-			apdu.sw1, apdu.sw2, apdu.resplen ? ":" : "");
-		if (apdu.resplen)
-			util_hex_dump_asc(stdout, apdu.resp, apdu.resplen, -1);
+	if (check_apdu(&apdu))
 		return 1;
-	}
 	if (apdu.resplen < 0x04) {
-		printf("expected 4-6 bytes form GET DATA for startkey data, but got only %u\n", apdu.resplen);
+		printf("expected 4-6 bytes form GET DATA for startkey data, but got only %zu\n", apdu.resplen);
 		printf("aborting\n");
 		return 1;
 	}

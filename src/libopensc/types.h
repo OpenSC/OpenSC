@@ -177,8 +177,9 @@ struct sc_crt {
 #define SC_AC_OP_CREATE_EF		27
 #define SC_AC_OP_CREATE_DF		28
 #define SC_AC_OP_ADMIN			29
+#define SC_AC_OP_PIN_USE		30
 /* If you add more OPs here, make sure you increase SC_MAX_AC_OPS*/
-#define SC_MAX_AC_OPS			30
+#define SC_MAX_AC_OPS			31
 
 /* the use of SC_AC_OP_ERASE is deprecated, SC_AC_OP_DELETE should be used
  * instead  */
@@ -224,7 +225,8 @@ typedef struct sc_file {
 	unsigned int type, ef_structure, status; /* See constant values defined above */
 	unsigned int shareable;                  /* true(1), false(0) according to ISO 7816-4:2005 Table 14 */
 	size_t size;	/* Size of file (in bytes) */
-	int id;		/* Short file id (2 bytes) */
+	int id;		/* file identifier (2 bytes) */
+	int sid;	/* short EF identifier (1 byte) */
 	struct sc_acl_entry *acl[SC_MAX_AC_OPS]; /* Access Control List */
 
 	int record_length; /* In case of fixed-length or cyclic EF */
@@ -280,8 +282,8 @@ typedef struct sc_apdu {
 	int cse;			/* APDU case */
 	unsigned char cla, ins, p1, p2;	/* CLA, INS, P1 and P2 bytes */
 	size_t lc, le;			/* Lc and Le bytes */
-	unsigned char *data;		/* C-APDU data */
-	size_t datalen;			/* length of data in C-APDU */
+	const unsigned char *data;	/* S-APDU data */
+	size_t datalen;			/* length of data in S-APDU */
 	unsigned char *resp;		/* R-APDU data buffer */
 	size_t resplen;			/* in: size of R-APDU buffer,
 					 * out: length of data returned in R-APDU */

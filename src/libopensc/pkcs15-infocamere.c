@@ -21,7 +21,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#if HAVE_CONFIG_H
 #include "config.h"
+#endif
 
 #include <stdlib.h>
 #include <string.h>
@@ -117,10 +119,6 @@ static int sc_pkcs15emu_add_prkey(sc_pkcs15_card_t *p15card,
         info.modulus_length    = modulus_length;
         info.usage             = usage;
         info.native            = 1;
-        info.access_flags      = SC_PKCS15_PRKEY_ACCESS_SENSITIVE
-                                | SC_PKCS15_PRKEY_ACCESS_ALWAYSSENSITIVE
-                                | SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE
-                                | SC_PKCS15_PRKEY_ACCESS_LOCAL;
         info.key_reference     = ref;
 
         if (path)
@@ -244,6 +242,8 @@ static int infocamere_1200_init(sc_pkcs15_card_t * p15card)
 	
 	if (r != SC_SUCCESS || file->size > 255) {
 		/* Not EF.GDO */
+		if (file)
+			sc_file_free(file);
 		return SC_ERROR_WRONG_CARD;
 	}
 
@@ -251,6 +251,7 @@ static int infocamere_1200_init(sc_pkcs15_card_t * p15card)
 
 	if (ef_gdo[0] != 0x5A || file->size < 3) {
 		/* Not EF.GDO */
+		sc_file_free(file);
 		return SC_ERROR_WRONG_CARD;
 	}
 
@@ -262,8 +263,10 @@ static int infocamere_1200_init(sc_pkcs15_card_t * p15card)
 
 	if (file->size < (size_t) (len_iccsn + 5)) {
 		/* Not CHN */
+		sc_file_free(file);
 		return SC_ERROR_WRONG_CARD;
 	}
+	sc_file_free(file);
 
 	if (!
 	    (ef_gdo[len_iccsn + 2] == 0x5F

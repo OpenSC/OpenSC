@@ -1,0 +1,79 @@
+#!/bin/sh
+
+usage()
+{
+cat << EOF
+usage: $0 options
+
+OpenSC bootstrap
+OPTIONS:
+   -h      Show this message
+   -s      Package suffix
+   -S      Use package suffix as 'g' appended with the date of last commit
+   -r      Package version revision
+   -R      Use package version revision as Git commit number from 'git describe' result
+   -b      Package branch
+   -B      Use package branch as current Git branch
+EOF
+}
+
+
+SUFFIX=
+REVISION=
+VERBOSE=
+KEEPVERSION=
+while getopts “:hs:Sr:RK” OPTION
+do
+     case $OPTION in
+         h)
+             usage
+             exit 1
+             ;;
+         s)
+             SUFFIX=$OPTARG
+             ;;
+         S)
+             SUFFIX=g`git log -1 --pretty=fuller --date=iso | grep CommitDate: | sed -E 's/^CommitDate:\s(.*)/\1/' | sed -E 's/(.*)-(.*)-(.*) (.*):(.*):(.*)\s+.*/\1\2\3\4\5\6/'`
+             ;;
+         r)
+             REVISION=$OPTARG
+             ;;
+         R)
+             REVISION=`git describe | perl -ne 'print $1 if /^[\.0-9]*-([0-9]*)-g[a-z0-9]*$/;'`
+             ;;
+         ?)
+             usage
+             exit
+             ;;
+     esac
+done
+
+set -e
+set -x
+if [ -f Makefile ]; then
+  make distclean
+fi
+
+rm -rf *~ *.cache config.guess config.log config.status config.sub depcomp ltmain.sh version.m4.ci
+
+if [ -n "$SUFFIX" ] || [ -n "$REVISION" ]
+then
+    cp -a version.m4 version.m4.tmp
+
+    if [ -n "$SUFFIX" ]
+    then
+        echo Set package suffix "$SUFFIX"
+        sed 's/^define(\[PACKAGE_SUFFIX\],\s*\[\([-~]*[0-9a-zA-Z]*\)\])$/define(\[PACKAGE_SUFFIX\], \['$SUFFIX'\])/g' version.m4.tmp > version.m4.ci
+        cp version.m4.ci version.m4.tmp
+    fi
+
+    if [ -n "$REVISION" ]
+    then
+        echo Set package revision "$REVISION"
+        sed 's/^define(\[PACKAGE_VERSION_REVISION\],\s*\[\([-~]*[0-9a-zA-Z]*\)\])$/define(\[PACKAGE_VERSION_REVISION\], \['$REVISION'\])/g' version.m4.tmp > version.m4.ci
+    fi
+
+    rm -f version.m4.tmp
+fi
+
+autoreconf --verbose --install --force || true

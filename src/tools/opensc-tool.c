@@ -149,7 +149,7 @@ static int opensc_get_conf_entry(const char *config)
 	}
 
 	section = buffer;
-	name = section == NULL ? NULL : strchr(section+1, ':');
+	name = strchr(section+1, ':');
 	key = name == NULL ? NULL : strchr(name+1, ':');
 	if (key == NULL) {
 		r = EINVAL;
@@ -203,7 +203,7 @@ static int opensc_set_conf_entry(const char *config)
 	}
 
 	section = buffer;
-	name = section == NULL ? NULL : strchr(section+1, ':');
+	name = strchr(section+1, ':');
 	key = name == NULL ? NULL : strchr(name+1, ':');
 	value = key == NULL ? NULL : strchr(key+1, ':');
 	if (value == NULL) {
@@ -656,6 +656,7 @@ int main(int argc, char * const argv[])
 	int action_count = 0;
 	const char *opt_driver = NULL;
 	const char *opt_conf_entry = NULL;
+	char **p;
 	sc_context_param_t ctx_param;
 
 	setbuf(stderr, NULL);
@@ -695,8 +696,14 @@ int main(int argc, char * const argv[])
 			action_count++;
 			break;
 		case 's':
-			opt_apdus = (char **) realloc(opt_apdus,
+			p = (char **) realloc(opt_apdus,
 					(opt_apdu_count + 1) * sizeof(char *));
+			if (!p) {
+				fprintf(stderr, "Not enough memory\n");
+				err = 1;
+				goto end;
+			}
+			opt_apdus = p;
 			opt_apdus[opt_apdu_count] = optarg;
 			do_send_apdu++;
 			if (opt_apdu_count == 0)
@@ -750,6 +757,8 @@ int main(int argc, char * const argv[])
 		fprintf(stderr, "Failed to establish context: %s\n", sc_strerror(r));
 		return 1;
 	}
+
+	ctx->flags |= SC_CTX_FLAG_ENABLE_DEFAULT_DRIVER;
 
 	if (verbose > 1) {
 		ctx->debug = verbose;

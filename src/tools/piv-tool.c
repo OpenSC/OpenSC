@@ -86,7 +86,7 @@ static const char *option_help[] = {
 	"authenticate using default 3des key",
 	"Generate key <ref>:<alg> 9A:06 on card, and output pubkey",
 	"Load an object <containerID> containerID as defined in 800-73 without leading 0x",
-	"Load a cert <ref> where <ref> is 9A,9B,9C or 9D",
+	"Load a cert <ref> where <ref> is 9A,9C,9D or 9E",
 	"Load a cert that has been gziped <ref>",
 	"Output file for cert or key",
 	"Inout file for cert",
@@ -104,38 +104,41 @@ static EVP_PKEY * evpkey = NULL;
 
 static int load_object(const char * object_id, const char * object_file)
 {
-	FILE *fp;
+	FILE *fp = NULL;
 	sc_path_t path;
 	size_t derlen;
 	u8 *der = NULL;
 	u8 *body;
 	size_t bodylen;
-	int r;
+	int r = -1;
 	struct stat stat_buf;
 
-    if((fp=fopen(object_file, "r"))==NULL){
+    if(!object_file || (fp=fopen(object_file, "r")) == NULL){
         printf("Cannot open object file, %s %s\n",
 			(object_file)?object_file:"", strerror(errno));
-        return -1;
+		goto err;
     }
 
-	stat(object_file, &stat_buf);
+	if (0 != stat(object_file, &stat_buf)) {
+		printf("unable to read file %s\n",object_file);
+		goto err;
+	}
 	derlen = stat_buf.st_size;
 	der = malloc(derlen);
 	if (der == NULL) {
 		printf("file %s is too big, %lu\n",
 		object_file, (unsigned long)derlen);
-		return-1 ;
+		goto err;
 	}
 	if (1 != fread(der, derlen, 1, fp)) {
 		printf("unable to read file %s\n",object_file);
-		return -1;
+		goto err;
 	}
 	/* check if tag and length are valid */
 	body = (u8 *)sc_asn1_find_tag(card->ctx, der, derlen, 0x53, &bodylen);
 	if (body == NULL || derlen != body  - der +  bodylen) {
 		fprintf(stderr, "object tag or length not valid\n");
-		return -1;
+		goto err;
 	}
 
 	sc_format_path(object_id, &path);
@@ -143,10 +146,16 @@ static int load_object(const char * object_id, const char * object_file)
 	r = sc_select_file(card, &path, NULL);
 	if (r < 0) {
 		fprintf(stderr, "select file failed\n");
-		return -1;
+		r = -1;
+		goto err;
 	}
 	/* leave 8 bits for flags, and pass in total length */
 	r = sc_write_binary(card, 0, der, derlen, derlen<<8);
+
+err:
+	free(der);
+	if (fp)
+		fclose(fp);
 
 	return r;
 }
@@ -156,41 +165,49 @@ static int load_cert(const char * cert_id, const char * cert_file,
 					int compress)
 {
 	X509 * cert = NULL;
-	FILE *fp;
+	FILE *fp = NULL;
 	u8 buf[1];
 	size_t buflen = 1;
 	sc_path_t path;
 	u8 *der = NULL;
 	u8 *p;
 	size_t derlen;
-	int r;
+	int r = -1;
+
+	if (!cert_file) {
+        printf("Missing cert file\n");
+		goto err;
+	}
 
     if((fp=fopen(cert_file, "r"))==NULL){
         printf("Cannot open cert file, %s %s\n",
-			cert_file?cert_file:"", strerror(errno));
-        return -1;
+				cert_file, strerror(errno));
+        goto err;
     }
 	if (compress) { /* file is gziped already */
 		struct stat stat_buf;
 
-		stat(cert_file, &stat_buf);
+		if (0 != stat(cert_file, &stat_buf)) {
+			printf("unable to read file %s\n",cert_file);
+			goto err;
+		}
 		derlen = stat_buf.st_size;
 		der = malloc(derlen);
 		if (der == NULL) {
 			printf("file %s is too big, %lu\n",
 				cert_file, (unsigned long)derlen);
-			return-1 ;
+			goto err;
 		}
 		if (1 != fread(der, derlen, 1, fp)) {
 			printf("unable to read file %s\n",cert_file);
-			return -1;
+			goto err;
 		}
 	} else {
 		cert = PEM_read_X509(fp, &cert, NULL, NULL);
     	if(cert == NULL){
         	printf("file %s does not conatin PEM-encoded certificate\n",
 				 cert_file);
-        	return -1 ;
+        	goto err;
     	}
 
 		derlen = i2d_X509(cert, NULL);
@@ -198,30 +215,34 @@ static int load_cert(const char * cert_id, const char * cert_file,
 		p = der;
 		i2d_X509(cert, &p);
 	}
-    fclose(fp);
 	sc_hex_to_bin(cert_id, buf,&buflen);
 
 	switch (buf[0]) {
 		case 0x9a: sc_format_path("0101",&path); break;
-		case 0x9b: sc_format_path("0500",&path); break;
 		case 0x9c: sc_format_path("0100",&path); break;
 		case 0x9d: sc_format_path("0102",&path); break;
+		case 0x9e: sc_format_path("0500",&path); break;
 		default:
-			fprintf(stderr,"cert must be 9A, 9B, 9C or 9D\n");
-			return 2;
+			fprintf(stderr,"cert must be 9A, 9C, 9D or 9E\n");
+			r = 2;
+			goto err;
 	}
 
 	r = sc_select_file(card, &path, NULL);
 	if (r < 0) {
 		fprintf(stderr, "select file failed\n");
-		 return -1;
+		goto err;
 	}
 	/* we pass length  and  8 bits of flag to card-piv.c write_binary */
 	/* pass in its a cert and if needs compress */
 	r = sc_write_binary(card, 0, der, derlen, (derlen<<8) | (compress<<4) | 1);
 
-	return r;
+err:
+	free(der);
+	if (fp)
+		fclose(fp);
 
+	return r;
 }
 static int admin_mode(const char* admin_info)
 {
@@ -268,13 +289,13 @@ static int gen_key(const char * key_info)
 	}
 	switch (buf[0]) {
 		case 0x9a:
-		case 0x9b:
 		case 0x9c:
 		case 0x9d:
+		case 0x9e:
 			keydata.key_num = buf[0];
 			break;
 		default:
-			fprintf(stderr, "<keyref>:<algid> must be 9A, 9B, 9C or 9D\n");
+			fprintf(stderr, "<keyref>:<algid> must be 9A, 9C, 9D or 9E\n");
 			return 2;
 	}
 
@@ -484,6 +505,7 @@ int main(int argc, char * const argv[])
 			break;
 		case 'Z':
 			compress_cert = 1;
+			/* fall through */
 		case 'C':
 			do_load_cert = 1;
 			cert_id = optarg;

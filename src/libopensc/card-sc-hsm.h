@@ -50,13 +50,16 @@
 #define ID_USER_PIN				0x81		/* User PIN identifier */
 #define ID_SO_PIN				0x88		/* Security officer PIN identifier */
 
+#define INIT_RRC_ENABLED		0x01		/* Bit 1 of initialization options */
+#define INIT_TRANSPORT_PIN		0x02		/* Bit 2 of initialization options */
+
 /* Information the driver maintains between calls */
 typedef struct sc_hsm_private_data {
 	const sc_security_env_t *env;
 	u8 algorithm;
 	int noExtLength;
 	char *serialno;
-	char initpw[6];						// Initial user PIN set at initialization (first 6 digits of token pin)
+	u8 sopin[8];
 } sc_hsm_private_data_t;
 
 
@@ -96,6 +99,18 @@ typedef struct sc_cvc sc_cvc_t;
 
 
 
+struct ec_curve {
+	const struct sc_lv_data oid;
+	const struct sc_lv_data prime;
+	const struct sc_lv_data coefficientA;
+	const struct sc_lv_data coefficientB;
+	const struct sc_lv_data basePointG;
+	const struct sc_lv_data order;
+	const struct sc_lv_data coFactor;
+};
+
+
+
 int sc_pkcs15emu_sc_hsm_decode_cvc(sc_pkcs15_card_t * p15card,
 											const u8 ** buf, size_t *buflen,
 											sc_cvc_t *cvc);
@@ -103,5 +118,7 @@ int sc_pkcs15emu_sc_hsm_encode_cvc(sc_pkcs15_card_t * p15card,
 		sc_cvc_t *cvc,
 		u8 ** buf, size_t *buflen);
 void sc_pkcs15emu_sc_hsm_free_cvc(sc_cvc_t *cvc);
+int sc_pkcs15emu_sc_hsm_get_curve(struct ec_curve **curve, u8 *oid, size_t oidlen);
+int sc_pkcs15emu_sc_hsm_get_public_key(struct sc_context *ctx, sc_cvc_t *cvc, struct sc_pkcs15_pubkey *pubkey);
 
 #endif /* SC_HSM_H_ */

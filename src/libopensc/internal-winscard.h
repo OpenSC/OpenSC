@@ -20,6 +20,13 @@ typedef unsigned __int8 uint8_t;
 #ifdef __APPLE__
 #include <wintypes.h>
 #endif
+// allow unicode built where SCARD_READERSTATE is defined as SCARD_READERSTATEW and SCardGetStatusChange renamed to SCardGetStatusChangeW
+#ifdef _WIN32
+#ifdef UNICODE
+#define SCARD_READERSTATE SCARD_READERSTATEA
+#undef SCardGetStatusChange
+#endif
+#endif
 #else
 /* mingw32 does not have winscard.h */
 
@@ -193,6 +200,9 @@ typedef LONG (PCSC_API *SCardGetAttrib_t)(SCARDHANDLE hCard, DWORD dwAttrId,\
 #define PCSCv2_PART10_PROPERTY_bMaxPINSize 7
 #define PCSCv2_PART10_PROPERTY_sFirmwareID 8
 #define PCSCv2_PART10_PROPERTY_bPPDUSupport 9
+#define PCSCv2_PART10_PROPERTY_dwMaxAPDUDataSize 10
+#define PCSCv2_PART10_PROPERTY_wIdVendor 11
+#define PCSCv2_PART10_PROPERTY_wIdProduct 12
 
 /* structures used (but not defined) in PCSC Part 10:
  * "IFDs with Secure Pin Entry Capabilities" */
@@ -240,7 +250,13 @@ typedef struct
 	uint8_t bMsgIndex; /**< Message index (should be 00) */
 	uint8_t bTeoPrologue[3]; /**< T=1 block prologue field to use (fill with 00) */
 	uint32_t ulDataLength; /**< length of Data to be sent to the ICC */
-	uint8_t abData[1]; /**< Data to send to the ICC */
+	uint8_t abData
+#if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
+	[] /* valid C99 code */
+#else
+	[0] /* non-standard, but usually working code */
+#endif
+	; /**< Data to send to the ICC */
 } PIN_VERIFY_STRUCTURE;
 
 /** structure used with \ref FEATURE_MODIFY_PIN_DIRECT */
@@ -273,7 +289,13 @@ typedef struct
 	uint8_t bMsgIndex3; /**< index of 3d prompting message */
 	uint8_t bTeoPrologue[3]; /**< T=1 block prologue field to use (fill with 00) */
 	uint32_t ulDataLength; /**< length of Data to be sent to the ICC */
-	uint8_t abData[1]; /**< Data to send to the ICC */
+	uint8_t abData
+#if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
+	[] /* valid C99 code */
+#else
+	[0] /* non-standard, but usually working code */
+#endif
+	; /**< Data to send to the ICC */
 } PIN_MODIFY_STRUCTURE;
 
 /* PIN_PROPERTIES as defined (in/up to?) PC/SC 2.02.05 */

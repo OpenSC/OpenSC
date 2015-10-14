@@ -18,9 +18,11 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#if HAVE_CONFIG_H
 #include "config.h"
+#endif
 
-#if ENABLE_OPENSSL	/* empty file without openssl */
+#ifdef ENABLE_OPENSSL	/* empty file without openssl */
 #include <string.h>
 #include <stdlib.h>
 #include <openssl/bio.h>

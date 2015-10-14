@@ -46,6 +46,7 @@ enum {
 	SC_CARD_TYPE_CARDOS_M4_2C,
 	SC_CARD_TYPE_CARDOS_CIE_V1, /* Italian CIE (eID) v1 */
 	SC_CARD_TYPE_CARDOS_M4_4,
+	SC_CARD_TYPE_CARDOS_V5_0,
 
 	/* flex/cyberflex drivers */
 	SC_CARD_TYPE_FLEX_BASE = 2000,
@@ -93,6 +94,7 @@ enum {
 	/* starcos driver */
 	SC_CARD_TYPE_STARCOS_BASE = 7000,
 	SC_CARD_TYPE_STARCOS_GENERIC,
+	SC_CARD_TYPE_STARCOS_V3_4,
 
 	/* tcos driver */
 	SC_CARD_TYPE_TCOS_BASE = 8000,
@@ -104,6 +106,7 @@ enum {
 	SC_CARD_TYPE_OPENPGP_BASE = 9000,
 	SC_CARD_TYPE_OPENPGP_V1,
 	SC_CARD_TYPE_OPENPGP_V2,
+	SC_CARD_TYPE_OPENPGP_GNUK,
 
 	/* jcop driver */
 	SC_CARD_TYPE_JCOP_BASE = 10000,
@@ -138,6 +141,7 @@ enum {
 	SC_CARD_TYPE_MUSCLE_V2,
 	SC_CARD_TYPE_MUSCLE_ETOKEN_72K,
 	SC_CARD_TYPE_MUSCLE_JCOP241,
+	SC_CARD_TYPE_MUSCLE_JCOP242R2_NO_EXT_APDU,
 
 	/* ACOS5 driver */
 	SC_CARD_TYPE_ACOS5_BASE = 16000,
@@ -166,6 +170,7 @@ enum {
 	SC_CARD_TYPE_GEMSAFEV1_BASE = 21000,
 	SC_CARD_TYPE_GEMSAFEV1_GENERIC,
 	SC_CARD_TYPE_GEMSAFEV1_PTEID,
+	SC_CARD_TYPE_GEMSAFEV1_SEEID,
 
 	/* IAS cards */
 	SC_CARD_TYPE_IAS_BASE = 22000,
@@ -188,9 +193,25 @@ enum {
 	SC_CARD_TYPE_IASECC_OBERTHUR,
 	SC_CARD_TYPE_IASECC_SAGEM,
 	SC_CARD_TYPE_IASECC_AMOS,
+	SC_CARD_TYPE_IASECC_MI,
 
 	/* SmartCard-HSM */
 	SC_CARD_TYPE_SC_HSM = 26000,
+
+	/* Spanish DNIe card */
+	SC_CARD_TYPE_DNIE_BASE = 27000,
+	SC_CARD_TYPE_DNIE_BLANK, /* ATR LC byte: 00 */
+	SC_CARD_TYPE_DNIE_ADMIN, /* ATR LC byte: 01 */
+	SC_CARD_TYPE_DNIE_USER,  /* ATR LC byte: 03 */
+	SC_CARD_TYPE_DNIE_TERMINATED, /* ATR LC byte: 0F */
+
+	/* JavaCards with isoApplet */
+	SC_CARD_TYPE_ISO_APPLET_BASE = 28000,
+	SC_CARD_TYPE_ISO_APPLET_GENERIC,
+
+	/* Masktech cards */
+	SC_CARD_TYPE_MASKTECH_BASE = 29000,
+	SC_CARD_TYPE_MASKTECH_GENERIC
 };
 
 extern sc_card_driver_t *sc_get_default_driver(void);
@@ -222,11 +243,13 @@ extern sc_card_driver_t *sc_get_westcos_driver(void);
 extern sc_card_driver_t *sc_get_myeid_driver(void);
 extern sc_card_driver_t *sc_get_ias_driver(void);
 extern sc_card_driver_t *sc_get_sc_hsm_driver(void);
-extern sc_card_driver_t *sc_get_javacard_driver(void);
 extern sc_card_driver_t *sc_get_itacns_driver(void);
 extern sc_card_driver_t *sc_get_authentic_driver(void);
 extern sc_card_driver_t *sc_get_iasecc_driver(void);
 extern sc_card_driver_t *sc_get_epass2003_driver(void);
+extern sc_card_driver_t *sc_get_dnie_driver(void);
+extern sc_card_driver_t *sc_get_isoApplet_driver(void);
+extern sc_card_driver_t *sc_get_masktech_driver(void);
 
 #ifdef __cplusplus
 }

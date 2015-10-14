@@ -85,6 +85,7 @@ static const char *option_help[] = {
 static int do_echo(int argc, char **argv);
 static int do_ls(int argc, char **argv);
 static int do_find(int argc, char **argv);
+static int do_find_tags(int argc, char **argv);
 static int do_cd(int argc, char **argv);
 static int do_cat(int argc, char **argv);
 static int do_info(int argc, char **argv);
@@ -127,6 +128,9 @@ static struct command	cmds[] = {
 	{ do_find,
 		"find",	"[<start id> [<end id>]]",
 		"find all files in the current DF"	},
+	{ do_find_tags,
+		"find_tags",	"[<start tag> [<end tag>]]",
+		"find all tags of data objects in the current context"	},
 	{ do_cd,
 		"cd",	"{.. | <file id> | aid:<DF name>}",
 		"change to another DF"			},
@@ -297,27 +301,40 @@ ambiguous_match(struct command *table, const char *cmd)
 	return last_match;
 }
 
-static void check_ret(int r, int op, const char *err, const sc_file_t *file)
+
+static void
+check_ret(int r, int op, const char *err, const sc_file_t *file)
 {
 	fprintf(stderr, "%s: %s\n", err, sc_strerror(r));
 	if (r == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED)
 		fprintf(stderr, "ACL for operation: %s\n", util_acl_to_str(sc_file_get_acl_entry(file, op)));
 }
 
-static int arg_to_fid(const char *arg, u8 *fid)
-{
-    if (strlen(arg) != 4) {
-        printf("Wrong ID length.\n");
-        return -1;
-    }
-    if (sscanf(arg, "%02X%02X", &fid[0], &fid[1]) != 2) {
-        printf("Invalid ID.\n");
-        return -1;
-    }
 
-    return 0;
+static int
+arg_to_fid(const char *arg, u8 *fid)
+{
+	unsigned int fid0, fid1;
+
+	if (strlen(arg) != 4) {
+		printf("Wrong ID length.\n");
+		return -1;
+	}
+
+	if (sscanf(arg, "%02X%02X", &fid0, &fid1) != 2) {
+		printf("Invalid ID.\n");
+		return -1;
+	}
+
+	fid[0] = (unsigned char)fid0;
+	fid[1] = (unsigned char)fid1;
+
+	return 0;
 }
-static int arg_to_path(const char *arg, sc_path_t *path, int is_id)
+
+
+static int
+arg_to_path(const char *arg, sc_path_t *path, int is_id)
 {
 	memset(path, 0, sizeof(sc_path_t));
 
@@ -566,6 +583,73 @@ static int do_find(int argc, char **argv)
 	return 0;
 }
 
+static int do_find_tags(int argc, char **argv)
+{
+	u8 start[2], end[2], rbuf[256];
+	int r;
+	unsigned int tag, tag_end;
+
+	start[0] = 0x00;
+	start[1] = 0x00;
+	end[0] = 0xFF;
+	end[1] = 0xFF;
+	switch (argc) {
+	case 2:
+		if (arg_to_fid(argv[1], end) != 0)
+			return usage(do_find_tags);
+		/* fall through */
+	case 1:
+		if (arg_to_fid(argv[0], start) != 0)
+			return usage(do_find_tags);
+		/* fall through */
+	case 0:
+		break;
+	default:
+		return usage(do_find_tags);
+	}
+	tag = (start[0] << 8) | start[1];
+	tag_end = (end[0] << 8) | end[1];
+
+	printf("Tag\tType\n");
+	while (1) {
+		printf("(%04X)\r", tag);
+		fflush(stdout);
+
+		r = sc_get_data(card, tag, rbuf, sizeof rbuf);
+		if (r >= 0) {
+			printf(" %04X ", tag);
+			if (tag == 0)
+				printf("\tdump file");
+			if ((0x0001 <= tag && tag <= 0x00FE)
+					|| (0x1F1F <= tag && tag <= 0xFFFF))
+				printf("\tBER-TLV");
+			if (tag == 0x00FF || tag == 0x02FF)
+				printf("\tspecial function");
+			if (0x0100 <= tag && tag <= 0x01FF)
+				printf("\tproprietary");
+			if (tag == 0x0200)
+				printf("\tRFU");
+			if (0x0201 <= tag && tag <= 0x02FE)
+				printf("\tSIMPLE-TLV");
+			printf("\n");
+			if (r > 0)
+				util_hex_dump_asc(stdout, rbuf, r, -1);
+		} else {
+			switch (r) {
+				case SC_ERROR_NOT_ALLOWED:
+				case SC_ERROR_SECURITY_STATUS_NOT_SATISFIED:
+					printf("(%04X)\t%s\n", tag, sc_strerror(r));
+					break;
+			}
+		}
+
+		if (tag >= tag_end)
+			break;
+		tag++;
+	}
+	return 0;
+}
+
 static int do_cd(int argc, char **argv)
 {
 	sc_path_t path;
@@ -626,18 +710,20 @@ static int read_and_util_print_binary_file(sc_file_t *file)
 {
 	unsigned char *buf = NULL;
 	int r;
+	size_t size;
 
-	buf = malloc(file->size);
+	if (file->size) {
+		size = file->size;
+	} else {
+		size = 1024;
+	}
+	buf = malloc(size);
 	if (!buf)
 		return -1;
 
-	r = sc_read_binary(card, 0, buf, file->size, 0);
+	r = sc_read_binary(card, 0, buf, size, 0);
 	if (r < 0)   {
 		check_ret(r, SC_AC_OP_READ, "read failed", file);
-		return -1;
-	}
-	if ((r != file->size) && (card->type != SC_CARD_TYPE_BELPIC_EID))   {
-		printf("expecting %d, got only %d bytes.\n", file->size, r);
 		return -1;
 	}
 	if ((r == 0) && (card->type == SC_CARD_TYPE_BELPIC_EID))
@@ -771,8 +857,10 @@ static int do_info(int argc, char **argv)
 		st = "Unknown File";
 		break;
 	}
-	printf("\n%s  ID %04X\n\n", st, file->id);
-	printf("%-15s%s\n", "File path:", path_to_filename(&path, '/'));
+	printf("\n%s  ID %04X", st, file->id);
+	if (file->sid)
+		printf(", SFI %02X", file->sid);
+	printf("\n\n%-15s%s\n", "File path:", path_to_filename(&path, '/'));
 	printf("%-15s%lu bytes\n", "File size:", (unsigned long) file->size);
 
 	if (file->type == SC_FILE_TYPE_DF) {
@@ -877,13 +965,14 @@ static int do_create(int argc, char **argv)
 	unsigned int size;
 	int r, op;
 
-	if (argc != 2)
+	if (argc < 2)
 		return usage(do_create);
 	if (arg_to_path(argv[0], &path, 1) != 0)
 		return usage(do_create);
 	/* %z isn't supported everywhere */
 	if (sscanf(argv[1], "%u", &size) != 1)
 		return usage(do_create);
+
 	file = sc_file_new();
 	file->id = (path.value[0] << 8) | path.value[1];
 	file->type = SC_FILE_TYPE_WORKING_EF;
@@ -892,6 +981,11 @@ static int do_create(int argc, char **argv)
 	file->status = SC_FILE_STATUS_ACTIVATED;
 	for (op = 0; op < SC_MAX_AC_OPS; op++)
 		sc_file_add_acl_entry(file, op, SC_AC_NONE, 0);
+
+	if (argc > 2)   {
+		snprintf((char *)file->name, sizeof(file->name), "%s", argv[2]);
+		file->namelen = strlen((char *)file->name);
+	}
 
 	r = create_file(file);
 	sc_file_free(file);
@@ -998,14 +1092,15 @@ static int do_verify(int argc, char **argv)
 				printf("No PIN entered - aborting VERIFY.\n");
 				return -1;
 			}
-			if (strlcpy(buf, pin, sizeof(buf)) >= sizeof(buf)) {
+
+			if (strlcpy((char *)buf, pin, sizeof(buf)) >= sizeof(buf)) {
 				free(pin);
 				printf("PIN too long - aborting VERIFY.\n");
 				return -1;
 			}
 			free(pin);
 			data.pin1.data = buf;
-			data.pin1.len = strlen(buf);
+			data.pin1.len = strlen((char *)buf);
 		}
 	} else {
 		r = parse_string_or_hexdata(argv[1], buf, &buflen);
@@ -1186,6 +1281,7 @@ static int do_get(int argc, char **argv)
 	}
 	count = file->size;
 	while (count) {
+		/* FIXME sc_read_binary does this kind of fetching in a loop already */
 		int c = count > sizeof(buf) ? sizeof(buf) : count;
 
 		r = sc_read_binary(card, idx, buf, c, 0);
@@ -1772,7 +1868,7 @@ int main(int argc, char * const argv[])
 	char *cargv[260];
 	sc_context_param_t ctx_param;
 	int lcycle = SC_CARDCTRL_LIFECYCLE_ADMIN;
-	FILE *script;
+	FILE *script = stdin;
 
 	printf("OpenSC Explorer version %s\n", sc_get_version());
 
@@ -1810,6 +1906,8 @@ int main(int argc, char * const argv[])
 		fprintf(stderr, "Failed to establish context: %s\n", sc_strerror(r));
 		return 1;
 	}
+
+	ctx->flags |= SC_CTX_FLAG_ENABLE_DEFAULT_DRIVER;
 
 	if (verbose > 1) {
 		ctx->debug = verbose;

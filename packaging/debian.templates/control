@@ -1,0 +1,31 @@
+Source: opensc
+Section: utils
+Priority: extra
+Maintainer: Viktor Tarasov <viktor.tarasov@gmail.com>
+Build-Depends: debhelper (>= 8.0.0), autotools-dev, libltdl3-dev, libreadline-dev, libssl-dev (>= 0.9.7d-3), libpcsclite-dev (>= 1.2.9-beta1), pkg-config, xsltproc, docbook-xsl, zlib1g-dev, dh-autoreconf, flex
+Standards-Version: 3.9.2
+Homepage: https://github.com/OpenSC/OpenSC
+#Vcs-Git: git://git.debian.org/collab-maint/opensc.git
+#Vcs-Browser: http://git.debian.org/?p=collab-maint/opensc.git;a=summary
+
+Package: opensc
+Section: utils
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, pcscd
+Replaces: libopensc2 (<< 0.12.0)
+Conflicts: libopensc2 (<< 0.12.0), mozilla-opensc
+Description: Smart card utilities with support for PKCS#15 compatible cards
+ OpenSC provides a set of libraries and utilities to access smart
+ cards. It mainly focuses on cards that support cryptographic
+ operations. It facilitates their use in security applications such as
+ mail encryption, authentication, and digital signature. OpenSC
+ implements the PKCS#11 API. OpenSC implements the PKCS#15
+ standard and aims to be compatible with all software that does so as
+ well.
+ .
+ Before purchasing any cards, please read carefully documentation in
+ /usr/share/doc/opensc/html/wiki/index.html - only some cards are
+ supported. Not only does card type matters, but also card version,
+ card OS version and preloaded applet. Only a subset of possible
+ operations may be supported for your card. Card initialization may
+ require third party proprietary software.

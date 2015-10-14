@@ -19,7 +19,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#if HAVE_CONFIG_H
 #include "config.h"
+#endif
 
 #include <string.h>
 #include <stdlib.h>
@@ -85,7 +87,7 @@ int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 {
 	sc_context_t *ctx = p15card->card->ctx;
 	int r;
-	sc_algorithm_info_t *alg_info;
+	sc_algorithm_info_t *alg_info = NULL;
 	sc_security_env_t senv;
 	const struct sc_pkcs15_prkey_info *prkey = (const struct sc_pkcs15_prkey_info *) obj->data;
 	unsigned long pad_flags = 0, sec_flags = 0;
@@ -169,7 +171,7 @@ int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 	/* Strip any padding */
 	if (pad_flags & SC_ALGORITHM_RSA_PAD_PKCS1) {
 		size_t s = r;
-		r = sc_pkcs1_strip_02_padding(out, s, out, &s);
+		r = sc_pkcs1_strip_02_padding(ctx, out, s, out, &s);
 		LOG_TEST_RET(ctx, r, "Invalid PKCS#1 padding");
 	}
 
@@ -190,7 +192,7 @@ int sc_pkcs15_derive(struct sc_pkcs15_card *p15card,
 {
 	sc_context_t *ctx = p15card->card->ctx;
 	int r;
-	sc_algorithm_info_t *alg_info;
+	sc_algorithm_info_t *alg_info = NULL;
 	sc_security_env_t senv;
 	const struct sc_pkcs15_prkey_info *prkey = (const struct sc_pkcs15_prkey_info *) obj->data;
 	unsigned long pad_flags = 0, sec_flags = 0;
@@ -212,14 +214,14 @@ int sc_pkcs15_derive(struct sc_pkcs15_card *p15card,
 
 	switch (obj->type) {
 		case SC_PKCS15_TYPE_PRKEY_EC:
-			alg_info = sc_card_find_ec_alg(p15card->card, prkey->field_length);
+			alg_info = sc_card_find_ec_alg(p15card->card, prkey->field_length, NULL);
 			if (alg_info == NULL) {
 				sc_log(ctx, "Card does not support EC with field_size %d", prkey->field_length);
 				LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 			}
 
-			if (out == NULL || *poutlen < (prkey->field_length +7) / 8) {
-			    *poutlen = (prkey->field_length +7) / 8;
+			if (out == NULL || *poutlen < (prkey->field_length + 7) / 8) {
+			    *poutlen = (prkey->field_length + 7) / 8;
 			    r = 0; /* say no data to return */
 			    goto out;
 			}
@@ -276,7 +278,7 @@ int sc_pkcs15_derive(struct sc_pkcs15_card *p15card,
 	/* Strip any padding */
 	if (pad_flags & SC_ALGORITHM_RSA_PAD_PKCS1) {
 		size_t s = r;
-		r = sc_pkcs1_strip_02_padding(out, s, out, &s);
+		r = sc_pkcs1_strip_02_padding(ctx, out, s, out, &s);
 		LOG_TEST_RET(ctx, r, "Invalid PKCS#1 padding");
 	}
 
@@ -352,7 +354,7 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 
 		case SC_PKCS15_TYPE_PRKEY_EC:
 			modlen = ((prkey->field_length +7) / 8) * 2;  /* 2*nLen */ 
-			alg_info = sc_card_find_ec_alg(p15card->card, prkey->field_length);
+			alg_info = sc_card_find_ec_alg(p15card->card, prkey->field_length, NULL);
 			if (alg_info == NULL) {
 				sc_log(ctx, "Card does not support EC with field_size %d", prkey->field_length);
 				LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);

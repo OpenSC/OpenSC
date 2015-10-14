@@ -18,7 +18,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#if HAVE_CONFIG_H
 #include "config.h"
+#endif
 
 #include <stdlib.h>
 #include <string.h>
@@ -259,22 +261,6 @@ add_acl_entry(sc_card_t *card, sc_file_t *file, unsigned int op, u8 nibble)
 static int
 cryptoflex_get_ac_keys(sc_card_t *card, sc_file_t *file)
 {
-#if 0
-	sc_apdu_t apdu;
-	u8 rbuf[3];
-	int r;
-	
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xC4, 0x00, 0x00);
-	apdu.cla = 0xF0 /* 0x00 for Cyberflex */;
-	apdu.le = 3;
-	apdu.resplen = 3;
-	apdu.resp = rbuf;
-	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
-	if (apdu.sw1 != 0x90 && apdu.sw2 != 0x00)
-		return 0;
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "AC Keys: %02X %02X %02X\n", rbuf[0], rbuf[1], rbuf[2]);
-#endif
 	return 0;
 }
 
@@ -337,10 +323,6 @@ cryptoflex_process_file_attrs(sc_card_t *card, sc_file_t *file,
 			add_acl_entry(card, file, SC_AC_OP_UPDATE, (u8)(p[0] & 0x0F));
 			break;
 		case SC_FILE_EF_CYCLIC:
-#if 0
-			/* FIXME */
-			file->acl[SC_AC_OP_DECREASE] = ac_to_acl(p[0] & 0x0F);
-#endif
 			break;
 		}
 	}
@@ -431,9 +413,6 @@ cyberflex_process_file_attrs(sc_card_t *card, sc_file_t *file,
 			file->ef_structure = SC_FILE_EF_CYCLIC;
 			break;
 		case  0x04:
-#if 0
-			file->ef_structure = SC_FILE_EF_PROGRAM;
-#endif
 			break;
 		default:
 			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "invalid file type: 0x%02X\n", *p);
@@ -448,10 +427,6 @@ cyberflex_process_file_attrs(sc_card_t *card, sc_file_t *file,
 			add_acl_entry(card, file, SC_AC_OP_UPDATE, (u8)(pos[0] & 0x0F));
 			break;
 		case SC_FILE_EF_CYCLIC:
-#if 0
-			/* FIXME */
-			file->acl[SC_AC_OP_DECREASE] = ac_to_acl(pos[0] & 0x0F);
-#endif
 			break;
 		}
 	}
@@ -539,10 +514,8 @@ static int select_file_id(sc_card_t *card, const u8 *buf, size_t buflen,
 	sc_apdu_t apdu;
         u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
         sc_file_t *file;
-	char	debug_buf[32];
 
-	sc_bin_to_hex(buf, buflen, debug_buf, sizeof(debug_buf), 0);
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "called, p1=%u, path=%s\n", p1, debug_buf);
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "called, p1=%u, path=%s\n", p1, sc_dump_hex(buf, buflen));
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xA4, p1, 0);
 	apdu.resp = rbuf;
@@ -858,9 +831,7 @@ cyberflex_construct_file_attrs(sc_card_t *card, const sc_file_t *file,
 				 u8 *buf, size_t *buflen)
 {
 	u8 *p = buf;
-	int i;
 	size_t size = file->size;
-	int ops[6];
 
 	/* cyberflex wants input parameters length added */
 	switch (file->type) {
@@ -905,20 +876,6 @@ cyberflex_construct_file_attrs(sc_card_t *card, const sc_file_t *file,
 			return -1;
 		}
 	p[5] = 0x01;	/* status?? */
-	for (i = 0; i < 6; i++)
-		ops[i] = -1;
-	if (file->type == SC_FILE_TYPE_DF) {
-		ops[0] = SC_AC_OP_LIST_FILES;
-		ops[2] = SC_AC_OP_DELETE;
-		ops[3] = SC_AC_OP_CREATE;
-	} else {
-		ops[0] = SC_AC_OP_READ;
-		ops[1] = SC_AC_OP_UPDATE;
-		ops[2] = SC_AC_OP_READ;
-		ops[3] = SC_AC_OP_UPDATE;
-		ops[4] = SC_AC_OP_REHABILITATE;
-		ops[5] = SC_AC_OP_INVALIDATE;
-	}
 	p[6] = p[7] = 0;
 	
 	*buflen = 16;
@@ -1170,10 +1127,10 @@ static int flex_generate_key(sc_card_t *card, struct sc_cardctl_cryptoflex_genke
 	apdu.lc = 4;
 
 	/* Little endian representation of exponent */
-	sbuf[0] = data->exponent;
-	sbuf[1] = data->exponent >> 8;
-	sbuf[2] = data->exponent >> 16;
-	sbuf[3] = data->exponent >> 24;
+	sbuf[0] = data->exponent & 0xFF;
+	sbuf[1] = (data->exponent >> 8) & 0xFF;
+	sbuf[2] = (data->exponent >> 16) & 0xFF;
+	sbuf[3] = (data->exponent >> 24) & 0xFF;
 
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");

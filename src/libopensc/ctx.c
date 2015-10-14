@@ -18,7 +18,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#if HAVE_CONFIG_H
 #include "config.h"
+#endif
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -70,11 +72,9 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 #endif
 	{ "gemsafeV1",	(void *(*)(void)) sc_get_gemsafeV1_driver },
 	{ "miocos",	(void *(*)(void)) sc_get_miocos_driver },
-	{ "mcrd",	(void *(*)(void)) sc_get_mcrd_driver },
 	{ "asepcos",	(void *(*)(void)) sc_get_asepcos_driver },
 	{ "starcos",	(void *(*)(void)) sc_get_starcos_driver },
 	{ "tcos",	(void *(*)(void)) sc_get_tcos_driver },
-	{ "openpgp",	(void *(*)(void)) sc_get_openpgp_driver },
 	{ "jcop",	(void *(*)(void)) sc_get_jcop_driver },
 #ifdef ENABLE_OPENSSL
 	{ "oberthur",	(void *(*)(void)) sc_get_oberthur_driver },
@@ -97,16 +97,21 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 	{ "westcos",	(void *(*)(void)) sc_get_westcos_driver },
 	{ "myeid",      (void *(*)(void)) sc_get_myeid_driver },
 	{ "sc-hsm",		(void *(*)(void)) sc_get_sc_hsm_driver },
+#ifdef ENABLE_OPENSSL
+	{ "dnie",       (void *(*)(void)) sc_get_dnie_driver },
+#endif
+	{ "masktech",	(void *(*)(void)) sc_get_masktech_driver },
 
 /* Here should be placed drivers that need some APDU transactions to
  * recognise its cards. */
+	{ "mcrd",	(void *(*)(void)) sc_get_mcrd_driver },
 	{ "setcos",	(void *(*)(void)) sc_get_setcos_driver },
 	{ "muscle",	(void *(*)(void)) sc_get_muscle_driver },
 	{ "atrust-acos",(void *(*)(void)) sc_get_atrust_acos_driver },
 	{ "PIV-II",	(void *(*)(void)) sc_get_piv_driver },
 	{ "itacns",	(void *(*)(void)) sc_get_itacns_driver },
-	/* javacard without supported applet - last before default */
-	{ "javacard",	(void *(*)(void)) sc_get_javacard_driver },
+	{ "isoApplet",	(void *(*)(void)) sc_get_isoApplet_driver },
+	{ "openpgp",	(void *(*)(void)) sc_get_openpgp_driver },
 	/* The default driver should be last, as it handles all the
 	 * unrecognized cards. */
 	{ "default",	(void *(*)(void)) sc_get_default_driver },
@@ -181,7 +186,8 @@ static void set_defaults(sc_context_t *ctx, struct _sc_ctx_options *opts)
 	if (ctx->debug_file && (ctx->debug_file != stderr && ctx->debug_file != stdout))
 		fclose(ctx->debug_file);
 	ctx->debug_file = stderr;
-	ctx->paranoid_memory = 0;
+	ctx->flags = 0;
+
 #ifdef __APPLE__
 	/* Override the default debug log for OpenSC.tokend to be different from PKCS#11.
 	 * TODO: Could be moved to OpenSC.tokend */
@@ -199,8 +205,10 @@ static void set_defaults(sc_context_t *ctx, struct _sc_ctx_options *opts)
 int sc_ctx_log_to_file(sc_context_t *ctx, const char* filename)
 {
 	/* Close any existing handles */
-	if (ctx->debug_file && (ctx->debug_file != stderr && ctx->debug_file != stdout))
+	if (ctx->debug_file && (ctx->debug_file != stderr && ctx->debug_file != stdout))   {
 		fclose(ctx->debug_file);
+		ctx->debug_file = NULL;
+	}
 
 	/* Handle special names */
 	if (!strcmp(filename, "stdout"))
@@ -239,7 +247,7 @@ load_parameters(sc_context_t *ctx, scconf_block *block, struct _sc_ctx_options *
 	if (val)   {
 #ifdef _WIN32
 		expanded_len = PATH_MAX;
-		expanded_len = ExpandEnvironmentStrings(val, expanded_val, expanded_len);
+		expanded_len = ExpandEnvironmentStringsA(val, expanded_val, expanded_len);
 		if (expanded_len > 0)
 			val = expanded_val;
 #endif
@@ -249,8 +257,13 @@ load_parameters(sc_context_t *ctx, scconf_block *block, struct _sc_ctx_options *
 		sc_ctx_log_to_file(ctx, val);
 	}
 
-	ctx->paranoid_memory = scconf_get_bool (block, "paranoid-memory",
-		ctx->paranoid_memory);
+	if (scconf_get_bool (block, "paranoid-memory",
+			   	ctx->flags & SC_CTX_FLAG_PARANOID_MEMORY))
+		ctx->flags |= SC_CTX_FLAG_PARANOID_MEMORY;
+
+	if (scconf_get_bool (block, "enable_default_driver",
+			   	ctx->flags & SC_CTX_FLAG_ENABLE_DEFAULT_DRIVER))
+		ctx->flags |= SC_CTX_FLAG_ENABLE_DEFAULT_DRIVER;
 
 	val = scconf_get_str(block, "force_card_driver", NULL);
 	if (val) {
@@ -277,15 +290,28 @@ static void load_reader_driver_options(sc_context_t *ctx)
 {
 	struct sc_reader_driver *driver = ctx->reader_driver;
 	scconf_block *conf_block = NULL;
-
-	driver->max_send_size = 0;
-	driver->max_recv_size = 0;
+	sc_reader_t *reader;
+	int max_send_size;
+	int max_recv_size;
 
 	conf_block = sc_get_conf_block(ctx, "reader_driver", driver->short_name, 1);
 
 	if (conf_block != NULL) {
-		driver->max_send_size = scconf_get_int(conf_block, "max_send_size", driver->max_send_size);
-		driver->max_recv_size = scconf_get_int(conf_block, "max_recv_size", driver->max_recv_size);
+		max_send_size = scconf_get_int(conf_block, "max_send_size", -1);
+		max_recv_size = scconf_get_int(conf_block, "max_recv_size", -1);
+		if (max_send_size >= 0 || max_recv_size >= 0) {
+			if (list_iterator_start(&ctx->readers)) {
+				reader = list_iterator_next(&ctx->readers);
+				while (reader) {
+					if (max_send_size >= 0)
+						reader->max_send_size = max_send_size;
+					if (max_recv_size >= 0)
+						reader->max_recv_size = max_recv_size;
+					reader = list_iterator_next(&ctx->readers);
+				}
+				list_iterator_stop(&ctx->readers);
+			}
+		}
 	}
 }
 
@@ -543,7 +569,7 @@ static void process_config_file(sc_context_t *ctx, struct _sc_ctx_options *opts)
 #ifdef _WIN32
 	conf_path = getenv("OPENSC_CONF");
 	if (!conf_path) {
-		rc = RegOpenKeyEx(HKEY_CURRENT_USER, "Software\\OpenSC Project\\OpenSC", 0, KEY_QUERY_VALUE, &hKey);
+		rc = RegOpenKeyExA(HKEY_CURRENT_USER, "Software\\OpenSC Project\\OpenSC", 0, KEY_QUERY_VALUE, &hKey);
 		if (rc == ERROR_SUCCESS) {
 			temp_len = PATH_MAX;
 			rc = RegQueryValueEx( hKey, "ConfigFile", NULL, NULL, (LPBYTE) temp_path, &temp_len);
@@ -554,7 +580,7 @@ static void process_config_file(sc_context_t *ctx, struct _sc_ctx_options *opts)
 	}
 
 	if (!conf_path) {
-		rc = RegOpenKeyEx( HKEY_LOCAL_MACHINE, "Software\\OpenSC Project\\OpenSC", 0, KEY_QUERY_VALUE, &hKey );
+		rc = RegOpenKeyExA( HKEY_LOCAL_MACHINE, "Software\\OpenSC Project\\OpenSC", 0, KEY_QUERY_VALUE, &hKey );
 		if (rc == ERROR_SUCCESS) {
 			temp_len = PATH_MAX;
 			rc = RegQueryValueEx( hKey, "ConfigFile", NULL, NULL, (LPBYTE) temp_path, &temp_len);
@@ -698,7 +724,9 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 		return SC_ERROR_OUT_OF_MEMORY;
 	}
 
+	ctx->flags = parm->flags;
 	set_defaults(ctx, &opts);
+
 	list_init(&ctx->readers);
 	list_attributes_seeker(&ctx->readers, reader_list_seeker);
 	/* set thread context and create mutex object (if specified) */
@@ -727,7 +755,6 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 	ctx->reader_driver = sc_get_openct_driver();
 #endif
 
-	load_reader_driver_options(ctx);
 	r = ctx->reader_driver->ops->init(ctx);
 	if (r != SC_SUCCESS)   {
 		sc_release_context(ctx);
@@ -743,6 +770,7 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 	}
 	del_drvs(&opts);
 	sc_ctx_detect_readers(ctx);
+	load_reader_driver_options(ctx);
 	*ctx_out = ctx;
 
 	return SC_SUCCESS;
@@ -832,7 +860,7 @@ int sc_set_card_driver(sc_context_t *ctx, const char *short_name)
 	if (short_name == NULL) {
 		ctx->forced_driver = NULL;
 		match = 1;
-	} else while (ctx->card_drivers[i] != NULL && i < SC_MAX_CARD_DRIVERS) {
+	} else while (i < SC_MAX_CARD_DRIVERS && ctx->card_drivers[i] != NULL) {
 		struct sc_card_driver *drv = ctx->card_drivers[i];
 
 		if (strcmp(short_name, drv->short_name) == 0) {
@@ -852,9 +880,18 @@ int sc_get_cache_dir(sc_context_t *ctx, char *buf, size_t bufsize)
 {
 	char *homedir;
 	const char *cache_dir;
+        scconf_block *conf_block = NULL;
 #ifdef _WIN32
 	char temp_path[PATH_MAX];
 #endif
+	conf_block = sc_get_conf_block(ctx, "framework", "pkcs15", 1);
+	cache_dir = scconf_get_str(conf_block, "file_cache_dir", NULL);
+	if (cache_dir != NULL) {
+		if (bufsize <= strlen(cache_dir))
+			return SC_ERROR_BUFFER_TOO_SMALL;
+		strcpy(buf, cache_dir);
+		return SC_SUCCESS;
+	}
 
 #ifndef _WIN32
 	cache_dir = ".eid/cache";
@@ -865,7 +902,7 @@ int sc_get_cache_dir(sc_context_t *ctx, char *buf, size_t bufsize)
 	/* If USERPROFILE isn't defined, assume it's a single-user OS
 	 * and put the cache dir in the Windows dir (usually C:\\WINDOWS) */
 	if (homedir == NULL || homedir[0] == '\0') {
-		GetWindowsDirectory(temp_path, sizeof(temp_path));
+		GetWindowsDirectoryA(temp_path, sizeof(temp_path));
 		homedir = temp_path;
 	}
 #endif

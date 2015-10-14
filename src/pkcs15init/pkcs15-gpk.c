@@ -1,7 +1,7 @@
 /*
  * GPK specific operation for PKCS15 initialization
  *
- * Copyright (C) 2002 Olaf Kirch <okir@lst.de>
+ * Copyright (C) 2002 Olaf Kirch <okir@suse.de>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -458,8 +458,7 @@ gpk_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_pkcs15_objec
 #endif
 
 done:
-	if (keyfile)
-		sc_file_free(keyfile);
+	sc_file_free(keyfile);
 	return r;
 }
 
@@ -718,7 +717,8 @@ gpk_pkfile_init_public(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file
 	if (r >= 0) {
 		if (r != 7 || buffer[0] != 0) {
 			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "first record of public key file is not Lsys0");
-			return SC_ERROR_OBJECT_NOT_VALID;
+			r = SC_ERROR_OBJECT_NOT_VALID;
+			goto out;
 		}
 
 		r = sc_update_record(p15card->card, 1, sysrec, sizeof(sysrec),

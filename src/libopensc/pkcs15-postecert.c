@@ -20,7 +20,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#if HAVE_CONFIG_H
 #include "config.h"
+#endif
 
 #include <stdlib.h>
 #include <string.h>
@@ -112,10 +114,6 @@ static int sc_pkcs15emu_add_prkey(sc_pkcs15_card_t *p15card,
         info.modulus_length    = modulus_length;
         info.usage             = usage;
         info.native            = 1;
-        info.access_flags      = SC_PKCS15_PRKEY_ACCESS_SENSITIVE
-                                | SC_PKCS15_PRKEY_ACCESS_ALWAYSSENSITIVE
-                                | SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE
-                                | SC_PKCS15_PRKEY_ACCESS_LOCAL;
         info.key_reference     = ref;
 
         if (path)
@@ -225,7 +223,7 @@ static int sc_pkcs15emu_postecert_init(sc_pkcs15_card_t * p15card)
 			count_cert[o] =
 			    (*(certi + i + 2) << 8) + *(certi + i + 3) + 4;
 			o++;
-			if (o > 4)
+			if (o >= 4)
 				break;
 			i += (*(certi + i + 2) << 8) + *(certi + i + 3);
 		}

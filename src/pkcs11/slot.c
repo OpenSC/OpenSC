@@ -20,6 +20,7 @@
  */
 
 #include "config.h"
+#include "libopensc/opensc.h"
 
 #include <string.h>
 #include <stdlib.h>
@@ -43,9 +44,8 @@ static struct sc_pkcs11_slot * reader_get_slot(sc_reader_t *reader)
 	/* Locate a slot related to the reader */
 	for (i = 0; i<list_size(&virtual_slots); i++) {
 		sc_pkcs11_slot_t *slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, i);
-		if (slot->reader == reader) {
+		if (slot->reader == reader)
 			return slot;
-		}
 	}
 	return NULL;
 }
@@ -97,7 +97,17 @@ CK_RV create_slot(sc_reader_t *reader)
 		slot->reader = reader;
 		strcpy_bp(slot->slot_info.slotDescription, reader->name, 64);
 	}
+
 	return CKR_OK;
+}
+
+void delete_slot(struct sc_pkcs11_slot *slot)
+{
+	if (slot) {
+		list_destroy(&slot->objects);
+		list_delete(&virtual_slots, slot);
+		free(slot);
+	}
 }
 
 
@@ -128,10 +138,13 @@ CK_RV initialize_reader(sc_reader_t *reader)
 			return rv;
 	}
 
-	if (sc_detect_card_presence(reader)) {
+	sc_log(context, "Initialize reader '%s': detect SC card presence", reader->name);
+	if (sc_detect_card_presence(reader))   {
+		sc_log(context, "Initialize reader '%s': detect PKCS11 card presence", reader->name);
 		card_detect(reader);
 	}
 
+	sc_log(context, "Reader '%s' initialized", reader->name);
 	return CKR_OK;
 }
 
@@ -139,7 +152,7 @@ CK_RV initialize_reader(sc_reader_t *reader)
 CK_RV card_removed(sc_reader_t * reader)
 {
 	unsigned int i;
-	struct sc_pkcs11_card *card = NULL;
+	struct sc_pkcs11_card *p11card = NULL;
 	/* Mark all slots as "token not present" */
 	sc_log(context, "%s: card removed", reader->name);
 
@@ -148,29 +161,23 @@ CK_RV card_removed(sc_reader_t * reader)
 		sc_pkcs11_slot_t *slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, i);
 		if (slot->reader == reader) {
 			/* Save the "card" object */
-			if (slot->card)
-				card = slot->card;
+			if (slot->p11card)
+				p11card = slot->p11card;
 			slot_token_removed(slot->id);
 		}
 	}
 
-	if (card) {
-		card->framework->unbind(card);
-		sc_disconnect_card(card->card);
-		/* FIXME: free mechanisms
-		 * spaces allocated by the
-		 * sc_pkcs11_register_sign_and_hash_mechanism
-		 * and sc_pkcs11_new_fw_mechanism.
-		 * but see sc_pkcs11_register_generic_mechanisms
-		for (i=0; i < card->nmechanisms; ++i) {
-			// if 'mech_data' is a pointer earlier returned by the ?alloc
-			free(card->mechanisms[i]->mech_data);
-			// if 'mechanisms[i]' is a pointer earlier returned by the ?alloc
-			free(card->mechanisms[i]);
+	if (p11card) {
+		p11card->framework->unbind(p11card);
+		sc_disconnect_card(p11card->card);
+		for (i=0; i < p11card->nmechanisms; ++i) {
+			if (p11card->mechanisms[i]->free_mech_data) {
+				p11card->mechanisms[i]->free_mech_data(p11card->mechanisms[i]->mech_data);
+			}
+			free(p11card->mechanisms[i]);
 		}
-		*/
-		free(card->mechanisms);
-		free(card);
+		free(p11card->mechanisms);
+		free(p11card);
 	}
 
 	return CKR_OK;
@@ -180,8 +187,10 @@ CK_RV card_removed(sc_reader_t * reader)
 CK_RV card_detect(sc_reader_t *reader)
 {
 	struct sc_pkcs11_card *p11card = NULL;
-	int rc, rv;
-	unsigned int i, j;
+	int rc;
+	CK_RV rv;
+	unsigned int i;
+	int j;
 
 	rv = CKR_OK;
 
@@ -215,7 +224,7 @@ again:
 	for (i=0; i<list_size(&virtual_slots); i++) {
 		sc_pkcs11_slot_t *slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, i);
 		if (slot->reader == reader) {
-			p11card = slot->card;
+			p11card = slot->p11card;
 			break;
 		}
 	}
@@ -232,8 +241,12 @@ again:
 	if (p11card->card == NULL) {
 		sc_log(context, "%s: Connecting ... ", reader->name);
 		rc = sc_connect_card(reader, &p11card->card);
-		if (rc != SC_SUCCESS)
+		if (rc != SC_SUCCESS)   {
+			sc_log(context, "%s: SC connect card error %i", reader->name, rc);
 			return sc_to_cryptoki_error(rc, NULL);
+		}
+
+		sc_log(context, "%s: Connected SC card %p", reader->name, p11card->card);
 	}
 
 	/* Detect the framework */
@@ -251,21 +264,34 @@ again:
 		if (frameworks[i] == NULL)
 			return CKR_GENERAL_ERROR;
 
+		p11card->framework = frameworks[i];
+
 		/* Initialize framework */
 		sc_log(context, "%s: Detected framework %d. Creating tokens.", reader->name, i);
-		/* Bind firstly 'generic' application or (emulated?) card without applications */
+		/* Bind 'generic' application or (emulated?) card without applications */
 		if (app_generic || !p11card->card->app_count)   {
+			scconf_block *atrblock = NULL;
+			int enable_InitToken = 0;
+
+			atrblock = sc_match_atr_block(p11card->card->ctx, NULL, &p11card->reader->atr);
+			if (atrblock)
+				enable_InitToken = scconf_get_bool(atrblock, "pkcs11_enable_InitToken", 0);
+
 			sc_log(context, "%s: Try to bind 'generic' token.", reader->name);
 			rv = frameworks[i]->bind(p11card, app_generic);
+			if (rv == CKR_TOKEN_NOT_RECOGNIZED && enable_InitToken)   {
+				sc_log(context, "%s: 'InitToken' enabled -- accept non-binded card", reader->name);
+				rv = CKR_OK;
+			}
 			if (rv != CKR_OK)   {
-				sc_log(context, "%s: cannot bind 'generic' token.", reader->name);
+				sc_log(context, "%s: cannot bind 'generic' token: rv 0x%X", reader->name, rv);
 				return rv;
 			}
 
 			sc_log(context, "%s: Creating 'generic' token.", reader->name);
 			rv = frameworks[i]->create_tokens(p11card, app_generic, &first_slot);
 			if (rv != CKR_OK)   {
-				sc_log(context, "%s: cannot create 'generic' token.", reader->name);
+				sc_log(context, "%s: create 'generic' token error 0x%X", reader->name, rv);
 				return rv;
 			}
 		}
@@ -281,39 +307,54 @@ again:
 			sc_log(context, "%s: Binding %s token.", reader->name, app_name);
 			rv = frameworks[i]->bind(p11card, app_info);
 			if (rv != CKR_OK)   {
-				sc_log(context, "%s: cannot bind %s token.", reader->name, app_name);
+				sc_log(context, "%s: bind %s token error Ox%X", reader->name, app_name, rv);
 				continue;
 			}
 
 			sc_log(context, "%s: Creating %s token.", reader->name, app_name);
 			rv = frameworks[i]->create_tokens(p11card, app_info, &first_slot);
 			if (rv != CKR_OK)   {
-				sc_log(context, "%s: cannot create %s token.", reader->name, app_name);
+				sc_log(context, "%s: create %s token error 0x%X", reader->name, app_name, rv);
 				return rv;
 			}
 		}
-
-		p11card->framework = frameworks[i];
 	}
+
 	sc_log(context, "%s: Detection ended", reader->name);
 	return CKR_OK;
 }
 
-CK_RV card_detect_all(void) {
-	 unsigned int i;
 
-	 /* Detect cards in all initialized readers */
-	 for (i=0; i< sc_ctx_get_reader_count(context); i++) {
-		 sc_reader_t *reader = sc_ctx_get_reader(context, i);
-		 if (!reader_get_slot(reader))
-			 initialize_reader(reader);
-		 card_detect(sc_ctx_get_reader(context, i));
-	 }
-	 return CKR_OK;
+CK_RV
+card_detect_all(void)
+{
+	unsigned int i;
+
+	sc_log(context, "Detect all cards");
+	/* Detect cards in all initialized readers */
+	for (i=0; i< sc_ctx_get_reader_count(context); i++) {
+		sc_reader_t *reader = sc_ctx_get_reader(context, i);
+		if (reader->flags & SC_READER_REMOVED) {
+			struct sc_pkcs11_slot *slot;
+			card_removed(reader);
+			while ((slot = reader_get_slot(reader))) {
+				delete_slot(slot);
+			}
+			_sc_delete_reader(context, reader);
+			i--;
+		} else {
+			if (!reader_get_slot(reader))
+				initialize_reader(reader);
+			else
+				card_detect(sc_ctx_get_reader(context, i));
+		}
+	}
+	sc_log(context, "All cards detected");
+	return CKR_OK;
 }
 
 /* Allocates an existing slot to a card */
-CK_RV slot_allocate(struct sc_pkcs11_slot ** slot, struct sc_pkcs11_card * card)
+CK_RV slot_allocate(struct sc_pkcs11_slot ** slot, struct sc_pkcs11_card * p11card)
 {
 	unsigned int i;
 	struct sc_pkcs11_slot *tmp_slot = NULL;
@@ -321,14 +362,13 @@ CK_RV slot_allocate(struct sc_pkcs11_slot ** slot, struct sc_pkcs11_card * card)
 	/* Locate a free slot for this reader */
 	for (i=0; i< list_size(&virtual_slots); i++) {
 		tmp_slot = (struct sc_pkcs11_slot *)list_get_at(&virtual_slots, i);
-		if (tmp_slot->reader == card->reader && tmp_slot->card == NULL)
+		if (tmp_slot->reader == p11card->reader && tmp_slot->p11card == NULL)
 			break;
 	}
 	if (!tmp_slot || (i == list_size(&virtual_slots)))
 		return CKR_FUNCTION_FAILED;
-	sc_log(context, "Allocated slot 0x%lx for card in reader %s", tmp_slot->id,
-		 card->reader->name);
-	tmp_slot->card = card;
+	sc_log(context, "Allocated slot 0x%lx for card in reader %s", tmp_slot->id, p11card->reader->name);
+	tmp_slot->p11card = p11card;
 	tmp_slot->events = SC_EVENT_CARD_INSERTED;
 	*slot = tmp_slot;
 	return CKR_OK;
@@ -349,6 +389,7 @@ CK_RV slot_get_token(CK_SLOT_ID id, struct sc_pkcs11_slot ** slot)
 {
 	int rv;
 
+	sc_log(context, "Slot(id=0x%lX): get token", id);
 	rv = slot_get_slot(id, slot);
 	if (rv != CKR_OK)
 		return rv;
@@ -356,6 +397,7 @@ CK_RV slot_get_token(CK_SLOT_ID id, struct sc_pkcs11_slot ** slot)
 	if (!((*slot)->slot_info.flags & CKF_TOKEN_PRESENT)) {
 		if ((*slot)->reader == NULL)
 			return CKR_TOKEN_NOT_PRESENT;
+		sc_log(context, "Slot(id=0x%lX): get token: now detect card", id);
 		rv = card_detect((*slot)->reader);
 		if (rv != CKR_OK)
 			return rv;
@@ -365,6 +407,7 @@ CK_RV slot_get_token(CK_SLOT_ID id, struct sc_pkcs11_slot ** slot)
 		sc_log(context, "card detected, but slot not presenting token");
 		return CKR_TOKEN_NOT_PRESENT;
 	}
+	sc_log(context, "Slot-get-token returns OK");
 	return CKR_OK;
 }
 
@@ -390,16 +433,16 @@ CK_RV slot_token_removed(CK_SLOT_ID id)
 	}
 
 	/* Release framework stuff */
-	if (slot->card != NULL) {
+	if (slot->p11card != NULL) {
 		if (slot->fw_data != NULL &&
-		    slot->card->framework != NULL && slot->card->framework->release_token != NULL)
-			slot->card->framework->release_token(slot->card, slot->fw_data);
+				slot->p11card->framework != NULL && slot->p11card->framework->release_token != NULL)
+			slot->p11card->framework->release_token(slot->p11card, slot->fw_data);
 	}
 
 	/* Reset relevant slot properties */
 	slot->slot_info.flags &= ~CKF_TOKEN_PRESENT;
 	slot->login_user = -1;
-	slot->card = NULL;
+	slot->p11card = NULL;
 
 	if (token_was_present)
 		slot->events = SC_EVENT_CARD_REMOVED;
@@ -418,7 +461,7 @@ CK_RV slot_find_changed(CK_SLOT_ID_PTR idp, int mask)
 		sc_pkcs11_slot_t *slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, i);
 		sc_log(context, "slot 0x%lx token: %d events: 0x%02X",slot->id, (slot->slot_info.flags & CKF_TOKEN_PRESENT), slot->events);
 		if ((slot->events & SC_EVENT_CARD_INSERTED)
-		    && !(slot->slot_info.flags & CKF_TOKEN_PRESENT)) {
+				&& !(slot->slot_info.flags & CKF_TOKEN_PRESENT)) {
 			/* If a token has not been initialized, clear the inserted event */
 			slot->events &= ~SC_EVENT_CARD_INSERTED;
 		}

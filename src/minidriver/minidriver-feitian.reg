@@ -1,0 +1,30 @@
+Windows Registry Editor Version 5.00
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Cryptography\Calais\SmartCards\ePass2003]
+"ATR"=hex:3b,9f,95,81,31,fe,9f,00,66,46,53,05,01,00,11,71,df,00,00,03,6a,82,f8
+"ATRMask"=hex,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff
+"Crypto Provider"="Microsoft Base Smart Card Crypto Provider"
+"Smart Card Key Storage Provider"="Microsoft Smart Card Key Storage Provider"
+"80000001"="opensc-minidriver.dll"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node\Microsoft\Cryptography\Calais\SmartCards\ePass2003]
+"ATR"=hex:3b,9f,95,81,31,fe,9f,00,66,46,53,05,01,00,11,71,df,00,00,03,6a,82,f8
+"ATRMask"=hex:ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,00,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff
+"Crypto Provider"="Microsoft Base Smart Card Crypto Provider"
+"Smart Card Key Storage Provider"="Microsoft Smart Card Key Storage Provider"
+"80000001"="opensc-minidriver.dll"
+
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Cryptography\Calais\SmartCards\FTCOS/PK-01C]
+"ATR"=hex:3b,9f,95,81,31,fe,9f,00,65,46,53,05,00,06,71,df,00,00,00,00,00,00,00
+"ATRMask"=hex:ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,00,ff,ff,ff,ff,ff,ff,00,00,00,00
+"Crypto Provider"="Microsoft Base Smart Card Crypto Provider"
+"Smart Card Key Storage Provider"="Microsoft Smart Card Key Storage Provider"
+"80000001"="opensc-minidriver.dll"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node\Microsoft\Cryptography\Calais\SmartCards\FTCOS/PK-01C]
+"ATR"=hex:3b,9f,95,81,31,fe,9f,00,65,46,53,05,00,06,71,df,00,00,00,00,00,00,00
+"ATRMask"=hex:ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,00,ff,ff,ff,ff,ff,ff,00,00,00,00
+"Crypto Provider"="Microsoft Base Smart Card Crypto Provider"
+"Smart Card Key Storage Provider"="Microsoft Smart Card Key Storage Provider"
+"80000001"="opensc-minidriver.dll"
