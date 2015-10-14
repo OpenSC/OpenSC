@@ -500,6 +500,8 @@ auth_select_file(struct sc_card *card, const struct sc_path *in_path,
 
 		rv = iso_ops->select_file(card, &path, &tmp_file);
 		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, rv, "select file failed");
+		if (!tmp_file)
+			return SC_ERROR_OBJECT_NOT_FOUND;
 
 		if (path.type == SC_PATH_TYPE_PARENT)   {
 			memcpy(&tmp_file->path, &auth_current_df->path, sizeof(struct sc_path));
@@ -1792,23 +1794,23 @@ auth_pin_reset_oberthur_style(struct sc_card *card, unsigned int type,
 	memset(&tmp_path, 0, sizeof(struct sc_path));
 
 	pin_cmd.pin_type = SC_AC_CHV;
-        pin_cmd.cmd = SC_PIN_CMD_VERIFY;
+	pin_cmd.cmd = SC_PIN_CMD_VERIFY;
 	pin_cmd.pin_reference = OBERTHUR_PIN_REFERENCE_PUK;
 	memcpy(&pin_cmd.pin1, &data->pin1, sizeof(pin_cmd.pin1));
 
 	rv = auth_pin_verify(card, SC_AC_CHV, &pin_cmd, tries_left);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, rv, "Oberthur style 'PIN RESET' failed: SOPIN verify error");
 
-        sc_format_path("2000", &tmp_path);
+	sc_format_path("2000", &tmp_path);
 	tmp_path.type = SC_PATH_TYPE_FILE_ID;
-        rv = iso_ops->select_file(card, &tmp_path, &tmp_file);
-        SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, rv, "select PUK file");
+	rv = iso_ops->select_file(card, &tmp_path, &tmp_file);
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, rv, "select PUK file");
 
-	if (tmp_file->size < OBERTHUR_AUTH_MAX_LENGTH_PUK)
+	if (!tmp_file || tmp_file->size < OBERTHUR_AUTH_MAX_LENGTH_PUK)
 		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_FILE_TOO_SMALL, "Oberthur style 'PIN RESET' failed");
 
 	rv = iso_ops->read_binary(card, 0, puk, OBERTHUR_AUTH_MAX_LENGTH_PUK, 0);
-        SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, rv, "read PUK file error");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, rv, "read PUK file error");
 	if (rv != OBERTHUR_AUTH_MAX_LENGTH_PUK)
 		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_DATA, "Oberthur style 'PIN RESET' failed");
 
@@ -1829,7 +1831,7 @@ auth_pin_reset_oberthur_style(struct sc_card *card, unsigned int type,
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, rv);
 	}
 
-        sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x2C, 0x00, local_pin_reference);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x2C, 0x00, local_pin_reference);
 	apdu.lc = OBERTHUR_AUTH_MAX_LENGTH_PIN  + OBERTHUR_AUTH_MAX_LENGTH_PUK;
 	apdu.datalen = OBERTHUR_AUTH_MAX_LENGTH_PIN  + OBERTHUR_AUTH_MAX_LENGTH_PUK;
 	apdu.data = ffs1;
@@ -1839,24 +1841,24 @@ auth_pin_reset_oberthur_style(struct sc_card *card, unsigned int type,
 
 	pin_cmd.pin1.min_length = 4;
 	pin_cmd.pin1.max_length = 8;
-        pin_cmd.pin1.encoding = SC_PIN_ENCODING_ASCII;
-        pin_cmd.pin1.offset = 5;
+	pin_cmd.pin1.encoding = SC_PIN_ENCODING_ASCII;
+	pin_cmd.pin1.offset = 5;
 
 	pin_cmd.pin2.data = &ffs1[OBERTHUR_AUTH_MAX_LENGTH_PUK];
 	pin_cmd.pin2.len = OBERTHUR_AUTH_MAX_LENGTH_PIN;
 	pin_cmd.pin2.offset = 5 + OBERTHUR_AUTH_MAX_LENGTH_PUK;
 	pin_cmd.pin2.min_length = 4;
 	pin_cmd.pin2.max_length = 8;
-        pin_cmd.pin2.encoding = SC_PIN_ENCODING_ASCII;
+	pin_cmd.pin2.encoding = SC_PIN_ENCODING_ASCII;
 
-        rvv = iso_drv->ops->pin_cmd(card, &pin_cmd, tries_left);
+	rvv = iso_drv->ops->pin_cmd(card, &pin_cmd, tries_left);
 	if (rvv)
 		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
-			"%s: PIN CMD 'VERIFY' with pinpad failed",
-			sc_strerror(rvv));
+				"%s: PIN CMD 'VERIFY' with pinpad failed",
+				sc_strerror(rvv));
 
 	if (auth_current_ef)
-        	rv = iso_ops->select_file(card, &auth_current_ef->path, &auth_current_ef);
+		rv = iso_ops->select_file(card, &auth_current_ef->path, &auth_current_ef);
 
 	if (rv > 0)
 		rv = 0;
