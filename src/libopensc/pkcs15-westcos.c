@@ -41,14 +41,10 @@ static int sc_pkcs15emu_westcos_init(sc_pkcs15_card_t * p15card)
 	sc_card_t *card = p15card->card;
 	sc_serial_number_t serial;
 	sc_path_t path;
-	sc_file_t *file = NULL;
 	sc_format_path("3F00", &path);
-	r = sc_select_file(card, &path, &file);
+	r = sc_select_file(card, &path, NULL);
 	if (r)
 		goto out;
-	if (file)
-		sc_file_free(file);
-	file = NULL;
 	if (p15card->tokeninfo->label != NULL)
 		free(p15card->tokeninfo->label);
 	p15card->tokeninfo->label = strdup("westcos");
@@ -65,7 +61,7 @@ static int sc_pkcs15emu_westcos_init(sc_pkcs15_card_t * p15card)
 		free(p15card->tokeninfo->serial_number);
 	p15card->tokeninfo->serial_number = strdup(buf);
 	sc_format_path("AAAA", &path);
-	r = sc_select_file(card, &path, &file);
+	r = sc_select_file(card, &path, NULL);
 	if (r) 
 	{
 		goto out;
@@ -113,11 +109,8 @@ static int sc_pkcs15emu_westcos_init(sc_pkcs15_card_t * p15card)
 		}
 	}
 	
-	if (file)
-		sc_file_free(file);
-	file = NULL;
 	sc_format_path("0002", &path);
-	r = sc_select_file(card, &path, &file);
+	r = sc_select_file(card, &path, NULL);
 	if (r) 
 	{
 		goto out;
@@ -197,11 +190,8 @@ static int sc_pkcs15emu_westcos_init(sc_pkcs15_card_t * p15card)
 				goto out;
 		}
 	}
-	if (file)
-		sc_file_free(file);
-	file = NULL;
 	sc_format_path("0001", &path);
-	r = sc_select_file(card, &path, &file);
+	r = sc_select_file(card, &path, NULL);
 	if (r) 
 	{
 		goto out;
@@ -233,8 +223,6 @@ static int sc_pkcs15emu_westcos_init(sc_pkcs15_card_t * p15card)
 	}
 	r = 0;
 out:
-	if (file)
-		sc_file_free(file);
 	return r;
 }
 
