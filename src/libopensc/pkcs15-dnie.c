@@ -41,12 +41,13 @@ static
 int dump_ef(sc_card_t * card, const char *path, u8 * buf, size_t * buf_len)
 {
 	int rv;
-	sc_file_t *file = sc_file_new();
+	sc_file_t *file = NULL;
 	sc_path_t scpath;
 	sc_format_path(path, &scpath);
 	rv = sc_select_file(card, &scpath, &file);
 	if (rv < 0) {
-		sc_file_free(file);
+		if (file)
+			sc_file_free(file);
 		return rv;
 	}
 	if (file->size > *buf_len) {
