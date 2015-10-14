@@ -689,6 +689,12 @@ int sc_select_file(sc_card_t *card, const sc_path_t *in_path,  sc_file_t **file)
 	if (r != SC_SUCCESS)
 		pbuf[0] = '\0';
 
+	/* FIXME We should be a bit less strict and let the upper layers do
+	 * the initialization (including reuse of existing file objects). We
+	 * implemented this here because we are lazy. */
+	if (file != NULL)
+		*file = NULL;
+
 	sc_log(card->ctx, "called; type=%d, path=%s", in_path->type, pbuf);
 	if (in_path->len > SC_MAX_PATH_SIZE)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
@@ -713,9 +719,16 @@ int sc_select_file(sc_card_t *card, const sc_path_t *in_path,  sc_file_t **file)
 	r = card->ops->select_file(card, in_path, file);
 	LOG_TEST_RET(card->ctx, r, "'SELECT' error");
 
-	/* Remember file path */
-	if (file && *file)
-		(*file)->path = *in_path;
+	if (file) {
+		if (*file)
+			/* Remember file path */
+			(*file)->path = *in_path;
+		else
+			/* FIXME We should be a bit less strict and let the upper layers do
+			 * the error checking. We implemented this here because we are
+			 * lazy.  */
+			r = SC_ERROR_INVALID_DATA;
+	}
 
 	LOG_FUNC_RETURN(card->ctx, r);
 }
