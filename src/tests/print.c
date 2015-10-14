@@ -260,7 +260,7 @@ void sc_test_print_object(const struct sc_pkcs15_object *obj)
 
 	printf("%s", kind);
 	if (obj->label[0])
-		printf(" [%s]\n", obj->label);
+		printf(" [%.*s]\n", (int) sizeof obj->label, obj->label);
 	else
 		printf(" (no label)\n");
 	printf("\tCom. Flags  : ");

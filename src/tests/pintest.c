@@ -60,11 +60,11 @@ static int ask_and_verify_pin(struct sc_pkcs15_object *pin_obj)
 	u8 *pass;
 
 	if (pin_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN) {
-		printf("Skipping unblocking pin [%s]\n", pin_obj->label);
+		printf("Skipping unblocking pin [%.*s]\n", (int) sizeof pin_obj->label, pin_obj->label);
 		return 0;
 	}
 
-	sprintf(prompt, "Please enter PIN code [%s]: ", pin_obj->label);
+	sprintf(prompt, "Please enter PIN code [%.*s]: ", (int) sizeof pin_obj->label, pin_obj->label);
 	pass = (u8 *) getpass(prompt);
 
 	if (SC_SUCCESS != sc_lock(card))

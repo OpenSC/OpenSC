@@ -436,7 +436,7 @@ cosm_create_pin(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 
 	pin_attrs = &auth_info->attrs.pin;
 
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "create '%s'; ref 0x%X; flags %X", pin_obj->label, pin_attrs->reference, pin_attrs->flags);
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "create '%.*s'; ref 0x%X; flags %X", (int) sizeof pin_obj->label, pin_obj->label, pin_attrs->reference, pin_attrs->flags);
 	if (sc_profile_get_file(profile, COSM_TITLE "-AppDF", &pin_file) < 0)
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INCONSISTENT_PROFILE, "\""COSM_TITLE"-AppDF\" not defined");
 
@@ -794,11 +794,11 @@ cosm_emu_update_any_df(struct sc_profile *profile, struct sc_pkcs15_card *p15car
 	SC_FUNC_CALLED(ctx, 1);
 	switch(op)   {
 	case SC_AC_OP_ERASE:
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Update DF; erase object('%s',type:%X)", object->label, object->type);
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Update DF; erase object('%.*s',type:%X)", (int) sizeof object->label, object->label, object->type);
 		rv = awp_update_df_delete(p15card, profile, object);
 		break;
 	case SC_AC_OP_CREATE:
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Update DF; create object('%s',type:%X)", object->label, object->type);
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Update DF; create object('%.*s',type:%X)", (int) sizeof object->label, object->label, object->type);
 		rv = awp_update_df_create(p15card, profile, object);
 		break;
 	}

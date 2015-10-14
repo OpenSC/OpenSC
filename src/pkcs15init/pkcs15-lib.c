@@ -809,7 +809,7 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 			 * For this, create a 'virtual' AUTH object 'SO PIN', accessible by the card specific part,
 			 * but not yet written into the on-card PKCS#15.
 			 */
-			sc_log(ctx, "Add virtual SO_PIN('%s',flags:%X,reference:%i,path:'%s')", pin_obj->label,
+			sc_log(ctx, "Add virtual SO_PIN('%.*s',flags:%X,reference:%i,path:'%s')", (int) sizeof pin_obj->label, pin_obj->label,
 					pin_attrs->flags, pin_attrs->reference, sc_print_path(&pin_ainfo.path));
 			r = sc_pkcs15_add_object(p15card, pin_obj);
 			LOG_TEST_RET(ctx, r, "Failed to add 'SOPIN' AUTH object");
@@ -1005,7 +1005,7 @@ sc_pkcs15init_store_pin(struct sc_pkcs15_card *p15card, struct sc_profile *profi
 	auth_info->auth_id = args->auth_id;
 
 	/* Now store the PINs */
-	sc_log(ctx, "Store PIN(%s,authID:%s)", pin_obj->label, sc_pkcs15_print_id(&auth_info->auth_id));
+	sc_log(ctx, "Store PIN(%.*s,authID:%s)", (int) sizeof pin_obj->label, pin_obj->label, sc_pkcs15_print_id(&auth_info->auth_id));
 	r = sc_pkcs15init_create_pin(p15card, profile, pin_obj, args);
 	if (r < 0)
 		sc_pkcs15_free_object(pin_obj);
@@ -1676,7 +1676,7 @@ sc_pkcs15init_store_certificate(struct sc_pkcs15_card *p15card,
 		cert_info->path = existing_path;
 	}
 
-	sc_log(ctx, "Store cert(%s,ID:%s,der(%p,%i))", object->label,
+	sc_log(ctx, "Store cert(%.*s,ID:%s,der(%p,%i))", (int) sizeof object->label, object->label,
 			sc_pkcs15_print_id(&cert_info->id), args->der_encoded.value, args->der_encoded.len);
 
 	if (!profile->pkcs15.direct_certificates)
@@ -1825,8 +1825,8 @@ sc_pkcs15init_get_pin_reference(struct sc_pkcs15_card *p15card,
 		struct sc_pkcs15_auth_info *auth_info = (struct sc_pkcs15_auth_info *)auth_objs[ii]->data;
 		struct sc_pkcs15_pin_attributes *pin_attrs = &auth_info->attrs.pin;
 
-		sc_log(ctx, "check PIN(%s,auth_method:%i,type:%i,reference:%i,flags:%X)",
-				auth_objs[ii]->label, auth_info->auth_method, pin_attrs->type,
+		sc_log(ctx, "check PIN(%.*s,auth_method:%i,type:%i,reference:%i,flags:%X)",
+				(int) sizeof auth_objs[ii]->label, auth_objs[ii]->label, auth_info->auth_method, pin_attrs->type,
 				pin_attrs->reference, pin_attrs->flags);
 		/* Find out if there is AUTH pkcs15 object with given 'type' and 'reference' */
 		if (auth_info->auth_method == auth_method && pin_attrs->reference == reference)
@@ -3305,11 +3305,11 @@ sc_pkcs15init_verify_secret(struct sc_profile *profile, struct sc_pkcs15_card *p
 
 	if (!r && pin_obj)   {
 		memcpy(&auth_info, pin_obj->data, sizeof(auth_info));
-		sc_log(ctx, "found PIN object '%s'", pin_obj->label);
+		sc_log(ctx, "found PIN object '%.*s'", (int) sizeof pin_obj->label, pin_obj->label);
 	}
 
 	if (pin_obj)   {
-		sc_log(ctx, "PIN object '%s'; pin_obj->content.len:%i", pin_obj->label, pin_obj->content.len);
+		sc_log(ctx, "PIN object '%.*s'; pin_obj->content.len:%i", (int) sizeof pin_obj->label, pin_obj->label, pin_obj->content.len);
 		if (pin_obj->content.value && pin_obj->content.len)   {
 			if (pin_obj->content.len > pinsize)
 				LOG_TEST_RET(ctx, SC_ERROR_BUFFER_TOO_SMALL, "PIN buffer is too small");
