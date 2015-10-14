@@ -2,7 +2,7 @@
  * Incrypto34 specific operation for PKCS15 initialization
  *
  * Copyright (C) 2005  ST Incard srl, Giuseppe Amato <giuseppe dot amato at st dot com>
- * Copyright (C) 2002 Olaf Kirch <okir@lst.de>
+ * Copyright (C) 2002 Olaf Kirch <okir@suse.de>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public

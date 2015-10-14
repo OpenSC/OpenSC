@@ -248,7 +248,7 @@ static int openct_reader_disconnect(sc_reader_t *reader)
 	struct driver_data *data = (struct driver_data *) reader->drv_data;
 
 	SC_FUNC_CALLED(reader->ctx, SC_LOG_DEBUG_VERBOSE);
-	if (data->h && !(reader->flags & SC_TERMINATE))
+	if (data->h && !(reader->ctx->flags & SC_CTX_FLAG_TERMINATE))
 		ct_reader_disconnect(data->h);
 	data->h = NULL;
 	return SC_SUCCESS;

@@ -118,7 +118,6 @@ HINSTANCE g_inst;
 #define MAGIC_SESSION_PIN "opensc-minidriver"
 
 struct md_directory {
-	unsigned char parent[9];
 	unsigned char name[9];
 
 	CARD_DIRECTORY_ACCESS_CONDITION acl;
@@ -130,7 +129,6 @@ struct md_directory {
 };
 
 struct md_file {
-	unsigned char parent[9];
 	unsigned char name[9];
 
 	CARD_FILE_ACCESS_CONDITION acl;
@@ -680,7 +678,8 @@ md_fs_find_directory(PCARD_DATA pCardData, struct md_directory *parent, char *na
 	else   {
 		dir = parent->subdirs;
 		while(dir)   {
-			if (!strcmp(dir->name, name))
+			if (strlen(name) > sizeof dir->name
+				   	|| !strncmp(dir->name, name, sizeof dir->name))
 				break;
 			dir = dir->next;
 		}
@@ -760,7 +759,8 @@ md_fs_find_file(PCARD_DATA pCardData, char *parent, char *name, struct md_file *
 	}
 
 	for (file = dir->files; file!=NULL;)   {
-		if (!strcmp(file->name, name))
+		if (sizeof file->name < strlen(name)
+				|| !strncmp(file->name, name, sizeof file->name))
 			break;
 		file = file->next;
 	}
@@ -865,7 +865,8 @@ md_fs_delete_file(PCARD_DATA pCardData, char *parent, char *name)
 		return SCARD_E_FILE_NOT_FOUND;
 	}
 
-	if (!strcmp(dir->files->name, name))   {
+	if (sizeof dir->files->name < strlen(name)
+			|| !strncmp(dir->files->name, name, sizeof dir->files->name))   {
 		file_to_rm = dir->files;
 		dir->files = dir->files->next;
 		md_fs_free_file(pCardData, file_to_rm);
@@ -875,7 +876,8 @@ md_fs_delete_file(PCARD_DATA pCardData, char *parent, char *name)
 		for (file = dir->files; file!=NULL; file = file->next)   {
 			if (!file->next)
 				break;
-			if (!strcmp(file->next->name, name))   {
+			if (sizeof file->next->name < strlen(name)
+					|| !strncmp(file->next->name, name, sizeof file->next->name))   {
 				file_to_rm = file->next;
 				file->next = file->next->next;
 				md_fs_free_file(pCardData, file_to_rm);
@@ -978,8 +980,8 @@ md_pkcs15_update_containers(PCARD_DATA pCardData, unsigned char *blob, size_t si
 			cont->flags = pp->bFlags;
 			cont->size_sign = pp->wSigKeySizeBits;
 			cont->size_key_exchange = pp->wKeyExchangeKeySizeBits;
-			logprintf(pCardData, 3, "update P15 containers: touch container (idx:%i,id:%s,guid:%s,flags:%X)\n",
-				idx, sc_pkcs15_print_id(&cont->id),cont->guid,cont->flags);
+			logprintf(pCardData, 3, "update P15 containers: touch container (idx:%i,id:%s,guid:%.*s,flags:%X)\n",
+				idx, sc_pkcs15_print_id(&cont->id),(int)sizeof cont->guid,cont->guid,cont->flags);
 		}
 	}
 
@@ -1002,7 +1004,7 @@ md_pkcs15_update_container_from_do(PCARD_DATA pCardData, struct sc_pkcs15_object
 
 	rv = sc_pkcs15_read_data_object(vs->p15card, (struct sc_pkcs15_data_info *)dobj->data, &ddata);
 	if (rv)   {
-		logprintf(pCardData, 2, "sc_pkcs15_read_data_object('%s') returned %i\n", dobj->label, rv);
+		logprintf(pCardData, 2, "sc_pkcs15_read_data_object('%.*s') returned %i\n", (int) sizeof dobj->label, dobj->label, rv);
 		return SCARD_F_INTERNAL_ERROR;
 	}
 
@@ -1060,7 +1062,7 @@ md_pkcs15_default_container_from_do(PCARD_DATA pCardData, struct sc_pkcs15_objec
 
 	rv = sc_pkcs15_read_data_object(vs->p15card, (struct sc_pkcs15_data_info *)dobj->data, &ddata);
 	if (rv)   {
-		logprintf(pCardData, 2, "sc_pkcs15_read_data_object('%s') returned %i\n", dobj->label, rv);
+		logprintf(pCardData, 2, "sc_pkcs15_read_data_object('%.*s') returned %i\n", (int) sizeof dobj->label, dobj->label, rv);
 		return SCARD_F_INTERNAL_ERROR;
 	}
 
@@ -1102,7 +1104,7 @@ md_pkcs15_delete_object(PCARD_DATA pCardData, struct sc_pkcs15_object *obj)
 
 	if (!obj)
 		return SCARD_S_SUCCESS;
-	logprintf(pCardData, 3, "MdDeleteObject('%s',type:0x%X) called\n", obj->label, obj->type);
+	logprintf(pCardData, 3, "MdDeleteObject('%.*s',type:0x%X) called\n", (int) sizeof obj->label, obj->label, obj->type);
 
 	rv = sc_lock(card);
 	if (rv)   {
@@ -1550,7 +1552,7 @@ md_set_cmapfile(PCARD_DATA pCardData, struct md_file *file)
 				cont->size_key_exchange = prkey_info->field_length;
 		}
 
-		logprintf(pCardData, 7, "Container[%i]'s guid=%s\n", ii, cont->guid);
+		logprintf(pCardData, 7, "Container[%i]'s guid=%.*s\n", ii, (int) sizeof cont->guid, cont->guid);
 		logprintf(pCardData, 7, "Container[%i]'s key-exchange:%i, sign:%i\n", ii, cont->size_key_exchange, cont->size_sign);
 
 		cont->id = prkey_info->id;
@@ -1558,10 +1560,10 @@ md_set_cmapfile(PCARD_DATA pCardData, struct md_file *file)
 
 		/* Try to find the friend objects: certficate and public key */
 		if (!sc_pkcs15_find_cert_by_id(vs->p15card, &cont->id, &cont->cert_obj))
-			logprintf(pCardData, 2, "found certificate friend '%s'\n", cont->cert_obj->label);
+			logprintf(pCardData, 2, "found certificate friend '%.*s'\n", (int) sizeof cont->cert_obj->label, cont->cert_obj->label);
 
 		if (!sc_pkcs15_find_pubkey_by_id(vs->p15card, &cont->id, &cont->pubkey_obj))
-			logprintf(pCardData, 2, "found public key friend '%s'\n", cont->pubkey_obj->label);
+			logprintf(pCardData, 2, "found public key friend '%.*s'\n", (int) sizeof cont->pubkey_obj->label, cont->pubkey_obj->label);
 	}
 
 	if (conts_num)   {
@@ -1584,8 +1586,8 @@ md_set_cmapfile(PCARD_DATA pCardData, struct md_file *file)
 			if (strcmp(dinfo->app_label, MD_DATA_APPLICAITON_NAME))
 				continue;
 
-			logprintf(pCardData, 2, "Found 'DATA' object '%s'\n", dobjs[ii]->label);
-			if (!strcmp(dobjs[ii]->label, MD_DATA_DEFAULT_CONT_LABEL))   {
+			logprintf(pCardData, 2, "Found 'DATA' object '%.*s'\n", (int) sizeof dobjs[ii]->label, dobjs[ii]->label);
+			if (!strncmp(dobjs[ii]->label, MD_DATA_DEFAULT_CONT_LABEL, sizeof dobjs[ii]->label))   {
 				default_cont = dobjs[ii];
 				continue;
 			}
@@ -2039,8 +2041,8 @@ md_pkcs15_generate_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, DWORD ke
 	cont->index = idx;
 	cont->flags = CONTAINER_MAP_VALID_CONTAINER;
 
-	logprintf(pCardData, 3, "MdGenerateKey(): generated key(idx:%i,id:%s,guid:%s)\n",
-			idx, sc_pkcs15_print_id(&cont->id),cont->guid);
+	logprintf(pCardData, 3, "MdGenerateKey(): generated key(idx:%i,id:%s,guid:%.*s)\n",
+			idx, sc_pkcs15_print_id(&cont->id),(int) sizeof cont->guid, cont->guid);
 
 	dwret = SCARD_S_SUCCESS;
 done:
@@ -2171,7 +2173,7 @@ md_pkcs15_store_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, BYTE *blob,
 	cont->index = idx;
 	cont->flags |= CONTAINER_MAP_VALID_CONTAINER;
 
-	logprintf(pCardData, 3, "MdStoreKey(): stored key(idx:%i,id:%s,guid:%s)\n", idx, sc_pkcs15_print_id(&cont->id),cont->guid);
+	logprintf(pCardData, 3, "MdStoreKey(): stored key(idx:%i,id:%s,guid:%.*s)\n", idx, sc_pkcs15_print_id(&cont->id),(int) sizeof cont->guid,cont->guid);
 	dwret = SCARD_S_SUCCESS;
 
 done:
@@ -2812,7 +2814,7 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 	if (!pubkey_der.value && cont->pubkey_obj)   {
 		struct sc_pkcs15_pubkey *pubkey = NULL;
 
-		logprintf(pCardData, 1, "now read public key '%s'\n", cont->pubkey_obj->label);
+		logprintf(pCardData, 1, "now read public key '%.*s'\n", (int) sizeof cont->pubkey_obj->label, cont->pubkey_obj->label);
 		rv = sc_pkcs15_read_pubkey(vs->p15card, cont->pubkey_obj, &pubkey);
 		if (!rv)   {
 			rv = sc_pkcs15_encode_pubkey(vs->ctx, pubkey, &pubkey_der.value, &pubkey_der.len);
@@ -2836,7 +2838,7 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 	if (!pubkey_der.value && cont->cert_obj)   {
 		struct sc_pkcs15_cert *cert = NULL;
 
-		logprintf(pCardData, 1, "now read certificate '%s'\n", cont->cert_obj->label);
+		logprintf(pCardData, 1, "now read certificate '%.*s'\n", (int) sizeof cont->cert_obj->label, cont->cert_obj->label);
 		rv = sc_pkcs15_read_certificate(vs->p15card, (struct sc_pkcs15_cert_info *)(cont->cert_obj->data), &cert);
 		if(!rv)   {
 			rv = sc_pkcs15_encode_pubkey(vs->ctx, cert->key, &pubkey_der.value, &pubkey_der.len);

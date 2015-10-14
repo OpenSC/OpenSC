@@ -85,10 +85,6 @@ static int sc_hsm_select_file(sc_card_t *card,
 	sc_file_t *file = NULL;
 
 	if (file_out == NULL) {				// Versions before 0.16 of the SmartCard-HSM do not support P2='0C'
-		if (!in_path->len && in_path->aid.len) {
-			sc_log(card->ctx, "Preventing reselection of applet which would clear the security state");
-			return SC_SUCCESS;
-		}
 		rv = sc_hsm_select_file(card, in_path, &file);
 		if (file != NULL) {
 			sc_file_free(file);

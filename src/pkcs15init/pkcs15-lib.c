@@ -12,7 +12,7 @@
  * a generic implementation; that is how PINs and keys are stored
  * on the card. These should be implemented in pkcs15-<cardname>.c
  *
- * Copyright (C) 2002, Olaf Kirch <okir@lst.de>
+ * Copyright (C) 2002, Olaf Kirch <okir@suse.de>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -727,10 +727,6 @@ sc_pkcs15init_finalize_profile(struct sc_card *card, struct sc_profile *profile,
 	if (aid)   {
 		sc_log(ctx, "finalize profile for AID %s", sc_dump_hex(aid->value, aid->len));
 		app = sc_find_app(card, aid);
-		if (!app)   {
-			sc_log(ctx, "Cannot find oncard application");
-			LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
-		}
 	}
 	else if (card->app_count == 1) {
 		app = card->app[0];
@@ -813,7 +809,7 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 			 * For this, create a 'virtual' AUTH object 'SO PIN', accessible by the card specific part,
 			 * but not yet written into the on-card PKCS#15.
 			 */
-			sc_log(ctx, "Add virtual SO_PIN('%s',flags:%X,reference:%i,path:'%s')", pin_obj->label,
+			sc_log(ctx, "Add virtual SO_PIN('%.*s',flags:%X,reference:%i,path:'%s')", (int) sizeof pin_obj->label, pin_obj->label,
 					pin_attrs->flags, pin_attrs->reference, sc_print_path(&pin_ainfo.path));
 			r = sc_pkcs15_add_object(p15card, pin_obj);
 			LOG_TEST_RET(ctx, r, "Failed to add 'SOPIN' AUTH object");
@@ -1009,7 +1005,7 @@ sc_pkcs15init_store_pin(struct sc_pkcs15_card *p15card, struct sc_profile *profi
 	auth_info->auth_id = args->auth_id;
 
 	/* Now store the PINs */
-	sc_log(ctx, "Store PIN(%s,authID:%s)", pin_obj->label, sc_pkcs15_print_id(&auth_info->auth_id));
+	sc_log(ctx, "Store PIN(%.*s,authID:%s)", (int) sizeof pin_obj->label, pin_obj->label, sc_pkcs15_print_id(&auth_info->auth_id));
 	r = sc_pkcs15init_create_pin(p15card, profile, pin_obj, args);
 	if (r < 0)
 		sc_pkcs15_free_object(pin_obj);
@@ -1683,7 +1679,7 @@ sc_pkcs15init_store_certificate(struct sc_pkcs15_card *p15card,
 		cert_info->path = existing_path;
 	}
 
-	sc_log(ctx, "Store cert(%s,ID:%s,der(%p,%i))", object->label,
+	sc_log(ctx, "Store cert(%.*s,ID:%s,der(%p,%i))", (int) sizeof object->label, object->label,
 			sc_pkcs15_print_id(&cert_info->id), args->der_encoded.value, args->der_encoded.len);
 
 	if (!profile->pkcs15.direct_certificates)
@@ -1832,8 +1828,8 @@ sc_pkcs15init_get_pin_reference(struct sc_pkcs15_card *p15card,
 		struct sc_pkcs15_auth_info *auth_info = (struct sc_pkcs15_auth_info *)auth_objs[ii]->data;
 		struct sc_pkcs15_pin_attributes *pin_attrs = &auth_info->attrs.pin;
 
-		sc_log(ctx, "check PIN(%s,auth_method:%i,type:%i,reference:%i,flags:%X)",
-				auth_objs[ii]->label, auth_info->auth_method, pin_attrs->type,
+		sc_log(ctx, "check PIN(%.*s,auth_method:%i,type:%i,reference:%i,flags:%X)",
+				(int) sizeof auth_objs[ii]->label, auth_objs[ii]->label, auth_info->auth_method, pin_attrs->type,
 				pin_attrs->reference, pin_attrs->flags);
 		/* Find out if there is AUTH pkcs15 object with given 'type' and 'reference' */
 		if (auth_info->auth_method == auth_method && pin_attrs->reference == reference)
@@ -2332,6 +2328,8 @@ sc_pkcs15init_select_intrinsic_id(struct sc_pkcs15_card *p15card, struct sc_prof
 		break;
 	default:
 		sc_log(ctx, "Unsupported ID style: %i", id_style);
+		if (allocated)
+			sc_pkcs15_free_pubkey(pubkey);
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Non supported ID style");
 	}
 
@@ -3310,11 +3308,11 @@ sc_pkcs15init_verify_secret(struct sc_profile *profile, struct sc_pkcs15_card *p
 
 	if (!r && pin_obj)   {
 		memcpy(&auth_info, pin_obj->data, sizeof(auth_info));
-		sc_log(ctx, "found PIN object '%s'", pin_obj->label);
+		sc_log(ctx, "found PIN object '%.*s'", (int) sizeof pin_obj->label, pin_obj->label);
 	}
 
 	if (pin_obj)   {
-		sc_log(ctx, "PIN object '%s'; pin_obj->content.len:%i", pin_obj->label, pin_obj->content.len);
+		sc_log(ctx, "PIN object '%.*s'; pin_obj->content.len:%i", (int) sizeof pin_obj->label, pin_obj->label, pin_obj->content.len);
 		if (pin_obj->content.value && pin_obj->content.len)   {
 			if (pin_obj->content.len > pinsize)
 				LOG_TEST_RET(ctx, SC_ERROR_BUFFER_TOO_SMALL, "PIN buffer is too small");
@@ -3410,6 +3408,7 @@ sc_pkcs15init_authenticate(struct sc_profile *profile, struct sc_pkcs15_card *p1
 	int  r = 0;
 
 	LOG_FUNC_CALLED(ctx);
+	assert(file != NULL);
 	sc_log(ctx, "path '%s', op=%u", sc_print_path(&file->path), op);
 
 	if (p15card->card->caps & SC_CARD_CAP_USE_FCI_AC) {

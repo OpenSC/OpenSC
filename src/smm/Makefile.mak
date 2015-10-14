@@ -1,5 +1,6 @@
 TOPDIR = ..\..
 
+!IF "$(OPENSSL_DEF)" == "/DENABLE_OPENSSL"
 TARGET = smm-local.dll
 
 OBJECTS = smm-local.obj sm-global-platform.obj sm-cwa14890.obj sm-card-iasecc.obj sm-card-authentic.obj
@@ -17,3 +18,7 @@ $(TARGET): $(OBJECTS) ..\libsm\libsm.lib ..\libopensc\opensc.lib
 
 .c.obj:
 	cl $(COPTS) /c $<
+
+!ELSE
+all:
+!ENDIF

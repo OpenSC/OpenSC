@@ -8,4 +8,3 @@ SUBDIRS = common scconf pkcs15init libopensc pkcs11 \
 if ENABLE_SM
 SUBDIRS += libsm smm
 endif
-

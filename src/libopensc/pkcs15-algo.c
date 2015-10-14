@@ -1,7 +1,7 @@
 /*
  * pkc15-algo.c: ASN.1 handling for algorithm IDs and parameters
  *
- * Copyright (C) 2001, 2002  Olaf Kirch <okir@lst.de>
+ * Copyright (C) 2001, 2002  Olaf Kirch <okir@suse.de>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
