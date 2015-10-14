@@ -548,7 +548,7 @@ sc_pkcs15_get_lastupdate(struct sc_pkcs15_card *p15card)
 	if (!p15card->tokeninfo->last_update.path.len)
 		return NULL;
 
-        r = sc_select_file(p15card->card, &p15card->tokeninfo->last_update.path, &file);
+	r = sc_select_file(p15card->card, &p15card->tokeninfo->last_update.path, &file);
 	if (r < 0)
 		return NULL;
 
