@@ -23,7 +23,7 @@ SM_DEF = /DENABLE_SM
 # - uncomment the line starting with OPENSSL_DEF
 # - set the OPENSSL_INCL_DIR below to your openssl include directory, preceded by "/I"
 # - set the OPENSSL_LIB below to your openssl lib file
-OPENSSL_DEF = /DENABLE_OPENSSL
+#OPENSSL_DEF= /DENABLE_OPENSSL
 !IF "$(OPENSSL_DEF)" == "/DENABLE_OPENSSL"
 !IF "$(BUILD_FOR)" == "WIN64"
 OPENSSL_DIR = C:\OpenSSL-Win64
@@ -45,8 +45,10 @@ OPENSSL_LIB = $(OPENSSL_DIR)\lib\VC\$(OPENSSL_STATIC_DIR)\libeay32MTd.lib user32
 OPENSSL_LIB = $(OPENSSL_DIR)\lib\VC\$(OPENSSL_STATIC_DIR)\libeay32MT.lib user32.lib advapi32.lib crypt32.lib
 !ENDIF
 
-PROGRAMS_OPENSSL = pkcs15-init.exe cryptoflex-tool.exe netkey-tool.exe piv-tool.exe westcos-tool.exe
+PROGRAMS_OPENSSL = cryptoflex-tool.exe pkcs15-init.exe netkey-tool.exe piv-tool.exe \
+	westcos-tool.exe sc-hsm-tool.exe dnie-tool.exe
 OPENSC_FEATURES = $(OPENSC_FEATURES) openssl
+CANDLEFLAGS = -dOpenSSL="$(OPENSSL_DIR)" $(CANDLEFLAGS)
 !ENDIF
 
 
@@ -55,11 +57,12 @@ OPENSC_FEATURES = $(OPENSC_FEATURES) openssl
 # - uncomment the line starting with ZLIB_DEF 
 # - set the ZLIB_INCL_DIR below to the zlib include lib proceeded by "/I"
 # - set the ZLIB_LIB  below to your zlib lib file
-ZLIB_DEF = /DENABLE_ZLIB
+#ZLIB_DEF = /DENABLE_ZLIB
 !IF "$(ZLIB_DEF)" == "/DENABLE_ZLIB"
 ZLIB_INCL_DIR = /IC:\zlib-dll\include
 ZLIB_LIB = C:\zlib-dll\lib\zdll.lib
 OPENSC_FEATURES = $(OPENSC_FEATURES) zlib
+CANDLEFLAGS = -dzlib="C:\zlib-dll" $(CANDLEFLAGS)
 !ENDIF
 
 # Used for MiniDriver
@@ -87,11 +90,11 @@ COPTS =  /W3 /D_CRT_SECURE_NO_DEPRECATE /MT /nologo /DHAVE_CONFIG_H $(ALL_INCLUD
 !IF "$(BUILD_FOR)" == "WIN64"
 LINKFLAGS = /NOLOGO /INCREMENTAL:NO /MACHINE:X64 /MANIFEST:NO /NODEFAULTLIB:MSVCRTD  /NODEFAULTLIB:MSVCRT $(LINKDEBUGFLAGS)
 LIBFLAGS =  /nologo /machine:x64
-CANDLEFLAGS = -dPlatform=x64
+CANDLEFLAGS = -dPlatform=x64 $(CANDLEFLAGS)
 !ELSE
 LINKFLAGS = /NOLOGO /INCREMENTAL:NO /MACHINE:X86 /MANIFEST:NO /NODEFAULTLIB:MSVCRTD  /NODEFAULTLIB:MSVCRT $(LINKDEBUGFLAGS)
 LIBFLAGS =  /nologo /machine:x86
-CANDLEFLAGS = -dPlatform=x86
+CANDLEFLAGS = -dPlatform=x86 $(CANDLEFLAGS)
 !ENDIF
 .c.obj::
 	cl $(CODE_OPTIMIZATION) $(COPTS) /c $<

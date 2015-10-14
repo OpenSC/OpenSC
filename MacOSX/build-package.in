@@ -1,6 +1,6 @@
 #!/bin/bash
 # Building the installer is only tested and supported on 10.9+ with Xcode 6.0.1
-# Built package targets 10.9+
+# Built package targets 10.10
 # Building should also work on older versions with older revisions or slight changes, YMMV
 
 # You need to have  the following from homebrew or macports or fink:
@@ -15,7 +15,7 @@ SDKS_PATH="$(xcode-select -p)/Platforms/MacOSX.platform/Developer/SDKs"
 SDK_PATH="${SDK_PATH:-$SDKS_PATH/$(ls -1 ${SDKS_PATH} | sort -n -k2 -t. -r | head -1)}"
 
 # Set SDK path
-export CFLAGS="-isysroot $SDK_PATH -arch i386 -arch x86_64 -mmacosx-version-min=10.7"
+export CFLAGS="-isysroot $SDK_PATH -arch i386 -arch x86_64 -mmacosx-version-min=10.10"
 
 # OpenSSL is deprecated on OSX since 10.7 and that generates lots of
 # "false positive" warnings and there is no alternative option.

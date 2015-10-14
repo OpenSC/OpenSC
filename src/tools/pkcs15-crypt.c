@@ -140,7 +140,7 @@ static char * get_pin(struct sc_pkcs15_object *obj)
 			return strdup(opt_pincode);
 	}
 
-	sprintf(buf, "Enter PIN [%s]: ", obj->label);
+	sprintf(buf, "Enter PIN [%.*s]: ", (int) sizeof obj->label, obj->label);
 	while (1) {
 		pincode = getpass(buf);
 		if (strlen(pincode) == 0)

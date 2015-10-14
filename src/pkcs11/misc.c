@@ -324,6 +324,7 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t * ctx)
 	}
 	conf->hide_empty_tokens = 1;
 	conf->lock_login = 0;
+	conf->init_sloppy = 1;
 	conf->pin_unblock_style = SC_PKCS11_PIN_UNBLOCK_NOT_ALLOWED;
 	conf->create_puk_slot = 0;
 	conf->zero_ckaid_for_ca_certs = 0;
@@ -339,6 +340,7 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t * ctx)
 	conf->slots_per_card = scconf_get_int(conf_block, "slots_per_card", conf->slots_per_card);
 	conf->hide_empty_tokens = scconf_get_bool(conf_block, "hide_empty_tokens", conf->hide_empty_tokens);
 	conf->lock_login = scconf_get_bool(conf_block, "lock_login", conf->lock_login);
+	conf->init_sloppy = scconf_get_bool(conf_block, "init_sloppy", conf->init_sloppy);
 
 	unblock_style = (char *)scconf_get_str(conf_block, "user_pin_unblock_style", NULL);
 	if (unblock_style && !strcmp(unblock_style, "set_pin_in_unlogged_session"))

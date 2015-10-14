@@ -1505,8 +1505,8 @@ compare_obj_data_name(struct sc_pkcs15_object *obj, const char *app_label, const
 	if (obj->type != SC_PKCS15_TYPE_DATA_OBJECT)
 		return 0;
 
-	return !strcmp(cinfo->app_label, app_label) &&
-		!strcmp(obj->label, label);
+	return !strncmp(cinfo->app_label, app_label, sizeof cinfo->app_label) &&
+		!strncmp(obj->label, label, sizeof obj->label);
 }
 
 

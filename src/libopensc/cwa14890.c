@@ -1466,17 +1466,21 @@ int cwa_encode_apdu(sc_card_t * card,
 	/* reserve extra bytes for padding and tlv header */
 	msgbuf = calloc(12 + from->lc, sizeof(u8));	/* to encrypt apdu data */
 	cryptbuf = calloc(12 + from->lc, sizeof(u8));
-	if (!msgbuf || !cryptbuf)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+	if (!msgbuf || !cryptbuf) {
+		res = SC_ERROR_OUT_OF_MEMORY;
+		goto err;
+	}
 
 	/* check if APDU is already encoded */
 	if ((from->cla & 0x0C) != 0) {
 		memcpy(to, from, sizeof(sc_apdu_t));
-		return SC_SUCCESS;	/* already encoded */
+		res = SC_SUCCESS;	/* already encoded */
+		goto encode_end;
 	}
 	if (from->ins == 0xC0) {
 		memcpy(to, from, sizeof(sc_apdu_t));
-		return SC_SUCCESS;	/* dont encode GET Response cmd */
+		res = SC_SUCCESS;	/* dont encode GET Response cmd */
+		goto encode_end;
 	}
 
 	/* call provider pre-operation method */
@@ -1500,8 +1504,10 @@ int cwa_encode_apdu(sc_card_t * card,
 	ccbuf =
 	    calloc(MAX(SC_MAX_APDU_BUFFER_SIZE, 20 + from->datalen),
 		   sizeof(u8));
-	if (!apdubuf || !ccbuf)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+	if (!apdubuf || !ccbuf) {
+		res = SC_ERROR_OUT_OF_MEMORY;
+		goto err;
+	}
 
 	/* set up data on destination apdu */
 	to->cse = SC_APDU_CASE_3_SHORT;
@@ -1615,6 +1621,7 @@ int cwa_encode_apdu(sc_card_t * card,
 	res = SC_SUCCESS;
 	goto encode_end_apdu_valid;
 
+err:
 encode_end:
 	if (apdubuf)
 		free(apdubuf);
