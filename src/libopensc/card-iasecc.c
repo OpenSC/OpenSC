@@ -2237,24 +2237,16 @@ iasecc_pin_get_policy (struct sc_card *card, struct sc_pin_cmd_data *data)
 	iasecc_sdo_free_fields(card, &sdo);
 
 	if (save_current_df)   {
-		struct sc_file *dummy_file = NULL;
-
 		sc_log(ctx, "iasecc_pin_get_policy() restore current DF");
-		rv = iasecc_select_file(card, &save_current_df->path, &dummy_file);
+		rv = iasecc_select_file(card, &save_current_df->path, NULL);
 		LOG_TEST_RET(ctx, rv, "Cannot return to saved DF");
-
-		sc_file_free(dummy_file);
 		sc_file_free(save_current_df);
 	}
 
 	if (save_current_ef)   {
-		struct sc_file *dummy_file = NULL;
-
 		sc_log(ctx, "iasecc_pin_get_policy() restore current EF");
-		rv = iasecc_select_file(card, &save_current_ef->path, &dummy_file);
+		rv = iasecc_select_file(card, &save_current_ef->path, NULL);
 		LOG_TEST_RET(ctx, rv, "Cannot return to saved EF");
-
-		sc_file_free(dummy_file);
 		sc_file_free(save_current_ef);
 	}
 
@@ -2466,9 +2458,7 @@ iasecc_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_
 	}
 
 	if (save_current)   {
-		struct sc_file *dummy_file = NULL;
-
-		rv = iasecc_select_file(card, &save_current->path, &dummy_file);
+		rv = iasecc_select_file(card, &save_current->path, NULL);
 		LOG_TEST_RET(ctx, rv, "Cannot return to saved PATH");
 	}
 
