@@ -269,7 +269,7 @@ static int jcop_select_file(sc_card_t *card, const sc_path_t *path,
 	  }
 	  if ((r = iso_ops->select_file(card, &drvdata->aid, fileptr)) < 0)
 	       return r;
-	  if ((selecting & SELECTING_TARGET) == SELECT_APPDF) {
+	  if (fileptr && (selecting & SELECTING_TARGET) == SELECT_APPDF) {
 	       (*fileptr)->type = SC_FILE_TYPE_DF;
 	       drvdata->selected=SELECT_APPDF;
 	       goto select_ok;
@@ -316,7 +316,6 @@ static int jcop_read_binary(sc_card_t *card, unsigned int idx,
      struct jcop_private_data *drvdata=DRVDATA(card);
      struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
      const struct sc_card_operations *iso_ops = iso_drv->ops;
-     sc_file_t  *tfile;
      int r;
      
      if (drvdata->selected == SELECT_MF) {
@@ -329,11 +328,10 @@ static int jcop_read_binary(sc_card_t *card, unsigned int idx,
 	  if (idx + count > 128) {
 	       count=128-idx;
 	  }
-	  r = iso_ops->select_file(card, &drvdata->aid, &tfile);
+	  r = iso_ops->select_file(card, &drvdata->aid, NULL);
 	  if (r < 0) { /* no pkcs15 app, so return empty DIR. */
 	       memset(buf, 0, count);
 	  } else {
-	       sc_file_free(tfile);
 	       memcpy(buf, (u8 *)(ef_dir_contents + idx), count);
 	  }
 	  return count;
