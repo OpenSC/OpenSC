@@ -1156,7 +1156,7 @@ static int westcos_sign_decipher(int mode, sc_card_t *card,
 		goto out;
 	}
 	r = sc_select_file(card, &(priv_data->env.file_ref), &keyfile);
-	if (r)
+	if (r || !keyfile)
 		goto out;
 
 	do {
