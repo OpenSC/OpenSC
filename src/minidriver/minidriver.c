@@ -117,6 +117,11 @@ HINSTANCE g_inst;
 /* magic to determine previous pinpad authentication */
 #define MAGIC_SESSION_PIN "opensc-minidriver"
 
+#define TLS1_0_PROTOCOL_VERSION 0x0301
+#define TLS1_1_PROTOCOL_VERSION 0x0302
+#define TLS1_2_PROTOCOL_VERSION 0x0303
+#define TLS_DERIVE_KEY_SIZE 48
+
 struct md_directory {
 	unsigned char name[9];
 
@@ -1846,7 +1851,7 @@ md_check_key_compatibility(PCARD_DATA pCardData, DWORD flags, DWORD key_type,
 				return SCARD_E_INVALID_PARAMETER;
 			}
 
-			if (pub_rsa->magic == 0x31415352 || pub_rsa->magic == 0x32415352)   {
+			if (pub_rsa->magic == BCRYPT_RSAPUBLIC_MAGIC || pub_rsa->magic == BCRYPT_RSAPRIVATE_MAGIC)   {
 				key_size = pub_rsa->bitlen;
 			}
 			else {
@@ -4124,7 +4129,7 @@ cleanup:
 /* Generic function to perform hash. Could have been OpenSSL but used BCrypt* functions.
 BCrypt is loaded as a delay load library. The dll can be loaded into Windows XP until this code is called.
 Hopefully, ECC is not available in Windows XP and BCrypt functions are not called */
-DWORD HashMe(__in PCARD_DATA pCardData, BCRYPT_ALG_HANDLE hAlgorithm, 
+DWORD HashDataWithBCrypt(__in PCARD_DATA pCardData, BCRYPT_ALG_HANDLE hAlgorithm, 
 			 PBYTE pbOuput, DWORD dwOutputSize, PBYTE pbSecret, DWORD dwSecretSize, 
 			 PBYTE pbData1, DWORD dwDataSize1,
 			 PBYTE pbData2, DWORD dwDataSize2, 
@@ -4215,9 +4220,9 @@ DWORD WINAPI DoTlsPrf(__in PCARD_DATA pCardData,
 	}
 	
 	/* size is always 48 */
-	dwLastRoundSize = 48 % dwHashSize;
+	dwLastRoundSize = TLS_DERIVE_KEY_SIZE % dwHashSize;
 	if (dwLastRoundSize == 0) dwLastRoundSize = dwHashSize;
-	dwNumberOfRounds = (DWORD) (48 / dwHashSize) + (dwLastRoundSize == dwHashSize?0:1);
+	dwNumberOfRounds = (DWORD) (TLS_DERIVE_KEY_SIZE / dwHashSize) + (dwLastRoundSize == dwHashSize?0:1);
 
 	/* store TLS A1, A2 intermediate operations */
 	pbAx = (PBYTE) LocalAlloc(0, dwNumberOfRounds * dwHashSize);
@@ -4236,14 +4241,14 @@ DWORD WINAPI DoTlsPrf(__in PCARD_DATA pCardData,
 		/* A1, A2, ... */
 		if (i == 0) {
 			/* A(1) = HMAC_hash(secret, label + seed)*/
-			dwReturn = HashMe(pCardData, hAlgorithm, 
+			dwReturn = HashDataWithBCrypt(pCardData, hAlgorithm, 
 					 pbAx, dwHashSize, pbSecret, dwSecretSize, 
 					 pbLabel, dwLabelSize,
 					 pbSeed, 64, 
 					 NULL, 0);
 		} else {
 			/* A(i) = HMAC_hash(secret, A(i-1))*/
-			dwReturn = HashMe(pCardData, hAlgorithm, 
+			dwReturn = HashDataWithBCrypt(pCardData, hAlgorithm, 
 					 pbAx + i * dwHashSize, dwHashSize, pbSecret, dwSecretSize, 
 					 pbAx + (i-1) * dwHashSize, dwHashSize,
 					 NULL, 0, 
@@ -4255,14 +4260,14 @@ DWORD WINAPI DoTlsPrf(__in PCARD_DATA pCardData,
 		}
 		if (dwNumberOfRounds -1 == i) {
 			/* last round */
-			dwReturn = HashMe(pCardData, hAlgorithm, 
+			dwReturn = HashDataWithBCrypt(pCardData, hAlgorithm, 
 						 pbBuffer, dwHashSize, pbSecret, dwSecretSize, 
 						 pbAx + i * dwHashSize, dwHashSize,
 						 pbLabel, dwLabelSize,
 						 pbSeed, 64);
 			memcpy(pbOutput + i * dwHashSize, pbBuffer, dwLastRoundSize);
 		} else {
-			dwReturn = HashMe(pCardData, hAlgorithm, 
+			dwReturn = HashDataWithBCrypt(pCardData, hAlgorithm, 
 						 pbOutput + i * dwHashSize, dwHashSize, pbSecret, dwSecretSize, 
 						 pbAx + i * dwHashSize, dwHashSize,
 						 pbLabel, dwLabelSize,
@@ -4299,10 +4304,10 @@ DWORD WINAPI CardDeriveTlsPrf(__in PCARD_DATA pCardData,
 	PBYTE pbBuffer = NULL;
 	DWORD i;
 	if(dwProtocol == 0) {
-		dwProtocol = 0x301;
-	} else if (dwProtocol == 0x301 || dwProtocol == 0x302) {
+		dwProtocol = TLS1_0_PROTOCOL_VERSION;
+	} else if (dwProtocol == TLS1_0_PROTOCOL_VERSION || dwProtocol == TLS1_1_PROTOCOL_VERSION) {
 		/* TLS 1.0 & 1.1 */
-	} else if (dwProtocol == 0x303) {
+	} else if (dwProtocol == TLS1_2_PROTOCOL_VERSION) {
 		/* TLS 1.2 */
 		if (szAlgorithm && wcscmp(szAlgorithm, BCRYPT_SHA256_ALGORITHM) != 0 && wcscmp(szAlgorithm, BCRYPT_SHA384_ALGORITHM) != 0) {
 			logprintf(pCardData, 0, "CardDeriveKey: The algorithm for TLS_PRF is invalid %S\n", szAlgorithm);
@@ -4313,17 +4318,17 @@ DWORD WINAPI CardDeriveTlsPrf(__in PCARD_DATA pCardData,
 		return SCARD_E_INVALID_PARAMETER;
 	}
 	/* size is always 48 according to msdn */
-	pAgreementInfo->cbDerivedKey = 48;
+	pAgreementInfo->cbDerivedKey = TLS_DERIVE_KEY_SIZE;
 	if (pAgreementInfo->dwFlags & CARD_BUFFER_SIZE_ONLY) {
 		return SCARD_S_SUCCESS;
 	}
 
-	pAgreementInfo->pbDerivedKey = (PBYTE)pCardData->pfnCspAlloc(48);
+	pAgreementInfo->pbDerivedKey = (PBYTE)pCardData->pfnCspAlloc(TLS_DERIVE_KEY_SIZE);
 	if (pAgreementInfo->pbDerivedKey == NULL) {
 		return SCARD_E_NO_MEMORY;
 	}
 
-	if (dwProtocol == 0x301 || dwProtocol == 0x302) {
+	if (dwProtocol == TLS1_0_PROTOCOL_VERSION || dwProtocol == TLS1_1_PROTOCOL_VERSION) {
 		/* TLS 1.0 & 1.1 */
 		DWORD dwNewSecretLength = (((agreement->dwSize) + (2) - 1) / (2));
 		dwReturn = DoTlsPrf(pCardData,
@@ -4339,7 +4344,7 @@ DWORD WINAPI CardDeriveTlsPrf(__in PCARD_DATA pCardData,
 			pAgreementInfo->pbDerivedKey  = NULL;
 			return dwReturn;
 		}
-		pbBuffer = (PBYTE) LocalAlloc(0, 48);
+		pbBuffer = (PBYTE) LocalAlloc(0, TLS_DERIVE_KEY_SIZE);
 		if (!pbBuffer) {
 			pCardData->pfnCspFree(pAgreementInfo->pbDerivedKey );
 			pAgreementInfo->pbDerivedKey  = NULL;
@@ -4359,12 +4364,12 @@ DWORD WINAPI CardDeriveTlsPrf(__in PCARD_DATA pCardData,
 			pAgreementInfo->pbDerivedKey  = NULL;
 			return dwReturn;
 		}
-		for (i = 0; i< 48; i++) {
+		for (i = 0; i< TLS_DERIVE_KEY_SIZE; i++) {
 			pAgreementInfo->pbDerivedKey[i] = pAgreementInfo->pbDerivedKey[i] ^ pbBuffer[i];
 		}
 		LocalFree(pbBuffer);
 
-	} else if (dwProtocol == 0x303) {
+	} else if (dwProtocol == TLS1_2_PROTOCOL_VERSION) {
 		dwReturn = DoTlsPrf(pCardData,
 						  pAgreementInfo->pbDerivedKey,
 						agreement->pbAgreement,
