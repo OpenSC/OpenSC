@@ -248,7 +248,7 @@ static int sc_pkcs15emu_gemsafeGPK_init(sc_pkcs15_card_t *p15card)
 
 	/* we will use dfpath in all other references */
 	dfpath = file->id;
-	free(file);
+	sc_file_free(file);
 	file = NULL;
 
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "GemSafe file found, id=%d",dfpath);
