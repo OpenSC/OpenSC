@@ -544,7 +544,6 @@ static int sc_pkcs15emu_sc_hsm_add_prkd(sc_pkcs15_card_t * p15card, u8 keyid) {
 	sc_pkcs15_object_t cert_obj;
 	struct sc_pkcs15_object prkd;
 	sc_pkcs15_prkey_info_t *key_info;
-	sc_file_t *file = NULL;
 	sc_path_t path;
 	u8 fid[2];
 	u8 efbin[512];
@@ -557,13 +556,12 @@ static int sc_pkcs15emu_sc_hsm_add_prkd(sc_pkcs15_card_t * p15card, u8 keyid) {
 
 	/* Try to select a related EF containing the PKCS#15 description of the key */
 	sc_path_set(&path, SC_PATH_TYPE_FILE_ID, fid, sizeof(fid), 0, 0);
-	r = sc_select_file(card, &path, &file);
+	r = sc_select_file(card, &path, NULL);
 
 	if (r != SC_SUCCESS) {
 		return SC_SUCCESS;
 	}
 
-	sc_file_free(file);
 	r = sc_read_binary(p15card->card, 0, efbin, sizeof(efbin), 0);
 	LOG_TEST_RET(card->ctx, r, "Could not read EF.PRKD");
 
