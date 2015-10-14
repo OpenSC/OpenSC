@@ -810,6 +810,8 @@ do_select(sc_card_t * card, u8 kind,
 	if (p2 == 0x0C) {
 		if (file) {
 			*file = sc_file_new();
+			if (!*file)
+				SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
 			(*file)->type = SC_FILE_TYPE_DF;
 			return SC_SUCCESS;
 		}
