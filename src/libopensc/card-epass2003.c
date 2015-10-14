@@ -2166,10 +2166,9 @@ get_external_key_maxtries(struct sc_card *card, unsigned char *maxtries)
 		SC_PATH_TYPE_PATH,
 		{{0}, 0}
 	};
-	struct sc_file *ef_file;
 	int ret;
 
-	ret = sc_select_file(card, &file_path, &ef_file);
+	ret = sc_select_file(card, &file_path, NULL);
 	LOG_TEST_RET(card->ctx, ret, "select max counter file failed");
 
 	ret = sc_read_binary(card, 0, maxcounter, 2, 0);
