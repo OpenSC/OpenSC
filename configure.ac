@@ -606,7 +606,7 @@ fi
 if test "${with_pkcs11_provider}" = "detect"; then
 	case "${host}" in
 		*-*-darwin*)
-			DEFAULT_PKCS11_PROVIDER="opensc-pkcs11.dylib"
+			DEFAULT_PKCS11_PROVIDER="opensc-pkcs11.so"
 		;;
 		*-mingw*|*-winnt*|*-cygwin*)
 			DEFAULT_PKCS11_PROVIDER="opensc-pkcs11.dll"
