@@ -58,9 +58,9 @@ int msc_get_challenge(sc_card_t *card, unsigned short dataLength, unsigned short
 int msc_generate_keypair(sc_card_t *card, int privateKey, int publicKey, int algorithm, int keySize, int options);
 int msc_extract_rsa_public_key(sc_card_t *card, 
 			int keyLocation,
-			int* modLength, 
+			size_t* modLength, 
 			u8** modulus,
-			int* expLength,
+			size_t* expLength,
 			u8** exponent);
 int msc_extract_key(sc_card_t *card, 
 			int keyLocation);

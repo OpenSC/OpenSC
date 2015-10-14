@@ -523,9 +523,9 @@ typedef struct sc_cardctl_muscle_key_info {
 	int 	keyType;
 	int 	keyLocation;
 	int 	keySize;
-	int 	modLength;
+	size_t 	modLength;
 	u8* 	modValue;
-	int 	expLength;
+	size_t 	expLength;
 	u8* 	expValue;
 	int 	pLength;
 	u8* 	pValue;
