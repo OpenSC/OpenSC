@@ -345,7 +345,6 @@ static int jcop_list_files(sc_card_t *card, u8 *buf, size_t buflen) {
      struct jcop_private_data *drvdata=DRVDATA(card);
      struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
      const struct sc_card_operations *iso_ops = iso_drv->ops;
-     sc_file_t  *tfile;
      int r;
 
      if (drvdata->selected == SELECT_MF) {
@@ -355,11 +354,10 @@ static int jcop_list_files(sc_card_t *card, u8 *buf, size_t buflen) {
 	  if (buflen < 4)
 	       return 2;
 	  /* AppDF only exists if applet is selectable */
-	  r = iso_ops->select_file(card, &drvdata->aid, &tfile);
+	  r = iso_ops->select_file(card, &drvdata->aid, NULL);
 	  if (r < 0) { 
 	       return 2;
 	  } else {
-	       sc_file_free(tfile);
 	       memcpy(buf+2, "\x50\x15", 2);
 	       return 4;
 	  }
