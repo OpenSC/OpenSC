@@ -372,60 +372,6 @@ struct sc_pkcs15_key_params {
 	void (*free_params)(void *);
 };
 
-/* From Windows Smart Card Minidriver Specification
- * Version 7.06
- *
- * #define MAX_CONTAINER_NAME_LEN       39
- * #define CONTAINER_MAP_VALID_CONTAINER        1
- * #define CONTAINER_MAP_DEFAULT_CONTAINER      2
- * typedef struct _CONTAINER_MAP_RECORD
- * {
- *      WCHAR wszGuid [MAX_CONTAINER_NAME_LEN + 1];
- *      BYTE bFlags;
- *      BYTE bReserved;
- *      WORD wSigKeySizeBits;
- *      WORD wKeyExchangeKeySizeBits;
- * } CONTAINER_MAP_RECORD, *PCONTAINER_MAP_RECORD;
- */
-/*
-#define SC_MD_MAX_CONTAINER_NAME_LEN 39
-#define SC_MD_CONTAINER_MAP_VALID_CONTAINER	0x01
-#define SC_MD_CONTAINER_MAP_DEFAULT_CONTAINER	0x02
-struct sc_md_cmap_record {
-	unsigned char *guid;
-	size_t guid_len;
-	unsigned flags;
-	unsigned keysize_sign;
-	unsigned keysize_keyexchange;
-};
-*/
-
-/* From Windows Smart Card Minidriver Specification
- * Version 7.06
- *
- * typedef struct _CARD_CACHE_FILE_FORMAT
- * {
- *	BYTE bVersion;		// Cache version
- *	BYTE bPinsFreshness;	// Card PIN
- *	WORD wContainersFreshness;
- *	WORD wFilesFreshness;
- * } CARD_CACHE_FILE_FORMAT, *PCARD_CACHE_FILE_FORMAT;
- */
-/*
-struct sc_md_cardcf {
-	unsigned char version;
-	unsigned char pin_freshness;
-	unsigned cont_freshness;
-	unsigned files_freshness;
-
-};
-
-struct sc_md_data {
-	struct sc_md_cardcf cardcf;
-	void *prop_data;
-};
-*/
-
 struct sc_pkcs15_prkey_info {
 	struct sc_pkcs15_id id;	/* correlates to public certificate id */
 	unsigned int usage, access_flags;

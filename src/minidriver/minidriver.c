@@ -2805,6 +2805,10 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 		return SCARD_E_NO_KEY_CONTAINER;
 	}
 
+	if (vs->p15card == NULL) {
+		return SCARD_F_INTERNAL_ERROR;
+	}
+
 	prkey_info = (struct sc_pkcs15_prkey_info *)cont->prkey_obj->data;
 
 	check_reader_status(pCardData);
@@ -2885,31 +2889,31 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 					pubkey_der.value, (DWORD) pubkey_der.len, 0, NULL, &sz);
 
 			if (cont->size_sign)   {
-				PUBRSAKEYSTRUCT_BASE *oh = (PUBRSAKEYSTRUCT_BASE *)pCardData->pfnCspAlloc(sz);
-				if (!oh)
+				PUBRSAKEYSTRUCT_BASE *publicKey = (PUBRSAKEYSTRUCT_BASE *)pCardData->pfnCspAlloc(sz);
+				if (!publicKey)
 					return SCARD_E_NO_MEMORY;
 
 				CryptDecodeObject(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING, RSA_CSP_PUBLICKEYBLOB,
-						pubkey_der.value, (DWORD) pubkey_der.len, 0, oh, &sz);
+						pubkey_der.value, (DWORD) pubkey_der.len, 0, publicKey, &sz);
 
-				oh->publickeystruc.aiKeyAlg = CALG_RSA_SIGN;
+				publicKey->publickeystruc.aiKeyAlg = CALG_RSA_SIGN;
 				pContainerInfo->cbSigPublicKey = sz;
-				pContainerInfo->pbSigPublicKey = (PBYTE)oh;
+				pContainerInfo->pbSigPublicKey = (PBYTE)publicKey;
 
 				logprintf(pCardData, 3, "return info on SIGN_CONTAINER_INDEX %i\n", bContainerIndex);
 			}
 
 			if (cont->size_key_exchange)   {
-				PUBRSAKEYSTRUCT_BASE *oh = (PUBRSAKEYSTRUCT_BASE*)pCardData->pfnCspAlloc(sz);
-				if (!oh)
+				PUBRSAKEYSTRUCT_BASE *publicKey = (PUBRSAKEYSTRUCT_BASE*)pCardData->pfnCspAlloc(sz);
+				if (!publicKey)
 					return SCARD_E_NO_MEMORY;
 
 				CryptDecodeObject(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING, RSA_CSP_PUBLICKEYBLOB,
-						pubkey_der.value, (DWORD) pubkey_der.len, 0, oh, &sz);
+						pubkey_der.value, (DWORD) pubkey_der.len, 0, publicKey, &sz);
 
-				oh->publickeystruc.aiKeyAlg = CALG_RSA_KEYX;
+				publicKey->publickeystruc.aiKeyAlg = CALG_RSA_KEYX;
 				pContainerInfo->cbKeyExPublicKey = sz;
-				pContainerInfo->pbKeyExPublicKey = (PBYTE)oh;
+				pContainerInfo->pbKeyExPublicKey = (PBYTE)publicKey;
 
 				logprintf(pCardData, 3, "return info on KEYX_CONTAINER_INDEX %i\n", bContainerIndex);
 			}
@@ -2918,7 +2922,7 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 		logprintf(pCardData, 7, "Encoding ECC public key");
 
 		if (pubkey_der.len > 2 && pubkey_der.value && pubkey_der.value[0] == 4 && pubkey_der.value[1] == pubkey_der.len -2) {
-			BCRYPT_ECCKEY_BLOB *oh = NULL;
+			BCRYPT_ECCKEY_BLOB *publicKey = NULL;
 			DWORD dwMagic = 0;
 			if (cont->size_sign)   {
 				sz = (DWORD) (sizeof(BCRYPT_ECCKEY_BLOB) +  pubkey_der.len -3);
@@ -2939,16 +2943,16 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 					return SCARD_F_INTERNAL_ERROR;
 				}
 
-				oh = (BCRYPT_ECCKEY_BLOB *)pCardData->pfnCspAlloc(sz);
-				if (!oh)
+				publicKey = (BCRYPT_ECCKEY_BLOB *)pCardData->pfnCspAlloc(sz);
+				if (!publicKey)
 					return SCARD_E_NO_MEMORY;
 
-				oh->cbKey =  (DWORD)(pubkey_der.len -3) /2;
-				oh->dwMagic = dwMagic;
+				publicKey->cbKey =  (DWORD)(pubkey_der.len -3) /2;
+				publicKey->dwMagic = dwMagic;
 
 				pContainerInfo->cbSigPublicKey = sz;
-				pContainerInfo->pbSigPublicKey = (PBYTE)oh;
-				memcpy(((PBYTE)oh) + sizeof(BCRYPT_ECCKEY_BLOB),  pubkey_der.value + 3,  pubkey_der.len -3);
+				pContainerInfo->pbSigPublicKey = (PBYTE)publicKey;
+				memcpy(((PBYTE)publicKey) + sizeof(BCRYPT_ECCKEY_BLOB),  pubkey_der.value + 3,  pubkey_der.len -3);
 				
 				logprintf(pCardData, 3, "return info on ECC SIGN_CONTAINER_INDEX %i\n", bContainerIndex);
 			}
@@ -2971,16 +2975,16 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 					return SCARD_F_INTERNAL_ERROR;
 				}
 
-				oh = (BCRYPT_ECCKEY_BLOB *)pCardData->pfnCspAlloc(sz);
-				if (!oh)
+				publicKey = (BCRYPT_ECCKEY_BLOB *)pCardData->pfnCspAlloc(sz);
+				if (!publicKey)
 					return SCARD_E_NO_MEMORY;
 
-				oh->cbKey =  (DWORD)(pubkey_der.len -3) /2;
-				oh->dwMagic = dwMagic;
+				publicKey->cbKey =  (DWORD)(pubkey_der.len -3) /2;
+				publicKey->dwMagic = dwMagic;
 
 				pContainerInfo->cbKeyExPublicKey = sz;
-				pContainerInfo->pbKeyExPublicKey = (PBYTE)oh;
-				memcpy(((PBYTE)oh) + sizeof(BCRYPT_ECCKEY_BLOB),  pubkey_der.value + 3,  pubkey_der.len -3);
+				pContainerInfo->pbKeyExPublicKey = (PBYTE)publicKey;
+				memcpy(((PBYTE)publicKey) + sizeof(BCRYPT_ECCKEY_BLOB),  pubkey_der.value + 3,  pubkey_der.len -3);
 				
 				logprintf(pCardData, 3, "return info on ECC KEYX_CONTAINER_INDEX %i\n", bContainerIndex);
 			}
