@@ -81,15 +81,15 @@ static const struct option options[] = {
 };
 
 static const char *option_help[] = {
-	"Prints the card serial number",
+	"Print the card serial number",
 	"Identify the card and print its name",
-	"authenticate using default 3des key",
+	"Authenticate using default 3DES key",
 	"Generate key <ref>:<alg> 9A:06 on card, and output pubkey",
 	"Load an object <containerID> containerID as defined in 800-73 without leading 0x",
 	"Load a cert <ref> where <ref> is 9A,9C,9D or 9E",
-	"Load a cert that has been gziped <ref>",
+	"Load a cert that has been gzipped <ref>",
 	"Output file for cert or key",
-	"Inout file for cert",
+	"Input file for cert",
 	"Sends an APDU in format AA:BB:CC:DD:EE:FF...",
 	"Uses reader number <arg> [0]",
 	"Forces the use of driver <arg> [auto-detect]",
