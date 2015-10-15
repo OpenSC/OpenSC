@@ -209,7 +209,7 @@ static char *prettify_gender(char *str)
 			case '0': return "unknown";
 			case '1': return "male";
 			case '2': return "female";
-			case '9': return "not applicable";
+			case '9': return "not announced";
 		}
 	}
 	return NULL;
@@ -248,7 +248,7 @@ static int decode_options(int argc, char **argv)
 {
 	int c;
 
-	while ((c = getopt_long(argc, argv,"r:x:CUG:L:hwvVd:", options, (int *) 0)) != EOF) {
+	while ((c = getopt_long(argc, argv,"r:x:CUG:L:EhwvVd:", options, (int *) 0)) != EOF) {
 		switch (c) {
 		case 'r':
 			opt_reader = optarg;
@@ -277,11 +277,11 @@ static int decode_options(int argc, char **argv)
 			break;
 		case 'C':
 			opt_cardinfo++;
-			actions++;;
+			actions++;
 			break;
 		case 'U':
 			opt_userinfo++;
-			actions++;;
+			actions++;
 			break;
 		case 'G':
 			opt_genkey++;
@@ -308,6 +308,7 @@ static int decode_options(int argc, char **argv)
 			break;
 		case 'E':
 			opt_erase++;
+			actions++;
 			break;
 		case OPT_DELKEY:
 			opt_delkey++;
