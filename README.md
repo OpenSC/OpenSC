@@ -9,6 +9,9 @@ Coverity Scan:
 Jenkins CI:
 [![Build Status](https://opensc.fr/jenkins/buildStatus/icon?job=OpenSC-master)](https://opensc.fr/jenkins/view/OpenSC-master/job/OpenSC-master/)
 
+Jenkins CI (Win-64):
+[![Build Status](https://opensc.fr/jenkins/buildStatus/icon?job=OpenSC-master-Win64)](https://opensc.fr/jenkins/view/OpenSC-master/job/OpenSC-master-Win64/)
+
 Travis CI:
 [![Build Status](https://api.travis-ci.org/OpenSC/OpenSC.png)](https://travis-ci.org/OpenSC/OpenSC)
 
