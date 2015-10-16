@@ -684,7 +684,7 @@ md_fs_find_directory(PCARD_DATA pCardData, struct md_directory *parent, char *na
 		dir = parent->subdirs;
 		while(dir)   {
 			if (strlen(name) > sizeof dir->name
-				   	|| !strncmp(dir->name, name, sizeof dir->name))
+					|| !strncmp(dir->name, name, sizeof dir->name))
 				break;
 			dir = dir->next;
 		}
@@ -723,10 +723,10 @@ md_fs_add_directory(PCARD_DATA pCardData, struct md_directory **head, char *name
 		*head = new_dir;
 	}
 	else    {
-		 struct md_directory *last = *head;
-		 while (last->next)
-			 last = last->next;
-		 last->next = new_dir;
+		struct md_directory *last = *head;
+		while (last->next)
+			last = last->next;
+		last->next = new_dir;
 	}
 
 	if (out)
@@ -815,10 +815,10 @@ md_fs_add_file(PCARD_DATA pCardData, struct md_file **head, char *name, CARD_FIL
 		*head = new_file;
 	}
 	else    {
-		 struct md_file *last = *head;
-		 while (last->next)
-			 last = last->next;
-		 last->next = new_file;
+		struct md_file *last = *head;
+		while (last->next)
+			last = last->next;
+		last->next = new_file;
 	}
 
 	if (out)
@@ -2390,23 +2390,23 @@ static VOID CenterWindow(HWND hwndWindow, HWND hwndParent)
 	nScreenWidth = GetSystemMetrics(SM_CXSCREEN);
 	nScreenHeight = GetSystemMetrics(SM_CYSCREEN);
 
-     // make the window relative to its parent
-     if (hwndParent != NULL) {
-		 GetWindowRect(hwndParent, &rectParent);
-         nX = ((rectParent.right - rectParent.left) - nWidth) / 2 + rectParent.left;
-         nY = ((rectParent.bottom - rectParent.top) - nHeight) / 2 + rectParent.top;
-	 }
-	 else {
-		 nX = (nScreenWidth - nWidth) /2;
-		 nY = (nScreenHeight - nHeight) /2;
-	 }
+	// make the window relative to its parent
+	if (hwndParent != NULL) {
+		GetWindowRect(hwndParent, &rectParent);
+		nX = ((rectParent.right - rectParent.left) - nWidth) / 2 + rectParent.left;
+		nY = ((rectParent.bottom - rectParent.top) - nHeight) / 2 + rectParent.top;
+	}
+	else {
+		nX = (nScreenWidth - nWidth) /2;
+		nY = (nScreenHeight - nHeight) /2;
+	}
 	// make sure that the dialog box never moves outside of the screen
 	if (nX < 0) nX = 0;
 	if (nY < 0) nY = 0;
 	if (nX + nWidth > nScreenWidth) nX = nScreenWidth - nWidth;
 	if (nY + nHeight > nScreenHeight) nY = nScreenHeight - nHeight;
- 
-    MoveWindow(hwndWindow, nX, nY, nWidth, nHeight, TRUE);
+
+	MoveWindow(hwndWindow, nX, nY, nWidth, nHeight, TRUE);
 }
 
 
@@ -2494,9 +2494,9 @@ static INT_PTR CALLBACK md_dialog_proc(HWND hWnd, UINT message, WPARAM wParam, L
 
 static int 
 md_dialog_perform_pin_operation(PCARD_DATA pCardData, int operation, struct sc_pkcs15_card *p15card,
-			 struct sc_pkcs15_object *pin_obj,
-			 const u8 *pin1, size_t pin1len,
-			 const u8 *pin2, size_t pin2len, BOOL displayUI)
+		struct sc_pkcs15_object *pin_obj,
+		const u8 *pin1, size_t pin1len,
+		const u8 *pin2, size_t pin2len, BOOL displayUI)
 {
 	LONG_PTR parameter[10];
 	INT_PTR result = 0;
@@ -3616,8 +3616,7 @@ DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 		if (r > 0) {
 			/* No padding info, or padding info none */
 			if ((pInfo->dwVersion < CARD_RSA_KEY_DECRYPT_INFO_VERSION_TWO) ||
-			    ((pInfo->dwVersion >= CARD_RSA_KEY_DECRYPT_INFO_VERSION_TWO) &&
-			    (pInfo->dwPaddingType == CARD_PADDING_NONE))) {
+					((pInfo->dwVersion >= CARD_RSA_KEY_DECRYPT_INFO_VERSION_TWO) && (pInfo->dwPaddingType == CARD_PADDING_NONE))) {
 				if ((unsigned)r <= pInfo->cbData - 9)	{
 					/* add pkcs1 02 padding */
 					logprintf(pCardData, 2, "Add '%s' to the output data", "PKCS#1 BT02 padding");
@@ -4134,10 +4133,10 @@ cleanup:
 BCrypt is loaded as a delay load library. The dll can be loaded into Windows XP until this code is called.
 Hopefully, ECC is not available in Windows XP and BCrypt functions are not called */
 DWORD HashDataWithBCrypt(__in PCARD_DATA pCardData, BCRYPT_ALG_HANDLE hAlgorithm, 
-			 PBYTE pbOuput, DWORD dwOutputSize, PBYTE pbSecret, DWORD dwSecretSize, 
-			 PBYTE pbData1, DWORD dwDataSize1,
-			 PBYTE pbData2, DWORD dwDataSize2, 
-			 PBYTE pbData3, DWORD dwDataSize3 )
+		PBYTE pbOuput, DWORD dwOutputSize, PBYTE pbSecret, DWORD dwSecretSize, 
+		PBYTE pbData1, DWORD dwDataSize1,
+		PBYTE pbData2, DWORD dwDataSize2, 
+		PBYTE pbData3, DWORD dwDataSize3 )
 {
 	DWORD dwReturn, dwSize, dwBufferSize;
 	BCRYPT_HASH_HANDLE hHash = NULL;
@@ -4195,7 +4194,7 @@ cleanup:
 
 /* Generic function for TLS PRF. Compute the P_HASH function */
 DWORD WINAPI DoTlsPrf(__in PCARD_DATA pCardData,
-					  __in PBYTE pbOutput,
+					__in PBYTE pbOutput,
 					__in PBYTE pbSecret,
 					__in DWORD dwSecretSize,
 					__in PWSTR szAlgorithm,
@@ -4246,17 +4245,17 @@ DWORD WINAPI DoTlsPrf(__in PCARD_DATA pCardData,
 		if (i == 0) {
 			/* A(1) = HMAC_hash(secret, label + seed)*/
 			dwReturn = HashDataWithBCrypt(pCardData, hAlgorithm, 
-					 pbAx, dwHashSize, pbSecret, dwSecretSize, 
-					 pbLabel, dwLabelSize,
-					 pbSeed, 64, 
-					 NULL, 0);
+					pbAx, dwHashSize, pbSecret, dwSecretSize, 
+					pbLabel, dwLabelSize,
+					pbSeed, 64, 
+					NULL, 0);
 		} else {
 			/* A(i) = HMAC_hash(secret, A(i-1))*/
 			dwReturn = HashDataWithBCrypt(pCardData, hAlgorithm, 
-					 pbAx + i * dwHashSize, dwHashSize, pbSecret, dwSecretSize, 
-					 pbAx + (i-1) * dwHashSize, dwHashSize,
-					 NULL, 0, 
-					 NULL, 0);
+					pbAx + i * dwHashSize, dwHashSize, pbSecret, dwSecretSize, 
+					pbAx + (i-1) * dwHashSize, dwHashSize,
+					NULL, 0, 
+					NULL, 0);
 		}
 		if (dwReturn) {
 			logprintf(pCardData, 0, "CardDeriveKey: unable to hash Ax 0x%08X\n", szAlgorithm, dwReturn);
@@ -4265,17 +4264,17 @@ DWORD WINAPI DoTlsPrf(__in PCARD_DATA pCardData,
 		if (dwNumberOfRounds -1 == i) {
 			/* last round */
 			dwReturn = HashDataWithBCrypt(pCardData, hAlgorithm, 
-						 pbBuffer, dwHashSize, pbSecret, dwSecretSize, 
-						 pbAx + i * dwHashSize, dwHashSize,
-						 pbLabel, dwLabelSize,
-						 pbSeed, 64);
+					pbBuffer, dwHashSize, pbSecret, dwSecretSize, 
+					pbAx + i * dwHashSize, dwHashSize,
+					pbLabel, dwLabelSize,
+					pbSeed, 64);
 			memcpy(pbOutput + i * dwHashSize, pbBuffer, dwLastRoundSize);
 		} else {
 			dwReturn = HashDataWithBCrypt(pCardData, hAlgorithm, 
-						 pbOutput + i * dwHashSize, dwHashSize, pbSecret, dwSecretSize, 
-						 pbAx + i * dwHashSize, dwHashSize,
-						 pbLabel, dwLabelSize,
-						 pbSeed, 64);
+					pbOutput + i * dwHashSize, dwHashSize, pbSecret, dwSecretSize, 
+					pbAx + i * dwHashSize, dwHashSize,
+					pbLabel, dwLabelSize,
+					pbSeed, 64);
 		}
 		if (dwReturn) {
 			logprintf(pCardData, 0, "CardDeriveKey: unable to hash Ax 0x%08X\n", szAlgorithm, dwReturn);
@@ -4336,7 +4335,7 @@ DWORD WINAPI CardDeriveTlsPrf(__in PCARD_DATA pCardData,
 		/* TLS 1.0 & 1.1 */
 		DWORD dwNewSecretLength = (((agreement->dwSize) + (2) - 1) / (2));
 		dwReturn = DoTlsPrf(pCardData,
-						  pAgreementInfo->pbDerivedKey,
+						pAgreementInfo->pbDerivedKey,
 						agreement->pbAgreement,
 						dwNewSecretLength,
 						BCRYPT_MD5_ALGORITHM,
@@ -4355,7 +4354,7 @@ DWORD WINAPI CardDeriveTlsPrf(__in PCARD_DATA pCardData,
 			return SCARD_E_NO_MEMORY;
 		}
 		dwReturn = DoTlsPrf(pCardData,
-						  pbBuffer,
+						pbBuffer,
 						agreement->pbAgreement + dwNewSecretLength,
 						dwNewSecretLength,
 						BCRYPT_SHA1_ALGORITHM,
@@ -4375,7 +4374,7 @@ DWORD WINAPI CardDeriveTlsPrf(__in PCARD_DATA pCardData,
 
 	} else if (dwProtocol == TLS1_2_PROTOCOL_VERSION) {
 		dwReturn = DoTlsPrf(pCardData,
-						  pAgreementInfo->pbDerivedKey,
+						pAgreementInfo->pbDerivedKey,
 						agreement->pbAgreement,
 						agreement->dwSize,
 						szAlgorithm,
