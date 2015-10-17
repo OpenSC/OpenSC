@@ -2440,15 +2440,16 @@ static int piv_select_file(sc_card_t *card, const sc_path_t *in_path,
 	pathlen = in_path->len;
 
 	/* only support single EF in current application */
+	/* 
+	 * PIV emulates files, and only does so becauses sc_pkcs15_* uses
+	 * select_file and read_binary. The emulation adds path emulated structures
+	 * so piv_select_file will find it.
+	 * there is no dir. Only direct access to emulated files
+	 * thus opensc-tool and opensc-explorer can not read the emulated files
+	 */
 
 	if (memcmp(path, "\x3F\x00", 2) == 0) {
-		if (pathlen == 2)   {
-			r = piv_select_aid(card, piv_aids[0].value, piv_aids[0].len_short, NULL, NULL);
-			SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Cannot select PIV AID");
-
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
-		}
-		else if (pathlen > 2) {
+		if (pathlen > 2) {
 			path += 2;
 			pathlen -= 2;
 		}
