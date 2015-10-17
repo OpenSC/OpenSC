@@ -505,24 +505,26 @@ static int
 pgp_get_card_features(sc_card_t *card)
 {
 	struct pgp_priv_data *priv = DRVDATA(card);
-	unsigned char *hist_bytes = card->atr.value;
-	size_t atr_len = card->atr.len;
+	u8 *hist_bytes = card->reader->atr_info.hist_bytes;
+	size_t hist_bytes_len = card->reader->atr_info.hist_bytes_len;
 	size_t i;
 	pgp_blob_t *blob, *blob6e, *blob73;
 
-	/* parse card capabilities from historical bytes */
-	for (i = 0; (i < atr_len) && (hist_bytes[i] != 0x73); i++)
-		;
-	/* IS07816-4 hist bytes 3rd function table */
-	if ((hist_bytes[i] == 0x73) && (atr_len > i+3)) {
-		/* bit 0x40 in byte 3 of TL 0x73 means "extended Le/Lc" */
-		if (hist_bytes[i+3] & 0x40) {
-			card->caps |= SC_CARD_CAP_APDU_EXT;
-			priv->ext_caps |= EXT_CAP_APDU_EXT;
+	if (hist_bytes_len > 0) {
+		/* parse card capabilities from historical bytes */
+		for (i = 0; (i < hist_bytes_len) && (hist_bytes[i] != 0x73); i++)
+			;
+		/* IS07816-4 hist bytes 3rd function table */
+		if ((hist_bytes[i] == 0x73) && (hist_bytes_len > i+3)) {
+			/* bit 0x40 in byte 3 of TL 0x73 means "extended Le/Lc" */
+			if (hist_bytes[i+3] & 0x40) {
+				card->caps |= SC_CARD_CAP_APDU_EXT;
+				priv->ext_caps |= EXT_CAP_APDU_EXT;
+			}
+			/* bit 0x80 in byte 3 of TL 0x73 means "Command chaining" */
+			if (hist_bytes[i+3] & 0x80)
+				priv->ext_caps |= EXT_CAP_CHAINING;
 		}
-		/* bit 0x80 in byte 3 of TL 0x73 means "Command chaining" */
-		if (hist_bytes[i+3] & 0x80)
-			priv->ext_caps |= EXT_CAP_CHAINING;
 	}
 
 	if (priv->bcd_version >= OPENPGP_CARD_2_0) {
