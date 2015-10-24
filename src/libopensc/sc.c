@@ -800,10 +800,15 @@ void *sc_mem_alloc_secure(sc_context_t *ctx, size_t len)
     if (!pointer)
         return NULL;
 #ifdef HAVE_SYS_MMAN_H
-    /* TODO Windows support and mprotect too */
+    /* TODO mprotect */
     /* Do not swap the memory */
     if (mlock(pointer, len) >= 0)
         locked = 1;
+#endif
+#ifdef _WIN32
+	/* Do not swap the memory */
+	if (VirtualLock(pointer, len) != 0)
+		locked = 1;
 #endif
     if (!locked) {
         if (ctx->flags & SC_CTX_FLAG_PARANOID_MEMORY) {
