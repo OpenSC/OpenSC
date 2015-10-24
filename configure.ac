@@ -494,6 +494,10 @@ case "${enable_openssl}" in
 		have_openssl="no"
 	;;
 	detect)
+		saved_CFLAGS="${CFLAGS}"
+		CFLAGS="${CFLAGS} ${OPENSSL_CFLAGS}"
+		AC_CHECK_HEADERS([openssl/crypto.h],,[have_openssl="no"])
+		CFLAGS="${saved_CFLAGS}"
 		if test "${have_openssl}" = "yes"; then
 			enable_openssl="yes"
 		else
@@ -602,7 +606,7 @@ fi
 if test "${with_pkcs11_provider}" = "detect"; then
 	case "${host}" in
 		*-*-darwin*)
-			DEFAULT_PKCS11_PROVIDER="opensc-pkcs11.dylib"
+			DEFAULT_PKCS11_PROVIDER="opensc-pkcs11.so"
 		;;
 		*-mingw*|*-winnt*|*-cygwin*)
 			DEFAULT_PKCS11_PROVIDER="opensc-pkcs11.dll"
