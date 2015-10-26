@@ -32,14 +32,12 @@
 #define ISOAPPLET_ALG_REF_ECDSA 0x21
 #define ISOAPPLET_ALG_REF_RSA_PAD_PKCS1 0x11
 
-#define ISOAPPLET_API_VERSION_MAJOR 0x00
-#define ISOAPPLET_API_VERSION_MINOR 0x06
+#define ISOAPPLET_VERSION 0x0006
 
 #define ISOAPPLET_API_FEATURE_EXT_APDU 0x01
 #define ISOAPPLET_API_FEATURE_SECURE_RANDOM 0x02
 #define ISOAPPLET_API_FEATURE_ECC 0x04
 
-#define ISOAPPLET_AID_LEN 12
 static const u8 isoApplet_aid[] = {0xf2,0x76,0xa2,0x88,0xbc,0xfb,0xa6,0x9d,0x34,0xf3,0x10,0x01};
 
 struct isoApplet_drv_data
@@ -52,6 +50,7 @@ struct isoApplet_drv_data
 	unsigned int sec_env_alg_ref;
 	unsigned int sec_env_ec_field_length;
 	unsigned int isoapplet_version;
+	unsigned int isoapplet_features;
 };
 #define DRVDATA(card)	((struct isoApplet_drv_data *) ((card)->drv_data))
 
@@ -96,8 +95,6 @@ static struct isoapplet_supported_ec_curves {
  * @param[in]     card
  * @param[in]     aid      The applet ID.
  * @param[in]     aid_len  The length of aid.
- * @param[out]    resp     The response of the applet upon selection.
- * @param[in,out] resp_len In: The buffer size of resp. Out: The length of the response.
  *
  * @return SC_SUCCESS: The applet is present and could be selected.
  *         any other:  Transmit failure or the card returned an error.
@@ -105,7 +102,7 @@ static struct isoapplet_supported_ec_curves {
  *                     not present.
  */
 static int
-isoApplet_select_applet(sc_card_t *card, const u8 *aid, const size_t aid_len, u8 *resp, size_t *resp_len)
+isoApplet_select_applet(sc_card_t *card, const u8 *aid, const size_t aid_len)
 {
 	int rv;
 	sc_context_t *ctx = card->ctx;
@@ -120,9 +117,6 @@ isoApplet_select_applet(sc_card_t *card, const u8 *aid, const size_t aid_len, u8
 	apdu.lc = aid_len;
 	apdu.data = aid;
 	apdu.datalen = aid_len;
-	apdu.resp = resp;
-	apdu.resplen = *resp_len;
-	apdu.le = 0;
 
 	rv = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(ctx, rv, "APDU transmit failure.");
@@ -130,7 +124,6 @@ isoApplet_select_applet(sc_card_t *card, const u8 *aid, const size_t aid_len, u8
 	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(card->ctx, rv, "Card returned error");
 
-	*resp_len = apdu.resplen;
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
@@ -151,53 +144,69 @@ isoApplet_finish(sc_card_t *card)
 static int
 isoApplet_match_card(sc_card_t *card)
 {
-	size_t rlen = SC_MAX_APDU_BUFFER_SIZE;
-	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	int rv;
 
-	rv = isoApplet_select_applet(card, isoApplet_aid, ISOAPPLET_AID_LEN, rbuf, &rlen);
-
+	rv = isoApplet_select_applet(card, isoApplet_aid, sizeof(isoApplet_aid));
 	if(rv != SC_SUCCESS)
 	{
 		return 0;
-	}
-
-	/* The IsoApplet should return an API version (major and minor) and a feature bitmap.
-	 * We expect 3 bytes: MAJOR API version - MINOR API version - API feature bitmap.
-	 * If applet does not return API version, versions 0x00 will match */
-	if(rlen < 3)
-	{
-		assert(sizeof(rbuf) >= 3);
-		memset(rbuf, 0x00, 3);
-	}
-
-	if(rbuf[0] != ISOAPPLET_API_VERSION_MAJOR)
-	{
-		sc_log(card->ctx, "IsoApplet: Mismatching major API version. Not proceeding. "
-		       "API versions: Driver (%02X-%02X), applet (%02X-%02X). Please update accordingly.",
-		       ISOAPPLET_API_VERSION_MAJOR, ISOAPPLET_API_VERSION_MINOR, rbuf[0], rbuf[1]);
-		return 0;
-	}
-
-	if(rbuf[1] != ISOAPPLET_API_VERSION_MINOR)
-	{
-		sc_log(card->ctx, "IsoApplet: Mismatching minor API version. Proceeding anyway. "
-		       "API versions: Driver (%02X-%02X), applet (%02X-%02X). "
-		       "Please update accordingly whenever possible.",
-		       ISOAPPLET_API_VERSION_MAJOR, ISOAPPLET_API_VERSION_MINOR, rbuf[0], rbuf[1]);
 	}
 
 	return 1;
 }
 
 static int
+isoApplet_get_info(sc_card_t * card, struct isoApplet_drv_data * drvdata) {
+	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
+	sc_apdu_t apdu;
+	int rv;
+	sc_context_t * ctx = card->ctx;
+
+	/* Get response with P1P2 proprietary (get applet version and features) */
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xca, 0x01, 0x01);
+	apdu.resp = rbuf;
+	apdu.resplen = sizeof(rbuf);
+	apdu.le = 256;
+
+	rv = sc_transmit_apdu(card, &apdu);
+	LOG_TEST_RET(ctx, rv, "APDU transmit faiure.");
+	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	if(rv < 0) {
+		if(apdu.sw1 == 0x6D && apdu.sw2 == 0x00) {
+			/* INS not supported. This is an older IsoApplet that might return the
+			 * applet information upon selection. For backward compatibility, try this. */
+			sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xa4, 0x04, 0x00);
+			apdu.lc = sizeof(isoApplet_aid);
+			apdu.data = isoApplet_aid;
+			apdu.datalen = sizeof(isoApplet_aid);
+			apdu.resp = rbuf;
+			apdu.resplen = sizeof(rbuf);
+			apdu.le = 256;
+			rv = sc_transmit_apdu(card, &apdu);
+			LOG_TEST_RET(ctx, rv, "APDU transmit faiure.");
+			rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
+			LOG_TEST_RET(ctx, rv, "Error selecting applet.");
+		} else {
+			LOG_TEST_RET(ctx, rv, "Card returned error.");
+		}
+	}
+
+	/* Fill up drvdata */
+	if(apdu.resplen >= 3)
+	{
+		drvdata->isoapplet_version = apdu.resp[0] << 8 | apdu.resp[1];
+		drvdata->isoapplet_features = apdu.resp[2];
+	}
+
+	return SC_SUCCESS;
+}
+
+static int
 isoApplet_init(sc_card_t *card)
 {
-	int i;
+	int i, r;
 	unsigned long flags = 0;
 	unsigned long ext_flags = 0;
-	size_t rlen = SC_MAX_APDU_BUFFER_SIZE;
-	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	struct isoApplet_drv_data *drvdata;
 
 	LOG_FUNC_CALLED(card->ctx);
@@ -210,22 +219,30 @@ isoApplet_init(sc_card_t *card)
 	card->cla = 0x00;
 
 	/* Obtain applet version and specific features */
-	if (0 > isoApplet_select_applet(card, isoApplet_aid, ISOAPPLET_AID_LEN, rbuf, &rlen)) {
-		free(card->drv_data);
-		card->drv_data = NULL;
-		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_CARD, "Error obtaining applet version.");
-	}
-	if(rlen < 3)
+	r = isoApplet_get_info(card, drvdata);
+	LOG_TEST_RET(card->ctx, r, "Error obtaining information about applet.");
+
+	if((drvdata->isoapplet_version & 0xFF00) != (ISOAPPLET_VERSION & 0xFF00))
 	{
-		assert(sizeof(rbuf) >= 3);
-		memset(rbuf, 0x00, 3);
+		sc_log(card->ctx, "IsoApplet: Mismatching major API version. Not proceeding. "
+			   "API versions: Driver (%04X), applet (%04X). Please update accordingly.",
+			   ISOAPPLET_VERSION, drvdata->isoapplet_version);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_CARD);
 	}
-	drvdata->isoapplet_version = ((unsigned int)rbuf[0] << 8) | rbuf[1];
-	if(rbuf[2] & ISOAPPLET_API_FEATURE_EXT_APDU)
-		card->caps |=  SC_CARD_CAP_APDU_EXT;
-	if(rbuf[2] & ISOAPPLET_API_FEATURE_SECURE_RANDOM)
-		card->caps |=  SC_CARD_CAP_RNG;
-	if(drvdata->isoapplet_version <= 0x0005 || rbuf[2] & ISOAPPLET_API_FEATURE_ECC)
+	else if(drvdata->isoapplet_version != ISOAPPLET_VERSION)
+	{
+		sc_log(card->ctx, "IsoApplet: Mismatching minor version. Proceeding anyway. "
+			   "API versions: Driver (%04X), applet (%04X)."
+			   "Please update accordingly whenever possible.",
+			   ISOAPPLET_VERSION, drvdata->isoapplet_version);
+	}
+
+	if(drvdata->isoapplet_features & ISOAPPLET_API_FEATURE_EXT_APDU)
+		card->caps |= SC_CARD_CAP_APDU_EXT;
+	if(drvdata->isoapplet_features & ISOAPPLET_API_FEATURE_SECURE_RANDOM)
+		card->caps |= SC_CARD_CAP_RNG;
+	if(drvdata->isoapplet_version <= 0x0005
+			|| drvdata->isoapplet_features & ISOAPPLET_API_FEATURE_ECC)
 	{
 		/* There are Java Cards that do not support ECDSA at all. The IsoApplet
 		 * started to report this with version 00.06.
@@ -237,7 +254,7 @@ isoApplet_init(sc_card_t *card)
 		flags |= SC_ALGORITHM_ECDSA_HASH_SHA1;
 		flags |= SC_ALGORITHM_ONBOARD_KEY_GEN;
 		ext_flags = SC_ALGORITHM_EXT_EC_UNCOMPRESES;
-		ext_flags |=  SC_ALGORITHM_EXT_EC_NAMEDCURVE;
+		ext_flags |= SC_ALGORITHM_EXT_EC_NAMEDCURVE;
 		ext_flags |= SC_ALGORITHM_EXT_EC_F_P;
 		for (i=0; ec_curves[i].oid.value[0] >= 0; i++)
 		{
@@ -1236,9 +1253,7 @@ static int isoApplet_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	if (was_reset > 0) {
-		size_t rlen = SC_MAX_APDU_BUFFER_SIZE;
-		u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
-		r = isoApplet_select_applet(card, isoApplet_aid, ISOAPPLET_AID_LEN, rbuf, &rlen);
+		r = isoApplet_select_applet(card, isoApplet_aid, sizeof(isoApplet_aid));
 	}
 
 	LOG_FUNC_RETURN(card->ctx, r);
