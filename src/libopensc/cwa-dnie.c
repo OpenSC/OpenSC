@@ -225,7 +225,7 @@ int dnie_read_file(sc_card_t * card,
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 	/* select file by mean of iso7816 ops */
 	res = card->ops->select_file(card, path, file);
-	if (res != SC_SUCCESS) {
+	if (res != SC_SUCCESS || !file || !(*file)) {
 		msg = "select_file failed";
 		goto dnie_read_file_err;
 	}

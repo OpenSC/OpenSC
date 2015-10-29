@@ -581,9 +581,9 @@ int msc_extract_key(sc_card_t *card,
 
 int msc_extract_rsa_public_key(sc_card_t *card, 
 			int keyLocation,
-			int* modLength, 
+			size_t* modLength, 
 			u8** modulus,
-			int* expLength,
+			size_t* expLength,
 			u8** exponent)
 {
 	int r;

@@ -544,7 +544,6 @@ static int sc_pkcs15emu_sc_hsm_add_prkd(sc_pkcs15_card_t * p15card, u8 keyid) {
 	sc_pkcs15_object_t cert_obj;
 	struct sc_pkcs15_object prkd;
 	sc_pkcs15_prkey_info_t *key_info;
-	sc_file_t *file = NULL;
 	sc_path_t path;
 	u8 fid[2];
 	u8 efbin[512];
@@ -557,13 +556,12 @@ static int sc_pkcs15emu_sc_hsm_add_prkd(sc_pkcs15_card_t * p15card, u8 keyid) {
 
 	/* Try to select a related EF containing the PKCS#15 description of the key */
 	sc_path_set(&path, SC_PATH_TYPE_FILE_ID, fid, sizeof(fid), 0, 0);
-	r = sc_select_file(card, &path, &file);
+	r = sc_select_file(card, &path, NULL);
 
 	if (r != SC_SUCCESS) {
 		return SC_SUCCESS;
 	}
 
-	sc_file_free(file);
 	r = sc_read_binary(p15card->card, 0, efbin, sizeof(efbin), 0);
 	LOG_TEST_RET(card->ctx, r, "Could not read EF.PRKD");
 
@@ -598,13 +596,11 @@ static int sc_pkcs15emu_sc_hsm_add_prkd(sc_pkcs15_card_t * p15card, u8 keyid) {
 	fid[0] = EE_CERTIFICATE_PREFIX;
 
 	sc_path_set(&path, SC_PATH_TYPE_FILE_ID, fid, sizeof(fid), 0, 0);
-	r = sc_select_file(card, &path, &file);
+	r = sc_select_file(card, &path, NULL);
 
 	if (r != SC_SUCCESS) {
 		return SC_SUCCESS;
 	}
-
-	sc_file_free(file);
 
 	/* Check if the certificate is a X.509 certificate */
 	r = sc_read_binary(p15card->card, 0, efbin, 1, 0);
@@ -646,7 +642,6 @@ static int sc_pkcs15emu_sc_hsm_add_dcod(sc_pkcs15_card_t * p15card, u8 id) {
 	sc_card_t *card = p15card->card;
 	sc_pkcs15_data_info_t *data_info;
 	sc_pkcs15_object_t data_obj;
-	sc_file_t *file = NULL;
 	sc_path_t path;
 	u8 fid[2];
 	u8 efbin[512];
@@ -659,13 +654,12 @@ static int sc_pkcs15emu_sc_hsm_add_dcod(sc_pkcs15_card_t * p15card, u8 id) {
 
 	/* Try to select a related EF containing the PKCS#15 description of the data */
 	sc_path_set(&path, SC_PATH_TYPE_FILE_ID, fid, sizeof(fid), 0, 0);
-	r = sc_select_file(card, &path, &file);
+	r = sc_select_file(card, &path, NULL);
 
 	if (r != SC_SUCCESS) {
 		return SC_SUCCESS;
 	}
 
-	sc_file_free(file);
 	r = sc_read_binary(p15card->card, 0, efbin, sizeof(efbin), 0);
 	LOG_TEST_RET(card->ctx, r, "Could not read EF.DCOD");
 
@@ -695,7 +689,6 @@ static int sc_pkcs15emu_sc_hsm_add_cd(sc_pkcs15_card_t * p15card, u8 id) {
 	sc_card_t *card = p15card->card;
 	sc_pkcs15_cert_info_t *cert_info;
 	sc_pkcs15_object_t obj;
-	sc_file_t *file = NULL;
 	sc_path_t path;
 	u8 fid[2];
 	u8 efbin[512];
@@ -708,13 +701,12 @@ static int sc_pkcs15emu_sc_hsm_add_cd(sc_pkcs15_card_t * p15card, u8 id) {
 
 	/* Try to select a related EF containing the PKCS#15 description of the data */
 	sc_path_set(&path, SC_PATH_TYPE_FILE_ID, fid, sizeof(fid), 0, 0);
-	r = sc_select_file(card, &path, &file);
+	r = sc_select_file(card, &path, NULL);
 
 	if (r != SC_SUCCESS) {
 		return SC_SUCCESS;
 	}
 
-	sc_file_free(file);
 	r = sc_read_binary(p15card->card, 0, efbin, sizeof(efbin), 0);
 	LOG_TEST_RET(card->ctx, r, "Could not read EF.DCOD");
 
@@ -739,7 +731,6 @@ static int sc_pkcs15emu_sc_hsm_add_cd(sc_pkcs15_card_t * p15card, u8 id) {
 static int sc_pkcs15emu_sc_hsm_read_tokeninfo (sc_pkcs15_card_t * p15card)
 {
 	sc_card_t *card = p15card->card;
-	sc_file_t *file = NULL;
 	sc_path_t path;
 	int r;
 	u8 efbin[512];
@@ -748,9 +739,8 @@ static int sc_pkcs15emu_sc_hsm_read_tokeninfo (sc_pkcs15_card_t * p15card)
 
 	/* Read token info */
 	sc_path_set(&path, SC_PATH_TYPE_FILE_ID, (u8 *) "\x2F\x03", 2, 0, 0);
-	r = sc_select_file(card, &path, &file);
+	r = sc_select_file(card, &path, NULL);
 	LOG_TEST_RET(card->ctx, r, "Could not select EF.TokenInfo");
-	sc_file_free(file);
 
 	r = sc_read_binary(p15card->card, 0, efbin, sizeof(efbin), 0);
 	LOG_TEST_RET(card->ctx, r, "Could not read EF.TokenInfo");
@@ -809,9 +799,8 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 
 	/* Read device certificate to determine serial number */
 	sc_path_set(&path, SC_PATH_TYPE_FILE_ID, (u8 *) "\x2F\x02", 2, 0, 0);
-	r = sc_select_file(card, &path, &file);
+	r = sc_select_file(card, &path, NULL);
 	LOG_TEST_RET(card->ctx, r, "Could not select EF.C_DevAut");
-	sc_file_free(file);
 
 	r = sc_read_binary(p15card->card, 0, efbin, sizeof(efbin), 0);
 	LOG_TEST_RET(card->ctx, r, "Could not read EF.C_DevAut");

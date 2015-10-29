@@ -195,7 +195,7 @@ sm_iasecc_get_apdu_delete_file(struct sc_context *ctx, struct sm_info *sm_info, 
 	if (!file_id)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
-        if (!rdata || !rdata->alloc)
+	if (!rdata || !rdata->alloc)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
  	rv = rdata->alloc(rdata, &rapdu);

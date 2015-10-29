@@ -1097,7 +1097,7 @@ static int westcos_sign_decipher(int mode, sc_card_t *card,
 				 size_t outlen)
 {
 	int r;
-	sc_file_t *keyfile = sc_file_new();
+	sc_file_t *keyfile = NULL;
 #ifdef ENABLE_OPENSSL
 	int idx = 0;
 	u8 buf[180];
@@ -1115,7 +1115,7 @@ static int westcos_sign_decipher(int mode, sc_card_t *card,
 #ifndef ENABLE_OPENSSL
 	r = SC_ERROR_NOT_SUPPORTED;
 #else
-	if (keyfile == NULL || mem == NULL || card->drv_data == NULL) {
+	if (mem == NULL || card->drv_data == NULL) {
 		r = SC_ERROR_OUT_OF_MEMORY;
 		goto out;
 	}
@@ -1156,7 +1156,7 @@ static int westcos_sign_decipher(int mode, sc_card_t *card,
 		goto out;
 	}
 	r = sc_select_file(card, &(priv_data->env.file_ref), &keyfile);
-	if (r)
+	if (r || !keyfile)
 		goto out;
 
 	do {

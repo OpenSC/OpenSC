@@ -263,16 +263,10 @@ static void parse_sec_attr(struct sc_file *file, const u8 *buf, size_t len)
 static int myeid_select_file(struct sc_card *card, const struct sc_path *in_path,
 		struct sc_file **file)
 {
-	struct sc_file *dummy_file = NULL;
 	int r;
 
 	LOG_FUNC_CALLED(card->ctx);
-	r = iso_ops->select_file(card, in_path, &dummy_file);
-
-	if (file)
-		*file = dummy_file;
-	else  if (dummy_file)
-		sc_file_free(dummy_file);
+	r = iso_ops->select_file(card, in_path, file);
 
 	if (r == 0 && file != NULL && *file != NULL)
 		parse_sec_attr(*file, (*file)->sec_attr, (*file)->sec_attr_len);
