@@ -38,6 +38,8 @@
 #include "../libopensc/asn1.h"
 #include "../libopensc/pkcs15.h"
 
+#include "common/compat_strlcpy.h"
+
 #include "pkcs15-init.h"
 #include "profile.h"
 
