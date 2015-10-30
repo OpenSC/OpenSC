@@ -1150,7 +1150,7 @@ sc_pkcs15init_init_prkdf(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15_prkey_info *key_info;
 	struct sc_pkcs15_keyinfo_gostparams *keyinfo_gostparams;
-	struct sc_pkcs15_object *object;
+	struct sc_pkcs15_object *object = NULL;
 	const char	*label;
 	unsigned int	usage;
 	int		r = 0, key_type;
