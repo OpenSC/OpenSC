@@ -33,17 +33,6 @@
 #include "pkcs15-init.h"
 #include "profile.h"
 
-static const sc_SecAttrV2_t pr_sec_attr = {
-	0x43, 1, 1, 0, 0, 0, 0, 1,
-	2, 0, 0, 0,
-	2, 0, 0, 0,
-	0, 0, 0, 0,
-	0, 0, 0, 0,
-	0, 0, 0, 0,
-	0, 0, 0, 0,
-	2, 0, 0, 0,
-	0, 0, 0, 0 /* reserve */
-};
 static const sc_SecAttrV2_t wn_sec_attr = {
 	0x43, 1, 1, 0, 0, 0, 0, -1,
 	2, 0, 0, 0,
