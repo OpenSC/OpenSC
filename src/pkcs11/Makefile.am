@@ -27,7 +27,7 @@ opensc_pkcs11_la_LDFLAGS = $(AM_LDFLAGS) \
 	-module -shared -avoid-version -no-undefined
 
 onepin_opensc_pkcs11_la_SOURCES = $(OPENSC_PKCS11_SRC) $(OPENSC_PKCS11_INC)
-onepin_opensc_pkcs11_la_CFLAGS = -DMODULE_APP_NAME=\"onepin-opensc-pkcs11\"
+onepin_opensc_pkcs11_la_CFLAGS = -DMODULE_APP_NAME=\"onepin-opensc-pkcs11\" $(AM_CFLAGS)
 onepin_opensc_pkcs11_la_LIBADD = $(OPENSC_PKCS11_LIBS)
 onepin_opensc_pkcs11_la_LDFLAGS = $(AM_LDFLAGS) \
         -export-symbols "$(srcdir)/pkcs11.exports" \
