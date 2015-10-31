@@ -33,5 +33,5 @@ $(TARGET3): $(OBJECTS3) ..\libopensc\opensc.lib
 	echo LIBRARY $* > $*.def
 	echo EXPORTS >> $*.def
 	type pkcs11.exports >> $*.def
-	link $(LINKFLAGS) /dll /def:$*.def /implib:$*.lib /out:$(TARGET3) $(OBJECTS3) ..\libopensc\opensc.lib ..\common\libpkcs11.lib ..\common\libscdl.lib $(OPENSSL_LIB) gdi32.lib advapi32.lib
+	link $(LINKFLAGS) /dll /def:$*.def /implib:$*.lib /out:$(TARGET3) $(OBJECTS3) ..\libopensc\opensc.lib ..\common\libpkcs11.lib ..\common\libscdl.lib ..\common\common.lib $(OPENSSL_LIB) gdi32.lib advapi32.lib
 	if EXIST $(TARGET3).manifest mt -manifest $(TARGET3).manifest -outputresource:$(TARGET3);2
