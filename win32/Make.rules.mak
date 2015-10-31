@@ -69,7 +69,7 @@ CNGSDK_INCL_DIR = "/IC:\Program Files (x86)\Microsoft CNG Development Kit\Includ
 # Code optimisation
 #  O1 - minimal code size
 #  OPT:REF - strip unused functions
-CODE_OPTIMIZATION = /O1 /OPT:REF
+CODE_OPTIMIZATION = /O1
 
 ALL_INCLUDES = /I$(TOPDIR)\win32 /I$(TOPDIR)\src $(OPENSSL_INCL_DIR) $(OPENSSL_EXTRA_CFLAGS) $(ZLIB_INCL_DIR) $(LIBLTDL_INCL) $(INTTYPES_INCL_DIR) $(CNGSDK_INCL_DIR) $(WIX_INCL_DIR)
 
