@@ -114,13 +114,19 @@ esac
 
 case "${host}" in
 	*-mingw*|*-winnt*|*-cygwin*)
-		DEBUG_FILE="%TEMP%\opensc-debug.log"
+		DEBUG_FILE="%TEMP%\\\opensc-debug.log"
+		PROFILE_DIR_DEFAULT="obtained from windows registers"
+		PROFILE_DIR="\"\""
 	;;
 	*)
 		DEBUG_FILE="/tmp/opensc-debug.log"
+		PROFILE_DIR="\$(pkgdatadir)"
+		PROFILE_DIR_DEFAULT="\$(pkgdatadir)"
 	;;
 esac
 AC_DEFINE_UNQUOTED([DEBUG_FILE], ["${DEBUG_FILE}"], [Debug file])
+AC_DEFINE_UNQUOTED([PROFILE_DIR], ["${PROFILE_DIR}"], [Directory of profiles])
+AC_DEFINE_UNQUOTED([PROFILE_DIR_DEFAULT], ["${PROFILE_DIR_DEFAULT}"], [Default directory of profiles])
 
 AC_ARG_ENABLE(
 	[strict],
@@ -486,14 +492,12 @@ PKG_CHECK_MODULES(
 case "${enable_openssl}" in
 	no)
 		have_openssl="no"
-		enable_sm="no"
 	;;
 	detect)
 		if test "${have_openssl}" = "yes"; then
 			enable_openssl="yes"
 		else
 			enable_openssl="no"
-			enable_sm="no"
 		fi
 	;;
 esac
@@ -504,6 +508,9 @@ if test "${enable_openssl}" = "yes"; then
 	else
 		AC_MSG_ERROR([OpenSSL linkage required, but no OpenSSL was found])
 	fi
+else
+	OPENSSL_CFLAGS=""
+	OPENSSL_LIBS=""
 fi
 
 if test "${enable_sm}" = "yes"; then
@@ -512,15 +519,19 @@ if test "${enable_sm}" = "yes"; then
 	case "${host}" in
 		*-mingw*|*-winnt*|*-cygwin*)
 			DEFAULT_SM_MODULE="smm-local.dll"
+			DEFAULT_SM_MODULE_PATH="\# module_path = \"\";"
 		;;
 		*-apple-*)
 			DEFAULT_SM_MODULE="libsmm-local.3.dylib"
+			DEFAULT_SM_MODULE_PATH="module_path = \$(libdir);"
 		;;
 		*)
 			DEFAULT_SM_MODULE="libsmm-local.so.3"
+			DEFAULT_SM_MODULE_PATH="module_path = \$(libdir);"
 		;;
 	esac
 	AC_DEFINE_UNQUOTED([DEFAULT_SM_MODULE], ["${DEFAULT_SM_MODULE}"], [Default SM module])
+	AC_DEFINE_UNQUOTED([DEFAULT_SM_MODULE_PATH], ["${DEFAULT_SM_MODULE_PATH}"], [Default SM module path])
 fi
 
 if test "${enable_openct}" = "yes"; then
@@ -565,6 +576,7 @@ if test "${enable_pcsc}" = "yes"; then
 	CFLAGS="${CFLAGS} ${PCSC_CFLAGS}"
 	# We must cope with mingw32 that does not have winscard.h mingw64 has it.
 	AC_CHECK_HEADERS([winscard.h],,[test "${WIN32}" != "yes" && AC_MSG_ERROR([winscard.h is required for pcsc])])
+	AC_CHECK_HEADERS([pcsclite.h])
 	CFLAGS="${saved_CFLAGS}"
 
 	if test "${with_pcsc_provider}" = "detect"; then
@@ -697,7 +709,10 @@ AC_SUBST([OPTIONAL_OPENCT_LIBS])
 AC_SUBST([OPTIONAL_PCSC_CFLAGS])
 AC_SUBST([LIBRARY_BITNESS])
 AC_SUBST([DEFAULT_SM_MODULE])
+AC_SUBST([DEFAULT_SM_MODULE_PATH])
 AC_SUBST([DEBUG_FILE])
+AC_SUBST([PROFILE_DIR])
+AC_SUBST([PROFILE_DIR_DEFAULT])
 
 AM_CONDITIONAL([ENABLE_MAN], [test "${enable_man}" = "yes"])
 AM_CONDITIONAL([ENABLE_ZLIB], [test "${enable_zlib}" = "yes"])

@@ -967,7 +967,7 @@ pkcs15_init_slot(struct sc_pkcs15_card *p15card, struct sc_pkcs11_slot *slot,
 		}
 		else   {
 			if (auth->label[0])
-				snprintf(label, sizeof(label), "%s (%s)", p15card->tokeninfo->label, auth->label);
+				snprintf(label, sizeof(label), "%s (%.*s)", p15card->tokeninfo->label, (int) sizeof auth->label, auth->label);
 			else
 				snprintf(label, sizeof(label), "%s", p15card->tokeninfo->label);
 			slot->token_info.flags |= CKF_LOGIN_REQUIRED;
@@ -1156,7 +1156,7 @@ _add_pin_related_objects(struct sc_pkcs11_slot *slot, struct sc_pkcs15_object *p
 	struct sc_pkcs15_auth_info *pin_info = (struct sc_pkcs15_auth_info *)pin_obj->data;
 	unsigned i;
 
-	sc_log(context, "Add objects related to PIN('%s',ID:%s)", pin_obj->label, sc_pkcs15_print_id(&pin_info->auth_id));
+	sc_log(context, "Add objects related to PIN('%.*s',ID:%s)", (int) sizeof pin_obj->label, pin_obj->label, sc_pkcs15_print_id(&pin_info->auth_id));
 	for (i=0; i < fw_data->num_objects; i++) {
 		struct pkcs15_any_object *obj = fw_data->objects[i];
 
@@ -1167,7 +1167,7 @@ _add_pin_related_objects(struct sc_pkcs11_slot *slot, struct sc_pkcs15_object *p
 		 * not private. Just ignore those... */
 		if (!(obj->p15_object->flags & SC_PKCS15_CO_FLAG_PRIVATE))
 			continue;
-		sc_log(context, "ObjID(%p,%s,%x):%s", obj, obj->p15_object->label,
+		sc_log(context, "ObjID(%p,%.*s,%x):%s", obj, (int) sizeof obj->p15_object->label, obj->p15_object->label,
 				obj->p15_object->type, sc_pkcs15_print_id(&obj->p15_object->auth_id));
 		if (!sc_pkcs15_compare_id(&pin_info->auth_id, &obj->p15_object->auth_id))   {
 			sc_log(context, "Ignoring object %d", i);
@@ -1175,15 +1175,15 @@ _add_pin_related_objects(struct sc_pkcs11_slot *slot, struct sc_pkcs15_object *p
 		}
 
 		if (is_privkey(obj)) {
-			sc_log(context, "Slot:%p, obj:%p  Adding private key %d to PIN '%s'", slot, obj, i, pin_obj->label);
+			sc_log(context, "Slot:%p, obj:%p  Adding private key %d to PIN '%.*s'", slot, obj, i, (int) sizeof pin_obj->label, pin_obj->label);
 			pkcs15_add_object(slot, obj, NULL);
 		}
 		else if (is_data(obj)) {
-			sc_log(context, "Slot:%p Adding data object %d to PIN '%s'", slot, i, pin_obj->label);
+			sc_log(context, "Slot:%p Adding data object %d to PIN '%.*s'", slot, i, (int) sizeof pin_obj->label, pin_obj->label);
 			pkcs15_add_object(slot, obj, NULL);
 		}
 		else if (is_cert(obj)) {
-			sc_log(context, "Slot:%p Adding cert object %d to PIN '%s'", slot, i, pin_obj->label);
+			sc_log(context, "Slot:%p Adding cert object %d to PIN '%.*s'", slot, i, (int) sizeof pin_obj->label, pin_obj->label);
 			pkcs15_add_object(slot, obj, NULL);
 		}
 		else   {
@@ -1233,7 +1233,7 @@ _add_public_objects(struct sc_pkcs11_slot *slot, struct pkcs15_fw_data *fw_data,
 		if (obj->p15_object->auth_id.len && !(is_pubkey(obj) || is_cert(obj)))
 			continue;
 
-		sc_log(context, "Add public object(%p,%s,%x)", obj, obj->p15_object->label, obj->p15_object->type);
+		sc_log(context, "Add public object(%p,%.*s,%x)", obj, (int) sizeof obj->p15_object->label, obj->p15_object->label, obj->p15_object->type);
 		pkcs15_add_object(slot, obj, NULL);
 
 		if (move_to_fw && move_to_fw != fw_data && move_to_fw->num_objects < MAX_OBJECTS)   {
@@ -1306,7 +1306,7 @@ pkcs15_create_tokens(struct sc_pkcs11_card *p11card, struct sc_app_info *app_inf
 			/* Check if a slot could be created with this PIN */
 			if (!_is_slot_auth_object(pin_info))
 				continue;
-			sc_log(context, "Found authentication object '%s'", auths[i]->label);
+			sc_log(context, "Found authentication object '%.*s'", (int) sizeof auths[i]->label, auths[i]->label);
 
 			rv = pkcs15_create_slot(p11card, fw_data, auths[i], app_info, &islot);
 			if (rv != CKR_OK)
@@ -1337,13 +1337,13 @@ pkcs15_create_tokens(struct sc_pkcs11_card *p11card, struct sc_app_info *app_inf
 		sc_log(context, "User/Sign PINs %p/%p", auth_user_pin, auth_sign_pin);
 		if (fauo && auth_user_pin && !memcmp(fauo->data, auth_user_pin->data, sizeof(struct sc_pkcs15_auth_info)))   {
 			/* Add objects from the non-first application to the FW data of the first slot */
-			sc_log(context, "Add objects to existing slot created for PIN '%s'", fauo->label);
+			sc_log(context, "Add objects to existing slot created for PIN '%.*s'", (int) sizeof fauo->label, fauo->label);
 			_add_pin_related_objects(*first_slot, fauo, fw_data, ffda);
 			slot = *first_slot;
 		}
 		else  if (auth_user_pin) {
 			/* For the UserPIN of the first slot create slot */
-			sc_log(context, "Create slot for User PIN '%s'", auth_user_pin->label);
+			sc_log(context, "Create slot for User PIN '%.*s'", (int) sizeof auth_user_pin->label, auth_user_pin->label);
 			rv = pkcs15_create_slot(p11card, fw_data, auth_user_pin, app_info, &slot);
 			if (rv != CKR_OK)
 				return CKR_OK; /* no more slots available for this card */
@@ -1355,7 +1355,7 @@ pkcs15_create_tokens(struct sc_pkcs11_card *p11card, struct sc_app_info *app_inf
 		if (auth_sign_pin && auth_user_pin)   {
 			struct sc_pkcs11_slot *sign_slot = NULL;
 
-			sc_log(context, "Create slot for Sign PIN '%s'", auth_sign_pin->label);
+			sc_log(context, "Create slot for Sign PIN '%.*s'", (int) sizeof auth_sign_pin->label, auth_sign_pin->label);
 			rv = pkcs15_create_slot(p11card, fw_data, auth_sign_pin, app_info, &sign_slot);
 			if (rv != CKR_OK)
 				return CKR_OK; /* no more slots available for this card */
@@ -1641,7 +1641,7 @@ pkcs15_change_pin(struct sc_pkcs11_slot *slot,
 	if (!auth_info)
 		return CKR_USER_PIN_NOT_INITIALIZED;
 
-	sc_log(context, "Change '%s' (ref:%i,type:%i)", pin_obj->label, auth_info->attrs.pin.reference, login_user);
+	sc_log(context, "Change '%.*s' (ref:%i,type:%i)", (int) sizeof pin_obj->label, pin_obj->label, auth_info->attrs.pin.reference, login_user);
 	if (p11card->card->reader->capabilities & SC_READER_CAP_PIN_PAD) {
 		/* pPin should be NULL in case of a pin pad reader, but
 		 * some apps (e.g. older Netscapes) don't know about it.
@@ -3151,7 +3151,7 @@ pkcs15_cert_get_attribute(struct sc_pkcs11_session *session, void *object, CK_AT
 		*(CK_BBOOL*)attr->pValue = FALSE;
 		break;
 	case CKA_LABEL:
-		len = strlen(cert->cert_p15obj->label);
+		len = strnlen(cert->cert_p15obj->label, sizeof cert->cert_p15obj->label);
 		check_attribute_buffer(attr, len);
 		memcpy(attr->pValue, cert->cert_p15obj->label, len);
 		break;
@@ -3420,7 +3420,7 @@ pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
 		*(CK_BBOOL*)attr->pValue = FALSE;
 		break;
 	case CKA_LABEL:
-		len = strlen(prkey->prv_p15obj->label);
+		len = strnlen(prkey->prv_p15obj->label, sizeof prkey->prv_p15obj->label);
 		check_attribute_buffer(attr, len);
 		memcpy(attr->pValue, prkey->prv_p15obj->label, len);
 		break;
@@ -3904,12 +3904,12 @@ pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session, void *object, CK_
 		break;
 	case CKA_LABEL:
 		if (pubkey->pub_p15obj) {
-			len = strlen(pubkey->pub_p15obj->label);
+			len = strnlen(pubkey->pub_p15obj->label, sizeof pubkey->pub_p15obj->label);
 			check_attribute_buffer(attr, len);
 			memcpy(attr->pValue, pubkey->pub_p15obj->label, len);
 		}
 		else if (cert && cert->cert_p15obj) {
-			len = strlen(cert->cert_p15obj->label);
+			len = strnlen(cert->cert_p15obj->label, sizeof cert->cert_p15obj->label);
 			check_attribute_buffer(attr, len);
 			memcpy(attr->pValue, cert->cert_p15obj->label, len);
 		}
@@ -4127,7 +4127,7 @@ pkcs15_dobj_get_attribute(struct sc_pkcs11_session *session, void *object, CK_AT
 		*(CK_BBOOL*)attr->pValue = (dobj->base.p15_object->flags & 0x02) != 0;
 		break;
 	case CKA_LABEL:
-		len = strlen(dobj->base.p15_object->label);
+		len = strnlen(dobj->base.p15_object->label, sizeof dobj->base.p15_object->label);
 		check_attribute_buffer(attr, len);
 		memcpy(attr->pValue, dobj->base.p15_object->label, len);
 		break;
@@ -4262,7 +4262,7 @@ pkcs15_skey_get_attribute(struct sc_pkcs11_session *session,
 		/*TODO Why no definition of the flag */
 		break;
 	case CKA_LABEL:
-		len = strlen(skey->base.p15_object->label);
+		len = strnlen(skey->base.p15_object->label, sizeof skey->base.p15_object->label);
 		check_attribute_buffer(attr, len);
 		memcpy(attr->pValue, skey->base.p15_object->label, len);
 		break;

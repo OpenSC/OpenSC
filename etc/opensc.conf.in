@@ -32,9 +32,9 @@ app default {
 
 	# PKCS#15 initialization / personalization
 	# profiles directory for pkcs15-init.
-	# Default: @pkgdatadir@
+	# Default: @PROFILE_DIR_DEFAULT@
 	#
-	# profile_dir = @pkgdatadir@;
+	# profile_dir = @PROFILE_DIR@;
 
 	# Paranoid memory allocation.
 	#
@@ -45,11 +45,11 @@ app default {
 	#
 	# paranoid_memory = false;
 
-        # Enable default card driver
-        # Default card driver is explicitely enabled for the 'opensc-explorer' and 'opensc-tool'.
-        #
-        # Default: false
-        # enable_default_driver = true;
+	# Enable default card driver
+	# Default card driver is explicitely enabled for the 'opensc-explorer' and 'opensc-tool'.
+	#
+	# Default: false
+	# enable_default_driver = true;
 
 	# CT-API module configuration.
 	reader_driver ctapi {
@@ -112,7 +112,11 @@ app default {
 		# max_recv_size = 256;
 	};
 
-	# What card drivers to load at start-up
+	# Whitelist of card drivers to load at start-up
+	#
+	# The supported internal card driver names can be retrieved
+	# from the output of:
+	# $ opensc-tool --list-drivers
 	#
 	# A special value of 'internal' will load all
 	# statically linked drivers. If an unknown (ie. not
@@ -277,144 +281,148 @@ app default {
 
 	# IAS/ECC cards
 	card_atr 3B:7F:96:00:00:00:31:B9:64:40:70:14:10:73:94:01:80:82:90:00 {
-                type = 25001;
-                driver = "iasecc";
-                name = "Gemalto MultiApp IAS/ECC v1.0.1";
-                secure_messaging = local_gemalto_iam;
+		type = 25001;
+		driver = "iasecc";
+		name = "Gemalto MultiApp IAS/ECC v1.0.1";
+		secure_messaging = local_gemalto_iam;
 		# secure_messaging = local_adele;
 		md_read_only = false;
 		md_supports_X509_enrollment = true;
-        }
+	}
 	card_atr 3B:7F:96:00:00:00:31:B8:64:40:70:14:10:73:94:01:80:82:90:00 {
-                type = 25001;
-                driver = "iasecc";
-                name = "Gemalto MultiApp IAS/ECC v1.0.1";
-                secure_messaging = local_gemalto_iam;
+		type = 25001;
+		driver = "iasecc";
+		name = "Gemalto MultiApp IAS/ECC v1.0.1";
+		secure_messaging = local_gemalto_iam;
 		md_read_only = false;
 		md_supports_X509_enrollment = true;
-        }
-        #card_atr 3B:DD:18:00:81:31:FE:45:80:F9:A0:00:00:00:77:01:08:00:07:90:00:FE {
-        #        type = 25002;
-        #        driver = "iasecc";
-        #        name = "Oberthur IAS/ECC v1.0.1";
-        #        # No 'admin' application for this card -- no secure messaging
-        #}
-        #card_atr 3B:7F:18:00:00:00:31:B8:64:50:23:EC:C1:73:94:01:80:82:90:00 {
-        #        type = 25003;
-        #        driver = "iasecc";
-        #        name = "Morpho YpsID S3 IAS/ECC";
-        #        # secure_messaging = local_morpho_YpsID_S3;
-        #}
-        #card_atr 3B:DF:96:00:80:31:FE:45:00:31:B8:64:04:1F:EC:C1:73:94:01:80:82:90:00:EC {
-        #        type = 25005;
-        #        driver = "iasecc";
-        #        name = "Morpho MI IAS/ECC v1.0.1";
-        #        md_read_only = false;
-        #        md_supports_X509_enrollment = true;
-        #        secure_messaging = local_morpho_mi;
-        #}
-        card_atr 3B:DF:18:FF:81:91:FE:1F:C3:00:31:B8:64:0C:01:EC:C1:73:94:01:80:82:90:00:B3 {
-                type = 25004;
-                driver = "iasecc";
-                name = "Amos IAS/ECC v1.0.1";
-                md_read_only = false;
-                md_supports_X509_enrollment = true;
-                secure_messaging = local_amos;
-        }
-        card_atr 3B:DC:18:FF:81:91:FE:1F:C3:80:73:C8:21:13:66:01:0B:03:52:00:05:38 {
-                type = 25004;
-                driver = "iasecc";
-                name = "Amos IAS/ECC v1.0.1";
-                md_read_only = false;
-                md_supports_X509_enrollment = true;
-                secure_messaging = local_amos_eid;
-        }
+	}
+	#card_atr 3B:DD:18:00:81:31:FE:45:80:F9:A0:00:00:00:77:01:08:00:07:90:00:FE {
+	#	type = 25002;
+	#	driver = "iasecc";
+	#	name = "Oberthur IAS/ECC v1.0.1";
+	#	# No 'admin' application for this card -- no secure messaging
+	#}
+	#card_atr 3B:7F:18:00:00:00:31:B8:64:50:23:EC:C1:73:94:01:80:82:90:00 {
+	#	type = 25003;
+	#	driver = "iasecc";
+	#	name = "Morpho YpsID S3 IAS/ECC";
+	#	# secure_messaging = local_morpho_YpsID_S3;
+	#}
+	#card_atr 3B:DF:96:00:80:31:FE:45:00:31:B8:64:04:1F:EC:C1:73:94:01:80:82:90:00:EC {
+	#	type = 25005;
+	#	driver = "iasecc";
+	#	name = "Morpho MI IAS/ECC v1.0.1";
+	#	md_read_only = false;
+	#	md_supports_X509_enrollment = true;
+	#	secure_messaging = local_morpho_mi;
+	#}
+	card_atr 3B:DF:18:FF:81:91:FE:1F:C3:00:31:B8:64:0C:01:EC:C1:73:94:01:80:82:90:00:B3 {
+		type = 25004;
+		driver = "iasecc";
+		name = "Amos IAS/ECC v1.0.1";
+		md_read_only = false;
+		md_supports_X509_enrollment = true;
+		secure_messaging = local_amos;
+	}
+	card_atr 3B:DC:18:FF:81:91:FE:1F:C3:80:73:C8:21:13:66:01:0B:03:52:00:05:38 {
+		type = 25004;
+		driver = "iasecc";
+		name = "Amos IAS/ECC v1.0.1";
+		md_read_only = false;
+		md_supports_X509_enrollment = true;
+		secure_messaging = local_amos_eid;
+	}
 
 	secure_messaging local_authentic  {
-		#path to ans name of external SM module
-		#module_name = @DEFAULT_SM_MODULE@;
-		#module_path = @libdir@;
+		# name of external SM module
+		# module_name = @DEFAULT_SM_MODULE@;
+		# directory with external SM module
+		# Default: defined by windows register
+		@DEFAULT_SM_MODULE_PATH@
 
 		# specific data to tune the module initialization
-		#module_data = "Here can be your SM module init data";
+		# module_data = "Here can be your SM module init data";
 
 		# SM mode:
 		# 'transmit' -- in this mode the procedure to securize an APDU is called by the OpenSC general
-                #               APDU transmit procedure.
+		#	       APDU transmit procedure.
 		#		In this mode all APDUs, except the ones filtered by the card specific procedure,
-                #               are securized.
-                # 'acl' -- in this mode APDU are securized only if needed by the ACLs of the command to be executed.
-                #
+		#	       are securized.
+		# 'acl' -- in this mode APDU are securized only if needed by the ACLs of the command to be executed.
+		#
 		#mode = transmit;
 
 		# SM type specific flags
-		# flags = 0x78;           # 0x78 -- level 3, channel 0
+		# flags = 0x78;	   # 0x78 -- level 3, channel 0
 
 		# Default KMC of the GP Card Manager for the Oberthur's Java cards
 		# kmc = "00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00";
 	}
 
-        secure_messaging local_gemalto_iam  {
+	secure_messaging local_gemalto_iam  {
 		module_name = @DEFAULT_SM_MODULE@;
-		module_path = @libdir@;
-                #module_data = "";
-                type = acl;             # transmit, acl
+		@DEFAULT_SM_MODULE_PATH@
+		# module_data = "";
+		type = acl;	     # transmit, acl
 
-                ifd_serial = "11:22:33:44:55:66:77:88";
+		ifd_serial = "11:22:33:44:55:66:77:88";
 
-                # Keyset values from IAM profiles of the Gemalto IAS/ECC cards
-                keyset_02_enc = "RW_PRIV_ENC_TEST";
-                keyset_02_mac = "RW_PRIV_MAC_TEST";
+		# Keyset values from IAM profiles of the Gemalto IAS/ECC cards
+		keyset_02_enc = "RW_PRIV_ENC_TEST";
+		keyset_02_mac = "RW_PRIV_MAC_TEST";
 
-                keyset_E828BD080FD2504543432D654944_01_enc = "RO_ENC_TEST_KEY_";
-                keyset_E828BD080FD2504543432D654944_01_mac = "RO_MAC_TEST_KEY_";
+		keyset_E828BD080FD2504543432D654944_01_enc = "RO_ENC_TEST_KEY_";
+		keyset_E828BD080FD2504543432D654944_01_mac = "RO_MAC_TEST_KEY_";
 
-                keyset_E828BD080FD2504543432D654944_03_enc = "RW_PUBL_ENC_TEST";
-                keyset_E828BD080FD2504543432D654944_03_mac = "RW_PUBL_MAC_TEST";
-        }
+		keyset_E828BD080FD2504543432D654944_03_enc = "RW_PUBL_ENC_TEST";
+		keyset_E828BD080FD2504543432D654944_03_mac = "RW_PUBL_MAC_TEST";
+	}
 
 	secure_messaging local_amos  {
 		module_name = @DEFAULT_SM_MODULE@;
-		module_path = @libdir@;
+		@DEFAULT_SM_MODULE_PATH@
+		# module_data = "";
 		mode = acl;
 		ifd_serial = "11:22:33:44:55:66:77:88";
 		keyset_02_enc = "ENCROECHANTILLON";
 		keyset_02_mac = "MACROECHANTILLON";
 	}
 
-        secure_messaging local_amos_eid  {
+	secure_messaging local_amos_eid  {
 		module_name = @DEFAULT_SM_MODULE@;
-		module_path = @libdir@;
-                mode = acl;
-                ifd_serial = "11:22:33:44:55:66:77:88";
-                keyset_E828BD080FD2504543432D654944_03_enc = "RW_PUBL_ENC_TEST";
-                keyset_E828BD080FD2504543432D654944_03_mac = "RW_PUBL_MAC_TEST";
-        }
+		@DEFAULT_SM_MODULE_PATH@
+		# module_data = "";
+		mode = acl;
+		ifd_serial = "11:22:33:44:55:66:77:88";
+		keyset_E828BD080FD2504543432D654944_03_enc = "RW_PUBL_ENC_TEST";
+		keyset_E828BD080FD2504543432D654944_03_mac = "RW_PUBL_MAC_TEST";
+	}
 
-        secure_messaging local_adele  {
+	secure_messaging local_adele  {
 		module_name = @DEFAULT_SM_MODULE@;
-		module_path = @libdir@;
-                #module_data = "";
-                type = acl;             # transmit, acl
+		@DEFAULT_SM_MODULE_PATH@
+		# module_data = "";
+		type = acl;	     # transmit, acl
 
 		ifd_serial = "11:22:33:44:55:66:77:88";
 
-                # Keyset values from 'Adele' profiles of the IAS/ECC cards
-                keyset_01_enc = "EMENCECHANTILLON";
-                keyset_01_mac = "EMMACECHANTILLON";
+		# Keyset values from 'Adele' profiles of the IAS/ECC cards
+		keyset_01_enc = "EMENCECHANTILLON";
+		keyset_01_mac = "EMMACECHANTILLON";
 
-                keyset_02_enc = "AAENCECHANTILLON";
-                keyset_02_mac = "AAMACECHANTILLON";
+		keyset_02_enc = "AAENCECHANTILLON";
+		keyset_02_mac = "AAMACECHANTILLON";
 
-                keyset_E828BD080FD2500000040301_02_enc = "E2ENCECHANTILLON";
-                keyset_E828BD080FD2500000040301_02_mac = "E2MACECHANTILLON";
+		keyset_E828BD080FD2500000040301_02_enc = "E2ENCECHANTILLON";
+		keyset_E828BD080FD2500000040301_02_mac = "E2MACECHANTILLON";
 
-                keyset_D2500000044164E86C650101_02_enc = "E1ENCECHANTILLON";
-                keyset_D2500000044164E86C650101_02_mac = "E1MACECHANTILLON";
+		keyset_D2500000044164E86C650101_02_enc = "E1ENCECHANTILLON";
+		keyset_D2500000044164E86C650101_02_mac = "E1MACECHANTILLON";
 
-                keyset_D2500000044164E86C650101_03_enc = "SIENCECHANTILLON";
-                keyset_D2500000044164E86C650101_03_mac = "SIMACECHANTILLON";
-        }
+		keyset_D2500000044164E86C650101_03_enc = "SIENCECHANTILLON";
+		keyset_D2500000044164E86C650101_03_mac = "SIMACECHANTILLON";
+	}
 
 	# Below are the framework specific configuration blocks.
 
@@ -487,25 +495,25 @@ app default {
 		#   obtained with the common procedures (ex. object creation protected by secure messaging).
 		#   Used by PKCS#11 module configurated to expose restricted number of slots.
 		#   (for ex. configurated to expose only User PIN slot, User and Sign PINs slots, ...)
-                application E828BD080FD25047656E65726963 {
-                        type = generic;
-                        model = "ECC Generic PKI";
-                }
+		application E828BD080FD25047656E65726963 {
+			type = generic;
+			model = "ECC Generic PKI";
+		}
 
-                application E828BD080FD2500000040301 {
-                        type = generic;
-                        model = "Adèle Générique";
-                }
+		application E828BD080FD2500000040301 {
+			type = generic;
+			model = "Adèle Générique";
+		}
 
-                application E828BD080FD2504543432D654944 {
-                        type = protected;
-                        model = "ECC eID";
-                }
+		application E828BD080FD2504543432D654944 {
+			type = protected;
+			model = "ECC eID";
+		}
 
-                application E828BD080FD2500000040201 {
-                        type = protected;
-                        model = "Adèle Admin-2";
-                }
+		application E828BD080FD2500000040201 {
+			type = protected;
+			model = "Adèle Admin-2";
+		}
 	}
 }
 
@@ -567,6 +575,18 @@ app opensc-pkcs11 {
 		#
 		# Default: false
 		# lock_login = true;
+
+		# With this setting disabled, the OpenSC PKCS#11 module will initialize
+		# the slots available when the application calls `C_GetSlotList`. With
+		# this setting enabled, the slots will also get initialized when
+		# C_GetSlotInfo is called.
+		#
+		# This setting is a workaround for Java which does not call
+		# `C_GetSlotList` when configured with a static `slot` instead of
+		# `slotListIndex`.
+		#
+		# Default: true
+		# init_sloppy = false;
 
 		# User PIN unblock style
 		#    none:  PIN unblock is not possible with PKCS#11 API;

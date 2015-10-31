@@ -298,10 +298,10 @@ int sc_pkcs15emu_sc_hsm_encode_cvc(sc_pkcs15_card_t * p15card,
 	}
 
 	sc_format_asn1_entry(asn1_cvc_body    , &cvc->cpi, NULL, 1);
-	lencar = strlen(cvc->car);
+	lencar = strnlen(cvc->car, sizeof cvc->car);
 	sc_format_asn1_entry(asn1_cvc_body + 1, &cvc->car, &lencar, 1);
 	sc_format_asn1_entry(asn1_cvc_body + 2, &asn1_cvc_pubkey, NULL, 1);
-	lenchr = strlen(cvc->chr);
+	lenchr = strnlen(cvc->chr, sizeof cvc->chr);
 	sc_format_asn1_entry(asn1_cvc_body + 3, &cvc->chr, &lenchr, 1);
 
 	sc_format_asn1_entry(asn1_cvcert    , &asn1_cvc_body, NULL, 1);
@@ -846,7 +846,7 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 	if (appinfo->label == NULL)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 
-	len = strlen(devcert.chr);		/* Strip last 5 digit sequence number from CHR */
+	len = strnlen(devcert.chr, sizeof devcert.chr);		/* Strip last 5 digit sequence number from CHR */
 	assert(len >= 8);
 	len -= 5;
 
@@ -866,9 +866,10 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 
 	pin_info.auth_id.len = 1;
 	pin_info.auth_id.value[0] = 1;
+	pin_info.path.aid = sc_hsm_aid;
 	pin_info.auth_type = SC_PKCS15_PIN_AUTH_TYPE_PIN;
 	pin_info.attrs.pin.reference = 0x81;
-	pin_info.attrs.pin.flags = SC_PKCS15_PIN_FLAG_LOCAL|SC_PKCS15_PIN_FLAG_INITIALIZED|SC_PKCS15_PIN_FLAG_UNBLOCK_DISABLED|SC_PKCS15_PIN_FLAG_EXCHANGE_REF_DATA;
+	pin_info.attrs.pin.flags = SC_PKCS15_PIN_FLAG_LOCAL|SC_PKCS15_PIN_FLAG_INITIALIZED|SC_PKCS15_PIN_FLAG_EXCHANGE_REF_DATA;
 	pin_info.attrs.pin.type = SC_PKCS15_PIN_TYPE_ASCII_NUMERIC;
 	pin_info.attrs.pin.min_length = 6;
 	pin_info.attrs.pin.stored_length = 0;
@@ -890,16 +891,17 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 
 	pin_info.auth_id.len = 1;
 	pin_info.auth_id.value[0] = 2;
+	pin_info.path.aid = sc_hsm_aid;
 	pin_info.auth_type = SC_PKCS15_PIN_AUTH_TYPE_PIN;
 	pin_info.attrs.pin.reference = 0x88;
-	pin_info.attrs.pin.flags = SC_PKCS15_PIN_FLAG_LOCAL|SC_PKCS15_PIN_FLAG_CHANGE_DISABLED|SC_PKCS15_PIN_FLAG_INITIALIZED|SC_PKCS15_PIN_FLAG_UNBLOCK_DISABLED|SC_PKCS15_PIN_FLAG_SO_PIN;
+	pin_info.attrs.pin.flags = SC_PKCS15_PIN_FLAG_LOCAL|SC_PKCS15_PIN_FLAG_INITIALIZED|SC_PKCS15_PIN_FLAG_UNBLOCK_DISABLED|SC_PKCS15_PIN_FLAG_SO_PIN;
 	pin_info.attrs.pin.type = SC_PKCS15_PIN_TYPE_BCD;
 	pin_info.attrs.pin.min_length = 16;
 	pin_info.attrs.pin.stored_length = 0;
 	pin_info.attrs.pin.max_length = 16;
 	pin_info.attrs.pin.pad_char = '\0';
-	pin_info.tries_left = 3;
-	pin_info.max_tries = 3;
+	pin_info.tries_left = 15;
+	pin_info.max_tries = 15;
 
 	strlcpy(pin_obj.label, "SOPIN", sizeof(pin_obj.label));
 	pin_obj.flags = SC_PKCS15_CO_FLAG_PRIVATE;

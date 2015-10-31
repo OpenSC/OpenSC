@@ -764,15 +764,14 @@ iasecc_sdo_allocate_and_parse(struct sc_card *card, unsigned char *data, size_t 
 	sdo = calloc(1, sizeof(struct iasecc_sdo));
 	if (!sdo)
 		return SC_ERROR_OUT_OF_MEMORY;
+	*out = sdo;
 
 	sdo->sdo_class = *(data + 1) & 0x7F;
 	sdo->sdo_ref = *(data + 2) & 0x3F;
 
 	sc_log(ctx, "sdo_class 0x%X, sdo_ref 0x%X", sdo->sdo_class, sdo->sdo_ref);
-	if (data_len == 3)   {
-		*out = sdo;
+	if (data_len == 3)
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
-	}
 
 	size_size = iasecc_parse_size(data + 3, &size);
 	LOG_TEST_RET(ctx, size_size, "parse error: invalid size data");
@@ -794,8 +793,6 @@ iasecc_sdo_allocate_and_parse(struct sc_card *card, unsigned char *data, size_t 
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "parse error: not totaly parsed");
 
 	sc_log(ctx, "docp.acls_contact.size %i; docp.size.size %i", sdo->docp.acls_contact.size, sdo->docp.size.size);
-
-	*out = sdo;
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
@@ -1295,6 +1292,12 @@ iasecc_docp_copy(struct sc_context *ctx, struct iasecc_sdo_docp *in, struct iase
 
 int
 iasecc_sdo_encode_update_field()
+{
+	return SC_ERROR_NOT_SUPPORTED;
+}
+
+int
+iasecc_se_get_crt()
 {
 	return SC_ERROR_NOT_SUPPORTED;
 }

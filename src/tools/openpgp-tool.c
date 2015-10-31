@@ -130,8 +130,8 @@ static const char *option_help[] = {
 /* E */	"Erase (reset) the card",
 	"Verify PIN (CHV1, CHV2, CHV3...)",
 	"PIN string",
-	"Delete key (1, 2, 3 or all)"
-/* d */ "Dump private data object number <arg> (i.e. PRIVATE-DO-<arg>)"
+	"Delete key (1, 2, 3 or all)",
+/* d */ "Dump private data object number <arg> (i.e. PRIVATE-DO-<arg>)",
 };
 
 static const struct ef_name_map openpgp_data[] = {
@@ -315,6 +315,7 @@ static int decode_options(int argc, char **argv)
 				key_id = optarg[0] - '0';
 			else                              /* Arg string is 'all' */
 				key_id = 'a';
+			break;
 		case 'd':
 			do_dump_idx = optarg[0] - '0';
 			opt_dump_do++;

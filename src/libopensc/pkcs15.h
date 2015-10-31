@@ -387,6 +387,7 @@ struct sc_pkcs15_key_params {
  *      WORD wKeyExchangeKeySizeBits;
  * } CONTAINER_MAP_RECORD, *PCONTAINER_MAP_RECORD;
  */
+/*
 #define SC_MD_MAX_CONTAINER_NAME_LEN 39
 #define SC_MD_CONTAINER_MAP_VALID_CONTAINER	0x01
 #define SC_MD_CONTAINER_MAP_DEFAULT_CONTAINER	0x02
@@ -397,6 +398,7 @@ struct sc_md_cmap_record {
 	unsigned keysize_sign;
 	unsigned keysize_keyexchange;
 };
+*/
 
 /* From Windows Smart Card Minidriver Specification
  * Version 7.06
@@ -409,6 +411,7 @@ struct sc_md_cmap_record {
  *	WORD wFilesFreshness;
  * } CARD_CACHE_FILE_FORMAT, *PCARD_CACHE_FILE_FORMAT;
  */
+/*
 struct sc_md_cardcf {
 	unsigned char version;
 	unsigned char pin_freshness;
@@ -421,6 +424,7 @@ struct sc_md_data {
 	struct sc_md_cardcf cardcf;
 	void *prop_data;
 };
+*/
 
 struct sc_pkcs15_prkey_info {
 	struct sc_pkcs15_id id;	/* correlates to public certificate id */
@@ -439,7 +443,7 @@ struct sc_pkcs15_prkey_info {
 	struct sc_path path;
 
 	/* Used by minidriver and its on-card support */
-	struct sc_md_cmap_record cmap_record;
+	/*struct sc_md_cmap_record cmap_record;*/
 };
 typedef struct sc_pkcs15_prkey_info sc_pkcs15_prkey_info_t;
 
