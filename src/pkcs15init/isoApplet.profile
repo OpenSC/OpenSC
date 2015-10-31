@@ -38,7 +38,7 @@ PIN so-pin {
 	max-length = 16;
 	min-length = 4; 
 	reference  = 1;
-	flags = case-sensitive, needs-padding;
+	flags = case-sensitive, needs-padding, initialized;
 }
 
 PIN so-puk {
@@ -46,7 +46,7 @@ PIN so-puk {
 	max-length = 16;
 	min-length = 16;
 	reference  = 2;
-	flags = unblockingPin, unblock-disabled, case-sensitive, change-disabled;
+	flags = unblockingPin, unblock-disabled, case-sensitive, change-disabled, initialized;
 }
 
 filesystem {
