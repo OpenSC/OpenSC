@@ -99,4 +99,15 @@
 #define DEFAULT_PKCS11_PROVIDER "opensc-pkcs11.dll"
 #endif
 
+// do not fail when linked with /GS dll and when /GS is not available
+#if _MSC_VER >= 1700 // only for vs 2012 or later
+extern "C" {
+	__declspec(noreturn) void __cdecl __report_rangecheckfailure()
+	{
+		ExitProcess(1);
+	}
+}
+#endif
+
+
 #endif
