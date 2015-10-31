@@ -188,19 +188,3 @@ const char *sc_strerror(int error)
 		return misc_errors[0];
 	return errors[error];
 }
-
-// do not fail when linked with /GS dll and when /GS is not available
-#ifdef _WIN32
-#if _MSC_VER < 1700 // only for vs 2012 or later
-#ifdef __cplusplus
-extern "C" {
-#endif
-__declspec(noreturn) void __cdecl __report_rangecheckfailure()
-{
-	ExitProcess(1);
-}
-#ifdef __cplusplus
-}
-#endif
-#endif
-#endif
