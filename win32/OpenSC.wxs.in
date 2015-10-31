@@ -294,7 +294,6 @@
         <?endif ?>
         <ComponentRef Id="opensc.conf"/>
         <?ifdef OpenSSL ?>
-          <ComponentRef Id="libeay32.dll"/>
           <ComponentRef Id="smm_local.dll"/>
         <?endif ?>
       </Feature>
