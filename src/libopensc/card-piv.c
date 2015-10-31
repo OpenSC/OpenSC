@@ -27,10 +27,17 @@
 #endif
 
 #include <ctype.h>
-#include <stdlib.h>
-#include <string.h>
 #include <fcntl.h>
 #include <limits.h>
+#include <stdlib.h>
+#include <string.h>
+
+#ifdef _WIN32
+#include <io.h>
+#else
+#include <unistd.h>
+#endif
+
 #ifdef ENABLE_OPENSSL
 	/* openssl only needed for card administration */
 #include <openssl/evp.h>

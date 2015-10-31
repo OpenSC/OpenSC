@@ -2201,16 +2201,3 @@ end:
 		sc_release_context(ctx);
 	return err;
 }
-
-/*
- * Helper function for PEM encoding public key
- */
-static const struct sc_asn1_entry	c_asn1_pem_key_items[] = {
-	{ "algorithm",	SC_ASN1_ALGORITHM_ID, SC_ASN1_CONS| SC_ASN1_TAG_SEQUENCE, 0, NULL, NULL},
-	{ "key",	SC_ASN1_BIT_STRING_NI, SC_ASN1_TAG_BIT_STRING, 0, NULL, NULL },
-	{ NULL, 0, 0, 0, NULL, NULL }
-};
-static const struct sc_asn1_entry	c_asn1_pem_key[] = {
-	{ "publicKey",	SC_ASN1_STRUCT, SC_ASN1_CONS | SC_ASN1_TAG_SEQUENCE, 0, NULL, NULL},
-	{ NULL, 0, 0, 0, NULL, NULL }
-};

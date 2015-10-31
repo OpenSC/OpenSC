@@ -252,6 +252,8 @@ static int cwa_compose_tlv(sc_card_t * card,
  * NOTICE that iso7816 sect 5.2.2 states that Tag length may be 1 to n bytes
  * length. In this code we'll assume allways tag lenght = 1 byte
  *
+ * FIXME use `sc_asn1_read_tag` or similar instead
+ *
  * @param card card info structure
  * @param data Buffer to look for tlv into
  * @param datalen Buffer len
@@ -305,12 +307,15 @@ static int cwa_parse_tlv(sc_card_t * card,
 		switch (0xff & *(buffer + n + 1)) {
 		case 0x84:
 			tlv->len = (0xff & *(buffer + n + j++));
+			/* fall through */
 		case 0x83:
 			tlv->len =
 			    (tlv->len << 8) + (0xff & *(buffer + n + j++));
+			/* fall through */
 		case 0x82:
 			tlv->len =
 			    (tlv->len << 8) + (0xff & *(buffer + n + j++));
+			/* fall through */
 		case 0x81:
 			tlv->len =
 			    (tlv->len << 8) + (0xff & *(buffer + n + j++));

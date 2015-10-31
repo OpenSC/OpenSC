@@ -350,8 +350,10 @@ authentic_sdo_allocate_prvkey(struct sc_profile *profile, struct sc_card *card,
 	LOG_TEST_RET(ctx, rv, "Cannot instantiate new PRKEY-RSA file");
 
 	sdo = calloc(1, sizeof(struct sc_authentic_sdo));
-	if (!sdo)
+	if (!sdo) {
+		sc_file_free(file);
 		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate 'sc_authentic_sdo'");
+	}
 	*out = sdo;
 
 	sdo->magic = AUTHENTIC_SDO_MAGIC;
@@ -546,8 +548,8 @@ authentic_pkcs15_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p
 		| SC_PKCS15_PRKEY_ACCESS_ALWAYSSENSITIVE
 		| SC_PKCS15_PRKEY_ACCESS_SENSITIVE;
 
-        rv = authentic_sdo_allocate_prvkey(profile, card, key_info, &sdo);
-        LOG_TEST_RET(ctx, rv, "IasEcc: init SDO private key failed");
+	rv = authentic_sdo_allocate_prvkey(profile, card, key_info, &sdo);
+	LOG_TEST_RET(ctx, rv, "IasEcc: init SDO private key failed");
 
 	rv = sc_card_ctl(card, SC_CARDCTL_AUTHENTIC_SDO_CREATE, sdo);
 	if (rv == SC_ERROR_FILE_ALREADY_EXISTS)   {

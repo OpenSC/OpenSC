@@ -392,8 +392,10 @@ static int sc_pkcs15emu_sc_hsm_get_ec_public_key(struct sc_context *ctx, sc_cvc_
 
 	ecp->der.len = oid->len + 2;
 	ecp->der.value = calloc(ecp->der.len, 1);
-	if (!ecp->der.value)
+	if (!ecp->der.value) {
+		free(ecp);
 		return SC_ERROR_OUT_OF_MEMORY;
+	}
 
 	*(ecp->der.value + 0) = 0x06;
 	*(ecp->der.value + 1) = (u8)oid->len;
@@ -401,8 +403,11 @@ static int sc_pkcs15emu_sc_hsm_get_ec_public_key(struct sc_context *ctx, sc_cvc_
 	ecp->type = 1;		// Named curve
 
 	pubkey->alg_id = (struct sc_algorithm_id *)calloc(1, sizeof(struct sc_algorithm_id));
-	if (!pubkey->alg_id)
+	if (!pubkey->alg_id) {
+		free(ecp->der.value);
+		free(ecp);
 		return SC_ERROR_OUT_OF_MEMORY;
+	}
 
 	pubkey->alg_id->algorithm = SC_ALGORITHM_EC;
 	pubkey->alg_id->params = ecp;

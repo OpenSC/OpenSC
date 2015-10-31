@@ -22,11 +22,17 @@
 #include "config.h"
 #endif
 
+#include <assert.h>
+#include <fcntl.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
-#include <fcntl.h>
-#include <assert.h>
+
+#ifdef _WIN32
+#include <io.h>
+#else
+#include <unistd.h>
+#endif
 
 #include "internal.h"
 #include "asn1.h"
@@ -1034,8 +1040,10 @@ sc_pkcs15_pubkey_from_prvkey(struct sc_context *ctx, struct sc_pkcs15_prkey *prv
 		break;
 	case SC_ALGORITHM_EC:
 		pubkey->u.ec.ecpointQ.value = malloc(prvkey->u.ec.ecpointQ.len);
-		if (!pubkey->u.ec.ecpointQ.value)
+		if (!pubkey->u.ec.ecpointQ.value) {
+			sc_pkcs15_free_pubkey(pubkey);
 			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+		}
 		memcpy(pubkey->u.ec.ecpointQ.value, prvkey->u.ec.ecpointQ.value, prvkey->u.ec.ecpointQ.len);
 		pubkey->u.ec.ecpointQ.len = prvkey->u.ec.ecpointQ.len;
 		break;

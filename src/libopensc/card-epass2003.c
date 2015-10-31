@@ -856,24 +856,38 @@ epass2003_sm_get_wrapped_apdu(struct sc_card *card,
 	*sm_apdu = NULL;
 	//construct new SM apdu from original apdu
 	apdu = calloc(1, sizeof(struct sc_apdu));
-	if (!apdu)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+	if (!apdu) {
+		rv = SC_ERROR_OUT_OF_MEMORY;
+		goto err;
+	}
 	apdu->data = calloc (1, SC_MAX_EXT_APDU_BUFFER_SIZE);
-	if (!apdu->data)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+	if (!apdu->data) {
+		rv = SC_ERROR_OUT_OF_MEMORY;
+		goto err;
+	}
 	apdu->resp = calloc (1, SC_MAX_EXT_APDU_BUFFER_SIZE);
-	if (!apdu->resp)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+	if (!apdu->resp) {
+		rv = SC_ERROR_OUT_OF_MEMORY;
+		goto err;
+	}
 	apdu->datalen = SC_MAX_EXT_APDU_BUFFER_SIZE;
 	apdu->resplen = SC_MAX_EXT_APDU_BUFFER_SIZE;
 
 	rv = epass2003_sm_wrap_apdu(card, plain, apdu);
 	if (rv)   {
 		rv = epass2003_sm_free_wrapped_apdu(card, NULL, &apdu);
-		LOG_FUNC_RETURN(ctx, rv);
+		if (rv < 0)
+			goto err;
 	}
 
 	*sm_apdu = apdu;
+	apdu = NULL;
+err:
+	if (apdu) {
+		free((unsigned char *) apdu->data);
+		free(apdu->resp);
+		free(apdu);
+	}
 	LOG_FUNC_RETURN(ctx, rv);
 }
 

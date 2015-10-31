@@ -535,6 +535,7 @@ static int westcos_create_file(sc_card_t *card, struct sc_file *file)
 		break;
 	case SC_FILE_TYPE_INTERNAL_EF:
 		buf[0] |= 0x80;
+		/* fall through */
 	case SC_FILE_TYPE_WORKING_EF:
 		switch (file->ef_structure) {
 		case SC_FILE_EF_TRANSPARENT:
@@ -1107,8 +1108,11 @@ static int westcos_sign_decipher(int mode, sc_card_t *card,
 	BIO *mem = BIO_new(BIO_s_mem());
 #endif
 
-	if (card == NULL)
+	if (card == NULL) {
+		if (keyfile)
+			sc_file_free(keyfile);
 		return SC_ERROR_INVALID_ARGUMENTS;
+	}
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
 		"westcos_sign_decipher outlen=%d\n", outlen);
 	

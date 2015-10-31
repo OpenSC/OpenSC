@@ -355,6 +355,7 @@ static int tcos_select_file(sc_card_t *card,
 	switch (in_path->type) {
 	case SC_PATH_TYPE_FILE_ID:
 		if (pathlen != 2) return SC_ERROR_INVALID_ARGUMENTS;
+		/* fall through */
 	case SC_PATH_TYPE_FROM_CURRENT:
 		apdu.p1 = 9;
 		break;

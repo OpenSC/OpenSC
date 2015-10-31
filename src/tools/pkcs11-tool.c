@@ -20,15 +20,19 @@
 
 #include "config.h"
 
+#include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
-#include <errno.h>
 #include <stdlib.h>
+
 #ifndef _WIN32
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#else
+#include <io.h>
 #endif
+
 #ifdef ENABLE_OPENSSL
 #include <openssl/opensslv.h>
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L

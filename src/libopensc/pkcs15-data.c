@@ -36,11 +36,6 @@
 #include "asn1.h"
 #include "pkcs15.h"
 
-static const struct sc_asn1_entry     c_asn1_data_object[] = {
-        { "dataObject", SC_ASN1_OCTET_STRING, SC_ASN1_TAG_OCTET_STRING, 0, NULL, NULL },
-        { NULL, 0, 0, 0, NULL, NULL }
-};
-
 
 int
 sc_pkcs15_read_data_object(struct sc_pkcs15_card *p15card,

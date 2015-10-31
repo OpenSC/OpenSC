@@ -45,17 +45,6 @@
 #include "libopensc/iasecc-sdo.h"
 #include "sm-module.h"
 
-static const struct sc_asn1_entry c_asn1_card_response[2] = {
-	{ "cardResponse", SC_ASN1_STRUCT, SC_ASN1_CTX | 1 | SC_ASN1_CONS, 0, NULL, NULL },
-	{ NULL, 0, 0, 0, NULL, NULL }
-};
-static const struct sc_asn1_entry c_asn1_iasecc_response[4] = {
-	{ "number",	SC_ASN1_INTEGER,	SC_ASN1_TAG_INTEGER,    0, NULL, NULL },
-	{ "status",	SC_ASN1_INTEGER, 	SC_ASN1_TAG_INTEGER,    0, NULL, NULL },
-	{ "data",       SC_ASN1_OCTET_STRING,   SC_ASN1_CTX | 2 | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL, NULL },
-	{ NULL, 0, 0, 0, NULL, NULL }
-};
-
 int
 sm_cwa_get_mac(struct sc_context *ctx, unsigned char *key, DES_cblock *icv,
 			unsigned char *in, int in_len, DES_cblock *out, int force_padding)

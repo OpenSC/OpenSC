@@ -595,6 +595,8 @@ sc_profile_get_file_instance(struct sc_profile *profile, const char *name,
 	file->id += index;
         if(file->type == SC_FILE_TYPE_BSO) {
 		r = sc_profile_add_file(profile, name, file);
+		if (r < 0)
+			sc_file_free(file);
 		LOG_TEST_RET(ctx, r, "Profile error: cannot add BSO file");
 	}
 	else if (file->path.len)   {
@@ -602,6 +604,8 @@ sc_profile_get_file_instance(struct sc_profile *profile, const char *name,
 		file->path.value[file->path.len - 1] = file->id & 0xFF;
 
 		r = sc_profile_add_file(profile, name, file);
+		if (r < 0)
+			sc_file_free(file);
 		LOG_TEST_RET(ctx, r, "Profile error: cannot add file");
 	}
 
@@ -2380,13 +2384,17 @@ expr_eval(struct num_exp_ctx *ctx, unsigned int *vp, unsigned int pri)
 		case '*':
 		case '/':
 			new_pri++;
+			/* fall through */
 		case '+':
 		case '-':
 			new_pri++;
+			/* fall through */
 		case '&':
 			new_pri++;
+			/* fall through */
 		case '|':
 			new_pri++;
+			/* fall through */
 		case ')':
 			break;
 		default:

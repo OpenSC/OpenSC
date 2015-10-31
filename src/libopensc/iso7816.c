@@ -645,6 +645,7 @@ iso7816_construct_fci(struct sc_card *card, const sc_file_t *file,
 		switch (file->type) {
 		case SC_FILE_TYPE_INTERNAL_EF:
 			buf[0] |= 0x08;
+			/* fall through */
 		case SC_FILE_TYPE_WORKING_EF:
 			buf[0] |= file->ef_structure & 7;
 			break;
