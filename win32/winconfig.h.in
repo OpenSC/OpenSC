@@ -100,7 +100,7 @@
 #endif
 
 // do not fail when linked with /GS dll and when /GS is not available
-#if _MSC_VER >= 1700 // only for vs 2012 or later
+#if _MSC_VER < 1700 // only for vs 2012 or later
 #ifdef __cplusplus
 extern "C" {
 #endif
