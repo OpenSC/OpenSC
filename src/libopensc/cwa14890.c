@@ -1402,6 +1402,7 @@ int cwa_create_secure_channel(sc_card_t * card,
 	/* arriving here means ok: cleanup */
 	res = SC_SUCCESS;
  csc_end:
+	free(tlv);
 	if (icc_cert)
 		X509_free(icc_cert);
 	if (ca_cert)
