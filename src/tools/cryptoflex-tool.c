@@ -601,8 +601,10 @@ static int create_key_files(void)
 	sc_file_add_acl_entry(file, SC_AC_OP_INVALIDATE, SC_AC_CHV, 1);
 	sc_file_add_acl_entry(file, SC_AC_OP_REHABILITATE, SC_AC_CHV, 1);
 
-	if (select_app_df())
+	if (select_app_df()) {
+		sc_file_free(file);
 		return 1;
+	}
 	r = sc_create_file(card, file);
 	sc_file_free(file);
 	if (r) {
