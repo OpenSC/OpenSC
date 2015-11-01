@@ -1,6 +1,6 @@
 TOPDIR = ..\..
 
-COMMON_OBJECTS = compat_getpass.obj compat_getopt.obj compat_strlcpy.obj compat_strlcat.obj simclist.obj
+COMMON_OBJECTS = compat_getpass.obj compat_getopt.obj compat_strlcpy.obj compat_strlcat.obj simclist.obj compat_report_rangecheckfailure.obj
 
 all: common.lib libpkcs11.lib libscdl.lib
 
