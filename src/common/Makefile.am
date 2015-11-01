@@ -17,6 +17,7 @@ libcompat_la_SOURCES = \
 	compat_strlcpy.h compat_strlcpy.c \
 	compat_getpass.h compat_getpass.c \
 	compat_getopt.h compat_getopt.c \
+	compat_report_rangecheckfailure.c \
 	simclist.c simclist.h
 
 compat_getopt_main_LDADD = libcompat.la

@@ -37,6 +37,7 @@ pkcs11_spy_la_SOURCES = pkcs11-spy.c pkcs11-display.c pkcs11-display.h pkcs11.ex
 pkcs11_spy_la_LIBADD = \
 	$(top_builddir)/src/common/libpkcs11.la \
 	$(top_builddir)/src/common/libscdl.la \
+	$(top_builddir)/src/common/libcompat.la \
 	$(OPTIONAL_OPENSSL_LIBS)
 pkcs11_spy_la_LDFLAGS = $(AM_LDFLAGS) \
 	-export-symbols "$(srcdir)/pkcs11.exports" \

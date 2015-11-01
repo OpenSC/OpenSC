@@ -17,7 +17,7 @@ $(TARGET1): $(OBJECTS) ..\libopensc\opensc_a.lib ..\pkcs15init\pkcs15init.lib
 	echo LIBRARY $* > $*.def
 	echo EXPORTS >> $*.def
 	type pkcs11.exports >> $*.def
-	link $(LINKFLAGS) /dll /def:$*.def /implib:$*.lib /out:$(TARGET1) $(OBJECTS) ..\libopensc\opensc_a.lib ..\pkcs15init\pkcs15init.lib $(OPENSSL_LIB) gdi32.lib
+	link $(LINKFLAGS) /dll /def:$*.def /implib:$*.lib /out:$(TARGET1) $(OBJECTS) ..\libopensc\opensc_a.lib ..\pkcs15init\pkcs15init.lib ..\common\common.lib $(OPENSSL_LIB) gdi32.lib
 	if EXIST $(TARGET1).manifest mt -manifest $(TARGET1).manifest -outputresource:$(TARGET1);2
 
 $(TARGET2): $(OBJECTS) ..\libopensc\opensc_a.lib ..\pkcs15init\pkcs15init.lib

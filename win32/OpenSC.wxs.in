@@ -152,9 +152,6 @@
                 <File Source="$(var.SOURCE_DIR)\src\tools\iasecc-tool.exe" Vital="yes"/>
               </Component>
               <?ifdef OpenSSL ?>
-                <Component Id="libeay32.dll" Guid="*" Win64="$(var.Win64YesNo)">
-                  <File Source="$(var.OpenSSL)\libeay32.dll" Vital="yes"/>
-                </Component>
                 <Component Id="smm_local.dll" Guid="*" Win64="$(var.Win64YesNo)">
                   <File Source="$(var.SOURCE_DIR)\src\smm\smm-local.dll" Vital="yes"/>
                 </Component>
@@ -297,7 +294,6 @@
         <?endif ?>
         <ComponentRef Id="opensc.conf"/>
         <?ifdef OpenSSL ?>
-          <ComponentRef Id="libeay32.dll"/>
           <ComponentRef Id="smm_local.dll"/>
         <?endif ?>
       </Feature>
