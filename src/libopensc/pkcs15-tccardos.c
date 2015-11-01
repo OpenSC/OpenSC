@@ -210,7 +210,8 @@ static int parse_EF_CardInfo(sc_pkcs15_card_t *p15card)
 	u8     info2[MAX_INFO2_SIZE];
 	size_t info2_len = MAX_INFO2_SIZE;
 	u8     *p1, *p2;
-	size_t key_num, i;
+	size_t i;
+	unsigned int key_num;
 	struct sc_context *ctx = p15card->card->ctx;
 	size_t offset;
 
@@ -223,8 +224,10 @@ static int parse_EF_CardInfo(sc_pkcs15_card_t *p15card)
 	if (r != SC_SUCCESS)
 		return SC_ERROR_WRONG_CARD;
 	/* get the number of private keys */
-	key_num = info1[info1_len-1] | (info1[info1_len-2] << 8) |
-		  (info1[info1_len-3] << 16) | (info1[info1_len-4] << 24);
+	key_num = ((unsigned int) info1[info1_len-1])
+		| (((unsigned int) info1[info1_len-2]) << 8)
+	   	| (((unsigned int) info1[info1_len-3]) << 16)
+	   	| (((unsigned int) info1[info1_len-4]) << 24);
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
 		"found %d private keys\n", (int)key_num);
 	/* set p1 to the address of the first key descriptor */

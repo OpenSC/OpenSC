@@ -101,7 +101,7 @@ static int from_base64(const char *in, unsigned int *out, int *skip)
 int sc_base64_encode(const u8 *in, size_t len, u8 *out, size_t outlen, size_t linelength)
 {
 	unsigned int chars = 0;
-	size_t i, c;
+	unsigned int i, c;
 
 	linelength -= linelength & 0x03;
 	while (len >= 3) {
@@ -125,7 +125,7 @@ int sc_base64_encode(const u8 *in, size_t len, u8 *out, size_t outlen, size_t li
 	}
 	i = c = 0;
 	while (c < len)
-		i |= *in++ << ((2 - c++) << 3);
+		i |= ((unsigned int) *in++) << ((2 - c++) << 3);
 	if (len) {
 		if (outlen < 4)
 			return SC_ERROR_BUFFER_TOO_SMALL;
