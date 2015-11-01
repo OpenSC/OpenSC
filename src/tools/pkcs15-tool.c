@@ -1296,7 +1296,7 @@ static int list_apps(FILE *fout)
 	for (i=0; i<p15card->card->app_count; i++)   {
 		struct sc_app_info *info = p15card->card->app[i];
 
-		fprintf(fout, "Application '%.*s':\n", (int) sizeof info->label, info->label);
+		fprintf(fout, "Application '%s':\n", info->label);
 		fprintf(fout, "\tAID: ");
 		for(j=0;j<info->aid.len;j++)
 			fprintf(fout, "%02X", info->aid.value[j]);
