@@ -3,7 +3,6 @@ include $(top_srcdir)/win32/ltrc.inc
 MAINTAINERCLEANFILES = $(srcdir)/Makefile.in $(srcdir)/versioninfo-pkcs11.rc $(srcdir)/versioninfo-pkcs11-spy.rc
 EXTRA_DIST = Makefile.mak versioninfo-pkcs11.rc.in versioninfo-pkcs11-spy.rc.in
 
-dist_noinst_SCRIPTS = opensc_pkcs11_install.js
 lib_LTLIBRARIES = opensc-pkcs11.la pkcs11-spy.la onepin-opensc-pkcs11.la
 
 AM_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(PTHREAD_CFLAGS)
@@ -47,15 +46,6 @@ if WIN32
 opensc_pkcs11_la_SOURCES += versioninfo-pkcs11.rc
 pkcs11_spy_la_SOURCES += versioninfo-pkcs11-spy.rc
 endif
-
-jar-dir:
-	if test ! -d jar-dir ; then mkdir jar-dir ; fi
-
-pkcs11-jar: jar-dir
-	cp .libs/*.so jar-dir
-	cp opensc_pkcs11_install.js jar-dir
-	signtool -Z"opensc-pkcs11.jar" -i"opensc_pkcs11_install.js" \
-		 -k"testcert" jar-dir
 
 if WIN32
 install-exec-hook:
