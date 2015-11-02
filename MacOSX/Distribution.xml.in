@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8" standalone="no"?>
 <installer-gui-script minSpecVersion="2">
     <allowed-os-versions>
-      <os-version min="10.9"/>
+      <os-version min="10.10"/>
     </allowed-os-versions>
     <background file="background.jpg" mime-type="image/jpeg" scaling="tofit"/>
     <readme file="Readme.html" mime-type="text/html"/>
     <license file="License.html" mime-type="text/html"/>
     <welcome file="Welcome.html" mime-type="text/html"/>
-    <title>OpenSC @PACKAGE_VERSION@ for OS X 10.9+</title>
+    <title>OpenSC @PACKAGE_VERSION@ for OS X 10.10+</title>
 
     <pkg-ref id="com.apple.tokend.opensc"/>
     <options customize="never" require-scripts="false"/>
