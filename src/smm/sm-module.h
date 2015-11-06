@@ -31,7 +31,7 @@ extern "C" {
 #include <openssl/sha.h>
 
 #include "libopensc/sm.h"
-#include "libsm/sm-common.h"
+#include "sm/sm-common.h"
 
 /* Global Platform definitions */
 int sm_gp_get_mac(unsigned char *key, DES_cblock *icv, unsigned char *in, int in_len,

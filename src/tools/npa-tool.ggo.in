@@ -1,0 +1,225 @@
+package "npa-tool"
+purpose "@PACKAGE_SUMMARY@"
+
+option "reader"         r
+    "Number of the PC/SC reader to use (-1 for autodetect)"
+    int
+    default="-1"
+    optional
+option "verbose"    v
+    "Use (several times) to be more verbose"
+    multiple
+    optional
+
+section "Password Authenticated Connection Establishment (PACE)"
+option "pin"            p
+    "Run PACE with (transport) eID-PIN"
+    string
+    argoptional
+    optional
+option "puk"            u
+    "Run PACE with PUK"
+    string
+    argoptional
+    optional
+option "can"            c
+    "Run PACE with CAN"
+    string
+    argoptional
+    optional
+option "mrz"            m
+    "Run PACE with MRZ (insert MRZ without newlines)"
+    string
+    argoptional
+    optional
+option "env"            -
+    "Whether to use environment variables PIN, PUK, CAN, MRZ and NEWPIN. You may want to clean your environment before enabling this."
+    flag off
+
+section "PIN management"
+option "new-pin"        N
+    "Install a new PIN"
+    string
+    argoptional
+    optional
+option "resume"         R
+    "Resume eID-PIN (uses CAN to activate last retry)"
+    flag off
+option "unblock"        U
+    "Unblock PIN (uses PUK to activate three more retries)"
+    flag off
+
+section "Terminal Authentication (TA) and Chip Authentication (CA)"
+option "cv-certificate" C
+    "Card Verifiable Certificate to create a certificate chain. Can be used multiple times (order is important)."
+    string
+    typestr="FILENAME"
+    optional
+    multiple
+option "cert-desc"      -
+    "Certificate description to show for Terminal Authentication"
+    string
+    typestr="HEX_STRING"
+    optional
+option "chat"           -
+    "Card holder authorization template to use (default is terminal's CHAT). Use 7F4C0E060904007F000703010203530103 to trigger EAC on the CAT-C (Komfortleser)."
+    string
+    typestr="HEX_STRING"
+    optional
+option "auxiliary-data" A
+    "Terminal's auxiliary data (default is determined by verification of validity, age and community ID)."
+    string
+    typestr="HEX_STRING"
+    optional
+option "private-key"    P
+    "Terminal's private key"
+    string
+    typestr="FILENAME"
+    optional
+option "cvc-dir"        -
+    "Where to look for the CVCA's certificate"
+    string
+    typestr="DIRECTORY"
+    default="@CVCDIR@"
+    optional
+option "x509-dir"        -
+    "Where to look for the CSCA's certificate"
+    string
+    typestr="DIRECTORY"
+    default="@X509DIR@"
+    optional
+option "disable-ta-checks"   -
+    "Disable checking the validity period of CV certifcates"
+    flag off
+option "disable-ca-checks"   -
+    "Disable passive authentication"
+    flag off
+
+section "Read and write data groups"
+option "read-dg1"       -
+    "Read DG 1   (Document Type)"
+    flag off
+option "read-dg2"       -
+    "Read DG 2   (Issuing State)"
+    flag off
+option "read-dg3"       -
+    "Read DG 3   (Date of Expiry)"
+    flag off
+option "read-dg4"       -
+    "Read DG 4   (Given Names)"
+    flag off
+option "read-dg5"       -
+    "Read DG 5   (Family Names)"
+    flag off
+option "read-dg6"       -
+    "Read DG 6   (Religious/Artistic Name)"
+    flag off
+option "read-dg7"       -
+    "Read DG 7   (Academic Title)"
+    flag off
+option "read-dg8"       -
+    "Read DG 8   (Date of Birth)"
+    flag off
+option "read-dg9"       -
+    "Read DG 9   (Place of Birth)"
+    flag off
+option "read-dg10"      -
+    "Read DG 10  (Nationality)"
+    flag off
+option "read-dg11"      -
+    "Read DG 11  (Sex)"
+    flag off
+option "read-dg12"      -
+    "Read DG 12  (Optional Data)"
+    flag off
+option "read-dg13"      -
+    "Read DG 13  (Birth Name)"
+    flag off
+option "read-dg14"      -
+    "Read DG 14"
+    flag off
+option "read-dg15"      -
+    "Read DG 15"
+    flag off
+option "read-dg16"      -
+    "Read DG 16"
+    flag off
+option "read-dg17"      -
+    "Read DG 17  (Normal Place of Residence)"
+    flag off
+option "read-dg18"      -
+    "Read DG 18  (Community ID)"
+    flag off
+option "read-dg19"      -
+    "Read DG 19  (Residence Permit I)"
+    flag off
+option "read-dg20"      -
+    "Read DG 20  (Residence Permit II)"
+    flag off
+option "read-dg21"      -
+    "Read DG 21  (Optional Data)"
+    flag off
+option "write-dg17"      -
+    "Write DG 17 (Normal Place of Residence)"
+    string
+    typestr="HEX_STRING"
+    optional
+option "write-dg18"      -
+    "Write DG 18 (Community ID)"
+    string
+    typestr="HEX_STRING"
+    optional
+option "write-dg19"      -
+    "Write DG 19 (Residence Permit I)"
+    string
+    typestr="HEX_STRING"
+    optional
+option "write-dg20"      -
+    "Write DG 20 (Residence Permit II)"
+    string
+    typestr="HEX_STRING"
+    optional
+option "write-dg21"      -
+    "Write DG 21 (Optional Data)"
+    string
+    typestr="HEX_STRING"
+    optional
+
+section "Verification of validity, age and community ID"
+option "verify-validity"    -
+    "Verify chip's validity with a reference date"
+    string
+    typestr="YYYYMMDD"
+    optional
+option "older-than"     -
+    "Verify age with a reference date"
+    string
+    typestr="YYYYMMDD"
+    optional
+option "verify-community"   -
+    "Verify community ID with a reference ID"
+    string
+    typestr="HEX_STRING"
+    optional
+
+section "Special options, not always useful"
+option "break"          b
+    "Brute force PIN, CAN or PUK. Use together with -p, -a or -u"
+    flag off
+option "translate"      t
+    "File with APDUs of HEX_STRINGs to send through the secure channel"
+    string
+    typestr="FILENAME"
+    default="stdin"
+    optional
+option "tr-03110v201"    -
+    "Force compliance to BSI TR-03110 version 2.01"
+    flag off
+option "disable-all-checks"   -
+    "Disable all checking of fly-by-data"
+    flag off
+
+text "
+Report bugs to @PACKAGE_BUGREPORT@
+
+Written by Frank Morgner <frankmorgner@gmail.com>"

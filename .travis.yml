@@ -13,6 +13,7 @@ addons:
     - mingw-w64
     - wine
     - xsltproc
+    - gengetopt
   coverity_scan:
     project:
       name: "OpenSC/OpenSC"
@@ -45,6 +46,14 @@ matrix:
     - os: linux
       env: HOST=i686-w64-mingw32
 
+before_install:
+  - if [ "$TRAVIS_OS_NAME" == "osx" ]; then
+        brew update;
+        brew uninstall libtool;
+        brew install libtool;
+        brew install gengetopt;
+    fi
+
 before_script:
   # we run a weekly cron job in travis on the coverity branch
   # just synchronize it with master to get a new report
@@ -53,7 +62,7 @@ before_script:
     fi
   - ./bootstrap
   - if [ -z "$HOST" ]; then
-    CFLAGS="-Werror" ./configure $ENABLE_DOC --enable-dnie-ui;
+      CFLAGS="-Werror" ./configure $ENABLE_DOC --enable-dnie-ui;
     else
       if [ ! -f "$(winepath 'C:/Program Files (x86)/Inno Setup 5/ISCC.exe')" ]; then
         /sbin/start-stop-daemon --start --quiet --pidfile /tmp/custom_xvfb_99.pid --make-pidfile --background --exec /usr/bin/Xvfb -- :99 -ac -screen 0 1280x1024x16;
@@ -88,15 +97,6 @@ after_script:
   # https://github.com/moodlerooms/moodle-plugin-ci/issues/33 for details
   - if [ ! -z "$HOST" ]; then
       killall services.exe;
-    fi
-
-
-before_install:
-  - if [ "$TRAVIS_OS_NAME" != "linux" ]; then
-        brew update;
-        brew uninstall libtool;
-        brew install libtool;
-        brew install libdvbpsi libhdhomerun;
     fi
 
 cache: ccache

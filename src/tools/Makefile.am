@@ -1,14 +1,32 @@
 include $(top_srcdir)/win32/ltrc.inc
 
-MAINTAINERCLEANFILES = $(srcdir)/Makefile.in $(srcdir)/versioninfo-tools.rc
-EXTRA_DIST = Makefile.mak versioninfo-tools.rc.in
+do_subst = $(SED) \
+	   -e 's,[@]CVCDIR[@],$(CVCDIR),g' \
+	   -e 's,[@]PACKAGE[@],$(PACKAGE),g' \
+	   -e 's,[@]PACKAGE_BUGREPORT[@],$(PACKAGE_BUGREPORT),g' \
+	   -e 's,[@]PACKAGE_NAME[@],$(PACKAGE_NAME),g' \
+	   -e 's,[@]PACKAGE_TARNAME[@],$(PACKAGE_TARNAME),g' \
+	   -e 's,[@]PACKAGE_URL[@],$(PACKAGE_URL),g' \
+	   -e 's,[@]PACKAGE_SUMMARY[@],$(PACKAGE_SUMMARY),g' \
+	   -e 's,[@]PACKAGE_VERSION[@],"$(PACKAGE_VERSION)",g' \
+	   -e 's,[@]X509DIR[@],$(X509DIR),g'
 
-noinst_HEADERS = util.h
+NPA_TOOL_BUILT_SOURCES = npa-tool-cmdline.h npa-tool-cmdline.c
+
+MAINTAINERCLEANFILES = $(srcdir)/Makefile.in $(srcdir)/versioninfo-tools.rc
+EXTRA_DIST = Makefile.mak versioninfo-tools.rc.in npa-tool.ggo.in
+
+noinst_HEADERS = util.h fread_to_eof.h
+noinst_PROGRAMS = sceac-example
 bin_PROGRAMS = opensc-tool opensc-explorer pkcs15-tool pkcs15-crypt \
 	pkcs11-tool cardos-tool eidenv openpgp-tool iasecc-tool
 if ENABLE_OPENSSL
 bin_PROGRAMS += cryptoflex-tool pkcs15-init netkey-tool piv-tool \
-	westcos-tool sc-hsm-tool dnie-tool gids-tool
+	westcos-tool sc-hsm-tool dnie-tool gids-tool npa-tool
+endif
+
+if ENABLE_MAN
+dist_man1_MANS = npa-tool.1
 endif
 
 # compile with $(PTHREAD_CFLAGS) to allow debugging with gdb
@@ -18,6 +36,10 @@ LIBS = \
 	$(top_builddir)/src/libopensc/libopensc.la \
 	$(top_builddir)/src/common/libscdl.la \
 	$(top_builddir)/src/common/libcompat.la
+
+sceac_example_SOURCES = sceac-example.c
+sceac_example_LDADD = $(top_builddir)/src/sm/libsmeac.la $(top_builddir)/src/libopensc/libopensc.la $(OPENPACE_LIBS)
+sceac_example_CFLAGS = -I$(top_srcdir)/src $(OPENPACE_CFLAGS)
 
 opensc_tool_SOURCES = opensc-tool.c util.c
 piv_tool_SOURCES = piv-tool.c util.c
@@ -54,6 +76,31 @@ dnie_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
 gids_tool_SOURCES = gids-tool.c util.c
 gids_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
 
+npa_tool_SOURCES = npa-tool.c fread_to_eof.c $(NPA_TOOL_BUILT_SOURCES)
+npa_tool_LDADD = $(top_builddir)/src/libopensc/libopensc.la \
+				 $(top_builddir)/src/sm/libsmeac.la \
+				 $(OPENPACE_LIBS)
+npa_tool_CFLAGS = -I$(top_srcdir)/src $(OPENPACE_CFLAGS) $(OPENSSL_CFLAGS)
+
+npa-tool.c: $(abs_builddir)/npa-tool.ggo $(NPA_TOOL_BUILT_SOURCES)
+
+# We only want *cmdline* to be generated when they have explicitly been removed.
+$(NPA_TOOL_BUILT_SOURCES):
+	$(MAKE) $(abs_builddir)/npa-tool.ggo
+	$(GENGETOPT) --include-getopt --file-name=npa-tool-cmdline --output-dir=$(builddir) < $(abs_builddir)/npa-tool.ggo
+
+$(abs_builddir)/npa-tool.ggo: npa-tool.ggo.in 
+	$(do_subst) < $(abs_srcdir)/npa-tool.ggo.in > $@
+
+# We only want npa-tool.1 to be generated when it has explicitly been removed.
+npa-tool.1:
+	$(MAKE) npa-tool$(EXEEXT)
+	$(HELP2MAN) \
+		--output=$@ \
+		--no-info \
+		--source='$(PACKAGE_STRING)' \
+		$(builddir)/npa-tool$(EXEEXT)
+
 if WIN32
 opensc_tool_SOURCES += versioninfo-tools.rc
 piv_tool_SOURCES += versioninfo-tools.rc
@@ -72,3 +119,6 @@ iasecc_tool_SOURCES += versioninfo-tools.rc
 sc_hsm_tool_SOURCES += versioninfo-tools.rc
 gids_tool_SOURCES += versioninfo-tools.rc
 endif
+
+clean-local:
+	rm -f $(abs_builddir)/npa-tool.ggo

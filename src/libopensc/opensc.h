@@ -1351,6 +1351,34 @@ extern const char *sc_get_version(void);
 
 extern sc_card_driver_t *sc_get_iso7816_driver(void);
 
+/** 
+ * @brief Read a complete EF by short file identifier.
+ *
+ * @param[in]     card
+ * @param[in]     sfid   Short file identifier
+ * @param[in,out] ef     Where to safe the file. the buffer will be allocated
+ *                       using \c realloc() and should be set to NULL, if
+ *                       empty.
+ * @param[in,out] ef_len Length of \a *ef
+ *
+ * @note The appropriate directory must be selected before calling this function.
+ * */
+int iso7816_read_binary_sfid(sc_card_t *card, unsigned char sfid,
+		u8 **ef, size_t *ef_len);
+
+/**
+ * @brief Write a complete EF by short file identifier.
+ *
+ * @param[in] card
+ * @param[in] sfid   Short file identifier
+ * @param[in] ef     Date to write
+ * @param[in] ef_len Length of \a ef
+ *
+ * @note The appropriate directory must be selected before calling this function.
+ * */
+int iso7816_write_binary_sfid(sc_card_t *card, unsigned char sfid,
+		u8 *ef, size_t ef_len);
+
 #ifdef __cplusplus
 }
 #endif

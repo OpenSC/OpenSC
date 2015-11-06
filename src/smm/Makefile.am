@@ -6,7 +6,7 @@ EXTRA_DIST = Makefile.mak
 
 AM_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(OPTIONAL_READLINE_CFLAGS)
 AM_CPPFLAGS = -I$(top_srcdir)/src -I$(top_srcdir)/src/common -I$(top_builddir)/src/include
-LIBS = $(top_builddir)/src/libsm/libsm.la \
+LIBS = $(top_builddir)/src/sm/libsm.la \
 	$(top_builddir)/src/libopensc/libopensc.la \
 	$(top_builddir)/src/common/libcompat.la
 
