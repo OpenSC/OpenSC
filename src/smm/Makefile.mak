@@ -3,7 +3,7 @@ TOPDIR = ..\..
 TARGET = smm-local.dll
 
 OBJECTS = smm-local.obj sm-global-platform.obj sm-cwa14890.obj sm-card-iasecc.obj sm-card-authentic.obj
-LIBS = $(TOPDIR)\src\libsm\libsm.lib $(TOPDIR)\src\libopensc\opensc_a.lib $(TOPDIR)\src\common\libscdl.lib
+LIBS = $(TOPDIR)\src\sm\libsm.lib $(TOPDIR)\src\libopensc\opensc_a.lib $(TOPDIR)\src\common\libscdl.lib
 
 all: $(TARGET)
 

@@ -40,9 +40,13 @@ OBJECTS			= \
 LIBS = $(TOPDIR)\src\scconf\scconf.lib \
 	   $(TOPDIR)\src\common\common.lib \
 	   $(TOPDIR)\src\common\libscdl.lib \
+	   $(TOPDIR)\src\sm\libsmeac.lib \
 	   $(TOPDIR)\src\pkcs15init\pkcs15init.lib
 
-all: $(TOPDIR)\win32\versioninfo.res $(TARGET)
+TARGET1 = cardnpa.dll
+OBJECTS1 = card-npa.obj
+
+all: $(TOPDIR)\win32\versioninfo.res $(TARGET) $(TARGET1)
 
 !INCLUDE $(TOPDIR)\win32\Make.rules.mak
 
@@ -55,3 +59,10 @@ opensc.dll: $(OBJECTS) $(LIBS)
 
 opensc_a.lib: $(OBJECTS) $(LIBS)
 	lib $(LIBFLAGS) /out:opensc_a.lib $(OBJECTS) $(LIBS) $(OPENSSL_LIB) $(ZLIB_LIB) user32.lib advapi32.lib ws2_32.lib
+
+$(TARGET1): $(OBJECTS1) opensc_a.lib
+	echo LIBRARY $* > $*.def
+	echo EXPORTS >> $*.def
+	type $*.exports >> $*.def
+	link /dll $(LINKFLAGS) /def:$*.def /implib:$*.lib /out:$(TARGET1) $(OBJECTS1) opensc_a.lib $(ZLIB_LIB) $(OPENPACE_LIB) $(OPENSSL_LIB) ws2_32.lib gdi32.lib advapi32.lib Crypt32.lib User32.lib
+	if EXIST $(TARGET).manifest mt -manifest $(TARGET1).manifest -outputresource:$(TARGET1);2
