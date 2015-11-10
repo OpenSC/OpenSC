@@ -353,3 +353,9 @@ perform_chip_authentication
 npa_default_flags
 npa_reset_retry_counter
 npa_pace_get_tries_left
+escape_pace_input_to_buf
+escape_buf_to_pace_input
+escape_pace_output_to_buf
+escape_buf_to_pace_output
+escape_pace_capabilities_to_buf
+escape_buf_to_pace_capabilities
