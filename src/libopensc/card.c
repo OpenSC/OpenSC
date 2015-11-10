@@ -29,6 +29,7 @@
 #endif
 #include <string.h>
 
+#include "reader-tr03119.h"
 #include "internal.h"
 #include "asn1.h"
 #include "common/compat_strlcpy.h"
@@ -203,6 +204,9 @@ int sc_connect_card(sc_reader_t *reader, sc_card_t **card_out)
 	connected = 1;
 	card->reader = reader;
 	card->ctx = ctx;
+
+	if (reader->flags & SC_READER_ENABLE_ESCAPE)
+		sc_detect_escape_cmds(reader);
 
 	memcpy(&card->atr, &reader->atr, sizeof(card->atr));
 	memcpy(&card->uid, &reader->uid, sizeof(card->uid));

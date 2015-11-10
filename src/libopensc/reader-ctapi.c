@@ -397,6 +397,8 @@ static int ctapi_load_module(sc_context_t *ctx,
 		if (conf_block) {
 			reader->max_send_size = scconf_get_int(conf_block, "max_send_size", reader->max_send_size);
 			reader->max_recv_size = scconf_get_int(conf_block, "max_recv_size", reader->max_recv_size);
+			if (scconf_get_bool(conf_block, "enable_escape", 0))
+				reader->flags |= SC_READER_ENABLE_ESCAPE;
 		}
 
 		r = _sc_add_reader(ctx, reader);

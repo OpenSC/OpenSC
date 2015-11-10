@@ -103,6 +103,12 @@ app default {
 		# Default: true
 		# enable_pinpad = false;
 		#
+		# Detect reader capabilities with escape commands (wrapped APDUs with
+		# CLA=0xFF as defined by PC/SC pt. 3 and BSI TR-03119, e.g. for getting
+		# the UID, escaped PIN commands and the reader's firmware version)
+		# Default: false
+		# enable_escape = true;
+		#
 		# Use specific pcsc provider.
 		# Default: @DEFAULT_PCSC_PROVIDER@
 		# provider_library = @DEFAULT_PCSC_PROVIDER@

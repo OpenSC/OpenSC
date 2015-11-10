@@ -12,7 +12,7 @@ noinst_HEADERS = cards.h ctbcs.h internal.h esteid.h muscle.h muscle-filesystem.
 	errors.h types.h compression.h itacns.h iso7816.h \
 	authentic.h iasecc.h iasecc-sdo.h sm.h card-sc-hsm.h \
 	pace.h cwa14890.h cwa-dnie.h card-gids.h aux-data.h \
-	jpki.h sc-ossl-compat.h card-npa.h
+	jpki.h sc-ossl-compat.h card-npa.h ccid-types.h reader-tr03119.h
 
 AM_CPPFLAGS = -DOPENSC_CONF_PATH=\"$(sysconfdir)/opensc.conf\" \
 	-I$(top_srcdir)/src
@@ -30,7 +30,7 @@ libopensc_la_SOURCES = \
 	\
 	muscle.c muscle-filesystem.c \
 	\
-	ctbcs.c reader-ctapi.c reader-pcsc.c reader-openct.c \
+	ctbcs.c reader-ctapi.c reader-pcsc.c reader-openct.c reader-tr03119.c \
 	\
 	card-setcos.c card-miocos.c card-flex.c card-gpk.c \
 	card-cardos.c card-tcos.c card-default.c \

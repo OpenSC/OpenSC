@@ -472,29 +472,31 @@ static int pcsc_reconnect(sc_reader_t * reader, DWORD action)
 
 static void initialize_uid(sc_reader_t *reader)
 {
-	sc_apdu_t apdu;
-	/* though we only expect 10 bytes max, we want to set the Le to 0x00 to not
-	 * get 0x6282 as SW in case of a UID variant shorter than 10 bytes */
-	u8 rbuf[256];
+	if (reader->flags & SC_READER_ENABLE_ESCAPE) {
+		sc_apdu_t apdu;
+		/* though we only expect 10 bytes max, we want to set the Le to 0x00 to not
+		 * get 0x6282 as SW in case of a UID variant shorter than 10 bytes */
+		u8 rbuf[256];
 
-	memset(&apdu, 0, sizeof(apdu));
-	apdu.cse = SC_APDU_CASE_2_SHORT;
-	apdu.cla = 0xFF;
-	apdu.ins = 0xCA;
-	apdu.p1 = 0x00;
-	apdu.p2 = 0x00;
-	apdu.le = 0x00;
-	apdu.resp = rbuf;
-	apdu.resplen = sizeof rbuf;
+		memset(&apdu, 0, sizeof(apdu));
+		apdu.cse = SC_APDU_CASE_2_SHORT;
+		apdu.cla = 0xFF;
+		apdu.ins = 0xCA;
+		apdu.p1 = 0x00;
+		apdu.p2 = 0x00;
+		apdu.le = 0x00;
+		apdu.resp = rbuf;
+		apdu.resplen = sizeof rbuf;
 
-	if (SC_SUCCESS == pcsc_transmit(reader, &apdu)
-			&& apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
-		reader->uid.len = apdu.resplen;
-		memcpy(reader->uid.value, apdu.resp, reader->uid.len);
-		sc_debug_hex(reader->ctx, SC_LOG_DEBUG_NORMAL, "UID",
-				reader->uid.value, reader->uid.len);
-	} else {
-		sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "unable to get UID");
+		if (SC_SUCCESS == pcsc_transmit(reader, &apdu)
+				&& apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
+			reader->uid.len = apdu.resplen;
+			memcpy(reader->uid.value, apdu.resp, reader->uid.len);
+			sc_debug_hex(reader->ctx, SC_LOG_DEBUG_NORMAL, "UID",
+					reader->uid.value, reader->uid.len);
+		} else {
+			sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "unable to get UID");
+		}
 	}
 }
 
@@ -1306,6 +1308,8 @@ static int pcsc_detect_readers(sc_context_t *ctx)
 			if (conf_block) {
 				reader->max_send_size = scconf_get_int(conf_block, "max_send_size", reader->max_send_size);
 				reader->max_recv_size = scconf_get_int(conf_block, "max_recv_size", reader->max_recv_size);
+				if (scconf_get_bool(conf_block, "enable_escape", 0))
+					reader->flags |= SC_READER_ENABLE_ESCAPE;
 			}
 
 			sc_log(ctx, "reader's max-send-size: %i, max-recv-size: %i", reader->max_send_size, reader->max_recv_size);
@@ -2393,6 +2397,8 @@ int cardmod_use_reader(sc_context_t *ctx, void * pcsc_context_handle, void * pcs
 		if (conf_block) {
 			reader->max_send_size = scconf_get_int(conf_block, "max_send_size", reader->max_send_size);
 			reader->max_recv_size = scconf_get_int(conf_block, "max_recv_size", reader->max_recv_size);
+			if (scconf_get_bool(conf_block, "enable_escape", 0))
+				reader->flags |= SC_READER_ENABLE_ESCAPE;
 		}
 
 		/* attempt to detect protocol in use T0/T1/RAW */

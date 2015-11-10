@@ -138,6 +138,8 @@ openct_add_reader(sc_context_t *ctx, unsigned int num, ct_info_t *info)
 	if (conf_block) {
 		reader->max_send_size = scconf_get_int(conf_block, "max_send_size", reader->max_send_size);
 		reader->max_recv_size = scconf_get_int(conf_block, "max_recv_size", reader->max_recv_size);
+		if (scconf_get_bool(conf_block, "enable_escape", 0))
+			reader->flags |= SC_READER_ENABLE_ESCAPE;
 	}
 
 	if ((rc = _sc_add_reader(ctx, reader)) < 0) {
