@@ -2350,6 +2350,8 @@ int cardmod_use_reader(sc_context_t *ctx, void * pcsc_context_handle, void * pcs
 		if (conf_block) {
 			reader->max_send_size = scconf_get_int(conf_block, "max_send_size", reader->max_send_size);
 			reader->max_recv_size = scconf_get_int(conf_block, "max_recv_size", reader->max_recv_size);
+			if (scconf_get_bool(conf_block, "enable_boxing", 0))
+				reader->flags |= SC_READER_TEST_BOXING;
 		}
 
 		/* attempt to detect protocol in use T0/T1/RAW */

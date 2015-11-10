@@ -95,6 +95,10 @@ app default {
 		# Default: true
 		# enable_pinpad = false;
 		#
+		# Detect boxing commands for PIN operations (BSI TR-03119)
+		# Default: false
+		# enable_boxing = true;
+		#
 		# Use specific pcsc provider.
 		# Default: @DEFAULT_PCSC_PROVIDER@
 		# provider_library = @DEFAULT_PCSC_PROVIDER@
