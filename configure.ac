@@ -169,6 +169,13 @@ AC_ARG_ENABLE(
 )
 
 AC_ARG_ENABLE(
+	[openpace],
+	[AS_HELP_STRING([--enable-openpace],[enable OpenPACE linkage @<:@detect@:>@])],
+	,
+	[enable_openpace="detect"]
+)
+
+AC_ARG_ENABLE(
 	[openct],
 	[AS_HELP_STRING([--enable-openct],[enable openct linkage @<:@disabled@:>@])],
 	,
@@ -549,6 +556,88 @@ else
 	OPENSSL_LIBS=""
 fi
 
+
+
+PKG_CHECK_EXISTS([libeac], [PKG_CHECK_MODULES([OPENPACE], [libeac >= 0.9])],
+                 [AC_MSG_WARN([libeac not found by pkg-config])])
+
+saved_CPPFLAGS="$CPPFLAGS"
+saved_LIBS="$LIBS"
+CPPFLAGS="$CPPFLAGS $OPENPACE_CFLAGS"
+LIBS="$LDFLAGS $OPENPACE_LIBS"
+
+have_openpace="yes"
+AC_CHECK_HEADERS(eac/eac.h, [],
+                 [ AC_MSG_WARN([OpenPACE headers not found])
+                 have_openpace="no" ])
+AC_MSG_CHECKING([for EAC_CTX_init_pace])
+AC_TRY_LINK_FUNC(EAC_CTX_init_pace, [ AC_MSG_RESULT([yes]) ],
+                 [ AC_MSG_WARN([Cannot link against libeac])
+                 have_openpace="no" ])
+
+CPPFLAGS="$saved_CPPFLAGS"
+LIBS="$saved_LIBS"
+
+
+AC_ARG_ENABLE(cvcdir,
+              AC_HELP_STRING([--enable-cvcdir=DIR],
+                             [directory containing CV certificates (default is determined by libeac)]),
+                             [cvcdir="${enableval}"],
+                             [cvcdir=false])
+if test "${cvcdir}" = false ; then
+    cvcdir="`$PKG_CONFIG libeac --variable=cvcdir`"
+fi
+if test "${cvcdir}" = "" ; then
+    AC_MSG_WARN([use --enable-cvcdir=DIR])
+fi
+CVCDIR="${cvcdir}"
+AC_SUBST(CVCDIR)
+
+AC_ARG_ENABLE(x509dir,
+              AC_HELP_STRING([--enable-x509dir=DIR],
+                             [directory containing X.509 certificates (default is determined by libeac)]),
+                             [x509dir="${enableval}"],
+                             [x509dir=false])
+if test "${x509dir}" = false ; then
+    x509dir="`$PKG_CONFIG libeac --variable=x509dir`"
+fi
+if test -z "${x509dir}"
+then
+    x509dir="`$PKG_CONFIG libeac --variable=x509dir`"
+fi
+if test -z "${x509dir}"
+then
+    AC_MSG_WARN([use --enable-x509dir=DIR])
+fi
+X509DIR="${x509dir}"
+AC_SUBST(X509DIR)
+
+case "${enable_openpace}" in
+	no)
+		have_openpace="no"
+	;;
+	detect)
+		if test "${have_openpace}" = "yes"; then
+			enable_openpace="yes"
+		else
+			enable_openpace="no"
+		fi
+	;;
+esac
+
+if test "${enable_openpace}" = "yes"; then
+	if test "${have_openpace}" = "yes"; then
+		AC_DEFINE([ENABLE_OPENPACE], [1], [Use OpenPACE libraries and header files])
+	else
+		AC_MSG_ERROR([OpenPACE linkage required, but no OpenPACE was found])
+	fi
+else
+	OPENPACE_CFLAGS=""
+	OPENPACE_LIBS=""
+fi
+
+
+
 if test "${enable_sm}" = "yes"; then
 	AC_DEFINE([ENABLE_SM], [1], [Enable secure messaging support])
 
@@ -798,6 +887,7 @@ AC_CONFIG_FILES([
 	src/libopensc/libopensc.pc
 	src/libsm/Makefile
 	src/libisosm/Makefile
+	src/libsceac/Makefile
 	src/pkcs11/Makefile
 	src/pkcs11/versioninfo-pkcs11.rc
 	src/pkcs11/versioninfo-pkcs11-spy.rc
@@ -878,6 +968,8 @@ ZLIB_CFLAGS:             ${ZLIB_CFLAGS}
 ZLIB_LIBS:               ${ZLIB_LIBS}
 OPENSSL_CFLAGS:          ${OPENSSL_CFLAGS}
 OPENSSL_LIBS:            ${OPENSSL_LIBS}
+OPENPACE_CFLAGS:         ${OPENPACE_CFLAGS}
+OPENPACE_LIBS:           ${OPENPACE_LIBS}
 OPENCT_CFLAGS:           ${OPENCT_CFLAGS}
 OPENCT_LIBS:             ${OPENCT_LIBS}
 PCSC_CFLAGS:             ${PCSC_CFLAGS}
