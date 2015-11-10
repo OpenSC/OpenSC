@@ -146,6 +146,24 @@ app default {
 	#
 	# force_card_driver = customcos;
 
+	# Configuration block for DNIe
+	#
+	# Card DNIe has an option to show an extra warning before
+	# issuing a signature.
+
+	card_driver dnie {
+		# Disable / enable warning message when performing a
+		# signature operation with the DNIe.
+		# Only used if compiled with --enable-dnie-ui
+		# user_consent_enabled = yes;
+
+		# Specify the pinentry application to use if warning
+		# is configured to be displayed using pinentry.
+		# Default: /usr/bin/pinentry
+		# Only used if compiled with --enable-dnie-ui
+		# user_consent_app = "/usr/bin/pinentry";
+	}
+
 	# In addition to the built-in list of known cards in the
 	# card driver, you can configure a new card for the driver
 	# using the card_atr block. The goal is to centralize
