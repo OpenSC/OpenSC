@@ -902,6 +902,7 @@ static int dnie_wrap_apdu(sc_card_t * card, sc_apdu_t * apdu)
 
 cleanup_and_return:
 	if (apdu->resp != wrapped.resp) free(wrapped.resp);
+	if (apdu->data != wrapped.data) free((void *)wrapped.data);
 	if (msg)
 		sc_log(ctx, msg);
 	LOG_FUNC_RETURN(ctx, res);

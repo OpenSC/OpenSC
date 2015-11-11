@@ -603,6 +603,8 @@ static int dnie_finish(struct sc_card *card)
 	/* disable sm channel if established */
 	result = cwa_create_secure_channel(card, GET_DNIE_PRIV_DATA(card)->cwa_provider, CWA_SM_OFF);
 #endif
+	if (GET_DNIE_PRIV_DATA(card)->cwa_provider != NULL)
+		free(GET_DNIE_PRIV_DATA(card)->cwa_provider);
 	if (card->drv_data != NULL)
 		free(card->drv_data);
 	LOG_FUNC_RETURN(card->ctx, result);
@@ -747,6 +749,8 @@ static int dnie_fill_cache(sc_card_t * card)
 		if (r != SC_SUCCESS) {
 			if (buffer)
 				free(buffer);
+			if (apdu.resp != tmp)
+				free(apdu.resp);
 			sc_log(ctx, "read_binary() APDU transmit failed");
 			LOG_FUNC_RETURN(ctx, r);
 		}
@@ -757,11 +761,17 @@ static int dnie_fill_cache(sc_card_t * card)
 			if (r == SC_ERROR_WRONG_LENGTH) {
 				count = 0xff & apdu.sw2;
 				if (count != 0)
+				{
+					if (apdu.resp != tmp)
+						free(apdu.resp);
 					continue;	/* read again with correct size */
+				}
 				goto read_done;	/* no more data to read */
 			}
 			if (r == SC_ERROR_INCORRECT_PARAMETERS)
 				goto read_done;
+			if (apdu.resp != tmp)
+				free(apdu.resp);
 			LOG_FUNC_RETURN(ctx, r);	/* arriving here means response error */
 		}
 		/* copy received data into buffer. realloc() if not enought space */
@@ -770,6 +780,11 @@ static int dnie_fill_cache(sc_card_t * card)
 		if (!buffer)
 			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 		memcpy(buffer + len, apdu.resp, count);
+		if (apdu.resp != tmp)
+		{
+			free(apdu.resp);
+			apdu.resp = tmp;
+		}
 		len += count;
 		if (count != card->max_recv_size)
 			goto read_done;
@@ -778,6 +793,8 @@ static int dnie_fill_cache(sc_card_t * card)
  read_done:
 	/* no more data to read: check if data is compressed */
 	pt = dnie_uncompress(card, buffer, &len);
+	if (apdu.resp != tmp)
+		free(apdu.resp);
 	if (pt == NULL) {
 		sc_log(ctx, "Uncompress proccess failed");
 		if (buffer)
@@ -820,6 +837,7 @@ static int dnie_read_binary(struct sc_card *card,
 	ctx = card->ctx;
 
 	LOG_FUNC_CALLED(ctx);
+
 	if (idx == 0 || GET_DNIE_PRIV_DATA(card)->cache == NULL) {
 		/* on first block or no cache, try to fill */
 		res = dnie_fill_cache(card);
@@ -862,8 +880,6 @@ static int dnie_compose_and_send_apdu(sc_card_t *card, const u8 *path, size_t pa
 
 	LOG_FUNC_CALLED(ctx);
 
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "called, p1=%u, path=%s\n", p1, sc_dump_hex(path, pathlen));
-
 	/* Arriving here means need to compose and send apdu */
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xA4, p1, 0);
 	apdu.resp = rbuf;
@@ -880,6 +896,9 @@ static int dnie_compose_and_send_apdu(sc_card_t *card, const u8 *path, size_t pa
 		apdu.le = 0;
 	}
 	res = dnie_transmit_apdu(card, &apdu);
+	if ((res != SC_SUCCESS) || (file_out == NULL))
+		if (apdu.resp != rbuf)
+			free(apdu.resp);
 	LOG_TEST_RET(ctx, res, "SelectFile() APDU transmit failed");
 	if (file_out == NULL) {
 		if (apdu.sw1 == 0x61)
@@ -890,6 +909,9 @@ static int dnie_compose_and_send_apdu(sc_card_t *card, const u8 *path, size_t pa
 
 	/* analyze response. if FCI, try to parse */
 	res = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	if ((res != SC_SUCCESS) || (apdu.resplen < 2) || (apdu.resp[0] == 0x00))
+		if (apdu.resp != rbuf)
+			free(apdu.resp);
 	LOG_TEST_RET(ctx, res, "SelectFile() check_sw failed");
 	if (apdu.resplen < 2)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
@@ -899,11 +921,17 @@ static int dnie_compose_and_send_apdu(sc_card_t *card, const u8 *path, size_t pa
 	/* finally process FCI response */
 	file = sc_file_new();
 	if (file == NULL)
+	{
+		if (apdu.resp != rbuf)
+			free(apdu.resp);
 		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+	}
 	res = card->ops->process_fci(card, file, apdu.resp + 2, apdu.resp[1]);
 	if (*file_out != NULL)
 		sc_file_free(*file_out);
 	*file_out = file;
+	if (apdu.resp != rbuf)
+		free(apdu.resp);
 	LOG_FUNC_RETURN(ctx, res);
 }
 
@@ -1075,12 +1103,19 @@ static int dnie_get_challenge(struct sc_card *card, u8 * rnd, size_t len)
 	while (len > 0) {
 		size_t n = len > 8 ? 8 : len;
 		result = dnie_transmit_apdu(card, &apdu);
+		if ((result != SC_SUCCESS) && (apdu.resp != NULL))
+			free(apdu.resp);
 		LOG_TEST_RET(card->ctx, result, "APDU transmit failed");
 		if (apdu.resplen != 8) {
 			result = sc_check_sw(card, apdu.sw1, apdu.sw2);
 			goto dnie_get_challenge_error;
 		}
 		memcpy(rnd, apdu.resp, n);
+		if (apdu.resp != buf)
+		{
+			free(apdu.resp);
+			apdu.resp = buf;
+		}
 		len -= n;
 		rnd += n;
 	}
@@ -1247,6 +1282,9 @@ static int dnie_set_security_env(struct sc_card *card,
 	LOG_TEST_RET(card->ctx, result, "Set Security Environment failed");
 	result = sc_check_sw(card, apdu.sw1, apdu.sw2);
 
+	if (apdu.resp)
+		free(apdu.resp);
+
 	LOG_FUNC_RETURN(card->ctx, result);
 }
 
@@ -1366,7 +1404,7 @@ static int dnie_compute_signature(struct sc_card *card,
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	if (datalen > SC_MAX_APDU_BUFFER_SIZE)	/* should be 256 */
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
-	if (outlen<256) /* enought space to store 2048 bit response */
+	if (outlen<256) /* enough space to store 2048 bit response */
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 #ifdef ENABLE_DNIE_UI
@@ -1400,14 +1438,20 @@ static int dnie_compute_signature(struct sc_card *card,
 	apdu.datalen = datalen;
 	/* tell card to compute signature */
 	result = dnie_transmit_apdu(card, &apdu);
+	if ((result != SC_SUCCESS) && (apdu.resp != rbuf))
+		free(apdu.resp);
 	LOG_TEST_RET(card->ctx, result, "compute_signature() failed");
 	/* check response */
 	result = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	if ((result != SC_SUCCESS) && (apdu.resp != rbuf))
+		free(apdu.resp);
 	LOG_TEST_RET(card->ctx, result, "compute_signature() response error");
 
 	/* ok: copy result from buffer */
 	memcpy(out, apdu.resp, apdu.resplen);
 	/* and return response length */
+	if (apdu.resp != rbuf)
+		free(apdu.resp);
 	LOG_FUNC_RETURN(card->ctx, apdu.resplen);
 }
 
@@ -1637,6 +1681,8 @@ static int dnie_read_header(struct sc_card *card)
 	/* transmit apdu */
 	r = dnie_transmit_apdu(card, &apdu);
 	if (r != SC_SUCCESS) {
+		if (apdu.resp != buf)
+			free(apdu.resp);
 		sc_log(ctx, "read_header() APDU transmit failed");
 		LOG_FUNC_RETURN(ctx, r);
 	}
@@ -1651,10 +1697,14 @@ static int dnie_read_header(struct sc_card *card)
 		goto header_notcompressed;
 	/* ok: assume data is correct */
 	sc_log(ctx, "read_header: uncompressed file size is %lu", uncompressed);
+	if (apdu.resp != buf)
+		free(apdu.resp);
 	return (int)(0x7FFF & uncompressed);
 
  header_notcompressed:
 	sc_log(ctx, "response doesn't match compressed file header");
+	if (apdu.resp != buf)
+		free(apdu.resp);
 	return 0;
 }
 
@@ -1912,23 +1962,36 @@ static int dnie_pin_verify(struct sc_card *card,
 	apdu.lc = pinlen;
 	apdu.datalen = pinlen;
 	apdu.data = pinbuffer;
+	apdu.resp = 0;
 	apdu.resplen = 0;
 	apdu.le = 0;
 
 	/* and send to card throught virtual channel */
 	res = dnie_transmit_apdu(card, &apdu);
+	if (res != SC_SUCCESS)
+	{
+		free(apdu.resp);
+		if (apdu.data != pinbuffer)
+			free((void *)apdu.data);
+	}
 	LOG_TEST_RET(card->ctx, res, "VERIFY APDU Transmit fail");
 
 	/* check response and if requested setup tries_left */
 	if (tries_left != NULL) {	/* returning tries_left count is requested */
 		if ((apdu.sw1 == 0x63) && ((apdu.sw2 & 0xF0) == 0xC0)) {
 			*tries_left = apdu.sw2 & 0x0F;
+			free(apdu.resp);
+			if (apdu.data != pinbuffer)
+				free((void *)apdu.data);
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_PIN_CODE_INCORRECT);
 		}
 	}
 	res = dnie_check_sw(card, apdu.sw1, apdu.sw2);	/* not a pinerr: parse result */
 
 	/* the end: a bit of Mister Proper and return */
+	free(apdu.resp);
+	if (apdu.data != pinbuffer)
+		free((void *)apdu.data);
 	memset(&apdu, 0, sizeof(apdu));	/* clear buffer */
 	data->apdu = NULL;
 	LOG_FUNC_RETURN(card->ctx, res);

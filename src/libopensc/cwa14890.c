@@ -1048,13 +1048,13 @@ static int cwa_verify_internal_auth(sc_card_t * card,
 int cwa_create_secure_channel(sc_card_t * card,
 			      cwa_provider_t * provider, int flag)
 {
-	u8 *cert;
+	u8 *cert = NULL;
 	size_t certlen;
 
 	int res = SC_SUCCESS;
 	char *msg = "Success";
 
-	u8 *sn_icc;
+	u8 *sn_icc = NULL;
 
 	/* data to get and parse certificates */
 	X509 *icc_cert = NULL;
@@ -1065,11 +1065,11 @@ int cwa_create_secure_channel(sc_card_t * card,
 	cwa_sm_status_t *sm = NULL;
 
 	/* several buffer and buffer pointers */
-	u8 *buffer;
+	u8 *buffer = NULL;
 	size_t bufferlen;
 	u8 *tlv = NULL;		/* buffer to compose TLV messages */
 	size_t tlvlen = 0;
-	u8 *rndbuf=NULL;
+	u8 rndbuf[16]; /* 8 RND.IFD + 8 SN.IFD */
 
 	/* preliminary checks */
 	if (!card || !card->ctx )
@@ -1320,12 +1320,6 @@ int cwa_create_secure_channel(sc_card_t * card,
 		msg = "Cannot get ifd serial number from provider";
 		goto csc_end;
 	}
-	rndbuf = calloc(8 /*RND.IFD */  + 8 /*SN.IFD */ , sizeof(u8));
-	if (!rndbuf) {
-		msg = "Cannot calloc for RND.IFD+SN.IFD";
-		res = SC_ERROR_OUT_OF_MEMORY;
-		goto csc_end;
-	}
 	RAND_bytes(sm->rndifd, 8);	/* generate 8 random bytes */
 	memcpy(rndbuf, sm->rndifd, 8);	/* insert RND.IFD into rndbuf */
 	memcpy(rndbuf + 8, buffer, 8);	/* insert SN.IFD into rndbuf */
@@ -1402,6 +1396,8 @@ int cwa_create_secure_channel(sc_card_t * card,
 	/* arriving here means ok: cleanup */
 	res = SC_SUCCESS;
  csc_end:
+	if (tlv)
+		free(tlv);
 	if (icc_cert)
 		X509_free(icc_cert);
 	if (ca_cert)
@@ -1500,7 +1496,7 @@ int cwa_encode_apdu(sc_card_t * card,
 	/* trace APDU before encoding process */
 	cwa_trace_apdu(card, from, 0);
 
-	/* reserve enougth space for apdulen+tlv bytes 
+	/* reserve enough space for apdulen+tlv bytes
 	 * to-be-crypted buffer and result apdu buffer */
 	 /* TODO DEE add 4 more bytes for testing.... */
 	apdubuf =
