@@ -17,12 +17,13 @@ opensc.conf: opensc.conf.in force
 .in:
 	@sed \
 		-e 's|@pkgdatadir[@]|$(pkgdatadir)|g' \
-		-e 's|@libdir[@]|$(libdir)|g' \
 		-e 's|@DEBUG_FILE[@]|$(DEBUG_FILE)|g' \
 		-e 's|@DEFAULT_PCSC_PROVIDER[@]|$(DEFAULT_PCSC_PROVIDER)|g' \
 		-e 's|@DEFAULT_SM_MODULE[@]|$(DEFAULT_SM_MODULE)|g' \
 		-e 's|@DEFAULT_SM_MODULE_PATH[@]|$(DEFAULT_SM_MODULE_PATH)|g' \
 		-e 's|@DYN_LIB_EXT[@]|$(DYN_LIB_EXT)|g' \
+		-e 's|@LIBDIR[@]|$(LIBDIR)|g' \
+		-e 's|@LIB_PRE[@]|$(LIB_PRE)|g' \
 		-e 's|@PROFILE_DIR[@]|$(PROFILE_DIR)|g' \
 		-e 's|@PROFILE_DIR_DEFAULT[@]|$(PROFILE_DIR_DEFAULT)|g' \
 		< $< > $@

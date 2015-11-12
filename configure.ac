@@ -544,10 +544,10 @@ fi
 if test "${enable_sm}" = "yes"; then
 	AC_DEFINE([ENABLE_SM], [1], [Enable secure messaging support])
 
+	DEFAULT_SM_MODULE="${LIB_PRE}smm-local${DYN_LIB_EXT}"
 	case "${host}" in
 		*-mingw*|*-winnt*|*-cygwin*)
-			DEFAULT_SM_MODULE="smm-local.dll"
-			DEFAULT_SM_MODULE_PATH="\#module_path = \"\";"
+			DEFAULT_SM_MODULE_PATH="\# module_path = \"\";"
 		;;
 		*-apple-*)
 			DEFAULT_SM_MODULE="libsmm-local.dylib"
@@ -627,15 +627,23 @@ if test "${enable_pcsc}" = "yes"; then
 fi
 
 AC_SUBST(DYN_LIB_EXT)
+AC_SUBST(LIBDIR)
+AC_SUBST(LIB_PRE)
 case "${host}" in
 	*-mingw*|*-winnt*|*-cygwin*)
 		DYN_LIB_EXT=".dll"
+		LIBDIR=""
+		LIB_PRE=""
 		;;
 	*-apple-*)
 		DYN_LIB_EXT=".dylib"
+		LIBDIR="\$(libdir)/"
+		LIB_PRE="lib"
 		;;
 	*)
 		DYN_LIB_EXT=".so"
+		LIBDIR="\$(libdir)/"
+		LIB_PRE="lib"
 		;;
 esac
 

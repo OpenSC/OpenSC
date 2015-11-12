@@ -53,7 +53,7 @@ app default {
 
 	# CT-API module configuration.
 	reader_driver ctapi {
-		# module @libdir@/libtowitoko@DYN_LIB_EXT@ {
+		# module @LIBDIR@@LIB_PRE@towitoko@DYN_LIB_EXT@ {
 			# CT-API ports:
 			# 0..3		COM1..4
 			# 4		Printer
@@ -134,7 +134,7 @@ app default {
 	#
 	# card_driver customcos {
 		# The location of the driver library
-		# module = @libdir@/card_customcos@DYN_LIB_EXT@;
+		# module = @LIBDIR@@LIB_PRE@card_customcos@DYN_LIB_EXT@;
 	# }
 
 	# Force using specific card driver
@@ -504,7 +504,7 @@ app default {
 		#
 		# emulate custom {
 			# The location of the driver library
-			# module = @libdir@/p15emu_custom@DYN_LIB_EXT@;
+			# module = @LIBDIR@@LIB_PRE@p15emu_custom@DYN_LIB_EXT@;
 		# }
 
 		# some additional application parameters:
