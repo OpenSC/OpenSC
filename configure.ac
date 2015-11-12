@@ -888,6 +888,7 @@ AC_CONFIG_FILES([
 	src/libsm/Makefile
 	src/libisosm/Makefile
 	src/libsceac/Makefile
+	src/libcardnpa/Makefile
 	src/pkcs11/Makefile
 	src/pkcs11/versioninfo-pkcs11.rc
 	src/pkcs11/versioninfo-pkcs11-spy.rc
