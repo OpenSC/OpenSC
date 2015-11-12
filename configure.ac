@@ -547,7 +547,7 @@ if test "${enable_sm}" = "yes"; then
 	case "${host}" in
 		*-mingw*|*-winnt*|*-cygwin*)
 			DEFAULT_SM_MODULE="smm-local.dll"
-			DEFAULT_SM_MODULE_PATH="\# module_path = \"\";"
+			DEFAULT_SM_MODULE_PATH="\#module_path = \"\";"
 		;;
 		*-apple-*)
 			DEFAULT_SM_MODULE="libsmm-local.dylib"
@@ -626,19 +626,22 @@ if test "${enable_pcsc}" = "yes"; then
 	AC_DEFINE([ENABLE_PCSC], [1], [Define if PC/SC is to be enabled])
 fi
 
+AC_SUBST(DYN_LIB_EXT)
+case "${host}" in
+	*-mingw*|*-winnt*|*-cygwin*)
+		DYN_LIB_EXT=".dll"
+		;;
+	*-apple-*)
+		DYN_LIB_EXT=".dylib"
+		;;
+	*)
+		DYN_LIB_EXT=".so"
+		;;
+esac
+
 
 if test "${with_pkcs11_provider}" = "detect"; then
-	case "${host}" in
-		*-*-darwin*)
-			DEFAULT_PKCS11_PROVIDER="opensc-pkcs11.so"
-		;;
-		*-mingw*|*-winnt*|*-cygwin*)
-			DEFAULT_PKCS11_PROVIDER="opensc-pkcs11.dll"
-		;;
-		*)
-			DEFAULT_PKCS11_PROVIDER="opensc-pkcs11.so"
-		;;
-	esac
+	DEFAULT_PKCS11_PROVIDER="opensc-pkcs11${DYN_LIB_EXT}"
 else
 	DEFAULT_PKCS11_PROVIDER="${with_pkcs11_provider}"
 fi
