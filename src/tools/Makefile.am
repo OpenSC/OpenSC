@@ -4,6 +4,7 @@ MAINTAINERCLEANFILES = $(srcdir)/Makefile.in $(srcdir)/versioninfo-tools.rc
 EXTRA_DIST = Makefile.mak versioninfo-tools.rc.in
 
 noinst_HEADERS = util.h
+noinst_PROGRAMS = sceac-example
 bin_PROGRAMS = opensc-tool opensc-explorer pkcs15-tool pkcs15-crypt \
 	pkcs11-tool cardos-tool eidenv openpgp-tool iasecc-tool
 if ENABLE_OPENSSL
@@ -18,6 +19,10 @@ LIBS = \
 	$(top_builddir)/src/libopensc/libopensc.la \
 	$(top_builddir)/src/common/libscdl.la \
 	$(top_builddir)/src/common/libcompat.la
+
+sceac_example_SOURCES = sceac-example.c
+sceac_example_LDADD = $(top_builddir)/src/libsceac/libsceac.la $(top_builddir)/src/libopensc/libopensc.la $(OPENPACE_LIBS)
+sceac_example_CFLAGS = -I$(top_srcdir)/src $(OPENPACE_CFLAGS)
 
 opensc_tool_SOURCES = opensc-tool.c util.c
 piv_tool_SOURCES = piv-tool.c util.c
