@@ -443,13 +443,8 @@ static int cwa_verify_cvc_certificate(sc_card_t * card,
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	/* compose apdu for Perform Security Operation (Verify cert) cmd */
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x2A, 0x00, 0xAE);
-	apdu.data = cert;
-	apdu.datalen = len;
-	apdu.lc = len;
-	apdu.le = 0;
-	apdu.resplen = 0;
-	apdu.resp = NULL;
+	dnie_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x2A, 0x00, 0xAE, 0, len,
+					NULL, 0, cert, len);
 
 	/* send composed apdu and parse result */
 	result = dnie_transmit_apdu(card, &apdu);
@@ -488,13 +483,8 @@ static int cwa_set_security_env(sc_card_t * card,
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	/* compose apdu for Manage Security Environment cmd */
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, p1, p2);
-	apdu.data = buffer;
-	apdu.datalen = length;
-	apdu.lc = length;
-	apdu.resp = NULL;
-	apdu.resplen = 0;
-	apdu.le = 0;
+	dnie_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, p1, p2, 0, length,
+					NULL, 0, buffer, length);
 
 	/* send composed apdu and parse result */
 	result = dnie_transmit_apdu(card, &apdu);
@@ -531,13 +521,8 @@ static int cwa_internal_auth(sc_card_t * card,
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	/* compose apdu for Internal Authenticate cmd */
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x88, 0x00, 0x00);
-	apdu.data = data;
-	apdu.datalen = datalen;
-	apdu.lc = datalen;
-	apdu.le = 0x80;		/* expected 1024 bits response */
-	apdu.resp = rbuf;
-	apdu.resplen = sizeof(rbuf);
+	dnie_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x88, 0x00, 0x00, 0x80, datalen,
+					rbuf, sizeof(rbuf), data, datalen);
 
 	/* send composed apdu and parse result */
 	result = dnie_transmit_apdu(card, &apdu);
@@ -740,13 +725,8 @@ static int cwa_external_auth(sc_card_t * card, cwa_sm_status_t * sm)
 	LOG_FUNC_CALLED(ctx);
 
 	/* compose apdu for External Authenticate cmd */
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x82, 0x00, 0x00);
-	apdu.data = sm->sig;
-	apdu.datalen = sizeof(sm->sig);
-	apdu.lc = sizeof(sm->sig);
-	apdu.le = 0;
-	apdu.resp = NULL;
-	apdu.resplen = 0;
+	dnie_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x82, 0x00, 0x00, 0, sizeof(sm->sig),
+					NULL, 0, sm->sig, sizeof(sm->sig));
 
 	/* send composed apdu and parse result */
 	result = dnie_transmit_apdu(card, &apdu);
