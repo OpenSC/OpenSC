@@ -184,6 +184,11 @@
                   <File Source="$(var.SOURCE_DIR)\src\tools\gids-tool.exe" Vital="yes"/>
                 </Component>
               <?endif ?>
+              <?ifdef enable_npa_tool ?>
+                <Component Id="npa_tool.exe" Guid="*" Win64="$(var.Win64YesNo)">
+                  <File Source="$(var.SOURCE_DIR)\src\tools\npa-tool.exe" Vital="yes"/>
+                </Component>
+              <?endif ?>
             </Directory>
             <?ifdef OpenSSL ?>
               <Directory Id="INSTALLDIR_PROFILES" Name="profiles">
@@ -371,6 +376,9 @@
           <ComponentRef Id="openpgp.profile"/>
           <ComponentRef Id="isoApplet.profile"/>
           <ComponentRef Id="gids.profile"/>
+        <?endif ?>
+        <?ifdef enable_npa_tool ?>
+          <ComponentRef Id="npa_tool.exe"/>
         <?endif ?>
       </Feature>
       <Feature Id="OpenSC_menu" Level="1" Title="Start menu entries" Description="Start menu entries: link to documentation">

@@ -1,15 +1,35 @@
 include $(top_srcdir)/win32/ltrc.inc
 
-MAINTAINERCLEANFILES = $(srcdir)/Makefile.in $(srcdir)/versioninfo-tools.rc
-EXTRA_DIST = Makefile.mak versioninfo-tools.rc.in
+do_subst = $(SED) \
+	   -e 's,[@]CVCDIR[@],$(CVCDIR),g' \
+	   -e 's,[@]PACKAGE[@],$(PACKAGE),g' \
+	   -e 's,[@]PACKAGE_BUGREPORT[@],$(PACKAGE_BUGREPORT),g' \
+	   -e 's,[@]PACKAGE_NAME[@],$(PACKAGE_NAME),g' \
+	   -e 's,[@]PACKAGE_TARNAME[@],$(PACKAGE_TARNAME),g' \
+	   -e 's,[@]PACKAGE_URL[@],$(PACKAGE_URL),g' \
+	   -e 's,[@]PACKAGE_SUMMARY[@],$(PACKAGE_SUMMARY),g' \
+	   -e 's,[@]PACKAGE_VERSION[@],"$(PACKAGE_VERSION)",g' \
+	   -e 's,[@]X509DIR[@],$(X509DIR),g'
 
-noinst_HEADERS = util.h
+BUILT_SOURCES = cmdline.h cmdline.c
+
+MAINTAINERCLEANFILES = $(srcdir)/Makefile.in $(srcdir)/versioninfo-tools.rc $(BUILT_SOURCES) npa-tool.ggo $(dist_man1_MANS)
+EXTRA_DIST = Makefile.mak versioninfo-tools.rc.in npa-tool.ggo npa-tool.ggo.in
+
+noinst_HEADERS = util.h fread_to_eof.h
 noinst_PROGRAMS = sceac-example
 bin_PROGRAMS = opensc-tool opensc-explorer pkcs15-tool pkcs15-crypt \
 	pkcs11-tool cardos-tool eidenv openpgp-tool iasecc-tool
 if ENABLE_OPENSSL
 bin_PROGRAMS += cryptoflex-tool pkcs15-init netkey-tool piv-tool \
 	westcos-tool sc-hsm-tool dnie-tool gids-tool
+endif
+if ENABLE_NPATOOL
+bin_PROGRAMS += npa-tool
+
+if ENABLE_MAN
+dist_man1_MANS = $(abs_builddir)/npa-tool.1
+endif
 endif
 
 # compile with $(PTHREAD_CFLAGS) to allow debugging with gdb
@@ -58,6 +78,27 @@ dnie_tool_SOURCES = dnie-tool.c util.c
 dnie_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
 gids_tool_SOURCES = gids-tool.c util.c
 gids_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
+
+npa_tool_SOURCES = npa-tool.c fread_to_eof.c $(BUILT_SOURCES)
+npa_tool_LDADD = $(top_builddir)/src/libopensc/libopensc.la \
+				 $(top_builddir)/src/libsceac/libsceac.la \
+				 $(OPENPACE_LIBS)
+npa_tool_CFLAGS = -I$(top_srcdir)/src $(OPENPACE_CFLAGS) $(OPENSSL_CFLAGS)
+
+npa-tool.c: $(BUILT_SOURCES)
+
+$(BUILT_SOURCES): npa-tool.ggo
+	$(GENGETOPT) --output-dir=$(srcdir) < $<
+
+npa-tool.ggo: npa-tool.ggo.in
+	$(do_subst) < $< > $(srcdir)/$@
+
+$(abs_builddir)/npa-tool.1: npa-tool.ggo.in
+	$(HELP2MAN) \
+		--output=$@ \
+		--no-info \
+		--source='$(PACKAGE_STRING)' \
+		$(builddir)/npa-tool
 
 if WIN32
 opensc_tool_SOURCES += versioninfo-tools.rc

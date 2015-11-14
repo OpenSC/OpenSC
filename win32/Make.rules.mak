@@ -83,7 +83,16 @@ CANDLEFLAGS = -dzlib="C:\zlib-dll" $(CANDLEFLAGS)
 OPENPACE_DIR = C:\OpenPACE
 OPENPACE_INCL_DIR = /I$(OPENPACE_DIR)\include
 OPENPACE_LIB = $(OPENPACE_DIR)\lib\libeac.lib
-CANDLEFLAGS = -dOpenPACE="$(OPENPACE_DIR)" $(CANDLEFLAGS)
+!ENDIF
+
+
+# If you want support for npa-tool (Used for German ID):
+# - Download and compile gengetopt
+# - set GENGETOPT to the location of your gengetopt.exe
+#GENGETOPT = "gengetopt.exe"
+!IF "$(GENGETOPT)" != ""
+PROGRAMS_OPENSSL = $(PROGRAMS_OPENSSL) npa-tool.exe
+CANDLEFLAGS = -denable_npa_tool="yes" $(CANDLEFLAGS)
 !ENDIF
 
 

@@ -361,7 +361,7 @@ AC_FUNC_ERROR_AT_LINE
 AC_FUNC_STAT
 AC_FUNC_VPRINTF
 AC_CHECK_FUNCS([ \
-	getpass gettimeofday memset mkdir \
+	getpass gettimeofday getline memset mkdir \
 	strdup strerror getopt_long getopt_long_only \
 	strlcpy strlcat strnlen
 ])
@@ -760,6 +760,38 @@ if test "${enable_man}" = "yes" -o "${enable_doc}" = "yes"; then
 	AC_MSG_RESULT([ok])
 fi
 
+ENABLE_NPATOOL="yes"
+AC_ARG_VAR([HELP2MAN],
+           [absolute path to help2man used for man page generation of npa-tool])
+AC_PATH_PROG(HELP2MAN, help2man, not found)
+if test ! -r src/tools/npa-tool.1 -a "${HELP2MAN}" = "not found"
+then
+    if test "${HELP2MAN}" = "not found" -a "${enable_man}" = "yes"
+    then
+        AC_MSG_WARN([Need help2man to generate man page for npa-tool])
+		ENABLE_NPATOOL="no"
+    fi
+else
+    # make sure these files are the most recent
+    touch src/tools/npa-tool.1
+fi
+
+AC_ARG_VAR([GENGETOPT],
+           [absolute path to gengetopt used for command line parsing of npa-tool])
+AC_PATH_PROG(GENGETOPT, gengetopt, not found)
+if test ! -r src/tools/cmdline.h -o ! -r src/tools/cmdline.c
+then
+    if test "${GENGETOPT}" = "not found"
+    then
+        AC_MSG_WARN([Need gengetopt for parsing command line of npa-tool])
+		ENABLE_NPATOOL="no"
+    fi
+else
+    # make sure these files are the most recent
+    touch src/tools/npa-tool.ggo
+    touch src/tools/cmdline.h src/tools/cmdline.h
+fi
+
 OPENSC_FEATURES=""
 if test "${enable_thread_locking}" = "yes"; then
 	OPENSC_FEATURES="${OPENSC_FEATURES} locking"
@@ -858,6 +890,7 @@ AM_CONDITIONAL([CYGWIN], [test "${CYGWIN}" = "yes"])
 AM_CONDITIONAL([ENABLE_MINIDRIVER], [test "${enable_minidriver}" = "yes"])
 AM_CONDITIONAL([ENABLE_SM], [test "${enable_sm}" = "yes"])
 AM_CONDITIONAL([ENABLE_DNIE_UI], [test "${enable_dnie_ui}" = "yes"])
+AM_CONDITIONAL([ENABLE_NPATOOL], [test "${ENABLE_NPATOOL}" = "yes"])
 AM_CONDITIONAL([GIT_CHECKOUT], [test "${GIT_CHECKOUT}" = "yes"])
 
 if test "${enable_pedantic}" = "yes"; then

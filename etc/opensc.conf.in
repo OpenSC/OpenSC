@@ -143,7 +143,7 @@ app default {
 
 	card_driver npa {
 		# The location of the driver library
-		module = @libdir@/@LIB_PRE@cardnpa@DYN_LIB_EXT@;
+		module = @LIBDIR@@LIB_PRE@cardnpa@DYN_LIB_EXT@;
 
 		# German ID card requires the CAN to be verified before QES PIN. This,
 		# however, is not part of the PKCS#15 profile of the card. So for
