@@ -1713,6 +1713,9 @@ part10_check_pin_min_max(sc_reader_t *reader, struct sc_pin_cmd_data *data)
 	   	data->flags & SC_PIN_CMD_IMPLICIT_CHANGE ?
 	   	&data->pin1 : &data->pin2;
 
+    if (!priv->get_tlv_properties)
+		return 0;
+
 	r = pcsc_internal_transmit(reader, NULL, 0, buffer, &length,
 		priv->get_tlv_properties);
 	SC_TEST_RET(reader->ctx, SC_LOG_DEBUG_NORMAL, r,
