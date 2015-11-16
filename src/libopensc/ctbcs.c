@@ -95,7 +95,7 @@ ctbcs_build_perform_verification_apdu(sc_apdu_t *apdu, struct sc_pin_cmd_data *d
 
 	if (data->flags & SC_PIN_CMD_NEED_PADDING) {
 		len = data->pin1.pad_length;
-		if (1 + j + len > buflen || len > 256)
+		if (1 + j + 1 + len > buflen || len > 256)
 			return SC_ERROR_BUFFER_TOO_SMALL;
 		buf[j++] = len;
 		memset(buf+j, data->pin1.pad_char, len);
@@ -170,7 +170,7 @@ ctbcs_build_modify_verification_apdu(sc_apdu_t *apdu, struct sc_pin_cmd_data *da
 
 	if (data->flags & SC_PIN_CMD_NEED_PADDING) {
 		len = data->pin1.pad_length + data->pin2.pad_length;
-		if (1 + j + len > buflen || len > 256)
+		if (1 + j + 1 + len > buflen || len > 256)
 			return SC_ERROR_BUFFER_TOO_SMALL;
 		buf[j++] = len;
 		memset(buf+j, data->pin1.pad_char, len);

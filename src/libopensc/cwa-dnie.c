@@ -269,7 +269,7 @@ int dnie_read_file(sc_card_t * card,
  dnie_read_file_err:
 	if (data)
 		free(data);
-	if (*file) {
+	if (file && *file) {
 		sc_file_free(*file);
 		*file = NULL;
 	}

@@ -1286,8 +1286,10 @@ sc_pkcs15_pubkey_from_spki_fields(struct sc_context *ctx, struct sc_pkcs15_pubke
 	sc_log(ctx, "sc_pkcs15_pubkey_from_spki_fields() called: %p:%d\n%s", buf, buflen, sc_dump_hex(buf, buflen));
 
 	tmp_buf = malloc(buflen);
-	if (!tmp_buf)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+	if (!tmp_buf) {
+		r = SC_ERROR_OUT_OF_MEMORY;
+		LOG_TEST_GOTO_ERR(ctx, r, "");
+	}
 	memcpy(tmp_buf, buf, buflen);
 
 	if ((*tmp_buf & SC_ASN1_TAG_CONTEXT))
@@ -1295,8 +1297,10 @@ sc_pkcs15_pubkey_from_spki_fields(struct sc_context *ctx, struct sc_pkcs15_pubke
 
 	memset(&pk_alg, 0, sizeof(pk_alg));
 	pubkey = calloc(1, sizeof(sc_pkcs15_pubkey_t));
-	if (pubkey == NULL)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+	if (pubkey == NULL) {
+		r = SC_ERROR_OUT_OF_MEMORY;
+		LOG_TEST_GOTO_ERR(ctx, r, "");
+	}
 	*outpubkey = pubkey;
 
 	sc_copy_asn1_entry(c_asn1_pkinfo, asn1_pkinfo);
@@ -1305,11 +1309,13 @@ sc_pkcs15_pubkey_from_spki_fields(struct sc_context *ctx, struct sc_pkcs15_pubke
 	sc_format_asn1_entry(asn1_pkinfo + 1, &pk.value, &pk.len, 0);
 
 	r = sc_asn1_decode(ctx, asn1_pkinfo, tmp_buf, buflen, NULL, NULL);
-	LOG_TEST_RET(ctx, r, "ASN.1 parsing of subjectPubkeyInfo failed");
+	LOG_TEST_GOTO_ERR(ctx, r, "ASN.1 parsing of subjectPubkeyInfo failed");
 
 	pubkey->alg_id = calloc(1, sizeof(struct sc_algorithm_id));
-	if (pubkey->alg_id == NULL)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+	if (pubkey->alg_id == NULL) {
+		r = SC_ERROR_OUT_OF_MEMORY;
+		LOG_TEST_GOTO_ERR(ctx, r, "");
+	}
 
 	memcpy(pubkey->alg_id, &pk_alg, sizeof(struct sc_algorithm_id));
 	pubkey->algorithm = pk_alg.algorithm;
@@ -1330,13 +1336,15 @@ sc_pkcs15_pubkey_from_spki_fields(struct sc_context *ctx, struct sc_pkcs15_pubke
 			struct sc_ec_parameters *ecp = (struct sc_ec_parameters *)pubkey->alg_id->params;
 
 			pubkey->u.ec.params.der.value = malloc(ecp->der.len);
-			if (pubkey->u.ec.params.der.value == NULL)
-				LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+			if (pubkey->u.ec.params.der.value == NULL) {
+				r = SC_ERROR_OUT_OF_MEMORY;
+				LOG_TEST_GOTO_ERR(ctx, r, "");
+			}
 
 			memcpy(pubkey->u.ec.params.der.value, ecp->der.value, ecp->der.len);
 			pubkey->u.ec.params.der.len = ecp->der.len;
 			r = sc_pkcs15_fix_ec_parameters(ctx, &pubkey->u.ec.params);
-			LOG_TEST_RET(ctx, r, "failed to fix EC parameters");
+			LOG_TEST_GOTO_ERR(ctx, r, "failed to fix EC parameters");
 		}
 
 		pubkey->u.ec.ecpointQ.value = malloc(pk.len);
@@ -1348,15 +1356,16 @@ sc_pkcs15_pubkey_from_spki_fields(struct sc_context *ctx, struct sc_pkcs15_pubke
 	else   {
 		/* Public key is expected to be encapsulated into BIT STRING */
 		r = sc_pkcs15_decode_pubkey(ctx, pubkey, pk.value, pk.len);
-		LOG_TEST_RET(ctx, r, "ASN.1 parsing of subjectPubkeyInfo failed");
+		LOG_TEST_GOTO_ERR(ctx, r, "ASN.1 parsing of subjectPubkeyInfo failed");
 	}
 
+err:
 	if (pk.value)
 		free(pk.value);
 	if (tmp_buf)
 		free(tmp_buf);
 
-	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+	LOG_FUNC_RETURN(ctx, r);
 }
 
 

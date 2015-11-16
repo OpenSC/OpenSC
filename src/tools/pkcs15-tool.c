@@ -828,8 +828,10 @@ static void print_ssh_key(FILE *outf, const char * alg, struct sc_pkcs15_object 
 		// Old style openssh - [<quote protected options> <whitespace> <keytype> <whitespace> <key> [<whitespace> anything else]
 		//
 		r = sc_base64_encode(buf, len, uu, 2*len, 0);
-		if (r < 0)
+		if (r < 0) {
+			free(uu);
 			return;
+		}
 
 		if (obj->label[0] != '\0')
 			fprintf(outf,"ssh-%s %s %.*s\n", alg, uu, (int) sizeof obj->label, obj->label);
@@ -1294,7 +1296,7 @@ static int list_apps(FILE *fout)
 	for (i=0; i<p15card->card->app_count; i++)   {
 		struct sc_app_info *info = p15card->card->app[i];
 
-		fprintf(fout, "Application '%.*s':\n", (int) sizeof info->label, info->label);
+		fprintf(fout, "Application '%s':\n", info->label);
 		fprintf(fout, "\tAID: ");
 		for(j=0;j<info->aid.len;j++)
 			fprintf(fout, "%02X", info->aid.value[j]);
