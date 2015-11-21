@@ -72,6 +72,14 @@ CK_RV C_OpenSession(CK_SLOT_ID slotID,	/* the slot's ID */
 		goto out;
 	}
 
+	if (sc_pkcs11_conf.lock_session) {
+		rv = sc_to_cryptoki_error(sc_lock(slot->p11card->card), "C_OpenSession");
+		if (rv != CKR_OK) {
+			free(session);
+			goto out;
+		}
+	}
+
 	session->slot = slot;
 	session->notify_callback = Notify;
 	session->notify_data = pApplication;
@@ -113,6 +121,11 @@ static CK_RV sc_pkcs11_close_session(CK_SESSION_HANDLE hSession)
 	if (list_delete(&sessions, session) != 0)
 		sc_log(context, "Could not delete session from list!");
 	free(session);
+
+	if (sc_pkcs11_conf.lock_session) {
+		sc_unlock(slot->p11card->card);
+	}
+
 	return CKR_OK;
 }
 

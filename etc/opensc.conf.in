@@ -593,6 +593,9 @@ app opensc-pkcs11 {
 		#
 		# Default: false
 		# lock_login = true;
+		#
+		# Default: true
+		# lock_session = false;
 
 		# With this setting disabled, the OpenSC PKCS#11 module will initialize
 		# the slots available when the application calls `C_GetSlotList`. With

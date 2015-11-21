@@ -324,6 +324,7 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t * ctx)
 	}
 	conf->hide_empty_tokens = 1;
 	conf->lock_login = 0;
+	conf->lock_session = 1;
 	conf->init_sloppy = 1;
 	conf->pin_unblock_style = SC_PKCS11_PIN_UNBLOCK_NOT_ALLOWED;
 	conf->create_puk_slot = 0;
@@ -340,6 +341,7 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t * ctx)
 	conf->slots_per_card = scconf_get_int(conf_block, "slots_per_card", conf->slots_per_card);
 	conf->hide_empty_tokens = scconf_get_bool(conf_block, "hide_empty_tokens", conf->hide_empty_tokens);
 	conf->lock_login = scconf_get_bool(conf_block, "lock_login", conf->lock_login);
+	conf->lock_session = scconf_get_bool(conf_block, "lock_session", conf->lock_session);
 	conf->init_sloppy = scconf_get_bool(conf_block, "init_sloppy", conf->init_sloppy);
 
 	unblock_style = (char *)scconf_get_str(conf_block, "user_pin_unblock_style", NULL);
@@ -371,9 +373,9 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t * ctx)
         free(tmp);
 
 	sc_log(ctx, "PKCS#11 options: plug_and_play=%d max_virtual_slots=%d slots_per_card=%d "
-		 "hide_empty_tokens=%d lock_login=%d pin_unblock_style=%d "
+		 "hide_empty_tokens=%d lock_login=%d lock_session=%d pin_unblock_style=%d "
 		 "zero_ckaid_for_ca_certs=%d create_slots_flags=0x%X",
 		 conf->plug_and_play, conf->max_virtual_slots, conf->slots_per_card,
-		 conf->hide_empty_tokens, conf->lock_login, conf->pin_unblock_style,
+		 conf->hide_empty_tokens, conf->lock_login, conf->lock_session, conf->pin_unblock_style,
 		 conf->zero_ckaid_for_ca_certs, conf->create_slots_flags);
 }
