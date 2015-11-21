@@ -27,8 +27,15 @@
 
 #include "libopensc/opensc.h"
 #include "cwa14890.h"
+
 #ifdef ENABLE_DNIE_UI
-#include "user-interface.h"
+/**
+* To handle user interface routines
+*/
+typedef struct ui_context {
+	int user_consent_enabled;
+	char *user_consent_app;
+} ui_context_t;
 #endif
 
 /**
