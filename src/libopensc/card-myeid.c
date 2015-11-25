@@ -48,6 +48,8 @@
 
 #define MYEID_ECC_SUPPORT
 
+#define MYEID_INFINEON_CHIP_ATR		0x04
+
 static struct sc_card_operations myeid_ops;
 static struct sc_card_driver myeid_drv = {
 	"MyEID cards with PKCS#15 applet",
@@ -63,6 +65,7 @@ static const char *myeid_atrs[] = {
 	"3B:F5:18:00:00:81:31:FE:45:4D:79:45:49:44:9A",
 	"3B:85:80:01:4D:79:45:49:44:78",
 	"3B:89:80:01:09:38:33:B1:4D:79:45:49:44:4C",
+	"3B:F5:96:00:00:80:31:FE:45:4D:79:45:49:44:15", /* Infineon's chip */
 	NULL
 };
 
@@ -85,8 +88,8 @@ static struct myeid_supported_ec_curves {
 	{"secp192r1", {{1, 2, 840, 10045, 3, 1, 1, -1}},192},
 	/* {"secp224r1", {{1, 3, 132, 0, 33, -1}},		224}, */
 	{"secp256r1", {{1, 2, 840, 10045, 3, 1, 7, -1}},256},
-	/* {"secp384r1", {{1, 3, 132, 0, 34, -1}},		384}, */
-	/* {"secp521r1", {{1, 3, 132, 0, 35, -1}},		521}, */
+	{"secp384r1", {{1, 3, 132, 0, 34, -1}},		384}, 
+	{"secp521r1", {{1, 3, 132, 0, 35, -1}},		521}, 
 	{NULL, {{-1}}, 0},
 };
 
@@ -125,6 +128,10 @@ static int myeid_init(struct sc_card *card)
 	u8 appletInfo[20];
 	size_t appletInfoLen;
 	int r;
+	int largeEccKeys = 0;
+	u8 defatr[SC_MAX_ATR_SIZE];
+	size_t len = sizeof(defatr);
+	const char *atrp = myeid_atrs[MYEID_INFINEON_CHIP_ATR];
 
 	LOG_FUNC_CALLED(card->ctx);
 	priv = calloc(1, sizeof(myeid_private_data_t));
@@ -154,7 +161,12 @@ static int myeid_init(struct sc_card *card)
 	_sc_card_add_rsa_alg(card, 2048, flags, 0);
 
 #ifdef MYEID_ECC_SUPPORT
-
+	if (sc_hex_to_bin(atrp, defatr, &len) == 0
+		&& (len == card->atr.len) && 
+		memcmp(card->atr.value, defatr, len) == 0) {	
+	    largeEccKeys = 1;	
+	}
+  
 	/* show ECC algorithms if the applet version of the inserted card supports them */
 	if ((card->version.fw_major == 3 && card->version.fw_minor > 5) ||
 			card->version.fw_major >= 4)   {
@@ -164,8 +176,12 @@ static int myeid_init(struct sc_card *card)
 		flags |= SC_ALGORITHM_ECDSA_HASH_NONE | SC_ALGORITHM_ECDSA_HASH_SHA1;
 		ext_flags = SC_ALGORITHM_EXT_EC_NAMEDCURVE | SC_ALGORITHM_EXT_EC_UNCOMPRESES;
 
-		for (i=0; ec_curves[i].curve_name != NULL; i++)
+		for (i=0; ec_curves[i].curve_name != NULL; i++) {
+		    if (i >= 2 && !largeEccKeys)
+			continue;
+		    else
 			_sc_card_add_ec_alg(card,  ec_curves[i].size, flags, ext_flags, &ec_curves[i].curve_oid);
+		}
 	}
 #endif
 
@@ -768,11 +784,38 @@ myeid_convert_ec_signature(struct sc_context *ctx, size_t s_len, unsigned char *
 	unsigned char *buf;
 	size_t buflen;
 	int r;
+	unsigned int len_size = 1;
+	unsigned int sig_len = 0;
 
-	assert(data && datalen);
+	assert(data && datalen && datalen > 3);
+	
+	/*
+		more advanced validation is needed, because with 521 bit keys
+		length of the signature TLV is encoded in two bytes.
+		- Hannu Honkanen 6.11.2015
+	 */
 
-	if (*data != 0x30 || *(data + 1) != (datalen - 2) || *(data + 2) != 0x02)
+	if (*data != 0x30) 
 		return SC_ERROR_INVALID_DATA;
+		
+	if ((*(data + 1) & 0x80) == 0x80)
+		len_size += *(data + 1) & 0x7F;
+	
+	if (len_size == 1)
+	    sig_len = *(data + 1);
+	else if (len_size == 2)
+	    sig_len = *(data + 2);
+	else if (len_size == 3)
+	{
+	    sig_len = *(data + 2) | (*data + 3) << 8; 	    	    
+	}
+	else
+	    return SC_ERROR_INVALID_DATA;
+		
+	if (*(data + 1 + len_size) != 0x02)		/* Verify that it is an INTEGER */
+	
+	if (sig_len != (datalen - len_size - 1))	/* validate size of the DER structure */
+	    return SC_ERROR_INVALID_DATA;	
 
 	buf = calloc(1, (s_len + 7)/8*2);
 	if (!buf)
@@ -802,6 +845,9 @@ myeid_compute_signature(struct sc_card *card, const u8 * data, size_t datalen,
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	struct myeid_private_data* priv;
 	int r;
+	unsigned int field_length = 0; 
+	int pad_chars = 0;
+	
 
 	assert(card != NULL && data != NULL && out != NULL);
 	ctx = card->ctx;
@@ -810,8 +856,20 @@ myeid_compute_signature(struct sc_card *card, const u8 * data, size_t datalen,
 	priv = (myeid_private_data_t*) card->drv_data;
 	sc_log(ctx, "key type %i, key length %i", priv->sec_env->algorithm, priv->sec_env->algorithm_ref);
 
-	if (datalen > 256)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+	if (priv->sec_env->algorithm == SC_ALGORITHM_EC ) {
+	
+	    field_length = priv->sec_env->algorithm_ref;
+	    
+	    /* pad with zeros if needed */
+		if (datalen < (field_length + 7) / 8 ) {
+			pad_chars = ((field_length + 7) / 8) - datalen; 
+			
+			memset(sbuf, 0, pad_chars);
+		}
+	}	
+	
+	if ((datalen + pad_chars) > 256)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);  
 
 	/* INS: 0x2A  PERFORM SECURITY OPERATION
 		* P1:  0x9E  Resp: Digital Signature
@@ -827,9 +885,9 @@ myeid_compute_signature(struct sc_card *card, const u8 * data, size_t datalen,
 		apdu.datalen = datalen - 1;
 	}
 	else   {
-		memcpy(sbuf, data, datalen);
-		apdu.lc = datalen;
-		apdu.datalen = datalen;
+		memcpy(sbuf + pad_chars, data, datalen);
+		apdu.lc = datalen + pad_chars;
+		apdu.datalen = datalen + pad_chars;
 	}
 
 	apdu.data = sbuf;
