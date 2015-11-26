@@ -594,6 +594,27 @@ app opensc-pkcs11 {
 		# Default: false
 		# lock_login = true;
 
+		# By default, interacting with the OpenSC PKCS#11 module may change the
+		# state of the token, e.g. whether a user is logged in or not.
+		#
+		# Thus other users or other applications may change or use the state of
+		# the token unknowingly. Other applications may create signatures
+		# abusing an existing login or they may logout unnoticed.
+		#
+		# With this setting enabled the login state of the token is tracked and
+		# cached (including the PIN). Every transaction is preceeded by
+		# restoring the login state.  After every transaction a logout is
+		# performed. This setting by default also enables `lock_login` (see
+		# above) to disable access for other applications during the atomic
+		# transactions.
+		#
+		# Please note that any PIN-pad should be disabled (see `enable_pinpad`
+		# above), because the user would have to input his PIN for every
+		# transaction.
+		#
+		# Default: false
+		# atomic = true;
+
 		# With this setting disabled, the OpenSC PKCS#11 module will initialize
 		# the slots available when the application calls `C_GetSlotList`. With
 		# this setting enabled, the slots will also get initialized when
