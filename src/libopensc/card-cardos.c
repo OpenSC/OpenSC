@@ -1221,8 +1221,13 @@ cardos_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data,
 static int
 cardos_logout(sc_card_t *card)
 {
-	if (card->type == SC_CARD_TYPE_CARDOS_M4_01 ||
-	    card->type == SC_CARD_TYPE_CARDOS_M4_2) {
+	if (card->type == SC_CARD_TYPE_CARDOS_M4_01
+		   	|| card->type == SC_CARD_TYPE_CARDOS_M4_2
+		   	|| card->type == SC_CARD_TYPE_CARDOS_M4_2B
+		   	|| card->type == SC_CARD_TYPE_CARDOS_M4_2C
+		   	|| card->type == SC_CARD_TYPE_CARDOS_M4_3
+		   	|| card->type == SC_CARD_TYPE_CARDOS_M4_4
+			|| card->type == SC_CARD_TYPE_CARDOS_V5_0) {
 		sc_apdu_t apdu;
 		int       r;
 		sc_path_t path;
