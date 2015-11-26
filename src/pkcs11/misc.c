@@ -127,6 +127,114 @@ CK_RV sc_to_cryptoki_error(int rc, const char *ctx)
 }
 
 
+struct sc_pkcs11_login {
+	CK_USER_TYPE userType;
+	CK_CHAR_PTR pPin;
+	CK_ULONG ulPinLen;
+};
+
+CK_RV restore_login_state(struct sc_pkcs11_slot *slot)
+{
+	CK_RV r = CKR_OK;
+
+	if (sc_pkcs11_conf.atomic && slot) {
+		if (list_iterator_start(&slot->logins)) {
+			struct sc_pkcs11_login *login = list_iterator_next(&slot->logins);
+			while (login) {
+				r = slot->p11card->framework->login(slot, login->userType,
+						login->pPin, login->ulPinLen);
+				if (r != CKR_OK)
+					break;
+				login = list_iterator_next(&slot->logins);
+			}
+			list_iterator_stop(&slot->logins);
+		}
+	}
+
+	return r;
+}
+
+CK_RV reset_login_state(struct sc_pkcs11_slot *slot)
+{
+	if (sc_pkcs11_conf.atomic
+			&& slot && slot->p11card && slot->p11card->framework) {
+		slot->p11card->framework->logout(slot);
+	}
+
+	return CKR_OK;
+}
+
+CK_RV push_login_state(struct sc_pkcs11_slot *slot,
+		CK_USER_TYPE userType, CK_CHAR_PTR pPin, CK_ULONG ulPinLen)
+{
+	CK_RV r = CKR_HOST_MEMORY;
+	struct sc_pkcs11_login *login = NULL;
+
+	if (!sc_pkcs11_conf.atomic || !slot) {
+		r = CKR_OK;
+		goto err;
+	}
+
+	login = (struct sc_pkcs11_login *) malloc(sizeof *login);
+	if (login == NULL) {
+		goto err;
+	}
+
+	login->pPin = sc_mem_alloc_secure(context, (sizeof *pPin)*ulPinLen);
+	if (login->pPin == NULL) {
+		goto err;
+	}
+	memcpy(login->pPin, pPin, (sizeof *pPin)*ulPinLen);
+	login->ulPinLen = ulPinLen;
+	login->userType = userType;
+
+	if (0 > list_append(&slot->logins, login)) {
+		goto err;
+	}
+
+	r = CKR_OK;
+
+err:
+	if (r != CKR_OK && login) {
+		sc_mem_clear(login->pPin, login->ulPinLen);
+		free(login->pPin);
+		free(login);
+	}
+
+	return r;
+}
+
+void pop_login_state(struct sc_pkcs11_slot *slot)
+{
+	if (slot) {
+		unsigned int size = list_size(&slot->logins);
+		if (size > 0) {
+			struct sc_pkcs11_login *login = list_get_at(&slot->logins, size-1);
+			if (login) {
+				sc_mem_clear(login->pPin, login->ulPinLen);
+				free(login->pPin);
+				free(login);
+			}
+			if (0 > list_delete_at(&slot->logins, size-1))
+				sc_log(context, "Error deleting login state");
+		}
+	}
+}
+
+void pop_all_login_states(struct sc_pkcs11_slot *slot)
+{
+	if (sc_pkcs11_conf.atomic && slot) {
+		struct sc_pkcs11_login *login = list_fetch(&slot->logins);
+		while (login) {
+			sc_mem_clear(login->pPin, login->ulPinLen);
+			free(login->pPin);
+			free(login);
+			login = list_fetch(&slot->logins);
+		}
+	}
+}
+
+
 /* Session manipulation */
 CK_RV session_start_operation(struct sc_pkcs11_session * session,
 			      int type, sc_pkcs11_mechanism_type_t * mech, struct sc_pkcs11_operation ** operation)
@@ -323,6 +431,7 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t * ctx)
 		conf->slots_per_card = 4;
 	}
 	conf->hide_empty_tokens = 1;
+	conf->atomic = 0;
 	conf->lock_login = 0;
 	conf->init_sloppy = 1;
 	conf->pin_unblock_style = SC_PKCS11_PIN_UNBLOCK_NOT_ALLOWED;
@@ -339,6 +448,9 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t * ctx)
 	conf->max_virtual_slots = scconf_get_int(conf_block, "max_virtual_slots", conf->max_virtual_slots);
 	conf->slots_per_card = scconf_get_int(conf_block, "slots_per_card", conf->slots_per_card);
 	conf->hide_empty_tokens = scconf_get_bool(conf_block, "hide_empty_tokens", conf->hide_empty_tokens);
+	conf->atomic = scconf_get_bool(conf_block, "atomic", conf->atomic);
+	if (conf->atomic)
+		conf->lock_login = 1;
 	conf->lock_login = scconf_get_bool(conf_block, "lock_login", conf->lock_login);
 	conf->init_sloppy = scconf_get_bool(conf_block, "init_sloppy", conf->init_sloppy);
 
@@ -371,9 +483,9 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t * ctx)
         free(tmp);
 
 	sc_log(ctx, "PKCS#11 options: plug_and_play=%d max_virtual_slots=%d slots_per_card=%d "
-		 "hide_empty_tokens=%d lock_login=%d pin_unblock_style=%d "
+		 "hide_empty_tokens=%d lock_login=%d atomic=%d pin_unblock_style=%d "
 		 "zero_ckaid_for_ca_certs=%d create_slots_flags=0x%X",
 		 conf->plug_and_play, conf->max_virtual_slots, conf->slots_per_card,
-		 conf->hide_empty_tokens, conf->lock_login, conf->pin_unblock_style,
+		 conf->hide_empty_tokens, conf->lock_login, conf->atomic, conf->pin_unblock_style,
 		 conf->zero_ckaid_for_ca_certs, conf->create_slots_flags);
 }

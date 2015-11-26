@@ -92,6 +92,8 @@ CK_RV create_slot(sc_reader_t *reader)
 	list_init(&slot->objects);
 	list_attributes_seeker(&slot->objects, object_list_seeker);
 
+	list_init(&slot->logins);
+
 	init_slot_info(&slot->slot_info);
 	if (reader != NULL) {
 		slot->reader = reader;

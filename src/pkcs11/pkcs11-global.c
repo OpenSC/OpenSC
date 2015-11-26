@@ -324,6 +324,8 @@ CK_RV C_Finalize(CK_VOID_PTR pReserved)
 
 	while ((slot = list_fetch(&virtual_slots))) {
 		list_destroy(&slot->objects);
+		pop_all_login_states(slot);
+		list_destroy(&slot->logins);
 		free(slot);
 	}
 	list_destroy(&virtual_slots);
