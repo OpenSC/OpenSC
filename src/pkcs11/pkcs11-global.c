@@ -46,7 +46,9 @@ extern CK_FUNCTION_LIST pkcs11_function_list;
 #include <pthread.h>
 CK_RV mutex_create(void **mutex)
 {
-	pthread_mutex_t *m = calloc(1, sizeof(*mutex));
+	pthread_mutex_t *m;
+
+	m = calloc(1, sizeof(*m));
 	if (m == NULL)
 		return CKR_GENERAL_ERROR;;
 	pthread_mutex_init(m, NULL);
