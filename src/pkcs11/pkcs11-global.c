@@ -25,6 +25,9 @@
 #ifdef HAVE_SYS_TIME_H
 #include <sys/time.h>
 #endif
+#ifdef _WIN32
+#include <winbase.h>
+#endif
 
 #include "sc-pkcs11.h"
 
