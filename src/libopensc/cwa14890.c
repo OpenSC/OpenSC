@@ -443,13 +443,8 @@ static int cwa_verify_cvc_certificate(sc_card_t * card,
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	/* compose apdu for Perform Security Operation (Verify cert) cmd */
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x2A, 0x00, 0xAE);
-	apdu.data = cert;
-	apdu.datalen = len;
-	apdu.lc = len;
-	apdu.le = 0;
-	apdu.resplen = 0;
-	apdu.resp = NULL;
+	dnie_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x2A, 0x00, 0xAE, 0, len,
+					NULL, 0, cert, len);
 
 	/* send composed apdu and parse result */
 	result = dnie_transmit_apdu(card, &apdu);
@@ -488,13 +483,8 @@ static int cwa_set_security_env(sc_card_t * card,
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	/* compose apdu for Manage Security Environment cmd */
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, p1, p2);
-	apdu.data = buffer;
-	apdu.datalen = length;
-	apdu.lc = length;
-	apdu.resp = NULL;
-	apdu.resplen = 0;
-	apdu.le = 0;
+	dnie_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, p1, p2, 0, length,
+					NULL, 0, buffer, length);
 
 	/* send composed apdu and parse result */
 	result = dnie_transmit_apdu(card, &apdu);
@@ -531,13 +521,8 @@ static int cwa_internal_auth(sc_card_t * card,
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	/* compose apdu for Internal Authenticate cmd */
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x88, 0x00, 0x00);
-	apdu.data = data;
-	apdu.datalen = datalen;
-	apdu.lc = datalen;
-	apdu.le = 0x80;		/* expected 1024 bits response */
-	apdu.resp = rbuf;
-	apdu.resplen = sizeof(rbuf);
+	dnie_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x88, 0x00, 0x00, 0x80, datalen,
+					rbuf, sizeof(rbuf), data, datalen);
 
 	/* send composed apdu and parse result */
 	result = dnie_transmit_apdu(card, &apdu);
@@ -740,13 +725,8 @@ static int cwa_external_auth(sc_card_t * card, cwa_sm_status_t * sm)
 	LOG_FUNC_CALLED(ctx);
 
 	/* compose apdu for External Authenticate cmd */
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x82, 0x00, 0x00);
-	apdu.data = sm->sig;
-	apdu.datalen = sizeof(sm->sig);
-	apdu.lc = sizeof(sm->sig);
-	apdu.le = 0;
-	apdu.resp = NULL;
-	apdu.resplen = 0;
+	dnie_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x82, 0x00, 0x00, 0, sizeof(sm->sig),
+					NULL, 0, sm->sig, sizeof(sm->sig));
 
 	/* send composed apdu and parse result */
 	result = dnie_transmit_apdu(card, &apdu);
@@ -1048,13 +1028,13 @@ static int cwa_verify_internal_auth(sc_card_t * card,
 int cwa_create_secure_channel(sc_card_t * card,
 			      cwa_provider_t * provider, int flag)
 {
-	u8 *cert;
+	u8 *cert = NULL;
 	size_t certlen;
 
 	int res = SC_SUCCESS;
 	char *msg = "Success";
 
-	u8 *sn_icc;
+	u8 *sn_icc = NULL;
 
 	/* data to get and parse certificates */
 	X509 *icc_cert = NULL;
@@ -1065,11 +1045,11 @@ int cwa_create_secure_channel(sc_card_t * card,
 	cwa_sm_status_t *sm = NULL;
 
 	/* several buffer and buffer pointers */
-	u8 *buffer;
+	u8 *buffer = NULL;
 	size_t bufferlen;
 	u8 *tlv = NULL;		/* buffer to compose TLV messages */
 	size_t tlvlen = 0;
-	u8 *rndbuf=NULL;
+	u8 rndbuf[16]; /* 8 RND.IFD + 8 SN.IFD */
 
 	/* preliminary checks */
 	if (!card || !card->ctx )
@@ -1320,12 +1300,6 @@ int cwa_create_secure_channel(sc_card_t * card,
 		msg = "Cannot get ifd serial number from provider";
 		goto csc_end;
 	}
-	rndbuf = calloc(8 /*RND.IFD */  + 8 /*SN.IFD */ , sizeof(u8));
-	if (!rndbuf) {
-		msg = "Cannot calloc for RND.IFD+SN.IFD";
-		res = SC_ERROR_OUT_OF_MEMORY;
-		goto csc_end;
-	}
 	RAND_bytes(sm->rndifd, 8);	/* generate 8 random bytes */
 	memcpy(rndbuf, sm->rndifd, 8);	/* insert RND.IFD into rndbuf */
 	memcpy(rndbuf + 8, buffer, 8);	/* insert SN.IFD into rndbuf */
@@ -1501,7 +1475,7 @@ int cwa_encode_apdu(sc_card_t * card,
 	/* trace APDU before encoding process */
 	cwa_trace_apdu(card, from, 0);
 
-	/* reserve enougth space for apdulen+tlv bytes 
+	/* reserve enough space for apdulen+tlv bytes
 	 * to-be-crypted buffer and result apdu buffer */
 	 /* TODO DEE add 4 more bytes for testing.... */
 	apdubuf =

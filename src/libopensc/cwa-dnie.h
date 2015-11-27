@@ -26,7 +26,6 @@
 #ifdef ENABLE_OPENSSL
 
 #include "libopensc/opensc.h"
-#include "cwa14890.h"
 
 #ifdef ENABLE_DNIE_UI
 /**
@@ -38,6 +37,8 @@ typedef struct ui_context {
 } ui_context_t;
 #endif
 
+struct cwa_provider_st;
+
 /**
   * OpenDNIe private data declaration
   *
@@ -48,7 +49,7 @@ typedef struct ui_context {
      int rsa_key_ref;    /**< Key id reference being used in sec operation */
      u8 *cache;      /**< Cache buffer for read_binary() operation */
      size_t cachelen;    /**< length of cache buffer */
-     cwa_provider_t *cwa_provider;
+     struct cwa_provider_st *cwa_provider;
 #ifdef ENABLE_DNIE_UI
 	 struct ui_context ui_ctx;
 #endif
@@ -61,6 +62,14 @@ typedef struct ui_context {
 #define GET_DNIE_UI_CTX(card) (((dnie_private_data_t *) ((card)->drv_data))->ui_ctx)
 
 int dnie_transmit_apdu(sc_card_t * card, sc_apdu_t * apdu);
+
+void dnie_format_apdu(sc_card_t *card, sc_apdu_t *apdu,
+                       int cse, int ins, int p1, int p2, int le, int lc,
+                       unsigned char * resp, size_t resplen,
+                       const unsigned char * data, size_t datalen);
+
+void dnie_free_apdu_buffers(sc_apdu_t *apdu,
+                               unsigned char * resp, size_t resplen);
 
 #endif
 
