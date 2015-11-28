@@ -322,7 +322,7 @@ static void load_reader_driver_options(sc_context_t *ctx)
  */
 static const char *find_library(sc_context_t *ctx, const char *name)
 {
-	int          i;
+	int          i, log_warning;
 	const char   *libname = NULL;
 	scconf_block **blocks, *blk;
 
@@ -336,10 +336,11 @@ static const char *find_library(sc_context_t *ctx, const char *name)
 			continue;
 		libname = scconf_get_str(blk, "module", name);
 #ifdef _WIN32
-		if (libname && libname[0] != '\\' )
+		log_warning = libname && libname[0] != ‘\\';
 #else
-		if (libname && libname[0] != '/' )
+		log_warning = libname && libname[0] != ‘/‘;
 #endif
+		if (log_warning)
 			sc_log(ctx, "warning: relative path to driver '%s' used", libname);
 		break;
 	}
@@ -917,7 +918,7 @@ int sc_get_cache_dir(sc_context_t *ctx, char *buf, size_t bufsize)
 int sc_make_cache_dir(sc_context_t *ctx)
 {
 	char dirname[PATH_MAX], *sp;
-	int    r;
+	int    r, mkdir_checker;
 	size_t j, namelen;
 
 	if ((r = sc_get_cache_dir(ctx, dirname, sizeof(dirname))) < 0)
@@ -926,10 +927,11 @@ int sc_make_cache_dir(sc_context_t *ctx)
 
 	while (1) {
 #ifdef _WIN32
-		if (mkdir(dirname) >= 0)
+		mkdir_checker = mkdir(dirname) >= 0;
 #else
-		if (mkdir(dirname, 0700) >= 0)
+		mkdir_checker = mkdir(dirname, 0700) >= 0;
 #endif
+		if (mkdir_checker)
 			break;
 
 		if (errno != ENOENT || (sp = strrchr(dirname, '/')) == NULL
@@ -946,10 +948,11 @@ int sc_make_cache_dir(sc_context_t *ctx)
 			break;
 		dirname[j] = '/';
 #ifdef _WIN32
-		if (mkdir(dirname) < 0)
+		mkdir_checker = mkdir(dirname) < 0;
 #else
-		if (mkdir(dirname, 0700) < 0)
+		mkdir_checker = mkdir(dirname, 0700) < 0;
 #endif
+		if (mkdir_checker)
 			goto failed;
 	}
 	return SC_SUCCESS;
