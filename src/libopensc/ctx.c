@@ -336,9 +336,9 @@ static const char *find_library(sc_context_t *ctx, const char *name)
 			continue;
 		libname = scconf_get_str(blk, "module", name);
 #ifdef _WIN32
-		log_warning = libname && libname[0] != ‘\\';
+		log_warning = libname && libname[0] != '\\';
 #else
-		log_warning = libname && libname[0] != ‘/‘;
+		log_warning = libname && libname[0] != '/';
 #endif
 		if (log_warning)
 			sc_log(ctx, "warning: relative path to driver '%s' used", libname);
