@@ -279,10 +279,12 @@ CK_RV C_Login(CK_SESSION_HANDLE hSession,	/* the session's handle */
 			if (rv == CKR_OK)
 				rv = slot->p11card->framework->login(slot, userType, pPin, ulPinLen);
 			if (rv == CKR_OK) {
-				rv = reset_login_state(session->slot);
+				rv = reset_login_state(slot);
 			} else {
-				reset_login_state(session->slot);
+				reset_login_state(slot);
 			}
+			if (rv == CKR_USER_NOT_LOGGED_IN)
+				slot->login_user = -1;
 		}
 	}
 	else {
@@ -305,10 +307,12 @@ CK_RV C_Login(CK_SESSION_HANDLE hSession,	/* the session's handle */
 			rv = push_login_state(slot, userType, pPin, ulPinLen);
 		if (rv == CKR_OK) {
 			slot->login_user = userType;
-			rv = reset_login_state(session->slot);
+			rv = reset_login_state(slot);
 		} else {
-			reset_login_state(session->slot);
+			reset_login_state(slot);
 		}
+		if (rv == CKR_USER_NOT_LOGGED_IN)
+			slot->login_user = -1;
 	}
 
 out:
@@ -387,10 +391,12 @@ CK_RV C_InitPIN(CK_SESSION_HANDLE hSession, CK_CHAR_PTR pPin, CK_ULONG ulPinLen)
 			sc_log(context, "C_InitPIN() init-pin result %li", rv);
 		}
 		if (rv == CKR_OK) {
-			rv = reset_login_state(session->slot);
+			rv = reset_login_state(slot);
 		} else {
-			reset_login_state(session->slot);
+			reset_login_state(slot);
 		}
+		if (rv == CKR_USER_NOT_LOGGED_IN)
+			slot->login_user = -1;
 	}
 
 out:
@@ -430,10 +436,12 @@ CK_RV C_SetPIN(CK_SESSION_HANDLE hSession,
 	if (rv == CKR_OK)
 		rv = slot->p11card->framework->change_pin(slot, pOldPin, ulOldLen, pNewPin, ulNewLen);
 	if (rv == CKR_OK) {
-		rv = reset_login_state(session->slot);
+		rv = reset_login_state(slot);
 	} else {
-		reset_login_state(session->slot);
+		reset_login_state(slot);
 	}
+	if (rv == CKR_USER_NOT_LOGGED_IN)
+		slot->login_user = -1;
 
 out:
 	sc_pkcs11_unlock();

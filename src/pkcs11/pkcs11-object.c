@@ -695,6 +695,8 @@ C_Sign(CK_SESSION_HANDLE hSession,		/* the session's handle */
 		} else {
 			reset_login_state(session->slot);
 		}
+		if (rv == CKR_USER_NOT_LOGGED_IN)
+			session->slot->login_user = -1;
 	}
 
 out:
@@ -763,6 +765,8 @@ C_SignFinal(CK_SESSION_HANDLE hSession,		/* the session's handle */
 		} else {
 			reset_login_state(session->slot);
 		}
+		if (rv == CKR_USER_NOT_LOGGED_IN)
+			session->slot->login_user = -1;
 	}
 
 out:
@@ -906,6 +910,8 @@ CK_RV C_Decrypt(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		} else {
 			reset_login_state(session->slot);
 		}
+		if (rv == CKR_USER_NOT_LOGGED_IN)
+			session->slot->login_user = -1;
 	}
 
 	sc_log(context, "C_Decrypt() = %s", lookup_enum ( RV_T, rv ));
@@ -1023,6 +1029,8 @@ CK_RV C_GenerateKeyPair(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		} else {
 			reset_login_state(session->slot);
 		}
+		if (rv == CKR_USER_NOT_LOGGED_IN)
+			session->slot->login_user = -1;
 	}
 
 out:
@@ -1128,6 +1136,8 @@ CK_RV C_DeriveKey(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		} else {
 			reset_login_state(session->slot);
 		}
+		if (rv == CKR_USER_NOT_LOGGED_IN)
+			session->slot->login_user = -1;
 
 		break;
 	    default:
@@ -1253,6 +1263,8 @@ CK_RV C_Verify(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		} else {
 			reset_login_state(session->slot);
 		}
+		if (rv == CKR_USER_NOT_LOGGED_IN)
+			session->slot->login_user = -1;
 	}
 
 out:
@@ -1310,6 +1322,8 @@ CK_RV C_VerifyFinal(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		} else {
 			reset_login_state(session->slot);
 		}
+		if (rv == CKR_USER_NOT_LOGGED_IN)
+			session->slot->login_user = -1;
 	}
 
 	sc_log(context, "C_VerifyFinal() = %s", lookup_enum ( RV_T, rv ));
