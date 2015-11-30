@@ -436,12 +436,20 @@ static int npa_pin_cmd_get_info(struct sc_card *card,
     switch (data->pin_reference) {
         case PACE_PIN_ID_CAN:
         case PACE_PIN_ID_MRZ:
-        case PACE_PIN_ID_PUK:
             /* usually unlimited number of retries */
             *tries_left = -1;
             data->pin1.max_tries = -1;
             data->pin1.tries_left = -1;
             r = SC_SUCCESS;
+            break;
+
+        case PACE_PIN_ID_PUK:
+            /* usually 10 tries */
+            *tries_left = 10;
+            data->pin1.max_tries = 10;
+            r = npa_pace_get_tries_left(card,
+                    pin_reference, tries_left);
+            data->pin1.tries_left = *tries_left;
             break;
 
         case PACE_PIN_ID_PIN:
