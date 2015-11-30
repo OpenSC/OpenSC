@@ -39,6 +39,34 @@ static struct sc_atr_table entersafe_atrs[] = {
 		 "3b:9f:95:81:31:fe:9f:00:65:46:53:05:30:06:71:df:00:00:00:80:6a:82:5e",
 		 "FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:00:FF:FF:FF:FF:FF:FF:00:00:00:00",
 		 "FTCOS/PK-01C", SC_CARD_TYPE_ENTERSAFE_FTCOS_PK_01C, 0, NULL },
+	 { 
+		"3b:fc:18:00:00:81:31:80:45:90:67:46:4a:00:64:18:14:00:00:00:00:02",
+		"ff:00:00:00:00:00:00:00:00:ff:ff:ff:ff:00:00:00:00:ff:ff:ff:ff:00",
+		"EJAVA/PK-01C", SC_CARD_TYPE_ENTERSAFE_EJAVA_PK_01C, 0, NULL },
+	{
+		"3b:7c:18:00:00:90:67:46:4a:20:28:8c:58:00:00:00:00",
+		"ff:00:00:00:00:ff:ff:ff:ff:00:00:00:00:ff:ff:ff:ff",
+		"EJAVA/PK-01C-T0",SC_CARD_TYPE_ENTERSAFE_EJAVA_PK_01C_T0,0,NULL},
+	{
+		"3B:FC:18:00:00:81:31:80:45:90:67:46:4A:21:28:8C:58:00:00:00:00:B7",
+		"ff:00:00:00:00:ff:ff:ff:ff:00:00:00:00:ff:ff:ff:ff",
+		"EJAVA/H10CR/PK-01C-T1",SC_CARD_TYPE_ENTERSAFE_EJAVA_H10CR_PK_01C_T1,0,NULL},
+	{
+		"3B:FC:18:00:00:81:31:80:45:90:67:46:4A:20:25:c3:30:00:00:00:00",
+		"ff:00:00:00:00:ff:ff:ff:ff:00:00:00:00:ff:ff:ff:ff",
+		"EJAVA/D11CR/PK-01C-T1",SC_CARD_TYPE_ENTERSAFE_EJAVA_D11CR_PK_01C_T1,0,NULL},
+	{
+		"3B:FC:18:00:00:81:31:80:45:90:67:46:4A:00:6A:04:24:00:00:00:00:20",
+		"ff:00:00:00:00:ff:ff:ff:ff:00:00:00:00:ff:ff:ff:ff",
+		"EJAVA/C21C/PK-01C-T1",SC_CARD_TYPE_ENTERSAFE_EJAVA_C21C_PK_01C_T1,0,NULL},
+	{
+		"3B:FC:18:00:00:81:31:80:45:90:67:46:4A:00:68:08:04:00:00:00:00:0E",
+		"ff:00:00:00:00:ff:ff:ff:ff:00:00:00:00:ff:ff:ff:ff",
+		"EJAVA/A22CR/PK-01C-T1",SC_CARD_TYPE_ENTERSAFE_EJAVA_A22CR_PK_01C_T1,0,NULL},
+	{
+		"3B:FC:18:00:00:81:31:80:45:90:67:46:4A:10:27:61:30:00:00:00:00:0C",
+		"ff:00:00:00:00:ff:ff:ff:ff:00:00:00:00:ff:ff:ff:ff",
+		"EJAVA/A40CR/PK-01C-T1",SC_CARD_TYPE_ENTERSAFE_EJAVA_A40CR_PK_01C_T1,0,NULL},
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
@@ -465,10 +493,11 @@ static int entersafe_select_fid(sc_card_t *card,
 	path.len=2;
 
 	r = iso_ops->select_file(card,&path,&file);
+	if(r) sc_file_free(file);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 
 	/* update cache */
-	if (file && file->type == SC_FILE_TYPE_DF) {
+	if (file->type == SC_FILE_TYPE_DF) {
 		 card->cache.current_path.type = SC_PATH_TYPE_PATH;
 		 card->cache.current_path.value[0] = 0x3f;
 		 card->cache.current_path.value[1] = 0x00;
@@ -482,7 +511,13 @@ static int entersafe_select_fid(sc_card_t *card,
 	}
 	
 	if (file_out)
+	{
 		 *file_out = file;
+	}
+	else
+	{
+		sc_file_free(file);
+	}
 
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
 }
@@ -691,6 +726,13 @@ static int entersafe_create_mf(sc_card_t *card, sc_entersafe_create_data * data)
 		 r = entersafe_transmit_apdu(card, &apdu,trans_code_3k,sizeof(trans_code_3k),0,1);
 	}break;
 	case SC_CARD_TYPE_ENTERSAFE_FTCOS_PK_01C:
+	case SC_CARD_TYPE_ENTERSAFE_EJAVA_PK_01C:
+	case SC_CARD_TYPE_ENTERSAFE_EJAVA_PK_01C_T0:	
+	case SC_CARD_TYPE_ENTERSAFE_EJAVA_H10CR_PK_01C_T1:
+	case SC_CARD_TYPE_ENTERSAFE_EJAVA_D11CR_PK_01C_T1:
+	case SC_CARD_TYPE_ENTERSAFE_EJAVA_C21C_PK_01C_T1:
+	case SC_CARD_TYPE_ENTERSAFE_EJAVA_A22CR_PK_01C_T1:
+	case SC_CARD_TYPE_ENTERSAFE_EJAVA_A40CR_PK_01C_T1:	
 	{
 		 r = entersafe_transmit_apdu(card, &apdu,trans_code_ftcos_pk_01c,sizeof(trans_code_ftcos_pk_01c),0,1);
 	}break;
@@ -1027,6 +1069,13 @@ static int entersafe_erase_card(sc_card_t *card)
 		 r = entersafe_transmit_apdu(card, &apdu,trans_code_3k,sizeof(trans_code_3k),0,1);
 	}break;
 	case SC_CARD_TYPE_ENTERSAFE_FTCOS_PK_01C:
+	case SC_CARD_TYPE_ENTERSAFE_EJAVA_PK_01C:
+	case SC_CARD_TYPE_ENTERSAFE_EJAVA_PK_01C_T0:		
+	case SC_CARD_TYPE_ENTERSAFE_EJAVA_H10CR_PK_01C_T1:
+	case SC_CARD_TYPE_ENTERSAFE_EJAVA_D11CR_PK_01C_T1:
+	case SC_CARD_TYPE_ENTERSAFE_EJAVA_C21C_PK_01C_T1:
+	case SC_CARD_TYPE_ENTERSAFE_EJAVA_A22CR_PK_01C_T1:
+	case SC_CARD_TYPE_ENTERSAFE_EJAVA_A40CR_PK_01C_T1:
 	{
 		 r = entersafe_transmit_apdu(card, &apdu,trans_code_ftcos_pk_01c,sizeof(trans_code_ftcos_pk_01c),0,1);
 	}break;
@@ -1150,6 +1199,34 @@ static int entersafe_write_rsa_key_factor(sc_card_t *card,
 
 		 memcpy(sbuff,data.data,data.len);
 		 entersafe_reverse_buffer(sbuff,data.len);
+/*
+ *  PK01C and PK13C smart card only support 1024 or 2048bit key .
+ *  Size of exponent1 exponent2 coefficient of RSA private key keep the same as size of prime1
+ *  So check factor is padded with zero or not
+ */
+		 switch(factor){
+			 case 0x3:
+			 case 0x4:
+			 case 0x5:
+				 {
+					 if( data.len > 32 && data.len < 64 )
+					 {
+						 for(r = data.len ; r < 64 ; r ++)
+							 sbuff[r] = 0;
+						 data.len = 64;
+					 }
+					 else if( data.len > 64 && data.len < 128 )
+					 {
+						 for(r = data.len ; r < 128 ; r ++)
+							 sbuff[r] = 0;
+						 data.len = 128;
+					 }
+				 }
+				 break;
+			 default:
+				 break;
+		 }
+
 		 apdu.data=sbuff;
 		 apdu.lc=apdu.datalen=data.len;
 
