@@ -1720,12 +1720,17 @@ static int do_asn1(int argc, char **argv)
 		goto err;
 	}
 	if ((size_t)r != len) {
-		printf("expecting %lu, got only %d bytes.\n", (unsigned long) len, r);
-		goto err;
+		printf("WARNING: expecting %lu, got %d bytes.\n", (unsigned long) len, r);
+		/* some cards return a bogus value for file length. As
+		 * long as the actual length is not higher than the expected
+		 * length, continue */
+		if(r > len) {
+			goto err;
+		}
 	}
 
 	/* asn1 dump */
-	sc_asn1_print_tags(buf, len);
+	sc_asn1_print_tags(buf, r);
 
 	err = 0;
 err:
