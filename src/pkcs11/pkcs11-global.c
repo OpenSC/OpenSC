@@ -26,6 +26,14 @@
 #include <sys/time.h>
 #endif
 
+#ifdef PKCS11_THREAD_LOCKING
+#if defined(HAVE_PTHREAD)
+#include <pthread.h>
+#elif defined(_WIN32)
+#include <windows.h>
+#endif
+#endif /* PKCS11_THREAD_LOCKING */
+
 #include "sc-pkcs11.h"
 
 #ifndef MODULE_APP_NAME
@@ -42,8 +50,10 @@ pid_t initialized_pid = (pid_t)-1;
 static int in_finalize = 0;
 extern CK_FUNCTION_LIST pkcs11_function_list;
 
-#if defined(HAVE_PTHREAD) && defined(PKCS11_THREAD_LOCKING)
-#include <pthread.h>
+#ifdef PKCS11_THREAD_LOCKING
+
+#if defined(HAVE_PTHREAD)
+
 CK_RV mutex_create(void **mutex)
 {
 	pthread_mutex_t *m;
@@ -81,7 +91,10 @@ CK_RV mutex_destroy(void *p)
 
 static CK_C_INITIALIZE_ARGS _def_locks = {
 	mutex_create, mutex_destroy, mutex_lock, mutex_unlock, 0, NULL };
-#elif defined(_WIN32) && defined (PKCS11_THREAD_LOCKING)
+#define HAVE_OS_LOCKING
+
+#elif defined(_WIN32)
+
 CK_RV mutex_create(void **mutex)
 {
 	CRITICAL_SECTION *m;
@@ -114,14 +127,18 @@ CK_RV mutex_destroy(void *p)
 	free(p);
 	return CKR_OK;
 }
+
 static CK_C_INITIALIZE_ARGS _def_locks = {
 	mutex_create, mutex_destroy, mutex_lock, mutex_unlock, 0, NULL };
+#define HAVE_OS_LOCKING
+
 #endif
 
+#endif /* PKCS11_THREAD_LOCKING */
+
 static CK_C_INITIALIZE_ARGS_PTR	global_locking;
-static void *			global_lock = NULL;
-#if (defined(HAVE_PTHREAD) || defined(_WIN32)) && defined(PKCS11_THREAD_LOCKING)
-#define HAVE_OS_LOCKING
+static void *global_lock = NULL;
+#ifdef HAVE_OS_LOCKING
 static CK_C_INITIALIZE_ARGS_PTR default_mutex_funcs = &_def_locks;
 #else
 static CK_C_INITIALIZE_ARGS_PTR default_mutex_funcs = NULL;
