@@ -690,13 +690,7 @@ C_Sign(CK_SESSION_HANDLE hSession,		/* the session's handle */
 		rv = restore_login_state(session->slot);
 		if (rv == CKR_OK)
 			rv = sc_pkcs11_sign_final(session, pSignature, pulSignatureLen);
-		if (rv == CKR_OK) {
-			rv = reset_login_state(session->slot);
-		} else {
-			reset_login_state(session->slot);
-		}
-		if (rv == CKR_USER_NOT_LOGGED_IN)
-			session->slot->login_user = -1;
+		rv = reset_login_state(session->slot, rv);
 	}
 
 out:
@@ -760,13 +754,7 @@ C_SignFinal(CK_SESSION_HANDLE hSession,		/* the session's handle */
 		rv = restore_login_state(session->slot);
 		if (rv == CKR_OK)
 			rv = sc_pkcs11_sign_final(session, pSignature, pulSignatureLen);
-		if (rv == CKR_OK) {
-			rv = reset_login_state(session->slot);
-		} else {
-			reset_login_state(session->slot);
-		}
-		if (rv == CKR_USER_NOT_LOGGED_IN)
-			session->slot->login_user = -1;
+		rv = reset_login_state(session->slot, rv);
 	}
 
 out:
@@ -905,13 +893,7 @@ CK_RV C_Decrypt(CK_SESSION_HANDLE hSession,	/* the session's handle */
 			rv = sc_pkcs11_decr(session, pEncryptedData,
 					ulEncryptedDataLen, pData, pulDataLen);
 		}
-		if (rv == CKR_OK) {
-			rv = reset_login_state(session->slot);
-		} else {
-			reset_login_state(session->slot);
-		}
-		if (rv == CKR_USER_NOT_LOGGED_IN)
-			session->slot->login_user = -1;
+		rv = reset_login_state(session->slot, rv);
 	}
 
 	sc_log(context, "C_Decrypt() = %s", lookup_enum ( RV_T, rv ));
@@ -1024,13 +1006,7 @@ CK_RV C_GenerateKeyPair(CK_SESSION_HANDLE hSession,	/* the session's handle */
 					pPublicKeyTemplate, ulPublicKeyAttributeCount,
 					pPrivateKeyTemplate, ulPrivateKeyAttributeCount,
 					phPublicKey, phPrivateKey);
-		if (rv == CKR_OK) {
-			rv = reset_login_state(session->slot);
-		} else {
-			reset_login_state(session->slot);
-		}
-		if (rv == CKR_USER_NOT_LOGGED_IN)
-			session->slot->login_user = -1;
+		rv = reset_login_state(session->slot, rv);
 	}
 
 out:
@@ -1131,13 +1107,7 @@ CK_RV C_DeriveKey(CK_SESSION_HANDLE hSession,	/* the session's handle */
 			rv = sc_pkcs11_deri(session, pMechanism, object, key_type,
 					hSession, *phKey, key_object);
 		/* TODO if (rv != CK_OK) need to destroy the object */
-		if (rv == CKR_OK) {
-			rv = reset_login_state(session->slot);
-		} else {
-			reset_login_state(session->slot);
-		}
-		if (rv == CKR_USER_NOT_LOGGED_IN)
-			session->slot->login_user = -1;
+		rv = reset_login_state(session->slot, rv);
 
 		break;
 	    default:
@@ -1258,13 +1228,7 @@ CK_RV C_Verify(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		rv = restore_login_state(session->slot);
 		if (rv == CKR_OK)
 			rv = sc_pkcs11_verif_final(session, pSignature, ulSignatureLen);
-		if (rv == CKR_OK) {
-			rv = reset_login_state(session->slot);
-		} else {
-			reset_login_state(session->slot);
-		}
-		if (rv == CKR_USER_NOT_LOGGED_IN)
-			session->slot->login_user = -1;
+		rv = reset_login_state(session->slot, rv);
 	}
 
 out:
@@ -1317,13 +1281,7 @@ CK_RV C_VerifyFinal(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		rv = restore_login_state(session->slot);
 		if (rv == CKR_OK)
 			rv = sc_pkcs11_verif_final(session, pSignature, ulSignatureLen);
-		if (rv == CKR_OK) {
-			rv = reset_login_state(session->slot);
-		} else {
-			reset_login_state(session->slot);
-		}
-		if (rv == CKR_USER_NOT_LOGGED_IN)
-			session->slot->login_user = -1;
+		rv = reset_login_state(session->slot, rv);
 	}
 
 	sc_log(context, "C_VerifyFinal() = %s", lookup_enum ( RV_T, rv ));
