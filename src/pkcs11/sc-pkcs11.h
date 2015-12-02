@@ -352,7 +352,7 @@ CK_RV slot_find_changed(CK_SLOT_ID_PTR idp, int mask);
 
 /* Login tracking functions */
 CK_RV restore_login_state(struct sc_pkcs11_slot *slot);
-CK_RV reset_login_state(struct sc_pkcs11_slot *slot);
+CK_RV reset_login_state(struct sc_pkcs11_slot *slot, CK_RV rv);
 CK_RV push_login_state(struct sc_pkcs11_slot *slot,
 		CK_USER_TYPE userType, CK_CHAR_PTR pPin, CK_ULONG ulPinLen);
 void pop_login_state(struct sc_pkcs11_slot *slot);

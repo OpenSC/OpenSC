@@ -154,14 +154,21 @@ CK_RV restore_login_state(struct sc_pkcs11_slot *slot)
 	return r;
 }
 
-CK_RV reset_login_state(struct sc_pkcs11_slot *slot)
+CK_RV reset_login_state(struct sc_pkcs11_slot *slot, CK_RV rv)
 {
-	if (sc_pkcs11_conf.atomic
-			&& slot && slot->p11card && slot->p11card->framework) {
-		slot->p11card->framework->logout(slot);
+	if (slot) {
+		if (sc_pkcs11_conf.atomic
+				&& slot->p11card && slot->p11card->framework) {
+			slot->p11card->framework->logout(slot);
+		}
+
+		if (rv == CKR_USER_NOT_LOGGED_IN) {
+			slot->login_user = -1;
+			pop_all_login_states(slot);
+		}
 	}
 
-	return CKR_OK;
+	return rv;
 }
 
 CK_RV push_login_state(struct sc_pkcs11_slot *slot,
