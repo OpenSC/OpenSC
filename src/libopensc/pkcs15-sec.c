@@ -91,6 +91,7 @@ int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 	sc_security_env_t senv;
 	const struct sc_pkcs15_prkey_info *prkey = (const struct sc_pkcs15_prkey_info *) obj->data;
 	unsigned long pad_flags = 0, sec_flags = 0;
+	int revalidated_cached_pin;
 
 	LOG_FUNC_CALLED(ctx);
 
@@ -147,24 +148,31 @@ int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 	r = sc_lock(p15card->card);
 	LOG_TEST_RET(ctx, r, "sc_lock() failed");
 
-	if (prkey->path.len != 0 || prkey->path.aid.len != 0) {
-		r = select_key_file(p15card, prkey, &senv);
-		if (r < 0) {
-			sc_unlock(p15card->card);
-			LOG_TEST_RET(ctx, r,"Unable to select private key file");
+	revalidated_cached_pin = 0;
+	do {
+		if (prkey->path.len != 0 || prkey->path.aid.len != 0) {
+			r = select_key_file(p15card, prkey, &senv);
+			if (r < 0) {
+				sc_log(ctx, "Unable to select private key file");
+			}
 		}
-	}
 
-	r = sc_set_security_env(p15card->card, &senv, 0);
-	if (r < 0) {
-		sc_unlock(p15card->card);
-		LOG_TEST_RET(ctx, r, "sc_set_security_env() failed");
-	}
-	r = sc_decipher(p15card->card, in, inlen, out, outlen);
-	if (r == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED) {
-		if (sc_pkcs15_pincache_revalidate(p15card, obj) == SC_SUCCESS)
+		if (r == SC_SUCCESS)
+			r = sc_set_security_env(p15card->card, &senv, 0);
+		if (r == SC_SUCCESS)
 			r = sc_decipher(p15card->card, in, inlen, out, outlen);
-	}
+
+		if (revalidated_cached_pin)
+			/* only re-validate once */
+			break;
+		if (r == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED) {
+			r = sc_pkcs15_pincache_revalidate(p15card, obj);
+			if (r < 0)
+				break;
+			revalidated_cached_pin = 1;
+		}
+	} while (revalidated_cached_pin);
+
 	sc_unlock(p15card->card);
 	LOG_TEST_RET(ctx, r, "sc_decipher() failed");
 
@@ -196,6 +204,7 @@ int sc_pkcs15_derive(struct sc_pkcs15_card *p15card,
 	sc_security_env_t senv;
 	const struct sc_pkcs15_prkey_info *prkey = (const struct sc_pkcs15_prkey_info *) obj->data;
 	unsigned long pad_flags = 0, sec_flags = 0;
+	int revalidated_cached_pin;
 
 	LOG_FUNC_CALLED(ctx);
 
@@ -251,27 +260,34 @@ int sc_pkcs15_derive(struct sc_pkcs15_card *p15card,
 	r = sc_lock(p15card->card);
 	LOG_TEST_RET(ctx, r, "sc_lock() failed");
 
-	if (prkey->path.len != 0 || prkey->path.aid.len != 0)   {
-		r = select_key_file(p15card, prkey, &senv);
-		if (r < 0) {
-			sc_unlock(p15card->card);
-			LOG_TEST_RET(ctx, r,"Unable to select private key file");
+	revalidated_cached_pin = 0;
+	do {
+		if (prkey->path.len != 0 || prkey->path.aid.len != 0)   {
+			r = select_key_file(p15card, prkey, &senv);
+			if (r < 0) {
+				sc_log(ctx, "Unable to select private key file");
+			}
 		}
-	}
 
-	r = sc_set_security_env(p15card->card, &senv, 0);
-	if (r < 0) {
-		sc_unlock(p15card->card);
-		LOG_TEST_RET(ctx, r, "sc_set_security_env() failed");
-	}
-/* TODO Do we need a sc_derive? PIV at least can use the decipher,
- * senv.operation       = SC_SEC_OPERATION_DERIVE;
- */
-	r = sc_decipher(p15card->card, in, inlen, out, *poutlen);
-	if (r == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED) {
-		if (sc_pkcs15_pincache_revalidate(p15card, obj) == SC_SUCCESS)
+		if (r == SC_SUCCESS)
+			r = sc_set_security_env(p15card->card, &senv, 0);
+		/* TODO Do we need a sc_derive? PIV at least can use the decipher,
+		 * senv.operation       = SC_SEC_OPERATION_DERIVE;
+		 */
+		if (r == SC_SUCCESS)
 			r = sc_decipher(p15card->card, in, inlen, out, *poutlen);
-	}
+
+		if (revalidated_cached_pin)
+			/* only re-validate once */
+			break;
+		if (r == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED) {
+			r = sc_pkcs15_pincache_revalidate(p15card, obj);
+			if (r < 0)
+				break;
+			revalidated_cached_pin = 1;
+		}
+	} while (revalidated_cached_pin);
+
 	sc_unlock(p15card->card);
 	LOG_TEST_RET(ctx, r, "sc_decipher/derive() failed");
 
@@ -308,6 +324,7 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	u8 buf[1024], *tmp;
 	size_t modlen;
 	unsigned long pad_flags = 0, sec_flags = 0;
+	int revalidated_cached_pin;
 
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx, "security operation flags 0x%X", flags);
@@ -478,25 +495,30 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	r = sc_lock(p15card->card);
 	LOG_TEST_RET(ctx, r, "sc_lock() failed");
 
-	sc_log(ctx, "Private key path '%s'", sc_print_path(&prkey->path));
-	if (prkey->path.len != 0 || prkey->path.aid.len != 0) {
-		r = select_key_file(p15card, prkey, &senv);
-		if (r < 0) {
-			sc_unlock(p15card->card);
-			LOG_TEST_RET(ctx, r,"Unable to select private key file");
+	revalidated_cached_pin = 0;
+	do {
+		if (prkey->path.len != 0 || prkey->path.aid.len != 0) {
+			r = select_key_file(p15card, prkey, &senv);
+			if (r < 0) {
+				sc_log(ctx, "Unable to select private key file");
+			}
 		}
-	}
 
-	r = sc_set_security_env(p15card->card, &senv, 0);
-	if (r < 0) {
-		sc_unlock(p15card->card);
-		LOG_TEST_RET(ctx, r, "sc_set_security_env() failed");
-	}
-
-	r = sc_compute_signature(p15card->card, tmp, inlen, out, outlen);
-	if (r == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED)
-		if (sc_pkcs15_pincache_revalidate(p15card, obj) == SC_SUCCESS)
+		if (r == SC_SUCCESS)
+			r = sc_set_security_env(p15card->card, &senv, 0);
+		if (r == SC_SUCCESS)
 			r = sc_compute_signature(p15card->card, tmp, inlen, out, outlen);
+
+		if (revalidated_cached_pin)
+			/* only re-validate once */
+			break;
+		if (r == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED) {
+			r = sc_pkcs15_pincache_revalidate(p15card, obj);
+			if (r < 0)
+				break;
+			revalidated_cached_pin = 1;
+		}
+	} while (revalidated_cached_pin);
 
 	sc_mem_clear(buf, sizeof(buf));
 	sc_unlock(p15card->card);
