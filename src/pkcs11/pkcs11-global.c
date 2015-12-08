@@ -656,9 +656,13 @@ CK_RV C_WaitForSlotEvent(CK_FLAGS flags,   /* blocking/nonblocking flag */
 		mask |= SC_EVENT_READER_EVENTS;
 	}
 
+
+	sc_ctx_detect_readers(context);
+
 	rv = slot_find_changed(&slot_id, mask);
-	if ((rv == CKR_OK) || (flags & CKF_DONT_BLOCK))
+	if (rv == CKR_OK   ||  (rv != CKR_TOKEN_NOT_PRESENT  && (flags & CKF_DONT_BLOCK) ))
 		goto out;
+	
 
 again:
 	sc_log(context, "C_WaitForSlotEvent() reader_states:%p", reader_states);
