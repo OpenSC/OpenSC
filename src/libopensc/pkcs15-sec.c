@@ -34,8 +34,8 @@
 #include "pkcs15.h"
 
 static int select_key_file(struct sc_pkcs15_card *p15card,
-			   const struct sc_pkcs15_prkey_info *prkey,
-			   sc_security_env_t *senv)
+		const struct sc_pkcs15_prkey_info *prkey,
+		sc_security_env_t *senv)
 {
 	sc_context_t *ctx = p15card->card->ctx;
 	sc_path_t path, file_id;
@@ -49,8 +49,8 @@ static int select_key_file(struct sc_pkcs15_card *p15card,
 	/* TODO: Why file_app may be NULL -- at least 3F00 has to be present?
 	 * Check validity of the following assumption. */
 	/* For pkcs15-emulated cards, the file_app may be NULL,
-	   in that case we allways assume an absolute path */
-	if (!prkey->path.len && prkey->path.aid.len)   {
+	 * in that case we allways assume an absolute path */
+	if (!prkey->path.len && prkey->path.aid.len) {
 		/* Private key is a SDO allocated in application DF */
 		path = prkey->path;
 	}
@@ -62,7 +62,7 @@ static int select_key_file(struct sc_pkcs15_card *p15card,
 		senv->file_ref = file_id;
 		senv->flags |= SC_SEC_ENV_FILE_REF_PRESENT;
 	}
-	else if (prkey->path.len > 2)   {
+	else if (prkey->path.len > 2) {
 		path = prkey->path;
 		memcpy(file_id.value, prkey->path.value + prkey->path.len - 2, 2);
 		file_id.len = 2;
@@ -70,7 +70,7 @@ static int select_key_file(struct sc_pkcs15_card *p15card,
 		senv->file_ref = file_id;
 		senv->flags |= SC_SEC_ENV_FILE_REF_PRESENT;
 	}
-	else   {
+	else {
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "invalid private key path");
 	}
 
@@ -79,11 +79,122 @@ static int select_key_file(struct sc_pkcs15_card *p15card,
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
+
+static int use_key(struct sc_pkcs15_card *p15card,
+		const struct sc_pkcs15_object *obj,
+		sc_security_env_t *senv,
+		int (*card_command)(sc_card_t *card,
+			 const u8 * in, size_t inlen,
+			 u8 * out, size_t outlen),
+		const u8 * in, size_t inlen, u8 * out, size_t outlen)
+{
+	int r = SC_SUCCESS;
+	int revalidated_cached_pin = 0;
+	const struct sc_pkcs15_prkey_info *prkey = (const struct sc_pkcs15_prkey_info *) obj->data;
+
+	r = sc_lock(p15card->card);
+	LOG_TEST_RET(p15card->card->ctx, r, "sc_lock() failed");
+
+	do {
+		if (prkey->path.len != 0 || prkey->path.aid.len != 0) {
+			r = select_key_file(p15card, prkey, senv);
+			if (r < 0) {
+				sc_log(p15card->card->ctx,
+						"Unable to select private key file");
+			}
+		}
+		if (r == SC_SUCCESS)
+			r = sc_set_security_env(p15card->card, senv, 0);
+
+		if (r == SC_SUCCESS)
+			r = card_command(p15card->card, in, inlen, out, outlen);
+
+		if (revalidated_cached_pin)
+			/* only re-validate once */
+			break;
+		if (r == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED) {
+			r = sc_pkcs15_pincache_revalidate(p15card, obj);
+			if (r < 0)
+				break;
+			revalidated_cached_pin = 1;
+		}
+	} while (revalidated_cached_pin);
+
+	sc_unlock(p15card->card);
+
+	return r;
+}
+
+static int format_senv(struct sc_pkcs15_card *p15card,
+		const struct sc_pkcs15_object *obj,
+		sc_security_env_t *senv_out, sc_algorithm_info_t **alg_info_out)
+{
+	sc_context_t *ctx = p15card->card->ctx;
+	const struct sc_pkcs15_prkey_info *prkey = (const struct sc_pkcs15_prkey_info *) obj->data;
+
+	memset(senv_out, 0, sizeof(*senv_out));
+
+	/* Card driver should have the access to supported algorithms from 'tokenInfo'. So that
+	 * it can get value of card specific 'AlgorithmInfo::algRef'. */
+	memcpy(senv_out->supported_algos, &p15card->tokeninfo->supported_algos, sizeof(senv_out->supported_algos));
+
+	if ((obj->type & SC_PKCS15_TYPE_CLASS_MASK) != SC_PKCS15_TYPE_PRKEY)
+		LOG_TEST_RET(ctx, SC_ERROR_NOT_ALLOWED, "This is not a private key");
+
+	/* If the key is not native, we can't operate with it. */
+	if (!prkey->native)
+		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "This key is not native, cannot operate with it");
+
+	switch (obj->type) {
+		case SC_PKCS15_TYPE_PRKEY_RSA:
+			*alg_info_out = sc_card_find_rsa_alg(p15card->card, prkey->modulus_length);
+			if (*alg_info_out == NULL) {
+				sc_log(ctx, "Card does not support RSA with key length %d", prkey->modulus_length);
+				LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
+			}
+			senv_out->algorithm = SC_ALGORITHM_RSA;
+			break;
+
+		case SC_PKCS15_TYPE_PRKEY_GOSTR3410:
+			*alg_info_out = sc_card_find_gostr3410_alg(p15card->card, prkey->modulus_length);
+			if (alg_info_out == NULL) {
+				sc_log(ctx, "Card does not support GOSTR3410 with key length %d", prkey->modulus_length);
+				LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
+			}
+			senv_out->algorithm = SC_ALGORITHM_GOSTR3410;
+			break;
+
+		case SC_PKCS15_TYPE_PRKEY_EC:
+			*alg_info_out = sc_card_find_ec_alg(p15card->card, prkey->field_length, NULL);
+			if (*alg_info_out == NULL) {
+				sc_log(ctx, "Card does not support EC with field_size %d", prkey->field_length);
+				LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
+			}
+			senv_out->algorithm = SC_ALGORITHM_EC;
+
+			senv_out->flags |= SC_SEC_ENV_ALG_REF_PRESENT;
+			senv_out->algorithm_ref = prkey->field_length;
+			break;
+			/* add other crypto types here */
+		default:
+			LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Key type not supported");
+	}
+	senv_out->flags |= SC_SEC_ENV_ALG_PRESENT;
+
+	/* optional keyReference attribute (the default value is -1) */
+	if (prkey->key_reference >= 0) {
+		senv_out->key_ref_len = 1;
+		senv_out->key_ref[0] = prkey->key_reference & 0xFF;
+		senv_out->flags |= SC_SEC_ENV_KEY_REF_PRESENT;
+	}
+
+	return SC_SUCCESS;
+}
  
 int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
-		       const struct sc_pkcs15_object *obj,
-		       unsigned long flags,
-		       const u8 * in, size_t inlen, u8 *out, size_t outlen)
+		const struct sc_pkcs15_object *obj,
+		unsigned long flags,
+		const u8 * in, size_t inlen, u8 *out, size_t outlen)
 {
 	sc_context_t *ctx = p15card->card->ctx;
 	int r;
@@ -93,80 +204,21 @@ int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 	unsigned long pad_flags = 0, sec_flags = 0;
 
 	LOG_FUNC_CALLED(ctx);
-
-	memset(&senv, 0, sizeof(senv));
-
-	/* Card driver should have the access to supported algorithms from 'tokenInfo'. So that
-	 * it can get value of card specific 'AlgorithmInfo::algRef'. */
-	memcpy(&senv.supported_algos, &p15card->tokeninfo->supported_algos, sizeof(senv.supported_algos));
-
-	/* If the key is not native, we can't operate with it. */
-	if (!prkey->native)
-		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "This key is not native, cannot operate with it");
-
+	
 	if (!(prkey->usage & (SC_PKCS15_PRKEY_USAGE_DECRYPT|SC_PKCS15_PRKEY_USAGE_UNWRAP)))
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_ALLOWED, "This key cannot be used for decryption");
 
-	switch (obj->type) {
-		case SC_PKCS15_TYPE_PRKEY_RSA:
-			alg_info = sc_card_find_rsa_alg(p15card->card, prkey->modulus_length);
-			if (alg_info == NULL) {
-				sc_log(ctx, "Card does not support RSA with key length %d", prkey->modulus_length);
-				LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
-			}
-			senv.algorithm = SC_ALGORITHM_RSA;
-			break;
-
-		case SC_PKCS15_TYPE_PRKEY_GOSTR3410:
-			alg_info = sc_card_find_gostr3410_alg(p15card->card, prkey->modulus_length);
-			if (alg_info == NULL) {
-				sc_log(ctx, "Card does not support GOSTR3410 with key length %d", prkey->modulus_length);
-				LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
-			}
-			senv.algorithm = SC_ALGORITHM_GOSTR3410;
-			break;
-
-		default:
-			LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED,"Key type not supported");
-	}
+	r = format_senv(p15card, obj, &senv, &alg_info);
+	LOG_TEST_RET(ctx, r, "Could not initialize security environment");
+	senv.operation = SC_SEC_OPERATION_DECIPHER;
 
 	r = sc_get_encoding_flags(ctx, flags, alg_info->flags, &pad_flags, &sec_flags);
 	LOG_TEST_RET(ctx, r, "cannot encode security operation flags");
-
 	senv.algorithm_flags = sec_flags;
-	senv.operation       = SC_SEC_OPERATION_DECIPHER;
-	senv.flags           = 0;
-	/* optional keyReference attribute (the default value is -1) */
-	if (prkey->key_reference >= 0) {
-		senv.key_ref_len = 1;
-		senv.key_ref[0] = prkey->key_reference & 0xFF;
-		senv.flags |= SC_SEC_ENV_KEY_REF_PRESENT;
-	}
-	senv.flags |= SC_SEC_ENV_ALG_PRESENT;
 
-	r = sc_lock(p15card->card);
-	LOG_TEST_RET(ctx, r, "sc_lock() failed");
-
-	if (prkey->path.len != 0 || prkey->path.aid.len != 0) {
-		r = select_key_file(p15card, prkey, &senv);
-		if (r < 0) {
-			sc_unlock(p15card->card);
-			LOG_TEST_RET(ctx, r,"Unable to select private key file");
-		}
-	}
-
-	r = sc_set_security_env(p15card->card, &senv, 0);
-	if (r < 0) {
-		sc_unlock(p15card->card);
-		LOG_TEST_RET(ctx, r, "sc_set_security_env() failed");
-	}
-	r = sc_decipher(p15card->card, in, inlen, out, outlen);
-	if (r == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED) {
-		if (sc_pkcs15_pincache_revalidate(p15card, obj) == SC_SUCCESS)
-			r = sc_decipher(p15card->card, in, inlen, out, outlen);
-	}
-	sc_unlock(p15card->card);
-	LOG_TEST_RET(ctx, r, "sc_decipher() failed");
+	r = use_key(p15card, obj, &senv, sc_decipher, in, inlen, out,
+			outlen);
+	LOG_TEST_RET(ctx, r, "use_key() failed");
 
 	/* Strip any padding */
 	if (pad_flags & SC_ALGORITHM_RSA_PAD_PKCS1) {
@@ -185,10 +237,10 @@ int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
  * In that case r = 0, and *poutlen = expected size
  */
 int sc_pkcs15_derive(struct sc_pkcs15_card *p15card,
-		       const struct sc_pkcs15_object *obj,
-		       unsigned long flags,
-		       const u8 * in, size_t inlen, u8 *out,
-		       unsigned long *poutlen)
+		const struct sc_pkcs15_object *obj,
+		unsigned long flags,
+		const u8 * in, size_t inlen, u8 *out,
+		unsigned long *poutlen)
 {
 	sc_context_t *ctx = p15card->card->ctx;
 	int r;
@@ -199,81 +251,32 @@ int sc_pkcs15_derive(struct sc_pkcs15_card *p15card,
 
 	LOG_FUNC_CALLED(ctx);
 
-	memset(&senv, 0, sizeof(senv));
-
-	/* Card driver should have the access to supported algorithms from 'tokenInfo'. So that
-	 * it can get value of card specific 'AlgorithmInfo::algRef'. */
-	memcpy(&senv.supported_algos, &p15card->tokeninfo->supported_algos, sizeof(senv.supported_algos));
-
-	/* If the key is not native, we can't operate with it. */
-	if (!prkey->native)
-		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "This key is not native, cannot operate with it");
-
 	if (!(prkey->usage & (SC_PKCS15_PRKEY_USAGE_DERIVE)))
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_ALLOWED, "This key cannot be used for derivation");
 
 	switch (obj->type) {
 		case SC_PKCS15_TYPE_PRKEY_EC:
-			alg_info = sc_card_find_ec_alg(p15card->card, prkey->field_length, NULL);
-			if (alg_info == NULL) {
-				sc_log(ctx, "Card does not support EC with field_size %d", prkey->field_length);
-				LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
-			}
-
 			if (out == NULL || *poutlen < (prkey->field_length + 7) / 8) {
-			    *poutlen = (prkey->field_length + 7) / 8;
-			    r = 0; /* say no data to return */
-			    goto out;
+				*poutlen = (prkey->field_length + 7) / 8;
+				r = 0; /* say no data to return */
+				LOG_FUNC_RETURN(ctx, r);
 			}
-
-			senv.algorithm = SC_ALGORITHM_EC;
-			senv.flags |= SC_SEC_ENV_ALG_PRESENT;
-
-			senv.flags |= SC_SEC_ENV_ALG_REF_PRESENT;
-			senv.algorithm_ref = prkey->field_length;
 			break;
 		default:
 			LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED,"Key type not supported");
 	}
 
+	r = format_senv(p15card, obj, &senv, &alg_info);
+	LOG_TEST_RET(ctx, r, "Could not initialize security environment");
+	senv.operation = SC_SEC_OPERATION_DERIVE;
+
 	r = sc_get_encoding_flags(ctx, flags, alg_info->flags, &pad_flags, &sec_flags);
 	LOG_TEST_RET(ctx, r, "cannot encode security operation flags");
-
 	senv.algorithm_flags = sec_flags;
-	senv.operation       = SC_SEC_OPERATION_DERIVE;
-	/* optional keyReference attribute (the default value is -1) */
-	if (prkey->key_reference >= 0) {
-		senv.key_ref_len = 1;
-		senv.key_ref[0] = prkey->key_reference & 0xFF;
-		senv.flags |= SC_SEC_ENV_KEY_REF_PRESENT;
-	}
 
-	r = sc_lock(p15card->card);
-	LOG_TEST_RET(ctx, r, "sc_lock() failed");
-
-	if (prkey->path.len != 0 || prkey->path.aid.len != 0)   {
-		r = select_key_file(p15card, prkey, &senv);
-		if (r < 0) {
-			sc_unlock(p15card->card);
-			LOG_TEST_RET(ctx, r,"Unable to select private key file");
-		}
-	}
-
-	r = sc_set_security_env(p15card->card, &senv, 0);
-	if (r < 0) {
-		sc_unlock(p15card->card);
-		LOG_TEST_RET(ctx, r, "sc_set_security_env() failed");
-	}
-/* TODO Do we need a sc_derive? PIV at least can use the decipher,
- * senv.operation       = SC_SEC_OPERATION_DERIVE;
- */
-	r = sc_decipher(p15card->card, in, inlen, out, *poutlen);
-	if (r == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED) {
-		if (sc_pkcs15_pincache_revalidate(p15card, obj) == SC_SUCCESS)
-			r = sc_decipher(p15card->card, in, inlen, out, *poutlen);
-	}
-	sc_unlock(p15card->card);
-	LOG_TEST_RET(ctx, r, "sc_decipher/derive() failed");
+	r = use_key(p15card, obj, &senv, sc_decipher, in, inlen, out,
+			*poutlen);
+	LOG_TEST_RET(ctx, r, "use_key() failed");
 
 	/* Strip any padding */
 	if (pad_flags & SC_ALGORITHM_RSA_PAD_PKCS1) {
@@ -283,9 +286,8 @@ int sc_pkcs15_derive(struct sc_pkcs15_card *p15card,
 	}
 
 	/* If card stores derived key on card, then no data is returned
-         * and the key must be used on the card. */
+	 * and the key must be used on the card. */
 	*poutlen = r;
-out:
 	LOG_FUNC_RETURN(ctx, r);
 }
 
@@ -310,62 +312,25 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	unsigned long pad_flags = 0, sec_flags = 0;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "security operation flags 0x%X", flags);
-
-	memset(&senv, 0, sizeof(senv));
-
-	/* Card driver should have the access to supported algorithms from 'tokenInfo'. So that
-	 * it can get value of card specific 'AlgorithmInfo::algRef'. */
-	memcpy(&senv.supported_algos, &p15card->tokeninfo->supported_algos, sizeof(senv.supported_algos));
-
-	if ((obj->type & SC_PKCS15_TYPE_CLASS_MASK) != SC_PKCS15_TYPE_PRKEY)
-		LOG_TEST_RET(ctx, SC_ERROR_NOT_ALLOWED, "This is not a private key");
-
-	/* If the key is not native, we can't operate with it. */
-	if (!prkey->native)
-		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "This key is not native, cannot operate with it");
 
 	if (!(prkey->usage & (SC_PKCS15_PRKEY_USAGE_SIGN|SC_PKCS15_PRKEY_USAGE_SIGNRECOVER|
-	                      SC_PKCS15_PRKEY_USAGE_NONREPUDIATION)))
+					SC_PKCS15_PRKEY_USAGE_NONREPUDIATION)))
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_ALLOWED, "This key cannot be used for signing");
+
+	r = format_senv(p15card, obj, &senv, &alg_info);
+	LOG_TEST_RET(ctx, r, "Could not initialize security environment");
+	senv.operation = SC_SEC_OPERATION_SIGN;
 
 	switch (obj->type) {
 		case SC_PKCS15_TYPE_PRKEY_RSA:
 			modlen = prkey->modulus_length / 8;
-			alg_info = sc_card_find_rsa_alg(p15card->card, prkey->modulus_length);
-			if (alg_info == NULL) {
-				sc_log(ctx, "Card does not support RSA with key length %d", prkey->modulus_length);
-				LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
-			}
-			senv.flags |= SC_SEC_ENV_ALG_PRESENT;
-			senv.algorithm = SC_ALGORITHM_RSA;
 			break;
-
 		case SC_PKCS15_TYPE_PRKEY_GOSTR3410:
 			modlen = (prkey->modulus_length + 7) / 8 * 2;
-			alg_info = sc_card_find_gostr3410_alg(p15card->card, prkey->modulus_length);
-			if (alg_info == NULL) {
-				sc_log(ctx, "Card does not support GOSTR3410 with key length %d", prkey->modulus_length);
-				LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
-			}
-			senv.flags |= SC_SEC_ENV_ALG_PRESENT;
-			senv.algorithm = SC_ALGORITHM_GOSTR3410;
 			break;
-
 		case SC_PKCS15_TYPE_PRKEY_EC:
 			modlen = ((prkey->field_length +7) / 8) * 2;  /* 2*nLen */ 
-			alg_info = sc_card_find_ec_alg(p15card->card, prkey->field_length, NULL);
-			if (alg_info == NULL) {
-				sc_log(ctx, "Card does not support EC with field_size %d", prkey->field_length);
-				LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
-			}
-			senv.algorithm = SC_ALGORITHM_EC;
-			senv.flags |= SC_SEC_ENV_ALG_PRESENT;
-
-			senv.flags |= SC_SEC_ENV_ALG_REF_PRESENT;
-			senv.algorithm_ref = prkey->field_length;
 			break;
-			/* add other crypto types here */
 		default:
 			LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Key type not supported");
 	}
@@ -389,7 +354,7 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	 * senv.algorithm_flags: what the card will have to do */
 
 	/* if the card has SC_ALGORITHM_NEED_USAGE set, and the
-	   key is for signing and decryption, we need to emulate signing */
+	 * key is for signing and decryption, we need to emulate signing */
 	/* TODO: -DEE assume only RSA keys will ever use _NEED_USAGE */
 
 	sc_log(ctx, "supported algorithm flags 0x%X, private key usage 0x%X", alg_info->flags, prkey->usage);
@@ -421,7 +386,7 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	/* If the card doesn't support the requested algorithm, see if we
 	 * can strip the input so a more restrictive algo can be used */
 	if ((flags == (SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE)) &&
-	    !(alg_info->flags & (SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_HASH_NONE))) {
+			!(alg_info->flags & (SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_HASH_NONE))) {
 		unsigned int algo;
 		size_t tmplen = sizeof(buf);
 
@@ -466,41 +431,10 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 		inlen = modlen;
 	}
 
-	senv.operation = SC_SEC_OPERATION_SIGN;
-
-	/* optional keyReference attribute (the default value is -1) */
-	if (prkey->key_reference >= 0) {
-		senv.key_ref_len = 1;
-		senv.key_ref[0] = prkey->key_reference & 0xFF;
-		senv.flags |= SC_SEC_ENV_KEY_REF_PRESENT;
-	}
-
-	r = sc_lock(p15card->card);
-	LOG_TEST_RET(ctx, r, "sc_lock() failed");
-
-	sc_log(ctx, "Private key path '%s'", sc_print_path(&prkey->path));
-	if (prkey->path.len != 0 || prkey->path.aid.len != 0) {
-		r = select_key_file(p15card, prkey, &senv);
-		if (r < 0) {
-			sc_unlock(p15card->card);
-			LOG_TEST_RET(ctx, r,"Unable to select private key file");
-		}
-	}
-
-	r = sc_set_security_env(p15card->card, &senv, 0);
-	if (r < 0) {
-		sc_unlock(p15card->card);
-		LOG_TEST_RET(ctx, r, "sc_set_security_env() failed");
-	}
-
-	r = sc_compute_signature(p15card->card, tmp, inlen, out, outlen);
-	if (r == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED)
-		if (sc_pkcs15_pincache_revalidate(p15card, obj) == SC_SUCCESS)
-			r = sc_compute_signature(p15card->card, tmp, inlen, out, outlen);
-
+	r = use_key(p15card, obj, &senv, sc_compute_signature, tmp, inlen,
+			out, outlen);
+	LOG_TEST_RET(ctx, r, "use_key() failed");
 	sc_mem_clear(buf, sizeof(buf));
-	sc_unlock(p15card->card);
-	LOG_TEST_RET(ctx, r, "sc_compute_signature() failed");
 
 	LOG_FUNC_RETURN(ctx, r);
 }

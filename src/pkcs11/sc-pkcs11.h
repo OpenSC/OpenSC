@@ -78,6 +78,7 @@ struct sc_pkcs11_config {
 	unsigned int slots_per_card;
 	unsigned char hide_empty_tokens;
 	unsigned char lock_login;
+	unsigned char atomic;
 	unsigned char init_sloppy;
 	unsigned int pin_unblock_style;
 	unsigned int create_puk_slot;
@@ -218,6 +219,7 @@ struct sc_pkcs11_slot {
 
 	int fw_data_idx;		/* Index of framework data */
 	struct sc_app_info *app_info;	/* Application assosiated to slot */
+	list_t logins;			/* tracks all calls to C_Login if atomic operations are requested */
 };
 typedef struct sc_pkcs11_slot sc_pkcs11_slot_t;
 
@@ -347,6 +349,14 @@ CK_RV slot_get_token(CK_SLOT_ID id, struct sc_pkcs11_slot **);
 CK_RV slot_token_removed(CK_SLOT_ID id);
 CK_RV slot_allocate(struct sc_pkcs11_slot **, struct sc_pkcs11_card *);
 CK_RV slot_find_changed(CK_SLOT_ID_PTR idp, int mask);
+
+/* Login tracking functions */
+CK_RV restore_login_state(struct sc_pkcs11_slot *slot);
+CK_RV reset_login_state(struct sc_pkcs11_slot *slot, CK_RV rv);
+CK_RV push_login_state(struct sc_pkcs11_slot *slot,
+		CK_USER_TYPE userType, CK_CHAR_PTR pPin, CK_ULONG ulPinLen);
+void pop_login_state(struct sc_pkcs11_slot *slot);
+void pop_all_login_states(struct sc_pkcs11_slot *slot);
 
 /* Session manipulation */
 CK_RV get_session(CK_SESSION_HANDLE hSession, struct sc_pkcs11_session ** session);
