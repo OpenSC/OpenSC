@@ -588,6 +588,7 @@ static int sc_pkcs15emu_sc_hsm_add_prkd(sc_pkcs15_card_t * p15card, u8 keyid) {
 
 	key_info = (sc_pkcs15_prkey_info_t *)prkd.data;
 	key_info->key_reference = keyid;
+	key_info->path.aid.len = 0;
 
 	if (prkd.type == SC_PKCS15_TYPE_PRKEY_RSA) {
 		r = sc_pkcs15emu_add_rsa_prkey(p15card, &prkd, key_info);
