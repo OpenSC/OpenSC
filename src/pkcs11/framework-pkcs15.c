@@ -1391,6 +1391,7 @@ static CK_RV
 pkcs15_release_token(struct sc_pkcs11_card *p11card, void *fw_token)
 {
 	sc_log(context, "pkcs15_release_token() not implemented");
+	free(fw_token);
 	return CKR_FUNCTION_REJECTED;
 }
 

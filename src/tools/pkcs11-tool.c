@@ -974,6 +974,7 @@ static void list_slots(int tokens, int refresh, int print)
 		rv = p11->C_GetSlotList(tokens, NULL, &p11_num_slots);
 		if (rv != CKR_OK)
 			p11_fatal("C_GetSlotList(NULL)", rv);
+		free(p11_slots);
 		p11_slots = calloc(p11_num_slots, sizeof(CK_SLOT_ID));
 		if (p11_slots == NULL) {
 			perror("calloc failed");
