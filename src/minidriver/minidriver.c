@@ -3165,16 +3165,24 @@ DWORD WINAPI CardDeauthenticate(__in PCARD_DATA pCardData,
 	__in LPWSTR pwszUserId,
 	__in DWORD dwFlags)
 {
+	VENDOR_SPECIFIC* vs = NULL;
+	int rv;
 	logprintf(pCardData, 1, "\nP:%d T:%d pCardData:%p ",GetCurrentProcessId(), GetCurrentThreadId(), pCardData);
 	logprintf(pCardData, 1, "CardDeauthenticate(%S) %d\n", NULLWSTR(pwszUserId), dwFlags);
 
 	if(!pCardData)
 		return SCARD_E_INVALID_PARAMETER;
 
-	/* TODO Reset PKCS#15 PIN object 'validated' flag */
+	vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
 
+	sc_pkcs15_pincache_clear(vs->p15card);
+
+	rv = sc_logout(vs->p15card->card);
+
+	if (rv != SC_SUCCESS)
+		return SCARD_E_UNSUPPORTED_FEATURE;
 	/* force a reset of a card - SCARD_S_SUCCESS do not lead to the reset of the card and leave it still authenticated */
-	return SCARD_E_UNSUPPORTED_FEATURE;
+	return SCARD_S_SUCCESS;
 }
 
 DWORD WINAPI CardCreateDirectory(__in PCARD_DATA pCardData,
@@ -4835,12 +4843,7 @@ DWORD WINAPI CardDeauthenticateEx(__in PCARD_DATA pCardData,
 	logprintf(pCardData, 1, "\nP:%d T:%d pCardData:%p ",GetCurrentProcessId(), GetCurrentThreadId(), pCardData);
 	logprintf(pCardData, 1, "CardDeauthenticateEx PinId=%d dwFlags=0x%08X\n",PinId, dwFlags);
 
-	if (!pCardData) return SCARD_E_INVALID_PARAMETER;
-
-	/* TODO Reset PKCS#15 PIN object 'validated' flag */
-
-	/* force a reset of a card - SCARD_S_SUCCESS does not lead to the reset of the card and leave it still authenticated */
-	return SCARD_E_UNSUPPORTED_FEATURE;
+	return CardDeauthenticate(pCardData, wszCARD_USER_USER, 0);
 }
 
 DWORD WINAPI CardGetContainerProperty(__in PCARD_DATA pCardData,
@@ -5554,8 +5557,7 @@ DWORD WINAPI CardAcquireContext(__inout PCARD_DATA pCardData, __in DWORD dwFlags
 	pCardData->pfnCardAuthenticateChallenge = CardAuthenticateChallenge;
 	pCardData->pfnCardUnblockPin = CardUnblockPin;
 	pCardData->pfnCardChangeAuthenticator = CardChangeAuthenticator;
-	/* the minidriver does not perform a deauthentication - set it to NULL according to the specification */
-	pCardData->pfnCardDeauthenticate = NULL;
+	pCardData->pfnCardDeauthenticate = CardDeauthenticate;
 	pCardData->pfnCardCreateDirectory = CardCreateDirectory;
 	pCardData->pfnCardDeleteDirectory = CardDeleteDirectory;
 	pCardData->pvUnused3 = NULL;
