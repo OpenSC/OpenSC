@@ -53,7 +53,7 @@ static struct sc_pkcs11_slot * reader_get_slot(sc_reader_t *reader)
 static void init_slot_info(CK_SLOT_INFO_PTR pInfo)
 {
 	strcpy_bp(pInfo->slotDescription, "Virtual hotplug slot", 64);
-	strcpy_bp(pInfo->manufacturerID, "OpenSC (www.opensc-project.org)", 32);
+	strcpy_bp(pInfo->manufacturerID, OPENSC_VS_FF_COMPANY_NAME, 32);
 	pInfo->flags = CKF_REMOVABLE_DEVICE | CKF_HW_SLOT;
 	pInfo->hardwareVersion.major = 0;
 	pInfo->hardwareVersion.minor = 0;

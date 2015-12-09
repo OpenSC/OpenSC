@@ -360,13 +360,13 @@ CK_RV C_GetInfo(CK_INFO_PTR pInfo)
 		pInfo->cryptokiVersion.minor = 11;
 	}
 	strcpy_bp(pInfo->manufacturerID,
-		  "OpenSC (www.opensc-project.org)",
+		  OPENSC_VS_FF_COMPANY_NAME,
 		  sizeof(pInfo->manufacturerID));
 	strcpy_bp(pInfo->libraryDescription,
-		  "Smart card PKCS#11 API",
+		  OPENSC_VS_FF_PRODUCT_NAME,
 		  sizeof(pInfo->libraryDescription));
-	pInfo->libraryVersion.major = 0;
-	pInfo->libraryVersion.minor = 0; /* FIXME: use 0.116 for 0.11.6 from autoconf */
+	pInfo->libraryVersion.major = OPENSC_VERSION_MAJOR;
+	pInfo->libraryVersion.minor = OPENSC_VERSION_MINOR;
 
 	sc_pkcs11_unlock();
 	return rv;
