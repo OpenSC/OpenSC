@@ -192,6 +192,19 @@ static int sc_hsm_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 
 
 
+static int sc_hsm_logout(sc_card_t * card)
+{
+	sc_path_t path;
+	sc_hsm_private_data_t *priv = (sc_hsm_private_data_t *) card->drv_data;
+	memset(priv->sopin, sizeof(priv->sopin), 0);
+
+	sc_path_set(&path, SC_PATH_TYPE_DF_NAME, sc_hsm_aid.value, sc_hsm_aid.len, 0, 0);
+
+	return sc_hsm_select_file(card, &path, NULL);
+}
+
+
+
 static int sc_hsm_read_binary(sc_card_t *card,
 			       unsigned int idx, u8 *buf, size_t count,
 			       unsigned long flags)
@@ -1063,6 +1076,7 @@ static struct sc_card_driver * sc_get_driver(void)
 	sc_hsm_ops.finish            = sc_hsm_finish;
 	sc_hsm_ops.card_ctl          = sc_hsm_card_ctl;
 	sc_hsm_ops.pin_cmd           = sc_hsm_pin_cmd;
+	sc_hsm_ops.logout            = sc_hsm_logout;
 
 	/* no record oriented file services */
 	sc_hsm_ops.read_record       = NULL;
