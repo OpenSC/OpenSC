@@ -107,6 +107,7 @@ void delete_slot(struct sc_pkcs11_slot *slot)
 {
 	if (slot) {
 		list_destroy(&slot->objects);
+		list_destroy(&slot->logins);
 		list_delete(&virtual_slots, slot);
 		free(slot);
 	}
@@ -437,8 +438,10 @@ CK_RV slot_token_removed(CK_SLOT_ID id)
 	/* Release framework stuff */
 	if (slot->p11card != NULL) {
 		if (slot->fw_data != NULL &&
-				slot->p11card->framework != NULL && slot->p11card->framework->release_token != NULL)
+				slot->p11card->framework != NULL && slot->p11card->framework->release_token != NULL) {
 			slot->p11card->framework->release_token(slot->p11card, slot->fw_data);
+			slot->fw_data = NULL;
+		}
 	}
 
 	/* Reset relevant slot properties */
