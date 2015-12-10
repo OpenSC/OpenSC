@@ -300,6 +300,9 @@ typedef struct sc_reader {
 	const struct sc_reader_operations *ops;
 	void *drv_data;
 	char *name;
+	char *vendor;
+	unsigned char version_major;
+	unsigned char version_minor;
 
 	unsigned long flags, capabilities;
 	unsigned int supported_protocols, active_protocol;
