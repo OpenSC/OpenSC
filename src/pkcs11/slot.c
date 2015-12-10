@@ -50,13 +50,20 @@ static struct sc_pkcs11_slot * reader_get_slot(sc_reader_t *reader)
 	return NULL;
 }
 
-static void init_slot_info(CK_SLOT_INFO_PTR pInfo)
+static void init_slot_info(CK_SLOT_INFO_PTR pInfo, sc_reader_t *reader)
 {
-	strcpy_bp(pInfo->slotDescription, "Virtual hotplug slot", 64);
-	strcpy_bp(pInfo->manufacturerID, OPENSC_VS_FF_COMPANY_NAME, 32);
+	if (reader) {
+		strcpy_bp(pInfo->slotDescription, reader->name, 64);
+		strcpy_bp(pInfo->manufacturerID, reader->vendor, 32);
+		pInfo->hardwareVersion.major = reader->version_major;
+		pInfo->hardwareVersion.minor = reader->version_minor;
+	} else {
+		strcpy_bp(pInfo->slotDescription, "Virtual hotplug slot", 64);
+		strcpy_bp(pInfo->manufacturerID, OPENSC_VS_FF_COMPANY_NAME, 32);
+		pInfo->hardwareVersion.major = OPENSC_VERSION_MAJOR;
+		pInfo->hardwareVersion.minor = OPENSC_VERSION_MINOR;
+	}
 	pInfo->flags = CKF_REMOVABLE_DEVICE | CKF_HW_SLOT;
-	pInfo->hardwareVersion.major = OPENSC_VERSION_MAJOR;
-	pInfo->hardwareVersion.minor = OPENSC_VERSION_MINOR;
 	pInfo->firmwareVersion.major = 0;
 	pInfo->firmwareVersion.minor = 0;
 }
@@ -94,7 +101,7 @@ CK_RV create_slot(sc_reader_t *reader)
 
 	list_init(&slot->logins);
 
-	init_slot_info(&slot->slot_info);
+	init_slot_info(&slot->slot_info, reader);
 	if (reader != NULL) {
 		slot->reader = reader;
 		strcpy_bp(slot->slot_info.manufacturerID, reader->vendor, 32);
@@ -250,6 +257,18 @@ again:
 		if (rc != SC_SUCCESS)   {
 			sc_log(context, "%s: SC connect card error %i", reader->name, rc);
 			return sc_to_cryptoki_error(rc, NULL);
+		}
+
+		/* boxing commands are only guaranteed to be working with a card
+		 * inserted. That's why by now, after sc_connect_card() the reader's
+		 * metadata may have changed. We re-initialize the metadata for every
+		 * slot of this reader here. */
+		if (reader->flags & SC_READER_TEST_BOXING) {
+			for (i = 0; i<list_size(&virtual_slots); i++) {
+				sc_pkcs11_slot_t *slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, i);
+				if (slot->reader == reader)
+					init_slot_info(&slot->slot_info, reader);
+			}
 		}
 
 		sc_log(context, "%s: Connected SC card %p", reader->name, p11card->card);

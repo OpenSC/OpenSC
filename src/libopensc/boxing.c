@@ -45,11 +45,18 @@
 
 static const u8 boxing_cla                          = 0xff;
 static const u8 boxing_ins                          = 0x9a;
-static const u8 boxing_p1                           = 0x04;
+
+static const u8 boxing_p1_PIN                       = 0x04;
 static const u8 boxing_p2_GetReaderPACECapabilities = 0x01;
 static const u8 boxing_p2_EstablishPACEChannel      = 0x02;
 static const u8 boxing_p2_DestroyPACEChannel        = 0x03;
 static const u8 boxing_p2_PC_to_RDR_Secure          = 0x10;
+
+static const u8 boxing_p1_IFD                       = 0x01;
+static const u8 boxing_p2_vendor                    = 0x01;
+static const u8 boxing_p2_product                   = 0x03;
+static const u8 boxing_p2_version_firmware          = 0x06;
+static const u8 boxing_p2_version_driver            = 0x07;
 
 struct sc_asn1_entry g_boolean[] = {
     { "boolean",
@@ -632,7 +639,7 @@ static int boxing_perform_verify(struct sc_reader *reader,
     apdu.cse     = SC_APDU_CASE_4_SHORT;
 	apdu.cla     = boxing_cla;
 	apdu.ins     = boxing_ins;
-	apdu.p1      = boxing_p1;
+	apdu.p1      = boxing_p1_PIN;
 	apdu.p2      = boxing_p2_PC_to_RDR_Secure;
     apdu.resp    = rbuf;
     apdu.resplen = sizeof rbuf;
@@ -693,7 +700,7 @@ static int boxing_perform_pace(struct sc_reader *reader,
     apdu.cse     = SC_APDU_CASE_4_EXT;
 	apdu.cla     = boxing_cla;
 	apdu.ins     = boxing_ins;
-	apdu.p1      = boxing_p1;
+	apdu.p1      = boxing_p1_PIN;
 	apdu.p2      = boxing_p2_EstablishPACEChannel;
     apdu.resp    = rbuf;
     apdu.resplen = sizeof rbuf;
@@ -905,29 +912,86 @@ int boxing_pace_capabilities_to_buf(sc_context_t *ctx,
 
 void sc_detect_boxing_cmds(sc_reader_t *reader)
 {
+    int error = 0;
     u8 rbuf[0xff+1];
     sc_apdu_t apdu;
     unsigned long capabilities;
 
-	memset(&apdu, 0, sizeof(apdu));
-    apdu.cse     = SC_APDU_CASE_2_SHORT;
-	apdu.cla     = boxing_cla;
-	apdu.ins     = boxing_ins;
-	apdu.p1      = boxing_p1;
-	apdu.p2      = boxing_p2_GetReaderPACECapabilities;
-    apdu.resp    = rbuf;
-    apdu.resplen = sizeof rbuf;
-    apdu.le      = sizeof rbuf;
+    if (reader && reader->ops && reader->ops->transmit) {
+        memset(&apdu, 0, sizeof(apdu));
+        apdu.cse     = SC_APDU_CASE_2_SHORT;
+        apdu.cla     = boxing_cla;
+        apdu.ins     = boxing_ins;
+        apdu.p1      = boxing_p1_PIN;
+        apdu.p2      = boxing_p2_GetReaderPACECapabilities;
+        apdu.resp    = rbuf;
+        apdu.resplen = sizeof rbuf;
+        apdu.le      = sizeof rbuf;
 
-    if (!reader || !reader->ops || !reader->ops->transmit
-            || reader->ops->transmit(reader, &apdu) != SC_SUCCESS
-            || apdu.sw1 != 0x90
-            || apdu.sw2 != 0x00
-            || boxing_buf_to_pace_capabilities(reader->ctx,
-                apdu.resp, apdu.resplen, &capabilities) != SC_SUCCESS) {
+        if (reader->ops->transmit(reader, &apdu) == SC_SUCCESS
+                && apdu.sw1 == 0x90 && apdu.sw2 == 0x00
+                && boxing_buf_to_pace_capabilities(reader->ctx,
+                    apdu.resp, apdu.resplen, &capabilities) == SC_SUCCESS) {
+            if (capabilities & SC_READER_CAP_PIN_PAD
+                    && !(reader->capabilities & SC_READER_CAP_PIN_PAD)) {
+                ((struct sc_reader_operations *) reader->ops)->perform_verify =
+                    boxing_perform_verify;
+                sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL,
+                        "Added boxing command wrappers for PIN verification/modification to '%s'", reader->name);
+            }
+
+            if (capabilities & SC_READER_CAP_PACE_GENERIC
+                    && !(reader->capabilities & SC_READER_CAP_PACE_GENERIC)) {
+                ((struct sc_reader_operations *) reader->ops)->perform_pace =
+                    boxing_perform_pace;
+                sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL,
+                        "Added boxing command wrappers for PACE to '%s'", reader->name);
+            }
+
+            reader->capabilities |= capabilities;
+        } else {
+            error++;
+            sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL,
+                    "%s does not support boxing commands", reader->name);
+        }
+
+        apdu.p1      = boxing_p1_IFD;
+        apdu.p2      = boxing_p2_vendor;
+        apdu.resplen = sizeof rbuf;
+        if (reader->ops->transmit(reader, &apdu) == SC_SUCCESS
+                && apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
+            if (!reader->vendor) {
+                /* add NUL termination, just in case... */
+                rbuf[apdu.resplen] = '\0';
+                reader->vendor = strdup((const char *) rbuf);
+            }
+        } else {
+            error++;
+        }
+
+        apdu.p1      = boxing_p1_IFD;
+        apdu.p2      = boxing_p2_version_firmware;
+        apdu.resplen = sizeof rbuf;
+        if (reader->ops->transmit(reader, &apdu) == SC_SUCCESS
+                && apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
+            if (!reader->version_major && !reader->version_minor) {
+                unsigned int major = 0, minor = 0;
+                /* add NUL termination, just in case... */
+                rbuf[apdu.resplen] = '\0';
+                sscanf((const char *) rbuf, "%u.%u", &major, &minor);
+                reader->version_major = major>0xff ? 0xff : major;
+                reader->version_minor = minor>0xff ? 0xff : minor;
+            }
+        } else {
+            error++;
+        }
+    }
+
+    if (error) {
         sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL,
-                "%s does not support boxing commands", reader->name);
-        if (!reader || !reader->ops || !reader->ops->transmit
+                "%d boxing command%s failed, need to reset the card",
+                error, error == 1 ? "" : "s");
+        if (reader && reader->ops && reader->ops->transmit) {
             memset(&apdu, 0, sizeof(apdu));
             apdu.cse     = SC_APDU_CASE_3_SHORT;
             apdu.cla     = 0x00;
@@ -944,23 +1008,5 @@ void sc_detect_boxing_cmds(sc_reader_t *reader)
             apdu.le      = 0;
             reader->ops->transmit(reader, &apdu);
         }
-    } else {
-        if (capabilities & SC_READER_CAP_PIN_PAD
-                && !(reader->capabilities & SC_READER_CAP_PIN_PAD)) {
-            ((struct sc_reader_operations *) reader->ops)->perform_verify =
-                boxing_perform_verify;
-            sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL,
-                    "Added boxing command wrappers for PIN verification/modification to '%s'", reader->name);
-        }
-
-        if (capabilities & SC_READER_CAP_PACE_GENERIC
-                && !(reader->capabilities & SC_READER_CAP_PACE_GENERIC)) {
-            ((struct sc_reader_operations *) reader->ops)->perform_pace =
-                boxing_perform_pace;
-            sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL,
-                    "Added boxing command wrappers for PACE to '%s'", reader->name);
-        }
-
-        reader->capabilities |= capabilities;
     }
 }
