@@ -5557,7 +5557,6 @@ DWORD WINAPI CardAcquireContext(__inout PCARD_DATA pCardData, __in DWORD dwFlags
 	pCardData->pfnCardAuthenticateChallenge = CardAuthenticateChallenge;
 	pCardData->pfnCardUnblockPin = CardUnblockPin;
 	pCardData->pfnCardChangeAuthenticator = CardChangeAuthenticator;
-	/* the minidriver does not perform a deauthentication - set it to NULL according to the specification */
 	pCardData->pfnCardDeauthenticate = CardDeauthenticate;
 	pCardData->pfnCardCreateDirectory = CardCreateDirectory;
 	pCardData->pfnCardDeleteDirectory = CardDeleteDirectory;
