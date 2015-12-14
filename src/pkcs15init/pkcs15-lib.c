@@ -13,6 +13,7 @@
  * on the card. These should be implemented in pkcs15-<cardname>.c
  *
  * Copyright (C) 2002, Olaf Kirch <okir@suse.de>
+ * Copyright (C) 2015 Informatyka Boguslawski sp. z o.o. sp.k., http://www.ib.pl/
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -599,6 +600,7 @@ sc_pkcs15init_delete_by_path(struct sc_profile *profile, struct sc_pkcs15_card *
 	LOG_TEST_RET(ctx, rv, "'DELETE' authentication failed");
 
 	/* Reselect file to delete: current path could be changed by 'verify PIN' procedure */
+    path = *file_path;
 	rv = sc_select_file(p15card->card, &path, &file);
 	LOG_TEST_RET(ctx, rv, "cannot select file to delete");
 
