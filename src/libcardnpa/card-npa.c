@@ -1,7 +1,7 @@
 /*
  * card-npa.c: Recognize known German identity cards
  *
- * Copyright (C) 2011-2015 Frank Morgner <morgner@informatik.hu-berlin.de>
+ * Copyright (C) 2011-2015 Frank Morgner <frankmorgner@gmail.com>
  *
  * This file is part of OpenSC.
  *

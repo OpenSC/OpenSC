@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2012 Frank Morgner <morgner@informatik.hu-berlin.de>
+ * Copyright (C) 2010-2012 Frank Morgner <frankmorgner@gmail.com>
  *
  * This file is part of OpenSC.
  *
