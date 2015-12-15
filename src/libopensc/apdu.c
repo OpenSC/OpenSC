@@ -504,12 +504,18 @@ sc_get_response(struct sc_card *card, struct sc_apdu *apdu, size_t olen)
 			/* if the card has returned 0x9000 but we still expect data ask for more
 			 * until we have read enough bytes */
 			le = minlen;
-	} while (rv != 0 || minlen != 0);
+	} while (rv != 0 && minlen != 0);
 
 	/* we've read all data, let's return 0x9000 */
 	apdu->resplen = buf - apdu->resp;
 	apdu->sw1 = 0x90;
 	apdu->sw2 = 0x00;
+
+#ifdef ENABLE_SM
+	if (card->sm_ctx.ops.decode_sm_apdu != NULL)
+		rv = card->sm_ctx.ops.decode_sm_apdu(card, apdu);
+	LOG_TEST_RET(ctx, rv, "Error decoding apdu.");
+#endif
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
