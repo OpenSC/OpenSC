@@ -3878,6 +3878,9 @@ pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session, void *object, CK_
 		*(CK_OBJECT_CLASS*)attr->pValue = CKO_PUBLIC_KEY;
 		break;
 	case CKA_TOKEN:
+		check_attribute_buffer(attr, sizeof(CK_BBOOL));
+		*(CK_BBOOL*)attr->pValue = TRUE;
+		break;
 	case CKA_SENSITIVE:
 		/* By PKCS#11 v2.20 public key cannot have SENSITIVE attr TRUE */
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
