@@ -5,7 +5,7 @@ MINIDRIVER_DEF = /DENABLE_MINIDRIVER
 
 #Build MSI with the Windows Installer XML (WIX) toolkit, requires WIX >= 3.9
 WIX_PATH = C:\Program Files (x86)\WiX Toolset v3.10
-WIX_INCL_DIR = "/I$(WIX_PATH)\SDK\VS20$(VSVER)\inc"
+WIX_INCL_DIR = "/I$(WIX_PATH)\SDK\VS2010\inc"
 !IF "$(BUILD_FOR)" == "WIN64"
 WIX_LIBS = "$(WIX_PATH)\SDK\VS20$(VSVER)\lib\x64\dutil.lib" "$(WIX_PATH)\SDK\VS20$(VSVER)\lib\x64\wcautil.lib"
 !ELSE
