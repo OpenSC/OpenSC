@@ -28,7 +28,7 @@ install:
         throw "There are newer queued builds for this pull request, failing early." }
   - date /T & time /T
   - set PATH=C:\cygwin\bin;%PATH%
-  - set OPENSSL_VER=1_0_2d
+  - set OPENSSL_VER=1_0_2e
   - set ZLIB_VER=128
   - ps: >-
       If ($env:Platform -Match "x86") {
