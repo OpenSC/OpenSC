@@ -7,9 +7,9 @@ MINIDRIVER_DEF = /DENABLE_MINIDRIVER
 WIX_PATH = C:\Program Files (x86)\WiX Toolset v3.10
 WIX_INCL_DIR = "/I$(WIX_PATH)\SDK\VS2010\inc"
 !IF "$(BUILD_FOR)" == "WIN64"
-WIX_LIBS = "$(WIX_PATH)\SDK\VS20$(VSVER)\lib\x64\dutil.lib" "$(WIX_PATH)\SDK\VS20$(VSVER)\lib\x64\wcautil.lib"
+WIX_LIBS = "$(WIX_PATH)\SDK\VS2010\lib\x64\dutil.lib" "$(WIX_PATH)\SDK\VS2010\lib\x64\wcautil.lib"
 !ELSE
-WIX_LIBS = "$(WIX_PATH)\SDK\VS20$(VSVER)\lib\x86\dutil.lib" "$(WIX_PATH)\SDK\VS20$(VSVER)\lib\x86\wcautil.lib"
+WIX_LIBS = "$(WIX_PATH)\SDK\VS2010\lib\x86\dutil.lib" "$(WIX_PATH)\SDK\VS2010\lib\x86\wcautil.lib"
 !ENDIF
 
 #Include support for Secure Messaging
