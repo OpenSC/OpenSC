@@ -56,7 +56,9 @@ install:
           C:\WinOpenSSL.exe /SILENT /VERYSILENT /SP- /SUPPRESSMSGBOXES /NORESTART
         }
         $env:NMAKE_EXTRA="OPENSSL_DEF=/DENABLE_OPENSSL ${env:NMAKE_EXTRA}"
-        appveyor DownloadFile "https://prdownloads.sourceforge.net/libpng/zlib${env:ZLIB_VER}.zip" -FileName zlib.zip
+        If (!(Test-Path zlib.zip )) {
+           appveyor DownloadFile "https://prdownloads.sourceforge.net/libpng/zlib${env:ZLIB_VER}.zip" -FileName zlib.zip
+        }
         7z x zlib.zip -oC:\
         Rename-Item -path "c:\zlib-${env:ZLIB_VER_DOT}" -newName "zlib"
       }
@@ -93,5 +95,6 @@ build_script:
   # - ps: Get-ChildItem -recurse c:\projects\OpenSC -exclude vc*.pdb *.pdb | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name }
 
 cache:
-  - C:\OpenSSL-Win32
-  - C:\OpenSSL-Win64
+  - C:\OpenSSL-Win32 -> appveyor.yml
+  - C:\OpenSSL-Win64 -> appveyor.yml
+  - zlib.zip -> appveyor.yml
