@@ -54,12 +54,19 @@ CANDLEFLAGS = -dOpenSSL="$(OPENSSL_DIR)" $(CANDLEFLAGS)
 # - set the ZLIB_INCL_DIR below to the zlib include lib proceeded by "/I"
 # - set the ZLIB_LIB  below to your zlib lib file
 #ZLIB_DEF = /DENABLE_ZLIB
-!IF "$(ZLIB_DEF)" == "/DENABLE_ZLIB"
+!IF "$(ZLIBSTATIC_DEF)" == "/DENABLE_ZLIB_STATIC"
+ZLIB_DEF = /DENABLE_ZLIB
+ZLIB_INCL_DIR = /IC:\zlib
+ZLIB_LIB = C:\zlib\zlib.lib
+OPENSC_FEATURES = $(OPENSC_FEATURES) zlib
+!ELSE IF "$(ZLIB_DEF)" == "/DENABLE_ZLIB"
 ZLIB_INCL_DIR = /IC:\zlib-dll\include
 ZLIB_LIB = C:\zlib-dll\lib\zdll.lib
 OPENSC_FEATURES = $(OPENSC_FEATURES) zlib
 CANDLEFLAGS = -dzlib="C:\zlib-dll" $(CANDLEFLAGS)
 !ENDIF
+
+
 
 # Used for MiniDriver
 CNGSDK_INCL_DIR = "/IC:\Program Files (x86)\Microsoft CNG Development Kit\Include"
