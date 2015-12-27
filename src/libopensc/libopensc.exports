@@ -280,6 +280,7 @@ sc_pkcs15init_get_cardos_ops
 sc_pkcs15init_get_cryptoflex_ops
 sc_pkcs15init_get_cyberflex_ops
 sc_pkcs15init_get_gpk_ops
+sc_pkcs15init_get_gids_ops
 sc_pkcs15init_get_incrypto34_ops
 sc_pkcs15init_get_jcop_ops
 sc_pkcs15init_get_manufacturer
