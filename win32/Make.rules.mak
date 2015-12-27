@@ -50,7 +50,7 @@ OPENSSL_LIB = $(OPENSSL_DIR)\lib\VC\$(OPENSSL_STATIC_DIR)\libeay32MT.lib user32.
 !ENDIF
 
 PROGRAMS_OPENSSL = cryptoflex-tool.exe pkcs15-init.exe netkey-tool.exe piv-tool.exe \
-	westcos-tool.exe sc-hsm-tool.exe dnie-tool.exe
+	westcos-tool.exe sc-hsm-tool.exe dnie-tool.exe gids-tool.exe
 OPENSC_FEATURES = $(OPENSC_FEATURES) openssl
 CANDLEFLAGS = -dOpenSSL="$(OPENSSL_DIR)" $(CANDLEFLAGS)
 !ENDIF

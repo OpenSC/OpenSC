@@ -8,7 +8,7 @@ bin_PROGRAMS = opensc-tool opensc-explorer pkcs15-tool pkcs15-crypt \
 	pkcs11-tool cardos-tool eidenv openpgp-tool iasecc-tool
 if ENABLE_OPENSSL
 bin_PROGRAMS += cryptoflex-tool pkcs15-init netkey-tool piv-tool \
-	westcos-tool sc-hsm-tool dnie-tool
+	westcos-tool sc-hsm-tool dnie-tool gids-tool
 endif
 
 # compile with $(PTHREAD_CFLAGS) to allow debugging with gdb
@@ -51,6 +51,8 @@ sc_hsm_tool_SOURCES = sc-hsm-tool.c util.c
 sc_hsm_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
 dnie_tool_SOURCES = dnie-tool.c util.c
 dnie_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
+gids_tool_SOURCES = gids-tool.c util.c
+gids_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
 
 if WIN32
 opensc_tool_SOURCES += versioninfo-tools.rc
@@ -68,4 +70,5 @@ westcos_tool_SOURCES += versioninfo-tools.rc
 openpgp_tool_SOURCES += versioninfo-tools.rc
 iasecc_tool_SOURCES += versioninfo-tools.rc
 sc_hsm_tool_SOURCES += versioninfo-tools.rc
+gids_tool_SOURCES += versioninfo-tools.rc
 endif

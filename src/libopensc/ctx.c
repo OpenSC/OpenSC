@@ -112,6 +112,7 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 	{ "PIV-II",	(void *(*)(void)) sc_get_piv_driver },
 	{ "itacns",	(void *(*)(void)) sc_get_itacns_driver },
 	{ "isoApplet",	(void *(*)(void)) sc_get_isoApplet_driver },
+	{ "gids",	(void *(*)(void)) sc_get_gids_driver },
 	{ "openpgp",	(void *(*)(void)) sc_get_openpgp_driver },
 	/* The default driver should be last, as it handles all the
 	 * unrecognized cards. */

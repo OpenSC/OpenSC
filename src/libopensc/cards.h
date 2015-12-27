@@ -218,7 +218,13 @@ enum {
 
 	/* Masktech cards */
 	SC_CARD_TYPE_MASKTECH_BASE = 29000,
-	SC_CARD_TYPE_MASKTECH_GENERIC
+	SC_CARD_TYPE_MASKTECH_GENERIC,
+
+	/* GIDS cards */
+	SC_CARD_TYPE_GIDS_BASE = 30000,
+	SC_CARD_TYPE_GIDS_GENERIC,
+	SC_CARD_TYPE_GIDS_V1,
+	SC_CARD_TYPE_GIDS_V2,
 };
 
 extern sc_card_driver_t *sc_get_default_driver(void);
@@ -257,6 +263,7 @@ extern sc_card_driver_t *sc_get_epass2003_driver(void);
 extern sc_card_driver_t *sc_get_dnie_driver(void);
 extern sc_card_driver_t *sc_get_isoApplet_driver(void);
 extern sc_card_driver_t *sc_get_masktech_driver(void);
+extern sc_card_driver_t *sc_get_gids_driver(void);
 
 #ifdef __cplusplus
 }
