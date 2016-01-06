@@ -27,22 +27,27 @@
 #include <stdio.h>
 #include <assert.h>
 
-#include "internal.h"
-#include "asn1.h"
-#include "pkcs15.h"
-#include "common/compat_strlcpy.h"
-#include "aux-data.h"
-
 #ifdef ENABLE_OPENSSL
+#include <openssl/opensslv.h>
+#include <openssl/bn.h>
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 #include <openssl/err.h>
+#include <openssl/bn.h>
+#include <openssl/rsa.h>
+#include <openssl/dsa.h>
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L
 	#ifndef OPENSSL_NO_EC
 	#include <openssl/ec.h>
 	#endif
 #endif
 #endif
+
+#include "internal.h"
+#include "asn1.h"
+#include "pkcs15.h"
+#include "common/compat_strlcpy.h"
+#include "aux-data.h"
 
 /*
  * in src/libopensc/types.h SC_MAX_SUPPORTED_ALGORITHMS  defined as 8
@@ -625,23 +630,30 @@ sc_pkcs15_convert_prkey(struct sc_pkcs15_prkey *pkcs15_key, void *evp_key)
 {
 #ifdef ENABLE_OPENSSL
 	EVP_PKEY *pk = (EVP_PKEY *)evp_key;
+	int pk_type;
+	 pk_type = EVP_PKEY_base_id(pk);
 
-	switch (pk->type) {
+	switch (pk_type) {
 	case EVP_PKEY_RSA: {
 		struct sc_pkcs15_prkey_rsa *dst = &pkcs15_key->u.rsa;
 		RSA *src = EVP_PKEY_get1_RSA(pk);
+		const BIGNUM *src_n, *src_e, *src_d, *src_p, *src_q, *src_iqmp, *src_dmp1, *src_dmq1;
+
+		RSA_get0_key(src, &src_n, &src_e, &src_d);
+		RSA_get0_factors(src, &src_p, &src_q);
+		RSA_get0_crt_params(src, &src_dmp1, &src_dmq1, &src_iqmp);
 
 		pkcs15_key->algorithm = SC_ALGORITHM_RSA;
-		if (!sc_pkcs15_convert_bignum(&dst->modulus, src->n)
-		 || !sc_pkcs15_convert_bignum(&dst->exponent, src->e)
-		 || !sc_pkcs15_convert_bignum(&dst->d, src->d)
-		 || !sc_pkcs15_convert_bignum(&dst->p, src->p)
-		 || !sc_pkcs15_convert_bignum(&dst->q, src->q))
+		if (!sc_pkcs15_convert_bignum(&dst->modulus, src_n)
+		 || !sc_pkcs15_convert_bignum(&dst->exponent, src_e)
+		 || !sc_pkcs15_convert_bignum(&dst->d, src_d)
+		 || !sc_pkcs15_convert_bignum(&dst->p, src_p)
+		 || !sc_pkcs15_convert_bignum(&dst->q, src_q))
 			return SC_ERROR_NOT_SUPPORTED;
-		if (src->iqmp && src->dmp1 && src->dmq1) {
-			sc_pkcs15_convert_bignum(&dst->iqmp, src->iqmp);
-			sc_pkcs15_convert_bignum(&dst->dmp1, src->dmp1);
-			sc_pkcs15_convert_bignum(&dst->dmq1, src->dmq1);
+		if (src_iqmp && src_dmp1 && src_dmq1) {
+			sc_pkcs15_convert_bignum(&dst->iqmp, src_iqmp);
+			sc_pkcs15_convert_bignum(&dst->dmp1, src_dmp1);
+			sc_pkcs15_convert_bignum(&dst->dmq1, src_dmq1);
 		}
 		RSA_free(src);
 		break;
@@ -649,13 +661,17 @@ sc_pkcs15_convert_prkey(struct sc_pkcs15_prkey *pkcs15_key, void *evp_key)
 	case EVP_PKEY_DSA: {
 		struct sc_pkcs15_prkey_dsa *dst = &pkcs15_key->u.dsa;
 		DSA *src = EVP_PKEY_get1_DSA(pk);
+		const BIGNUM *src_pub_key, *src_p, *src_q, *src_g, *src_priv_key;
+
+		DSA_get0_key(src, &src_pub_key, &src_priv_key);
+		DSA_get0_pqg(src, &src_p, &src_q, &src_g);
 
 		pkcs15_key->algorithm = SC_ALGORITHM_DSA;
-		sc_pkcs15_convert_bignum(&dst->pub, src->pub_key);
-		sc_pkcs15_convert_bignum(&dst->p, src->p);
-		sc_pkcs15_convert_bignum(&dst->q, src->q);
-		sc_pkcs15_convert_bignum(&dst->g, src->g);
-		sc_pkcs15_convert_bignum(&dst->priv, src->priv_key);
+		sc_pkcs15_convert_bignum(&dst->pub, src_pub_key);
+		sc_pkcs15_convert_bignum(&dst->p, src_p);
+		sc_pkcs15_convert_bignum(&dst->q, src_q);
+		sc_pkcs15_convert_bignum(&dst->g, src_g);
+		sc_pkcs15_convert_bignum(&dst->priv, src_priv_key);
 		DSA_free(src);
 		break;
 		}
