@@ -27,12 +27,13 @@
 #include <sys/types.h>
 
 #include "config.h"
+#include "pkcs15-oberthur.h"
+
 #include "libopensc/opensc.h"
 #include "libopensc/cardctl.h"
 #include "libopensc/log.h"
 #include "profile.h"
 #include "pkcs15-init.h"
-#include "pkcs15-oberthur.h"
 #include "libopensc/asn1.h"
 
 #ifdef ENABLE_OPENSSL
@@ -996,6 +997,30 @@ awp_encode_cert_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *ob
 	/*
 	 * serial number
 	 */
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+	
+	/* TODO the der encoding of a ANS1_INTEGER is a TLV, the original code only as using the 
+	 * i2c_ASN1_INTEGER which is not in OpenSSL 1.1  
+	 * It was adding the tag V_ASN1_INTEGER and the one byte length back in in effect creating
+	 * a DER encoded ASN1_INTEGER
+	 * So we can simplifty the code and make compatable with OpenSSL 1.1. This needs to be tested
+	 */
+	ci->serial.len = 0;
+	ci->serial.value = NULL;
+	/* get length */
+	ci->serial.len = i2d_ASN1_INTEGER(X509_get_serialNumber(x), NULL);
+	if (ci->serial.len > 0) {
+		if (!(ci->serial.value = malloc(ci->serial.len)))   {
+			ci->serial.len = 0;
+			r = SC_ERROR_OUT_OF_MEMORY;
+			goto done;
+		}
+		ci->serial.len = i2d_ASN1_INTEGER(X509_get_serialNumber(x), &ci->serial.value);
+	}
+	/* if len == 0, and value == NULL, then the cert did not have a serial number.*/
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "cert. serial encoded length %i", ci->serial.len);
+
+#else
 	do   {
 		int encoded_len;
 		unsigned char encoded[0x40], *encoded_ptr;
@@ -1015,6 +1040,7 @@ awp_encode_cert_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *ob
 
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "cert. serial encoded length %i", encoded_len);
 	} while (0);
+#endif
 
 	ci->x509 = X509_dup(x);
 done:

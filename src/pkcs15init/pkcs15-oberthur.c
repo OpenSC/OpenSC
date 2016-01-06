@@ -20,20 +20,20 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include <errno.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+//#include "config.h"
+#include "pkcs15-oberthur.h"
+//#include <errno.h>
+//#include <stdio.h>
+//#include <stdlib.h>
+//#include <string.h>
 #include <sys/types.h>
 #include <ctype.h>
 
-#include "config.h"
 #include "libopensc/opensc.h"
 #include "libopensc/cardctl.h"
 #include "libopensc/log.h"
 #include "profile.h"
 #include "pkcs15-init.h"
-#include "pkcs15-oberthur.h"
 
 #define COSM_TITLE "OberthurAWP"
 
