@@ -25,6 +25,7 @@
 #ifdef ENABLE_OPENSSL	/* empty file without openssl */
 #include <string.h>
 #include <stdlib.h>
+#include <openssl/bn.h>
 #include <openssl/bio.h>
 #include <openssl/rsa.h>
 #include <openssl/x509.h>

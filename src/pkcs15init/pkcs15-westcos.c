@@ -26,6 +26,7 @@
 
 #ifdef ENABLE_OPENSSL
 #include <openssl/opensslv.h>
+#include <openssl/bn.h>
 #include <openssl/rsa.h>
 #include <openssl/evp.h>
 #include <openssl/pem.h>
@@ -255,7 +256,11 @@ static int westcos_pkcs15init_generate_key(sc_profile_t *profile,
 		goto out;
 	}
 
+#if OPENSSL_VERSION_NUMBER >= 0x10100002L
+	rsa->meth = RSA_PKCS1_OpenSSL();
+#else
 	rsa->meth = RSA_PKCS1_SSLeay();
+#endif
 
 	if(pubkey != NULL)
 	{

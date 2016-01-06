@@ -39,8 +39,11 @@
 
 #include "cwa-dnie.h"
 
+#include <openssl/ossl_typ.h>
+#include <openssl/bn.h>
 #include <openssl/x509.h>
 #include <openssl/evp.h>
+#include <openssl/rsa.h>
 
 #define MAX_RESP_BUFFER_SIZE 2048
 

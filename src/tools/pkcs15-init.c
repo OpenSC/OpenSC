@@ -430,7 +430,11 @@ main(int argc, char **argv)
 	OPENSSL_config(NULL);
 #endif
 	/* OpenSSL magic */
+#if OPENSSL_VERSION_NUMBER  >= 0x10100002L
+	OpenSSL_add_all_algorithms();
+#else
 	SSLeay_add_all_algorithms();
+#endif
 	CRYPTO_malloc_init();
 #ifdef RANDOM_POOL
 	if (!RAND_load_file(RANDOM_POOL, 32))
@@ -898,7 +902,7 @@ do_store_private_key(struct sc_profile *profile)
 
 		printf("Importing %d certificates:\n", opt_ignore_ca_certs ? 1 : ncerts);
 		for (i = 0; i < ncerts && !(i && opt_ignore_ca_certs); i++)
-			printf("  %d: %s\n", i, X509_NAME_oneline(cert[i]->cert_info->subject,
+			printf("  %d: %s\n", i, X509_NAME_oneline(X509_get_subject_name(cert[i]),
 					namebuf, sizeof(namebuf)));
 	}
 
@@ -912,8 +916,11 @@ do_store_private_key(struct sc_profile *profile)
 
 		/* tell openssl to cache the extensions */
 		X509_check_purpose(cert[0], -1, -1);
+#if OPENSSL_VERSION_NUMBER  >= 0x10100002L
+		usage = X509_get_extended_key_usage(cert[0]);
+#else
 		usage = cert[0]->ex_kusage;
-
+#endif
 		/* No certificate usage? Assume ordinary
 		 * user cert */
 		if (usage == 0)
@@ -962,10 +969,14 @@ do_store_private_key(struct sc_profile *profile)
 			return r;
 
 		X509_check_purpose(cert[i], -1, -1);
+#if OPENSSL_VERSION_NUMBER >= 0x10100002L
+		cargs.x509_usage = X509_get_extended_key_usage(cert[i]);
+#else
 		cargs.x509_usage = cert[i]->ex_kusage;
+#endif
 		cargs.label = cert_common_name(cert[i]);
 		if (!cargs.label)
-			cargs.label = X509_NAME_oneline(cert[i]->cert_info->subject, namebuf, sizeof(namebuf));
+			cargs.label = X509_NAME_oneline(X509_get_subject_name(cert[i]), namebuf, sizeof(namebuf));
 
 		/* Just the first certificate gets the same ID
 		 * as the private key. All others get
@@ -1997,7 +2008,11 @@ do_read_pkcs12_private_key(const char *filename, const char *passphrase,
 
 	/* bump reference counts for certificates */
 	for (i = 0; i < ncerts; i++) {
+#if OPENSSL_VERSION_NUMBER >= 0x10100002L
+		X509_up_ref(certs[i]);
+#else
 		CRYPTO_add(&certs[i]->references, 1, CRYPTO_LOCK_X509);
+#endif
 	}
 
 	if (cacerts)

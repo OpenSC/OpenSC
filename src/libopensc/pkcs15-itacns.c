@@ -41,6 +41,7 @@
 #include "common/compat_strlcat.h"
 
 #ifdef ENABLE_OPENSSL
+#include <openssl/x509.h>
 #include <openssl/x509v3.h>
 #endif
 
@@ -242,11 +243,20 @@ static int itacns_add_cert(sc_pkcs15_card_t *p15card,
 	sc_pkcs15_free_certificate(cert);
 	if (!x509) return SC_SUCCESS;
 	X509_check_purpose(x509, -1, 0);
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100002L
+	if(X509_get_extension_flags(x509) & EXFLAG_KUSAGE) {
+		*ext_info_ok = 1;
+		*key_usage = X509_get_key_usage(x509);
+		*x_key_usage = X509_get_extended_key_usage(x509);
+	}
+#else
 	if(x509->ex_flags & EXFLAG_KUSAGE) {
 		*ext_info_ok = 1;
 		*key_usage = x509->ex_kusage;
 		*x_key_usage = x509->ex_xkusage;
 	}
+#endif
 	OPENSSL_free(x509);
 
 	return SC_SUCCESS;

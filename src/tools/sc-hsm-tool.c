@@ -32,6 +32,10 @@
 #include <sys/stat.h>
 
 /* Requires openssl for dkek import */
+#include <openssl/opensslv.h>
+/* TODO many changes neede to use BIGNUM  correctly leave for someone else to fix */
+#if OPENSSL_VERSION_NUMBER < 0x10100002L
+
 #include <openssl/opensslconf.h>
 #include <openssl/bio.h>
 #include <openssl/evp.h>
@@ -1696,3 +1700,10 @@ end:
 	ERR_print_errors_fp(stderr);
 	return err;
 }
+#else /* OPENSSL_VERSION_NUMBER */
+#warning "TODO Fix BIGNUM usage for OpenSSL 1.1"
+int main (){
+printf("not implemented needs BIGNUM changes\n");
+return 1;
+}
+#endif /* OPENSSL_VERSION_NUMBER */

@@ -996,6 +996,20 @@ awp_encode_cert_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *ob
 	/*
 	 * serial number
 	 */
+#if 1
+	
+	/* TODO the der encoding of a ANS1_INTEGER is a TLV, the original code only as using the 
+	 * i2c_ASN1_INTEGER which is not in OpenSSL 1.1  
+	 * It was adding the tag V_ASN1_INTEGER and the one byte length back in in effect creating
+	 * a DER encoded ASN1_INTEGER
+	 * So we can simplifty the code and make compatable with OpenSSL 1.1. This needs to be tested
+	 */
+	ci->serial.value = NULL;
+	r = ci->serial.len = i2d_ASN1_INTEGER(X509_get_serialNumber(x), &ci->serial.value);
+	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INTERNAL, "AWP encode cert failed: cannot get serialNumber");
+
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "cert. serial encoded length %i", ci->serial.len - 2);
+#else
 	do   {
 		int encoded_len;
 		unsigned char encoded[0x40], *encoded_ptr;
@@ -1015,6 +1029,7 @@ awp_encode_cert_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *ob
 
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "cert. serial encoded length %i", encoded_len);
 	} while (0);
+#endif
 
 	ci->x509 = X509_dup(x);
 done:

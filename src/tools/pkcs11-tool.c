@@ -43,6 +43,8 @@
 #endif
 #include <openssl/evp.h>
 #include <openssl/x509.h>
+#include <openssl/x509v3.h>
+#include <openssl/asn1t.h>
 #include <openssl/rsa.h>
 #include <openssl/pem.h>
 #if OPENSSL_VERSION_NUMBER >= 0x00908000L && !defined(OPENSSL_NO_EC) && !defined(OPENSSL_NO_ECDSA)
@@ -445,7 +447,11 @@ int main(int argc, char * argv[])
 	OPENSSL_config(NULL);
 #endif
 	/* OpenSSL magic */
+#if OPENSSL_VERSION_NUMBER  >= 0x10100002L
+	OpenSSL_add_all_algorithms();
+#else
 	SSLeay_add_all_algorithms();
+#endif
 	CRYPTO_malloc_init();
 #endif
 	while (1) {
@@ -1778,36 +1784,38 @@ static void	parse_certificate(struct x509cert_info *cert,
 		util_fatal("OpenSSL error during X509 certificate parsing");
 	}
 	/* check length first */
-	n = i2d_X509_NAME(x->cert_info->subject, NULL);
+	n = i2d_X509_NAME(X509_get_subject_name(x), NULL);
 	if (n < 0)
 		util_fatal("OpenSSL error while encoding subject name");
 	if (n > (int)sizeof (cert->subject))
 		util_fatal("subject name too long");
 	/* green light, actually do it */
 	p = cert->subject;
-	n = i2d_X509_NAME(x->cert_info->subject, &p);
+	n = i2d_X509_NAME(X509_get_subject_name(x), &p);
 	cert->subject_len = n;
 
 	/* check length first */
-	n = i2d_X509_NAME(x->cert_info->issuer, NULL);
+	n = i2d_X509_NAME(X509_get_issuer_name(x), NULL);
 	if (n < 0)
 		util_fatal("OpenSSL error while encoding issuer name");
 	if (n > (int)sizeof (cert->issuer))
 		util_fatal("issuer name too long");
 	/* green light, actually do it */
 	p = cert->issuer;
-	n = i2d_X509_NAME(x->cert_info->issuer, &p);
+	n =i2d_X509_NAME(X509_get_issuer_name(x), &p);
 	cert->issuer_len = n;
 
 	/* check length first */
-	n = i2d_ASN1_INTEGER(x->cert_info->serialNumber, NULL);
+	/* TODO fix this */
+	n = 0;
+	n = i2d_ASN1_INTEGER(X509_get_serialNumber(x), NULL);
 	if (n < 0)
 		util_fatal("OpenSSL error while encoding serial number");
 	if (n > (int)sizeof (cert->serialnum))
 		util_fatal("serial number too long");
 	/* green light, actually do it */
 	p = cert->serialnum;
-	n = i2d_ASN1_INTEGER(x->cert_info->serialNumber, &p);
+	n = i2d_ASN1_INTEGER(X509_get_serialNumber(x), &p);
 	cert->serialnum_len = n;
 }
 

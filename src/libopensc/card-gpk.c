@@ -941,7 +941,7 @@ gpk_select_key(sc_card_t *card, int key_sfi, const u8 *buf, size_t buflen)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	/* now do the SelFk */
-	RAND_pseudo_bytes(rnd, sizeof(rnd));
+	RAND_bytes(rnd, sizeof(rnd));
 	memset(&apdu, 0, sizeof(apdu));
 	apdu.cla = 0x80;
 	apdu.cse = SC_APDU_CASE_4_SHORT;

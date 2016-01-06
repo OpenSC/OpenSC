@@ -36,6 +36,9 @@
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 #include <openssl/err.h>
+#include <openssl/bn.h>
+#include <openssl/rsa.h>
+#include <openssl/dsa.h>
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L
 	#ifndef OPENSSL_NO_EC
 	#include <openssl/ec.h>

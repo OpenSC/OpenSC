@@ -617,7 +617,11 @@ int main(int argc, char *argv[])
 			goto out;
 		}
 
+#if OPENSSL_VERSION_NUMBER  >= 0x10100002L
+		RSA_set_method(rsa, RSA_PKCS1_OpenSSL());
+#else
 		rsa->meth = RSA_PKCS1_SSLeay();
+#endif
 
 		if(!i2d_RSAPrivateKey_bio(mem, rsa))
 		{
