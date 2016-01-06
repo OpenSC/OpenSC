@@ -772,9 +772,11 @@ __pkcs15_prkey_bind_related(struct pkcs15_fw_data *fw_data, struct pkcs15_prkey_
 			if (sc_pkcs15_compare_id(&pubkey->pub_info->id, id)) {
 				sc_log(context, "Associating object %d as public key", i);
 				pk->prv_pubkey = pubkey;
-				sc_pkcs15_dup_pubkey(context, pubkey->pub_data, &pk->pub_data);
-				if (pk->prv_info->modulus_length == 0)
-					pk->prv_info->modulus_length = pubkey->pub_info->modulus_length;
+				if (pubkey->pub_data) {
+					sc_pkcs15_dup_pubkey(context, pubkey->pub_data, &pk->pub_data);
+					if (pk->prv_info->modulus_length == 0)
+						pk->prv_info->modulus_length = pubkey->pub_info->modulus_length;
+				}
 			}
 		}
 	}
