@@ -33,6 +33,7 @@
 #include <openssl/x509v3.h>
 #include <openssl/bn.h>
 
+#include "libopensc/sc-ossl-compat.h"
 #include "libopensc/opensc.h"
 #include "libopensc/errors.h"
 #include "libopensc/pkcs15.h"
@@ -617,7 +618,7 @@ int main(int argc, char *argv[])
 			goto out;
 		}
 
-		rsa->meth = RSA_PKCS1_SSLeay();
+		RSA_set_method(rsa, RSA_PKCS1_OpenSSL());
 
 		if(!i2d_RSAPrivateKey_bio(mem, rsa))
 		{
