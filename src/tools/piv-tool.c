@@ -45,6 +45,7 @@
 #include <openssl/err.h>
 #include <openssl/obj_mac.h>
 
+#include "libopensc/sc-ossl-compat.h"
 #include "libopensc/opensc.h"
 #include "libopensc/cardctl.h"
 #include "libopensc/asn1.h"
@@ -534,7 +535,7 @@ int main(int argc, char * const argv[])
 	if (action_count == 0)
 		util_print_usage_and_die(app_name, options, option_help, NULL);
 
-	CRYPTO_malloc_init();
+	OPENSSL_malloc_init();
 	ERR_load_crypto_strings();
 	OpenSSL_add_all_algorithms();
 
