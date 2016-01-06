@@ -729,6 +729,62 @@ int dnie_match_card(struct sc_card *card)
 	LOG_FUNC_RETURN(card->ctx, result);
 }
 
+static int dnie_sm_free_wrapped_apdu(struct sc_card *card,
+		struct sc_apdu *plain, struct sc_apdu **sm_apdu)
+{
+	struct sc_context *ctx = card->ctx;
+	int rv = SC_SUCCESS;
+
+	LOG_FUNC_CALLED(ctx);
+	if (!sm_apdu)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+	if (!(*sm_apdu))
+		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+
+	plain->resp = (*sm_apdu)->resp;
+	plain->resplen = (*sm_apdu)->resplen;
+	plain->sw1 = (*sm_apdu)->sw1;
+	plain->sw2 = (*sm_apdu)->sw2;
+
+	if (((*sm_apdu)->data) != plain->data)
+		free((unsigned char *) (*sm_apdu)->data);
+	free(*sm_apdu);
+	*sm_apdu = NULL;
+
+	LOG_FUNC_RETURN(ctx, rv);
+}
+
+static int dnie_sm_get_wrapped_apdu(struct sc_card *card,
+		struct sc_apdu *plain, struct sc_apdu **sm_apdu)
+{
+	struct sc_context *ctx = card->ctx;
+	struct sc_apdu *apdu = NULL;
+	int rv = SC_SUCCESS;
+
+	LOG_FUNC_CALLED(ctx);
+	if (!plain || !sm_apdu)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+
+	*sm_apdu = NULL;
+	//construct new SM apdu from original apdu
+	apdu = calloc(1, sizeof(struct sc_apdu));
+	if (!apdu)
+		return SC_ERROR_OUT_OF_MEMORY;
+
+	memcpy(apdu, plain, sizeof(sc_apdu_t));
+
+	if (rv != SC_SUCCESS) {
+		dnie_sm_free_wrapped_apdu(card, NULL, &apdu);
+		goto err;
+	}
+
+	*sm_apdu = apdu;
+	apdu = NULL;
+err:
+	free(apdu);
+	LOG_FUNC_RETURN(ctx, rv);
+}
+
 /**
  * OpenDNIe card structures initialization.
  *
@@ -759,8 +815,9 @@ static int dnie_init(struct sc_card *card)
 #ifdef ENABLE_SM
 	/** Secure messaging initialization section **/
 	memset(&(card->sm_ctx), 0, sizeof(sm_context_t));
-	card->sm_ctx.ops.get_sm_apdu = NULL;
-	card->sm_ctx.ops.free_sm_apdu = NULL;
+	card->sm_ctx.ops.get_sm_apdu = dnie_sm_get_wrapped_apdu;
+	card->sm_ctx.ops.free_sm_apdu = dnie_sm_free_wrapped_apdu;
+	card->sm_ctx.sm_mode = SM_MODE_NONE;
 #endif
 
 	init_flags(card);
@@ -1293,6 +1350,10 @@ static int dnie_get_challenge(struct sc_card *card, u8 * rnd, size_t len)
 	*/
 	while (len > 0) {
 		size_t n = len > 8 ? 8 : len;
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0x84, 0x00, 0x00);
+		apdu.le = 8;
+		apdu.resp = buf;
+		apdu.resplen = 8;	/* include SW's */
 		result = dnie_transmit_apdu(card, &apdu);
 		if (result != SC_SUCCESS) {
 			dnie_free_apdu_buffers(&apdu, buf, 8);
