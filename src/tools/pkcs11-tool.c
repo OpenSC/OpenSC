@@ -37,6 +37,7 @@
 #include <openssl/opensslv.h>
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L
 #include <openssl/opensslconf.h>
+//#include <openssl/crypto.h>
 #endif
 #if OPENSSL_VERSION_NUMBER >= 0x00907000L
 #include <openssl/conf.h>
@@ -449,10 +450,11 @@ int main(int argc, char * argv[])
 	/* OpenSSL magic */
 #if OPENSSL_VERSION_NUMBER  >= 0x10100002L
 	OpenSSL_add_all_algorithms();
+	OPENSSL_malloc_init();
 #else
 	SSLeay_add_all_algorithms();
-#endif
 	CRYPTO_malloc_init();
+#endif
 #endif
 	while (1) {
 		c = getopt_long(argc, argv, "ILMOTa:bd:e:hi:klm:o:p:scvf:ty:w:z:r",

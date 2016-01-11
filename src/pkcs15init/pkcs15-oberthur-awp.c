@@ -27,12 +27,13 @@
 #include <sys/types.h>
 
 #include "config.h"
+#include "pkcs15-oberthur.h"
+
 #include "libopensc/opensc.h"
 #include "libopensc/cardctl.h"
 #include "libopensc/log.h"
 #include "profile.h"
 #include "pkcs15-init.h"
-#include "pkcs15-oberthur.h"
 #include "libopensc/asn1.h"
 
 #ifdef ENABLE_OPENSSL

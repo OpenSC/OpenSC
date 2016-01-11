@@ -534,7 +534,11 @@ int main(int argc, char * const argv[])
 	if (action_count == 0)
 		util_print_usage_and_die(app_name, options, option_help, NULL);
 
+#if OPENSSL_VERSION_NUMBER >= 0x10100002L
+	OPENSSL_malloc_init();
+#else
 	CRYPTO_malloc_init();
+#endif
 	ERR_load_crypto_strings();
 	OpenSSL_add_all_algorithms();
 

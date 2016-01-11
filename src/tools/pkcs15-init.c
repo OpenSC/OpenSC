@@ -432,10 +432,11 @@ main(int argc, char **argv)
 	/* OpenSSL magic */
 #if OPENSSL_VERSION_NUMBER  >= 0x10100002L
 	OpenSSL_add_all_algorithms();
+	OPENSSL_malloc_init();
 #else
 	SSLeay_add_all_algorithms();
-#endif
 	CRYPTO_malloc_init();
+#endif
 #ifdef RANDOM_POOL
 	if (!RAND_load_file(RANDOM_POOL, 32))
 		util_fatal("Unable to seed random number pool for key generation");
