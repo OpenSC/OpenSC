@@ -772,9 +772,11 @@ __pkcs15_prkey_bind_related(struct pkcs15_fw_data *fw_data, struct pkcs15_prkey_
 			if (sc_pkcs15_compare_id(&pubkey->pub_info->id, id)) {
 				sc_log(context, "Associating object %d as public key", i);
 				pk->prv_pubkey = pubkey;
-				sc_pkcs15_dup_pubkey(context, pubkey->pub_data, &pk->pub_data);
-				if (pk->prv_info->modulus_length == 0)
-					pk->prv_info->modulus_length = pubkey->pub_info->modulus_length;
+				if (pubkey->pub_data) {
+					sc_pkcs15_dup_pubkey(context, pubkey->pub_data, &pk->pub_data);
+					if (pk->prv_info->modulus_length == 0)
+						pk->prv_info->modulus_length = pubkey->pub_info->modulus_length;
+				}
 			}
 		}
 	}
@@ -3878,9 +3880,13 @@ pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session, void *object, CK_
 		*(CK_OBJECT_CLASS*)attr->pValue = CKO_PUBLIC_KEY;
 		break;
 	case CKA_TOKEN:
-	case CKA_SENSITIVE:
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
 		*(CK_BBOOL*)attr->pValue = TRUE;
+		break;
+	case CKA_SENSITIVE:
+		/* By PKCS#11 v2.20 public key cannot have SENSITIVE attr TRUE */
+		check_attribute_buffer(attr, sizeof(CK_BBOOL));
+		*(CK_BBOOL*)attr->pValue = FALSE;
 		break;
 	case CKA_LOCAL:
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));

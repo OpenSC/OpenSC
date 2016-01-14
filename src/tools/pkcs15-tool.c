@@ -688,9 +688,7 @@ static int read_public_key(void)
 	if (r >= 0) {
 		if (verbose)
 			printf("Reading public key with ID '%s'\n", opt_pubkey);
-		r = authenticate(obj);
-		if (r >= 0)
-			r = sc_pkcs15_read_pubkey(p15card, obj, &pubkey);
+		r = sc_pkcs15_read_pubkey(p15card, obj, &pubkey);
 	} else if (r == SC_ERROR_OBJECT_NOT_FOUND) {
 		/* No pubkey - try if there's a certificate */
 		r = sc_pkcs15_find_cert_by_id(p15card, &id, &obj);

@@ -757,14 +757,9 @@ static int dnie_transmit_apdu_internal(sc_card_t * card, sc_apdu_t * apdu)
 			       index, len);
 
 			/* compose envelope apdu command */
-			sc_format_apdu(card, &e_apdu, apdu->cse, 0xC2, 0x00, 0x00);
+			dnie_format_apdu(card, &e_apdu, apdu->cse, 0xC2, 0x00, 0x00, apdu->le, len,
+							apdu->resp, apdu->resplen, e_tx + index, len);
 			e_apdu.cla = 0x90;	/* propietary CLA */
-			e_apdu.data = e_tx + index;
-			e_apdu.lc = len;
-			e_apdu.datalen = len;
-			e_apdu.le = apdu->le;
-			e_apdu.resp = apdu->resp;
-			e_apdu.resplen = apdu->resplen;
 			/* if SM is ON, ensure resp exists, and force getResponse() */
 			if (provider->status.session.state == CWA_SM_ACTIVE) {
 				/* set up proper apdu type */
@@ -913,6 +908,34 @@ int dnie_transmit_apdu(sc_card_t * card, sc_apdu_t * apdu)
 	res = dnie_wrap_apdu(card, apdu);
 	if (res <= 0) return res;
 	return sc_transmit_apdu(card, apdu);
+}
+
+void dnie_format_apdu(sc_card_t *card, sc_apdu_t *apdu,
+			int cse, int ins, int p1, int p2, int le, int lc,
+			unsigned char * resp, size_t resplen,
+			const unsigned char * data, size_t datalen)
+{
+	sc_format_apdu(card, apdu, cse, ins, p1, p2);
+	apdu->le = le;
+	apdu->lc = lc;
+	if (resp != NULL) {
+		apdu->resp = resp;
+		apdu->resplen = resplen;
+	}
+	if (data != NULL) {
+		apdu->data = data;
+		apdu->datalen = datalen;
+	}
+}
+
+void dnie_free_apdu_buffers(sc_apdu_t *apdu,
+				unsigned char * resp, size_t resplen)
+{
+	if (apdu->resp != resp) {
+		free(apdu->resp);
+		apdu->resp = resp;
+		apdu->resplen = resplen;
+	}
 }
 
 #endif				/* HAVE_OPENSSL */
