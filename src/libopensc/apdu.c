@@ -504,7 +504,7 @@ sc_get_response(struct sc_card *card, struct sc_apdu *apdu, size_t olen)
 			/* if the card has returned 0x9000 but we still expect data ask for more
 			 * until we have read enough bytes */
 			le = minlen;
-	} while (rv != 0 || minlen != 0);
+	} while (rv != 0 && minlen != 0);
 
 	/* we've read all data, let's return 0x9000 */
 	apdu->resplen = buf - apdu->resp;
