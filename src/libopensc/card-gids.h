@@ -18,7 +18,15 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifdef _OPENSC_PKCS15_H
+#ifndef CARD_GIDS_H_
+#define CARD_GIDS_H_
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include "pkcs15.h"
+
 struct sc_cardctl_gids_genkey {
 	sc_pkcs15_object_t *object;
 	struct sc_pkcs15_pubkey* pubkey;
@@ -34,7 +42,6 @@ struct sc_cardctl_gids_save_cert {
 	sc_pkcs15_object_t *privkeyobject;
 	struct sc_path *path;
 };
-#endif
 
 typedef struct sc_cardctl_gids_get_container {
 	int containernum;
@@ -90,14 +97,20 @@ struct gids_keymap_record {
 #define GIDS_MAX_CONTAINER 126
 
 // stolen from cardmod.h
-#define MAX_CONTAINER_NAME_LEN                  39
-#define CONTAINER_MAP_VALID_CONTAINER           1
-#define CONTAINER_MAP_DEFAULT_CONTAINER         2
+#define MAX_CONTAINER_NAME_LEN				39
+#define CONTAINER_MAP_VALID_CONTAINER		1
+#define CONTAINER_MAP_DEFAULT_CONTAINER		2
 typedef struct _CONTAINER_MAP_RECORD
 {
-    unsigned short wszGuid [MAX_CONTAINER_NAME_LEN + 1];
-    unsigned char bFlags;
-    unsigned char bReserved;
-    unsigned short wSigKeySizeBits;
-    unsigned short wKeyExchangeKeySizeBits;
+	unsigned short wszGuid [MAX_CONTAINER_NAME_LEN + 1];
+	unsigned char bFlags;
+	unsigned char bReserved;
+	unsigned short wSigKeySizeBits;
+	unsigned short wKeyExchangeKeySizeBits;
 } CONTAINER_MAP_RECORD, *PCONTAINER_MAP_RECORD;
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* CARD_GIDS_H_ */
