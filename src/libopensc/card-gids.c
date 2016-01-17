@@ -910,6 +910,8 @@ static int gids_select_file(sc_card_t *card, const struct sc_path *in_path,
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
 
 	data->state = GIDS_STATE_NONE;
+	data->currentDO = 0;
+	data->currentEFID = 0;
 	if (in_path->len == 4 && in_path->value[0] == 0xA0) {
 		// is it a DO pseudo file ?
 		// yes, succeed
@@ -925,9 +927,17 @@ static int gids_select_file(sc_card_t *card, const struct sc_path *in_path,
 		file->size = SC_MAX_EXT_APDU_BUFFER_SIZE;
 		*file_out = file;
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+	} else if (in_path->len == 4 && in_path->value[0] == 0x3F && in_path->value[1] == 0xFF &&  in_path->type == SC_PATH_TYPE_PATH) {
+		// GIDS does not allow a select with a path containing a DF
+		// replace the file selection from SC_PATH_TYPE_PATH to SC_PATH_TYPE_FILE_ID
+		struct sc_path key_path;
+		memset(&key_path, 0, sizeof(key_path));
+		key_path.len = 2;
+		key_path.value[0] = in_path->value[2];
+		key_path.value[1] = in_path->value[3];
+		key_path.type = SC_PATH_TYPE_FILE_ID;
+		return iso_ops->select_file(card, &key_path, file_out);
 	} else {
-		data->currentDO = 0;
-		data->currentEFID = 0;
 		return iso_ops->select_file(card, in_path, file_out);
 	}
 }
