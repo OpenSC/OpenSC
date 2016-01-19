@@ -382,7 +382,7 @@ static int print_info(sc_card_t *card) {
 				if (r < 0) {
 					printf("      unable to read the file: %s\n", sc_strerror(r));
 				} else {
-					printf("      Size: %u\n", size);
+					printf("      Size: %zu\n", size);
 				}
 				printf("\n");
 				if (strcmp(records[i].directory, "mscp") == 0 && strcmp(records[i].filename, "cmapfile") == 0 ) {

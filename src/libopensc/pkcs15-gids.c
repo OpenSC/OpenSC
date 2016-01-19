@@ -112,11 +112,12 @@ static int sc_pkcs15emu_gids_add_prkey(sc_pkcs15_card_t * p15card, sc_cardctl_gi
 static int sc_pkcs15emu_gids_init (sc_pkcs15_card_t * p15card)
 {
 	sc_card_t *card = p15card->card;
-	int r, i;
+	int r;
+	size_t i;
 	struct sc_pkcs15_auth_info pin_info;
 	struct sc_pkcs15_object pin_obj;
 	struct sc_pin_cmd_data pin_cmd_data;
-	int recordsnum;
+	size_t recordsnum;
 
 	r = sc_card_ctl(card, SC_CARDCTL_GIDS_GET_ALL_CONTAINERS, &recordsnum);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "unable to get the containers. Uninitialized card ?");
@@ -207,7 +208,9 @@ static int sc_pkcs15emu_gids_init (sc_pkcs15_card_t * p15card)
 		container.containernum = i;
 		r = sc_card_ctl(card, SC_CARDCTL_GIDS_GET_CONTAINER_DETAIL, &container);
 		if (r < 0) {
-			break;
+			// one of the container information couldn't be retrieved
+			// ignore it
+			continue;
 		}
 		sc_pkcs15emu_gids_add_prkey(p15card, &container);
 	}

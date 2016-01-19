@@ -44,7 +44,7 @@ struct sc_cardctl_gids_save_cert {
 };
 
 typedef struct sc_cardctl_gids_get_container {
-	int containernum;
+	size_t containernum;
 	int pubusage;
 	int prvusage;
 	char label[40];

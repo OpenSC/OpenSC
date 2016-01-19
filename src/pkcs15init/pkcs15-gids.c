@@ -18,7 +18,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#ifdef HAVE_CONFIG_H
 #include "config.h"
+#endif
 
 #include <sys/types.h>
 #include <stdlib.h>
@@ -144,8 +146,11 @@ static int gids_emu_store_data(struct sc_pkcs15_card *p15card, struct sc_profile
 	case SC_PKCS15_TYPE_CERT:
 		r = gids_save_certificate(p15card, object, path);
 		break;
+	default:
+		r = SC_ERROR_NOT_IMPLEMENTED;
+		break;
 	}
-	return r;
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 static int gids_emu_update_tokeninfo(sc_profile_t *profile, sc_pkcs15_card_t *p15card,

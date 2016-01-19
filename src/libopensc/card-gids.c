@@ -27,7 +27,7 @@ Some features are undocumented like the format used to store certificates. They 
 */
 
 
-#if HAVE_CONFIG_H
+#ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
 
@@ -110,8 +110,8 @@ struct gids_private_data {
 // find file identifier & DO identifier from the masterfile for a directory/file
 static int gids_get_identifiers(sc_card_t* card, u8* masterfile, size_t masterfilesize, char *directory, char *filename, int *fileIdentifier, int *dataObjectIdentifier) {
 	gids_mf_record_t *records = (gids_mf_record_t *) (masterfile+1);
-	int recordcount = (int) ((masterfilesize-1) / sizeof(gids_mf_record_t));
-	int i;
+	size_t recordcount = ((masterfilesize-1) / sizeof(gids_mf_record_t));
+	size_t i;
 	assert(masterfilesize >= 1);
 
 	for (i = 0; i < recordcount; i++) {
@@ -713,7 +713,7 @@ static int gids_set_security_env(sc_card_t *card,
 			*p++ |= 0x50;
 		}
 	}
-	if (!env->flags & SC_SEC_ENV_KEY_REF_PRESENT) {
+	if (!(env->flags & SC_SEC_ENV_KEY_REF_PRESENT)) {
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED);
 	}
 	if (env->flags & SC_SEC_ENV_KEY_REF_ASYMMETRIC)
@@ -951,21 +951,21 @@ static int gids_read_binary(sc_card_t *card, unsigned int offset,
 	if (offset >= data->buffersize) {
 		return 0;
 	}
-	size = MIN((int) (data->buffersize - offset), (int) count);
+	size = (int) MIN((data->buffersize - offset), count);
 	memcpy(buf, data->buffer + offset, size);
 	return size;
 }
 
 // refresh the internal caches and return the number of containers
 static int
-gids_get_all_containers(sc_card_t* card, int *recordsnum) {
+gids_get_all_containers(sc_card_t* card, size_t *recordsnum) {
 	int r;
 	struct gids_private_data *privatedata = (struct gids_private_data *) card->drv_data;
 	r = gids_read_masterfile(card);
 	LOG_TEST_RET(card->ctx, r, "unable to read the masterfile");
 	r = gids_read_cmapfile(card);
 	LOG_TEST_RET(card->ctx, r, "unable to read the cmapfile");
-	*recordsnum = (int) (privatedata ->cmapfilesize / sizeof(CONTAINER_MAP_RECORD));
+	*recordsnum = (privatedata ->cmapfilesize / sizeof(CONTAINER_MAP_RECORD));
 	return SC_SUCCESS;
 }
 
@@ -974,9 +974,9 @@ static int
 gids_get_container_detail(sc_card_t* card, sc_cardctl_gids_get_container_t* container) {
 	PCONTAINER_MAP_RECORD records = NULL;
 	struct gids_private_data *privatedata = (struct gids_private_data *) card->drv_data;
-	int recordsnum, num, i;
+	size_t recordsnum, num, i;
 	records = (PCONTAINER_MAP_RECORD) privatedata ->cmapfile;
-	recordsnum = (int) (privatedata ->cmapfilesize / sizeof(CONTAINER_MAP_RECORD));
+	recordsnum = (privatedata ->cmapfilesize / sizeof(CONTAINER_MAP_RECORD));
 
 	num = container->containernum ;
 	if (num >= recordsnum) {
@@ -1018,8 +1018,8 @@ static int
 gids_select_key_reference(sc_card_t *card, sc_pkcs15_prkey_info_t* key_info) {
 	struct gids_private_data *data = (struct gids_private_data *) card->drv_data;
 	PCONTAINER_MAP_RECORD records = (PCONTAINER_MAP_RECORD) data->cmapfile;
-	int recordsnum;
-	int i, r;
+	size_t recordsnum;
+	int r;
 	char ch_tmp[10];
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
@@ -1030,10 +1030,11 @@ gids_select_key_reference(sc_card_t *card, sc_pkcs15_prkey_info_t* key_info) {
 	r = gids_read_cmapfile(card);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "gids read cmapfile failed");
 
-	recordsnum = (int) (data->cmapfilesize / sizeof(CONTAINER_MAP_RECORD));
+	recordsnum = (data->cmapfilesize / sizeof(CONTAINER_MAP_RECORD));
 
 	if (!key_info->key_reference) {
 		// new key
+		size_t i;
 		for (i = 0; i < recordsnum; i++) {
 			if (!(records[i].bFlags & CONTAINER_MAP_VALID_CONTAINER)) {
 				key_info->key_reference = 0x81 + i;
@@ -1045,8 +1046,8 @@ gids_select_key_reference(sc_card_t *card, sc_pkcs15_prkey_info_t* key_info) {
 		}
 		key_info->key_reference = 0x81 + recordsnum;
 	} else {
-		int i = key_info->key_reference - 0x81;
-		if (i < 0 || i > GIDS_MAX_CONTAINER) {
+		size_t i = key_info->key_reference - 0x81;
+		if (i > GIDS_MAX_CONTAINER) {
 			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "invalid key ref %d", key_info->key_reference);
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
 		}
@@ -1064,7 +1065,6 @@ gids_select_key_reference(sc_card_t *card, sc_pkcs15_prkey_info_t* key_info) {
 // try to mimic the GIDS minidriver key permission
 static int gids_perform_create_keyfile(sc_card_t *card, int keytype, int kid, int algid) {
 	struct sc_apdu apdu;
-	size_t len;
 	int r;
 	u8 keyexchange[] = {0x62,0x47,
 							0x82,0x01,0x18,  // file type
@@ -1109,7 +1109,6 @@ static int gids_perform_create_keyfile(sc_card_t *card, int keytype, int kid, in
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	// create the key file
-	len = SC_MAX_APDU_BUFFER_SIZE;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xE0, 0x00, 0x00);
 	if (keytype == 1) {
@@ -1153,10 +1152,10 @@ static int gids_create_keyfile(sc_card_t *card, sc_pkcs15_object_t *object) {
 	int cmapbuffersize = 0;
 	u8 keymapbuffer[MAX_GIDS_FILE_SIZE];
 	size_t keymapbuffersize = 0;
-	int keymaprecordnum = -1;
+	size_t keymaprecordnum = 0;
 	struct gids_private_data *data = (struct gids_private_data *) card->drv_data;
-	int recordnum;
-	int containernum = key_info->key_reference - 0x81;
+	size_t recordnum;
+	size_t containernum = key_info->key_reference - 0x81;
 	PCONTAINER_MAP_RECORD records = ((PCONTAINER_MAP_RECORD) cmapbuffer) + containernum;
 	struct gids_keymap_record* keymaprecord = NULL;
 	int i;
@@ -1171,10 +1170,10 @@ static int gids_create_keyfile(sc_card_t *card, sc_pkcs15_object_t *object) {
 
 	// masterfile & cmapfile have been refreshed in gids_perform_create_keyfile
 
-	recordnum = (int) (data->cmapfilesize / sizeof(CONTAINER_MAP_RECORD));
+	recordnum = (data->cmapfilesize / sizeof(CONTAINER_MAP_RECORD));
 	
 	// sanity check
-	if (containernum < 0 || containernum > recordnum || containernum > GIDS_MAX_CONTAINER) 
+	if (containernum > recordnum || containernum > GIDS_MAX_CONTAINER)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INTERNAL);
 
 	// refresh the key map file
@@ -1284,7 +1283,7 @@ static int gids_generate_key(sc_card_t *card, sc_pkcs15_object_t *object, struct
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	assert((object->type & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_PRKEY);
 
-	if (kid > 0x81 + GIDS_MAX_CONTAINER || kid < 0x81) {
+	if ((key_info->key_reference > 0x81 + GIDS_MAX_CONTAINER) || (kid < 0x81)) {
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_DATA);
 	}
 
@@ -1506,25 +1505,25 @@ static int gids_save_certificate(sc_card_t *card, sc_pkcs15_object_t *certobject
 }
 
 // remove a container and its registration in the cmapfile
-static int gids_delete_container_num(sc_card_t *card, int containernum) {
+static int gids_delete_container_num(sc_card_t *card, size_t containernum) {
 	int r;
 	u8 cmapbuffer[MAX_GIDS_FILE_SIZE];
-	int cmapbuffersize = 0;
+	size_t cmapbuffersize = 0;
 	u8 keymapbuffer[MAX_GIDS_FILE_SIZE];
 	size_t keymapbuffersize = 0;
-	int keymaprecordnum = -1;
+	size_t keymaprecordnum = 0;
 	struct gids_private_data *data = (struct gids_private_data *) card->drv_data;
-	int recordnum;
+	size_t recordnum;
 	PCONTAINER_MAP_RECORD records = ((PCONTAINER_MAP_RECORD) cmapbuffer) + containernum;
 	struct gids_keymap_record* keymaprecord = NULL;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	// masterfile & cmapfile have been refreshed before
 
-	recordnum = (int) (data->cmapfilesize / sizeof(CONTAINER_MAP_RECORD));
+	recordnum = (data->cmapfilesize / sizeof(CONTAINER_MAP_RECORD));
 	
 	// sanity check
-	if (containernum < 0 || containernum >= recordnum || recordnum <= 0) 
+	if (containernum >= recordnum || recordnum > GIDS_MAX_CONTAINER)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INTERNAL);
 
 	// refresh the key map file
@@ -1623,7 +1622,8 @@ static int gids_delete_cert(sc_card_t *card, sc_pkcs15_object_t* object) {
 }
 
 static int gids_delete_key(sc_card_t *card, sc_pkcs15_object_t* object) {
-	int r, containernum;
+	int r;
+	size_t containernum;
 	struct sc_pkcs15_prkey_info *key_info = (struct sc_pkcs15_prkey_info *) object->data;
 
 	assert((object->type & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_PRKEY);
@@ -1886,7 +1886,7 @@ static int gids_card_ctl(sc_card_t * card, unsigned long cmd, void *ptr)
 		case SC_CARDCTL_GET_SERIALNR:
 			return gids_get_serialnr(card, (sc_serial_number_t *) ptr);
 		case SC_CARDCTL_GIDS_GET_ALL_CONTAINERS:
-			return gids_get_all_containers(card, (int*) ptr);
+			return gids_get_all_containers(card, (size_t*) ptr);
 		case SC_CARDCTL_GIDS_GET_CONTAINER_DETAIL:
 			return gids_get_container_detail(card, (sc_cardctl_gids_get_container_t*) ptr);
 		case SC_CARDCTL_GIDS_SELECT_KEY_REFERENCE:
