@@ -1005,11 +1005,21 @@ awp_encode_cert_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *ob
 	 * a DER encoded ASN1_INTEGER
 	 * So we can simplifty the code and make compatable with OpenSSL 1.1. This needs to be tested
 	 */
+	ci->serial.len = 0;
 	ci->serial.value = NULL;
-	r = ci->serial.len = i2d_ASN1_INTEGER(X509_get_serialNumber(x), &ci->serial.value);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INTERNAL, "AWP encode cert failed: cannot get serialNumber");
+	/* get length */
+	ci->serial.len = i2d_ASN1_INTEGER(X509_get_serialNumber(x), NULL);
+	if (ci->serial.len > 0) {
+		if (!(ci->serial.value = malloc(ci->serial.len)))   {
+			ci->serial.len = 0;
+			r = SC_ERROR_OUT_OF_MEMORY;
+			goto done;
+		}
+		ci->serial.len = i2d_ASN1_INTEGER(X509_get_serialNumber(x), &ci->serial.value);
+	}
+	/* if len == 0, and value == NULL, then the cert did not have a serial number.*/
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "cert. serial encoded length %i", ci->serial.len);
 
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "cert. serial encoded length %i", ci->serial.len - 2);
 #else
 	do   {
 		int encoded_len;
