@@ -116,6 +116,7 @@
 #include <pthread.h>
 #endif
 
+#define SIMCLIST_C_INTERNAL
 #include "simclist.h"
 
 

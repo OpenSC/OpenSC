@@ -44,11 +44,20 @@ typedef INT64   int64_t;
 #include <errno.h>
 #include <sys/types.h>
 
+/* OpenSSL-1.1 e_os2.h does #if !defined(inline)
+ * the following causes problems. One of them needs to be fixed
+ * other files  may still want inline!
+ *
+ * only do the define inline when in the simclilst.c  code
+ */
+
 /* Be friend of both C90 and C99 compilers */
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
     /* "inline" and "restrict" are keywords */
 #else
+#ifdef SIMCLIST_C_INTERNAL
 #   define inline           /* inline */
+#endif /* SIMCLIST_C_INTERNAL */
 #   define restrict         /* restrict */
 #endif
 
