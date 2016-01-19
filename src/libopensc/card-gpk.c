@@ -912,7 +912,7 @@ gpk_set_filekey(const u8 *key, const u8 *challenge,
 #endif
 	if (r == SC_SUCCESS) {
 #if OPENSSL_VERSION_NUMBER  <  0x10100000L
-		r =EVP_CIPHER_CTX_init(ctx);
+		EVP_CIPHER_CTX_init(ctx);
 #endif
 		EVP_EncryptInit_ex(ctx, EVP_des_ede(), NULL, out, NULL);
 		if (!EVP_EncryptUpdate(ctx, kats+8, &outl, r_rn+4, 8))
