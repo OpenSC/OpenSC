@@ -35,6 +35,7 @@
 #include "internal.h"
 #include "asn1.h"
 #include "pkcs15.h"
+#include "common/compat_strnlen.h"
 
 
 int

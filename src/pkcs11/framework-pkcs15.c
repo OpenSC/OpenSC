@@ -24,6 +24,7 @@
 #include "libopensc/log.h"
 #include "libopensc/asn1.h"
 #include "libopensc/cardctl.h"
+#include "common/compat_strnlen.h"
 
 #ifdef ENABLE_OPENSSL
 #include <openssl/opensslv.h>

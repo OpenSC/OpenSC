@@ -30,6 +30,7 @@
 #include "pkcs15.h"
 #include "asn1.h"
 #include "common/compat_strlcpy.h"
+#include "common/compat_strnlen.h"
 
 #include "card-sc-hsm.h"
 
