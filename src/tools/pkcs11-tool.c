@@ -1427,7 +1427,7 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		if (!find_mechanism(slot, CKF_SIGN|CKF_HW, NULL, 0, &opt_mechanism))
 			util_fatal("Sign mechanism not supported\n");
 
-	printf("Using signature algorithm %s\n", p11_mechanism_to_name(opt_mechanism));
+	fprintf(stderr, "Using signature algorithm %s\n", p11_mechanism_to_name(opt_mechanism));
 	memset(&mech, 0, sizeof(mech));
 	mech.mechanism = opt_mechanism;
 
@@ -1515,7 +1515,7 @@ static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		if (!find_mechanism(slot, CKF_DECRYPT|CKF_HW, NULL, 0, &opt_mechanism))
 			util_fatal("Decrypt mechanism not supported\n");
 
-	printf("Using decrypt algorithm %s\n", p11_mechanism_to_name(opt_mechanism));
+	fprintf(stderr, "Using decrypt algorithm %s\n", p11_mechanism_to_name(opt_mechanism));
 	memset(&mech, 0, sizeof(mech));
 	mech.mechanism = opt_mechanism;
 
@@ -1570,7 +1570,7 @@ static void hash_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		if (!find_mechanism(slot, CKF_DIGEST, NULL, 0, &opt_mechanism))
 			util_fatal("Digest mechanism is not supported\n");
 
-	printf("Using digest algorithm %s\n", p11_mechanism_to_name(opt_mechanism));
+	fprintf(stderr, "Using digest algorithm %s\n", p11_mechanism_to_name(opt_mechanism));
 	memset(&mech, 0, sizeof(mech));
 	mech.mechanism = opt_mechanism;
 
