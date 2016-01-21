@@ -259,11 +259,11 @@ load_parameters(sc_context_t *ctx, scconf_block *block, struct _sc_ctx_options *
 	}
 
 	if (scconf_get_bool (block, "paranoid-memory",
-			   	ctx->flags & SC_CTX_FLAG_PARANOID_MEMORY))
+				ctx->flags & SC_CTX_FLAG_PARANOID_MEMORY))
 		ctx->flags |= SC_CTX_FLAG_PARANOID_MEMORY;
 
 	if (scconf_get_bool (block, "enable_default_driver",
-			   	ctx->flags & SC_CTX_FLAG_ENABLE_DEFAULT_DRIVER))
+				ctx->flags & SC_CTX_FLAG_ENABLE_DEFAULT_DRIVER))
 		ctx->flags |= SC_CTX_FLAG_ENABLE_DEFAULT_DRIVER;
 
 	val = scconf_get_str(block, "force_card_driver", NULL);

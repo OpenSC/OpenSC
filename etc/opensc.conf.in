@@ -513,9 +513,13 @@ app default {
 		#   obtained with the common procedures (ex. object creation protected by secure messaging).
 		#   Used by PKCS#11 module configurated to expose restricted number of slots.
 		#   (for ex. configurated to expose only User PIN slot, User and Sign PINs slots, ...)
+		#
+		# - disable: do not expose application in PKCS15 framework
+		#            default 'false'
 		application E828BD080FD25047656E65726963 {
 			type = generic;
 			model = "ECC Generic PKI";
+			# disable = true
 		}
 
 		application E828BD080FD2500000040301 {
