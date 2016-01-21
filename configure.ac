@@ -537,11 +537,11 @@ if test "${enable_sm}" = "yes"; then
 			DEFAULT_SM_MODULE_PATH="\# module_path = \"\";"
 		;;
 		*-apple-*)
-			DEFAULT_SM_MODULE="libsmm-local.3.dylib"
+			DEFAULT_SM_MODULE="libsmm-local.dylib"
 			DEFAULT_SM_MODULE_PATH="module_path = \$(libdir);"
 		;;
 		*)
-			DEFAULT_SM_MODULE="libsmm-local.so.3"
+			DEFAULT_SM_MODULE="libsmm-local.so"
 			DEFAULT_SM_MODULE_PATH="module_path = \$(libdir);"
 		;;
 	esac
