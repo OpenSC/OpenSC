@@ -335,7 +335,7 @@ AC_FUNC_VPRINTF
 AC_CHECK_FUNCS([ \
 	getpass gettimeofday memset mkdir \
 	strdup strerror getopt_long getopt_long_only \
-	strlcpy strlcat
+	strlcpy strlcat strnlen
 ])
 AC_CHECK_SIZEOF(void *)
 if test "${ac_cv_sizeof_void_p}" = 8; then
