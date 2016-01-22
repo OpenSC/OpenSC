@@ -516,6 +516,9 @@ app default {
 		#
 		# - disable: do not expose application in PKCS15 framework
 		#            default 'false'
+		#
+		# - ignore_usage: do not consider the SDO usage when looking for available key slot
+		#            default 'false'
 		application E828BD080FD25047656E65726963 {
 			type = generic;
 			model = "ECC Generic PKI";
@@ -530,6 +533,7 @@ app default {
 		application E828BD080FD2504543432D654944 {
 			type = protected;
 			model = "ECC eID";
+			# ignore_usage = true
 		}
 
 		application E828BD080FD2500000040201 {

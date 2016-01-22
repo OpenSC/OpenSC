@@ -106,6 +106,33 @@ iasecc_pkcs15_delete_file(struct sc_pkcs15_card *p15card, struct sc_profile *pro
 }
 
 
+static int
+iasecc_is_usage_ignored(struct sc_pkcs15_card *p15card)
+{
+	struct sc_context *ctx = p15card->card->ctx;
+	scconf_block *conf_block = NULL;
+	int ignore_usage = 0;
+
+	conf_block = sc_get_conf_block(ctx, "framework", "pkcs15", 1);
+	if (conf_block)   {
+		scconf_block **blocks = NULL;
+		char aid_str[SC_MAX_AID_STRING_SIZE];
+
+		sc_bin_to_hex(p15card->app->aid.value, p15card->app->aid.len, aid_str, sizeof(aid_str), 0);
+		blocks = scconf_find_blocks(ctx->conf, conf_block, "application", aid_str);
+		if (blocks)   {
+			ignore_usage = (blocks[0] && scconf_get_str(blocks[0], "ignore_usage", 0));
+			free(blocks);
+		}
+	}
+
+	if (ignore_usage)
+		sc_log(ctx, "SDO key usage");
+
+	return ignore_usage;
+}
+
+
 /*
  * Erase the card
  *
@@ -281,7 +308,7 @@ iasecc_pkcs15_select_key_reference(struct sc_profile *profile, struct sc_pkcs15_
 		struct iasecc_ctl_get_free_reference ctl_data;
 
 		ctl_data.key_size = key_info->modulus_length;
-		ctl_data.usage = key_info->usage;
+		ctl_data.usage = iasecc_is_usage_ignored(p15card) ? 0 : key_info->usage;
 		ctl_data.access = key_info->access_flags;
 		ctl_data.index = idx;
 
