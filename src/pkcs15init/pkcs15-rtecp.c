@@ -287,10 +287,10 @@ static int rtecp_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		sc_pkcs15_object_t *obj)
 {
 	sc_context_t *ctx;
-	/*                              RSA_PRkey/ for Miller-
-	 *                              RSA_PUBkey  Rabin test    Attempts Reserve */
-	const unsigned char prkey_prop[]  = { 0x23,       0x1F, 0,    0xAA, 0, 0 };
-	const unsigned char pbkey_prop[]  = { 0x33,       0x1F, 0,    0xAA, 0, 0 };
+	/*                              RSA_PRkey/ Adds Miller-
+	 *                              RSA_PUBkey Rabin tests    Attempts Reserve */
+	const unsigned char prkey_prop[]  = { 0x23,          0, 0,    0xAA, 0, 0 };
+	const unsigned char pbkey_prop[]  = { 0x33,          0, 0,    0xAA, 0, 0 };
 	/*                  GOSTR3410_PRkey/
 	 *                  GOSTR3410_PUBkey  paramset    Attempts Reserve */
 	unsigned char prgkey_prop[] = { 0x03,      '?', 0,    0xAA, 0, 0 };
