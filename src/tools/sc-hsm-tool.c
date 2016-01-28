@@ -131,34 +131,34 @@ static sc_card_t *card = NULL;
  * Generate a prime number
  *
  * The internal CPRNG is seeded using the provided seed value.
- * For the bit size of the generated prime the following condition holds:
- *
- * num_bits(prime) > max(2^r, num_bits(n + 1))
- *
- * r equals the number of bits needed to encode the secret.
  *
  * @param prime Pointer for storage of prime number
  * @param s Secret to share
- * @param n Maximum number of shares
+ * @param bits Bit size of prime
  * @param rngSeed Seed value for CPRNG
- * @param rngSeedLength Lenght of Seed value for CPRNG
+ * @param rngSeedLength Length of Seed value for CPRNG
  *
  */
-static void generatePrime(BIGNUM *prime, const BIGNUM *s, const unsigned int n, unsigned char *rngSeed, const unsigned int rngSeedLength)
+static int generatePrime(BIGNUM *prime, const BIGNUM *s, const int bits, unsigned char *rngSeed, const unsigned int rngSeedLength)
 {
-	int bits = 0;
+	int max_rounds = 1000;
 
 	// Seed the RNG
 	RAND_seed(rngSeed, rngSeedLength);
 
-	// Determine minimum number of bits for prime >= max(2^r, n + 1)
-	bits = BN_num_bits_word(n + 1) > BN_num_bits(s) ? (BN_num_bits_word(n + 1)) : (BN_num_bits(s));
-
 	// Clear the prime value
 	BN_clear(prime);
 
-	// Generate random prime
-	BN_generate_prime(prime, bits, 1, NULL, NULL, NULL, NULL );
+	do {
+		// Generate random prime
+		BN_generate_prime(prime, bits, 1, NULL, NULL, NULL, NULL );
+
+	} while ((BN_ucmp(prime, s) == -1) && (max_rounds-- > 0));	// If prime < s or not reached 1000 tries
+
+	if (max_rounds > 0)
+		return 0;
+	else
+		return -1; // We could not find a prime number
 }
 
 
@@ -928,7 +928,7 @@ static int generate_pwd_shares(sc_card_t *card, char **pwd, int *pwdlen, int pas
 		free(*pwd);
 		return r;
 	}
-	**pwd |= 0x80;
+	**pwd &= 0x7F; // Make sure the bit size of the secret is not bigger than 63 bits
 
 	/*
 	 * Initialize prime and secret
@@ -952,7 +952,13 @@ static int generate_pwd_shares(sc_card_t *card, char **pwd, int *pwdlen, int pas
 		return r;
 	}
 
-	generatePrime(&prime, &secret, password_shares_total, rngseed, SEED_LENGTH);
+	r = generatePrime(&prime, &secret, 64, rngseed, SEED_LENGTH);
+	if (r < 0) {
+		printf("Error generating valid prime number. Please try again.");
+		OPENSSL_cleanse(*pwd, *pwdlen);
+		free(*pwd);
+		return r;
+	}
 
 	// Allocate data buffer for the generated shares
 	shares = malloc(password_shares_total * sizeof(secret_share_t));
