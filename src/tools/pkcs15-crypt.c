@@ -88,8 +88,8 @@ static const char *option_help[] = {
 	"Decipher operation",
 	"Selects the private key ID to use",
 	"Uses reader number <arg>",
-	"Selects the input file to use",
-	"Outputs to file <arg>",
+	"Selects the input file to use (defaults to stdin)",
+	"Outputs to file <arg> (defaults to stdout)",
 	"Format for ECDSA signature <arg>: 'rs' (default), 'sequence', 'openssl'",
 	"Outputs raw 8 bit data",
 	"Input file is a SHA-1 hash",
@@ -157,13 +157,19 @@ static int read_input(u8 *buf, int buflen)
 	FILE *inf;
 	int c;
 
-	inf = fopen(opt_input, "rb");
-	if (inf == NULL) {
-		fprintf(stderr, "Unable to open '%s' for reading.\n", opt_input);
-		return -1;
+	if (opt_input==NULL) {
+		inf = stdin;
+	} else {
+		inf = fopen(opt_input, "rb");
+		if (inf == NULL) {
+			fprintf(stderr, "Unable to open '%s' for reading.\n", opt_input);
+			return -1;
+		}
 	}
 	c = fread(buf, 1, buflen, inf);
-	fclose(inf);
+	if (inf!=stdin) {
+		fclose(inf);
+	}
 	if (c < 0) {
 		perror("read");
 		return -1;
@@ -203,8 +209,7 @@ static int sign(struct sc_pkcs15_object *obj)
 	int r, c, len;
 
 	if (opt_input == NULL) {
-		fprintf(stderr, "No input file specified.\n");
-		return 2;
+		fprintf(stderr, "No input file specified. Reading from stdin\n");
 	}
 
 	c = read_input(buf, sizeof(buf));
@@ -258,8 +263,7 @@ static int decipher(struct sc_pkcs15_object *obj)
 	int r, c, len;
 
 	if (opt_input == NULL) {
-		fprintf(stderr, "No input file specified.\n");
-		return 2;
+		fprintf(stderr, "No input file specified. Reading from stdin\n");
 	}
 	c = read_input(buf, sizeof(buf));
 	if (c < 0)

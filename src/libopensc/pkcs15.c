@@ -421,12 +421,12 @@ fix_starcos_pkcs15_card(struct sc_pkcs15_card *p15card)
 	struct sc_context *ctx = p15card->card->ctx;
 
 	/* set special flags based on card meta data */
-	if (strcmp(p15card->card->driver->short_name,"cardos") == 0) {
+	if (strcmp(p15card->card->driver->short_name,"cardos") == 0
+			&& p15card->tokeninfo && p15card->tokeninfo->label) {
 
 		/* D-Trust cards (D-TRUST, D-SIGN) */
-		if (p15card->tokeninfo->label
-				&& (strstr(p15card->tokeninfo->label,"D-TRUST") != NULL
-					|| strstr(p15card->tokeninfo->label,"D-SIGN") != NULL)) {
+		if (strstr(p15card->tokeninfo->label,"D-TRUST") != NULL
+				|| strstr(p15card->tokeninfo->label,"D-SIGN") != NULL) {
 
 			/* D-TRUST Card 2.0 2cc (standard cards, which always add
 			 * SHA1 prefix itself */

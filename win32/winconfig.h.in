@@ -74,6 +74,7 @@
 #define S_IWUSR S_IWRITE
 #endif
 
+#define HAVE_STRNLEN
 #define HAVE_IO_H
 #define ENABLE_PCSC
 #define HAVE_WINSCARD_H
