@@ -1821,7 +1821,9 @@ do_read_private_key(unsigned char *data, size_t data_len, EVP_PKEY **key)
 
 	mem = BIO_new(BIO_s_mem());
 	BIO_set_mem_buf(mem, &buf_mem, BIO_NOCLOSE);
-	if (!strstr((char *)data, "-----BEGIN PRIVATE KEY-----") && !strstr((char *)data, "-----BEGIN EC PRIVATE KEY-----"))
+	if (!strstr((char *)data, "-----BEGIN PRIVATE KEY-----") &&
+		!strstr((char *)data, "-----BEGIN RSA PRIVATE KEY-----") &&
+		!strstr((char *)data, "-----BEGIN EC PRIVATE KEY-----"))
 		*key = d2i_PrivateKey_bio(mem, NULL);
 	else
 		*key = PEM_read_bio_PrivateKey(mem, NULL, NULL, NULL);
@@ -1840,6 +1842,23 @@ do_read_private_key(unsigned char *data, size_t data_len, EVP_PKEY **key)
 		rsa->LOCALNAME##_len = BN_bn2bin(BNVALUE, rsa->LOCALNAME); \
 	} while (0)
 
+#if OPENSSL_VERSION_NUMBER >= 0x10000000L
+static int
+parse_rsa_private_key(EVP_PKEY *evp_key, struct rsakey_info *rsa)
+{
+	RSA *r = (RSA *) EVP_PKEY_get0(evp_key);
+	RSA_GET_BN(modulus, r->n);
+	RSA_GET_BN(public_exponent, r->e);
+	RSA_GET_BN(private_exponent, r->d);
+	RSA_GET_BN(prime_1, r->p);
+	RSA_GET_BN(prime_2, r->q);
+	RSA_GET_BN(exponent_1, r->dmp1);
+	RSA_GET_BN(exponent_2, r->dmq1);
+	RSA_GET_BN(coefficient, r->iqmp);
+
+	return 0;
+}
+#else
 static int
 parse_rsa_private_key(struct rsakey_info *rsa, unsigned char *data, int len)
 {
@@ -1862,6 +1881,7 @@ parse_rsa_private_key(struct rsakey_info *rsa, unsigned char *data, int len)
 
 	return 0;
 }
+#endif
 
 static void parse_rsa_public_key(struct rsakey_info *rsa,
 		unsigned char *data, int len)
@@ -1997,13 +2017,19 @@ static int write_object(CK_SESSION_HANDLE session)
 		if (rv)
 			util_fatal("Cannot read private key\n");
 
+#if OPENSSL_VERSION_NUMBER >= 0x10000000L
 		if (evp_key->type == EVP_PKEY_RSA)   {
-			rv = parse_rsa_private_key(&rsa, contents, contents_len);
+			rv = parse_rsa_private_key(evp_key, &rsa);
 		}
-#if OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_EC)
+#ifndef OPENSSL_NO_EC
 		else if (evp_key->type == NID_id_GostR3410_2001 || evp_key->type == EVP_PKEY_EC)   {
 			/* parsing ECDSA is identical to GOST */
 			rv = parse_gost_private_key(evp_key, &gost);
+		}
+#endif
+#else
+		if (evp_key->type == EVP_PKEY_RSA)   {
+			rv = parse_rsa_private_key(&rsa, contents, contents_len);
 		}
 #endif
 		else   {
