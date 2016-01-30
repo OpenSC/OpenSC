@@ -76,6 +76,7 @@ typedef struct sc_cardctl_gids_init_param {
 #define CMAP_DO 0xDF23
 #define CARDID_FI EveryoneReadAdminWriteAc_FI
 #define CARDID_DO 0xDF20
+#define GIDS_MAX_DO 0xDFFF
 
 #define MAX_GIDS_FILE_SIZE 65000
 
