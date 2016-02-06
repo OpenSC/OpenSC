@@ -1117,6 +1117,7 @@ do_read_check_certificate(sc_pkcs15_cert_t *sc_oldcert,
 {
 	X509 *oldcert, *newcert;
 	EVP_PKEY *oldpk, *newpk;
+	int oldpk_type, newpk_type;
 	const u8 *ptr;
 	int r;
 
@@ -1136,19 +1137,37 @@ do_read_check_certificate(sc_pkcs15_cert_t *sc_oldcert,
 
 	oldpk = X509_get_pubkey(oldcert);
 	newpk = X509_get_pubkey(newcert);
+#if OPENSSL_VERSION_NUMBER >= 0x10100003L
+	oldpk_type = EVP_PKEY_base_id(oldpk);
+	newpk_type = EVP_PKEY_base_id(newpk);
+#else
+	oldpk_type = oldpk->type;
+	newpk_type = newpk->type;
+#endif
 
 	/* Compare the public keys, there's no high level openssl function for this(?) */
 	r = SC_ERROR_INVALID_ARGUMENTS;
-	if (oldpk->type == newpk->type)
+	if (oldpk_type == newpk_type)
 	{
-		if ((oldpk->type == EVP_PKEY_DSA) &&
+		if ((oldpk_type == EVP_PKEY_DSA) &&
+#if OPENSSL_VERSION_NUMBER >= 0x10100003L
+			!BN_cmp(EVP_PKEY_get0_DSA(oldpk)->p, EVP_PKEY_get0_DSA(newpk)->p) &&
+			!BN_cmp(EVP_PKEY_get0_DSA(oldpk)->q, EVP_PKEY_get0_DSA(newpk)->q) &&
+			!BN_cmp(EVP_PKEY_get0_DSA(oldpk)->g, EVP_PKEY_get0_DSA(newpk)->g))
+#else
 			!BN_cmp(oldpk->pkey.dsa->p, newpk->pkey.dsa->p) &&
 			!BN_cmp(oldpk->pkey.dsa->q, newpk->pkey.dsa->q) &&
 			!BN_cmp(oldpk->pkey.dsa->g, newpk->pkey.dsa->g))
+#endif
 				r = 0;
-		else if ((oldpk->type == EVP_PKEY_RSA) &&
+		else if ((oldpk_type == EVP_PKEY_RSA) &&
+#if OPENSSL_VERSION_NUMBER >= 0x10100003L
+			!BN_cmp(EVP_PKEY_get0_RSA(oldpk)->n, EVP_PKEY_get0_RSA(newpk)->n) &&
+			!BN_cmp(EVP_PKEY_get0_RSA(oldpk)->e, EVP_PKEY_get0_RSA(newpk)->e))
+#else
 			!BN_cmp(oldpk->pkey.rsa->n, newpk->pkey.rsa->n) &&
 			!BN_cmp(oldpk->pkey.rsa->e, newpk->pkey.rsa->e))
+#endif
 				r = 0;
 	}
 
@@ -1999,7 +2018,11 @@ do_read_pkcs12_private_key(const char *filename, const char *passphrase,
 		return SC_ERROR_CANNOT_LOAD_KEY;
 	}
 
+#if OPENSSL_VERSION_NUMBER >= 0x10100003L
+	EVP_PKEY_up_ref(user_key);
+#else
 	CRYPTO_add(&user_key->references, 1, CRYPTO_LOCK_EVP_PKEY);
+#endif
 	if (user_cert && max_certs)
 		certs[ncerts++] = user_cert;
 

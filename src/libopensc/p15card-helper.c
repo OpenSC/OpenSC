@@ -143,6 +143,7 @@ CERT_HANDLE_FUNCTION(default_cert_handle) {
 	int r;
 	X509 *cert_data = NULL;
 	EVP_PKEY *pkey = NULL;
+	RSA * rsa = NULL;
 	int certtype = 0;
 	int modulus_len = 0;
 	const prdata* key = get_prkey_by_cert(items, cert);
@@ -170,13 +171,22 @@ CERT_HANDLE_FUNCTION(default_cert_handle) {
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
-	if(pkey->pkey.rsa->n == NULL) {
+#if OPENSSL_VERSION_NUMBER >= 0x10100003L
+	rsa = EVP_PKEY_get1_RSA(pkey);
+#else
+	rsa = pkey->pkey.rsa;
+#endif
+	if( rsa == NULL) {
 		sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "Error: no modulus associated with the certificate");
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
 	
+#if OPENSSL_VERSION_NUMBER >= 0x10100003L
+	modulus_len = BN_num_bits(rsa->n); /* converting to bits */
+#else
 	modulus_len = 8 * BN_num_bytes(pkey->pkey.rsa->n); /* converting to bits */
+#endif
 	/* printf("Key Size: %d bits\n\n", modulus_len); */
 	/* cached_cert->modulusLength = modulus_len; */
 	

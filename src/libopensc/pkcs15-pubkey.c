@@ -1530,8 +1530,13 @@ sc_pkcs15_convert_pubkey(struct sc_pkcs15_pubkey *pkcs15_key, void *evp_key)
 {
 #ifdef ENABLE_OPENSSL
 	EVP_PKEY *pk = (EVP_PKEY *)evp_key;
-
-	switch (pk->type) {
+	int pk_type;
+#if OPENSSL_VERSION_NUMBER >= 0x10100003L
+	pk_type = EVP_PKEY_base_id(pk);
+#else
+	pk_type = pk->type;
+ #endif
+	switch (pk_type) {
 	case EVP_PKEY_RSA: {
 		struct sc_pkcs15_pubkey_rsa *dst = &pkcs15_key->u.rsa;
 		RSA *src = EVP_PKEY_get1_RSA(pk);

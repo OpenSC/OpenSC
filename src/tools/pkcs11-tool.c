@@ -1989,6 +1989,7 @@ static int write_object(CK_SESSION_HANDLE session)
 	struct rsakey_info rsa;
 	struct gostkey_info gost;
 	EVP_PKEY *evp_key = NULL;
+	int pk_type;
 
 	memset(&cert, 0, sizeof(cert));
 	memset(&rsa,  0, sizeof(rsa));
@@ -2042,17 +2043,24 @@ static int write_object(CK_SESSION_HANDLE session)
 				util_fatal("Cannot read public key\n");
 		}
 
-		if (evp_key->type == EVP_PKEY_RSA) {
+#if OPENSSL_VERSION_NUMBER >=  0x10100003L
+		pk_type = EVP_PKEY_base_id(evp_key);
+#else
+		pk_type =  evp_key->type;
+#endif
+
+		if (pk_type == EVP_PKEY_RSA)   {
 			rv = parse_rsa_pkey(evp_key, is_private, &rsa);
 		}
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_EC)
-		else if (evp_key->type == NID_id_GostR3410_2001 || evp_key->type == EVP_PKEY_EC)   {
+		else if (pk_type == NID_id_GostR3410_2001 || pk_type == EVP_PKEY_EC)   {
 			/* parsing ECDSA is identical to GOST */
 			rv = parse_gost_pkey(evp_key, is_private, &gost);
 		}
 #endif
-		else
-			util_fatal("Unsupported key type: 0x%X\n", evp_key->type);
+		else   {
+			util_fatal("Unsupported key type: 0x%X\n", pk_type);
+		}
 
 		if (rv)
 			util_fatal("Cannot parse key\n");
@@ -2130,7 +2138,12 @@ static int write_object(CK_SESSION_HANDLE session)
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_SUBJECT, cert.subject, cert.subject_len);
 			n_privkey_attr++;
 		}
-		if (evp_key->type == EVP_PKEY_RSA)   {
+#if OPENSSL_VERSION_NUMBER >=  0x10100003L
+		pk_type = EVP_PKEY_base_id(evp_key);
+#else
+		pk_type =  evp_key->type;
+#endif
+		if (pk_type == EVP_PKEY_RSA)   {
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_KEY_TYPE, &type, sizeof(type));
 			n_privkey_attr++;
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_MODULUS, rsa.modulus, rsa.modulus_len);
@@ -2151,7 +2164,7 @@ static int write_object(CK_SESSION_HANDLE session)
 			n_privkey_attr++;
 		}
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_EC)
-		else if (evp_key->type == EVP_PKEY_EC)   {
+		else if (pk_type == EVP_PKEY_EC)   {
 			type = CKK_EC;
 
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_KEY_TYPE, &type, sizeof(type));
@@ -2161,7 +2174,7 @@ static int write_object(CK_SESSION_HANDLE session)
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_VALUE, gost.private.value, gost.private.len);
 			n_privkey_attr++;
 		}
-		else if (evp_key->type == NID_id_GostR3410_2001)   {
+		else if (pk_type == NID_id_GostR3410_2001)   {
 			type = CKK_GOSTR3410;
 
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_KEY_TYPE, &type, sizeof(type));
