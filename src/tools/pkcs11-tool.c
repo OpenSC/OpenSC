@@ -357,7 +357,7 @@ static void		sign_data(CK_SLOT_ID, CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static void		decrypt_data(CK_SLOT_ID, CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static void		hash_data(CK_SLOT_ID, CK_SESSION_HANDLE);
 static void		derive_key(CK_SLOT_ID, CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
-static int		gen_keypair(CK_SESSION_HANDLE,
+static int		gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE,
 				CK_OBJECT_HANDLE *, CK_OBJECT_HANDLE *, const char *);
 static int		write_object(CK_SESSION_HANDLE session);
 static int		read_object(CK_SESSION_HANDLE session);
@@ -880,7 +880,7 @@ int main(int argc, char * argv[])
 
 	if (do_gen_keypair) {
 		CK_OBJECT_HANDLE hPublicKey, hPrivateKey;
-		gen_keypair(session, &hPublicKey, &hPrivateKey, opt_key_type);
+		gen_keypair(opt_slot, session, &hPublicKey, &hPrivateKey, opt_key_type);
 	}
 
 	if (do_write_object) {
@@ -1611,7 +1611,7 @@ static void hash_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 
 #define FILL_ATTR(attr, typ, val, len) {(attr).type=(typ); (attr).pValue=(val); (attr).ulValueLen=len;}
 
-static int gen_keypair(CK_SESSION_HANDLE session,
+static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	CK_OBJECT_HANDLE *hPublicKey, CK_OBJECT_HANDLE *hPrivateKey, const char *type)
 {
 	CK_MECHANISM mechanism = {CKM_RSA_PKCS_KEY_PAIR_GEN, NULL_PTR, 0};
@@ -1642,6 +1642,10 @@ static int gen_keypair(CK_SESSION_HANDLE session,
 			CK_ULONG    key_length;
 			const char *size = type + strlen("RSA:");
 
+			if (!opt_mechanism_used)
+				if (!find_mechanism(slot, CKM_RSA_PKCS_KEY_PAIR_GEN, NULL, 0, &opt_mechanism))
+					util_fatal("Generate RSA mechanism not supported\n");
+
 			if (size == NULL)
 				util_fatal("Unknown key type %s", type);
 			key_length = (unsigned long)atol(size);
@@ -1671,12 +1675,13 @@ static int gen_keypair(CK_SESSION_HANDLE session,
 			n_pubkey_attr++;
 			FILL_ATTR(privateKeyTemplate[n_privkey_attr], CKA_UNWRAP, &_true, sizeof(_true));
 			n_privkey_attr++;
-
-
-			mechanism.mechanism = CKM_RSA_PKCS_KEY_PAIR_GEN;
 		}
 		else if (!strncmp(type, "EC:", 3))   {
 			int ii;
+
+			if (!opt_mechanism_used)
+				if (!find_mechanism(slot, CKM_EC_KEY_PAIR_GEN, NULL, 0, &opt_mechanism))
+					util_fatal("Generate EC key mechanism not supported\n");
 
 			for (ii=0; ec_curve_infos[ii].name; ii++)   {
 				if (!strcmp(ec_curve_infos[ii].name, type + 3))
@@ -1710,15 +1715,14 @@ static int gen_keypair(CK_SESSION_HANDLE session,
 				n_privkey_attr++;
 			}
 
-
 			FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_EC_PARAMS, ecparams, ecparams_size);
 			n_pubkey_attr++;
-
-			mechanism.mechanism = CKM_EC_KEY_PAIR_GEN;
 		}
 		else {
 			util_fatal("Unknown key type %s", type);
 		}
+
+                mechanism.mechanism = opt_mechanism;
 	}
 
 	if (opt_object_label != NULL) {
@@ -4446,7 +4450,7 @@ static void test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 
 	printf("\n*** Generating a %s key pair ***\n", opt_key_type);
 
-	if (!gen_keypair(session, &pub_key, &priv_key, opt_key_type))
+	if (!gen_keypair(slot, session, &pub_key, &priv_key, opt_key_type))
 		return;
 
 	tmp = getID(session, priv_key, (CK_ULONG *) &opt_object_id_len);
@@ -4601,7 +4605,7 @@ static void test_ec(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	}
 
 	printf("*** Generating EC key pair ***\n");
-	if (!gen_keypair(session, &pub_key, &priv_key, opt_key_type))
+	if (!gen_keypair(slot, session, &pub_key, &priv_key, opt_key_type))
 		return;
 
 	tmp = getID(session, priv_key, (CK_ULONG *) &opt_object_id_len);
@@ -4831,8 +4835,8 @@ static struct mech_info	p11_mechanisms[] = {
       { CKM_RSA_PKCS,		"RSA-PKCS",	NULL },
       { CKM_RSA_9796,		"RSA-9796",	NULL },
       { CKM_RSA_X_509,		"RSA-X-509",	NULL },
-      { CKM_MD2_RSA_PKCS,	"MD2-RSA-PKCS", 	NULL },
-      { CKM_MD5_RSA_PKCS,	"MD5-RSA-PKCS", 	"rsa-md5" },
+      { CKM_MD2_RSA_PKCS,	"MD2-RSA-PKCS",	NULL },
+      { CKM_MD5_RSA_PKCS,	"MD5-RSA-PKCS",	"rsa-md5" },
       { CKM_SHA1_RSA_PKCS,	"SHA1-RSA-PKCS",	"rsa-sha1" },
       { CKM_SHA256_RSA_PKCS,	"SHA256-RSA-PKCS",	"rsa-sha256" },
       { CKM_SHA384_RSA_PKCS,	"SHA384-RSA-PKCS",	"rsa-sha384" },
