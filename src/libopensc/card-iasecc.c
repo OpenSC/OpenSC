@@ -3450,7 +3450,7 @@ iasecc_get_free_reference(struct sc_card *card, struct iasecc_ctl_get_free_refer
 			continue;
 		}
 
-		if (sdo->docp.non_repudiation.value)   {
+		if (ctl_data->usage && sdo->docp.non_repudiation.value)   {
 			sc_log(ctx, "non repudiation flag %X", sdo->docp.non_repudiation.value[0]);
 			if ((ctl_data->usage & SC_PKCS15_PRKEY_USAGE_NONREPUDIATION) && !(*sdo->docp.non_repudiation.value))   {
 				sc_log(ctx, "key index %i ignored: need non repudiation", idx);
@@ -3476,23 +3476,25 @@ iasecc_get_free_reference(struct sc_card *card, struct iasecc_ctl_get_free_refer
 			}
 		}
 
-		if ((ctl_data->usage & SC_PKCS15_PRKEY_USAGE_NONREPUDIATION) && (ctl_data->usage & SC_PKCS15_PRKEY_USAGE_SIGN))   {
-			if (sdo->docp.scbs[IASECC_ACLS_RSAKEY_PSO_SIGN] == IASECC_SCB_NEVER)   {
-				sc_log(ctx, "key index %i ignored: PSO SIGN not allowed", idx);
-				continue;
+		if (ctl_data->usage)   {
+			if ((ctl_data->usage & SC_PKCS15_PRKEY_USAGE_NONREPUDIATION) && (ctl_data->usage & SC_PKCS15_PRKEY_USAGE_SIGN))   {
+				if (sdo->docp.scbs[IASECC_ACLS_RSAKEY_PSO_SIGN] == IASECC_SCB_NEVER)   {
+					sc_log(ctx, "key index %i ignored: PSO SIGN not allowed", idx);
+					continue;
+				}
 			}
-		}
-		else if (ctl_data->usage & SC_PKCS15_PRKEY_USAGE_SIGN)   {
-			if (sdo->docp.scbs[IASECC_ACLS_RSAKEY_INTERNAL_AUTH] == IASECC_SCB_NEVER)   {
-				sc_log(ctx, "key index %i ignored: INTERNAL AUTHENTICATE not allowed", idx);
-				continue;
+			else if (ctl_data->usage & SC_PKCS15_PRKEY_USAGE_SIGN)   {
+				if (sdo->docp.scbs[IASECC_ACLS_RSAKEY_INTERNAL_AUTH] == IASECC_SCB_NEVER)   {
+					sc_log(ctx, "key index %i ignored: INTERNAL AUTHENTICATE not allowed", idx);
+					continue;
+				}
 			}
-		}
 
-		if (ctl_data->usage & (SC_PKCS15_PRKEY_USAGE_DECRYPT | SC_PKCS15_PRKEY_USAGE_UNWRAP))   {
-			if (sdo->docp.scbs[IASECC_ACLS_RSAKEY_PSO_DECIPHER] == IASECC_SCB_NEVER)   {
-				sc_log(ctx, "key index %i ignored: PSO DECIPHER not allowed", idx);
-				continue;
+			if (ctl_data->usage & (SC_PKCS15_PRKEY_USAGE_DECRYPT | SC_PKCS15_PRKEY_USAGE_UNWRAP))   {
+				if (sdo->docp.scbs[IASECC_ACLS_RSAKEY_PSO_DECIPHER] == IASECC_SCB_NEVER)   {
+					sc_log(ctx, "key index %i ignored: PSO DECIPHER not allowed", idx);
+					continue;
+				}
 			}
 		}
 
