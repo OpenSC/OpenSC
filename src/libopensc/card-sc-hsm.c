@@ -196,7 +196,7 @@ static int sc_hsm_logout(sc_card_t * card)
 {
 	sc_path_t path;
 	sc_hsm_private_data_t *priv = (sc_hsm_private_data_t *) card->drv_data;
-	memset(priv->sopin, sizeof(priv->sopin), 0);
+	memset(priv->sopin, 0, sizeof(priv->sopin));
 
 	sc_path_set(&path, SC_PATH_TYPE_DF_NAME, sc_hsm_aid.value, sc_hsm_aid.len, 0, 0);
 
