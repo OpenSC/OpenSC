@@ -611,6 +611,8 @@ sc_profile_get_file_instance(struct sc_profile *profile, const char *name,
 
 	if (ret)
 		*ret = file;
+	else
+		sc_file_free(file);
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
