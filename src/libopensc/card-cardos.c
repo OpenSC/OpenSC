@@ -534,6 +534,7 @@ static int cardos_set_file_attributes(sc_card_t *card, sc_file_t *file)
 				 * generation. */
 			case SC_FILE_EF_LINEAR_VARIABLE_TLV:
 				type[1] = 0xff;
+				/* fall through */
 			default:
 				type[0] |= file->ef_structure & 7;
 				break;
