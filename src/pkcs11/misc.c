@@ -202,7 +202,7 @@ CK_RV push_login_state(struct sc_pkcs11_slot *slot,
 	r = CKR_OK;
 
 err:
-	if (r != CKR_OK && login) {
+	if (r != CKR_OK && login && login->pPin ) {
 		sc_mem_clear(login->pPin, login->ulPinLen);
 		free(login->pPin);
 		free(login);
