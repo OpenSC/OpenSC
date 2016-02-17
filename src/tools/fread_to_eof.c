@@ -31,7 +31,7 @@ int fread_to_eof(const char *file, unsigned char **buf, size_t *buflen)
     int r = 0;
     unsigned char *p;
 
-    if (!buflen || !buf)
+    if (!buflen || !buf || !file)
         goto err;
 
 #define MAX_READ_LEN 0xfff
