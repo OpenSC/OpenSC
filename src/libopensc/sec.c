@@ -249,7 +249,15 @@ int sc_build_pin(u8 *buf, size_t buflen, struct sc_pin_cmd_pin *pin, int pad)
 			return SC_ERROR_BUFFER_TOO_SMALL;
 		for (i = j = 0; j < pin_len; j++) {
 			buf[i] <<= 4;
-			buf[i] |= pin->data[j] & 0xf;
+			if (pin->data[j] >= '0' && pin->data[j] <= '9') {
+				buf[i] |= pin->data[j] & 0xf;
+			} else if (pin->data[j] >= 'A' && pin->data[j] <= 'F') {
+				buf[i] |= pin->data[j] - 'A' + 10;
+			} else if (pin->data[j] >= 'a' && pin->data[j] <= 'f') {
+				buf[i] |= pin->data[j] - 'a' + 10;
+			} else {
+				return SC_ERROR_INVALID_ARGUMENTS;
+			}
 			if (j & 1)
 				i++;
 		}
