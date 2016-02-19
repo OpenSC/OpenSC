@@ -255,7 +255,6 @@ again:
 	/* Detect the framework */
 	if (p11card->framework == NULL) {
 		struct sc_app_info *app_generic = sc_pkcs15_get_application_by_type(p11card->card, "generic");
-		struct sc_pkcs11_slot *first_slot = NULL;
 
 		sc_log(context, "%s: Detecting Framework. %i on-card applications", reader->name, p11card->card->app_count);
 		sc_log(context, "%s: generic application %s", reader->name, app_generic ? app_generic->label : "<none>");
@@ -292,7 +291,7 @@ again:
 			}
 
 			sc_log(context, "%s: Creating 'generic' token.", reader->name);
-			rv = frameworks[i]->create_tokens(p11card, app_generic, &first_slot);
+			rv = frameworks[i]->create_tokens(p11card, app_generic);
 			if (rv != CKR_OK)   {
 				sc_log(context, "%s: create 'generic' token error 0x%X", reader->name, rv);
 				return rv;
@@ -315,7 +314,7 @@ again:
 			}
 
 			sc_log(context, "%s: Creating %s token.", reader->name, app_name);
-			rv = frameworks[i]->create_tokens(p11card, app_info, &first_slot);
+			rv = frameworks[i]->create_tokens(p11card, app_info);
 			if (rv != CKR_OK)   {
 				sc_log(context, "%s: create %s token error 0x%X", reader->name, app_name, rv);
 				return rv;

@@ -481,8 +481,6 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t * ctx)
 			conf->create_slots_flags |= SC_PKCS11_SLOT_FOR_PIN_USER;
 		else if (!strcmp(op, "sign"))
 			conf->create_slots_flags |= SC_PKCS11_SLOT_FOR_PIN_SIGN;
-		else if (!strcmp(op, "application"))
-			conf->create_slots_flags |= SC_PKCS11_SLOT_FOR_APPLICATION;
 		else if (!strcmp(op, "all"))
 			conf->create_slots_flags |= SC_PKCS11_SLOT_CREATE_ALL;
 		op = strtok(NULL, " ,");
