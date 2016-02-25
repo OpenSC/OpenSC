@@ -430,7 +430,6 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t * ctx)
 	char *create_slots_for_pins = NULL, *op, *tmp;
 
 	/* Set defaults */
-	conf->plug_and_play = 1;
 	conf->max_virtual_slots = 16;
 	if (strcmp(ctx->app_name, "onepin-opensc-pkcs11") == 0) {
 		conf->slots_per_card = 1;
@@ -451,7 +450,6 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t * ctx)
 		return;
 
 	/* contains the defaults, if there is a "pkcs11" config block */
-	conf->plug_and_play = scconf_get_bool(conf_block, "plug_and_play", conf->plug_and_play);
 	conf->max_virtual_slots = scconf_get_int(conf_block, "max_virtual_slots", conf->max_virtual_slots);
 	conf->slots_per_card = scconf_get_int(conf_block, "slots_per_card", conf->slots_per_card);
 	conf->hide_empty_tokens = scconf_get_bool(conf_block, "hide_empty_tokens", conf->hide_empty_tokens);
@@ -487,10 +485,10 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t * ctx)
 	}
         free(tmp);
 
-	sc_log(ctx, "PKCS#11 options: plug_and_play=%d max_virtual_slots=%d slots_per_card=%d "
+	sc_log(ctx, "PKCS#11 options: max_virtual_slots=%d slots_per_card=%d "
 		 "hide_empty_tokens=%d lock_login=%d atomic=%d pin_unblock_style=%d "
 		 "zero_ckaid_for_ca_certs=%d create_slots_flags=0x%X",
-		 conf->plug_and_play, conf->max_virtual_slots, conf->slots_per_card,
+		 conf->max_virtual_slots, conf->slots_per_card,
 		 conf->hide_empty_tokens, conf->lock_login, conf->atomic, conf->pin_unblock_style,
 		 conf->zero_ckaid_for_ca_certs, conf->create_slots_flags);
 }
