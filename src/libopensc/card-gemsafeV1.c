@@ -63,6 +63,8 @@ static struct sc_atr_table gemsafe_atrs[] = {
     {"3B:7D:95:00:00:80:31:80:65:B0:83:11:00:C8:83:00:90:00", NULL, NULL, SC_CARD_TYPE_GEMSAFEV1_PTEID, 0, NULL},
     /* Swedish eID card */
     {"3B:7D:96:00:00:80:31:80:65:B0:83:11:00:C8:83:00:90:00", NULL, NULL, SC_CARD_TYPE_GEMSAFEV1_SEEID, 0, NULL},
+    /* European Patent Office epoline card*/
+    {"3b:7d:96:00:00:80:31:80:65:b0:83:02:01:f3:83:00:90:00", NULL, NULL, SC_CARD_TYPE_GEMSAFEV1_SEEID, 0, NULL},
     {NULL, NULL, NULL, 0, 0, NULL}
 };
 
