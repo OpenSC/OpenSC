@@ -63,7 +63,7 @@ before_script:
 script:
   - if [ "${COVERITY_SCAN_BRANCH}" != 1 ]; then
       if [ $TRAVIS_OS_NAME == osx ]; then
-      CFLAGS="-Werror" ./MacOSX/build;
+        ./MacOSX/build;
       else
         make;
       fi;
