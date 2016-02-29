@@ -1614,12 +1614,13 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card, struct sc_profile
 	if (r >= 0)
 		r = sc_pkcs15init_add_object(p15card, profile, SC_PKCS15_PUKDF, object);
 
+	if (r >= 0 && res_obj)
+		*res_obj = object;
+
 	profile->dirty = 1;
 
 err:
-	if (r >= 0 && res_obj)
-		*res_obj = object;
-	else if (object)
+	if (object && r < 0)
 		sc_pkcs15init_free_object(object);
 
 	LOG_FUNC_RETURN(ctx, r);
