@@ -2018,8 +2018,8 @@ static int write_object(CK_SESSION_HANDLE session)
 #endif
 	}
 	if (opt_object_class == CKO_PRIVATE_KEY || opt_object_class == CKO_PUBLIC_KEY) {
-		int is_private = opt_object_class == CKO_PRIVATE_KEY;
 #ifdef ENABLE_OPENSSL
+		int is_private = opt_object_class == CKO_PRIVATE_KEY;
 		int rv;
 
 		rv = do_read_key(contents, contents_len, is_private, &evp_key);
@@ -2647,7 +2647,6 @@ derive_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
 	CK_BBOOL true = TRUE;
 	CK_BBOOL false = FALSE;
 	CK_OBJECT_HANDLE newkey = 0;
-	CK_ECDH1_DERIVE_PARAMS ecdh_parms;
 	CK_RV rv;
 	int fd, r;
 	CK_ATTRIBUTE newkey_template[] = {
@@ -2672,6 +2671,7 @@ derive_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
 	case CKM_ECDH1_DERIVE:
 		/*  Use OpenSSL to read the other public key, and get the raw verion */
 		{
+		CK_ECDH1_DERIVE_PARAMS ecdh_parms;
 		unsigned char buf[512];
 		int len;
 		BIO     *bio_in = NULL;
