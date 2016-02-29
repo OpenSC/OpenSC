@@ -256,7 +256,7 @@ enter(const char *function)
 	gettimeofday (&tv, NULL);
 	tm = localtime (&tv.tv_sec);
 	strftime (time_string, sizeof(time_string), "%F %H:%M:%S", tm);
-	fprintf(spy_output, "%s.%03ld\n", time_string, tv.tv_usec / 1000);
+	fprintf(spy_output, "%s.%03ld\n", time_string, (long)tv.tv_usec / 1000);
 #endif
 
 }
