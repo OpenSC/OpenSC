@@ -812,8 +812,10 @@ static void print_ssh_key(FILE *outf, const char * alg, struct sc_pkcs15_object 
 
 	if (opt_rfc4716) {
 		r = sc_base64_encode(buf, len, uu, 2*len, 64);
-		if (r < 0)
+		if (r < 0) {
+			free(uu);
 			return;
+		}
 
 		fprintf(outf,"---- BEGIN SSH2 PUBLIC KEY ----\n");
 

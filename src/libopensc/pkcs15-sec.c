@@ -157,7 +157,7 @@ static int format_senv(struct sc_pkcs15_card *p15card,
 
 		case SC_PKCS15_TYPE_PRKEY_GOSTR3410:
 			*alg_info_out = sc_card_find_gostr3410_alg(p15card->card, prkey->modulus_length);
-			if (alg_info_out == NULL) {
+			if (*alg_info_out == NULL) {
 				sc_log(ctx, "Card does not support GOSTR3410 with key length %d", prkey->modulus_length);
 				LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 			}

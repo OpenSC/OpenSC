@@ -191,7 +191,8 @@ CK_RV push_login_state(struct sc_pkcs11_slot *slot,
 	if (login->pPin == NULL) {
 		goto err;
 	}
-	memcpy(login->pPin, pPin, (sizeof *pPin)*ulPinLen);
+	if (pPin)
+		memcpy(login->pPin, pPin, (sizeof *pPin)*ulPinLen);
 	login->ulPinLen = ulPinLen;
 	login->userType = userType;
 
@@ -202,7 +203,7 @@ CK_RV push_login_state(struct sc_pkcs11_slot *slot,
 	r = CKR_OK;
 
 err:
-	if (r != CKR_OK && login) {
+	if (r != CKR_OK && login && login->pPin ) {
 		sc_mem_clear(login->pPin, login->ulPinLen);
 		free(login->pPin);
 		free(login);
