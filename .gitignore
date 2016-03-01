@@ -119,3 +119,4 @@ src/tests/pintest
 src/tests/prngtest
 
 version.m4.ci
+/nbproject/private/
