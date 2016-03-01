@@ -76,4 +76,5 @@ then
     rm -f version.m4.tmp
 fi
 
-autoreconf --verbose --install --force || true
+./bootstrap
+# autoreconf --verbose --install --force || true

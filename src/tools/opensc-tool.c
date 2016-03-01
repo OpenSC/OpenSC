@@ -50,17 +50,19 @@ static int	verbose = 0;
 
 enum {
 	OPT_SERIAL = 0x100,
-	OPT_LIST_ALG
+	OPT_LIST_ALG,
+	OPT_VERSION
 };
 
 static const struct option options[] = {
+	{ "version",		0, NULL,	OPT_VERSION },
 	{ "info",		0, NULL,		'i' },
 	{ "atr",		0, NULL,		'a' },
 	{ "serial",		0, NULL,	OPT_SERIAL  },
 	{ "name",		0, NULL,		'n' },
 	{ "get-conf-entry",	1, NULL,		'G' },
 	{ "set-conf-entry",	1, NULL,		'S' },
-	{ "list-readers",	0, NULL, 		'l' },
+	{ "list-readers",	0, NULL,		'l' },
 	{ "list-drivers",	0, NULL,		'D' },
 	{ "list-files",		0, NULL,		'f' },
 	{ "send-apdu",		1, NULL,		's' },
@@ -73,6 +75,7 @@ static const struct option options[] = {
 };
 
 static const char *option_help[] = {
+	"Prints OpenSC package revision",
 	"Prints information about OpenSC",
 	"Prints the ATR bytes of the card",
 	"Prints the card serial number",
@@ -650,6 +653,7 @@ int main(int argc, char * const argv[])
 	int do_list_files = 0;
 	int do_send_apdu = 0;
 	int do_print_atr = 0;
+	int do_print_version = 0;
 	int do_print_serial = 0;
 	int do_print_name = 0;
 	int do_list_algorithms = 0;
@@ -724,6 +728,10 @@ int main(int argc, char * const argv[])
 		case 'v':
 			verbose++;
 			break;
+		case OPT_VERSION:
+			do_print_version = 1;
+			action_count++;
+			break;
 		case 'c':
 			opt_driver = optarg;
 			break;
@@ -742,6 +750,11 @@ int main(int argc, char * const argv[])
 	}
 	if (action_count == 0)
 		util_print_usage_and_die(app_name, options, option_help, NULL);
+
+	if (do_print_version)   {
+		printf("%s\n", OPENSC_SCM_REVISION);
+		action_count--;
+	}
 
 	if (do_info) {
 		opensc_info();
