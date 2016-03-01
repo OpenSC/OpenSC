@@ -169,6 +169,8 @@ static int sc_hsm_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 			   int *tries_left)
 {
 	sc_hsm_private_data_t *priv = (sc_hsm_private_data_t *) card->drv_data;
+	sc_apdu_t apdu;
+	u8 cmdbuff[16];
 	int r;
 
 	if ((data->cmd == SC_PIN_CMD_VERIFY) && (data->pin_reference == 0x88)) {
@@ -182,12 +184,43 @@ static int sc_hsm_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 	}
 
+	if ((data->cmd == SC_PIN_CMD_CHANGE) && (data->pin_reference == 0x88)) {
+		if ((data->pin1.len != 16) || (data->pin2.len != 16))
+			return SC_ERROR_INVALID_PIN_LENGTH;
+
+		r = sc_hsm_encode_sopin(data->pin1.data, cmdbuff);
+		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+
+		r = sc_hsm_encode_sopin(data->pin2.data, cmdbuff + 8);
+		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x24, 0x00, data->pin_reference);
+		apdu.data = cmdbuff;
+		apdu.datalen = sizeof(cmdbuff);
+		apdu.lc = 16;
+		apdu.resplen = 0;
+		data->apdu = &apdu;
+	}
+
 	data->pin1.offset = 5;
 	data->pin1.length_offset = 4;
 	data->pin2.offset = 5;
 	data->pin2.length_offset = 4;
 
 	return (*iso_ops->pin_cmd)(card, data, tries_left);
+}
+
+
+
+static int sc_hsm_logout(sc_card_t * card)
+{
+	sc_path_t path;
+	sc_hsm_private_data_t *priv = (sc_hsm_private_data_t *) card->drv_data;
+	memset(priv->sopin, 0, sizeof(priv->sopin));
+
+	sc_path_set(&path, SC_PATH_TYPE_DF_NAME, sc_hsm_aid.value, sc_hsm_aid.len, 0, 0);
+
+	return sc_hsm_select_file(card, &path, NULL);
 }
 
 
@@ -1063,6 +1096,7 @@ static struct sc_card_driver * sc_get_driver(void)
 	sc_hsm_ops.finish            = sc_hsm_finish;
 	sc_hsm_ops.card_ctl          = sc_hsm_card_ctl;
 	sc_hsm_ops.pin_cmd           = sc_hsm_pin_cmd;
+	sc_hsm_ops.logout            = sc_hsm_logout;
 
 	/* no record oriented file services */
 	sc_hsm_ops.read_record       = NULL;

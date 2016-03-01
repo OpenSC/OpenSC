@@ -688,9 +688,7 @@ static int read_public_key(void)
 	if (r >= 0) {
 		if (verbose)
 			printf("Reading public key with ID '%s'\n", opt_pubkey);
-		r = authenticate(obj);
-		if (r >= 0)
-			r = sc_pkcs15_read_pubkey(p15card, obj, &pubkey);
+		r = sc_pkcs15_read_pubkey(p15card, obj, &pubkey);
 	} else if (r == SC_ERROR_OBJECT_NOT_FOUND) {
 		/* No pubkey - try if there's a certificate */
 		r = sc_pkcs15_find_cert_by_id(p15card, &id, &obj);
@@ -814,8 +812,10 @@ static void print_ssh_key(FILE *outf, const char * alg, struct sc_pkcs15_object 
 
 	if (opt_rfc4716) {
 		r = sc_base64_encode(buf, len, uu, 2*len, 64);
-		if (r < 0)
+		if (r < 0) {
+			free(uu);
 			return;
+		}
 
 		fprintf(outf,"---- BEGIN SSH2 PUBLIC KEY ----\n");
 
@@ -828,8 +828,10 @@ static void print_ssh_key(FILE *outf, const char * alg, struct sc_pkcs15_object 
 		// Old style openssh - [<quote protected options> <whitespace> <keytype> <whitespace> <key> [<whitespace> anything else]
 		//
 		r = sc_base64_encode(buf, len, uu, 2*len, 0);
-		if (r < 0)
+		if (r < 0) {
+			free(uu);
 			return;
+		}
 
 		if (obj->label[0] != '\0')
 			fprintf(outf,"ssh-%s %s %.*s\n", alg, uu, (int) sizeof obj->label, obj->label);
@@ -1294,7 +1296,7 @@ static int list_apps(FILE *fout)
 	for (i=0; i<p15card->card->app_count; i++)   {
 		struct sc_app_info *info = p15card->card->app[i];
 
-		fprintf(fout, "Application '%.*s':\n", (int) sizeof info->label, info->label);
+		fprintf(fout, "Application '%s':\n", info->label);
 		fprintf(fout, "\tAID: ");
 		for(j=0;j<info->aid.len;j++)
 			fprintf(fout, "%02X", info->aid.value[j]);

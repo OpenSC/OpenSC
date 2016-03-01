@@ -62,7 +62,8 @@
 						<option>--input</option> <replaceable>file</replaceable>,
 						<option>-i</option> <replaceable>file</replaceable>
 					</term>
-					<listitem><para>Specifies the input file to use.</para></listitem>
+					<listitem><para>Specifies the input file to use. Defaults to stdin if
+					not specified.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -78,7 +79,8 @@
 						<option>--output</option> <replaceable>file</replaceable>,
 						<option>-o</option> <replaceable>file</replaceable>
 					</term>
-					<listitem><para>Any output will be sent to the specified file.</para></listitem>
+					<listitem><para>Any output will be sent to the specified file. Defaults
+					to stdout if not specified.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>

@@ -1,15 +1,23 @@
+
+
 OPENSC_FEATURES = pcsc
+
+!IF "$(BUILD_ON)" == "WIN32"
+PROGRAMFILES_PATH = C:\Program Files
+!ELSE
+PROGRAMFILES_PATH = C:\Program Files (x86)
+!ENDIF
 
 #Include support for minidriver
 MINIDRIVER_DEF = /DENABLE_MINIDRIVER
 
 #Build MSI with the Windows Installer XML (WIX) toolkit, requires WIX >= 3.9
-WIX_PATH = C:\Program Files (x86)\WiX Toolset v3.10
-WIX_INCL_DIR = "/I$(WIX_PATH)\SDK\VS20$(VSVER)\inc"
+WIX_PATH = $(PROGRAMFILES_PATH)\WiX Toolset v3.10
+WIX_INCL_DIR = "/I$(WIX_PATH)\SDK\VS2010\inc"
 !IF "$(BUILD_FOR)" == "WIN64"
-WIX_LIBS = "$(WIX_PATH)\SDK\VS20$(VSVER)\lib\x64\dutil.lib" "$(WIX_PATH)\SDK\VS20$(VSVER)\lib\x64\wcautil.lib"
+WIX_LIBS = "$(WIX_PATH)\SDK\VS2010\lib\x64\dutil.lib" "$(WIX_PATH)\SDK\VS2010\lib\x64\wcautil.lib"
 !ELSE
-WIX_LIBS = "$(WIX_PATH)\SDK\VS20$(VSVER)\lib\x86\dutil.lib" "$(WIX_PATH)\SDK\VS20$(VSVER)\lib\x86\wcautil.lib"
+WIX_LIBS = "$(WIX_PATH)\SDK\VS2010\lib\x86\dutil.lib" "$(WIX_PATH)\SDK\VS2010\lib\x86\wcautil.lib"
 !ENDIF
 
 #Include support for Secure Messaging
@@ -42,7 +50,7 @@ OPENSSL_LIB = $(OPENSSL_DIR)\lib\VC\$(OPENSSL_STATIC_DIR)\libeay32MT.lib user32.
 !ENDIF
 
 PROGRAMS_OPENSSL = cryptoflex-tool.exe pkcs15-init.exe netkey-tool.exe piv-tool.exe \
-	westcos-tool.exe sc-hsm-tool.exe dnie-tool.exe
+	westcos-tool.exe sc-hsm-tool.exe dnie-tool.exe gids-tool.exe
 OPENSC_FEATURES = $(OPENSC_FEATURES) openssl
 CANDLEFLAGS = -dOpenSSL="$(OPENSSL_DIR)" $(CANDLEFLAGS)
 !ENDIF
@@ -54,15 +62,21 @@ CANDLEFLAGS = -dOpenSSL="$(OPENSSL_DIR)" $(CANDLEFLAGS)
 # - set the ZLIB_INCL_DIR below to the zlib include lib proceeded by "/I"
 # - set the ZLIB_LIB  below to your zlib lib file
 #ZLIB_DEF = /DENABLE_ZLIB
-!IF "$(ZLIB_DEF)" == "/DENABLE_ZLIB"
+!IF "$(ZLIBSTATIC_DEF)" == "/DENABLE_ZLIB_STATIC"
+ZLIB_DEF = /DENABLE_ZLIB
+ZLIB_INCL_DIR = /IC:\zlib
+ZLIB_LIB = C:\zlib\zlib.lib
+OPENSC_FEATURES = $(OPENSC_FEATURES) zlib
+!ELSE IF "$(ZLIB_DEF)" == "/DENABLE_ZLIB"
 ZLIB_INCL_DIR = /IC:\zlib-dll\include
 ZLIB_LIB = C:\zlib-dll\lib\zdll.lib
 OPENSC_FEATURES = $(OPENSC_FEATURES) zlib
 CANDLEFLAGS = -dzlib="C:\zlib-dll" $(CANDLEFLAGS)
 !ENDIF
 
+
 # Used for MiniDriver
-CNGSDK_INCL_DIR = "/IC:\Program Files (x86)\Microsoft CNG Development Kit\Include"
+CNGSDK_INCL_DIR = "/I$(PROGRAMFILES_PATH)\Microsoft CNG Development Kit\Include"
 # Mandatory path to 'ISO C9x compliant stdint.h and inttypes.h for Microsoft Visual Studio'
 # http://msinttypes.googlecode.com/files/msinttypes-r26.zip
 # INTTYPES_INCL_DIR =  /IC:\opensc\dependencies\msys\local

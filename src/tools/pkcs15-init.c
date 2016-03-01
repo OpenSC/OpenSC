@@ -1396,7 +1396,7 @@ do_delete_objects(struct sc_profile *profile, unsigned int myopt_delete_flags)
 
 	if (myopt_delete_flags & SC_PKCS15INIT_TYPE_DATA) {
 		struct sc_object_id app_oid;
-		sc_pkcs15_object_t *obj;
+		sc_pkcs15_object_t *obj = NULL;
 
 		if (opt_application_id != NULL) {
 			sc_format_oid(&app_oid, opt_application_id);

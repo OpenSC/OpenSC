@@ -41,7 +41,20 @@
 #include "compression.h"
 #include "cwa14890.h"
 #include "cwa-dnie.h"
-#include "user-interface.h"
+
+#ifdef _WIN32
+
+#ifndef UNICODE
+#define UNICODE
+#endif
+
+#include <windows.h>
+#endif
+#ifdef __APPLE__
+#include <Carbon/Carbon.h>
+#endif
+/* default titles */
+#define USER_CONSENT_TITLE "Confirm"
 
 extern cwa_provider_t *dnie_get_cwa_provider(sc_card_t * card);
 extern int dnie_read_file(
@@ -141,6 +154,197 @@ const char *user_consent_message="Está a punto de realizar una firma electróni
 #else
 const char *user_consent_message="Esta a punto de realizar una firma digital\ncon su clave de FIRMA del DNI electronico.\nDesea permitir esta operacion?";
 #endif
+
+#ifdef ENABLE_DNIE_UI
+/**
+ * Messages used on pinentry protocol
+ */
+char *user_consent_msgs[] = { "SETTITLE", "SETDESC", "CONFIRM", "BYE" };
+
+/**
+ * Ask for user consent.
+ *
+ * Check for user consent configuration,
+ * Invoke proper gui app and check result
+ *
+ * @param card pointer to sc_card structure
+ * @param title Text to appear in the window header
+ * @param text Message to show to the user
+ * @return SC_SUCCESS on user consent OK , else error code
+ */
+int dnie_ask_user_consent(struct sc_card * card, const char *title, const char *message)
+{
+#ifdef __APPLE__
+	CFOptionFlags result;  /* result code from the message box */
+	/* convert the strings from char* to CFStringRef */
+	CFStringRef header_ref; /* to store title */
+	CFStringRef message_ref; /* to store message */
+#endif
+#ifdef linux
+	pid_t pid;
+	FILE *fin=NULL;
+	FILE *fout=NULL;	/* to handle pipes as streams */
+	struct stat st_file;	/* to verify that executable exists */
+	int srv_send[2];	/* to send data from server to client */
+	int srv_recv[2];	/* to receive data from client to server */
+	char outbuf[1024];	/* to compose and send messages */
+	char buf[1024];		/* to store client responses */
+	int n = 0;		/* to iterate on to-be-sent messages */
+#endif
+	int res = SC_ERROR_INTERNAL;	/* by default error :-( */
+	char *msg = NULL;	/* to makr errors */
+
+	if ((card == NULL) || (card->ctx == NULL))
+		return SC_ERROR_INVALID_ARGUMENTS;
+	LOG_FUNC_CALLED(card->ctx);
+
+	if ((title==NULL) || (message==NULL))
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
+	if (GET_DNIE_UI_CTX(card).user_consent_enabled == 0) {
+		sc_log(card->ctx,
+		       "User Consent is disabled in configuration file");
+		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+	}
+#ifdef _WIN32
+	/* in Windows, do not use pinentry, but MessageBox system call */
+	res = MessageBox (
+		NULL,
+		TEXT(message),
+		TEXT(title),
+		MB_ICONWARNING | MB_OKCANCEL | MB_DEFBUTTON2 | MB_APPLMODAL
+		);
+	if ( res == IDOK )
+		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+	LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ALLOWED);
+#elif __APPLE__
+	/* Also in Mac OSX use native functions */
+
+	/* convert the strings from char* to CFStringRef */
+	header_ref = CFStringCreateWithCString( NULL, title, strlen(title) );
+	message_ref = CFStringCreateWithCString( NULL,message, strlen(message) );
+
+	/* Displlay user notification alert */
+	CFUserNotificationDisplayAlert(
+		0, /* no timeout */
+		kCFUserNotificationNoteAlertLevel,  /* Alert level */
+		NULL,	/* IconURL, use default, you can change */
+			/* it depending message_type flags */
+		NULL,	/* SoundURL (not used) */
+		NULL,	/* localization of strings */
+		header_ref,	/* header. Cannot be null */
+		message_ref,	/* message text */
+		CFSTR("Cancel"), /* default ( "OK" if null) button text */
+		CFSTR("OK"), /* second button title */
+                NULL, /* third button title, null--> no other button */
+		&result /* response flags */
+	);
+
+	/* Clean up the strings */
+	CFRelease( header_ref );
+        CFRelease( message_ref );
+	/* Return 0 only if "OK" is selected */
+	if( result == kCFUserNotificationAlternateResponse )
+		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+	LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ALLOWED);
+#elif linux
+	/* check that user_consent_app exists. TODO: check if executable */
+	res = stat(GET_DNIE_UI_CTX(card).user_consent_app, &st_file);
+	if (res != 0) {
+		sc_log(card->ctx, "Invalid pinentry application: %s\n",
+		       GET_DNIE_UI_CTX(card).user_consent_app);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+	}
+
+	/* just a simple bidirectional pipe+fork+exec implementation */
+	/* In a pipe, xx[0] is for reading, xx[1] is for writing */
+	if (pipe(srv_send) < 0) {
+		msg = "pipe(srv_send)";
+		goto do_error;
+	}
+	if (pipe(srv_recv) < 0) {
+		msg = "pipe(srv_recv)";
+		goto do_error;
+	}
+	pid = fork();
+	switch (pid) {
+	case -1:		/* error  */
+		msg = "fork()";
+		goto do_error;
+	case 0:		/* child  */
+		/* make our pipes, our new stdin & stderr, closing older ones */
+		dup2(srv_send[0], STDIN_FILENO);	/* map srv send for input */
+		dup2(srv_recv[1], STDOUT_FILENO);	/* map srv_recv for output */
+		/* once dup2'd pipes are no longer needed on client; so close */
+		close(srv_send[0]);
+		close(srv_send[1]);
+		close(srv_recv[0]);
+		close(srv_recv[1]);
+		/* call exec() with proper user_consent_app from configuration */
+		/* if ok should never return */
+		execlp(GET_DNIE_UI_CTX(card).user_consent_app, GET_DNIE_UI_CTX(card).user_consent_app, (char *)NULL);
+		res = SC_ERROR_INTERNAL;
+		msg = "execlp() error";	/* exec() failed */
+		goto do_error;
+	default:		/* parent */
+		/* Close the pipe ends that the child uses to read from / write to
+		 * so when we close the others, an EOF will be transmitted properly.
+		 */
+		close(srv_send[0]);
+		close(srv_recv[1]);
+		/* use iostreams to take care on newlines and text based data */
+		fin = fdopen(srv_recv[0], "r");
+		if (fin == NULL) {
+			msg = "fdopen(in)";
+			goto do_error;
+		}
+		fout = fdopen(srv_send[1], "w");
+		if (fout == NULL) {
+			msg = "fdopen(out)";
+			goto do_error;
+		}
+		/* read and ignore first line */
+		fflush(stdin);
+		for (n = 0; n<4; n++) {
+			char *pt;
+			memset(outbuf, 0, sizeof(outbuf));
+			if (n==0) snprintf(outbuf,1023,"%s %s\n",user_consent_msgs[0],title);
+			else if (n==1) snprintf(outbuf,1023,"%s %s\n",user_consent_msgs[1],message);
+			else snprintf(outbuf,1023,"%s\n",user_consent_msgs[n]);
+			/* send message */
+			fputs(outbuf, fout);
+			fflush(fout);
+			/* get response */
+			memset(buf, 0, sizeof(buf));
+			pt=fgets(buf, sizeof(buf) - 1, fin);
+			if (pt==NULL) {
+				res = SC_ERROR_INTERNAL;
+				msg = "fgets() Unexpected IOError/EOF";
+				goto do_error;
+			}
+			if (strstr(buf, "OK") == NULL) {
+				res = SC_ERROR_NOT_ALLOWED;
+				msg = "fail/cancel";
+				goto do_error;
+			}
+		}
+	}			/* switch */
+	/* arriving here means signature has been accepted by user */
+	res = SC_SUCCESS;
+	msg = NULL;
+do_error:
+	/* close out channel to force client receive EOF and also die */
+	if (fout != NULL) fclose(fout);
+	if (fin != NULL) fclose(fin);
+#else
+#error "Don't know how to handle user consent in this (rare) Operating System"
+#endif
+	if (msg != NULL)
+		sc_log(card->ctx, "%s", msg);
+	LOG_FUNC_RETURN(card->ctx, res);
+}
+
+#endif				/* ENABLE_DNIE_UI */
 
 /**
  * DNIe specific card driver operations
@@ -430,17 +634,16 @@ static int dnie_get_serialnr(sc_card_t * card, sc_serial_number_t * serial)
 		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 	}
 	/* not cached, retrieve it by mean of an APDU */
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xb8, 0x00, 0x00);
+	/* official driver read 0x11 bytes, but only uses 7. Manual says just 7 (for le) */
+	dnie_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xb8, 0x00, 0x00, 0x07, 0,
+					rbuf, sizeof(rbuf), NULL, 0);
 	apdu.cla = 0x90;	/* propietary cmd */
-	apdu.resp = rbuf;
-	apdu.resplen = sizeof(rbuf);
-	/* official driver read 0x11 bytes, but only uses 7. Manual says just 7 */
-	apdu.le = 0x07;
-	apdu.lc = 0;
-	apdu.datalen = 0;
 	/* send apdu */
 	result = dnie_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(card->ctx, result, "APDU transmit failed");
+	if (result != SC_SUCCESS) {
+		dnie_free_apdu_buffers(&apdu, rbuf, sizeof(rbuf));
+		LOG_TEST_RET(card->ctx, result, "APDU transmit failed");
+	}
 	if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
 		return SC_ERROR_INTERNAL;
 	/* cache serial number */
@@ -456,6 +659,7 @@ static int dnie_get_serialnr(sc_card_t * card, sc_serial_number_t * serial)
 	memcpy(serial, &card->serialnr, sizeof(*serial));
 	sc_log(card->ctx, "Serial Number (apdu): '%s'",
 	       sc_dump_hex(serial->value, serial->len));
+	dnie_free_apdu_buffers(&apdu, rbuf, sizeof(rbuf));
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
@@ -603,8 +807,8 @@ static int dnie_finish(struct sc_card *card)
 	/* disable sm channel if established */
 	result = cwa_create_secure_channel(card, GET_DNIE_PRIV_DATA(card)->cwa_provider, CWA_SM_OFF);
 #endif
-	if (card->drv_data != NULL)
-		free(card->drv_data);
+	free(GET_DNIE_PRIV_DATA(card)->cwa_provider);
+	free(card->drv_data);
 	LOG_FUNC_RETURN(card->ctx, result);
 }
 
@@ -745,8 +949,9 @@ static int dnie_fill_cache(sc_card_t * card)
 		/* transmit apdu */
 		r = dnie_transmit_apdu(card, &apdu);
 		if (r != SC_SUCCESS) {
-			if (buffer)
-				free(buffer);
+			free(buffer);
+			if (apdu.resp != tmp)
+				free(apdu.resp);
 			sc_log(ctx, "read_binary() APDU transmit failed");
 			LOG_FUNC_RETURN(ctx, r);
 		}
@@ -756,20 +961,33 @@ static int dnie_fill_cache(sc_card_t * card)
 			r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 			if (r == SC_ERROR_WRONG_LENGTH) {
 				count = 0xff & apdu.sw2;
-				if (count != 0)
+				if (count != 0) {
+					if (apdu.resp != tmp)
+						free(apdu.resp);
 					continue;	/* read again with correct size */
+				}
 				goto read_done;	/* no more data to read */
 			}
 			if (r == SC_ERROR_INCORRECT_PARAMETERS)
 				goto read_done;
+			if (apdu.resp != tmp)
+				free(apdu.resp);
 			LOG_FUNC_RETURN(ctx, r);	/* arriving here means response error */
 		}
 		/* copy received data into buffer. realloc() if not enought space */
 		count = apdu.resplen;
 		buffer = realloc(buffer, len + count);
-		if (!buffer)
+		if (!buffer) {
+			free((void *)apdu.data);
+			if (apdu.resp != tmp)
+				free(apdu.resp);
 			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+		}
 		memcpy(buffer + len, apdu.resp, count);
+		if (apdu.resp != tmp) {
+			free(apdu.resp);
+			apdu.resp = tmp;
+		}
 		len += count;
 		if (count != card->max_recv_size)
 			goto read_done;
@@ -778,15 +996,16 @@ static int dnie_fill_cache(sc_card_t * card)
  read_done:
 	/* no more data to read: check if data is compressed */
 	pt = dnie_uncompress(card, buffer, &len);
+	free((void *)apdu.data);
+	if (apdu.resp != tmp)
+		free(apdu.resp);
 	if (pt == NULL) {
 		sc_log(ctx, "Uncompress proccess failed");
-		if (buffer)
-			free(buffer);
+		free(buffer);
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
 	}
 	if (pt != buffer)
-		if (buffer)
-			free(buffer);
+		free(buffer);
 
 	/* ok: as final step, set correct cache data into dnie_priv structures */
 	GET_DNIE_PRIV_DATA(card)->cache = pt;
@@ -862,16 +1081,10 @@ static int dnie_compose_and_send_apdu(sc_card_t *card, const u8 *path, size_t pa
 
 	LOG_FUNC_CALLED(ctx);
 
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "called, p1=%u, path=%s\n", p1, sc_dump_hex(path, pathlen));
-
 	/* Arriving here means need to compose and send apdu */
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xA4, p1, 0);
-	apdu.resp = rbuf;
-	apdu.resplen = sizeof(rbuf);
-	apdu.lc = pathlen;
-	apdu.data = path;
-	apdu.datalen = pathlen;
-	apdu.le = sc_get_max_recv_size(card);
+	dnie_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xA4, p1, 0, 
+					sc_get_max_recv_size(card), pathlen,
+					rbuf, sizeof(rbuf), path, pathlen);
 	if (p1 == 3)
 		apdu.cse= SC_APDU_CASE_1;
 
@@ -880,6 +1093,8 @@ static int dnie_compose_and_send_apdu(sc_card_t *card, const u8 *path, size_t pa
 		apdu.le = 0;
 	}
 	res = dnie_transmit_apdu(card, &apdu);
+	if ((res != SC_SUCCESS) || (file_out == NULL))
+		dnie_free_apdu_buffers(&apdu, rbuf, sizeof(rbuf));
 	LOG_TEST_RET(ctx, res, "SelectFile() APDU transmit failed");
 	if (file_out == NULL) {
 		if (apdu.sw1 == 0x61)
@@ -890,20 +1105,26 @@ static int dnie_compose_and_send_apdu(sc_card_t *card, const u8 *path, size_t pa
 
 	/* analyze response. if FCI, try to parse */
 	res = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	LOG_TEST_RET(ctx, res, "SelectFile() check_sw failed");
-	if (apdu.resplen < 2)
+	if (res != SC_SUCCESS) {
+		dnie_free_apdu_buffers(&apdu, rbuf, sizeof(rbuf));
+		LOG_TEST_RET(ctx, res, "SelectFile() check_sw failed");
+	}
+	if ((apdu.resplen < 2) || (apdu.resp[0] == 0x00)) {
+		dnie_free_apdu_buffers(&apdu, rbuf, sizeof(rbuf));
 		LOG_FUNC_RETURN(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
-	if (apdu.resp[0] == 0x00)	/* proprietary coding */
-		LOG_FUNC_RETURN(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
+	}
 
 	/* finally process FCI response */
 	file = sc_file_new();
-	if (file == NULL)
+	if (file == NULL) {
+		dnie_free_apdu_buffers(&apdu, rbuf, sizeof(rbuf));
 		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+	}
 	res = card->ops->process_fci(card, file, apdu.resp + 2, apdu.resp[1]);
 	if (*file_out != NULL)
 		sc_file_free(*file_out);
 	*file_out = file;
+	dnie_free_apdu_buffers(&apdu, rbuf, sizeof(rbuf));
 	LOG_FUNC_RETURN(ctx, res);
 }
 
@@ -1063,10 +1284,8 @@ static int dnie_get_challenge(struct sc_card *card, u8 * rnd, size_t len)
 		result = SC_ERROR_INVALID_ARGUMENTS;
 		goto dnie_get_challenge_error;
 	}
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0x84, 0x00, 0x00);
-	apdu.le = 8;
-	apdu.resp = buf;
-	apdu.resplen = 8;	/* include SW's */
+	dnie_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0x84, 0x00, 0x00, 8, 0,
+					buf, 8, NULL, 0);
 
 	/* 
 	* As DNIe cannot handle other data length than 0x08 and 0x14, 
@@ -1075,12 +1294,17 @@ static int dnie_get_challenge(struct sc_card *card, u8 * rnd, size_t len)
 	while (len > 0) {
 		size_t n = len > 8 ? 8 : len;
 		result = dnie_transmit_apdu(card, &apdu);
-		LOG_TEST_RET(card->ctx, result, "APDU transmit failed");
+		if (result != SC_SUCCESS) {
+			dnie_free_apdu_buffers(&apdu, buf, 8);
+			LOG_TEST_RET(card->ctx, result, "APDU transmit failed");
+		}
 		if (apdu.resplen != 8) {
 			result = sc_check_sw(card, apdu.sw1, apdu.sw2);
+			dnie_free_apdu_buffers(&apdu, buf, 8);
 			goto dnie_get_challenge_error;
 		}
 		memcpy(rnd, apdu.resp, n);
+		dnie_free_apdu_buffers(&apdu, buf, 8);
 		len -= n;
 		rnd += n;
 	}
@@ -1210,7 +1434,8 @@ static int dnie_set_security_env(struct sc_card *card,
 	}
 
 	/* create and format apdu */
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0x00, 0x00);
+	dnie_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0x00, 0x00, 0, p - sbuf,
+					NULL, 0, sbuf, p - sbuf);
 
 	/* check and perform operation */
 	switch (env->operation) {
@@ -1232,18 +1457,13 @@ static int dnie_set_security_env(struct sc_card *card,
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 
-	/* complete apdu contents with buffer data */
-	apdu.data = sbuf;
-	apdu.datalen = p - sbuf;
-	apdu.lc = p - sbuf;
-	apdu.resplen = 0;
-
 	/* Notice that Manual states that DNIE only allows handle of 
 	 * current security environment, so se_num is ignored, and
 	 * store sec env apdu (00 22 F2 se_num) command will not be issued */
 
 	/* send composed apdu and parse result */
 	result = dnie_transmit_apdu(card, &apdu);
+	dnie_free_apdu_buffers(&apdu, NULL, 0);
 	LOG_TEST_RET(card->ctx, result, "Set Security Environment failed");
 	result = sc_check_sw(card, apdu.sw1, apdu.sw2);
 
@@ -1297,19 +1517,15 @@ static int dnie_decipher(struct sc_card *card,
 	 * (90 74 40 keyID). This code uses standard 00 2A 80 8x one)
 	 * as shown in card-atrust-acos.c and card-jcop.c
 	 */
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A,	/* INS: 0x2A  perform security operation */
-		       0x80,	/* P1: Response is plain value */
-		       0x86	/* P2: 8x: Padding indicator byte followed by cryptogram */
+	dnie_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 
+			0x2A,	/* INS: 0x2A  perform security operation */
+			0x80,	/* P1: Response is plain value */
+			0x86,	/* P2: 8x: Padding indicator byte followed by cryptogram */
+			256, crgram_len + 1, rbuf, sizeof(rbuf), sbuf, crgram_len + 1
 	    );
-	apdu.resp = rbuf;
-	apdu.resplen = sizeof(rbuf);
 
 	sbuf[0] = 0;		/* padding indicator byte, 0x00 = No further indication */
 	memcpy(sbuf + 1, crgram, crgram_len);
-	apdu.data = sbuf;
-	apdu.lc = crgram_len + 1;
-	apdu.datalen = crgram_len + 1;
-	apdu.le = 256;
 	/* send apdu */
 	result = dnie_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, result, "APDU transmit failed");
@@ -1353,6 +1569,7 @@ static int dnie_compute_signature(struct sc_card *card,
 				  u8 * out, size_t outlen)
 {
 	int result = SC_SUCCESS;
+	int result_resplen = 0;
 	struct sc_apdu apdu;
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];	/* to receive sign response */
 
@@ -1372,7 +1589,7 @@ static int dnie_compute_signature(struct sc_card *card,
 #ifdef ENABLE_DNIE_UI
 	/* (Requested by DGP): on signature operation, ask user consent */
 	if (GET_DNIE_PRIV_DATA(card)->rsa_key_ref == 0x02) {	/* TODO: revise key ID handling */
-		result = sc_ask_user_consent(card,user_consent_title,user_consent_message);
+		result = dnie_ask_user_consent(card,user_consent_title,user_consent_message);
 		LOG_TEST_RET(card->ctx, result, "User consent denied");
 	}
 #endif    
@@ -1391,24 +1608,27 @@ static int dnie_compute_signature(struct sc_card *card,
 	/*INS: 0x2A  PERFORM SECURITY OPERATION
 	 * P1:  0x9E  Resp: Digital Signature
 	 * P2:  0x9A  Cmd: Input for Digital Signature */
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x9E, 0x9A);
-	apdu.resp = rbuf;
-	apdu.resplen = sizeof(rbuf);
-	apdu.le = 256;		/* signature response size */
-	apdu.data = data;
-	apdu.lc = datalen;	/*  Caller determines the type of hash and its size */
-	apdu.datalen = datalen;
+	dnie_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x9E, 0x9A, 256, datalen,
+					rbuf, sizeof(rbuf), data, datalen);
 	/* tell card to compute signature */
 	result = dnie_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(card->ctx, result, "compute_signature() failed");
+	if (result != SC_SUCCESS) {
+		dnie_free_apdu_buffers(&apdu, rbuf, sizeof(rbuf));
+		LOG_TEST_RET(card->ctx, result, "compute_signature() failed");
+	}
 	/* check response */
 	result = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	LOG_TEST_RET(card->ctx, result, "compute_signature() response error");
+	if (result != SC_SUCCESS) {
+		dnie_free_apdu_buffers(&apdu, rbuf, sizeof(rbuf));
+		LOG_TEST_RET(card->ctx, result, "compute_signature() response error");
+	}
 
 	/* ok: copy result from buffer */
-	memcpy(out, apdu.resp, apdu.resplen);
+	result_resplen = apdu.resplen;
+	memcpy(out, apdu.resp, result_resplen);
 	/* and return response length */
-	LOG_FUNC_RETURN(card->ctx, apdu.resplen);
+	dnie_free_apdu_buffers(&apdu, rbuf, sizeof(rbuf));
+	LOG_FUNC_RETURN(card->ctx, result_resplen);
 }
 
 /*
@@ -1438,7 +1658,6 @@ static int dnie_list_files(sc_card_t * card, u8 * buf, size_t buflen)
 	size_t count = 0;
 	u8 data[2];
 	sc_apdu_t apdu;
-	sc_apdu_t back;
 	if (!card || !card->ctx)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
@@ -1447,21 +1666,8 @@ static int dnie_list_files(sc_card_t * card, u8 * buf, size_t buflen)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	/* compose select_file(ID) command */
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, 0x00, 0x00);
-	apdu.le = 0;
-	apdu.lc = 2;
-	apdu.data = data;
-	apdu.resp = NULL;
-	apdu.datalen = 2;
-	apdu.resplen = 0;
-	/* compose select_file(PARENT) command */
-	sc_format_apdu(card, &back, SC_APDU_CASE_1, 0xA4, 0x03, 0x00);
-	back.le = 0;
-	back.lc = 0;
-	back.data = NULL;
-	back.resp = NULL;
-	back.datalen = 0;
-	back.resplen = 0;
+	dnie_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, 0x00, 0x00, 0, 2,
+					NULL, 0, data, 2);
 	/* iterate on every possible ids */
 	for (id1 = 0; id1 < 256; id1++) {
 		for (id2 = 0; id2 < 256; id2++) {
@@ -1481,6 +1687,7 @@ static int dnie_list_files(sc_card_t * card, u8 * buf, size_t buflen)
 			data[0] = (u8) (0xff & id1);
 			data[1] = (u8) (0xff & id2);
 			res = dnie_transmit_apdu(card, &apdu);
+			dnie_free_apdu_buffers(&apdu, NULL, 0);
 			if (res != SC_SUCCESS) {
 				sc_log(card->ctx, "List file '%02X%02X' failed",
 				       id1, id2);
@@ -1628,15 +1835,12 @@ static int dnie_read_header(struct sc_card *card)
 	LOG_FUNC_CALLED(ctx);
 
 	/* initialize apdu */
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xB0, 0x00, 0x00);
-	apdu.p1 = 0x00;
-	apdu.p2 = 0x00;
-	apdu.le = 8;		/* read 8 bytes at begining of file */
-	apdu.resplen = SC_MAX_APDU_BUFFER_SIZE;
-	apdu.resp = buf;
+	dnie_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xB0, 0x00, 0x00, 8, 0,
+					buf, SC_MAX_APDU_BUFFER_SIZE, NULL, 0);
 	/* transmit apdu */
 	r = dnie_transmit_apdu(card, &apdu);
 	if (r != SC_SUCCESS) {
+		dnie_free_apdu_buffers(&apdu, buf, SC_MAX_APDU_BUFFER_SIZE);
 		sc_log(ctx, "read_header() APDU transmit failed");
 		LOG_FUNC_RETURN(ctx, r);
 	}
@@ -1651,10 +1855,12 @@ static int dnie_read_header(struct sc_card *card)
 		goto header_notcompressed;
 	/* ok: assume data is correct */
 	sc_log(ctx, "read_header: uncompressed file size is %lu", uncompressed);
+	dnie_free_apdu_buffers(&apdu, buf, SC_MAX_APDU_BUFFER_SIZE);
 	return (int)(0x7FFF & uncompressed);
 
  header_notcompressed:
 	sc_log(ctx, "response doesn't match compressed file header");
+	dnie_free_apdu_buffers(&apdu, buf, SC_MAX_APDU_BUFFER_SIZE);
 	return 0;
 }
 
@@ -1903,33 +2109,28 @@ static int dnie_pin_verify(struct sc_card *card,
 	pinlen = res;
 
 	/* compose apdu */
-	memset(&apdu, 0, sizeof(apdu));	/* clear buffer */
-	apdu.cla = 0x00;
-	apdu.cse = SC_APDU_CASE_3_SHORT;
-	apdu.ins = (u8) 0x20;	/* Verify cmd */
-	apdu.p1 = (u8) 0x00;
-	apdu.p2 = (u8) 0x00;
-	apdu.lc = pinlen;
-	apdu.datalen = pinlen;
-	apdu.data = pinbuffer;
-	apdu.resplen = 0;
-	apdu.le = 0;
+	dnie_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x20, 0x00, 0x00, 0x00, pinlen,
+					NULL, 0, pinbuffer, pinlen);
 
 	/* and send to card throught virtual channel */
 	res = dnie_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(card->ctx, res, "VERIFY APDU Transmit fail");
+	if (res != SC_SUCCESS) {
+		dnie_free_apdu_buffers(&apdu, NULL, 0);
+		LOG_TEST_RET(card->ctx, res, "VERIFY APDU Transmit fail");
+	}
 
 	/* check response and if requested setup tries_left */
 	if (tries_left != NULL) {	/* returning tries_left count is requested */
 		if ((apdu.sw1 == 0x63) && ((apdu.sw2 & 0xF0) == 0xC0)) {
 			*tries_left = apdu.sw2 & 0x0F;
+			dnie_free_apdu_buffers(&apdu, NULL, 0);
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_PIN_CODE_INCORRECT);
 		}
 	}
 	res = dnie_check_sw(card, apdu.sw1, apdu.sw2);	/* not a pinerr: parse result */
 
 	/* the end: a bit of Mister Proper and return */
-	memset(&apdu, 0, sizeof(apdu));	/* clear buffer */
+	dnie_free_apdu_buffers(&apdu, NULL, 0);
 	data->apdu = NULL;
 	LOG_FUNC_RETURN(card->ctx, res);
 #else

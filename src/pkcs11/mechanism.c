@@ -415,7 +415,7 @@ sc_pkcs11_signature_update(sc_pkcs11_operation_t *operation,
 		LOG_FUNC_RETURN(context, CKR_DATA_LEN_RANGE);
 	memcpy(data->buffer + data->buffer_len, pPart, ulPartLen);
 	data->buffer_len += ulPartLen;
-	sc_log(context, "data length %li", data->buffer_len);
+	sc_log(context, "data length %u", data->buffer_len);
 	LOG_FUNC_RETURN(context, CKR_OK);
 }
 
@@ -428,7 +428,7 @@ sc_pkcs11_signature_final(sc_pkcs11_operation_t *operation,
 
 	LOG_FUNC_CALLED(context);
 	data = (struct signature_data *) operation->priv_data;
-	sc_log(context, "data length %li", data->buffer_len);
+	sc_log(context, "data length %u", data->buffer_len);
 	if (data->md) {
 		sc_pkcs11_operation_t	*md = data->md;
 		CK_ULONG len = sizeof(data->buffer);
@@ -441,7 +441,7 @@ sc_pkcs11_signature_final(sc_pkcs11_operation_t *operation,
 		data->buffer_len = len;
 	}
 
-	sc_log(context, "%li bytes to sign", data->buffer_len);
+	sc_log(context, "%u bytes to sign", data->buffer_len);
 	rv = data->key->ops->sign(operation->session, data->key, &operation->mechanism,
 			data->buffer, data->buffer_len, pSignature, pulSignatureLen);
 	LOG_FUNC_RETURN(context, rv);

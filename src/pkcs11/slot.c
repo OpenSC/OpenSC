@@ -92,6 +92,8 @@ CK_RV create_slot(sc_reader_t *reader)
 	list_init(&slot->objects);
 	list_attributes_seeker(&slot->objects, object_list_seeker);
 
+	list_init(&slot->logins);
+
 	init_slot_info(&slot->slot_info);
 	if (reader != NULL) {
 		slot->reader = reader;
@@ -105,6 +107,7 @@ void delete_slot(struct sc_pkcs11_slot *slot)
 {
 	if (slot) {
 		list_destroy(&slot->objects);
+		list_destroy(&slot->logins);
 		list_delete(&virtual_slots, slot);
 		free(slot);
 	}
@@ -252,7 +255,6 @@ again:
 	/* Detect the framework */
 	if (p11card->framework == NULL) {
 		struct sc_app_info *app_generic = sc_pkcs15_get_application_by_type(p11card->card, "generic");
-		struct sc_pkcs11_slot *first_slot = NULL;
 
 		sc_log(context, "%s: Detecting Framework. %i on-card applications", reader->name, p11card->card->app_count);
 		sc_log(context, "%s: generic application %s", reader->name, app_generic ? app_generic->label : "<none>");
@@ -289,7 +291,7 @@ again:
 			}
 
 			sc_log(context, "%s: Creating 'generic' token.", reader->name);
-			rv = frameworks[i]->create_tokens(p11card, app_generic, &first_slot);
+			rv = frameworks[i]->create_tokens(p11card, app_generic);
 			if (rv != CKR_OK)   {
 				sc_log(context, "%s: create 'generic' token error 0x%X", reader->name, rv);
 				return rv;
@@ -312,7 +314,7 @@ again:
 			}
 
 			sc_log(context, "%s: Creating %s token.", reader->name, app_name);
-			rv = frameworks[i]->create_tokens(p11card, app_info, &first_slot);
+			rv = frameworks[i]->create_tokens(p11card, app_info);
 			if (rv != CKR_OK)   {
 				sc_log(context, "%s: create %s token error 0x%X", reader->name, app_name, rv);
 				return rv;
@@ -435,8 +437,10 @@ CK_RV slot_token_removed(CK_SLOT_ID id)
 	/* Release framework stuff */
 	if (slot->p11card != NULL) {
 		if (slot->fw_data != NULL &&
-				slot->p11card->framework != NULL && slot->p11card->framework->release_token != NULL)
+				slot->p11card->framework != NULL && slot->p11card->framework->release_token != NULL) {
 			slot->p11card->framework->release_token(slot->p11card, slot->fw_data);
+			slot->fw_data = NULL;
+		}
 	}
 
 	/* Reset relevant slot properties */

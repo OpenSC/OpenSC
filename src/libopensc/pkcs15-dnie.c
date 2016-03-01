@@ -257,27 +257,6 @@ static int sc_pkcs15emu_dnie_init(sc_pkcs15_card_t * p15card)
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
-/********************************************/
-/* Public Functions When called as DLL Module*/
-/********************************************/
-
-const char *sc_driver_version(void)
-{
-	return "0.12.3-svn";	/* defined in config.h of OpenSC */
-}
-
-int bind(sc_pkcs15_card_t * p15card, sc_pkcs15emu_opt_t * options)
-{
-	/* Check for correct card driver (i.e. iso7816) */
-	if (strcmp(p15card->card->driver->short_name, "dnie") != 0)
-		return SC_ERROR_WRONG_CARD;
-
-	/* Check for correct card */
-	if (dnie_match_card(p15card->card) != 1)
-		return SC_ERROR_WRONG_CARD;
-	return sc_pkcs15emu_dnie_init(p15card);
-}
-
 /****************************************/
 /* public functions for in-built module */
 /****************************************/

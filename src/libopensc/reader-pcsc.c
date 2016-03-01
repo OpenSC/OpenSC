@@ -1098,7 +1098,7 @@ static int pcsc_detect_readers(sc_context_t *ctx)
 		else {
 			rv = gpriv->SCardListReaders(gpriv->pcsc_ctx, NULL, NULL,
 					      (LPDWORD) &reader_buf_size);
-			if (rv == SCARD_E_NO_SERVICE) {
+			if (rv == (LONG)SCARD_E_NO_SERVICE) {
 				gpriv->SCardReleaseContext(gpriv->pcsc_ctx);
 				gpriv->pcsc_ctx = -1;
 				gpriv->pcsc_wait_ctx = -1;
@@ -1712,6 +1712,9 @@ part10_check_pin_min_max(sc_reader_t *reader, struct sc_pin_cmd_data *data)
 	struct sc_pin_cmd_pin *pin_ref =
 	   	data->flags & SC_PIN_CMD_IMPLICIT_CHANGE ?
 	   	&data->pin1 : &data->pin2;
+
+    if (!priv->get_tlv_properties)
+		return 0;
 
 	r = pcsc_internal_transmit(reader, NULL, 0, buffer, &length,
 		priv->get_tlv_properties);

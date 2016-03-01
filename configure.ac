@@ -143,6 +143,13 @@ AC_ARG_ENABLE(
 )
 
 AC_ARG_ENABLE(
+	[thread_locking],
+	[AS_HELP_STRING([--disable-thread-locking],[disable OS thread locking @<:@enabled@:>@])],
+	,
+	[enable_thread_locking="yes"]
+)
+
+AC_ARG_ENABLE(
 	[zlib],
 	[AS_HELP_STRING([--enable-zlib],[enable zlib linkage @<:@detect@:>@])],
 	,
@@ -328,7 +335,7 @@ AC_FUNC_VPRINTF
 AC_CHECK_FUNCS([ \
 	getpass gettimeofday memset mkdir \
 	strdup strerror getopt_long getopt_long_only \
-	strlcpy strlcat
+	strlcpy strlcat strnlen
 ])
 AC_CHECK_SIZEOF(void *)
 if test "${ac_cv_sizeof_void_p}" = 8; then
@@ -367,6 +374,10 @@ if test "${WIN32}" = "no"; then
 		[AC_MSG_ERROR([POSIX thread support required])]
 	)
 	CC="${PTHREAD_CC}"
+fi
+
+if test "${enable_thread_locking}" = "yes"; then
+	CPPFLAGS="${CPPFLAGS} -DPKCS11_THREAD_LOCKING"
 fi
 
 if test "${enable_minidriver}" = "yes"; then
@@ -526,11 +537,11 @@ if test "${enable_sm}" = "yes"; then
 			DEFAULT_SM_MODULE_PATH="\# module_path = \"\";"
 		;;
 		*-apple-*)
-			DEFAULT_SM_MODULE="libsmm-local.3.dylib"
+			DEFAULT_SM_MODULE="libsmm-local.dylib"
 			DEFAULT_SM_MODULE_PATH="module_path = \$(libdir);"
 		;;
 		*)
-			DEFAULT_SM_MODULE="libsmm-local.so.3"
+			DEFAULT_SM_MODULE="libsmm-local.so"
 			DEFAULT_SM_MODULE_PATH="module_path = \$(libdir);"
 		;;
 	esac
@@ -638,6 +649,9 @@ if test "${enable_man}" = "yes" -o "${enable_doc}" = "yes"; then
 fi
 
 OPENSC_FEATURES=""
+if test "${enable_thread_locking}" = "yes"; then
+	OPENSC_FEATURES="${OPENSC_FEATURES} locking"
+fi
 if test "${enable_zlib}" = "yes"; then
 	OPENSC_FEATURES="${OPENSC_FEATURES} zlib"
 	OPTIONAL_ZLIB_CFLAGS="${ZLIB_CFLAGS}"
@@ -719,6 +733,7 @@ AC_SUBST([PROFILE_DIR])
 AC_SUBST([PROFILE_DIR_DEFAULT])
 
 AM_CONDITIONAL([ENABLE_MAN], [test "${enable_man}" = "yes"])
+AM_CONDITIONAL([ENABLE_THREAD_LOCKING], [test "${enable_thread_locking}" = "yes"])
 AM_CONDITIONAL([ENABLE_ZLIB], [test "${enable_zlib}" = "yes"])
 AM_CONDITIONAL([ENABLE_READLINE], [test "${enable_readline}" = "yes"])
 AM_CONDITIONAL([ENABLE_OPENSSL], [test "${enable_openssl}" = "yes"])
@@ -805,6 +820,7 @@ XSL stylesheets:         ${xslstylesheetsdir}
 
 man support:             ${enable_man}
 doc support:             ${enable_doc}
+thread locking support:  ${enable_thread_locking}
 zlib support:            ${enable_zlib}
 readline support:        ${enable_readline}
 OpenSSL support:         ${enable_openssl}

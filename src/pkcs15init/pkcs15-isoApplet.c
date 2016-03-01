@@ -265,7 +265,7 @@ isoApplet_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t
 
 	LOG_FUNC_CALLED(card->ctx);
 
-	if(!pin || !pin_len || !df || !&df->path)
+	if(!pin || !pin_len || !df)
 	{
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}

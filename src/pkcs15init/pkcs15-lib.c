@@ -155,6 +155,7 @@ static struct profile_operations {
 	{ "myeid", (void *) sc_pkcs15init_get_myeid_ops },
 	{ "sc-hsm", (void *) sc_pkcs15init_get_sc_hsm_ops },
 	{ "isoApplet", (void *) sc_pkcs15init_get_isoApplet_ops },
+	{ "gids", (void *) sc_pkcs15init_get_gids_ops },
 #ifdef ENABLE_OPENSSL
 	{ "authentic", (void *) sc_pkcs15init_get_authentic_ops },
 	{ "iasecc", (void *) sc_pkcs15init_get_iasecc_ops },
@@ -599,6 +600,7 @@ sc_pkcs15init_delete_by_path(struct sc_profile *profile, struct sc_pkcs15_card *
 	LOG_TEST_RET(ctx, rv, "'DELETE' authentication failed");
 
 	/* Reselect file to delete: current path could be changed by 'verify PIN' procedure */
+	path = *file_path;
 	rv = sc_select_file(p15card->card, &path, &file);
 	LOG_TEST_RET(ctx, rv, "cannot select file to delete");
 
@@ -1476,7 +1478,7 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card, struct sc_profile
 		struct sc_pkcs15init_pubkeyargs *keyargs, struct sc_pkcs15_object **res_obj)
 {
 	struct sc_context *ctx = p15card->card->ctx;
-	struct sc_pkcs15_object *object;
+	struct sc_pkcs15_object *object = NULL;
 	struct sc_pkcs15_pubkey_info *key_info;
 	struct sc_pkcs15_keyinfo_gostparams *keyinfo_gostparams;
 	struct sc_pkcs15_pubkey key;
@@ -1544,8 +1546,8 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card, struct sc_profile
 		 * in libopensc (sc_pkcs15_free_prkey_info) */
 		key_info->params.data = malloc(key_info->params.len);
 		if (!key_info->params.data) {
-			sc_pkcs15init_free_object(object);
-			LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate GOST params");
+			r = SC_ERROR_OUT_OF_MEMORY;
+			LOG_TEST_GOTO_ERR(ctx, r, "Cannot allocate GOST params");
 		}
 		keyinfo_gostparams = key_info->params.data;
 		keyinfo_gostparams->gostr3410 = keyargs->params.gost.gostr3410;
@@ -1557,8 +1559,8 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card, struct sc_profile
 		if (key.u.ec.params.der.value) {
 			key_info->params.data = malloc(key.u.ec.params.der.len);
 			if (!key_info->params.data) {
-				sc_pkcs15init_free_object(object);
-				LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate EC params");
+				r = SC_ERROR_OUT_OF_MEMORY;
+				LOG_TEST_GOTO_ERR(ctx, r, "Cannot allocate EC params");
 			}
 			key_info->params.len = key.u.ec.params.der.len;
 			memcpy(key_info->params.data, key.u.ec.params.der.value, key.u.ec.params.der.len);
@@ -1567,32 +1569,34 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card, struct sc_profile
 
 	/* Select a intrinsic Key ID if the user didn't specify one */
 	r = sc_pkcs15init_select_intrinsic_id(p15card, profile, SC_PKCS15_TYPE_PUBKEY, &keyargs->id, &key);
-	LOG_TEST_RET(ctx, r, "Get intrinsic ID error");
+	LOG_TEST_GOTO_ERR(ctx, r, "Get intrinsic ID error");
 
 	/* Select a Key ID if the user didn't specify one and there is no intrinsic ID,
 	 * otherwise make sure it's unique */
 	r = select_id(p15card, SC_PKCS15_TYPE_PUBKEY, &keyargs->id);
-	LOG_TEST_RET(ctx, r, "Failed to select public key object ID");
+	LOG_TEST_GOTO_ERR(ctx, r, "Failed to select public key object ID");
 
 	/* Make sure that private key's ID is the unique inside the PKCS#15 application */
 	r = sc_pkcs15_find_pubkey_by_id(p15card, &keyargs->id, NULL);
-	if (!r)
-		LOG_TEST_RET(ctx, SC_ERROR_NON_UNIQUE_ID, "Non unique ID of the public key object");
-	else if (r != SC_ERROR_OBJECT_NOT_FOUND)
-		LOG_TEST_RET(ctx, r, "Find public key error");
+	if (!r) {
+		r = SC_ERROR_NON_UNIQUE_ID;
+		LOG_TEST_GOTO_ERR(ctx, r, "Non unique ID of the public key object");
+	} else if (r != SC_ERROR_OBJECT_NOT_FOUND)  {
+		LOG_TEST_GOTO_ERR(ctx, r, "Find public key error");
+	}
 
 	key_info->id = keyargs->id;
 
 	/* DER encode public key components */
 	r = sc_pkcs15_encode_pubkey(p15card->card->ctx, &key, &object->content.value, &object->content.len);
-	LOG_TEST_RET(ctx, r, "Encode public key error");
+	LOG_TEST_GOTO_ERR(ctx, r, "Encode public key error");
 
 	r = sc_pkcs15_encode_pubkey(p15card->card->ctx, &key, &key_info->direct.raw.value, &key_info->direct.raw.len);
-	LOG_TEST_RET(ctx, r, "RAW encode public key error");
+	LOG_TEST_GOTO_ERR(ctx, r, "RAW encode public key error");
 
 	/* EC key are encoded as SPKI to preserve domain parameter */
 	r = sc_pkcs15_encode_pubkey_as_spki(p15card->card->ctx, &key, &key_info->direct.spki.value, &key_info->direct.spki.len);
-	LOG_TEST_RET(ctx, r, "SPKI encode public key error");
+	LOG_TEST_GOTO_ERR(ctx, r, "SPKI encode public key error");
 
 	/* Now create key file and store key */
 	if (type == SC_PKCS15_TYPE_PUBKEY_EC)
@@ -1614,6 +1618,10 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card, struct sc_profile
 		*res_obj = object;
 
 	profile->dirty = 1;
+
+err:
+	if (object && r < 0)
+		sc_pkcs15init_free_object(object);
 
 	LOG_FUNC_RETURN(ctx, r);
 }
@@ -2951,6 +2959,8 @@ sc_pkcs15init_change_attrib(struct sc_pkcs15_card *p15card, struct sc_profile *p
 			struct sc_file *file = NULL;
 
 			r = sc_profile_get_file_by_path(profile, &df->path, &file);
+			if (r < 0)
+				free(buf);
 			LOG_TEST_RET(ctx, r, "Cannot instantiate file by path");
 
 			r = sc_pkcs15init_update_file(profile, p15card, file, buf, bufsize);

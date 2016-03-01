@@ -71,6 +71,8 @@ extern int sc_pkcs15emu_sc_hsm_init_ex(sc_pkcs15_card_t *,
 					sc_pkcs15emu_opt_t *);
 extern int sc_pkcs15emu_dnie_init_ex(sc_pkcs15_card_t *,
 					sc_pkcs15emu_opt_t *);
+extern int sc_pkcs15emu_gids_init_ex(sc_pkcs15_card_t *,
+					sc_pkcs15emu_opt_t *);
 
 static struct {
 	const char *		name;
@@ -95,6 +97,7 @@ static struct {
 	{ "oberthur",   sc_pkcs15emu_oberthur_init_ex	},
 	{ "sc-hsm",   sc_pkcs15emu_sc_hsm_init_ex	},
 	{ "dnie",       sc_pkcs15emu_dnie_init_ex   },
+	{ "gids",       sc_pkcs15emu_gids_init_ex   },
 	{ NULL, NULL }
 };
 
