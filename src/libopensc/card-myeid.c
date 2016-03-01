@@ -46,8 +46,6 @@
 #define MYEID_STATE_CREATION	0x01
 #define MYEID_STATE_ACTIVATED	0x07
 
-#define MYEID_ECC_SUPPORT
-
 #define MYEID_INFINEON_CHIP_ATR		0x04
 
 static struct sc_card_operations myeid_ops;
@@ -160,7 +158,6 @@ static int myeid_init(struct sc_card *card)
 	_sc_card_add_rsa_alg(card, 1536, flags, 0);
 	_sc_card_add_rsa_alg(card, 2048, flags, 0);
 
-#ifdef MYEID_ECC_SUPPORT
 	if (sc_hex_to_bin(atrp, defatr, &len) == 0
 		&& (len == card->atr.len) && 
 		memcmp(card->atr.value, defatr, len) == 0) {	
@@ -183,7 +180,6 @@ static int myeid_init(struct sc_card *card)
 			_sc_card_add_ec_alg(card,  ec_curves[i].size, flags, ext_flags, &ec_curves[i].curve_oid);
 		}
 	}
-#endif
 
 	/* State that we have an RNG */
 	card->caps |= SC_CARD_CAP_RNG | SC_CARD_CAP_ISO7816_PIN_INFO;
@@ -756,16 +752,11 @@ static int myeid_set_security_env(struct sc_card *card,
 
 			return myeid_set_security_env_rsa(card, &tmp, se_num);
 		}
-	else if (tmp.algorithm == SC_ALGORITHM_EC)
-	{
-#ifdef MYEID_ECC_SUPPORT
+		else if (tmp.algorithm == SC_ALGORITHM_EC)
+		{
 			tmp.algorithm_ref = 0x04;
 			tmp.algorithm_flags = 0;
 			return myeid_set_security_env_ec(card, &tmp, se_num);
-#else
-			sc_log(ctx, "Elliptic curves are not supported in this version.");
-			return SC_ERROR_NOT_SUPPORTED;
-#endif
 		}
 		else
 		{
