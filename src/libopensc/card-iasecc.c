@@ -3182,7 +3182,7 @@ iasecc_compute_signature_dst(struct sc_card *card,
 	size_t offs = 0, hash_len = 0;
 	unsigned char sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	unsigned char rbuf[SC_MAX_APDU_BUFFER_SIZE];
-	int rv;
+	int rv = SC_SUCCESS;
 
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx, "iasecc_compute_signature_dst() input length %i", in_len);
