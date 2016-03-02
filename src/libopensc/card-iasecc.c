@@ -2319,7 +2319,7 @@ iasecc_pin_change(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries
 	sc_log(ctx, "Change PIN(ref:%i,type:0x%X,lengths:%i/%i)", reference, data->pin_type, data->pin1.len, data->pin2.len);
 
 	if ((card->reader->capabilities & SC_READER_CAP_PIN_PAD))   {
-		if (!data->pin1.data && !data->pin1.len && &data->pin2.data && !data->pin2.len)   {
+		if (!data->pin1.data && !data->pin1.len && !data->pin2.data && !data->pin2.len)   {
 			rv = iasecc_chv_change_pinpad(card, reference, tries_left);
 			sc_log(ctx, "iasecc_pin_cmd(SC_PIN_CMD_CHANGE) chv_change_pinpad returned %i", rv);
 			LOG_FUNC_RETURN(ctx, rv);
