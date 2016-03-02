@@ -185,7 +185,7 @@ sm_iasecc_get_apdu_create_file(struct sc_context *ctx, struct sm_info *sm_info, 
 static int
 sm_iasecc_get_apdu_delete_file(struct sc_context *ctx, struct sm_info *sm_info, struct sc_remote_data *rdata)
 {
-	unsigned int file_id = (unsigned int)sm_info->cmd_data;
+	unsigned int file_id = (unsigned int)(long)sm_info->cmd_data;
 	struct sc_remote_apdu *rapdu = NULL;
 	int rv;
 
