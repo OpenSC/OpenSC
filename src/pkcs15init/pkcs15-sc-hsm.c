@@ -485,6 +485,9 @@ static int sc_hsm_emu_update_prkd(struct sc_profile *profile, struct sc_pkcs15_c
 	size_t buflen;
 	int r;
 
+	// Don't save AID in PRKD
+	key_info->path.aid.len = 0;
+
 	r = sc_pkcs15_encode_prkdf_entry(p15card->card->ctx, object, &buf, &buflen);
 	LOG_TEST_RET(p15card->card->ctx, r, "Error encoding PRKD entry");
 
