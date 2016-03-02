@@ -1449,7 +1449,7 @@ authentic_pin_change(struct sc_card *card, struct sc_pin_cmd_data *data, int *tr
 
 	memset(prv_data->pins_sha1[data->pin_reference], 0, sizeof(prv_data->pins_sha1[0]));
 
-	if (!data->pin1.data && !data->pin1.len && &data->pin2.data && !data->pin2.len)   {
+	if (!data->pin1.data && !data->pin1.len && !data->pin2.data && !data->pin2.len)   {
 		if (!(card->reader->capabilities & SC_READER_CAP_PIN_PAD))
 			LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "PIN pad not supported");
 		rv = authentic_pin_change_pinpad(card, data->pin_reference, tries_left);
