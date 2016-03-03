@@ -775,8 +775,8 @@ myeid_convert_ec_signature(struct sc_context *ctx, size_t s_len, unsigned char *
 	unsigned char *buf;
 	size_t buflen;
 	int r;
-	unsigned int len_size = 1;
-	unsigned int sig_len = 0;
+	size_t len_size = 1;
+	size_t sig_len = 0;
 
 	assert(data && datalen && datalen > 3);
 	
@@ -836,8 +836,8 @@ myeid_compute_signature(struct sc_card *card, const u8 * data, size_t datalen,
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	struct myeid_private_data* priv;
 	int r;
-	unsigned int field_length = 0; 
-	int pad_chars = 0;
+	size_t field_length = 0; 
+	size_t pad_chars = 0;
 	
 
 	assert(card != NULL && data != NULL && out != NULL);
