@@ -430,10 +430,9 @@ myeid_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 					"Unsupported RSA key size");
 			break;
 		case SC_PKCS15_TYPE_PRKEY_EC:
-			/* Here the information about curve is not available, that's why algorithm is checked
-			   without curve OID. 
-			  
-			   Added setting keybits from key_info->field_length -Hannu Honkanen
+			/* 
+			   Here the information about curve is not available, that's why algorithm is checked
+			   without curve OID. 	  			   
                          */
                     
 			if (key_info->field_length != 0)
@@ -506,8 +505,7 @@ myeid_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 			if (!sc_valid_oid(&prkey->u.ec.params.id))
                                 if (sc_pkcs15_fix_ec_parameters(ctx, &prkey->u.ec.params))
                                         LOG_FUNC_RETURN(ctx, SC_ERROR_OBJECT_NOT_VALID);
-			
-			 /* moved setting keybits BEFORE calling sc_card_find_ec_alg - Hannu Honkanen */
+						
 			if(key_info->field_length != 0)
 				keybits = key_info->field_length;
 			else
@@ -598,11 +596,7 @@ myeid_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 		case SC_PKCS15_TYPE_PRKEY_EC:
 			/* EC is supported in MyEID v > 3.5. TODO: set correct return value if older MyEID version. */
 			/* Here the information about curve is not available, that's why supported algorithm is checked
-			   without curve OID. */
-			
-			/*
-                         * set keybits BEFORE calling sc_card_find_ec_alg - Hannu Honkanen 30.10.2015
-                         */
+			   without curve OID. */						
                     
 			if(key_info->field_length != 0)
 				keybits = key_info->field_length;
