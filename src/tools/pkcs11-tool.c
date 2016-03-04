@@ -1637,13 +1637,14 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	CK_RV rv;
 
 	if (type != NULL) {
-		if (strncmp(type, "RSA:", strlen("RSA:")) == 0 ||
-		    strncmp(type, "rsa:", strlen("rsa:")) == 0) {
+		if (strncmp(type, "RSA:", strlen("RSA:")) == 0 || strncmp(type, "rsa:", strlen("rsa:")) == 0) {
+			CK_MECHANISM_TYPE mtypes[] = {CKM_RSA_PKCS_KEY_PAIR_GEN, CKM_RSA_X9_31_KEY_PAIR_GEN};
+			size_t mtypes_num = sizeof(mtypes)/sizeof(mtypes[0]);
 			CK_ULONG    key_length;
 			const char *size = type + strlen("RSA:");
 
 			if (!opt_mechanism_used)
-				if (!find_mechanism(slot, CKM_RSA_PKCS_KEY_PAIR_GEN, NULL, 0, &opt_mechanism))
+				if (!find_mechanism(slot, CKF_GENERATE_KEY_PAIR, mtypes, mtypes_num, &opt_mechanism))
 					util_fatal("Generate RSA mechanism not supported\n");
 
 			if (size == NULL)
@@ -1677,10 +1678,12 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 			n_privkey_attr++;
 		}
 		else if (!strncmp(type, "EC:", 3))   {
+			CK_MECHANISM_TYPE mtypes[] = {CKM_EC_KEY_PAIR_GEN};
+			size_t mtypes_num = sizeof(mtypes)/sizeof(mtypes[0]);
 			int ii;
 
 			if (!opt_mechanism_used)
-				if (!find_mechanism(slot, CKM_EC_KEY_PAIR_GEN, NULL, 0, &opt_mechanism))
+				if (!find_mechanism(slot, CKF_GENERATE_KEY_PAIR, mtypes, mtypes_num, &opt_mechanism))
 					util_fatal("Generate EC key mechanism not supported\n");
 
 			for (ii=0; ec_curve_infos[ii].name; ii++)   {
