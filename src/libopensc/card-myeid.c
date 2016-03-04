@@ -782,9 +782,9 @@ myeid_convert_ec_signature(struct sc_context *ctx, size_t s_len, unsigned char *
 	assert(data && datalen && datalen > 3);
 	
 	/*
-		more advanced validation is needed, because with 521 bit keys
-		length of the signature TLV is encoded in two bytes.
-		- Hannu Honkanen 6.11.2015
+	 *	When validating the signature data, we have to consider that length of the signature
+	 *	can be encoded in either one or two bytes depending on key size. With 521 bit keys
+	 *	length of the structure takes two bytes.
 	 */
 
 	if (*data != 0x30) 
