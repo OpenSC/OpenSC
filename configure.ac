@@ -9,7 +9,6 @@ define([PACKAGE_VERSION_MAJOR], [0])
 define([PACKAGE_VERSION_MINOR], [15])
 define([PACKAGE_VERSION_FIX], [0])
 define([PACKAGE_SUFFIX], [])
-define([PACKAGE_VERSION_REVISION], [0])
 
 define([VS_FF_LEGAL_COPYRIGHT], [OpenSC Project])
 define([VS_FF_LEGAL_COMPANY_NAME], [OpenSC Project])
@@ -31,7 +30,6 @@ AM_INIT_AUTOMAKE(foreign 1.10)
 OPENSC_VERSION_MAJOR="PACKAGE_VERSION_MAJOR"
 OPENSC_VERSION_MINOR="PACKAGE_VERSION_MINOR"
 OPENSC_VERSION_FIX="PACKAGE_VERSION_FIX"
-OPENSC_VERSION_REVISION="PACKAGE_VERSION_REVISION"
 
 OPENSC_VS_FF_LEGAL_COPYRIGHT="VS_FF_LEGAL_COPYRIGHT"
 OPENSC_VS_FF_COMPANY_NAME="VS_FF_LEGAL_COMPANY_NAME"
@@ -303,11 +301,26 @@ AC_MSG_RESULT([${xslstylesheetsdir}])
 AC_MSG_CHECKING([git checkout])
 GIT_CHECKOUT="no"
 if test -n "${GIT}" -a -d "${srcdir}/.git"; then
-        AC_DEFINE([HAVE_CONFIG_VERSION_H], [1], [extra version available in config-version.h])
-        GIT_CHECKOUT="yes"
+	AC_DEFINE([HAVE_CONFIG_VERSION_H], [1], [extra version available in config-version.h])
+	GIT_CHECKOUT="yes"
 fi
 AC_MSG_RESULT([${GIT_CHECKOUT}])
 
+if test "${GIT_CHECKOUT}" = "yes"; then
+	REVISION_DESCRIPTION="$(${GIT} describe || echo '<version not available>' )"
+	if test "${REVISION_DESCRIPTION}" = "<version not available>"; then
+		REVISION_DESCRIPTION="$(${GIT} describe --tags || echo '<version not available>')"
+	fi
+
+	HASH_COMMIT_DATE="$(${GIT} log -1 --pretty=format:'rev: %h, commit-time: %ci')"
+	GIT_TAG_COMMIT="$(${GIT} rev-list --tags --no-walk --max-count=1)"
+
+	OPENSC_SCM_REVISION="OpenSC-${REVISION_DESCRIPTION}, ${HASH_COMMIT_DATE}"
+	OPENSC_VERSION_REVISION="$(${GIT} rev-list ${GIT_TAG_COMMIT}..HEAD --count || echo 0)"
+else
+	OPENSC_SCM_REVISION="No Git revision info available"
+	OPENSC_VERSION_REVISION="0"
+fi
 
 dnl C Compiler features
 AC_C_INLINE
@@ -683,7 +696,8 @@ fi
 AC_DEFINE_UNQUOTED([OPENSC_VERSION_MAJOR], [${OPENSC_VERSION_MAJOR}], [OpenSC version major component])
 AC_DEFINE_UNQUOTED([OPENSC_VERSION_MINOR], [${OPENSC_VERSION_MINOR}], [OpenSC version minor component])
 AC_DEFINE_UNQUOTED([OPENSC_VERSION_FIX], [${OPENSC_VERSION_FIX}], [OpenSC version fix component])
-AC_DEFINE_UNQUOTED([OPENSC_VERSION_REVISION], [${OPENSC_VERSION_REVISION}], [OpenSC version Git describe revision])
+AC_DEFINE_UNQUOTED([OPENSC_VERSION_REVISION], [${OPENSC_VERSION_REVISION}], [OpenSC file version revision])
+AC_DEFINE_UNQUOTED([OPENSC_SCM_REVISION], ["${OPENSC_SCM_REVISION}"], [OpenSC version Git describe revision])
 AC_DEFINE_UNQUOTED([OPENSC_FEATURES], ["${OPENSC_FEATURES}"], [Enabled OpenSC features])
 
 AC_DEFINE_UNQUOTED([OPENSC_VS_FF_LEGAL_COPYRIGHT], [${OPENSC_VS_FF_LEGAL_COPYRIGHT}], [OpenSC version-info LegalCopyright value])
@@ -702,6 +716,7 @@ AC_SUBST([OPENSC_VERSION_MAJOR])
 AC_SUBST([OPENSC_VERSION_MINOR])
 AC_SUBST([OPENSC_VERSION_FIX])
 AC_SUBST([OPENSC_VERSION_REVISION])
+AC_SUBST([OPENSC_SCM_REVISION])
 AC_SUBST([OPENSC_VS_FF_LEGAL_COPYRIGHT])
 AC_SUBST([OPENSC_VS_FF_COMPANY_NAME])
 AC_SUBST([OPENSC_VS_FF_COMMENTS])
@@ -805,6 +820,7 @@ OpenSC has been configured with the following options:
 Version:                 ${PACKAGE_VERSION}
 Version fix:             ${OPENSC_VERSION_FIX}
 Version revision:        ${OPENSC_VERSION_REVISION}
+Git revision:            ${OPENSC_SCM_REVISION}
 
 Copyright:               ${OPENSC_VS_FF_LEGAL_COPYRIGHT}
 Company:                 ${OPENSC_VS_FF_COMPANY_NAME}

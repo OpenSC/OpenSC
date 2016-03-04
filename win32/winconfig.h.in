@@ -100,4 +100,8 @@
 #define DEFAULT_PKCS11_PROVIDER "opensc-pkcs11.dll"
 #endif
 
+#ifndef OPENSC_SCM_REVISION
+#define OPENSC_SCM_REVISION "@OPENSC_SCM_REVISION@"
+#endif
+
 #endif
