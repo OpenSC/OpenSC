@@ -355,6 +355,7 @@ static int rtecp_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
 	file->id = key_info->key_reference;
 	r = sc_file_set_type_attr(file, (const u8*)"\x10\x00", 2);
+
 	/* private key file */
 	if (obj->type == SC_PKCS15_TYPE_PRKEY_RSA)
 		file->size = key_info->modulus_length / 8 / 2 * 5 + 8;
@@ -375,8 +376,10 @@ static int rtecp_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		else
 			r = sc_file_set_prop_attr(file, prgkey_prop,sizeof(prgkey_prop));
 	}
-	if (r == SC_SUCCESS)
+	if (r == SC_SUCCESS)  {
+		sc_log(ctx, "create private key file id:%04i", file->id);
 		r = sc_create_file(p15card->card, file);
+	}
 	/* public key file */
 	if (obj->type == SC_PKCS15_TYPE_PRKEY_RSA)
 		file->size = key_info->modulus_length / 8 / 2 * 3;
@@ -396,8 +399,10 @@ static int rtecp_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		else
 			r = sc_file_set_prop_attr(file, pbgkey_prop,sizeof(pbgkey_prop));
 	}
-	if (r == SC_SUCCESS)
+	if (r == SC_SUCCESS)   {
+		sc_log(ctx, "create public key file id:%04i", file->id);
 		r = sc_create_file(p15card->card, file);
+	}
 	assert(file);
 	sc_file_free(file);
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, r);
@@ -630,6 +635,51 @@ static int rtecp_finalize(sc_card_t *card)
 	return sc_card_ctl(card, SC_CARDCTL_RTECP_INIT_END, NULL);
 }
 
+
+/*
+ * Delete object
+ * 
+ * Applied to private key: used to delete public part internal file
+ */
+static int rtecp_delete_object(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
+		struct sc_pkcs15_object *obj, const struct sc_path *path)
+{
+	sc_context_t *ctx;
+	sc_file_t *df;
+	sc_path_t pubkey_path;
+	int key_ref;
+	int r;
+
+	if (!profile || !p15card || !p15card->card || !p15card->card->ctx)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	ctx = p15card->card->ctx;
+	LOG_FUNC_CALLED(ctx);
+	sc_log(ctx, "delete object: type %X, path %s", obj->type, sc_print_path(path));
+
+	if ((obj->type & SC_PKCS15_TYPE_CLASS_MASK) != SC_PKCS15_TYPE_PRKEY)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
+
+	key_ref = ((struct sc_pkcs15_prkey_info *)obj->data)->key_reference;
+	sc_log(ctx, "key reference %04i", key_ref);
+
+	r = sc_profile_get_file(profile, "PuKey-DF", &df);
+	LOG_TEST_RET(ctx, r, "Get PuKey-DF info failed");
+	pubkey_path = df->path;
+	sc_file_free(df);
+
+	r = sc_append_file_id(&pubkey_path, key_ref);
+	LOG_TEST_RET(ctx, r, "Append ID to file failed");
+
+	sc_log(ctx, "delete pubkey file %s", sc_print_path(&pubkey_path));
+	r = sc_pkcs15init_delete_by_path(profile, p15card, &pubkey_path);
+	if (r && r != SC_ERROR_FILE_NOT_FOUND)
+		LOG_FUNC_RETURN(ctx, r);
+
+	LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
+}
+
+
 static struct sc_pkcs15init_operations sc_pkcs15init_rtecp_operations = {
 	rtecp_erase,                    /* erase_card */
 	rtecp_init,                     /* init_card */
@@ -644,7 +694,7 @@ static struct sc_pkcs15init_operations sc_pkcs15init_rtecp_operations = {
 	NULL,                           /* encode_private_key */
 	NULL,                           /* encode_public_key */
 	rtecp_finalize,                 /* finalize_card */
-	NULL,                           /* delete_object */
+	rtecp_delete_object,            /* delete_object */
 	NULL, NULL, NULL, NULL, NULL,   /* pkcs15init emulation */
 	NULL                            /* sanity_check */
 };
