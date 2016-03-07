@@ -344,8 +344,10 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	/* revert data to sign when signing with the GOST key.
 	 * TODO: can it be confirmed by the GOST standard?
 	 * TODO: tested with RuTokenECP, has to be validated for RuToken. */
-	if (obj->type == SC_PKCS15_TYPE_PRKEY_GOSTR3410)
-		sc_mem_reverse(buf, inlen);
+	if (obj->type == SC_PKCS15_TYPE_PRKEY_GOSTR3410)   {
+		r = sc_mem_reverse(buf, inlen);
+		LOG_TEST_RET(ctx, r, "Reverse memory error");
+	}
 
 	tmp = buf;
 
