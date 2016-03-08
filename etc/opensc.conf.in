@@ -352,6 +352,22 @@ app default {
 		secure_messaging = local_amos_eid;
 	}
 
+	# SmartCard-HSM with contact-based interface or USB-Stick
+	card_atr 3B:FE:18:00:00:81:31:FE:45:80:31:81:54:48:53:4D:31:73:80:21:40:81:07:FA {
+                driver = "sc-hsm";
+		md_read_only = false;
+		md_supports_X509_enrollment = true;
+		md_guid_as_label = true;
+        }
+
+	# SmartCard-HSM with contact-less interface
+	card_atr 3B:8E:80:01:80:31:81:54:48:53:4D:31:73:80:21:40:81:07:18 {
+                driver = "sc-hsm";
+		md_read_only = false;
+		md_supports_X509_enrollment = true;
+		md_guid_as_label = true;
+        }
+
 	secure_messaging local_authentic  {
 		# name of external SM module
 		# module_name = @DEFAULT_SM_MODULE@;
@@ -457,11 +473,11 @@ app default {
 		# Default: false
 		# use_file_caching = true;
 		#
-		# set a path for caching 
+		# set a path for caching
 		# so you do not use the env variables and for pam_pkcs11
 		# (with certificate check)  where $HOME is not set
 		# Default: path in user home
-		# file_cache_dir = /var/lib/opensc/cache	
+		# file_cache_dir = /var/lib/opensc/cache
                 #
 		# Use PIN caching?
 		# Default: true
