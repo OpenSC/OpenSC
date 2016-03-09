@@ -2239,7 +2239,12 @@ static int write_object(CK_SESSION_HANDLE session)
 			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_SUBJECT, cert.subject, cert.subject_len);
 			n_pubkey_attr++;
 		}
-		if (evp_key->type == EVP_PKEY_RSA) {
+#if OPENSSL_VERSION_NUMBER >=  0x10100003L
+		pk_type = EVP_PKEY_base_id(evp_key);
+#else
+		pk_type =  evp_key->type;
+#endif
+		if (pk_type == EVP_PKEY_RSA) {
 			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_KEY_TYPE, &type, sizeof(type));
 			n_pubkey_attr++;
 			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_MODULUS,
@@ -2250,7 +2255,7 @@ static int write_object(CK_SESSION_HANDLE session)
 			n_pubkey_attr++;
 		}
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_EC)
-		else if (evp_key->type == EVP_PKEY_EC)   {
+		else if (pk_type == EVP_PKEY_EC)   {
 			type = CKK_EC;
 
 			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_KEY_TYPE, &type, sizeof(type));
@@ -2260,7 +2265,7 @@ static int write_object(CK_SESSION_HANDLE session)
 			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_VALUE, gost.public.value, gost.public.len);
 			n_pubkey_attr++;
 		}
-		else if (evp_key->type == NID_id_GostR3410_2001) {
+		else if (pk_type == NID_id_GostR3410_2001) {
 			type = CKK_GOSTR3410;
 
 			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_KEY_TYPE, &type, sizeof(type));
