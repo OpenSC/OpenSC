@@ -244,6 +244,15 @@ app default {
 		# Force protocol selection for specific cards.
 		# Known parameters: t0, t1, raw
 		# force_protocol = "t0";
+
+		# Context: minidriver
+		#
+		# md_read_only: Mark card as read/only card in Minidriver/BaseCSP interface (Default: false)
+		# md_supports_X509_enrollment: Indicate X509 enrollment support at Minidriver/BaseCSP interface (Default: false)
+		# md_guid_as_id: Use the GUID generated for the key as id in the PKCS#15 structure (Default: false - auto generated)
+		# md_guid_as_label: Use the GUID generated for the key as label in the PKCS#15 structure (Default: false - no label set)
+		# md_supports_container_key_gen: Card allows generating key pairs on the card (Default: false)
+		# md_supports_container_key_import: Card allows importing private keys (Default: false)
 	# }
 
 	# PIV cards need an entry similar to this one:
@@ -354,19 +363,21 @@ app default {
 
 	# SmartCard-HSM with contact-based interface or USB-Stick
 	card_atr 3B:FE:18:00:00:81:31:FE:45:80:31:81:54:48:53:4D:31:73:80:21:40:81:07:FA {
-                driver = "sc-hsm";
+		driver = "sc-hsm";
 		md_read_only = false;
 		md_supports_X509_enrollment = true;
+		md_supports_container_key_gen = true;
 		md_guid_as_label = true;
-        }
+	}
 
 	# SmartCard-HSM with contact-less interface
 	card_atr 3B:8E:80:01:80:31:81:54:48:53:4D:31:73:80:21:40:81:07:18 {
-                driver = "sc-hsm";
+		driver = "sc-hsm";
 		md_read_only = false;
 		md_supports_X509_enrollment = true;
+		md_supports_container_key_gen = true;
 		md_guid_as_label = true;
-        }
+	}
 
 	secure_messaging local_authentic  {
 		# name of external SM module
