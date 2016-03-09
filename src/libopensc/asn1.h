@@ -135,6 +135,7 @@ int sc_asn1_sig_value_sequence_to_rs(struct sc_context *ctx,
 #define SC_ASN1_CONS			0x01000000
 
 #define SC_ASN1_TAG_MASK		0x00FFFFFF
+#define SC_ASN1_TAGNUM_SIZE		3
 
 #define SC_ASN1_PRESENT			0x00000001
 #define SC_ASN1_OPTIONAL		0x00000002
