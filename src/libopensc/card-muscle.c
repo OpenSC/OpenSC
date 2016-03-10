@@ -476,7 +476,11 @@ static int muscle_init(sc_card_t *card)
 	card->caps |= SC_CARD_CAP_RNG;
 
 	/* Card type detection */
-	_sc_match_atr(card, muscle_atrs, &card->type);
+	if (_sc_match_atr(card, muscle_atrs, &card->type) < 0)   {
+		free(priv->fs);
+		free(card->drv_data);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED);
+	}
 
 	if(card->type == SC_CARD_TYPE_MUSCLE_ETOKEN_72K) {
 		card->caps |= SC_CARD_CAP_APDU_EXT;
