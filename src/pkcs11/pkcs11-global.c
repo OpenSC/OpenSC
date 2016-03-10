@@ -404,9 +404,6 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 
 	/* Slot list can only change in v2.20 */
 	if (pSlotList == NULL_PTR && sc_pkcs11_conf.plug_and_play) {
-		/* Trick NSS into updating the slot list by changing the hotplug slot ID */
-		sc_pkcs11_slot_t *hotplug_slot = list_get_at(&virtual_slots, 0);
-		hotplug_slot->id--;
 		sc_ctx_detect_readers(context);
 	}
 
