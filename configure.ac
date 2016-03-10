@@ -544,9 +544,9 @@ fi
 if test "${enable_sm}" = "yes"; then
 	AC_DEFINE([ENABLE_SM], [1], [Enable secure messaging support])
 
+	DEFAULT_SM_MODULE="${LIB_PRE}smm-local${DYN_LIB_EXT}"
 	case "${host}" in
 		*-mingw*|*-winnt*|*-cygwin*)
-			DEFAULT_SM_MODULE="smm-local.dll"
 			DEFAULT_SM_MODULE_PATH="\# module_path = \"\";"
 		;;
 		*-apple-*)
@@ -626,19 +626,30 @@ if test "${enable_pcsc}" = "yes"; then
 	AC_DEFINE([ENABLE_PCSC], [1], [Define if PC/SC is to be enabled])
 fi
 
+AC_SUBST(DYN_LIB_EXT)
+AC_SUBST(LIBDIR)
+AC_SUBST(LIB_PRE)
+case "${host}" in
+	*-mingw*|*-winnt*|*-cygwin*)
+		DYN_LIB_EXT=".dll"
+		LIBDIR=""
+		LIB_PRE=""
+		;;
+	*-apple-*)
+		DYN_LIB_EXT=".dylib"
+		LIBDIR="\$(libdir)/"
+		LIB_PRE="lib"
+		;;
+	*)
+		DYN_LIB_EXT=".so"
+		LIBDIR="\$(libdir)/"
+		LIB_PRE="lib"
+		;;
+esac
+
 
 if test "${with_pkcs11_provider}" = "detect"; then
-	case "${host}" in
-		*-*-darwin*)
-			DEFAULT_PKCS11_PROVIDER="opensc-pkcs11.so"
-		;;
-		*-mingw*|*-winnt*|*-cygwin*)
-			DEFAULT_PKCS11_PROVIDER="opensc-pkcs11.dll"
-		;;
-		*)
-			DEFAULT_PKCS11_PROVIDER="opensc-pkcs11.so"
-		;;
-	esac
+	DEFAULT_PKCS11_PROVIDER="opensc-pkcs11${DYN_LIB_EXT}"
 else
 	DEFAULT_PKCS11_PROVIDER="${with_pkcs11_provider}"
 fi
@@ -700,13 +711,13 @@ AC_DEFINE_UNQUOTED([OPENSC_VERSION_REVISION], [${OPENSC_VERSION_REVISION}], [Ope
 AC_DEFINE_UNQUOTED([OPENSC_SCM_REVISION], ["${OPENSC_SCM_REVISION}"], [OpenSC version Git describe revision])
 AC_DEFINE_UNQUOTED([OPENSC_FEATURES], ["${OPENSC_FEATURES}"], [Enabled OpenSC features])
 
-AC_DEFINE_UNQUOTED([OPENSC_VS_FF_LEGAL_COPYRIGHT], [${OPENSC_VS_FF_LEGAL_COPYRIGHT}], [OpenSC version-info LegalCopyright value])
-AC_DEFINE_UNQUOTED([OPENSC_VS_FF_COMPANY_NAME], [${OPENSC_VS_FF_COMPANY_NAME}], [OpenSC version-info CompanyName value])
-AC_DEFINE_UNQUOTED([OPENSC_VS_FF_COMMENTS], [${OPENSC_VS_FF_COMMENTS}], [OpenSC version-info Comments])
-AC_DEFINE_UNQUOTED([OPENSC_VS_FF_PRODUCT_NAME], [${OPENSC_VS_FF_PRODUCT_NAME}], [OpenSC version-info ProductName])
-AC_DEFINE_UNQUOTED([OPENSC_VS_FF_PRODUCT_UPDATES], [${OPENSC_VS_FF_PRODUCT_UPDATES}], [OpenSC version-info UpdateURL])
-AC_DEFINE_UNQUOTED([OPENSC_VS_FF_PRODUCT_URL], [${OPENSC_VS_FF_PRODUCT_URL}], [OpenSC version-info ProductURL])
-AC_DEFINE_UNQUOTED([OPENSC_VS_FF_COMPANY_URL], [${OPENSC_VS_FF_COMPANY_URL}], [OpenSC version-info UpdateURL])
+AC_DEFINE_UNQUOTED([OPENSC_VS_FF_LEGAL_COPYRIGHT], ["${OPENSC_VS_FF_LEGAL_COPYRIGHT}"], [OpenSC version-info LegalCopyright value])
+AC_DEFINE_UNQUOTED([OPENSC_VS_FF_COMPANY_NAME], ["${OPENSC_VS_FF_COMPANY_NAME}"], [OpenSC version-info CompanyName value])
+AC_DEFINE_UNQUOTED([OPENSC_VS_FF_COMMENTS], ["${OPENSC_VS_FF_COMMENTS}"], [OpenSC version-info Comments])
+AC_DEFINE_UNQUOTED([OPENSC_VS_FF_PRODUCT_NAME], ["${OPENSC_VS_FF_PRODUCT_NAME}"], [OpenSC version-info ProductName])
+AC_DEFINE_UNQUOTED([OPENSC_VS_FF_PRODUCT_UPDATES], ["${OPENSC_VS_FF_PRODUCT_UPDATES}"], [OpenSC version-info UpdateURL])
+AC_DEFINE_UNQUOTED([OPENSC_VS_FF_PRODUCT_URL], ["${OPENSC_VS_FF_PRODUCT_URL}"], [OpenSC version-info ProductURL])
+AC_DEFINE_UNQUOTED([OPENSC_VS_FF_COMPANY_URL], ["${OPENSC_VS_FF_COMPANY_URL}"], [OpenSC version-info UpdateURL])
 
 pkcs11dir="\$(libdir)/pkcs11"
 
