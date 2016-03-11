@@ -49,14 +49,14 @@ static const u8 boxing_ins                          = 0x9a;
 static const u8 boxing_p1_PIN                       = 0x04;
 static const u8 boxing_p2_GetReaderPACECapabilities = 0x01;
 static const u8 boxing_p2_EstablishPACEChannel      = 0x02;
-static const u8 boxing_p2_DestroyPACEChannel        = 0x03;
+/*static const u8 boxing_p2_DestroyPACEChannel        = 0x03;*/
 static const u8 boxing_p2_PC_to_RDR_Secure          = 0x10;
 
 static const u8 boxing_p1_IFD                       = 0x01;
 static const u8 boxing_p2_vendor                    = 0x01;
-static const u8 boxing_p2_product                   = 0x03;
+/*static const u8 boxing_p2_product                   = 0x03;*/
 static const u8 boxing_p2_version_firmware          = 0x06;
-static const u8 boxing_p2_version_driver            = 0x07;
+/*static const u8 boxing_p2_version_driver            = 0x07;*/
 
 struct sc_asn1_entry g_boolean[] = {
     { "boolean",
