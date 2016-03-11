@@ -2314,7 +2314,16 @@ sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_pat
 	r = -1; /* file state: not in cache */
 	if (p15card->opts.use_file_cache) {
 		r = sc_pkcs15_read_cached_file(p15card, in_path, &data, &len);
+
+		if (!r && in_path->aid.len > 0 && in_path->len >= 2)   {
+			struct sc_path parent = *in_path;
+
+			parent.len -= 2;
+			parent.type = SC_PATH_TYPE_PATH;
+			r = sc_select_file(p15card->card, &parent, NULL);
+		}
 	}
+
 	if (r) {
 		r = sc_lock(p15card->card);
 		LOG_TEST_RET(ctx, r, "sc_lock() failed");
