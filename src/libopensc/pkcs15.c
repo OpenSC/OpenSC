@@ -537,8 +537,8 @@ sc_pkcs15_get_lastupdate(struct sc_pkcs15_card *p15card)
 	struct sc_context *ctx  = p15card->card->ctx;
 	struct sc_file *file = NULL;
 	struct sc_asn1_entry asn1_last_update[C_ASN1_LAST_UPDATE_SIZE];
-        unsigned char *content, last_update[32];
-        size_t lupdate_len = sizeof(last_update) - 1;
+	unsigned char *content, last_update[32];
+	size_t lupdate_len = sizeof(last_update) - 1;
 	int r, content_len;
 	size_t size;
 
@@ -552,11 +552,8 @@ sc_pkcs15_get_lastupdate(struct sc_pkcs15_card *p15card)
 	if (r < 0)
 		return NULL;
 
-	if (file->size) {
-		size = 1024;
-	} else {
-		size = file->size;
-	}
+	size = file->size ? file->size : 1024;
+
 	content = calloc(size, 1);
 	if (!content)
 		return NULL;
