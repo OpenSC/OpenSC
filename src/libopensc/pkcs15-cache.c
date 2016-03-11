@@ -41,38 +41,53 @@ static int generate_cache_filename(struct sc_pkcs15_card *p15card,
 				   char *buf, size_t bufsize)
 {
 	char dir[PATH_MAX];
-        char pathname[SC_MAX_PATH_SIZE*2+1];
+	char *last_update = NULL;
 	int  r;
-        const u8 *pathptr;
-        size_t i, pathlen;
+	unsigned u;
 
-	if (path->type != SC_PATH_TYPE_PATH)
-                return SC_ERROR_INVALID_ARGUMENTS;
+	if (p15card->tokeninfo->serial_number == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	assert(path->len <= SC_MAX_PATH_SIZE);
 	r = sc_get_cache_dir(p15card->card->ctx, dir, sizeof(dir));
 	if (r)
 		return r;
-	pathptr = path->value;
-	pathlen = path->len;
-	if (pathlen > 2 && memcmp(pathptr, "\x3F\x00", 2) == 0) {
-                pathptr += 2;
-		pathlen -= 2;
+	snprintf(dir + strlen(dir), sizeof(dir) - strlen(dir), "/");
+
+	last_update = sc_pkcs15_get_lastupdate(p15card);
+	if (!last_update)
+		last_update = "NODATE";
+
+	snprintf(dir + strlen(dir), sizeof(dir) - strlen(dir),
+			"%s_%s", p15card->tokeninfo->serial_number, last_update);
+
+	if (path->aid.value && path->aid.len &&
+		(path->type == SC_PATH_TYPE_FILE_ID || path->type == SC_PATH_TYPE_PATH))   {
+		snprintf(dir + strlen(dir), sizeof(dir) - strlen(dir), "_");
+		for (u = 0; u < path->aid.len; u++)
+			snprintf(dir + strlen(dir), sizeof(dir) - strlen(dir),
+					"%02X",  path->aid.value[u]);
 	}
-	for (i = 0; i < pathlen; i++)
-		sprintf(pathname + 2*i, "%02X", pathptr[i]);
-	if (p15card->tokeninfo->serial_number != NULL) {
-		char *last_update = sc_pkcs15_get_lastupdate(p15card);
-		if (last_update != NULL)
-			r = snprintf(buf, bufsize, "%s/%s_%s_%s", dir, p15card->tokeninfo->serial_number,
-					last_update, pathname);
-		else
-			r = snprintf(buf, bufsize, "%s/%s_DATE_%s", dir,
-					p15card->tokeninfo->serial_number, pathname);
-		if (r < 0)
-			return SC_ERROR_BUFFER_TOO_SMALL;
-	} else
+	else if (path->type != SC_PATH_TYPE_PATH)  {
 		return SC_ERROR_INVALID_ARGUMENTS;
-        return SC_SUCCESS;
+	}
+
+	if (path->value && path->len)   {
+		size_t offs = 0;
+
+		if (path->len > 2 && memcmp(path->value, "\x3F\x00", 2) == 0)
+			offs = 2;
+		snprintf(dir + strlen(dir), sizeof(dir) - strlen(dir), "_");
+		for (u = 0; u < path->len - offs; u++)
+			snprintf(dir + strlen(dir), sizeof(dir) - strlen(dir),
+					"%02X",  path->value[u + offs]);
+	}
+
+	if (!buf || bufsize < strlen(dir))
+		return SC_ERROR_BUFFER_TOO_SMALL;
+	strcpy(buf, dir);
+
+	return SC_SUCCESS;
 }
 
 int sc_pkcs15_read_cached_file(struct sc_pkcs15_card *p15card,
@@ -80,60 +95,79 @@ int sc_pkcs15_read_cached_file(struct sc_pkcs15_card *p15card,
 			       u8 **buf, size_t *bufsize)
 {
 	char fname[PATH_MAX];
-	int r;
+	int rv;
 	FILE *f;
-	size_t count, offset, got;
+	size_t count;
 	struct stat stbuf;
 	u8 *data = NULL;
 
-	r = generate_cache_filename(p15card, path, fname, sizeof(fname));
-	if (r != 0)
-		return r;
-	r = stat(fname, &stbuf);
-	if (r)
+	if (path->len < 2)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	/* Accept full path or FILE-ID path with AID */
+	if ((path->type != SC_PATH_TYPE_PATH) && (path->type != SC_PATH_TYPE_FILE_ID || path->aid.len == 0))
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	sc_log(p15card->card->ctx, "try to read cache for %s", sc_print_path(path));
+	rv = generate_cache_filename(p15card, path, fname, sizeof(fname));
+	if (rv != SC_SUCCESS)
+		return rv;
+	sc_log(p15card->card->ctx, "read cached file %s", fname);
+
+	f = fopen(fname, "rb");
+	if (!f)
 		return SC_ERROR_FILE_NOT_FOUND;
+	if (fstat(fileno(f), &stbuf))   {
+		fclose(f);
+		return  SC_ERROR_FILE_NOT_FOUND;
+	}
+
 	if (path->count < 0) {
 		count = stbuf.st_size;
-		offset = 0;
-	} else {
+	}
+	else {
 		count = path->count;
-		offset = path->index;
-		if (offset + count > (size_t)stbuf.st_size)
-			return SC_ERROR_FILE_NOT_FOUND; /* cache file bad? */
-	}
-	if (*buf == NULL) {
-		data = malloc((size_t)stbuf.st_size);
-		if (data == NULL)
-			return SC_ERROR_OUT_OF_MEMORY;
-	} else
-		if (count > *bufsize)
-			return SC_ERROR_BUFFER_TOO_SMALL;
-	f = fopen(fname, "rb");
-	if (f == NULL) {
-		if (data)
-			free(data);
-		return SC_ERROR_FILE_NOT_FOUND;
-	}
-	if (offset) {
-		if (0 != fseek(f, (long)offset, SEEK_SET)) {
-			fclose(f);
-			free(data);
-			return SC_ERROR_FILE_NOT_FOUND;
+		if (path->index + count > (size_t)stbuf.st_size)   {
+			rv = SC_ERROR_FILE_NOT_FOUND; /* cache file bad? */
+			goto err;
+		}
+
+		if (0 != fseek(f, (long)path->index, SEEK_SET)) {
+			rv = SC_ERROR_FILE_NOT_FOUND;
+			goto err;
 		}
 	}
+
+	if (*buf == NULL) {
+		data = malloc((size_t)stbuf.st_size);
+		if (data == NULL)   {
+			rv = SC_ERROR_OUT_OF_MEMORY;
+			goto err;
+		}
+	}
+	else if (count > *bufsize)  {
+		rv =  SC_ERROR_BUFFER_TOO_SMALL;
+		goto err;
+	}
+
 	if (data)
 		*buf = data;
-	got = fread(*buf, 1, count, f);
-	fclose(f);
-	if (got != count) {
-		if (data)
-			free(data);
-		return SC_ERROR_BUFFER_TOO_SMALL;
+
+	if (count != fread(*buf, 1, count, f)) {
+		rv = SC_ERROR_BUFFER_TOO_SMALL;
+		goto err;
 	}
 	*bufsize = count;
-	if (data)
-		*buf = data;
-	return 0;
+
+	rv = SC_SUCCESS;
+
+err:
+	if (rv != SC_SUCCESS)
+		if (data)
+			free(data);
+
+	fclose(f);
+	return rv;
 }
 
 int sc_pkcs15_cache_file(struct sc_pkcs15_card *p15card,
@@ -142,8 +176,8 @@ int sc_pkcs15_cache_file(struct sc_pkcs15_card *p15card,
 {
 	char fname[PATH_MAX];
 	int r;
-        FILE *f;
-        size_t c;
+	FILE *f;
+	size_t c;
 
 	r = generate_cache_filename(p15card, path, fname, sizeof(fname));
 	if (r != 0)
@@ -162,11 +196,11 @@ int sc_pkcs15_cache_file(struct sc_pkcs15_card *p15card,
 		return 0;
 
 	c = fwrite(buf, 1, bufsize, f);
-        fclose(f);
+	fclose(f);
 	if (c != bufsize) {
 		sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "fwrite() wrote only %d bytes", c);
 		unlink(fname);
 		return SC_ERROR_INTERNAL;
 	}
-        return 0;
+	return 0;
 }
