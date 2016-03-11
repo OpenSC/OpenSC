@@ -117,7 +117,7 @@ ctbcs_build_modify_verification_apdu(sc_apdu_t *apdu, struct sc_pin_cmd_data *da
 {
 	const char *prompt;
 	size_t buflen, count = 0, j = 0, len;
-	static u8 buf[256];
+	static u8 buf[SC_MAX_APDU_BUFFER_SIZE];
 	u8 control;
 
 	ctbcs_init_apdu(apdu,
@@ -141,12 +141,10 @@ ctbcs_build_modify_verification_apdu(sc_apdu_t *apdu, struct sc_pin_cmd_data *da
 	/* card apdu must be last in packet */
 	if (!data->apdu)
 		return SC_ERROR_INTERNAL;
-	if (count + 8 > buflen)
+	if (count + 12 > buflen)
 		return SC_ERROR_BUFFER_TOO_SMALL;
 
 	j = count;
-	if (j + 2 > buflen)
-		return SC_ERROR_BUFFER_TOO_SMALL;
 	buf[j++] = CTBCS_TAG_VERIFY_CMD;
 	buf[j++] = 0x00;
 
@@ -158,8 +156,6 @@ ctbcs_build_modify_verification_apdu(sc_apdu_t *apdu, struct sc_pin_cmd_data *da
 		return SC_ERROR_INVALID_ARGUMENTS;
 	if (data->pin1.min_length == data->pin1.max_length)
 		control |= data->pin1.min_length << CTBCS_PIN_CONTROL_LEN_SHIFT;
-	if (j + 7 > buflen)
-		return SC_ERROR_BUFFER_TOO_SMALL;
 	buf[j++] = control;
 	buf[j++] = data->pin1.offset+1; /* Looks like offset is 1-based in CTBCS */
 	buf[j++] = data->pin2.offset+1;
