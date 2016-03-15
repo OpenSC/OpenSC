@@ -47,7 +47,7 @@ ctbcs_build_perform_verification_apdu(sc_apdu_t *apdu, struct sc_pin_cmd_data *d
 {
 	const char *prompt;
 	size_t buflen, count = 0, j = 0, len;
-	static u8 buf[256];
+	static u8 buf[SC_MAX_APDU_BUFFER_SIZE];
 	u8 control;
 
 	ctbcs_init_apdu(apdu,
@@ -71,7 +71,7 @@ ctbcs_build_perform_verification_apdu(sc_apdu_t *apdu, struct sc_pin_cmd_data *d
 	/* card apdu must be last in packet */
 	if (!data->apdu)
 		return SC_ERROR_INTERNAL;
-	if (count + 8 > buflen)
+	if (count + 12 > buflen)
 		return SC_ERROR_BUFFER_TOO_SMALL;
 
 	j = count;
@@ -95,14 +95,13 @@ ctbcs_build_perform_verification_apdu(sc_apdu_t *apdu, struct sc_pin_cmd_data *d
 
 	if (data->flags & SC_PIN_CMD_NEED_PADDING) {
 		len = data->pin1.pad_length;
-		if (1 + j + 1 + len > buflen || len > 256)
+		if (2 + j + len > buflen)
 			return SC_ERROR_BUFFER_TOO_SMALL;
 		buf[j++] = len;
 		memset(buf+j, data->pin1.pad_char, len);
 		j += len;
 	}
-	if (count + 1 > buflen)
-		return SC_ERROR_BUFFER_TOO_SMALL;
+
 	buf[count+1] = j - count - 2;
 	count = j;
 
@@ -166,14 +165,13 @@ ctbcs_build_modify_verification_apdu(sc_apdu_t *apdu, struct sc_pin_cmd_data *da
 
 	if (data->flags & SC_PIN_CMD_NEED_PADDING) {
 		len = data->pin1.pad_length + data->pin2.pad_length;
-		if (1 + j + 1 + len > buflen || len > 256)
+		if (2 + j + len > buflen)
 			return SC_ERROR_BUFFER_TOO_SMALL;
 		buf[j++] = len;
 		memset(buf+j, data->pin1.pad_char, len);
 		j += len;
 	}
-	if (count > buflen)
-		return SC_ERROR_BUFFER_TOO_SMALL;
+
 	buf[count+1] = j - count - 2;
 	count = j;
 
