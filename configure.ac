@@ -6,7 +6,7 @@ define([PRODUCT_NAME], [OpenSC])
 define([PRODUCT_TARNAME], [opensc])
 define([PRODUCT_BUGREPORT], [https://github.com/OpenSC/OpenSC/issues])
 define([PACKAGE_VERSION_MAJOR], [0])
-define([PACKAGE_VERSION_MINOR], [15])
+define([PACKAGE_VERSION_MINOR], [16])
 define([PACKAGE_VERSION_FIX], [0])
 define([PACKAGE_SUFFIX], [])
 
