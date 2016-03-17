@@ -1,4 +1,4 @@
-version: 0.15.0.{build}
+version: 0.16.0.{build}
 
 platform:
   - x86
@@ -38,19 +38,20 @@ install:
   - set OPENSSL_VER=1_0_2e
   - set ZLIB_VER=128
   - set ZLIB_VER_DOT=1.2.8
+  - ps: $env:PACKAGE_NAME=(git describe --tags)
   - ps: >-
       If ($env:Platform -Match "x86") {
         $env:VCVARS_PLATFORM="x86"
         $env:ENV_PLATFORM="x86"
         $env:OPENSSL_PF="Win32"
         $env:NMAKE_ARCH=""
-        $env:ARTIFACT="OpenSC-${env:APPVEYOR_BUILD_VERSION}-win32_vs${env:VSVER}-${env:CONFIGURATION}.msi"
+        $env:ARTIFACT="OpenSC-${env:PACKAGE_NAME}-win32_vs${env:VSVER}-${env:CONFIGURATION}.msi"
       } Else {
         $env:VCVARS_PLATFORM="amd64"
         $env:ENV_PLATFORM="x64"
         $env:OPENSSL_PF="Win64"
         $env:NMAKE_ARCH="BUILD_ON=WIN64 BUILD_FOR=WIN64"
-        $env:ARTIFACT="OpenSC-${env:APPVEYOR_BUILD_VERSION}-win64_vs${env:VSVER}-${env:CONFIGURATION}.msi"
+        $env:ARTIFACT="OpenSC-${env:PACKAGE_NAME}-win64_vs${env:VSVER}-${env:CONFIGURATION}.msi"
       }
   - ps: >-
       If ($env:Configuration -Like "*Debug*") {
@@ -75,6 +76,7 @@ install:
   - appveyor DownloadFile "http://download.microsoft.com/download/2/C/9/2C93059C-0532-42DF-8C24-9AEAFF00768E/cngsdk.msi"
   - cngsdk.msi /quiet
   - uname -a
+  - set
 
 build_script:
   # build zlib.lib as a static library
@@ -108,3 +110,17 @@ cache:
   - C:\OpenSSL-Win32 -> appveyor.yml
   - C:\OpenSSL-Win64 -> appveyor.yml
   - zlib.zip -> appveyor.yml
+
+deploy:
+  - provider: GitHub
+    tag: $(APPVEYOR_REPO_TAG_NAME)
+    release: OpenSC-$(APPVEYOR_REPO_TAG_NAME)
+    description: 'release OpenSC $(APPVEYOR_REPO_TAG_NAME)'
+    auth_token:
+      secure: YWY6+jv1p4n7yf/AUY+vyhfcWmgb3F6h2bNGa069BMtxQFruWHEAz9ke3Ci0V6FY
+    artifact: /OpenSC-.*\.msi/
+    draft: false
+    prerelease: true
+    on:
+      branch: /0.16.0-rc.*/		# here branch is release tag
+      appveyor_repo_tag: true  		# deploy on tag push only
