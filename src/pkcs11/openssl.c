@@ -182,7 +182,9 @@ sc_pkcs11_register_openssl_mechanisms(struct sc_pkcs11_card *p11card)
 	if (!e)
 	{
 #if !defined(OPENSSL_NO_STATIC_ENGINE) && !defined(OPENSSL_NO_GOST)
+#if OPENSSL_VERSION_NUMBER  < 0x10100000L
 		ENGINE_load_gost();
+#endif
 		e = ENGINE_by_id("gost");
 #else
 		/* try to load dynamic gost engine */
