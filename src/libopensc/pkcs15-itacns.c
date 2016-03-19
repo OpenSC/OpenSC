@@ -30,13 +30,20 @@
 #include <config.h>
 #endif
 
-#include "pkcs15.h"
-#include "log.h"
-#include "cards.h"
-#include "itacns.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+
+#ifdef ENABLE_OPENSSL
+#include <openssl/x509.h>
+#include <openssl/x509v3.h>
+#endif
+
+#include "libopensc/internal.h"
+#include "libopensc/pkcs15.h"
+#include "libopensc/log.h"
+#include "libopensc/cards.h"
+#include "libopensc/itacns.h"
 #include "common/compat_strlcpy.h"
 #include "common/compat_strlcat.h"
 
@@ -244,19 +251,11 @@ static int itacns_add_cert(sc_pkcs15_card_t *p15card,
 	if (!x509) return SC_SUCCESS;
 	X509_check_purpose(x509, -1, 0);
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100002L
 	if(X509_get_extension_flags(x509) & EXFLAG_KUSAGE) {
 		*ext_info_ok = 1;
 		*key_usage = X509_get_key_usage(x509);
 		*x_key_usage = X509_get_extended_key_usage(x509);
 	}
-#else
-	if(x509->ex_flags & EXFLAG_KUSAGE) {
-		*ext_info_ok = 1;
-		*key_usage = x509->ex_kusage;
-		*x_key_usage = x509->ex_xkusage;
-	}
-#endif
 	OPENSSL_free(x509);
 
 	return SC_SUCCESS;

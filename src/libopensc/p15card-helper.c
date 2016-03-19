@@ -171,22 +171,15 @@ CERT_HANDLE_FUNCTION(default_cert_handle) {
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
-#if OPENSSL_VERSION_NUMBER >= 0x10100003L
-	rsa = EVP_PKEY_get1_RSA(pkey);
-#else
-	rsa = pkey->pkey.rsa;
-#endif
+	rsa = EVP_PKEY_get0_RSA(pkey);
 	if( rsa == NULL) {
 		sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "Error: no modulus associated with the certificate");
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
 	
-#if OPENSSL_VERSION_NUMBER >= 0x10100003L
-	modulus_len = BN_num_bits(rsa->n); /* converting to bits */
-#else
-	modulus_len = 8 * BN_num_bytes(pkey->pkey.rsa->n); /* converting to bits */
-#endif
+	modulus_len =  BN_num_bits(rsa->n); /* converting to bits */
+
 	/* printf("Key Size: %d bits\n\n", modulus_len); */
 	/* cached_cert->modulusLength = modulus_len; */
 	

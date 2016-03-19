@@ -37,7 +37,7 @@
 #include <openssl/opensslv.h>
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L
 #include <openssl/opensslconf.h>
-//#include <openssl/crypto.h>
+#include <openssl/crypto.h>
 #endif
 #if OPENSSL_VERSION_NUMBER >= 0x00907000L
 #include <openssl/conf.h>
@@ -56,6 +56,7 @@
 #include <openssl/err.h>
 #endif
 
+#include "libopensc/sc-ossl-compat.h"
 #include "pkcs11/pkcs11.h"
 #include "pkcs11/pkcs11-opensc.h"
 #include "libopensc/asn1.h"
@@ -444,16 +445,19 @@ int main(int argc, char * argv[])
 #endif
 
 #ifdef ENABLE_OPENSSL
-#if OPENSSL_VERSION_NUMBER >= 0x00907000L
+#if OPENSSL_VERSION_NUMBER >= 0x00907000L && OPENSSL_VERSION_NUMBER < 0x10100000L
 	OPENSSL_config(NULL);
 #endif
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+	OPENSSL_init_crypto(OPENSSL_INIT_LOAD_CRYPTO_STRINGS
+		| OPENSSL_INIT_ADD_ALL_CIPHERS
+		| OPENSSL_INIT_ADD_ALL_DIGESTS
+		| OPENSSL_INIT_LOAD_CONFIG,
+		NULL);
+#else
 	/* OpenSSL magic */
-#if OPENSSL_VERSION_NUMBER  >= 0x10100002L
 	OpenSSL_add_all_algorithms();
 	OPENSSL_malloc_init();
-#else
-	SSLeay_add_all_algorithms();
-	CRYPTO_malloc_init();
 #endif
 #endif
 	while (1) {
@@ -2043,11 +2047,7 @@ static int write_object(CK_SESSION_HANDLE session)
 				util_fatal("Cannot read public key\n");
 		}
 
-#if OPENSSL_VERSION_NUMBER >=  0x10100003L
 		pk_type = EVP_PKEY_base_id(evp_key);
-#else
-		pk_type =  evp_key->type;
-#endif
 
 		if (pk_type == EVP_PKEY_RSA)   {
 			rv = parse_rsa_pkey(evp_key, is_private, &rsa);
@@ -2138,11 +2138,8 @@ static int write_object(CK_SESSION_HANDLE session)
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_SUBJECT, cert.subject, cert.subject_len);
 			n_privkey_attr++;
 		}
-#if OPENSSL_VERSION_NUMBER >=  0x10100003L
 		pk_type = EVP_PKEY_base_id(evp_key);
-#else
-		pk_type =  evp_key->type;
-#endif
+
 		if (pk_type == EVP_PKEY_RSA)   {
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_KEY_TYPE, &type, sizeof(type));
 			n_privkey_attr++;
@@ -2239,11 +2236,8 @@ static int write_object(CK_SESSION_HANDLE session)
 			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_SUBJECT, cert.subject, cert.subject_len);
 			n_pubkey_attr++;
 		}
-#if OPENSSL_VERSION_NUMBER >=  0x10100003L
 		pk_type = EVP_PKEY_base_id(evp_key);
-#else
-		pk_type =  evp_key->type;
-#endif
+
 		if (pk_type == EVP_PKEY_RSA) {
 			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_KEY_TYPE, &type, sizeof(type));
 			n_pubkey_attr++;

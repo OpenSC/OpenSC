@@ -1751,12 +1751,7 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 		goto err;
 	}
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-	EVP_CIPHER_CTX_reset(ctx);
-#else
 	EVP_CIPHER_CTX_cleanup(ctx);
-	EVP_CIPHER_CTX_init(ctx);
-#endif
 
 	if (!EVP_DecryptInit(ctx, cipher, key, NULL)) {
 		r = SC_ERROR_INTERNAL;

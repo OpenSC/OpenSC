@@ -52,6 +52,7 @@
 #include <openssl/pkcs12.h>
 #include <openssl/x509v3.h>
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L
+#include <openssl/crypto.h>
 #include <openssl/opensslconf.h> /* for OPENSSL_NO_EC */
 #ifndef OPENSSL_NO_EC
 #include <openssl/ec.h>
@@ -59,6 +60,7 @@
 #endif /* OPENSSL_VERSION_NUMBER >= 0x10000000L */
 
 #include "common/compat_strlcpy.h"
+#include "libopensc/sc-ossl-compat.h"
 #include "libopensc/cardctl.h"
 #include "libopensc/pkcs15.h"
 #include "libopensc/log.h"
@@ -426,17 +428,22 @@ main(int argc, char **argv)
 	unsigned int		n;
 	int			r = 0;
 
-#if OPENSSL_VERSION_NUMBER >= 0x00907000L
+#if OPENSSL_VERSION_NUMBER >= 0x00907000L && OPENSSL_VERSION_NUMBER < 0x10100000L
 	OPENSSL_config(NULL);
 #endif
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+	/* Openssl 1.1.0 magic */
+	OPENSSL_init_crypto(OPENSSL_INIT_LOAD_CRYPTO_STRINGS
+		| OPENSSL_INIT_ADD_ALL_CIPHERS
+		| OPENSSL_INIT_ADD_ALL_DIGESTS
+		| OPENSSL_INIT_LOAD_CONFIG,
+		NULL);
+#else
 	/* OpenSSL magic */
-#if OPENSSL_VERSION_NUMBER  >= 0x10100002L
 	OpenSSL_add_all_algorithms();
 	OPENSSL_malloc_init();
-#else
-	SSLeay_add_all_algorithms();
-	CRYPTO_malloc_init();
 #endif
+
 #ifdef RANDOM_POOL
 	if (!RAND_load_file(RANDOM_POOL, 32))
 		util_fatal("Unable to seed random number pool for key generation");
@@ -917,11 +924,8 @@ do_store_private_key(struct sc_profile *profile)
 
 		/* tell openssl to cache the extensions */
 		X509_check_purpose(cert[0], -1, -1);
-#if OPENSSL_VERSION_NUMBER  >= 0x10100002L
 		usage = X509_get_extended_key_usage(cert[0]);
-#else
-		usage = cert[0]->ex_kusage;
-#endif
+
 		/* No certificate usage? Assume ordinary
 		 * user cert */
 		if (usage == 0)
@@ -970,11 +974,8 @@ do_store_private_key(struct sc_profile *profile)
 			return r;
 
 		X509_check_purpose(cert[i], -1, -1);
-#if OPENSSL_VERSION_NUMBER >= 0x10100002L
 		cargs.x509_usage = X509_get_extended_key_usage(cert[i]);
-#else
-		cargs.x509_usage = cert[i]->ex_kusage;
-#endif
+
 		cargs.label = cert_common_name(cert[i]);
 		if (!cargs.label)
 			cargs.label = X509_NAME_oneline(X509_get_subject_name(cert[i]), namebuf, sizeof(namebuf));
@@ -1150,24 +1151,13 @@ do_read_check_certificate(sc_pkcs15_cert_t *sc_oldcert,
 	if (oldpk_type == newpk_type)
 	{
 		if ((oldpk_type == EVP_PKEY_DSA) &&
-#if OPENSSL_VERSION_NUMBER >= 0x10100003L
 			!BN_cmp(EVP_PKEY_get0_DSA(oldpk)->p, EVP_PKEY_get0_DSA(newpk)->p) &&
 			!BN_cmp(EVP_PKEY_get0_DSA(oldpk)->q, EVP_PKEY_get0_DSA(newpk)->q) &&
 			!BN_cmp(EVP_PKEY_get0_DSA(oldpk)->g, EVP_PKEY_get0_DSA(newpk)->g))
-#else
-			!BN_cmp(oldpk->pkey.dsa->p, newpk->pkey.dsa->p) &&
-			!BN_cmp(oldpk->pkey.dsa->q, newpk->pkey.dsa->q) &&
-			!BN_cmp(oldpk->pkey.dsa->g, newpk->pkey.dsa->g))
-#endif
 				r = 0;
 		else if ((oldpk_type == EVP_PKEY_RSA) &&
-#if OPENSSL_VERSION_NUMBER >= 0x10100003L
 			!BN_cmp(EVP_PKEY_get0_RSA(oldpk)->n, EVP_PKEY_get0_RSA(newpk)->n) &&
 			!BN_cmp(EVP_PKEY_get0_RSA(oldpk)->e, EVP_PKEY_get0_RSA(newpk)->e))
-#else
-			!BN_cmp(oldpk->pkey.rsa->n, newpk->pkey.rsa->n) &&
-			!BN_cmp(oldpk->pkey.rsa->e, newpk->pkey.rsa->e))
-#endif
 				r = 0;
 	}
 
@@ -2018,11 +2008,8 @@ do_read_pkcs12_private_key(const char *filename, const char *passphrase,
 		return SC_ERROR_CANNOT_LOAD_KEY;
 	}
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100003L
 	EVP_PKEY_up_ref(user_key);
-#else
-	CRYPTO_add(&user_key->references, 1, CRYPTO_LOCK_EVP_PKEY);
-#endif
+
 	if (user_cert && max_certs)
 		certs[ncerts++] = user_cert;
 
@@ -2032,11 +2019,7 @@ do_read_pkcs12_private_key(const char *filename, const char *passphrase,
 
 	/* bump reference counts for certificates */
 	for (i = 0; i < ncerts; i++) {
-#if OPENSSL_VERSION_NUMBER >= 0x10100002L
 		X509_up_ref(certs[i]);
-#else
-		CRYPTO_add(&certs[i]->references, 1, CRYPTO_LOCK_X509);
-#endif
 	}
 
 	if (cacerts)

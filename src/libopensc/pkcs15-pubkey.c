@@ -34,10 +34,6 @@
 #include <unistd.h>
 #endif
 
-#include "internal.h"
-#include "asn1.h"
-#include "pkcs15.h"
-
 #ifdef ENABLE_OPENSSL
 #include <openssl/bn.h>
 #include <openssl/rsa.h>
@@ -50,6 +46,11 @@
 #endif
 #endif
 #endif
+
+#include "libopensc/internal.h"
+#include "libopensc/asn1.h"
+#include "libopensc/pkcs15.h"
+
 
 #define C_ASN1_PKINFO_ATTR_SIZE 3
 static const struct sc_asn1_entry c_asn1_pkinfo[C_ASN1_PKINFO_ATTR_SIZE] = {
@@ -1531,11 +1532,8 @@ sc_pkcs15_convert_pubkey(struct sc_pkcs15_pubkey *pkcs15_key, void *evp_key)
 #ifdef ENABLE_OPENSSL
 	EVP_PKEY *pk = (EVP_PKEY *)evp_key;
 	int pk_type;
-#if OPENSSL_VERSION_NUMBER >= 0x10100003L
 	pk_type = EVP_PKEY_base_id(pk);
-#else
-	pk_type = pk->type;
- #endif
+
 	switch (pk_type) {
 	case EVP_PKEY_RSA: {
 		struct sc_pkcs15_pubkey_rsa *dst = &pkcs15_key->u.rsa;

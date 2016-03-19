@@ -171,17 +171,22 @@ void
 sc_pkcs11_register_openssl_mechanisms(struct sc_pkcs11_card *p11card)
 {
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_ENGINE)
-	void (*locking_cb)(int, int, const char *, int);
 	ENGINE *e;
+/* crypto locking removed in 1.1 */
+#if OPENSSL_VERSION_NUMBER  < 0x10100000L
+	void (*locking_cb)(int, int, const char *, int);
 
 	locking_cb = CRYPTO_get_locking_callback();
 	if (locking_cb)
 		CRYPTO_set_locking_callback(NULL);
+#endif
 
 	e = ENGINE_by_id("gost");
 	if (!e)
 	{
 #if !defined(OPENSSL_NO_STATIC_ENGINE) && !defined(OPENSSL_NO_GOST)
+
+/* ENGINE_load_gost removed in 1.1 */
 #if OPENSSL_VERSION_NUMBER  < 0x10100000L
 		ENGINE_load_gost();
 #endif
@@ -205,8 +210,10 @@ sc_pkcs11_register_openssl_mechanisms(struct sc_pkcs11_card *p11card)
 		ENGINE_free(e);
 	}
 
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 	if (locking_cb)
 		CRYPTO_set_locking_callback(locking_cb);
+#endif
 #endif /* OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_ENGINE) */
 
 	openssl_sha1_mech.mech_data = EVP_sha1();

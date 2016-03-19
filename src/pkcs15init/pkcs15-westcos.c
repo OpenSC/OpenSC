@@ -34,6 +34,7 @@
 #include <openssl/bio.h>
 #endif
 
+#include "libopensc/sc-ossl-compat.h"
 #include "libopensc/opensc.h"
 #include "libopensc/cardctl.h"
 #include "pkcs15-init.h"
@@ -256,11 +257,7 @@ static int westcos_pkcs15init_generate_key(sc_profile_t *profile,
 		goto out;
 	}
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100002L
 	rsa->meth = RSA_PKCS1_OpenSSL();
-#else
-	rsa->meth = RSA_PKCS1_SSLeay();
-#endif
 
 	if(pubkey != NULL)
 	{

@@ -28,9 +28,9 @@
 #include <openssl/evp.h>
 #include <openssl/rand.h>
 
-#include "internal.h"
-#include "cardctl.h"
-#include "pkcs15.h"
+#include "libopensc/internal.h"
+#include "libopensc/cardctl.h"
+#include "libopensc/pkcs15.h"
 
 #define GPK_SEL_MF		0x00
 #define GPK_SEL_DF		0x01
@@ -735,7 +735,7 @@ gpk_compute_crycks(sc_card_t *card, sc_apdu_t *apdu,
 
 	ctx = EVP_CIPHER_CTX_new();
 	if (ctx == NULL)
-		return SC_ERROR_INTERNAL; 
+		return SC_ERROR_INTERNAL;
 
 
 	/* Fill block with 0x00 and then with the data. */
@@ -753,9 +753,6 @@ gpk_compute_crycks(sc_card_t *card, sc_apdu_t *apdu,
 	/* Set IV */
 	memset(in, 0x00, 8);
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-	EVP_CIPHER_CTX_init(ctx);
-#endif
 	EVP_EncryptInit_ex(ctx, EVP_des_ede_cbc(), NULL, priv->key, in);
 	for (i = 0; i < len; i += 8) {
 		if (!EVP_EncryptUpdate(ctx, out, &outl, &block[i], 8)) {
@@ -903,26 +900,15 @@ gpk_set_filekey(const u8 *key, const u8 *challenge,
 	if (!EVP_EncryptUpdate(ctx, kats, &outl, r_rn+4, 8))
 		r = SC_ERROR_INTERNAL;
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-	    /* In OpenSSL 1.1 _init and _cleanup are both done by _reset */
-	    EVP_CIPHER_CTX_reset(ctx);
-#else
 	if (!EVP_CIPHER_CTX_cleanup(ctx))
 		r = SC_ERROR_INTERNAL;
-#endif
 	if (r == SC_SUCCESS) {
-#if OPENSSL_VERSION_NUMBER  <  0x10100000L
 		EVP_CIPHER_CTX_init(ctx);
-#endif
 		EVP_EncryptInit_ex(ctx, EVP_des_ede(), NULL, out, NULL);
 		if (!EVP_EncryptUpdate(ctx, kats+8, &outl, r_rn+4, 8))
 			r = SC_ERROR_INTERNAL;
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-	    EVP_CIPHER_CTX_reset(ctx);
-#else
 	if (!EVP_CIPHER_CTX_cleanup(ctx))
 		r = SC_ERROR_INTERNAL;
-#endif
 	}
 	memset(out, 0, sizeof(out));
 
@@ -931,16 +917,16 @@ gpk_set_filekey(const u8 *key, const u8 *challenge,
 	 * here? INVALID_ARGS doesn't seem quite right
 	 */
 	if (r == SC_SUCCESS) {
-#if OPENSSL_VERSION_NUMBER  < 0x10100000L
 		EVP_CIPHER_CTX_init(ctx);
-#endif
 		EVP_EncryptInit_ex(ctx, EVP_des_ede(), NULL, kats, NULL);
 		if (!EVP_EncryptUpdate(ctx, out, &outl, challenge, 8))
 			r = SC_ERROR_INTERNAL;
-		EVP_CIPHER_CTX_free(ctx);
 		if (memcmp(r_rn, out+4, 4) != 0)
 			r = SC_ERROR_INVALID_ARGUMENTS;
 	}
+
+	if (ctx)
+	    EVP_CIPHER_CTX_free(ctx);
 
 	sc_mem_clear(out, sizeof(out));
 	return r;
@@ -1572,7 +1558,8 @@ gpk_pkfile_load(sc_card_t *card, struct sc_cardctl_gpk_pkload *args)
 			break;
 		}
 	}
-	EVP_CIPHER_CTX_free(ctx);
+	if (ctx)
+		EVP_CIPHER_CTX_free(ctx);
 
 	apdu.data = temp;
 	apdu.datalen = args->datalen;
