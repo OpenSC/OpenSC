@@ -1207,9 +1207,9 @@ static int
 sc_pkcs15_read_der_file(sc_context_t *ctx, char * filename,
 		u8 ** buf, size_t * buflen)
 {
-	int r, offs;
+	int r;
 	int f = -1;
-	size_t len;
+	size_t len, offs;
 	u8 tagbuf[16]; /* enough to read in the tag and length */
 	u8 * rbuf = NULL;
 	size_t rbuflen = 0;
