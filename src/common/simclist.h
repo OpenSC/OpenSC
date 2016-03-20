@@ -45,7 +45,7 @@ typedef INT64   int64_t;
 #include <sys/types.h>
 
 /* bases on OpenSSL's version in e_os2.h  */
-#if !defined(inline) && !defined(__cplusplus)
+#if !defined(inline)
 /* Be friend of both C90 and C99 compilers */
 # if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
    /* "inline" and "restrict" are keywords */
@@ -62,7 +62,8 @@ typedef INT64   int64_t;
 #endif
 
 /* bases on OpenSSL's version in e_os2.h  */
-#if !defined(restrict) && !defined(__cplusplus)
+/* On MacOS  C++ is used for tokend */
+#if !defined(restrict)
 /* Be friend of both C90 and C99 compilers */
 # if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
    /* "inline" and "restrict" are keywords */
