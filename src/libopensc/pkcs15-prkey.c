@@ -27,21 +27,26 @@
 #include <stdio.h>
 #include <assert.h>
 
-#include "internal.h"
-#include "asn1.h"
-#include "pkcs15.h"
-#include "common/compat_strlcpy.h"
-
 #ifdef ENABLE_OPENSSL
+#include <openssl/opensslv.h>
+#include <openssl/bn.h>
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 #include <openssl/err.h>
+#include <openssl/bn.h>
+#include <openssl/rsa.h>
+#include <openssl/dsa.h>
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L
 	#ifndef OPENSSL_NO_EC
 	#include <openssl/ec.h>
 	#endif
 #endif
 #endif
+
+#include "libopensc/internal.h"
+#include "libopensc/asn1.h"
+#include "libopensc/pkcs15.h"
+#include "common/compat_strlcpy.h"
 
 /*
  * in src/libopensc/types.h SC_MAX_SUPPORTED_ALGORITHMS  defined as 8
@@ -622,8 +627,10 @@ sc_pkcs15_convert_prkey(struct sc_pkcs15_prkey *pkcs15_key, void *evp_key)
 {
 #ifdef ENABLE_OPENSSL
 	EVP_PKEY *pk = (EVP_PKEY *)evp_key;
+	int pk_type;
+	 pk_type = EVP_PKEY_base_id(pk);
 
-	switch (pk->type) {
+	switch (pk_type) {
 	case EVP_PKEY_RSA: {
 		struct sc_pkcs15_prkey_rsa *dst = &pkcs15_key->u.rsa;
 		RSA *src = EVP_PKEY_get1_RSA(pk);
