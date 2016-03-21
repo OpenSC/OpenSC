@@ -124,7 +124,7 @@ deploy:
     release: OpenSC-$(APPVEYOR_REPO_TAG_NAME)
     description: 'release OpenSC $(APPVEYOR_REPO_TAG_NAME)'
     auth_token:
-      secure: RrgaSKXCmTwZo+QhKUiPfBKWYm14zcNb7GftcQ6MTF4Ul4DVue3s7rf6lqjUi7Bn
+      secure: NGaTqWohBQa7fgE62rEm2sp9jkv6S9FRc3YEi3T5CpaoyIY6K89FJjqzaoPLr8vj
     artifact: /OpenSC-.*\.msi/
     draft: false
     prerelease: true
