@@ -1,5 +1,11 @@
 version: 0.16.0.{build}
 
+#init:
+#  # Exclude combinations allowed to fail
+#  - if "%Environment%" == "VSVER=14" (if "%Configuration%" == "Release" (exit /b 1))
+#  - if "%Environment%" == "VSVER=14" (if "%Configuration%" == "Debug" (exit /b 1))
+#  - if "%Environment%" == "VSVER=10" (if "%Platform%" == "x64" (exit /b 1))
+
 platform:
   - x86
   - x64
@@ -12,11 +18,12 @@ configuration:
 
 environment:
   matrix:
-    - VSVER: 14
+    # - VSVER: 14
     - VSVER: 12
-    - VSVER: 10
+    # - VSVER: 10
 
 matrix:
+  fast_finish: true     # set this flag to immediately finish build once one of the jobs fails.
   allow_failures:
     # not included in AppVeyor right now
     - platform: x64
