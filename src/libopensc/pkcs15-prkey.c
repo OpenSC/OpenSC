@@ -623,7 +623,7 @@ sc_pkcs15_convert_prkey(struct sc_pkcs15_prkey *pkcs15_key, void *evp_key)
 #ifdef ENABLE_OPENSSL
 	EVP_PKEY *pk = (EVP_PKEY *)evp_key;
 
-	switch (pk->type) {
+	switch (EVP_PKEY_base_id(pk)) {
 	case EVP_PKEY_RSA: {
 		struct sc_pkcs15_prkey_rsa *dst = &pkcs15_key->u.rsa;
 		RSA *src = EVP_PKEY_get1_RSA(pk);
