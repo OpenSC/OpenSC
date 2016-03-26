@@ -194,7 +194,7 @@ static int entersafe_cipher_apdu(sc_card_t *card, sc_apdu_t *apdu,
 								 u8 *key, size_t keylen,
 								 u8 *buff, size_t buffsize)
 {
-	 EVP_CIPHER_CTX ctx;
+	 EVP_CIPHER_CTX *ctx;
 	 u8 iv[8]={0};
 	 int len;
 
@@ -211,27 +211,24 @@ static int entersafe_cipher_apdu(sc_card_t *card, sc_apdu_t *apdu,
 	 memcpy(buff+1,apdu->data,apdu->lc);
 	 buff[apdu->lc+1]=0x80;
 
-	 EVP_CIPHER_CTX_init(&ctx);
-	 EVP_CIPHER_CTX_set_padding(&ctx,0);
+	 ctx = EVP_CIPHER_CTX_new();
+	 EVP_CIPHER_CTX_set_padding(ctx,0);
 
 	 if(keylen == 8)
-		  EVP_EncryptInit_ex(&ctx, EVP_des_ecb(), NULL, key, iv);
+		  EVP_EncryptInit_ex(ctx, EVP_des_ecb(), NULL, key, iv);
 	 else if (keylen == 16) 
-		  EVP_EncryptInit_ex(&ctx, EVP_des_ede(), NULL, key, iv);
+		  EVP_EncryptInit_ex(ctx, EVP_des_ede(), NULL, key, iv);
 	 else
 		  SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INTERNAL);
 	 
 	 len = apdu->lc;
-	 if(!EVP_EncryptUpdate(&ctx, buff, &len, buff, buffsize)){
+	 if(!EVP_EncryptUpdate(ctx, buff, &len, buff, buffsize)){
 		  sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "entersafe encryption error.");
 		  SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INTERNAL);
 	 }
 	 apdu->lc = len;
 
-	 if (!EVP_CIPHER_CTX_cleanup(&ctx)){
-		  sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "entersafe encryption error.");
-		  SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INTERNAL);
-	 }
+	 EVP_CIPHER_CTX_free(ctx);
 
 	 if(apdu->lc!=buffsize)
 	 {
@@ -254,7 +251,7 @@ static int entersafe_mac_apdu(sc_card_t *card, sc_apdu_t *apdu,
 	 u8 *tmp=0,*tmp_rounded=NULL;
 	 size_t tmpsize=0,tmpsize_rounded=0;
 	 int outl=0;
-	 EVP_CIPHER_CTX ctx;
+	 EVP_CIPHER_CTX *ctx;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -292,12 +289,12 @@ static int entersafe_mac_apdu(sc_card_t *card, sc_apdu_t *apdu,
 	 tmp_rounded[tmpsize]=0x80;
 
 	 /* block_size-1 blocks*/
-	 EVP_CIPHER_CTX_init(&ctx);
-	 EVP_CIPHER_CTX_set_padding(&ctx,0);
-	 EVP_EncryptInit_ex(&ctx, EVP_des_cbc(), NULL, key, iv);
+	 ctx = EVP_CIPHER_CTX_new();
+	 EVP_CIPHER_CTX_set_padding(ctx,0);
+	 EVP_EncryptInit_ex(ctx, EVP_des_cbc(), NULL, key, iv);
 
 	 if(tmpsize_rounded>8){
-		  if(!EVP_EncryptUpdate(&ctx,tmp_rounded,&outl,tmp_rounded,tmpsize_rounded-8)){
+		  if(!EVP_EncryptUpdate(ctx,tmp_rounded,&outl,tmp_rounded,tmpsize_rounded-8)){
 			   r = SC_ERROR_INTERNAL;
 			   goto out;			   
 		  }
@@ -305,24 +302,21 @@ static int entersafe_mac_apdu(sc_card_t *card, sc_apdu_t *apdu,
 	 /* last block */
 	 if(keylen==8)
 	 {
-		  if(!EVP_EncryptUpdate(&ctx,tmp_rounded+outl,&outl,tmp_rounded+outl,8)){
+		  if(!EVP_EncryptUpdate(ctx,tmp_rounded+outl,&outl,tmp_rounded+outl,8)){
 			   r = SC_ERROR_INTERNAL;
 			   goto out;			   
 		  }
 	 }
 	 else
 	 {
-		  EVP_EncryptInit_ex(&ctx, EVP_des_ede_cbc(), NULL, key,tmp_rounded+outl-8);
-		  if(!EVP_EncryptUpdate(&ctx,tmp_rounded+outl,&outl,tmp_rounded+outl,8)){
+		  EVP_EncryptInit_ex(ctx, EVP_des_ede_cbc(), NULL, key,tmp_rounded+outl-8);
+		  if(!EVP_EncryptUpdate(ctx,tmp_rounded+outl,&outl,tmp_rounded+outl,8)){
 			   r = SC_ERROR_INTERNAL;
 			   goto out;			   
 		  }
 	 }
 
-	 if (!EVP_CIPHER_CTX_cleanup(&ctx)){
-		  r = SC_ERROR_INTERNAL;
-		  goto out;			   
-	 }
+	 EVP_CIPHER_CTX_free(ctx);
 
 	 memcpy(buff,apdu->data,apdu->lc);
 	 /* use first 4 bytes of last block as mac value*/

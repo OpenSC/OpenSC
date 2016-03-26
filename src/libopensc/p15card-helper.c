@@ -169,13 +169,13 @@ CERT_HANDLE_FUNCTION(default_cert_handle) {
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
-	if(pkey->pkey.rsa->n == NULL) {
+	if(EVP_PKEY_get0_RSA(pkey)->n == NULL) {
 		sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "Error: no modulus associated with the certificate");
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
 	
-	modulus_len = 8 * BN_num_bytes(pkey->pkey.rsa->n); /* converting to bits */
+	modulus_len = 8 * BN_num_bytes(EVP_PKEY_get0_RSA(pkey)->n); /* converting to bits */
 	/* printf("Key Size: %d bits\n\n", modulus_len); */
 	/* cached_cert->modulusLength = modulus_len; */
 	

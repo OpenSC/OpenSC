@@ -1319,8 +1319,8 @@ int cwa_create_secure_channel(sc_card_t * card,
 
 	/* verify received signature */
 	sc_log(ctx, "Verify Internal Auth command response");
-	res = cwa_verify_internal_auth(card, icc_pubkey->pkey.rsa,	/* evaluated icc public key */
-				       ifd_privkey->pkey.rsa,	/* evaluated from DGP's Manual Annex 3 Data */
+	res = cwa_verify_internal_auth(card, EVP_PKEY_get0_RSA(icc_pubkey),	/* evaluated icc public key */
+				       EVP_PKEY_get0_RSA(ifd_privkey),	/* evaluated from DGP's Manual Annex 3 Data */
 				       rndbuf,	/* RND.IFD || SN.IFD */
 				       16,	/* rndbuf length; should be 16 */
 				       sm	/* sm data */
@@ -1340,8 +1340,8 @@ int cwa_create_secure_channel(sc_card_t * card,
 
 	/* compose signature data for external auth */
 	res = cwa_prepare_external_auth(card,
-					icc_pubkey->pkey.rsa,
-					ifd_privkey->pkey.rsa, sn_icc, sm);
+					EVP_PKEY_get0_RSA(icc_pubkey),
+					EVP_PKEY_get0_RSA(ifd_privkey), sn_icc, sm);
 	if (res != SC_SUCCESS) {
 		msg = "Prepare external auth failed";
 		goto csc_end;

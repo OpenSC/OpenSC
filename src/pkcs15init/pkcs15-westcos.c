@@ -255,7 +255,7 @@ static int westcos_pkcs15init_generate_key(sc_profile_t *profile,
 		goto out;
 	}
 
-	rsa->meth = RSA_PKCS1_SSLeay();
+	rsa->meth = RSA_PKCS1_OpenSSL();
 
 	if(pubkey != NULL)
 	{
