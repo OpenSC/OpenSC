@@ -477,7 +477,7 @@ int main(int argc, char * const argv[])
 		fprintf(stderr, "Found %s!\n", p15card->tokeninfo->label);
 
 	if (do_decipher) {
-		if ((err = get_key(SC_PKCS15_PRKEY_USAGE_DECRYPT, &key))
+		if ((err = get_key(SC_PKCS15_PRKEY_USAGE_DECRYPT|SC_PKCS15_PRKEY_USAGE_UNWRAP, &key))
 		 || (err = decipher(key)))
 			goto end;
 		action_count--;
