@@ -84,6 +84,7 @@ enum {
 	OPT_LIST_SKEYS,
 	OPT_NO_PROMPT,
 	OPT_RAW,
+	OPT_PRINT_VERSION
 };
 
 #define NELEMENTS(x)	(sizeof(x)/sizeof((x)[0]))
@@ -91,6 +92,7 @@ enum {
 static int	authenticate(sc_pkcs15_object_t *obj);
 
 static const struct option options[] = {
+	{ "version",		0, NULL,			OPT_PRINT_VERSION },
 	{ "learn-card",		no_argument, NULL,		'L' },
 	{ "list-applications",	no_argument, NULL,		OPT_LIST_APPLICATIONS },
 	{ "read-certificate",	required_argument, NULL,	'r' },
@@ -103,7 +105,7 @@ static const struct option options[] = {
 	{ "dump",		no_argument, NULL,		'D' },
 	{ "unblock-pin",	no_argument, NULL,		'u' },
 	{ "change-pin",		no_argument, NULL,		OPT_CHANGE_PIN },
-	{ "list-keys",          no_argument, NULL,		'k' },
+	{ "list-keys",		no_argument, NULL,		'k' },
 	{ "list-public-keys",	no_argument, NULL,		OPT_LIST_PUB },
 	{ "read-public-key",	required_argument, NULL,	OPT_READ_PUB },
 #if defined(ENABLE_OPENSSL) && (defined(_WIN32) || defined(HAVE_INTTYPES_H))
@@ -113,7 +115,7 @@ static const struct option options[] = {
 	{ "test-update",	no_argument, NULL,		'T' },
 	{ "update",		no_argument, NULL,		'U' },
 	{ "reader",		required_argument, NULL,	OPT_READER },
-	{ "pin",                required_argument, NULL,	OPT_PIN },
+	{ "pin",		required_argument, NULL,	OPT_PIN },
 	{ "new-pin",		required_argument, NULL,	OPT_NEWPIN },
 	{ "puk",		required_argument, NULL,	OPT_PUK },
 	{ "verify-pin",		no_argument, NULL,		OPT_VERIFY_PIN },
@@ -128,6 +130,7 @@ static const struct option options[] = {
 };
 
 static const char *option_help[] = {
+	"Print OpenSC package version",
 	"Stores card info to cache",
 	"List the on-card PKCS#15 applications",
 	"Reads certificate with ID <arg>",
@@ -241,7 +244,7 @@ static void print_cert_info(const struct sc_pkcs15_object *obj)
 
 	print_access_rules(obj->access_rules, SC_PKCS15_MAX_ACCESS_RULES);
 
-        rv = sc_pkcs15_read_certificate(p15card, cert_info, &cert_parsed);
+	rv = sc_pkcs15_read_certificate(p15card, cert_info, &cert_parsed);
 	if (rv >= 0 && cert_parsed)   {
 		printf("\tEncoded serial : %02X %02X ", *(cert_parsed->serial), *(cert_parsed->serial + 1));
 		util_hex_dump(stdout, cert_parsed->serial + 2, cert_parsed->serial_len - 2, "");
@@ -606,7 +609,7 @@ static void print_pubkey_info(const struct sc_pkcs15_object *obj)
 		"neverExtract", "local"
 	};
 	const unsigned int af_count = NELEMENTS(access_flags);
-        int have_path = (pubkey->path.len != 0) || (pubkey->path.aid.len != 0);
+	int have_path = (pubkey->path.len != 0) || (pubkey->path.aid.len != 0);
 
 	printf("Public %s Key [%.*s]\n", types[7 & obj->type], (int) sizeof obj->label, obj->label);
 	print_common_flags(obj);
@@ -627,11 +630,11 @@ static void print_pubkey_info(const struct sc_pkcs15_object *obj)
 
 	if (pubkey->modulus_length)   {
 		printf("\tModLength      : %lu\n", (unsigned long)pubkey->modulus_length);
-        }
+	}
 	else if (pubkey->field_length)   {
 		printf("\tFieldLength    : %lu\n", (unsigned long)pubkey->field_length);
-        }
-        else if (obj->type == SC_PKCS15_TYPE_PUBKEY_EC && have_path)   {
+	}
+	else if (obj->type == SC_PKCS15_TYPE_PUBKEY_EC && have_path)   {
 		sc_pkcs15_pubkey_t *pkey = NULL;
 		if (!sc_pkcs15_read_pubkey(p15card, obj, &pkey))   {
 			printf("\tFieldLength    : %lu\n", (unsigned long)pkey->u.ec.params.field_length);
@@ -646,7 +649,7 @@ static void print_pubkey_info(const struct sc_pkcs15_object *obj)
 	if (obj->auth_id.len != 0)
 		printf("\tAuth ID        : %s\n", sc_pkcs15_print_id(&obj->auth_id));
 	printf("\tID             : %s\n", sc_pkcs15_print_id(&pubkey->id));
-        if (!have_path || obj->content.len)
+	if (!have_path || obj->content.len)
 		printf("\tDirectValue    : <%s>\n", obj->content.len ? "present" : "absent");
 }
 
@@ -905,7 +908,7 @@ static int read_ssh_key(void)
 		if (!pubkey->u.rsa.modulus.data || !pubkey->u.rsa.modulus.len ||
 				!pubkey->u.rsa.exponent.data || !pubkey->u.rsa.exponent.len)  {
 			fprintf(stderr, "Failed to decode public RSA key.\n");
-                        goto fail2;
+			goto fail2;
 		}
 
 		buf[0]=0;
@@ -963,7 +966,7 @@ static int read_ssh_key(void)
 				!pubkey->u.dsa.g.data || !pubkey->u.dsa.g.len ||
 				!pubkey->u.dsa.pub.data || !pubkey->u.dsa.pub.len)   {
 			fprintf(stderr, "Failed to decode DSA key.\n");
-                        goto fail2;
+			goto fail2;
 		}
 
 		buf[0]=0;
@@ -1139,13 +1142,13 @@ static int verify_pin(void)
 	int r;
 
 	if (!opt_auth_id)   {
-	        struct sc_pkcs15_object *objs[32];
+		struct sc_pkcs15_object *objs[32];
 		int ii;
 
 		r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_AUTH_PIN, objs, 32);
 		if (r < 0) {
-                        fprintf(stderr, "PIN code enumeration failed: %s\n", sc_strerror(r));
-                        return -1;
+			fprintf(stderr, "PIN code enumeration failed: %s\n", sc_strerror(r));
+			return -1;
 		}
 
 		for (ii=0;ii<r;ii++)   {
@@ -1610,7 +1613,8 @@ static int read_and_cache_file(const sc_path_t *path)
 		}
 		r = head - buf;
 
-	} else {		
+	}
+	else {
 
 		r = sc_read_binary(card, 0, buf, size, 0);
 		if (r < 0) {
@@ -1692,18 +1696,18 @@ static int test_update(sc_card_t *in_card)
 	sc_apdu_t apdu;
 	static u8 cmd1[2] = { 0x50, 0x15};
 	u8 rbuf[258];
-        int rc;
+	int rc;
 	int r;
 	static u8 fci_bad[] = { 0x00, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
 	static u8 fci_good[] = { 0x00, 0xFF, 0x00, 0x00, 0x00, 0x00, 0xFF, 0x00, 0x00 };
 
 
 
-        if (strcmp("cardos",in_card->driver->short_name) != 0) {
- 		printf("not using the cardos driver, card is fine.\n");
+	if (strcmp("cardos",in_card->driver->short_name) != 0) {
+		printf("not using the cardos driver, card is fine.\n");
 		rc = 0;
-                goto end;
-        }
+		goto end;
+	}
 
 	/* first select file on 5015 and get fci */
 	sc_format_apdu(in_card, &apdu, SC_APDU_CASE_4_SHORT, 0xa4, 0x08, 0x00);
@@ -1747,7 +1751,7 @@ static int test_update(sc_card_t *in_card)
 
 	{
 		size_t i=0;
-	  	while(i < rbuf[1]) {
+		while(i < rbuf[1]) {
 			if (rbuf[2+i] == 0x86) { /* found our buffer */
 				break;
 			}
@@ -1776,7 +1780,7 @@ static int test_update(sc_card_t *in_card)
 	}
 end:
 	/* 0 = card ok, 1 = card vulnerable, 2 = problem! */
-        return rc;
+	return rc;
 
 bad_fci:
 	util_hex_dump(stdout,rbuf,apdu.resplen," ");
@@ -1836,7 +1840,7 @@ static int update(sc_card_t *in_card)
 	if (apdu.resplen < 1) {
 		printf("get lifecycle failed: lifecycle byte not in response\n");
 		goto end;
-        }
+	}
 
 	if (rbuf[0] != 0x10 && rbuf[0] != 0x20) {
 		printf("lifecycle neither user nor admin, can't proceed\n");
@@ -1890,7 +1894,7 @@ skip_change_lifecycle:
 
 	printf("security update applied successfully.\n");
 end:
-        return 0;
+	return 0;
 }
 
 int main(int argc, char * const argv[])
@@ -1916,6 +1920,7 @@ int main(int argc, char * const argv[])
 	int do_learn_card = 0;
 	int do_test_update = 0;
 	int do_update = 0;
+	int do_print_version = 0;
 	int action_count = 0;
 	sc_context_param_t ctx_param;
 
@@ -1930,6 +1935,10 @@ int main(int argc, char * const argv[])
 		if (c == '?')
 			util_print_usage_and_die(app_name, options, option_help, NULL);
 		switch (c) {
+		case OPT_PRINT_VERSION:
+			do_print_version = 1;
+			action_count++;
+			break;
 		case 'r':
 			opt_cert = optarg;
 			do_read_cert = 1;
@@ -2052,6 +2061,11 @@ int main(int argc, char * const argv[])
 	if (action_count == 0)
 		util_print_usage_and_die(app_name, options, option_help, NULL);
 
+	if (do_print_version)   {
+		printf("%s\n", OPENSC_SCM_REVISION);
+		action_count--;
+	}
+
 	memset(&ctx_param, 0, sizeof(ctx_param));
 	ctx_param.ver      = 0;
 	ctx_param.app_name = app_name;
@@ -2074,7 +2088,7 @@ int main(int argc, char * const argv[])
 	if (verbose)
 		fprintf(stderr, "Trying to find a PKCS#15 compatible card...\n");
 
-        if (opt_bind_to_aid)   {
+	if (opt_bind_to_aid)   {
 		struct sc_aid aid;
 
 		aid.len = sizeof(aid.value);
@@ -2181,7 +2195,7 @@ int main(int argc, char * const argv[])
 		action_count--;
 	}
 	if (do_test_update || do_update) {
- 		err = test_update(card);
+		err = test_update(card);
 		action_count--;
 		if (err == 2) { /* problem */
 			err = 1;

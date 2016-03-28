@@ -58,9 +58,11 @@ enum {
 	OPT_MD5,
 	OPT_PKCS1,
 	OPT_BIND_TO_AID,
+	OPT_VERSION,
 };
 
 static const struct option options[] = {
+	{ "version",		0, NULL,		OPT_VERSION },
 	{ "sign",		0, NULL,		's' },
 	{ "decipher",		0, NULL,		'c' },
 	{ "key",		1, NULL,		'k' },
@@ -354,8 +356,9 @@ int main(int argc, char * const argv[])
 	int err = 0, r, c, long_optind = 0;
 	int do_decipher = 0;
 	int do_sign = 0;
+	int do_print_version = 0;
 	int action_count = 0;
-        struct sc_pkcs15_object *key;
+	struct sc_pkcs15_object *key;
 	sc_context_param_t ctx_param;
 
 	while (1) {
@@ -365,6 +368,10 @@ int main(int argc, char * const argv[])
 		if (c == '?')
 			util_print_usage_and_die(app_name, options, option_help, NULL);
 		switch (c) {
+		case OPT_VERSION:
+			do_print_version = 1;
+			action_count++;
+			break;
 		case 's':
 			do_sign++;
 			action_count++;
@@ -429,6 +436,11 @@ int main(int argc, char * const argv[])
 	}
 	if (action_count == 0)
 		util_print_usage_and_die(app_name, options, option_help, NULL);
+
+	if (do_print_version)   {
+		printf("%s\n", OPENSC_SCM_REVISION);
+		action_count--;
+	}
 
 	if (!(opt_crypt_flags & SC_ALGORITHM_RSA_HASHES))
 		opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_NONE;

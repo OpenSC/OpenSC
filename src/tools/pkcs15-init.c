@@ -139,6 +139,7 @@ enum {
 	OPT_ERASE_APPLICATION,
 	OPT_IGNORE_CA_CERTIFICATES,
 	OPT_UPDATE_EXISTING,
+	OPT_VERSION,
 
 	OPT_PIN1     = 0x10000,	/* don't touch these values */
 	OPT_PUK1     = 0x10001,
@@ -150,6 +151,7 @@ enum {
 };
 
 const struct option	options[] = {
+	{ "version",		0, NULL,			OPT_VERSION },
 	{ "erase-card",		no_argument, NULL,		'E' },
 	{ "create-pkcs15",	no_argument, NULL,		'C' },
 	{ "store-pin",		no_argument, NULL,		'P' },
@@ -211,6 +213,7 @@ const struct option	options[] = {
 	{ NULL, 0, NULL, 0 }
 };
 static const char *		option_help[] = {
+	"Print OpenSC package version",
 	"Erase the smart card",
 	"Creates a new PKCS #15 structure",
 	"Store a new PIN/PUK on the card",
@@ -287,6 +290,7 @@ enum {
 	ACTION_SANITY_CHECK,
 	ACTION_UPDATE_LAST_UPDATE,
 	ACTION_ERASE_APPLICATION,
+	ACTION_PRINT_VERSION,
 
 	ACTION_MAX
 };
@@ -525,6 +529,9 @@ main(int argc, char **argv)
 			printf("About to %s.\n", action_names[action]);
 
 		switch (action) {
+		case ACTION_PRINT_VERSION:
+			printf("%s\n", OPENSC_SCM_REVISION);
+			break;
 		case ACTION_ASSERT_PRISTINE:
 			/* skip printing error message */
 			if ((r = do_assert_pristine(card)) < 0)
@@ -2551,6 +2558,9 @@ handle_option(const struct option *opt)
 		break;
 	case OPT_UPDATE_EXISTING:
 		opt_update_existing = 1;
+		break;
+	case OPT_VERSION:
+		this_action = ACTION_PRINT_VERSION;
 		break;
 	default:
 		util_print_usage_and_die(app_name, options, option_help, NULL);
