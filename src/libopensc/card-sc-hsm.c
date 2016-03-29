@@ -546,6 +546,10 @@ static int sc_hsm_compute_signature(sc_card_t *card,
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OBJECT_NOT_FOUND);
 	}
 
+	if (datalen > SC_MAX_APDU_BUFFER_SIZE) {
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+	}
+
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4, 0x68, priv->env->key_ref[0], priv->algorithm);
 	apdu.cla = 0x80;
 	apdu.resp = rbuf;
