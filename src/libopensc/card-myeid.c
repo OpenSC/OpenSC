@@ -47,6 +47,10 @@
 #define MYEID_STATE_ACTIVATED	0x07
 
 #define MYEID_INFINEON_CHIP_ATR		0x04
+#define MYEID_CARD_NAME_MAX_LEN		100
+
+static const char *myeid_card_name = "MyEID";
+static char card_name_buf[MYEID_CARD_NAME_MAX_LEN];
 
 static struct sc_card_operations myeid_ops;
 static struct sc_card_driver myeid_drv = {
@@ -131,9 +135,13 @@ static int myeid_init(struct sc_card *card)
 	u8 defatr[SC_MAX_ATR_SIZE];
 	size_t len = sizeof(defatr);
 	const char *atrp = myeid_atrs[MYEID_INFINEON_CHIP_ATR];
-
+	
 	LOG_FUNC_CALLED(card->ctx);
+
+	card->name = myeid_card_name;
+
 	priv = calloc(1, sizeof(myeid_private_data_t));
+
 	if (!priv)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 
@@ -186,7 +194,7 @@ static int myeid_init(struct sc_card *card)
 	card->caps |= SC_CARD_CAP_RNG | SC_CARD_CAP_ISO7816_PIN_INFO;
 
 	card->max_recv_size = 255;
-	card->max_send_size = 255;
+	card->max_send_size = 255;	
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
@@ -1297,7 +1305,6 @@ static int myeid_get_info(struct sc_card *card, u8 *rbuf, size_t buflen)
 {
 	sc_apdu_t apdu;
 	int r;
-	char nameBuf[100];
 
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -1322,9 +1329,9 @@ static int myeid_get_info(struct sc_card *card, u8 *rbuf, size_t buflen)
 	card->version.fw_major = rbuf[5] * 10 + rbuf[6];
 	card->version.fw_minor = rbuf[7];
 	/* add version to name */
-	sprintf((char *) nameBuf, "%s %d.%d.%d", card->name, rbuf[5], rbuf[6], rbuf[7]);
-	card->name = nameBuf;
-	//card->driver->name
+	sprintf((char *) card_name_buf, "%s %d.%d.%d", card->name, rbuf[5], rbuf[6], rbuf[7]);
+	card->name = card_name_buf;
+
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
