@@ -134,7 +134,7 @@ static int myeid_init(struct sc_card *card)
 	u8 defatr[SC_MAX_ATR_SIZE];
 	size_t len = sizeof(defatr);
 	const char *atrp = myeid_atrs[MYEID_INFINEON_CHIP_ATR];
-
+	
 	LOG_FUNC_CALLED(card->ctx);
 
 	card->name = myeid_card_name;
@@ -193,7 +193,7 @@ static int myeid_init(struct sc_card *card)
 	card->caps |= SC_CARD_CAP_RNG | SC_CARD_CAP_ISO7816_PIN_INFO;
 
 	card->max_recv_size = 255;
-	card->max_send_size = 255;
+	card->max_send_size = 255;	
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
@@ -1327,7 +1327,6 @@ static int myeid_get_info(struct sc_card *card, u8 *rbuf, size_t buflen)
 	card->version.fw_minor = rbuf[7];
 	/* add version to name */
 	snprintf(card_name_buf, sizeof(card_name_buf),
-			"%s %d.%d.%d", card->name, rbuf[5], rbuf[6], rbuf[7]);
 	card->name = card_name_buf;
 
 	LOG_FUNC_RETURN(card->ctx, r);
