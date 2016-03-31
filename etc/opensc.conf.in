@@ -569,12 +569,6 @@ app default {
 # Parameters for the OpenSC PKCS11 module
 app opensc-pkcs11 {
 	pkcs11 {
-		# Should the module support hotplug of readers as per PKCS#11 v2.20?
-		# This affects slot changes and PC/SC PnP, as v2.11 applications
-		# are not allowed to change the length of the slot list.
-		# Default: true
-		# plug_and_play = false;
-
 		# Maximum Number of virtual slots.
 		# If there are more slots than defined here,
 		# the remaining slots will be hidden from PKCS#11.
