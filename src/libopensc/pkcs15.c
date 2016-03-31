@@ -201,6 +201,7 @@ int sc_pkcs15_parse_tokeninfo(sc_context_t *ctx,
 			sprintf(byte, "%02X", serial[ii]);
 			strcat(ti->serial_number, byte);
 		}
+		sc_log(ctx, "TokenInfo.serialNunmber '%s'", ti->serial_number);
 	}
 
 	if (ti->manufacturer_id == NULL) {
