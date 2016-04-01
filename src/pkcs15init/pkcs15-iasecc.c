@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2002  Juha Yrjölä <juha.yrjola@iki.fi>
  * Copyright (C) 2010  Viktor Tarasov <vtarasov@opentrust.com>
- *                      OpenTrust <www.opentrust.com>
+ *		      OpenTrust <www.opentrust.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -671,7 +671,7 @@ iasecc_pkcs15_get_auth_id_from_se(struct sc_pkcs15_card *p15card, unsigned char 
 		struct sc_pkcs15_id *auth_id)
 {
 	struct sc_context *ctx = p15card->card->ctx;
-        struct sc_pkcs15_object *pin_objs[32];
+	struct sc_pkcs15_object *pin_objs[32];
 	int rv, ii, nn_pins, se_ref, pin_ref;
 
 	LOG_FUNC_CALLED(ctx);
@@ -683,7 +683,7 @@ iasecc_pkcs15_get_auth_id_from_se(struct sc_pkcs15_card *p15card, unsigned char 
 	if (!(scb & IASECC_SCB_METHOD_USER_AUTH))
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 
-        rv = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_AUTH_PIN, pin_objs, 32);
+	rv = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_AUTH_PIN, pin_objs, 32);
 	LOG_TEST_RET(ctx, rv, "Error while getting AUTH objects");
 	nn_pins = rv;
 
@@ -1441,12 +1441,12 @@ iasecc_md_gemalto_set_default(struct sc_pkcs15_card *p15card, struct sc_profile 
 		struct sc_file *file = NULL;
 
 		sc_log(ctx, "update data object content in '%s'\n", sc_print_path(&dinfo->path));
-                rv = sc_select_file(p15card->card, &dinfo->path, &file);
-                LOG_TEST_RET(ctx, rv, "Cannot select data object file");
+		rv = sc_select_file(p15card->card, &dinfo->path, &file);
+		LOG_TEST_RET(ctx, rv, "Cannot select data object file");
 
-                rv = sc_pkcs15init_update_file(profile, p15card, file, guid, guid_len);
-                sc_file_free(file);
-                LOG_TEST_RET(ctx, rv, "Failed to update 'CSP'/'Default Key Container' data object");
+		rv = sc_pkcs15init_update_file(profile, p15card, file, guid, guid_len);
+		sc_file_free(file);
+		LOG_TEST_RET(ctx, rv, "Failed to update 'CSP'/'Default Key Container' data object");
 	}
 
 	LOG_FUNC_RETURN(ctx, rv);
@@ -1460,7 +1460,7 @@ iasecc_md_gemalto_unset_default(struct sc_pkcs15_card *p15card, struct sc_profil
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15_object *data_obj = NULL;
 	struct sc_pkcs15_data *dod = NULL;
-        struct sc_pkcs15_object *key_objs[32];
+	struct sc_pkcs15_object *key_objs[32];
 	struct sc_pkcs15_prkey_info *key_info = (struct sc_pkcs15_prkey_info *)key_obj->data;
 	unsigned char guid[40];
 	size_t guid_len;
@@ -1545,7 +1545,7 @@ iasecc_md_gemalto_new_prvkey(struct sc_pkcs15_card *p15card, struct sc_profile *
 	sc_init_oid(&data_args.app_oid);
 	data_args.label = (char *)guid;
 	data_args.app_label = "CSP";
-        data_args.der_encoded.value = data;
+	data_args.der_encoded.value = data;
 	data_args.der_encoded.len = offs;
 
 	rv = sc_pkcs15init_store_data_object(p15card, profile, &data_args, NULL);
@@ -1581,7 +1581,7 @@ iasecc_md_gemalto_delete_prvkey(struct sc_pkcs15_card *p15card, struct sc_profil
 	LOG_TEST_RET(ctx, rv, "Cannot get private key GUID");
 
 	rv = sc_pkcs15_find_data_object_by_name(p15card, "CSP", (char *)guid, &data_obj);
-        if (rv == SC_ERROR_OBJECT_NOT_FOUND)
+	if (rv == SC_ERROR_OBJECT_NOT_FOUND)
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 	LOG_TEST_RET(ctx, rv, "Find 'CSP'/<key> data object error");
 
@@ -1643,22 +1643,22 @@ iasecc_store_pubkey(struct sc_pkcs15_card *p15card, struct sc_profile *profile, 
 
 	prkey_info = (struct sc_pkcs15_prkey_info *)prkey_object->data;
 
-        pubkey_info->key_reference = prkey_info->key_reference;
+	pubkey_info->key_reference = prkey_info->key_reference;
 
-        pubkey_info->access_flags = prkey_info->access_flags & SC_PKCS15_PRKEY_ACCESS_LOCAL;
-        pubkey_info->access_flags |= SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE;
+	pubkey_info->access_flags = prkey_info->access_flags & SC_PKCS15_PRKEY_ACCESS_LOCAL;
+	pubkey_info->access_flags |= SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE;
 
-        pubkey_info->native = 0;
+	pubkey_info->native = 0;
 
-        pubkey_info->usage |= prkey_info->usage & SC_PKCS15_PRKEY_USAGE_SIGN ? SC_PKCS15_PRKEY_USAGE_VERIFY : 0;
-        pubkey_info->usage |= prkey_info->usage & SC_PKCS15_PRKEY_USAGE_SIGNRECOVER ? SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER : 0;
-        pubkey_info->usage |= prkey_info->usage & SC_PKCS15_PRKEY_USAGE_NONREPUDIATION ? SC_PKCS15_PRKEY_USAGE_VERIFY : 0;
-        pubkey_info->usage |= prkey_info->usage & SC_PKCS15_PRKEY_USAGE_DECRYPT ? SC_PKCS15_PRKEY_USAGE_ENCRYPT : 0;
-        pubkey_info->usage |= prkey_info->usage & SC_PKCS15_PRKEY_USAGE_UNWRAP ? SC_PKCS15_PRKEY_USAGE_WRAP : 0;
+	pubkey_info->usage |= prkey_info->usage & SC_PKCS15_PRKEY_USAGE_SIGN ? SC_PKCS15_PRKEY_USAGE_VERIFY : 0;
+	pubkey_info->usage |= prkey_info->usage & SC_PKCS15_PRKEY_USAGE_SIGNRECOVER ? SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER : 0;
+	pubkey_info->usage |= prkey_info->usage & SC_PKCS15_PRKEY_USAGE_NONREPUDIATION ? SC_PKCS15_PRKEY_USAGE_VERIFY : 0;
+	pubkey_info->usage |= prkey_info->usage & SC_PKCS15_PRKEY_USAGE_DECRYPT ? SC_PKCS15_PRKEY_USAGE_ENCRYPT : 0;
+	pubkey_info->usage |= prkey_info->usage & SC_PKCS15_PRKEY_USAGE_UNWRAP ? SC_PKCS15_PRKEY_USAGE_WRAP : 0;
 
-        iasecc_pkcs15_add_access_rule(object, SC_PKCS15_ACCESS_RULE_MODE_READ, NULL);
+	iasecc_pkcs15_add_access_rule(object, SC_PKCS15_ACCESS_RULE_MODE_READ, NULL);
 
-        memcpy(&pubkey_info->algo_refs[0], &prkey_info->algo_refs[0], sizeof(pubkey_info->algo_refs));
+	memcpy(&pubkey_info->algo_refs[0], &prkey_info->algo_refs[0], sizeof(pubkey_info->algo_refs));
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
@@ -1672,6 +1672,7 @@ iasecc_store_cert(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_card *card = p15card->card;
 	struct sc_file *pfile = NULL;
+	struct sc_path parent_path;
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
@@ -1679,6 +1680,14 @@ iasecc_store_cert(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 
 	rv = iasecc_pkcs15_new_file(profile, card, SC_PKCS15_TYPE_CERT, 0, &pfile);
 	LOG_TEST_RET(ctx, rv, "IasEcc new CERT file error");
+
+	parent_path = pfile->path;
+	if (parent_path.len >= 2)
+		parent_path.len -= 2;
+	if (!parent_path.len && !parent_path.aid.len)
+		sc_format_path("3F00", &parent_path);
+	rv = sc_select_file(card, &parent_path, NULL);
+	LOG_TEST_RET(ctx, rv, "cannot select parent of certificate to store");
 
 	rv = iasecc_pkcs15_fix_file_access(p15card, pfile, object);
 	LOG_TEST_RET(ctx, rv, "encode file access rules failed");
