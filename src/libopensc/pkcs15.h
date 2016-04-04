@@ -26,6 +26,7 @@ extern "C" {
 #endif
 
 #include "libopensc/opensc.h"
+#include "libopensc/aux-data.h"
 
 #define SC_PKCS15_CACHE_DIR		".eid"
 
@@ -388,8 +389,8 @@ struct sc_pkcs15_prkey_info {
 
 	struct sc_path path;
 
-	/* Used by minidriver and its on-card support */
-	/*struct sc_md_cmap_record cmap_record;*/
+	/* Non-pkcs15 data, like MD CMAP record */
+	struct sc_auxiliary_data *aux_data;
 };
 typedef struct sc_pkcs15_prkey_info sc_pkcs15_prkey_info_t;
 

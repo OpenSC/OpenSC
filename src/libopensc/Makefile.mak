@@ -33,6 +33,7 @@ OBJECTS			= \
 	pkcs15-itacns.obj pkcs15-gemsafeV1.obj pkcs15-sc-hsm.obj \
 	pkcs15-dnie.obj pkcs15-gids.obj \
 	compression.obj p15card-helper.obj sm.obj \
+	aux-data.obj \
 	$(TOPDIR)\win32\versioninfo.res
 
 all: $(TOPDIR)\win32\versioninfo.res $(TARGET)

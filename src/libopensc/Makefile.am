@@ -11,7 +11,7 @@ noinst_HEADERS = cards.h ctbcs.h internal.h esteid.h muscle.h muscle-filesystem.
 	cardctl.h asn1.h log.h \
 	errors.h types.h compression.h itacns.h iso7816.h \
 	authentic.h iasecc.h iasecc-sdo.h sm.h card-sc-hsm.h \
-	pace.h cwa14890.h cwa-dnie.h card-gids.h
+	pace.h cwa14890.h cwa-dnie.h card-gids.h aux-data.h
 
 AM_CPPFLAGS = -DOPENSC_CONF_PATH=\"$(sysconfdir)/opensc.conf\" \
 	-I$(top_srcdir)/src
@@ -50,6 +50,7 @@ libopensc_la_SOURCES = \
 	pkcs15-itacns.c pkcs15-gemsafeV1.c pkcs15-sc-hsm.c \
 	pkcs15-dnie.c pkcs15-gids.c \
 	compression.c p15card-helper.c sm.c \
+	aux-data.c \
 	libopensc.exports
 if WIN32
 libopensc_la_SOURCES += $(top_builddir)/win32/versioninfo.rc
