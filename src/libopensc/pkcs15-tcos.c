@@ -35,6 +35,7 @@
 
 int sc_pkcs15emu_tcos_init_ex(
 	sc_pkcs15_card_t   *p15card,
+	struct sc_aid *,
 	sc_pkcs15emu_opt_t *opts);
 
 static int insert_cert(
@@ -488,6 +489,7 @@ static int detect_unicard(
 
 int sc_pkcs15emu_tcos_init_ex(
 	sc_pkcs15_card_t   *p15card,
+	struct sc_aid *aid,
 	sc_pkcs15emu_opt_t *opts
 ){
 	sc_card_t         *card = p15card->card;

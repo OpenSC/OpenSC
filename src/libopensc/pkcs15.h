@@ -945,7 +945,7 @@ typedef struct sc_pkcs15emu_opt {
 
 #define SC_PKCS15EMU_FLAGS_NO_CHECK	0x00000001
 
-extern int sc_pkcs15_bind_synthetic(struct sc_pkcs15_card *);
+extern int sc_pkcs15_bind_synthetic(struct sc_pkcs15_card *, struct sc_aid *);
 extern int sc_pkcs15_is_emulation_only(sc_card_t *);
 
 int sc_pkcs15emu_object_add(struct sc_pkcs15_card *, unsigned int,
