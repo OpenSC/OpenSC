@@ -1223,7 +1223,7 @@ sc_pkcs15_bind(struct sc_card *card, struct sc_aid *aid,
 		sc_log(ctx, "PKCS#15 emulation enabled");
 		emu_first = scconf_get_bool(conf_block, "try_emulation_first", 0);
 		if (emu_first || sc_pkcs15_is_emulation_only(card)) {
-			r = sc_pkcs15_bind_synthetic(p15card);
+			r = sc_pkcs15_bind_synthetic(p15card, aid);
 			if (r == SC_SUCCESS)
 				goto done;
 			r = sc_pkcs15_bind_internal(p15card, aid);
@@ -1233,7 +1233,7 @@ sc_pkcs15_bind(struct sc_card *card, struct sc_aid *aid,
 			r = sc_pkcs15_bind_internal(p15card, aid);
 			if (r == SC_SUCCESS)
 				goto done;
-			r = sc_pkcs15_bind_synthetic(p15card);
+			r = sc_pkcs15_bind_synthetic(p15card, aid);
 			if (r < 0)
 				goto error;
 		}
@@ -1279,6 +1279,7 @@ __sc_pkcs15_search_objects(struct sc_pkcs15_card *p15card, unsigned int class_ma
 	struct sc_pkcs15_df	*df = NULL;
 	unsigned int	df_mask = 0;
 	size_t		match_count = 0;
+	int r;
 
 	if (type)
 		class_mask |= SC_PKCS15_TYPE_TO_CLASS(type);
@@ -1315,9 +1316,12 @@ __sc_pkcs15_search_objects(struct sc_pkcs15_card *p15card, unsigned int class_ma
 		}
 		if (df->enumerated)
 			continue;
-		/* Enumerate the DF's, so p15card->obj_list is
-		 * populated. */
-		if (SC_SUCCESS != sc_pkcs15_parse_df(p15card, df))
+		/* Enumerate the DF's, so p15card->obj_list is populated. */
+		if (p15card->ops.parse_df)
+			r = p15card->ops.parse_df(p15card, df);
+		else
+			r = sc_pkcs15_parse_df(p15card, df);
+		if (r != SC_SUCCESS)
 			continue;
 	}
 
@@ -2021,11 +2025,6 @@ sc_pkcs15_parse_df(struct sc_pkcs15_card *p15card, struct sc_pkcs15_df *df)
 		     const u8 **nbuf, size_t *nbufsize) = NULL;
 
 	sc_log(ctx, "called; path=%s, type=%d, enum=%d", sc_print_path(&df->path), df->type, df->enumerated);
-
-	if (p15card->ops.parse_df)   {
-		r = p15card->ops.parse_df(p15card, df);
-		LOG_FUNC_RETURN(ctx, r);
-	}
 
 	if (df->enumerated)
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
