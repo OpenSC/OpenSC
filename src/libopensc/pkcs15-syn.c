@@ -1,8 +1,8 @@
 /*
  * pkcs15-syn.c: PKCS #15 emulation of non-pkcs15 cards
  *
- * Copyright (C) 2003  Olaf Kirch <okir@suse.de>
- *               2004  Nils Larsch <nlarsch@betrusted.com>
+ * Copyright (C) 2003 Olaf Kirch <okir@suse.de>
+ *		 2004 Nils Larsch <nlarsch@betrusted.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -85,6 +85,7 @@ int sc_pkcs15_is_emulation_only(sc_card_t *card)
 		case SC_CARD_TYPE_DNIE_ADMIN:
 		case SC_CARD_TYPE_DNIE_USER:
 		case SC_CARD_TYPE_DNIE_TERMINATED:
+		case SC_CARD_TYPE_IASECC_GEMALTO:
 			return 1;
 		default:
 			return 0;
