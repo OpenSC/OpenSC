@@ -43,6 +43,7 @@
 #include "libopensc/pkcs15.h"
 #include "libopensc/log.h"
 #include "libopensc/internal.h"
+#include "libopensc/aux-data.h"
 #include "pkcs15init/pkcs15-init.h"
 
 #ifdef ENABLE_OPENSSL
@@ -148,11 +149,11 @@ struct md_pkcs15_container {
 	int index;
 	struct sc_pkcs15_id id;
 	char guid[MAX_CONTAINER_NAME_LEN + 1];
-	unsigned flags;
+	unsigned char flags;
 	size_t size_key_exchange, size_sign;
 
 	struct sc_pkcs15_object *cert_obj, *prkey_obj, *pubkey_obj;
-	BOOL guid_overwrite;
+	// BOOL guid_overwrite;
 };
 
 struct md_dh_agreement {
@@ -557,39 +558,49 @@ static VOID md_generate_guid( __in_ecount(MAX_CONTAINER_NAME_LEN+1) PSTR szGuid)
 	if (szRPCGuid) RpcStringFreeA(&szRPCGuid);
 }
 
-static VOID
+static DWORD
 md_contguid_get_guid_from_card(PCARD_DATA pCardData, struct sc_pkcs15_object *prkey, __in_ecount(MAX_CONTAINER_NAME_LEN+1) PSTR szGuid)
 {
 	int rv;
 	VENDOR_SPECIFIC *vs;
 	size_t guid_len = MAX_CONTAINER_NAME_LEN+1;
+
 	vs = (VENDOR_SPECIFIC*) pCardData->pvVendorSpecific;
 	rv = sc_pkcs15_get_object_guid(vs->p15card, prkey, 0, (unsigned char*) szGuid, &guid_len);
 	if (rv)   {
 		logprintf(pCardData, 2, "md_contguid_get_guid_from_card(): error %d\n", rv);
-		return;
+		return SCARD_F_INTERNAL_ERROR;
 	}
+
+	return SCARD_S_SUCCESS;
 }
 
 /* add a new entry in the guid conversion table */
-static VOID
-md_contguid_add_conversion(PCARD_DATA pCardData, struct sc_pkcs15_object *prkey, 
-								__in_ecount(MAX_CONTAINER_NAME_LEN+1) PSTR szWindowsGuid)
+static DWORD
+md_contguid_add_conversion(PCARD_DATA pCardData, struct sc_pkcs15_object *prkey,
+		__in_ecount(MAX_CONTAINER_NAME_LEN+1) PSTR szWindowsGuid)
 {
+	DWORD ret;
 	int i;
 	CHAR szOpenSCGuid[MAX_CONTAINER_NAME_LEN+1] = "";
-	md_contguid_get_guid_from_card(pCardData, prkey, szOpenSCGuid);
-	if (strcmp(szOpenSCGuid, szWindowsGuid) == 0) 
-		return;
+
+	ret = md_contguid_get_guid_from_card(pCardData, prkey, szOpenSCGuid);
+	if (ret != SCARD_S_SUCCESS)
+		return ret;
+
+	if (strcmp(szOpenSCGuid, szWindowsGuid) == 0)
+		return ret;
+
 	for (i = 0; i < MD_MAX_CONVERSIONS; i++) {
 		if (md_static_conversions[i].szWindowsGuid[0] == 0) {
 			strcpy_s(md_static_conversions[i].szWindowsGuid, MAX_CONTAINER_NAME_LEN+1, szWindowsGuid);
 			strcpy_s(md_static_conversions[i].szOpenSCGuid, MAX_CONTAINER_NAME_LEN+1, szOpenSCGuid);
 			logprintf(pCardData, 0, "md_contguid_add_conversion(): Registering conversion '%s' '%s'\n", szWindowsGuid, szOpenSCGuid);
-			return;
+			return SCARD_S_SUCCESS;;
 		}
 	}
-	logprintf(pCardData, 0, "md_contguid_add_conversion(): Unable to add a new conversion with guid %s. Further loads may trigger errors\n", szWindowsGuid);
+	logprintf(pCardData, 0, "md_contguid_add_conversion(): Unable to add a new conversion with guid %s.\n", szWindowsGuid);
+	return SCARD_F_INTERNAL_ERROR;;
 }
 
 /* remove an entry in the guid conversion table*/
@@ -622,7 +633,7 @@ md_contguid_find_conversion(PCARD_DATA pCardData, __in_ecount(MAX_CONTAINER_NAME
 /* build key args from the minidriver guid */
 static VOID
 md_contguid_build_key_args_from_cont_guid(PCARD_DATA pCardData, __in_ecount(MAX_CONTAINER_NAME_LEN+1) PSTR szGuid,
-											struct sc_pkcs15init_prkeyargs *prkey_args)
+		struct sc_pkcs15init_prkeyargs *prkey_args)
 {
 	/* strlen(szGuid) <= MAX_CONTAINER_NAME */
 	logprintf(pCardData, 3, "Using the guid '%s'\n", szGuid);
@@ -641,13 +652,15 @@ md_contguid_build_key_args_from_cont_guid(PCARD_DATA pCardData, __in_ecount(MAX_
 }
 
 /* build minidriver guid from the key */
-static VOID 
+static DWORD
 md_contguid_build_cont_guid_from_key(PCARD_DATA pCardData, struct sc_pkcs15_object *key_obj, __in_ecount(MAX_CONTAINER_NAME_LEN+1) PSTR szGuid)
 {
 	VENDOR_SPECIFIC *vs;
 	struct sc_pkcs15_prkey_info *prkey_info = (struct sc_pkcs15_prkey_info *)key_obj->data;
+	DWORD dwret = SCARD_S_SUCCESS;
+
 	vs = (VENDOR_SPECIFIC*) pCardData->pvVendorSpecific;
-	
+
 	szGuid[0] = '\0';
 	/* priorize the use of the key id over the key label as a container name */
 	if (md_is_guid_as_id(pCardData) && prkey_info->id.len > 0 && prkey_info->id.len <= MAX_CONTAINER_NAME_LEN)  {
@@ -656,9 +669,33 @@ md_contguid_build_cont_guid_from_key(PCARD_DATA pCardData, struct sc_pkcs15_obje
 	} else if (md_is_guid_as_label(pCardData) && key_obj->label[0] != 0)  {
 		strncpy_s(szGuid, MAX_CONTAINER_NAME_LEN+1, key_obj->label, MAX_CONTAINER_NAME_LEN);
 	} else {
-		md_contguid_get_guid_from_card(pCardData, key_obj, szGuid);
+		dwret = md_contguid_get_guid_from_card(pCardData, key_obj, szGuid);
 	}
+
+	return dwret;
 }
+
+
+static DWORD
+md_cont_flags_from_key(PCARD_DATA pCardData, struct sc_pkcs15_object *key_obj, unsigned char *cont_flags)
+{
+	struct sc_pkcs15_prkey_info *prkey_info = NULL;
+	VENDOR_SPECIFIC *vs;
+	int rv;
+
+	vs = (VENDOR_SPECIFIC*) pCardData->pvVendorSpecific;
+	prkey_info = (struct sc_pkcs15_prkey_info *)key_obj->data;
+
+	*cont_flags = CONTAINER_MAP_VALID_CONTAINER;
+	if (prkey_info->aux_data)   {
+		rv = sc_aux_data_get_md_flags(vs->ctx, prkey_info->aux_data, cont_flags);
+		if (rv != SC_ERROR_NOT_SUPPORTED && rv != SC_SUCCESS)
+			return SCARD_F_INTERNAL_ERROR;
+	}
+
+	return SCARD_S_SUCCESS;
+}
+
 
 /* Search directory by name and optionally by name of it's parent */
 static DWORD
@@ -986,111 +1023,14 @@ md_pkcs15_update_containers(PCARD_DATA pCardData, unsigned char *blob, size_t si
 			cont->size_sign = pp->wSigKeySizeBits;
 			cont->size_key_exchange = pp->wKeyExchangeKeySizeBits;
 			logprintf(pCardData, 3, "update P15 containers: touch container (idx:%i,id:%s,guid:%.*s,flags:%X)\n",
-				idx, sc_pkcs15_print_id(&cont->id),(int)sizeof cont->guid,cont->guid,cont->flags);
+				idx, sc_pkcs15_print_id(&cont->id),
+				(int)sizeof cont->guid, cont->guid, cont->flags);
 		}
 	}
 
 	return SCARD_S_SUCCESS;
 }
 
-static DWORD
-md_pkcs15_update_container_from_do(PCARD_DATA pCardData, struct sc_pkcs15_object *dobj)
-{
-	VENDOR_SPECIFIC *vs;
-	DWORD dwret = SCARD_F_INTERNAL_ERROR;
-	struct sc_pkcs15_data *ddata = NULL;
-	struct sc_pkcs15_id id;
-	int rv, offs, idx;
-	unsigned flags;
-
-	if (!pCardData || !dobj)
-		return SCARD_E_INVALID_PARAMETER;
-	vs = pCardData->pvVendorSpecific;
-
-	rv = sc_pkcs15_read_data_object(vs->p15card, (struct sc_pkcs15_data_info *)dobj->data, &ddata);
-	if (rv)   {
-		logprintf(pCardData, 2, "sc_pkcs15_read_data_object('%.*s') returned %i\n", (int) sizeof dobj->label, dobj->label, rv);
-		return SCARD_F_INTERNAL_ERROR;
-	}
-
-	offs = 0;
-	if (*(ddata->data + offs++) != 0x01)   {
-		sc_pkcs15_free_data_object(ddata);
-		return SCARD_E_INVALID_VALUE;
-	}
-	id.len = *(ddata->data + offs++);
-	memcpy(id.value, ddata->data + offs, id.len);
-	offs += (int) id.len;
-
-	if (*(ddata->data + offs++) != 0x02)   {
-		sc_pkcs15_free_data_object(ddata);
-		return SCARD_E_INVALID_VALUE;
-	}
-	if (*(ddata->data + offs++) != 0x01)   {
-		sc_pkcs15_free_data_object(ddata);
-		return SCARD_E_INVALID_VALUE;
-	}
-
-	flags = *(ddata->data + offs);
-
-	for (idx=0; idx<MD_MAX_KEY_CONTAINERS && vs->p15_containers[idx].prkey_obj; idx++)   {
-		if (vs->p15_containers[idx].guid_overwrite)
-			continue;
-		if (sc_pkcs15_compare_id(&id, &vs->p15_containers[idx].id))   {
-			_snprintf_s(vs->p15_containers[idx].guid, MAX_CONTAINER_NAME_LEN+1, MAX_CONTAINER_NAME_LEN,
-					"%s", dobj->label);
-			vs->p15_containers[idx].flags = flags;
-			logprintf(pCardData, 2, "Set container's guid to '%s' and flags to 0x%X\n",
-					vs->p15_containers[idx].guid, flags);
-			break;
-		}
-	}
-
-	sc_pkcs15_free_data_object(ddata);
-	return SCARD_S_SUCCESS;
-}
-
-
-static DWORD
-md_pkcs15_default_container_from_do(PCARD_DATA pCardData, struct sc_pkcs15_object *dobj)
-{
-	VENDOR_SPECIFIC *vs;
-	struct sc_pkcs15_data *ddata = NULL;
-	DWORD dwret = SCARD_F_INTERNAL_ERROR;
-	int rv, idx;
-	char guid[MAX_CONTAINER_NAME_LEN + 1];
-
-	if (!pCardData || !dobj)
-		return SCARD_E_INVALID_PARAMETER;
-
-	vs = pCardData->pvVendorSpecific;
-
-	rv = sc_pkcs15_read_data_object(vs->p15card, (struct sc_pkcs15_data_info *)dobj->data, &ddata);
-	if (rv)   {
-		logprintf(pCardData, 2, "sc_pkcs15_read_data_object('%.*s') returned %i\n", (int) sizeof dobj->label, dobj->label, rv);
-		return SCARD_F_INTERNAL_ERROR;
-	}
-
-	if (ddata->data_len > MAX_CONTAINER_NAME_LEN || ddata->data_len < 32)   {
-		logprintf(pCardData, 2, "Invalid container name length %i\n", ddata->data_len);
-		return SCARD_E_INVALID_VALUE;
-	}
-
-	memset(guid, 0, sizeof(guid));
-	memcpy(&guid[0] , ddata->data, ddata->data_len);
-
-	logprintf(pCardData, 2, "Search container '%s' to set it as default\n", guid);
-	for (idx=0; idx<MD_MAX_KEY_CONTAINERS && vs->p15_containers[idx].prkey_obj; idx++)   {
-		if (strstr(vs->p15_containers[idx].guid, guid))   {
-			vs->p15_containers[idx].flags |= CONTAINER_MAP_DEFAULT_CONTAINER;
-			logprintf(pCardData, 2, "Default container is '%s'\n", vs->p15_containers[idx].guid);
-			break;
-		}
-	}
-
-	sc_pkcs15_free_data_object(ddata);
-	return SCARD_S_SUCCESS;
-}
 
 static DWORD
 md_pkcs15_delete_object(PCARD_DATA pCardData, struct sc_pkcs15_object *obj)
@@ -1474,11 +1414,11 @@ md_fs_add_msroot(PCARD_DATA pCardData, struct md_file **head)
  * Set the content of the 'soft' 'cmapfile':
  * 1. Initialize internal p15_contaniers with the existing private keys PKCS#15 objects;
  * 2. Try to read the content of the PKCS#15 'DATA' object 'CSP':'cmapfile',
- *        If some record from the 'DATA' object references an existing key:
+ *		If some record from the 'DATA' object references an existing key:
  *    2a. Update the non-pkcs#15 attributes of the corresponding internal p15_container;
  *    2b. Change the index of internal p15_container according to the index from 'DATA' file.
- *        Records from 'DATA' file are ignored is they do not have
- *            the corresponding PKCS#15 private key object.
+ *	  Records from 'DATA' file are ignored is they do not have
+ *		the corresponding PKCS#15 private key object.
  * 3. Initalize the content of the 'soft' 'cmapfile' from the inernal p15-containers.
  */
 static DWORD
@@ -1525,21 +1465,28 @@ md_set_cmapfile(PCARD_DATA pCardData, struct md_file *file)
 			continue;
 		}
 
-		md_contguid_build_cont_guid_from_key(pCardData, key_obj, cont->guid);
+		dwret = md_contguid_build_cont_guid_from_key(pCardData, key_obj, cont->guid);
+		if (dwret != SCARD_S_SUCCESS)
+			return dwret;
 
 		/* replace the OpenSC guid by a Windows Guid if needed
 		Typically used in the certificate enrollment process.
 		Windows create a new container with a Windows guid, close the context, then create a new context and look for the previous container.
 		If we return our guid, it fails because the Windows guid can't be found.
 		The overwrite is present to avoid this conversion been replaced by md_pkcs15_update_container_from_do*/
-		cont->guid_overwrite = md_contguid_find_conversion(pCardData, cont->guid);
+		// cont->guid_overwrite = md_contguid_find_conversion(pCardData, cont->guid);
 
-		cont->flags = CONTAINER_MAP_VALID_CONTAINER;
+		// cont->flags = CONTAINER_MAP_VALID_CONTAINER;
+		dwret = md_cont_flags_from_key(pCardData, key_obj, &cont->flags);
+		if (dwret != SCARD_S_SUCCESS)
+			return dwret;
+		if (cont->flags & CONTAINER_MAP_DEFAULT_CONTAINER)
+			found_default = 1;
 
 		/* AT_KEYEXCHANGE is more general key usage,
-			*	it allows 'decryption' as well as 'signature' key usage.
-			* AT_SIGNATURE allows only 'signature' usage.
-			*/
+		 *	it allows 'decryption' as well as 'signature' key usage.
+		 * AT_SIGNATURE allows only 'signature' usage.
+		 */
 		cont->size_key_exchange = cont->size_sign = 0;
 		if (key_obj->type == SC_PKCS15_TYPE_PRKEY_RSA) {
 			if (prkey_info->usage & USAGE_ANY_DECIPHER)
@@ -1573,6 +1520,7 @@ md_set_cmapfile(PCARD_DATA pCardData, struct md_file *file)
 
 	if (conts_num)   {
 		/* Read 'CMAPFILE' (Gemalto style) and update the attributes of P15 containers */
+#if 0
 		struct sc_pkcs15_object *dobjs[MD_MAX_KEY_CONTAINERS + 1], *default_cont = NULL;
 		int num_dobjs = MD_MAX_KEY_CONTAINERS + 1;
 
@@ -1611,7 +1559,7 @@ md_set_cmapfile(PCARD_DATA pCardData, struct md_file *file)
 				return dwret;
 			}
 		}
-
+#endif
 		/* Initialize 'CMAPFILE' content from the P15 containers */
 		p = (PCONTAINER_MAP_RECORD)cmap_buf;
 		for (ii=0; ii<MD_MAX_KEY_CONTAINERS; ii++)   {
@@ -1652,7 +1600,7 @@ md_set_cmapfile(PCARD_DATA pCardData, struct md_file *file)
 			loghex(pCardData, 7, (PBYTE) (p+ii), sizeof(CONTAINER_MAP_RECORD));
 		}
 	}
-	
+
 	dwret = md_fs_add_msroot(pCardData, &(file->next));
 	if (dwret != SCARD_S_SUCCESS)
 		return dwret;
@@ -2027,7 +1975,7 @@ md_pkcs15_generate_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, DWORD ke
 
 	/* use the Windows Guid as input to determine some characteristics of the key such as the label or the id */
 	md_contguid_build_key_args_from_cont_guid(pCardData, cont->guid, &(keygen_args.prkey_args));
-	
+
 	if (keygen_args.prkey_args.label == NULL) {
 		md_generate_guid(szGuid);
 		keygen_args.prkey_args.label = szGuid;
@@ -2040,7 +1988,9 @@ md_pkcs15_generate_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, DWORD ke
 		goto done;
 	}
 
-	md_contguid_add_conversion(pCardData, cont->prkey_obj, cont->guid);
+	dwret = md_contguid_add_conversion(pCardData, cont->prkey_obj, cont->guid);
+	if (dwret != SCARD_S_SUCCESS)
+		return dwret;
 
 	cont->id = ((struct sc_pkcs15_prkey_info *)cont->prkey_obj->data)->id;
 	cont->index = idx;
@@ -2049,7 +1999,6 @@ md_pkcs15_generate_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, DWORD ke
 	logprintf(pCardData, 3, "MdGenerateKey(): generated key(idx:%i,id:%s,guid:%.*s)\n",
 			idx, sc_pkcs15_print_id(&cont->id),(int) sizeof cont->guid, cont->guid);
 
-	dwret = SCARD_S_SUCCESS;
 done:
 	sc_pkcs15init_unbind(profile);
 	sc_unlock(card);
@@ -2146,11 +2095,11 @@ md_pkcs15_store_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, BYTE *blob,
 
 	sc_pkcs15init_set_p15card(profile, vs->p15card);
 	cont = &(vs->p15_containers[idx]);
-	
+
 	prkey_args.label = szGuid;
 	/* use the Windows Guid as input to determine some characteristics of the key such as the label or the id */
 	md_contguid_build_key_args_from_cont_guid(pCardData, cont->guid, &prkey_args);
-	
+
 	memcpy(pubkey_args.id.value, prkey_args.id.value, prkey_args.id.len);
 	pubkey_args.id.len = prkey_args.id.len;
 	pubkey_args.label = prkey_args.label;
@@ -2172,14 +2121,15 @@ md_pkcs15_store_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, BYTE *blob,
 		goto done;
 	}
 
-	md_contguid_add_conversion(pCardData, cont->prkey_obj, cont->guid);
+	dwret = md_contguid_add_conversion(pCardData, cont->prkey_obj, cont->guid);
+	if (dwret != SCARD_S_SUCCESS)
+		return dwret;
 
 	cont->id = ((struct sc_pkcs15_prkey_info *)cont->prkey_obj->data)->id;
 	cont->index = idx;
 	cont->flags |= CONTAINER_MAP_VALID_CONTAINER;
 
 	logprintf(pCardData, 3, "MdStoreKey(): stored key(idx:%i,id:%s,guid:%.*s)\n", idx, sc_pkcs15_print_id(&cont->id),(int) sizeof cont->guid,cont->guid);
-	dwret = SCARD_S_SUCCESS;
 
 done:
 	sc_pkcs15init_unbind(profile);
