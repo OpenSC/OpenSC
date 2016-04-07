@@ -2039,7 +2039,7 @@ struct sc_card_driver *sc_get_gids_driver(void)
 
 struct sc_card_driver *sc_get_gids_driver(void)
 {
-	return SC_ERROR_WRONG_CARD;
+	return NULL;
 }
 
 #endif
