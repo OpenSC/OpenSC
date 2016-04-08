@@ -557,7 +557,7 @@ static void print_prkey_info(const struct sc_pkcs15_object *obj)
 	printf("\tID             : %s\n", sc_pkcs15_print_id(&prkey->id));
 
 	guid_len = sizeof(guid);
-	if (!sc_pkcs15_get_object_guid(p15card, obj, 0, guid, &guid_len))   {
+	if (!sc_pkcs15_get_object_guid(p15card, obj, 1, guid, &guid_len))   {
 		printf("\tMD:guid        : ");
 		if (strlen((char *)guid) == guid_len)   {
 			printf("%s\n", (char *)guid);
@@ -775,7 +775,7 @@ static void print_skey_info(const struct sc_pkcs15_object *obj)
 		printf("\tPath           : %s\n", sc_print_path(&skey->path));
 
 	guid_len = sizeof(guid);
-	if (!sc_pkcs15_get_object_guid(p15card, obj, 0, guid, &guid_len))   {
+	if (!sc_pkcs15_get_object_guid(p15card, obj, 1, guid, &guid_len))   {
 		printf("\tGUID           : %s\n", (char *)guid);
 	}
 

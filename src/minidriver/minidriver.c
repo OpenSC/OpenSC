@@ -566,7 +566,7 @@ md_contguid_get_guid_from_card(PCARD_DATA pCardData, struct sc_pkcs15_object *pr
 	size_t guid_len = MAX_CONTAINER_NAME_LEN+1;
 
 	vs = (VENDOR_SPECIFIC*) pCardData->pvVendorSpecific;
-	rv = sc_pkcs15_get_object_guid(vs->p15card, prkey, 0, (unsigned char*) szGuid, &guid_len);
+	rv = sc_pkcs15_get_object_guid(vs->p15card, prkey, 1, (unsigned char*) szGuid, &guid_len);
 	if (rv)   {
 		logprintf(pCardData, 2, "md_contguid_get_guid_from_card(): error %d\n", rv);
 		return SCARD_F_INTERNAL_ERROR;
