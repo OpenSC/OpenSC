@@ -42,6 +42,7 @@
 #define TC_CARDOS_PIN_MASK	0x3000
 
 int sc_pkcs15emu_tccardos_init_ex(sc_pkcs15_card_t *p15card,
+				  struct sc_aid *,
 				  sc_pkcs15emu_opt_t *opts);
 
 static int read_file(struct sc_card *card, const char *file, u8 *buf,
@@ -348,6 +349,7 @@ static int sc_pkcs15_tccardos_init_func(sc_pkcs15_card_t *p15card)
 }
 
 int sc_pkcs15emu_tccardos_init_ex(sc_pkcs15_card_t *p15card,
+				  struct sc_aid *aid,
 				  sc_pkcs15emu_opt_t *opts)
 {
 	return sc_pkcs15_tccardos_init_func(p15card);

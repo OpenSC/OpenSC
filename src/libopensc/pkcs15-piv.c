@@ -40,7 +40,7 @@
 
 #define MANU_ID		"piv_II "
 
-int sc_pkcs15emu_piv_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
+int sc_pkcs15emu_piv_init_ex(sc_pkcs15_card_t *, struct sc_aid *aid, sc_pkcs15emu_opt_t *);
 
 typedef struct objdata_st {
 	const char *id;
@@ -999,7 +999,7 @@ sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "DEE Adding pin %d label=%s",i, label);
 				prkey_info.modulus_length= ckis[i].pubkey_len;
 				r = sc_pkcs15emu_add_rsa_prkey(p15card, &prkey_obj, &prkey_info);
 				break;
-		 	case SC_ALGORITHM_EC: 
+			case SC_ALGORITHM_EC:
 				prkey_info.usage         |= prkeys[i].usage_ec;
 				prkey_info.field_length = ckis[i].pubkey_len;
 				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "DEE added key_alg %2.2x prkey_obj.flags %8.8x",
@@ -1020,7 +1020,7 @@ sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "DEE Adding pin %d label=%s",i, label);
 }
 
 int sc_pkcs15emu_piv_init_ex(sc_pkcs15_card_t *p15card,
-				  sc_pkcs15emu_opt_t *opts)
+		struct sc_aid *aid, sc_pkcs15emu_opt_t *opts)
 {
 	sc_card_t   *card = p15card->card;
 	sc_context_t    *ctx = card->ctx;

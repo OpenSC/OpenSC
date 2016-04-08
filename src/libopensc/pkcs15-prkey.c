@@ -31,6 +31,7 @@
 #include "asn1.h"
 #include "pkcs15.h"
 #include "common/compat_strlcpy.h"
+#include "aux-data.h"
 
 #ifdef ENABLE_OPENSSL
 #include <openssl/x509.h>
@@ -596,6 +597,8 @@ void sc_pkcs15_free_prkey_info(sc_pkcs15_prkey_info_t *key)
 		free(key->subject.value);
 
 	sc_pkcs15_free_key_params(&key->params);
+
+	sc_aux_data_free(&key->aux_data);
 
 	free(key);
 }

@@ -139,6 +139,8 @@ enum {
 	OPT_ERASE_APPLICATION,
 	OPT_IGNORE_CA_CERTIFICATES,
 	OPT_UPDATE_EXISTING,
+	OPT_MD_CONTAINER_GUID,
+	OPT_VERSION,
 
 	OPT_PIN1     = 0x10000,	/* don't touch these values */
 	OPT_PUK1     = 0x10001,
@@ -201,6 +203,7 @@ const struct option	options[] = {
 	{ "profile",		required_argument, NULL,	'p' },
 	{ "card-profile",	required_argument, NULL,	'c' },
 	{ "options-file",	required_argument, NULL,	OPT_OPTIONS },
+	{ "md-container-guid",	required_argument, NULL,	OPT_MD_CONTAINER_GUID},
 	{ "wait",		no_argument, NULL,		'w' },
 	{ "help",		no_argument, NULL,		'h' },
 	{ "verbose",		no_argument, NULL,		'v' },
@@ -261,6 +264,7 @@ static const char *		option_help[] = {
 	"Specify the general profile to use",
 	"Specify the card profile to use",
 	"Read additional command line options from file",
+	"For a new key specify GUID for a MD container",
 	"Wait for card insertion",
 	"Display this message",
 	"Verbose operation. Use several times to enable debug output.",
@@ -287,6 +291,7 @@ enum {
 	ACTION_SANITY_CHECK,
 	ACTION_UPDATE_LAST_UPDATE,
 	ACTION_ERASE_APPLICATION,
+	ACTION_PRINT_VERSION,
 
 	ACTION_MAX
 };
@@ -307,7 +312,8 @@ static const char *action_names[] = {
 	"change attribute(s)",
 	"check card's sanity",
 	"update 'last-update'",
-	"erase application"
+	"erase application",
+	"print OpenSC package version"
 };
 
 #define MAX_CERTS		4
@@ -360,6 +366,7 @@ static char *			opt_application_id = NULL;
 static char *			opt_application_name = NULL;
 static char *			opt_bind_to_aid = NULL;
 static char *			opt_puk_authid = NULL;
+static char *			opt_md_container_guid = NULL;
 static unsigned int		opt_x509_usage = 0;
 static unsigned int		opt_delete_flags = 0;
 static unsigned int		opt_type = 0;
@@ -1500,7 +1507,7 @@ do_generate_key(struct sc_profile *profile, const char *spec)
 
 	if ((r = init_keyargs(&keygen_args.prkey_args)) < 0)
 		return r;
-        keygen_args.prkey_args.access_flags |=
+	keygen_args.prkey_args.access_flags |=
 		  SC_PKCS15_PRKEY_ACCESS_SENSITIVE
 		| SC_PKCS15_PRKEY_ACCESS_ALWAYSSENSITIVE
 		| SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE
@@ -1558,7 +1565,7 @@ static int init_keyargs(struct sc_pkcs15init_prkeyargs *args)
 		sc_pkcs15_format_id(opt_authid, &args->auth_id);
 	} else if (!opt_insecure) {
 		util_error("no PIN given for key - either use --insecure or \n"
-		      "specify a PIN using --auth-id");
+				"specify a PIN using --auth-id");
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	if (opt_extractable) {
@@ -1566,6 +1573,12 @@ static int init_keyargs(struct sc_pkcs15init_prkeyargs *args)
 	}
 	args->label = opt_label;
 	args->x509_usage = opt_x509_usage;
+
+	if (opt_md_container_guid)   {
+		args->guid = (unsigned char *)opt_md_container_guid;
+		args->guid_len = strlen(opt_md_container_guid);
+	}
+
 	return 0;
 }
 
@@ -2551,6 +2564,12 @@ handle_option(const struct option *opt)
 		break;
 	case OPT_UPDATE_EXISTING:
 		opt_update_existing = 1;
+		break;
+	case OPT_MD_CONTAINER_GUID:
+		opt_md_container_guid = optarg;
+		break;
+	case OPT_VERSION:
+		this_action = ACTION_PRINT_VERSION;
 		break;
 	default:
 		util_print_usage_and_die(app_name, options, option_help, NULL);

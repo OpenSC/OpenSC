@@ -88,7 +88,7 @@ static const struct sc_asn1_entry c_asn1_profile_indication[C_ASN1_PROFILE_INDIC
 
 #define C_ASN1_TOKI_ATTRS_SIZE 15
 static const struct sc_asn1_entry c_asn1_toki_attrs[C_ASN1_TOKI_ATTRS_SIZE] = {
-	{ "version",        SC_ASN1_INTEGER,		SC_ASN1_TAG_INTEGER, 0, NULL, NULL },
+	{ "version",	    SC_ASN1_INTEGER,		SC_ASN1_TAG_INTEGER, 0, NULL, NULL },
 	{ "serialNumber",   SC_ASN1_OCTET_STRING,	SC_ASN1_TAG_OCTET_STRING, SC_ASN1_OPTIONAL, NULL, NULL },
 	{ "manufacturerID", SC_ASN1_UTF8STRING,		SC_ASN1_TAG_UTF8STRING, SC_ASN1_OPTIONAL, NULL, NULL },
 	{ "label",	    SC_ASN1_UTF8STRING,		SC_ASN1_CTX | 0, SC_ASN1_OPTIONAL, NULL, NULL },
@@ -111,9 +111,11 @@ static const struct sc_asn1_entry c_asn1_tokeninfo[] = {
 	{ NULL, 0, 0, 0, NULL, NULL }
 };
 
-static void sc_pkcs15_free_unusedspace(struct sc_pkcs15_card *p15card);
-static void sc_pkcs15_remove_dfs(struct sc_pkcs15_card *p15card);
-static void sc_pkcs15_remove_objects(struct sc_pkcs15_card *p15card);
+static void sc_pkcs15_free_unusedspace(struct sc_pkcs15_card *);
+static void sc_pkcs15_remove_dfs(struct sc_pkcs15_card *);
+static void sc_pkcs15_remove_objects(struct sc_pkcs15_card *);
+static int sc_pkcs15_aux_get_md_guid(struct sc_pkcs15_card *, const struct sc_pkcs15_object *,
+		unsigned, unsigned char *, size_t *);
 
 int sc_pkcs15_parse_tokeninfo(sc_context_t *ctx,
 	sc_pkcs15_tokeninfo_t *ti, const u8 *buf, size_t blen)
@@ -132,7 +134,7 @@ int sc_pkcs15_parse_tokeninfo(sc_context_t *ctx,
 	u8 preferred_language[3];
 	size_t lang_length = sizeof(preferred_language);
 	struct sc_asn1_entry asn1_supported_algorithms[SC_MAX_SUPPORTED_ALGORITHMS + 1],
-			     asn1_algo_infos[SC_MAX_SUPPORTED_ALGORITHMS][7];
+			asn1_algo_infos[SC_MAX_SUPPORTED_ALGORITHMS][7];
 	size_t reference_len = sizeof(ti->supported_algos[0].reference);
 	size_t mechanism_len = sizeof(ti->supported_algos[0].mechanism);
 	size_t operations_len = sizeof(ti->supported_algos[0].operations);
@@ -267,7 +269,7 @@ sc_pkcs15_encode_tokeninfo(sc_context_t *ctx, sc_pkcs15_tokeninfo_t *ti,
 	struct sc_asn1_entry asn1_toki_attrs[C_ASN1_TOKI_ATTRS_SIZE];
 	struct sc_asn1_entry asn1_tokeninfo[2];
 	struct sc_asn1_entry asn1_supported_algorithms[SC_MAX_SUPPORTED_ALGORITHMS + 1],
-			     asn1_algo_infos[SC_MAX_SUPPORTED_ALGORITHMS][7];
+			asn1_algo_infos[SC_MAX_SUPPORTED_ALGORITHMS][7];
 	size_t reference_len = sizeof(ti->supported_algos[0].reference);
 	size_t mechanism_len = sizeof(ti->supported_algos[0].mechanism);
 	size_t operations_len = sizeof(ti->supported_algos[0].operations);
@@ -407,7 +409,7 @@ fix_authentic_ddo(struct sc_pkcs15_card *p15card)
 			sc_file_free(p15card->file_odf);
 			p15card->file_odf = NULL;
 		}
-	        if (p15card->file_tokeninfo != NULL) {
+		if (p15card->file_tokeninfo != NULL) {
 			sc_file_free(p15card->file_tokeninfo);
 			p15card->file_tokeninfo = NULL;
 		}
@@ -1205,8 +1207,8 @@ sc_pkcs15_bind(struct sc_card *card, struct sc_aid *aid,
 				p15card->opts.pin_cache_ignore_user_consent);
 	}
 	sc_log(ctx, "PKCS#15 options: use_file_cache=%d use_pin_cache=%d pin_cache_counter=%d pin_cache_ignore_user_consent=%d",
-	         p15card->opts.use_file_cache, p15card->opts.use_pin_cache,
-		 p15card->opts.pin_cache_counter, p15card->opts.pin_cache_ignore_user_consent);
+			p15card->opts.use_file_cache, p15card->opts.use_pin_cache,p15card->opts.pin_cache_counter,
+			p15card->opts.pin_cache_ignore_user_consent);
 
 	r = sc_lock(card);
 	if (r) {
@@ -1220,7 +1222,7 @@ sc_pkcs15_bind(struct sc_card *card, struct sc_aid *aid,
 		sc_log(ctx, "PKCS#15 emulation enabled");
 		emu_first = scconf_get_bool(conf_block, "try_emulation_first", 0);
 		if (emu_first || sc_pkcs15_is_emulation_only(card)) {
-			r = sc_pkcs15_bind_synthetic(p15card);
+			r = sc_pkcs15_bind_synthetic(p15card, aid);
 			if (r == SC_SUCCESS)
 				goto done;
 			r = sc_pkcs15_bind_internal(p15card, aid);
@@ -1230,7 +1232,7 @@ sc_pkcs15_bind(struct sc_card *card, struct sc_aid *aid,
 			r = sc_pkcs15_bind_internal(p15card, aid);
 			if (r == SC_SUCCESS)
 				goto done;
-			r = sc_pkcs15_bind_synthetic(p15card);
+			r = sc_pkcs15_bind_synthetic(p15card, aid);
 			if (r < 0)
 				goto error;
 		}
@@ -1276,6 +1278,7 @@ __sc_pkcs15_search_objects(struct sc_pkcs15_card *p15card, unsigned int class_ma
 	struct sc_pkcs15_df	*df = NULL;
 	unsigned int	df_mask = 0;
 	size_t		match_count = 0;
+	int r;
 
 	if (type)
 		class_mask |= SC_PKCS15_TYPE_TO_CLASS(type);
@@ -1312,9 +1315,12 @@ __sc_pkcs15_search_objects(struct sc_pkcs15_card *p15card, unsigned int class_ma
 		}
 		if (df->enumerated)
 			continue;
-		/* Enumerate the DF's, so p15card->obj_list is
-		 * populated. */
-		if (SC_SUCCESS != sc_pkcs15_parse_df(p15card, df))
+		/* Enumerate the DF's, so p15card->obj_list is populated. */
+		if (p15card->ops.parse_df)
+			r = p15card->ops.parse_df(p15card, df);
+		else
+			r = sc_pkcs15_parse_df(p15card, df);
+		if (r != SC_SUCCESS)
 			continue;
 	}
 
@@ -1563,9 +1569,8 @@ sc_pkcs15_search_objects(struct sc_pkcs15_card *p15card, struct sc_pkcs15_search
 
 int
 sc_pkcs15_get_objects_cond(struct sc_pkcs15_card *p15card, unsigned int type,
-			       int (* func)(struct sc_pkcs15_object *, void *),
-			       void *func_arg,
-			       struct sc_pkcs15_object **ret, size_t ret_size)
+		int (* func)(struct sc_pkcs15_object *, void *),
+		void *func_arg, struct sc_pkcs15_object **ret, size_t ret_size)
 {
 	return __sc_pkcs15_search_objects(p15card, 0, type,
 			func, func_arg, ret, ret_size);
@@ -1788,8 +1793,7 @@ sc_pkcs15_find_data_object_by_name(struct sc_pkcs15_card *p15card, const char *a
 
 int
 sc_pkcs15_find_prkey_by_id_usage(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_id *id,
-			       unsigned int usage,
-			       struct sc_pkcs15_object **out)
+		unsigned int usage, struct sc_pkcs15_object **out)
 {
 	struct sc_pkcs15_search_key sk;
 
@@ -2020,11 +2024,6 @@ sc_pkcs15_parse_df(struct sc_pkcs15_card *p15card, struct sc_pkcs15_df *df)
 		     const u8 **nbuf, size_t *nbufsize) = NULL;
 
 	sc_log(ctx, "called; path=%s, type=%d, enum=%d", sc_print_path(&df->path), df->type, df->enumerated);
-
-	if (p15card->ops.parse_df)   {
-		r = p15card->ops.parse_df(p15card, df);
-		LOG_FUNC_RETURN(ctx, r);
-	}
 
 	if (df->enumerated)
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
@@ -2703,7 +2702,7 @@ sc_pkcs15_serialize_guid(unsigned char *in, size_t in_size, unsigned flags,
 
 int
 sc_pkcs15_get_object_guid(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_object *obj,
-		                unsigned flags, unsigned char *out, size_t *out_size)
+		unsigned flags, unsigned char *out, size_t *out_size)
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_serial_number serialnr;
@@ -2719,6 +2718,12 @@ sc_pkcs15_get_object_guid(struct sc_pkcs15_card *p15card, const struct sc_pkcs15
 		rv = p15card->ops.get_guid(p15card, obj, out, out_size);
 		LOG_FUNC_RETURN(ctx, rv);
 	}
+
+	rv = sc_pkcs15_aux_get_md_guid(p15card, obj, flags, out, out_size);
+	if (rv == SC_SUCCESS)
+		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+	else if (rv != SC_ERROR_NOT_SUPPORTED)
+		LOG_TEST_RET(ctx, rv, "Failed to get alternative object GUID");
 
 	memset(out, 0, *out_size);
 
@@ -2750,9 +2755,9 @@ sc_pkcs15_get_object_guid(struct sc_pkcs15_card *p15card, const struct sc_pkcs15
 	memcpy(guid_bin + id.len, serialnr.value, serialnr.len);
 	guid_bin_size = id.len + serialnr.len;
 
-        /*
+	/*
 	 * If OpenSSL is available (SHA1), then rather use the hash of the data
-         * - this also protects against data being too short
+	 * - this also protects against data being too short
 	 */
 #ifdef ENABLE_OPENSSL
 	SHA1(guid_bin, guid_bin_size, guid_bin);
@@ -2770,6 +2775,31 @@ sc_pkcs15_get_object_guid(struct sc_pkcs15_card *p15card, const struct sc_pkcs15
 	LOG_TEST_RET(ctx, rv, "Serialize GUID error");
 
 	*out_size = strlen((char *)out);
+	LOG_FUNC_RETURN(ctx, rv);
+}
+
+
+static int
+sc_pkcs15_aux_get_md_guid(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_object *obj,
+		unsigned flags,
+		unsigned char *out, size_t *out_size)
+{
+	struct sc_context *ctx = p15card->card->ctx;
+	struct sc_pkcs15_prkey_info *prkey_info = NULL;
+	int rv;
+
+	LOG_FUNC_CALLED(ctx);
+	if(!out || !out_size)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+
+	if ((obj->type & SC_PKCS15_TYPE_CLASS_MASK) != SC_PKCS15_TYPE_PRKEY)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
+
+	prkey_info = (struct sc_pkcs15_prkey_info *)obj->data;
+	if (!prkey_info->aux_data || prkey_info->aux_data->type != SC_AUX_DATA_TYPE_MD_CMAP_RECORD)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
+
+	rv = sc_aux_data_get_md_guid(ctx, prkey_info->aux_data, flags, out, out_size);
 	LOG_FUNC_RETURN(ctx, rv);
 }
 

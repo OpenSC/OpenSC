@@ -33,7 +33,7 @@
 #define MANU_ID		"Giesecke & Devrient GmbH"
 #define STARCERT	"StarCertV2201"
 
-int sc_pkcs15emu_starcert_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
+int sc_pkcs15emu_starcert_init_ex(sc_pkcs15_card_t *, struct sc_aid *,sc_pkcs15emu_opt_t *);
 
 typedef struct cdata_st {
 	const char *label;
@@ -270,6 +270,7 @@ static int sc_pkcs15emu_starcert_init(sc_pkcs15_card_t *p15card)
 }
 
 int sc_pkcs15emu_starcert_init_ex(sc_pkcs15_card_t *p15card,
+				  struct sc_aid *aid,
 				  sc_pkcs15emu_opt_t *opts)
 {
 

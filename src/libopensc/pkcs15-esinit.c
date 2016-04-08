@@ -29,7 +29,7 @@
 
 #define MANU_ID		"entersafe"
 
-int sc_pkcs15emu_entersafe_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
+int sc_pkcs15emu_entersafe_init_ex(sc_pkcs15_card_t *, struct sc_aid *, sc_pkcs15emu_opt_t *);
 
 static int entersafe_detect_card( sc_pkcs15_card_t *p15card)
 {
@@ -77,6 +77,7 @@ static int sc_pkcs15emu_entersafe_init( sc_pkcs15_card_t *p15card)
 }
 
 int sc_pkcs15emu_entersafe_init_ex(sc_pkcs15_card_t *p15card,
+				   struct sc_aid *aid,
 				  sc_pkcs15emu_opt_t *opts)
 {
 	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
