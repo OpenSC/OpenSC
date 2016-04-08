@@ -142,6 +142,10 @@ sc_aux_data_get_md_guid(struct sc_context *ctx, struct sc_auxiliary_data *aux_da
 
 	cmap_record = &aux_data->data.cmap_record;
 
+	/* Ignore silently request of '{}' frame is output buffer is too small */
+	if (!flags && *out_size < strlen((char *)cmap_record->guid) + 2)
+		flags = 1;
+
 	*guid = '\0';
 	if (!flags)
 		strcpy(guid, "{");
@@ -149,8 +153,10 @@ sc_aux_data_get_md_guid(struct sc_context *ctx, struct sc_auxiliary_data *aux_da
 	if (!flags)
 		strlcat(guid, "}", sizeof(guid));
 
-	if (*out_size < strlen(guid))
+	if (*out_size < strlen(guid))   {
+		sc_log(ctx, "aux-data: buffer too small: out_size:%i < guid-length:%i", *out_size, strlen(guid));
 		LOG_FUNC_RETURN(ctx, SC_ERROR_BUFFER_TOO_SMALL);
+	}
 
 	memset(out, 0, *out_size);
 	memcpy(out, guid, strlen(guid));
@@ -165,8 +171,6 @@ int
 sc_aux_data_get_md_flags(struct sc_context *ctx, struct sc_auxiliary_data *aux_data,
 		unsigned char *flags)
 {
-	struct sc_md_cmap_record *cmap_record = NULL;
-
 	LOG_FUNC_CALLED(ctx);
 	if(!aux_data || !flags)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
