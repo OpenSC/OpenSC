@@ -291,6 +291,7 @@ enum {
 	ACTION_SANITY_CHECK,
 	ACTION_UPDATE_LAST_UPDATE,
 	ACTION_ERASE_APPLICATION,
+	ACTION_PRINT_VERSION,
 
 	ACTION_MAX
 };
@@ -311,7 +312,8 @@ static const char *action_names[] = {
 	"change attribute(s)",
 	"check card's sanity",
 	"update 'last-update'",
-	"erase application"
+	"erase application",
+	"print OpenSC package version"
 };
 
 #define MAX_CERTS		4
