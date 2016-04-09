@@ -34,11 +34,8 @@
 #include <unistd.h>
 #endif
 
-#include "internal.h"
-#include "asn1.h"
-#include "pkcs15.h"
-
 #ifdef ENABLE_OPENSSL
+#include <openssl/bn.h>
 #include <openssl/rsa.h>
 #include <openssl/dsa.h>
 #include <openssl/evp.h>
@@ -49,6 +46,11 @@
 #endif
 #endif
 #endif
+
+#include "libopensc/internal.h"
+#include "libopensc/asn1.h"
+#include "libopensc/pkcs15.h"
+
 
 #define C_ASN1_PKINFO_ATTR_SIZE 3
 static const struct sc_asn1_entry c_asn1_pkinfo[C_ASN1_PKINFO_ATTR_SIZE] = {
@@ -732,7 +734,7 @@ sc_pkcs15_decode_pubkey_ec(sc_context_t *ctx,
 	/*
 	 * Only get here if raw point is stored in pkcs15 without curve name
 	 * spki has the curvename, so we can get the field_length
-	 * Following only true for curves that are multiple of 8 
+	 * Following only true for curves that are multiple of 8
 	 */
 	key->params.field_length = (ecpoint_len - 1)/2 * 8;
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
@@ -824,7 +826,7 @@ sc_pkcs15_encode_pubkey_as_spki(sc_context_t *ctx, struct sc_pkcs15_pubkey *pubk
 		pkey.value = pubkey->u.ec.ecpointQ.value;
 		pkey.len = 0; /* flag as do not delete */
 
-	        if (pubkey->u.ec.params.named_curve || pubkey->u.ec.params.der.value)   {
+		if (pubkey->u.ec.params.named_curve || pubkey->u.ec.params.der.value)   {
 			struct sc_ec_parameters *ec_params = NULL;
 
 			r = sc_pkcs15_fix_ec_parameters(ctx, &pubkey->u.ec.params);
@@ -1209,16 +1211,21 @@ sc_pkcs15_read_der_file(sc_context_t *ctx, char * filename,
 {
 	int r;
 	int f = -1;
-	size_t len;
+	size_t len, offs;
 	u8 tagbuf[16]; /* enough to read in the tag and length */
 	u8 * rbuf = NULL;
-	size_t rbuflen;
-	const u8 * body;
+	size_t rbuflen = 0;
+	const u8 * body = NULL;
 	size_t bodylen;
 	unsigned int cla_out, tag_out;
-	*buf = NULL;
 
 	LOG_FUNC_CALLED(ctx);
+	if (!buf || !buflen)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+
+	*buf = NULL;
+	*buflen = 0;
+
 	f = open(filename, O_RDONLY);
 	if (f < 0) {
 		r = SC_ERROR_FILE_NOT_FOUND;
@@ -1232,14 +1239,24 @@ sc_pkcs15_read_der_file(sc_context_t *ctx, char * filename,
 		goto out;
 	}
 	len = r;
+
 	body = tagbuf;
-	if (sc_asn1_read_tag(&body, len, &cla_out, &tag_out, &bodylen) != SC_SUCCESS) {
-		sc_log(ctx, "DER problem");
+	r = sc_asn1_read_tag(&body, len, &cla_out, &tag_out, &bodylen);
+	if (r != SC_SUCCESS)
+		goto out;
+
+	if (tag_out == SC_ASN1_TAG_EOC || body == NULL)   {
+		r = SC_SUCCESS;
+		goto out;
+	}
+
+	offs = body - tagbuf;
+	if (offs > len || offs < 2)   {
 		r = SC_ERROR_INVALID_ASN1_OBJECT;
 		goto out;
 	}
 
-	rbuflen = body - tagbuf + bodylen;
+	rbuflen = offs + bodylen;
 	rbuf = malloc(rbuflen);
 	if (rbuf == NULL) {
 		r = SC_ERROR_OUT_OF_MEMORY;
@@ -1328,7 +1345,7 @@ sc_pkcs15_pubkey_from_spki_fields(struct sc_context *ctx, struct sc_pkcs15_pubke
 		/* EC public key is not encapsulated into BIT STRING -- it's a BIT STRING */
 		/*
 		 * sc_pkcs15_fix_ec_parameters below will set field_length from curve.
-		 * if no alg_id->params, assume field_length is multiple of 8 
+		 * if no alg_id->params, assume field_length is multiple of 8
 		 */
 		pubkey->u.ec.params.field_length = (pk.len - 1) / 2 * 8;
 
@@ -1529,8 +1546,10 @@ sc_pkcs15_convert_pubkey(struct sc_pkcs15_pubkey *pkcs15_key, void *evp_key)
 {
 #ifdef ENABLE_OPENSSL
 	EVP_PKEY *pk = (EVP_PKEY *)evp_key;
+	int pk_type;
+	pk_type = EVP_PKEY_base_id(pk);
 
-	switch (pk->type) {
+	switch (pk_type) {
 	case EVP_PKEY_RSA: {
 		struct sc_pkcs15_pubkey_rsa *dst = &pkcs15_key->u.rsa;
 		RSA *src = EVP_PKEY_get1_RSA(pk);

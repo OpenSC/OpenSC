@@ -9,6 +9,7 @@
 #include "config.h"
 
 #ifdef ENABLE_OPENSSL
+#include <openssl/opensslv.h>
 #include <openssl/bn.h>
 #include <openssl/evp.h>
 #include <openssl/pem.h>
@@ -17,6 +18,10 @@
 #include <openssl/rsa.h>
 #include <openssl/pkcs12.h>
 #include <openssl/x509v3.h>
+
+#include "profile.h"
+#include "libopensc/opensc.h"
+
 
 #define COSM_TLV_TAG		0x00
 

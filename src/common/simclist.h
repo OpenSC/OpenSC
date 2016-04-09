@@ -44,12 +44,39 @@ typedef INT64   int64_t;
 #include <errno.h>
 #include <sys/types.h>
 
+/* bases on OpenSSL's version in e_os2.h  */
+#if !defined(inline)
 /* Be friend of both C90 and C99 compilers */
-#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
-    /* "inline" and "restrict" are keywords */
-#else
-#   define inline           /* inline */
-#   define restrict         /* restrict */
+# if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
+   /* "inline" and "restrict" are keywords */
+#  define simclist_inline  inline
+# elif defined(__GNUC__) && __GNUC__>=2
+#  define simclist_inline  __inline__
+# elif defined(_MSC_VER)
+#  define simclist_inline __inline
+# else
+#  define simclist_inline
+# endif
+#else    /* use what caller wants as inline  may be from config.h */
+#   define simclist_inline  inline           /* inline */
+#endif
+
+/* bases on OpenSSL's version in e_os2.h  */
+/* On MacOS  C++ is used for tokend */
+#if !defined(restrict)
+/* Be friend of both C90 and C99 compilers */
+# if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
+   /* "inline" and "restrict" are keywords */
+#  define simclist_restrict restrict         /* restrict */
+# elif defined(__GNUC__) && __GNUC__>=2
+#  define simclist_restrict __restrict__
+# elif defined(_MSC_VER)
+#  define simclist_restrict __restrict
+# else
+#  define simclist_restrict
+# endif
+#else    /* use what caller wants as restrict may be from config.h */
+#   define simclist_restrict  restrict
 #endif
 
 
@@ -136,7 +163,7 @@ typedef list_hash_t (*element_hash_computer)(const void *el);
  * @param serialize_buffer  reference to fill with the length of the buffer
  * @return                  reference to the buffer with the serialized data
  */
-typedef void *(*element_serializer)(const void *restrict el, uint32_t *restrict serializ_len);
+typedef void *(*element_serializer)(const void *simclist_restrict el, uint32_t *simclist_restrict serializ_len);
 
 /**
  * a function for un-serializing an element.
@@ -153,7 +180,7 @@ typedef void *(*element_serializer)(const void *restrict el, uint32_t *restrict 
  * @param data_len          reference to the location where to store the length of the data in the buffer returned
  * @return                  reference to a buffer with the original, unserialized representation of the element
  */
-typedef void *(*element_unserializer)(const void *restrict data, uint32_t *restrict data_len);
+typedef void *(*element_unserializer)(const void *simclist_restrict data, uint32_t *simclist_restrict data_len);
 
 /* [private-use] list entry -- olds actual user datum */
 struct list_entry_s {
@@ -213,7 +240,7 @@ typedef struct {
  * @param l     must point to a user-provided memory location
  * @return      0 for success. -1 for failure
  */
-int list_init(list_t *restrict l);
+int list_init(list_t *simclist_restrict l);
 
 /**
  * completely remove the list from memory.
@@ -224,7 +251,7 @@ int list_init(list_t *restrict l);
  *
  * @param l     list to destroy
  */
-void list_destroy(list_t *restrict l);
+void list_destroy(list_t *simclist_restrict l);
 
 /**
  * set the comparator function for list elements.
@@ -238,7 +265,7 @@ void list_destroy(list_t *restrict l);
  *
  * @see element_comparator()
  */
-int list_attributes_comparator(list_t *restrict l, element_comparator comparator_fun);
+int list_attributes_comparator(list_t *simclist_restrict l, element_comparator comparator_fun);
 
 /**
  * set a seeker function for list elements.
@@ -252,7 +279,7 @@ int list_attributes_comparator(list_t *restrict l, element_comparator comparator
  *
  * @see element_seeker()
  */
-int list_attributes_seeker(list_t *restrict l, element_seeker seeker_fun);
+int list_attributes_seeker(list_t *simclist_restrict l, element_seeker seeker_fun);
 
 /**
  * require to free element data when list entry is removed (default: don't free).
@@ -284,7 +311,7 @@ int list_attributes_seeker(list_t *restrict l, element_seeker seeker_fun);
  * @see list_meter_double()
  * @see list_meter_string()
  */
-int list_attributes_copy(list_t *restrict l, element_meter metric_fun, int copy_data);
+int list_attributes_copy(list_t *simclist_restrict l, element_meter metric_fun, int copy_data);
 
 /**
  * set the element hash computing function for the list elements.
@@ -304,7 +331,7 @@ int list_attributes_copy(list_t *restrict l, element_meter metric_fun, int copy_
  *
  * @see element_hash_computer()
  */
-int list_attributes_hash_computer(list_t *restrict l, element_hash_computer hash_computer_fun);
+int list_attributes_hash_computer(list_t *simclist_restrict l, element_hash_computer hash_computer_fun);
 
 /**
  * set the element serializer function for the list elements.
@@ -325,7 +352,7 @@ int list_attributes_hash_computer(list_t *restrict l, element_hash_computer hash
  * @see     list_dump_filedescriptor()
  * @see     list_restore_filedescriptor()
  */
-int list_attributes_serializer(list_t *restrict l, element_serializer serializer_fun);
+int list_attributes_serializer(list_t *simclist_restrict l, element_serializer serializer_fun);
 
 /**
  * set the element unserializer function for the list elements.
@@ -347,7 +374,7 @@ int list_attributes_serializer(list_t *restrict l, element_serializer serializer
  * @see     list_dump_filedescriptor()
  * @see     list_restore_filedescriptor()
  */
-int list_attributes_unserializer(list_t *restrict l, element_unserializer unserializer_fun);
+int list_attributes_unserializer(list_t *simclist_restrict l, element_unserializer unserializer_fun);
 
 /**
  * append data at the end of the list.
@@ -359,7 +386,7 @@ int list_attributes_unserializer(list_t *restrict l, element_unserializer unseri
  *
  * @return      1 for success. < 0 for failure
  */
-int list_append(list_t *restrict l, const void *data);
+int list_append(list_t *simclist_restrict l, const void *data);
 
 /**
  * insert data in the head of the list.
@@ -371,7 +398,7 @@ int list_append(list_t *restrict l, const void *data);
  *
  * @return      1 for success. < 0 for failure
  */
-int list_prepend(list_t *restrict l, const void *restrict data);
+int list_prepend(list_t *simclist_restrict l, const void *simclist_restrict data);
 
 /**
  * extract the element in the top of the list.
@@ -381,7 +408,7 @@ int list_prepend(list_t *restrict l, const void *restrict data);
  * @param l     list to operate
  * @return      reference to user datum, or NULL on errors
  */
-void *list_fetch(list_t *restrict l);
+void *list_fetch(list_t *simclist_restrict l);
 
 /**
  * retrieve an element at a given position.
@@ -390,7 +417,7 @@ void *list_fetch(list_t *restrict l);
  * @param pos   [0,size-1] position index of the element wanted
  * @return      reference to user datum, or NULL on errors
  */
-void *list_get_at(const list_t *restrict l, unsigned int pos);
+void *list_get_at(const list_t *simclist_restrict l, unsigned int pos);
 
 /**
  * return the maximum element of the list.
@@ -404,7 +431,7 @@ void *list_get_at(const list_t *restrict l, unsigned int pos);
  * @param l     list to operate
  * @return      the reference to the element, or NULL
  */
-void *list_get_max(const list_t *restrict l);
+void *list_get_max(const list_t *simclist_restrict l);
 
 /**
  * return the minimum element of the list.
@@ -418,7 +445,7 @@ void *list_get_max(const list_t *restrict l);
  * @param l     list to operate
  * @return      the reference to the element, or NULL
  */
-void *list_get_min(const list_t *restrict l);
+void *list_get_min(const list_t *simclist_restrict l);
 
 /**
  * retrieve and remove from list an element at a given position.
@@ -427,7 +454,7 @@ void *list_get_min(const list_t *restrict l);
  * @param pos   [0,size-1] position index of the element wanted
  * @return      reference to user datum, or NULL on errors
  */
-void *list_extract_at(list_t *restrict l, unsigned int pos);
+void *list_extract_at(list_t *simclist_restrict l, unsigned int pos);
 
 /**
  * insert an element at a given position.
@@ -437,7 +464,7 @@ void *list_extract_at(list_t *restrict l, unsigned int pos);
  * @param pos   [0,size-1] position index to insert the element at
  * @return      positive value on success. Negative on failure
  */
-int list_insert_at(list_t *restrict l, const void *data, unsigned int pos);
+int list_insert_at(list_t *simclist_restrict l, const void *data, unsigned int pos);
 
 /**
  * expunge the first found given element from the list.
@@ -454,7 +481,7 @@ int list_insert_at(list_t *restrict l, const void *data, unsigned int pos);
  * @see list_attributes_comparator()
  * @see list_delete_at()
  */
-int list_delete(list_t *restrict l, const void *data);
+int list_delete(list_t *simclist_restrict l, const void *data);
 
 /**
  * expunge an element at a given position from the list.
@@ -463,7 +490,7 @@ int list_delete(list_t *restrict l, const void *data);
  * @param pos   [0,size-1] position index of the element to be deleted
  * @return      0 on success. Negative value on failure
  */
-int list_delete_at(list_t *restrict l, unsigned int pos);
+int list_delete_at(list_t *simclist_restrict l, unsigned int pos);
 
 /**
  * expunge an array of elements from the list, given their position range.
@@ -473,7 +500,7 @@ int list_delete_at(list_t *restrict l, unsigned int pos);
  * @param posend    [posstart,size-1] position of the last element to be deleted
  * @return      the number of elements successfully removed
  */
-int list_delete_range(list_t *restrict l, unsigned int posstart, unsigned int posend);
+int list_delete_range(list_t *simclist_restrict l, unsigned int posstart, unsigned int posend);
 
 /**
  * clear all the elements off of the list.
@@ -486,7 +513,7 @@ int list_delete_range(list_t *restrict l, unsigned int posstart, unsigned int po
  * @param l     list to operate
  * @return      the number of elements in the list before cleaning
  */
-int list_clear(list_t *restrict l);
+int list_clear(list_t *simclist_restrict l);
 
 /**
  * inspect the number of elements in the list.
@@ -494,7 +521,7 @@ int list_clear(list_t *restrict l);
  * @param l     list to operate
  * @return      number of elements currently held by the list
  */
-unsigned int list_size(const list_t *restrict l);
+unsigned int list_size(const list_t *simclist_restrict l);
 
 /**
  * inspect whether the list is empty.
@@ -504,7 +531,7 @@ unsigned int list_size(const list_t *restrict l);
  *
  * @see list_size()
  */
-int list_empty(const list_t *restrict l);
+int list_empty(const list_t *simclist_restrict l);
 
 /**
  * find the position of an element in a list.
@@ -523,7 +550,7 @@ int list_empty(const list_t *restrict l);
  * @see list_attributes_comparator()
  * @see list_get_at()
  */
-int list_locate(const list_t *restrict l, const void *data);
+int list_locate(const list_t *simclist_restrict l, const void *data);
 
 /**
  * returns an element given an indicator.
@@ -538,7 +565,7 @@ int list_locate(const list_t *restrict l, const void *data);
  * @param indicator indicator data to pass to the seeker along with elements
  * @return      reference to the element accepted by the seeker, or NULL if none found
  */
-void *list_seek(list_t *restrict l, const void *indicator);
+void *list_seek(list_t *simclist_restrict l, const void *indicator);
 
 /**
  * inspect whether some data is member of the list.
@@ -559,7 +586,7 @@ void *list_seek(list_t *restrict l, const void *indicator);
  *
  * @see list_attributes_comparator()
  */
-int list_contains(const list_t *restrict l, const void *data);
+int list_contains(const list_t *simclist_restrict l, const void *data);
 
 /**
  * concatenate two lists
@@ -578,7 +605,7 @@ int list_contains(const list_t *restrict l, const void *data);
  * @param dest  reference to the destination list
  * @return      0 for success, -1 for errors
  */
-int list_concat(const list_t *l1, const list_t *l2, list_t *restrict dest);
+int list_concat(const list_t *l1, const list_t *l2, list_t *simclist_restrict dest);
 
 /**
  * sort list elements.
@@ -595,7 +622,7 @@ int list_concat(const list_t *l1, const list_t *l2, list_t *restrict dest);
  *
  * @see list_attributes_comparator()
  */
-int list_sort(list_t *restrict l, int versus);
+int list_sort(list_t *simclist_restrict l, int versus);
 
 /**
  * start an iteration session.
@@ -607,7 +634,7 @@ int list_sort(list_t *restrict l, int versus);
  *
  * @see list_iterator_stop()
  */
-int list_iterator_start(list_t *restrict l);
+int list_iterator_start(list_t *simclist_restrict l);
 
 /**
  * return the next element in the iteration session.
@@ -615,7 +642,7 @@ int list_iterator_start(list_t *restrict l);
  * @param l     list to operate
  * @return		element datum, or NULL on errors
  */
-void *list_iterator_next(list_t *restrict l);
+void *list_iterator_next(list_t *simclist_restrict l);
 
 /**
  * inspect whether more elements are available in the iteration session.
@@ -623,7 +650,7 @@ void *list_iterator_next(list_t *restrict l);
  * @param l     list to operate
  * @return      0 iff no more elements are available.
  */
-int list_iterator_hasnext(const list_t *restrict l);
+int list_iterator_hasnext(const list_t *simclist_restrict l);
 
 /**
  * end an iteration session.
@@ -631,7 +658,7 @@ int list_iterator_hasnext(const list_t *restrict l);
  * @param l     list to operate
  * @return      0 iff the iteration session cannot be stopped
  */
-int list_iterator_stop(list_t *restrict l);
+int list_iterator_stop(list_t *simclist_restrict l);
 
 /**
  * return the hash of the current status of the list.
@@ -641,7 +668,7 @@ int list_iterator_stop(list_t *restrict l);
  *
  * @return      0 for success; <0 for failure
  */
-int list_hash(const list_t *restrict l, list_hash_t *restrict hash);
+int list_hash(const list_t *simclist_restrict l, list_hash_t *simclist_restrict hash);
 
 #ifdef SIMCLIST_DUMPRESTORE
 /**
@@ -659,7 +686,7 @@ int list_hash(const list_t *restrict l, list_hash_t *restrict hash);
  *
  * @see list_dump_filedescriptor()
  */
-int list_dump_getinfo_filedescriptor(int fd, list_dump_info_t *restrict info);
+int list_dump_getinfo_filedescriptor(int fd, list_dump_info_t *simclist_restrict info);
 
 /**
  * get meta informations on a list dump on file.
@@ -674,7 +701,7 @@ int list_dump_getinfo_filedescriptor(int fd, list_dump_info_t *restrict info);
  *
  * @see list_dump_filedescriptor()
  */
-int list_dump_getinfo_file(const char *restrict filename, list_dump_info_t *restrict info);
+int list_dump_getinfo_file(const char *simclist_restrict filename, list_dump_info_t *simclist_restrict info);
 
 /**
  * dump the list into an open, writable file descriptor.
@@ -710,7 +737,7 @@ int list_dump_getinfo_file(const char *restrict filename, list_dump_info_t *rest
  * @see list_attributes_copy()
  * @see list_attributes_serializer()
  */
-int list_dump_filedescriptor(const list_t *restrict l, int fd, size_t *restrict len);
+int list_dump_filedescriptor(const list_t *simclist_restrict l, int fd, size_t *simclist_restrict len);
 
 /**
  * dump the list to a file name.
@@ -733,7 +760,7 @@ int list_dump_filedescriptor(const list_t *restrict l, int fd, size_t *restrict 
  *
  * This function stores a representation of the list
  */
-int list_dump_file(const list_t *restrict l, const char *restrict filename, size_t *restrict len);
+int list_dump_file(const list_t *simclist_restrict l, const char *simclist_restrict filename, size_t *simclist_restrict len);
 
 /**
  * restore the list from an open, readable file descriptor to memory.
@@ -753,7 +780,7 @@ int list_dump_file(const list_t *restrict l, const char *restrict filename, size
  * @param len   location to store the length of the dump read (bytes), or NULL
  * @return      0 if successful; -1 otherwise
  */
-int list_restore_filedescriptor(list_t *restrict l, int fd, size_t *restrict len);
+int list_restore_filedescriptor(list_t *simclist_restrict l, int fd, size_t *simclist_restrict len);
 
 /**
  * restore the list from a file name.
@@ -771,7 +798,7 @@ int list_restore_filedescriptor(list_t *restrict l, int fd, size_t *restrict len
  * @param len       location to store the length of the dump read (bytes), or NULL
  * @return          0 if successful; -1 otherwise
  */
-int list_restore_file(list_t *restrict l, const char *restrict filename, size_t *len);
+int list_restore_file(list_t *simclist_restrict l, const char *simclist_restrict filename, size_t *len);
 #endif
 
 /* ready-made comparators, meters and hash computers */

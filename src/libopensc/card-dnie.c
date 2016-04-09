@@ -687,7 +687,7 @@ static void dnie_clear_cache(dnie_private_data_t * data)
  *
  * @param card pointer to card data
  */
-static inline void init_flags(struct sc_card *card)
+static void init_flags(struct sc_card *card)
 {
 	unsigned long algoflags;
 	/* set up flags according documentation */

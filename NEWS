@@ -1,4 +1,82 @@
 NEWS for OpenSC -- History of user visible changes
+New in 0.16.0; 2016-03-15
+* still TODO:
+56d52af Merge pull request #617 from mtrojnar/os_locking
+ee59157 Merge pull request #516 from frankmorgner/lock
+d7d64ee Merge pull request #494 from frankmorgner/fork
+9a590d6 do not reset the authentication state before each operation
+
+* build
+    link OpenSSL in static 
+* configuration
+    use one configuration file for all systems
+* tools:
+    package revision as version
+  ** pkcs11-tool
+       keygen mechanism in pkcs11 tools
+       write GOST public key
+       fix CKA_SENSITIVE attribute of public keys
+  ** opensc-explorer:
+       added command find_tags
+       allow ASN.1 decoding if the file seems incomplete
+  ** pkcs15-tool:
+       handle record-based files when doing file caching
+       option to prine raw data
+  ** sc-hsm-tool:
+       status info support for SmartCard-HSM V2.0
+* minidriver:
+  support for ECC
+  Windows x509 enrollment
+  first implementation of CardDeleteContainer
+* reader-pcsc
+  fixed unreleased locks with pcsc-lite
+  honour PC/SC pt 10 dwMaxAPDUDataSize
+  added call back for getting vendor/product id
+  restrict access to card handles after fork
+  SCardGetAttrib is used to initialize reader's metadata
+* pkcs11
+  no slot reserved for hot plug
+  no more slot created 'per-applications'
+  atomic operation (TODO: expand)
+  export all C_* symbols
+  metadata initialized from package info
+  fix registering pkcs11 mechanisms multiple times
+  sloppy initialization for C_GetSlotInfo
+* pkcs15
+  cache of on-card files extended to application paths
+  configuration option to enable/disable application
+  make file cache dir configurable
+* OpenPGP
+  support for Gnuk -- USB cryptographic token for GNU Privacy Guard
+  build without OpenSSL
+  implemented 'erase card'
+  additional manufacturers
+* MyEID
+  support for 521 bit ECC keys
+  ATRs for the new cards
+* sc-hsm
+  read/write support in minidriver
+* rtecp
+  delete keys
+* GemSafeV1
+  support for European Patent Office smart card
+  sign with SHA256
+* Gids
+  first support for Gids smart card
+* dnie
+* Feitian PKI card
+  new ATRs 
+* IsoApplet
+  (fixes)
+* starcos
+  initial support for STARCOS 3.4 (German D-Trust cards)
+* macosx
+  install tokend to /Library/Security/ instead /System/Library/Security/
+* PIV
+  allow using of cards where default application in not PIV
+  support for the Yubikey NEO
+* italian-CNS
+  italian-cns reg file for minidriver
 New in 0.15.0; 2015-05-11
 * new card drivers
   AzeDIT 3.5
