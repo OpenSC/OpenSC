@@ -94,10 +94,6 @@ static unsigned char g_random[8] = {
 	0xBF, 0xC3, 0x29, 0x11, 0xC7, 0x18, 0xC3, 0x40
 };
 
-static unsigned char g_sk_enc[16] = { 0 };	/* encrypt session key */
-static unsigned char g_sk_mac[16] = { 0 };	/* mac session key */
-static unsigned char g_icv_mac[16] = { 0 };	/* instruction counter vector(for sm) */
-
 #define REVERSE_ORDER4(x)	(			  \
 		((unsigned long)x & 0xFF000000)>> 24	| \
 		((unsigned long)x & 0x00FF0000)>>  8 	| \
@@ -328,12 +324,12 @@ gen_init_key(struct sc_card *card, unsigned char *key_enc, unsigned char *key_ma
 
 	/* Step 2,3 - Create S-ENC/S-MAC Session Key */
 	if (KEY_TYPE_AES == key_type) {
-		aes128_encrypt_ecb(key_enc, 16, data, 16, g_sk_enc);
-		aes128_encrypt_ecb(key_mac, 16, data, 16, g_sk_mac);
+		aes128_encrypt_ecb(key_enc, 16, data, 16, card->sm_ctx.info.session.gp.gp_keyset.enc);
+		aes128_encrypt_ecb(key_mac, 16, data, 16, card->sm_ctx.info.session.gp.gp_keyset.mac);
 	}
 	else {
-		des3_encrypt_ecb(key_enc, 16, data, 16, g_sk_enc);
-		des3_encrypt_ecb(key_mac, 16, data, 16, g_sk_mac);
+		des3_encrypt_ecb(key_enc, 16, data, 16, card->sm_ctx.info.session.gp.gp_keyset.enc);
+		des3_encrypt_ecb(key_mac, 16, data, 16, card->sm_ctx.info.session.gp.gp_keyset.mac);
 	}
 
 	memcpy(data, g_random, 8);
@@ -344,9 +340,9 @@ gen_init_key(struct sc_card *card, unsigned char *key_enc, unsigned char *key_ma
 
 	/* calculate host cryptogram */
 	if (KEY_TYPE_AES == key_type)
-		aes128_encrypt_cbc(g_sk_enc, 16, iv, data, 16 + blocksize, cryptogram);
+		aes128_encrypt_cbc(card->sm_ctx.info.session.gp.gp_keyset.enc, 16, iv, data, 16 + blocksize, cryptogram);
 	else
-		des3_encrypt_cbc(g_sk_enc, 16, iv, data, 16 + blocksize, cryptogram);
+		des3_encrypt_cbc(card->sm_ctx.info.session.gp.gp_keyset.enc, 16, iv, data, 16 + blocksize, cryptogram);
 
 	/* verify card cryptogram */
 	if (0 != memcmp(&cryptogram[16], &result[20], 8))
@@ -379,10 +375,10 @@ verify_init_key(struct sc_card *card, unsigned char *ran_key, unsigned char key_
 
 	/* calculate host cryptogram */
 	if (KEY_TYPE_AES == key_type) {
-		aes128_encrypt_cbc(g_sk_enc, 16, iv, data, 16 + blocksize,
+		aes128_encrypt_cbc(card->sm_ctx.info.session.gp.gp_keyset.enc, 16, iv, data, 16 + blocksize,
 				   cryptogram);
 	} else {
-		des3_encrypt_cbc(g_sk_enc, 16, iv, data, 16 + blocksize,
+		des3_encrypt_cbc(card->sm_ctx.info.session.gp.gp_keyset.enc, 16, iv, data, 16 + blocksize,
 				 cryptogram);
 	}
 
@@ -394,15 +390,15 @@ verify_init_key(struct sc_card *card, unsigned char *ran_key, unsigned char key_
 	/* calculate mac icv */
 	memset(iv, 0x00, 16);
 	if (KEY_TYPE_AES == key_type) {
-		aes128_encrypt_cbc(g_sk_mac, 16, iv, data, 16, mac);
+		aes128_encrypt_cbc(card->sm_ctx.info.session.gp.gp_keyset.mac, 16, iv, data, 16, mac);
 		i = 0;
 	} else {
-		des3_encrypt_cbc(g_sk_mac, 16, iv, data, 16, mac);
+		des3_encrypt_cbc(card->sm_ctx.info.session.gp.gp_keyset.mac, 16, iv, data, 16, mac);
 		i = 8;
 	}
 	/* save mac icv */
-	memset(g_icv_mac, 0x00, 16);
-	memcpy(g_icv_mac, &mac[i], 8);
+	memset(card->sm_ctx.info.session.gp.gp_keyset.kek, 0x00, 16);
+	memcpy(card->sm_ctx.info.session.gp.gp_keyset.kek, &mac[i], 8);
 
 	/* verify host cryptogram */
 	memcpy(data, &cryptogram[16], 8);
@@ -464,7 +460,7 @@ epass2003_refresh(struct sc_card *card)
 
 /* Data(TLV)=0x87|L|0x01+Cipher */
 static int
-construct_data_tlv(struct sc_apdu *apdu, unsigned char *apdu_buf,
+construct_data_tlv(struct sc_card *card, struct sc_apdu *apdu, unsigned char *apdu_buf,
 		unsigned char *data_tlv, size_t * data_tlv_len, const unsigned char key_type)
 {
 	size_t block_size = (KEY_TYPE_AES == key_type ? 16 : 8);
@@ -500,9 +496,9 @@ construct_data_tlv(struct sc_apdu *apdu, unsigned char *apdu_buf,
 
 	/* encrypt Data */
 	if (KEY_TYPE_AES == key_type)
-		aes128_encrypt_cbc(g_sk_enc, 16, iv, pad, pad_len, apdu_buf + block_size + tlv_more);
+		aes128_encrypt_cbc(card->sm_ctx.info.session.gp.gp_keyset.enc, 16, iv, pad, pad_len, apdu_buf + block_size + tlv_more);
 	else
-		des3_encrypt_cbc(g_sk_enc, 16, iv, pad, pad_len, apdu_buf + block_size + tlv_more);
+		des3_encrypt_cbc(card->sm_ctx.info.session.gp.gp_keyset.enc, 16, iv, pad, pad_len, apdu_buf + block_size + tlv_more);
 
 	memcpy(data_tlv + tlv_more, apdu_buf + block_size + tlv_more, pad_len);
 	*data_tlv_len = tlv_more + pad_len;
@@ -538,7 +534,7 @@ construct_le_tlv(struct sc_apdu *apdu, unsigned char *apdu_buf, size_t data_tlv_
 
 /* MAC(TLV)=0x8e|0x08|MAC */
 static int
-construct_mac_tlv(unsigned char *apdu_buf, size_t data_tlv_len, size_t le_tlv_len,
+construct_mac_tlv(struct sc_card *card, unsigned char *apdu_buf, size_t data_tlv_len, size_t le_tlv_len,
 		unsigned char *mac_tlv, size_t * mac_tlv_len, const unsigned char key_type)
 {
 	size_t block_size = (KEY_TYPE_AES == key_type ? 16 : 8);
@@ -566,29 +562,29 @@ construct_mac_tlv(unsigned char *apdu_buf, size_t data_tlv_len, size_t le_tlv_le
 
 	/* increase icv */
 	for (; i >= 0; i--) {
-		if (g_icv_mac[i] == 0xff) {
-			g_icv_mac[i] = 0;
+		if (card->sm_ctx.info.session.gp.gp_keyset.kek[i] == 0xff) {
+			card->sm_ctx.info.session.gp.gp_keyset.kek[i] = 0;
 		}
 		else {
-			g_icv_mac[i]++;
+			card->sm_ctx.info.session.gp.gp_keyset.kek[i]++;
 			break;
 		}
 	}
 
 	/* calculate MAC */
 	memset(icv, 0, sizeof(icv));
-	memcpy(icv, g_icv_mac, 16);
+	memcpy(icv, card->sm_ctx.info.session.gp.gp_keyset.kek, 16);
 	if (KEY_TYPE_AES == key_type) {
-		aes128_encrypt_cbc(g_sk_mac, 16, icv, apdu_buf, mac_len, mac);
+		aes128_encrypt_cbc(card->sm_ctx.info.session.gp.gp_keyset.mac, 16, icv, apdu_buf, mac_len, mac);
 		memcpy(mac_tlv + 2, &mac[mac_len - 16], 8);
 	}
 	else {
 		unsigned char iv[8] = { 0 };
 		unsigned char tmp[8] = { 0 };
-		des_encrypt_cbc(g_sk_mac, 8, icv, apdu_buf, mac_len, mac);
-		des_decrypt_cbc(&g_sk_mac[8], 8, iv, &mac[mac_len - 8], 8, tmp);
+		des_encrypt_cbc(card->sm_ctx.info.session.gp.gp_keyset.mac, 8, icv, apdu_buf, mac_len, mac);
+		des_decrypt_cbc(&card->sm_ctx.info.session.gp.gp_keyset.mac[8], 8, iv, &mac[mac_len - 8], 8, tmp);
 		memset(iv, 0x00, 8);
-		des_encrypt_cbc(g_sk_mac, 8, iv, tmp, 8, mac_tlv + 2);
+		des_encrypt_cbc(card->sm_ctx.info.session.gp.gp_keyset.mac, 8, iv, tmp, 8, mac_tlv + 2);
 	}
 
 	*mac_tlv_len = 2 + 8;
@@ -604,7 +600,7 @@ construct_mac_tlv(unsigned char *apdu_buf, size_t data_tlv_len, size_t le_tlv_le
  * where
  * Data'=Data(TLV)+Le(TLV)+MAC(TLV) */
 static int
-encode_apdu(struct sc_apdu *plain, struct sc_apdu *sm,
+encode_apdu(struct sc_card *card, struct sc_apdu *plain, struct sc_apdu *sm,
 		unsigned char *apdu_buf, size_t * apdu_buf_len)
 {
 	size_t block_size = (KEY_TYPE_DES == g_smtype ? 16 : 8);
@@ -635,7 +631,7 @@ encode_apdu(struct sc_apdu *plain, struct sc_apdu *sm,
 
 	/* Data -> Data' */
 	if (plain->lc != 0)
-		if (0 != construct_data_tlv(plain, apdu_buf, dataTLV, &data_tlv_len, g_smtype))
+		if (0 != construct_data_tlv(card, plain, apdu_buf, dataTLV, &data_tlv_len, g_smtype))
 			return -1;
 
 	if (plain->le != 0 || (plain->le == 0 && plain->resplen != 0))
@@ -643,7 +639,7 @@ encode_apdu(struct sc_apdu *plain, struct sc_apdu *sm,
 				     &le_tlv_len, g_smtype))
 			return -1;
 
-	if (0 != construct_mac_tlv(apdu_buf, data_tlv_len, le_tlv_len, mac_tlv, &mac_tlv_len, g_smtype))
+	if (0 != construct_mac_tlv(card, apdu_buf, data_tlv_len, le_tlv_len, mac_tlv, &mac_tlv_len, g_smtype))
 		return -1;
 
 	memset(apdu_buf + 4, 0, *apdu_buf_len - 4);
@@ -714,7 +710,7 @@ epass2003_sm_wrap_apdu(struct sc_card *card, struct sc_apdu *plain, struct sc_ap
 		break;
 	case 0x0C:
 		memset(buf, 0, sizeof(buf));
-		if (0 != encode_apdu(plain, sm, buf, &buf_len))
+		if (0 != encode_apdu(card, plain, sm, buf, &buf_len))
 			return SC_ERROR_CARD_CMD_FAILED;
 		break;
 	default:
@@ -737,7 +733,7 @@ epass2003_sm_wrap_apdu(struct sc_card *card, struct sc_apdu *plain, struct sc_ap
  * SW12(TLV)=0x99|0x02|SW1+SW2
  * MAC(TLV)=0x8e|0x08|MAC */
 static int
-decrypt_response(unsigned char *in, unsigned char *out, size_t * out_len)
+decrypt_response(struct sc_card *card, unsigned char *in, unsigned char *out, size_t * out_len)
 {
 	size_t in_len;
 	size_t i;
@@ -768,9 +764,9 @@ decrypt_response(unsigned char *in, unsigned char *out, size_t * out_len)
 
 	/* decrypt */
 	if (KEY_TYPE_AES == g_smtype)
-		aes128_decrypt_cbc(g_sk_enc, 16, iv, &in[i], in_len - 1, plaintext);
+		aes128_decrypt_cbc(card->sm_ctx.info.session.gp.gp_keyset.enc, 16, iv, &in[i], in_len - 1, plaintext);
 	else
-		des3_decrypt_cbc(g_sk_enc, 16, iv, &in[i], in_len - 1, plaintext);
+		des3_decrypt_cbc(card->sm_ctx.info.session.gp.gp_keyset.enc, 16, iv, &in[i], in_len - 1, plaintext);
 
 	/* unpadding */
 	while (0x80 != plaintext[in_len - 2] && (in_len - 2 > 0))
@@ -796,7 +792,7 @@ epass2003_sm_unwrap_apdu(struct sc_card *card, struct sc_apdu *sm, struct sc_apd
 	r = sc_check_sw(card, sm->sw1, sm->sw2);
 	if (r == SC_SUCCESS) {
 		if (g_sm) {
-			if (0 != decrypt_response(sm->resp, plain->resp, &len))
+			if (0 != decrypt_response(card, sm->resp, plain->resp, &len))
 				return SC_ERROR_CARD_CMD_FAILED;
 		}
 		else {
@@ -2295,6 +2291,8 @@ epass2003_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries
 	unsigned char maxtries = 0;
 
 	LOG_FUNC_CALLED(card->ctx);
+
+	epass2003_refresh(card);
 
 	internal_sanitize_pin_info(&data->pin1, 0);
 	internal_sanitize_pin_info(&data->pin2, 1);
