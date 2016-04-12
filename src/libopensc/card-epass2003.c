@@ -22,6 +22,7 @@
 #if HAVE_CONFIG_H
 #include "config.h"
 #endif
+
 #ifdef ENABLE_SM		/* empty file without SM enabled */
 #ifdef ENABLE_OPENSSL		/* empty file without openssl */
 
@@ -106,6 +107,18 @@ static unsigned char g_icv_mac[16] = { 0 };	/* instruction counter vector(for sm
 
 static int epass2003_transmit_apdu(struct sc_card *card, struct sc_apdu *apdu);
 static int epass2003_select_file(struct sc_card *card, const sc_path_t * in_path, sc_file_t ** file_out);
+
+static int
+sc_transmit_apdu_t(sc_card_t *card, sc_apdu_t *apdu)
+{
+	int r = sc_transmit_apdu(card, apdu);
+	if ( ((0x69 == apdu->sw1) && (0x85 == apdu->sw2)) || ((0x69 == apdu->sw1) && (0x88 == apdu->sw2)))
+	{
+		epass2003_init(card);
+		r = sc_transmit_apdu(card, apdu);
+	}
+	return r;
+}
 
 static int
 openssl_enc(const EVP_CIPHER * cipher, const unsigned char *key, const unsigned char *iv,
@@ -899,7 +912,7 @@ epass2003_transmit_apdu(struct sc_card *card, struct sc_apdu *apdu)
 
 	LOG_FUNC_CALLED(card->ctx);
 
-	r = sc_transmit_apdu(card, apdu);
+	r = sc_transmit_apdu_t(card, apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	return r;
@@ -924,11 +937,11 @@ get_data(struct sc_card *card, unsigned char type, unsigned char *data, size_t d
 		/* No SM temporarily */
 		unsigned char tmp_sm = g_sm;
 		g_sm = SM_PLAIN;
-		r = sc_transmit_apdu(card, &apdu);
+		r = sc_transmit_apdu_t(card, &apdu);
 		g_sm = tmp_sm;
 	}
 	else {
-		r = sc_transmit_apdu(card, &apdu);
+		r = sc_transmit_apdu_t(card, &apdu);
 	}
 	LOG_TEST_RET(card->ctx, r, "APDU get_data failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
@@ -1096,7 +1109,7 @@ epass2003_select_fid_(struct sc_card *card, sc_path_t * in_path, sc_file_t ** fi
 		apdu.sw2 = 0x00;
 	}
 	else {
-		r = sc_transmit_apdu(card, &apdu);
+		r = sc_transmit_apdu_t(card, &apdu);
 		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	}
 
@@ -1390,7 +1403,7 @@ epass2003_set_security_env(struct sc_card *card, const sc_security_env_t * env, 
 		locked = 1;
 	}
 	if (apdu.datalen != 0) {
-		r = sc_transmit_apdu(card, &apdu);
+		r = sc_transmit_apdu_t(card, &apdu);
 		if (r) {
 			sc_log(card->ctx, "%s: APDU transmit failed", sc_strerror(r));
 			goto err;
@@ -1406,7 +1419,7 @@ epass2003_set_security_env(struct sc_card *card, const sc_security_env_t * env, 
 		return 0;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0xF2, se_num);
-	r = sc_transmit_apdu(card, &apdu);
+	r = sc_transmit_apdu_t(card, &apdu);
 	sc_unlock(card);
 
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
@@ -1445,7 +1458,7 @@ static int epass2003_decipher(struct sc_card *card, const u8 * data, size_t data
 	apdu.lc = datalen;
 	apdu.datalen = datalen;
 
-	r = sc_transmit_apdu(card, &apdu);
+	r = sc_transmit_apdu_t(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
@@ -1805,7 +1818,7 @@ epass2003_create_file(struct sc_card *card, sc_file_t * file)
 	apdu.datalen = len;
 	apdu.data = sbuf;
 
-	r = sc_transmit_apdu(card, &apdu);
+	r = sc_transmit_apdu_t(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(card->ctx, r, "APDU sw1/2 wrong");
@@ -1838,7 +1851,7 @@ epass2003_delete_file(struct sc_card *card, const sc_path_t * path)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 
-	r = sc_transmit_apdu(card, &apdu);
+	r = sc_transmit_apdu_t(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(card->ctx, r, "Delete file failed");
@@ -1860,7 +1873,7 @@ epass2003_list_files(struct sc_card *card, unsigned char *buf, size_t buflen)
 	apdu.resplen = sizeof(rbuf);
 	apdu.resp = rbuf;
 
-	r = sc_transmit_apdu(card, &apdu);
+	r = sc_transmit_apdu_t(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
@@ -1896,7 +1909,7 @@ internal_write_rsa_key_factor(struct sc_card *card, unsigned short fid, u8 facto
 	apdu.lc = apdu.datalen = 2 + data.len;
 	apdu.data = sbuff;
 
-	r = sc_transmit_apdu(card, &apdu);
+	r = sc_transmit_apdu_t(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(card->ctx, r, "Write rsa key factor failed");
@@ -1969,7 +1982,7 @@ install_secret_key(struct sc_card *card, unsigned char ktype, unsigned char kid,
 	apdu.lc = apdu.datalen = 10 + dataLen;
 	apdu.data = tmp_data;
 
-	r = sc_transmit_apdu(card, &apdu);
+	r = sc_transmit_apdu_t(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU install_secret_key failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(card->ctx, r, "install_secret_key failed");
@@ -2071,7 +2084,7 @@ epass2003_gen_key(struct sc_card *card, sc_epass2003_gen_key_data * data)
 	apdu.lc = apdu.datalen = 7;
 	apdu.data = sbuf;
 
-	r = sc_transmit_apdu(card, &apdu);
+	r = sc_transmit_apdu_t(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(card->ctx, r, "generate keypair failed");
@@ -2085,7 +2098,7 @@ epass2003_gen_key(struct sc_card *card, sc_epass2003_gen_key_data * data)
 	apdu.resplen = sizeof(rbuf);
 	apdu.le = 0x00;
 
-	r = sc_transmit_apdu(card, &apdu);
+	r = sc_transmit_apdu_t(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(card->ctx, r, "get pukey failed");
@@ -2207,7 +2220,7 @@ get_external_key_retries(struct sc_card *card, unsigned char kid, unsigned char 
 	apdu.resp = NULL;
 	apdu.resplen = 0;
 
-	r = sc_transmit_apdu(card, &apdu);
+	r = sc_transmit_apdu_t(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU get_external_key_retries failed");
 
 	if (retries && ((0x63 == (apdu.sw1 & 0xff)) && (0xC0 == (apdu.sw2 & 0xf0)))) {
@@ -2245,7 +2258,7 @@ external_key_auth(struct sc_card *card, unsigned char kid,
 	apdu.lc = apdu.datalen = 8;
 	apdu.data = tmp_data;
 
-	r = sc_transmit_apdu(card, &apdu);
+	r = sc_transmit_apdu_t(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU external_key_auth failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(card->ctx, r, "external_key_auth failed");
@@ -2277,7 +2290,7 @@ update_secret_key(struct sc_card *card, unsigned char ktype, unsigned char kid,
 	apdu.lc = apdu.datalen = 1 + HASH_LEN;
 	apdu.data = tmp_data;
 
-	r = sc_transmit_apdu(card, &apdu);
+	r = sc_transmit_apdu_t(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU update_secret_key failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(card->ctx, r, "update_secret_key failed");
@@ -2296,6 +2309,10 @@ epass2003_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries
 
 	LOG_FUNC_CALLED(card->ctx);
 
+	//////////////////////////////////////////////////////////////////////////
+	epass2003_init(card);//
+	//////////////////////////////////////////////////////////////////////////
+	
 	internal_sanitize_pin_info(&data->pin1, 0);
 	internal_sanitize_pin_info(&data->pin2, 1);
 	data->flags |= SC_PIN_CMD_NEED_PADDING;
