@@ -327,7 +327,7 @@ sc_profile_load(struct sc_profile *profile, const char *filename)
 	scconf_context	*conf;
 	const char *profile_dir = NULL;
 	char path[PATH_MAX];
-	int             res = 0, i;
+	int res = 0, i;
 #ifdef _WIN32
 	char temp_path[PATH_MAX];
 	DWORD temp_len;
@@ -341,26 +341,15 @@ sc_profile_load(struct sc_profile *profile, const char *filename)
 		if (profile_dir)
 			break;
 	}
+
 	if (!profile_dir) {
 #ifdef _WIN32
-		rc = RegOpenKeyEx(HKEY_CURRENT_USER, "Software\\OpenSC Project\\OpenSC", 0, KEY_QUERY_VALUE, &hKey);
-		if (rc == ERROR_SUCCESS) {
-			temp_len = PATH_MAX;
-			rc = RegQueryValueEx(hKey, "ProfileDir", NULL, NULL, (LPBYTE) temp_path, &temp_len);
-			if ((rc == ERROR_SUCCESS) && (temp_len < PATH_MAX))
-				profile_dir = temp_path;
-			RegCloseKey(hKey);
-		}
-		if (!profile_dir) {
-			rc = RegOpenKeyEx(HKEY_LOCAL_MACHINE, "Software\\OpenSC Project\\OpenSC", 0, KEY_QUERY_VALUE, &hKey);
-			if (rc == ERROR_SUCCESS) {
-				temp_len = PATH_MAX;
-				rc = RegQueryValueEx(hKey, "ProfileDir", NULL, NULL, (LPBYTE) temp_path, &temp_len);
-				if ((rc == ERROR_SUCCESS) && (temp_len < PATH_MAX))
-					profile_dir = temp_path;
-				RegCloseKey(hKey);
-			}
-		}
+		temp_len = PATH_MAX;
+		res = sc_ctx_win32_get_config_value(NULL, "ProfileDir", "Software\\OpenSC Project\\OpenSC",
+				temp_path, &temp_len);
+		if (res)
+			LOG_FUNC_RETURN(ctx, res);
+		profile_dir = temp_path;
 #else
 		profile_dir = SC_PKCS15_PROFILE_DIRECTORY;
 #endif

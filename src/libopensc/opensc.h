@@ -777,6 +777,16 @@ int sc_release_context(sc_context_t *ctx);
 int sc_ctx_detect_readers(sc_context_t *ctx);
 
 /**
+ * In windows: get configuration option from environment or from registers.
+ * @param env name of environment variable
+ * @param reg name of register value
+ * @param key path of register key
+ * @return SC_SUCCESS on success and an error code otherwise.
+ */
+int sc_ctx_win32_get_config_value(char *env, char *reg, char *key, char *out,
+	size_t *out_size);
+
+/**
  * Returns a pointer to the specified sc_reader_t object
  * @param  ctx  OpenSC context
  * @param  i    number of the reader structure to return (starting with 0)

@@ -1229,8 +1229,6 @@ sc_card_sm_load(struct sc_card *card, const char *module_path, const char *in_mo
 #ifdef _WIN32
 	char temp_path[PATH_MAX];
 	int temp_len;
-	long rc;
-	HKEY hKey;
 	const char path_delim = '\\';
 #else
 	const char path_delim = '/';
@@ -1243,25 +1241,12 @@ sc_card_sm_load(struct sc_card *card, const char *module_path, const char *in_mo
 		return sc_card_sm_unload(card);
 
 #ifdef _WIN32
-	if (!module_path) {
-		rc = RegOpenKeyExA( HKEY_CURRENT_USER, "Software\\OpenSC Project\\OpenSC", 0, KEY_QUERY_VALUE, &hKey );
-		if( rc == ERROR_SUCCESS ) {
-			temp_len = PATH_MAX;
-			rc = RegQueryValueExA( hKey, "SmDir", NULL, NULL, (LPBYTE) temp_path, &temp_len);
-			if( (rc == ERROR_SUCCESS) && (temp_len < PATH_MAX) )
-				module_path = temp_path;
-			RegCloseKey( hKey );
-		}
-	}
-	if (!module_path) {
-		rc = RegOpenKeyExA( HKEY_LOCAL_MACHINE, "Software\\OpenSC Project\\OpenSC", 0, KEY_QUERY_VALUE, &hKey );
-		if( rc == ERROR_SUCCESS ) {
-			temp_len = PATH_MAX;
-			rc = RegQueryValueExA( hKey, "SmDir", NULL, NULL, (LPBYTE) temp_path, &temp_len);
-			if(rc == ERROR_SUCCESS && temp_len < PATH_MAX)
-				module_path = temp_path;
-			RegCloseKey( hKey );
-		}
+	if (!module_path)   {
+		temp_len = PATH_MAX;
+		rv = sc_ctx_win32_get_config_value(NULL, "SmDir", "Software\\OpenSC Project\\OpenSC",
+				temp_path, &temp_len);
+		if (rv == SC_SUCCESS)
+			module_path = temp_path;
 	}
 #endif
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "SM module '%s' located in '%s'", in_module, module_path);
