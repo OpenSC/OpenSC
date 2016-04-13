@@ -129,6 +129,72 @@ struct _sc_ctx_options {
 };
 
 
+int
+sc_ctx_win32_get_config_value(char *name_env, char *name_reg, char *name_key,
+		char *out, size_t *out_len)
+{
+#ifdef _WIN32
+	char temp[PATH_MAX + 1];
+	char *value = NULL;
+	int temp_len = PATH_MAX;
+	int rv = SC_ERROR_INTERNAL;
+	long rc;
+	HKEY hKey;
+
+	if (!out || !out_len)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	if (name_env)   {
+		value = getenv(name_env);
+		if (value)
+			goto done;
+	}
+
+	if (!name_reg)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	if (!name_key)
+		name_key = "Software\\OpenSC Project\\OpenSC";
+
+	rc = RegOpenKeyExA(HKEY_CURRENT_USER, name_key, 0, KEY_QUERY_VALUE, &hKey);
+	if (rc == ERROR_SUCCESS) {
+		temp_len = PATH_MAX;
+		rc = RegQueryValueEx( hKey, name_reg, NULL, NULL, (LPBYTE) temp, &temp_len);
+		if ((rc == ERROR_SUCCESS) && (temp_len < PATH_MAX))
+			value = temp;
+		RegCloseKey(hKey);
+	}
+
+	if (!value) {
+		rc = RegOpenKeyExA( HKEY_LOCAL_MACHINE, name_key, 0, KEY_QUERY_VALUE, &hKey );
+		if (rc == ERROR_SUCCESS) {
+			temp_len = PATH_MAX;
+			rc = RegQueryValueEx( hKey, name_reg, NULL, NULL, (LPBYTE) temp, &temp_len);
+			if ((rc == ERROR_SUCCESS) && (temp_len < PATH_MAX))
+				value = temp;
+			RegCloseKey(hKey);
+		}
+	}
+
+done:
+	if (value) {
+		if (strlen(value) >= *out_len)
+			return SC_ERROR_BUFFER_TOO_SMALL;
+		strcpy(out, value);
+		*out_len = strlen(out);
+		return SC_SUCCESS;
+	}
+
+	memset(out, 0, *out_len);
+	*out_len = 0;
+
+	return SC_ERROR_OBJECT_NOT_FOUND;
+#else
+	return SC_ERROR_NOT_SUPPORTED;
+#endif
+}
+
+
 /* Simclist helper to locate readers by name */
 static int reader_list_seeker(const void *el, const void *key) {
 	const struct sc_reader *reader = (struct sc_reader *)el;
@@ -325,8 +391,8 @@ static void load_reader_driver_options(sc_context_t *ctx)
  */
 static const char *find_library(sc_context_t *ctx, const char *name)
 {
-	int          i, log_warning;
-	const char   *libname = NULL;
+	int i, log_warning;
+	const char *libname = NULL;
 	scconf_block **blocks, *blk;
 
 	for (i = 0; ctx->conf_blocks[i]; i++) {
@@ -403,7 +469,7 @@ static void *load_dynamic_driver(sc_context_t *ctx, void **dll, const char *name
 }
 
 static int load_card_driver_options(sc_context_t *ctx,
-				    struct sc_card_driver *driver)
+		struct sc_card_driver *driver)
 {
 	scconf_block **blocks, *blk;
 	int i;
@@ -566,8 +632,6 @@ static void process_config_file(sc_context_t *ctx, struct _sc_ctx_options *opts)
 #ifdef _WIN32
 	char temp_path[PATH_MAX];
 	DWORD temp_len;
-	long rc;
-	HKEY hKey;
 #endif
 
 	/* Takes effect even when no config around */
@@ -577,34 +641,14 @@ static void process_config_file(sc_context_t *ctx, struct _sc_ctx_options *opts)
 
 	memset(ctx->conf_blocks, 0, sizeof(ctx->conf_blocks));
 #ifdef _WIN32
-	conf_path = getenv("OPENSC_CONF");
-	if (!conf_path) {
-		rc = RegOpenKeyExA(HKEY_CURRENT_USER, "Software\\OpenSC Project\\OpenSC", 0, KEY_QUERY_VALUE, &hKey);
-		if (rc == ERROR_SUCCESS) {
-			temp_len = PATH_MAX;
-			rc = RegQueryValueEx( hKey, "ConfigFile", NULL, NULL, (LPBYTE) temp_path, &temp_len);
-			if ((rc == ERROR_SUCCESS) && (temp_len < PATH_MAX))
-				conf_path = temp_path;
-			RegCloseKey(hKey);
-		}
-	}
-
-	if (!conf_path) {
-		rc = RegOpenKeyExA( HKEY_LOCAL_MACHINE, "Software\\OpenSC Project\\OpenSC", 0, KEY_QUERY_VALUE, &hKey );
-		if (rc == ERROR_SUCCESS) {
-			temp_len = PATH_MAX;
-			rc = RegQueryValueEx( hKey, "ConfigFile", NULL, NULL, (LPBYTE) temp_path, &temp_len);
-			if ((rc == ERROR_SUCCESS) && (temp_len < PATH_MAX))
-				conf_path = temp_path;
-			RegCloseKey(hKey);
-		}
-	}
-
-	if (!conf_path) {
+	temp_len = PATH_MAX;
+	r = sc_ctx_win32_get_config_value("OPENSC_CONF", "ConfigFile", "Software\\OpenSC Project\\OpenSC",
+		temp_path, &temp_len);
+	if (r)   {
 		sc_log(ctx, "process_config_file doesn't find opensc config file. Please set the registry key.");
 		return;
 	}
-
+	conf_path = temp_path;
 #else
 	conf_path = getenv("OPENSC_CONF");
 	if (!conf_path)
