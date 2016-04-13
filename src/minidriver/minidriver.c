@@ -247,8 +247,6 @@ static void logprintf(PCARD_DATA pCardData, int level, _Printf_format_string_ co
 {
 	va_list arg;
 	VENDOR_SPECIFIC *vs;
-#define CARDMOD_LOW_LEVEL_DEBUG 1
-#ifdef CARDMOD_LOW_LEVEL_DEBUG
 /* Use a simplied log to get all messages including messages
  * before opensc is loaded. The file must be modifiable by all
  * users as we maybe called under lsa or user. Note data from
@@ -256,20 +254,23 @@ static void logprintf(PCARD_DATA pCardData, int level, _Printf_format_string_ co
  * flush to get last message before ann crash
  * close so as the file is not left open during any wait.
  */
-	{
-		FILE* lldebugfp = NULL;
+	DWORD md_debug = 0;
+	DWORD sz = sizeof(md_debug);
+	int rv;
 
-		lldebugfp = fopen("C:\\tmp\\md.log","a+");
+	rv = sc_ctx_win32_get_config_value("CARDMOD_LOW_LEVEL_DEBUG",
+			"MiniDriverDebug", "Software\\OpenSC Project\\OpenSC",
+			(char *)(&md_debug), &sz);
+	if (rv == SC_SUCCESS && md_debug != 0)   {
+		FILE *lldebugfp = fopen("C:\\tmp\\md.log","a+");
 		if (lldebugfp)   {
 			va_start(arg, format);
 			vfprintf(lldebugfp, format, arg);
 			va_end(arg);
 			fflush(lldebugfp);
 			fclose(lldebugfp);
-			lldebugfp = NULL;
 		}
 	}
-#endif
 
 	va_start(arg, format);
 	if(pCardData != NULL)   {
@@ -5689,7 +5690,6 @@ BOOL APIENTRY DllMain( HINSTANCE hinstDLL,
 	LPVOID lpReserved
 )
 {
-#ifdef CARDMOD_LOW_LEVEL_DEBUG
 	CHAR name[MAX_PATH + 1] = "\0";
 	char *reason = "";
 
@@ -5712,7 +5712,6 @@ BOOL APIENTRY DllMain( HINSTANCE hinstDLL,
 
 	logprintf(NULL,8,"\n********** DllMain Module(handle:0x%p) '%s'; reason='%s'; Reserved=%p; P:%d; T:%d\n",
 			hinstDLL, name, reason, lpReserved, GetCurrentProcessId(), GetCurrentThreadId());
-#endif
 	switch (ul_reason_for_call)
 	{
 	case DLL_PROCESS_ATTACH:

@@ -111,6 +111,7 @@
                 <RegistryValue Type="string" Name="ConfigFile" Value="[INSTALLDIR]opensc.conf"/>
                 <RegistryValue Type="string" Name="ProfileDir" Value="[INSTALLDIR]profiles"/>
                 <RegistryValue Type="string" Name="SmDir" Value="[INSTALLDIR]tools"/>
+                <RegistryValue Type="integer" Name="MiniDriverDebug" Value="0"/>
               </RegistryKey>
             </Component>
 
