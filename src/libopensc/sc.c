@@ -53,7 +53,7 @@ int sc_hex_to_bin(const char *in, u8 *out, size_t *outlen)
 	size_t left, count = 0;
 
 	assert(in != NULL && out != NULL && outlen != NULL);
-        left = *outlen;
+	left = *outlen;
 
 	while (*in != '\0') {
 		int byte = 0, nybbles = 2;
@@ -76,10 +76,15 @@ int sc_hex_to_bin(const char *in, u8 *out, size_t *outlen)
 			}
 			byte |= c;
 		}
+		// Detect premature end of string before byte is complete
+		if (!*in && nybbles >= 0) {
+			err = SC_ERROR_INVALID_ARGUMENTS;
+			break;
+		}
 		if (*in == ':' || *in == ' ')
 			in++;
 		if (left <= 0) {
-                        err = SC_ERROR_BUFFER_TOO_SMALL;
+			err = SC_ERROR_BUFFER_TOO_SMALL;
 			break;
 		}
 		out[count++] = (u8) byte;
