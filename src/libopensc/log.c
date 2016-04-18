@@ -91,7 +91,7 @@ static void sc_do_log_va(sc_context_t *ctx, int level, const char *file, int lin
 	gettimeofday (&tv, NULL);
 	tm = localtime (&tv.tv_sec);
 	strftime (time_string, sizeof(time_string), "%H:%M:%S", tm);
-	r = snprintf(p, left, "0x%lx %s.%03ld ", (unsigned long)pthread_self(), time_string, tv.tv_usec / 1000);
+	r = snprintf(p, left, "0x%lx %s.%03ld ", (unsigned long)pthread_self(), time_string, (long)tv.tv_usec / 1000);
 #endif
 	p += r;
 	left -= r;
@@ -159,6 +159,28 @@ void _sc_log(struct sc_context *ctx, const char *format, ...)
 	va_start(ap, format);
 	sc_do_log_va(ctx, SC_LOG_DEBUG_NORMAL, NULL, 0, NULL, format, ap);
 	va_end(ap);
+}
+
+void _sc_debug_hex(sc_context_t *ctx, int type, const char *file, int line,
+        const char *func, const char *label, const u8 *data, size_t len)
+{
+	size_t blen = len * 5 + 128;
+	char *buf = malloc(blen);
+	if (buf == NULL)
+		return;
+
+    sc_hex_dump(ctx, type, data, len, buf, blen);
+
+    if (label)
+        sc_do_log(ctx, type, file, line, func,
+                "\n%s (%u byte%s):\n%s",
+                label, (unsigned int) len, len==1?"":"s", buf);
+    else
+        sc_do_log(ctx, type, file, line, func,
+                "%u byte%s:\n%s",
+                (unsigned int) len, len==1?"":"s", buf);
+
+	free(buf);
 }
 
 /* Although not used, we need this for consistent exports */

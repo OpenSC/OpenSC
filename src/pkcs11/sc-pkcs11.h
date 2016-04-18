@@ -49,8 +49,9 @@ extern "C" {
 
 #define SC_PKCS11_SLOT_FOR_PIN_USER	1
 #define SC_PKCS11_SLOT_FOR_PIN_SIGN	2
-#define SC_PKCS11_SLOT_FOR_APPLICATION	4
 #define SC_PKCS11_SLOT_CREATE_ALL	8
+
+#define SC_PKCS11_SLOT_FOR_PINS		(SC_PKCS11_SLOT_FOR_PIN_USER | SC_PKCS11_SLOT_FOR_PIN_SIGN)
 
 extern void *C_LoadModule(const char *name, CK_FUNCTION_LIST_PTR_PTR);
 extern CK_RV C_UnloadModule(void *module);
@@ -152,7 +153,7 @@ struct sc_pkcs11_framework_ops {
 
 	/* Create tokens to virtual slots and
 	 * objects in tokens; called after bind */
-	CK_RV (*create_tokens)(struct sc_pkcs11_card *, struct sc_app_info *, struct sc_pkcs11_slot **);
+	CK_RV (*create_tokens)(struct sc_pkcs11_card *, struct sc_app_info *);
 	CK_RV (*release_token)(struct sc_pkcs11_card *, void *);
 
 	/* Login and logout */

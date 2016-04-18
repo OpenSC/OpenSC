@@ -430,8 +430,16 @@ myeid_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 					"Unsupported RSA key size");
 			break;
 		case SC_PKCS15_TYPE_PRKEY_EC:
-			/* Here the information about curve is not available, that's why algorithm is checked
-			   without curve OID. */
+			/* 
+			   Here the information about curve is not available, that's why algorithm is checked
+			   without curve OID. 	  			   
+                         */
+                    
+			if (key_info->field_length != 0)
+				keybits = key_info->field_length;
+			else 
+				key_info->field_length = keybits;
+			
 			if (sc_card_find_ec_alg(p15card->card, keybits, NULL) == NULL)
 				LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Unsupported EC key size");
 			break;
@@ -497,13 +505,15 @@ myeid_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 			if (!sc_valid_oid(&prkey->u.ec.params.id))
                                 if (sc_pkcs15_fix_ec_parameters(ctx, &prkey->u.ec.params))
                                         LOG_FUNC_RETURN(ctx, SC_ERROR_OBJECT_NOT_VALID);
-			if (sc_card_find_ec_alg(p15card->card, keybits, &prkey->u.ec.params.id) == NULL)
-				LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Unsupported algorithm or key size");
+						
 			if(key_info->field_length != 0)
 				keybits = key_info->field_length;
 			else
 				key_info->field_length = keybits;
 			break;
+			
+			if (sc_card_find_ec_alg(p15card->card, keybits, &prkey->u.ec.params.id) == NULL)
+				LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Unsupported algorithm or key size");			
 		default:
 			LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Store key failed: Unsupported key type");
 			break;
@@ -586,13 +596,16 @@ myeid_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 		case SC_PKCS15_TYPE_PRKEY_EC:
 			/* EC is supported in MyEID v > 3.5. TODO: set correct return value if older MyEID version. */
 			/* Here the information about curve is not available, that's why supported algorithm is checked
-			   without curve OID. */
-			if (sc_card_find_ec_alg(p15card->card, keybits, NULL) == NULL)
-				LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Unsupported EC key size");
+			   without curve OID. */						
+                    
 			if(key_info->field_length != 0)
 				keybits = key_info->field_length;
 			else
 				key_info->field_length = keybits;
+			
+			if (sc_card_find_ec_alg(p15card->card, keybits, NULL) == NULL)
+				LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Unsupported EC key size");
+			
 			break;
 		default:
 			LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Unsupported key type");

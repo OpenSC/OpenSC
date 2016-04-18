@@ -87,6 +87,7 @@ sc_disconnect_card
 sc_do_log
 sc_do_log_noframe
 _sc_debug
+_sc_debug_hex
 sc_enum_apps
 sc_encode_oid
 sc_parse_ef_atr
@@ -280,6 +281,7 @@ sc_pkcs15init_get_cardos_ops
 sc_pkcs15init_get_cryptoflex_ops
 sc_pkcs15init_get_cyberflex_ops
 sc_pkcs15init_get_gpk_ops
+sc_pkcs15init_get_gids_ops
 sc_pkcs15init_get_incrypto34_ops
 sc_pkcs15init_get_jcop_ops
 sc_pkcs15init_get_manufacturer

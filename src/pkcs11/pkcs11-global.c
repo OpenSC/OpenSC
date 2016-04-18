@@ -264,17 +264,9 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs)
 	list_init(&virtual_slots);
 	list_attributes_seeker(&virtual_slots, slot_list_seeker);
 
-	/* Create a slot for a future "PnP" stuff. */
-	if (sc_pkcs11_conf.plug_and_play) {
-		create_slot(NULL);
-	}
-
 	/* Create slots for readers found on initialization, only if in 2.11 mode */
-	if (!sc_pkcs11_conf.plug_and_play) {
-		for (i=0; i<sc_ctx_get_reader_count(context); i++) {
+	for (i=0; i<sc_ctx_get_reader_count(context); i++)
 			initialize_reader(sc_ctx_get_reader(context, i));
-		}
-	}
 
 out:
 	if (context != NULL)
@@ -354,19 +346,15 @@ CK_RV C_GetInfo(CK_INFO_PTR pInfo)
 
 	memset(pInfo, 0, sizeof(CK_INFO));
 	pInfo->cryptokiVersion.major = 2;
-	if (sc_pkcs11_conf.plug_and_play) {
-		pInfo->cryptokiVersion.minor = 20;
-	} else {
-		pInfo->cryptokiVersion.minor = 11;
-	}
+	pInfo->cryptokiVersion.minor = 20;
 	strcpy_bp(pInfo->manufacturerID,
-		  "OpenSC (www.opensc-project.org)",
+		  OPENSC_VS_FF_COMPANY_NAME,
 		  sizeof(pInfo->manufacturerID));
 	strcpy_bp(pInfo->libraryDescription,
-		  "Smart card PKCS#11 API",
+		  OPENSC_VS_FF_PRODUCT_NAME,
 		  sizeof(pInfo->libraryDescription));
-	pInfo->libraryVersion.major = 0;
-	pInfo->libraryVersion.minor = 0; /* FIXME: use 0.116 for 0.11.6 from autoconf */
+	pInfo->libraryVersion.major = OPENSC_VERSION_MAJOR;
+	pInfo->libraryVersion.minor = OPENSC_VERSION_MINOR;
 
 	sc_pkcs11_unlock();
 	return rv;
@@ -400,15 +388,11 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 		return rv;
 
 	sc_log(context, "C_GetSlotList(token=%d, %s)", tokenPresent,
-		 (pSlotList==NULL_PTR && sc_pkcs11_conf.plug_and_play)? "plug-n-play":"refresh");
+			pSlotList==NULL_PTR? "plug-n-play":"refresh");
 
 	/* Slot list can only change in v2.20 */
-	if (pSlotList == NULL_PTR && sc_pkcs11_conf.plug_and_play) {
-		/* Trick NSS into updating the slot list by changing the hotplug slot ID */
-		sc_pkcs11_slot_t *hotplug_slot = list_get_at(&virtual_slots, 0);
-		hotplug_slot->id--;
+	if (pSlotList == NULL_PTR)
 		sc_ctx_detect_readers(context);
-	}
 
 	card_detect_all();
 
@@ -494,7 +478,6 @@ static sc_timestamp_t get_current_time(void)
 CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
 {
 	struct sc_pkcs11_slot *slot;
-	unsigned int uninit_slotcount;
 	sc_timestamp_t now;
 	CK_RV rv;
 
@@ -507,11 +490,7 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
 
 	sc_log(context, "C_GetSlotInfo(0x%lx)", slotID);
 
-	if (sc_pkcs11_conf.plug_and_play)
-		uninit_slotcount = 1;
-	else
-		uninit_slotcount = 0;
-	if (sc_pkcs11_conf.init_sloppy && uninit_slotcount <= list_size(&virtual_slots)) {
+	if (sc_pkcs11_conf.init_sloppy) {
 		/* Most likely virtual_slots only contains the hotplug slot and has not
 		 * been initialized because the caller has *not* called C_GetSlotList
 		 * before C_GetSlotInfo, as required by PKCS#11.  Initialize
@@ -670,12 +649,8 @@ CK_RV C_WaitForSlotEvent(CK_FLAGS flags,   /* blocking/nonblocking flag */
 	if (rv != CKR_OK)
 		return rv;
 
-	mask = SC_EVENT_CARD_EVENTS;
-
+	mask = SC_EVENT_CARD_EVENTS | SC_EVENT_READER_EVENTS;
 	/* Detect and add new slots for added readers v2.20 */
-	if (sc_pkcs11_conf.plug_and_play) {
-		mask |= SC_EVENT_READER_EVENTS;
-	}
 
 	rv = slot_find_changed(&slot_id, mask);
 	if ((rv == CKR_OK) || (flags & CKF_DONT_BLOCK))
@@ -685,12 +660,7 @@ again:
 	sc_log(context, "C_WaitForSlotEvent() reader_states:%p", reader_states);
 	sc_pkcs11_unlock();
 	r = sc_wait_for_event(context, mask, &found, &events, -1, &reader_states);
-	if (sc_pkcs11_conf.plug_and_play && events & SC_EVENT_READER_ATTACHED) {
-		/* NSS/Firefox Triggers a C_GetSlotList(NULL) only if a slot ID is returned that it does not know yet
-		   Change the first hotplug slot id on every call to make this happen. */
-		sc_pkcs11_slot_t *hotplug_slot = list_get_at(&virtual_slots, 0);
-		*pSlot= hotplug_slot->id -1;
-
+	if (events & SC_EVENT_READER_ATTACHED) {
 		rv = sc_pkcs11_lock();
 		if (rv != CKR_OK)
 			return rv;

@@ -112,6 +112,9 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 	{ "PIV-II",	(void *(*)(void)) sc_get_piv_driver },
 	{ "itacns",	(void *(*)(void)) sc_get_itacns_driver },
 	{ "isoApplet",	(void *(*)(void)) sc_get_isoApplet_driver },
+#ifdef ENABLE_ZLIB
+	{ "gids",	(void *(*)(void)) sc_get_gids_driver },
+#endif
 	{ "openpgp",	(void *(*)(void)) sc_get_openpgp_driver },
 	/* The default driver should be last, as it handles all the
 	 * unrecognized cards. */
@@ -259,11 +262,11 @@ load_parameters(sc_context_t *ctx, scconf_block *block, struct _sc_ctx_options *
 	}
 
 	if (scconf_get_bool (block, "paranoid-memory",
-			   	ctx->flags & SC_CTX_FLAG_PARANOID_MEMORY))
+				ctx->flags & SC_CTX_FLAG_PARANOID_MEMORY))
 		ctx->flags |= SC_CTX_FLAG_PARANOID_MEMORY;
 
 	if (scconf_get_bool (block, "enable_default_driver",
-			   	ctx->flags & SC_CTX_FLAG_ENABLE_DEFAULT_DRIVER))
+				ctx->flags & SC_CTX_FLAG_ENABLE_DEFAULT_DRIVER))
 		ctx->flags |= SC_CTX_FLAG_ENABLE_DEFAULT_DRIVER;
 
 	val = scconf_get_str(block, "force_card_driver", NULL);
@@ -421,8 +424,7 @@ static int load_card_driver_options(sc_context_t *ctx,
 	return SC_SUCCESS;
 }
 
-static int load_card_drivers(sc_context_t *ctx,
-			     struct _sc_ctx_options *opts)
+static int load_card_drivers(sc_context_t *ctx, struct _sc_ctx_options *opts)
 {
 	const struct _sc_driver_entry *ent;
 	int drv_count;
@@ -460,8 +462,14 @@ static int load_card_drivers(sc_context_t *ctx,
 		}
 
 		ctx->card_drivers[drv_count] = func();
-		ctx->card_drivers[drv_count]->dll = dll;
+		if (ctx->card_drivers[drv_count] == NULL) {
+			sc_log(ctx, "Driver '%s' not available.", ent->name);
+			if (dll)
+				sc_dlclose(dll);
+			continue;
+		}
 
+		ctx->card_drivers[drv_count]->dll = dll;
 		ctx->card_drivers[drv_count]->atr_map = NULL;
 		ctx->card_drivers[drv_count]->natrs = 0;
 

@@ -12,6 +12,7 @@ configuration:
 
 environment:
   matrix:
+    - VSVER: 14
     - VSVER: 12
     - VSVER: 10
 
@@ -20,6 +21,12 @@ matrix:
     # not included in AppVeyor right now
     - platform: x64
       VSVER: 10
+    # does currently not build zlib out of the box
+    - configuration: Release
+      VSVER: 14
+    # does currently not build zlib out of the box
+    - configuration: Debug
+      VSVER: 14
 
 install:
   - ps: if ($env:APPVEYOR_PULL_REQUEST_NUMBER -and $env:APPVEYOR_BUILD_NUMBER -ne ((Invoke-RestMethod `
@@ -91,8 +98,11 @@ build_script:
   - cd win32 && nmake /f Makefile.mak %NMAKE_ARCH% %NMAKE_EXTRA% VSVER=%VSVER% OpenSC.msi
   - move OpenSC.msi %ARTIFACT%
   - appveyor PushArtifact %ARTIFACT%
-  # optionaly put all pdb files for dump analysis, but this consume approx 100 MB per build
-  # - ps: Get-ChildItem -recurse c:\projects\OpenSC -exclude vc*.pdb *.pdb | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name }
+  # put all pdb files for dump analysis, but this consume approx 100 MB per build
+  - ps: >-
+      If ($env:Configuration -Like "*Debug*") {
+        Get-ChildItem -recurse c:\projects\OpenSC -exclude vc*.pdb *.pdb | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name }
+      }
 
 cache:
   - C:\OpenSSL-Win32 -> appveyor.yml

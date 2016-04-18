@@ -28,6 +28,8 @@
 #define COMPRESSION_GZIP	2
 #define COMPRESSION_UNKNOWN (-1)
 
+int sc_compress(u8* out, size_t* outLen, const u8* in, size_t inLen, int method);
+
 int sc_decompress_alloc(u8** out, size_t* outLen, const u8* in, size_t inLen, int method);
 int sc_decompress(u8* out, size_t* outLen, const u8* in, size_t inLen, int method);
 

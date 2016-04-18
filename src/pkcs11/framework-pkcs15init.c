@@ -53,8 +53,7 @@ static CK_RV pkcs15init_unbind(struct sc_pkcs11_card *p11card)
 
 
 static CK_RV
-pkcs15init_create_tokens(struct sc_pkcs11_card *p11card, struct sc_app_info *app_info,
-		struct sc_pkcs11_slot **first_slot)
+pkcs15init_create_tokens(struct sc_pkcs11_card *p11card, struct sc_app_info *app_info)
 {
 	struct sc_profile	*profile;
 	struct sc_pkcs11_slot	*slot;

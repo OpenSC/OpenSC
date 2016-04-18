@@ -1724,7 +1724,7 @@ static int do_asn1(int argc, char **argv)
 		/* some cards return a bogus value for file length. As
 		 * long as the actual length is not higher than the expected
 		 * length, continue */
-		if(r > len) {
+		if(r > (signed)len) {
 			goto err;
 		}
 	}

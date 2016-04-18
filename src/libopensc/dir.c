@@ -61,6 +61,7 @@ parse_dir_record(sc_card_t *card, u8 ** buf, size_t *buflen, int rec_nr)
 {
 	struct sc_context *ctx = card->ctx;
 	struct sc_asn1_entry asn1_dirrecord[5], asn1_dir[2];
+	scconf_block *conf_block = NULL;
 	sc_app_info_t *app = NULL;
 	struct sc_aid aid;
 	u8 label[128], path[128], ddo[128];
@@ -82,6 +83,25 @@ parse_dir_record(sc_card_t *card, u8 ** buf, size_t *buflen, int rec_nr)
 	if (r == SC_ERROR_ASN1_END_OF_CONTENTS)
 		LOG_FUNC_RETURN(ctx, r);
 	LOG_TEST_RET(ctx, r, "EF(DIR) parsing failed");
+
+	conf_block = sc_get_conf_block(ctx, "framework", "pkcs15", 1);
+	if (conf_block)   {
+		scconf_block **blocks = NULL;
+		char aid_str[SC_MAX_AID_STRING_SIZE];
+		int ignore_app = 0;
+
+		sc_bin_to_hex(aid.value, aid.len, aid_str, sizeof(aid_str), 0);
+		blocks = scconf_find_blocks(card->ctx->conf, conf_block, "application", aid_str);
+		if (blocks)   {
+			ignore_app = (blocks[0] && scconf_get_str(blocks[0], "disable", 0));
+                        free(blocks);
+		 }
+
+		if (ignore_app)   {
+			sc_log(ctx, "Application '%s' ignored", aid_str);
+			LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+		}
+	}
 
 	app = calloc(1, sizeof(struct sc_app_info));
 	if (app == NULL)

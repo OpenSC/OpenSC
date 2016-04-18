@@ -12,7 +12,7 @@ app default {
 	# A greater value means more debug info.
 	# Default: 0
 	#
-	debug = 0;
+	#debug = 3;
 
 	# The file to which debug output will be written
 	#
@@ -53,7 +53,7 @@ app default {
 
 	# CT-API module configuration.
 	reader_driver ctapi {
-		# module @libdir@/libtowitoko.so {
+		# module @LIBDIR@@LIB_PRE@towitoko@DYN_LIB_EXT@ {
 			# CT-API ports:
 			# 0..3		COM1..4
 			# 4		Printer
@@ -134,7 +134,7 @@ app default {
 	#
 	# card_driver customcos {
 		# The location of the driver library
-		# module = @libdir@/card_customcos.so;
+		# module = @LIBDIR@@LIB_PRE@card_customcos@DYN_LIB_EXT@;
 	# }
 
 	# Force using specific card driver
@@ -244,6 +244,15 @@ app default {
 		# Force protocol selection for specific cards.
 		# Known parameters: t0, t1, raw
 		# force_protocol = "t0";
+
+		# Context: minidriver
+		#
+		# md_read_only: Mark card as read/only card in Minidriver/BaseCSP interface (Default: false)
+		# md_supports_X509_enrollment: Indicate X509 enrollment support at Minidriver/BaseCSP interface (Default: false)
+		# md_guid_as_id: Use the GUID generated for the key as id in the PKCS#15 structure (Default: false - auto generated)
+		# md_guid_as_label: Use the GUID generated for the key as label in the PKCS#15 structure (Default: false - no label set)
+		# md_supports_container_key_gen: Card allows generating key pairs on the card (Default: false)
+		# md_supports_container_key_import: Card allows importing private keys (Default: false)
 	# }
 
 	# PIV cards need an entry similar to this one:
@@ -352,6 +361,24 @@ app default {
 		secure_messaging = local_amos_eid;
 	}
 
+	# SmartCard-HSM with contact-based interface or USB-Stick
+	card_atr 3B:FE:18:00:00:81:31:FE:45:80:31:81:54:48:53:4D:31:73:80:21:40:81:07:FA {
+		driver = "sc-hsm";
+		md_read_only = false;
+		md_supports_X509_enrollment = true;
+		md_supports_container_key_gen = true;
+		md_guid_as_label = true;
+	}
+
+	# SmartCard-HSM with contact-less interface
+	card_atr 3B:8E:80:01:80:31:81:54:48:53:4D:31:73:80:21:40:81:07:18 {
+		driver = "sc-hsm";
+		md_read_only = false;
+		md_supports_X509_enrollment = true;
+		md_supports_container_key_gen = true;
+		md_guid_as_label = true;
+	}
+
 	secure_messaging local_authentic  {
 		# name of external SM module
 		# module_name = @DEFAULT_SM_MODULE@;
@@ -457,11 +484,11 @@ app default {
 		# Default: false
 		# use_file_caching = true;
 		#
-		# set a path for caching 
+		# set a path for caching
 		# so you do not use the env variables and for pam_pkcs11
 		# (with certificate check)  where $HOME is not set
 		# Default: path in user home
-		# file_cache_dir = /var/lib/opensc/cache	
+		# file_cache_dir = /var/lib/opensc/cache
                 #
 		# Use PIN caching?
 		# Default: true
@@ -504,7 +531,7 @@ app default {
 		#
 		# emulate custom {
 			# The location of the driver library
-			# module = @libdir@/p15emu_custom.so;
+			# module = @LIBDIR@@LIB_PRE@p15emu_custom@DYN_LIB_EXT@;
 		# }
 
 		# some additional application parameters:
@@ -513,9 +540,13 @@ app default {
 		#   obtained with the common procedures (ex. object creation protected by secure messaging).
 		#   Used by PKCS#11 module configurated to expose restricted number of slots.
 		#   (for ex. configurated to expose only User PIN slot, User and Sign PINs slots, ...)
+		#
+		# - disable: do not expose application in PKCS15 framework
+		#            default 'false'
 		application E828BD080FD25047656E65726963 {
 			type = generic;
 			model = "ECC Generic PKI";
+			# disable = true
 		}
 
 		application E828BD080FD2500000040301 {
@@ -670,22 +701,19 @@ app opensc-pkcs11 {
 		# Card can contain more then one PINs or more then one on-card application with
 		#   its own PINs. Normally, to access all of them with the PKCS#11 API a slot has to be
 		#   created for all of them. Many slots could be ennoying for some of widely used application,
-		#   like FireFox. This configuration parameter allows to select the PINs or on-card application
+		#   like FireFox. This configuration parameter allows to select the PIN(s)
 		#   for which PKCS#11 slot will be created.
 		# Actually recognised following symbolic names:
-		#  'user', 'sign', 'application', all
+		#  'user', 'sign', 'all'
 		# Only PINs initialised, non-SoPIN, non-unblocking are associated with symbolic name.
 		# 'user' is identified as first global or first local PIN.
 		# 'sign' is identified as second PIN: first local, second global or second local.
-		# 'application' slot created for each on-card application,
-		#   even if they use a common global PIN.
 		# 'all' slot created for all non-sopin, non-unblocking PINs,
 		#   optionally for PUK (see option 'create_puk_slot')
 		#
 		# Default: all
 		# create_slots_for_pins = "user,sign";
-		# create_slots_for_pins = application;
-		# create_slots_for_pins = "application,sign";
+		# create_slots_for_pins = "sign";
 		#
 		# For the module to simulate the opensc-onepin module behavior the following option
 		# must be set:

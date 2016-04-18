@@ -55,14 +55,9 @@ install-exec-hook:
 	done
 else
 # see http://wiki.cacert.org/wiki/Pkcs11TaskForce
-if CYGWIN
-PKCS11_SUFFIX=.dll
-else
-PKCS11_SUFFIX=.so
-endif
 install-exec-hook:
 	$(MKDIR_P) "$(DESTDIR)$(pkcs11dir)"
-	for l in opensc-pkcs11$(PKCS11_SUFFIX) onepin-opensc-pkcs11$(PKCS11_SUFFIX) pkcs11-spy$(PKCS11_SUFFIX); do \
+	for l in opensc-pkcs11$(DYN_LIB_EXT) onepin-opensc-pkcs11$(DYN_LIB_EXT) pkcs11-spy$(DYN_LIB_EXT); do \
 		rm -f "$(DESTDIR)$(pkcs11dir)/$$l"; \
 		$(LN_S) ../$$l "$(DESTDIR)$(pkcs11dir)/$$l"; \
 	done

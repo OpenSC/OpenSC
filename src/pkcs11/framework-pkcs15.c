@@ -24,6 +24,7 @@
 #include "libopensc/log.h"
 #include "libopensc/asn1.h"
 #include "libopensc/cardctl.h"
+#include "common/compat_strnlen.h"
 
 #ifdef ENABLE_OPENSSL
 #include <openssl/opensslv.h>
@@ -701,6 +702,7 @@ __pkcs15_create_data_object(struct pkcs15_fw_data *fw_data,
 }
 
 
+#ifdef USE_PKCS15_INIT
 static int
 __pkcs15_create_secret_key_object(struct pkcs15_fw_data *fw_data,
 		struct sc_pkcs15_object *object, struct pkcs15_any_object **skey_object)
@@ -718,6 +720,7 @@ __pkcs15_create_secret_key_object(struct pkcs15_fw_data *fw_data,
 
 	return 0;
 }
+#endif
 
 
 static int
@@ -772,9 +775,11 @@ __pkcs15_prkey_bind_related(struct pkcs15_fw_data *fw_data, struct pkcs15_prkey_
 			if (sc_pkcs15_compare_id(&pubkey->pub_info->id, id)) {
 				sc_log(context, "Associating object %d as public key", i);
 				pk->prv_pubkey = pubkey;
-				sc_pkcs15_dup_pubkey(context, pubkey->pub_data, &pk->pub_data);
-				if (pk->prv_info->modulus_length == 0)
-					pk->prv_info->modulus_length = pubkey->pub_info->modulus_length;
+				if (pubkey->pub_data) {
+					sc_pkcs15_dup_pubkey(context, pubkey->pub_data, &pk->pub_data);
+					if (pk->prv_info->modulus_length == 0)
+						pk->prv_info->modulus_length = pubkey->pub_info->modulus_length;
+				}
 			}
 		}
 	}
@@ -1205,7 +1210,7 @@ _add_pin_related_objects(struct sc_pkcs11_slot *slot, struct sc_pkcs15_object *p
 
 
 static void
-_add_public_objects(struct sc_pkcs11_slot *slot, struct pkcs15_fw_data *fw_data, struct pkcs15_fw_data *move_to_fw)
+_add_public_objects(struct sc_pkcs11_slot *slot, struct pkcs15_fw_data *fw_data)
 {
 	unsigned i;
 
@@ -1235,32 +1240,21 @@ _add_public_objects(struct sc_pkcs11_slot *slot, struct pkcs15_fw_data *fw_data,
 
 		sc_log(context, "Add public object(%p,%.*s,%x)", obj, (int) sizeof obj->p15_object->label, obj->p15_object->label, obj->p15_object->type);
 		pkcs15_add_object(slot, obj, NULL);
-
-		if (move_to_fw && move_to_fw != fw_data && move_to_fw->num_objects < MAX_OBJECTS)   {
-			int tail = fw_data->num_objects - i - 1;
-
-			sc_log(context, "Move public object(%p) from %p to %p", obj, fw_data, move_to_fw);
-			move_to_fw->objects[move_to_fw->num_objects++] = obj;
-			if (tail)
-				memcpy(&fw_data->objects[i], &fw_data->objects[i + 1], sizeof(fw_data->objects[0]) * tail);
-			i--;
-			fw_data->num_objects--;
-		}
 	}
 }
 
 
 static CK_RV
-pkcs15_create_tokens(struct sc_pkcs11_card *p11card, struct sc_app_info *app_info,
-		struct sc_pkcs11_slot **first_slot)
+pkcs15_create_tokens(struct sc_pkcs11_card *p11card, struct sc_app_info *app_info)
 {
-	struct pkcs15_fw_data *fw_data = NULL, *ffda = NULL;
-	struct sc_pkcs15_object *auth_user_pin = NULL, *auth_sign_pin = NULL, *fauo = NULL;
-	struct sc_pkcs11_slot *slot = NULL;
+	struct pkcs15_fw_data *fw_data = NULL;
+	struct sc_pkcs15_object *auth_user_pin = NULL, *auth_sign_pin = NULL;
+	struct sc_pkcs11_slot *slot = NULL, *sign_slot = NULL;
+	unsigned int cs_flags = sc_pkcs11_conf.create_slots_flags;
 	int i, rv, idx;
 
 	sc_log(context, "create PKCS#15 tokens; fws:%p,%p,%p", p11card->fws_data[0], p11card->fws_data[1], p11card->fws_data[2]);
-	sc_log(context, "create slots flags 0x%X", sc_pkcs11_conf.create_slots_flags);
+	sc_log(context, "create slots flags 0x%X", cs_flags);
 
 	/* Find out framework data corresponding to the given application */
 	fw_data = get_fw_data(p11card, app_info, &idx);
@@ -1273,9 +1267,9 @@ pkcs15_create_tokens(struct sc_pkcs11_card *p11card, struct sc_app_info *app_inf
 
 	/* Try to identify UserPIN and SignPIN by their symbolic name */
 	auth_user_pin = _get_auth_object_by_name(fw_data->p15_card, "UserPIN");
-	if (sc_pkcs11_conf.create_slots_flags & SC_PKCS11_SLOT_FOR_PIN_SIGN)
+	if (cs_flags & SC_PKCS11_SLOT_FOR_PIN_SIGN)
 		auth_sign_pin = _get_auth_object_by_name(fw_data->p15_card, "SignPIN");
-	sc_log(context, "Flags:0x%X; Auth User/Sign PINs %p/%p", sc_pkcs11_conf.create_slots_flags, auth_user_pin, auth_sign_pin);
+	sc_log(context, "Flags:0x%X; Auth User/Sign PINs %p/%p", cs_flags, auth_user_pin, auth_sign_pin);
 
 	/* Add PKCS#15 objects of the known types to the framework data */
 	rv = _pkcs15_create_typed_objects(fw_data);
@@ -1287,7 +1281,7 @@ pkcs15_create_tokens(struct sc_pkcs11_card *p11card, struct sc_app_info *app_inf
 	 *  - 'UserPIN' cannot be identified (VT: for some cards with incomplete PIN flags);
 	 *  - configuration impose to create slot for all PINs.
 	 */
-	if (!auth_user_pin || sc_pkcs11_conf.create_slots_flags & SC_PKCS11_SLOT_CREATE_ALL)   {
+	if (!auth_user_pin || cs_flags & SC_PKCS11_SLOT_CREATE_ALL)   {
 		struct sc_pkcs15_object *auths[MAX_OBJECTS];
 		int auth_count;
 
@@ -1322,26 +1316,8 @@ pkcs15_create_tokens(struct sc_pkcs11_card *p11card, struct sc_app_info *app_inf
 		}
 	}
 	else   {
-		/* If there is no need to create slot for each PIN or for each application,
-		 * the objets from the non-first application and protected by the same (global) PIN
-		 * are added to the framework data of the first slot .*/
-		if (!(sc_pkcs11_conf.create_slots_flags & SC_PKCS11_SLOT_FOR_APPLICATION))   {
-			if (first_slot && *first_slot)   {
-				/* Initialize variables related to the first created slot */
-				fauo = slot_data_auth((*first_slot)->fw_data);
-				ffda = (struct pkcs15_fw_data *) p11card->fws_data[(*first_slot)->fw_data_idx];
-				sc_log(context, "%i objects in first slot", ffda->num_objects);
-			}
-		}
-
 		sc_log(context, "User/Sign PINs %p/%p", auth_user_pin, auth_sign_pin);
-		if (fauo && auth_user_pin && !memcmp(fauo->data, auth_user_pin->data, sizeof(struct sc_pkcs15_auth_info)))   {
-			/* Add objects from the non-first application to the FW data of the first slot */
-			sc_log(context, "Add objects to existing slot created for PIN '%.*s'", (int) sizeof fauo->label, fauo->label);
-			_add_pin_related_objects(*first_slot, fauo, fw_data, ffda);
-			slot = *first_slot;
-		}
-		else  if (auth_user_pin) {
+		if (auth_user_pin && (cs_flags & SC_PKCS11_SLOT_FOR_PIN_USER)) {
 			/* For the UserPIN of the first slot create slot */
 			sc_log(context, "Create slot for User PIN '%.*s'", (int) sizeof auth_user_pin->label, auth_user_pin->label);
 			rv = pkcs15_create_slot(p11card, fw_data, auth_user_pin, app_info, &slot);
@@ -1351,10 +1327,8 @@ pkcs15_create_tokens(struct sc_pkcs11_card *p11card, struct sc_app_info *app_inf
 			_add_pin_related_objects(slot, auth_user_pin, fw_data, NULL);
 		}
 
-		/*  Create slot for SignPIN and populate it's FW data with the objects protected by SignPIN*/
-		if (auth_sign_pin && auth_user_pin)   {
-			struct sc_pkcs11_slot *sign_slot = NULL;
-
+		if (auth_sign_pin && (cs_flags & SC_PKCS11_SLOT_FOR_PIN_SIGN))   {
+			/* Only Sign PIN slot needs to be exposed */
 			sc_log(context, "Create slot for Sign PIN '%.*s'", (int) sizeof auth_sign_pin->label, auth_sign_pin->label);
 			rv = pkcs15_create_slot(p11card, fw_data, auth_sign_pin, app_info, &sign_slot);
 			if (rv != CKR_OK)
@@ -1362,26 +1336,23 @@ pkcs15_create_tokens(struct sc_pkcs11_card *p11card, struct sc_app_info *app_inf
 			sign_slot->fw_data_idx = idx;
 			_add_pin_related_objects(sign_slot, auth_sign_pin, fw_data, NULL);
 		}
+
+		sc_log(context, "slot %p, sign-slot %p\n", slot, sign_slot);
+		if (!slot && sign_slot)
+			slot = sign_slot;
 	}
 
-	if (!slot)   {
+	if (!slot && (cs_flags == SC_PKCS11_SLOT_CREATE_ALL))   {
 		sc_log(context, "Now create slot without AUTH object");
 		pkcs15_create_slot(p11card, fw_data, NULL, app_info, &slot);
 		sc_log(context, "Created slot without AUTH object: %p", slot);
 	}
 
-	if (first_slot && *first_slot==NULL)   {
-		sc_log(context, "Set first slot: %p", slot);
-		*first_slot = slot;
-	}
-
 	if (slot)   {
 		sc_log(context, "Add public objects to slot %p", slot);
-		_add_public_objects(slot, fw_data, ffda);
+		_add_public_objects(slot, fw_data);
 	}
 
-	if (ffda)
-		sc_log(context, "Finaly there are %i objects in first slot", ffda->num_objects);
 	sc_log(context, "All tokens created");
 	return CKR_OK;
 }

@@ -1233,7 +1233,7 @@ sc_pkcs15_read_der_file(sc_context_t *ctx, char * filename,
 	}
 	len = r;
 	body = tagbuf;
-	if (sc_asn1_read_tag(&body, 0xfffff, &cla_out, &tag_out, &bodylen) != SC_SUCCESS) {
+	if (sc_asn1_read_tag(&body, len, &cla_out, &tag_out, &bodylen) != SC_SUCCESS) {
 		sc_log(ctx, "DER problem");
 		r = SC_ERROR_INVALID_ASN1_OBJECT;
 		goto out;
@@ -1260,7 +1260,7 @@ sc_pkcs15_read_der_file(sc_context_t *ctx, char * filename,
 	*buf = rbuf;
 	rbuf = NULL;
 	r = rbuflen;
-	out:
+out:
 	if (f >= 0)
 		close(f);
 

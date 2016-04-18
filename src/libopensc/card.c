@@ -485,7 +485,7 @@ int sc_create_file(sc_card_t *card, sc_file_t *file)
 	if (r != SC_SUCCESS)
 		pbuf[0] = '\0';
 
-	sc_log(card->ctx, "called; type=%d, path=%s, size=%u",  in_path->type, pbuf, file->size);
+	sc_log(card->ctx, "called; type=%d, path=%s, id=%04i, size=%u",  in_path->type, pbuf, file->id, file->size);
 	/* ISO 7816-4: "Number of data bytes in the file, including structural information if any"
 	 * can not be bigger than two bytes */
 	if (file->size > 0xFFFF)

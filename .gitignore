@@ -21,6 +21,7 @@ missing
 mkinstalldirs
 so_locations
 stamp-h*
+tags
 .deps
 .libs
 .#*#

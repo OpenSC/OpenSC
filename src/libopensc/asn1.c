@@ -73,14 +73,17 @@ int sc_asn1_read_tag(const u8 ** buf, size_t buflen, unsigned int *cla_out,
 		*tag_out = SC_ASN1_TAG_EOC;
 		return SC_SUCCESS;
 	}
-	/* parse tag byte(s) */
+	/* parse tag byte(s)
+	 * Resulted tag is presented by integer that has not to be
+	 * confused with the 'tag number' part of ASN.1 tag.
+	 */
 	cla = (*p & SC_ASN1_TAG_CLASS) | (*p & SC_ASN1_TAG_CONSTRUCTED);
 	tag = *p & SC_ASN1_TAG_PRIMITIVE;
 	p++;
 	left--;
 	if (tag == SC_ASN1_TAG_PRIMITIVE) {
 		/* high tag number */
-		size_t n = sizeof(int) - 1;
+		size_t n = SC_ASN1_TAGNUM_SIZE - 1;
 		/* search the last tag octet */
 		while (left-- != 0 && n != 0) {
 			tag <<= 8;
@@ -93,10 +96,8 @@ int sc_asn1_read_tag(const u8 ** buf, size_t buflen, unsigned int *cla_out,
 			/* either an invalid tag or it doesn't fit in
 			 * unsigned int */
 			return SC_ERROR_INVALID_ASN1_OBJECT;
-
 	}
-	if (left == 0)
-		return SC_ERROR_INVALID_ASN1_OBJECT;
+
 	/* parse length byte(s) */
 	len = *p & 0x7f;
 	if (*p++ & 0x80) {

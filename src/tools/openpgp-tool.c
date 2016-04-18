@@ -340,7 +340,7 @@ static int do_userinfo(sc_card_t *card)
 	for (i = 0; openpgp_data[i].ef != NULL; i++) {
 		sc_path_t path;
 		sc_file_t *file;
-		unsigned int count;
+		size_t count;
 		int r;
 
 		sc_format_path(openpgp_data[i].ef, &path);
@@ -350,22 +350,22 @@ static int do_userinfo(sc_card_t *card)
 			return EXIT_FAILURE;
 		}
 
-		count = (unsigned int)file->size;
+		count = file->size;
 		if (!count)
 			continue;
 
-		if (count > (unsigned int)sizeof(buf) - 1) {
+		if (count > sizeof(buf) - 1) {
 			fprintf(stderr, "Too small buffer to read the OpenPGP data\n");
 			return EXIT_FAILURE;
 		}
 
-		r = sc_read_binary(card, 0, buf, (size_t)count, 0);
+		r = sc_read_binary(card, 0, buf, count, 0);
 		if (r < 0) {
 			fprintf(stderr, "%s: read failed - %s\n", openpgp_data[i].ef, sc_strerror(r));
 			return EXIT_FAILURE;
 		}
-		if (r != count) {
-			fprintf(stderr, "%s: expecting %d, got only %d bytes\n", openpgp_data[i].ef, count, r);
+		if (r != (signed)count) {
+			fprintf(stderr, "%s: expecting %zd, got only %d bytes\n", openpgp_data[i].ef, count, r);
 			return EXIT_FAILURE;
 		}
 

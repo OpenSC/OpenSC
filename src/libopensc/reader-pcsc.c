@@ -47,6 +47,15 @@
 #endif
 #endif
 
+#define SCARD_CLASS_SYSTEM     0x7fff
+#define SCARD_ATTR_VALUE(Class, Tag) ((((ULONG)(Class)) << 16) | ((ULONG)(Tag)))
+#define SCARD_ATTR_DEVICE_FRIENDLY_NAME_A SCARD_ATTR_VALUE(SCARD_CLASS_SYSTEM, 0x0003)
+#define SCARD_ATTR_DEVICE_SYSTEM_NAME_A SCARD_ATTR_VALUE(SCARD_CLASS_SYSTEM, 0x0004)
+#define SCARD_CLASS_VENDOR_INFO 1
+#define SCARD_ATTR_VENDOR_NAME SCARD_ATTR_VALUE(SCARD_CLASS_VENDOR_INFO, 0x0100) /**< Vendor name. */
+#define SCARD_ATTR_VENDOR_IFD_TYPE SCARD_ATTR_VALUE(SCARD_CLASS_VENDOR_INFO, 0x0101) /**< Vendor-supplied interface device type (model designation of reader). */
+#define SCARD_ATTR_VENDOR_IFD_VERSION SCARD_ATTR_VALUE(SCARD_CLASS_VENDOR_INFO, 0x0102) /**< Vendor-supplied interface device version (DWORD in the form 0xMMmmbbbb where MM = major version, mm = minor version, and bbbb = build number). */
+
 /* Logging */
 #define PCSC_TRACE(reader, desc, rv) do { sc_log(reader->ctx, "%s:" desc ": 0x%08lx\n", reader->name, rv); } while (0)
 #define PCSC_LOG(ctx, desc, rv) do { sc_log(ctx, desc ": 0x%08lx\n", rv); } while (0)
@@ -727,7 +736,8 @@ static int pcsc_init(sc_context_t *ctx)
 		gpriv->SCardListReaders = (SCardListReaders_t)sc_dlsym(gpriv->dlhandle, "SCardListReadersA");
 
 	/* If we have SCardGetAttrib it is correct API */
-	if (sc_dlsym(gpriv->dlhandle, "SCardGetAttrib") != NULL) {
+	gpriv->SCardGetAttrib = (SCardGetAttrib_t)sc_dlsym(gpriv->dlhandle, "SCardGetAttrib");
+	if (gpriv->SCardGetAttrib != NULL) {
 #ifdef __APPLE__
 		gpriv->SCardControl = (SCardControl_t)sc_dlsym(gpriv->dlhandle, "SCardControl132");
 #endif
@@ -1057,6 +1067,25 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 		/* debug the product and vendor ID of the reader */
 		part10_get_vendor_product(reader, card_handle, NULL, NULL);
 	}
+
+	if(gpriv->SCardGetAttrib != NULL) {
+		if (gpriv->SCardGetAttrib(card_handle, SCARD_ATTR_VENDOR_NAME,
+					rbuf, &rcount) == SCARD_S_SUCCESS
+				&& rcount > 0) {
+			/* add NUL termination, just in case... */
+			rbuf[(sizeof rbuf)-1] = '\0';
+			reader->vendor = strdup((char *) rbuf);
+		}
+
+		rcount = sizeof rbuf;
+		if(gpriv->SCardGetAttrib(card_handle, SCARD_ATTR_VENDOR_IFD_VERSION,
+					rbuf, &rcount) == SCARD_S_SUCCESS
+				&& rcount == 4) {
+			i = *(DWORD *) rbuf;
+			reader->version_major = (i >> 24) & 0xFF;
+			reader->version_minor = (i >> 16) & 0xFF;
+		}
+	}
 }
 
 static int pcsc_detect_readers(sc_context_t *ctx)
@@ -1098,7 +1127,7 @@ static int pcsc_detect_readers(sc_context_t *ctx)
 		else {
 			rv = gpriv->SCardListReaders(gpriv->pcsc_ctx, NULL, NULL,
 					      (LPDWORD) &reader_buf_size);
-			if (rv == SCARD_E_NO_SERVICE) {
+			if (rv == (LONG)SCARD_E_NO_SERVICE) {
 				gpriv->SCardReleaseContext(gpriv->pcsc_ctx);
 				gpriv->pcsc_ctx = -1;
 				gpriv->pcsc_wait_ctx = -1;
@@ -1804,7 +1833,7 @@ pcsc_pin_cmd(sc_reader_t *reader, struct sc_pin_cmd_data *data)
 	/* If PIN block building failed, we fail too */
 	SC_TEST_RET(reader->ctx, SC_LOG_DEBUG_NORMAL, r, "PC/SC v2 pinpad block building failed!");
 	/* If not, debug it, just for fun */
-	sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "PC/SC v2 pinpad block: %s", sc_dump_hex(sbuf, scount));
+	sc_debug_hex(reader->ctx, SC_LOG_DEBUG_NORMAL, "PC/SC v2 pinpad block", sbuf, scount);
 
 	r = pcsc_internal_transmit(reader, sbuf, scount, rbuf, &rcount, ioctl);
 
@@ -2107,11 +2136,6 @@ struct sc_reader_driver * sc_get_pcsc_driver(void)
 }
 
 #ifdef ENABLE_MINIDRIVER
-
-#define SCARD_CLASS_SYSTEM     0x7fff
-#define SCARD_ATTR_VALUE(Class, Tag) ((((ULONG)(Class)) << 16) | ((ULONG)(Tag)))
-#define SCARD_ATTR_DEVICE_FRIENDLY_NAME_A SCARD_ATTR_VALUE(SCARD_CLASS_SYSTEM, 0x0003)
-#define SCARD_ATTR_DEVICE_SYSTEM_NAME_A SCARD_ATTR_VALUE(SCARD_CLASS_SYSTEM, 0x0004)
 
 static int cardmod_connect(sc_reader_t *reader)
 {

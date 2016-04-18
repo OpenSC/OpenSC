@@ -53,10 +53,10 @@ static struct sc_pkcs11_slot * reader_get_slot(sc_reader_t *reader)
 static void init_slot_info(CK_SLOT_INFO_PTR pInfo)
 {
 	strcpy_bp(pInfo->slotDescription, "Virtual hotplug slot", 64);
-	strcpy_bp(pInfo->manufacturerID, "OpenSC (www.opensc-project.org)", 32);
+	strcpy_bp(pInfo->manufacturerID, OPENSC_VS_FF_COMPANY_NAME, 32);
 	pInfo->flags = CKF_REMOVABLE_DEVICE | CKF_HW_SLOT;
-	pInfo->hardwareVersion.major = 0;
-	pInfo->hardwareVersion.minor = 0;
+	pInfo->hardwareVersion.major = OPENSC_VERSION_MAJOR;
+	pInfo->hardwareVersion.minor = OPENSC_VERSION_MINOR;
 	pInfo->firmwareVersion.major = 0;
 	pInfo->firmwareVersion.minor = 0;
 }
@@ -97,7 +97,10 @@ CK_RV create_slot(sc_reader_t *reader)
 	init_slot_info(&slot->slot_info);
 	if (reader != NULL) {
 		slot->reader = reader;
+		strcpy_bp(slot->slot_info.manufacturerID, reader->vendor, 32);
 		strcpy_bp(slot->slot_info.slotDescription, reader->name, 64);
+		slot->slot_info.hardwareVersion.major = reader->version_major;
+		slot->slot_info.hardwareVersion.minor = reader->version_minor;
 	}
 
 	return CKR_OK;
@@ -255,7 +258,6 @@ again:
 	/* Detect the framework */
 	if (p11card->framework == NULL) {
 		struct sc_app_info *app_generic = sc_pkcs15_get_application_by_type(p11card->card, "generic");
-		struct sc_pkcs11_slot *first_slot = NULL;
 
 		sc_log(context, "%s: Detecting Framework. %i on-card applications", reader->name, p11card->card->app_count);
 		sc_log(context, "%s: generic application %s", reader->name, app_generic ? app_generic->label : "<none>");
@@ -292,7 +294,7 @@ again:
 			}
 
 			sc_log(context, "%s: Creating 'generic' token.", reader->name);
-			rv = frameworks[i]->create_tokens(p11card, app_generic, &first_slot);
+			rv = frameworks[i]->create_tokens(p11card, app_generic);
 			if (rv != CKR_OK)   {
 				sc_log(context, "%s: create 'generic' token error 0x%X", reader->name, rv);
 				return rv;
@@ -315,7 +317,7 @@ again:
 			}
 
 			sc_log(context, "%s: Creating %s token.", reader->name, app_name);
-			rv = frameworks[i]->create_tokens(p11card, app_info, &first_slot);
+			rv = frameworks[i]->create_tokens(p11card, app_info);
 			if (rv != CKR_OK)   {
 				sc_log(context, "%s: create %s token error 0x%X", reader->name, app_name, rv);
 				return rv;

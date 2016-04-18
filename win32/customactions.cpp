@@ -41,6 +41,12 @@
 // WiX Header Files:
 #include <wcautil.h>
 
+#if defined(_MSC_VER) && (_MSC_VER >= 1900)
+// only for VS 2015 or later
+// WiX 3.10 was built for older versions of VS and needs this for compatibility
+#pragma comment(lib, "legacy_stdio_definitions.lib")
+#endif
+
 #define X86onX64_SC_DATABASE TEXT("SOFTWARE\\Wow6432Node\\Microsoft\\Cryptography\\Calais\\SmartCards")
 #define SC_DATABASE TEXT("SOFTWARE\\Microsoft\\Cryptography\\Calais\\SmartCards")
 #define BASE_CSP TEXT("OpenSC CSP")

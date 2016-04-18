@@ -63,6 +63,31 @@ static int detect_method(const u8* in, size_t inLen) {
 	}
 }
 
+static int sc_compress_gzip(u8* out, size_t* outLen, const u8* in, size_t inLen) {
+	/* Since compress does not offer a way to make it compress gzip... manually set it up */
+	z_stream gz;
+	int err;
+	int window_size = 15 + 0x10;
+	memset(&gz, 0, sizeof(gz));
+
+	gz.next_in = (u8*)in;
+	gz.avail_in = inLen;
+	gz.next_out = out;
+	gz.avail_out = *outLen;
+
+	err = deflateInit2(&gz, Z_BEST_COMPRESSION, Z_DEFLATED, window_size, 9, Z_DEFAULT_STRATEGY);
+	if(err != Z_OK) return zerr_to_opensc(err);
+	err = deflate(&gz, Z_FINISH);
+	if(err != Z_STREAM_END) {
+		deflateEnd(&gz);
+		return zerr_to_opensc(err);
+	}
+	*outLen = gz.total_out;
+
+	err = deflateEnd(&gz);
+	return zerr_to_opensc(err);
+}
+
 static int sc_decompress_gzip(u8* out, size_t* outLen, const u8* in, size_t inLen) {
 	/* Since uncompress does not offer a way to make it uncompress gzip... manually set it up */
 	z_stream gz;
@@ -86,6 +111,23 @@ static int sc_decompress_gzip(u8* out, size_t* outLen, const u8* in, size_t inLe
 
 	err = inflateEnd(&gz);
 	return zerr_to_opensc(err);	
+}
+
+int sc_compress(u8* out, size_t* outLen, const u8* in, size_t inLen, int method) {
+	unsigned long zlib_outlen;
+	int rc;
+
+	switch(method) {
+	case COMPRESSION_ZLIB:
+		zlib_outlen = *outLen;
+		rc = zerr_to_opensc(compress(out, &zlib_outlen, in, inLen));
+		*outLen = zlib_outlen;
+		return rc;
+	case COMPRESSION_GZIP:
+		return sc_compress_gzip(out, outLen, in, inLen);
+	default:
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
 }
 
 int sc_decompress(u8* out, size_t* outLen, const u8* in, size_t inLen, int method) {

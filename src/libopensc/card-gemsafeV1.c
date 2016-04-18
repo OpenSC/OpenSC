@@ -28,6 +28,11 @@
 #include "asn1.h"
 #include "cardctl.h"
 
+#define GEMSAFEV1_ALG_REF_FREEFORM	0x12
+#define GEMSAFEV3_ALG_REF_FREEFORM	0x02
+#define GEMSAFEV3_ALG_REF_SHA1		0x12
+#define GEMSAFEV3_ALG_REF_SHA256	0x42
+
 static struct sc_card_operations gemsafe_ops;
 static struct sc_card_operations *iso_ops = NULL;
 
@@ -58,6 +63,8 @@ static struct sc_atr_table gemsafe_atrs[] = {
     {"3B:7D:95:00:00:80:31:80:65:B0:83:11:00:C8:83:00:90:00", NULL, NULL, SC_CARD_TYPE_GEMSAFEV1_PTEID, 0, NULL},
     /* Swedish eID card */
     {"3B:7D:96:00:00:80:31:80:65:B0:83:11:00:C8:83:00:90:00", NULL, NULL, SC_CARD_TYPE_GEMSAFEV1_SEEID, 0, NULL},
+    /* European Patent Office epoline card*/
+    {"3b:7d:96:00:00:80:31:80:65:b0:83:02:01:f3:83:00:90:00", NULL, NULL, SC_CARD_TYPE_GEMSAFEV1_SEEID, 0, NULL},
     {NULL, NULL, NULL, 0, 0, NULL}
 };
 
@@ -199,10 +206,27 @@ static int gemsafe_init(struct sc_card *card)
 		flags |= SC_ALGORITHM_ONBOARD_KEY_GEN;
 		flags |= SC_ALGORITHM_RSA_HASH_NONE;
 
+		/* GemSAFE V3 cards support SHA256 */
+		if (card->type == SC_CARD_TYPE_GEMSAFEV1_PTEID ||
+		    card->type == SC_CARD_TYPE_GEMSAFEV1_SEEID)
+			flags |= SC_ALGORITHM_RSA_HASH_SHA256;
+
 		_sc_card_add_rsa_alg(card,  512, flags, 0);
 		_sc_card_add_rsa_alg(card,  768, flags, 0);
 		_sc_card_add_rsa_alg(card, 1024, flags, 0);
 		_sc_card_add_rsa_alg(card, 2048, flags, 0);
+
+		/* fake algorithm to persuade register_mechanisms()
+		 * to register these hashes */
+		if (card->type == SC_CARD_TYPE_GEMSAFEV1_PTEID ||
+		    card->type == SC_CARD_TYPE_GEMSAFEV1_SEEID) {
+			flags  = SC_ALGORITHM_RSA_HASH_SHA1;
+			flags |= SC_ALGORITHM_RSA_HASH_MD5;
+			flags |= SC_ALGORITHM_RSA_HASH_MD5_SHA1;
+			flags |= SC_ALGORITHM_RSA_HASH_RIPEMD160;
+
+			_sc_card_add_rsa_alg(card,  512, flags, 0);
+		}
 	}
 
 	card->drv_data = exdata;
@@ -363,15 +387,21 @@ static u8 gemsafe_flags2algref(struct sc_card *card, const struct sc_security_en
 	u8 ret = 0;
 
 	if (env->operation == SC_SEC_OPERATION_SIGN) {
-		if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1)
+		if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA256)
+			ret = GEMSAFEV3_ALG_REF_SHA256;
+		else if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1)
 			ret = (card->type == SC_CARD_TYPE_GEMSAFEV1_PTEID ||
-			       card->type == SC_CARD_TYPE_GEMSAFEV1_SEEID) ? 0x02 : 0x12;
+			       card->type == SC_CARD_TYPE_GEMSAFEV1_SEEID) ?
+			      GEMSAFEV3_ALG_REF_FREEFORM :
+			      GEMSAFEV1_ALG_REF_FREEFORM;
 		else if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_ISO9796)
 			ret = 0x11;
 	} else if (env->operation == SC_SEC_OPERATION_DECIPHER) {
 		if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1)
 			ret = (card->type == SC_CARD_TYPE_GEMSAFEV1_PTEID ||
-			       card->type == SC_CARD_TYPE_GEMSAFEV1_SEEID) ? 0x02 : 0x12;
+			       card->type == SC_CARD_TYPE_GEMSAFEV1_SEEID) ?
+			      GEMSAFEV3_ALG_REF_FREEFORM :
+			      GEMSAFEV1_ALG_REF_FREEFORM;
 	}
 
 	return ret;
@@ -429,6 +459,7 @@ static int gemsafe_compute_signature(struct sc_card *card, const u8 * data,
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 
+	/* the card can sign 36 bytes of free form data */
 	if (data_len > 36) {
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "error: input data too long: %lu bytes\n", data_len);
 		return SC_ERROR_INVALID_ARGUMENTS;

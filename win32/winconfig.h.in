@@ -74,6 +74,7 @@
 #define S_IWUSR S_IWRITE
 #endif
 
+#define HAVE_STRNLEN
 #define HAVE_IO_H
 #define ENABLE_PCSC
 #define HAVE_WINSCARD_H
@@ -95,8 +96,28 @@
 #define OPENSC_FEATURES "N/A"
 #endif
 
+#ifndef OPENSC_VERSION_MAJOR
+#define OPENSC_VERSION_MAJOR 0
+#endif
+
+#ifndef OPENSC_VERSION_MINOR
+#define OPENSC_VERSION_MINOR 15
+#endif
+
+#ifndef OPENSC_VS_FF_COMPANY_NAME
+#define OPENSC_VS_FF_COMPANY_NAME "OpenSC Project"
+#endif
+
+#ifndef OPENSC_VS_FF_PRODUCT_NAME
+#define OPENSC_VS_FF_PRODUCT_NAME "OpenSC smartcard framework"
+#endif
+
 #ifndef DEFAULT_PKCS11_PROVIDER
 #define DEFAULT_PKCS11_PROVIDER "opensc-pkcs11.dll"
+#endif
+
+#ifndef OPENSC_SCM_REVISION
+#define OPENSC_SCM_REVISION "@OPENSC_SCM_REVISION@"
 #endif
 
 #endif
