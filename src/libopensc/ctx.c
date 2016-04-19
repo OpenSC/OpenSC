@@ -356,34 +356,6 @@ load_parameters(sc_context_t *ctx, scconf_block *block, struct _sc_ctx_options *
 	return err;
 }
 
-static void load_reader_driver_options(sc_context_t *ctx)
-{
-	struct sc_reader_driver *driver = ctx->reader_driver;
-	scconf_block *conf_block = NULL;
-	sc_reader_t *reader;
-	int max_send_size;
-	int max_recv_size;
-
-	conf_block = sc_get_conf_block(ctx, "reader_driver", driver->short_name, 1);
-
-	if (conf_block != NULL) {
-		max_send_size = scconf_get_int(conf_block, "max_send_size", -1);
-		max_recv_size = scconf_get_int(conf_block, "max_recv_size", -1);
-		if (max_send_size >= 0 || max_recv_size >= 0) {
-			if (list_iterator_start(&ctx->readers)) {
-				reader = list_iterator_next(&ctx->readers);
-				while (reader) {
-					if (max_send_size >= 0)
-						reader->max_send_size = max_send_size;
-					if (max_recv_size >= 0)
-						reader->max_recv_size = max_recv_size;
-					reader = list_iterator_next(&ctx->readers);
-				}
-				list_iterator_stop(&ctx->readers);
-			}
-		}
-	}
-}
 
 /**
  * find library module for provided driver in configuration file
@@ -824,7 +796,6 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 	}
 	del_drvs(&opts);
 	sc_ctx_detect_readers(ctx);
-	load_reader_driver_options(ctx);
 	*ctx_out = ctx;
 
 	return SC_SUCCESS;

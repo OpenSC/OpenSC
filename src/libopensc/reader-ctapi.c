@@ -322,19 +322,17 @@ static struct ctapi_module * add_module(struct ctapi_global_private_data *gpriv,
 }
 
 static int ctapi_load_module(sc_context_t *ctx,
-			     struct ctapi_global_private_data *gpriv,
-			     scconf_block *conf)
+		struct ctapi_global_private_data *gpriv, scconf_block *conf)
 {
 	const char *val;
 	struct ctapi_functions funcs;
 	struct ctapi_module *mod;
 	const scconf_list *list;
+	scconf_block *conf_block = NULL;
 	void *dlh;
 	int r, i, NumUnits;
 	u8 cmd[5], rbuf[256], sad, dad;
 	unsigned short lr;
-
-
 
 	list = scconf_find_list(conf, "ports");
 	if (list == NULL) {
@@ -391,6 +389,16 @@ static int ctapi_load_module(sc_context_t *ctx,
 		reader->name = strdup(namebuf);
 		priv->funcs = funcs;
 		priv->ctn = mod->ctn_count;
+
+		reader->max_send_size = SC_READER_SHORT_APDU_MAX_SEND_SIZE;
+		reader->max_recv_size = SC_READER_SHORT_APDU_MAX_RECV_SIZE;
+
+		conf_block = sc_get_conf_block(ctx, "reader_driver", "ctapi", 1);
+		if (conf_block) {
+			reader->max_send_size = scconf_get_int(conf_block, "max_send_size", reader->max_send_size);
+			reader->max_recv_size = scconf_get_int(conf_block, "max_recv_size", reader->max_recv_size);
+		}
+
 		r = _sc_add_reader(ctx, reader);
 		if (r) {
 			funcs.CT_close((unsigned short)mod->ctn_count);
@@ -506,21 +514,13 @@ static int ctapi_init(sc_context_t *ctx)
 		return SC_ERROR_OUT_OF_MEMORY;
 	ctx->reader_drv_data = gpriv;
 
-	for (i = 0; ctx->conf_blocks[i] != NULL; i++) {
-		blocks = scconf_find_blocks(ctx->conf, ctx->conf_blocks[i],
-					    "reader_driver", "ctapi");
-		if (blocks && blocks[0])
-			conf_block = blocks[0];
+	conf_block = sc_get_conf_block(ctx, "reader_driver", "ctapi", 1);
+	if (conf_block)   {
+		blocks = scconf_find_blocks(ctx->conf, conf_block, "module", NULL);
+		for (i = 0; blocks != NULL && blocks[i] != NULL; i++)
+			ctapi_load_module(ctx, gpriv, blocks[i]);
 		free(blocks);
-		if (conf_block != NULL)
-			break;
 	}
-	if (conf_block == NULL)
-		return 0;
-	blocks = scconf_find_blocks(ctx->conf, conf_block, "module", NULL);
-	for (i = 0; blocks != NULL && blocks[i] != NULL; i++)
-		ctapi_load_module(ctx, gpriv, blocks[i]);
-	free(blocks);
 
 	return 0;
 }
