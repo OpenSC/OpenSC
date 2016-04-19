@@ -96,6 +96,7 @@ static int
 openct_add_reader(sc_context_t *ctx, unsigned int num, ct_info_t *info)
 {
 	sc_reader_t	*reader;
+	scconf_block *conf_block;
 	struct driver_data *data;
 	int		rc;
 
@@ -118,6 +119,12 @@ openct_add_reader(sc_context_t *ctx, unsigned int num, ct_info_t *info)
 	reader->ops = &openct_ops;
 	reader->drv_data = data;
 	reader->name = strdup(data->info.ct_name);
+
+	conf_block = sc_get_conf_block(ctx, "reader_driver", "openct", 1);
+	if (conf_block) {
+		reader->max_send_size = scconf_get_int(conf_block, "max_send_size", reader->max_send_size);
+		reader->max_recv_size = scconf_get_int(conf_block, "max_recv_size", reader->max_recv_size);
+	}
 
 	if ((rc = _sc_add_reader(ctx, reader)) < 0) {
 		free(data);

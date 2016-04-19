@@ -704,8 +704,10 @@ static int pcsc_init(sc_context_t *ctx)
 		gpriv->provider_library =
 		    scconf_get_str(conf_block, "provider_library", gpriv->provider_library);
 	}
-	sc_log(ctx, "PC/SC options: connect_exclusive=%d disconnect_action=%d transaction_end_action=%d reconnect_action=%d enable_pinpad=%d enable_pace=%d",
-		gpriv->connect_exclusive, gpriv->disconnect_action, gpriv->transaction_end_action, gpriv->reconnect_action, gpriv->enable_pinpad, gpriv->enable_pace);
+	sc_log(ctx, "PC/SC options: connect_exclusive=%d disconnect_action=%d transaction_end_action=%d"
+		     " reconnect_action=%d enable_pinpad=%d enable_pace=%d",
+		gpriv->connect_exclusive, gpriv->disconnect_action, gpriv->transaction_end_action,
+		gpriv->reconnect_action, gpriv->enable_pinpad, gpriv->enable_pace);
 
 	gpriv->dlhandle = sc_dlopen(gpriv->provider_library);
 	if (gpriv->dlhandle == NULL) {
@@ -870,31 +872,32 @@ part10_find_property_by_tag(unsigned char buffer[], int length,
  */
 static size_t part10_detect_max_data(sc_reader_t *reader, SCARDHANDLE card_handle)
 {
-    u8 rbuf[256];
-    DWORD rcount = sizeof rbuf;
-    struct pcsc_private_data *priv;
-	/* 0 means no limitations */
-    size_t max_data = 0;
+	u8 rbuf[256];
+	DWORD rcount = sizeof rbuf;
+	struct pcsc_private_data *priv = NULL;
+	/* 0 means extended APDU not supported */
+	size_t max_data = 0;
 	int r;
 
-    if (!reader)
-        goto err;
-    priv = GET_PRIV_DATA(reader);
-    if (!priv)
-        goto err;
+	if (!reader)
+		goto err;
+	priv = GET_PRIV_DATA(reader);
+	if (!priv)
+		goto err;
 
-    if (priv->get_tlv_properties && priv->gpriv) {
+	if (priv->get_tlv_properties && priv->gpriv) {
 		if (SCARD_S_SUCCESS != priv->gpriv->SCardControl(card_handle,
-					priv->get_tlv_properties, NULL, 0, rbuf, sizeof(rbuf),
-					&rcount)) {
-			sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL,
-				   	"PC/SC v2 part 10: Get TLV properties failed!");
+				priv->get_tlv_properties, NULL, 0, rbuf, sizeof(rbuf), &rcount)) {
+			sc_log(reader->ctx, "PC/SC v2 part 10: Get TLV properties failed!");
 			goto err;
 		}
 
 		r = part10_find_property_by_tag(rbuf, rcount,
 				PCSCv2_PART10_PROPERTY_dwMaxAPDUDataSize);
-		if (r >= 0)
+		sc_log(reader->ctx, "get dwMaxAPDUDataSize property returned %i", r);
+
+		/* 256 < X <= 0x10000: short and extended APDU of up to X bytes of data */
+		if (r > 0x100 && r <= 0x10000)
 			max_data = r;
     }
 
@@ -1058,11 +1061,13 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 	}
 
 	if (priv->get_tlv_properties) {
-		/* Set reader max_send_size and max_recv_size based on
+		/* Try to set reader max_send_size and max_recv_size based on
 		 * detected max_data */
-		reader->max_send_size = part10_detect_max_data(reader,
-				card_handle);
-		reader->max_recv_size = reader->max_send_size;
+		int max_data = part10_detect_max_data(reader, card_handle);
+		if (max_data > 0)   {
+			reader->max_send_size = max_data;
+			reader->max_recv_size = max_data;
+		}
 
 		/* debug the product and vendor ID of the reader */
 		part10_get_vendor_product(reader, card_handle, NULL, NULL);
@@ -1171,6 +1176,7 @@ static int pcsc_detect_readers(sc_context_t *ctx)
 	for (reader_name = reader_buf; *reader_name != '\x0'; reader_name += strlen(reader_name) + 1) {
 		sc_reader_t *reader = NULL, *old_reader;
 		struct pcsc_private_data *priv = NULL;
+		scconf_block *conf_block = NULL;
 		int found = 0;
 
 		for (i=0;i < sc_ctx_get_reader_count(ctx) && !found;i++) {
@@ -1196,7 +1202,7 @@ static int pcsc_detect_readers(sc_context_t *ctx)
 			ret = SC_ERROR_OUT_OF_MEMORY;
 			goto err1;
 		}
-			if ((priv = calloc(1, sizeof(struct pcsc_private_data))) == NULL) {
+		if ((priv = calloc(1, sizeof(struct pcsc_private_data))) == NULL) {
 			ret = SC_ERROR_OUT_OF_MEMORY;
 			goto err1;
 		}
@@ -1208,6 +1214,7 @@ static int pcsc_detect_readers(sc_context_t *ctx)
 			ret = SC_ERROR_OUT_OF_MEMORY;
 			goto err1;
 		}
+
 		priv->gpriv = gpriv;
 		if (_sc_add_reader(ctx, reader)) {
 			ret = SC_SUCCESS;	/* silent ignore */
@@ -1238,10 +1245,25 @@ static int pcsc_detect_readers(sc_context_t *ctx)
 				PCSC_TRACE(reader, "SCardConnect(SHARED)", rv);
 			}
 
+			/* max send/receive sizes: with default values only short APDU supported */
+			reader->max_send_size = SC_READER_SHORT_APDU_MAX_SEND_SIZE;
+			reader->max_recv_size = SC_READER_SHORT_APDU_MAX_RECV_SIZE;
+
+			/* max send/receive sizes: check if reader explicitely declares support of extended APDU */
 			if (rv == SCARD_S_SUCCESS) {
 				detect_reader_features(reader, card_handle);
 				gpriv->SCardDisconnect(card_handle, SCARD_LEAVE_CARD);
 			}
+
+			/* max send/receive sizes: if exist in configuration these options overwrite
+			 *			   the values by default and values declared by reader */
+			conf_block = sc_get_conf_block(ctx, "reader_driver", "pcsc", 1);
+			if (conf_block) {
+				reader->max_send_size = scconf_get_int(conf_block, "max_send_size", reader->max_send_size);
+				reader->max_recv_size = scconf_get_int(conf_block, "max_recv_size", reader->max_recv_size);
+			}
+
+			sc_log(ctx, "reader's max-send-size: %i, max-recv-size: %i", reader->max_send_size, reader->max_recv_size);
 		}
 
 		continue;
@@ -2257,6 +2279,7 @@ int cardmod_use_reader(sc_context_t *ctx, void * pcsc_context_handle, void * pcs
 	SCARDHANDLE card_handle;
 	u8 feature_buf[256], rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	PCSC_TLV_STRUCTURE *pcsc_tlv;
+	scconf_block *conf_block = NULL;
 	struct pcsc_global_private_data *gpriv = (struct pcsc_global_private_data *) ctx->reader_drv_data;
 	LONG rv;
 	char reader_name[128];
@@ -2317,6 +2340,15 @@ int cardmod_use_reader(sc_context_t *ctx, void * pcsc_context_handle, void * pcs
 			goto err1;
 		}
 		priv->gpriv = gpriv;
+
+		reader->max_send_size = SC_READER_SHORT_APDU_MAX_SEND_SIZE;
+		reader->max_recv_size = SC_READER_SHORT_APDU_MAX_RECV_SIZE;
+
+		conf_block = sc_get_conf_block(ctx, "reader_driver", "cardmod", 1);
+		if (conf_block) {
+			reader->max_send_size = scconf_get_int(conf_block, "max_send_size", reader->max_send_size);
+			reader->max_recv_size = scconf_get_int(conf_block, "max_recv_size", reader->max_recv_size);
+		}
 
 		/* attempt to detect protocol in use T0/T1/RAW */
 		rv = priv->gpriv->SCardStatus(card_handle, NULL, &readers_len,

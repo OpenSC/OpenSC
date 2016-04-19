@@ -294,6 +294,10 @@ struct sc_reader_driver {
 #define SC_READER_CAP_PACE_DESTROY_CHANNEL 0x00000010
 #define SC_READER_CAP_PACE_GENERIC         0x00000020
 
+/* reader send/receive length of short APDU */
+#define SC_READER_SHORT_APDU_MAX_SEND_SIZE 255
+#define SC_READER_SHORT_APDU_MAX_RECV_SIZE 256
+
 typedef struct sc_reader {
 	struct sc_context *ctx;
 	const struct sc_reader_driver *driver;
