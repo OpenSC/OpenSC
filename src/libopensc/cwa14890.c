@@ -590,6 +590,7 @@ static int cwa_prepare_external_auth(sc_card_t * card,
 	BIGNUM *bnsub = NULL;
 	BIGNUM *bnres = NULL;
 	sc_context_t *ctx = NULL;
+	BIGNUM *ifd_privkey_n, *ifd_privkey_e, *ifd_privkey_d;
 
 	/* safety check */
 	if (!card || !card->ctx)
@@ -643,7 +644,8 @@ static int cwa_prepare_external_auth(sc_card_t * card,
 		res = SC_ERROR_INTERNAL;
 		goto prepare_external_auth_end;
 	}
-	res = BN_sub(bnsub, ifd_privkey->n, bn);	/* eval N.IFD-SIG */
+	RSA_get0_key(ifd_privkey, &ifd_privkey_n, &ifd_privkey_e, &ifd_privkey_d);
+	res = BN_sub(bnsub, ifd_privkey_n, bn);	/* eval N.IFD-SIG */
 	if (res == 0) {		/* 1:success 0 fail */
 		msg = "Prepare external auth: BN sigmin evaluation failed";
 		res = SC_ERROR_INTERNAL;
@@ -891,6 +893,7 @@ static int cwa_verify_internal_auth(sc_card_t * card,
 	BIGNUM *bn = NULL;
 	BIGNUM *sigbn = NULL;
 	sc_context_t *ctx = NULL;
+	BIGNUM *icc_pubkey_n, *icc_pubkey_e, *icc_pubkey_d;
 
 	if (!card || !card->ctx)
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -961,7 +964,8 @@ static int cwa_verify_internal_auth(sc_card_t * card,
 		res = SC_ERROR_OUT_OF_MEMORY;
 		goto verify_internal_done;
 	}
-	res = BN_sub(sigbn, icc_pubkey->n, bn);	/* eval N.ICC-SIG */
+	RSA_get0_key(icc_pubkey, &icc_pubkey_n, &icc_pubkey_e, &icc_pubkey_d);
+	res = BN_sub(sigbn, icc_pubkey_n, bn);	/* eval N.ICC-SIG */
 	if (!res) {
 		msg = "Verify Signature: evaluation of N.ICC-SIG failed";
 		res = SC_ERROR_INTERNAL;

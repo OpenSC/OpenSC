@@ -1867,16 +1867,24 @@ do_read_key(unsigned char *data, size_t data_len, int private, EVP_PKEY **key)
 
 #define RSA_GET_BN(LOCALNAME, BNVALUE) \
 	do { \
-		rsa->LOCALNAME = malloc(BN_num_bytes(BNVALUE)); \
-		if (!rsa->LOCALNAME) \
-			util_fatal("malloc() failure\n"); \
-		rsa->LOCALNAME##_len = BN_bn2bin(BNVALUE, rsa->LOCALNAME); \
+		if (BNVALUE) { \
+			rsa->LOCALNAME = malloc(BN_num_bytes(BNVALUE)); \
+			if (!rsa->LOCALNAME) \
+				util_fatal("malloc() failure\n"); \
+			rsa->LOCALNAME##_len = BN_bn2bin(BNVALUE, rsa->LOCALNAME); \
+		} else { \
+			rsa->LOCALNAME##_len = 0; \
+			rsa->LOCALNAME = NULL; \
+		} \
 	} while (0)
 
 static int
 parse_rsa_pkey(EVP_PKEY *pkey, int private, struct rsakey_info *rsa)
 {
 	RSA *r;
+	BIGNUM *r_n, *r_e, *r_d;
+	BIGNUM *r_p, *r_q;
+	BIGNUM *r_dmp1, *r_dmq1, *r_iqmp;
 
 	r = EVP_PKEY_get1_RSA(pkey);
 	if (!r) {
@@ -1886,15 +1894,23 @@ parse_rsa_pkey(EVP_PKEY *pkey, int private, struct rsakey_info *rsa)
 			util_fatal("OpenSSL error during RSA public key parsing");
 	}
 
-	RSA_GET_BN(modulus, r->n);
-	RSA_GET_BN(public_exponent, r->e);
+	RSA_get0_key(r, &r_n, &r_e, NULL);
+	RSA_GET_BN(modulus, r_n);
+	RSA_GET_BN(public_exponent, r_e);
+
 	if (private) {
-		RSA_GET_BN(private_exponent, r->d);
-		RSA_GET_BN(prime_1, r->p);
-		RSA_GET_BN(prime_2, r->q);
-		RSA_GET_BN(exponent_1, r->dmp1);
-		RSA_GET_BN(exponent_2, r->dmq1);
-		RSA_GET_BN(coefficient, r->iqmp);
+		RSA_get0_key(r, NULL, NULL, &r_d);
+		RSA_get0_crt_params(r, &r_dmp1, &r_dmq1, &r_iqmp);
+		RSA_GET_BN(private_exponent, r_d);
+
+		RSA_get0_factors(r, &r_p, &r_q);
+		RSA_GET_BN(prime_1, r_p);
+		RSA_GET_BN(prime_2, r_q);
+
+		RSA_get0_crt_params(r, &r_dmp1, &r_dmq1, &r_iqmp);
+		RSA_GET_BN(exponent_1, r_dmp1);
+		RSA_GET_BN(exponent_2, r_dmq1);
+		RSA_GET_BN(coefficient, r_iqmp);
 	}
 
 	RSA_free(r);
@@ -3464,6 +3480,7 @@ static EVP_PKEY *get_public_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE priv
 	CK_ULONG        pubkeyLen;
 	EVP_PKEY       *pkey;
 	RSA            *rsa;
+	BIGNUM *rsa_n, *rsa_e;
 
 	id = NULL;
 	id = getID(session, privKeyObject, &idLen);
@@ -3497,8 +3514,11 @@ static EVP_PKEY *get_public_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE priv
 					free(exp);
 				return NULL;
 			}
-			rsa->n = BN_bin2bn(mod, modLen, NULL);
-			rsa->e = BN_bin2bn(exp, expLen, NULL);
+			rsa_n = BN_bin2bn(mod, modLen, NULL);
+			rsa_e =	BN_bin2bn(exp, expLen, NULL);
+			if (RSA_set0_key(rsa, rsa_n, rsa_e, NULL) != 1)
+			    return NULL;
+
 			EVP_PKEY_assign_RSA(pkey, rsa);
 			free(mod);
 			free(exp);

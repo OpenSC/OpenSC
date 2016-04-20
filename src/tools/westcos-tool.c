@@ -682,9 +682,16 @@ int main(int argc, char *argv[])
 		r = create_file_cert(card);
 		if(r) goto out;
 
-		if (!do_convert_bignum(&dst->modulus, rsa->n)
-		 || !do_convert_bignum(&dst->exponent, rsa->e))
-			goto out;
+		{
+			BIGNUM *rsa_n, *rsa_e;
+
+			RSA_get0_key(rsa, &rsa_n, &rsa_e, NULL);
+
+			if (!do_convert_bignum(&dst->modulus, rsa_n)
+			 || !do_convert_bignum(&dst->exponent, rsa_e))
+				goto out;
+
+		}
 
 		r = sc_pkcs15_encode_pubkey(ctx, &key, &pdata, &lg);
 		if(r) goto out;

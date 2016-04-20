@@ -1553,9 +1553,12 @@ sc_pkcs15_convert_pubkey(struct sc_pkcs15_pubkey *pkcs15_key, void *evp_key)
 	case EVP_PKEY_RSA: {
 		struct sc_pkcs15_pubkey_rsa *dst = &pkcs15_key->u.rsa;
 		RSA *src = EVP_PKEY_get1_RSA(pk);
+		BIGNUM *src_n, *src_e;
+
+		RSA_get0_key(src, &src_n, &src_e, NULL);
 
 		pkcs15_key->algorithm = SC_ALGORITHM_RSA;
-		if (!sc_pkcs15_convert_bignum(&dst->modulus, src->n) || !sc_pkcs15_convert_bignum(&dst->exponent, src->e))
+		if (!sc_pkcs15_convert_bignum(&dst->modulus, src_n) || !sc_pkcs15_convert_bignum(&dst->exponent, src_e))
 			return SC_ERROR_INVALID_DATA;
 		RSA_free(src);
 		break;
@@ -1563,12 +1566,16 @@ sc_pkcs15_convert_pubkey(struct sc_pkcs15_pubkey *pkcs15_key, void *evp_key)
 	case EVP_PKEY_DSA: {
 		struct sc_pkcs15_pubkey_dsa *dst = &pkcs15_key->u.dsa;
 		DSA *src = EVP_PKEY_get1_DSA(pk);
+		BIGNUM *src_pub_key, *src_priv_key, *src_p, *src_q, *src_g;
+
+		DSA_get0_key(src, &src_pub_key, &src_priv_key);
+		DSA_get0_pqg(src, &src_p, &src_q, &src_g);
 
 		pkcs15_key->algorithm = SC_ALGORITHM_DSA;
-		sc_pkcs15_convert_bignum(&dst->pub, src->pub_key);
-		sc_pkcs15_convert_bignum(&dst->p, src->p);
-		sc_pkcs15_convert_bignum(&dst->q, src->q);
-		sc_pkcs15_convert_bignum(&dst->g, src->g);
+		sc_pkcs15_convert_bignum(&dst->pub, src_pub_key);
+		sc_pkcs15_convert_bignum(&dst->p, src_p);
+		sc_pkcs15_convert_bignum(&dst->q, src_q);
+		sc_pkcs15_convert_bignum(&dst->g, src_g);
 		DSA_free(src);
 		break;
 	}
