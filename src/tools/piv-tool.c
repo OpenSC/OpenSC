@@ -330,19 +330,25 @@ static int gen_key(const char * key_info)
 
 	if (keydata.key_bits > 0) { /* RSA key */
 		RSA * newkey = NULL;
+		BIGNUM *newkey_n, *newkey_e;
 
 		newkey = RSA_new();
 		if (newkey == NULL) {
 			fprintf(stderr, "gen_key RSA_new failed %d\n",r);
 			return -1;
 		}
-		newkey->n = BN_bin2bn(keydata.pubkey, keydata.pubkey_len, newkey->n);
+		newkey_n = BN_bin2bn(keydata.pubkey, keydata.pubkey_len, NULL);
 		expl = keydata.exponent;
 		expc[3] = (u8) expl & 0xff;
 		expc[2] = (u8) (expl >>8) & 0xff;
 		expc[1] = (u8) (expl >>16) & 0xff;
 		expc[0] = (u8) (expl >>24) & 0xff;
-		newkey->e =  BN_bin2bn(expc, 4,  newkey->e);
+		newkey_e =  BN_bin2bn(expc, 4, NULL);
+
+		if (RSA_set0_key(newkey, newkey_n, newkey_e, NULL) != 1) {
+			fprintf(stderr, "gen_key unable to set RSA values");
+			return -1;
+		}
 
 		if (verbose)
 			RSA_print_fp(stdout, newkey,0);

@@ -178,7 +178,7 @@ CERT_HANDLE_FUNCTION(default_cert_handle) {
 		goto err;
 	}
 	
-	modulus_len =  BN_num_bits(rsa->n); /* converting to bits */
+	modulus_len =  RSA_bits(rsa); /* converting to bits */
 
 	/* printf("Key Size: %d bits\n\n", modulus_len); */
 	/* cached_cert->modulusLength = modulus_len; */

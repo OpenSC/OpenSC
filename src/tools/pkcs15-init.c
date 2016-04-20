@@ -1149,18 +1149,21 @@ do_read_check_certificate(sc_pkcs15_cert_t *sc_oldcert,
 
 	oldpk = X509_get_pubkey(oldcert);
 	newpk = X509_get_pubkey(newcert);
-#if OPENSSL_VERSION_NUMBER >= 0x10100003L
+
 	oldpk_type = EVP_PKEY_base_id(oldpk);
 	newpk_type = EVP_PKEY_base_id(newpk);
-#else
-	oldpk_type = oldpk->type;
-	newpk_type = newpk->type;
-#endif
 
 	/* Compare the public keys, there's no high level openssl function for this(?) */
+	/* Yes there is in 1.0.2 and above EVP_PKEY_cmp */
+
+
 	r = SC_ERROR_INVALID_ARGUMENTS;
 	if (oldpk_type == newpk_type)
 	{
+#if  OPENSSL_VERSION_NUMBER >= 0x10002000L
+		if (EVP_PKEY_cmp(oldpk, newpk) == 1)
+			r = 0;
+#else
 		if ((oldpk_type == EVP_PKEY_DSA) &&
 			!BN_cmp(EVP_PKEY_get0_DSA(oldpk)->p, EVP_PKEY_get0_DSA(newpk)->p) &&
 			!BN_cmp(EVP_PKEY_get0_DSA(oldpk)->q, EVP_PKEY_get0_DSA(newpk)->q) &&
@@ -1170,6 +1173,7 @@ do_read_check_certificate(sc_pkcs15_cert_t *sc_oldcert,
 			!BN_cmp(EVP_PKEY_get0_RSA(oldpk)->n, EVP_PKEY_get0_RSA(newpk)->n) &&
 			!BN_cmp(EVP_PKEY_get0_RSA(oldpk)->e, EVP_PKEY_get0_RSA(newpk)->e))
 				r = 0;
+#endif
 	}
 
 	EVP_PKEY_free(newpk);
