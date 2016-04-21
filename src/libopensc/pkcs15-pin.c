@@ -174,7 +174,8 @@ int sc_pkcs15_decode_aodf_entry(struct sc_pkcs15_card *p15card,
 					info.path = p15card->file_app->path;
 			}
 		}
-		sc_debug(ctx, SC_LOG_DEBUG_ASN1, "decoded PIN(ref:%X,path:%s)", info.attrs.pin.reference, sc_print_path(&info.path));
+		sc_debug(ctx, SC_LOG_DEBUG_ASN1, "decoded '%s'(ref:%X,path:%s)",obj->label,
+			info.attrs.pin.reference, sc_print_path(&info.path));
 	}
 	else if (asn1_auth_type_choice[1].flags & SC_ASN1_PRESENT)   {
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED, "BIO authentication object not yet supported");

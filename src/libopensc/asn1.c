@@ -1113,11 +1113,38 @@ err:
 	return ret;
 }
 
-/* TODO: According to specification type of 'SecurityCondition' is 'CHOICE'.
- *       Do it at least for SC_ASN1_PKCS15_ID(authId), SC_ASN1_STRUCT(authReference) and NULL(always). */
+static const struct sc_asn1_entry c_asn1_auth_reference[3] = {
+	{ "authMethod", SC_ASN1_BIT_FIELD, SC_ASN1_TAG_BIT_STRING, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "seIdentifier", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ NULL, 0, 0, 0, NULL, NULL }
+};
+
+static const struct sc_asn1_entry c_asn1_auth_ref_id_choice[4] = {
+	{ "always", SC_ASN1_NULL, SC_ASN1_TAG_NULL, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "authId", SC_ASN1_PKCS15_ID,  SC_ASN1_TAG_OCTET_STRING, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "authReference", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ NULL, 0, 0, 0, NULL, NULL }
+};
+
+static const struct sc_asn1_entry c_asn1_auth_id_ref[3] = {
+	{ "securityConditionFirst", SC_ASN1_CHOICE, 0, 0, NULL, NULL },
+	{ "securityConditionSecond", SC_ASN1_CHOICE, 0, 0, NULL, NULL },
+	{ NULL, 0, 0, 0, NULL, NULL }
+};
+
+static const struct sc_asn1_entry c_asn1_security_condition_choice[7] = {
+	{ "always", SC_ASN1_NULL, SC_ASN1_TAG_NULL, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "authId", SC_ASN1_PKCS15_ID,  SC_ASN1_TAG_OCTET_STRING, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "authReference", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "not", SC_ASN1_STRUCT, SC_ASN1_CTX | 0 | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL, NULL},
+	{ "and", SC_ASN1_STRUCT, SC_ASN1_CTX | 1 | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL, NULL},
+	{ "or",  SC_ASN1_STRUCT, SC_ASN1_CTX | 2 | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL, NULL},
+	{ NULL, 0, 0, 0, NULL, NULL }
+};
+
 static const struct sc_asn1_entry c_asn1_access_control_rule[3] = {
 	{ "accessMode", SC_ASN1_BIT_FIELD, SC_ASN1_TAG_BIT_STRING, SC_ASN1_OPTIONAL, NULL, NULL },
-	{ "securityCondition", SC_ASN1_PKCS15_ID, SC_ASN1_TAG_OCTET_STRING, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "securityCondition", SC_ASN1_CHOICE, 0, 0, NULL, NULL },
 	{ NULL, 0, 0, 0, NULL, NULL }
 };
 
@@ -1159,14 +1186,32 @@ static int asn1_decode_p15_object(sc_context_t *ctx, const u8 *in,
 {
 	struct sc_pkcs15_object *p15_obj = obj->p15_obj;
 	struct sc_asn1_entry asn1_c_attr[6], asn1_p15_obj[5];
-	struct sc_asn1_entry asn1_ac_rules[SC_PKCS15_MAX_ACCESS_RULES + 1], asn1_ac_rule[SC_PKCS15_MAX_ACCESS_RULES][3];
+	struct sc_asn1_entry asn1_ac_rules[SC_PKCS15_MAX_ACCESS_RULES + 1];
+	struct sc_asn1_entry asn1_ac_rule[SC_PKCS15_MAX_ACCESS_RULES][3];
+	struct sc_asn1_entry asn1_sc[SC_PKCS15_MAX_ACCESS_RULES][7];
+	struct sc_asn1_entry asn1_sc_and[SC_PKCS15_MAX_ACCESS_RULES][3];
+	struct sc_asn1_entry asn1_sc_and_id_ref[SC_PKCS15_MAX_ACCESS_RULES][2][4];
+	struct sc_asn1_entry asn1_sc_and_id_ref_auth_ref[SC_PKCS15_MAX_ACCESS_RULES][2][3];
 	size_t flags_len = sizeof(p15_obj->flags);
 	size_t label_len = sizeof(p15_obj->label);
 	size_t access_mode_len = sizeof(p15_obj->access_rules[0].access_mode);
+	size_t auth_ref_method_len[SC_PKCS15_MAX_ACCESS_RULES][2];
 	int r, ii;
 
-	for (ii=0; ii<SC_PKCS15_MAX_ACCESS_RULES; ii++)
+	for (ii=0; ii<SC_PKCS15_MAX_ACCESS_RULES; ii++)   {
 		sc_copy_asn1_entry(c_asn1_access_control_rule, asn1_ac_rule[ii]);
+		sc_copy_asn1_entry(c_asn1_security_condition_choice, asn1_sc[ii]);
+		sc_copy_asn1_entry(c_asn1_auth_id_ref, asn1_sc_and[ii]);
+
+		sc_copy_asn1_entry(c_asn1_auth_ref_id_choice, asn1_sc_and_id_ref[ii][0]);
+		sc_copy_asn1_entry(c_asn1_auth_ref_id_choice, asn1_sc_and_id_ref[ii][1]);
+
+		sc_copy_asn1_entry(c_asn1_auth_reference, asn1_sc_and_id_ref_auth_ref[ii][0]);
+		sc_copy_asn1_entry(c_asn1_auth_reference, asn1_sc_and_id_ref_auth_ref[ii][1]);
+
+		auth_ref_method_len[ii][0] = sizeof(p15_obj->access_rules[ii].sc.sc_and[0].auth_ref.auth_method);
+		auth_ref_method_len[ii][1] = sizeof(p15_obj->access_rules[ii].sc.sc_and[1].auth_ref.auth_method);
+	}
 	sc_copy_asn1_entry(c_asn1_access_control_rules, asn1_ac_rules);
 
 
@@ -1179,7 +1224,29 @@ static int asn1_decode_p15_object(sc_context_t *ctx, const u8 *in,
 
 	for (ii=0; ii<SC_PKCS15_MAX_ACCESS_RULES; ii++)   {
 		sc_format_asn1_entry(asn1_ac_rule[ii] + 0, &p15_obj->access_rules[ii].access_mode, &access_mode_len, 0);
-		sc_format_asn1_entry(asn1_ac_rule[ii] + 1, &p15_obj->access_rules[ii].auth_id, NULL, 0);
+		sc_format_asn1_entry(asn1_ac_rule[ii]+ 1, asn1_sc[ii], NULL, 0);
+		sc_format_asn1_entry(asn1_sc[ii] + 1, &p15_obj->access_rules[ii].sc.auth_id, NULL, 0);
+
+		sc_format_asn1_entry(asn1_sc_and_id_ref[ii][0] + 1, &p15_obj->access_rules[ii].sc.sc_and[0].auth_id, NULL, 0);
+		sc_format_asn1_entry(asn1_sc_and_id_ref[ii][1] + 1, &p15_obj->access_rules[ii].sc.sc_and[1].auth_id, NULL, 0);
+
+		sc_format_asn1_entry(asn1_sc_and_id_ref_auth_ref[ii][0] + 0, &p15_obj->access_rules[ii].sc.sc_and[0].auth_ref.auth_method,
+			&auth_ref_method_len[ii][0], 0);
+		sc_format_asn1_entry(asn1_sc_and_id_ref_auth_ref[ii][1] + 0, &p15_obj->access_rules[ii].sc.sc_and[1].auth_ref.auth_method,
+			&auth_ref_method_len[ii][1], 0);
+
+		sc_format_asn1_entry(asn1_sc_and_id_ref_auth_ref[ii][0] + 1, &p15_obj->access_rules[ii].sc.sc_and[0].auth_ref.se_num,
+			NULL, 0);
+		sc_format_asn1_entry(asn1_sc_and_id_ref_auth_ref[ii][1] + 1, &p15_obj->access_rules[ii].sc.sc_and[1].auth_ref.se_num,
+			NULL, 0);
+
+		sc_format_asn1_entry(asn1_sc_and_id_ref[ii][0] + 2, asn1_sc_and_id_ref_auth_ref[ii][0], NULL, 0);
+		sc_format_asn1_entry(asn1_sc_and_id_ref[ii][1] + 2, asn1_sc_and_id_ref_auth_ref[ii][1], NULL, 0);
+
+		sc_format_asn1_entry(asn1_sc_and[ii] + 0, asn1_sc_and_id_ref[ii][0], NULL, 0);
+		sc_format_asn1_entry(asn1_sc_and[ii] + 1, asn1_sc_and_id_ref[ii][1], NULL, 0);
+		sc_format_asn1_entry(asn1_sc[ii] + 4, asn1_sc_and[ii], NULL, 0);
+
 		sc_format_asn1_entry(asn1_ac_rules + ii, asn1_ac_rule[ii], NULL, 0);
 	}
 	sc_format_asn1_entry(asn1_c_attr + 4, asn1_ac_rules, NULL, 0);
@@ -1190,6 +1257,45 @@ static int asn1_decode_p15_object(sc_context_t *ctx, const u8 *in,
 	sc_format_asn1_entry(asn1_p15_obj + 3, obj->asn1_type_attr, NULL, 0);
 
 	r = asn1_decode(ctx, asn1_p15_obj, in, len, NULL, NULL, 0, depth + 1);
+
+	/* If AuthID is absent in CommonObjectAttributes,
+	 * look if any of SecurityConditions contains reference to protecting object.
+	 * If such reference exists, and it's the unique one,
+	 * use it as general AuthID of protecting object.
+	 */
+	if (r == SC_SUCCESS)   {
+		if (!(asn1_c_attr[2].flags & SC_ASN1_PRESENT))   {
+			int nn = 0;
+			for (ii=0; ii<SC_PKCS15_MAX_ACCESS_RULES; ii++)   {
+				/* TODO: for a while only 'authId' and 'and' members are analysed */
+				if (asn1_sc[ii][1].flags & SC_ASN1_PRESENT)
+					nn++;
+				if (asn1_sc_and_id_ref[ii][0][1].flags & SC_ASN1_PRESENT)
+					nn++;
+				if (asn1_sc_and_id_ref[ii][1][1].flags & SC_ASN1_PRESENT)
+					nn++;
+			}
+
+			for (ii=0; nn == 1 && ii<SC_PKCS15_MAX_ACCESS_RULES; ii++)   {
+				if (asn1_sc[ii][1].flags & SC_ASN1_PRESENT)   {
+					p15_obj->auth_id = p15_obj->access_rules[ii].sc.auth_id;
+					sc_log(ctx, "Set CommonObject AuthID from AuthID of SecureCondition");
+					break;
+				}
+				if (asn1_sc_and_id_ref[ii][0][1].flags & SC_ASN1_PRESENT)   {
+					p15_obj->auth_id = p15_obj->access_rules[ii].sc.sc_and[0].auth_id;
+					sc_log(ctx, "Set CommonObject AuthID from AuthID of SecureCondition:And:First");
+					break;
+				}
+				if (asn1_sc_and_id_ref[ii][1][1].flags & SC_ASN1_PRESENT)   {
+					p15_obj->auth_id = p15_obj->access_rules[ii].sc.sc_and[1].auth_id;
+					sc_log(ctx, "Set CommonObject AuthID from AuthID of SecureCondition:And:Second");
+					break;
+				}
+			}
+		}
+	}
+
 	return r;
 }
 
@@ -1208,7 +1314,7 @@ static int asn1_encode_p15_object(sc_context_t *ctx, const struct sc_asn1_pkcs15
 	if (p15_obj.access_rules[0].access_mode)   {
 		for (ii=0; ii<SC_PKCS15_MAX_ACCESS_RULES; ii++)   {
 			sc_copy_asn1_entry(c_asn1_access_control_rule, asn1_ac_rule[ii]);
-			if (p15_obj.access_rules[ii].auth_id.len == 0)   {
+			if (p15_obj.access_rules[ii].sc.auth_id.len == 0)   {
 				asn1_ac_rule[ii][1].type = SC_ASN1_NULL;
 				asn1_ac_rule[ii][1].tag = SC_ASN1_TAG_NULL;
 			}
@@ -1233,7 +1339,7 @@ static int asn1_encode_p15_object(sc_context_t *ctx, const struct sc_asn1_pkcs15
 		for (ii=0; p15_obj.access_rules[ii].access_mode; ii++)   {
 			access_mode_len = sizeof(p15_obj.access_rules[ii].access_mode);
 			sc_format_asn1_entry(asn1_ac_rule[ii] + 0, (void *) &p15_obj.access_rules[ii].access_mode, &access_mode_len, 1);
-			sc_format_asn1_entry(asn1_ac_rule[ii] + 1, (void *) &p15_obj.access_rules[ii].auth_id, NULL, 1);
+			sc_format_asn1_entry(asn1_ac_rule[ii] + 1, (void *) &p15_obj.access_rules[ii].sc.auth_id, NULL, 1);
 			sc_format_asn1_entry(asn1_ac_rules + ii, asn1_ac_rule[ii], NULL, 1);
 		}
 		sc_format_asn1_entry(asn1_c_attr + 4, asn1_ac_rules, NULL, 1);
@@ -1250,11 +1356,11 @@ static int asn1_encode_p15_object(sc_context_t *ctx, const struct sc_asn1_pkcs15
 }
 
 static int asn1_decode_entry(sc_context_t *ctx,struct sc_asn1_entry *entry,
-			     const u8 *obj, size_t objlen, int depth)
+		const u8 *obj, size_t objlen, int depth)
 {
 	void *parm = entry->parm;
 	int (*callback_func)(sc_context_t *nctx, void *arg, const u8 *nobj,
-			     size_t nobjlen, int ndepth);
+			size_t nobjlen, int ndepth);
 	size_t *len = (size_t *) entry->arg;
 	int r = 0;
 
@@ -1266,7 +1372,7 @@ static int asn1_decode_entry(sc_context_t *ctx,struct sc_asn1_entry *entry,
 	case SC_ASN1_STRUCT:
 		if (parm != NULL)
 			r = asn1_decode(ctx, (struct sc_asn1_entry *) parm, obj,
-				       objlen, NULL, NULL, 0, depth + 1);
+					objlen, NULL, NULL, 0, depth + 1);
 		break;
 	case SC_ASN1_NULL:
 		break;
@@ -1314,8 +1420,11 @@ static int asn1_decode_entry(sc_context_t *ctx,struct sc_asn1_entry *entry,
 		}
 		break;
 	case SC_ASN1_BIT_FIELD:
-		if (parm != NULL)
+		if (parm != NULL)   {
 			r = decode_bit_field(obj, objlen, (u8 *) parm, *len);
+			sc_debug(ctx, SC_LOG_DEBUG_ASN1, "%*.*sdecoding '%s' returned bit field 0x%X, length %i\n",
+					depth, depth, "", entry->name, *((unsigned *) entry->parm), *len);
+		}
 		break;
 	case SC_ASN1_OCTET_STRING:
 		if (parm != NULL) {
@@ -1425,7 +1534,7 @@ static int asn1_decode_entry(sc_context_t *ctx,struct sc_asn1_entry *entry,
 	}
 	if (r) {
 		sc_debug(ctx, SC_LOG_DEBUG_ASN1, "decoding of ASN.1 object '%s' failed: %s\n", entry->name,
-		      sc_strerror(r));
+			sc_strerror(r));
 		return r;
 	}
 	entry->flags |= SC_ASN1_PRESENT;

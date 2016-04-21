@@ -318,9 +318,9 @@ int sc_pkcs15_decode_prkdf_entry(struct sc_pkcs15_card *p15card,
 					 SC_PKCS15_ACCESS_RULE_MODE_PSO_CDS |
 					 SC_PKCS15_ACCESS_RULE_MODE_PSO_DECRYPT |
 					 SC_PKCS15_ACCESS_RULE_MODE_INT_AUTH)) {
-				if (obj->access_rules[i].auth_id.len != 0) {
+				if (obj->access_rules[i].sc.auth_id.len != 0) {
 					/* Found an auth ID to use for private key access */
-					obj->auth_id = obj->access_rules[i].auth_id;
+					obj->auth_id = obj->access_rules[i].sc.auth_id;
 					sc_log(ctx, "Auth ID found - %s",
 						 sc_pkcs15_print_id(&obj->auth_id));
 					break;

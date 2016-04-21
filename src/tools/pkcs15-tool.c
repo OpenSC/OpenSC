@@ -212,7 +212,7 @@ print_access_rules(const struct sc_pkcs15_accessrule *rules, int num)
 			}
 		}
 
-		printf(":%s;", (rules + i)->auth_id.len ? sc_pkcs15_print_id(&(rules + i)->auth_id) : "<always>");
+		printf(":%s;", (rules + i)->sc.auth_id.len ? sc_pkcs15_print_id(&(rules + i)->sc.auth_id) : "<always>");
 	}
 	printf("\n");
 }

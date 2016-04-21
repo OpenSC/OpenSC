@@ -381,16 +381,16 @@ authentic_pkcs15_add_access_rule(struct sc_pkcs15_object *object, unsigned acces
 		if (!object->access_rules[ii].access_mode)   {
 			object->access_rules[ii].access_mode = access_mode;
 			if (auth_id)
-				object->access_rules[ii].auth_id = *auth_id;
+				object->access_rules[ii].sc.auth_id = *auth_id;
 			else
-				object->access_rules[ii].auth_id.len = 0;
+				object->access_rules[ii].sc.auth_id.len = 0;
 			break;
 		}
-		else if (!auth_id && !object->access_rules[ii].auth_id.len)   {
+		else if (!auth_id && !object->access_rules[ii].sc.auth_id.len)   {
 			object->access_rules[ii].access_mode |= access_mode;
 			break;
 		}
-		else if (auth_id && sc_pkcs15_compare_id(&object->access_rules[ii].auth_id, auth_id))   {
+		else if (auth_id && sc_pkcs15_compare_id(&object->access_rules[ii].sc.auth_id, auth_id))   {
 			object->access_rules[ii].access_mode |= access_mode;
 			break;
 		}

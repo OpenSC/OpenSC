@@ -360,9 +360,27 @@ struct sc_pkcs15_keyinfo_gostparams
 #define SC_PKCS15_ACCESS_RULE_MODE_INT_AUTH     0x200
 #define SC_PKCS15_ACCESS_RULE_MODE_EXT_AUTH     0x400
 
+struct sc_pkcs15_auth_reference {
+	unsigned auth_method;
+	int se_num;
+};
+
+struct sc_pkcs15_auth_id_and_ref {
+	struct sc_pkcs15_id auth_id;
+	struct sc_pkcs15_auth_reference auth_ref;
+};
+
+struct sc_pkcs15_security_condition {
+	struct sc_pkcs15_id auth_id;
+	struct sc_pkcs15_auth_reference auth_ref;
+	struct sc_pkcs15_auth_id_and_ref sc_not;
+	struct sc_pkcs15_auth_id_and_ref sc_and[2];
+	struct sc_pkcs15_auth_id_and_ref sc_or[2];
+};
+
 struct sc_pkcs15_accessrule {
 	unsigned access_mode;
-	struct sc_pkcs15_id auth_id;
+	struct sc_pkcs15_security_condition sc;
 };
 typedef struct sc_pkcs15_accessrule sc_pkcs15_accessrule_t;
 

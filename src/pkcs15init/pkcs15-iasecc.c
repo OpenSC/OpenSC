@@ -644,16 +644,16 @@ iasecc_pkcs15_add_access_rule(struct sc_pkcs15_object *object, unsigned access_m
 		if (!object->access_rules[ii].access_mode)   {
 			object->access_rules[ii].access_mode = access_mode;
 			if (auth_id)
-				object->access_rules[ii].auth_id = *auth_id;
+				object->access_rules[ii].sc.auth_id = *auth_id;
 			else
-				object->access_rules[ii].auth_id.len = 0;
+				object->access_rules[ii].sc.auth_id.len = 0;
 			break;
 		}
-		else if (!auth_id && !object->access_rules[ii].auth_id.len)   {
+		else if (!auth_id && !object->access_rules[ii].sc.auth_id.len)   {
 			object->access_rules[ii].access_mode |= access_mode;
 			break;
 		}
-		else if (auth_id && sc_pkcs15_compare_id(&object->access_rules[ii].auth_id, auth_id))   {
+		else if (auth_id && sc_pkcs15_compare_id(&object->access_rules[ii].sc.auth_id, auth_id))   {
 			object->access_rules[ii].access_mode |= access_mode;
 			break;
 		}
@@ -1747,19 +1747,19 @@ iasecc_store_data_object(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 		acl = sc_file_get_acl_entry(file, SC_AC_OP_READ);
 		sc_log(ctx, "iasecc_store_data_object() READ method %i", acl->method);
 		if (acl->method == SC_AC_IDA)
-			iasecc_reference_to_pkcs15_id (acl->key_ref, &object->access_rules[0].auth_id);
+			iasecc_reference_to_pkcs15_id (acl->key_ref, &object->access_rules[0].sc.auth_id);
 
 		object->access_rules[1].access_mode = SC_PKCS15_ACCESS_RULE_MODE_UPDATE;
 		acl = sc_file_get_acl_entry(file, SC_AC_OP_UPDATE);
 		sc_log(ctx, "iasecc_store_data_object() UPDATE method %i", acl->method);
 		if (acl->method == SC_AC_IDA)
-			iasecc_reference_to_pkcs15_id (acl->key_ref, &object->access_rules[1].auth_id);
+			iasecc_reference_to_pkcs15_id (acl->key_ref, &object->access_rules[1].sc.auth_id);
 
 		object->access_rules[2].access_mode = SC_PKCS15_ACCESS_RULE_MODE_DELETE;
 		acl = sc_file_get_acl_entry(file, SC_AC_OP_DELETE);
 		sc_log(ctx, "iasecc_store_data_object() UPDATE method %i", acl->method);
 		if (acl->method == SC_AC_IDA)
-			iasecc_reference_to_pkcs15_id (acl->key_ref, &object->access_rules[2].auth_id);
+			iasecc_reference_to_pkcs15_id (acl->key_ref, &object->access_rules[2].sc.auth_id);
 
 	} while(0);
 
