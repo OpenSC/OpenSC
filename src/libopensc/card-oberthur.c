@@ -988,11 +988,11 @@ auth_create_file(struct sc_card *card, struct sc_file *file)
 		struct sc_path tmp_path;
 		struct sc_file *df_file = NULL;
 
+		memset(&tmp_path, 0, sizeof(struct sc_path));
 		tmp_path.type = SC_PATH_TYPE_FILE_ID;
 		tmp_path.value[0] = file->id >> 8;
 		tmp_path.value[1] = file->id & 0xFF;
 		tmp_path.len = 2;
-
 		rv = auth_select_file(card, &tmp_path, &df_file);
 		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "rv %i", rv);
 	}
