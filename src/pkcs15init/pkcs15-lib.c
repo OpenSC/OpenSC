@@ -814,12 +814,14 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 			 */
 			sc_log(ctx, "Add virtual SO_PIN('%.*s',flags:%X,reference:%i,path:'%s')", (int) sizeof pin_obj->label, pin_obj->label,
 					pin_attrs->flags, pin_attrs->reference, sc_print_path(&pin_ainfo.path));
+
 			r = sc_pkcs15_add_object(p15card, pin_obj);
 			LOG_TEST_RET(ctx, r, "Failed to add 'SOPIN' AUTH object");
 		}
 	}
 
 	/* Perform card-specific initialization */
+
 	if (profile->ops->init_card)   {
 		r = profile->ops->init_card(profile, p15card);
 		if (r < 0 && pin_obj)   {
@@ -830,11 +832,12 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 	}
 
 	/* Create the application directory */
-	r = profile->ops->create_dir(profile, p15card, df);
+	if (profile->ops->create_dir)
+		r = profile->ops->create_dir(profile, p15card, df);
 	LOG_TEST_RET(ctx, r, "Create 'DIR' error");
 
 	/* Store SO PIN */
-	if (pin_obj)
+	if (pin_obj && profile->ops->create_pin)
 		r = profile->ops->create_pin(profile, p15card, df, pin_obj,
 				args->so_pin, args->so_pin_len,
 				args->so_puk, args->so_puk_len);
