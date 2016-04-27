@@ -72,6 +72,7 @@ doc/tools/pkcs15-tool
 doc/tools/sc-hsm-tool
 doc/tools/westcos-tool
 doc/tools/dnie-tool
+doc/tools/gids-tool
 
 etc/opensc.conf.win
 etc/opensc.conf
@@ -95,6 +96,7 @@ src/tools/cryptoflex-tool
 src/tools/netkey-tool
 src/tools/pkcs11-tool
 src/tools/dnie-tool
+src/tools/gids-tool
 
 win32/OpenSC.iss
 win32/OpenSC.wxs
