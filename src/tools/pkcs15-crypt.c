@@ -86,6 +86,7 @@ static const struct option options[] = {
 };
 
 static const char *option_help[] = {
+	"Print OpenSC package version",
 	"Performs digital signature operation",
 	"Decipher operation",
 	"Selects the private key ID to use",
