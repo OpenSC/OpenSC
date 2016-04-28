@@ -257,7 +257,7 @@ auth_init(struct sc_card *card)
 	_sc_card_add_rsa_alg(card, 2048, flags, 0);
 
 	sc_format_path("3F00", &path);
-   	rv = auth_select_file(card, &path, NULL);
+	rv = auth_select_file(card, &path, NULL);
 
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, rv);
 }
@@ -1465,8 +1465,8 @@ auth_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 	case SC_CARDCTL_OBERTHUR_CREATE_PIN:
 		return auth_create_reference_data(card,
 				(struct sc_cardctl_oberthur_createpin_info *) ptr);
-    case SC_CARDCTL_GET_SERIALNR:
-        return auth_get_serialnr(card, (struct sc_serial_number *)ptr);
+	case SC_CARDCTL_GET_SERIALNR:
+		return auth_get_serialnr(card, (struct sc_serial_number *)ptr);
 	case SC_CARDCTL_LIFECYCLE_GET:
 	case SC_CARDCTL_LIFECYCLE_SET:
 		return SC_ERROR_NOT_SUPPORTED;
@@ -1482,7 +1482,7 @@ auth_read_component(struct sc_card *card, enum SC_CARDCTL_OBERTHUR_KEY_TYPE type
 {
 	struct sc_apdu apdu;
 	int rv;
-	unsigned char resp[SC_MAX_APDU_BUFFER_SIZE];
+	unsigned char resp[256];
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "num %i, outlen %i, type %i\n", num, outlen, type);
@@ -2115,9 +2115,9 @@ auth_read_binary(struct sc_card *card, unsigned int offset,
 		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS, "Invalid file offset");
 
 	if (auth_current_ef->magic==SC_FILE_MAGIC &&
-             auth_current_ef->ef_structure == SC_CARDCTL_OBERTHUR_KEY_RSA_PUBLIC)   {
+			auth_current_ef->ef_structure == SC_CARDCTL_OBERTHUR_KEY_RSA_PUBLIC)   {
 		int jj;
-		unsigned char resp[SC_MAX_APDU_BUFFER_SIZE], *out = NULL;
+		unsigned char resp[256], *out = NULL;
 		size_t resp_len, out_len;
 		struct sc_pkcs15_bignum bn[2];
 		struct sc_pkcs15_pubkey_rsa key;
