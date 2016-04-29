@@ -3222,7 +3222,7 @@ static int read_object(CK_SESSION_HANDLE session)
  * based on the object, and other attributes. For example EC keys do
  * not have a VALUE But have a EC_POINT. DvO: done for RSA and EC public keys.
  */
-	if (clazz == CKO_PRIVATE_KEY || CKO_PUBLIC_KEY) {
+	if (clazz == CKO_PRIVATE_KEY || clazz == CKO_PUBLIC_KEY) {
 		type = getKEY_TYPE(session, obj);
 	}
 	if (clazz == CKO_PRIVATE_KEY) {
