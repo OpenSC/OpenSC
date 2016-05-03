@@ -2028,8 +2028,8 @@ static int write_object(CK_SESSION_HANDLE session)
 	unsigned char *oid_buf = NULL;
 	CK_OBJECT_CLASS clazz;
 	CK_CERTIFICATE_TYPE cert_type;
-	CK_KEY_TYPE type = CKK_RSA;
 #ifdef ENABLE_OPENSSL
+	CK_KEY_TYPE type = CKK_RSA;
 	struct x509cert_info cert;
 	struct rsakey_info rsa;
 	struct gostkey_info gost;
@@ -2222,14 +2222,18 @@ static int write_object(CK_SESSION_HANDLE session)
 	else
 	if (opt_object_class == CKO_PUBLIC_KEY) {
 		clazz = CKO_PUBLIC_KEY;
+#ifdef ENABLE_OPENSSL
 		if (evp_key->type == EVP_PKEY_RSA)
 			type = CKK_RSA;
+#if OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_EC)
 		else if (evp_key->type == EVP_PKEY_EC)
 			type = CKK_EC;
 		else if (evp_key->type == NID_id_GostR3410_2001)
 			type = CKK_GOSTR3410;
+#endif
 		else
 			util_fatal("Unsupported public key type: 0x%X", evp_key->type);
+#endif
 
 		n_pubkey_attr = 0;
 		FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_CLASS, &clazz, sizeof(clazz));
@@ -3122,6 +3126,7 @@ get_mechanisms(CK_SLOT_ID slot, CK_MECHANISM_TYPE_PTR *pList, CK_FLAGS flags)
 	return ulCount;
 }
 
+#ifdef ENABLE_OPENSSL
 unsigned char *BIO_copy_data(BIO *out, int *data_lenp) {
     unsigned char *data, *tdata;
     int data_len;
@@ -3139,6 +3144,7 @@ unsigned char *BIO_copy_data(BIO *out, int *data_lenp) {
     }
     return data;
 }
+#endif
 
 /*
  * Read object CKA_VALUE attribute's value.
@@ -3148,7 +3154,9 @@ static int read_object(CK_SESSION_HANDLE session)
 	CK_RV rv;
 	CK_ATTRIBUTE attrs[20];
 	CK_OBJECT_CLASS clazz = opt_object_class;
+#ifdef ENABLE_OPENSSL
 	CK_KEY_TYPE type = CKK_RSA;
+#endif
 	CK_OBJECT_HANDLE obj = CK_INVALID_HANDLE;
 	int nn_attrs = 0;
 	unsigned char *value = NULL, *oid_buf = NULL;
@@ -3222,19 +3230,18 @@ static int read_object(CK_SESSION_HANDLE session)
  * based on the object, and other attributes. For example EC keys do
  * not have a VALUE But have a EC_POINT. DvO: done for RSA and EC public keys.
  */
-	if (clazz == CKO_PRIVATE_KEY || clazz == CKO_PUBLIC_KEY) {
-		type = getKEY_TYPE(session, obj);
-	}
 	if (clazz == CKO_PRIVATE_KEY) {
 		fprintf(stderr, "sorry, reading private keys not (yet) supported\n");
 		return 0;
 	}
 	if (clazz == CKO_PUBLIC_KEY) {
+#ifdef ENABLE_OPENSSL
 		int derlen;
 		BIO *out = BIO_new(BIO_s_mem());
 		if (!out)
 			util_fatal("out of memory");
 
+		type = getKEY_TYPE(session, obj);
 		if (type == CKK_RSA) {
 			RSA *rsa;
 
@@ -3259,6 +3266,7 @@ static int read_object(CK_SESSION_HANDLE session)
 			if (!i2d_RSA_PUBKEY_bio(out, rsa))
 				util_fatal("cannot convert RSA public key to DER");
 			RSA_free(rsa);
+#if OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_EC)
 		} else if (type == CKK_EC) {
 			EC_KEY *ec;
 			CK_BYTE *params;
@@ -3299,10 +3307,14 @@ static int read_object(CK_SESSION_HANDLE session)
 			EC_KEY_free(ec);
 		}
 		else
+#endif
 			util_fatal("Reading public keys of type 0x%X not (yet) supported", type);
 		value = BIO_copy_data(out, &derlen);
 		BIO_free(out);
 		len = derlen;
+#else
+		util_fatal("No OpenSSL support, cannot read public key");
+#endif
 	}
 	else
 		value = getVALUE(session, obj, &len);
@@ -4410,7 +4422,10 @@ static int test_decrypt(CK_SESSION_HANDLE sess)
 	CK_OBJECT_HANDLE privKeyObject;
 	CK_MECHANISM_TYPE *mechs = NULL;
 	CK_SESSION_INFO sessionInfo;
-	CK_ULONG        j, n, num_mechs = 0;
+	CK_ULONG        j, num_mechs = 0;
+#ifdef ENABLE_OPENSSL
+	CK_ULONG        n;
+#endif
 	char 		*label;
 
 	rv = p11->C_GetSessionInfo(sess, &sessionInfo);
@@ -4446,7 +4461,6 @@ static int test_decrypt(CK_SESSION_HANDLE sess)
 
 #ifndef ENABLE_OPENSSL
 		printf("No OpenSSL support, unable to validate decryption\n");
-		n = 0;
 #else
 		for (n = 0; n < num_mechs; n++) {
 			errors += encrypt_decrypt(sess, mechs[n], privKeyObject);
