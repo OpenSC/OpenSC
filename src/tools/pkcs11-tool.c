@@ -3237,8 +3237,8 @@ static int read_object(CK_SESSION_HANDLE session)
 	if (clazz == CKO_PUBLIC_KEY) {
 #ifdef ENABLE_OPENSSL
 		int derlen;
-		BIO *out = BIO_new(BIO_s_mem());
-		if (!out)
+		BIO *pout = BIO_new(BIO_s_mem());
+		if (!pout)
 			util_fatal("out of memory");
 
 		type = getKEY_TYPE(session, obj);
@@ -3263,7 +3263,7 @@ static int read_object(CK_SESSION_HANDLE session)
 			} else
 				util_fatal("cannot obtain PUBLIC_EXPONENT");
 
-			if (!i2d_RSA_PUBKEY_bio(out, rsa))
+			if (!i2d_RSA_PUBKEY_bio(pout, rsa))
 				util_fatal("cannot convert RSA public key to DER");
 			RSA_free(rsa);
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_EC)
@@ -3302,15 +3302,15 @@ static int read_object(CK_SESSION_HANDLE session)
 			free(value);
 			if (!success)
 				util_fatal("cannot obtain and parse EC_POINT");
-			if (!i2d_EC_PUBKEY_bio(out, ec))
+			if (!i2d_EC_PUBKEY_bio(pout, ec))
 				util_fatal("cannot convert EC public key to DER");
 			EC_KEY_free(ec);
 		}
 		else
 #endif
 			util_fatal("Reading public keys of type 0x%X not (yet) supported", type);
-		value = BIO_copy_data(out, &derlen);
-		BIO_free(out);
+		value = BIO_copy_data(pout, &derlen);
+		BIO_free(pout);
 		len = derlen;
 #else
 		util_fatal("No OpenSSL support, cannot read public key");
