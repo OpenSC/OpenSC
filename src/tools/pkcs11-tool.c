@@ -3305,9 +3305,9 @@ static int read_object(CK_SESSION_HANDLE session)
 			if (!i2d_EC_PUBKEY_bio(pout, ec))
 				util_fatal("cannot convert EC public key to DER");
 			EC_KEY_free(ec);
+#endif
 		}
 		else
-#endif
 			util_fatal("Reading public keys of type 0x%X not (yet) supported", type);
 		value = BIO_copy_data(pout, &derlen);
 		BIO_free(pout);
