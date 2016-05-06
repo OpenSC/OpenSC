@@ -50,10 +50,11 @@ const char *sc_get_version(void)
 int sc_hex_to_bin(const char *in, u8 *out, size_t *outlen)
 {
 	int err = SC_SUCCESS;
-	size_t left, count = 0;
+	size_t left, count = 0, in_len;
 
 	assert(in != NULL && out != NULL && outlen != NULL);
 	left = *outlen;
+	in_len = strlen(in);
 
 	while (*in != '\0') {
 		int byte = 0, nybbles = 2;
@@ -76,11 +77,13 @@ int sc_hex_to_bin(const char *in, u8 *out, size_t *outlen)
 			}
 			byte |= c;
 		}
-		// Detect premature end of string before byte is complete
-		if (!*in && nybbles >= 0) {
+
+		/* Detect premature end of string before byte is complete */
+		if (in_len > 1 && *in == '\0' && nybbles >= 0) {
 			err = SC_ERROR_INVALID_ARGUMENTS;
 			break;
 		}
+
 		if (*in == ':' || *in == ' ')
 			in++;
 		if (left <= 0) {
