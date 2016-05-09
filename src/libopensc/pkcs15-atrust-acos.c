@@ -127,7 +127,7 @@ static int sc_pkcs15emu_atrust_acos_init(sc_pkcs15_card_t *p15card)
 	};
 
 	const prdata prkeys[] = {
-		{ "1", "SK.CH.EKEY", 1536,
+		{ "01", "SK.CH.EKEY", 1536,
 			SC_PKCS15_PRKEY_USAGE_SIGN | SC_PKCS15_PRKEY_USAGE_DECRYPT | SC_PKCS15_PRKEY_USAGE_UNWRAP,
 		  "", /* do not specify file here to prevent reset of security state */
 		  0x88, "01", SC_PKCS15_CO_FLAG_PRIVATE},
