@@ -290,7 +290,7 @@ int sc_pkcs15_derive(struct sc_pkcs15_card *p15card,
 	
 	switch (obj->type) {
 		case SC_PKCS15_TYPE_PRKEY_EC:
-	/* don't overwrite *poutlen, because in ECDH the shared secret can be returned from card */
+	/* But in case the card returned the shared secret, don't overwrite *poutlen */
 			break;
 		default:
 			*poutlen = r;
