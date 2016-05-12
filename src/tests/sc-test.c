@@ -84,7 +84,7 @@ int sc_test_init(int *argc, char *argv[])
 				return rc;
 		} else {
 			for (i = rc = 0; rc != 1 && i < (int) sc_ctx_get_reader_count(ctx); i++)
-				rc = sc_detect_card_presence(sc_ctx_get_reader(ctx, opt_reader));
+				rc = sc_detect_card_presence(sc_ctx_get_reader(ctx, i));
 			if (rc == 1)
 				opt_reader = i - 1;
 		}
