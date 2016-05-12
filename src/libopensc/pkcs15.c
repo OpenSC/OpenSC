@@ -2424,9 +2424,15 @@ sc_pkcs15_compare_id(const struct sc_pkcs15_id *id1, const struct sc_pkcs15_id *
 void
 sc_pkcs15_format_id(const char *str, struct sc_pkcs15_id *id)
 {
-	size_t len = sizeof(id->value);
+	size_t len;
 
-	if (sc_hex_to_bin(str, id->value, &len) >= 0)
+	if (!id)
+		return;
+	len = sizeof(id->value);
+
+	if (sc_hex_to_bin(str, id->value, &len) != SC_SUCCESS)
+		id->len = 0;
+	else
 		id->len = len;
 }
 
