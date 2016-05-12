@@ -2675,6 +2675,7 @@ derive_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
 #if defined(ENABLE_OPENSSL) && OPENSSL_VERSION_NUMBER >= 0x00908000L && !defined(OPENSSL_NO_EC) && !defined(OPENSSL_NO_ECDSA)
 	case CKM_ECDH1_COFACTOR_DERIVE:
 	case CKM_ECDH1_DERIVE:
+
 		/*  Use OpenSSL to read the other public key, and get the raw version */
 		{
 		int len;
