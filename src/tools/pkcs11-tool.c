@@ -2676,8 +2676,8 @@ derive_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
 	case CKM_ECDH1_COFACTOR_DERIVE:
 	case CKM_ECDH1_DERIVE:
 		/*  Use OpenSSL to read the other public key, and get the raw version */
-		{				
-		int len;		
+		{
+		int len;
 		BIO     *bio_in = NULL;
 		const EC_KEY  *eckey = NULL;
 		const EC_GROUP *ecgroup = NULL;
@@ -2722,10 +2722,10 @@ derive_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
 	}
 
 	rv = p11->C_DeriveKey(session, &mech, key, newkey_template, 5, &newkey);
-	
+
 	free(buf);
 	buf = NULL;
-	
+
 	if (rv != CKR_OK)
 	    p11_fatal("C_DeriveKey", rv);
 
