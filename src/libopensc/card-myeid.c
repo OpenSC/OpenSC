@@ -134,7 +134,7 @@ static int myeid_init(struct sc_card *card)
 	u8 defatr[SC_MAX_ATR_SIZE];
 	size_t len = sizeof(defatr);
 	const char *atrp = myeid_atrs[MYEID_INFINEON_CHIP_ATR];
-	
+
 	LOG_FUNC_CALLED(card->ctx);
 
 	card->name = myeid_card_name;
@@ -930,14 +930,14 @@ int myeid_ecdh_derive(struct sc_card *card, const u8* pubkey, size_t pubkey_len,
 
 	apdu.resp = rbuf;
 	apdu.resplen = sizeof(rbuf);
-	
+
 	/* Fill in "Data objects in dynamic authentication template" (tag 0x7C) structure 
 	*
 	* TODO: encode the structure using OpenSC's ASN1-functions.
-	* 
+	*
 	*  Size of the structure depends on key length. With 521 bit keys two bytes are needed for defining length of a point.
-	*/		
-	
+	*/
+
 	sbuf[0] = 0x7C;
 	ext_len_bytes = 0;
 
@@ -951,12 +951,12 @@ int myeid_ecdh_derive(struct sc_card *card, const u8* pubkey, size_t pubkey_len,
 		ext_len_bytes = 2;
 	}
 	else
-	{		
+	{
 		sbuf[1] = pubkey_len + 2;
 		sbuf[2] = 0x85;
-		sbuf[3] = pubkey_len;	
+		sbuf[3] = pubkey_len;
 	}
-	
+
 	memcpy(&sbuf[4 + ext_len_bytes], pubkey, pubkey_len);
 
 	apdu.lc = pubkey_len + 4 + ext_len_bytes;
