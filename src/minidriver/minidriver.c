@@ -195,8 +195,8 @@ typedef struct _VENDOR_SPECIFIC
 }VENDOR_SPECIFIC;
 
 /*
- * Windows (ex. Vista) may access the card from more the one thread.
- * The following data type and static data is an attemt to resolve
+ * Windows (ex. Vista) may access the card from more than one thread.
+ * The following data type and static data is an attempt to resolve
  * some of the encountered multi-thread issues of OpenSC
  * on the minidriver side.
  *
@@ -3881,7 +3881,7 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 		r = sc_pkcs15_compute_signature(vs->p15card, pkey, opt_crypt_flags, dataToSign, dataToSignLen, pbuf, lg);
 		logprintf(pCardData, 2, "sc_pkcs15_compute_signature return %d\n", r);
 		if(r < 0)   {
-			logprintf(pCardData, 2, "sc_pkcs15_compute_signature erreur %s\n", sc_strerror(r));
+			logprintf(pCardData, 2, "sc_pkcs15_compute_signature error %s\n", sc_strerror(r));
 			pCardData->pfnCspFree(pbuf);
 			return md_translate_OpenSC_to_Windows_error(r, SCARD_F_INTERNAL_ERROR);
 		}
