@@ -674,10 +674,10 @@ static int myeid_set_security_env_ec(sc_card_t *card, const sc_security_env_t *e
 		sc_log(card->ctx, "Decipher operation is not supported with EC keys.");
 		return SC_ERROR_NOT_SUPPORTED;
 		break;
-	case SC_SEC_OPERATION_SIGN:	
+	case SC_SEC_OPERATION_SIGN:
 		apdu.p1 = 0x41;
-		apdu.p2 = 0xB6;		
-		break;	
+		apdu.p2 = 0xB6;
+		break;
 	case SC_SEC_OPERATION_DERIVE:
 		apdu.p1 = 0x41;
 		apdu.p2 = 0xA4;
@@ -1354,6 +1354,7 @@ static int myeid_get_info(struct sc_card *card, u8 *rbuf, size_t buflen)
 	card->version.fw_minor = rbuf[7];
 	/* add version to name */
 	snprintf(card_name_buf, sizeof(card_name_buf),
+			"%s %d.%d.%d", card->name, rbuf[5], rbuf[6], rbuf[7]);
 	card->name = card_name_buf;
 
 	LOG_FUNC_RETURN(card->ctx, r);
