@@ -1,0 +1,422 @@
+#include "p11test_case_common.h"
+
+/**
+ * Allocate place in the structure for every certificte found
+ * and store related information
+ */
+int callback_certificates(test_certs_t *objects,
+	CK_ATTRIBUTE template[], unsigned int template_size, CK_OBJECT_HANDLE object_handle)
+{
+	EVP_PKEY *evp = NULL;
+	const u_char *cp;
+	test_cert_t *o = NULL;
+
+	objects->count = objects->count+1;
+	objects->data = realloc(objects->data, objects->count*sizeof(test_cert_t));
+	if (objects->data == NULL)
+		return -1;
+
+	o = &(objects->data[objects->count - 1]);
+
+	/* get the type and data, store in some structure */
+	o->key_id = malloc(template[0].ulValueLen);
+	o->key_id = memcpy(o->key_id, template[0].pValue, template[0].ulValueLen);
+	o->key_id_size = template[0].ulValueLen;
+	o->id_str = convert_byte_string(o->key_id, o->key_id_size);
+	o->private_handle = CK_INVALID_HANDLE;
+	o->always_auth = 0;
+	o->bits = 0;
+	o->label = malloc(template[2].ulValueLen + 1);
+	strncpy(o->label, template[2].pValue, template[2].ulValueLen);
+	o->label[template[2].ulValueLen] = '\0';
+	o->verify_public = 0;
+	o->mechs = NULL;
+	o->type = -1;
+	cp = template[1].pValue;
+	if ((o->x509 = X509_new()) == NULL) {
+		fail_msg("X509_new");
+	} else if (d2i_X509(&(o->x509), (const unsigned char **) &cp,
+			template[1].ulValueLen) == NULL) {
+		fail_msg("d2i_X509");
+	} else if ((evp = X509_get_pubkey(o->x509)) == NULL) {
+		fail_msg("X509_get_pubkey failed.");
+	}
+	if (EVP_PKEY_base_id(evp) == EVP_PKEY_RSA) {
+		if ((o->key.rsa = RSAPublicKey_dup(evp->pkey.rsa)) == NULL)
+			fail_msg("RSAPublicKey_dup failed");
+		o->type = EVP_PK_RSA;
+		o->bits = EVP_PKEY_bits(evp);
+
+		o->num_mechs = 1; // the only mechanism for RSA
+		o->mechs = malloc(sizeof(test_mech_t));
+		if (o->mechs == NULL)
+			fail_msg("malloc failed for mechs");
+		o->mechs[0].mech = CKM_RSA_PKCS;
+		o->mechs[0].flags = 0;
+	} else if (EVP_PKEY_base_id(evp) == EVP_PKEY_EC) {
+		if ((o->key.ec = EC_KEY_dup(evp->pkey.ec)) == NULL)
+			fail_msg("EC_KEY_dup failed");
+		o->type = EVP_PK_EC;
+		o->bits = EVP_PKEY_bits(evp);
+
+		o->num_mechs = 1; // XXX CKM_ECDSA_SHA1 is not supported on Test PIV cards
+		o->mechs = malloc(2*sizeof(test_mech_t));
+		if (o->mechs == NULL)
+			fail_msg("malloc failed for mechs");
+		o->mechs[0].mech = CKM_ECDSA;
+		o->mechs[0].flags = 0;
+		o->mechs[1].mech = CKM_ECDSA_SHA1;
+		o->mechs[1].flags = 0;
+	} else {
+		debug_print("[ WARN %s ]evp->type = 0x%.4X (not RSA, EC)\n", o->id_str, evp->type);
+	}
+	EVP_PKEY_free(evp);
+
+	debug_print(" [ OK %s ] Certificate with label %s loaded successfully",
+		o->id_str, o->label);
+	return 1;
+}
+
+/**
+ * Pair found private keys on the card with existing certificates
+ */
+int callback_private_keys(test_certs_t *objects,
+	CK_ATTRIBUTE template[], unsigned int template_size, CK_OBJECT_HANDLE object_handle)
+{
+	unsigned int i = 0;
+	char *key_id = convert_byte_string(template[3].pValue, template[3].ulValueLen);
+	while (i < objects->count && objects->data[i].key_id_size == template[3].ulValueLen && 
+		memcmp(objects->data[i].key_id, template[3].pValue, template[3].ulValueLen) != 0)
+		i++;
+
+	if (i == objects->count) {
+		fprintf(stderr, "Can't find certificate for private key with ID %s\n", key_id);
+		free(key_id);
+		return -1;
+	}
+	if (objects->data[i].private_handle != CK_INVALID_HANDLE) {
+		fprintf(stderr, "Object already filled? ID %s\n", key_id);
+		free(key_id);
+		return -1;
+	}
+	free(key_id);
+
+	objects->data[i].private_handle = object_handle;
+	objects->data[i].sign = (template[0].ulValueLen != (CK_BBOOL) -1)
+		? *((CK_BBOOL *) template[0].pValue) : CK_FALSE;
+	objects->data[i].decrypt = (template[1].ulValueLen != (CK_BBOOL) -1)
+		? *((CK_BBOOL *) template[1].pValue) : CK_FALSE;
+	objects->data[i].key_type = (template[2].ulValueLen != (CK_ULONG) -1)
+		? *((CK_KEY_TYPE *) template[2].pValue) : (CK_KEY_TYPE) -1;
+	objects->data[i].always_auth = (template[2].ulValueLen != (CK_BBOOL) -1)
+		? *((CK_BBOOL *) template[2].pValue) : CK_FALSE;
+
+	debug_print(" [ OK %s ] Private key to the certificate found successfully S:%d D:%d T:%02lX",
+		objects->data[i].id_str, objects->data[i].sign, objects->data[i].decrypt,
+		objects->data[i].key_type);
+	return 0;
+}
+
+/**
+ * Pair found public keys on the card with existing certificates
+ */
+int callback_public_keys(test_certs_t *objects,
+	CK_ATTRIBUTE template[], unsigned int template_size, CK_OBJECT_HANDLE object_handle)
+{
+	unsigned int i = 0;
+	char *key_id = convert_byte_string(template[3].pValue, template[3].ulValueLen);
+	while (i < objects->count && objects->data[i].key_id_size == template[3].ulValueLen && 
+		memcmp(objects->data[i].key_id, template[3].pValue, template[3].ulValueLen) != 0)
+		i++;
+
+	if (i == objects->count) {
+		fprintf(stderr, "Can't find certificate for public key with ID %s\n", key_id);
+		free(key_id);
+		return -1;
+	}
+	if (objects->data[i].verify_public != 0) {
+		fprintf(stderr, "Object already filled? ID %s\n", key_id);
+		free(key_id);
+		return -1;
+	}
+	free(key_id);
+
+	objects->data[i].verify = (template[0].ulValueLen != (CK_ULONG) -1)
+		? *((CK_BBOOL *) template[0].pValue) : CK_FALSE;
+	objects->data[i].encrypt = (template[1].ulValueLen != (CK_ULONG) -1)
+		? *((CK_BBOOL *) template[1].pValue) : CK_FALSE;
+
+	/* check if we get the same public key as from the certificate */
+	if (objects->data[i].key_type == CKK_RSA) {
+		RSA *rsa = RSA_new();
+		objects->data[i].bits = (template[6].ulValueLen != (CK_ULONG) -1)
+			? *((CK_ULONG *)template[6].pValue) : 0;
+		rsa->n = BN_bin2bn(template[4].pValue, template[4].ulValueLen, NULL);
+		rsa->e = BN_bin2bn(template[5].pValue, template[5].ulValueLen, NULL);
+		if (BN_cmp(objects->data[i].key.rsa->n, rsa->n) != 0 ||
+			BN_cmp(objects->data[i].key.rsa->e, rsa->e) != 0) {
+			debug_print(" [ WARN %s ] Got different public key then the from the certificate ID\n",
+				objects->data[i].id_str);
+			return -1;
+		}
+		RSA_free(rsa);
+		objects->data[i].verify_public = 1;
+	} else if (objects->data[i].key_type == CKK_EC) {
+		debug_print(" [ WARN %s] EC public key check skipped so far\n",
+			objects->data[i].id_str);
+
+		//EC_KEY *ec = EC_KEY_new();
+		//int nid = NID_X9_62_prime256v1; /* 0x11 */
+		//int nid = NID_secp384r1;		/* 0x14 */
+		//EC_GROUP *ecgroup = EC_GROUP_new_by_curve_name(nid);
+		//EC_GROUP_set_asn1_flag(ecgroup, OPENSSL_EC_NAMED_CURVE);
+		//EC_POINT *ecpoint = EC_POINT_new(ecgroup);
+
+		//EC_KEY_set_public_key(ec, ecpoint);
+		return -1;
+	} else {
+		debug_print(" [ WARN %s] non-RSA, non-EC key\n", objects->data[i].id_str);
+		return -1;
+	}
+
+	debug_print(" [ OK %s ] Public key to the certificate found successfully V:%d E:%d T:%02lX",
+		objects->data[i].id_str, objects->data[i].verify, objects->data[i].encrypt,
+		objects->data[i].key_type);
+	return 0;
+}
+
+int search_objects(test_certs_t *objects, token_info_t *info,
+	CK_ATTRIBUTE filter[], CK_LONG filter_size, CK_ATTRIBUTE template[], CK_LONG template_size,
+	int (*callback)(test_certs_t *, CK_ATTRIBUTE[], unsigned int, CK_OBJECT_HANDLE))
+{
+	CK_RV rv;
+	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
+	CK_ULONG object_count;
+	CK_OBJECT_HANDLE object_handle = CK_INVALID_HANDLE;
+	CK_OBJECT_HANDLE_PTR object_handles = NULL;
+	unsigned long i = 0, objects_length = 0;
+
+	/* FindObjects first
+	 * https://wiki.oasis-open.org/pkcs11/CommonBugs
+	 */
+	rv = fp->C_FindObjectsInit(info->session_handle, filter, filter_size);
+	if (rv != CKR_OK) {
+		fprintf(stderr, "C_FindObjectsInit: rv = 0x%.8lX\n", rv);
+		return -1;
+	}
+
+	while(1) {
+		rv = fp->C_FindObjects(info->session_handle, &object_handle, 1, &object_count);
+		if (object_count == 0)
+			break;
+		if (rv != CKR_OK) {
+			fprintf(stderr, "C_FindObjects: rv = 0x%.8lX\n", rv);
+			return -1;
+		}
+		/* store handle */
+		if (i >= objects_length) {
+			objects_length += 4; // do not realloc after each row
+			object_handles = realloc(object_handles, objects_length * sizeof(CK_OBJECT_HANDLE_PTR));
+			if (object_handles == NULL)
+		 		fail_msg("Realloc failed. Need to store object handles.\n");
+		}
+		object_handles[i++] = object_handle;
+	}
+	objects_length = i; //terminate list of handles
+
+	rv = fp->C_FindObjectsFinal(info->session_handle);
+	if (rv != CKR_OK) {
+		fprintf(stderr, "C_FindObjectsFinal: rv = 0x%.8lX\n", rv);
+ 		fail_msg("Could not find certificate.\n");
+	}
+
+	for (i = 0;i < objects_length; i++) {
+		/* Find attributes one after another to handle errors
+		 * https://wiki.oasis-open.org/pkcs11/CommonBugs
+		 */
+		for (int j = 0; j < template_size; j++) {
+			template[j].pValue = NULL;
+			template[j].ulValueLen = 0;
+
+			rv = fp->C_GetAttributeValue(info->session_handle, object_handles[i],
+				&(template[j]), 1);
+			if (rv == CKR_ATTRIBUTE_TYPE_INVALID)
+				continue;
+			else if (rv != CKR_OK)
+				fail_msg("C_GetAttributeValue: rv = 0x%.8X\n", rv);
+
+			/* Allocate memory to hold the data we want */
+			if (template[j].ulValueLen != 0) {
+				template[j].pValue = malloc(template[j].ulValueLen);
+				if (template[j].pValue == NULL)
+					fail_msg("malloc failed");
+			}
+			/* Call again to get actual attribute */
+			rv = fp->C_GetAttributeValue(info->session_handle, object_handles[i],
+				&(template[j]), 1);
+			if (rv != CKR_OK)
+				fail_msg("C_GetAttributeValue: rv = 0x%.8X\n", rv);
+		}
+
+		callback(objects, template, template_size, object_handles[i]);
+		// XXX check results
+		for (int j = 0; j < template_size; j++)
+			free(template[j].pValue);
+	}
+	free(object_handles);
+	return 0;
+}
+
+void search_for_all_objects(test_certs_t *objects, token_info_t *info)
+{
+	CK_OBJECT_CLASS keyClass = CKO_CERTIFICATE;
+	CK_OBJECT_CLASS privateClass = CKO_PRIVATE_KEY;
+	CK_OBJECT_CLASS publicClass = CKO_PUBLIC_KEY;
+	CK_ATTRIBUTE filter[] = {
+			{CKA_CLASS, &keyClass, sizeof(keyClass)},
+	};
+	CK_ATTRIBUTE attrs[] = {
+			{ CKA_ID, NULL_PTR, 0},
+			{ CKA_VALUE, NULL_PTR, 0},
+			{ CKA_LABEL, NULL_PTR, 0},
+			{ CKA_CERTIFICATE_TYPE, NULL_PTR, 0},
+
+			/* Specific X.509 certificate attributes */
+			//{ CKA_SUBJECT, NULL_PTR, 0},
+			//{ CKA_ISSUER, NULL_PTR, 0},
+			//{ CKA_SERIAL_NUMBER, NULL_PTR, 0},
+			//{ CKA_ALLOWED_MECHANISMS, NULL_PTR, 0},
+	};
+	CK_ULONG attrs_size = sizeof (attrs) / sizeof (CK_ATTRIBUTE);
+	CK_ATTRIBUTE private_attrs[] = {
+			{ CKA_SIGN, NULL, 0}, // CK_BBOOL
+			{ CKA_DECRYPT, NULL, 0}, // CK_BBOOL
+			{ CKA_KEY_TYPE, NULL, 0}, // CKK_
+			{ CKA_ID, NULL, 0},
+			{ CKA_ALWAYS_AUTHENTICATE, NULL, 0}, // CK_BBOOL
+	};
+	CK_ULONG private_attrs_size = sizeof (private_attrs) / sizeof (CK_ATTRIBUTE);
+	CK_ATTRIBUTE public_attrs[] = {
+			{ CKA_VERIFY, NULL, 0}, // CK_BBOOL
+			{ CKA_ENCRYPT, NULL, 0}, // CK_BBOOL
+			{ CKA_KEY_TYPE, NULL, 0},
+			{ CKA_ID, NULL, 0},
+			{ CKA_MODULUS, NULL, 0},
+			{ CKA_PUBLIC_EXPONENT, NULL, 0},
+			{ CKA_MODULUS_BITS, NULL, 0},
+			{ CKA_EC_PARAMS, NULL, 0},
+			{ CKA_EC_POINT, NULL, 0},
+	};
+	CK_ULONG public_attrs_size = sizeof (public_attrs) / sizeof (CK_ATTRIBUTE);
+
+	debug_print("\nSearch for all certificates on the card");
+	search_objects(objects, info, filter, 1, // XXX size = 1
+		attrs, attrs_size, callback_certificates);
+
+
+	/* do the same thing with private keys (collect handles based on the collected IDs) */
+	debug_print("\nSearch for all private keys respective to the certificates");
+	filter[0].pValue = &privateClass;
+	// search for all and pair on the fly
+	search_objects(objects, info, filter, 1,
+		private_attrs, private_attrs_size, callback_private_keys);
+
+	debug_print("\nSearch for all public keys respective to the certificates");
+	filter[0].pValue = &publicClass;
+	search_objects(objects, info, filter, 1,
+		public_attrs, public_attrs_size, callback_public_keys);
+}
+
+void clean_all_objects(test_certs_t *objects) {
+	unsigned int i;
+	for (i = 0; i < objects->count; i++) {
+		free(objects->data[i].key_id);
+		free(objects->data[i].id_str);
+		free(objects->data[i].label);
+		free(objects->data[i].mechs);
+		X509_free(objects->data[i].x509);
+		if (objects->data[i].key_type == CKK_RSA)
+			RSA_free(objects->data[i].key.rsa);
+		else
+			EC_KEY_free(objects->data[i].key.ec);
+	}
+	free(objects->data);
+}
+
+char id_buffer[11];
+
+const char *get_mechanism_name(int mech_id)
+{
+	switch (mech_id) {
+		case CKM_RSA_PKCS:
+			return "CKM_RSA_PKCS";
+		case CKM_RSA_X_509:
+			return "CKM_RSA_X_509";
+		case CKM_ECDSA:
+			return "CKM_ECDSA";
+		case CKM_ECDSA_SHA1:
+			return "CKM_ECDSA_SHA1";
+		case CKM_ECDH1_DERIVE:
+			return "CKM_ECDH1_DERIVE";
+		case CKM_ECDH1_COFACTOR_DERIVE:
+			return "CKM_ECDH1_COFACTOR_DERIVE";
+		default:
+			sprintf(id_buffer, "0x%.8X", mech_id);
+			return id_buffer;
+	}
+}
+
+const char *get_mechanism_flag_name(int mech_id)
+{
+	switch (mech_id) {
+		case CKF_HW:
+			return "CKF_HW";
+		case CKF_ENCRYPT:
+			return "CKF_ENCRYPT";
+		case CKF_DECRYPT:
+			return "CKF_DECRYPT";
+		case CKF_DIGEST:
+			return "CKF_DIGEST";
+		case CKF_SIGN:
+			return "CKF_SIGN";
+		case CKF_SIGN_RECOVER:
+			return "CKF_SIGN_RECOVER";
+		case CKF_VERIFY:
+			return "CKF_VERIFY";
+		case CKF_VERIFY_RECOVER:
+			return "CKF_VERIFY_RECOVER";
+		case CKF_GENERATE:
+			return "CKF_GENERATE";
+		case CKF_GENERATE_KEY_PAIR:
+			return "CKF_GENERATE_KEY_PAIR";
+		case CKF_WRAP:
+			return "CKF_WRAP";
+		case CKF_UNWRAP:
+			return "CKF_UNWRAP";
+		case CKF_DERIVE:
+			return "CKF_DERIVE";
+		case CKF_EC_F_P:
+			return "CKF_EC_F_P";
+		case CKF_EC_F_2M:
+			return "CKF_EC_F_2M";
+		case CKF_EC_NAMEDCURVE:
+			return "CKF_EC_NAMEDCURVE";
+		case CKF_EC_UNCOMPRESS:
+			return "CKF_EC_UNCOMPRESS";
+		case CKF_EC_COMPRESS:
+			return "CKF_EC_COMPRESS";
+		default:
+			sprintf(id_buffer, "0x%.8X", mech_id);
+			return id_buffer;
+	}
+}
+
+char *convert_byte_string(char *id, unsigned long length)
+{
+	char *data = malloc(3 * length * sizeof(char) + 1);
+	for (unsigned int i = 0; i < length; i++)
+		sprintf(&data[i*3], "%02X:", id[i]);
+	data[length*3-1] = '\0';
+	return data;
+}
+
