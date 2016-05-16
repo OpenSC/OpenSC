@@ -245,7 +245,7 @@ void readonly_tests(void **state) {
 	printf(" Public == Cert ----------^       ^  ^  ^       ^  ^  ^\n");
 	printf(" Sign Attribute ------------------'  |  |       |  |  '---- Decrypt Attribute\n");
 	printf(" Sign&Verify functionality ----------'  |       |  '------- Enc&Dec functionality\n");
-	printf(" Verify Attribute ----------------------'       '---------- Encrypt functionaliy\n");
+	printf(" Verify Attribute ----------------------'       '---------- Encrypt Attribute\n");
 
 	clean_all_objects(&objects);
 }

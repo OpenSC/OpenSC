@@ -58,14 +58,14 @@ void supported_mechanisms_test(void **state) {
 				if (token.num_rsa_mechs < MAX_MECHS)
 					token.rsa_mechs[token.num_rsa_mechs++].mech = mechanism_list[i];
 				else
-					fail_msg("Too many RSA mechanisms");
+					fail_msg("Too many RSA mechanisms (%d)", MAX_MECHS);
 			}
 			if (mechanism_list[i] == CKM_ECDSA_SHA1
 					|| mechanism_list[i] == CKM_ECDSA) {
 				if (token.num_ec_mechs < MAX_MECHS)
 					token.ec_mechs[token.num_ec_mechs++].mech = mechanism_list[i];
 				else
-					fail_msg("Too many EC mechanisms");
+					fail_msg("Too many EC mechanisms (%d)", MAX_MECHS);
 			}
 		}
 
