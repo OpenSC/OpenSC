@@ -10,7 +10,7 @@ void supported_mechanisms_test(void **state) {
 	CK_MECHANISM_INFO_PTR mechanism_info;
 
 	rv = function_pointer->C_GetMechanismList(info->slot_id, NULL_PTR, &mechanism_count);
-	assert_int_not_equal(mechanism_count,0);
+	assert_int_not_equal(mechanism_count, 0);
 	if ((rv == CKR_OK) && (mechanism_count > 0)) {
 		mechanism_list = (CK_MECHANISM_TYPE_PTR) malloc(mechanism_count * sizeof(CK_MECHANISM_TYPE));
 		rv = function_pointer->C_GetMechanismList(info->slot_id, mechanism_list, &mechanism_count);
@@ -31,13 +31,28 @@ void supported_mechanisms_test(void **state) {
 			if(rv != CKR_OK){
 				continue;
 			}
+			// store mechanisms list for later tests
+			if (mechanism_list[i] == CKM_RSA_PKCS) {
+				if (token.num_rsa_mechs < MAX_MECHS)
+					token.rsa_mechs[token.num_rsa_mechs++].mech = mechanism_list[i];
+				else
+					fail_msg("Too many RSA mechanisms");
+			}
+			if (mechanism_list[i] == CKM_ECDSA_SHA1 || mechanism_list[i] == CKM_ECDSA) {
+				if (token.num_ec_mechs < MAX_MECHS)
+					token.ec_mechs[token.num_ec_mechs++].mech = mechanism_list[i];
+				else
+					fail_msg("Too many EC mechanisms");
+			}
 		}
 
 		printf("[    MECHANISM    ] [ KEY SIZE ] [  FLAGS   ]\n");
 		printf("[                 ] [ MIN][ MAX] [          ]\n");
 		for (i = 0; i < mechanism_count; i++) {
-			printf("[%-17s] [%4lu][%4lu] [%10s]", get_mechanism_name(mechanism_list[i]),
-				mechanism_info[i].ulMinKeySize, mechanism_info[i].ulMaxKeySize,
+			printf("[%-17s] [%4lu][%4lu] [%10s]",
+				get_mechanism_name(mechanism_list[i]),
+				mechanism_info[i].ulMinKeySize,
+				mechanism_info[i].ulMaxKeySize,
 				get_mechanism_flag_name(mechanism_info[i].flags));
 			for (CK_FLAGS j = 1; j <= CKF_EC_COMPRESS; j = j<<1)
 				if ((mechanism_info[i].flags & j) != 0)

@@ -10,11 +10,6 @@
 #define VERIFY_DECRYPT	0x04
 
 typedef struct {
-	CK_MECHANISM_TYPE mech;
-	int flags;
-} test_mech_t;
-
-typedef struct {
 	char	*key_id;
 	CK_ULONG key_id_size;
 	char	*id_str;
@@ -34,7 +29,7 @@ typedef struct {
 	char		*label;
 	CK_ULONG 	 bits;
 	int			verify_public;
-	test_mech_t	*mechs;
+	test_mech_t	mechs[MAX_MECHS];
 	int			num_mechs;
 } test_cert_t;
 

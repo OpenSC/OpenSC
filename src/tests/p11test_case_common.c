@@ -10,6 +10,7 @@ int callback_certificates(test_certs_t *objects,
 	EVP_PKEY *evp = NULL;
 	const u_char *cp;
 	test_cert_t *o = NULL;
+	size_t i;
 
 	objects->count = objects->count+1;
 	objects->data = realloc(objects->data, objects->count*sizeof(test_cert_t));
@@ -30,7 +31,7 @@ int callback_certificates(test_certs_t *objects,
 	strncpy(o->label, template[2].pValue, template[2].ulValueLen);
 	o->label[template[2].ulValueLen] = '\0';
 	o->verify_public = 0;
-	o->mechs = NULL;
+	o->num_mechs = 0;
 	o->type = -1;
 	cp = template[1].pValue;
 	if ((o->x509 = X509_new()) == NULL) {
@@ -47,26 +48,22 @@ int callback_certificates(test_certs_t *objects,
 		o->type = EVP_PK_RSA;
 		o->bits = EVP_PKEY_bits(evp);
 
-		o->num_mechs = 1; // the only mechanism for RSA
-		o->mechs = malloc(sizeof(test_mech_t));
-		if (o->mechs == NULL)
-			fail_msg("malloc failed for mechs");
-		o->mechs[0].mech = CKM_RSA_PKCS;
-		o->mechs[0].flags = 0;
+		o->num_mechs = token.num_rsa_mechs;
+		for (i = 0; i <= token.num_rsa_mechs; i++) {
+			o->mechs[i].mech = token.rsa_mechs[i].mech;
+			o->mechs[i].flags = 0;
+		}
 	} else if (EVP_PKEY_base_id(evp) == EVP_PKEY_EC) {
 		if ((o->key.ec = EC_KEY_dup(evp->pkey.ec)) == NULL)
 			fail_msg("EC_KEY_dup failed");
 		o->type = EVP_PK_EC;
 		o->bits = EVP_PKEY_bits(evp);
 
-		o->num_mechs = 1; // XXX CKM_ECDSA_SHA1 is not supported on Test PIV cards
-		o->mechs = malloc(2*sizeof(test_mech_t));
-		if (o->mechs == NULL)
-			fail_msg("malloc failed for mechs");
-		o->mechs[0].mech = CKM_ECDSA;
-		o->mechs[0].flags = 0;
-		o->mechs[1].mech = CKM_ECDSA_SHA1;
-		o->mechs[1].flags = 0;
+		o->num_mechs = token.num_ec_mechs;
+		for (i = 0; i <= token.num_ec_mechs; i++) {
+			o->mechs[i].mech = token.ec_mechs[i].mech;
+			o->mechs[i].flags = 0;
+		}
 	} else {
 		debug_print("[ WARN %s ]evp->type = 0x%.4X (not RSA, EC)\n", o->id_str, evp->type);
 	}
@@ -333,7 +330,6 @@ void clean_all_objects(test_certs_t *objects) {
 		free(objects->data[i].key_id);
 		free(objects->data[i].id_str);
 		free(objects->data[i].label);
-		free(objects->data[i].mechs);
 		X509_free(objects->data[i].x509);
 		if (objects->data[i].key_type == CKK_RSA)
 			RSA_free(objects->data[i].key.rsa);

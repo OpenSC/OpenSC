@@ -4,8 +4,6 @@
 
 #define DEFAULT_PIN		"123456"
 
-token_info_t token;
-
 int group_setup(void **state);
 int group_teardown(void **state);
 
