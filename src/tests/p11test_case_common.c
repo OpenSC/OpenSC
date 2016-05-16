@@ -22,6 +22,45 @@
 #include "p11test_case_common.h"
 
 /**
+ * Allocate new place for next certificate to store in the list
+ * and return pointer to this object
+ */
+test_cert_t * add_certificate(test_certs_t *objects)
+{
+	test_cert_t *o = NULL;
+	objects->count = objects->count+1;
+	objects->data = realloc(objects->data, objects->count * sizeof(test_cert_t));
+	if (objects->data == NULL)
+		return NULL;
+
+	o = &(objects->data[objects->count - 1]);
+	o->private_handle = CK_INVALID_HANDLE;
+	o->always_auth = 0;
+	o->bits = 0;
+	o->verify_public = 0;
+	o->num_mechs = 0;
+	o->type = -1;
+	return o;
+}
+
+/*
+ * Search for certificate in the list by ID and return pointer to it
+ */
+test_cert_t * search_certificate(test_certs_t *objects, CK_ATTRIBUTE *id)
+{
+	unsigned int i = 0;
+
+	while (i < objects->count && objects->data[i].key_id_size == id->ulValueLen &&
+		memcmp(objects->data[i].key_id, id->pValue, id->ulValueLen) != 0)
+		i++;
+
+	if (i == objects->count)
+		return NULL;
+
+	return &(objects->data[i]);
+}
+
+/**
  * Allocate place in the structure for every certificte found
  * and store related information
  */
@@ -33,28 +72,20 @@ int callback_certificates(test_certs_t *objects,
 	test_cert_t *o = NULL;
 	size_t i;
 
-	objects->count = objects->count+1;
-	objects->data = realloc(objects->data, objects->count*sizeof(test_cert_t));
-	if (objects->data == NULL)
+	if ((o = add_certificate(objects)) == NULL)
 		return -1;
-
-	o = &(objects->data[objects->count - 1]);
 
 	/* get the type and data, store in some structure */
 	o->key_id = malloc(template[0].ulValueLen);
 	o->key_id = memcpy(o->key_id, template[0].pValue, template[0].ulValueLen);
 	o->key_id_size = template[0].ulValueLen;
 	o->id_str = convert_byte_string(o->key_id, o->key_id_size);
-	o->private_handle = CK_INVALID_HANDLE;
-	o->always_auth = 0;
-	o->bits = 0;
 	o->label = malloc(template[2].ulValueLen + 1);
 	strncpy(o->label, template[2].pValue, template[2].ulValueLen);
 	o->label[template[2].ulValueLen] = '\0';
-	o->verify_public = 0;
-	o->num_mechs = 0;
-	o->type = -1;
 	cp = template[1].pValue;
+
+	/* Extract public key from the certificate */
 	if ((o->x509 = X509_new()) == NULL) {
 		fail_msg("X509_new");
 	} else if (d2i_X509(&(o->x509), (const unsigned char **) &cp,
@@ -110,7 +141,7 @@ int callback_certificates(test_certs_t *objects,
 
 	debug_print(" [ OK %s ] Certificate with label %s loaded successfully",
 		o->id_str, o->label);
-	return 1;
+	return 0;
 }
 
 /**
@@ -119,37 +150,37 @@ int callback_certificates(test_certs_t *objects,
 int callback_private_keys(test_certs_t *objects,
 	CK_ATTRIBUTE template[], unsigned int template_size, CK_OBJECT_HANDLE object_handle)
 {
-	unsigned int i = 0;
-	char *key_id = convert_byte_string(template[3].pValue, template[3].ulValueLen);
-	while (i < objects->count && objects->data[i].key_id_size == template[3].ulValueLen && 
-		memcmp(objects->data[i].key_id, template[3].pValue, template[3].ulValueLen) != 0)
-		i++;
+	test_cert_t *o = NULL;
+	char *key_id;
 
-	if (i == objects->count) {
+	/* Search for already stored certificate with same ID */
+	if ((o = search_certificate(objects, &(template[3]))) == NULL) {
+		key_id = convert_byte_string(template[3].pValue, template[3].ulValueLen);
 		fprintf(stderr, "Can't find certificate for private key with ID %s\n", key_id);
 		free(key_id);
 		return -1;
 	}
-	if (objects->data[i].private_handle != CK_INVALID_HANDLE) {
+
+	if (o->private_handle != CK_INVALID_HANDLE) {
+		key_id = convert_byte_string(template[3].pValue, template[3].ulValueLen);
 		fprintf(stderr, "Object already filled? ID %s\n", key_id);
 		free(key_id);
 		return -1;
 	}
-	free(key_id);
 
-	objects->data[i].private_handle = object_handle;
-	objects->data[i].sign = (template[0].ulValueLen != (CK_BBOOL) -1)
+	/* Store attributes, flags and handles */
+	o->private_handle = object_handle;
+	o->sign = (template[0].ulValueLen != (CK_BBOOL) -1)
 		? *((CK_BBOOL *) template[0].pValue) : CK_FALSE;
-	objects->data[i].decrypt = (template[1].ulValueLen != (CK_BBOOL) -1)
+	o->decrypt = (template[1].ulValueLen != (CK_BBOOL) -1)
 		? *((CK_BBOOL *) template[1].pValue) : CK_FALSE;
-	objects->data[i].key_type = (template[2].ulValueLen != (CK_ULONG) -1)
+	o->key_type = (template[2].ulValueLen != (CK_ULONG) -1)
 		? *((CK_KEY_TYPE *) template[2].pValue) : (CK_KEY_TYPE) -1;
-	objects->data[i].always_auth = (template[2].ulValueLen != (CK_BBOOL) -1)
+	o->always_auth = (template[2].ulValueLen != (CK_BBOOL) -1)
 		? *((CK_BBOOL *) template[2].pValue) : CK_FALSE;
 
 	debug_print(" [ OK %s ] Private key to the certificate found successfully S:%d D:%d T:%02lX",
-		objects->data[i].id_str, objects->data[i].sign, objects->data[i].decrypt,
-		objects->data[i].key_type);
+		o->id_str, o->sign, o->decrypt, o->key_type);
 	return 0;
 }
 
@@ -159,47 +190,47 @@ int callback_private_keys(test_certs_t *objects,
 int callback_public_keys(test_certs_t *objects,
 	CK_ATTRIBUTE template[], unsigned int template_size, CK_OBJECT_HANDLE object_handle)
 {
-	unsigned int i = 0;
-	char *key_id = convert_byte_string(template[3].pValue, template[3].ulValueLen);
-	while (i < objects->count && objects->data[i].key_id_size == template[3].ulValueLen && 
-		memcmp(objects->data[i].key_id, template[3].pValue, template[3].ulValueLen) != 0)
-		i++;
+	test_cert_t *o = NULL;
+	char *key_id;
 
-	if (i == objects->count) {
+	/* Search for already stored certificate with same ID */
+	if ((o = search_certificate(objects, &(template[3]))) == NULL) {
+		key_id = convert_byte_string(template[3].pValue, template[3].ulValueLen);
 		fprintf(stderr, "Can't find certificate for public key with ID %s\n", key_id);
 		free(key_id);
 		return -1;
 	}
-	if (objects->data[i].verify_public != 0) {
+
+	if (o->verify_public != 0) {
+		key_id = convert_byte_string(template[3].pValue, template[3].ulValueLen);
 		fprintf(stderr, "Object already filled? ID %s\n", key_id);
 		free(key_id);
 		return -1;
 	}
-	free(key_id);
 
-	objects->data[i].verify = (template[0].ulValueLen != (CK_ULONG) -1)
+	o->verify = (template[0].ulValueLen != (CK_ULONG) -1)
 		? *((CK_BBOOL *) template[0].pValue) : CK_FALSE;
-	objects->data[i].encrypt = (template[1].ulValueLen != (CK_ULONG) -1)
+	o->encrypt = (template[1].ulValueLen != (CK_ULONG) -1)
 		? *((CK_BBOOL *) template[1].pValue) : CK_FALSE;
 
 	/* check if we get the same public key as from the certificate */
-	if (objects->data[i].key_type == CKK_RSA) {
+	if (o->key_type == CKK_RSA) {
 		RSA *rsa = RSA_new();
-		objects->data[i].bits = (template[6].ulValueLen != (CK_ULONG) -1)
+		o->bits = (template[6].ulValueLen != (CK_ULONG) -1)
 			? *((CK_ULONG *)template[6].pValue) : 0;
 		rsa->n = BN_bin2bn(template[4].pValue, template[4].ulValueLen, NULL);
 		rsa->e = BN_bin2bn(template[5].pValue, template[5].ulValueLen, NULL);
-		if (BN_cmp(objects->data[i].key.rsa->n, rsa->n) != 0 ||
-			BN_cmp(objects->data[i].key.rsa->e, rsa->e) != 0) {
+		if (BN_cmp(o->key.rsa->n, rsa->n) != 0 ||
+			BN_cmp(o->key.rsa->e, rsa->e) != 0) {
 			debug_print(" [ WARN %s ] Got different public key then the from the certificate ID\n",
-				objects->data[i].id_str);
+				o->id_str);
 			return -1;
 		}
 		RSA_free(rsa);
-		objects->data[i].verify_public = 1;
-	} else if (objects->data[i].key_type == CKK_EC) {
+		o->verify_public = 1;
+	} else if (o->key_type == CKK_EC) {
 		debug_print(" [ WARN %s] EC public key check skipped so far\n",
-			objects->data[i].id_str);
+			o->id_str);
 
 		//EC_KEY *ec = EC_KEY_new();
 		//int nid = NID_X9_62_prime256v1; /* 0x11 */
@@ -211,13 +242,12 @@ int callback_public_keys(test_certs_t *objects,
 		//EC_KEY_set_public_key(ec, ecpoint);
 		return -1;
 	} else {
-		debug_print(" [ WARN %s] non-RSA, non-EC key\n", objects->data[i].id_str);
+		debug_print(" [ WARN %s] non-RSA, non-EC key\n", o->id_str);
 		return -1;
 	}
 
 	debug_print(" [ OK %s ] Public key to the certificate found successfully V:%d E:%d T:%02lX",
-		objects->data[i].id_str, objects->data[i].verify, objects->data[i].encrypt,
-		objects->data[i].key_type);
+		o->id_str, o->verify, o->encrypt, o->key_type);
 	return 0;
 }
 
