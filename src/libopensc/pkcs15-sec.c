@@ -287,15 +287,7 @@ int sc_pkcs15_derive(struct sc_pkcs15_card *p15card,
 
 	/* If card stores derived key on card, then no data is returned
 	 * and the key must be used on the card. */
-	
-	switch (obj->type) {
-		case SC_PKCS15_TYPE_PRKEY_EC:
-	/* But in case the card returned the shared secret, don't overwrite *poutlen */
-			break;
-		default:
-			*poutlen = r;
-	}
-	
+	*poutlen = r;
 	LOG_FUNC_RETURN(ctx, r);
 }
 
