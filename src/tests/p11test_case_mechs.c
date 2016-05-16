@@ -30,28 +30,29 @@ void supported_mechanisms_test(void **state) {
 	CK_MECHANISM_TYPE_PTR mechanism_list;
 	CK_MECHANISM_INFO_PTR mechanism_info;
 
-	rv = function_pointer->C_GetMechanismList(info->slot_id, NULL_PTR, &mechanism_count);
-	assert_int_not_equal(mechanism_count, 0);
+	rv = function_pointer->C_GetMechanismList(info->slot_id, NULL_PTR,
+		&mechanism_count);
 	if ((rv == CKR_OK) && (mechanism_count > 0)) {
-		mechanism_list = (CK_MECHANISM_TYPE_PTR) malloc(mechanism_count * sizeof(CK_MECHANISM_TYPE));
-		rv = function_pointer->C_GetMechanismList(info->slot_id, mechanism_list, &mechanism_count);
+		mechanism_list = (CK_MECHANISM_TYPE_PTR)
+			malloc(mechanism_count * sizeof(CK_MECHANISM_TYPE));
+		rv = function_pointer->C_GetMechanismList(info->slot_id,
+			mechanism_list, &mechanism_count);
 		if (rv != CKR_OK) {
 			free(mechanism_list);
 			function_pointer->C_Finalize(NULL_PTR);
 			fail_msg("Could not get mechanism list!\n");
 		}
-		assert_non_null(mechanism_list);
 
-		mechanism_info = (CK_MECHANISM_INFO_PTR) malloc(mechanism_count * sizeof(CK_MECHANISM_INFO));
+		mechanism_info = (CK_MECHANISM_INFO_PTR)
+			malloc(mechanism_count * sizeof(CK_MECHANISM_INFO));
 
-		for (i=0; i< mechanism_count; i++) {
+		for (i = 0; i < mechanism_count; i++) {
 			CK_MECHANISM_TYPE mechanism_type = mechanism_list[i];
 			rv = function_pointer->C_GetMechanismInfo(info->slot_id,
 				mechanism_type, &mechanism_info[i]);
-
-			if(rv != CKR_OK){
+			if (rv != CKR_OK)
 				continue;
-			}
+
 			// store mechanisms list for later tests
 			if (mechanism_list[i] == CKM_RSA_PKCS) {
 				if (token.num_rsa_mechs < MAX_MECHS)
@@ -59,7 +60,8 @@ void supported_mechanisms_test(void **state) {
 				else
 					fail_msg("Too many RSA mechanisms");
 			}
-			if (mechanism_list[i] == CKM_ECDSA_SHA1 || mechanism_list[i] == CKM_ECDSA) {
+			if (mechanism_list[i] == CKM_ECDSA_SHA1
+					|| mechanism_list[i] == CKM_ECDSA) {
 				if (token.num_ec_mechs < MAX_MECHS)
 					token.ec_mechs[token.num_ec_mechs++].mech = mechanism_list[i];
 				else

@@ -24,54 +24,6 @@
 
 static void *pkcs11_so;
 
-int get_slot_with_card(token_info_t * info);
-
-int load_pkcs11_module(token_info_t * info, const char* path_to_pkcs11_library) {
-	CK_RV rv;
-    CK_RV (*C_GetFunctionList)(CK_FUNCTION_LIST_PTR_PTR) = 0;
-
-    if(strlen(path_to_pkcs11_library) == 0) {
-        fprintf(stderr, "You have to specify path to PKCS#11 library.");
-        return 1;
-    }
-
-    pkcs11_so = dlopen(path_to_pkcs11_library, RTLD_NOW);
-
-    if (!pkcs11_so) {
-        fprintf(stderr, "Error loading pkcs#11 so: %s\n", dlerror());
-        return 1;
-    }
-
-    C_GetFunctionList = (CK_RV (*)(CK_FUNCTION_LIST_PTR_PTR)) dlsym(pkcs11_so, "C_GetFunctionList");
-
-    if (!C_GetFunctionList) {
-        fprintf(stderr, "Could not get function list: %s\n", dlerror());
-        return 1;
-    }
-
-    rv = C_GetFunctionList(&info->function_pointer);
-    if (CKR_OK != rv) {
-        fprintf(stderr, "C_GetFunctionList call failed: 0x%.8lX", rv);
-        return 1;
-    }
-
-    rv = info->function_pointer->C_Initialize(NULL_PTR);
-
-    if (rv != CKR_OK) {
-        fprintf(stderr, "C_Initialize: Error = 0x%.8lX\n", rv);
-        return 1;
-    }
-
-    if(get_slot_with_card(info)) {
-        fprintf(stderr, "There is no card present in reader.\n");
-        info->function_pointer->C_Finalize(NULL_PTR);
-        return 1;
-    }
-
-    info->function_pointer->C_Finalize(NULL_PTR);
-    return 0;
-}
-
 int get_slot_with_card(token_info_t * info)
 {
     CK_SLOT_ID_PTR slot_list;
@@ -124,6 +76,52 @@ int get_slot_with_card(token_info_t * info)
     }
 
     return error;
+}
+
+int load_pkcs11_module(token_info_t * info, const char* path_to_pkcs11_library) {
+	CK_RV rv;
+    CK_RV (*C_GetFunctionList)(CK_FUNCTION_LIST_PTR_PTR) = 0;
+
+    if(strlen(path_to_pkcs11_library) == 0) {
+        fprintf(stderr, "You have to specify path to PKCS#11 library.");
+        return 1;
+    }
+
+    pkcs11_so = dlopen(path_to_pkcs11_library, RTLD_NOW);
+
+    if (!pkcs11_so) {
+        fprintf(stderr, "Error loading pkcs#11 so: %s\n", dlerror());
+        return 1;
+    }
+
+    C_GetFunctionList = (CK_RV (*)(CK_FUNCTION_LIST_PTR_PTR)) dlsym(pkcs11_so, "C_GetFunctionList");
+
+    if (!C_GetFunctionList) {
+        fprintf(stderr, "Could not get function list: %s\n", dlerror());
+        return 1;
+    }
+
+    rv = C_GetFunctionList(&info->function_pointer);
+    if (CKR_OK != rv) {
+        fprintf(stderr, "C_GetFunctionList call failed: 0x%.8lX", rv);
+        return 1;
+    }
+
+    rv = info->function_pointer->C_Initialize(NULL_PTR);
+
+    if (rv != CKR_OK) {
+        fprintf(stderr, "C_Initialize: Error = 0x%.8lX\n", rv);
+        return 1;
+    }
+
+    if(get_slot_with_card(info)) {
+        fprintf(stderr, "There is no card present in reader.\n");
+        info->function_pointer->C_Finalize(NULL_PTR);
+        return 1;
+    }
+
+    info->function_pointer->C_Finalize(NULL_PTR);
+    return 0;
 }
 
 void close_pkcs11_module() {

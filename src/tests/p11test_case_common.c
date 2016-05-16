@@ -299,12 +299,6 @@ void search_for_all_objects(test_certs_t *objects, token_info_t *info)
 			{ CKA_VALUE, NULL_PTR, 0},
 			{ CKA_LABEL, NULL_PTR, 0},
 			{ CKA_CERTIFICATE_TYPE, NULL_PTR, 0},
-
-			/* Specific X.509 certificate attributes */
-			//{ CKA_SUBJECT, NULL_PTR, 0},
-			//{ CKA_ISSUER, NULL_PTR, 0},
-			//{ CKA_SERIAL_NUMBER, NULL_PTR, 0},
-			//{ CKA_ALLOWED_MECHANISMS, NULL_PTR, 0},
 	};
 	CK_ULONG attrs_size = sizeof (attrs) / sizeof (CK_ATTRIBUTE);
 	CK_ATTRIBUTE private_attrs[] = {
