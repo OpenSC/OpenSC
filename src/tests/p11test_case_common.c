@@ -63,27 +63,45 @@ int callback_certificates(test_certs_t *objects,
 	} else if ((evp = X509_get_pubkey(o->x509)) == NULL) {
 		fail_msg("X509_get_pubkey failed.");
 	}
+
 	if (EVP_PKEY_base_id(evp) == EVP_PKEY_RSA) {
+		/* Extract public RSA key */
 		if ((o->key.rsa = RSAPublicKey_dup(evp->pkey.rsa)) == NULL)
 			fail_msg("RSAPublicKey_dup failed");
 		o->type = EVP_PK_RSA;
 		o->bits = EVP_PKEY_bits(evp);
 
-		o->num_mechs = token.num_rsa_mechs;
-		for (i = 0; i <= token.num_rsa_mechs; i++) {
-			o->mechs[i].mech = token.rsa_mechs[i].mech;
-			o->mechs[i].flags = 0;
+		if (token.num_rsa_mechs > 0 ) {
+			/* Get supported mechanisms by token */
+			o->num_mechs = token.num_rsa_mechs;
+			for (i = 0; i <= token.num_rsa_mechs; i++) {
+				o->mechs[i].mech = token.rsa_mechs[i].mech;
+				o->mechs[i].flags = 0;
+			}
+		} else {
+			/* Use the default list */
+			o->num_mechs = 1;
+			o->mechs[0].mech = CKM_RSA_PKCS;
+			o->mechs[0].flags = 0;
 		}
 	} else if (EVP_PKEY_base_id(evp) == EVP_PKEY_EC) {
+		/* Extract public EC key */
 		if ((o->key.ec = EC_KEY_dup(evp->pkey.ec)) == NULL)
 			fail_msg("EC_KEY_dup failed");
 		o->type = EVP_PK_EC;
 		o->bits = EVP_PKEY_bits(evp);
 
-		o->num_mechs = token.num_ec_mechs;
-		for (i = 0; i <= token.num_ec_mechs; i++) {
-			o->mechs[i].mech = token.ec_mechs[i].mech;
-			o->mechs[i].flags = 0;
+		if (token.num_ec_mechs > 0 ) {
+			o->num_mechs = token.num_ec_mechs;
+			for (i = 0; i <= token.num_ec_mechs; i++) {
+				o->mechs[i].mech = token.ec_mechs[i].mech;
+				o->mechs[i].flags = 0;
+			}
+		} else {
+			/* Use the default list */
+			o->num_mechs = 1;
+			o->mechs[0].mech = CKM_ECDSA;
+			o->mechs[0].flags = 0;
 		}
 	} else {
 		debug_print("[ WARN %s ]evp->type = 0x%.4X (not RSA, EC)\n", o->id_str, evp->type);
