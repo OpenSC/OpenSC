@@ -38,8 +38,15 @@ on command line:
 
     ./p11test -m /usr/lib64/pkcs11/libcoolkeypk11.so
 
+or to debug PKCS#11 calls using `/usr/lib64/pkcs11-spy.so`:
+
+	export PKCS11SPY="../pkcs11/.libs/opensc-pkcs11.so"
+    ./p11test -m ../pkcs11/.libs/pkcs11-spy.so
+
 
 TODO:
 
  * Test `CKM_ECDSA_DERIVE` mechanism(s)
  * Read pin from environment variable?
+ * Work with cards without certificates (Private + Public keys)
+ * Verify EC Public key with Certificate
