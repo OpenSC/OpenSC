@@ -272,6 +272,7 @@ void search_for_all_objects(test_certs_t *objects, token_info_t *info)
 	CK_ATTRIBUTE filter[] = {
 			{CKA_CLASS, &keyClass, sizeof(keyClass)},
 	};
+	CK_ULONG filter_size = 1;
 	CK_ATTRIBUTE attrs[] = {
 			{ CKA_ID, NULL_PTR, 0},
 			{ CKA_VALUE, NULL_PTR, 0},
@@ -307,7 +308,7 @@ void search_for_all_objects(test_certs_t *objects, token_info_t *info)
 	CK_ULONG public_attrs_size = sizeof (public_attrs) / sizeof (CK_ATTRIBUTE);
 
 	debug_print("\nSearch for all certificates on the card");
-	search_objects(objects, info, filter, 1, // XXX size = 1
+	search_objects(objects, info, filter, filter_size,
 		attrs, attrs_size, callback_certificates);
 
 
@@ -315,12 +316,12 @@ void search_for_all_objects(test_certs_t *objects, token_info_t *info)
 	debug_print("\nSearch for all private keys respective to the certificates");
 	filter[0].pValue = &privateClass;
 	// search for all and pair on the fly
-	search_objects(objects, info, filter, 1,
+	search_objects(objects, info, filter, filter_size,
 		private_attrs, private_attrs_size, callback_private_keys);
 
 	debug_print("\nSearch for all public keys respective to the certificates");
 	filter[0].pValue = &publicClass;
-	search_objects(objects, info, filter, 1,
+	search_objects(objects, info, filter, filter_size,
 		public_attrs, public_attrs_size, callback_public_keys);
 }
 

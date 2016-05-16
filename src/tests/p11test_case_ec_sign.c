@@ -12,8 +12,10 @@ void ec_sign_size_test(void **state) {
 
 	debug_print("\nCheck functionality of Sign&Verify and/or Encrypt&Decrypt");
 	for (unsigned int i = 0; i < objects.count; i++) {
-		if (objects.data[i].key_type == CKK_EC)
-			// for (int j = 0; j < objects.data[i].num_mechs; j++) // XXX single mechanism
+		if (objects.data[i].key_type != CKK_EC)
+			continue;
+		// sanity: Test all mechanisms
+		for (int j = 0; j < objects.data[i].num_mechs; j++)
 			for (int l = 30; l < 35; l++)
 				sign_verify_test(&(objects.data[i]), info,
 					&(objects.data[i].mechs[0]), l);
