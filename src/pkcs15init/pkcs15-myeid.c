@@ -30,10 +30,12 @@
 #include "libopensc/log.h"
 #include "pkcs15-init.h"
 #include "profile.h"
+#include "libopensc/asn1.h"
 
 #undef KEEP_AC_NONE_FOR_INIT_APPLET
 
 #define MYEID_MAX_PINS   14
+#define MYEID_MAX_RSA_KEY_LEN 2048
 
 unsigned char MYEID_DEFAULT_PUBKEY[] = {0x01, 0x00, 0x01};
 #define MYEID_DEFAULT_PUBKEY_LEN       sizeof(MYEID_DEFAULT_PUBKEY)
@@ -580,8 +582,11 @@ myeid_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	struct sc_cardctl_myeid_gen_store_key_info args;
 	struct sc_file *file = NULL;
 	int r;
+	unsigned int cla,tag;
+	size_t taglen;
 	size_t keybits = key_info->modulus_length;
-	unsigned char raw_pubkey[256];
+	u8 raw_pubkey[MYEID_MAX_RSA_KEY_LEN / 8];
+	u8* dataptr;
 
 	LOG_FUNC_CALLED(ctx);
 	if (object->type != SC_PKCS15_TYPE_PRKEY_RSA && object->type != SC_PKCS15_TYPE_PRKEY_EC)
@@ -633,7 +638,7 @@ myeid_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 		args.key_type = SC_CARDCTL_MYEID_KEY_EC;
 	}
 
-	/* Generate RSA key  */
+	/* Generate the key  */
 	r = sc_card_ctl(card, SC_CARDCTL_MYEID_GENERATE_STORE_KEY, &args);
 	LOG_TEST_RET(ctx, r, "Card control 'MYEID_GENERATE_STORE_KEY' failed");
 
@@ -683,13 +688,23 @@ myeid_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 			r = sc_card_ctl(card, SC_CARDCTL_MYEID_GETDATA, &data_obj);
 			LOG_TEST_RET(ctx, r, "Cannot get EC public key: 'MYEID_GETDATA' failed");
 
+			dataptr = data_obj.Data;
+			r = sc_asn1_read_tag((const u8 **)&dataptr, data_obj.DataLen, &cla, &tag, &taglen);
+			LOG_TEST_RET(ctx, r, "Invalid EC public key data. Cannot parse DER structure.");
+
+			if (taglen == 0)
+			    LOG_FUNC_RETURN(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
+
 			if (pubkey->u.ec.ecpointQ.value)
 				free(pubkey->u.ec.ecpointQ.value);
-			pubkey->u.ec.ecpointQ.value = malloc(data_obj.DataLen - 2);
-                        if (pubkey->u.ec.ecpointQ.value == NULL)
+
+			pubkey->u.ec.ecpointQ.value = malloc(taglen);
+
+			if (pubkey->u.ec.ecpointQ.value == NULL)
 				LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
-			memcpy(pubkey->u.ec.ecpointQ.value, data_obj.Data + 2, data_obj.DataLen - 2);
-			pubkey->u.ec.ecpointQ.len = data_obj.DataLen - 2;
+
+			memcpy(pubkey->u.ec.ecpointQ.value, dataptr, taglen);
+			pubkey->u.ec.ecpointQ.len = taglen;
 
 			if (pubkey->u.ec.params.named_curve)
 				free(pubkey->u.ec.params.named_curve);
