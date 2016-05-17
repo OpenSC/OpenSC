@@ -80,8 +80,9 @@ int group_teardown(void **state) {
 
 	token_info_t *info = (token_info_t *) *state;
 	debug_print("Clearing state after group tests!");
-	if(info && info->function_pointer)
-		info->function_pointer->C_Finalize(NULL_PTR);
+	// XXX do not finalize already Finalized
+	//if(info && info->function_pointer)
+	//	info->function_pointer->C_Finalize(NULL_PTR);
 
 	free(info);
 	free(token.library_path);
