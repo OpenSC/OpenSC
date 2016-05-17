@@ -48,12 +48,12 @@ int main(int argc, char** argv) {
 		cmocka_unit_test_setup_teardown(supported_mechanisms_test,
 			token_setup, token_cleanup),
 
-		/* Regression test Sign&Verify with various data lengths */
-		cmocka_unit_test_setup_teardown(ec_sign_size_test,
-			user_login_setup, after_test_cleanup),
-
 		/* Complex readonly test of all objects on the card */
 		cmocka_unit_test_setup_teardown(readonly_tests,
+			user_login_setup, after_test_cleanup),
+
+		/* Regression test Sign&Verify with various data lengths */
+		cmocka_unit_test_setup_teardown(ec_sign_size_test,
 			user_login_setup, after_test_cleanup),
 	};
 
