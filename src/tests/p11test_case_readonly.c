@@ -221,6 +221,11 @@ void readonly_tests(void **state) {
 		}
 	}
 
+	if (objects.count == 0) {
+		printf(" [WARN] No objects to display\n");
+		return;
+	}
+
 	/* print summary */
 	printf("[KEY ID] [TYPE] [SIZE] [PUBLIC] [SIGN&VERIFY] [ENC&DECRYPT] [LABEL]\n");
 	for (i = 0; i < objects.count; i++) {
