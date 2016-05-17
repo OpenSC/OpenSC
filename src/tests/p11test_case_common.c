@@ -410,6 +410,10 @@ const char *get_mechanism_name(int mech_id)
 	switch (mech_id) {
 		case CKM_RSA_PKCS:
 			return "CKM_RSA_PKCS";
+		case CKM_SHA1_RSA_PKCS:
+			return "CKM_SHA1_RSA_PKCS";
+		case CKM_SHA256_RSA_PKCS:
+			return "CKM_SHA256_RSA_PKCS";
 		case CKM_RSA_X_509:
 			return "CKM_RSA_X_509";
 		case CKM_ECDSA:
