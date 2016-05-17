@@ -21,6 +21,18 @@
 
 #include "p11test_case_readonly.h"
 
+void always_authenticate(test_cert_t *o, token_info_t *info)
+{
+	CK_RV rv;
+	if (!o->always_auth)
+		return;
+
+	rv = info->function_pointer->C_Login(info->session_handle,
+		CKU_CONTEXT_SPECIFIC, info->pin, info->pin_length);
+	if (rv != CKR_OK)
+		debug_print(" [ SKIP %s ] Re-authentication failed", o->id_str);
+}
+
 int encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 {
 	CK_RV rv;
@@ -61,13 +73,12 @@ int encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 	if (rv != CKR_OK)
 		fail_msg("C_DecryptInit: rv = 0x%.8X\n", rv);
 
+	always_authenticate(o, info);
+
 	rv = info->function_pointer->C_Decrypt(info->session_handle, enc_message,
 		enc_message_length, dec_message, &dec_message_length);
 	free(enc_message);
-	if (rv == CKR_USER_NOT_LOGGED_IN) {
-		debug_print(" [ SKIP %s ] Not allowed to decrypt with this key?", o->id_str);
-		return 0;
-	} else if (rv != CKR_OK)
+	if (rv != CKR_OK)
 		fail_msg("C_Decrypt: rv = 0x%.8X\n", rv);
 
 	dec_message[dec_message_length] = '\0';
@@ -116,13 +127,7 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 	} else if (rv != CKR_OK)
 		fail_msg("C_SignInit: rv = 0x%.8X\n", rv);
 
-	if (o->always_auth) {
-		rv = info->function_pointer->C_Login(info->session_handle,
-			CKU_CONTEXT_SPECIFIC, info->pin, info->pin_length);
-		if (rv != CKR_OK) {
-			debug_print(" [ SKIP %s ] Re-authentication failed", o->id_str);
-		}
-	}
+	always_authenticate(o, info);
 
 	/* Call C_Sign with NULL argument to find out the real size of signature */
 	rv = info->function_pointer->C_Sign(info->session_handle,
