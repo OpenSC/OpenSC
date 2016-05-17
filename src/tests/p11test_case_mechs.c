@@ -69,10 +69,10 @@ void supported_mechanisms_test(void **state) {
 			}
 		}
 
-		printf("[    MECHANISM    ] [ KEY SIZE ] [  FLAGS   ]\n");
-		printf("[                 ] [ MIN][ MAX] [          ]\n");
+		printf("[     MECHANISM     ] [ KEY SIZE ] [  FLAGS   ]\n");
+		printf("[                   ] [ MIN][ MAX] [          ]\n");
 		for (i = 0; i < mechanism_count; i++) {
-			printf("[%-17s] [%4lu][%4lu] [%10s]",
+			printf("[%-19s] [%4lu][%4lu] [%10s]",
 				get_mechanism_name(mechanism_list[i]),
 				mechanism_info[i].ulMinKeySize,
 				mechanism_info[i].ulMaxKeySize,

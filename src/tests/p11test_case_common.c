@@ -414,6 +414,10 @@ const char *get_mechanism_name(int mech_id)
 			return "CKM_SHA1_RSA_PKCS";
 		case CKM_SHA256_RSA_PKCS:
 			return "CKM_SHA256_RSA_PKCS";
+		case CKM_SHA384_RSA_PKCS:
+			return "CKM_SHA384_RSA_PKCS";
+		case CKM_SHA512_RSA_PKCS:
+			return "CKM_SHA512_RSA_PKCS";
 		case CKM_RSA_X_509:
 			return "CKM_RSA_X_509";
 		case CKM_ECDSA:
@@ -424,6 +428,8 @@ const char *get_mechanism_name(int mech_id)
 			return "CKM_ECDH1_DERIVE";
 		case CKM_ECDH1_COFACTOR_DERIVE:
 			return "CKM_ECDH1_COFACTOR_DERIVE";
+		case CKM_EC_KEY_PAIR_GEN:
+			return "CKM_EC_KEY_PAIR_GEN";
 		default:
 			sprintf(id_buffer, "0x%.8X", mech_id);
 			return id_buffer;
@@ -469,6 +475,8 @@ const char *get_mechanism_flag_name(int mech_id)
 			return "CKF_EC_UNCOMPRESS";
 		case CKF_EC_COMPRESS:
 			return "CKF_EC_COMPRESS";
+		case CKF_EC_ECPARAMETERS:
+			return "CKF_EC_ECPARAMETERS";
 		default:
 			sprintf(id_buffer, "0x%.8X", mech_id);
 			return id_buffer;
