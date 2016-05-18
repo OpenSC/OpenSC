@@ -15,7 +15,7 @@ SDKS_PATH="$(xcode-select -p)/Platforms/MacOSX.platform/Developer/SDKs"
 SDK_PATH="${SDK_PATH:-$SDKS_PATH/$(ls -1 ${SDKS_PATH} | sort -n -k2 -t. -r | head -1)}"
 
 # Set SDK path
-export CFLAGS="$CFLAGS -isysroot $SDK_PATH -arch i386 -arch x86_64 -mmacosx-version-min=10.10"
+export CFLAGS="$CFLAGS -isysroot $SDK_PATH -arch x86_64 -mmacosx-version-min=10.10"
 
 # OpenSSL is deprecated on OSX since 10.7 and that generates lots of
 # "false positive" warnings and there is no alternative option.
