@@ -549,10 +549,6 @@ if test "${enable_sm}" = "yes"; then
 		*-mingw*|*-winnt*|*-cygwin*)
 			DEFAULT_SM_MODULE_PATH="\# module_path = \"\";"
 		;;
-		*-apple-*)
-			DEFAULT_SM_MODULE="libsmm-local.dylib"
-			DEFAULT_SM_MODULE_PATH="module_path = \$(libdir);"
-		;;
 		*)
 			DEFAULT_SM_MODULE="libsmm-local.so"
 			DEFAULT_SM_MODULE_PATH="module_path = \$(libdir);"
@@ -634,11 +630,6 @@ case "${host}" in
 		DYN_LIB_EXT=".dll"
 		LIBDIR=""
 		LIB_PRE=""
-		;;
-	*-apple-*)
-		DYN_LIB_EXT=".dylib"
-		LIBDIR="\$(libdir)/"
-		LIB_PRE="lib"
 		;;
 	*)
 		DYN_LIB_EXT=".so"
