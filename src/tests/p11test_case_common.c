@@ -409,27 +409,29 @@ const char *get_mechanism_name(int mech_id)
 {
 	switch (mech_id) {
 		case CKM_RSA_PKCS:
-			return "CKM_RSA_PKCS";
+			return "RSA_PKCS";
 		case CKM_SHA1_RSA_PKCS:
-			return "CKM_SHA1_RSA_PKCS";
+			return "SHA1_RSA_PKCS";
 		case CKM_SHA256_RSA_PKCS:
-			return "CKM_SHA256_RSA_PKCS";
+			return "SHA256_RSA_PKCS";
 		case CKM_SHA384_RSA_PKCS:
-			return "CKM_SHA384_RSA_PKCS";
+			return "SHA384_RSA_PKCS";
 		case CKM_SHA512_RSA_PKCS:
-			return "CKM_SHA512_RSA_PKCS";
+			return "SHA512_RSA_PKCS";
 		case CKM_RSA_X_509:
-			return "CKM_RSA_X_509";
+			return "RSA_X_509";
 		case CKM_ECDSA:
-			return "CKM_ECDSA";
+			return "ECDSA";
 		case CKM_ECDSA_SHA1:
-			return "CKM_ECDSA_SHA1";
+			return "ECDSA_SHA1";
 		case CKM_ECDH1_DERIVE:
-			return "CKM_ECDH1_DERIVE";
+			return "ECDH1_DERIVE";
 		case CKM_ECDH1_COFACTOR_DERIVE:
-			return "CKM_ECDH1_COFACTOR_DERIVE";
+			return "ECDH1_COFACTOR_DERIVE";
 		case CKM_EC_KEY_PAIR_GEN:
-			return "CKM_EC_KEY_PAIR_GEN";
+			return "EC_KEY_PAIR_GEN";
+		case CKM_RSA_PKCS_KEY_PAIR_GEN:
+			return "RSA_PKCS_KEY_PAIR_GEN";
 		default:
 			sprintf(id_buffer, "0x%.8X", mech_id);
 			return id_buffer;

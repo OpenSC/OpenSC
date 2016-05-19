@@ -54,6 +54,8 @@ typedef struct {
 	size_t  num_rsa_mechs;
 	test_mech_t	ec_mechs[MAX_MECHS];
 	size_t  num_ec_mechs;
+	test_mech_t	keygen_mechs[MAX_MECHS];
+	size_t  num_keygen_mechs;
 } token_info_t;
 
 token_info_t token;
