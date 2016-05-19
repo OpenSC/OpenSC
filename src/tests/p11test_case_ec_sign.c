@@ -21,7 +21,7 @@
 #include "p11test_case_ec_sign.h"
 
 void ec_sign_size_test(void **state) {
-
+	int min, max, j, l;
 	token_info_t *info = (token_info_t *) *state;
 
 	test_certs_t objects;
@@ -30,15 +30,18 @@ void ec_sign_size_test(void **state) {
 
 	search_for_all_objects(&objects, info);
 
-	debug_print("\nCheck functionality of Sign&Verify and/or Encrypt&Decrypt");
+	debug_print("\nCheck functionality of Sign&Verify on different data lengths");
 	for (unsigned int i = 0; i < objects.count; i++) {
 		if (objects.data[i].key_type != CKK_EC)
 			continue;
 		// sanity: Test all mechanisms
-		for (int j = 0; j < objects.data[i].num_mechs; j++)
-			for (int l = 30; l < 35; l++)
+		min = (objects.data[i].bits + 7) / 8 - 2;
+		max = (objects.data[i].bits + 7) / 8 + 2;
+		for (j = 0; j < objects.data[i].num_mechs; j++) {
+			for (l = min; l < max; l++)
 				sign_verify_test(&(objects.data[i]), info,
 					&(objects.data[i].mechs[0]), l);
+		}
 	}
 
 	clean_all_objects(&objects);
