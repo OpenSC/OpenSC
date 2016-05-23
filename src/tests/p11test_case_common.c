@@ -432,6 +432,10 @@ const char *get_mechanism_name(int mech_id)
 			return "EC_KEY_PAIR_GEN";
 		case CKM_RSA_PKCS_KEY_PAIR_GEN:
 			return "RSA_PKCS_KEY_PAIR_GEN";
+		case CKM_MD5_RSA_PKCS:
+			return "MD5_RSA_PKCS";
+		case CKM_RIPEMD160_RSA_PKCS:
+			return "RIPEMD160_RSA_PKCS";
 		default:
 			sprintf(id_buffer, "0x%.8X", mech_id);
 			return id_buffer;

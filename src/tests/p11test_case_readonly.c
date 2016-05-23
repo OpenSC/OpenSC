@@ -29,8 +29,9 @@ void always_authenticate(test_cert_t *o, token_info_t *info)
 
 	rv = info->function_pointer->C_Login(info->session_handle,
 		CKU_CONTEXT_SPECIFIC, info->pin, info->pin_length);
-	if (rv != CKR_OK)
+	if (rv != CKR_OK) {
 		debug_print(" [ SKIP %s ] Re-authentication failed", o->id_str);
+	}
 }
 
 int encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *mech)
@@ -43,6 +44,11 @@ int encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 	CK_ULONG dec_message_length = BUFFER_SIZE;
 	unsigned char *enc_message;
 	int enc_message_length;
+
+	if ((mech->flags & CKF_DECRYPT) == 0) {
+		debug_print(" [ KEY %s ] Skip for encryption for non-supportring mechanism", o->id_str);
+		return 0;
+	}
 
 	sign_mechanism.mechanism = mech->mech;
 	if (o->type != EVP_PK_RSA) {
