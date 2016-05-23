@@ -806,12 +806,12 @@ void *sc_mem_alloc_secure(sc_context_t *ctx, size_t len)
 
     pointer = calloc(len, sizeof(unsigned char));
     if (!pointer)
-        return NULL;
+	return NULL;
 #ifdef HAVE_SYS_MMAN_H
     /* TODO mprotect */
     /* Do not swap the memory */
     if (mlock(pointer, len) >= 0)
-        locked = 1;
+	locked = 1;
 #endif
 #ifdef _WIN32
 	/* Do not swap the memory */
@@ -819,26 +819,27 @@ void *sc_mem_alloc_secure(sc_context_t *ctx, size_t len)
 		locked = 1;
 #endif
     if (!locked) {
-        if (ctx->flags & SC_CTX_FLAG_PARANOID_MEMORY) {
-            sc_do_log (ctx, 0, NULL, 0, NULL, "cannot lock memory, failing allocation because paranoid set");
-            free (pointer);
-            pointer = NULL;
-        } else {
-            sc_do_log (ctx, 0, NULL, 0, NULL, "cannot lock memory, sensitive data may be paged to disk");
-        }
+	if (ctx->flags & SC_CTX_FLAG_PARANOID_MEMORY) {
+	    sc_do_log (ctx, 0, NULL, 0, NULL, "cannot lock memory, failing allocation because paranoid set");
+	    free (pointer);
+	    pointer = NULL;
+	} else {
+	    sc_do_log (ctx, 0, NULL, 0, NULL, "cannot lock memory, sensitive data may be paged to disk");
+	}
     }
     return pointer;
 }
 
 void sc_mem_clear(void *ptr, size_t len)
 {
-#ifdef ENABLE_OPENSSL
 	/* FIXME: Bug in 1.0.0-beta series crashes with 0 length */
-	if (len > 0)
+	if (len > 0)   {
+#ifdef ENABLE_OPENSSL
 		OPENSSL_cleanse(ptr, len);
 #else
-	memset(ptr, 0, len);
+		memset(ptr, 0, len);
 #endif
+	}
 }
 
 int sc_mem_reverse(unsigned char *buf, size_t len)
