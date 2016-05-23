@@ -66,9 +66,12 @@ static int dump_unusedspace(void)
 
 	if (p15card->file_unusedspace != NULL)
 		path = p15card->file_unusedspace->path;
-	else {
+	else if (p15card->file_app != NULL) {
 		path = p15card->file_app->path;
 		sc_append_path_id(&path, (const u8 *) "\x50\x33", 2);
+	} else {
+		printf("\nCan't find unused space file.\n");
+		return -1;
 	}
 	path.count = -1;
 
