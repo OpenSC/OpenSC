@@ -91,7 +91,7 @@ int encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 	if (memcmp(dec_message, message, dec_message_length) == 0
 			&& dec_message_length == message_length) {
 		debug_print(" [ OK %s ] Text decrypted successfully.", o->id_str);
-		mech->flags |= VERIFY_DECRYPT;
+		mech->flags |= FLAGS_VERIFY_DECRYPT;
 	} else {
 		debug_print(" [ ERROR %s ] Text decryption failed. Recovered text: %s",
 			o->id_str, dec_message);
@@ -184,7 +184,7 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 		if ((rv = ECDSA_do_verify(message, message_length, sig, o->key.ec)) == 1) {
 			debug_print(" [ OK %s ] EC Signature of length %lu is valid.",
 				o->id_str, message_length);
-			mech->flags |= VERIFY_SIGN;
+			mech->flags |= FLAGS_VERIFY_SIGN;
 		} else {
 			fail_msg("ECDSA_do_verify: rv = %d: %s\n", rv,
 				ERR_error_string(ERR_peek_last_error(), NULL));
@@ -254,8 +254,8 @@ void readonly_tests(void **state) {
 		for (int j = 0; j < objects.data[i].num_mechs; j++)
 			printf("         [ %-18s ] [   %s    ] [   %s    ]\n",
 				get_mechanism_name(objects.data[i].mechs[j].mech),
-				objects.data[i].mechs[j].flags & VERIFY_SIGN ? "[./]" : "    ",
-				objects.data[i].mechs[j].flags & VERIFY_DECRYPT ? "[./]" : "    ");
+				objects.data[i].mechs[j].flags & FLAGS_VERIFY_SIGN ? "[./]" : "    ",
+				objects.data[i].mechs[j].flags & FLAGS_VERIFY_DECRYPT ? "[./]" : "    ");
 		printf("\n");
 	}
 	printf(" Public == Cert ----------^       ^  ^  ^       ^  ^  ^\n");

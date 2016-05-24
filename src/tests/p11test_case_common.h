@@ -27,9 +27,6 @@
 #include <openssl/err.h>
 #include "p11test_common.h"
 
-#define VERIFY_SIGN		0x02
-#define VERIFY_DECRYPT	0x04
-
 typedef struct {
 	char	*key_id;
 	CK_ULONG key_id_size;

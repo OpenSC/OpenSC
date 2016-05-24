@@ -29,7 +29,7 @@
 #include <cmocka.h>
 #include "pkcs11/pkcs11.h"
 
-#define MAX_MECHS 5
+#define MAX_MECHS 10
 
 #ifdef NDEBUG
 	#define debug_print(fmt, ...) \
@@ -37,6 +37,9 @@
 #else
 	#define debug_print(fmt, ...)
 #endif
+
+#define FLAGS_VERIFY_SIGN		0x02
+#define FLAGS_VERIFY_DECRYPT	0x04
 
 typedef struct {
 	CK_MECHANISM_TYPE mech;
