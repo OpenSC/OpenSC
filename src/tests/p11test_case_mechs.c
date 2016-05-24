@@ -53,13 +53,21 @@ void supported_mechanisms_test(void **state) {
 			if (rv != CKR_OK)
 				continue;
 
-			// store mechanisms list for later tests
-			if (mechanism_list[i] == CKM_RSA_PKCS) {
+			/* store mechanisms list for later tests */
+
+			/* Assume RSA mechanisms provide both SIGN and VERIFY flags
+			 * rather than list all of them
+			 */
+			if ((mechanism_info[i].flags & (CKF_SIGN | CKF_VERIFY)) != 0
+					&& mechanism_list[i] != CKM_RSA_X_509 // XXX skip so far
+					&& mechanism_list[i] != CKM_ECDSA
+					&& mechanism_list[i] != CKM_ECDSA_SHA1) {
 				if (token.num_rsa_mechs < MAX_MECHS)
 					token.rsa_mechs[token.num_rsa_mechs++].mech = mechanism_list[i];
 				else
 					fail_msg("Too many RSA mechanisms (%d)", MAX_MECHS);
 			}
+			/* We list all known EC mechanisms */
 			if (mechanism_list[i] == CKM_ECDSA_SHA1
 					|| mechanism_list[i] == CKM_ECDSA) {
 				if (token.num_ec_mechs < MAX_MECHS)

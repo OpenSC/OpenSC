@@ -45,18 +45,19 @@ int encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 	unsigned char *enc_message;
 	int enc_message_length;
 
-	if ((mech->flags & CKF_DECRYPT) == 0) {
-		debug_print(" [ KEY %s ] Skip for encryption for non-supportring mechanism", o->id_str);
-		return 0;
-	}
-
-	sign_mechanism.mechanism = mech->mech;
 	if (o->type != EVP_PK_RSA) {
 		debug_print(" [ KEY %s ] Skip non-RSA key for encryption", o->id_str);
 		return 0;
 	}
 
-	debug_print(" [ KEY %s ] Encrypt message", o->id_str);
+	if (mech->mech != CKM_RSA_X_509 && mech->mech != CKM_RSA_X_509) {
+		debug_print(" [ KEY %s ] Skip encryption for non-supported mechanism", o->id_str);
+		return 0;
+	}
+
+	sign_mechanism.mechanism = mech->mech;
+	debug_print(" [ KEY %s ] Encrypt message using %s",
+		o->id_str, get_mechanism_name(mech->mech));
 	enc_message = malloc(RSA_size(o->key.rsa));
 	if (enc_message == NULL)
 		fail_msg("malloc returned null");
@@ -106,10 +107,11 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 	CK_RV rv;
 	CK_MECHANISM sign_mechanism = { CKM_RSA_PKCS, NULL_PTR, 0 };
 	CK_BYTE *message = (CK_BYTE *)SHORT_MESSAGE_TO_SIGN;
+	CK_BYTE *cmp_message = NULL;
 	CK_BYTE *sign = NULL;
 	CK_ULONG sign_length = 0;
 	unsigned int nlen;
-	int dec_message_length;
+	int dec_message_length, cmp_message_length, type;
 
 	if (message_length > strlen((char *)message))
 		fail_msg("Truncate is longer than the actual message");
@@ -120,7 +122,8 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 		return 0;
 	}
 
-	debug_print(" [ KEY %s ] Signing message of length %lu", o->id_str, message_length);
+	debug_print(" [ KEY %s ] Signing message of length %lu using CKM_%s",
+		o->id_str, message_length, get_mechanism_name(mech->mech));
 
 	rv = info->function_pointer->C_SignInit(info->session_handle, &sign_mechanism,
 		o->private_handle);
@@ -156,21 +159,73 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 	debug_print(" [ KEY %s ] Verify message sinature", o->id_str);
 	dec_message_length = 0;
 	if (o->type == EVP_PK_RSA) {
-		CK_BYTE dec_message[BUFFER_SIZE];
-		dec_message_length = RSA_public_decrypt(sign_length, sign,
-			dec_message, o->key.rsa, RSA_PKCS1_PADDING);
+		/* raw RSA mechanism */
+		if (mech->mech == CKM_RSA_PKCS) {
+			CK_BYTE dec_message[BUFFER_SIZE];
+			dec_message_length = RSA_public_decrypt(sign_length, sign,
+				dec_message, o->key.rsa, RSA_PKCS1_PADDING);
+			free(sign);
+			if (dec_message_length < 0)
+				fail_msg("RSA_public_decrypt: rv = %d: %s\n", dec_message_length,
+					ERR_error_string(ERR_peek_last_error(), NULL));
+			dec_message[dec_message_length] = '\0';
+			if (memcmp(dec_message, message, dec_message_length) == 0
+					&& dec_message_length == (int) message_length) {
+				debug_print(" [ OK %s ] Signature is valid.", o->id_str);
+				mech->flags |= FLAGS_VERIFY_SIGN;
+				return 1;
+			} else {
+				debug_print(" [ ERROR %s ] Signature is not valid. Error: %s",
+					o->id_str, ERR_error_string(ERR_peek_last_error(), NULL));
+				return 0;
+			}
+		}
+
+		/* Digest mechanisms */
+		switch (mech->mech) {
+			case CKM_SHA1_RSA_PKCS:
+				cmp_message = SHA1(message, message_length, NULL);
+				cmp_message_length = SHA_DIGEST_LENGTH;
+				type = NID_sha1;
+				break;
+			case CKM_SHA256_RSA_PKCS:
+				cmp_message = SHA256(message, message_length, NULL);
+				cmp_message_length = SHA256_DIGEST_LENGTH;
+				type = NID_sha256;
+				break;
+			case CKM_SHA384_RSA_PKCS:
+				cmp_message = SHA384(message, message_length, NULL);
+				cmp_message_length = SHA384_DIGEST_LENGTH;
+				type = NID_sha384;
+				break;
+			case CKM_SHA512_RSA_PKCS:
+				cmp_message = SHA512(message, message_length, NULL);
+				cmp_message_length = SHA512_DIGEST_LENGTH;
+				type = NID_sha512;
+				break;
+			case CKM_MD5_RSA_PKCS:
+				cmp_message = MD5(message, message_length, NULL);
+				cmp_message_length = MD5_DIGEST_LENGTH;
+				type = NID_md5;
+				break;
+			case CKM_RIPEMD160_RSA_PKCS:
+				cmp_message = RIPEMD160(message, message_length, NULL);
+				cmp_message_length = RIPEMD160_DIGEST_LENGTH;
+				type = NID_ripemd160;
+				break;
+			default:
+				debug_print(" [ OK %s ] Skip verify so far", o->id_str);
+				return 1;
+		}
+		rv = RSA_verify(type, cmp_message, cmp_message_length,
+			sign, sign_length, o->key.rsa);
 		free(sign);
-		if (dec_message_length < 0)
-			fail_msg("RSA_public_decrypt: rv = %d: %s\n", dec_message_length,
-				ERR_error_string(ERR_peek_last_error(), NULL));
-		dec_message[dec_message_length] = '\0';
-		if (memcmp(dec_message, message, dec_message_length) == 0
-				&& dec_message_length == (int) message_length) {
+		if (rv == 1) {
 			debug_print(" [ OK %s ] Signature is valid.", o->id_str);
-			mech->flags |= VERIFY_SIGN;
+			mech->flags |= FLAGS_VERIFY_SIGN;
 		 } else {
-			debug_print(" [ ERROR %s ] Signature is not valid. Recovered text: %s",
-				o->id_str, dec_message);
+			debug_print(" [ ERROR %s ] Signature is not valid. Error: %s",
+				o->id_str, ERR_error_string(ERR_peek_last_error(), NULL));
 			return 0;
 		}
 	} else if (o->type == EVP_PK_EC) {
