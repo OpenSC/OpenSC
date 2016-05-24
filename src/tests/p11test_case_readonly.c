@@ -30,7 +30,7 @@ void always_authenticate(test_cert_t *o, token_info_t *info)
 	rv = info->function_pointer->C_Login(info->session_handle,
 		CKU_CONTEXT_SPECIFIC, info->pin, info->pin_length);
 	if (rv != CKR_OK) {
-		debug_print(" [ SKIP %s ] Re-authentication failed", o->id_str);
+		fail_msg(" [ SKIP %s ] Re-authentication failed", o->id_str);
 	}
 }
 
