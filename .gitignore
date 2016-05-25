@@ -54,6 +54,9 @@ tags
 *.css
 *.out
 *.tmp
+*.obj
+*.exp
+*.res
 ChangeLog
 
 doc/tools/cardos-tool
@@ -64,6 +67,7 @@ doc/tools/netkey-tool
 doc/tools/openpgp-tool
 doc/tools/opensc-explorer
 doc/tools/opensc-tool
+src/tools/gids-tool
 doc/tools/piv-tool
 doc/tools/pkcs11-tool
 doc/tools/pkcs15-crypt
@@ -90,6 +94,7 @@ src/tools/piv-tool
 src/tools/eidenv
 src/tools/opensc-explorer
 src/tools/opensc-tool
+src/tools/gids-tool
 src/tools/rutoken-tool
 src/tools/cardos-info
 src/tools/cryptoflex-tool
@@ -101,6 +106,9 @@ src/tools/gids-tool
 win32/OpenSC.iss
 win32/OpenSC.wxs
 win32/winconfig.h
+win32/OpenSC.msi
+win32/OpenSC.wixobj
+win32/OpenSC.wixpdb
 
 MacOSX/build-package
 MacOSX/Distribution.xml
