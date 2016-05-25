@@ -116,6 +116,11 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 	if (message_length > strlen((char *)message))
 		fail_msg("Truncate is longer than the actual message");
 
+	if (o->private_handle == CK_INVALID_HANDLE) {
+		debug_print(" [ KEY %s ] Missing private key", o->id_str);
+		return 0;
+	}
+
 	sign_mechanism.mechanism = mech->mech;
 	if (o->type != EVP_PK_EC && o->type != EVP_PK_RSA) {
 		debug_print(" [ KEY %s ] Skip non-RSA and non-EC key", o->id_str);
