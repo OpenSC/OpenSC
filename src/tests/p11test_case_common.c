@@ -170,16 +170,16 @@ int callback_private_keys(test_certs_t *objects,
 
 	/* Store attributes, flags and handles */
 	o->private_handle = object_handle;
-	o->sign = (template[0].ulValueLen != (CK_BBOOL) -1)
+	o->sign = (template[0].ulValueLen != (CK_ULONG) -1)
 		? *((CK_BBOOL *) template[0].pValue) : CK_FALSE;
-	o->decrypt = (template[1].ulValueLen != (CK_BBOOL) -1)
+	o->decrypt = (template[1].ulValueLen != (CK_ULONG) -1)
 		? *((CK_BBOOL *) template[1].pValue) : CK_FALSE;
 	o->key_type = (template[2].ulValueLen != (CK_ULONG) -1)
 		? *((CK_KEY_TYPE *) template[2].pValue) : (CK_KEY_TYPE) -1;
-	o->always_auth = (template[4].ulValueLen != (CK_BBOOL) -1)
+	o->always_auth = (template[4].ulValueLen != (CK_ULONG) -1)
 		? *((CK_BBOOL *) template[4].pValue) : CK_FALSE;
 
-	debug_print(" [ OK %s ] Private key to the certificate found successfully S:%d D:%d T:%02lX",
+	debug_print(" [  OK %s ] Private key to the certificate found successfully S:%d D:%d T:%02lX",
 		o->id_str, o->sign, o->decrypt, o->key_type);
 	return 0;
 }
