@@ -50,7 +50,7 @@ int encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 		return 0;
 	}
 
-	if (mech->mech != CKM_RSA_X_509 && mech->mech != CKM_RSA_X_509) {
+	if (mech->mech != CKM_RSA_X_509 && mech->mech != CKM_RSA_PKCS) {
 		debug_print(" [ KEY %s ] Skip encryption for non-supported mechanism", o->id_str);
 		return 0;
 	}
@@ -156,7 +156,7 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 		fail_msg("C_Sign: rv = 0x%.8X\n", rv);
 	}
 
-	debug_print(" [ KEY %s ] Verify message sinature", o->id_str);
+	debug_print(" [ KEY %s ] Verify message signature", o->id_str);
 	dec_message_length = 0;
 	if (o->type == EVP_PK_RSA) {
 		/* raw RSA mechanism */
