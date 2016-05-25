@@ -21,7 +21,7 @@
 #include "p11test_case_ec_sign.h"
 
 void ec_sign_size_test(void **state) {
-	int min, max, j, l;
+	int min, max, j, l, errors = 0, rv;
 	token_info_t *info = (token_info_t *) *state;
 
 	test_certs_t objects;
@@ -38,11 +38,16 @@ void ec_sign_size_test(void **state) {
 		min = (objects.data[i].bits + 7) / 8 - 2;
 		max = (objects.data[i].bits + 7) / 8 + 2;
 		for (j = 0; j < objects.data[i].num_mechs; j++) {
-			for (l = min; l < max; l++)
-				sign_verify_test(&(objects.data[i]), info,
-					&(objects.data[i].mechs[0]), l);
+			for (l = min; l < max; l++) {
+				rv = sign_verify_test(&(objects.data[i]), info,
+					&(objects.data[i].mechs[j]), l);
+				if (rv == -1)
+					errors++;
+			}
 		}
 	}
+	if (errors > 0)
+		fail_msg("Some signatures were not verified successfully. Please review the log");
 
 	clean_all_objects(&objects);
 }
