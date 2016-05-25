@@ -241,11 +241,19 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 		BN_bin2bn(&sign[0], nlen, sig->r);
 		BN_bin2bn(&sign[nlen], nlen, sig->s);
 		free(sign);
-		if ((rv = ECDSA_do_verify(message, message_length, sig, o->key.ec)) == 1) {
-			debug_print(" [ OK %s ] EC Signature of length %lu is valid.",
-				o->id_str, message_length);
+		if (mech->mech == CKM_ECDSA_SHA1) {
+			cmp_message = SHA1(message, message_length, NULL); // XXX not thread safe
+			cmp_message_length = SHA_DIGEST_LENGTH;
+		} else {
+			cmp_message = message;
+			cmp_message_length = message_length;
+		}
+		if ((rv = ECDSA_do_verify(cmp_message, cmp_message_length, sig, o->key.ec)) == 1) {
+			debug_print(" [ OK %s ] EC Signature of length %d is valid.",
+				o->id_str, cmp_message_length);
 			mech->flags |= FLAGS_VERIFY_SIGN;
 		} else {
+			ERR_print_errors_fp(stderr);
 			fail_msg("ECDSA_do_verify: rv = %d: %s\n", rv,
 				ERR_error_string(ERR_peek_last_error(), NULL));
 		}
