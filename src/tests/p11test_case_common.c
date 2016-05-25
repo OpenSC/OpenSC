@@ -135,11 +135,11 @@ int callback_certificates(test_certs_t *objects,
 			o->mechs[0].flags = 0;
 		}
 	} else {
-		debug_print("[ WARN %s ]evp->type = 0x%.4X (not RSA, EC)\n", o->id_str, evp->type);
+		debug_print("[WARN %s ]evp->type = 0x%.4X (not RSA, EC)\n", o->id_str, evp->type);
 	}
 	EVP_PKEY_free(evp);
 
-	debug_print(" [ OK %s ] Certificate with label %s loaded successfully",
+	debug_print(" [  OK %s ] Certificate with label %s loaded successfully",
 		o->id_str, o->label);
 	return 0;
 }
@@ -222,14 +222,14 @@ int callback_public_keys(test_certs_t *objects,
 		rsa->e = BN_bin2bn(template[5].pValue, template[5].ulValueLen, NULL);
 		if (BN_cmp(o->key.rsa->n, rsa->n) != 0 ||
 			BN_cmp(o->key.rsa->e, rsa->e) != 0) {
-			debug_print(" [ WARN %s ] Got different public key then the from the certificate ID\n",
+			debug_print(" [WARN %s ] Got different public key then the from the certificate ID",
 				o->id_str);
 			return -1;
 		}
 		RSA_free(rsa);
 		o->verify_public = 1;
 	} else if (o->key_type == CKK_EC) {
-		debug_print(" [ WARN %s] EC public key check skipped so far\n",
+		debug_print(" [WARN %s ] EC public key check skipped so far",
 			o->id_str);
 
 		//EC_KEY *ec = EC_KEY_new();
@@ -242,11 +242,11 @@ int callback_public_keys(test_certs_t *objects,
 		//EC_KEY_set_public_key(ec, ecpoint);
 		return -1;
 	} else {
-		debug_print(" [ WARN %s] non-RSA, non-EC key\n", o->id_str);
+		debug_print(" [WARN %s ] non-RSA, non-EC key\n", o->id_str);
 		return -1;
 	}
 
-	debug_print(" [ OK %s ] Public key to the certificate found successfully V:%d E:%d T:%02lX",
+	debug_print(" [  OK %s ] Public key to the certificate found successfully V:%d E:%d T:%02lX",
 		o->id_str, o->verify, o->encrypt, o->key_type);
 	return 0;
 }

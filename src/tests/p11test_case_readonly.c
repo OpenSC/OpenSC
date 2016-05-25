@@ -34,6 +34,15 @@ void always_authenticate(test_cert_t *o, token_info_t *info)
 	}
 }
 
+/* Perform encryption and decryption of a message using private key referenced
+ * in the  o  object with mechanism defined by  mech.
+ *
+ * Returns
+ *  * 1 for successful Encrypt&Decrypt sequnce
+ *  * 0 for skipped test (unsupporedted mechanism, key, ...)
+ *  * -1 otherwise.
+ *  Serious errors terminate the execution.
+ */
 int encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 {
 	CK_RV rv;
@@ -50,6 +59,7 @@ int encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 		return 0;
 	}
 
+	/* XXX other supported encryption mechanisms */
 	if (mech->mech != CKM_RSA_X_509 && mech->mech != CKM_RSA_PKCS) {
 		debug_print(" [ KEY %s ] Skip encryption for non-supported mechanism", o->id_str);
 		return 0;
@@ -73,7 +83,7 @@ int encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 	rv = info->function_pointer->C_DecryptInit(info->session_handle, &sign_mechanism,
 		o->private_handle);
 	if (rv == CKR_KEY_TYPE_INCONSISTENT) {
-		debug_print(" [ SKIP %s ] Not allowed to decrypt with this key?", o->id_str);
+		debug_print(" [SKIP %s ] Not allowed to decrypt with this key?", o->id_str);
 		free(enc_message);
 		return 0;
 	}
@@ -91,16 +101,26 @@ int encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 	dec_message[dec_message_length] = '\0';
 	if (memcmp(dec_message, message, dec_message_length) == 0
 			&& dec_message_length == message_length) {
-		debug_print(" [ OK %s ] Text decrypted successfully.", o->id_str);
+		debug_print(" [  OK %s ] Text decrypted successfully.", o->id_str);
 		mech->flags |= FLAGS_VERIFY_DECRYPT;
+		return 1;
 	} else {
 		debug_print(" [ ERROR %s ] Text decryption failed. Recovered text: %s",
 			o->id_str, dec_message);
-		return 0;
 	}
-	return 1;
+	return 0;
 }
 
+/* Perform signature and verication of a message using private key referenced
+ * in the  o  object with mechanism defined by  mech. Message length can be
+ * specified using argument  message_length.
+ *
+ * Returns
+ *  * 1 for successful Encrypt&Decrypt sequnce
+ *  * 0 for skipped test (unsupporedted mechanism, key, ...)
+ *  * -1 otherwise.
+ *  Serious errors terminate the execution.
+ */
 int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 	CK_ULONG message_length)
 {
@@ -117,13 +137,13 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 		fail_msg("Truncate is longer than the actual message");
 
 	if (o->private_handle == CK_INVALID_HANDLE) {
-		debug_print(" [ KEY %s ] Missing private key", o->id_str);
+		debug_print(" [SKIP %s ] Missing private key", o->id_str);
 		return 0;
 	}
 
 	sign_mechanism.mechanism = mech->mech;
 	if (o->type != EVP_PK_EC && o->type != EVP_PK_RSA) {
-		debug_print(" [ KEY %s ] Skip non-RSA and non-EC key", o->id_str);
+		debug_print(" [SKIP %s ] Skip non-RSA and non-EC key", o->id_str);
 		return 0;
 	}
 
@@ -133,10 +153,10 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 	rv = info->function_pointer->C_SignInit(info->session_handle, &sign_mechanism,
 		o->private_handle);
 	if (rv == CKR_KEY_TYPE_INCONSISTENT) {
-		debug_print(" [ SKIP %s ] Not allowed to sign with this key?", o->id_str);
+		debug_print(" [SKIP %s ] Not allowed to sign with this key?", o->id_str);
 		return 0;
 	} else if (rv == CKR_MECHANISM_INVALID) {
-		debug_print(" [ SKIP %s ] Bad mechanism. Not supported?", o->id_str);
+		debug_print(" [SKIP %s ] Bad mechanism. Not supported?", o->id_str);
 		return 0;
 	} else if (rv != CKR_OK)
 		fail_msg("C_SignInit: rv = 0x%.8X\n", rv);
@@ -176,7 +196,7 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 			dec_message[dec_message_length] = '\0';
 			if (memcmp(dec_message, message, dec_message_length) == 0
 					&& dec_message_length == (int) message_length) {
-				debug_print(" [ OK %s ] Signature is valid.", o->id_str);
+				debug_print(" [  OK %s ] Signature is valid.", o->id_str);
 				mech->flags |= FLAGS_VERIFY_SIGN;
 				return 1;
 			} else {
@@ -219,19 +239,19 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 				type = NID_ripemd160;
 				break;
 			default:
-				debug_print(" [ OK %s ] Skip verify so far", o->id_str);
-				return 1;
+				debug_print(" [SKIP %s ] Skip verify of unknown mechanism", o->id_str);
+				return 0;
 		}
 		rv = RSA_verify(type, cmp_message, cmp_message_length,
 			sign, sign_length, o->key.rsa);
 		free(sign);
 		if (rv == 1) {
-			debug_print(" [ OK %s ] Signature is valid.", o->id_str);
+			debug_print(" [  OK %s ] Signature is valid.", o->id_str);
 			mech->flags |= FLAGS_VERIFY_SIGN;
 		 } else {
 			debug_print(" [ ERROR %s ] Signature is not valid. Error: %s",
 				o->id_str, ERR_error_string(ERR_peek_last_error(), NULL));
-			return 0;
+			return -1;
 		}
 	} else if (o->type == EVP_PK_EC) {
 		ECDSA_SIG *sig = ECDSA_SIG_new();
@@ -248,22 +268,23 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 			cmp_message = message;
 			cmp_message_length = message_length;
 		}
-		if ((rv = ECDSA_do_verify(cmp_message, cmp_message_length, sig, o->key.ec)) == 1) {
-			debug_print(" [ OK %s ] EC Signature of length %d is valid.",
-				o->id_str, cmp_message_length);
+		rv = ECDSA_do_verify(cmp_message, cmp_message_length, sig, o->key.ec);
+		if (rv == 1) {
+			ECDSA_SIG_free(sig);
+			debug_print(" [  OK %s ] EC Signature of length %lu is valid.",
+				o->id_str, message_length);
 			mech->flags |= FLAGS_VERIFY_SIGN;
+			return 1;
 		} else {
-			ERR_print_errors_fp(stderr);
-			fail_msg("ECDSA_do_verify: rv = %d: %s\n", rv,
-				ERR_error_string(ERR_peek_last_error(), NULL));
+			ECDSA_SIG_free(sig);
+			debug_print(" [FAIL %s ] ECDSA_do_verify: rv = %lu: %s\n", o->id_str,
+				rv, ERR_error_string(ERR_peek_last_error(), NULL));
+			return -1;
 		}
-		ECDSA_SIG_free(sig);
 	} else {
 		debug_print(" [ KEY %s ] Unknown type. Not verifying", o->id_str);
-		return 0;
 	}
-
-	return 1;
+	return 0;
 }
 
 void readonly_tests(void **state) {
