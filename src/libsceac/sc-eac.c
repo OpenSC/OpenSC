@@ -315,7 +315,8 @@ npa_sm_ctx_create(EAC_CTX *ctx, const unsigned char *certificate_description,
         out->id_icc = BUF_MEM_create_init(id_icc, id_icc_length);
         if (!out->id_icc)
             goto err;
-    }
+    } else
+        out->id_icc = NULL;
 
     out->eph_pub_key = NULL;
     out->auxiliary_data = NULL;
