@@ -1080,6 +1080,7 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 	}
 
 	if(gpriv->SCardGetAttrib != NULL) {
+		rcount = sizeof(rbuf);
 		if (gpriv->SCardGetAttrib(card_handle, SCARD_ATTR_VENDOR_NAME,
 					rbuf, &rcount) == SCARD_S_SUCCESS
 				&& rcount > 0) {
