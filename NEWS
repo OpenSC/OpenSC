@@ -45,8 +45,6 @@ New in 0.16.0; 2016-05-15
   cache of on-card files extended to application paths
   configuration option to enable/disable application
   make file cache dir configurable
-  partial parse of 'security condition' -- take auth.id of protecting object
-      from 'security condition'
   in key info data type introduced 'auxiliary data' -- container
       for the non-pkc15 data.
 * OpenPGP

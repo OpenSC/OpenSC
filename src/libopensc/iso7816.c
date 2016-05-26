@@ -892,6 +892,9 @@ iso7816_compute_signature(struct sc_card *card,
 	struct sc_apdu apdu;
 
 	assert(card != NULL && data != NULL && out != NULL);
+	LOG_FUNC_CALLED(card->ctx);
+	sc_log(card->ctx, "ISO7816 compute signature: in-len %i, out-len %i",
+		datalen, outlen);
 
 	/* INS: 0x2A  PERFORM SECURITY OPERATION
 	 * P1:  0x9E  Resp: Digital Signature
@@ -908,9 +911,8 @@ iso7816_compute_signature(struct sc_card *card,
 	fixup_transceive_length(card, &apdu);
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
-	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
+	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
 		LOG_FUNC_RETURN(card->ctx, apdu.resplen);
-	}
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(card->ctx, r, "Card returned error");
@@ -924,12 +926,13 @@ iso7816_decipher(struct sc_card *card,
 		const u8 * crgram, size_t crgram_len,
 		u8 * out, size_t outlen)
 {
-	int       r;
+	int r;
 	struct sc_apdu apdu;
-	u8        *sbuf = NULL;
+	u8 *sbuf = NULL;
 
 	assert(card != NULL && crgram != NULL && out != NULL);
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(card->ctx);
+	sc_log(card->ctx, "ISO7816 decipher: in-len %i, out-len %i", crgram_len, outlen);
 
 	sbuf = malloc(crgram_len + 1);
 	if (sbuf == NULL)
