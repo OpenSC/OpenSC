@@ -1279,6 +1279,8 @@ static int pcsc_detect_readers(sc_context_t *ctx)
 		if (reader != NULL) {
 			if (reader->name)
 				free(reader->name);
+			if (reader->vendor)
+				free(reader->vendor);
 			free(reader);
 		}
 		goto out;
@@ -2497,14 +2499,14 @@ int cardmod_use_reader(sc_context_t *ctx, void * pcsc_context_handle, void * pcs
 		goto out;
 
 	err1:
-		if (priv != NULL)
-		{
+		if (priv != NULL) {
 			free(priv);
 		}
-		if (reader != NULL)
-		{
+		if (reader != NULL) {
 			if (reader->name)
 				free(reader->name);
+			if (reader->vendor)
+				free(reader->vendor);
 			free(reader);
 		}
 	}

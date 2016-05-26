@@ -54,6 +54,8 @@ int _sc_delete_reader(sc_context_t *ctx, sc_reader_t *reader)
 			reader->ops->release(reader);
 	if (reader->name)
 		free(reader->name);
+	if (reader->vendor)
+		free(reader->vendor);
 	list_delete(&ctx->readers, reader);
 	free(reader);
 	return SC_SUCCESS;
