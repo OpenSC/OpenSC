@@ -26,6 +26,7 @@
 #include "p11test_case_readonly.h"
 #include "p11test_case_ec_sign.h"
 #include "p11test_case_mechs.h"
+#include "p11test_case_wait.h"
 
 #define DEFAULT_P11LIB	"../pkcs11/.libs/opensc-pkcs11.so"
 
@@ -44,6 +45,10 @@ int main(int argc, char** argv) {
 
 	char command;
 	const struct CMUnitTest readonly_tests_without_initialization[] = {
+		/* Test card events on slot */
+		cmocka_unit_test_setup_teardown(wait_test,
+		token_initialize, token_cleanup),
+
 		/* Check all the mechanisms provided by the token */
 		cmocka_unit_test_setup_teardown(supported_mechanisms_test,
 			token_setup, token_cleanup),

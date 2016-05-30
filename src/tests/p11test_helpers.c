@@ -58,6 +58,15 @@ int initialize_cryptoki(token_info_t *info) {
 	return 0;
 }
 
+int token_initialize(void **state) {
+	token_info_t *info = (token_info_t *) *state;
+	if(initialize_cryptoki(info)) {
+		debug_print("CRYPTOKI couldn't be initialized");
+		return 1;
+	}
+	return 0;
+}
+
 int group_setup(void **state)
 {
 

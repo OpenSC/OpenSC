@@ -1,7 +1,6 @@
 /*
- * p11test_helpers.h: Test suite for PKCS#11 API: Supporting functions
+ * p11test_case_wait.h: Test slot events (insert / remove)
  *
- * Copyright (C) 2016 Martin Strhársky <strharsky.martin@gmail.com>
  * Copyright (C) 2016 Red Hat, Inc.
  *
  * Author: Jakub Jelen <jjelen@redhat.com>
@@ -19,21 +18,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+#include "p11test_case_common.h"
 
-#ifndef P11TEST_HELPERS_H
-#define P11TEST_HELPERS_H
-#include "p11test_common.h"
+void wait_test(void **state);
 
-#define DEFAULT_PIN		"123456"
-
-int group_setup(void **state);
-int group_teardown(void **state);
-
-int user_login_setup(void **state);
-int after_test_cleanup(void **state);
-
-int token_setup(void **state);
-int token_cleanup(void **state);
-
-int token_initialize(void **state);
-#endif //P11TEST_HELPERS_H
