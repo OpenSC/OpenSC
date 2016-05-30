@@ -1080,6 +1080,7 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 	}
 
 	if(gpriv->SCardGetAttrib != NULL) {
+		rcount = sizeof(rbuf);
 		if (gpriv->SCardGetAttrib(card_handle, SCARD_ATTR_VENDOR_NAME,
 					rbuf, &rcount) == SCARD_S_SUCCESS
 				&& rcount > 0) {
@@ -1278,6 +1279,8 @@ static int pcsc_detect_readers(sc_context_t *ctx)
 		if (reader != NULL) {
 			if (reader->name)
 				free(reader->name);
+			if (reader->vendor)
+				free(reader->vendor);
 			free(reader);
 		}
 		goto out;
@@ -2496,14 +2499,14 @@ int cardmod_use_reader(sc_context_t *ctx, void * pcsc_context_handle, void * pcs
 		goto out;
 
 	err1:
-		if (priv != NULL)
-		{
+		if (priv != NULL) {
 			free(priv);
 		}
-		if (reader != NULL)
-		{
+		if (reader != NULL) {
 			if (reader->name)
 				free(reader->name);
+			if (reader->vendor)
+				free(reader->vendor);
 			free(reader);
 		}
 	}
