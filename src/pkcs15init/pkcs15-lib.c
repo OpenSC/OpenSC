@@ -61,6 +61,7 @@
 #include "libopensc/cardctl.h"
 #include "libopensc/asn1.h"
 #include "libopensc/log.h"
+#include "libopensc/aux-data.h"
 #include "profile.h"
 #include "pkcs15-init.h"
 
@@ -813,12 +814,14 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 			 */
 			sc_log(ctx, "Add virtual SO_PIN('%.*s',flags:%X,reference:%i,path:'%s')", (int) sizeof pin_obj->label, pin_obj->label,
 					pin_attrs->flags, pin_attrs->reference, sc_print_path(&pin_ainfo.path));
+
 			r = sc_pkcs15_add_object(p15card, pin_obj);
 			LOG_TEST_RET(ctx, r, "Failed to add 'SOPIN' AUTH object");
 		}
 	}
 
 	/* Perform card-specific initialization */
+
 	if (profile->ops->init_card)   {
 		r = profile->ops->init_card(profile, p15card);
 		if (r < 0 && pin_obj)   {
@@ -829,11 +832,12 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 	}
 
 	/* Create the application directory */
-	r = profile->ops->create_dir(profile, p15card, df);
+	if (profile->ops->create_dir)
+		r = profile->ops->create_dir(profile, p15card, df);
 	LOG_TEST_RET(ctx, r, "Create 'DIR' error");
 
 	/* Store SO PIN */
-	if (pin_obj)
+	if (pin_obj && profile->ops->create_pin)
 		r = profile->ops->create_pin(profile, p15card, df, pin_obj,
 				args->so_pin, args->so_pin_len,
 				args->so_puk, args->so_puk_len);
@@ -1264,6 +1268,46 @@ err:
 }
 
 
+static int
+_pkcd15init_set_aux_md_data(struct sc_pkcs15_card *p15card, struct sc_auxiliary_data **aux_data,
+		unsigned char *guid, size_t guid_len)
+{
+	struct sc_context *ctx = p15card->card->ctx;
+	unsigned char flags = SC_MD_CONTAINER_MAP_VALID_CONTAINER;
+	char gd[SC_MD_MAX_CONTAINER_NAME_LEN + 1];
+	int rv;
+
+	LOG_FUNC_CALLED(ctx);
+
+	if(!guid || !guid_len)
+		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+
+	if (!aux_data)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+
+	if (guid_len > SC_MD_MAX_CONTAINER_NAME_LEN)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
+
+	memset(gd, 0, sizeof(gd));
+	memcpy(gd, guid, guid_len);
+
+	if (*aux_data == NULL)   {
+		rv = sc_aux_data_allocate(ctx, aux_data, NULL);
+		LOG_TEST_RET(ctx, rv, "Failed to allocate aux data");
+	}
+
+	rv = sc_aux_data_set_md_guid(ctx, *aux_data, gd);
+	LOG_TEST_RET(ctx, rv, "Failed to set private key CMAP record GUID");
+
+	if (sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PRKEY, NULL, 0) == 0)
+		flags |= SC_MD_CONTAINER_MAP_DEFAULT_CONTAINER;
+
+	rv = sc_aux_data_set_md_flags(ctx, *aux_data, flags);
+	LOG_TEST_RET(ctx, rv, "Failed to set private key CMAP record flags");
+
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+}
+
 /*
  * Generate a new private key
  */
@@ -1308,6 +1352,10 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 	LOG_TEST_RET(ctx, r, "Set up private key object error");
 
 	key_info = (struct sc_pkcs15_prkey_info *) object->data;
+
+	r = _pkcd15init_set_aux_md_data(p15card, &key_info->aux_data,
+			keygen_args->prkey_args.guid, keygen_args->prkey_args.guid_len);
+	LOG_TEST_RET(ctx, r, "Failed to set aux MD data");
 
 	/* Set up the PuKDF info. The public key will be filled in
 	 * by the card driver's generate_key function called below.
@@ -1394,8 +1442,9 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card, struct sc_profil
 		struct sc_pkcs15init_prkeyargs *keyargs, struct sc_pkcs15_object **res_obj)
 {
 	struct sc_context *ctx = p15card->card->ctx;
-	struct sc_pkcs15_object *object;
+	struct sc_pkcs15_object *object = NULL;
 	struct sc_pkcs15_prkey key;
+	struct sc_pkcs15_prkey_info *key_info = NULL;
 	int keybits, r = 0;
 
 	LOG_FUNC_CALLED(ctx);
@@ -1435,8 +1484,9 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card, struct sc_profil
 	r = sc_pkcs15init_encode_prvkey_content(p15card, &key, object);
 	LOG_TEST_RET(ctx, r, "Failed to encode public key");
 
-	/* Get the number of private keys already on this card */
-	/*idx = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PRKEY, NULL, 0);*/
+	key_info = (struct sc_pkcs15_prkey_info *) object->data;
+	r = _pkcd15init_set_aux_md_data(p15card, &key_info->aux_data, keyargs->guid, keyargs->guid_len);
+	LOG_TEST_RET(ctx, r, "Failed to set aux MD data");
 
 	if (profile->ops->create_key)
 		r = profile->ops->create_key(profile, p15card, object);

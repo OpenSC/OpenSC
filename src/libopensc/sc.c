@@ -50,10 +50,11 @@ const char *sc_get_version(void)
 int sc_hex_to_bin(const char *in, u8 *out, size_t *outlen)
 {
 	int err = SC_SUCCESS;
-	size_t left, count = 0;
+	size_t left, count = 0, in_len;
 
 	assert(in != NULL && out != NULL && outlen != NULL);
-        left = *outlen;
+	left = *outlen;
+	in_len = strlen(in);
 
 	while (*in != '\0') {
 		int byte = 0, nybbles = 2;
@@ -76,10 +77,17 @@ int sc_hex_to_bin(const char *in, u8 *out, size_t *outlen)
 			}
 			byte |= c;
 		}
+
+		/* Detect premature end of string before byte is complete */
+		if (in_len > 1 && *in == '\0' && nybbles >= 0) {
+			err = SC_ERROR_INVALID_ARGUMENTS;
+			break;
+		}
+
 		if (*in == ':' || *in == ' ')
 			in++;
 		if (left <= 0) {
-                        err = SC_ERROR_BUFFER_TOO_SMALL;
+			err = SC_ERROR_BUFFER_TOO_SMALL;
 			break;
 		}
 		out[count++] = (u8) byte;
@@ -798,12 +806,12 @@ void *sc_mem_alloc_secure(sc_context_t *ctx, size_t len)
 
     pointer = calloc(len, sizeof(unsigned char));
     if (!pointer)
-        return NULL;
+	return NULL;
 #ifdef HAVE_SYS_MMAN_H
     /* TODO mprotect */
     /* Do not swap the memory */
     if (mlock(pointer, len) >= 0)
-        locked = 1;
+	locked = 1;
 #endif
 #ifdef _WIN32
 	/* Do not swap the memory */
@@ -811,26 +819,27 @@ void *sc_mem_alloc_secure(sc_context_t *ctx, size_t len)
 		locked = 1;
 #endif
     if (!locked) {
-        if (ctx->flags & SC_CTX_FLAG_PARANOID_MEMORY) {
-            sc_do_log (ctx, 0, NULL, 0, NULL, "cannot lock memory, failing allocation because paranoid set");
-            free (pointer);
-            pointer = NULL;
-        } else {
-            sc_do_log (ctx, 0, NULL, 0, NULL, "cannot lock memory, sensitive data may be paged to disk");
-        }
+	if (ctx->flags & SC_CTX_FLAG_PARANOID_MEMORY) {
+	    sc_do_log (ctx, 0, NULL, 0, NULL, "cannot lock memory, failing allocation because paranoid set");
+	    free (pointer);
+	    pointer = NULL;
+	} else {
+	    sc_do_log (ctx, 0, NULL, 0, NULL, "cannot lock memory, sensitive data may be paged to disk");
+	}
     }
     return pointer;
 }
 
 void sc_mem_clear(void *ptr, size_t len)
 {
-#ifdef ENABLE_OPENSSL
 	/* FIXME: Bug in 1.0.0-beta series crashes with 0 length */
-	if (len > 0)
+	if (len > 0)   {
+#ifdef ENABLE_OPENSSL
 		OPENSSL_cleanse(ptr, len);
 #else
-	memset(ptr, 0, len);
+		memset(ptr, 0, len);
 #endif
+	}
 }
 
 int sc_mem_reverse(unsigned char *buf, size_t len)

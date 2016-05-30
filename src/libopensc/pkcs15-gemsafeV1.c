@@ -40,7 +40,7 @@
 #define GEMSAFE_READ_QUANTUM    248
 #define GEMSAFE_MAX_OBJLEN      28672
 
-int sc_pkcs15emu_gemsafeV1_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
+int sc_pkcs15emu_gemsafeV1_init_ex(sc_pkcs15_card_t *, struct sc_aid *,sc_pkcs15emu_opt_t *);
 
 static int
 sc_pkcs15emu_add_cert(sc_pkcs15_card_t *p15card,
@@ -434,6 +434,7 @@ static int sc_pkcs15emu_gemsafeV1_init( sc_pkcs15_card_t *p15card)
 }
 
 int sc_pkcs15emu_gemsafeV1_init_ex( sc_pkcs15_card_t *p15card,
+			struct sc_aid *aid,
 			sc_pkcs15emu_opt_t *opts)
 {
 	if (opts && opts->flags & SC_PKCS15EMU_FLAGS_NO_CHECK)

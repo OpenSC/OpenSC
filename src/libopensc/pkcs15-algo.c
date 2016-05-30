@@ -421,7 +421,7 @@ static struct sc_asn1_pkcs15_algorithm_info algorithm_table[] = {
 			asn1_encode_ec_params,
 			asn1_free_ec_params },
 #endif
-/* TODO: -DEE Not clear of we need the next five or not */
+/* TODO: -DEE Not clear if we need the next five or not */
 #ifdef SC_ALGORITHM_ECDSA_SHA1
 	/* Note RFC 3279 says no ecParameters */
 	{ SC_ALGORITHM_ECDSA_SHA1, {{ 1, 2, 840, 10045, 4, 1, -1}}, NULL, NULL, NULL},

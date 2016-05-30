@@ -294,6 +294,10 @@ struct sc_reader_driver {
 #define SC_READER_CAP_PACE_DESTROY_CHANNEL 0x00000010
 #define SC_READER_CAP_PACE_GENERIC         0x00000020
 
+/* reader send/receive length of short APDU */
+#define SC_READER_SHORT_APDU_MAX_SEND_SIZE 255
+#define SC_READER_SHORT_APDU_MAX_RECV_SIZE 256
+
 typedef struct sc_reader {
 	struct sc_context *ctx;
 	const struct sc_reader_driver *driver;
@@ -775,6 +779,16 @@ int sc_release_context(sc_context_t *ctx);
  * @return SC_SUCCESS on success and an error code otherwise.
  */
 int sc_ctx_detect_readers(sc_context_t *ctx);
+
+/**
+ * In windows: get configuration option from environment or from registers.
+ * @param env name of environment variable
+ * @param reg name of register value
+ * @param key path of register key
+ * @return SC_SUCCESS on success and an error code otherwise.
+ */
+int sc_ctx_win32_get_config_value(char *env, char *reg, char *key, char *out,
+	size_t *out_size);
 
 /**
  * Returns a pointer to the specified sc_reader_t object

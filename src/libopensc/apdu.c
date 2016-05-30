@@ -256,9 +256,11 @@ int
 sc_check_apdu(sc_card_t *card, const sc_apdu_t *apdu)
 {
 	if ((apdu->cse & ~SC_APDU_SHORT_MASK) == 0) {
-		/* length check for short APDU    */
-		if (apdu->le > 256 || (apdu->lc > 255 && (apdu->flags & SC_APDU_FLAGS_CHAINING) == 0))
+		/* length check for short APDU */
+		if (apdu->le > 256 || (apdu->lc > 255 && (apdu->flags & SC_APDU_FLAGS_CHAINING) == 0))   {
+			sc_log(card->ctx, "failed length check for short APDU");
 			goto error;
+		}
 	}
 	else if ((apdu->cse & SC_APDU_EXT) != 0) {
 		/* check if the card supports extended APDUs */
@@ -267,8 +269,10 @@ sc_check_apdu(sc_card_t *card, const sc_apdu_t *apdu)
 			goto error;
 		}
 		/* length check for extended APDU */
-		if (apdu->le > 65536 || apdu->lc > 65535)
+		if (apdu->le > 65536 || apdu->lc > 65535)   {
+			sc_log(card->ctx, "failed length check for extended APDU");
 			goto error;
+		}
 	}
 	else   {
 		goto error;
@@ -281,7 +285,7 @@ sc_check_apdu(sc_card_t *card, const sc_apdu_t *apdu)
 			goto error;
 		break;
 	case SC_APDU_CASE_2_SHORT:
-		/* no data is sent        */
+		/* no data is sent */
 		if (apdu->datalen != 0 || apdu->lc != 0)
 			goto error;
 		/* data is expected       */
@@ -293,7 +297,7 @@ sc_check_apdu(sc_card_t *card, const sc_apdu_t *apdu)
 			goto error;
 		break;
 	case SC_APDU_CASE_3_SHORT:
-		/* data is sent           */
+		/* data is sent */
 		if (apdu->datalen == 0 || apdu->data == NULL || apdu->lc == 0)
 			goto error;
 		/* no data is expected    */
@@ -304,7 +308,7 @@ sc_check_apdu(sc_card_t *card, const sc_apdu_t *apdu)
 			goto error;
 		break;
 	case SC_APDU_CASE_4_SHORT:
-		/* data is sent           */
+		/* data is sent */
 		if (apdu->datalen == 0 || apdu->data == NULL || apdu->lc == 0)
 			goto error;
 		/* data is expected       */

@@ -53,6 +53,11 @@ sc_asn1_verify_tag
 sc_asn1_write_element
 sc_asn1_sig_value_sequence_to_rs
 sc_asn1_sig_value_rs_to_sequence
+sc_aux_data_set_md_flags
+sc_aux_data_allocate
+sc_aux_data_set_md_guid
+sc_aux_data_free
+sc_aux_data_get_md_guid
 sc_base64_decode
 sc_base64_encode
 sc_bin_to_hex
@@ -77,6 +82,7 @@ sc_ctx_get_reader_by_name
 sc_ctx_get_reader_count
 sc_ctx_log_to_file
 sc_ctx_use_reader
+sc_ctx_win32_get_config_value
 _sc_delete_reader
 sc_decipher
 sc_delete_file

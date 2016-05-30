@@ -34,7 +34,7 @@
 #define MANU_ID		"A-Trust"
 #define CARD_LABEL	"a.sign Premium a"
 
-int sc_pkcs15emu_atrust_acos_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
+int sc_pkcs15emu_atrust_acos_init_ex(sc_pkcs15_card_t *, struct sc_aid *aid, sc_pkcs15emu_opt_t *);
 
 typedef struct cdata_st {
 	const char *label;
@@ -127,7 +127,7 @@ static int sc_pkcs15emu_atrust_acos_init(sc_pkcs15_card_t *p15card)
 	};
 
 	const prdata prkeys[] = {
-		{ "1", "SK.CH.EKEY", 1536,
+		{ "01", "SK.CH.EKEY", 1536,
 			SC_PKCS15_PRKEY_USAGE_SIGN | SC_PKCS15_PRKEY_USAGE_DECRYPT | SC_PKCS15_PRKEY_USAGE_UNWRAP,
 		  "", /* do not specify file here to prevent reset of security state */
 		  0x88, "01", SC_PKCS15_CO_FLAG_PRIVATE},
@@ -265,6 +265,7 @@ static int sc_pkcs15emu_atrust_acos_init(sc_pkcs15_card_t *p15card)
 }
 
 int sc_pkcs15emu_atrust_acos_init_ex(sc_pkcs15_card_t *p15card,
+				  struct sc_aid *aid,
 				  sc_pkcs15emu_opt_t *opts)
 {
 

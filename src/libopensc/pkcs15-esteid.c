@@ -39,7 +39,7 @@
 #include "pkcs15.h"
 #include "esteid.h"
 
-int sc_pkcs15emu_esteid_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
+int sc_pkcs15emu_esteid_init_ex(sc_pkcs15_card_t *, struct sc_aid *, sc_pkcs15emu_opt_t *);
 
 static void
 set_string (char **strp, const char *value)
@@ -269,6 +269,7 @@ static int esteid_detect_card(sc_pkcs15_card_t *p15card)
 }
 
 int sc_pkcs15emu_esteid_init_ex(sc_pkcs15_card_t *p15card,
+				struct sc_aid *aid,
 				sc_pkcs15emu_opt_t *opts)
 {
 

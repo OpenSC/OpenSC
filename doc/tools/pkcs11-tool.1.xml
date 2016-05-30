@@ -56,6 +56,15 @@
 
 				<varlistentry>
 					<term>
+						<option>--unlock-pin</option>
+					</term>
+					<listitem><para>Unlock User PIN (without <option>--login</option>
+					unlock in logged in session; otherwise <option>--login-type</option>
+					has to be 'context-specific').</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
 						<option>--hash</option>,
 						<option>-h</option>
 					</term>
@@ -75,7 +84,7 @@
 						<option>--init-pin</option>
 					</term>
 					<listitem><para>Initializes the user PIN. This option
-					differs from --change-pin in that it sets the user PIN
+					differs from <option>--change-pin</option> in that it sets the user PIN
 					for the first time. Once set, the user PIN can be changed
 					using <option>--change-pin</option>.</para></listitem>
 				</varlistentry>
@@ -103,6 +112,34 @@
 						<option>-k</option>
 					</term>
 					<listitem><para>Generate a new key pair (public and private pair.)</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--key-type</option> <replacement>specification</replacement>
+					</term>
+					<listitem><para>Specify the type and length of the key to create, for example rsa:1024 or EC:prime256v1.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--usage-sign</option>
+					</term>
+					<listitem><para>Specify 'sign' key usage flag (sets SIGN in privkey, sets VERIFY in pubkey).</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--usage-decrypt</option>
+					</term>
+					<listitem><para>Specify 'decrypt' key usage flag (RSA only, set DECRYPT privkey, ENCRYPT in pubkey).</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--usage-derive</option>
+					</term>
+					<listitem><para>Specify 'derive' key usage flag (EC only).</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -155,6 +192,14 @@
 					<listitem><para>Authenticate to the token before performing
 					other operations. This option is not needed if a PIN is
 					provided on the command line.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--login-type</option>
+					</term>
+					<listitem><para>Specify login type ('so', 'user', 'context-specific';
+					default:'user').</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -214,6 +259,20 @@
 
 				<varlistentry>
 					<term>
+						<option>--puk</option> <replaceable>puk</replaceable>
+					</term>
+					<listitem><para>Supply User PUK on the command line.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--new-pin</option> <replaceable>pin</replaceable>
+					</term>
+					<listitem><para>Supply new User PIN on the command line.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
 						<option>--set-id</option> <replaceable>id</replaceable>,
 						<option>-e</option> <replaceable>id</replaceable>
 					</term>
@@ -241,6 +300,13 @@
 						<option>--decrypt</option>,
 					</term>
 					<listitem><para>Decrypt some data.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--derive</option>,
+					</term>
+					<listitem><para>Derive a secret key using another key and some data.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -298,6 +364,38 @@
 
 				<varlistentry>
 					<term>
+						<option>--test-hotplug</option>
+					</term>
+					<listitem><para>Test hotplug capabilities (C_GetSlotList +
+					C_WaitForSlotEvent).</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--private</option>
+					</term>
+					<listitem><para>Set the CKA_PRIVATE attribute (object is only
+					viewable after a login).</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--test-ec</option>
+					</term>
+					<listitem><para>Test EC (best used with the <option>--login</option>
+					or <option>--pin</option> option).</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--test-fork</option>
+					</term>
+					<listitem><para>Test forking and calling C_Initialize() in the
+					child.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
 						<option>--type</option> <replaceable>type</replaceable>,
 						<option>-y</option> <replaceable>type</replaceable>
 					</term>
@@ -315,6 +413,63 @@
 					OpenSC debugging level! To set OpenSC PKCS#11 module into debug
 					mode, set the <varname>OPENSC_DEBUG</varname> environment variable to a
 					non-zero number.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--read-object</option>,
+						<option>-r</option>
+					</term>
+					<listitem><para>Get object's CKA_VALUE attribute (use with
+					<option>--type</option>).</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--delete-object</option>,
+						<option>-b</option>
+					</term>
+					<listitem><para>Delete an object.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--application-label</option> <replaceable>label</replaceable>
+					</term>
+					<listitem><para>Specify the application label of the data object (use with
+					<option>--type</option> data).</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--application-id</option> <replaceable>id</replaceable>
+					</term>
+					<listitem><para>Specify the application ID of the data object (use with
+					<option>--type</option> data).</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--issuer</option> <replaceable>data</replaceable>
+					</term>
+					<listitem><para>Specify the issuer in hexadecimal format (use with
+					<option>--type</option> cert).</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--subject</option> <replaceable>data</replaceable>
+					</term>
+					<listitem><para>Specify the subject in hexadecimal format (use with
+					<option>--type</option> cert/privkey/pubkey).</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--signature-format</option> <replaceable>format</replaceable>
+					</term>
+					<listitem><para>Format for ECDSA signature: 'rs' (default),
+					'sequence', 'openssl'.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>

@@ -33,7 +33,7 @@
 #define MANU_ID		"Giesecke & Devrient GmbH"
 #define STARCERT	"StarCertV2201"
 
-int sc_pkcs15emu_starcert_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
+int sc_pkcs15emu_starcert_init_ex(sc_pkcs15_card_t *, struct sc_aid *,sc_pkcs15emu_opt_t *);
 
 typedef struct cdata_st {
 	const char *label;
@@ -146,11 +146,11 @@ static int sc_pkcs15emu_starcert_init(sc_pkcs15_card_t *p15card)
 	};
 
 	const prdata prkeys[] = {
-		{ "1", "DS key", 1024, USAGE_NONREP, "3F00DF01",
+		{ "01", "DS key", 1024, USAGE_NONREP, "3F00DF01",
 		  0x84, "99", SC_PKCS15_CO_FLAG_PRIVATE},
-		{ "3", "KE key", 1024, USAGE_KE, "3F00DF01",
+		{ "03", "KE key", 1024, USAGE_KE, "3F00DF01",
 		  0x85, NULL, SC_PKCS15_CO_FLAG_PRIVATE},
-		{ "4", "AUT key", 1024, USAGE_AUT, "3F00DF01",
+		{ "04", "AUT key", 1024, USAGE_AUT, "3F00DF01",
 		  0x82, NULL, SC_PKCS15_CO_FLAG_PRIVATE},
 		{ NULL, NULL, 0, 0, NULL, 0, NULL, 0}
 	};
@@ -270,6 +270,7 @@ static int sc_pkcs15emu_starcert_init(sc_pkcs15_card_t *p15card)
 }
 
 int sc_pkcs15emu_starcert_init_ex(sc_pkcs15_card_t *p15card,
+				  struct sc_aid *aid,
 				  sc_pkcs15emu_opt_t *opts)
 {
 

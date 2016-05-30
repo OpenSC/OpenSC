@@ -855,15 +855,39 @@ authentic_emu_update_tokeninfo(struct sc_profile *profile, struct sc_pkcs15_card
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
+static int
+authentic_pkcs15_init_card(struct sc_profile *profile, struct sc_pkcs15_card *p15card)
+{
+	LOG_FUNC_RETURN(p15card->card->ctx, SC_ERROR_NOT_SUPPORTED);
+}
+
+
+static int
+authentic_pkcs15_create_dir(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
+		struct sc_file *df)
+{
+	LOG_FUNC_RETURN(p15card->card->ctx, SC_ERROR_NOT_SUPPORTED);
+}
+
+
+static int
+authentic_pkcs15_create_pin(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
+		struct sc_file *df, struct sc_pkcs15_object *pin_obj,
+		const unsigned char *pin, size_t pin_len,
+		const unsigned char *puk, size_t puk_len)
+{
+	LOG_FUNC_RETURN(p15card->card->ctx, SC_ERROR_NOT_SUPPORTED);
+}
+
 
 static struct sc_pkcs15init_operations
 sc_pkcs15init_authentic_operations = {
 	authentic_pkcs15_erase_card,
-	NULL,					/* init_card  */
-	NULL,					/* create_dir */
+	authentic_pkcs15_init_card,
+	authentic_pkcs15_create_dir,
 	NULL,					/* create_domain */
 	NULL,					/* select_pin_reference */
-	NULL,					/* create_pin */
+	authentic_pkcs15_create_pin,
 	authentic_pkcs15_select_key_reference,
 	authentic_pkcs15_create_key,
 	authentic_pkcs15_store_key,

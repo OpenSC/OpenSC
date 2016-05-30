@@ -17,10 +17,10 @@
 
 <p>OpenSC provides a set of libraries and utilities to work with smart cards. Its main focus is on cards that support cryptographic operations, and facilitate their use in security applications such as authentication, mail encryption and digital signatures.</p>
 
-<p>OpenSC implements the <a  href="http://www.rsa.com/rsalabs/node.asp?id=2133">PKCS#11 API</a> so applications supporting this API (such as Mozilla Firefox and Thunderbird) can use it. On the card OpenSC implements the <a href="http://www.rsa.com/rsalabs/node.asp?id=2141">PKCS#15</a> standard and aims to be compatible with every software/card that does so, too.</p>
+<p>OpenSC implements the <a href="https://www.oasis-open.org/committees/pkcs11/">PKCS#11 API</a> so applications supporting this API (such as Mozilla Firefox and Thunderbird) can use it. On the card OpenSC implements the <a href="http://www.emc.com/emc-plus/rsa-labs/standards-initiatives/pkcs-15-cryptographic-token-information-format.htm">PKCS#15</a> standard and aims to be compatible with every software/card that does so, too.</p>
 
 <h2>Documentation:</h2>
-<p>The OpenSC Wiki is available at: <a href="http://www.opensc-project.org/opensc">http://www.opensc-project.org/opensc</a> and should be consulted for further documentation and support.</p>
+<p>The OpenSC Wiki is available at: <a href="https://github.com/OpenSC/OpenSC/wiki">https://github.com/OpenSC/OpenSC/wiki</a> and should be consulted for further documentation and support.</p>
 
 </body>
 </html>

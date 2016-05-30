@@ -66,7 +66,7 @@ filesystem {
 			
 				# Private RSA keys
 				EF OberthurAWP-private-key-info   {
-					ACL	 = WRITE=CHV1, UPDATE=CHV1, READ=CHV1;
+					ACL	 = WRITE=CHV1, UPDATE=CHV1, READ=NONE;
 				}
 				EF template-private-key {
 					file-id		= 3000;
@@ -78,7 +78,7 @@ filesystem {
 				
 				# Private DES keys
 				EF OberthurAWP-private-des-info   {
-					ACL	 = WRITE=CHV1, UPDATE=CHV1, READ=CHV1;
+					ACL	 = WRITE=CHV1, UPDATE=CHV1, READ=NONE;
 				}
 				EF template-private-des {
 					file-id	 = 4000;
@@ -90,7 +90,7 @@ filesystem {
 			
 				# Private data
 				EF OberthurAWP-privdata-info   {
-					ACL = WRITE=CHV1, UPDATE=CHV1, READ=CHV1;
+					ACL = WRITE=CHV1, UPDATE=CHV1, READ=NONE;
 				}
 				EF  template-privdata {
 					file-id	 = 6000;

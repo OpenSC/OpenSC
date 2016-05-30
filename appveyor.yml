@@ -1,4 +1,10 @@
-version: 0.15.0.{build}
+version: 0.16.0.{build}
+
+#init:
+#  # Exclude combinations allowed to fail
+#  - if "%Environment%" == "VSVER=14" (if "%Configuration%" == "Release" (exit /b 1))
+#  - if "%Environment%" == "VSVER=14" (if "%Configuration%" == "Debug" (exit /b 1))
+#  - if "%Environment%" == "VSVER=10" (if "%Platform%" == "x64" (exit /b 1))
 
 platform:
   - x86
@@ -12,11 +18,12 @@ configuration:
 
 environment:
   matrix:
-    - VSVER: 14
+    # - VSVER: 14
     - VSVER: 12
-    - VSVER: 10
+    # - VSVER: 10
 
 matrix:
+  fast_finish: true     # set this flag to immediately finish build once one of the jobs fails.
   allow_failures:
     # not included in AppVeyor right now
     - platform: x64
@@ -38,19 +45,20 @@ install:
   - set OPENSSL_VER=1_0_2e
   - set ZLIB_VER=128
   - set ZLIB_VER_DOT=1.2.8
+  - ps: $env:PACKAGE_NAME=(git describe --tags)
   - ps: >-
       If ($env:Platform -Match "x86") {
         $env:VCVARS_PLATFORM="x86"
         $env:ENV_PLATFORM="x86"
         $env:OPENSSL_PF="Win32"
         $env:NMAKE_ARCH=""
-        $env:ARTIFACT="OpenSC-${env:APPVEYOR_BUILD_VERSION}-win32_vs${env:VSVER}-${env:CONFIGURATION}.msi"
+        $env:ARTIFACT="OpenSC-${env:PACKAGE_NAME}-win32_vs${env:VSVER}-${env:CONFIGURATION}.msi"
       } Else {
         $env:VCVARS_PLATFORM="amd64"
         $env:ENV_PLATFORM="x64"
         $env:OPENSSL_PF="Win64"
         $env:NMAKE_ARCH="BUILD_ON=WIN64 BUILD_FOR=WIN64"
-        $env:ARTIFACT="OpenSC-${env:APPVEYOR_BUILD_VERSION}-win64_vs${env:VSVER}-${env:CONFIGURATION}.msi"
+        $env:ARTIFACT="OpenSC-${env:PACKAGE_NAME}-win64_vs${env:VSVER}-${env:CONFIGURATION}.msi"
       }
   - ps: >-
       If ($env:Configuration -Like "*Debug*") {
@@ -75,6 +83,7 @@ install:
   - appveyor DownloadFile "http://download.microsoft.com/download/2/C/9/2C93059C-0532-42DF-8C24-9AEAFF00768E/cngsdk.msi"
   - cngsdk.msi /quiet
   - uname -a
+  - set
 
 build_script:
   # build zlib.lib as a static library
@@ -108,3 +117,17 @@ cache:
   - C:\OpenSSL-Win32 -> appveyor.yml
   - C:\OpenSSL-Win64 -> appveyor.yml
   - zlib.zip -> appveyor.yml
+
+deploy:
+  - provider: GitHub
+    tag: $(APPVEYOR_REPO_TAG_NAME)
+    release: OpenSC-$(APPVEYOR_REPO_TAG_NAME)
+    description: 'release OpenSC $(APPVEYOR_REPO_TAG_NAME)'
+    auth_token:
+      secure: NGaTqWohBQa7fgE62rEm2sp9jkv6S9FRc3YEi3T5CpaoyIY6K89FJjqzaoPLr8vj
+    artifact: /OpenSC-.*\.msi/
+    draft: false
+    prerelease: true
+    on:
+      branch: /0.16.0-rc.*/		# here branch is release tag
+      appveyor_repo_tag: true  		# deploy on tag push only

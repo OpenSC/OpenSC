@@ -6,7 +6,7 @@ define([PRODUCT_NAME], [OpenSC])
 define([PRODUCT_TARNAME], [opensc])
 define([PRODUCT_BUGREPORT], [https://github.com/OpenSC/OpenSC/issues])
 define([PACKAGE_VERSION_MAJOR], [0])
-define([PACKAGE_VERSION_MINOR], [15])
+define([PACKAGE_VERSION_MINOR], [16])
 define([PACKAGE_VERSION_FIX], [0])
 define([PACKAGE_SUFFIX], [])
 
@@ -549,10 +549,6 @@ if test "${enable_sm}" = "yes"; then
 		*-mingw*|*-winnt*|*-cygwin*)
 			DEFAULT_SM_MODULE_PATH="\# module_path = \"\";"
 		;;
-		*-apple-*)
-			DEFAULT_SM_MODULE="libsmm-local.dylib"
-			DEFAULT_SM_MODULE_PATH="module_path = \$(libdir);"
-		;;
 		*)
 			DEFAULT_SM_MODULE="libsmm-local.so"
 			DEFAULT_SM_MODULE_PATH="module_path = \$(libdir);"
@@ -634,11 +630,6 @@ case "${host}" in
 		DYN_LIB_EXT=".dll"
 		LIBDIR=""
 		LIB_PRE=""
-		;;
-	*-apple-*)
-		DYN_LIB_EXT=".dylib"
-		LIBDIR="\$(libdir)/"
-		LIB_PRE="lib"
 		;;
 	*)
 		DYN_LIB_EXT=".so"
