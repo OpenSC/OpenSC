@@ -2662,7 +2662,11 @@ derive_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
 		{CKA_ENCRYPT, &true, sizeof(true)},
 		{CKA_DECRYPT, &true, sizeof(true)}
 	};
-
+#if defined(ENABLE_OPENSSL) && OPENSSL_VERSION_NUMBER >= 0x00908000L && !defined(OPENSSL_NO_EC) && !defined(OPENSSL_NO_ECDSA)
+	CK_ECDH1_DERIVE_PARAMS ecdh_parms;
+	unsigned char buf[512];
+#endif /* ENABLE_OPENSSL etc */
+	
 	if (!opt_mechanism_used)
 		if (!find_mechanism(slot, CKF_DERIVE|CKF_HW, NULL, 0, &opt_mechanism))
 			util_fatal("Derive mechanism not supported\n");
@@ -2677,8 +2681,6 @@ derive_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
 	case CKM_ECDH1_DERIVE:
 		/*  Use OpenSSL to read the other public key, and get the raw verion */
 		{
-		CK_ECDH1_DERIVE_PARAMS ecdh_parms;
-		unsigned char buf[512];
 		int len;
 		BIO     *bio_in = NULL;
 		const EC_KEY  *eckey = NULL;
