@@ -24,7 +24,7 @@ CFLAGS="$CFLAGS -Wno-deprecated-declarations"
 
 export SED=/usr/bin/sed
 PREFIX=/Library/OpenSC
-export PKG_CONFIG_PATH=/usr/lib/pkgconfig
+#export PKG_CONFIG_PATH=/usr/lib/pkgconfig
 
 ./configure --prefix=$PREFIX \
 --sysconfdir=$PREFIX/etc \
