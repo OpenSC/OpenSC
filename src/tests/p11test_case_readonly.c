@@ -46,6 +46,7 @@ void always_authenticate(test_cert_t *o, token_info_t *info)
 int encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 {
 	CK_RV rv;
+	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
 	CK_MECHANISM sign_mechanism = { CKM_RSA_PKCS, NULL_PTR, 0 };
 	CK_BYTE *message = (CK_BYTE *)SHORT_MESSAGE_TO_SIGN;
 	CK_ULONG message_length = strlen((char*) message);
@@ -80,7 +81,7 @@ int encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 	}
 
 	debug_print(" [ KEY %s ] Decrypt message", o->id_str);
-	rv = info->function_pointer->C_DecryptInit(info->session_handle, &sign_mechanism,
+	rv = fp->C_DecryptInit(info->session_handle, &sign_mechanism,
 		o->private_handle);
 	if (rv == CKR_KEY_TYPE_INCONSISTENT) {
 		debug_print(" [SKIP %s ] Not allowed to decrypt with this key?", o->id_str);
@@ -92,7 +93,7 @@ int encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 
 	always_authenticate(o, info);
 
-	rv = info->function_pointer->C_Decrypt(info->session_handle, enc_message,
+	rv = fp->C_Decrypt(info->session_handle, enc_message,
 		enc_message_length, dec_message, &dec_message_length);
 	free(enc_message);
 	if (rv != CKR_OK)
@@ -125,6 +126,7 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 	CK_ULONG message_length)
 {
 	CK_RV rv;
+	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
 	CK_MECHANISM sign_mechanism = { CKM_RSA_PKCS, NULL_PTR, 0 };
 	CK_BYTE *message = (CK_BYTE *)SHORT_MESSAGE_TO_SIGN;
 	CK_BYTE *cmp_message = NULL;
@@ -150,7 +152,7 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 	debug_print(" [ KEY %s ] Signing message of length %lu using CKM_%s",
 		o->id_str, message_length, get_mechanism_name(mech->mech));
 
-	rv = info->function_pointer->C_SignInit(info->session_handle, &sign_mechanism,
+	rv = fp->C_SignInit(info->session_handle, &sign_mechanism,
 		o->private_handle);
 	if (rv == CKR_KEY_TYPE_INCONSISTENT) {
 		debug_print(" [SKIP %s ] Not allowed to sign with this key?", o->id_str);
@@ -164,7 +166,7 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 	always_authenticate(o, info);
 
 	/* Call C_Sign with NULL argument to find out the real size of signature */
-	rv = info->function_pointer->C_Sign(info->session_handle,
+	rv = fp->C_Sign(info->session_handle,
 		message, message_length, sign, &sign_length);
 	if (rv != CKR_OK)
 		fail_msg("C_Sign: rv = 0x%.8X\n", rv);
@@ -174,7 +176,7 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 		fail_msg("malloc failed");
 
 	/* Call C_Sign with allocated buffer to the the actual signature */
-	rv = info->function_pointer->C_Sign(info->session_handle,
+	rv = fp->C_Sign(info->session_handle,
 		message, message_length, sign, &sign_length);
 	if (rv != CKR_OK) {
 		free(sign);
@@ -183,10 +185,10 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 
 	debug_print(" [ KEY %s ] Verify message signature", o->id_str);
 	/* try C_Verify() if it is supported */
-	rv = info->function_pointer->C_VerifyInit(info->session_handle, &sign_mechanism,
+	rv = fp->C_VerifyInit(info->session_handle, &sign_mechanism,
 		o->public_handle);
 	if (rv == CKR_OK) {
-		rv = info->function_pointer->C_Verify(info->session_handle,
+		rv = fp->C_Verify(info->session_handle,
 			message, message_length, sign, sign_length);
 		if (rv == CKR_OK) {
 			mech->flags |= FLAGS_VERIFY_SIGN;
