@@ -80,6 +80,7 @@ int group_setup(void **state)
 	}
 	info->pin = token.pin;
 	info->pin_length = token.pin_length;
+	info->interactive = token.interactive;
 
 	*state = info;
 	return 0;

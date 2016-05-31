@@ -37,6 +37,7 @@ void display_usage() {
 		"		-m module_path	Path to tested module (e.g. /usr/lib64/opensc-pkcs11.so)\n"
 		"						Default is "DEFAULT_P11LIB"\n"
 		"		-p pin:			Application PIN\n"
+		"		-i				Wait for the card before running the test (interactive)\n"
 		"		-h				This help\n"
 		"\n");
 }
@@ -65,8 +66,9 @@ int main(int argc, char** argv) {
 	token.library_path = NULL;
 	token.pin = NULL;
 	token.pin_length = 0;
+	token.interactive = 0;
 
-	while ((command = getopt(argc, argv, "?hm:p:")) != -1) {
+	while ((command = getopt(argc, argv, "?hm:p:i")) != -1) {
 		switch (command) {
 			case 'm':
 				token.library_path = strdup(optarg);
@@ -74,6 +76,9 @@ int main(int argc, char** argv) {
 			case 'p':
 				token.pin = (CK_UTF8CHAR*) strdup(optarg);
 				token.pin_length = strlen(optarg);
+				break;
+			case 'i':
+				token.interactive = 1;
 				break;
 			case 'h':
 			case '?':

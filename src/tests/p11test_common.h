@@ -53,6 +53,8 @@ typedef struct {
 	CK_UTF8CHAR* pin;
 	size_t pin_length;
 	char* library_path;
+	unsigned int interactive;
+
 	test_mech_t rsa_mechs[MAX_MECHS];
 	size_t  num_rsa_mechs;
 	test_mech_t	ec_mechs[MAX_MECHS];

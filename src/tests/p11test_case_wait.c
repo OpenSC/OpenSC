@@ -29,12 +29,17 @@ void wait_test(void **state) {
 	CK_SLOT_INFO slot_info;
 	int token_present = 0;
 
+	if (!info->interactive) {
+		fprintf(stderr, "To test wait, run in interactive mode (-i switch).\n");
+		skip();
+	}
+
 	do {
 		printf(" [ Waiting for slot event ... ]\n");
 
 		rv = fp->C_WaitForSlotEvent(0, &slot_id, NULL_PTR);
 		if (rv == CKR_FUNCTION_NOT_SUPPORTED) {
-			fprintf(stderr, "Function does not support call with blocking wait\n");
+			fprintf(stderr, "Function does not support call with blocking wait. Skipping.\n");
 			skip();
 		} else if (rv != CKR_OK) {
 			fail_msg("C_WaitForSlotEvent: rv = 0x%.8lX\n", rv);
