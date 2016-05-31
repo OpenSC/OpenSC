@@ -195,11 +195,11 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 			free(sign);
 			return 1;
 		} else {
-			debug_print("   C_Verify: rv = 0x%.8lX\n", rv);
+			debug_print("   C_Verify: rv = 0x%.8lX", rv);
 			debug_print(" [ KEY %s ] Falling back to openssl verification", o->id_str);
 		}
 	} else {
-		debug_print("   C_VerifyInit: rv = 0x%.8lX\n", rv);
+		debug_print("   C_VerifyInit: rv = 0x%.8lX", rv);
 		debug_print(" [ KEY %s ] Falling back to openssl verification", o->id_str);
 	}
 	dec_message_length = 0;
