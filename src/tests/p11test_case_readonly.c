@@ -182,6 +182,24 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 	}
 
 	debug_print(" [ KEY %s ] Verify message signature", o->id_str);
+	/* try C_Verify() if it is supported */
+	rv = info->function_pointer->C_VerifyInit(info->session_handle, &sign_mechanism,
+		o->public_handle);
+	if (rv == CKR_OK) {
+		rv = info->function_pointer->C_Verify(info->session_handle,
+			message, message_length, sign, sign_length);
+		if (rv == CKR_OK) {
+			mech->flags |= FLAGS_VERIFY_SIGN;
+			free(sign);
+			return 1;
+		} else {
+			debug_print("   C_Verify: rv = 0x%.8lX\n", rv);
+			debug_print(" [ KEY %s ] Falling back to openssl verification", o->id_str);
+		}
+	} else {
+		debug_print("   C_VerifyInit: rv = 0x%.8lX\n", rv);
+		debug_print(" [ KEY %s ] Falling back to openssl verification", o->id_str);
+	}
 	dec_message_length = 0;
 	if (o->type == EVP_PK_RSA) {
 		/* raw RSA mechanism */

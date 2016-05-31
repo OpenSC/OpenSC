@@ -35,6 +35,7 @@ test_cert_t * add_certificate(test_certs_t *objects)
 
 	o = &(objects->data[objects->count - 1]);
 	o->private_handle = CK_INVALID_HANDLE;
+	o->public_handle = CK_INVALID_HANDLE;
 	o->always_auth = 0;
 	o->bits = 0;
 	o->verify_public = 0;
@@ -208,6 +209,7 @@ int callback_public_keys(test_certs_t *objects,
 		return -1;
 	}
 
+	o->public_handle = object_handle;
 	o->verify = (template[0].ulValueLen != (CK_ULONG) -1)
 		? *((CK_BBOOL *) template[0].pValue) : CK_FALSE;
 	o->encrypt = (template[1].ulValueLen != (CK_ULONG) -1)

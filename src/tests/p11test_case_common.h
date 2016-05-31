@@ -38,6 +38,7 @@ typedef struct {
 		EC_KEY	*ec;
 	} key;
 	CK_OBJECT_HANDLE private_handle;
+	CK_OBJECT_HANDLE public_handle;
 	CK_BBOOL	sign;
 	CK_BBOOL	decrypt;
 	CK_BBOOL	verify;
