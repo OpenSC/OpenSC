@@ -67,6 +67,10 @@ static struct sc_atr_table entersafe_atrs[] = {
 		"3B:FC:18:00:00:81:31:80:45:90:67:46:4A:10:27:61:30:00:00:00:00:0C",
 		"ff:00:00:00:00:ff:ff:ff:ff:00:00:00:00:ff:ff:ff:ff",
 		"EJAVA/A40CR/PK-01C-T1",SC_CARD_TYPE_ENTERSAFE_EJAVA_A40CR_PK_01C_T1,0,NULL},
+	{
+		"3b:fc:18:00:00:81:31:80:45:90:67:46:4a:00:68:08:06:00:00:00:00:0c",
+		"FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:00:FF:FF:FF:FF:FF:FF:00:00:00",
+		"FTCOS/PK-01C", SC_CARD_TYPE_ENTERSAFE_FTCOS_PK_01C, 0, NULL },
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
@@ -362,7 +366,8 @@ static int entersafe_transmit_apdu(sc_card_t *card, sc_apdu_t *apdu,
 	r = sc_apdu_get_octets(card->ctx, apdu, &sbuf, &ssize, SC_PROTO_RAW);
 	if (r == SC_SUCCESS)
 		sc_apdu_log(card->ctx, SC_LOG_DEBUG_VERBOSE, sbuf, ssize, 1);
-	free(sbuf);
+	if(sbuf)
+		free(sbuf);
 
 	 if(cipher)
 	 {
@@ -493,7 +498,11 @@ static int entersafe_select_fid(sc_card_t *card,
 	path.len=2;
 
 	r = iso_ops->select_file(card,&path,&file);
-	if(r) sc_file_free(file);
+	if(r) 
+	{
+		if(file)
+			sc_file_free(file);
+	}
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 
 	/* update cache */
@@ -516,7 +525,8 @@ static int entersafe_select_fid(sc_card_t *card,
 	}
 	else
 	{
-		sc_file_free(file);
+		if(file)
+			sc_file_free(file);
 	}
 
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
