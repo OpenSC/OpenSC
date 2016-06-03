@@ -224,6 +224,13 @@ AC_ARG_ENABLE(
 	[enable_dnie_ui="no"]
 )
 
+AC_ARG_ENABLE(
+	[werror-declaration-after-statement],
+	[AS_HELP_STRING([--disable-werror-declaration-after-statement],[disable -Werror 'declaration-after-statement' @<:@enabled@:>@])],
+	,
+	[werror_declaration_after_statement="yes"]
+)
+
 AC_ARG_WITH(
 	[xsl-stylesheetsdir],
 	[AS_HELP_STRING([--with-xsl-stylesheetsdir=PATH],[docbook xsl-stylesheets for svn build @<:@detect@:>@])],
@@ -244,6 +251,7 @@ AC_ARG_WITH(
 	,
 	[with_pkcs11_provider="detect"]
 )
+
 dnl ./configure check
 reader_count=""
 for rdriver in "${enable_pcsc}" "${enable_openct}" "${enable_ctapi}"; do
@@ -775,7 +783,9 @@ if test "$GCC" = "yes"; then
 	CFLAGS="-fno-strict-aliasing ${CFLAGS}"
 fi
 
-CFLAGS="${CFLAGS} -Werror=declaration-after-statement"
+if test "${werror_declaration_after_statement}" = "yes"; then
+	CFLAGS="${CFLAGS} -Werror=declaration-after-statement"
+fi
 
 AC_CONFIG_FILES([
 	Makefile
