@@ -5038,7 +5038,7 @@ static const char *p11_mechanism_to_name(CK_MECHANISM_TYPE mech)
 		if (mi->mech == mech)
 			return mi->name;
 	}
-	snprintf(temp, sizeof(temp), "mechtype-%lu", (unsigned long) mech);
+	snprintf(temp, sizeof(temp), "mechtype-0x%lX", (unsigned long) mech);
 	return temp;
 }
 
