@@ -388,6 +388,7 @@ static const char *	CKR2Str(CK_ULONG res);
 static int		p11_test(CK_SESSION_HANDLE session);
 static int test_card_detection(int);
 static int		hex_to_bin(const char *in, CK_BYTE *out, size_t *outlen);
+static void		pseudo_randomize(unsigned char *data, size_t dataLen);
 static void		test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE session);
 static void		test_ec(CK_SLOT_ID slot, CK_SESSION_HANDLE session);
 #ifndef _WIN32
@@ -3313,6 +3314,7 @@ static int test_digest(CK_SESSION_HANDLE session)
 	}
 
 	/* 1st test */
+	pseudo_randomize(data, sizeof(data));
 
 	ck_mech.mechanism = firstMechType;
 	rv = p11->C_DigestInit(session, &ck_mech);
@@ -3686,9 +3688,6 @@ static int test_signature(CK_SESSION_HANDLE sess)
 		return 0;
 	}
 
-	data[0] = 0;
-	data[1] = 1;
-
 	/* 1st test */
 
 	/* assume --login has already authenticated the key */
@@ -3704,6 +3703,8 @@ static int test_signature(CK_SESSION_HANDLE sess)
 		dataLen = sizeof(data);	/* let's hope it's OK */
 		break;
 	}
+
+	pseudo_randomize(data, dataLen);
 
 	ck_mech.mechanism = firstMechType;
 	rv = p11->C_SignInit(sess, &ck_mech, privKeyObject);
@@ -4836,6 +4837,17 @@ static int hex_to_bin(const char *in, unsigned char *out, size_t *outlen)
 
 	*outlen = count;
 	return 1;
+}
+
+static void pseudo_randomize(unsigned char *data, size_t dataLen)
+{
+	size_t i = 0;
+	/* initialization with some data */
+	while (i < dataLen) {
+		*data = rand() & 0xFF;
+		data++;
+		i++;
+	}
 }
 
 static struct mech_info	p11_mechanisms[] = {
