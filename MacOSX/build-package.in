@@ -19,7 +19,7 @@ export CFLAGS="$CFLAGS -isysroot $SDK_PATH -arch x86_64 -mmacosx-version-min=10.
 
 export SED=/usr/bin/sed
 PREFIX=/Library/OpenSC
-export PKG_CONFIG_PATH=/usr/lib/pkgconfig
+export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/lib/pkgconfig
 
 if ! pkg-config libcrypto --atleast-version=1.0.1; then
 	# OpenSSL is not installed
