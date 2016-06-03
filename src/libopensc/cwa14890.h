@@ -274,61 +274,7 @@ typedef struct cwa_provider_st {
 	*/
 	int (*cwa_get_sn_icc) (sc_card_t * card, u8 ** buf);
 
-    /************** operations related with APDU encoding ******************/
-
-	/**
- 	* Operation to be done before any APDU encode procedure.
- 	*
- 	* @param card Pointer to card driver data structure
- 	* @param provider pointer to cwa1890 SM provider
- 	* @param from APDU to be encoded
- 	* @param to resulting APDU to be sent to encode procedure
- 	* @return SC_SUCCESS if OK, else error code
- 	*/
-	int (*cwa_encode_pre_ops) (sc_card_t * card,
-				   struct cwa_provider_st * provider,
-				   sc_apdu_t * from, sc_apdu_t * to);
-
-	/**
- 	* Operation to be done after APDU encode process finished ok.
- 	*
- 	* @param card Pointer to card driver data structure
- 	* @param provider pointer to cwa1890 SM provider
- 	* @param from encoded APDU
- 	* @param to resulting encoded APDU to be returned to libopensc
- 	* @return SC_SUCCESS if OK, else error code
- 	*/
-	int (*cwa_encode_post_ops) (sc_card_t * card,
-				    struct cwa_provider_st * provider,
-				    sc_apdu_t * from, sc_apdu_t * to);
-
-    /************** operations related APDU response decoding **************/
-
-	/**
- 	* Operation to be done before any APDU Response decode procedure.
- 	*
- 	* @param card Pointer to card driver data structure
- 	* @param provider pointer to cwa1890 SM provider
- 	* @param from APDU Response to be decoded
- 	* @param to resulting APDU response to be sent to decode procedure
- 	* @return SC_SUCCESS if OK, else error code
- 	*/
-	int (*cwa_decode_pre_ops) (sc_card_t * card,
-				   struct cwa_provider_st * provider,
-				   sc_apdu_t * from, sc_apdu_t * to);
-
-	/**
- 	* Operation to be done after APDU Response decode process finished ok.
- 	*
- 	* @param card Pointer to card driver data structure
- 	* @param provider pointer to cwa1890 SM provider
- 	* @param from decoded APDU Response
- 	* @param to resulting APDU Response to be returned to libopensc
- 	* @return SC_SUCCESS if OK, else error code
- 	*/
-	int (*cwa_decode_post_ops) (sc_card_t * card,
-				    struct cwa_provider_st * provider,
-				    sc_apdu_t * from, sc_apdu_t * to);
+ 
 } cwa_provider_t;
 
 /************************** external function prototypes ******************/
@@ -359,13 +305,12 @@ extern int cwa_create_secure_channel(sc_card_t * card,
  *
  * @param card card info structure
  * @param provider cwa provider data to handle SM channel
- * @param from apdu to be decoded
- * @param to   where to store decoded apdu
+ * @param apdu apdu to be decoded
  * @return SC_SUCCESS if ok; else error code
  */
 extern int cwa_decode_response(sc_card_t * card,
 			       cwa_provider_t * provider,
-			       sc_apdu_t * from, sc_apdu_t * to);
+			       sc_apdu_t * apdu);
 
 /**
  * Encode an APDU.
