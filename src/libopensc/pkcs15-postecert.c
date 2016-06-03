@@ -33,7 +33,7 @@
 #include "pkcs15.h"
 #include "log.h"
 
-int sc_pkcs15emu_postecert_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
+int sc_pkcs15emu_postecert_init_ex(sc_pkcs15_card_t *, struct sc_aid *, sc_pkcs15emu_opt_t *);
 
 static int (*set_security_env) (sc_card_t *, const sc_security_env_t *, int);
 
@@ -354,6 +354,7 @@ static int postecert_detect_card(sc_pkcs15_card_t * p15card)
 }
 
 int sc_pkcs15emu_postecert_init_ex(sc_pkcs15_card_t * p15card,
+				   struct sc_aid *aid,
 				   sc_pkcs15emu_opt_t * opts)
 {
 	if (opts && opts->flags & SC_PKCS15EMU_FLAGS_NO_CHECK)

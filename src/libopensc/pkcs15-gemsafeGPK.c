@@ -35,7 +35,7 @@
 
 #define MANU_ID		"GemSAFE on GPK16000"
 
-int sc_pkcs15emu_gemsafeGPK_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
+int sc_pkcs15emu_gemsafeGPK_init_ex(sc_pkcs15_card_t *, struct sc_aid *, sc_pkcs15emu_opt_t *);
 
 static int (*pin_cmd_save)(struct sc_card *, struct sc_pin_cmd_data *, 
 		int *tries_left);
@@ -182,7 +182,7 @@ static int sc_pkcs15emu_gemsafeGPK_init(sc_pkcs15_card_t *p15card)
 	};
 
 	const pindata pins[] = {
-		{ "1", "pin", "3F000200", 0x00,
+		{ "01", "pin", "3F000200", 0x00,
 		  SC_PKCS15_PIN_TYPE_ASCII_NUMERIC,
 		  8, 4, 8, SC_PKCS15_PIN_FLAG_NEEDS_PADDING |
 		  SC_PKCS15_PIN_FLAG_LOCAL, -1, 0x00,
@@ -191,8 +191,8 @@ static int sc_pkcs15emu_gemsafeGPK_init(sc_pkcs15_card_t *p15card)
 	};
 
 	const prdata prkeys[] = {
-		{ "1", "AUTH key", 1024, USAGE_AUT, "I0009",
-		  0x00, "1", 0},
+		{ "01", "AUTH key", 1024, USAGE_AUT, "I0009",
+		  0x00, "01", 0},
 		{ NULL, NULL, 0, 0, NULL, 0, NULL, 0}
 	};
 
@@ -283,7 +283,7 @@ static int sc_pkcs15emu_gemsafeGPK_init(sc_pkcs15_card_t *p15card)
 		}
 
 		kinfo[num_keyinfo].fileid = i;
-		sc_pkcs15_format_id("NONE", &kinfo[num_keyinfo].id); 
+		sc_pkcs15_format_id("", &kinfo[num_keyinfo].id); 
 
 		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"reading modulus");
 		r = sc_read_record(card, 2, modulus_buf, 
@@ -506,7 +506,7 @@ static int sc_pkcs15emu_gemsafeGPK_init(sc_pkcs15_card_t *p15card)
 	return SC_SUCCESS;
 }
 
-int sc_pkcs15emu_gemsafeGPK_init_ex(sc_pkcs15_card_t *p15card,
+int sc_pkcs15emu_gemsafeGPK_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid,
 				  sc_pkcs15emu_opt_t *opts)
 {
 	sc_card_t   *card = p15card->card;

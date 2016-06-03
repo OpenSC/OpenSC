@@ -215,6 +215,7 @@ static int setcos_init(sc_card_t *card)
 			_sc_card_add_rsa_alg(card, 512, flags, 0);
 			_sc_card_add_rsa_alg(card, 768, flags, 0);
 			_sc_card_add_rsa_alg(card, 1024, flags, 0);
+			_sc_card_add_rsa_alg(card, 2048, flags, 0);
 		}
 		break;
 	}

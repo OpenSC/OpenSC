@@ -26,6 +26,7 @@ extern "C" {
 #endif
 
 #include "libopensc/opensc.h"
+#include "libopensc/aux-data.h"
 
 #define SC_PKCS15_CACHE_DIR		".eid"
 
@@ -388,8 +389,8 @@ struct sc_pkcs15_prkey_info {
 
 	struct sc_path path;
 
-	/* Used by minidriver and its on-card support */
-	/*struct sc_md_cmap_record cmap_record;*/
+	/* Non-pkcs15 data, like MD CMAP record */
+	struct sc_auxiliary_data *aux_data;
 };
 typedef struct sc_pkcs15_prkey_info sc_pkcs15_prkey_info_t;
 
@@ -944,7 +945,7 @@ typedef struct sc_pkcs15emu_opt {
 
 #define SC_PKCS15EMU_FLAGS_NO_CHECK	0x00000001
 
-extern int sc_pkcs15_bind_synthetic(struct sc_pkcs15_card *);
+extern int sc_pkcs15_bind_synthetic(struct sc_pkcs15_card *, struct sc_aid *);
 extern int sc_pkcs15_is_emulation_only(sc_card_t *);
 
 int sc_pkcs15emu_object_add(struct sc_pkcs15_card *, unsigned int,

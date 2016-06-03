@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<refentry id="gids-tool">
+	<refmeta>
+		<refentrytitle>gids-tool</refentrytitle>
+		<manvolnum>1</manvolnum>
+		<refmiscinfo class="productname">OpenSC</refmiscinfo>
+		<refmiscinfo class="manual">OpenSC Tools</refmiscinfo>
+		<refmiscinfo class="source">opensc</refmiscinfo>
+	</refmeta>
+
+	<refnamediv>
+		<refname>gids-tool</refname>
+		<refpurpose>smart card utility for GIDS cards</refpurpose>
+	</refnamediv>
+
+	<refsynopsisdiv>
+		<cmdsynopsis>
+			<command>gids-tool</command>
+			<arg choice="opt"><replaceable class="option">OPTIONS</replaceable></arg>
+		</cmdsynopsis>
+	</refsynopsisdiv>
+
+	<refsect1>
+		<para>
+			The <command>gids-tool</command> utility can be used from the command line to perform
+			miscellaneous smart card operations on a GIDS smart card.
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Options</title>
+		<para>
+			<variablelist>
+				<varlistentry>
+					<term>
+						<option>-X</option>,
+						<option>--initialize</option>
+					</term>
+					<listitem><para>Initialize token.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--admin-key</option> <replaceable>argument</replaceable>
+					</term>
+					<listitem><para>Define the administrator key</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--pin</option> <replaceable>argument</replaceable>
+					</term>
+					<listitem><para>Define user PIN.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--serial-number</option> <replaceable>argument</replaceable>
+					</term>
+					<listitem><para>Define serial number.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>-U</option>,
+						<option>--unblock</option>
+					</term>
+					<listitem><para>Unblock the user PIN after an administrator
+					authentication.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>-C</option>,
+						<option>--change-admin-key</option>
+					</term>
+					<listitem><para>Change the administrator key.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--new-admin-key</option> <replaceable>argument</replaceable>
+					</term>
+					<listitem><para>Define the new adminastrator key.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--reader</option> <replaceable>argument</replaceable>,
+						<option>-r</option> <replaceable>argument</replaceable>
+					</term>
+					<listitem><para>Uses reader number
+					<replaceable>argument</replaceable>.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>-w</option>,
+						<option>--wait</option>
+					</term>
+					<listitem><para>Wait for a card to be inserted.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>-v</option>,
+						<option>--verbose</option>
+					</term>
+					<listitem><para>Verbose operation. Use several times to
+					enable debug output.</para></listitem>
+				</varlistentry>
+			</variablelist>
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>See also</title>
+		<para>
+			<citerefentry>
+				<refentrytitle>opensc-tool</refentrytitle>
+				<manvolnum>1</manvolnum>
+			</citerefentry>
+		</para>
+	</refsect1>
+
+</refentry>

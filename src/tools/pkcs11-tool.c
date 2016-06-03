@@ -74,6 +74,8 @@ static struct ec_curve_info {
 } ec_curve_infos[] = {
 	{"secp192r1",    "1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192},
 	{"prime192v1",   "1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192},
+	{"prime192v2",   "1.2.840.10045.3.1.2", "06082A8648CE3D030102", 192},
+	{"prime192v3",   "1.2.840.10045.3.1.3", "06082A8648CE3D030103", 192},
 	{"nistp192",     "1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192},
 	{"ansiX9p192r1", "1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192},
 
@@ -83,6 +85,7 @@ static struct ec_curve_info {
 	{"prime256v1",   "1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256},
 	{"secp256r1",    "1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256},
 	{"ansiX9p256r1", "1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256},
+	{"frp256v1",	 "1.2.250.1.223.101.256.1", "060a2a817a01815f65820001", 256},
 
 	{"secp384r1",		"1.3.132.0.34", "06052B81040022", 384},
 	{"prime384v1",		"1.3.132.0.34", "06052B81040022", 384},
@@ -2659,7 +2662,11 @@ derive_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
 		{CKA_ENCRYPT, &true, sizeof(true)},
 		{CKA_DECRYPT, &true, sizeof(true)}
 	};
-
+#if defined(ENABLE_OPENSSL) && OPENSSL_VERSION_NUMBER >= 0x00908000L && !defined(OPENSSL_NO_EC) && !defined(OPENSSL_NO_ECDSA)
+	CK_ECDH1_DERIVE_PARAMS ecdh_parms;
+	unsigned char buf[512];
+#endif /* ENABLE_OPENSSL etc */
+	
 	if (!opt_mechanism_used)
 		if (!find_mechanism(slot, CKF_DERIVE|CKF_HW, NULL, 0, &opt_mechanism))
 			util_fatal("Derive mechanism not supported\n");
@@ -2674,8 +2681,6 @@ derive_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
 	case CKM_ECDH1_DERIVE:
 		/*  Use OpenSSL to read the other public key, and get the raw verion */
 		{
-		CK_ECDH1_DERIVE_PARAMS ecdh_parms;
-		unsigned char buf[512];
 		int len;
 		BIO     *bio_in = NULL;
 		const EC_KEY  *eckey = NULL;
@@ -5033,7 +5038,7 @@ static const char *p11_mechanism_to_name(CK_MECHANISM_TYPE mech)
 		if (mi->mech == mech)
 			return mi->name;
 	}
-	snprintf(temp, sizeof(temp), "mechtype-%lu", (unsigned long) mech);
+	snprintf(temp, sizeof(temp), "mechtype-0x%lX", (unsigned long) mech);
 	return temp;
 }
 

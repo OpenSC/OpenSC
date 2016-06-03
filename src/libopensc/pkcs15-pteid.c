@@ -50,7 +50,7 @@
 #define IAS_CARD 0
 #define GEMSAFE_CARD 1
 
-int sc_pkcs15emu_pteid_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
+int sc_pkcs15emu_pteid_init_ex(sc_pkcs15_card_t *, struct sc_aid *, sc_pkcs15emu_opt_t *);
 
 static int sc_pkcs15emu_pteid_init(sc_pkcs15_card_t * p15card)
 {
@@ -227,11 +227,11 @@ static int sc_pkcs15emu_pteid_init(sc_pkcs15_card_t * p15card)
 
 	/* Add objects */
 	for (i = 0; i < 3; i++) {
-		static const char *object_ids[3] = {"1", "2", "3"};
+		static const char *object_ids[3] = {"01", "02", "03"};
 		static const char *object_labels[3] = {"Citizen Data",
 											   "Citizen Address Data",
 											   "Citizen Notepad"};
-		static const char *object_authids[3] = {NULL, "3", "1"};
+		static const char *object_authids[3] = {NULL, "03", "01"};
 		static const char *object_paths[3] = {"3f005f00ef02",
 											  "3f005f00ef05",
 											  "3f005f00ef07"};
@@ -275,7 +275,7 @@ static int pteid_detect_card(sc_pkcs15_card_t *p15card)
 	return SC_ERROR_WRONG_CARD;
 }
 
-int sc_pkcs15emu_pteid_init_ex(sc_pkcs15_card_t *p15card, sc_pkcs15emu_opt_t *opts)
+int sc_pkcs15emu_pteid_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid, sc_pkcs15emu_opt_t *opts)
 {
 	if (opts != NULL && opts->flags & SC_PKCS15EMU_FLAGS_NO_CHECK)
 		return sc_pkcs15emu_pteid_init(p15card);

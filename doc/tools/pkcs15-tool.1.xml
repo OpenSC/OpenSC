@@ -38,6 +38,12 @@
 			<variablelist>
                                 <varlistentry>
                                         <term>
+                                                <option>--version</option>,
+                                        </term>
+                                        <listitem><para>Print the OpenSC package release version.</para></listitem>
+                                </varlistentry>
+                                <varlistentry>
+                                        <term>
 						<option>--aid</option> <replaceable>aid</replaceable>
 					</term>
                                         <listitem><para>Specify in a hexadecimal form the AID of the on-card PKCS#15

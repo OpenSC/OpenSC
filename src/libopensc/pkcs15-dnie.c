@@ -261,6 +261,7 @@ static int sc_pkcs15emu_dnie_init(sc_pkcs15_card_t * p15card)
 /* public functions for in-built module */
 /****************************************/
 int sc_pkcs15emu_dnie_init_ex(sc_pkcs15_card_t * p15card,
+			      struct sc_aid *aid,
 			      sc_pkcs15emu_opt_t * opts)
 {
 	int r=SC_SUCCESS;

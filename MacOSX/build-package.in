@@ -15,16 +15,29 @@ SDKS_PATH="$(xcode-select -p)/Platforms/MacOSX.platform/Developer/SDKs"
 SDK_PATH="${SDK_PATH:-$SDKS_PATH/$(ls -1 ${SDKS_PATH} | sort -n -k2 -t. -r | head -1)}"
 
 # Set SDK path
-export CFLAGS="$CFLAGS -isysroot $SDK_PATH -arch i386 -arch x86_64 -mmacosx-version-min=10.10"
-
-# OpenSSL is deprecated on OSX since 10.7 and that generates lots of
-# "false positive" warnings and there is no alternative option.
-# Just ignore these warning for now by silencing them.
-CFLAGS="$CFLAGS -Wno-deprecated-declarations"
+export CFLAGS="$CFLAGS -isysroot $SDK_PATH -arch x86_64 -mmacosx-version-min=10.10"
 
 export SED=/usr/bin/sed
 PREFIX=/Library/OpenSC
 export PKG_CONFIG_PATH=/usr/lib/pkgconfig
+
+if ! pkg-config libcrypto --atleast-version=1.0.1; then
+	# OpenSSL is not installed
+	if ! test -e $BUILDPATH/openssl_bin/lib/pkgconfig; then
+		# Build OpenSSL manually, because Apple's binaries are deprecated
+		if ! test -e openssl; then
+			git clone --depth=1 https://github.com/openssl/openssl.git -b OpenSSL_1_0_2-stable
+		fi
+		cd openssl
+		KERNEL_BITS=64 ./config --prefix=$PREFIX -mmacosx-version-min=10.10
+		make clean update depend
+		make
+		make INSTALL_PREFIX=$BUILDPATH/openssl_bin install_sw
+		cd ..
+	fi
+	export OPENSSL_CFLAGS="`env PKG_CONFIG_PATH=$BUILDPATH/openssl_bin/$PREFIX/lib/pkgconfig PKG_CONFIG_SYSROOT_DIR=$BUILDPATH/openssl_bin pkg-config --static --cflags libcrypto`"
+	export OPENSSL_LIBS="`  env PKG_CONFIG_PATH=$BUILDPATH/openssl_bin/$PREFIX/lib/pkgconfig PKG_CONFIG_SYSROOT_DIR=$BUILDPATH/openssl_bin pkg-config --static --libs   libcrypto`"
+fi
 
 ./configure --prefix=$PREFIX \
 --sysconfdir=$PREFIX/etc \
