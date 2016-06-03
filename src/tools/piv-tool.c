@@ -548,7 +548,8 @@ int main(int argc, char * const argv[])
 
 	if (out_file) {
 		bp = BIO_new(BIO_s_file());
-		BIO_write_filename(bp, (char *)out_file);
+		if (!BIO_write_filename(bp, (char *)out_file))
+		    goto end;
 	} else {
 		bp = BIO_new(BIO_s_file());
 		BIO_set_fp(bp,stdout,BIO_NOCLOSE);
