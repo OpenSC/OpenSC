@@ -331,8 +331,6 @@ sc_profile_load(struct sc_profile *profile, const char *filename)
 #ifdef _WIN32
 	char temp_path[PATH_MAX];
 	DWORD temp_len;
-	long rc;
-	HKEY hKey;
 #endif
 
 	LOG_FUNC_CALLED(ctx);
