@@ -28,7 +28,7 @@ tools.html: $(srcdir)/tools.xml $(wildcard $(srcdir)/*.1.xml) $(wildcard $(srcdi
 
 %: $(srcdir)/%.1.xml
 	@echo $< $@
-	@cat completion-template \
+	@cat $(srcdir)/completion-template \
 		| sed "s,ALLOPTS,\
 			$(shell sed -n 's,\s\s\s*<option>\([^<]*\)</option>.*,\1,pg' $< \
 				| sort -u | grep -- '^\-' | tr '\n' ' ')," \
