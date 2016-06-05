@@ -28,26 +28,6 @@
 extern "C" {
 #endif
 
-typedef struct _scconf_entry {
-	const char *name;
-	unsigned int type;
-	unsigned int flags;
-	void *parm;
-	void *arg;
-} scconf_entry;
-
-/* Entry flags */
-#define SCCONF_PRESENT		0x00000001
-#define SCCONF_MANDATORY	0x00000002
-#define SCCONF_ALLOC		0x00000004
-#define SCCONF_ALL_BLOCKS	0x00000008
-#define SCCONF_VERBOSE		0x00000010	/* For debugging purposes only */
-
-/* Entry types */
-#define SCCONF_CALLBACK		1
-#define SCCONF_BLOCK		2
-#define SCCONF_LIST		3
-
 #define SCCONF_BOOLEAN		11
 #define SCCONF_INTEGER		12
 #define SCCONF_STRING		13
@@ -106,19 +86,11 @@ extern int scconf_parse(scconf_context * config);
  */
 extern int scconf_parse_string(scconf_context * config, const char *string);
 
-/* Parse entries
- */
-extern int scconf_parse_entries(const scconf_context * config, const scconf_block * block, scconf_entry * entry);
-
 /* Write config to a file
  * If the filename is NULL, use the config->filename
  * Returns 0 = ok, else = errno
  */
 extern int scconf_write(scconf_context * config, const char *filename);
-
-/* Write configuration entries to block
- */
-extern int scconf_write_entries(scconf_context * config, scconf_block * block, scconf_entry * entry);
 
 /* Find a block by the item_name
  * If the block is NULL, the root block is used

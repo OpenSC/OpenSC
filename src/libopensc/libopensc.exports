@@ -20,13 +20,11 @@ scconf_list_strings_length
 scconf_list_toarray
 scconf_new
 scconf_parse
-scconf_parse_entries
 scconf_parse_string
 scconf_put_bool
 scconf_put_int
 scconf_put_str
 scconf_write
-scconf_write_entries
 _sc_asn1_decode
 _sc_asn1_encode
 sc_append_file_id
