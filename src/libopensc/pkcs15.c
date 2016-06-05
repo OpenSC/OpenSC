@@ -2221,7 +2221,8 @@ sc_pkcs15_encode_unusedspace(struct sc_context *ctx, struct sc_pkcs15_card *p15c
 		sc_format_asn1_entry(asn1_unusedspace + c, asn1_values + 3*c, NULL, 1);
 		sc_copy_asn1_entry(c_asn1_unusedspace_values, asn1_values + 3*c);
 		sc_format_asn1_entry(asn1_values + 3*c, &unusedspace->path, NULL, 1);
-		sc_format_asn1_entry(asn1_values + 3*c+1, &unusedspace->auth_id, NULL, unusedspace->auth_id.len);
+		sc_format_asn1_entry(asn1_values + 3*c+1, &unusedspace->auth_id, NULL,
+			   unusedspace->auth_id.len > 0 ? 1 : 0);
 		c++;
 	}
 	asn1_unusedspace[c].name = NULL;
