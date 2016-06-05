@@ -605,7 +605,7 @@ static void process_config_file(sc_context_t *ctx, struct _sc_ctx_options *opts)
 	const char *debug = NULL;
 #ifdef _WIN32
 	char temp_path[PATH_MAX];
-	DWORD temp_len;
+	size_t temp_len;
 #endif
 
 	/* Takes effect even when no config around */

@@ -330,7 +330,7 @@ sc_profile_load(struct sc_profile *profile, const char *filename)
 	int res = 0, i;
 #ifdef _WIN32
 	char temp_path[PATH_MAX];
-	DWORD temp_len;
+	size_t temp_len;
 #endif
 
 	LOG_FUNC_CALLED(ctx);

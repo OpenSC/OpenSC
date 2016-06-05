@@ -255,7 +255,7 @@ static void logprintf(PCARD_DATA pCardData, int level, _Printf_format_string_ co
  * close so as the file is not left open during any wait.
  */
 	DWORD md_debug = 0;
-	DWORD sz = sizeof(md_debug);
+	size_t sz = sizeof(md_debug);
 	int rv;
 
 	rv = sc_ctx_win32_get_config_value("CARDMOD_LOW_LEVEL_DEBUG",
