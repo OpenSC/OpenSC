@@ -319,7 +319,7 @@ gen_init_key(struct sc_card *card, unsigned char *key_enc, unsigned char *key_ma
 	unsigned char iv[16] = { 0 };
 	
 	if (!card->drv_data) 
-		return SC_ERROR_INVALID_ARGUMENTS
+		return SC_ERROR_INVALID_ARGUMENTS;
 	
 	epass2003_exdata *exdata = (epass2003_exdata *)card->drv_data;
 
@@ -391,7 +391,7 @@ verify_init_key(struct sc_card *card, unsigned char *ran_key, unsigned char key_
 	unsigned char tmp_sm;
 	
 	if (!card->drv_data) 
-		return SC_ERROR_INVALID_ARGUMENTS
+		return SC_ERROR_INVALID_ARGUMENTS;
 	epass2003_exdata *exdata = (epass2003_exdata *)card->drv_data;
 
 	LOG_FUNC_CALLED(card->ctx);
@@ -459,7 +459,7 @@ mutual_auth(struct sc_card *card, unsigned char *key_enc,
 	unsigned char ran_key[8] = { 0 };
 
 	if (!card->drv_data) 
-		return SC_ERROR_INVALID_ARGUMENTS
+		return SC_ERROR_INVALID_ARGUMENTS;
 	epass2003_exdata *exdata = (epass2003_exdata *)card->drv_data;
 
 	LOG_FUNC_CALLED(ctx);
@@ -481,7 +481,7 @@ epass2003_refresh(struct sc_card *card)
 	int r = SC_SUCCESS;
 	
 	if (!card->drv_data) 
-		return SC_ERROR_INVALID_ARGUMENTS
+		return SC_ERROR_INVALID_ARGUMENTS;
 	
 	epass2003_exdata *exdata = (epass2003_exdata *)card->drv_data;
 
@@ -508,7 +508,7 @@ construct_data_tlv(struct sc_card *card, struct sc_apdu *apdu, unsigned char *ap
 	unsigned char iv[16] = { 0 };
 	
 	if (!card->drv_data) 
-		return SC_ERROR_INVALID_ARGUMENTS
+		return SC_ERROR_INVALID_ARGUMENTS;
 	
 	epass2003_exdata *exdata = (epass2003_exdata *)card->drv_data;
 
@@ -587,7 +587,7 @@ construct_mac_tlv(struct sc_card *card, unsigned char *apdu_buf, size_t data_tlv
 	int i = (KEY_TYPE_AES == key_type ? 15 : 7);
 	
 	if (!card->drv_data) 
-		return SC_ERROR_INVALID_ARGUMENTS
+		return SC_ERROR_INVALID_ARGUMENTS;
 	
 	epass2003_exdata *exdata = (epass2003_exdata *)card->drv_data;
 
@@ -652,7 +652,7 @@ encode_apdu(struct sc_card *card, struct sc_apdu *plain, struct sc_apdu *sm,
 		unsigned char *apdu_buf, size_t * apdu_buf_len)
 {
 	if (!card->drv_data) 
-		return SC_ERROR_INVALID_ARGUMENTS
+		return SC_ERROR_INVALID_ARGUMENTS;
 	
 	epass2003_exdata *exdata = (epass2003_exdata *)card->drv_data;
 	size_t block_size = (KEY_TYPE_DES == exdata->smtype ? 16 : 8);
@@ -738,7 +738,7 @@ epass2003_sm_wrap_apdu(struct sc_card *card, struct sc_apdu *plain, struct sc_ap
 	size_t buf_len = sizeof(buf);
 	
 	if (!card->drv_data) 
-		return SC_ERROR_INVALID_ARGUMENTS
+		return SC_ERROR_INVALID_ARGUMENTS;
 	
 	epass2003_exdata *exdata = (epass2003_exdata *)card->drv_data;
 
@@ -798,7 +798,7 @@ decrypt_response(struct sc_card *card, unsigned char *in, unsigned char *out, si
 	unsigned char plaintext[4096] = { 0 };
 	
 	if (!card->drv_data) 
-		return SC_ERROR_INVALID_ARGUMENTS
+		return SC_ERROR_INVALID_ARGUMENTS;
 	
 	epass2003_exdata *exdata = (epass2003_exdata *)card->drv_data;
 
@@ -850,7 +850,7 @@ epass2003_sm_unwrap_apdu(struct sc_card *card, struct sc_apdu *sm, struct sc_apd
 	size_t len = 0;
 	
 	if (!card->drv_data) 
-		return SC_ERROR_INVALID_ARGUMENTS
+		return SC_ERROR_INVALID_ARGUMENTS;
 	
 	epass2003_exdata *exdata = (epass2003_exdata *)card->drv_data;
 
@@ -978,7 +978,7 @@ get_data(struct sc_card *card, unsigned char type, unsigned char *data, size_t d
 	size_t resplen = SC_MAX_APDU_BUFFER_SIZE;
 	
 	if (!card->drv_data) 
-		return SC_ERROR_INVALID_ARGUMENTS
+		return SC_ERROR_INVALID_ARGUMENTS;
 	
 	epass2003_exdata *exdata = (epass2003_exdata *)card->drv_data;
 
