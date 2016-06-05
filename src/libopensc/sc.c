@@ -126,15 +126,20 @@ int sc_bin_to_hex(const u8 *in, size_t in_len, char *out, size_t out_len,
  */
 size_t sc_right_trim(u8 *buf, size_t len) {
 
-	long i;
+	size_t i;
 
-	for(i=len-1; i >=0; i--) {
-		if(!isprint(buf[i])) {
-			buf[i] = '\0';
-			len--;
-			continue;
+	if (!buf)
+		return 0;
+
+	if (len > 0) {
+		for(i = len-1; i > 0; i--) {
+			if(!isprint(buf[i])) {
+				buf[i] = '\0';
+				len--;
+				continue;
+			}
+			break;
 		}
-		break;
 	}
 	return len;
 }
