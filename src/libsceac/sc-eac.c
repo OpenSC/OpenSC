@@ -499,7 +499,7 @@ err:
         data->chat = NULL;
         NPA_MSE_C_free(data);
     }
-    free(data_sequence);
+    OPENSSL_free(data_sequence);
 
     return r;
 }
@@ -683,7 +683,7 @@ static int npa_gen_auth_1_encrypted_nonce(sc_card_t *card,
 err:
     if (c_data)
         NPA_GEN_AUTH_PACE_C_free(c_data);
-    free(d);
+    OPENSSL_free(d);
     if (r_data)
         NPA_GEN_AUTH_PACE_R_free(r_data);
 
@@ -775,7 +775,7 @@ static int npa_gen_auth_2_map_nonce(sc_card_t *card,
 err:
     if (c_data)
         NPA_GEN_AUTH_PACE_C_free(c_data);
-    free(d);
+    OPENSSL_free(d);
     if (r_data)
         NPA_GEN_AUTH_PACE_R_free(r_data);
 
@@ -867,7 +867,7 @@ static int npa_gen_auth_3_perform_key_agreement(sc_card_t *card,
 err:
     if (c_data)
         NPA_GEN_AUTH_PACE_C_free(c_data);
-    free(d);
+    OPENSSL_free(d);
     if (r_data)
         NPA_GEN_AUTH_PACE_R_free(r_data);
 
@@ -984,7 +984,7 @@ static int npa_gen_auth_4_mutual_authentication(sc_card_t *card,
 err:
     if (c_data)
         NPA_GEN_AUTH_PACE_C_free(c_data);
-    free(d);
+    OPENSSL_free(d);
     if (r_data)
         NPA_GEN_AUTH_PACE_R_free(r_data);
 
@@ -1748,7 +1748,7 @@ err:
         NPA_GEN_AUTH_CA_C_free(c_data);
     if (r_data)
         NPA_GEN_AUTH_CA_R_free(r_data);
-    free(d);
+    OPENSSL_free(d);
 
     return r;
 }
@@ -2085,7 +2085,7 @@ npa_sm_pre_transmit(sc_card_t *card, const struct iso_sm_ctx *ctx,
     unsigned char *cert = NULL;
     int len;
     BUF_MEM *signature = NULL;
-    unsigned char *sequence = NULL, *templates = NULL;
+    unsigned char *sequence = NULL;
     NPA_MSE_C *msesetat = NULL;
     const unsigned char *p;
     struct npa_sm_ctx *eacsmctx;
@@ -2265,9 +2265,8 @@ err:
         BUF_MEM_free(signature);
     if (cert)
         OPENSSL_free(cert);
-    free(sequence);
-    if (templates)
-        OPENSSL_free(templates);
+    if (sequence)
+        OPENSSL_free(sequence);
     if (msesetat)
         NPA_MSE_C_free(msesetat);
 

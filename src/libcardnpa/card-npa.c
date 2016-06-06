@@ -24,7 +24,6 @@
 #endif
 
 #include "card-npa.h"
-#include "libisosm/iso-sm.h"
 #include "libopensc/boxing.h"
 #include "libopensc/internal.h"
 #include "libopensc/opensc.h"
