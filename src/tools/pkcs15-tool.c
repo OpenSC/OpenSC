@@ -1051,8 +1051,8 @@ static int read_ssh_key(void)
 		fclose(outf);
 	if (cert)
 		sc_pkcs15_free_certificate(cert);
-	sc_pkcs15_free_pubkey(pubkey);
-
+	else if (pubkey)
+		sc_pkcs15_free_pubkey(pubkey);
 	return 0;
 fail:
 	printf("can't convert key: buffer too small\n");
