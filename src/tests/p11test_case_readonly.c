@@ -21,6 +21,59 @@
 
 #include "p11test_case_readonly.h"
 
+int encrypt_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
+    CK_ULONG message_length, test_mech_t *mech, unsigned char **enc_message)
+{
+	int enc_message_length;
+
+	*enc_message = malloc(RSA_size(o->key.rsa));
+	if (*enc_message == NULL) {
+		debug_print("malloc returned null");
+		return -1;
+	}
+
+	enc_message_length = RSA_public_encrypt(message_length, message,
+		*enc_message, o->key.rsa, RSA_PKCS1_PADDING);
+	if (enc_message_length < 0) {
+		free(*enc_message);
+		debug_print("RSA_public_encrypt: rv = 0x%.8X\n", enc_message_length);
+		return -1;
+	}
+	return enc_message_length;
+}
+
+int decrypt_message(test_cert_t *o, token_info_t *info, CK_BYTE *enc_message,
+    CK_ULONG enc_message_length, test_mech_t *mech, unsigned char **dec_message)
+{
+	CK_RV rv;
+	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
+	CK_MECHANISM dec_mechanism = { CKM_RSA_PKCS, NULL_PTR, 0 };
+	CK_ULONG dec_message_length = BUFFER_SIZE;
+
+	dec_mechanism.mechanism = mech->mech;
+	rv = fp->C_DecryptInit(info->session_handle, &dec_mechanism,
+		o->private_handle);
+	if (rv == CKR_KEY_TYPE_INCONSISTENT) {
+		debug_print(" [SKIP %s ] Not allowed to decrypt with this key?", o->id_str);
+		return 0;
+	} else if (rv != CKR_OK) {
+		debug_print("C_DecryptInit: rv = 0x%.8lX\n", rv);
+		return -1;
+	}
+	*dec_message = malloc(BUFFER_SIZE);
+
+	always_authenticate(o, info);
+
+	rv = fp->C_Decrypt(info->session_handle, enc_message,
+		enc_message_length, *dec_message, &dec_message_length);
+	if (rv != CKR_OK) {
+		free(*dec_message);
+		debug_print("C_Decrypt: rv = 0x%.8lX\n", rv);
+		return -1;
+	}
+	return (int) dec_message_length;
+}
+
 /* Perform encryption and decryption of a message using private key referenced
  * in the  o  object with mechanism defined by  mech.
  *
@@ -32,13 +85,10 @@
  */
 int encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 {
-	CK_RV rv;
-	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
-	CK_MECHANISM sign_mechanism = { CKM_RSA_PKCS, NULL_PTR, 0 };
 	CK_BYTE *message = (CK_BYTE *)SHORT_MESSAGE_TO_SIGN;
 	CK_ULONG message_length = strlen((char*) message);
-	CK_BYTE dec_message[BUFFER_SIZE];
-	CK_ULONG dec_message_length = BUFFER_SIZE;
+	CK_BYTE *dec_message = NULL;
+	int dec_message_length = 0;
 	unsigned char *enc_message;
 	int enc_message_length;
 
@@ -46,56 +96,38 @@ int encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 		debug_print(" [ KEY %s ] Skip non-RSA key for encryption", o->id_str);
 		return 0;
 	}
-
 	/* XXX other supported encryption mechanisms */
 	if (mech->mech != CKM_RSA_X_509 && mech->mech != CKM_RSA_PKCS) {
 		debug_print(" [ KEY %s ] Skip encryption for non-supported mechanism", o->id_str);
 		return 0;
 	}
 
-	sign_mechanism.mechanism = mech->mech;
-	debug_print(" [ KEY %s ] Encrypt message using %s",
+	debug_print(" [ KEY %s ] Encrypt message using CKM_%s",
 		o->id_str, get_mechanism_name(mech->mech));
-	enc_message = malloc(RSA_size(o->key.rsa));
-	if (enc_message == NULL)
-		fail_msg("malloc returned null");
-
-	enc_message_length = RSA_public_encrypt(message_length, message,
-		enc_message, o->key.rsa, RSA_PKCS1_PADDING);
-	if (enc_message_length < 0) {
-		free(enc_message);
-		fail_msg("RSA_public_encrypt: rv = 0x%.8X\n", enc_message_length);
-	}
+	enc_message_length = encrypt_message(o, info,
+	    message, message_length, mech, &enc_message);
+	if (enc_message_length <= 0)
+		return -1;
 
 	debug_print(" [ KEY %s ] Decrypt message", o->id_str);
-	rv = fp->C_DecryptInit(info->session_handle, &sign_mechanism,
-		o->private_handle);
-	if (rv == CKR_KEY_TYPE_INCONSISTENT) {
-		debug_print(" [SKIP %s ] Not allowed to decrypt with this key?", o->id_str);
-		free(enc_message);
-		return 0;
-	}
-	if (rv != CKR_OK)
-		fail_msg("C_DecryptInit: rv = 0x%.8X\n", rv);
-
-	always_authenticate(o, info);
-
-	rv = fp->C_Decrypt(info->session_handle, enc_message,
-		enc_message_length, dec_message, &dec_message_length);
+	dec_message_length = decrypt_message(o, info,
+	    enc_message, enc_message_length, mech, &dec_message);
 	free(enc_message);
-	if (rv != CKR_OK)
-		fail_msg("C_Decrypt: rv = 0x%.8X\n", rv);
+	if (dec_message_length <= 0) {
+		return -1;
+	}
 
-	dec_message[dec_message_length] = '\0';
 	if (memcmp(dec_message, message, dec_message_length) == 0
-			&& dec_message_length == message_length) {
+			&& (unsigned int) dec_message_length == message_length) {
 		debug_print(" [  OK %s ] Text decrypted successfully.", o->id_str);
 		mech->flags |= FLAGS_VERIFY_DECRYPT;
+		free(dec_message);
 		return 1;
-	} else {
-		debug_print(" [ ERROR %s ] Text decryption failed. Recovered text: %s",
-			o->id_str, dec_message);
 	}
+	dec_message[dec_message_length] = '\0';
+	debug_print(" [ ERROR %s ] Text decryption failed. Recovered text: %s",
+		o->id_str, dec_message);
+	free(dec_message);
 	return 0;
 }
 
