@@ -47,10 +47,9 @@ int decrypt_message(test_cert_t *o, token_info_t *info, CK_BYTE *enc_message,
 {
 	CK_RV rv;
 	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
-	CK_MECHANISM dec_mechanism = { CKM_RSA_PKCS, NULL_PTR, 0 };
+	CK_MECHANISM dec_mechanism = { mech->mech, NULL_PTR, 0 };
 	CK_ULONG dec_message_length = BUFFER_SIZE;
 
-	dec_mechanism.mechanism = mech->mech;
 	rv = fp->C_DecryptInit(info->session_handle, &dec_mechanism,
 		o->private_handle);
 	if (rv == CKR_KEY_TYPE_INCONSISTENT) {
@@ -114,9 +113,8 @@ int encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 	dec_message_length = decrypt_message(o, info,
 	    enc_message, enc_message_length, mech, &dec_message);
 	free(enc_message);
-	if (dec_message_length <= 0) {
+	if (dec_message_length <= 0)
 		return -1;
-	}
 
 	if (memcmp(dec_message, message, dec_message_length) == 0
 			&& (unsigned int) dec_message_length == message_length) {
@@ -132,46 +130,14 @@ int encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 	return 0;
 }
 
-/* Perform signature and verication of a message using private key referenced
- * in the  o  object with mechanism defined by  mech. Message length can be
- * specified using argument  message_length.
- *
- * Returns
- *  * 1 for successful Encrypt&Decrypt sequnce
- *  * 0 for skipped test (unsupporedted mechanism, key, ...)
- *  * -1 otherwise.
- *  Serious errors terminate the execution.
- */
-int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
-	CK_ULONG message_length)
+int sign_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
+    CK_ULONG message_length, test_mech_t *mech, unsigned char **sign)
 {
 	CK_RV rv;
 	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
-	CK_MECHANISM sign_mechanism = { CKM_RSA_PKCS, NULL_PTR, 0 };
-	CK_BYTE *message = (CK_BYTE *)SHORT_MESSAGE_TO_SIGN;
-	CK_BYTE *cmp_message = NULL;
-	CK_BYTE *sign = NULL;
+	CK_MECHANISM sign_mechanism = { mech->mech, NULL_PTR, 0 };
 	CK_ULONG sign_length = 0;
-	unsigned int nlen;
-	int dec_message_length, cmp_message_length, type;
 
-	if (message_length > strlen((char *)message))
-		fail_msg("Truncate is longer than the actual message");
-
-	if (o->private_handle == CK_INVALID_HANDLE) {
-		debug_print(" [SKIP %s ] Missing private key", o->id_str);
-		return 0;
-	}
-
-	if (o->type != EVP_PK_EC && o->type != EVP_PK_RSA) {
-		debug_print(" [SKIP %s ] Skip non-RSA and non-EC key", o->id_str);
-		return 0;
-	}
-
-	debug_print(" [ KEY %s ] Signing message of length %lu using CKM_%s",
-		o->id_str, message_length, get_mechanism_name(mech->mech));
-
-	sign_mechanism.mechanism = mech->mech;
 	rv = fp->C_SignInit(info->session_handle, &sign_mechanism,
 		o->private_handle);
 	if (rv == CKR_KEY_TYPE_INCONSISTENT) {
@@ -180,67 +146,66 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 	} else if (rv == CKR_MECHANISM_INVALID) {
 		debug_print(" [SKIP %s ] Bad mechanism. Not supported?", o->id_str);
 		return 0;
-	} else if (rv != CKR_OK)
-		fail_msg("C_SignInit: rv = 0x%.8X\n", rv);
+	} else if (rv != CKR_OK) {
+		debug_print("  C_SignInit: rv = 0x%.8lX\n", rv);
+		return -1;
+	}
 
 	always_authenticate(o, info);
 
 	/* Call C_Sign with NULL argument to find out the real size of signature */
 	rv = fp->C_Sign(info->session_handle,
-		message, message_length, sign, &sign_length);
-	if (rv != CKR_OK)
-		fail_msg("C_Sign: rv = 0x%.8X\n", rv);
+		message, message_length, *sign, &sign_length);
+	if (rv != CKR_OK) {
+		fprintf(stderr, "  C_Sign: rv = 0x%.8lX\n", rv);
+		return -1;
+	}
 
-	sign = malloc(sign_length);
-	if (sign == NULL)
-		fail_msg("malloc failed");
+	*sign = malloc(sign_length);
+	if (*sign == NULL) {
+		fprintf(stderr, "%s: malloc failed", __func__);
+		return -1;
+	}
 
 	/* Call C_Sign with allocated buffer to the the actual signature */
 	rv = fp->C_Sign(info->session_handle,
-		message, message_length, sign, &sign_length);
+		message, message_length, *sign, &sign_length);
 	if (rv != CKR_OK) {
-		free(sign);
-		fail_msg("C_Sign: rv = 0x%.8X\n", rv);
+		free(*sign);
+		fprintf(stderr, "C_Sign: rv = 0x%.8lX\n", rv);
+		return -1;
 	}
+	return sign_length;
+}
 
-	debug_print(" [ KEY %s ] Verify message signature", o->id_str);
-	/* try C_Verify() if it is supported */
-	rv = fp->C_VerifyInit(info->session_handle, &sign_mechanism,
-		o->public_handle);
-	if (rv == CKR_OK) {
-		rv = fp->C_Verify(info->session_handle,
-			message, message_length, sign, sign_length);
-		if (rv == CKR_OK) {
-			mech->flags |= FLAGS_VERIFY_SIGN;
-			free(sign);
-			return 1;
-		} else {
-			debug_print("   C_Verify: rv = 0x%.8lX", rv);
-			debug_print(" [ KEY %s ] Falling back to openssl verification", o->id_str);
-		}
-	} else {
-		debug_print("   C_VerifyInit: rv = 0x%.8lX", rv);
-		debug_print(" [ KEY %s ] Falling back to openssl verification", o->id_str);
-	}
-	dec_message_length = 0;
+int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
+    CK_ULONG message_length, test_mech_t *mech, unsigned char *sign,
+    CK_ULONG sign_length)
+{
+	CK_RV rv;
+	CK_BYTE *cmp_message = NULL;
+	int cmp_message_length;
+
 	if (o->type == EVP_PK_RSA) {
+		int type;
+
 		/* raw RSA mechanism */
 		if (mech->mech == CKM_RSA_PKCS) {
 			CK_BYTE dec_message[BUFFER_SIZE];
-			dec_message_length = RSA_public_decrypt(sign_length, sign,
+			int dec_message_length = RSA_public_decrypt(sign_length, sign,
 				dec_message, o->key.rsa, RSA_PKCS1_PADDING);
-			free(sign);
-			if (dec_message_length < 0)
-				fail_msg("RSA_public_decrypt: rv = %d: %s\n", dec_message_length,
+			if (dec_message_length < 0) {
+				fprintf(stderr, "RSA_public_decrypt: rv = %d: %s\n", dec_message_length,
 					ERR_error_string(ERR_peek_last_error(), NULL));
-			dec_message[dec_message_length] = '\0';
+				return -1;
+			}
 			if (memcmp(dec_message, message, dec_message_length) == 0
 					&& dec_message_length == (int) message_length) {
 				debug_print(" [  OK %s ] Signature is valid.", o->id_str);
 				mech->flags |= FLAGS_VERIFY_SIGN;
 				return 1;
 			} else {
-				debug_print(" [ ERROR %s ] Signature is not valid. Error: %s",
+				fprintf(stderr, " [ ERROR %s ] Signature is not valid. Error: %s",
 					o->id_str, ERR_error_string(ERR_peek_last_error(), NULL));
 				return 0;
 			}
@@ -284,25 +249,26 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 		}
 		rv = RSA_verify(type, cmp_message, cmp_message_length,
 			sign, sign_length, o->key.rsa);
-		free(sign);
 		if (rv == 1) {
 			debug_print(" [  OK %s ] Signature is valid.", o->id_str);
 			mech->flags |= FLAGS_VERIFY_SIGN;
 		 } else {
-			debug_print(" [ ERROR %s ] Signature is not valid. Error: %s",
+			fprintf(stderr, " [ ERROR %s ] Signature is not valid. Error: %s",
 				o->id_str, ERR_error_string(ERR_peek_last_error(), NULL));
 			return -1;
 		}
 	} else if (o->type == EVP_PK_EC) {
+		unsigned int nlen;
 		ECDSA_SIG *sig = ECDSA_SIG_new();
-		if (sig == NULL)
-			fail_msg("ECDSA_SIG_new: failed");
+		if (sig == NULL) {
+			fprintf(stderr, "ECDSA_SIG_new: failed");
+			return -1;
+		}
 		nlen = sign_length/2;
 		BN_bin2bn(&sign[0], nlen, sig->r);
 		BN_bin2bn(&sign[nlen], nlen, sig->s);
-		free(sign);
 		if (mech->mech == CKM_ECDSA_SHA1) {
-			cmp_message = SHA1(message, message_length, NULL); // XXX not thread safe
+			cmp_message = SHA1(message, message_length, NULL);
 			cmp_message_length = SHA_DIGEST_LENGTH;
 		} else {
 			cmp_message = message;
@@ -317,14 +283,88 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 			return 1;
 		} else {
 			ECDSA_SIG_free(sig);
-			debug_print(" [FAIL %s ] ECDSA_do_verify: rv = %lu: %s\n", o->id_str,
+			fprintf(stderr, " [FAIL %s ] ECDSA_do_verify: rv = %lu: %s\n", o->id_str,
 				rv, ERR_error_string(ERR_peek_last_error(), NULL));
 			return -1;
 		}
 	} else {
-		debug_print(" [ KEY %s ] Unknown type. Not verifying", o->id_str);
+		fprintf(stderr, " [ KEY %s ] Unknown type. Not verifying", o->id_str);
 	}
 	return 0;
+}
+
+int verify_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
+    CK_ULONG message_length, test_mech_t *mech, unsigned char *sign,
+    CK_ULONG sign_length)
+{
+	CK_RV rv;
+	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
+	CK_MECHANISM sign_mechanism = { mech->mech, NULL_PTR, 0 };
+
+	/* try C_Verify() if it is supported */
+	rv = fp->C_VerifyInit(info->session_handle, &sign_mechanism,
+		o->public_handle);
+	if (rv != CKR_OK) {
+		debug_print("   C_VerifyInit: rv = 0x%.8lX", rv);
+		goto openssl_verify;
+	}
+	rv = fp->C_Verify(info->session_handle,
+		message, message_length, sign, sign_length);
+	if (rv == CKR_OK) {
+		mech->flags |= FLAGS_VERIFY_SIGN;
+		return 1;
+	}
+	debug_print("   C_Verify: rv = 0x%.8lX", rv);
+
+openssl_verify:
+	debug_print(" [ KEY %s ] Falling back to openssl verification", o->id_str);
+	return verify_message_openssl(o, info, message, message_length, mech,
+		sign, sign_length);
+}
+
+/* Perform signature and verication of a message using private key referenced
+ * in the  o  object with mechanism defined by  mech. Message length can be
+ * specified using argument  message_length.
+ *
+ * Returns
+ *  * 1 for successful Encrypt&Decrypt sequnce
+ *  * 0 for skipped test (unsupporedted mechanism, key, ...)
+ *  * -1 otherwise.
+ *  Serious errors terminate the execution.
+ */
+int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
+	CK_ULONG message_length)
+{
+	CK_BYTE *message = (CK_BYTE *)SHORT_MESSAGE_TO_SIGN;
+	CK_BYTE *sign = NULL;
+	CK_ULONG sign_length = 0;
+	int verify = 0;
+
+	if (message_length > strlen((char *)message))
+		fail_msg("Truncate is longer than the actual message");
+
+	if (o->private_handle == CK_INVALID_HANDLE) {
+		debug_print(" [SKIP %s ] Missing private key", o->id_str);
+		return 0;
+	}
+
+	if (o->type != EVP_PK_EC && o->type != EVP_PK_RSA) {
+		debug_print(" [SKIP %s ] Skip non-RSA and non-EC key", o->id_str);
+		return 0;
+	}
+
+	debug_print(" [ KEY %s ] Signing message of length %lu using CKM_%s",
+		o->id_str, message_length, get_mechanism_name(mech->mech));
+	verify = sign_message(o, info, message, message_length, mech, &sign);
+	if (verify <= 0)
+		return -1;
+	sign_length = (unsigned long) verify;
+
+	debug_print(" [ KEY %s ] Verify message signature", o->id_str);
+	verify = verify_message(o, info, message, message_length, mech,
+		sign, sign_length);
+	free(sign);
+	return verify;
 }
 
 void readonly_tests(void **state) {
