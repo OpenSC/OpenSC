@@ -335,10 +335,13 @@ openssl_verify:
 int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 	CK_ULONG message_length)
 {
-	CK_BYTE *message = (CK_BYTE *)SHORT_MESSAGE_TO_SIGN;
+	CK_BYTE *message_default = (CK_BYTE *)SHORT_MESSAGE_TO_SIGN;
+	CK_BYTE *message = message_default;
 	CK_BYTE *sign = NULL;
 	CK_ULONG sign_length = 0;
 	int verify = 0;
+	int pad_message_length;
+	unsigned char *pad_message = NULL;
 
 	if (message_length > strlen((char *)message))
 		fail_msg("Truncate is longer than the actual message");
@@ -353,6 +356,15 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 		return 0;
 	}
 
+	if (mech->mech == CKM_RSA_X_509) {
+		pad_message_length = (o->bits+7)/8;
+		pad_message = malloc(pad_message_length);
+		RSA_padding_add_PKCS1_type_1(pad_message, pad_message_length,
+		    message, message_length);
+		message_length = pad_message_length;
+		message = pad_message;
+	}
+
 	debug_print(" [ KEY %s ] Signing message of length %lu using CKM_%s",
 		o->id_str, message_length, get_mechanism_name(mech->mech));
 	verify = sign_message(o, info, message, message_length, mech, &sign);
@@ -364,6 +376,8 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 	verify = verify_message(o, info, message, message_length, mech,
 		sign, sign_length);
 	free(sign);
+	if (pad_message != NULL)
+		free(pad_message);
 	return verify;
 }
 

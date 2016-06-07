@@ -59,7 +59,6 @@ void supported_mechanisms_test(void **state) {
 			 * rather than list all of them
 			 */
 			if ((mechanism_info[i].flags & (CKF_SIGN | CKF_VERIFY)) != 0
-					&& mechanism_list[i] != CKM_RSA_X_509 // XXX skip so far
 					&& mechanism_list[i] != CKM_ECDSA
 					&& mechanism_list[i] != CKM_ECDSA_SHA1) {
 				if (token.num_rsa_mechs < MAX_MECHS)
