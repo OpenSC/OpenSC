@@ -36,7 +36,7 @@ libopensc_la_SOURCES = \
 	card-mcrd.c card-starcos.c card-openpgp.c card-jcop.c \
 	card-oberthur.c card-belpic.c card-atrust-acos.c \
 	card-entersafe.c card-epass2003.c card-coolkey.c \
-	card-incrypto34.c card-piv.c card-muscle.c card-acos5.c \
+	card-incrypto34.c card-piv.c card-cac.c card-muscle.c card-acos5.c \
 	card-asepcos.c card-akis.c card-gemsafeV1.c card-rutoken.c \
 	card-rtecp.c card-westcos.c card-myeid.c \
 	card-itacns.c card-authentic.c \
@@ -47,8 +47,9 @@ libopensc_la_SOURCES = \
 	pkcs15-openpgp.c pkcs15-infocamere.c pkcs15-starcert.c \
 	pkcs15-tcos.c pkcs15-esteid.c pkcs15-postecert.c pkcs15-gemsafeGPK.c \
 	pkcs15-actalis.c pkcs15-atrust-acos.c pkcs15-tccardos.c pkcs15-piv.c \
-	pkcs15-esinit.c pkcs15-westcos.c pkcs15-pteid.c pkcs15-oberthur.c \
-	pkcs15-itacns.c pkcs15-gemsafeV1.c pkcs15-sc-hsm.c pkcs15-coolkey.c \
+	pkcs15-cac.c pkcs15-esinit.c pkcs15-westcos.c pkcs15-pteid.c \
+	pkcs15-oberthur.c pkcs15-itacns.c pkcs15-gemsafeV1.c pkcs15-sc-hsm.c \
+	pkcs15-coolkey.c \
 	pkcs15-dnie.c pkcs15-gids.c pkcs15-iasecc.c pkcs15-jpki.c \
 	compression.c p15card-helper.c sm.c \
 	aux-data.c \

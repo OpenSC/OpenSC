@@ -43,6 +43,7 @@ struct sc_pkcs15_emulator_handler builtin_emulators[] = {
 	{ "esteid",	sc_pkcs15emu_esteid_init_ex	},
 	{ "itacns",	sc_pkcs15emu_itacns_init_ex	},
 	{ "postecert",	sc_pkcs15emu_postecert_init_ex  },
+	{ "CAC",        sc_pkcs15emu_cac_init_ex	},
 	{ "PIV-II",     sc_pkcs15emu_piv_init_ex	},
 	{ "gemsafeGPK",	sc_pkcs15emu_gemsafeGPK_init_ex	},
 	{ "gemsafeV1",	sc_pkcs15emu_gemsafeV1_init_ex	},

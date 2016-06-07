@@ -61,17 +61,19 @@
  */
 static inline unsigned short lebytes2ushort(const u8 *bytes) { return (unsigned short)bytes[1] << 8 | (unsigned short)bytes[0]; }
 
+#define CAC_MAX_SIZE 4096		/* arbitrary, just needs to be 'large enough' */
 /*
  *  CAC hardware and APDU constants
  */
 #define CAC_MAX_CHUNK_SIZE 240
-#define CAC_INS_GET_CERTIFICATE 0x36
-#define CAC_INS_SIGN_DECRYPT 0x42
+#define CAC_INS_GET_CERTIFICATE 0x36  /* CAC1 command to read a certificate */
+#define CAC_INS_SIGN_DECRYPT    0x42  /* A crypto operation */
 #define CAC_P1_STEP    0x80
 #define CAC_P1_FINAL   0x00
-#define CAC_INS_READ_FILE    0x52
+#define CAC_INS_READ_FILE       0x52  /* read a TL or V file */
 #define CAC_FILE_TAG    1
 #define CAC_FILE_VALUE  2
+/* TAGS in a TL file */
 #define CAC_TAG_CERTIFICATE           0x70
 #define CAC_TAG_CERTINFO              0x71
 #define CAC_TAG_CUID                  0xF0
@@ -92,6 +94,7 @@ static inline unsigned short lebytes2ushort(const u8 *bytes) { return (unsigned 
 #define CAC_APP_TYPE_PKI        0x04
 
 /* hardware data structures (returned in the CCC) */
+/* part of the card_url */
 typedef struct cac_access_profile {
 	u8 GCACR_listID;
 	u8 GCACR_readTagListACRID;
@@ -110,6 +113,7 @@ typedef struct cac_access_profile {
 	u8 CryptoACR_deleteACRID;
 } cac_access_profile_t;
 
+/* part of the card url */
 typedef struct cac_access_key_info {
 	u8	keyFileID[2];
 	u8	keynumber;
@@ -121,9 +125,9 @@ typedef struct cac_card_url {
 	u8 objectID[2];
 	u8 applicationID[2];
 	cac_access_profile_t accessProfile;
-	u8 pinID;			/* not used for VM cards */
+	u8 pinID;			     /* not used for VM cards */
 	cac_access_key_info_t accessKeyInfo; /* not used for VM cards */
-	u8 keyCryptoAlgorithm; /* not used for VM cards */
+	u8 keyCryptoAlgorithm;               /* not used for VM cards */
 } cac_card_url_t;
 
 typedef struct cac_cuid {
@@ -153,14 +157,19 @@ typedef struct cac_object_list {
 } cac_object_list_t;
 
 /*
- * Flags in  for Current Selected Object Type
+ * Flags for Current Selected Object Type
+ *   CAC files are TLV files, with TL and V separated. For generic
+ *   containers we reintegrate the TL anv V portions into a single 
+ *   file to read. Certs are also TLV files, but pkcs15 wants the
+ *   actual certificate. At select time we know the patch which tells
+ *   us what time of files we want to read. We remember that type
+ *   so that read_binary can do the appropriate processing.
  */
-
 #define CAC_OBJECT_TYPE_CERT		1
 #define CAC_OBJECT_TYPE_TLV_FILE	4
 
 /*
- * CAC private data operations
+ * CAC private data per card state
  */
 typedef struct cac_private_data {
 	int object_type;		/* select set this so we know how to read the file */
@@ -168,9 +177,9 @@ typedef struct cac_private_data {
 	u8 *cache_buf;			/* cached version of the currently selected file */
 	size_t cache_buf_len;		/* length of the cached selected file */
 	int cached;			/* is the cached selected file valid */
-	cac_cuid_t cuid;
-	u8 *cac_id;
-	size_t cac_id_len;
+	cac_cuid_t cuid;                /* card unique ID from the CCC */
+	u8 *cac_id;                     /* card serial number */
+	size_t cac_id_len;              /* card serial number len */
 	cac_object_list_t pki_list;              /* list of pki containers */
 	cac_object_list_entry_t *pki_current;    /* current pki object  _ctl function */
 	cac_object_list_t general_list;          /* list of general containers */
@@ -197,76 +206,6 @@ static void cac_free_private_data(cac_private_data_t *priv)
 	free(priv);
 	return;
 }
-
-
-/*
- * Set up the nomal CAC paths
- */
-#define CAC_STRING_AND_LENGTH(x)  x, sizeof(x)-1
-#define CAC_TO_AID(x) CAC_STRING_AND_LENGTH(x)
-#define CAC_TO_PATH_VALUE(x) CAC_STRING_AND_LENGTH(x)
-#define CAC_NULL_PATH { 0 }, 0
-
-#define CAC_2_RID "\xA0\x00\x00\x01\x16"
-#define CAC_1_RID "\xA0\x00\x00\x00\x79"
-#define CAC_1_CM_AID "\xA0\x00\x00\x00\x30\x00\00"
-
-static const sc_path_t cac_CCC_Path = {
-	CAC_TO_PATH_VALUE(""),
-	0,0,SC_PATH_TYPE_DF_NAME,
-	{ CAC_TO_AID(CAC_2_RID "\xDB\x00") }
-};
-
-static const sc_path_t cac_cac1_card_manager = {
-	CAC_TO_PATH_VALUE(""),
-	0,0,SC_PATH_TYPE_DF_NAME,
-	{ CAC_TO_AID(CAC_1_CM_AID) }
-};
-#define MAX_CAC_SLOTS 10
-static const char *cac_labels[MAX_CAC_SLOTS] = {
-	"CAC ID Certificate",
-	"CAC Email Signature Certificate",
-	"CAC Email Encryption Certificate",
-	"CAC Cert 3",
-	"CAC Cert 4",
-	"CAC Cert 5",
-	"CAC Cert 6",
-	"CAC Cert 7",
-	"CAC Cert 8",
-	"CAC Cert 9"
-};
-
-/* template for a cac1 pki object */
-static const cac_object_t cac_cac1_pki_obj= {
-	"CAC Certificate", 0x0, { CAC_NULL_PATH, 0,0,SC_PATH_TYPE_DF_NAME,
-	{ CAC_TO_AID(CAC_1_RID "\x01\x00") } }
-};
-
-/* template for cac1 cuid */
-static const cac_cuid_t cac_cac1_cuid = {
-	{ 0xa0, 0x00, 0x00, 0x00, 0x79 },
-	2, 2, 0
-};
-
-/*
- *  CAC 1 general objectes defined in 4.3.1.2 of CAC Applet Developer Guide Version 1.0.
- */
-static const cac_object_t cac_1_objects[] = {
-	{ "Person Instance", 0x200, { CAC_NULL_PATH, 0, 0, SC_PATH_TYPE_DF_NAME,
-		{ CAC_TO_AID(CAC_1_RID "\x02\x00") }}},
-	{ "Personnel", 0x201, { CAC_NULL_PATH, 0, 0, SC_PATH_TYPE_DF_NAME,
-		{ CAC_TO_AID(CAC_1_RID "\x02\x01") }}},
-	{ "Benefits", 0x202, { CAC_NULL_PATH, 0, 0, SC_PATH_TYPE_DF_NAME,
-		{ CAC_TO_AID(CAC_1_RID "\x02\x02") }}},
-	{ "Other Benefits", 0x202, { CAC_NULL_PATH, 0, 0, SC_PATH_TYPE_DF_NAME,
-		{ CAC_TO_AID(CAC_1_RID "\x02\x02") }}},
-	{ "PKI Credential", 0x2FD, { CAC_NULL_PATH, 0, 0, SC_PATH_TYPE_DF_NAME,
-		{ CAC_TO_AID(CAC_1_RID "\x02\xFD") }}},
-	{ "PKI Certificate", 0x2FE, { CAC_NULL_PATH, 0, 0, SC_PATH_TYPE_DF_NAME,
-		{ CAC_TO_AID(CAC_1_RID "\x02\xFE") }}},
-};
-
-static const int cac_1_object_count = sizeof(cac_1_objects)/sizeof(cac_1_objects[0]);
 
 /*
  * Object list operations
@@ -299,8 +238,81 @@ static void cac_free_object_list(struct cac_object_list *list)
 	}
 }
 
+
 /*
- * use the object id to find our object info on the object
+ * Set up the normal CAC paths
+ */
+#define CAC_STRING_AND_LENGTH(x)  x, sizeof(x)-1
+#define CAC_TO_AID(x) CAC_STRING_AND_LENGTH(x)
+#define CAC_TO_PATH_VALUE(x) CAC_STRING_AND_LENGTH(x)
+#define CAC_NULL_PATH { 0 }, 0
+
+#define CAC_2_RID "\xA0\x00\x00\x01\x16"
+#define CAC_1_RID "\xA0\x00\x00\x00\x79"
+#define CAC_1_CM_AID "\xA0\x00\x00\x00\x30\x00\00"
+
+static const sc_path_t cac_CCC_Path = {
+	CAC_TO_PATH_VALUE(""),
+	0,0,SC_PATH_TYPE_DF_NAME,
+	{ CAC_TO_AID(CAC_2_RID "\xDB\x00") }
+};
+
+static const sc_path_t cac_cac1_card_manager = {
+	CAC_TO_PATH_VALUE(""),
+	0,0,SC_PATH_TYPE_DF_NAME,
+	{ CAC_TO_AID(CAC_1_CM_AID) }
+};
+#define MAX_CAC_SLOTS 10		/* arbitrary, just needs to be 'large enough' */
+/* default certificate labels for the CAC card */
+static const char *cac_labels[MAX_CAC_SLOTS] = {
+	"CAC ID Certificate",
+	"CAC Email Signature Certificate",
+	"CAC Email Encryption Certificate",
+	"CAC Cert 3",
+	"CAC Cert 4",
+	"CAC Cert 5",
+	"CAC Cert 6",
+	"CAC Cert 7",
+	"CAC Cert 8",
+	"CAC Cert 9"
+};
+
+/* template for a cac1 pki object */
+static const cac_object_t cac_cac1_pki_obj= {
+	"CAC Certificate", 0x0, { CAC_NULL_PATH, 0,0,SC_PATH_TYPE_DF_NAME,
+	{ CAC_TO_AID(CAC_1_RID "\x01\x00") } }
+};
+
+/* template for cac1 cuid */
+static const cac_cuid_t cac_cac1_cuid = {
+	{ 0xa0, 0x00, 0x00, 0x00, 0x79 },
+	2, 2, 0
+};
+
+/*
+ *  CAC-1 general objectes defined in 4.3.1.2 of CAC Applet Developer Guide Version 1.0.
+ *   doubles as a source for CAC-2 labels.
+ */
+static const cac_object_t cac_1_objects[] = {
+	{ "Person Instance", 0x200, { CAC_NULL_PATH, 0, 0, SC_PATH_TYPE_DF_NAME,
+		{ CAC_TO_AID(CAC_1_RID "\x02\x00") }}},
+	{ "Personnel", 0x201, { CAC_NULL_PATH, 0, 0, SC_PATH_TYPE_DF_NAME,
+		{ CAC_TO_AID(CAC_1_RID "\x02\x01") }}},
+	{ "Benefits", 0x202, { CAC_NULL_PATH, 0, 0, SC_PATH_TYPE_DF_NAME,
+		{ CAC_TO_AID(CAC_1_RID "\x02\x02") }}},
+	{ "Other Benefits", 0x202, { CAC_NULL_PATH, 0, 0, SC_PATH_TYPE_DF_NAME,
+		{ CAC_TO_AID(CAC_1_RID "\x02\x02") }}},
+	{ "PKI Credential", 0x2FD, { CAC_NULL_PATH, 0, 0, SC_PATH_TYPE_DF_NAME,
+		{ CAC_TO_AID(CAC_1_RID "\x02\xFD") }}},
+	{ "PKI Certificate", 0x2FE, { CAC_NULL_PATH, 0, 0, SC_PATH_TYPE_DF_NAME,
+		{ CAC_TO_AID(CAC_1_RID "\x02\xFE") }}},
+};
+
+static const int cac_1_object_count = sizeof(cac_1_objects)/sizeof(cac_1_objects[0]);
+
+
+/*
+ * use the object id to find our object info on the object in our CAC-1 list
  */
 static const cac_object_t *cac_find_obj_by_id(unsigned short object_id)
 {
@@ -334,11 +346,12 @@ static int cac_is_cert(cac_private_data_t * priv, const sc_path_t *in_path)
 
 /*
  * Send a command and receive data. 
- * GET DATA may call to get the first 128 bytes to get the length from the tag.
  *
  * A caller may provide a buffer, and length to read. If not provided,
  * an internal 4096 byte buffer is used, and a copy is returned to the
  * caller. that need to be freed by the caller.
+ *
+ * modelled after a similiar function in card-piv.c
  */
 
 static int cac_apdu_io(sc_card_t *card, int ins, int p1, int p2,
@@ -347,7 +360,7 @@ static int cac_apdu_io(sc_card_t *card, int ins, int p1, int p2,
 {
 	int r;
 	sc_apdu_t apdu;
-	u8 rbufinitbuf[4096];
+	u8 rbufinitbuf[CAC_MAX_SIZE];
 	u8 *rbuf;
 	size_t rbuflen;
 	int find_len = 0;
@@ -425,7 +438,7 @@ err:
 }
 
 /*
- * Read a CAC TLV file. Parameters specify if the TLV file is Tag length, or Value type
+ * Read a CAC TLV file. Parameters specify if the TLV file is TL (Tag/Length) file or a V (value) file
  */
 #define HIGH_BYTE_OF_SHORT(x) (((x)>> 8) & 0xff)
 #define LOW_BYTE_OF_SHORT(x) ((x) & 0xff)
@@ -482,7 +495,7 @@ fail:
  */
 static int cac_cac1_get_certificate(sc_card_t *card, u8 **out_buf, size_t *out_len)
 {
-	u8 buf[4096];
+	u8 buf[CAC_MAX_SIZE];
 	u8 *out_ptr;
 	size_t size = 0;
 	size_t left = 0;
@@ -506,6 +519,7 @@ static int cac_cac1_get_certificate(sc_card_t *card, u8 **out_buf, size_t *out_l
 		if (r < 0) {
 		 	break;
 		}
+		/* in the old CAC-1, 0x63 means 'more data' in addition to 'pin failed' */
 		if (apdu.sw1 != 0x63)  {
 			/* we've either finished reading, or hit an error, break */
 			r = sc_check_sw(card, apdu.sw1, apdu.sw2);
@@ -529,14 +543,12 @@ static int cac_cac1_get_certificate(sc_card_t *card, u8 **out_buf, size_t *out_l
 	return r;
 }
 
-/* create a fact tag for cac1 cards based on the val_len */
+/* create a fake tag/length file for cac1 cards based on the val_len */
 static int cac_cac1_get_cert_tag(sc_card_t *card, size_t val_len, u8 **tlp, size_t *tl_len_p) 
 {
 	static const u8 cac_cac1_cert_tag[] = { CAC_TAG_CERTINFO, 1, CAC_TAG_CERTIFICATE, 0xff, 0, 0 };
 	u8 *tl;
 	size_t tl_len;
-	/* SPICE CAC emulator only emulates a CAC_I without the TAG FILE, if we hit this
-	 * case, create a FAKE_TAG_FILE */
 	tl_len = sizeof(cac_cac1_cert_tag);
 	tl = malloc(tl_len);
 	if (tl == NULL) {
@@ -618,8 +630,8 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 	if (priv->object_type <= 0)
 		 SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INTERNAL);
 
-	if ((card->type == SC_CARD_TYPE_CAC_I) || (priv->object_type == CAC_OBJECT_TYPE_CERT)) {
-		/* SPICE smart card emulator only presents CAC I cards with the old CAC I interface as
+	if ((card->type == SC_CARD_TYPE_CAC_I) && (priv->object_type == CAC_OBJECT_TYPE_CERT)) {
+		/* SPICE smart card emulator only presents CAC-1 cards with the old CAC-1 interface as
 		 * certs. If we are a cac 1 card, use the old interface */
 		r = cac_cac1_get_certificate(card, &val, &val_len);
 		if (r < 0)
@@ -648,7 +660,6 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 			goto done;
 		}
 		priv->cache_buf_len = tlv_len;
-		
 
 		for (tl_ptr = tl, val_ptr=val, tlv_ptr = priv->cache_buf; 
 				tl_len > 2 && val_len > 0 && tlv_len > 0;
@@ -675,7 +686,7 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 		
 	case CAC_OBJECT_TYPE_CERT:
 		/* read file */
-	    sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL," obj= cert_file, val_len=%d (0x%04x)", val_len, val_len);
+	    	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL," obj= cert_file, val_len=%d (0x%04x)", val_len, val_len);
 		cert_len = 0;
 		cert_ptr = NULL;
 		cert_type = 0;
@@ -696,6 +707,7 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 				break;
 			}
 		}
+		/* if the info byte is 1, then the cert is compressed, decompress it */
 		if ((cert_type & 0x3) == 1) {
 			r= sc_decompress_alloc(&priv->cache_buf, &priv->cache_buf_len, cert_ptr, cert_len, COMPRESSION_AUTO);
 			if (r)
@@ -758,6 +770,7 @@ static int cac_fill_object_info(cac_object_list_entry_t **entry, sc_pkcs15_data_
 	obj = &(*entry)->obj;
 	*entry =(*entry)->next;
 	obj_info->path = obj->path;
+	obj_info->path.count = CAC_MAX_SIZE-1; /* read something from the object */ 
 	obj_info->id.value[0] = (obj->fd >> 8) & 0xff;
 	obj_info->id.value[1] = obj->fd & 0xff;
 	obj_info->id.len = 2;
@@ -859,8 +872,6 @@ static int cac_set_security_env(sc_card_t *card, const sc_security_env_t *env, i
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"flags=%08x op=%d alg=%d algf=%08x algr=%08x kr0=%02x, krfl=%d\n",
 			env->flags, env->operation, env->algorithm, env->algorithm_flags,
 			env->algorithm_ref, env->key_ref[0], env->key_ref_len);
-
-	/* record the path so we can select the applet under the lock */
 
 	if (env->algorithm != SC_ALGORITHM_RSA) {
 		 r = SC_ERROR_NO_CARD_SUPPORT;
@@ -970,7 +981,7 @@ static int cac_decipher(sc_card_t *card,
 }
 
 /*
- * CAC cards use SC_PATH_SELECT_OBJECT_ID * rather than SC_PATH_SELECT_FILE_ID. In order to use more 
+ * CAC cards use SC_PATH_SELECT_OBJECT_ID rather than SC_PATH_SELECT_FILE_ID. In order to use more 
  * of the PKCS #15 structure, we call the selection SC_PATH_SELECT_FILE_ID, but we set p1 to 2 instead 
  * of 0. Also cac1 does not do any FCI, but it doesn't understand not selecting it. It returns invalid INS
  * if it doesn't like anything about the select, so we always 'request' FCI for CAC1
@@ -1111,7 +1122,7 @@ static int cac_select_file_by_type(sc_card_t *card, const sc_path_t *in_path, sc
 	if (file == NULL)
 			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 	file->path = *in_path;
-	file->size=4096; /* we don't know how big, just give a large size until we can read the file */
+	file->size = CAC_MAX_SIZE; /* we don't know how big, just give a large size until we can read the file */
 
 	*file_out = file;
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
@@ -1120,7 +1131,7 @@ static int cac_select_file_by_type(sc_card_t *card, const sc_path_t *in_path, sc
 
 static int cac_select_file(sc_card_t *card, const sc_path_t *in_path, sc_file_t **file_out)
 {
-	return cac_select_file_by_type(card,in_path,file_out,card->type);
+	return cac_select_file_by_type(card, in_path, file_out, card->type);
 }
 
 static int cac_finish(sc_card_t *card)
@@ -1360,6 +1371,7 @@ static int cac_find_first_pki_applet(sc_card_t *card, int *index_out)
 
 /*
  * CAC-1 has been found, identify all the certs and general containers.
+ * This emulates CAC-2's CCC.
  */
 static int cac_populate_cac_1(sc_card_t *card, int index, cac_private_data_t *priv)
 {
@@ -1368,7 +1380,8 @@ static int cac_populate_cac_1(sc_card_t *card, int index, cac_private_data_t *pr
 	u8 buf[100];
 	u8 *val;
 	size_t val_len;
-	
+
+	/* populate PKI objects */	
 	for (i=index; i < MAX_CAC_SLOTS; i++) {
 		r = cac_select_pki_applet(card, i);
 		if (r == SC_SUCCESS) {
@@ -1393,15 +1406,7 @@ static int cac_populate_cac_1(sc_card_t *card, int index, cac_private_data_t *pr
 	 * create a cuid to simulate the cac 2 cuid.
 	 */
 	priv->cuid = cac_cac1_cuid;
-	r = cac_select_file_by_type(card, &cac_cac1_card_manager, NULL, SC_CARD_TYPE_CAC_I);
-	if (r == SC_SUCCESS) {
-		priv->cac_id = NULL;
-		r = cac_apdu_io(card, 0xca, 0, 0, NULL, 0, &priv->cac_id, &priv->cac_id_len);
-		if (r >= 0) {
-			return SC_SUCCESS;
-		}
-	}
-	/* couldn't read a real serial number, create one from the first 100 bytes of the
+	/* create a serial number by hashing the first 100 bytes of the
 	 * first certificate on the card */
 	r = cac_select_pki_applet(card, index);
 	if (r < 0) {
@@ -1429,7 +1434,7 @@ static int cac_find_and_initialize(sc_card_t *card)
 	int r, index;
 	cac_private_data_t *priv = NULL;
 
-	/* alread found? */
+	/* already found? */
 	if (card->drv_data) {
 		return SC_SUCCESS;
 	}
@@ -1483,7 +1488,6 @@ static int cac_match_card(sc_card_t *card)
 }
 
 
-/* XXXX not complete yet */
 static int cac_init(sc_card_t *card)
 {
 	int r;
