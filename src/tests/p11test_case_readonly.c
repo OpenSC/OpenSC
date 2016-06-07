@@ -21,19 +21,6 @@
 
 #include "p11test_case_readonly.h"
 
-void always_authenticate(test_cert_t *o, token_info_t *info)
-{
-	CK_RV rv;
-	if (!o->always_auth)
-		return;
-
-	rv = info->function_pointer->C_Login(info->session_handle,
-		CKU_CONTEXT_SPECIFIC, info->pin, info->pin_length);
-	if (rv != CKR_OK) {
-		fail_msg(" [ SKIP %s ] Re-authentication failed", o->id_str);
-	}
-}
-
 /* Perform encryption and decryption of a message using private key referenced
  * in the  o  object with mechanism defined by  mech.
  *

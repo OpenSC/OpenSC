@@ -57,6 +57,8 @@ typedef struct {
 	test_cert_t *data;
 } test_certs_t;
 
+void always_authenticate(test_cert_t *o, token_info_t *info);
+
 int search_objects(test_certs_t *objects, token_info_t *info,
 	CK_ATTRIBUTE filter[], CK_LONG filter_size, CK_ATTRIBUTE template[], CK_LONG template_size,
 	int (*callback)(test_certs_t *, CK_ATTRIBUTE[], unsigned int, CK_OBJECT_HANDLE));
