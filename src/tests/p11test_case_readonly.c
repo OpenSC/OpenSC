@@ -60,7 +60,8 @@ int decrypt_message(test_cert_t *o, token_info_t *info, CK_BYTE *enc_message,
 		debug_print("C_DecryptInit: rv = 0x%.8lX\n", rv);
 		return -1;
 	}
-	*dec_message = malloc(BUFFER_SIZE);
+
+	*dec_message = malloc(dec_message_length);
 
 	always_authenticate(o, info);
 
@@ -68,7 +69,7 @@ int decrypt_message(test_cert_t *o, token_info_t *info, CK_BYTE *enc_message,
 		enc_message_length, *dec_message, &dec_message_length);
 	if (rv != CKR_OK) {
 		free(*dec_message);
-		debug_print("C_Decrypt: rv = 0x%.8lX\n", rv);
+		debug_print("  C_Decrypt: rv = 0x%.8lX\n", rv);
 		return -1;
 	}
 	return (int) dec_message_length;
@@ -162,7 +163,6 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 		return 0;
 	}
 
-	sign_mechanism.mechanism = mech->mech;
 	if (o->type != EVP_PK_EC && o->type != EVP_PK_RSA) {
 		debug_print(" [SKIP %s ] Skip non-RSA and non-EC key", o->id_str);
 		return 0;
@@ -171,6 +171,7 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 	debug_print(" [ KEY %s ] Signing message of length %lu using CKM_%s",
 		o->id_str, message_length, get_mechanism_name(mech->mech));
 
+	sign_mechanism.mechanism = mech->mech;
 	rv = fp->C_SignInit(info->session_handle, &sign_mechanism,
 		o->private_handle);
 	if (rv == CKR_KEY_TYPE_INCONSISTENT) {

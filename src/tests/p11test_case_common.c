@@ -234,8 +234,6 @@ int callback_public_keys(test_certs_t *objects,
 	/* check if we get the same public key as from the certificate */
 	if (o->key_type == CKK_RSA) {
 		RSA *rsa = RSA_new();
-		o->bits = (template[6].ulValueLen != (CK_ULONG) -1)
-			? *((CK_ULONG *)template[6].pValue) : 0;
 		rsa->n = BN_bin2bn(template[4].pValue, template[4].ulValueLen, NULL);
 		rsa->e = BN_bin2bn(template[5].pValue, template[5].ulValueLen, NULL);
 		if (BN_cmp(o->key.rsa->n, rsa->n) != 0 ||
@@ -382,7 +380,6 @@ void search_for_all_objects(test_certs_t *objects, token_info_t *info)
 			{ CKA_ID, NULL, 0},
 			{ CKA_MODULUS, NULL, 0},
 			{ CKA_PUBLIC_EXPONENT, NULL, 0},
-			{ CKA_MODULUS_BITS, NULL, 0},
 			{ CKA_EC_PARAMS, NULL, 0},
 			{ CKA_EC_POINT, NULL, 0},
 	};
