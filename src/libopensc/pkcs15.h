@@ -129,7 +129,7 @@ struct sc_pkcs15_auth_info {
 	/* authentication method: CHV, SEN, SYMBOLIC, ... */
 	unsigned int  auth_method;
 
-	int tries_left, max_tries;
+	int tries_left, max_tries, logged_in;
 	int max_unlocks;
  };
 typedef struct sc_pkcs15_auth_info sc_pkcs15_auth_info_t;
@@ -749,6 +749,8 @@ int sc_pkcs15_unblock_pin(struct sc_pkcs15_card *card,
 			 struct sc_pkcs15_object *pin_obj,
 			 const u8 *puk, size_t puklen,
 			 const u8 *newpin, size_t newpinlen);
+int sc_pkcs15_get_pin_info(struct sc_pkcs15_card *card,
+			 struct sc_pkcs15_object *pin_obj);
 int sc_pkcs15_find_pin_by_auth_id(struct sc_pkcs15_card *card,
 				  const struct sc_pkcs15_id *id,
 				  struct sc_pkcs15_object **out);

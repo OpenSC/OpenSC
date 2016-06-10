@@ -1561,6 +1561,7 @@ authentic_pin_get_policy (struct sc_card *card, struct sc_pin_cmd_data *data)
 	data->pin1.offset = 5;
 	data->pin1.pad_char = 0xFF;
 	data->pin1.pad_length = data->pin1.max_length;
+	data->pin1.logged_in = SC_PIN_STATE_UNKNOWN;
 
 	data->flags |= SC_PIN_CMD_NEED_PADDING;
 

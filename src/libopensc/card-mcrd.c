@@ -1420,6 +1420,7 @@ static int mcrd_pin_cmd(sc_card_t * card, struct sc_pin_cmd_data *data,
 			return SC_ERROR_INTERNAL;
 		data->pin1.tries_left = buf[5];
 		data->pin1.max_tries = buf[2];
+		data->pin1.logged_in = SC_PIN_STATE_UNKNOWN;
 		return SC_SUCCESS;
 	}
 
