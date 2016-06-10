@@ -52,3 +52,5 @@ TODO:
  * Verify EC Public key with Certificate
  * Selection of the card/slot
  * Interface for results reporting?
+ * Multipart mechanisms with hashes
+ * Keygen write tests (optional)
