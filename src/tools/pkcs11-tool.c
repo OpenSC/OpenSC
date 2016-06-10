@@ -1163,6 +1163,15 @@ static int login(CK_SESSION_HANDLE session, int login_type)
 
 	if (!pin && !(info.flags & CKF_PROTECTED_AUTHENTICATION_PATH)) {
 			printf("Logging in to \"%s\".\n", p11_utf8_to_local(info.label, sizeof(info.label)));
+		if ((login_type == CKU_SO && info.flags & CKF_SO_PIN_COUNT_LOW) ||
+				(login_type == CKU_USER && info.flags & CKF_USER_PIN_COUNT_LOW))
+			printf("WARNING: PIN count low\n");
+		else if ((login_type == CKU_SO && info.flags & CKF_SO_PIN_FINAL_TRY) ||
+				(login_type == CKU_USER && info.flags & CKF_USER_PIN_FINAL_TRY))
+			printf("WARNING: PIN final try\n");
+		else if ((login_type == CKU_SO && info.flags & CKF_SO_PIN_LOCKED) ||
+				(login_type == CKU_USER && info.flags & CKF_USER_PIN_LOCKED)) /* PIN is reported as locked but try to continue */
+			printf("WARNING: PIN reported locked\n"); 
 		if (login_type == CKU_SO)
 			printf("Please enter SO PIN: ");
 		else if (login_type == CKU_USER)
