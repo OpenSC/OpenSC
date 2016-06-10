@@ -21,10 +21,22 @@
 
 #include "p11test_case_readonly.h"
 
+unsigned char *rsa_x_509_pad_message(const unsigned char *message,
+	unsigned long *message_length, test_cert_t *o)
+{
+	int pad_message_length = (o->bits+7)/8;
+	unsigned char *pad_message = malloc(pad_message_length);
+	RSA_padding_add_PKCS1_type_1(pad_message, pad_message_length,
+	    message, *message_length);
+	*message_length = pad_message_length;
+	return pad_message;
+}
+
 int encrypt_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
     CK_ULONG message_length, test_mech_t *mech, unsigned char **enc_message)
 {
-	int enc_message_length;
+	int rv;
+	int padding;
 
 	*enc_message = malloc(RSA_size(o->key.rsa));
 	if (*enc_message == NULL) {
@@ -32,14 +44,15 @@ int encrypt_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 		return -1;
 	}
 
-	enc_message_length = RSA_public_encrypt(message_length, message,
-		*enc_message, o->key.rsa, RSA_PKCS1_PADDING);
-	if (enc_message_length < 0) {
+	padding = ((mech->mech == CKM_RSA_X_509) ? RSA_NO_PADDING : RSA_PKCS1_PADDING);
+	rv = RSA_public_encrypt(message_length, message,
+		*enc_message, o->key.rsa, padding);
+	if (rv < 0) {
 		free(*enc_message);
-		debug_print("RSA_public_encrypt: rv = 0x%.8X\n", enc_message_length);
+		debug_print("RSA_public_encrypt: rv = 0x%.8X\n", rv);
 		return -1;
 	}
-	return enc_message_length;
+	return rv;
 }
 
 int decrypt_message(test_cert_t *o, token_info_t *info, CK_BYTE *enc_message,
@@ -90,7 +103,7 @@ int encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 	CK_BYTE *dec_message = NULL;
 	int dec_message_length = 0;
 	unsigned char *enc_message;
-	int enc_message_length;
+	int enc_message_length, rv;
 
 	if (o->type != EVP_PK_RSA) {
 		debug_print(" [ KEY %s ] Skip non-RSA key for encryption", o->id_str);
@@ -101,6 +114,9 @@ int encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 		debug_print(" [ KEY %s ] Skip encryption for non-supported mechanism", o->id_str);
 		return 0;
 	}
+
+	if (mech->mech == CKM_RSA_X_509)
+		message = rsa_x_509_pad_message(message, &message_length, o);
 
 	debug_print(" [ KEY %s ] Encrypt message using CKM_%s",
 		o->id_str, get_mechanism_name(mech->mech));
@@ -120,14 +136,17 @@ int encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 			&& (unsigned int) dec_message_length == message_length) {
 		debug_print(" [  OK %s ] Text decrypted successfully.", o->id_str);
 		mech->flags |= FLAGS_VERIFY_DECRYPT;
-		free(dec_message);
-		return 1;
+		rv = 1;
+	} else {
+		dec_message[dec_message_length] = '\0';
+		debug_print(" [ ERROR %s ] Text decryption failed. Recovered text: %s",
+			o->id_str, dec_message);
+		rv = 0;
 	}
-	dec_message[dec_message_length] = '\0';
-	debug_print(" [ ERROR %s ] Text decryption failed. Recovered text: %s",
-		o->id_str, dec_message);
 	free(dec_message);
-	return 0;
+	if (mech->mech == CKM_RSA_X_509)
+		free(message);
+	return rv;
 }
 
 int sign_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
@@ -190,10 +209,12 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 		int type;
 
 		/* raw RSA mechanism */
-		if (mech->mech == CKM_RSA_PKCS) {
+		if (mech->mech == CKM_RSA_PKCS || mech->mech == CKM_RSA_X_509) {
 			CK_BYTE dec_message[BUFFER_SIZE];
+			int padding = ((mech->mech == CKM_RSA_X_509)
+				? RSA_NO_PADDING : RSA_PKCS1_PADDING);
 			int dec_message_length = RSA_public_decrypt(sign_length, sign,
-				dec_message, o->key.rsa, RSA_PKCS1_PADDING);
+				dec_message, o->key.rsa, padding);
 			if (dec_message_length < 0) {
 				fprintf(stderr, "RSA_public_decrypt: rv = %d: %s\n", dec_message_length,
 					ERR_error_string(ERR_peek_last_error(), NULL));
@@ -340,8 +361,6 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 	CK_BYTE *sign = NULL;
 	CK_ULONG sign_length = 0;
 	int verify = 0;
-	int pad_message_length;
-	unsigned char *pad_message = NULL;
 
 	if (message_length > strlen((char *)message))
 		fail_msg("Truncate is longer than the actual message");
@@ -356,14 +375,8 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 		return 0;
 	}
 
-	if (mech->mech == CKM_RSA_X_509) {
-		pad_message_length = (o->bits+7)/8;
-		pad_message = malloc(pad_message_length);
-		RSA_padding_add_PKCS1_type_1(pad_message, pad_message_length,
-		    message, message_length);
-		message_length = pad_message_length;
-		message = pad_message;
-	}
+	if (mech->mech == CKM_RSA_X_509)
+		message = rsa_x_509_pad_message(message, &message_length, o);
 
 	debug_print(" [ KEY %s ] Signing message of length %lu using CKM_%s",
 		o->id_str, message_length, get_mechanism_name(mech->mech));
@@ -376,8 +389,8 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 	verify = verify_message(o, info, message, message_length, mech,
 		sign, sign_length);
 	free(sign);
-	if (pad_message != NULL)
-		free(pad_message);
+	if (mech->mech == CKM_RSA_X_509)
+		free(message);
 	return verify;
 }
 
