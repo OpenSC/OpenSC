@@ -2352,6 +2352,7 @@ epass2003_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries
 			LOG_TEST_RET(card->ctx, r, "get max counter failed");
 
 			data->pin1.max_tries = maxtries;
+			data->pin1.logged_in = SC_PIN_STATE_UNKNOWN;
 		}
 
 		return r;

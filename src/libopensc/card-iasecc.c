@@ -2230,6 +2230,7 @@ iasecc_pin_get_policy (struct sc_card *card, struct sc_pin_cmd_data *data)
 
 	data->pin1.encoding = SC_PIN_ENCODING_ASCII;
 	data->pin1.offset = 5;
+	data->pin1.logged_in = SC_PIN_STATE_UNKNOWN;
 
 	sc_log(ctx, "PIN policy: size max/min %i/%i, tries max/left %i/%i",
 				data->pin1.max_length, data->pin1.min_length,
