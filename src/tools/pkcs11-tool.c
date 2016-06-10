@@ -3031,7 +3031,7 @@ static void show_dobj(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 	if (getPRIVATE(sess, obj))
 		printf(" private");
 	if (!getMODIFIABLE(sess, obj) && !getPRIVATE(sess, obj))
-		printf("<empty>\n");
+		printf("<empty>");
 
 	printf ("\n");
 	suppress_warn = 0;
