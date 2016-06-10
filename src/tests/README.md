@@ -50,3 +50,5 @@ TODO:
  * Read pin from environment variable?
  * Work with cards without certificates (Private + Public keys)
  * Verify EC Public key with Certificate
+ * Selection of the card/slot
+ * Interface for results reporting?
