@@ -57,8 +57,8 @@
 #define SCARD_ATTR_VENDOR_IFD_VERSION SCARD_ATTR_VALUE(SCARD_CLASS_VENDOR_INFO, 0x0102) /**< Vendor-supplied interface device version (DWORD in the form 0xMMmmbbbb where MM = major version, mm = minor version, and bbbb = build number). */
 
 /* Logging */
-#define PCSC_TRACE(reader, desc, rv) do { sc_log(reader->ctx, "%s:" desc ": 0x%08lx\n", reader->name, rv); } while (0)
-#define PCSC_LOG(ctx, desc, rv) do { sc_log(ctx, desc ": 0x%08lx\n", rv); } while (0)
+#define PCSC_TRACE(reader, desc, rv) do { sc_log(reader->ctx, "%s:" desc ": 0x%08lx\n", reader->name, (unsigned long)((ULONG)rv)); } while (0)
+#define PCSC_LOG(ctx, desc, rv) do { sc_log(ctx, desc ": 0x%08lx\n", (unsigned long)((ULONG)rv)); } while (0)
 
 /* Utility for handling big endian IOCTL codes. */
 #define dw2i_be(a, x) ((((((a[x] << 8) + a[x+1]) << 8) + a[x+2]) << 8) + a[x+3])
@@ -459,6 +459,8 @@ static int pcsc_reconnect(sc_reader_t * reader, DWORD action)
 			    priv->gpriv->connect_exclusive ? SCARD_SHARE_EXCLUSIVE : SCARD_SHARE_SHARED,
 			    protocol, action, &active_proto);
 
+	
+	PCSC_TRACE(reader, "SCardReconnect returned", rv);
 	if (rv != SCARD_S_SUCCESS) {
 		PCSC_TRACE(reader, "SCardReconnect failed", rv);
 		return pcsc_to_opensc_error(rv);
@@ -529,11 +531,14 @@ static int pcsc_connect(sc_reader_t *reader)
 static int pcsc_disconnect(sc_reader_t * reader)
 {
 	struct pcsc_private_data *priv = GET_PRIV_DATA(reader);
+	LONG rv;
 
 	LOG_FUNC_CALLED(reader->ctx);
 
-	if (!(reader->ctx->flags & SC_CTX_FLAG_TERMINATE))
-		priv->gpriv->SCardDisconnect(priv->pcsc_card, priv->gpriv->disconnect_action);
+	if (!(reader->ctx->flags & SC_CTX_FLAG_TERMINATE)) {
+		rv = priv->gpriv->SCardDisconnect(priv->pcsc_card, priv->gpriv->disconnect_action);
+		PCSC_TRACE(reader, "SCardDisconnect returned", rv);
+	}
 	reader->flags = 0;
 	return SC_SUCCESS;
 }
@@ -551,6 +556,10 @@ static int pcsc_lock(sc_reader_t *reader)
 
 	rv = priv->gpriv->SCardBeginTransaction(priv->pcsc_card);
 
+
+	if (rv != SCARD_S_SUCCESS)
+	    PCSC_TRACE(reader, "SCardBeginTransaction returned", rv);
+
 	switch (rv) {
 		case SCARD_E_INVALID_HANDLE:
 		case SCARD_E_READER_UNAVAILABLE:
@@ -563,6 +572,9 @@ static int pcsc_lock(sc_reader_t *reader)
 			return SC_ERROR_READER_REATTACHED;
 		case SCARD_W_RESET_CARD:
 			/* try to reconnect if the card was reset by some other application */
+			PCSC_TRACE(reader, "SCardBeginTransaction calling pcsc_reconnect", rv);
+			/* possible bug in PCSC that reset may still be active */
+			sleep(1); 
 			r = pcsc_reconnect(reader, SCARD_LEAVE_CARD);
 			if (r != SC_SUCCESS) {
 				sc_log(reader->ctx, "pcsc_reconnect failed", r);
@@ -1225,6 +1237,7 @@ static int pcsc_detect_readers(sc_context_t *ctx)
 			goto err1;
 		}
 
+		/* TODO need to check return codes */
 		refresh_attributes(reader);
 
 		/* check for pinpad support early, to allow opensc-tool -l display accurate information */
@@ -2492,6 +2505,7 @@ int cardmod_use_reader(sc_context_t *ctx, void * pcsc_context_handle, void * pcs
 		}
 
 
+		/* TODO should check return codes */
 		refresh_attributes(reader);
 
 		ret = SC_SUCCESS;
