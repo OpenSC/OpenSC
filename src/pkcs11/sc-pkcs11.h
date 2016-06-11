@@ -181,6 +181,7 @@ struct sc_pkcs11_framework_ops {
 				CK_OBJECT_HANDLE_PTR, CK_OBJECT_HANDLE_PTR);
 	CK_RV (*get_random)(struct sc_pkcs11_slot *,
 				CK_BYTE_PTR, CK_ULONG);
+	CK_RV (*check_state)(struct sc_pkcs11_slot *, int *, int);
 };
 
 /*

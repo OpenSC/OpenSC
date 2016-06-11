@@ -1269,6 +1269,24 @@ sc_pkcs15_unbind(struct sc_pkcs15_card *p15card)
 	return 0;
 }
 
+int
+sc_pkcs15_check_state(struct sc_pkcs15_card *p15card, int * logged_in, int flags)
+{
+	sc_context_t *ctx = p15card->card->ctx;
+	int r = 0;
+
+	LOG_FUNC_CALLED(ctx);
+
+	r = sc_lock(p15card->card);
+	LOG_TEST_RET(ctx, r, "sc_lock() failed");
+
+	r = sc_check_state(p15card->card, logged_in, flags);
+
+	sc_unlock(p15card->card);
+	LOG_TEST_RET(ctx, r, "sc_check_state failed");
+
+	LOG_FUNC_RETURN(ctx, r);
+}
 
 static int
 __sc_pkcs15_search_objects(struct sc_pkcs15_card *p15card, unsigned int class_mask, unsigned int type,

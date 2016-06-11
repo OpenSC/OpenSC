@@ -158,6 +158,7 @@ typedef struct piv_private_data {
 	int keysWithOffCardCerts;
 	char * offCardCertURL;
 	int pin_preference; /* set from Discovery object */
+	int logged_in; /* we did a verify that worked */
 } piv_private_data_t;
 
 #define PIV_DATA(card) ((piv_private_data_t*)card->drv_data)
@@ -2870,6 +2871,7 @@ static int piv_init(sc_card_t *card)
 	priv->aid_file = sc_file_new();
 	priv->selected_obj = -1;
 	priv->pin_preference = 0x80; /* 800-73-3 part 1, table 3 */
+	priv->logged_in = 0;
 
 	/* Some objects will only be present if Histroy object says so */
 	for (i=0; i < PIV_OBJ_LAST_ENUM -1; i++) {
@@ -2949,11 +2951,16 @@ static int piv_check_sw(struct sc_card *card, unsigned int sw1, unsigned int sw2
 static int piv_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
                        int *tries_left)
 {
+	int r = 0;
+	piv_private_data_t * priv = PIV_DATA(card);
+
 	/* Extra validation of (new) PIN during a PIN change request, to
 	 * ensure it's not outside the FIPS 201 4.1.6.1 (numeric only) and
 	 * FIPS 140-2 (6 character minimum) requirements.
 	 */
 	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	if (data->cmd == SC_PIN_CMD_CHANGE) {
 		int i = 0;
 		if (data->pin2.len < 6) {
@@ -2965,9 +2972,90 @@ static int piv_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 			}
 		}
 	}
-	return iso_drv->ops->pin_cmd(card, data, tries_left);
+
+	r = iso_drv->ops->pin_cmd(card, data, tries_left);
+	if (r == 0 && data->cmd == SC_PIN_CMD_VERIFY && data->pin1.len > 0) {
+		priv->logged_in = 1;
+	}
+
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 }
 
+static int piv_logout(sc_card_t *card)
+{
+	int r = 0;
+	piv_private_data_t * priv = PIV_DATA(card);
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	/* TODO 800-73-3 does not define a logout, 800-73-4 does */
+
+	if (priv != NULL)
+		priv->logged_in = 0;
+
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+}
+
+/* make sure AID is correct, and if PIN was sent before, we are still loged in */
+static int piv_check_state(sc_card_t *card, int * logged_in, int flags)
+{
+	int r;
+	sc_apdu_t apdu;
+	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
+	size_t resplen = sizeof(rbuf);
+
+	piv_private_data_t * priv = PIV_DATA(card);
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	/* check if have gotten started, if not assume state is OK */
+	if (priv == NULL)
+		return SC_SUCCESS;
+
+	/* TODO: If SM was supported do some test here */
+
+	/* reset AID */
+	r = piv_select_aid(card, piv_aids[0].value, piv_aids[0].len_short, rbuf, &resplen);
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "PIV select failed");
+
+	/* TODO: If SM was supported do some test here */
+
+	/* See if verify is needed  Do it inline here */
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x20, 0x00, priv->pin_preference);
+	apdu.lc = 0;
+	apdu.datalen = 0;
+	apdu.data = NULL;
+	apdu.resp = NULL;
+	apdu.le = 0;
+	apdu.resplen = 0;
+	r = sc_transmit_apdu(card, &apdu);
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "PIV check_state verify Transmit failed");
+
+	/* we talked to the card and got response */
+	/* 90 00 means we are logged in */
+	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
+		if (logged_in && *logged_in == -1) {
+			*logged_in =  0; /* could set which PIN */
+		}
+		r = SC_SUCCESS;
+	} else if (apdu.sw1 == 0x63) {
+		/* 0x63 means we are not logged in */
+		if (logged_in && *logged_in == -1) {
+			r = SC_SUCCESS;
+		} else if (logged_in && *logged_in != -1) {
+			/* Problem. Card says we are not logged in, by code thinks we are */
+			if (logged_in)
+				*logged_in = -1;
+			if (flags & 1)
+				r = SC_ERROR_PIN_CODE_INCORRECT; /* TODO need better error code */
+			else
+				r = SC_SUCCESS;
+		}
+	} else {
+	    r = SC_ERROR_PIN_CODE_INCORRECT; /* need better error code */
+	}
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+}
 
 static struct sc_card_driver * sc_get_driver(void)
 {
@@ -2980,6 +3068,7 @@ static struct sc_card_driver * sc_get_driver(void)
 
 	piv_ops.select_file =  piv_select_file; /* must use get/put, could emulate? */
 	piv_ops.get_challenge = piv_get_challenge;
+	piv_ops.logout = piv_logout;
 	piv_ops.read_binary = piv_read_binary;
 	piv_ops.write_binary = piv_write_binary;
 	piv_ops.set_security_env = piv_set_security_env;
@@ -2989,6 +3078,7 @@ static struct sc_card_driver * sc_get_driver(void)
 	piv_ops.check_sw = piv_check_sw;
 	piv_ops.card_ctl = piv_card_ctl;
 	piv_ops.pin_cmd = piv_pin_cmd;
+	piv_ops.check_state = piv_check_state;
 
 	return &piv_drv;
 }

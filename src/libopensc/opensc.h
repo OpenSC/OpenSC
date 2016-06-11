@@ -618,6 +618,12 @@ struct sc_card_operations {
 	int (*read_public_key)(struct sc_card *, unsigned,
 			struct sc_path *, unsigned, unsigned,
 			unsigned char **, size_t *);
+	/* Check if card has not been accessed by other application
+	 * sc_lock checks for card reset, and if SM is working. 
+	 * Check_state does additional checks AID is the same, SM (if used) is still working,
+	 * if a verify is needed
+	 */
+	int (*check_state)(struct sc_card *, int * loged_in, int flags);
 };
 
 typedef struct sc_card_driver {
@@ -908,6 +914,16 @@ int sc_wait_for_event(sc_context_t *ctx, unsigned int event_mask,
  * @retval SC_SUCCESS on success
  */
 int sc_reset(struct sc_card *card, int do_cold_reset);
+
+/**
+ * Check if the card state is as expected, i.e. connected,
+ * AID is set, SM (if used) is operating, verify has been done
+ * @param card  The card to check
+ * @param logged_in = (in/out)  -1 not logged  in >= 0 logged in
+ * @param flags What tests to perform/what stat is expected if  1 logged_in error if card  is not loged in 
+ * @retval SC_SUCCESS on success
+ */
+int sc_check_state(struct sc_card *card,  int * logged_in, int flags);
 
 /**
  * Cancel all pending PC/SC calls

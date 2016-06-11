@@ -2970,6 +2970,22 @@ pkcs15_get_random(struct sc_pkcs11_slot *slot, CK_BYTE_PTR p, CK_ULONG len)
 	return sc_to_cryptoki_error(rc, "C_GenerateRandom");
 }
 
+static CK_RV
+pkcs15_check_state(struct sc_pkcs11_slot *slot, int *logged_in, int flags)
+{
+	struct sc_pkcs11_card *p11card = slot->p11card;
+	struct pkcs15_fw_data *fw_data = NULL;
+	int rv = 0;
+
+	fw_data = (struct pkcs15_fw_data *) p11card->fws_data[slot->fw_data_idx];
+	if (!fw_data)
+		return sc_to_cryptoki_error(SC_ERROR_INTERNAL, "pkcs15_check_state");
+
+	rv = sc_pkcs15_check_state(fw_data->p15_card, logged_in, flags);
+	/* TODO test rv, and if pin is needed for next line */
+
+	return sc_to_cryptoki_error(rv, "pkcs15_check_state");
+}
 
 struct sc_pkcs11_framework_ops framework_pkcs15 = {
 	pkcs15_bind,
@@ -2990,7 +3006,8 @@ struct sc_pkcs11_framework_ops framework_pkcs15 = {
 	NULL,
 	NULL,
 #endif
-	pkcs15_get_random
+	pkcs15_get_random,
+	pkcs15_check_state
 };
 
 

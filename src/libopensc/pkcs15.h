@@ -738,6 +738,7 @@ int sc_pkcs15_find_skey_by_id(struct sc_pkcs15_card *card,
 			       const struct sc_pkcs15_id *id,
 			       struct sc_pkcs15_object **out);
 
+int sc_pkcs15_check_state(struct sc_pkcs15_card *p15card, int * logged_in, int flags);
 int sc_pkcs15_verify_pin(struct sc_pkcs15_card *card,
 			 struct sc_pkcs15_object *pin_obj,
 			 const u8 *pincode, size_t pinlen);

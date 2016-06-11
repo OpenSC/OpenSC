@@ -384,6 +384,31 @@ int sc_reset(sc_card_t *card, int do_cold_reset)
 	return r;
 }
 
+int sc_check_state(sc_card_t *card, int * logged_in, int flags)
+{
+	int r = 0;
+
+
+	LOG_FUNC_CALLED(card->ctx);
+	if (logged_in)
+	    sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "logged_in=%p *logged_in=%d flags=%2.2x",logged_in, *logged_in, flags);
+	else
+	    sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "logged_in=NULL flags=%2.2x", flags);
+
+	/* if card does not support check_state, return SC_SUCCESS */
+	if (card->ops->check_state != NULL) {
+		r = card->ops->check_state(card, logged_in, flags);
+		if (logged_in)
+		    sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "r=%d logged_in=%p *logged_in=%d flags=%2.2x", r, logged_in, *logged_in, flags);
+		else
+		    sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "r=%d logged_in=NULL flags=%2.2x", r, flags);
+
+	}
+
+	return r;
+}
+
+
 int sc_lock(sc_card_t *card)
 {
 	int r = 0, r2 = 0;
