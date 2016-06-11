@@ -167,6 +167,7 @@ static CK_RV	get_ec_pubkey_params(struct sc_pkcs15_pubkey *, CK_ATTRIBUTE_PTR);
 static int	lock_card(struct pkcs15_fw_data *);
 static int	unlock_card(struct pkcs15_fw_data *);
 static int	reselect_app_df(sc_pkcs15_card_t *p15card);
+static CK_RV	pkcs15_check_state(struct sc_pkcs11_slot *, int *, int);
 
 #ifdef USE_PKCS15_INIT
 static CK_RV	set_gost_params(struct sc_pkcs15init_keyarg_gost_params *,
@@ -484,6 +485,13 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo)
 	if (rv != CKR_OK)   {
 		sc_log(context, "C_GetTokenInfo() get token: rv 0x%X", rv);
 		goto out;
+	}
+
+	/* TODO may be in wrong spot */
+	rv = pkcs15_check_state(slot, NULL, 0);
+	if (rv != SC_SUCCESS) {
+		sc_log(context, "C_GetTokenInfo() check_state: rv 0x%X", rv);
+	    goto out;
 	}
 
 	/* User PIN flags are cleared before re-calculation */
