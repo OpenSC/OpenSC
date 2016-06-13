@@ -4744,17 +4744,20 @@ static const char *p11_slot_info_flags(CK_FLAGS value)
 static const char *p11_token_info_flags(CK_FLAGS value)
 {
 	static struct flag_info	slot_flags[] = {
-		{ CKF_RNG, "rng" },
-		{ CKF_WRITE_PROTECTED, "readonly" },
 		{ CKF_LOGIN_REQUIRED, "login required" },
-		{ CKF_USER_PIN_INITIALIZED, "PIN initialized" },
 		{ CKF_PROTECTED_AUTHENTICATION_PATH, "PIN pad present" },
+		{ CKF_RNG, "rng" },
+		{ CKF_SO_PIN_TO_BE_CHANGED, "SO PIN to be changed"},
+		{ CKF_SO_PIN_COUNT_LOW, "SO PIN count low" },
+		{ CKF_SO_PIN_FINAL_TRY, "final SO PIN try" },		
+		{ CKF_SO_PIN_LOCKED, "SO PIN locked" },				
 		{ CKF_TOKEN_INITIALIZED, "token initialized" },
 		{ CKF_USER_PIN_COUNT_LOW, "user PIN count low" },
 		{ CKF_USER_PIN_FINAL_TRY, "final user PIN try" },
+		{ CKF_USER_PIN_INITIALIZED, "PIN initialized" },		
 		{ CKF_USER_PIN_LOCKED, "user PIN locked" },
 		{ CKF_USER_PIN_TO_BE_CHANGED, "user PIN to be changed"},
-		{ CKF_SO_PIN_TO_BE_CHANGED, "SO PIN to be changed"},
+		{ CKF_WRITE_PROTECTED, "readonly" },
 		{ 0, NULL }
 	};
 
