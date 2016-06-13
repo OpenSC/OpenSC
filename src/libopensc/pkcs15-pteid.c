@@ -1,6 +1,7 @@
 /*
  * PKCS15 emulation layer for Portugal eID card.
  *
+ * Copyright (C) 2016, Nuno Goncalves <nunojpg@gmail.com>
  * Copyright (C) 2009, Joao Poupino <joao.poupino@ist.utl.pt>
  * Copyright (C) 2004, Martin Paljak <martin@martinpaljak.net>
  *
@@ -106,22 +107,24 @@ static int sc_pkcs15emu_pteid_init(sc_pkcs15_card_t * p15card)
 	/* TODO: Use Portuguese descriptions? */
 	
 	/* Add X.509 Certificates */
-	for (i = 0; i < 4; i++) {
-		static const char *pteid_cert_names[4] = {
+	for (i = 0; i < 5; i++) {
+		static const char *pteid_cert_names[5] = {
 				"AUTHENTICATION CERTIFICATE",
 				"SIGNATURE CERTIFICATE",
 				"SIGNATURE SUB CA",
-				"AUTHENTICATION SUB CA"
+				"AUTHENTICATION SUB CA",
+				"ROOT CA",
 		};
 		/* X.509 Certificate Paths */
-		static const char *pteid_cert_paths[4] = {
+		static const char *pteid_cert_paths[5] = {
 			"3f005f00ef09", /* Authentication Certificate path */
 			"3f005f00ef08", /* Digital Signature Certificate path */
 			"3f005f00ef0f", /* Signature sub CA path */
-			"3f005f00ef10"	/* Authentication sub CA path */
+			"3f005f00ef10",	/* Authentication sub CA path */
+			"3f005f00ef11", /* Root CA path */
 		};
 		/* X.509 Certificate IDs */
-		static const int pteid_cert_ids[4] = {0x45, 0x46, 0x51, 0x52};
+		static const int pteid_cert_ids[5] = {0x45, 0x46, 0x50, 0x51, 0x52};
 		struct sc_pkcs15_cert_info cert_info;
 		struct sc_pkcs15_object cert_obj;
 
