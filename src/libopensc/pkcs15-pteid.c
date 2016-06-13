@@ -256,18 +256,30 @@ static int sc_pkcs15emu_pteid_init(sc_pkcs15_card_t * p15card)
 	}
 
 	/* Add objects */
-	for (i = 0; i < 3; i++) {
-		static const char *object_ids[3] = {"01", "02", "03"};
-		static const char *object_labels[3] = {"Citizen Data",
-											   "Citizen Address Data",
-											   "Citizen Notepad"};
-		static const char *object_authids[3] = {NULL, "03", "01"};
-		static const char *object_paths[3] = {"3f005f00ef02",
-											  "3f005f00ef05",
-											  "3f005f00ef07"};
-		static const int object_flags[3] = {0,
-											SC_PKCS15_CO_FLAG_PRIVATE,
-											SC_PKCS15_CO_FLAG_MODIFIABLE};
+	for (i = 0; i < 5; i++) {
+		static const char *object_ids[5] = {"1", "2", "3", "4", "5"};
+		static const char *object_labels[5] = {
+			"Citizen Data",
+			"Citizen Address Data",
+			"Citizen Notepad",
+			"SOD",
+			"TRACE",
+		};
+		static const char *object_authids[5] = {NULL, "3", NULL, NULL, NULL};
+		static const char *object_paths[5] = {
+			"3f005f00ef02",
+			"3f005f00ef05",
+			"3f005f00ef07",
+			"3f005f00ef06",
+			"3F000003",
+		};
+		static const int object_flags[5] = {
+			0,
+			SC_PKCS15_CO_FLAG_PRIVATE,
+			0,
+			0,
+			0,
+		};
 		struct sc_pkcs15_data_info obj_info;
 		struct sc_pkcs15_object obj_obj;
 
