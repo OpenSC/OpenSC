@@ -150,17 +150,24 @@ static int sc_pkcs15emu_pteid_init(sc_pkcs15_card_t * p15card)
 			"Address PIN"
 		};
 		/* PIN References */
-		static const int pteid_pin_ref[2][3] = { {1, 130, 131}, {129, 130, 131} };
+		static const int pteid_pin_ref[2][3] = {
+			{1, 130, 131},			/* IAS_CARD */
+			{129, 130, 131},		/* GEMSAFE_CARD */
+		};
 		/* PIN Authentication IDs */
 		static const int pteid_pin_authid[3] = {1, 2, 3};
 		/* PIN Paths */
-		static const char *pteid_pin_paths[2][3] = { {NULL, "3f005f00", "3f005f00"},
-													 {NULL, NULL, NULL} };
+		static const char *pteid_pin_paths[2][3] = {
+			{NULL, "3f005f00", "3f005f00"},	/* IAS_CARD */
+			{NULL, NULL, NULL},		/* GEMSAFE_CARD */
+		};
 		struct sc_pkcs15_auth_info pin_info;
 		struct sc_pkcs15_object pin_obj;
+		struct sc_pin_cmd_data pin_cmd_data;
 
 		memset(&pin_info, 0, sizeof(pin_info));
 		memset(&pin_obj, 0, sizeof(pin_obj));
+		memset(&pin_cmd_data, 0, sizeof(pin_cmd_data));
 
 		pin_info.auth_type = SC_PKCS15_PIN_AUTH_TYPE_PIN;
 		pin_info.auth_id.len = 1;
@@ -175,10 +182,23 @@ static int sc_pkcs15emu_pteid_init(sc_pkcs15_card_t * p15card)
 		pin_info.attrs.pin.max_length = 8;
 		pin_info.attrs.pin.pad_char = type == IAS_CARD ? 0x2F : 0xFF;
 		pin_info.tries_left = -1;
+		pin_info.max_tries = 3;
 		if (pteid_pin_paths[type][i] != NULL)
 			sc_format_path(pteid_pin_paths[type][i], &pin_info.path);
 		strlcpy(pin_obj.label, pteid_pin_names[i], sizeof(pin_obj.label));
 		pin_obj.flags = 0;
+
+	
+		pin_cmd_data.cmd = SC_PIN_CMD_GET_INFO;
+		pin_cmd_data.pin_type = pin_info.attrs.pin.type;
+		pin_cmd_data.pin_reference = pin_info.attrs.pin.reference;
+
+		r = sc_pin_cmd(card, &pin_cmd_data, NULL);
+		if (r == SC_SUCCESS) {
+			pin_info.tries_left = pin_cmd_data.pin1.tries_left;
+		}
+
+
 		r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
 		if (r < 0) {
 			r = SC_ERROR_INTERNAL;
