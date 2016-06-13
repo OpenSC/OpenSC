@@ -180,6 +180,7 @@ CK_RV C_GetSessionInfo(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	CK_RV rv;
 	struct sc_pkcs11_session *session;
 	struct sc_pkcs11_slot *slot;
+	int logged_out;
 
 	if (pInfo == NULL_PTR)
 		return CKR_ARGUMENTS_BAD;
@@ -202,9 +203,10 @@ CK_RV C_GetSessionInfo(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	pInfo->ulDeviceError = 0;
 
 	slot = session->slot;
-	if (slot->login_user == CKU_SO) {
+	logged_out = (slot_get_logged_in_state(slot) == SC_PIN_STATE_LOGGED_OUT);
+	if (slot->login_user == CKU_SO && !logged_out) {
 		pInfo->state = CKS_RW_SO_FUNCTIONS;
-	} else if (slot->login_user == CKU_USER || (!(slot->token_info.flags & CKF_LOGIN_REQUIRED))) {
+	} else if ((slot->login_user == CKU_USER && !logged_out) || (!(slot->token_info.flags & CKF_LOGIN_REQUIRED))) {
 		pInfo->state = (session->flags & CKF_RW_SESSION)
 		    ? CKS_RW_USER_FUNCTIONS : CKS_RO_USER_FUNCTIONS;
 	} else {

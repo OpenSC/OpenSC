@@ -1084,6 +1084,37 @@ _is_slot_auth_object(struct sc_pkcs15_auth_info *pin_info)
 	return 1;
 }
 
+int slot_get_logged_in_state(struct sc_pkcs11_slot *slot)
+{
+	int logged_in = SC_PIN_STATE_UNKNOWN;
+	struct pkcs15_fw_data *fw_data = NULL;
+	struct sc_pkcs15_card *p15card = NULL;
+	struct sc_pkcs15_object *pin_obj = NULL;
+	struct sc_pkcs15_auth_info *pin_info;
+
+	fw_data = (struct pkcs15_fw_data *) slot->p11card->fws_data[slot->fw_data_idx];
+	if (!fw_data)
+		goto out;
+	p15card = fw_data->p15_card;
+
+	if (slot->login_user == CKU_SO) {
+		sc_pkcs15_find_so_pin(p15card, &pin_obj);
+	} else {
+		pin_obj = slot_data_auth(slot->fw_data);
+	}
+
+	if (!pin_obj)
+		goto out;
+
+	pin_info = (struct sc_pkcs15_auth_info *)pin_obj->data;
+	if (!pin_info)
+		goto out;
+	sc_pkcs15_get_pin_info(p15card, pin_obj);
+	logged_in = pin_info->logged_in;
+out:
+	return logged_in;
+}
+
 
 struct sc_pkcs15_object *
 _get_auth_object_by_name(struct sc_pkcs15_card *p15card, char *name)
