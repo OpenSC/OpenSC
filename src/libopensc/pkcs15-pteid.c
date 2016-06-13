@@ -209,7 +209,10 @@ static int sc_pkcs15emu_pteid_init(sc_pkcs15_card_t * p15card)
 	/* Add Private Keys */
 	for (i = 0; i < 2; i++) {
 		/* Key reference */
-		static const int pteid_prkey_keyref[2][2] = { {1, 130}, {2, 1} };
+		static const int pteid_prkey_keyref[2][2] = {
+			{1, 130},		/* IAS_CARD */
+			{2, 1},			/* GEMSAFE_CARD */
+		};
 		/* RSA Private Key usage */
 		static int pteid_prkey_usage[2] = {
 			SC_PKCS15_PRKEY_USAGE_SIGN,
@@ -217,10 +220,14 @@ static int sc_pkcs15emu_pteid_init(sc_pkcs15_card_t * p15card)
 		/* RSA Private Key IDs */
 		static const int pteid_prkey_ids[2] = {0x45, 0x46};
 		static const char *pteid_prkey_names[2] = {
-				"CITIZEN AUTHENTICATION KEY",
-				"CITIZEN SIGNATURE KEY"};
+			"CITIZEN AUTHENTICATION KEY",
+			"CITIZEN SIGNATURE KEY",
+		};
 		/* RSA Private Key Paths */
-		static const char *pteid_prkey_paths[2][2] = { {NULL, "3f005f00"}, {NULL, NULL} };
+		static const char *pteid_prkey_paths[2][2] = {
+			{NULL, "3f005f00"},	/* IAS_CARD */
+			{NULL, NULL},		/* GEMSAFE_CARD */
+		};
 		struct sc_pkcs15_prkey_info prkey_info;
 		struct sc_pkcs15_object prkey_obj;
 
