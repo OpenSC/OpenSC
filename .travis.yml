@@ -19,7 +19,7 @@ addons:
       description: "Build submitted via Travis CI"
     notification_email: viktor.tarasov@gmail.com
     build_command:   "make -j 4"
-    branch_pattern: master
+    branch_pattern: coverity_scan
 
 env:
   global:
