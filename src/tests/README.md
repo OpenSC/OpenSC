@@ -12,15 +12,15 @@ Build OpenSC from source:
 
     git clone git@github.com:Jakuje/OpenSC.git
     cd OpenSC
-	git checkout jjelen-testsuite		# not in master yet
-    autoconf
+    git checkout jjelen-testsuite		# not in master yet
+    ./bootstrap
     ./configure
-    make
+    make -j4
 
 Plug in the card/reader, change to test directory and run the test:
 
     cd src/tests
-	./p11test
+    ./p11test
 
 It will run all tests on PKCS#11 API with default pin `123456`
 and using just built OpenSC shared library.
@@ -40,7 +40,7 @@ on command line:
 
 or to debug PKCS#11 calls using `/usr/lib64/pkcs11-spy.so`:
 
-	export PKCS11SPY="../pkcs11/.libs/opensc-pkcs11.so"
+    export PKCS11SPY="../pkcs11/.libs/opensc-pkcs11.so"
     ./p11test -m ../pkcs11/.libs/pkcs11-spy.so
 
 
@@ -54,3 +54,4 @@ TODO:
  * Interface for results reporting?
  * Multipart mechanisms with hashes
  * Keygen write tests (optional)
+ * Integrate becnhmark script with soft token
