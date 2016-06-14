@@ -360,7 +360,7 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 	CK_BYTE *message = message_default;
 	CK_BYTE *sign = NULL;
 	CK_ULONG sign_length = 0;
-	int verify = 0;
+	int rv = 0;
 
 	if (message_length > strlen((char *)message))
 		fail_msg("Truncate is longer than the actual message");
@@ -380,18 +380,18 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 
 	debug_print(" [ KEY %s ] Signing message of length %lu using CKM_%s",
 		o->id_str, message_length, get_mechanism_name(mech->mech));
-	verify = sign_message(o, info, message, message_length, mech, &sign);
-	if (verify <= 0)
+	rv = sign_message(o, info, message, message_length, mech, &sign);
+	if (rv <= 0)
 		return -1;
-	sign_length = (unsigned long) verify;
+	sign_length = (unsigned long) rv;
 
 	debug_print(" [ KEY %s ] Verify message signature", o->id_str);
-	verify = verify_message(o, info, message, message_length, mech,
+	rv = verify_message(o, info, message, message_length, mech,
 		sign, sign_length);
 	free(sign);
 	if (mech->mech == CKM_RSA_X_509)
 		free(message);
-	return verify;
+	return rv;
 }
 
 void readonly_tests(void **state) {
