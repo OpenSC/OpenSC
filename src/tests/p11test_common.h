@@ -29,7 +29,7 @@
 #include <cmocka.h>
 #include "pkcs11/pkcs11.h"
 
-#define MAX_MECHS 10
+#define MAX_MECHS 30
 
 #ifdef NDEBUG
 	#define debug_print(fmt, ...) \

@@ -21,6 +21,9 @@
 
 #include "p11test_case_common.h"
 
+char name_buffer[11];
+char flag_buffer[11];
+
 /**
  * If the object enforces re-authentication, do it now.
  */
@@ -57,6 +60,7 @@ test_cert_t * add_certificate(test_certs_t *objects)
 	o->verify_public = 0;
 	o->num_mechs = 0;
 	o->type = -1;
+	o->x509 = NULL; /* The "reuse" capability of d2i_X509() is strongly discouraged */
 	return o;
 }
 
@@ -103,10 +107,7 @@ int callback_certificates(test_certs_t *objects,
 	cp = template[1].pValue;
 
 	/* Extract public key from the certificate */
-	if ((o->x509 = X509_new()) == NULL) {
-		fail_msg("X509_new");
-	} else if (d2i_X509(&(o->x509), (const unsigned char **) &cp,
-			template[1].ulValueLen) == NULL) {
+	if (d2i_X509(&(o->x509), &cp, template[1].ulValueLen) == NULL) {
 		fail_msg("d2i_X509");
 	} else if ((evp = X509_get_pubkey(o->x509)) == NULL) {
 		fail_msg("X509_get_pubkey failed.");
@@ -452,8 +453,8 @@ const char *get_mechanism_name(int mech_id)
 		case CKM_RIPEMD160_RSA_PKCS:
 			return "RIPEMD160_RSA_PKCS";
 		default:
-			sprintf(id_buffer, "0x%.8X", mech_id);
-			return id_buffer;
+			sprintf(name_buffer, "0x%.8X", mech_id);
+			return name_buffer;
 	}
 }
 
@@ -499,8 +500,8 @@ const char *get_mechanism_flag_name(int mech_id)
 		case CKF_EC_ECPARAMETERS:
 			return "CKF_EC_ECPARAMETERS";
 		default:
-			sprintf(id_buffer, "0x%.8X", mech_id);
-			return id_buffer;
+			sprintf(flag_buffer, "0x%.8X", mech_id);
+			return flag_buffer;
 	}
 }
 
