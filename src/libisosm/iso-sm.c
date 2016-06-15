@@ -313,7 +313,9 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
         /* for encrypted APDUs we usually get authenticated status bytes (4B),
          * a MAC (11B) and a cryptogram with padding indicator (3B without
          * data).  The cryptogram is always padded to the block size. */
-        cse |= SC_APDU_EXT;
+        /*cse |= SC_APDU_EXT;*/
+        sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
+                "Response data may be truncated, because it doesn't fit into a short length APDU.");
 
     switch (cse) {
         case SC_APDU_CASE_1:
