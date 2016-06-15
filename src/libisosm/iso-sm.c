@@ -31,6 +31,8 @@
 #ifdef ENABLE_SM
 
 static const struct sc_asn1_entry c_sm_capdu[] = {
+    { "Cryptogram",
+        SC_ASN1_OCTET_STRING, SC_ASN1_CTX|0x05, SC_ASN1_OPTIONAL, NULL, NULL },
     { "Padding-content indicator followed by cryptogram",
         SC_ASN1_OCTET_STRING, SC_ASN1_CTX|0x07, SC_ASN1_OPTIONAL, NULL, NULL },
     { "Protected Le",
@@ -41,6 +43,8 @@ static const struct sc_asn1_entry c_sm_capdu[] = {
 };
 
 static const struct sc_asn1_entry c_sm_rapdu[] = {
+    { "Cryptogram",
+        SC_ASN1_OCTET_STRING, SC_ASN1_CTX|0x05, SC_ASN1_OPTIONAL, NULL, NULL },
     { "Padding-content indicator followed by cryptogram" ,
         SC_ASN1_OCTET_STRING, SC_ASN1_CTX|0x07, SC_ASN1_OPTIONAL, NULL, NULL },
     { "Processing Status",
@@ -194,7 +198,7 @@ static int prefix_buf(u8 prefix, u8 *buf, size_t buflen, u8 **cat)
 }
 
 static int format_data(sc_card_t *card, const struct iso_sm_ctx *ctx,
-        const u8 *data, size_t datalen,
+        int prepend_padding_indicator, const u8 *data, size_t datalen,
         struct sc_asn1_entry *formatted_encrypted_data_entry,
         u8 **formatted_data, size_t *formatted_data_len)
 {
@@ -223,11 +227,13 @@ static int format_data(sc_card_t *card, const struct iso_sm_ctx *ctx,
     }
     sc_debug_hex(card->ctx, SC_LOG_DEBUG_NORMAL, "Cryptogram", *formatted_data, r);
 
-    r = prefix_buf(ctx->padding_indicator, *formatted_data, r, formatted_data);
-    if (r < 0) {
-        sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not prepend padding indicator to formatted "
-                "data: %s", sc_strerror(r));
-        goto err;
+    if (prepend_padding_indicator) {
+        r = prefix_buf(ctx->padding_indicator, *formatted_data, r, formatted_data);
+        if (r < 0) {
+            sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not prepend padding indicator to formatted "
+                    "data: %s", sc_strerror(r));
+            goto err;
+        }
     }
 
     *formatted_data_len = r;
@@ -269,7 +275,7 @@ static int format_head(const struct iso_sm_ctx *ctx, const sc_apdu_t *apdu,
 static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
         const sc_apdu_t *apdu, sc_apdu_t **psm_apdu)
 {
-    struct sc_asn1_entry sm_capdu[4];
+    struct sc_asn1_entry sm_capdu[5];
     u8 *p, *le = NULL, *sm_data = NULL, *fdata = NULL, *mac_data = NULL,
        *asn1 = NULL, *mac = NULL, *resp_data = NULL;
     size_t sm_data_len, fdata_len, mac_data_len, asn1_len, mac_len, le_len;
@@ -322,7 +328,7 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
             break;
 	case SC_APDU_CASE_2_SHORT:
             le_len = 1;
-            r = format_le(apdu->le, sm_capdu + 1, &le, &le_len);
+            r = format_le(apdu->le, sm_capdu + 2, &le, &le_len);
             if (r < 0) {
                 sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not format Le of SM apdu");
                 goto err;
@@ -333,7 +339,7 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
             if (card->reader->active_protocol == SC_PROTO_T0) {
                 /* T0 extended APDUs look just like short APDUs */
                 le_len = 1;
-                r = format_le(apdu->le, sm_capdu + 1, &le, &le_len);
+                r = format_le(apdu->le, sm_capdu + 2, &le, &le_len);
                 if (r < 0) {
                     sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not format Le of SM apdu");
                     goto err;
@@ -341,7 +347,7 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
             } else {
                 /* in case of T1 always use 2 bytes for length */
                 le_len = 2;
-                r = format_le(apdu->le, sm_capdu + 1, &le, &le_len);
+                r = format_le(apdu->le, sm_capdu + 2, &le, &le_len);
                 if (r < 0) {
                     sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not format Le of SM apdu");
                     goto err;
@@ -351,8 +357,13 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
             break;
         case SC_APDU_CASE_3_SHORT:
         case SC_APDU_CASE_3_EXT:
-            r = format_data(card, ctx, apdu->data, apdu->datalen,
-                    sm_capdu + 0, &fdata, &fdata_len);
+            if (apdu->ins & 1) {
+                r = format_data(card, ctx, 0, apdu->data, apdu->datalen,
+                        sm_capdu + 0, &fdata, &fdata_len);
+            } else {
+                r = format_data(card, ctx, 1, apdu->data, apdu->datalen,
+                        sm_capdu + 1, &fdata, &fdata_len);
+            }
             if (r < 0) {
                 sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not format data of SM apdu");
                 goto err;
@@ -364,7 +375,7 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
             /* in case of T0 no Le byte is added */
             if (card->reader->active_protocol != SC_PROTO_T0) {
                 le_len = 1;
-                r = format_le(apdu->le, sm_capdu + 1, &le, &le_len);
+                r = format_le(apdu->le, sm_capdu + 2, &le, &le_len);
                 if (r < 0) {
                     sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not format Le of SM apdu");
                     goto err;
@@ -372,8 +383,13 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
                 sc_debug_hex(card->ctx, SC_LOG_DEBUG_NORMAL, "Protected Le (plain)", le, le_len);
             }
 
-            r = format_data(card, ctx, apdu->data, apdu->datalen,
-                    sm_capdu + 0, &fdata, &fdata_len);
+            if (apdu->ins & 1) {
+                r = format_data(card, ctx, 0, apdu->data, apdu->datalen,
+                        sm_capdu + 0, &fdata, &fdata_len);
+            } else {
+                r = format_data(card, ctx, 1, apdu->data, apdu->datalen,
+                        sm_capdu + 1, &fdata, &fdata_len);
+            }
             if (r < 0) {
                 sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not format data of SM apdu");
                 goto err;
@@ -390,7 +406,7 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
                 /* only 2 bytes are use to specify the length of the
                  * expected data */
                 le_len = 2;
-                r = format_le(apdu->le, sm_capdu + 1, &le, &le_len);
+                r = format_le(apdu->le, sm_capdu + 2, &le, &le_len);
                 if (r < 0) {
                     sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not format Le of SM apdu");
                     goto err;
@@ -398,8 +414,13 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
                 sc_debug_hex(card->ctx, SC_LOG_DEBUG_NORMAL, "Protected Le (plain)", le, le_len);
             }
 
-            r = format_data(card, ctx, apdu->data, apdu->datalen,
-                    sm_capdu + 0, &fdata, &fdata_len);
+            if (apdu->ins & 1) {
+                r = format_data(card, ctx, 0, apdu->data, apdu->datalen,
+                        sm_capdu + 0, &fdata, &fdata_len);
+            } else {
+                r = format_data(card, ctx, 1, apdu->data, apdu->datalen,
+                        sm_capdu + 1, &fdata, &fdata_len);
+            }
             if (r < 0) {
                 sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not format data of SM apdu");
                 goto err;
@@ -447,7 +468,7 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 
 
     /* format SM apdu */
-    sc_format_asn1_entry(sm_capdu + 2, mac, &mac_len, SC_ASN1_PRESENT);
+    sc_format_asn1_entry(sm_capdu + 3, mac, &mac_len, SC_ASN1_PRESENT);
     r = sc_asn1_encode(card->ctx, sm_capdu, (u8 **) &sm_data, &sm_data_len);
     if (r < 0)
         goto err;
@@ -499,18 +520,19 @@ static int sm_decrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
         const sc_apdu_t *sm_apdu, sc_apdu_t *apdu)
 {
     int r;
-    struct sc_asn1_entry sm_rapdu[4];
-    struct sc_asn1_entry my_sm_rapdu[4];
+    struct sc_asn1_entry sm_rapdu[5];
+    struct sc_asn1_entry my_sm_rapdu[5];
     u8 sw[2], mac[8], fdata[SC_MAX_EXT_APDU_BUFFER_SIZE];
     size_t sw_len = sizeof sw, mac_len = sizeof mac, fdata_len = sizeof fdata,
-           buf_len, asn1_len;
+           buf_len, asn1_len, fdata_offset = 0;
     const u8 *buf;
     u8 *data = NULL, *mac_data = NULL, *asn1 = NULL;
 
     sc_copy_asn1_entry(c_sm_rapdu, sm_rapdu);
     sc_format_asn1_entry(sm_rapdu + 0, fdata, &fdata_len, 0);
-    sc_format_asn1_entry(sm_rapdu + 1, sw, &sw_len, 0);
-    sc_format_asn1_entry(sm_rapdu + 2, mac, &mac_len, 0);
+    sc_format_asn1_entry(sm_rapdu + 1, fdata, &fdata_len, 0);
+    sc_format_asn1_entry(sm_rapdu + 2, sw, &sw_len, 0);
+    sc_format_asn1_entry(sm_rapdu + 3, mac, &mac_len, 0);
 
     r = sc_asn1_decode(card->ctx, sm_rapdu, sm_apdu->resp, sm_apdu->resplen,
             &buf, &buf_len);
@@ -522,10 +544,10 @@ static int sm_decrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
     }
 
 
-    if (sm_rapdu[2].flags & SC_ASN1_PRESENT) {
+    if (sm_rapdu[3].flags & SC_ASN1_PRESENT) {
         /* copy from sm_apdu to my_sm_apdu, but leave mac at default */
         sc_copy_asn1_entry(sm_rapdu, my_sm_rapdu);
-        sc_copy_asn1_entry(&c_sm_rapdu[2], &my_sm_rapdu[2]);
+        sc_copy_asn1_entry(&c_sm_rapdu[3], &my_sm_rapdu[3]);
 
         r = sc_asn1_encode(card->ctx, my_sm_rapdu, &asn1, &asn1_len);
         if (r < 0)
@@ -546,12 +568,17 @@ static int sm_decrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
     }
 
 
-    if (sm_rapdu[0].flags & SC_ASN1_PRESENT) {
+    if (sm_rapdu[1].flags & SC_ASN1_PRESENT) {
         if (ctx->padding_indicator != fdata[0]) {
             r = SC_ERROR_UNKNOWN_DATA_RECEIVED;
             goto err;
         }
-        r = ctx->decrypt(card, ctx, fdata + 1, fdata_len - 1, &data);
+        fdata_offset = 1;
+    }
+    if (sm_rapdu[0].flags & SC_ASN1_PRESENT
+            || sm_rapdu[1].flags & SC_ASN1_PRESENT) {
+        r = ctx->decrypt(card, ctx, fdata + fdata_offset,
+                fdata_len - fdata_offset, &data);
         if (r < 0)
             goto err;
         buf_len = r;
@@ -576,7 +603,7 @@ static int sm_decrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
         apdu->resplen = 0;
     }
 
-    if (sm_rapdu[1].flags & SC_ASN1_PRESENT) {
+    if (sm_rapdu[2].flags & SC_ASN1_PRESENT) {
         if (sw_len != 2) {
             sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Length of processing status bytes must be 2");
             r = SC_ERROR_ASN1_END_OF_CONTENTS;
