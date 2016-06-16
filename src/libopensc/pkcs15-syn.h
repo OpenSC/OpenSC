@@ -50,6 +50,7 @@ int sc_pkcs15emu_sc_hsm_init_ex(sc_pkcs15_card_t *,	struct sc_aid *, sc_pkcs15em
 int sc_pkcs15emu_dnie_init_ex(sc_pkcs15_card_t *,	struct sc_aid *, sc_pkcs15emu_opt_t *);
 int sc_pkcs15emu_gids_init_ex(sc_pkcs15_card_t *,	struct sc_aid *, sc_pkcs15emu_opt_t *);
 int sc_pkcs15emu_iasecc_init_ex(sc_pkcs15_card_t *,	struct sc_aid *, sc_pkcs15emu_opt_t *);
+int sc_pkcs15emu_jpki_init_ex(sc_pkcs15_card_t *,	struct sc_aid *, sc_pkcs15emu_opt_t *);
 
 struct sc_pkcs15_emulator_handler {
 	const char *name;

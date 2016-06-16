@@ -56,6 +56,7 @@ struct sc_pkcs15_emulator_handler builtin_emulators[] = {
 	{ "dnie",       sc_pkcs15emu_dnie_init_ex   },
 	{ "gids",       sc_pkcs15emu_gids_init_ex   },
 	{ "iasecc",	sc_pkcs15emu_iasecc_init_ex   },
+	{ "jpki",	sc_pkcs15emu_jpki_init_ex },
 	{ NULL, NULL }
 };
 
