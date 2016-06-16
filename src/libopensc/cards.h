@@ -225,6 +225,9 @@ enum {
 	SC_CARD_TYPE_GIDS_GENERIC,
 	SC_CARD_TYPE_GIDS_V1,
 	SC_CARD_TYPE_GIDS_V2,
+
+	/* JPKI cards */
+	SC_CARD_TYPE_JPKI_BASE = 31000,
 };
 
 extern sc_card_driver_t *sc_get_default_driver(void);
@@ -264,6 +267,7 @@ extern sc_card_driver_t *sc_get_dnie_driver(void);
 extern sc_card_driver_t *sc_get_isoApplet_driver(void);
 extern sc_card_driver_t *sc_get_masktech_driver(void);
 extern sc_card_driver_t *sc_get_gids_driver(void);
+extern sc_card_driver_t *sc_get_jpki_driver(void);
 
 #ifdef __cplusplus
 }
