@@ -377,8 +377,9 @@ sc_single_transmit(struct sc_card *card, struct sc_apdu *apdu)
 	       apdu->cla, apdu->ins, apdu->p1, apdu->p2, apdu->datalen,
 	       apdu->data);
 #ifdef ENABLE_SM
-	if (card->sm_ctx.sm_mode == SM_MODE_TRANSMIT)
-		return sc_sm_single_transmit(card, apdu);
+	if (card->sm_ctx.sm_mode == SM_MODE_TRANSMIT) {
+		LOG_FUNC_RETURN(ctx, sc_sm_single_transmit(card, apdu));
+	}
 #endif
 
 	/* send APDU to the reader driver */
