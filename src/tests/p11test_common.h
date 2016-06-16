@@ -41,6 +41,9 @@
 #define FLAGS_VERIFY_SIGN		0x02
 #define FLAGS_VERIFY_DECRYPT	0x04
 
+/* nonstandard mechanism */
+#define CKM_SHA224_RSA_PKCS 0x00000046
+
 typedef struct {
 	CK_MECHANISM_TYPE mech;
 	int flags;

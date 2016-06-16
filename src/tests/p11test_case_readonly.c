@@ -239,6 +239,11 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 				cmp_message_length = SHA_DIGEST_LENGTH;
 				type = NID_sha1;
 				break;
+			case CKM_SHA224_RSA_PKCS:
+				cmp_message = SHA224(message, message_length, NULL);
+				cmp_message_length = SHA224_DIGEST_LENGTH;
+				type = NID_sha224;
+				break;
 			case CKM_SHA256_RSA_PKCS:
 				cmp_message = SHA256(message, message_length, NULL);
 				cmp_message_length = SHA256_DIGEST_LENGTH;
