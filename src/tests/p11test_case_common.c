@@ -327,7 +327,7 @@ int search_objects(test_certs_t *objects, token_info_t *info,
 			if (rv == CKR_ATTRIBUTE_TYPE_INVALID)
 				continue;
 			else if (rv != CKR_OK)
-				fail_msg("C_GetAttributeValue: rv = 0x%.8X\n", rv);
+				fail_msg("C_GetAttributeValue: rv = 0x%.8lX\n", rv);
 
 			/* Allocate memory to hold the data we want */
 			if (template[j].ulValueLen != 0) {
@@ -339,7 +339,7 @@ int search_objects(test_certs_t *objects, token_info_t *info,
 			rv = fp->C_GetAttributeValue(info->session_handle, object_handles[i],
 				&(template[j]), 1);
 			if (rv != CKR_OK)
-				fail_msg("C_GetAttributeValue: rv = 0x%.8X\n", rv);
+				fail_msg("C_GetAttributeValue: rv = 0x%.8lX\n", rv);
 		}
 
 		callback(objects, template, template_size, object_handles[i]);

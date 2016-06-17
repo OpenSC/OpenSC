@@ -4,7 +4,7 @@
 
 In addition to the dependencies needed by OpenSC, the test suite is
 using  [`cmocka`](https://cmocka.org/) unit testing framework
-(`libcmocka-devel` package in Fedora).
+(`libcmocka-devel` package in Fedora/EPEL).
 
 ## How to use?
 
@@ -54,4 +54,4 @@ TODO:
  * Interface for results reporting?
  * Multipart mechanisms with hashes
  * Keygen write tests (optional)
- * Integrate becnhmark script with soft token
+ * Integrate benchmark script with soft token

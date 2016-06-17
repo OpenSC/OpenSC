@@ -29,6 +29,7 @@ void supported_mechanisms_test(void **state) {
 	CK_ULONG mechanism_count, i;
 	CK_MECHANISM_TYPE_PTR mechanism_list;
 	CK_MECHANISM_INFO_PTR mechanism_info;
+	CK_FLAGS j;
 
 	rv = function_pointer->C_GetMechanismList(info->slot_id, NULL_PTR,
 		&mechanism_count);
@@ -90,7 +91,7 @@ void supported_mechanisms_test(void **state) {
 				mechanism_info[i].ulMinKeySize,
 				mechanism_info[i].ulMaxKeySize,
 				get_mechanism_flag_name(mechanism_info[i].flags));
-			for (CK_FLAGS j = 1; j <= CKF_EC_COMPRESS; j = j<<1)
+			for (j = 1; j <= CKF_EC_COMPRESS; j = j<<1)
 				if ((mechanism_info[i].flags & j) != 0)
 					printf(" %s", get_mechanism_flag_name(j));
 			printf("\n");
