@@ -31,6 +31,7 @@ int get_slot_with_card(token_info_t * info)
     CK_ULONG slot_count = 0;
     CK_RV rv;
     int error = 0;
+    unsigned int i;
 
     CK_FUNCTION_LIST_PTR function_pointer = info->function_pointer;
 
@@ -58,7 +59,7 @@ int get_slot_with_card(token_info_t * info)
     }
 
     /* Find a slot capable of specified mechanism */
-    for (unsigned int i = 0; i < slot_count; i++) {
+    for (i = 0; i < slot_count; i++) {
         CK_SLOT_INFO slot_info;
         slot_id = slot_list[i];
 

@@ -278,6 +278,7 @@ int search_objects(test_certs_t *objects, token_info_t *info,
 	CK_OBJECT_HANDLE object_handle = CK_INVALID_HANDLE;
 	CK_OBJECT_HANDLE_PTR object_handles = NULL;
 	unsigned long i = 0, objects_length = 0;
+	int j;
 
 	/* FindObjects first
 	 * https://wiki.oasis-open.org/pkcs11/CommonBugs
@@ -317,7 +318,7 @@ int search_objects(test_certs_t *objects, token_info_t *info,
 		/* Find attributes one after another to handle errors
 		 * https://wiki.oasis-open.org/pkcs11/CommonBugs
 		 */
-		for (int j = 0; j < template_size; j++) {
+		for (j = 0; j < template_size; j++) {
 			template[j].pValue = NULL;
 			template[j].ulValueLen = 0;
 
@@ -343,7 +344,7 @@ int search_objects(test_certs_t *objects, token_info_t *info,
 
 		callback(objects, template, template_size, object_handles[i]);
 		// XXX check results
-		for (int j = 0; j < template_size; j++)
+		for (j = 0; j < template_size; j++)
 			free(template[j].pValue);
 	}
 	free(object_handles);
@@ -411,15 +412,14 @@ void clean_all_objects(test_certs_t *objects) {
 		free(objects->data[i].id_str);
 		free(objects->data[i].label);
 		X509_free(objects->data[i].x509);
-		if (objects->data[i].key_type == CKK_RSA)
+		if (objects->data[i].key_type == CKK_RSA &&
+		    objects->data[i].key.rsa != NULL)
 			RSA_free(objects->data[i].key.rsa);
-		else
+		else if (objects->data[i].key.ec != NULL)
 			EC_KEY_free(objects->data[i].key.ec);
 	}
 	free(objects->data);
 }
-
-char id_buffer[11];
 
 const char *get_mechanism_name(int mech_id)
 {
@@ -509,8 +509,9 @@ const char *get_mechanism_flag_name(int mech_id)
 
 char *convert_byte_string(char *id, unsigned long length)
 {
+	unsigned int i;
 	char *data = malloc(3 * length * sizeof(char) + 1);
-	for (unsigned int i = 0; i < length; i++)
+	for (i = 0; i < length; i++)
 		sprintf(&data[i*3], "%02X:", id[i]);
 	data[length*3-1] = '\0';
 	return data;
