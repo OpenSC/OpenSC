@@ -180,6 +180,41 @@ static const struct sc_asn1_entry c_asn1_req[C_ASN1_REQ_SIZE] = {
 
 
 
+static int read_file(sc_pkcs15_card_t * p15card, u8 fid[2],
+		u8 *efbin, size_t *len)
+{
+	sc_path_t path;
+	int r;
+
+	sc_path_set(&path, SC_PATH_TYPE_FILE_ID, fid, 2, 0, 0);
+	/* look this up with our AID */
+	path.aid = sc_hsm_aid;
+	/* we don't have a pre-known size of the file */
+	path.count = -1;
+	if (!p15card->opts.use_file_cache
+			|| SC_SUCCESS != sc_pkcs15_read_cached_file(p15card, &path, &efbin, len)) {
+		/* avoid re-selection of SC-HSM */
+		path.aid.len = 0;
+		r = sc_select_file(p15card->card, &path, NULL);
+		LOG_TEST_RET(p15card->card->ctx, r, "Could not select EF");
+
+		r = sc_read_binary(p15card->card, 0, efbin, *len, 0);
+		LOG_TEST_RET(p15card->card->ctx, r, "Could not read EF");
+
+		*len = r;
+
+		if (p15card->opts.use_file_cache) {
+			/* save this with our AID */
+			path.aid = sc_hsm_aid;
+			sc_pkcs15_cache_file(p15card, &path, efbin, *len);
+		}
+	}
+
+	return SC_SUCCESS;
+}
+
+
+
 /*
  * Decode a card verifiable certificate as defined in TR-03110.
  */
@@ -481,28 +516,21 @@ void sc_pkcs15emu_sc_hsm_free_cvc(sc_cvc_t *cvc)
 
 
 
-static int sc_pkcs15emu_sc_hsm_add_pubkey(sc_pkcs15_card_t *p15card, sc_pkcs15_prkey_info_t *key_info, char *label)
+static int sc_pkcs15emu_sc_hsm_add_pubkey(sc_pkcs15_card_t *p15card, u8 *efbin, size_t len, sc_pkcs15_prkey_info_t *key_info, char *label)
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	sc_card_t *card = p15card->card;
 	sc_pkcs15_pubkey_info_t pubkey_info;
 	sc_pkcs15_object_t pubkey_obj;
 	struct sc_pkcs15_pubkey pubkey;
-	u8 efbin[1024];
 	sc_cvc_t cvc;
 	u8 *cvcpo;
-	size_t cvclen;
 	int r;
 
-	/* EF.CERT is selected */
-	r = sc_read_binary(p15card->card, 0, efbin, sizeof(efbin), 0);
-	LOG_TEST_RET(ctx, r, "Could not read CSR from EF");
-
 	cvcpo = efbin;
-	cvclen = r;
 
 	memset(&cvc, 0, sizeof(cvc));
-	r = sc_pkcs15emu_sc_hsm_decode_cvc(p15card, (const u8 **)&cvcpo, &cvclen, &cvc);
+	r = sc_pkcs15emu_sc_hsm_decode_cvc(p15card, (const u8 **)&cvcpo, &len, &cvc);
 	LOG_TEST_RET(ctx, r, "Could decode certificate signing request");
 
 	memset(&pubkey, 0, sizeof(pubkey));
@@ -552,7 +580,6 @@ static int sc_pkcs15emu_sc_hsm_add_prkd(sc_pkcs15_card_t * p15card, u8 keyid) {
 	sc_pkcs15_object_t cert_obj;
 	struct sc_pkcs15_object prkd;
 	sc_pkcs15_prkey_info_t *key_info;
-	sc_path_t path;
 	u8 fid[2];
 	u8 efbin[512];
 	u8 *ptr;
@@ -563,20 +590,13 @@ static int sc_pkcs15emu_sc_hsm_add_prkd(sc_pkcs15_card_t * p15card, u8 keyid) {
 	fid[1] = keyid;
 
 	/* Try to select a related EF containing the PKCS#15 description of the key */
-	sc_path_set(&path, SC_PATH_TYPE_FILE_ID, fid, sizeof(fid), 0, 0);
-	r = sc_select_file(card, &path, NULL);
-
-	if (r != SC_SUCCESS) {
-		return SC_SUCCESS;
-	}
-
-	r = sc_read_binary(p15card->card, 0, efbin, sizeof(efbin), 0);
+	len = sizeof efbin;
+	r = read_file(p15card, fid, efbin, &len);
 	LOG_TEST_RET(card->ctx, r, "Could not read EF.PRKD");
 
-	memset(&prkd, 0, sizeof(prkd));
 	ptr = efbin;
-	len = r;
 
+	memset(&prkd, 0, sizeof(prkd));
 	r = sc_pkcs15_decode_prkdf_entry(p15card, &prkd, (const u8 **)&ptr, &len);
 	LOG_TEST_RET(card->ctx, r, "Could not decode EF.PRKD");
 
@@ -604,22 +624,16 @@ static int sc_pkcs15emu_sc_hsm_add_prkd(sc_pkcs15_card_t * p15card, u8 keyid) {
 	/* Check if we also have a certificate for the private key */
 	fid[0] = EE_CERTIFICATE_PREFIX;
 
-	sc_path_set(&path, SC_PATH_TYPE_FILE_ID, fid, sizeof(fid), 0, 0);
-	r = sc_select_file(card, &path, NULL);
-
-	if (r != SC_SUCCESS) {
-		return SC_SUCCESS;
-	}
-
-	/* Check if the certificate is a X.509 certificate */
-	r = sc_read_binary(p15card->card, 0, efbin, 1, 0);
+	len = sizeof efbin;
+	r = read_file(p15card, fid, efbin, &len);
+	LOG_TEST_RET(card->ctx, r, "Could not read EF");
 
 	if (r < 0) {
 		return SC_SUCCESS;
 	}
 
 	if (efbin[0] == 0x67) {		/* Decode CSR and create public key object */
-		sc_pkcs15emu_sc_hsm_add_pubkey(p15card, key_info, prkd.label);
+		sc_pkcs15emu_sc_hsm_add_pubkey(p15card, efbin, len, key_info, prkd.label);
 		return SC_SUCCESS;		/* Ignore any errors */
 	}
 
@@ -631,7 +645,7 @@ static int sc_pkcs15emu_sc_hsm_add_prkd(sc_pkcs15_card_t * p15card, u8 keyid) {
 	memset(&cert_obj, 0, sizeof(cert_obj));
 
 	cert_info.id = key_info->id;
-	cert_info.path = path;
+	sc_path_set(&cert_info.path, SC_PATH_TYPE_FILE_ID, fid, 2, 0, 0);
 	cert_info.path.count = -1;
 
 	strlcpy(cert_obj.label, prkd.label, sizeof(cert_obj.label));
@@ -651,7 +665,6 @@ static int sc_pkcs15emu_sc_hsm_add_dcod(sc_pkcs15_card_t * p15card, u8 id) {
 	sc_card_t *card = p15card->card;
 	sc_pkcs15_data_info_t *data_info;
 	sc_pkcs15_object_t data_obj;
-	sc_path_t path;
 	u8 fid[2];
 	u8 efbin[512];
 	const u8 *ptr;
@@ -662,20 +675,13 @@ static int sc_pkcs15emu_sc_hsm_add_dcod(sc_pkcs15_card_t * p15card, u8 id) {
 	fid[1] = id;
 
 	/* Try to select a related EF containing the PKCS#15 description of the data */
-	sc_path_set(&path, SC_PATH_TYPE_FILE_ID, fid, sizeof(fid), 0, 0);
-	r = sc_select_file(card, &path, NULL);
-
-	if (r != SC_SUCCESS) {
-		return SC_SUCCESS;
-	}
-
-	r = sc_read_binary(p15card->card, 0, efbin, sizeof(efbin), 0);
+	len = sizeof efbin;
+	r = read_file(p15card, fid, efbin, &len);
 	LOG_TEST_RET(card->ctx, r, "Could not read EF.DCOD");
 
-	memset(&data_obj, 0, sizeof(data_obj));
 	ptr = efbin;
-	len = r;
 
+	memset(&data_obj, 0, sizeof(data_obj));
 	r = sc_pkcs15_decode_dodf_entry(p15card, &data_obj, &ptr, &len);
 	LOG_TEST_RET(card->ctx, r, "Could not decode EF.DCOD");
 
@@ -698,7 +704,6 @@ static int sc_pkcs15emu_sc_hsm_add_cd(sc_pkcs15_card_t * p15card, u8 id) {
 	sc_card_t *card = p15card->card;
 	sc_pkcs15_cert_info_t *cert_info;
 	sc_pkcs15_object_t obj;
-	sc_path_t path;
 	u8 fid[2];
 	u8 efbin[512];
 	const u8 *ptr;
@@ -709,20 +714,13 @@ static int sc_pkcs15emu_sc_hsm_add_cd(sc_pkcs15_card_t * p15card, u8 id) {
 	fid[1] = id;
 
 	/* Try to select a related EF containing the PKCS#15 description of the data */
-	sc_path_set(&path, SC_PATH_TYPE_FILE_ID, fid, sizeof(fid), 0, 0);
-	r = sc_select_file(card, &path, NULL);
-
-	if (r != SC_SUCCESS) {
-		return SC_SUCCESS;
-	}
-
-	r = sc_read_binary(p15card->card, 0, efbin, sizeof(efbin), 0);
+	len = sizeof efbin;
+	r = read_file(p15card, fid, efbin, &len);
 	LOG_TEST_RET(card->ctx, r, "Could not read EF.DCOD");
 
-	memset(&obj, 0, sizeof(obj));
 	ptr = efbin;
-	len = r;
 
+	memset(&obj, 0, sizeof(obj));
 	r = sc_pkcs15_decode_cdf_entry(p15card, &obj, &ptr, &len);
 	LOG_TEST_RET(card->ctx, r, "Could not decode EF.CD");
 
@@ -740,18 +738,15 @@ static int sc_pkcs15emu_sc_hsm_add_cd(sc_pkcs15_card_t * p15card, u8 id) {
 static int sc_pkcs15emu_sc_hsm_read_tokeninfo (sc_pkcs15_card_t * p15card)
 {
 	sc_card_t *card = p15card->card;
-	sc_path_t path;
 	int r;
 	u8 efbin[512];
+	size_t len;
 
 	LOG_FUNC_CALLED(card->ctx);
 
 	/* Read token info */
-	sc_path_set(&path, SC_PATH_TYPE_FILE_ID, (u8 *) "\x2F\x03", 2, 0, 0);
-	r = sc_select_file(card, &path, NULL);
-	LOG_TEST_RET(card->ctx, r, "Could not select EF.TokenInfo");
-
-	r = sc_read_binary(p15card->card, 0, efbin, sizeof(efbin), 0);
+	len = sizeof efbin;
+	r = read_file(p15card, (u8 *) "\x2F\x03", efbin, &len);
 	LOG_TEST_RET(card->ctx, r, "Could not read EF.TokenInfo");
 
 	r = sc_pkcs15_parse_tokeninfo(card->ctx, p15card->tokeninfo, efbin, r);
@@ -807,15 +802,11 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 	sc_file_free(file);
 
 	/* Read device certificate to determine serial number */
-	sc_path_set(&path, SC_PATH_TYPE_FILE_ID, (u8 *) "\x2F\x02", 2, 0, 0);
-	r = sc_select_file(card, &path, NULL);
+	len = sizeof efbin;
+	r = read_file(p15card, (u8 *) "\x2F\x02", efbin, &len);
 	LOG_TEST_RET(card->ctx, r, "Could not select EF.C_DevAut");
 
-	r = sc_read_binary(p15card->card, 0, efbin, sizeof(efbin), 0);
-	LOG_TEST_RET(card->ctx, r, "Could not read EF.C_DevAut");
-
 	ptr = efbin;
-	len = r;
 
 	memset(&devcert, 0 ,sizeof(devcert));
 	r = sc_pkcs15emu_sc_hsm_decode_cvc(p15card, (const u8 **)&ptr, &len, &devcert);
