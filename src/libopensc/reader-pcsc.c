@@ -470,6 +470,34 @@ static int pcsc_reconnect(sc_reader_t * reader, DWORD action)
 	return pcsc_to_opensc_error(rv);
 }
 
+static void initialize_uid(sc_reader_t *reader)
+{
+	sc_apdu_t apdu;
+	/* though we only expect 10 bytes max, we want to set the Le to 0x00 to not
+	 * get 0x6282 as SW in case of a UID variant shorter than 10 bytes */
+	u8 rbuf[256];
+
+	memset(&apdu, 0, sizeof(apdu));
+	apdu.cse = SC_APDU_CASE_2_SHORT;
+	apdu.cla = 0xFF;
+	apdu.ins = 0xCA;
+	apdu.p1 = 0x00;
+	apdu.p2 = 0x00;
+	apdu.le = 0x00;
+	apdu.resp = rbuf;
+	apdu.resplen = sizeof rbuf;
+
+	if (SC_SUCCESS == pcsc_transmit(reader, &apdu)
+			&& apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
+		reader->uid.len = apdu.resplen;
+		memcpy(reader->uid.value, apdu.resp, reader->uid.len);
+		sc_debug_hex(reader->ctx, SC_LOG_DEBUG_NORMAL, "UID",
+				reader->uid.value, reader->uid.len);
+	} else {
+		sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "unable to get UID");
+	}
+}
+
 static int pcsc_connect(sc_reader_t *reader)
 {
 	DWORD active_proto, tmp, protocol = SCARD_PROTOCOL_T0 | SCARD_PROTOCOL_T1;
@@ -521,6 +549,8 @@ static int pcsc_connect(sc_reader_t *reader)
 		}
 		sc_log(reader->ctx, "Final protocol: %s", reader->active_protocol == SC_PROTO_T1 ? "T=1" : "T=0");
 	}
+
+	initialize_uid(reader);
 
 	/* After connect reader is not locked yet */
 	priv->locked = 0;
@@ -2184,6 +2214,8 @@ static int cardmod_connect(sc_reader_t *reader)
 		return r;
 	if (!(reader->flags & SC_READER_CARD_PRESENT))
 		return SC_ERROR_CARD_NOT_PRESENT;
+
+	initialize_uid(reader);
 
 	return SC_SUCCESS;
 }

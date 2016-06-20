@@ -316,6 +316,7 @@ typedef struct sc_reader {
 	size_t max_recv_size; /* Mac Le supported by the reader layer */
 
 	struct sc_atr atr;
+	struct sc_uid uid;
 	struct _atr_info {
 		u8 *hist_bytes;
 		size_t hist_bytes_len;
@@ -470,6 +471,7 @@ typedef struct sc_card {
 	struct sc_reader *reader;
 
 	struct sc_atr atr;
+	struct sc_uid uid;
 
 	int type;			/* Card type, for card driver internal use */
 	unsigned long caps, flags;
