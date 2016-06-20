@@ -367,6 +367,7 @@ int sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card,
 	r = sc_pin_cmd(card, &data, &auth_info->tries_left);
 	sc_log(ctx, "PIN cmd result %i", r);
 	if (r == SC_SUCCESS)
+	if (r == SC_SUCCESS && pin_obj->usage_counter == 0)
 		sc_pkcs15_pincache_add(p15card, pin_obj, pincode, pinlen);
 out:
 	sc_unlock(card);
