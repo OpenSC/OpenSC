@@ -77,18 +77,6 @@
 
 				<varlistentry>
 					<term>
-						<option>--learn-card</option>,
-						<option>-L</option>
-					</term>
-					<listitem><para>Cache PKCS #15 token data to the local filesystem.
-					Subsequent operations are performed on the cached data where possible.
-					If the cache becomes out-of-sync with the token state (eg. new key is
-					generated and stored on the token), the cache should be updated or
-					operations may show stale results.</para></listitem>
-				</varlistentry>
-
-				<varlistentry>
-					<term>
 						<option>--list-applications</option>
 					</term>
 					<listitem><para>List the on-card PKCS#15 applications</para></listitem>

@@ -2423,6 +2423,10 @@ sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_pat
 		sc_unlock(p15card->card);
 
 		sc_file_free(file);
+
+		if (p15card->opts.use_file_cache) {
+			sc_pkcs15_cache_file(p15card, in_path, data, len);
+		}
 	}
 	*buf = data;
 	*buflen = len;

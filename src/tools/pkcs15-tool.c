@@ -93,7 +93,6 @@ static int	authenticate(sc_pkcs15_object_t *obj);
 
 static const struct option options[] = {
 	{ "version",		0, NULL,			OPT_PRINT_VERSION },
-	{ "learn-card",		no_argument, NULL,		'L' },
 	{ "list-applications",	no_argument, NULL,		OPT_LIST_APPLICATIONS },
 	{ "read-certificate",	required_argument, NULL,	'r' },
 	{ "list-certificates",	no_argument, NULL,		'c' },
@@ -131,7 +130,6 @@ static const struct option options[] = {
 
 static const char *option_help[] = {
 	"Print OpenSC package version",
-	"Stores card info to cache",
 	"List the on-card PKCS#15 applications",
 	"Reads certificate with ID <arg>",
 	"Lists certificates",
@@ -1546,151 +1544,6 @@ static int change_pin(void)
 	return 0;
 }
 
-static int read_and_cache_file(const sc_path_t *path)
-{
-	sc_file_t *tfile;
-	const sc_acl_entry_t *e;
-	u8 *buf;
-	int r;
-	size_t size;
-
-	if (verbose) {
-		printf("Reading file ");
-		util_hex_dump(stdout, path->value, path->len, "");
-		printf("...\n");
-	}
-	r = sc_select_file(card, path, &tfile);
-	if (r != 0) {
-		fprintf(stderr, "sc_select_file() failed: %s\n", sc_strerror(r));
-		return -1;
-	}
-	e = sc_file_get_acl_entry(tfile, SC_AC_OP_READ);
-	if (e != NULL && e->method != SC_AC_NONE) {
-		if (verbose)
-			printf("Skipping; ACL for read operation is not NONE.\n");
-		return -1;
-	}
-	if (tfile->size) {
-		size = tfile->size;
-	} else {
-		size = 1024;
-	}
-	buf = malloc(size);
-	if (!buf) {
-		printf("out of memory!");
-		return -1;
-	}
-	if (tfile->ef_structure == SC_FILE_EF_LINEAR_VARIABLE_TLV) {
-		int i;
-		size_t l, record_len;
-		unsigned char *head = buf;
-
-		for (i=1;  ; i++) {
-			l = size - (head - buf);
-			if (l > 256) { l = 256; }
-			r = sc_read_record(p15card->card, i, head, l, SC_RECORD_BY_REC_NR);
-			if (r == SC_ERROR_RECORD_NOT_FOUND) {
-				r = 0;
-				break;
-			}
-			if (r < 0) {
-				free(buf);
-				return -1;
-			}
-			if (r < 2)
-				break;
-			record_len = head[1];
-			if (record_len != 0xff) {
-				memmove(head,head+2,r-2);
-				head += (r-2);
-			}
-			else {
-				if (r < 4)
-					break;
-				memmove(head,head+4,r-4);
-				head += (r-4);
-			}
-		}
-		r = head - buf;
-
-	}
-	else {
-
-		r = sc_read_binary(card, 0, buf, size, 0);
-		if (r < 0) {
-			fprintf(stderr, "sc_read_binary() failed: %s\n", sc_strerror(r));
-			free(buf);
-			return -1;
-		}
-	}
-	r = sc_pkcs15_cache_file(p15card, path, buf, r);
-	if (r) {
-		fprintf(stderr, "Unable to cache file: %s\n", sc_strerror(r));
-		free(buf);
-		return -1;
-	}
-	sc_file_free(tfile);
-	free(buf);
-	return 0;
-}
-
-static int learn_card(void)
-{
-	char dir[PATH_MAX];
-	int r, i, cert_count;
-	struct sc_pkcs15_object *certs[32];
-	struct sc_pkcs15_df *df;
-
-	r = sc_get_cache_dir(ctx, dir, sizeof(dir));
-	if (r) {
-		fprintf(stderr, "Unable to find cache directory: %s\n", sc_strerror(r));
-		return 1;
-	}
-
-	printf("Using cache directory '%s'.\n", dir);
-	r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_CERT_X509, certs, 32);
-	if (r < 0) {
-		fprintf(stderr, "Certificate enumeration failed: %s\n", sc_strerror(r));
-		return 1;
-	}
-	cert_count = r;
-	r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PRKEY, NULL, 0);
-	if (r < 0) {
-		fprintf(stderr, "Private key enumeration failed: %s\n", sc_strerror(r));
-		return 1;
-	}
-	r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_AUTH, NULL, 0);
-	if (r < 0) {
-		fprintf(stderr, "Authentication objects enumeration failed: %s\n", sc_strerror(r));
-		return 1;
-	}
-
-	/* Cache all relevant DF files. The cache
-	 * directory is created automatically. */
-	for (df = p15card->df_list; df != NULL; df = df->next)
-		read_and_cache_file(&df->path);
-	printf("Caching %d certificate(s)...\n", cert_count);
-	for (i = 0; i < cert_count; i++) {
-		sc_path_t tpath;
-		struct sc_pkcs15_cert_info *cinfo = (struct sc_pkcs15_cert_info *) certs[i]->data;
-
-		printf("[%.*s]\n", (int) sizeof certs[i]->label, certs[i]->label);
-
-		memset(&tpath, 0, sizeof(tpath));
-		tpath = cinfo->path;
-		if (tpath.type == SC_PATH_TYPE_FILE_ID) {
-			/* prepend application DF path in case of a file id */
-			r = sc_concatenate_path(&tpath, &p15card->file_app->path, &tpath);
-			if (r != SC_SUCCESS)
-				return r;
-		}
-
-		read_and_cache_file(&tpath);
-	}
-
-	return 0;
-}
-
 static int test_update(sc_card_t *in_card)
 {
 	sc_apdu_t apdu;
@@ -1917,7 +1770,6 @@ int main(int argc, char * const argv[])
 	int do_verify_pin = 0;
 	int do_change_pin = 0;
 	int do_unblock_pin = 0;
-	int do_learn_card = 0;
 	int do_test_update = 0;
 	int do_update = 0;
 	int do_print_version = 0;
@@ -2007,10 +1859,6 @@ int main(int argc, char * const argv[])
 			opt_rfc4716 = 1;
 			break;
 #endif
-		case 'L':
-			do_learn_card = 1;
-			action_count++;
-			break;
 		case 'T':
 			do_test_update = 1;
 			action_count++;
@@ -2117,11 +1965,6 @@ int main(int argc, char * const argv[])
 		if ((err = verify_pin()))
 			goto end;
 
-	if (do_learn_card) {
-		if ((err = learn_card()))
-			goto end;
-		action_count--;
-	}
 	if (do_list_certs) {
 		if ((err = list_certificates()))
 			goto end;
