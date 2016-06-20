@@ -36,6 +36,7 @@
 #include "internal.h"
 #include "pkcs15.h"
 
+#define RANDOM_UID_INDICATOR 0x08
 static int generate_cache_filename(struct sc_pkcs15_card *p15card,
 				   const sc_path_t *path,
 				   char *buf, size_t bufsize)
@@ -45,7 +46,9 @@ static int generate_cache_filename(struct sc_pkcs15_card *p15card,
 	int  r;
 	unsigned u;
 
-	if (p15card->tokeninfo->serial_number == NULL)
+	if (p15card->tokeninfo->serial_number == NULL
+			&& (p15card->card->uid.len == 0
+				|| p15card->card->uid.value[0] == RANDOM_UID_INDICATOR))
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	assert(path->len <= SC_MAX_PATH_SIZE);
@@ -58,8 +61,16 @@ static int generate_cache_filename(struct sc_pkcs15_card *p15card,
 	if (!last_update)
 		last_update = "NODATE";
 
-	snprintf(dir + strlen(dir), sizeof(dir) - strlen(dir),
-			"%s_%s", p15card->tokeninfo->serial_number, last_update);
+	if (p15card->tokeninfo->serial_number) {
+		snprintf(dir + strlen(dir), sizeof(dir) - strlen(dir),
+				"%s_%s", p15card->tokeninfo->serial_number,
+				last_update);
+	} else {
+		snprintf(dir + strlen(dir), sizeof(dir) - strlen(dir),
+				"uid-%s_%s", sc_dump_hex(
+					p15card->card->uid.value,
+					p15card->card->uid.len), last_update);
+	}
 
 	if (path->aid.len &&
 		(path->type == SC_PATH_TYPE_FILE_ID || path->type == SC_PATH_TYPE_PATH))   {
