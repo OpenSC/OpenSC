@@ -580,7 +580,6 @@ static int sc_pkcs15emu_sc_hsm_add_prkd(sc_pkcs15_card_t * p15card, u8 keyid) {
 	sc_pkcs15_object_t cert_obj;
 	struct sc_pkcs15_object prkd;
 	sc_pkcs15_prkey_info_t *key_info;
-	sc_path_t path;
 	u8 fid[2];
 	u8 efbin[512];
 	u8 *ptr;
@@ -646,7 +645,7 @@ static int sc_pkcs15emu_sc_hsm_add_prkd(sc_pkcs15_card_t * p15card, u8 keyid) {
 	memset(&cert_obj, 0, sizeof(cert_obj));
 
 	cert_info.id = key_info->id;
-	cert_info.path = path;
+	sc_path_set(&cert_info.path, SC_PATH_TYPE_FILE_ID, fid, 2, 0, 0);
 	cert_info.path.count = -1;
 
 	strlcpy(cert_obj.label, prkd.label, sizeof(cert_obj.label));
