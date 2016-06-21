@@ -37,7 +37,7 @@ static struct sc_card_operations gemsafe_ops;
 static struct sc_card_operations *iso_ops = NULL;
 
 static struct sc_card_driver gemsafe_drv = {
-	"driver for the Gemplus GemSAFE V1 applet",
+	"Gemalto GemSafe V1 applet",
 	"gemsafeV1",
 	&gemsafe_ops,
 	NULL, 0, NULL
