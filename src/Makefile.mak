@@ -1,8 +1,10 @@
 TOPDIR = ..
 
-!INCLUDE $(TOPDIR)\win32\Make.rules.mak
-
 SUBDIRS = common scconf libsm pkcs15init libopensc pkcs11 tools tests
+
+default: all
+
+!INCLUDE $(TOPDIR)\win32\Make.rules.mak
 
 !IF "$(MINIDRIVER_DEF)" == "/DENABLE_MINIDRIVER"
 SUBDIRS = $(SUBDIRS) minidriver
@@ -12,9 +14,6 @@ SUBDIRS = $(SUBDIRS) minidriver
 SUBDIRS = $(SUBDIRS) smm
 !ENDIF
 
-all::
-
-all depend install clean::
+all clean::
 	@for %i in ( $(SUBDIRS) ) do \
 		@cmd /c "cd %i && $(MAKE) /nologo /f Makefile.mak $@"
-

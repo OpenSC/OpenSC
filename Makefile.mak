@@ -1,7 +1,6 @@
-
 SUBDIRS = etc win32 src
 
-all::
+default: all
 
-all depend install clean::
+all clean::
 	@for %i in ( $(SUBDIRS) ) do @cmd /c "cd %i && $(MAKE) /nologo /f Makefile.mak $@"

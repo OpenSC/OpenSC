@@ -2,14 +2,17 @@ TOPDIR = ..\..
 
 TARGET = opensc-minidriver.dll
 OBJECTS = minidriver.obj versioninfo-minidriver.res
+LIBS = $(TOPDIR)\src\libopensc\opensc_a.lib \
+	   $(TOPDIR)\src\pkcs15init\pkcs15init.lib \
+	   $(TOPDIR)\src\common\libscdl.lib
+
+all: $(TARGET)
 
 !INCLUDE $(TOPDIR)\win32\Make.rules.mak
 
-all: versioninfo-minidriver.res $(TARGET)
-
-$(TARGET): $(OBJECTS) ..\libopensc\opensc_a.lib ..\pkcs15init\pkcs15init.lib
+$(TARGET): $(OBJECTS) $(LIBS)
 	echo LIBRARY $* > $*.def
 	echo EXPORTS >> $*.def
 	type minidriver.exports >> $*.def
-	link /dll $(LINKFLAGS) /def:$*.def /out:$(TARGET) $(OBJECTS) ..\libopensc\opensc_a.lib ..\pkcs15init\pkcs15init.lib $(ZLIB_LIB) $(OPENSSL_LIB) ..\common\libscdl.lib ws2_32.lib gdi32.lib advapi32.lib Crypt32.lib User32.lib bcrypt.lib DelayImp.lib Rpcrt4.lib /DELAYLOAD:bcrypt.dll
+	link /dll $(LINKFLAGS) /def:$*.def /out:$(TARGET) $(OBJECTS) $(LIBS) $(ZLIB_LIB) $(OPENSSL_LIB) ws2_32.lib gdi32.lib advapi32.lib Crypt32.lib User32.lib bcrypt.lib DelayImp.lib Rpcrt4.lib /DELAYLOAD:bcrypt.dll
 	if EXIST $(TARGET).manifest mt -manifest $(TARGET).manifest -outputresource:$(TARGET);2

@@ -1,21 +1,18 @@
-
 TOPDIR = ..\..
 
 TARGETS = base64.exe p15dump.exe \
 	  p15dump.exe pintest.exe # prngtest.exe lottery.exe
 
-all: print.obj sc-test.obj $(TARGETS)
-$(TARGETS): $(TOPDIR)\win32\versioninfo.res print.obj sc-test.obj \
-	..\common\common.lib ..\libopensc\opensc.lib
+OBJECTS = print.obj sc-test.obj $(TOPDIR)\win32\versioninfo.res
+LIBS = $(TOPDIR)\src\common\common.lib $(TOPDIR)\src\libopensc\opensc.lib
+
+all: $(TARGETS)
 
 !INCLUDE $(TOPDIR)\win32\Make.rules.mak
 
-.c.obj:
-	cl $(COPTS) /c $<
+$(TARGETS): $(OBJECTS) $(LIBS)
 
 .c.exe:
 	cl $(COPTS) /c $<
-        link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj sc-test.obj print.obj \
-        ..\common\common.lib ..\libopensc\opensc.lib $(TOPDIR)\win32\versioninfo.res
+	link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj $(OBJECTS) $(LIBS)
 	if EXIST $@.manifest mt -manifest $@.manifest -outputresource:$@;1
-

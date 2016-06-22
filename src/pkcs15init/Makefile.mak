@@ -14,8 +14,7 @@ OBJECTS = pkcs15-lib.obj profile.obj \
 
 all: $(TARGET)
 
-$(TARGET): $(OBJECTS)
-	lib $(LIBFLAGS) /out:$(TARGET) $(OBJECTS)
-
 !INCLUDE $(TOPDIR)\win32\Make.rules.mak
 
+$(TARGET): $(OBJECTS)
+	lib $(LIBFLAGS) /out:$(TARGET) $(OBJECTS)

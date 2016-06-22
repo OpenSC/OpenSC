@@ -1,8 +1,8 @@
 TOPDIR = ..
 
-!INCLUDE $(TOPDIR)\win32\Make.rules.mak
-
 all: versioninfo-customactions.res config.h
+
+!INCLUDE $(TOPDIR)\win32\Make.rules.mak
 
 config.h: winconfig.h
 	copy /y winconfig.h config.h
