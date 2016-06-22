@@ -37,10 +37,34 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#ifdef HAVE_SYS_TIME_H
 #include <sys/time.h>
+#else
+/* only implement what we are using in this file */
+struct timeval {
+    unsigned int tv_sec;
+    unsigned int tv_usec;
+};
+int gettimeofday(struct timeval *tv, struct timezone *tz)
+{
+#ifdef _WIN32
+    SYSTEMTIME st;
+    GetLocalTime(&st);
+    if (!tv)
+        return -1;
+    tv->tv_sec = st.wSecond;
+    tv->tv_usec = st.wMilliseconds*1000;
+#else
+    tv->tv_sec = 0;
+    tv->tv_usec = 0;
+#endif
+    return 0;
+}
+#endif
 
 #ifndef HAVE_GETLINE
-static ssize_t getline(char **lineptr, size_t *n, FILE *stream)
+static int getline(char **lineptr, size_t *n, FILE *stream)
 {
     char *p;
 
@@ -188,7 +212,7 @@ int npa_translate_apdus(sc_card_t *card, FILE *input)
     char *read = NULL;
     size_t readlen = 0, apdulen;
     sc_apdu_t apdu;
-    ssize_t linelen;
+    int linelen;
     int r;
 
     memset(&apdu, 0, sizeof apdu);
@@ -407,8 +431,8 @@ main (int argc, char **argv)
         EAC_set_x509_default_dir(cmdline.cvc_dir_arg);
 
     if (cmdline.break_flag) {
-        /* The biggest buffer sprintf could write with "%llu" */
-        char secretbuf[strlen("18446744073709551615")+1];
+        /* The biggest number sprintf could write with "%llu is 18446744073709551615 */
+        char secretbuf[21];
         unsigned long long secret = 0;
         unsigned long long maxsecret = 0;
 
