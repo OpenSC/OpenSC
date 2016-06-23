@@ -2645,20 +2645,27 @@ get##ATTR(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj) \
 static TYPE * \
 get##ATTR(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj, CK_ULONG_PTR pulCount) \
 { \
-	CK_ATTRIBUTE	attr = { CKA_##ATTR, NULL, 0 }; \
-	CK_RV		rv; \
- \
-	rv = p11->C_GetAttributeValue(sess, obj, &attr, 1); \
-	if (rv == CKR_OK) { \
-		if (!(attr.pValue = calloc(1, attr.ulValueLen + 1))) \
-			util_fatal("out of memory in get" #ATTR ": %m"); \
-		rv = p11->C_GetAttributeValue(sess, obj, &attr, 1); \
-		if (pulCount) \
-			*pulCount = attr.ulValueLen / sizeof(TYPE); \
-	} else {\
-		p11_warn("C_GetAttributeValue(" #ATTR ")", rv); \
-	} \
-	return (TYPE *) attr.pValue; \
+	CK_ATTRIBUTE	attr = { CKA_##ATTR, NULL, 0 };		\
+	CK_RV		rv;					\
+	if (pulCount)						\
+		*pulCount = 0;					\
+	rv = p11->C_GetAttributeValue(sess, obj, &attr, 1);	\
+	if (rv == CKR_OK) {					\
+		if (attr.ulValueLen == (CK_ULONG)(-1))		\
+			return NULL;				\
+		if (!(attr.pValue = calloc(1, attr.ulValueLen + 1)))		\
+			util_fatal("out of memory in get" #ATTR ": %m");	\
+		rv = p11->C_GetAttributeValue(sess, obj, &attr, 1);		\
+		if (attr.ulValueLen == (CK_ULONG)(-1)) {	\
+			free(attr.pValue);			\
+			return NULL;				\
+		}						\
+		if (pulCount)					\
+			*pulCount = attr.ulValueLen / sizeof(TYPE);	\
+	} else {						\
+		p11_warn("C_GetAttributeValue(" #ATTR ")", rv);	\
+	}							\
+	return (TYPE *) attr.pValue;				\
 }
 
 /*
