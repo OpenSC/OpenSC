@@ -132,6 +132,7 @@ enum {
 	OPT_DERIVE,
 	OPT_DECRYPT,
 	OPT_TEST_FORK,
+	OPT_GENERATE_KEY,
 };
 
 static const struct option options[] = {
@@ -149,7 +150,7 @@ static const struct option options[] = {
 	{ "mechanism",		1, NULL,		'm' },
 
 	{ "login",		0, NULL,		'l' },
-	{ "login-type",         1, NULL,                OPT_LOGIN_TYPE },
+	{ "login-type",		1, NULL,		OPT_LOGIN_TYPE },
 	{ "pin",		1, NULL,		'p' },
 	{ "puk",		1, NULL,		OPT_PUK },
 	{ "new-pin",		1, NULL,		OPT_NEW_PIN },
@@ -159,6 +160,7 @@ static const struct option options[] = {
 	{ "change-pin",		0, NULL,		'c' },
 	{ "unlock-pin",		0, NULL,		OPT_UNLOCK_PIN },
 	{ "keypairgen",		0, NULL,		'k' },
+	{ "keygen",		0, NULL,		OPT_GENERATE_KEY },
 	{ "key-type",		1, NULL,		OPT_KEY_TYPE },
 	{ "usage-sign",		0, NULL,		OPT_KEY_USAGE_SIGN },
 	{ "usage-decrypt",	0, NULL,		OPT_KEY_USAGE_DECRYPT },
@@ -221,6 +223,7 @@ static const char *option_help[] = {
 	"Change User PIN",
 	"Unlock User PIN (without '--login' unlock in logged in session; otherwise '--login-type' has to be 'context-specific')",
 	"Key pair generation",
+	"Key generation",
 	"Specify the type and length of the key to create, for example rsa:1024 or EC:prime256v1",
 	"Specify 'sign' key usage flag (sets SIGN in privkey, sets VERIFY in pubkey)",
 	"Specify 'decrypt' key usage flag (RSA only, set DECRYPT privkey, ENCRYPT in pubkey)",
@@ -362,6 +365,7 @@ static void		hash_data(CK_SLOT_ID, CK_SESSION_HANDLE);
 static void		derive_key(CK_SLOT_ID, CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static int		gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE,
 				CK_OBJECT_HANDLE *, CK_OBJECT_HANDLE *, const char *);
+static int		gen_key(CK_SLOT_ID slot, CK_SESSION_HANDLE, CK_OBJECT_HANDLE *, const char *, char *);
 static int		write_object(CK_SESSION_HANDLE session);
 static int		read_object(CK_SESSION_HANDLE session);
 static int		delete_object(CK_SESSION_HANDLE session);
@@ -418,6 +422,7 @@ int main(int argc, char * argv[])
 	int do_hash = 0;
 	int do_derive = 0;
 	int do_gen_keypair = 0;
+	int do_gen_key = 0;
 	int do_write_object = 0;
 	int do_read_object = 0;
 	int do_delete_object = 0;
@@ -488,6 +493,11 @@ int main(int argc, char * argv[])
 		case 'k':
 			need_session |= NEED_SESSION_RW;
 			do_gen_keypair = 1;
+			action_count++;
+			break;
+		case OPT_GENERATE_KEY:
+			need_session |= NEED_SESSION_RW;
+			do_gen_key = 1;
 			action_count++;
 			break;
 		case 'w':
@@ -885,6 +895,11 @@ int main(int argc, char * argv[])
 	if (do_gen_keypair) {
 		CK_OBJECT_HANDLE hPublicKey, hPrivateKey;
 		gen_keypair(opt_slot, session, &hPublicKey, &hPrivateKey, opt_key_type);
+	}
+
+	if (do_gen_key) {
+		CK_OBJECT_HANDLE hSecretKey;
+		gen_key(opt_slot, session, &hSecretKey, opt_key_type, NULL);
 	}
 
 	if (do_write_object) {
@@ -1767,6 +1782,86 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	return 1;
 }
 
+static int
+gen_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE *hSecretKey,
+	const char *type, char *label)
+{
+	CK_MECHANISM mechanism = {CKM_AES_KEY_GEN, NULL_PTR, 0};
+	CK_OBJECT_CLASS secret_key_class = CKO_SECRET_KEY;
+	CK_BBOOL _true = TRUE;
+	CK_KEY_TYPE key_type = CKK_AES;
+	CK_ULONG    key_length;
+	CK_ATTRIBUTE keyTemplate[20] = {
+		{CKA_CLASS, &secret_key_class, sizeof(secret_key_class)},
+		{CKA_TOKEN, &_true, sizeof(_true)},
+	};
+	int n_attr = 2;
+	CK_RV rv;
+
+	if (type != NULL) {
+		if (strncmp(type, "AES:", strlen("AES:")) == 0 || strncmp(type, "aes:", strlen("aes:")) == 0) {
+			CK_MECHANISM_TYPE mtypes[] = {CKM_AES_KEY_GEN};
+			size_t mtypes_num = sizeof(mtypes)/sizeof(mtypes[0]);
+			const char *size = type + strlen("AES:");
+
+			mechanism.mechanism = CKM_AES_KEY_GEN;
+			key_type = CKK_AES;
+
+			if (!opt_mechanism_used)
+				if (!find_mechanism(slot, CKF_GENERATE, mtypes, mtypes_num, &opt_mechanism))
+					util_fatal("Generate Key mechanism not supported\n");
+
+			if (size == NULL)
+				util_fatal("Unknown key type %s", type);
+			key_length = (unsigned long)atol(size);
+			if (key_length == 0)
+				key_length = 32;
+
+			FILL_ATTR(keyTemplate[n_attr], CKA_KEY_TYPE, &key_type, sizeof(key_type));
+			n_attr++;
+			FILL_ATTR(keyTemplate[n_attr], CKA_ENCRYPT, &_true, sizeof(_true));
+			n_attr++;
+			FILL_ATTR(keyTemplate[n_attr], CKA_DECRYPT, &_true, sizeof(_true));
+			n_attr++;
+			FILL_ATTR(keyTemplate[n_attr], CKA_WRAP, &_true, sizeof(_true));
+			n_attr++;
+			FILL_ATTR(keyTemplate[n_attr], CKA_UNWRAP, &_true, sizeof(_true));
+			n_attr++;
+			FILL_ATTR(keyTemplate[n_attr], CKA_VALUE_LEN, &key_length, sizeof(key_length));
+			n_attr++;
+
+		}
+		else {
+			util_fatal("Unknown key type %s", type);
+		}
+
+		mechanism.mechanism = opt_mechanism;
+	}
+
+	if (label != NULL) {
+		FILL_ATTR(keyTemplate[n_attr], CKA_LABEL, label, strlen(label));
+		n_attr++;
+	}
+	else if (opt_object_label != NULL) {
+		FILL_ATTR(keyTemplate[n_attr], CKA_LABEL, opt_object_label, strlen(opt_object_label));
+		n_attr++;
+	}
+
+	if (new_object_id_len)   {
+		FILL_ATTR(keyTemplate[n_attr], CKA_ID, new_object_id, new_object_id_len);
+		n_attr++;
+	}
+
+	rv = p11->C_GenerateKey(session, &mechanism, keyTemplate, n_attr, hSecretKey);
+	if (rv != CKR_OK)
+		p11_fatal("C_GenerateKey", rv);
+
+	printf("Key generated:\n");
+	show_object(session, *hSecretKey);
+	return 1;
+}
+
+
 #ifdef ENABLE_OPENSSL
 static void	parse_certificate(struct x509cert_info *cert,
 		unsigned char *data, int len)
@@ -2584,6 +2679,7 @@ ATTR_METHOD(OPENSC_NON_REPUDIATION, CK_BBOOL);
 ATTR_METHOD(KEY_TYPE, CK_KEY_TYPE);
 ATTR_METHOD(CERTIFICATE_TYPE, CK_CERTIFICATE_TYPE);
 ATTR_METHOD(MODULUS_BITS, CK_ULONG);
+ATTR_METHOD(VALUE_LEN, CK_ULONG);
 VARATTR_METHOD(LABEL, char);
 VARATTR_METHOD(APPLICATION, char);
 VARATTR_METHOD(ID, unsigned char);
@@ -2754,7 +2850,7 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 	const char      *sepa;
 	char		*label;
 	int		pub = 1;
-	int             sec = 0;
+	int		sec = 0;
 
 	switch(getCLASS(sess, obj)) {
 		case CKO_PRIVATE_KEY:
@@ -2858,6 +2954,16 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 			 printf("\n");
 		break;
 	case CKK_GENERIC_SECRET:
+	case CKK_AES:
+		if (key_type == CKK_AES)
+			printf("; AES");
+		else
+			printf("; Generic secret");
+		size = getVALUE_LEN(sess, obj);
+		if (size)
+			printf(" length %li", size);
+		size = 0;
+		printf("\n");
 		value = getVALUE(sess, obj, &size);
 		if (value) {
 			unsigned int    n;
