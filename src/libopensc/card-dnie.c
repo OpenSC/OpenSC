@@ -165,6 +165,25 @@ const char *user_consent_message="Esta a punto de realizar una firma digital\nco
 char *user_consent_msgs[] = { "SETTITLE", "SETDESC", "CONFIRM", "BYE" };
 
 /**
+ * Do fgets() without interruptions.
+ *
+ * Retry the operation if it is interrupted, such as with receiving an alarm.
+ *
+ * @param s Buffer receiving the data
+ * @param size Size of the buffer
+ * @param stream Stream to read
+ * @return s on success, NULL on error
+ */
+static char *nointr_fgets(char *s, int size, FILE *stream)
+{
+	while (fgets(s, size, stream) == NULL) {
+		if (feof(stream) || errno != EINTR)
+			return NULL;
+	}
+	return s;
+}
+
+/**
  * Ask for user consent.
  *
  * Check for user consent configuration,
@@ -286,9 +305,8 @@ int dnie_ask_user_consent(struct sc_card * card, const char *title, const char *
 		/* call exec() with proper user_consent_app from configuration */
 		/* if ok should never return */
 		execlp(GET_DNIE_UI_CTX(card).user_consent_app, GET_DNIE_UI_CTX(card).user_consent_app, (char *)NULL);
-		res = SC_ERROR_INTERNAL;
-		msg = "execlp() error";	/* exec() failed */
-		goto do_error;
+		sc_log(card->ctx, "execlp() error");
+		abort();
 	default:		/* parent */
 		/* Close the pipe ends that the child uses to read from / write to
 		 * so when we close the others, an EOF will be transmitted properly.
@@ -307,22 +325,24 @@ int dnie_ask_user_consent(struct sc_card * card, const char *title, const char *
 			goto do_error;
 		}
 		/* read and ignore first line */
-		fflush(stdin);
+		if (nointr_fgets(buf, sizeof(buf), fin) == NULL) {
+			res = SC_ERROR_INTERNAL;
+			msg = "nointr_fgets() Unexpected IOError/EOF";
+			goto do_error;
+		}
 		for (n = 0; n<4; n++) {
 			char *pt;
-			memset(outbuf, 0, sizeof(outbuf));
-			if (n==0) snprintf(outbuf,1023,"%s %s\n",user_consent_msgs[0],title);
-			else if (n==1) snprintf(outbuf,1023,"%s %s\n",user_consent_msgs[1],message);
-			else snprintf(outbuf,1023,"%s\n",user_consent_msgs[n]);
+			if (n==0) snprintf(outbuf, sizeof outbuf,"%s %s\n",user_consent_msgs[0],title);
+			else if (n==1) snprintf(outbuf, sizeof outbuf,"%s %s\n",user_consent_msgs[1],message);
+			else snprintf(outbuf, sizeof outbuf,"%s\n",user_consent_msgs[n]);
 			/* send message */
 			fputs(outbuf, fout);
 			fflush(fout);
 			/* get response */
-			memset(buf, 0, sizeof(buf));
-			pt=fgets(buf, sizeof(buf) - 1, fin);
+			pt=nointr_fgets(buf, sizeof(buf), fin);
 			if (pt==NULL) {
 				res = SC_ERROR_INTERNAL;
-				msg = "fgets() Unexpected IOError/EOF";
+				msg = "nointr_fgets() Unexpected IOError/EOF";
 				goto do_error;
 			}
 			if (strstr(buf, "OK") == NULL) {
