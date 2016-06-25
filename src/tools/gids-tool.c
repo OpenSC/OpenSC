@@ -134,17 +134,19 @@ static int initialize(sc_card_t *card, const char *so_pin, const char *user_pin,
 	} else {
 		_serial = (char *)serial;
 	}
-	len = sizeof(param.cardid);
-	r = sc_hex_to_bin(_serial, param.cardid, &len);
-	if (r < 0) {
-		fprintf(stderr, "Error decoding serial number (%s)\n", sc_strerror(r));
-		return -1;
-	}
-	if (len == 0) {
+
+	if (_serial[0] == '\0') {
 		memset(param.cardid, 0, sizeof(param.cardid));
-	} else if (len != 32) {
+	} else if (strlen(_serial) != 32) {
 		fprintf(stderr, "the serial number must be a hexadecimal string of 32 characters\n");
 		return -1;
+	} else {
+		len = sizeof(param.cardid);
+		r = sc_hex_to_bin(_serial, param.cardid, &len);
+		if (r < 0) {
+			fprintf(stderr, "Error decoding serial number (%s)\n", sc_strerror(r));
+			return -1;
+		}
 	}
 
 	param.user_pin_len = strlen(_user_pin);
