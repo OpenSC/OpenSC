@@ -242,6 +242,8 @@ struct sc_ef_atr {
 	unsigned char df_selection;
 	size_t unit_size;
 	unsigned char card_capabilities;
+	size_t max_command_apdu;
+	size_t max_response_apdu;
 
 	struct sc_aid aid;
 
