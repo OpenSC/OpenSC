@@ -25,9 +25,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#ifdef ENABLE_OPENSSL
-#include <openssl/x509v3.h>
-#endif
 
 #include "common/compat_strlcpy.h"
 #include "common/compat_strlcat.h"
