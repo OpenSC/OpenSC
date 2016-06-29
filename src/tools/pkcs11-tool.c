@@ -2758,7 +2758,10 @@ derive_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
 	CK_BBOOL false = FALSE;
 	CK_OBJECT_HANDLE newkey = 0;
 	CK_RV rv;
+	CK_ECDH1_DERIVE_PARAMS ecdh_parms;
 	int fd, r;
+	unsigned char* buf = NULL;  /* buffer for handling input data */
+	size_t buf_size = 0;
 	CK_ATTRIBUTE newkey_template[] = {
 		{CKA_TOKEN, &false, sizeof(false)}, /* session only object */
 		{CKA_CLASS, &newkey_class, sizeof(newkey_class)},
@@ -2783,13 +2786,20 @@ derive_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
 #if defined(ENABLE_OPENSSL) && OPENSSL_VERSION_NUMBER >= 0x00908000L && !defined(OPENSSL_NO_EC) && !defined(OPENSSL_NO_ECDSA)
 	case CKM_ECDH1_COFACTOR_DERIVE:
 	case CKM_ECDH1_DERIVE:
-		/*  Use OpenSSL to read the other public key, and get the raw verion */
+
+		/*  Use OpenSSL to read the other public key, and get the raw version */
 		{
 		int len;
 		BIO     *bio_in = NULL;
 		const EC_KEY  *eckey = NULL;
 		const EC_GROUP *ecgroup = NULL;
 		const EC_POINT * ecpoint = NULL;
+
+		buf_size = 512; /* TODO: calculate buffer size from key length */	
+		buf = malloc(buf_size);
+
+		if (!buf)
+		    util_fatal("Failed to allocate memory for other party's public point.");
 
 		bio_in = BIO_new(BIO_s_file());
 		if (BIO_read_filename(bio_in, opt_input) <= 0)
@@ -2802,9 +2812,9 @@ derive_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
 		ecpoint = EC_KEY_get0_public_key(eckey);
 		ecgroup = EC_KEY_get0_group(eckey);
 		if (!ecpoint || !ecgroup)
-			util_fatal("Failed to parse other EC kry from %s", opt_input);
+			util_fatal("Failed to parse other EC key from %s", opt_input);
 
-		len = EC_POINT_point2oct(ecgroup, ecpoint, POINT_CONVERSION_UNCOMPRESSED, buf, sizeof(buf),NULL);
+		len = EC_POINT_point2oct(ecgroup, ecpoint, POINT_CONVERSION_UNCOMPRESSED, buf, buf_size, NULL);
 
 		memset(&ecdh_parms, 0, sizeof(ecdh_parms));
 		ecdh_parms.kdf = CKD_NULL;
@@ -2819,11 +2829,15 @@ derive_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
 #endif /* ENABLE_OPENSSL  && !OPENSSL_NO_EC && !OPENSSL_NO_ECDSA */
 	/* TODO add RSA  but do not have card to test */
 	default:
-		util_fatal("mechanisum not supported for derive\n");
+		util_fatal("mechanism not supported for derive\n");
 		break;
 	}
 
 	rv = p11->C_DeriveKey(session, &mech, key, newkey_template, 5, &newkey);
+
+	free(buf);
+	buf = NULL;
+
 	if (rv != CKR_OK)
 	    p11_fatal("C_DeriveKey", rv);
 
