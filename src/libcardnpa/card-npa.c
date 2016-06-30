@@ -344,8 +344,10 @@ static int npa_init(sc_card_t * card)
     }
 
     card->caps |= SC_CARD_CAP_APDU_EXT | SC_CARD_CAP_RNG;
-    card->max_recv_size = 0xFFFF+1;
-    card->max_send_size = 0xFFFF;
+    /* 1520 bytes is the minimum lenght of the communication buffer in all
+     * Chip/OS variants */
+    card->max_recv_size = 1520;
+    card->max_send_size = 1520;
 #ifdef ENABLE_SM
     memset(&card->sm_ctx, 0, sizeof card->sm_ctx);
 #endif
