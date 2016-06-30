@@ -359,7 +359,7 @@ sm_incr_ssc(unsigned char *ssc, size_t ssc_len)
 	if (!ssc)
 		return;
 
-	for (ii = ssc_len - 1;ii >= 0; ii++)   {
+	for (ii = ssc_len - 1; ii >= 0; ii--)   {
 		*(ssc + ii) += 1;
 		if (*(ssc + ii) != 0)
 			break;
