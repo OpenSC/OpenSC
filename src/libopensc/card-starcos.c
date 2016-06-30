@@ -26,9 +26,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "internal.h"
 #include "asn1.h"
 #include "cardctl.h"
+#include "internal.h"
+#include "iso7816.h"
 
 static struct sc_atr_table starcos_atrs[] = {
 	{ "3B:B7:94:00:c0:24:31:fe:65:53:50:4b:32:33:90:00:b4", NULL, NULL, SC_CARD_TYPE_STARCOS_GENERIC, 0, NULL },
@@ -149,6 +150,18 @@ static int starcos_init(sc_card_t *card)
 		/* we need read_binary&friends with max 128 bytes per read */
 		card->max_send_size = 128;
 		card->max_recv_size = 128;
+	}
+
+	if (sc_parse_ef_atr(card) == SC_SUCCESS) {
+		if (card->ef_atr->card_capabilities & ISO7816_CAP_EXTENDED_LENGTH) {
+			card->caps |= SC_CARD_CAP_APDU_EXT;
+		}
+		if (card->ef_atr->max_response_apdu > 0) {
+			card->max_recv_size = card->ef_atr->max_response_apdu;
+		}
+		if (card->ef_atr->max_command_apdu > 0) {
+			card->max_send_size = card->ef_atr->max_command_apdu;
+		}
 	}
 
 	return 0;
