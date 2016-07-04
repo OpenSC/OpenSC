@@ -103,8 +103,10 @@ sc_pkcs15emu_jpki_init(sc_pkcs15_card_t * p15card)
 
 		struct sc_pkcs15_auth_info pin_info;
 		struct sc_pkcs15_object pin_obj;
+		struct sc_pin_cmd_data pin_cmd_data;
 		memset(&pin_info, 0, sizeof (pin_info));
 		memset(&pin_obj, 0, sizeof (pin_obj));
+		memset(&pin_cmd_data, 0, sizeof(pin_cmd_data));
 
 		pin_info.auth_id.len = 1;
 		pin_info.auth_id.value[0] = jpki_pin_authid[i];
@@ -116,13 +118,17 @@ sc_pkcs15emu_jpki_init(sc_pkcs15_card_t * p15card)
 		pin_info.attrs.pin.stored_length = 0;
 		pin_info.attrs.pin.max_length = jpki_pin_max[i];
 		pin_info.attrs.pin.pad_char = '\0';
-		pin_info.tries_left = jpki_pin_max_tries[i];	/* TODO: fixme */
 		pin_info.max_tries = jpki_pin_max_tries[i];
+		pin_info.tries_left = -1;
 
-		strlcpy(pin_obj.label, jpki_pin_names[i], sizeof (pin_obj.label));
+		pin_cmd_data.cmd = SC_PIN_CMD_GET_INFO;
+		pin_cmd_data.pin_type = SC_AC_CHV;
+		pin_cmd_data.pin_reference = jpki_pin_ref[i];
+		rc = sc_pin_cmd(card, &pin_cmd_data, &pin_info.tries_left);
+		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, rc,
+			    "sc_pin_cmd failed");
+		strlcpy(pin_obj.label, jpki_pin_names[i], sizeof(pin_obj.label));
 		pin_obj.flags = jpki_pin_flags[i];
-		pin_obj.auth_id.len = 1;
-		pin_obj.auth_id.value[0] = 3;
 
 		rc = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
 		if (rc < 0) {
