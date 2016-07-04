@@ -34,7 +34,7 @@
 #include "jpki.h"
 
 int sc_pkcs15emu_jpki_init_ex(sc_pkcs15_card_t *, struct sc_aid *,
-							  sc_pkcs15emu_opt_t *);
+			      sc_pkcs15emu_opt_t *);
 
 static int
 sc_pkcs15emu_jpki_init(sc_pkcs15_card_t * p15card)
@@ -43,7 +43,7 @@ sc_pkcs15emu_jpki_init(sc_pkcs15_card_t * p15card)
 	struct jpki_private_data *drvdata = JPKI_DRVDATA(card);
 	int i, rc;
 
-	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
+	LOG_FUNC_CALLED(p15card->card->ctx);
 
 	p15card->tokeninfo->label = "JPKI";
 	p15card->tokeninfo->manufacturer_id = "JPKI";
@@ -84,7 +84,7 @@ sc_pkcs15emu_jpki_init(sc_pkcs15_card_t * p15card)
 
 		rc = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
 		if (rc < 0) {
-			return SC_ERROR_INTERNAL;
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 		}
 	}
 
@@ -126,7 +126,7 @@ sc_pkcs15emu_jpki_init(sc_pkcs15_card_t * p15card)
 
 		rc = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
 		if (rc < 0) {
-			return SC_ERROR_INTERNAL;
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 		}
 	}
 
@@ -165,19 +165,16 @@ sc_pkcs15emu_jpki_init(sc_pkcs15_card_t * p15card)
 
 		rc = sc_pkcs15emu_add_rsa_prkey(p15card, &prkey_obj, &prkey_info);
 		if (rc < 0) {
-			return SC_ERROR_INTERNAL;
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 		}
 	}
-
-	return SC_SUCCESS;
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
 int
 sc_pkcs15emu_jpki_init_ex(sc_pkcs15_card_t * p15card,
-						  struct sc_aid *aid, sc_pkcs15emu_opt_t * opts)
+			  struct sc_aid *aid, sc_pkcs15emu_opt_t * opts)
 {
-	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
-
 	if (opts && opts->flags & SC_PKCS15EMU_FLAGS_NO_CHECK) {
 		return sc_pkcs15emu_jpki_init(p15card);
 	} else {

@@ -47,6 +47,8 @@ int jpki_select_ap(struct sc_card *card)
 	int rc;
 	sc_path_t path;
 
+	LOG_FUNC_CALLED(card->ctx);
+
 	/* Select JPKI application */
 	sc_format_path(AID_JPKI, &path);
 	path.type = SC_PATH_TYPE_DF_NAME;
@@ -59,8 +61,6 @@ static int
 jpki_match_card(struct sc_card *card)
 {
 	int i, rc;
-
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	i = _sc_match_atr(card, jpki_atrs, &card->type);
 	if (i >= 0) {
@@ -80,7 +80,7 @@ jpki_finish(sc_card_t * card)
 {
 	struct jpki_private_data *drvdata = JPKI_DRVDATA(card);
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+	LOG_FUNC_CALLED(card->ctx);
 
 	if (drvdata) {
 		free(drvdata);
@@ -96,7 +96,7 @@ jpki_init(struct sc_card *card)
 	sc_file_t *mf;
 	int flags;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+	LOG_FUNC_CALLED(card->ctx);
 
 	drvdata = malloc(sizeof (struct jpki_private_data));
 	if (!drvdata) {
@@ -136,23 +136,22 @@ jpki_init(struct sc_card *card)
 
 static int
 jpki_select_file(struct sc_card *card,
-				 const struct sc_path *path, struct sc_file **file_out)
+		 const struct sc_path *path, struct sc_file **file_out)
 {
 	struct jpki_private_data *drvdata = JPKI_DRVDATA(card);
 	int rc;
 	sc_apdu_t apdu;
 	struct sc_file *file = NULL;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
-			 "jpki_select_file: path=%s, len=%d\n",
-			 sc_print_path(path), path->len);
+	LOG_FUNC_CALLED(card->ctx);
+	sc_log(card->ctx, "jpki_select_file: path=%s, len=%d\n",
+	       sc_print_path(path), path->len);
 	if (path->len == 2 && memcmp(path->value, "\x3F\x00", 2) == 0) {
 		drvdata->selected = SELECT_MF;
 		if (file_out) {
 			sc_file_dup(file_out, drvdata->mf);
 			if (*file_out == NULL) {
-				return SC_ERROR_OUT_OF_MEMORY;
+                LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 			}
 		}
 		return 0;
@@ -192,14 +191,16 @@ jpki_select_file(struct sc_card *card,
 
 static int
 jpki_read_binary(sc_card_t * card, unsigned int idx,
-				 u8 * buf, size_t count, unsigned long flags)
+		 u8 * buf, size_t count, unsigned long flags)
 {
 	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
 	const struct sc_card_operations *iso_ops = iso_drv->ops;
+	int rc;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+	LOG_FUNC_CALLED(card->ctx);
 
-	return iso_ops->read_binary(card, idx, buf, count, flags);
+	rc = iso_ops->read_binary(card, idx, buf, count, flags);
+	LOG_FUNC_RETURN(card->ctx, rc);
 }
 
 static int
@@ -209,7 +210,7 @@ jpki_pin_cmd(sc_card_t * card, struct sc_pin_cmd_data *data, int *tries_left)
 	sc_path_t path;
 	sc_apdu_t apdu;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+	LOG_FUNC_CALLED(card->ctx);
 
 	if (tries_left) {
 		*tries_left = -1;
@@ -228,7 +229,7 @@ jpki_pin_cmd(sc_card_t * card, struct sc_pin_cmd_data *data, int *tries_left)
 		break;
 	default:
 		sc_log(card->ctx, "Unknown PIN reference: %d", data->pin_reference);
-		return SC_ERROR_INVALID_ARGUMENTS;
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 	LOG_TEST_RET(card->ctx, rc, "SELECT_FILE error");
 
@@ -249,40 +250,39 @@ jpki_pin_cmd(sc_card_t * card, struct sc_pin_cmd_data *data, int *tries_left)
 		LOG_TEST_RET(card->ctx, rc, "APDU transmit failed");
 		if (apdu.sw1 != 0x63) {
 			sc_log(card->ctx, "VERIFY GET_INFO error");
-			return SC_ERROR_CARD_CMD_FAILED;
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_CARD_CMD_FAILED);
 		}
 		if (tries_left) {
 			*tries_left = apdu.sw2 - 0xC0;
-			sc_log(card->ctx, "tries_left=%d\n", *tries_left);
 		}
 		break;
 	default:
 		sc_log(card->ctx, "Card does not support PIN command: %d", data->cmd);
-		return SC_ERROR_NOT_SUPPORTED;
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 	}
 
-	return SC_SUCCESS;
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
 static int
 jpki_set_security_env(sc_card_t * card,
-					  const sc_security_env_t * env, int se_num)
+		      const sc_security_env_t * env, int se_num)
 {
 	int rc;
 	sc_path_t path;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
-			 "flags=%08x op=%d alg=%d algf=%08x algr=%08x kr0=%02x, krfl=%d\n",
-			 env->flags, env->operation, env->algorithm,
-			 env->algorithm_flags, env->algorithm_ref, env->key_ref[0],
-			 env->key_ref_len);
+	LOG_FUNC_CALLED(card->ctx);
+	sc_log(card->ctx,
+	       "flags=%08x op=%d alg=%d algf=%08x algr=%08x kr0=%02x, krfl=%d\n",
+	       env->flags, env->operation, env->algorithm,
+	       env->algorithm_flags, env->algorithm_ref, env->key_ref[0],
+	       env->key_ref_len);
 
 	switch (env->operation) {
 	case SC_SEC_OPERATION_SIGN:
 		break;
 	default:
-		return SC_ERROR_NOT_SUPPORTED;
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 	}
 
 	switch (env->key_ref[0]) {
@@ -293,23 +293,23 @@ jpki_set_security_env(sc_card_t * card,
 		sc_format_path(JPKI_SIGN_KEY, &path);
 		break;
 	default:
-		return SC_ERROR_NOT_SUPPORTED;
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 	}
 	path.type = SC_PATH_TYPE_FILE_ID;
 	rc = sc_select_file(card, &path, NULL);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, rc, "select key failed");
-	return SC_SUCCESS;
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
 static int
 jpki_compute_signature(sc_card_t * card,
-					   const u8 * data, size_t datalen, u8 * out, size_t outlen)
+		       const u8 * data, size_t datalen, u8 * out, size_t outlen)
 {
 	int rc;
 	sc_apdu_t apdu;
 	unsigned char resp[SC_MAX_APDU_BUFFER_SIZE];
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+	LOG_FUNC_CALLED(card->ctx);
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x00, 0x80);
 	apdu.cla = 0x80;
@@ -322,7 +322,7 @@ jpki_compute_signature(sc_card_t * card,
 	rc = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, rc, "APDU transmit failed");
 	memcpy(out, resp, outlen);
-	return SC_SUCCESS;
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
 static struct sc_card_driver *
