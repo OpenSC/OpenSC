@@ -3879,7 +3879,7 @@ static int test_signature(CK_SESSION_HANDLE sess)
 	CK_MECHANISM_TYPE firstMechType;
 	CK_SESSION_INFO sessionInfo;
 	CK_ULONG        i, j;
-	unsigned char   data[256];
+	unsigned char   data[512]; /* FIXME: Will not work for keys above 4096 bits */
 	CK_ULONG        modLenBytes = 0;
 	CK_ULONG        dataLen;
 	unsigned char   sig1[1024], sig2[1024];
@@ -4093,7 +4093,7 @@ static int test_signature(CK_SESSION_HANDLE sess)
 	/* 4rd test: the other signature keys */
 
 	for (i = 0; mechTypes[i] != 0xffffff; i++)
-		if (i == firstMechType)
+		if (mechTypes[i] == firstMechType)
 			break;
 	ck_mech.mechanism = mechTypes[i];
 	j = 1;  /* j-th signature key */
@@ -4103,6 +4103,16 @@ static int test_signature(CK_SESSION_HANDLE sess)
 		label = getLABEL(sess, privKeyObject, NULL);
 		modLenBits = get_private_key_length(sess, privKeyObject);
 		modLenBytes = (modLenBits + 7) / 8;
+
+		/* Fill in data[0] and dataLens[0] */
+		dataLen = modLenBytes;
+		data[0] = 0x00;
+		data[1] = 0x01;
+		memset(data + 2, 0xFF, dataLen - 3 - dataLens[1]);
+		data[dataLen - 36] = 0x00;
+		memcpy(data + (dataLen - dataLens[1]), datas[1], dataLens[1]);
+		datas[0] = data;
+		dataLens[0] = dataLen;
 
 		printf("  testing key %d (%u bits%s%s) with 1 signature mechanism",
 				(int) (j-1),

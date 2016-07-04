@@ -3589,7 +3589,7 @@ pkcs15_prkey_decrypt(struct sc_pkcs11_session *session, void *obj,
 	struct sc_pkcs11_card *p11card = session->slot->p11card;
 	struct pkcs15_fw_data *fw_data = NULL;
 	struct pkcs15_prkey_object *prkey;
-	unsigned char decrypted[256]; /* FIXME: Will not work for keys above 2048 bits */
+	unsigned char decrypted[512]; /* FIXME: Will not work for keys above 4096 bits */
 	int	buff_too_small, rv, flags = 0, prkey_has_path = 0;
 
 	sc_log(context, "Initiating decryption.");
