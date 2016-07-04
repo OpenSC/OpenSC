@@ -4,6 +4,7 @@
  *
  * Copyright (C) 2001, 2002  Juha Yrjölä <juha.yrjola@iki.fi>
  * Copyright (C) 2005,2006,2007,2008,2009,2010 Douglas E. Engert <deengert@anl.gov>
+ * Copyright (C) 2016  Douglas E. Engert <deengert@gmail.com>
  * Copyright (C) 2006, Identity Alliance, Thomas Harning <thomas.harning@identityalliance.com>
  * Copyright (C) 2007, EMC, Russell Larner <rlarner@rsa.com>
  *
@@ -158,6 +159,15 @@ typedef struct piv_private_data {
 	int keysWithOffCardCerts;
 	char * offCardCertURL;
 	int pin_preference; /* set from Discovery object */
+	int logged_in;
+	int pin_cmd_verify;
+	int pin_cmd_noparse;
+	unsigned int pin_cmd_verify_sw1;
+	unsigned int pin_cmd_verify_sw2;
+	int tries_left; /* SC_PIN_CMD_GET_INFO tries_left from last */
+	unsigned int card_issues; /* card_issues flags for this card */
+	int object_test_verify; /* Can test this object to set verification state of card */
+	int neo_version; /* 3 byte version number of NEO or Ybuikey4  as integer */
 } piv_private_data_t;
 
 #define PIV_DATA(card) ((piv_private_data_t*)card->drv_data)
@@ -179,13 +189,29 @@ struct piv_aid {
  * 800-73-3 Part 1 now referes to "01 00" i.e. going back to 800-73-1.
  * The main differences between 73-1, and 73-3 are the addition of the
  * key History object and keys, as well as Discovery and Iris objects.
+ * These can be discovered by trying GET DATA
  */
 
+/* all have same AID */
 static struct piv_aid piv_aids[] = {
-	{SC_CARD_TYPE_PIV_II_GENERIC,
+	{SC_CARD_TYPE_PIV_II_GENERIC, /* TODO not really card type but what PIV AID is supported */
 		 9, 9, (u8 *) "\xA0\x00\x00\x03\x08\x00\x00\x10\x00" },
 	{0,  9, 0, NULL }
 };
+
+/* card_issues - bugs in PIV implementations requires special handling */
+#define CI_VERIFY_630X			    0x00000001U /* VERIFY tries left returns 630X rather then 63CX */
+#define CI_VERIFY_LC0_FAIL		    0x00000002U /* VERIFY Lc=0 never returns 90 00 if PIN not needed */
+							/* will also test after first PIN verify if protected object can be used instead */
+#define CI_CANT_USE_GETDATA_FOR_STATE	    0x00000008U /* No object to test verification inplace of VERIFY Lc=0 */
+#define CI_LEAKS_FILE_NOT_FOUND		    0x00000010U /* GET DATA of empty object returns 6A 82 even if PIN not verified */
+
+#define CI_OTHER_AID_LOSE_STATE		    0x00000100U /* Other drivers match routines may reset our security state and lose AID!!! */
+#define CI_NFC_EXPOSE_TOO_MUCH		    0x00000200U /* PIN, crypto and objects exposed over NFS in violation of 800-73-3 */
+
+#define CI_NO_RSA2048			    0x00010000U /* does not have RSA 2048 */
+#define CI_NO_EC384			    0x00020000U /* does not have EC 384 */
+
 
 /*
  * Flags in the piv_object:
@@ -449,6 +475,7 @@ static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 	const u8 *body;
 	size_t bodylen;
 	int find_len = 0;
+	piv_private_data_t * priv = PIV_DATA(card);
 
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
@@ -523,7 +550,8 @@ static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 
 
 	rbuflen = 0;  /* in case rseplen < 3  i.e. not parseable */
-	if ( recvbuflen && recvbuf && apdu.resplen > 3) {
+	/* we may only be using get data to test the security status of the card, so zero length is OK */
+	if ( recvbuflen && recvbuf && apdu.resplen > 3 && priv->pin_cmd_noparse != 1) {
 		*recvbuflen = 0;
 		/* we should have all the tag data, so we have to tell sc_asn1_find_tag
 		 * the buffer is bigger, so it will not produce "ASN1.tag too long!" */
@@ -913,14 +941,14 @@ static int piv_get_data(sc_card_t * card, int enumtag,
 				goto err;
 			}
 		    *buf_len = r;
-		} else if ( r == 0) {
+		} else if ( r == 0 ) {
 			r = SC_ERROR_FILE_NOT_FOUND;
 			goto err;
 		} else {
 			goto err;
 		}
 	}
-sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"get buffer for #%d len %d", enumtag, *buf_len);
+sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"buffer for #%d *buf=0x%p len=%d", enumtag, *buf, *buf_len);
 	if (*buf == NULL && *buf_len > 0) {
 		*buf = malloc(*buf_len);
 		if (*buf == NULL ) {
@@ -2842,34 +2870,95 @@ static int piv_finish(sc_card_t *card)
 
 static int piv_match_card(sc_card_t *card)
 {
-	int i;
+	int i, k;
+	size_t j;
+	u8 *p, *pe;
 	sc_file_t aidfile;
+	int type  = -1;
+	piv_private_data_t *priv;
+
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
 	/* Since we send an APDU, the card's logout function may be called...
 	 * however it may be in dirty memory */
 	card->ops->logout = NULL;
 
+	/* piv_match_card may be called with card->type, set by opensc.conf */
+	/* user provide card type must be one we know */
+	switch (card->type) {
+		case -1:
+		case SC_CARD_TYPE_PIV_II_GENERIC:
+		case SC_CARD_TYPE_PIV_II_HIST:
+		case SC_CARD_TYPE_PIV_II_NEO:
+		case SC_CARD_TYPE_PIV_II_YUBIKEY4:
+			type = card->type;
+			break;
+		default:
+			return 0; /* can not handle the card */
+	}
+	if (type == -1) {
+
+		/*
+		 *try to identify card by ATR or historical data in ATR
+		 * currently all PIV card will respond to piv_find_aid
+		 * the same. But in future may need to know card type first,
+		 * so do it here.
+		 */
+
+		if (card->reader->atr_info.hist_bytes != NULL) {
+			if (card->reader->atr_info.hist_bytes_len == 8 &&
+					!(memcmp(card->reader->atr_info.hist_bytes, "Yubikey4", 8))) {
+				type = SC_CARD_TYPE_PIV_II_YUBIKEY4;
+			} else
+			if (card->reader->atr_info.hist_bytes_len >= 7 &&
+					!(memcmp(card->reader->atr_info.hist_bytes, "Yubikey", 7))) {
+				type = SC_CARD_TYPE_PIV_II_NEO;
+			} else 
+			if (card->reader->atr_info.hist_bytes[0] == 0x80u) { /* compact TLV */
+				p = card->reader->atr_info.hist_bytes;
+				pe = p + card->reader->atr_info.hist_bytes_len;
+				p++; /* skip 0x80u byte */
+				while (p < pe && type == -1) {
+					j = *p & 0x0fu; /* length */
+					if ((*p++ & 0xf0u) == 0xf0u) { /*looking for 15 */
+						if ((p + j) <= pe) {
+							for (k = 0; piv_aids[k].len_long != 0; k++) {
+								if (j == piv_aids[k].len_long
+									&& !memcmp(p, piv_aids[k].value,j)) {
+									type = SC_CARD_TYPE_PIV_II_HIST;
+									break;
+								}
+							}
+						}
+					}
+					p += j;
+				}
+			}
+		}
+		if (type == -1)
+			type = SC_CARD_TYPE_PIV_II_GENERIC;
+	}
+
 	/* Detect by selecting applet */
-	i = !(piv_find_aid(card, &aidfile));
-	return i; /* never match */
-}
+	i = piv_find_aid(card, &aidfile);
 
+	if (i < 0)
+		return 0; /* don't match. Does not have a PIV applet. */
 
-static int piv_init(sc_card_t *card)
-{
-	int r, i;
-	unsigned long flags;
-	unsigned long ext_flags;
-	piv_private_data_t *priv;
-
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	priv = calloc(1, sizeof(piv_private_data_t));
 
 	if (!priv)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+
+	if (card->type == -1)
+		card->type = type;
+
+	card->drv_data = priv;
 	priv->aid_file = sc_file_new();
 	priv->selected_obj = -1;
 	priv->pin_preference = 0x80; /* 800-73-3 part 1, table 3 */
+	priv->logged_in = SC_PIN_STATE_UNKNOWN;
+	priv->tries_left = 10; /* will assume OK at start */
 
 	/* Some objects will only be present if Histroy object says so */
 	for (i=0; i < PIV_OBJ_LAST_ENUM -1; i++) {
@@ -2877,19 +2966,97 @@ static int piv_init(sc_card_t *card)
 			priv->obj_cache[i].flags |= PIV_OBJ_CACHE_NOT_PRESENT;
 	}
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Max send = %d recv = %d\n",
-			card->max_send_size, card->max_recv_size);
-	card->drv_data = priv;
-	card->cla = 0x00;
-	card->name = "PIV-II card";
+	return 1; /* match */
+}
 
-	r = piv_find_aid(card, priv->aid_file);
-	if (r < 0) {
-		 sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Failed to initialize %s\n", card->name);
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+
+static int piv_init(sc_card_t *card)
+{
+	int r;
+	piv_private_data_t * priv = PIV_DATA(card);
+	sc_apdu_t apdu;
+	unsigned long flags;
+	unsigned long ext_flags;
+	u8 neo_version_buf[3];
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+
+	/* can not force the PIV driver to use non-PIV cards as tested in piv_card_match */
+	if (!priv || card->type == -1)
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NO_CARD_SUPPORT);
+
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Max send = %d recv = %d card->type = %d\n",
+			card->max_send_size, card->max_recv_size, card->type);
+	card->cla = 0x00;
+	if(card->name == NULL)
+		card->name = "PIV-II card";
+
+	/*
+	 * Set card_issues based on card type either set by piv_match_card or by opensc.conf 
+	 */
+
+	switch(card->type) {
+		case SC_CARD_TYPE_PIV_II_NEO:
+		case SC_CARD_TYPE_PIV_II_YUBIKEY4:
+			sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xFD, 0x00, 0x00);
+			apdu.lc = 0;
+			apdu.data = NULL;
+			apdu.datalen = 0;
+			apdu.resp = neo_version_buf;
+			apdu.resplen = sizeof(neo_version_buf);
+			apdu.le = apdu.resplen;
+			r = sc_transmit_apdu(card, &apdu);
+			priv->neo_version = (neo_version_buf[0]<<16) | (neo_version_buf[1] <<8) | neo_version_buf[2];
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "NEO card->type=%d, r=0x%08x version=0x%08x",
+					card->type, r, priv->neo_version);
+			break;
 	}
+
+
+	/* 
+	 * set card_issues flags based card->type and new versions
+	 * YubiKey NEO and Ybuikey 4 have PIV applets, with compliance issues 
+	 * with the the NIST 800-73-3 specs The OpenSC developers do not have 
+	 * access to the different versions the NEO and 4, so it is a best 
+	 * if using a protected object can be use to test verify state. 
+	 * TODO use NEO version numbers to set the flags. Allows for finer control
+	 * but needs input from Yubico or users. 
+	 */ 
+
+	switch(card->type) {
+		case SC_CARD_TYPE_PIV_II_NEO:
+			priv->card_issues = CI_NO_EC384
+				| CI_VERIFY_630X
+				| CI_VERIFY_LC0_FAIL
+				| CI_OTHER_AID_LOSE_STATE
+				| CI_LEAKS_FILE_NOT_FOUND
+				| CI_NFC_EXPOSE_TOO_MUCH;
+			break;
+
+		case SC_CARD_TYPE_PIV_II_YUBIKEY4:
+			priv->card_issues = CI_VERIFY_LC0_FAIL
+				| CI_OTHER_AID_LOSE_STATE
+				| CI_LEAKS_FILE_NOT_FOUND;
+			break;
+
+		case SC_CARD_TYPE_PIV_II_HIST:
+			priv->card_issues = 0;
+			break;
+
+		case SC_CARD_TYPE_PIV_II_GENERIC:
+			priv->card_issues = CI_VERIFY_LC0_FAIL
+				| CI_OTHER_AID_LOSE_STATE;
+			break;
+
+		default:
+		     priv->card_issues = 0; /* opensc.conf may have it wrong, continue anyway */
+		     sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Unknown PIV card->type %d\n", card->type);
+		     card->type = SC_CARD_TYPE_PIV_II_BASE;
+	}
+	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "PIV card-type=%d card_issues=0x%08x", card->type, priv->card_issues);
+
 	priv->enumtag = piv_aids[r].enumtag;
-	card->type = piv_aids[r].enumtag;
 
 	/* PKCS#11 may try to generate session keys, and get confused
 	 * if SC_ALGORITHM_ONBOARD_KEY_GEN is present
@@ -2906,8 +3073,10 @@ static int piv_init(sc_card_t *card)
 	ext_flags = SC_ALGORITHM_EXT_EC_NAMEDCURVE | SC_ALGORITHM_EXT_EC_UNCOMPRESES;
 
 	_sc_card_add_ec_alg(card, 256, flags, ext_flags, NULL);
-	_sc_card_add_ec_alg(card, 384, flags, ext_flags, NULL);
+	if (!(priv->card_issues & CI_NO_EC384))
+		_sc_card_add_ec_alg(card, 384, flags, ext_flags, NULL);
 
+	/* TODO may turn off SC_CARD_CAP_ISO7816_PIN_INFO later */
 	card->caps |= SC_CARD_CAP_RNG | SC_CARD_CAP_ISO7816_PIN_INFO;
 
 	/*
@@ -2929,31 +3098,122 @@ static int piv_check_sw(struct sc_card *card, unsigned int sw1, unsigned int sw2
 {
 	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
 
-	const u8 *yubikey_neo_atr =
-		(const u8*)"\x3B\xFC\x13\x00\x00\x81\x31\xFE\x15\x59\x75\x62\x69\x6B\x65\x79\x4E\x45\x4F\x72\x33\xE1";
-	if (card->atr.len != 22 || memcmp(card->atr.value, yubikey_neo_atr, 22) != 0)
-		return iso_drv->ops->check_sw(card, sw1, sw2);
+	int r;
+	piv_private_data_t * priv = PIV_DATA(card);
 
-	/* Handle here the Yubikey NEO, which returns 0x0X rather than 0xCX to
-	 * indicate the number of remaining PIN retries.  Perhaps they misread the
-	 * spec and thought 0xCX meant "clear" or "don't care", not a literal 0xC! */
-	if (sw1 == 0x63U && (sw2 & ~0x0fU) == 0x00U && sw2 != 0) {
-		 sc_log(card->ctx, "Verification failed (remaining tries: %d)", (sw2 & 0x0f));
-		 return SC_ERROR_PIN_CODE_INCORRECT;
+	/* may be called before piv_init  has allocated priv */
+	if (priv) {
+		/* need to save sw1 and sw2 if trying to determine card_state from pin_cmd */
+		if (priv->pin_cmd_verify) {
+			priv->pin_cmd_verify_sw1 = sw1;
+			priv->pin_cmd_verify_sw2 = sw2;
+		}
+		if (priv->card_issues & CI_VERIFY_630X) {
+
+		/* Handle the Yubikey NEO or any other PIV card which returns in response to a verify 
+		 * 63 0X rather than 63 CX indicate the number of remaining PIN retries.
+		 * Perhaps they misread the spec and thought 0xCX meant "clear" or "don't care", not a literal 0xC!
+		 */
+			if (priv->pin_cmd_verify && sw1 == 0x63U) {
+				priv->pin_cmd_verify_sw2 |= 0xC0U; /* make it easier to test in other code */
+				if ((sw2 & ~0x0fU) == 0x00U) {
+					sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Verification failed (remaining tries: %d)", (sw2 & 0x0f));
+					return SC_ERROR_PIN_CODE_INCORRECT;
+					/* this is what the iso_check_sw returns for 63 C0 */
+				}
+			}
+		}
 	}
-
-	return iso_drv->ops->check_sw(card, sw1, sw2);
+	r = iso_drv->ops->check_sw(card, sw1, sw2);
+	return r;
 }
 
+static int piv_check_protected_objects(sc_card_t *card)
+{
+	int r = 0;
+	int i;
+	piv_private_data_t * priv = PIV_DATA(card);
+	u8 buf[8]; /* tag of 53 with 82 xx xx  will fit in 4 */
+	u8 * rbuf;
+	size_t buf_len;
+	static int protected_objects[] = {PIV_OBJ_PI, PIV_OBJ_CHF, PIV_OBJ_IRIS_IMAGE};
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	/*
+	 * routine only called from piv_pin_cmd after verify lc=0 did not return 90 00
+	 * We will test for a protected object using GET DATA. 
+	 *
+	 * Based on observations, of cards using the GET DATA APDU,
+	 * SC_ERROR_SECURITY_STATUS_NOT_SATISFIED  means the PIN not verified,
+	 * SC_SUCCESS means PIN has been verified even if it has length 0
+	 * SC_ERROR_FILE_NOT_FOUND (which is the bug) does not tell us anything
+	 * about the state of the PIN and we will try the next object.  
+	 * 
+	 * If we can't determine the security state from this process,
+	 * set card_issues CI_CANT_USE_GETDATA_FOR_STATE
+	 * and return SC_ERROR_PIN_CODE_INCORRECT
+	 * The curcomvention is to add a dummy Printed Info object in the card. 
+	 * so we will have an object to test. 
+	 * 
+	 * We save the object's number to use in the future.
+	 * 
+	 */
+	if (priv->object_test_verify == 0) {
+		for (i = 0; i < (int)(sizeof(protected_objects)/sizeof(int)); i++) {
+			buf_len = sizeof(buf);
+			priv->pin_cmd_noparse = 1; /* tell piv_general_io dont need to parse at all. */
+			rbuf = buf;
+			r = piv_get_data(card, protected_objects[i], &rbuf, &buf_len);
+			priv->pin_cmd_noparse = 0;
+			/* TODO may need to check sw1 and sw2 to see what really happened */
+			if (r >= 0 || r == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED) {
+
+				/* we can use this object next time if needed */
+				priv->object_test_verify = protected_objects[i];
+				break;
+			}
+		}
+		if (priv->object_test_verify == 0) {
+			/*
+			 * none of the objects returned acceptable sw1, sw2 
+			 */
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "No protected objects found, setting CI_CANT_USE_GETDATA_FOR_STATE");
+			priv->card_issues |= CI_CANT_USE_GETDATA_FOR_STATE;
+			r = SC_ERROR_PIN_CODE_INCORRECT;
+		}
+	} else {
+		/* use the one object we found earlier. Test is security status has changed */
+		buf_len = sizeof(buf);
+		priv->pin_cmd_noparse = 1; /* tell piv_general_io dont need to parse at all. */
+		rbuf = buf;
+		r = piv_get_data(card, priv->object_test_verify, &rbuf, &buf_len);
+		priv->pin_cmd_noparse = 0;
+	}
+	if (r == SC_ERROR_FILE_NOT_FOUND)
+			r = SC_ERROR_PIN_CODE_INCORRECT;
+	else if (r == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED)
+			r = SC_ERROR_PIN_CODE_INCORRECT;
+	else if (r > 0)
+		r = SC_SUCCESS;
+
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "object_test_verify=%d, card_issues = 0x%08x", priv->object_test_verify, priv->card_issues);
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+}
 
 static int piv_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
                        int *tries_left)
 {
+	int r = 0;
+	piv_private_data_t * priv = PIV_DATA(card);
+
 	/* Extra validation of (new) PIN during a PIN change request, to
 	 * ensure it's not outside the FIPS 201 4.1.6.1 (numeric only) and
 	 * FIPS 140-2 (6 character minimum) requirements.
 	 */
 	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"piv_pin_cmd tries_left=%d, logged_in=%d", priv->tries_left, priv->logged_in);
 	if (data->cmd == SC_PIN_CMD_CHANGE) {
 		int i = 0;
 		if (data->pin2.len < 6) {
@@ -2965,7 +3225,81 @@ static int piv_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 			}
 		}
 	}
-	return iso_drv->ops->pin_cmd(card, data, tries_left);
+
+	priv->pin_cmd_verify_sw1 = 0x00U;
+
+	if (data->cmd == SC_PIN_CMD_GET_INFO) { /* fill in what we think it should be */
+		data->pin1.logged_in = priv->logged_in;
+		data->pin1.tries_left = priv->tries_left;
+		if (tries_left)
+			*tries_left = priv->tries_left;
+	}
+
+	priv->pin_cmd_verify = 1; /* tell piv_check_sw its a verify to save sw1, sw2 */
+	r = iso_drv->ops->pin_cmd(card, data, tries_left);
+	priv->pin_cmd_verify = 0;
+
+	/* if access to applet is know to be reset by other driver  we select_aid and try again */
+	if ( priv->card_issues & CI_OTHER_AID_LOSE_STATE && priv->pin_cmd_verify_sw1 == 0x6DU) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "AID may be lost doing piv_find_aid and retry pin_cmd");
+		r = piv_find_aid(card, priv->aid_file); /* return not tested */
+
+		priv->pin_cmd_verify = 1; /* tell piv_check_sw its a verify to save sw1, sw2 */
+		r = iso_drv->ops->pin_cmd(card, data, tries_left);
+		priv->pin_cmd_verify = 0;
+	}
+
+	/* If verify worked, we are loged_in */
+	if (data->cmd == SC_PIN_CMD_VERIFY) {
+	    if (r >= 0)
+		priv->logged_in = SC_PIN_STATE_LOGGED_IN;
+	    else 
+		priv->logged_in = SC_PIN_STATE_LOGGED_OUT;
+	}
+
+	/* Some cards never return 90 00  for SC_PIN_CMD_GET_INFO even if the card state is verified */
+	/* PR 797 has changed the return codes from pin_cmd, and added a data->pin1.logged_in flag */
+
+	if (data->cmd == SC_PIN_CMD_GET_INFO) {
+		if (priv->card_issues & CI_CANT_USE_GETDATA_FOR_STATE) {
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "CI_CANT_USE_GETDATA_FOR_STATE set, assume logged_in=%d", priv->logged_in);
+			data->pin1.logged_in =  priv->logged_in; /* use what ever we saw last */
+		} else if (priv->card_issues & CI_VERIFY_LC0_FAIL
+			&& priv->pin_cmd_verify_sw1 == 0x63U ) { /* can not use modified return codes from iso->drv->pin_cmd */
+				/* try another method, looking at a protected object this may require adding one of these to NEO */
+			    r = piv_check_protected_objects(card);
+			if (r == SC_SUCCESS)
+				data->pin1.logged_in = SC_PIN_STATE_LOGGED_IN;
+			else if (r ==  SC_ERROR_PIN_CODE_INCORRECT) {
+				if (priv->card_issues & CI_CANT_USE_GETDATA_FOR_STATE) { /* we still can not determine login state */
+
+					data->pin1.logged_in = priv->logged_in; /* may have be set from SC_PIN_CMD_VERIFY */
+					/* TODO a reset may have logged us out. need to detect resets */
+				} else {
+					data->pin1.logged_in = SC_PIN_STATE_LOGGED_OUT;
+				}
+				r = SC_SUCCESS;
+			}
+		}
+		priv->logged_in = data->pin1.logged_in;
+		priv->tries_left = data->pin1.tries_left;
+	}
+
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"piv_pin_cmd tries_left=%d, logged_in=%d",priv->tries_left, priv->logged_in);
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+}
+
+
+static int piv_logout(sc_card_t *card)
+{
+	int r = 0;
+	/* piv_private_data_t * priv = PIV_DATA(card); */
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	/* TODO 800-73-3 does not define a logout, 800-73-4 does */
+
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 }
 
 
@@ -2980,6 +3314,7 @@ static struct sc_card_driver * sc_get_driver(void)
 
 	piv_ops.select_file =  piv_select_file; /* must use get/put, could emulate? */
 	piv_ops.get_challenge = piv_get_challenge;
+	piv_ops.logout = piv_logout;
 	piv_ops.read_binary = piv_read_binary;
 	piv_ops.write_binary = piv_write_binary;
 	piv_ops.set_security_env = piv_set_security_env;
