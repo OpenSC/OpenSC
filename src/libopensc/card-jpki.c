@@ -100,7 +100,7 @@ jpki_init(struct sc_card *card)
 
 	drvdata = malloc(sizeof (struct jpki_private_data));
 	if (!drvdata) {
-		return SC_ERROR_OUT_OF_MEMORY;
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 	}
 	memset(drvdata, 0, sizeof (struct jpki_private_data));
 
@@ -108,7 +108,7 @@ jpki_init(struct sc_card *card)
 	mf = sc_file_new();
 	if (!mf) {
 		free(drvdata);
-		return SC_ERROR_OUT_OF_MEMORY;
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 	}
 	sc_format_path("3f00", &mf->path);
 	mf->type = SC_FILE_TYPE_DF;
@@ -151,7 +151,7 @@ jpki_select_file(struct sc_card *card,
 		if (file_out) {
 			sc_file_dup(file_out, drvdata->mf);
 			if (*file_out == NULL) {
-                LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+				LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 			}
 		}
 		return 0;
@@ -317,11 +317,14 @@ jpki_compute_signature(sc_card_t * card,
 	apdu.datalen = datalen;
 	apdu.lc = datalen;
 	apdu.resp = resp;
-	apdu.resplen = sizeof (resp);
+	apdu.resplen = sizeof(resp);
 	apdu.le = 0;
 	rc = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, rc, "APDU transmit failed");
-	memcpy(out, resp, outlen);
+	if (apdu.resplen > outlen) {
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+	}
+	memcpy(out, resp, apdu.resplen);
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
