@@ -1025,6 +1025,7 @@ AC_CONFIG_FILES([
 	src/scconf/Makefile
 	src/tests/Makefile
 	src/tests/regression/Makefile
+	src/tests/p11test/Makefile
 	src/tools/Makefile
 	src/tools/versioninfo-tools.rc
 	src/tools/versioninfo-opensc-notify.rc

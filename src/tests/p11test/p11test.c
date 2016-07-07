@@ -28,7 +28,7 @@
 #include "p11test_case_mechs.h"
 #include "p11test_case_wait.h"
 
-#define DEFAULT_P11LIB	"../pkcs11/.libs/opensc-pkcs11.so"
+#define DEFAULT_P11LIB	"../../pkcs11/.libs/opensc-pkcs11.so"
 
 void display_usage() {
 	fprintf(stdout,
