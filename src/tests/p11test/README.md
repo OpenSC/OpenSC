@@ -19,7 +19,7 @@ Build OpenSC from source:
 
 Plug in the card/reader, change to test directory and run the test:
 
-    cd src/tests
+    cd src/tests/p11test
     ./p11test
 
 It will run all tests on PKCS#11 API with default pin `123456`
