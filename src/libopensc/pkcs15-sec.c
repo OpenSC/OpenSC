@@ -432,6 +432,16 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 		}
 		inlen = modlen;
 	}
+	/* PKCS#11 MECHANISMS V2.30: 6.3.1 EC Signatures
+	 * If the length of the hash value is larger than the bit length of n, only
+	 * the leftmost bits of the hash up to the length of n will be used. Any
+	 * truncation is done by the token.
+	 */
+	else if (senv.algorithm == SC_ALGORITHM_EC &&
+			(flags & SC_ALGORITHM_ECDSA_HASH_NONE) != 0) {
+		inlen = MIN(inlen, (prkey->field_length+7)/8);
+	}
+
 
 	r = use_key(p15card, obj, &senv, sc_compute_signature, tmp, inlen,
 			out, outlen);
