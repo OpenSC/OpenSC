@@ -180,6 +180,7 @@ CK_RV C_GetSessionInfo(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	CK_RV rv;
 	struct sc_pkcs11_session *session;
 	struct sc_pkcs11_slot *slot;
+	int logged_in = -1;
 
 	if (pInfo == NULL_PTR)
 		return CKR_ARGUMENTS_BAD;
@@ -202,6 +203,30 @@ CK_RV C_GetSessionInfo(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	pInfo->ulDeviceError = 0;
 
 	slot = session->slot;
+
+	/*
+	 * Check the state of the connection to see if an existing session has been interupted 
+	 * by some other application. The called rountine may reestablished the connection and
+	 * also used a cache PIN to reauthenticate. 
+	 * TODO DO we just reset login_user and pInfo->state or do a C_Logout
+	 * If it can not we will convert to a CKS_RO_PUBLIC_SESSION
+	 * and let the caller call C_Login again. 
+	 */
+	if (slot->p11card->framework->check_state != NULL) {
+		logged_in = slot->login_user;
+		rv = slot->p11card->framework->check_state(slot, &logged_in, 0);
+
+		if (rv == CKR_OK) {
+			if (slot->login_user != logged_in) {
+				/* TODO do we will do a logout */
+				if (slot->login_user >= 0) {
+					slot->login_user = -1;
+					rv = slot->p11card->framework->logout(slot);
+				}
+			}
+		}
+	}
+
 	if (slot->login_user == CKU_SO) {
 		pInfo->state = CKS_RW_SO_FUNCTIONS;
 	} else if (slot->login_user == CKU_USER || (!(slot->token_info.flags & CKF_LOGIN_REQUIRED))) {

@@ -63,6 +63,7 @@ sc_build_pin
 sc_cancel
 sc_card_ctl
 sc_change_reference_data
+sc_check_state
 sc_check_sw
 sc_compare_oid
 sc_compare_path
@@ -148,6 +149,7 @@ sc_pkcs15_card_clear
 sc_pkcs15_card_free
 sc_pkcs15_card_new
 sc_pkcs15_change_pin
+sc_pkcs15_check_state
 sc_pkcs15_compare_id
 sc_pkcs15_compute_signature
 sc_pkcs15_decipher
