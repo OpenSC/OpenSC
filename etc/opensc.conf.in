@@ -95,6 +95,10 @@ app default {
 		# Default: true
 		# enable_pinpad = false;
 		#
+		# Detect boxing commands for PIN operations (BSI TR-03119)
+		# Default: false
+		# enable_boxing = true;
+		#
 		# Use specific pcsc provider.
 		# Default: @DEFAULT_PCSC_PROVIDER@
 		# provider_library = @DEFAULT_PCSC_PROVIDER@
@@ -125,7 +129,7 @@ app default {
 	# Default: internal
 	# NOTE: When "internal" keyword is used, must be last entry
 	#
-	# card_drivers = customcos, internal;
+	card_drivers = npa, internal;
 
 	# Card driver configuration blocks.
 
@@ -136,6 +140,32 @@ app default {
 		# The location of the driver library
 		# module = @LIBDIR@@LIB_PRE@card_customcos@DYN_LIB_EXT@;
 	# }
+
+	card_driver npa {
+		# The location of the driver library
+		module = @LIBDIR@@LIB_PRE@cardnpa@DYN_LIB_EXT@;
+
+		# German ID card requires the CAN to be verified before QES PIN. This,
+		# however, is not part of the PKCS#15 profile of the card. So for
+		# verifying the QES PIN we actually need both. The CAN may be given
+		# here. If the CAN is not given here, it will be prompted on the
+		# command line or on the reader (depending on the reader's
+		# capabilities).
+		#
+		#can = 222222;
+
+		# QES is only possible with a Comfort Reader (CAT-K), which holds a
+		# cryptographic key to authenticate itself as signature terminal (ST).
+		# We usually will use the reader's capability to sign the data.
+		# However, during developement you may specify soft certificates and
+		# keys for a ST below.
+		# The following example EAC PKI can be found in vicc's example data:
+		# https://github.com/frankmorgner/vsmartcard/tree/master/virtualsmartcard/npa-example-data
+		#
+		#st_dv_certificate = ZZSTDVCA00001.cvcert;
+		#st_certificate = ZZSTTERM00001.cvcert;
+		#st_key = ZZSTTERM00001.pkcs8;
+	}
 
 	# Force using specific card driver
 	#

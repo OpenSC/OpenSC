@@ -1,7 +1,7 @@
 /*
  * opensc.h: PACE library header file
  *
- * Copyright (C) ???? Frank Morgner <morgner@informatik.hu-berlin.de>
+ * Copyright (C) 2010-2012 Frank Morgner <frankmorgner@gmail.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public

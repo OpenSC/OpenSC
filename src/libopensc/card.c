@@ -29,6 +29,7 @@
 #endif
 #include <string.h>
 
+#include "boxing.h"
 #include "internal.h"
 #include "asn1.h"
 #include "common/compat_strlcpy.h"
@@ -207,6 +208,9 @@ int sc_connect_card(sc_reader_t *reader, sc_card_t **card_out)
 	connected = 1;
 	card->reader = reader;
 	card->ctx = ctx;
+
+	if (reader->flags & SC_READER_TEST_BOXING)
+		sc_detect_boxing_cmds(reader);
 
 	memcpy(&card->atr, &reader->atr, sizeof(card->atr));
 

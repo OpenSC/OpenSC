@@ -11,7 +11,7 @@ OBJECTS			= \
 	\
 	muscle.obj muscle-filesystem.obj \
 	\
-	ctbcs.obj reader-ctapi.obj reader-pcsc.obj reader-openct.obj \
+	ctbcs.obj reader-ctapi.obj reader-pcsc.obj reader-openct.obj boxing.obj \
 	\
 	card-setcos.obj card-miocos.obj card-flex.obj card-gpk.obj \
 	card-cardos.obj card-tcos.obj card-default.obj \
