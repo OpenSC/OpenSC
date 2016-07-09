@@ -1189,6 +1189,15 @@ static int login(CK_SESSION_HANDLE session, int login_type)
 
 	if (!pin && !(info.flags & CKF_PROTECTED_AUTHENTICATION_PATH)) {
 			printf("Logging in to \"%s\".\n", p11_utf8_to_local(info.label, sizeof(info.label)));
+		if ((login_type == CKU_SO && info.flags & CKF_SO_PIN_COUNT_LOW) ||
+				(login_type == CKU_USER && info.flags & CKF_USER_PIN_COUNT_LOW))
+			printf("WARNING: PIN count low\n");
+		else if ((login_type == CKU_SO && info.flags & CKF_SO_PIN_FINAL_TRY) ||
+				(login_type == CKU_USER && info.flags & CKF_USER_PIN_FINAL_TRY))
+			printf("WARNING: PIN final try\n");
+		else if ((login_type == CKU_SO && info.flags & CKF_SO_PIN_LOCKED) ||
+				(login_type == CKU_USER && info.flags & CKF_USER_PIN_LOCKED)) /* PIN is reported as locked but try to continue */
+			printf("WARNING: PIN reported locked\n"); 
 		if (login_type == CKU_SO)
 			printf("Please enter SO PIN: ");
 		else if (login_type == CKU_USER)
@@ -3194,7 +3203,7 @@ static void show_dobj(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 	if (getPRIVATE(sess, obj))
 		printf(" private");
 	if (!getMODIFIABLE(sess, obj) && !getPRIVATE(sess, obj))
-		printf("<empty>\n");
+		printf("<empty>");
 
 	printf ("\n");
 	suppress_warn = 0;
@@ -5076,17 +5085,20 @@ static const char *p11_slot_info_flags(CK_FLAGS value)
 static const char *p11_token_info_flags(CK_FLAGS value)
 {
 	static struct flag_info	slot_flags[] = {
-		{ CKF_RNG, "rng" },
-		{ CKF_WRITE_PROTECTED, "readonly" },
 		{ CKF_LOGIN_REQUIRED, "login required" },
-		{ CKF_USER_PIN_INITIALIZED, "PIN initialized" },
 		{ CKF_PROTECTED_AUTHENTICATION_PATH, "PIN pad present" },
+		{ CKF_RNG, "rng" },
+		{ CKF_SO_PIN_TO_BE_CHANGED, "SO PIN to be changed"},
+		{ CKF_SO_PIN_COUNT_LOW, "SO PIN count low" },
+		{ CKF_SO_PIN_FINAL_TRY, "final SO PIN try" },		
+		{ CKF_SO_PIN_LOCKED, "SO PIN locked" },				
 		{ CKF_TOKEN_INITIALIZED, "token initialized" },
 		{ CKF_USER_PIN_COUNT_LOW, "user PIN count low" },
 		{ CKF_USER_PIN_FINAL_TRY, "final user PIN try" },
+		{ CKF_USER_PIN_INITIALIZED, "PIN initialized" },		
 		{ CKF_USER_PIN_LOCKED, "user PIN locked" },
 		{ CKF_USER_PIN_TO_BE_CHANGED, "user PIN to be changed"},
-		{ CKF_SO_PIN_TO_BE_CHANGED, "SO PIN to be changed"},
+		{ CKF_WRITE_PROTECTED, "readonly" },
 		{ 0, NULL }
 	};
 
