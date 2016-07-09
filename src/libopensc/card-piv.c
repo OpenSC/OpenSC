@@ -159,6 +159,7 @@ typedef struct piv_private_data {
 	int keysWithOffCardCerts;
 	char * offCardCertURL;
 	int pin_preference; /* set from Discovery object */
+	int logged_in;
 	int pin_cmd_verify;
 	int pin_cmd_noparse;
 	unsigned int pin_cmd_verify_sw1;
@@ -2956,6 +2957,7 @@ static int piv_match_card(sc_card_t *card)
 	priv->aid_file = sc_file_new();
 	priv->selected_obj = -1;
 	priv->pin_preference = 0x80; /* 800-73-3 part 1, table 3 */
+	priv->logged_in = SC_PIN_STATE_UNKNOWN;
 	priv->tries_left = 10; /* will assume OK at start */
 
 	/* Some objects will only be present if Histroy object says so */
@@ -3027,6 +3029,7 @@ static int piv_init(sc_card_t *card)
 			priv->card_issues = CI_NO_EC384
 				| CI_VERIFY_630X
 				| CI_VERIFY_LC0_FAIL
+				| CI_OTHER_AID_LOSE_STATE
 				| CI_LEAKS_FILE_NOT_FOUND
 				| CI_NFC_EXPOSE_TOO_MUCH;
 			break;
@@ -3038,8 +3041,12 @@ static int piv_init(sc_card_t *card)
 			break;
 
 		case SC_CARD_TYPE_PIV_II_HIST:
-		case SC_CARD_TYPE_PIV_II_GENERIC:
 			priv->card_issues = 0;
+			break;
+
+		case SC_CARD_TYPE_PIV_II_GENERIC:
+			priv->card_issues = CI_VERIFY_LC0_FAIL
+				| CI_OTHER_AID_LOSE_STATE;
 			break;
 
 		default:
@@ -3169,8 +3176,8 @@ static int piv_check_protected_objects(sc_card_t *card)
 		if (priv->object_test_verify == 0) {
 			/*
 			 * none of the objects returned acceptable sw1, sw2 
-			 * Assume card state is unknown 
 			 */
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "No protected objects found, setting CI_CANT_USE_GETDATA_FOR_STATE");
 			priv->card_issues |= CI_CANT_USE_GETDATA_FOR_STATE;
 			r = SC_ERROR_PIN_CODE_INCORRECT;
 		}
@@ -3179,11 +3186,15 @@ static int piv_check_protected_objects(sc_card_t *card)
 		buf_len = sizeof(buf);
 		priv->pin_cmd_noparse = 1; /* tell piv_general_io dont need to parse at all. */
 		rbuf = buf;
-		r = piv_get_data(card, protected_objects[priv->object_test_verify], &rbuf, &buf_len);
+		r = piv_get_data(card, priv->object_test_verify, &rbuf, &buf_len);
 		priv->pin_cmd_noparse = 0;
 	}
-	if (r == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED)
+	if (r == SC_ERROR_FILE_NOT_FOUND)
 			r = SC_ERROR_PIN_CODE_INCORRECT;
+	else if (r == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED)
+			r = SC_ERROR_PIN_CODE_INCORRECT;
+	else if (r > 0)
+		r = SC_SUCCESS;
 
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "object_test_verify=%d, card_issues = 0x%08x", priv->object_test_verify, priv->card_issues);
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
@@ -3201,7 +3212,8 @@ static int piv_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 	 */
 	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
 
-	 SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"piv_pin_cmd tries_left=%d, logged_in=%d", priv->tries_left, priv->logged_in);
 	if (data->cmd == SC_PIN_CMD_CHANGE) {
 		int i = 0;
 		if (data->pin2.len < 6) {
@@ -3215,6 +3227,13 @@ static int piv_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 	}
 
 	priv->pin_cmd_verify_sw1 = 0x00U;
+
+	if (data->cmd == SC_PIN_CMD_GET_INFO) { /* fill in what we think it should be */
+		data->pin1.logged_in = priv->logged_in;
+		data->pin1.tries_left = priv->tries_left;
+		if (tries_left)
+			*tries_left = priv->tries_left;
+	}
 
 	priv->pin_cmd_verify = 1; /* tell piv_check_sw its a verify to save sw1, sw2 */
 	r = iso_drv->ops->pin_cmd(card, data, tries_left);
@@ -3230,16 +3249,43 @@ static int piv_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 		priv->pin_cmd_verify = 0;
 	}
 
-	/* Some cards never return 90 00  for SC_PIN_CMD_GET_INFO even if the card state is verified */
-
-	if (data->cmd == SC_PIN_CMD_GET_INFO
-			&& priv->card_issues & CI_VERIFY_LC0_FAIL
-			&& priv->pin_cmd_verify_sw1 == 0x63U /* can not use SC_ERROR_PIN_CODE_INCORRECT here */
-			&& !(priv->card_issues & CI_CANT_USE_GETDATA_FOR_STATE)) {
-				/* try another method, looking at a protected object */
-				r = piv_check_protected_objects(card);
+	/* If verify worked, we are loged_in */
+	if (data->cmd == SC_PIN_CMD_VERIFY) {
+	    if (r >= 0)
+		priv->logged_in = SC_PIN_STATE_LOGGED_IN;
+	    else 
+		priv->logged_in = SC_PIN_STATE_LOGGED_OUT;
 	}
 
+	/* Some cards never return 90 00  for SC_PIN_CMD_GET_INFO even if the card state is verified */
+	/* PR 797 has changed the return codes from pin_cmd, and added a data->pin1.logged_in flag */
+
+	if (data->cmd == SC_PIN_CMD_GET_INFO) {
+		if (priv->card_issues & CI_CANT_USE_GETDATA_FOR_STATE) {
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "CI_CANT_USE_GETDATA_FOR_STATE set, assume logged_in=%d", priv->logged_in);
+			data->pin1.logged_in =  priv->logged_in; /* use what ever we saw last */
+		} else if (priv->card_issues & CI_VERIFY_LC0_FAIL
+			&& priv->pin_cmd_verify_sw1 == 0x63U ) { /* can not use modified return codes from iso->drv->pin_cmd */
+				/* try another method, looking at a protected object this may require adding one of these to NEO */
+			    r = piv_check_protected_objects(card);
+			if (r == SC_SUCCESS)
+				data->pin1.logged_in = SC_PIN_STATE_LOGGED_IN;
+			else if (r ==  SC_ERROR_PIN_CODE_INCORRECT) {
+				if (priv->card_issues & CI_CANT_USE_GETDATA_FOR_STATE) { /* we still can not determine login state */
+
+					data->pin1.logged_in = priv->logged_in; /* may have be set from SC_PIN_CMD_VERIFY */
+					/* TODO a reset may have logged us out. need to detect resets */
+				} else {
+					data->pin1.logged_in = SC_PIN_STATE_LOGGED_OUT;
+				}
+				r = SC_SUCCESS;
+			}
+		}
+		priv->logged_in = data->pin1.logged_in;
+		priv->tries_left = data->pin1.tries_left;
+	}
+
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"piv_pin_cmd tries_left=%d, logged_in=%d",priv->tries_left, priv->logged_in);
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 }
 
