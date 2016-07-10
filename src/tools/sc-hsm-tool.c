@@ -77,6 +77,7 @@ static const struct option options[] = {
 	{ "initialize",				0, NULL,		'X' },
 	{ "create-dkek-share",		1, NULL,		'C' },
 	{ "import-dkek-share",		1, NULL,		'I' },
+	{ "print-dkek-share",		1, NULL,		'P' },
 	{ "wrap-key",				1, NULL,		'W' },
 	{ "unwrap-key",				1, NULL,		'U' },
 	{ "dkek-shares",			1, NULL,		's' },
@@ -99,6 +100,7 @@ static const char *option_help[] = {
 	"Initialize token",
 	"Create DKEK key share and save to <filename>",
 	"Import DKEK key share <filename>",
+	"Print HEX of DKEK key share <filename>",
 	"Wrap key and save to <filename>",
 	"Unwrap key read from <filename>",
 	"Number of DKEK shares [No DKEK]",
@@ -834,7 +836,112 @@ static int import_dkek_share(sc_card_t *card, const char *inf, int iter, const c
 	return 0;
 }
 
+static int print_dkek_share(sc_card_t *card, const char *inf, int iter, const char *password, int num_of_password_shares)
+{
+	// hex output can be used in the SCSH shell with the 
+	// decrypt_keyblob.js file
+	sc_cardctl_sc_hsm_dkek_t dkekinfo;
+	EVP_CIPHER_CTX ctx;
+	FILE *in = NULL;
+	u8 filebuff[64],key[EVP_MAX_KEY_LENGTH], iv[EVP_MAX_IV_LENGTH],outbuff[64];
+	char *pwd = NULL;
+	int r, outlen, pwdlen;
+	u8 i;
 
+	if (inf == NULL) {
+		fprintf(stderr, "No file name specified for DKEK share\n");
+		return -1;
+	}
+
+	in = fopen(inf, "rb");
+
+	if (in == NULL) {
+		perror(inf);
+		return -1;
+	}
+
+	if (fread(filebuff, 1, sizeof(filebuff), in) != sizeof(filebuff)) {
+		perror(inf);
+		fclose(in);
+		return -1;
+	}
+
+	fclose(in);
+
+	if (memcmp(filebuff, magic, sizeof(magic) - 1)) {
+		fprintf(stderr, "File %s is not a DKEK share\n", inf);
+		return -1;
+	}
+
+	if (password == NULL) {
+
+		if (num_of_password_shares == -1) {
+			printf("Enter password to decrypt DKEK share : ");
+			util_getpass(&pwd, NULL, stdin);
+			pwdlen = strlen(pwd);
+			printf("\n");
+		} else {
+			r = recreate_password_from_shares(&pwd, &pwdlen, num_of_password_shares);
+			if (r < 0) {
+				return -1;
+			}
+		}
+
+	} else {
+		pwd = (char *) password;
+		pwdlen = strlen(password);
+	}
+
+	printf("Deciphering DKEK share, please wait...\n");
+	EVP_BytesToKey(EVP_aes_256_cbc(), EVP_md5(), filebuff + 8, (u8 *)pwd, pwdlen, iter, key, iv);
+	OPENSSL_cleanse(pwd, strlen(pwd));
+
+	if (password == NULL) {
+		free(pwd);
+	}
+
+	EVP_CIPHER_CTX_init(&ctx);
+	EVP_DecryptInit_ex(&ctx, EVP_aes_256_cbc(), NULL, key, iv);
+	if (!EVP_DecryptUpdate(&ctx, outbuff, &outlen, filebuff + 16, sizeof(filebuff) - 16)) {
+		fprintf(stderr, "Error decrypting DKEK share. Password correct ?\n");
+		return -1;
+	}
+
+	if (!EVP_DecryptFinal_ex(&ctx, outbuff + outlen, &r)) {
+		fprintf(stderr, "Error decrypting DKEK share. Password correct ?\n");
+		return -1;
+	}
+
+	memset(&dkekinfo, 0, sizeof(dkekinfo));
+	memcpy(dkekinfo.dkek_share, outbuff, sizeof(dkekinfo.dkek_share));
+	dkekinfo.importShare = 1;
+
+	OPENSSL_cleanse(outbuff, sizeof(outbuff));
+
+	printf("DKEK Share HEX: \n\n");
+
+	for (i = 0; i < sizeof(dkekinfo.dkek_share); i++)
+	{
+	    printf("%02X", dkekinfo.dkek_share[i]);
+	}
+	printf("\n\n");
+
+	OPENSSL_cleanse(&dkekinfo.dkek_share, sizeof(dkekinfo.dkek_share));
+	EVP_CIPHER_CTX_cleanup(&ctx);
+
+	if (r == SC_ERROR_INS_NOT_SUPPORTED) {			// Not supported or not initialized for key shares
+		fprintf(stderr, "Not supported by card or card not initialized for key share usage\n");
+		return -1;
+	}
+
+	if (r < 0) {
+		fprintf(stderr, "sc_card_ctl(*, SC_CARDCTL_SC_HSM_IMPORT_DKEK_SHARE, *) failed with %s\n", sc_strerror(r));
+		return -1;
+	}
+	//printf("DKEK share imported\n");
+	//print_dkek_info(&dkekinfo);
+	return 0;
+}
 
 static void ask_for_password(char **pwd, int *pwdlen)
 {
@@ -1533,6 +1640,7 @@ int main(int argc, char * const argv[])
 	int action_count = 0;
 	int do_initialize = 0;
 	int do_import_dkek_share = 0;
+	int do_print_dkek_share = 0;
 	int do_create_dkek_share = 0;
 	int do_wrap_key = 0;
 	int do_unwrap_key = 0;
@@ -1555,7 +1663,7 @@ int main(int argc, char * const argv[])
 	setbuf(stdout, NULL);
 
 	while (1) {
-		c = getopt_long(argc, argv, "XC:I:W:U:s:i:fr:wv", options, &long_optind);
+		c = getopt_long(argc, argv, "XC:I:P:W:U:s:i:fr:wv", options, &long_optind);
 		if (c == -1)
 			break;
 		if (c == '?')
@@ -1572,6 +1680,11 @@ int main(int argc, char * const argv[])
 			break;
 		case 'I':
 			do_import_dkek_share = 1;
+			opt_filename = optarg;
+			action_count++;
+			break;
+		case 'P':
+			do_print_dkek_share = 1;
 			opt_filename = optarg;
 			action_count++;
 			break;
@@ -1669,6 +1782,9 @@ int main(int argc, char * const argv[])
 		goto fail;
 
 	if (do_import_dkek_share && import_dkek_share(card, opt_filename, opt_iter, opt_password, opt_password_shares_total))
+		goto fail;
+
+	if (do_print_dkek_share && print_dkek_share(card, opt_filename, opt_iter, opt_password, opt_password_shares_total))
 		goto fail;
 
 	if (do_wrap_key && wrap_key(card, opt_key_reference, opt_filename, opt_pin))
