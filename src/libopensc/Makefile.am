@@ -38,7 +38,7 @@ libopensc_la_SOURCES = \
 	card-entersafe.c card-epass2003.c card-coolkey.c \
 	card-incrypto34.c card-piv.c card-muscle.c card-acos5.c \
 	card-asepcos.c card-akis.c card-gemsafeV1.c card-rutoken.c \
-	card-rtecp.c card-westcos.c card-myeid.c card-ias.c \
+	card-rtecp.c card-westcos.c card-myeid.c \
 	card-itacns.c card-authentic.c \
 	card-iasecc.c iasecc-sdo.c iasecc-sm.c card-sc-hsm.c \
 	card-dnie.c cwa14890.c cwa-dnie.c \
