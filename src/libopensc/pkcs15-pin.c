@@ -575,6 +575,46 @@ out:
 	LOG_FUNC_RETURN(ctx, r);
 }
 
+int sc_pkcs15_get_pin_info(struct sc_pkcs15_card *p15card,
+			 struct sc_pkcs15_object *pin_obj)
+{
+	int r;
+	struct sc_pin_cmd_data data;
+	struct sc_card *card = p15card->card;
+	struct sc_context *ctx = card->ctx;
+	struct sc_pkcs15_auth_info *pin_info = (struct sc_pkcs15_auth_info *) pin_obj->data;
+
+	LOG_FUNC_CALLED(ctx);
+
+	r = sc_lock(card);
+	if (r != SC_SUCCESS)
+		return r;
+
+	if (pin_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)   {
+		r = SC_ERROR_INVALID_DATA;
+		goto out;
+	}
+
+	/* Try to update PIN info from card */
+	memset(&data, 0, sizeof(data));
+	data.cmd = SC_PIN_CMD_GET_INFO;
+	data.pin_type = SC_AC_CHV;
+	data.pin_reference = pin_info->attrs.pin.reference;
+
+	r = sc_pin_cmd(card, &data, NULL);
+	if (r == SC_SUCCESS) {
+		if (data.pin1.max_tries > 0)
+			pin_info->max_tries = data.pin1.max_tries;
+		/* tries_left must be supported or sc_pin_cmd should not return SC_SUCCESS */
+		pin_info->tries_left = data.pin1.tries_left;
+		pin_info->logged_in = data.pin1.logged_in;
+	}
+
+out:
+	sc_unlock(card);
+	LOG_FUNC_RETURN(ctx, r);
+}
+
 
 void sc_pkcs15_free_auth_info(sc_pkcs15_auth_info_t *auth_info)
 {

@@ -340,6 +340,11 @@ typedef struct sc_reader {
 #define SC_PIN_ENCODING_BCD	1
 #define SC_PIN_ENCODING_GLP	2 /* Global Platform - Card Specification v2.0.1 */
 
+/** Values for sc_pin_cmd_pin.logged_in */
+#define SC_PIN_STATE_UNKNOWN	-1
+#define SC_PIN_STATE_LOGGED_OUT 0
+#define SC_PIN_STATE_LOGGED_IN  1
+
 struct sc_pin_cmd_pin {
 	const char *prompt;	/* Prompt to display */
 
@@ -360,6 +365,7 @@ struct sc_pin_cmd_pin {
 
 	int max_tries;	/* Used for signaling back from SC_PIN_CMD_GET_INFO */
 	int tries_left;	/* Used for signaling back from SC_PIN_CMD_GET_INFO */
+	int logged_in;	/* Used for signaling back from SC_PIN_CMD_GET_INFO */
 
 	struct sc_acl_entry acls[SC_MAX_SDO_ACLS];
 };

@@ -350,6 +350,7 @@ CK_RV slot_get_token(CK_SLOT_ID id, struct sc_pkcs11_slot **);
 CK_RV slot_token_removed(CK_SLOT_ID id);
 CK_RV slot_allocate(struct sc_pkcs11_slot **, struct sc_pkcs11_card *);
 CK_RV slot_find_changed(CK_SLOT_ID_PTR idp, int mask);
+int slot_get_logged_in_state(struct sc_pkcs11_slot *slot);
 
 /* Login tracking functions */
 CK_RV restore_login_state(struct sc_pkcs11_slot *slot);

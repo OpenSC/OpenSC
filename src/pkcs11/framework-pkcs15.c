@@ -466,10 +466,10 @@ __pkcs15_delete_object(struct pkcs15_fw_data *fw_data, struct pkcs15_any_object 
 CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo)
 {
 	struct sc_pkcs11_slot *slot;
+	struct pkcs15_fw_data *fw_data = NULL;
+	struct sc_pkcs15_card *p15card = NULL;
 	struct sc_pkcs15_object *auth;
 	struct sc_pkcs15_auth_info *pin_info;
-	struct sc_pin_cmd_data data;
-	int r;
 	CK_RV rv;
 
 	sc_log(context, "C_GetTokenInfo(%lx)", slotID);
@@ -486,6 +486,11 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo)
 		goto out;
 	}
 
+	fw_data = (struct pkcs15_fw_data *) slot->p11card->fws_data[slot->fw_data_idx];
+	if (!fw_data)
+		return sc_to_cryptoki_error(SC_ERROR_INTERNAL, "C_GetTokenInfo");
+	p15card = fw_data->p15_card;
+
 	/* User PIN flags are cleared before re-calculation */
 	slot->token_info.flags &= ~(CKF_USER_PIN_COUNT_LOW|CKF_USER_PIN_FINAL_TRY|CKF_USER_PIN_LOCKED);
 	auth = slot_data_auth(slot->fw_data);
@@ -493,24 +498,7 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo)
 	if (auth) {
 		pin_info = (struct sc_pkcs15_auth_info*) auth->data;
 
-		if (pin_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)   {
-			rv = CKR_FUNCTION_REJECTED;
-			goto out;
-		}
-
-		/* Try to update PIN info from card */
-		memset(&data, 0, sizeof(data));
-		data.cmd = SC_PIN_CMD_GET_INFO;
-		data.pin_type = SC_AC_CHV;
-		data.pin_reference = pin_info->attrs.pin.reference;
-
-		r = sc_pin_cmd(slot->p11card->card, &data, NULL);
-		if (r == SC_SUCCESS) {
-			if (data.pin1.max_tries > 0)
-				pin_info->max_tries = data.pin1.max_tries;
-			/* tries_left must be supported or sc_pin_cmd should not return SC_SUCCESS */
-			pin_info->tries_left = data.pin1.tries_left;
-		}
+		sc_pkcs15_get_pin_info(p15card, auth);
 
 		if (pin_info->tries_left >= 0) {
 			if (pin_info->tries_left == 1 || pin_info->max_tries == 1)
@@ -1094,6 +1082,37 @@ _is_slot_auth_object(struct sc_pkcs15_auth_info *pin_info)
 			return 0;
 
 	return 1;
+}
+
+int slot_get_logged_in_state(struct sc_pkcs11_slot *slot)
+{
+	int logged_in = SC_PIN_STATE_UNKNOWN;
+	struct pkcs15_fw_data *fw_data = NULL;
+	struct sc_pkcs15_card *p15card = NULL;
+	struct sc_pkcs15_object *pin_obj = NULL;
+	struct sc_pkcs15_auth_info *pin_info;
+
+	fw_data = (struct pkcs15_fw_data *) slot->p11card->fws_data[slot->fw_data_idx];
+	if (!fw_data)
+		goto out;
+	p15card = fw_data->p15_card;
+
+	if (slot->login_user == CKU_SO) {
+		sc_pkcs15_find_so_pin(p15card, &pin_obj);
+	} else {
+		pin_obj = slot_data_auth(slot->fw_data);
+	}
+
+	if (!pin_obj)
+		goto out;
+
+	pin_info = (struct sc_pkcs15_auth_info *)pin_obj->data;
+	if (!pin_info)
+		goto out;
+	sc_pkcs15_get_pin_info(p15card, pin_obj);
+	logged_in = pin_info->logged_in;
+out:
+	return logged_in;
 }
 
 
