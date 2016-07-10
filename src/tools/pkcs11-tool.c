@@ -4097,6 +4097,8 @@ static int test_signature(CK_SESSION_HANDLE sess)
 			break;
 	ck_mech.mechanism = mechTypes[i];
 	j = 1;  /* j-th signature key */
+	data[0] = 0x00; // maybe line commented out, if data[0] has already 0x00 value
+//	data[1] = 0x01;
 	while (find_object(sess, CKO_PRIVATE_KEY, &privKeyObject, NULL, 0, j++) != 0) {
 		CK_ULONG	modLenBits;
 
@@ -4104,10 +4106,8 @@ static int test_signature(CK_SESSION_HANDLE sess)
 		modLenBits = get_private_key_length(sess, privKeyObject);
 		modLenBytes = (modLenBits + 7) / 8;
 
-		/* Fill in data[0] and dataLens[0] */
+		/* Fill in datas[0] and dataLens[0] */
 		dataLen = modLenBytes;
-		data[0] = 0x00;
-		data[1] = 0x01;
 		memset(data + 2, 0xFF, dataLen - 3 - dataLens[1]);
 		data[dataLen - 36] = 0x00;
 		memcpy(data + (dataLen - dataLens[1]), datas[1], dataLens[1]);
