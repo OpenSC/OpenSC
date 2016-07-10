@@ -120,6 +120,7 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 	{ "openpgp",	(void *(*)(void)) sc_get_openpgp_driver },
 	/* The default driver should be last, as it handles all the
 	 * unrecognized cards. */
+	{ "jpki",	(void *(*)(void)) sc_get_jpki_driver },
 	{ "default",	(void *(*)(void)) sc_get_default_driver },
 	{ NULL, NULL }
 };
