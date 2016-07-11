@@ -11,10 +11,10 @@ do_subst = $(SED) \
 	   -e 's,[@]PACKAGE_VERSION[@],"$(PACKAGE_VERSION)",g' \
 	   -e 's,[@]X509DIR[@],$(X509DIR),g'
 
-NPA_TOOL_BUILT_SOURCES = cmdline.h cmdline.c
+NPA_TOOL_BUILT_SOURCES = npa-tool-cmdline.h npa-tool-cmdline.c
 
-MAINTAINERCLEANFILES = $(srcdir)/Makefile.in $(srcdir)/versioninfo-tools.rc $(NPA_TOOL_BUILT_SOURCES) npa-tool.ggo $(dist_man1_MANS)
-EXTRA_DIST = Makefile.mak versioninfo-tools.rc.in npa-tool.ggo npa-tool.ggo.in
+MAINTAINERCLEANFILES = $(srcdir)/Makefile.in $(srcdir)/versioninfo-tools.rc
+EXTRA_DIST = Makefile.mak versioninfo-tools.rc.in npa-tool.ggo.in
 
 noinst_HEADERS = util.h fread_to_eof.h
 noinst_PROGRAMS = sceac-example
@@ -22,14 +22,11 @@ bin_PROGRAMS = opensc-tool opensc-explorer pkcs15-tool pkcs15-crypt \
 	pkcs11-tool cardos-tool eidenv openpgp-tool iasecc-tool
 if ENABLE_OPENSSL
 bin_PROGRAMS += cryptoflex-tool pkcs15-init netkey-tool piv-tool \
-	westcos-tool sc-hsm-tool dnie-tool gids-tool
+	westcos-tool sc-hsm-tool dnie-tool gids-tool npa-tool
 endif
-if ENABLE_NPATOOL
-bin_PROGRAMS += npa-tool
 
 if ENABLE_MAN
-dist_man1_MANS = $(abs_builddir)/npa-tool.1
-endif
+dist_man1_MANS = npa-tool.1
 endif
 
 # compile with $(PTHREAD_CFLAGS) to allow debugging with gdb
@@ -85,20 +82,24 @@ npa_tool_LDADD = $(top_builddir)/src/libopensc/libopensc.la \
 				 $(OPENPACE_LIBS)
 npa_tool_CFLAGS = -I$(top_srcdir)/src $(OPENPACE_CFLAGS) $(OPENSSL_CFLAGS)
 
-npa-tool.c: $(NPA_TOOL_BUILT_SOURCES)
+npa-tool.c: $(abs_builddir)/npa-tool.ggo $(NPA_TOOL_BUILT_SOURCES)
 
-$(NPA_TOOL_BUILT_SOURCES): npa-tool.ggo
-	$(GENGETOPT) --output-dir=$(srcdir) < $<
+# We only want *cmdline* to be generated when they have explicitly been removed.
+$(NPA_TOOL_BUILT_SOURCES):
+	$(MAKE) $(abs_builddir)/npa-tool.ggo
+	$(GENGETOPT) --include-getopt --file-name=npa-tool-cmdline --output-dir=$(builddir) < $(abs_builddir)/npa-tool.ggo
 
-npa-tool.ggo: npa-tool.ggo.in
-	$(do_subst) < $< > $(srcdir)/$@
+$(abs_builddir)/npa-tool.ggo: npa-tool.ggo.in 
+	$(do_subst) < $(abs_srcdir)/npa-tool.ggo.in > $@
 
-$(abs_builddir)/npa-tool.1: npa-tool.ggo.in
+# We only want npa-tool.1 to be generated when it has explicitly been removed.
+npa-tool.1:
+	$(MAKE) npa-tool$(EXEEXT)
 	$(HELP2MAN) \
 		--output=$@ \
 		--no-info \
 		--source='$(PACKAGE_STRING)' \
-		$(builddir)/npa-tool
+		$(builddir)/npa-tool$(EXEEXT)
 
 if WIN32
 opensc_tool_SOURCES += versioninfo-tools.rc
@@ -118,3 +119,6 @@ iasecc_tool_SOURCES += versioninfo-tools.rc
 sc_hsm_tool_SOURCES += versioninfo-tools.rc
 gids_tool_SOURCES += versioninfo-tools.rc
 endif
+
+clean-local:
+	rm -f $(abs_builddir)/npa-tool.ggo

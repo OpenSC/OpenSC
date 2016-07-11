@@ -22,7 +22,7 @@
 #endif
 
 #ifdef ENABLE_OPENPACE
-#include "cmdline.h"
+#include "npa-tool-cmdline.h"
 #include "fread_to_eof.h"
 #include "libsceac/rw_sfid.h"
 #include "libsceac/sslutil.h"

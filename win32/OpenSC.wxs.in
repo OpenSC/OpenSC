@@ -184,7 +184,7 @@
                   <File Source="$(var.SOURCE_DIR)\src\tools\gids-tool.exe" Vital="yes"/>
                 </Component>
               <?endif ?>
-              <?ifdef enable_npa_tool ?>
+              <?ifdef OpenPACE ?>
                 <Component Id="npa_tool.exe" Guid="*" Win64="$(var.Win64YesNo)">
                   <File Source="$(var.SOURCE_DIR)\src\tools\npa-tool.exe" Vital="yes"/>
                 </Component>
@@ -377,7 +377,7 @@
           <ComponentRef Id="isoApplet.profile"/>
           <ComponentRef Id="gids.profile"/>
         <?endif ?>
-        <?ifdef enable_npa_tool ?>
+        <?ifdef OpenPACE ?>
           <ComponentRef Id="npa_tool.exe"/>
         <?endif ?>
       </Feature>
