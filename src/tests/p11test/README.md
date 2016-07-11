@@ -22,19 +22,28 @@ Plug in the card/reader, change to test directory and run the test:
     cd src/tests/p11test
     ./p11test
 
-It will run all tests on PKCS#11 API with default pin `123456`
-and using just built OpenSC shared library.
+It will run all tests on the first card found in PKCS#11 API
+with default pin `123456` and using just built OpenSC shared library.
 
 ## My card has different PIN.
 
-PIN can be specified on commandline:
+PIN can be specified on command-line:
 
     ./p11test -p 12345678
+
+## I have more slots with different cards.
+
+Slot can be selected using `-s` switch on command-line.
+
+    ./p11test -s 4
+
+Slot numbers can be obtained using from `pkcs11-tool -L` (note that different
+libraries might have different numbers for the slots).
 
 ## I want to test different pkcs11 library
 
 You can specify different library or build from different branch
-on command line:
+on command-line:
 
     ./p11test -m /usr/lib64/pkcs11/libcoolkeypk11.so
 
@@ -43,6 +52,8 @@ or to debug PKCS#11 calls using `/usr/lib64/pkcs11-spy.so`:
     export PKCS11SPY="../pkcs11/.libs/opensc-pkcs11.so"
     ./p11test -m ../pkcs11/.libs/pkcs11-spy.so
 
+You can run the test suite also on the soft tokens. The testbench for
+`softhsm` and `opencryptoki` is available in the script `runtest.sh`.
 
 TODO:
 
@@ -55,3 +66,4 @@ TODO:
  * Multipart mechanisms with hashes
  * Keygen write tests (optional)
  * [./] Integrate benchmark script with soft token
+ * Reflect cmocka dependency in the configure
