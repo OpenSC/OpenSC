@@ -38,12 +38,14 @@ void ec_sign_size_test(void **state) {
 		// sanity: Test all mechanisms
 		min = (objects.data[i].bits + 7) / 8 - 2;
 		max = (objects.data[i].bits + 7) / 8 + 2;
-		for (j = 0; j < objects.data[i].num_mechs; j++) {
-			for (l = min; l < max; l++) {
-				rv = sign_verify_test(&(objects.data[i]), info,
-					&(objects.data[i].mechs[j]), l);
-				if (rv == -1)
-					errors++;
+		if (objects.data[i].sign && objects.data[i].verify) {
+			for (j = 0; j < objects.data[i].num_mechs; j++) {
+				for (l = min; l < max; l++) {
+					rv = sign_verify_test(&(objects.data[i]), info,
+						&(objects.data[i].mechs[j]), l);
+					if (rv == -1)
+						errors++;
+				}
 			}
 		}
 	}
