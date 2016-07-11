@@ -58,18 +58,27 @@ int get_slot_with_card(token_info_t * info)
         return 1;
     }
 
-    /* Find a slot capable of specified mechanism */
-    for (i = 0; i < slot_count; i++) {
-        CK_SLOT_INFO slot_info;
-        slot_id = slot_list[i];
+	/* Find a slot capable of specified mechanism */
+	for (i = 0; i < slot_count; i++) {
+		CK_SLOT_INFO slot_info;
+		slot_id = slot_list[i];
 
-        rv = function_pointer->C_GetSlotInfo(slot_id, &slot_info);
+		rv = function_pointer->C_GetSlotInfo(slot_id, &slot_info);
 
-        if(rv == CKR_OK && (slot_info.flags & CKF_TOKEN_PRESENT)){
-            info->slot_id = slot_id;
-            break;
-        }
-    }
+		if (rv == CKR_OK && (slot_info.flags & CKF_TOKEN_PRESENT)) { /* token present */
+			if (info->slot_id != (unsigned long) -1) {
+				if (info->slot_id == slot_list[i]) { /* explicitly specified slot */
+					debug_print("Manually selected slot %lu\n", info->slot_id);
+					goto cleanup;
+				}
+			} else { /* first found slot if not specified */
+				info->slot_id = slot_id;
+				goto cleanup;
+			}
+		}
+	}
+	error = 1;
+	fprintf(stderr, "No slot with card inserted or the selected slot does not exist\n");
 
     cleanup:
     if (slot_list) {
@@ -115,7 +124,7 @@ int load_pkcs11_module(token_info_t * info, const char* path_to_pkcs11_library) 
         return 1;
     }
 
-    if(get_slot_with_card(info)) {
+    if (get_slot_with_card(info)) {
         fprintf(stderr, "There is no card present in reader.\n");
         info->function_pointer->C_Finalize(NULL_PTR);
         return 1;

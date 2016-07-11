@@ -32,11 +32,12 @@
 
 void display_usage() {
 	fprintf(stdout,
-		" usage:\n"
-		"	./p11test [-m module_path] [-p pin]\n"
+		" Usage:\n"
+		"	./p11test [-m module_path] [-s slot_id] [-p pin]\n"
 		"		-m module_path	Path to tested module (e.g. /usr/lib64/opensc-pkcs11.so)\n"
 		"						Default is "DEFAULT_P11LIB"\n"
-		"		-p pin:			Application PIN\n"
+		"		-p pin			Application PIN\n"
+		"		-s slot_id		Slot ID with the card\n"
 		"		-i				Wait for the card before running the test (interactive)\n"
 		"		-h				This help\n"
 		"\n");
@@ -67,11 +68,15 @@ int main(int argc, char** argv) {
 	token.pin = NULL;
 	token.pin_length = 0;
 	token.interactive = 0;
+	token.slot_id = (unsigned long) -1;
 
-	while ((command = getopt(argc, argv, "?hm:p:i")) != -1) {
+	while ((command = getopt(argc, argv, "?hm:s:p:i")) != -1) {
 		switch (command) {
 			case 'm':
 				token.library_path = strdup(optarg);
+				break;
+			case 's':
+				token.slot_id = atol(optarg);
 				break;
 			case 'p':
 				token.pin = (CK_UTF8CHAR*) strdup(optarg);

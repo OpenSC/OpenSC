@@ -74,14 +74,15 @@ int group_setup(void **state)
 
 	assert_non_null(info);
 
+	info->pin = token.pin;
+	info->pin_length = token.pin_length;
+	info->interactive = token.interactive;
+	info->slot_id = token.slot_id;
+
 	if (load_pkcs11_module(info, token.library_path)) {
 		free(info);
 		fail_msg("Could not load module!\n");
 	}
-	info->pin = token.pin;
-	info->pin_length = token.pin_length;
-	info->interactive = token.interactive;
-
 	*state = info;
 	return 0;
 }
