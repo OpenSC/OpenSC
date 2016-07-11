@@ -45,22 +45,22 @@ DECLARE_ASN1_FUNCTIONS(ASN1_AUXILIARY_DATA)
 #else
 /** @brief Type of the secret */
 enum s_type {
-    /** @brief MRZ is the Machine Readable Zone, printed on the card, encoding
-     * the personal information of the user */
-    PACE_MRZ = 1,
-    /** @brief CAN is the Card access number printed on the card */
-    PACE_CAN,
-    /** @brief PIN is the Personal Identification Number, a secret known only
-     * to the user and not printed on the card */
-    PACE_PIN,
-    /** @brief PUK is the Personal Unblocking key. This type of secret is used
-     * when the card is suspended due to too many incorrect PACE runs */
-    PACE_PUK,
-    /** @brief This type of secret is not defined in BSI TR-03110. We use it as
-     * a generic type, so we can use PACE independent from a ID card */
-    PACE_RAW,
-    /** @brief Undefined type, if nothing else matches */
-    PACE_SEC_UNDEF
+	/** @brief MRZ is the Machine Readable Zone, printed on the card, encoding
+	 * the personal information of the user */
+	PACE_MRZ = 1,
+	/** @brief CAN is the Card access number printed on the card */
+	PACE_CAN,
+	/** @brief PIN is the Personal Identification Number, a secret known only
+	 * to the user and not printed on the card */
+	PACE_PIN,
+	/** @brief PUK is the Personal Unblocking key. This type of secret is used
+	 * when the card is suspended due to too many incorrect PACE runs */
+	PACE_PUK,
+	/** @brief This type of secret is not defined in BSI TR-03110. We use it as
+	 * a generic type, so we can use PACE independent from a ID card */
+	PACE_RAW,
+	/** @brief Undefined type, if nothing else matches */
+	PACE_SEC_UNDEF
 };
 
 /**
@@ -71,12 +71,12 @@ enum s_type {
  * cards are incompatible with the newer specification.
  */
 enum eac_tr_version {
-    /** @brief Undefined type, if nothing else matches */
-    EAC_TR_VERSION = 0,
-    /** @brief Perform EAC according to TR-03110 v2.01 */
-    EAC_TR_VERSION_2_01,
-    /** @brief Perform EAC according to TR-03110 v2.02 and later */
-    EAC_TR_VERSION_2_02,
+	/** @brief Undefined type, if nothing else matches */
+	EAC_TR_VERSION = 0,
+	/** @brief Perform EAC according to TR-03110 v2.01 */
+	EAC_TR_VERSION_2_01,
+	/** @brief Perform EAC according to TR-03110 v2.02 and later */
+	EAC_TR_VERSION_2_02,
 };
 #endif
 
@@ -190,9 +190,9 @@ int get_pace_capabilities(u8 *bitmap);
  * @return \c SC_SUCCESS or error code if an error occurred
  */
 int perform_pace(sc_card_t *card,
-        struct establish_pace_channel_input pace_input,
-        struct establish_pace_channel_output *pace_output,
-        enum eac_tr_version tr_version);
+		struct establish_pace_channel_input pace_input,
+		struct establish_pace_channel_output *pace_output,
+		enum eac_tr_version tr_version);
 
 /**
  * @brief Terminal Authentication version 2
@@ -213,9 +213,9 @@ int perform_pace(sc_card_t *card,
  * @return \c SC_SUCCESS or error code if an error occurred
  */
 int perform_terminal_authentication(sc_card_t *card,
-        const unsigned char **certs, const size_t *certs_lens,
-        const unsigned char *privkey, size_t privkey_len,
-        const unsigned char *auxiliary_data, size_t auxiliary_data_len);
+		const unsigned char **certs, const size_t *certs_lens,
+		const unsigned char *privkey, size_t privkey_len,
+		const unsigned char *auxiliary_data, size_t auxiliary_data_len);
 
 /**
  * @brief Establish secure messaging using Chip Authentication version 2
@@ -229,7 +229,7 @@ int perform_terminal_authentication(sc_card_t *card,
  * @return \c SC_SUCCESS or error code if an error occurred
  */
 int perform_chip_authentication(sc_card_t *card,
-        unsigned char **ef_cardsecurity, size_t *ef_cardsecurity_len);
+		unsigned char **ef_cardsecurity, size_t *ef_cardsecurity_len);
 
 /** 
  * @brief Sends a reset retry counter APDU
@@ -248,8 +248,8 @@ int perform_chip_authentication(sc_card_t *card,
  * @return \c SC_SUCCESS or error code if an error occurred
  */
 int npa_reset_retry_counter(sc_card_t *card,
-        enum s_type pin_id, int ask_for_secret,
-        const char *new, size_t new_len);
+		enum s_type pin_id, int ask_for_secret,
+		const char *new, size_t new_len);
 
 /** 
  * @brief Sends an MSE:Set AT to determine the number of remaining tries
@@ -261,14 +261,14 @@ int npa_reset_retry_counter(sc_card_t *card,
  * @return \c SC_SUCCESS or error code if an error occurred
  */
 int npa_pace_get_tries_left(sc_card_t *card,
-        enum s_type pin_id, int *tries_left);
+		enum s_type pin_id, int *tries_left);
 /** 
  * @brief Send APDU to unblock the PIN
  *
  * @param[in] card
  */
 #define npa_unblock_pin(card) \
-    npa_reset_retry_counter(card, PACE_PIN, 0, NULL, 0)
+	npa_reset_retry_counter(card, PACE_PIN, 0, NULL, 0)
 /**
  * @brief Send APDU to set a new PIN
  *
@@ -277,7 +277,7 @@ int npa_pace_get_tries_left(sc_card_t *card,
  * @param[in] newplen        (optional) length of \a new
  */
 #define npa_change_pin(card, newp, newplen) \
-    npa_reset_retry_counter(card, PACE_PIN, 1, newp, newplen)
+	npa_reset_retry_counter(card, PACE_PIN, 1, newp, newplen)
 
 /** @brief Disable all sanity checks done by libnpa */
 #define NPA_FLAG_DISABLE_CHECK_ALL 1

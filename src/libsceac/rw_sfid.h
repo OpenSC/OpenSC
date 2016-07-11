@@ -40,7 +40,7 @@
  * @note The appropriate directory must be selected before calling this function.
  * */
 int read_binary_sfid(sc_card_t *card, unsigned char sfid,
-        u8 **ef, size_t *ef_len);
+		u8 **ef, size_t *ef_len);
 
 /**
  * @brief Write a complete EF by short file identifier.
@@ -53,7 +53,7 @@ int read_binary_sfid(sc_card_t *card, unsigned char sfid,
  * @note The appropriate directory must be selected before calling this function.
  * */
 int write_binary_sfid(sc_card_t *card, unsigned char sfid,
-        u8 *ef, size_t ef_len);
+		u8 *ef, size_t ef_len);
 
 #endif
 /* @} */
