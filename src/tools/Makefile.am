@@ -11,9 +11,9 @@ do_subst = $(SED) \
 	   -e 's,[@]PACKAGE_VERSION[@],"$(PACKAGE_VERSION)",g' \
 	   -e 's,[@]X509DIR[@],$(X509DIR),g'
 
-BUILT_SOURCES = cmdline.h cmdline.c
+NPA_TOOL_BUILT_SOURCES = cmdline.h cmdline.c
 
-MAINTAINERCLEANFILES = $(srcdir)/Makefile.in $(srcdir)/versioninfo-tools.rc $(BUILT_SOURCES) npa-tool.ggo $(dist_man1_MANS)
+MAINTAINERCLEANFILES = $(srcdir)/Makefile.in $(srcdir)/versioninfo-tools.rc $(NPA_TOOL_BUILT_SOURCES) npa-tool.ggo $(dist_man1_MANS)
 EXTRA_DIST = Makefile.mak versioninfo-tools.rc.in npa-tool.ggo npa-tool.ggo.in
 
 noinst_HEADERS = util.h fread_to_eof.h
@@ -79,15 +79,15 @@ dnie_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
 gids_tool_SOURCES = gids-tool.c util.c
 gids_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
 
-npa_tool_SOURCES = npa-tool.c fread_to_eof.c $(BUILT_SOURCES)
+npa_tool_SOURCES = npa-tool.c fread_to_eof.c $(NPA_TOOL_BUILT_SOURCES)
 npa_tool_LDADD = $(top_builddir)/src/libopensc/libopensc.la \
 				 $(top_builddir)/src/libsceac/libsceac.la \
 				 $(OPENPACE_LIBS)
 npa_tool_CFLAGS = -I$(top_srcdir)/src $(OPENPACE_CFLAGS) $(OPENSSL_CFLAGS)
 
-npa-tool.c: $(BUILT_SOURCES)
+npa-tool.c: $(NPA_TOOL_BUILT_SOURCES)
 
-$(BUILT_SOURCES): npa-tool.ggo
+$(NPA_TOOL_BUILT_SOURCES): npa-tool.ggo
 	$(GENGETOPT) --output-dir=$(srcdir) < $<
 
 npa-tool.ggo: npa-tool.ggo.in
