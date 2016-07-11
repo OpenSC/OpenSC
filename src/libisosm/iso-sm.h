@@ -52,41 +52,41 @@ extern "C" {
 
 /** @brief Secure messaging context */
 struct iso_sm_ctx {
-    /** @brief data of the specific crypto implementation */
-    void *priv_data;
+	/** @brief data of the specific crypto implementation */
+	void *priv_data;
 
-    /** @brief Padding-content indicator byte (ISO 7816-4 Table 30) */
-    u8 padding_indicator;
-    /** @brief Pad to this block length */
-    size_t block_length;
+	/** @brief Padding-content indicator byte (ISO 7816-4 Table 30) */
+	u8 padding_indicator;
+	/** @brief Pad to this block length */
+	size_t block_length;
 
-    /** @brief Call back function for authentication of data */
-    int (*authenticate)(sc_card_t *card, const struct iso_sm_ctx *ctx,
-            const u8 *data, size_t datalen, u8 **outdata);
-    /** @brief Call back function for verifying authentication data */
-    int (*verify_authentication)(sc_card_t *card, const struct iso_sm_ctx *ctx,
-            const u8 *mac, size_t maclen,
-            const u8 *macdata, size_t macdatalen);
+	/** @brief Call back function for authentication of data */
+	int (*authenticate)(sc_card_t *card, const struct iso_sm_ctx *ctx,
+			const u8 *data, size_t datalen, u8 **outdata);
+	/** @brief Call back function for verifying authentication data */
+	int (*verify_authentication)(sc_card_t *card, const struct iso_sm_ctx *ctx,
+			const u8 *mac, size_t maclen,
+			const u8 *macdata, size_t macdatalen);
 
-    /** @brief Call back function for encryption of data */
-    int (*encrypt)(sc_card_t *card, const struct iso_sm_ctx *ctx,
-            const u8 *data, size_t datalen, u8 **enc);
-    /** @brief Call back function for decryption of data */
-    int (*decrypt)(sc_card_t *card, const struct iso_sm_ctx *ctx,
-            const u8 *enc, size_t enclen, u8 **data);
+	/** @brief Call back function for encryption of data */
+	int (*encrypt)(sc_card_t *card, const struct iso_sm_ctx *ctx,
+			const u8 *data, size_t datalen, u8 **enc);
+	/** @brief Call back function for decryption of data */
+	int (*decrypt)(sc_card_t *card, const struct iso_sm_ctx *ctx,
+			const u8 *enc, size_t enclen, u8 **data);
 
-    /** @brief Call back function for actions before encoding and encryption of \a apdu */
-    int (*pre_transmit)(sc_card_t *card, const struct iso_sm_ctx *ctx,
-            sc_apdu_t *apdu);
-    /** @brief Call back function for actions before decryption and decoding of \a sm_apdu */
-    int (*post_transmit)(sc_card_t *card, const struct iso_sm_ctx *ctx,
-            sc_apdu_t *sm_apdu);
-    /** @brief Call back function for actions after decrypting SM protected APDU */
-    int (*finish)(sc_card_t *card, const struct iso_sm_ctx *ctx,
-            sc_apdu_t *apdu);
+	/** @brief Call back function for actions before encoding and encryption of \a apdu */
+	int (*pre_transmit)(sc_card_t *card, const struct iso_sm_ctx *ctx,
+			sc_apdu_t *apdu);
+	/** @brief Call back function for actions before decryption and decoding of \a sm_apdu */
+	int (*post_transmit)(sc_card_t *card, const struct iso_sm_ctx *ctx,
+			sc_apdu_t *sm_apdu);
+	/** @brief Call back function for actions after decrypting SM protected APDU */
+	int (*finish)(sc_card_t *card, const struct iso_sm_ctx *ctx,
+			sc_apdu_t *apdu);
 
-    /** @brief Clears and frees private data */
-    void (*clear_free)(const struct iso_sm_ctx *ctx);
+	/** @brief Clears and frees private data */
+	void (*clear_free)(const struct iso_sm_ctx *ctx);
 };
 
 /** 
