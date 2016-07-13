@@ -25,6 +25,7 @@
 
 #include "p11test_case_readonly.h"
 #include "p11test_case_ec_sign.h"
+#include "p11test_case_usage.h"
 #include "p11test_case_mechs.h"
 #include "p11test_case_wait.h"
 
@@ -61,6 +62,10 @@ int main(int argc, char** argv) {
 
 		/* Regression test Sign&Verify with various data lengths */
 		cmocka_unit_test_setup_teardown(ec_sign_size_test,
+			user_login_setup, after_test_cleanup),
+
+		/* Verify that the Usage flags on the objects are sane */
+		cmocka_unit_test_setup_teardown(usage_test,
 			user_login_setup, after_test_cleanup),
 	};
 

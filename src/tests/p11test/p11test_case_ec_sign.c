@@ -49,9 +49,9 @@ void ec_sign_size_test(void **state) {
 			}
 		}
 	}
+	clean_all_objects(&objects);
+
 	if (errors > 0)
 		fail_msg("Some signatures were not verified successfully. Please review the log");
-
-	clean_all_objects(&objects);
 }
 
