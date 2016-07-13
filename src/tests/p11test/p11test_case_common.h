@@ -43,6 +43,10 @@ typedef struct {
 	CK_BBOOL	decrypt;
 	CK_BBOOL	verify;
 	CK_BBOOL	encrypt;
+	CK_BBOOL	wrap;
+	CK_BBOOL	unwrap;
+	CK_BBOOL	derive_priv;
+	CK_BBOOL	derive_pub;
 	CK_KEY_TYPE	key_type;
 	CK_BBOOL	always_auth;
 	char		*label;

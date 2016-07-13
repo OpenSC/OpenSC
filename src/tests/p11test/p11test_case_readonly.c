@@ -439,10 +439,13 @@ void readonly_tests(void **state) {
 	}
 
 	/* print summary */
-	printf("[KEY ID] [TYPE] [SIZE] [PUBLIC] [SIGN&VERIFY] [ENC&DECRYPT] [LABEL]\n");
+	printf("[KEY ID] [LABEL]\n");
+	printf("[ TYPE ] [SIZE] [PUBLIC] [SIGN&VERIFY] [ENC&DECRYPT] [WRAP&UNWR] [ DERIVE ]\n");
 	for (i = 0; i < objects.count; i++) {
-		printf("[%-6s] [%s] [%4lu] [ %s ] [%s%s] [%s%s] [%s]\n",
+		printf("\n[%-6s] [%s]\n",
 			objects.data[i].id_str,
+			objects.data[i].label);
+		printf("[ %s ] [%4lu] [ %s ] [%s%s] [%s%s] [%s %s] [%s%s]\n",
 			objects.data[i].key_type == CKK_RSA ? "RSA " :
 				objects.data[i].key_type == CKK_EC ? " EC " : " ?? ",
 			objects.data[i].bits,
@@ -451,18 +454,20 @@ void readonly_tests(void **state) {
 			objects.data[i].verify ? " [./] " : " [  ] ",
 			objects.data[i].encrypt ? "[./] " : "[  ] ",
 			objects.data[i].decrypt ? " [./] " : " [  ] ",
-			objects.data[i].label);
+			objects.data[i].wrap ? "[./]" : "[  ]",
+			objects.data[i].unwrap ? "[./]" : "[  ]",
+			objects.data[i].derive_pub ? "[./]" : "[  ]",
+			objects.data[i].derive_priv ? "[./]" : "[  ]");
 		for (j = 0; j < objects.data[i].num_mechs; j++)
-			printf("         [ %-18s ] [   %s    ] [   %s    ]\n",
+			printf("  [ %-18s ] [   %s    ] [   %s    ] [         ] [        ]\n",
 				get_mechanism_name(objects.data[i].mechs[j].mech),
 				objects.data[i].mechs[j].flags & FLAGS_VERIFY_SIGN ? "[./]" : "    ",
 				objects.data[i].mechs[j].flags & FLAGS_VERIFY_DECRYPT ? "[./]" : "    ");
-		printf("\n");
 	}
-	printf(" Public == Cert ----------^       ^  ^  ^       ^  ^  ^\n");
-	printf(" Sign Attribute ------------------'  |  |       |  |  '---- Decrypt Attribute\n");
-	printf(" Sign&Verify functionality ----------'  |       |  '------- Enc&Dec functionality\n");
-	printf(" Verify Attribute ----------------------'       '---------- Encrypt Attribute\n");
+	printf(" Public == Cert ---^       ^  ^  ^       ^  ^  ^       ^----^- Attributes\n");
+	printf(" Sign Attribute -----------'  |  |       |  |  '---- Decrypt Attribute\n");
+	printf(" Sign&Verify functionality ---'  |       |  '------- Enc&Dec functionality\n");
+	printf(" Verify Attribute ---------------'       '---------- Encrypt Attribute\n");
 
 	clean_all_objects(&objects);
 }

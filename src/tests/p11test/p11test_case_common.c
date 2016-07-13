@@ -196,6 +196,10 @@ int callback_private_keys(test_certs_t *objects,
 		? *((CK_KEY_TYPE *) template[2].pValue) : (CK_KEY_TYPE) -1;
 	o->always_auth = (template[4].ulValueLen != (CK_ULONG) -1)
 		? *((CK_BBOOL *) template[4].pValue) : CK_FALSE;
+	o->unwrap = (template[5].ulValueLen != (CK_ULONG) -1)
+		? *((CK_BBOOL *) template[5].pValue) : CK_FALSE;
+	o->derive_priv = (template[6].ulValueLen != (CK_ULONG) -1)
+		? *((CK_BBOOL *) template[6].pValue) : CK_FALSE;
 
 	debug_print(" [  OK %s ] Private key to the certificate found successfully S:%d D:%d T:%02lX",
 		o->id_str, o->sign, o->decrypt, o->key_type);
@@ -231,6 +235,10 @@ int callback_public_keys(test_certs_t *objects,
 		? *((CK_BBOOL *) template[0].pValue) : CK_FALSE;
 	o->encrypt = (template[1].ulValueLen != (CK_ULONG) -1)
 		? *((CK_BBOOL *) template[1].pValue) : CK_FALSE;
+	o->wrap = (template[8].ulValueLen != (CK_ULONG) -1)
+		? *((CK_BBOOL *) template[8].pValue) : CK_FALSE;
+	o->derive_pub = (template[9].ulValueLen != (CK_ULONG) -1)
+		? *((CK_BBOOL *) template[9].pValue) : CK_FALSE;
 
 	/* check if we get the same public key as from the certificate */
 	if (o->key_type == CKK_RSA) {
@@ -373,6 +381,8 @@ void search_for_all_objects(test_certs_t *objects, token_info_t *info)
 			{ CKA_KEY_TYPE, NULL, 0}, // CKK_
 			{ CKA_ID, NULL, 0},
 			{ CKA_ALWAYS_AUTHENTICATE, NULL, 0}, // CK_BBOOL
+			{ CKA_UNWRAP, NULL, 0}, // CK_BBOOL
+			{ CKA_DERIVE, NULL, 0}, // CK_BBOOL
 	};
 	CK_ULONG private_attrs_size = sizeof (private_attrs) / sizeof (CK_ATTRIBUTE);
 	CK_ATTRIBUTE public_attrs[] = {
@@ -384,6 +394,8 @@ void search_for_all_objects(test_certs_t *objects, token_info_t *info)
 			{ CKA_PUBLIC_EXPONENT, NULL, 0},
 			{ CKA_EC_PARAMS, NULL, 0},
 			{ CKA_EC_POINT, NULL, 0},
+			{ CKA_WRAP, NULL, 0}, // CK_BBOOL
+			{ CKA_DERIVE, NULL, 0}, // CK_BBOOL
 	};
 	CK_ULONG public_attrs_size = sizeof (public_attrs) / sizeof (CK_ATTRIBUTE);
 
