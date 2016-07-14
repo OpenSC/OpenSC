@@ -1,5 +1,5 @@
 /*
- * p11test_case_readonly.h: Sign & Verify tests
+ * p11test_case_multipart.h: Multipart Sign & Verify tests (RSA only)
  *
  * Copyright (C) 2016 Red Hat, Inc.
  *
@@ -20,16 +20,7 @@
  */
 
 #include "p11test_case_common.h"
-#include <openssl/sha.h>
-#include <openssl/md5.h>
-#include <openssl/ripemd.h>
+#include "p11test_case_readonly.h"
 
-#define SHORT_MESSAGE_TO_SIGN "Simple message for signing & verifying.\n"
-#define BUFFER_SIZE		4096
-
-void readonly_tests(void **state);
-int encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
-    CK_ULONG message_length, int multipart);
-int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
-    CK_ULONG message_length, int multipart);
+void multipart_tests(void **state);
 

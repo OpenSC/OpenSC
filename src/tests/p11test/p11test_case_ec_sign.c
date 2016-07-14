@@ -42,7 +42,7 @@ void ec_sign_size_test(void **state) {
 			for (j = 0; j < objects.data[i].num_mechs; j++) {
 				for (l = min; l < max; l++) {
 					rv = sign_verify_test(&(objects.data[i]), info,
-						&(objects.data[i].mechs[j]), l);
+						&(objects.data[i].mechs[j]), l, 0);
 					if (rv == -1)
 						errors++;
 				}

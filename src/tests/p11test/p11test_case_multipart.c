@@ -1,0 +1,89 @@
+/*
+ * p11test_case_multipart.c: Multipart Sign & Verify tests (RSA only)
+ *
+ * Copyright (C) 2016 Red Hat, Inc.
+ *
+ * Author: Jakub Jelen <jjelen@redhat.com>
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include "p11test_case_multipart.h"
+
+void multipart_tests(void **state) {
+
+	token_info_t *info = (token_info_t *) *state;
+	unsigned int i;
+	int used;
+	test_certs_t objects;
+
+	objects.count = 0;
+	objects.data = NULL;
+
+	search_for_all_objects(&objects, info);
+
+	debug_print("\nCheck functionality of Multipart Sign&Verify and/or Encrypt&Decrypt");
+	for (i = 0; i < objects.count; i++) {
+		if (objects.data[i].type == EVP_PK_EC) {
+			debug_print(" [ SKIP %s ] EC keys do not support multi-part operations",
+			objects.data[i].id_str);
+			continue;
+		}
+		used = 0;
+		/* do the Sign&Verify and/or Encrypt&Decrypt */
+		/* XXX some keys do not have appropriate flags, but we can use them
+		 * or vice versa */
+		//if (objects.data[i].sign && objects.data[i].verify)
+			for (int j = 0; j < objects.data[i].num_mechs; j++)
+				used |= sign_verify_test(&(objects.data[i]), info,
+					&(objects.data[i].mechs[j]), 32, 1);
+
+		if (!used) {
+			debug_print(" [ WARN %s ] Private key with unknown purpose T:%02lX",
+			objects.data[i].id_str, objects.data[i].key_type);
+		}
+	}
+
+	if (objects.count == 0) {
+		printf(" [WARN] No objects to display\n");
+		return;
+	}
+
+	/* print summary */
+	printf("[KEY ID] [TYPE] [ SIZE ] [PUBLIC] [SIGN&VERIFY] [LABEL]\n");
+	for (i = 0; i < objects.count; i++) {
+		if (objects.data[i].type == EVP_PK_EC)
+			continue;
+		printf("[%-6s] [%s] [%6lu] [ %s ] [%s%s] [%s]\n",
+			objects.data[i].id_str,
+			objects.data[i].key_type == CKK_RSA ? "RSA " :
+				objects.data[i].key_type == CKK_EC ? " EC " : " ?? ",
+			objects.data[i].bits,
+			objects.data[i].verify_public == 1 ? " ./ " : "    ",
+			objects.data[i].sign ? "[./] " : "[  ] ",
+			objects.data[i].verify ? " [./] " : " [  ] ",
+			objects.data[i].label);
+		for (int j = 0; j < objects.data[i].num_mechs; j++)
+			printf("         [ %-20s ] [   %s    ]\n",
+				get_mechanism_name(objects.data[i].mechs[j].mech),
+				objects.data[i].mechs[j].flags & FLAGS_VERIFY_SIGN ? "[./]" : "    ");
+		printf("\n");
+	}
+	printf(" Public == Cert ------------^       ^  ^  ^\n");
+	printf(" Sign Attribute --------------------'  |  |\n");
+	printf(" Sign&Verify functionality ------------'  |\n");
+	printf(" Verify Attribute ------------------------'\n");
+
+	clean_all_objects(&objects);
+}

@@ -24,6 +24,7 @@
 #include "p11test_helpers.h"
 
 #include "p11test_case_readonly.h"
+#include "p11test_case_multipart.h"
 #include "p11test_case_ec_sign.h"
 #include "p11test_case_usage.h"
 #include "p11test_case_mechs.h"
@@ -58,6 +59,10 @@ int main(int argc, char** argv) {
 
 		/* Complex readonly test of all objects on the card */
 		cmocka_unit_test_setup_teardown(readonly_tests,
+			user_login_setup, after_test_cleanup),
+
+		/* Multipart signatures and encryption */
+		cmocka_unit_test_setup_teardown(multipart_tests,
 			user_login_setup, after_test_cleanup),
 
 		/* Regression test Sign&Verify with various data lengths */

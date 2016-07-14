@@ -69,7 +69,8 @@ int encrypt_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 		debug_print("   C_EncryptInit: rv = 0x%.8lX", rv);
 		goto openssl_encrypt;
 	}
-	/* get the expected lenght */
+
+	/* get the expected length */
 	rv = fp->C_Encrypt(info->session_handle, message, message_length,
 	    NULL, &enc_message_length);
 	if (rv != CKR_OK) {
@@ -132,16 +133,18 @@ int decrypt_message(test_cert_t *o, token_info_t *info, CK_BYTE *enc_message,
 /* Perform encryption and decryption of a message using private key referenced
  * in the  o  object with mechanism defined by  mech.
  *
+ * NONE of the reasonable mechanisms support multipart encryption/decryption
+ *
  * Returns
  *  * 1 for successful Encrypt&Decrypt sequnce
  *  * 0 for skipped test (unsupporedted mechanism, key, ...)
  *  * -1 otherwise.
  *  Serious errors terminate the execution.
  */
-int encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *mech)
+int encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
+	CK_ULONG message_length, int multipart)
 {
 	CK_BYTE *message = (CK_BYTE *)SHORT_MESSAGE_TO_SIGN;
-	CK_ULONG message_length = strlen((char*) message);
 	CK_BYTE *dec_message = NULL;
 	int dec_message_length = 0;
 	unsigned char *enc_message;
@@ -162,14 +165,14 @@ int encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 
 	debug_print(" [ KEY %s ] Encrypt message using CKM_%s",
 		o->id_str, get_mechanism_name(mech->mech));
-	enc_message_length = encrypt_message(o, info,
-	    message, message_length, mech, &enc_message);
+	enc_message_length = encrypt_message(o, info, message, message_length,
+	    mech, &enc_message);
 	if (enc_message_length <= 0)
 		return -1;
 
 	debug_print(" [ KEY %s ] Decrypt message", o->id_str);
-	dec_message_length = decrypt_message(o, info,
-	    enc_message, enc_message_length, mech, &dec_message);
+	dec_message_length = decrypt_message(o, info, enc_message,
+	    enc_message_length, mech, &dec_message);
 	free(enc_message);
 	if (dec_message_length <= 0)
 		return -1;
@@ -192,12 +195,14 @@ int encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 }
 
 int sign_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
-    CK_ULONG message_length, test_mech_t *mech, unsigned char **sign)
+    CK_ULONG message_length, test_mech_t *mech, unsigned char **sign,
+    int multipart)
 {
 	CK_RV rv;
 	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
 	CK_MECHANISM sign_mechanism = { mech->mech, NULL_PTR, 0 };
 	CK_ULONG sign_length = 0;
+	char *name;
 
 	rv = fp->C_SignInit(info->session_handle, &sign_mechanism,
 		o->private_handle);
@@ -214,26 +219,57 @@ int sign_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 
 	always_authenticate(o, info);
 
-	/* Call C_Sign with NULL argument to find out the real size of signature */
-	rv = fp->C_Sign(info->session_handle,
-		message, message_length, *sign, &sign_length);
-	if (rv != CKR_OK) {
-		fprintf(stderr, "  C_Sign: rv = 0x%.8lX\n", rv);
-		return -1;
-	}
+	if (multipart) {
+		int part = message_length / 3;
+		rv = fp->C_SignUpdate(info->session_handle, message, part);
+		if (rv != CKR_OK) {
+			fprintf(stderr, "  C_SignUpdate: rv = 0x%.8lX\n", rv);
+			return -1;
+		}
+		rv = fp->C_SignUpdate(info->session_handle, message + part, message_length - part);
+		if (rv != CKR_OK) {
+			fprintf(stderr, "  C_SignUpdate: rv = 0x%.8lX\n", rv);
+			return -1;
+		}
+		/* Call C_SignFinal with NULL argument to find out the real size of signature */
+		rv = fp->C_SignFinal(info->session_handle, *sign, &sign_length);
+		if (rv != CKR_OK) {
+			fprintf(stderr, "  C_SignFinal: rv = 0x%.8lX\n", rv);
+			return -1;
+		}
 
-	*sign = malloc(sign_length);
-	if (*sign == NULL) {
-		fprintf(stderr, "%s: malloc failed", __func__);
-		return -1;
-	}
+		*sign = malloc(sign_length);
+		if (*sign == NULL) {
+			fprintf(stderr, "%s: malloc failed", __func__);
+			return -1;
+		}
 
-	/* Call C_Sign with allocated buffer to the the actual signature */
-	rv = fp->C_Sign(info->session_handle,
-		message, message_length, *sign, &sign_length);
+		/* Call C_SignFinal with allocated buffer to the the actual signature */
+		rv = fp->C_SignFinal(info->session_handle, *sign, &sign_length);
+		name = "C_SignFinal";
+	} else {
+		/* Call C_Sign with NULL argument to find out the real size of signature */
+		rv = fp->C_Sign(info->session_handle,
+			message, message_length, *sign, &sign_length);
+		if (rv != CKR_OK) {
+			fprintf(stderr, "  C_Sign: rv = 0x%.8lX\n", rv);
+			return -1;
+		}
+
+		*sign = malloc(sign_length);
+		if (*sign == NULL) {
+			fprintf(stderr, "%s: malloc failed", __func__);
+			return -1;
+		}
+
+		/* Call C_Sign with allocated buffer to the the actual signature */
+		rv = fp->C_Sign(info->session_handle,
+			message, message_length, *sign, &sign_length);
+		name = "C_Sign";
+	}
 	if (rv != CKR_OK) {
 		free(*sign);
-		fprintf(stderr, "C_Sign: rv = 0x%.8lX\n", rv);
+		fprintf(stderr, "  %s: rv = 0x%.8lX\n", name, rv);
 		return -1;
 	}
 	return sign_length;
@@ -363,11 +399,12 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 
 int verify_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
     CK_ULONG message_length, test_mech_t *mech, unsigned char *sign,
-    CK_ULONG sign_length)
+    CK_ULONG sign_length, int multipart)
 {
 	CK_RV rv;
 	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
 	CK_MECHANISM sign_mechanism = { mech->mech, NULL_PTR, 0 };
+	char *name;
 
 	/* try C_Verify() if it is supported */
 	rv = fp->C_VerifyInit(info->session_handle, &sign_mechanism,
@@ -376,13 +413,35 @@ int verify_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 		debug_print("   C_VerifyInit: rv = 0x%.8lX", rv);
 		goto openssl_verify;
 	}
-	rv = fp->C_Verify(info->session_handle,
-		message, message_length, sign, sign_length);
+	if (multipart) {
+		int part = message_length / 3;
+		/* First part */
+		rv = fp->C_VerifyUpdate(info->session_handle, message, part);
+		if (rv != CKR_OK) {
+			debug_print("   C_VerifyUpdate: rv = 0x%.8lX", rv);
+			goto openssl_verify;
+		}
+		/* Second part */
+		rv = fp->C_VerifyUpdate(info->session_handle, message + part,
+		    message_length - part);
+		if (rv != CKR_OK) {
+			debug_print("   C_VerifyUpdate: rv = 0x%.8lX", rv);
+			goto openssl_verify;
+		}
+		/* Final */
+		rv = fp->C_VerifyFinal(info->session_handle,
+			sign, sign_length);
+		name = "C_VerifyFinal";
+	} else {
+		rv = fp->C_Verify(info->session_handle,
+			message, message_length, sign, sign_length);
+		name = "C_Verify";
+	}
 	if (rv == CKR_OK) {
 		mech->flags |= FLAGS_VERIFY_SIGN;
 		return 1;
 	}
-	debug_print("   C_Verify: rv = 0x%.8lX", rv);
+	debug_print("   %s: rv = 0x%.8lX", name, rv);
 
 openssl_verify:
 	debug_print(" [ KEY %s ] Falling back to openssl verification", o->id_str);
@@ -401,7 +460,7 @@ openssl_verify:
  *  Serious errors terminate the execution.
  */
 int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
-	CK_ULONG message_length)
+    CK_ULONG message_length, int multipart)
 {
 	CK_BYTE *message_default = (CK_BYTE *)SHORT_MESSAGE_TO_SIGN;
 	CK_BYTE *message = message_default;
@@ -427,14 +486,14 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 
 	debug_print(" [ KEY %s ] Signing message of length %lu using CKM_%s",
 		o->id_str, message_length, get_mechanism_name(mech->mech));
-	rv = sign_message(o, info, message, message_length, mech, &sign);
+	rv = sign_message(o, info, message, message_length, mech, &sign, multipart);
 	if (rv <= 0)
-		return -1;
+		return rv;
 	sign_length = (unsigned long) rv;
 
 	debug_print(" [ KEY %s ] Verify message signature", o->id_str);
 	rv = verify_message(o, info, message, message_length, mech,
-		sign, sign_length);
+		sign, sign_length, multipart);
 	free(sign);
 	if (mech->mech == CKM_RSA_X_509)
 		free(message);
@@ -462,12 +521,12 @@ void readonly_tests(void **state) {
 		//if (objects.data[i].sign && objects.data[i].verify)
 			for (j = 0; j < objects.data[i].num_mechs; j++)
 				used |= sign_verify_test(&(objects.data[i]), info,
-					&(objects.data[i].mechs[j]), 32);
+					&(objects.data[i].mechs[j]), 32, 0);
 
 		//if (objects.data[i].encrypt && objects.data[i].decrypt)
 			for (j = 0; j < objects.data[i].num_mechs; j++)
 				used |= encrypt_decrypt_test(&(objects.data[i]), info,
-					&(objects.data[i].mechs[j]));
+					&(objects.data[i].mechs[j]), 32, 0);
 
 		if (!used) {
 			debug_print(" [ WARN %s ] Private key with unknown purpose T:%02lX",
