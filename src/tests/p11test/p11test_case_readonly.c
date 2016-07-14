@@ -32,11 +32,10 @@ unsigned char *rsa_x_509_pad_message(const unsigned char *message,
 	return pad_message;
 }
 
-int encrypt_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
+int encrypt_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
     CK_ULONG message_length, test_mech_t *mech, unsigned char **enc_message)
 {
-	int rv;
-	int padding;
+	int rv, padding;
 
 	*enc_message = malloc(RSA_size(o->key.rsa));
 	if (*enc_message == NULL) {
@@ -44,6 +43,7 @@ int encrypt_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 		return -1;
 	}
 
+	/* Prepare padding for RSA_X_509 */
 	padding = ((mech->mech == CKM_RSA_X_509) ? RSA_NO_PADDING : RSA_PKCS1_PADDING);
 	rv = RSA_public_encrypt(message_length, message,
 		*enc_message, o->key.rsa, padding);
@@ -53,6 +53,48 @@ int encrypt_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 		return -1;
 	}
 	return rv;
+}
+
+int encrypt_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
+    CK_ULONG message_length, test_mech_t *mech, unsigned char **enc_message)
+{
+	CK_RV rv;
+	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
+	CK_MECHANISM enc_mechanism = { mech->mech, NULL_PTR, 0 };
+	CK_ULONG enc_message_length;
+
+	rv = fp->C_EncryptInit(info->session_handle, &enc_mechanism,
+		o->public_handle);
+	if (rv != CKR_OK) {
+		debug_print("   C_EncryptInit: rv = 0x%.8lX", rv);
+		goto openssl_encrypt;
+	}
+	/* get the expected lenght */
+	rv = fp->C_Encrypt(info->session_handle, message, message_length,
+	    NULL, &enc_message_length);
+	if (rv != CKR_OK) {
+		debug_print("   C_Encrypt: rv = 0x%.8lX", rv);
+		goto openssl_encrypt;
+	}
+	*enc_message = malloc(enc_message_length);
+	if (*enc_message == NULL) {
+		debug_print("malloc returned null");
+		return -1;
+	}
+
+	/* Do the actual encryption with allocated buffer */
+	rv = fp->C_Encrypt(info->session_handle, message, message_length,
+		*enc_message, &enc_message_length);
+	if (rv == CKR_OK) {
+		mech->flags |= FLAGS_VERIFY_SIGN;
+		return enc_message_length;
+	}
+	debug_print("   C_Encrypt: rv = 0x%.8lX", rv);
+
+openssl_encrypt:
+	debug_print(" [ KEY %s ] Falling back to openssl encryption", o->id_str);
+	return encrypt_message_openssl(o, info, message, message_length, mech,
+	    enc_message);
 }
 
 int decrypt_message(test_cert_t *o, token_info_t *info, CK_BYTE *enc_message,
