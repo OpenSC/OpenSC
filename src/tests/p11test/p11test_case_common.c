@@ -466,6 +466,16 @@ const char *get_mechanism_name(int mech_id)
 			return "MD5_RSA_PKCS";
 		case CKM_RIPEMD160_RSA_PKCS:
 			return "RIPEMD160_RSA_PKCS";
+		case CKM_RSA_PKCS_PSS:
+			return "RSA_PKCS_PSS";
+		case CKM_SHA1_RSA_PKCS_PSS:
+			return "SHA1_RSA_PKCS_PSS";
+		case CKM_SHA256_RSA_PKCS_PSS:
+			return "SHA256_RSA_PKCS_PSS";
+		case CKM_SHA384_RSA_PKCS_PSS:
+			return "SHA384_RSA_PKCS_PSS";
+		case CKM_SHA512_RSA_PKCS_PSS:
+			return "SHA512_RSA_PKCS_PSS";
 		default:
 			sprintf(name_buffer, "0x%.8X", mech_id);
 			return name_buffer;
