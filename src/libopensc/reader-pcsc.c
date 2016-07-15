@@ -573,8 +573,6 @@ static int pcsc_lock(sc_reader_t *reader)
 		case SCARD_W_RESET_CARD:
 			/* try to reconnect if the card was reset by some other application */
 			PCSC_TRACE(reader, "SCardBeginTransaction calling pcsc_reconnect", rv);
-			/* possible bug in PCSC that reset may still be active */
-			sleep(1); 
 			r = pcsc_reconnect(reader, SCARD_LEAVE_CARD);
 			if (r != SC_SUCCESS) {
 				sc_log(reader->ctx, "pcsc_reconnect failed", r);
