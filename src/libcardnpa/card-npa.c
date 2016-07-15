@@ -24,7 +24,6 @@
 #endif
 
 #include "card-npa.h"
-#include "libopensc/boxing.h"
 #include "libopensc/internal.h"
 #include "libopensc/opensc.h"
 #include "libopensc/pace.h"

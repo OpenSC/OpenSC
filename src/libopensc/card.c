@@ -29,7 +29,7 @@
 #endif
 #include <string.h>
 
-#include "boxing.h"
+#include "reader-boxing.h"
 #include "internal.h"
 #include "asn1.h"
 #include "common/compat_strlcpy.h"

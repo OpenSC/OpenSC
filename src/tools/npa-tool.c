@@ -28,7 +28,6 @@
 #include "libsceac/sslutil.h"
 #include "libsceac/sc-eac.h"
 #include <eac/pace.h>
-#include <libopensc/boxing.h>
 #include <libopensc/log.h>
 #include <libopensc/opensc.h>
 #include <libopensc/sm.h>
