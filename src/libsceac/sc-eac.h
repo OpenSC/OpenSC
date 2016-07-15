@@ -27,7 +27,7 @@
 
 #include "libopensc/opensc.h"
 #include "libopensc/pace.h"
-#include "libisosm/iso-sm.h"
+#include "libsm/iso-sm.h"
 
 #ifdef __cplusplus
 extern "C" {
