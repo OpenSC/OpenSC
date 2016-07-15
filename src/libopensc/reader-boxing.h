@@ -1,5 +1,5 @@
 /*
- * boxing.c: interface related to boxing commands with pseudo APDUs
+ * reader-boxing.h: interface related to boxing commands with pseudo APDUs
  *
  * Copyright (C) 2013-2015  Frank Morgner
  *
@@ -18,8 +18,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifndef _BOXING_CMDS_H
-#define _BOXING_CMDS_H
+#ifndef _READER_BOXING_H
+#define _READER_BOXING_H
 
 #include "libopensc/opensc.h"
 #include "libopensc/pace.h"

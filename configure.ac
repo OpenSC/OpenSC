@@ -919,7 +919,6 @@ AC_CONFIG_FILES([
 	src/libopensc/Makefile
 	src/libopensc/libopensc.pc
 	src/libsm/Makefile
-	src/libisosm/Makefile
 	src/libsceac/Makefile
 	src/libcardnpa/Makefile
 	src/pkcs11/Makefile

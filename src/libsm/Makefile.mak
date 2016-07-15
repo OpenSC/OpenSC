@@ -3,7 +3,10 @@ TOPDIR = ..\..
 TARGET = libsm.lib
 OBJECTS = sm-common.obj
 
-all: $(TARGET)
+TARGET1 = libisosm.lib
+OBJECTS1 = iso-sm.obj
+
+all: $(TARGET) $(TARGET1)
 
 !INCLUDE $(TOPDIR)\win32\Make.rules.mak
 
@@ -16,3 +19,6 @@ $(TARGET): $(OBJECTS)
 $(TARGET):
 
 !ENDIF
+
+$(TARGET1): $(OBJECTS1)
+        lib $(LIBFLAGS) /out:$(TARGET1) $(OBJECTS1)
