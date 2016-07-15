@@ -25,7 +25,7 @@ void multipart_tests(void **state) {
 
 	token_info_t *info = (token_info_t *) *state;
 	unsigned int i;
-	int used;
+	int used, j;
 	test_certs_t objects;
 
 	objects.count = 0;
@@ -45,7 +45,7 @@ void multipart_tests(void **state) {
 		/* XXX some keys do not have appropriate flags, but we can use them
 		 * or vice versa */
 		//if (objects.data[i].sign && objects.data[i].verify)
-			for (int j = 0; j < objects.data[i].num_mechs; j++)
+			for (j = 0; j < objects.data[i].num_mechs; j++)
 				used |= sign_verify_test(&(objects.data[i]), info,
 					&(objects.data[i].mechs[j]), 32, 1);
 
@@ -74,7 +74,7 @@ void multipart_tests(void **state) {
 			objects.data[i].sign ? "[./] " : "[  ] ",
 			objects.data[i].verify ? " [./] " : " [  ] ",
 			objects.data[i].label);
-		for (int j = 0; j < objects.data[i].num_mechs; j++)
+		for (j = 0; j < objects.data[i].num_mechs; j++)
 			printf("         [ %-20s ] [   %s    ]\n",
 				get_mechanism_name(objects.data[i].mechs[j].mech),
 				objects.data[i].mechs[j].flags & FLAGS_VERIFY_SIGN ? "[./]" : "    ");
