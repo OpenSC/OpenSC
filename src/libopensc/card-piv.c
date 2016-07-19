@@ -389,7 +389,7 @@ static struct sc_card_operations piv_ops;
 
 static struct sc_card_driver piv_drv = {
 	"PIV-II  for multiple cards",
-	"piv",
+	"PIV-II",
 	&piv_ops,
 	NULL, 0, NULL
 };
