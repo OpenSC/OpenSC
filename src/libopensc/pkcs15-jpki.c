@@ -138,10 +138,8 @@ sc_pkcs15emu_jpki_init(sc_pkcs15_card_t * p15card)
 	for (i = 0; i < 2; i++) {
 		static int prkey_pin[2] = { 1, 2 };
 		static int prkey_usage[2] = {
-			SC_PKCS15_PRKEY_USAGE_ENCRYPT |
-			SC_PKCS15_PRKEY_USAGE_DECRYPT |
 			SC_PKCS15_PRKEY_USAGE_SIGN,
-			SC_PKCS15_PRKEY_USAGE_NONREPUDIATION
+			SC_PKCS15_PRKEY_USAGE_SIGN | SC_PKCS15_PRKEY_USAGE_NONREPUDIATION
 		};
 		static const char *prkey_name[2] = {
 			"User Authentication Key",
