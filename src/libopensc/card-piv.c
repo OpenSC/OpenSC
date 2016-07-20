@@ -3292,7 +3292,7 @@ static int piv_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 
 static int piv_logout(sc_card_t *card)
 {
-	int r = 0;
+	int r = SC_ERROR_NOT_SUPPORTED; /* TODO Some PIV cards may support a logout */
 	/* piv_private_data_t * priv = PIV_DATA(card); */
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
