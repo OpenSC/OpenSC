@@ -18,11 +18,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#set -x
+set -x
 SOPIN="12345678"
 PIN="123456"
 export GNUTLS_PIN=$PIN 
 GENERATE_KEYS=1
+PKCS11_TOOL="../../tools/pkcs11-tool";
 
 function generate_cert() {
 	TYPE="$1"
@@ -30,23 +31,34 @@ function generate_cert() {
 	LABEL="$3"
 
 	# Generate key pair
-	p11tool --generate-$TYPE --login --provider="$P11LIB" --label="$LABEL"
+	$PKCS11_TOOL --keypairgen --key-type="$TYPE" --login --pin=$PIN \
+		--module="$P11LIB" --label="$LABEL" --id=$ID
+
 	if [[ "$?" -ne "0" ]]; then
 		echo "Couldn't generate $TYPE key pair"
 		return 1
 	fi
+
+	# check type value for the PKCS#11 URI (RHEL7 is using old "object-type")
+	TYPE_KEY="type"
+	p11tool --list-all --provider="$P11LIB" --login | grep "object-type" && \
+		TYPE_KEY="object-type"
+
 	# Generate certificate
 	certtool --generate-self-signed --outfile="$TYPE.cert" --template=cert.cfg \
-		--provider="$P11LIB" --load-privkey "pkcs11:object=$LABEL;type=private"
+		--provider="$P11LIB" --load-privkey "pkcs11:object=$LABEL;$TYPE_KEY=private" \
+		--load-pubkey "pkcs11:object=$LABEL;$TYPE_KEY=public"
+	# convert to DER:
+	openssl x509 -inform PEM -outform DER -in "$TYPE.cert" -out "$TYPE.cert.der"
 	# Write certificate
-	p11tool --login --write --load-certificate="$TYPE.cert" --label="$LABEL" \
-		--provider="$P11LIB"
-	rm "$TYPE.cert"
-	# Fix ID
-	p11tool --login --set-id=$ID --provider="$P11LIB" "pkcs11:object=$LABEL;type=cert"
-	p11tool --login --set-id=$ID --provider="$P11LIB" "pkcs11:object=$LABEL;type=private"
-	p11tool --login --set-id=$ID --provider="$P11LIB" "pkcs11:object=$LABEL;type=public"
-	# p11tool --login --provider="$P11LIB" --list-all
+	#p11tool --login --write --load-certificate="$TYPE.cert" --label="$LABEL" \
+	#	--provider="$P11LIB"
+	$PKCS11_TOOL --write-object "$TYPE.cert.der" --type=cert --id=$ID \
+		--label="$LABEL" --module="$P11LIB"
+
+	rm "$TYPE.cert" "$TYPE.cert.der"
+
+	p11tool --login --provider="$P11LIB" --list-all
 }
 
 function card_setup() {
@@ -90,9 +102,9 @@ function card_setup() {
 
 		if [[ $GENERATE_KEYS -eq 1 ]]; then
 			# Generate RSA Key pair
-			generate_cert "rsa" "02" "RSA_auth"
+			generate_cert "RSA:1024" "02" "RSA_auth"
 			# Generate ECC Key pair
-			generate_cert "ecc" "03" "ECC_auth"
+			generate_cert "EC:prime256v1" "03" "ECC_auth"
 		fi
 }
 
