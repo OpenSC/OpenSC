@@ -408,6 +408,8 @@ int sc_lock(sc_card_t *card)
 					card->sm_ctx.ops.open(card);
 #endif
 				r = card->reader->ops->lock(card->reader);
+				if (r == SC_SUCCESS  && card->ops->card_was_reset)
+				    r = card->ops->card_was_reset(card);
 			}
 		}
 		if (r == 0)
