@@ -1175,6 +1175,7 @@ static int login(CK_SESSION_HANDLE session, int login_type)
 	int		pin_allocated = 0, r;
 	CK_TOKEN_INFO	info;
 	CK_RV		rv;
+	CK_FLAGS	pin_flags;
 
 	get_token_info(opt_slot, &info);
 
@@ -1190,26 +1191,24 @@ static int login(CK_SESSION_HANDLE session, int login_type)
 	if (!pin && !(info.flags & CKF_PROTECTED_AUTHENTICATION_PATH)) {
 		printf("Logging in to \"%s\".\n", p11_utf8_to_local(info.label, sizeof(info.label)));
 		if (login_type == CKU_SO)   {
-			if (info.flags & CKF_SO_PIN_COUNT_LOW)
-				printf("WARNING: SO PIN count low\n");
-			if (info.flags & CKF_SO_PIN_FINAL_TRY)
-				printf("WARNING: SO PIN final try\n");
-			if (info.flags & CKF_SO_PIN_LOCKED)
-				printf("WARNING: SO PIN reported locked\n");
-			if (info.flags & CKF_SO_PIN_TO_BE_CHANGED)
-				printf("WARNING: SO PIN has to be changed\n");
+			pin_flags=info.flags & (
+				CKF_SO_PIN_COUNT_LOW |
+				CKF_SO_PIN_FINAL_TRY |
+				CKF_SO_PIN_LOCKED | 
+				CKF_SO_PIN_TO_BE_CHANGED);
+			if(pin_flags)
+				printf("WARNING: %s\n",p11_token_info_flags(pin_flags));
 
 			printf("Please enter SO PIN: ");
 		}
 		else if (login_type == CKU_USER)   {
-			if (info.flags & CKF_USER_PIN_COUNT_LOW)
-				printf("WARNING: User PIN count low\n");
-			if (info.flags & CKF_USER_PIN_FINAL_TRY)
-				printf("WARNING: User PIN final try\n");
-			if (info.flags & CKF_USER_PIN_LOCKED)
-				printf("WARNING: User PIN reported locked\n");
-			if (info.flags & CKF_USER_PIN_TO_BE_CHANGED)
-				printf("WARNING: User PIN has to be changed\n");
+			pin_flags=info.flags & (
+				CKF_USER_PIN_COUNT_LOW |
+				CKF_USER_PIN_FINAL_TRY |
+				CKF_USER_PIN_LOCKED | 
+				CKF_USER_PIN_TO_BE_CHANGED);
+			if(pin_flags)
+				printf("WARNING: %s\n",p11_token_info_flags(pin_flags));
 
 			printf("Please enter User PIN: ");
 		}
@@ -5138,10 +5137,10 @@ static const char *p11_token_info_flags(CK_FLAGS value)
 		{ CKF_LOGIN_REQUIRED, "login required" },
 		{ CKF_PROTECTED_AUTHENTICATION_PATH, "PIN pad present" },
 		{ CKF_RNG, "rng" },
-		{ CKF_SO_PIN_TO_BE_CHANGED, "SO PIN to be changed"},
 		{ CKF_SO_PIN_COUNT_LOW, "SO PIN count low" },
 		{ CKF_SO_PIN_FINAL_TRY, "final SO PIN try" },
 		{ CKF_SO_PIN_LOCKED, "SO PIN locked" },
+		{ CKF_SO_PIN_TO_BE_CHANGED, "SO PIN to be changed"},
 		{ CKF_TOKEN_INITIALIZED, "token initialized" },
 		{ CKF_USER_PIN_COUNT_LOW, "user PIN count low" },
 		{ CKF_USER_PIN_FINAL_TRY, "final user PIN try" },
