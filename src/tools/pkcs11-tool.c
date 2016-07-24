@@ -292,6 +292,7 @@ static char *		opt_key_type = NULL;
 static char *		opt_sig_format = NULL;
 static int		opt_is_private = 0;
 static int		opt_test_hotplug = 0;
+static int		opt_login = 0;
 static int		opt_login_type = -1;
 static int		opt_key_usage_sign = 0;
 static int		opt_key_usage_decrypt = 0;
@@ -434,7 +435,6 @@ int main(int argc, char * argv[])
 	int do_test_fork = 0;
 #endif
 	int need_session = 0;
-	int opt_login = 0;
 	int do_init_token = 0;
 	int do_init_pin = 0;
 	int do_change_pin = 0;
@@ -3948,8 +3948,17 @@ static int test_signature(CK_SESSION_HANDLE sess)
 	if (rv != CKR_OK)
 		p11_fatal("C_OpenSession", rv);
 	if ((sessionInfo.state & CKS_RO_USER_FUNCTIONS) == 0) {
-		printf("Signatures: not logged in, skipping signature tests\n");
-		return errors;
+		if (opt_login) {
+			int r;
+			r = login(sess, CKU_CONTEXT_SPECIFIC);
+			if (r != 0){
+				printf("Signatures: failed to login, skipping signature tests\n");
+				return errors;
+			}
+		} else {
+			printf("Signatures: not logged in, skipping signature tests\n");
+			return errors;
+		}
 	}
 
 	if (!find_mechanism(sessionInfo.slotID, CKF_SIGN | CKF_HW, mechTypes, mechTypes_num, &firstMechType)) {
@@ -4261,8 +4270,17 @@ static int test_verify(CK_SESSION_HANDLE sess)
 	if (rv != CKR_OK)
 		p11_fatal("C_OpenSession", rv);
 	if ((sessionInfo.state & CKS_RO_USER_FUNCTIONS) == 0) {
-		printf("Verify: not logged in, skipping verify tests\n");
-		return errors;
+		if (opt_login) {
+			int r;
+			r = login(sess, CKU_CONTEXT_SPECIFIC);
+			if (r != 0){
+				printf("Verify: failed to login, skipping verify tests\n");
+				return errors;
+			}
+		} else {
+			printf("Verify: not logged in, skipping verify tests\n");
+			return errors;
+		}
 	}
 
 	if (!find_mechanism(sessionInfo.slotID, CKF_VERIFY, NULL, 0, &first_mech_type)) {
@@ -4582,8 +4600,17 @@ static int test_decrypt(CK_SESSION_HANDLE sess)
 	if (rv != CKR_OK)
 		p11_fatal("C_OpenSession", rv);
 	if ((sessionInfo.state & CKS_RO_USER_FUNCTIONS) == 0) {
-		printf("Decryption: not logged in, skipping decryption tests\n");
-		return errors;
+		if (opt_login) {
+			int r;
+			r = login(sess, CKU_CONTEXT_SPECIFIC);
+			if (r != 0){
+				printf("Decryption: failed to login, skipping decryption tests\n");
+				return errors;
+			}
+		} else {
+			printf("Decryption: not logged in, skipping decryption tests\n");
+			return errors;
+		}
 	}
 
 	num_mechs = get_mechanisms(sessionInfo.slotID, &mechs, CKF_DECRYPT);
