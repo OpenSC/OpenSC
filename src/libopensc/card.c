@@ -408,6 +408,8 @@ int sc_lock(sc_card_t *card)
 				if (was_reset++ > 4) /* TODO retry a few times */
 					break;
 				r = card->reader->ops->lock(card->reader);
+				if (r == SC_SUCCESS  && card->ops->card_was_reset)
+				    r = card->ops->card_was_reset(card);
 			}
 		}
 		if (r == 0)
