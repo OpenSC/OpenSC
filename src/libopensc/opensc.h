@@ -628,6 +628,8 @@ struct sc_card_operations {
 	int (*read_public_key)(struct sc_card *, unsigned,
 			struct sc_path *, unsigned, unsigned,
 			unsigned char **, size_t *);
+
+	int (*card_reader_lock_obtained)(struct sc_card *, int was_reset);
 };
 
 typedef struct sc_card_driver {

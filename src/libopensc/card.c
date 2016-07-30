@@ -389,6 +389,7 @@ int sc_lock(sc_card_t *card)
 {
 	int r = 0, r2 = 0;
 	int was_reset = 0;
+	int reader_lock_obtained  = 0;
 
 	if (card == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -409,6 +410,8 @@ int sc_lock(sc_card_t *card)
 					break;
 				r = card->reader->ops->lock(card->reader);
 			}
+			if (r == 0)
+				reader_lock_obtained = 1;
 		}
 		if (r == 0)
 			card->cache.valid = 1;
@@ -428,6 +431,10 @@ int sc_lock(sc_card_t *card)
 		sc_log(card->ctx, "unable to release card->mutex lock");
 		r = r != SC_SUCCESS ? r : r2;
 	}
+
+	/* give card driver a chance to do something when reader lock first obtained */
+	if (r == 0 && reader_lock_obtained == 1  && card->ops->card_reader_lock_obtained)
+		r = card->ops->card_reader_lock_obtained(card, was_reset);
 
 	LOG_FUNC_RETURN(card->ctx, r);
 }
