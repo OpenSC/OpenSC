@@ -3300,6 +3300,25 @@ static int piv_logout(sc_card_t *card)
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
+static int piv_card_reader_lock_obtained(sc_card_t *card, int was_reset)
+{
+	int r = 0;
+	u8 temp[2000];
+	size_t templen = sizeof(temp);
+	piv_private_data_t * priv = PIV_DATA(card); /* may be null */
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+	if (was_reset > 0) {
+		if (priv)
+			priv->logged_in =  SC_PIN_STATE_UNKNOWN;
+
+		r = piv_select_aid(card, piv_aids[0].value, piv_aids[0].len_short, temp, &templen);
+	}
+
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+}
+
+
 
 static struct sc_card_driver * sc_get_driver(void)
 {
@@ -3322,6 +3341,7 @@ static struct sc_card_driver * sc_get_driver(void)
 	piv_ops.check_sw = piv_check_sw;
 	piv_ops.card_ctl = piv_card_ctl;
 	piv_ops.pin_cmd = piv_pin_cmd;
+	piv_ops.card_reader_lock_obtained = piv_card_reader_lock_obtained;
 
 	return &piv_drv;
 }
