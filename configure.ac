@@ -795,11 +795,11 @@ AC_CONFIG_FILES([
 	src/Makefile
 	src/common/Makefile
 	src/libopensc/Makefile
-	src/libopensc/libopensc.pc
 	src/libsm/Makefile
 	src/pkcs11/Makefile
 	src/pkcs11/versioninfo-pkcs11.rc
 	src/pkcs11/versioninfo-pkcs11-spy.rc
+	src/pkcs11/opensc-pkcs11.pc
 	src/pkcs15init/Makefile
 	src/scconf/Makefile
 	src/tests/Makefile

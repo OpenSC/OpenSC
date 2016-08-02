@@ -3,9 +3,7 @@ exec_prefix=@exec_prefix@
 libdir=@libdir@
 includedir=@includedir@
 
-Name: libopensc
-Description: libopensc
+Name: OpenSC smartcard framework
+Description: OpenSC PKCS#11 module
 Version: @VERSION@
-Libs: -L${libdir} -lopensc -lscconf
-Cflags: -I${includedir}
-
+Libs: -L${libdir} -lopensc-pkcs11

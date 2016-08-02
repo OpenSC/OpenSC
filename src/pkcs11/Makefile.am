@@ -1,7 +1,7 @@
 include $(top_srcdir)/win32/ltrc.inc
 
 MAINTAINERCLEANFILES = $(srcdir)/Makefile.in $(srcdir)/versioninfo-pkcs11.rc $(srcdir)/versioninfo-pkcs11-spy.rc
-EXTRA_DIST = Makefile.mak versioninfo-pkcs11.rc.in versioninfo-pkcs11-spy.rc.in
+EXTRA_DIST = Makefile.mak versioninfo-pkcs11.rc.in versioninfo-pkcs11-spy.rc.in opensc-pkcs11.pc.in
 
 lib_LTLIBRARIES = opensc-pkcs11.la pkcs11-spy.la onepin-opensc-pkcs11.la
 
@@ -18,6 +18,10 @@ OPENSC_PKCS11_LIBS = \
 	$(top_builddir)/src/common/libscdl.la \
 	$(top_builddir)/src/common/libcompat.la \
 	$(OPTIONAL_OPENSSL_LIBS) $(PTHREAD_LIBS)
+
+pkgconfigdir = $(libdir)/pkgconfig
+pkgconfig_DATA = opensc-pkcs11.pc
+DISTCLEANFILES = $(pkgconfig_DATA)
 
 opensc_pkcs11_la_SOURCES = $(OPENSC_PKCS11_SRC) $(OPENSC_PKCS11_INC)
 opensc_pkcs11_la_LIBADD = $(OPENSC_PKCS11_LIBS)
