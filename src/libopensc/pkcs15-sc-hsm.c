@@ -581,7 +581,7 @@ static int sc_pkcs15emu_sc_hsm_add_prkd(sc_pkcs15_card_t * p15card, u8 keyid) {
 	struct sc_pkcs15_object prkd;
 	sc_pkcs15_prkey_info_t *key_info;
 	u8 fid[2];
-	u8 efbin[512];
+	u8 efbin[1024];
 	u8 *ptr;
 	size_t len;
 	int r;
