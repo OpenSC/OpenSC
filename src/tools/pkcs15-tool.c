@@ -18,10 +18,13 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
-
 #include "config.h"
-#include <ctype.h>
+
+#define _XOPEN_SOURCE 500
 #include <assert.h>
+#include <ctype.h>
+#include <ftw.h>
+#include <stdio.h>
 
 #ifdef ENABLE_OPENSSL
 #if defined(HAVE_INTTYPES_H)
@@ -46,6 +49,7 @@ static const char *app_name = "pkcs15-tool";
 
 static int opt_wait = 0;
 static int opt_no_cache = 0;
+static int opt_clear_cache = 0;
 static char * opt_auth_id = NULL;
 static char * opt_reader = NULL;
 static char * opt_cert = NULL;
@@ -69,6 +73,7 @@ enum {
 	OPT_READER,
 	OPT_PIN_ID,
 	OPT_NO_CACHE,
+	OPT_CLEAR_CACHE,
 	OPT_LIST_PUB,
 	OPT_READ_PUB,
 #if defined(ENABLE_OPENSSL) && (defined(_WIN32) || defined(HAVE_INTTYPES_H))
@@ -120,6 +125,7 @@ static const struct option options[] = {
 	{ "verify-pin",		no_argument, NULL,		OPT_VERIFY_PIN },
 	{ "output",		required_argument, NULL,	'o' },
 	{ "no-cache",		no_argument, NULL,		OPT_NO_CACHE },
+	{ "clear-cache",	no_argument, NULL,		OPT_CLEAR_CACHE },
 	{ "auth-id",		required_argument, NULL,	'a' },
 	{ "aid",		required_argument, NULL,	OPT_BIND_TO_AID },
 	{ "wait",		no_argument, NULL,		'w' },
@@ -157,6 +163,7 @@ static const char *option_help[] = {
 	"Verify PIN after card binding (without 'auth-id' the first non-SO, non-Unblock PIN will be verified)",
 	"Outputs to file <arg>",
 	"Disable card caching",
+	"Clear card caching",
 	"The auth ID of the PIN to use",
 	"Specify AID of the on-card PKCS#15 application to bind to (in hexadecimal form)",
 	"Wait for card insertion",
@@ -1134,6 +1141,29 @@ static u8 * get_pin(const char *prompt, sc_pkcs15_object_t *pin_obj)
 	}
 }
 
+int unlink_cb(const char *fpath, const struct stat *sb, int typeflag, struct FTW *ftwbuf)
+{
+	int r = remove(fpath);
+	if (r)
+		perror(fpath);
+	return r;
+}
+static int clear_cache(void)
+{
+	char dirname[PATH_MAX];
+	int r = 0;
+#ifdef _WIN32
+	char systemprofile_cache[] = "C:\\Windows\\system32\\config\\systemprofile\\eid-cache";
+	/* remove the system's login cache directory and ignore errors */
+	nftw(systemprofile_cache, unlink_cb, 64, FTW_DEPTH | FTW_PHYS);
+#endif
+	/* remove the user's cache directory */
+	if ((r = sc_get_cache_dir(ctx, dirname, sizeof(dirname))) < 0)
+		return r;
+	r = nftw(dirname, unlink_cb, 64, FTW_DEPTH | FTW_PHYS);
+	return r;
+}
+
 static int verify_pin(void)
 {
 	struct sc_pkcs15_object	*pin_obj = NULL;
@@ -1899,6 +1929,10 @@ int main(int argc, char * const argv[])
 		case OPT_NO_CACHE:
 			opt_no_cache++;
 			break;
+		case OPT_CLEAR_CACHE:
+			opt_clear_cache = 1;
+			action_count++;
+			break;
 		case 'w':
 			opt_wait = 1;
 			break;
@@ -1923,6 +1957,12 @@ int main(int argc, char * const argv[])
 	if (r) {
 		fprintf(stderr, "Failed to establish context: %s\n", sc_strerror(r));
 		return 1;
+	}
+
+	if (opt_clear_cache) {
+		if ((err = clear_cache()))
+			goto end;
+		action_count--;
 	}
 
 	if (verbose > 1) {
