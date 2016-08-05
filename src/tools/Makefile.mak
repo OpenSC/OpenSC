@@ -22,5 +22,5 @@ $(TARGETS): $(OBJECTS) $(LIBS)
 
 .c.exe:
 	cl $(COPTS) /c $<
-	link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj $(OBJECTS) $(LIBS) $(OPENSSL_LIB) gdi32.lib
+	link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj $(OBJECTS) $(LIBS) $(OPENSSL_LIB) gdi32.lib shell32.lib
 	if EXIST $@.manifest mt -manifest $@.manifest -outputresource:$@;1

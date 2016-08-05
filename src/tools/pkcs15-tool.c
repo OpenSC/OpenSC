@@ -23,7 +23,12 @@
 #define _XOPEN_SOURCE 500
 #include <assert.h>
 #include <ctype.h>
+#ifdef _WIN32
+#include <Shellapi.h>
+#include <tchar.h>
+#else
 #include <ftw.h>
+#endif
 #include <stdio.h>
 
 #ifdef ENABLE_OPENSSL
@@ -1141,6 +1146,52 @@ static u8 * get_pin(const char *prompt, sc_pkcs15_object_t *pin_obj)
 	}
 }
 
+#ifdef _WIN32
+static int clear_cache(void)
+{
+	TCHAR dirname[PATH_MAX];
+	SHFILEOPSTRUCT fileop;
+	int r;
+
+	fileop.hwnd   = NULL;      // no status display
+	fileop.wFunc  = FO_DELETE; // delete operation
+	fileop.pFrom  = dirname;   // source file name as double null terminated string
+	fileop.pTo    = NULL;      // no destination needed
+	fileop.fFlags = FOF_NOCONFIRMATION|FOF_SILENT;  // do not prompt the user
+
+	fileop.fAnyOperationsAborted = FALSE;
+	fileop.lpszProgressTitle     = NULL;
+	fileop.hNameMappings         = NULL;
+
+	/* remove the user's cache directory */
+	if ((r = sc_get_cache_dir(ctx, dirname, sizeof(dirname))) < 0)
+		return r;
+	dirname[_tcslen(dirname)+1] = 0;
+
+	printf("Deleting %s...", dirname);
+	r = SHFileOperation(&fileop);
+	if (r == 0) {
+		printf(" OK\n");
+	} else {
+		printf(" Error\n");
+	}
+
+	_tcscpy(dirname, _T("C:\\Windows\\System32\\config\\systemprofile\\eid-cache"));
+	dirname[_tcslen(dirname)+1] = 0;
+
+	printf("Deleting %s...", dirname);
+	r = SHFileOperation(&fileop);
+	if (r == 0) {
+		printf(" OK\n");
+	} else {
+		printf(" Error\n");
+	}
+
+	return r;
+}
+
+#else
+
 int unlink_cb(const char *fpath, const struct stat *sb, int typeflag, struct FTW *ftwbuf)
 {
 	int r = remove(fpath);
@@ -1152,17 +1203,15 @@ static int clear_cache(void)
 {
 	char dirname[PATH_MAX];
 	int r = 0;
-#ifdef _WIN32
-	char systemprofile_cache[] = "C:\\Windows\\system32\\config\\systemprofile\\eid-cache";
-	/* remove the system's login cache directory and ignore errors */
-	nftw(systemprofile_cache, unlink_cb, 64, FTW_DEPTH | FTW_PHYS);
-#endif
+
 	/* remove the user's cache directory */
 	if ((r = sc_get_cache_dir(ctx, dirname, sizeof(dirname))) < 0)
 		return r;
 	r = nftw(dirname, unlink_cb, 64, FTW_DEPTH | FTW_PHYS);
 	return r;
 }
+#endif
+
 
 static int verify_pin(void)
 {
