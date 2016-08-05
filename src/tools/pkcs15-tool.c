@@ -85,6 +85,7 @@ enum {
 	OPT_CHANGE_PIN = 0x100,
 	OPT_LIST_PINS,
 	OPT_READER,
+	OPT_TEST_SESSION_PIN,
 	OPT_PIN_ID,
 	OPT_NO_CACHE,
 	OPT_CLEAR_CACHE,
@@ -141,6 +142,7 @@ static const struct option options[] = {
 	{ "new-pin",		required_argument, NULL,	OPT_NEWPIN },
 	{ "puk",		required_argument, NULL,	OPT_PUK },
 	{ "verify-pin",		no_argument, NULL,		OPT_VERIFY_PIN },
+	{ "test-session-pin",	no_argument, NULL,		OPT_TEST_SESSION_PIN },
 	{ "output",		required_argument, NULL,	'o' },
 	{ "no-cache",		no_argument, NULL,		OPT_NO_CACHE },
 	{ "clear-cache",	no_argument, NULL,		OPT_CLEAR_CACHE },
@@ -182,6 +184,7 @@ static const char *option_help[] = {
 	"Specify New PIN (when changing or unblocking)",
 	"Specify Unblock PIN",
 	"Verify PIN after card binding (without 'auth-id' the first non-SO, non-Unblock PIN will be verified)",
+	"Equivalent to --verify-pin with additional session PIN generation",
 	"Outputs to file <arg>",
 	"Disable card caching",
 	"Clear card caching",
@@ -1328,13 +1331,99 @@ static int verify_pin(void)
 
 
 	r = sc_pkcs15_verify_pin(p15card, pin_obj, pin, pin ? strlen((char *) pin) : 0);
+	if (opt_pin == NULL)
+		free(pin);
 	if (r < 0)   {
 		fprintf(stderr, "Operation failed: %s\n", sc_strerror(r));
 		return -1;
 	}
 
+	return 0;
+}
+
+static int test_session_pin(void)
+{
+	struct sc_pkcs15_object	*pin_obj = NULL;
+	struct sc_pkcs15_auth_info *auth_info = NULL;
+	unsigned int  auth_method;
+	unsigned char		*pin;
+	int r;
+	unsigned char sessionpin[SC_MAX_PIN_SIZE];
+	size_t sessionpinlen = sizeof sessionpin;
+
+	if (!opt_auth_id)   {
+		struct sc_pkcs15_object *objs[32];
+		int ii;
+
+		r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_AUTH_PIN, objs, 32);
+		if (r < 0) {
+			fprintf(stderr, "PIN code enumeration failed: %s\n", sc_strerror(r));
+			return -1;
+		}
+
+		for (ii=0;ii<r;ii++)   {
+			struct sc_pkcs15_auth_info *pin_info = (struct sc_pkcs15_auth_info *) objs[ii]->data;
+
+			if (pin_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
+				continue;
+			if (pin_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN)
+				continue;
+			if (pin_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN)
+				continue;
+
+			pin_obj = objs[ii];
+			break;
+		}
+	}
+	else   {
+		pin_obj = get_pin_info();
+	}
+
+	if (!(card->caps & SC_CARD_CAP_SESSION_PIN)) {
+		fprintf(stderr, "Card does not support session PIN. Will try anyway.\n");
+	}
+
+	if (!pin_obj)   {
+		fprintf(stderr, "PIN object '%s' not found\n", opt_auth_id);
+		return -1;
+	}
+
+	if (opt_pin != NULL)
+		pin = (unsigned char *) opt_pin;
+	else
+		pin = get_pin("Please enter PIN", pin_obj);
+
+	r = sc_pkcs15_verify_pin_with_session_pin(p15card, pin_obj, pin, pin ? strlen((char *) pin) : 0,
+			sessionpin, &sessionpinlen);
 	if (opt_pin == NULL)
 		free(pin);
+	if (r < 0)   {
+		fprintf(stderr, "Operation failed: %s\n", sc_strerror(r));
+		return -1;
+	}
+
+	if (!sessionpinlen)   {
+		fprintf(stderr, "Could not generate session PIN\n");
+		return -1;
+	}
+
+	printf("Generated session PIN (in hexadecimal form): ");
+	util_hex_dump(stdout, sessionpin, sessionpinlen, "");
+	puts("");
+
+	auth_info = (struct sc_pkcs15_auth_info *)pin_obj->data;
+	/* save the pin type */
+	auth_method = auth_info->auth_method;
+	auth_info->auth_method = SC_AC_SESSION;
+	r = sc_pkcs15_verify_pin(p15card, pin_obj, sessionpin, sessionpinlen);
+	/* restore the pin type */
+	auth_info->auth_method = auth_method;
+	if (r < 0)   {
+		fprintf(stderr, "Could not verify session PIN: %s\n", sc_strerror(r));
+		return -1;
+	}
+
+	puts("Verified session PIN");
 
 	return 0;
 }
@@ -1962,6 +2051,7 @@ int main(int argc, char * const argv[])
 	int do_change_pin = 0;
 	int do_unblock_pin = 0;
 	int do_test_update = 0;
+	int do_test_session_pin = 0;
 	int do_update = 0;
 	int do_print_version = 0;
 	int do_list_info = 0;
@@ -2057,6 +2147,10 @@ int main(int argc, char * const argv[])
 #endif
 		case 'T':
 			do_test_update = 1;
+			action_count++;
+			break;
+		case OPT_TEST_SESSION_PIN:
+			do_test_session_pin = 1;
 			action_count++;
 			break;
 		case 'U':
@@ -2266,6 +2360,11 @@ int main(int argc, char * const argv[])
 			if ((err = update(card)))
 				goto end;
 		}
+	}
+	if (do_test_session_pin) {
+		if ((err = test_session_pin()))
+			goto end;
+		action_count--;
 	}
 end:
 	if (p15card)
