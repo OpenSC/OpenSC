@@ -2817,19 +2817,16 @@ static void show_object(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 }
 
 
-static void
-derive_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
+static CK_OBJECT_HANDLE
+derive_ec_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE mech_mech)
 {
-	unsigned char *value = NULL;
-	CK_ULONG value_len = 0;
+#if defined(ENABLE_OPENSSL) && OPENSSL_VERSION_NUMBER >= 0x00908000L && !defined(OPENSSL_NO_EC) && !defined(OPENSSL_NO_ECDSA)
 	CK_MECHANISM mech;
 	CK_OBJECT_CLASS newkey_class= CKO_SECRET_KEY;
 	CK_KEY_TYPE newkey_type = CKK_GENERIC_SECRET;
 	CK_BBOOL true = TRUE;
 	CK_BBOOL false = FALSE;
 	CK_OBJECT_HANDLE newkey = 0;
-	CK_RV rv;
-	int fd, r;
 	CK_ATTRIBUTE newkey_template[] = {
 		{CKA_TOKEN, &false, sizeof(false)}, /* session only object */
 		{CKA_CLASS, &newkey_class, sizeof(newkey_class)},
@@ -2837,83 +2834,96 @@ derive_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
 		{CKA_ENCRYPT, &true, sizeof(true)},
 		{CKA_DECRYPT, &true, sizeof(true)}
 	};
-#if defined(ENABLE_OPENSSL) && OPENSSL_VERSION_NUMBER >= 0x00908000L && !defined(OPENSSL_NO_EC) && !defined(OPENSSL_NO_ECDSA)
 	CK_ECDH1_DERIVE_PARAMS ecdh_parms;
+	CK_RV rv;
+	BIO *bio_in = NULL;
+	EC_KEY  *eckey = NULL;
+	const EC_GROUP *ecgroup = NULL;
+	const EC_POINT *ecpoint = NULL;
 	unsigned char buf[512];
-#endif /* ENABLE_OPENSSL etc */
-	
-	if (!opt_mechanism_used)
-		if (!find_mechanism(slot, CKF_DERIVE|CKF_HW, NULL, 0, &opt_mechanism))
-			util_fatal("Derive mechanism not supported");
+	size_t buf_size = 0;
+	int len;
 
-	printf("Using derive algorithm 0x%8.8lx %s\n", opt_mechanism, p11_mechanism_to_name(opt_mechanism));
+	printf("Using derive algorithm 0x%8.8lx %s\n", opt_mechanism, p11_mechanism_to_name(mech_mech));
 	memset(&mech, 0, sizeof(mech));
-	mech.mechanism = opt_mechanism;
+	mech.mechanism = mech_mech;
 
-	switch(opt_mechanism) {
-#if defined(ENABLE_OPENSSL) && OPENSSL_VERSION_NUMBER >= 0x00908000L && !defined(OPENSSL_NO_EC) && !defined(OPENSSL_NO_ECDSA)
-	case CKM_ECDH1_COFACTOR_DERIVE:
-	case CKM_ECDH1_DERIVE:
-		/*  Use OpenSSL to read the other public key, and get the raw verion */
-		{
-		int len;
-		BIO     *bio_in = NULL;
-		const EC_KEY  *eckey = NULL;
-		const EC_GROUP *ecgroup = NULL;
-		const EC_POINT * ecpoint = NULL;
+	/*  Use OpenSSL to read the other public key, and get the raw version */
+	bio_in = BIO_new(BIO_s_file());
+	if (BIO_read_filename(bio_in, opt_input) <= 0)
+		util_fatal("Cannot open %s: %m", opt_input);
 
-		bio_in = BIO_new(BIO_s_file());
-		if (BIO_read_filename(bio_in, opt_input) <= 0)
-			util_fatal("Cannot open %s: %m", opt_input);
+	eckey = d2i_EC_PUBKEY_bio(bio_in, NULL);
+	if (!eckey)
+		util_fatal("Cannot read EC key from %s", opt_input);
 
-		eckey = d2i_EC_PUBKEY_bio(bio_in, NULL);
-		if (!eckey)
-			util_fatal("Cannot read EC key from %s", opt_input);
+	ecpoint = EC_KEY_get0_public_key(eckey);
+	ecgroup = EC_KEY_get0_group(eckey);
+	if (!ecpoint || !ecgroup)
+		util_fatal("Failed to parse other EC key from %s", opt_input);
 
-		ecpoint = EC_KEY_get0_public_key(eckey);
-		ecgroup = EC_KEY_get0_group(eckey);
-		if (!ecpoint || !ecgroup)
-			util_fatal("Failed to parse other EC key from %s", opt_input);
+	buf_size = sizeof(buf);
+	len = EC_POINT_point2oct(ecgroup, ecpoint, POINT_CONVERSION_UNCOMPRESSED, buf, buf_size, NULL);
 
-		len = EC_POINT_point2oct(ecgroup, ecpoint, POINT_CONVERSION_UNCOMPRESSED, buf, sizeof(buf),NULL);
+	BIO_free(bio_in);
+	EC_KEY_free(eckey);
 
-		memset(&ecdh_parms, 0, sizeof(ecdh_parms));
-		ecdh_parms.kdf = CKD_NULL;
-		ecdh_parms.ulSharedDataLen = 0;
-		ecdh_parms.pSharedData = NULL;
-		ecdh_parms.ulPublicDataLen = len;	/* TODO drop header */
-		ecdh_parms.pPublicData = buf;		/* Cheat to test */
-		mech.pParameter = &ecdh_parms;
-		mech.ulParameterLen = sizeof(ecdh_parms);
-		}
-		break;
-#endif /* ENABLE_OPENSSL  && !OPENSSL_NO_EC && !OPENSSL_NO_ECDSA */
-	/* TODO add RSA  but do not have card to test */
-	default:
-		util_fatal("mechanism not supported for derive");
-		break;
-	}
+	memset(&ecdh_parms, 0, sizeof(ecdh_parms));
+	ecdh_parms.kdf = CKD_NULL;
+	ecdh_parms.ulSharedDataLen = 0;
+	ecdh_parms.pSharedData = NULL;
+	ecdh_parms.ulPublicDataLen = len;
+	ecdh_parms.pPublicData = buf;
+	mech.pParameter = &ecdh_parms;
+	mech.ulParameterLen = sizeof(ecdh_parms);
 
 	rv = p11->C_DeriveKey(session, &mech, key, newkey_template, 5, &newkey);
 	if (rv != CKR_OK)
 	    p11_fatal("C_DeriveKey", rv);
 
-	/*TODO get the key value and write to stdout or file */
-	value = getVALUE(session, newkey, &value_len);
+	return newkey;
+#else
+	util_fatal("Derive EC key not supported");
+#endif /* ENABLE_OPENSSL  && !OPENSSL_NO_EC && !OPENSSL_NO_ECDSA */
+}
+
+
+static void
+derive_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
+{
+	CK_BYTE *value = NULL;
+	CK_ULONG value_len = 0;
+	CK_OBJECT_HANDLE derived_key = 0;
+	int rv, fd;
+
+	if (!opt_mechanism_used)
+		if (!find_mechanism(slot, CKF_DERIVE|CKF_HW, NULL, 0, &opt_mechanism))
+			util_fatal("Derive mechanism not supported");
+
+	switch(opt_mechanism) {
+	case CKM_ECDH1_COFACTOR_DERIVE:
+	case CKM_ECDH1_DERIVE:
+		derived_key= derive_ec_key(session, key, opt_mechanism);
+		break;
+	default:
+		util_fatal("mechanism not supported for derive");
+		break;
+	}
+
+	value = getVALUE(session, derived_key, &value_len);
 	if (value && value_len > 0) {
-		if (opt_output == NULL)   {
-			fd = 1;
-		}
-		else  {
+		fd = STDOUT_FILENO;
+		if (opt_output)   {
 			fd = open(opt_output, O_CREAT|O_TRUNC|O_WRONLY|O_BINARY, S_IRUSR|S_IWUSR);
 			if (fd < 0)
 				util_fatal("failed to open %s: %m", opt_output);
 		}
 
-		r = write(fd, value, value_len);
-		if (r < 0)
+		rv = write(fd, value, value_len);
+		if (rv < 0)
 			util_fatal("Failed to write to %s: %m", opt_output);
-		if (fd != 1)
+
+		if (opt_output)
 			close(fd);
 	}
 }
