@@ -68,28 +68,28 @@ int token_initialize(void **state) {
 }
 
 void logfile_init(token_info_t *info) {
-	if (token.outfile == NULL)
+	if (token.log.outfile == NULL)
 		return;
 
-    if ((info->logfd = fopen(token.outfile, "w")) == NULL)
+    if ((info->log.fd = fopen(token.log.outfile, "w")) == NULL)
 		fail_msg("Couldn't open file for test results.");
-	fprintf(info->logfd, "{\n\"time\": 0,\n\"results\": [");
-	info->log_in_test = 0;
-	info->log_first = 1;
+	fprintf(info->log.fd, "{\n\"time\": 0,\n\"results\": [");
+	info->log.in_test = 0;
+	info->log.first = 1;
 }
 
 void logfile_finalize(token_info_t *info) {
-	if (info->logfd == NULL)
+	if (info->log.fd == NULL)
 		return;
 
 	/* Make sure the JSON object for test is closed */
-	if (info->log_in_test) {
-		fprintf(info->logfd, ",\n\t\"result\": \"unknown\"\n},");
-		info->log_in_test = 0;
+	if (info->log.in_test) {
+		fprintf(info->log.fd, ",\n\t\"result\": \"unknown\"\n},");
+		info->log.in_test = 0;
 	}
 
-	fprintf(info->logfd, "]\n}\n");
-	fclose(info->logfd);
+	fprintf(info->log.fd, "]\n}\n");
+	fclose(info->log.fd);
 }
 
 int group_setup(void **state)

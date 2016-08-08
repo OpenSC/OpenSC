@@ -79,12 +79,12 @@ int main(int argc, char** argv) {
 	token.pin_length = 0;
 	token.interactive = 0;
 	token.slot_id = (unsigned long) -1;
-	token.outfile = NULL;
+	token.log.outfile = NULL;
 
 	while ((command = getopt(argc, argv, "?hm:s:p:io:")) != -1) {
 		switch (command) {
 			case 'o':
-				token.outfile = strdup(optarg);
+				token.log.outfile = strdup(optarg);
 				break;
 			case 'm':
 				token.library_path = strdup(optarg);

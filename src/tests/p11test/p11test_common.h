@@ -45,6 +45,15 @@
 #define CKM_SHA224_RSA_PKCS 0x00000046
 
 typedef struct {
+	char *outfile;
+	FILE *fd;
+	int in_test;
+	int first;
+	int in_data;
+	int first_data;
+} log_context_t;
+
+typedef struct {
 	CK_MECHANISM_TYPE mech;
 	int flags;
 } test_mech_t;
@@ -57,10 +66,7 @@ typedef struct {
 	size_t pin_length;
 	char *library_path;
 	unsigned int interactive;
-	FILE *logfd;
-	char *outfile;
-	int log_in_test;
-	int log_first;
+	log_context_t log;
 
 	test_mech_t rsa_mechs[MAX_MECHS];
 	size_t  num_rsa_mechs;

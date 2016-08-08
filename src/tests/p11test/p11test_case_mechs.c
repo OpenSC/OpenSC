@@ -88,12 +88,21 @@ void supported_mechanisms_test(void **state) {
 
 		printf("[      MECHANISM      ] [ KEY SIZE ] [  FLAGS   ]\n");
 		printf("[        CKM_*        ] [ MIN][ MAX] [          ]\n");
+		P11TEST_DATA_ROW(info, 4, 's', "MECHANISM",
+			's', "MIN_KEY",
+			's', "MAX_KEY",
+			's', "FLAGS");
 		for (i = 0; i < mechanism_count; i++) {
 			printf("[%-21s] [%4lu][%4lu] [%10s]",
 				get_mechanism_name(mechanism_list[i]),
 				mechanism_info[i].ulMinKeySize,
 				mechanism_info[i].ulMaxKeySize,
 				get_mechanism_flag_name(mechanism_info[i].flags));
+			P11TEST_DATA_ROW(info, 4,
+				's', get_mechanism_name(mechanism_list[i]),
+				'd', mechanism_info[i].ulMinKeySize,
+				'd', mechanism_info[i].ulMaxKeySize,
+				's', get_mechanism_flag_name(mechanism_info[i].flags));
 			for (j = 1; j <= CKF_EC_COMPRESS; j = j<<1)
 				if ((mechanism_info[i].flags & j) != 0)
 					printf(" %s", get_mechanism_flag_name(j));

@@ -75,28 +75,49 @@ char *convert_byte_string(char *id, unsigned long length);
 
 // TODO saniteze inputs
 
-#define P11TEST_START(info) if (info->logfd) { \
-	if (info->log_in_test) \
-		fprintf(info->logfd, "\n\t\"result\": \"unknown\"\n}"); \
-	fprintf(info->logfd, "%s\n{\n\t\"test_id\": \"%s\"", \
-			info->log_first ? "" : ",", __func__); \
-	info->log_in_test = 1; \
-	info->log_first = 0; \
+#define P11TEST_START(info) if (info->log.fd) { \
+	if (info->log.in_test) \
+		fprintf(info->log.fd, "\n\t\"result\": \"unknown\"\n}"); \
+	fprintf(info->log.fd, "%s\n{\n\t\"test_id\": \"%s\"", \
+			info->log.first ? "" : ",", __func__); \
+	info->log.in_test = 1; \
+	info->log.first = 0; \
+	info->log.in_data = 0; \
 	} else {}
-#define P11TEST_SKIP(info) do { if (info->logfd && info->log_in_test) { \
-	fprintf(info->logfd, ",\n\t\"result\": \"skip\"\n}"); \
-	info->log_in_test = 0; \
-	} skip(); } while(0);
-#define P11TEST_PASS(info) if (info->logfd && info->log_in_test) { \
-	fprintf(info->logfd, ",\n\t\"result\": \"pass\"\n}"); \
-	info->log_in_test = 0; \
-	} else {}
-#define P11TEST_FAIL(info, msg, ...) do { \
-	if (info->logfd && info->log_in_test) { fprintf(info->logfd, \
-		",\n\t\"result\": \"fail\",\n\t\"fail_reason\": \"" msg "\"}", ##__VA_ARGS__); \
-		info->log_in_test = 0; \
+
+#define _P11TEST_FINALIZE(info, result) \
+	if (info->log.in_data) {\
+		fprintf(info->log.fd, "]"); \
 	} \
+	if (info->log.fd && info->log.in_test) { \
+		fprintf(info->log.fd, ",\n\t\"result\": \"" result "\"\n}"); \
+		info->log.in_test = 0; \
+	}
+
+#define P11TEST_SKIP(info) do { _P11TEST_FINALIZE(info, "skip")	skip(); } while(0);
+
+#define P11TEST_PASS(info) do { _P11TEST_FINALIZE(info, "pass") } while(0);
+
+#define P11TEST_FAIL(info, msg, ...) do { \
+	if (info->log.fd && info->log.in_test) { \
+		fprintf(info->log.fd, ",\n\t\"fail_reason\": \"" msg "\"", ##__VA_ARGS__); \
+	} \
+	_P11TEST_FINALIZE(info, "fail") \
 	fail_msg(msg, ##__VA_ARGS__); \
 	} while (0);
+
+#define P11TEST_DATA_ROW(info, cols, ...) do { \
+	if (info->log.in_test == 0) \
+		fail_msg("Can't add data outside of the test");\
+	if (info->log.in_data == 0) {\
+		fprintf(info->log.fd, ",\n\t\"data\": [");\
+		info->log.in_data = 1;\
+	} else { \
+		fprintf(info->log.fd, ",");\
+	} \
+	write_data_row(info, cols, ##__VA_ARGS__); \
+	} while(0);
+
+void write_data_row(token_info_t *info, int cols, ...);
 
 #endif /* P11TEST_CASE_COMMON_H */

@@ -539,3 +539,26 @@ char *convert_byte_string(char *id, unsigned long length)
 	return data;
 }
 
+void write_data_row(token_info_t *info, int cols, ...)
+{
+	va_list ap;
+	int i, intval, type;
+	char *data;
+
+	va_start(ap, cols*2);
+	fprintf(info->log.fd, "\n\t[");
+	for (i = 1; i <= cols*2; i+=2) {
+		if (i > 1)
+			fprintf(info->log.fd, ",");
+		type = va_arg(ap, int);
+		if (type == 'd') {
+			intval = va_arg(ap, int);
+			fprintf(info->log.fd, "\n\t\t\"%d\"", intval);
+		} else if (type == 's') {
+			data = va_arg(ap, char*);
+			fprintf(info->log.fd, "\n\t\t\"%s\"", data);
+		}
+	}
+	fprintf(info->log.fd, "\n\t]");
+	va_end(ap);
+}
