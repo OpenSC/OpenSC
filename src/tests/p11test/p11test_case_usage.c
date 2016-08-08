@@ -29,6 +29,7 @@ void usage_test(void **state) {
 	objects.count = 0;
 	objects.data = NULL;
 
+	P11TEST_START(info);
 	search_for_all_objects(&objects, info);
 
 	debug_print("Check if the usage flags are sane.\n");
@@ -68,5 +69,6 @@ void usage_test(void **state) {
 	clean_all_objects(&objects);
 
 	if (errors > 0)
-		fail_msg("Not all the usage flags were successfully verified. See the log above.");
+		P11TEST_FAIL(info, "Not all the usage flags were successfully verified. See the verbose log.");
+	P11TEST_PASS(info);
 }

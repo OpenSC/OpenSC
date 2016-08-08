@@ -31,6 +31,7 @@ void supported_mechanisms_test(void **state) {
 	CK_MECHANISM_INFO_PTR mechanism_info;
 	CK_FLAGS j;
 
+	P11TEST_START(info);
 	rv = function_pointer->C_GetMechanismList(info->slot_id, NULL_PTR,
 		&mechanism_count);
 	if ((rv == CKR_OK) && (mechanism_count > 0)) {
@@ -41,11 +42,13 @@ void supported_mechanisms_test(void **state) {
 		if (rv != CKR_OK) {
 			free(mechanism_list);
 			function_pointer->C_Finalize(NULL_PTR);
-			fail_msg("Could not get mechanism list!\n");
+			P11TEST_FAIL(info, "Could not get mechanism list!");
 		}
 
 		mechanism_info = (CK_MECHANISM_INFO_PTR)
 			malloc(mechanism_count * sizeof(CK_MECHANISM_INFO));
+		if (mechanism_info == NULL)
+			P11TEST_FAIL(info, "Couldn't malloc()");
 
 		for (i = 0; i < mechanism_count; i++) {
 			CK_MECHANISM_TYPE mechanism_type = mechanism_list[i];
@@ -65,7 +68,7 @@ void supported_mechanisms_test(void **state) {
 				if (token.num_rsa_mechs < MAX_MECHS)
 					token.rsa_mechs[token.num_rsa_mechs++].mech = mechanism_list[i];
 				else
-					fail_msg("Too many RSA mechanisms (%d)", MAX_MECHS);
+					P11TEST_FAIL(info, "Too many RSA mechanisms (%d)", MAX_MECHS);
 			}
 			/* We list all known EC mechanisms */
 			if (mechanism_list[i] == CKM_ECDSA_SHA1
@@ -73,13 +76,13 @@ void supported_mechanisms_test(void **state) {
 				if (token.num_ec_mechs < MAX_MECHS)
 					token.ec_mechs[token.num_ec_mechs++].mech = mechanism_list[i];
 				else
-					fail_msg("Too many EC mechanisms (%d)", MAX_MECHS);
+					P11TEST_FAIL(info, "Too many EC mechanisms (%d)", MAX_MECHS);
 			}
 			if ((mechanism_info[i].flags & CKF_GENERATE_KEY_PAIR) != 0) {
 				if (token.num_keygen_mechs < MAX_MECHS)
 					token.keygen_mechs[token.num_keygen_mechs++].mech = mechanism_list[i];
 				else
-					fail_msg("Too many KEYGEN mechanisms (%d)", MAX_MECHS);
+					P11TEST_FAIL(info, "Too many KEYGEN mechanisms (%d)", MAX_MECHS);
 			}
 		}
 
@@ -99,5 +102,6 @@ void supported_mechanisms_test(void **state) {
 		free(mechanism_list);
 		free(mechanism_info);
 	}
+	P11TEST_PASS(info);
 }
 

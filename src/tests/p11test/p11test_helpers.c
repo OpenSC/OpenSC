@@ -67,6 +67,31 @@ int token_initialize(void **state) {
 	return 0;
 }
 
+void logfile_init(token_info_t *info) {
+	if (token.outfile == NULL)
+		return;
+
+    if ((info->logfd = fopen(token.outfile, "w")) == NULL)
+		fail_msg("Couldn't open file for test results.");
+	fprintf(info->logfd, "{\n\"time\": 0,\n\"results\": [");
+	info->log_in_test = 0;
+	info->log_first = 1;
+}
+
+void logfile_finalize(token_info_t *info) {
+	if (info->logfd == NULL)
+		return;
+
+	/* Make sure the JSON object for test is closed */
+	if (info->log_in_test) {
+		fprintf(info->logfd, ",\n\t\"result\": \"unknown\"\n},");
+		info->log_in_test = 0;
+	}
+
+	fprintf(info->logfd, "]\n}\n");
+	fclose(info->logfd);
+}
+
 int group_setup(void **state)
 {
 
@@ -83,6 +108,9 @@ int group_setup(void **state)
 		free(info);
 		fail_msg("Could not load module!\n");
 	}
+
+	logfile_init(info);
+
 	*state = info;
 	return 0;
 }
@@ -98,6 +126,8 @@ int group_teardown(void **state) {
 	free(info);
 	free(token.library_path);
 	free(token.pin);
+
+	logfile_finalize(info);
 
 	close_pkcs11_module();
 
@@ -134,7 +164,7 @@ int user_login_setup(void **state) {
 	CK_FUNCTION_LIST_PTR function_pointer = info->function_pointer;
 	CK_RV rv;
 
-	if(prepare_token(info))
+	if (prepare_token(info))
 		fail_msg("Could not prepare token.\n");
 
 	debug_print("Logging in to the token!");

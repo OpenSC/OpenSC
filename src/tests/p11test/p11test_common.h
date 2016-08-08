@@ -55,8 +55,12 @@ typedef struct {
 	CK_SESSION_HANDLE session_handle;
 	CK_UTF8CHAR* pin;
 	size_t pin_length;
-	char* library_path;
+	char *library_path;
 	unsigned int interactive;
+	FILE *logfd;
+	char *outfile;
+	int log_in_test;
+	int log_first;
 
 	test_mech_t rsa_mechs[MAX_MECHS];
 	size_t  num_rsa_mechs;

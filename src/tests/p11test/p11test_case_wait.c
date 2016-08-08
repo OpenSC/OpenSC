@@ -29,9 +29,10 @@ void wait_test(void **state) {
 	CK_SLOT_INFO slot_info;
 	int token_present = 0;
 
+	P11TEST_START(info);
 	if (!info->interactive) {
 		fprintf(stderr, "To test wait, run in interactive mode (-i switch).\n");
-		skip();
+		P11TEST_SKIP(info);
 	}
 
 	do {
@@ -41,14 +42,12 @@ void wait_test(void **state) {
 		if (rv == CKR_FUNCTION_NOT_SUPPORTED) {
 			fprintf(stderr, "Function does not support call with blocking wait. Skipping.\n");
 			skip();
-		} else if (rv != CKR_OK) {
-			fail_msg("C_WaitForSlotEvent: rv = 0x%.8lX\n", rv);
-		}
+		} else if (rv != CKR_OK)
+			P11TEST_FAIL(info, "C_WaitForSlotEvent: rv = 0x%.8lX\n", rv);
 
 		rv = fp->C_GetSlotInfo(slot_id, &slot_info);
-		if (rv != CKR_OK) {
-			fail_msg("C_GetSlotInfo: rv = 0x%.8lX\n", rv);
-		}
+		if (rv != CKR_OK)
+			P11TEST_FAIL(info, "C_GetSlotInfo: rv = 0x%.8lX\n", rv);
 
 		token_present = ((slot_info.flags & CKF_TOKEN_PRESENT) != 0);
 
@@ -56,5 +55,5 @@ void wait_test(void **state) {
 		printf("              Status: %s\n",
 			token_present ? "Token present": "No token");
 	} while (!token_present);
-	
+	P11TEST_PASS(info);
 }

@@ -31,6 +31,7 @@ void multipart_tests(void **state) {
 	objects.count = 0;
 	objects.data = NULL;
 
+	P11TEST_START(info);
 	search_for_all_objects(&objects, info);
 
 	debug_print("\nCheck functionality of Multipart Sign&Verify and/or Encrypt&Decrypt");
@@ -86,4 +87,5 @@ void multipart_tests(void **state) {
 	printf(" Verify Attribute ------------------------'\n");
 
 	clean_all_objects(&objects);
+	P11TEST_PASS(info);
 }

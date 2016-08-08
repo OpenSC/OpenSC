@@ -73,4 +73,30 @@ const char *get_mechanism_name(int mech_id);
 const char *get_mechanism_flag_name(int flag_id);
 char *convert_byte_string(char *id, unsigned long length);
 
+// TODO saniteze inputs
+
+#define P11TEST_START(info) if (info->logfd) { \
+	if (info->log_in_test) \
+		fprintf(info->logfd, "\n\t\"result\": \"unknown\"\n}"); \
+	fprintf(info->logfd, "%s\n{\n\t\"test_id\": \"%s\"", \
+			info->log_first ? "" : ",", __func__); \
+	info->log_in_test = 1; \
+	info->log_first = 0; \
+	} else {}
+#define P11TEST_SKIP(info) do { if (info->logfd && info->log_in_test) { \
+	fprintf(info->logfd, ",\n\t\"result\": \"skip\"\n}"); \
+	info->log_in_test = 0; \
+	} skip(); } while(0);
+#define P11TEST_PASS(info) if (info->logfd && info->log_in_test) { \
+	fprintf(info->logfd, ",\n\t\"result\": \"pass\"\n}"); \
+	info->log_in_test = 0; \
+	} else {}
+#define P11TEST_FAIL(info, msg, ...) do { \
+	if (info->logfd && info->log_in_test) { fprintf(info->logfd, \
+		",\n\t\"result\": \"fail\",\n\t\"fail_reason\": \"" msg "\"}", ##__VA_ARGS__); \
+		info->log_in_test = 0; \
+	} \
+	fail_msg(msg, ##__VA_ARGS__); \
+	} while (0);
+
 #endif /* P11TEST_CASE_COMMON_H */

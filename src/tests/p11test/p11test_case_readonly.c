@@ -512,6 +512,7 @@ void readonly_tests(void **state) {
 
 	search_for_all_objects(&objects, info);
 
+	P11TEST_START(info);
 	debug_print("\nCheck functionality of Sign&Verify and/or Encrypt&Decrypt");
 	for (i = 0; i < objects.count; i++) {
 		used = 0;
@@ -571,4 +572,5 @@ void readonly_tests(void **state) {
 	printf(" Verify Attribute -----------------'       '---------- Encrypt Attribute\n");
 
 	clean_all_objects(&objects);
+	P11TEST_PASS(info);
 }

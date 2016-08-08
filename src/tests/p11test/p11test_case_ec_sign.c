@@ -29,6 +29,7 @@ void ec_sign_size_test(void **state) {
 	objects.count = 0;
 	objects.data = NULL;
 
+	P11TEST_START(info);
 	search_for_all_objects(&objects, info);
 
 	debug_print("\nCheck functionality of Sign&Verify on different data lengths");
@@ -52,6 +53,7 @@ void ec_sign_size_test(void **state) {
 	clean_all_objects(&objects);
 
 	if (errors > 0)
-		fail_msg("Some signatures were not verified successfully. Please review the log");
+		P11TEST_FAIL(info, "Some signatures were not verified successfully. Please review the log");
+	P11TEST_PASS(info);
 }
 

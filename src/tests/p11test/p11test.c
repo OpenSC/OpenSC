@@ -41,17 +41,17 @@ void display_usage() {
 		"		-p pin			Application PIN\n"
 		"		-s slot_id		Slot ID with the card\n"
 		"		-i				Wait for the card before running the test (interactive)\n"
+		"		-o				File to write a log in JSON\n"
 		"		-h				This help\n"
 		"\n");
 }
 
 int main(int argc, char** argv) {
-
 	char command;
 	const struct CMUnitTest readonly_tests_without_initialization[] = {
 		/* Test card events on slot */
 		cmocka_unit_test_setup_teardown(wait_test,
-		token_initialize, token_cleanup),
+			token_initialize, token_cleanup),
 
 		/* Check all the mechanisms provided by the token */
 		cmocka_unit_test_setup_teardown(supported_mechanisms_test,
@@ -79,9 +79,13 @@ int main(int argc, char** argv) {
 	token.pin_length = 0;
 	token.interactive = 0;
 	token.slot_id = (unsigned long) -1;
+	token.outfile = NULL;
 
-	while ((command = getopt(argc, argv, "?hm:s:p:i")) != -1) {
+	while ((command = getopt(argc, argv, "?hm:s:p:io:")) != -1) {
 		switch (command) {
+			case 'o':
+				token.outfile = strdup(optarg);
+				break;
 			case 'm':
 				token.library_path = strdup(optarg);
 				break;
