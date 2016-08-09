@@ -85,14 +85,15 @@ char *convert_byte_string(char *id, unsigned long length);
 	info->log.in_data = 0; \
 	} else {}
 
-#define _P11TEST_FINALIZE(info, result) \
+#define _P11TEST_FINALIZE(info, result) if (info->log.fd) {\
 	if (info->log.in_data) {\
 		fprintf(info->log.fd, "]"); \
 	} \
 	if (info->log.fd && info->log.in_test) { \
 		fprintf(info->log.fd, ",\n\t\"result\": \"" result "\"\n}"); \
 		info->log.in_test = 0; \
-	}
+	} \
+	} else {}
 
 #define P11TEST_SKIP(info) do { _P11TEST_FINALIZE(info, "skip")	skip(); } while(0);
 
@@ -106,7 +107,7 @@ char *convert_byte_string(char *id, unsigned long length);
 	fail_msg(msg, ##__VA_ARGS__); \
 	} while (0);
 
-#define P11TEST_DATA_ROW(info, cols, ...) do { \
+#define P11TEST_DATA_ROW(info, cols, ...) if (info->log.fd) { \
 	if (info->log.in_test == 0) \
 		fail_msg("Can't add data outside of the test");\
 	if (info->log.in_data == 0) {\
@@ -116,7 +117,7 @@ char *convert_byte_string(char *id, unsigned long length);
 		fprintf(info->log.fd, ",");\
 	} \
 	write_data_row(info, cols, ##__VA_ARGS__); \
-	} while(0);
+	} else {}
 
 void write_data_row(token_info_t *info, int cols, ...);
 
