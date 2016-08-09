@@ -66,8 +66,64 @@ void usage_test(void **state) {
 			    objects.data[i].id_str);
 		}
 	}
-	clean_all_objects(&objects);
 
+	/* print summary */
+	printf("[KEY ID] [LABEL]\n");
+	printf("[ TYPE ] [ SIZE ] [PUBLIC] [SIGN&VERIFY] [ENC&DECRYPT] [WRAP&UNWR] [ DERIVE ]\n");
+	P11TEST_DATA_ROW(info, 13,
+		's', "KEY ID",
+		's', "LABEL",
+		's', "TYPE",
+		's', "BITS",
+		's', "VERIFY PUBKEY",
+		's', "SIGN",
+		's', "VERIFY",
+		's', "ENCRYPT",
+		's', "DECRYPT",
+		's', "WRAP",
+		's', "UNWRAP",
+		's', "DERIVE PUBLIC",
+		's', "DERIVE PRIVATE");
+	for (i = 0; i < objects.count; i++) {
+		printf("\n[%-6s] [%s]\n",
+			objects.data[i].id_str,
+			objects.data[i].label);
+		printf("[ %s ] [%6lu] [ %s ] [%s%s] [%s%s] [%s %s] [%s%s]\n",
+			objects.data[i].key_type == CKK_RSA ? "RSA " :
+				objects.data[i].key_type == CKK_EC ? " EC " : " ?? ",
+			objects.data[i].bits,
+			objects.data[i].verify_public == 1 ? " ./ " : "    ",
+			objects.data[i].sign ? "[./] " : "[  ] ",
+			objects.data[i].verify ? " [./] " : " [  ] ",
+			objects.data[i].encrypt ? "[./] " : "[  ] ",
+			objects.data[i].decrypt ? " [./] " : " [  ] ",
+			objects.data[i].wrap ? "[./]" : "[  ]",
+			objects.data[i].unwrap ? "[./]" : "[  ]",
+			objects.data[i].derive_pub ? "[./]" : "[  ]",
+			objects.data[i].derive_priv ? "[./]" : "[  ]");
+		P11TEST_DATA_ROW(info, 13,
+			's', objects.data[i].id_str,
+			's', objects.data[i].label,
+			's', objects.data[i].key_type == CKK_RSA ? "RSA" :
+				objects.data[i].key_type == CKK_EC ? "EC" : "??",
+			'd', objects.data[i].bits,
+			's', objects.data[i].verify_public == 1 ? "YES" : "",
+			's', objects.data[i].sign ? "YES" : "",
+			's', objects.data[i].verify ? "YES" : "",
+			's', objects.data[i].encrypt ? "YES" : "",
+			's', objects.data[i].decrypt ? "YES" : "",
+			's', objects.data[i].wrap ? "YES" : "",
+			's', objects.data[i].unwrap ? "YES" : "",
+			's', objects.data[i].derive_pub ? "YES" : "",
+			's', objects.data[i].derive_priv ? "YES" : "");
+	}
+	printf(" Public == Cert -----^       ^-----^       ^-----^       ^----^      ^---^\n");
+	printf(" Sign & Verify Attributes ------'             |            |           |\n");
+	printf(" Encrypt & Decrypt Attributes ----------------'            |           |\n");
+	printf(" Wrap & Unwrap Attributes ---------------------------------'           |\n");
+	printf(" Public and Private key Derive Attributes -----------------------------'\n");
+
+	clean_all_objects(&objects);
 	if (errors > 0)
 		P11TEST_FAIL(info, "Not all the usage flags were successfully verified. See the verbose log.");
 	P11TEST_PASS(info);

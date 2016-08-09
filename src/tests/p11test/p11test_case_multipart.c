@@ -63,6 +63,10 @@ void multipart_tests(void **state) {
 
 	/* print summary */
 	printf("[KEY ID] [TYPE] [ SIZE ] [PUBLIC] [SIGN&VERIFY] [LABEL]\n");
+	P11TEST_DATA_ROW(info, 3,
+		's', "KEY ID",
+		's', "MECHANISM",
+		's', "MULTIPART SIGN&VERIFY WORKS");
 	for (i = 0; i < objects.count; i++) {
 		if (objects.data[i].type == EVP_PK_EC)
 			continue;
@@ -75,10 +79,17 @@ void multipart_tests(void **state) {
 			objects.data[i].sign ? "[./] " : "[  ] ",
 			objects.data[i].verify ? " [./] " : " [  ] ",
 			objects.data[i].label);
-		for (j = 0; j < objects.data[i].num_mechs; j++)
+		for (j = 0; j < objects.data[i].num_mechs; j++) {
 			printf("         [ %-20s ] [   %s    ]\n",
 				get_mechanism_name(objects.data[i].mechs[j].mech),
 				objects.data[i].mechs[j].flags & FLAGS_VERIFY_SIGN ? "[./]" : "    ");
+			if ((objects.data[i].mechs[j].flags & FLAGS_VERIFY_SIGN) == 0)
+				continue; /* do not export unknown and non-working algorithms */
+			P11TEST_DATA_ROW(info, 3,
+				's', objects.data[i].id_str,
+				's', get_mechanism_name(objects.data[i].mechs[j].mech),
+				's', objects.data[i].mechs[j].flags & FLAGS_VERIFY_SIGN ? "YES" : "");
+		}
 		printf("\n");
 	}
 	printf(" Public == Cert ------------^       ^  ^  ^\n");

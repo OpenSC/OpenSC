@@ -543,6 +543,11 @@ void readonly_tests(void **state) {
 	/* print summary */
 	printf("[KEY ID] [LABEL]\n");
 	printf("[ TYPE ] [ SIZE ] [PUBLIC] [SIGN&VERIFY] [ENC&DECRYPT] [WRAP&UNWR] [ DERIVE ]\n");
+	P11TEST_DATA_ROW(info, 4,
+		's', "KEY ID",
+		's', "MECHANISM",
+		's', "SIGN&VERIFY WORKS",
+		's', "ENCRYPT&DECRYPT WORKS");
 	for (i = 0; i < objects.count; i++) {
 		printf("\n[%-6s] [%s]\n",
 			objects.data[i].id_str,
@@ -560,11 +565,20 @@ void readonly_tests(void **state) {
 			objects.data[i].unwrap ? "[./]" : "[  ]",
 			objects.data[i].derive_pub ? "[./]" : "[  ]",
 			objects.data[i].derive_priv ? "[./]" : "[  ]");
-		for (j = 0; j < objects.data[i].num_mechs; j++)
+		for (j = 0; j < objects.data[i].num_mechs; j++) {
 			printf("  [ %-20s ] [   %s    ] [   %s    ] [         ] [        ]\n",
 				get_mechanism_name(objects.data[i].mechs[j].mech),
 				objects.data[i].mechs[j].flags & FLAGS_VERIFY_SIGN ? "[./]" : "    ",
 				objects.data[i].mechs[j].flags & FLAGS_VERIFY_DECRYPT ? "[./]" : "    ");
+			if ((objects.data[i].mechs[j].flags & FLAGS_VERIFY_SIGN) == 0 &&
+				(objects.data[i].mechs[j].flags & FLAGS_VERIFY_DECRYPT) == 0)
+				continue; /* skip emty rows for export */
+			P11TEST_DATA_ROW(info, 4,
+				's', objects.data[i].id_str,
+				's', get_mechanism_name(objects.data[i].mechs[j].mech),
+				's', objects.data[i].mechs[j].flags & FLAGS_VERIFY_SIGN ? "YES" : "",
+				's', objects.data[i].mechs[j].flags & FLAGS_VERIFY_DECRYPT ? "YES" : "");
+		}
 	}
 	printf(" Public == Cert -----^       ^  ^  ^       ^  ^  ^       ^----^- Attributes\n");
 	printf(" Sign Attribute -------------'  |  |       |  |  '---- Decrypt Attribute\n");
