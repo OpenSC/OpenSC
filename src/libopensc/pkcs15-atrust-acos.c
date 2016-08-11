@@ -218,6 +218,7 @@ static int sc_pkcs15emu_atrust_acos_init(sc_pkcs15_card_t *p15card)
 		pin_info.attrs.pin.pad_char      = pins[i].pad_char;
 		sc_format_path(pins[i].path, &pin_info.path);
 		pin_info.tries_left    = -1;
+		pin_info.logged_in = SC_PIN_STATE_UNKNOWN;
 
 		strlcpy(pin_obj.label, pins[i].label, sizeof(pin_obj.label));
 		pin_obj.flags = pins[i].obj_flags;

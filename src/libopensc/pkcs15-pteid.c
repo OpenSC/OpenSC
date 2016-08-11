@@ -172,6 +172,7 @@ static int sc_pkcs15emu_pteid_init(sc_pkcs15_card_t * p15card)
 		pin_info.attrs.pin.max_length = 8;
 		pin_info.attrs.pin.pad_char = type == IAS_CARD ? 0x2F : 0xFF;
 		pin_info.tries_left = -1;
+		pin_info.logged_in = SC_PIN_STATE_UNKNOWN;
 		if (pteid_pin_paths[type][i] != NULL)
 			sc_format_path(pteid_pin_paths[type][i], &pin_info.path);
 		strlcpy(pin_obj.label, pteid_pin_names[i], sizeof(pin_obj.label));

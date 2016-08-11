@@ -208,6 +208,7 @@ static int insert_pin(
 	pin_info.attrs.pin.stored_length    = 16;
 	pin_info.attrs.pin.max_length       = 16;
 	pin_info.attrs.pin.pad_char         = '\0';
+	pin_info.logged_in = SC_PIN_STATE_UNKNOWN;
 	sc_format_path(path, &pin_info.path);
 
 	memset(&pin_obj, 0, sizeof(pin_obj));

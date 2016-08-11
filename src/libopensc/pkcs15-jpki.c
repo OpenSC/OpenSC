@@ -120,6 +120,7 @@ sc_pkcs15emu_jpki_init(sc_pkcs15_card_t * p15card)
 		pin_info.attrs.pin.pad_char = '\0';
 		pin_info.max_tries = jpki_pin_max_tries[i];
 		pin_info.tries_left = -1;
+		pin_info.logged_in = SC_PIN_STATE_UNKNOWN;
 
 		pin_cmd_data.cmd = SC_PIN_CMD_GET_INFO;
 		pin_cmd_data.pin_type = SC_AC_CHV;

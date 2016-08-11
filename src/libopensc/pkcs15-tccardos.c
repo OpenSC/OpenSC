@@ -188,6 +188,7 @@ static int create_pin_obj(sc_pkcs15_card_t *p15card, int cert,
 	ainfo.attrs.pin.max_length = 8;
 	ainfo.attrs.pin.pad_char   = 0;
 	ainfo.tries_left = 3;    /* XXX */
+	ainfo.logged_in = SC_PIN_STATE_UNKNOWN;
 	sc_format_path(TC_CARDOS_APP_DF, &ainfo.path);
 	ainfo.path.index = 0;
 	ainfo.path.count = 0;

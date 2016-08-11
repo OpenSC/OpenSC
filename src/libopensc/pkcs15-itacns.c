@@ -354,6 +354,7 @@ static int itacns_add_pin(sc_pkcs15_card_t *p15card,
 	pin_info.attrs.pin.stored_length = 8;
 	pin_info.attrs.pin.max_length = 8;
 	pin_info.attrs.pin.pad_char = 0xff;
+	pin_info.logged_in = SC_PIN_STATE_UNKNOWN;
 	if(path)
         pin_info.path = *path;
 

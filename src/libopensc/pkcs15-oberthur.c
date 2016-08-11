@@ -955,6 +955,7 @@ sc_pkcs15emu_oberthur_init(struct sc_pkcs15_card * p15card)
 				| SC_PKCS15_PIN_FLAG_NEEDS_PADDING
 				| SC_PKCS15_PIN_FLAG_SO_PIN;
 	auth_info.tries_left		= tries_left;
+	auth_info.logged_in = SC_PIN_STATE_UNKNOWN;
 
 	strncpy(obj.label, "SO PIN", SC_PKCS15_MAX_LABEL_SIZE-1);
 	obj.flags = SC_PKCS15_CO_FLAG_MODIFIABLE | SC_PKCS15_CO_FLAG_PRIVATE;

@@ -545,6 +545,7 @@ sc_pkcs15emu_add_pin(sc_pkcs15_card_t *p15card,
 	info->attrs.pin.flags             = flags;
 	info->attrs.pin.pad_char          = pad_char;
 	info->tries_left        = tries_left;
+	info->logged_in = SC_PIN_STATE_UNKNOWN;
 
 	if (path)
 		info->path = *path;

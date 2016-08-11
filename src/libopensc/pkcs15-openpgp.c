@@ -225,6 +225,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 		pin_info.attrs.pin.max_length    = c4data[1 + pin_cfg[i].do_index];
 		pin_info.attrs.pin.pad_char      = '\0';
 		pin_info.tries_left = c4data[4 + pin_cfg[i].do_index];
+		pin_info.logged_in = SC_PIN_STATE_UNKNOWN;
 
 		sc_format_path("3F00", &pin_info.path);
 
