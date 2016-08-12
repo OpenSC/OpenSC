@@ -79,7 +79,7 @@ void logfile_init(token_info_t *info) {
 }
 
 void logfile_finalize(token_info_t *info) {
-	if (info->log.fd == NULL)
+	if (info == NULL || info->log.fd == NULL)
 		return;
 
 	/* Make sure the JSON object for test is closed */
