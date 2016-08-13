@@ -876,6 +876,8 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 	pin_info.tries_left = 3;
 	pin_info.max_tries = 3;
 
+	pin_obj.auth_id.len = 1;
+	pin_obj.auth_id.value[0] = 2;
 	strlcpy(pin_obj.label, "UserPIN", sizeof(pin_obj.label));
 	pin_obj.flags = SC_PKCS15_CO_FLAG_PRIVATE|SC_PKCS15_CO_FLAG_MODIFIABLE;
 
