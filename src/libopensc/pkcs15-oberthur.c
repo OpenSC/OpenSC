@@ -991,6 +991,15 @@ sc_pkcs15emu_oberthur_init(struct sc_pkcs15_card * p15card)
 
 		strncpy(obj.label, PIN_DOMAIN_LABEL, SC_PKCS15_MAX_LABEL_SIZE-1);
 		obj.flags = SC_PKCS15_CO_FLAG_MODIFIABLE | SC_PKCS15_CO_FLAG_PRIVATE;
+		if (sopin_reference == 0x84) {
+			/*
+			 * auth_pin_reset_oberthur_style() in card-oberthur.c
+			 * always uses PUK with reference 0x84 for
+			 * unblocking of User PIN
+			 */
+			obj.auth_id.len = 1;
+			obj.auth_id.value[0] = 0xFF;
+		}
 
 		sc_format_path(AWP_PIN_DF, &auth_info.path);
 		auth_info.path.type = SC_PATH_TYPE_PATH;
