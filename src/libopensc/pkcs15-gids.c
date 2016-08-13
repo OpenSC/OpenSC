@@ -118,6 +118,7 @@ static int sc_pkcs15emu_gids_init (sc_pkcs15_card_t * p15card)
 	struct sc_pkcs15_object pin_obj;
 	struct sc_pin_cmd_data pin_cmd_data;
 	size_t recordsnum;
+	int has_puk;
 
 	r = sc_card_ctl(card, SC_CARDCTL_GIDS_GET_ALL_CONTAINERS, &recordsnum);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "unable to get the containers. Uninitialized card ?");
@@ -183,21 +184,28 @@ static int sc_pkcs15emu_gids_init (sc_pkcs15_card_t * p15card)
 	strlcpy(pin_obj.label, "UserPIN", sizeof(pin_obj.label));
 	pin_obj.flags = SC_PKCS15_CO_FLAG_PRIVATE|SC_PKCS15_CO_FLAG_MODIFIABLE;
 
+	/*
+	 * check whether PUK is available on this card and then optionally
+	 * link PIN with PUK.
+	 */
+	pin_cmd_data.pin_reference = 0x81;
+	has_puk = sc_pin_cmd(card, &pin_cmd_data, NULL) == SC_SUCCESS;
+	if (has_puk) {
+		pin_obj.auth_id.len = 1;
+		pin_obj.auth_id.value[0] = 0x81;
+	}
+
 	r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "unable to sc_pkcs15emu_add_pin_obj");
 
-	// add the PUK if it is available on the card. Not all card have a PUK
-	pin_info.attrs.pin.reference = 0x81;
-	pin_info.auth_id.value[0] = 0x81;
-	pin_info.attrs.pin.flags = SC_PKCS15_PIN_FLAG_LOCAL|SC_PKCS15_PIN_FLAG_INITIALIZED | SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN;
-	pin_info.attrs.pin.reference = 0x81;
-	pin_cmd_data.pin_reference = pin_info.attrs.pin.reference;
-
-	r = sc_pin_cmd(card, &pin_cmd_data, NULL);
-	if (r == SC_SUCCESS) {
+	if (has_puk) {
+		pin_info.auth_id.value[0] = 0x81;
+		pin_info.attrs.pin.flags = SC_PKCS15_PIN_FLAG_LOCAL|SC_PKCS15_PIN_FLAG_INITIALIZED | SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN;
+		pin_info.attrs.pin.reference = 0x81;
 		pin_info.max_tries = pin_cmd_data.pin1.max_tries;
 		pin_info.tries_left = pin_cmd_data.pin1.tries_left;
 		strlcpy(pin_obj.label, "PUK", sizeof(pin_obj.label));
+		pin_obj.auth_id.len = 0;
 		r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
 		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "unable to sc_pkcs15emu_add_pin_obj with PUK");
 	}

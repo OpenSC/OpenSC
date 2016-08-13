@@ -934,6 +934,14 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "DEE Adding pin %d label=%s",i, label);
 		strncpy(pin_obj.label, label, SC_PKCS15_MAX_LABEL_SIZE - 1);
 		pin_obj.flags = pins[i].obj_flags;
+		if (i == 0 && pin_info.attrs.pin.reference == 0x80) {
+			/*
+			 * according to description of "RESET RETRY COUNTER"
+			 * command in specs PUK can only unblock PIV PIN
+			 */
+			pin_obj.auth_id.len = 1;
+			pin_obj.auth_id.value[0] = 2;
+		}
 
 		r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
 		if (r < 0)
