@@ -276,8 +276,8 @@ struct sc_pkcs15_cert {
 	size_t issuer_len;
 	u8 *subject;
 	size_t subject_len;
-	u8 *crl;
-	size_t crl_len;
+	u8 *extensions;
+	size_t extensions_len;
 
 	struct sc_pkcs15_pubkey * key;
 
@@ -713,6 +713,20 @@ void sc_pkcs15_free_certificate(struct sc_pkcs15_cert *cert);
 int sc_pkcs15_find_cert_by_id(struct sc_pkcs15_card *card,
 			      const struct sc_pkcs15_id *id,
 			      struct sc_pkcs15_object **out);
+int sc_pkcs15_get_name_from_dn(struct sc_context *ctx,
+                              const u8 *dn, size_t dn_len,
+                              const struct sc_object_id *type,
+                              u8 **name, size_t *name_len);
+int sc_pkcs15_get_extension(struct sc_context *ctx,
+                            struct sc_pkcs15_cert *cert,
+                            const struct sc_object_id *type,
+                            u8 **ext_val, size_t *ext_val_len,
+                            int *is_critical);
+int sc_pkcs15_get_bitstring_extension(struct sc_context *ctx,
+                                      struct sc_pkcs15_cert *cert,
+                                      const struct sc_object_id *type,
+                                      unsigned long long *value,
+                                      int *is_critical);
 /* sc_pkcs15_create_cdf:  Creates a new certificate DF on a card pointed
  * by <card>.  Information about the file, such as the file ID, is read
  * from <file>.  <certs> has to be NULL-terminated. */

@@ -1265,7 +1265,7 @@ int sc_format_oid(struct sc_object_id *oid, const char *in);
  * Compares two sc_object_id objects
  * @param  oid1  the first sc_object_id object
  * @param  oid2  the second sc_object_id object
- * @return 1 if the oids are equal and a non-zero value otherwise
+ * @return 1 if the oids are equal and a zero value otherwise
  */
 int sc_compare_oid(const struct sc_object_id *oid1, const struct sc_object_id *oid2);
 /**
