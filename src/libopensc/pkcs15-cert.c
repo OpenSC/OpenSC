@@ -47,16 +47,8 @@ parse_x509_cert(sc_context_t *ctx, struct sc_pkcs15_der *der, struct sc_pkcs15_c
 		{ "version", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, 0, &cert->version, NULL },
 		{ NULL, 0, 0, 0, NULL, NULL }
 	};
-	struct sc_asn1_entry asn1_x509v3[] = {
-		{ "certificatePolicies",	SC_ASN1_OCTET_STRING, SC_ASN1_SEQUENCE | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL, NULL },
-		{ "subjectKeyIdentifier",	SC_ASN1_OCTET_STRING, SC_ASN1_SEQUENCE | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL, NULL },
-		{ "crlDistributionPoints",	SC_ASN1_OCTET_STRING, SC_ASN1_SEQUENCE | SC_ASN1_CONS, SC_ASN1_OPTIONAL | SC_ASN1_ALLOC, &cert->crl, &cert->crl_len },
-		{ "authorityKeyIdentifier",	SC_ASN1_OCTET_STRING, SC_ASN1_SEQUENCE | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL, NULL },
-		{ "keyUsage",			SC_ASN1_BOOLEAN, SC_ASN1_SEQUENCE | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL, NULL },
-		{ NULL, 0, 0, 0, NULL, NULL }
-	};
 	struct sc_asn1_entry asn1_extensions[] = {
-		{ "x509v3",		SC_ASN1_STRUCT,    SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_OPTIONAL, asn1_x509v3, NULL },
+		{ "x509v3",		SC_ASN1_OCTET_STRING,    SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_OPTIONAL| SC_ASN1_ALLOC, &cert->extensions, &cert->extensions_len },
 		{ NULL, 0, 0, 0, NULL, NULL }
 	};
 	struct sc_asn1_entry asn1_tbscert[] = {
@@ -138,6 +130,185 @@ parse_x509_cert(sc_context_t *ctx, struct sc_pkcs15_der *der, struct sc_pkcs15_c
 	}
 
 	return SC_SUCCESS;
+}
+
+
+/* get a component of a Distinguished Name (e.i. subject or issuer) from an oid tag. dn can be either
+ * cert->subject or cert->issuer. dn_len would be cert->subject_len or cert->issuer_len.
+ * common types:
+ *   CN: type[] = {0x55, 0x04, 0x03} type_len = 3;
+ *   Country: type[] = {0x55, 0x04, 0x06} type_len = 3;
+ *   L: type[] = {0x55, 0x04, 0x07} type_len = 3;
+ *   S: type[] = {0x55, 0x04, 0x08} type_len = 3;
+ *   O: type[] = {0x55, 0x04, 0x0a} type_len = 3;
+ *   OU: type[] = {0x55, 0x04, 0x0b} type_len = 3;
+ * if *name is NULL, sc_pkcs15_get_name_from_dn will allocate space for name.
+ */
+int
+sc_pkcs15_get_name_from_dn(struct sc_context *ctx, const u8 *dn, size_t dn_len, const u8 *type, size_t type_len, u8 **name, size_t *name_len)
+{
+	const u8 *rdn = NULL;
+	const u8 *next_ava = NULL;
+	size_t rdn_len = 0;
+	size_t next_ava_len = 0;
+
+	rdn = sc_asn1_skip_tag(ctx, &dn, &dn_len, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, &rdn_len);
+	if (rdn == NULL) {
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ASN1_OBJECT, "ASN.1 decoding of Distiguished Name");
+	}
+
+	for (next_ava = rdn, next_ava_len = rdn_len; next_ava_len; ) {
+		const u8 *ava, *dummy, *oid;
+		size_t ava_len, dummy_len, oid_len;
+
+		/* unwrap the set and point to the next ava */
+		ava = sc_asn1_skip_tag(ctx, &next_ava, &next_ava_len, SC_ASN1_TAG_SET | SC_ASN1_CONS, &ava_len);
+		if (ava == NULL) {
+			LOG_TEST_RET(ctx, SC_ERROR_INVALID_ASN1_OBJECT, "ASN.1 decoding of AVA");
+		}
+
+		/* It would be nice to use sc_asn1_decode here to parse the entire AVA, but we are missing 1 critical
+		 * 	function in the templates: the ability to accept any tag for value. This prevents us from just
+		 * 	grabbing the value as is out of the template. AVA's can have tags of PRINTABLE_STRING,
+		 * 	TELETEXSTRING, T61STRING or	UTF8_STRING with PRINTABLE_STRING and UTF8_STRING being the most common.
+		 * The other feature that would be nice is returning a pointer to our requested data using the space
+		 *  of the parent (basically what this code is doing here), rather than allocating and copying. */
+		/* unwrap the sequence */
+		dummy = ava; dummy_len = ava_len;
+		ava = sc_asn1_skip_tag(ctx, &dummy, &dummy_len, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, &ava_len);
+		if (ava == NULL) {
+			LOG_TEST_RET(ctx, SC_ERROR_INVALID_ASN1_OBJECT, "ASN.1 decoding of AVA");
+		}
+		/* unwrap the oid */
+		oid = sc_asn1_skip_tag(ctx, &ava, &ava_len, SC_ASN1_TAG_OBJECT, &oid_len);
+		if (ava == NULL) {
+			LOG_TEST_RET(ctx, SC_ERROR_INVALID_ASN1_OBJECT, "ASN.1 decoding of AVA OID");
+		}
+
+		/* is it the RN we are looking for */
+		if (oid_len != type_len) {
+			continue;
+		}
+		if (memcmp(oid, type, type_len) != 0) {
+			continue;
+		}
+		/* Yes, then return the name */
+		dummy = sc_asn1_skip_tag(ctx, &ava, &ava_len, ava[0] & SC_ASN1_TAG_PRIMITIVE, &dummy_len);
+		if (*name == NULL) {
+			*name = malloc(dummy_len);
+			if (*name == NULL) {
+				LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+			}
+			*name_len = dummy_len;
+		}
+		*name_len = MIN(dummy_len, *name_len);
+		memcpy(*name, dummy, *name_len);
+		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+	}
+	LOG_FUNC_RETURN(ctx, SC_ERROR_ASN1_OBJECT_NOT_FOUND);
+}
+
+/* get a specific extension from the cert. The extension is identified by it's oid value. NOTE:
+ * extensions can occur in any number or any order, which is why we can't parse them with a single
+ * pass of the asn1 decoder. If is_critical is supplied, then it is set to 1 if the extention is critical and 0
+ * if it is not. The data in the extension is extension specific. The following are
+ * common extension values:
+ *   Subject Key ID: type[] = {0x55, 0x1d, 0x0e} type_len = 3;
+ *   Key Usage: type[] = {0x55, 0x1d, 0x0f} type_len = 3;
+ *   Subject Alt Name: type[] = {0x55, 0x1d, 0x11} type_len = 3;
+ *   Basic Constraints: type[] = {0x55, 0x1d, 0x13} type_len = 3;
+ *   CRL Distribution Points: type[] = {0x55, 0x1d, 0x1f} type_len = 3;
+ *   Certificate Policies: type[] = {0x55, 0x1d, 0x20} type_len = 3;
+ *   Extended Key Usage: type[] = {0x55, 0x1d, 0x25} type_len = 3;
+ * if *name is NULL, sc_pkcs15_get_extension will allocate space for name.
+ */
+int
+sc_pkcs15_get_extension(struct sc_context *ctx, struct sc_pkcs15_cert *cert, const u8 *type, size_t type_len, u8 **ext_val, size_t *ext_val_len, int *is_critical)
+{
+	const u8 *ext = NULL;
+	const u8 *next_ext = NULL;
+	size_t ext_len = 0;
+	size_t next_ext_len = 0;
+	u8 *val, *oid;
+	size_t val_len, oid_len;
+	int critical;
+	int r;
+	struct sc_asn1_entry asn1_cert_ext[] = {
+		{ "extensionType", SC_ASN1_OCTET_STRING, SC_ASN1_TAG_OBJECT, SC_ASN1_ALLOC, &oid, &oid_len },
+		{ "criticalFlag",  SC_ASN1_BOOLEAN, SC_ASN1_TAG_BOOLEAN, SC_ASN1_OPTIONAL,  &critical, NULL },
+		{ "extensionValue",SC_ASN1_OCTET_STRING, SC_ASN1_TAG_OCTET_STRING, SC_ASN1_ALLOC, &val, &val_len  },
+		{ NULL, 0, 0, 0, NULL, NULL }
+	};
+
+	for (next_ext = cert->extensions, next_ext_len = cert->extensions_len; next_ext_len; ) {
+
+		/* unwrap the set and point to the next ava */
+		ext = sc_asn1_skip_tag(ctx, &next_ext, &next_ext_len, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, &ext_len);
+		if (ext == NULL) {
+			LOG_TEST_RET(ctx, SC_ERROR_INVALID_ASN1_OBJECT, "ASN.1 decoding of AVA");
+		}
+
+		/*
+		 * use the sc_asn1_decoder for clarity. NOTE it would be more efficient to do this by hand
+		 * so we avoid the man malloc/frees here, but one hopes that one day the asn1_decode will allow
+		 * a 'static pointer' flag that returns a const pointer to the actual asn1 space so we only need
+		 * to make a final copy of the extension value before we return */
+		critical = 0;
+		r = sc_asn1_decode(ctx, asn1_cert_ext, ext, ext_len, NULL, NULL);
+		if (r < 0) {
+			LOG_FUNC_RETURN(ctx, r);
+		}
+
+
+		/* is it the RN we are looking for */
+		if ((oid_len == type_len)  && (memcmp(oid, type, type_len) == 0)) {
+			if (*ext_val == NULL) {
+				*ext_val= val;
+				val = NULL;
+				*ext_val_len = val_len;
+			} else {
+				*ext_val_len = MIN(*ext_val_len, val_len);
+				memcpy(*ext_val, val, *ext_val_len);
+			}
+
+			if (is_critical) {
+				*is_critical = critical;
+			}
+			r = val_len;
+			free(val);
+			free(oid);
+			LOG_FUNC_RETURN(ctx, r);
+		}
+		free(val);
+		free(oid);
+	}
+	LOG_FUNC_RETURN(ctx, SC_ERROR_ASN1_OBJECT_NOT_FOUND);
+}
+
+/*
+ *  Get an extension whose value is a bit string. These include keyUsage and extendedKeyUsage. See above for
+ *  other parameters
+ */
+int
+sc_pkcs15_get_bitstring_extension(struct sc_context *ctx, struct sc_pkcs15_cert *cert, const u8 *type, size_t type_len, unsigned long long *value, int *is_critical)
+{
+	int r;
+	u8 *bit_string = NULL;
+	size_t bit_string_len=0, val_len = sizeof(*value);
+	struct sc_asn1_entry asn1_bit_string[] = {
+		{ "bitString", SC_ASN1_BIT_STRING, SC_ASN1_TAG_BIT_STRING, 0, value, &val_len },
+		{ NULL, 0, 0, 0, NULL, NULL }
+	};
+
+	r = sc_pkcs15_get_extension(ctx, cert, type, type_len, &bit_string, &bit_string_len, is_critical);
+	if (r < 0) {
+		LOG_FUNC_RETURN(ctx, r);
+	}
+	r = sc_asn1_decode(ctx, asn1_bit_string, bit_string, bit_string_len, NULL, NULL);
+	if (r < 0) {
+		LOG_FUNC_RETURN(ctx, r);
+	}
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
 
@@ -350,7 +521,7 @@ sc_pkcs15_free_certificate(struct sc_pkcs15_cert *cert)
 	free(cert->issuer);
 	free(cert->serial);
 	free(cert->data.value);
-	free(cert->crl);
+	free(cert->extensions);
 	free(cert);
 }
 
