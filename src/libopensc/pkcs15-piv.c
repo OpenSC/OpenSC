@@ -104,6 +104,10 @@ typedef struct common_key_info_st {
 	int pubkey_from_file;
 	int key_alg;
 	unsigned int pubkey_len;
+	unsigned long long cert_keyUsage; /* x509 key usage as defined in certificate */
+	int cert_keyUsage_present; /* 1 if keyUsage found in certificate */
+	int pub_usage;
+	int priv_usage;
 	struct sc_pkcs15_pubkey *pubkey_from_cert;
 	int not_present;
 } common_key_info;
@@ -608,6 +612,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 	sc_serial_number_t serial;
 	char buf[SC_MAX_SERIALNR * 2 + 1];
 	common_key_info ckis[PIV_NUM_CERTS_AND_KEYS];
+	int follows_nist_fascn = 0;
 
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
@@ -634,6 +639,10 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 	} else {
 		sc_bin_to_hex(serial.value, serial.len, buf, sizeof(buf), 0);
 		p15card->tokeninfo->serial_number = strdup(buf);
+	}
+	/* US gov issued PIVs have CHUID with a FASCN that does not start with 9999 */
+	if (serial.len == 25 && !(serial.value[0] == 0xD4 && serial.value[1] == 0xE7 && serial.value[2] == 0x39 && (serial.value[3] | 0x7F) == 0xFF)) {
+	    follows_nist_fascn = 1;
 	}
 
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "PIV-II adding objects...");
@@ -709,6 +718,10 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 		ckis[i].pubkey_from_file = 0;
 		ckis[i].pubkey_len = 0;
 		ckis[i].pubkey_from_cert = NULL;
+		ckis[i].cert_keyUsage = 0;
+		ckis[i].cert_keyUsage_present = 0;
+		ckis[i].pub_usage = 0;
+		ckis[i].priv_usage = 0;
 
 		memset(&cert_info, 0, sizeof(cert_info));
 		memset(&cert_obj,  0, sizeof(cert_obj));
@@ -729,7 +742,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 
 		r = sc_pkcs15_read_file(p15card, &cert_info.path, &cert_der.value, &cert_der.len);
 
-		if (r) { 
+		if (r) {
 			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "No cert found,i=%d", i);
 			continue;
 		}
@@ -750,15 +763,127 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Failed to read/parse the certificate r=%d",r);
 			continue;
 		}
+		/* 
+		 * get keyUsage if present save in ckis[i]
+		 * Will only use it if this in a non FED issued card
+		 * which has a CHUID with FASC-N not starting with 9999
+		 */
+
+		if (follows_nist_fascn == 0) {
+			struct sc_object_id keyUsage_oid={{2,5,29,15,-1}};
+			unsigned long long *value;
+			int r = 0;
+
+			value = &ckis[i].cert_keyUsage;
+			r = sc_pkcs15_get_bitstring_extension(card->ctx, cert_out,
+				&keyUsage_oid,
+				value, NULL);
+			if ( r >= 0)
+				ckis[i].cert_keyUsage_present = 1;
+				/* TODO if no key usage, we could set all uses */
+		}
+
+
 		ckis[i].key_alg = cert_out->key->algorithm;
 		switch (cert_out->key->algorithm) {
 			case SC_ALGORITHM_RSA:
 				/* save pubkey_len for pub and priv */
 				ckis[i].pubkey_len = cert_out->key->u.rsa.modulus.len * 8;
+				/* See RFC 5280 and PKCS#11 V2.40 */
+				if (ckis[i].cert_keyUsage_present) {
+					if (ckis[i].cert_keyUsage & 0x01u) { /* digitalSignature  RFC 5280 */
+						ckis[i].pub_usage |= SC_PKCS15_PRKEY_USAGE_ENCRYPT /* extra*/
+									|SC_PKCS15_PRKEY_USAGE_WRAP
+									|SC_PKCS15_PRKEY_USAGE_VERIFY
+									|SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER;
+					        ckis[i].priv_usage |= SC_PKCS15_PRKEY_USAGE_DECRYPT /*extra */
+									|SC_PKCS15_PRKEY_USAGE_UNWRAP
+									|SC_PKCS15_PRKEY_USAGE_SIGN
+									|SC_PKCS15_PRKEY_USAGE_SIGNRECOVER;
+					}
+					if(ckis[i].cert_keyUsage & 0x02u) { /* nonRepudation */
+						ckis[i].pub_usage |= SC_PKCS15_PRKEY_USAGE_ENCRYPT /* extra */
+									|SC_PKCS15_PRKEY_USAGE_NONREPUDIATION
+									|SC_PKCS15_PRKEY_USAGE_VERIFY
+									|SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER;
+						ckis[i].priv_usage |= SC_PKCS15_PRKEY_USAGE_DECRYPT /*extra*/
+									|SC_PKCS15_PRKEY_USAGE_NONREPUDIATION
+									|SC_PKCS15_PRKEY_USAGE_SIGN
+									|SC_PKCS15_PRKEY_USAGE_SIGNRECOVER;
+					}
+					if(ckis[i].cert_keyUsage &  0x04u) { /* KeyEncipherment */
+						ckis[i].pub_usage |= SC_PKCS15_PRKEY_USAGE_ENCRYPT| SC_PKCS15_PRKEY_USAGE_WRAP;
+						ckis[i].priv_usage |= SC_PKCS15_PRKEY_USAGE_DECRYPT| SC_PKCS15_PRKEY_USAGE_UNWRAP;
+					}
+					if(ckis[i].cert_keyUsage & 0x08u) { /* dataEncipherment */
+						ckis[i].pub_usage |= SC_PKCS15_PRKEY_USAGE_ENCRYPT;
+						ckis[i].priv_usage |= SC_PKCS15_PRKEY_USAGE_DECRYPT;
+					}
+					if(ckis[i].cert_keyUsage & 0x10u) { /* keyAgreement */
+						ckis[i].pub_usage |= SC_PKCS15_PRKEY_USAGE_DERIVE;
+						ckis[i].priv_usage |= SC_PKCS15_PRKEY_USAGE_DERIVE;
+					}
+					if(ckis[i].cert_keyUsage & 0x20u) { /* keyCertSign */
+						ckis[i].pub_usage |= SC_PKCS15_PRKEY_USAGE_VERIFY|SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER;
+						ckis[i].priv_usage |=  SC_PKCS15_PRKEY_USAGE_SIGN;
+					}
+					if(ckis[i].cert_keyUsage & 0x40u) { /* crlSign */
+						ckis[i].pub_usage |= SC_PKCS15_PRKEY_USAGE_VERIFY|SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER;
+						ckis[i].priv_usage |=  SC_PKCS15_PRKEY_USAGE_SIGN;
+					}
+					if(ckis[i].cert_keyUsage & 0x80u) { /*encipherOnly */
+						ckis[i].pub_usage |= SC_PKCS15_PRKEY_USAGE_ENCRYPT|SC_PKCS15_PRKEY_USAGE_WRAP;
+						ckis[i].priv_usage |= SC_PKCS15_PRKEY_USAGE_DECRYPT|SC_PKCS15_PRKEY_USAGE_UNWRAP;
+					}
+					if (ckis[i].cert_keyUsage & 0x100u) { /*decipherOnly */ /* TODO is this correct */
+						ckis[i].pub_usage |= SC_PKCS15_PRKEY_USAGE_DECRYPT|SC_PKCS15_PRKEY_USAGE_UNWRAP;
+						ckis[i].priv_usage |= SC_PKCS15_PRKEY_USAGE_ENCRYPT|SC_PKCS15_PRKEY_USAGE_WRAP;
+					}
+				}
 				break;
+
 			case SC_ALGORITHM_EC:
 				ckis[i].pubkey_len = cert_out->key->u.ec.params.field_length;
+				if (ckis[i].cert_keyUsage_present) {
+					if(ckis[i].cert_keyUsage & 0x01u) { /*digitalSignature  RFC 5280 */
+						ckis[i].pub_usage |= SC_PKCS15_PRKEY_USAGE_VERIFY;
+						ckis[i].priv_usage |= SC_PKCS15_PRKEY_USAGE_SIGN;
+					}
+					if(ckis[i].cert_keyUsage & 0x02u) { /* nonRepudation */
+						ckis[i].pub_usage |= SC_PKCS15_PRKEY_USAGE_NONREPUDIATION;
+						ckis[i].priv_usage |= SC_PKCS15_PRKEY_USAGE_NONREPUDIATION;
+					}
+					if(ckis[i].cert_keyUsage & 0x04u) {/* KeyEncipherment */
+						ckis[i].pub_usage |= 0;
+						ckis[i].priv_usage |= 0;
+					}
+					if(ckis[i].cert_keyUsage & 0x08u) { /* dataEncipherment */
+						ckis[i].pub_usage |= 0;
+						ckis[i].priv_usage |= 0;
+					}
+					if(ckis[i].cert_keyUsage & 0x10u) { /* keyAgreement */
+						ckis[i].pub_usage |= SC_PKCS15_PRKEY_USAGE_DERIVE;
+						ckis[i].priv_usage |= SC_PKCS15_PRKEY_USAGE_DERIVE;
+					}
+					if(ckis[i].cert_keyUsage & 0x20u) { /* keyCertSign */
+						ckis[i].pub_usage |= SC_PKCS15_PRKEY_USAGE_VERIFY;
+						ckis[i].priv_usage |= SC_PKCS15_PRKEY_USAGE_SIGN;
+					}
+					if(ckis[i].cert_keyUsage & 0x40u) { /* crlSign */
+						ckis[i].pub_usage |= SC_PKCS15_PRKEY_USAGE_VERIFY;
+						ckis[i].priv_usage |=  SC_PKCS15_PRKEY_USAGE_SIGN;
+					}
+					if(ckis[i].cert_keyUsage & 0x80u) { /*encipherOnly */
+						ckis[i].pub_usage |= 0;
+						ckis[i].priv_usage |= 0;
+					}
+					if (ckis[i].cert_keyUsage & 0x100u) { /*decipherOnly */
+						ckis[i].pub_usage |= 0;
+						ckis[i].priv_usage |= 0;
+					}
+				}
 				break;
+
 			default:
 				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Unsuported key.algorithm %d", cert_out->key->algorithm);
 				ckis[i].pubkey_len = 0; /* set some value for now */
@@ -928,7 +1053,11 @@ sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "DEE Adding pin %d label=%s",i, label);
 		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"adding pubkey for %d keyalg=%d",i, ckis[i].key_alg);
 		switch (ckis[i].key_alg) {
 			case SC_ALGORITHM_RSA:
-				pubkey_info.usage = pubkeys[i].usage_rsa;
+				if (ckis[i].cert_keyUsage_present) {
+					pubkey_info.usage =  ckis[i].pub_usage;
+				} else {
+					pubkey_info.usage = pubkeys[i].usage_rsa;
+				}
 				pubkey_info.modulus_length = ckis[i].pubkey_len;
 				strncpy(pubkey_obj.label, pubkeys[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
 
@@ -939,7 +1068,12 @@ sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "DEE Adding pin %d label=%s",i, label);
 				ckis[i].pubkey_found = 1;
 				break;
 			case SC_ALGORITHM_EC:
-				pubkey_info.usage = pubkeys[i].usage_ec;
+				if (ckis[i].cert_keyUsage_present) {
+					pubkey_info.usage = ckis[i].pub_usage;
+				} else {
+				    pubkey_info.usage = pubkeys[i].usage_ec;
+				}
+
 				pubkey_info.field_length = ckis[i].pubkey_len; 
 				strncpy(pubkey_obj.label, pubkeys[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
 
@@ -952,6 +1086,8 @@ sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "DEE Adding pin %d label=%s",i, label);
 				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"key_alg %d not supported", ckis[i].key_alg);
 				continue;
 		}
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"USAGE: cert_keyUsage_present:%d usage:0x%8.8x",
+				ckis[i].cert_keyUsage_present ,pubkey_info.usage); 
 	}
 
 
@@ -994,13 +1130,21 @@ sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "DEE Adding pin %d label=%s",i, label);
 		}
 
 		switch (ckis[i].key_alg) {
-			case SC_ALGORITHM_RSA: 
-				prkey_info.usage         |= prkeys[i].usage_rsa;
+			case SC_ALGORITHM_RSA:
+				if(ckis[i].cert_keyUsage_present) {
+					prkey_info.usage |= ckis[i].priv_usage;
+				} else {
+					prkey_info.usage |= prkeys[i].usage_rsa;
+				}
 				prkey_info.modulus_length= ckis[i].pubkey_len;
 				r = sc_pkcs15emu_add_rsa_prkey(p15card, &prkey_obj, &prkey_info);
 				break;
 			case SC_ALGORITHM_EC:
-				prkey_info.usage         |= prkeys[i].usage_ec;
+				if (ckis[i].cert_keyUsage_present) {
+					prkey_info.usage  |= ckis[i].priv_usage;
+				} else {
+					prkey_info.usage  |= prkeys[i].usage_ec;
+				}
 				prkey_info.field_length = ckis[i].pubkey_len;
 				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "DEE added key_alg %2.2x prkey_obj.flags %8.8x",
 					 ckis[i].key_alg, prkey_obj.flags);
@@ -1010,6 +1154,7 @@ sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "DEE Adding pin %d label=%s",i, label);
 				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Unsupported key_alg %d", ckis[i].key_alg);
 				r = 0; /* we just skip this one */
 		}
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"USAGE: cert_keyUsage_present:%d usage:0x%8.8x", ckis[i].cert_keyUsage_present ,prkey_info.usage);
 		if (r < 0)
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 	}
