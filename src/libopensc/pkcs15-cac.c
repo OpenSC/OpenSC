@@ -8,7 +8,9 @@
  * Copyright (C) 2006, Identity Alliance,
  *               Thomas Harning <thomas.harning@identityalliance.com>
  * Copyright (C) 2007, EMC, Russell Larner <rlarner@rsa.com>
- * Copyright (C) 2016, Red Hat, Inc., Robert Relyea <rrelyea@redhat.com>
+ * Copyright (C) 2016, Red Hat, Inc.
+ *
+ * CAC driver author: Robert Relyea <rrelyea@redhat.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -36,7 +38,6 @@
 
 #include "internal.h"
 #include "cardctl.h"
-#include "asn1.h"
 #include "pkcs15.h"
 /* X509 Key Usage flags */
 #include "../pkcs15init/pkcs15-init.h"

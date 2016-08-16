@@ -110,7 +110,7 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 	{ "setcos",	(void *(*)(void)) sc_get_setcos_driver },
 	{ "muscle",	(void *(*)(void)) sc_get_muscle_driver },
 	{ "atrust-acos",(void *(*)(void)) sc_get_atrust_acos_driver },
-	{ "CAC",	(void *(*)(void)) sc_get_cac_driver },
+	{ "cac",	(void *(*)(void)) sc_get_cac_driver },
 	{ "PIV-II",	(void *(*)(void)) sc_get_piv_driver },
 	{ "itacns",	(void *(*)(void)) sc_get_itacns_driver },
 	{ "isoApplet",	(void *(*)(void)) sc_get_isoApplet_driver },

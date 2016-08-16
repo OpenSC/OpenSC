@@ -8,7 +8,7 @@ lib_LTLIBRARIES = libopensc.la
 noinst_HEADERS = cards.h ctbcs.h internal.h esteid.h muscle.h muscle-filesystem.h \
 	internal-winscard.h p15card-helper.h pkcs15-syn.h \
 	opensc.h pkcs15.h \
-	cardctl.h asn1.h log.h \
+	cardctl.h asn1.h log.h simpletlv.h \
 	errors.h types.h compression.h itacns.h iso7816.h \
 	authentic.h iasecc.h iasecc-sdo.h sm.h card-sc-hsm.h \
 	pace.h cwa14890.h cwa-dnie.h card-gids.h aux-data.h \
@@ -22,6 +22,7 @@ AM_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(OPTIONAL_OPENCT_CFLAGS) \
 libopensc_la_SOURCES = \
 	sc.c ctx.c log.c errors.c \
 	asn1.c base64.c sec.c card.c iso7816.c dir.c ef-atr.c padding.c apdu.c \
+	simpletlv.c \
 	\
 	pkcs15.c pkcs15-cert.c pkcs15-data.c pkcs15-pin.c \
 	pkcs15-prkey.c pkcs15-pubkey.c pkcs15-skey.c \
@@ -35,8 +36,8 @@ libopensc_la_SOURCES = \
 	card-cardos.c card-tcos.c card-default.c \
 	card-mcrd.c card-starcos.c card-openpgp.c card-jcop.c \
 	card-oberthur.c card-belpic.c card-atrust-acos.c \
-	card-entersafe.c card-epass2003.c card-coolkey.c \
-	card-incrypto34.c card-piv.c card-cac.c card-muscle.c card-acos5.c \
+	card-entersafe.c card-epass2003.c card-coolkey.c card-incrypto34.c \
+	card-piv.c card-cac.c card-muscle.c card-acos5.c \
 	card-asepcos.c card-akis.c card-gemsafeV1.c card-rutoken.c \
 	card-rtecp.c card-westcos.c card-myeid.c \
 	card-itacns.c card-authentic.c \
