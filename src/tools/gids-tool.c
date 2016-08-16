@@ -36,6 +36,7 @@
 #include <openssl/evp.h>
 #include <openssl/err.h>
 
+#include "libopensc/sc-ossl-compat.h"
 #include "libopensc/opensc.h"
 #include "libopensc/cardctl.h"
 #include "libopensc/card-gids.h"
@@ -521,7 +522,9 @@ int main(int argc, char * const argv[])
 		}
 	}
 
-	CRYPTO_malloc_init();
+	/* OpenSSL magic */
+	OPENSSL_malloc_init();
+
 	ERR_load_crypto_strings();
 	OpenSSL_add_all_algorithms();
 

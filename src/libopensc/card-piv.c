@@ -1582,14 +1582,19 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 	size_t challenge_response_len;
 	u8 *decrypted_reponse = NULL;
 	size_t decrypted_reponse_len;
-	EVP_CIPHER_CTX ctx;
+	EVP_CIPHER_CTX * ctx = NULL;
 
 	u8 sbuf[255];
 	const EVP_CIPHER *cipher;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	EVP_CIPHER_CTX_init(&ctx);
+	ctx = EVP_CIPHER_CTX_new();
+	if (ctx == NULL) {
+		r = SC_ERROR_OUT_OF_MEMORY;
+		goto err;
+	}
+
 	cipher = get_cipher_for_algo(alg_id);
 	if(!cipher) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Invalid cipher selector, none found for:  %02x\n", alg_id);
@@ -1648,22 +1653,22 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 	}
 
 	/* decrypt the data from the card */
-	if (!EVP_DecryptInit(&ctx, cipher, key, NULL)) {
+	if (!EVP_DecryptInit(ctx, cipher, key, NULL)) {
 		/* may fail if des parity of key is wrong. depends on OpenSSL options */
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
-	EVP_CIPHER_CTX_set_padding(&ctx,0);
+	EVP_CIPHER_CTX_set_padding(ctx,0);
 
 	p = plain_text;
-	if (!EVP_DecryptUpdate(&ctx, p, &N, witness_data, witness_len)) {
+	if (!EVP_DecryptUpdate(ctx, p, &N, witness_data, witness_len)) {
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
 	plain_text_len = tmplen = N;
 	p += tmplen;
 
-	if(!EVP_DecryptFinal(&ctx, p, &N)) {
+	if(!EVP_DecryptFinal(ctx, p, &N)) {
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
@@ -1772,24 +1777,23 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 		goto err;
 	}
 
-	EVP_CIPHER_CTX_cleanup(&ctx);
-	EVP_CIPHER_CTX_init(&ctx);
+	EVP_CIPHER_CTX_cleanup(ctx);
 
-	if (!EVP_DecryptInit(&ctx, cipher, key, NULL)) {
+	if (!EVP_DecryptInit(ctx, cipher, key, NULL)) {
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
-	EVP_CIPHER_CTX_set_padding(&ctx,0);
+	EVP_CIPHER_CTX_set_padding(ctx,0);
 
 	tmp = decrypted_reponse;
-	if (!EVP_DecryptUpdate(&ctx, tmp, &N, challenge_response, challenge_response_len)) {
+	if (!EVP_DecryptUpdate(ctx, tmp, &N, challenge_response, challenge_response_len)) {
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
 	decrypted_reponse_len = tmplen = N;
 	tmp += tmplen;
 
-	if(!EVP_DecryptFinal(&ctx, tmp, &N)) {
+	if(!EVP_DecryptFinal(ctx, tmp, &N)) {
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
@@ -1805,7 +1809,8 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 	r = SC_SUCCESS;
 
 err:
-	EVP_CIPHER_CTX_cleanup(&ctx);
+	if (ctx)
+		EVP_CIPHER_CTX_free(ctx);
 	if (locked)
 		sc_unlock(card);
 	if (rbuf)
@@ -1853,12 +1858,16 @@ static int piv_general_external_authenticate(sc_card_t *card,
 	size_t keylen = 0;
 	size_t cypher_text_len = 0;
 	u8 sbuf[255];
-	EVP_CIPHER_CTX ctx;
+	EVP_CIPHER_CTX * ctx = NULL;
 	const EVP_CIPHER *cipher;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	EVP_CIPHER_CTX_init(&ctx);
+	ctx = EVP_CIPHER_CTX_new();
+	if (ctx == NULL) {
+	    r = SC_ERROR_OUT_OF_MEMORY;
+	    goto err;
+	}
 
 	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Selected cipher for algorithm id: %02x\n", alg_id);
 
@@ -1924,7 +1933,7 @@ static int piv_general_external_authenticate(sc_card_t *card,
 	tmplen = challenge_len;
 
 	/* Encrypt the challenge with the secret */
-	if (!EVP_EncryptInit(&ctx, cipher, key, NULL)) {
+	if (!EVP_EncryptInit(ctx, cipher, key, NULL)) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Encrypt fail\n");
 		r = SC_ERROR_INTERNAL;
 		goto err;
@@ -1937,15 +1946,15 @@ static int piv_general_external_authenticate(sc_card_t *card,
 		goto err;
 	}
 
-	EVP_CIPHER_CTX_set_padding(&ctx,0);
-	if (!EVP_EncryptUpdate(&ctx, cypher_text, &outlen, challenge_data, challenge_len)) {
+	EVP_CIPHER_CTX_set_padding(ctx,0);
+	if (!EVP_EncryptUpdate(ctx, cypher_text, &outlen, challenge_data, challenge_len)) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Encrypt update fail\n");
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
 	cypher_text_len += outlen;
 
-	if (!EVP_EncryptFinal(&ctx, cypher_text + cypher_text_len, &outlen)) {
+	if (!EVP_EncryptFinal(ctx, cypher_text + cypher_text_len, &outlen)) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Final fail\n");
 		r = SC_ERROR_INTERNAL;
 		goto err;
@@ -2005,7 +2014,8 @@ static int piv_general_external_authenticate(sc_card_t *card,
 	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Got response  challenge\n");
 
 err:
-	EVP_CIPHER_CTX_cleanup(&ctx);
+	if (ctx)
+		EVP_CIPHER_CTX_free(ctx);
 
 	if (locked)
 		sc_unlock(card);

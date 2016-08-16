@@ -1860,7 +1860,7 @@ static int gids_authenticate_admin(sc_card_t *card, u8* key) {
 #ifndef ENABLE_OPENSSL
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED);
 #else
-	EVP_CIPHER_CTX ctx;
+	EVP_CIPHER_CTX *ctx = NULL;
 	int r;
 	u8 apduSetRandom[20] = {0x7C,0x12,0x81,0x10,0};
 	u8* randomR1 = apduSetRandom + 4;
@@ -1878,8 +1878,6 @@ static int gids_authenticate_admin(sc_card_t *card, u8* key) {
 	const EVP_CIPHER *cipher;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	// init crypto
-	EVP_CIPHER_CTX_init(&ctx);
 	// this is CBC instead of ECB
 	cipher = EVP_des_ede3_cbc();
 	if (!cipher) {
@@ -1920,21 +1918,28 @@ static int gids_authenticate_admin(sc_card_t *card, u8* key) {
 	memcpy(buffer, randomR2, 16);
 	memcpy(buffer+16, randomR1, 16);
 	memcpy(buffer+32, z1, sizeof(z1));
-	if (!EVP_EncryptInit(&ctx, cipher, key, NULL)) {
-		EVP_CIPHER_CTX_cleanup(&ctx);
+	// init crypto
+	ctx = EVP_CIPHER_CTX_new();
+	if (ctx == NULL) {
+	    SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INTERNAL);
+	}
+
+	if (!EVP_EncryptInit(ctx, cipher, key, NULL)) {
+		EVP_CIPHER_CTX_free(ctx);
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INTERNAL);
 	}
-	EVP_CIPHER_CTX_set_padding(&ctx,0);
-	if (!EVP_EncryptUpdate(&ctx, buffer2, &buffer2size, buffer, sizeof(buffer))) {
-		EVP_CIPHER_CTX_cleanup(&ctx);
+	EVP_CIPHER_CTX_set_padding(ctx,0);
+	if (!EVP_EncryptUpdate(ctx, buffer2, &buffer2size, buffer, sizeof(buffer))) {
+		EVP_CIPHER_CTX_free(ctx);
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INTERNAL);
 	}
 
-	if(!EVP_EncryptFinal(&ctx, buffer2+buffer2size, &buffer2size)) {
-		EVP_CIPHER_CTX_cleanup(&ctx);
+	if(!EVP_EncryptFinal(ctx, buffer2+buffer2size, &buffer2size)) {
+		EVP_CIPHER_CTX_free(ctx);
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INTERNAL);
 	}
-	EVP_CIPHER_CTX_cleanup(&ctx);
+	EVP_CIPHER_CTX_free(ctx);
+	ctx = NULL;
 	// send it to the card
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4, INS_GENERAL_AUTHENTICATE, 0x00, 0x00);
 	apdu.lc = sizeof(apduSendReponse);
