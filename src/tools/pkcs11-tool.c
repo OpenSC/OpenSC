@@ -60,6 +60,12 @@
 #include "common/compat_strlcpy.h"
 #include "util.h"
 
+#ifdef _WIN32
+#ifndef STDOUT_FILENO
+#define STDOUT_FILENO 1
+#endif
+#endif
+
 extern void *C_LoadModule(const char *name, CK_FUNCTION_LIST_PTR_PTR);
 extern CK_RV C_UnloadModule(void *module);
 
