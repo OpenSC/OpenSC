@@ -1553,7 +1553,7 @@ sc_pkcs15_convert_pubkey(struct sc_pkcs15_pubkey *pkcs15_key, void *evp_key)
 	case EVP_PKEY_RSA: {
 		struct sc_pkcs15_pubkey_rsa *dst = &pkcs15_key->u.rsa;
 		RSA *src = EVP_PKEY_get1_RSA(pk);
-		BIGNUM *src_n, *src_e;
+		const BIGNUM *src_n, *src_e;
 
 		RSA_get0_key(src, &src_n, &src_e, NULL);
 
@@ -1566,7 +1566,7 @@ sc_pkcs15_convert_pubkey(struct sc_pkcs15_pubkey *pkcs15_key, void *evp_key)
 	case EVP_PKEY_DSA: {
 		struct sc_pkcs15_pubkey_dsa *dst = &pkcs15_key->u.dsa;
 		DSA *src = EVP_PKEY_get1_DSA(pk);
-		BIGNUM *src_pub_key, *src_priv_key, *src_p, *src_q, *src_g;
+		const BIGNUM *src_pub_key, *src_priv_key, *src_p, *src_q, *src_g;
 
 		DSA_get0_key(src, &src_pub_key, &src_priv_key);
 		DSA_get0_pqg(src, &src_p, &src_q, &src_g);

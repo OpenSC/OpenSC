@@ -178,7 +178,7 @@ static sc_ossl_inline int RSA_set0_crt_params(RSA *r, BIGNUM *dmp1, BIGNUM *dmq1
     return 1;
 }
 
-static sc_ossl_inline void RSA_get0_key(const RSA *r, BIGNUM **n, BIGNUM **e, BIGNUM **d)
+static sc_ossl_inline void RSA_get0_key(const RSA *r, const BIGNUM **n, const BIGNUM **e, const BIGNUM **d)
 {
     if (n != NULL)
         *n = r->n;
@@ -188,7 +188,7 @@ static sc_ossl_inline void RSA_get0_key(const RSA *r, BIGNUM **n, BIGNUM **e, BI
         *d = r->d;
 }
 
-static sc_ossl_inline void RSA_get0_factors(const RSA *r, BIGNUM **p, BIGNUM **q)
+static sc_ossl_inline void RSA_get0_factors(const RSA *r, const BIGNUM **p, const BIGNUM **q)
 {
     if (p != NULL)
         *p = r->p;
@@ -197,7 +197,7 @@ static sc_ossl_inline void RSA_get0_factors(const RSA *r, BIGNUM **p, BIGNUM **q
 }
 
 static sc_ossl_inline void RSA_get0_crt_params(const RSA *r,
-                         BIGNUM **dmp1, BIGNUM **dmq1, BIGNUM **iqmp)
+                         const BIGNUM **dmp1, const BIGNUM **dmq1, const BIGNUM **iqmp)
 {
     if (dmp1 != NULL)
         *dmp1 = r->dmp1;
@@ -210,7 +210,7 @@ static sc_ossl_inline void RSA_get0_crt_params(const RSA *r,
 #endif /* OPENSSL_NO_RSA */
 
 #ifndef OPENSSL_NO_DSA
-static sc_ossl_inline void DSA_get0_pqg(const DSA *d, BIGNUM **p, BIGNUM **q, BIGNUM **g)
+static sc_ossl_inline void DSA_get0_pqg(const DSA *d, const BIGNUM **p, const BIGNUM **q, const BIGNUM **g)
 {
     if (p != NULL)
         *p = d->p;
@@ -220,7 +220,7 @@ static sc_ossl_inline void DSA_get0_pqg(const DSA *d, BIGNUM **p, BIGNUM **q, BI
         *g = d->g;
 }
 
-static sc_ossl_inline void DSA_get0_key(const DSA *d, BIGNUM **pub_key, BIGNUM **priv_key)
+static sc_ossl_inline void DSA_get0_key(const DSA *d, const BIGNUM **pub_key, const BIGNUM **priv_key)
 {
     if (pub_key != NULL)
         *pub_key = d->pub_key;

@@ -226,8 +226,8 @@ static int gen_d(RSA *rsa)
 {
 	BN_CTX *bnctx;
 	BIGNUM *r0, *r1, *r2;
-	BIGNUM *rsa_p, *rsa_q, *rsa_n, *rsa_e, *rsa_d;
-	BIGNUM *rsa_n_new, *rsa_e_new;
+	const BIGNUM *rsa_p, *rsa_q, *rsa_n, *rsa_e, *rsa_d;
+	BIGNUM *rsa_n_new, *rsa_e_new, *rsa_d_new;
 
 	bnctx = BN_CTX_new();
 	if (bnctx == NULL)
@@ -242,7 +242,7 @@ static int gen_d(RSA *rsa)
 	BN_sub(r1, rsa_p, BN_value_one());
 	BN_sub(r2, rsa_q, BN_value_one());
 	BN_mul(r0, r1, r2, bnctx);
-	if ((rsa_d = BN_mod_inverse(NULL, rsa_e, r0, bnctx)) == NULL) {
+	if ((rsa_d_new = BN_mod_inverse(NULL, rsa_e, r0, bnctx)) == NULL) {
 		fprintf(stderr, "BN_mod_inverse() failed.\n");
 		return -1;
 	}
@@ -252,7 +252,7 @@ static int gen_d(RSA *rsa)
 	 */
 	rsa_n_new = BN_dup(rsa_n);
 	rsa_e_new = BN_dup(rsa_e);
-	if (RSA_set0_key(rsa, rsa_n_new, rsa_e_new, rsa_d) != 1)
+	if (RSA_set0_key(rsa, rsa_n_new, rsa_e_new, rsa_d_new) != 1)
 		return -1;
 
 	BN_CTX_end(bnctx);
@@ -662,7 +662,7 @@ static int encode_private_key(RSA *rsa, u8 *key, size_t *keysize)
 	u8 bnbuf[256];
 	int base = 0;
 	int r;
-	BIGNUM *rsa_p, *rsa_q, *rsa_dmp1, *rsa_dmq1, *rsa_iqmp;
+	const BIGNUM *rsa_p, *rsa_q, *rsa_dmp1, *rsa_dmq1, *rsa_iqmp;
 
 	switch (RSA_bits(rsa)) {
 	case 512:
@@ -742,7 +742,7 @@ static int encode_public_key(RSA *rsa, u8 *key, size_t *keysize)
 	u8 bnbuf[256];
 	int base = 0;
 	int r;
-	BIGNUM *rsa_n, *rsa_e;
+	const BIGNUM *rsa_n, *rsa_e;
 
 	switch (RSA_bits(rsa)) {
 	case 512:

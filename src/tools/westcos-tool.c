@@ -103,7 +103,7 @@ static int unlock = 0;
 static char *get_filename = NULL;
 static char *put_filename = NULL;
 
-static int do_convert_bignum(sc_pkcs15_bignum_t *dst, BIGNUM *src)
+static int do_convert_bignum(sc_pkcs15_bignum_t *dst, const BIGNUM *src)
 {
 	if (src == 0) return 0;
 	dst->len = BN_num_bytes(src);
@@ -683,7 +683,7 @@ int main(int argc, char *argv[])
 		if(r) goto out;
 
 		{
-			BIGNUM *rsa_n, *rsa_e;
+			const BIGNUM *rsa_n, *rsa_e;
 
 			RSA_get0_key(rsa, &rsa_n, &rsa_e, NULL);
 

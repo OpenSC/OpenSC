@@ -590,7 +590,7 @@ static int cwa_prepare_external_auth(sc_card_t * card,
 	BIGNUM *bnsub = NULL;
 	BIGNUM *bnres = NULL;
 	sc_context_t *ctx = NULL;
-	BIGNUM *ifd_privkey_n, *ifd_privkey_e, *ifd_privkey_d;
+	const BIGNUM *ifd_privkey_n, *ifd_privkey_e, *ifd_privkey_d;
 
 	/* safety check */
 	if (!card || !card->ctx)
@@ -893,7 +893,7 @@ static int cwa_verify_internal_auth(sc_card_t * card,
 	BIGNUM *bn = NULL;
 	BIGNUM *sigbn = NULL;
 	sc_context_t *ctx = NULL;
-	BIGNUM *icc_pubkey_n, *icc_pubkey_e, *icc_pubkey_d;
+	const BIGNUM *icc_pubkey_n, *icc_pubkey_e, *icc_pubkey_d;
 
 	if (!card || !card->ctx)
 		return SC_ERROR_INVALID_ARGUMENTS;
