@@ -236,7 +236,7 @@ static const char *option_help[] = {
 	"Specify 'derive' key usage flag (EC only)",
 	"Write an object (key, cert, data) to the card",
 	"Get object's CKA_VALUE attribute (use with --type)",
-	"Delete an object",
+	"Delete an object (use with --type cert/data/privkey/pubkey/secrkey)",
 	"Specify the application label of the data object (use with --type data)",
 	"Specify the application ID of the data object (use with --type data)",
 	"Specify the issuer in hexadecimal format (use with --type cert)",
@@ -541,6 +541,8 @@ int main(int argc, char * argv[])
 				opt_object_class = CKO_CERTIFICATE;
 			else if (strcmp(optarg, "privkey") == 0)
 				opt_object_class = CKO_PRIVATE_KEY;
+			else if (strcmp(optarg, "secrkey") == 0)
+				opt_object_class = CKO_SECRET_KEY;
 			else if (strcmp(optarg, "pubkey") == 0)
 				opt_object_class = CKO_PUBLIC_KEY;
 			else if (strcmp(optarg, "data") == 0)
@@ -1782,7 +1784,7 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 			util_fatal("Unknown key type %s", type);
 		}
 
-                mechanism.mechanism = opt_mechanism;
+        mechanism.mechanism = opt_mechanism;
 	}
 
 	if (opt_object_label != NULL) {
@@ -1842,7 +1844,6 @@ gen_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE *hSecretKey
 			size_t mtypes_num = sizeof(mtypes)/sizeof(mtypes[0]);
 			const char *size = type + strlen("AES:");
 
-			mechanism.mechanism = CKM_AES_KEY_GEN;
 			key_type = CKK_AES;
 
 			if (!opt_mechanism_used)
@@ -1857,21 +1858,61 @@ gen_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE *hSecretKey
 
 			FILL_ATTR(keyTemplate[n_attr], CKA_KEY_TYPE, &key_type, sizeof(key_type));
 			n_attr++;
-			FILL_ATTR(keyTemplate[n_attr], CKA_ENCRYPT, &_true, sizeof(_true));
-			n_attr++;
-			FILL_ATTR(keyTemplate[n_attr], CKA_DECRYPT, &_true, sizeof(_true));
-			n_attr++;
-			FILL_ATTR(keyTemplate[n_attr], CKA_WRAP, &_true, sizeof(_true));
-			n_attr++;
-			FILL_ATTR(keyTemplate[n_attr], CKA_UNWRAP, &_true, sizeof(_true));
-			n_attr++;
-			FILL_ATTR(keyTemplate[n_attr], CKA_VALUE_LEN, &key_length, sizeof(key_length));
-			n_attr++;
+		}
+		else if (strncmp(type, "DES:", strlen("DES:")) == 0 || strncmp(type, "des:", strlen("des:")) == 0) {
+			CK_MECHANISM_TYPE mtypes[] = {CKM_DES_KEY_GEN};
+			size_t mtypes_num = sizeof(mtypes)/sizeof(mtypes[0]);
+			const char *size = type + strlen("DES:");
 
+			key_type = CKK_DES;
+
+			if (!opt_mechanism_used)
+				if (!find_mechanism(slot, CKF_GENERATE, mtypes, mtypes_num, &opt_mechanism))
+					util_fatal("Generate Key mechanism not supported\n");
+
+			if (size == NULL)
+				util_fatal("Unknown key type %s", type);
+			key_length = (unsigned long)atol(size);
+			if (key_length == 0)
+				key_length = 8;
+
+			FILL_ATTR(keyTemplate[n_attr], CKA_KEY_TYPE, &key_type, sizeof(key_type));
+			n_attr++;
+		}
+		else if (strncmp(type, "DES3:", strlen("DES3:")) == 0 || strncmp(type, "des3:", strlen("des3:")) == 0) {
+			CK_MECHANISM_TYPE mtypes[] = {CKM_DES3_KEY_GEN};
+			size_t mtypes_num = sizeof(mtypes)/sizeof(mtypes[0]);
+			const char *size = type + strlen("DES3:");
+
+			key_type = CKK_DES3;
+
+			if (!opt_mechanism_used)
+				if (!find_mechanism(slot, CKF_GENERATE, mtypes, mtypes_num, &opt_mechanism))
+					util_fatal("Generate Key mechanism not supported\n");
+
+			if (size == NULL)
+				util_fatal("Unknown key type %s", type);
+			key_length = (unsigned long)atol(size);
+			if (key_length == 0)
+				key_length = 16;
+
+			FILL_ATTR(keyTemplate[n_attr], CKA_KEY_TYPE, &key_type, sizeof(key_type));
+			n_attr++;
 		}
 		else {
 			util_fatal("Unknown key type %s", type);
 		}
+
+		FILL_ATTR(keyTemplate[n_attr], CKA_ENCRYPT, &_true, sizeof(_true));
+		n_attr++;
+		FILL_ATTR(keyTemplate[n_attr], CKA_DECRYPT, &_true, sizeof(_true));
+		n_attr++;
+		FILL_ATTR(keyTemplate[n_attr], CKA_WRAP, &_true, sizeof(_true));
+		n_attr++;
+		FILL_ATTR(keyTemplate[n_attr], CKA_UNWRAP, &_true, sizeof(_true));
+		n_attr++;
+		FILL_ATTR(keyTemplate[n_attr], CKA_VALUE_LEN, &key_length, sizeof(key_length));
+		n_attr++;
 
 		mechanism.mechanism = opt_mechanism;
 	}
@@ -1885,8 +1926,8 @@ gen_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE *hSecretKey
 		n_attr++;
 	}
 
-	if (new_object_id_len)   {
-		FILL_ATTR(keyTemplate[n_attr], CKA_ID, new_object_id, new_object_id_len);
+	if (opt_object_id_len != 0) {
+		FILL_ATTR(keyTemplate[n_attr], CKA_ID, opt_object_id, opt_object_id_len);
 		n_attr++;
 	}
 
@@ -3049,8 +3090,14 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 		break;
 	case CKK_GENERIC_SECRET:
 	case CKK_AES:
+	case CKK_DES:
+	case CKK_DES3:
 		if (key_type == CKK_AES)
 			printf("; AES");
+		else if (key_type == CKK_DES)
+			printf("; DES");
+		else if (key_type == CKK_DES3)
+			printf("; DES3");
 		else
 			printf("; Generic secret");
 		size = getVALUE_LEN(sess, obj);
