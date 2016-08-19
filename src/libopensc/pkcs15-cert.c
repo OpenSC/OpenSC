@@ -223,27 +223,32 @@ sc_pkcs15_get_name_from_dn(struct sc_context *ctx, const u8 *dn, size_t dn_len, 
  * if *name is NULL, sc_pkcs15_get_extension will allocate space for name.
  */
 int
-sc_pkcs15_get_extension(struct sc_context *ctx, struct sc_pkcs15_cert *cert, const u8 *type, size_t type_len, u8 **ext_val, size_t *ext_val_len, int *is_critical)
+sc_pkcs15_get_extension(struct sc_context *ctx, struct sc_pkcs15_cert *cert,
+	const struct sc_object_id *type, u8 **ext_val,
+	size_t *ext_val_len, int *is_critical)
 {
 	const u8 *ext = NULL;
 	const u8 *next_ext = NULL;
 	size_t ext_len = 0;
 	size_t next_ext_len = 0;
-	u8 *val, *oid;
-	size_t val_len, oid_len;
+	struct sc_object_id oid;
+	u8 *val;
+	size_t val_len;
 	int critical;
 	int r;
 	struct sc_asn1_entry asn1_cert_ext[] = {
-		{ "extensionType", SC_ASN1_OCTET_STRING, SC_ASN1_TAG_OBJECT, SC_ASN1_ALLOC, &oid, &oid_len },
-		{ "criticalFlag",  SC_ASN1_BOOLEAN, SC_ASN1_TAG_BOOLEAN, SC_ASN1_OPTIONAL,  &critical, NULL },
-		{ "extensionValue",SC_ASN1_OCTET_STRING, SC_ASN1_TAG_OCTET_STRING, SC_ASN1_ALLOC, &val, &val_len  },
+		{ "x509v3 entry OID", SC_ASN1_OBJECT, SC_ASN1_TAG_OBJECT, 0, &oid, 0 },
+		{ "criticalFlag",  SC_ASN1_BOOLEAN, SC_ASN1_TAG_BOOLEAN, SC_ASN1_OPTIONAL, &critical, NULL },
+		{ "extensionValue",SC_ASN1_OCTET_STRING, SC_ASN1_TAG_OCTET_STRING, SC_ASN1_ALLOC, &val, &val_len },
 		{ NULL, 0, 0, 0, NULL, NULL }
 	};
 
-	for (next_ext = cert->extensions, next_ext_len = cert->extensions_len; next_ext_len; ) {
+	for (next_ext = cert->extensions, next_ext_len = cert->extensions_len;
+		next_ext_len; ) {
 
 		/* unwrap the set and point to the next ava */
-		ext = sc_asn1_skip_tag(ctx, &next_ext, &next_ext_len, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, &ext_len);
+		ext = sc_asn1_skip_tag(ctx, &next_ext, &next_ext_len,
+			SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, &ext_len);
 		if (ext == NULL) {
 			LOG_TEST_RET(ctx, SC_ERROR_INVALID_ASN1_OBJECT, "ASN.1 decoding of AVA");
 		}
@@ -261,7 +266,7 @@ sc_pkcs15_get_extension(struct sc_context *ctx, struct sc_pkcs15_cert *cert, con
 
 
 		/* is it the RN we are looking for */
-		if ((oid_len == type_len)  && (memcmp(oid, type, type_len) == 0)) {
+		if(sc_compare_oid(&oid, type) == 0) {
 			if (*ext_val == NULL) {
 				*ext_val= val;
 				val = NULL;
@@ -276,11 +281,9 @@ sc_pkcs15_get_extension(struct sc_context *ctx, struct sc_pkcs15_cert *cert, con
 			}
 			r = val_len;
 			free(val);
-			free(oid);
 			LOG_FUNC_RETURN(ctx, r);
 		}
 		free(val);
-		free(oid);
 	}
 	LOG_FUNC_RETURN(ctx, SC_ERROR_ASN1_OBJECT_NOT_FOUND);
 }
@@ -290,7 +293,9 @@ sc_pkcs15_get_extension(struct sc_context *ctx, struct sc_pkcs15_cert *cert, con
  *  other parameters
  */
 int
-sc_pkcs15_get_bitstring_extension(struct sc_context *ctx, struct sc_pkcs15_cert *cert, const u8 *type, size_t type_len, unsigned long long *value, int *is_critical)
+sc_pkcs15_get_bitstring_extension(struct sc_context *ctx,
+	struct sc_pkcs15_cert *cert, const struct sc_object_id *type,
+	unsigned long long *value, int *is_critical)
 {
 	int r;
 	u8 *bit_string = NULL;
@@ -300,7 +305,7 @@ sc_pkcs15_get_bitstring_extension(struct sc_context *ctx, struct sc_pkcs15_cert 
 		{ NULL, 0, 0, 0, NULL, NULL }
 	};
 
-	r = sc_pkcs15_get_extension(ctx, cert, type, type_len, &bit_string, &bit_string_len, is_critical);
+	r = sc_pkcs15_get_extension(ctx, cert, type, &bit_string, &bit_string_len, is_critical);
 	if (r < 0) {
 		LOG_FUNC_RETURN(ctx, r);
 	}

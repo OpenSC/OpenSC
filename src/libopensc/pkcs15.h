@@ -719,12 +719,12 @@ int sc_pkcs15_get_name_from_dn(struct sc_context *ctx,
                               u8 **name, size_t *name_len);
 int sc_pkcs15_get_extension(struct sc_context *ctx,
                             struct sc_pkcs15_cert *cert,
-                            const u8 *type, size_t type_len,
+                            const struct sc_object_id *type,
                             u8 **ext_val, size_t *ext_val_len,
                             int *is_critical);
 int sc_pkcs15_get_bitstring_extension(struct sc_context *ctx,
                                       struct sc_pkcs15_cert *cert,
-                                      const u8 *type, size_t type_len,
+                                      const struct sc_object_id *type,
                                       unsigned long long *value,
                                       int *is_critical);
 /* sc_pkcs15_create_cdf:  Creates a new certificate DF on a card pointed
