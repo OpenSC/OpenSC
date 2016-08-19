@@ -715,7 +715,7 @@ int sc_pkcs15_find_cert_by_id(struct sc_pkcs15_card *card,
 			      struct sc_pkcs15_object **out);
 int sc_pkcs15_get_name_from_dn(struct sc_context *ctx,
                               const u8 *dn, size_t dn_len,
-                              const u8 *type, size_t type_len,
+                              const struct sc_object_id *type,
                               u8 **name, size_t *name_len);
 int sc_pkcs15_get_extension(struct sc_context *ctx,
                             struct sc_pkcs15_cert *cert,

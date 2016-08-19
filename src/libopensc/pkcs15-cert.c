@@ -145,12 +145,14 @@ parse_x509_cert(sc_context_t *ctx, struct sc_pkcs15_der *der, struct sc_pkcs15_c
  * if *name is NULL, sc_pkcs15_get_name_from_dn will allocate space for name.
  */
 int
-sc_pkcs15_get_name_from_dn(struct sc_context *ctx, const u8 *dn, size_t dn_len, const u8 *type, size_t type_len, u8 **name, size_t *name_len)
+sc_pkcs15_get_name_from_dn(struct sc_context *ctx, const u8 *dn, size_t dn_len,
+	const struct sc_object_id *type, u8 **name, size_t *name_len)
 {
 	const u8 *rdn = NULL;
 	const u8 *next_ava = NULL;
 	size_t rdn_len = 0;
 	size_t next_ava_len = 0;
+	int rv;
 
 	rdn = sc_asn1_skip_tag(ctx, &dn, &dn_len, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, &rdn_len);
 	if (rdn == NULL) {
@@ -158,7 +160,8 @@ sc_pkcs15_get_name_from_dn(struct sc_context *ctx, const u8 *dn, size_t dn_len, 
 	}
 
 	for (next_ava = rdn, next_ava_len = rdn_len; next_ava_len; ) {
-		const u8 *ava, *dummy, *oid;
+		const u8 *ava, *dummy, *oidp;
+		struct sc_object_id oid;
 		size_t ava_len, dummy_len, oid_len;
 
 		/* unwrap the set and point to the next ava */
@@ -180,16 +183,18 @@ sc_pkcs15_get_name_from_dn(struct sc_context *ctx, const u8 *dn, size_t dn_len, 
 			LOG_TEST_RET(ctx, SC_ERROR_INVALID_ASN1_OBJECT, "ASN.1 decoding of AVA");
 		}
 		/* unwrap the oid */
-		oid = sc_asn1_skip_tag(ctx, &ava, &ava_len, SC_ASN1_TAG_OBJECT, &oid_len);
+		oidp = sc_asn1_skip_tag(ctx, &ava, &ava_len, SC_ASN1_TAG_OBJECT, &oid_len);
 		if (ava == NULL) {
 			LOG_TEST_RET(ctx, SC_ERROR_INVALID_ASN1_OBJECT, "ASN.1 decoding of AVA OID");
 		}
 
-		/* is it the RN we are looking for */
-		if (oid_len != type_len) {
-			continue;
+		/* Convert to OID */
+		rv = sc_asn1_decode_object_id(oidp, oid_len, &oid);
+		if (rv != SC_SUCCESS) {
+			LOG_TEST_RET(ctx, SC_ERROR_INVALID_ASN1_OBJECT, "ASN.1 decoding of AVA OID");
 		}
-		if (memcmp(oid, type, type_len) != 0) {
+
+		if (sc_compare_oid(&oid, type) != 0) {
 			continue;
 		}
 		/* Yes, then return the name */
