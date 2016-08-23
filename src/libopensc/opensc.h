@@ -46,9 +46,11 @@ extern "C" {
 
 #if defined(_WIN32)
 #define SC_FORMAT_LEN_SIZE_T "I"
+#define SC_FORMAT_LEN_PTRDIFF_T "I"
 #else
-/* hope SUSv3 one works */
+/* hope SUSv3 ones work */
 #define SC_FORMAT_LEN_SIZE_T "z"
+#define SC_FORMAT_LEN_PTRDIFF_T "t"
 #endif
 
 #define SC_SEC_OPERATION_DECIPHER	0x0001
