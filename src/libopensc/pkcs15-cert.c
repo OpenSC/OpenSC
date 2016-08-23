@@ -194,7 +194,7 @@ sc_pkcs15_get_name_from_dn(struct sc_context *ctx, const u8 *dn, size_t dn_len,
 			LOG_TEST_RET(ctx, SC_ERROR_INVALID_ASN1_OBJECT, "ASN.1 decoding of AVA OID");
 		}
 
-		if (sc_compare_oid(&oid, type) != 0) {
+		if (sc_compare_oid(&oid, type) == 0) {
 			continue;
 		}
 		/* Yes, then return the name */
@@ -269,9 +269,8 @@ sc_pkcs15_get_extension(struct sc_context *ctx, struct sc_pkcs15_cert *cert,
 			LOG_FUNC_RETURN(ctx, r);
 		}
 
-
 		/* is it the RN we are looking for */
-		if(sc_compare_oid(&oid, type) == 0) {
+		if(sc_compare_oid(&oid, type) != 0) {
 			if (*ext_val == NULL) {
 				*ext_val= val;
 				val = NULL;
