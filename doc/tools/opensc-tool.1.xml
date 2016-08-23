@@ -100,6 +100,13 @@
 				</varlistentry>
 				<varlistentry>
 					<term>
+						<option>--reset</option>[=<replaceable>type</replaceable>],
+					</term>
+					<listitem><para>Resets the card in reader.
+					The default reset type is <literal>cold</literal>, but warm reset is also possible.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
 						<option>--send-apdu</option> <replaceable>apdu</replaceable>,
 						<option>-s</option> <replaceable>apdu</replaceable>
 					</term>
