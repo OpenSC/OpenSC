@@ -136,12 +136,12 @@ parse_x509_cert(sc_context_t *ctx, struct sc_pkcs15_der *der, struct sc_pkcs15_c
 /* get a component of a Distinguished Name (e.i. subject or issuer) from an oid tag. dn can be either
  * cert->subject or cert->issuer. dn_len would be cert->subject_len or cert->issuer_len.
  * common types:
- *   CN: type[] = {0x55, 0x04, 0x03} type_len = 3;
- *   Country: type[] = {0x55, 0x04, 0x06} type_len = 3;
- *   L: type[] = {0x55, 0x04, 0x07} type_len = 3;
- *   S: type[] = {0x55, 0x04, 0x08} type_len = 3;
- *   O: type[] = {0x55, 0x04, 0x0a} type_len = 3;
- *   OU: type[] = {0x55, 0x04, 0x0b} type_len = 3;
+ *   CN:      struct sc_object_id type = {{85, 4, 3, -1}};
+ *   Country: struct sc_object_id type = {{85, 4, 6, -1}};
+ *   L:       struct sc_object_id type = {{85, 4, 7, -1}};
+ *   S:       struct sc_object_id type = {{85, 4, 8, -1}};
+ *   O:       struct sc_object_id type = {{85, 4, 10, -1}};
+ *   OU:      struct sc_object_id type = {{85, 4, 11, -1}};
  * if *name is NULL, sc_pkcs15_get_name_from_dn will allocate space for name.
  */
 int
@@ -218,14 +218,14 @@ sc_pkcs15_get_name_from_dn(struct sc_context *ctx, const u8 *dn, size_t dn_len,
  * pass of the asn1 decoder. If is_critical is supplied, then it is set to 1 if the extention is critical and 0
  * if it is not. The data in the extension is extension specific. The following are
  * common extension values:
- *   Subject Key ID: type[] = {0x55, 0x1d, 0x0e} type_len = 3;
- *   Key Usage: type[] = {0x55, 0x1d, 0x0f} type_len = 3;
- *   Subject Alt Name: type[] = {0x55, 0x1d, 0x11} type_len = 3;
- *   Basic Constraints: type[] = {0x55, 0x1d, 0x13} type_len = 3;
- *   CRL Distribution Points: type[] = {0x55, 0x1d, 0x1f} type_len = 3;
- *   Certificate Policies: type[] = {0x55, 0x1d, 0x20} type_len = 3;
- *   Extended Key Usage: type[] = {0x55, 0x1d, 0x25} type_len = 3;
- * if *name is NULL, sc_pkcs15_get_extension will allocate space for name.
+ *   Subject Key ID:          struct sc_object_id type = {{85, 29, 14, -1}};
+ *   Key Usage:               struct sc_object_id type = {{85, 29, 15, -1}};
+ *   Subject Alt Name:        struct sc_object_id type = {{85, 29, 17, -1}};
+ *   Basic Constraints:       struct sc_object_id type = {{85, 29, 19, -1}};
+ *   CRL Distribution Points: struct sc_object_id type = {{85, 29, 31, -1}};
+ *   Certificate Policies:    struct sc_object_id type = {{85, 29, 32, -1}};
+ *   Extended Key Usage:      struct sc_object_id type = {{85, 29, 37, -1}};
+ * if *ext_val is NULL, sc_pkcs15_get_extension will allocate space for ext_val.
  */
 int
 sc_pkcs15_get_extension(struct sc_context *ctx, struct sc_pkcs15_cert *cert,
