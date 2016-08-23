@@ -276,16 +276,8 @@ static void logprintf(PCARD_DATA pCardData, int level, _Printf_format_string_ co
 	va_start(arg, format);
 	if(pCardData != NULL)   {
 		vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
-		if(vs != NULL && vs->ctx != NULL)   {
-#ifdef _MSC_VER
+		if(vs != NULL && vs->ctx != NULL)
 			sc_do_log_noframe(vs->ctx, level, format, arg);
-#else
-			/* FIXME: trouble in vsprintf with %S arg under mingw32 */
-			if(vs->ctx->debug>=level) {
-				vfprintf(vs->ctx->debug_file, format, arg);
-			}
-#endif
-		}
 	}
 	va_end(arg);
 }
