@@ -72,6 +72,13 @@ HINSTANCE g_inst;
 #define MD_MAX_KEY_CONTAINERS 12
 #define MD_CARDID_SIZE 16
 
+#define MD_ROLE_USER_SIGN (ROLE_ADMIN + 1)
+/*
+ * must be higher than MD_ROLE_USER_SIGN and
+ * less than or equal MAX_PINS
+ */
+#define MD_MAX_PINS MAX_PINS
+
 #define MD_UTC_TIME_LENGTH_MAX	16
 #define MD_CARDCF_LENGTH	(sizeof(CARD_CACHE_FILE_FORMAT))
 
@@ -173,7 +180,7 @@ struct md_guid_conversion md_static_conversions[MD_MAX_CONVERSIONS] = {0};
 
 typedef struct _VENDOR_SPECIFIC
 {
-	struct sc_pkcs15_object *obj_user_pin, *obj_sopin;
+	struct sc_pkcs15_object *pin_objs[MD_MAX_PINS];
 
 	struct sc_context *ctx;
 	struct sc_reader *reader;
@@ -331,6 +338,9 @@ static void loghex(PCARD_DATA pCardData, int level, PBYTE data, size_t len)
  * caller has changed the handles.
  * if so, then free up all previous card info
  * and reestablish
+ *
+ * FIXME: if this fails the context can be left
+ * in inconsistent state.
  */
 static int
 check_reader_status(PCARD_DATA pCardData)
@@ -376,7 +386,7 @@ static DWORD
 md_get_pin_by_role(PCARD_DATA pCardData, PIN_ID role, struct sc_pkcs15_object **ret_obj)
 {
 	VENDOR_SPECIFIC *vs;
-	int rv = SC_SUCCESS;
+	int rv;
 
 	if (!pCardData)
 		return SCARD_E_INVALID_PARAMETER;
@@ -385,43 +395,63 @@ md_get_pin_by_role(PCARD_DATA pCardData, PIN_ID role, struct sc_pkcs15_object **
 	if (!ret_obj)
 		return SCARD_E_INVALID_PARAMETER;
 
-	*ret_obj = NULL;
-
-	if (role == ROLE_USER)   {
-		if (!vs->obj_user_pin)   {
-			/* Get 'global' User PIN; if no, get the 'local' one */
-			rv = sc_pkcs15_find_pin_by_flags(vs->p15card, SC_PKCS15_PIN_TYPE_FLAGS_PIN_GLOBAL,
-					SC_PKCS15_PIN_TYPE_FLAGS_MASK, NULL, &vs->obj_user_pin);
-			if (rv)
-				rv = sc_pkcs15_find_pin_by_flags(vs->p15card, SC_PKCS15_PIN_TYPE_FLAGS_PIN_LOCAL,
-						SC_PKCS15_PIN_TYPE_FLAGS_MASK, NULL, &vs->obj_user_pin);
-		}
-
-		*ret_obj = vs->obj_user_pin;
+	/* please keep me in sync with _get_auth_object_by_name() in pkcs11/framework-pkcs15.c */
+	if (role == ROLE_USER) {
+		/* Get 'global' User PIN; if no, get the 'local' one */
+		rv = sc_pkcs15_find_pin_by_flags(vs->p15card, SC_PKCS15_PIN_TYPE_FLAGS_PIN_GLOBAL,
+						 SC_PKCS15_PIN_TYPE_FLAGS_MASK, NULL, ret_obj);
+		if (rv)
+			rv = sc_pkcs15_find_pin_by_flags(vs->p15card, SC_PKCS15_PIN_TYPE_FLAGS_PIN_LOCAL,
+							 SC_PKCS15_PIN_TYPE_FLAGS_MASK, NULL, ret_obj);
 	}
-	else if (role == ROLE_ADMIN)  {
-		/* Get SO PIN; if no, get the 'global' PUK; if no get the 'local' one  */
-		if (!vs->obj_sopin)   {
-			rv = sc_pkcs15_find_pin_by_flags(vs->p15card, SC_PKCS15_PIN_TYPE_FLAGS_SOPIN,
-					SC_PKCS15_PIN_TYPE_FLAGS_SOPIN, NULL, &vs->obj_sopin);
-			if (rv)
-				rv = sc_pkcs15_find_pin_by_flags(vs->p15card, SC_PKCS15_PIN_TYPE_FLAGS_PUK_GLOBAL,
-						SC_PKCS15_PIN_TYPE_FLAGS_MASK, NULL, &vs->obj_sopin);
-			if (rv)
-				rv = sc_pkcs15_find_pin_by_flags(vs->p15card, SC_PKCS15_PIN_TYPE_FLAGS_PUK_LOCAL,
-						SC_PKCS15_PIN_TYPE_FLAGS_MASK, NULL, &vs->obj_sopin);
-		}
+	else if (role == MD_ROLE_USER_SIGN) {
+		int idx = 0;
 
-		*ret_obj = vs->obj_sopin;
+		/* Get the 'global' user PIN */
+		rv = sc_pkcs15_find_pin_by_flags(vs->p15card, SC_PKCS15_PIN_TYPE_FLAGS_PIN_GLOBAL,
+						 SC_PKCS15_PIN_TYPE_FLAGS_MASK, NULL, ret_obj);
+		if (!rv) {
+			/* Global (user) PIN exists, get the local one -- sign PIN */
+			rv = sc_pkcs15_find_pin_by_flags(vs->p15card, SC_PKCS15_PIN_TYPE_FLAGS_PIN_LOCAL,
+							 SC_PKCS15_PIN_TYPE_FLAGS_MASK, NULL, ret_obj);
+		}
+		else {
+			/* No global PIN, try to get first local one -- user PIN */
+			rv = sc_pkcs15_find_pin_by_flags(vs->p15card, SC_PKCS15_PIN_TYPE_FLAGS_PIN_LOCAL,
+							 SC_PKCS15_PIN_TYPE_FLAGS_MASK, &idx, ret_obj);
+			if (!rv) {
+				/* User PIN is local, try to get the second local -- sign PIN */
+				idx++;
+				rv = sc_pkcs15_find_pin_by_flags(vs->p15card, SC_PKCS15_PIN_TYPE_FLAGS_PIN_LOCAL,
+								 SC_PKCS15_PIN_TYPE_FLAGS_MASK, &idx, ret_obj);
+			}
+		}
+	}
+	else if (role == ROLE_ADMIN) {
+		/* Get SO PIN; if no, get the 'global' PUK; if no get the 'local' one  */
+		rv = sc_pkcs15_find_so_pin(vs->p15card, ret_obj);
+		if (rv)
+			rv = sc_pkcs15_find_pin_by_flags(vs->p15card, SC_PKCS15_PIN_TYPE_FLAGS_PUK_GLOBAL,
+							 SC_PKCS15_PIN_TYPE_FLAGS_MASK, NULL, ret_obj);
+		if (rv)
+			rv = sc_pkcs15_find_pin_by_flags(vs->p15card, SC_PKCS15_PIN_TYPE_FLAGS_PUK_LOCAL,
+							 SC_PKCS15_PIN_TYPE_FLAGS_MASK, NULL, ret_obj);
 	}
 	else   {
-		logprintf(pCardData, 2, "cannot get PIN object: unsupported role\n");
+		logprintf(pCardData, 2, "cannot get PIN object: unsupported role %d\n", (int)role);
 		return SCARD_E_UNSUPPORTED_FEATURE;
 	}
 
-	return (rv == SC_SUCCESS) ? SCARD_S_SUCCESS : SCARD_E_UNSUPPORTED_FEATURE;
-}
+	if (rv)
+		return SCARD_E_UNSUPPORTED_FEATURE;
 
+	if (*ret_obj)
+		logprintf(pCardData, 7, "Returning PIN '%.*s' for role %u\n",
+			  (int) sizeof (*ret_obj)->label, (*ret_obj)->label,
+			  (unsigned int)role);
+
+	return SCARD_S_SUCCESS;
+}
 
 static BOOL
 md_get_config_bool(PCARD_DATA pCardData, char *flag_name, unsigned flag, BOOL ret_default)
@@ -1339,6 +1369,14 @@ md_fs_add_msroot(PCARD_DATA pCardData, struct md_file **head)
 static DWORD
 md_set_cmapfile(PCARD_DATA pCardData, struct md_file *file)
 {
+	typedef enum { SCF_NONE,
+		       SCF_NONDEFAULT_SIGN_PIN,
+		       SCF_NONDEFAULT_OTHER_PIN,
+		       SCF_NONDEFAULT_USER_PIN,
+		       SCF_DEFAULT_SIGN_PIN,
+		       SCF_DEFAULT_OTHER_PIN,
+		       SCF_DEFAULT_USER_PIN
+	} pin_mode_t;
 	VENDOR_SPECIFIC *vs;
 	PCONTAINER_MAP_RECORD p;
 	unsigned char *cmap_buf = NULL;
@@ -1347,12 +1385,33 @@ md_set_cmapfile(PCARD_DATA pCardData, struct md_file *file)
 	int ii, rv, conts_num, found_default = 0;
 	/* struct sc_pkcs15_data *data_object; */
 	struct sc_pkcs15_object *prkey_objs[MD_MAX_KEY_CONTAINERS];
+	pin_mode_t pin_mode = SCF_NONE;
+	int pin_cont_idx = -1;
 
 	if (!pCardData || !file)
 		return SCARD_E_INVALID_PARAMETER;
 
 	logprintf(pCardData, 2, "set 'cmapfile'\n");
 	vs = pCardData->pvVendorSpecific;
+
+	dwret = md_get_pin_by_role(pCardData, ROLE_USER, &vs->pin_objs[ROLE_USER]);
+	if (dwret != SCARD_S_SUCCESS)   {
+		logprintf(pCardData, 2, "Cannot get User PIN object");
+		return dwret;
+	}
+
+	dwret = md_get_pin_by_role(pCardData, MD_ROLE_USER_SIGN, &vs->pin_objs[MD_ROLE_USER_SIGN]);
+	if (dwret != SCARD_S_SUCCESS) {
+		logprintf(pCardData, 2, "Cannot get Sign PIN object -- ignored");
+		vs->pin_objs[MD_ROLE_USER_SIGN] = NULL;
+	}
+
+	dwret = md_get_pin_by_role(pCardData, ROLE_ADMIN, &vs->pin_objs[ROLE_ADMIN]);
+	if (dwret != SCARD_S_SUCCESS) {
+		logprintf(pCardData, 2, "Cannot get Admin PIN object -- ignored");
+		vs->pin_objs[ROLE_ADMIN] = NULL;
+	}
+
 	cmap_len = MD_MAX_KEY_CONTAINERS*sizeof(CONTAINER_MAP_RECORD);
 	cmap_buf = pCardData->pfnCspAlloc(cmap_len);
 	if(!cmap_buf)
@@ -1394,7 +1453,116 @@ md_set_cmapfile(PCARD_DATA pCardData, struct md_file *file)
 		dwret = md_cont_flags_from_key(pCardData, key_obj, &cont->flags);
 		if (dwret != SCARD_S_SUCCESS)
 			return dwret;
-		if (cont->flags & CONTAINER_MAP_DEFAULT_CONTAINER)
+
+		logprintf(pCardData, 7, "Container[%i] is '%.*s' guid=%.*s\n", ii,
+			  (int) sizeof key_obj->label, key_obj->label,
+			  (int) sizeof cont->guid, cont->guid);
+
+		if (cont->flags & CONTAINER_MAP_VALID_CONTAINER &&
+		    key_obj->auth_id.len > 0) {
+			struct sc_pkcs15_object *keypin_obj;
+			struct sc_pkcs15_auth_info *userpin_info =
+				(struct sc_pkcs15_auth_info *)vs->pin_objs[ROLE_USER]->data;
+			struct sc_pkcs15_auth_info *signpin_info =
+				vs->pin_objs[MD_ROLE_USER_SIGN] ?
+				(struct sc_pkcs15_auth_info *)vs->pin_objs[MD_ROLE_USER_SIGN]->data :
+				NULL;
+			struct sc_pkcs15_auth_info *adminpin_info =
+				vs->pin_objs[ROLE_ADMIN] ?
+				(struct sc_pkcs15_auth_info *)vs->pin_objs[ROLE_ADMIN]->data :
+				NULL;
+
+			if (sc_pkcs15_find_pin_by_auth_id(vs->p15card, &key_obj->auth_id, &keypin_obj))
+				logprintf(pCardData, 2,
+					  "Container[%i] has an unknown auth id, might not work properly\n",
+					  ii);
+			else {
+				size_t pinidx;
+				size_t pinidxempty = MD_MAX_PINS;
+				for (pinidx = 0; pinidx < MD_MAX_PINS; pinidx++) {
+					struct sc_pkcs15_auth_info *pin_info;
+
+					if (!vs->pin_objs[pinidx]) {
+						if (pinidxempty >= MD_MAX_PINS)
+							pinidxempty = pinidx;
+
+						continue;
+					}
+
+					pin_info =
+						(struct sc_pkcs15_auth_info *)vs->pin_objs[pinidx]->data;
+
+					if (sc_pkcs15_compare_id(&key_obj->auth_id,
+								 &pin_info->auth_id))
+						break;
+				}
+
+				if (pinidx >= MD_MAX_PINS) {
+					if (pinidxempty >= MD_MAX_PINS)
+						logprintf(pCardData, 2,
+							  "no free slot for container[%i] auth id, might not work properly\n",
+							  ii);
+					else
+						vs->pin_objs[pinidxempty] = keypin_obj;
+				}
+
+				if (sc_pkcs15_compare_id(&key_obj->auth_id, &userpin_info->auth_id)) {
+					pin_mode_t pin_mode_n =
+						cont->flags & CONTAINER_MAP_DEFAULT_CONTAINER ?
+						SCF_DEFAULT_USER_PIN : SCF_NONDEFAULT_USER_PIN;
+
+					logprintf(pCardData, 7,
+						  "Container[%i]%s is secured by User PIN\n",
+						  ii,
+						  cont->flags & CONTAINER_MAP_DEFAULT_CONTAINER ?
+						  " (default)" : "");
+
+					if (pin_mode < pin_mode_n) {
+						pin_mode = pin_mode_n;
+						pin_cont_idx = ii;
+					}
+				} else if (signpin_info != NULL &&
+					   sc_pkcs15_compare_id(&key_obj->auth_id, &signpin_info->auth_id)) {
+					pin_mode_t pin_mode_n =
+						cont->flags & CONTAINER_MAP_DEFAULT_CONTAINER ?
+						SCF_DEFAULT_SIGN_PIN : SCF_NONDEFAULT_SIGN_PIN;
+
+					logprintf(pCardData, 7,
+						  "Container[%i]%s is secured by Sign PIN\n",
+						  ii,
+						  cont->flags & CONTAINER_MAP_DEFAULT_CONTAINER ?
+						  " (default)" : "");
+
+					if (pin_mode < pin_mode_n) {
+						pin_mode = pin_mode_n;
+						pin_cont_idx = ii;
+					}
+				} else if (adminpin_info != NULL &&
+					   sc_pkcs15_compare_id(&key_obj->auth_id, &adminpin_info->auth_id)) {
+					logprintf(pCardData, 2,
+						  "Container[%i] is secured by Admin PIN, might not work properly\n",
+						  ii);
+				} else {
+					pin_mode_t pin_mode_n =
+						cont->flags & CONTAINER_MAP_DEFAULT_CONTAINER ?
+						SCF_DEFAULT_OTHER_PIN : SCF_NONDEFAULT_OTHER_PIN;
+
+					logprintf(pCardData, 7,
+						  "Container[%i]%s is secured by other PIN\n",
+						  ii,
+						  cont->flags & CONTAINER_MAP_DEFAULT_CONTAINER ?
+						  " (default)" : "");
+
+					if (pin_mode < pin_mode_n) {
+						pin_mode = pin_mode_n;
+						pin_cont_idx = ii;
+					}
+				}
+			}
+		}
+
+		if (cont->flags & CONTAINER_MAP_VALID_CONTAINER &&
+		    cont->flags & CONTAINER_MAP_DEFAULT_CONTAINER)
 			found_default = 1;
 
 		/* AT_KEYEXCHANGE is more general key usage,
@@ -1418,7 +1586,6 @@ md_set_cmapfile(PCARD_DATA pCardData, struct md_file *file)
 				cont->size_key_exchange = prkey_info->field_length;
 		}
 
-		logprintf(pCardData, 7, "Container[%i]'s guid=%.*s\n", ii, (int) sizeof cont->guid, cont->guid);
 		logprintf(pCardData, 7, "Container[%i]'s key-exchange:%i, sign:%i\n", ii, cont->size_key_exchange, cont->size_sign);
 
 		cont->id = prkey_info->id;
@@ -1474,6 +1641,108 @@ md_set_cmapfile(PCARD_DATA pCardData, struct md_file *file)
 			}
 		}
 #endif
+
+		/* if no default container was found promote the best one (PIN-wise) to default */
+		if (!found_default && (pin_mode == SCF_NONDEFAULT_SIGN_PIN ||
+				       pin_mode == SCF_NONDEFAULT_OTHER_PIN ||
+				       pin_mode == SCF_NONDEFAULT_USER_PIN)) {
+			struct md_pkcs15_container *cont =
+				&vs->p15_containers[pin_cont_idx];
+			cont->flags |= CONTAINER_MAP_DEFAULT_CONTAINER;
+
+			found_default = 1;
+
+			logprintf(pCardData, 7,
+				  "Container[%i] promoted to default\n",
+				  pin_cont_idx);
+
+			if (pin_mode == SCF_NONDEFAULT_SIGN_PIN)
+				pin_mode = SCF_DEFAULT_SIGN_PIN;
+			else if (pin_mode == SCF_NONDEFAULT_OTHER_PIN)
+				pin_mode = SCF_DEFAULT_OTHER_PIN;
+			else
+				pin_mode = SCF_DEFAULT_USER_PIN;
+		}
+
+		/* if all containers use non-user PINs we need to make the best container PIN the user (primary) one */
+		if (pin_mode == SCF_NONDEFAULT_SIGN_PIN ||
+		    pin_mode == SCF_DEFAULT_SIGN_PIN ||
+		    pin_mode == SCF_NONDEFAULT_OTHER_PIN ||
+		    pin_mode == SCF_DEFAULT_OTHER_PIN) {
+			struct sc_pkcs15_object *user_pin_old =
+				vs->pin_objs[ROLE_USER];
+			struct sc_pkcs15_object *user_pin_new =
+				NULL;
+
+			if (pin_mode == SCF_NONDEFAULT_SIGN_PIN ||
+			    pin_mode == SCF_DEFAULT_SIGN_PIN) {
+				user_pin_new = vs->pin_objs[MD_ROLE_USER_SIGN];
+				vs->pin_objs[MD_ROLE_USER_SIGN] = NULL;
+
+				logprintf(pCardData, 7,
+					  "Sign PIN%s promoted to user one\n",
+					  pin_mode == SCF_DEFAULT_SIGN_PIN ?
+					  " (from default container)" : "");
+			} else {
+				struct sc_pkcs15_object *key_obj =
+					vs->p15_containers[pin_cont_idx].prkey_obj;
+				struct sc_pkcs15_object *keypin_obj;
+
+				if (sc_pkcs15_find_pin_by_auth_id(vs->p15card, &key_obj->auth_id, &keypin_obj))
+					logprintf(pCardData, 2,
+					  "Cannot find container[%i] auth id again, might not work properly\n",
+						  pin_cont_idx);
+				else {
+					size_t pinidx;
+
+					logprintf(pCardData, 7,
+						  "Container[%i]%s PIN will be made the user on\n",
+						  pin_cont_idx,
+						  pin_mode == SCF_DEFAULT_OTHER_PIN ?
+						  " (default)" : "");
+
+					for (pinidx = 0; pinidx < MD_MAX_PINS; pinidx++) {
+						struct sc_pkcs15_auth_info *pin_info;
+
+						if (!vs->pin_objs[pinidx])
+							continue;
+
+						pin_info =
+							(struct sc_pkcs15_auth_info *)vs->pin_objs[pinidx]->data;
+
+						if (sc_pkcs15_compare_id(&key_obj->auth_id,
+									 &pin_info->auth_id)) {
+							vs->pin_objs[pinidx] = NULL;
+							break;
+						}
+					}
+
+					user_pin_new = keypin_obj;
+				}
+			}
+
+			if (user_pin_new) {
+				size_t pinidx;
+
+				vs->pin_objs[ROLE_USER] = user_pin_new;
+
+				for (pinidx = 0; pinidx < MD_MAX_PINS; pinidx++) {
+					if (vs->pin_objs[pinidx])
+						continue;
+
+					vs->pin_objs[pinidx] = user_pin_old;
+					break;
+				}
+
+				if (pinidx >= MD_MAX_PINS) {
+					logprintf(pCardData, 2,
+						  "no free slot for previous User PIN, replacing last one\n");
+
+					vs->pin_objs[MD_MAX_PINS - 1] = user_pin_old;
+				}
+			}
+		}
+
 		/* Initialize 'CMAPFILE' content from the P15 containers */
 		p = (PCONTAINER_MAP_RECORD)cmap_buf;
 		for (ii=0; ii<MD_MAX_KEY_CONTAINERS; ii++)   {
@@ -1784,7 +2053,7 @@ md_check_key_compatibility(PCARD_DATA pCardData, DWORD flags, DWORD key_type,
 
 
 static DWORD
-md_pkcs15_generate_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, DWORD key_size)
+md_pkcs15_generate_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, DWORD key_size, PIN_ID PinId)
 {
 	VENDOR_SPECIFIC *vs;
 	struct sc_card *card = NULL;
@@ -1796,13 +2065,17 @@ md_pkcs15_generate_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, DWORD ke
 	struct sc_pkcs15init_pubkeyargs pub_args;
 	struct md_pkcs15_container *cont = NULL;
 	int rv;
-	DWORD dw, dwret = SCARD_F_INTERNAL_ERROR;
+	DWORD dwret = SCARD_F_INTERNAL_ERROR;
 	CHAR szGuid[MAX_CONTAINER_NAME_LEN +1] = "Default key label";
 
 	if (!pCardData)
 		return SCARD_E_INVALID_PARAMETER;
 
 	vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
+
+	if (PinId >= MD_MAX_PINS || !vs->pin_objs[PinId])
+		return SCARD_E_INVALID_PARAMETER;
+
 	card = vs->p15card->card;
 
 	memset(&pub_args, 0, sizeof(pub_args));
@@ -1853,12 +2126,7 @@ md_pkcs15_generate_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, DWORD ke
 
 	keygen_args.prkey_args.access_flags = MD_KEY_ACCESS;
 
-	dw = md_get_pin_by_role(pCardData, ROLE_USER, &pin_obj);
-	if (dw != SCARD_S_SUCCESS)   {
-		logprintf(pCardData, 2, "MdGenerateKey(): cannot get User PIN object");
-		return dw;
-	}
-
+	pin_obj = vs->pin_objs[PinId];
 	auth_info = (struct sc_pkcs15_auth_info *) pin_obj->data;
 	keygen_args.prkey_args.auth_id = pub_args.auth_id = auth_info->auth_id;
 
@@ -1917,9 +2185,8 @@ done:
 	return dwret;
 }
 
-
 static DWORD
-md_pkcs15_store_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, BYTE *blob, DWORD blob_size)
+md_pkcs15_store_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, BYTE *blob, DWORD blob_size, PIN_ID PinId)
 {
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L
 	VENDOR_SPECIFIC *vs;
@@ -1933,13 +2200,17 @@ md_pkcs15_store_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, BYTE *blob,
 	BYTE *ptr = blob;
 	EVP_PKEY *pkey=NULL;
 	int rv;
-	DWORD dw, dwret = SCARD_F_INTERNAL_ERROR;
+	DWORD dwret = SCARD_F_INTERNAL_ERROR;
 	CHAR szGuid[MAX_CONTAINER_NAME_LEN +1] = "Default key label";
 
 	if (!pCardData)
 		return SCARD_E_INVALID_PARAMETER;
 
 	vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
+
+	if (PinId >= MD_MAX_PINS || !vs->pin_objs[PinId])
+		return SCARD_E_INVALID_PARAMETER;
+
 	card = vs->p15card->card;
 
 	pkey = b2i_PrivateKey((const unsigned char **)&ptr, blob_size);
@@ -1977,12 +2248,7 @@ md_pkcs15_store_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, BYTE *blob,
 
 	prkey_args.access_flags = MD_KEY_ACCESS;
 
-	dw = md_get_pin_by_role(pCardData, ROLE_USER, &pin_obj);
-	if (dw != SCARD_S_SUCCESS)   {
-		logprintf(pCardData, 2, "MdStoreKey(): cannot get User PIN object");
-		return dw;
-	}
-
+	pin_obj = vs->pin_objs[PinId];
 	prkey_args.auth_id = ((struct sc_pkcs15_auth_info *) pin_obj->data)->auth_id;
 
 	rv = sc_lock(card);
@@ -2551,22 +2817,35 @@ DWORD WINAPI CardDeleteContainer(__in PCARD_DATA pCardData,
 	return SCARD_S_SUCCESS;
 }
 
-
-DWORD WINAPI CardCreateContainer(__in PCARD_DATA pCardData,
-	__in BYTE bContainerIndex,
-	__in DWORD dwFlags,
-	__in DWORD dwKeySpec,
-	__in DWORD dwKeySize,
-	__in PBYTE pbKeyData)
+/** The CardCreateContainerEx function creates a new key container that the
+container index identifies and the bContainerIndex parameter specifies. The function
+associates the key container with the PIN that the PinId parameter specified.
+This function is useful if the card-edge does not allow for changing the key attributes
+after the key container is created. This function replaces the need to call
+CardSetContainerProperty to set the CCP_PIN_IDENTIFIER property CardCreateContainer
+is called.
+The caller of this function can provide the key material that the card imports.
+This is useful in those situations in which the card either does not support internal
+key generation or the caller requests that the key be archived in the card.*/
+DWORD WINAPI CardCreateContainerEx(__in PCARD_DATA  pCardData,
+				   __in BYTE  bContainerIndex,
+				   __in DWORD  dwFlags,
+				   __in DWORD  dwKeySpec,
+				   __in DWORD  dwKeySize,
+				   __in PBYTE  pbKeyData,
+				   __in PIN_ID  PinId)
 {
 	DWORD dwret;
 
 	if (!pCardData)
 		return SCARD_E_INVALID_PARAMETER;
 
+	if (PinId == ROLE_ADMIN)
+		return SCARD_W_SECURITY_VIOLATION;
+
 	logprintf(pCardData, 1, "\nP:%d T:%d pCardData:%p ",GetCurrentProcessId(), GetCurrentThreadId(), pCardData);
-	logprintf(pCardData, 1, "CardCreateContainer(idx:%i,flags:%X,type:%X,size:%i,data:%p)\n",
-			bContainerIndex, dwFlags, dwKeySpec, dwKeySize, pbKeyData);
+	logprintf(pCardData, 1, "CardCreateContainerEx(idx:%i,flags:%X,type:%X,size:%i,data:%p,pin:%u)\n",
+		  bContainerIndex, dwFlags, dwKeySpec, dwKeySize, pbKeyData, (unsigned int)(PinId));
 
 	if (pbKeyData)   {
 		logprintf(pCardData, 7, "Key data\n");
@@ -2595,7 +2874,7 @@ DWORD WINAPI CardCreateContainer(__in PCARD_DATA pCardData,
 	}
 
 	if (dwFlags & CARD_CREATE_CONTAINER_KEY_GEN)   {
-		dwret = md_pkcs15_generate_key(pCardData, bContainerIndex, dwKeySpec, dwKeySize);
+		dwret = md_pkcs15_generate_key(pCardData, bContainerIndex, dwKeySpec, dwKeySize, PinId);
 		if (dwret != SCARD_S_SUCCESS)   {
 			logprintf(pCardData, 1, "key generation failed\n");
 			return dwret;
@@ -2603,7 +2882,7 @@ DWORD WINAPI CardCreateContainer(__in PCARD_DATA pCardData,
 		logprintf(pCardData, 1, "key generated\n");
 	}
 	else if ((dwFlags & CARD_CREATE_CONTAINER_KEY_IMPORT) && (pbKeyData != NULL)) {
-		dwret = md_pkcs15_store_key(pCardData, bContainerIndex, dwKeySpec, pbKeyData, dwKeySize);
+		dwret = md_pkcs15_store_key(pCardData, bContainerIndex, dwKeySpec, pbKeyData, dwKeySize, PinId);
 		if (dwret != SCARD_S_SUCCESS)   {
 			logprintf(pCardData, 1, "key store failed\n");
 			return dwret;
@@ -2618,6 +2897,17 @@ DWORD WINAPI CardCreateContainer(__in PCARD_DATA pCardData,
 	return SCARD_S_SUCCESS;
 }
 
+DWORD WINAPI CardCreateContainer(__in PCARD_DATA pCardData,
+				 __in BYTE bContainerIndex,
+				 __in DWORD dwFlags,
+				 __in DWORD dwKeySpec,
+				 __in DWORD dwKeySize,
+				 __in PBYTE pbKeyData)
+{
+	return CardCreateContainerEx(pCardData, bContainerIndex, dwFlags,
+				     dwKeySpec, dwKeySize, pbKeyData,
+				     ROLE_USER);
+}
 
 typedef struct {
 	PUBLICKEYSTRUC  publickeystruc;
@@ -4517,21 +4807,17 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 		}
 	}
 
-	if (PinId != ROLE_USER)
+	if (PinId >= MD_MAX_PINS)
 		return SCARD_E_INVALID_PARAMETER;
+
+	pin_obj = vs->pin_objs[PinId];
+	if (!pin_obj)
+		return SCARD_E_INVALID_PARAMETER;
+
+	auth_info = (struct sc_pkcs15_auth_info *)pin_obj->data;
 
 	if(pcAttemptsRemaining)
 		(*pcAttemptsRemaining) = (DWORD) -1;
-
-	r = md_get_pin_by_role(pCardData, PinId, &pin_obj);
-	if (r != SCARD_S_SUCCESS)   {
-		logprintf(pCardData, 2, "Cannot get User PIN object");
-		return r;
-	}
-
-	if (!pin_obj)
-		return SCARD_F_INTERNAL_ERROR;
-	auth_info = (struct sc_pkcs15_auth_info *)pin_obj->data;
 
 	/* Do we need to display a prompt to enter PIN on pin pad? */
 	logprintf(pCardData, 7, "PIN pad=%s, pbPinData=%p, hwndParent=%p\n",
@@ -4590,7 +4876,6 @@ DWORD WINAPI CardChangeAuthenticatorEx(__in PCARD_DATA pCardData,
 	__out_opt PDWORD pcAttemptsRemaining)
 {
 	VENDOR_SPECIFIC *vs = NULL;
-	DWORD dw_rv;
 	struct sc_pkcs15_object *pin_obj = NULL;
 	int rv;
 	struct sc_pkcs15_auth_info *auth_info;
@@ -4601,6 +4886,9 @@ DWORD WINAPI CardChangeAuthenticatorEx(__in PCARD_DATA pCardData,
 
 	if (!pCardData)
 		return SCARD_E_INVALID_PARAMETER;
+
+	vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
+
 	if (!(dwFlags & PIN_CHANGE_FLAG_UNBLOCK) && !(dwFlags & PIN_CHANGE_FLAG_CHANGEPIN)){
 		logprintf(pCardData, 1, "Unknown flag\n");
 		return SCARD_E_INVALID_PARAMETER;
@@ -4609,12 +4897,11 @@ DWORD WINAPI CardChangeAuthenticatorEx(__in PCARD_DATA pCardData,
 		return SCARD_E_INVALID_PARAMETER;
 	if (dwFlags & PIN_CHANGE_FLAG_UNBLOCK && dwAuthenticatingPinId == dwTargetPinId)
 		return SCARD_E_INVALID_PARAMETER;
-	if (dwAuthenticatingPinId != ROLE_USER && dwAuthenticatingPinId != ROLE_ADMIN)
+	if (dwAuthenticatingPinId >= MD_MAX_PINS || dwTargetPinId >= MD_MAX_PINS)
 		return SCARD_E_INVALID_PARAMETER;
-	if (dwTargetPinId != ROLE_USER && dwTargetPinId != ROLE_ADMIN) {
-		logprintf(pCardData, 1, "Only ROLE_USER or ROLE_ADMIN is supported\n");
+	if (!vs->pin_objs[dwAuthenticatingPinId] || !vs->pin_objs[dwTargetPinId])
 		return SCARD_E_INVALID_PARAMETER;
-	}
+
 	/* according to the spec: cRetryCount MUST be zero */
 	if (cRetryCount)
 		return SCARD_E_INVALID_PARAMETER;
@@ -4624,8 +4911,6 @@ DWORD WINAPI CardChangeAuthenticatorEx(__in PCARD_DATA pCardData,
 
 
 	check_reader_status(pCardData);
-
-	vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
 
 	if (!(vs->reader->capabilities & SC_READER_CAP_PIN_PAD)) {
 		if (pbAuthenticatingPinData == NULL  || cbAuthenticatingPinData == 0)    {
@@ -4646,20 +4931,15 @@ DWORD WINAPI CardChangeAuthenticatorEx(__in PCARD_DATA pCardData,
 		}
 	}
 
-	dw_rv = md_get_pin_by_role(pCardData, dwTargetPinId, &pin_obj);
-	if (dw_rv != SCARD_S_SUCCESS)   {
-		logprintf(pCardData, 2, "Cannot get User PIN object %s", (dwTargetPinId==ROLE_ADMIN?"admin":"user"));
-		return dw_rv;
-	}
-	if (!pin_obj)
-		return SCARD_F_INTERNAL_ERROR;
+	pin_obj = vs->pin_objs[dwTargetPinId];
 
 	if(pcAttemptsRemaining)
 		(*pcAttemptsRemaining) = (DWORD) -1;
 
+	/* FIXME: this does not enforce dwAuthenticatingPinId */
 	rv = md_dialog_perform_pin_operation(pCardData, (dwFlags & PIN_CHANGE_FLAG_UNBLOCK ? SC_PIN_CMD_UNBLOCK:SC_PIN_CMD_CHANGE), 
 		vs->p15card, pin_obj, (const u8 *) pbAuthenticatingPinData, cbAuthenticatingPinData, pbTargetData, cbTargetData, DisplayPinpadUI);
-	
+
 	if (rv)   {
 		logprintf(pCardData, 2, "Failed to %s %s PIN: '%s' (%i)\n",
 																(dwFlags & PIN_CHANGE_FLAG_CHANGEPIN?"change":"unblock"),
@@ -4745,7 +5025,34 @@ DWORD WINAPI CardGetContainerProperty(__in PCARD_DATA pCardData,
 			*pdwDataLen = sizeof(*p);
 		if (cbData < sizeof(*p))
 			return ERROR_INSUFFICIENT_BUFFER;
-		*p = ROLE_USER;
+
+		if (cont->prkey_obj->auth_id.len == 0)
+			*p = ROLE_EVERYONE;
+		else {
+			size_t pinidx;
+			for (pinidx = 0; pinidx < MD_MAX_PINS; pinidx++) {
+				struct sc_pkcs15_auth_info *pin_info;
+
+				if (!vs->pin_objs[pinidx])
+					continue;
+
+				pin_info =
+					(struct sc_pkcs15_auth_info *)vs->pin_objs[pinidx]->data;
+
+				if (sc_pkcs15_compare_id(&cont->prkey_obj->auth_id,
+							 &pin_info->auth_id))
+					break;
+			}
+
+			if (pinidx >= MD_MAX_PINS) {
+				logprintf(pCardData, 2,
+					  "Could not find container %i PIN, returning no PIN needed, might not work properly\n",
+					  bContainerIndex);
+				*p = ROLE_EVERYONE;
+			} else
+				*p = (PIN_ID)pinidx;
+		}
+
 		logprintf(pCardData, 2,"Return Pin id %u\n",*p);
 		return SCARD_S_SUCCESS;
 	}
@@ -4895,18 +5202,15 @@ DWORD WINAPI CardGetProperty(__in PCARD_DATA pCardData,
 		if (p->dwVersion != PIN_INFO_CURRENT_VERSION)
 			return ERROR_REVISION_MISMATCH;
 
+		if (dwFlags >= MD_MAX_PINS)
+			return SCARD_E_INVALID_PARAMETER;
+
+		if (!vs->pin_objs[dwFlags])
+			return SCARD_E_INVALID_PARAMETER;
+
 		p->PinType = vs->reader->capabilities & SC_READER_CAP_PIN_PAD ? ExternalPinType : AlphaNumericPinType;
 		p->dwFlags = 0;
 		switch (dwFlags)   {
-			case ROLE_USER:
-				logprintf(pCardData, 2,"returning info on PIN ROLE_USER ( Auth ) [%u]\n",dwFlags);
-				p->PinPurpose = DigitalSignaturePin;
-				p->PinCachePolicy.dwVersion = PIN_CACHE_POLICY_CURRENT_VERSION;
-				p->PinCachePolicy.dwPinCachePolicyInfo = 0;
-				p->PinCachePolicy.PinCachePolicyType = PinCacheNormal;
-				p->dwChangePermission = CREATE_PIN_SET(ROLE_USER);
-				p->dwUnblockPermission = CREATE_PIN_SET(ROLE_ADMIN);
-				break;
 			case ROLE_ADMIN:
 				logprintf(pCardData, 2,"returning info on PIN ROLE_ADMIN ( Unblock ) [%u]\n",dwFlags);
 				p->PinPurpose = UnblockOnlyPin;
@@ -4917,17 +5221,38 @@ DWORD WINAPI CardGetProperty(__in PCARD_DATA pCardData,
 				p->dwUnblockPermission = 0;
 				break;
 			default:
-				logprintf(pCardData, 0,"Invalid Pin number %u requested\n",dwFlags);
-				return SCARD_E_INVALID_PARAMETER;
+				logprintf(pCardData, 2, "returning info on normal PIN [%u]\n", dwFlags);
+
+				if (dwFlags == ROLE_USER)
+					p->PinPurpose = PrimaryCardPin;
+				else if (dwFlags == MD_ROLE_USER_SIGN)
+					p->PinPurpose = DigitalSignaturePin;
+				else
+					p->PinPurpose = AuthenticationPin;
+
+				p->PinCachePolicy.dwVersion = PIN_CACHE_POLICY_CURRENT_VERSION;
+				p->PinCachePolicy.dwPinCachePolicyInfo = 0;
+				p->PinCachePolicy.PinCachePolicyType = PinCacheNormal;
+				p->dwChangePermission = CREATE_PIN_SET(dwFlags);
+				p->dwUnblockPermission = CREATE_PIN_SET(ROLE_ADMIN);
+				break;
 		}
 	}
 	else if (wcscmp(CP_CARD_LIST_PINS,wszProperty) == 0)   {
 		PPIN_SET p = (PPIN_SET) pbData;
+		size_t pinidx;
 		if (pdwDataLen)
 			*pdwDataLen = sizeof(*p);
 		if (cbData < sizeof(*p))
 			return ERROR_INSUFFICIENT_BUFFER;
-		SET_PIN(*p, ROLE_USER);
+
+		memset(p, 0, sizeof(*p));
+		for (pinidx = 0; pinidx < MD_MAX_PINS; pinidx++) {
+			if (!vs->pin_objs[pinidx])
+				continue;
+
+			SET_PIN(*p, (PIN_ID)pinidx);
+		}
 	}
 	else if (wcscmp(CP_CARD_AUTHENTICATED_STATE,wszProperty) == 0)   {
 		PPIN_SET p = (PPIN_SET) pbData;
@@ -4942,8 +5267,12 @@ DWORD WINAPI CardGetProperty(__in PCARD_DATA pCardData,
 	else if (wcscmp(CP_CARD_PIN_STRENGTH_VERIFY,wszProperty) == 0)   {
 		DWORD *p = (DWORD *)pbData;
 
-		if (dwFlags != ROLE_USER)
+		if (dwFlags >= MD_MAX_PINS)
 			return SCARD_E_INVALID_PARAMETER;
+
+		if (!vs->pin_objs[dwFlags])
+			return SCARD_E_INVALID_PARAMETER;
+
 		if (pdwDataLen)
 			*pdwDataLen = sizeof(*p);
 		if (cbData < sizeof(*p))
@@ -5291,35 +5620,6 @@ DWORD WINAPI CardProcessEncryptedData(
 	return SCARD_E_UNSUPPORTED_FEATURE;
 }
 
-/** The CardCreateContainerEx function creates a new key container that the
-container index identifies and the bContainerIndex parameter specifies. The function
-associates the key container with the PIN that the PinId parameter specified.
-This function is useful if the card-edge does not allow for changing the key attributes
-after the key container is created. This function replaces the need to call
-CardSetContainerProperty to set the CCP_PIN_IDENTIFIER property CardCreateContainer
-is called.
-The caller of this function can provide the key material that the card imports.
-This is useful in those situations in which the card either does not support internal
-key generation or the caller requests that the key be archived in the card.*/
-
-DWORD WINAPI CardCreateContainerEx(
-    __in PCARD_DATA  pCardData,
-    __in BYTE  bContainerIndex,
-    __in DWORD  dwFlags,
-    __in DWORD  dwKeySpec,
-    __in DWORD  dwKeySize,
-    __in PBYTE  pbKeyData,
-    __in PIN_ID  PinId
-)
-{
-	if (PinId == ROLE_ADMIN)
-		return SCARD_W_SECURITY_VIOLATION;
-	if (PinId != ROLE_USER)
-		return SCARD_E_INVALID_PARAMETER;
-	/* basically CardCreateContainerEx is CardCreateContainer + the PinId */
-	return CardCreateContainer(pCardData, bContainerIndex, dwFlags, dwKeySpec, dwKeySize, pbKeyData);
-}
-
 DWORD WINAPI CardAcquireContext(__inout PCARD_DATA pCardData, __in DWORD dwFlags)
 {
 	VENDOR_SPECIFIC *vs;
@@ -5471,7 +5771,6 @@ DWORD WINAPI CardAcquireContext(__inout PCARD_DATA pCardData, __in DWORD dwFlags
 static int associate_card(PCARD_DATA pCardData)
 {
 	VENDOR_SPECIFIC *vs;
-	DWORD dw;
 	int  r;
 
 	logprintf(pCardData, 1, "associate_card\n");
@@ -5530,18 +5829,7 @@ static int associate_card(PCARD_DATA pCardData)
 		return SCARD_E_UNKNOWN_CARD;
 	}
 
-	dw = md_get_pin_by_role(pCardData, ROLE_USER, &vs->obj_user_pin);
-	if (dw != SCARD_S_SUCCESS)   {
-		logprintf(pCardData, 2, "Cannot get User PIN object");
-		return dw;
-	}
-
-	dw = md_get_pin_by_role(pCardData, ROLE_USER, &vs->obj_sopin);
-	if (dw != SCARD_S_SUCCESS)
-		logprintf(pCardData, 2, "Cannot get ADMIN PIN object -- ignored");
-
 	return SCARD_S_SUCCESS;
-
 }
 
 static int disassociate_card(PCARD_DATA pCardData)
@@ -5554,8 +5842,8 @@ static int disassociate_card(PCARD_DATA pCardData)
 
 	vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
 
-	vs->obj_user_pin = NULL;
-	vs->obj_sopin = NULL;
+	memset(vs->pin_objs, 0, sizeof(vs->pin_objs));
+	memset(vs->p15_containers, 0, sizeof(vs->p15_containers));
 
 	if(vs->p15card)   {
 		logprintf(pCardData, 6, "sc_pkcs15_unbind\n");
@@ -5622,4 +5910,3 @@ BOOL APIENTRY DllMain( HINSTANCE hinstDLL,
 #pragma managed(pop)
 #endif
 #endif
-
