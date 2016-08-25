@@ -2945,16 +2945,30 @@ DWORD WINAPI CardUnblockPin(__in PCARD_DATA  pCardData,
 	logprintf(pCardData, 1, "\nP:%d T:%d pCardData:%p ",GetCurrentProcessId(), GetCurrentThreadId(), pCardData);
 	logprintf(pCardData, 1, "CardUnblockPin\n");
 
-	if (pwszUserId == NULL)
+	if (pwszUserId == NULL) {
+		logprintf(pCardData, 1, "no user ID\n");
 		return SCARD_E_INVALID_PARAMETER;
-	if (wcscmp(wszCARD_USER_USER, pwszUserId) != 0 && wcscmp(wszCARD_USER_ADMIN,pwszUserId) != 0)
+	}
+	if (wcscmp(wszCARD_USER_USER, pwszUserId) != 0 && wcscmp(wszCARD_USER_ADMIN,pwszUserId) != 0) {
+		logprintf(pCardData, 1, "unknown user ID %S\n", pwszUserId);
 		return SCARD_E_INVALID_PARAMETER;
-	if (wcscmp(wszCARD_USER_ADMIN, pwszUserId) == 0)
+	}
+	if (wcscmp(wszCARD_USER_ADMIN, pwszUserId) == 0) {
+		logprintf(pCardData, 1, "unlocking admin not supported\n");
 		return SCARD_E_UNSUPPORTED_FEATURE;
-	if (dwFlags & CARD_AUTHENTICATE_PIN_CHALLENGE_RESPONSE)
-		return SCARD_E_UNSUPPORTED_FEATURE;
-	if (dwFlags)
+	}
+	if (dwFlags & CARD_AUTHENTICATE_PIN_CHALLENGE_RESPONSE) {
+		logprintf(pCardData, 1,
+			  "challenge / response not supported, we'll treat response as a PUK\n");
+		logprintf(pCardData, 1,
+			  "note that you'll need to type PUK in hex (replace every PUK digit X with '3X') in Win CAD unblock dialog response field\n");
+		dwFlags &= ~CARD_AUTHENTICATE_PIN_CHALLENGE_RESPONSE;
+	}
+	if (dwFlags) {
+		logprintf(pCardData, 1, "flags of %x not supported\n",
+			  (unsigned int)dwFlags);
 		return SCARD_E_INVALID_PARAMETER;
+	}
 
 	logprintf(pCardData, 1, "UserID('%S'), AuthData(%p, %u), NewPIN(%p, %u), Retry(%u), dwFlags(0x%X)\n",
 			pwszUserId, pbAuthenticationData, cbAuthenticationData, pbNewPinData, cbNewPinData,
