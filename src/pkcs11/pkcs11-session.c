@@ -20,6 +20,7 @@
 
 #include "config.h"
 
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -72,12 +73,22 @@ CK_RV C_OpenSession(CK_SLOT_ID slotID,	/* the slot's ID */
 		goto out;
 	}
 
+	/* make session handle from pointer and check its uniqueness */
+	session->handle = (CK_SESSION_HANDLE)(uintptr_t)session;
+	if (list_seek(&sessions, &session->handle) != NULL) {
+		sc_log(context, "C_OpenSession handle 0x%lx already exists", session->handle);
+
+		free(session);
+
+		rv = CKR_HOST_MEMORY;
+		goto out;
+	}
+
 	session->slot = slot;
 	session->notify_callback = Notify;
 	session->notify_data = pApplication;
 	session->flags = flags;
 	slot->nsessions++;
-	session->handle = (CK_SESSION_HANDLE) session;	/* cast a pointer to long */
 	list_append(&sessions, session);
 	*phSession = session->handle;
 	sc_log(context, "C_OpenSession handle: 0x%lx", session->handle);
