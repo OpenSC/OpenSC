@@ -706,6 +706,18 @@ if test "${enable_ctapi}" = "yes"; then
 	OPENSC_FEATURES="${OPENSC_FEATURES} ctapi"
 fi
 
+if test "${enable_minidriver}" = "yes"; then
+	AC_MSG_CHECKING([WiX SDK])
+	AC_CHECK_HEADERS([wcautil.h],[enable_minidriver_ca="yes"],[enable_minidriver_ca="no"])
+	if test "${enable_minidriver_ca}" = "yes"; then
+		AC_MSG_RESULT([found, minidriver setup custom action will be built])
+	else
+		AC_MSG_RESULT([not found, minidriver setup custom action will be skipped])
+	fi
+else
+	enable_minidriver_ca="no"
+fi
+
 AC_DEFINE_UNQUOTED([OPENSC_VERSION_MAJOR], [${OPENSC_VERSION_MAJOR}], [OpenSC version major component])
 AC_DEFINE_UNQUOTED([OPENSC_VERSION_MINOR], [${OPENSC_VERSION_MINOR}], [OpenSC version minor component])
 AC_DEFINE_UNQUOTED([OPENSC_VERSION_FIX], [${OPENSC_VERSION_FIX}], [OpenSC version fix component])
@@ -770,6 +782,7 @@ AM_CONDITIONAL([ENABLE_DOC], [test "${enable_doc}" = "yes"])
 AM_CONDITIONAL([WIN32], [test "${WIN32}" = "yes"])
 AM_CONDITIONAL([CYGWIN], [test "${CYGWIN}" = "yes"])
 AM_CONDITIONAL([ENABLE_MINIDRIVER], [test "${enable_minidriver}" = "yes"])
+AM_CONDITIONAL([ENABLE_MINIDRIVER_SETUP_CUSTOMACTION], [test "${enable_minidriver_ca}" = "yes"])
 AM_CONDITIONAL([ENABLE_SM], [test "${enable_sm}" = "yes"])
 AM_CONDITIONAL([ENABLE_DNIE_UI], [test "${enable_dnie_ui}" = "yes"])
 AM_CONDITIONAL([GIT_CHECKOUT], [test "${GIT_CHECKOUT}" = "yes"])
