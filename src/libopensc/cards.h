@@ -10,12 +10,12 @@
  *
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307	 USA
  */
 
 #ifndef _OPENSC_CARDS_H
@@ -119,7 +119,7 @@ enum {
 	SC_CARD_TYPE_OBERTHUR_32K_BIO,
 	SC_CARD_TYPE_OBERTHUR_64K,
 	/* Oberthur 'COSMO v7' with applet 'AuthentIC v3.2' */
-        SC_CARD_TYPE_OBERTHUR_AUTHENTIC_3_2 = 11100,
+	SC_CARD_TYPE_OBERTHUR_AUTHENTIC_3_2 = 11100,
 
 	/* belpic driver */
 	SC_CARD_TYPE_BELPIC_BASE = 12000,
@@ -212,7 +212,7 @@ enum {
 	SC_CARD_TYPE_DNIE_BASE = 27000,
 	SC_CARD_TYPE_DNIE_BLANK, /* ATR LC byte: 00 */
 	SC_CARD_TYPE_DNIE_ADMIN, /* ATR LC byte: 01 */
-	SC_CARD_TYPE_DNIE_USER,  /* ATR LC byte: 03 */
+	SC_CARD_TYPE_DNIE_USER,	 /* ATR LC byte: 03 */
 	SC_CARD_TYPE_DNIE_TERMINATED, /* ATR LC byte: 0F */
 
 	/* JavaCards with isoApplet */
