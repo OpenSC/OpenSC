@@ -1,6 +1,7 @@
 /*
  * PKCS15 emulation layer for Portugal eID card.
  *
+ * Copyright (C) 2016, Nuno Goncalves <nunojpg@gmail.com>
  * Copyright (C) 2009, Joao Poupino <joao.poupino@ist.utl.pt>
  * Copyright (C) 2004, Martin Paljak <martin@martinpaljak.net>
  *
@@ -106,22 +107,24 @@ static int sc_pkcs15emu_pteid_init(sc_pkcs15_card_t * p15card)
 	/* TODO: Use Portuguese descriptions? */
 	
 	/* Add X.509 Certificates */
-	for (i = 0; i < 4; i++) {
-		static const char *pteid_cert_names[4] = {
+	for (i = 0; i < 5; i++) {
+		static const char *pteid_cert_names[5] = {
 				"AUTHENTICATION CERTIFICATE",
 				"SIGNATURE CERTIFICATE",
 				"SIGNATURE SUB CA",
-				"AUTHENTICATION SUB CA"
+				"AUTHENTICATION SUB CA",
+				"ROOT CA",
 		};
 		/* X.509 Certificate Paths */
-		static const char *pteid_cert_paths[4] = {
+		static const char *pteid_cert_paths[5] = {
 			"3f005f00ef09", /* Authentication Certificate path */
 			"3f005f00ef08", /* Digital Signature Certificate path */
 			"3f005f00ef0f", /* Signature sub CA path */
-			"3f005f00ef10"	/* Authentication sub CA path */
+			"3f005f00ef10",	/* Authentication sub CA path */
+			"3f005f00ef11", /* Root CA path */
 		};
 		/* X.509 Certificate IDs */
-		static const int pteid_cert_ids[4] = {0x45, 0x46, 0x51, 0x52};
+		static const int pteid_cert_ids[5] = {0x45, 0x46, 0x50, 0x51, 0x52};
 		struct sc_pkcs15_cert_info cert_info;
 		struct sc_pkcs15_object cert_obj;
 
@@ -147,17 +150,24 @@ static int sc_pkcs15emu_pteid_init(sc_pkcs15_card_t * p15card)
 			"Address PIN"
 		};
 		/* PIN References */
-		static const int pteid_pin_ref[2][3] = { {1, 130, 131}, {129, 130, 131} };
+		static const int pteid_pin_ref[2][3] = {
+			{1, 130, 131},			/* IAS_CARD */
+			{129, 130, 131},		/* GEMSAFE_CARD */
+		};
 		/* PIN Authentication IDs */
 		static const int pteid_pin_authid[3] = {1, 2, 3};
 		/* PIN Paths */
-		static const char *pteid_pin_paths[2][3] = { {NULL, "3f005f00", "3f005f00"},
-													 {NULL, NULL, NULL} };
+		static const char *pteid_pin_paths[2][3] = {
+			{NULL, "3f005f00", "3f005f00"},	/* IAS_CARD */
+			{NULL, NULL, NULL},		/* GEMSAFE_CARD */
+		};
 		struct sc_pkcs15_auth_info pin_info;
 		struct sc_pkcs15_object pin_obj;
+		struct sc_pin_cmd_data pin_cmd_data;
 
 		memset(&pin_info, 0, sizeof(pin_info));
 		memset(&pin_obj, 0, sizeof(pin_obj));
+		memset(&pin_cmd_data, 0, sizeof(pin_cmd_data));
 
 		pin_info.auth_type = SC_PKCS15_PIN_AUTH_TYPE_PIN;
 		pin_info.auth_id.len = 1;
@@ -172,10 +182,23 @@ static int sc_pkcs15emu_pteid_init(sc_pkcs15_card_t * p15card)
 		pin_info.attrs.pin.max_length = 8;
 		pin_info.attrs.pin.pad_char = type == IAS_CARD ? 0x2F : 0xFF;
 		pin_info.tries_left = -1;
+		pin_info.max_tries = 3;
 		if (pteid_pin_paths[type][i] != NULL)
 			sc_format_path(pteid_pin_paths[type][i], &pin_info.path);
 		strlcpy(pin_obj.label, pteid_pin_names[i], sizeof(pin_obj.label));
 		pin_obj.flags = 0;
+
+	
+		pin_cmd_data.cmd = SC_PIN_CMD_GET_INFO;
+		pin_cmd_data.pin_type = pin_info.attrs.pin.type;
+		pin_cmd_data.pin_reference = pin_info.attrs.pin.reference;
+
+		r = sc_pin_cmd(card, &pin_cmd_data, NULL);
+		if (r == SC_SUCCESS) {
+			pin_info.tries_left = pin_cmd_data.pin1.tries_left;
+		}
+
+
 		r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
 		if (r < 0) {
 			r = SC_ERROR_INTERNAL;
@@ -186,7 +209,10 @@ static int sc_pkcs15emu_pteid_init(sc_pkcs15_card_t * p15card)
 	/* Add Private Keys */
 	for (i = 0; i < 2; i++) {
 		/* Key reference */
-		static const int pteid_prkey_keyref[2][2] = { {1, 130}, {2, 1} };
+		static const int pteid_prkey_keyref[2][2] = {
+			{1, 130},		/* IAS_CARD */
+			{2, 1},			/* GEMSAFE_CARD */
+		};
 		/* RSA Private Key usage */
 		static int pteid_prkey_usage[2] = {
 			SC_PKCS15_PRKEY_USAGE_SIGN,
@@ -194,10 +220,14 @@ static int sc_pkcs15emu_pteid_init(sc_pkcs15_card_t * p15card)
 		/* RSA Private Key IDs */
 		static const int pteid_prkey_ids[2] = {0x45, 0x46};
 		static const char *pteid_prkey_names[2] = {
-				"CITIZEN AUTHENTICATION KEY",
-				"CITIZEN SIGNATURE KEY"};
+			"CITIZEN AUTHENTICATION KEY",
+			"CITIZEN SIGNATURE KEY",
+		};
 		/* RSA Private Key Paths */
-		static const char *pteid_prkey_paths[2][2] = { {NULL, "3f005f00"}, {NULL, NULL} };
+		static const char *pteid_prkey_paths[2][2] = {
+			{NULL, "3f005f00"},	/* IAS_CARD */
+			{NULL, NULL},		/* GEMSAFE_CARD */
+		};
 		struct sc_pkcs15_prkey_info prkey_info;
 		struct sc_pkcs15_object prkey_obj;
 
@@ -226,18 +256,30 @@ static int sc_pkcs15emu_pteid_init(sc_pkcs15_card_t * p15card)
 	}
 
 	/* Add objects */
-	for (i = 0; i < 3; i++) {
-		static const char *object_ids[3] = {"01", "02", "03"};
-		static const char *object_labels[3] = {"Citizen Data",
-											   "Citizen Address Data",
-											   "Citizen Notepad"};
-		static const char *object_authids[3] = {NULL, "03", "01"};
-		static const char *object_paths[3] = {"3f005f00ef02",
-											  "3f005f00ef05",
-											  "3f005f00ef07"};
-		static const int object_flags[3] = {0,
-											SC_PKCS15_CO_FLAG_PRIVATE,
-											SC_PKCS15_CO_FLAG_MODIFIABLE};
+	for (i = 0; i < 5; i++) {
+		static const char *object_ids[5] = {"1", "2", "3", "4", "5"};
+		static const char *object_labels[5] = {
+			"Citizen Data",
+			"Citizen Address Data",
+			"Citizen Notepad",
+			"SOD",
+			"TRACE",
+		};
+		static const char *object_authids[5] = {NULL, "3", NULL, NULL, NULL};
+		static const char *object_paths[5] = {
+			"3f005f00ef02",
+			"3f005f00ef05",
+			"3f005f00ef07",
+			"3f005f00ef06",
+			"3F000003",
+		};
+		static const int object_flags[5] = {
+			0,
+			SC_PKCS15_CO_FLAG_PRIVATE,
+			0,
+			0,
+			0,
+		};
 		struct sc_pkcs15_data_info obj_info;
 		struct sc_pkcs15_object obj_obj;
 
