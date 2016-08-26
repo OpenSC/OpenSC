@@ -1061,7 +1061,7 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 	if (priv->verify_ioctl || (priv->verify_ioctl_start && priv->verify_ioctl_finish)) {
 		const char *log_text = "Reader supports pinpad PIN verification";
 		if (priv->gpriv->enable_pinpad) {
-			sc_log(ctx, log_text);
+			sc_log(ctx, "%s", log_text);
 			reader->capabilities |= SC_READER_CAP_PIN_PAD;
 		} else {
 			sc_log(ctx, "%s %s", log_text, log_disabled);
@@ -1071,7 +1071,7 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 	if (priv->modify_ioctl || (priv->modify_ioctl_start && priv->modify_ioctl_finish)) {
 		const char *log_text = "Reader supports pinpad PIN modification";
 		if (priv->gpriv->enable_pinpad) {
-			sc_log(ctx, log_text);
+			sc_log(ctx, "%s", log_text);
 			reader->capabilities |= SC_READER_CAP_PIN_PAD;
 		} else {
 			sc_log(ctx, "%s %s", log_text, log_disabled);
@@ -1115,7 +1115,7 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 			reader->capabilities |= part10_detect_pace_capabilities(reader, card_handle);
 
 			if (reader->capabilities & SC_READER_CAP_PACE_GENERIC)
-				sc_log(ctx, log_text);
+				sc_log(ctx, "%s", log_text);
 		}
 		else {
 			sc_log(ctx, "%s %s", log_text, log_disabled);
@@ -2494,7 +2494,7 @@ int cardmod_use_reader(sc_context_t *ctx, void * pcsc_context_handle, void * pcs
 					if (priv->verify_ioctl || (priv->verify_ioctl_start && priv->verify_ioctl_finish)) {
 						char *log_text = "Reader supports pinpad PIN verification";
 						if (priv->gpriv->enable_pinpad) {
-							sc_log(ctx, log_text);
+							sc_log(ctx, "%s", log_text);
 							reader->capabilities |= SC_READER_CAP_PIN_PAD;
 						} else {
 							sc_log(ctx, "%s %s", log_text, log_disabled);
@@ -2504,7 +2504,7 @@ int cardmod_use_reader(sc_context_t *ctx, void * pcsc_context_handle, void * pcs
 					if (priv->modify_ioctl || (priv->modify_ioctl_start && priv->modify_ioctl_finish)) {
 						char *log_text = "Reader supports pinpad PIN modification";
 						if (priv->gpriv->enable_pinpad) {
-							sc_log(ctx, log_text);
+							sc_log(ctx, "%s", log_text);
 							reader->capabilities |= SC_READER_CAP_PIN_PAD;
 						} else {
 							sc_log(ctx, "%s %s", log_text, log_disabled);
@@ -2538,7 +2538,7 @@ int cardmod_use_reader(sc_context_t *ctx, void * pcsc_context_handle, void * pcs
 					if (priv->pace_ioctl) {
 						char *log_text = "Reader supports PACE";
 						if (priv->gpriv->enable_pace) {
-							sc_log(ctx, log_text);
+							sc_log(ctx, "%s", log_text);
 							reader->capabilities |= SC_READER_CAP_PACE_GENERIC;
 						} else {
 							sc_log(ctx, "%s %s", log_text, log_disabled);
