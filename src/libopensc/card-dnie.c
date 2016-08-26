@@ -618,7 +618,7 @@ get_info_end:
 		bufferlen=0;
 	}
 	if (msg)
-		sc_log(card->ctx,msg);
+		sc_log(card->ctx, "%s", msg);
         LOG_FUNC_RETURN(card->ctx, res);
 }
 
