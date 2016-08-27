@@ -558,7 +558,9 @@ int main(
 		exit(1);
 	}
 	printf("\nCard detected (driver: %s)\nATR:", card->driver->name);
-	for(i=0;i<card->atr.len;++i) printf("%c%02X", i?':':' ', card->atr.value[i]); printf("\n");
+	for (i = 0; i < card->atr.len; ++i)
+		printf("%c%02X", i?':':' ', card->atr.value[i]);
+	printf("\n");
 
 	if((r = sc_lock(card))<0){
 		fprintf(stderr,"Lock failed: %s\n", sc_strerror(r));

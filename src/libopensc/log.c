@@ -169,16 +169,16 @@ void _sc_debug_hex(sc_context_t *ctx, int type, const char *file, int line,
 	if (buf == NULL)
 		return;
 
-    sc_hex_dump(ctx, type, data, len, buf, blen);
+	sc_hex_dump(ctx, type, data, len, buf, blen);
 
-    if (label)
-        sc_do_log(ctx, type, file, line, func,
-                "\n%s (%u byte%s):\n%s",
-                label, (unsigned int) len, len==1?"":"s", buf);
-    else
-        sc_do_log(ctx, type, file, line, func,
-                "%u byte%s:\n%s",
-                (unsigned int) len, len==1?"":"s", buf);
+	if (label)
+		sc_do_log(ctx, type, file, line, func,
+			"\n%s (%u byte%s):\n%s",
+			label, (unsigned int) len, len==1?"":"s", buf);
+	else
+		sc_do_log(ctx, type, file, line, func,
+			"%u byte%s:\n%s",
+			(unsigned int) len, len==1?"":"s", buf);
 
 	free(buf);
 }
