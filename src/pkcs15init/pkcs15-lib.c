@@ -3334,7 +3334,7 @@ sc_pkcs15init_verify_secret(struct sc_profile *profile, struct sc_pkcs15_card *p
 	int		r, use_pinpad = 0, pin_id = -1;
 	const char	*ident, *label = NULL;
 	unsigned char	pinbuf[0x100];
-	size_t		pinsize = sizeof(pinbuf);
+	size_t		pinsize = 0;
 
 
 	LOG_FUNC_CALLED(ctx);
@@ -3392,7 +3392,7 @@ sc_pkcs15init_verify_secret(struct sc_profile *profile, struct sc_pkcs15_card *p
 	if (pin_obj)   {
 		sc_log(ctx, "PIN object '%.*s'; pin_obj->content.len:%i", (int) sizeof pin_obj->label, pin_obj->label, pin_obj->content.len);
 		if (pin_obj->content.value && pin_obj->content.len)   {
-			if (pin_obj->content.len > pinsize)
+			if (pin_obj->content.len > sizeof(pinbuf))
 				LOG_TEST_RET(ctx, SC_ERROR_BUFFER_TOO_SMALL, "PIN buffer is too small");
 			memcpy(pinbuf, pin_obj->content.value, pin_obj->content.len);
 			pinsize = pin_obj->content.len;
@@ -3407,6 +3407,7 @@ sc_pkcs15init_verify_secret(struct sc_profile *profile, struct sc_pkcs15_card *p
 	switch (type) {
 	case SC_AC_CHV:
 		if (callbacks.get_pin)   {
+			pinsize = sizeof(pinbuf);
 			r = callbacks.get_pin(profile, pin_id, &auth_info, label, pinbuf, &pinsize);
 			sc_log(ctx, "'get_pin' callback returned %i; pinsize:%i", r, pinsize);
 		}
@@ -3417,6 +3418,7 @@ sc_pkcs15init_verify_secret(struct sc_profile *profile, struct sc_pkcs15_card *p
 		r = 0;
 		break;
 	default:
+		pinsize = sizeof(pinbuf);
 		r = sc_pkcs15init_get_transport_key(profile, p15card, type, reference, pinbuf, &pinsize);
 		break;
 	}
