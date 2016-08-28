@@ -28,9 +28,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#ifdef ENABLE_OPENSSL
-#include <openssl/x509v3.h>
-#endif
 
 #include "common/compat_strlcpy.h"
 #include "common/compat_strlcat.h"
@@ -110,53 +107,22 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 		r = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
 		if (r < 0)
 			return SC_ERROR_INTERNAL;
-#ifdef ENABLE_OPENSSL
 		if (i == 0) {
-			BIO *mem = NULL;
-			X509 *x509 = NULL;
 			sc_pkcs15_cert_t *cert;
-			char cardholder_name[64];
-			unsigned char *tmp = NULL;
 			r = sc_pkcs15_read_certificate(p15card, &cert_info, &cert);
 			if (r == SC_SUCCESS) {
-				mem = BIO_new_mem_buf(cert->data.value, cert->data.len);
-				if (!mem) {
-					sc_pkcs15_free_certificate(cert);
-					return SC_ERROR_INTERNAL;
+				static const struct sc_object_id cn_oid = {{ 2, 5, 4, 3, -1 }};
+				u8 *cn_name = NULL;
+				size_t cn_len = 0;
+				sc_pkcs15_get_name_from_dn(card->ctx, cert->subject,
+					cert->subject_len, &cn_oid, &cn_name, &cn_len);
+				if (cn_len > 0) {
+					set_string(&p15card->tokeninfo->label, (const char*)cn_name);
 				}
-				x509 = d2i_X509_bio(mem, NULL);
-				BIO_free(mem);
+				free(cn_name);
 				sc_pkcs15_free_certificate(cert);
-				if (!x509)
-					return SC_ERROR_INTERNAL;
-				r = X509_NAME_get_index_by_NID(X509_get_subject_name(x509), NID_commonName, -1);
-				if (r >= 0) {
-					X509_NAME_ENTRY *ne;
-					ASN1_STRING *a_str;
-					ne = X509_NAME_get_entry(X509_get_subject_name(x509), r);
-					if (!ne) {
-						X509_free(x509);
-						return SC_ERROR_INTERNAL;
-					}
-					a_str = X509_NAME_ENTRY_get_data(ne);
-					if (!a_str) {
-						X509_free(x509);
-						return SC_ERROR_INTERNAL;
-					}
-					r = ASN1_STRING_to_UTF8(&tmp, a_str);
-					if (r > 0) {
-						if ((unsigned)r > sizeof(cardholder_name) - 1)
-							r = sizeof(cardholder_name) -1;
-						memcpy(cardholder_name, tmp, r);
-						cardholder_name[r] = '\0';
-						set_string(&p15card->tokeninfo->label, cardholder_name);
-						OPENSSL_free(tmp);
-					}
-				}
-				X509_free(x509);
 			}
 		}
-#endif
 	}
 
 	/* the file with key pin info (tries left) */
