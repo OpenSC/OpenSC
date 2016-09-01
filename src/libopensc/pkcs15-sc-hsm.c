@@ -758,7 +758,7 @@ static int sc_pkcs15emu_sc_hsm_read_tokeninfo (sc_pkcs15_card_t * p15card)
 	r = read_file(p15card, (u8 *) "\x2F\x03", efbin, &len);
 	LOG_TEST_RET(card->ctx, r, "Could not read EF.TokenInfo");
 
-	r = sc_pkcs15_parse_tokeninfo(card->ctx, p15card->tokeninfo, efbin, r);
+	r = sc_pkcs15_parse_tokeninfo(card->ctx, p15card->tokeninfo, efbin, len);
 	LOG_TEST_RET(card->ctx, r, "Could not decode EF.TokenInfo");
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
