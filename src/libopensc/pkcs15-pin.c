@@ -137,6 +137,7 @@ sc_pkcs15_decode_aodf_entry(struct sc_pkcs15_card *p15card, struct sc_pkcs15_obj
 	/* Fill in defaults */
 	memset(&info, 0, sizeof(info));
 	info.tries_left = -1;
+	info.logged_in = SC_PIN_STATE_UNKNOWN;
 
 	r = sc_asn1_decode(ctx, asn1_auth_type, *buf, *buflen, buf, buflen);
 	if (r == SC_ERROR_ASN1_END_OF_CONTENTS)
