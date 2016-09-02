@@ -405,16 +405,20 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 	prev_reader = NULL;
 	numMatches = 0;
 	for (i=0; i<list_size(&virtual_slots); i++) {
-	        slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, i);
+		slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, i);
 		/* the list of available slots contains:
 		 * - if present, virtual hotplug slot;
 		 * - any slot with token;
 		 * - without token(s), one empty slot per reader;
+		 * - any slot that has already been seen;
 		 */
-	        if ((!tokenPresent && !slot->reader)
+		if ((!tokenPresent && !slot->reader)
 				|| (!tokenPresent && slot->reader != prev_reader)
-				|| (slot->slot_info.flags & CKF_TOKEN_PRESENT))
+				|| (slot->slot_info.flags & CKF_TOKEN_PRESENT)
+				|| (slot->flags & SC_PKCS11_SLOT_FLAG_SEEN)) {
 			found[numMatches++] = slot->id;
+			slot->flags |= SC_PKCS11_SLOT_FLAG_SEEN;
+		}
 		prev_reader = slot->reader;
 	}
 
