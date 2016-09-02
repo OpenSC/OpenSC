@@ -75,26 +75,39 @@ static int object_list_seeker(const void *el, const void *key)
 
 CK_RV create_slot(sc_reader_t *reader)
 {
-	struct sc_pkcs11_slot *slot;
+	/* find unused virtual hotplug slots */
+	struct sc_pkcs11_slot *slot = reader_get_slot(NULL);
 
-	if (list_size(&virtual_slots) >= sc_pkcs11_conf.max_virtual_slots)
-		return CKR_FUNCTION_FAILED;
+	/* create a new slot if no empty slot is available */
+	if (!slot) {
+		if (list_size(&virtual_slots) >= sc_pkcs11_conf.max_virtual_slots)
+			return CKR_FUNCTION_FAILED;
 
-	slot = (struct sc_pkcs11_slot *)calloc(1, sizeof(struct sc_pkcs11_slot));
-	if (!slot)
-		return CKR_HOST_MEMORY;
+		slot = (struct sc_pkcs11_slot *)calloc(1, sizeof(struct sc_pkcs11_slot));
+		if (!slot)
+			return CKR_HOST_MEMORY;
 
-	list_append(&virtual_slots, slot);
+		list_append(&virtual_slots, slot);
+		list_init(&slot->objects);
+		list_attributes_seeker(&slot->objects, object_list_seeker);
+
+		list_init(&slot->logins);
+	} else {
+		/* reuse the old list of logins/objects since they should be empty */
+		list_t logins = slot->logins;
+		list_t objects = slot->objects;
+
+		memset(slot, 0, sizeof *slot);
+
+		slot->logins = logins;
+		slot->objects = objects;
+	}
+
 	slot->login_user = -1;
 	slot->id = (CK_SLOT_ID) list_locate(&virtual_slots, slot);
-	sc_log(context, "Creating slot with id 0x%lx", slot->id);
-
-	list_init(&slot->objects);
-	list_attributes_seeker(&slot->objects, object_list_seeker);
-
-	list_init(&slot->logins);
-
 	init_slot_info(&slot->slot_info);
+	sc_log(context, "Initializing slot with id 0x%lx", slot->id);
+
 	if (reader != NULL) {
 		slot->reader = reader;
 		strcpy_bp(slot->slot_info.manufacturerID, reader->vendor, 32);
@@ -106,13 +119,21 @@ CK_RV create_slot(sc_reader_t *reader)
 	return CKR_OK;
 }
 
-void delete_slot(struct sc_pkcs11_slot *slot)
+void empty_slot(struct sc_pkcs11_slot *slot)
 {
 	if (slot) {
-		list_destroy(&slot->objects);
-		list_destroy(&slot->logins);
-		list_delete(&virtual_slots, slot);
-		free(slot);
+		if (slot->flags & SC_PKCS11_SLOT_FLAG_SEEN) {
+			/* Keep the slot visible to the application. The slot's state has
+			 * already been reset by `slot_token_removed()`, lists have been
+			 * emptied. We replace the reader with a virtual hotplug slot. */
+			slot->reader = NULL;
+			init_slot_info(&slot->slot_info);
+		} else {
+			list_destroy(&slot->objects);
+			list_destroy(&slot->logins);
+			list_delete(&virtual_slots, slot);
+			free(slot);
+		}
 	}
 }
 
@@ -343,7 +364,7 @@ card_detect_all(void)
 			struct sc_pkcs11_slot *slot;
 			card_removed(reader);
 			while ((slot = reader_get_slot(reader))) {
-				delete_slot(slot);
+				empty_slot(slot);
 			}
 			_sc_delete_reader(context, reader);
 			i--;
@@ -444,16 +465,18 @@ CK_RV slot_token_removed(CK_SLOT_ID id)
 			slot->p11card->framework->release_token(slot->p11card, slot->fw_data);
 			slot->fw_data = NULL;
 		}
+		slot->p11card = NULL;
 	}
 
 	/* Reset relevant slot properties */
 	slot->slot_info.flags &= ~CKF_TOKEN_PRESENT;
 	slot->login_user = -1;
 	pop_all_login_states(slot);
-	slot->p11card = NULL;
 
 	if (token_was_present)
 		slot->events = SC_EVENT_CARD_REMOVED;
+
+	memset(&slot->token_info, 0, sizeof slot->token_info);
 
 	return CKR_OK;
 }
