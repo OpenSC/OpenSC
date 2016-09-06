@@ -463,6 +463,7 @@ int sc_unlock(sc_card_t *card)
 		sc_log(card->ctx, "cache invalidated");
 #endif
 		/* release reader lock */
+		sc_log(card->ctx, "sc_unlock: doing real unlock");
 		if (card->reader->ops->unlock != NULL)
 			r = card->reader->ops->unlock(card->reader);
 	}
@@ -474,6 +475,7 @@ int sc_unlock(sc_card_t *card)
 #ifdef _WIN32
     //make extra unlock calls transparent
     if(card->lock_count < 0){
+        sc_log(card->ctx, "redundant sc_unlock call, ignoring");
         card->lock_count = 0;
     }
 #endif
