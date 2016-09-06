@@ -452,7 +452,9 @@ int sc_unlock(sc_card_t *card)
 	if (r != SC_SUCCESS)
 		return r;
 
+#ifndef _WIN32
 	assert(card->lock_count >= 1);
+#endif
 	if (--card->lock_count == 0) {
 #ifdef INVALIDATE_CARD_CACHE_IN_UNLOCK
 		/* invalidate cache */
@@ -469,6 +471,12 @@ int sc_unlock(sc_card_t *card)
 		sc_log(card->ctx, "unable to release lock");
 		r = (r == SC_SUCCESS) ? r2 : r;
 	}
+#ifdef _WIN32
+    //make extra unlock calls transparent
+    if(card->lock_count < 0){
+        card->lock_count = 0;
+    }
+#endif
 
 	return r;
 }
