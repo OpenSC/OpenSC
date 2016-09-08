@@ -156,12 +156,17 @@ autofound:
 	if (verbose)
 		printf("Using card driver %s.\n", card->driver->name);
 
+#ifndef _WIN32 //issues 750, 703
 	r = sc_lock(card);
 	if (r < 0) {
 		fprintf(stderr, "Failed to lock card: %s\n", sc_strerror(r));
 		sc_disconnect_card(card);
 		return 1;
 	}
+#else
+    if (verbose)
+        printf("Skipping early card lock");
+#endif
 
 	*cardp = card;
 	return 0;
