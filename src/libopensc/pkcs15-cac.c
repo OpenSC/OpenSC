@@ -2,10 +2,10 @@
  * partial PKCS15 emulation for CAC-II cards
  * only minimal use of the authentication cert and key
  *
- * Copyright (C) 2005,2006,2007,2008,2009,2010  
- *               Douglas E. Engert <deengert@anl.gov> 
+ * Copyright (C) 2005,2006,2007,2008,2009,2010
+ *               Douglas E. Engert <deengert@anl.gov>
  *               2004, Nils Larsch <larsch@trustcenter.de>
- * Copyright (C) 2006, Identity Alliance, 
+ * Copyright (C) 2006, Identity Alliance,
  *               Thomas Harning <thomas.harning@identityalliance.com>
  * Copyright (C) 2007, EMC, Russell Larner <rlarner@rsa.com>
  * Copyright (C) 2016, Red Hat, Inc., Robert Relyea <rrelyea@redhat.com>
@@ -38,6 +38,8 @@
 #include "cardctl.h"
 #include "asn1.h"
 #include "pkcs15.h"
+/* X509 Key Usage flags */
+#include "../pkcs15init/pkcs15-init.h"
 
 /* probably should get manufacturer ID from cuid */
 #define MANU_ID		"Common Access Card"
@@ -55,11 +57,11 @@ typedef struct pdata_st {
 	unsigned int maxlen;
 	unsigned int minlen;
 	unsigned int storedlen;
-	int         flags;	
+	int         flags;
 	int         tries_left;
 	const unsigned char  pad_char;
 	int         obj_flags;
-} pindata; 
+} pindata;
 
 static int cac_detect_card(sc_pkcs15_card_t *p15card)
 {
@@ -74,7 +76,7 @@ static int cac_detect_card(sc_pkcs15_card_t *p15card)
 
 #define CAC_NUM_CERTS_AND_KEYS 10
 
-const char * cac_get_name(int type)
+static const char * cac_get_name(int type)
 {
     switch (type) {
     case SC_CARD_TYPE_CAC_I: return ("CAC I");
@@ -94,44 +96,46 @@ static unsigned int
 cac_alg_flags_from_algorithm(int algorithm)
 {
 	switch (algorithm) {
-#ifdef SC_ALGORITHM_RSA
 	case SC_ALGORITHM_RSA:
 		return SC_PKCS15_PRKEY_USAGE_ENCRYPT | SC_PKCS15_PRKEY_USAGE_WRAP |
 		       SC_PKCS15_PRKEY_USAGE_VERIFY | SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER |
 		       SC_PKCS15_PRKEY_USAGE_DECRYPT | SC_PKCS15_PRKEY_USAGE_UNWRAP |
 		       SC_PKCS15_PRKEY_USAGE_SIGN | SC_PKCS15_PRKEY_USAGE_SIGNRECOVER |
 		       SC_PKCS15_PRKEY_USAGE_NONREPUDIATION;
-#endif
-#ifdef SC_ALGORITHM_DSA
 	case SC_ALGORITHM_DSA:
-		return SC_PKCS15_PRKEY_USAGE_VERIFY| SC_PKCS15_PRKEY_USAGE_SIGN | 
+		return SC_PKCS15_PRKEY_USAGE_VERIFY| SC_PKCS15_PRKEY_USAGE_SIGN |
 		       SC_PKCS15_PRKEY_USAGE_NONREPUDIATION;
-#endif
 #ifdef SC_ALGORITHM_DH
 	case SC_ALGORITHM_DH:
 		return SC_PKCS15_PRKEY_USAGE_DERIVE ;
 #endif
-#ifdef SC_ALGORITHM_EC
 	case SC_ALGORITHM_EC:
 		return SC_PKCS15_PRKEY_USAGE_DERIVE | SC_PKCS15_PRKEY_USAGE_VERIFY|
 		       SC_PKCS15_PRKEY_USAGE_SIGN | SC_PKCS15_PRKEY_USAGE_NONREPUDIATION;
-#endif
-#ifdef SC_ALGORITHM_GOSTR3410
 	case SC_ALGORITHM_GOSTR3410:
 		return SC_PKCS15_PRKEY_USAGE_DERIVE | SC_PKCS15_PRKEY_USAGE_VERIFY|
 		       SC_PKCS15_PRKEY_USAGE_SIGN | SC_PKCS15_PRKEY_USAGE_NONREPUDIATION;
-#endif
 	}
 	return 0;
 }
 
 
 /* These are the cert key usage bits that map to various PKCS #11 (and thus PKCS #15) flags */
-#define SC_CERT_USAGE_SIGNATURE 0x63ULL /* Signature, Non repudication, Cert Sign, Crl sign */
-#define SC_CERT_USAGE_DERIVE    0x10ULL /* Key agreement */
-#define SC_CERT_USAGE_UNWRAP	0x14ULL /* Key encipherment, Key agreement */
-#define SC_CERT_USAGE_DECRYPT	0x88ULL /* Data encipherment, encipher */
-#define SC_CERT_USAGE_NONREPUDIATION 0x02ULL
+#define CAC_X509_USAGE_SIGNATURE		\
+	(SC_PKCS15INIT_X509_DIGITAL_SIGNATURE	| \
+	SC_PKCS15INIT_X509_NON_REPUDIATION	| \
+	SC_PKCS15INIT_X509_KEY_CERT_SIGN 	| \
+	SC_PKCS15INIT_X509_CRL_SIGN)
+#define CAC_X509_USAGE_DERIVE			\
+	SC_PKCS15INIT_X509_KEY_AGREEMENT
+#define CAC_X509_USAGE_UNWRAP 			\
+	(SC_PKCS15INIT_X509_KEY_ENCIPHERMENT	| \
+	SC_PKCS15INIT_X509_KEY_AGREEMENT)
+#define CAC_X509_USAGE_DECRYPT			\
+	(SC_PKCS15INIT_X509_DATA_ENCIPHERMENT 	\
+	/* | encipher? */)
+#define CAC_X509_USAGE_NONREPUDIATION		\
+	SC_PKCS15INIT_X509_NON_REPUDIATION
 
 /* map a cert usage and algorithm to public and private key usages */
 static int
@@ -140,23 +144,19 @@ cac_map_usage(unsigned long long cert_usage, int algorithm, unsigned int *pub_us
 	unsigned int pub_usage = 0, pr_usage = 0;
 	unsigned int alg_flags = cac_alg_flags_from_algorithm(algorithm);
 
-	if (cert_usage & SC_CERT_USAGE_SIGNATURE) {
+	if (cert_usage & CAC_X509_USAGE_SIGNATURE) {
 		pub_usage |= SC_PKCS15_PRKEY_USAGE_VERIFY|SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER;
 		pr_usage |= SC_PKCS15_PRKEY_USAGE_SIGN|SC_PKCS15_PRKEY_USAGE_SIGNRECOVER;
 	}
-	if (cert_usage & SC_CERT_USAGE_DERIVE) {
+	if (cert_usage & CAC_X509_USAGE_DERIVE) {
 		pub_usage |= SC_PKCS15_PRKEY_USAGE_DERIVE;
 		pr_usage |= SC_PKCS15_PRKEY_USAGE_DERIVE;
 	}
-	if (cert_usage & SC_CERT_USAGE_UNWRAP) {
-		pub_usage |= SC_PKCS15_PRKEY_USAGE_WRAP;
-		pr_usage |= SC_PKCS15_PRKEY_USAGE_UNWRAP;
-	}
-	if (cert_usage & SC_CERT_USAGE_DECRYPT) {
+	if (cert_usage & (CAC_X509_USAGE_DECRYPT|CAC_X509_USAGE_UNWRAP)) {
 		pub_usage |= SC_PKCS15_PRKEY_USAGE_ENCRYPT;
 		pr_usage |= SC_PKCS15_PRKEY_USAGE_DECRYPT;
 	}
-	if (allow_nonrepudiation && (cert_usage & SC_CERT_USAGE_NONREPUDIATION)) {
+	if (allow_nonrepudiation && (cert_usage & CAC_X509_USAGE_NONREPUDIATION)) {
 		pub_usage |= SC_PKCS15_PRKEY_USAGE_NONREPUDIATION;
 		pr_usage |= SC_PKCS15_PRKEY_USAGE_NONREPUDIATION;
 	}
@@ -175,7 +175,7 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 	static const pindata pins[] = {
 		{ "1", NULL, "", 0x00,
 		  SC_PKCS15_PIN_TYPE_ASCII_NUMERIC,
-		  8, 4, 8, 
+		  8, 4, 8,
 		  SC_PKCS15_PIN_FLAG_NEEDS_PADDING |
 		  SC_PKCS15_PIN_FLAG_INITIALIZED ,
 		  -1, 0xFF,
@@ -183,14 +183,14 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 		{ NULL, NULL, NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 	};
 	/* oid for key usage */
-	static const u8 usage_type[] = { 0x55, 0x1d, 0x0f };
+	static const struct sc_object_id usage_type = {{ 2, 5, 29, 15, -1 }};
 	unsigned long long usage;
 
 
 	/*
 	 * The size of the key or the algid is not really known
-	 * but can be derived from the certificates. 
-	 * the cert, pubkey and privkey are a set. 
+	 * but can be derived from the certificates.
+	 * the cert, pubkey and privkey are a set.
 	 * Key usages bits taken from certificate key usage extension.
 	 */
 
@@ -208,12 +208,11 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 
 	/* could read this off card if needed */
 
-	p15card->tokeninfo->label = strdup(cac_get_name(card->type)); 
+	p15card->tokeninfo->label = strdup(cac_get_name(card->type));
 	p15card->tokeninfo->manufacturer_id = strdup(MANU_ID);
-	p15card->opts.use_file_cache = 1;
 
 	/*
-	 * get serial number 
+	 * get serial number
 	 */
 	r = sc_card_ctl(card, SC_CARDCTL_GET_SERIALNR, &serial);
 	if (r < 0) {
@@ -267,18 +266,19 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 		memset(&obj_obj, 0, sizeof(obj_obj));
 		memcpy(obj_obj.label, obj_info.app_label, sizeof(obj_obj.label));
-		
-		r = sc_pkcs15emu_object_add(p15card, SC_PKCS15_TYPE_DATA_OBJECT, 
-			&obj_obj, &obj_info); 
+
+		r = sc_pkcs15emu_object_add(p15card, SC_PKCS15_TYPE_DATA_OBJECT,
+			&obj_obj, &obj_info);
 		if (r < 0)
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 	}
+	r = (card->ops->card_ctl)(card, SC_CARDCTL_CAC_FINAL_GET_GENERIC_OBJECTS, &count);
 
 	/*
 	 * certs, pubkeys and priv keys are related and we assume
-	 * they are in order 
-	 * We need to read the cert, get modulus and keylen 
-	 * We use those for the pubkey, and priv key objects. 
+	 * they are in order
+	 * We need to read the cert, get modulus and keylen
+	 * We use those for the pubkey, and priv key objects.
 	 */
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "CAC adding certs, pub and priv keys...");
 	r = (card->ops->card_ctl)(card, SC_CARDCTL_CAC_INIT_GET_CERT_OBJECTS, &count);
@@ -305,7 +305,7 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 		cert_info.id = obj_info.id;
 		pubkey_info.id = obj_info.id;
 		prkey_info.id = obj_info.id;
-		cert_info.path = obj_info.path;	
+		cert_info.path = obj_info.path;
 		prkey_info.path = obj_info.path;
 		/* Add 0x3f00 to the front of prkey_info.path to make sc_key_file happy */
 		/* only do this if our path.len is 1 or 2 */
@@ -329,7 +329,7 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 
 		r = sc_pkcs15_read_file(p15card, &cert_info.path, &cert_der.value, &cert_der.len);
 
-		if (r) { 
+		if (r) {
 			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "No cert found,i=%d", i);
 			continue;
 		}
@@ -363,8 +363,9 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 		if (!token_name) {
 			u8 * cn_name = NULL;
 			size_t cn_len = 0;
-			static const u8 cn_oid[] = { 0x55, 0x4, 0x3 };
-			r = sc_pkcs15_get_name_from_dn(card->ctx, cert_out->subject, cert_out->subject_len, cn_oid, sizeof(cn_oid), &cn_name, &cn_len);
+			static const struct sc_object_id cn_oid = {{ 2, 5, 4, 3, -1 }};
+			r = sc_pkcs15_get_name_from_dn(card->ctx, cert_out->subject,
+				cert_out->subject_len, &cn_oid, &cn_name, &cn_len);
 			if (r == SC_SUCCESS) {
 				token_name = malloc (cn_len+1);
 				memcpy(token_name, cn_name, cn_len);
@@ -381,12 +382,12 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 			goto fail;
 		pubkey_obj.emulated = cert_out->key;
 
-		r = sc_pkcs15_get_bitstring_extension(card->ctx, cert_out, usage_type, sizeof(usage_type), &usage, NULL);
+		r = sc_pkcs15_get_bitstring_extension(card->ctx, cert_out, &usage_type, &usage, NULL);
 		if (r < 0) {
 			usage = 0xd9ULL; /* basic default usage */
 		}
 		cac_map_usage(usage, cert_out->key->algorithm, &pubkey_info.usage, &prkey_info.usage, 1);
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,  "cert %s: cert_usage=0x%llx, pub_usage=0x%x priv_usage=0x%x\n", 
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,  "cert %s: cert_usage=0x%llx, pub_usage=0x%x priv_usage=0x%x\n",
 				sc_dump_hex(cert_info.id.value, cert_info.id.len),
 				 usage, pubkey_info.usage, prkey_info.usage);
 		if (cert_out->key->algorithm != SC_ALGORITHM_RSA) {
@@ -410,6 +411,7 @@ fail:
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r); /* should not fail */
 
 	}
+	r = (card->ops->card_ctl)(card, SC_CARDCTL_CAC_FINAL_GET_CERT_OBJECTS, &count);
 
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
 }

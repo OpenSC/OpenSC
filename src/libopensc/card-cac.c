@@ -59,7 +59,10 @@
 /*
  * should be in internal.h
  */
-static inline unsigned short lebytes2ushort(const u8 *bytes) { return (unsigned short)bytes[1] << 8 | (unsigned short)bytes[0]; }
+static unsigned short lebytes2ushort(const u8 *bytes)
+{
+	return (unsigned short)bytes[1] << 8 | (unsigned short)bytes[0];
+}
 
 #define CAC_MAX_SIZE 4096		/* arbitrary, just needs to be 'large enough' */
 /*
@@ -144,22 +147,10 @@ typedef struct cac_object {
 	sc_path_t path;
 } cac_object_t;
 
-typedef struct cac_object_list_entry cac_object_list_entry_t;
-
-struct cac_object_list_entry {
-	cac_object_list_entry_t *next;
-	cac_object_t obj;
-};
-
-typedef struct cac_object_list {
-	cac_object_list_entry_t *head;
-	cac_object_list_entry_t *tail;
-} cac_object_list_t;
-
 /*
  * Flags for Current Selected Object Type
  *   CAC files are TLV files, with TL and V separated. For generic
- *   containers we reintegrate the TL anv V portions into a single 
+ *   containers we reintegrate the TL anv V portions into a single
  *   file to read. Certs are also TLV files, but pkcs15 wants the
  *   actual certificate. At select time we know the patch which tells
  *   us what time of files we want to read. We remember that type
@@ -180,64 +171,54 @@ typedef struct cac_private_data {
 	cac_cuid_t cuid;                /* card unique ID from the CCC */
 	u8 *cac_id;                     /* card serial number */
 	size_t cac_id_len;              /* card serial number len */
-	cac_object_list_t pki_list;              /* list of pki containers */
-	cac_object_list_entry_t *pki_current;    /* current pki object  _ctl function */
-	cac_object_list_t general_list;          /* list of general containers */
-	cac_object_list_entry_t *general_current;/* current object for _ctl function */
+	list_t pki_list;                /* list of pki containers */
+	cac_object_t *pki_current;      /* current pki object _ctl function */
+	list_t general_list;            /* list of general containers */
+	cac_object_t *general_current;  /* current object for _ctl function */
 } cac_private_data_t;
 
 #define CAC_DATA(card) ((cac_private_data_t*)card->drv_data)
+
+int cac_list_compare_path(const void *a, const void *b)
+{
+	if (a == NULL || b == NULL)
+		return 1;
+	return memcmp( &((cac_object_t *) a)->path,
+		&((cac_object_t *) b)->path, sizeof(sc_path_t));
+}
 
 static cac_private_data_t *cac_new_private_data(void)
 {
 	cac_private_data_t *priv;
 	priv = calloc(1, sizeof(cac_private_data_t));
+	list_init(&priv->pki_list);
+	list_attributes_comparator(&priv->pki_list, cac_list_compare_path);
+	list_init(&priv->general_list);
+	list_attributes_comparator(&priv->general_list, cac_list_compare_path);
 	/* set other fields as appropriate */
 
 	return priv;
 }
 
-static void cac_free_object_list(struct cac_object_list *list);
-
 static void cac_free_private_data(cac_private_data_t *priv)
 {
-	cac_free_object_list(&priv->pki_list);
-	cac_free_object_list(&priv->general_list);
+	list_destroy(&priv->pki_list);
+	list_destroy(&priv->general_list);
 	free(priv);
 	return;
 }
 
-/*
- * Object list operations
- */
-static int cac_add_object_to_list(cac_object_list_t *list, const cac_object_t *object)
+static int cac_add_object_to_list(list_t *list, const cac_object_t *object)
 {
-	cac_object_list_entry_t *entry = malloc(sizeof(cac_object_list_entry_t));
+	cac_object_t *entry = malloc(sizeof(cac_object_t));
 
 	if (entry == NULL) {
 		return SC_ERROR_OUT_OF_MEMORY;
 	}
-	entry->next = NULL;
-	entry->obj = *object;
-	if (list->head == NULL) {
-		list->head = list->tail = entry;
-		return SC_SUCCESS;
-	}
-	list->tail->next = entry;
-	list->tail = entry;
+	*entry = *object;
+	list_append(list, entry);
 	return SC_SUCCESS;
 }
-
-static void cac_free_object_list(struct cac_object_list *list)
-{
-	cac_object_list_entry_t *current, *next;
-
-	for (current = list->head; current; current=next) {
-		next = current->next;
-		free(current);
-	}
-}
-
 
 /*
  * Set up the normal CAC paths
@@ -257,11 +238,6 @@ static const sc_path_t cac_CCC_Path = {
 	{ CAC_TO_AID(CAC_2_RID "\xDB\x00") }
 };
 
-static const sc_path_t cac_cac1_card_manager = {
-	CAC_TO_PATH_VALUE(""),
-	0,0,SC_PATH_TYPE_DF_NAME,
-	{ CAC_TO_AID(CAC_1_CM_AID) }
-};
 #define MAX_CAC_SLOTS 10		/* arbitrary, just needs to be 'large enough' */
 /* default certificate labels for the CAC card */
 static const char *cac_labels[MAX_CAC_SLOTS] = {
@@ -278,7 +254,7 @@ static const char *cac_labels[MAX_CAC_SLOTS] = {
 };
 
 /* template for a cac1 pki object */
-static const cac_object_t cac_cac1_pki_obj= {
+static const cac_object_t cac_cac1_pki_obj = {
 	"CAC Certificate", 0x0, { CAC_NULL_PATH, 0,0,SC_PATH_TYPE_DF_NAME,
 	{ CAC_TO_AID(CAC_1_RID "\x01\x00") } }
 };
@@ -331,21 +307,16 @@ static const cac_object_t *cac_find_obj_by_id(unsigned short object_id)
  */
 static int cac_is_cert(cac_private_data_t * priv, const sc_path_t *in_path)
 {
-	cac_object_list_entry_t *current;
-	sc_path_t test_path = *in_path;
-	test_path.index = 0;
-	test_path.count = 0;
+	cac_object_t test_obj;
+	test_obj.path = *in_path;
+	test_obj.path.index = 0;
+	test_obj.path.count = 0;
 
-	for (current = priv->pki_list.head; current; current=current->next) {
-		if (memcmp(&current->obj.path, &test_path, sizeof(sc_path_t)) == 0) {
-			return 1;
-		}
-	}
-	return 0;
+	return (list_contains(&priv->pki_list, &test_obj) != 0);
 }
 
 /*
- * Send a command and receive data. 
+ * Send a command and receive data.
  *
  * A caller may provide a buffer, and length to read. If not provided,
  * an internal 4096 byte buffer is used, and a copy is returned to the
@@ -369,7 +340,7 @@ static int cac_apdu_io(sc_card_t *card, int ins, int p1, int p2,
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "%02x %02x %02x %d : %d %d\n",
-		 ins, p1, p2, sendbuflen , card->max_send_size, card->max_recv_size);
+		 ins, p1, p2, sendbuflen, card->max_send_size, card->max_recv_size);
 
 	rbuf = rbufinitbuf;
 	rbuflen = sizeof(rbufinitbuf);
@@ -465,7 +436,8 @@ static int cac_read_file(sc_card_t *card, int file_type, u8 **out_buf, size_t *o
 		goto fail;
 
 	left = size = lebytes2ushort(count);
-sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,"got %d bytes out_ptr=%lx count&=%lx count[0]=0x%02x count[1]=0x%02x, len=0x%04x (%d)", len, (unsigned long) out_ptr, (unsigned long)&count, count[0], count[1], size, size); 
+	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "got %d bytes out_ptr=%lx count&=%lx count[0]=0x%02x count[1]=0x%02x, len=0x%04x (%d)",
+		len, (unsigned long) out_ptr, (unsigned long)&count, count[0], count[1], size, size);
 	out = out_ptr = malloc(size);
 	if (out == NULL) {
 		r = SC_ERROR_OUT_OF_MEMORY;
@@ -474,7 +446,7 @@ sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,"got %d bytes out_ptr=%lx count&=%lx co
 	for (offset += 2; left > 0; offset += len, left -= len, out_ptr += len) {
 		len = MIN(left, CAC_MAX_CHUNK_SIZE);
 		params[1] = len;
-		r = cac_apdu_io(card, CAC_INS_READ_FILE, HIGH_BYTE_OF_SHORT(offset), LOW_BYTE_OF_SHORT(offset), 
+		r = cac_apdu_io(card, CAC_INS_READ_FILE, HIGH_BYTE_OF_SHORT(offset), LOW_BYTE_OF_SHORT(offset),
 						&params[0], sizeof(params), &out_ptr, &len);
 		if (r < 0) {
 			goto fail;
@@ -484,7 +456,7 @@ sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,"got %d bytes out_ptr=%lx count&=%lx co
 	*out_buf = out;
 	return SC_SUCCESS;
 fail:
-	if (out) 
+	if (out)
 		free(out);
 	*out_len = 0;
 	return r;
@@ -517,7 +489,7 @@ static int cac_cac1_get_certificate(sc_card_t *card, u8 **out_buf, size_t *out_l
 
 		r = sc_transmit_apdu(card, &apdu);
 		if (r < 0) {
-		 	break;
+			break;
 		}
 		/* in the old CAC-1, 0x63 means 'more data' in addition to 'pin failed' */
 		if (apdu.sw1 != 0x63)  {
@@ -543,8 +515,11 @@ static int cac_cac1_get_certificate(sc_card_t *card, u8 **out_buf, size_t *out_l
 	return r;
 }
 
-/* create a fake tag/length file for cac1 cards based on the val_len */
-static int cac_cac1_get_cert_tag(sc_card_t *card, size_t val_len, u8 **tlp, size_t *tl_len_p) 
+/* Create a fake tag/length file in Simple TLV for cac1 cards based on the val_len.
+ * Can not use internal asn1 library because Simple TLV has different syntax
+ * than DER.
+ */
+static int cac_cac1_get_cert_tag(sc_card_t *card, size_t val_len, u8 **tlp, size_t *tl_len_p)
 {
 	static const u8 cac_cac1_cert_tag[] = { CAC_TAG_CERTINFO, 1, CAC_TAG_CERTIFICATE, 0xff, 0, 0 };
 	u8 *tl;
@@ -567,9 +542,13 @@ static int cac_cac1_get_cert_tag(sc_card_t *card, size_t val_len, u8 **tlp, size
 	*tl_len_p = tl_len;
 	return SC_SUCCESS;
 }
-		
-/* get the tlv length return that len and return the length of the tl header. Don't overrun the buffer */
-static size_t cac_get_len(u8 *tl_ptr, size_t tl_len, size_t *tl_head_len) 
+
+/* get the Simple TLV length return that len and return the length of the TL
+ * header. Don't overrun the buffer.
+ * Can not use internal asn1 library because Simple TLV has different syntax
+ * than DER.
+ */
+static size_t cac_get_len(u8 *tl_ptr, size_t tl_len, size_t *tl_head_len)
 {
 	size_t len;
 	if (tl_len < 2) {
@@ -640,14 +619,14 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 		r = cac_cac1_get_cert_tag(card, val_len, &tl, &tl_len);
 		if (r < 0)
 			goto done;
-	} else {	
+	} else {
 		r = cac_read_file(card, CAC_FILE_TAG, &tl, &tl_len);
 		if (r < 0)  {
 			goto done;
 		}
 
 		r = cac_read_file(card, CAC_FILE_VALUE, &val, &val_len);
-		if (r < 0) 
+		if (r < 0)
 			goto done;
 	}
 
@@ -661,7 +640,7 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 		}
 		priv->cache_buf_len = tlv_len;
 
-		for (tl_ptr = tl, val_ptr=val, tlv_ptr = priv->cache_buf; 
+		for (tl_ptr = tl, val_ptr=val, tlv_ptr = priv->cache_buf;
 				tl_len > 2 && val_len > 0 && tlv_len > 0;
 				val_len -= len, tlv_len -= len, val_ptr += len, tlv_ptr += len) {
 			/* get the tag and the length */
@@ -683,10 +662,10 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 			memcpy(tlv_ptr, val_ptr, len);
 		}
 		break;
-		
+
 	case CAC_OBJECT_TYPE_CERT:
 		/* read file */
-	    	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL," obj= cert_file, val_len=%d (0x%04x)", val_len, val_len);
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL," obj= cert_file, val_len=%d (0x%04x)", val_len, val_len);
 		cert_len = 0;
 		cert_ptr = NULL;
 		cert_type = 0;
@@ -709,7 +688,12 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 		}
 		/* if the info byte is 1, then the cert is compressed, decompress it */
 		if ((cert_type & 0x3) == 1) {
+#ifdef ENABLE_ZLIB
 			r= sc_decompress_alloc(&priv->cache_buf, &priv->cache_buf_len, cert_ptr, cert_len, COMPRESSION_AUTO);
+#else
+			sc_log(card->ctx, "PIV compression not supported, no zlib");
+			r = SC_ERROR_NOT_SUPPORTED;
+#endif
 			if (r)
 				goto done;
 		} else {
@@ -747,34 +731,36 @@ static int cac_write_binary(sc_card_t *card, unsigned int idx,
 }
 
 /* initialize getting a list and return the number of elements in the list */
-static int cac_get_init_and_get_count(cac_object_list_t *list, cac_object_list_entry_t **entry, int *countp)
+static int cac_get_init_and_get_count(list_t *list, cac_object_t **entry, int *countp)
 {
-	int count;	
-	cac_object_list_entry_t *current;
-	*entry = list->head;
-	for (count=0, current=list->head; current; current=current->next, count++) 
-		/* empty */;
-	*countp = count;
+	*countp = list_size(list);
+	list_iterator_start(list);
+	*entry = list_iterator_next(list);
+	return SC_SUCCESS;
+}
+
+/* finalize the list iterator */
+static int cac_final_iterator(list_t *list)
+{
+	list_iterator_stop(list);
 	return SC_SUCCESS;
 }
 
 /* fill in the obj_info for the current object on the list and advance to the next object */
-static int cac_fill_object_info(cac_object_list_entry_t **entry, sc_pkcs15_data_info_t *obj_info)
+static int cac_fill_object_info(list_t *list, cac_object_t **entry, sc_pkcs15_data_info_t *obj_info)
 {
-	cac_object_t *obj;
 	memset(obj_info, 0, sizeof(sc_pkcs15_data_info_t));
 	if (*entry == NULL) {
 		return SC_ERROR_FILE_END_REACHED;
 	}
 
-	obj = &(*entry)->obj;
-	*entry =(*entry)->next;
-	obj_info->path = obj->path;
-	obj_info->path.count = CAC_MAX_SIZE-1; /* read something from the object */ 
-	obj_info->id.value[0] = (obj->fd >> 8) & 0xff;
-	obj_info->id.value[1] = obj->fd & 0xff;
+	obj_info->path = (*entry)->path;
+	obj_info->path.count = CAC_MAX_SIZE-1; /* read something from the object */
+	obj_info->id.value[0] = ((*entry)->fd >> 8) & 0xff;
+	obj_info->id.value[1] = (*entry)->fd & 0xff;
 	obj_info->id.len = 2;
-	strncpy(obj_info->app_label, obj->name, SC_PKCS15_MAX_LABEL_SIZE-1);
+	strncpy(obj_info->app_label, (*entry)->name, SC_PKCS15_MAX_LABEL_SIZE-1);
+	*entry = list_iterator_next(list);
 	return SC_SUCCESS;
 }
 
@@ -809,16 +795,18 @@ static int cac_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 	switch(cmd) {
 		case SC_CARDCTL_GET_SERIALNR:
 			return cac_get_serial_nr_from_CUID(card, (sc_serial_number_t *) ptr);
-			break;
 		case SC_CARDCTL_CAC_INIT_GET_GENERIC_OBJECTS:
-			return cac_get_init_and_get_count(&priv->general_list, &priv->general_current,(int *)ptr);
+			return cac_get_init_and_get_count(&priv->general_list, &priv->general_current, (int *)ptr);
 		case SC_CARDCTL_CAC_INIT_GET_CERT_OBJECTS:
-			return cac_get_init_and_get_count(&priv->pki_list, &priv->pki_current,(int *)ptr);
-			break;
+			return cac_get_init_and_get_count(&priv->pki_list, &priv->pki_current, (int *)ptr);
 		case SC_CARDCTL_CAC_GET_NEXT_GENERIC_OBJECT:
-			return cac_fill_object_info(&priv->general_current, (sc_pkcs15_data_info_t *)ptr);
+			return cac_fill_object_info(&priv->general_list, &priv->general_current, (sc_pkcs15_data_info_t *)ptr);
 		case SC_CARDCTL_CAC_GET_NEXT_CERT_OBJECT:
-			return cac_fill_object_info(&priv->pki_current, (sc_pkcs15_data_info_t *)ptr);
+			return cac_fill_object_info(&priv->pki_list, &priv->pki_current, (sc_pkcs15_data_info_t *)ptr);
+		case SC_CARDCTL_CAC_FINAL_GET_GENERIC_OBJECTS:
+			return cac_final_iterator(&priv->general_list);
+		case SC_CARDCTL_CAC_FINAL_GET_CERT_OBJECTS:
+			return cac_final_iterator(&priv->pki_list);
 	}
 
 	LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
@@ -836,7 +824,7 @@ static int cac_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"challenge len=%d",len);
 
 	r = sc_lock(card);
-	if (r != SC_SUCCESS) 
+	if (r != SC_SUCCESS)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 
 
@@ -847,7 +835,7 @@ static int cac_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 		rbufp = &rbuf[0];
 		rbuflen = sizeof(rbuf);;
 		r = cac_apdu_io(card, 0x84, 0x00, 0x00, NULL, 0, &rbufp, &rbuflen);
- 		if (r < 0) {
+		if (r < 0) {
 			sc_unlock(card);
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 		}
@@ -909,10 +897,10 @@ static int cac_rsa_op(sc_card_t *card,
 	 * The PKCS #15 higher level driver code does all this correctly (it's the same for all cards, just
 	 * different sets of APDU's that need to be called), so this call is really a little bit of paranoia */
 	r = sc_lock(card);
-	if (r != SC_SUCCESS) 
+	if (r != SC_SUCCESS)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 
-	
+
 	rbuf = NULL;
 	rbuflen = 0;
 	for (; datalen > CAC_MAX_CHUNK_SIZE; data += CAC_MAX_CHUNK_SIZE, datalen -= CAC_MAX_CHUNK_SIZE) {
@@ -953,8 +941,8 @@ static int cac_rsa_op(sc_card_t *card,
 err:
 	sc_unlock(card);
 	if (r < 0) {
-		bzero(out, outlen);
-	} 
+		sc_mem_clear(out, outlen);
+	}
 	if (rbuf) {
 		free(rbuf);
 	}
@@ -981,8 +969,8 @@ static int cac_decipher(sc_card_t *card,
 }
 
 /*
- * CAC cards use SC_PATH_SELECT_OBJECT_ID rather than SC_PATH_SELECT_FILE_ID. In order to use more 
- * of the PKCS #15 structure, we call the selection SC_PATH_SELECT_FILE_ID, but we set p1 to 2 instead 
+ * CAC cards use SC_PATH_SELECT_OBJECT_ID rather than SC_PATH_SELECT_FILE_ID. In order to use more
+ * of the PKCS #15 structure, we call the selection SC_PATH_SELECT_FILE_ID, but we set p1 to 2 instead
  * of 0. Also cac1 does not do any FCI, but it doesn't understand not selecting it. It returns invalid INS
  * if it doesn't like anything about the select, so we always 'request' FCI for CAC1
  *
@@ -996,7 +984,7 @@ static int cac_select_file_by_type(sc_card_t *card, const sc_path_t *in_path, sc
 	unsigned char pathbuf[SC_MAX_PATH_SIZE], *path = pathbuf;
 	int r, pathlen, pathtype;
 	struct sc_file *file = NULL;
- 	cac_private_data_t * priv = CAC_DATA(card);
+	cac_private_data_t * priv = CAC_DATA(card);
 
 	assert(card != NULL && in_path != NULL);
 	ctx = card->ctx;
@@ -1007,10 +995,10 @@ static int cac_select_file_by_type(sc_card_t *card, const sc_path_t *in_path, sc
 	pathlen = in_path->len;
 	pathtype = in_path->type;
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,"path->aid=%x %x %x %x %x %x %x  len=%d, path->value = %x %x %x %x len=%d path->type=%d (%x)", 
+	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,"path->aid=%x %x %x %x %x %x %x  len=%d, path->value = %x %x %x %x len=%d path->type=%d (%x)",
 		in_path->aid.value[0], in_path->aid.value[1], in_path->aid.value[2], in_path->aid.value[3],
-		in_path->aid.value[4], in_path->aid.value[5], in_path->aid.value[6], in_path->aid.len, 
-		in_path->value[0], in_path->value[1], in_path->value[2], in_path->value[3], in_path->len, 
+		in_path->aid.value[4], in_path->aid.value[5], in_path->aid.value[6], in_path->aid.len,
+		in_path->value[0], in_path->value[1], in_path->value[2], in_path->value[3], in_path->len,
 		in_path->type, in_path->type);
 	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,"file_out=%lx index=%d count=%d\n",(unsigned long) file_out,
 		in_path->index, in_path->count);
@@ -1019,14 +1007,14 @@ static int cac_select_file_by_type(sc_card_t *card, const sc_path_t *in_path, sc
 	 * we have to add some bytes to the path to make it happy. A better fix would be to give sc_key_file
 	 * a flag that says 'no, really this path is fine'.  We only need to do this for private keys */
 	if ((pathlen > 2) && (pathlen <= 4) && memcmp(path, "\x3F\x00", 2) == 0) {
-        	if (pathlen > 2) {
-            		path += 2;
-            		pathlen -= 2;
-        	}
+		if (pathlen > 2) {
+			path += 2;
+			pathlen -= 2;
+		}
 	}
 
 
-	/* CAC has multiple different type of objects that aren't PKCS #15. When we read 
+	/* CAC has multiple different type of objects that aren't PKCS #15. When we read
 	 * them we need convert them to something PKCS #15 would understand. Find the object
 	 * and object type here:
 	 */
@@ -1086,16 +1074,15 @@ static int cac_select_file_by_type(sc_card_t *card, const sc_path_t *in_path, sc
 	apdu.lc = pathlen;
 	apdu.data = path;
 	apdu.datalen = pathlen;
+	apdu.resp = buf;
+	apdu.resplen = sizeof(buf);
+	apdu.le = sc_get_max_recv_size(card) < 256 ? sc_get_max_recv_size(card) : 256;
 
 	if (file_out != NULL) {
 		apdu.p2 = 0;		/* first record, return FCI */
-		apdu.resp = buf;
-		apdu.resplen = sizeof(buf);
-		apdu.le = sc_get_max_recv_size(card) < 256 ? sc_get_max_recv_size(card) : 256;
 	}
 	else {
 		apdu.p2 = (type == SC_CARD_TYPE_CAC_I)? 0x00 : 0x0C;
-		apdu.cse = (apdu.lc == 0) ? SC_APDU_CASE_1 : SC_APDU_CASE_3_SHORT;
 	}
 
 	r = sc_transmit_apdu(card, &apdu);
@@ -1136,7 +1123,7 @@ static int cac_select_file(sc_card_t *card, const sc_path_t *in_path, sc_file_t 
 
 static int cac_finish(sc_card_t *card)
 {
- 	cac_private_data_t * priv = CAC_DATA(card);
+	cac_private_data_t * priv = CAC_DATA(card);
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	if (priv) {
@@ -1157,18 +1144,18 @@ static int cac_path_from_cardurl(sc_card_t *card, sc_path_t *path, cac_card_url_
 	if (len < 10) {
 		return SC_ERROR_INVALID_DATA;
 	}
-	bzero(path, sizeof(sc_path_t));
+	sc_mem_clear(path, sizeof(sc_path_t));
 	memcpy(path->aid.value, &val->rid, sizeof(val->rid));
 	memcpy(&path->aid.value[5], &val->applicationID, sizeof(val->applicationID));
 	path->aid.len = sizeof(val->rid) + sizeof(val->applicationID);
 	memcpy(path->value, &val->objectID, sizeof(val->objectID));
 	path->len = sizeof(val->objectID);
 	path->type = SC_PATH_TYPE_FILE_ID;
-	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,"path->aid=%x %x %x %x %x %x %x  len=%d, path->value = %x %x len=%d path->type=%d (%x)", 
+	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,"path->aid=%x %x %x %x %x %x %x  len=%d, path->value = %x %x len=%d path->type=%d (%x)",
 		path->aid.value[0], path->aid.value[1], path->aid.value[2], path->aid.value[3],
 		path->aid.value[4], path->aid.value[5], path->aid.value[6],
 		path->aid.len, path->value[0], path->value[1], path->len, path->type, path->type);
-	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,"rid=%x %x %x %x %x  len=%d appid= %x %x len=%d objid= %x %x len=%d", 
+	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,"rid=%x %x %x %x %x  len=%d appid= %x %x len=%d objid= %x %x len=%d",
 		val->rid[0], val->rid[1], val->rid[2], val->rid[3], val->rid[4], sizeof(val->rid),
 		val->applicationID[0], val->applicationID[1], sizeof(val->applicationID),
 		val->objectID[0], val->objectID[1], sizeof(val->objectID));
@@ -1193,7 +1180,7 @@ static int cac_parse_cardurl(sc_card_t *card, cac_private_data_t *priv, cac_card
 		 * go way if we create a label function that will create a unique label
 		 * from a cert index.
 		 */
-		if (priv->cert_next >= MAX_CAC_SLOTS) 
+		if (priv->cert_next >= MAX_CAC_SLOTS)
 			break; /* don't fail just because we have more certs than we can support */
 		new_object.name = cac_labels[priv->cert_next];
 		new_object.fd = priv->cert_next+1;
@@ -1204,7 +1191,7 @@ static int cac_parse_cardurl(sc_card_t *card, cac_private_data_t *priv, cac_card
 	case CAC_APP_TYPE_GENERAL:
 		object_id = bebytes2ushort(val->objectID);
 		obj = cac_find_obj_by_id(object_id);
-		if (obj == NULL) 
+		if (obj == NULL)
 			break; /* don't fail just because we don't recognize the object */
 		new_object.name = obj->name;
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,"CARDURL: gen_object found, objectID=%x (%s),", object_id, new_object.name);
@@ -1235,7 +1222,7 @@ static int cac_parse_cuid(sc_card_t *card, cac_private_data_t *priv, cac_cuid_t 
 	card_id_len = len - (&val->card_id - (u8 *)val);
 	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "card_id=%s (%d)",sc_dump_hex(&val->card_id, card_id_len),card_id_len);
 	priv->cuid = *val;
-	priv->cac_id = malloc(card_id_len); 
+	priv->cac_id = malloc(card_id_len);
 	if (priv->cac_id == NULL) {
 		return SC_ERROR_OUT_OF_MEMORY;
 	}
@@ -1245,7 +1232,7 @@ static int cac_parse_cuid(sc_card_t *card, cac_private_data_t *priv, cac_cuid_t 
 }
 static int cac_process_CCC(sc_card_t *card, cac_private_data_t *priv);
 
-static int cac_parse_CCC(sc_card_t *card, cac_private_data_t *priv, u8 *tl, 
+static int cac_parse_CCC(sc_card_t *card, cac_private_data_t *priv, u8 *tl,
 						 size_t tl_len, u8 *val, size_t val_len)
 {
 	size_t header_len, len = 0;
@@ -1253,7 +1240,7 @@ static int cac_parse_CCC(sc_card_t *card, cac_private_data_t *priv, u8 *tl,
 	u8 *val_end = val + val_len;
 	sc_path_t new_path;
 	int r;
-	
+
 
 	for (; (tl < tl_end) && (val< val_end); val += len) {
 		/* get the tag and the length */
@@ -1264,7 +1251,7 @@ static int cac_parse_CCC(sc_card_t *card, cac_private_data_t *priv, u8 *tl,
 		case CAC_TAG_CUID:
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,"TAG:CUID");
 			r = cac_parse_cuid(card, priv, (cac_cuid_t *)val, len);
-			if (r < 0) 
+			if (r < 0)
 				return r;
 			break;
 		case CAC_TAG_CC_VERSION_NUMBER:
@@ -1275,7 +1262,7 @@ static int cac_parse_CCC(sc_card_t *card, cac_private_data_t *priv, u8 *tl,
 		case CAC_TAG_CARDURL:
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,"TAG:CARDURL");
 			r = cac_parse_cardurl(card, priv, (cac_card_url_t *)val, len);
-			if (r < 0) 
+			if (r < 0)
 				return r;
 			break;
 		/*
@@ -1301,11 +1288,11 @@ static int cac_parse_CCC(sc_card_t *card, cac_private_data_t *priv, u8 *tl,
 		case CAC_TAG_NEXT_CCC:
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,"TAG:NEXT CCC");
 			r = cac_path_from_cardurl(card, &new_path, (cac_card_url_t *)val, len);
-			if (r < 0) 
+			if (r < 0)
 				return r;
 
 			r = cac_select_file_by_type(card, &new_path, NULL, SC_CARD_TYPE_CAC_II);
-			if (r < 0) 
+			if (r < 0)
 				return r;
 
 			r = cac_process_CCC(card, priv);
@@ -1327,13 +1314,13 @@ static int cac_process_CCC(sc_card_t *card, cac_private_data_t *priv)
 	size_t tl_len, val_len;
 	int r;
 
-	
+
 	r = cac_read_file(card, CAC_FILE_TAG, &tl, &tl_len);
-	if (r < 0) 
+	if (r < 0)
 		goto done;
-	
+
 	r = cac_read_file(card, CAC_FILE_VALUE, &val, &val_len);
-	if (r < 0) 
+	if (r < 0)
 		goto done;
 
 	r = cac_parse_CCC(card, priv, tl, tl_len, val, val_len);
@@ -1381,7 +1368,7 @@ static int cac_populate_cac_1(sc_card_t *card, int index, cac_private_data_t *pr
 	u8 *val;
 	size_t val_len;
 
-	/* populate PKI objects */	
+	/* populate PKI objects */
 	for (i=index; i < MAX_CAC_SLOTS; i++) {
 		r = cac_select_pki_applet(card, i);
 		if (r == SC_SUCCESS) {
@@ -1420,8 +1407,13 @@ static int cac_populate_cac_1(sc_card_t *card, int index, cac_private_data_t *pr
 		if (priv->cac_id == NULL) {
 			return SC_ERROR_OUT_OF_MEMORY;
 		}
+#ifdef ENABLE_OPENSSL
 		SHA1(val, val_len, priv->cac_id);
 		priv->cac_id_len = 20;
+#else
+		sc_log(card->ctx, "OpenSSL Required");
+		return SC_ERROR_NOT_SUPPORTED;
+#endif /* ENABLE_OPENSSL */
 	}
 	return SC_SUCCESS;
 }
@@ -1512,9 +1504,9 @@ static int cac_init(sc_card_t *card)
 
 static int cac_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 {
-	/* CAC, like PIV needs Extra validation of (new) PIN during 
-	 * a PIN change request, to ensure it's not outside the 
-	 * FIPS 201 4.1.6.1 (numeric only) and * FIPS 140-2 
+	/* CAC, like PIV needs Extra validation of (new) PIN during
+	 * a PIN change request, to ensure it's not outside the
+	 * FIPS 201 4.1.6.1 (numeric only) and * FIPS 140-2
 	 * (6 character minimum) requirements.
 	 */
 	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
