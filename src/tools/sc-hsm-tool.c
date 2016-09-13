@@ -1646,7 +1646,7 @@ int main(int argc, char * const argv[])
 		sc_ctx_log_to_file(ctx, "stderr");
 	}
 
-	r = util_connect_card(ctx, &card, opt_reader, opt_wait, verbose);
+	r = util_connect_card_ex(ctx, &card, opt_reader, opt_wait, 0, verbose);
 	if (r != SC_SUCCESS) {
 		if (r < 0) {
 			fprintf(stderr, "Failed to connect to card: %s\n", sc_strerror(err));
@@ -1687,7 +1687,6 @@ fail:
 	err = 1;
 end:
 	if (card) {
-		sc_unlock(card);
 		sc_disconnect_card(card);
 	}
 	if (ctx)
