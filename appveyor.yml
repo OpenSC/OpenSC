@@ -30,7 +30,6 @@ install:
   - date /T & time /T
   - set PATH=C:\cygwin\bin;%PATH%
   - set OPENSSL_VER=1_0_2e
-  - set ZLIB_VER=128
   - set ZLIB_VER_DOT=1.2.8
   - ps: $env:PACKAGE_NAME=(git describe --tags)
   - ps: >-
@@ -59,7 +58,7 @@ install:
         }
         $env:NMAKE_EXTRA="OPENSSL_DEF=/DENABLE_OPENSSL ${env:NMAKE_EXTRA}"
         If (!(Test-Path zlib.zip )) {
-           appveyor DownloadFile "https://prdownloads.sourceforge.net/libpng/zlib${env:ZLIB_VER}.zip" -FileName zlib.zip
+           appveyor DownloadFile "https://github.com/madler/zlib/archive/v${env:ZLIB_VER_DOT}.zip" -FileName zlib.zip
         }
         7z x zlib.zip -oC:\
         Rename-Item -path "c:\zlib-${env:ZLIB_VER_DOT}" -newName "zlib"
