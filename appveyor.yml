@@ -1,11 +1,5 @@
 version: 0.16.0.{build}
 
-#init:
-#  # Exclude combinations allowed to fail
-#  - if "%Environment%" == "VSVER=14" (if "%Configuration%" == "Release" (exit /b 1))
-#  - if "%Environment%" == "VSVER=14" (if "%Configuration%" == "Debug" (exit /b 1))
-#  - if "%Environment%" == "VSVER=10" (if "%Platform%" == "x64" (exit /b 1))
-
 platform:
   - x86
   - x64
@@ -18,22 +12,15 @@ configuration:
 
 environment:
   matrix:
-    # - VSVER: 14
+    - VSVER: 14
     - VSVER: 12
-    # - VSVER: 10
+    - VSVER: 10
 
 matrix:
-  fast_finish: true     # set this flag to immediately finish build once one of the jobs fails.
   allow_failures:
     # not included in AppVeyor right now
     - platform: x64
       VSVER: 10
-    # does currently not build zlib out of the box
-    - configuration: Release
-      VSVER: 14
-    # does currently not build zlib out of the box
-    - configuration: Debug
-      VSVER: 14
 
 install:
   - ps: if ($env:APPVEYOR_PULL_REQUEST_NUMBER -and $env:APPVEYOR_BUILD_NUMBER -ne ((Invoke-RestMethod `
@@ -108,7 +95,7 @@ build_script:
   - cd win32 && nmake /f Makefile.mak %NMAKE_ARCH% %NMAKE_EXTRA% VSVER=%VSVER% OpenSC.msi
   - move OpenSC.msi %ARTIFACT%
   - appveyor PushArtifact %ARTIFACT%
-  # put all pdb files for dump analysis, but this consume approx 100 MB per build
+  # put all pdb files for dump analysis, but this consumes approx 100 MB per build
   - ps: >-
       If ($env:Configuration -Like "*Debug*") {
         Get-ChildItem -recurse c:\projects\OpenSC -exclude vc*.pdb *.pdb | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name }
