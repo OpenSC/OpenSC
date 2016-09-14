@@ -39,13 +39,13 @@ install:
         $env:ENV_PLATFORM="x86"
         $env:OPENSSL_PF="Win32"
         $env:NMAKE_ARCH=""
-        $env:ARTIFACT="OpenSC-${env:PACKAGE_NAME}-win32_vs${env:VSVER}-${env:CONFIGURATION}.msi"
+        $env:ARTIFACT="OpenSC-win32_vs${env:VSVER}-${env:CONFIGURATION}.msi"
       } Else {
         $env:VCVARS_PLATFORM="amd64"
         $env:ENV_PLATFORM="x64"
         $env:OPENSSL_PF="Win64"
         $env:NMAKE_ARCH="BUILD_ON=WIN64 BUILD_FOR=WIN64"
-        $env:ARTIFACT="OpenSC-${env:PACKAGE_NAME}-win64_vs${env:VSVER}-${env:CONFIGURATION}.msi"
+        $env:ARTIFACT="OpenSC-win64_vs${env:VSVER}-${env:CONFIGURATION}.msi"
       }
   - ps: >-
       If ($env:Configuration -Like "*Debug*") {
