@@ -47,8 +47,8 @@ is_string_valid_atr(const char *atr_str)
 }
 
 int
-util_connect_card(sc_context_t *ctx, sc_card_t **cardp,
-		 const char *reader_id, int do_wait, int verbose)
+util_connect_card_ex(sc_context_t *ctx, sc_card_t **cardp,
+		 const char *reader_id, int do_wait, int do_lock, int verbose)
 {
 	struct sc_reader *reader = NULL, *found = NULL;
 	struct sc_card *card = NULL;
@@ -156,15 +156,24 @@ autofound:
 	if (verbose)
 		printf("Using card driver %s.\n", card->driver->name);
 
-	r = sc_lock(card);
-	if (r < 0) {
-		fprintf(stderr, "Failed to lock card: %s\n", sc_strerror(r));
-		sc_disconnect_card(card);
-		return 1;
+	if (do_lock) {
+		r = sc_lock(card);
+		if (r < 0) {
+			fprintf(stderr, "Failed to lock card: %s\n", sc_strerror(r));
+			sc_disconnect_card(card);
+			return 1;
+		}
 	}
 
 	*cardp = card;
 	return 0;
+}
+
+int
+util_connect_card(sc_context_t *ctx, sc_card_t **cardp,
+		 const char *reader_id, int do_wait, int verbose)
+{
+	return util_connect_card_ex(ctx, cardp, reader_id, do_wait, 1, verbose);
 }
 
 void util_print_binary(FILE *f, const u8 *buf, int count)

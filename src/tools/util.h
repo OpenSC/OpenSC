@@ -33,7 +33,8 @@ void util_warn(const char *fmt, ...);
 void util_error(const char *fmt, ...);
 void util_fatal(const char *fmt, ...);
 /* All singing all dancing card connect routine */
-int util_connect_card(struct sc_context *, struct sc_card **, const char *reader_id, int wait, int verbose);
+int util_connect_card_ex(struct sc_context *, struct sc_card **, const char *reader_id, int do_wait, int do_lock, int verbose);
+int util_connect_card(struct sc_context *, struct sc_card **, const char *reader_id, int do_wait, int verbose);
 
 int util_getpass (char **lineptr, size_t *n, FILE *stream);
 
