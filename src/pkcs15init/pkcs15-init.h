@@ -382,12 +382,6 @@ extern int	sc_pkcs15init_erase_card_recursively(struct sc_pkcs15_card *,
 extern int	sc_pkcs15init_rmdir(struct sc_pkcs15_card *, struct sc_profile *,
 				struct sc_file *);
 
-/* Helper function for CardOS */
-extern int	sc_pkcs15init_requires_restrictive_usage(
-				struct sc_pkcs15_card *,
-				struct sc_pkcs15init_prkeyargs *,
-				unsigned int);
-
 extern int	sc_pkcs15_create_pin_domain(struct sc_profile *, struct sc_pkcs15_card *,
 				const struct sc_pkcs15_id *, struct sc_file **);
 

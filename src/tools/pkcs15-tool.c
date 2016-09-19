@@ -1555,7 +1555,9 @@ static int test_update(sc_card_t *in_card)
 	static u8 fci_bad[] = { 0x00, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
 	static u8 fci_good[] = { 0x00, 0xFF, 0x00, 0x00, 0x00, 0x00, 0xFF, 0x00, 0x00 };
 
-
+	r = sc_lock(card);
+	if (r < 0)
+		return r;
 
 	if (strcmp("cardos",in_card->driver->short_name) != 0) {
 		printf("not using the cardos driver, card is fine.\n");
@@ -1633,10 +1635,12 @@ static int test_update(sc_card_t *in_card)
 		goto bad_fci;
 	}
 end:
+	sc_unlock(card);
 	/* 0 = card ok, 1 = card vulnerable, 2 = problem! */
 	return rc;
 
 bad_fci:
+	sc_unlock(card);
 	util_hex_dump(stdout,rbuf,apdu.resplen," ");
 	printf("\n");
 	return 2;
@@ -1656,6 +1660,10 @@ static int update(sc_card_t *in_card)
 	apdu.lc = sizeof(cmd1);
 	apdu.datalen = sizeof(cmd1);
 	apdu.data = cmd1;
+
+	r = sc_lock(card);
+	if (r < 0)
+		return r;
 
 	r = sc_transmit_apdu(card, &apdu);
 	if (r < 0) {
@@ -1748,6 +1756,7 @@ skip_change_lifecycle:
 
 	printf("security update applied successfully.\n");
 end:
+	sc_unlock(card);
 	return 0;
 }
 
@@ -1930,7 +1939,7 @@ int main(int argc, char * const argv[])
 		sc_ctx_log_to_file(ctx, "stderr");
 	}
 
-	err = util_connect_card(ctx, &card, opt_reader, opt_wait, verbose);
+	err = util_connect_card_ex(ctx, &card, opt_reader, opt_wait, 0, verbose);
 	if (err)
 		goto end;
 
