@@ -3,9 +3,8 @@ exec_prefix=@exec_prefix@
 libdir=@libdir@
 includedir=@includedir@
 
-Name: libopensc
-Description: libopensc
+Name: opensc
+Description: opensc
 Version: @VERSION@
-Libs: -L${libdir} -lopensc -lscconf
+Libs: -L${libdir} -lopensc-pkcs11
 Cflags: -I${includedir}
-
