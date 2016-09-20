@@ -77,7 +77,9 @@ static const struct option options[] = {
 	{ "initialize",				0, NULL,		'X' },
 	{ "create-dkek-share",		1, NULL,		'C' },
 	{ "import-dkek-share",		1, NULL,		'I' },
+#ifdef PRINT_DKEK_SHARE
 	{ "print-dkek-share",		1, NULL,		'P' },
+#endif
 	{ "wrap-key",				1, NULL,		'W' },
 	{ "unwrap-key",				1, NULL,		'U' },
 	{ "dkek-shares",			1, NULL,		's' },
@@ -100,7 +102,9 @@ static const char *option_help[] = {
 	"Initialize token",
 	"Create DKEK key share and save to <filename>",
 	"Import DKEK key share <filename>",
+#ifdef PRINT_DKEK_SHARE
 	"Print HEX of DKEK key share <filename>",
+#endif
 	"Wrap key and save to <filename>",
 	"Unwrap key read from <filename>",
 	"Number of DKEK shares [No DKEK]",
