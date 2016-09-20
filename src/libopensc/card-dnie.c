@@ -749,6 +749,10 @@ int dnie_match_card(struct sc_card *card)
 	LOG_FUNC_CALLED(card->ctx);
 	matched = _sc_match_atr(card, dnie_atrs, &card->type);
 	result = (matched >= 0) ? 1 : 0;
+	if (result && card->atr.value[15] >= 0x04) {
+		/* exclude DNIe 3.0 */
+		result = 0;
+	}
 	LOG_FUNC_RETURN(card->ctx, result);
 }
 
