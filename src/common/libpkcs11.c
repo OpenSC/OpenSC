@@ -60,6 +60,7 @@ C_LoadModule(const char *mspec, CK_FUNCTION_LIST_PTR_PTR funcs)
 		fprintf(stderr, "C_GetFunctionList failed %lx", rv);
 failed:
 	C_UnloadModule((void *) mod);
+	free(mod);
 	return NULL;
 }
 

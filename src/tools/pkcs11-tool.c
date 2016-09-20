@@ -1384,8 +1384,10 @@ static int change_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess)
 			r = util_getpass(&new_pin, &len, stdin);
 			if (r < 0)
 				return 1;
-			if (!new_pin || !*new_pin || strcmp(new_buf, new_pin) != 0)
+			if (!new_pin || !*new_pin || strcmp(new_buf, new_pin) != 0) {
+				free(new_pin);
 				return 1;
+			}
 		}
 		else   {
 			new_pin = (char *) opt_new_pin;
@@ -3536,6 +3538,7 @@ static int read_object(CK_SESSION_HANDLE session)
 	if (opt_output)
 		fclose(out);
 
+	free(value);
 	if (oid_buf)
 		free(oid_buf);
 	return 1;

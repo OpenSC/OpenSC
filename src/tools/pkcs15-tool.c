@@ -1119,8 +1119,10 @@ static u8 * get_pin(const char *prompt, sc_pkcs15_object_t *pin_obj)
 		r = util_getpass(&pincode, &len, stdin);
 		if (r < 0)
 			return NULL;
-		if (!pincode || strlen(pincode) == 0)
+		if (!pincode || strlen(pincode) == 0) {
+			free(pincode);
 			return NULL;
+		}
 		if (strlen(pincode) < pinfo->attrs.pin.min_length) {
 			printf("PIN code too short, try again.\n");
 			continue;
@@ -1129,7 +1131,7 @@ static u8 * get_pin(const char *prompt, sc_pkcs15_object_t *pin_obj)
 			printf("PIN code too long, try again.\n");
 			continue;
 		}
-		return (u8 *) strdup(pincode);
+		return (u8 *) pincode;
 	}
 }
 
@@ -1489,6 +1491,7 @@ static int change_pin(void)
 
 	if (pincode && strlen((char *) pincode) == 0) {
 		fprintf(stderr, "No PIN code supplied.\n");
+		free(pincode);
 		return 2;
 	}
 
@@ -1508,6 +1511,7 @@ static int change_pin(void)
 		if (newpin == NULL || strlen((char *) newpin) == 0)   {
 			fprintf(stderr, "No new PIN value supplied.\n");
 			free(newpin);
+			free(pincode);
 			return 2;
 		}
 
