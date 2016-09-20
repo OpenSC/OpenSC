@@ -58,16 +58,16 @@ typedef struct _pgp_pin_cfg {
  * "Signature PIN2 & "Encryption PIN" are two different PINs - not sync'ed by hardware
  */
 static const pgp_pin_cfg_t	pin_cfg_v1[3] = {
-	{ "Signature PIN",  0x01, PGP_USER_PIN_FLAGS,  6, 0 },	// used for PSO:CDS
 	{ "Encryption PIN", 0x02, PGP_USER_PIN_FLAGS,  6, 1 },	// used for PSO:DEC, INT-AUT, {GET,PUT} DATA
+	{ "Signature PIN",  0x01, PGP_USER_PIN_FLAGS,  6, 0 },	// used for PSO:CDS
 	{ "Admin PIN",      0x03, PGP_ADMIN_PIN_FLAGS, 8, 2 }
 };
 /* OpenPGP cards v2:
  * "User PIN (sig)" & "User PIN" are the same PIN, but use different references depending on action
  */
 static const pgp_pin_cfg_t	pin_cfg_v2[3] = {
-	{ "User PIN (sig)", 0x01, PGP_USER_PIN_FLAGS,  6, 0 },	// used for PSO:CDS
 	{ "User PIN",       0x02, PGP_USER_PIN_FLAGS,  6, 0 },	// used for PSO:DEC, INT-AUT, {GET,PUT} DATA
+	{ "User PIN (sig)", 0x01, PGP_USER_PIN_FLAGS,  6, 0 },	// used for PSO:CDS
 	{ "Admin PIN",      0x03, PGP_ADMIN_PIN_FLAGS, 8, 2 }
 };
 
@@ -216,7 +216,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 
 		pin_info.auth_type = SC_PKCS15_PIN_AUTH_TYPE_PIN;
 		pin_info.auth_id.len      = 1;
-		pin_info.auth_id.value[0] = i + 1;
+		pin_info.auth_id.value[0] = pin_cfg[i].reference;
 		pin_info.attrs.pin.reference     = pin_cfg[i].reference;
 		pin_info.attrs.pin.flags         = pin_cfg[i].flags;
 		pin_info.attrs.pin.type          = SC_PKCS15_PIN_TYPE_UTF8;

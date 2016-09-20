@@ -569,10 +569,8 @@ pgp_get_card_features(sc_card_t *card)
 			unsigned long flags;
 
 			/* Is this correct? */
-			/* OpenPGP card spec 1.1 & 2.0, section 2.1 */
-			flags = SC_ALGORITHM_RSA_RAW;
 			/* OpenPGP card spec 1.1 & 2.0, section 7.2.9 & 7.2.10 */
-			flags |= SC_ALGORITHM_RSA_PAD_PKCS1;
+			flags = SC_ALGORITHM_RSA_PAD_PKCS1;
 			flags |= SC_ALGORITHM_RSA_HASH_NONE;
 			/* Can be generated in card */
 			flags |= SC_ALGORITHM_ONBOARD_KEY_GEN;
@@ -1520,6 +1518,8 @@ pgp_put_data(sc_card_t *card, unsigned int tag, const u8 *buf, size_t buf_len)
 static int
 pgp_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 {
+	struct pgp_priv_data *priv = DRVDATA(card);
+
 	LOG_FUNC_CALLED(card->ctx);
 
 	if (data->pin_type != SC_AC_CHV)
@@ -1533,8 +1533,17 @@ pgp_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 	 * So, if we receive Ref=1, Ref=2, we must convert to 81, 82...
 	 * In OpenPGP v1, the PINs are named CHV1, CHV2, CHV3.
 	 * In v2, they are named PW1, PW3 (PW1 operates in 2 modes).
-	 * However, the PIN references (P2 in APDU) are the same in both versions:
-	 * 81 (CHV1 or PW1), 82 (CHV2 or PW1-mode 2), 83 (CHV3 or PW3).
+	 *
+	 * The PIN references (P2 in APDU) for "VERIFY" are the same in both versions:
+	 * 81 (CHV1 or PW1), 82 (CHV2 or PW1-mode 2), 83 (CHV3 or PW3),
+	 * On the other hand from version 2.0 "CHANGE REFERENCE DATA" and
+	 * "RESET RETRY COUNTER" don't support PW1-mode 2 (82) and need this
+	 * value changed to PW1 (81).
+	 * Both of these commands also differ between card versions in that
+	 * v1 cards can use only implicit old PIN or CHV3 test for both commands
+	 * whereas v2 can use both implicit (for PW3) and explicit
+	 * (for special "Resetting Code") PIN test for "RESET RETRY COUNTER"
+	 * and only explicit test for "CHANGE REFERENCE DATA".
 	 *
 	 * Note that if this function is called from sc_pkcs15_verify_pin() in pkcs15-pin.c,
 	 * the Ref is already 81, 82, 83.
@@ -1542,6 +1551,39 @@ pgp_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 
 	/* convert the PIN Reference if needed */
 	data->pin_reference |= 0x80;
+
+	/* check version-dependent constraints */
+	if (data->cmd == SC_PIN_CMD_CHANGE || data->cmd == SC_PIN_CMD_UNBLOCK) {
+		if (priv->bcd_version >= OPENPGP_CARD_2_0) {
+			if (data->pin_reference == 0x82)
+				data->pin_reference = 0x81;
+
+			if (data->cmd == SC_PIN_CMD_CHANGE) {
+				if (data->pin1.len == 0 &&
+				    !(data->flags & SC_PIN_CMD_USE_PINPAD))
+					LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
+						     "v2 cards don't support implicit old PIN for PIN change.");
+
+				data->flags &= ~SC_PIN_CMD_IMPLICIT_CHANGE;
+			}
+		} else {
+			if (data->pin1.len != 0) {
+				sc_log(card->ctx,
+				       "v1 cards don't support explicit old or CHV3 PIN, PIN ignored.");
+				sc_log(card->ctx,
+				       "please make sure that you have verified the relevant PIN first.");
+				data->pin1.len = 0;
+			}
+
+			data->flags |= SC_PIN_CMD_IMPLICIT_CHANGE;
+		}
+	}
+
+	if (data->cmd == SC_PIN_CMD_UNBLOCK && data->pin2.len == 0 &&
+	    !(data->flags & SC_PIN_CMD_USE_PINPAD))
+		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
+			     "new PIN must be provided for unblock operation.");
+
 	/* ensure pin_reference is 81, 82, 83 */
 	if (!(data->pin_reference == 0x81 || data->pin_reference == 0x82 || data->pin_reference == 0x83)) {
 		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
