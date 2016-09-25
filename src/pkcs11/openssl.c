@@ -180,7 +180,7 @@ sc_pkcs11_register_openssl_mechanisms(struct sc_pkcs11_card *p11card)
 	e = ENGINE_by_id("gost");
 	if (!e)
 	{
-#if !defined(OPENSSL_NO_STATIC_ENGINE) && !defined(OPENSSL_NO_GOST)
+#if !defined(OPENSSL_NO_STATIC_ENGINE) && !defined(OPENSSL_NO_GOST) && !defined(LIBRESSL_VERSION_NUMBER)
 		ENGINE_load_gost();
 		e = ENGINE_by_id("gost");
 #else
