@@ -107,14 +107,12 @@ typedef struct epass2003_exdata_st {
 		((unsigned long)x & 0x0000FF00)<<  8	| \
 		((unsigned long)x & 0x000000FF)<< 24)
 
-#define pin_low_notify(ret) \
-      printf("Verification failed (remaining tries: %d)\n",ret)
 
 static const struct sc_card_error epass2003_errors[] = {
 	{ 0x6200, SC_ERROR_CARD_CMD_FAILED,	"Warning: no information given, non-volatile memory is unchanged" },
 	{ 0x6281, SC_ERROR_CORRUPTED_DATA,	"Part of returned data may be corrupted" },
 	{ 0x6282, SC_ERROR_FILE_END_REACHED,	"End of file/record reached before reading Le bytes" },
-    { 0x6283, SC_ERROR_CARD_CMD_FAILED,	"Selected file invalidated" },
+	{ 0x6283, SC_ERROR_CARD_CMD_FAILED,	"Selected file invalidated" },
 	{ 0x6284, SC_ERROR_CARD_CMD_FAILED,	"FCI not formatted according to ISO 7816-4" },
 
 	{ 0x6300, SC_ERROR_PIN_CODE_INCORRECT,  "Authentication failed"}, 
@@ -179,25 +177,25 @@ int epass2003_refresh(struct sc_card *card);
 static int
 epass2003_check_sw(struct sc_card *card, unsigned int sw1, unsigned int sw2)
 {
-	const int err_count = sizeof(epass2003_errors)/sizeof(epass2003_errors[0]);
-	int i;
-    
-	/* Handle special cases here */
+    const int err_count = sizeof(epass2003_errors)/sizeof(epass2003_errors[0]);
+    int i;
+
+    /* Handle special cases here */
     if (sw1 == 0x6C) {
         sc_log(card->ctx, "Wrong length; correct length is %d", sw2);
         return SC_ERROR_WRONG_LENGTH;
     }
-    
+
 
     for (i = 0; i < err_count; i++)   {
         if (epass2003_errors[i].SWs == ((sw1 << 8) | sw2)) {
             sc_log(card->ctx, "%s", epass2003_errors[i].errorstr);
             return epass2003_errors[i].errorno;
         }
-	}
+    }
 
-	sc_log(card->ctx, "Unknown SWs; SW1=%02X, SW2=%02X", sw1, sw2);
-	return SC_ERROR_CARD_CMD_FAILED;
+    sc_log(card->ctx, "Unknown SWs; SW1=%02X, SW2=%02X", sw1, sw2);
+    return SC_ERROR_CARD_CMD_FAILED;
 }
 
 static int
@@ -1135,8 +1133,9 @@ epass2003_init(struct sc_card *card)
 	exdata = (epass2003_exdata *)calloc(1, sizeof(epass2003_exdata));
 	if (!exdata)
 		return SC_ERROR_OUT_OF_MEMORY;
-
+		
 	card->drv_data = exdata;
+
 	exdata->sm = SM_SCP01;
 
 	/* decide FIPS/Non-FIPS mode */
@@ -1177,6 +1176,7 @@ static int
 epass2003_finish(sc_card_t *card)
 {
 	epass2003_exdata *exdata = (epass2003_exdata *)card->drv_data;
+	
 	if (exdata)
 		free(exdata);
 	return SC_SUCCESS;
@@ -2493,14 +2493,15 @@ update_secret_key(struct sc_card *card, unsigned char ktype, unsigned char kid,
 	return r;
 }
 
+#if 1
 /* use external auth secret as pin */
 static int
 epass2003_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left)
 {
 	int r;
 	u8 kid;
-	u8 retries = 0;
-	u8 pin_low = 3;
+    u8 retries = 0;
+    u8 pin_low = 3;
 	unsigned char maxtries = 0;
 
 	LOG_FUNC_CALLED(card->ctx);
@@ -2527,59 +2528,62 @@ epass2003_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries
 		return r;
 	}
 	/* verify */
-	if (data->cmd == SC_PIN_CMD_UNBLOCK) {
-		r = external_key_auth(card, (kid + 1), (unsigned char *)data->pin1.data,
-				data->pin1.len);
-		LOG_TEST_RET(card->ctx, r, "verify pin failed");
-	}
-	else {
-		r = external_key_auth(card, kid, (unsigned char *)data->pin1.data,
-				data->pin1.len);
- 	get_external_key_retries(card, 0x80 | kid, &retries);
-	if (retries < pin_low)
-		pin_low_notify(retries);
-        }
-	LOG_TEST_RET(card->ctx, r, "verify pin failed");
+    if (data->cmd == SC_PIN_CMD_UNBLOCK) {
+        r = external_key_auth(card, (kid + 1), (unsigned char *)data->pin1.data,
+                              data->pin1.len);
+        LOG_TEST_RET(card->ctx, r, "verify pin failed");
+    }
+    else {
+        r = external_key_auth(card, kid, (unsigned char *)data->pin1.data,
+                              data->pin1.len);
+        get_external_key_retries(card, 0x80 | kid, &retries);
+        if (retries < pin_low)
+            sc_log(card->ctx, "Verification failed (remaining tries: %d)", retries);
 
-	if (data->cmd == SC_PIN_CMD_CHANGE || data->cmd == SC_PIN_CMD_UNBLOCK) {
-		/* change */
-		r = update_secret_key(card, 0x04, kid, (unsigned char *)data->pin2.data,
-				(unsigned long)data->pin2.len);
-		LOG_TEST_RET(card->ctx, r, "verify pin failed");
-	}
+    }
+    LOG_TEST_RET(card->ctx, r, "verify pin failed");
+
+
+    if (data->cmd == SC_PIN_CMD_CHANGE || data->cmd == SC_PIN_CMD_UNBLOCK) {
+        /* change */
+        r = update_secret_key(card, 0x04, kid, (unsigned char *)data->pin2.data,
+                              (unsigned long)data->pin2.len);
+        LOG_TEST_RET(card->ctx, r, "verify pin failed");
+    }
 	return r;
 }
+#endif
 
 static struct sc_card_driver *sc_get_driver(void)
 {
-	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
+    struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
 
-	if (iso_ops == NULL)
-		iso_ops = iso_drv->ops;
+    if (iso_ops == NULL)
+    iso_ops = iso_drv->ops;
 
-	epass2003_ops = *iso_ops;
+    epass2003_ops = *iso_ops;
 
-	epass2003_ops.match_card = epass2003_match_card;
-	epass2003_ops.init = epass2003_init;
-	epass2003_ops.finish = epass2003_finish;
-	epass2003_ops.write_binary = NULL;
-	epass2003_ops.write_record = NULL;
-	epass2003_ops.select_file = epass2003_select_file;
-	epass2003_ops.get_response = NULL;
-	epass2003_ops.restore_security_env = epass2003_restore_security_env;
-	epass2003_ops.set_security_env = epass2003_set_security_env;
-	epass2003_ops.decipher = epass2003_decipher;
-	epass2003_ops.compute_signature = epass2003_decipher;
-	epass2003_ops.create_file = epass2003_create_file;
-	epass2003_ops.delete_file = epass2003_delete_file;
-	epass2003_ops.list_files = epass2003_list_files;
-	epass2003_ops.card_ctl = epass2003_card_ctl;
-	epass2003_ops.process_fci = epass2003_process_fci;
-	epass2003_ops.construct_fci = epass2003_construct_fci;
-	epass2003_ops.pin_cmd = epass2003_pin_cmd;
-	epass2003_ops.check_sw = epass2003_check_sw;
-	epass2003_ops.get_challenge = epass2003_get_challenge;
-	return &epass2003_drv;
+    epass2003_ops.match_card = epass2003_match_card;
+    epass2003_ops.init = epass2003_init;
+    epass2003_ops.finish = epass2003_finish;
+    epass2003_ops.write_binary = NULL;
+    epass2003_ops.write_record = NULL;
+    epass2003_ops.select_file = epass2003_select_file;
+    epass2003_ops.get_response = NULL;
+    epass2003_ops.restore_security_env = epass2003_restore_security_env;
+    epass2003_ops.set_security_env = epass2003_set_security_env;
+    epass2003_ops.decipher = epass2003_decipher;
+    epass2003_ops.compute_signature = epass2003_decipher;
+    epass2003_ops.create_file = epass2003_create_file;
+    epass2003_ops.delete_file = epass2003_delete_file;
+    epass2003_ops.list_files = epass2003_list_files;
+    epass2003_ops.card_ctl = epass2003_card_ctl;
+    epass2003_ops.process_fci = epass2003_process_fci;
+    epass2003_ops.construct_fci = epass2003_construct_fci;
+    epass2003_ops.pin_cmd = epass2003_pin_cmd;
+    epass2003_ops.check_sw = epass2003_check_sw;
+    epass2003_ops.get_challenge = epass2003_get_challenge;
+    return &epass2003_drv;
 }
 
 struct sc_card_driver *sc_get_epass2003_driver(void)
