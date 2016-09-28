@@ -365,7 +365,8 @@ static int do_userinfo(sc_card_t *card)
 			return EXIT_FAILURE;
 		}
 		if (r != (signed)count) {
-			fprintf(stderr, "%s: expecting %zd, got only %d bytes\n", openpgp_data[i].ef, count, r);
+			fprintf(stderr, "%s: expecting %"SC_FORMAT_LEN_SIZE_T"d, got only %d bytes\n",
+				openpgp_data[i].ef, count, r);
 			return EXIT_FAILURE;
 		}
 

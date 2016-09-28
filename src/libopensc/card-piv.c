@@ -1676,8 +1676,9 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 	plain_text_len += tmplen;
 
 	if (plain_text_len != witness_len) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Encrypted and decrypted lengths do not match: %zu:%zu\n",
-				witness_len, plain_text_len);
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
+			 "Encrypted and decrypted lengths do not match: %"SC_FORMAT_LEN_SIZE_T"u:%"SC_FORMAT_LEN_SIZE_T"u\n",
+			 witness_len, plain_text_len);
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
@@ -1801,8 +1802,9 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 	decrypted_reponse_len += tmplen;
 
 	if (decrypted_reponse_len != nonce_len || memcmp(nonce, decrypted_reponse, nonce_len) != 0) {
-		sc_log(card->ctx, "mutual authentication failed, card returned wrong value %zu:%zu",
-				decrypted_reponse_len, nonce_len);
+		sc_log(card->ctx,
+		       "mutual authentication failed, card returned wrong value %"SC_FORMAT_LEN_SIZE_T"u:%"SC_FORMAT_LEN_SIZE_T"u",
+		       decrypted_reponse_len, nonce_len);
 		r = SC_ERROR_DECRYPT_FAILED;
 		goto err;
 	}
@@ -2005,7 +2007,7 @@ static int piv_general_external_authenticate(sc_card_t *card,
 	/* Sanity check the lengths again */
 	if(output_len != (size_t)tmplen) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Allocated and computed lengths do not match! "
-				"Expected %zd, found: %d\n", output_len, tmplen);
+			 "Expected %"SC_FORMAT_LEN_SIZE_T"d, found: %d\n", output_len, tmplen);
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
