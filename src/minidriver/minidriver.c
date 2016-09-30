@@ -247,6 +247,11 @@ static DWORD md_fs_init(PCARD_DATA pCardData);
 #define snprintf _snprintf
 #endif
 
+#if defined(__GNUC__)
+static void logprintf(PCARD_DATA pCardData, int level, const char* format, ...)
+	__attribute__ ((format (SC_PRINTF_FORMAT, 3, 4)));
+#endif
+
 static void logprintf(PCARD_DATA pCardData, int level, _Printf_format_string_ const char* format, ...)
 {
 	va_list arg;
