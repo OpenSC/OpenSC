@@ -259,6 +259,8 @@ static const struct sc_asn1_entry c_asn1_md_container[C_ASN1_MD_CONTAINER_SIZE] 
 	{ NULL, 0, 0, 0, NULL, NULL }
 };
 
+static DWORD md_translate_OpenSC_to_Windows_error(int OpenSCerror,
+						  DWORD dwDefaulCode);
 static DWORD associate_card(PCARD_DATA pCardData);
 static void disassociate_card(PCARD_DATA pCardData);
 static DWORD md_pkcs15_delete_object(PCARD_DATA pCardData, struct sc_pkcs15_object *obj);
@@ -1585,27 +1587,31 @@ md_set_cardid(PCARD_DATA pCardData, struct md_file *file)
 }
 
 /* fill the msroot file from root certificates */
-static void
-md_fs_read_msroot_file(PCARD_DATA pCardData, char *parent, struct md_file *file)
+static DWORD
+md_fs_read_msroot_file(PCARD_DATA pCardData, struct md_file *file)
 {
 	CERT_BLOB dbStore = {0};
 	HCERTSTORE hCertStore = NULL;
 	VENDOR_SPECIFIC *vs;
 	int rv, ii, cert_num;
 	struct sc_pkcs15_object *prkey_objs[MD_MAX_KEY_CONTAINERS];
+	DWORD dwret = SCARD_F_INTERNAL_ERROR;
 
-	hCertStore = CertOpenStore(CERT_STORE_PROV_MEMORY, X509_ASN_ENCODING, (HCRYPTPROV_LEGACY) NULL, 0, NULL);
-	if (!hCertStore) {
-		goto Ret;
-	}
+	if (!pCardData || !file)
+		return SCARD_E_INVALID_PARAMETER;
 
 	vs = (VENDOR_SPECIFIC *) pCardData->pvVendorSpecific;
 	if (!vs)
+		return SCARD_E_INVALID_PARAMETER;
+
+	hCertStore = CertOpenStore(CERT_STORE_PROV_MEMORY, X509_ASN_ENCODING, (HCRYPTPROV_LEGACY) NULL, 0, NULL);
+	if (!hCertStore)
 		goto Ret;
 
 	rv = sc_pkcs15_get_objects(vs->p15card, SC_PKCS15_TYPE_CERT_X509, prkey_objs, MD_MAX_KEY_CONTAINERS);
 	if (rv < 0)   {
 		logprintf(pCardData, 0, "certificate enumeration failed: %s\n", sc_strerror(rv));
+		dwret = md_translate_OpenSC_to_Windows_error(rv, dwret);
 		goto Ret;
 	}
 	cert_num = rv;
@@ -1642,8 +1648,8 @@ md_fs_read_msroot_file(PCARD_DATA pCardData, char *parent, struct md_file *file)
 	}
 
 	dbStore.pbData = (PBYTE) pCardData->pfnCspAlloc(dbStore.cbData);
-
 	if (NULL == dbStore.pbData) {
+		dwret = SCARD_E_NO_MEMORY;
 		goto Ret;
 	}
 
@@ -1659,17 +1665,21 @@ md_fs_read_msroot_file(PCARD_DATA pCardData, char *parent, struct md_file *file)
 	file->size = dbStore.cbData;
 	file->blob = dbStore.pbData;
 	dbStore.pbData = NULL;
+	dwret = SCARD_S_SUCCESS;
+
 Ret:
 	if (dbStore.pbData)
 		pCardData->pfnCspFree(dbStore.pbData);
 	if (hCertStore)
 		CertCloseStore(hCertStore, CERT_CLOSE_STORE_FORCE_FLAG);
+
+	return dwret;
 }
 
 /*
  * Return content of the 'soft' file.
  */
-static void
+static DWORD
 md_fs_read_content(PCARD_DATA pCardData, char *parent, struct md_file *file)
 {
 	VENDOR_SPECIFIC *vs;
@@ -1677,21 +1687,21 @@ md_fs_read_content(PCARD_DATA pCardData, char *parent, struct md_file *file)
 	DWORD dwret;
 
 	if (!pCardData || !file)
-		return;
+		return SCARD_E_INVALID_PARAMETER;
 
 	vs = pCardData->pvVendorSpecific;
 	if (!vs)
-		return;
+		return SCARD_E_INVALID_PARAMETER;
 
 	dwret = md_fs_find_directory(pCardData, NULL, parent, &dir);
 	if (dwret != SCARD_S_SUCCESS)   {
 		logprintf(pCardData, 2, "find directory '%s' error: %lX\n",
 			  parent ? parent : "<null>", (unsigned long)dwret);
-		return;
+		return dwret;
 	}
 	else if (!dir)   {
 		logprintf(pCardData, 2, "directory '%s' not found\n", parent ? parent : "<null>");
-		return;
+		return SCARD_E_DIR_NOT_FOUND;
 	}
 
 	if (!strcmp((char *)dir->name, "mscp"))   {
@@ -1714,21 +1724,21 @@ md_fs_read_content(PCARD_DATA pCardData, char *parent, struct md_file *file)
 			if(rv)   {
 				logprintf(pCardData, 2, "Cannot read certificate idx:%i: sc-error %d\n", idx, rv);
 				logprintf(pCardData, 2, "set cardcf from 'DATA' pkcs#15 object\n");
-				return;
+				return md_translate_OpenSC_to_Windows_error(rv,
+									    SCARD_F_INTERNAL_ERROR);
 			}
 
 			file->size = cert->data.len;
 			file->blob = pCardData->pfnCspAlloc(cert->data.len);
 			CopyMemory(file->blob, cert->data.value, cert->data.len);
 			sc_pkcs15_free_certificate(cert);
-		}
-		if (!strcmp((char *)file->name, "msroot")) {
-			md_fs_read_msroot_file(pCardData, parent, file);
-		}
+
+			return SCARD_S_SUCCESS;
+		} else if (!strcmp((char *)file->name, "msroot"))
+			return md_fs_read_msroot_file(pCardData, file);
 	}
-	else   {
-		return;
-	}
+
+	return SCARD_E_FILE_NOT_FOUND;
 }
 
 /*
@@ -3153,7 +3163,8 @@ md_dialog_perform_pin_operation(PCARD_DATA pCardData, int operation, struct sc_p
 	return (int) result;
 }
 
-DWORD md_translate_OpenSC_to_Windows_error(int OpenSCerror, DWORD dwDefaulCode)
+static DWORD md_translate_OpenSC_to_Windows_error(int OpenSCerror,
+						  DWORD dwDefaulCode)
 {
 	switch(OpenSCerror)
 	{
@@ -4012,13 +4023,11 @@ DWORD WINAPI CardReadFile(__in PCARD_DATA pCardData,
 
 	if(!pCardData)
 		return SCARD_E_INVALID_PARAMETER;
-	if (!ppbData || !pcbData)
-		return SCARD_E_INVALID_PARAMETER;
 
 	logprintf(pCardData, 2,
-		  "pszDirectoryName = %s, pszFileName = %s, dwFlags = %lX, pcbData=%lu, ppbData=%p\n",
+		  "pszDirectoryName = %s, pszFileName = %s, dwFlags = %lX, pcbData=%p, ppbData=%p\n",
 		  NULLSTR(pszDirectoryName), NULLSTR(pszFileName),
-		  (unsigned long)dwFlags, (unsigned long)*pcbData, ppbData);
+		  (unsigned long)dwFlags, pcbData, ppbData);
 
 	if (!pszFileName || !strlen(pszFileName))
 		return SCARD_E_INVALID_PARAMETER;
@@ -4035,17 +4044,28 @@ DWORD WINAPI CardReadFile(__in PCARD_DATA pCardData,
 		return SCARD_E_FILE_NOT_FOUND;
 	}
 
-	if (!file->blob)
-		md_fs_read_content(pCardData, pszDirectoryName, file);
+	if (!file->blob) {
+		dwret = md_fs_read_content(pCardData, pszDirectoryName, file);
+		if (dwret != SCARD_S_SUCCESS)
+			return dwret;
 
-	*ppbData = pCardData->pfnCspAlloc(file->size);
-	if(!*ppbData)
-		return SCARD_E_NO_MEMORY;
-	*pcbData = (DWORD) file->size;
-	memcpy(*ppbData, file->blob, file->size);
+		if (!file->blob)
+			return SCARD_F_INTERNAL_ERROR;
+	}
+
+	if (ppbData) {
+		*ppbData = pCardData->pfnCspAlloc(file->size);
+		if(!*ppbData)
+			return SCARD_E_NO_MEMORY;
+
+		memcpy(*ppbData, file->blob, file->size);
+	}
+
+	if (pcbData)
+		*pcbData = (DWORD) file->size;
 
 	logprintf(pCardData, 7, "returns '%s' content:\n",  NULLSTR(pszFileName));
-	loghex(pCardData, 7, *ppbData, *pcbData);
+	loghex(pCardData, 7, file->blob, file->size);
 	return SCARD_S_SUCCESS;
 }
 
