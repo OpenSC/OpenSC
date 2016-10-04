@@ -35,6 +35,7 @@
 
 #ifdef ENABLE_OPENSSL
 #include <openssl/opensslv.h>
+#include "libopensc/sc-ossl-compat.h"
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L
 #include <openssl/opensslconf.h>
 #include <openssl/crypto.h>
@@ -56,7 +57,6 @@
 #include <openssl/err.h>
 #endif
 
-#include "libopensc/sc-ossl-compat.h"
 #include "pkcs11/pkcs11.h"
 #include "pkcs11/pkcs11-opensc.h"
 #include "libopensc/asn1.h"
@@ -460,10 +460,10 @@ int main(int argc, char * argv[])
 #endif
 
 #ifdef ENABLE_OPENSSL
-#if OPENSSL_VERSION_NUMBER >= 0x00907000L && OPENSSL_VERSION_NUMBER < 0x10100000L
+#if (OPENSSL_VERSION_NUMBER >= 0x00907000L && OPENSSL_VERSION_NUMBER < 0x10100000L) || defined(LIBRESSL_VERSION_NUMBER)
 	OPENSSL_config(NULL);
 #endif
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
 	OPENSSL_init_crypto(OPENSSL_INIT_LOAD_CRYPTO_STRINGS
 		| OPENSSL_INIT_ADD_ALL_CIPHERS
 		| OPENSSL_INIT_ADD_ALL_DIGESTS

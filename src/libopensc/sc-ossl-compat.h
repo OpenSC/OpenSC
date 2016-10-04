@@ -32,6 +32,13 @@ extern "C" {
 /*
  * Provide backward compatability to older versions of OpenSSL
  * while using most of OpenSSL 1.1  API
+ *
+ * LibreSSL is a fork of OpenSSL from 2014
+ * In its version of openssl/opensslv.h it defines:
+ * OPENSSL_VERSION_NUMBER  0x20000000L (Will not change)
+ * LIBRESSL_VERSION_NUMBER  0x2050000fL (changes with its versions.
+ * The LibreSSL appears to follow the OpenSSL-1.0.1 API
+ *
  */
 
 /*
@@ -81,7 +88,7 @@ extern "C" {
 #define EVP_PKEY_base_id(x)		(x->type)
 #endif
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
 #define RSA_PKCS1_OpenSSL		RSA_PKCS1_SSLeay
 #define OPENSSL_malloc_init		CRYPTO_malloc_init
 
@@ -101,7 +108,7 @@ extern "C" {
  * If that is not good enough, versions could be added to libopensc
  */
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
 /* based on OpenSSL-1.1.0 e_os2.h */
 /* sc_ossl_inline: portable inline definition usable in public headers */
 # if !defined(inline) && !defined(__cplusplus)
@@ -120,7 +127,7 @@ extern "C" {
 # endif
 #endif
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
 
 #define RSA_bits(R) (BN_num_bits(R->n))
 

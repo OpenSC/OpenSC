@@ -39,6 +39,7 @@
 #include <string.h>
 #endif
 #include <openssl/opensslv.h>
+#include "libopensc/sc-ossl-compat.h"
 #if OPENSSL_VERSION_NUMBER >= 0x00907000L
 #include <openssl/conf.h>
 #endif
@@ -60,7 +61,6 @@
 #endif /* OPENSSL_VERSION_NUMBER >= 0x10000000L */
 
 #include "common/compat_strlcpy.h"
-#include "libopensc/sc-ossl-compat.h"
 #include "libopensc/cardctl.h"
 #include "libopensc/pkcs15.h"
 #include "libopensc/log.h"
@@ -439,7 +439,7 @@ main(int argc, char **argv)
 #if OPENSSL_VERSION_NUMBER >= 0x00907000L && OPENSSL_VERSION_NUMBER < 0x10100000L
 	OPENSSL_config(NULL);
 #endif
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && !(defined LIBRESSL_VERSION_NUMBER)
 	/* Openssl 1.1.0 magic */
 	OPENSSL_init_crypto(OPENSSL_INIT_LOAD_CRYPTO_STRINGS
 		| OPENSSL_INIT_ADD_ALL_CIPHERS
