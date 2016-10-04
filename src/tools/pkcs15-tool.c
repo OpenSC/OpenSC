@@ -2062,10 +2062,8 @@ int main(int argc, char * const argv[])
 end:
 	if (p15card)
 		sc_pkcs15_unbind(p15card);
-	if (card) {
-		sc_unlock(card);
+	if (card)
 		sc_disconnect_card(card);
-	}
 	if (ctx)
 		sc_release_context(ctx);
 	return err;
