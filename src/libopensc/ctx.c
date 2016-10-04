@@ -792,6 +792,13 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 
 	load_card_drivers(ctx, &opts);
 	load_card_atrs(ctx);
+
+	if (!opts.forced_card_driver) {
+		char *driver = getenv("OPENSC_DRIVER");
+		if(driver) {
+			opts.forced_card_driver = strdup(driver);
+		}
+	}
 	if (opts.forced_card_driver) {
 		/* FIXME: check return value? */
 		sc_set_card_driver(ctx, opts.forced_card_driver);
