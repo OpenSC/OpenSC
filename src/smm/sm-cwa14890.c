@@ -204,6 +204,7 @@ sm_cwa_init_session_keys(struct sc_context *ctx, struct sm_cwa_session *session_
 		memcpy(&session_data->session_mac[0], buff, sizeof(session_data->session_mac));
 	}
 	else if (mechanism == IASECC_ALGORITHM_SYMMETRIC_SHA256)   {
+#if OPENSSL_VERSION_NUMBER >= 0x00908000L
 		xored[35] = 0x01;
 		SHA256(xored, 36, buff);
 		memcpy(&session_data->session_enc[0], buff, sizeof(session_data->session_enc));
@@ -211,6 +212,10 @@ sm_cwa_init_session_keys(struct sc_context *ctx, struct sm_cwa_session *session_
 		xored[35] = 0x02;
 		SHA256(xored, 36, buff);
 		memcpy(&session_data->session_mac[0], buff, sizeof(session_data->session_mac));
+#else
+		sc_log(ctx, "No FIPS, SHA256 is not supported");
+		return SC_ERROR_INVALID_ARGUMENTS;
+#endif
 	}
 	else   {
 		return SC_ERROR_INVALID_ARGUMENTS;
