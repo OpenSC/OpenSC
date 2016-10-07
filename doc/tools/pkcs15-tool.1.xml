@@ -140,6 +140,16 @@
 
 				<varlistentry>
 					<term>
+						<option>--clear-cache</option>
+					</term>
+					<listitem><para>Removes the user's cache directory. On
+					Windows, this option additionally removes the system's
+					caching directory (requires administrator
+					privileges).</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
 						<option>--output</option> <replaceable>filename</replaceable>,
 						<option>-o</option> <replaceable>filename</replaceable>
 					</term>
