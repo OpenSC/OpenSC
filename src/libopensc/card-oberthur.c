@@ -1340,19 +1340,23 @@ auth_update_component(struct sc_card *card, struct auth_update_component_info *a
 		int outl;
 		const unsigned char in[8] = {0,0,0,0,0,0,0,0};
 		unsigned char out[8];
-		EVP_CIPHER_CTX ctx;
+		EVP_CIPHER_CTX  * ctx = NULL;
 
 		if (args->len!=8 && args->len!=24)
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
+		ctx = EVP_CIPHER_CTX_new();
+		if (ctx == NULL) 
+		    SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL,SC_ERROR_OUT_OF_MEMORY);
+
 		p2 = 0;
-		EVP_CIPHER_CTX_init(&ctx);
 		if (args->len == 24)
-			EVP_EncryptInit_ex(&ctx, EVP_des_ede(), NULL, args->data, NULL);
+			EVP_EncryptInit_ex(ctx, EVP_des_ede(), NULL, args->data, NULL);
 		else
-			EVP_EncryptInit_ex(&ctx, EVP_des_ecb(), NULL, args->data, NULL);
-		rv = EVP_EncryptUpdate(&ctx, out, &outl, in, 8);
-		if (!EVP_CIPHER_CTX_cleanup(&ctx) || rv == 0) {
+			EVP_EncryptInit_ex(ctx, EVP_des_ecb(), NULL, args->data, NULL);
+		rv = EVP_EncryptUpdate(ctx, out, &outl, in, 8);
+		EVP_CIPHER_CTX_free(ctx);
+		if (rv == 0) {
 			sc_log(card->ctx, "OpenSSL encryption error.");
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 		}

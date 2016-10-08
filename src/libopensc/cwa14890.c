@@ -36,6 +36,8 @@
 #include "opensc.h"
 #include "cardctl.h"
 #include "internal.h"
+#include <openssl/rsa.h>
+#include <openssl/bn.h>
 #include <openssl/x509.h>
 #include <openssl/des.h>
 #include <openssl/rand.h>
@@ -588,6 +590,7 @@ static int cwa_prepare_external_auth(sc_card_t * card,
 	BIGNUM *bnsub = NULL;
 	BIGNUM *bnres = NULL;
 	sc_context_t *ctx = NULL;
+	const BIGNUM *ifd_privkey_n, *ifd_privkey_e, *ifd_privkey_d;
 
 	/* safety check */
 	if (!card || !card->ctx)
@@ -641,7 +644,8 @@ static int cwa_prepare_external_auth(sc_card_t * card,
 		res = SC_ERROR_INTERNAL;
 		goto prepare_external_auth_end;
 	}
-	res = BN_sub(bnsub, ifd_privkey->n, bn);	/* eval N.IFD-SIG */
+	RSA_get0_key(ifd_privkey, &ifd_privkey_n, &ifd_privkey_e, &ifd_privkey_d);
+	res = BN_sub(bnsub, ifd_privkey_n, bn);	/* eval N.IFD-SIG */
 	if (res == 0) {		/* 1:success 0 fail */
 		msg = "Prepare external auth: BN sigmin evaluation failed";
 		res = SC_ERROR_INTERNAL;
@@ -889,6 +893,7 @@ static int cwa_verify_internal_auth(sc_card_t * card,
 	BIGNUM *bn = NULL;
 	BIGNUM *sigbn = NULL;
 	sc_context_t *ctx = NULL;
+	const BIGNUM *icc_pubkey_n, *icc_pubkey_e, *icc_pubkey_d;
 
 	if (!card || !card->ctx)
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -959,7 +964,8 @@ static int cwa_verify_internal_auth(sc_card_t * card,
 		res = SC_ERROR_OUT_OF_MEMORY;
 		goto verify_internal_done;
 	}
-	res = BN_sub(sigbn, icc_pubkey->n, bn);	/* eval N.ICC-SIG */
+	RSA_get0_key(icc_pubkey, &icc_pubkey_n, &icc_pubkey_e, &icc_pubkey_d);
+	res = BN_sub(sigbn, icc_pubkey_n, bn);	/* eval N.ICC-SIG */
 	if (!res) {
 		msg = "Verify Signature: evaluation of N.ICC-SIG failed";
 		res = SC_ERROR_INTERNAL;
@@ -1319,8 +1325,8 @@ int cwa_create_secure_channel(sc_card_t * card,
 
 	/* verify received signature */
 	sc_log(ctx, "Verify Internal Auth command response");
-	res = cwa_verify_internal_auth(card, icc_pubkey->pkey.rsa,	/* evaluated icc public key */
-				       ifd_privkey->pkey.rsa,	/* evaluated from DGP's Manual Annex 3 Data */
+	res = cwa_verify_internal_auth(card, EVP_PKEY_get0_RSA(icc_pubkey),	/* evaluated icc public key */
+				       EVP_PKEY_get0_RSA(ifd_privkey),	/* evaluated from DGP's Manual Annex 3 Data */
 				       rndbuf,	/* RND.IFD || SN.IFD */
 				       16,	/* rndbuf length; should be 16 */
 				       sm	/* sm data */
@@ -1340,8 +1346,8 @@ int cwa_create_secure_channel(sc_card_t * card,
 
 	/* compose signature data for external auth */
 	res = cwa_prepare_external_auth(card,
-					icc_pubkey->pkey.rsa,
-					ifd_privkey->pkey.rsa, sn_icc, sm);
+					EVP_PKEY_get0_RSA(icc_pubkey),
+					EVP_PKEY_get0_RSA(ifd_privkey), sn_icc, sm);
 	if (res != SC_SUCCESS) {
 		msg = "Prepare external auth failed";
 		goto csc_end;

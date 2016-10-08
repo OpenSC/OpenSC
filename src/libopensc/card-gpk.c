@@ -731,7 +731,12 @@ gpk_compute_crycks(sc_card_t *card, sc_apdu_t *apdu,
 	u8		in[8], out[8], block[64];
 	unsigned int	len = 0, i;
 	int             r = SC_SUCCESS, outl;
-	EVP_CIPHER_CTX  ctx;
+	EVP_CIPHER_CTX  *ctx = NULL;
+
+	ctx = EVP_CIPHER_CTX_new();
+	if (ctx == NULL)
+		return SC_ERROR_INTERNAL;
+
 
 	/* Fill block with 0x00 and then with the data. */
 	memset(block, 0x00, sizeof(block));
@@ -748,16 +753,14 @@ gpk_compute_crycks(sc_card_t *card, sc_apdu_t *apdu,
 	/* Set IV */
 	memset(in, 0x00, 8);
 
-	EVP_CIPHER_CTX_init(&ctx);
-	EVP_EncryptInit_ex(&ctx, EVP_des_ede_cbc(), NULL, priv->key, in);
+	EVP_EncryptInit_ex(ctx, EVP_des_ede_cbc(), NULL, priv->key, in);
 	for (i = 0; i < len; i += 8) {
-		if (!EVP_EncryptUpdate(&ctx, out, &outl, &block[i], 8)) {
+		if (!EVP_EncryptUpdate(ctx, out, &outl, &block[i], 8)) {
 			r = SC_ERROR_INTERNAL;
 			break;
 		}
 	}
-	if (!EVP_CIPHER_CTX_cleanup(&ctx))
-		r = SC_ERROR_INTERNAL;
+	EVP_CIPHER_CTX_free(ctx);
 
 	memcpy((u8 *) (apdu->data + apdu->datalen), out + 5, 3);
 	apdu->datalen += 3;
@@ -883,25 +886,29 @@ gpk_set_filekey(const u8 *key, const u8 *challenge,
 		const u8 *r_rn, u8 *kats)
 {
 	int			r = SC_SUCCESS, outl;
-	EVP_CIPHER_CTX		ctx;
+	EVP_CIPHER_CTX		* ctx = NULL;
 	u8                      out[16];
 
 	memcpy(out, key+8, 8);
 	memcpy(out+8, key, 8);
 
-	EVP_CIPHER_CTX_init(&ctx);
-	EVP_EncryptInit_ex(&ctx, EVP_des_ede(), NULL, key, NULL);
-	if (!EVP_EncryptUpdate(&ctx, kats, &outl, r_rn+4, 8))
+	ctx = EVP_CIPHER_CTX_new();
+	if (ctx == NULL)
+		return SC_ERROR_INTERNAL;
+
+	EVP_EncryptInit_ex(ctx, EVP_des_ede(), NULL, key, NULL);
+	if (!EVP_EncryptUpdate(ctx, kats, &outl, r_rn+4, 8))
 		r = SC_ERROR_INTERNAL;
-	if (!EVP_CIPHER_CTX_cleanup(&ctx))
+
+	if (!EVP_CIPHER_CTX_cleanup(ctx))
 		r = SC_ERROR_INTERNAL;
 	if (r == SC_SUCCESS) {
-		EVP_CIPHER_CTX_init(&ctx);
-		EVP_EncryptInit_ex(&ctx, EVP_des_ede(), NULL, out, NULL);
-		if (!EVP_EncryptUpdate(&ctx, kats+8, &outl, r_rn+4, 8))
+		EVP_CIPHER_CTX_init(ctx);
+		EVP_EncryptInit_ex(ctx, EVP_des_ede(), NULL, out, NULL);
+		if (!EVP_EncryptUpdate(ctx, kats+8, &outl, r_rn+4, 8))
 			r = SC_ERROR_INTERNAL;
-		if (!EVP_CIPHER_CTX_cleanup(&ctx))
-			r = SC_ERROR_INTERNAL;
+	if (!EVP_CIPHER_CTX_cleanup(ctx))
+		r = SC_ERROR_INTERNAL;
 	}
 	memset(out, 0, sizeof(out));
 
@@ -910,15 +917,16 @@ gpk_set_filekey(const u8 *key, const u8 *challenge,
 	 * here? INVALID_ARGS doesn't seem quite right
 	 */
 	if (r == SC_SUCCESS) {
-		EVP_CIPHER_CTX_init(&ctx);
-		EVP_EncryptInit_ex(&ctx, EVP_des_ede(), NULL, kats, NULL);
-		if (!EVP_EncryptUpdate(&ctx, out, &outl, challenge, 8))
-			r = SC_ERROR_INTERNAL;
-		if (!EVP_CIPHER_CTX_cleanup(&ctx))
+		EVP_CIPHER_CTX_init(ctx);
+		EVP_EncryptInit_ex(ctx, EVP_des_ede(), NULL, kats, NULL);
+		if (!EVP_EncryptUpdate(ctx, out, &outl, challenge, 8))
 			r = SC_ERROR_INTERNAL;
 		if (memcmp(r_rn, out+4, 4) != 0)
 			r = SC_ERROR_INVALID_ARGUMENTS;
 	}
+
+	if (ctx)
+	    EVP_CIPHER_CTX_free(ctx);
 
 	sc_mem_clear(out, sizeof(out));
 	return r;
@@ -941,7 +949,7 @@ gpk_select_key(sc_card_t *card, int key_sfi, const u8 *buf, size_t buflen)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	/* now do the SelFk */
-	RAND_pseudo_bytes(rnd, sizeof(rnd));
+	RAND_bytes(rnd, sizeof(rnd));
 	memset(&apdu, 0, sizeof(apdu));
 	apdu.cla = 0x80;
 	apdu.cse = SC_APDU_CASE_4_SHORT;
@@ -1509,10 +1517,14 @@ gpk_pkfile_load(sc_card_t *card, struct sc_cardctl_gpk_pkload *args)
 	unsigned int	n;
 	u8		temp[256];
 	int		r = SC_SUCCESS, outl;
-	EVP_CIPHER_CTX  ctx;
+	EVP_CIPHER_CTX  * ctx;
 
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "gpk_pkfile_load(fid=%04x, len=%d, datalen=%d)\n",
 			args->file->id, args->len, args->datalen);
+
+	ctx = EVP_CIPHER_CTX_new();
+	if (ctx == NULL)
+		return SC_ERROR_INTERNAL;
 
 	if (0) {
 		char buf[2048];
@@ -1539,15 +1551,16 @@ gpk_pkfile_load(sc_card_t *card, struct sc_cardctl_gpk_pkload *args)
 		return SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
 	}
 
-	EVP_CIPHER_CTX_init(&ctx);
-	EVP_EncryptInit_ex(&ctx, EVP_des_ede(), NULL, priv->key, NULL);
+	EVP_EncryptInit_ex(ctx, EVP_des_ede(), NULL, priv->key, NULL);
 	for (n = 0; n < args->datalen; n += 8) {
-		if (!EVP_EncryptUpdate(&ctx, temp+n, &outl, args->data + n, 8)) {
+		if (!EVP_EncryptUpdate(ctx, temp+n, &outl, args->data + n, 8)) {
 			r = SC_ERROR_INTERNAL;
 			break;
 		}
 	}
-	if (!EVP_CIPHER_CTX_cleanup(&ctx) || r != SC_SUCCESS)
+	if (ctx)
+		EVP_CIPHER_CTX_free(ctx);
+	if (r != SC_SUCCESS)
 		return SC_ERROR_INTERNAL;
 
 	apdu.data = temp;

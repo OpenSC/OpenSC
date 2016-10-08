@@ -33,6 +33,7 @@
 #include <openssl/x509v3.h>
 #include <openssl/bn.h>
 
+#include "libopensc/sc-ossl-compat.h"
 #include "libopensc/opensc.h"
 #include "libopensc/errors.h"
 #include "libopensc/pkcs15.h"
@@ -102,7 +103,7 @@ static int unlock = 0;
 static char *get_filename = NULL;
 static char *put_filename = NULL;
 
-static int do_convert_bignum(sc_pkcs15_bignum_t *dst, BIGNUM *src)
+static int do_convert_bignum(sc_pkcs15_bignum_t *dst, const BIGNUM *src)
 {
 	if (src == 0) return 0;
 	dst->len = BN_num_bytes(src);
@@ -617,7 +618,7 @@ int main(int argc, char *argv[])
 			goto out;
 		}
 
-		rsa->meth = RSA_PKCS1_SSLeay();
+		RSA_set_method(rsa, RSA_PKCS1_OpenSSL());
 
 		if(!i2d_RSAPrivateKey_bio(mem, rsa))
 		{
@@ -681,9 +682,16 @@ int main(int argc, char *argv[])
 		r = create_file_cert(card);
 		if(r) goto out;
 
-		if (!do_convert_bignum(&dst->modulus, rsa->n)
-		 || !do_convert_bignum(&dst->exponent, rsa->e))
-			goto out;
+		{
+			const BIGNUM *rsa_n, *rsa_e;
+
+			RSA_get0_key(rsa, &rsa_n, &rsa_e, NULL);
+
+			if (!do_convert_bignum(&dst->modulus, rsa_n)
+			 || !do_convert_bignum(&dst->exponent, rsa_e))
+				goto out;
+
+		}
 
 		r = sc_pkcs15_encode_pubkey(ctx, &key, &pdata, &lg);
 		if(r) goto out;

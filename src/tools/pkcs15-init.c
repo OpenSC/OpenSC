@@ -39,6 +39,7 @@
 #include <string.h>
 #endif
 #include <openssl/opensslv.h>
+#include "libopensc/sc-ossl-compat.h"
 #if OPENSSL_VERSION_NUMBER >= 0x00907000L
 #include <openssl/conf.h>
 #endif
@@ -52,6 +53,7 @@
 #include <openssl/pkcs12.h>
 #include <openssl/x509v3.h>
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L
+#include <openssl/crypto.h>
 #include <openssl/opensslconf.h> /* for OPENSSL_NO_EC */
 #ifndef OPENSSL_NO_EC
 #include <openssl/ec.h>
@@ -434,12 +436,22 @@ main(int argc, char **argv)
 	unsigned int		n;
 	int			r = 0;
 
-#if OPENSSL_VERSION_NUMBER >= 0x00907000L
+#if OPENSSL_VERSION_NUMBER >= 0x00907000L && OPENSSL_VERSION_NUMBER < 0x10100000L
 	OPENSSL_config(NULL);
 #endif
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && !(defined LIBRESSL_VERSION_NUMBER)
+	/* Openssl 1.1.0 magic */
+	OPENSSL_init_crypto(OPENSSL_INIT_LOAD_CRYPTO_STRINGS
+		| OPENSSL_INIT_ADD_ALL_CIPHERS
+		| OPENSSL_INIT_ADD_ALL_DIGESTS
+		| OPENSSL_INIT_LOAD_CONFIG,
+		NULL);
+#else
 	/* OpenSSL magic */
-	SSLeay_add_all_algorithms();
-	CRYPTO_malloc_init();
+	OpenSSL_add_all_algorithms();
+	OPENSSL_malloc_init();
+#endif
+
 #ifdef RANDOM_POOL
 	if (!RAND_load_file(RANDOM_POOL, 32))
 		util_fatal("Unable to seed random number pool for key generation");
@@ -909,7 +921,7 @@ do_store_private_key(struct sc_profile *profile)
 
 		printf("Importing %d certificates:\n", opt_ignore_ca_certs ? 1 : ncerts);
 		for (i = 0; i < ncerts && !(i && opt_ignore_ca_certs); i++)
-			printf("  %d: %s\n", i, X509_NAME_oneline(cert[i]->cert_info->subject,
+			printf("  %d: %s\n", i, X509_NAME_oneline(X509_get_subject_name(cert[i]),
 					namebuf, sizeof(namebuf)));
 	}
 
@@ -923,7 +935,7 @@ do_store_private_key(struct sc_profile *profile)
 
 		/* tell openssl to cache the extensions */
 		X509_check_purpose(cert[0], -1, -1);
-		usage = cert[0]->ex_kusage;
+		usage = X509_get_extended_key_usage(cert[0]);
 
 		/* No certificate usage? Assume ordinary
 		 * user cert */
@@ -973,10 +985,11 @@ do_store_private_key(struct sc_profile *profile)
 			return r;
 
 		X509_check_purpose(cert[i], -1, -1);
-		cargs.x509_usage = cert[i]->ex_kusage;
+		cargs.x509_usage = X509_get_extended_key_usage(cert[i]);
+
 		cargs.label = cert_common_name(cert[i]);
 		if (!cargs.label)
-			cargs.label = X509_NAME_oneline(cert[i]->cert_info->subject, namebuf, sizeof(namebuf));
+			cargs.label = X509_NAME_oneline(X509_get_subject_name(cert[i]), namebuf, sizeof(namebuf));
 
 		/* Just the first certificate gets the same ID
 		 * as the private key. All others get
@@ -1116,6 +1129,7 @@ do_read_check_certificate(sc_pkcs15_cert_t *sc_oldcert,
 {
 	X509 *oldcert, *newcert;
 	EVP_PKEY *oldpk, *newpk;
+	int oldpk_type, newpk_type;
 	const u8 *ptr;
 	int r;
 
@@ -1136,19 +1150,30 @@ do_read_check_certificate(sc_pkcs15_cert_t *sc_oldcert,
 	oldpk = X509_get_pubkey(oldcert);
 	newpk = X509_get_pubkey(newcert);
 
+	oldpk_type = EVP_PKEY_base_id(oldpk);
+	newpk_type = EVP_PKEY_base_id(newpk);
+
 	/* Compare the public keys, there's no high level openssl function for this(?) */
+	/* Yes there is in 1.0.2 and above EVP_PKEY_cmp */
+
+
 	r = SC_ERROR_INVALID_ARGUMENTS;
-	if (oldpk->type == newpk->type)
+	if (oldpk_type == newpk_type)
 	{
-		if ((oldpk->type == EVP_PKEY_DSA) &&
-			!BN_cmp(oldpk->pkey.dsa->p, newpk->pkey.dsa->p) &&
-			!BN_cmp(oldpk->pkey.dsa->q, newpk->pkey.dsa->q) &&
-			!BN_cmp(oldpk->pkey.dsa->g, newpk->pkey.dsa->g))
+#if  OPENSSL_VERSION_NUMBER >= 0x10002000L
+		if (EVP_PKEY_cmp(oldpk, newpk) == 1)
+			r = 0;
+#else
+		if ((oldpk_type == EVP_PKEY_DSA) &&
+			!BN_cmp(EVP_PKEY_get0_DSA(oldpk)->p, EVP_PKEY_get0_DSA(newpk)->p) &&
+			!BN_cmp(EVP_PKEY_get0_DSA(oldpk)->q, EVP_PKEY_get0_DSA(newpk)->q) &&
+			!BN_cmp(EVP_PKEY_get0_DSA(oldpk)->g, EVP_PKEY_get0_DSA(newpk)->g))
 				r = 0;
-		else if ((oldpk->type == EVP_PKEY_RSA) &&
-			!BN_cmp(oldpk->pkey.rsa->n, newpk->pkey.rsa->n) &&
-			!BN_cmp(oldpk->pkey.rsa->e, newpk->pkey.rsa->e))
+		else if ((oldpk_type == EVP_PKEY_RSA) &&
+			!BN_cmp(EVP_PKEY_get0_RSA(oldpk)->n, EVP_PKEY_get0_RSA(newpk)->n) &&
+			!BN_cmp(EVP_PKEY_get0_RSA(oldpk)->e, EVP_PKEY_get0_RSA(newpk)->e))
 				r = 0;
+#endif
 	}
 
 	EVP_PKEY_free(newpk);
@@ -2004,7 +2029,8 @@ do_read_pkcs12_private_key(const char *filename, const char *passphrase,
 		return SC_ERROR_CANNOT_LOAD_KEY;
 	}
 
-	CRYPTO_add(&user_key->references, 1, CRYPTO_LOCK_EVP_PKEY);
+	EVP_PKEY_up_ref(user_key);
+
 	if (user_cert && max_certs)
 		certs[ncerts++] = user_cert;
 
@@ -2014,7 +2040,7 @@ do_read_pkcs12_private_key(const char *filename, const char *passphrase,
 
 	/* bump reference counts for certificates */
 	for (i = 0; i < ncerts; i++) {
-		CRYPTO_add(&certs[i]->references, 1, CRYPTO_LOCK_X509);
+		X509_up_ref(certs[i]);
 	}
 
 	if (cacerts)
