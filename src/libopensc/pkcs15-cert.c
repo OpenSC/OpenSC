@@ -273,26 +273,27 @@ sc_pkcs15_get_extension(struct sc_context *ctx, struct sc_pkcs15_cert *cert,
 			LOG_FUNC_RETURN(ctx, r);
 
 		/* is it the RN we are looking for */
-		if(sc_compare_oid(&oid, type) != 0) {
+		if (sc_compare_oid(&oid, type) != 0) {
 			if (*ext_val == NULL) {
-				*ext_val= val;
+				*ext_val = val;
 				val = NULL;
 				*ext_val_len = val_len;
+				/* do not free here -- return the allocated value to caller */
 			}
 			else {
 				*ext_val_len = MIN(*ext_val_len, val_len);
 				memcpy(*ext_val, val, *ext_val_len);
+				free(val);
 			}
 
 			if (is_critical)
 				*is_critical = critical;
 
 			r = val_len;
-			free(val);
 			LOG_FUNC_RETURN(ctx, r);
 		}
-		free(val);
 	}
+	free(val);
 
 	LOG_FUNC_RETURN(ctx, SC_ERROR_ASN1_OBJECT_NOT_FOUND);
 }

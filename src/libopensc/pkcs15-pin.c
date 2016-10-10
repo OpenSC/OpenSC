@@ -407,7 +407,7 @@ int sc_pkcs15_change_pin(struct sc_pkcs15_card *p15card,
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pin_cmd_data data;
 	struct sc_pkcs15_auth_info *auth_info = (struct sc_pkcs15_auth_info *)pin_obj->data;
-	struct sc_card *card = p15card->card;
+	struct sc_card *card;
 	int r;
 
 	LOG_FUNC_CALLED(ctx);

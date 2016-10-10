@@ -1403,6 +1403,8 @@ sc_pkcs15_pubkey_from_spki_sequence(struct sc_context *ctx, const unsigned char 
 
 	if(outpubkey)
 		*outpubkey = pubkey;
+	else
+		free(pubkey);
 
 	LOG_FUNC_RETURN(ctx, r);
 }

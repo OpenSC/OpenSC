@@ -2486,6 +2486,7 @@ handle_option(const struct option *opt)
 		break;
 	case 'h':
 		util_print_usage_and_die(app_name, options, option_help, NULL);
+		/* exit */
 	case 'i':
 		opt_objectid = optarg;
 		break;
@@ -2829,6 +2830,7 @@ int get_pin(sc_ui_hints_t *hints, char **out)
 
 		if (!(flags & SC_UI_PIN_MISMATCH_RETRY)) {
 			fprintf(stderr, "PINs do not match.\n");
+			free(pin);
 			return SC_ERROR_KEYPAD_PIN_MISMATCH;
 		}
 
