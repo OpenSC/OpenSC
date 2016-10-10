@@ -6,6 +6,7 @@ EXTRA_DIST = Makefile.mak
 SUBDIRS = regression
 noinst_PROGRAMS = base64 lottery p15dump pintest prngtest
 
+AM_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS)
 AM_CPPFLAGS = -I$(top_srcdir)/src
 LIBS = \
 	$(top_builddir)/src/libopensc/libopensc.la \
