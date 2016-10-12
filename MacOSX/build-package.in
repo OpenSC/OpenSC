@@ -41,30 +41,32 @@ if ! pkg-config libcrypto --atleast-version=1.0.1; then
 	export OPENSSL_LIBS="`  env PKG_CONFIG_PATH=$BUILDPATH/openssl_bin/$PREFIX/lib/pkgconfig PKG_CONFIG_SYSROOT_DIR=$BUILDPATH/openssl_bin pkg-config --static --libs   libcrypto`"
 fi
 
-./configure --prefix=$PREFIX \
---sysconfdir=$PREFIX/etc \
---disable-dependency-tracking \
---enable-shared \
---disable-static \
---enable-strict \
---disable-assert \
---enable-sm # TODO: remove this (must be sensible default in master)
+if ! test -e ${BUILDPATH}/target/$PREFIX/lib/pkgconfig; then
+	./configure --prefix=$PREFIX \
+		--sysconfdir=$PREFIX/etc \
+		--disable-dependency-tracking \
+		--enable-shared \
+		--disable-static \
+		--enable-strict \
+		--disable-assert \
+		--enable-sm # TODO: remove this (must be sensible default in master)
 
-# always make clean
-make clean
+	# always make clean
+	make clean
 
-# compile
-make -j 2
+	# compile
+	make -j 2
 
-# copy files
-rm -rf target
-make install DESTDIR=${BUILDPATH}/target
+	# copy files
+	rm -rf target
+	make install DESTDIR=${BUILDPATH}/target
 
-# remove garbage
-rm -f target/$PREFIX/lib/*.la
+	# remove garbage
+	rm -f target/$PREFIX/lib/*.la
 
-# generate .bundle (required by Adobe Acrobat)
-./MacOSX/libtool-bundle target/$PREFIX/lib/opensc-pkcs11.so target/$PREFIX/lib
+	# generate .bundle (required by Adobe Acrobat)
+	./MacOSX/libtool-bundle target/$PREFIX/lib/opensc-pkcs11.so target/$PREFIX/lib
+fi
 
 # Check out OpenSC.tokend, if not already fetched.
 if ! test -e OpenSC.tokend; then
