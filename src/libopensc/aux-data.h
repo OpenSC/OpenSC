@@ -28,7 +28,6 @@ extern "C" {
 #endif
 
 #include "cardctl.h"
-#include "internal.h"
 #include "errors.h"
 #include "asn1.h"
 #include "types.h"
