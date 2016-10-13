@@ -69,8 +69,8 @@ void usage_test(void **state) {
 
 	/* print summary */
 	printf("[KEY ID] [LABEL]\n");
-	printf("[ TYPE ] [ SIZE ] [PUBLIC] [SIGN&VERIFY] [ENC&DECRYPT] [WRAP&UNWR] [ DERIVE ]\n");
-	P11TEST_DATA_ROW(info, 13,
+	printf("[ TYPE ] [ SIZE ] [PUBLIC] [SIGN&VERIFY] [ENC&DECRYPT] [WRAP&UNWR] [ DERIVE ] [ALWAYS_AUTH]\n");
+	P11TEST_DATA_ROW(info, 14,
 		's', "KEY ID",
 		's', "LABEL",
 		's', "TYPE",
@@ -83,12 +83,13 @@ void usage_test(void **state) {
 		's', "WRAP",
 		's', "UNWRAP",
 		's', "DERIVE PUBLIC",
-		's', "DERIVE PRIVATE");
+		's', "DERIVE PRIVATE",
+		's', "ALWAYS AUTH");
 	for (i = 0; i < objects.count; i++) {
 		printf("\n[%-6s] [%s]\n",
 			objects.data[i].id_str,
 			objects.data[i].label);
-		printf("[ %s ] [%6lu] [ %s ] [%s%s] [%s%s] [%s %s] [%s%s]\n",
+		printf("[ %s ] [%6lu] [ %s ] [%s%s] [%s%s] [%s %s] [%s%s] [    %s   ]\n",
 			objects.data[i].key_type == CKK_RSA ? "RSA " :
 				objects.data[i].key_type == CKK_EC ? " EC " : " ?? ",
 			objects.data[i].bits,
@@ -100,8 +101,9 @@ void usage_test(void **state) {
 			objects.data[i].wrap ? "[./]" : "[  ]",
 			objects.data[i].unwrap ? "[./]" : "[  ]",
 			objects.data[i].derive_pub ? "[./]" : "[  ]",
-			objects.data[i].derive_priv ? "[./]" : "[  ]");
-		P11TEST_DATA_ROW(info, 13,
+			objects.data[i].derive_priv ? "[./]" : "[  ]",
+			objects.data[i].always_auth ? "[./]" : "[  ]");
+		P11TEST_DATA_ROW(info, 14,
 			's', objects.data[i].id_str,
 			's', objects.data[i].label,
 			's', objects.data[i].key_type == CKK_RSA ? "RSA" :
@@ -115,7 +117,8 @@ void usage_test(void **state) {
 			's', objects.data[i].wrap ? "YES" : "",
 			's', objects.data[i].unwrap ? "YES" : "",
 			's', objects.data[i].derive_pub ? "YES" : "",
-			's', objects.data[i].derive_priv ? "YES" : "");
+			's', objects.data[i].derive_priv ? "YES" : "",
+			's', objects.data[i].always_auth ? "YES" : "");
 	}
 	printf(" Public == Cert -----^       ^-----^       ^-----^       ^----^      ^---^\n");
 	printf(" Sign & Verify Attributes ------'             |            |           |\n");
