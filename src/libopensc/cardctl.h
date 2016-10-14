@@ -225,6 +225,7 @@ enum {
 	SC_CARDCTL_COOLKEY_BASE = _CTL_PREFIX('C', 'O', 'K'),
 	SC_CARDCTL_COOLKEY_INIT_GET_OBJECTS,
 	SC_CARDCTL_COOLKEY_GET_NEXT_OBJECT,
+	SC_CARDCTL_COOLKEY_FINAL_GET_OBJECTS,
 	SC_CARDCTL_COOLKEY_GET_ATTRIBUTE,
 	SC_CARDCTL_COOLKEY_GET_TOKEN_INFO,
 	SC_CARDCTL_COOLKEY_FIND_OBJECT,
@@ -1067,7 +1068,7 @@ typedef struct sc_cardctl_coolkey_attribute {
 typedef struct sc_cardctl_coolkey_find_object {
 	int type; /* in parameter */
 	unsigned long find_id; /* in parameter */
-	sc_cardctl_coolkey_attribute_t *template; /* in paramter */
+	sc_cardctl_coolkey_attribute_t *coolkey_template; /* in paramter */
 	int template_count;                       /* in parameter */
 	sc_cardctl_coolkey_object_t *obj; /* out parameter */
 } sc_cardctl_coolkey_find_object_t;

@@ -1,10 +1,10 @@
 /*
  * partial PKCS15 emulation for Coolkey cards
  *
- * Copyright (C) 2005,2006,2007,2008,2009,2010  
- *               Douglas E. Engert <deengert@anl.gov> 
+ * Copyright (C) 2005,2006,2007,2008,2009,2010
+ *               Douglas E. Engert <deengert@anl.gov>
  *               2004, Nils Larsch <larsch@trustcenter.de>
- * Copyright (C) 2006, Identity Alliance, 
+ * Copyright (C) 2006, Identity Alliance,
  *               Thomas Harning <thomas.harning@identityalliance.com>
  * Copyright (C) 2007, EMC, Russell Larner <rlarner@rsa.com>
  * Copyright (C) 2016, Red Hat, Inc., Robert Relyea <rrelyea@redhat.com>
@@ -51,11 +51,11 @@ typedef struct pdata_st {
 	unsigned int maxlen;
 	unsigned int minlen;
 	unsigned int storedlen;
-	int         flags;	
+	int         flags;
 	int         tries_left;
 	const unsigned char  pad_char;
 	int         obj_flags;
-} pindata; 
+} pindata;
 
 static int coolkey_detect_card(sc_pkcs15_card_t *p15card)
 {
@@ -86,7 +86,7 @@ coolkey_get_object(sc_card_t *card, unsigned long object_id, sc_cardctl_coolkey_
 
 
 /*
- * fetch attributes from an object 
+ * fetch attributes from an object
  */
 static int
 coolkey_get_attribute(sc_card_t *card, sc_cardctl_coolkey_object_t *obj, CK_ATTRIBUTE_TYPE type, const u8 **val, size_t *val_len, u8 *data_type) {
@@ -135,7 +135,7 @@ coolkey_find_matching_cert(sc_card_t *card, sc_cardctl_coolkey_object_t *in_obj,
 	/* now find the cert that has the ID */
 	fobj.type = SC_CARDCTL_COOLKEY_FIND_BY_TEMPLATE;
 	fobj.obj = NULL;
-	fobj.template = &template[0];
+	fobj.coolkey_template = &template[0];
 	fobj.template_count=2;
 	r = sc_card_ctl(card, SC_CARDCTL_COOLKEY_FIND_OBJECT, &fobj);
 	if (r < 0) {
@@ -157,8 +157,8 @@ coolkey_get_attribute_ulong(sc_card_t *card, sc_cardctl_coolkey_object_t *obj, C
 	if (r < 0) {
 		return r;
 	}
-	if ((data_type != SC_CARDCTL_COOLKEY_ATTR_TYPE_ULONG)  &&
-	 									(val_len != sizeof(CK_ULONG))) {
+	if ((data_type != SC_CARDCTL_COOLKEY_ATTR_TYPE_ULONG) &&
+	    (val_len != sizeof(CK_ULONG))) {
 		return SC_ERROR_CORRUPTED_DATA;
 	}
 	*value = bebytes2ulong(val);
@@ -251,11 +251,11 @@ coolkey_get_attribute_lv(sc_card_t *card, sc_cardctl_coolkey_object_t *obj, CK_A
 #define COOLKEY_ID_KEY ((unsigned long)'k')
 #define COOLKEY_ID_CERT_DATA ((unsigned long)'C')
 
-inline static unsigned long 
+static unsigned long
 coolkey_get_object_type(unsigned long object_id) { return ((object_id >> 24 ) & 0xff); }
 
-inline static unsigned long 
-coolkey_make_new_id(unsigned long object_id, unsigned long id_type) 
+static unsigned long
+coolkey_make_new_id(unsigned long object_id, unsigned long id_type)
 { return ((object_id  & 0x00ffffffUL)|(id_type << 24)); }
 
 
@@ -396,7 +396,7 @@ coolkey_make_public_key(sc_card_t *card, sc_cardctl_coolkey_object_t *obj, CK_KE
 	    if(r < 0) {
 			goto fail;
 		}
-		r = coolkey_get_attribute_bytes_alloc(card, obj, CKA_EC_PARAMS, 
+		r = coolkey_get_attribute_bytes_alloc(card, obj, CKA_EC_PARAMS,
 				&key->u.ec.params.der.value, &key->u.ec.params.der.len);
 		if (r < 0) {
 			goto fail;
@@ -462,7 +462,7 @@ static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
 	static const pindata pins[] = {
 		{ "1", NULL, "", 0x00,
 		  SC_PKCS15_PIN_TYPE_ASCII_NUMERIC,
-		  32, 4, 32, 
+		  32, 4, 32,
 		  SC_PKCS15_PIN_FLAG_INITIALIZED,
 		  -1, 0xFF,
 		  SC_PKCS15_CO_FLAG_PRIVATE },
@@ -471,8 +471,8 @@ static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
 
 	/*
 	 * The size of the key or the algid is not really known
-	 * but can be derived from the certificates. 
-	 * the cert, pubkey and privkey are a set. 
+	 * but can be derived from the certificates.
+	 * the cert, pubkey and privkey are a set.
 	 * Key usages bits taken from certificate key usage extension.
 	 */
 
@@ -487,8 +487,8 @@ static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
 	memset(&serial, 0, sizeof(serial));
 
 	/* coolkey caches a nonce once it logs in, don't keep the pin around. The card will
- 	 * stay logged in until it's been pulled from the reader, in which case you want to reauthenticate
- 	 * anyway */
+	 * stay logged in until it's been pulled from the reader, in which case you want to reauthenticate
+	 * anyway */
 	p15card->opts.use_pin_cache = 0;
 
 
@@ -617,7 +617,7 @@ static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
 			/* set the info values */
 			obj_info = &pubkey_info;
 			memset(&pubkey_info, 0, sizeof(pubkey_info));
-			r = sc_pkcs15_encode_pubkey_as_spki(card->ctx, key, &pubkey_info.direct.spki.value, 
+			r = sc_pkcs15_encode_pubkey_as_spki(card->ctx, key, &pubkey_info.direct.spki.value,
 																			&pubkey_info.direct.spki.len);
 			if (r < 0)
 				goto fail;
@@ -645,7 +645,7 @@ static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
 			obj_info = &cert_info;
 			memset(&cert_info, 0, sizeof(cert_info));
 			coolkey_get_id(card, &coolkey_obj, &cert_info.id);
-			cert_info.path = coolkey_obj.path;	
+			cert_info.path = coolkey_obj.path;
 			obj_type = SC_PKCS15_TYPE_CERT_X509;
 
 			/* following will find the cached cert in cert_info */
@@ -664,11 +664,12 @@ static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
 			continue;
 		}
 
-		r = sc_pkcs15emu_object_add(p15card, obj_type, &obj_obj, obj_info); 
+		r = sc_pkcs15emu_object_add(p15card, obj_type, &obj_obj, obj_info);
 fail:
 		if (key) { sc_pkcs15_free_pubkey(key); }
 
 	}
+	r = (card->ops->card_ctl)(card, SC_CARDCTL_COOLKEY_FINAL_GET_OBJECTS, &count);
 
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
 }
