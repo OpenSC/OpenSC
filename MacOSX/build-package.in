@@ -30,7 +30,9 @@ if ! pkg-config libcrypto --atleast-version=1.0.1; then
 		fi
 		cd openssl
 		KERNEL_BITS=64 ./config --prefix=$PREFIX -mmacosx-version-min=10.10
-		make clean update depend
+		make clean
+		make update
+		make depend
 		make
 		make INSTALL_PREFIX=$BUILDPATH/openssl_bin install_sw
 		cd ..
