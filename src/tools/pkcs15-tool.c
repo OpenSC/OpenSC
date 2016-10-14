@@ -1198,7 +1198,7 @@ static int clear_cache(void)
 
 #else
 
-int unlink_cb(const char *fpath, const struct stat *sb, int typeflag, struct FTW *ftwbuf)
+static int unlink_cb(const char *fpath, const struct stat *sb, int typeflag, struct FTW *ftwbuf)
 {
 	int r = remove(fpath);
 	if (r)
