@@ -23,7 +23,7 @@ export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/lib/pkgconfig
 
 if ! pkg-config libcrypto --atleast-version=1.0.1; then
 	# OpenSSL is not installed
-	if ! test -e $BUILDPATH/openssl_bin/lib/pkgconfig; then
+	if ! test -e $BUILDPATH/openssl_bin/$PREFIX/lib/pkgconfig; then
 		# Build OpenSSL manually, because Apple's binaries are deprecated
 		if ! test -e openssl; then
 			git clone --depth=1 https://github.com/openssl/openssl.git -b OpenSSL_1_0_2-stable
