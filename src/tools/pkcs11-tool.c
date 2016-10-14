@@ -2988,6 +2988,7 @@ derive_ec_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE
 	return newkey;
 #else
 	util_fatal("Derive EC key not supported");
+	return 0;
 #endif /* ENABLE_OPENSSL  && !OPENSSL_NO_EC && !OPENSSL_NO_ECDSA */
 }
 
