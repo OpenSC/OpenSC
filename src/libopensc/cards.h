@@ -231,6 +231,10 @@ enum {
 
 	/* JPKI cards */
 	SC_CARD_TYPE_JPKI_BASE = 31000,
+
+	/* CAC cards */
+	SC_CARD_TYPE_COOLKEY_BASE = 32000,
+	SC_CARD_TYPE_COOLKEY_GENERIC,
 };
 
 extern sc_card_driver_t *sc_get_default_driver(void);
@@ -271,6 +275,7 @@ extern sc_card_driver_t *sc_get_isoApplet_driver(void);
 extern sc_card_driver_t *sc_get_masktech_driver(void);
 extern sc_card_driver_t *sc_get_gids_driver(void);
 extern sc_card_driver_t *sc_get_jpki_driver(void);
+extern sc_card_driver_t *sc_get_coolkey_driver(void);
 
 #ifdef __cplusplus
 }
