@@ -5346,7 +5346,6 @@ static int hex_to_bin(const char *in, unsigned char *out, size_t *outlen)
 
 	left = *outlen;
 
-	while (*in == '0' && *(++in) != '\0') ; // strip leading zeros in input
 	if (strlen(in) % 2)
 		nybbles = 1; // any leading zero in output should be in most-significant byte, not last one!
 	while (*in != '\0') {
