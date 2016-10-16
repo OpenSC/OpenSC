@@ -27,6 +27,7 @@
 #include <assert.h>
 #include <string.h>
 
+#include "internal.h"
 #include "common/compat_strlcat.h"
 
 #include <libopensc/errors.h>

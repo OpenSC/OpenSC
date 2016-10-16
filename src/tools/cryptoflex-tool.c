@@ -20,6 +20,7 @@
 
 #include "config.h"
 
+#include "libopensc/sc-ossl-compat.h"
 #include <openssl/bn.h>
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
