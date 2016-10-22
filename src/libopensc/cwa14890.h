@@ -36,6 +36,7 @@
 #define CWA_SM_OFF        0x00	/** Disable SM channel */
 #define CWA_SM_COLD       0x01	/** force creation of a new SM channel */
 #define CWA_SM_WARM       0x02	/** Create new SM channel only if state is NONE */
+#define CWA_SM_OVER       0x03	/** Create new SM channel only over another channel */
 
 /* TAGS for encoded APDU's */
 #define CWA_SM_PLAIN_TAG  0x81	/** Plain value (to be protected by CC) */
