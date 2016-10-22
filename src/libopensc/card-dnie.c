@@ -59,7 +59,6 @@
 /* default titles */
 #define USER_CONSENT_TITLE "Confirm"
 
-extern cwa_provider_t *dnie_get_cwa_provider(sc_card_t * card);
 extern int dnie_read_file(
 	sc_card_t * card, 
 	const sc_path_t * path, 
@@ -749,10 +748,6 @@ int dnie_match_card(struct sc_card *card)
 	LOG_FUNC_CALLED(card->ctx);
 	matched = _sc_match_atr(card, dnie_atrs, &card->type);
 	result = (matched >= 0) ? 1 : 0;
-	if (result && card->atr.value[15] >= 0x04) {
-		/* exclude DNIe 3.0 */
-		result = 0;
-	}
 	LOG_FUNC_RETURN(card->ctx, result);
 }
 
@@ -769,13 +764,15 @@ static int dnie_sm_free_wrapped_apdu(struct sc_card *card,
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 
 	if ((*sm_apdu) != plain) {
-		plain->resp = (*sm_apdu)->resp;
-		plain->resplen = (*sm_apdu)->resplen;
-		plain->sw1 = (*sm_apdu)->sw1;
-		plain->sw2 = (*sm_apdu)->sw2;
+		if (plain) {
+			plain->resp = (*sm_apdu)->resp;
+			plain->resplen = (*sm_apdu)->resplen;
+			plain->sw1 = (*sm_apdu)->sw1;
+			plain->sw2 = (*sm_apdu)->sw2;
+			if (((*sm_apdu)->data) != plain->data)
+				free((unsigned char *) (*sm_apdu)->data);
+		}
 
-		if (((*sm_apdu)->data) != plain->data)
-			free((unsigned char *) (*sm_apdu)->data);
 		free(*sm_apdu);
 	}
 	*sm_apdu = NULL;
@@ -2195,6 +2192,11 @@ static int dnie_pin_verify(struct sc_card *card,
 
 	LOG_FUNC_CALLED(card->ctx);
 	/* ensure that secure channel is established from reset */
+	if (card->atr.value[15] >= DNIE_30_VERSION) {
+		/* the provider should be prepared for using PIN information */
+		sc_log(card->ctx, "DNIe 3.0 detected doing PIN initialization");
+		dnie_change_cwa_provider_to_pin(card);
+	}
 	res = cwa_create_secure_channel(card, GET_DNIE_PRIV_DATA(card)->cwa_provider, CWA_SM_COLD);
 	LOG_TEST_RET(card->ctx, res, "Establish SM failed");
 
@@ -2232,6 +2234,14 @@ static int dnie_pin_verify(struct sc_card *card,
 	/* the end: a bit of Mister Proper and return */
 	dnie_free_apdu_buffers(&apdu, resp, MAX_RESP_BUFFER_SIZE);
 	data->apdu = NULL;
+
+	/* ensure that secure channel is established after a PIN channel in 3.0 */
+	if (card->atr.value[15] >= DNIE_30_VERSION) {
+		sc_log(card->ctx, "DNIe 3.0 detected => re-establish secure channel");
+		dnie_change_cwa_provider_to_secure(card);
+		res = cwa_create_secure_channel(card, GET_DNIE_PRIV_DATA(card)->cwa_provider, CWA_SM_OVER);
+	}
+
 	LOG_FUNC_RETURN(card->ctx, res);
 #else
     LOG_TEST_RET(card->ctx, SC_ERROR_NOT_SUPPORTED, "built without support of SM and External Authentication");
