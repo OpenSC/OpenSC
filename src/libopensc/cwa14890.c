@@ -1665,8 +1665,11 @@ int cwa_decode_response(sc_card_t * card,
 	/* cwa14890 sect 9.3: check SW1 or SW2 for SM related errors */
 	if (apdu->sw1 == 0x69) {
 		if ((apdu->sw2 == 0x88) || (apdu->sw2 == 0x87)) {
+			/* configure the driver to re-establish the SM */
 			msg = "SM related errors in APDU response";
-			res = SC_ERROR_SM_ENCRYPT_FAILED;	/* tell driver to restart SM */
+			sm_session->state = CWA_SM_NONE;
+			card->sm_ctx.sm_mode = SM_MODE_NONE;
+			res = SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
 			goto response_decode_end;
 		}
 	}
