@@ -46,6 +46,7 @@
 #endif
 #include <assert.h>
 #ifdef ENABLE_OPENSSL
+#include <openssl/opensslv.h>
 #include <openssl/bn.h>
 #include <openssl/evp.h>
 #include <openssl/pem.h>
@@ -55,6 +56,7 @@
 #include <openssl/pkcs12.h>
 #endif
 
+#include "libopensc/sc-ossl-compat.h"
 #include "common/compat_strlcpy.h"
 #include "common/libscdl.h"
 #include "libopensc/pkcs15.h"
@@ -2162,11 +2164,6 @@ prkey_fixup_rsa(struct sc_pkcs15_card *p15card, struct sc_pkcs15_prkey_rsa *key)
 	}
 
 #ifdef ENABLE_OPENSSL
-#define GETBN(dst, src, mem) \
-	do {	dst.len = BN_num_bytes(src); \
-		assert(dst.len <= sizeof(mem)); \
-		BN_bn2bin(src, dst.data = mem); \
-	} while (0)
 
 	/* Generate additional parameters.
 	 * At least the GPK seems to need the full set of CRT
@@ -2178,7 +2175,6 @@ prkey_fixup_rsa(struct sc_pkcs15_card *p15card, struct sc_pkcs15_prkey_rsa *key)
 	 /* We don't really need an RSA structure, only the BIGNUMs */
 
 	if (!key->dmp1.len || !key->dmq1.len || !key->iqmp.len) {
-		static u8 dmp1[256], dmq1[256], iqmp[256];
 		BIGNUM *aux;
 		BN_CTX *bn_ctx;
 		BIGNUM *rsa_n, *rsa_e, *rsa_d, *rsa_p, *rsa_q, *rsa_dmp1, *rsa_dmq1, *rsa_iqmp;
@@ -2206,11 +2202,35 @@ prkey_fixup_rsa(struct sc_pkcs15_card *p15card, struct sc_pkcs15_prkey_rsa *key)
 		BN_clear_free(aux);
 		BN_CTX_free(bn_ctx);
 
-		/* Not thread safe, but much better than a memory leak */
-		/* TODO put on stack, or allocate and clear and then free */
-		GETBN(key->dmp1, rsa_dmp1, dmp1);
-		GETBN(key->dmq1, rsa_dmq1, dmq1);
-		GETBN(key->iqmp, rsa_iqmp, iqmp);
+		/* Do not replace, only fill in missing */
+		if (key->dmp1.data == NULL) {
+			key->dmp1.len = BN_num_bytes(rsa_dmp1);
+			key->dmp1.data = malloc(key->dmp1.len);
+			if (key->dmp1.data) {
+				BN_bn2bin(rsa_dmp1, key->dmp1.data);
+			} else {
+				key->dmp1.len = 0;
+			}
+		}
+
+		if (key->dmq1.data == NULL) {
+			key->dmq1.len = BN_num_bytes(rsa_dmq1);
+			key->dmq1.data = malloc(key->dmq1.len);
+			if (key->dmq1.data) {
+				BN_bn2bin(rsa_dmq1, key->dmq1.data);
+			} else {
+				key->dmq1.len = 0;
+			}
+		}
+		if (key->iqmp.data == NULL) {
+			key->iqmp.len = BN_num_bytes(rsa_iqmp);
+			key->iqmp.data = malloc(key->iqmp.len);
+			if (key->iqmp.data) {
+				BN_bn2bin(rsa_iqmp, key->iqmp.data);
+			} else {
+				key->iqmp.len = 0;
+			}
+		}
 
 		BN_clear_free(rsa_n);
 		BN_clear_free(rsa_e);
@@ -2222,7 +2242,6 @@ prkey_fixup_rsa(struct sc_pkcs15_card *p15card, struct sc_pkcs15_prkey_rsa *key)
 		BN_clear_free(rsa_iqmp);
 
 	}
-#undef GETBN
 #endif
 	return 0;
 }
