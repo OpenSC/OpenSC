@@ -115,6 +115,7 @@ static const struct option options[] = {
 	{ "list-data-objects",	no_argument, NULL,		'C' },
 	{ "list-pins",		no_argument, NULL,		OPT_LIST_PINS },
 	{ "list-secret-keys",	no_argument, NULL,		OPT_LIST_SKEYS },
+	{ "dump-summary",	no_argument, NULL,		'd' },
 	{ "dump",		no_argument, NULL,		'D' },
 	{ "unblock-pin",	no_argument, NULL,		'u' },
 	{ "change-pin",		no_argument, NULL,		OPT_CHANGE_PIN },
@@ -153,6 +154,7 @@ static const char *option_help[] = {
 	"Lists data objects",
 	"Lists PIN codes",
 	"Lists secret keys",
+	"Dump card objects summary",
 	"Dump card objects",
 	"Unblock PIN code",
 	"Change PIN or PUK code",
@@ -268,7 +270,7 @@ static void print_cert_info(const struct sc_pkcs15_object *obj)
 }
 
 
-static int list_certificates(void)
+static int list_certificates(int summary)
 {
 	int r, i;
 	struct sc_pkcs15_object *objs[32];
@@ -278,8 +280,10 @@ static int list_certificates(void)
 		fprintf(stderr, "Certificate enumeration failed: %s\n", sc_strerror(r));
 		return 1;
 	}
-	if (verbose)
-		printf("Card has %d certificate(s).\n\n", r);
+	if (verbose || summary)
+		printf("Card has %d Certificate(s).\n\n", r);
+	if(summary)
+		return 0;
 	for (i = 0; i < r; i++) {
 		print_cert_info(objs[i]);
 		printf("\n");
@@ -480,7 +484,7 @@ static int read_data_object(void)
 	return 2;
 }
 
-static int list_data_objects(void)
+static int list_data_objects(int summary)
 {
 	int r, i, count;
 	struct sc_pkcs15_object *objs[32];
@@ -491,6 +495,10 @@ static int list_data_objects(void)
 		return 1;
 	}
 	count = r;
+	if (verbose || summary)
+		printf("Card has %d Data object(s).\n\n", count);
+	if(summary)
+		return 0;
 	for (i = 0; i < count; i++) {
 		int idx;
 		struct sc_pkcs15_data_info *cinfo = (struct sc_pkcs15_data_info *) objs[i]->data;
@@ -589,7 +597,7 @@ static void print_prkey_info(const struct sc_pkcs15_object *obj)
 }
 
 
-static int list_private_keys(void)
+static int list_private_keys(int summary)
 {
 	int r, i;
 	struct sc_pkcs15_object *objs[32];
@@ -599,8 +607,10 @@ static int list_private_keys(void)
 		fprintf(stderr, "Private key enumeration failed: %s\n", sc_strerror(r));
 		return 1;
 	}
-	if (verbose)
-		printf("Card has %d private key(s).\n\n", r);
+	if (verbose || summary)
+		printf("Card has %d Private key(s).\n\n", r);
+	if(summary)
+		return 0;
 	for (i = 0; i < r; i++) {
 		print_prkey_info(objs[i]);
 		printf("\n");
@@ -668,7 +678,7 @@ static void print_pubkey_info(const struct sc_pkcs15_object *obj)
 		printf("\tDirectValue    : <%s>\n", obj->content.len ? "present" : "absent");
 }
 
-static int list_public_keys(void)
+static int list_public_keys(int summary)
 {
 	int r, i;
 	struct sc_pkcs15_object *objs[32];
@@ -678,8 +688,10 @@ static int list_public_keys(void)
 		fprintf(stderr, "Public key enumeration failed: %s\n", sc_strerror(r));
 		return 1;
 	}
-	if (verbose)
-		printf("Card has %d public key(s).\n\n", r);
+	if (verbose || summary)
+		printf("Card has %d Public key(s).\n\n", r);
+	if(summary)
+		return 0;
 	for (i = 0; i < r; i++) {
 		print_pubkey_info(objs[i]);
 		printf("\n");
@@ -1356,7 +1368,7 @@ static void print_pin_info(const struct sc_pkcs15_object *obj)
 		printf("\tTries left     : %d\n", auth_info->tries_left);
 }
 
-static int list_pins(void)
+static int list_pins(int summary)
 {
 	int r, i;
 	struct sc_pkcs15_object *objs[32];
@@ -1366,8 +1378,11 @@ static int list_pins(void)
 		fprintf(stderr, "AUTH objects enumeration failed: %s\n", sc_strerror(r));
 		return 1;
 	}
-	if (verbose)
-		printf("Card has %d Authentication objects.\n", r);
+	if (verbose || summary)
+		printf("Card has %d Authentication object(s).\n\n", r);
+	if (summary)
+		return 0;
+
 	for (i = 0; i < r; i++) {
 		print_pin_info(objs[i]);
 		printf("\n");
@@ -1401,7 +1416,7 @@ static int list_apps(FILE *fout)
 	return 0;
 }
 
-static int dump(void)
+static int dump(int summary)
 {
 	const char *flags[] = {
 		"Read-only",
@@ -1433,11 +1448,11 @@ static int dump(void)
 	}
 	printf("\n\n");
 
-	list_pins();
-	list_private_keys();
-	list_public_keys();
-	list_certificates();
-	list_data_objects();
+	list_pins(summary);
+	list_private_keys(summary);
+	list_public_keys(summary);
+	list_certificates(summary);
+	list_data_objects(summary);
 
 	return 0;
 }
@@ -1857,7 +1872,8 @@ int main(int argc, char * const argv[])
 	int do_list_pins = 0;
 	int do_list_skeys = 0;
 	int do_list_apps = 0;
-	int do_dump = 0;
+	int do_dump_summary = 0;
+	int do_dump = 0;	
 	int do_list_prkeys = 0;
 	int do_list_pubkeys = 0;
 	int do_read_pubkey = 0;
@@ -1878,7 +1894,7 @@ int main(int argc, char * const argv[])
 	c = OPT_PUK;
 
 	while (1) {
-		c = getopt_long(argc, argv, "r:cuko:va:LR:CwDTU", options, &long_optind);
+		c = getopt_long(argc, argv, "r:cuko:va:LR:CwdDTU", options, &long_optind);
 		if (c == -1)
 			break;
 		if (c == '?')
@@ -1927,6 +1943,10 @@ int main(int argc, char * const argv[])
 			break;
 		case OPT_LIST_SKEYS:
 			do_list_skeys = 1;
+			action_count++;
+			break;
+		case 'd':
+			do_dump_summary = 1;
 			action_count++;
 			break;
 		case 'D':
@@ -2073,7 +2093,7 @@ int main(int argc, char * const argv[])
 			goto end;
 
 	if (do_list_certs) {
-		if ((err = list_certificates()))
+		if ((err = list_certificates(0)))
 			goto end;
 		action_count--;
 	}
@@ -2083,7 +2103,7 @@ int main(int argc, char * const argv[])
 		action_count--;
 	}
 	if (do_list_data_objects) {
-		if ((err = list_data_objects()))
+		if ((err = list_data_objects(0)))
 			goto end;
 		action_count--;
 	}
@@ -2093,12 +2113,12 @@ int main(int argc, char * const argv[])
 		action_count--;
 	}
 	if (do_list_prkeys) {
-		if ((err = list_private_keys()))
+		if ((err = list_private_keys(0)))
 			goto end;
 		action_count--;
 	}
 	if (do_list_pubkeys) {
-		if ((err = list_public_keys()))
+		if ((err = list_public_keys(0)))
 			goto end;
 		action_count--;
 	}
@@ -2115,8 +2135,7 @@ int main(int argc, char * const argv[])
 	}
 #endif
 	if (do_list_pins) {
-		if ((err = list_pins()))
-			goto end;
+		if ((err = list_pins(0)))
 		action_count--;
 	}
 	if (do_list_skeys) {
@@ -2129,8 +2148,8 @@ int main(int argc, char * const argv[])
 			goto end;
 		action_count--;
 	}
-	if (do_dump) {
-		if ((err = dump()))
+	if (do_dump || do_dump_summary) {
+		if ((err = dump(do_dump_summary)))
 			goto end;
 		action_count--;
 	}
