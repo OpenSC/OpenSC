@@ -12,7 +12,7 @@ noinst_HEADERS = cards.h ctbcs.h internal.h esteid.h muscle.h muscle-filesystem.
 	errors.h types.h compression.h itacns.h iso7816.h \
 	authentic.h iasecc.h iasecc-sdo.h sm.h card-sc-hsm.h \
 	pace.h cwa14890.h cwa-dnie.h card-gids.h aux-data.h \
-	jpki.h
+	jpki.h sc-ossl-compat.h
 
 AM_CPPFLAGS = -DOPENSC_CONF_PATH=\"$(sysconfdir)/opensc.conf\" \
 	-I$(top_srcdir)/src
