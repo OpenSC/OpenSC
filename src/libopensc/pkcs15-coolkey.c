@@ -7,7 +7,9 @@
  * Copyright (C) 2006, Identity Alliance,
  *               Thomas Harning <thomas.harning@identityalliance.com>
  * Copyright (C) 2007, EMC, Russell Larner <rlarner@rsa.com>
- * Copyright (C) 2016, Red Hat, Inc., Robert Relyea <rrelyea@redhat.com>
+ * Copyright (C) 2016, Red Hat, Inc.
+ *
+ * Coolkey driver author: Robert Relyea <rrelyea@redhat.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
