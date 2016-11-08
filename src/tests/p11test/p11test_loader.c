@@ -64,14 +64,20 @@ int get_slot_with_card(token_info_t * info)
 		slot_id = slot_list[i];
 
 		rv = function_pointer->C_GetSlotInfo(slot_id, &slot_info);
+		if (rv != CKR_OK)
+			continue;
 
-		if (rv == CKR_OK && (slot_info.flags & CKF_TOKEN_PRESENT)) { /* token present */
-			if (info->slot_id != (unsigned long) -1) {
-				if (info->slot_id == slot_list[i]) { /* explicitly specified slot */
-					debug_print("Manually selected slot %lu\n", info->slot_id);
-					goto cleanup;
-				}
-			} else { /* first found slot if not specified */
+		if (info->slot_id == slot_id) {
+			if (info->slot_id == slot_list[i]) { /* explicitly specified slot */
+				debug_print("Manually selected slot %lu (%s a token)\n", info->slot_id,
+				    ((slot_info.flags & CKF_TOKEN_PRESENT) ? "with" : "without"));
+				goto cleanup;
+			}
+		}
+
+		if (slot_info.flags & CKF_TOKEN_PRESENT) {
+			/* first found slot if not specified */
+			if (info->slot_id == (unsigned long) -1) {
 				info->slot_id = slot_id;
 				goto cleanup;
 			}
