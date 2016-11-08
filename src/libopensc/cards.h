@@ -182,10 +182,6 @@ enum {
 	SC_CARD_TYPE_GEMSAFEV1_PTEID,
 	SC_CARD_TYPE_GEMSAFEV1_SEEID,
 
-	/* IAS cards */
-	SC_CARD_TYPE_IAS_BASE = 22000,
-	SC_CARD_TYPE_IAS_PTEID,
-
 	/* Italian CNS cards */
 	SC_CARD_TYPE_ITACNS_BASE = 23000,
 	SC_CARD_TYPE_ITACNS_GENERIC,
@@ -264,7 +260,6 @@ extern sc_card_driver_t *sc_get_rutoken_driver(void);
 extern sc_card_driver_t *sc_get_rtecp_driver(void);
 extern sc_card_driver_t *sc_get_westcos_driver(void);
 extern sc_card_driver_t *sc_get_myeid_driver(void);
-extern sc_card_driver_t *sc_get_ias_driver(void);
 extern sc_card_driver_t *sc_get_sc_hsm_driver(void);
 extern sc_card_driver_t *sc_get_itacns_driver(void);
 extern sc_card_driver_t *sc_get_authentic_driver(void);
