@@ -279,7 +279,7 @@ static int list_certificates(void)
 		return 1;
 	}
 	if (verbose)
-		printf("Card has %d certificate(s).\n\n", r);
+		printf("Card has %d Certificate(s).\n\n", r);
 	for (i = 0; i < r; i++) {
 		print_cert_info(objs[i]);
 		printf("\n");
@@ -491,6 +491,8 @@ static int list_data_objects(void)
 		return 1;
 	}
 	count = r;
+	if (verbose)
+		printf("Card has %d Data object(s).\n\n", count);
 	for (i = 0; i < count; i++) {
 		int idx;
 		struct sc_pkcs15_data_info *cinfo = (struct sc_pkcs15_data_info *) objs[i]->data;
@@ -600,7 +602,7 @@ static int list_private_keys(void)
 		return 1;
 	}
 	if (verbose)
-		printf("Card has %d private key(s).\n\n", r);
+		printf("Card has %d Private key(s).\n\n", r);
 	for (i = 0; i < r; i++) {
 		print_prkey_info(objs[i]);
 		printf("\n");
@@ -679,7 +681,7 @@ static int list_public_keys(void)
 		return 1;
 	}
 	if (verbose)
-		printf("Card has %d public key(s).\n\n", r);
+		printf("Card has %d Public key(s).\n\n", r);
 	for (i = 0; i < r; i++) {
 		print_pubkey_info(objs[i]);
 		printf("\n");
@@ -1367,7 +1369,7 @@ static int list_pins(void)
 		return 1;
 	}
 	if (verbose)
-		printf("Card has %d Authentication objects.\n", r);
+		printf("Card has %d Authentication object(s).\n\n", r);
 	for (i = 0; i < r; i++) {
 		print_pin_info(objs[i]);
 		printf("\n");
