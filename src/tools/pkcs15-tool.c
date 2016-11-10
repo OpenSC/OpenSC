@@ -98,7 +98,8 @@ enum {
 	OPT_LIST_SKEYS,
 	OPT_NO_PROMPT,
 	OPT_RAW,
-	OPT_PRINT_VERSION
+	OPT_PRINT_VERSION,
+	OPT_LIST_INFO,
 };
 
 #define NELEMENTS(x)	(sizeof(x)/sizeof((x)[0]))
@@ -107,6 +108,7 @@ static int	authenticate(sc_pkcs15_object_t *obj);
 
 static const struct option options[] = {
 	{ "version",		0, NULL,			OPT_PRINT_VERSION },
+	{ "list-info",	no_argument, NULL,		OPT_LIST_INFO },
 	{ "list-applications",	no_argument, NULL,		OPT_LIST_APPLICATIONS },
 	{ "read-certificate",	required_argument, NULL,	'r' },
 	{ "list-certificates",	no_argument, NULL,		'c' },
@@ -145,6 +147,7 @@ static const struct option options[] = {
 
 static const char *option_help[] = {
 	"Print OpenSC package version",
+	"List card information",
 	"List the on-card PKCS#15 applications",
 	"Reads certificate with ID <arg>",
 	"Lists certificates",
@@ -1403,8 +1406,7 @@ static int list_apps(FILE *fout)
 	return 0;
 }
 
-static int dump(void)
-{
+static void list_info(void){
 	const char *flags[] = {
 		"Read-only",
 		"Login required",
@@ -1433,8 +1435,12 @@ static int dump(void)
 			count++;
 		}
 	}
-	printf("\n\n");
+	printf("\n");
+}
 
+static int dump(void)
+{
+	list_info();
 	list_pins();
 	list_private_keys();
 	list_public_keys();
@@ -1872,6 +1878,7 @@ int main(int argc, char * const argv[])
 	int do_test_update = 0;
 	int do_update = 0;
 	int do_print_version = 0;
+	int do_list_info = 0;
 	int action_count = 0;
 	sc_context_param_t ctx_param;
 
@@ -1888,6 +1895,10 @@ int main(int argc, char * const argv[])
 		switch (c) {
 		case OPT_PRINT_VERSION:
 			do_print_version = 1;
+			action_count++;
+			break;
+		case OPT_LIST_INFO:
+			do_list_info = 1;
 			action_count++;
 			break;
 		case 'r':
@@ -2069,6 +2080,12 @@ int main(int argc, char * const argv[])
 		p15card->opts.use_file_cache = 0;
 	if (verbose)
 		fprintf(stderr, "Found %s!\n", p15card->tokeninfo->label);
+
+	if (do_list_info) {
+		if (!do_dump)
+			list_info();
+		action_count--;
+	}
 
 	if (do_verify_pin)
 		if ((err = verify_pin()))
