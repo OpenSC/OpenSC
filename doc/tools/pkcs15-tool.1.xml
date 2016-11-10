@@ -72,7 +72,7 @@
 						<option>--dump</option>,
 						<option>-D</option>
 					</term>
-					<listitem><para>Dump card objects.</para></listitem>
+					<listitem><para>List all card objects.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -87,7 +87,7 @@
 						<option>--list-certificates</option>,
 						<option>-c</option>
 					</term>
-					<listitem><para>Lists all certificates stored on the token.</para></listitem>
+					<listitem><para>List all certificates stored on the token.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -95,7 +95,7 @@
 						<option>--list-data-objects</option>,
 						<option>-C</option>
 					</term>
-					<listitem><para>Lists all data objects stored on the token.
+					<listitem><para>List all data objects stored on the token.
 					For some cards the PKCS#15 attributes of the private data objects are
 					protected for reading and need the authentication with the User PIN.
 					In such a case the <option>--verify-pin</option> option has to be used.
@@ -107,7 +107,7 @@
 						<option>--list-keys</option>,
 						<option>-k</option>
 					</term>
-					<listitem><para>Lists all private keys stored on the token. General
+					<listitem><para>List all private keys stored on the token. General
 					information about each private key is listed (eg. key name, id and
 					algorithm). Actual private key values are not displayed.
 					For some cards the PKCS#15 attributes of the private keys are protected for reading
@@ -119,7 +119,7 @@
 					<term>
 						<option>--list-pins</option>
 					</term>
-					<listitem><para>Lists all PINs stored on the token. General information
+					<listitem><para>List all PINs stored on the token. General information
 					about each PIN is listed (eg. PIN name). Actual PIN values are not shown.</para></listitem>
 				</varlistentry>
 
@@ -127,8 +127,16 @@
 					<term>
 						<option>--list-public-keys</option>
 					</term>
-					<listitem><para>Lists all public keys stored on the token, including
+					<listitem><para>List all public keys stored on the token, including
 					key name, id, algorithm and length information.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--short</option>
+						<option>-s</option>
+					</term>
+					<listitem><para>Output lists in compact format.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
