@@ -178,11 +178,10 @@ CK_RV push_login_state(struct sc_pkcs11_slot *slot,
 	struct sc_pkcs11_login *login = NULL;
 
 	if (!sc_pkcs11_conf.atomic || !slot) {
-		r = CKR_OK;
-		goto err;
+		return CKR_OK;
 	}
 
-	login = (struct sc_pkcs11_login *) malloc(sizeof *login);
+	login = (struct sc_pkcs11_login *) calloc(1, sizeof *login);
 	if (login == NULL) {
 		goto err;
 	}
@@ -199,12 +198,15 @@ CK_RV push_login_state(struct sc_pkcs11_slot *slot,
 		goto err;
 	}
 
+	login = NULL;
 	r = CKR_OK;
 
 err:
-	if (r != CKR_OK && login) {
-		sc_mem_clear(login->pPin, login->ulPinLen);
-		free(login->pPin);
+	if (login) {
+		if (login->pPin) {
+			sc_mem_clear(login->pPin, login->ulPinLen);
+			free(login->pPin);
+		}
 		free(login);
 	}
 

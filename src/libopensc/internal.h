@@ -40,6 +40,10 @@ extern "C" {
 #include "libopensc/log.h"
 #include "libopensc/cards.h"
 
+#ifdef ENABLE_OPENSSL
+#include "libopensc/sc-ossl-compat.h"
+#endif
+
 #define SC_FILE_MAGIC			0x14426950
 
 #ifndef _WIN32

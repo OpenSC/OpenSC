@@ -1,6 +1,7 @@
 /*
  * PKCS15 emulation layer for Portugal eID card.
  *
+ * Copyright (C) 2016, Nuno Goncalves <nunojpg@gmail.com>
  * Copyright (C) 2009, Joao Poupino <joao.poupino@ist.utl.pt>
  * Copyright (C) 2004, Martin Paljak <martin@martinpaljak.net>
  *
@@ -47,198 +48,269 @@
 #include "internal.h"
 #include "pkcs15.h"
 
-#define IAS_CARD 0
-#define GEMSAFE_CARD 1
-
+static int pteid_detect_card(struct sc_card *card);
 int sc_pkcs15emu_pteid_init_ex(sc_pkcs15_card_t *, struct sc_aid *, sc_pkcs15emu_opt_t *);
+
+static
+int dump_ef(sc_card_t * card, const char *path, u8 * buf, size_t * buf_len)
+{
+	int rv;
+	sc_file_t *file = NULL;
+	sc_path_t scpath;
+	sc_format_path(path, &scpath);
+	rv = sc_select_file(card, &scpath, &file);
+	if (rv < 0) {
+		if (file)
+			sc_file_free(file);
+		return rv;
+	}
+	if (file->size > *buf_len) {
+		sc_file_free(file);
+		return SC_ERROR_BUFFER_TOO_SMALL;
+	}
+	rv = sc_read_binary(card, 0, buf, file->size, 0);
+	sc_file_free(file);
+	if (rv < 0)
+		return rv;
+	*buf_len = rv;
+
+	return SC_SUCCESS;
+}
+
+static const struct sc_asn1_entry c_asn1_odf[] = {
+	{"privateKeys", SC_ASN1_STRUCT, SC_ASN1_CTX | 0 | SC_ASN1_CONS, 0, NULL, NULL},
+	{"publicKeys", SC_ASN1_STRUCT, SC_ASN1_CTX | 1 | SC_ASN1_CONS, 0, NULL,	 NULL},
+	{"trustedPublicKeys", SC_ASN1_STRUCT, SC_ASN1_CTX | 2 | SC_ASN1_CONS, 0, NULL, NULL},
+	{"secretKeys", SC_ASN1_STRUCT, SC_ASN1_CTX | 3 | SC_ASN1_CONS, 0, NULL,	 NULL},
+	{"certificates", SC_ASN1_STRUCT, SC_ASN1_CTX | 4 | SC_ASN1_CONS, 0,	 NULL, NULL},
+	{"trustedCertificates", SC_ASN1_STRUCT, SC_ASN1_CTX | 5 | SC_ASN1_CONS,	 0, NULL, NULL},
+	{"usefulCertificates", SC_ASN1_STRUCT, SC_ASN1_CTX | 6 | SC_ASN1_CONS,	 0, NULL, NULL},
+	{"dataObjects", SC_ASN1_STRUCT, SC_ASN1_CTX | 7 | SC_ASN1_CONS, 0, NULL,	 NULL},
+	{"authObjects", SC_ASN1_STRUCT, SC_ASN1_CTX | 8 | SC_ASN1_CONS, 0, NULL,	 NULL},
+	{NULL, 0, 0, 0, NULL, NULL}
+};
+
+static const unsigned int odf_indexes[] = {
+	SC_PKCS15_PRKDF,		//0
+	SC_PKCS15_PUKDF,		//1
+	SC_PKCS15_PUKDF_TRUSTED,	//2
+	SC_PKCS15_SKDF,			//3
+	SC_PKCS15_CDF,			//4
+	SC_PKCS15_CDF_TRUSTED,		//5
+	SC_PKCS15_CDF_USEFUL,		//6
+	SC_PKCS15_DODF,			//7
+	SC_PKCS15_AODF,			//8
+};
+
+static
+int parse_odf(const u8 * buf, size_t buflen, struct sc_pkcs15_card *p15card)
+{
+	const u8 *p = buf;
+	size_t left = buflen;
+	int r, i, type;
+	sc_path_t path;
+	struct sc_asn1_entry asn1_obj_or_path[] = {
+		{"path", SC_ASN1_PATH, SC_ASN1_CONS | SC_ASN1_SEQUENCE, 0,
+		 &path, NULL},
+		{NULL, 0, 0, 0, NULL, NULL}
+	};
+	struct sc_asn1_entry asn1_odf[10];
+
+	sc_path_t path_prefix;
+
+	sc_format_path("3F004F00", &path_prefix);
+
+	sc_copy_asn1_entry(c_asn1_odf, asn1_odf);
+	for (i = 0; asn1_odf[i].name != NULL; i++)
+		sc_format_asn1_entry(asn1_odf + i, asn1_obj_or_path, NULL, 0);
+	while (left > 0) {
+		r = sc_asn1_decode_choice(p15card->card->ctx, asn1_odf, p, left,
+					  &p, &left);
+		if (r == SC_ERROR_ASN1_END_OF_CONTENTS)
+			break;
+		if (r < 0)
+			return r;
+		type = r;
+		r = sc_pkcs15_make_absolute_path(&path_prefix, &path);
+		if (r < 0)
+			return r;
+		r = sc_pkcs15_add_df(p15card, odf_indexes[type], &path);
+		if (r)
+			return r;
+	}
+	return 0;
+}
 
 static int sc_pkcs15emu_pteid_init(sc_pkcs15_card_t * p15card)
 {
-	int r, i, 				type;
-	unsigned char 			*buf = NULL;
-	size_t 					len;
-	sc_pkcs15_tokeninfo_t 	tokeninfo;
-	sc_path_t 				tmppath;
-	sc_card_t 				*card = p15card->card;
-	sc_context_t 			*ctx = card->ctx;
+	u8 buf[1024];
+	sc_pkcs15_df_t *df;
+	sc_pkcs15_object_t *p15_obj;
+	sc_path_t path;
+	struct sc_file *file = NULL;
+	size_t len;
+	int rv;
+	int i;
 
-	/* Parse the TokenInfo EF */
-	sc_format_path("3f004f005032", &tmppath);
-	r = sc_select_file(card, &tmppath, &p15card->file_tokeninfo);
-	if (r)
-		goto end;
-	if ( (len = p15card->file_tokeninfo->size) == 0) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "EF(TokenInfo) is empty\n");
-		goto end;
+	sc_context_t *ctx = p15card->card->ctx;
+	LOG_FUNC_CALLED(ctx);
+
+	/* Check for correct card atr */
+	if (pteid_detect_card(p15card->card) != SC_SUCCESS)
+		return SC_ERROR_WRONG_CARD;
+
+	sc_log(p15card->card->ctx, "Selecting application DF");
+	sc_format_path("4F00", &path);
+	rv = sc_select_file(p15card->card, &path, &file);
+	if (rv != SC_SUCCESS || !file)
+		return SC_ERROR_INTERNAL;
+	/* set the application DF */
+	if (p15card->file_app)
+		free(p15card->file_app);
+	p15card->file_app = file;
+
+	/* Load TokenInfo */
+	len = sizeof(buf);
+	rv = dump_ef(p15card->card, "4F005032", buf, &len);
+	if (rv != SC_SUCCESS) {
+		sc_log(ctx, "Reading of EF.TOKENINFO failed: %d", rv);
+		LOG_FUNC_RETURN(ctx, rv);
 	}
-	buf = malloc(len);
-	if (buf == NULL)
-		return SC_ERROR_OUT_OF_MEMORY;
-	r = sc_read_binary(card, 0, buf, len, 0);
-	if (r < 0)
-		goto end;
-	if (r <= 2) {
-		r = SC_ERROR_PKCS15_APP_NOT_FOUND;
-		goto end;
-	}
-	memset(&tokeninfo, 0, sizeof(tokeninfo));
-	r = sc_pkcs15_parse_tokeninfo(ctx, &tokeninfo, buf, (size_t) r);
-	if (r != SC_SUCCESS)
-		goto end;
-
-	*(p15card->tokeninfo) = tokeninfo;
-
-	/* Card type detection */
-	if (card->type == SC_CARD_TYPE_IAS_PTEID)
-		type = IAS_CARD;
-	else if (card->type == SC_CARD_TYPE_GEMSAFEV1_PTEID)
-		type = GEMSAFE_CARD;
-	else {
-		r = SC_ERROR_INTERNAL;
-		goto end;
+	memset(p15card->tokeninfo, 0, sizeof(*p15card->tokeninfo));
+	rv = sc_pkcs15_parse_tokeninfo(p15card->card->ctx, p15card->tokeninfo,
+				       buf, len);
+	if (rv != SC_SUCCESS) {
+		sc_log(ctx, "Decoding of EF.TOKENINFO failed: %d", rv);
+		LOG_FUNC_RETURN(ctx, rv);
 	}
 
-	p15card->tokeninfo->flags = SC_PKCS15_TOKEN_PRN_GENERATION
+	p15card->tokeninfo->flags |= SC_PKCS15_TOKEN_PRN_GENERATION
 				  | SC_PKCS15_TOKEN_EID_COMPLIANT
 				  | SC_PKCS15_TOKEN_READONLY;
 
-	/* TODO: Use the cardholder's name?  */
-	/* TODO: Use Portuguese descriptions? */
-	
-	/* Add X.509 Certificates */
-	for (i = 0; i < 4; i++) {
-		static const char *pteid_cert_names[4] = {
-				"AUTHENTICATION CERTIFICATE",
-				"SIGNATURE CERTIFICATE",
-				"SIGNATURE SUB CA",
-				"AUTHENTICATION SUB CA"
-		};
-		/* X.509 Certificate Paths */
-		static const char *pteid_cert_paths[4] = {
-			"3f005f00ef09", /* Authentication Certificate path */
-			"3f005f00ef08", /* Digital Signature Certificate path */
-			"3f005f00ef0f", /* Signature sub CA path */
-			"3f005f00ef10"	/* Authentication sub CA path */
-		};
-		/* X.509 Certificate IDs */
-		static const int pteid_cert_ids[4] = {0x45, 0x46, 0x51, 0x52};
-		struct sc_pkcs15_cert_info cert_info;
-		struct sc_pkcs15_object cert_obj;
-
-		memset(&cert_info, 0, sizeof(cert_info));
-		memset(&cert_obj, 0, sizeof(cert_obj));
-
-		cert_info.id.value[0] = pteid_cert_ids[i];
-		cert_info.id.len = 1;
-		sc_format_path(pteid_cert_paths[i], &cert_info.path);
-		strlcpy(cert_obj.label, pteid_cert_names[i], sizeof(cert_obj.label));
-		r = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
-		if (r < 0) {
-			r = SC_ERROR_INTERNAL;
-			goto end;
-		}
+	/* Load ODF */
+	len = sizeof(buf);
+	rv = dump_ef(p15card->card, "4F005031", buf, &len);
+	if (rv != SC_SUCCESS) {
+		sc_log(ctx, "Reading of ODF failed: %d", rv);
+		LOG_FUNC_RETURN(ctx, rv);
 	}
-	
-	/* Add PINs */
-	for (i = 0; i < 3; i++) {
-		static const char *pteid_pin_names[3] = {
-			"Auth PIN",
-			"Sign PIN",
-			"Address PIN"
-		};
-		/* PIN References */
-		static const int pteid_pin_ref[2][3] = { {1, 130, 131}, {129, 130, 131} };
-		/* PIN Authentication IDs */
-		static const int pteid_pin_authid[3] = {1, 2, 3};
-		/* PIN Paths */
-		static const char *pteid_pin_paths[2][3] = { {NULL, "3f005f00", "3f005f00"},
-													 {NULL, NULL, NULL} };
-		struct sc_pkcs15_auth_info pin_info;
-		struct sc_pkcs15_object pin_obj;
+	rv = parse_odf(buf, len, p15card);
+	if (rv != SC_SUCCESS) {
+		sc_log(ctx, "Decoding of ODF failed: %d", rv);
+		LOG_FUNC_RETURN(ctx, rv);
+	}
 
-		memset(&pin_info, 0, sizeof(pin_info));
-		memset(&pin_obj, 0, sizeof(pin_obj));
-
-		pin_info.auth_type = SC_PKCS15_PIN_AUTH_TYPE_PIN;
-		pin_info.auth_id.len = 1;
-		pin_info.auth_id.value[0] = pteid_pin_authid[i];
-		pin_info.attrs.pin.reference = pteid_pin_ref[type][i];
-		pin_info.attrs.pin.flags = SC_PKCS15_PIN_FLAG_NEEDS_PADDING
-						 | SC_PKCS15_PIN_FLAG_INITIALIZED
-						 | SC_PKCS15_PIN_FLAG_CASE_SENSITIVE;
-		pin_info.attrs.pin.type = SC_PKCS15_PIN_TYPE_ASCII_NUMERIC;
-		pin_info.attrs.pin.min_length = 4;
-		pin_info.attrs.pin.stored_length = 8;
-		pin_info.attrs.pin.max_length = 8;
-		pin_info.attrs.pin.pad_char = type == IAS_CARD ? 0x2F : 0xFF;
-		pin_info.tries_left = -1;
-		pin_info.logged_in = SC_PIN_STATE_UNKNOWN;
-		if (pteid_pin_paths[type][i] != NULL)
-			sc_format_path(pteid_pin_paths[type][i], &pin_info.path);
-		strlcpy(pin_obj.label, pteid_pin_names[i], sizeof(pin_obj.label));
-		pin_obj.flags = 0;
-		r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
-		if (r < 0) {
-			r = SC_ERROR_INTERNAL;
-			goto end;
+	/* Decode EF.PrKDF, EF.PuKDF, EF.CDF and EF.AODF */
+	for (df = p15card->df_list; df != NULL; df = df->next) {
+		if (df->type == SC_PKCS15_PRKDF) {
+			rv = sc_pkcs15_parse_df(p15card, df);
+			if (rv != SC_SUCCESS) {
+				sc_log(ctx,
+				       "Decoding of EF.PrKDF (%s) failed: %d",
+				       sc_print_path(&df->path), rv);
+			}
+		}
+		if (df->type == SC_PKCS15_PUKDF) {
+			rv = sc_pkcs15_parse_df(p15card, df);
+			if (rv != SC_SUCCESS) {
+				sc_log(ctx,
+				       "Decoding of EF.PuKDF (%s) failed: %d",
+				       sc_print_path(&df->path), rv);
+			}
+		}
+		if (df->type == SC_PKCS15_CDF) {
+			rv = sc_pkcs15_parse_df(p15card, df);
+			if (rv != SC_SUCCESS) {
+				sc_log(ctx,
+				       "Decoding of EF.CDF (%s) failed: %d",
+				       sc_print_path(&df->path), rv);
+			}
+		}
+		if (df->type == SC_PKCS15_AODF) {
+			rv = sc_pkcs15_parse_df(p15card, df);
+			if (rv != SC_SUCCESS) {
+				sc_log(ctx,
+				       "Decoding of EF.AODF (%s) failed: %d",
+				       sc_print_path(&df->path), rv);
+			}
 		}
 	}
 
-	/* Add Private Keys */
-	for (i = 0; i < 2; i++) {
-		/* Key reference */
-		static const int pteid_prkey_keyref[2][2] = { {1, 130}, {2, 1} };
-		/* RSA Private Key usage */
-		static int pteid_prkey_usage[2] = {
-			SC_PKCS15_PRKEY_USAGE_SIGN,
-			SC_PKCS15_PRKEY_USAGE_NONREPUDIATION};
-		/* RSA Private Key IDs */
-		static const int pteid_prkey_ids[2] = {0x45, 0x46};
-		static const char *pteid_prkey_names[2] = {
-				"CITIZEN AUTHENTICATION KEY",
-				"CITIZEN SIGNATURE KEY"};
-		/* RSA Private Key Paths */
-		static const char *pteid_prkey_paths[2][2] = { {NULL, "3f005f00"}, {NULL, NULL} };
-		struct sc_pkcs15_prkey_info prkey_info;
-		struct sc_pkcs15_object prkey_obj;
+	p15_obj = p15card->obj_list;
+	while (p15_obj != NULL) {
+		if ( p15_obj->df && (p15_obj->df->type == SC_PKCS15_PRKDF) ) {
+			struct sc_pkcs15_prkey_info *prkey_info = (sc_pkcs15_prkey_info_t *) p15_obj->data;
+			prkey_info->access_flags = SC_PKCS15_PRKEY_ACCESS_SENSITIVE
+					| SC_PKCS15_PRKEY_ACCESS_ALWAYSSENSITIVE
+					| SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE
+					| SC_PKCS15_PRKEY_ACCESS_LOCAL;
+			p15_obj->flags = SC_PKCS15_CO_FLAG_PRIVATE;
+		}
 
-		memset(&prkey_info, 0, sizeof(prkey_info));
-		memset(&prkey_obj, 0, sizeof(prkey_obj));
 
-		prkey_info.id.len = 1;
-		prkey_info.id.value[0] = pteid_prkey_ids[i];
-		prkey_info.usage = pteid_prkey_usage[i];
-		prkey_info.native = 1;
-		prkey_info.key_reference = pteid_prkey_keyref[type][i];
-		prkey_info.modulus_length = 1024;
-		if (pteid_prkey_paths[type][i] != NULL)
-			sc_format_path(pteid_prkey_paths[type][i], &prkey_info.path);
-		strlcpy(prkey_obj.label, pteid_prkey_names[i], sizeof(prkey_obj.label));
-		prkey_obj.auth_id.len = 1;
-		prkey_obj.auth_id.value[0] = i + 1;
-		prkey_obj.user_consent = (i == 1) ? 1 : 0;
-		prkey_obj.flags = SC_PKCS15_CO_FLAG_PRIVATE;
+		if ( p15_obj->df && (p15_obj->df->type == SC_PKCS15_AODF) ) {
+			static const char *pteid_pin_names[3] = {
+			    "Auth PIN",
+			    "Sign PIN",
+			    "Address PIN"
+			};
 
-		r = sc_pkcs15emu_add_rsa_prkey(p15card, &prkey_obj, &prkey_info);
-		if (r < 0) {
-			r = SC_ERROR_INTERNAL;
-			goto end;
+			struct sc_pin_cmd_data pin_cmd_data;
+			struct sc_pkcs15_auth_info *pin_info = (sc_pkcs15_auth_info_t *) p15_obj->data;
+
+			strlcpy(p15_obj->label, pteid_pin_names[pin_info->auth_id.value[0]-1], sizeof(p15_obj->label));
+
+			pin_info->attrs.pin.flags |= SC_PKCS15_PIN_FLAG_NEEDS_PADDING;
+			pin_info->tries_left = -1;
+			pin_info->max_tries = 3;
+			pin_info->auth_method = SC_AC_CHV;
+
+			memset(&pin_cmd_data, 0, sizeof(pin_cmd_data));
+			pin_cmd_data.cmd = SC_PIN_CMD_GET_INFO;
+			pin_cmd_data.pin_type = pin_info->attrs.pin.type;
+			pin_cmd_data.pin_reference = pin_info->attrs.pin.reference;
+			rv = sc_pin_cmd(p15card->card, &pin_cmd_data, NULL);
+			if (rv == SC_SUCCESS) {
+				pin_info->tries_left = pin_cmd_data.pin1.tries_left;
+			}
+		}
+		/* Remove found public keys as cannot be read_binary()'d */
+		if ( p15_obj->df && (p15_obj->df->type == SC_PKCS15_PUKDF) ) {
+			sc_pkcs15_object_t *puk = p15_obj;
+			p15_obj = p15_obj->next;
+			sc_pkcs15_remove_object(p15card, puk);
+			sc_pkcs15_free_object(puk);
+		} else {
+			p15_obj = p15_obj->next;
 		}
 	}
 
-	/* Add objects */
-	for (i = 0; i < 3; i++) {
-		static const char *object_ids[3] = {"01", "02", "03"};
-		static const char *object_labels[3] = {"Citizen Data",
-											   "Citizen Address Data",
-											   "Citizen Notepad"};
-		static const char *object_authids[3] = {NULL, "03", "01"};
-		static const char *object_paths[3] = {"3f005f00ef02",
-											  "3f005f00ef05",
-											  "3f005f00ef07"};
-		static const int object_flags[3] = {0,
-											SC_PKCS15_CO_FLAG_PRIVATE,
-											SC_PKCS15_CO_FLAG_MODIFIABLE};
+	/* Add data objects */
+	for (i = 0; i < 5; i++) {
+		static const char *object_ids[5] = {"1", "2", "3", "4", "5"};
+		static const char *object_labels[5] = {
+			"Citizen Data",
+			"Citizen Address Data",
+			"Citizen Notepad",
+			"SOD",
+			"TRACE",
+		};
+		static const char *object_authids[5] = {NULL, "3", NULL, NULL, NULL};
+		static const char *object_paths[5] = {
+			"3f005f00ef02",
+			"3f005f00ef05",
+			"3f005f00ef07",
+			"3f005f00ef06",
+			"3F000003",
+		};
+		static const int object_flags[5] = {
+			0,
+			SC_PKCS15_CO_FLAG_PRIVATE,
+			0,
+			0,
+			0,
+		};
 		struct sc_pkcs15_data_info obj_info;
 		struct sc_pkcs15_object obj_obj;
 
@@ -253,37 +325,36 @@ static int sc_pkcs15emu_pteid_init(sc_pkcs15_card_t * p15card)
 		strlcpy(obj_obj.label, object_labels[i], SC_PKCS15_MAX_LABEL_SIZE);
 		obj_obj.flags = object_flags[i];
 
-		r = sc_pkcs15emu_object_add(p15card, SC_PKCS15_TYPE_DATA_OBJECT, &obj_obj, &obj_info);
-		if (r < 0)
-			goto end;
+		rv = sc_pkcs15emu_object_add(p15card, SC_PKCS15_TYPE_DATA_OBJECT, &obj_obj, &obj_info);
+		if (rv != SC_SUCCESS){
+			sc_log(ctx, "Object add failed: %d", rv);
+			break;
+		}
 	}
-end:
-	if (buf != NULL) {
-		free(buf);
-		buf = NULL;
-	}
-	if (r)
-		return r;
 
-	return SC_SUCCESS;
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
-static int pteid_detect_card(sc_pkcs15_card_t *p15card)
+static int pteid_detect_card(struct sc_card *card)
 {
-	if (p15card->card->type == SC_CARD_TYPE_IAS_PTEID ||
-		p15card->card->type == SC_CARD_TYPE_GEMSAFEV1_PTEID)
+	if (card->type == SC_CARD_TYPE_GEMSAFEV1_PTEID)
 		return SC_SUCCESS;
 	return SC_ERROR_WRONG_CARD;
 }
 
 int sc_pkcs15emu_pteid_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid, sc_pkcs15emu_opt_t *opts)
 {
-	if (opts != NULL && opts->flags & SC_PKCS15EMU_FLAGS_NO_CHECK)
-		return sc_pkcs15emu_pteid_init(p15card);
-	else {
-		int r = pteid_detect_card(p15card);
-		if (r)
-			return SC_ERROR_WRONG_CARD;
-		return sc_pkcs15emu_pteid_init(p15card);
-	}
+	int r=SC_SUCCESS;
+	sc_context_t *ctx = p15card->card->ctx;
+	LOG_FUNC_CALLED(ctx);
+
+	/* if no check flag execute unconditionally */
+	if (opts && opts->flags & SC_PKCS15EMU_FLAGS_NO_CHECK)
+		LOG_FUNC_RETURN(ctx, sc_pkcs15emu_pteid_init(p15card));
+	/* check for proper card */
+	r = pteid_detect_card(p15card->card);
+	if (r == SC_ERROR_WRONG_CARD)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_WRONG_CARD);
+	/* ok: initialize and return */
+	LOG_FUNC_RETURN(ctx, sc_pkcs15emu_pteid_init(p15card));
 }

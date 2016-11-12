@@ -25,6 +25,7 @@
 #ifdef ENABLE_OPENSSL	/* empty file without openssl */
 #include <string.h>
 #include <stdlib.h>
+#include <openssl/bn.h>
 #include <openssl/bio.h>
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
@@ -142,6 +143,7 @@ CERT_HANDLE_FUNCTION(default_cert_handle) {
 	int r;
 	X509 *cert_data = NULL;
 	EVP_PKEY *pkey = NULL;
+	RSA * rsa = NULL;
 	int certtype = 0;
 	int modulus_len = 0;
 	const prdata* key = get_prkey_by_cert(items, cert);
@@ -169,13 +171,15 @@ CERT_HANDLE_FUNCTION(default_cert_handle) {
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
-	if(pkey->pkey.rsa->n == NULL) {
+	rsa = EVP_PKEY_get0_RSA(pkey);
+	if( rsa == NULL) {
 		sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "Error: no modulus associated with the certificate");
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
 	
-	modulus_len = 8 * BN_num_bytes(pkey->pkey.rsa->n); /* converting to bits */
+	modulus_len =  RSA_bits(rsa);
+
 	/* printf("Key Size: %d bits\n\n", modulus_len); */
 	/* cached_cert->modulusLength = modulus_len; */
 	

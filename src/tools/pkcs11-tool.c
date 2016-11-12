@@ -35,14 +35,18 @@
 
 #ifdef ENABLE_OPENSSL
 #include <openssl/opensslv.h>
+#include "libopensc/sc-ossl-compat.h"
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L
 #include <openssl/opensslconf.h>
+#include <openssl/crypto.h>
 #endif
 #if OPENSSL_VERSION_NUMBER >= 0x00907000L
 #include <openssl/conf.h>
 #endif
 #include <openssl/evp.h>
 #include <openssl/x509.h>
+#include <openssl/x509v3.h>
+#include <openssl/asn1t.h>
 #include <openssl/rsa.h>
 #include <openssl/pem.h>
 #if OPENSSL_VERSION_NUMBER >= 0x00908000L && !defined(OPENSSL_NO_EC) && !defined(OPENSSL_NO_ECDSA)
@@ -456,12 +460,20 @@ int main(int argc, char * argv[])
 #endif
 
 #ifdef ENABLE_OPENSSL
-#if OPENSSL_VERSION_NUMBER >= 0x00907000L
+#if (OPENSSL_VERSION_NUMBER >= 0x00907000L && OPENSSL_VERSION_NUMBER < 0x10100000L) || defined(LIBRESSL_VERSION_NUMBER)
 	OPENSSL_config(NULL);
 #endif
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
+	OPENSSL_init_crypto(OPENSSL_INIT_LOAD_CRYPTO_STRINGS
+		| OPENSSL_INIT_ADD_ALL_CIPHERS
+		| OPENSSL_INIT_ADD_ALL_DIGESTS
+		| OPENSSL_INIT_LOAD_CONFIG,
+		NULL);
+#else
 	/* OpenSSL magic */
-	SSLeay_add_all_algorithms();
-	CRYPTO_malloc_init();
+	OpenSSL_add_all_algorithms();
+	OPENSSL_malloc_init();
+#endif
 #endif
 	while (1) {
 		c = getopt_long(argc, argv, "ILMOTa:bd:e:hi:klm:o:p:scvf:ty:w:z:r",
@@ -1384,8 +1396,10 @@ static int change_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess)
 			r = util_getpass(&new_pin, &len, stdin);
 			if (r < 0)
 				return 1;
-			if (!new_pin || !*new_pin || strcmp(new_buf, new_pin) != 0)
+			if (!new_pin || !*new_pin || strcmp(new_buf, new_pin) != 0) {
+				free(new_pin);
 				return 1;
+			}
 		}
 		else   {
 			new_pin = (char *) opt_new_pin;
@@ -1960,36 +1974,37 @@ static void	parse_certificate(struct x509cert_info *cert,
 		util_fatal("OpenSSL error during X509 certificate parsing");
 	}
 	/* check length first */
-	n = i2d_X509_NAME(x->cert_info->subject, NULL);
+	n = i2d_X509_NAME(X509_get_subject_name(x), NULL);
 	if (n < 0)
 		util_fatal("OpenSSL error while encoding subject name");
 	if (n > (int)sizeof (cert->subject))
 		util_fatal("subject name too long");
 	/* green light, actually do it */
 	p = cert->subject;
-	n = i2d_X509_NAME(x->cert_info->subject, &p);
+	n = i2d_X509_NAME(X509_get_subject_name(x), &p);
 	cert->subject_len = n;
 
 	/* check length first */
-	n = i2d_X509_NAME(x->cert_info->issuer, NULL);
+	n = i2d_X509_NAME(X509_get_issuer_name(x), NULL);
 	if (n < 0)
 		util_fatal("OpenSSL error while encoding issuer name");
 	if (n > (int)sizeof (cert->issuer))
 		util_fatal("issuer name too long");
 	/* green light, actually do it */
 	p = cert->issuer;
-	n = i2d_X509_NAME(x->cert_info->issuer, &p);
+	n =i2d_X509_NAME(X509_get_issuer_name(x), &p);
 	cert->issuer_len = n;
 
 	/* check length first */
-	n = i2d_ASN1_INTEGER(x->cert_info->serialNumber, NULL);
+	n = 0;
+	n = i2d_ASN1_INTEGER(X509_get_serialNumber(x), NULL);
 	if (n < 0)
 		util_fatal("OpenSSL error while encoding serial number");
 	if (n > (int)sizeof (cert->serialnum))
 		util_fatal("serial number too long");
 	/* green light, actually do it */
 	p = cert->serialnum;
-	n = i2d_ASN1_INTEGER(x->cert_info->serialNumber, &p);
+	n = i2d_ASN1_INTEGER(X509_get_serialNumber(x), &p);
 	cert->serialnum_len = n;
 }
 
@@ -2023,16 +2038,24 @@ do_read_key(unsigned char *data, size_t data_len, int private, EVP_PKEY **key)
 
 #define RSA_GET_BN(RSA, LOCALNAME, BNVALUE) \
 	do { \
-		RSA->LOCALNAME = malloc(BN_num_bytes(BNVALUE)); \
-		if (!RSA->LOCALNAME) \
-			util_fatal("malloc() failure"); \
-		RSA->LOCALNAME##_len = BN_bn2bin(BNVALUE, RSA->LOCALNAME); \
+		if (BNVALUE) { \
+			RSA->LOCALNAME = malloc(BN_num_bytes(BNVALUE)); \
+			if (!RSA->LOCALNAME) \
+				util_fatal("malloc() failure\n"); \
+			RSA->LOCALNAME##_len = BN_bn2bin(BNVALUE, RSA->LOCALNAME); \
+		} else { \
+			RSA->LOCALNAME##_len = 0; \
+			RSA->LOCALNAME = NULL; \
+		} \
 	} while (0)
 
 static int
 parse_rsa_pkey(EVP_PKEY *pkey, int private, struct rsakey_info *rsa)
 {
 	RSA *r;
+	const BIGNUM *r_n, *r_e, *r_d;
+	const BIGNUM *r_p, *r_q;
+	const BIGNUM *r_dmp1, *r_dmq1, *r_iqmp;
 
 	r = EVP_PKEY_get1_RSA(pkey);
 	if (!r) {
@@ -2042,15 +2065,22 @@ parse_rsa_pkey(EVP_PKEY *pkey, int private, struct rsakey_info *rsa)
 			util_fatal("OpenSSL error during RSA public key parsing");
 	}
 
-	RSA_GET_BN(rsa, modulus, r->n);
-	RSA_GET_BN(rsa, public_exponent, r->e);
+	RSA_get0_key(r, &r_n, &r_e, NULL);
+	RSA_GET_BN(rsa, modulus, r_n);
+	RSA_GET_BN(rsa, public_exponent, r_e);
+
 	if (private) {
-		RSA_GET_BN(rsa, private_exponent, r->d);
-		RSA_GET_BN(rsa, prime_1, r->p);
-		RSA_GET_BN(rsa, prime_2, r->q);
-		RSA_GET_BN(rsa, exponent_1, r->dmp1);
-		RSA_GET_BN(rsa, exponent_2, r->dmq1);
-		RSA_GET_BN(rsa, coefficient, r->iqmp);
+		RSA_get0_key(r, NULL, NULL, &r_d);
+		RSA_GET_BN(rsa, private_exponent, r_d);
+
+		RSA_get0_factors(r, &r_p, &r_q);
+		RSA_GET_BN(rsa, prime_1, r_p);
+		RSA_GET_BN(rsa, prime_2, r_q);
+
+		RSA_get0_crt_params(r, &r_dmp1, &r_dmq1, &r_iqmp);
+		RSA_GET_BN(rsa, exponent_1, r_dmp1);
+		RSA_GET_BN(rsa, exponent_2, r_dmq1);
+		RSA_GET_BN(rsa, coefficient, r_iqmp);
 	}
 
 	RSA_free(r);
@@ -2200,6 +2230,7 @@ static int write_object(CK_SESSION_HANDLE session)
 	struct rsakey_info rsa;
 	struct gostkey_info gost;
 	EVP_PKEY *evp_key = NULL;
+	int pk_type;
 
 	memset(&cert, 0, sizeof(cert));
 	memset(&rsa,  0, sizeof(rsa));
@@ -2253,20 +2284,22 @@ static int write_object(CK_SESSION_HANDLE session)
 				util_fatal("Cannot read public key");
 		}
 
-		if (evp_key->type == EVP_PKEY_RSA) {
+		pk_type = EVP_PKEY_base_id(evp_key);
+
+		if (pk_type == EVP_PKEY_RSA)   {
 			rv = parse_rsa_pkey(evp_key, is_private, &rsa);
 		}
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_EC)
-		else if (evp_key->type == NID_id_GostR3410_2001) {
+		else if (pk_type == NID_id_GostR3410_2001)   {
 			rv = parse_gost_pkey(evp_key, is_private, &gost);
 			type = CKK_GOSTR3410;
-		} else if (evp_key->type == EVP_PKEY_EC) {
+		} else if (pk_type == EVP_PKEY_EC) {
 			rv = parse_ec_pkey(evp_key, is_private, &gost);
 			type = CKK_EC;
 		}
 #endif
 		else
-			util_fatal("Unsupported key type: 0x%X", evp_key->type);
+			util_fatal("Unsupported key type: 0x%X", pk_type);
 
 		if (rv)
 			util_fatal("Cannot parse key");
@@ -2344,9 +2377,12 @@ static int write_object(CK_SESSION_HANDLE session)
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_SUBJECT, cert.subject, cert.subject_len);
 			n_privkey_attr++;
 		}
-		FILL_ATTR(privkey_templ[n_privkey_attr], CKA_KEY_TYPE, &type, sizeof(type));
-		n_privkey_attr++;
-		if (evp_key->type == EVP_PKEY_RSA)   {
+		pk_type = EVP_PKEY_base_id(evp_key);
+
+		if (pk_type == EVP_PKEY_RSA)   {
+			type = CKK_RSA;
+			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_KEY_TYPE, &type, sizeof(type));
+			n_privkey_attr++;
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_MODULUS, rsa.modulus, rsa.modulus_len);
 			n_privkey_attr++;
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_PUBLIC_EXPONENT, rsa.public_exponent, rsa.public_exponent_len);
@@ -2365,13 +2401,21 @@ static int write_object(CK_SESSION_HANDLE session)
 			n_privkey_attr++;
 		}
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_EC)
-		else if (evp_key->type == EVP_PKEY_EC)   {
+		else if (pk_type == EVP_PKEY_EC)   {
+			type = CKK_EC;
+
+			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_KEY_TYPE, &type, sizeof(type));
+			n_privkey_attr++;
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_EC_PARAMS, gost.param_oid.value, gost.param_oid.len);
 			n_privkey_attr++;
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_VALUE, gost.private.value, gost.private.len);
 			n_privkey_attr++;
 		}
-		else if (evp_key->type == NID_id_GostR3410_2001)   {
+		else if (pk_type == NID_id_GostR3410_2001)   {
+			type = CKK_GOSTR3410;
+
+			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_KEY_TYPE, &type, sizeof(type));
+			n_privkey_attr++;
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_GOSTR3410_PARAMS, gost.param_oid.value, gost.param_oid.len);
 			n_privkey_attr++;
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_VALUE, gost.private.value, gost.private.len);
@@ -2389,16 +2433,17 @@ static int write_object(CK_SESSION_HANDLE session)
 	if (opt_object_class == CKO_PUBLIC_KEY) {
 		clazz = CKO_PUBLIC_KEY;
 #ifdef ENABLE_OPENSSL
-		if (evp_key->type == EVP_PKEY_RSA)
+		pk_type = EVP_PKEY_base_id(evp_key);
+		if (pk_type == EVP_PKEY_RSA)
 			type = CKK_RSA;
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_EC)
-		else if (evp_key->type == EVP_PKEY_EC)
+		else if (pk_type == EVP_PKEY_EC)
 			type = CKK_EC;
-		else if (evp_key->type == NID_id_GostR3410_2001)
+		else if (pk_type == NID_id_GostR3410_2001)
 			type = CKK_GOSTR3410;
 #endif
 		else
-			util_fatal("Unsupported public key type: 0x%X", evp_key->type);
+			util_fatal("Unsupported public key type: 0x%X", pk_type);
 #endif
 
 		n_pubkey_attr = 0;
@@ -2444,22 +2489,34 @@ static int write_object(CK_SESSION_HANDLE session)
 			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_SUBJECT, cert.subject, cert.subject_len);
 			n_pubkey_attr++;
 		}
-		FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_KEY_TYPE, &type, sizeof(type));
-		n_pubkey_attr++;
-		if (evp_key->type == EVP_PKEY_RSA) {
-			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_MODULUS, rsa.modulus, rsa.modulus_len);
+		pk_type = EVP_PKEY_base_id(evp_key);
+
+		if (pk_type == EVP_PKEY_RSA) {
+			type = CKK_RSA;
+			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_KEY_TYPE, &type, sizeof(type));
+			n_pubkey_attr++;
+			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_MODULUS,
+				rsa.modulus, rsa.modulus_len);
 			n_pubkey_attr++;
 			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_PUBLIC_EXPONENT, rsa.public_exponent, rsa.public_exponent_len);
 			n_pubkey_attr++;
 		}
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_EC)
-		else if (evp_key->type == EVP_PKEY_EC)   {
+		else if (pk_type == EVP_PKEY_EC)   {
+			type = CKK_EC;
+
+			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_KEY_TYPE, &type, sizeof(type));
+			n_pubkey_attr++;
 			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_EC_PARAMS, gost.param_oid.value, gost.param_oid.len);
 			n_pubkey_attr++;
 			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_EC_POINT, gost.public.value, gost.public.len);
 			n_pubkey_attr++;
 		}
-		else if (evp_key->type == NID_id_GostR3410_2001) {
+		else if (pk_type == NID_id_GostR3410_2001) {
+			type = CKK_GOSTR3410;
+
+			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_KEY_TYPE, &type, sizeof(type));
+			n_pubkey_attr++;
 			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_GOSTR3410_PARAMS, gost.param_oid.value, gost.param_oid.len);
 			n_pubkey_attr++;
 			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_VALUE, gost.public.value, gost.public.len);
@@ -2931,6 +2988,7 @@ derive_ec_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE
 	return newkey;
 #else
 	util_fatal("Derive EC key not supported");
+	return 0;
 #endif /* ENABLE_OPENSSL  && !OPENSSL_NO_EC && !OPENSSL_NO_ECDSA */
 }
 
@@ -3446,24 +3504,30 @@ static int read_object(CK_SESSION_HANDLE session)
 		type = getKEY_TYPE(session, obj);
 		if (type == CKK_RSA) {
 			RSA *rsa;
+			BIGNUM *rsa_n = NULL;
+			BIGNUM *rsa_e = NULL;
+
 
 			rsa = RSA_new();
 			if (rsa == NULL)
 				util_fatal("out of memory");
 
 			if ((value = getMODULUS(session, obj, &len))) {
-				if (!(rsa->n = BN_bin2bn(value, len, rsa->n)))
+				if (!(rsa_n = BN_bin2bn(value, len, NULL)))
 					util_fatal("cannot parse MODULUS");
 				free(value);
 			} else
 				util_fatal("cannot obtain MODULUS");
 
 			if ((value = getPUBLIC_EXPONENT(session, obj, &len))) {
-				if (!(rsa->e = BN_bin2bn(value, len, rsa->e)))
+				if (!(rsa_e = BN_bin2bn(value, len, NULL)))
 					util_fatal("cannot parse PUBLIC_EXPONENT");
 				free(value);
 			} else
 				util_fatal("cannot obtain PUBLIC_EXPONENT");
+
+			if (RSA_set0_key(rsa, rsa_n, rsa_e, NULL) != 1)
+				util_fatal("cannot set RSA values");
 
 			if (!i2d_RSA_PUBKEY_bio(pout, rsa))
 				util_fatal("cannot convert RSA public key to DER");
@@ -3536,6 +3600,7 @@ static int read_object(CK_SESSION_HANDLE session)
 	if (opt_output)
 		fclose(out);
 
+	free(value);
 	if (oid_buf)
 		free(oid_buf);
 	return 1;
@@ -3802,6 +3867,7 @@ static EVP_PKEY *get_public_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE priv
 	CK_ULONG        pubkeyLen;
 	EVP_PKEY       *pkey;
 	RSA            *rsa;
+	BIGNUM *rsa_n, *rsa_e;
 
 	id = NULL;
 	id = getID(session, privKeyObject, &idLen);
@@ -3835,8 +3901,11 @@ static EVP_PKEY *get_public_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE priv
 					free(exp);
 				return NULL;
 			}
-			rsa->n = BN_bin2bn(mod, modLen, NULL);
-			rsa->e = BN_bin2bn(exp, expLen, NULL);
+			rsa_n = BN_bin2bn(mod, modLen, NULL);
+			rsa_e =	BN_bin2bn(exp, expLen, NULL);
+			if (RSA_set0_key(rsa, rsa_n, rsa_e, NULL) != 1)
+			    return NULL;
+
 			EVP_PKEY_assign_RSA(pkey, rsa);
 			free(mod);
 			free(exp);
@@ -4410,7 +4479,7 @@ static int wrap_unwrap(CK_SESSION_HANDLE session,
 	CK_OBJECT_HANDLE cipherKeyObject;
 	CK_RV           rv;
 	EVP_PKEY       *pkey;
-	EVP_CIPHER_CTX	seal_ctx;
+	EVP_CIPHER_CTX	* seal_ctx;
 	unsigned char	keybuf[512], *key = keybuf;
 	int		key_len;
 	unsigned char	iv[32], ciphered[1024], cleartext[1024];
@@ -4426,7 +4495,13 @@ static int wrap_unwrap(CK_SESSION_HANDLE session,
 
 	printf("    %s: ", OBJ_nid2sn(EVP_CIPHER_nid(algo)));
 
-	if (!EVP_SealInit(&seal_ctx, algo,
+	seal_ctx = EVP_CIPHER_CTX_new();
+	if (seal_ctx == NULL) {
+		printf("Internal error.\n");
+		return 1;
+	}
+
+	if (!EVP_SealInit(seal_ctx, algo,
 			&key, &key_len,
 			iv, &pkey, 1)) {
 		fprintf(stderr, "Internal error.\n");
@@ -4435,15 +4510,15 @@ static int wrap_unwrap(CK_SESSION_HANDLE session,
 
 	/* Encrypt something */
 	len = sizeof(ciphered);
-	if (!EVP_SealUpdate(&seal_ctx, ciphered, &len, (const unsigned char *) "hello world", 11)) {
-		fprintf(stderr, "Internal error.\n");
+	if (!EVP_SealUpdate(seal_ctx, ciphered, &len, (const unsigned char *) "hello world", 11)) {
+		printf("Internal error.\n");
 		return 1;
 	}
 	ciphered_len = len;
 
 	len = sizeof(ciphered) - ciphered_len;
-	if (!EVP_SealFinal(&seal_ctx, ciphered + ciphered_len, &len)) {
-		fprintf(stderr, "Internal error.\n");
+	if (!EVP_SealFinal(seal_ctx, ciphered + ciphered_len, &len)) {
+		printf("Internal error.\n");
 		return 1;
 	}
 	ciphered_len += len;
@@ -4479,21 +4554,21 @@ static int wrap_unwrap(CK_SESSION_HANDLE session,
 		return 1;
 	}
 
-	if (!EVP_DecryptInit(&seal_ctx, algo, key, iv)) {
-		fprintf(stderr, "Internal error.\n");
+	if (!EVP_DecryptInit(seal_ctx, algo, key, iv)) {
+		printf("Internal error.\n");
 		return 1;
 	}
 
 	len = sizeof(cleartext);
-	if (!EVP_DecryptUpdate(&seal_ctx, cleartext, &len, ciphered, ciphered_len)) {
-		fprintf(stderr, "Internal error.\n");
+	if (!EVP_DecryptUpdate(seal_ctx, cleartext, &len, ciphered, ciphered_len)) {
+		printf("Internal error.\n");
 		return 1;
 	}
 
 	cleartext_len = len;
 	len = sizeof(cleartext) - len;
-	if (!EVP_DecryptFinal(&seal_ctx, cleartext + cleartext_len, &len)) {
-		fprintf(stderr, "Internal error.\n");
+	if (!EVP_DecryptFinal(seal_ctx, cleartext + cleartext_len, &len)) {
+		printf("Internal error.\n");
 		return 1;
 	}
 	cleartext_len += len;
@@ -4503,6 +4578,9 @@ static int wrap_unwrap(CK_SESSION_HANDLE session,
 		printf("resulting cleartext doesn't match input\n");
 		return 1;
 	}
+
+	if (seal_ctx)
+	    EVP_CIPHER_CTX_free(seal_ctx);
 
 	printf("OK\n");
 	return 0;
@@ -5268,7 +5346,6 @@ static int hex_to_bin(const char *in, unsigned char *out, size_t *outlen)
 
 	left = *outlen;
 
-	while (*in == '0' && *(++in) != '\0') ; // strip leading zeros in input
 	if (strlen(in) % 2)
 		nybbles = 1; // any leading zero in output should be in most-significant byte, not last one!
 	while (*in != '\0') {

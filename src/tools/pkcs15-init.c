@@ -39,6 +39,7 @@
 #include <string.h>
 #endif
 #include <openssl/opensslv.h>
+#include "libopensc/sc-ossl-compat.h"
 #if OPENSSL_VERSION_NUMBER >= 0x00907000L
 #include <openssl/conf.h>
 #endif
@@ -52,6 +53,7 @@
 #include <openssl/pkcs12.h>
 #include <openssl/x509v3.h>
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L
+#include <openssl/crypto.h>
 #include <openssl/opensslconf.h> /* for OPENSSL_NO_EC */
 #ifndef OPENSSL_NO_EC
 #include <openssl/ec.h>
@@ -434,12 +436,22 @@ main(int argc, char **argv)
 	unsigned int		n;
 	int			r = 0;
 
-#if OPENSSL_VERSION_NUMBER >= 0x00907000L
+#if OPENSSL_VERSION_NUMBER >= 0x00907000L && OPENSSL_VERSION_NUMBER < 0x10100000L
 	OPENSSL_config(NULL);
 #endif
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && !(defined LIBRESSL_VERSION_NUMBER)
+	/* Openssl 1.1.0 magic */
+	OPENSSL_init_crypto(OPENSSL_INIT_LOAD_CRYPTO_STRINGS
+		| OPENSSL_INIT_ADD_ALL_CIPHERS
+		| OPENSSL_INIT_ADD_ALL_DIGESTS
+		| OPENSSL_INIT_LOAD_CONFIG,
+		NULL);
+#else
 	/* OpenSSL magic */
-	SSLeay_add_all_algorithms();
-	CRYPTO_malloc_init();
+	OpenSSL_add_all_algorithms();
+	OPENSSL_malloc_init();
+#endif
+
 #ifdef RANDOM_POOL
 	if (!RAND_load_file(RANDOM_POOL, 32))
 		util_fatal("Unable to seed random number pool for key generation");
@@ -609,7 +621,6 @@ out:
 		sc_pkcs15_unbind(p15card);
 	}
 	if (card) {
-		sc_unlock(card);
 		sc_disconnect_card(card);
 	}
 	sc_release_context(ctx);
@@ -637,7 +648,7 @@ open_reader_and_card(char *reader)
 		sc_ctx_log_to_file(ctx, "stderr");
 	}
 
-	if (util_connect_card(ctx, &card, reader, opt_wait, verbose))
+	if (util_connect_card_ex(ctx, &card, reader, opt_wait, 0, verbose))
 		return 0;
 
 	return 1;
@@ -651,6 +662,10 @@ do_assert_pristine(sc_card_t *in_card)
 {
 	sc_path_t	path;
 	int		r, ok = 1;
+
+	r = sc_lock(in_card);
+	if (r < 0)
+		goto end;
 
 	sc_format_path("3F00", &path);
 	r = sc_select_file(in_card, &path, NULL);
@@ -671,6 +686,7 @@ do_assert_pristine(sc_card_t *in_card)
 
 	ok = 0;
 end:
+	sc_unlock(in_card);
 	if (!ok) {
 		fprintf(stderr,
 			"Card not pristine; detected (possibly incomplete) "
@@ -690,14 +706,14 @@ do_erase(sc_card_t *in_card, struct sc_profile *profile)
 {
 	int	r;
 	struct sc_pkcs15_card *p15card;
+	struct sc_aid aid;
+	struct sc_aid *paid = NULL;
 
 	p15card = sc_pkcs15_card_new();
 	p15card->card = in_card;
 
 	ignore_cmdline_pins++;
 	if (opt_bind_to_aid)   {
-		struct sc_aid aid;
-
 		aid.len = sizeof(aid.value);
 		r = sc_hex_to_bin(opt_bind_to_aid, aid.value, &aid.len);
 		if (r < 0)   {
@@ -705,11 +721,15 @@ do_erase(sc_card_t *in_card, struct sc_profile *profile)
 			goto err;
 		}
 
-		r = sc_pkcs15init_erase_card(p15card, profile, &aid);
+		paid = &aid;
 	}
-	else   {
-		r = sc_pkcs15init_erase_card(p15card, profile, NULL);
-	}
+
+	r = sc_lock(p15card->card);
+	if (r < 0)
+		goto err;
+	r = sc_pkcs15init_erase_card(p15card, profile, paid);
+	sc_unlock(p15card->card);
+
 	ignore_cmdline_pins--;
 
 err:
@@ -730,7 +750,13 @@ do_erase_application(sc_card_t *in_card, struct sc_profile *profile)
 
 static int do_finalize_card(sc_card_t *in_card, struct sc_profile *profile)
 {
-	return sc_pkcs15init_finalize_card(in_card, profile);
+	int r;
+	r = sc_lock(p15card->card);
+	if (r < 0)
+		return r;
+	r = sc_pkcs15init_finalize_card(in_card, profile);
+	sc_unlock(p15card->card);
+	return r;
 }
 
 /*
@@ -811,7 +837,12 @@ do_init_app(struct sc_profile *profile)
 	args.serial = (const char *) opt_serial;
 	args.label = opt_label;
 
-	return sc_pkcs15init_add_app(card, profile, &args);
+	r = sc_lock(p15card->card);
+	if (r < 0)
+		return r;
+	r = sc_pkcs15init_add_app(card, profile, &args);
+	sc_unlock(p15card->card);
+	return r;
 
 failed:	fprintf(stderr, "Failed to read PIN: %s\n", sc_strerror(r));
 	return SC_ERROR_PKCS15INIT;
@@ -879,7 +910,12 @@ do_store_pin(struct sc_profile *profile)
 	args.puk = (u8 *) opt_pins[1];
 	args.puk_len = opt_pins[1]? strlen(opt_pins[1]) : 0;
 
-	return sc_pkcs15init_store_pin(p15card, profile, &args);
+	r = sc_lock(p15card->card);
+	if (r < 0)
+		return r;
+	r = sc_pkcs15init_store_pin(p15card, profile, &args);
+	sc_unlock(p15card->card);
+	return r;
 
 failed:	fprintf(stderr, "Failed to read PIN: %s\n", sc_strerror(r));
 	return SC_ERROR_PKCS15INIT;
@@ -909,7 +945,7 @@ do_store_private_key(struct sc_profile *profile)
 
 		printf("Importing %d certificates:\n", opt_ignore_ca_certs ? 1 : ncerts);
 		for (i = 0; i < ncerts && !(i && opt_ignore_ca_certs); i++)
-			printf("  %d: %s\n", i, X509_NAME_oneline(cert[i]->cert_info->subject,
+			printf("  %d: %s\n", i, X509_NAME_oneline(X509_get_subject_name(cert[i]),
 					namebuf, sizeof(namebuf)));
 	}
 
@@ -923,7 +959,7 @@ do_store_private_key(struct sc_profile *profile)
 
 		/* tell openssl to cache the extensions */
 		X509_check_purpose(cert[0], -1, -1);
-		usage = cert[0]->ex_kusage;
+		usage = X509_get_extended_key_usage(cert[0]);
 
 		/* No certificate usage? Assume ordinary
 		 * user cert */
@@ -951,10 +987,14 @@ do_store_private_key(struct sc_profile *profile)
 		| SC_PKCS15_PRKEY_ACCESS_ALWAYSSENSITIVE
 		| SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE;
 
-	r = sc_pkcs15init_store_private_key(p15card, profile, &args, NULL);
-
+	r = sc_lock(p15card->card);
 	if (r < 0)
 		return r;
+	r = sc_pkcs15init_store_private_key(p15card, profile, &args, NULL);
+	if (r < 0) {
+		sc_unlock(p15card->card);
+		return r;
+	}
 
 	/* If there are certificate as well (e.g. when reading the
 	 * private key from a PKCS #12 file) store them, too.
@@ -973,10 +1013,11 @@ do_store_private_key(struct sc_profile *profile)
 			return r;
 
 		X509_check_purpose(cert[i], -1, -1);
-		cargs.x509_usage = cert[i]->ex_kusage;
+		cargs.x509_usage = X509_get_extended_key_usage(cert[i]);
+
 		cargs.label = cert_common_name(cert[i]);
 		if (!cargs.label)
-			cargs.label = X509_NAME_oneline(cert[i]->cert_info->subject, namebuf, sizeof(namebuf));
+			cargs.label = X509_NAME_oneline(X509_get_subject_name(cert[i]), namebuf, sizeof(namebuf));
 
 		/* Just the first certificate gets the same ID
 		 * as the private key. All others get
@@ -1002,6 +1043,7 @@ next_cert:
 	if (ncerts == 0)
 		r = do_store_public_key(profile, pkey);
 
+	sc_unlock(p15card->card);
 	return r;
 }
 
@@ -1064,15 +1106,21 @@ do_store_public_key(struct sc_profile *profile, EVP_PKEY *pkey)
 	args.label = (opt_pubkey_label != 0 ? opt_pubkey_label : opt_label);
 	args.x509_usage = opt_x509_usage;
 
-	if (pkey == NULL)
+	if (pkey == NULL) {
 		r = do_read_public_key(opt_infile, opt_format, &pkey);
+	}
 	if (r >= 0) {
 		r = sc_pkcs15_convert_pubkey(&args.key, pkey);
 		if (r >= 0)
 			init_gost_params(&args.params.gost, pkey);
 	}
-	if (r >= 0)
+	if (r >= 0) {
+		r = sc_lock(p15card->card);
+		if (r < 0)
+			return r;
 		r = sc_pkcs15init_store_public_key(p15card, profile, &args, &dummy);
+		sc_unlock(p15card->card);
+	}
 
 	return r;
 }
@@ -1101,8 +1149,13 @@ do_store_certificate(struct sc_profile *profile)
 	r = do_read_certificate(opt_infile, opt_format, &cert);
 	if (r >= 0)
 		r = do_convert_cert(&args.der_encoded, cert);
-	if (r >= 0)
+	if (r >= 0) {
+		r = sc_lock(p15card->card);
+		if (r < 0)
+			return r;
 		r = sc_pkcs15init_store_certificate(p15card, profile, &args, NULL);
+		sc_unlock(p15card->card);
+	}
 
 	if (args.der_encoded.value)
 		free(args.der_encoded.value);
@@ -1116,6 +1169,7 @@ do_read_check_certificate(sc_pkcs15_cert_t *sc_oldcert,
 {
 	X509 *oldcert, *newcert;
 	EVP_PKEY *oldpk, *newpk;
+	int oldpk_type, newpk_type;
 	const u8 *ptr;
 	int r;
 
@@ -1136,19 +1190,30 @@ do_read_check_certificate(sc_pkcs15_cert_t *sc_oldcert,
 	oldpk = X509_get_pubkey(oldcert);
 	newpk = X509_get_pubkey(newcert);
 
+	oldpk_type = EVP_PKEY_base_id(oldpk);
+	newpk_type = EVP_PKEY_base_id(newpk);
+
 	/* Compare the public keys, there's no high level openssl function for this(?) */
+	/* Yes there is in 1.0.2 and above EVP_PKEY_cmp */
+
+
 	r = SC_ERROR_INVALID_ARGUMENTS;
-	if (oldpk->type == newpk->type)
+	if (oldpk_type == newpk_type)
 	{
-		if ((oldpk->type == EVP_PKEY_DSA) &&
-			!BN_cmp(oldpk->pkey.dsa->p, newpk->pkey.dsa->p) &&
-			!BN_cmp(oldpk->pkey.dsa->q, newpk->pkey.dsa->q) &&
-			!BN_cmp(oldpk->pkey.dsa->g, newpk->pkey.dsa->g))
+#if  OPENSSL_VERSION_NUMBER >= 0x10002000L
+		if (EVP_PKEY_cmp(oldpk, newpk) == 1)
+			r = 0;
+#else
+		if ((oldpk_type == EVP_PKEY_DSA) &&
+			!BN_cmp(EVP_PKEY_get0_DSA(oldpk)->p, EVP_PKEY_get0_DSA(newpk)->p) &&
+			!BN_cmp(EVP_PKEY_get0_DSA(oldpk)->q, EVP_PKEY_get0_DSA(newpk)->q) &&
+			!BN_cmp(EVP_PKEY_get0_DSA(oldpk)->g, EVP_PKEY_get0_DSA(newpk)->g))
 				r = 0;
-		else if ((oldpk->type == EVP_PKEY_RSA) &&
-			!BN_cmp(oldpk->pkey.rsa->n, newpk->pkey.rsa->n) &&
-			!BN_cmp(oldpk->pkey.rsa->e, newpk->pkey.rsa->e))
+		else if ((oldpk_type == EVP_PKEY_RSA) &&
+			!BN_cmp(EVP_PKEY_get0_RSA(oldpk)->n, EVP_PKEY_get0_RSA(newpk)->n) &&
+			!BN_cmp(EVP_PKEY_get0_RSA(oldpk)->e, EVP_PKEY_get0_RSA(newpk)->e))
 				r = 0;
+#endif
 	}
 
 	EVP_PKEY_free(newpk);
@@ -1191,16 +1256,20 @@ do_update_certificate(struct sc_profile *profile)
 		return SC_ERROR_OBJECT_NOT_FOUND;
 	}
 
+	r = sc_lock(p15card->card);
+	if (r < 0)
+		return r;
+
 	certinfo = (sc_pkcs15_cert_info_t *) obj->data;
 	r = sc_pkcs15_read_certificate(p15card, certinfo, &oldcert);
 	if (r < 0)
-		return r;
+		goto err;
 
 	newcert_raw.value = NULL;
 	r = do_read_check_certificate(oldcert, opt_infile, opt_format, &newcert_raw);
 	sc_pkcs15_free_certificate(oldcert);
 	if (r < 0)
-		return r;
+		goto err;
 
 	r = sc_pkcs15init_update_certificate(p15card, profile, obj,
 		newcert_raw.value, newcert_raw.len);
@@ -1208,6 +1277,8 @@ do_update_certificate(struct sc_profile *profile)
 	if (newcert_raw.value)
 		free(newcert_raw.value);
 
+err:
+	sc_unlock(p15card->card);
 	return r;
 }
 
@@ -1243,7 +1314,11 @@ do_store_data_object(struct sc_profile *profile)
 		/* der_encoded contains the plain data, nothing DER encoded */
 		args.der_encoded.value = data;
 		args.der_encoded.len = datalen;
+		r = sc_lock(p15card->card);
+		if (r < 0)
+			return r;
 		r = sc_pkcs15init_store_data_object(p15card, profile, &args, NULL);
+		sc_unlock(p15card->card);
 	}
 
 	if (data)
@@ -1257,7 +1332,13 @@ do_store_data_object(struct sc_profile *profile)
 static int
 do_sanity_check(struct sc_profile *profile)
 {
-	return sc_pkcs15init_sanity_check(p15card, profile);
+	int r;
+	r = sc_lock(p15card->card);
+	if (r < 0)
+		return r;
+	r = sc_pkcs15init_sanity_check(p15card, profile);
+	sc_unlock(p15card->card);
+	return r;
 }
 
 static int cert_is_root(sc_pkcs15_cert_t *c)
@@ -1405,6 +1486,10 @@ do_delete_objects(struct sc_profile *profile, unsigned int myopt_delete_flags)
 {
 	int r = 0, count = 0;
 
+	r = sc_lock(p15card->card);
+	if (r < 0)
+		return r;
+
 	if (myopt_delete_flags & SC_PKCS15INIT_TYPE_DATA) {
 		struct sc_object_id app_oid;
 		sc_pkcs15_object_t *obj = NULL;
@@ -1439,6 +1524,7 @@ do_delete_objects(struct sc_profile *profile, unsigned int myopt_delete_flags)
 			count += r;
 	}
 
+	sc_unlock(p15card->card);
 	printf("Deleted %d objects\n", count);
 
 	return r;
@@ -1491,7 +1577,11 @@ do_change_attributes(struct sc_profile *profile, unsigned int myopt_type)
 		strlcpy(obj->label, opt_label, sizeof(obj->label));
 	}
 
+	r = sc_lock(p15card->card);
+	if (r < 0)
+		return r;
 	r = sc_pkcs15init_update_any_df(p15card, profile, obj->df, 0);
+	sc_unlock(p15card->card);
 
 	return r;
 }
@@ -1556,7 +1646,11 @@ do_generate_key(struct sc_profile *profile, const char *spec)
 			}
 		}
 	}
+	r = sc_lock(p15card->card);
+	if (r < 0)
+		return r;
 	r = sc_pkcs15init_generate_key(p15card, profile, &keygen_args, keybits, NULL);
+	sc_unlock(p15card->card);
 	return r;
 }
 
@@ -2004,7 +2098,8 @@ do_read_pkcs12_private_key(const char *filename, const char *passphrase,
 		return SC_ERROR_CANNOT_LOAD_KEY;
 	}
 
-	CRYPTO_add(&user_key->references, 1, CRYPTO_LOCK_EVP_PKEY);
+	EVP_PKEY_up_ref(user_key);
+
 	if (user_cert && max_certs)
 		certs[ncerts++] = user_cert;
 
@@ -2014,7 +2109,7 @@ do_read_pkcs12_private_key(const char *filename, const char *passphrase,
 
 	/* bump reference counts for certificates */
 	for (i = 0; i < ncerts; i++) {
-		CRYPTO_add(&certs[i]->references, 1, CRYPTO_LOCK_X509);
+		X509_up_ref(certs[i]);
 	}
 
 	if (cacerts)
@@ -2460,6 +2555,7 @@ handle_option(const struct option *opt)
 		break;
 	case 'h':
 		util_print_usage_and_die(app_name, options, option_help, NULL);
+		/* exit */
 	case 'i':
 		opt_objectid = optarg;
 		break;
@@ -2803,6 +2899,7 @@ int get_pin(sc_ui_hints_t *hints, char **out)
 
 		if (!(flags & SC_UI_PIN_MISMATCH_RETRY)) {
 			fprintf(stderr, "PINs do not match.\n");
+			free(pin);
 			return SC_ERROR_KEYPAD_PIN_MISMATCH;
 		}
 

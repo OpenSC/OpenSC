@@ -32,6 +32,8 @@
 #include <sys/stat.h>
 
 /* Requires openssl for dkek import */
+#include <openssl/opensslv.h>
+
 #include <openssl/opensslconf.h>
 #include <openssl/bio.h>
 #include <openssl/evp.h>
@@ -39,6 +41,7 @@
 #include <openssl/rand.h>
 #include <openssl/err.h>
 
+#include "libopensc/sc-ossl-compat.h"
 #include "libopensc/opensc.h"
 #include "libopensc/cardctl.h"
 #include "libopensc/asn1.h"
@@ -123,8 +126,8 @@ static const char *option_help[] = {
 };
 
 typedef struct {
-	BIGNUM x;
-	BIGNUM y;
+	BIGNUM * x;
+	BIGNUM * y;
 } secret_share_t;
 
 static sc_context_t *ctx = NULL;
@@ -157,7 +160,11 @@ static int generatePrime(BIGNUM *prime, const BIGNUM *s, const int bits, unsigne
 
 	do {
 		// Generate random prime
+#if OPENSSL_VERSION_NUMBER  >= 0x00908000L /* last parm is BN_GENCB which is null in our case */
+		BN_generate_prime_ex(prime, bits, 1, NULL, NULL, NULL);
+#else
 		BN_generate_prime(prime, bits, 1, NULL, NULL, NULL, NULL );
+#endif
 
 	} while ((BN_ucmp(prime, s) == -1) && (max_rounds-- > 0));	// If prime < s or not reached 1000 tries
 
@@ -179,21 +186,20 @@ static int generatePrime(BIGNUM *prime, const BIGNUM *s, const int bits, unsigne
  * @param prime Prime for finite field arithmetic
  * @param y Pointer for storage of calculated y-value
  */
-static void calculatePolynomialValue(const BIGNUM x, BIGNUM **polynomial, const unsigned char t, const BIGNUM prime, BIGNUM *y)
+static void calculatePolynomialValue(const BIGNUM *x, BIGNUM **polynomial, const unsigned char t, const BIGNUM *prime, BIGNUM *y)
 {
 	BIGNUM **pp;
-	BIGNUM temp;
-	BIGNUM exponent;
+	BIGNUM *temp;
+	BIGNUM *exponent;
 
 	unsigned long exp;
 	BN_CTX *ctx;
 
 	// Create context for temporary variables of OpenSSL engine
 	ctx = BN_CTX_new();
-	BN_CTX_init(ctx);
 
-	BN_init(&temp);
-	BN_init(&exponent);
+	temp = BN_new();
+	exponent = BN_new();
 
 	// Set y to ZERO
 	BN_zero(y);
@@ -206,21 +212,21 @@ static void calculatePolynomialValue(const BIGNUM x, BIGNUM **polynomial, const 
 
 	for (exp = 1; exp < t; exp++) {
 
-		BN_copy(&temp, &x);
+		BN_copy(temp, x);
 
-		BN_set_word(&exponent, exp);
+		BN_set_word(exponent, exp);
 		// temp = x^exponent mod prime
-		BN_mod_exp(&temp, &x, &exponent, &prime, ctx);
+		BN_mod_exp(temp, x, exponent, prime, ctx);
 		// exponent = temp * a = a * x^exponent mod prime
-		BN_mod_mul(&exponent, &temp, *pp, &prime, ctx);
+		BN_mod_mul(exponent, temp, *pp, prime, ctx);
 		// add the temp value from exponent to y
-		BN_copy(&temp, y);
-		BN_mod_add(y, &temp, &exponent, &prime, ctx);
+		BN_copy(temp, y);
+		BN_mod_add(y, temp, exponent, prime, ctx);
 		pp++;
 	}
 
-	BN_clear_free(&temp);
-	BN_clear_free(&exponent);
+	BN_clear_free(temp);
+	BN_clear_free(exponent);
 
 	BN_CTX_free(ctx);
 }
@@ -236,7 +242,7 @@ static void calculatePolynomialValue(const BIGNUM x, BIGNUM **polynomial, const 
  * @param prime Prime for finite field arithmetic
  * @param shares Pointer for storage of calculated shares (must be big enough to hold n shares)
  */
-static int createShares(const BIGNUM *s, const unsigned char t, const unsigned char n,	const BIGNUM prime, secret_share_t *shares)
+static int createShares(const BIGNUM *s, const unsigned char t, const unsigned char n,	const BIGNUM *prime, secret_share_t *shares)
 {
 	// Array representing the polynomial a(x) = s + a_1 * x + ... + a_n-1 * x^n-1 mod p
 	BIGNUM **polynomial = malloc(n * sizeof(BIGNUM *));
@@ -247,26 +253,23 @@ static int createShares(const BIGNUM *s, const unsigned char t, const unsigned c
 	// Set the secret value as the constant part of the polynomial
 	pp = polynomial;
 	*pp = BN_new();
-	BN_init(*pp);
 	BN_copy(*pp, s);
 	pp++;
 
 	// Initialize and generate some random values for coefficients a_x in the remaining polynomial
 	for (i = 1; i < t; i++) {
 		*pp = BN_new();
-		BN_init(*pp);
-		BN_rand_range(*pp, &prime);
+		BN_rand_range(*pp, prime);
 		pp++;
 	}
 
 	sp = shares;
 	// Now calculate n secret shares
 	for (i = 1; i <= n; i++) {
-		BN_init(&(sp->x));
-		BN_init(&(sp->y));
-
-		BN_set_word(&(sp->x), i);
-		calculatePolynomialValue(sp->x, polynomial, t, prime, &(sp->y));
+		sp->x = BN_new();
+		sp->y = BN_new();
+		BN_set_word((sp->x), i);
+		calculatePolynomialValue(sp->x, polynomial, t, prime, (sp->y));
 		sp++;
 	}
 
@@ -292,7 +295,7 @@ static int createShares(const BIGNUM *s, const unsigned char t, const unsigned c
  * @param prime Prime for finite field arithmetic
  * @param s Pointer for storage of calculated secred
  */
-static int reconstructSecret(secret_share_t *shares, unsigned char t, const BIGNUM prime, BIGNUM *s)
+static int reconstructSecret(secret_share_t *shares, unsigned char t, const BIGNUM *prime, BIGNUM *s)
 {
 	unsigned char i;
 	unsigned char j;
@@ -300,9 +303,9 @@ static int reconstructSecret(secret_share_t *shares, unsigned char t, const BIGN
 	// Array representing the polynomial a(x) = s + a_1 * x + ... + a_n-1 * x^n-1 mod p
 	BIGNUM **bValue = malloc(t * sizeof(BIGNUM *));
 	BIGNUM **pbValue;
-	BIGNUM numerator;
-	BIGNUM denominator;
-	BIGNUM temp;
+	BIGNUM * numerator;
+	BIGNUM * denominator;
+	BIGNUM * temp;
 	secret_share_t *sp_i;
 	secret_share_t *sp_j;
 	BN_CTX *ctx;
@@ -311,24 +314,22 @@ static int reconstructSecret(secret_share_t *shares, unsigned char t, const BIGN
 	pbValue = bValue;
 	for (i = 0; i < t; i++) {
 		*pbValue = BN_new();
-		BN_init(*pbValue);
 		pbValue++;
 	}
 
-	BN_init(&numerator);
-	BN_init(&denominator);
-	BN_init(&temp);
+	numerator = BN_new();
+	denominator = BN_new();
+	temp = BN_new();
 
 	// Create context for temporary variables of engine
 	ctx = BN_CTX_new();
-	BN_CTX_init(ctx);
 
 	pbValue = bValue;
 	sp_i = shares;
 	for (i = 0; i < t; i++) {
 
-		BN_one(&numerator);
-		BN_one(&denominator);
+		BN_one(numerator);
+		BN_one(denominator);
 
 		sp_j = shares;
 
@@ -339,9 +340,9 @@ static int reconstructSecret(secret_share_t *shares, unsigned char t, const BIGN
 				continue;
 			}
 
-			BN_mul(&numerator, &numerator, &(sp_j->x), ctx);
-			BN_sub(&temp, &(sp_j->x), &(sp_i->x));
-			BN_mul(&denominator, &denominator, &temp, ctx);
+			BN_mul(numerator, numerator, (sp_j->x), ctx);
+			BN_sub(temp, (sp_j->x), (sp_i->x));
+			BN_mul(denominator, denominator, temp, ctx);
 
 			sp_j++;
 		}
@@ -350,12 +351,12 @@ static int reconstructSecret(secret_share_t *shares, unsigned char t, const BIGN
 		 * Use the modular inverse value of the denominator for the
 		 * multiplication
 		 */
-		if (BN_mod_inverse(&denominator, &denominator, &prime, ctx) == NULL ) {
+		if (BN_mod_inverse(denominator, denominator, prime, ctx) == NULL ) {
 			free(bValue);
 			return -1;
 		}
 
-		BN_mod_mul(*pbValue, &numerator, &denominator, &prime, ctx);
+		BN_mod_mul(*pbValue, numerator, denominator, prime, ctx);
 
 		pbValue++;
 		sp_i++;
@@ -370,19 +371,19 @@ static int reconstructSecret(secret_share_t *shares, unsigned char t, const BIGN
 	BN_zero(s);
 	for (i = 0; i < t; i++) {
 
-		BN_mul(&temp, &(sp_i->y), *pbValue, ctx);
-		BN_add(s, s, &temp);
+		BN_mul(temp, (sp_i->y), *pbValue, ctx);
+		BN_add(s, s, temp);
 		pbValue++;
 		sp_i++;
 	}
 
 	// Perform modulo operation and copy result
-	BN_nnmod(&temp, s, &prime, ctx);
-	BN_copy(s, &temp);
+	BN_nnmod(temp, s, prime, ctx);
+	BN_copy(s, temp);
 
-	BN_clear_free(&numerator);
-	BN_clear_free(&denominator);
-	BN_clear_free(&temp);
+	BN_clear_free(numerator);
+	BN_clear_free(denominator);
+	BN_clear_free(temp);
 
 	BN_CTX_free(ctx);
 
@@ -413,8 +414,8 @@ static int cleanUpShares(secret_share_t *shares, unsigned char n)
 
 	sp = shares;
 	for (i = 0; i < n; i++) {
-		BN_clear_free(&(sp->x));
-		BN_clear_free(&(sp->y));
+		BN_clear_free((sp->x));
+		BN_clear_free((sp->y));
 		sp++;
 	}
 
@@ -640,8 +641,8 @@ static int initialize(sc_card_t *card, const char *so_pin, const char *user_pin,
 static int recreate_password_from_shares(char **pwd, int *pwdlen, int num_of_password_shares)
 {
 	int r, i;
-	BIGNUM prime;
-	BIGNUM secret;
+	BIGNUM *prime;
+	BIGNUM *secret;
 	BIGNUM *p;
 	char inbuf[64];
 	unsigned char bin[64];
@@ -658,8 +659,8 @@ static int recreate_password_from_shares(char **pwd, int *pwdlen, int num_of_pas
 	/*
 	 * Initialize prime and secret
 	 */
-	BN_init(&prime);
-	BN_init(&secret);
+	prime = BN_new();
+	secret = BN_new();
 
 	// Allocate data buffer for the shares
 	shares = malloc(num_of_password_shares * sizeof(secret_share_t));
@@ -676,7 +677,7 @@ static int recreate_password_from_shares(char **pwd, int *pwdlen, int num_of_pas
 	}
 	binlen = 64;
 	sc_hex_to_bin(inbuf, bin, &binlen);
-	BN_bin2bn(bin, binlen, &prime);
+	BN_bin2bn(bin, binlen, prime);
 
 	sp = shares;
 	for (i = 0; i < num_of_password_shares; i++) {
@@ -687,8 +688,8 @@ static int recreate_password_from_shares(char **pwd, int *pwdlen, int num_of_pas
 
 		clearScreen();
 
-		BN_init(&(sp->x));
-		BN_init(&(sp->y));
+		sp->x = BN_new();
+		sp->y = BN_new();
 
 		printf("Share %i of %i\n\n", i + 1, num_of_password_shares);
 
@@ -698,7 +699,7 @@ static int recreate_password_from_shares(char **pwd, int *pwdlen, int num_of_pas
 			fprintf(stderr, "Input aborted\n");
 			return -1;
 		}
-		p = &(sp->x);
+		p = (sp->x);
 		BN_hex2bn(&p, inbuf);
 
 		printf("Please enter share value: ");
@@ -709,14 +710,14 @@ static int recreate_password_from_shares(char **pwd, int *pwdlen, int num_of_pas
 		}
 		binlen = 64;
 		sc_hex_to_bin(inbuf, bin, &binlen);
-		BN_bin2bn(bin, binlen, &(sp->y));
+		BN_bin2bn(bin, binlen, (sp->y));
 
 		sp++;
 	}
 
 	clearScreen();
 
-	r = reconstructSecret(shares, num_of_password_shares, prime, &secret);
+	r = reconstructSecret(shares, num_of_password_shares, prime, secret);
 
 	if (r < 0) {
 		printf("\nError during reconstruction of secret. Wrong shares?\n");
@@ -728,14 +729,14 @@ static int recreate_password_from_shares(char **pwd, int *pwdlen, int num_of_pas
 	 * Encode the secret value
 	 */
 	ip = (unsigned char *) inbuf;
-	*pwdlen = BN_bn2bin(&secret, ip);
+	*pwdlen = BN_bn2bin(secret, ip);
 	*pwd = calloc(1, *pwdlen);
 	memcpy(*pwd, ip, *pwdlen);
 
 	cleanUpShares(shares, num_of_password_shares);
 
-	BN_clear_free(&prime);
-	BN_clear_free(&secret);
+	BN_clear_free(prime);
+	BN_clear_free(secret);
 
 	return 0;
 }
@@ -745,7 +746,7 @@ static int recreate_password_from_shares(char **pwd, int *pwdlen, int num_of_pas
 static int import_dkek_share(sc_card_t *card, const char *inf, int iter, const char *password, int num_of_password_shares)
 {
 	sc_cardctl_sc_hsm_dkek_t dkekinfo;
-	EVP_CIPHER_CTX ctx;
+	EVP_CIPHER_CTX *ctx = NULL;
 	FILE *in = NULL;
 	u8 filebuff[64],key[EVP_MAX_KEY_LENGTH], iv[EVP_MAX_IV_LENGTH],outbuff[64];
 	char *pwd = NULL;
@@ -803,14 +804,14 @@ static int import_dkek_share(sc_card_t *card, const char *inf, int iter, const c
 		free(pwd);
 	}
 
-	EVP_CIPHER_CTX_init(&ctx);
-	EVP_DecryptInit_ex(&ctx, EVP_aes_256_cbc(), NULL, key, iv);
-	if (!EVP_DecryptUpdate(&ctx, outbuff, &outlen, filebuff + 16, sizeof(filebuff) - 16)) {
+	ctx = EVP_CIPHER_CTX_new();
+	EVP_DecryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, key, iv);
+	if (!EVP_DecryptUpdate(ctx, outbuff, &outlen, filebuff + 16, sizeof(filebuff) - 16)) {
 		fprintf(stderr, "Error decrypting DKEK share. Password correct ?\n");
 		return -1;
 	}
 
-	if (!EVP_DecryptFinal_ex(&ctx, outbuff + outlen, &r)) {
+	if (!EVP_DecryptFinal_ex(ctx, outbuff + outlen, &r)) {
 		fprintf(stderr, "Error decrypting DKEK share. Password correct ?\n");
 		return -1;
 	}
@@ -824,7 +825,7 @@ static int import_dkek_share(sc_card_t *card, const char *inf, int iter, const c
 	r = sc_card_ctl(card, SC_CARDCTL_SC_HSM_IMPORT_DKEK_SHARE, (void *)&dkekinfo);
 
 	OPENSSL_cleanse(&dkekinfo.dkek_share, sizeof(dkekinfo.dkek_share));
-	EVP_CIPHER_CTX_cleanup(&ctx);
+	EVP_CIPHER_CTX_free(ctx);
 
 	if (r == SC_ERROR_INS_NOT_SUPPORTED) {			// Not supported or not initialized for key shares
 		fprintf(stderr, "Not supported by card or card not initialized for key share usage\n");
@@ -845,7 +846,7 @@ static int print_dkek_share(sc_card_t *card, const char *inf, int iter, const ch
 	// hex output can be used in the SCSH shell with the 
 	// decrypt_keyblob.js file
 	sc_cardctl_sc_hsm_dkek_t dkekinfo;
-	EVP_CIPHER_CTX ctx;
+	EVP_CIPHER_CTX *ctx = NULL;
 	FILE *in = NULL;
 	u8 filebuff[64],key[EVP_MAX_KEY_LENGTH], iv[EVP_MAX_IV_LENGTH],outbuff[64];
 	char *pwd = NULL;
@@ -904,14 +905,14 @@ static int print_dkek_share(sc_card_t *card, const char *inf, int iter, const ch
 		free(pwd);
 	}
 
-	EVP_CIPHER_CTX_init(&ctx);
-	EVP_DecryptInit_ex(&ctx, EVP_aes_256_cbc(), NULL, key, iv);
-	if (!EVP_DecryptUpdate(&ctx, outbuff, &outlen, filebuff + 16, sizeof(filebuff) - 16)) {
+	ctx = EVP_CIPHER_CTX_new();
+	EVP_DecryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, key, iv);
+	if (!EVP_DecryptUpdate(ctx, outbuff, &outlen, filebuff + 16, sizeof(filebuff) - 16)) {
 		fprintf(stderr, "Error decrypting DKEK share. Password correct ?\n");
 		return -1;
 	}
 
-	if (!EVP_DecryptFinal_ex(&ctx, outbuff + outlen, &r)) {
+	if (!EVP_DecryptFinal_ex(ctx, outbuff + outlen, &r)) {
 		fprintf(stderr, "Error decrypting DKEK share. Password correct ?\n");
 		return -1;
 	}
@@ -931,7 +932,7 @@ static int print_dkek_share(sc_card_t *card, const char *inf, int iter, const ch
 	printf("\n\n");
 
 	OPENSSL_cleanse(&dkekinfo.dkek_share, sizeof(dkekinfo.dkek_share));
-	EVP_CIPHER_CTX_cleanup(&ctx);
+	EVP_CIPHER_CTX_free(ctx);
 
 	if (r == SC_ERROR_INS_NOT_SUPPORTED) {			// Not supported or not initialized for key shares
 		fprintf(stderr, "Not supported by card or card not initialized for key share usage\n");
@@ -987,8 +988,8 @@ static void ask_for_password(char **pwd, int *pwdlen)
 static int generate_pwd_shares(sc_card_t *card, char **pwd, int *pwdlen, int password_shares_threshold, int password_shares_total)
 {
 	int r, i;
-	BIGNUM prime;
-	BIGNUM secret;
+	BIGNUM *prime;
+	BIGNUM *secret;
 	unsigned char buf[64];
 	char hex[64];
 	int l;
@@ -1044,13 +1045,13 @@ static int generate_pwd_shares(sc_card_t *card, char **pwd, int *pwdlen, int pas
 	/*
 	 * Initialize prime and secret
 	 */
-	BN_init(&prime);
-	BN_init(&secret);
+	prime = BN_new();
+	secret = BN_new();
 
 	/*
 	 * Encode the secret value
 	 */
-	BN_bin2bn((unsigned char *)*pwd, *pwdlen, &secret);
+	BN_bin2bn((unsigned char *)*pwd, *pwdlen, secret);
 
 	/*
 	 * Generate seed and calculate a prime depending on the size of the secret
@@ -1063,7 +1064,7 @@ static int generate_pwd_shares(sc_card_t *card, char **pwd, int *pwdlen, int pas
 		return r;
 	}
 
-	r = generatePrime(&prime, &secret, 64, rngseed, SEED_LENGTH);
+	r = generatePrime(prime, secret, 64, rngseed, SEED_LENGTH);
 	if (r < 0) {
 		printf("Error generating valid prime number. Please try again.");
 		OPENSSL_cleanse(*pwd, *pwdlen);
@@ -1074,7 +1075,7 @@ static int generate_pwd_shares(sc_card_t *card, char **pwd, int *pwdlen, int pas
 	// Allocate data buffer for the generated shares
 	shares = malloc(password_shares_total * sizeof(secret_share_t));
 
-	createShares(&secret, password_shares_threshold, password_shares_total, prime, shares);
+	createShares(secret, password_shares_threshold, password_shares_total, prime, shares);
 
 	sp = shares;
 	for (i = 0; i < password_shares_total; i++) {
@@ -1087,12 +1088,12 @@ static int generate_pwd_shares(sc_card_t *card, char **pwd, int *pwdlen, int pas
 
 		printf("Share %i of %i\n\n", i + 1, password_shares_total);
 
-		l = BN_bn2bin(&prime, buf);
+		l = BN_bn2bin(prime, buf);
 		sc_bin_to_hex(buf, l, hex, 64, ':');
 		printf("\nPrime       : %s\n", hex);
 
-		printf("Share ID    : %s\n", BN_bn2dec(&(sp->x)));
-		l = BN_bn2bin(&(sp->y), buf);
+		printf("Share ID    : %s\n", BN_bn2dec((sp->x)));
+		l = BN_bn2bin((sp->y), buf);
 		sc_bin_to_hex(buf, l, hex, 64, ':');
 		printf("Share value : %s\n", hex);
 
@@ -1106,8 +1107,8 @@ static int generate_pwd_shares(sc_card_t *card, char **pwd, int *pwdlen, int pas
 
 	cleanUpShares(shares, password_shares_total);
 
-	BN_clear_free(&prime);
-	BN_clear_free(&secret);
+	BN_clear_free(prime);
+	BN_clear_free(secret);
 
 	return 0;
 }
@@ -1116,7 +1117,7 @@ static int generate_pwd_shares(sc_card_t *card, char **pwd, int *pwdlen, int pas
 
 static int create_dkek_share(sc_card_t *card, const char *outf, int iter, const char *password, int password_shares_threshold, int password_shares_total)
 {
-	EVP_CIPHER_CTX ctx;
+	EVP_CIPHER_CTX *ctx = NULL;
 	FILE *out = NULL;
 	u8 filebuff[64], key[EVP_MAX_KEY_LENGTH], iv[EVP_MAX_IV_LENGTH];
 	u8 dkek_share[32];
@@ -1167,14 +1168,14 @@ static int create_dkek_share(sc_card_t *card, const char *outf, int iter, const 
 		return -1;
 	}
 
-	EVP_CIPHER_CTX_init(&ctx);
-	EVP_EncryptInit_ex(&ctx, EVP_aes_256_cbc(), NULL, key, iv);
-	if (!EVP_EncryptUpdate(&ctx, filebuff + 16, &outlen, dkek_share, sizeof(dkek_share))) {
+	ctx = EVP_CIPHER_CTX_new();
+	EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, key, iv);
+	if (!EVP_EncryptUpdate(ctx, filebuff + 16, &outlen, dkek_share, sizeof(dkek_share))) {
 		fprintf(stderr, "Error encrypting DKEK share\n");
 		return -1;
 	}
 
-	if (!EVP_EncryptFinal_ex(&ctx, filebuff + 16 + outlen, &r)) {
+	if (!EVP_EncryptFinal_ex(ctx, filebuff + 16 + outlen, &r)) {
 		fprintf(stderr, "Error encrypting DKEK share\n");
 		return -1;
 	}
@@ -1195,7 +1196,7 @@ static int create_dkek_share(sc_card_t *card, const char *outf, int iter, const 
 	fclose(out);
 
 	OPENSSL_cleanse(filebuff, sizeof(filebuff));
-	EVP_CIPHER_CTX_cleanup(&ctx);
+	EVP_CIPHER_CTX_free(ctx);
 
 	printf("DKEK share created and saved to %s\n", outf);
 	return 0;
@@ -1744,9 +1745,16 @@ int main(int argc, char * const argv[])
 		}
 	}
 
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && !(defined LIBRESSL_VERSION_NUMBER)
+	OPENSSL_init_crypto(OPENSSL_INIT_LOAD_CRYPTO_STRINGS
+		| OPENSSL_INIT_ADD_ALL_CIPHERS
+		| OPENSSL_INIT_ADD_ALL_DIGESTS,
+		NULL);
+#else
 	CRYPTO_malloc_init();
 	ERR_load_crypto_strings();
 	OpenSSL_add_all_algorithms();
+#endif
 
 	memset(&ctx_param, 0, sizeof(sc_context_param_t));
 	ctx_param.app_name = app_name;

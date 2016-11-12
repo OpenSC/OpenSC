@@ -37,7 +37,7 @@ static struct sc_card_operations gemsafe_ops;
 static struct sc_card_operations *iso_ops = NULL;
 
 static struct sc_card_driver gemsafe_drv = {
-	"driver for the Gemplus GemSAFE V1 applet",
+	"Gemalto GemSafe V1 applet",
 	"gemsafeV1",
 	&gemsafe_ops,
 	NULL, 0, NULL
@@ -229,6 +229,7 @@ static int gemsafe_init(struct sc_card *card)
 		}
 	}
 
+	card->caps |= SC_CARD_CAP_ISO7816_PIN_INFO;
 	card->drv_data = exdata;
 
 	return 0;
@@ -563,146 +564,6 @@ static int gemsafe_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 	return r;
 }
 
-static int gemsafe_build_pin_apdu(struct sc_card *card,
-		struct sc_apdu *apdu,
-		struct sc_pin_cmd_data *data)
-{
-	static u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
-	int r, len = 0, pad = 0, use_pin_pad = 0, ins, p1 = 0;
-
-	switch (data->pin_type) {
-	case SC_AC_CHV:
-		break;
-	default:
-		return SC_ERROR_INVALID_ARGUMENTS;
-	}
-
-	if (data->flags & SC_PIN_CMD_NEED_PADDING)
-		pad = 1;
-	if (data->flags & SC_PIN_CMD_USE_PINPAD)
-		use_pin_pad = 1;
-
-	data->pin1.offset = 5;
-
-	switch (data->cmd) {
-	case SC_PIN_CMD_VERIFY:
-		ins = 0x20;
-		if ((r = sc_build_pin(sbuf, sizeof(sbuf), &data->pin1, pad)) < 0)
-			return r;
-		len = r;
-		break;
-	case SC_PIN_CMD_CHANGE:
-		ins = 0x24;
-		if (data->pin1.len != 0 || use_pin_pad) {
-			if ((r = sc_build_pin(sbuf, sizeof(sbuf), &data->pin1, pad)) < 0)
-				return r;
-			len += r;
-		} else {
-			/* implicit test */
-			p1 = 1;
-		}
-
-		data->pin2.offset = data->pin1.offset + len;
-		if ((r = sc_build_pin(sbuf+len, sizeof(sbuf)-len, &data->pin2, pad)) < 0)
-			return r;
-		len += r;
-		break;
-	case SC_PIN_CMD_UNBLOCK:
-		ins = 0x2C;
-		if (data->pin1.len != 0 || use_pin_pad) {
-			if ((r = sc_build_pin(sbuf, sizeof(sbuf), &data->pin1, pad)) < 0)
-				return r;
-			len += r;
-		} else {
-			p1 |= 0x02;
-		}
-
-		if (data->pin2.len != 0 || use_pin_pad) {
-			data->pin2.offset = data->pin1.offset + len;
-			if ((r = sc_build_pin(sbuf+len, sizeof(sbuf)-len, &data->pin2, pad)) < 0)
-				return r;
-			len += r;
-		} else {
-			p1 |= 0x01;
-		}
-		break;
-	default:
-		return SC_ERROR_NOT_SUPPORTED;
-	}
-
-	sc_format_apdu(card, apdu, SC_APDU_CASE_3_SHORT,
-				ins, p1, data->pin_reference);
-
-	apdu->lc = len;
-	apdu->datalen = len;
-	apdu->data = sbuf;
-	apdu->resplen = 0;
-
-	return 0;
-}
-
-static int gemsafe_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data,
-			   int *tries_left)
-{
-	struct sc_apdu local_apdu, *apdu;
-	int r;
-
-	if (tries_left)
-		*tries_left = -1;
-
-	/* See if we've been called from another card driver, which is
-	 * passing an APDU to us (this allows to write card drivers
-	 * whose PIN functions behave "mostly like ISO" except in some
-	 * special circumstances.
-	 */
-	if (data->apdu == NULL) {
-		r = gemsafe_build_pin_apdu(card, &local_apdu, data);
-		if (r < 0)
-			return r;
-		data->apdu = &local_apdu;
-	}
-	apdu = data->apdu;
-
-	if (!(data->flags & SC_PIN_CMD_USE_PINPAD)) {
-		/* Transmit the APDU to the card */
-		r = sc_transmit_apdu(card, apdu);
-
-		/* Clear the buffer - it may contain pins */
-		memset((void *) apdu->data, 0, apdu->datalen);
-	} else {
-		/* Call the reader driver to collect
-		 * the PIN and pass on the APDU to the card */
-		if (data->pin1.offset == 0) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
-				"Card driver didn't set PIN offset");
-			return SC_ERROR_INVALID_ARGUMENTS;
-		}
-		if (card->reader
-		 && card->reader->ops
-		 && card->reader->ops->perform_verify) {
-			r = card->reader->ops->perform_verify(card->reader, data);
-			/* sw1/sw2 filled in by reader driver */
-		} else {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
-				"Card reader driver does not support "
-				"PIN entry through reader key pad");
-			r = SC_ERROR_NOT_SUPPORTED;
-		}
-	}
-
-	/* Don't pass references to local variables up to the caller. */
-	if (data->apdu == &local_apdu)
-		data->apdu = NULL;
-
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
-	if (apdu->sw1 == 0x63) {
-		if ((apdu->sw2 & 0xF0) == 0xC0 && tries_left != NULL)
-			*tries_left = apdu->sw2 & 0x0F;
-		return SC_ERROR_PIN_CODE_INCORRECT;
-	}
-	return sc_check_sw(card, apdu->sw1, apdu->sw2);
-}
-
 static struct sc_card_driver *sc_get_driver(void)
 {
 	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
@@ -721,7 +582,7 @@ static struct sc_card_driver *sc_get_driver(void)
 	gemsafe_ops.compute_signature    = gemsafe_compute_signature;
 	gemsafe_ops.get_challenge 		 = gemsafe_get_challenge;
 	gemsafe_ops.process_fci	= gemsafe_process_fci;
-	gemsafe_ops.pin_cmd		 = gemsafe_pin_cmd;
+	gemsafe_ops.pin_cmd		 = iso_ops->pin_cmd;
 
 	return &gemsafe_drv;
 }

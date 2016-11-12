@@ -39,8 +39,11 @@
 
 #include "cwa-dnie.h"
 
+#include <openssl/ossl_typ.h>
+#include <openssl/bn.h>
 #include <openssl/x509.h>
 #include <openssl/evp.h>
+#include <openssl/rsa.h>
 
 #define MAX_RESP_BUFFER_SIZE 2048
 
@@ -420,6 +423,7 @@ static int dnie_get_root_ca_pubkey(sc_card_t * card, EVP_PKEY ** root_ca_key)
 {
 	int res=SC_SUCCESS;
 	RSA *root_ca_rsa=NULL;
+	BIGNUM *root_ca_rsa_n, *root_ca_rsa_e;
 	LOG_FUNC_CALLED(card->ctx);
 
 	/* compose root_ca_public key with data provided by Dnie Manual */
@@ -429,11 +433,20 @@ static int dnie_get_root_ca_pubkey(sc_card_t * card, EVP_PKEY ** root_ca_key)
 		sc_log(card->ctx, "Cannot create data for root CA public key");
 		return SC_ERROR_OUT_OF_MEMORY;
 	}
-	root_ca_rsa->n = BN_bin2bn(icc_root_ca_modulus,
-				   sizeof(icc_root_ca_modulus), root_ca_rsa->n);
-	root_ca_rsa->e = BN_bin2bn(icc_root_ca_public_exponent,
-				   sizeof(icc_root_ca_public_exponent),
-				   root_ca_rsa->e);
+
+	root_ca_rsa_n = BN_bin2bn(icc_root_ca_modulus, sizeof(icc_root_ca_modulus), NULL);
+	root_ca_rsa_e = BN_bin2bn(icc_root_ca_public_exponent, sizeof(icc_root_ca_public_exponent), NULL);
+	if (RSA_set0_key(root_ca_rsa, root_ca_rsa_n, root_ca_rsa_e, NULL) != 1) {
+		BN_free(root_ca_rsa_n);
+		BN_free(root_ca_rsa_e);
+		if (*root_ca_key)
+			EVP_PKEY_free(*root_ca_key);
+		if (root_ca_rsa)
+			RSA_free(root_ca_rsa);
+		sc_log(card->ctx, "Cannot set RSA valuses for CA public key");
+		return SC_ERROR_INTERNAL;
+	}
+
 	res = EVP_PKEY_assign_RSA(*root_ca_key, root_ca_rsa);
 	if (!res) {
 		if (*root_ca_key)
@@ -531,6 +544,7 @@ static int dnie_get_privkey(sc_card_t * card, EVP_PKEY ** ifd_privkey,
                             u8 * private_exponent, int private_exponent_len)
 {
 	RSA *ifd_rsa=NULL;
+	BIGNUM *ifd_rsa_n, *ifd_rsa_e, *ifd_rsa_d = NULL;
 	int res=SC_SUCCESS;
 
 	LOG_FUNC_CALLED(card->ctx);
@@ -542,9 +556,19 @@ static int dnie_get_privkey(sc_card_t * card, EVP_PKEY ** ifd_privkey,
 		sc_log(card->ctx, "Cannot create data for IFD private key");
 		return SC_ERROR_OUT_OF_MEMORY;
 	}
-	ifd_rsa->n = BN_bin2bn(modulus, modulus_len, ifd_rsa->n);
-	ifd_rsa->e = BN_bin2bn(public_exponent, public_exponent_len, ifd_rsa->e);
-	ifd_rsa->d = BN_bin2bn(private_exponent, private_exponent_len, ifd_rsa->d);
+	ifd_rsa_n = BN_bin2bn(modulus, modulus_len, NULL);
+	ifd_rsa_e = BN_bin2bn(public_exponent, public_exponent_len, NULL);
+	ifd_rsa_d = BN_bin2bn(private_exponent, private_exponent_len, NULL);
+	if (RSA_set0_key(ifd_rsa, ifd_rsa_n, ifd_rsa_e, ifd_rsa_d) != 1) {
+		BN_free(ifd_rsa_n);
+		BN_free(ifd_rsa_e);
+		BN_free(ifd_rsa_d);
+		RSA_free(ifd_rsa);
+		EVP_PKEY_free(*ifd_privkey);
+		sc_log(card->ctx, "Cannot set RSA values for IFD private key");
+		return SC_ERROR_INTERNAL;
+	}
+
 	res = EVP_PKEY_assign_RSA(*ifd_privkey, ifd_rsa);
 	if (!res) {
 		if (*ifd_privkey)

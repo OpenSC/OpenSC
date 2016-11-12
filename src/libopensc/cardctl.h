@@ -219,6 +219,17 @@ enum {
         SC_CARDCTL_AUTHENTIC_SDO_STORE,
         SC_CARDCTL_AUTHENTIC_SDO_GENERATE,
 
+	/*
+	 * Coolkey specific calls
+	 */
+	SC_CARDCTL_COOLKEY_BASE = _CTL_PREFIX('C', 'O', 'K'),
+	SC_CARDCTL_COOLKEY_INIT_GET_OBJECTS,
+	SC_CARDCTL_COOLKEY_GET_NEXT_OBJECT,
+	SC_CARDCTL_COOLKEY_FINAL_GET_OBJECTS,
+	SC_CARDCTL_COOLKEY_GET_ATTRIBUTE,
+	SC_CARDCTL_COOLKEY_GET_TOKEN_INFO,
+	SC_CARDCTL_COOLKEY_FIND_OBJECT,
+
         /*
 	 * IAS/ECC
 	 */
@@ -1030,6 +1041,40 @@ typedef struct sc_cardctl_isoApplet_import_key {
 		} ec;
 	} privkey;
 } sc_cardctl_isoApplet_import_key_t;
+
+/*
+ * coolkey object returned from the card control interface
+ */
+typedef struct sc_cardctl_coolkey_object {
+        sc_path_t path;
+        unsigned long id;
+        size_t length;
+        u8  *data;
+} sc_cardctl_coolkey_object_t;
+
+
+/* data structure to pass attributes through the ctl interface */
+typedef struct sc_cardctl_coolkey_attribute {
+        const sc_cardctl_coolkey_object_t *object;
+	unsigned long attribute_type;
+        u8 attribute_data_type;
+        size_t attribute_length;
+        const u8 *attribute_value;
+} sc_cardctl_coolkey_attribute_t;
+
+#define SC_CARDCTL_COOLKEY_ATTR_TYPE_STRING 0
+#define SC_CARDCTL_COOLKEY_ATTR_TYPE_ULONG 1
+
+typedef struct sc_cardctl_coolkey_find_object {
+	int type; /* in parameter */
+	unsigned long find_id; /* in parameter */
+	sc_cardctl_coolkey_attribute_t *coolkey_template; /* in paramter */
+	int template_count;                       /* in parameter */
+	sc_cardctl_coolkey_object_t *obj; /* out parameter */
+} sc_cardctl_coolkey_find_object_t;
+
+#define SC_CARDCTL_COOLKEY_FIND_BY_ID       0
+#define SC_CARDCTL_COOLKEY_FIND_BY_TEMPLATE 1
 
 #ifdef __cplusplus
 }
