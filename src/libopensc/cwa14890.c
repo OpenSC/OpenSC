@@ -733,7 +733,7 @@ static int cwa_external_auth(sc_card_t * card, cwa_sm_status_t * sm)
 	LOG_FUNC_CALLED(ctx);
 
 	/* compose apdu for External Authenticate cmd */
-	dnie_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x82, 0x00, 0x00, 0, sizeof(sm->sig),
+	dnie_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x82, 0x00, 0x00, 255, sizeof(sm->sig),
 					resp, MAX_RESP_BUFFER_SIZE, sm->sig, sizeof(sm->sig));
 
 	/* send composed apdu and parse result */
@@ -1583,7 +1583,7 @@ int cwa_encode_apdu(sc_card_t * card,
 			 &k1, &k2, DES_ENCRYPT);
 
 	/* compose and add computed MAC TLV to result buffer */
-        tlv_len = (card->atr.value[15] >= DNIE_30_VERSION)? 8 : 4;
+	tlv_len = (card->atr.value[15] >= DNIE_30_VERSION)? 8 : 4;
 	sc_log(ctx, "Using TLV lenght: %d", tlv_len);
 	res = cwa_compose_tlv(card, 0x8E, tlv_len, macbuf, &apdubuf, &apdulen);
 	if (res != SC_SUCCESS) {
@@ -1720,7 +1720,7 @@ int cwa_decode_response(sc_card_t * card,
 		res = SC_ERROR_INVALID_DATA;
 		goto response_decode_end;
 	}
-        tlv_len = (card->atr.value[15] >= DNIE_30_VERSION)? 8 : 4;
+	tlv_len = (card->atr.value[15] >= DNIE_30_VERSION)? 8 : 4;
 	if (m_tlv->len != tlv_len) {
 		msg = "Invalid MAC TAG Length";
 		res = SC_ERROR_INVALID_DATA;
