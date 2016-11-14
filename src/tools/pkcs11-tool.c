@@ -140,6 +140,7 @@ enum {
 	OPT_LOGIN_TYPE,
 	OPT_TEST_EC,
 	OPT_DERIVE,
+	OPT_DERIVE_PASS_DER,
 	OPT_DECRYPT,
 	OPT_TEST_FORK,
 	OPT_GENERATE_KEY,
@@ -157,6 +158,7 @@ static const struct option options[] = {
 	{ "decrypt",		0, NULL,		OPT_DECRYPT },
 	{ "hash",		0, NULL,		'h' },
 	{ "derive",		0, NULL,		OPT_DERIVE },
+	{ "derive-pass-der",	0, NULL,		OPT_DERIVE_PASS_DER },
 	{ "mechanism",		1, NULL,		'm' },
 
 	{ "login",		0, NULL,		'l' },
@@ -220,6 +222,7 @@ static const char *option_help[] = {
 	"Decrypt some data",
 	"Hash some data",
 	"Derive a secret key using another key and some data",
+	"Derive ECDHpass DER encoded pubkey for compatibility with some PKCS#11 implementations"
 	"Specify mechanism (use -M for a list of supported mechanisms)",
 
 	"Log into the token first",
@@ -308,6 +311,7 @@ static int		opt_key_usage_sign = 0;
 static int		opt_key_usage_decrypt = 0;
 static int		opt_key_usage_derive = 0;
 static int		opt_key_usage_default = 1; /* uses defaults if no opt_key_usage options */
+static int		opt_derive_pass_der = 0;
 
 static void *module = NULL;
 static CK_FUNCTION_LIST_PTR p11 = NULL;
@@ -728,6 +732,9 @@ int main(int argc, char * argv[])
 			do_test_ec = 1;
 			action_count++;
 			break;
+		case OPT_DERIVE_PASS_DER:
+			opt_derive_pass_der = 1;
+			/* fall through */
 		case OPT_DERIVE:
 			need_session |= NEED_SESSION_RW;
 			do_derive = 1;
@@ -2931,22 +2938,31 @@ derive_ec_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE
 	CK_BBOOL true = TRUE;
 	CK_BBOOL false = FALSE;
 	CK_OBJECT_HANDLE newkey = 0;
-	CK_ATTRIBUTE newkey_template[] = {
+	CK_ATTRIBUTE newkey_template[20] = {
 		{CKA_TOKEN, &false, sizeof(false)}, /* session only object */
 		{CKA_CLASS, &newkey_class, sizeof(newkey_class)},
 		{CKA_KEY_TYPE, &newkey_type, sizeof(newkey_type)},
+		{CKA_SENSITIVE, &false, sizeof(false)},
+		{CKA_EXTRACTABLE, &true, sizeof(true)},
 		{CKA_ENCRYPT, &true, sizeof(true)},
-		{CKA_DECRYPT, &true, sizeof(true)}
+		{CKA_DECRYPT, &true, sizeof(true)},
+		{CKA_WRAP, &true, sizeof(true)},
+		{CKA_UNWRAP, &true, sizeof(true)}
 	};
+	int n_attrs = 9;
 	CK_ECDH1_DERIVE_PARAMS ecdh_parms;
 	CK_RV rv;
 	BIO *bio_in = NULL;
 	EC_KEY  *eckey = NULL;
 	const EC_GROUP *ecgroup = NULL;
 	const EC_POINT *ecpoint = NULL;
-	unsigned char buf[512];
+	unsigned char *buf = NULL;
 	size_t buf_size = 0;
-	int len;
+	CK_ULONG key_len = 0;
+	ASN1_OCTET_STRING *octet = NULL;
+	unsigned char * der = NULL;
+	unsigned char * derp = NULL;
+	size_t  der_size = 0;
 
 	printf("Using derive algorithm 0x%8.8lx %s\n", opt_mechanism, p11_mechanism_to_name(mech_mech));
 	memset(&mech, 0, sizeof(mech));
@@ -2963,11 +2979,32 @@ derive_ec_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE
 
 	ecpoint = EC_KEY_get0_public_key(eckey);
 	ecgroup = EC_KEY_get0_group(eckey);
+
 	if (!ecpoint || !ecgroup)
 		util_fatal("Failed to parse other EC key from %s", opt_input);
 
-	buf_size = sizeof(buf);
-	len = EC_POINT_point2oct(ecgroup, ecpoint, POINT_CONVERSION_UNCOMPRESSED, buf, buf_size, NULL);
+	/* both eckeys must be same curve */
+	key_len = (EC_GROUP_get_degree(ecgroup) + 7) / 8;
+	FILL_ATTR(newkey_template[n_attrs], CKA_VALUE_LEN, &key_len, sizeof(key_len));
+	n_attrs++;
+
+	buf_size = EC_POINT_point2oct(ecgroup, ecpoint, POINT_CONVERSION_UNCOMPRESSED, NULL,	    0, NULL);
+	buf = (unsigned char *)malloc(buf_size);
+	if (buf == NULL)
+	    util_fatal("malloc() failure\n");
+	buf_size = EC_POINT_point2oct(ecgroup, ecpoint, POINT_CONVERSION_UNCOMPRESSED, buf, buf_size, NULL);
+
+	if (opt_derive_pass_der) {
+		octet = ASN1_OCTET_STRING_new();
+		if (octet == NULL)
+		    util_fatal("ASN1_OCTET_STRING_new failure\n");
+		ASN1_OCTET_STRING_set(octet, buf, buf_size);
+		der_size = i2d_ASN1_OCTET_STRING(octet, NULL);
+		derp = der = (unsigned char *) malloc(der_size);
+		if (der == NULL)
+			util_fatal("malloc() failure\n");
+		der_size = i2d_ASN1_OCTET_STRING(octet, &derp);
+	}
 
 	BIO_free(bio_in);
 	EC_KEY_free(eckey);
@@ -2976,14 +3013,26 @@ derive_ec_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE
 	ecdh_parms.kdf = CKD_NULL;
 	ecdh_parms.ulSharedDataLen = 0;
 	ecdh_parms.pSharedData = NULL;
-	ecdh_parms.ulPublicDataLen = len;
-	ecdh_parms.pPublicData = buf;
+	if (opt_derive_pass_der) {
+		ecdh_parms.ulPublicDataLen = der_size;
+		ecdh_parms.pPublicData = der;
+	} else {
+		ecdh_parms.ulPublicDataLen = buf_size;
+		ecdh_parms.pPublicData = buf;
+	}
 	mech.pParameter = &ecdh_parms;
 	mech.ulParameterLen = sizeof(ecdh_parms);
 
-	rv = p11->C_DeriveKey(session, &mech, key, newkey_template, 5, &newkey);
+	rv = p11->C_DeriveKey(session, &mech, key, newkey_template, n_attrs, &newkey);
 	if (rv != CKR_OK)
 	    p11_fatal("C_DeriveKey", rv);
+
+	if (der)
+	    OPENSSL_free(der);
+	if (buf)
+	    free(buf);
+	if (octet)
+	    ASN1_OCTET_STRING_free(octet);
 
 	return newkey;
 #else
