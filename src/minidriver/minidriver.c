@@ -5816,7 +5816,7 @@ static int associate_card(PCARD_DATA pCardData)
 	vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
 	/*
 	 * set the addresses of the reader and card handles
-	 * Our cardmod pcsc code will use these  when we call sc_ctx_use_reader
+	 * Our pcsc code will use these  when we call sc_ctx_use_reader
 	 * We use the address of the handles as provided in the pCardData
 	 */
 	vs->hSCardCtx = pCardData->hSCardCtx;
@@ -5834,7 +5834,7 @@ static int associate_card(PCARD_DATA pCardData)
 	}
 
 	/* set the provided reader and card handles into ctx */
-	logprintf(pCardData, 5, "cardmod_use_handles %d\n", sc_ctx_use_reader(vs->ctx, &vs->hSCardCtx, &vs->hScard));
+	logprintf(pCardData, 5, "sc_ctx_use_reader %d\n", sc_ctx_use_reader(vs->ctx, &vs->hSCardCtx, &vs->hScard));
 
 	/* should be only one reader */
 	logprintf(pCardData, 5, "sc_ctx_get_reader_count(ctx): %d\n", sc_ctx_get_reader_count(vs->ctx));
