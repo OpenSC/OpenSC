@@ -769,7 +769,7 @@ app onepin-opensc-pkcs11 {
 	}
 }
 
-# Used by OpenSC.tokend on Mac OS X only.
+# Used by OpenSC.tokend on Mac OS X only
 app tokend {
 	# The file to which debug log will be written
 	# Default: /tmp/opensc-tokend.log
@@ -785,14 +785,6 @@ app tokend {
 	}
 }
 
-# XXX: remove cardmod pseudodriver
+# Used by OpenSC minidriver on Windows only
 app cardmod {
-	# cardmod app name use special pcsc reader subset
-	# fix options for this reader driver here.
-
-	reader_driver cardmod {
-		# Enable pinpad if detected (PC/SC v2.0.2 Part 10)
-		# Default: true
-		# enable_pinpad = false;
-	}
 }

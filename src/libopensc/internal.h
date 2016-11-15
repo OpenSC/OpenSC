@@ -129,10 +129,10 @@ int _sc_match_atr(struct sc_card *card, struct sc_atr_table *table, int *type_ou
 
 int _sc_card_add_algorithm(struct sc_card *card, const struct sc_algorithm_info *info);
 int _sc_card_add_rsa_alg(struct sc_card *card, unsigned int key_length,
-			 unsigned long flags, unsigned long exponent);
+		unsigned long flags, unsigned long exponent);
 int _sc_card_add_ec_alg(struct sc_card *card, unsigned int key_length,
-			 unsigned long flags, unsigned long ext_flags,
-			 struct sc_object_id *curve_oid);
+		unsigned long flags, unsigned long ext_flags,
+		struct sc_object_id *curve_oid);
 
 /********************************************************************/
 /*                 pkcs1 padding/encoding functions                 */
@@ -157,7 +157,7 @@ int sc_pkcs1_strip_digest_info_prefix(unsigned int *algorithm,
  * @return SC_SUCCESS on success and an error code otherwise
  */
 int sc_pkcs1_encode(sc_context_t *ctx, unsigned long flags,
-	const u8 *in, size_t inlen, u8 *out, size_t *outlen, size_t modlen);
+		const u8 *in, size_t inlen, u8 *out, size_t *outlen, size_t modlen);
 /**
  * Get the necessary padding and sec. env. flags.
  * @param  ctx     IN  sc_contex_t object
@@ -168,8 +168,8 @@ int sc_pkcs1_encode(sc_context_t *ctx, unsigned long flags,
  * @return SC_SUCCESS on success and an error code otherwise
  */
 int sc_get_encoding_flags(sc_context_t *ctx,
-	unsigned long iflags, unsigned long caps,
-	unsigned long *pflags, unsigned long *salg);
+		unsigned long iflags, unsigned long caps,
+		unsigned long *pflags, unsigned long *salg);
 
 /********************************************************************/
 /*             mutex functions                                      */
@@ -231,7 +231,7 @@ unsigned long sc_thread_id(const sc_context_t *ctx);
  * @return SC_SUCCESS on success and an error code otherwise
  */
 int sc_apdu_get_octets(sc_context_t *ctx, const sc_apdu_t *apdu, u8 **buf,
-	size_t *len, unsigned int proto);
+		size_t *len, unsigned int proto);
 /**
  * Sets the status bytes and return data in the APDU
  * @param  ctx     sc_context_t object
@@ -241,7 +241,7 @@ int sc_apdu_get_octets(sc_context_t *ctx, const sc_apdu_t *apdu, u8 **buf,
  * @return SC_SUCCESS on success and an error code otherwise
  */
 int sc_apdu_set_resp(sc_context_t *ctx, sc_apdu_t *apdu, const u8 *buf,
-	size_t len);
+		size_t len);
 /**
  * Logs APDU
  * @param  ctx          sc_context_t object
@@ -256,7 +256,6 @@ int sc_apdu_set_resp(sc_context_t *ctx, sc_apdu_t *apdu, const u8 *buf,
 extern struct sc_reader_driver *sc_get_pcsc_driver(void);
 extern struct sc_reader_driver *sc_get_ctapi_driver(void);
 extern struct sc_reader_driver *sc_get_openct_driver(void);
-extern struct sc_reader_driver *sc_get_cardmod_driver(void);
 extern struct sc_reader_driver *sc_get_cryptotokenkit_driver(void);
 
 #ifdef __cplusplus
