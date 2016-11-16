@@ -690,7 +690,7 @@ static int npa_logout(sc_card_t *card)
 	return sc_select_file(card, sc_get_mf_path(), NULL);
 }
 
-static struct sc_card_driver *npa_get_driver(void)
+struct sc_card_driver *sc_get_npa_driver(void)
 {
 	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
 
@@ -703,22 +703,4 @@ static struct sc_card_driver *npa_get_driver(void)
 	npa_ops.logout = npa_logout;
 
 	return &npa_drv;
-}
-
-void *sc_module_init(const char *name)
-{
-	const char npa_name[] = "npa";
-	if (name) {
-		if (strcmp(npa_name, name) == 0)
-			return npa_get_driver;
-	}
-	return NULL;
-}
-
-const char *sc_driver_version(void)
-{
-	/* Tested with OpenSC 0.12 and 0.13.0, which can't be captured by checking
-	 * our version info against OpenSC's PACKAGE_VERSION. For this reason we
-	 * tell OpenSC that everything is fine, here. */
-	return sc_get_version();
 }

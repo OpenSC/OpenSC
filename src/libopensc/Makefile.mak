@@ -27,6 +27,7 @@ OBJECTS			= \
 	card-iasecc.obj iasecc-sdo.obj iasecc-sm.obj cwa-dnie.obj cwa14890.obj \
 	card-sc-hsm.obj card-dnie.obj card-isoApplet.obj pkcs15-coolkey.obj \
 	card-masktech.obj card-gids.obj card-jpki.obj \
+	card-npa.obj \
 	\
 	pkcs15-openpgp.obj pkcs15-infocamere.obj pkcs15-starcert.obj \
 	pkcs15-tcos.obj pkcs15-esteid.obj pkcs15-postecert.obj pkcs15-gemsafeGPK.obj \
@@ -43,10 +44,7 @@ LIBS = $(TOPDIR)\src\scconf\scconf.lib \
 	   $(TOPDIR)\src\sm\libsmeac.lib \
 	   $(TOPDIR)\src\pkcs15init\pkcs15init.lib
 
-TARGET1 = cardnpa.dll
-OBJECTS1 = card-npa.obj
-
-all: $(TOPDIR)\win32\versioninfo.res $(TARGET) $(TARGET1)
+all: $(TOPDIR)\win32\versioninfo.res $(TARGET)
 
 !INCLUDE $(TOPDIR)\win32\Make.rules.mak
 
@@ -54,15 +52,8 @@ opensc.dll: $(OBJECTS) $(LIBS)
 	echo LIBRARY $* > $*.def
 	echo EXPORTS >> $*.def
 	type lib$*.exports >> $*.def
-	link $(LINKFLAGS) /dll /def:$*.def /implib:$*.lib /out:opensc.dll $(OBJECTS) $(LIBS) $(OPENSSL_LIB) $(ZLIB_LIB) gdi32.lib advapi32.lib ws2_32.lib
+	link $(LINKFLAGS) /dll /def:$*.def /implib:$*.lib /out:opensc.dll $(OBJECTS) $(LIBS) $(OPENPACE_LIB) $(OPENSSL_LIB) $(ZLIB_LIB) gdi32.lib advapi32.lib ws2_32.lib
 	if EXIST opensc.dll.manifest mt -manifest opensc.dll.manifest -outputresource:opensc.dll;2
 
 opensc_a.lib: $(OBJECTS) $(LIBS)
-	lib $(LIBFLAGS) /out:opensc_a.lib $(OBJECTS) $(LIBS) $(OPENSSL_LIB) $(ZLIB_LIB) user32.lib advapi32.lib ws2_32.lib
-
-$(TARGET1): $(OBJECTS1) opensc_a.lib
-	echo LIBRARY $* > $*.def
-	echo EXPORTS >> $*.def
-	type $*.exports >> $*.def
-	link /dll $(LINKFLAGS) /def:$*.def /implib:$*.lib /out:$(TARGET1) $(OBJECTS1) opensc_a.lib $(ZLIB_LIB) $(OPENPACE_LIB) $(OPENSSL_LIB) ws2_32.lib gdi32.lib advapi32.lib Crypt32.lib User32.lib
-	if EXIST $(TARGET).manifest mt -manifest $(TARGET1).manifest -outputresource:$(TARGET1);2
+	lib $(LIBFLAGS) /out:opensc_a.lib $(OBJECTS) $(LIBS) $(OPENPACE_LIB) $(OPENSSL_LIB) $(ZLIB_LIB) user32.lib advapi32.lib ws2_32.lib
