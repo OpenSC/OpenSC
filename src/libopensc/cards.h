@@ -236,6 +236,11 @@ enum {
 	SC_CARD_TYPE_CAC_GENERIC,
 	SC_CARD_TYPE_CAC_I,
 	SC_CARD_TYPE_CAC_II,
+
+	/* nPA cards */
+	SC_CARD_TYPE_NPA = 34000,
+	SC_CARD_TYPE_NPA_TEST,
+	SC_CARD_TYPE_NPA_ONLINE,
 };
 
 extern sc_card_driver_t *sc_get_default_driver(void);
@@ -277,6 +282,7 @@ extern sc_card_driver_t *sc_get_gids_driver(void);
 extern sc_card_driver_t *sc_get_jpki_driver(void);
 extern sc_card_driver_t *sc_get_coolkey_driver(void);
 extern sc_card_driver_t *sc_get_cac_driver(void);
+extern sc_card_driver_t *sc_get_npa_driver(void);
 
 #ifdef __cplusplus
 }
