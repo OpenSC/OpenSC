@@ -138,12 +138,12 @@ parse_x509_cert(sc_context_t *ctx, struct sc_pkcs15_der *der, struct sc_pkcs15_c
  * dn_len would be cert->subject_len or cert->issuer_len.
  *
  * Common types:
- *   CN:      struct sc_object_id type = {{85, 4, 3, -1}};
- *   Country: struct sc_object_id type = {{85, 4, 6, -1}};
- *   L:       struct sc_object_id type = {{85, 4, 7, -1}};
- *   S:       struct sc_object_id type = {{85, 4, 8, -1}};
- *   O:       struct sc_object_id type = {{85, 4, 10, -1}};
- *   OU:      struct sc_object_id type = {{85, 4, 11, -1}};
+ *   CN:      struct sc_object_id type = {{2, 5, 4, 3, -1}};
+ *   Country: struct sc_object_id type = {{2, 5, 4, 6, -1}};
+ *   L:       struct sc_object_id type = {{2, 5, 4, 7, -1}};
+ *   S:       struct sc_object_id type = {{2, 5, 4, 8, -1}};
+ *   O:       struct sc_object_id type = {{2, 5, 4, 10, -1}};
+ *   OU:      struct sc_object_id type = {{2, 5, 4, 11, -1}};
  *
  * if *name is NULL, sc_pkcs15_get_name_from_dn will allocate space for name.
  */
@@ -224,13 +224,13 @@ sc_pkcs15_get_name_from_dn(struct sc_context *ctx, const u8 *dn, size_t dn_len,
  * and 0 if it is not.
  * The data in the extension is extension specific.
  * The following are common extension values:
- *   Subject Key ID:		struct sc_object_id type = {{85, 29, 14, -1}};
- *   Key Usage:			struct sc_object_id type = {{85, 29, 15, -1}};
- *   Subject Alt Name:		struct sc_object_id type = {{85, 29, 17, -1}};
- *   Basic Constraints:		struct sc_object_id type = {{85, 29, 19, -1}};
- *   CRL Distribution Points:	struct sc_object_id type = {{85, 29, 31, -1}};
- *   Certificate Policies:	struct sc_object_id type = {{85, 29, 32, -1}};
- *   Extended Key Usage:	struct sc_object_id type = {{85, 29, 37, -1}};
+ *   Subject Key ID:		struct sc_object_id type = {{2, 5, 29, 14, -1}};
+ *   Key Usage:			struct sc_object_id type = {{2, 5, 29, 15, -1}};
+ *   Subject Alt Name:		struct sc_object_id type = {{2, 5, 29, 17, -1}};
+ *   Basic Constraints:		struct sc_object_id type = {{2, 5, 29, 19, -1}};
+ *   CRL Distribution Points:	struct sc_object_id type = {{2, 5, 29, 31, -1}};
+ *   Certificate Policies:	struct sc_object_id type = {{2, 5, 29, 32, -1}};
+ *   Extended Key Usage:	struct sc_object_id type = {{2, 5, 29, 37, -1}};
  *
  * if *ext_val is NULL, sc_pkcs15_get_extension will allocate space for ext_val.
  */
@@ -244,8 +244,8 @@ sc_pkcs15_get_extension(struct sc_context *ctx, struct sc_pkcs15_cert *cert,
 	size_t ext_len = 0;
 	size_t next_ext_len = 0;
 	struct sc_object_id oid;
-	u8 *val;
-	size_t val_len;
+	u8 *val = NULL;
+	size_t val_len = 0;
 	int critical;
 	int r;
 	struct sc_asn1_entry asn1_cert_ext[] = {
@@ -292,8 +292,13 @@ sc_pkcs15_get_extension(struct sc_context *ctx, struct sc_pkcs15_cert *cert,
 			r = val_len;
 			LOG_FUNC_RETURN(ctx, r);
 		}
+		if (val) {
+			free(val);
+			val = NULL;
+		}
 	}
-	free(val);
+	if (val)
+	    free(val);
 
 	LOG_FUNC_RETURN(ctx, SC_ERROR_ASN1_OBJECT_NOT_FOUND);
 }
@@ -423,13 +428,14 @@ int
 sc_pkcs15_decode_cdf_entry(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *obj,
 		const u8 ** buf, size_t *buflen)
 {
-        sc_context_t *ctx = p15card->card->ctx;
+	sc_context_t *ctx = p15card->card->ctx;
 	struct sc_pkcs15_cert_info info;
 	struct sc_asn1_entry	asn1_cred_ident[3], asn1_com_cert_attr[4],
 				asn1_x509_cert_attr[2], asn1_type_cert_attr[2],
 				asn1_cert[2], asn1_x509_cert_value_choice[3];
-	struct sc_asn1_pkcs15_object cert_obj = { obj, asn1_com_cert_attr, NULL,
-					     asn1_type_cert_attr };
+	struct sc_asn1_pkcs15_object cert_obj = {
+		obj, asn1_com_cert_attr, NULL,
+		asn1_type_cert_attr };
 	sc_pkcs15_der_t *der = &info.value;
 	u8 id_value[128];
 	int id_type;
@@ -454,8 +460,8 @@ sc_pkcs15_decode_cdf_entry(struct sc_pkcs15_card *p15card, struct sc_pkcs15_obje
 	sc_format_asn1_entry(asn1_type_cert_attr + 0, asn1_x509_cert_attr, NULL, 0);
 	sc_format_asn1_entry(asn1_cert + 0, &cert_obj, NULL, 0);
 
-        /* Fill in defaults */
-        memset(&info, 0, sizeof(info));
+	/* Fill in defaults */
+	memset(&info, 0, sizeof(info));
 	info.authority = 0;
 
 	r = sc_asn1_decode(ctx, asn1_cert, *buf, *buflen, buf, buflen);
