@@ -56,10 +56,12 @@ C_LoadModule(const char *mspec, CK_FUNCTION_LIST_PTR_PTR funcs)
 	rv = c_get_function_list(funcs);
 	if (rv == CKR_OK)
 		return (void *) mod;
-	else
+	else {
 		fprintf(stderr, "C_GetFunctionList failed %lx", rv);
+		C_UnloadModule((void *) mod);
+		return NULL;
+	}
 failed:
-	C_UnloadModule((void *) mod);
 	free(mod);
 	return NULL;
 }
