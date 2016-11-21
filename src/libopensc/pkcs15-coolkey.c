@@ -41,7 +41,7 @@
 #include "pkcs15.h"
 #include "../pkcs11/pkcs11.h"
 
-int sc_pkcs15emu_coolkey_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
+int sc_pkcs15emu_coolkey_init_ex(sc_pkcs15_card_t *, struct sc_aid *, sc_pkcs15emu_opt_t *);
 
 
 typedef struct pdata_st {
@@ -673,16 +673,17 @@ fail:
 	}
 	r = (card->ops->card_ctl)(card, SC_CARDCTL_COOLKEY_FINAL_GET_OBJECTS, &count);
 
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
-int sc_pkcs15emu_coolkey_init_ex(sc_pkcs15_card_t *p15card,
-				  sc_pkcs15emu_opt_t *opts)
+int
+sc_pkcs15emu_coolkey_init_ex(sc_pkcs15_card_t *p15card,
+		struct sc_aid *aid, sc_pkcs15emu_opt_t *opts)
 {
 	sc_card_t   *card = p15card->card;
 	sc_context_t    *ctx = card->ctx;
 
-	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
+	LOG_FUNC_CALLED(ctx);
 
 	if (opts && opts->flags & SC_PKCS15EMU_FLAGS_NO_CHECK)
 		return sc_pkcs15emu_coolkey_init(p15card);
