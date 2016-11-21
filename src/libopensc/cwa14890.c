@@ -1076,6 +1076,7 @@ int cwa_create_secure_channel(sc_card_t * card,
 	switch (flag) {
 	case CWA_SM_OFF:	/* disable SM */
 		provider->status.session.state = CWA_SM_NONE;	/* just mark channel inactive */
+		card->sm_ctx.sm_mode = SM_MODE_NONE;
 		sc_log(ctx, "Setting CWA SM status to none");
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 	case CWA_SM_WARM:	/* only initialize if not already done */
@@ -1088,6 +1089,7 @@ int cwa_create_secure_channel(sc_card_t * card,
 		sc_log(ctx, "CWA SM initialization requested => reset and re-initialize");
 		sc_reset(card, 0);
 		provider->status.session.state = CWA_SM_INPROGRESS;
+		card->sm_ctx.sm_mode = SM_MODE_NONE;
 		break;
 	case CWA_SM_OVER:	/* create another channel over an existing one */
 		if (provider->status.session.state != CWA_SM_ACTIVE) {
@@ -1667,8 +1669,7 @@ int cwa_decode_response(sc_card_t * card,
 		if ((apdu->sw2 == 0x88) || (apdu->sw2 == 0x87)) {
 			/* configure the driver to re-establish the SM */
 			msg = "SM related errors in APDU response";
-			sm_session->state = CWA_SM_NONE;
-			card->sm_ctx.sm_mode = SM_MODE_NONE;
+			cwa_create_secure_channel(card, provider, CWA_SM_OFF);
 			res = SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
 			goto response_decode_end;
 		}

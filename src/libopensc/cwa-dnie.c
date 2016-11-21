@@ -556,9 +556,9 @@ static int dnie_get_privkey(sc_card_t * card, EVP_PKEY ** ifd_privkey,
 		sc_log(card->ctx, "Cannot create data for IFD private key");
 		return SC_ERROR_OUT_OF_MEMORY;
 	}
-	ifd_rsa_n = BN_bin2bn(ifd_modulus, sizeof(ifd_modulus), NULL);
-	ifd_rsa_e = BN_bin2bn(ifd_public_exponent, sizeof(ifd_public_exponent), NULL);
-	ifd_rsa_d = BN_bin2bn(ifd_private_exponent, sizeof(ifd_private_exponent), NULL);
+	ifd_rsa_n = BN_bin2bn(modulus, modulus_len, NULL);
+	ifd_rsa_e = BN_bin2bn(public_exponent, public_exponent_len, NULL);
+	ifd_rsa_d = BN_bin2bn(private_exponent, private_exponent_len, NULL);
 	if (RSA_set0_key(ifd_rsa, ifd_rsa_n, ifd_rsa_e, ifd_rsa_d) != 1) {
 		BN_free(ifd_rsa_n);
 		BN_free(ifd_rsa_e);
