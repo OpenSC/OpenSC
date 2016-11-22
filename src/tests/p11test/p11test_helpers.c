@@ -123,11 +123,11 @@ int group_teardown(void **state) {
 	//if(info && info->function_pointer)
 	//	info->function_pointer->C_Finalize(NULL_PTR);
 
-	free(info);
 	free(token.library_path);
 	free(token.pin);
 
 	logfile_finalize(info);
+	free(info);
 
 	close_pkcs11_module();
 
