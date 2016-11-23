@@ -283,6 +283,17 @@ int sc_ctx_log_to_file(sc_context_t *ctx, const char* filename)
 		ctx->debug_file = NULL;
 	}
 
+	if (ctx->reopen_log_file)   {
+		if (!ctx->debug_filename)   {
+			if (!filename)
+				filename = "stderr";
+			ctx->debug_filename = strdup(filename);
+		}
+	}
+
+	if (!filename)
+		return SC_SUCCESS;
+
 	/* Handle special names */
 	if (!strcmp(filename, "stdout"))
 		ctx->debug_file = stdout;
@@ -304,13 +315,16 @@ load_parameters(sc_context_t *ctx, scconf_block *block, struct _sc_ctx_options *
 	const scconf_list *list;
 	const char *val, *s_internal = "internal";
 	int debug;
-	int reopen;
 #ifdef _WIN32
 	char expanded_val[PATH_MAX];
 	DWORD expanded_len;
 #endif
 
-	reopen = scconf_get_bool(block, "reopen_debug_file", 1);
+#ifdef _WIN32
+	ctx->reopen_log_file = 1;
+#else
+	ctx->reopen_log_file = scconf_get_bool(block, "reopen_debug_file", 0);
+#endif
 
 	debug = scconf_get_int(block, "debug", ctx->debug);
 	if (debug > ctx->debug)
@@ -324,10 +338,10 @@ load_parameters(sc_context_t *ctx, scconf_block *block, struct _sc_ctx_options *
 		if (expanded_len > 0)
 			val = expanded_val;
 #endif
-		if (reopen)
-			ctx->debug_filename = strdup(val);
-
 		sc_ctx_log_to_file(ctx, val);
+	}
+	else if (ctx->debug)   {
+		sc_ctx_log_to_file(ctx, NULL);
 	}
 
 	if (scconf_get_bool (block, "paranoid-memory",

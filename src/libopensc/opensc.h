@@ -679,6 +679,7 @@ typedef struct sc_context {
 	scconf_block *conf_blocks[3];
 	char *app_name;
 	int debug;
+	int reopen_log_file;
 	unsigned long flags;
 
 	FILE *debug_file;
