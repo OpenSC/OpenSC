@@ -45,7 +45,7 @@
 /* probably should get manufacturer ID from cuid */
 #define MANU_ID		"Common Access Card"
 
-int sc_pkcs15emu_cac_init_ex(sc_pkcs15_card_t *, sc_pkcs15emu_opt_t *);
+int sc_pkcs15emu_cac_init_ex(sc_pkcs15_card_t *, struct sc_aid *, sc_pkcs15emu_opt_t *);
 
 
 
@@ -418,12 +418,12 @@ fail:
 }
 
 int sc_pkcs15emu_cac_init_ex(sc_pkcs15_card_t *p15card,
-				  sc_pkcs15emu_opt_t *opts)
+		struct sc_aid *aid, sc_pkcs15emu_opt_t *opts)
 {
 	sc_card_t   *card = p15card->card;
 	sc_context_t    *ctx = card->ctx;
 
-	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
+	LOG_FUNC_CALLED(ctx);
 
 	if (opts && opts->flags & SC_PKCS15EMU_FLAGS_NO_CHECK)
 		return sc_pkcs15emu_cac_init(p15card);
