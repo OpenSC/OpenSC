@@ -253,18 +253,6 @@ static void add_internal_drvs(struct _sc_ctx_options *opts)
 	}
 }
 
-static void set_defaults(sc_context_t *ctx, struct _sc_ctx_options *opts)
-{
-	ctx->debug = 0;
-	if (ctx->debug_file && (ctx->debug_file != stderr && ctx->debug_file != stdout))
-		fclose(ctx->debug_file);
-	ctx->debug_file = stderr;
-	ctx->flags = 0;
-
-	ctx->forced_driver = NULL;
-	add_internal_drvs(opts);
-}
-
 /* In Windows, file handles can not be shared between DLL-s,
  * each DLL has a separate file handle table. Thus tools and utilities
  * can not set the file handle themselves when -v is specified on command line.
@@ -744,7 +732,7 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 	}
 
 	ctx->flags = parm->flags;
-	set_defaults(ctx, &opts);
+	add_internal_drvs(&opts);
 
 	list_init(&ctx->readers);
 	list_attributes_seeker(&ctx->readers, reader_list_seeker);
