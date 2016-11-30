@@ -286,13 +286,10 @@ load_parameters(sc_context_t *ctx, scconf_block *block, struct _sc_ctx_options *
 	const scconf_list *list;
 	const char *val, *s_internal = "internal";
 	int debug;
-	int reopen;
 #ifdef _WIN32
 	char expanded_val[PATH_MAX];
 	DWORD expanded_len;
 #endif
-
-	reopen = scconf_get_bool(block, "reopen_debug_file", 1);
 
 	debug = scconf_get_int(block, "debug", ctx->debug);
 	if (debug > ctx->debug)

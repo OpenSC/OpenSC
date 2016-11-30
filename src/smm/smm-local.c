@@ -243,6 +243,10 @@ initialize(struct sc_context *ctx, struct sm_info *sm_info, struct sc_remote_dat
 	if (!sm_info)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
+#ifdef _WIN32
+	sc_ctx_log_to_file(ctx, ctx->debug_filename);
+#endif
+
 	sc_log(ctx, "Current AID: %s", sc_dump_hex(sm_info->current_aid.value, sm_info->current_aid.len));
 	switch (sm_info->sm_type)   {
 	case SM_TYPE_GP_SCP01:

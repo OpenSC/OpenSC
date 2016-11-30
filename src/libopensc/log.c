@@ -112,14 +112,6 @@ static void sc_do_log_va(sc_context_t *ctx, int level, const char *file, int lin
 	if (r < 0)
 		return;
 
-#ifdef _WIN32
-	if (ctx->debug_filename)   {
-		r = sc_ctx_log_to_file(ctx, ctx->debug_filename);
-		if (r < 0)
-			return;
-	}
-#endif
-
 	outf = ctx->debug_file;
 	if (outf == NULL)
 		return;
@@ -129,27 +121,15 @@ static void sc_do_log_va(sc_context_t *ctx, int level, const char *file, int lin
 	if (n == 0 || buf[n-1] != '\n')
 		fprintf(outf, "\n");
 	fflush(outf);
-
-#ifdef _WIN32
-	if (ctx->debug_filename)   {
-		if (ctx->debug_file && (ctx->debug_file != stderr && ctx->debug_file != stdout))   {
-			fclose(ctx->debug_file);
-			ctx->debug_file = NULL;
-		}
-	}
-#endif
-
-
-	return;
 }
 
 void _sc_debug(struct sc_context *ctx, int level, const char *format, ...)
 {
 	va_list ap;
 
-        va_start(ap, format);
-        sc_do_log_va(ctx, level, NULL, 0, NULL, format, ap);
-        va_end(ap);
+	va_start(ap, format);
+	sc_do_log_va(ctx, level, NULL, 0, NULL, format, ap);
+	va_end(ap);
 }
 
 void _sc_log(struct sc_context *ctx, const char *format, ...)
@@ -162,7 +142,7 @@ void _sc_log(struct sc_context *ctx, const char *format, ...)
 }
 
 void _sc_debug_hex(sc_context_t *ctx, int type, const char *file, int line,
-        const char *func, const char *label, const u8 *data, size_t len)
+		const char *func, const char *label, const u8 *data, size_t len)
 {
 	size_t blen = len * 5 + 128;
 	char *buf = malloc(blen);
