@@ -727,9 +727,9 @@ app onepin-opensc-pkcs11 {
 # Used by OpenSC.tokend on Mac OS X only.
 app tokend {
 	# The file to which debug log will be written
-	# Default: /tmp/opensc-tokend.log
+	# Default: stderr
 	#
-	# debug_file = /Library/Logs/OpenSC.tokend.log
+	# debug_file = /tmp/opensc-tokend.log
 
 	framework tokend {
 		# Score for OpenSC.tokend

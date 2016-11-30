@@ -261,12 +261,6 @@ static void set_defaults(sc_context_t *ctx, struct _sc_ctx_options *opts)
 	ctx->debug_file = stderr;
 	ctx->flags = 0;
 
-#ifdef __APPLE__
-	/* Override the default debug log for OpenSC.tokend to be different from PKCS#11.
-	 * TODO: Could be moved to OpenSC.tokend */
-	if (!strcmp(ctx->app_name, "tokend"))
-		ctx->debug_file = fopen("/tmp/opensc-tokend.log", "a");
-#endif
 	ctx->forced_driver = NULL;
 	add_internal_drvs(opts);
 }
