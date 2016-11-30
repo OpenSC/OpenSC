@@ -316,19 +316,15 @@ load_parameters(sc_context_t *ctx, scconf_block *block, struct _sc_ctx_options *
 	if (debug > ctx->debug)
 		ctx->debug = debug;
 
-	val = scconf_get_str(block, "debug_file", NULL);
-	if (val)   {
+	val = scconf_get_str(block, "debug_file", "stderr");
 #ifdef _WIN32
-		expanded_len = PATH_MAX;
-		expanded_len = ExpandEnvironmentStringsA(val, expanded_val, expanded_len);
-		if (expanded_len > 0)
-			val = expanded_val;
+	expanded_len = PATH_MAX;
+	expanded_len = ExpandEnvironmentStringsA(val, expanded_val, expanded_len);
+	if (expanded_len > 0)
+		val = expanded_val;
 #endif
-		if (reopen)
-			ctx->debug_filename = strdup(val);
-
-		sc_ctx_log_to_file(ctx, val);
-	}
+	ctx->debug_filename = strdup(val);
+	sc_ctx_log_to_file(ctx, val);
 
 	if (scconf_get_bool (block, "paranoid-memory",
 				ctx->flags & SC_CTX_FLAG_PARANOID_MEMORY))
