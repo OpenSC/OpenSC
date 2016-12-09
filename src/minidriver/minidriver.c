@@ -4619,7 +4619,8 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 	if (NULL == pbPinData) {
 		if (!(vs->reader->capabilities & SC_READER_CAP_PIN_PAD))
 			return SCARD_E_INVALID_PARAMETER;
-		if (!(dwFlags & CARD_PIN_SILENT_CONTEXT)) {
+		if (!(dwFlags & CARD_PIN_SILENT_CONTEXT)
+				&& !(vs->ctx->flags & SC_CTX_FLAG_DISABLE_POPUPS)) {
 			DisplayPinpadUI = TRUE;
 		}
 	}
@@ -4747,7 +4748,8 @@ DWORD WINAPI CardChangeAuthenticatorEx(__in PCARD_DATA pCardData,
 	}
 	/* using a pin pad */
 	if (NULL == pbAuthenticatingPinData) {
-		if (!(dwFlags & CARD_PIN_SILENT_CONTEXT)) {
+		if (!(dwFlags & CARD_PIN_SILENT_CONTEXT)
+				&& !(vs->ctx->flags & SC_CTX_FLAG_DISABLE_POPUPS)) {
 			DisplayPinpadUI = TRUE;
 		}
 	}

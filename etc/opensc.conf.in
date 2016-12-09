@@ -45,6 +45,11 @@ app default {
 	#
 	# paranoid_memory = false;
 
+	# Dsiable pop-ups of built-in GUI
+	#
+	# Default: false
+	# disable_popups = true;
+
 	# Enable default card driver
 	# Default card driver is explicitely enabled for the 'opensc-explorer' and 'opensc-tool'.
 	#
