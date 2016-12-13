@@ -167,15 +167,19 @@ int encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 		o->id_str, get_mechanism_name(mech->mech));
 	enc_message_length = encrypt_message(o, info, message, message_length,
 	    mech, &enc_message);
-	if (enc_message_length <= 0)
+	if (enc_message_length <= 0) {
+		free(message);
 		return -1;
+	}
 
 	debug_print(" [ KEY %s ] Decrypt message", o->id_str);
 	dec_message_length = decrypt_message(o, info, enc_message,
 	    enc_message_length, mech, &dec_message);
 	free(enc_message);
-	if (dec_message_length <= 0)
+	if (dec_message_length <= 0) {
+		free(message);
 		return -1;
+	}
 
 	if (memcmp(dec_message, message, dec_message_length) == 0
 			&& (unsigned int) dec_message_length == message_length) {
@@ -487,8 +491,10 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 	debug_print(" [ KEY %s ] Signing message of length %lu using CKM_%s",
 		o->id_str, message_length, get_mechanism_name(mech->mech));
 	rv = sign_message(o, info, message, message_length, mech, &sign, multipart);
-	if (rv <= 0)
+	if (rv <= 0) {
+		free(message);
 		return rv;
+	}
 	sign_length = (unsigned long) rv;
 
 	debug_print(" [ KEY %s ] Verify message signature", o->id_str);
