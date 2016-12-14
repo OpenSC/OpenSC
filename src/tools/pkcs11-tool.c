@@ -4511,6 +4511,7 @@ static int test_verify(CK_SESSION_HANDLE sess)
 			printf(" -- can't get the modulus length, skipping\n");
 			continue;
 		}
+		printf("\n");
 
 		errors += sign_verify(sess, priv_key, key_len, pub_key, i != 0);
 	}
