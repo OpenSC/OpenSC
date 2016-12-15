@@ -423,7 +423,7 @@ struct sc_pkcs15_skey_info {
 	int native, key_reference;
 	size_t value_len;
 	unsigned long key_type;
-	int algo_refs[SC_MAX_SUPPORTED_ALGORITHMS];
+	unsigned int algo_refs[SC_MAX_SUPPORTED_ALGORITHMS];
 	struct sc_path path; /* if on card */
 	struct sc_pkcs15_der data;
 };
