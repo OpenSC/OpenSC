@@ -1369,26 +1369,16 @@ compare_obj_id(struct sc_pkcs15_object *obj, const struct sc_pkcs15_id *id)
 {
 	void *data = obj->data;
 
-	switch (obj->type) {
-	case SC_PKCS15_TYPE_CERT_X509:
+	switch (obj->type & SC_PKCS15_TYPE_CLASS_MASK) {
+	case SC_PKCS15_TYPE_CERT:
 		return sc_pkcs15_compare_id(&((struct sc_pkcs15_cert_info *) data)->id, id);
-	case SC_PKCS15_TYPE_PRKEY_RSA:
-	case SC_PKCS15_TYPE_PRKEY_DSA:
-	case SC_PKCS15_TYPE_PRKEY_GOSTR3410:
-	case SC_PKCS15_TYPE_PRKEY_EC:
+	case SC_PKCS15_TYPE_PRKEY:
 		return sc_pkcs15_compare_id(&((struct sc_pkcs15_prkey_info *) data)->id, id);
-	case SC_PKCS15_TYPE_PUBKEY_RSA:
-	case SC_PKCS15_TYPE_PUBKEY_DSA:
-	case SC_PKCS15_TYPE_PUBKEY_GOSTR3410:
-	case SC_PKCS15_TYPE_PUBKEY_EC:
+	case SC_PKCS15_TYPE_PUBKEY:
 		return sc_pkcs15_compare_id(&((struct sc_pkcs15_pubkey_info *) data)->id, id);
-	case SC_PKCS15_TYPE_SKEY_DES:
-	case SC_PKCS15_TYPE_SKEY_2DES:
-	case SC_PKCS15_TYPE_SKEY_3DES:
+	case SC_PKCS15_TYPE_SKEY:
 		return sc_pkcs15_compare_id(&((struct sc_pkcs15_skey_info *) data)->id, id);
-	case SC_PKCS15_TYPE_AUTH_PIN:
-	case SC_PKCS15_TYPE_AUTH_BIO:
-	case SC_PKCS15_TYPE_AUTH_AUTHKEY:
+	case SC_PKCS15_TYPE_AUTH:
 		return sc_pkcs15_compare_id(&((struct sc_pkcs15_auth_info *) data)->auth_id, id);
 	case SC_PKCS15_TYPE_DATA_OBJECT:
 		return sc_pkcs15_compare_id(&((struct sc_pkcs15_data_info *) data)->id, id);
@@ -1400,7 +1390,7 @@ compare_obj_id(struct sc_pkcs15_object *obj, const struct sc_pkcs15_id *id)
 static int
 sc_obj_app_oid(struct sc_pkcs15_object *obj, const struct sc_object_id *app_oid)
 {
-	if (obj->type & SC_PKCS15_TYPE_DATA_OBJECT)
+	if ((obj->type & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_DATA_OBJECT)
 		return sc_compare_oid(&((struct sc_pkcs15_data_info *) obj->data)->app_oid, app_oid);
 	return 0;
 }
@@ -1412,17 +1402,11 @@ compare_obj_usage(struct sc_pkcs15_object *obj, unsigned int mask, unsigned int 
 	void		*data = obj->data;
 	unsigned int	usage;
 
-	switch (obj->type) {
-	case SC_PKCS15_TYPE_PRKEY_RSA:
-	case SC_PKCS15_TYPE_PRKEY_DSA:
-	case SC_PKCS15_TYPE_PRKEY_GOSTR3410:
-	case SC_PKCS15_TYPE_PRKEY_EC:
+	switch (obj->type & SC_PKCS15_TYPE_CLASS_MASK) {
+	case SC_PKCS15_TYPE_PRKEY:
 		usage = ((struct sc_pkcs15_prkey_info *) data)->usage;
 		break;
-	case SC_PKCS15_TYPE_PUBKEY_RSA:
-	case SC_PKCS15_TYPE_PUBKEY_DSA:
-	case SC_PKCS15_TYPE_PUBKEY_GOSTR3410:
-	case SC_PKCS15_TYPE_PUBKEY_EC:
+	case SC_PKCS15_TYPE_PUBKEY:
 		usage = ((struct sc_pkcs15_pubkey_info *) data)->usage;
 		break;
 	default:
@@ -1438,7 +1422,7 @@ compare_obj_flags(struct sc_pkcs15_object *obj, unsigned int mask, unsigned int 
 	struct sc_pkcs15_auth_info *auth_info;
 	unsigned int	flags;
 
-	switch (obj->type) {
+	switch (obj->type & SC_PKCS15_TYPE_CLASS_MASK) {
 	case SC_PKCS15_TYPE_AUTH_PIN:
 		auth_info = (struct sc_pkcs15_auth_info *) obj->data;
 		if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
@@ -1459,17 +1443,14 @@ compare_obj_reference(struct sc_pkcs15_object *obj, int value)
 	void		*data = obj->data;
 	int		reference;
 
-	switch (obj->type) {
+	switch (obj->type & SC_PKCS15_TYPE_CLASS_MASK) {
 	case SC_PKCS15_TYPE_AUTH_PIN:
 		auth_info = (struct sc_pkcs15_auth_info *) obj->data;
 		if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
 			return 0;
 		reference = auth_info->attrs.pin.reference;
 		break;
-	case SC_PKCS15_TYPE_PRKEY_RSA:
-	case SC_PKCS15_TYPE_PRKEY_DSA:
-	case SC_PKCS15_TYPE_PRKEY_GOSTR3410:
-	case SC_PKCS15_TYPE_PRKEY_EC:
+	case SC_PKCS15_TYPE_PRKEY:
 		reference = ((struct sc_pkcs15_prkey_info *) data)->key_reference;
 		break;
 	default:
@@ -1484,19 +1465,15 @@ compare_obj_path(struct sc_pkcs15_object *obj, const struct sc_path *path)
 {
 	void *data = obj->data;
 
-	switch (obj->type) {
-	case SC_PKCS15_TYPE_CERT_X509:
-		return sc_compare_path(&((struct sc_pkcs15_cert_info *) data)->path, path);
-	case SC_PKCS15_TYPE_PRKEY_RSA:
-	case SC_PKCS15_TYPE_PRKEY_DSA:
-	case SC_PKCS15_TYPE_PRKEY_GOSTR3410:
-	case SC_PKCS15_TYPE_PRKEY_EC:
+	switch (obj->type & SC_PKCS15_TYPE_CLASS_MASK) {
+	case SC_PKCS15_TYPE_PRKEY:
 		return sc_compare_path(&((struct sc_pkcs15_prkey_info *) data)->path, path);
-	case SC_PKCS15_TYPE_PUBKEY_RSA:
-	case SC_PKCS15_TYPE_PUBKEY_DSA:
-	case SC_PKCS15_TYPE_PUBKEY_GOSTR3410:
-	case SC_PKCS15_TYPE_PUBKEY_EC:
+	case SC_PKCS15_TYPE_PUBKEY:
 		return sc_compare_path(&((struct sc_pkcs15_pubkey_info *) data)->path, path);
+	case SC_PKCS15_TYPE_SKEY:
+		return sc_compare_path(&((struct sc_pkcs15_skey_info *) data)->path, path);
+	case SC_PKCS15_TYPE_CERT:
+		return sc_compare_path(&((struct sc_pkcs15_cert_info *) data)->path, path);
 	case SC_PKCS15_TYPE_AUTH_PIN:
 		return sc_compare_path(&((struct sc_pkcs15_auth_info *) data)->path, path);
 	case SC_PKCS15_TYPE_DATA_OBJECT:
@@ -2622,12 +2599,15 @@ sc_pkcs15_add_supported_algo_ref(struct sc_pkcs15_object *obj, struct sc_support
 	if (!algo)
 		return SC_SUCCESS;
 
-	switch (obj->type) {
-	case SC_PKCS15_TYPE_PRKEY_RSA:
+	switch (obj->type & SC_PKCS15_TYPE_CLASS_MASK) {
+	case SC_PKCS15_TYPE_PRKEY:
 		algo_refs = ((struct sc_pkcs15_prkey_info *)obj->data)->algo_refs;
 		break;
-	case SC_PKCS15_TYPE_PUBKEY_RSA:
+	case SC_PKCS15_TYPE_PUBKEY:
 		algo_refs = ((struct sc_pkcs15_pubkey_info *)obj->data)->algo_refs;
+		break;
+	case SC_PKCS15_TYPE_SKEY:
+		algo_refs = ((struct sc_pkcs15_skey_info *)obj->data)->algo_refs;
 		break;
 	}
 	if (!algo_refs)
@@ -2654,21 +2634,18 @@ sc_pkcs15_get_object_id(const struct sc_pkcs15_object *obj, struct sc_pkcs15_id 
 	if (!obj || !out)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
-	switch (obj->type) {
-	case SC_PKCS15_TYPE_CERT_X509:
+	switch (obj->type & SC_PKCS15_TYPE_CLASS_MASK) {
+	case SC_PKCS15_TYPE_CERT:
 		*out = ((struct sc_pkcs15_cert_info *) obj->data)->id;
 		break;
-	case SC_PKCS15_TYPE_PRKEY_RSA:
-	case SC_PKCS15_TYPE_PRKEY_DSA:
-	case SC_PKCS15_TYPE_PRKEY_GOSTR3410:
-	case SC_PKCS15_TYPE_PRKEY_EC:
+	case SC_PKCS15_TYPE_PRKEY:
 		*out = ((struct sc_pkcs15_prkey_info *) obj->data)->id;
 		break;
-	case SC_PKCS15_TYPE_PUBKEY_RSA:
-	case SC_PKCS15_TYPE_PUBKEY_DSA:
-	case SC_PKCS15_TYPE_PUBKEY_GOSTR3410:
-	case SC_PKCS15_TYPE_PUBKEY_EC:
+	case SC_PKCS15_TYPE_PUBKEY:
 		*out = ((struct sc_pkcs15_pubkey_info *) obj->data)->id;
+		break;
+	case SC_PKCS15_TYPE_SKEY:
+		*out = ((struct sc_pkcs15_skey_info *) obj->data)->id;
 		break;
 	case SC_PKCS15_TYPE_AUTH_PIN:
 		*out = ((struct sc_pkcs15_auth_info *) obj->data)->auth_id;
