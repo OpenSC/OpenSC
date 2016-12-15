@@ -383,7 +383,10 @@ arg_to_path(const char *arg, sc_path_t *path, int is_id)
 static void print_file(const sc_file_t *file)
 {
 	const char *format = " %02X%02X ";
-	const char *st = "???";
+	const char *st = NULL;
+
+	if(!file->type_attr_len)
+		st = "???";
 
 	switch (file->type) {
 	case SC_FILE_TYPE_WORKING_EF:
@@ -398,7 +401,10 @@ static void print_file(const sc_file_t *file)
 		break;
 	}
 	printf(format, file->id >> 8, file->id & 0xFF);
-	printf("\t%4s", st);
+	if (st == NULL)
+		printf("\t0x%02X", *file->type_attr);
+	else
+		printf("\t%4s", st);
 	printf(" %5lu", (unsigned long)file->size);
 	if (file->namelen) {
 		printf("\tName: ");
@@ -825,7 +831,7 @@ static int do_info(int argc, char **argv)
 	sc_file_t *file;
 	sc_path_t path;
 	size_t i;
-	const char *st;
+	const char *st = NULL;
 	int r, not_current = 1;
 	const id2str_t *ac_ops = NULL;
 
@@ -845,6 +851,9 @@ static int do_info(int argc, char **argv)
 	} else
 		return usage(do_info);
 
+	if(!file->type_attr_len)
+		st = "Unknown File";
+
 	switch (file->type) {
 	case SC_FILE_TYPE_WORKING_EF:
 	case SC_FILE_TYPE_INTERNAL_EF:
@@ -853,11 +862,11 @@ static int do_info(int argc, char **argv)
 	case SC_FILE_TYPE_DF:
 		st = "Dedicated File";
 		break;
-	default:
-		st = "Unknown File";
-		break;
 	}
-	printf("\n%s  ID %04X", st, file->id);
+	if (st == NULL)
+		printf("\nFile type [%02x] ID %04X", *file->type_attr, file->id);
+	else
+		printf("\n%s  ID %04X", st, file->id);
 	if (file->sid)
 		printf(", SFI %02X", file->sid);
 	printf("\n\n%-15s%s\n", "File path:", path_to_filename(&path, '/'));
