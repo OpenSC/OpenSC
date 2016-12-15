@@ -1064,8 +1064,10 @@ iso7816_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_l
 	int r;
 	u8  sbuf[SC_MAX_APDU_BUFFER_SIZE];
 
-	if (tries_left)
-		*tries_left = -1;
+	data->pin1.tries_left = -1;
+	if (tries_left != NULL) {
+		*tries_left = data->pin1.tries_left;
+	}
 
 	/* Many cards do support PIN status queries, but some cards don't and
 	 * mistakenly count the command as a failed PIN attempt, so for now we
@@ -1122,22 +1124,21 @@ iso7816_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_l
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu->sw1, apdu->sw2);
 
-	if (data->cmd == SC_PIN_CMD_GET_INFO) {
-		if (r == SC_SUCCESS) {
-			data->pin1.logged_in = SC_PIN_STATE_LOGGED_IN;
-		} else if (r == SC_ERROR_PIN_CODE_INCORRECT) {
-			data->pin1.tries_left = apdu->sw2 & 0xF;
-			data->pin1.logged_in = SC_PIN_STATE_LOGGED_OUT;
+	if (r == SC_SUCCESS) {
+		data->pin1.logged_in = SC_PIN_STATE_LOGGED_IN;
+	} else if (r == SC_ERROR_PIN_CODE_INCORRECT) {
+		data->pin1.tries_left = apdu->sw2 & 0xF;
+		data->pin1.logged_in = SC_PIN_STATE_LOGGED_OUT;
+		if (data->cmd == SC_PIN_CMD_GET_INFO)
 			r = SC_SUCCESS;
-		} else if (r == SC_ERROR_AUTH_METHOD_BLOCKED) {
-			data->pin1.tries_left = 0;
-			data->pin1.logged_in = SC_PIN_STATE_LOGGED_OUT;
+	} else if (r == SC_ERROR_AUTH_METHOD_BLOCKED) {
+		data->pin1.tries_left = 0;
+		data->pin1.logged_in = SC_PIN_STATE_LOGGED_OUT;
+		if (data->cmd == SC_PIN_CMD_GET_INFO)
 			r = SC_SUCCESS;
-		}
-
-		if (tries_left != NULL) {
-			*tries_left = data->pin1.tries_left;
-		}
+	}
+	if (tries_left != NULL) {
+		*tries_left = data->pin1.tries_left;
 	}
 
 	return r;
