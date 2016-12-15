@@ -228,6 +228,11 @@ static int cardos_init(sc_card_t *card)
 		_sc_card_add_rsa_alg(card, 2048, flags, 0);
 	}
 
+	if (card->type == SC_CARD_TYPE_CARDOS_V5_0) {
+		/* Starting with CardOS 5, the card supports PIN query commands */
+		card->caps |= SC_CARD_CAP_ISO7816_PIN_INFO;
+	}
+
 	return 0;
 }
 
