@@ -253,24 +253,6 @@ static void add_internal_drvs(struct _sc_ctx_options *opts)
 	}
 }
 
-static void set_defaults(sc_context_t *ctx, struct _sc_ctx_options *opts)
-{
-	ctx->debug = 0;
-	if (ctx->debug_file && (ctx->debug_file != stderr && ctx->debug_file != stdout))
-		fclose(ctx->debug_file);
-	ctx->debug_file = stderr;
-	ctx->flags = 0;
-
-#ifdef __APPLE__
-	/* Override the default debug log for OpenSC.tokend to be different from PKCS#11.
-	 * TODO: Could be moved to OpenSC.tokend */
-	if (!strcmp(ctx->app_name, "tokend"))
-		ctx->debug_file = fopen("/tmp/opensc-tokend.log", "a");
-#endif
-	ctx->forced_driver = NULL;
-	add_internal_drvs(opts);
-}
-
 /* In Windows, file handles can not be shared between DLL-s,
  * each DLL has a separate file handle table. Thus tools and utilities
  * can not set the file handle themselves when -v is specified on command line.
@@ -304,31 +286,24 @@ load_parameters(sc_context_t *ctx, scconf_block *block, struct _sc_ctx_options *
 	const scconf_list *list;
 	const char *val, *s_internal = "internal";
 	int debug;
-	int reopen;
 #ifdef _WIN32
 	char expanded_val[PATH_MAX];
 	DWORD expanded_len;
 #endif
 
-	reopen = scconf_get_bool(block, "reopen_debug_file", 1);
-
 	debug = scconf_get_int(block, "debug", ctx->debug);
 	if (debug > ctx->debug)
 		ctx->debug = debug;
 
-	val = scconf_get_str(block, "debug_file", NULL);
-	if (val)   {
+	val = scconf_get_str(block, "debug_file", "stderr");
 #ifdef _WIN32
-		expanded_len = PATH_MAX;
-		expanded_len = ExpandEnvironmentStringsA(val, expanded_val, expanded_len);
-		if (expanded_len > 0)
-			val = expanded_val;
+	expanded_len = PATH_MAX;
+	expanded_len = ExpandEnvironmentStringsA(val, expanded_val, expanded_len);
+	if (expanded_len > 0)
+		val = expanded_val;
 #endif
-		if (reopen)
-			ctx->debug_filename = strdup(val);
-
-		sc_ctx_log_to_file(ctx, val);
-	}
+	ctx->debug_filename = strdup(val);
+	sc_ctx_log_to_file(ctx, val);
 
 	if (scconf_get_bool (block, "paranoid-memory",
 				ctx->flags & SC_CTX_FLAG_PARANOID_MEMORY))
@@ -754,7 +729,7 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 	}
 
 	ctx->flags = parm->flags;
-	set_defaults(ctx, &opts);
+	add_internal_drvs(&opts);
 
 	list_init(&ctx->readers);
 	list_attributes_seeker(&ctx->readers, reader_list_seeker);

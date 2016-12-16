@@ -21,15 +21,6 @@ app default {
 	#
 	# debug_file = @DEBUG_FILE@
 
-	# Re-open debug file  (used in WIN32)
-	#
-	# In Windows, file handles can not be shared between DLL-s,
-	#  each DLL has a separate file handle table.
-	# For that reason reopen debug file before every debug message.
-	#
-	# Default: true
-	# reopen_debug_file = false;
-
 	# PKCS#15 initialization / personalization
 	# profiles directory for pkcs15-init.
 	# Default: @PROFILE_DIR_DEFAULT@
@@ -727,9 +718,9 @@ app onepin-opensc-pkcs11 {
 # Used by OpenSC.tokend on Mac OS X only.
 app tokend {
 	# The file to which debug log will be written
-	# Default: /tmp/opensc-tokend.log
+	# Default: stderr
 	#
-	# debug_file = /Library/Logs/OpenSC.tokend.log
+	# debug_file = /tmp/opensc-tokend.log
 
 	framework tokend {
 		# Score for OpenSC.tokend
