@@ -27,6 +27,8 @@
 #include "libopensc/log.h"
 #include "libopensc/asn1.h"
 #include "libopensc/pkcs15.h"
+#include "libopensc/cwa14890.h"
+#include "libopensc/cwa-dnie.h"
 
 /* Card driver related */
 #ifdef ENABLE_OPENSSL
@@ -155,6 +157,19 @@ static int sc_pkcs15emu_dnie_init(sc_pkcs15_card_t * p15card)
 	/* Check for correct card atr */
 	if (dnie_match_card(p15card->card) != 1)
 		return SC_ERROR_WRONG_CARD;
+
+	/* The two keys inside DNIe 3.0 needs login before performing any signature.
+	 * They are CKA_ALWAYS_AUTHENTICATE although they are not tagged like that.
+	 * For the moment caching is forced if 3.0 is detected to make it work properly. */
+	if (p15card->card->atr.value[15] >= DNIE_30_VERSION) {
+		p15card->opts.use_pin_cache = 1;
+		p15card->opts.pin_cache_counter = DNIE_30_CACHE_COUNTER;
+		sc_log(ctx, "DNIe 3.0 detected - PKCS#15 options reset: use_file_cache=%d use_pin_cache=%d pin_cache_counter=%d pin_cache_ignore_user_consent=%d",
+			p15card->opts.use_file_cache,
+			p15card->opts.use_pin_cache,
+			p15card->opts.pin_cache_counter,
+			p15card->opts.pin_cache_ignore_user_consent);
+        }
 
 	/* Set root path of this application */
 	p15card->file_app = sc_file_new();

@@ -62,6 +62,7 @@ struct cwa_provider_st;
 #define GET_DNIE_UI_CTX(card) (((dnie_private_data_t *) ((card)->drv_data))->ui_ctx)
 
 #define DNIE_30_VERSION 0x04
+#define DNIE_30_CACHE_COUNTER 30000
 
 cwa_provider_t *dnie_get_cwa_provider(sc_card_t * card);
 
