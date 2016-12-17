@@ -158,6 +158,7 @@ static int sc_pkcs15emu_dnie_init(sc_pkcs15_card_t * p15card)
 	if (dnie_match_card(p15card->card) != 1)
 		return SC_ERROR_WRONG_CARD;
 
+#ifdef ENABLE_OPENSSL
 	/* The two keys inside DNIe 3.0 needs login before performing any signature.
 	 * They are CKA_ALWAYS_AUTHENTICATE although they are not tagged like that.
 	 * For the moment caching is forced if 3.0 is detected to make it work properly. */
@@ -170,6 +171,7 @@ static int sc_pkcs15emu_dnie_init(sc_pkcs15_card_t * p15card)
 			p15card->opts.pin_cache_counter,
 			p15card->opts.pin_cache_ignore_user_consent);
         }
+#endif
 
 	/* Set root path of this application */
 	p15card->file_app = sc_file_new();
