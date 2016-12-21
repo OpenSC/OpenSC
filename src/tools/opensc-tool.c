@@ -288,7 +288,7 @@ static int list_readers(void)
 				if ((r = sc_connect_card(reader, &card)) != SC_SUCCESS) {
 					fprintf(stderr, "     failed: %s\n", sc_strerror(r));
 				} else {
-					printf("     %s %s %s\n", tmp, card->name, state & SC_READER_CARD_INUSE ? "[IN USE]" : "");
+					printf("     %s %s %s\n", tmp, card->name ? card->name : "", state & SC_READER_CARD_INUSE ? "[IN USE]" : "");
 					sc_disconnect_card(card);
 				}
 			}
