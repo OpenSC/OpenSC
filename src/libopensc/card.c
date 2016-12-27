@@ -189,6 +189,7 @@ int sc_connect_card(sc_reader_t *reader, sc_card_t **card_out)
 	sc_context_t *ctx;
 	struct sc_card_driver *driver;
 	int i, r = 0, idx, connected = 0;
+	scconf_block *atrblock = NULL;
 
 	if (card_out == NULL || reader == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -211,7 +212,18 @@ int sc_connect_card(sc_reader_t *reader, sc_card_t **card_out)
 	memcpy(&card->atr, &reader->atr, sizeof(card->atr));
 	memcpy(&card->uid, &reader->uid, sizeof(card->uid));
 
+	/* Completely ignore card based on ATR to avoid conflicts with other software */
 	_sc_parse_atr(reader);
+	atrblock = _sc_match_atr_block(ctx, NULL, &card->atr);
+	if (atrblock != NULL) {
+		const char *ignore_card;
+		ignore_card = scconf_get_str(atrblock, "ignore_card", "none");
+		if (!strcmp(ignore_card, ctx->app_name) || !strcmp(ignore_card, "all")) {
+			sc_log(ctx, "App: %s', card ignored", ctx->app_name);
+			r = SC_ERROR_NOT_SUPPORTED;
+			goto err;
+		}
+	}
 
 	/* See if the ATR matches any ATR specified in the config file */
 	if ((driver = ctx->forced_driver) == NULL) {

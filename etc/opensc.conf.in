@@ -183,6 +183,16 @@ app default {
 
 	# Generic format: card_atr <hex encoded ATR (case-sensitive!)>
 
+	# "ignore_card" allows to ignore card based on ATR. This is designed
+	# to avoid handling of incompatible cards used by another software.
+	# ignore_card could be "all" to ignore handling in all opensc 
+	# applications or as app. name, e.g. "opensc-pkcs11" to ignore only
+	# in opensc-pkcs11 library. ATR below belongs to the CSAS certificate
+	# smartcard.
+	card_atr 3b:7e:94:00:00:80:25:a0:00:00:00:28:56:80:10:12:81:01:17 {
+		ignore_card = "opensc-pkcs11";
+	}
+
 	# New card entry for the flex card driver
 	# card_atr 3b:f0:0d:ca:fe {
 		# All parameters for the context are
