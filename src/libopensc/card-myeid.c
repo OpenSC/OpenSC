@@ -46,8 +46,16 @@
 #define MYEID_STATE_CREATION	0x01
 #define MYEID_STATE_ACTIVATED	0x07
 
-#define MYEID_INFINEON_CHIP_ATR		0x04
 #define MYEID_CARD_NAME_MAX_LEN		100
+
+/* The following flags define the features supported by the card currently in use.
+  They are used in 'card_supported_features' field in myeid_card_caps struct */
+#define MYEID_CARD_CAP_RSA		0x01
+#define MYEID_CARD_CAP_3DES		0x02
+#define MYEID_CARD_CAP_AES		0x04
+#define MYEID_CARD_CAP_ECC		0x08
+#define MYEID_CARD_CAP_GRIDPIN		0x10
+#define MYEID_CARD_CAP_PIV_EMU		0x20
 
 static const char *myeid_card_name = "MyEID";
 static char card_name_buf[MYEID_CARD_NAME_MAX_LEN];
@@ -83,6 +91,15 @@ typedef struct myeid_private_data {
 	const struct sc_security_env* sec_env;
 } myeid_private_data_t;
 
+typedef struct myeid_card_caps {
+	unsigned char card_caps_ver;
+	unsigned short card_supported_features;
+	unsigned short max_rsa_key_length;
+	unsigned short max_des_key_length;
+	unsigned short max_aes_key_length;
+	unsigned short max_ecc_key_length;
+} myeid_card_caps_t;
+
 static struct myeid_supported_ec_curves {
 	char *curve_name;
 	struct sc_object_id curve_oid;
@@ -97,6 +114,7 @@ static struct myeid_supported_ec_curves {
 };
 
 static int myeid_get_info(struct sc_card *card, u8 *rbuf, size_t buflen);
+static int myeid_get_card_caps(struct sc_card *card, myeid_card_caps_t* card_caps);
 
 static int myeid_match_card(struct sc_card *card)
 {
@@ -130,10 +148,8 @@ static int myeid_init(struct sc_card *card)
 	u8 appletInfo[20];
 	size_t appletInfoLen;
 	int r;
-	int largeEccKeys = 0;
-	u8 defatr[SC_MAX_ATR_SIZE];
-	size_t len = sizeof(defatr);
-	const char *atrp = myeid_atrs[MYEID_INFINEON_CHIP_ATR];
+	unsigned short max_ecc_key_length = 256;
+	myeid_card_caps_t card_caps;
 
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -165,16 +181,24 @@ static int myeid_init(struct sc_card *card)
 	_sc_card_add_rsa_alg(card, 1024, flags, 0);
 	_sc_card_add_rsa_alg(card, 1536, flags, 0);
 	_sc_card_add_rsa_alg(card, 2048, flags, 0);
+	
+	memset(&card_caps, 0, sizeof(myeid_card_caps_t));
 
-	if (sc_hex_to_bin(atrp, defatr, &len) == 0
-		&& (len == card->atr.len) &&
-		memcmp(card->atr.value, defatr, len) == 0) {
-	    largeEccKeys = 1;
+	if (card->version.fw_major >= 40) {
+	    /* Since 4.0, we can query available algorithms and key sizes.
+	     * Since 3.5.0 RSA up to 2048 and ECC up to 256 are always supported, so we check only max ECC key length. */
+	    r = myeid_get_card_caps(card, &card_caps);
+
+	    if (r == SC_SUCCESS) {
+		max_ecc_key_length = card_caps.max_ecc_key_length;
+	    }
+	    else {
+		sc_log(card->ctx, "Failed to get card capabilities. Using default max ECC key length 256.");
+	    }
 	}
 
 	/* show ECC algorithms if the applet version of the inserted card supports them */
-	if ((card->version.fw_major == 3 && card->version.fw_minor > 5) ||
-			card->version.fw_major >= 4)   {
+	if (card->version.fw_major >= 35) {
 		int i;
 
 		flags = SC_ALGORITHM_ECDSA_RAW | SC_ALGORITHM_ECDH_CDH_RAW | SC_ALGORITHM_ONBOARD_KEY_GEN;
@@ -182,10 +206,12 @@ static int myeid_init(struct sc_card *card)
 		ext_flags = SC_ALGORITHM_EXT_EC_NAMEDCURVE | SC_ALGORITHM_EXT_EC_UNCOMPRESES;
 
 		for (i=0; ec_curves[i].curve_name != NULL; i++) {
-		    if (i >= 2 && !largeEccKeys)
-			continue;
-		    else
-			_sc_card_add_ec_alg(card,  ec_curves[i].size, flags, ext_flags, &ec_curves[i].curve_oid);
+			if (i == 2 && max_ecc_key_length < 384)
+				continue;
+			else if (i == 3 && max_ecc_key_length < 521)
+				continue;
+			else
+				_sc_card_add_ec_alg(card,  ec_curves[i].size, flags, ext_flags, &ec_curves[i].curve_oid);
 		}
 	}
 
@@ -1383,6 +1409,45 @@ static int myeid_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 
 	/* copy and return serial number */
 	memcpy(serial, &card->serialnr, sizeof(*serial));
+
+	LOG_FUNC_RETURN(card->ctx, r);
+}
+
+/*
+ Get information of features that the card supports. MyEID 4.x cards are available on different
+ hardware and maximum key sizes cannot be determined simply from the version number anymore.
+ */
+static int myeid_get_card_caps(struct sc_card *card, myeid_card_caps_t* card_caps)
+{
+	sc_apdu_t apdu;
+	int r;
+	unsigned char rbuf[SC_MAX_APDU_BUFFER_SIZE];
+
+	LOG_FUNC_CALLED(card->ctx);
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xca, 0x01, 0xAA);
+	apdu.resp    = rbuf;
+	apdu.resplen = sizeof(myeid_card_caps_t);
+	apdu.le      = sizeof(myeid_card_caps_t);
+
+	r = sc_transmit_apdu(card, &apdu);
+	LOG_TEST_RET(card->ctx, r,  "APDU transmit failed");
+
+	if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
+		return SC_ERROR_INTERNAL;
+
+	if (apdu.resplen < 11) {
+		sc_log(card->ctx, "Unexpected response to GET DATA (MyEIC card capabilities)");
+		return SC_ERROR_INTERNAL;
+	}
+
+	card_caps->card_caps_ver = rbuf[0];
+	/* the card returns big endian values */
+	card_caps->card_supported_features = (unsigned short) rbuf[1] << 8 | rbuf[2];
+	card_caps->max_rsa_key_length = (unsigned short) rbuf[3] << 8 | rbuf[4];
+	card_caps->max_des_key_length = (unsigned short) rbuf[5] << 8 | rbuf[6];
+	card_caps->max_aes_key_length = (unsigned short) rbuf[7] << 8 | rbuf[8];
+	card_caps->max_ecc_key_length = (unsigned short) rbuf[9] << 8 | rbuf[10];
 
 	LOG_FUNC_RETURN(card->ctx, r);
 }
