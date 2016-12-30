@@ -223,7 +223,7 @@ int dnie_ask_user_consent(struct sc_card * card, const char *title, const char *
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	if (GET_DNIE_UI_CTX(card).user_consent_enabled == 0
-			|| card->ctx & SC_CTX_FLAG_ENABLE_POPUPS) {
+			|| card->ctx->flags & SC_CTX_FLAG_DISABLE_POPUPS) {
 		sc_log(card->ctx,
 		       "User Consent or popups are disabled in configuration file");
 		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
