@@ -28,7 +28,7 @@
 #include "config.h"
 #endif
 
-#ifdef ENABLE_OPENSSL		/* empty file without openssl */
+#if defined(ENABLE_OPENSSL) && defined(ENABLE_SM)	/* empty file without openssl or sm */
 
 #include <stdlib.h>
 #include <string.h>
@@ -848,20 +848,16 @@ static int dnie_init(struct sc_card *card)
 	if (!provider) 
 	    LOG_TEST_RET(card->ctx, SC_ERROR_INTERNAL, "Error initializing cwa-dnie provider");
 
-#ifdef ENABLE_SM
 	/** Secure messaging initialization section **/
 	memset(&(card->sm_ctx), 0, sizeof(sm_context_t));
 	card->sm_ctx.ops.get_sm_apdu = dnie_sm_get_wrapped_apdu;
 	card->sm_ctx.ops.free_sm_apdu = dnie_sm_free_wrapped_apdu;
 	card->sm_ctx.sm_mode = SM_MODE_NONE;
-#endif
 
 	init_flags(card);
 
-#ifdef ENABLE_SM
 	res=cwa_create_secure_channel(card,provider,CWA_SM_OFF);
 	LOG_TEST_RET(card->ctx, res, "Failure creating CWA secure channel.");
-#endif
 
 	/* initialize private data */
 	card->drv_data = calloc(1, sizeof(dnie_private_data_t));
@@ -896,10 +892,8 @@ static int dnie_finish(struct sc_card *card)
 	int result = SC_SUCCESS;
 	LOG_FUNC_CALLED(card->ctx);
 	dnie_clear_cache(GET_DNIE_PRIV_DATA(card));
-#ifdef ENABLE_SM
 	/* disable sm channel if established */
 	result = cwa_create_secure_channel(card, GET_DNIE_PRIV_DATA(card)->cwa_provider, CWA_SM_OFF);
-#endif
 	free(GET_DNIE_PRIV_DATA(card)->cwa_provider);
 	free(card->drv_data);
 	LOG_FUNC_RETURN(card->ctx, result);
@@ -1428,11 +1422,9 @@ static int dnie_logout(struct sc_card *card)
 	if ((card == NULL) || (card->ctx == NULL))
 		return SC_ERROR_INVALID_ARGUMENTS;
 	LOG_FUNC_CALLED(card->ctx);
-#ifdef ENABLE_SM
 	/* disable and free any sm channel related data */
 	result =
 	    cwa_create_secure_channel(card, GET_DNIE_PRIV_DATA(card)->cwa_provider, CWA_SM_OFF);
-#endif
 	/* TODO: _logout() see comments.txt on what to do here */
 	LOG_FUNC_RETURN(card->ctx, result);
 }
@@ -2161,11 +2153,9 @@ static int dnie_pin_change(struct sc_card *card, struct sc_pin_cmd_data * data)
 {
 	int res=SC_SUCCESS;
 	LOG_FUNC_CALLED(card->ctx);
-#ifdef ENABLE_SM
-    /* Ensure that secure channel is established from reset */
-    res = cwa_create_secure_channel(card, GET_DNIE_PRIV_DATA(card)->cwa_provider, CWA_SM_COLD);
-    LOG_TEST_RET(card->ctx, res, "Establish SM failed");
-#endif
+	/* Ensure that secure channel is established from reset */
+	res = cwa_create_secure_channel(card, GET_DNIE_PRIV_DATA(card)->cwa_provider, CWA_SM_COLD);
+	LOG_TEST_RET(card->ctx, res, "Establish SM failed");
 	LOG_FUNC_RETURN(card->ctx,SC_ERROR_NOT_SUPPORTED);
 }
 
@@ -2182,7 +2172,6 @@ static int dnie_pin_change(struct sc_card *card, struct sc_pin_cmd_data * data)
 static int dnie_pin_verify(struct sc_card *card,
                         struct sc_pin_cmd_data *data, int *tries_left)
 {
-#ifdef ENABLE_SM
 	int res=SC_SUCCESS;
 	sc_apdu_t apdu;
 
@@ -2244,10 +2233,6 @@ static int dnie_pin_verify(struct sc_card *card,
 	}
 
 	LOG_FUNC_RETURN(card->ctx, res);
-#else
-    LOG_TEST_RET(card->ctx, SC_ERROR_NOT_SUPPORTED, "built without support of SM and External Authentication");
-    return SC_ERROR_NOT_SUPPORTED;
-#endif
 }
 
 /* pin_cmd: verify/change/unblock command; optionally using the

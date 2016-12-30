@@ -23,7 +23,7 @@
 #ifndef __CWADNIE_H__
 #define __CWADNIE_H__
 
-#ifdef ENABLE_OPENSSL
+#if defined(ENABLE_OPENSSL) && defined(ENABLE_SM)
 
 #include "libopensc/opensc.h"
 
