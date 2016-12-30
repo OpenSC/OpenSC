@@ -31,11 +31,7 @@
 #include "libopensc/cwa-dnie.h"
 
 /* Card driver related */
-#ifdef ENABLE_OPENSSL
-extern int dnie_match_card(struct sc_card *card);
-#else
-#define dnie_match_card(card) 0
-#endif
+#if defined(ENABLE_OPENSSL) && defined(ENABLE_SM)
 
 /* Helper functions to get the pkcs15 stuff bound. */
 
@@ -158,7 +154,6 @@ static int sc_pkcs15emu_dnie_init(sc_pkcs15_card_t * p15card)
 	if (dnie_match_card(p15card->card) != 1)
 		return SC_ERROR_WRONG_CARD;
 
-#ifdef ENABLE_OPENSSL
 	/* The two keys inside DNIe 3.0 needs login before performing any signature.
 	 * They are CKA_ALWAYS_AUTHENTICATE although they are not tagged like that.
 	 * For the moment caching is forced if 3.0 is detected to make it work properly. */
@@ -171,7 +166,6 @@ static int sc_pkcs15emu_dnie_init(sc_pkcs15_card_t * p15card)
 			p15card->opts.pin_cache_counter,
 			p15card->opts.pin_cache_ignore_user_consent);
         }
-#endif
 
 	/* Set root path of this application */
 	p15card->file_app = sc_file_new();
@@ -273,6 +267,7 @@ static int sc_pkcs15emu_dnie_init(sc_pkcs15_card_t * p15card)
 	
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
+#endif
 
 /****************************************/
 /* public functions for in-built module */
@@ -285,6 +280,7 @@ int sc_pkcs15emu_dnie_init_ex(sc_pkcs15_card_t * p15card,
 	sc_context_t *ctx = p15card->card->ctx;
 	LOG_FUNC_CALLED(ctx);
 
+#if defined(ENABLE_OPENSSL) && defined(ENABLE_SM)
 	/* if no check flag execute unconditionally */
 	if (opts && opts->flags & SC_PKCS15EMU_FLAGS_NO_CHECK)
 		LOG_FUNC_RETURN(ctx, sc_pkcs15emu_dnie_init(p15card));
@@ -294,4 +290,8 @@ int sc_pkcs15emu_dnie_init_ex(sc_pkcs15_card_t * p15card,
 		LOG_FUNC_RETURN(ctx, SC_ERROR_WRONG_CARD);
 	/* ok: initialize and return */
 	LOG_FUNC_RETURN(ctx, sc_pkcs15emu_dnie_init(p15card));
+#else
+	r = SC_ERROR_WRONG_CARD;
+	LOG_FUNC_RETURN(ctx, r);
+#endif
 }

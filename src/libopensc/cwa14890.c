@@ -27,7 +27,7 @@
 #include "config.h"
 #endif
 
-#ifdef ENABLE_OPENSSL		/* empty file without openssl */
+#if defined(ENABLE_OPENSSL) && defined(ENABLE_SM)	/* empty file without openssl or sm */
 
 #include <stdlib.h>
 #include <string.h>

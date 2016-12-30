@@ -25,7 +25,7 @@
 #ifndef __CWA14890_H__
 #define __CWA14890_H__
 
-#ifdef ENABLE_OPENSSL
+#if defined(ENABLE_OPENSSL) && defined(ENABLE_SM)
 
 /* Secure Messaging state indicator */
 #define CWA_SM_NONE       0x00	/** No SM channel defined */
