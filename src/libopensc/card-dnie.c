@@ -2147,7 +2147,7 @@ static int dnie_pin_change(struct sc_card *card, struct sc_pin_cmd_data * data)
 	int res=SC_SUCCESS;
 	LOG_FUNC_CALLED(card->ctx);
 	/* Ensure that secure channel is established from reset */
-	res = cwa_create_secure_channel(card, GET_DNIE_PRIV_DATA(card)->cwa_provider, CWA_SM_COLD);
+	res = cwa_create_secure_channel(card, GET_DNIE_PRIV_DATA(card)->cwa_provider, CWA_SM_ON);
 	LOG_TEST_RET(card->ctx, res, "Establish SM failed");
 	LOG_FUNC_RETURN(card->ctx,SC_ERROR_NOT_SUPPORTED);
 }
@@ -2180,7 +2180,7 @@ static int dnie_pin_verify(struct sc_card *card,
 		sc_log(card->ctx, "DNIe 3.0 detected doing PIN initialization");
 		dnie_change_cwa_provider_to_pin(card);
 	}
-	res = cwa_create_secure_channel(card, GET_DNIE_PRIV_DATA(card)->cwa_provider, CWA_SM_COLD);
+	res = cwa_create_secure_channel(card, GET_DNIE_PRIV_DATA(card)->cwa_provider, CWA_SM_ON);
 	LOG_TEST_RET(card->ctx, res, "Establish SM failed");
 
 	data->apdu = &apdu;	/* prepare apdu struct */
@@ -2222,7 +2222,7 @@ static int dnie_pin_verify(struct sc_card *card,
 	if (card->atr.value[15] >= DNIE_30_VERSION) {
 		sc_log(card->ctx, "DNIe 3.0 detected => re-establish secure channel");
 		dnie_change_cwa_provider_to_secure(card);
-		res = cwa_create_secure_channel(card, GET_DNIE_PRIV_DATA(card)->cwa_provider, CWA_SM_OVER);
+		res = cwa_create_secure_channel(card, GET_DNIE_PRIV_DATA(card)->cwa_provider, CWA_SM_ON);
 	}
 
 	LOG_FUNC_RETURN(card->ctx, res);

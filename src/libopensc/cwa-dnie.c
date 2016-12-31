@@ -813,17 +813,6 @@ static int dnie_create_pre_ops(sc_card_t * card, cwa_provider_t * provider)
 }
 
 /**
- * Now in DNIe the channel mode is changed to SM_MODE_TRANSMIT
- * after CWA initialization to be consistent with OpenSC
- */
-static int dnie_create_post_ops(sc_card_t * card, cwa_provider_t * provider)
-{
-	card->sm_ctx.sm_mode = SM_MODE_TRANSMIT;
-
-	return SC_SUCCESS;
-}
-
-/**
  * Main entry point for DNIe CWA14890 SM data provider.
  *
  * Return a pointer to DNIe data provider with proper function pointers
@@ -842,11 +831,9 @@ cwa_provider_t *dnie_get_cwa_provider(sc_card_t * card)
 
 	/* pre and post operations */
 	res->cwa_create_pre_ops = dnie_create_pre_ops;
-	res->cwa_create_post_ops = dnie_create_post_ops;
 
 	/* Get ICC intermediate CA  path */
-	res->cwa_get_icc_intermediate_ca_cert =
-	    dnie_get_icc_intermediate_ca_cert;
+	res->cwa_get_icc_intermediate_ca_cert = dnie_get_icc_intermediate_ca_cert;
 	/* Get ICC certificate path */
 	res->cwa_get_icc_cert = dnie_get_icc_cert;
 
@@ -864,8 +851,7 @@ cwa_provider_t *dnie_get_cwa_provider(sc_card_t * card)
 	res->cwa_get_root_ca_pubkey_ref = dnie_get_root_ca_pubkey_ref;
 
 	/* Get public key reference for IFD intermediate CA certificate */
-	res->cwa_get_intermediate_ca_pubkey_ref =
-	    dnie_get_intermediate_ca_pubkey_ref;
+	res->cwa_get_intermediate_ca_pubkey_ref = dnie_get_intermediate_ca_pubkey_ref;
 
 	/* Get public key reference for IFD CVC certificate */
 	res->cwa_get_ifd_pubkey_ref = dnie_get_ifd_pubkey_ref;
@@ -923,8 +909,7 @@ int dnie_transmit_apdu(sc_card_t * card, sc_apdu_t * apdu)
 	cwa_provider_t *provider = NULL;
 	ctx=card->ctx;
 	provider = GET_DNIE_PRIV_DATA(card)->cwa_provider;
-	if ((provider->status.session.state == CWA_SM_ACTIVE) &&
-		(card->sm_ctx.sm_mode == SM_MODE_TRANSMIT)) {
+	if (card->sm_ctx.sm_mode == SM_MODE_TRANSMIT) {
 		res = sc_transmit_apdu(card, apdu);
 		LOG_TEST_RET(ctx, res, "Error in dnie_wrap_apdu process");
 		res = cwa_decode_response(card, provider, apdu);
