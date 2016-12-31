@@ -33,6 +33,8 @@
 /* Card driver related */
 #if defined(ENABLE_OPENSSL) && defined(ENABLE_SM)
 
+extern int dnie_match_card(struct sc_card *card);
+
 /* Helper functions to get the pkcs15 stuff bound. */
 
 static
