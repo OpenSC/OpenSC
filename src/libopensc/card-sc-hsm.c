@@ -486,7 +486,9 @@ static int sc_hsm_decode_ecdsa_signature(sc_card_t *card,
 		fieldsizebytes = 64;
 	}
 
-	sc_log(card->ctx, "Field size %d, signature buffer size %d", fieldsizebytes, outlen);
+	sc_log(card->ctx,
+	       "Field size %"SC_FORMAT_LEN_SIZE_T"u, signature buffer size %"SC_FORMAT_LEN_SIZE_T"u",
+	       fieldsizebytes, outlen);
 
 	if (outlen < (fieldsizebytes * 2)) {
 		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_DATA, "output too small for EC signature");

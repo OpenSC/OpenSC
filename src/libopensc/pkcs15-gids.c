@@ -51,7 +51,8 @@ static int sc_pkcs15emu_gids_add_prkey(sc_pkcs15_card_t * p15card, sc_cardctl_gi
 	int r;
 	char ch_tmp[10];
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
-		"Got args: containerIndex=%x\n", container->containernum);
+		"Got args: containerIndex=%"SC_FORMAT_LEN_SIZE_T"x\n",
+		 container->containernum);
 
 	memset(&prkey_info, 0, sizeof(prkey_info));
 	memset(&prkey_obj,  0, sizeof(prkey_obj));

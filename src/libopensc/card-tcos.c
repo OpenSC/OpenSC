@@ -472,8 +472,8 @@ static int tcos_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "List Dir failed");
 		if (apdu.resplen > buflen) return SC_ERROR_BUFFER_TOO_SMALL;
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
-			"got %d %s-FileIDs\n", apdu.resplen/2,
-			p1==1 ? "DF" : "EF");
+			 "got %"SC_FORMAT_LEN_SIZE_T"u %s-FileIDs\n",
+			 apdu.resplen / 2, p1 == 1 ? "DF" : "EF");
 
 		memcpy(buf, apdu.resp, apdu.resplen);
 		buf += apdu.resplen;
@@ -530,8 +530,8 @@ static int tcos_set_security_env(sc_card_t *card, const sc_security_env_t *env, 
 			"No Key-Reference in SecEnvironment\n");
 	else
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
-			"Key-Reference %02X (len=%d)\n",
-			env->key_ref[0], env->key_ref_len);
+			 "Key-Reference %02X (len=%"SC_FORMAT_LEN_SIZE_T"u)\n",
+			 env->key_ref[0], env->key_ref_len);
 	/* Key-Reference 0x80 ?? */
 	default_key= !(env->flags & SC_SEC_ENV_KEY_REF_PRESENT) || (env->key_ref_len==1 && env->key_ref[0]==0x80);
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL,

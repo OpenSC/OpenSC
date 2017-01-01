@@ -273,7 +273,7 @@ CK_RV C_Login(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		goto out;
 	}
 
-	sc_log(context, "C_Login(0x%lx, %d)", hSession, userType);
+	sc_log(context, "C_Login(0x%lx, %lu)", hSession, userType);
 
 	slot = session->slot;
 
@@ -295,7 +295,7 @@ CK_RV C_Login(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		}
 	}
 	else {
-		sc_log(context, "C_Login() slot->login_user %li", slot->login_user);
+		sc_log(context, "C_Login() slot->login_user %i", slot->login_user);
 		if (slot->login_user >= 0) {
 			if ((CK_USER_TYPE) slot->login_user == userType)
 				rv = CKR_USER_ALREADY_LOGGED_IN;
