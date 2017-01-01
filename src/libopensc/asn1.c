@@ -1260,7 +1260,10 @@ static int asn1_decode_entry(sc_context_t *ctx,struct sc_asn1_entry *entry,
 
 	callback_func = parm;
 
-	sc_debug(ctx, SC_LOG_DEBUG_ASN1, "%*.*sdecoding '%s'\n", depth, depth, "", entry->name);
+	sc_debug(ctx, SC_LOG_DEBUG_ASN1, "%*.*sdecoding '%s', raw data:%s%s\n",
+		depth, depth, "", entry->name,
+		sc_dump_hex(obj, objlen > 16  ? 16 : objlen),
+		objlen > 16 ? "..." : "");
 
 	switch (entry->type) {
 	case SC_ASN1_STRUCT:
@@ -1482,7 +1485,7 @@ static int asn1_decode(sc_context_t *ctx, struct sc_asn1_entry *asn1,
 
 		obj = sc_asn1_skip_tag(ctx, &p, &left, entry->tag, &objlen);
 		if (obj == NULL) {
-			sc_debug(ctx, SC_LOG_DEBUG_ASN1, "not present\n");
+			sc_debug(ctx, SC_LOG_DEBUG_ASN1, "'%s' not present\n", entry->name);
 			if (choice)
 				continue;
 			if (entry->flags & SC_ASN1_OPTIONAL)
