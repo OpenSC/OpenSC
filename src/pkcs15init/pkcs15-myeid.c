@@ -290,8 +290,10 @@ myeid_create_pin(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	int r;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "PIN('%s',ref:%i,flags:0x%X,pin_len:%d,puk_len:%d)\n",
-			pin_obj->label, auth_info->attrs.pin.reference, auth_info->attrs.pin.flags, pin_len, puk_len);
+	sc_log(ctx,
+	       "PIN('%s',ref:%i,flags:0x%X,pin_len:%"SC_FORMAT_LEN_SIZE_T"u,puk_len:%"SC_FORMAT_LEN_SIZE_T"u)\n",
+	       pin_obj->label, auth_info->attrs.pin.reference,
+	       auth_info->attrs.pin.flags, pin_len, puk_len);
 
 	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
 		return SC_ERROR_OBJECT_NOT_VALID;
@@ -671,7 +673,10 @@ myeid_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 		else if (object->type == SC_PKCS15_TYPE_PRKEY_EC) {
 			struct sc_ec_parameters *ecparams = (struct sc_ec_parameters *)key_info->params.data;
 
-			sc_log(ctx, "curve '%s', len %i, oid '%s'", ecparams->named_curve, ecparams->field_length, sc_dump_oid(&(ecparams->id)));
+			sc_log(ctx,
+			       "curve '%s', len %"SC_FORMAT_LEN_SIZE_T"u, oid '%s'",
+			       ecparams->named_curve, ecparams->field_length,
+			       sc_dump_oid(&(ecparams->id)));
 			pubkey->algorithm = SC_ALGORITHM_EC;
 
 			r = sc_select_file(card, &file->path, NULL);

@@ -300,8 +300,10 @@ int sc_connect_card(sc_reader_t *reader, sc_card_t **card_out)
 	card->max_recv_size = sc_get_max_recv_size(card);
 	card->max_send_size = sc_get_max_send_size(card);
 
-	sc_log(ctx, "card info name:'%s', type:%i, flags:0x%X, max_send/recv_size:%i/%i",
-		card->name, card->type, card->flags, card->max_send_size, card->max_recv_size);
+	sc_log(ctx,
+	       "card info name:'%s', type:%i, flags:0x%lX, max_send/recv_size:%"SC_FORMAT_LEN_SIZE_T"u/%"SC_FORMAT_LEN_SIZE_T"u",
+	       card->name, card->type, card->flags, card->max_send_size,
+	       card->max_recv_size);
 
 #ifdef ENABLE_SM
         /* Check, if secure messaging module present. */
@@ -485,7 +487,9 @@ int sc_create_file(sc_card_t *card, sc_file_t *file)
 	if (r != SC_SUCCESS)
 		pbuf[0] = '\0';
 
-	sc_log(card->ctx, "called; type=%d, path=%s, id=%04i, size=%u",  in_path->type, pbuf, file->id, file->size);
+	sc_log(card->ctx,
+	       "called; type=%d, path=%s, id=%04i, size=%"SC_FORMAT_LEN_SIZE_T"u",
+	       in_path->type, pbuf, file->id, file->size);
 	/* ISO 7816-4: "Number of data bytes in the file, including structural information if any"
 	 * can not be bigger than two bytes */
 	if (file->size > 0xFFFF)
@@ -524,7 +528,8 @@ int sc_read_binary(sc_card_t *card, unsigned int idx,
 	int r;
 
 	assert(card != NULL && card->ops != NULL && buf != NULL);
-	sc_log(card->ctx, "called; %d bytes at index %d", count, idx);
+	sc_log(card->ctx, "called; %"SC_FORMAT_LEN_SIZE_T"u bytes at index %d",
+	       count, idx);
 	if (count == 0)
 		return 0;
 
@@ -574,7 +579,8 @@ int sc_write_binary(sc_card_t *card, unsigned int idx,
 	int r;
 
 	assert(card != NULL && card->ops != NULL && buf != NULL);
-	sc_log(card->ctx, "called; %d bytes at index %d", count, idx);
+	sc_log(card->ctx, "called; %"SC_FORMAT_LEN_SIZE_T"u bytes at index %d",
+	       count, idx);
 	if (count == 0)
 		LOG_FUNC_RETURN(card->ctx, 0);
 	if (card->ops->write_binary == NULL)
@@ -617,7 +623,8 @@ int sc_update_binary(sc_card_t *card, unsigned int idx,
 	int r;
 
 	assert(card != NULL && card->ops != NULL && buf != NULL);
-	sc_log(card->ctx, "called; %d bytes at index %d", count, idx);
+	sc_log(card->ctx, "called; %"SC_FORMAT_LEN_SIZE_T"u bytes at index %d",
+	       count, idx);
 	if (count == 0)
 		return 0;
 
@@ -668,7 +675,9 @@ int sc_erase_binary(struct sc_card *card, unsigned int offs, size_t count,  unsi
 	int r;
 
 	assert(card != NULL && card->ops != NULL);
-	sc_log(card->ctx, "called; erase %d bytes from offset %d", count, offs);
+	sc_log(card->ctx,
+	       "called; erase %"SC_FORMAT_LEN_SIZE_T"u bytes from offset %d",
+	       count, offs);
 
 	if (card->ops->erase_binary == NULL)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
@@ -1170,9 +1179,11 @@ void sc_print_cache(struct sc_card *card)   {
 				sc_print_path(&card->cache.current_ef->path));
 
 	if (card->cache.current_df)
-		sc_log(ctx, "current_df(type=%i, aid_len=%i) %s", card->cache.current_df->path.type,
-				card->cache.current_df->path.aid.len,
-				sc_print_path(&card->cache.current_df->path));
+		sc_log(ctx,
+		       "current_df(type=%i, aid_len=%"SC_FORMAT_LEN_SIZE_T"u) %s",
+		       card->cache.current_df->path.type,
+		       card->cache.current_df->path.aid.len,
+		       sc_print_path(&card->cache.current_df->path));
 }
 
 int sc_copy_ec_params(struct sc_ec_parameters *dst, struct sc_ec_parameters *src)

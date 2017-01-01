@@ -641,7 +641,9 @@ static int cryptoflex_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 		if (r)
 			return r;
 		if (apdu.resplen != 4) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "expected 4 bytes, got %d.\n", apdu.resplen);
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+				 "expected 4 bytes, got %"SC_FORMAT_LEN_SIZE_T"u.\n",
+				 apdu.resplen);
 			return SC_ERROR_UNKNOWN_DATA_RECEIVED;
 		}
 		memcpy(buf, rbuf + 2, 2);
@@ -676,7 +678,9 @@ static int cyberflex_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 		if (r)
 			return r;
 		if (apdu.resplen != 6) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "expected 6 bytes, got %d.\n", apdu.resplen);
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+				 "expected 6 bytes, got %"SC_FORMAT_LEN_SIZE_T"u.\n",
+				 apdu.resplen);
 			return SC_ERROR_UNKNOWN_DATA_RECEIVED;
 		}
 		memcpy(buf, rbuf + 4, 2);
@@ -845,7 +849,8 @@ cyberflex_construct_file_attrs(sc_card_t *card, const sc_file_t *file,
 		break;
 	}
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Creating %02x:%02x, size %d %02x:%02x\n",
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+		 "Creating %02x:%02x, size %"SC_FORMAT_LEN_SIZE_T"u %02"SC_FORMAT_LEN_SIZE_T"x:%02"SC_FORMAT_LEN_SIZE_T"x\n",
 		 file->id >> 8,
 		 file->id & 0xFF,
 		 size,
@@ -983,7 +988,9 @@ cryptoflex_compute_signature(sc_card_t *card, const u8 *data,
 	size_t i, i2;
 	
 	if (data_len != 64 && data_len != 96 && data_len != 128  && data_len != 256) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Illegal input length: %d\n", data_len);
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+			 "Illegal input length: %"SC_FORMAT_LEN_SIZE_T"u\n",
+			 data_len);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	if (outlen < data_len) {
@@ -1042,7 +1049,9 @@ cyberflex_compute_signature(sc_card_t *card, const u8 *data,
 	case 96:  alg_id = 0xC6; break;
 	case 128: alg_id = 0xC8; break;
 	default:
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Illegal input length: %d\n", data_len);
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+			 "Illegal input length: %"SC_FORMAT_LEN_SIZE_T"u\n",
+			 data_len);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	key_id = prv->rsa_key_ref + 1; /* Why? */

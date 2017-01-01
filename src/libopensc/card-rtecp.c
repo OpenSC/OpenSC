@@ -435,7 +435,8 @@ static int rtecp_change_reference_data(sc_card_t *card, unsigned int type,
 	int r;
 
 	assert(card && card->ctx && newref);
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "newlen = %u\n", newlen);
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+		 "newlen = %"SC_FORMAT_LEN_SIZE_T"u\n", newlen);
 	if (newlen > sizeof(buf) - 2 - sizeof(tmp) - 2 * (sizeof(buf) / 0xFF + 1))
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
 

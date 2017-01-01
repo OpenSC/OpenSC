@@ -321,7 +321,9 @@ sm_gp_encrypt_command_data(struct sc_context *ctx, unsigned char *session_key,
 	if (!out || !out_len)
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "SM GP encrypt command data error");
 
-	sc_log(ctx, "SM GP encrypt command data(len:%i,%p)", in_len, in);
+	sc_log(ctx,
+	       "SM GP encrypt command data(len:%"SC_FORMAT_LEN_SIZE_T"u,%p)",
+	       in_len, in);
 	if (in==NULL || in_len==0)   {
 		*out = NULL;
 		*out_len = 0;
@@ -363,9 +365,10 @@ sm_gp_securize_apdu(struct sc_context *ctx, struct sm_info *sm_info,
 	LOG_FUNC_CALLED(ctx);
 
 	apdu_data = (unsigned char *)apdu->data;
-	sc_log(ctx, "SM GP securize APDU(cse:%X,cla:%X,ins:%X,data(len:%i,%p),lc:%i,GP level:%X,GP index:%X",
-				apdu->cse, apdu->cla, apdu->ins, apdu->datalen, apdu->data,
-				apdu->lc, gp_level, gp_index);
+	sc_log(ctx,
+	       "SM GP securize APDU(cse:%X,cla:%X,ins:%X,data(len:%"SC_FORMAT_LEN_SIZE_T"u,%p),lc:%"SC_FORMAT_LEN_SIZE_T"u,GP level:%X,GP index:%X",
+	       apdu->cse, apdu->cla, apdu->ins, apdu->datalen, apdu->data,
+	       apdu->lc, gp_level, gp_index);
 
 	if (gp_level == 0 || (apdu->cla & 0x04))
 		return 0;
@@ -384,7 +387,9 @@ sm_gp_securize_apdu(struct sc_context *ctx, struct sm_info *sm_info,
 		if (encrypted_len + 8 > SC_MAX_APDU_BUFFER_SIZE)
 			LOG_TEST_RET(ctx, SC_ERROR_BUFFER_TOO_SMALL, "SM GP securize APDU: not enough place for encrypted data");
 
-		sc_log(ctx, "SM GP securize APDU: encrypted length %i", encrypted_len);
+		sc_log(ctx,
+		       "SM GP securize APDU: encrypted length %"SC_FORMAT_LEN_SIZE_T"u",
+		       encrypted_len);
 	}
 	else   {
 		LOG_TEST_RET(ctx, SC_ERROR_SM_INVALID_LEVEL, "SM GP securize APDU: invalid SM level");

@@ -200,14 +200,14 @@ static void sc_pkcs11_print_attr(int level, const char *file, unsigned int line,
 
 	if (fm == NULL) {
 		sc_do_log(context, level,
-				file, line, function,
-				"%s: Attribute 0x%x = %s\n",
-				info, attr->type, value);
+			  file, line, function,
+			  "%s: Attribute 0x%lx = %s\n",
+			  info, attr->type, value);
 	} else {
 		sc_do_log(context, level,
-				file, line, function,
-				"%s: %s = %s\n",
-				info, fm->name, value);
+			  file, line, function,
+			  "%s: %s = %s\n",
+			  info, fm->name, value);
 	}
 }
 

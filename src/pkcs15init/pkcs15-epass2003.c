@@ -371,7 +371,7 @@ cosm_new_file(struct sc_profile *profile, struct sc_card *card,
 	file->ef_structure = structure;
 
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
-		 "file size %i; ef type %i/%i; id %04X, path_len %i\n",
+		 "file size %"SC_FORMAT_LEN_SIZE_T"u; ef type %i/%i; id %04X, path_len %"SC_FORMAT_LEN_SIZE_T"u\n",
 		 file->size, file->type, file->ef_structure, file->id,
 		 file->path.len);
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "file path: %s",
@@ -410,7 +410,8 @@ static int epass2003_pkcs15_store_key(struct sc_profile *profile,
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "index %i; id %s\n", idx,
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+		 "index %"SC_FORMAT_LEN_SIZE_T"u; id %s\n", idx,
 		 sc_pkcs15_print_id(&key_info->id));
 	if (key->algorithm != SC_ALGORITHM_RSA
 	    || key->algorithm != SC_ALGORITHM_RSA)
@@ -439,11 +440,13 @@ static int epass2003_pkcs15_store_key(struct sc_profile *profile,
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r,
 		    "create key: failed to create key file");
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "index %i; keybits %i\n", idx,
-		 keybits);
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+		 "index %"SC_FORMAT_LEN_SIZE_T"u; keybits %"SC_FORMAT_LEN_SIZE_T"u\n",
+		 idx, keybits);
 	if (keybits < 1024 || keybits > 2048 || (keybits % 0x20)) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE_TOOL,
-			 "Unsupported key size %u\n", keybits);
+			 "Unsupported key size %"SC_FORMAT_LEN_SIZE_T"u\n",
+			 keybits);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
@@ -518,11 +521,13 @@ static int epass2003_pkcs15_generate_key(struct sc_profile *profile,
 	SC_TEST_GOTO_ERR(card->ctx, SC_LOG_DEBUG_NORMAL, r,
 		    "create key: failed to create key file");
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "index %i; keybits %i\n", idx,
-		 keybits);
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+		 "index %"SC_FORMAT_LEN_SIZE_T"u; keybits %"SC_FORMAT_LEN_SIZE_T"u\n",
+		 idx, keybits);
 	if (keybits < 1024 || keybits > 2048 || (keybits % 0x20)) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE_TOOL,
-			 "Unsupported key size %u\n", keybits);
+			 "Unsupported key size %"SC_FORMAT_LEN_SIZE_T"u\n",
+			 keybits);
 		r = SC_ERROR_INVALID_ARGUMENTS;
 		goto err;
 	}
@@ -555,7 +560,7 @@ static int epass2003_pkcs15_generate_key(struct sc_profile *profile,
 	    + pukf->path.value[pukf->path.len - 1];
 
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
-		 "public key size %i; ef type %i/%i; id %04X; path: %s",
+		 "public key size %"SC_FORMAT_LEN_SIZE_T"u; ef type %i/%i; id %04X; path: %s",
 		 pukf->size, pukf->type, pukf->ef_structure, pukf->id,
 		 sc_print_path(&pukf->path));
 

@@ -173,7 +173,8 @@ sc_pkcs1_strip_02_padding(sc_context_t *ctx, const u8 *data, size_t len, u8 *out
 	*out_len = len - n;
 	memmove(out, data + n, *out_len);
 
-	sc_log(ctx, "stripped output(%i): %s", len - n, sc_dump_hex(out, len - n));
+	sc_log(ctx, "stripped output(%"SC_FORMAT_LEN_SIZE_T"u): %s", len - n,
+	       sc_dump_hex(out, len - n));
 	LOG_FUNC_RETURN(ctx, len - n);
 }
 
@@ -284,7 +285,7 @@ int sc_get_encoding_flags(sc_context_t *ctx,
 	if (pflags == NULL || sflags == NULL)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
-	sc_log(ctx, "iFlags 0x%X, card capabilities 0x%X", iflags, caps);
+	sc_log(ctx, "iFlags 0x%lX, card capabilities 0x%lX", iflags, caps);
 	for (i = 0; digest_info_prefix[i].algorithm != 0; i++) {
 		if (iflags & digest_info_prefix[i].algorithm) {
 			if (digest_info_prefix[i].algorithm != SC_ALGORITHM_RSA_HASH_NONE &&
@@ -313,6 +314,6 @@ int sc_get_encoding_flags(sc_context_t *ctx,
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "unsupported algorithm");
 	}
 
-	sc_log(ctx, "pad flags 0x%X, secure algorithm flags 0x%X", *pflags, *sflags);
+	sc_log(ctx, "pad flags 0x%lX, secure algorithm flags 0x%lX", *pflags, *sflags);
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }

@@ -1235,8 +1235,8 @@ gpk_compute_signature(sc_card_t *card, const u8 *data,
 
 	if (data_len > priv->sec_mod_len) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
-			"Data length (%u) does not match key modulus %u.\n",
-			data_len, priv->sec_mod_len);
+			 "Data length (%"SC_FORMAT_LEN_SIZE_T"u) does not match key modulus %u.\n",
+			 data_len, priv->sec_mod_len);
 		return SC_ERROR_INTERNAL;
 	}
 	if (sizeof(cardsig) < priv->sec_mod_len)
@@ -1289,8 +1289,8 @@ gpk_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 
 	if (inlen != priv->sec_mod_len) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
-			"Data length (%u) does not match key modulus %u.\n",
-			inlen, priv->sec_mod_len);
+			 "Data length (%"SC_FORMAT_LEN_SIZE_T"u) does not match key modulus %u.\n",
+			 inlen, priv->sec_mod_len);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
