@@ -389,16 +389,6 @@ print_data_object(const char *kind, const u8*data, size_t data_len)
 			}
 		for (i=0; i < data_len; i++)
 			fprintf(outf, "%c", data[i]);
-		if (opt_raw) {
-			for (i=0; i < data_len; i++)
-				printf("%c", data[i]);
-		} else {
-			printf("Dumping (%lu bytes) to file <%s>: <",
-				(unsigned long) data_len, opt_outfile);
-			for (i=0; i < data_len; i++)
-				printf(" %02X", data[i]);
-			printf(" >\n");
-		}
 		fclose(outf);
 	} else {
 		if (opt_raw) {
