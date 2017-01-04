@@ -153,11 +153,13 @@ int encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 
 	if (o->type != EVP_PK_RSA) {
 		debug_print(" [ KEY %s ] Skip non-RSA key for encryption", o->id_str);
+		free(message);
 		return 0;
 	}
 	/* XXX other supported encryption mechanisms */
 	if (mech->mech != CKM_RSA_X_509 && mech->mech != CKM_RSA_PKCS) {
 		debug_print(" [ KEY %s ] Skip encryption for non-supported mechanism", o->id_str);
+		free(message);
 		return 0;
 	}
 
@@ -194,8 +196,7 @@ int encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 		rv = 0;
 	}
 	free(dec_message);
-	if (mech->mech == CKM_RSA_X_509)
-		free(message);
+	free(message);
 	return rv;
 }
 
@@ -482,6 +483,7 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 
 	if (o->type != EVP_PK_EC && o->type != EVP_PK_RSA) {
 		debug_print(" [SKIP %s ] Skip non-RSA and non-EC key", o->id_str);
+		free(message);
 		return 0;
 	}
 
@@ -501,8 +503,7 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 	rv = verify_message(o, info, message, message_length, mech,
 		sign, sign_length, multipart);
 	free(sign);
-	if (mech->mech == CKM_RSA_X_509)
-		free(message);
+	free(message);
 	return rv;
 }
 
