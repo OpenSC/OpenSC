@@ -1,0 +1,13 @@
+{
+   Suppress pcsc_detect_readers()
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:malloc
+   obj:*
+   obj:*
+   fun:pcsc_detect_readers
+   fun:sc_ctx_detect_readers
+   fun:sc_context_create
+   fun:C_Initialize
+}
+
