@@ -1200,6 +1200,10 @@ sc_pkcs15_free_pubkey_info(sc_pkcs15_pubkey_info_t *info)
 {
 	if (info->subject.value)
 		free(info->subject.value);
+	if (info->direct.spki.value)
+		free(info->direct.spki.value);
+	if (info->direct.raw.value)
+		free(info->direct.raw.value);
 	sc_pkcs15_free_key_params(&info->params);
 	free(info);
 }
