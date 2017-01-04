@@ -21,13 +21,14 @@
 
 #include "p11test_case_readonly.h"
 
-unsigned char *rsa_x_509_pad_message(const unsigned char *message,
+unsigned char *rsa_x_509_pad_message(unsigned char *message,
 	unsigned long *message_length, test_cert_t *o)
 {
 	int pad_message_length = (o->bits+7)/8;
 	unsigned char *pad_message = malloc(pad_message_length);
 	RSA_padding_add_PKCS1_type_1(pad_message, pad_message_length,
 	    message, *message_length);
+	free(message);
 	*message_length = pad_message_length;
 	return pad_message;
 }
@@ -144,7 +145,7 @@ int decrypt_message(test_cert_t *o, token_info_t *info, CK_BYTE *enc_message,
 int encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 	CK_ULONG message_length, int multipart)
 {
-	CK_BYTE *message = (CK_BYTE *)SHORT_MESSAGE_TO_SIGN;
+	CK_BYTE *message = (CK_BYTE *) strdup(SHORT_MESSAGE_TO_SIGN);
 	CK_BYTE *dec_message = NULL;
 	int dec_message_length = 0;
 	unsigned char *enc_message;
@@ -466,8 +467,7 @@ openssl_verify:
 int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
     CK_ULONG message_length, int multipart)
 {
-	CK_BYTE *message_default = (CK_BYTE *)SHORT_MESSAGE_TO_SIGN;
-	CK_BYTE *message = message_default;
+	CK_BYTE *message = (CK_BYTE *) strdup(SHORT_MESSAGE_TO_SIGN);
 	CK_BYTE *sign = NULL;
 	CK_ULONG sign_length = 0;
 	int rv = 0;
