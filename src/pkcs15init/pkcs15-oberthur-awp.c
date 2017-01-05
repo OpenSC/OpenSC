@@ -152,8 +152,7 @@ awp_new_file(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 	if (otag)   {
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "obj template %s",otag);
 		if (sc_profile_get_file(profile, otag, &ofile) < 0) {
-			if (ifile)
-				sc_file_free(ifile);
+			sc_file_free(ifile);
 			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "profile does not defines template '%s'", name);
 			return SC_ERROR_INCONSISTENT_PROFILE;
 		}
@@ -531,8 +530,8 @@ awp_update_container(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 	}
 
 done:
-	if (clist)	sc_file_free(clist);
-	if (file)	sc_file_free(file);
+	sc_file_free(clist);
+	sc_file_free(file);
 	if (list)  free(list);
 
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, rv);
@@ -1392,10 +1391,8 @@ awp_update_df_create_cert(struct sc_pkcs15_card *p15card, struct sc_profile *pro
 
 	awp_free_cert_info(&icert);
 
-	if (info_file)
-		sc_file_free(info_file);
-	if (obj_file)
-		sc_file_free(obj_file);
+	sc_file_free(info_file);
+	sc_file_free(obj_file);
 
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, rv);
 }
@@ -1478,8 +1475,7 @@ awp_update_df_create_prvkey(struct sc_pkcs15_card *p15card, struct sc_profile *p
 err:
 	if (p15cert)
 		sc_pkcs15_free_certificate(p15cert);
-	if (info_file)
-		sc_file_free(info_file);
+	sc_file_free(info_file);
 	if (cert_obj)
 		awp_free_cert_info(&icert);
 
@@ -1532,8 +1528,7 @@ awp_update_df_create_pubkey(struct sc_pkcs15_card *p15card, struct sc_profile *p
 	awp_free_key_info(&ikey);
 
 err:
-	if (info_file)
-		sc_file_free(info_file);
+	sc_file_free(info_file);
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, rv);
 }
 
@@ -1572,10 +1567,8 @@ awp_update_df_create_data(struct sc_pkcs15_card *p15card, struct sc_profile *pro
 
 	awp_free_data_info(&idata);
 
-	if (info_file)
-		sc_file_free(info_file);
-	if (obj_file)
-		sc_file_free(obj_file);
+	sc_file_free(info_file);
+	sc_file_free(obj_file);
 
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, rv);
 }
@@ -1689,8 +1682,8 @@ awp_delete_from_container(struct sc_pkcs15_card *p15card,
 	if (rv > 0)
 		rv = 0;
 
-	if (buff)		free(buff);
-	if (clist)		sc_file_free(clist);
+	free(buff);
+	sc_file_free(clist);
 	sc_file_free(file);
 
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, rv);
@@ -1766,8 +1759,7 @@ done:
 	if (buff)
 		free(buff);
 	sc_file_free(lst);
-	if (lst_file)
-		sc_file_free(lst_file);
+	sc_file_free(lst_file);
 
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, rv);
 }

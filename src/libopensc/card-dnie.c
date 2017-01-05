@@ -556,10 +556,8 @@ static int dnie_get_info(sc_card_t * card, char *data[])
 
 	/* phase 2: get IDESP */
 	sc_format_path("3F000006", &path);
-	if (file) {
-		sc_file_free(file);
-		file = NULL;
-	}
+	sc_file_free(file);
+	file = NULL;
 	if (buffer) {
 		free(buffer); 
 		buffer=NULL; 
@@ -581,10 +579,8 @@ static int dnie_get_info(sc_card_t * card, char *data[])
 get_info_ph3:
 	/* phase 3: get DNIe software version */
 	sc_format_path("3F002F03", &path);
-	if (file) {
-		sc_file_free(file);
-		file = NULL;
-	}
+	sc_file_free(file);
+	file = NULL;
 	if (buffer) {
 		free(buffer); 
 		buffer=NULL; 
@@ -614,10 +610,8 @@ get_info_ph3:
 	msg = NULL;
 
 get_info_end:
-	if (file) {
-		sc_file_free(file);
-		file = NULL;
-	}
+	sc_file_free(file);
+	file = NULL;
 	if (buffer) {
 		free(buffer);
 		buffer=NULL;
@@ -1206,8 +1200,7 @@ static int dnie_compose_and_send_apdu(sc_card_t *card, const u8 *path, size_t pa
 		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 	}
 	res = card->ops->process_fci(card, file, apdu.resp + 2, apdu.resp[1]);
-	if (*file_out != NULL)
-		sc_file_free(*file_out);
+	sc_file_free(*file_out);
 	*file_out = file;
 	dnie_free_apdu_buffers(&apdu, rbuf, sizeof(rbuf));
 	LOG_FUNC_RETURN(ctx, res);

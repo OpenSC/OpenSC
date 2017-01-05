@@ -406,14 +406,10 @@ fix_authentic_ddo(struct sc_pkcs15_card *p15card)
 	 * Cleanup this attributes -- default values must be OK.
 	 */
 	if (p15card->card->type == SC_CARD_TYPE_OBERTHUR_AUTHENTIC_3_2)   {
-		if (p15card->file_odf != NULL) {
-			sc_file_free(p15card->file_odf);
-			p15card->file_odf = NULL;
-		}
-		if (p15card->file_tokeninfo != NULL) {
-			sc_file_free(p15card->file_tokeninfo);
-			p15card->file_tokeninfo = NULL;
-		}
+		sc_file_free(p15card->file_odf);
+		p15card->file_odf = NULL;
+		sc_file_free(p15card->file_tokeninfo);
+		p15card->file_tokeninfo = NULL;
 	}
 }
 
@@ -518,18 +514,12 @@ parse_ddo(struct sc_pkcs15_card *p15card, const u8 * buf, size_t buflen)
 	fix_authentic_ddo(p15card);
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 mem_err:
-	if (p15card->file_odf != NULL) {
-		sc_file_free(p15card->file_odf);
-		p15card->file_odf = NULL;
-	}
-	if (p15card->file_tokeninfo != NULL) {
-		sc_file_free(p15card->file_tokeninfo);
-		p15card->file_tokeninfo = NULL;
-	}
-	if (p15card->file_unusedspace != NULL) {
-		sc_file_free(p15card->file_unusedspace);
-		p15card->file_unusedspace = NULL;
-	}
+	sc_file_free(p15card->file_odf);
+	p15card->file_odf = NULL;
+	sc_file_free(p15card->file_tokeninfo);
+	p15card->file_tokeninfo = NULL;
+	sc_file_free(p15card->file_unusedspace);
+	p15card->file_unusedspace = NULL;
 	LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 }
 
@@ -794,14 +784,10 @@ sc_pkcs15_card_free(struct sc_pkcs15_card *p15card)
 	sc_pkcs15_free_unusedspace(p15card);
 	p15card->unusedspace_read = 0;
 
-	if (p15card->file_app != NULL)
-		sc_file_free(p15card->file_app);
-	if (p15card->file_tokeninfo != NULL)
-		sc_file_free(p15card->file_tokeninfo);
-	if (p15card->file_odf != NULL)
-		sc_file_free(p15card->file_odf);
-	if (p15card->file_unusedspace != NULL)
-		sc_file_free(p15card->file_unusedspace);
+	sc_file_free(p15card->file_app);
+	sc_file_free(p15card->file_tokeninfo);
+	sc_file_free(p15card->file_odf);
+	sc_file_free(p15card->file_unusedspace);
 
 	p15card->magic = 0;
 	sc_pkcs15_free_tokeninfo(p15card);
@@ -827,22 +813,14 @@ sc_pkcs15_card_clear(struct sc_pkcs15_card *p15card)
 	sc_pkcs15_remove_dfs(p15card);
 
 	p15card->df_list = NULL;
-	if (p15card->file_app != NULL) {
-		sc_file_free(p15card->file_app);
-		p15card->file_app = NULL;
-	}
-	if (p15card->file_tokeninfo != NULL) {
-		sc_file_free(p15card->file_tokeninfo);
-		p15card->file_tokeninfo = NULL;
-	}
-	if (p15card->file_odf != NULL) {
-		sc_file_free(p15card->file_odf);
-		p15card->file_odf = NULL;
-	}
-	if (p15card->file_unusedspace != NULL) {
-		sc_file_free(p15card->file_unusedspace);
-		p15card->file_unusedspace = NULL;
-	}
+	sc_file_free(p15card->file_app);
+	p15card->file_app = NULL;
+	sc_file_free(p15card->file_tokeninfo);
+	p15card->file_tokeninfo = NULL;
+	sc_file_free(p15card->file_odf);
+	p15card->file_odf = NULL;
+	sc_file_free(p15card->file_unusedspace);
+	p15card->file_unusedspace = NULL;
 	if (p15card->tokeninfo->label != NULL) {
 		free(p15card->tokeninfo->label);
 		p15card->tokeninfo->label = NULL;
@@ -2433,8 +2411,7 @@ sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_pat
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 
 fail_unlock:
-	if (file)
-		sc_file_free(file);
+	sc_file_free(file);
 	sc_unlock(p15card->card);
 	LOG_FUNC_RETURN(ctx, r);
 }

@@ -46,8 +46,7 @@ int dump_ef(sc_card_t * card, const char *path, u8 * buf, size_t * buf_len)
 	sc_format_path(path, &scpath);
 	rv = sc_select_file(card, &scpath, &file);
 	if (rv < 0) {
-		if (file)
-			sc_file_free(file);
+		sc_file_free(file);
 		return rv;
 	}
 	if (file->size > *buf_len) {

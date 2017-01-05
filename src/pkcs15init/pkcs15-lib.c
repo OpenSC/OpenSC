@@ -467,8 +467,7 @@ sc_pkcs15init_set_p15card(struct sc_profile *profile, struct sc_pkcs15_card *p15
 			}
 		}
 
-                if (file)
-			sc_file_free(file);
+		sc_file_free(file);
 	}
 
 	profile->p15_data = p15card;
@@ -2842,8 +2841,7 @@ sc_pkcs15init_update_any_df(struct sc_pkcs15_card *p15card,
 		}
 		free(buf);
 	}
-	if (file)
-		sc_file_free(file);
+	sc_file_free(file);
 
 	LOG_TEST_RET(ctx, r, "Failed to encode or update xDF");
 
@@ -3253,8 +3251,7 @@ sc_pkcs15init_update_certificate(struct sc_pkcs15_card *p15card,
 	profile->dirty = 1;
 
 done:
-	if (file)
-		sc_file_free(file);
+	sc_file_free(file);
 
 	LOG_FUNC_RETURN(ctx, r);
 }
@@ -3545,8 +3542,7 @@ sc_pkcs15init_authenticate(struct sc_profile *profile, struct sc_pkcs15_card *p1
 		r = sc_pkcs15init_verify_secret(profile, p15card, file_tmp ? file_tmp : file, acl->method, acl->key_ref);
 	}
 
-	if (file_tmp)
-		sc_file_free(file_tmp);
+	sc_file_free(file_tmp);
 
 	LOG_FUNC_RETURN(ctx, r);
 }
@@ -3630,8 +3626,7 @@ sc_pkcs15init_create_file(struct sc_profile *profile, struct sc_pkcs15_card *p15
 	r = sc_create_file(p15card->card, file);
 	LOG_TEST_RET(ctx, r, "Create file failed");
 
-	if (parent)
-		sc_file_free(parent);
+	sc_file_free(parent);
 	LOG_FUNC_RETURN(ctx, r);
 }
 

@@ -243,8 +243,7 @@ static int infocamere_1200_init(sc_pkcs15_card_t * p15card)
 
 	if (r != SC_SUCCESS || file->size > 255) {
 		/* Not EF.GDO */
-		if (file)
-			sc_file_free(file);
+		sc_file_free(file);
 		return SC_ERROR_WRONG_CARD;
 	}
 

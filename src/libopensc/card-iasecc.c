@@ -288,11 +288,11 @@ iasecc_select_mf(struct sc_card *card, struct sc_file **file_out)
 	mf_file->type = SC_FILE_TYPE_DF;
 	mf_file->path = path;
 
-	if (card->cache.valid && card->cache.current_df)
+	if (card->cache.valid)
 		 sc_file_free(card->cache.current_df);
 	card->cache.current_df = NULL;
 
-	if (card->cache.valid && card->cache.current_ef)
+	if (card->cache.valid)
 		sc_file_free(card->cache.current_ef);
 	card->cache.current_ef = NULL;
 
@@ -895,7 +895,7 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 
 		if (file_out)
 			*file_out = file;
-		else if (file)
+		else
 		   sc_file_free(file);
 
 		if (lpath.type == SC_PATH_TYPE_DF_NAME)
@@ -915,8 +915,7 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 			&& !memcmp(card->cache.current_df->path.value, lpath.value, lpath.len))   {
 		sc_log(ctx, "returns current DF path %s", sc_print_path(&card->cache.current_df->path));
 		if (file_out)   {
-			if (*file_out)
-				sc_file_free(*file_out);
+			sc_file_free(*file_out);
 			sc_file_dup(file_out, card->cache.current_df);
 		}
 
@@ -1010,7 +1009,7 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 		if (rv == SC_ERROR_FILE_NOT_FOUND && cache_valid && df_from_cache)   {
 			card->cache.valid = 0;
 			sc_log(ctx, "iasecc_select_file() file not found, retry without cached DF");
-			if (file_out && *file_out)   {
+			if (file_out)   {
 				sc_file_free(*file_out);
 				*file_out = NULL;
 			}
@@ -1042,12 +1041,12 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 
 			sc_log(ctx, "FileType %i", file->type);
 			if (file->type == SC_FILE_TYPE_DF)   {
-				if (card->cache.valid && card->cache.current_df)
+				if (card->cache.valid)
 					sc_file_free(card->cache.current_df);
 				card->cache.current_df = NULL;
 
 
-				if (card->cache.valid && card->cache.current_ef)
+				if (card->cache.valid)
 					sc_file_free(card->cache.current_ef);
 				card->cache.current_ef = NULL;
 
@@ -1055,7 +1054,7 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 				card->cache.valid = 1;
 			}
 			else   {
-				if (card->cache.valid && card->cache.current_ef)
+				if (card->cache.valid)
 					sc_file_free(card->cache.current_ef);
 
 				card->cache.current_ef = NULL;
@@ -1064,8 +1063,7 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 			}
 
 			if (file_out)   {
-				if (*file_out)
-					sc_file_free(*file_out);
+				sc_file_free(*file_out);
 				*file_out = file;
 			}
 			else   {
@@ -1073,12 +1071,10 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 			}
 		}
 		else if (lpath.type == SC_PATH_TYPE_DF_NAME)   {
-			if (card->cache.current_df)
-				sc_file_free(card->cache.current_df);
+			sc_file_free(card->cache.current_df);
 			card->cache.current_df = NULL;
 
-			if (card->cache.current_ef)
-				sc_file_free(card->cache.current_ef);
+			sc_file_free(card->cache.current_ef);
 			card->cache.current_ef = NULL;
 
 			card->cache.valid = 1;
@@ -1388,8 +1384,7 @@ iasecc_finish(struct sc_card *card)
 	LOG_FUNC_CALLED(ctx);
 
 	while (se_info)   {
-		if (se_info->df)
-			sc_file_free(se_info->df);
+		sc_file_free(se_info->df);
 		next = se_info->next;
 		free(se_info);
 		se_info = next;
@@ -1436,7 +1431,7 @@ iasecc_delete_file(struct sc_card *card, const struct sc_path *path)
 		rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
 		LOG_TEST_RET(ctx, rv, "Delete file failed");
 
-		if (card->cache.valid && card->cache.current_ef)
+		if (card->cache.valid)
 			sc_file_free(card->cache.current_ef);
 		card->cache.current_ef = NULL;
 	}
@@ -1916,8 +1911,7 @@ iasecc_se_at_to_chv_reference(struct sc_card *card, unsigned reference,
 	if (chv_reference)
 		*chv_reference = crt.refs[0];
 
-	if (se.df)
-		sc_file_free(se.df);
+	sc_file_free(se.df);
 
 	LOG_FUNC_RETURN(ctx, rv);
 }
@@ -2211,8 +2205,7 @@ iasecc_pin_get_policy (struct sc_card *card, struct sc_pin_cmd_data *data)
 			continue;
 		}
 
-		if (se.df)
-			sc_file_free(se.df);
+		sc_file_free(se.df);
 	}
 
 	if (sdo.data.chv.size_max.value)
@@ -2977,8 +2970,7 @@ iasecc_get_chv_reference_from_se(struct sc_card *card, int *se_reference)
 	rv = iasecc_se_get_crt(card, &se, &crt);
 	LOG_TEST_RET(ctx, rv, "Cannot get 'USER PASSWORD' authentication template");
 
-	if (se.df)
-		sc_file_free(se.df);
+	sc_file_free(se.df);
 	LOG_FUNC_RETURN(ctx, crt.refs[0]);
 }
 

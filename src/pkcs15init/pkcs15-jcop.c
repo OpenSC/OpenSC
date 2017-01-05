@@ -324,10 +324,8 @@ jcop_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	  free(keybuf);
      if (delete_ok)
 	  sc_pkcs15init_rmdir(p15card, profile, temppubfile);
-     if (keyfile)
-	  sc_file_free(keyfile);
-     if (temppubfile)
-	  sc_file_free(temppubfile);
+	 sc_file_free(keyfile);
+	 sc_file_free(temppubfile);
      return r;
 }
 

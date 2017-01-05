@@ -565,16 +565,13 @@ authentic_set_current_files(struct sc_card *card, struct sc_path *path,
 				card->cache.current_df->path.len += cur_df_path.len;
 			}
 
-			if (card->cache.current_ef)   {
-				sc_file_free(card->cache.current_ef);
-				card->cache.current_ef = NULL;
-			}
+			sc_file_free(card->cache.current_ef);
+			card->cache.current_ef = NULL;
 
 			card->cache.valid = 1;
 		}
 		else   {
-			if (card->cache.current_ef)
-				sc_file_free(card->cache.current_ef);
+			sc_file_free(card->cache.current_ef);
 			card->cache.current_ef = NULL;
 			sc_file_dup(&card->cache.current_ef, file);
 		}
@@ -625,12 +622,10 @@ authentic_select_mf(struct sc_card *card, struct sc_file **file_out)
 	LOG_TEST_RET(ctx, rv, "authentic_select_file() check SW failed");
 
 	if (card->cache.valid == 1)   {
-		if (card->cache.current_df)
-			sc_file_free(card->cache.current_df);
+		sc_file_free(card->cache.current_df);
 		card->cache.current_df = NULL;
 
-		if (card->cache.current_ef)
-			sc_file_free(card->cache.current_ef);
+		sc_file_free(card->cache.current_ef);
 		card->cache.current_ef = NULL;
 	}
 
@@ -1220,7 +1215,7 @@ authentic_delete_file(struct sc_card *card, const struct sc_path *path)
 	}
 	LOG_TEST_RET(ctx, rv, "Delete file failed");
 
-	if (card->cache.valid && card->cache.current_ef)   {
+	if (card->cache.valid)   {
 		sc_file_free(card->cache.current_ef);
 		card->cache.current_ef = NULL;
 	}

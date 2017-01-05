@@ -624,12 +624,9 @@ static int epass2003_pkcs15_generate_key(struct sc_profile *profile,
 		free(gendat.modulus);
 
 err:
-	if (pukf)
-		sc_file_free(pukf);
-	if (file)
-		sc_file_free(file);
-	if (tfile)
-		sc_file_free(tfile);
+	sc_file_free(pukf);
+	sc_file_free(file);
+	sc_file_free(tfile);
 
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 }

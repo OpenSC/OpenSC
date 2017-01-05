@@ -502,8 +502,7 @@ authentic_free_sdo_data(struct sc_authentic_sdo *sdo)
 	if (!sdo)
 		return;
 
-	if (sdo->file)
-		sc_file_free(sdo->file);
+	sc_file_free(sdo->file);
 
 	for (ii=0; ii<rsa_mechs_num; ii++)
 		if (sdo->docp.mech == authentic_v3_rsa_mechs[ii])
@@ -737,8 +736,7 @@ authentic_pkcs15_delete_rsa_sdo (struct sc_profile *profile, struct sc_pkcs15_ca
 	LOG_TEST_GOTO_ERR(ctx, rv, "SC_CARDCTL_AUTHENTIC_SDO_DELETE failed for private key");
 
 err:
-	if (file)
-		sc_file_free(file);
+	sc_file_free(file);
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
