@@ -542,6 +542,8 @@ sc_file_t * sc_file_new(void)
 void sc_file_free(sc_file_t *file)
 {
 	unsigned int i;
+	if (file == NULL)
+		return;
 	assert(sc_file_valid(file));
 	file->magic = 0;
 	for (i = 0; i < SC_MAX_AC_OPS; i++)
@@ -600,8 +602,7 @@ void sc_file_dup(sc_file_t **dest, const sc_file_t *src)
 		goto err;
 	return;
 err:
-	if (newf != NULL)
-		sc_file_free(newf);
+	sc_file_free(newf);
 	*dest = NULL;
 }
 

@@ -1238,8 +1238,7 @@ out:
 		RSA_free(rsa);
 out2:
 #endif /* ENABLE_OPENSSL */
-	if (keyfile)
-		sc_file_free(keyfile);
+	sc_file_free(keyfile);
 	return r;
 }
 

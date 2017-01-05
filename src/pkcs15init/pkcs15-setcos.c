@@ -417,8 +417,7 @@ setcos_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	r = sc_card_ctl(p15card->card, SC_CARDCTL_SETCOS_GENERATE_STORE_KEY, &args);
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Card control 'GENERATE_STORE_KEY' failed");
 
-	if (file)
-		sc_file_free(file);
+	sc_file_free(file);
 
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, r);
 }

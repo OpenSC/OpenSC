@@ -491,8 +491,7 @@ auth_select_file(struct sc_card *card, const struct sc_path *in_path,
 				auth_current_ef->path.type, sc_print_path(&auth_current_ef->path));
 
 	if (path.type == SC_PATH_TYPE_PARENT || path.type == SC_PATH_TYPE_FILE_ID)   {
-		if (auth_current_ef)
-			sc_file_free(auth_current_ef);
+		sc_file_free(auth_current_ef);
 		auth_current_ef = NULL;
 
 		rv = iso_ops->select_file(card, &path, &tmp_file);
@@ -516,8 +515,7 @@ auth_select_file(struct sc_card *card, const struct sc_path *in_path,
 				sc_file_dup(&auth_current_df, tmp_file);
 			}
 			else   {
-				if (auth_current_ef)
-					sc_file_free(auth_current_ef);
+				sc_file_free(auth_current_ef);
 
 				sc_file_dup(&auth_current_ef, tmp_file);
 				sc_concatenate_path(&auth_current_ef->path, &auth_current_df->path, &path);
@@ -531,8 +529,7 @@ auth_select_file(struct sc_card *card, const struct sc_path *in_path,
 	else if (path.type == SC_PATH_TYPE_DF_NAME)   {
 		rv = iso_ops->select_file(card, &path, NULL);
 		if (rv)   {
-			if (auth_current_ef)
-				sc_file_free(auth_current_ef);
+			sc_file_free(auth_current_ef);
 			auth_current_ef = NULL;
 		}
 		LOG_TEST_RET(card->ctx, rv, "select file failed");
@@ -993,8 +990,7 @@ auth_create_file(struct sc_card *card, struct sc_file *file)
 		sc_log(card->ctx, "rv %i", rv);
 	}
 
-	if (auth_current_ef)
-		sc_file_free(auth_current_ef);
+	sc_file_free(auth_current_ef);
 	sc_file_dup(&auth_current_ef, file);
 
 	LOG_FUNC_RETURN(card->ctx, rv);

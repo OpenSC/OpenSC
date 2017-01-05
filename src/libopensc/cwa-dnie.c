@@ -348,7 +348,7 @@ int dnie_read_file(sc_card_t * card,
  dnie_read_file_err:
 	if (data)
 		free(data);
-	if (file && *file) {
+	if (file) {
 		sc_file_free(*file);
 		*file = NULL;
 	}
@@ -400,10 +400,8 @@ static int dnie_read_certificate(sc_card_t * card, char *certpath, X509 ** cert)
 		buffer = NULL;
 		bufferlen = 0;
 	}
-	if (file) {
-		sc_file_free(file);
-		file = NULL;
-	}
+	sc_file_free(file);
+	file = NULL;
 	if (msg)
 		sc_log(card->ctx, msg);
 	LOG_FUNC_RETURN(card->ctx, res);

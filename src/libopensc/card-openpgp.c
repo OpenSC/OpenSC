@@ -790,8 +790,7 @@ pgp_free_blob(pgp_blob_t *blob)
 				*p = blob->next;
 		}
 
-		if (blob->file)
-			sc_file_free(blob->file);
+		sc_file_free(blob->file);
 		if (blob->data)
 			free(blob->data);
 		free(blob);

@@ -185,8 +185,7 @@ myeid_init_card(sc_profile_t *profile,
         sc_format_path("3F00", &path);
 	r = sc_select_file(p15card->card, &path, &file);
 
-	if (file)
-		sc_file_free(file);
+	sc_file_free(file);
 
 	LOG_FUNC_RETURN(p15card->card->ctx, r);
 }
@@ -231,8 +230,7 @@ myeid_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *df
 			sc_log(ctx, "Create '%s'", create_dfs[ii]);
 
 			r = sc_profile_get_file(profile, create_dfs[ii], &file);
-			if (file)
-				sc_file_free(file);
+			sc_file_free(file);
 			if (r) {
 				sc_log(ctx, "Inconsistent profile: cannot find %s", create_dfs[ii]);
 				LOG_FUNC_RETURN(ctx, SC_ERROR_INCONSISTENT_PROFILE);
@@ -530,8 +528,7 @@ myeid_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	r = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_UPDATE);
 	LOG_TEST_RET(ctx, r, "No authorisation to store MyEID private key");
 
-	if (file)
-		sc_file_free(file);
+	sc_file_free(file);
 
 	/* Fill in data structure */
 	memset(&args, 0, sizeof (args));
@@ -722,8 +719,7 @@ myeid_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 		}
 	}
 
-	if (file)
-		sc_file_free(file);
+	sc_file_free(file);
 
 	LOG_FUNC_RETURN(ctx, r);
 }

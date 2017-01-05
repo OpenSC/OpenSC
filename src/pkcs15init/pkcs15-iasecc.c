@@ -300,8 +300,7 @@ iasecc_pkcs15_select_key_reference(struct sc_profile *profile, struct sc_pkcs15_
 	key_info->key_reference = idx | IASECC_OBJECT_REF_LOCAL;
 	sc_log(ctx, "selected key reference %i", key_info->key_reference);
 
-	if (file)
-		sc_file_free(file);
+	sc_file_free(file);
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
@@ -376,7 +375,7 @@ iasecc_sdo_set_key_acls_from_profile(struct sc_profile *profile, struct sc_card 
 
 	/* Convert PKCS15 ACLs to SE ACLs */
 	rv = iasecc_file_convert_acls(ctx, profile, file);
-	if (rv < 0 && file)
+	if (rv < 0)
 		sc_file_free(file);
 	LOG_TEST_RET(ctx, rv, "Cannot convert profile ACLs");
 
@@ -401,8 +400,7 @@ iasecc_sdo_set_key_acls_from_profile(struct sc_profile *profile, struct sc_card 
 		}
 		else if (acl->method == SC_AC_SEN || acl->method == SC_AC_PRO || acl->method == SC_AC_AUT)   {
 			if ((acl->key_ref & 0xF) == 0 || (acl->key_ref & 0xF) == 0xF)   {
-				if (file)
-					sc_file_free(file);
+				sc_file_free(file);
 				LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Invalid SE reference");
 			}
 
@@ -416,14 +414,12 @@ iasecc_sdo_set_key_acls_from_profile(struct sc_profile *profile, struct sc_card 
 				scb[cntr++] = acl->key_ref | IASECC_SCB_METHOD_EXT_AUTH;
 		}
 		else   {
-			if (file)
-				sc_file_free(file);
+			sc_file_free(file);
 			LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Unknown SCB method");
 		}
 	}
 
-	if (file)
-		sc_file_free(file);
+	sc_file_free(file);
 
 	/* Copy ACLs into the DOCP*/
 	sdo->docp.acls_contact.tag = IASECC_DOCP_TAG_ACLS_CONTACT;
@@ -853,8 +849,7 @@ iasecc_sdo_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	card->caps &= ~SC_CARD_CAP_USE_FCI_AC;
 	rv = sc_pkcs15init_authenticate(profile, p15card, dummy_file, SC_AC_OP_UPDATE);
 	card->caps = caps;
-	if (dummy_file)
-		sc_file_free(dummy_file);
+	sc_file_free(dummy_file);
 
 	LOG_TEST_RET(ctx, rv, "SDO PRIVATE KEY UPDATE authentication failed");
 
@@ -1037,12 +1032,9 @@ iasecc_pkcs15_create_key_slot(struct sc_profile *profile, struct sc_pkcs15_card 
 	LOG_TEST_GOTO_ERR(ctx, rv, "create key slot: cannot create public key: ctl failed");
 
 err:
-	if (file_p_prvkey)
-		sc_file_free(file_p_prvkey);
-	if (file_p_pubkey)
-		sc_file_free(file_p_pubkey);
-	if (parent)
-		sc_file_free(parent);
+	sc_file_free(file_p_prvkey);
+	sc_file_free(file_p_pubkey);
+	sc_file_free(parent);
 
 	LOG_FUNC_RETURN(ctx, rv);
 }
@@ -1141,8 +1133,7 @@ iasecc_pkcs15_generate_key(struct sc_profile *profile, sc_pkcs15_card_t *p15card
 	rv = sc_select_file(card, &file->path, NULL);
 	LOG_TEST_RET(ctx, rv, "DF for private objects not defined");
 
-	if (file)
-		sc_file_free(file);
+	sc_file_free(file);
 
 	rv = iasecc_sdo_convert_to_file(card, sdo_prvkey, &file);
 	LOG_TEST_RET(ctx, rv, "Cannot convert SDO PRIVKEY to file");
@@ -1234,8 +1225,7 @@ iasecc_pkcs15_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p15ca
 	rv = sc_select_file(card, &file->path, NULL);
 	LOG_TEST_RET(ctx, rv, "failed to select parent DF");
 
-	if (file)
-		sc_file_free(file);
+	sc_file_free(file);
 
 	key_info->access_flags &= ~SC_PKCS15_PRKEY_ACCESS_LOCAL;
 
@@ -1303,8 +1293,7 @@ iasecc_pkcs15_delete_sdo (struct sc_profile *profile, struct sc_pkcs15_card *p15
 	rv = sc_pkcs15init_authenticate(profile, p15card, dummy_file, SC_AC_OP_UPDATE);
 	card->caps = save_card_caps;
 
-	if (dummy_file)
-		sc_file_free(dummy_file);
+	sc_file_free(dummy_file);
 
 	if (rv < 0)   {
 		iasecc_sdo_free(card, sdo);
@@ -1692,8 +1681,7 @@ iasecc_store_cert(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 	rv = iasecc_pkcs15_fix_file_access(p15card, pfile, object);
 	LOG_TEST_RET(ctx, rv, "encode file access rules failed");
 
-	if (pfile)
-		sc_file_free(pfile);
+	sc_file_free(pfile);
 
 	/* NOT_IMPLEMENTED error code indicates to the upper call to execute the default 'store data' procedure */
 	LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_IMPLEMENTED);
@@ -1801,13 +1789,9 @@ iasecc_store_data_object(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 	if (path)
 		*path = file->path;
 
-	if (parent)
-		sc_file_free(parent);
-
+	sc_file_free(parent);
 	sc_file_free(file);
-
-	if (cfile)
-		sc_file_free(cfile);
+	sc_file_free(cfile);
 
 	LOG_FUNC_RETURN(ctx, rv);
 #undef MAX_DATA_OBJS

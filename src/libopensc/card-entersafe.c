@@ -498,11 +498,8 @@ static int entersafe_select_fid(sc_card_t *card,
 	path.len=2;
 
 	r = iso_ops->select_file(card,&path,&file);
-	if(r && file) 
-	{
-		if(file)
-			sc_file_free(file);
-	}
+	if (r)
+		sc_file_free(file);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 
 	/* update cache */
@@ -520,14 +517,9 @@ static int entersafe_select_fid(sc_card_t *card,
 	}
 	
 	if (file_out)
-	{
-		 *file_out = file;
-	}
+		*file_out = file;
 	else
-	{
-		if(file)
-			sc_file_free(file);
-	}
+		sc_file_free(file);
 
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
 }

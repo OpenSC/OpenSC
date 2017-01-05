@@ -165,10 +165,8 @@ int sc_enum_apps(sc_card_t *card)
 		card->app_count = 0;
 
 	sc_format_path("3F002F00", &path);
-	if (card->ef_dir != NULL) {
-		sc_file_free(card->ef_dir);
-		card->ef_dir = NULL;
-	}
+	sc_file_free(card->ef_dir);
+	card->ef_dir = NULL;
 	r = sc_select_file(card, &path, &card->ef_dir);
 	LOG_TEST_RET(ctx, r, "Cannot select EF.DIR file");
 

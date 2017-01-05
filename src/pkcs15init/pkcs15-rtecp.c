@@ -73,7 +73,6 @@ static int create_sysdf(sc_profile_t *profile, sc_card_t *card, const char *name
 					SC_AC_NEVER, SC_AC_KEY_REF_NONE);
 		if (r == SC_SUCCESS)
 			r = sc_create_file(card, file);
-		assert(file);
 		sc_file_free(file);
 	}
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
@@ -99,7 +98,6 @@ static int rtecp_init(sc_profile_t *profile, sc_pkcs15_card_t *p15card)
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Get MF info failed");
 	assert(file);
 	r = sc_create_file(card, file);
-	assert(file);
 	sc_file_free(file);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Create MF failed");
 
@@ -107,7 +105,6 @@ static int rtecp_init(sc_profile_t *profile, sc_pkcs15_card_t *p15card)
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Get DIR file info failed");
 	assert(file);
 	r = sc_create_file(card, file);
-	assert(file);
 	sc_file_free(file);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Create DIR file failed");
 
@@ -346,7 +343,6 @@ static int rtecp_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	r = sc_file_add_acl_entry(file, SC_AC_OP_CREATE, SC_AC_CHV, auth_id);
 	if (r == SC_SUCCESS)
 		r = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_CREATE);
-	assert(file);
 	sc_file_free(file);
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Authenticate failed");
 
@@ -403,7 +399,6 @@ static int rtecp_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		sc_log(ctx, "create public key file id:%04i", file->id);
 		r = sc_create_file(p15card->card, file);
 	}
-	assert(file);
 	sc_file_free(file);
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, r);
 }

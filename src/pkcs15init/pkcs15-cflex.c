@@ -114,8 +114,7 @@ static int cflex_erase_card(struct sc_profile *profile, sc_pkcs15_card_t *p15car
 
 
 out:	/* Forget all cached keys, the pin files on card are all gone. */
-	if (userpinfile)
-		sc_file_free(userpinfile);
+	sc_file_free(userpinfile);
 
         sc_free_apps(p15card->card);
         if (r == SC_ERROR_FILE_NOT_FOUND)
@@ -308,10 +307,8 @@ cflex_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_pkcs15_obj
 
 	key_info->key_reference = 0;
 
-out:	if (prkf)
-		sc_file_free(prkf);
-	if (pukf)
-		sc_file_free(pukf);
+out:	sc_file_free(prkf);
+	sc_file_free(pukf);
 	return r;
 }
 
@@ -372,10 +369,8 @@ cflex_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 
 	invert_buf(pubkey->u.rsa.modulus.data, raw_pubkey, pubkey->u.rsa.modulus.len);
 
-out:	if (pukf)
-		sc_file_free(pukf);
-	if (prkf)
-		sc_file_free(prkf);
+out:	sc_file_free(pukf);
+	sc_file_free(prkf);
 	return r;
 }
 

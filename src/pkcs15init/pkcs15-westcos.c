@@ -117,8 +117,7 @@ static int westcos_pkcs15_create_pin(sc_profile_t *profile,
 		if(r) return (r);
 	}
 
-	if(pinfile)
-		sc_file_free(pinfile);
+	sc_file_free(pinfile);
 
 	if(pin != NULL)
 	{
@@ -314,8 +313,7 @@ out:
 		BN_free(bn);
 	if(rsa)
 		RSA_free(rsa);
-	if(prkf)
-		sc_file_free(prkf);
+	sc_file_free(prkf);
 
 	return r;
 #endif

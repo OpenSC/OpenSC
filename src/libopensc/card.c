@@ -98,8 +98,7 @@ static void sc_card_free(sc_card_t *card)
 	sc_free_apps(card);
 	sc_free_ef_atr(card);
 
-	if (card->ef_dir != NULL)
-		sc_file_free(card->ef_dir);
+	sc_file_free(card->ef_dir);
 
 	free(card->ops);
 
@@ -120,11 +119,8 @@ static void sc_card_free(sc_card_t *card)
 		card->algorithm_count = 0;
 	}
 
-	if (card->cache.current_ef)
-		sc_file_free(card->cache.current_ef);
-
-	if (card->cache.current_df)
-		sc_file_free(card->cache.current_df);
+	sc_file_free(card->cache.current_ef);
+	sc_file_free(card->cache.current_df);
 
 	if (card->mutex != NULL) {
 		int r = sc_mutex_destroy(card->ctx, card->mutex);

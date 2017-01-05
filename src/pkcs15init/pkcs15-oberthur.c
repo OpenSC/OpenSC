@@ -111,8 +111,7 @@ cosm_write_tokeninfo (struct sc_pkcs15_card *p15card, struct sc_profile *profile
 		rv = 0;
 
 err:
-	if (file)
-		sc_file_free(file);
+	sc_file_free(file);
 	free(buffer);
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, rv);
 }
@@ -322,8 +321,7 @@ cosm_create_reference_data(struct sc_profile *profile, struct sc_pkcs15_card *p1
 		rv = sc_pkcs15init_update_file(profile, p15card, file, oberthur_puk, sizeof(oberthur_puk));
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Failed to update pukfile");
 
-		if (file)
-			sc_file_free(file);
+		sc_file_free(file);
 	}
 
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, rv);
@@ -714,8 +712,7 @@ cosm_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	key_info->key_reference = file->path.value[file->path.len - 1];
 
 err:
-	if (file)
-		sc_file_free(file);
+	sc_file_free(file);
 
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, rv);
 }
@@ -761,8 +758,7 @@ cosm_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	rv = sc_card_ctl(p15card->card, SC_CARDCTL_OBERTHUR_UPDATE_KEY, &update_info);
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Cannot update private key");
 
-	if (file)
-		sc_file_free(file);
+	sc_file_free(file);
 
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, rv);
 }

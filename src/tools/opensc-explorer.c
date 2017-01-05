@@ -260,8 +260,7 @@ static int usage(int (*func)(int, char **))
 
 static void die(int ret)
 {
-	if (current_file != NULL)
-		sc_file_free(current_file);
+	sc_file_free(current_file);
 	if (card) {
 		sc_unlock(card);
 		sc_disconnect_card(card);
@@ -684,8 +683,7 @@ static int do_cd(int argc, char **argv)
 			printf("unable to go up: %s\n", sc_strerror(r));
 			return -1;
 		}
-		if (current_file)
-			sc_file_free(current_file);
+		sc_file_free(current_file);
 		current_file = file;
 		current_path = path;
 		return 0;
@@ -705,8 +703,7 @@ static int do_cd(int argc, char **argv)
 		return -1;
 	}
 	current_path = path;
-	if (current_file)
-		sc_file_free(current_file);
+	sc_file_free(current_file);
 	current_file = file;
 
 	return 0;
@@ -818,8 +815,7 @@ static int do_cat(int argc, char **argv)
 	err = 0;
 err:
 	if (not_current) {
-		if (file != NULL)
-			sc_file_free(file);
+		sc_file_free(file);
 		select_current_path_or_die();
 	}
 
@@ -1318,8 +1314,7 @@ static int do_get(int argc, char **argv)
 
 	err = 0;
 err:
-	if (file)
-		sc_file_free(file);
+	sc_file_free(file);
 	if (outf != NULL && outf != stdout)
 		fclose(outf);
 	select_current_path_or_die();
@@ -1492,8 +1487,7 @@ static int do_put(int argc, char **argv)
 
 	err = 0;
 err:
-	if (file)
-		sc_file_free(file);
+	sc_file_free(file);
 	if (outf)
 		fclose(outf);
 	select_current_path_or_die();
@@ -1746,8 +1740,7 @@ err:
 	if (buf)
 		free(buf);
 	if (not_current) {
-		if (file)
-			sc_file_free(file);
+		sc_file_free(file);
 		select_current_path_or_die();
 	}
 	return -err;
