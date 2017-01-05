@@ -196,6 +196,8 @@ static cac_private_data_t *cac_new_private_data(void)
 
 static void cac_free_private_data(cac_private_data_t *priv)
 {
+	free(priv->cac_id);
+	free(priv->cache_buf);
 	list_destroy(&priv->pki_list);
 	list_destroy(&priv->general_list);
 	free(priv);
@@ -209,7 +211,7 @@ static int cac_add_object_to_list(list_t *list, const cac_object_t *object)
 	if (entry == NULL) {
 		return SC_ERROR_OUT_OF_MEMORY;
 	}
-	*entry = *object;
+	memcpy(entry, object, sizeof(cac_object_t));
 	list_append(list, entry);
 	return SC_SUCCESS;
 }
