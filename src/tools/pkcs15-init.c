@@ -751,11 +751,11 @@ do_erase_application(sc_card_t *in_card, struct sc_profile *profile)
 static int do_finalize_card(sc_card_t *in_card, struct sc_profile *profile)
 {
 	int r;
-	r = sc_lock(p15card->card);
+	r = sc_lock(in_card);
 	if (r < 0)
 		return r;
 	r = sc_pkcs15init_finalize_card(in_card, profile);
-	sc_unlock(p15card->card);
+	sc_unlock(in_card);
 	return r;
 }
 
@@ -837,11 +837,11 @@ do_init_app(struct sc_profile *profile)
 	args.serial = (const char *) opt_serial;
 	args.label = opt_label;
 
-	r = sc_lock(p15card->card);
+	r = sc_lock(card);
 	if (r < 0)
 		return r;
 	r = sc_pkcs15init_add_app(card, profile, &args);
-	sc_unlock(p15card->card);
+	sc_unlock(card);
 	return r;
 
 failed:	fprintf(stderr, "Failed to read PIN: %s\n", sc_strerror(r));
