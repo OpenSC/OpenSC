@@ -473,7 +473,7 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 	CK_ULONG sign_length = 0;
 	int rv = 0;
 
-	if (message_length > strlen((char *)message))
+	if (message_length > strlen(SHORT_MESSAGE_TO_SIGN))
 		fail_msg("Truncate is longer than the actual message");
 
 	if (o->private_handle == CK_INVALID_HANDLE) {
