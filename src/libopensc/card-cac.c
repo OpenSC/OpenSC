@@ -181,14 +181,21 @@ int cac_list_compare_path(const void *a, const void *b)
 		&((cac_object_t *) b)->path, sizeof(sc_path_t));
 }
 
+/* For SimCList autocopy, we need to know the size of the data elements */
+size_t cac_list_meter(const void *el) {
+	return sizeof(cac_object_t);
+}
+
 static cac_private_data_t *cac_new_private_data(void)
 {
 	cac_private_data_t *priv;
 	priv = calloc(1, sizeof(cac_private_data_t));
 	list_init(&priv->pki_list);
 	list_attributes_comparator(&priv->pki_list, cac_list_compare_path);
+	list_attributes_copy(&priv->pki_list, cac_list_meter, 1);
 	list_init(&priv->general_list);
 	list_attributes_comparator(&priv->general_list, cac_list_compare_path);
+	list_attributes_copy(&priv->general_list, cac_list_meter, 1);
 	/* set other fields as appropriate */
 
 	return priv;
@@ -206,13 +213,8 @@ static void cac_free_private_data(cac_private_data_t *priv)
 
 static int cac_add_object_to_list(list_t *list, const cac_object_t *object)
 {
-	cac_object_t *entry = malloc(sizeof(cac_object_t));
-
-	if (entry == NULL) {
-		return SC_ERROR_OUT_OF_MEMORY;
-	}
-	memcpy(entry, object, sizeof(cac_object_t));
-	list_append(list, entry);
+	if (list_append(list, object) < 0)
+		return SC_ERROR_UNKNOWN;
 	return SC_SUCCESS;
 }
 
