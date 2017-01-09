@@ -837,11 +837,7 @@ do_init_app(struct sc_profile *profile)
 	args.serial = (const char *) opt_serial;
 	args.label = opt_label;
 
-	r = sc_lock(p15card->card);
-	if (r < 0)
-		return r;
 	r = sc_pkcs15init_add_app(card, profile, &args);
-	sc_unlock(p15card->card);
 	return r;
 
 failed:	fprintf(stderr, "Failed to read PIN: %s\n", sc_strerror(r));
