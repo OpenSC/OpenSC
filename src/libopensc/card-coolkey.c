@@ -778,6 +778,11 @@ coolkey_compare_id(const void * a, const void *b)
 	    == ((sc_cardctl_coolkey_object_t *)b)->id;
 }
 
+/* For SimCList autocopy, we need to know the size of the data elements */
+size_t coolkey_list_meter(const void *el) {
+	return sizeof(sc_cardctl_coolkey_object_t);
+}
+
 static coolkey_private_data_t *coolkey_new_private_data(void)
 {
 	coolkey_private_data_t *priv;
@@ -787,12 +792,25 @@ static coolkey_private_data_t *coolkey_new_private_data(void)
 	priv->key_id = COOLKEY_INVALID_KEY;
 	list_init(&priv->objects_list);
 	list_attributes_comparator(&priv->objects_list, coolkey_compare_id);
+	list_attributes_copy(&priv->objects_list, coolkey_list_meter, 1);
 
 	return priv;
 }
 
 static void coolkey_free_private_data(coolkey_private_data_t *priv)
 {
+	list_t *l = &priv->objects_list;
+	sc_cardctl_coolkey_object_t *o;
+
+	/* Clean up the allocated memory in the items */
+	list_iterator_start(l);
+	while (list_iterator_hasnext(l)) {
+		o = (sc_cardctl_coolkey_object_t *)list_iterator_next(l);
+		free(o->data);
+		o->data = NULL;
+	}
+	list_iterator_stop(l);
+
 	list_destroy(&priv->objects_list);
 	if (priv->token_name) {
 		free(priv->token_name);
@@ -806,13 +824,8 @@ static void coolkey_free_private_data(coolkey_private_data_t *priv)
  */
 static int coolkey_add_object_to_list(list_t *list, const sc_cardctl_coolkey_object_t *object)
 {
-	sc_cardctl_coolkey_object_t *entry = malloc(sizeof(sc_cardctl_coolkey_object_t));
-
-	if (entry == NULL) {
-		return SC_ERROR_OUT_OF_MEMORY;
-	}
-	*entry = *object;
-	list_append(list, entry);
+	if (list_append(list, object) < 0)
+		return SC_ERROR_UNKNOWN;
 	return SC_SUCCESS;
 }
 
@@ -1916,6 +1929,7 @@ static int coolkey_select_file(sc_card_t *card, const sc_path_t *in_path, sc_fil
 		file->shareable = 0;
 		file->ef_structure = 0;
 		file->size = priv->obj->length;
+		*file_out = file;
 	}
 
     return SC_SUCCESS;
