@@ -1,7 +1,7 @@
 /*
  * PKCS15 emulation layer for Portugal eID card.
  *
- * Copyright (C) 2016, Nuno Goncalves <nunojpg@gmail.com>
+ * Copyright (C) 2016-2017, Nuno Goncalves <nunojpg@gmail.com>
  * Copyright (C) 2009, Joao Poupino <joao.poupino@ist.utl.pt>
  * Copyright (C) 2004, Martin Paljak <martin@martinpaljak.net>
  *
@@ -272,6 +272,7 @@ static int sc_pkcs15emu_pteid_init(sc_pkcs15_card_t * p15card)
 			rv = sc_pin_cmd(p15card->card, &pin_cmd_data, NULL);
 			if (rv == SC_SUCCESS) {
 				pin_info->tries_left = pin_cmd_data.pin1.tries_left;
+				pin_info->logged_in = pin_cmd_data.pin1.logged_in;
 			}
 		}
 		/* Remove found public keys as cannot be read_binary()'d */
