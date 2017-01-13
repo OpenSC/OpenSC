@@ -4,6 +4,7 @@
 /* defined twice: in versioninfo-minidriver.rc.in and in minidriver.c */
 #define IDD_PINPAD      101
 #define IDI_LOGO        102
+#define IDC_PURPOSE_TEXT 1002
 #define IDC_PINPAD_TEXT 1001
 #define IDC_PINPAD_ICON 1000
 
@@ -43,14 +44,16 @@ BEGIN
 	END
 END
 
-IDD_PINPAD DIALOGEX 0, 0, 309, 71
+IDD_PINPAD DIALOGEX 0, 0, 309, 89
 STYLE DS_SYSMODAL | DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION
 CAPTION "PIN Entry Required"
 FONT 8, "MS Shell Dlg", 400, 0, 0x1
 BEGIN
-    LTEXT           "Please enter PIN on PINPAD",IDC_STATIC,46,9,256,31
+    LTEXT           "OpenSC Smart Card Provider",IDC_PURPOSE_TEXT,46,9,256,10
+    LTEXT           "Please enter your PIN on the PINPAD",IDC_PINPAD_TEXT,46,19,256,19
     ICON            "",IDC_PINPAD_ICON,6,11,20,20
     LTEXT           "This window will be closed automatically after the PIN has been submitted on the PINPAD or if the PINPAD timeout occurs (in general 30 seconds).",IDC_STATIC,7,46,298,19
+    PUSHBUTTON      "Cancel",IDCANCEL,250,67,50,14
 END
 
 #ifndef __MINGW32__

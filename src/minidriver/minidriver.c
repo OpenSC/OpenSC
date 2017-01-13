@@ -113,6 +113,7 @@ HINSTANCE g_inst;
  /* defined twice: in versioninfo-minidriver.rc.in and in minidriver.c */
 #define IDD_PINPAD      101
 #define IDI_LOGO        102
+#define IDC_PURPOSE_TEXT 1002
 #define IDC_PINPAD_TEXT 1001
 #define IDC_PINPAD_ICON 1000
 
@@ -2366,8 +2367,8 @@ md_dialog_perform_pin_operation_thread(PVOID lpParameter)
 		rv = (DWORD) ERROR_INVALID_PARAMETER;
 		break;
 	}
-	if (parameter[9] != 0) {
-		EndDialog((HWND) parameter[9], rv);
+	if (parameter[10] != 0) {
+		EndDialog((HWND) parameter[10], rv);
 	}
 	return (DWORD) rv;
 }
@@ -2379,6 +2380,7 @@ static INT_PTR CALLBACK md_dialog_proc(HWND hWnd, UINT message, WPARAM wParam, L
 	{
 	case WM_INITDIALOG:
 		{
+			DWORD role = (DWORD) (((LONG_PTR*)lParam)[8]);
 			HICON hIcon = NULL;
 			PCARD_DATA pCardData = (PCARD_DATA) (((LONG_PTR*)lParam)[7]);
 			VENDOR_SPECIFIC* vs = (VENDOR_SPECIFIC*) pCardData->pvVendorSpecific;
@@ -2386,7 +2388,20 @@ static INT_PTR CALLBACK md_dialog_proc(HWND hWnd, UINT message, WPARAM wParam, L
 			SetWindowLongPtr(hWnd, GWLP_USERDATA, lParam);
 			/* change the text shown on the screen */
 			if (vs->wszPinContext )   {
-				SetWindowTextW(GetDlgItem(hWnd, IDC_PINPAD_TEXT), vs->wszPinContext );
+				SetWindowTextW(GetDlgItem(hWnd, IDC_PURPOSE_TEXT), vs->wszPinContext);
+			}
+			switch (role) {
+				case ROLE_ADMIN:
+					SetWindowText(GetDlgItem(hWnd, IDC_PINPAD_TEXT),
+							"Please enter your PIN to unblock the user PIN on the PINPAD.");
+					break;
+				case ROLE_USER:
+					SetWindowText(GetDlgItem(hWnd, IDC_PINPAD_TEXT),
+							"Please enter your digital signature PIN on the PINPAD.");
+					break;
+				default:
+					break;
+
 			}
 			CenterWindow(hWnd, vs->hwndParent);
 			/* load the information icon */
@@ -2400,8 +2415,29 @@ static INT_PTR CALLBACK md_dialog_proc(HWND hWnd, UINT message, WPARAM wParam, L
 				SendMessage(hWnd, WM_SETICON, ICON_BIG, (LPARAM) hIcon);
 			}
 			/* launch the function in another thread context store the thread handle */
-			((LONG_PTR*)lParam)[9] = (LONG_PTR) hWnd;
-			((LONG_PTR*)lParam)[8] = (LONG_PTR) CreateThread(NULL, 0, md_dialog_perform_pin_operation_thread, (PVOID) lParam, 0, NULL);
+			((LONG_PTR*)lParam)[10] = (LONG_PTR) hWnd;
+			((LONG_PTR*)lParam)[9] = (LONG_PTR) CreateThread(NULL, 0, md_dialog_perform_pin_operation_thread, (PVOID) lParam, 0, NULL);
+		}
+		return TRUE;
+	case WM_COMMAND:
+		{
+			/* This *must* be IDCANCEL, because we don't have any other command */
+			if (LOWORD(wParam) != IDCANCEL) 
+				return FALSE;
+
+			/* cancel request */
+			LPARAM param = GetWindowLongPtr(hWnd, GWLP_USERDATA);
+			if (param) {
+				PCARD_DATA pCardData = (PCARD_DATA)((LONG_PTR*)param)[7];
+				VENDOR_SPECIFIC* vs = (VENDOR_SPECIFIC*) pCardData->pvVendorSpecific;
+				sc_cancel(vs->ctx);
+				/* Some readers don't support SCardCancel, though they're
+				 * reporting SCARD_S_SUCCESS. We force closing of the dialog so
+				 * that at least the application can continue. */
+				if (((LONG_PTR*)param)[10] != 0) {
+					EndDialog((HWND) ((LONG_PTR*)param)[10], SC_ERROR_KEYPAD_CANCELLED);
+				}
+			}
 		}
 		return TRUE;
 	case WM_DESTROY:
@@ -2409,7 +2445,7 @@ static INT_PTR CALLBACK md_dialog_proc(HWND hWnd, UINT message, WPARAM wParam, L
 			/* clean resources used */
 			LPARAM param = GetWindowLongPtr(hWnd, GWLP_USERDATA);
 			if (param) {
-				HANDLE hThread = (HANDLE)((LONG_PTR*)param)[8];
+				HANDLE hThread = (HANDLE)((LONG_PTR*)param)[9];
 				CloseHandle(hThread);
 			}
 		}
@@ -2424,9 +2460,9 @@ static int
 md_dialog_perform_pin_operation(PCARD_DATA pCardData, int operation, struct sc_pkcs15_card *p15card,
 		struct sc_pkcs15_object *pin_obj,
 		const u8 *pin1, size_t pin1len,
-		const u8 *pin2, size_t *pin2len, BOOL displayUI)
+		const u8 *pin2, size_t *pin2len, BOOL displayUI, DWORD role)
 {
-	LONG_PTR parameter[10];
+	LONG_PTR parameter[11];
 	INT_PTR result = 0;
 	int rv = 0;
 	VENDOR_SPECIFIC* pv = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
@@ -2439,8 +2475,9 @@ md_dialog_perform_pin_operation(PCARD_DATA pCardData, int operation, struct sc_p
 	parameter[5] = (LONG_PTR)pin2;
 	parameter[6] = (LONG_PTR)pin2len;
 	parameter[7] = (LONG_PTR)pCardData;
-	parameter[8] = 0; /* place holder for thread handle */
-	parameter[9] = 0; /* place holder for window handle */
+	parameter[8] = (LONG_PTR)role;
+	parameter[9] = 0; /* place holder for thread handle */
+	parameter[10] = 0; /* place holder for window handle */
 	/* launch the function to perform in the same thread context */
 	if (!displayUI) {
 		rv = md_dialog_perform_pin_operation_thread(parameter);
@@ -4845,7 +4882,7 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 		if (ppbSessionPin) *ppbSessionPin = pCardData->pfnCspAlloc(SC_MAX_PIN_SIZE);
 		if (ppbSessionPin) *pcbSessionPin = SC_MAX_PIN_SIZE;
 		r = md_dialog_perform_pin_operation(pCardData, SC_PIN_CMD_GET_SESSION_PIN, vs->p15card, pin_obj, (const u8 *) pbPinData, cbPinData,
-			   	ppbSessionPin && *ppbSessionPin ? *ppbSessionPin : NULL, pcbSessionPin, DisplayPinpadUI);
+			   	ppbSessionPin && *ppbSessionPin ? *ppbSessionPin : NULL, pcbSessionPin, DisplayPinpadUI, PinId);
 		if (r) {
 			if (ppbSessionPin) {
 				pCardData->pfnCspFree(*ppbSessionPin);
@@ -4868,7 +4905,7 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 		if (pcbSessionPin) *pcbSessionPin = 0;
 		if (ppbSessionPin) *ppbSessionPin = NULL;
 		logprintf(pCardData, 2, "standard pin verification");
-		r = md_dialog_perform_pin_operation(pCardData, SC_PIN_CMD_VERIFY, vs->p15card, pin_obj, (const u8 *) pbPinData, cbPinData, NULL, NULL, DisplayPinpadUI);
+		r = md_dialog_perform_pin_operation(pCardData, SC_PIN_CMD_VERIFY, vs->p15card, pin_obj, (const u8 *) pbPinData, cbPinData, NULL, NULL, DisplayPinpadUI, PinId);
 	}
 
 	/* restore the pin type */
@@ -4995,7 +5032,7 @@ DWORD WINAPI CardChangeAuthenticatorEx(__in PCARD_DATA pCardData,
 		(*pcAttemptsRemaining) = (DWORD) -1;
 
 	rv = md_dialog_perform_pin_operation(pCardData, (dwFlags & PIN_CHANGE_FLAG_UNBLOCK ? SC_PIN_CMD_UNBLOCK:SC_PIN_CMD_CHANGE), 
-		vs->p15card, pin_obj, (const u8 *) pbAuthenticatingPinData, cbAuthenticatingPinData, pbTargetData, &cbTargetData, DisplayPinpadUI);
+		vs->p15card, pin_obj, (const u8 *) pbAuthenticatingPinData, cbAuthenticatingPinData, pbTargetData, &cbTargetData, DisplayPinpadUI, dwTargetPinId);
 	
 	if (rv)   {
 		logprintf(pCardData, 2, "Failed to %s %s PIN: '%s' (%i)\n",
