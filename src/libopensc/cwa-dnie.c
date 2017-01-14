@@ -266,12 +266,6 @@ static u8 sn_ifd[] = { 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01 };
  */
 static u8 sn_ifd_pin[] = { 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01};
 
-/**
- * Serial number for ICC card.
- * This buffer is to be filled at runtime
- */
-static u8 sn_icc[] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
-
 /************ internal functions **********************************/
 
 /**
@@ -738,9 +732,10 @@ static int dnie_get_icc_privkey_ref(sc_card_t * card, u8 ** buf, size_t * len)
  * @param buf where to store result (8 bytes)
  * @return SC_SUCCESS if ok; else error
  */
-static int dnie_get_sn_ifd(sc_card_t * card, u8 ** buf)
+static int dnie_get_sn_ifd(sc_card_t * card)
 {
-	*buf = sn_ifd;
+	struct sm_cwa_session * sm = &card->sm_ctx.info.session.cwa;
+	memcpy(sm->ifd.sn, sn_ifd, sizeof(sm->ifd.sn));
 	return SC_SUCCESS;
 }
 
@@ -752,13 +747,12 @@ static int dnie_get_sn_ifd(sc_card_t * card, u8 ** buf)
  * return SC_SUCCESS
  *
  * @param card pointer to card structure
- * @param buf where to store result (8 bytes)
  * @return SC_SUCCESS if ok; else error
  */
-static int dnie_get_sn_ifd_pin(sc_card_t * card, u8 ** buf)
+static int dnie_get_sn_ifd_pin(sc_card_t * card)
 {
-	LOG_FUNC_CALLED(card->ctx);
-	*buf = sn_ifd_pin;
+	struct sm_cwa_session * sm = &card->sm_ctx.info.session.cwa;
+	memcpy(sm->ifd.sn, sn_ifd_pin, sizeof(sm->ifd.sn));
 	return SC_SUCCESS;
 }
 
@@ -768,21 +762,19 @@ static int dnie_get_sn_ifd_pin(sc_card_t * card, u8 ** buf)
  * Just retrieve it from cache and return success
  *
  * @param card pointer to card structure
- * @param buf where to store result (8 bytes)
  * @return SC_SUCCESS if ok; else error
  */
-static int dnie_get_sn_icc(sc_card_t * card, u8 ** buf)
+static int dnie_get_sn_icc(sc_card_t * card)
 {
 	int res=SC_SUCCESS;
 	sc_serial_number_t serial;
+	struct sm_cwa_session * sm = &card->sm_ctx.info.session.cwa;
 
 	res = sc_card_ctl(card, SC_CARDCTL_GET_SERIALNR, &serial);
 	LOG_TEST_RET(card->ctx, res, "Error in gettting serial number");
 	/* copy into sn_icc buffer.Remember that dnie sn has 7 bytes length */
-	memset(&sn_icc[0], 0, sizeof(sn_icc));
-	memcpy(&sn_icc[1], serial.value, 7);
-	/* return data */
-	*buf = &sn_icc[0];
+	memset(sm->icc.sn, 0, sizeof(sizeof(sm->icc.sn)));
+	memcpy(&sm->icc.sn[1], serial.value, 7);
 	return SC_SUCCESS;
 }
 

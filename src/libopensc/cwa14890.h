@@ -221,23 +221,23 @@ typedef struct cwa_provider_st {
 	* Retrieve SN.IFD - Terminal Serial Number.
 	*
 	* Result SN is 8 bytes long left padded with zeroes if required.
+	* The result should stored in card->sm_ctx.info.session.cwa.ifd.sn
 	*
 	* @param card pointer to card structure
-	* @param buf where to store result (8 bytes)
 	* @return SC_SUCCESS if ok; else error
 	*/
-	int (*cwa_get_sn_ifd) (sc_card_t * card, u8 ** buf);
+	int (*cwa_get_sn_ifd) (sc_card_t * card);
 
 	/**
-	*  Get SN.ICC - Card Serial Number.
+	* Get SN.ICC - Card Serial Number.
 	*  
-	*  Result value is 8 bytes long left padded with zeroes if needed)
+	* Result value is 8 bytes long left padded with zeroes if needed)
+	* The result should stored in card->sm_ctx.info.session.cwa.icc.sn
 	*
 	* @param card pointer to card structure
-	* @param buf where to store result (8 bytes)
 	* @return SC_SUCCESS if ok; else error
 	*/
-	int (*cwa_get_sn_icc) (sc_card_t * card, u8 ** buf);
+	int (*cwa_get_sn_icc) (sc_card_t * card);
 
  
 } cwa_provider_t;

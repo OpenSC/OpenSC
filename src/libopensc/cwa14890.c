@@ -150,18 +150,20 @@ static void cwa_trace_apdu(sc_card_t * card, sc_apdu_t * apdu, int flag)
 static int cwa_increase_ssc(sc_card_t * card)
 {
 	int n;
+	struct sm_cwa_session * sm = &card->sm_ctx.info.session.cwa;
+
 	/* preliminary checks */
 	if (!card || !card->ctx )
 		return SC_ERROR_INVALID_ARGUMENTS;
 	LOG_FUNC_CALLED(card->ctx);
 	/* u8 arithmetic; exit loop if no carry */
-	sc_log(card->ctx, "Curr SSC: '%s'", sc_dump_hex(card->sm_ctx.info.session.cwa.ssc, 8));
+	sc_log(card->ctx, "Curr SSC: '%s'", sc_dump_hex(sm->ssc, 8));
 	for (n = 7; n >= 0; n--) {
-		card->sm_ctx.info.session.cwa.ssc[n]++;
-		if ((card->sm_ctx.info.session.cwa.ssc[n]) != 0x00)
+		sm->ssc[n]++;
+		if ((sm->ssc[n]) != 0x00)
 			break;
 	}
-	sc_log(card->ctx, "Next SSC: '%s'", sc_dump_hex(card->sm_ctx.info.session.cwa.ssc, 8));
+	sc_log(card->ctx, "Next SSC: '%s'", sc_dump_hex(sm->ssc, 8));
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
@@ -558,7 +560,6 @@ static int cwa_internal_auth(sc_card_t * card, u8 * sig, size_t sig_len, u8 * da
 static int cwa_prepare_external_auth(sc_card_t * card,
 				     RSA * icc_pubkey,
 				     RSA * ifd_privkey,
-				     u8 * sn_icc,
 				     u8 * sig,
 				     size_t sig_len)
 {
@@ -602,7 +603,7 @@ static int cwa_prepare_external_auth(sc_card_t * card,
 	ctx = card->ctx;
 	LOG_FUNC_CALLED(ctx);
 	/* check received arguments */
-	if (!icc_pubkey || !ifd_privkey || !sn_icc || !sm)
+	if (!icc_pubkey || !ifd_privkey || !sm)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 	buf1 = calloc(128, sizeof(u8));
 	buf2 = calloc(128, sizeof(u8));
@@ -625,7 +626,7 @@ static int cwa_prepare_external_auth(sc_card_t * card,
 	memcpy(sha_buf, buf3 + 1, 74);	/* copy pRND into sha_buf */
 	memcpy(sha_buf + 74, buf3 + 1 + 74, 32);	/* copy kifd into sha_buf */
 	memcpy(sha_buf + 74 + 32, sm->icc.rnd, 8);	/* copy 8 byte icc challenge */
-	memcpy(sha_buf + 74 + 32 + 8, sn_icc, 8);	/* copy serialnr, 8 bytes */
+	memcpy(sha_buf + 74 + 32 + 8, sm->icc.sn, 8);	/* copy serialnr, 8 bytes */
 	SHA1(sha_buf, 74 + 32 + 8 + 8, sha_data);
 	/* copy hashed data into buffer */
 	memcpy(buf3 + 1 + 74 + 32, sha_data, SHA_DIGEST_LENGTH);
@@ -1047,8 +1048,6 @@ int cwa_create_secure_channel(sc_card_t * card,
 	int res = SC_SUCCESS;
 	char *msg = "Success";
 
-	u8 *sn_icc = NULL;
-
 	/* data to get and parse certificates */
 	X509 *icc_cert = NULL;
 	X509 *ca_cert = NULL;
@@ -1105,7 +1104,7 @@ int cwa_create_secure_channel(sc_card_t * card,
 	/* retrieve icc serial number */
 	sc_log(ctx, "Retrieve ICC serial number");
 	if (provider->cwa_get_sn_icc) {
-		res = provider->cwa_get_sn_icc(card, &sn_icc);
+		res = provider->cwa_get_sn_icc(card);
 		if (res != SC_SUCCESS) {
 			msg = "Retrieve ICC failed";
 			sc_log(ctx, msg);
@@ -1295,14 +1294,14 @@ int cwa_create_secure_channel(sc_card_t * card,
 	/* Internal (Card) authentication (let the card verify sent ifd certs) 
 	   SN.IFD equals 8 lsb bytes of ifd.pubk ref according cwa14890 sec 8.4.1 */
 	sc_log(ctx, "Step 8.4.1.10: Perform Internal authentication");
-	res = provider->cwa_get_sn_ifd(card, &buffer);
+	res = provider->cwa_get_sn_ifd(card);
 	if (res != SC_SUCCESS) {
 		msg = "Cannot get ifd serial number from provider";
 		goto csc_end;
 	}
 	RAND_bytes(sm->ifd.rnd, 8);	/* generate 8 random bytes */
 	memcpy(rndbuf, sm->ifd.rnd, 8);	/* insert RND.IFD into rndbuf */
-	memcpy(rndbuf + 8, buffer, 8);	/* insert SN.IFD into rndbuf */
+	memcpy(rndbuf + 8, sm->ifd.sn, 8);	/* insert SN.IFD into rndbuf */
 	res = cwa_internal_auth(card, sig, 128, rndbuf, 16);
 	if (res != SC_SUCCESS) {
 		msg = "Internal auth cmd failed";
@@ -1341,7 +1340,7 @@ int cwa_create_secure_channel(sc_card_t * card,
 	/* compose signature data for external auth */
 	res = cwa_prepare_external_auth(card,
 					EVP_PKEY_get0_RSA(icc_pubkey),
-					EVP_PKEY_get0_RSA(ifd_privkey), sn_icc, sig, 128);
+					EVP_PKEY_get0_RSA(ifd_privkey), sig, 128);
 	if (res != SC_SUCCESS) {
 		msg = "Prepare external auth failed";
 		goto csc_end;
@@ -1938,13 +1937,13 @@ static int default_get_icc_privkey_ref(sc_card_t * card, u8 ** buf,
 }
 
 /* Retrieve SN.IFD (8 bytes left padded with zeroes if needed) */
-static int default_get_sn_ifd(sc_card_t * card, u8 ** buf)
+static int default_get_sn_ifd(sc_card_t * card)
 {
 	return SC_ERROR_NOT_SUPPORTED;
 }
 
 /* Retrieve SN.ICC (8 bytes left padded with zeroes if needed) */
-static int default_get_sn_icc(sc_card_t * card, u8 ** buf)
+static int default_get_sn_icc(sc_card_t * card)
 {
 	return SC_ERROR_NOT_SUPPORTED;
 }
