@@ -114,9 +114,10 @@ int main(int argc, char** argv) {
 	}
 
 	if (token.pin == NULL || token.pin_length == 0) {
-		debug_print("Falling back to the default PIN " DEFAULT_PIN);
-		token.pin = (CK_UTF8CHAR*) strdup(DEFAULT_PIN);
-		token.pin_length = strlen(DEFAULT_PIN);
+		printf("No PIN specified. Please, specify it on command-line using -p switch\n");
+		return -1;
+		/*token.pin = (CK_UTF8CHAR*) strdup(DEFAULT_PIN);
+		token.pin_length = strlen(DEFAULT_PIN);*/
 	}
 
 	debug_print("Card info:\n\tPIN %s\n\tPIN LENGTH %lu\n\t",
