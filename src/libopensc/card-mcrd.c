@@ -361,8 +361,11 @@ static int mcrd_init(sc_card_t * card)
 					r = sc_transmit_apdu(card, &apdu);
 					SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 					sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "SELECT AID: %02X%02X", apdu.sw1, apdu.sw2);
-					if (apdu.sw1 != 0x90 && apdu.sw2 != 0x00)
-						SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,  SC_ERROR_CARD_CMD_FAILED);
+					if (apdu.sw1 != 0x90 && apdu.sw2 != 0x00) {
+						free(card->drv_data);
+						card->drv_data = NULL;
+						SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_CARD);
+					}
 				}
 			}
 		} else {
