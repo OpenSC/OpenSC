@@ -113,6 +113,7 @@ HINSTANCE g_inst;
  /* defined twice: in versioninfo-minidriver.rc.in and in minidriver.c */
 #define IDD_PINPAD      101
 #define IDI_LOGO        102
+#define IDC_EXPLANATION_TEXT 1003
 #define IDC_PURPOSE_TEXT 1002
 #define IDC_PINPAD_TEXT 1001
 #define IDC_PINPAD_ICON 1000
@@ -2380,6 +2381,8 @@ static INT_PTR CALLBACK md_dialog_proc(HWND hWnd, UINT message, WPARAM wParam, L
 	{
 	case WM_INITDIALOG:
 		{
+			LANGID lang = GetUserDefaultUILanguage();
+			struct sc_pkcs15_card *p15card = (struct sc_pkcs15_card *) (((LONG_PTR*)lParam)[1]);
 			DWORD role = (DWORD) (((LONG_PTR*)lParam)[8]);
 			HICON hIcon = NULL;
 			PCARD_DATA pCardData = (PCARD_DATA) (((LONG_PTR*)lParam)[7]);
@@ -2387,17 +2390,44 @@ static INT_PTR CALLBACK md_dialog_proc(HWND hWnd, UINT message, WPARAM wParam, L
 			/* store parameter like pCardData for further use if needed */
 			SetWindowLongPtr(hWnd, GWLP_USERDATA, lParam);
 			/* change the text shown on the screen */
+			if (p15card->tokeninfo->preferred_language) {
+				/* choose the token's preferred language over the system's language */
+				if (strncmp(p15card->tokeninfo->preferred_language, "de", 2))
+					lang = LANG_GERMAN|SUBLANG_GERMAN;
+			}
+
 			if (vs->wszPinContext )   {
 				SetWindowTextW(GetDlgItem(hWnd, IDC_PURPOSE_TEXT), vs->wszPinContext);
 			}
+			if (lang & LANG_GERMAN) {
+				SetWindowText(hWnd,
+						"PIN-Eingabe notwendig");
+				SetWindowText(GetDlgItem(hWnd, IDC_EXPLANATION_TEXT),
+						"Dieses Fenster wird automatisch geschlossen, wenn die PIN am PINPAD eingegeben wurde oder nach dem PINPAD-Timeout (typischerweise nach 30 Sekunden).");
+				SetWindowText(GetDlgItem(hWnd, IDC_EXPLANATION_TEXT),
+						"Dieses Fenster wird automatisch geschlossen, wenn die PIN am PINPAD eingegeben wurde oder nach dem PINPAD-Timeout (typischerweise nach 30 Sekunden).");
+				SetWindowText(GetDlgItem(hWnd, IDCANCEL),
+						"Abbrechen");
+			}
+
 			switch (role) {
 				case ROLE_ADMIN:
-					SetWindowText(GetDlgItem(hWnd, IDC_PINPAD_TEXT),
-							"Please enter your PIN to unblock the user PIN on the PINPAD.");
+					if (lang & LANG_GERMAN) {
+						SetWindowText(GetDlgItem(hWnd, IDC_PINPAD_TEXT),
+								"Bitte geben Sie Ihre PIN zum Entsperren der Nutzer-PIN auf dem PINPAD ein.");
+					} else {
+						SetWindowText(GetDlgItem(hWnd, IDC_PINPAD_TEXT),
+								"Please enter your PIN to unblock the user PIN on the PINPAD.");
+					}
 					break;
 				case ROLE_USER:
-					SetWindowText(GetDlgItem(hWnd, IDC_PINPAD_TEXT),
-							"Please enter your digital signature PIN on the PINPAD.");
+					if (lang & LANG_GERMAN) {
+						SetWindowText(GetDlgItem(hWnd, IDC_PINPAD_TEXT),
+								"Bitte geben Sie Ihre Signatur-PIN auf dem PINPAD ein.");
+					} else {
+						SetWindowText(GetDlgItem(hWnd, IDC_PINPAD_TEXT),
+								"Please enter your digital signature PIN on the PINPAD.");
+					}
 					break;
 				default:
 					break;
