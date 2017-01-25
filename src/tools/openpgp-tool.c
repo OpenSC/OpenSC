@@ -654,7 +654,7 @@ int main(int argc, char **argv)
 		#ifndef _WIN32
 		execv(exec_program, largv);
 		#else
-		_execv(exec_program, largv);
+		_execv(exec_program, (const char * const*)largv);
 		#endif
 		/* we should not get here */
 		perror("execv()");

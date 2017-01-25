@@ -20,6 +20,7 @@
  */
 
 #include <string.h>
+#include <stdint.h>
 #include <stdlib.h>
 
 #include "internal.h"
@@ -693,7 +694,7 @@ iasecc_sm_delete_file(struct sc_card *card, unsigned se_num, unsigned int file_i
 	rv = iasecc_sm_initialize(card, se_num, SM_CMD_FILE_DELETE);
 	LOG_TEST_RET(ctx, rv, "iasecc_sm_delete_file() SM INITIALIZE failed");
 
-	sm_info->cmd_data = (void *)(long)file_id;
+	sm_info->cmd_data = (void *)(uintptr_t)file_id;
 
 	sc_remote_data_init(&rdata);
 	rv = iasecc_sm_cmd(card, &rdata);

@@ -430,8 +430,9 @@ static int cac_read_file(sc_card_t *card, int file_type, u8 **out_buf, size_t *o
 		goto fail;
 
 	left = size = lebytes2ushort(count);
-	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "got %d bytes out_ptr=%lx count&=%lx count[0]=0x%02x count[1]=0x%02x, len=0x%04x (%d)",
-		len, (unsigned long) out_ptr, (unsigned long)&count, count[0], count[1], size, size);
+	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
+		 "got %d bytes out_ptr=%p count&=%p count[0]=0x%02x count[1]=0x%02x, len=0x%04x (%d)",
+		 len, out_ptr, &count, count[0], count[1], size, size);
 	out = out_ptr = malloc(size);
 	if (out == NULL) {
 		r = SC_ERROR_OUT_OF_MEMORY;
@@ -983,8 +984,8 @@ static int cac_select_file_by_type(sc_card_t *card, const sc_path_t *in_path, sc
 		in_path->aid.value[4], in_path->aid.value[5], in_path->aid.value[6], in_path->aid.len,
 		in_path->value[0], in_path->value[1], in_path->value[2], in_path->value[3], in_path->len,
 		in_path->type, in_path->type);
-	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,"file_out=%lx index=%d count=%d\n",(unsigned long) file_out,
-		in_path->index, in_path->count);
+	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "file_out=%p index=%d count=%d\n",
+		 file_out, in_path->index, in_path->count);
 
 	/* Sigh, sc_key_select expects paths to keys to have specific formats. There is no override.
 	 * we have to add some bytes to the path to make it happy. A better fix would be to give sc_key_file

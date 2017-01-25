@@ -1243,7 +1243,7 @@ sc_card_sm_load(struct sc_card *card, const char *module_path, const char *in_mo
 	char *module = NULL;
 #ifdef _WIN32
 	char temp_path[PATH_MAX];
-	int temp_len;
+	size_t temp_len;
 	const char path_delim = '\\';
 #else
 	const char path_delim = '/';
