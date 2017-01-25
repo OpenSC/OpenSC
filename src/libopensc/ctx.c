@@ -139,8 +139,7 @@ sc_ctx_win32_get_config_value(char *name_env, char *name_reg, char *name_key,
 #ifdef _WIN32
 	char temp[PATH_MAX + 1];
 	char *value = NULL;
-	int temp_len = PATH_MAX;
-	int rv = SC_ERROR_INTERNAL;
+	DWORD temp_len = PATH_MAX;
 	long rc;
 	HKEY hKey;
 
