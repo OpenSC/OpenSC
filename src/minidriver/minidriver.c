@@ -241,7 +241,6 @@ static const struct sc_asn1_entry c_asn1_md_container[C_ASN1_MD_CONTAINER_SIZE] 
 
 static int associate_card(PCARD_DATA pCardData);
 static int disassociate_card(PCARD_DATA pCardData);
-static DWORD md_get_cardcf(PCARD_DATA pCardData, CARD_CACHE_FILE_FORMAT **out);
 static DWORD md_pkcs15_delete_object(PCARD_DATA pCardData, struct sc_pkcs15_object *obj);
 static DWORD md_fs_init(PCARD_DATA pCardData);
 
@@ -325,17 +324,6 @@ static void loghex(PCARD_DATA pCardData, int level, PBYTE data, size_t len)
 	}
 	if (i%32 != 0)
 		logprintf(pCardData, level, " %04X  %s\n", a, line);
-}
-
-static void print_werror(PCARD_DATA pCardData, PSTR str)
-{
-	void *buf;
-	FormatMessageA(
-		FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-		NULL, GetLastError(), 0, (LPSTR) &buf, 0, NULL);
-
-	logprintf(pCardData, 0, "%s%s\n", str, (PSTR) buf);
-	LocalFree(buf);
 }
 
 /*
@@ -532,25 +520,6 @@ md_is_supports_container_key_import(PCARD_DATA pCardData)
 	return md_get_config_bool(pCardData, "md_supports_container_key_import", MD_STATIC_FLAG_CREATE_CONTAINER_KEY_IMPORT, TRUE);
 }
 
-
-/* Check if specified PIN has been verified */
-static BOOL
-md_is_pin_set(PCARD_DATA pCardData, DWORD role)
-{
-	VENDOR_SPECIFIC *vs;
-	CARD_CACHE_FILE_FORMAT *cardcf = NULL;
-
-	if (!pCardData)
-		return FALSE;
-	vs = pCardData->pvVendorSpecific;
-
-	if (md_get_cardcf(pCardData, &cardcf) != SCARD_S_SUCCESS)
-		return FALSE;
-
-	return IS_PIN_SET(cardcf->bPinsFreshness, role);
-}
-
-
 /* generate unique key label (GUID)*/
 static VOID md_generate_guid( __in_ecount(MAX_CONTAINER_NAME_LEN+1) PSTR szGuid) {
 	RPC_CSTR szRPCGuid = NULL;
@@ -618,21 +587,6 @@ md_contguid_delete_conversion(PCARD_DATA pCardData, __in_ecount(MAX_CONTAINER_NA
 	}
 }
 
-/* this function take the guid in input and search if it should be replaced
-Return if it has been replaced or not */
-static BOOL
-md_contguid_find_conversion(PCARD_DATA pCardData, __in_ecount(MAX_CONTAINER_NAME_LEN+1) PSTR szGuid)
-{
-	int i;
-	for (i = 0; i < MD_MAX_CONVERSIONS; i++) {
-		if (strcmp(md_static_conversions[i].szOpenSCGuid,szGuid) == 0) {
-			strcpy_s(szGuid, MAX_CONTAINER_NAME_LEN+1, md_static_conversions[i].szWindowsGuid);
-			return TRUE;
-		}
-	}
-	return FALSE;
-}
-
 /* build key args from the minidriver guid */
 static VOID
 md_contguid_build_key_args_from_cont_guid(PCARD_DATA pCardData, __in_ecount(MAX_CONTAINER_NAME_LEN+1) PSTR szGuid,
@@ -658,11 +612,8 @@ md_contguid_build_key_args_from_cont_guid(PCARD_DATA pCardData, __in_ecount(MAX_
 static DWORD
 md_contguid_build_cont_guid_from_key(PCARD_DATA pCardData, struct sc_pkcs15_object *key_obj, __in_ecount(MAX_CONTAINER_NAME_LEN+1) PSTR szGuid)
 {
-	VENDOR_SPECIFIC *vs;
 	struct sc_pkcs15_prkey_info *prkey_info = (struct sc_pkcs15_prkey_info *)key_obj->data;
 	DWORD dwret = SCARD_S_SUCCESS;
-
-	vs = (VENDOR_SPECIFIC*) pCardData->pvVendorSpecific;
 
 	szGuid[0] = '\0';
 	/* priorize the use of the key id over the key label as a container name */
@@ -724,7 +675,7 @@ md_fs_find_directory(PCARD_DATA pCardData, struct md_directory *parent, char *na
 		dir = parent->subdirs;
 		while(dir)   {
 			if (strlen(name) > sizeof dir->name
-					|| !strncmp(dir->name, name, sizeof dir->name))
+					|| !strncmp((char *)dir->name, name, sizeof dir->name))
 				break;
 			dir = dir->next;
 		}
@@ -756,7 +707,7 @@ md_fs_add_directory(PCARD_DATA pCardData, struct md_directory **head, char *name
 		return SCARD_E_NO_MEMORY;
 	memset(new_dir, 0, sizeof(struct md_directory));
 
-	strncpy_s(new_dir->name, sizeof(new_dir->name), name, sizeof(new_dir->name) - 1);
+	strncpy_s((char *)new_dir->name, sizeof(new_dir->name), name, sizeof(new_dir->name) - 1);
 	new_dir->acl = acl;
 
 	if (*head == NULL)   {
@@ -780,7 +731,6 @@ md_fs_add_directory(PCARD_DATA pCardData, struct md_directory **head, char *name
 static DWORD
 md_fs_find_file(PCARD_DATA pCardData, char *parent, char *name, struct md_file **out)
 {
-	VENDOR_SPECIFIC *vs;
 	struct md_file *file = NULL;
 	struct md_directory *dir = NULL;
 	DWORD dwret;
@@ -790,8 +740,6 @@ md_fs_find_file(PCARD_DATA pCardData, char *parent, char *name, struct md_file *
 
 	if (!pCardData || !name)
 		return SCARD_E_INVALID_PARAMETER;
-
-	vs = pCardData->pvVendorSpecific;
 
 	dwret = md_fs_find_directory(pCardData, NULL, parent, &dir);
 	if (dwret != SCARD_S_SUCCESS)   {
@@ -805,7 +753,7 @@ md_fs_find_file(PCARD_DATA pCardData, char *parent, char *name, struct md_file *
 
 	for (file = dir->files; file!=NULL;)   {
 		if (sizeof file->name < strlen(name)
-				|| !strncmp(file->name, name, sizeof file->name))
+				|| !strncmp((char *)file->name, name, sizeof file->name))
 			break;
 		file = file->next;
 	}
@@ -834,7 +782,7 @@ md_fs_add_file(PCARD_DATA pCardData, struct md_file **head, char *name, CARD_FIL
 		return SCARD_E_NO_MEMORY;
 	memset(new_file, 0, sizeof(struct md_file));
 
-	strncpy_s(new_file->name, sizeof(new_file->name), name, sizeof(new_file->name) - 1);
+	strncpy_s((char *)new_file->name, sizeof(new_file->name), name, sizeof(new_file->name) - 1);
 	new_file->size = size;
 	new_file->acl = acl;
 
@@ -911,7 +859,7 @@ md_fs_delete_file(PCARD_DATA pCardData, char *parent, char *name)
 	}
 
 	if (sizeof dir->files->name < strlen(name)
-			|| !strncmp(dir->files->name, name, sizeof dir->files->name))   {
+			|| !strncmp((char *)dir->files->name, name, sizeof dir->files->name))   {
 		file_to_rm = dir->files;
 		dir->files = dir->files->next;
 		md_fs_free_file(pCardData, file_to_rm);
@@ -922,7 +870,7 @@ md_fs_delete_file(PCARD_DATA pCardData, char *parent, char *name)
 			if (!file->next)
 				break;
 			if (sizeof file->next->name < strlen(name)
-					|| !strncmp(file->next->name, name, sizeof file->next->name))   {
+					|| !strncmp((char *)file->next->name, name, sizeof file->next->name))   {
 				file_to_rm = file->next;
 				file->next = file->next->next;
 				md_fs_free_file(pCardData, file_to_rm);
@@ -995,7 +943,6 @@ md_pkcs15_update_containers(PCARD_DATA pCardData, unsigned char *blob, size_t si
 {
 	VENDOR_SPECIFIC *vs;
 	CONTAINER_MAP_RECORD *pp;
-	DWORD dwret = SCARD_F_INTERNAL_ERROR;
 	int nn_records, idx;
 
 	if (!pCardData || !blob || size < sizeof(CONTAINER_MAP_RECORD))
@@ -1109,7 +1056,7 @@ md_fs_set_content(PCARD_DATA pCardData, struct md_file *file, unsigned char *blo
 	CopyMemory(file->blob, blob, size);
 	file->size = size;
 
-	if (!strcmp(file->name, "cmapfile"))
+	if (!strcmp((char *)file->name, "cmapfile"))
 		return md_pkcs15_update_containers(pCardData, blob, size);
 
 	return SCARD_S_SUCCESS;
@@ -1167,14 +1114,12 @@ md_fs_read_msroot_file(PCARD_DATA pCardData, char *parent, struct md_file *file)
 {
 	CERT_BLOB dbStore = {0};
 	HCERTSTORE hCertStore = NULL;
-	DWORD dwret = 0;
 	VENDOR_SPECIFIC *vs;
 	int rv, ii, cert_num;
 	struct sc_pkcs15_object *prkey_objs[MD_MAX_KEY_CONTAINERS];
 
 	hCertStore = CertOpenStore(CERT_STORE_PROV_MEMORY, X509_ASN_ENCODING, (HCRYPTPROV_LEGACY) NULL, 0, NULL);
 	if (!hCertStore) {
-		dwret = GetLastError();
 		goto Ret;
 	}
 
@@ -1213,14 +1158,12 @@ md_fs_read_msroot_file(PCARD_DATA pCardData, char *parent, struct md_file *file)
 			CERT_STORE_SAVE_TO_MEMORY,
 				&dbStore,
 		0)) {
-		dwret = GetLastError();
 		goto Ret;
 	}
 
 	dbStore.pbData = (PBYTE) pCardData->pfnCspAlloc(dbStore.cbData);
 
 	if (NULL == dbStore.pbData) {
-		dwret = ERROR_NOT_ENOUGH_MEMORY;
 		goto Ret;
 	}
 
@@ -1231,7 +1174,6 @@ md_fs_read_msroot_file(PCARD_DATA pCardData, char *parent, struct md_file *file)
 				&dbStore,
 				0))
 	{
-		dwret = GetLastError();
 		goto Ret;
 	}
 	file->size = dbStore.cbData;
@@ -1272,12 +1214,12 @@ md_fs_read_content(PCARD_DATA pCardData, char *parent, struct md_file *file)
 		return;
 	}
 
-	if (!strcmp(dir->name, "mscp"))   {
+	if (!strcmp((char *)dir->name, "mscp"))   {
 		int idx, rv;
 
-		if(sscanf_s(file->name, "ksc%d", &idx) > 0)   {
+		if(sscanf_s((char *)file->name, "ksc%d", &idx) > 0)   {
 		}
-		else if(sscanf_s(file->name, "kxc%d", &idx) > 0)   {
+		else if(sscanf_s((char *)file->name, "kxc%d", &idx) > 0)   {
 		}
 		else   {
 			idx = -1;
@@ -1300,7 +1242,7 @@ md_fs_read_content(PCARD_DATA pCardData, char *parent, struct md_file *file)
 			CopyMemory(file->blob, cert->data.value, cert->data.len);
 			sc_pkcs15_free_certificate(cert);
 		}
-		if (!strcmp(file->name, "msroot")) {
+		if (!strcmp((char *)file->name, "msroot")) {
 			md_fs_read_msroot_file(pCardData, parent, file);
 		}
 	}
@@ -1319,16 +1261,11 @@ md_fs_read_content(PCARD_DATA pCardData, char *parent, struct md_file *file)
 static DWORD
 md_set_cardcf(PCARD_DATA pCardData, struct md_file *file)
 {
-	VENDOR_SPECIFIC *vs;
-	char *last_update = NULL;
 	CARD_CACHE_FILE_FORMAT empty = {0};
-	size_t empty_len = sizeof(empty);
 	DWORD dwret;
 
 	if (!pCardData || !file)
 		return SCARD_E_INVALID_PARAMETER;
-
-	vs = pCardData->pvVendorSpecific;
 
 	dwret = md_fs_set_content(pCardData, file, (unsigned char *)(&empty), MD_CARDCF_LENGTH);
 	if (dwret != SCARD_S_SUCCESS)
@@ -1338,31 +1275,6 @@ md_set_cardcf(PCARD_DATA pCardData, struct md_file *file)
 	loghex(pCardData, 3, file->blob, file->size);
 	return SCARD_S_SUCCESS;
 }
-
-/*
- * Return content of the 'soft' 'cardcf' file
- */
-static DWORD
-md_get_cardcf(PCARD_DATA pCardData, CARD_CACHE_FILE_FORMAT **out)
-{
-	struct md_file *file = NULL;
-
-	if (!pCardData)
-		return SCARD_E_INVALID_PARAMETER;
-
-	md_fs_find_file(pCardData, NULL, "cardcf", &file);
-	if (!file)   {
-		logprintf(pCardData, 2, "file 'cardcf' not found\n");
-		return SCARD_E_FILE_NOT_FOUND;
-	}
-	if (!file->blob || file->size < MD_CARDCF_LENGTH)
-		return SCARD_E_INVALID_VALUE;
-	if (out)
-		*out = (CARD_CACHE_FILE_FORMAT *)file->blob;
-
-	return SCARD_S_SUCCESS;
-}
-
 
 static DWORD
 md_set_cardapps(PCARD_DATA pCardData, struct md_file *file)
@@ -1429,7 +1341,6 @@ md_set_cmapfile(PCARD_DATA pCardData, struct md_file *file)
 {
 	VENDOR_SPECIFIC *vs;
 	PCONTAINER_MAP_RECORD p;
-	sc_pkcs15_pubkey_t *pubkey = NULL;
 	unsigned char *cmap_buf = NULL;
 	size_t cmap_len;
 	DWORD dwret;
@@ -1459,7 +1370,7 @@ md_set_cmapfile(PCARD_DATA pCardData, struct md_file *file)
 
 	/* Initialize the P15 container array with the existing keys */
 	for(ii = 0; ii < conts_num; ii++)   {
-		struct sc_pkcs15_object *key_obj = prkey_objs[ii], *cert_obj = NULL;
+		struct sc_pkcs15_object *key_obj = prkey_objs[ii];
 		struct sc_pkcs15_prkey_info *prkey_info = (struct sc_pkcs15_prkey_info *)key_obj->data;
 		struct md_pkcs15_container *cont = &vs->p15_containers[ii];
 
@@ -1566,8 +1477,6 @@ md_set_cmapfile(PCARD_DATA pCardData, struct md_file *file)
 		/* Initialize 'CMAPFILE' content from the P15 containers */
 		p = (PCONTAINER_MAP_RECORD)cmap_buf;
 		for (ii=0; ii<MD_MAX_KEY_CONTAINERS; ii++)   {
-			struct sc_pkcs15_object *cert_obj = NULL;
-
 			if (!(vs->p15_containers[ii].flags & CONTAINER_MAP_VALID_CONTAINER))
 				continue;
 
@@ -1930,15 +1839,15 @@ md_pkcs15_generate_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, DWORD ke
 		if ((key_type == AT_ECDSA_P256)|| (key_type == AT_ECDHE_P256)) {
 			keygen_args.prkey_args.key.u.ec.params.named_curve = "secp256r1";
 			keygen_args.prkey_args.key.u.ec.params.der.len = 10;
-			keygen_args.prkey_args.key.u.ec.params.der.value = "\x06\x08\x2A\x86\x48\xCE\x3D\x03\x01\x07";
+			keygen_args.prkey_args.key.u.ec.params.der.value = (unsigned char *)"\x06\x08\x2A\x86\x48\xCE\x3D\x03\x01\x07";
 		} else if ((key_type == AT_ECDSA_P384)|| (key_type == AT_ECDHE_P384)) {
 			keygen_args.prkey_args.key.u.ec.params.named_curve = "secp384r1";
 			keygen_args.prkey_args.key.u.ec.params.der.len = 7;
-			keygen_args.prkey_args.key.u.ec.params.der.value = "\x06\x05\x2B\x81\x04\x00\x22";
+			keygen_args.prkey_args.key.u.ec.params.der.value = (unsigned char *)"\x06\x05\x2B\x81\x04\x00\x22";
 		} else if ((key_type == AT_ECDSA_P521)|| (key_type == AT_ECDHE_P521)) {
 			keygen_args.prkey_args.key.u.ec.params.named_curve = "secp521r1";
 			keygen_args.prkey_args.key.u.ec.params.der.len = 7;
-			keygen_args.prkey_args.key.u.ec.params.der.value = "\x06\x05\x2B\x81\x04\x00\x23";
+			keygen_args.prkey_args.key.u.ec.params.der.value = (unsigned char *)"\x06\x05\x2B\x81\x04\x00\x23";
 		}
 	}
 
@@ -2033,7 +1942,7 @@ md_pkcs15_store_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, BYTE *blob,
 	vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
 	card = vs->p15card->card;
 
-	pkey = b2i_PrivateKey(&ptr, blob_size);
+	pkey = b2i_PrivateKey((const unsigned char **)&ptr, blob_size);
 	if (!pkey)   {
 		logprintf(pCardData, 1, "MdStoreKey() MSBLOB key parse error");
 		return SCARD_E_INVALID_PARAMETER;
@@ -2172,10 +2081,9 @@ md_pkcs15_store_certificate(PCARD_DATA pCardData, char *file_name, unsigned char
 
 	/* use container's ID as ID of certificate to store */
 	idx = -1;
-	if(sscanf_s(file_name, "ksc%d", &idx) > 0)
-		;
-	else if(sscanf_s(file_name, "kxc%d", &idx) > 0)
-		;
+	if(sscanf_s(file_name, "ksc%d", &idx) > 0) {
+	} else if(sscanf_s(file_name, "kxc%d", &idx) > 0) {
+	}
 
 	if (idx >= 0 && idx < MD_MAX_KEY_CONTAINERS)   {
 		cont = &(vs->p15_containers[idx]);
@@ -2223,7 +2131,7 @@ md_query_key_sizes(PCARD_DATA pCardData, DWORD dwKeySpec, CARD_KEY_SIZES *pKeySi
 {
 	VENDOR_SPECIFIC *vs = NULL;
 	struct sc_algorithm_info* algo_info;
-	int count = 0, i, key_algo = 0, keysize = 0, flag;
+	int count = 0, i, keysize = 0, flag;
 	if (!pKeySizes)
 		return SCARD_E_INVALID_PARAMETER;
 
@@ -2453,7 +2361,6 @@ md_dialog_perform_pin_operation(PCARD_DATA pCardData, int operation, struct sc_p
 {
 	LONG_PTR parameter[10];
 	INT_PTR result = 0;
-	HWND hWndDlg = 0;
 	int rv = 0;
 	VENDOR_SPECIFIC* pv = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
 	/* stack the parameters */
@@ -2652,12 +2559,10 @@ DWORD WINAPI CardCreateContainer(__in PCARD_DATA pCardData,
 	__in DWORD dwKeySize,
 	__in PBYTE pbKeyData)
 {
-	VENDOR_SPECIFIC *vs = NULL;
 	DWORD dwret;
 
 	if (!pCardData)
 		return SCARD_E_INVALID_PARAMETER;
-	vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
 
 	logprintf(pCardData, 1, "\nP:%d T:%d pCardData:%p ",GetCurrentProcessId(), GetCurrentThreadId(), pCardData);
 	logprintf(pCardData, 1, "CardCreateContainer(idx:%i,flags:%X,type:%X,size:%i,data:%p)\n",
@@ -2745,7 +2650,7 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 		return SCARD_E_INVALID_PARAMETER;
 	if (bContainerIndex >= MD_MAX_KEY_CONTAINERS)
 		return SCARD_E_NO_KEY_CONTAINER;
-	if (pContainerInfo->dwVersion < 0 || pContainerInfo->dwVersion >  CONTAINER_INFO_CURRENT_VERSION)
+	if (pContainerInfo->dwVersion > CONTAINER_INFO_CURRENT_VERSION)
 		return ERROR_REVISION_MISMATCH;
 
 	pContainerInfo->dwVersion = CONTAINER_INFO_CURRENT_VERSION;
@@ -3189,8 +3094,6 @@ DWORD WINAPI CardReadFile(__in PCARD_DATA pCardData,
 	__deref_out_bcount_opt(*pcbData) PBYTE *ppbData,
 	__out PDWORD pcbData)
 {
-	VENDOR_SPECIFIC *vs;
-	struct md_directory *dir = NULL;
 	struct md_file *file = NULL;
 
 	logprintf(pCardData, 1, "\nP:%d T:%d pCardData:%p ",GetCurrentProcessId(), GetCurrentThreadId(), pCardData);
@@ -3200,8 +3103,6 @@ DWORD WINAPI CardReadFile(__in PCARD_DATA pCardData,
 		return SCARD_E_INVALID_PARAMETER;
 	if (!ppbData || !pcbData)
 		return SCARD_E_INVALID_PARAMETER;
-
-	vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
 
 	logprintf(pCardData, 2, "pszDirectoryName = %s, pszFileName = %s, dwFlags = %X, pcbData=%u, *ppbData=%X\n",
 		NULLSTR(pszDirectoryName), NULLSTR(pszFileName), dwFlags, *pcbData, *ppbData);
@@ -3290,7 +3191,6 @@ DWORD WINAPI CardDeleteFile(__in PCARD_DATA pCardData,
 	__in LPSTR pszFileName,
 	__in DWORD dwFlags)
 {
-	struct md_file *file = NULL;
 	DWORD dwret;
 
 	logprintf(pCardData, 1, "\nP:%d T:%d pCardData:%p ",GetCurrentProcessId(), GetCurrentThreadId(), pCardData);
@@ -3351,8 +3251,8 @@ DWORD WINAPI CardEnumFiles(__in PCARD_DATA pCardData,
 	file = dir->files;
 	for (offs = 0; file != NULL && offs < sizeof(mstr) - 10;)   {
 		logprintf(pCardData, 2, "enum files(): file name '%s'\n", file->name);
-		strcpy_s(mstr+offs, sizeof(mstr) - offs, file->name);
-		offs += strlen(file->name) + 1;
+		strcpy_s(mstr+offs, sizeof(mstr) - offs, (char *)file->name);
+		offs += strlen((char *)file->name) + 1;
 		file = file->next;
 	}
 	mstr[offs] = 0;
@@ -3373,14 +3273,10 @@ DWORD WINAPI CardGetFileInfo(__in PCARD_DATA pCardData,
 	__in LPSTR pszFileName,
 	__inout PCARD_FILE_INFO pCardFileInfo)
 {
-	VENDOR_SPECIFIC *vs = NULL;
-	struct md_directory *dir = NULL;
 	struct md_file *file = NULL;
 
 	logprintf(pCardData, 1, "\nP:%d T:%d pCardData:%p ",GetCurrentProcessId(), GetCurrentThreadId(), pCardData);
 	logprintf(pCardData, 1, "CardGetFileInfo(dirName:'%s',fileName:'%s', out %p)\n", NULLSTR(pszDirectoryName), NULLSTR(pszFileName), pCardFileInfo);
-
-	vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
 
 	md_fs_find_file(pCardData, pszDirectoryName, pszFileName, &file);
 	if (!file)   {
@@ -3399,7 +3295,6 @@ DWORD WINAPI CardGetFileInfo(__in PCARD_DATA pCardData,
 DWORD WINAPI CardQueryFreeSpace(__in PCARD_DATA pCardData, __in DWORD dwFlags,
 	__inout PCARD_FREE_SPACE_INFO pCardFreeSpaceInfo)
 {
-	VENDOR_SPECIFIC *vs;
 	DWORD dwret;
 
 	logprintf(pCardData, 1, "\nP:%d T:%d pCardData:%p ",GetCurrentProcessId(), GetCurrentThreadId(), pCardData);
@@ -3408,8 +3303,6 @@ DWORD WINAPI CardQueryFreeSpace(__in PCARD_DATA pCardData, __in DWORD dwFlags,
 
 	if (!pCardData)
 		return SCARD_E_INVALID_PARAMETER;
-
-	vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
 
 	check_reader_status(pCardData);
 
@@ -3461,7 +3354,6 @@ DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 	VENDOR_SPECIFIC *vs;
 	struct sc_pkcs15_prkey_info *prkey_info;
 	BYTE *pbuf = NULL, *pbuf2 = NULL;
-	DWORD lg= 0, lg2 = 0;
 	struct sc_pkcs15_object *pkey = NULL;
 	struct sc_algorithm_info *alg_info = NULL;
 
@@ -3506,7 +3398,6 @@ DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 	if (!pbuf)
 		return SCARD_E_NO_MEMORY;
 
-	lg2 = pInfo->cbData;
 	pbuf2 = pCardData->pfnCspAlloc(pInfo->cbData);
 	if (!pbuf2) {
 		pCardData->pfnCspFree(pbuf);
@@ -4355,7 +4246,6 @@ DWORD WINAPI CardDeriveKey(__in PCARD_DATA pCardData,
 	__inout PCARD_DERIVE_KEY pAgreementInfo)
 {
 	VENDOR_SPECIFIC *vs;
-	DWORD dwAgreementIndex = 0;
 	struct md_dh_agreement* agreement = NULL;
 	NCryptBufferDesc* parameters = NULL;
 	ULONG i;
@@ -4977,7 +4867,6 @@ DWORD WINAPI CardGetProperty(__in PCARD_DATA pCardData,
 	else if (wcscmp(CP_CARD_SERIAL_NO, wszProperty) == 0)   {
 		unsigned char buf[64];
 		size_t buf_len = sizeof(buf);
-		size_t sn_len = strlen(vs->p15card->tokeninfo->serial_number)/2;
 
 		if (sc_hex_to_bin(vs->p15card->tokeninfo->serial_number, buf, &buf_len))   {
 			buf_len = strlen(vs->p15card->tokeninfo->serial_number);

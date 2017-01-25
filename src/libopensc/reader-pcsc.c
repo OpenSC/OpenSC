@@ -49,12 +49,28 @@
 
 #define SCARD_CLASS_SYSTEM     0x7fff
 #define SCARD_ATTR_VALUE(Class, Tag) ((((ULONG)(Class)) << 16) | ((ULONG)(Tag)))
+
+#ifndef SCARD_ATTR_DEVICE_FRIENDLY_NAME_A
 #define SCARD_ATTR_DEVICE_FRIENDLY_NAME_A SCARD_ATTR_VALUE(SCARD_CLASS_SYSTEM, 0x0003)
+#endif
+
+#ifndef SCARD_ATTR_DEVICE_SYSTEM_NAME_A
 #define SCARD_ATTR_DEVICE_SYSTEM_NAME_A SCARD_ATTR_VALUE(SCARD_CLASS_SYSTEM, 0x0004)
+#endif
+
 #define SCARD_CLASS_VENDOR_INFO 1
+
+#ifndef SCARD_ATTR_VENDOR_NAME
 #define SCARD_ATTR_VENDOR_NAME SCARD_ATTR_VALUE(SCARD_CLASS_VENDOR_INFO, 0x0100) /**< Vendor name. */
+#endif
+
+#ifndef SCARD_ATTR_VENDOR_IFD_TYPE
 #define SCARD_ATTR_VENDOR_IFD_TYPE SCARD_ATTR_VALUE(SCARD_CLASS_VENDOR_INFO, 0x0101) /**< Vendor-supplied interface device type (model designation of reader). */
+#endif
+
+#ifndef SCARD_ATTR_VENDOR_IFD_VERSION
 #define SCARD_ATTR_VENDOR_IFD_VERSION SCARD_ATTR_VALUE(SCARD_CLASS_VENDOR_INFO, 0x0102) /**< Vendor-supplied interface device version (DWORD in the form 0xMMmmbbbb where MM = major version, mm = minor version, and bbbb = build number). */
+#endif
 
 /* Logging */
 #define PCSC_TRACE(reader, desc, rv) do { sc_log(reader->ctx, "%s:" desc ": 0x%08lx\n", reader->name, (unsigned long)((ULONG)rv)); } while (0)
@@ -834,7 +850,7 @@ static int pcsc_finish(sc_context_t *ctx)
 	LOG_FUNC_CALLED(ctx);
 
 	if (gpriv) {
-		if (gpriv->pcsc_ctx != -1 && !(ctx->flags & SC_CTX_FLAG_TERMINATE))
+		if (gpriv->pcsc_ctx != (SCARDCONTEXT)-1 && !(ctx->flags & SC_CTX_FLAG_TERMINATE))
 			gpriv->SCardReleaseContext(gpriv->pcsc_ctx);
 		if (gpriv->dlhandle != NULL)
 			sc_dlclose(gpriv->dlhandle);
@@ -1168,7 +1184,7 @@ static int pcsc_detect_readers(sc_context_t *ctx)
 	sc_log(ctx, "Probing PC/SC readers");
 
 	do {
-		if (gpriv->pcsc_ctx == -1) {
+		if (gpriv->pcsc_ctx == (SCARDCONTEXT)-1) {
 			/*
 			 * Cannot call SCardListReaders with -1
 			 * context as in Windows ERROR_INVALID_HANDLE
@@ -2222,8 +2238,6 @@ static int cardmod_connect(sc_reader_t *reader)
 
 static int cardmod_disconnect(sc_reader_t * reader)
 {
-	struct pcsc_private_data *priv = GET_PRIV_DATA(reader);
-
 	reader->flags = 0;
 	return SC_SUCCESS;
 }
@@ -2330,8 +2344,8 @@ int cardmod_use_reader(sc_context_t *ctx, void * pcsc_context_handle, void * pcs
 	scconf_block *conf_block = NULL;
 	struct pcsc_global_private_data *gpriv = (struct pcsc_global_private_data *) ctx->reader_drv_data;
 	LONG rv;
-	char reader_name[128];
-	DWORD rcount, feature_len, display_ioctl, reader_name_size = sizeof(reader_name);
+	BYTE reader_name[128];
+	DWORD rcount, feature_len, display_ioctl = 0, reader_name_size = sizeof(reader_name);
 	int ret = SC_ERROR_INTERNAL;
 	unsigned int i;
 
@@ -2380,7 +2394,7 @@ int cardmod_use_reader(sc_context_t *ctx, void * pcsc_context_handle, void * pcs
 		reader->drv_data = priv;
 		reader->ops = &cardmod_ops;
 		reader->driver = &cardmod_drv;
-		if ((reader->name = strdup(reader_name)) == NULL) {
+		if ((reader->name = strdup((const char *)reader_name)) == NULL) {
 			ret = SC_ERROR_OUT_OF_MEMORY;
 			goto err1;
 		}

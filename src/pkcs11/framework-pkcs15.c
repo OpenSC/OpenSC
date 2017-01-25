@@ -878,6 +878,8 @@ pkcs15_add_object(struct sc_pkcs11_slot *slot, struct pkcs15_any_object *obj,
 {
 	unsigned int i;
 	struct pkcs15_fw_data *card_fw_data;
+	CK_OBJECT_HANDLE handle =
+		(CK_OBJECT_HANDLE)obj; /* cast pointer to long, will truncate on Win64 */
 
 	if (obj == NULL || slot == NULL)
 		return;
@@ -888,11 +890,11 @@ pkcs15_add_object(struct sc_pkcs11_slot *slot, struct pkcs15_any_object *obj,
 		return;
 
 	if (pHandle != NULL)
-		*pHandle = (CK_OBJECT_HANDLE)obj; /* cast pointer to long */
+		*pHandle = handle;
 
 	list_append(&slot->objects, obj);
-	sc_log(context, "Slot:%X Setting object handle of 0x%lx to 0x%lx", slot->id, obj->base.handle, (CK_OBJECT_HANDLE)obj);
-	obj->base.handle = (CK_OBJECT_HANDLE)obj; /* cast pointer to long */
+	sc_log(context, "Slot:%X Setting object handle of 0x%lx to 0x%lx", slot->id, obj->base.handle, handle);
+	obj->base.handle = handle;
 	obj->base.flags |= SC_PKCS11_OBJECT_SEEN;
 	obj->refcount++;
 
