@@ -409,8 +409,12 @@ if test "${enable_minidriver}" = "yes"; then
 	AC_CHECK_HEADER(
 		[cardmod.h],
 		,
-		[AC_MSG_ERROR([cardmod.h is not found and required for minidriver])]
-	)
+		[AC_MSG_ERROR([cardmod.h from CNG is required for minidriver])],
+		[#if defined(__MINGW32__)
+#include "${srcdir}/src/minidriver/cardmod-mingw-compat.h"
+#endif
+	])
+
 	AC_DEFINE([ENABLE_MINIDRIVER], [1], [Enable minidriver support])
 fi
 

@@ -30,12 +30,13 @@
 #pragma managed(push, off)
 #endif
 
+#define MINGW_HAS_SECURE_API 1
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 
 #include <windows.h>
-#include "cardmod.h"
 
 #include "libopensc/asn1.h"
 #include "libopensc/cardctl.h"
@@ -54,9 +55,10 @@
 #endif
 
 #if defined(__MINGW32__)
-/* Part of the build svn project in the include directory */
 #include "cardmod-mingw-compat.h"
 #endif
+
+#include "cardmod.h"
 
 /* store the instance given at DllMain when attached to access internal resources */
 HINSTANCE g_inst;

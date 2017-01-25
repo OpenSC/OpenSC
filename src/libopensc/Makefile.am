@@ -19,7 +19,7 @@ AM_CPPFLAGS = -DOPENSC_CONF_PATH=\"$(sysconfdir)/opensc.conf\" \
 AM_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(OPTIONAL_OPENCT_CFLAGS) \
 	$(OPTIONAL_PCSC_CFLAGS) $(OPTIONAL_ZLIB_CFLAGS)
 
-libopensc_la_SOURCES = \
+libopensc_la_SOURCES_BASE = \
 	sc.c ctx.c log.c errors.c \
 	asn1.c base64.c sec.c card.c iso7816.c dir.c ef-atr.c padding.c apdu.c \
 	simpletlv.c \
@@ -53,8 +53,10 @@ libopensc_la_SOURCES = \
 	pkcs15-coolkey.c \
 	pkcs15-dnie.c pkcs15-gids.c pkcs15-iasecc.c pkcs15-jpki.c \
 	compression.c p15card-helper.c sm.c \
-	aux-data.c \
+	aux-data.c
+libopensc_la_SOURCES = $(libopensc_la_SOURCES_BASE) \
 	libopensc.exports
+libopensc_static_la_SOURCES = $(libopensc_la_SOURCES_BASE)
 if WIN32
 libopensc_la_SOURCES += $(top_builddir)/win32/versioninfo.rc
 endif
@@ -67,6 +69,7 @@ libopensc_la_LIBADD = $(OPTIONAL_OPENSSL_LIBS) $(OPTIONAL_OPENCT_LIBS) \
 if WIN32
 libopensc_la_LIBADD += -lws2_32
 endif
+libopensc_static_la_LIBADD = $(libopensc_la_LIBADD)
 libopensc_la_LDFLAGS = $(AM_LDFLAGS) \
 	-version-info @OPENSC_LT_CURRENT@:@OPENSC_LT_REVISION@:@OPENSC_LT_AGE@ \
 	-export-symbols "$(srcdir)/libopensc.exports" \
@@ -77,4 +80,8 @@ if WIN32
 mylibdir=$(libdir)
 mylib_DATA=.libs/@WIN_LIBPREFIX@opensc-@OPENSC_LT_OLDEST@.dll.def
 .libs/@WIN_LIBPREFIX@opensc-@OPENSC_LT_OLDEST@.dll.def:	libopensc.la
+
+if ENABLE_MINIDRIVER
+noinst_LTLIBRARIES = libopensc_static.la
+endif
 endif
