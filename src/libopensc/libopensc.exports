@@ -52,6 +52,7 @@ sc_asn1_write_element
 sc_asn1_sig_value_sequence_to_rs
 sc_asn1_sig_value_rs_to_sequence
 sc_aux_data_set_md_flags
+sc_aux_data_get_md_flags
 sc_aux_data_allocate
 sc_aux_data_set_md_guid
 sc_aux_data_free
@@ -71,6 +72,7 @@ sc_compute_signature
 sc_concatenate_path
 sc_connect_card
 sc_context_create
+sc_context_repair
 sc_copy_asn1_entry
 sc_create_file
 sc_ctx_detect_readers
@@ -133,11 +135,13 @@ sc_make_cache_dir
 sc_mem_alloc_secure
 sc_mem_clear
 sc_mem_reverse
+_sc_match_atr_block
 sc_match_atr_block
 sc_path_print
 sc_path_set
 sc_pin_cmd
 sc_pkcs1_encode
+sc_pkcs1_strip_02_padding
 sc_pkcs15_add_df
 sc_pkcs15_add_object
 sc_pkcs15_add_unusedspace
