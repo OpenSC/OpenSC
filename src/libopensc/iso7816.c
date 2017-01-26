@@ -452,6 +452,9 @@ iso7816_select_file(struct sc_card *card, const struct sc_path *in_path, struct 
 	int r, pathlen, pathtype;
 	int select_mf = 0;
 	struct sc_file *file = NULL;
+	const u8 *buffer;
+	size_t buffer_len;
+	unsigned int cla, tag;
 
 	assert(card != NULL && in_path != NULL);
 	ctx = card->ctx;
@@ -577,8 +580,10 @@ iso7816_select_file(struct sc_card *card, const struct sc_path *in_path, struct 
 			sc_file_free(file);
 			LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 		}
-		if ((size_t)apdu.resp[1] + 2 <= apdu.resplen)
-			card->ops->process_fci(card, file, apdu.resp+2, apdu.resp[1]);
+		buffer = apdu.resp;
+		r = sc_asn1_read_tag(&buffer, apdu.resplen, &cla, &tag, &buffer_len);
+		if (r == SC_SUCCESS)
+			card->ops->process_fci(card, file, buffer, buffer_len);
 		*file_out = file;
 		break;
 	case 0x00: /* proprietary coding */
