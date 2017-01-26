@@ -3301,7 +3301,7 @@ static void show_cert(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 	unsigned char	*id;
 	char		*label;
 
-	printf("Certificate Object, type = ");
+	printf("Certificate Object; type = ");
 	switch (cert_type) {
 	case CKC_X_509:
 		printf("X.509 cert\n");
@@ -3310,10 +3310,10 @@ static void show_cert(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 		printf("X.509 attribute cert\n");
 		break;
 	case CKC_VENDOR_DEFINED:
-		printf("vendor defined");
+		printf("vendor defined\n");
 		break;
 	default:
-		printf("; unknown cert type\n");
+		printf("unknown cert type\n");
 		break;
 	}
 
