@@ -4127,8 +4127,8 @@ static int test_signature(CK_SESSION_HANDLE sess)
 	rv = p11->C_GetSessionInfo(sess, &sessionInfo);
 	if (rv != CKR_OK)
 		p11_fatal("C_OpenSession", rv);
-	if ((sessionInfo.state & CKS_RO_USER_FUNCTIONS) == 0) {
-		printf("Signatures: not logged in, skipping signature tests\n");
+	if (!(sessionInfo.state & CKS_RW_USER_FUNCTIONS)) {
+		printf("Signature: not a R/W session, skipping signature tests\n");
 		return errors;
 	}
 
@@ -4440,8 +4440,8 @@ static int test_verify(CK_SESSION_HANDLE sess)
 	rv = p11->C_GetSessionInfo(sess, &sessionInfo);
 	if (rv != CKR_OK)
 		p11_fatal("C_OpenSession", rv);
-	if ((sessionInfo.state & CKS_RO_USER_FUNCTIONS) == 0) {
-		printf("Verify: not logged in, skipping verify tests\n");
+	if (!(sessionInfo.state & CKS_RW_USER_FUNCTIONS)) {
+		printf("Verify: not a R/W session, skipping verify tests\n");
 		return errors;
 	}
 
@@ -4771,8 +4771,8 @@ static int test_decrypt(CK_SESSION_HANDLE sess)
 	rv = p11->C_GetSessionInfo(sess, &sessionInfo);
 	if (rv != CKR_OK)
 		p11_fatal("C_OpenSession", rv);
-	if ((sessionInfo.state & CKS_RO_USER_FUNCTIONS) == 0) {
-		printf("Decryption: not logged in, skipping decryption tests\n");
+	if (!(sessionInfo.state & CKS_RW_USER_FUNCTIONS)) {
+		printf("Decryption: not a R/W session, skipping decryption tests\n");
 		return errors;
 	}
 
