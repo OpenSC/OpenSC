@@ -1486,8 +1486,8 @@ pkcs15_login(struct sc_pkcs11_slot *slot, CK_USER_TYPE userType,
 		if (ulPinLen == 0)
 			pPin = NULL;
 	}
-	else if (ulPinLen > pin_info->attrs.pin.max_length)   {
-		return CKR_ARGUMENTS_BAD;
+	else if (ulPinLen > pin_info->attrs.pin.max_length || ulPinLen < pin_info->attrs.pin.min_length)   {
+		return CKR_PIN_LEN_RANGE; //The specified PIN is too long or too short.
 	}
 
 
