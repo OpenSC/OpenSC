@@ -365,6 +365,7 @@ static void		show_token(CK_SLOT_ID);
 static void		list_mechs(CK_SLOT_ID);
 static void		list_objects(CK_SESSION_HANDLE, CK_OBJECT_CLASS);
 static int		login(CK_SESSION_HANDLE, int);
+static void		authenticate_if_required(CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static void		init_token(CK_SLOT_ID);
 static void		init_pin(CK_SLOT_ID, CK_SESSION_HANDLE);
 static int		change_pin(CK_SLOT_ID, CK_SESSION_HANDLE);
@@ -2882,6 +2883,32 @@ VARATTR_METHOD(GOSTR3410_PARAMS, unsigned char);
 VARATTR_METHOD(EC_POINT, unsigned char);
 VARATTR_METHOD(EC_PARAMS, unsigned char);
 
+static void  authenticate_if_required(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE privKeyObject){
+	CK_SESSION_INFO sessionInfo;
+	CK_TOKEN_INFO	info;
+	CK_RV rv;
+
+	rv = p11->C_GetSessionInfo(session, &sessionInfo);
+	if (rv != CKR_OK)
+		p11_fatal("C_OpenSession", rv);
+
+	switch(sessionInfo.state){
+		case CKS_RW_USER_FUNCTIONS: //logged in, not need to continue.
+			util_warn("authentication was requested, but was already logged in");
+			return;
+		case CKS_RW_PUBLIC_SESSION:
+			break;
+		default:
+			util_fatal("unexpected state");
+	}
+
+	get_token_info(opt_slot, &info);
+	if (!(info.flags & CKF_PROTECTED_AUTHENTICATION_PATH) && !getALWAYS_AUTHENTICATE(session, privKeyObject))
+		return;
+
+	login(session,CKU_CONTEXT_SPECIFIC);
+}
+
 static void list_objects(CK_SESSION_HANDLE sess, CK_OBJECT_CLASS  object_class)
 {
 	CK_OBJECT_HANDLE object;
@@ -4022,8 +4049,7 @@ static int sign_verify_openssl(CK_SESSION_HANDLE session,
 	if (rv != CKR_OK)
 		p11_fatal("C_SignInit", rv);
 
-	if (getALWAYS_AUTHENTICATE(session, privKeyObject))
-		login(session,CKU_CONTEXT_SPECIFIC);
+	authenticate_if_required(session, privKeyObject);
 	printf("    %s: ", p11_mechanism_to_name(ck_mech->mechanism));
 
 	sigLen1 = sizeof(sig1);
@@ -4219,8 +4245,7 @@ static int test_signature(CK_SESSION_HANDLE sess)
 		rv = p11->C_SignInit(sess, &ck_mech, privKeyObject);
 		if (rv != CKR_OK)
 			p11_fatal("C_SignInit", rv);
-		if (getALWAYS_AUTHENTICATE(sess, privKeyObject))
-			login(sess,CKU_CONTEXT_SPECIFIC);
+		authenticate_if_required(sess, privKeyObject);
 
 		sigLen2 = sizeof(sig2);
 		rv = p11->C_Sign(sess, data, dataLen, sig2, &sigLen2);
@@ -4258,8 +4283,7 @@ static int test_signature(CK_SESSION_HANDLE sess)
 	   printf("  ERR: C_Sign() didn't return CKR_OK for a NULL output buf, but %s (0x%0x)\n",
 	   CKR2Str(rv), (int) rv);
 	}
-	if (getALWAYS_AUTHENTICATE(sess, privKeyObject))
-		login(sess,CKU_CONTEXT_SPECIFIC);
+	authenticate_if_required(sess, privKeyObject);
 
 	rv = p11->C_Sign(sess, data, dataLen, sig2, &sigLen2);
 	if (rv == CKR_OPERATION_NOT_INITIALIZED) {
@@ -4395,8 +4419,7 @@ static int sign_verify(CK_SESSION_HANDLE session,
 		}
 
 		printf("    %s: ", p11_mechanism_to_name(*mech_type));
-		if (getALWAYS_AUTHENTICATE(session, priv_key))
-			login(session,CKU_CONTEXT_SPECIFIC);
+		authenticate_if_required(session, priv_key);
 
 		signat_len = sizeof(signat);
 		rv = p11->C_Sign(session, datas[j], data_lens[j], signat, &signat_len);
