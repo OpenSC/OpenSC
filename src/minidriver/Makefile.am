@@ -18,6 +18,7 @@ AM_CPPFLAGS = -I$(top_srcdir)/src
 opensc_minidriver@LIBRARY_BITNESS@_la_SOURCES = minidriver.c minidriver.exports versioninfo-minidriver.rc
 opensc_minidriver@LIBRARY_BITNESS@_la_LIBADD =  \
 	$(top_builddir)/src/libopensc/libopensc.la \
+	$(top_builddir)/src/common/libcompat.la \
 	$(OPTIONAL_OPENSSL_LIBS) \
 	-lbcrypt -lcrypt32 -lrpcrt4
 opensc_minidriver@LIBRARY_BITNESS@_la_LDFLAGS = $(AM_LDFLAGS) \

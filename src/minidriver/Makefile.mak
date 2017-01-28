@@ -4,7 +4,8 @@ TARGET = opensc-minidriver.dll
 OBJECTS = minidriver.obj versioninfo-minidriver.res
 LIBS = $(TOPDIR)\src\libopensc\opensc_a.lib \
 	   $(TOPDIR)\src\pkcs15init\pkcs15init.lib \
-	   $(TOPDIR)\src\common\libscdl.lib
+	   $(TOPDIR)\src\common\libscdl.lib \
+	   $(TOPDIR)\src\common\common.lib
 
 all: $(TARGET)
 
