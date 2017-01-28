@@ -773,7 +773,7 @@ static int dnie_get_sn_icc(sc_card_t * card)
 	res = sc_card_ctl(card, SC_CARDCTL_GET_SERIALNR, &serial);
 	LOG_TEST_RET(card->ctx, res, "Error in gettting serial number");
 	/* copy into sn_icc buffer.Remember that dnie sn has 7 bytes length */
-	memset(sm->icc.sn, 0, sizeof(sizeof(sm->icc.sn)));
+	memset(sm->icc.sn, 0, sizeof(sm->icc.sn));
 	memcpy(&sm->icc.sn[1], serial.value, 7);
 	return SC_SUCCESS;
 }
