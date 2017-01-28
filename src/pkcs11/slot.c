@@ -229,15 +229,19 @@ again:
 		sc_log(context, "%s: failed, %s", reader->name, sc_strerror(rc));
 		return sc_to_cryptoki_error(rc, NULL);
 	}
-	if (rc == 0) {
+	if (!(rc & SC_READER_CARD_PRESENT)) {
 		sc_log(context, "%s: card absent", reader->name);
 		card_removed(reader);	/* Release all resources */
 		return CKR_TOKEN_NOT_PRESENT;
 	}
 
-	/* If the card was changed, disconnect the current one */
-	if (rc & SC_READER_CARD_CHANGED) {
-		sc_log(context, "%s: Card changed", reader->name);
+	/*
+	 * If the card was changed or reset, disconnect the current one
+	 * then recheck whether we need to reattach
+	 */
+	if (rc & (SC_READER_CARD_CHANGED | SC_READER_CARD_RESET)) {
+		sc_log(context, "%s: Card %s", reader->name,
+		       rc & SC_READER_CARD_CHANGED ? "changed" : "reset");
 		/* The following should never happen - but if it
 		 * does we'll be stuck in an endless loop.
 		 * So better be fussy.

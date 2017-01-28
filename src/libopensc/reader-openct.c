@@ -394,7 +394,7 @@ static int openct_reader_perform_verify(sc_reader_t *reader, struct sc_pin_cmd_d
 	return 0;
 }
 
-static int openct_reader_lock(sc_reader_t *reader)
+static int openct_reader_lock(sc_reader_t *reader, int resetok)
 {
 	struct driver_data *data = (struct driver_data *) reader->drv_data;
 	int rc;
