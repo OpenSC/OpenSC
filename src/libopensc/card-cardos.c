@@ -177,11 +177,13 @@ static int cardos_init(sc_card_t *card)
 	card->cla = 0x00;
 
 	/* Set up algorithm info. */
-	flags = SC_ALGORITHM_NEED_USAGE
-		| SC_ALGORITHM_RSA_RAW
+	flags = SC_ALGORITHM_RSA_RAW
 		| SC_ALGORITHM_RSA_HASH_NONE
 		| SC_ALGORITHM_ONBOARD_KEY_GEN
 		;
+	if (card->type != SC_CARD_TYPE_CARDOS_V5_3)
+		flags |= SC_ALGORITHM_NEED_USAGE;
+
 	_sc_card_add_rsa_alg(card,  512, flags, 0);
 	_sc_card_add_rsa_alg(card,  768, flags, 0);
 	_sc_card_add_rsa_alg(card, 1024, flags, 0);
@@ -252,7 +254,7 @@ static const struct sc_card_error cardos_errors[] = {
 { 0x6f82, SC_ERROR_CARD_CMD_FAILED,	"not enough memory in xram"}, 
 { 0x6f84, SC_ERROR_CARD_CMD_FAILED,	"general protection fault"}, 
 
-/* the card doesn't now this combination of ins+cla+p1+p2 */
+/* the card doesn't know this combination of ins+cla+p1+p2 */
 /* i.e. command will never work */
 { 0x6881, SC_ERROR_NO_CARD_SUPPORT,	"logical channel not supported"}, 
 { 0x6a86, SC_ERROR_INCORRECT_PARAMETERS,"p1/p2 invalid"}, 
