@@ -1094,7 +1094,7 @@ static int do_verify(int argc, char **argv)
 			printf("Please enter PIN: ");
 			r = util_getpass(&pin, &len, stdin);
 			if (r < 0) {
-				printf("No PIN entered - aborting VERIFY.\n");
+				printf("util_getpass error.\n");
 				return -1;
 			}
 
