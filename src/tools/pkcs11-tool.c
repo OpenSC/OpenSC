@@ -1246,7 +1246,7 @@ static int login(CK_SESSION_HANDLE session, int login_type)
 
 		r = util_getpass(&pin, &len, stdin);
 		if (r < 0)
-			util_fatal("No PIN entered");
+			util_fatal("util_getpass error");
 		pin_allocated = 1;
 	}
 
