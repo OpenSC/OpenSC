@@ -76,7 +76,7 @@ static const char * opt_pin = NULL;
 static const char * opt_puk = NULL;
 static int	compact = 0;
 static int	verbose = 0;
-static int opt_no_prompt = 0;
+static int opt_use_pinpad = 0;
 #if defined(ENABLE_OPENSSL) && (defined(_WIN32) || defined(HAVE_INTTYPES_H))
 static int opt_rfc4716 = 0;
 #endif
@@ -101,7 +101,8 @@ enum {
 	OPT_BIND_TO_AID,
 	OPT_LIST_APPLICATIONS,
 	OPT_LIST_SKEYS,
-	OPT_NO_PROMPT,
+	OPT_USE_PINPAD,
+	OPT_USE_PINPAD_DEPRECATED,
 	OPT_RAW,
 	OPT_PRINT_VERSION,
 	OPT_LIST_INFO,
@@ -147,7 +148,8 @@ static const struct option options[] = {
 	{ "aid",		required_argument, NULL,	OPT_BIND_TO_AID },
 	{ "wait",		no_argument, NULL,		'w' },
 	{ "verbose",		no_argument, NULL,		'v' },
-	{ "no-prompt",		no_argument, NULL,		OPT_NO_PROMPT },
+	{ "use-pinpad",		no_argument, NULL,		OPT_USE_PINPAD },
+	{ "no-prompt",		no_argument, NULL,		OPT_USE_PINPAD_DEPRECATED },
 	{ NULL, 0, NULL, 0 }
 };
 
@@ -188,6 +190,7 @@ static const char *option_help[] = {
 	"Wait for card insertion",
 	"Verbose operation. Use several times to enable debug output.",
 	"Do not prompt the user; if no PINs supplied, pinpad will be used.",
+	NULL,
 	NULL
 };
 
@@ -1174,7 +1177,7 @@ static u8 * get_pin(const char *prompt, sc_pkcs15_object_t *pin_obj)
 	size_t len = 0;
 	int r;
 
-	if (opt_no_prompt) {
+	if (opt_use_pinpad) {
 		// defer entry of the PIN to the readers pinpad.
 		if (verbose)
 			printf("%s [%.*s]: entry deferred to the reader keypad\n", prompt, (int) sizeof pin_obj->label, pin_obj->label);
@@ -2092,8 +2095,10 @@ int main(int argc, char * const argv[])
 		case 'w':
 			opt_wait = 1;
 			break;
-		case OPT_NO_PROMPT:
-			opt_no_prompt = 1;
+		case OPT_USE_PINPAD_DEPRECATED:
+			fprintf(stderr, "'--no-prompt' is deprecated , use '--use-pinpad' instead.\n");
+		case OPT_USE_PINPAD:
+			opt_use_pinpad = 1;
 			break;
 		}
 	}
