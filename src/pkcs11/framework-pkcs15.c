@@ -1486,10 +1486,6 @@ pkcs15_login(struct sc_pkcs11_slot *slot, CK_USER_TYPE userType,
 		if (ulPinLen == 0)
 			pPin = NULL;
 	}
-	else if (ulPinLen > pin_info->attrs.pin.max_length)   {
-		return CKR_ARGUMENTS_BAD;
-	}
-
 
 	/* By default, we make the reader resource manager keep other
 	 * processes from accessing the card while we're logged in.
