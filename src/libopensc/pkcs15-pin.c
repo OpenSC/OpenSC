@@ -295,6 +295,10 @@ sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *pi
 
 	LOG_FUNC_CALLED(ctx);
 
+	r = _validate_pin(p15card, (struct sc_pkcs15_auth_info *)pin_obj->data, pinlen);
+	if (r)
+		LOG_FUNC_RETURN(ctx, r);
+
 	r = _sc_pkcs15_verify_pin(p15card, pin_obj, pincode, pinlen);
 	if (r == SC_SUCCESS)
 		sc_pkcs15_pincache_add(p15card, pin_obj, pincode, pinlen);
