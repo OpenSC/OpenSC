@@ -268,7 +268,7 @@ _validate_pin(struct sc_pkcs15_card *p15card, struct sc_pkcs15_auth_info *auth_i
 		return SC_ERROR_BUFFER_TOO_SMALL;
 
 	/* if we use pinpad, no more checks are needed */
-	if (p15card->card->reader->capabilities & SC_READER_CAP_PIN_PAD)
+	if (p15card->card->reader->capabilities & SC_READER_CAP_PIN_PAD && !pinlen)
 		return SC_SUCCESS;
 
 	/* If pin is given, make sure it is within limits */
@@ -371,9 +371,8 @@ _sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *p
 		data.pin_reference = skey_info->key_reference;
 	}
 
-	if(p15card->card->reader->capabilities & SC_READER_CAP_PIN_PAD) {
-		if (!pincode && !pinlen)
-			data.flags |= SC_PIN_CMD_USE_PINPAD;
+	if(p15card->card->reader->capabilities & SC_READER_CAP_PIN_PAD && !pinlen) {
+		data.flags |= SC_PIN_CMD_USE_PINPAD;
 
 		if (auth_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN)
 			data.pin1.prompt = "Please enter SO PIN";
