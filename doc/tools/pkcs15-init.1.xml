@@ -483,6 +483,13 @@
 					</listitem>
 				</varlistentry>
 
+				<varlistentry>
+					<term>
+						<option>--use-pinpad</option>
+					</term>
+					<listitem><para>Do not prompt the user; if no PINs supplied, pinpad will be used.</para></listitem>
+				</varlistentry>
+
 			</variablelist>
 		</para>
 	</refsect1>
