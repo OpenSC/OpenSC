@@ -144,13 +144,14 @@ enum {
 	OPT_MD_CONTAINER_GUID,
 	OPT_VERSION,
 
-	OPT_PIN1     = 0x10000,	/* don't touch these values */
-	OPT_PUK1     = 0x10001,
-	OPT_PIN2     = 0x10002,
-	OPT_PUK2     = 0x10003,
-	OPT_SERIAL   = 0x10004,
-	OPT_NO_SOPIN = 0x10005,
-	OPT_NO_PROMPT= 0x10006
+	OPT_PIN1      = 0x10000,	/* don't touch these values */
+	OPT_PUK1      = 0x10001,
+	OPT_PIN2      = 0x10002,
+	OPT_PUK2      = 0x10003,
+	OPT_SERIAL    = 0x10004,
+	OPT_NO_SOPIN  = 0x10005,
+	OPT_USE_PINPAD= 0x10006,
+	OPT_USE_PINPAD_DEPRECATED
 };
 
 const struct option	options[] = {
@@ -201,7 +202,8 @@ const struct option	options[] = {
 	{ "insecure",		no_argument, NULL,		OPT_INSECURE },
 	{ "use-default-transport-keys",
 				no_argument, NULL,		'T' },
-	{ "no-prompt",		no_argument, NULL,		OPT_NO_PROMPT },
+	{ "use-pinpad",		no_argument, NULL,		OPT_USE_PINPAD },
+	{ "no-prompt",		no_argument, NULL,		OPT_USE_PINPAD_DEPRECATED },
 
 	{ "profile",		required_argument, NULL,	'p' },
 	{ "card-profile",	required_argument, NULL,	'c' },
@@ -264,6 +266,7 @@ static const char *		option_help[] = {
 	"Insecure mode: do not require a PIN for private key",
 	"Do not ask for transport keys if the driver thinks it knows the key",
 	"Do not prompt the user; if no PINs supplied, pinpad will be used",
+	NULL,
 
 	"Specify the general profile to use",
 	"Specify the card profile to use",
@@ -344,7 +347,7 @@ static unsigned int		opt_actions;
 static int			opt_extractable = 0,
 				opt_insecure = 0,
 				opt_authority = 0,
-				opt_no_prompt = 0,
+				opt_use_pinpad = 0,
 				opt_no_sopin = 0,
 				opt_use_defkeys = 0,
 				opt_wait = 0,
@@ -804,14 +807,14 @@ do_init_app(struct sc_profile *profile)
 		so_puk_disabled = 1;
 
 
-	if (!opt_pins[2] && !opt_no_prompt && !opt_no_sopin) {
+	if (!opt_pins[2] && !opt_use_pinpad && !opt_no_sopin) {
 		r = get_new_pin(&hints, role, "pin", &pins[2]);
 		if (r < 0)
 			goto failed;
 		opt_pins[2] = pins[2];
 	}
 
-	if (!so_puk_disabled && opt_pins[2] && !opt_pins[3] && !opt_no_prompt) {
+	if (!so_puk_disabled && opt_pins[2] && !opt_pins[3] && !opt_use_pinpad) {
 		sc_pkcs15init_get_pin_info(profile, SC_PKCS15INIT_SO_PUK, &info);
 
 		if (!(info.attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN))
@@ -1892,7 +1895,7 @@ get_pin_callback(struct sc_profile *profile,
 		char		prompt[128];
 		int		r;
 
-		if (opt_no_prompt)
+		if (opt_use_pinpad)
 			return SC_ERROR_OBJECT_NOT_FOUND;
 
 		snprintf(prompt, sizeof(prompt), "%s required", name);
@@ -1958,9 +1961,9 @@ get_key_callback(struct sc_profile *profile,
 	}
 
 	printf("Transport key (%s #%d) required.\n", kind, reference);
-	if (opt_no_prompt) {
+	if (opt_use_pinpad) {
 		printf("\n"
-		"Refusing to prompt for transport key because --no-prompt\n"
+		"Refusing to prompt for transport key because --use-pinpad\n"
 		"was specified on the command line. Please invoke without\n"
 		"--no-prompt, or specify the --use-default-transport-keys\n"
 		"option to use the default transport keys without being\n"
@@ -2627,8 +2630,10 @@ handle_option(const struct option *opt)
 	case OPT_NO_SOPIN:
 		opt_no_sopin = 1;
 		break;
-	case OPT_NO_PROMPT:
-		opt_no_prompt = 1;
+	case OPT_USE_PINPAD_DEPRECATED:
+		fprintf(stderr, "'--no-prompt' is deprecated , use '--use-pinpad' instead.\n");
+	case OPT_USE_PINPAD:
+		opt_use_pinpad = 1;
 		break;
 	case OPT_ASSERT_PRISTINE:
 		this_action = ACTION_ASSERT_PRISTINE;
@@ -2969,7 +2974,7 @@ static int verify_pin(struct sc_pkcs15_card *p15card, char *auth_id_str)
 	else   {
 		sc_ui_hints_t   hints;
 
-                if (opt_no_prompt)
+                if (opt_use_pinpad)
 			return SC_ERROR_OBJECT_NOT_FOUND;
 
 		if (pin_obj->label[0])
