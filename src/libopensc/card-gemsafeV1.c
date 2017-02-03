@@ -84,6 +84,7 @@ static const u8 gemsafe_def_aid[] = {0xA0, 0x00, 0x00, 0x00, 0x63, 0x50,
 typedef struct gemsafe_exdata_st {
 	u8	aid[16];
 	size_t	aid_len;
+	u8 alg_ref;	/* from last set_securuty_env */
 } gemsafe_exdata;
 
 static int get_conf_aid(sc_card_t *card, u8 *aid, size_t *len)
@@ -207,26 +208,17 @@ static int gemsafe_init(struct sc_card *card)
 		flags |= SC_ALGORITHM_RSA_HASH_NONE;
 
 		/* GemSAFE V3 cards support SHA256 */
-		if (card->type == SC_CARD_TYPE_GEMSAFEV1_PTEID ||
-		    card->type == SC_CARD_TYPE_GEMSAFEV1_SEEID)
-			flags |= SC_ALGORITHM_RSA_HASH_SHA256;
+		/* but they do this by accepting just a SHA256 hash without digest */
+
+		/* do not create PKCS#11 mechanisms for these digest+hash. They are too long*/
+		card->negate_hashes = SC_ALGORITHM_RSA_HASH_SHA224 |
+			SC_ALGORITHM_RSA_HASH_SHA384  |
+			SC_ALGORITHM_RSA_HASH_SHA512;
 
 		_sc_card_add_rsa_alg(card,  512, flags, 0);
 		_sc_card_add_rsa_alg(card,  768, flags, 0);
 		_sc_card_add_rsa_alg(card, 1024, flags, 0);
 		_sc_card_add_rsa_alg(card, 2048, flags, 0);
-
-		/* fake algorithm to persuade register_mechanisms()
-		 * to register these hashes */
-		if (card->type == SC_CARD_TYPE_GEMSAFEV1_PTEID ||
-		    card->type == SC_CARD_TYPE_GEMSAFEV1_SEEID) {
-			flags  = SC_ALGORITHM_RSA_HASH_SHA1;
-			flags |= SC_ALGORITHM_RSA_HASH_MD5;
-			flags |= SC_ALGORITHM_RSA_HASH_MD5_SHA1;
-			flags |= SC_ALGORITHM_RSA_HASH_RIPEMD160;
-
-			_sc_card_add_rsa_alg(card,  512, flags, 0);
-		}
 	}
 
 	card->caps |= SC_CARD_CAP_ISO7816_PIN_INFO;
@@ -388,7 +380,7 @@ static u8 gemsafe_flags2algref(struct sc_card *card, const struct sc_security_en
 	u8 ret = 0;
 
 	if (env->operation == SC_SEC_OPERATION_SIGN) {
-		if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA256)
+		if (env->algorithm_hash & SC_ALGORITHM_RSA_HASH_SHA256)
 			ret = GEMSAFEV3_ALG_REF_SHA256;
 		else if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1)
 			ret = (card->type == SC_CARD_TYPE_GEMSAFEV1_PTEID ||
@@ -428,9 +420,11 @@ static int gemsafe_set_security_env(struct sc_card *card,
 				    const struct sc_security_env *env,
 				    int se_num)
 {
+	gemsafe_exdata *exdata = (gemsafe_exdata *)card->drv_data;
 	u8 alg_ref;
 	struct sc_security_env se_env = *env;
 	struct sc_context *ctx = card->ctx;
+	exdata->alg_ref =  0;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -440,6 +434,7 @@ static int gemsafe_set_security_env(struct sc_card *card,
 		if (alg_ref) {
 			se_env.algorithm_ref = alg_ref;
 			se_env.flags |= SC_SEC_ENV_ALG_REF_PRESENT;
+			exdata->alg_ref = alg_ref;
 		}
 	}
 	if (!(se_env.flags & SC_SEC_ENV_ALG_REF_PRESENT))
@@ -452,17 +447,31 @@ static int gemsafe_set_security_env(struct sc_card *card,
 static int gemsafe_compute_signature(struct sc_card *card, const u8 * data,
 	size_t data_len, u8 * out, size_t outlen)
 {
-	int r, len;
+	gemsafe_exdata *exdata = (gemsafe_exdata *)card->drv_data;
+	int r;
 	struct sc_apdu apdu;
-	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	sc_context_t *ctx = card->ctx;
+	const u8 *sdata;
+	size_t sdata_len;
+	u8  sdatabuf[SC_MAX_APDU_BUFFER_SIZE];
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 
 	/* the card can sign 36 bytes of free form data */
-	if (data_len > 36) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "error: input data too long: %lu bytes\n", data_len);
+	/* TODO verify if this is correct */
+	/* If doing SHA256, strip off digest header, and let card add it back in */
+	if (exdata->alg_ref == 0x42) {
+		r = sc_pkcs1_strip_digest_info_prefix(NULL, data, data_len, sdatabuf, &sdata_len);
+		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "error: strip of digest header failed");
+		sdata = sdatabuf;
+	} else {
+		sdata = data;
+		sdata_len = data_len;
+	}
+	
+	if (sdata_len > 36) {
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "error: input data too long: %lu bytes\n", sdata_len);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
@@ -474,17 +483,17 @@ static int gemsafe_compute_signature(struct sc_card *card, const u8 * data,
 	} else {
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x9E, 0xAC);
 		apdu.cla |= 0x80;
-		apdu.resp = rbuf;
-		apdu.resplen = sizeof(rbuf);
-		apdu.le      = 256;
+		apdu.resp = out;
+		apdu.resplen = outlen;
+		apdu.le      = (outlen < 256) ? outlen : 256;
 	}
 	/* we sign a digestInfo object => tag 0x90 */
 	sbuf[0] = 0x90;
-	sbuf[1] = (u8)data_len;
-	memcpy(sbuf + 2, data, data_len);
+	sbuf[1] = (u8)sdata_len;
+	memcpy(sbuf + 2, sdata, sdata_len);
 	apdu.data = sbuf;
-	apdu.lc   = data_len + 2;
-	apdu.datalen = data_len + 2;
+	apdu.lc   = sdata_len + 2;
+	apdu.datalen = sdata_len + 2;
 
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
@@ -493,9 +502,9 @@ static int gemsafe_compute_signature(struct sc_card *card, const u8 * data,
 		   card->type == SC_CARD_TYPE_GEMSAFEV1_SEEID) {
 			/* finalize the exchange */
 			sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0x2A, 0x9E, 0x9A);
-			apdu.le = 128; /* 1024 bit keys */
-			apdu.resp = rbuf;
-			apdu.resplen = sizeof(rbuf);
+			apdu.le = (outlen < 256) ? outlen : 256; /* out and outlen match key size */
+			apdu.resp = out;
+			apdu.resplen = outlen;
 			if(card->type == SC_CARD_TYPE_GEMSAFEV1_SEEID) {
 			  /* cla 0x80 not supported */
 			  apdu.cla = 0x00;
@@ -505,10 +514,8 @@ static int gemsafe_compute_signature(struct sc_card *card, const u8 * data,
 			if(apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
 				SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 		}
-		len = apdu.resplen > outlen ? outlen : apdu.resplen;
 
-		memcpy(out, apdu.resp, len);
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, len);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, apdu.resplen);
 	}
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
