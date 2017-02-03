@@ -238,7 +238,8 @@ sc_pkcs11_sign_init(struct sc_pkcs11_session *session, CK_MECHANISM_PTR pMechani
 		LOG_FUNC_RETURN(context, CKR_ARGUMENTS_BAD);
 
 	/* See if we support this mechanism type */
-	sc_log(context, "mechanism 0x%X, key-type 0x%X", pMechanism->mechanism, key_type);
+	sc_log(context, "mechanism 0x%lX, key-type 0x%lX",
+	       pMechanism->mechanism, key_type);
 	mt = sc_pkcs11_find_mechanism(p11card, pMechanism->mechanism, CKF_SIGN);
 	if (mt == NULL)
 		LOG_FUNC_RETURN(context, CKR_MECHANISM_INVALID);

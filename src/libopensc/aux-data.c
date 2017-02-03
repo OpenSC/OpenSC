@@ -157,7 +157,9 @@ sc_aux_data_get_md_guid(struct sc_context *ctx, struct sc_auxiliary_data *aux_da
 		strlcat(guid, "}", sizeof(guid));
 
 	if (*out_size < strlen(guid))   {
-		sc_log(ctx, "aux-data: buffer too small: out_size:%i < guid-length:%i", *out_size, strlen(guid));
+		sc_log(ctx,
+		       "aux-data: buffer too small: out_size:%"SC_FORMAT_LEN_SIZE_T"u < guid-length:%"SC_FORMAT_LEN_SIZE_T"u",
+		       *out_size, strlen(guid));
 		LOG_FUNC_RETURN(ctx, SC_ERROR_BUFFER_TOO_SMALL);
 	}
 

@@ -618,7 +618,7 @@ get_info_end:
 		bufferlen=0;
 	}
 	if (msg)
-		sc_log(card->ctx,msg);
+		sc_log(card->ctx, "%s", msg);
         LOG_FUNC_RETURN(card->ctx, res);
 }
 
@@ -964,7 +964,8 @@ static u8 *dnie_uncompress(sc_card_t * card, u8 * from, size_t *len)
 	*len = uncompressed;
 	sc_log(card->ctx, "Compressed data:\n%s\n",
 	       sc_dump_hex(from + 8, compressed));
-	sc_log(card->ctx, "Uncompress() done. Before:'%lu' After: '%lu'",
+	sc_log(card->ctx,
+	       "Uncompress() done. Before:'%"SC_FORMAT_LEN_SIZE_T"u' After: '%"SC_FORMAT_LEN_SIZE_T"u'",
 	       compressed, uncompressed);
 	sc_log(card->ctx, "Uncompressed data:\n%s\n",
 	       sc_dump_hex(upt, uncompressed));
@@ -1091,7 +1092,9 @@ static int dnie_fill_cache(sc_card_t * card)
 	/* ok: as final step, set correct cache data into dnie_priv structures */
 	GET_DNIE_PRIV_DATA(card)->cache = pt;
 	GET_DNIE_PRIV_DATA(card)->cachelen = len;
-	sc_log(ctx, "fill_cache() done. length '%d' bytes", len);
+	sc_log(ctx,
+	       "fill_cache() done. length '%"SC_FORMAT_LEN_SIZE_T"u' bytes",
+	       len);
 	LOG_FUNC_RETURN(ctx,len);
 }
 
@@ -1684,7 +1687,7 @@ static int dnie_compute_signature(struct sc_card *card,
 	   data and feed them into sign() command
 	 */
 	sc_log(card->ctx,
-	       "Compute signature len: '%d' bytes:\n%s\n============================================================",
+	       "Compute signature len: '%"SC_FORMAT_LEN_SIZE_T"u' bytes:\n%s\n============================================================",
 	       datalen, sc_dump_hex(data, datalen));
 
 	/*INS: 0x2A  PERFORM SECURITY OPERATION

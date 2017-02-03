@@ -229,15 +229,19 @@ again:
 		sc_log(context, "%s: failed, %s", reader->name, sc_strerror(rc));
 		return sc_to_cryptoki_error(rc, NULL);
 	}
-	if (rc == 0) {
+	if (!(rc & SC_READER_CARD_PRESENT)) {
 		sc_log(context, "%s: card absent", reader->name);
 		card_removed(reader);	/* Release all resources */
 		return CKR_TOKEN_NOT_PRESENT;
 	}
 
-	/* If the card was changed, disconnect the current one */
-	if (rc & SC_READER_CARD_CHANGED) {
-		sc_log(context, "%s: Card changed", reader->name);
+	/*
+	 * If the card was changed or reset, disconnect the current one
+	 * then recheck whether we need to reattach
+	 */
+	if (rc & (SC_READER_CARD_CHANGED | SC_READER_CARD_RESET)) {
+		sc_log(context, "%s: Card %s", reader->name,
+		       rc & SC_READER_CARD_CHANGED ? "changed" : "reset");
 		/* The following should never happen - but if it
 		 * does we'll be stuck in an endless loop.
 		 * So better be fussy.
@@ -310,14 +314,18 @@ again:
 				rv = CKR_OK;
 			}
 			if (rv != CKR_OK)   {
-				sc_log(context, "%s: cannot bind 'generic' token: rv 0x%X", reader->name, rv);
+				sc_log(context,
+				       "%s: cannot bind 'generic' token: rv 0x%lX",
+				       reader->name, rv);
 				return rv;
 			}
 
 			sc_log(context, "%s: Creating 'generic' token.", reader->name);
 			rv = frameworks[i]->create_tokens(p11card, app_generic);
 			if (rv != CKR_OK)   {
-				sc_log(context, "%s: create 'generic' token error 0x%X", reader->name, rv);
+				sc_log(context,
+				       "%s: create 'generic' token error 0x%lX",
+				       reader->name, rv);
 				return rv;
 			}
 		}
@@ -333,14 +341,17 @@ again:
 			sc_log(context, "%s: Binding %s token.", reader->name, app_name);
 			rv = frameworks[i]->bind(p11card, app_info);
 			if (rv != CKR_OK)   {
-				sc_log(context, "%s: bind %s token error Ox%X", reader->name, app_name, rv);
+				sc_log(context, "%s: bind %s token error Ox%lX",
+				       reader->name, app_name, rv);
 				continue;
 			}
 
 			sc_log(context, "%s: Creating %s token.", reader->name, app_name);
 			rv = frameworks[i]->create_tokens(p11card, app_info);
 			if (rv != CKR_OK)   {
-				sc_log(context, "%s: create %s token error 0x%X", reader->name, app_name, rv);
+				sc_log(context,
+				       "%s: create %s token error 0x%lX",
+				       reader->name, app_name, rv);
 				return rv;
 			}
 		}
@@ -490,7 +501,9 @@ CK_RV slot_find_changed(CK_SLOT_ID_PTR idp, int mask)
 	card_detect_all();
 	for (i=0; i<list_size(&virtual_slots); i++) {
 		sc_pkcs11_slot_t *slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, i);
-		sc_log(context, "slot 0x%lx token: %d events: 0x%02X",slot->id, (slot->slot_info.flags & CKF_TOKEN_PRESENT), slot->events);
+		sc_log(context, "slot 0x%lx token: %lu events: 0x%02X",
+		       slot->id, (slot->slot_info.flags & CKF_TOKEN_PRESENT),
+		       slot->events);
 		if ((slot->events & SC_EVENT_CARD_INSERTED)
 				&& !(slot->slot_info.flags & CKF_TOKEN_PRESENT)) {
 			/* If a token has not been initialized, clear the inserted event */

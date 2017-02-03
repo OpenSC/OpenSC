@@ -44,6 +44,14 @@ extern "C" {
 #include "libopensc/sm.h"
 #endif
 
+#if defined(_WIN32) && !(defined(__MINGW32__) && defined (__MINGW_PRINTF_FORMAT))
+#define SC_FORMAT_LEN_SIZE_T "I"
+#define SC_FORMAT_LEN_PTRDIFF_T "I"
+#else
+/* hope SUSv3 ones work */
+#define SC_FORMAT_LEN_SIZE_T "z"
+#define SC_FORMAT_LEN_PTRDIFF_T "t"
+#endif
 
 #define SC_SEC_OPERATION_DECIPHER	0x0001
 #define SC_SEC_OPERATION_SIGN		0x0002
@@ -287,6 +295,7 @@ struct sc_reader_driver {
 #define SC_READER_CARD_EXCLUSIVE	0x00000008
 #define SC_READER_HAS_WAITING_AREA	0x00000010
 #define SC_READER_REMOVED			0x00000020
+#define SC_READER_CARD_RESET			0x00000040
 
 /* reader capabilities */
 #define SC_READER_CAP_DISPLAY	0x00000001
@@ -404,7 +413,11 @@ struct sc_reader_operations {
 	int (*connect)(struct sc_reader *reader);
 	int (*disconnect)(struct sc_reader *reader);
 	int (*transmit)(struct sc_reader *reader, sc_apdu_t *apdu);
-	int (*lock)(struct sc_reader *reader);
+	/*
+	 * resetok means to continue even if the card was reset
+	 * as long as it wasn't reset between individual operations
+	 */
+	int (*lock)(struct sc_reader *reader, int resetok);
 	int (*unlock)(struct sc_reader *reader);
 	int (*set_protocol)(struct sc_reader *reader, unsigned int proto);
 	/* Pin pad functions */
@@ -884,11 +897,12 @@ int sc_disconnect_card(struct sc_card *card);
  * Checks if a card is present in a reader
  * @param reader Reader structure
  * @retval If an error occured, the return value is a (negative)
- *	OpenSC error code. If no card is present, 0 is returned.
- *	Otherwise, a positive value is returned, which is a
- *	combination of flags. The flag SC_READER_CARD_PRESENT is
- *	always set. In addition, if the card was exchanged,
- *	the SC_READER_CARD_CHANGED flag is set.
+ *	OpenSC error code. Otherwise, a positive value is returned, which
+ *	is a combination of zero or more flags. See "reader flags" above.
+ *	The flag SC_READER_CARD_PRESENT is set if there is a card present.
+ *	In addition, if the card was exchanged or reset
+ *	SC_READER_CARD_CHANGED or SC_READER_CARD_RESET flag,
+ *	respectively, will be set.
  */
 int sc_detect_card_presence(sc_reader_t *reader);
 

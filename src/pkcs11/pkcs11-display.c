@@ -18,6 +18,9 @@
  */
 
 #include "config.h"
+#if !defined(_MSC_VER) || _MSC_VER >= 1800
+#include <inttypes.h>
+#endif
 #include <string.h>
 
 #ifdef ENABLE_OPENSSL
@@ -90,10 +93,18 @@ buf_spec(CK_VOID_PTR buf_addr, CK_ULONG buf_len)
 {
 	static char ret[64];
 
+#if !defined(_MSC_VER) || _MSC_VER >= 1800
+	const size_t prwidth = sizeof(CK_VOID_PTR) * 2;
+
+	sprintf(ret, "%0*"PRIxPTR" / %lu", (int) prwidth, (uintptr_t) buf_addr,
+		buf_len);
+#else
 	if (sizeof(CK_VOID_PTR) == 4)
-		sprintf(ret, "%08lx / %ld", (unsigned long) buf_addr, (CK_LONG) buf_len);
+		sprintf(ret, "%08lx / %lu", (unsigned long) buf_addr, buf_len);
 	else
-		sprintf(ret, "%016lx / %ld", (unsigned long) buf_addr, (CK_LONG) buf_len);
+		sprintf(ret, "%016llx / %lu", (unsigned long long) buf_addr,
+			buf_len);
+#endif
 
 	return ret;
 }

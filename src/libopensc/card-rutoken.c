@@ -550,8 +550,9 @@ static int set_sec_attr_from_acl(sc_card_t *card, sc_file_t *file)
 		{
 			/* AccessMode.[conv_attr[i].sec_attr_pos] */
 			attr[0] |= 1 << conv_attr[i].sec_attr_pos;
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "AccessMode.%u, attr[0]=0x%x",
-					conv_attr[i].sec_attr_pos, attr[0]);
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+				 "AccessMode.%"SC_FORMAT_LEN_SIZE_T"u, attr[0]=0x%x",
+				 conv_attr[i].sec_attr_pos, attr[0]);
 			attr[1 + conv_attr[i].sec_attr_pos] = (u8)entry->method;
 			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "method %u", (u8)entry->method);
 			if (entry->method == SC_AC_CHV)
@@ -979,7 +980,9 @@ static int rutoken_cipher_p(sc_card_t *card, const u8 * crgram, size_t crgram_le
 	sc_apdu_t apdu;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, ": crgram_len %i; outlen %i", crgram_len, outlen);
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+		 ": crgram_len %"SC_FORMAT_LEN_SIZE_T"u; outlen %"SC_FORMAT_LEN_SIZE_T"u",
+		 crgram_len, outlen);
 
 	if (!out)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
@@ -1022,7 +1025,9 @@ static int rutoken_cipher_p(sc_card_t *card, const u8 * crgram, size_t crgram_le
 			}
 		}
 	} while (ret == SC_SUCCESS  &&  crgram_len != 0);
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "len out cipher %d\n", outlen - outlen_tail);
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+		 "len out cipher %"SC_FORMAT_LEN_SIZE_T"u\n",
+		 outlen - outlen_tail);
 	if (ret == SC_SUCCESS)
 		ret = (outlen_tail == 0) ? (int)outlen : SC_ERROR_WRONG_LENGTH;
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, ret);
@@ -1240,7 +1245,7 @@ static int rutoken_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 			ret = rutoken_format(card, 0x7b); /* APDU: FORMAT END */
 			break;
 		default:
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "cmd = %d", cmd);
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "cmd = %lu", cmd);
 			ret = SC_ERROR_NOT_SUPPORTED;
 			break;
 		}

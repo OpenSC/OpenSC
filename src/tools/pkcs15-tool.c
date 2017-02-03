@@ -530,7 +530,8 @@ static int list_data_objects(void)
 					return 1;
 				}
 				sc_pkcs15_free_data_object(data_object);
-				printf("  Size:%5lu", cinfo->data.len);
+				printf("  Size:%5"SC_FORMAT_LEN_SIZE_T"u",
+				       cinfo->data.len);
 			} else {
 				printf("  AuthID:%-3s", sc_pkcs15_print_id(&objs[i]->auth_id));
 			}

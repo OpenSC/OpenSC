@@ -600,7 +600,7 @@ static int westcos_create_file(sc_card_t *card, struct sc_file *file)
 		p2 = (file->id) % 256;
 	}
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
-		"create file %s, id %X size %d\n",
+		 "create file %s, id %X size %"SC_FORMAT_LEN_SIZE_T"u\n",
 		 file->path.value, file->id, file->size);
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xE0, p1, p2);
 	apdu.cla = 0x80;
@@ -866,7 +866,7 @@ static int westcos_card_ctl(sc_card_t * card, unsigned long cmd, void *ptr)
 	if (card == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
-		"westcos_card_ctl cmd = %X\n", cmd);
+		"westcos_card_ctl cmd = %lX\n", cmd);
 	priv_data = (priv_data_t *) card->drv_data;
 	switch (cmd) {
 	case SC_CARDCTL_GET_DEFAULT_KEY:
@@ -1110,9 +1110,11 @@ static int westcos_sign_decipher(int mode, sc_card_t *card,
 
 	if (card == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
+
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
-		"westcos_sign_decipher outlen=%d\n", outlen);
-	
+		 "westcos_sign_decipher outlen=%"SC_FORMAT_LEN_SIZE_T"u\n",
+		 outlen);
+
 #ifndef ENABLE_OPENSSL
 	r = SC_ERROR_NOT_SUPPORTED;
 #else
@@ -1176,7 +1178,7 @@ static int westcos_sign_decipher(int mode, sc_card_t *card,
 	BIO_set_mem_eof_return(mem, -1);
 	if (!d2i_RSAPrivateKey_bio(mem, &rsa)) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
-			"RSA key invalid, %d\n", ERR_get_error());
+			"RSA key invalid, %lu\n", ERR_get_error());
 		r = SC_ERROR_UNKNOWN;
 		goto out;
 	}
@@ -1199,7 +1201,7 @@ static int westcos_sign_decipher(int mode, sc_card_t *card,
 
 #endif
 			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
-				"Decipher error %d\n", ERR_get_error());
+				"Decipher error %lu\n", ERR_get_error());
 			r = SC_ERROR_UNKNOWN;
 			goto out;
 		}
@@ -1215,7 +1217,7 @@ static int westcos_sign_decipher(int mode, sc_card_t *card,
 
 #endif
 			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
-				"Signature error %d\n", ERR_get_error());
+				"Signature error %lu\n", ERR_get_error());
 			r = SC_ERROR_UNKNOWN;
 			goto out;
 		}

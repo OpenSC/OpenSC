@@ -275,7 +275,7 @@ static int ctapi_disconnect(sc_reader_t *reader)
 	return 0;
 }
 
-static int ctapi_lock(sc_reader_t *reader)
+static int ctapi_lock(sc_reader_t *reader, int resetok)
 {
 	return 0;
 }
