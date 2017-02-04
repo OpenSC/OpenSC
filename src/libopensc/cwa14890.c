@@ -143,19 +143,18 @@ static void cwa_trace_apdu(sc_card_t * card, sc_apdu_t * apdu, int flag)
  * Increase send sequence counter SSC.
  *
  * @param card smart card info structure
- * @param sm Secure Message session handling data structure
  * @return SC_SUCCESS if ok; else error code
  *
  * TODO: to further study: what about using bignum arithmetics?
  */
-static int cwa_increase_ssc(sc_card_t * card, cwa_sm_session_t * sm)
+static int cwa_increase_ssc(sc_card_t * card)
 {
 	int n;
+	struct sm_cwa_session * sm = &card->sm_ctx.info.session.cwa;
+
 	/* preliminary checks */
 	if (!card || !card->ctx )
 		return SC_ERROR_INVALID_ARGUMENTS;
-	if (!sm )
-		return SC_ERROR_SM_NOT_INITIALIZED;
 	LOG_FUNC_CALLED(card->ctx);
 	/* u8 arithmetic; exit loop if no carry */
 	sc_log(card->ctx, "Curr SSC: '%s'", sc_dump_hex(sm->ssc, 8));
@@ -504,13 +503,13 @@ static int cwa_set_security_env(sc_card_t * card,
  * Internal (Card) authentication (let the card verify sent ifd certs)
  *
  * @param card pointer to card data 
- * @param sm   secure message data pointer
+ * @param sig signature buffer
+ * @param dig_len signature buffer length
  * @param data data to be sent in apdu
  * @param datalen length of data to send
  * @return SC_SUCCESS if OK: else error code
  */
-static int cwa_internal_auth(sc_card_t * card,
-			     cwa_sm_status_t * sm, u8 * data, size_t datalen)
+static int cwa_internal_auth(sc_card_t * card, u8 * sig, size_t sig_len, u8 * data, size_t datalen)
 {
 	sc_apdu_t apdu;
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
@@ -536,9 +535,9 @@ static int cwa_internal_auth(sc_card_t * card,
 	result = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(ctx, result, "SM internal auth invalid response");
 
-	if (apdu.resplen != sizeof(sm->sig))	/* invalid number of bytes received */
+	if (apdu.resplen != sig_len)	/* invalid number of bytes received */
 		LOG_FUNC_RETURN(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
-	memcpy(sm->sig, apdu.resp, apdu.resplen);	/* copy result to buffer */
+	memcpy(sig, apdu.resp, apdu.resplen);	/* copy result to buffer */
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
@@ -554,13 +553,15 @@ static int cwa_internal_auth(sc_card_t * card,
  * @param icc_pubkey public key of card
  * @param ifd_privkey private RSA key of ifd
  * @param sn_icc card serial number
- * @param sm pointer to cwa_internal_t data
+ * @param sig signature buffer
+ * @param sig_len signature buffer length
  * @return SC_SUCCESS if ok; else errorcode
  */
 static int cwa_prepare_external_auth(sc_card_t * card,
 				     RSA * icc_pubkey,
 				     RSA * ifd_privkey,
-				     u8 * sn_icc, cwa_sm_status_t * sm)
+				     u8 * sig,
+				     size_t sig_len)
 {
 	/* we have to compose following message:
 	   data = E[PK.ICC.AUT](SIGMIN)
@@ -594,6 +595,7 @@ static int cwa_prepare_external_auth(sc_card_t * card,
 	BIGNUM *bnres = NULL;
 	sc_context_t *ctx = NULL;
 	const BIGNUM *ifd_privkey_n, *ifd_privkey_e, *ifd_privkey_d;
+	struct sm_cwa_session * sm = &card->sm_ctx.info.session.cwa;
 
 	/* safety check */
 	if (!card || !card->ctx)
@@ -601,7 +603,7 @@ static int cwa_prepare_external_auth(sc_card_t * card,
 	ctx = card->ctx;
 	LOG_FUNC_CALLED(ctx);
 	/* check received arguments */
-	if (!icc_pubkey || !ifd_privkey || !sn_icc || !sm)
+	if (!icc_pubkey || !ifd_privkey || !sm)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 	buf1 = calloc(128, sizeof(u8));
 	buf2 = calloc(128, sizeof(u8));
@@ -618,21 +620,20 @@ static int cwa_prepare_external_auth(sc_card_t * card,
 	/* compose buffer data */
 	buf3[0] = 0x6A;		/* iso padding */
 	RAND_bytes(buf3 + 1, 74);	/* pRND */
-	RAND_bytes(sm->kifd, 32);	/* Kifd */
-	memcpy(buf3 + 1 + 74, sm->kifd, 32);	/* copy Kifd into buffer */
+	RAND_bytes(sm->ifd.k, 32);	/* Kifd */
+	memcpy(buf3 + 1 + 74, sm->ifd.k, 32);	/* copy Kifd into buffer */
 	/* prepare data to be hashed */
 	memcpy(sha_buf, buf3 + 1, 74);	/* copy pRND into sha_buf */
 	memcpy(sha_buf + 74, buf3 + 1 + 74, 32);	/* copy kifd into sha_buf */
-	memcpy(sha_buf + 74 + 32, sm->rndicc, 8);	/* copy 8 byte icc challenge */
-	memcpy(sha_buf + 74 + 32 + 8, sn_icc, 8);	/* copy serialnr, 8 bytes */
+	memcpy(sha_buf + 74 + 32, sm->icc.rnd, 8);	/* copy 8 byte icc challenge */
+	memcpy(sha_buf + 74 + 32 + 8, sm->icc.sn, 8);	/* copy serialnr, 8 bytes */
 	SHA1(sha_buf, 74 + 32 + 8 + 8, sha_data);
 	/* copy hashed data into buffer */
 	memcpy(buf3 + 1 + 74 + 32, sha_data, SHA_DIGEST_LENGTH);
 	buf3[127] = 0xBC;	/* iso padding */
 
 	/* encrypt with ifd private key */
-	len2 =
-	    RSA_private_decrypt(128, buf3, buf2, ifd_privkey, RSA_NO_PADDING);
+	len2 = RSA_private_decrypt(128, buf3, buf2, ifd_privkey, RSA_NO_PADDING);
 	if (len2 < 0) {
 		msg = "Prepare external auth: ifd_privk encrypt failed";
 		res = SC_ERROR_SM_ENCRYPT_FAILED;
@@ -669,14 +670,14 @@ static int cwa_prepare_external_auth(sc_card_t * card,
 
 	/* re-encrypt result with icc public key */
 	len1 = RSA_public_encrypt(len3, buf3, buf1, icc_pubkey, RSA_NO_PADDING);
-	if (len1 <= 0) {
+	if (len1 <= 0 || (size_t) len1 != sig_len) {
 		msg = "Prepare external auth: icc_pubk encrypt failed";
 		res = SC_ERROR_SM_ENCRYPT_FAILED;
 		goto prepare_external_auth_end;
 	}
 
 	/* process done: copy result into cwa_internal buffer and return success */
-	memcpy(sm->sig, buf1, len1);
+	memcpy(sig, buf1, len1);
 	res = SC_SUCCESS;
 
  prepare_external_auth_end:
@@ -715,11 +716,12 @@ static int cwa_prepare_external_auth(sc_card_t * card,
  *
  * Perform external (IFD) authenticate procedure (8.4.1.2)
  *
- * @param data apdu signature content
- * @param datalen signature length (128)
+ * @param card pointer to card data 
+ * @param sig signature buffer
+ * @param sig signature buffer length
  * @return SC_SUCCESS if OK: else error code
  */
-static int cwa_external_auth(sc_card_t * card, cwa_sm_status_t * sm)
+static int cwa_external_auth(sc_card_t * card, u8 * sig, size_t sig_len)
 {
 	sc_apdu_t apdu;
 	int result = SC_SUCCESS;
@@ -733,8 +735,8 @@ static int cwa_external_auth(sc_card_t * card, cwa_sm_status_t * sm)
 	LOG_FUNC_CALLED(ctx);
 
 	/* compose apdu for External Authenticate cmd */
-	dnie_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x82, 0x00, 0x00, 255, sizeof(sm->sig),
-					resp, MAX_RESP_BUFFER_SIZE, sm->sig, sizeof(sm->sig));
+	dnie_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x82, 0x00, 0x00, 255, sig_len,
+					resp, MAX_RESP_BUFFER_SIZE, sig, sig_len);
 
 	/* send composed apdu and parse result */
 	result = dnie_transmit_apdu(card, &apdu);
@@ -750,10 +752,9 @@ static int cwa_external_auth(sc_card_t * card, cwa_sm_status_t * sm)
  * Compute Kenc,Kmac, and SSC  and store it into sm data
  *
  * @param card pointer to sc_card_t data
- * @param sm pointer to cwa_internal_t data
  * @return SC_SUCCESS if ok; else error code
  */
-static int cwa_compute_session_keys(sc_card_t * card, cwa_sm_status_t * sm)
+static int cwa_compute_session_keys(sc_card_t * card)
 {
 
 	char *msg = NULL;
@@ -765,6 +766,7 @@ static int cwa_compute_session_keys(sc_card_t * card, cwa_sm_status_t * sm)
 	u8 kenc[4] = { 0x00, 0x00, 0x00, 0x01 };
 	u8 kmac[4] = { 0x00, 0x00, 0x00, 0x02 };
 	sc_context_t *ctx = NULL;
+	struct sm_cwa_session * sm = &card->sm_ctx.info.session.cwa;
 
 	/* safety check */
 	if (!card || !card->ctx)
@@ -782,13 +784,13 @@ static int cwa_compute_session_keys(sc_card_t * card, cwa_sm_status_t * sm)
 	}
 	/* compose kseed  (cwa-14890-1 sect 8.7.2) */
 	for (n = 0; n < 32; n++)
-		*(kseed + n) = sm->kicc[n] ^ sm->kifd[n];
+		*(kseed + n) = sm->icc.k[n] ^ sm->ifd.k[n];
 
 	/* evaluate kenc (cwa-14890-1 sect 8.8) */
 	memcpy(data, kseed, 32);
 	memcpy(data + 32, kenc, 4);
 	SHA1(data, 32 + 4, sha_data);
-	memcpy(sm->session.kenc, sha_data, 16);	/* kenc=16 fsb sha((kifd^kicc)||00000001) */
+	memcpy(sm->session_enc, sha_data, 16);	/* kenc=16 fsb sha((kifd^kicc)||00000001) */
 
 	/* evaluate kmac */
 	memset(data, 0, 32 + 4);
@@ -797,11 +799,11 @@ static int cwa_compute_session_keys(sc_card_t * card, cwa_sm_status_t * sm)
 	memcpy(data, kseed, 32);
 	memcpy(data + 32, kmac, 4);
 	SHA1(data, 32 + 4, sha_data);
-	memcpy(sm->session.kmac, sha_data, 16);	/* kmac=16 fsb sha((kifd^kicc)||00000002) */
+	memcpy(sm->session_mac, sha_data, 16);	/* kmac=16 fsb sha((kifd^kicc)||00000002) */
 
 	/* evaluate send sequence counter  (cwa-14890-1 sect 8.9 & 9.6 */
-	memcpy(sm->session.ssc, sm->rndicc + 4, 4);	/* 4 least significant bytes of rndicc */
-	memcpy(sm->session.ssc + 4, sm->rndifd + 4, 4);	/* 4 least significant bytes of rndifd */
+	memcpy(sm->ssc, sm->icc.rnd + 4, 4);	/* 4 least significant bytes of rndicc */
+	memcpy(sm->ssc + 4, sm->ifd.rnd + 4, 4);	/* 4 least significant bytes of rndifd */
 
 	/* arriving here means process ok */
 	res = SC_SUCCESS;
@@ -822,9 +824,9 @@ static int cwa_compute_session_keys(sc_card_t * card, cwa_sm_status_t * sm)
 	if (res != SC_SUCCESS)
 		sc_log(ctx, msg);
 	else {
-		sc_log(ctx, "Kenc: %s", sc_dump_hex(sm->session.kenc, 16));
-		sc_log(ctx, "Kmac: %s", sc_dump_hex(sm->session.kmac, 16));
-		sc_log(ctx, "SSC:  %s", sc_dump_hex(sm->session.ssc, 8));
+		sc_log(ctx, "Kenc: %s", sc_dump_hex(sm->session_enc, 16));
+		sc_log(ctx, "Kmac: %s", sc_dump_hex(sm->session_mac, 16));
+		sc_log(ctx, "SSC:  %s", sc_dump_hex(sm->ssc, 8));
 	}
 	LOG_FUNC_RETURN(ctx, res);
 }
@@ -877,14 +879,17 @@ static int cwa_compare_signature(u8 * data, size_t dlen, u8 * ifd_data)
  * @param ifd_privkey ifd private key
  * @param ifdbuf buffer containing ( RND.IFD || SN.IFD )
  * @param ifdlen buffer length; should be 16
- * @param sm secure messaging internal data
+ * @param sig signature buffer
+ * @param sig_len signature buffer length
  * @return SC_SUCCESS if ok; else error code
  */
 static int cwa_verify_internal_auth(sc_card_t * card,
 				    RSA * icc_pubkey,
 				    RSA * ifd_privkey,
 				    u8 * ifdbuf,
-				    size_t ifdlen, cwa_sm_status_t * sm)
+				    size_t ifdlen,
+				    u8 * sig,
+				    size_t sig_len)
 {
 	int res = SC_SUCCESS;
 	char *msg = NULL;
@@ -898,6 +903,7 @@ static int cwa_verify_internal_auth(sc_card_t * card,
 	BIGNUM *sigbn = NULL;
 	sc_context_t *ctx = NULL;
 	const BIGNUM *icc_pubkey_n, *icc_pubkey_e, *icc_pubkey_d;
+	struct sm_cwa_session * sm = &card->sm_ctx.info.session.cwa;
 
 	if (!card || !card->ctx)
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -937,9 +943,7 @@ static int cwa_verify_internal_auth(sc_card_t * card,
 	 */
 
 	/* decrypt data with our ifd priv key */
-	len1 =
-	    RSA_private_decrypt(sizeof(sm->sig), sm->sig, buf1, ifd_privkey,
-				RSA_NO_PADDING);
+	len1 = RSA_private_decrypt(sig_len, sig, buf1, ifd_privkey, RSA_NO_PADDING);
 	if (len1 <= 0) {
 		msg = "Verify Signature: decrypt with ifd privk failed";
 		res = SC_ERROR_SM_ENCRYPT_FAILED;
@@ -997,7 +1001,7 @@ static int cwa_verify_internal_auth(sc_card_t * card,
 	}
 	/* arriving here means OK: complete data structures */
  verify_internal_ok:
-	memcpy(sm->kicc, buf3 + 1 + 74, 32);	/* extract Kicc from buf3 */
+	memcpy(sm->icc.k, buf3 + 1 + 74, 32);	/* extract Kicc from buf3 */
 	res = SC_SUCCESS;
  verify_internal_done:
 	if (buf1)
@@ -1044,15 +1048,14 @@ int cwa_create_secure_channel(sc_card_t * card,
 	int res = SC_SUCCESS;
 	char *msg = "Success";
 
-	u8 *sn_icc = NULL;
-
 	/* data to get and parse certificates */
 	X509 *icc_cert = NULL;
 	X509 *ca_cert = NULL;
 	EVP_PKEY *icc_pubkey = NULL;
 	EVP_PKEY *ifd_privkey = NULL;
 	sc_context_t *ctx = NULL;
-	cwa_sm_status_t *sm = NULL;
+	struct sm_cwa_session * sm = &card->sm_ctx.info.session.cwa;
+	u8 sig[128];
 
 	/* several buffer and buffer pointers */
 	u8 *buffer = NULL;
@@ -1068,34 +1071,17 @@ int cwa_create_secure_channel(sc_card_t * card,
 		return SC_ERROR_SM_NOT_INITIALIZED;
 	/* comodity vars */
 	ctx = card->ctx;
-	sm = &(provider->status);
 
 	LOG_FUNC_CALLED(ctx);
 
 	/* check requested initialization method */
 	switch (flag) {
 	case CWA_SM_OFF:	/* disable SM */
-		provider->status.session.state = CWA_SM_NONE;	/* just mark channel inactive */
 		card->sm_ctx.sm_mode = SM_MODE_NONE;
 		sc_log(ctx, "Setting CWA SM status to none");
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
-	case CWA_SM_WARM:	/* only initialize if not already done */
-		if (provider->status.session.state != CWA_SM_NONE) {
-			sc_log(ctx,
-			       "Warm CWA SM requested: already in SM state");
-			LOG_FUNC_RETURN(ctx, SC_SUCCESS);
-		}
-	case CWA_SM_COLD:	/* force sm initialization process */
-		sc_log(ctx, "CWA SM initialization requested => reset and re-initialize");
-		sc_reset(card, 0);
-		provider->status.session.state = CWA_SM_INPROGRESS;
-		card->sm_ctx.sm_mode = SM_MODE_NONE;
-		break;
-	case CWA_SM_OVER:	/* create another channel over an existing one */
-		if (provider->status.session.state != CWA_SM_ACTIVE) {
-			sc_log(ctx, "CWA SM over requested => not in active state");
-			LOG_FUNC_RETURN(ctx, SC_ERROR_SM_INVALID_LEVEL);
-		}
+	case CWA_SM_ON:	/* force sm initialization process */
+		sc_log(ctx, "CWA SM initialization requested");
 		break;
 	default:
 		sc_log(ctx, "Invalid provided SM initialization flag");
@@ -1118,7 +1104,7 @@ int cwa_create_secure_channel(sc_card_t * card,
 	/* retrieve icc serial number */
 	sc_log(ctx, "Retrieve ICC serial number");
 	if (provider->cwa_get_sn_icc) {
-		res = provider->cwa_get_sn_icc(card, &sn_icc);
+		res = provider->cwa_get_sn_icc(card);
 		if (res != SC_SUCCESS) {
 			msg = "Retrieve ICC failed";
 			sc_log(ctx, msg);
@@ -1308,15 +1294,15 @@ int cwa_create_secure_channel(sc_card_t * card,
 	/* Internal (Card) authentication (let the card verify sent ifd certs) 
 	   SN.IFD equals 8 lsb bytes of ifd.pubk ref according cwa14890 sec 8.4.1 */
 	sc_log(ctx, "Step 8.4.1.10: Perform Internal authentication");
-	res = provider->cwa_get_sn_ifd(card, &buffer);
+	res = provider->cwa_get_sn_ifd(card);
 	if (res != SC_SUCCESS) {
 		msg = "Cannot get ifd serial number from provider";
 		goto csc_end;
 	}
-	RAND_bytes(sm->rndifd, 8);	/* generate 8 random bytes */
-	memcpy(rndbuf, sm->rndifd, 8);	/* insert RND.IFD into rndbuf */
-	memcpy(rndbuf + 8, buffer, 8);	/* insert SN.IFD into rndbuf */
-	res = cwa_internal_auth(card, sm, rndbuf, 16);
+	RAND_bytes(sm->ifd.rnd, 8);	/* generate 8 random bytes */
+	memcpy(rndbuf, sm->ifd.rnd, 8);	/* insert RND.IFD into rndbuf */
+	memcpy(rndbuf + 8, sm->ifd.sn, 8);	/* insert SN.IFD into rndbuf */
+	res = cwa_internal_auth(card, sig, 128, rndbuf, 16);
 	if (res != SC_SUCCESS) {
 		msg = "Internal auth cmd failed";
 		goto csc_end;
@@ -1336,7 +1322,7 @@ int cwa_create_secure_channel(sc_card_t * card,
 				       EVP_PKEY_get0_RSA(ifd_privkey),	/* evaluated from DGP's Manual Annex 3 Data */
 				       rndbuf,	/* RND.IFD || SN.IFD */
 				       16,	/* rndbuf length; should be 16 */
-				       sm	/* sm data */
+				       sig, 128
 	    );
 	if (res != SC_SUCCESS) {
 		msg = "Internal Auth Verify failed";
@@ -1345,7 +1331,7 @@ int cwa_create_secure_channel(sc_card_t * card,
 
 	/* get challenge: retrieve 8 random bytes from card */
 	sc_log(ctx, "Step 8.4.1.11: Prepare External Auth: Get Challenge");
-	res = card->ops->get_challenge(card, sm->rndicc, sizeof(sm->rndicc));
+	res = card->ops->get_challenge(card, sm->icc.rnd, sizeof(sm->icc.rnd));
 	if (res != SC_SUCCESS) {
 		msg = "Get Challenge failed";
 		goto csc_end;
@@ -1354,7 +1340,7 @@ int cwa_create_secure_channel(sc_card_t * card,
 	/* compose signature data for external auth */
 	res = cwa_prepare_external_auth(card,
 					EVP_PKEY_get0_RSA(icc_pubkey),
-					EVP_PKEY_get0_RSA(ifd_privkey), sn_icc, sm);
+					EVP_PKEY_get0_RSA(ifd_privkey), sig, 128);
 	if (res != SC_SUCCESS) {
 		msg = "Prepare external auth failed";
 		goto csc_end;
@@ -1362,7 +1348,7 @@ int cwa_create_secure_channel(sc_card_t * card,
 
 	/* External (IFD)  authentication */
 	sc_log(ctx, "Step 8.4.1.12: Perform External (IFD) Authentication");
-	res = cwa_external_auth(card, sm);
+	res = cwa_external_auth(card, sig, 128);
 	if (res != SC_SUCCESS) {
 		msg = "External auth cmd failed";
 		goto csc_end;
@@ -1370,7 +1356,7 @@ int cwa_create_secure_channel(sc_card_t * card,
 
 	/* Session key generation */
 	sc_log(ctx, "Step 8.4.2: Compute Session Keys");
-	res = cwa_compute_session_keys(card, sm);
+	res = cwa_compute_session_keys(card);
 	if (res != SC_SUCCESS) {
 		msg = "Session Key generation failed";
 		goto csc_end;
@@ -1401,9 +1387,9 @@ int cwa_create_secure_channel(sc_card_t * card,
 	/* setup SM state according result */
 	if (res != SC_SUCCESS) {
 		sc_log(ctx, msg);
-		provider->status.session.state = CWA_SM_NONE;
+		card->sm_ctx.sm_mode = SM_MODE_NONE;
 	} else {
-		provider->status.session.state = CWA_SM_ACTIVE;
+		card->sm_ctx.sm_mode = SM_MODE_TRANSMIT;
 	}
 	LOG_FUNC_RETURN(ctx, res);
 }
@@ -1439,7 +1425,7 @@ int cwa_encode_apdu(sc_card_t * card,
 	size_t i, j;		/* for xor loops */
 	int res = SC_SUCCESS;
 	sc_context_t *ctx = NULL;
-	cwa_sm_session_t *sm_session = NULL;
+	struct sm_cwa_session * sm_session = &card->sm_ctx.info.session.cwa;
 	u8 *msgbuf = NULL;	/* to encrypt apdu data */
 	u8 *cryptbuf = NULL;
 
@@ -1447,13 +1433,12 @@ int cwa_encode_apdu(sc_card_t * card,
 	if (!card || !card->ctx || !provider)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	ctx = card->ctx;
-	sm_session = &(provider->status.session);
 
 	LOG_FUNC_CALLED(ctx);
 	/* check remaining arguments */
 	if (!from || !to || !sm_session)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_SM_NOT_INITIALIZED);
-	if (sm_session->state != CWA_SM_ACTIVE)
+	if (card->sm_ctx.sm_mode != SM_MODE_TRANSMIT)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_SM_INVALID_LEVEL);
 
 	/* reserve extra bytes for padding and tlv header */
@@ -1514,9 +1499,9 @@ int cwa_encode_apdu(sc_card_t * card,
 
 		/* prepare keys */
 		DES_cblock iv = { 0, 0, 0, 0, 0, 0, 0, 0 };
-		DES_set_key_unchecked((const_DES_cblock *) & (sm_session->kenc[0]),
+		DES_set_key_unchecked((const_DES_cblock *) & (sm_session->session_enc[0]),
 				      &k1);
-		DES_set_key_unchecked((const_DES_cblock *) & (sm_session->kenc[8]),
+		DES_set_key_unchecked((const_DES_cblock *) & (sm_session->session_enc[8]),
 				      &k2);
 
 		/* pad message */
@@ -1562,14 +1547,14 @@ int cwa_encode_apdu(sc_card_t * card,
 
 	/* sc_log(ctx,"data to compose mac: %s",sc_dump_hex(ccbuf,cclen)); */
 	/* compute MAC Cryptographic Checksum using kmac and increased SSC */
-	res = cwa_increase_ssc(card, sm_session); /* increase send sequence counter */
+	res = cwa_increase_ssc(card); /* increase send sequence counter */
 	if (res != SC_SUCCESS) {
 		msg = "Error in computing SSC";
 		goto encode_end;
 	}
 	/* set up keys for mac computing */
-	DES_set_key_unchecked((const_DES_cblock *) & (sm_session->kmac[0]),&k1);
-	DES_set_key_unchecked((const_DES_cblock *) & (sm_session->kmac[8]),&k2);
+	DES_set_key_unchecked((const_DES_cblock *) & (sm_session->session_mac[0]),&k1);
+	DES_set_key_unchecked((const_DES_cblock *) & (sm_session->session_mac[8]),&k2);
 
 	memcpy(macbuf, sm_session->ssc, 8);	/* start with computed SSC */
 	for (i = 0; i < cclen; i += 8) {	/* divide data in 8 byte blocks */
@@ -1649,19 +1634,18 @@ int cwa_decode_response(sc_card_t * card,
 	int res = SC_SUCCESS;
 	char *msg = NULL;	/* to store error messages */
 	sc_context_t *ctx = NULL;
-	cwa_sm_session_t *sm_session = NULL;
+	struct sm_cwa_session * sm_session = &card->sm_ctx.info.session.cwa;
 
 	/* mandatory check */
 	if (!card || !card->ctx || !provider)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	ctx = card->ctx;
-	sm_session = &(provider->status.session);
 
 	LOG_FUNC_CALLED(ctx);
 	/* check remaining arguments */
 	if ((apdu == NULL) || (sm_session == NULL))
 		LOG_FUNC_RETURN(ctx, SC_ERROR_SM_NOT_INITIALIZED);
-	if (sm_session->state != CWA_SM_ACTIVE)
+	if (card->sm_ctx.sm_mode != SM_MODE_TRANSMIT)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_SM_INVALID_LEVEL);
 
 	/* cwa14890 sect 9.3: check SW1 or SW2 for SM related errors */
@@ -1766,14 +1750,14 @@ int cwa_decode_response(sc_card_t * card,
 	/* evaluate mac by mean of kmac and increased SendSequence Counter SSC */
 
 	/* increase SSC */
-	res = cwa_increase_ssc(card, sm_session);	/* increase send sequence counter */
+	res = cwa_increase_ssc(card);	/* increase send sequence counter */
 	if (res != SC_SUCCESS) {
 		msg = "Error in computing SSC";
 		goto response_decode_end;
 	}
 	/* set up keys for mac computing */
-	DES_set_key_unchecked((const_DES_cblock *) & (sm_session->kmac[0]), &k1);
-	DES_set_key_unchecked((const_DES_cblock *) & (sm_session->kmac[8]), &k2);
+	DES_set_key_unchecked((const_DES_cblock *) & (sm_session->session_mac[0]), &k1);
+	DES_set_key_unchecked((const_DES_cblock *) & (sm_session->session_mac[8]), &k2);
 
 	memcpy(macbuf, sm_session->ssc, 8);	/* start with computed SSC */
 	for (i = 0; i < cclen; i += 8) {	/* divide data in 8 byte blocks */
@@ -1834,9 +1818,9 @@ int cwa_decode_response(sc_card_t * card,
 			goto response_decode_end;
 		}
 		/* prepare keys to decode */
-		DES_set_key_unchecked((const_DES_cblock *) & (sm_session->kenc[0]),
+		DES_set_key_unchecked((const_DES_cblock *) & (sm_session->session_enc[0]),
 				      &k1);
-		DES_set_key_unchecked((const_DES_cblock *) & (sm_session->kenc[8]),
+		DES_set_key_unchecked((const_DES_cblock *) & (sm_session->session_enc[8]),
 				      &k2);
 		/* decrypt into response buffer
 		 * by using 3DES CBC by mean of kenc and iv={0,...0} */
@@ -1953,13 +1937,13 @@ static int default_get_icc_privkey_ref(sc_card_t * card, u8 ** buf,
 }
 
 /* Retrieve SN.IFD (8 bytes left padded with zeroes if needed) */
-static int default_get_sn_ifd(sc_card_t * card, u8 ** buf)
+static int default_get_sn_ifd(sc_card_t * card)
 {
 	return SC_ERROR_NOT_SUPPORTED;
 }
 
 /* Retrieve SN.ICC (8 bytes left padded with zeroes if needed) */
-static int default_get_sn_icc(sc_card_t * card, u8 ** buf)
+static int default_get_sn_icc(sc_card_t * card)
 {
 	return SC_ERROR_NOT_SUPPORTED;
 }
@@ -1967,50 +1951,6 @@ static int default_get_sn_icc(sc_card_t * card, u8 ** buf)
 static cwa_provider_t default_cwa_provider = {
 
     /************ data related with SM operations *************************/
-	{
-	 {			/* KICC */
-	  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
-	 {			/* KIFD */
-	  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
-	 {			/* RND.ICC */
-	  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
-	 {			/* RND.IFD */
-	  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
-	 {			/* SigBuf */
-	  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
-	 { /* sm session */
-	  CWA_SM_NONE,		/* state */
-	  {			/* Kenc */
-	   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
-	  {			/* Kmac */
-	   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
-	  {			/* SSC Send Sequence counter */
-	   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
-	  }
-	 },
 
     /************ operations related with secure channel creation *********/
 
