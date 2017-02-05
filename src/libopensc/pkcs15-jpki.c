@@ -99,7 +99,10 @@ sc_pkcs15emu_jpki_init(sc_pkcs15_card_t * p15card)
 		static const int jpki_pin_ref[2] = { 1, 2 };
 		static const int jpki_pin_authid[2] = { 1, 2 };
 		static const int jpki_pin_flags[2] = { 0, 0 };
-		static const int jpki_pin_max_tries[2] = { 5, 3 };
+		static const int jpki_pin_max_tries[2] = {
+			JPKI_AUTH_PIN_MAX_TRIES,
+			JPKI_SIGN_PIN_MAX_TRIES
+		};
 
 		struct sc_pkcs15_auth_info pin_info;
 		struct sc_pkcs15_object pin_obj;

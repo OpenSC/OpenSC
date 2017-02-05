@@ -27,15 +27,18 @@
 #define AID_JPKI "D392f000260100000001"
 #define JPKI_AUTH_KEY "0017"
 #define JPKI_AUTH_PIN "0018"
+#define JPKI_AUTH_PIN_MAX_TRIES 3
 
 #define JPKI_SIGN_KEY "001A"
 #define JPKI_SIGN_PIN "001B"
+#define JPKI_SIGN_PIN_MAX_TRIES 5
 
 #define JPKI_DRVDATA(card) ((struct jpki_private_data *) ((card)->drv_data))
 
 struct jpki_private_data {
 	sc_file_t *mf;
 	int selected;
+	int logged_in;
 };
 
 int jpki_select_ap(struct sc_card *card);
