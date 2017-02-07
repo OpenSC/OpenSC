@@ -87,16 +87,15 @@ cp MacOSX/opensc-uninstall target/usr/local/bin
 # Build package
 pkgbuild --root target --scripts MacOSX/scripts --identifier org.opensc-project.mac --version @PACKAGE_VERSION@ --install-location / OpenSC.pkg
 # Build product
-productbuild --distribution MacOSX/Distribution.xml --package-path . --resources MacOSX/resources OpenSC-@PACKAGE_VERSION@.pkg
+productbuild --distribution MacOSX/Distribution.xml --package-path . --resources MacOSX/resources "OpenSC @PACKAGE_VERSION@.pkg"
 
 # Build "uninstaller"
-pkgbuild --nopayload --identifier org.opensc-project.mac.uninstall --scripts MacOSX/uninstaller-scripts Uninstall_OpenSC.pkg
+osacompile -o "OpenSC Uninstaller.app" "MacOSX/OpenSC_Uninstaller.applescript"
 
 # Create .dmg
 rm -f OpenSC-@PACKAGE_VERSION@.dmg
-TIMESTAMP=$(date +%Y.%m.%d)
 i=0
-while ! hdiutil create -srcfolder Uninstall_OpenSC.pkg -srcfolder OpenSC-@PACKAGE_VERSION@.pkg -volname "OpenSC @PACKAGE_VERSION@ for Mac OS X 10.10+ (${TIMESTAMP})" OpenSC-@PACKAGE_VERSION@.dmg
+while ! hdiutil create -srcfolder "OpenSC @PACKAGE_VERSION@.pkg" -srcfolder "OpenSC Uninstaller.app" -volname "@PACKAGE_NAME@" OpenSC-@PACKAGE_VERSION@.dmg
 do
 	i=$[$i+1]
 	if [ $i -gt 2 ]
