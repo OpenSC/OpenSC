@@ -7,5 +7,4 @@ EXTRA_DIST = build build-package.in Distribution.xml.in libtool-bundle opensc-un
 	resources/Welcome.html.in \
 	scripts \
 	scripts/postinstall \
-	uninstaller-scripts \
-	uninstaller-scripts/postinstall
+	OpenSC_Uninstaller.applescript
