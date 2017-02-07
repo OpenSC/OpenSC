@@ -18,6 +18,7 @@ AM_CPPFLAGS = -DOPENSC_CONF_PATH=\"$(sysconfdir)/opensc.conf\" \
 	-I$(top_srcdir)/src
 AM_CFLAGS = $(OPENPACE_CFLAGS) $(OPTIONAL_OPENSSL_CFLAGS) $(OPTIONAL_OPENCT_CFLAGS) \
 	$(OPTIONAL_PCSC_CFLAGS) $(OPTIONAL_ZLIB_CFLAGS)
+AM_OBJCFLAGS = $(AM_CFLAGS)
 
 libopensc_la_SOURCES_BASE = \
 	sc.c ctx.c log.c errors.c \
@@ -55,9 +56,20 @@ libopensc_la_SOURCES_BASE = \
 	pkcs15-dnie.c pkcs15-gids.c pkcs15-iasecc.c pkcs15-jpki.c \
 	compression.c p15card-helper.c sm.c \
 	aux-data.c
+
+if ENABLE_CRYPTOTOKENKIT
+# most platforms don't support objective C the way we needed.
+# Only include it if needed
+libopensc_la_SOURCES_BASE += reader-cryptotokenkit.m
+else
+libopensc_la_LIBTOOLFLAGS = --tag CC
+libopensc_static_la_LIBTOOLFLAGS = --tag CC
+endif
+
 libopensc_la_SOURCES = $(libopensc_la_SOURCES_BASE) \
 	libopensc.exports
 libopensc_static_la_SOURCES = $(libopensc_la_SOURCES_BASE)
+
 if WIN32
 libopensc_la_SOURCES += $(top_builddir)/win32/versioninfo.rc
 endif

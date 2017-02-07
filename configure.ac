@@ -58,6 +58,7 @@ AC_CANONICAL_HOST
 AC_PROG_CC
 # AC_PROG_CXX is needed to built the win32 custom action. Indeed dutil.h use [extern "C"] definition which fails on pure c compiler
 AC_PROG_CXX
+AC_PROG_OBJC
 PKG_PROG_PKG_CONFIG
 AC_C_BIGENDIAN
 
@@ -196,6 +197,13 @@ AC_ARG_ENABLE(
 )
 
 AC_ARG_ENABLE(
+	[cryptotokenkit],
+	[AS_HELP_STRING([--disable-cryptotokenkit],[disable CryptoTokenKit support @<:@enabled@:>@])],
+	,
+	[enable_cryptotokenkit="no"]
+)
+
+AC_ARG_ENABLE(
 	[ctapi],
 	[AS_HELP_STRING([--enable-ctapi],[enable CT-API support @<:@disabled@:>@])],
 	,
@@ -267,11 +275,11 @@ AC_ARG_WITH(
 
 dnl ./configure check
 reader_count=""
-for rdriver in "${enable_pcsc}" "${enable_openct}" "${enable_ctapi}"; do
+for rdriver in "${enable_pcsc}" "${enable_cryptotokenkit}" "${enable_openct}" "${enable_ctapi}"; do
 	test "${rdriver}" = "yes" && reader_count="${reader_count}x"
 done
 if test "${reader_count}" != "x"; then
-	AC_MSG_ERROR([Only one of --enable-pcsc, --enable-openct, --enable-ctapi can be specified!])
+	AC_MSG_ERROR([Only one of --enable-pcsc, --enable-cryptotokenkit, --enable-openct, --enable-ctapi can be specified!])
 fi
 
 dnl Checks for programs.
@@ -711,6 +719,22 @@ if test "${enable_pcsc}" = "yes"; then
 	AC_DEFINE([ENABLE_PCSC], [1], [Define if PC/SC is to be enabled])
 fi
 
+if test "${enable_cryptotokenkit}" = "yes"; then
+	if test -z "${CRYPTOTOKENKIT_CFLAGS}"; then
+		case "${host}" in
+			*-apple-*)
+				CRYPTOTOKENKIT_CFLAGS="-framework CryptoTokenKit -framework Foundation"
+				LDFLAGS="${LDFLAGS} -framework CryptoTokenKit -framework Foundation"
+			;;
+			*)
+				AC_MSG_ERROR([CryptoTokenKit only supported on Darwin])
+			;;
+		esac
+	fi
+	AC_DEFINE([ENABLE_CRYPTOTOKENKIT], [1], [Define if CryptoTokenKit is to be enabled])
+fi
+
+
 AC_SUBST(DYN_LIB_EXT)
 AC_SUBST(LIBDIR)
 AC_SUBST(LIB_PRE)
@@ -803,6 +827,9 @@ if test "${enable_pcsc}" = "yes"; then
 	OPENSC_FEATURES="${OPENSC_FEATURES} pcsc(${DEFAULT_PCSC_PROVIDER})"
 	OPTIONAL_PCSC_CFLAGS="${PCSC_CFLAGS}"
 fi
+if test "${enable_cryptotokenkit}" = "yes"; then
+	OPTIONAL_CRYPTOTOKENKIT_CFLAGS="${CRYPTOTOKENKIT_CFLAGS}"
+fi
 if test "${enable_ctapi}" = "yes"; then
 	OPENSC_FEATURES="${OPENSC_FEATURES} ctapi"
 fi
@@ -878,7 +905,7 @@ AM_CONDITIONAL([ENABLE_THREAD_LOCKING], [test "${enable_thread_locking}" = "yes"
 AM_CONDITIONAL([ENABLE_ZLIB], [test "${enable_zlib}" = "yes"])
 AM_CONDITIONAL([ENABLE_READLINE], [test "${enable_readline}" = "yes"])
 AM_CONDITIONAL([ENABLE_OPENSSL], [test "${enable_openssl}" = "yes"])
-AM_CONDITIONAL([ENABLE_OPENCT], [test "${enable_openct}" = "yes"])
+AM_CONDITIONAL([ENABLE_CRYPTOTOKENKIT], [test "${enable_cryptotokenkit}" = "yes"])
 AM_CONDITIONAL([ENABLE_DOC], [test "${enable_doc}" = "yes"])
 AM_CONDITIONAL([WIN32], [test "${WIN32}" = "yes"])
 AM_CONDITIONAL([CYGWIN], [test "${CYGWIN}" = "yes"])
@@ -970,6 +997,7 @@ zlib support:            ${enable_zlib}
 readline support:        ${enable_readline}
 OpenSSL support:         ${enable_openssl}
 PC/SC support:           ${enable_pcsc}
+CryptoTokenKit support:  ${enable_cryptotokenkit}
 OpenCT support:          ${enable_openct}
 CT-API support:          ${enable_ctapi}
 minidriver support:      ${enable_minidriver}
@@ -999,6 +1027,7 @@ OPENPACE_LIBS:           ${OPENPACE_LIBS}
 OPENCT_CFLAGS:           ${OPENCT_CFLAGS}
 OPENCT_LIBS:             ${OPENCT_LIBS}
 PCSC_CFLAGS:             ${PCSC_CFLAGS}
+CRYPTOTOKENKIT_CFLAGS:   ${CRYPTOTOKENKIT_CFLAGS}
 
 EOF
 

@@ -257,6 +257,7 @@ extern struct sc_reader_driver *sc_get_pcsc_driver(void);
 extern struct sc_reader_driver *sc_get_ctapi_driver(void);
 extern struct sc_reader_driver *sc_get_openct_driver(void);
 extern struct sc_reader_driver *sc_get_cardmod_driver(void);
+extern struct sc_reader_driver *sc_get_cryptotokenkit_driver(void);
 
 #ifdef __cplusplus
 }

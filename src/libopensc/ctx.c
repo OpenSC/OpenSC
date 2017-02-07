@@ -797,6 +797,8 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 	if(strcmp(ctx->app_name, "cardmod") == 0)
 		ctx->reader_driver = sc_get_cardmod_driver();
 #endif
+#elif defined(ENABLE_CRYPTOTOKENKIT)
+	ctx->reader_driver = sc_get_cryptotokenkit_driver();
 #elif defined(ENABLE_CTAPI)
 	ctx->reader_driver = sc_get_ctapi_driver();
 #elif defined(ENABLE_OPENCT)
