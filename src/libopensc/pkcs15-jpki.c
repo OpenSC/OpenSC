@@ -47,8 +47,8 @@ sc_pkcs15emu_jpki_init(sc_pkcs15_card_t * p15card)
 
 	p15card->tokeninfo->label = strdup("JPKI");
 	p15card->tokeninfo->manufacturer_id = strdup("JPKI");
-	/* set NULL until we found serial number */
-	p15card->tokeninfo->serial_number = NULL;
+	/* set dummy until we found serial number */
+	p15card->tokeninfo->serial_number = strdup("00000000");
 
 	/* Select application directory */
 	if (drvdata->selected != SELECT_JPKI_AP) {
