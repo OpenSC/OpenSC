@@ -124,7 +124,18 @@ app default {
 		# Default: n/a
 		# max_send_size = 255;
 		# max_recv_size = 256;
-	};
+	}
+
+	# Options for CryptoTokenKit support
+	reader_driver cryptotokenkit {
+		# Limit command and response sizes. Some Readers don't propagate their
+		# transceive capabilities correctly. max_send_size and max_recv_size
+		# allow setting the limits manually, for example to enable extended
+		# length capabilities.
+		# Default: autodetect
+		# max_send_size = 65535;
+		# max_recv_size = 65536;
+	}
 
 	# Whitelist of card drivers to load at start-up
 	#
