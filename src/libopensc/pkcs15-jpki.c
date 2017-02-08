@@ -98,7 +98,12 @@ sc_pkcs15emu_jpki_init(sc_pkcs15_card_t * p15card)
 		static const int jpki_pin_max[2] = { 4, 16 };
 		static const int jpki_pin_ref[2] = { 1, 2 };
 		static const int jpki_pin_authid[2] = { 1, 2 };
-		static const int jpki_pin_flags[2] = { 0, 0 };
+		static const int jpki_pin_flags[2] = {
+			SC_PKCS15_PIN_FLAG_INITIALIZED |
+			SC_PKCS15_PIN_FLAG_LOCAL,
+			SC_PKCS15_PIN_FLAG_INITIALIZED |
+			SC_PKCS15_PIN_FLAG_LOCAL
+		};
 		static const int jpki_pin_max_tries[2] = {
 			JPKI_AUTH_PIN_MAX_TRIES,
 			JPKI_SIGN_PIN_MAX_TRIES
