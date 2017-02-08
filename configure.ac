@@ -822,7 +822,6 @@ AC_CONFIG_FILES([
 	MacOSX/Makefile
 	MacOSX/build-package
 	MacOSX/Distribution.xml
-	MacOSX/resources/ReadMe.html
 	MacOSX/resources/Welcome.html
 ])
 AC_OUTPUT
