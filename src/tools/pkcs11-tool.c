@@ -2893,8 +2893,8 @@ static void  authenticate_if_required(CK_SESSION_HANDLE session, CK_OBJECT_HANDL
 		p11_fatal("C_OpenSession", rv);
 
 	switch(sessionInfo.state){
-		case CKS_RW_USER_FUNCTIONS: //logged in, not need to continue.
-			util_warn("authentication was requested, but was already logged in");
+		case CKS_RW_USER_FUNCTIONS:
+		   	//logged in, not need to continue.
 			return;
 		case CKS_RW_PUBLIC_SESSION:
 			break;
