@@ -2,11 +2,7 @@
 
 #define IDC_STATIC -1
 /* defined twice: in versioninfo-minidriver.rc.in and in minidriver.c */
-#define IDD_PINPAD      101
-#define IDI_LOGO        102
-#define IDC_PURPOSE_TEXT 1002
-#define IDC_PINPAD_TEXT 1001
-#define IDC_PINPAD_ICON 1000
+#define IDI_SMARTCARD   102
 
 VS_VERSION_INFO VERSIONINFO
 	FILEVERSION @OPENSC_VERSION_MAJOR@,@OPENSC_VERSION_MINOR@,@OPENSC_VERSION_FIX@,@OPENSC_VERSION_REVISION@
@@ -44,20 +40,4 @@ BEGIN
 	END
 END
 
-IDD_PINPAD DIALOGEX 0, 0, 309, 89
-STYLE DS_SYSMODAL | DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION
-CAPTION "PIN Entry Required"
-FONT 8, "MS Shell Dlg", 400, 0, 0x1
-BEGIN
-    LTEXT           "OpenSC Smart Card Provider",IDC_PURPOSE_TEXT,46,9,256,10
-    LTEXT           "Please enter your PIN on the PINPAD",IDC_PINPAD_TEXT,46,19,256,19
-    ICON            "",IDC_PINPAD_ICON,6,11,20,20
-    LTEXT           "This window will be closed automatically after the PIN has been submitted on the PINPAD or if the PINPAD timeout occurs (in general 30 seconds).",IDC_STATIC,7,46,298,19
-    PUSHBUTTON      "Cancel",IDCANCEL,250,67,50,14
-END
-
-#ifndef __MINGW32__
-IDI_LOGO               ICON                    "..\\..\\win32\\OpenSC.ico"
-#else
-IDI_LOGO               ICON                    "../../win32/OpenSC.ico"
-#endif
+IDI_SMARTCARD          ICON                    "..\\..\\win32\\DDORes.dll_14_2302.ico"

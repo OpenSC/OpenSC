@@ -30,11 +30,14 @@
 #pragma managed(push, off)
 #endif
 
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 
 #include <windows.h>
+#include <Commctrl.h>
+#include "cardmod.h"
 
 #include "common/compat_strlcpy.h"
 #include "libopensc/asn1.h"
@@ -111,12 +114,7 @@ HINSTANCE g_inst;
 #endif
 
  /* defined twice: in versioninfo-minidriver.rc.in and in minidriver.c */
-#define IDD_PINPAD      101
-#define IDI_LOGO        102
-#define IDC_EXPLANATION_TEXT 1003
-#define IDC_PURPOSE_TEXT 1002
-#define IDC_PINPAD_TEXT 1001
-#define IDC_PINPAD_ICON 1000
+#define IDI_SMARTCARD   102
 
 /* magic to determine previous pinpad authentication */
 #define MAGIC_SESSION_PIN "opensc-minidriver"
@@ -2304,39 +2302,6 @@ md_query_key_sizes(PCARD_DATA pCardData, DWORD dwKeySpec, CARD_KEY_SIZES *pKeySi
 	return SCARD_S_SUCCESS;
 }
 
-static VOID CenterWindow(HWND hwndWindow, HWND hwndParent)
-{
-	RECT rectWindow, rectParent;
-	int nWidth,nHeight, nScreenWidth, nScreenHeight;
-	int nX, nY;
-	GetWindowRect(hwndWindow, &rectWindow);
-
-	nWidth = rectWindow.right - rectWindow.left;
-	nHeight = rectWindow.bottom - rectWindow.top;
-
-	nScreenWidth = GetSystemMetrics(SM_CXSCREEN);
-	nScreenHeight = GetSystemMetrics(SM_CYSCREEN);
-
-	// make the window relative to its parent
-	if (hwndParent != NULL) {
-		GetWindowRect(hwndParent, &rectParent);
-		nX = ((rectParent.right - rectParent.left) - nWidth) / 2 + rectParent.left;
-		nY = ((rectParent.bottom - rectParent.top) - nHeight) / 2 + rectParent.top;
-	}
-	else {
-		nX = (nScreenWidth - nWidth) /2;
-		nY = (nScreenHeight - nHeight) /2;
-	}
-	// make sure that the dialog box never moves outside of the screen
-	if (nX < 0) nX = 0;
-	if (nY < 0) nY = 0;
-	if (nX + nWidth > nScreenWidth) nX = nScreenWidth - nWidth;
-	if (nY + nHeight > nScreenHeight) nY = nScreenHeight - nHeight;
-
-	MoveWindow(hwndWindow, nX, nY, nWidth, nHeight, TRUE);
-}
-
-
 static DWORD WINAPI
 md_dialog_perform_pin_operation_thread(PVOID lpParameter)
 {
@@ -2374,114 +2339,57 @@ md_dialog_perform_pin_operation_thread(PVOID lpParameter)
 	return (DWORD) rv;
 }
 
-static INT_PTR CALLBACK md_dialog_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+static INT_PTR CALLBACK md_dialog_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam, LONG_PTR dwRefData)
 {
-	UNREFERENCED_PARAMETER(wParam);
-	switch (message)
-	{
-	case WM_INITDIALOG:
-		{
-			LANGID lang = GetUserDefaultUILanguage();
-			struct sc_pkcs15_card *p15card = (struct sc_pkcs15_card *) (((LONG_PTR*)lParam)[1]);
-			DWORD role = (DWORD) (((LONG_PTR*)lParam)[8]);
-			HICON hIcon = NULL;
-			PCARD_DATA pCardData = (PCARD_DATA) (((LONG_PTR*)lParam)[7]);
-			VENDOR_SPECIFIC* vs = (VENDOR_SPECIFIC*) pCardData->pvVendorSpecific;
-			/* store parameter like pCardData for further use if needed */
-			SetWindowLongPtr(hWnd, GWLP_USERDATA, lParam);
-			/* change the text shown on the screen */
-			if (p15card->tokeninfo->preferred_language) {
-				/* choose the token's preferred language over the system's language */
-				if (strncmp(p15card->tokeninfo->preferred_language, "de", 2))
-					lang = LANG_GERMAN|SUBLANG_GERMAN;
-			}
-
-			if (vs->wszPinContext )   {
-				SetWindowTextW(GetDlgItem(hWnd, IDC_PURPOSE_TEXT), vs->wszPinContext);
-			}
-			if (lang & LANG_GERMAN) {
-				SetWindowText(hWnd,
-						"PIN-Eingabe notwendig");
-				SetWindowText(GetDlgItem(hWnd, IDC_EXPLANATION_TEXT),
-						"Dieses Fenster wird automatisch geschlossen, wenn die PIN am PINPAD eingegeben wurde oder nach dem PINPAD-Timeout (typischerweise nach 30 Sekunden).");
-				SetWindowText(GetDlgItem(hWnd, IDC_EXPLANATION_TEXT),
-						"Dieses Fenster wird automatisch geschlossen, wenn die PIN am PINPAD eingegeben wurde oder nach dem PINPAD-Timeout (typischerweise nach 30 Sekunden).");
-				SetWindowText(GetDlgItem(hWnd, IDCANCEL),
-						"Abbrechen");
-			}
-
-			switch (role) {
-				case ROLE_ADMIN:
-					if (lang & LANG_GERMAN) {
-						SetWindowText(GetDlgItem(hWnd, IDC_PINPAD_TEXT),
-								"Bitte geben Sie Ihre PIN zum Entsperren der Nutzer-PIN auf dem PINPAD ein.");
-					} else {
-						SetWindowText(GetDlgItem(hWnd, IDC_PINPAD_TEXT),
-								"Please enter your PIN to unblock the user PIN on the PINPAD.");
-					}
-					break;
-				case ROLE_USER:
-					if (lang & LANG_GERMAN) {
-						SetWindowText(GetDlgItem(hWnd, IDC_PINPAD_TEXT),
-								"Bitte geben Sie Ihre Signatur-PIN auf dem PINPAD ein.");
-					} else {
-						SetWindowText(GetDlgItem(hWnd, IDC_PINPAD_TEXT),
-								"Please enter your digital signature PIN on the PINPAD.");
-					}
-					break;
-				default:
-					break;
-
-			}
-			CenterWindow(hWnd, vs->hwndParent);
-			/* load the information icon */
-			hIcon = (HICON) LoadImage(0, IDI_INFORMATION, IMAGE_ICON, 0, 0, LR_SHARED);
-			SendMessage(GetDlgItem(hWnd, IDC_PINPAD_ICON),STM_SETIMAGE,IMAGE_ICON, (LPARAM) hIcon);
-			/* change the icon */
-			hIcon = LoadIcon(g_inst, MAKEINTRESOURCE(IDI_LOGO));
-			if (hIcon)
+	UNREFERENCED_PARAMETER(lParam);
+	switch (message) {
+		case TDN_CREATED:
 			{
-				SendMessage(hWnd, WM_SETICON, ICON_SMALL, (LPARAM) hIcon);
-				SendMessage(hWnd, WM_SETICON, ICON_BIG, (LPARAM) hIcon);
+				/* remove the icon from the window title */
+				SendMessage(hWnd, WM_SETICON, (LPARAM) ICON_BIG, (LONG_PTR) NULL);
+				SendMessage(hWnd, WM_SETICON, (LPARAM) ICON_SMALL, (LONG_PTR) NULL);
+				/* store parameter like pCardData for further use if needed */
+				SetWindowLongPtr(hWnd, GWLP_USERDATA, dwRefData);
+				/* launch the function in another thread context store the thread handle */
+				((LONG_PTR*)dwRefData)[10] = (LONG_PTR) hWnd;
+				((LONG_PTR*)dwRefData)[9] = (LONG_PTR) CreateThread(NULL, 0, md_dialog_perform_pin_operation_thread, (LPVOID) dwRefData, 0, NULL);
 			}
-			/* launch the function in another thread context store the thread handle */
-			((LONG_PTR*)lParam)[10] = (LONG_PTR) hWnd;
-			((LONG_PTR*)lParam)[9] = (LONG_PTR) CreateThread(NULL, 0, md_dialog_perform_pin_operation_thread, (PVOID) lParam, 0, NULL);
-		}
-		return TRUE;
-	case WM_COMMAND:
-		{
-			/* This *must* be IDCANCEL, because we don't have any other command */
-			if (LOWORD(wParam) != IDCANCEL) 
-				return FALSE;
+		case TDN_TIMER:
+			// progress bar 30 seconds.
+			SendMessage(hWnd, TDM_SET_PROGRESS_BAR_POS, wParam / 300 , 0L);
+			/* continue the tickcount */
+			return S_OK;
+		case TDN_BUTTON_CLICKED:
+			{
+				/* We ignore anything else than the Cancel button */
+				if (LOWORD(wParam) != IDCANCEL) 
+					return S_FALSE;
 
-			/* cancel request */
-			LPARAM param = GetWindowLongPtr(hWnd, GWLP_USERDATA);
-			if (param) {
-				PCARD_DATA pCardData = (PCARD_DATA)((LONG_PTR*)param)[7];
-				VENDOR_SPECIFIC* vs = (VENDOR_SPECIFIC*) pCardData->pvVendorSpecific;
-				sc_cancel(vs->ctx);
-				/* Some readers don't support SCardCancel, though they're
-				 * reporting SCARD_S_SUCCESS. We force closing of the dialog so
-				 * that at least the application can continue. */
-				if (((LONG_PTR*)param)[10] != 0) {
-					EndDialog((HWND) ((LONG_PTR*)param)[10], SC_ERROR_KEYPAD_CANCELLED);
+				LONG_PTR param = GetWindowLongPtr(hWnd, GWLP_USERDATA);
+				if (param) {
+					PCARD_DATA pCardData = (PCARD_DATA)((LONG_PTR*)param)[7];
+					VENDOR_SPECIFIC* vs = (VENDOR_SPECIFIC*) pCardData->pvVendorSpecific;
+					sc_cancel(vs->ctx);
 				}
 			}
-		}
-		return TRUE;
-	case WM_DESTROY:
-		{
-			/* clean resources used */
-			LPARAM param = GetWindowLongPtr(hWnd, GWLP_USERDATA);
-			if (param) {
-				HANDLE hThread = (HANDLE)((LONG_PTR*)param)[9];
-				CloseHandle(hThread);
+			/* Some readers don't support SCardCancel, though they're
+			 * reporting SCARD_S_SUCCESS. We force closing of the dialog so
+			 * that at least the application can continue. */
+			return S_OK;
+		case TDN_DESTROYED:
+			{
+				/* clean resources used */
+				LONG_PTR param = GetWindowLongPtr(hWnd, GWLP_USERDATA);
+				if (param) {
+					HANDLE hThread = (HANDLE)((LONG_PTR*)param)[9];
+					CloseHandle(hThread);
+				}
 			}
-		}
-		break;
+			break;
 	}
-	return FALSE;
+
+	/* don't close the Task Dialog */
+	return S_FALSE;
 }
 
 
@@ -2494,8 +2402,12 @@ md_dialog_perform_pin_operation(PCARD_DATA pCardData, int operation, struct sc_p
 {
 	LONG_PTR parameter[11];
 	INT_PTR result = 0;
+	HWND hWndDlg = 0;
+	TASKDIALOGCONFIG tc = {0};
 	int rv = 0;
 	VENDOR_SPECIFIC* pv = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
+	LANGID lang = GetUserDefaultUILanguage();
+
 	/* stack the parameters */
 	parameter[0] = (LONG_PTR)operation;
 	parameter[1] = (LONG_PTR)p15card;
@@ -2508,16 +2420,77 @@ md_dialog_perform_pin_operation(PCARD_DATA pCardData, int operation, struct sc_p
 	parameter[8] = (LONG_PTR)role;
 	parameter[9] = 0; /* place holder for thread handle */
 	parameter[10] = 0; /* place holder for window handle */
+
 	/* launch the function to perform in the same thread context */
 	if (!displayUI) {
 		rv = md_dialog_perform_pin_operation_thread(parameter);
 		SecureZeroMemory(parameter, sizeof(parameter));
 		return rv;
 	}
+
 	/* launch the UI in the same thread context than the parent and the function to perform in another thread context 
 	this is the only way to display a modal dialog attached to a parent (hwndParent != 0) */
-	result = DialogBoxParam(g_inst, MAKEINTRESOURCE(IDD_PINPAD), pv->hwndParent, md_dialog_proc, (LPARAM) parameter);
+	tc.hwndParent = pv->hwndParent;
+	tc.hInstance = g_inst;
+	tc.dwFlags = TDF_ALLOW_DIALOG_CANCELLATION | TDF_SHOW_PROGRESS_BAR | TDF_CALLBACK_TIMER | TDF_EXPAND_FOOTER_AREA | TDF_POSITION_RELATIVE_TO_WINDOW | TDF_USE_HICON_FOOTER;
+	tc.dwCommonButtons = TDCBF_CANCEL_BUTTON;
+
+	if (p15card->tokeninfo->preferred_language) {
+		/* choose the token's preferred language over the system's language */
+		if (strncmp(p15card->tokeninfo->preferred_language, "de", 2))
+			lang = LANG_GERMAN|SUBLANG_GERMAN;
+	}
+
+	if (lang & LANG_GERMAN) {
+		tc.pszWindowTitle = L"Windows-Sicherheit";
+		tc.pszMainInstruction = L"OpenSC Smartcard-Anbieter";
+		switch (role) {
+			case ROLE_ADMIN:
+				tc.pszContent = L"Bitte geben Sie Ihre PIN zum Entsperren der Nutzer-PIN auf dem PINPAD ein.";
+				break;
+			case ROLE_USER:
+				/* fall through */
+			default:
+				tc.pszContent = L"Bitte geben Sie Ihre PIN für die digitale Signatur auf dem PINPAD ein.";
+				break;
+		}
+		tc.pszExpandedInformation = L"Dieses Fenster wird automatisch geschlossen, wenn die PIN am PINPAD eingegeben wurde (Timeout typischerweise nach 30 Sekunden).";
+		tc.pszExpandedControlText = L"Weitere Informationen";
+		tc.pszCollapsedControlText = L"Weitere Informationen";
+	} else {
+		tc.pszWindowTitle = L"Windows Security";
+		tc.pszMainInstruction = L"OpenSC Smart Card Provider";
+		switch (role) {
+			case ROLE_ADMIN:
+				tc.pszContent = L"Please enter your PIN to unblock the user PIN on the PINPAD.";
+				break;
+			case ROLE_USER:
+				/* fall through */
+			default:
+				tc.pszContent = L"Please enter your digital signature PIN on the PINPAD.";
+				break;
+		}
+		tc.pszExpandedInformation = L"This window will be closed automatically after the PIN has been submitted on the PINPAD (timeout typically after 30 seconds).";
+		tc.pszExpandedControlText = L"Click here for more information";
+		tc.pszCollapsedControlText = L"Click here for more information";
+	}
+	if (pv->wszPinContext ) {
+		tc.pszMainInstruction = pv->wszPinContext;
+	}
+
+	tc.pszMainIcon = MAKEINTRESOURCE(IDI_SMARTCARD);
+	tc.cButtons = 0;
+	tc.pButtons = NULL;
+	tc.cRadioButtons = 0;
+	tc.pRadioButtons = NULL;
+	tc.pfCallback = md_dialog_proc;
+	tc.lpCallbackData = (LONG_PTR)parameter;
+	tc.cbSize = sizeof(tc);
+
+	result = TaskDialogIndirect(&tc, NULL, NULL, NULL);
+
 	SecureZeroMemory(parameter, sizeof(parameter));
+
 	return (int) result;
 }
 
