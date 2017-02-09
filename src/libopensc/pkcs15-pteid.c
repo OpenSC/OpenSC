@@ -288,26 +288,25 @@ static int sc_pkcs15emu_pteid_init(sc_pkcs15_card_t * p15card)
 
 	/* Add data objects */
 	for (i = 0; i < 5; i++) {
-		static const char *object_ids[5] = {"1", "2", "3", "4", "5"};
 		static const char *object_labels[5] = {
+			"Trace",
 			"Citizen Data",
 			"Citizen Address Data",
+			"SOd",
 			"Citizen Notepad",
-			"SOD",
-			"TRACE",
 		};
-		static const char *object_authids[5] = {NULL, "3", NULL, NULL, NULL};
+		static const char *object_authids[5] = {NULL, NULL, "3", NULL, NULL};
 		static const char *object_paths[5] = {
+			"3f000003",
 			"3f005f00ef02",
 			"3f005f00ef05",
-			"3f005f00ef07",
 			"3f005f00ef06",
-			"3F000003",
+			"3f005f00ef07",
 		};
 		static const int object_flags[5] = {
 			0,
-			SC_PKCS15_CO_FLAG_PRIVATE,
 			0,
+			SC_PKCS15_CO_FLAG_PRIVATE,
 			0,
 			0,
 		};
@@ -317,7 +316,6 @@ static int sc_pkcs15emu_pteid_init(sc_pkcs15_card_t * p15card)
 		memset(&obj_info, 0, sizeof(obj_info));
 		memset(&obj_obj, 0, sizeof(obj_obj));
 
-		sc_pkcs15_format_id(object_ids[i], &obj_info.id);
 		sc_format_path(object_paths[i], &obj_info.path);
 		strlcpy(obj_info.app_label, object_labels[i], SC_PKCS15_MAX_LABEL_SIZE);
 		if (object_authids[i] != NULL)
