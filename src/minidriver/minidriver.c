@@ -217,6 +217,7 @@ typedef struct _VENDOR_SPECIFIC
 struct md_opensc_static_data {
 	unsigned flags, flags_checked;
 	unsigned long attach_check;
+	CRITICAL_SECTION hScard_lock;
 };
 static struct md_opensc_static_data md_static_data;
 
@@ -2315,6 +2316,7 @@ md_dialog_perform_pin_operation_thread(PVOID lpParameter)
 	const u8 *pin2 = (const u8 *) parameter[5];
 	size_t *pin2len = (size_t *) parameter[6];
 	int rv = 0;
+	EnterCriticalSection(&md_static_data.hScard_lock);
 	switch (operation)
 	{
 	case SC_PIN_CMD_VERIFY:
@@ -2333,6 +2335,7 @@ md_dialog_perform_pin_operation_thread(PVOID lpParameter)
 		rv = (DWORD) ERROR_INVALID_PARAMETER;
 		break;
 	}
+	LeaveCriticalSection(&md_static_data.hScard_lock);
 	if (parameter[10] != 0) {
 		EndDialog((HWND) parameter[10], rv);
 	}
@@ -5996,6 +5999,8 @@ static int disassociate_card(PCARD_DATA pCardData)
 	vs->obj_user_pin = NULL;
 	vs->obj_sopin = NULL;
 
+	EnterCriticalSection(&md_static_data.hScard_lock);
+
 	if(vs->p15card)   {
 		logprintf(pCardData, 6, "sc_pkcs15_unbind\n");
 		sc_pkcs15_unbind(vs->p15card);
@@ -6012,6 +6017,8 @@ static int disassociate_card(PCARD_DATA pCardData)
 
 	vs->hSCardCtx = -1;
 	vs->hScard = -1;
+
+	LeaveCriticalSection(&md_static_data.hScard_lock);
 
 	return SCARD_S_SUCCESS;
 }
@@ -6051,9 +6058,11 @@ BOOL APIENTRY DllMain( HINSTANCE hinstDLL,
 	{
 	case DLL_PROCESS_ATTACH:
 		g_inst = hinstDLL;
+		InitializeCriticalSection(&md_static_data.hScard_lock);
 		md_static_data.attach_check = MD_STATIC_PROCESS_ATTACHED;
 		break;
 	case DLL_PROCESS_DETACH:
+		DeleteCriticalSection(&md_static_data.hScard_lock);
 		md_static_data.attach_check = 0;
 		break;
 	}
