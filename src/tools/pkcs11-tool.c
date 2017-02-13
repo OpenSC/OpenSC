@@ -4301,6 +4301,7 @@ static int test_signature(CK_SESSION_HANDLE sess)
 
 	/* Fill in data[0] and dataLens[0] */
 	dataLen = modLenBytes;
+	data[0] = 0x00;
 	data[1] = 0x01;
 	memset(data + 2, 0xFF, dataLen - 3 - dataLens[1]);
 	data[dataLen - 36] = 0x00;
