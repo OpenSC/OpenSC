@@ -182,8 +182,13 @@ jpki_select_file(struct sc_card *card,
 		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 	}
 
-	/* read size of auth certificate file */
-	if (path->len == 2 && memcmp(path->value, "\x00\x0a", 2) == 0) {
+	/* read certificate file size */
+	if (path->len == 2 && (
+		    memcmp(path->value, "\x00\x0A", 2) == 0 ||
+		    memcmp(path->value, "\x00\x01", 2) == 0 ||
+		    memcmp(path->value, "\x00\x0B", 2) == 0 ||
+		    memcmp(path->value, "\x00\x02", 2) == 0 )
+		) {
 		u8 buf[4];
 		rc = sc_read_binary(card, 0, buf, 4, 0);
 		LOG_TEST_RET(card->ctx, rc, "SW Check failed");
@@ -195,7 +200,6 @@ jpki_select_file(struct sc_card *card,
 		file->size = (buf[2] << 8 | buf[3]) + 4;
 		*file_out = file;
 	}
-
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
