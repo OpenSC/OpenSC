@@ -865,9 +865,11 @@ epass2003_sm_wrap_apdu(struct sc_card *card, struct sc_apdu *plain, struct sc_ap
 	case 0x00:
 	case 0x04:
 		sm->datalen = plain->datalen;
-		sm->data = plain->data;
+		//sm->data = plain->data;
+		memcpy((void *)sm->data,plain->data,plain->datalen);
 		sm->resplen = plain->resplen;
-		sm->resp = plain->resp;
+		//sm->resp = plain->resp;
+		memcpy(sm->resp,plain->resp,plain->resplen);
 		break;
 	case 0x0C:
 		memset(buf, 0, sizeof(buf));
@@ -996,13 +998,20 @@ epass2003_sm_free_wrapped_apdu(struct sc_card *card,
 	if (!(*sm_apdu))
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 
+
 	if (plain)
 		rv = epass2003_sm_unwrap_apdu(card, *sm_apdu, plain);
 
 	if ((*sm_apdu)->data)
-		free((unsigned char *) (*sm_apdu)->data);
+	{
+		unsigned char * p = (unsigned char *)((*sm_apdu)->data);
+		free(p);
+	}
 	if ((*sm_apdu)->resp)
+	{
 		free((*sm_apdu)->resp);
+	}
+
 	free(*sm_apdu);
 	*sm_apdu = NULL;
 
@@ -1051,11 +1060,13 @@ epass2003_sm_get_wrapped_apdu(struct sc_card *card,
 
 	*sm_apdu = apdu;
 	apdu = NULL;
+	LOG_FUNC_RETURN(ctx, rv);
 err:
 	if (apdu) {
 		free((unsigned char *) apdu->data);
 		free(apdu->resp);
 		free(apdu);
+		apdu = NULL;
 	}
 	LOG_FUNC_RETURN(ctx, rv);
 }
@@ -1156,6 +1167,15 @@ epass2003_init(struct sc_card *card)
 		exdata->smtype = KEY_TYPE_AES;
 	else
 		exdata->smtype = KEY_TYPE_DES;
+
+	if (0x84 == data[14])
+	{
+		if (0x00 == data[16])
+		{ 
+			exdata->sm = SM_PLAIN;
+		}
+	}
+
 
 	/* mutual authentication */
 	card->max_recv_size = 0xD8;
