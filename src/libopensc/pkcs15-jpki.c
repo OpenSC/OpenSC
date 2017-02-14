@@ -72,6 +72,13 @@ sc_pkcs15emu_jpki_init(sc_pkcs15_card_t * p15card)
 			"0002"
 		};
 		static int jpki_cert_ids[4] = { 1, 2, 3, 4 };
+		static int jpki_cert_flags[4] = {
+			0,
+			SC_PKCS15_CO_FLAG_PRIVATE,
+			0,
+			0,
+		};
+		static int jpki_cert_authority[4] = {0, 0, 1, 1};
 		struct sc_pkcs15_cert_info cert_info;
 		struct sc_pkcs15_object cert_obj;
 		memset(&cert_info, 0, sizeof(cert_info));
@@ -83,8 +90,8 @@ sc_pkcs15emu_jpki_init(sc_pkcs15_card_t * p15card)
 		cert_info.path.type = SC_PATH_TYPE_FILE_ID;
 
 		strlcpy(cert_obj.label, jpki_cert_names[i], sizeof(cert_obj.label));
-		cert_obj.flags = 0;
-
+		cert_info.authority = jpki_cert_authority[i];
+		cert_obj.flags = jpki_cert_flags[i];
 		rc = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
 		if (rc < 0)
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
