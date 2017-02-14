@@ -321,6 +321,15 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	LOG_TEST_RET(ctx, r, "Could not initialize security environment");
 	senv.operation = SC_SEC_OPERATION_SIGN;
 
+	/* 
+	 * Is input know hash? Some cards need to know for set_security_env
+	 * even if the calling application did the hash and set SC_ALGORITHM_RSA_HASH_NONE
+	 * let card driver's set_security_env have a look at flags, in and inlen
+	 */
+	senv.algorithm_flags_original = flags;
+	senv.in_data = in;
+	senv.in_datalen = inlen;
+
 	switch (obj->type) {
 		case SC_PKCS15_TYPE_PRKEY_RSA:
 			modlen = prkey->modulus_length / 8;
@@ -383,7 +392,6 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 		r = sc_pkcs15_decipher(p15card, obj,flags, buf, modlen, out, outlen);
 		LOG_FUNC_RETURN(ctx, r);
 	}
-
 
 	/* If the card doesn't support the requested algorithm, see if we
 	 * can strip the input so a more restrictive algo can be used */

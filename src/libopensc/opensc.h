@@ -168,6 +168,10 @@ typedef struct sc_security_env {
 	struct sc_path file_ref;
 	unsigned char key_ref[8];
 	size_t key_ref_len;
+	/* data and flags passed into crypto operation */
+	unsigned int algorithm_flags_original;
+	const u8 *in_data;
+	size_t in_datalen;
 
 	struct sc_supported_algo_info supported_algos[SC_MAX_SUPPORTED_ALGORITHMS];
 } sc_security_env_t;
@@ -506,6 +510,11 @@ typedef struct sc_card {
 	struct sm_context sm_ctx;
 #endif
 
+	/* 
+	 * When creating software supported pkcs11 mechanism for hashes 
+	 * if not 0, can can only handle these hashes 
+	 */
+	unsigned long  restrict_to_these_hashes;
 	unsigned int magic;
 } sc_card_t;
 
