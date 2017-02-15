@@ -431,9 +431,8 @@ static int rtecp_change_reference_data(sc_card_t *card, unsigned int type,
 {
 	sc_apdu_t apdu;
 	u8 rsf_length[2], *buf, *buf_end, *p; 
-	/* update used_buf_length after putting TLV */
 	size_t val_length, buf_length, max_transmit_length;
-	int apdu_num, r;
+	int transmits_num, r;
 
 	assert(card && card->ctx && newref);
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "newlen = %u\n", newlen);
@@ -447,15 +446,10 @@ static int rtecp_change_reference_data(sc_card_t *card, unsigned int type,
 	
 	max_transmit_length = sc_get_max_send_size(card);
 	assert(max_transmit_length > 2);
-	/*
-	 * from inequality:
-	 * buf_length <= apdu_num * max_transmit_length;
-	 * 2 + sizeof(rsf_length) + newlen + 2 * apdu_num <= apdu_num * max_transmit_length;
-	 * apdu_num >= (2 + sizeof(rsf_length) + newlen) / (max_transmit_length -2) 
-	 */
-	apdu_num = (2 + sizeof(rsf_length) + newlen) / (max_transmit_length - 2) + 1;
+	/* (2 + sizeof(rsf_length) + newlen) - total length of data we need to transfer, (max_transmit_length - 2) - amount of useful data we can transfer in one transmit (2 bytes for 0xA5 tag) */
+	transmits_num = (2 + sizeof(rsf_length) + newlen) / (max_transmit_length - 2) + 1;
 	/* buffer length = size of 0x80 TLV + size of RSF-file + (size of Tag and Length)*(number of APDUs) */
-	buf_length = (2 + sizeof(rsf_length)) + newlen + 2*(apdu_num); 
+	buf_length = (2 + sizeof(rsf_length)) + newlen + 2*(transmits_num); 
 	p = buf = (u8 *)malloc(buf_length);
 	if (buf == NULL)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
@@ -475,10 +469,10 @@ static int rtecp_change_reference_data(sc_card_t *card, unsigned int type,
 			val_length = max_transmit_length - (p - buf) % max_transmit_length - 2;
 		else
 			val_length = newlen;
-		assert(val_length <= newlen);
 		/* not using sc_asn1_put_tag(...) because rtecp do not support asn1 properly (when val_length > 127) */
 		*p++ = 0xA5;
 		*p++ = (u8)val_length;
+		assert(val_length <= newlen);
 		memcpy(p, newref, val_length);
 		p += val_length;
 		newref += val_length;
