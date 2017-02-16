@@ -446,7 +446,10 @@ static int rtecp_change_reference_data(sc_card_t *card, unsigned int type,
 	
 	max_transmit_length = sc_get_max_send_size(card);
 	assert(max_transmit_length > 2);
-	/* (2 + sizeof(rsf_length) + newlen) - total length of data we need to transfer, (max_transmit_length - 2) - amount of useful data we can transfer in one transmit (2 bytes for 0xA5 tag) */
+	/*
+	 * (2 + sizeof(rsf_length) + newlen) - total length of data we need to transfer,
+	 * (max_transmit_length - 2) - amount of useful data we can transfer in one transmit (2 bytes for 0xA5 tag)
+	 */
 	transmits_num = (2 + sizeof(rsf_length) + newlen) / (max_transmit_length - 2) + 1;
 	/* buffer length = size of 0x80 TLV + size of RSF-file + (size of Tag and Length)*(number of APDUs) */
 	buf_length = (2 + sizeof(rsf_length)) + newlen + 2*(transmits_num); 
