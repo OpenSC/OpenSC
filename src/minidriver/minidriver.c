@@ -2447,38 +2447,77 @@ md_dialog_perform_pin_operation(PCARD_DATA pCardData, int operation, struct sc_p
 	if (lang & LANG_GERMAN) {
 		tc.pszWindowTitle = L"Windows-Sicherheit";
 		tc.pszMainInstruction = L"OpenSC Smartcard-Anbieter";
-		switch (role) {
-			case ROLE_ADMIN:
-				tc.pszContent = L"Bitte geben Sie Ihre PIN zum Entsperren der Nutzer-PIN auf dem PINPAD ein.";
-				break;
-			case ROLE_USER:
-				/* fall through */
-			default:
-				tc.pszContent = L"Bitte geben Sie Ihre PIN für die digitale Signatur auf dem PINPAD ein.";
-				break;
-		}
-		tc.pszExpandedInformation = L"Dieses Fenster wird automatisch geschlossen, wenn die PIN am PINPAD eingegeben wurde (Timeout typischerweise nach 30 Sekunden).";
 		tc.pszExpandedControlText = L"Weitere Informationen";
 		tc.pszCollapsedControlText = L"Weitere Informationen";
 	} else {
 		tc.pszWindowTitle = L"Windows Security";
 		tc.pszMainInstruction = L"OpenSC Smart Card Provider";
-		switch (role) {
-			case ROLE_ADMIN:
-				tc.pszContent = L"Please enter your PIN to unblock the user PIN on the PINPAD.";
-				break;
-			case ROLE_USER:
-				/* fall through */
-			default:
-				tc.pszContent = L"Please enter your digital signature PIN on the PINPAD.";
-				break;
-		}
-		tc.pszExpandedInformation = L"This window will be closed automatically after the PIN has been submitted on the PINPAD (timeout typically after 30 seconds).";
 		tc.pszExpandedControlText = L"Click here for more information";
 		tc.pszCollapsedControlText = L"Click here for more information";
 	}
-	if (pv->wszPinContext ) {
+	if (pv->wszPinContext) {
 		tc.pszMainInstruction = pv->wszPinContext;
+	}
+
+	/* card specific strings */
+	switch (p15card->card->type) {
+		case SC_CARD_TYPE_SC_HSM_SOC:
+			if (lang & LANG_GERMAN) {
+				switch (role) {
+					case ROLE_ADMIN:
+						tc.pszContent = L"Bitte geben Sie Ihre PIN zum Entsperren der Nutzer-PIN auf dem PINPAD ein.";
+						break;
+					case ROLE_USER:
+						/* fall through */
+					default:
+						tc.pszContent = L"Bitte verifizieren Sie Ihren Fingarabdruck oder Ihre PIN für die digitale Signatur auf der Karte.";
+						break;
+				}
+				tc.pszExpandedInformation = L"Dieses Fenster wird automatisch geschlossen, wenn der Fingerabdruck oder die PIN auf der Karte verifiziert wurde (Timeout nach 30 Sekunden).";
+			} else {
+				tc.pszWindowTitle = L"Windows Security";
+				tc.pszMainInstruction = L"OpenSC Smart Card Provider";
+				switch (role) {
+					case ROLE_ADMIN:
+						tc.pszContent = L"Please enter your PIN to unblock the user PIN on the PINPAD.";
+						break;
+					case ROLE_USER:
+						/* fall through */
+					default:
+						tc.pszContent = L"Please verify your fingerprint or PIN for the digital signature PIN on the card.";
+						break;
+				}
+				tc.pszExpandedInformation = L"This window will be closed automatically after the fingerpritn or the PIN has been verified on the card (timeout after 30 seconds).";
+			}
+			break;
+
+		default:
+			if (lang & LANG_GERMAN) {
+				switch (role) {
+					case ROLE_ADMIN:
+						tc.pszContent = L"Bitte geben Sie Ihre PIN zum Entsperren der Nutzer-PIN auf dem PINPAD ein.";
+						break;
+					case ROLE_USER:
+						/* fall through */
+					default:
+						tc.pszContent = L"Bitte geben Sie Ihre PIN für die digitale Signatur auf dem PINPAD ein.";
+						break;
+				}
+				tc.pszExpandedInformation = L"Dieses Fenster wird automatisch geschlossen, wenn die PIN am PINPAD eingegeben wurde (Timeout typischerweise nach 30 Sekunden).";
+			} else {
+				switch (role) {
+					case ROLE_ADMIN:
+						tc.pszContent = L"Please enter your PIN to unblock the user PIN on the PINPAD.";
+						break;
+					case ROLE_USER:
+						/* fall through */
+					default:
+						tc.pszContent = L"Please enter your digital signature PIN on the PINPAD.";
+						break;
+				}
+				tc.pszExpandedInformation = L"This window will be closed automatically after the PIN has been submitted on the PINPAD (timeout typically after 30 seconds).";
+			}
+			break;
 	}
 
 	tc.pszMainIcon = MAKEINTRESOURCE(IDI_SMARTCARD);
