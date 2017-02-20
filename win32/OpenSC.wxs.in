@@ -68,6 +68,12 @@
         </Component>
         <Component Id="opensc_minidriver.dll" Guid="*" Win64="$(var.Win64YesNo)">
           <File Source="$(var.SOURCE_DIR)\src\minidriver\opensc-minidriver.dll" Vital="yes"/>
+          <!-- CertPropSvc loads the minidriver and propagates the smart card's
+               certificates to the user's certificate store, see https://technet.microsoft.com/en-us/itpro/windows/keep-secure/smart-card-certificate-propagation-service -->
+          <ServiceControl Id="ControlCertPropSvc" Name="CertPropSvc" Start="install" Stop="both" Wait="yes" />
+          <RegistryKey Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\CertPropSvc">
+            <RegistryValue Type="integer" Name="Start" Value="2"/>
+          </RegistryKey>
         </Component>
         <!-- install an alias for the Base smart card CSP. Using a different CSP in minidriver installation deactivate the plug and play feature
             but not all other components like the pin change screen available after ctrl+alt+del.
