@@ -430,52 +430,66 @@ static int rtecp_change_reference_data(sc_card_t *card, unsigned int type,
 		const u8 *newref, size_t newlen, int *tries_left)
 {
 	sc_apdu_t apdu;
-	u8 tmp[2], buf[0x1000], *p = buf;
-	size_t taglen;
-	int r;
+	u8 rsf_length[2], *buf, *buf_end, *p; 
+	size_t val_length, buf_length, max_transmit_length;
+	int transmits_num, r;
 
 	assert(card && card->ctx && newref);
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "newlen = %u\n", newlen);
-	if (newlen > sizeof(buf) - 2 - sizeof(tmp) - 2 * (sizeof(buf) / 0xFF + 1))
+	if (newlen > 0xFFFF)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
-
 	if (type == SC_AC_CHV && old && oldlen != 0)
 	{
 		r = sc_verify(card, type, ref_qualifier, old, oldlen, tries_left);
 		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Verify old pin failed");
 	}
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x24, 0x01, ref_qualifier);
-	tmp[0] = (newlen >> 8) & 0xFF;
-	tmp[1] = newlen & 0xFF;
-	sc_asn1_put_tag(0x80, tmp, sizeof(tmp), p, sizeof(buf) - (p - buf), &p);
-	r = sc_asn1_put_tag(0xA5, newref, newlen, p, sizeof(buf) - (p - buf), &p);
-	if (r == SC_ERROR_INVALID_ARGUMENTS)
+	
+	max_transmit_length = sc_get_max_send_size(card);
+	assert(max_transmit_length > 2);
+	/*
+	 * (2 + sizeof(rsf_length) + newlen) - total length of data we need to transfer,
+	 * (max_transmit_length - 2) - amount of useful data we can transfer in one transmit (2 bytes for 0xA5 tag)
+	 */
+	transmits_num = (2 + sizeof(rsf_length) + newlen) / (max_transmit_length - 2) + 1;
+	/* buffer length = size of 0x80 TLV + size of RSF-file + (size of Tag and Length)*(number of APDUs) */
+	buf_length = (2 + sizeof(rsf_length)) + newlen + 2*(transmits_num); 
+	p = buf = (u8 *)malloc(buf_length);
+	if (buf == NULL)
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+	buf_end = buf + buf_length; 
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x24, 0x01, ref_qualifier);	
+	/* put 0x80 TLV */
+	rsf_length[0] = (newlen >> 8) & 0xFF;
+	rsf_length[1] = newlen & 0xFF;
+	assert(buf_end - p >= (int)(2 + sizeof(rsf_length)));
+	sc_asn1_put_tag(0x80, rsf_length, sizeof(rsf_length), p, buf_end - p, &p);
+	/* put 0xA5 TLVs (one or more); each transmit must begin with 0xA5 TLV */
+	while (newlen)
 	{
-		while (newlen)
-		{
-			assert(sizeof(buf) - (p - buf) >= newlen + 2);
-			assert((p - buf) % 0xFF < 0x80);
-			if ((p - buf) % 0xFF % 0x80 + newlen + 2 > 0xFF)
-				taglen = 0xFF - 2 - (p - buf) % 0xFF % 0x80;
-			else
-				taglen = newlen;
-			*p++ = 0xA5;
-			*p++ = (u8)taglen;
-			assert(taglen <= newlen);
-			memcpy(p, newref, taglen);
-			p += taglen;
-			newref += taglen;
-			newlen -= taglen;
-			if (newlen)
-				apdu.flags |= SC_APDU_FLAGS_CHAINING;
-		}
+		assert(buf_end - p >= (int)(newlen + 2));
+		if ((p - buf) % max_transmit_length + newlen + 2 > max_transmit_length)
+			val_length = max_transmit_length - (p - buf) % max_transmit_length - 2;
+		else
+			val_length = newlen;
+		/* not using sc_asn1_put_tag(...) because rtecp do not support asn1 properly (when val_length > 127) */
+		*p++ = 0xA5;
+		*p++ = (u8)val_length;
+		assert(val_length <= newlen);
+		memcpy(p, newref, val_length);
+		p += val_length;
+		newref += val_length;
+		newlen -= val_length;
+		if (newlen)
+			apdu.flags |= SC_APDU_FLAGS_CHAINING;
 	}
 	apdu.lc = p - buf;
 	apdu.data = buf;
 	apdu.datalen = p - buf;
 
 	r = sc_transmit_apdu(card, &apdu);
-	sc_mem_clear(buf, sizeof(buf));
+	sc_mem_clear(buf, buf_length);
+	free(buf);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
