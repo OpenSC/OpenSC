@@ -52,7 +52,9 @@ int sc_hex_to_bin(const char *in, u8 *out, size_t *outlen)
 	int err = SC_SUCCESS;
 	size_t left, count = 0, in_len;
 
-	assert(in != NULL && out != NULL && outlen != NULL);
+	if (in == NULL || out == NULL || outlen == NULL) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
 	left = *outlen;
 	in_len = strlen(in);
 
@@ -233,7 +235,9 @@ int sc_compare_oid(const struct sc_object_id *oid1, const struct sc_object_id *o
 {
 	int i;
 
-	assert(oid1 != NULL && oid2 != NULL);
+	if (oid1 == NULL || oid2 == NULL) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
 
 	for (i = 0; i < SC_MAX_OBJECT_ID_OCTETS; i++)   {
 		if (oid1->value[i] != oid2->value[i])
@@ -432,8 +436,9 @@ int sc_file_add_acl_entry(sc_file_t *file, unsigned int operation,
 {
 	sc_acl_entry_t *p, *_new;
 
-	assert(file != NULL);
-	assert(operation < SC_MAX_AC_OPS);
+	if (file == NULL || operation >= SC_MAX_AC_OPS) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
 
 	switch (method) {
 	case SC_AC_NEVER:
@@ -499,8 +504,9 @@ const sc_acl_entry_t * sc_file_get_acl_entry(const sc_file_t *file,
 		SC_AC_UNKNOWN, SC_AC_KEY_REF_NONE, {{0, 0, 0, {0}}}, NULL
 	};
 
-	assert(file != NULL);
-	assert(operation < SC_MAX_AC_OPS);
+	if (file == NULL || operation >= SC_MAX_AC_OPS) {
+		return NULL;
+	}
 
 	p = file->acl[operation];
 	if (p == (sc_acl_entry_t *) 1)
@@ -517,8 +523,9 @@ void sc_file_clear_acl_entries(sc_file_t *file, unsigned int operation)
 {
 	sc_acl_entry_t *e;
 
-	assert(file != NULL);
-	assert(operation < SC_MAX_AC_OPS);
+	if (file == NULL || operation >= SC_MAX_AC_OPS) {
+		return;
+	}
 
 	e = file->acl[operation];
 	if (e == (sc_acl_entry_t *) 1 ||
@@ -549,9 +556,8 @@ sc_file_t * sc_file_new(void)
 void sc_file_free(sc_file_t *file)
 {
 	unsigned int i;
-	if (file == NULL)
+	if (file == NULL || !sc_file_valid(file))
 		return;
-	assert(sc_file_valid(file));
 	file->magic = 0;
 	for (i = 0; i < SC_MAX_AC_OPS; i++)
 		sc_file_clear_acl_entries(file, i);
@@ -572,7 +578,8 @@ void sc_file_dup(sc_file_t **dest, const sc_file_t *src)
 	const sc_acl_entry_t *e;
 	unsigned int op;
 
-	assert(sc_file_valid(src));
+	if (!sc_file_valid(src))
+		return;
 	*dest = NULL;
 	newf = sc_file_new();
 	if (newf == NULL)
@@ -617,7 +624,9 @@ int sc_file_set_sec_attr(sc_file_t *file, const u8 *sec_attr,
 			 size_t sec_attr_len)
 {
 	u8 *tmp;
-	assert(sc_file_valid(file));
+	if (!sc_file_valid(file)) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
 
 	if (sec_attr == NULL) {
 		if (file->sec_attr != NULL)
@@ -645,7 +654,9 @@ int sc_file_set_prop_attr(sc_file_t *file, const u8 *prop_attr,
 			 size_t prop_attr_len)
 {
 	u8 *tmp;
-	assert(sc_file_valid(file));
+	if (!sc_file_valid(file)) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
 
 	if (prop_attr == NULL) {
 		if (file->prop_attr != NULL)
@@ -673,7 +684,9 @@ int sc_file_set_type_attr(sc_file_t *file, const u8 *type_attr,
 			 size_t type_attr_len)
 {
 	u8 *tmp;
-	assert(sc_file_valid(file));
+	if (!sc_file_valid(file)) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
 
 	if (type_attr == NULL) {
 		if (file->type_attr != NULL)
@@ -702,7 +715,9 @@ int sc_file_set_content(sc_file_t *file, const u8 *content,
 			 size_t content_len)
 {
 	u8 *tmp;
-	assert(sc_file_valid(file));
+	if (!sc_file_valid(file)) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
 
 	if (content == NULL) {
 		if (file->encoded_content != NULL)
@@ -730,9 +745,8 @@ int sc_file_set_content(sc_file_t *file, const u8 *content,
 
 
 int sc_file_valid(const sc_file_t *file) {
-#ifndef NDEBUG
-	assert(file != NULL);
-#endif
+	if (file == NULL)
+		return 0;
 	return file->magic == SC_FILE_MAGIC;
 }
 

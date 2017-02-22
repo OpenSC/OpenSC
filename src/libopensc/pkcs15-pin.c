@@ -257,7 +257,9 @@ static int
 _validate_pin(struct sc_pkcs15_card *p15card, struct sc_pkcs15_auth_info *auth_info, size_t pinlen)
 {
 	size_t max_length;
-	assert(p15card != NULL);
+	if (p15card == NULL) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
 
 	/* Ignore validation of the non-PIN authentication objects */
 	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)

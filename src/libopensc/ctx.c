@@ -41,7 +41,9 @@
 
 int _sc_add_reader(sc_context_t *ctx, sc_reader_t *reader)
 {
-	assert(reader != NULL);
+	if (reader == NULL) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
 	reader->ctx = ctx;
 	list_append(&ctx->readers, reader);
 	return SC_SUCCESS;
@@ -49,7 +51,9 @@ int _sc_add_reader(sc_context_t *ctx, sc_reader_t *reader)
 
 int _sc_delete_reader(sc_context_t *ctx, sc_reader_t *reader)
 {
-	assert(reader != NULL);
+	if (reader == NULL) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
 	if (reader->ops->release)
 			reader->ops->release(reader);
 	if (reader->name)
@@ -867,7 +871,9 @@ int sc_release_context(sc_context_t *ctx)
 {
 	unsigned int i;
 
-	assert(ctx != NULL);
+	if (ctx == NULL) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 	while (list_size(&ctx->readers)) {
 		sc_reader_t *rdr = (sc_reader_t *) list_get_at(&ctx->readers, 0);
