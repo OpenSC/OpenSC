@@ -361,7 +361,9 @@ sc_pkcs15_read_certificate(struct sc_pkcs15_card *p15card, const struct sc_pkcs1
 	struct sc_pkcs15_der der;
 	int r;
 
-	assert(p15card != NULL && info != NULL && cert_out != NULL);
+	if (p15card == NULL || info == NULL || cert_out == NULL) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
 	ctx = p15card->card->ctx;
 	LOG_FUNC_CALLED(ctx);
 
@@ -533,7 +535,9 @@ sc_pkcs15_encode_cdf_entry(sc_context_t *ctx, const struct sc_pkcs15_object *obj
 void
 sc_pkcs15_free_certificate(struct sc_pkcs15_cert *cert)
 {
-	assert(cert != NULL);
+	if (cert == NULL) {
+		return;
+	}
 
 	if (cert->key)
 		sc_pkcs15_free_pubkey(cert->key);

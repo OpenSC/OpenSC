@@ -910,7 +910,9 @@ sc_pkcs15_read_pubkey(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_obj
 	size_t	len;
 	int	algorithm, r;
 
-	assert(p15card != NULL && obj != NULL && out != NULL);
+	if (p15card == NULL || obj == NULL || out == NULL) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx, "Public key type 0x%X", obj->type);
 
@@ -997,7 +999,9 @@ err:
 static int
 sc_pkcs15_dup_bignum (struct sc_pkcs15_bignum *dst, struct sc_pkcs15_bignum *src)
 {
-	assert(dst && src);
+	if (!dst || !src) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
 
 	if (src->data && src->len)   {
 		dst->data = calloc(1, src->len);
@@ -1018,7 +1022,9 @@ sc_pkcs15_pubkey_from_prvkey(struct sc_context *ctx, struct sc_pkcs15_prkey *prv
 	struct sc_pkcs15_pubkey *pubkey = NULL;
 	int rv = SC_SUCCESS;
 
-	assert(prvkey && out);
+	if (!prvkey || !out) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
 
 	*out = NULL;
 	pubkey = calloc(1, sizeof(struct sc_pkcs15_pubkey));
@@ -1074,7 +1080,9 @@ sc_pkcs15_dup_pubkey(struct sc_context *ctx, struct sc_pkcs15_pubkey *key, struc
 	u8* alg;
 	size_t alglen;
 
-	assert(key && out);
+	if (!key || !out) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
 
 	*out = NULL;
 	pubkey = calloc(1, sizeof(struct sc_pkcs15_pubkey));
@@ -1149,7 +1157,9 @@ sc_pkcs15_dup_pubkey(struct sc_context *ctx, struct sc_pkcs15_pubkey *key, struc
 void
 sc_pkcs15_erase_pubkey(struct sc_pkcs15_pubkey *key)
 {
-	assert(key != NULL);
+	if (key == NULL) {
+		return;
+	}
 	if (key->alg_id) {
 		sc_asn1_clear_algorithm_id(key->alg_id);
 		free(key->alg_id);

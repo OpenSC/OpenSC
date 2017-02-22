@@ -36,7 +36,9 @@ int sc_decipher(sc_card_t *card,
 {
 	int r;
 
-	assert(card != NULL && crgram != NULL && out != NULL);
+	if (card == NULL || crgram == NULL || out == NULL) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
 	if (card->ops->decipher == NULL)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_NOT_SUPPORTED);
@@ -50,7 +52,9 @@ int sc_compute_signature(sc_card_t *card,
 {
 	int r;
 
-	assert(card != NULL);
+	if (card == NULL) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
 	if (card->ops->compute_signature == NULL)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_NOT_SUPPORTED);
@@ -64,7 +68,9 @@ int sc_set_security_env(sc_card_t *card,
 {
 	int r;
 
-	assert(card != NULL);
+	if (card == NULL) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
 	if (card->ops->set_security_env == NULL)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_NOT_SUPPORTED);
@@ -76,7 +82,9 @@ int sc_restore_security_env(sc_card_t *card, int se_num)
 {
 	int r;
 
-	assert(card != NULL);
+	if (card == NULL) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
 	if (card->ops->restore_security_env == NULL)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_NOT_SUPPORTED);
@@ -155,7 +163,9 @@ int sc_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 {
 	int r;
 
-	assert(card != NULL);
+	if (card == NULL) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
 	if (card->ops->pin_cmd) {
 		r = card->ops->pin_cmd(card, data, tries_left);

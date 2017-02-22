@@ -767,9 +767,8 @@ sc_pkcs15_free_app(struct sc_pkcs15_card *p15card)
 void
 sc_pkcs15_card_free(struct sc_pkcs15_card *p15card)
 {
-	if (p15card == NULL)
+	if (p15card == NULL || p15card->magic != SC_PKCS15_CARD_MAGIC)
 		return;
-	assert(p15card->magic == SC_PKCS15_CARD_MAGIC);
 
 	if (p15card->ops.clear)
 		p15card->ops.clear(p15card);
@@ -1189,7 +1188,9 @@ sc_pkcs15_bind(struct sc_card *card, struct sc_aid *aid,
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx, "application(aid:'%s')", aid ? sc_dump_hex(aid->value, aid->len) : "empty");
 
-	assert(p15card_out != NULL);
+	if (p15card_out == NULL) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
 	p15card = sc_pkcs15_card_new();
 	if (p15card == NULL)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
@@ -1261,7 +1262,9 @@ error:
 int
 sc_pkcs15_unbind(struct sc_pkcs15_card *p15card)
 {
-	assert(p15card != NULL && p15card->magic == SC_PKCS15_CARD_MAGIC);
+	if (p15card == NULL || p15card->magic != SC_PKCS15_CARD_MAGIC) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
 
 	LOG_FUNC_CALLED(p15card->card->ctx);
 	if (p15card->dll_handle)
@@ -1960,7 +1963,9 @@ sc_pkcs15_encode_df(struct sc_context *ctx, struct sc_pkcs15_card *p15card, stru
 		     unsigned char **nbuf, size_t *nbufsize) = NULL;
 	int r;
 
-	assert(p15card != NULL && p15card->magic == SC_PKCS15_CARD_MAGIC);
+	if (p15card == NULL || p15card->magic != SC_PKCS15_CARD_MAGIC) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
 	switch (df->type) {
 	case SC_PKCS15_PRKDF:
 		func = sc_pkcs15_encode_prkdf_entry;
@@ -2309,7 +2314,9 @@ sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_pat
 	size_t	len = 0, offset = 0;
 	int	r;
 
-	assert(p15card != NULL && in_path != NULL && buf != NULL);
+	if (p15card == NULL || in_path == NULL || buf == NULL) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
 
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx, "path=%s, index=%u, count=%d", sc_print_path(in_path), in_path->index, in_path->count);
@@ -2420,7 +2427,8 @@ fail_unlock:
 int
 sc_pkcs15_compare_id(const struct sc_pkcs15_id *id1, const struct sc_pkcs15_id *id2)
 {
-	assert(id1 != NULL && id2 != NULL);
+	if (id1 == NULL || id2 == NULL)
+		return 0;
 	if (id1->len != id2->len)
 		return 0;
 	return memcmp(id1->value, id2->value, id1->len) == 0;

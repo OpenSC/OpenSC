@@ -34,7 +34,9 @@
 static void fixup_transceive_length(const struct sc_card *card,
 		struct sc_apdu *apdu)
 {
-	assert(card != NULL && apdu != NULL);
+	if (card == NULL || apdu == NULL) {
+		return;
+	}
 
 	if (apdu->lc > sc_get_max_send_size(card)) {
 		/* The lower layers will automatically do chaining */
@@ -459,7 +461,9 @@ iso7816_select_file(struct sc_card *card, const struct sc_path *in_path, struct 
 	size_t buffer_len;
 	unsigned int cla, tag;
 
-	assert(card != NULL && in_path != NULL);
+	if (card == NULL || in_path == NULL) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
 	ctx = card->ctx;
 	memcpy(path, in_path->value, in_path->len);
 	pathlen = in_path->len;
@@ -803,7 +807,9 @@ iso7816_set_security_env(struct sc_card *card,
 	u8 *p;
 	int r, locked = 0;
 
-	assert(card != NULL && env != NULL);
+	if (card == NULL || env == NULL) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0x41, 0);
 	switch (env->operation) {
 	case SC_SEC_OPERATION_DECIPHER:
@@ -880,7 +886,9 @@ iso7816_restore_security_env(struct sc_card *card, int se_num)
 	struct sc_apdu apdu;
 	int r;
 
-	assert(card != NULL);
+	if (card == NULL) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x22, 0xF3, se_num);
 
@@ -901,7 +909,9 @@ iso7816_compute_signature(struct sc_card *card,
 	int r;
 	struct sc_apdu apdu;
 
-	assert(card != NULL && data != NULL && out != NULL);
+	if (card == NULL || data == NULL || out == NULL) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
 	LOG_FUNC_CALLED(card->ctx);
 	sc_log(card->ctx,
 	       "ISO7816 compute signature: in-len %"SC_FORMAT_LEN_SIZE_T"u, out-len %"SC_FORMAT_LEN_SIZE_T"u",
@@ -941,7 +951,9 @@ iso7816_decipher(struct sc_card *card,
 	struct sc_apdu apdu;
 	u8 *sbuf = NULL;
 
-	assert(card != NULL && crgram != NULL && out != NULL);
+	if (card == NULL || crgram == NULL || out == NULL) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
 	LOG_FUNC_CALLED(card->ctx);
 	sc_log(card->ctx,
 	       "ISO7816 decipher: in-len %"SC_FORMAT_LEN_SIZE_T"u, out-len %"SC_FORMAT_LEN_SIZE_T"u",
