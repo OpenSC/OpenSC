@@ -398,8 +398,11 @@ if test "${WIN32}" = "no"; then
 fi
 
 if test "${enable_thread_locking}" = "yes"; then
-	CPPFLAGS="${CPPFLAGS} -DPKCS11_THREAD_LOCKING"
+	OPENSC_PKCS11_PTHREAD_CFLAGS="${PTHREAD_CFLAGS} -DPKCS11_THREAD_LOCKING"
+else
+	OPENSC_PKCS11_PTHREAD_CFLAGS=""
 fi
+AC_SUBST(OPENSC_PKCS11_PTHREAD_CFLAGS)
 
 if test "${enable_minidriver}" = "yes"; then
 	dnl win32 special test for minidriver
