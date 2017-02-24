@@ -44,11 +44,6 @@ matrix:
       env: HOST=x86_64-w64-mingw32
     - os: linux
       env: HOST=i686-w64-mingw32
-  allow_failures:
-    - os: linux
-      env: HOST=x86_64-w64-mingw32
-    - os: linux
-      env: HOST=i686-w64-mingw32
 
 before_script:
   - ./bootstrap
@@ -81,6 +76,13 @@ script:
   - if [ ! -z "$HOST" -a "${COVERITY_SCAN_BRANCH}" != 1 ]; then
       make install;
       wine "C:/Program Files (x86)/Inno Setup 5/ISCC.exe" win32/OpenSC.iss;
+    fi
+
+after_script:
+  # kill process started during compilation to finish the build, see
+  # https://github.com/moodlerooms/moodle-plugin-ci/issues/33 for details
+  - if [ ! -z "$HOST" -a "${COVERITY_SCAN_BRANCH}" != 1 ]; then
+      killall services.exe;
     fi
 
 
