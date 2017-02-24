@@ -865,10 +865,8 @@ epass2003_sm_wrap_apdu(struct sc_card *card, struct sc_apdu *plain, struct sc_ap
 	case 0x00:
 	case 0x04:
 		sm->datalen = plain->datalen;
-		//sm->data = plain->data;
 		memcpy((void *)sm->data,plain->data,plain->datalen);
 		sm->resplen = plain->resplen;
-		//sm->resp = plain->resp;
 		memcpy(sm->resp,plain->resp,plain->resplen);
 		break;
 	case 0x0C:
@@ -1002,13 +1000,11 @@ epass2003_sm_free_wrapped_apdu(struct sc_card *card,
 	if (plain)
 		rv = epass2003_sm_unwrap_apdu(card, *sm_apdu, plain);
 
-	if ((*sm_apdu)->data)
-	{
+	if ((*sm_apdu)->data) {
 		unsigned char * p = (unsigned char *)((*sm_apdu)->data);
 		free(p);
 	}
-	if ((*sm_apdu)->resp)
-	{
+	if ((*sm_apdu)->resp) {
 		free((*sm_apdu)->resp);
 	}
 
@@ -1060,7 +1056,6 @@ epass2003_sm_get_wrapped_apdu(struct sc_card *card,
 
 	*sm_apdu = apdu;
 	apdu = NULL;
-	LOG_FUNC_RETURN(ctx, rv);
 err:
 	if (apdu) {
 		free((unsigned char *) apdu->data);
