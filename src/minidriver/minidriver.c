@@ -2363,22 +2363,40 @@ static INT_PTR CALLBACK md_dialog_proc(HWND hWnd, UINT message, WPARAM wParam, L
 			/* continue the tickcount */
 			return S_OK;
 		case TDN_BUTTON_CLICKED:
-			{
-				/* We ignore anything else than the Cancel button */
-				if (LOWORD(wParam) != IDCANCEL) 
-					return S_FALSE;
+			/* We ignore anything else than the Cancel button */
+			if (LOWORD(wParam) != IDCANCEL)
+				return S_FALSE;
 
-				LONG_PTR param = GetWindowLongPtr(hWnd, GWLP_USERDATA);
-				if (param) {
-					PCARD_DATA pCardData = (PCARD_DATA)((LONG_PTR*)param)[7];
-					VENDOR_SPECIFIC* vs = (VENDOR_SPECIFIC*) pCardData->pvVendorSpecific;
-					sc_cancel(vs->ctx);
+			LONG_PTR param = GetWindowLongPtr(hWnd, GWLP_USERDATA);
+			if (param) {
+				LANGID lang = GetUserDefaultUILanguage();
+				PCARD_DATA pCardData = (PCARD_DATA)((LONG_PTR*)param)[7];
+				VENDOR_SPECIFIC* vs = (VENDOR_SPECIFIC*) pCardData->pvVendorSpecific;
+				sc_cancel(vs->ctx);
+
+				/* Some readers don't support SCardCancel, though they're
+				 * reporting SCARD_S_SUCCESS. We leave this window open and
+				 * just report to the user. */
+				if (vs->p15card->tokeninfo->preferred_language) {
+					/* choose the token's preferred language over the system's
+					 * language */
+					if (strncmp(vs->p15card->tokeninfo->preferred_language, "de", 2))
+						lang = LANG_GERMAN|SUBLANG_GERMAN;
 				}
+
+				if (lang & LANG_GERMAN) {
+					SendMessage(hWnd, TDM_SET_ELEMENT_TEXT, TDE_CONTENT, (LPARAM)L"Nutzen Sie das PIN-Pad, um den Vorgang abzubrechen.");
+					SendMessage(hWnd, TDM_SET_ELEMENT_TEXT, TDE_EXPANDED_INFORMATION, (LPARAM)L"Einige Kartenleser unterstützen das Abbrechen ausschließlich am PIN-Pad. Drücken Sie Cancel (Abbruch) oder entfernen Sie die Karte.");
+				} else {
+					SendMessage(hWnd, TDM_SET_ELEMENT_TEXT, TDE_CONTENT, (LPARAM)L"Use the PIN pad to cancel the operation.");
+					SendMessage(hWnd, TDM_SET_ELEMENT_TEXT, TDE_EXPANDED_INFORMATION, (LPARAM)L"Some readers only support canceling the operation on the PIN pad. Press Cancel or remove the card.");
+				}
+				SendMessage(hWnd, TDM_UPDATE_ICON, TDIE_ICON_MAIN, (LPARAM)MAKEINTRESOURCE(TD_WARNING_ICON));
+				/* remove the icon from the window title */
+				SendMessage(hWnd, WM_SETICON, (LPARAM) ICON_BIG, (LONG_PTR) NULL);
+				SendMessage(hWnd, WM_SETICON, (LPARAM) ICON_SMALL, (LONG_PTR) NULL);
 			}
-			/* Some readers don't support SCardCancel, though they're
-			 * reporting SCARD_S_SUCCESS. We force closing of the dialog so
-			 * that at least the application can continue. */
-			return S_OK;
+			break;
 		case TDN_DESTROYED:
 			{
 				/* clean resources used */
