@@ -279,6 +279,8 @@ typedef struct sc_file {
  * returns 0x6Cxx (wrong length)
  */
 #define SC_APDU_FLAGS_NO_RETRY_WL	0x00000004UL
+/* APDU is from Secure Messaging  */
+#define SC_APDU_FLAGS_NO_SM		0x00000008UL
 
 #define SC_APDU_ALLOCATE_FLAG		0x01
 #define SC_APDU_ALLOCATE_FLAG_DATA	0x02

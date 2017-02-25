@@ -377,7 +377,8 @@ sc_single_transmit(struct sc_card *card, struct sc_apdu *apdu)
 	       apdu->cla, apdu->ins, apdu->p1, apdu->p2, apdu->datalen,
 	       apdu->data);
 #ifdef ENABLE_SM
-	if (card->sm_ctx.sm_mode == SM_MODE_TRANSMIT) {
+	if (card->sm_ctx.sm_mode == SM_MODE_TRANSMIT
+		   	&& (apdu->flags & SC_APDU_FLAGS_NO_SM) == 0) {
 		LOG_FUNC_RETURN(ctx, sc_sm_single_transmit(card, apdu));
 	}
 #endif
@@ -404,7 +405,7 @@ sc_set_le_and_transmit(struct sc_card *card, struct sc_apdu *apdu, size_t olen)
 		LOG_TEST_RET(ctx, SC_ERROR_WRONG_LENGTH, "wrong length: required length exceeds resplen");
 
 	/* don't try again if it doesn't work this time */
-	apdu->flags  |= SC_APDU_FLAGS_NO_GET_RESP;
+	apdu->flags  |= SC_APDU_FLAGS_NO_RETRY_WL;
 	/* set the new expected length */
 	apdu->resplen = olen;
 	apdu->le      = nlen;
