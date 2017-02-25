@@ -156,8 +156,9 @@ sc_sm_single_transmit(struct sc_card *card, struct sc_apdu *apdu)
 		LOG_TEST_RET(ctx, rv, "cannot validate SM encoded APDU");
 	}
 
-	/* send APDU to the reader driver */
-	rv = card->reader->ops->transmit(card->reader, sm_apdu);
+	/* send APDU flagged as NO_SM */
+	sm_apdu->flags |= SC_APDU_FLAGS_NO_SM;
+	rv = sc_transmit_apdu(card, sm_apdu);
 	if (rv < 0) {
 		card->sm_ctx.ops.free_sm_apdu(card, apdu, &sm_apdu);
 		sc_sm_stop(card);

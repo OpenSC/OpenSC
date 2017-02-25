@@ -1,5 +1,5 @@
 /**
- * cwa-dnie.h: Defines dnie_transmit_apdu wrapper for sc_transmit_apdu
+ * cwa-dnie.h: CWA specifics for DNIe
  *
  * This work is derived from many sources at OpenSC Project site,
  * (see references), and the information made public for Spanish 
@@ -69,8 +69,6 @@ cwa_provider_t *dnie_get_cwa_provider(sc_card_t * card);
 void dnie_change_cwa_provider_to_pin(sc_card_t * card);
 
 void dnie_change_cwa_provider_to_secure(sc_card_t * card);
-
-int dnie_transmit_apdu(sc_card_t * card, sc_apdu_t * apdu);
 
 void dnie_format_apdu(sc_card_t *card, sc_apdu_t *apdu,
                        int cse, int ins, int p1, int p2, int le, int lc,

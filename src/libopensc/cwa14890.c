@@ -450,7 +450,7 @@ static int cwa_verify_cvc_certificate(sc_card_t * card,
 					resp, MAX_RESP_BUFFER_SIZE, cert, len);
 
 	/* send composed apdu and parse result */
-	result = dnie_transmit_apdu(card, &apdu);
+	result = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(ctx, result, "Verify CVC certificate failed");
 	result = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_FUNC_RETURN(ctx, result);
@@ -491,7 +491,7 @@ static int cwa_set_security_env(sc_card_t * card,
 					resp, MAX_RESP_BUFFER_SIZE, buffer, length);
 
 	/* send composed apdu and parse result */
-	result = dnie_transmit_apdu(card, &apdu);
+	result = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(ctx, result, "SM Set Security Environment failed");
 	result = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_FUNC_RETURN(ctx, result);
@@ -529,7 +529,7 @@ static int cwa_internal_auth(sc_card_t * card, u8 * sig, size_t sig_len, u8 * da
 					rbuf, sizeof(rbuf), data, datalen);
 
 	/* send composed apdu and parse result */
-	result = dnie_transmit_apdu(card, &apdu);
+	result = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(ctx, result, "SM internal auth failed");
 
 	result = sc_check_sw(card, apdu.sw1, apdu.sw2);
@@ -739,7 +739,7 @@ static int cwa_external_auth(sc_card_t * card, u8 * sig, size_t sig_len)
 					resp, MAX_RESP_BUFFER_SIZE, sig, sig_len);
 
 	/* send composed apdu and parse result */
-	result = dnie_transmit_apdu(card, &apdu);
+	result = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(ctx, result, "SM external auth failed");
 	result = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(ctx, result, "SM external auth invalid response");
