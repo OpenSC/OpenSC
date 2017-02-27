@@ -60,6 +60,15 @@ test_cert_t * add_certificate(test_certs_t *objects)
 	o->verify_public = 0;
 	o->num_mechs = 0;
 	o->type = -1;
+	o->sign = 0;
+	o->verify = 0;
+	o->decrypt = 0;
+	o->encrypt = 0;
+	o->wrap = 0;
+	o->unwrap = 0;
+	o->derive_priv = 0;
+	o->derive_pub = 0;
+	o->key_type = -1;
 	o->x509 = NULL; /* The "reuse" capability of d2i_X509() is strongly discouraged */
 	return o;
 }
@@ -545,7 +554,8 @@ void write_data_row(token_info_t *info, int cols, ...)
 	int i, intval, type;
 	char *data;
 
-	va_start(ap, cols*2);
+	cols = cols*2; /* shut GCC up */
+	va_start(ap, cols);
 	fprintf(info->log.fd, "\n\t[");
 	for (i = 1; i <= cols*2; i+=2) {
 		if (i > 1)

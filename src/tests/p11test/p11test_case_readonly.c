@@ -151,6 +151,11 @@ int encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 	unsigned char *enc_message;
 	int enc_message_length, rv;
 
+	if (o->private_handle == CK_INVALID_HANDLE) {
+		debug_print(" [SKIP %s ] Missing private key", o->id_str);
+		return 0;
+	}
+
 	if (o->type != EVP_PK_RSA) {
 		debug_print(" [ KEY %s ] Skip non-RSA key for encryption", o->id_str);
 		free(message);
@@ -556,6 +561,7 @@ void readonly_tests(void **state) {
 		's', "SIGN&VERIFY WORKS",
 		's', "ENCRYPT&DECRYPT WORKS");
 	for (i = 0; i < objects.count; i++) {
+		test_cert_t *o = &objects.data[i];
 		printf("\n[%-6s] [%s]\n",
 			objects.data[i].id_str,
 			objects.data[i].label);
@@ -572,6 +578,10 @@ void readonly_tests(void **state) {
 			objects.data[i].unwrap ? "[./]" : "[  ]",
 			objects.data[i].derive_pub ? "[./]" : "[  ]",
 			objects.data[i].derive_priv ? "[./]" : "[  ]");
+		if (!o->sign && !o->verify && !o->encrypt && !o->decrypt) {
+			printf("  no usable attributes found ... ignoring\n");
+			continue;
+		}
 		for (j = 0; j < objects.data[i].num_mechs; j++) {
 			printf("  [ %-20s ] [   %s    ] [   %s    ] [         ] [        ]\n",
 				get_mechanism_name(objects.data[i].mechs[j].mech),
