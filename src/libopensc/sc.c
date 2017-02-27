@@ -178,6 +178,13 @@ unsigned short bebytes2ushort(const u8 *buf)
 	return (unsigned short) (buf[0] << 8 | buf[1]);
 }
 
+unsigned short lebytes2ushort(const u8 *buf)
+{
+	if (buf == NULL)
+		return 0U;
+	return (unsigned short)buf[1] << 8 | (unsigned short)buf[0];
+}
+
 void sc_init_oid(struct sc_object_id *oid)
 {
 	int ii;

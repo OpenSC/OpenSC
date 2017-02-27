@@ -111,6 +111,13 @@ unsigned long bebytes2ulong(const u8 *buf);
  */
 unsigned short bebytes2ushort(const u8 *buf);
 
+/**
+ * Convert 2 bytes in little endian order into an unsigned short
+ * @param  buf   the byte array of 2 bytes
+ * @return       the converted value
+ */
+unsigned short lebytes2ushort(const u8 *buf);
+
 /* Returns an scconf_block entry with matching ATR/ATRmask to the ATR specified,
  * NULL otherwise. Additionally, if card driver is not specified, search through
  * all card drivers user configured ATRs. */
