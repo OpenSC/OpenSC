@@ -846,20 +846,24 @@ myeid_convert_ec_signature(struct sc_context *ctx, size_t s_len, unsigned char *
 	if (sig_len != (datalen - len_size - 1))	/* validate size of the DER structure */
 	    return SC_ERROR_INVALID_DATA;
 
-	buf = calloc(1, (s_len + 7)/8*2);
-	if (!buf)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+	/* test&fail early */
 	buflen = (s_len + 7)/8*2;
-
-	r = sc_asn1_sig_value_sequence_to_rs(ctx, data, datalen, buf, buflen);
-	if (r < 0)
-		free(buf);
-	LOG_TEST_RET(ctx, r, "Failed to cenvert Sig-Value to the raw RS format");
-
 	if (buflen > datalen)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
 
+	buf = calloc(1, buflen);
+	if (!buf)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+
+	r = sc_asn1_sig_value_sequence_to_rs(ctx, data, datalen, buf, buflen);
+	if (r < 0) {
+		free(buf);
+		sc_log(ctx, "Failed to convert Sig-Value to the raw RS format");
+		return r;
+	}
+
 	memmove(data, buf, buflen);
+	free(buf);
 	return buflen;
 }
 
@@ -868,7 +872,7 @@ static int
 myeid_compute_signature(struct sc_card *card, const u8 * data, size_t datalen,
 		u8 * out, size_t outlen)
 {
-	struct sc_context *ctx = card->ctx;
+	struct sc_context *ctx;
 	struct sc_apdu apdu;
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];

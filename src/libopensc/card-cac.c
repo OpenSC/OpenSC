@@ -467,7 +467,7 @@ static int cac_cac1_get_certificate(sc_card_t *card, u8 **out_buf, size_t *out_l
 	size_t left = 0;
 	size_t len, next_len;
 	sc_apdu_t apdu;
-	int r;
+	int r = SC_SUCCESS;
 
 
 	/* get the size */

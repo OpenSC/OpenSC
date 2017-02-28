@@ -460,6 +460,7 @@ static int sc_pkcs15emu_sc_hsm_get_ec_public_key(struct sc_context *ctx, sc_cvc_
 	memcpy(pubkey->u.ec.params.der.value, ecp->der.value, ecp->der.len);
 	pubkey->u.ec.params.der.len = ecp->der.len;
 
+	/* FIXME: check return value? */
 	sc_pkcs15_fix_ec_parameters(ctx, &pubkey->u.ec.params);
 
 	return SC_SUCCESS;
@@ -627,11 +628,8 @@ static int sc_pkcs15emu_sc_hsm_add_prkd(sc_pkcs15_card_t * p15card, u8 keyid) {
 
 	len = sizeof efbin;
 	r = read_file(p15card, fid, efbin, &len);
-	LOG_TEST_RET(card->ctx, r, "Could not read EF");
 
-	if (r < 0) {
-		return SC_SUCCESS;
-	}
+	LOG_TEST_RET(card->ctx, r, "Could not read EF");
 
 	if (efbin[0] == 0x67) {		/* Decode CSR and create public key object */
 		sc_pkcs15emu_sc_hsm_add_pubkey(p15card, efbin, len, key_info, prkd.label);

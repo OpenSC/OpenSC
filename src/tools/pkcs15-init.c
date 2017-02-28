@@ -1318,8 +1318,10 @@ do_store_data_object(struct sc_profile *profile)
 		args.der_encoded.value = data;
 		args.der_encoded.len = datalen;
 		r = sc_lock(p15card->card);
-		if (r < 0)
+		if (r < 0) {
+			free(data);
 			return r;
+		}
 		r = sc_pkcs15init_store_data_object(p15card, profile, &args, NULL);
 		sc_unlock(p15card->card);
 	}

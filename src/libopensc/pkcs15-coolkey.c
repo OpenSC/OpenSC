@@ -667,6 +667,8 @@ static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
 		}
 
 		r = sc_pkcs15emu_object_add(p15card, obj_type, &obj_obj, obj_info);
+		if (r != SC_SUCCESS)
+			sc_log(card->ctx, "sc_pkcs15emu_object_add() returned %d", r);
 fail:
 		if (key) { sc_pkcs15_free_pubkey(key); }
 

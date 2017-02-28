@@ -760,7 +760,7 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 	struct sc_pkcs15_object	*pin_obj = NULL;
 	struct sc_app_info	*app;
 	struct sc_file		*df = profile->df_info->file;
-	int			r;
+	int			r = SC_SUCCESS;
 
 	LOG_FUNC_CALLED(ctx);
 	p15card->card = card;

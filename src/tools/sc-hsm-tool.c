@@ -697,6 +697,7 @@ static int recreate_password_from_shares(char **pwd, int *pwdlen, int num_of_pas
 		memset(inbuf, 0, sizeof(inbuf));
 		if (fgets(inbuf, sizeof(inbuf), stdin) == NULL) {
 			fprintf(stderr, "Input aborted\n");
+			free(shares);
 			return -1;
 		}
 		p = (sp->x);
@@ -706,6 +707,7 @@ static int recreate_password_from_shares(char **pwd, int *pwdlen, int num_of_pas
 		memset(inbuf, 0, sizeof(inbuf));
 		if (fgets(inbuf, sizeof(inbuf), stdin) == NULL) {
 			fprintf(stderr, "Input aborted\n");
+			free(shares);
 			return -1;
 		}
 		binlen = 64;

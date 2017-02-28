@@ -793,15 +793,18 @@ static int read_public_key(void)
 
 	if (r == SC_ERROR_OBJECT_NOT_FOUND) {
 		fprintf(stderr, "Public key with ID '%s' not found.\n", opt_pubkey);
-		return 2;
+		r = 2;
+		goto out;
 	}
 	if (r < 0) {
 		fprintf(stderr, "Public key enumeration failed: %s\n", sc_strerror(r));
-		return 1;
+		r = 1;
+		goto out;
 	}
 	if (!pubkey) {
 		fprintf(stderr, "Public key not available\n");
-		return 1;
+		r = 1;
+		goto out;
 	}
 
 	r = sc_pkcs15_encode_pubkey_as_spki(ctx, pubkey, &pem_key.value, &pem_key.len);
@@ -813,6 +816,7 @@ static int read_public_key(void)
 		free(pem_key.value);
 	}
 
+out:
 	if (cert)
 		sc_pkcs15_free_certificate(cert);
 	else if (pubkey)
@@ -2097,6 +2101,7 @@ int main(int argc, char * const argv[])
 			break;
 		case OPT_USE_PINPAD_DEPRECATED:
 			fprintf(stderr, "'--no-prompt' is deprecated , use '--use-pinpad' instead.\n");
+			/* fallthrough */
 		case OPT_USE_PINPAD:
 			opt_use_pinpad = 1;
 			break;

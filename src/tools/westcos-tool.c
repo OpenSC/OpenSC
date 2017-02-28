@@ -91,8 +91,6 @@ static int finalize = 0;
 static int install_pin = 0;
 static int overwrite = 0;
 
-static const char *pin = NULL;
-static const char *puk = NULL;
 static char *cert = NULL;
 
 static int keylen = 0;
@@ -260,7 +258,7 @@ static int unlock_pin(sc_card_t *card,
 	}
 	else
 	{
-		if(pin == NULL || puk == NULL)
+		if(pin_value == NULL || puk_value == NULL)
 		{
 			return SC_ERROR_INVALID_ARGUMENTS;
 		}
@@ -372,6 +370,8 @@ int main(int argc, char *argv[])
 	RSA	*rsa = NULL;
 	BIGNUM	*bn = NULL;
 	BIO	*mem = NULL;
+	static const char *pin = NULL;
+	static const char *puk = NULL;
 
 	while (1)
 	{
