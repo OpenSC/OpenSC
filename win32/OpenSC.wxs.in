@@ -68,12 +68,6 @@
         </Component>
         <Component Id="opensc_minidriver.dll" Guid="*" Win64="$(var.Win64YesNo)">
           <File Source="$(var.SOURCE_DIR)\src\minidriver\opensc-minidriver.dll" Vital="yes"/>
-          <!-- CertPropSvc loads the minidriver and propagates the smart card's
-               certificates to the user's certificate store, see https://technet.microsoft.com/en-us/itpro/windows/keep-secure/smart-card-certificate-propagation-service -->
-          <ServiceControl Id="ControlCertPropSvc" Name="CertPropSvc" Start="install" Stop="both" Wait="yes" />
-          <RegistryKey Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\CertPropSvc">
-            <RegistryValue Type="integer" Name="Start" Value="2"/>
-          </RegistryKey>
         </Component>
         <!-- install an alias for the Base smart card CSP. Using a different CSP in minidriver installation deactivate the plug and play feature
             but not all other components like the pin change screen available after ctrl+alt+del.
@@ -91,6 +85,15 @@
               </RegistryKey>
               <?endif?>
               -->
+        </Component>
+        <Component Id="CertPropSvc" Guid="*" Win64="$(var.Win64YesNo)" Permanent="yes">
+          <!-- CertPropSvc loads the minidriver and propagates the smart card's
+               certificates to the user's certificate store, see https://technet.microsoft.com/en-us/itpro/windows/keep-secure/smart-card-certificate-propagation-service -->
+          <ServiceControl Id="ControlCertPropSvcStart" Name="CertPropSvc" Start="install" Wait="no" />
+          <ServiceControl Id="ControlCertPropSvcStop" Name="CertPropSvc" Stop="uninstall" Wait="yes" />
+          <RegistryKey Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\CertPropSvc">
+            <RegistryValue Type="integer" Name="Start" Value="2" KeyPath="yes"/>
+          </RegistryKey>
         </Component>
       </Directory>
       <!-- Install tools and profiles to Program Files -->
@@ -331,6 +334,7 @@
       <Feature Id="OpenSC_minidriver" Level="1" Title="OpenSC minidriver" Description="OpenSC minidriver for using smart cards with native Windows CSP applications (like Internet Explorer)" Absent="allow">
         <ComponentRef Id="opensc_minidriver.dll"/>
         <ComponentRef Id="openscBaseCSP"/>
+        <ComponentRef Id="CertPropSvc"/>
       </Feature>
       <!-- Tools and profiles are for personalization -->
       <Feature Id="OpenSC_tools" Level="1" Title="Tools and profiles" Description="Tools for debugging and personalization. Includes profiles needed for running pkcs15-init.exe">
