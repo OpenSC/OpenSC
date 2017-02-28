@@ -592,13 +592,8 @@ if test "${enable_pcsc}" = "yes"; then
 			case "${host}" in
 				*-*-darwin*)
 					# Locate the latest SDK.
-					SDKS_PATH="$(xcode-select --print-path)/Platforms/MacOSX.platform/Developer/SDKs"
-					if test -d $SDKS_PATH; then
-					    SDK_PATH="${SDK_PATH:-$SDKS_PATH/$(ls -1 ${SDKS_PATH} | sort -n -t. -k2 -r | head -1)}"
-					    PCSC_CFLAGS="-I$SDK_PATH/System/Library/Frameworks/PCSC.framework/Versions/Current/Headers"
-					else
-					    PCSC_CFLAGS="-I/System/Library/Frameworks/PCSC.framework/Headers"
-					fi
+					SDK_PATH=$(xcrun --sdk macosx --show-sdk-path)
+					PCSC_CFLAGS="-I$SDK_PATH/System/Library/Frameworks/PCSC.framework/Versions/Current/Headers"
 				;;
 				*)
 					PCSC_CFLAGS="-I/usr/include/PCSC"
