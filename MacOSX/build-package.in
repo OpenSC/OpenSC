@@ -11,8 +11,7 @@ test -x ./configure || ./bootstrap
 BUILDPATH=${PWD}
 
 # Locate the latest OSX SDK
-SDKS_PATH="$(xcode-select -p)/Platforms/MacOSX.platform/Developer/SDKs"
-SDK_PATH="${SDK_PATH:-$SDKS_PATH/$(ls -1 ${SDKS_PATH} | sort -n -k2 -t. -r | head -1)}"
+SDK_PATH=$(xcrun --sdk macosx --show-sdk-path)
 
 # Set SDK path
 export CFLAGS="$CFLAGS -isysroot $SDK_PATH -arch x86_64 -mmacosx-version-min=10.10"
