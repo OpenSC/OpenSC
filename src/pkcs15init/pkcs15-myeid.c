@@ -512,10 +512,10 @@ myeid_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 				keybits = key_info->field_length;
 			else
 				key_info->field_length = keybits;
-			break;
-			
+
 			if (sc_card_find_ec_alg(p15card->card, keybits, &prkey->u.ec.params.id) == NULL)
 				LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Unsupported algorithm or key size");			
+			break;
 		default:
 			LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Store key failed: Unsupported key type");
 			break;

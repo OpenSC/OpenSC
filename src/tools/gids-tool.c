@@ -277,7 +277,7 @@ static int changeAdminKey(sc_card_t* card, const char *so_pin, const char* new_k
 
 	if (new_key == NULL) {
 		printf("Enter new admin key (48 hexadecimal characters) : ");
-		util_getpass(&_so_pin, NULL, stdin);
+		util_getpass(&_new_key, NULL, stdin);
 		printf("\n");
 	} else {
 		_new_key = (char *)new_key;

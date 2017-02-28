@@ -574,8 +574,11 @@ __pkcs15_create_cert_object(struct pkcs15_fw_data *fw_data, struct sc_pkcs15_obj
 	/* Certificate object */
 	rv = __pkcs15_create_object(fw_data, (struct pkcs15_any_object **) &object,
 			cert, &pkcs15_cert_ops, sizeof(struct pkcs15_cert_object));
-	if (rv < 0)
+	if (rv < 0) {
+		if (p15_cert != NULL)
+			sc_pkcs15_free_certificate(p15_cert);
 		return rv;
+	}
 
 	object->cert_info = p15_info;
 	object->cert_data = p15_cert;
@@ -646,6 +649,8 @@ __pkcs15_create_pubkey_object(struct pkcs15_fw_data *fw_data,
 		object->pub_data = p15_key;
 		if (p15_key && object->pub_info->modulus_length == 0 && p15_key->algorithm == SC_ALGORITHM_RSA)
 			object->pub_info->modulus_length = 8 * p15_key->u.rsa.modulus.len;
+	} else if (pubkey->emulated && (fw_data->p15_card->flags & SC_PKCS15_CARD_FLAG_EMULATED)) {
+		sc_pkcs15_free_pubkey(p15_key);
 	}
 
 	if (pubkey_object != NULL)

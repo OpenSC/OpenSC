@@ -292,7 +292,7 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 		struct sc_pkcs15_object pubkey_obj;
 		struct sc_pkcs15_object prkey_obj;
 		sc_pkcs15_der_t   cert_der;
-		sc_pkcs15_cert_t *cert_out;
+		sc_pkcs15_cert_t *cert_out = NULL;
 
 		r = (card->ops->card_ctl)(card, SC_CARDCTL_CAC_GET_NEXT_CERT_OBJECT, &obj_info);
 
@@ -353,12 +353,15 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 		r =  sc_pkcs15_read_certificate(p15card, &cert_info, &cert_out);
 		if (r < 0 || cert_out->key == NULL) {
 			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Failed to read/parse the certificate r=%d",r);
+			if (cert_out != NULL)
+				sc_pkcs15_free_certificate(cert_out);
 			continue;
 		}
 
 		r = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
 		if (r < 0) {
 			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, " Failed to add cert obj r=%d",r);
+			sc_pkcs15_free_certificate(cert_out);
 			continue;
 		}
 		/* set the token name to the name of the CN of the first certificate */
@@ -394,6 +397,7 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 				 usage, pubkey_info.usage, prkey_info.usage);
 		if (cert_out->key->algorithm != SC_ALGORITHM_RSA) {
 			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"unsupported key.algorithm %d", cert_out->key->algorithm);
+			sc_pkcs15_free_certificate(cert_out);
 			continue;
 		} else {
 			pubkey_info.modulus_length = cert_out->key->u.rsa.modulus.len * 8;

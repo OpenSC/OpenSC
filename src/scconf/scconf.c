@@ -411,6 +411,8 @@ char *scconf_list_strdup(const scconf_list * list, const char *filler)
 	if (filler) {
 		len += scconf_list_array_length(list) * (strlen(filler) + 1);
 	}
+	if (len == 0)
+		return NULL;
 	buf = malloc(len);
 	if (!buf) {
 		return NULL;
