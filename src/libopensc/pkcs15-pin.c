@@ -331,6 +331,22 @@ int
 _sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *pin_obj,
 		const unsigned char *pincode, size_t pinlen)
 {
+	return sc_pkcs15_verify_pin_with_session_pin(p15card, pin_obj, pincode,
+			pinlen, NULL, NULL);
+}
+
+/*
+ * Verify a PIN and generate a session PIN
+ *
+ * If the code given to us has zero length, this means we
+ * should ask the card reader to obtain the PIN from the
+ * reader's PIN pad
+ */
+int sc_pkcs15_verify_pin_with_session_pin(struct sc_pkcs15_card *p15card,
+			 struct sc_pkcs15_object *pin_obj,
+			 const unsigned char *pincode, size_t pinlen,
+			 const unsigned char *sessionpin, size_t *sessionpinlen)
+{
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15_auth_info *auth_info = (struct sc_pkcs15_auth_info *)pin_obj->data;
 	int r;
@@ -350,7 +366,6 @@ _sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *p
 
 	/* Initialize arguments */
 	memset(&data, 0, sizeof(data));
-	data.cmd = SC_PIN_CMD_VERIFY;
 	data.pin_type = auth_info->auth_method;
 
 	if (auth_info->auth_type == SC_PKCS15_PIN_AUTH_TYPE_PIN)   {
@@ -404,6 +419,19 @@ _sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *p
 			data.pin1.prompt = "Please enter PIN";
 	}
 
+	if (card->caps & SC_CARD_CAP_SESSION_PIN && sessionpin && sessionpinlen) {
+		/* session pin is requested and supported with standard verification*/
+		data.cmd = SC_PIN_CMD_GET_SESSION_PIN;
+		memcpy(&data.pin2, &data.pin1, sizeof (data.pin1));
+		data.pin2.data = sessionpin;
+		data.pin2.len = *sessionpinlen;
+	} else {
+		/* perform a standard verify */
+		data.cmd = SC_PIN_CMD_VERIFY;
+		if (sessionpinlen)
+			*sessionpinlen = 0;
+	}
+
 	r = sc_lock(card);
 	LOG_TEST_RET(ctx, r, "sc_lock() failed");
 
@@ -416,6 +444,16 @@ _sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *p
 
 	r = sc_pin_cmd(card, &data, &auth_info->tries_left);
 	sc_log(ctx, "PIN cmd result %i", r);
+	if (r == SC_SUCCESS) {
+		sc_pkcs15_pincache_add(p15card, pin_obj, pincode, pinlen);
+		if (data.cmd == SC_PIN_CMD_GET_SESSION_PIN) {
+			*sessionpinlen = data.pin2.len;
+		}
+	} else {
+		if (data.cmd == SC_PIN_CMD_GET_SESSION_PIN) {
+			*sessionpinlen = 0;
+		}
+	}
 out:
 	sc_unlock(card);
 	LOG_FUNC_RETURN(ctx, r);

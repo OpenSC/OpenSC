@@ -767,6 +767,10 @@ int sc_pkcs15_find_skey_by_id(struct sc_pkcs15_card *card,
 int sc_pkcs15_verify_pin(struct sc_pkcs15_card *card,
 			 struct sc_pkcs15_object *pin_obj,
 			 const u8 *pincode, size_t pinlen);
+int sc_pkcs15_verify_pin_with_session_pin(struct sc_pkcs15_card *p15card,
+			 struct sc_pkcs15_object *pin_obj,
+			 const unsigned char *pincode, size_t pinlen,
+			 const unsigned char *sessionpin, size_t *sessionpinlen);
 int sc_pkcs15_change_pin(struct sc_pkcs15_card *card,
 			 struct sc_pkcs15_object *pin_obj,
 			 const u8 *oldpincode, size_t oldpinlen,
