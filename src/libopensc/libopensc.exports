@@ -237,6 +237,7 @@ sc_pkcs15_unbind
 sc_pkcs15_unblock_pin
 sc_pkcs15_verify_pin
 sc_pkcs15_get_pin_info
+sc_pkcs15_verify_pin_with_session_pin
 sc_pkcs15emu_add_data_object
 sc_pkcs15emu_add_pin_obj
 sc_pkcs15emu_add_rsa_prkey
