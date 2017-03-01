@@ -2344,30 +2344,33 @@ md_dialog_perform_pin_operation_thread(PVOID lpParameter)
 
 static INT_PTR CALLBACK md_dialog_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam, LONG_PTR dwRefData)
 {
+	LONG_PTR param;
+
 	UNREFERENCED_PARAMETER(lParam);
 	switch (message) {
 		case TDN_CREATED:
-			{
-				/* remove the icon from the window title */
-				SendMessage(hWnd, WM_SETICON, (LPARAM) ICON_BIG, (LONG_PTR) NULL);
-				SendMessage(hWnd, WM_SETICON, (LPARAM) ICON_SMALL, (LONG_PTR) NULL);
-				/* store parameter like pCardData for further use if needed */
-				SetWindowLongPtr(hWnd, GWLP_USERDATA, dwRefData);
-				/* launch the function in another thread context store the thread handle */
-				((LONG_PTR*)dwRefData)[10] = (LONG_PTR) hWnd;
-				((LONG_PTR*)dwRefData)[9] = (LONG_PTR) CreateThread(NULL, 0, md_dialog_perform_pin_operation_thread, (LPVOID) dwRefData, 0, NULL);
-			}
+			/* remove the icon from the window title */
+			SendMessage(hWnd, WM_SETICON, (LPARAM) ICON_BIG, (LONG_PTR) NULL);
+			SendMessage(hWnd, WM_SETICON, (LPARAM) ICON_SMALL, (LONG_PTR) NULL);
+			/* store parameter like pCardData for further use if needed */
+			SetWindowLongPtr(hWnd, GWLP_USERDATA, dwRefData);
+			/* launch the function in another thread context store the thread handle */
+			((LONG_PTR*)dwRefData)[10] = (LONG_PTR) hWnd;
+			((LONG_PTR*)dwRefData)[9] = (LONG_PTR) CreateThread(NULL, 0, md_dialog_perform_pin_operation_thread, (LPVOID) dwRefData, 0, NULL);
+			return S_OK;
+
 		case TDN_TIMER:
 			// progress bar 30 seconds.
 			SendMessage(hWnd, TDM_SET_PROGRESS_BAR_POS, wParam / 300 , 0L);
 			/* continue the tickcount */
 			return S_OK;
+
 		case TDN_BUTTON_CLICKED:
 			/* We ignore anything else than the Cancel button */
 			if (LOWORD(wParam) != IDCANCEL)
 				return S_FALSE;
 
-			LONG_PTR param = GetWindowLongPtr(hWnd, GWLP_USERDATA);
+			param = GetWindowLongPtr(hWnd, GWLP_USERDATA);
 			if (param) {
 				LANGID lang = GetUserDefaultUILanguage();
 				PCARD_DATA pCardData = (PCARD_DATA)((LONG_PTR*)param)[7];
@@ -2397,14 +2400,13 @@ static INT_PTR CALLBACK md_dialog_proc(HWND hWnd, UINT message, WPARAM wParam, L
 				SendMessage(hWnd, WM_SETICON, (LPARAM) ICON_SMALL, (LONG_PTR) NULL);
 			}
 			break;
+
 		case TDN_DESTROYED:
-			{
-				/* clean resources used */
-				LONG_PTR param = GetWindowLongPtr(hWnd, GWLP_USERDATA);
-				if (param) {
-					HANDLE hThread = (HANDLE)((LONG_PTR*)param)[9];
-					CloseHandle(hThread);
-				}
+			/* clean resources used */
+			param = GetWindowLongPtr(hWnd, GWLP_USERDATA);
+			if (param) {
+				HANDLE hThread = (HANDLE)((LONG_PTR*)param)[9];
+				CloseHandle(hThread);
 			}
 			break;
 	}
