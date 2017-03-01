@@ -352,7 +352,8 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 		r =  sc_pkcs15_read_certificate(p15card, &cert_info, &cert_out);
 		if (r < 0 || cert_out->key == NULL) {
 			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Failed to read/parse the certificate r=%d",r);
-			sc_pkcs15_free_certificate(cert_out);
+			if (cert_out != NULL)
+				sc_pkcs15_free_certificate(cert_out);
 			continue;
 		}
 
