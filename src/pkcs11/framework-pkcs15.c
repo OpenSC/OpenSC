@@ -2741,11 +2741,17 @@ pkcs15_gen_keypair(struct sc_pkcs11_slot *slot, CK_MECHANISM_PTR pMechanism,
 		goto kpgen_done;
 
 	if (keytype == CKK_GOSTR3410)   {
+		unsigned int kp[] = {1, 2, 643, 2, 2, 35, 1, (unsigned int)-1};
+		unsigned int hp[] = {1, 2, 643, 2, 2, 30, 1, (unsigned int)-1};
 		keygen_args.prkey_args.key.algorithm = SC_ALGORITHM_GOSTR3410;
 		pub_args.key.algorithm               = SC_ALGORITHM_GOSTR3410;
 		set_gost_params(&keygen_args.prkey_args.params.gost, &pub_args.params.gost,
 				pPubTpl, ulPubCnt, pPrivTpl, ulPrivCnt);
 		keybits = SC_PKCS15_GOSTR3410_KEYSIZE;
+		memcpy(&keygen_args.prkey_args.key.u.gostr3410.params.key, kp, 8*sizeof(kp[0]));
+		memcpy(&keygen_args.prkey_args.key.u.gostr3410.params.hash, hp, 8*sizeof(kp[0]));
+		memcpy(&pub_args.key.u.gostr3410.params.key, kp, 8*sizeof(kp[0]));
+		memcpy(&pub_args.key.u.gostr3410.params.hash, hp, 8*sizeof(kp[0]));
 	}
 	else if (keytype == CKK_RSA)   {
 		/* default value (CKA_KEY_TYPE isn't set) or CKK_RSA is set */

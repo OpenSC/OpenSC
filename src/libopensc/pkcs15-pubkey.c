@@ -1081,6 +1081,8 @@ sc_pkcs15_dup_pubkey(struct sc_context *ctx, struct sc_pkcs15_pubkey *key, struc
 	pubkey->algorithm = key->algorithm;
 
 	if (key->alg_id) {
+		if (key->algorithm == SC_ALGORITHM_GOSTR3410)
+			key->alg_id->params = &(key->u.gostr3410.params);
 		rv = sc_asn1_encode_algorithm_id(ctx, &alg, &alglen,key->alg_id, 0);
 		if (rv == SC_SUCCESS) {
 			pubkey->alg_id = (struct sc_algorithm_id *)calloc(1, sizeof(struct sc_algorithm_id));

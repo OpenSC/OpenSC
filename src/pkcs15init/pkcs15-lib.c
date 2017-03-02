@@ -1369,6 +1369,7 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 
 	if (keygen_args->prkey_args.key.algorithm == SC_ALGORITHM_GOSTR3410)   {
 		pubkey_args.params.gost = keygen_args->prkey_args.params.gost;
+		pubkey_args.key.u.gostr3410.params = keygen_args->prkey_args.key.u.gostr3410.params;
 	}
 	else if (keygen_args->prkey_args.key.algorithm == SC_ALGORITHM_EC)   {
 		pubkey_args.key.u.ec.params = keygen_args->prkey_args.key.u.ec.params;
