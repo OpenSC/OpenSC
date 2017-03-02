@@ -19,7 +19,7 @@ addons:
       description: "Build submitted via Travis CI"
     notification_email: viktor.tarasov@gmail.com
     build_command:   "make -j 4"
-    branch_pattern: master
+    branch_pattern: coverity_scan
 
 env:
   global:
@@ -46,6 +46,11 @@ matrix:
       env: HOST=i686-w64-mingw32
 
 before_script:
+  # we run a weekly cron job in travis on the coverity branch
+  # just synchronize it with master to get a new report
+  - if [ "${COVERITY_SCAN_BRANCH}" == 1 ]; then
+      git reset --hard origin/master;
+    fi
   - ./bootstrap
   - if [ -z "$HOST" ]; then
     CFLAGS="-Werror" ./configure $ENABLE_DOC --enable-dnie-ui;
