@@ -81,7 +81,7 @@ script:
 after_script:
   # kill process started during compilation to finish the build, see
   # https://github.com/moodlerooms/moodle-plugin-ci/issues/33 for details
-  - if [ ! -z "$HOST" -a "${COVERITY_SCAN_BRANCH}" != 1 ]; then
+  - if [ ! -z "$HOST" ]; then
       killall services.exe;
     fi
 
