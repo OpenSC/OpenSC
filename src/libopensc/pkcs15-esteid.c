@@ -117,7 +117,13 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 				sc_pkcs15_get_name_from_dn(card->ctx, cert->subject,
 					cert->subject_len, &cn_oid, &cn_name, &cn_len);
 				if (cn_len > 0) {
-					set_string(&p15card->tokeninfo->label, (const char*)cn_name);
+					char *token_name = malloc(cn_len+1);
+					if (token_name) {
+						memcpy(token_name, cn_name, cn_len);
+						token_name[cn_len] = '\0';
+						set_string(&p15card->tokeninfo->label, (const char*)token_name);
+						free(token_name);
+					}
 				}
 				free(cn_name);
 				sc_pkcs15_free_certificate(cert);
