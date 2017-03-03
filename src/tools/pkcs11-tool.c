@@ -1108,6 +1108,7 @@ static void show_token(CK_SLOT_ID slot)
 	printf("  firmware version   : %d.%d\n", info.firmwareVersion.major, info.firmwareVersion.minor);
 	printf("  serial num         : %s\n", p11_utf8_to_local(info.serialNumber,
 			sizeof(info.serialNumber)));
+	printf("  pin min/max        : %lu/%lu\n", info.ulMinPinLen, info.ulMaxPinLen);
 }
 
 static void list_mechs(CK_SLOT_ID slot)
