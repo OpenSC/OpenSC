@@ -1163,10 +1163,8 @@ epass2003_init(struct sc_card *card)
 	else
 		exdata->smtype = KEY_TYPE_DES;
 
-	if (0x84 == data[14])
-	{
-		if (0x00 == data[16])
-		{ 
+	if (0x84 == data[14]) {
+		if (0x00 == data[16]) { 
 			exdata->sm = SM_PLAIN;
 		}
 	}
