@@ -865,9 +865,9 @@ epass2003_sm_wrap_apdu(struct sc_card *card, struct sc_apdu *plain, struct sc_ap
 	case 0x00:
 	case 0x04:
 		sm->datalen = plain->datalen;
-		memcpy((void *)sm->data,plain->data,plain->datalen);
+		memcpy(sm->data, plain->data, plain->datalen);
 		sm->resplen = plain->resplen;
-		memcpy(sm->resp,plain->resp,plain->resplen);
+		memcpy(sm->resp, plain->resp, plain->resplen);
 		break;
 	case 0x0C:
 		memset(buf, 0, sizeof(buf));
