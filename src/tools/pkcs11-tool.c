@@ -2884,30 +2884,44 @@ VARATTR_METHOD(GOSTR3410_PARAMS, unsigned char);
 VARATTR_METHOD(EC_POINT, unsigned char);
 VARATTR_METHOD(EC_PARAMS, unsigned char);
 
+
+/* called to check for CKA_ALWAYS_AUTHENTICATE and  CKU_CONTEXT_SPECIFIC login */
 static void  authenticate_if_required(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE privKeyObject){
 	CK_SESSION_INFO sessionInfo;
 	CK_TOKEN_INFO	info;
 	CK_RV rv;
 
+	get_token_info(opt_slot, &info);
 	rv = p11->C_GetSessionInfo(session, &sessionInfo);
 	if (rv != CKR_OK)
-		p11_fatal("C_OpenSession", rv);
+		p11_fatal("C_GetSessionInfo", rv);
 
 	switch(sessionInfo.state){
 		case CKS_RW_USER_FUNCTIONS:
-		   	//logged in, not need to continue.
-			return;
+		case CKS_RO_USER_FUNCTIONS:
+		case CKS_RW_SO_FUNCTIONS:
+			if (getALWAYS_AUTHENTICATE(session, privKeyObject)) {
+				login(session,CKU_CONTEXT_SPECIFIC);
+			}
+			break;
 		case CKS_RW_PUBLIC_SESSION:
+			/*
+			 * May be called if key does not require login
+			 * in which case it does not require CKU_CONTEXT_SPECIFIC
+			 * May be called if cached pin count has expired 
+			 * or session was set to CKS_RO_PUBLIC_SESSION
+			 * will assume a login at this point will
+			 * satisfy CKA_ALWAYS_AUTHENTICATE CKU_CONTEXT_SPECIFIC 
+			 */
+			if (getPRIVATE(session, privKeyObject) && opt_login_type != -1)
+			login(session,opt_login_type);
+			
 			break;
 		default:
 			util_fatal("unexpected state");
 	}
+	return;
 
-	get_token_info(opt_slot, &info);
-	if (!(info.flags & CKF_PROTECTED_AUTHENTICATION_PATH) && !getALWAYS_AUTHENTICATE(session, privKeyObject))
-		return;
-
-	login(session,CKU_CONTEXT_SPECIFIC);
 }
 
 static void list_objects(CK_SESSION_HANDLE sess, CK_OBJECT_CLASS  object_class)
@@ -4746,6 +4760,7 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 		p11_fatal("C_DecryptInit", rv);
 
 	data_len = encrypted_len;
+	authenticate_if_required(session, privKeyObject);
 	rv = p11->C_Decrypt(session, encrypted, encrypted_len, data, &data_len);
 	if (rv != CKR_OK)
 		p11_fatal("C_Decrypt", rv);
