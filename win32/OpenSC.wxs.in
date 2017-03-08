@@ -38,8 +38,6 @@
              Compressed="yes"
              SummaryCodepage="1252"
              InstallScope="perMachine"/>
-    <!-- OpenSC is covered by LGPL. Extend the license as required with other EULA notes -->
-    <WixVariable Id="WixUILicenseRtf" Value="license.rtf"/>
     <!-- Setup background images -->
     <WixVariable Id="WixUIBannerBmp" Value="bannrbmp.bmp"/>
     <WixVariable Id="WixUIDialogBmp" Value="dlgbmp.bmp"/>
@@ -376,8 +374,13 @@
         <ComponentRef Id="ProgramMenuDir"/>
       </Feature>
     </Feature>
-    <UIRef Id="WixUI_Mondo"/>
-    <UIRef Id="WixUI_ErrorProgressText"/>
+    <UI Id='Mondo'>
+      <UIRef Id="WixUI_Mondo"/>
+      <UIRef Id="WixUI_ErrorProgressText"/>
+
+      <Publish Dialog="WelcomeDlg" Control="Next" Event="NewDialog" Value="SetupTypeDlg" Order="3">1</Publish>
+      <Publish Dialog="SetupTypeDlg" Control="Back" Event="NewDialog" Value="WelcomeDlg" Order="3">1</Publish>
+    </UI>
 
     <InstallExecuteSequence>
       <!-- UnInstall sequence -->
