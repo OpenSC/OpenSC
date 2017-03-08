@@ -32,7 +32,6 @@ ShowComponentSizes=false
 FlatComponentsList=false
 WizardImageBackColor=clWhite
 DisableFinishedPage=false
-InfoBeforeFile=license.rtf
 VersionInfoProductName=OpenSC
 VersionInfoProductVersion=@OPENSC_VERSION_MAJOR@.@OPENSC_VERSION_MINOR@.@OPENSC_VERSION_FIX@
 AllowRootDirectory=true
