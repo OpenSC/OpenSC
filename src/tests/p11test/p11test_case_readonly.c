@@ -145,7 +145,7 @@ int decrypt_message(test_cert_t *o, token_info_t *info, CK_BYTE *enc_message,
 int encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 	CK_ULONG message_length, int multipart)
 {
-	CK_BYTE *message = (CK_BYTE *) strdup(SHORT_MESSAGE_TO_SIGN);
+	CK_BYTE *message = NULL;
 	CK_BYTE *dec_message = NULL;
 	int dec_message_length = 0;
 	unsigned char *enc_message;
@@ -158,16 +158,15 @@ int encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 
 	if (o->type != EVP_PK_RSA) {
 		debug_print(" [ KEY %s ] Skip non-RSA key for encryption", o->id_str);
-		free(message);
 		return 0;
 	}
 	/* XXX other supported encryption mechanisms */
 	if (mech->mech != CKM_RSA_X_509 && mech->mech != CKM_RSA_PKCS) {
 		debug_print(" [ KEY %s ] Skip encryption for non-supported mechanism", o->id_str);
-		free(message);
 		return 0;
 	}
 
+	message = (CK_BYTE *) strdup(SHORT_MESSAGE_TO_SIGN);
 	if (mech->mech == CKM_RSA_X_509)
 		message = rsa_x_509_pad_message(message, &message_length, o);
 
@@ -415,7 +414,9 @@ int verify_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 	CK_RV rv;
 	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
 	CK_MECHANISM sign_mechanism = { mech->mech, NULL_PTR, 0 };
+#ifdef NDEBUG
 	char *name;
+#endif
 
 	/* try C_Verify() if it is supported */
 	rv = fp->C_VerifyInit(info->session_handle, &sign_mechanism,
@@ -442,11 +443,15 @@ int verify_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 		/* Final */
 		rv = fp->C_VerifyFinal(info->session_handle,
 			sign, sign_length);
+#ifdef NDEBUG
 		name = "C_VerifyFinal";
+#endif
 	} else {
 		rv = fp->C_Verify(info->session_handle,
 			message, message_length, sign, sign_length);
+#ifdef NDEBUG
 		name = "C_Verify";
+#endif
 	}
 	if (rv == CKR_OK) {
 		mech->flags |= FLAGS_VERIFY_SIGN;
@@ -473,7 +478,7 @@ openssl_verify:
 int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
     CK_ULONG message_length, int multipart)
 {
-	CK_BYTE *message = (CK_BYTE *) strdup(SHORT_MESSAGE_TO_SIGN);
+	CK_BYTE *message = NULL;
 	CK_BYTE *sign = NULL;
 	CK_ULONG sign_length = 0;
 	int rv = 0;
@@ -488,10 +493,10 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 
 	if (o->type != EVP_PK_EC && o->type != EVP_PK_RSA) {
 		debug_print(" [SKIP %s ] Skip non-RSA and non-EC key", o->id_str);
-		free(message);
 		return 0;
 	}
 
+	message = (CK_BYTE *) strdup(SHORT_MESSAGE_TO_SIGN);
 	if (mech->mech == CKM_RSA_X_509)
 		message = rsa_x_509_pad_message(message, &message_length, o);
 
