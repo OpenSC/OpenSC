@@ -1159,9 +1159,9 @@ md_set_cardid(PCARD_DATA pCardData, struct md_file *file)
 	return SCARD_S_SUCCESS;
 }
 
-/* fill the msroot file from root certificates */
+/* fill the msroots file from root certificates */
 static void
-md_fs_read_msroot_file(PCARD_DATA pCardData, char *parent, struct md_file *file)
+md_fs_read_msroots_file(PCARD_DATA pCardData, char *parent, struct md_file *file)
 {
 	CERT_BLOB dbStore = {0};
 	HCERTSTORE hCertStore = NULL;
@@ -1298,8 +1298,8 @@ md_fs_read_content(PCARD_DATA pCardData, char *parent, struct md_file *file)
 			CopyMemory(file->blob, cert->data.value, cert->data.len);
 			sc_pkcs15_free_certificate(cert);
 		}
-		if (!strcmp(file->name, "msroot")) {
-			md_fs_read_msroot_file(pCardData, parent, file);
+		if (!strcmp(file->name, "msroots")) {
+			md_fs_read_msroots_file(pCardData, parent, file);
 		}
 	}
 	else   {
@@ -1380,9 +1380,9 @@ md_set_cardapps(PCARD_DATA pCardData, struct md_file *file)
 	return SCARD_S_SUCCESS;
 }
 
-/* check if the card has root certificates. If yes, notify the base csp by creating the msroot file */
+/* check if the card has root certificates. If yes, notify the base csp by creating the msroots file */
 static DWORD
-md_fs_add_msroot(PCARD_DATA pCardData, struct md_file **head)
+md_fs_add_msroots(PCARD_DATA pCardData, struct md_file **head)
 {
 	VENDOR_SPECIFIC *vs;
 	int rv, ii, cert_num;
@@ -1402,7 +1402,7 @@ md_fs_add_msroot(PCARD_DATA pCardData, struct md_file **head)
 	for(ii = 0; ii < cert_num; ii++)   {
 		struct sc_pkcs15_cert_info *cert_info = (struct sc_pkcs15_cert_info *) prkey_objs[ii]->data;
 		if (cert_info->authority) {
-			dwret = md_fs_add_file(pCardData, head, "msroot", EveryoneReadUserWriteAc, NULL, 0, NULL);
+			dwret = md_fs_add_file(pCardData, head, "msroots", EveryoneReadUserWriteAc, NULL, 0, NULL);
 			if (dwret != SCARD_S_SUCCESS)
 				return dwret;
 			return SCARD_S_SUCCESS;
@@ -1602,7 +1602,7 @@ md_set_cmapfile(PCARD_DATA pCardData, struct md_file *file)
 		}
 	}
 
-	dwret = md_fs_add_msroot(pCardData, &(file->next));
+	dwret = md_fs_add_msroots(pCardData, &(file->next));
 	if (dwret != SCARD_S_SUCCESS)
 		return dwret;
 
