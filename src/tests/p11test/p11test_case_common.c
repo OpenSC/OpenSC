@@ -80,8 +80,8 @@ test_cert_t * search_certificate(test_certs_t *objects, CK_ATTRIBUTE *id)
 {
 	unsigned int i = 0;
 
-	while (i < objects->count && objects->data[i].key_id_size == id->ulValueLen &&
-		memcmp(objects->data[i].key_id, id->pValue, id->ulValueLen) != 0)
+	while (i < objects->count && (objects->data[i].key_id_size != id->ulValueLen ||
+		memcmp(objects->data[i].key_id, id->pValue, id->ulValueLen) != 0))
 		i++;
 
 	if (i == objects->count)
