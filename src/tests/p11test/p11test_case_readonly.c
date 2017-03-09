@@ -315,7 +315,7 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 				mech->flags |= FLAGS_VERIFY_SIGN;
 				return 1;
 			} else {
-				fprintf(stderr, " [ ERROR %s ] Signature is not valid. Error: %s",
+				fprintf(stderr, " [ ERROR %s ] Signature is not valid. Error: %s\n",
 					o->id_str, ERR_error_string(ERR_peek_last_error(), NULL));
 				return 0;
 			}
