@@ -347,7 +347,9 @@ int search_objects(test_certs_t *objects, token_info_t *info,
 				fail_msg("C_GetAttributeValue: rv = 0x%.8lX\n", rv);
 
 			/* Allocate memory to hold the data we want */
-			if (template[j].ulValueLen != 0) {
+			if (template[j].ulValueLen == 0) {
+				continue;
+			} else {
 				template[j].pValue = malloc(template[j].ulValueLen);
 				if (template[j].pValue == NULL)
 					fail_msg("malloc failed");
