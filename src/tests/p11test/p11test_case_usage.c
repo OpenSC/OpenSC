@@ -34,6 +34,10 @@ void usage_test(void **state) {
 
 	debug_print("Check if the usage flags are sane.\n");
 	for (i = 0; i < objects.count; i++) {
+		/* Ignore if there is missing private key */
+		if (objects.data[i].private_handle == CK_INVALID_HANDLE)
+			continue;
+
 		/* The usage flags are paired */
 		if (objects.data[i].sign != objects.data[i].verify) {
 			errors++;

@@ -244,6 +244,9 @@ int callback_public_keys(test_certs_t *objects,
 		? *((CK_BBOOL *) template[0].pValue) : CK_FALSE;
 	o->encrypt = (template[1].ulValueLen != (CK_ULONG) -1)
 		? *((CK_BBOOL *) template[1].pValue) : CK_FALSE;
+	/* store key type in case there is no corresponding private key */
+	o->key_type = (template[2].ulValueLen != (CK_ULONG) -1)
+		? *((CK_KEY_TYPE *) template[2].pValue) : (CK_KEY_TYPE) -1;
 	o->wrap = (template[8].ulValueLen != (CK_ULONG) -1)
 		? *((CK_BBOOL *) template[8].pValue) : CK_FALSE;
 	o->derive_pub = (template[9].ulValueLen != (CK_ULONG) -1)
