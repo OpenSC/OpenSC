@@ -22,12 +22,16 @@
 #include "p11test_case_readonly.h"
 
 unsigned char *rsa_x_509_pad_message(unsigned char *message,
-	unsigned long *message_length, test_cert_t *o)
+	unsigned long *message_length, test_cert_t *o, int encrypt)
 {
 	int pad_message_length = (o->bits+7)/8;
 	unsigned char *pad_message = malloc(pad_message_length);
-	RSA_padding_add_PKCS1_type_1(pad_message, pad_message_length,
-	    message, *message_length);
+	if (!encrypt)
+		RSA_padding_add_PKCS1_type_1(pad_message, pad_message_length,
+		    message, *message_length);
+	else
+		RSA_padding_add_PKCS1_type_2(pad_message, pad_message_length,
+		    message, *message_length);
 	free(message);
 	*message_length = pad_message_length;
 	return pad_message;
@@ -169,7 +173,7 @@ int encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 
 	message = (CK_BYTE *) strdup(SHORT_MESSAGE_TO_SIGN);
 	if (mech->mech == CKM_RSA_X_509)
-		message = rsa_x_509_pad_message(message, &message_length, o);
+		message = rsa_x_509_pad_message(message, &message_length, o, 1);
 
 	debug_print(" [ KEY %s ] Encrypt message using CKM_%s",
 		o->id_str, get_mechanism_name(mech->mech));
@@ -500,7 +504,7 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 
 	message = (CK_BYTE *) strdup(SHORT_MESSAGE_TO_SIGN);
 	if (mech->mech == CKM_RSA_X_509)
-		message = rsa_x_509_pad_message(message, &message_length, o);
+		message = rsa_x_509_pad_message(message, &message_length, o, 0);
 
 	debug_print(" [ KEY %s ] Signing message of length %lu using CKM_%s",
 		o->id_str, message_length, get_mechanism_name(mech->mech));
