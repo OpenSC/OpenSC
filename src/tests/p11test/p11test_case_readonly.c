@@ -67,11 +67,16 @@ int encrypt_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
 	CK_MECHANISM enc_mechanism = { mech->mech, NULL_PTR, 0 };
 	CK_ULONG enc_message_length;
+	static int encrypt_support = 1;
+
+	if (!encrypt_support)
+		goto openssl_encrypt;
 
 	rv = fp->C_EncryptInit(info->session_handle, &enc_mechanism,
 		o->public_handle);
 	if (rv != CKR_OK) {
 		debug_print("   C_EncryptInit: rv = 0x%.8lX", rv);
+		encrypt_support = 0; /* avoid trying over and over again */
 		goto openssl_encrypt;
 	}
 
@@ -419,15 +424,20 @@ int verify_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 	CK_RV rv;
 	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
 	CK_MECHANISM sign_mechanism = { mech->mech, NULL_PTR, 0 };
+	static int verify_support = 1;
 #ifdef NDEBUG
 	char *name;
 #endif
+
+	if (!verify_support)
+		goto openssl_verify;
 
 	/* try C_Verify() if it is supported */
 	rv = fp->C_VerifyInit(info->session_handle, &sign_mechanism,
 		o->public_handle);
 	if (rv != CKR_OK) {
 		debug_print("   C_VerifyInit: rv = 0x%.8lX", rv);
+		verify_support = 0; /* avoid trying over and over again */
 		goto openssl_verify;
 	}
 	if (multipart) {
@@ -464,6 +474,7 @@ int verify_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 		return 1;
 	}
 	debug_print("   %s: rv = 0x%.8lX", name, rv);
+	verify_support = 0; /* avoid trying over and over again */
 
 openssl_verify:
 	debug_print(" [ KEY %s ] Falling back to openssl verification", o->id_str);
