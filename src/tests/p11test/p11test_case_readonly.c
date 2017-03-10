@@ -162,7 +162,8 @@ int encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 	}
 	/* XXX other supported encryption mechanisms */
 	if (mech->mech != CKM_RSA_X_509 && mech->mech != CKM_RSA_PKCS) {
-		debug_print(" [ KEY %s ] Skip encryption for non-supported mechanism", o->id_str);
+		debug_print(" [ KEY %s ] Skip encryption for non-supported mechanism %s",
+			o->id_str, get_mechanism_name(mech->mech));
 		return 0;
 	}
 
@@ -367,7 +368,7 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 			debug_print(" [  OK %s ] Signature is valid.", o->id_str);
 			mech->flags |= FLAGS_VERIFY_SIGN;
 		 } else {
-			fprintf(stderr, " [ ERROR %s ] Signature is not valid. Error: %s",
+			fprintf(stderr, " [ ERROR %s ] Signature is not valid. Error: %s\n",
 				o->id_str, ERR_error_string(ERR_peek_last_error(), NULL));
 			return -1;
 		}
@@ -455,6 +456,7 @@ int verify_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 	}
 	if (rv == CKR_OK) {
 		mech->flags |= FLAGS_VERIFY_SIGN;
+		debug_print(" [  OK %s ] Verification successful", o->id_str);
 		return 1;
 	}
 	debug_print("   %s: rv = 0x%.8lX", name, rv);
@@ -532,8 +534,13 @@ void readonly_tests(void **state) {
 	P11TEST_START(info);
 	debug_print("\nCheck functionality of Sign&Verify and/or Encrypt&Decrypt");
 	for (i = 0; i < objects.count; i++) {
-		used = 0;
 		/* do the Sign&Verify and/or Encrypt&Decrypt */
+		used = 0;
+		if (objects.data[i].private_handle == CK_INVALID_HANDLE) {
+			debug_print(" [SKIP %s ] Missing private key",
+				objects.data[i].id_str);
+			continue;
+		}
 		/* XXX some keys do not have appropriate flags, but we can use them
 		 * or vice versa */
 		//if (objects.data[i].sign && objects.data[i].verify)

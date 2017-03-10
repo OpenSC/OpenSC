@@ -107,7 +107,7 @@ int callback_certificates(test_certs_t *objects,
 
 	/* get the type and data, store in some structure */
 	o->key_id = malloc(template[0].ulValueLen);
-	o->key_id = memcpy(o->key_id, template[0].pValue, template[0].ulValueLen);
+	memcpy(o->key_id, template[0].pValue, template[0].ulValueLen);
 	o->key_id_size = template[0].ulValueLen;
 	o->id_str = convert_byte_string(o->key_id, o->key_id_size);
 	o->label = malloc(template[2].ulValueLen + 1);
@@ -162,7 +162,7 @@ int callback_certificates(test_certs_t *objects,
 			o->mechs[0].flags = 0;
 		}
 	} else {
-		debug_print("[WARN %s ]evp->type = 0x%.4X (not RSA, EC)\n", o->id_str, evp->type);
+		fprintf(stderr, "[WARN %s ]evp->type = 0x%.4X (not RSA, EC)\n", o->id_str, evp->type);
 	}
 	EVP_PKEY_free(evp);
 
@@ -261,6 +261,7 @@ int callback_public_keys(test_certs_t *objects,
 			BN_cmp(o->key.rsa->e, rsa->e) != 0) {
 			debug_print(" [WARN %s ] Got different public key then the from the certificate ID",
 				o->id_str);
+			RSA_free(rsa);
 			return -1;
 		}
 		RSA_free(rsa);
@@ -279,7 +280,8 @@ int callback_public_keys(test_certs_t *objects,
 		//EC_KEY_set_public_key(ec, ecpoint);
 		return -1;
 	} else {
-		debug_print(" [WARN %s ] non-RSA, non-EC key\n", o->id_str);
+		debug_print(" [WARN %s ] non-RSA, non-EC key. Key type: %02lX",
+			o->id_str, o->key_type);
 		return -1;
 	}
 
