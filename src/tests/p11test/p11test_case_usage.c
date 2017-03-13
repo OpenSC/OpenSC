@@ -39,19 +39,19 @@ void usage_test(void **state) {
 			continue;
 
 		/* The usage flags are paired */
-		if (objects.data[i].sign != objects.data[i].verify) {
+		if (objects.data[i].sign && !objects.data[i].verify) {
 			errors++;
-			fprintf(stderr, " [ ERROR %s ] Both Sign & Verify should be set.\n",
+			fprintf(stderr, " [ ERROR %s ] If Sign is set, Verify should be set too.\n",
 			    objects.data[i].id_str);
 		}
-		if (objects.data[i].encrypt != objects.data[i].decrypt) {
+		if (objects.data[i].decrypt && !objects.data[i].encrypt) {
 			errors++;
-			fprintf(stderr, " [ ERROR %s ] Both Encrypt & Decrypt should be set.\n",
+			fprintf(stderr, " [ ERROR %s ] If Decrypt is set, Encrypt should be set too.\n",
 			    objects.data[i].id_str);
 		}
-		if (objects.data[i].wrap != objects.data[i].unwrap) {
+		if (objects.data[i].unwrap && !objects.data[i].wrap) {
 			errors++;
-			fprintf(stderr, " [ ERROR %s ] Both Wrap & Unwrap should be set.\n",
+			fprintf(stderr, " [ ERROR %s ] If Unwrap is set, Wrap should be set too.\n",
 			    objects.data[i].id_str);
 		}
 		if (objects.data[i].derive_pub != objects.data[i].derive_priv) {
