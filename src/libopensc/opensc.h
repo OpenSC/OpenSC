@@ -44,7 +44,7 @@ extern "C" {
 #include "libopensc/sm.h"
 #endif
 
-#if defined(_WIN32)
+#if defined(_WIN32) && !(defined(__MINGW32__) && defined (__MINGW_PRINTF_FORMAT))
 #define SC_FORMAT_LEN_SIZE_T "I"
 #define SC_FORMAT_LEN_PTRDIFF_T "I"
 #else
