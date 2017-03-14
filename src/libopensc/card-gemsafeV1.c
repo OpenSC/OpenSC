@@ -462,7 +462,9 @@ static int gemsafe_compute_signature(struct sc_card *card, const u8 * data,
 
 	/* the card can sign 36 bytes of free form data */
 	if (data_len > 36) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "error: input data too long: %lu bytes\n", data_len);
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
+			 "error: input data too long: %"SC_FORMAT_LEN_SIZE_T"u bytes\n",
+			 data_len);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 

@@ -286,8 +286,8 @@ static CK_RV sc_pkcs11_openssl_md_final(sc_pkcs11_operation_t *op,
 	EVP_MD_CTX *md_ctx = DIGEST_CTX(op);
 
 	if (*pulDigestLen < (unsigned) EVP_MD_CTX_size(md_ctx)) {
-		sc_log(context, "Provided buffer too small: %ul < %d",
-			*pulDigestLen, EVP_MD_CTX_size(md_ctx));
+		sc_log(context, "Provided buffer too small: %lu < %d",
+		       *pulDigestLen, EVP_MD_CTX_size(md_ctx));
 		*pulDigestLen = EVP_MD_CTX_size(md_ctx);
 		return CKR_BUFFER_TOO_SMALL;
 	}

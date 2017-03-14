@@ -272,7 +272,8 @@ static int process_fci_v3_4(sc_context_t *ctx, sc_file_t *file,
 	size_t taglen, len = buflen;
 	const u8 *tag = NULL, *p;
 
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "processing %d FCI bytes\n", buflen);
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
+		 "processing %"SC_FORMAT_LEN_SIZE_T"u FCI bytes\n", buflen);
 
 	if (buflen < 2)
 		return SC_ERROR_INTERNAL;
@@ -307,7 +308,8 @@ static int process_fcp_v3_4(sc_context_t *ctx, sc_file_t *file,
 	size_t taglen, len = buflen;
 	const u8 *tag = NULL, *p;
 
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "processing %d FCP bytes\n", buflen);
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
+		 "processing %"SC_FORMAT_LEN_SIZE_T"u FCP bytes\n", buflen);
 
 	if (buflen < 2)
 		return SC_ERROR_INTERNAL;
@@ -640,11 +642,12 @@ static int starcos_select_file(sc_card_t *card,
 		pbuf[0] = '\0';
 
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
-		"current path (%s, %s): %s (len: %u)\n",
-		(card->cache.current_path.type==SC_PATH_TYPE_DF_NAME?"aid":"path"),
-		(card->cache.valid?"valid":"invalid"), pbuf,
-		card->cache.current_path.len);
-  
+		 "current path (%s, %s): %s (len: %"SC_FORMAT_LEN_SIZE_T"u)\n",
+		 card->cache.current_path.type == SC_PATH_TYPE_DF_NAME ?
+		 "aid" : "path",
+		 card->cache.valid ? "valid" : "invalid", pbuf,
+		 card->cache.current_path.len);
+
 	memcpy(path, in_path->value, in_path->len);
 	pathlen = in_path->len;
 

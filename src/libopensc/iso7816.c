@@ -360,7 +360,8 @@ iso7816_process_fci(struct sc_card *card, struct sc_file *file,
 			continue;
 
 		file->size = size;
-		sc_log(ctx, "  bytes in file: %d", file->size);
+		sc_log(ctx, "  bytes in file: %"SC_FORMAT_LEN_SIZE_T"u",
+		       file->size);
 		break;
 	}
 
@@ -901,8 +902,9 @@ iso7816_compute_signature(struct sc_card *card,
 
 	assert(card != NULL && data != NULL && out != NULL);
 	LOG_FUNC_CALLED(card->ctx);
-	sc_log(card->ctx, "ISO7816 compute signature: in-len %i, out-len %i",
-		datalen, outlen);
+	sc_log(card->ctx,
+	       "ISO7816 compute signature: in-len %"SC_FORMAT_LEN_SIZE_T"u, out-len %"SC_FORMAT_LEN_SIZE_T"u",
+	       datalen, outlen);
 
 	/* INS: 0x2A  PERFORM SECURITY OPERATION
 	 * P1:  0x9E  Resp: Digital Signature
@@ -940,7 +942,9 @@ iso7816_decipher(struct sc_card *card,
 
 	assert(card != NULL && crgram != NULL && out != NULL);
 	LOG_FUNC_CALLED(card->ctx);
-	sc_log(card->ctx, "ISO7816 decipher: in-len %i, out-len %i", crgram_len, outlen);
+	sc_log(card->ctx,
+	       "ISO7816 decipher: in-len %"SC_FORMAT_LEN_SIZE_T"u, out-len %"SC_FORMAT_LEN_SIZE_T"u",
+	       crgram_len, outlen);
 
 	sbuf = malloc(crgram_len + 1);
 	if (sbuf == NULL)

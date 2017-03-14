@@ -428,7 +428,7 @@ static void *load_dynamic_driver(sc_context_t *ctx, void **dll, const char *name
 	const char *(**tmodv)(void) = &modversion;
 
 	if (name == NULL) { /* should not occurr, but... */
-		sc_log(ctx, "No module specified", name);
+		sc_log(ctx, "No module specified");
 		return NULL;
 	}
 	libname = find_library(ctx, name);

@@ -344,8 +344,8 @@ static int refresh_attributes(sc_reader_t *reader)
 	state = priv->reader_state.dwEventState;
 	prev_state = priv->reader_state.dwCurrentState;
 
-	sc_log(reader->ctx, "current  state: 0x%08X", state);
-	sc_log(reader->ctx, "previous state: 0x%08X", prev_state);
+	sc_log(reader->ctx, "current  state: 0x%08X", (unsigned int)state);
+	sc_log(reader->ctx, "previous state: 0x%08X", (unsigned int)prev_state);
 
 	if (state & SCARD_STATE_UNKNOWN) {
 		/* State means "reader unknown", but we have listed it at least once.
@@ -561,7 +561,9 @@ static int pcsc_connect(sc_reader_t *reader)
 			sc_log(reader->ctx, "Reconnecting to force protocol");
 			r = pcsc_reconnect(reader, SCARD_UNPOWER_CARD);
 			if (r != SC_SUCCESS) {
-				sc_log(reader->ctx, "pcsc_reconnect (to force protocol) failed", r);
+				sc_log(reader->ctx,
+				       "pcsc_reconnect (to force protocol) failed (%d)",
+				       r);
 				return r;
 			}
 		}
@@ -613,7 +615,8 @@ static int pcsc_lock(sc_reader_t *reader)
 		case SCARD_E_READER_UNAVAILABLE:
 			r = pcsc_connect(reader);
 			if (r != SC_SUCCESS) {
-				sc_log(reader->ctx, "pcsc_connect failed", r);
+				sc_log(reader->ctx, "pcsc_connect failed (%d)",
+				       r);
 				return r;
 			}
 			/* return failure so that upper layers will be notified and try to lock again */
@@ -623,7 +626,8 @@ static int pcsc_lock(sc_reader_t *reader)
 			PCSC_TRACE(reader, "SCardBeginTransaction calling pcsc_reconnect", rv);
 			r = pcsc_reconnect(reader, SCARD_LEAVE_CARD);
 			if (r != SC_SUCCESS) {
-				sc_log(reader->ctx, "pcsc_reconnect failed", r);
+				sc_log(reader->ctx,
+				       "pcsc_reconnect failed (%d)", r);
 				return r;
 			}
 			/* return failure so that upper layers will be notified and try to lock again */
@@ -766,10 +770,14 @@ static int pcsc_init(sc_context_t *ctx)
 		gpriv->provider_library =
 		    scconf_get_str(conf_block, "provider_library", gpriv->provider_library);
 	}
-	sc_log(ctx, "PC/SC options: connect_exclusive=%d disconnect_action=%d transaction_end_action=%d"
-		     " reconnect_action=%d enable_pinpad=%d enable_pace=%d",
-		gpriv->connect_exclusive, gpriv->disconnect_action, gpriv->transaction_end_action,
-		gpriv->reconnect_action, gpriv->enable_pinpad, gpriv->enable_pace);
+	sc_log(ctx,
+	       "PC/SC options: connect_exclusive=%d disconnect_action=%u transaction_end_action=%u"
+	       " reconnect_action=%u enable_pinpad=%d enable_pace=%d",
+	       gpriv->connect_exclusive,
+	       (unsigned int)gpriv->disconnect_action,
+	       (unsigned int)gpriv->transaction_end_action,
+	       (unsigned int)gpriv->reconnect_action, gpriv->enable_pinpad,
+	       gpriv->enable_pace);
 
 	gpriv->dlhandle = sc_dlopen(gpriv->provider_library);
 	if (gpriv->dlhandle == NULL) {
@@ -1106,7 +1114,10 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 				}
 			}
 			else   {
-				sc_log(ctx, "Returned PIN properties structure has bad length (%d/%d)", rcount, sizeof(PIN_PROPERTIES_STRUCTURE));
+				sc_log(ctx,
+				       "Returned PIN properties structure has bad length (%lu/%"SC_FORMAT_LEN_SIZE_T"u)",
+				       (unsigned long)rcount,
+				       sizeof(PIN_PROPERTIES_STRUCTURE));
 			}
 		}
 	}
@@ -1328,7 +1339,9 @@ static int pcsc_detect_readers(sc_context_t *ctx)
 					reader->flags |= SC_READER_ENABLE_ESCAPE;
 			}
 
-			sc_log(ctx, "reader's max-send-size: %i, max-recv-size: %i", reader->max_send_size, reader->max_recv_size);
+			sc_log(ctx,
+			       "reader's max-send-size: %"SC_FORMAT_LEN_SIZE_T"u, max-recv-size: %"SC_FORMAT_LEN_SIZE_T"u",
+			       reader->max_send_size, reader->max_recv_size);
 		}
 
 		continue;
@@ -1453,8 +1466,10 @@ static int pcsc_wait_for_event(sc_context_t *ctx, unsigned int event_mask, sc_re
 		*event = 0;
 		for (i = 0, rsp = rgReaderStates; i < num_watch; i++, rsp++) {
 			DWORD state, prev_state;
-			sc_log(ctx, "'%s' before=0x%08X now=0x%08X", rsp->szReader,
-					rsp->dwCurrentState, rsp->dwEventState);
+			sc_log(ctx, "'%s' before=0x%08X now=0x%08X",
+			       rsp->szReader,
+			       (unsigned int)rsp->dwCurrentState,
+			       (unsigned int)rsp->dwEventState);
 			prev_state = rsp->dwCurrentState;
 			state = rsp->dwEventState;
 			rsp->dwCurrentState = rsp->dwEventState;
@@ -2372,7 +2387,9 @@ int cardmod_use_reader(sc_context_t *ctx, void * pcsc_context_handle, void * pcs
 	gpriv->pcsc_ctx = *(SCARDCONTEXT *)pcsc_context_handle;
 	card_handle =  *(SCARDHANDLE *)pcsc_card_handle;
 
-	sc_log(ctx, "gpriv->pcsc_ctx = %X, card_handle = %X", gpriv->pcsc_ctx, card_handle);
+	sc_log(ctx, "gpriv->pcsc_ctx = %llX, card_handle = %llX",
+	       (unsigned long long)gpriv->pcsc_ctx,
+	       (unsigned long long)card_handle);
 
 	if(gpriv->SCardGetAttrib(card_handle, SCARD_ATTR_DEVICE_SYSTEM_NAME_A, \
 			reader_name, &reader_name_size) == SCARD_S_SUCCESS)
@@ -2420,7 +2437,7 @@ int cardmod_use_reader(sc_context_t *ctx, void * pcsc_context_handle, void * pcs
 			&state, &prot, atr, &atr_len);
 		if (rv != SCARD_S_SUCCESS)
 		{
-			sc_log(ctx, "SCardStatus failed %08x", rv);
+			sc_log(ctx, "SCardStatus failed %08lx", rv);
 			prot = SCARD_PROTOCOL_T0;
 		}
 		sc_log(ctx, "Set protocole to %s", \
@@ -2440,7 +2457,7 @@ int cardmod_use_reader(sc_context_t *ctx, void * pcsc_context_handle, void * pcs
 			rv = gpriv->SCardControl(card_handle, CM_IOCTL_GET_FEATURE_REQUEST, NULL, 0, feature_buf, sizeof(feature_buf), &feature_len);
 			if (rv != SCARD_S_SUCCESS)
 			{
-				sc_log(ctx, "SCardControl failed %08x", rv);
+				sc_log(ctx, "SCardControl failed %08lx", rv);
 			}
 			else
 			{
@@ -2536,7 +2553,10 @@ int cardmod_use_reader(sc_context_t *ctx, void * pcsc_context_handle, void * pcs
 							}
 							else
 							{
-								sc_log(ctx, "Returned PIN properties structure has bad length (%d/%d)", rcount, sizeof(PIN_PROPERTIES_STRUCTURE));
+								sc_log(ctx,
+								       "Returned PIN properties structure has bad length (%lu/%"SC_FORMAT_LEN_SIZE_T"u)",
+								       (unsigned long)rcount,
+								       sizeof(PIN_PROPERTIES_STRUCTURE));
 							}
 						}
 					}
