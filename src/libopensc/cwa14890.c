@@ -414,7 +414,7 @@ static int cwa_verify_icc_certificates(sc_card_t * card,
 	if (sub_ca_key)
 		EVP_PKEY_free(sub_ca_key);
 	if (res != SC_SUCCESS)
-		sc_log(ctx, msg);
+		sc_log(ctx, "%s", msg);
 	LOG_FUNC_RETURN(ctx, res);
 }
 
@@ -707,7 +707,7 @@ static int cwa_prepare_external_auth(sc_card_t * card,
 	}
 
 	if (res != SC_SUCCESS)
-		sc_log(ctx, msg);
+		sc_log(ctx, "%s", msg);
 	LOG_FUNC_RETURN(ctx, res);
 }
 
@@ -822,7 +822,7 @@ static int cwa_compute_session_keys(sc_card_t * card)
 		free(sha_data);
 	}
 	if (res != SC_SUCCESS)
-		sc_log(ctx, msg);
+		sc_log(ctx, "%s", msg);
 	else {
 		sc_log(ctx, "Kenc: %s", sc_dump_hex(sm->session_enc, 16));
 		sc_log(ctx, "Kmac: %s", sc_dump_hex(sm->session_mac, 16));
@@ -1015,7 +1015,7 @@ static int cwa_verify_internal_auth(sc_card_t * card,
 	if (sigbn)
 		BN_free(sigbn);
 	if (res != SC_SUCCESS)
-		sc_log(ctx, msg);
+		sc_log(ctx, "%s", msg);
 	LOG_FUNC_RETURN(ctx, res);
 }
 
@@ -1096,7 +1096,7 @@ int cwa_create_secure_channel(sc_card_t * card,
 		res = provider->cwa_create_pre_ops(card, provider);
 		if (res != SC_SUCCESS) {
 			msg = "Create SM: provider pre_ops() failed";
-			sc_log(ctx, msg);
+			sc_log(ctx, "%s", msg);
 			goto csc_end;
 		}
 	}
@@ -1107,12 +1107,12 @@ int cwa_create_secure_channel(sc_card_t * card,
 		res = provider->cwa_get_sn_icc(card);
 		if (res != SC_SUCCESS) {
 			msg = "Retrieve ICC failed";
-			sc_log(ctx, msg);
+			sc_log(ctx, "%s", msg);
 			goto csc_end;
 		}
 	} else {
 		msg = "Don't know how to obtain ICC serial number";
-		sc_log(ctx, msg);
+		sc_log(ctx, "%s", msg);
 		res = SC_ERROR_INTERNAL;
 		goto csc_end;
 	}
@@ -1386,7 +1386,7 @@ int cwa_create_secure_channel(sc_card_t * card,
 		EVP_PKEY_free(ifd_privkey);
 	/* setup SM state according result */
 	if (res != SC_SUCCESS) {
-		sc_log(ctx, msg);
+		sc_log(ctx, "%s", msg);
 		card->sm_ctx.sm_mode = SM_MODE_NONE;
 	} else {
 		card->sm_ctx.sm_mode = SM_MODE_TRANSMIT;
@@ -1593,7 +1593,7 @@ encode_end:
 		free(apdubuf);
 encode_end_apdu_valid:
 	if (msg)
-		sc_log(ctx, msg);
+		sc_log(ctx, "%s", msg);
 	free(msgbuf);
 	free(cryptbuf);
 	free(ccbuf);
@@ -1852,7 +1852,7 @@ int cwa_decode_response(sc_card_t * card,
 	if (ccbuf)
 		free(ccbuf);
 	if (msg) {
-		sc_log(ctx, msg);
+		sc_log(ctx, "%s", msg);
 	} else {
 		cwa_trace_apdu(card, apdu, 1);
 	}			/* trace apdu response */

@@ -1084,7 +1084,7 @@ mcrd_select_file(sc_card_t * card, const sc_path_t * path, sc_file_t ** file)
 			linep += 4;
 		}
 		strcpy(linep, "\n");
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, line);
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "%s", line);
 	}
 
 	if (path->type == SC_PATH_TYPE_DF_NAME) {
@@ -1147,7 +1147,7 @@ mcrd_select_file(sc_card_t * card, const sc_path_t * path, sc_file_t ** file)
 			linep += 4;
 		}
 		strcpy(linep, "\n");
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, line);
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "%s", line);
 	}
 	return r;
 }
