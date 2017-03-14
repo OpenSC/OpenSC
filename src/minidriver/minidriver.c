@@ -2982,15 +2982,6 @@ DWORD WINAPI CardGetChallenge(__in PCARD_DATA pCardData,
 	if (!ppbChallengeData || !pcbChallengeData)
 		return SCARD_E_INVALID_PARAMETER;
 
-	logprintf(pCardData, 1, "Asked challenge length %lu, buffer %p\n",
-		  (unsigned long)*pcbChallengeData, *ppbChallengeData);
-	if (pcbChallengeData == NULL)   {
-		*ppbChallengeData = NULL;
-
-		logprintf(pCardData, 7, "returns zero bytes\n");
-		return SCARD_S_SUCCESS;
-	}
-
 	vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
 
 	check_reader_status(pCardData);
