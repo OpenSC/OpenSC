@@ -363,10 +363,10 @@ static int entersafe_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		 ( keybits > 2048 ) ||
 		 ( keybits % 0x20 ) )
 	{
-		sc_debug( card->ctx,
-				  SC_LOG_DEBUG_NORMAL,
-				  "Unsupported key size %u\n",
-				  keybits );
+		sc_debug(card->ctx,
+			 SC_LOG_DEBUG_NORMAL,
+			 "Unsupported key size %"SC_FORMAT_LEN_SIZE_T"u\n",
+			 keybits);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
@@ -413,10 +413,10 @@ static int entersafe_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15ca
 		 ( keybits > 2048 ) ||
 		 ( keybits % 0x20 ) )
 	{
-		sc_debug( card->ctx,
-				  SC_LOG_DEBUG_NORMAL,
-				  "Unsupported key size %u\n",
-				  keybits );
+		sc_debug(card->ctx,
+			 SC_LOG_DEBUG_NORMAL,
+			 "Unsupported key size %"SC_FORMAT_LEN_SIZE_T"u\n",
+			 keybits);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 

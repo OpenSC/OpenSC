@@ -7,7 +7,7 @@ EXTRA_DIST = ltrc.inc Makefile.mak Make.rules.mak \
 		versioninfo.rc.in winconfig.h.in OpenSC.iss.in OpenSC.wxs.in versioninfo-customactions.rc.in
 dist_noinst_HEADERS = versioninfo.rc winconfig.h OpenSC.iss OpenSC.wxs license.rtf OpenSC.ico dlgbmp.bmp bannrbmp.bmp
 
-if ENABLE_MINIDRIVER
+if ENABLE_MINIDRIVER_SETUP_CUSTOMACTION
 lib_LTLIBRARIES = customactions@LIBRARY_BITNESS@.la
 
 AM_CPPFLAGS = -I$(top_srcdir)

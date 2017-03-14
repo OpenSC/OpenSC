@@ -185,9 +185,11 @@ static int gemsafe_get_cert_len(sc_card_t *card)
 	 * (allocated EF space is much greater!)
 	 */
 	objlen = (((size_t) ibuf[0]) << 8) | ibuf[1];
-	sc_log(card->ctx, "Stored object is of size: %d", objlen);
+	sc_log(card->ctx, "Stored object is of size: %"SC_FORMAT_LEN_SIZE_T"u",
+	       objlen);
 	if (objlen < 1 || objlen > GEMSAFE_MAX_OBJLEN) {
-	    sc_log(card->ctx, "Invalid object size: %d", objlen);
+	    sc_log(card->ctx, "Invalid object size: %"SC_FORMAT_LEN_SIZE_T"u",
+		   objlen);
 	    return SC_ERROR_INTERNAL;
 	}
 
@@ -259,7 +261,9 @@ static int gemsafe_get_cert_len(sc_card_t *card)
 			if (ind+3 >= sizeof ibuf)
 				return SC_ERROR_INVALID_DATA;
 			certlen = ((((size_t) ibuf[ind+2]) << 8) | ibuf[ind+3]) + 4;
-			sc_log(card->ctx, "Found certificate of key container %d at offset %d, len %d", i+1, ind, certlen);
+			sc_log(card->ctx,
+			       "Found certificate of key container %d at offset %d, len %"SC_FORMAT_LEN_SIZE_T"u",
+			       i+1, ind, certlen);
 			gemsafe_cert[i].index = ind;
 			gemsafe_cert[i].count = certlen;
 			ind += certlen;

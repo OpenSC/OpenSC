@@ -1084,7 +1084,7 @@ mcrd_select_file(sc_card_t * card, const sc_path_t * path, sc_file_t ** file)
 			linep += 4;
 		}
 		strcpy(linep, "\n");
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, line);
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "%s", line);
 	}
 
 	if (path->type == SC_PATH_TYPE_DF_NAME) {
@@ -1147,7 +1147,7 @@ mcrd_select_file(sc_card_t * card, const sc_path_t * path, sc_file_t ** file)
 			linep += 4;
 		}
 		strcpy(linep, "\n");
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, line);
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "%s", line);
 	}
 	return r;
 }
@@ -1359,7 +1359,7 @@ static int mcrd_compute_signature(sc_card_t * card,
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
 
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
-		 "Will compute signature (%d) for %d (0x%02x) bytes using key %d algorithm %d flags %d\n",
+		 "Will compute signature (%d) for %"SC_FORMAT_LEN_SIZE_T"u (0x%02"SC_FORMAT_LEN_SIZE_T"x) bytes using key %d algorithm %d flags %d\n",
 		 env->operation, datalen, datalen, env->key_ref[0],
 		 env->algorithm, env->algorithm_flags);
 

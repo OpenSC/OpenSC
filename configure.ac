@@ -409,8 +409,12 @@ if test "${enable_minidriver}" = "yes"; then
 	AC_CHECK_HEADER(
 		[cardmod.h],
 		,
-		[AC_MSG_ERROR([cardmod.h is not found and required for minidriver])]
-	)
+		[AC_MSG_ERROR([cardmod.h from CNG is required for minidriver])],
+		[#if defined(__MINGW32__)
+#include "${srcdir}/src/minidriver/cardmod-mingw-compat.h"
+#endif
+	])
+
 	AC_DEFINE([ENABLE_MINIDRIVER], [1], [Enable minidriver support])
 fi
 
@@ -552,23 +556,6 @@ else
 	OPENSSL_LIBS=""
 fi
 
-if test "${enable_sm}" = "yes"; then
-	AC_DEFINE([ENABLE_SM], [1], [Enable secure messaging support])
-
-	DEFAULT_SM_MODULE="${LIB_PRE}smm-local${DYN_LIB_EXT}"
-	case "${host}" in
-		*-mingw*|*-winnt*|*-cygwin*)
-			DEFAULT_SM_MODULE_PATH="\# module_path = \"\";"
-		;;
-		*)
-			DEFAULT_SM_MODULE="libsmm-local.so"
-			DEFAULT_SM_MODULE_PATH="module_path = \$(libdir);"
-		;;
-	esac
-	AC_DEFINE_UNQUOTED([DEFAULT_SM_MODULE], ["${DEFAULT_SM_MODULE}"], [Default SM module])
-	AC_DEFINE_UNQUOTED([DEFAULT_SM_MODULE_PATH], ["${DEFAULT_SM_MODULE_PATH}"], [Default SM module path])
-fi
-
 if test "${enable_openct}" = "yes"; then
 	PKG_CHECK_MODULES(
 		[OPENCT],
@@ -647,6 +634,22 @@ case "${host}" in
 		;;
 esac
 
+if test "${enable_sm}" = "yes"; then
+	AC_DEFINE([ENABLE_SM], [1], [Enable secure messaging support])
+
+	DEFAULT_SM_MODULE="${LIB_PRE}smm-local${DYN_LIB_EXT}"
+	case "${host}" in
+		*-mingw*|*-winnt*|*-cygwin*)
+			DEFAULT_SM_MODULE_PATH="\# module_path = \"\";"
+		;;
+		*)
+			DEFAULT_SM_MODULE="libsmm-local.so"
+			DEFAULT_SM_MODULE_PATH="module_path = \$(libdir);"
+		;;
+	esac
+	AC_DEFINE_UNQUOTED([DEFAULT_SM_MODULE], ["${DEFAULT_SM_MODULE}"], [Default SM module])
+	AC_DEFINE_UNQUOTED([DEFAULT_SM_MODULE_PATH], ["${DEFAULT_SM_MODULE_PATH}"], [Default SM module path])
+fi
 
 if test "${with_pkcs11_provider}" = "detect"; then
 	DEFAULT_PKCS11_PROVIDER="opensc-pkcs11${DYN_LIB_EXT}"
@@ -702,6 +705,18 @@ if test "${enable_pcsc}" = "yes"; then
 fi
 if test "${enable_ctapi}" = "yes"; then
 	OPENSC_FEATURES="${OPENSC_FEATURES} ctapi"
+fi
+
+if test "${enable_minidriver}" = "yes"; then
+	AC_MSG_CHECKING([WiX SDK])
+	AC_CHECK_HEADERS([wcautil.h],[enable_minidriver_ca="yes"],[enable_minidriver_ca="no"])
+	if test "${enable_minidriver_ca}" = "yes"; then
+		AC_MSG_RESULT([found, minidriver setup custom action will be built])
+	else
+		AC_MSG_RESULT([not found, minidriver setup custom action will be skipped])
+	fi
+else
+	enable_minidriver_ca="no"
 fi
 
 AC_DEFINE_UNQUOTED([OPENSC_VERSION_MAJOR], [${OPENSC_VERSION_MAJOR}], [OpenSC version major component])
@@ -768,6 +783,7 @@ AM_CONDITIONAL([ENABLE_DOC], [test "${enable_doc}" = "yes"])
 AM_CONDITIONAL([WIN32], [test "${WIN32}" = "yes"])
 AM_CONDITIONAL([CYGWIN], [test "${CYGWIN}" = "yes"])
 AM_CONDITIONAL([ENABLE_MINIDRIVER], [test "${enable_minidriver}" = "yes"])
+AM_CONDITIONAL([ENABLE_MINIDRIVER_SETUP_CUSTOMACTION], [test "${enable_minidriver_ca}" = "yes"])
 AM_CONDITIONAL([ENABLE_SM], [test "${enable_sm}" = "yes"])
 AM_CONDITIONAL([ENABLE_DNIE_UI], [test "${enable_dnie_ui}" = "yes"])
 AM_CONDITIONAL([GIT_CHECKOUT], [test "${GIT_CHECKOUT}" = "yes"])

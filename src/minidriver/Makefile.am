@@ -12,12 +12,14 @@ else
 dist_noinst_DATA = opensc-minidriver.inf minidriver-westcos.reg minidriver-sc-hsm.reg minidriver-feitian.reg
 endif
 
+AM_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS)
 AM_CPPFLAGS = -I$(top_srcdir)/src
 
 opensc_minidriver@LIBRARY_BITNESS@_la_SOURCES = minidriver.c minidriver.exports versioninfo-minidriver.rc
 opensc_minidriver@LIBRARY_BITNESS@_la_LIBADD =  \
 	$(top_builddir)/src/libopensc/libopensc.la \
-	-lcrypt32
+	$(OPTIONAL_OPENSSL_LIBS) \
+	-lbcrypt -lcrypt32 -lrpcrt4
 opensc_minidriver@LIBRARY_BITNESS@_la_LDFLAGS = $(AM_LDFLAGS) \
 	-export-symbols "$(srcdir)/minidriver.exports" \
 	-module -avoid-version -no-undefined

@@ -140,8 +140,7 @@ sc_ctx_win32_get_config_value(char *name_env, char *name_reg, char *name_key,
 #ifdef _WIN32
 	char temp[PATH_MAX + 1];
 	char *value = NULL;
-	int temp_len = PATH_MAX;
-	int rv = SC_ERROR_INTERNAL;
+	DWORD temp_len = PATH_MAX;
 	long rc;
 	HKEY hKey;
 
@@ -428,7 +427,7 @@ static void *load_dynamic_driver(sc_context_t *ctx, void **dll, const char *name
 	const char *(**tmodv)(void) = &modversion;
 
 	if (name == NULL) { /* should not occurr, but... */
-		sc_log(ctx, "No module specified", name);
+		sc_log(ctx, "No module specified");
 		return NULL;
 	}
 	libname = find_library(ctx, name);

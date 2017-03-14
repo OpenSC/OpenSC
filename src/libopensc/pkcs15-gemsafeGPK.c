@@ -487,8 +487,8 @@ static int sc_pkcs15emu_gemsafeGPK_init(sc_pkcs15_card_t *p15card)
 	
 		for (j = 0; j < num_keyinfo; j++) {
 			if (sc_pkcs15_compare_id(&kinfo[j].id, &prkey_info.id))  {
-				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "found key in file %d for id %d", 
-						kinfo[j].fileid, prkey_info.id);
+				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "found key in file %d for id %s",
+					 kinfo[j].fileid, prkeys[i].id);
 				prkey_info.path.value[0] = kinfo[j].fileid >> 8;
 				prkey_info.path.value[1] = kinfo[j].fileid & 0xff;
 				break;

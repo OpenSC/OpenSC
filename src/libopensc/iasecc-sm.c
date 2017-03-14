@@ -20,6 +20,7 @@
  */
 
 #include <string.h>
+#include <stdint.h>
 #include <stdlib.h>
 
 #include "internal.h"
@@ -96,7 +97,7 @@ iasecc_sm_transmit_apdus(struct sc_card *card, struct sc_remote_data *rdata,
 	sc_log(ctx, "iasecc_sm_transmit_apdus() rdata-length %i", rdata->length);
 
 	while (rapdu)   {
-		sc_log(ctx, "iasecc_sm_transmit_apdus() rAPDU flags 0x%X", rapdu->apdu.flags);
+		sc_log(ctx, "iasecc_sm_transmit_apdus() rAPDU flags 0x%lX", rapdu->apdu.flags);
 		rv = sc_transmit_apdu(card, &rapdu->apdu);
 		LOG_TEST_RET(ctx, rv, "iasecc_sm_transmit_apdus() failed to execute r-APDU");
 		rv = sc_check_sw(card, rapdu->apdu.sw1, rapdu->apdu.sw2);
@@ -269,7 +270,7 @@ iasecc_sm_get_challenge(struct sc_card *card, unsigned char *out, size_t len)
 	unsigned char rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	int rv;
 
-	sc_log(ctx, "SM get challenge: length %i",len);
+	sc_log(ctx, "SM get challenge: length %"SC_FORMAT_LEN_SIZE_T"u", len);
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0x84, 0, 0);
 	apdu.le = len;
 	apdu.resplen = len;
@@ -338,7 +339,9 @@ iasecc_sm_initialize(struct sc_card *card, unsigned se_num, unsigned cmd)
 
 	rdata.free(&rdata);
 
-	sc_log(ctx, "MA data(len:%i) '%s'", cwa_session->mdata_len, sc_dump_hex(cwa_session->mdata, cwa_session->mdata_len));
+	sc_log(ctx, "MA data(len:%"SC_FORMAT_LEN_SIZE_T"u) '%s'",
+	       cwa_session->mdata_len,
+	       sc_dump_hex(cwa_session->mdata, cwa_session->mdata_len));
 	if (cwa_session->mdata_len != 0x48)
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "iasecc_sm_initialize() invalid MUTUAL AUTHENTICATE result data");
 
@@ -373,7 +376,9 @@ iasecc_sm_cmd(struct sc_card *card, struct sc_remote_data *rdata)
 	for (rapdu = rdata->data; rapdu; rapdu = rapdu->next)   {
 		struct sc_apdu *apdu = &rapdu->apdu;
 
-		sc_log(ctx, "iasecc_sm_cmd() apdu->ins:0x%X, resplen %i", apdu->ins, apdu->resplen);
+		sc_log(ctx,
+		       "iasecc_sm_cmd() apdu->ins:0x%X, resplen %"SC_FORMAT_LEN_SIZE_T"u",
+		       apdu->ins, apdu->resplen);
 		if (!apdu->ins)
 			break;
 		rv = sc_transmit_apdu(card, apdu);
@@ -387,7 +392,9 @@ iasecc_sm_cmd(struct sc_card *card, struct sc_remote_data *rdata)
 			sc_log(ctx, "iasecc_sm_cmd() APDU error rv:%i", rv);
 			break;
 		}
-		sc_log(ctx, "iasecc_sm_cmd() apdu->resplen %i", apdu->resplen);
+		sc_log(ctx,
+		       "iasecc_sm_cmd() apdu->resplen %"SC_FORMAT_LEN_SIZE_T"u",
+		       apdu->resplen);
 	}
 
 	LOG_FUNC_RETURN(ctx, rv);
@@ -578,7 +585,9 @@ iasecc_sm_create_file(struct sc_card *card, unsigned se_num, unsigned char *fcp,
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "iasecc_sm_create_file() SE#%i, fcp(%i) '%s'", se_num, fcp_len, sc_dump_hex(fcp, fcp_len));
+	sc_log(ctx,
+	       "iasecc_sm_create_file() SE#%i, fcp(%"SC_FORMAT_LEN_SIZE_T"u) '%s'",
+	       se_num, fcp_len, sc_dump_hex(fcp, fcp_len));
 
 	rv = iasecc_sm_initialize(card, se_num, SM_CMD_FILE_CREATE);
 	LOG_TEST_RET(ctx, rv, "iasecc_sm_create_file() SM INITIALIZE failed");
@@ -613,7 +622,9 @@ iasecc_sm_read_binary(struct sc_card *card, unsigned se_num, size_t offs, unsign
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "SM read binary: acl:%X, offs:%i, count:%i", se_num, offs, count);
+	sc_log(ctx,
+	       "SM read binary: acl:%X, offs:%"SC_FORMAT_LEN_SIZE_T"u, count:%"SC_FORMAT_LEN_SIZE_T"u",
+	       se_num, offs, count);
 
 	rv = iasecc_sm_initialize(card, se_num, SM_CMD_FILE_READ);
 	LOG_TEST_RET(ctx, rv, "iasecc_sm_read_binary() SM INITIALIZE failed");
@@ -652,7 +663,9 @@ iasecc_sm_update_binary(struct sc_card *card, unsigned se_num, size_t offs,
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "SM update binary: acl:%X, offs:%i, count:%i", se_num, offs, count);
+	sc_log(ctx,
+	       "SM update binary: acl:%X, offs:%"SC_FORMAT_LEN_SIZE_T"u, count:%"SC_FORMAT_LEN_SIZE_T"u",
+	       se_num, offs, count);
 
 	rv = iasecc_sm_initialize(card, se_num, SM_CMD_FILE_UPDATE);
 	LOG_TEST_RET(ctx, rv, "iasecc_sm_update_binary() SM INITIALIZE failed");
@@ -693,7 +706,7 @@ iasecc_sm_delete_file(struct sc_card *card, unsigned se_num, unsigned int file_i
 	rv = iasecc_sm_initialize(card, se_num, SM_CMD_FILE_DELETE);
 	LOG_TEST_RET(ctx, rv, "iasecc_sm_delete_file() SM INITIALIZE failed");
 
-	sm_info->cmd_data = (void *)(long)file_id;
+	sm_info->cmd_data = (void *)(uintptr_t)file_id;
 
 	sc_remote_data_init(&rdata);
 	rv = iasecc_sm_cmd(card, &rdata);

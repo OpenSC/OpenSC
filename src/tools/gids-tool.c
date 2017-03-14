@@ -385,12 +385,7 @@ static int print_info(sc_card_t *card) {
 				if (r < 0) {
 					printf("      unable to read the file: %s\n", sc_strerror(r));
 				} else {
-#ifdef _WIN32
-					// visual studio doesn't support %zu
-					printf("      Size: %Iu\n", size);
-#else
-					printf("      Size: %zu\n", size);
-#endif
+					printf("      Size: %"SC_FORMAT_LEN_SIZE_T"u\n", size);
 				}
 				printf("\n");
 				if (strcmp(records[i].directory, "mscp") == 0 && strcmp(records[i].filename, "cmapfile") == 0 ) {

@@ -231,6 +231,10 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 
 		strlcpy(pin_obj.label, pin_cfg[i].label, sizeof(pin_obj.label));
 		pin_obj.flags = SC_PKCS15_CO_FLAG_MODIFIABLE | SC_PKCS15_CO_FLAG_PRIVATE;
+		if (i < 2) {
+			pin_obj.auth_id.len = 1;
+			pin_obj.auth_id.value[0] = 3;
+		}
 
 		r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
 		if (r < 0)

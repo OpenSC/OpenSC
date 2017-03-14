@@ -384,7 +384,9 @@ auth_process_fci(struct sc_card *card, struct sc_file *file,
 		else if (file->size==2048)
 			file->size = PUBKEY_2048_ASN1_SIZE;
 		else   {
-			sc_log(card->ctx, "Not supported public key size: %i", file->size);
+			sc_log(card->ctx,
+			       "Not supported public key size: %"SC_FORMAT_LEN_SIZE_T"u",
+			       file->size);
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
 		}
 		break;
@@ -540,11 +542,12 @@ auth_select_file(struct sc_card *card, const struct sc_path *in_path,
 					path.value[offs + 1] != auth_current_df->path.value[offs + 1])
 				break;
 
-		sc_log(card->ctx, "offs %i", offs);
+		sc_log(card->ctx, "offs %"SC_FORMAT_LEN_SIZE_T"u", offs);
 		if (offs && offs < auth_current_df->path.len)   {
 			size_t deep = auth_current_df->path.len - offs;
 
-			sc_log(card->ctx, "deep %i", deep);
+			sc_log(card->ctx, "deep %"SC_FORMAT_LEN_SIZE_T"u",
+			       deep);
 			for (ii=0; ii<deep; ii+=2)   {
 				struct sc_path tmp_path;
 
@@ -746,8 +749,9 @@ encode_file_structure_V5(struct sc_card *card, const struct sc_file *file,
 	unsigned char  ops[8] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
 	LOG_FUNC_CALLED(card->ctx);
-	sc_log(card->ctx, "id %04X; size %i; type 0x%X/0x%X",
-			file->id, file->size, file->type, file->ef_structure);
+	sc_log(card->ctx,
+	       "id %04X; size %"SC_FORMAT_LEN_SIZE_T"u; type 0x%X/0x%X",
+	       file->id, file->size, file->type, file->ef_structure);
 
 	if (*buflen < 0x18)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INCORRECT_PARAMETERS);
@@ -825,7 +829,9 @@ encode_file_structure_V5(struct sc_card *card, const struct sc_file *file,
 		else if (file->size == PUBKEY_2048_ASN1_SIZE || file->size == 2048)
 			size = 2048;
 		else   {
-			sc_log(card->ctx, "incorrect RSA size %X", file->size);
+			sc_log(card->ctx,
+			       "incorrect RSA size %"SC_FORMAT_LEN_SIZE_T"X",
+			       file->size);
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INCORRECT_PARAMETERS);
 		}
 	}
@@ -838,7 +844,9 @@ encode_file_structure_V5(struct sc_card *card, const struct sc_file *file,
 		else if (file->size == 24 || file->size == 192)
 			size = 192;
 		else   {
-			sc_log(card->ctx, "incorrect DES size %i", file->size);
+			sc_log(card->ctx,
+			       "incorrect DES size %"SC_FORMAT_LEN_SIZE_T"u",
+			       file->size);
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INCORRECT_PARAMETERS);
 		}
 	}
@@ -937,8 +945,8 @@ auth_create_file(struct sc_card *card, struct sc_file *file)
 	sc_log(card->ctx, " create path=%s", pbuf);
 
 	sc_log(card->ctx,
-		"id %04X; size %i; type 0x%X; ef 0x%X",
-		file->id, file->size, file->type, file->ef_structure);
+	       "id %04X; size %"SC_FORMAT_LEN_SIZE_T"u; type 0x%X; ef 0x%X",
+	       file->id, file->size, file->type, file->ef_structure);
 
 	if (file->id==0x0000 || file->id==0xFFFF || file->id==0x3FFF)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
@@ -1015,9 +1023,10 @@ auth_set_security_env(struct sc_card *card,
 	};
 
 	LOG_FUNC_CALLED(card->ctx);
-	sc_log(card->ctx, "op %i; path %s; key_ref 0x%X; algos 0x%X; flags 0x%X",
-			env->operation, sc_print_path(&env->file_ref), env->key_ref[0],
-			env->algorithm_flags, env->flags);
+	sc_log(card->ctx,
+	       "op %i; path %s; key_ref 0x%X; algos 0x%X; flags 0x%lX",
+	       env->operation, sc_print_path(&env->file_ref), env->key_ref[0],
+	       env->algorithm_flags, env->flags);
 
 	memset(auth_senv, 0, sizeof(struct auth_senv));
 
@@ -1027,8 +1036,9 @@ auth_set_security_env(struct sc_card *card,
 	switch (env->algorithm)   {
 	case SC_ALGORITHM_DES:
 	case SC_ALGORITHM_3DES:
-		sc_log(card->ctx, "algo SC_ALGORITHM_xDES: ref %X, flags %X",
-				env->algorithm_ref, env->flags);
+		sc_log(card->ctx,
+		       "algo SC_ALGORITHM_xDES: ref %X, flags %lX",
+		       env->algorithm_ref, env->flags);
 
 		if (env->operation == SC_SEC_OPERATION_DECIPHER)   {
 			sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0x41, 0xB8);
@@ -1049,7 +1059,7 @@ auth_set_security_env(struct sc_card *card,
 		}
 
 		if (pads & (~supported_pads))   {
-			sc_log(card->ctx, "No support for PAD %X",pads);
+			sc_log(card->ctx, "No support for PAD %lX", pads);
 			LOG_TEST_RET(card->ctx, SC_ERROR_NOT_SUPPORTED, "No padding support.");
 		}
 
@@ -1109,12 +1119,16 @@ auth_compute_signature(struct sc_card *card, const unsigned char *in, size_t ile
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	else if (ilen > 96)   {
-		sc_log(card->ctx, "Illegal input length %d", ilen);
+		sc_log(card->ctx,
+		       "Illegal input length %"SC_FORMAT_LEN_SIZE_T"u",
+		       ilen);
 		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS, "Illegal input length");
 	}
 
 	LOG_FUNC_CALLED(card->ctx);
-	sc_log(card->ctx, "inlen %i, outlen %i", ilen, olen);
+	sc_log(card->ctx,
+	       "inlen %"SC_FORMAT_LEN_SIZE_T"u, outlen %"SC_FORMAT_LEN_SIZE_T"u",
+	       ilen, olen);
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x9E, 0x9A);
 	apdu.datalen = ilen;
@@ -1130,8 +1144,9 @@ auth_compute_signature(struct sc_card *card, const unsigned char *in, size_t ile
 	LOG_TEST_RET(card->ctx, rv, "Compute signature failed");
 
 	if (apdu.resplen > olen)   {
-		sc_log(card->ctx, "Compute signature failed: invalide response length %i",
-				apdu.resplen);
+		sc_log(card->ctx,
+		       "Compute signature failed: invalid response length %"SC_FORMAT_LEN_SIZE_T"u",
+		       apdu.resplen);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_CARD_CMD_FAILED);
 	}
 
@@ -1150,7 +1165,9 @@ auth_decipher(struct sc_card *card, const unsigned char *in, size_t inlen,
 	int rv, _inlen = inlen;
 
 	LOG_FUNC_CALLED(card->ctx);
-	sc_log(card->ctx,"crgram_len %i;  outlen %i", inlen, outlen);
+	sc_log(card->ctx,
+	       "crgram_len %"SC_FORMAT_LEN_SIZE_T"u;  outlen %"SC_FORMAT_LEN_SIZE_T"u",
+	       inlen, outlen);
 	if (!out || !outlen || inlen > SC_MAX_APDU_BUFFER_SIZE)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
@@ -1304,7 +1321,8 @@ auth_generate_key(struct sc_card *card, int use_sm,
 	data->pubkey_len = apdu.resplen;
 	free(apdu.resp);
 
-	sc_log(card->ctx, "resulted public key len %i", apdu.resplen);
+	sc_log(card->ctx, "resulted public key len %"SC_FORMAT_LEN_SIZE_T"u",
+	       apdu.resplen);
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
@@ -1481,7 +1499,8 @@ auth_read_component(struct sc_card *card, enum SC_CARDCTL_OBERTHUR_KEY_TYPE type
 	unsigned char resp[256];
 
 	LOG_FUNC_CALLED(card->ctx);
-	sc_log(card->ctx, "num %i, outlen %i, type %i", num, outlen, type);
+	sc_log(card->ctx, "num %i, outlen %"SC_FORMAT_LEN_SIZE_T"u, type %i",
+	       num, outlen, type);
 
 	if (!outlen || type!=SC_CARDCTL_OBERTHUR_KEY_RSA_PUBLIC)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INCORRECT_PARAMETERS);
@@ -2012,7 +2031,8 @@ write_publickey (struct sc_card *card, unsigned int offset,
 	sc_hex_dump(card->ctx, SC_LOG_DEBUG_NORMAL,
 		buf, count, debug_buf, sizeof(debug_buf));
 	sc_log(card->ctx,
-		"write_publickey in %d bytes :\n%s", count, debug_buf);
+	       "write_publickey in %"SC_FORMAT_LEN_SIZE_T"u bytes :\n%s",
+	       count, debug_buf);
 
 	if (1+offset > sizeof(rsa_der))
 		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS, "Invalid offset value");
@@ -2030,7 +2050,7 @@ write_publickey (struct sc_card *card, unsigned int offset,
 			der_size = rsa_der[1];
 	}
 
-	sc_log(card->ctx, "der_size %i",der_size);
+	sc_log(card->ctx, "der_size %"SC_FORMAT_LEN_SIZE_T"u", der_size);
 	if (offset + len < der_size + 2)
 		LOG_FUNC_RETURN(card->ctx, len);
 
@@ -2066,7 +2086,8 @@ auth_update_binary(struct sc_card *card, unsigned int offset,
 	int rv = 0;
 
 	LOG_FUNC_CALLED(card->ctx);
-	sc_log(card->ctx, "offset %i; count %i", offset, count);
+	sc_log(card->ctx, "offset %i; count %"SC_FORMAT_LEN_SIZE_T"u", offset,
+	       count);
 	sc_log(card->ctx, "last selected : magic %X; ef %X",
 			auth_current_ef->magic, auth_current_ef->ef_structure);
 
@@ -2103,7 +2124,9 @@ auth_read_binary(struct sc_card *card, unsigned int offset,
 	char debug_buf[2048];
 
 	LOG_FUNC_CALLED(card->ctx);
-	sc_log(card->ctx,"offset %i; size %i; flags 0x%lX", offset, count, flags);
+	sc_log(card->ctx,
+	       "offset %i; size %"SC_FORMAT_LEN_SIZE_T"u; flags 0x%lX",
+	       offset, count, flags);
 	sc_log(card->ctx,"last selected : magic %X; ef %X",
 			auth_current_ef->magic, auth_current_ef->ef_structure);
 
@@ -2153,8 +2176,8 @@ auth_read_binary(struct sc_card *card, unsigned int offset,
 			sc_hex_dump(card->ctx, SC_LOG_DEBUG_NORMAL,
 				buf, rv, debug_buf, sizeof(debug_buf));
 			sc_log(card->ctx,
-				"write_publickey in %d bytes :\n%s",
-				count, debug_buf);
+			       "write_publickey in %"SC_FORMAT_LEN_SIZE_T"u bytes :\n%s",
+			       count, debug_buf);
 		}
 
 		if (bn[0].data)
@@ -2180,7 +2203,9 @@ auth_read_record(struct sc_card *card, unsigned int nr_rec,
 	int rv = 0;
 	unsigned char recvbuf[SC_MAX_APDU_BUFFER_SIZE];
 
-	sc_log(card->ctx, "auth_read_record(): nr_rec %i; count %i", nr_rec, count);
+	sc_log(card->ctx,
+	       "auth_read_record(): nr_rec %i; count %"SC_FORMAT_LEN_SIZE_T"u",
+	       nr_rec, count);
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xB2, nr_rec, 0);
 	apdu.p2 = (flags & SC_RECORD_EF_ID_MASK) << 3;

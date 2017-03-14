@@ -53,4 +53,8 @@ BEGIN
     LTEXT           "This window will be closed automatically after the PIN has been submitted on the PINPAD or if the PINPAD timeout occurs (in general 30 seconds).",IDC_STATIC,7,46,298,19
 END
 
+#ifndef __MINGW32__
 IDI_LOGO               ICON                    "..\\..\\win32\\OpenSC.ico"
+#else
+IDI_LOGO               ICON                    "../../win32/OpenSC.ico"
+#endif

@@ -58,7 +58,9 @@ int msc_list_objects(sc_card_t* card, u8 next, mscfs_file_t* file) {
 	if(apdu.resplen == 0) /* No more left */
 		return 0;
 	if (apdu.resplen != 14) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "expected 14 bytes, got %d.\n", apdu.resplen);
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+			 "expected 14 bytes, got %"SC_FORMAT_LEN_SIZE_T"u.\n",
+			 apdu.resplen);
 		return SC_ERROR_UNKNOWN_DATA_RECEIVED;
 	}
 	memcpy(file->objectId.id, fileData, 4);
@@ -79,7 +81,8 @@ int msc_partial_read_object(sc_card_t *card, msc_id objectId, int offset, u8 *da
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x56, 0x00, 0x00);
 	
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
-		"READ: Offset: %x\tLength: %i\n", offset, dataLength);
+		"READ: Offset: %x\tLength: %"SC_FORMAT_LEN_SIZE_T"u\n", offset,
+		 dataLength);
 	memcpy(buffer, objectId.id, 4);
 	ulong2bebytes(buffer + 4, offset);
 	buffer[8] = (u8)dataLength;
@@ -183,7 +186,9 @@ int msc_partial_update_object(sc_card_t *card, msc_id objectId, int offset, cons
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x54, 0x00, 0x00);
 	apdu.lc = dataLength + 9;
 	if (card->ctx->debug >= 2)
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "WRITE: Offset: %x\tLength: %i\n", offset, dataLength);
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+			 "WRITE: Offset: %x\tLength: %"SC_FORMAT_LEN_SIZE_T"u\n",
+			 offset, dataLength);
 	
 	memcpy(buffer, objectId.id, 4);
 	ulong2bebytes(buffer + 4, offset);
