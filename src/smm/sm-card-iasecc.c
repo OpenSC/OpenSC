@@ -67,7 +67,9 @@ sm_iasecc_get_apdu_read_binary(struct sc_context *ctx, struct sm_info *sm_info, 
         if (!rdata || !rdata->alloc)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
-	sc_log(ctx, "SM get 'READ BINARY' APDUs: offset:%i,size:%i", cmd_data->offs, cmd_data->count);
+	sc_log(ctx,
+	       "SM get 'READ BINARY' APDUs: offset:%"SC_FORMAT_LEN_SIZE_T"u,size:%"SC_FORMAT_LEN_SIZE_T"u",
+	       cmd_data->offs, cmd_data->count);
 	offs = cmd_data->offs;
 	while (cmd_data->count > data_offs)   {
 		int sz = (cmd_data->count - data_offs) > SM_MAX_DATA_SIZE ? SM_MAX_DATA_SIZE : (cmd_data->count - data_offs);
@@ -111,7 +113,9 @@ sm_iasecc_get_apdu_update_binary(struct sc_context *ctx, struct sm_info *sm_info
         if (!rdata || !rdata->alloc)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
-	sc_log(ctx, "SM get 'UPDATE BINARY' APDUs: offset:%i,size:%i", cmd_data->offs, cmd_data->count);
+	sc_log(ctx,
+	       "SM get 'UPDATE BINARY' APDUs: offset:%"SC_FORMAT_LEN_SIZE_T"u,size:%"SC_FORMAT_LEN_SIZE_T"u",
+	       cmd_data->offs, cmd_data->count);
 	offs = cmd_data->offs;
 	while (data_offs < cmd_data->count)   {
 		int sz = (cmd_data->count - data_offs) > SM_MAX_DATA_SIZE ? SM_MAX_DATA_SIZE : (cmd_data->count - data_offs);
@@ -157,7 +161,9 @@ sm_iasecc_get_apdu_create_file(struct sc_context *ctx, struct sm_info *sm_info, 
 	if (!cmd_data || !cmd_data->data || !rdata || !rdata->alloc)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
-	sc_log(ctx, "SM get 'CREATE FILE' APDU: FCP(%i) %s", cmd_data->size, sc_dump_hex(cmd_data->data,cmd_data->size));
+	sc_log(ctx,
+	       "SM get 'CREATE FILE' APDU: FCP(%"SC_FORMAT_LEN_SIZE_T"u) %s",
+	       cmd_data->size, sc_dump_hex(cmd_data->data,cmd_data->size));
 
  	rv = rdata->alloc(rdata, &rapdu);
 	LOG_TEST_RET(ctx, rv, "SM get 'UPDATE BINARY' APDUs: cannot allocate remote APDU");
@@ -231,9 +237,9 @@ sm_iasecc_get_apdu_verify_pin(struct sc_context *ctx, struct sm_info *sm_info, s
 	if (!pin_data || !rdata || !rdata->alloc)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
-	sc_log(ctx, "SM get 'VERIFY PIN' APDU: ", pin_data->pin_reference);
+	sc_log(ctx, "SM get 'VERIFY PIN' APDU: %u", pin_data->pin_reference);
 
- 	rv = rdata->alloc(rdata, &rapdu);
+	rv = rdata->alloc(rdata, &rapdu);
 	LOG_TEST_RET(ctx, rv, "SM get 'VERIFY PIN' APDUs: cannot allocate remote APDU");
 
 	rapdu->apdu.cse = SC_APDU_CASE_3_SHORT;
@@ -505,7 +511,8 @@ sm_iasecc_get_apdus(struct sc_context *ctx, struct sm_info *sm_info,
 	if (!sm_info)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
-	sc_log(ctx, "SM IAS/ECC get APDUs: init_len:%i", init_len);
+	sc_log(ctx, "SM IAS/ECC get APDUs: init_len:%"SC_FORMAT_LEN_SIZE_T"u",
+	       init_len);
 	sc_log(ctx, "SM IAS/ECC get APDUs: rdata:%p", rdata);
 	sc_log(ctx, "SM IAS/ECC get APDUs: serial %s", sc_dump_hex(sm_info->serialnr.value, sm_info->serialnr.len));
 
@@ -579,7 +586,9 @@ sm_iasecc_decode_card_data(struct sc_context *ctx, struct sm_info *sm_info, stru
 
 	LOG_FUNC_CALLED(ctx);
 
-	sc_log(ctx, "IAS/ECC decode answer() rdata length %i, out length %i", rdata->length, out_len);
+	sc_log(ctx,
+	       "IAS/ECC decode answer() rdata length %i, out length %"SC_FORMAT_LEN_SIZE_T"u",
+	       rdata->length, out_len);
         for (rapdu = rdata->data; rapdu; rapdu = rapdu->next)   {
                 unsigned char *decrypted;
                 size_t decrypted_len;
@@ -590,7 +599,9 @@ sm_iasecc_decode_card_data(struct sc_context *ctx, struct sm_info *sm_info, stru
 		unsigned char ticket[8];
 		size_t ticket_len = sizeof(ticket);
 
-		sc_log(ctx, "IAS/ECC decode response(%i) %s", rapdu->apdu.resplen, sc_dump_hex(rapdu->apdu.resp, rapdu->apdu.resplen));
+		sc_log(ctx,
+		       "IAS/ECC decode response(%"SC_FORMAT_LEN_SIZE_T"u) %s",
+		       rapdu->apdu.resplen, sc_dump_hex(rapdu->apdu.resp, rapdu->apdu.resplen));
 
 		sc_copy_asn1_entry(c_asn1_iasecc_sm_data_object, asn1_iasecc_sm_data_object);
 		sc_format_asn1_entry(asn1_iasecc_sm_data_object + 0, resp_data, &resp_len, 0);
@@ -614,7 +625,10 @@ sm_iasecc_decode_card_data(struct sc_context *ctx, struct sm_info *sm_info, stru
 					&decrypted, &decrypted_len);
 			LOG_TEST_RET(ctx, rv, "IAS/ECC decode answer(s): cannot decrypt card answer data");
 
-			sc_log(ctx, "IAS/ECC decrypted data(%i) %s", decrypted_len, sc_dump_hex(decrypted, decrypted_len));
+			sc_log(ctx,
+			       "IAS/ECC decrypted data(%"SC_FORMAT_LEN_SIZE_T"u) %s",
+			       decrypted_len,
+			       sc_dump_hex(decrypted, decrypted_len));
 			while(*(decrypted + decrypted_len - 1) == 0x00)
 			       decrypted_len--;
 			if (*(decrypted + decrypted_len - 1) != 0x80)
@@ -628,7 +642,9 @@ sm_iasecc_decode_card_data(struct sc_context *ctx, struct sm_info *sm_info, stru
 				memcpy(out + offs, decrypted, decrypted_len);
 
 				offs += decrypted_len;
-				sc_log(ctx, "IAS/ECC decode card answer(s): out_len/offs %i/%i", out_len, offs);
+				sc_log(ctx,
+				       "IAS/ECC decode card answer(s): out_len/offs %"SC_FORMAT_LEN_SIZE_T"u/%i",
+				       out_len, offs);
 			}
 
 			free(decrypted);

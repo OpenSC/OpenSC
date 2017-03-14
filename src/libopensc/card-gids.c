@@ -214,8 +214,9 @@ static int gids_get_DO(sc_card_t* card, int fileIdentifier, int dataObjectIdenti
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
-		"Got args: fileIdentifier=%x, dataObjectIdentifier=%x, response=%x, responselen=%d\n",
-		fileIdentifier, dataObjectIdentifier, response, responselen ? *responselen : 0);
+		 "Got args: fileIdentifier=%x, dataObjectIdentifier=%x, response=%p, responselen=%"SC_FORMAT_LEN_SIZE_T"u\n",
+		 fileIdentifier, dataObjectIdentifier, response,
+		 responselen ? *responselen : 0);
 
 	sc_format_apdu(card, &apdu,
 		response == NULL ? SC_APDU_CASE_3_SHORT : SC_APDU_CASE_4_SHORT, INS_GET_DATA, (fileIdentifier&0xFF00)>>8, (fileIdentifier&0xFF));
@@ -250,8 +251,8 @@ static int gids_put_DO(sc_card_t* card, int fileIdentifier, int dataObjectIdenti
 	u8* p = buffer;
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
-		"Got args: fileIdentifier=%x, dataObjectIdentifier=%x, data=%x, datalen=%d\n",
-		fileIdentifier, dataObjectIdentifier, data, datalen);
+		 "Got args: fileIdentifier=%x, dataObjectIdentifier=%x, data=%p, datalen=%"SC_FORMAT_LEN_SIZE_T"u\n",
+		 fileIdentifier, dataObjectIdentifier, data, datalen);
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, INS_PUT_DATA, (fileIdentifier&0xFF00)>>8, (fileIdentifier&0xFF));
 
@@ -278,8 +279,8 @@ static int gids_select_aid(sc_card_t* card, u8* aid, size_t aidlen, u8* response
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
-		"Got args: aid=%x, aidlen=%d, response=%x, responselen=%d\n",
-		aid, aidlen, response, responselen ? *responselen : 0);
+		 "Got args: aid=%p, aidlen=%"SC_FORMAT_LEN_SIZE_T"u, response=%p, responselen=%"SC_FORMAT_LEN_SIZE_T"u\n",
+		 aid, aidlen, response, responselen ? *responselen : 0);
 
 	sc_format_apdu(card, &apdu,
 		response == NULL ? SC_APDU_CASE_3_SHORT : SC_APDU_CASE_4_SHORT, INS_SELECT, P1_SELECT_DF_BY_NAME, P2_SELECT_FIRST_OR_ONLY_OCCURENCE);
@@ -851,8 +852,8 @@ static int gids_read_public_key (struct sc_card *card , unsigned int algorithm,
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
-		"Got args: key_reference=%x, response=%x, responselen=%d\n",
-		key_reference, response, responselen ? *responselen : 0);
+		 "Got args: key_reference=%x, response=%p, responselen=%"SC_FORMAT_LEN_SIZE_T"u\n",
+		 key_reference, response, responselen ? *responselen : 0);
 
 	sc_format_apdu(card, &apdu,
 		response == NULL ? SC_APDU_CASE_3_SHORT : SC_APDU_CASE_4_SHORT, INS_GET_DATA, 0x3F, 0xFF);
@@ -998,7 +999,9 @@ static int gids_read_binary(sc_card_t *card, unsigned int offset,
 				SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 			}
 			if (data->buffersize != expectedsize) {
-				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "expected size: %d real size: %d", expectedsize, data->buffersize);
+				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+					 "expected size: %"SC_FORMAT_LEN_SIZE_T"u real size: %"SC_FORMAT_LEN_SIZE_T"u",
+					 expectedsize, data->buffersize);
 				SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_DATA);
 			}
 		} else {
@@ -1115,7 +1118,9 @@ gids_select_key_reference(sc_card_t *card, sc_pkcs15_prkey_info_t* key_info) {
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
 		}
 		if (i > recordsnum) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "container num is not allowed %d %d", i, recordsnum);
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+				 "container num is not allowed %"SC_FORMAT_LEN_SIZE_T"u %"SC_FORMAT_LEN_SIZE_T"u",
+				 i, recordsnum);
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
 		}
 	}
@@ -1254,7 +1259,9 @@ static int gids_create_keyfile(sc_card_t *card, sc_pkcs15_object_t *object) {
 		keymaprecordnum = (keymapbuffersize - 1) / sizeof(struct gids_keymap_record);
 		if (keymaprecordnum != recordnum) {
 			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL , "Error: Unable to create the key file because the keymap and cmapfile are inconsistent");
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL , "keymaprecordnum = %u recordnum = %u", (unsigned long) keymaprecordnum, (unsigned long) recordnum);
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL ,
+				 "keymaprecordnum = %"SC_FORMAT_LEN_SIZE_T"u recordnum = %"SC_FORMAT_LEN_SIZE_T"u",
+				 keymaprecordnum, recordnum);
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INTERNAL);
 		}
 	}

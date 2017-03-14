@@ -143,7 +143,8 @@ sm_authentic_get_apdus(struct sc_context *ctx, struct sm_info *sm_info,
 	if (!sm_info)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
-	sc_log(ctx, "SM get APDUs: rdata:%p, init_len:%i", rdata, init_len);
+	sc_log(ctx, "SM get APDUs: rdata:%p, init_len:%"SC_FORMAT_LEN_SIZE_T"u",
+	       rdata, init_len);
 	sc_log(ctx, "SM get APDUs: serial %s", sc_dump_hex(sm_info->serialnr.value, sm_info->serialnr.len));
 
 	if (init_data)   {

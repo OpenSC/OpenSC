@@ -642,7 +642,9 @@ static int get_carddata(sc_card_t *card, u8* carddata_loc, unsigned int carddata
 		return r;
 	}
 	if(apdu.resplen < carddataloc_len) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "GetCardData: card returned %d bytes rather than expected %d\n", apdu.resplen, carddataloc_len);
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+			 "GetCardData: card returned %"SC_FORMAT_LEN_SIZE_T"u bytes rather than expected %d\n",
+			 apdu.resplen, carddataloc_len);
 		return SC_ERROR_WRONG_LENGTH;
 	}
 

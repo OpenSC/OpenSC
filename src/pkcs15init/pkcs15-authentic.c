@@ -254,8 +254,9 @@ authentic_pkcs15_new_file(struct sc_profile *profile, struct sc_card *card,
 		file->path.count = -1;
 	}
 
-	sc_log(ctx, "file(size:%i,type:%i/%i,id:%04X), path(type:%X,'%s')",  file->size, file->type, file->ef_structure, file->id,
-			file->path.type, sc_print_path(&file->path));
+	sc_log(ctx, "file(size:%"SC_FORMAT_LEN_SIZE_T"u,type:%i/%i,id:%04X), path(type:%X,'%s')",
+	       file->size, file->type, file->ef_structure, file->id,
+	       file->path.type, sc_print_path(&file->path));
 	if (out)
 		*out = file;
 	else
@@ -525,8 +526,10 @@ authentic_pkcs15_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p
 	int	 rv;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "create private key(keybits:%i,usage:%X,access:%X,ref:%X)", keybits,
-			key_info->usage, key_info->access_flags, key_info->key_reference);
+	sc_log(ctx,
+	       "create private key(keybits:%"SC_FORMAT_LEN_SIZE_T"u,usage:%X,access:%X,ref:%X)",
+	       keybits, key_info->usage, key_info->access_flags,
+	       key_info->key_reference);
 	if (keybits < 1024 || keybits > 2048 || (keybits % 256))
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Invalid RSA key size");
 
@@ -604,8 +607,10 @@ authentic_pkcs15_generate_key(struct sc_profile *profile, sc_pkcs15_card_t *p15c
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "generate key(bits:%i,path:%s,AuthID:%s\n", keybits,
-			sc_print_path(&key_info->path), sc_pkcs15_print_id(&object->auth_id));
+	sc_log(ctx,
+	       "generate key(bits:%"SC_FORMAT_LEN_SIZE_T"u,path:%s,AuthID:%s\n",
+	       keybits, sc_print_path(&key_info->path),
+	       sc_pkcs15_print_id(&object->auth_id));
 
 	if (!object->content.value || object->content.len != sizeof(struct sc_authentic_sdo))
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Invalid PrKey SDO data");
@@ -669,8 +674,10 @@ authentic_pkcs15_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p1
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "Store IAS/ECC key(keybits:%i,AuthID:%s,path:%s)",
-			keybits, sc_pkcs15_print_id(&object->auth_id), sc_print_path(&key_info->path));
+	sc_log(ctx,
+	       "Store IAS/ECC key(keybits:%"SC_FORMAT_LEN_SIZE_T"u,AuthID:%s,path:%s)",
+	       keybits, sc_pkcs15_print_id(&object->auth_id),
+	       sc_print_path(&key_info->path));
 
 	if (!object->content.value || object->content.len != sizeof(struct sc_authentic_sdo))
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Invalid PrKey SDO data");
@@ -716,7 +723,8 @@ authentic_pkcs15_delete_rsa_sdo (struct sc_profile *profile, struct sc_pkcs15_ca
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "delete SDO RSA key (ref:%i,size:%i)", key_info->key_reference, key_info->modulus_length);
+	sc_log(ctx, "delete SDO RSA key (ref:%i,size:%"SC_FORMAT_LEN_SIZE_T"u)",
+	       key_info->key_reference, key_info->modulus_length);
 
 	rv = authentic_pkcs15_new_file(profile, p15card->card, SC_PKCS15_TYPE_PRKEY_RSA, key_info->key_reference, &file);
 	LOG_TEST_GOTO_ERR(ctx, rv, "PRKEY_RSA instantiation file error");
