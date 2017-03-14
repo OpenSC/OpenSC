@@ -30,14 +30,13 @@
 #pragma managed(push, off)
 #endif
 
-#define MINGW_HAS_SECURE_API 1
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 
 #include <windows.h>
 
+#include "common/compat_strlcpy.h"
 #include "libopensc/asn1.h"
 #include "libopensc/cardctl.h"
 #include "libopensc/opensc.h"
@@ -244,6 +243,10 @@ static int disassociate_card(PCARD_DATA pCardData);
 static DWORD md_pkcs15_delete_object(PCARD_DATA pCardData, struct sc_pkcs15_object *obj);
 static DWORD md_fs_init(PCARD_DATA pCardData);
 
+#if defined(_MSC_VER) && _MSC_VER < 1900
+#define snprintf _snprintf
+#endif
+
 static void logprintf(PCARD_DATA pCardData, int level, _Printf_format_string_ const char* format, ...)
 {
 	va_list arg;
@@ -300,7 +303,8 @@ static void loghex(PCARD_DATA pCardData, int level, PBYTE data, size_t len)
 	memset(line, 0, sizeof(line));
 
 	while(i < len) {
-		sprintf_s(c, sizeof(line)-(size_t)(c-line),"%02X", *p);
+		snprintf(c, sizeof(line) - (size_t)(c - line), "%02X", *p);
+		line[sizeof(line) - 1] = 0;
 		p++;
 		c += 2;
 		i++;
@@ -517,9 +521,11 @@ static VOID md_generate_guid( __in_ecount(MAX_CONTAINER_NAME_LEN+1) PSTR szGuid)
 	RPC_CSTR szRPCGuid = NULL;
 	GUID Label = {0};
 	UuidCreate(&Label);
-	UuidToStringA(&Label, &szRPCGuid);
-	strncpy_s(szGuid, MAX_CONTAINER_NAME_LEN+1, (PSTR) szRPCGuid, MAX_CONTAINER_NAME_LEN);
-	if (szRPCGuid) RpcStringFreeA(&szRPCGuid);
+	if (UuidToStringA(&Label, &szRPCGuid) == RPC_S_OK && szRPCGuid) {
+		strlcpy(szGuid, (PSTR)szRPCGuid, MAX_CONTAINER_NAME_LEN + 1);
+		RpcStringFreeA(&szRPCGuid);
+	} else
+		szGuid[0] = 0;
 }
 
 static DWORD
@@ -557,8 +563,10 @@ md_contguid_add_conversion(PCARD_DATA pCardData, struct sc_pkcs15_object *prkey,
 
 	for (i = 0; i < MD_MAX_CONVERSIONS; i++) {
 		if (md_static_conversions[i].szWindowsGuid[0] == 0) {
-			strcpy_s(md_static_conversions[i].szWindowsGuid, MAX_CONTAINER_NAME_LEN+1, szWindowsGuid);
-			strcpy_s(md_static_conversions[i].szOpenSCGuid, MAX_CONTAINER_NAME_LEN+1, szOpenSCGuid);
+			strlcpy(md_static_conversions[i].szWindowsGuid,
+				szWindowsGuid, MAX_CONTAINER_NAME_LEN + 1);
+			strlcpy(md_static_conversions[i].szOpenSCGuid,
+				szOpenSCGuid, MAX_CONTAINER_NAME_LEN + 1);
 			logprintf(pCardData, 0, "md_contguid_add_conversion(): Registering conversion '%s' '%s'\n", szWindowsGuid, szOpenSCGuid);
 			return SCARD_S_SUCCESS;;
 		}
@@ -613,7 +621,7 @@ md_contguid_build_cont_guid_from_key(PCARD_DATA pCardData, struct sc_pkcs15_obje
 		memcpy(szGuid, prkey_info->id.value, prkey_info->id.len);
 		szGuid[prkey_info->id.len] = 0;
 	} else if (md_is_guid_as_label(pCardData) && key_obj->label[0] != 0)  {
-		strncpy_s(szGuid, MAX_CONTAINER_NAME_LEN+1, key_obj->label, MAX_CONTAINER_NAME_LEN);
+		strlcpy(szGuid, key_obj->label, MAX_CONTAINER_NAME_LEN + 1);
 	} else {
 		dwret = md_contguid_get_guid_from_card(pCardData, key_obj, szGuid);
 	}
@@ -699,7 +707,7 @@ md_fs_add_directory(PCARD_DATA pCardData, struct md_directory **head, char *name
 		return SCARD_E_NO_MEMORY;
 	memset(new_dir, 0, sizeof(struct md_directory));
 
-	strncpy_s((char *)new_dir->name, sizeof(new_dir->name), name, sizeof(new_dir->name) - 1);
+	strlcpy((char *)new_dir->name, name, sizeof(new_dir->name));
 	new_dir->acl = acl;
 
 	if (*head == NULL)   {
@@ -774,7 +782,7 @@ md_fs_add_file(PCARD_DATA pCardData, struct md_file **head, char *name, CARD_FIL
 		return SCARD_E_NO_MEMORY;
 	memset(new_file, 0, sizeof(struct md_file));
 
-	strncpy_s((char *)new_file->name, sizeof(new_file->name), name, sizeof(new_file->name) - 1);
+	strlcpy((char *)new_file->name, name, sizeof(new_file->name));
 	new_file->size = size;
 	new_file->acl = acl;
 
@@ -876,9 +884,9 @@ md_fs_delete_file(PCARD_DATA pCardData, char *parent, char *name)
 	if (!strcmp(parent, "mscp"))   {
 		int idx = -1;
 
-		if(sscanf_s(name, "ksc%d", &idx) > 0)   {
+		if(sscanf(name, "ksc%d", &idx) > 0)   {
 		}
-		else if(sscanf_s(name, "kxc%d", &idx) > 0)   {
+		else if(sscanf(name, "kxc%d", &idx) > 0)   {
 		}
 
 		if (idx >= 0 && idx < MD_MAX_KEY_CONTAINERS)   {
@@ -959,7 +967,7 @@ md_pkcs15_update_containers(PCARD_DATA pCardData, unsigned char *blob, size_t si
 			memset(cont, 0, sizeof(CONTAINER_MAP_RECORD));
 		}
 		else   {
-			strcpy_s(cont->guid,MAX_CONTAINER_NAME_LEN+1, szGuid);
+			strlcpy(cont->guid, szGuid, MAX_CONTAINER_NAME_LEN + 1);
 			cont->index = idx;
 			cont->flags = pp->bFlags;
 			cont->size_sign = pp->wSigKeySizeBits;
@@ -1209,9 +1217,9 @@ md_fs_read_content(PCARD_DATA pCardData, char *parent, struct md_file *file)
 	if (!strcmp((char *)dir->name, "mscp"))   {
 		int idx, rv;
 
-		if(sscanf_s((char *)file->name, "ksc%d", &idx) > 0)   {
+		if(sscanf((char *)file->name, "ksc%d", &idx) > 0)   {
 		}
-		else if(sscanf_s((char *)file->name, "kxc%d", &idx) > 0)   {
+		else if(sscanf((char *)file->name, "kxc%d", &idx) > 0)   {
 		}
 		else   {
 			idx = -1;
@@ -1486,14 +1494,16 @@ md_set_cmapfile(PCARD_DATA pCardData, struct md_file *file)
 				char k_name[6];
 
 				if (vs->p15_containers[ii].size_key_exchange)   {
-					_snprintf_s((char *)k_name, sizeof(k_name), sizeof(k_name)-1, "kxc%02i", ii);
+					snprintf(k_name, sizeof(k_name), "kxc%02i", ii);
+					k_name[sizeof(k_name) - 1] = 0;
 					dwret = md_fs_add_file(pCardData, &(file->next), k_name, file->acl, NULL, 0, NULL);
 					if (dwret != SCARD_S_SUCCESS)
 						return dwret;
 				}
 
 				if (vs->p15_containers[ii].size_sign)   {
-					_snprintf_s((char *)k_name, sizeof(k_name), sizeof(k_name)-1, "ksc%02i", ii);
+					snprintf(k_name, sizeof(k_name), "ksc%02i", ii);
+					k_name[sizeof(k_name) - 1] = 0;
 					dwret = md_fs_add_file(pCardData, &(file->next), k_name, file->acl, NULL, 0, NULL);
 					if (dwret != SCARD_S_SUCCESS)
 						return dwret;
@@ -2073,8 +2083,8 @@ md_pkcs15_store_certificate(PCARD_DATA pCardData, char *file_name, unsigned char
 
 	/* use container's ID as ID of certificate to store */
 	idx = -1;
-	if(sscanf_s(file_name, "ksc%d", &idx) > 0) {
-	} else if(sscanf_s(file_name, "kxc%d", &idx) > 0) {
+	if(sscanf(file_name, "ksc%d", &idx) > 0) {
+	} else if(sscanf(file_name, "kxc%d", &idx) > 0) {
 	}
 
 	if (idx >= 0 && idx < MD_MAX_KEY_CONTAINERS)   {
@@ -3257,7 +3267,7 @@ DWORD WINAPI CardEnumFiles(__in PCARD_DATA pCardData,
 	file = dir->files;
 	for (offs = 0; file != NULL && offs < sizeof(mstr) - 10;)   {
 		logprintf(pCardData, 2, "enum files(): file name '%s'\n", file->name);
-		strcpy_s(mstr+offs, sizeof(mstr) - offs, (char *)file->name);
+		strlcpy(mstr + offs, (char *)file->name, sizeof(mstr) - offs);
 		offs += strlen((char *)file->name) + 1;
 		file = file->next;
 	}

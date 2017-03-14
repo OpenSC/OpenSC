@@ -126,6 +126,12 @@ AC_DEFINE_UNQUOTED([DEBUG_FILE], ["${DEBUG_FILE}"], [Debug file])
 AC_DEFINE_UNQUOTED([PROFILE_DIR], ["${PROFILE_DIR}"], [Directory of profiles])
 AC_DEFINE_UNQUOTED([PROFILE_DIR_DEFAULT], ["${PROFILE_DIR_DEFAULT}"], [Default directory of profiles])
 
+case "${host}" in
+	*-mingw*)
+		CPPFLAGS="${CPPFLAGS} -D__USE_MINGW_ANSI_STDIO=1"
+	;;
+esac
+
 AC_ARG_ENABLE(
 	[strict],
 	[AS_HELP_STRING([--disable-strict],[disable strict compile mode @<:@disabled@:>@])],
