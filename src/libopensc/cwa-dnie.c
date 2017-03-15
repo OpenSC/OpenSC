@@ -327,7 +327,8 @@ int dnie_read_file(sc_card_t * card,
 		goto dnie_read_file_err;
 	}
 	/* call sc_read_binary() to retrieve data */
-	sc_log(ctx, "read_binary(): expected '%d' bytes", fsize);
+	sc_log(ctx, "read_binary(): expected '%"SC_FORMAT_LEN_SIZE_T"u' bytes",
+	       fsize);
 	res = sc_read_binary(card, 0, data, fsize, 0L);
 	if (res < 0) {		/* read_binary returns number of bytes readed */
 		res = SC_ERROR_CARD_CMD_FAILED;
@@ -348,7 +349,7 @@ int dnie_read_file(sc_card_t * card,
 	}
  dnie_read_file_end:
 	if (msg)
-		sc_log(ctx, msg);
+		sc_log(ctx, "%s", msg);
 	LOG_FUNC_RETURN(ctx, res);
 }
 
@@ -397,7 +398,7 @@ static int dnie_read_certificate(sc_card_t * card, char *certpath, X509 ** cert)
 	sc_file_free(file);
 	file = NULL;
 	if (msg)
-		sc_log(card->ctx, msg);
+		sc_log(card->ctx, "%s", msg);
 	LOG_FUNC_RETURN(card->ctx, res);
 }
 

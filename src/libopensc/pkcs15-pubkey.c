@@ -726,7 +726,8 @@ sc_pkcs15_decode_pubkey_ec(sc_context_t *ctx,
 	if (*ecpoint_data != 0x04)
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Supported only uncompressed EC pointQ value");
 
-	sc_log(ctx, "decode-EC key=%p, buf=%p, buflen=%d", key, buf, buflen);
+	sc_log(ctx, "decode-EC key=%p, buf=%p, buflen=%"SC_FORMAT_LEN_SIZE_T"u",
+	       key, buf, buflen);
 
 	key->ecpointQ.len = ecpoint_len;
 	key->ecpointQ.value = ecpoint_data;
@@ -755,7 +756,9 @@ sc_pkcs15_encode_pubkey_ec(sc_context_t *ctx, struct sc_pkcs15_pubkey_ec *key,
 	r = sc_asn1_encode(ctx, asn1_ec_pointQ, buf, buflen);
 	LOG_TEST_RET(ctx, r, "ASN.1 encoding failed");
 
-	sc_log(ctx, "EC key->ecpointQ=%p:%d *buf=%p:%d", key->ecpointQ.value, key->ecpointQ.len, *buf, *buflen);
+	sc_log(ctx,
+	       "EC key->ecpointQ=%p:%"SC_FORMAT_LEN_SIZE_T"u *buf=%p:%"SC_FORMAT_LEN_SIZE_T"u",
+	       key->ecpointQ.value, key->ecpointQ.len, *buf, *buflen);
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
@@ -1304,7 +1307,9 @@ sc_pkcs15_pubkey_from_spki_fields(struct sc_context *ctx, struct sc_pkcs15_pubke
 	unsigned char *tmp_buf = NULL;
 	int r;
 
-	sc_log(ctx, "sc_pkcs15_pubkey_from_spki_fields() called: %p:%d\n%s", buf, buflen, sc_dump_hex(buf, buflen));
+	sc_log(ctx,
+	       "sc_pkcs15_pubkey_from_spki_fields() called: %p:%"SC_FORMAT_LEN_SIZE_T"u\n%s",
+	       buf, buflen, sc_dump_hex(buf, buflen));
 
 	tmp_buf = malloc(buflen);
 	if (!tmp_buf) {
@@ -1515,7 +1520,8 @@ sc_pkcs15_fix_ec_parameters(struct sc_context *ctx, struct sc_ec_parameters *ecp
 			sc_format_oid(&ecparams->id, ec_curve_infos[ii].oid_str);
 
 		ecparams->field_length = ec_curve_infos[ii].size;
-		sc_log(ctx, "Curve length %i", ecparams->field_length);
+		sc_log(ctx, "Curve length %"SC_FORMAT_LEN_SIZE_T"u",
+		       ecparams->field_length);
 	}
 	else if (ecparams->named_curve)   {	/* it can be name of curve or OID in ASCII form */
 		for (ii=0; ec_curve_infos[ii].name; ii++)   {

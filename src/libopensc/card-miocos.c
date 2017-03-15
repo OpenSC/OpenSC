@@ -472,7 +472,7 @@ static int miocos_card_ctl(sc_card_t *card, unsigned long cmd,
 	case SC_CARDCTL_MIOCOS_CREATE_AC:
 		return miocos_create_ac(card, (struct sc_cardctl_miocos_ac_info *) arg);
 	}
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "card_ctl command 0x%X not supported\n", cmd);
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "card_ctl command 0x%lX not supported\n", cmd);
 	return SC_ERROR_NOT_SUPPORTED;
 }
 

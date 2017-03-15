@@ -120,19 +120,19 @@ static void cwa_trace_apdu(sc_card_t * card, sc_apdu_t * apdu, int flag)
 		if (apdu->datalen > 0) {	/* apdu data to show */
 			buf = cwa_hexdump(apdu->data, apdu->datalen);
 			sc_log(card->ctx,
-			       "\nAPDU before encode: ==================================================\nCLA: %02X INS: %02X P1: %02X P2: %02X Lc: %02X Le: %02X DATA: [%5u bytes]\n%s======================================================================\n",
+			       "\nAPDU before encode: ==================================================\nCLA: %02X INS: %02X P1: %02X P2: %02X Lc: %02"SC_FORMAT_LEN_SIZE_T"X Le: %02"SC_FORMAT_LEN_SIZE_T"X DATA: [%5"SC_FORMAT_LEN_SIZE_T"u bytes]\n%s======================================================================\n",
 			       apdu->cla, apdu->ins, apdu->p1, apdu->p2,
 			       apdu->lc, apdu->le, apdu->datalen, buf);
 		} else {	/* apdu data field is empty */
 			sc_log(card->ctx,
-			       "\nAPDU before encode: ==================================================\nCLA: %02X INS: %02X P1: %02X P2: %02X Lc: %02X Le: %02X (NO DATA)\n======================================================================\n",
+			       "\nAPDU before encode: ==================================================\nCLA: %02X INS: %02X P1: %02X P2: %02X Lc: %02"SC_FORMAT_LEN_SIZE_T"X Le: %02"SC_FORMAT_LEN_SIZE_T"X (NO DATA)\n======================================================================\n",
 			       apdu->cla, apdu->ins, apdu->p1, apdu->p2,
 			       apdu->lc, apdu->le);
 		}
 	} else {		/* apdu response */
 		buf = cwa_hexdump(apdu->resp, apdu->resplen);
 		sc_log(card->ctx,
-		       "\nAPDU response after decode: ==========================================\nSW1: %02X SW2: %02X RESP: [%5u bytes]\n%s======================================================================\n",
+		       "\nAPDU response after decode: ==========================================\nSW1: %02X SW2: %02X RESP: [%5"SC_FORMAT_LEN_SIZE_T"u bytes]\n%s======================================================================\n",
 		       apdu->sw1, apdu->sw2, apdu->resplen, buf);
 	}
 #endif
@@ -338,7 +338,7 @@ static int cwa_parse_tlv(sc_card_t * card,
 		}
 		tlv->data = buffer + n + j;
 		tlv->buflen = j + tlv->len;;
-		sc_log(ctx, "Found Tag: '0x%02X': Length: '%d 'Value:\n%s",
+		sc_log(ctx, "Found Tag: '0x%02X': Length: '%"SC_FORMAT_LEN_SIZE_T"u' Value:\n%s",
 		       tlv->tag, tlv->len, sc_dump_hex(tlv->data, tlv->len));
 		/* set index to next Tag to jump to */
 		next = tlv->buflen;
@@ -414,7 +414,7 @@ static int cwa_verify_icc_certificates(sc_card_t * card,
 	if (sub_ca_key)
 		EVP_PKEY_free(sub_ca_key);
 	if (res != SC_SUCCESS)
-		sc_log(ctx, msg);
+		sc_log(ctx, "%s", msg);
 	LOG_FUNC_RETURN(ctx, res);
 }
 
@@ -707,7 +707,7 @@ static int cwa_prepare_external_auth(sc_card_t * card,
 	}
 
 	if (res != SC_SUCCESS)
-		sc_log(ctx, msg);
+		sc_log(ctx, "%s", msg);
 	LOG_FUNC_RETURN(ctx, res);
 }
 
@@ -822,7 +822,7 @@ static int cwa_compute_session_keys(sc_card_t * card)
 		free(sha_data);
 	}
 	if (res != SC_SUCCESS)
-		sc_log(ctx, msg);
+		sc_log(ctx, "%s", msg);
 	else {
 		sc_log(ctx, "Kenc: %s", sc_dump_hex(sm->session_enc, 16));
 		sc_log(ctx, "Kmac: %s", sc_dump_hex(sm->session_mac, 16));
@@ -1015,7 +1015,7 @@ static int cwa_verify_internal_auth(sc_card_t * card,
 	if (sigbn)
 		BN_free(sigbn);
 	if (res != SC_SUCCESS)
-		sc_log(ctx, msg);
+		sc_log(ctx, "%s", msg);
 	LOG_FUNC_RETURN(ctx, res);
 }
 
@@ -1096,7 +1096,7 @@ int cwa_create_secure_channel(sc_card_t * card,
 		res = provider->cwa_create_pre_ops(card, provider);
 		if (res != SC_SUCCESS) {
 			msg = "Create SM: provider pre_ops() failed";
-			sc_log(ctx, msg);
+			sc_log(ctx, "%s", msg);
 			goto csc_end;
 		}
 	}
@@ -1107,12 +1107,12 @@ int cwa_create_secure_channel(sc_card_t * card,
 		res = provider->cwa_get_sn_icc(card);
 		if (res != SC_SUCCESS) {
 			msg = "Retrieve ICC failed";
-			sc_log(ctx, msg);
+			sc_log(ctx, "%s", msg);
 			goto csc_end;
 		}
 	} else {
 		msg = "Don't know how to obtain ICC serial number";
-		sc_log(ctx, msg);
+		sc_log(ctx, "%s", msg);
 		res = SC_ERROR_INTERNAL;
 		goto csc_end;
 	}
@@ -1386,7 +1386,7 @@ int cwa_create_secure_channel(sc_card_t * card,
 		EVP_PKEY_free(ifd_privkey);
 	/* setup SM state according result */
 	if (res != SC_SUCCESS) {
-		sc_log(ctx, msg);
+		sc_log(ctx, "%s", msg);
 		card->sm_ctx.sm_mode = SM_MODE_NONE;
 	} else {
 		card->sm_ctx.sm_mode = SM_MODE_TRANSMIT;
@@ -1571,7 +1571,7 @@ int cwa_encode_apdu(sc_card_t * card,
 
 	/* compose and add computed MAC TLV to result buffer */
 	tlv_len = (card->atr.value[15] >= DNIE_30_VERSION)? 8 : 4;
-	sc_log(ctx, "Using TLV lenght: %d", tlv_len);
+	sc_log(ctx, "Using TLV lenght: %"SC_FORMAT_LEN_SIZE_T"u", tlv_len);
 	res = cwa_compose_tlv(card, 0x8E, tlv_len, macbuf, &apdubuf, &apdulen);
 	if (res != SC_SUCCESS) {
 		msg = "Encode APDU compose_tlv(0x87) failed";
@@ -1593,7 +1593,7 @@ encode_end:
 		free(apdubuf);
 encode_end_apdu_valid:
 	if (msg)
-		sc_log(ctx, msg);
+		sc_log(ctx, "%s", msg);
 	free(msgbuf);
 	free(cryptbuf);
 	free(ccbuf);
@@ -1852,7 +1852,7 @@ int cwa_decode_response(sc_card_t * card,
 	if (ccbuf)
 		free(ccbuf);
 	if (msg) {
-		sc_log(ctx, msg);
+		sc_log(ctx, "%s", msg);
 	} else {
 		cwa_trace_apdu(card, apdu, 1);
 	}			/* trace apdu response */

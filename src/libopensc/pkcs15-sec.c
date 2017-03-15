@@ -149,7 +149,9 @@ static int format_senv(struct sc_pkcs15_card *p15card,
 		case SC_PKCS15_TYPE_PRKEY_RSA:
 			*alg_info_out = sc_card_find_rsa_alg(p15card->card, prkey->modulus_length);
 			if (*alg_info_out == NULL) {
-				sc_log(ctx, "Card does not support RSA with key length %d", prkey->modulus_length);
+				sc_log(ctx,
+				       "Card does not support RSA with key length %"SC_FORMAT_LEN_SIZE_T"u",
+				       prkey->modulus_length);
 				LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 			}
 			senv_out->algorithm = SC_ALGORITHM_RSA;
@@ -158,7 +160,9 @@ static int format_senv(struct sc_pkcs15_card *p15card,
 		case SC_PKCS15_TYPE_PRKEY_GOSTR3410:
 			*alg_info_out = sc_card_find_gostr3410_alg(p15card->card, prkey->modulus_length);
 			if (*alg_info_out == NULL) {
-				sc_log(ctx, "Card does not support GOSTR3410 with key length %d", prkey->modulus_length);
+				sc_log(ctx,
+				       "Card does not support GOSTR3410 with key length %"SC_FORMAT_LEN_SIZE_T"u",
+				       prkey->modulus_length);
 				LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 			}
 			senv_out->algorithm = SC_ALGORITHM_GOSTR3410;
@@ -167,7 +171,9 @@ static int format_senv(struct sc_pkcs15_card *p15card,
 		case SC_PKCS15_TYPE_PRKEY_EC:
 			*alg_info_out = sc_card_find_ec_alg(p15card->card, prkey->field_length, NULL);
 			if (*alg_info_out == NULL) {
-				sc_log(ctx, "Card does not support EC with field_size %d", prkey->field_length);
+				sc_log(ctx,
+				       "Card does not support EC with field_size %"SC_FORMAT_LEN_SIZE_T"u",
+				       prkey->field_length);
 				LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 			}
 			senv_out->algorithm = SC_ALGORITHM_EC;
@@ -409,7 +415,7 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	}
 	senv.algorithm_flags = sec_flags;
 
-	sc_log(ctx, "DEE flags:0x%8.8x alg_info->flags:0x%8.8x pad:0x%8.8x sec:0x%8.8x",
+	sc_log(ctx, "DEE flags:0x%8.8lx alg_info->flags:0x%8.8x pad:0x%8.8lx sec:0x%8.8lx",
 		flags, alg_info->flags, pad_flags, sec_flags);
 
 	/* add the padding bytes (if necessary) */

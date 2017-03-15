@@ -44,6 +44,14 @@ extern "C" {
 #include "libopensc/sm.h"
 #endif
 
+#if defined(_WIN32) && !(defined(__MINGW32__) && defined (__MINGW_PRINTF_FORMAT))
+#define SC_FORMAT_LEN_SIZE_T "I"
+#define SC_FORMAT_LEN_PTRDIFF_T "I"
+#else
+/* hope SUSv3 ones work */
+#define SC_FORMAT_LEN_SIZE_T "z"
+#define SC_FORMAT_LEN_PTRDIFF_T "t"
+#endif
 
 #define SC_SEC_OPERATION_DECIPHER	0x0001
 #define SC_SEC_OPERATION_SIGN		0x0002

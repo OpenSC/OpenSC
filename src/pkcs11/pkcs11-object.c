@@ -333,7 +333,7 @@ C_FindObjectsInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	if (rv != CKR_OK)
 		goto out;
 
-	sc_log(context, "C_FindObjectsInit(slot = %d)\n", session->slot->id);
+	sc_log(context, "C_FindObjectsInit(slot = %lu)\n", session->slot->id);
 	dump_template(SC_LOG_DEBUG_NORMAL, "C_FindObjectsInit()", pTemplate, ulCount);
 
 	rv = session_start_operation(session, SC_PKCS11_OPERATION_FIND,
@@ -362,8 +362,9 @@ C_FindObjectsInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 			if (object->ops->get_attribute(session, object, &private_attribute) != CKR_OK)
 			        continue;
 			if (is_private) {
-				sc_log(context, "Object %d/%d: Private object and not logged in.",
-					 slot->id, object->handle);
+				sc_log(context,
+				       "Object %lu/%lu: Private object and not logged in.",
+				       slot->id, object->handle);
 				continue;
 			}
 		}
@@ -373,20 +374,23 @@ C_FindObjectsInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		for (j = 0; j < ulCount; j++) {
 			rv = object->ops->cmp_attribute(session, object, &pTemplate[j]);
 			if (rv == 0) {
-				sc_log(context, "Object %d/%d: Attribute 0x%x does NOT match.",
-					 slot->id, object->handle, pTemplate[j].type);
+				sc_log(context,
+				       "Object %lu/%lu: Attribute 0x%lx does NOT match.",
+				       slot->id, object->handle, pTemplate[j].type);
 				match = 0;
 				break;
 			}
 
 			if (context->debug >= 4) {
-				sc_log(context, "Object %d/%d: Attribute 0x%x matches.",
-					 slot->id, object->handle, pTemplate[j].type);
+				sc_log(context,
+				       "Object %lu/%lu: Attribute 0x%lx matches.",
+				       slot->id, object->handle, pTemplate[j].type);
 			}
 		}
 
 		if (match) {
-			sc_log(context, "Object %d/%d matches\n", slot->id, object->handle);
+			sc_log(context, "Object %lu/%lu matches\n", slot->id,
+			       object->handle);
 			/* Realloc handles - remove restriction on only 32 matching objects -dee */
 			if (operation->num_handles >= operation->allocated_handles) {
 				operation->allocated_handles += SC_PKCS11_FIND_INC_HANDLES;

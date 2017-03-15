@@ -87,7 +87,8 @@ sm_gp_config_get_keyset(struct sc_context *ctx, struct sm_info *sm_info)
 		return SC_ERROR_UNKNOWN_DATA_RECEIVED;
 	}
 
-	sc_log(ctx, "SM type:%X, KMC(%i) %s", sm_info->sm_type, hex_len, sc_dump_hex(hex, hex_len));
+	sc_log(ctx, "SM type:%X, KMC(%"SC_FORMAT_LEN_SIZE_T"u) %s",
+	       sm_info->sm_type, hex_len, sc_dump_hex(hex, hex_len));
 	if (hex_len != 16 && hex_len != 48 )
 		return SC_ERROR_INVALID_DATA;
 
@@ -135,7 +136,8 @@ sm_cwa_config_get_keyset(struct sc_context *ctx, struct sm_info *sm_info)
 		return SC_ERROR_SM_KEYSET_NOT_FOUND;
 	}
 
-	sc_log(ctx, "keyset::enc(%i) %s", strlen(value), value);
+	sc_log(ctx, "keyset::enc(%"SC_FORMAT_LEN_SIZE_T"u) %s", strlen(value),
+	       value);
 	if (strlen(value) == 16)   {
 		memcpy(cwa_keyset->enc, value, 16);
 	}
@@ -147,7 +149,8 @@ sm_cwa_config_get_keyset(struct sc_context *ctx, struct sm_info *sm_info)
 			return SC_ERROR_UNKNOWN_DATA_RECEIVED;
 		}
 
-		sc_log(ctx, "ENC(%i) %s", hex_len, sc_dump_hex(hex, hex_len));
+		sc_log(ctx, "ENC(%"SC_FORMAT_LEN_SIZE_T"u) %s", hex_len,
+		       sc_dump_hex(hex, hex_len));
 		if (hex_len != 16)
 			return SC_ERROR_INVALID_DATA;
 
@@ -167,7 +170,8 @@ sm_cwa_config_get_keyset(struct sc_context *ctx, struct sm_info *sm_info)
 		return SC_ERROR_SM_KEYSET_NOT_FOUND;
 	}
 
-	sc_log(ctx, "keyset::mac(%i) %s", strlen(value), value);
+	sc_log(ctx, "keyset::mac(%"SC_FORMAT_LEN_SIZE_T"u) %s", strlen(value),
+	       value);
 	if (strlen(value) == 16)   {
 		memcpy(cwa_keyset->mac, value, 16);
 	}
@@ -179,7 +183,8 @@ sm_cwa_config_get_keyset(struct sc_context *ctx, struct sm_info *sm_info)
 			return SC_ERROR_UNKNOWN_DATA_RECEIVED;
 		}
 
-		sc_log(ctx, "MAC(%i) %s", hex_len, sc_dump_hex(hex, hex_len));
+		sc_log(ctx, "MAC(%"SC_FORMAT_LEN_SIZE_T"u) %s", hex_len,
+		       sc_dump_hex(hex, hex_len));
 		if (hex_len != 16)
 			return SC_ERROR_INVALID_DATA;
 
@@ -203,7 +208,9 @@ sm_cwa_config_get_keyset(struct sc_context *ctx, struct sm_info *sm_info)
 	}
 
 	if (hex_len != sizeof(cwa_session->ifd.sn))   {
-		sc_log(ctx, "SM get 'ifd_serial': invalid IFD serial length: %i", hex_len);
+		sc_log(ctx,
+		       "SM get 'ifd_serial': invalid IFD serial length: %"SC_FORMAT_LEN_SIZE_T"u",
+		       hex_len);
 		return SC_ERROR_UNKNOWN_DATA_RECEIVED;
 	}
 
@@ -313,7 +320,8 @@ finalize(struct sc_context *ctx, struct sm_info *sm_info, struct sc_remote_data 
 	int rv = SC_ERROR_INTERNAL;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "SM finalize: out buffer(%i) %p", out_len, out);
+	sc_log(ctx, "SM finalize: out buffer(%"SC_FORMAT_LEN_SIZE_T"u) %p",
+	       out_len, out);
 	if (!sm_info || !rdata)
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 
