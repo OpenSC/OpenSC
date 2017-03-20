@@ -1976,9 +1976,7 @@ static void	parse_certificate(struct x509cert_info *cert,
 	if (strstr((char *)data, "-----BEGIN CERTIFICATE-----")) {
 		BIO *mem = BIO_new_mem_buf(data, len);
 		x = PEM_read_bio_X509(mem, NULL, NULL, NULL);
-		/* Update what is written to the card to be DER encoded
-		 * If we use  --attr-from  do not check anything and write
-		 * blob to the card */
+		/* Update what is written to the card to be DER encoded */
 		if (contents != NULL) {
 			unsigned char *contents_pointer = contents;
 			*contents_len = i2d_X509(x, &contents_pointer);
@@ -1992,6 +1990,10 @@ static void	parse_certificate(struct x509cert_info *cert,
 	if (!x) {
 		util_fatal("OpenSSL error during X509 certificate parsing");
 	}
+	/* convert only (if needed) */
+	if (cert == NULL)
+		return;
+
 	/* check length first */
 	n = i2d_X509_NAME(X509_get_subject_name(x), NULL);
 	if (n < 0)
@@ -2277,14 +2279,28 @@ static int write_object(CK_SESSION_HANDLE session)
 		fclose(f);
 		need_to_parse_certdata = 1;
 	}
-	if (opt_object_class == CKO_CERTIFICATE && !opt_attr_from_file) {
-		memcpy(certdata, contents, MAX_OBJECT_SIZE);
-		certdata_len = contents_len;
-		need_to_parse_certdata = 1;
+	if (opt_object_class == CKO_CERTIFICATE) {
+		if (opt_attr_from_file) {
+			/* Convert  contents  from PEM to DER if needed
+			 * certdata  already read and will be validated later
+			 */
+#ifdef ENABLE_OPENSSL
+			parse_certificate(NULL, contents, contents_len, contents, &contents_len);
+#else
+			util_fatal("No OpenSSL support, cannot parse certificate");
+#endif
+		} else {
+			memcpy(certdata, contents, MAX_OBJECT_SIZE);
+			certdata_len = contents_len;
+			need_to_parse_certdata = 1;
+		}
 	}
 
 	if (need_to_parse_certdata) {
 #ifdef ENABLE_OPENSSL
+		/* Validate and get the certificate fields (from certdata)
+		 * and convert PEM to DER if needed
+		 */
 		parse_certificate(&cert, certdata, certdata_len,
 			(opt_attr_from_file ? NULL : contents), &contents_len);
 #else
