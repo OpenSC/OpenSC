@@ -482,6 +482,14 @@
                                         </para></listitem>
 				</varlistentry>
 
+				<varlistentry>
+					<term>
+						<option>--generate-random</option> <replaceable>num</replaceable>
+					</term>
+					<listitem><para>Get <replaceable>num</replaceable> bytes of random data.
+                                        </para></listitem>
+				</varlistentry>
+
 			</variablelist>
 		</para>
 	</refsect1>
