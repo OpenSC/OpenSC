@@ -170,6 +170,8 @@ cardos_select_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	} else {
 		preferred = current;
 		/* PINs are even numbered, PUKs are odd */
+		if (preferred >= 125)
+			return SC_ERROR_TOO_MANY_OBJECTS;
 		if (!(preferred & 1))
 			preferred++;
 	}
