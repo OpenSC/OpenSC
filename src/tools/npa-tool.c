@@ -81,6 +81,21 @@ static int getline(char **lineptr, size_t *n, FILE *stream)
 }
 #endif
 
+/* we don't want to export this from libopensc so we implement it here, again */
+#include <openssl/asn1t.h>
+
+#define ASN1_APP_IMP_OPT(stname, field, type, tag) ASN1_EX_TYPE(ASN1_TFLG_IMPTAG|ASN1_TFLG_APPLICATION|ASN1_TFLG_OPTIONAL, tag, stname, field, type)
+#define ASN1_APP_IMP(stname, field, type, tag) ASN1_EX_TYPE(ASN1_TFLG_IMPTAG|ASN1_TFLG_APPLICATION, tag, stname, field, type)
+
+/* 0x67
+ * Auxiliary authenticated data */
+ASN1_ITEM_TEMPLATE(ASN1_AUXILIARY_DATA) = 
+	ASN1_EX_TEMPLATE_TYPE(
+			ASN1_TFLG_SEQUENCE_OF|ASN1_TFLG_IMPTAG|ASN1_TFLG_APPLICATION,
+			7, AuxiliaryAuthenticatedData, CVC_DISCRETIONARY_DATA_TEMPLATE)
+ASN1_ITEM_TEMPLATE_END(ASN1_AUXILIARY_DATA)
+IMPLEMENT_ASN1_FUNCTIONS(ASN1_AUXILIARY_DATA)
+
 /** 
  * @brief Print binary data to a file stream
  * 
