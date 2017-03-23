@@ -38,7 +38,7 @@ LIBS = \
 	$(top_builddir)/src/common/libcompat.la
 
 sceac_example_SOURCES = sceac-example.c
-sceac_example_LDADD = $(top_builddir)/src/sm/libsmeac.la $(top_builddir)/src/libopensc/libopensc.la $(OPENPACE_LIBS)
+sceac_example_LDADD = $(top_builddir)/src/libopensc/libopensc.la $(OPENPACE_LIBS)
 sceac_example_CFLAGS = -I$(top_srcdir)/src $(OPENPACE_CFLAGS)
 
 opensc_tool_SOURCES = opensc-tool.c util.c
@@ -78,7 +78,6 @@ gids_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
 
 npa_tool_SOURCES = npa-tool.c fread_to_eof.c $(NPA_TOOL_BUILT_SOURCES)
 npa_tool_LDADD = $(top_builddir)/src/libopensc/libopensc.la \
-				 $(top_builddir)/src/sm/libsmeac.la \
 				 $(OPENPACE_LIBS)
 npa_tool_CFLAGS = -I$(top_srcdir)/src $(OPENPACE_CFLAGS) $(OPENSSL_CFLAGS)
 

@@ -14,8 +14,6 @@ LIBS = $(TOPDIR)\src\common\common.lib \
 	   $(TOPDIR)\src\libopensc\opensc.lib \
 	   $(TOPDIR)\src\pkcs15init\pkcs15init.lib \
 	   $(TOPDIR)\src\common\libpkcs11.lib \
-	   $(TOPDIR)\src\sm\libsmeac.lib \
-	   $(TOPDIR)\src\sm\libsmiso.lib \
 	   $(TOPDIR)\src\common\libscdl.lib
 
 all: $(TARGETS)
