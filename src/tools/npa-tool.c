@@ -486,7 +486,7 @@ main (int argc, char **argv)
 		} else if (cmdline.puk_given) {
 			pace_input.pin_id = PACE_PUK;
 			pace_input.pin_length = 10;
-			maxsecret = 9999999999LLU;
+			maxsecret = 9999999999;
 			if (puk) {
 				if (sscanf(puk, "%llu", &secret) != 1) {
 					fprintf(stderr, "%s is not an unsigned long long.\n",

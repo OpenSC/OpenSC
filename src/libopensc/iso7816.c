@@ -999,6 +999,8 @@ iso7816_build_pin_apdu(struct sc_card *card, struct sc_apdu *apdu,
 
 	switch (data->pin_type) {
 	case SC_AC_CHV:
+		/* fall through */
+	case SC_AC_SESSION:
 		break;
 	default:
 		return SC_ERROR_INVALID_ARGUMENTS;

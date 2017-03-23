@@ -338,7 +338,7 @@ load_parameters(sc_context_t *ctx, scconf_block *block, struct _sc_ctx_options *
 #ifdef _WIN32
 		expanded_len = PATH_MAX;
 		expanded_len = ExpandEnvironmentStringsA(val, expanded_val, expanded_len);
-		if (expanded_len > 0)
+		if (0 < expanded_len && expanded_len < sizeof expanded_val)
 			val = expanded_val;
 #endif
 		sc_ctx_log_to_file(ctx, val);

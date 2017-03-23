@@ -56,10 +56,13 @@
 /* Information the driver maintains between calls */
 typedef struct sc_hsm_private_data {
 	const sc_security_env_t *env;
+	sc_file_t *dffcp;
 	u8 algorithm;
 	int noExtLength;
 	char *serialno;
 	u8 sopin[8];
+	u8 *EF_C_DevAut;
+	size_t EF_C_DevAut_len;
 } sc_hsm_private_data_t;
 
 

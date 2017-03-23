@@ -609,10 +609,18 @@ if test "${cvcdir}" = false ; then
     cvcdir="`$PKG_CONFIG libeac --variable=cvcdir`"
 fi
 if test "${cvcdir}" = "" ; then
-    AC_MSG_WARN([use --enable-cvcdir=DIR])
+	case "${host}" in
+		*-mingw*|*-winnt*|*-cygwin*)
+			cvcdir="%PROGRAMFILES%\\\OpenSC Project\\\OpenSC\\\cvc"
+			;;
+		*)
+			AC_MSG_WARN([use --enable-cvcdir=DIR])
+			;;
+	esac
 fi
 CVCDIR="${cvcdir}"
 AC_SUBST(CVCDIR)
+AC_DEFINE_UNQUOTED([CVCDIR], ["${CVCDIR}"], [CVC directory])
 
 AC_ARG_ENABLE(x509dir,
               AC_HELP_STRING([--enable-x509dir=DIR],
@@ -628,10 +636,18 @@ then
 fi
 if test -z "${x509dir}"
 then
-    AC_MSG_WARN([use --enable-x509dir=DIR])
+	case "${host}" in
+		*-mingw*|*-winnt*|*-cygwin*)
+			x509dir="%PROGRAMFILES%\\\OpenSC Project\\\OpenSC\\\x509"
+			;;
+		*)
+			AC_MSG_WARN([use --enable-x509dir=DIR])
+			;;
+	esac
 fi
 X509DIR="${x509dir}"
 AC_SUBST(X509DIR)
+AC_DEFINE_UNQUOTED([X509DIR], ["${X509DIR}"], [CVC directory])
 
 case "${enable_openpace}" in
 	no)
@@ -905,7 +921,9 @@ AM_CONDITIONAL([ENABLE_THREAD_LOCKING], [test "${enable_thread_locking}" = "yes"
 AM_CONDITIONAL([ENABLE_ZLIB], [test "${enable_zlib}" = "yes"])
 AM_CONDITIONAL([ENABLE_READLINE], [test "${enable_readline}" = "yes"])
 AM_CONDITIONAL([ENABLE_OPENSSL], [test "${enable_openssl}" = "yes"])
+AM_CONDITIONAL([ENABLE_OPENPACE], [test "${enable_openpace}" = "yes"])
 AM_CONDITIONAL([ENABLE_CRYPTOTOKENKIT], [test "${enable_cryptotokenkit}" = "yes"])
+AM_CONDITIONAL([ENABLE_OPENCT], [test "${enable_openct}" = "yes"])
 AM_CONDITIONAL([ENABLE_DOC], [test "${enable_doc}" = "yes"])
 AM_CONDITIONAL([WIN32], [test "${WIN32}" = "yes"])
 AM_CONDITIONAL([CYGWIN], [test "${CYGWIN}" = "yes"])

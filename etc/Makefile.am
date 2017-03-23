@@ -1,7 +1,9 @@
+CV_CERTS = UTSRCACC100001 DESRCACC100001
+
 MAINTAINERCLEANFILES = $(srcdir)/Makefile.in
 DISTCLEANFILES = opensc.conf
 
-EXTRA_DIST = Makefile.mak
+EXTRA_DIST = $(CV_CERTS) Makefile.mak
 
 SUFFIXES = .in
 
@@ -38,3 +40,12 @@ install-exec-hook: opensc.conf
 
 uninstall-hook: opensc.conf
 	rm -f "$(DESTDIR)$(sysconfdir)/opensc.conf.new" "$(DESTDIR)$(sysconfdir)/opensc.conf"
+
+if ENABLE_OPENPACE
+install-data-local:
+	$(MKDIR_P) "$(DESTDIR)$(CVCDIR)"
+	for cert in $(CV_CERTS);   do $(INSTALL_DATA) $(srcdir)/$${cert} "$(DESTDIR)$(CVCDIR)";  done
+
+uninstall-local:
+	for cert in $(CV_CERTS);   do rm -f "$(DESTDIR)$(CVCDIR)/$${cert}";  done
+endif

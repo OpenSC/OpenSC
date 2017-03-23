@@ -82,6 +82,7 @@ int sc_pkcs15_is_emulation_only(sc_card_t *card)
 		case SC_CARD_TYPE_OPENPGP_V2:
 		case SC_CARD_TYPE_OPENPGP_GNUK:
 		case SC_CARD_TYPE_SC_HSM:
+		case SC_CARD_TYPE_SC_HSM_SOC:
 		case SC_CARD_TYPE_DNIE_BASE:
 		case SC_CARD_TYPE_DNIE_BLANK:
 		case SC_CARD_TYPE_DNIE_ADMIN:

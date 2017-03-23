@@ -1762,13 +1762,11 @@ int perform_chip_authentication(sc_card_t *card,
 		unsigned char **ef_cardsecurity, size_t *ef_cardsecurity_len)
 {
 	int r;
-	BUF_MEM *picc_pubkey = NULL, *nonce = NULL, *token = NULL,
-			*eph_pub_key = NULL;
+	BUF_MEM *picc_pubkey = NULL;
 	struct iso_sm_ctx *isosmctx;
 	struct npa_sm_ctx *eacsmctx;
 
-	if (!card || !card->sm_ctx.info.cmd_data
-			|| !ef_cardsecurity || !ef_cardsecurity_len) {
+	if (!card || !ef_cardsecurity || !ef_cardsecurity_len) {
 		r = SC_ERROR_INVALID_ARGUMENTS;
 		goto err;
 	}
@@ -1778,7 +1776,6 @@ int perform_chip_authentication(sc_card_t *card,
 		goto err;
 	}
 	eacsmctx = isosmctx->priv_data;
-
 
 	/* Passive Authentication */
 	if (!*ef_cardsecurity && !*ef_cardsecurity_len) {
@@ -1796,8 +1793,42 @@ int perform_chip_authentication(sc_card_t *card,
 		goto err;
 	}
 
+	r = perform_chip_authentication_ex(card, eacsmctx->ctx,
+			(unsigned char *) picc_pubkey->data, picc_pubkey->length);
 
-	r = npa_mse_set_at_ca(card, eacsmctx->ctx->ca_ctx->protocol);
+err:
+	BUF_MEM_clear_free(picc_pubkey);
+
+	if (card)
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	else
+		return r;
+}
+
+int perform_chip_authentication_ex(sc_card_t *card, void *eac_ctx,
+		unsigned char *picc_pubkey, size_t picc_pubkey_len)
+{
+	int r;
+	BUF_MEM *picc_pubkey_buf = NULL, *nonce = NULL, *token = NULL,
+			*eph_pub_key = NULL;
+	EAC_CTX *ctx = eac_ctx;
+
+	if (!card || !ctx) {
+		r = SC_ERROR_INVALID_ARGUMENTS;
+		goto err;
+	}
+
+
+	picc_pubkey_buf = BUF_MEM_create_init(picc_pubkey, picc_pubkey_len);
+	if (!picc_pubkey_buf) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not verify EF.CardSecurity.");
+		ssl_error(card->ctx);
+		r = SC_ERROR_INTERNAL;
+		goto err;
+	}
+
+
+	r = npa_mse_set_at_ca(card, ctx->ca_ctx->protocol);
 	if (r < 0) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not select protocol proberties "
 				"(MSE: Set AT failed).");
@@ -1805,7 +1836,7 @@ int perform_chip_authentication(sc_card_t *card,
 	}
 
 
-	eph_pub_key = CA_STEP2_get_eph_pubkey(eacsmctx->ctx);
+	eph_pub_key = CA_STEP2_get_eph_pubkey(ctx);
 	if (!eph_pub_key) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not derive keys.");
 		ssl_error(card->ctx);
@@ -1819,7 +1850,7 @@ int perform_chip_authentication(sc_card_t *card,
 	}
 
 
-	if (!CA_STEP4_compute_shared_secret(eacsmctx->ctx, picc_pubkey)) {
+	if (!CA_STEP4_compute_shared_secret(ctx, picc_pubkey_buf)) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not compute shared secret.");
 		ssl_error(card->ctx);
 		r = SC_ERROR_INTERNAL;
@@ -1827,7 +1858,7 @@ int perform_chip_authentication(sc_card_t *card,
 	}
 
 
-	if (!CA_STEP6_derive_keys(eacsmctx->ctx, nonce, token)) {
+	if (!CA_STEP6_derive_keys(ctx, nonce, token)) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not derive keys.");
 		ssl_error(card->ctx);
 		r = SC_ERROR_INTERNAL;
@@ -1836,15 +1867,19 @@ int perform_chip_authentication(sc_card_t *card,
 
 
 	/* Initialize secure channel */
-	if (!EAC_CTX_set_encryption_ctx(eacsmctx->ctx, EAC_ID_CA)) {
+	if (!EAC_CTX_set_encryption_ctx(ctx, EAC_ID_CA)) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not initialize encryption.");
 		ssl_error(card->ctx);
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
 
+	if (card->sm_ctx.sm_mode != SM_MODE_TRANSMIT) {
+		r = npa_sm_start(card, ctx, NULL, 0, NULL, 0);
+	}
+
 err:
-	BUF_MEM_clear_free(picc_pubkey);
+	BUF_MEM_clear_free(picc_pubkey_buf);
 	BUF_MEM_clear_free(nonce);
 	BUF_MEM_clear_free(token);
 	BUF_MEM_clear_free(eph_pub_key);
@@ -2367,6 +2402,12 @@ int perform_terminal_authentication(sc_card_t *card,
 
 int perform_chip_authentication(sc_card_t *card,
 		unsigned char **ef_cardsecurity, size_t *ef_cardsecurity_len)
+{
+	return SC_ERROR_NOT_SUPPORTED;
+}
+
+int perform_chip_authentication_ex(sc_card_t *card, void *eac_ctx,
+		unsigned char *picc_pubkey, size_t picc_pubkey_len)
 {
 	return SC_ERROR_NOT_SUPPORTED;
 }
