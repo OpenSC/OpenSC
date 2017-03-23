@@ -14,6 +14,7 @@ addons:
     - wine
     - xsltproc
     - gengetopt
+    - help2man
   coverity_scan:
     project:
       name: "OpenSC/OpenSC"
@@ -51,7 +52,7 @@ before_install:
         brew update;
         brew uninstall libtool;
         brew install libtool;
-        brew install gengetopt;
+        brew install gengetopt help2man;
     fi
 
 before_script:

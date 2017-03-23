@@ -73,8 +73,8 @@ libopensc_static_la_SOURCES = $(libopensc_la_SOURCES_BASE)
 if WIN32
 libopensc_la_SOURCES += $(top_builddir)/win32/versioninfo.rc
 endif
-libopensc_la_LIBADD = $(OPENPACE_LIBS) $(OPTIONAL_OPENSSL_LIBS) $(OPTIONAL_OPENCT_LIBS) \
-	$(OPTIONAL_ZLIB_LIBS) \
+libopensc_la_LIBADD = $(OPENPACE_LIBS) $(OPTIONAL_OPENSSL_LIBS) \
+	$(OPTIONAL_OPENCT_LIBS) $(OPTIONAL_ZLIB_LIBS) \
 	$(top_builddir)/src/pkcs15init/libpkcs15init.la \
 	$(top_builddir)/src/scconf/libscconf.la \
 	$(top_builddir)/src/common/libscdl.la \

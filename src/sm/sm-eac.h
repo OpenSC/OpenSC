@@ -230,6 +230,8 @@ int perform_terminal_authentication(sc_card_t *card,
  */
 int perform_chip_authentication(sc_card_t *card,
 		unsigned char **ef_cardsecurity, size_t *ef_cardsecurity_len);
+int perform_chip_authentication_ex(sc_card_t *card, void *eacsmctx,
+		unsigned char *picc_pubkey, size_t picc_pubkey_len);
 
 /** 
  * @brief Sends a reset retry counter APDU

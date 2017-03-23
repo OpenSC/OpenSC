@@ -148,6 +148,7 @@ struct sc_crt {
 #define SC_AC_SEN                       0x00000020 /* Security Environment. */
 #define SC_AC_SCB                       0x00000040 /* IAS/ECC SCB byte. */
 #define SC_AC_IDA                       0x00000080 /* PKCS#15 authentication ID */
+#define SC_AC_SESSION			0x00000100 /* Session PIN */
 
 #define SC_AC_UNKNOWN			0xFFFFFFFE
 #define SC_AC_NEVER			0xFFFFFFFF
