@@ -163,6 +163,7 @@ typedef struct sc_security_env {
 	unsigned long flags;
 	int operation;
 	unsigned int algorithm, algorithm_flags;
+	unsigned int algorithm_hash;
 
 	unsigned int algorithm_ref;
 	struct sc_path file_ref;
@@ -507,6 +508,7 @@ typedef struct sc_card {
 	struct sm_context sm_ctx;
 #endif
 
+	unsigned long  negate_hashes; /*  Dont create pkcs11 mechanisms for these hashes */
 	unsigned int magic;
 } sc_card_t;
 

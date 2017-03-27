@@ -310,6 +310,7 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	u8 buf[1024], *tmp;
 	size_t modlen;
 	unsigned long pad_flags = 0, sec_flags = 0;
+	unsigned int algorithm_hash = 0;
 
 	LOG_FUNC_CALLED(ctx);
 
@@ -358,7 +359,6 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	/* if the card has SC_ALGORITHM_NEED_USAGE set, and the
 	 * key is for signing and decryption, we need to emulate signing */
 	/* TODO: -DEE assume only RSA keys will ever use _NEED_USAGE */
-
 	sc_log(ctx, "supported algorithm flags 0x%X, private key usage 0x%X", alg_info->flags, prkey->usage);
 	if ((alg_info->flags & SC_ALGORITHM_NEED_USAGE) &&
 		((prkey->usage & USAGE_ANY_SIGN) &&
@@ -383,6 +383,19 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 		r = sc_pkcs15_decipher(p15card, obj,flags, buf, modlen, out, outlen);
 		LOG_FUNC_RETURN(ctx, r);
 	}
+
+	/* 
+	 * Is input know hash? Some cards need to know for set_security_env
+	 * even if the calling application did the hash and set SC_ALGORITHM_RSA_HASH_NONE
+	 */
+	senv.algorithm_hash = flags;
+	if ((senv.algorithm_hash & SC_ALGORITHM_RSA_HASHES) == 0) {
+		/* don't know what hash if any it might be, see if it is known */
+		if(sc_pkcs1_strip_digest_info_prefix(&algorithm_hash, in, inlen, NULL, NULL) == SC_SUCCESS) {
+			senv.algorithm_hash |= algorithm_hash;
+		}
+	}
+	sc_log(ctx, "algorithm_hash: 0x%8.8x",senv.algorithm_hash);
 
 
 	/* If the card doesn't support the requested algorithm, see if we
