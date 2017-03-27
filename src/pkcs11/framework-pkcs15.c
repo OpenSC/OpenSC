@@ -4723,9 +4723,18 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 		/* Only if card did not lists the hashs, will we
 		 * help it a little, by adding all the OpenSSL hashes
 		 * that have PKCS#11 mechanisms.
+		 *
+		 * The card lists what hashes it can do on the card,
+		 * but it may only accept some hashes done in software 
+		 * So restrict to this set of hashes first.
 		 */
+		if (card->restrict_to_these_hashes & SC_ALGORITHM_RSA_HASHES) {
+			rsa_flags |=  (card->restrict_to_these_hashes & SC_ALGORITHM_RSA_HASHES);
+		}
+		/* card must accept some hash, so if non specified, wil accept all */
 		if (!(rsa_flags & SC_ALGORITHM_RSA_HASHES)) {
 			rsa_flags |= SC_ALGORITHM_RSA_HASHES;
+
 #if OPENSSL_VERSION_NUMBER <  0x00908000L
 		/* turn off hashes not in openssl 0.9.8 */
 			rsa_flags &= ~(SC_ALGORITHM_RSA_HASH_SHA256 | SC_ALGORITHM_RSA_HASH_SHA384 | SC_ALGORITHM_RSA_HASH_SHA512 | SC_ALGORITHM_RSA_HASH_SHA224);
