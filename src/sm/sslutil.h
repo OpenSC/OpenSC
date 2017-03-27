@@ -30,7 +30,7 @@
 	unsigned long _r; \
 	ERR_load_crypto_strings(); \
 	for (_r = ERR_get_error(); _r; _r = ERR_get_error()) { \
-		sc_debug(ctx, SC_LOG_DEBUG_VERBOSE, ERR_error_string(_r, NULL)); \
+		sc_debug(ctx, SC_LOG_DEBUG_VERBOSE, "%s", ERR_error_string(_r, NULL)); \
 	} \
 	ERR_free_strings(); \
 }
