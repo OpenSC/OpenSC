@@ -528,7 +528,7 @@ static int npa_pace_verify(struct sc_card *card,
 			r = perform_pace(card, pace_input, &pace_output, EAC_TR_VERSION_2_02);
 
 			if (r == SC_SUCCESS) {
-				sc_log(card->ctx, "%s resumed.\n");
+				sc_log(card->ctx, "%s resumed.\n", npa_secret_name(pin_reference));
 				if (tries_left) {
 					*tries_left = MAX_PIN_TRIES;
 				}
