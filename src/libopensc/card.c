@@ -164,7 +164,8 @@ size_t sc_get_max_send_size(const sc_card_t *card)
 	max_send_size = card->max_send_size;
 
 	/* initialize max_send_size to a meaningfull value */
-	if (card->caps & SC_CARD_CAP_APDU_EXT) {
+	if (card->caps & SC_CARD_CAP_APDU_EXT
+			&& card->reader->active_protocol != SC_PROTO_T0) {
 		if (!max_send_size)
 			max_send_size = 65535;
 	} else {
