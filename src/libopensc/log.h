@@ -52,11 +52,30 @@ enum {
 #define sc_log _sc_log
 #endif
 
-void sc_do_log(struct sc_context *ctx, int level, const char *file, int line, const char *func, 
+#if defined(__GNUC__)
+#if defined(__MINGW32__) && defined (__MINGW_PRINTF_FORMAT)
+#define SC_PRINTF_FORMAT __MINGW_PRINTF_FORMAT
+#else
+#define SC_PRINTF_FORMAT printf
+#endif
+
+/* GCC can check format and param correctness for us */
+void sc_do_log(struct sc_context *ctx, int level, const char *file, int line,
+	       const char *func, const char *format, ...)
+	__attribute__ ((format (SC_PRINTF_FORMAT, 6, 7)));
+void sc_do_log_noframe(sc_context_t *ctx, int level, const char *format,
+		       va_list args) __attribute__ ((format (SC_PRINTF_FORMAT, 3, 0)));
+void _sc_debug(struct sc_context *ctx, int level, const char *format, ...)
+	__attribute__ ((format (SC_PRINTF_FORMAT, 3, 4)));
+void _sc_log(struct sc_context *ctx, const char *format, ...)
+	__attribute__ ((format (SC_PRINTF_FORMAT, 2, 3)));
+#else
+void sc_do_log(struct sc_context *ctx, int level, const char *file, int line, const char *func,
 		const char *format, ...);
 void sc_do_log_noframe(sc_context_t *ctx, int level, const char *format, va_list args);
 void _sc_debug(struct sc_context *ctx, int level, const char *format, ...);
 void _sc_log(struct sc_context *ctx, const char *format, ...);
+#endif
 /** 
  * @brief Log binary data to a sc context
  * 

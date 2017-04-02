@@ -962,7 +962,9 @@ pgp_get_blob(sc_card_t *card, pgp_blob_t *blob, unsigned int id,
 			return SC_SUCCESS;
 		}
 		else
-			sc_log(card->ctx, "Not enough memory to create blob for DO %X");
+			sc_log(card->ctx,
+			       "Not enough memory to create blob for DO %X",
+			       id);
 	}
 
 	return SC_ERROR_FILE_NOT_FOUND;
@@ -1361,7 +1363,9 @@ gnuk_write_certificate(sc_card_t *card, const u8 *buf, size_t length)
 		size_t plen = MIN(length - i*256, 256);
 		u8 roundbuf[256];	/* space to build APDU data with even length for Gnuk */
 
-		sc_log(card->ctx, "Write part %d from offset 0x%X, len %d", i+1, part, plen);
+		sc_log(card->ctx,
+		       "Write part %"SC_FORMAT_LEN_SIZE_T"u from offset 0x%"SC_FORMAT_LEN_SIZE_T"X, len %"SC_FORMAT_LEN_SIZE_T"u",
+		       i+1, i*256, plen);
 
 		/* 1st chunk: P1 = 0x85, further chunks: P1 = chunk no */
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xD6, (i == 0) ? 0x85 : i, 0);
@@ -1480,7 +1484,9 @@ pgp_put_data(sc_card_t *card, unsigned int tag, const u8 *buf, size_t buf_len)
 	 * If we check here, the driver may be stuck to a limit version number of card.
 	 * 7F21 size is soft-coded, so we can check it. */
 	if (tag == DO_CERT && buf_len > priv->max_cert_size) {
-		sc_log(card->ctx, "Data size %ld exceeds DO size limit %ld.", buf_len, priv->max_cert_size);
+		sc_log(card->ctx,
+		       "Data size %"SC_FORMAT_LEN_SIZE_T"u exceeds DO size limit %"SC_FORMAT_LEN_SIZE_T"u.",
+		       buf_len, priv->max_cert_size);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_WRONG_LENGTH);
 	}
 
@@ -1791,9 +1797,13 @@ pgp_update_new_algo_attr(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_
 	r = pgp_seek_blob(card, priv->mf, (0x00C0 | key_info->keytype), &algo_blob);
 	LOG_TEST_RET(card->ctx, r, "Cannot get old algorithm attributes");
 	old_modulus_len = bebytes2ushort(algo_blob->data + 1);  /* modulus length is coded in byte 2 & 3 */
-	sc_log(card->ctx, "Old modulus length %d, new %d.", old_modulus_len, key_info->modulus_len);
+	sc_log(card->ctx,
+	       "Old modulus length %d, new %"SC_FORMAT_LEN_SIZE_T"u.",
+	       old_modulus_len, key_info->modulus_len);
 	old_exponent_len = bebytes2ushort(algo_blob->data + 3);  /* exponent length is coded in byte 3 & 4 */
-	sc_log(card->ctx, "Old exponent length %d, new %d.", old_exponent_len, key_info->exponent_len);
+	sc_log(card->ctx,
+	       "Old exponent length %d, new %"SC_FORMAT_LEN_SIZE_T"u.",
+	       old_exponent_len, key_info->exponent_len);
 
 	/* Modulus */
 	/* If passed modulus_len is zero, it means using old key size */
@@ -2103,7 +2113,9 @@ pgp_update_card_algorithms(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *ke
 	LOG_FUNC_CALLED(card->ctx);
 
 	if (id > card->algorithm_count) {
-		sc_log(card->ctx, "This key ID %d is out of the card's algorithm list.");
+		sc_log(card->ctx,
+		       "This key ID %u is out of the card's algorithm list.",
+		       (unsigned int)id);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 
@@ -2486,7 +2498,9 @@ pgp_store_key(sc_card_t *card, sc_cardctl_openpgp_keystore_info_t *key_info)
 
 	/* we only support exponent of maximum 32 bits */
 	if (key_info->e_len > 4) {
-		sc_log(card->ctx, "Exponent %bit (>32) is not supported.", key_info->e_len*8);
+		sc_log(card->ctx,
+		       "Exponent %"SC_FORMAT_LEN_SIZE_T"u-bit (>32) is not supported.",
+		       key_info->e_len * 8);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 	}
 

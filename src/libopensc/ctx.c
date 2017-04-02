@@ -111,6 +111,7 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 	{ "muscle",	(void *(*)(void)) sc_get_muscle_driver },
 	{ "atrust-acos",(void *(*)(void)) sc_get_atrust_acos_driver },
 	{ "PIV-II",	(void *(*)(void)) sc_get_piv_driver },
+	{ "cac",	(void *(*)(void)) sc_get_cac_driver },
 	{ "itacns",	(void *(*)(void)) sc_get_itacns_driver },
 	{ "isoApplet",	(void *(*)(void)) sc_get_isoApplet_driver },
 #ifdef ENABLE_ZLIB
@@ -119,6 +120,7 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 	{ "openpgp",	(void *(*)(void)) sc_get_openpgp_driver },
 	{ "jpki",	(void *(*)(void)) sc_get_jpki_driver },
 	{ "coolkey",	(void *(*)(void)) sc_get_coolkey_driver },
+	{ "npa",	(void *(*)(void)) sc_get_npa_driver },
 	/* The default driver should be last, as it handles all the
 	 * unrecognized cards. */
 	{ "default",	(void *(*)(void)) sc_get_default_driver },
@@ -139,8 +141,7 @@ sc_ctx_win32_get_config_value(char *name_env, char *name_reg, char *name_key,
 #ifdef _WIN32
 	char temp[PATH_MAX + 1];
 	char *value = NULL;
-	int temp_len = PATH_MAX;
-	int rv = SC_ERROR_INTERNAL;
+	DWORD temp_len = PATH_MAX;
 	long rc;
 	HKEY hKey;
 
@@ -427,7 +428,7 @@ static void *load_dynamic_driver(sc_context_t *ctx, void **dll, const char *name
 	const char *(**tmodv)(void) = &modversion;
 
 	if (name == NULL) { /* should not occurr, but... */
-		sc_log(ctx, "No module specified", name);
+		sc_log(ctx, "No module specified");
 		return NULL;
 	}
 	libname = find_library(ctx, name);

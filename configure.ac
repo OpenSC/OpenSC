@@ -126,6 +126,12 @@ AC_DEFINE_UNQUOTED([DEBUG_FILE], ["${DEBUG_FILE}"], [Debug file])
 AC_DEFINE_UNQUOTED([PROFILE_DIR], ["${PROFILE_DIR}"], [Directory of profiles])
 AC_DEFINE_UNQUOTED([PROFILE_DIR_DEFAULT], ["${PROFILE_DIR_DEFAULT}"], [Default directory of profiles])
 
+case "${host}" in
+	*-mingw*)
+		CPPFLAGS="${CPPFLAGS} -D__USE_MINGW_ANSI_STDIO=1"
+	;;
+esac
+
 AC_ARG_ENABLE(
 	[strict],
 	[AS_HELP_STRING([--disable-strict],[disable strict compile mode @<:@disabled@:>@])],
@@ -166,6 +172,13 @@ AC_ARG_ENABLE(
 	[AS_HELP_STRING([--enable-openssl],[enable openssl linkage @<:@detect@:>@])],
 	,
 	[enable_openssl="detect"]
+)
+
+AC_ARG_ENABLE(
+	[openpace],
+	[AS_HELP_STRING([--enable-openpace],[enable OpenPACE linkage @<:@detect@:>@])],
+	,
+	[enable_openpace="detect"]
 )
 
 AC_ARG_ENABLE(
@@ -354,7 +367,7 @@ AC_FUNC_ERROR_AT_LINE
 AC_FUNC_STAT
 AC_FUNC_VPRINTF
 AC_CHECK_FUNCS([ \
-	getpass gettimeofday memset mkdir \
+	getpass gettimeofday getline memset mkdir \
 	strdup strerror getopt_long getopt_long_only \
 	strlcpy strlcat strnlen
 ])
@@ -398,16 +411,23 @@ if test "${WIN32}" = "no"; then
 fi
 
 if test "${enable_thread_locking}" = "yes"; then
-	CPPFLAGS="${CPPFLAGS} -DPKCS11_THREAD_LOCKING"
+	OPENSC_PKCS11_PTHREAD_CFLAGS="${PTHREAD_CFLAGS} -DPKCS11_THREAD_LOCKING"
+else
+	OPENSC_PKCS11_PTHREAD_CFLAGS=""
 fi
+AC_SUBST(OPENSC_PKCS11_PTHREAD_CFLAGS)
 
 if test "${enable_minidriver}" = "yes"; then
 	dnl win32 special test for minidriver
 	AC_CHECK_HEADER(
 		[cardmod.h],
 		,
-		[AC_MSG_ERROR([cardmod.h is not found and required for minidriver])]
-	)
+		[AC_MSG_ERROR([cardmod.h from CNG is required for minidriver])],
+		[#if defined(__MINGW32__)
+#include "${srcdir}/src/minidriver/cardmod-mingw-compat.h"
+#endif
+	])
+
 	AC_DEFINE([ENABLE_MINIDRIVER], [1], [Enable minidriver support])
 fi
 
@@ -549,21 +569,84 @@ else
 	OPENSSL_LIBS=""
 fi
 
-if test "${enable_sm}" = "yes"; then
-	AC_DEFINE([ENABLE_SM], [1], [Enable secure messaging support])
 
-	DEFAULT_SM_MODULE="${LIB_PRE}smm-local${DYN_LIB_EXT}"
-	case "${host}" in
-		*-mingw*|*-winnt*|*-cygwin*)
-			DEFAULT_SM_MODULE_PATH="\# module_path = \"\";"
-		;;
-		*)
-			DEFAULT_SM_MODULE="libsmm-local.so"
-			DEFAULT_SM_MODULE_PATH="module_path = \$(libdir);"
-		;;
-	esac
-	AC_DEFINE_UNQUOTED([DEFAULT_SM_MODULE], ["${DEFAULT_SM_MODULE}"], [Default SM module])
-	AC_DEFINE_UNQUOTED([DEFAULT_SM_MODULE_PATH], ["${DEFAULT_SM_MODULE_PATH}"], [Default SM module path])
+
+PKG_CHECK_EXISTS([libeac], [PKG_CHECK_MODULES([OPENPACE], [libeac >= 0.9])],
+                 [AC_MSG_WARN([libeac not found by pkg-config])])
+
+saved_CPPFLAGS="$CPPFLAGS"
+saved_LIBS="$LIBS"
+CPPFLAGS="$CPPFLAGS $OPENPACE_CFLAGS"
+LIBS="$LDFLAGS $OPENPACE_LIBS"
+
+have_openpace="yes"
+AC_CHECK_HEADERS(eac/eac.h, [],
+                 [ AC_MSG_WARN([OpenPACE headers not found])
+                 have_openpace="no" ])
+AC_MSG_CHECKING([for EAC_CTX_init_pace])
+AC_TRY_LINK_FUNC(EAC_CTX_init_pace, [ AC_MSG_RESULT([yes]) ],
+                 [ AC_MSG_WARN([Cannot link against libeac])
+                 have_openpace="no" ])
+
+CPPFLAGS="$saved_CPPFLAGS"
+LIBS="$saved_LIBS"
+
+
+AC_ARG_ENABLE(cvcdir,
+              AC_HELP_STRING([--enable-cvcdir=DIR],
+                             [directory containing CV certificates (default is determined by libeac)]),
+                             [cvcdir="${enableval}"],
+                             [cvcdir=false])
+if test "${cvcdir}" = false ; then
+    cvcdir="`$PKG_CONFIG libeac --variable=cvcdir`"
+fi
+if test "${cvcdir}" = "" ; then
+    AC_MSG_WARN([use --enable-cvcdir=DIR])
+fi
+CVCDIR="${cvcdir}"
+AC_SUBST(CVCDIR)
+
+AC_ARG_ENABLE(x509dir,
+              AC_HELP_STRING([--enable-x509dir=DIR],
+                             [directory containing X.509 certificates (default is determined by libeac)]),
+                             [x509dir="${enableval}"],
+                             [x509dir=false])
+if test "${x509dir}" = false ; then
+    x509dir="`$PKG_CONFIG libeac --variable=x509dir`"
+fi
+if test -z "${x509dir}"
+then
+    x509dir="`$PKG_CONFIG libeac --variable=x509dir`"
+fi
+if test -z "${x509dir}"
+then
+    AC_MSG_WARN([use --enable-x509dir=DIR])
+fi
+X509DIR="${x509dir}"
+AC_SUBST(X509DIR)
+
+case "${enable_openpace}" in
+	no)
+		have_openpace="no"
+	;;
+	detect)
+		if test "${have_openpace}" = "yes"; then
+			enable_openpace="yes"
+		else
+			enable_openpace="no"
+		fi
+	;;
+esac
+
+if test "${enable_openpace}" = "yes"; then
+	if test "${have_openpace}" = "yes"; then
+		AC_DEFINE([ENABLE_OPENPACE], [1], [Use OpenPACE libraries and header files])
+	else
+		AC_MSG_ERROR([OpenPACE linkage required, but no OpenPACE was found])
+	fi
+else
+	OPENPACE_CFLAGS=""
+	OPENPACE_LIBS=""
 fi
 
 if test "${enable_openct}" = "yes"; then
@@ -592,13 +675,8 @@ if test "${enable_pcsc}" = "yes"; then
 			case "${host}" in
 				*-*-darwin*)
 					# Locate the latest SDK.
-					SDKS_PATH="$(xcode-select --print-path)/Platforms/MacOSX.platform/Developer/SDKs"
-					if test -d $SDKS_PATH; then
-					    SDK_PATH="${SDK_PATH:-$SDKS_PATH/$(ls -1 ${SDKS_PATH} | sort -n -t. -k2 -r | head -1)}"
-					    PCSC_CFLAGS="-I$SDK_PATH/System/Library/Frameworks/PCSC.framework/Versions/Current/Headers"
-					else
-					    PCSC_CFLAGS="-I/System/Library/Frameworks/PCSC.framework/Headers"
-					fi
+					SDK_PATH=$(xcrun --sdk macosx --show-sdk-path)
+					PCSC_CFLAGS="-I$SDK_PATH/System/Library/Frameworks/PCSC.framework/Versions/Current/Headers"
 				;;
 				*)
 					PCSC_CFLAGS="-I/usr/include/PCSC"
@@ -649,6 +727,22 @@ case "${host}" in
 		;;
 esac
 
+if test "${enable_sm}" = "yes"; then
+	AC_DEFINE([ENABLE_SM], [1], [Enable secure messaging support])
+
+	DEFAULT_SM_MODULE="${LIB_PRE}smm-local${DYN_LIB_EXT}"
+	case "${host}" in
+		*-mingw*|*-winnt*|*-cygwin*)
+			DEFAULT_SM_MODULE_PATH="\# module_path = \"\";"
+		;;
+		*)
+			DEFAULT_SM_MODULE="libsmm-local.so"
+			DEFAULT_SM_MODULE_PATH="module_path = \$(libdir);"
+		;;
+	esac
+	AC_DEFINE_UNQUOTED([DEFAULT_SM_MODULE], ["${DEFAULT_SM_MODULE}"], [Default SM module])
+	AC_DEFINE_UNQUOTED([DEFAULT_SM_MODULE_PATH], ["${DEFAULT_SM_MODULE_PATH}"], [Default SM module path])
+fi
 
 if test "${with_pkcs11_provider}" = "detect"; then
 	DEFAULT_PKCS11_PROVIDER="opensc-pkcs11${DYN_LIB_EXT}"
@@ -673,6 +767,13 @@ if test "${enable_man}" = "yes" -o "${enable_doc}" = "yes"; then
 	test "${xslstylesheetsdir}" != "no" || AC_MSG_ERROR([Missing xslstylesheetsdir])
 	AC_MSG_RESULT([ok])
 fi
+
+AC_ARG_VAR([HELP2MAN],
+           [absolute path to help2man used for man page generation of npa-tool])
+AC_PATH_PROG(HELP2MAN, help2man, not found)
+AC_ARG_VAR([GENGETOPT],
+           [absolute path to gengetopt used for command line parsing of npa-tool])
+AC_PATH_PROG(GENGETOPT, gengetopt, not found)
 
 OPENSC_FEATURES=""
 if test "${enable_thread_locking}" = "yes"; then
@@ -704,6 +805,18 @@ if test "${enable_pcsc}" = "yes"; then
 fi
 if test "${enable_ctapi}" = "yes"; then
 	OPENSC_FEATURES="${OPENSC_FEATURES} ctapi"
+fi
+
+if test "${enable_minidriver}" = "yes"; then
+	AC_MSG_CHECKING([WiX SDK])
+	AC_CHECK_HEADERS([wcautil.h],[enable_minidriver_ca="yes"],[enable_minidriver_ca="no"])
+	if test "${enable_minidriver_ca}" = "yes"; then
+		AC_MSG_RESULT([found, minidriver setup custom action will be built])
+	else
+		AC_MSG_RESULT([not found, minidriver setup custom action will be skipped])
+	fi
+else
+	enable_minidriver_ca="no"
 fi
 
 AC_DEFINE_UNQUOTED([OPENSC_VERSION_MAJOR], [${OPENSC_VERSION_MAJOR}], [OpenSC version major component])
@@ -770,8 +883,10 @@ AM_CONDITIONAL([ENABLE_DOC], [test "${enable_doc}" = "yes"])
 AM_CONDITIONAL([WIN32], [test "${WIN32}" = "yes"])
 AM_CONDITIONAL([CYGWIN], [test "${CYGWIN}" = "yes"])
 AM_CONDITIONAL([ENABLE_MINIDRIVER], [test "${enable_minidriver}" = "yes"])
+AM_CONDITIONAL([ENABLE_MINIDRIVER_SETUP_CUSTOMACTION], [test "${enable_minidriver_ca}" = "yes"])
 AM_CONDITIONAL([ENABLE_SM], [test "${enable_sm}" = "yes"])
 AM_CONDITIONAL([ENABLE_DNIE_UI], [test "${enable_dnie_ui}" = "yes"])
+AM_CONDITIONAL([ENABLE_NPATOOL], [test "${ENABLE_NPATOOL}" = "yes"])
 AM_CONDITIONAL([GIT_CHECKOUT], [test "${GIT_CHECKOUT}" = "yes"])
 
 if test "${enable_pedantic}" = "yes"; then
@@ -798,7 +913,7 @@ AC_CONFIG_FILES([
 	src/Makefile
 	src/common/Makefile
 	src/libopensc/Makefile
-	src/libsm/Makefile
+	src/sm/Makefile
 	src/pkcs11/Makefile
 	src/pkcs11/versioninfo-pkcs11.rc
 	src/pkcs11/versioninfo-pkcs11-spy.rc
@@ -879,6 +994,8 @@ ZLIB_CFLAGS:             ${ZLIB_CFLAGS}
 ZLIB_LIBS:               ${ZLIB_LIBS}
 OPENSSL_CFLAGS:          ${OPENSSL_CFLAGS}
 OPENSSL_LIBS:            ${OPENSSL_LIBS}
+OPENPACE_CFLAGS:         ${OPENPACE_CFLAGS}
+OPENPACE_LIBS:           ${OPENPACE_LIBS}
 OPENCT_CFLAGS:           ${OPENCT_CFLAGS}
 OPENCT_LIBS:             ${OPENCT_LIBS}
 PCSC_CFLAGS:             ${PCSC_CFLAGS}

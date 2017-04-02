@@ -51,7 +51,8 @@ static int	verbose = 0;
 enum {
 	OPT_SERIAL = 0x100,
 	OPT_LIST_ALG,
-	OPT_VERSION
+	OPT_VERSION,
+	OPT_RESET
 };
 
 static const struct option options[] = {
@@ -67,6 +68,7 @@ static const struct option options[] = {
 	{ "list-files",		0, NULL,		'f' },
 	{ "send-apdu",		1, NULL,		's' },
 	{ "reader",		1, NULL,		'r' },
+	{ "reset",		2, NULL,	OPT_RESET   },
 	{ "card-driver",	1, NULL,		'c' },
 	{ "list-algorithms",    0, NULL,	OPT_LIST_ALG },
 	{ "wait",		0, NULL,		'w' },
@@ -87,6 +89,7 @@ static const char *option_help[] = {
 	"Recursively lists files stored on card",
 	"Sends an APDU in format AA:BB:CC:DD:EE:FF...",
 	"Uses reader number <arg> [0]",
+	"Does card reset of type <cold|warm> [cold]",
 	"Forces the use of driver <arg> [auto-detect]",
 	"Lists algorithms supported by card",
 	"Wait for a card to be inserted",
@@ -642,6 +645,29 @@ static int list_algorithms(void)
 	return 0;
 }
 
+static int card_reset(const char *reset_type)
+{
+	int cold_reset;
+	int r;
+
+	if (reset_type && strcmp(reset_type, "cold") &&
+	    strcmp(reset_type, "warm")) {
+		fprintf(stderr, "Invalid reset type: %s\n", reset_type);
+		return 2;
+	}
+
+	cold_reset = !reset_type || strcmp(reset_type, "cold") == 0;
+
+	r = sc_reset(card, cold_reset);
+	if (r) {
+		fprintf(stderr, "sc_reset(%s) failed: %d\n",
+			cold_reset ? "cold" : "warm", r);
+		return 1;
+	}
+
+	return 0;
+}
+
 int main(int argc, char * const argv[])
 {
 	int err = 0, r, c, long_optind = 0;
@@ -657,9 +683,11 @@ int main(int argc, char * const argv[])
 	int do_print_serial = 0;
 	int do_print_name = 0;
 	int do_list_algorithms = 0;
+	int do_reset = 0;
 	int action_count = 0;
 	const char *opt_driver = NULL;
 	const char *opt_conf_entry = NULL;
+	const char *opt_reset_type = NULL;
 	char **p;
 	sc_context_param_t ctx_param;
 
@@ -744,6 +772,11 @@ int main(int argc, char * const argv[])
 			break;
 		case OPT_LIST_ALG:
 			do_list_algorithms = 1;
+			action_count++;
+			break;
+		case OPT_RESET:
+			do_reset = 1;
+			opt_reset_type = optarg;
 			action_count++;
 			break;
 		}
@@ -851,6 +884,12 @@ int main(int argc, char * const argv[])
 
 	if (do_list_algorithms) {
 		if ((err = list_algorithms()))
+			goto end;
+		action_count--;
+	}
+
+	if (do_reset) {
+		if ((err = card_reset(opt_reset_type)))
 			goto end;
 		action_count--;
 	}

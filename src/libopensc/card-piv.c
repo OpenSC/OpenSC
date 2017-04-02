@@ -483,8 +483,10 @@ static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	sc_log(card->ctx, "%02x %02x %02x %d : %d %d",
-		 ins, p1, p2, sendbuflen, card->max_send_size, card->max_recv_size);
+	sc_log(card->ctx,
+	       "%02x %02x %02x %"SC_FORMAT_LEN_SIZE_T"u : %"SC_FORMAT_LEN_SIZE_T"u %"SC_FORMAT_LEN_SIZE_T"u",
+	       ins, p1, p2, sendbuflen, card->max_send_size,
+	       card->max_recv_size);
 
 	rbuf = rbufinitbuf;
 	rbuflen = sizeof(rbufinitbuf);
@@ -523,14 +525,16 @@ static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 		 apdu.resplen = 0;
 	}
 
-	sc_log(card->ctx, "calling sc_transmit_apdu flags=%x le=%d, resplen=%d, resp=%p",
-		apdu.flags, apdu.le, apdu.resplen, apdu.resp);
+	sc_log(card->ctx,
+	       "calling sc_transmit_apdu flags=%lx le=%"SC_FORMAT_LEN_SIZE_T"u, resplen=%"SC_FORMAT_LEN_SIZE_T"u, resp=%p",
+	       apdu.flags, apdu.le, apdu.resplen, apdu.resp);
 
 	/* with new adpu.c and chaining, this actually reads the whole object */
 	r = sc_transmit_apdu(card, &apdu);
 
-	sc_log(card->ctx, "DEE r=%d apdu.resplen=%d sw1=%02x sw2=%02x",
-			r, apdu.resplen, apdu.sw1, apdu.sw2);
+	sc_log(card->ctx,
+	       "DEE r=%d apdu.resplen=%"SC_FORMAT_LEN_SIZE_T"u sw1=%02x sw2=%02x",
+	       r, apdu.resplen, apdu.sw1, apdu.sw2);
 	if (r < 0) {
 		sc_log(card->ctx, "Transmit failed");
 		goto err;
@@ -575,7 +579,9 @@ static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 		/* if using internal buffer, alloc new one */
 		if (rbuf == rbufinitbuf) {
 			*recvbuf = malloc(rbuflen);
-				sc_log(card->ctx, "DEE got buffer %p len %d",*recvbuf,  rbuflen);
+				sc_log(card->ctx,
+				       "DEE got buffer %p len %"SC_FORMAT_LEN_SIZE_T"u",
+				       *recvbuf, rbuflen);
 			if (*recvbuf == NULL) {
 				r = SC_ERROR_OUT_OF_MEMORY;
 				goto err;
@@ -718,8 +724,9 @@ static int piv_select_aid(sc_card_t* card, u8* aid, size_t aidlen, u8* response,
 	int r;
 
 	LOG_FUNC_CALLED(card->ctx);
-	sc_log(card->ctx, "Got args: aid=%x, aidlen=%d, response=%x, responselen=%d",
-		aid, aidlen, response, responselen ? *responselen : 0);
+	sc_log(card->ctx,
+	       "Got args: aid=%p, aidlen=%"SC_FORMAT_LEN_SIZE_T"u, response=%p, responselen=%"SC_FORMAT_LEN_SIZE_T"u",
+	       aid, aidlen, response, responselen ? *responselen : 0);
 
 	sc_format_apdu(card, &apdu,
 		response == NULL ? SC_APDU_CASE_3_SHORT : SC_APDU_CASE_4_SHORT, 0xA4, 0x04, 0x00);
@@ -945,7 +952,9 @@ piv_get_data(sc_card_t * card, int enumtag, u8 **buf, size_t *buf_len)
 		}
 	}
 
-	sc_log(card->ctx, "buffer for #%d *buf=0x%p len=%d", enumtag, *buf, *buf_len);
+	sc_log(card->ctx,
+	       "buffer for #%d *buf=0x%p len=%"SC_FORMAT_LEN_SIZE_T"u",
+	       enumtag, *buf, *buf_len);
 	if (*buf == NULL && *buf_len > 0) {
 		*buf = malloc(*buf_len);
 		if (*buf == NULL ) {
@@ -978,12 +987,13 @@ piv_get_cached_data(sc_card_t * card, int enumtag, u8 **buf, size_t *buf_len)
 	/* see if we have it cached */
 	if (priv->obj_cache[enumtag].flags & PIV_OBJ_CACHE_VALID) {
 
-		sc_log(card->ctx, "found #%d %p:%d %p:%d",
-				enumtag,
-				priv->obj_cache[enumtag].obj_data,
-				priv->obj_cache[enumtag].obj_len,
-				priv->obj_cache[enumtag].internal_obj_data,
-				priv->obj_cache[enumtag].internal_obj_len);
+		sc_log(card->ctx,
+		       "found #%d %p:%"SC_FORMAT_LEN_SIZE_T"u %p:%"SC_FORMAT_LEN_SIZE_T"u",
+		       enumtag,
+		       priv->obj_cache[enumtag].obj_data,
+		       priv->obj_cache[enumtag].obj_len,
+		       priv->obj_cache[enumtag].internal_obj_data,
+		       priv->obj_cache[enumtag].internal_obj_len);
 
 
 		if (priv->obj_cache[enumtag].obj_len == 0) {
@@ -1020,12 +1030,13 @@ piv_get_cached_data(sc_card_t * card, int enumtag, u8 **buf, size_t *buf_len)
 		*buf = rbuf;
 		*buf_len = r;
 
-		sc_log(card->ctx, "added #%d  %p:%d %p:%d",
-				enumtag,
-				priv->obj_cache[enumtag].obj_data,
-				priv->obj_cache[enumtag].obj_len,
-				priv->obj_cache[enumtag].internal_obj_data,
-				priv->obj_cache[enumtag].internal_obj_len);
+		sc_log(card->ctx,
+		       "added #%d  %p:%"SC_FORMAT_LEN_SIZE_T"u %p:%"SC_FORMAT_LEN_SIZE_T"u",
+		       enumtag,
+		       priv->obj_cache[enumtag].obj_data,
+		       priv->obj_cache[enumtag].obj_len,
+		       priv->obj_cache[enumtag].internal_obj_data,
+		       priv->obj_cache[enumtag].internal_obj_len);
 
 	} else if (r == 0 || r == SC_ERROR_FILE_NOT_FOUND) {
 		r = SC_ERROR_FILE_NOT_FOUND;
@@ -1053,9 +1064,11 @@ piv_cache_internal_data(sc_card_t *card, int enumtag)
 
 	/* if already cached */
 	if (priv->obj_cache[enumtag].internal_obj_data && priv->obj_cache[enumtag].internal_obj_len) {
-		sc_log(card->ctx, "#%d found internal %p:%d", enumtag,
-				priv->obj_cache[enumtag].internal_obj_data,
-				priv->obj_cache[enumtag].internal_obj_len);
+		sc_log(card->ctx,
+		       "#%d found internal %p:%"SC_FORMAT_LEN_SIZE_T"u",
+		       enumtag,
+		       priv->obj_cache[enumtag].internal_obj_data,
+		       priv->obj_cache[enumtag].internal_obj_len);
 		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 	}
 
@@ -1127,9 +1140,10 @@ piv_cache_internal_data(sc_card_t *card, int enumtag)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 	}
 
-	sc_log(card->ctx, "added #%d internal %p:%d", enumtag,
-		priv->obj_cache[enumtag].internal_obj_data,
-		priv->obj_cache[enumtag].internal_obj_len);
+	sc_log(card->ctx, "added #%d internal %p:%"SC_FORMAT_LEN_SIZE_T"u",
+	       enumtag,
+	       priv->obj_cache[enumtag].internal_obj_data,
+	       priv->obj_cache[enumtag].internal_obj_len);
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
@@ -1166,7 +1180,9 @@ piv_read_binary(sc_card_t *card, unsigned int idx, unsigned char *buf, size_t co
 				r = SC_ERROR_FILE_NOT_FOUND;
 				goto err;
 			}
-			sc_log(card->ctx, "DEE rbuf=%p,rbuflen=%d,",rbuf, rbuflen);
+			sc_log(card->ctx,
+			       "DEE rbuf=%p,rbuflen=%"SC_FORMAT_LEN_SIZE_T"u,",
+			       rbuf, rbuflen);
 			body = sc_asn1_find_tag(card->ctx, rbuf, rbuflen, rbuf[0], &bodylen);
 			if (body == NULL) {
 				/* if missing, assume its the body */
@@ -1176,8 +1192,9 @@ piv_read_binary(sc_card_t *card, unsigned int idx, unsigned char *buf, size_t co
 				goto err;
 			}
 			if (bodylen > body - rbuf + rbuflen) {
-				sc_log(card->ctx, " ***** tag length > then data: %d>%d+%d",
-					bodylen , body - rbuf, rbuflen);
+				sc_log(card->ctx,
+				       " ***** tag length > then data: %"SC_FORMAT_LEN_SIZE_T"u>%"SC_FORMAT_LEN_PTRDIFF_T"u+%"SC_FORMAT_LEN_SIZE_T"u",
+				       bodylen, body - rbuf, rbuflen);
 				r = SC_ERROR_INVALID_DATA;
 				goto err;
 			}
@@ -1264,7 +1281,7 @@ piv_write_certificate(sc_card_t *card, const u8* buf, size_t count, unsigned lon
 	size_t sbuflen;
 	size_t taglen;
 
-	sc_log(card->ctx, "DEE cert len=%d",count);
+	sc_log(card->ctx, "DEE cert len=%"SC_FORMAT_LEN_SIZE_T"u", count);
 	taglen = put_tag_and_len(0x70, count, NULL)
 		+ put_tag_and_len(0x71, 1, NULL)
 		+ put_tag_and_len(0xFE, 0, NULL);
@@ -1285,7 +1302,8 @@ piv_write_certificate(sc_card_t *card, const u8* buf, size_t count, unsigned lon
 	*p++ = (flags)? 0x01:0x00; /* certinfo, i.e. gziped? */
 	put_tag_and_len(0xFE,0,&p); /* LRC tag */
 
-	sc_log(card->ctx, "DEE buf %p len %d %d", sbuf, p -sbuf, sbuflen);
+	sc_log(card->ctx, "DEE buf %p len %"SC_FORMAT_LEN_PTRDIFF_T"u %"SC_FORMAT_LEN_SIZE_T"u",
+	       sbuf, p - sbuf, sbuflen);
 
 	enumtag = piv_objects[priv->selected_obj].enumtag;
 	r = piv_put_data(card, enumtag, sbuf, sbuflen);
@@ -1676,8 +1694,9 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 	plain_text_len += tmplen;
 
 	if (plain_text_len != witness_len) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Encrypted and decrypted lengths do not match: %zu:%zu\n",
-				witness_len, plain_text_len);
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
+			 "Encrypted and decrypted lengths do not match: %"SC_FORMAT_LEN_SIZE_T"u:%"SC_FORMAT_LEN_SIZE_T"u\n",
+			 witness_len, plain_text_len);
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
@@ -1690,8 +1709,9 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 	 */
 	nonce = malloc(witness_len);
 	if(!nonce) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "OOM allocating nonce\n",
-				witness_len, plain_text_len);
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
+			 "OOM allocating nonce (%"SC_FORMAT_LEN_SIZE_T"u : %"SC_FORMAT_LEN_SIZE_T"u)\n",
+			 witness_len, plain_text_len);
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
@@ -1699,8 +1719,9 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 
 	r = RAND_bytes(nonce, witness_len);
 	if(!r) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Generating random for nonce\n",
-				witness_len, plain_text_len);
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
+			 "Generating random for nonce (%"SC_FORMAT_LEN_SIZE_T"u : %"SC_FORMAT_LEN_SIZE_T"u)\n",
+			 witness_len, plain_text_len);
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
@@ -1801,8 +1822,9 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 	decrypted_reponse_len += tmplen;
 
 	if (decrypted_reponse_len != nonce_len || memcmp(nonce, decrypted_reponse, nonce_len) != 0) {
-		sc_log(card->ctx, "mutual authentication failed, card returned wrong value %zu:%zu",
-				decrypted_reponse_len, nonce_len);
+		sc_log(card->ctx,
+		       "mutual authentication failed, card returned wrong value %"SC_FORMAT_LEN_SIZE_T"u:%"SC_FORMAT_LEN_SIZE_T"u",
+		       decrypted_reponse_len, nonce_len);
 		r = SC_ERROR_DECRYPT_FAILED;
 		goto err;
 	}
@@ -2005,7 +2027,7 @@ static int piv_general_external_authenticate(sc_card_t *card,
 	/* Sanity check the lengths again */
 	if(output_len != (size_t)tmplen) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Allocated and computed lengths do not match! "
-				"Expected %zd, found: %d\n", output_len, tmplen);
+			 "Expected %"SC_FORMAT_LEN_SIZE_T"d, found: %d\n", output_len, tmplen);
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
@@ -2088,8 +2110,9 @@ piv_get_serial_nr_from_CHUI(sc_card_t* card, sc_serial_number_t* serial)
 					gbits = gbits | guid[i]; /* if all are zero, gbits will be zero */
 				}
 			}
-			sc_log(card->ctx, "fascn=%p,fascnlen=%d,guid=%p,guidlen=%d,gbits=%2.2x",
-					fascn, fascnlen, guid, guidlen, gbits);
+			sc_log(card->ctx,
+			       "fascn=%p,fascnlen=%"SC_FORMAT_LEN_SIZE_T"u,guid=%p,guidlen=%"SC_FORMAT_LEN_SIZE_T"u,gbits=%2.2x",
+			       fascn, fascnlen, guid, guidlen, gbits);
 
 			if (fascn && fascnlen == 25) {
 				/* test if guid and the fascn starts with ;9999 (in ISO 4bit + partiy code) */
@@ -2203,7 +2226,7 @@ static int piv_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	sc_log(card->ctx, "challenge len=%d",len);
+	sc_log(card->ctx, "challenge len=%"SC_FORMAT_LEN_SIZE_T"u", len);
 
 	r = sc_lock(card);
 	if (r != SC_SUCCESS)
@@ -2256,9 +2279,10 @@ piv_set_security_env(sc_card_t *card, const sc_security_env_t *env, int se_num)
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	sc_log(card->ctx, "flags=%08x op=%d alg=%d algf=%08x algr=%08x kr0=%02x, krfl=%d",
-			env->flags, env->operation, env->algorithm, env->algorithm_flags,
-			env->algorithm_ref, env->key_ref[0], env->key_ref_len);
+	sc_log(card->ctx,
+	       "flags=%08lx op=%d alg=%d algf=%08x algr=%08x kr0=%02x, krfl=%"SC_FORMAT_LEN_SIZE_T"u",
+	       env->flags, env->operation, env->algorithm, env->algorithm_flags,
+	       env->algorithm_ref, env->key_ref[0], env->key_ref_len);
 
 	priv->operation = env->operation;
 	priv->algorithm = env->algorithm;
@@ -2399,7 +2423,9 @@ piv_compute_signature(sc_card_t *card, const u8 * data, size_t datalen,
 	if (priv->alg_id == 0x11 || priv->alg_id == 0x14 ) {
 		nLen = (priv->key_size + 7) / 8;
 		if (outlen < 2*nLen) {
-			sc_log(card->ctx, " output too small for EC signature %d < %d", outlen, 2*nLen);
+			sc_log(card->ctx,
+			       " output too small for EC signature %"SC_FORMAT_LEN_SIZE_T"u < %"SC_FORMAT_LEN_SIZE_T"u",
+			       outlen, 2 * nLen);
 			r = SC_ERROR_INVALID_DATA;
 			goto err;
 		}
@@ -2580,7 +2606,8 @@ static int piv_process_discovery(sc_card_t *card)
 		goto err;
 	}
 
-	sc_log(card->ctx, "Discovery = %p:%d",rbuf, rbuflen);
+	sc_log(card->ctx, "Discovery = %p:%"SC_FORMAT_LEN_SIZE_T"u", rbuf,
+	       rbuflen);
 	/* the object is now cached, see what we have */
 	if (rbuflen != 0) {
 		body = rbuf;
@@ -2590,11 +2617,14 @@ static int piv_process_discovery(sc_card_t *card)
 			goto err;
 		}
 
-	sc_log(card->ctx, "Discovery 0x%2.2x 0x%2.2x %p:%d", cla_out, tag_out, body, bodylen);
+	sc_log(card->ctx,
+	       "Discovery 0x%2.2x 0x%2.2x %p:%"SC_FORMAT_LEN_SIZE_T"u",
+	       cla_out, tag_out, body, bodylen);
 	if ( cla_out+tag_out == 0x7E && body != NULL && bodylen != 0) {
 		aidlen = 0;
 		aid = sc_asn1_find_tag(card->ctx, body, bodylen, 0x4F, &aidlen);
-		sc_log(card->ctx, "Discovery aid=%p:%d",aid,aidlen);
+		sc_log(card->ctx, "Discovery aid=%p:%"SC_FORMAT_LEN_SIZE_T"u",
+		       aid, aidlen);
 			if (aid == NULL || aidlen < piv_aids[0].len_short ||
 				memcmp(aid,piv_aids[0].value,piv_aids[0].len_short) != 0) { /*TODO look at long */
 				sc_log(card->ctx, "Discovery object not PIV");
@@ -2602,7 +2632,9 @@ static int piv_process_discovery(sc_card_t *card)
 				goto err;
 			}
 			pinp = sc_asn1_find_tag(card->ctx, body, bodylen, 0x5F2F, &pinplen);
-			sc_log(card->ctx, "Discovery pinp=%p:%d",pinp,pinplen);
+			sc_log(card->ctx,
+			       "Discovery pinp=%p:%"SC_FORMAT_LEN_SIZE_T"u",
+			       pinp, pinplen);
 			if (pinp && pinplen == 2) {
 				sc_log(card->ctx, "Discovery pinp flags=0x%2.2x 0x%2.2x",*pinp, *(pinp+1));
 				r = SC_SUCCESS;
@@ -2829,10 +2861,11 @@ piv_process_history(sc_card_t *card)
 
 			certobj = NULL;
 
-			sc_log(card->ctx, "Added from off card file #%d %p:%d 0x%02X",
-				enumtag,
-				priv->obj_cache[enumtag].obj_data,
-				priv->obj_cache[enumtag].obj_len, *keyref);
+			sc_log(card->ctx,
+			       "Added from off card file #%d %p:%"SC_FORMAT_LEN_SIZE_T"u 0x%02X",
+			       enumtag,
+			       priv->obj_cache[enumtag].obj_data,
+			       priv->obj_cache[enumtag].obj_len, *keyref);
 
 			bodylen -= (seqlen + seq - seqtag);
 			seq += seqlen;
@@ -2859,10 +2892,13 @@ piv_finish(sc_card_t *card)
 		if (priv->offCardCertURL)
 			free(priv->offCardCertURL);
 		for (i = 0; i < PIV_OBJ_LAST_ENUM - 1; i++) {
-			sc_log(card->ctx, "DEE freeing #%d, 0x%02x %p:%d %p:%d", i,
-				priv->obj_cache[i].flags,
-				priv->obj_cache[i].obj_data, priv->obj_cache[i].obj_len,
-				priv->obj_cache[i].internal_obj_data, priv->obj_cache[i].internal_obj_len);
+			sc_log(card->ctx,
+			       "DEE freeing #%d, 0x%02x %p:%"SC_FORMAT_LEN_SIZE_T"u %p:%"SC_FORMAT_LEN_SIZE_T"u",
+			       i, priv->obj_cache[i].flags,
+			       priv->obj_cache[i].obj_data,
+			       priv->obj_cache[i].obj_len,
+			       priv->obj_cache[i].internal_obj_data,
+			       priv->obj_cache[i].internal_obj_len);
 			if (priv->obj_cache[i].obj_data)
 				free(priv->obj_cache[i].obj_data);
 			if (priv->obj_cache[i].internal_obj_data)
@@ -2992,8 +3028,9 @@ static int piv_init(sc_card_t *card)
 	if (!priv || card->type == -1)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NO_CARD_SUPPORT);
 
-	sc_log(card->ctx, "Max send = %d recv = %d card->type = %d",
-			card->max_send_size, card->max_recv_size, card->type);
+	sc_log(card->ctx,
+	       "Max send = %"SC_FORMAT_LEN_SIZE_T"u recv = %"SC_FORMAT_LEN_SIZE_T"u card->type = %d",
+	       card->max_send_size, card->max_recv_size, card->type);
 	card->cla = 0x00;
 	if(card->name == NULL)
 		card->name = "PIV-II card";

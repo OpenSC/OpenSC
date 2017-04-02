@@ -47,8 +47,8 @@ sc_pkcs15emu_jpki_init(sc_pkcs15_card_t * p15card)
 
 	p15card->tokeninfo->label = strdup("JPKI");
 	p15card->tokeninfo->manufacturer_id = strdup("JPKI");
-	/* set NULL until we found serial number */
-	p15card->tokeninfo->serial_number = NULL;
+	/* set dummy until we found serial number */
+	p15card->tokeninfo->serial_number = strdup("00000000");
 
 	/* Select application directory */
 	if (drvdata->selected != SELECT_JPKI_AP) {
@@ -58,30 +58,40 @@ sc_pkcs15emu_jpki_init(sc_pkcs15_card_t * p15card)
 	}
 
 	/* add certificates */
-	for (i = 0; i < 2; i++) {
-		static const char *jpki_cert_names[2] = {
+	for (i = 0; i < 4; i++) {
+		static const char *jpki_cert_names[4] = {
 			"User Authentication Certificate",
-			"Digital Signature Certificate"
+			"Digital Signature Certificate",
+			"User Authentication Certificate CA",
+			"Digital Signature Certificate CA"
 		};
-		static char const *jpki_cert_paths[2] = {
+		static char const *jpki_cert_paths[4] = {
 			"000A",
-			"0001"
+			"0001",
+			"000B",
+			"0002"
 		};
-		static int jpki_cert_ids[2] = { 1, 2 };
-
+		static int jpki_cert_ids[4] = { 1, 2, 3, 4 };
+		static int jpki_cert_flags[4] = {
+			0,
+			SC_PKCS15_CO_FLAG_PRIVATE,
+			0,
+			0,
+		};
+		static int jpki_cert_authority[4] = {0, 0, 1, 1};
 		struct sc_pkcs15_cert_info cert_info;
 		struct sc_pkcs15_object cert_obj;
-		memset(&cert_info, 0, sizeof (cert_info));
-		memset(&cert_obj, 0, sizeof (cert_obj));
+		memset(&cert_info, 0, sizeof(cert_info));
+		memset(&cert_obj, 0, sizeof(cert_obj));
 
 		cert_info.id.value[0] = jpki_cert_ids[i];
 		cert_info.id.len = 1;
 		sc_format_path(jpki_cert_paths[i], &cert_info.path);
 		cert_info.path.type = SC_PATH_TYPE_FILE_ID;
 
-		strlcpy(cert_obj.label, jpki_cert_names[i], sizeof (cert_obj.label));
-		cert_obj.flags = 0;
-
+		strlcpy(cert_obj.label, jpki_cert_names[i], sizeof(cert_obj.label));
+		cert_info.authority = jpki_cert_authority[i];
+		cert_obj.flags = jpki_cert_flags[i];
 		rc = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
 		if (rc < 0)
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
@@ -98,7 +108,12 @@ sc_pkcs15emu_jpki_init(sc_pkcs15_card_t * p15card)
 		static const int jpki_pin_max[2] = { 4, 16 };
 		static const int jpki_pin_ref[2] = { 1, 2 };
 		static const int jpki_pin_authid[2] = { 1, 2 };
-		static const int jpki_pin_flags[2] = { 0, 0 };
+		static const int jpki_pin_flags[2] = {
+			SC_PKCS15_PIN_FLAG_INITIALIZED |
+			SC_PKCS15_PIN_FLAG_LOCAL,
+			SC_PKCS15_PIN_FLAG_INITIALIZED |
+			SC_PKCS15_PIN_FLAG_LOCAL
+		};
 		static const int jpki_pin_max_tries[2] = {
 			JPKI_AUTH_PIN_MAX_TRIES,
 			JPKI_SIGN_PIN_MAX_TRIES

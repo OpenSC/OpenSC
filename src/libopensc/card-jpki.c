@@ -145,8 +145,9 @@ jpki_select_file(struct sc_card *card,
 	struct sc_file *file = NULL;
 
 	LOG_FUNC_CALLED(card->ctx);
-	sc_log(card->ctx, "jpki_select_file: path=%s, len=%d",
-			sc_print_path(path), path->len);
+	sc_log(card->ctx,
+	       "jpki_select_file: path=%s, len=%"SC_FORMAT_LEN_SIZE_T"u",
+	       sc_print_path(path), path->len);
 	if (path->len == 2 && memcmp(path->value, "\x3F\x00", 2) == 0) {
 		drvdata->selected = SELECT_MF;
 		if (file_out) {
@@ -182,8 +183,13 @@ jpki_select_file(struct sc_card *card,
 		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 	}
 
-	/* read size of auth certificate file */
-	if (path->len == 2 && memcmp(path->value, "\x00\x0a", 2) == 0) {
+	/* read certificate file size */
+	if (path->len == 2 && (
+		    memcmp(path->value, "\x00\x0A", 2) == 0 ||
+		    memcmp(path->value, "\x00\x01", 2) == 0 ||
+		    memcmp(path->value, "\x00\x0B", 2) == 0 ||
+		    memcmp(path->value, "\x00\x02", 2) == 0 )
+		) {
 		u8 buf[4];
 		rc = sc_read_binary(card, 0, buf, 4, 0);
 		LOG_TEST_RET(card->ctx, rc, "SW Check failed");
@@ -195,7 +201,6 @@ jpki_select_file(struct sc_card *card,
 		file->size = (buf[2] << 8 | buf[3]) + 4;
 		*file_out = file;
 	}
-
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
@@ -297,10 +302,10 @@ jpki_set_security_env(sc_card_t * card,
 
 	LOG_FUNC_CALLED(card->ctx);
 	sc_log(card->ctx,
-		"flags=%08x op=%d alg=%d algf=%08x algr=%08x kr0=%02x, krfl=%d",
-		env->flags, env->operation, env->algorithm,
-		env->algorithm_flags, env->algorithm_ref, env->key_ref[0],
-		env->key_ref_len);
+	       "flags=%08lx op=%d alg=%d algf=%08x algr=%08x kr0=%02x, krfl=%"SC_FORMAT_LEN_SIZE_T"u",
+	       env->flags, env->operation, env->algorithm,
+	       env->algorithm_flags, env->algorithm_ref, env->key_ref[0],
+	       env->key_ref_len);
 
 	switch (env->operation) {
 	case SC_SEC_OPERATION_SIGN:

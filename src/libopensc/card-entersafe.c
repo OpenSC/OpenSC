@@ -49,23 +49,23 @@ static struct sc_atr_table entersafe_atrs[] = {
 		"EJAVA/PK-01C-T0",SC_CARD_TYPE_ENTERSAFE_EJAVA_PK_01C_T0,0,NULL},
 	{
 		"3B:FC:18:00:00:81:31:80:45:90:67:46:4A:21:28:8C:58:00:00:00:00:B7",
-		"ff:00:00:00:00:ff:ff:ff:ff:00:00:00:00:ff:ff:ff:ff",
+		"ff:00:00:00:00:00:00:00:00:ff:ff:ff:ff:00:00:00:00:ff:ff:ff:ff:00",
 		"EJAVA/H10CR/PK-01C-T1",SC_CARD_TYPE_ENTERSAFE_EJAVA_H10CR_PK_01C_T1,0,NULL},
 	{
 		"3B:FC:18:00:00:81:31:80:45:90:67:46:4A:20:25:c3:30:00:00:00:00",
-		"ff:00:00:00:00:ff:ff:ff:ff:00:00:00:00:ff:ff:ff:ff",
+		"ff:00:00:00:00:00:00:00:00:ff:ff:ff:ff:00:00:00:00:00:00:00:00",
 		"EJAVA/D11CR/PK-01C-T1",SC_CARD_TYPE_ENTERSAFE_EJAVA_D11CR_PK_01C_T1,0,NULL},
 	{
 		"3B:FC:18:00:00:81:31:80:45:90:67:46:4A:00:6A:04:24:00:00:00:00:20",
-		"ff:00:00:00:00:ff:ff:ff:ff:00:00:00:00:ff:ff:ff:ff",
+		"ff:00:00:00:00:00:00:00:00:ff:ff:ff:ff:00:00:00:00:ff:ff:ff:ff:00",
 		"EJAVA/C21C/PK-01C-T1",SC_CARD_TYPE_ENTERSAFE_EJAVA_C21C_PK_01C_T1,0,NULL},
 	{
 		"3B:FC:18:00:00:81:31:80:45:90:67:46:4A:00:68:08:04:00:00:00:00:0E",
-		"ff:00:00:00:00:ff:ff:ff:ff:00:00:00:00:ff:ff:ff:ff",
+		"ff:00:00:00:00:00:00:00:00:ff:ff:ff:ff:00:00:00:00:ff:ff:ff:ff:00",
 		"EJAVA/A22CR/PK-01C-T1",SC_CARD_TYPE_ENTERSAFE_EJAVA_A22CR_PK_01C_T1,0,NULL},
 	{
 		"3B:FC:18:00:00:81:31:80:45:90:67:46:4A:10:27:61:30:00:00:00:00:0C",
-		"ff:00:00:00:00:ff:ff:ff:ff:00:00:00:00:ff:ff:ff:ff",
+		"ff:00:00:00:00:00:00:00:00:ff:ff:ff:ff:00:00:00:00:ff:ff:ff:ff:00",
 		"EJAVA/A40CR/PK-01C-T1",SC_CARD_TYPE_ENTERSAFE_EJAVA_A40CR_PK_01C_T1,0,NULL},
 	{
 		"3b:fc:18:00:00:81:31:80:45:90:67:46:4a:00:68:08:06:00:00:00:00:0c",
@@ -685,13 +685,14 @@ static int entersafe_select_file(sc_card_t *card,
 	  r = sc_path_print(pbuf, sizeof(pbuf), &card->cache.current_path);
 	  if (r != SC_SUCCESS)
 		 pbuf[0] = '\0';
-		
+
 	  sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
-		"current path (%s, %s): %s (len: %u)\n",
-		   (card->cache.current_path.type==SC_PATH_TYPE_DF_NAME?"aid":"path"),
-		   (card->cache.valid?"valid":"invalid"), pbuf,
+		   "current path (%s, %s): %s (len: %"SC_FORMAT_LEN_SIZE_T"u)\n",
+		   card->cache.current_path.type == SC_PATH_TYPE_DF_NAME ?
+		   "aid" : "path",
+		   card->cache.valid ? "valid" : "invalid", pbuf,
 		   card->cache.current_path.len);
-	 
+
 	 switch(in_path->type)
 	 {
 	 case SC_PATH_TYPE_FILE_ID:

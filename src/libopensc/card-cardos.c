@@ -1211,8 +1211,12 @@ cardos_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data,
 	data->pin_reference |= 0x80;
 
 	sc_log(ctx, "PIN_CMD(cmd:%i, ref:%i)", data->cmd, data->pin_reference);
-	sc_log(ctx, "PIN1(max:%i, min:%i)", data->pin1.max_length, data->pin1.min_length);
-	sc_log(ctx, "PIN2(max:%i, min:%i)", data->pin2.max_length, data->pin2.min_length);
+	sc_log(ctx,
+	       "PIN1(max:%"SC_FORMAT_LEN_SIZE_T"u, min:%"SC_FORMAT_LEN_SIZE_T"u)",
+	       data->pin1.max_length, data->pin1.min_length);
+	sc_log(ctx,
+	       "PIN2(max:%"SC_FORMAT_LEN_SIZE_T"u, min:%"SC_FORMAT_LEN_SIZE_T"u)",
+	       data->pin2.max_length, data->pin2.min_length);
 
 	/* FIXME: the following values depend on what pin length was
 	 * used when creating the BS objects */

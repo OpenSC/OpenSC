@@ -50,13 +50,20 @@ static struct sc_pkcs11_slot * reader_get_slot(sc_reader_t *reader)
 	return NULL;
 }
 
-static void init_slot_info(CK_SLOT_INFO_PTR pInfo)
+static void init_slot_info(CK_SLOT_INFO_PTR pInfo, sc_reader_t *reader)
 {
-	strcpy_bp(pInfo->slotDescription, "Virtual hotplug slot", 64);
-	strcpy_bp(pInfo->manufacturerID, OPENSC_VS_FF_COMPANY_NAME, 32);
+	if (reader) {
+		strcpy_bp(pInfo->slotDescription, reader->name, 64);
+		strcpy_bp(pInfo->manufacturerID, reader->vendor, 32);
+		pInfo->hardwareVersion.major = reader->version_major;
+		pInfo->hardwareVersion.minor = reader->version_minor;
+	} else {
+		strcpy_bp(pInfo->slotDescription, "Virtual hotplug slot", 64);
+		strcpy_bp(pInfo->manufacturerID, OPENSC_VS_FF_COMPANY_NAME, 32);
+		pInfo->hardwareVersion.major = OPENSC_VERSION_MAJOR;
+		pInfo->hardwareVersion.minor = OPENSC_VERSION_MINOR;
+	}
 	pInfo->flags = CKF_REMOVABLE_DEVICE | CKF_HW_SLOT;
-	pInfo->hardwareVersion.major = OPENSC_VERSION_MAJOR;
-	pInfo->hardwareVersion.minor = OPENSC_VERSION_MINOR;
 	pInfo->firmwareVersion.major = 0;
 	pInfo->firmwareVersion.minor = 0;
 }
@@ -105,7 +112,7 @@ CK_RV create_slot(sc_reader_t *reader)
 
 	slot->login_user = -1;
 	slot->id = (CK_SLOT_ID) list_locate(&virtual_slots, slot);
-	init_slot_info(&slot->slot_info);
+	init_slot_info(&slot->slot_info, reader);
 	sc_log(context, "Initializing slot with id 0x%lx", slot->id);
 
 	if (reader != NULL) {
@@ -127,7 +134,7 @@ void empty_slot(struct sc_pkcs11_slot *slot)
 			 * already been reset by `slot_token_removed()`, lists have been
 			 * emptied. We replace the reader with a virtual hotplug slot. */
 			slot->reader = NULL;
-			init_slot_info(&slot->slot_info);
+			init_slot_info(&slot->slot_info, NULL);
 		} else {
 			list_destroy(&slot->objects);
 			list_destroy(&slot->logins);
@@ -273,6 +280,18 @@ again:
 			return sc_to_cryptoki_error(rc, NULL);
 		}
 
+		/* escape commands are only guaranteed to be working with a card
+		 * inserted. That's why by now, after sc_connect_card() the reader's
+		 * metadata may have changed. We re-initialize the metadata for every
+		 * slot of this reader here. */
+		if (reader->flags & SC_READER_ENABLE_ESCAPE) {
+			for (i = 0; i<list_size(&virtual_slots); i++) {
+				sc_pkcs11_slot_t *slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, i);
+				if (slot->reader == reader)
+					init_slot_info(&slot->slot_info, reader);
+			}
+		}
+
 		sc_log(context, "%s: Connected SC card %p", reader->name, p11card->card);
 	}
 
@@ -310,14 +329,18 @@ again:
 				rv = CKR_OK;
 			}
 			if (rv != CKR_OK)   {
-				sc_log(context, "%s: cannot bind 'generic' token: rv 0x%X", reader->name, rv);
+				sc_log(context,
+				       "%s: cannot bind 'generic' token: rv 0x%lX",
+				       reader->name, rv);
 				return rv;
 			}
 
 			sc_log(context, "%s: Creating 'generic' token.", reader->name);
 			rv = frameworks[i]->create_tokens(p11card, app_generic);
 			if (rv != CKR_OK)   {
-				sc_log(context, "%s: create 'generic' token error 0x%X", reader->name, rv);
+				sc_log(context,
+				       "%s: create 'generic' token error 0x%lX",
+				       reader->name, rv);
 				return rv;
 			}
 		}
@@ -333,14 +356,17 @@ again:
 			sc_log(context, "%s: Binding %s token.", reader->name, app_name);
 			rv = frameworks[i]->bind(p11card, app_info);
 			if (rv != CKR_OK)   {
-				sc_log(context, "%s: bind %s token error Ox%X", reader->name, app_name, rv);
+				sc_log(context, "%s: bind %s token error Ox%lX",
+				       reader->name, app_name, rv);
 				continue;
 			}
 
 			sc_log(context, "%s: Creating %s token.", reader->name, app_name);
 			rv = frameworks[i]->create_tokens(p11card, app_info);
 			if (rv != CKR_OK)   {
-				sc_log(context, "%s: create %s token error 0x%X", reader->name, app_name, rv);
+				sc_log(context,
+				       "%s: create %s token error 0x%lX",
+				       reader->name, app_name, rv);
 				return rv;
 			}
 		}
@@ -490,7 +516,9 @@ CK_RV slot_find_changed(CK_SLOT_ID_PTR idp, int mask)
 	card_detect_all();
 	for (i=0; i<list_size(&virtual_slots); i++) {
 		sc_pkcs11_slot_t *slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, i);
-		sc_log(context, "slot 0x%lx token: %d events: 0x%02X",slot->id, (slot->slot_info.flags & CKF_TOKEN_PRESENT), slot->events);
+		sc_log(context, "slot 0x%lx token: %lu events: 0x%02X",
+		       slot->id, (slot->slot_info.flags & CKF_TOKEN_PRESENT),
+		       slot->events);
 		if ((slot->events & SC_EVENT_CARD_INSERTED)
 				&& !(slot->slot_info.flags & CKF_TOKEN_PRESENT)) {
 			/* If a token has not been initialized, clear the inserted event */

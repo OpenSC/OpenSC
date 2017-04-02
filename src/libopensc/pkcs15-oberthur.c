@@ -389,7 +389,9 @@ sc_oberthur_parse_containers (struct sc_pkcs15_card *p15card,
 		struct container *cont;
 		unsigned char *ptr =  buff + offs + 2;
 
-		sc_log(ctx, "parse contaniers offs:%i, len:%i", offs, len);
+		sc_log(ctx,
+		       "parse contaniers offs:%"SC_FORMAT_LEN_SIZE_T"u, len:%"SC_FORMAT_LEN_SIZE_T"u",
+		       offs, len);
 		if (*(buff + offs) != 'R')
 			return SC_ERROR_INVALID_DATA;
 
@@ -991,6 +993,15 @@ sc_pkcs15emu_oberthur_init(struct sc_pkcs15_card * p15card)
 
 		strncpy(obj.label, PIN_DOMAIN_LABEL, SC_PKCS15_MAX_LABEL_SIZE-1);
 		obj.flags = SC_PKCS15_CO_FLAG_MODIFIABLE | SC_PKCS15_CO_FLAG_PRIVATE;
+		if (sopin_reference == 0x84) {
+			/*
+			 * auth_pin_reset_oberthur_style() in card-oberthur.c
+			 * always uses PUK with reference 0x84 for
+			 * unblocking of User PIN
+			 */
+			obj.auth_id.len = 1;
+			obj.auth_id.value[0] = 0xFF;
+		}
 
 		sc_format_path(AWP_PIN_DF, &auth_info.path);
 		auth_info.path.type = SC_PATH_TYPE_PATH;
@@ -1010,8 +1021,9 @@ sc_pkcs15emu_oberthur_init(struct sc_pkcs15_card * p15card)
 				&oberthur_infos[ii].content, &oberthur_infos[ii].len, 1);
 		LOG_TEST_RET(ctx, rv, "Oberthur init failed: read oberthur file error");
 
-		sc_log(ctx, "Oberthur init: parse %s file, content length %i",
-				oberthur_infos[ii].name, oberthur_infos[ii].len);
+		sc_log(ctx,
+		       "Oberthur init: parse %s file, content length %"SC_FORMAT_LEN_SIZE_T"u",
+		       oberthur_infos[ii].name, oberthur_infos[ii].len);
 		rv = oberthur_infos[ii].parser(p15card, oberthur_infos[ii].content, oberthur_infos[ii].len,
 				oberthur_infos[ii].postpone_allowed);
 		LOG_TEST_RET(ctx, rv, "Oberthur init failed: parse error");

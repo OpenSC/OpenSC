@@ -38,8 +38,6 @@
              Compressed="yes"
              SummaryCodepage="1252"
              InstallScope="perMachine"/>
-    <!-- OpenSC is covered by LGPL. Extend the license as required with other EULA notes -->
-    <WixVariable Id="WixUILicenseRtf" Value="license.rtf"/>
     <!-- Setup background images -->
     <WixVariable Id="WixUIBannerBmp" Value="bannrbmp.bmp"/>
     <WixVariable Id="WixUIDialogBmp" Value="dlgbmp.bmp"/>
@@ -179,6 +177,9 @@
                 </Component>
                 <Component Id="gids_tool.exe" Guid="*" Win64="$(var.Win64YesNo)">
                   <File Source="$(var.SOURCE_DIR)\src\tools\gids-tool.exe" Vital="yes"/>
+                </Component>
+                <Component Id="npa_tool.exe" Guid="*" Win64="$(var.Win64YesNo)">
+                  <File Source="$(var.SOURCE_DIR)\src\tools\npa-tool.exe" Vital="yes"/>
                 </Component>
               <?endif ?>
             </Directory>
@@ -335,6 +336,7 @@
           <ComponentRef Id="sc_hsm_tool.exe"/>
           <ComponentRef Id="dnie_tool.exe"/>
           <ComponentRef Id="gids_tool.exe"/>
+          <ComponentRef Id="npa_tool.exe"/>
           <ComponentRef Id="cyberflex.profile"/>
           <ComponentRef Id="flex.profile"/>
           <ComponentRef Id="gpk.profile"/>
@@ -372,8 +374,13 @@
         <ComponentRef Id="ProgramMenuDir"/>
       </Feature>
     </Feature>
-    <UIRef Id="WixUI_Mondo"/>
-    <UIRef Id="WixUI_ErrorProgressText"/>
+    <UI Id='Mondo'>
+      <UIRef Id="WixUI_Mondo"/>
+      <UIRef Id="WixUI_ErrorProgressText"/>
+
+      <Publish Dialog="WelcomeDlg" Control="Next" Event="NewDialog" Value="SetupTypeDlg" Order="3">1</Publish>
+      <Publish Dialog="SetupTypeDlg" Control="Back" Event="NewDialog" Value="WelcomeDlg" Order="3">1</Publish>
+    </UI>
 
     <InstallExecuteSequence>
       <!-- UnInstall sequence -->

@@ -44,6 +44,14 @@ extern "C" {
 #include "libopensc/sm.h"
 #endif
 
+#if defined(_WIN32) && !(defined(__MINGW32__) && defined (__MINGW_PRINTF_FORMAT))
+#define SC_FORMAT_LEN_SIZE_T "I"
+#define SC_FORMAT_LEN_PTRDIFF_T "I"
+#else
+/* hope SUSv3 ones work */
+#define SC_FORMAT_LEN_SIZE_T "z"
+#define SC_FORMAT_LEN_PTRDIFF_T "t"
+#endif
 
 #define SC_SEC_OPERATION_DECIPHER	0x0001
 #define SC_SEC_OPERATION_SIGN		0x0002
@@ -287,6 +295,7 @@ struct sc_reader_driver {
 #define SC_READER_CARD_EXCLUSIVE	0x00000008
 #define SC_READER_HAS_WAITING_AREA	0x00000010
 #define SC_READER_REMOVED			0x00000020
+#define SC_READER_ENABLE_ESCAPE		0x00000040
 
 /* reader capabilities */
 #define SC_READER_CAP_DISPLAY	0x00000001
@@ -1350,6 +1359,34 @@ extern const char *sc_get_version(void);
 	}
 
 extern sc_card_driver_t *sc_get_iso7816_driver(void);
+
+/** 
+ * @brief Read a complete EF by short file identifier.
+ *
+ * @param[in]     card
+ * @param[in]     sfid   Short file identifier
+ * @param[in,out] ef     Where to safe the file. the buffer will be allocated
+ *                       using \c realloc() and should be set to NULL, if
+ *                       empty.
+ * @param[in,out] ef_len Length of \a *ef
+ *
+ * @note The appropriate directory must be selected before calling this function.
+ * */
+int iso7816_read_binary_sfid(sc_card_t *card, unsigned char sfid,
+		u8 **ef, size_t *ef_len);
+
+/**
+ * @brief Write a complete EF by short file identifier.
+ *
+ * @param[in] card
+ * @param[in] sfid   Short file identifier
+ * @param[in] ef     Date to write
+ * @param[in] ef_len Length of \a ef
+ *
+ * @note The appropriate directory must be selected before calling this function.
+ * */
+int iso7816_write_binary_sfid(sc_card_t *card, unsigned char sfid,
+		u8 *ef, size_t ef_len);
 
 #ifdef __cplusplus
 }

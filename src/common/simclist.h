@@ -124,7 +124,7 @@ typedef int (*element_comparator)(const void *a, const void *b);
 typedef int (*element_seeker)(const void *el, const void *indicator);
 
 /**
- * an element lenght meter.
+ * an element length meter.
  *
  * An element meter is a function that:
  *      -# receives the reference to an element el

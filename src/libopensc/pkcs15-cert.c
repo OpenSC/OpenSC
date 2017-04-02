@@ -264,7 +264,7 @@ sc_pkcs15_get_extension(struct sc_context *ctx, struct sc_pkcs15_cert *cert,
 
 		/*
 		 * use the sc_asn1_decoder for clarity. NOTE it would be more efficient to do this by hand
-		 * so we avoid the man malloc/frees here, but one hopes that one day the asn1_decode will allow
+		 * so we avoid the many malloc/frees here, but one hopes that one day the asn1_decode will allow
 		 * a 'static pointer' flag that returns a const pointer to the actual asn1 space so we only need
 		 * to make a final copy of the extension value before we return */
 		critical = 0;
@@ -316,7 +316,7 @@ sc_pkcs15_get_bitstring_extension(struct sc_context *ctx,
 	u8 *bit_string = NULL;
 	size_t bit_string_len=0, val_len = sizeof(*value);
 	struct sc_asn1_entry asn1_bit_string[] = {
-		{ "bitString", SC_ASN1_BIT_STRING, SC_ASN1_TAG_BIT_STRING, 0, value, &val_len },
+		{ "bitString", SC_ASN1_BIT_STRING_NI, SC_ASN1_TAG_BIT_STRING, 0, value, &val_len },
 		{ NULL, 0, 0, 0, NULL, NULL }
 	};
 
@@ -325,6 +325,7 @@ sc_pkcs15_get_bitstring_extension(struct sc_context *ctx,
 
 	r = sc_asn1_decode(ctx, asn1_bit_string, bit_string, bit_string_len, NULL, NULL);
 	LOG_TEST_RET(ctx, r, "Decoding extension bit string");
+	free(bit_string);
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }

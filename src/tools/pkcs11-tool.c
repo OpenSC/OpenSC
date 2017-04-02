@@ -144,6 +144,7 @@ enum {
 	OPT_DECRYPT,
 	OPT_TEST_FORK,
 	OPT_GENERATE_KEY,
+	OPT_GENERATE_RANDOM,
 };
 
 static const struct option options[] = {
@@ -206,6 +207,7 @@ static const struct option options[] = {
 #ifndef _WIN32
 	{ "test-fork",		0, NULL,		OPT_TEST_FORK },
 #endif
+	{ "generate-random",	1, NULL,		OPT_GENERATE_RANDOM },
 
 	{ NULL, 0, NULL, 0 }
 };
@@ -270,6 +272,7 @@ static const char *option_help[] = {
 #ifndef _WIN32
 	"Test forking and calling C_Initialize() in the child",
 #endif
+	"Generate given amount of random data",
 };
 
 static const char *	app_name = "pkcs11-tool"; /* for utils.c */
@@ -311,6 +314,7 @@ static int		opt_key_usage_decrypt = 0;
 static int		opt_key_usage_derive = 0;
 static int		opt_key_usage_default = 1; /* uses defaults if no opt_key_usage options */
 static int		opt_derive_pass_der = 0;
+static unsigned long	opt_random_bytes = 0;
 
 static void *module = NULL;
 static CK_FUNCTION_LIST_PTR p11 = NULL;
@@ -413,6 +417,7 @@ static void		test_ec(CK_SLOT_ID slot, CK_SESSION_HANDLE session);
 #ifndef _WIN32
 static void		test_fork(void);
 #endif
+static void		generate_random(CK_SESSION_HANDLE session);
 static CK_RV		find_object_with_attributes(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE *out,
 				CK_ATTRIBUTE *attrs, CK_ULONG attrsLen, CK_ULONG obj_index);
 static CK_ULONG		get_private_key_length(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE prkey);
@@ -455,6 +460,7 @@ int main(int argc, char * argv[])
 	int do_change_pin = 0;
 	int do_unlock_pin = 0;
 	int action_count = 0;
+	int do_generate_random = 0;
 	CK_RV rv;
 
 #ifdef _WIN32
@@ -747,6 +753,13 @@ int main(int argc, char * argv[])
 			action_count++;
 			break;
 #endif
+		case OPT_GENERATE_RANDOM:
+			need_session |= NEED_SESSION_RO;
+			opt_random_bytes = strtoul(optarg, NULL, 0);
+			do_generate_random = 1;
+			action_count++;
+			break;
+
 		default:
 			util_print_usage_and_die(app_name, options, option_help, NULL);
 		}
@@ -984,6 +997,11 @@ int main(int argc, char * argv[])
 		else
 			test_ec(opt_slot, session);
 	}
+
+	if (do_generate_random) {
+		generate_random(session);
+	}
+
 end:
 	if (session != CK_INVALID_HANDLE) {
 		rv = p11->C_CloseSession(session);
@@ -1108,6 +1126,7 @@ static void show_token(CK_SLOT_ID slot)
 	printf("  firmware version   : %d.%d\n", info.firmwareVersion.major, info.firmwareVersion.minor);
 	printf("  serial num         : %s\n", p11_utf8_to_local(info.serialNumber,
 			sizeof(info.serialNumber)));
+	printf("  pin min/max        : %lu/%lu\n", info.ulMinPinLen, info.ulMaxPinLen);
 }
 
 static void list_mechs(CK_SLOT_ID slot)
@@ -1965,22 +1984,34 @@ gen_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE *hSecretKey
 
 #ifdef ENABLE_OPENSSL
 static void	parse_certificate(struct x509cert_info *cert,
-		unsigned char *data, int len)
+		unsigned char *data, int len, unsigned char *contents,
+		int *contents_len)
 {
 	X509 *x = NULL;
 	unsigned char *p;
 	int n;
 
-	if (!strstr((char *)data, "-----BEGIN CERTIFICATE-----"))
-		x = d2i_X509(NULL, (const unsigned char **)&data, len);
-	else {
+	if (strstr((char *)data, "-----BEGIN CERTIFICATE-----")) {
 		BIO *mem = BIO_new_mem_buf(data, len);
 		x = PEM_read_bio_X509(mem, NULL, NULL, NULL);
+		/* Update what is written to the card to be DER encoded */
+		if (contents != NULL) {
+			unsigned char *contents_pointer = contents;
+			*contents_len = i2d_X509(x, &contents_pointer);
+			if (*contents_len < 0)
+				util_fatal("Failed to convert PEM to DER");
+		}
 		BIO_free(mem);
+	} else {
+		x = d2i_X509(NULL, (const unsigned char **)&data, len);
 	}
 	if (!x) {
 		util_fatal("OpenSSL error during X509 certificate parsing");
 	}
+	/* convert only (if needed) */
+	if (cert == NULL)
+		return;
+
 	/* check length first */
 	n = i2d_X509_NAME(X509_get_subject_name(x), NULL);
 	if (n < 0)
@@ -2266,15 +2297,30 @@ static int write_object(CK_SESSION_HANDLE session)
 		fclose(f);
 		need_to_parse_certdata = 1;
 	}
-	if (opt_object_class == CKO_CERTIFICATE && !opt_attr_from_file) {
-		memcpy(certdata, contents, MAX_OBJECT_SIZE);
-		certdata_len = contents_len;
-		need_to_parse_certdata = 1;
+	if (opt_object_class == CKO_CERTIFICATE) {
+		if (opt_attr_from_file) {
+			/* Convert  contents  from PEM to DER if needed
+			 * certdata  already read and will be validated later
+			 */
+#ifdef ENABLE_OPENSSL
+			parse_certificate(NULL, contents, contents_len, contents, &contents_len);
+#else
+			util_fatal("No OpenSSL support, cannot parse certificate");
+#endif
+		} else {
+			memcpy(certdata, contents, MAX_OBJECT_SIZE);
+			certdata_len = contents_len;
+			need_to_parse_certdata = 1;
+		}
 	}
 
 	if (need_to_parse_certdata) {
 #ifdef ENABLE_OPENSSL
-		parse_certificate(&cert, certdata, certdata_len);
+		/* Validate and get the certificate fields (from certdata)
+		 * and convert PEM to DER if needed
+		 */
+		parse_certificate(&cert, certdata, certdata_len,
+			(opt_attr_from_file ? NULL : contents), &contents_len);
 #else
 		util_fatal("No OpenSSL support, cannot parse certificate");
 #endif
@@ -5283,6 +5329,37 @@ static void test_fork(void)
 
 }
 #endif
+
+static void generate_random(CK_SESSION_HANDLE session)
+{
+	CK_RV rv;
+	CK_BYTE *buf;
+	FILE *out;
+
+	buf = malloc(opt_random_bytes);
+	if (!buf)
+		util_fatal("Not enough memory to allocate random data buffer");
+
+	rv = p11->C_GenerateRandom(session, buf, opt_random_bytes);
+	if (rv != CKR_OK)
+		util_fatal("Could not generate random bytes");
+
+	if (opt_output) {
+		out = fopen(opt_output, "wb");
+		if (out==NULL)
+			util_fatal("Cannot open '%s'", opt_output);
+	}
+	else
+		out = stdout;
+
+	if (fwrite(buf, 1, opt_random_bytes, out) != opt_random_bytes)
+		util_fatal("Cannot write to '%s'", opt_output);
+
+	if (opt_output)
+		fclose(out);
+
+	free(buf);
+}
 
 static const char *p11_flag_names(struct flag_info *list, CK_FLAGS value)
 {

@@ -90,6 +90,10 @@
 #define PACKAGE_VERSION "@PACKAGE_VERSION@"
 #endif
 
+#ifndef VERSION
+#define VERSION PACKAGE_VERSION
+#endif
+
 #ifndef PACKAGE_NAME
 #define PACKAGE_NAME "@PACKAGE_NAME@"
 #endif

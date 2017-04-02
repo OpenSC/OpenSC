@@ -865,9 +865,9 @@ epass2003_sm_wrap_apdu(struct sc_card *card, struct sc_apdu *plain, struct sc_ap
 	case 0x00:
 	case 0x04:
 		sm->datalen = plain->datalen;
-		sm->data = plain->data;
+		memcpy((void *)sm->data, plain->data, plain->datalen);
 		sm->resplen = plain->resplen;
-		sm->resp = plain->resp;
+		memcpy(sm->resp, plain->resp, plain->resplen);
 		break;
 	case 0x0C:
 		memset(buf, 0, sizeof(buf));
@@ -978,7 +978,9 @@ epass2003_sm_unwrap_apdu(struct sc_card *card, struct sc_apdu *sm, struct sc_apd
 	plain->sw1 = sm->sw1;
 	plain->sw2 = sm->sw2;
 
-	sc_log(card->ctx, "unwrapped APDU: resplen %i, SW %02X%02X", plain->resplen, plain->sw1, plain->sw2);
+	sc_log(card->ctx,
+	       "unwrapped APDU: resplen %"SC_FORMAT_LEN_SIZE_T"u, SW %02X%02X",
+	       plain->resplen, plain->sw1, plain->sw2);
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
@@ -996,13 +998,18 @@ epass2003_sm_free_wrapped_apdu(struct sc_card *card,
 	if (!(*sm_apdu))
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 
+
 	if (plain)
 		rv = epass2003_sm_unwrap_apdu(card, *sm_apdu, plain);
 
-	if ((*sm_apdu)->data)
-		free((unsigned char *) (*sm_apdu)->data);
-	if ((*sm_apdu)->resp)
+	if ((*sm_apdu)->data) {
+		unsigned char * p = (unsigned char *)((*sm_apdu)->data);
+		free(p);
+	}
+	if ((*sm_apdu)->resp) {
 		free((*sm_apdu)->resp);
+	}
+
 	free(*sm_apdu);
 	*sm_apdu = NULL;
 
@@ -1056,6 +1063,7 @@ err:
 		free((unsigned char *) apdu->data);
 		free(apdu->resp);
 		free(apdu);
+		apdu = NULL;
 	}
 	LOG_FUNC_RETURN(ctx, rv);
 }
@@ -1156,6 +1164,13 @@ epass2003_init(struct sc_card *card)
 		exdata->smtype = KEY_TYPE_AES;
 	else
 		exdata->smtype = KEY_TYPE_DES;
+
+	if (0x84 == data[14]) {
+		if (0x00 == data[16]) { 
+			exdata->sm = SM_PLAIN;
+		}
+	}
+
 
 	/* mutual authentication */
 	card->max_recv_size = 0xD8;
@@ -1516,9 +1531,12 @@ epass2003_select_file(struct sc_card *card, const sc_path_t * in_path,
 	if (r != SC_SUCCESS)
 		pbuf[0] = '\0';
 
-	sc_log(card->ctx, "current path (%s, %s): %s (len: %u)\n",
-			(card->cache.current_path.type == SC_PATH_TYPE_DF_NAME ? "aid" : "path"),
-			(card->cache.valid ? "valid" : "invalid"), pbuf, card->cache.current_path.len);
+	sc_log(card->ctx,
+	       "current path (%s, %s): %s (len: %"SC_FORMAT_LEN_SIZE_T"u)\n",
+	       card->cache.current_path.type == SC_PATH_TYPE_DF_NAME ?
+	       "aid" : "path",
+	       card->cache.valid ? "valid" : "invalid", pbuf,
+	       card->cache.current_path.len);
 
 	switch (in_path->type) {
 	case SC_PATH_TYPE_FILE_ID:
@@ -1684,7 +1702,8 @@ epass2003_process_fci(struct sc_card *card, sc_file_t * file, const u8 * buf, si
 		file->size = tag[0];
 		if (taglen == 2)
 			file->size = (file->size << 8) + tag[1];
-		sc_log(ctx, "  bytes in file: %d", file->size);
+		sc_log(ctx, "  bytes in file: %"SC_FORMAT_LEN_SIZE_T"u",
+		       file->size);
 	}
 
 	if (tag == NULL) {

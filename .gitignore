@@ -67,7 +67,7 @@ doc/tools/netkey-tool
 doc/tools/openpgp-tool
 doc/tools/opensc-explorer
 doc/tools/opensc-tool
-src/tools/gids-tool
+doc/tools/gids-tool
 doc/tools/piv-tool
 doc/tools/pkcs11-tool
 doc/tools/pkcs15-crypt
@@ -76,7 +76,6 @@ doc/tools/pkcs15-tool
 doc/tools/sc-hsm-tool
 doc/tools/westcos-tool
 doc/tools/dnie-tool
-doc/tools/gids-tool
 
 etc/opensc.conf.win
 etc/opensc.conf
@@ -101,7 +100,8 @@ src/tools/cryptoflex-tool
 src/tools/netkey-tool
 src/tools/pkcs11-tool
 src/tools/dnie-tool
-src/tools/gids-tool
+src/tools/npa-tool
+src/tools/sceac-example
 
 win32/OpenSC.iss
 win32/OpenSC.wxs

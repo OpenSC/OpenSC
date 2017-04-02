@@ -518,8 +518,10 @@ gpk_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	sc_file_t	*keyfile;
 	int             r, n;
 
-	sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "path=%s, %d bits\n", sc_print_path(&key_info->path),
-			key_info->modulus_length);
+	sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL,
+		 "path=%s, %"SC_FORMAT_LEN_SIZE_T"u bits\n",
+		 sc_print_path(&key_info->path),
+		 key_info->modulus_length);
 
 	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
 		sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "GPK supports generating only RSA keys.");
