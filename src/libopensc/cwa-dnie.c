@@ -895,24 +895,6 @@ void dnie_change_cwa_provider_to_pin(sc_card_t * card)
 	res->cwa_get_sn_ifd = dnie_get_sn_ifd_pin;
 }
 
-int dnie_transmit_apdu(sc_card_t * card, sc_apdu_t * apdu)
-{
-	int res = SC_SUCCESS;
-	sc_context_t *ctx;
-	cwa_provider_t *provider = NULL;
-	ctx=card->ctx;
-	provider = GET_DNIE_PRIV_DATA(card)->cwa_provider;
-	if (card->sm_ctx.sm_mode == SM_MODE_TRANSMIT) {
-		res = sc_transmit_apdu(card, apdu);
-		LOG_TEST_RET(ctx, res, "Error in dnie_wrap_apdu process");
-		res = cwa_decode_response(card, provider, apdu);
-		LOG_TEST_RET(ctx, res, "Error in cwa_decode_response process");
-	}
-	else
-		res = sc_transmit_apdu(card, apdu);
-	return res;
-}
-
 void dnie_format_apdu(sc_card_t *card, sc_apdu_t *apdu,
 			int cse, int ins, int p1, int p2, int le, int lc,
 			unsigned char * resp, size_t resplen,

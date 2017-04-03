@@ -656,7 +656,7 @@ static int dnie_get_serialnr(sc_card_t * card, sc_serial_number_t * serial)
 					rbuf, sizeof(rbuf), NULL, 0);
 	apdu.cla = 0x90;	/* propietary cmd */
 	/* send apdu */
-	result = dnie_transmit_apdu(card, &apdu);
+	result = sc_transmit_apdu(card, &apdu);
 	if (result != SC_SUCCESS) {
 		dnie_free_apdu_buffers(&apdu, rbuf, sizeof(rbuf));
 		LOG_TEST_RET(card->ctx, result, "APDU transmit failed");
@@ -750,9 +750,11 @@ static int dnie_sm_free_wrapped_apdu(struct sc_card *card,
 		struct sc_apdu *plain, struct sc_apdu **sm_apdu)
 {
 	struct sc_context *ctx = card->ctx;
+	cwa_provider_t *provider = NULL;
 	int rv = SC_SUCCESS;
 
 	LOG_FUNC_CALLED(ctx);
+	provider = GET_DNIE_PRIV_DATA(card)->cwa_provider;
 	if (!sm_apdu)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 	if (!(*sm_apdu))
@@ -769,6 +771,7 @@ static int dnie_sm_free_wrapped_apdu(struct sc_card *card,
 		}
 
 		free(*sm_apdu);
+		rv = cwa_decode_response(card, provider, plain);
 	}
 	*sm_apdu = NULL;
 
@@ -1029,7 +1032,7 @@ static int dnie_fill_cache(sc_card_t * card)
 		apdu.resplen = MAX_RESP_BUFFER_SIZE;
 		apdu.resp = tmp;
 		/* transmit apdu */
-		r = dnie_transmit_apdu(card, &apdu);
+		r = sc_transmit_apdu(card, &apdu);
 		if (r != SC_SUCCESS) {
 			free(buffer);
 			if (apdu.resp != tmp)
@@ -1174,7 +1177,7 @@ static int dnie_compose_and_send_apdu(sc_card_t *card, const u8 *path, size_t pa
 	if (file_out == NULL)
 		apdu.cse = SC_APDU_CASE_4_SHORT;
 
-	res = dnie_transmit_apdu(card, &apdu);
+	res = sc_transmit_apdu(card, &apdu);
 	if ((res != SC_SUCCESS) || (file_out == NULL))
 		dnie_free_apdu_buffers(&apdu, rbuf, sizeof(rbuf));
 	LOG_TEST_RET(ctx, res, "SelectFile() APDU transmit failed");
@@ -1379,7 +1382,7 @@ static int dnie_get_challenge(struct sc_card *card, u8 * rnd, size_t len)
 		apdu.le = BUFFER_SIZE;
 		apdu.resp = buf;
 		apdu.resplen = MAX_RESP_BUFFER_SIZE;	/* include SW's */
-		result = dnie_transmit_apdu(card, &apdu);
+		result = sc_transmit_apdu(card, &apdu);
 		if (result != SC_SUCCESS) {
 			dnie_free_apdu_buffers(&apdu, buf, MAX_RESP_BUFFER_SIZE);
 			LOG_TEST_RET(card->ctx, result, "APDU transmit failed");
@@ -1547,7 +1550,7 @@ static int dnie_set_security_env(struct sc_card *card,
 	 * store sec env apdu (00 22 F2 se_num) command will not be issued */
 
 	/* send composed apdu and parse result */
-	result = dnie_transmit_apdu(card, &apdu);
+	result = sc_transmit_apdu(card, &apdu);
 	dnie_free_apdu_buffers(&apdu, rbuf, MAX_RESP_BUFFER_SIZE);
 	LOG_TEST_RET(card->ctx, result, "Set Security Environment failed");
 	result = sc_check_sw(card, apdu.sw1, apdu.sw2);
@@ -1612,7 +1615,7 @@ static int dnie_decipher(struct sc_card *card,
 	sbuf[0] = 0;		/* padding indicator byte, 0x00 = No further indication */
 	memcpy(sbuf + 1, crgram, crgram_len);
 	/* send apdu */
-	result = dnie_transmit_apdu(card, &apdu);
+	result = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, result, "APDU transmit failed");
 	/* check response */
 	result = sc_check_sw(card, apdu.sw1, apdu.sw2);
@@ -1696,7 +1699,7 @@ static int dnie_compute_signature(struct sc_card *card,
 	dnie_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x9E, 0x9A, 256, datalen,
 					rbuf, sizeof(rbuf), data, datalen);
 	/* tell card to compute signature */
-	result = dnie_transmit_apdu(card, &apdu);
+	result = sc_transmit_apdu(card, &apdu);
 	if (result != SC_SUCCESS) {
 		dnie_free_apdu_buffers(&apdu, rbuf, sizeof(rbuf));
 		LOG_TEST_RET(card->ctx, result, "compute_signature() failed");
@@ -1771,7 +1774,7 @@ static int dnie_list_files(sc_card_t * card, u8 * buf, size_t buflen)
 			/* compose and transmit select_file() cmd */
 			data[0] = (u8) (0xff & id1);
 			data[1] = (u8) (0xff & id2);
-			res = dnie_transmit_apdu(card, &apdu);
+			res = sc_transmit_apdu(card, &apdu);
 			dnie_free_apdu_buffers(&apdu, NULL, 0);
 			if (res != SC_SUCCESS) {
 				sc_log(card->ctx, "List file '%02X%02X' failed",
@@ -1923,7 +1926,7 @@ static int dnie_read_header(struct sc_card *card)
 	dnie_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xB0, 0x00, 0x00, 8, 0,
 					buf, MAX_RESP_BUFFER_SIZE, NULL, 0);
 	/* transmit apdu */
-	r = dnie_transmit_apdu(card, &apdu);
+	r = sc_transmit_apdu(card, &apdu);
 	if (r != SC_SUCCESS) {
 		dnie_free_apdu_buffers(&apdu, buf, SC_MAX_APDU_BUFFER_SIZE);
 		sc_log(ctx, "read_header() APDU transmit failed");
@@ -2201,7 +2204,7 @@ static int dnie_pin_verify(struct sc_card *card,
 					resp, MAX_RESP_BUFFER_SIZE, pinbuffer, pinlen);
 
 	/* and send to card throught virtual channel */
-	res = dnie_transmit_apdu(card, &apdu);
+	res = sc_transmit_apdu(card, &apdu);
 	if (res != SC_SUCCESS) {
 		dnie_free_apdu_buffers(&apdu, resp, MAX_RESP_BUFFER_SIZE);
 		LOG_TEST_RET(card->ctx, res, "VERIFY APDU Transmit fail");
