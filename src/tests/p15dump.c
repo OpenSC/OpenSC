@@ -30,8 +30,7 @@ static int dump_objects(const char *what, int type)
 		printf("failed.\n");
 		fprintf(stderr, "Error enumerating %s: %s\n",
 			what, sc_strerror(count));
-		if (SC_SUCCESS != sc_unlock(card))
-			return 1;
+		sc_unlock(card);
 		return 1;
 	}
 	if (count == 0) {

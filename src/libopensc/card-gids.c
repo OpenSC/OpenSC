@@ -669,6 +669,7 @@ static int gids_get_crypto_identifier_from_key_ref(sc_card_t *card, const unsign
 	if (index >= recordsnum) {
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
 	}
+	*cryptoidentifier = 0x00; /* initialize to zero */
 	if (records[index].wKeyExchangeKeySizeBits == 1024 || records[index].wSigKeySizeBits == 1024) {
 		*cryptoidentifier = GIDS_RSA_1024_IDENTIFIER;
 		return SC_SUCCESS;
@@ -879,12 +880,16 @@ static int gids_read_public_key (struct sc_card *card , unsigned int algorithm,
 	if (keydata != NULL) {
 		rsa_key.modulus.data = (u8*) keydata;
 		rsa_key.modulus.len = len;
+	} else {
+		rsa_key.modulus.len = 0;
 	}
 
 	keydata = sc_asn1_find_tag(card->ctx, keytemplate, tlen, GIDS_PUBKEY_TAG_EXPONENT, &len);
 	if (keydata != NULL) {
 		rsa_key.exponent.data = (u8*) keydata;
 		rsa_key.exponent.len = len;
+	} else {
+		rsa_key.exponent.len = 0;
 	}
 
 	if (rsa_key.exponent.len && rsa_key.modulus.len) {
@@ -1460,7 +1465,7 @@ static int gids_import_key(sc_card_t *card, sc_pkcs15_object_t *object, sc_pkcs1
 	SC_TEST_GOTO_ERR(card->ctx, SC_LOG_DEBUG_NORMAL, r, "unable to put the private key - key greater than 2048 bits ?");
 	r = SC_SUCCESS;
 err:
-	sc_mem_clear(buffer, sizeof(buffer));
+	sc_mem_clear(buffer, buflen);
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 

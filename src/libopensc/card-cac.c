@@ -472,7 +472,7 @@ static int cac_cac1_get_certificate(sc_card_t *card, u8 **out_buf, size_t *out_l
 	size_t left = 0;
 	size_t len, next_len;
 	sc_apdu_t apdu;
-	int r;
+	int r = SC_SUCCESS;
 
 
 	/* get the size */
@@ -681,12 +681,12 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 			r = sc_decompress_alloc(&priv->cache_buf, &priv->cache_buf_len,
 				cert_ptr, cert_len, COMPRESSION_AUTO);
 #else
-			sc_log(card->ctx, "PIV compression not supported, no zlib");
+			sc_log(card->ctx, "CAC compression not supported, no zlib");
 			r = SC_ERROR_NOT_SUPPORTED;
 #endif
 			if (r)
 				goto done;
-		} else {
+		} else if (cert_len > 0) {
 			priv->cache_buf = malloc(cert_len);
 			if (priv->cache_buf == NULL) {
 				r = SC_ERROR_OUT_OF_MEMORY;
@@ -694,6 +694,9 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 			}
 			priv->cache_buf_len = cert_len;
 			memcpy(priv->cache_buf, cert_ptr, cert_len);
+		} else {
+			sc_log(card->ctx, "Can't read zero-length certificate");
+			goto done;
 		}
 		break;
 	default:

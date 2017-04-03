@@ -1377,7 +1377,7 @@ coolkey_fill_object(sc_card_t *card, sc_cardctl_coolkey_object_t *obj)
 {
 	int r;
 	size_t buf_len = obj->length;
-	u8 *new_obj_data = malloc(buf_len);
+	u8 *new_obj_data = NULL;
 	sc_cardctl_coolkey_object_t *obj_entry;
 	coolkey_private_data_t * priv = COOLKEY_DATA(card);
 
@@ -1421,7 +1421,7 @@ coolkey_find_attribute(sc_card_t *card, sc_cardctl_coolkey_attribute_t *attribut
 	const u8 *obj = attribute->object->data;
 	const u8 *attr = NULL;
 	size_t buf_len = attribute->object->length;
-	coolkey_object_header_t *object_head = (coolkey_object_header_t *)obj;
+	coolkey_object_header_t *object_head;
 	int attribute_count,i;
 	attribute->attribute_data_type = SC_CARDCTL_COOLKEY_ATTR_TYPE_STRING;
 	attribute->attribute_length = 0;
@@ -1442,6 +1442,7 @@ coolkey_find_attribute(sc_card_t *card, sc_cardctl_coolkey_attribute_t *attribut
 	if (buf_len <= sizeof(coolkey_v0_object_header_t)) {
 		return SC_ERROR_CORRUPTED_DATA;
 	}
+	object_head = (coolkey_object_header_t *)obj;
 	object_record_type = object_head->record_type;
 	/* make sure it's a type we recognize */
 	if ((object_record_type != COOLKEY_V1_OBJECT) && (object_record_type != COOLKEY_V0_OBJECT)) {
@@ -2198,6 +2199,8 @@ static int coolkey_initialize(sc_card_t *card)
 			continue;
 		}
 		r = coolkey_add_object(priv, object_id, NULL, object_len, 0);
+		if (r != SC_SUCCESS)
+			sc_log(card->ctx, "coolkey_add_object() returned %d", r);
 
 	}
 	if (r != SC_ERROR_FILE_END_REACHED) {

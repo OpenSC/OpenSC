@@ -710,7 +710,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 		struct sc_pkcs15_cert_info cert_info;
 		struct sc_pkcs15_object    cert_obj;
 		sc_pkcs15_der_t   cert_der;
-		sc_pkcs15_cert_t *cert_out;
+		sc_pkcs15_cert_t *cert_out = NULL;
 		
 		ckis[i].cert_found = 0;
 		ckis[i].key_alg = -1;
@@ -761,6 +761,8 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 		r =  sc_pkcs15_read_certificate(p15card, &cert_info, &cert_out);
 		if (r < 0 || cert_out->key == NULL) {
 			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Failed to read/parse the certificate r=%d",r);
+			if (cert_out != NULL)
+				sc_pkcs15_free_certificate(cert_out);
 			continue;
 		}
 		/* 

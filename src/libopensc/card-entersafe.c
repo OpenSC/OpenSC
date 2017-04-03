@@ -487,7 +487,7 @@ static int entersafe_select_fid(sc_card_t *card,
 								sc_file_t **file_out)
 {
 	int r;
-	sc_file_t *file=0;
+	sc_file_t *file = NULL;
 	sc_path_t path;
 
 	memset(&path, 0, sizeof(sc_path_t));
