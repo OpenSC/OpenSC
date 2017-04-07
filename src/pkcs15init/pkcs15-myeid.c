@@ -411,7 +411,7 @@ myeid_encode_public_key(sc_profile_t *profile, sc_card_t *card,
 
 
 /*
- * Store a private key
+ * Create a private key file
  */
 static int
 myeid_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
@@ -420,7 +420,11 @@ myeid_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	struct sc_card *card = p15card->card;
 	struct sc_pkcs15_prkey_info *key_info = (struct sc_pkcs15_prkey_info *) object->data;
 	struct sc_file *file = NULL;
+	struct sc_pkcs15_object *pin_object = NULL;
+	struct sc_pkcs15_auth_info *pkcs15_auth_info = NULL;
 	int keybits = key_info->modulus_length, r;
+	int pin_reference = -1;
+	unsigned char sec_attrs[] = {0xFF, 0xFF, 0xFF};
 
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -473,6 +477,38 @@ myeid_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 
 	sc_log(ctx, "Path of MyEID private key file to create %s",
 			sc_print_path(&file->path));
+
+	if (object->auth_id.len >= 1) {
+		r = sc_pkcs15_find_pin_by_auth_id(p15card, &object->auth_id, &pin_object);
+
+		if (r != SC_SUCCESS)
+			sc_file_free(file);
+		LOG_TEST_RET(ctx, r, "Failed to get pin object by auth_id");
+
+		if (pin_object->type != SC_PKCS15_TYPE_AUTH_PIN) {
+			sc_file_free(file);
+			LOG_TEST_RET(ctx, SC_ERROR_OBJECT_NOT_VALID, "Invalid object returned when locating pin object.");
+		}
+
+		pkcs15_auth_info =  (struct sc_pkcs15_auth_info*) pin_object->data;
+
+		if (pkcs15_auth_info == NULL || pkcs15_auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN) {
+			sc_file_free(file);
+			LOG_TEST_RET(ctx, SC_ERROR_OBJECT_NOT_VALID, "NULL or invalid sc_pkcs15_auth_info in pin object");
+		}
+
+		pin_reference = pkcs15_auth_info->attrs.pin.reference;
+
+		if (pin_reference >= 1 && pin_reference < MYEID_MAX_PINS) {
+			sec_attrs[0] = (pin_reference << 4 | (pin_reference & 0x0F));
+			sec_attrs[1] = (pin_reference << 4 | (pin_reference & 0x0F));
+			sc_file_set_sec_attr(file, sec_attrs, sizeof(sec_attrs));
+		}
+	}
+	else {
+		sc_file_free(file);
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Invalid AuthID value for a private key.");
+	}
 
 	/* Now create the key file */
 	r = sc_pkcs15init_create_file(profile, p15card, file);
