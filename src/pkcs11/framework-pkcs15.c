@@ -4005,8 +4005,13 @@ pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session, void *object, CK_
 			unsigned char *value = NULL;
 			size_t len;
 
-			if (sc_pkcs15_encode_pubkey(context, pubkey->pub_data, &value, &len))
-				return sc_to_cryptoki_error(SC_ERROR_INTERNAL, "C_GetAttributeValue");
+			if (attr->type != CKA_SPKI) {
+				if (sc_pkcs15_encode_pubkey(context, pubkey->pub_data, &value, &len))
+					return sc_to_cryptoki_error(SC_ERROR_INTERNAL, "C_GetAttributeValue");
+				} else {
+					if (sc_pkcs15_encode_pubkey_as_spki(context, pubkey->pub_data, &value, &len))
+					return sc_to_cryptoki_error(SC_ERROR_INTERNAL, "C_GetAttributeValue");
+				}
 
 			if (attr->pValue == NULL_PTR) {
 				attr->ulValueLen = len;
@@ -4023,7 +4028,7 @@ pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session, void *object, CK_
 
 			free(value);
 		}
-		else if (pubkey->base.p15_object && pubkey->base.p15_object->content.value && pubkey->base.p15_object->content.len)   {
+		else if (attr->type != CKA_SPKI && pubkey->base.p15_object && pubkey->base.p15_object->content.value && pubkey->base.p15_object->content.len)   {
 			check_attribute_buffer(attr, pubkey->base.p15_object->content.len);
 			memcpy(attr->pValue, pubkey->base.p15_object->content.value, pubkey->base.p15_object->content.len);
 		}
