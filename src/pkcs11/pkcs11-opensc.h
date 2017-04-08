@@ -9,4 +9,6 @@
  */
 #define CKA_OPENSC_NON_REPUDIATION      (CKA_VENDOR_DEFINED | 1UL)
 
+#define CKA_SPKI			(CKA_VENDOR_DEFINED | 2UL)
+
 #endif

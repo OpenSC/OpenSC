@@ -686,7 +686,7 @@ sc_pkcs11_verify_final(sc_pkcs11_operation_t *operation,
 {
 	struct signature_data *data;
 	struct sc_pkcs11_object *key;
-	unsigned char *pubkey_value;
+	unsigned char *pubkey_value = NULL;
 	CK_KEY_TYPE key_type;
 	CK_BYTE params[9 /* GOST_PARAMS_OID_SIZE */] = { 0 };
 	CK_ATTRIBUTE attr = {CKA_VALUE, NULL, 0};
@@ -700,6 +700,14 @@ sc_pkcs11_verify_final(sc_pkcs11_operation_t *operation,
 		return CKR_ARGUMENTS_BAD;
 
 	key = data->key;
+	rv = key->ops->get_attribute(operation->session, key, &attr_key_type);
+	if (rv != CKR_OK)
+		return rv;
+
+	if (key_type != CKK_GOSTR3410)
+		attr.type = CKA_SPKI;
+		
+
 	rv = key->ops->get_attribute(operation->session, key, &attr);
 	if (rv != CKR_OK)
 		return rv;
@@ -713,8 +721,7 @@ sc_pkcs11_verify_final(sc_pkcs11_operation_t *operation,
 	if (rv != CKR_OK)
 		goto done;
 
-	rv = key->ops->get_attribute(operation->session, key, &attr_key_type);
-	if (rv == CKR_OK && key_type == CKK_GOSTR3410) {
+	if (key_type == CKK_GOSTR3410) {
 		rv = key->ops->get_attribute(operation->session, key, &attr_key_params);
 		if (rv != CKR_OK)
 			goto done;
