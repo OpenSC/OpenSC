@@ -406,8 +406,7 @@ CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, int pubkey_len,
 	int res;
 	CK_RV rv = CKR_GENERAL_ERROR;
 	EVP_PKEY *pkey = NULL;
-	const unsigned char *pubkey_tmp;
-	int is_spki = 0;
+	const unsigned char *pubkey_tmp = NULL;
 
 	if (mech == CKM_GOSTR3410)
 	{
@@ -428,31 +427,8 @@ CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, int pubkey_len,
 	 * We can use d2i_PUBKEY which works for SPKI and any key type. 
 	 */
 	pubkey_tmp = pubkey; /* pass in so pubkey pointer is not modified */
-	/* SPKI ASN.1 starts with SEQUENCE, SEQUENCE, OBJECT IDENTIFIER */
-	if (*pubkey_tmp++ == 0x30) {
-		if (*pubkey_tmp & 0x80)
-			pubkey_tmp += *pubkey_tmp & 0x7F;
 
-		pubkey_tmp++;
-		if (*pubkey_tmp++ == 0x30) {
-			if (*pubkey_tmp & 0x80)
-				pubkey_tmp += *pubkey_tmp & 0x7F;
-
-			pubkey_tmp += 1;
-			if (*pubkey_tmp == 0x06)
-				is_spki = 1;
-		}
-	}
-
-	pubkey_tmp = pubkey; /* pass in so pubkey pointer is not modified */
-
-	if (is_spki) {
-		pkey = d2i_PUBKEY(NULL, &pubkey_tmp, pubkey_len);
-	}else {
-		/* Assume it is RSA */
-		/* TODO support others  but GOST is done above, and EC always uses SPKI */
-		pkey = d2i_PublicKey(EVP_PKEY_RSA, NULL, &pubkey_tmp, pubkey_len);
-	}
+	pkey = d2i_PUBKEY(NULL, &pubkey_tmp, pubkey_len);
 	if (pkey == NULL)
 		return CKR_GENERAL_ERROR;
 
