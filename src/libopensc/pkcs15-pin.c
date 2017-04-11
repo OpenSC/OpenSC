@@ -360,14 +360,14 @@ _sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *p
 	else if (auth_info->auth_type == SC_PKCS15_PIN_AUTH_TYPE_AUTH_KEY)   {
 		struct sc_pkcs15_object *skey_obj = NULL;
 		struct sc_pkcs15_id *skey_id =  &auth_info->attrs.authkey.skey_id;
-		struct sc_pkcs15_skey_info *skey_info = NULL;
+		struct sc_pkcs15_prkey_info *skey_info = NULL;
 
 		r = sc_pkcs15_find_skey_by_id(p15card, skey_id, &skey_obj);
 		if (r)   {
 			sc_log(ctx, "cannot find secret key with id:%s", sc_pkcs15_print_id(skey_id));
 			LOG_FUNC_RETURN(ctx, r);
 		}
-		skey_info = (struct sc_pkcs15_skey_info *)skey_obj->data;
+		skey_info = (struct sc_pkcs15_prkey_info *)skey_obj->data;
 
 		sc_log(ctx, "found secret key '%s'", skey_obj->label);
 		data.pin_reference = skey_info->key_reference;

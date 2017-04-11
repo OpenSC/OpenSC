@@ -824,7 +824,7 @@ static int read_public_key(void)
 
 static void print_skey_info(const struct sc_pkcs15_object *obj)
 {
-	struct sc_pkcs15_skey_info *skey = (struct sc_pkcs15_skey_info *) obj->data;
+	struct sc_pkcs15_prkey_info *skey = (struct sc_pkcs15_prkey_info *) obj->data;
 	const char *types[] = { "generic", "DES", "2DES", "3DES"};
 	unsigned char guid[40];
 	size_t guid_len;

@@ -69,7 +69,7 @@ sc_pkcs15_decode_skdf_entry(struct sc_pkcs15_card *p15card, struct sc_pkcs15_obj
 		const u8 ** buf, size_t *buflen)
 {
         struct sc_context *ctx = p15card->card->ctx;
-        struct sc_pkcs15_skey_info info;
+        struct sc_pkcs15_prkey_info info;
 	int r;
 	size_t usage_len = sizeof(info.usage);
 	size_t af_len = sizeof(info.access_flags);

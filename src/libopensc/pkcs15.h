@@ -378,8 +378,14 @@ struct sc_pkcs15_prkey_info {
 	unsigned int usage, access_flags;
 	int native, key_reference;
 	/* convert to union if other types are supported */
-	size_t modulus_length; /* RSA */
-	size_t field_length;   /* EC in bits */
+	union {
+		size_t modulus_length; /* RSA */
+		size_t field_length;   /* EC in bits */
+		struct {
+			size_t value_len;       /* secret key length */
+			unsigned long key_type; /* PKCS#11 CKK_* */
+		};
+	};
 
 	unsigned int algo_refs[SC_MAX_SUPPORTED_ALGORITHMS];
 
@@ -388,6 +394,8 @@ struct sc_pkcs15_prkey_info {
 	struct sc_pkcs15_key_params params;
 
 	struct sc_path path;
+
+	struct sc_pkcs15_der data;
 
 	/* Non-pkcs15 data, like MD CMAP record */
 	struct sc_auxiliary_data *aux_data;
@@ -416,21 +424,6 @@ struct sc_pkcs15_pubkey_info {
 	} direct;
 };
 typedef struct sc_pkcs15_pubkey_info sc_pkcs15_pubkey_info_t;
-
-struct sc_pkcs15_skey_info {
-	struct sc_pkcs15_id id;
-	unsigned int usage, access_flags;
-	int native, key_reference;
-	size_t value_len;
-	unsigned long key_type;
-	unsigned int algo_refs[SC_MAX_SUPPORTED_ALGORITHMS];
-	struct sc_path path; /* if on card */
-	struct sc_pkcs15_der data;
-};
-typedef struct sc_pkcs15_skey_info sc_pkcs15_skey_info_t;
-
-#define sc_pkcs15_skey sc_pkcs15_data
-#define sc_pkcs15_skey_t sc_pkcs15_data_t
 
 #define SC_PKCS15_TYPE_CLASS_MASK		0xF00
 

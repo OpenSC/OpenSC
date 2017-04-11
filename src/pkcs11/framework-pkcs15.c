@@ -125,8 +125,7 @@ struct pkcs15_data_object {
 struct pkcs15_skey_object {
 	struct pkcs15_any_object    base;
 
-	struct sc_pkcs15_skey_info *info;
-	struct sc_pkcs15_skey *valueXXXX;
+	struct sc_pkcs15_prkey_info *info;
 };
 
 #define skey_flags	base.base.flags
@@ -707,7 +706,7 @@ __pkcs15_create_secret_key_object(struct pkcs15_fw_data *fw_data,
 	rv = __pkcs15_create_object(fw_data, (struct pkcs15_any_object **) &skey,
 			object, &pkcs15_skey_ops, sizeof(struct pkcs15_skey_object));
 	if (rv >= 0)
-	    skey->info = (struct sc_pkcs15_skey_info *) object->data;
+	    skey->info = (struct sc_pkcs15_prkey_info *) object->data;
 
 	if (skey_object != NULL)
 		*skey_object = (struct pkcs15_any_object *) skey;
@@ -2072,7 +2071,7 @@ pkcs15_create_secret_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 	struct sc_pkcs15init_skeyargs args;
 	struct pkcs15_any_object *key_any_obj = NULL;
 	struct sc_pkcs15_object	*key_obj = NULL;
-	struct sc_pkcs15_skey_info *skey_info;
+	struct sc_pkcs15_prkey_info *skey_info;
 	CK_KEY_TYPE key_type;
 	CK_BBOOL _token = FALSE;
 	int rv;
@@ -2171,7 +2170,7 @@ pkcs15_create_secret_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 
 	    key_obj->flags = 2; /* TODO not sure what these mean */
 
-	    skey_info = calloc(1, sizeof(sc_pkcs15_skey_info_t));
+	    skey_info = calloc(1, sizeof(sc_pkcs15_prkey_info_t));
 	    if (skey_info == NULL) {
 		rv = CKR_HOST_MEMORY;
 		goto out;
