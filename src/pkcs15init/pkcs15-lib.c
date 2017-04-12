@@ -77,6 +77,7 @@
 #define DEFAULT_PIN_FLAGS		(SC_PKCS15_CO_FLAG_PRIVATE|SC_PKCS15_CO_FLAG_MODIFIABLE)
 #define DEFAULT_PRKEY_FLAGS		(SC_PKCS15_CO_FLAG_PRIVATE|SC_PKCS15_CO_FLAG_MODIFIABLE)
 #define DEFAULT_PUBKEY_FLAGS		(SC_PKCS15_CO_FLAG_MODIFIABLE)
+#define DEFAULT_SKEY_FLAGS		(SC_PKCS15_CO_FLAG_PRIVATE|SC_PKCS15_CO_FLAG_MODIFIABLE)
 #define DEFAULT_CERT_FLAGS		(SC_PKCS15_CO_FLAG_MODIFIABLE)
 #define DEFAULT_DATA_FLAGS		(SC_PKCS15_CO_FLAG_MODIFIABLE)
 
@@ -2531,6 +2532,8 @@ get_template_name_from_object (struct sc_pkcs15_object *obj)
 		return "private-key";
 	case SC_PKCS15_TYPE_PUBKEY:
 		return "public-key";
+	case SC_PKCS15_TYPE_SKEY:
+		return "secret-key";
 	case SC_PKCS15_TYPE_CERT:
 		return "certificate";
 	case SC_PKCS15_TYPE_DATA_OBJECT:
@@ -2559,6 +2562,9 @@ get_object_path_from_object (struct sc_pkcs15_object *obj,
 		return SC_SUCCESS;
 	case SC_PKCS15_TYPE_PUBKEY:
 		*ret_path = ((struct sc_pkcs15_pubkey_info *)obj->data)->path;
+		return SC_SUCCESS;
+	case SC_PKCS15_TYPE_SKEY:
+		*ret_path = ((struct sc_pkcs15_skey_info *)obj->data)->path;
 		return SC_SUCCESS;
 	case SC_PKCS15_TYPE_CERT:
 		*ret_path = ((struct sc_pkcs15_cert_info *)obj->data)->path;
@@ -2946,6 +2952,10 @@ sc_pkcs15init_new_object(int type, const char *label, struct sc_pkcs15_id *auth_
 		object->flags = DEFAULT_PRKEY_FLAGS;
 		data_size = sizeof(struct sc_pkcs15_prkey_info);
 		break;
+	case SC_PKCS15_TYPE_SKEY:
+		object->flags = DEFAULT_SKEY_FLAGS;
+		data_size = sizeof(struct sc_pkcs15_skey_info);
+		break;
 	case SC_PKCS15_TYPE_PUBKEY:
 		object->flags = DEFAULT_PUBKEY_FLAGS;
 		data_size = sizeof(struct sc_pkcs15_pubkey_info);
@@ -3025,6 +3035,9 @@ sc_pkcs15init_change_attrib(struct sc_pkcs15_card *p15card, struct sc_profile *p
 		case SC_PKCS15_PUKDF_TRUSTED:
 			((struct sc_pkcs15_pubkey_info *) object->data)->id = new_id;
 			break;
+		case SC_PKCS15_SKDF:
+			((struct sc_pkcs15_skey_info *) object->data)->id = new_id;
+			break;
 		case SC_PKCS15_CDF:
 		case SC_PKCS15_CDF_TRUSTED:
 		case SC_PKCS15_CDF_USEFUL:
@@ -3075,22 +3088,8 @@ sc_pkcs15init_delete_object(struct sc_pkcs15_card *p15card, struct sc_profile *p
 	int r = 0, stored_in_ef = 0;
 
 	LOG_FUNC_CALLED(ctx);
-	switch(obj->type & SC_PKCS15_TYPE_CLASS_MASK)   {
-	case SC_PKCS15_TYPE_PUBKEY:
-		path = ((struct sc_pkcs15_pubkey_info *)obj->data)->path;
-		break;
-	case SC_PKCS15_TYPE_PRKEY:
-		path = ((struct sc_pkcs15_prkey_info *)obj->data)->path;
-		break;
-	case SC_PKCS15_TYPE_CERT:
-		path = ((struct sc_pkcs15_cert_info *)obj->data)->path;
-		break;
-	case SC_PKCS15_TYPE_DATA_OBJECT:
-		path = ((struct sc_pkcs15_data_info *)obj->data)->path;
-		break;
-	default:
-		return SC_ERROR_NOT_SUPPORTED;
-	}
+	r = get_object_path_from_object(obj, &path);
+	LOG_TEST_RET(ctx, r, "Failed to get object path");
 
 	sc_log(ctx, "delete object(type:%X) with path(type:%X,%s)", obj->type, path.type, sc_print_path(&path));
 
