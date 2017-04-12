@@ -109,14 +109,15 @@ static int	do_select_parent(struct sc_profile *, struct sc_pkcs15_card *,
 			struct sc_file *, struct sc_file **);
 static int	sc_pkcs15init_create_pin(struct sc_pkcs15_card *, struct sc_profile *,
 			struct sc_pkcs15_object *, struct sc_pkcs15init_pinargs *);
-static int	check_keygen_params_consistency(struct sc_card *card, struct sc_pkcs15init_keygen_args *args,
-			unsigned int bits, unsigned int *out_bits);
-static int	check_key_compatibility(struct sc_pkcs15_card *,
+static int	check_keygen_params_consistency(struct sc_card *card,
+			unsigned int alg, struct sc_pkcs15init_prkeyargs *prkey,
+			unsigned int *keybits);
+static int	check_key_compatibility(struct sc_pkcs15_card *, unsigned int,
 			struct sc_pkcs15_prkey *, unsigned int,
 			unsigned int, unsigned int);
 static int	prkey_fixup(struct sc_pkcs15_card *, struct sc_pkcs15_prkey *);
 static int	prkey_bits(struct sc_pkcs15_card *, struct sc_pkcs15_prkey *);
-static int	prkey_pkcs15_algo(struct sc_pkcs15_card *, struct sc_pkcs15_prkey *);
+static int	key_pkcs15_algo(struct sc_pkcs15_card *, unsigned int);
 static int	select_id(struct sc_pkcs15_card *, int, struct sc_pkcs15_id *);
 static int	select_object_path(struct sc_pkcs15_card *, struct sc_profile *,
 			struct sc_pkcs15_object *, struct sc_path *);
@@ -1188,7 +1189,7 @@ sc_pkcs15init_init_prkdf(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 	/* Create the prkey object now.
 	 * If we find out below that we're better off reusing an
 	 * existing object, we'll ditch this one */
-	key_type = prkey_pkcs15_algo(p15card, key);
+	key_type = key_pkcs15_algo(p15card, key->algorithm);
 	r = key_type;
 	LOG_TEST_GOTO_ERR(ctx, r, "Unsupported key type");
 
@@ -1332,10 +1333,13 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 
 	LOG_FUNC_CALLED(ctx);
 	/* check supported key size */
-	r = check_keygen_params_consistency(p15card->card, keygen_args, keybits, &keybits);
+	r = check_keygen_params_consistency(p15card->card,
+		keygen_args->prkey_args.key.algorithm, &keygen_args->prkey_args,
+		&keybits);
 	LOG_TEST_RET(ctx, r, "Invalid key size");
 
-	if (check_key_compatibility(p15card, &keygen_args->prkey_args.key, keygen_args->prkey_args.x509_usage,
+	if (check_key_compatibility(p15card, keygen_args->prkey_args.key.algorithm,
+			&keygen_args->prkey_args.key, keygen_args->prkey_args.x509_usage,
 			keybits, SC_ALGORITHM_ONBOARD_KEY_GEN))
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Cannot generate key with the given parameters");
 
@@ -1465,7 +1469,7 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card, struct sc_profil
 	LOG_TEST_RET(ctx, keybits, "Invalid private key size");
 
 	/* Now check whether the card is able to handle this key */
-	if (check_key_compatibility(p15card, &key, keyargs->x509_usage, keybits, 0)) {
+	if (check_key_compatibility(p15card, key.algorithm, &key, keyargs->x509_usage, keybits, 0)) {
 		/* Make sure the caller explicitly tells us to store
 		 * the key as extractable. */
 		if (!(keyargs->access_flags & SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE))
@@ -2067,26 +2071,23 @@ sc_pkcs15init_keybits(struct sc_pkcs15_bignum *bn)
  * Check consistency of the key parameters.
  */
 static int
-check_keygen_params_consistency(struct sc_card *card, struct sc_pkcs15init_keygen_args *params,
-		unsigned int keybits, unsigned int *out_keybits)
+check_keygen_params_consistency(struct sc_card *card,
+		unsigned int alg, struct sc_pkcs15init_prkeyargs *prkey,
+		unsigned int *keybits)
 {
 	struct sc_context *ctx = card->ctx;
-	unsigned int alg = params->prkey_args.key.algorithm;
 	int i, rv;
 
-	if (alg == SC_ALGORITHM_EC)   {
-		struct sc_ec_parameters *ecparams = &params->prkey_args.key.u.ec.params;
+	if (alg == SC_ALGORITHM_EC && prkey)   {
+		struct sc_ec_parameters *ecparams = &prkey->key.u.ec.params;
 
 		rv = sc_pkcs15_fix_ec_parameters(ctx, ecparams);
 		LOG_TEST_RET(ctx, rv, "Cannot fix EC parameters");
 
 		sc_log(ctx, "EC parameters: %s", sc_dump_hex(ecparams->der.value, ecparams->der.len));
-		if (!keybits)
-			keybits = ecparams->field_length;
+		if (!*keybits)
+			*keybits = ecparams->field_length;
 	}
-
-	if (out_keybits)
-		*out_keybits = keybits;
 
 	for (i = 0; i < card->algorithm_count; i++) {
 		struct sc_algorithm_info *info = &card->algorithms[i];
@@ -2094,7 +2095,7 @@ check_keygen_params_consistency(struct sc_card *card, struct sc_pkcs15init_keyge
 		if (info->algorithm != alg)
 			continue;
 
-		if (info->key_length != keybits)
+		if (info->key_length != *keybits)
 			continue;
 
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
@@ -2108,7 +2109,8 @@ check_keygen_params_consistency(struct sc_card *card, struct sc_pkcs15init_keyge
  * Check whether the card has native crypto support for this key.
  */
 static int
-check_key_compatibility(struct sc_pkcs15_card *p15card, struct sc_pkcs15_prkey *key, unsigned int x509_usage,
+check_key_compatibility(struct sc_pkcs15_card *p15card, unsigned int alg,
+		struct sc_pkcs15_prkey *prkey, unsigned int x509_usage,
 		unsigned int key_length, unsigned int flags)
 {
 	struct sc_context *ctx = p15card->card->ctx;
@@ -2119,14 +2121,14 @@ check_key_compatibility(struct sc_pkcs15_card *p15card, struct sc_pkcs15_prkey *
 	count = p15card->card->algorithm_count;
 	for (info = p15card->card->algorithms; count--; info++) {
 		/* don't check flags if none was specified */
-		if (info->algorithm != key->algorithm || info->key_length != key_length)
+		if (info->algorithm != alg || info->key_length != key_length)
 			continue;
 		if (flags != 0 && ((info->flags & flags) != flags))
 			continue;
 
-		if (key->algorithm == SC_ALGORITHM_RSA)   {
-			if (info->u._rsa.exponent != 0 && key->u.rsa.exponent.len != 0) {
-				struct sc_pkcs15_bignum *e = &key->u.rsa.exponent;
+		if (alg == SC_ALGORITHM_RSA && prkey)   {
+			if (info->u._rsa.exponent != 0 && prkey->u.rsa.exponent.len != 0) {
+				struct sc_pkcs15_bignum *e = &prkey->u.rsa.exponent;
 				unsigned long	exponent = 0;
 				unsigned int	n;
 
@@ -2140,12 +2142,12 @@ check_key_compatibility(struct sc_pkcs15_card *p15card, struct sc_pkcs15_prkey *
 					continue;
 			}
 		}
-		else if (key->algorithm == SC_ALGORITHM_EC)   {
-			if (!sc_valid_oid(&key->u.ec.params.id))
-				if (sc_pkcs15_fix_ec_parameters(ctx, &key->u.ec.params))
+		else if (alg == SC_ALGORITHM_EC)   {
+			if (!sc_valid_oid(&prkey->u.ec.params.id))
+				if (sc_pkcs15_fix_ec_parameters(ctx, &prkey->u.ec.params))
 					LOG_FUNC_RETURN(ctx, SC_ERROR_OBJECT_NOT_VALID);
 			if (sc_valid_oid(&info->u._ec.params.id))
-				if (!sc_compare_oid(&info->u._ec.params.id, &key->u.ec.params.id))
+				if (!sc_compare_oid(&info->u._ec.params.id, &prkey->u.ec.params.id))
 					continue;
 		}
 
@@ -2302,11 +2304,11 @@ prkey_bits(struct sc_pkcs15_card *p15card, struct sc_pkcs15_prkey *key)
 
 
 static int
-prkey_pkcs15_algo(struct sc_pkcs15_card *p15card, struct sc_pkcs15_prkey *key)
+key_pkcs15_algo(struct sc_pkcs15_card *p15card, unsigned int algorithm)
 {
 	struct sc_context *ctx = p15card->card->ctx;
 
-	switch (key->algorithm) {
+	switch (algorithm) {
 	case SC_ALGORITHM_RSA:
 		return SC_PKCS15_TYPE_PRKEY_RSA;
 	case SC_ALGORITHM_DSA:
