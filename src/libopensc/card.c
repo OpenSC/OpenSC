@@ -952,6 +952,19 @@ int _sc_card_add_algorithm(sc_card_t *card, const sc_algorithm_info_t *info)
 	return SC_SUCCESS;
 }
 
+int _sc_card_add_symmetric_alg(sc_card_t *card, unsigned int algorithm,
+			       unsigned int key_length, unsigned long flags)
+{
+	sc_algorithm_info_t info;
+
+	memset(&info, 0, sizeof(info));
+	info.algorithm = algorithm;
+	info.key_length = key_length;
+	info.flags = flags;
+
+	return _sc_card_add_algorithm(card, &info);
+}
+
 int  _sc_card_add_ec_alg(sc_card_t *card, unsigned int key_length,
 			unsigned long flags, unsigned long ext_flags,
 			struct sc_object_id *curve_oid)
