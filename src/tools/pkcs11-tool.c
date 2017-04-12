@@ -1105,6 +1105,9 @@ static void show_token(CK_SLOT_ID slot)
 	if (rv == CKR_TOKEN_NOT_RECOGNIZED) {
 		printf("  (token not recognized)\n");
 		return;
+	} else if (rv != CKR_OK) {
+		printf("C_GetTokenInfo() failed: rv = %s\n", CKR2Str(rv));
+		return;
 	}
 	if (!(info.flags & CKF_TOKEN_INITIALIZED) && (!verbose)) {
 		printf("  token state:   uninitialized\n");
