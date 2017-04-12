@@ -788,6 +788,8 @@ static coolkey_private_data_t *coolkey_new_private_data(void)
 	coolkey_private_data_t *priv;
 	/* allocate priv and zero all the fields */
 	priv = calloc(1, sizeof(coolkey_private_data_t));
+	if (!priv)
+		return NULL;
 	/* set other fields as appropriate */
 	priv->key_id = COOLKEY_INVALID_KEY;
 	list_init(&priv->objects_list);
@@ -2152,7 +2154,7 @@ static int coolkey_initialize(sc_card_t *card)
 
 	priv = coolkey_new_private_data();
 	if (priv == NULL) {
-		r= SC_ERROR_OUT_OF_MEMORY;
+		r = SC_ERROR_OUT_OF_MEMORY;
 		goto cleanup;
 	}
 	r = coolkey_get_life_cycle(card, &life_cycle);
