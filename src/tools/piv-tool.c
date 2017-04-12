@@ -213,6 +213,9 @@ static int load_cert(const char * cert_id, const char * cert_file,
 
 		derlen = i2d_X509(cert, NULL);
 		der = malloc(derlen);
+		if (!der) {
+			goto err;
+		}
 		p = der;
 		i2d_X509(cert, &p);
 	}
@@ -485,6 +488,10 @@ int main(int argc, char * const argv[])
 		case 's':
 			opt_apdus = (char **) realloc(opt_apdus,
 					(opt_apdu_count + 1) * sizeof(char *));
+			if (!opt_apdus) {
+				err = 1;
+				goto end;
+			}
 			opt_apdus[opt_apdu_count] = optarg;
 			do_send_apdu++;
 			if (opt_apdu_count == 0)

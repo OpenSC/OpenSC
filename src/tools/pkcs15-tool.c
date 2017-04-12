@@ -888,6 +888,8 @@ static void print_ssh_key(FILE *outf, const char * alg, struct sc_pkcs15_object 
 	int r;
 
 	uu = malloc(len*2); // Way over - even if we have extra LFs; as each 6 bits take one byte.
+	if (!uu)
+		return;
 
 	if (opt_rfc4716) {
 		r = sc_base64_encode(buf, len, uu, 2*len, 64);

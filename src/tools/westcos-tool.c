@@ -106,7 +106,8 @@ static int do_convert_bignum(sc_pkcs15_bignum_t *dst, const BIGNUM *src)
 	if (src == 0) return 0;
 	dst->len = BN_num_bytes(src);
 	dst->data = malloc(dst->len);
-	BN_bn2bin(src, dst->data);
+	if (!dst->data) return 0;
+	if (!BN_bn2bin(src, dst->data)) return 0;
 	return 1;
 }
 

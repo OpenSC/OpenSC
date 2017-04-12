@@ -50,6 +50,9 @@ C_LoadModule(const char *mspec, CK_FUNCTION_LIST_PTR_PTR funcs)
 	sc_pkcs11_module_t *mod;
 	CK_RV rv, (*c_get_function_list)(CK_FUNCTION_LIST_PTR_PTR);
 	mod = calloc(1, sizeof(*mod));
+	if (mod == NULL) {
+		return NULL;
+	}
 	mod->_magic = MAGIC;
 
 	if (mspec == NULL) {

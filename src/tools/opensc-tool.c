@@ -167,7 +167,7 @@ static int opensc_get_conf_entry(const char *config)
 	key++;
 
 	blocks = scconf_find_blocks(ctx->conf, NULL, section, name);
-	if (blocks[0])
+	if (blocks && blocks[0])
 		conf_block = blocks[0];
 	free(blocks);
 	if (conf_block != NULL) {
@@ -224,7 +224,7 @@ static int opensc_set_conf_entry(const char *config)
 	value++;
 
 	blocks = scconf_find_blocks(ctx->conf, NULL, section, name);
-	if (blocks[0])
+	if (blocks && blocks[0])
 		conf_block = blocks[0];
 	free(blocks);
 	if (conf_block != NULL) {

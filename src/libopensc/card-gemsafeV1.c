@@ -99,7 +99,7 @@ static int get_conf_aid(sc_card_t *card, u8 *aid, size_t *len)
 	for (i = 0; ctx->conf_blocks[i] != NULL; i++) {
 		blocks = scconf_find_blocks(ctx->conf, ctx->conf_blocks[i],
 						"card", "gemsafeV1");
-		if (blocks[0] != NULL)
+		if (blocks != NULL && blocks[0] != NULL)
 			conf_block = blocks[0];
 		free(blocks);
 	}

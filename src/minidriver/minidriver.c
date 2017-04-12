@@ -5694,6 +5694,8 @@ DWORD WINAPI CardAcquireContext(__inout PCARD_DATA pCardData, __in DWORD dwFlags
 
 	/* VENDOR SPECIFIC */
 	vs = pCardData->pvVendorSpecific = pCardData->pfnCspAlloc(sizeof(VENDOR_SPECIFIC));
+	if (!vs)
+		return SCARD_E_NO_MEMORY;
 	memset(vs, 0, sizeof(VENDOR_SPECIFIC));
 
 	logprintf(pCardData, 1, "==================================================================\n");
