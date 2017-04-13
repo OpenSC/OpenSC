@@ -396,7 +396,6 @@ iso7816_process_fci(struct sc_card *card, struct sc_file *file,
 			sc_log(ctx, "  type: %s", type);
 			sc_log(ctx, "  EF structure: %d", byte & 0x07);
 			sc_log(ctx, "  tag 0x82: 0x%02x", byte);
-			/* FIXME: check return value? */
 			if (SC_SUCCESS != sc_file_set_type_attr(file, &byte, 1))
 				sc_log(ctx, "Warning: Could not set file attributes");
 		}
