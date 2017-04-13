@@ -901,6 +901,9 @@ int sc_pkcs15_serialize_guid(unsigned char *, size_t, unsigned, char *, size_t);
 int sc_encode_oid (struct sc_context *, struct sc_object_id *,
 		unsigned char **, size_t *);
 
+/* Copy gost3410 parameters (e.g. from prkey to pubkey) */
+int sc_copy_gost_params(struct sc_pkcs15_gost_parameters *dst, struct sc_pkcs15_gost_parameters *src);
+
 /* Get application by type: 'protected', 'generic' */
 struct sc_app_info *sc_pkcs15_get_application_by_type(struct sc_card *, char *);
 

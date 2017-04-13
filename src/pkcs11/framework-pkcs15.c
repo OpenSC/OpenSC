@@ -143,7 +143,7 @@ extern struct sc_pkcs11_object_ops pkcs15_skey_ops;
 #define GOST_PARAMS_OID_SIZE 8
 static const struct {
 	const CK_BYTE encoded_oid[GOST_PARAMS_ENCODED_OID_SIZE];
-	const unsigned int oid[GOST_PARAMS_OID_SIZE]; 
+	const unsigned int oid[GOST_PARAMS_OID_SIZE];
 	unsigned char oid_id;
 } gostr3410_param_oid [] = {
 	{ { 0x06, 0x07, 0x2a, 0x85, 0x03, 0x02, 0x02, 0x23, 0x01 },
@@ -2657,14 +2657,14 @@ set_gost3410_params(struct sc_pkcs15init_prkeyargs *prkey_args,
 	size_t len, param_index, hash_index;
 	CK_RV rv;
 
-	/* If template has CKA_GOSTR3410_PARAMS attribute, set param_index to 
+	/* If template has CKA_GOSTR3410_PARAMS attribute, set param_index to
 	 * corresponding item's index in gostr3410_param_oid[] */
 	len = GOST_PARAMS_ENCODED_OID_SIZE;
 	if (pPrivTpl && ulPrivCnt)
 		rv = attr_find2(pPubTpl, ulPubCnt, pPrivTpl, ulPrivCnt, CKA_GOSTR3410_PARAMS, &gost_params_oid_from_template, &len);
 	else
 		rv = attr_find(pPubTpl, ulPubCnt, CKA_GOSTR3410_PARAMS, &gost_params_oid_from_template, &len);
-	
+
 	if (rv == CKR_OK) {
 		size_t nn = sizeof(gostr3410_param_oid)/sizeof(gostr3410_param_oid[0]);
 
@@ -2685,14 +2685,14 @@ set_gost3410_params(struct sc_pkcs15init_prkeyargs *prkey_args,
 	else
 		return rv;
 
-	/* If template has CKA_GOSTR3411_PARAMS attribute, set hash_index to 
+	/* If template has CKA_GOSTR3411_PARAMS attribute, set hash_index to
 	 * corresponding item's index in gostr3410_hash_param_oid[] */
 	len = GOST_HASH_PARAMS_ENCODED_OID_SIZE;
 	if (pPrivTpl && ulPrivCnt)
 		rv = attr_find2(pPubTpl, ulPubCnt, pPrivTpl, ulPrivCnt, CKA_GOSTR3411_PARAMS, &gost_hash_params_oid_from_template, &len);
 	else
 		rv = attr_find(pPubTpl, ulPubCnt, CKA_GOSTR3411_PARAMS, &gost_hash_params_oid_from_template, &len);
-	
+
 	if (rv == CKR_OK) {
 		size_t nn = sizeof(gostr3410_hash_param_oid)/sizeof(gostr3410_hash_param_oid[0]);
 
@@ -2713,14 +2713,14 @@ set_gost3410_params(struct sc_pkcs15init_prkeyargs *prkey_args,
 	else
 		return rv;
 
-	/* Set params and hash oids in priv and pub keys' gostr3410 params 
+	/* Set params and hash oids in priv and pub keys' gostr3410 params
 	 * and set params oid_id in priv key */
 	if (prkey_args) {
 		(prkey_args->params).gost.gostr3410 = gostr3410_param_oid[param_index].oid_id;
 		memcpy(&(prkey_args->key).u.gostr3410.params.key,
 			&gostr3410_param_oid[param_index].oid,
 			sizeof(gostr3410_param_oid[param_index].oid));
-		memcpy(&(prkey_args->key).u.gostr3410.params.hash, 
+		memcpy(&(prkey_args->key).u.gostr3410.params.hash,
 			&gostr3410_hash_param_oid[hash_index].oid,
 			sizeof(gostr3410_hash_param_oid[hash_index].oid));
 	}
@@ -2729,13 +2729,11 @@ set_gost3410_params(struct sc_pkcs15init_prkeyargs *prkey_args,
 		memcpy(&(pubkey_args->key).u.gostr3410.params.key,
 			&gostr3410_param_oid[param_index].oid,
 			sizeof(gostr3410_param_oid[param_index].oid));
-		memcpy(&(pubkey_args->key).u.gostr3410.params.hash, 
+		memcpy(&(pubkey_args->key).u.gostr3410.params.hash,
 			&gostr3410_hash_param_oid[hash_index].oid,
 			sizeof(gostr3410_hash_param_oid[hash_index].oid));
-		/* Set pubkey's params pointer here - otherwise pubkey will be incomplete */
-	//	(pubkey_args->key).alg_id->params = &((pubkey_args->key).u.gostr3410.params);
 	}
-	
+
 	return CKR_OK;
 }
 

@@ -856,6 +856,19 @@ sc_pkcs15_card_clear(struct sc_pkcs15_card *p15card)
 }
 
 
+int sc_copy_gost_params(struct sc_pkcs15_gost_parameters *dst, struct sc_pkcs15_gost_parameters *src)
+{
+	if (!dst || !src)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	memcpy(&dst->key, &src->key, sizeof(src->key));
+	memcpy(&dst->hash, &src->hash, sizeof(src->hash));
+	memcpy(&dst->cipher, &src->cipher, sizeof(src->cipher));
+
+	return SC_SUCCESS;
+}
+
+
 struct sc_app_info *
 sc_find_app(struct sc_card *card, struct sc_aid *aid)
 {
