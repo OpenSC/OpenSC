@@ -690,7 +690,7 @@ int iso_get_sm_apdu(struct sc_card *card, struct sc_apdu *apdu, struct sc_apdu *
 
 int iso_free_sm_apdu(struct sc_card *card, struct sc_apdu *apdu, struct sc_apdu **sm_apdu)
 {
-	struct sc_apdu *p = *sm_apdu;
+	struct sc_apdu *p;
 	int r;
 
 	if (!sm_apdu)

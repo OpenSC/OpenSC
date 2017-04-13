@@ -186,12 +186,14 @@ CK_RV push_login_state(struct sc_pkcs11_slot *slot,
 		goto err;
 	}
 
-	login->pPin = sc_mem_alloc_secure(context, (sizeof *pPin)*ulPinLen);
-	if (login->pPin == NULL) {
-		goto err;
+	if (pPin && ulPinLen) {
+		login->pPin = sc_mem_alloc_secure(context, (sizeof *pPin)*ulPinLen);
+		if (login->pPin == NULL) {
+			goto err;
+		}
+		memcpy(login->pPin, pPin, (sizeof *pPin)*ulPinLen);
+		login->ulPinLen = ulPinLen;
 	}
-	memcpy(login->pPin, pPin, (sizeof *pPin)*ulPinLen);
-	login->ulPinLen = ulPinLen;
 	login->userType = userType;
 
 	if (0 > list_append(&slot->logins, login)) {

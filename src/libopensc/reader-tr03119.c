@@ -987,11 +987,11 @@ void sc_detect_escape_cmds(sc_reader_t *reader)
 		}
 	}
 
-	if (error) {
+	if (error && reader) {
 		sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL,
 				"%d escape command%s failed, need to reset the card",
 				error, error == 1 ? "" : "s");
-		if (reader && reader->ops && reader->ops->transmit) {
+		if (reader->ops && reader->ops->transmit) {
 			memset(&apdu, 0, sizeof(apdu));
 			apdu.cse     = SC_APDU_CASE_3_SHORT;
 			apdu.cla     = 0x00;
