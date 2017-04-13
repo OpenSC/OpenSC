@@ -1721,6 +1721,7 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	CK_ULONG modulusBits = 1024;
 	CK_BYTE publicExponent[] = { 0x01, 0x00, 0x01 }; /* 65537 in bytes */
 	CK_BBOOL _true = TRUE;
+	CK_BBOOL _false = FALSE;
 	CK_OBJECT_CLASS pubkey_class = CKO_PUBLIC_KEY;
 	CK_OBJECT_CLASS privkey_class = CKO_PRIVATE_KEY;
 	CK_ATTRIBUTE publicKeyTemplate[20] = {
@@ -1847,6 +1848,17 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 			opt_object_id, opt_object_id_len);
 		n_pubkey_attr++;
 		n_privkey_attr++;
+	}
+
+	if (opt_is_private != 0) {
+		FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_PRIVATE,
+			&_true, sizeof(_true));
+		n_pubkey_attr++;
+	}
+	else {
+		FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_PRIVATE,
+			&_false, sizeof(_false));
+		n_pubkey_attr++;
 	}
 
 	rv = p11->C_GenerateKeyPair(session, &mechanism,
