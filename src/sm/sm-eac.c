@@ -1051,7 +1051,7 @@ int perform_pace(sc_card_t *card,
 	int r;
 	const unsigned char *pp;
 
-	if (!card || !pace_output)
+	if (!card || !card->reader || !card->reader->ops || !pace_output)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	/* show description in advance to give the user more time to read it...
@@ -2346,7 +2346,8 @@ int perform_pace(sc_card_t *card,
 {
 	int r;
 
-	if (card->reader->capabilities & SC_READER_CAP_PACE_GENERIC
+	if (card && card->reader
+			&& card->reader->capabilities & SC_READER_CAP_PACE_GENERIC
 			&& card->reader->ops->perform_pace) {
 		r = card->reader->ops->perform_pace(card->reader, &pace_input, pace_output);
 	} else {

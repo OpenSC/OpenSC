@@ -538,11 +538,12 @@ static int sc_hsm_compute_signature(sc_card_t *card,
 	sc_apdu_t apdu;
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
-	sc_hsm_private_data_t *priv = (sc_hsm_private_data_t *) card->drv_data;
+	sc_hsm_private_data_t *priv;
 
 	if (card == NULL || data == NULL || out == NULL) {
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
+	priv = (sc_hsm_private_data_t *) card->drv_data;
 
 	if (priv->env == NULL) {
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OBJECT_NOT_FOUND);
@@ -590,12 +591,13 @@ static int sc_hsm_decipher(sc_card_t *card, const u8 * crgram, size_t crgram_len
 	size_t len;
 	sc_apdu_t apdu;
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
-	sc_hsm_private_data_t *priv = (sc_hsm_private_data_t *) card->drv_data;
+	sc_hsm_private_data_t *priv;
 
 	if (card == NULL || crgram == NULL || out == NULL) {
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	LOG_FUNC_CALLED(card->ctx);
+	priv = (sc_hsm_private_data_t *) card->drv_data;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4, 0x62, priv->env->key_ref[0], priv->algorithm);
 	apdu.cla = 0x80;

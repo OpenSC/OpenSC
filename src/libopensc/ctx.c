@@ -526,8 +526,6 @@ static int load_card_drivers(sc_context_t *ctx, struct _sc_ctx_options *opts)
 		ctx->card_drivers[drv_count] = func();
 		if (ctx->card_drivers[drv_count] == NULL) {
 			sc_log(ctx, "Driver '%s' not available.", ent->name);
-			if (dll)
-				sc_dlclose(dll);
 			continue;
 		}
 
@@ -818,8 +816,8 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 		}
 	}
 	if (opts.forced_card_driver) {
-		/* FIXME: check return value? */
-		sc_set_card_driver(ctx, opts.forced_card_driver);
+		if (SC_SUCCESS != sc_set_card_driver(ctx, opts.forced_card_driver))
+			sc_log(ctx, "Warning: Could not load %s.", opts.forced_card_driver);
 		free(opts.forced_card_driver);
 	}
 	del_drvs(&opts);

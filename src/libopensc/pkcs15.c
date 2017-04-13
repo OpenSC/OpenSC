@@ -2285,15 +2285,16 @@ int
 sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_path,
 		unsigned char **buf, size_t *buflen)
 {
-	struct sc_context *ctx = p15card->card->ctx;
+	struct sc_context *ctx;
 	struct sc_file *file = NULL;
 	unsigned char *data = NULL;
 	size_t	len = 0, offset = 0;
 	int	r;
 
-	if (p15card == NULL || in_path == NULL || buf == NULL) {
+	if (p15card == NULL || p15card->card == NULL || in_path == NULL || buf == NULL) {
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
+	ctx = p15card->card->ctx;
 
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx, "path=%s, index=%u, count=%d", sc_print_path(in_path), in_path->index, in_path->count);
@@ -2354,7 +2355,6 @@ sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_pat
 				if (r == SC_ERROR_RECORD_NOT_FOUND)
 					break;
 				if (r < 0) {
-					free(data);
 					goto fail_unlock;
 				}
 				if (r < 2)
@@ -2376,7 +2376,6 @@ sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_pat
 		else {
 			r = sc_read_binary(p15card->card, offset, data, len, 0);
 			if (r < 0) {
-				free(data);
 				goto fail_unlock;
 			}
 			/* sc_read_binary may return less than requested */
@@ -2395,6 +2394,7 @@ sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_pat
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 
 fail_unlock:
+	free(data);
 	sc_file_free(file);
 	sc_unlock(p15card->card);
 	LOG_FUNC_RETURN(ctx, r);
