@@ -76,6 +76,7 @@ extern "C" {
 #define SC_ALGORITHM_DES		64
 #define SC_ALGORITHM_3DES		65
 #define SC_ALGORITHM_GOST		66
+#define SC_ALGORITHM_AES		67
 
 /* Hash algorithms */
 #define SC_ALGORITHM_MD5		128
