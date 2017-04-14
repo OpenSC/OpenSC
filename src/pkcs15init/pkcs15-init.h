@@ -271,9 +271,10 @@ struct sc_pkcs15init_skeyargs {
 	unsigned long           usage;
 	unsigned int		flags;
 	unsigned int		access_flags;
+	unsigned long		algorithm; /* User requested algorithm */
 	unsigned long		value_len; /* User requested length */
 
-	struct sc_pkcs15_der	data_value; /* Wrong name: is not DER encoded */
+	struct sc_pkcs15_skey	key;
 };
 
 struct sc_pkcs15init_certargs {
