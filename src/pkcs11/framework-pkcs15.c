@@ -2137,11 +2137,11 @@ pkcs15_create_secret_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 			break;
 		case CKA_VALUE:
 			if (attr->pValue) {
-			    args.data_value.value = calloc(1,attr->ulValueLen);
-			    if (!args.data_value.value)
-					return CKR_HOST_MEMORY;
-			    memcpy(args.data_value.value, attr->pValue, attr->ulValueLen);
-			    args.data_value.len = attr->ulValueLen;
+			    args.key.data = calloc(1,attr->ulValueLen);
+			    if (!args.key.data)
+				return CKR_HOST_MEMORY;
+			    memcpy(args.key.data, attr->pValue, attr->ulValueLen);
+			    args.key.data_len = attr->ulValueLen;
 			}
 			break;
 		case CKA_DECRYPT:
@@ -2193,8 +2193,8 @@ pkcs15_create_secret_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 	    skey_info->native = 0; /* card can not use this */
 	    skey_info->access_flags = 0; /* looks like not needed */
 	    skey_info->key_type = key_type; /* PKCS#11 CKK_* */
-	    skey_info->data.value = args.data_value.value;
-	    skey_info->data.len = args.data_value.len;
+	    skey_info->data.value = args.key.data;
+	    skey_info->data.len = args.key.data_len;
 	    skey_info->value_len = args.value_len; /* callers prefered length */
 
 	}
