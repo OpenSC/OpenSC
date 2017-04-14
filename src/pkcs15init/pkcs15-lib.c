@@ -1276,6 +1276,83 @@ err:
 	LOG_FUNC_RETURN(ctx, r);
 }
 
+/*
+ * Prepare secret key download, and initialize a skdf entry
+ */
+static int
+sc_pkcs15init_init_skdf(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
+		struct sc_pkcs15init_skeyargs *keyargs, struct sc_pkcs15_object **res_obj)
+{
+	struct sc_context *ctx = p15card->card->ctx;
+	struct sc_pkcs15_skey_info *key_info;
+	struct sc_pkcs15_object *object = NULL;
+	const char	*label;
+	unsigned int	usage;
+	unsigned int	keybits = keyargs->value_len;
+	int		r = 0, key_type;
+
+	LOG_FUNC_CALLED(ctx);
+	if (!res_obj || !keybits) {
+		r = SC_ERROR_INVALID_ARGUMENTS;
+		LOG_TEST_GOTO_ERR(ctx, r, "Initialize SKDF entry failed");
+	}
+
+	*res_obj = NULL;
+
+	if ((usage = keyargs->usage) == 0) {
+		usage = SC_PKCS15_PRKEY_USAGE_ENCRYPT|SC_PKCS15_PRKEY_USAGE_DECRYPT;
+	}
+
+	if ((label = keyargs->label) == NULL)
+		label = DEFAULT_SECRET_KEY_LABEL;
+
+	/* Create the skey object now.
+	 * If we find out below that we're better off reusing an
+	 * existing object, we'll ditch this one */
+	key_type = key_pkcs15_algo(p15card, keyargs->algorithm);
+	r = key_type;
+	LOG_TEST_GOTO_ERR(ctx, r, "Unsupported key type");
+
+	object = sc_pkcs15init_new_object(key_type, label, &keyargs->auth_id, NULL);
+	if (object == NULL)
+		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate new SKey object");
+
+	key_info = (struct sc_pkcs15_skey_info *) object->data;
+	key_info->usage = usage;
+	key_info->native = 1;
+	key_info->key_reference = 0;
+	key_info->value_len = keybits;
+	key_info->access_flags = keyargs->access_flags;
+	/* Path is selected below */
+
+	if (keyargs->access_flags & SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE) {
+		key_info->access_flags &= ~SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE;
+		key_info->native = 0;
+	}
+
+	/* Select a Key ID if the user didn't specify one,
+	 * otherwise make sure it's compatible with our intended use */
+	r = select_id(p15card, SC_PKCS15_TYPE_SKEY, &keyargs->id);
+	LOG_TEST_GOTO_ERR(ctx, r, "Cannot select ID for SKey object");
+
+	key_info->id = keyargs->id;
+
+	r = select_object_path(p15card, profile, object, &key_info->path);
+	LOG_TEST_GOTO_ERR(ctx, r, "Failed to select secret key object path");
+
+	/* See if we need to select a key reference for this object */
+	if (profile->ops->select_key_reference)
+		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_NOT_SUPPORTED, "SKey keyreference selection not supported");
+
+	*res_obj = object;
+	object = NULL;
+	r = SC_SUCCESS;
+
+err:
+	if (object)
+		sc_pkcs15init_free_object(object);
+	LOG_FUNC_RETURN(ctx, r);
+}
 
 static int
 _pkcd15init_set_aux_md_data(struct sc_pkcs15_card *p15card, struct sc_auxiliary_data **aux_data,
@@ -1457,6 +1534,68 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 		*res_obj = object;
 
 	sc_pkcs15_erase_pubkey(&pubkey_args.key);
+
+	profile->dirty = 1;
+
+	LOG_FUNC_RETURN(ctx, r);
+}
+
+/*
+ * Generate a new secret key
+ */
+int
+sc_pkcs15init_generate_secret_key(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
+		struct sc_pkcs15init_skeyargs *skey_args, struct sc_pkcs15_object **res_obj)
+{
+	struct sc_context *ctx = p15card->card->ctx;
+	struct sc_pkcs15_object *object = NULL;
+	unsigned int keybits = skey_args->value_len;
+	int r;
+
+	LOG_FUNC_CALLED(ctx);
+	/* check supported key size */
+	r = check_keygen_params_consistency(p15card->card, skey_args->algorithm, NULL, &keybits);
+	LOG_TEST_RET(ctx, r, "Invalid key size");
+
+	if (check_key_compatibility(p15card, skey_args->algorithm, NULL, 0,
+			keybits, SC_ALGORITHM_ONBOARD_KEY_GEN))
+		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Cannot generate key with the given parameters");
+
+	if (profile->ops->generate_key == NULL)
+		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Key generation not supported");
+
+	if (skey_args->id.len)   {
+		/* Make sure that secret key's ID is the unique inside the PKCS#15 application */
+		r = sc_pkcs15_find_skey_by_id(p15card, &skey_args->id, NULL);
+		if (!r)
+			LOG_TEST_RET(ctx, SC_ERROR_NON_UNIQUE_ID, "Non unique ID of the private key object");
+		else if (r != SC_ERROR_OBJECT_NOT_FOUND)
+			LOG_TEST_RET(ctx, r, "Find private key error");
+	}
+
+	/* Set up the SKDF object */
+	r = sc_pkcs15init_init_skdf(p15card, profile, skey_args, &object);
+	LOG_TEST_RET(ctx, r, "Set up secret key object error");
+
+	/* Generate the secret key on card */
+	r = profile->ops->create_key(profile, p15card, object);
+	LOG_TEST_RET(ctx, r, "Cannot generate key: create key failed");
+
+	r = profile->ops->generate_key(profile, p15card, object, NULL);
+	LOG_TEST_RET(ctx, r, "Failed to generate key");
+
+	r = sc_pkcs15init_add_object(p15card, profile, SC_PKCS15_SKDF, object);
+	LOG_TEST_RET(ctx, r, "Failed to add generated secret key object");
+
+	if (!r && profile->ops->emu_store_data)   {
+		r = profile->ops->emu_store_data(p15card, profile, object, NULL, NULL);
+		if (r == SC_ERROR_NOT_IMPLEMENTED)
+			r = SC_SUCCESS;
+		LOG_TEST_RET(ctx, r, "Card specific 'store data' failed");
+	}
+
+	if (res_obj)
+		*res_obj = object;
 
 	profile->dirty = 1;
 
@@ -1702,6 +1841,78 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card, struct sc_profile
 err:
 	if (object && r < 0)
 		sc_pkcs15init_free_object(object);
+
+	LOG_FUNC_RETURN(ctx, r);
+}
+
+
+/*
+ * Store secret key
+ */
+int
+sc_pkcs15init_store_secret_key(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
+		struct sc_pkcs15init_skeyargs *keyargs, struct sc_pkcs15_object **res_obj)
+{
+	struct sc_context *ctx = p15card->card->ctx;
+	struct sc_pkcs15_object *object = NULL;
+	int r = 0;
+
+	LOG_FUNC_CALLED(ctx);
+
+	/* Now check whether the card is able to handle this key */
+	if (check_key_compatibility(p15card, keyargs->algorithm, NULL, 0, keyargs->key.data_len * 8, 0)) {
+		/* Make sure the caller explicitly tells us to store
+		 * the key as extractable. */
+		if (!(keyargs->access_flags & SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE))
+			LOG_TEST_RET(ctx, SC_ERROR_INCOMPATIBLE_KEY, "Card does not support this key.");
+	}
+
+	/* Select a intrinsic Key ID if user didn't specify one */
+	r = sc_pkcs15init_select_intrinsic_id(p15card, profile, SC_PKCS15_TYPE_SKEY,
+			&keyargs->id, &keyargs->key);
+	LOG_TEST_RET(ctx, r, "Get intrinsic ID error");
+
+	/* Make sure that private key's ID is the unique inside the PKCS#15 application */
+	r = sc_pkcs15_find_skey_by_id(p15card, &keyargs->id, NULL);
+	if (!r)
+		LOG_TEST_RET(ctx, SC_ERROR_NON_UNIQUE_ID, "Non unique ID of the secret key object");
+	else if (r != SC_ERROR_OBJECT_NOT_FOUND)
+		LOG_TEST_RET(ctx, r, "Find secret key error");
+
+	/* Set up the SKDF object */
+	r = sc_pkcs15init_init_skdf(p15card, profile, keyargs, &object);
+	LOG_TEST_RET(ctx, r, "Failed to initialize secret key object");
+
+	if (profile->ops->create_key)
+		r = profile->ops->create_key(profile, p15card, object);
+	LOG_TEST_RET(ctx, r, "Card specific 'create key' failed");
+
+	if (profile->ops->store_key) {
+		struct sc_pkcs15_prkey key;
+		memset(&key, 0, sizeof(key));
+		key.algorithm = keyargs->algorithm;
+		key.u.secret = keyargs->key;
+		r = profile->ops->store_key(profile, p15card, object, &key);
+	}
+	LOG_TEST_RET(ctx, r, "Card specific 'store key' failed");
+
+	sc_pkcs15_free_object_content(object);
+
+	/* Now update the SKDF */
+	r = sc_pkcs15init_add_object(p15card, profile, SC_PKCS15_SKDF, object);
+	LOG_TEST_RET(ctx, r, "Failed to add new secret key PKCS#15 object");
+
+	if (!r && profile->ops->emu_store_data)   {
+		r = profile->ops->emu_store_data(p15card, profile, object, NULL, NULL);
+		if (r == SC_ERROR_NOT_IMPLEMENTED)
+			r = SC_SUCCESS;
+		LOG_TEST_RET(ctx, r, "Card specific 'store data' failed");
+	}
+
+	if (r >= 0 && res_obj)
+		*res_obj = object;
+
+	profile->dirty = 1;
 
 	LOG_FUNC_RETURN(ctx, r);
 }
@@ -2336,6 +2547,12 @@ key_pkcs15_algo(struct sc_pkcs15_card *p15card, unsigned int algorithm)
 		return SC_PKCS15_TYPE_PRKEY_GOSTR3410;
 	case SC_ALGORITHM_EC:
 		return SC_PKCS15_TYPE_PRKEY_EC;
+	case SC_ALGORITHM_DES:
+		return SC_PKCS15_TYPE_SKEY_DES;
+	case SC_ALGORITHM_3DES:
+		return SC_PKCS15_TYPE_SKEY_3DES;
+	case SC_ALGORITHM_AES:
+		return SC_PKCS15_TYPE_SKEY_GENERIC;
 	}
 	sc_log(ctx, "Unsupported key algorithm.");
 	return SC_ERROR_NOT_SUPPORTED;

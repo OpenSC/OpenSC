@@ -285,6 +285,7 @@ sc_pkcs15init_erase_card_recursively
 sc_pkcs15init_finalize_card
 sc_pkcs15init_fixup_file
 sc_pkcs15init_generate_key
+sc_pkcs15init_generate_secret_key
 sc_pkcs15init_get_asepcos_ops
 sc_pkcs15init_get_cardos_ops
 sc_pkcs15init_get_cryptoflex_ops
@@ -313,6 +314,7 @@ sc_pkcs15init_store_data_object
 sc_pkcs15init_store_pin
 sc_pkcs15init_store_private_key
 sc_pkcs15init_store_public_key
+sc_pkcs15init_store_secret_key
 sc_pkcs15init_unbind
 sc_pkcs15init_update_any_df
 sc_pkcs15init_update_certificate

@@ -28,6 +28,7 @@ extern "C" {
 #include "libopensc/pkcs15.h"
 
 #define DEFAULT_PRIVATE_KEY_LABEL "Private Key"
+#define DEFAULT_SECRET_KEY_LABEL  "Secret Key"
 
 #define SC_PKCS15INIT_X509_DIGITAL_SIGNATURE     0x0080UL
 #define SC_PKCS15INIT_X509_NON_REPUDIATION       0x0040UL
@@ -317,6 +318,10 @@ extern int	sc_pkcs15init_generate_key(struct sc_pkcs15_card *,
 				struct sc_pkcs15init_keygen_args *,
 				unsigned int keybits,
 				struct sc_pkcs15_object **);
+extern int	sc_pkcs15init_generate_secret_key(struct sc_pkcs15_card *,
+				struct sc_profile *,
+				struct sc_pkcs15init_skeyargs *,
+				struct sc_pkcs15_object **);
 extern int	sc_pkcs15init_store_private_key(struct sc_pkcs15_card *,
 				struct sc_profile *,
 				struct sc_pkcs15init_prkeyargs *,
@@ -329,6 +334,10 @@ extern int	sc_pkcs15init_store_split_key(struct sc_pkcs15_card *,
 extern int	sc_pkcs15init_store_public_key(struct sc_pkcs15_card *,
 				struct sc_profile *,
 				struct sc_pkcs15init_pubkeyargs *,
+				struct sc_pkcs15_object **);
+extern int	sc_pkcs15init_store_secret_key(struct sc_pkcs15_card *,
+				struct sc_profile *,
+				struct sc_pkcs15init_skeyargs *,
 				struct sc_pkcs15_object **);
 extern int	sc_pkcs15init_store_certificate(struct sc_pkcs15_card *,
 				struct sc_profile *,
