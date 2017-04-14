@@ -831,12 +831,12 @@ out:
 
 static void print_skey_info(const struct sc_pkcs15_object *obj)
 {
+	static const char *skey_types[] = { "", "Generic", "DES", "2DES", "3DES", "", "", "" };
 	struct sc_pkcs15_skey_info *skey = (struct sc_pkcs15_skey_info *) obj->data;
-	const char *types[] = { "generic", "DES", "2DES", "3DES"};
 	unsigned char guid[40];
 	size_t guid_len;
 
-	printf("Secret %s Key [%.*s]\n", types[3 & obj->type], (int) sizeof obj->label, obj->label);
+	printf("Secret %s Key [%.*s]\n", skey_types[7 & obj->type], (int) sizeof obj->label, obj->label);
 	print_common_flags(obj);
 	printf("\tUsage          : [0x%X]", skey->usage);
 	print_key_usages(skey->usage);
@@ -874,7 +874,7 @@ static int list_skeys(void)
 		return 1;
 	}
 	if (verbose)
-		printf("Card has %d secret key(s).\n\n", r);
+		printf("Card has %d Secret key(s).\n\n", r);
 	for (i = 0; i < r; i++) {
 		print_skey_info(objs[i]);
 		printf("\n");
@@ -1617,6 +1617,7 @@ static int dump(void)
 	list_pins();
 	list_private_keys();
 	list_public_keys();
+	list_skeys();
 	list_certificates();
 	list_data_objects();
 
