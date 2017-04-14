@@ -1955,6 +1955,9 @@ sc_pkcs15_encode_df(struct sc_context *ctx, struct sc_pkcs15_card *p15card, stru
 	case SC_PKCS15_PUKDF_TRUSTED:
 		func = sc_pkcs15_encode_pukdf_entry;
 		break;
+	case SC_PKCS15_SKDF:
+		func = sc_pkcs15_encode_skdf_entry;
+		break;
 	case SC_PKCS15_CDF:
 	case SC_PKCS15_CDF_TRUSTED:
 	case SC_PKCS15_CDF_USEFUL:

@@ -824,6 +824,9 @@ int sc_pkcs15_encode_prkdf_entry(struct sc_context *ctx,
 int sc_pkcs15_encode_pukdf_entry(struct sc_context *ctx,
 			const struct sc_pkcs15_object *obj, u8 **buf,
 			size_t *bufsize);
+int sc_pkcs15_encode_skdf_entry(struct sc_context *ctx,
+			const struct sc_pkcs15_object *obj, u8 **buf,
+			size_t *buflen);
 int sc_pkcs15_encode_dodf_entry(struct sc_context *ctx,
 			const struct sc_pkcs15_object *obj, u8 **buf,
 			size_t *bufsize);
