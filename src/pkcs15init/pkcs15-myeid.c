@@ -201,6 +201,7 @@ myeid_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *df
 	static const char *create_dfs[] = {
 		"PKCS15-PrKDF",
 		"PKCS15-PuKDF",
+		"PKCS15-SKDF",
 		"PKCS15-CDF",
 		"PKCS15-CDF-TRUSTED",
 		"PKCS15-DODF",
@@ -210,6 +211,7 @@ myeid_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *df
 	static const int create_dfs_val[] = {
 		SC_PKCS15_PRKDF,
 		SC_PKCS15_PUKDF,
+		SC_PKCS15_SKDF,
 		SC_PKCS15_CDF,
 		SC_PKCS15_CDF_TRUSTED,
 		SC_PKCS15_DODF
@@ -349,19 +351,33 @@ myeid_new_file(sc_profile_t *profile, sc_card_t *card,
 	sc_file_t *file;
 	sc_path_t *p;
 	char name[64];
-	const char *tag;
+	const char *tag = NULL;
 	int r;
 
 	LOG_FUNC_CALLED(card->ctx);
-	if (type == SC_PKCS15_TYPE_PRKEY_RSA || type == SC_PKCS15_TYPE_PRKEY_EC)
+	switch (type) {
+	case SC_PKCS15_TYPE_PRKEY_RSA:
+	case SC_PKCS15_TYPE_PRKEY_EC:
 		tag = "private-key";
-	else if (type == SC_PKCS15_TYPE_PUBKEY_RSA || type == SC_PKCS15_TYPE_PUBKEY_EC)
+		break;
+	case SC_PKCS15_TYPE_PUBKEY_RSA:
+	case SC_PKCS15_TYPE_PUBKEY_EC:
 		tag = "public-key";
-	else if ((type & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_CERT)
-		tag = "certificate";
-	else if ((type & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_DATA_OBJECT)
-		tag = "data";
-	else {
+		break;
+	case SC_PKCS15_TYPE_SKEY_GENERIC:
+	case SC_PKCS15_TYPE_SKEY_DES:
+	case SC_PKCS15_TYPE_SKEY_3DES:
+		tag = "secret-key";
+		break;
+	default:
+		if ((type & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_CERT)
+			tag = "certificate";
+		else if ((type & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_DATA_OBJECT)
+			tag = "data";
+		break;
+	}
+
+	if (!tag) {
 		sc_log(card->ctx, "Unsupported file type");
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
@@ -418,36 +434,37 @@ myeid_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 		struct sc_pkcs15_object *object) {
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_card *card = p15card->card;
-	struct sc_pkcs15_prkey_info *key_info = (struct sc_pkcs15_prkey_info *) object->data;
+	struct sc_pkcs15_prkey_info *prkey_info = (struct sc_pkcs15_prkey_info *) object->data;
+	struct sc_pkcs15_skey_info *skey_info = (struct sc_pkcs15_skey_info *) object->data;
+	struct sc_pkcs15_id *id;
+	struct sc_path *path;
+	int *key_reference;
 	struct sc_file *file = NULL;
 	struct sc_pkcs15_object *pin_object = NULL;
 	struct sc_pkcs15_auth_info *pkcs15_auth_info = NULL;
-	int keybits = key_info->modulus_length, r;
-	int pin_reference = -1;
 	unsigned char sec_attrs[] = {0xFF, 0xFF, 0xFF};
+	int r, ef_structure, keybits = 0, pin_reference = -1;
 
 	LOG_FUNC_CALLED(card->ctx);
 
-	/* Check that the card supports the requested modulus length */
 	switch (object->type) {
 		case SC_PKCS15_TYPE_PRKEY_RSA:
-			if (sc_card_find_rsa_alg(p15card->card, keybits) == NULL)
-				LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS,
-					"Unsupported RSA key size");
+			ef_structure = SC_CARDCTL_MYEID_KEY_RSA;
+			keybits = prkey_info->modulus_length;
 			break;
 		case SC_PKCS15_TYPE_PRKEY_EC:
-			/* 
-			   Here the information about curve is not available, that's why algorithm is checked
-			   without curve OID. 	  			   
-                         */
-                    
-			if (key_info->field_length != 0)
-				keybits = key_info->field_length;
-			else 
-				key_info->field_length = keybits;
-			
-			if (sc_card_find_ec_alg(p15card->card, keybits, NULL) == NULL)
-				LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Unsupported EC key size");
+			ef_structure = SC_CARDCTL_MYEID_KEY_EC;
+			keybits = prkey_info->field_length;
+			break;
+		case SC_PKCS15_TYPE_SKEY_DES:
+		case SC_PKCS15_TYPE_SKEY_3DES:
+			ef_structure = SC_CARDCTL_MYEID_KEY_DES;
+			keybits = skey_info->value_len;
+			break;
+		case SC_PKCS15_TYPE_SKEY_GENERIC:
+			keybits = skey_info->value_len;
+			/* FIXME */
+			ef_structure = SC_CARDCTL_MYEID_KEY_AES;
 			break;
 		default:
 			LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS,
@@ -455,27 +472,33 @@ myeid_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 			break;
 	}
 
-	sc_log(ctx, "create MyEID private key ID:%s", sc_pkcs15_print_id(&key_info->id));
+	if ((object->type & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_PRKEY) {
+		id = &prkey_info->id;
+		path = &prkey_info->path;
+		key_reference = &prkey_info->key_reference;
+	} else {
+		id = &skey_info->id;
+		path = &skey_info->path;
+		key_reference = &skey_info->key_reference;
+	}
+
+	sc_log(ctx, "create MyEID key ID:%s", sc_pkcs15_print_id(id));
 
 	/* Get the private key file */
-	r = myeid_new_file(profile, card, object->type, key_info->key_reference, &file);
-	LOG_TEST_RET(ctx, r, "Cannot get new MyEID private key file");
+	r = myeid_new_file(profile, card, object->type, *key_reference, &file);
+	LOG_TEST_RET(ctx, r, "Cannot get new MyEID key file");
 
 	if (!file || !file->path.len)
-		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Cannot determine private key file");
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Cannot determine key file");
 
 	sc_log(ctx, "Key file size %d", keybits);
 	file->size = keybits;
+	file->ef_structure = ef_structure;
 
-	if (object->type == SC_PKCS15_TYPE_PRKEY_RSA)
-		file->ef_structure = SC_CARDCTL_MYEID_KEY_RSA;
-	else if (object->type == SC_PKCS15_TYPE_PRKEY_EC)
-		file->ef_structure = SC_CARDCTL_MYEID_KEY_EC;
+	memcpy(path->value, &file->path.value, file->path.len);
+	*key_reference = file->path.value[file->path.len - 1] & 0xFF;
 
-	memcpy(&key_info->path.value, &file->path.value, file->path.len);
-	key_info->key_reference = file->path.value[file->path.len - 1] & 0xFF;
-
-	sc_log(ctx, "Path of MyEID private key file to create %s",
+	sc_log(ctx, "Path of MyEID key file to create %s",
 			sc_print_path(&file->path));
 
 	if (object->auth_id.len >= 1) {
@@ -513,7 +536,7 @@ myeid_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	/* Now create the key file */
 	r = sc_pkcs15init_create_file(profile, p15card, file);
 	sc_file_free(file);
-	LOG_TEST_RET(ctx, r, "Cannot create MyEID private key file");
+	LOG_TEST_RET(ctx, r, "Cannot create MyEID key file");
 
 	LOG_FUNC_RETURN(ctx, r);
 }
@@ -527,40 +550,28 @@ myeid_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 		struct sc_pkcs15_prkey *prkey) {
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_card *card = p15card->card;
-	struct sc_pkcs15_prkey_info *key_info = (struct sc_pkcs15_prkey_info *) object->data;
 	struct sc_cardctl_myeid_gen_store_key_info args;
 	struct sc_file *file = NULL;
-	int r, keybits = key_info->modulus_length;
+	struct sc_pkcs15_id *id;
+	struct sc_path *path;
+	int r;
 
 	LOG_FUNC_CALLED(ctx);
 
-	switch (object->type) {
-		case SC_PKCS15_TYPE_PRKEY_RSA:
-			if (sc_card_find_rsa_alg(p15card->card, keybits) == NULL)
-				LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Unsupported RSA key size");
-			break;
-		case SC_PKCS15_TYPE_PRKEY_EC:
-			if (!sc_valid_oid(&prkey->u.ec.params.id))
-                                if (sc_pkcs15_fix_ec_parameters(ctx, &prkey->u.ec.params))
-                                        LOG_FUNC_RETURN(ctx, SC_ERROR_OBJECT_NOT_VALID);
-						
-			if(key_info->field_length != 0)
-				keybits = key_info->field_length;
-			else
-				key_info->field_length = keybits;
-
-			if (sc_card_find_ec_alg(p15card->card, keybits, &prkey->u.ec.params.id) == NULL)
-				LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Unsupported algorithm or key size");			
-			break;
-		default:
-			LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Store key failed: Unsupported key type");
-			break;
+	if ((object->type & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_PRKEY) {
+		struct sc_pkcs15_prkey_info *prkey_info = (struct sc_pkcs15_prkey_info *) object->data;
+		id = &prkey_info->id;
+		path = &prkey_info->path;
+	} else {
+		struct sc_pkcs15_skey_info *skey_info = (struct sc_pkcs15_skey_info *) object->data;
+		id = &skey_info->id;
+		path = &skey_info->path;
 	}
 
 	sc_log(ctx, "store MyEID key with ID:%s and path:%s",
-			sc_pkcs15_print_id(&key_info->id), sc_print_path(&key_info->path));
+			sc_pkcs15_print_id(id), sc_print_path(path));
 
-	r = sc_select_file(card, &key_info->path, &file);
+	r = sc_select_file(card, path, &file);
 	LOG_TEST_RET(ctx, r, "Cannot store MyEID key: select key file failed");
 
 	r = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_UPDATE);
@@ -572,8 +583,9 @@ myeid_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	memset(&args, 0, sizeof (args));
 
 	args.op_type = OP_TYPE_STORE;
-	if(object->type == SC_PKCS15_TYPE_PRKEY_RSA) {
-		//args.key_len_bits = keybits;
+
+	switch (object->type) {
+	case SC_PKCS15_TYPE_PRKEY_RSA:
 		args.key_type = SC_CARDCTL_MYEID_KEY_RSA;
 		args.pubexp_len = prkey->u.rsa.exponent.len;
 		args.pubexp = prkey->u.rsa.exponent.data;
@@ -589,16 +601,33 @@ myeid_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 		args.invq_len = prkey->u.rsa.iqmp.len;
 		args.invq = prkey->u.rsa.iqmp.data;
 
+		//args.key_len_bits = keybits;
 		args.key_len_bits = prkey->u.rsa.modulus.len;
 		args.mod = prkey->u.rsa.modulus.data;
-	}
-	else {
+		break;
+	case SC_PKCS15_TYPE_PRKEY_EC:
 		args.key_type = SC_CARDCTL_MYEID_KEY_EC;
 		args.d = prkey->u.ec.privateD.data;
 		args.d_len = prkey->u.ec.privateD.len;
 		args.ecpublic_point = prkey->u.ec.ecpointQ.value;
 		args.ecpublic_point_len = prkey->u.ec.ecpointQ.len;
 		args.key_len_bits = prkey->u.ec.params.field_length;
+		break;
+	case SC_PKCS15_TYPE_SKEY_GENERIC:
+	case SC_PKCS15_TYPE_SKEY_DES:
+	case SC_PKCS15_TYPE_SKEY_2DES:
+	case SC_PKCS15_TYPE_SKEY_3DES:
+		switch (prkey->algorithm) {
+		case SC_ALGORITHM_AES:
+			args.key_type = SC_CARDCTL_MYEID_KEY_AES;
+			break;
+		case SC_ALGORITHM_DES:
+			args.key_type = SC_CARDCTL_MYEID_KEY_DES;
+			break;
+		}
+		args.d = prkey->u.secret.data;
+		args.d_len = prkey->u.secret.data_len;
+		break;
 	}
 	/* Store RSA key  */
 	r = sc_card_ctl(card, SC_CARDCTL_MYEID_GENERATE_STORE_KEY, &args);

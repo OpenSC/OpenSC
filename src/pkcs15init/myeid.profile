@@ -36,6 +36,7 @@ option default {
 	cdf-trusted-size = 510;
 	prkdf-size	     = 1530;
 	pukdf-size	     = 1530;
+	skdf-size	     = 1530;
 	dodf-size	     = 1530;
     }
 }
@@ -136,6 +137,13 @@ filesystem {
                 acl	      = *=NEVER, READ=NONE, UPDATE=$PIN, DELETE=$SOPIN;
             }
 
+            EF PKCS15-SKDF {
+                file-id	  = 4407;
+                structure = transparent;
+                size	  = $skdf-size;
+                acl	      = *=NEVER, READ=NONE, UPDATE=$PIN, DELETE=$SOPIN;
+            }
+
             EF PKCS15-CDF {
                 file-id	  = 4403;
                 structure = transparent;
@@ -159,8 +167,14 @@ filesystem {
             
             EF template-private-key {
                 type      = internal-ef;
-    	        file-id   = 4B01;	
-    	        acl       = CRYPTO=$PIN, UPDATE=$PIN, DELETE=$PIN, GENERATE=$PIN;
+                file-id   = 4B01;
+                acl       = CRYPTO=$PIN, UPDATE=$PIN, DELETE=$PIN, GENERATE=$PIN;
+            }
+            
+            EF template-secret-key {
+                type      = internal-ef;
+                file-id   = 4D01;
+                acl       = CRYPTO=$PIN, UPDATE=$PIN, DELETE=$PIN, GENERATE=$PIN;
             }
             
             EF template-public-key {
@@ -181,12 +195,17 @@ filesystem {
                 EF private-key {
                     file-id   = 4B01;
                     type      = internal-ef;
-                    acl       = READ=NONE, UPDATE=$PIN, DELETE=$PIN, GENERATE=$PIN;
+                    acl       = CRYPTO=$PIN, UPDATE=$PIN, DELETE=$PIN, GENERATE=$PIN;
                 }
                 EF public-key {
-                    file-id	  = 5501;
+                    file-id   = 5501;
                     structure = transparent;
                     acl       = READ=NONE, UPDATE=$PIN, DELETE=$PIN, GENERATE=$PIN;
+                }
+                EF secret-key {
+                    file-id   = 4D01;
+                    type      = internal-ef;
+                    acl       = CRYPTO=$PIN, UPDATE=$PIN, DELETE=$PIN, GENERATE=$PIN;
                 }
 		
                 # Certificate template

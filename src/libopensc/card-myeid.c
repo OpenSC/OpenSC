@@ -43,6 +43,8 @@
 #define LOAD_KEY_EC_PRIVATE	0x97
 #define LOAD_KEY_EC_PUBLIC	0x96
 
+#define LOAD_KEY_SYMMETRIC	0xa0
+
 #define MYEID_STATE_CREATION	0x01
 #define MYEID_STATE_ACTIVATED	0x07
 
@@ -148,7 +150,6 @@ static int myeid_init(struct sc_card *card)
 	u8 appletInfo[20];
 	size_t appletInfoLen;
 	int r;
-	unsigned short max_ecc_key_length = 256;
 	myeid_card_caps_t card_caps;
 
 	LOG_FUNC_CALLED(card->ctx);
@@ -183,16 +184,15 @@ static int myeid_init(struct sc_card *card)
 	_sc_card_add_rsa_alg(card, 2048, flags, 0);
 	
 	memset(&card_caps, 0, sizeof(myeid_card_caps_t));
+	card_caps.max_ecc_key_length = 256;
+	card_caps.max_rsa_key_length = 2048;
 
 	if (card->version.fw_major >= 40) {
 	    /* Since 4.0, we can query available algorithms and key sizes.
 	     * Since 3.5.0 RSA up to 2048 and ECC up to 256 are always supported, so we check only max ECC key length. */
 	    r = myeid_get_card_caps(card, &card_caps);
 
-	    if (r == SC_SUCCESS) {
-		max_ecc_key_length = card_caps.max_ecc_key_length;
-	    }
-	    else {
+	    if (r != SC_SUCCESS) {
 		sc_log(card->ctx, "Failed to get card capabilities. Using default max ECC key length 256.");
 	    }
 	}
@@ -206,13 +206,26 @@ static int myeid_init(struct sc_card *card)
 		ext_flags = SC_ALGORITHM_EXT_EC_NAMEDCURVE | SC_ALGORITHM_EXT_EC_UNCOMPRESES;
 
 		for (i=0; ec_curves[i].curve_name != NULL; i++) {
-			if (i == 2 && max_ecc_key_length < 384)
-				continue;
-			else if (i == 3 && max_ecc_key_length < 521)
-				continue;
-			else
-				_sc_card_add_ec_alg(card,  ec_curves[i].size, flags, ext_flags, &ec_curves[i].curve_oid);
+			if (card_caps.max_ecc_key_length >= ec_curves[i].size)
+				_sc_card_add_ec_alg(card, ec_curves[i].size, flags, ext_flags, &ec_curves[i].curve_oid);
 		}
+	}
+
+	/* show supported symmetric algorithms */
+	flags = 0;
+	if (card_caps.card_supported_features & MYEID_CARD_CAP_3DES) {
+		if (card_caps.max_des_key_length >= 56)
+			_sc_card_add_symmetric_alg(card, SC_ALGORITHM_DES, 56, flags);
+		if (card_caps.max_des_key_length >= 128)
+			_sc_card_add_symmetric_alg(card, SC_ALGORITHM_3DES, 128, flags);
+		if (card_caps.max_des_key_length >= 192)
+			_sc_card_add_symmetric_alg(card, SC_ALGORITHM_3DES, 192, flags);
+	}
+	if (card_caps.card_supported_features & MYEID_CARD_CAP_AES) {
+		if (card_caps.max_aes_key_length >= 128)
+			_sc_card_add_symmetric_alg(card, SC_ALGORITHM_AES, 128, flags);
+		if (card_caps.max_aes_key_length >= 256)
+			_sc_card_add_symmetric_alg(card, SC_ALGORITHM_AES, 256, flags);
 	}
 
 	/* State that we have an RNG */
@@ -438,6 +451,8 @@ static int encode_file_structure(sc_card_t *card, const sc_file_t *file,
 	}
 	else   {
 		delete = sc_file_get_acl_entry(file, SC_AC_OP_DELETE);
+
+		sc_log(card->ctx, "id (%X), type (%X)", file->id, file->type);
 
 		switch (file->type) {
 		case SC_FILE_TYPE_WORKING_EF:
@@ -1188,7 +1203,8 @@ static int myeid_loadkey(sc_card_t *card, int mode, u8* value, int value_len)
 
 	if(value    != NULL &&
 	   value[0] != 0x0 &&
-	   mode     != LOAD_KEY_PUBLIC_EXPONENT)
+	   mode     != LOAD_KEY_PUBLIC_EXPONENT &&
+	   mode     != LOAD_KEY_SYMMETRIC)
 		sbuf[len++] = 0x0;
 
 	if(mode == LOAD_KEY_MODULUS && value_len >= 256)
@@ -1326,6 +1342,12 @@ static int myeid_generate_store_key(struct sc_card *card,
 					data->d_len)) >= 0 &&
 				(r = myeid_loadkey(card, LOAD_KEY_EC_PUBLIC, data->ecpublic_point,
 					data->ecpublic_point_len)) >= 0)
+			LOG_FUNC_RETURN(card->ctx, r);
+		}
+		else if(data->key_type == SC_CARDCTL_MYEID_KEY_AES ||
+			data->key_type == SC_CARDCTL_MYEID_KEY_DES) {
+			if((r = myeid_loadkey(card, LOAD_KEY_SYMMETRIC, data->d,
+					data->d_len)) >= 0)
 			LOG_FUNC_RETURN(card->ctx, r);
 		}
 	}
