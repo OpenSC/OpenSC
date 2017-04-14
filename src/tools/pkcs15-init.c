@@ -338,6 +338,7 @@ struct secret {
 #define SC_PKCS15INIT_TYPE_CERT		4
 #define SC_PKCS15INIT_TYPE_CHAIN	(8 | 4)
 #define SC_PKCS15INIT_TYPE_DATA		16
+#define SC_PKCS15INIT_TYPE_SKEY		32
 
 static sc_context_t *	ctx = NULL;
 static sc_card_t *		card = NULL;
@@ -1454,6 +1455,13 @@ static int do_delete_crypto_objects(sc_pkcs15_card_t *myp15card,
 		}
 	}
 
+	if (which & SC_PKCS15INIT_TYPE_SKEY) {
+	    if (sc_pkcs15_find_skey_by_id(myp15card, id, &objs[count]) != 0)
+			fprintf(stderr, "NOTE: couldn't find secrkey %s to delete\n", sc_pkcs15_print_id(id));
+		else
+			count++;
+	}
+
 	if (del_cert && ((which & SC_PKCS15INIT_TYPE_CHAIN) == SC_PKCS15INIT_TYPE_CHAIN)) {
 		/* Get the cert chain, stop if there's a CA that is the issuer of
 		 * other certs on this card */
@@ -1518,7 +1526,7 @@ do_delete_objects(struct sc_profile *profile, unsigned int myopt_delete_flags)
 		}
 	}
 
-	if (myopt_delete_flags & (SC_PKCS15INIT_TYPE_PRKEY | SC_PKCS15INIT_TYPE_PUBKEY | SC_PKCS15INIT_TYPE_CHAIN)) {
+	if (myopt_delete_flags & (SC_PKCS15INIT_TYPE_PRKEY | SC_PKCS15INIT_TYPE_PUBKEY | SC_PKCS15INIT_TYPE_CHAIN | SC_PKCS15INIT_TYPE_SKEY)) {
 		sc_pkcs15_id_t id;
 		if (opt_objectid == NULL)
 				util_fatal("Specify the --id for key(s) or cert(s) to be deleted\n");
@@ -1569,6 +1577,10 @@ do_change_attributes(struct sc_profile *profile, unsigned int myopt_type)
 			break;
 		case SC_PKCS15INIT_TYPE_DATA:
 		    if ((r = sc_pkcs15_find_data_object_by_id(p15card, &id, &obj)) != 0)
+				return r;
+			break;
+		case SC_PKCS15INIT_TYPE_SKEY:
+		    if ((r = sc_pkcs15_find_skey_by_id(p15card, &id, &obj)) != 0)
 				return r;
 			break;
 	}
@@ -2382,6 +2394,7 @@ parse_objects(const char *list, unsigned int action)
 		{"cert", SC_PKCS15INIT_TYPE_CERT},
 		{"chain", SC_PKCS15INIT_TYPE_CHAIN},
 		{"data", SC_PKCS15INIT_TYPE_DATA},
+		{"secrkey", SC_PKCS15INIT_TYPE_SKEY},
 		{NULL, 0}
 	};
 
@@ -2396,7 +2409,7 @@ parse_objects(const char *list, unsigned int action)
 		if (len == 4 && !strncasecmp(list, "help", 4)) {
 			if (action == ACTION_DELETE_OBJECTS) {
 				printf("\nDelete arguments: a comma-separated list containing any of the following:\n");
-				printf("  privkey,pubkey,cert,chain,data\n");
+				printf("  privkey,pubkey,secrkey,cert,chain,data\n");
 				printf("When \"data\" is specified, an --application-id must also be specified,\n");
 				printf("  in the other cases an \"--id\" must also be specified\n");
 				printf("When \"chain\" is specified, the certificate chain starting with the cert\n");
@@ -2404,7 +2417,7 @@ parse_objects(const char *list, unsigned int action)
 				printf("  another cert on the card\n");
 			}
 			else {
-				printf("\nChange attribute argument: either privkey, pubkey, cert or data\n");
+				printf("\nChange attribute argument: either privkey, pubkey, secrkey, cert or data\n");
 				printf("You also have to specify the --id of the object\n");
 				printf("For now, you can only change the --label\n");
 				printf("E.g. pkcs15-init -A cert --id 45 -a 1 --label Jim\n");
