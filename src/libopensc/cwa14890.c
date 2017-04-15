@@ -66,39 +66,6 @@ typedef struct cwa_tlv_st {
 /*********************** utility functions ************************/
 
 /**
- * Tool for create a string dump of a provided buffer.
- *
- * When buffer length is longer than 16384 bytes, output is cut
- *
- * @param buff Buffer to be printed
- * @param len Buffer len
- * @return a char buffer with data dump in hex+ascii format
- */
-static char *cwa_hexdump(const u8 * buf, size_t len)
-{
-	size_t j;
-	size_t count = 0;
-	static char res[16384];
-	memset(res, 0, sizeof(res));
-	len = MIN(len, sizeof(res));
-	for (count = 0; count < len; count += 16) {
-		size_t nitems = MIN(16, len - count);
-		for (j = 0; j < nitems; j++)
-			sprintf(res, "%s%02X ", res, 0xff & *(buf + count + j));
-		for (; j < 16; j++)
-			sprintf(res, "%s   ", res);
-		for (j = 0; j < nitems; j++) {
-			char c = (char)*(buf + count + j);
-			sprintf(res, "%s%c", res, (isprint(c) ? c : '.'));
-		}
-		for (; j < 16; j++)
-			sprintf(res, "%s ", res);
-		sprintf(res, "%s\n", res);
-	}
-	return res;
-}
-
-/**
  * Dump an APDU before SM translation.
  *
  * This is mainly for debugging purposes. programmer should disable
@@ -111,14 +78,12 @@ static char *cwa_hexdump(const u8 * buf, size_t len)
  */
 static void cwa_trace_apdu(sc_card_t * card, sc_apdu_t * apdu, int flag)
 {
-	char *buf = NULL;
-/* set to 0 in production */
-#if 1
-	if (!card || !card->ctx || !apdu)
+	char buf[2048];
+	if (!card || !card->ctx || !apdu || card->ctx->debug < SC_LOG_DEBUG_NORMAL)
 		return;
 	if (flag == 0) {	/* apdu command */
 		if (apdu->datalen > 0) {	/* apdu data to show */
-			buf = cwa_hexdump(apdu->data, apdu->datalen);
+			sc_hex_dump(card->ctx, SC_LOG_DEBUG_NORMAL, apdu->data, apdu->datalen, buf, sizeof(buf));
 			sc_log(card->ctx,
 			       "\nAPDU before encode: ==================================================\nCLA: %02X INS: %02X P1: %02X P2: %02X Lc: %02"SC_FORMAT_LEN_SIZE_T"X Le: %02"SC_FORMAT_LEN_SIZE_T"X DATA: [%5"SC_FORMAT_LEN_SIZE_T"u bytes]\n%s======================================================================\n",
 			       apdu->cla, apdu->ins, apdu->p1, apdu->p2,
@@ -130,13 +95,11 @@ static void cwa_trace_apdu(sc_card_t * card, sc_apdu_t * apdu, int flag)
 			       apdu->lc, apdu->le);
 		}
 	} else {		/* apdu response */
-		buf = cwa_hexdump(apdu->resp, apdu->resplen);
+		sc_hex_dump(card->ctx, SC_LOG_DEBUG_NORMAL, apdu->resp, apdu->resplen, buf, sizeof(buf));
 		sc_log(card->ctx,
 		       "\nAPDU response after decode: ==========================================\nSW1: %02X SW2: %02X RESP: [%5"SC_FORMAT_LEN_SIZE_T"u bytes]\n%s======================================================================\n",
 		       apdu->sw1, apdu->sw2, apdu->resplen, buf);
 	}
-#endif
-
 }
 
 /**
