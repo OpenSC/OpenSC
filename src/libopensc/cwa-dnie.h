@@ -75,9 +75,6 @@ void dnie_format_apdu(sc_card_t *card, sc_apdu_t *apdu,
                        unsigned char * resp, size_t resplen,
                        const unsigned char * data, size_t datalen);
 
-void dnie_free_apdu_buffers(sc_apdu_t *apdu,
-                               unsigned char * resp, size_t resplen);
-
 #endif
 
 #endif
