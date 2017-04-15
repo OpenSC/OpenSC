@@ -435,7 +435,6 @@ static int cwa_verify_cvc_certificate(sc_card_t * card,
 	sc_apdu_t apdu;
 	int result = SC_SUCCESS;
 	sc_context_t *ctx = NULL;
-	u8 resp[MAX_RESP_BUFFER_SIZE];
 
 	/* safety check */
 	if (!card || !card->ctx)
@@ -446,8 +445,8 @@ static int cwa_verify_cvc_certificate(sc_card_t * card,
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	/* compose apdu for Perform Security Operation (Verify cert) cmd */
-	dnie_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x00, 0xAE, 255, len,
-					resp, MAX_RESP_BUFFER_SIZE, cert, len);
+	dnie_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x2A, 0x00, 0xAE, 0, len,
+					NULL, 0, cert, len);
 
 	/* send composed apdu and parse result */
 	result = sc_transmit_apdu(card, &apdu);
@@ -476,7 +475,6 @@ static int cwa_set_security_env(sc_card_t * card,
 	sc_apdu_t apdu;
 	int result = SC_SUCCESS;
 	sc_context_t *ctx = NULL;
-	u8 resp[MAX_RESP_BUFFER_SIZE];
 
 	/* safety check */
 	if (!card || !card->ctx)
@@ -487,8 +485,8 @@ static int cwa_set_security_env(sc_card_t * card,
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	/* compose apdu for Manage Security Environment cmd */
-	dnie_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x22, p1, p2, 255, length,
-					resp, MAX_RESP_BUFFER_SIZE, buffer, length);
+	dnie_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, p1, p2, 0, length,
+					NULL, 0, buffer, length);
 
 	/* send composed apdu and parse result */
 	result = sc_transmit_apdu(card, &apdu);
@@ -726,7 +724,6 @@ static int cwa_external_auth(sc_card_t * card, u8 * sig, size_t sig_len)
 	sc_apdu_t apdu;
 	int result = SC_SUCCESS;
 	sc_context_t *ctx = NULL;
-	u8 resp[MAX_RESP_BUFFER_SIZE];
 
 	/* safety check */
 	if (!card || !card->ctx)
@@ -735,8 +732,8 @@ static int cwa_external_auth(sc_card_t * card, u8 * sig, size_t sig_len)
 	LOG_FUNC_CALLED(ctx);
 
 	/* compose apdu for External Authenticate cmd */
-	dnie_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x82, 0x00, 0x00, 255, sig_len,
-					resp, MAX_RESP_BUFFER_SIZE, sig, sig_len);
+	dnie_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x82, 0x00, 0x00, 0, sig_len,
+					NULL, 0, sig, sig_len);
 
 	/* send composed apdu and parse result */
 	result = sc_transmit_apdu(card, &apdu);
@@ -1467,13 +1464,16 @@ int cwa_encode_apdu(sc_card_t * card,
 	/* reserve enough space for apdulen+tlv bytes
 	 * to-be-crypted buffer and result apdu buffer */
 	 /* TODO DEE add 4 more bytes for testing.... */
-	apdubuf =
-	    calloc(MAX(SC_MAX_APDU_BUFFER_SIZE, 20 + from->datalen),
+	apdubuf = calloc(MAX(SC_MAX_APDU_BUFFER_SIZE, 20 + from->datalen),
 		   sizeof(u8));
-	ccbuf =
-	    calloc(MAX(SC_MAX_APDU_BUFFER_SIZE, 20 + from->datalen),
+	ccbuf = calloc(MAX(SC_MAX_APDU_BUFFER_SIZE, 20 + from->datalen),
 		   sizeof(u8));
-	if (!apdubuf || !ccbuf) {
+	if (!to->resp) {
+		/* if no response create a buffer for the encoded response */
+		to->resp = calloc(MAX_RESP_BUFFER_SIZE, sizeof(u8));
+		to->resplen = MAX_RESP_BUFFER_SIZE;
+	}
+	if (!apdubuf || !ccbuf || (!from->resp && !to->resp)) {
 		res = SC_ERROR_OUT_OF_MEMORY;
 		goto err;
 	}
@@ -1485,6 +1485,8 @@ int cwa_encode_apdu(sc_card_t * card,
 	to->p1 = from->p1;
 	to->p2 = from->p2;
 	to->le = from->le;
+	if (!to->le)
+		to->le = 255;
 	to->lc = 0;		/* to be evaluated */
 	/* fill buffer with header info */
 	*(ccbuf + cclen++) = to->cla;
@@ -1591,6 +1593,8 @@ err:
 encode_end:
 	if (apdubuf)
 		free(apdubuf);
+	if (from->resp != to->resp)
+		free(to->resp);
 encode_end_apdu_valid:
 	if (msg)
 		sc_log(ctx, "%s", msg);
@@ -1784,13 +1788,9 @@ int cwa_decode_response(sc_card_t * card,
 	/* allocate response buffer */
 	resplen = 10 + MAX(p_tlv->len, e_tlv->len);	/* estimate response buflen */
 	if (apdu->resplen < resplen) {
-		free(apdu->resp);
-		apdu->resp = calloc(resplen, sizeof(u8));
-		if (!apdu->resp) {
-			msg = "Cannot allocate buffer to store response";
-			res = SC_ERROR_OUT_OF_MEMORY;
-			goto response_decode_end;
-		}
+		msg = "Cannot allocate buffer to store response";
+		res = SC_ERROR_BUFFER_TOO_SMALL;
+		goto response_decode_end;
 	}
 	apdu->resplen = resplen;
 

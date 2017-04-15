@@ -913,15 +913,5 @@ void dnie_format_apdu(sc_card_t *card, sc_apdu_t *apdu,
 	}
 }
 
-void dnie_free_apdu_buffers(sc_apdu_t *apdu,
-				unsigned char * resp, size_t resplen)
-{
-	if (apdu->resp != resp) {
-		free(apdu->resp);
-		apdu->resp = resp;
-		apdu->resplen = resplen;
-	}
-}
-
 #endif				/* HAVE_OPENSSL */
 /* _ end of cwa-dnie.c - */
