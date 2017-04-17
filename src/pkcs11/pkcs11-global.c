@@ -40,6 +40,12 @@
 #define MODULE_APP_NAME "opensc-pkcs11"
 #endif
 
+#ifndef PKCS11_THREAD_LOCKING
+/* libp11 depends on CKF_OS_LOCKING_OK, which
+ * requires PKCS11_THREAD_LOCKING to work */
+#define PKCS11_THREAD_LOCKING
+#endif
+
 sc_context_t *context = NULL;
 struct sc_pkcs11_config sc_pkcs11_conf;
 list_t sessions;
