@@ -381,6 +381,7 @@ CK_RV
 card_detect_all(void)
 {
 	unsigned int i;
+	CK_RV rv;  
 
 	sc_log(context, "Detect all cards");
 	/* Detect cards in all initialized readers */
@@ -398,11 +399,11 @@ card_detect_all(void)
 			if (!reader_get_slot(reader))
 				initialize_reader(reader);
 			else
-				card_detect(sc_ctx_get_reader(context, i));
+				rv = card_detect(sc_ctx_get_reader(context, i));
 		}
 	}
 	sc_log(context, "All cards detected");
-	return CKR_OK;
+	return rv;
 }
 
 /* Allocates an existing slot to a card */
@@ -511,9 +512,11 @@ CK_RV slot_token_removed(CK_SLOT_ID id)
 CK_RV slot_find_changed(CK_SLOT_ID_PTR idp, int mask)
 {
 	unsigned int i;
+	CK_RV rv;
 	LOG_FUNC_CALLED(context);
 
-	card_detect_all();
+	rv = card_detect_all();
+	if(rv == CKR_TOKEN_NOT_PRESENT ) LOG_FUNC_RETURN(context, CKR_TOKEN_NOT_PRESENT);
 	for (i=0; i<list_size(&virtual_slots); i++) {
 		sc_pkcs11_slot_t *slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, i);
 		sc_log(context, "slot 0x%lx token: %lu events: 0x%02X",
