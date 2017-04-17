@@ -291,6 +291,13 @@ CK_RV C_Finalize(CK_VOID_PTR pReserved)
 	sc_pkcs11_slot_t *slot;
 	CK_RV rv;
 
+#if !defined(_WIN32)
+	/* Handle fork() exception */
+	if (getpid() != initialized_pid && context) {
+			context->flags |= SC_CTX_FLAG_TERMINATE;
+	}
+#endif
+
 	if (pReserved != NULL_PTR)
 		return CKR_ARGUMENTS_BAD;
 
