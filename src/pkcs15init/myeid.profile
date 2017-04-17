@@ -105,6 +105,7 @@ filesystem {
 
             EF PKCS15-TokenInfo {
         	   file-id	  = 5032;
+        	   size		  = 160;
 	           structure  = transparent;
         	   acl	      = READ=NONE, UPDATE=$SOPIN, DELETE=$SOPIN;
             }
