@@ -66,6 +66,7 @@
 #include "libopensc/aux-data.h"
 #include "profile.h"
 #include "pkcs15-init.h"
+#include "pkcs11/pkcs11.h"
 
 #define OPENSC_INFO_FILEPATH		"3F0050154946"
 #define OPENSC_INFO_FILEID		0x4946
@@ -1321,6 +1322,17 @@ sc_pkcs15init_init_skdf(struct sc_pkcs15_card *p15card, struct sc_profile *profi
 	key_info->usage = usage;
 	key_info->native = 1;
 	key_info->key_reference = 0;
+	switch (keyargs->algorithm) {
+	case SC_ALGORITHM_DES:
+		key_info->key_type = CKM_DES_ECB;
+		break;
+	case SC_ALGORITHM_3DES:
+		key_info->key_type = CKM_DES3_ECB;
+		break;
+	case SC_ALGORITHM_AES:
+		key_info->key_type = CKM_AES_ECB;
+		break;
+	}
 	key_info->value_len = keybits;
 	key_info->access_flags = keyargs->access_flags;
 	/* Path is selected below */
