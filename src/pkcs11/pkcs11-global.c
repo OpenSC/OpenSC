@@ -25,6 +25,9 @@
 #ifdef HAVE_SYS_TIME_H
 #include <sys/time.h>
 #endif
+#ifdef _WIN32
+#include <winbase.h>
+#endif
 
 #ifdef PKCS11_THREAD_LOCKING
 #if defined(HAVE_PTHREAD)
@@ -38,6 +41,12 @@
 
 #ifndef MODULE_APP_NAME
 #define MODULE_APP_NAME "opensc-pkcs11"
+#endif
+
+#ifndef PKCS11_THREAD_LOCKING
+/* libp11 depends on CKF_OS_LOCKING_OK, which
+ * requires PKCS11_THREAD_LOCKING to work */
+#define PKCS11_THREAD_LOCKING
 #endif
 
 sc_context_t *context = NULL;
