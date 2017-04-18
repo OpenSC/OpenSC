@@ -61,6 +61,9 @@ int sc_hex_to_bin(const char *in, u8 *out, size_t *outlen)
 	while (*in != '\0') {
 		int byte = 0, nybbles = 2;
 
+		char *p; for(p = (char*)in; *p && *p != ':' && *p != ' '; p++);
+		if ((p-in) & 1)
+		    nybbles = 1; // any leading zero in output should be in most-significant byte, not last one!
 		while (nybbles-- && *in && *in != ':' && *in != ' ') {
 			char c;
 			byte <<= 4;
