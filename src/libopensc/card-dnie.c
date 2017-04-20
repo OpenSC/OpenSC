@@ -422,9 +422,8 @@ static int dnie_get_environment(
 	/* look for sc block in opensc.conf */
 	ctx = card->ctx;
 	for (i = 0; ctx->conf_blocks[i]; i++) {
-		blocks =
-		    scconf_find_blocks(ctx->conf, ctx->conf_blocks[i],
-				       "card_driver", "dnie");
+		blocks = scconf_find_blocks(ctx->conf, ctx->conf_blocks[i],
+				"card_driver", "dnie");
 		if (!blocks)
 			continue;
 		blk = blocks[0];

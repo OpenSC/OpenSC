@@ -519,6 +519,11 @@ static int loadCertificate(sc_pkcs15_card_t * p15card, int i,
 	compCert = malloc(compLen * sizeof(unsigned char));
 	len = 4 * compLen;	/*Approximation of the uncompressed size */
 	cert = malloc(len * sizeof(unsigned char));
+	if (!cert || !compCert) {
+		free(cert);
+		free(compCert);
+		return SC_ERROR_OUT_OF_MEMORY;
+	}
 
 	sc_read_binary(card, 4, compCert, compLen, 0);
 

@@ -45,17 +45,23 @@ static void buf_init(BUFHAN * bp, FILE * fp, const char *saved_string)
 	bp->fp = fp;
 	bp->saved_char = 0;
 	bp->buf = malloc(256);
-	bp->bufmax = 256;
+	if (bp->buf) {
+		bp->bufmax = 256;
+		bp->buf[0] = '\0';
+	} else
+		bp->bufmax = 0;
 	bp->bufcur = 0;
-	bp->buf[0] = '\0';
 	bp->saved_string = saved_string;
 }
 
 static void buf_addch(BUFHAN * bp, char ch)
 {
 	if (bp->bufcur >= bp->bufmax) {
+		char *p = (char *) realloc(bp->buf, bp->bufmax + 256);
+		if (!p)
+			return;
 		bp->bufmax += 256;
-		bp->buf = (char *) realloc(bp->buf, bp->bufmax);
+		bp->buf = p;
 	}
 	if (bp->buf) {
 		bp->buf[bp->bufcur++] = ch;

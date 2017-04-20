@@ -208,6 +208,8 @@ static int itacns_init(sc_card_t *card)
 	card->cla = 0x00;
 
 	card->drv_data = calloc(1, sizeof(itacns_drv_data_t));
+	if (!card->drv_data)
+		return SC_ERROR_OUT_OF_MEMORY;
 
 	/* Match ATR again to find the card data. */
 	itacns_match_card(card);
@@ -219,7 +221,7 @@ static int itacns_init(sc_card_t *card)
 		;
 	_sc_card_add_rsa_alg(card, 1024, flags, 0);
 
-	return 0;
+	return SC_SUCCESS;
 }
 
 static int itacns_finish(struct sc_card *card)

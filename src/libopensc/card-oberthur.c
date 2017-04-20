@@ -2122,6 +2122,10 @@ auth_read_binary(struct sc_card *card, unsigned int offset,
 {
 	int rv;
 	char debug_buf[2048];
+	struct sc_pkcs15_bignum bn[2];
+	unsigned char *out = NULL;
+	bn[0].data = NULL;
+	bn[1].data = NULL;
 
 	LOG_FUNC_CALLED(card->ctx);
 	sc_log(card->ctx,
@@ -2136,9 +2140,8 @@ auth_read_binary(struct sc_card *card, unsigned int offset,
 	if (auth_current_ef->magic==SC_FILE_MAGIC &&
 			auth_current_ef->ef_structure == SC_CARDCTL_OBERTHUR_KEY_RSA_PUBLIC)   {
 		int jj;
-		unsigned char resp[256], *out = NULL;
+		unsigned char resp[256];
 		size_t resp_len, out_len;
-		struct sc_pkcs15_bignum bn[2];
 		struct sc_pkcs15_pubkey_rsa key;
 
 		resp_len = sizeof(resp);
@@ -2150,14 +2153,22 @@ auth_read_binary(struct sc_card *card, unsigned int offset,
 			;
 
 		bn[0].data = calloc(1, rv - jj);
+		if (!bn[0].data) {
+			rv = SC_ERROR_OUT_OF_MEMORY;
+			goto err;
+		}
 		bn[0].len = rv - jj;
 		memcpy(bn[0].data, resp + jj, rv - jj);
 
 		rv = auth_read_component(card, SC_CARDCTL_OBERTHUR_KEY_RSA_PUBLIC,
 				1, resp, resp_len);
-		LOG_TEST_RET(card->ctx, rv, "Cannot read RSA public key component");
+		LOG_TEST_GOTO_ERR(card->ctx, rv, "Cannot read RSA public key component");
 
 		bn[1].data = calloc(1, rv);
+		if (!bn[1].data) {
+			rv = SC_ERROR_OUT_OF_MEMORY;
+			goto err;
+		}
 		bn[1].len = rv;
 		memcpy(bn[1].data, resp, rv);
 
@@ -2165,8 +2176,8 @@ auth_read_binary(struct sc_card *card, unsigned int offset,
 		key.modulus = bn[1];
 
 		if (sc_pkcs15_encode_pubkey_rsa(card->ctx, &key, &out, &out_len)) {
-			LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ASN1_OBJECT,
-					"cannot encode RSA public key");
+			rv = SC_ERROR_INVALID_ASN1_OBJECT;
+			LOG_TEST_GOTO_ERR(card->ctx, rv, "cannot encode RSA public key");
 		}
 		else {
 			rv  = out_len - offset > count ? count : out_len - offset;
@@ -2179,17 +2190,15 @@ auth_read_binary(struct sc_card *card, unsigned int offset,
 			       "write_publickey in %"SC_FORMAT_LEN_SIZE_T"u bytes :\n%s",
 			       count, debug_buf);
 		}
-
-		if (bn[0].data)
-			free(bn[0].data);
-		if (bn[1].data)
-			free(bn[1].data);
-		if (out)
-			free(out);
 	}
-	else	 {
+	else {
 		rv = iso_ops->read_binary(card, offset, buf, count, 0);
 	}
+
+err:
+	free(bn[0].data);
+	free(bn[1].data);
+	free(out);
 
 	LOG_FUNC_RETURN(card->ctx, rv);
 }

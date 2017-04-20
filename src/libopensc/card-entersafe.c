@@ -387,8 +387,13 @@ static int entersafe_transmit_apdu(sc_card_t *card, sc_apdu_t *apdu,
 	 {	 
 		  mac_data_size=apdu->lc+4;
 		  mac_data=malloc(mac_data_size);
+		  if(!mac_data)
+		  {
+			   r = SC_ERROR_OUT_OF_MEMORY;
+			   goto out;
+		  }
 		  r = entersafe_mac_apdu(card,apdu,key,keylen,mac_data,mac_data_size);
-		  if(r<0)
+		  if(r < 0)
 			   goto out;
 	 }
 	 

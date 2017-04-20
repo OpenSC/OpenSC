@@ -1414,12 +1414,12 @@ sc_card_sm_check(struct sc_card *card)
         for (ii = 0; ctx->conf_blocks[ii]; ii++) {
 		scconf_block **blocks;
 
-                blocks = scconf_find_blocks(ctx->conf, ctx->conf_blocks[ii], "secure_messaging", sm);
+		blocks = scconf_find_blocks(ctx->conf, ctx->conf_blocks[ii], "secure_messaging", sm);
 		if (blocks) {
 			sm_conf_block = blocks[0];
 			free(blocks);
 		}
-                if (sm_conf_block != NULL)
+		if (sm_conf_block != NULL)
 			break;
 	}
 

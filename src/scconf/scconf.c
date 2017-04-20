@@ -35,13 +35,12 @@ scconf_context *scconf_new(const char *filename)
 {
 	scconf_context *config;
 
-	config = malloc(sizeof(scconf_context));
+	config = calloc(1, sizeof(scconf_context));
 	if (!config) {
 		return NULL;
 	}
-	memset(config, 0, sizeof(scconf_context));
 	config->filename = filename ? strdup(filename) : NULL;
-	config->root = malloc(sizeof(scconf_block));
+	config->root = calloc(1, sizeof(scconf_block));
 	if (!config->root) {
 		if (config->filename) {
 			free(config->filename);
@@ -49,7 +48,6 @@ scconf_context *scconf_new(const char *filename)
 		free(config);
 		return NULL;
 	}
-	memset(config->root, 0, sizeof(scconf_block));
 	return config;
 }
 
@@ -107,6 +105,8 @@ scconf_block **scconf_find_blocks(const scconf_context * config, const scconf_bl
 	for (item = block->items; item; item = item->next) {
 		if (item->type == SCCONF_ITEM_TYPE_BLOCK &&
 		    strcasecmp(item_name, item->key) == 0) {
+			if (!item->value.block)
+				continue;
 			if (key && strcasecmp(key, item->value.block->name->data)) {
 				continue;
 			}
@@ -207,21 +207,19 @@ scconf_item *scconf_item_copy(const scconf_item * src, scconf_item ** dst)
 {
 	scconf_item *ptr, *_dst = NULL, *next = NULL;
 
-	next = malloc(sizeof(scconf_item));
+	next = calloc(1, sizeof(scconf_item));
 	if (!next) {
 		return NULL;
 	}
-	memset(next, 0, sizeof(scconf_item));
 	ptr = next;
 	_dst = next;
 	while (src) {
 		if (!next) {
-			next = malloc(sizeof(scconf_item));
+			next = calloc(1, sizeof(scconf_item));
 			if (!next) {
 				scconf_item_destroy(ptr);
 				return NULL;
 			}
-			memset(next, 0, sizeof(scconf_item));
 			_dst->next = next;
 		}
 		next->type = src->type;
@@ -281,7 +279,7 @@ scconf_block *scconf_block_copy(const scconf_block * src, scconf_block ** dst)
 	if (src) {
 		scconf_block *_dst = NULL;
 
-		_dst = malloc(sizeof(scconf_block));
+		_dst = calloc(1, sizeof(scconf_block));
 		if (!_dst) {
 			return NULL;
 		}
@@ -311,11 +309,10 @@ scconf_list *scconf_list_add(scconf_list ** list, const char *value)
 {
 	scconf_list *rec, **tmp;
 
-	rec = malloc(sizeof(scconf_list));
+	rec = calloc(1, sizeof(scconf_list));
 	if (!rec) {
 		return NULL;
 	}
-	memset(rec, 0, sizeof(scconf_list));
 	rec->data = value ? strdup(value) : NULL;
 
 	if (!*list) {
@@ -413,11 +410,10 @@ char *scconf_list_strdup(const scconf_list * list, const char *filler)
 	}
 	if (len == 0)
 		return NULL;
-	buf = malloc(len);
+	buf = calloc(1, len);
 	if (!buf) {
 		return NULL;
 	}
-	memset(buf, 0, len);
 	while (list && list->data) {
 		strcat(buf, list->data);
 		if (filler) {

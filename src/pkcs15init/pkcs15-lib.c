@@ -203,6 +203,8 @@ get_profile_from_config(struct sc_card *card, char *buffer, size_t size)
 		blocks = scconf_find_blocks(ctx->conf, ctx->conf_blocks[i],
 					"card_driver",
 					card->driver->short_name);
+		if (!blocks)
+			continue;
 		blk = blocks[0];
 		free(blocks);
 		if (blk == NULL)
@@ -228,18 +230,22 @@ find_library(struct sc_context *ctx, const char *name)
 
 	for (i = 0; ctx->conf_blocks[i]; i++) {
 		blocks = scconf_find_blocks(ctx->conf, ctx->conf_blocks[i], "framework", "pkcs15");
-                blk = blocks[0];
-                free(blocks);
-                if (blk == NULL)
-                        continue;
-		blocks = scconf_find_blocks(ctx->conf, blk, "pkcs15init", name);
+		if (!blocks)
+			continue;
 		blk = blocks[0];
-                free(blocks);
-                if (blk == NULL)
-                        continue;
-                libname = scconf_get_str(blk, "module", NULL);
-                break;
-        }
+		free(blocks);
+		if (blk == NULL)
+			continue;
+		blocks = scconf_find_blocks(ctx->conf, blk, "pkcs15init", name);
+		if (!blocks)
+			continue;
+		blk = blocks[0];
+		free(blocks);
+		if (blk == NULL)
+			continue;
+		libname = scconf_get_str(blk, "module", NULL);
+		break;
+	}
 	if (!libname) {
 		sc_log(ctx, "unable to locate pkcs15init driver for '%s'", name);
 	}

@@ -704,6 +704,10 @@ sc_pkcs11_verify_final(sc_pkcs11_operation_t *operation,
 	if (rv != CKR_OK)
 		return rv;
 	pubkey_value = calloc(1, attr.ulValueLen);
+	if (!pubkey_value) {
+		rv = CKR_HOST_MEMORY;
+		goto done;
+	}
 	attr.pValue = pubkey_value;
 	rv = key->ops->get_attribute(operation->session, key, &attr);
 	if (rv != CKR_OK)
@@ -841,19 +845,19 @@ sc_pkcs11_deri(struct sc_pkcs11_session *session,
 
 	ulDataLen = 0;
 	rv = operation->type->derive(operation, basekey,
-	    pMechanism->pParameter, pMechanism->ulParameterLen,
-	    NULL, &ulDataLen);
+			pMechanism->pParameter, pMechanism->ulParameterLen,
+			NULL, &ulDataLen);
 	if (rv != CKR_OK)
-	    goto out;
+		goto out;
 
 	if (ulDataLen > 0)
-	    keybuf = calloc(1,ulDataLen);
+		keybuf = calloc(1,ulDataLen);
 	else
-	    keybuf = calloc(1,8); /* pass in  dummy buffer */
+		keybuf = calloc(1,8); /* pass in  dummy buffer */
 
-        if (!keybuf) {
-	    rv = CKR_HOST_MEMORY;
-	    goto out;
+	if (!keybuf) {
+		rv = CKR_HOST_MEMORY;
+		goto out;
 	}
 
 	/* Now do the actuall derivation */

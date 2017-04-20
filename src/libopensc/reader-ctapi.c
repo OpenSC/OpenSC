@@ -190,7 +190,7 @@ static int ctapi_transmit(sc_reader_t *reader, sc_apdu_t *apdu)
 	int r;
 
 	rsize = rbuflen = apdu->resplen + 2;
-	rbuf     = malloc(rbuflen);
+	rbuf = malloc(rbuflen);
 	if (rbuf == NULL) {
 		r = SC_ERROR_OUT_OF_MEMORY;
 		goto out;
@@ -310,9 +310,14 @@ static struct ctapi_module * add_module(struct ctapi_global_private_data *gpriv,
 		const char *name, void *dlhandle)
 {
 	int i;
+	struct ctapi_module *p;
 
 	i = gpriv->module_count;
-	gpriv->modules = (struct ctapi_module *) realloc(gpriv->modules, sizeof(struct ctapi_module) * (i+1));
+	p = (struct ctapi_module *) realloc(gpriv->modules, sizeof(struct ctapi_module) * (i+1));
+	if (!p) {
+		return NULL;
+	}
+	gpriv->modules = p;
 	gpriv->modules[i].name = strdup(name);
 	gpriv->modules[i].dlhandle = dlhandle;
 	gpriv->modules[i].ctn_count = 0;
@@ -358,6 +363,8 @@ static int ctapi_load_module(sc_context_t *ctx,
 		goto symerr;
 
 	mod = add_module(gpriv, val, dlh);
+	if (!mod)
+		goto symerr;
 	for (; list != NULL; list = list->next) {
 		int port;
 		char namebuf[128];

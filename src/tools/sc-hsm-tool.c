@@ -250,6 +250,9 @@ static int createShares(const BIGNUM *s, const unsigned char t, const unsigned c
 	unsigned long i;
 	secret_share_t *sp;
 
+	if (!polynomial)
+		return -1;
+
 	// Set the secret value as the constant part of the polynomial
 	pp = polynomial;
 	*pp = BN_new();
@@ -309,6 +312,9 @@ static int reconstructSecret(secret_share_t *shares, unsigned char t, const BIGN
 	secret_share_t *sp_i;
 	secret_share_t *sp_j;
 	BN_CTX *ctx;
+
+	if (!bValue)
+		return -1;
 
 	// Initialize
 	pbValue = bValue;
@@ -656,14 +662,16 @@ static int recreate_password_from_shares(char **pwd, int *pwdlen, int num_of_pas
 		return -1;
 	}
 
+	// Allocate data buffer for the shares
+	shares = malloc(num_of_password_shares * sizeof(secret_share_t));
+	if (!shares)
+		return -1;
+
 	/*
 	 * Initialize prime and secret
 	 */
 	prime = BN_new();
 	secret = BN_new();
-
-	// Allocate data buffer for the shares
-	shares = malloc(num_of_password_shares * sizeof(secret_share_t));
 
 	printf("\nDeciphering the DKEK for import into the SmartCard-HSM requires %i key custodians", num_of_password_shares);
 	printf("\nto present their share. Only the first key custodian needs to enter the public prime.");
@@ -733,14 +741,16 @@ static int recreate_password_from_shares(char **pwd, int *pwdlen, int num_of_pas
 	ip = (unsigned char *) inbuf;
 	*pwdlen = BN_bn2bin(secret, ip);
 	*pwd = calloc(1, *pwdlen);
-	memcpy(*pwd, ip, *pwdlen);
+	if (*pwd) {
+		memcpy(*pwd, ip, *pwdlen);
+	}
 
 	cleanUpShares(shares, num_of_password_shares);
 
 	BN_clear_free(prime);
 	BN_clear_free(secret);
 
-	return 0;
+	return *pwd ? 0 : -1;
 }
 
 

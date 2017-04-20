@@ -380,6 +380,8 @@ coolkey_make_public_key(sc_card_t *card, sc_cardctl_coolkey_object_t *obj, CK_KE
 	int r;
 
 	key = calloc(1, sizeof(struct sc_pkcs15_pubkey));
+	if (!key)
+		return NULL;
 	switch (key_type) {
 	case CKK_RSA:
 		key->algorithm = SC_ALGORITHM_RSA;

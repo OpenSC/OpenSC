@@ -968,6 +968,9 @@ pkcs15_init_slot(struct sc_pkcs15_card *p15card, struct sc_pkcs11_slot *slot,
 		slot->token_info.flags |= CKF_RNG;
 
 	slot->fw_data = fw_data = calloc(1, sizeof(*fw_data));
+	if (!fw_data) {
+		return;
+	}
 	fw_data->auth_obj = auth;
 
 	if (auth != NULL) {
@@ -2136,7 +2139,7 @@ pkcs15_create_secret_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 			if (attr->pValue) {
 			    args.data_value.value = calloc(1,attr->ulValueLen);
 			    if (!args.data_value.value)
-				return CKR_HOST_MEMORY;
+					return CKR_HOST_MEMORY;
 			    memcpy(args.data_value.value, attr->pValue, attr->ulValueLen);
 			    args.data_value.len = attr->ulValueLen;
 			}
@@ -2170,8 +2173,8 @@ pkcs15_create_secret_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 
 	    key_obj = calloc(1, sizeof(sc_pkcs15_object_t));
 	    if (key_obj == NULL) {
-		rv = CKR_HOST_MEMORY;
-		goto out;
+			rv = CKR_HOST_MEMORY;
+			goto out;
 	    }
 	    key_obj->type = SC_PKCS15_TYPE_SKEY;
 
@@ -2181,9 +2184,9 @@ pkcs15_create_secret_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 	    key_obj->flags = 2; /* TODO not sure what these mean */
 
 	    skey_info = calloc(1, sizeof(sc_pkcs15_skey_info_t));
-	    if (skey_info == NULL) {
-		rv = CKR_HOST_MEMORY;
-		goto out;
+		if (skey_info == NULL) {
+			rv = CKR_HOST_MEMORY;
+			goto out;
 	    }
 	    key_obj->data = skey_info;
 	    skey_info->usage = args.usage;

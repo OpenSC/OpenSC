@@ -257,11 +257,18 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs)
 	load_pkcs11_parameters(&sc_pkcs11_conf, context);
 
 	/* List of sessions */
-	list_init(&sessions);
+	if (0 != list_init(&sessions)) {
+		rv = CKR_HOST_MEMORY;
+		goto out;
+	}
 	list_attributes_seeker(&sessions, session_list_seeker);
 
 	/* List of slots */
 	list_init(&virtual_slots);
+	if (0 != list_init(&virtual_slots)) {
+		rv = CKR_HOST_MEMORY;
+		goto out;
+	}
 	list_attributes_seeker(&virtual_slots, slot_list_seeker);
 
 	/* Create slots for readers found on initialization, only if in 2.11 mode */

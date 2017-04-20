@@ -579,9 +579,6 @@ static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 		/* if using internal buffer, alloc new one */
 		if (rbuf == rbufinitbuf) {
 			*recvbuf = malloc(rbuflen);
-				sc_log(card->ctx,
-				       "DEE got buffer %p len %"SC_FORMAT_LEN_SIZE_T"u",
-				       *recvbuf, rbuflen);
 			if (*recvbuf == NULL) {
 				r = SC_ERROR_OUT_OF_MEMORY;
 				goto err;

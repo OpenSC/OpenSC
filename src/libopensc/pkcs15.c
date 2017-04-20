@@ -1153,6 +1153,10 @@ sc_pkcs15_bind_internal(struct sc_pkcs15_card *p15card, struct sc_aid *aid)
 	if (!p15card->tokeninfo->serial_number && card->serialnr.len)   {
 		char *serial = calloc(1, card->serialnr.len*2 + 1);
 		size_t ii;
+		if (!serial) {
+			err = SC_ERROR_OUT_OF_MEMORY;
+			goto end;
+		}
 
 		for(ii=0;ii<card->serialnr.len;ii++)
 			sprintf(serial + ii*2, "%02X", *(card->serialnr.value + ii));

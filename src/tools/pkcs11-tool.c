@@ -1054,7 +1054,7 @@ static void list_slots(int tokens, int refresh, int print)
 		p11_slots = calloc(p11_num_slots, sizeof(CK_SLOT_ID));
 		if (p11_slots == NULL) {
 			perror("calloc failed");
-			return;
+			exit(1);
 		}
 
 		rv = p11->C_GetSlotList(tokens, p11_slots, &p11_num_slots);
@@ -4796,7 +4796,7 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 	encrypted_len = EVP_PKEY_encrypt(encrypted, orig_data, sizeof(orig_data), pkey);
 #endif
 	EVP_PKEY_free(pkey);
-	if (encrypted_len <= 0) {
+	if (((int) encrypted_len) <= 0) {
 		fprintf(stderr, "Encryption failed, returning\n");
 		return 0;
 	}

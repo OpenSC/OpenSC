@@ -670,12 +670,12 @@ static void process_config_file(sc_context_t *ctx, struct _sc_ctx_options *opts)
 		return;
 	}
 	blocks = scconf_find_blocks(ctx->conf, NULL, "app", ctx->app_name);
-	if (blocks[0])
+	if (blocks && blocks[0])
 		ctx->conf_blocks[count++] = blocks[0];
 	free(blocks);
 	if (strcmp(ctx->app_name, "default") != 0) {
 		blocks = scconf_find_blocks(ctx->conf, NULL, "app", "default");
-		if (blocks[0])
+		if (blocks && blocks[0])
 			ctx->conf_blocks[count] = blocks[0];
 		free(blocks);
 	}
@@ -775,7 +775,9 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 	ctx->flags = parm->flags;
 	set_defaults(ctx, &opts);
 
-	list_init(&ctx->readers);
+	if (0 != list_init(&ctx->readers)) {
+		return SC_ERROR_OUT_OF_MEMORY;
+	}
 	list_attributes_seeker(&ctx->readers, reader_list_seeker);
 	/* set thread context and create mutex object (if specified) */
 	if (parm->thread_ctx != NULL)

@@ -373,6 +373,10 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 				cert_out->subject_len, &cn_oid, &cn_name, &cn_len);
 			if (r == SC_SUCCESS) {
 				token_name = malloc (cn_len+1);
+				if (!token_name) {
+					r = SC_ERROR_OUT_OF_MEMORY;
+					goto fail;
+				}
 				memcpy(token_name, cn_name, cn_len);
 				free(cn_name);
 				token_name[cn_len] = 0;

@@ -107,11 +107,10 @@ static scconf_item *scconf_item_add_internal(scconf_parser * parser, int type)
 			return item;
 		}
 	}
-	item = malloc(sizeof(scconf_item));
+	item = calloc(1, sizeof(scconf_item));
 	if (!item) {
 		return NULL;
 	}
-	memset(item, 0, sizeof(scconf_item));
 	item->type = type;
 
 	item->key = parser->key;
@@ -177,12 +176,14 @@ static void scconf_block_add_internal(scconf_parser * parser)
 	scconf_item *item;
 
 	item = scconf_item_add_internal(parser, SCCONF_ITEM_TYPE_BLOCK);
+	if (!item) {
+		return;
+	}
 
-	block = malloc(sizeof(scconf_block));
+	block = calloc(1, sizeof(scconf_block));
 	if (!block) {
 		return;
 	}
-	memset(block, 0, sizeof(scconf_block));
 	block->parent = parser->block;
 	item->value.block = block;
 
@@ -259,6 +260,9 @@ void scconf_parse_token(scconf_parser * parser, int token_type, const char *toke
 		/* fall through - treat empty lines as comments */
 	case TOKEN_TYPE_COMMENT:
 		item = scconf_item_add_internal(parser, SCCONF_ITEM_TYPE_COMMENT);
+		if (!item) {
+			return;
+		}
 		item->value.comment = token ? strdup(token) : NULL;
 		break;
 	case TOKEN_TYPE_STRING:

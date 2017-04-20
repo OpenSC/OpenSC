@@ -371,6 +371,10 @@ static int npa_init(sc_card_t * card)
 	EAC_init();
 #endif
 	card->drv_data = npa_drv_data_create();
+	if (!card->drv_data) {
+		r = SC_ERROR_OUT_OF_MEMORY;
+		goto err;
+	}
 	r = npa_load_options(card->ctx, card->drv_data);
 	if (r != SC_SUCCESS)
 		goto err;

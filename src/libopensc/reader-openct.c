@@ -115,9 +115,8 @@ openct_add_reader(sc_context_t *ctx, unsigned int num, ct_info_t *info)
 	int		rc;
 
 	if (!(reader = calloc(1, sizeof(*reader)))
-	 || !(data = (calloc(1, sizeof(*data))))) {
-		if (reader)
-			free(reader);
+			|| !(data = (calloc(1, sizeof(*data))))) {
+		free(reader);
 		return SC_ERROR_OUT_OF_MEMORY;
 	}
 

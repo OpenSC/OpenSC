@@ -95,10 +95,14 @@ CK_RV create_slot(sc_reader_t *reader)
 			return CKR_HOST_MEMORY;
 
 		list_append(&virtual_slots, slot);
-		list_init(&slot->objects);
+		if (0 != list_init(&slot->objects)) {
+			return CKR_HOST_MEMORY;
+		}
 		list_attributes_seeker(&slot->objects, object_list_seeker);
 
-		list_init(&slot->logins);
+		if (0 != list_init(&slot->logins)) {
+			return CKR_HOST_MEMORY;
+		}
 	} else {
 		/* reuse the old list of logins/objects since they should be empty */
 		list_t logins = slot->logins;

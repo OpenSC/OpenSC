@@ -619,6 +619,8 @@ sc_pkcs15_convert_bignum(sc_pkcs15_bignum_t *dst, const void *src)
 		return 0;
 	dst->len = BN_num_bytes(bn);
 	dst->data = malloc(dst->len);
+	if (!dst->data)
+		return 0;
 	BN_bn2bin(bn, dst->data);
 	return 1;
 #else
@@ -722,6 +724,8 @@ sc_pkcs15_convert_prkey(struct sc_pkcs15_prkey *pkcs15_key, void *evp_key)
 
 		/* copy the public key */
 		dst->ecpointQ.value = malloc(buflen);
+		if (!dst->ecpointQ.value)
+			return SC_ERROR_OUT_OF_MEMORY;
 		memcpy(dst->ecpointQ.value, buf, buflen);
 		dst->ecpointQ.len = buflen;
 
