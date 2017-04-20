@@ -1811,7 +1811,7 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 			const CK_BYTE GOST_PARAMSET_A_OID[] = {0x06, 0x07, 0x2a, 0x85, 0x03, 0x02, 0x02, 0x23, 0x01};
 			const CK_BYTE GOST_PARAMSET_B_OID[] = {0x06, 0x07, 0x2a, 0x85, 0x03, 0x02, 0x02, 0x23, 0x02};
 			const CK_BYTE GOST_PARAMSET_C_OID[] = {0x06, 0x07, 0x2a, 0x85, 0x03, 0x02, 0x02, 0x23, 0x03};
-			const CK_BYTE GOST_HASH_PARAMSET_A_OID[] = {0x06, 0x07, 0x2a, 0x85, 0x03, 0x02, 0x02, 0x1e, 0x01};
+			const CK_BYTE GOST_HASH_PARAMSET_OID[] = {0x06, 0x07, 0x2a, 0x85, 0x03, 0x02, 0x02, 0x1e, 0x01};
 			unsigned long int  gost_key_type = CKK_GOSTR3410;
 			CK_MECHANISM_TYPE mtypes[] = {CKM_GOSTR3410_KEY_PAIR_GEN};
 			size_t mtypes_num = sizeof(mtypes)/sizeof(mtypes[0]);
@@ -1827,15 +1827,15 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 
 			if (!strcmp("A", p_param_set)) {
 				memcpy(key_paramset_encoded_oid, GOST_PARAMSET_A_OID, sizeof(GOST_PARAMSET_A_OID));
-				memcpy(hash_paramset_encoded_oid, GOST_HASH_PARAMSET_A_OID, sizeof(GOST_HASH_PARAMSET_A_OID));
+				memcpy(hash_paramset_encoded_oid, GOST_HASH_PARAMSET_OID, sizeof(GOST_HASH_PARAMSET_OID));
 			}
 			else if (!strcmp("B", p_param_set)) {
 				memcpy(key_paramset_encoded_oid, GOST_PARAMSET_B_OID, sizeof(GOST_PARAMSET_B_OID));
-				memcpy(hash_paramset_encoded_oid, GOST_HASH_PARAMSET_A_OID, sizeof(GOST_HASH_PARAMSET_A_OID));
+				memcpy(hash_paramset_encoded_oid, GOST_HASH_PARAMSET_OID, sizeof(GOST_HASH_PARAMSET_OID));
 			}
 			else if (!strcmp("C", p_param_set)) {
 				memcpy(key_paramset_encoded_oid, GOST_PARAMSET_C_OID, sizeof(GOST_PARAMSET_C_OID));
-				memcpy(hash_paramset_encoded_oid, GOST_HASH_PARAMSET_A_OID, sizeof(GOST_HASH_PARAMSET_A_OID));
+				memcpy(hash_paramset_encoded_oid, GOST_HASH_PARAMSET_OID, sizeof(GOST_HASH_PARAMSET_OID));
 			}
 			else
 				util_fatal("Unknown key type %s, valid key types for mechanism GOSTR3410 are GOSTR3410:A, GOSTR3410:B, GOSTR3410:C", type);

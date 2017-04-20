@@ -861,9 +861,9 @@ int sc_copy_gost_params(struct sc_pkcs15_gost_parameters *dst, struct sc_pkcs15_
 	if (!dst || !src)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
-	memcpy(&dst->key, &src->key, sizeof(src->key));
-	memcpy(&dst->hash, &src->hash, sizeof(src->hash));
-	memcpy(&dst->cipher, &src->cipher, sizeof(src->cipher));
+	memcpy((dst->key).value, (src->key).value, sizeof((src->key).value));
+	memcpy((dst->hash).value, (src->hash).value, sizeof((src->hash).value));
+	memcpy((dst->cipher).value, (src->cipher).value, sizeof((src->cipher).value));
 
 	return SC_SUCCESS;
 }
