@@ -3369,7 +3369,7 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 		printf("%sunwrap", sepa);
 		sepa = ", ";
 	}
-	if ((!pub || sec) && getDERIVE(sess, obj)) {
+	if (getDERIVE(sess, obj)) {
 		printf("%sderive", sepa);
 		sepa = ", ";
 	}
