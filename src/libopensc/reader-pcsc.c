@@ -416,12 +416,12 @@ static int pcsc_detect_card_presence(sc_reader_t *reader)
 	LOG_FUNC_RETURN(reader->ctx, reader->flags);
 }
 
-static int check_forced_protocol(sc_context_t *ctx, struct sc_atr *atr, DWORD *protocol)
+static int check_forced_protocol(sc_reader_t *reader, DWORD *protocol)
 {
 	scconf_block *atrblock = NULL;
 	int ok = 0;
 
-	atrblock = _sc_match_atr_block(ctx, NULL, atr);
+	atrblock = _sc_match_atr_block(reader->ctx, NULL, &reader->atr);
 	if (atrblock != NULL) {
 		const char *forcestr;
 
@@ -437,8 +437,16 @@ static int check_forced_protocol(sc_context_t *ctx, struct sc_atr *atr, DWORD *p
 			ok = 1;
 		}
 		if (ok)
-			sc_log(ctx, "force_protocol: %s", forcestr);
+			sc_log(reader->ctx, "force_protocol: %s", forcestr);
 	}
+
+	if (!ok && reader->uid.len) {
+		/* We identify contactless cards by their UID. Communication
+		 * defined by ISO/IEC 14443 is identical to T=1. */
+		*protocol = SCARD_PROTOCOL_T1;
+		ok = 1;
+	}
+
 	return ok;
 }
 
@@ -461,7 +469,7 @@ static int pcsc_reconnect(sc_reader_t * reader, DWORD action)
 		return SC_ERROR_CARD_NOT_PRESENT;
 
 	/* Check if we need a specific protocol. refresh_attributes above already sets the ATR */
-	if (check_forced_protocol(reader->ctx, &reader->atr, &tmp))
+	if (check_forced_protocol(reader, &tmp))
 		protocol = tmp;
 
 #ifndef HAVE_PCSCLITE
@@ -552,10 +560,12 @@ static int pcsc_connect(sc_reader_t *reader)
 		reader->active_protocol = pcsc_proto_to_opensc(active_proto);
 		priv->pcsc_card = card_handle;
 
+		initialize_uid(reader);
+
 		sc_log(reader->ctx, "Initial protocol: %s", reader->active_protocol == SC_PROTO_T1 ? "T=1" : "T=0");
 
 		/* Check if we need a specific protocol. refresh_attributes above already sets the ATR */
-		if (check_forced_protocol(reader->ctx, &reader->atr, &tmp)) {
+		if (check_forced_protocol(reader, &tmp)) {
 			if (active_proto != tmp) {
 				sc_log(reader->ctx, "Reconnecting to force protocol");
 				r = pcsc_reconnect(reader, SCARD_UNPOWER_CARD);
@@ -568,9 +578,9 @@ static int pcsc_connect(sc_reader_t *reader)
 			}
 			sc_log(reader->ctx, "Final protocol: %s", reader->active_protocol == SC_PROTO_T1 ? "T=1" : "T=0");
 		}
+	} else {
+		initialize_uid(reader);
 	}
-
-	initialize_uid(reader);
 
 	/* After connect reader is not locked yet */
 	priv->locked = 0;
