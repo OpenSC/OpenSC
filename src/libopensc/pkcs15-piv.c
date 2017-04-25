@@ -793,7 +793,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 				ckis[i].pubkey_len = cert_out->key->u.rsa.modulus.len * 8;
 				/* See RFC 5280 and PKCS#11 V2.40 */
 				if (ckis[i].cert_keyUsage_present) {
-					if (ckis[i].cert_keyUsage & 0x01u) { /* digitalSignature  RFC 5280 */
+					if (ckis[i].cert_keyUsage & SC_X509_DIGITAL_SIGNATURE) {
 						ckis[i].pub_usage |= SC_PKCS15_PRKEY_USAGE_ENCRYPT /* extra*/
 									|SC_PKCS15_PRKEY_USAGE_WRAP
 									|SC_PKCS15_PRKEY_USAGE_VERIFY
@@ -803,7 +803,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 									|SC_PKCS15_PRKEY_USAGE_SIGN
 									|SC_PKCS15_PRKEY_USAGE_SIGNRECOVER;
 					}
-					if(ckis[i].cert_keyUsage & 0x02u) { /* nonRepudation */
+					if (ckis[i].cert_keyUsage & SC_X509_NON_REPUDIATION) {
 						ckis[i].pub_usage |= SC_PKCS15_PRKEY_USAGE_ENCRYPT /* extra */
 									|SC_PKCS15_PRKEY_USAGE_NONREPUDIATION
 									|SC_PKCS15_PRKEY_USAGE_VERIFY
@@ -813,31 +813,31 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 									|SC_PKCS15_PRKEY_USAGE_SIGN
 									|SC_PKCS15_PRKEY_USAGE_SIGNRECOVER;
 					}
-					if(ckis[i].cert_keyUsage &  0x04u) { /* KeyEncipherment */
+					if (ckis[i].cert_keyUsage & SC_X509_KEY_ENCIPHERMENT) {
 						ckis[i].pub_usage |= SC_PKCS15_PRKEY_USAGE_ENCRYPT| SC_PKCS15_PRKEY_USAGE_WRAP;
 						ckis[i].priv_usage |= SC_PKCS15_PRKEY_USAGE_DECRYPT| SC_PKCS15_PRKEY_USAGE_UNWRAP;
 					}
-					if(ckis[i].cert_keyUsage & 0x08u) { /* dataEncipherment */
+					if (ckis[i].cert_keyUsage & SC_X509_DATA_ENCIPHERMENT) {
 						ckis[i].pub_usage |= SC_PKCS15_PRKEY_USAGE_ENCRYPT;
 						ckis[i].priv_usage |= SC_PKCS15_PRKEY_USAGE_DECRYPT;
 					}
-					if(ckis[i].cert_keyUsage & 0x10u) { /* keyAgreement */
+					if (ckis[i].cert_keyUsage & SC_X509_KEY_AGREEMENT) {
 						ckis[i].pub_usage |= SC_PKCS15_PRKEY_USAGE_DERIVE;
 						ckis[i].priv_usage |= SC_PKCS15_PRKEY_USAGE_DERIVE;
 					}
-					if(ckis[i].cert_keyUsage & 0x20u) { /* keyCertSign */
+					if (ckis[i].cert_keyUsage & SC_X509_KEY_CERT_SIGN) {
 						ckis[i].pub_usage |= SC_PKCS15_PRKEY_USAGE_VERIFY|SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER;
 						ckis[i].priv_usage |=  SC_PKCS15_PRKEY_USAGE_SIGN;
 					}
-					if(ckis[i].cert_keyUsage & 0x40u) { /* crlSign */
+					if (ckis[i].cert_keyUsage & SC_X509_CRL_SIGN) {
 						ckis[i].pub_usage |= SC_PKCS15_PRKEY_USAGE_VERIFY|SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER;
 						ckis[i].priv_usage |=  SC_PKCS15_PRKEY_USAGE_SIGN;
 					}
-					if(ckis[i].cert_keyUsage & 0x80u) { /*encipherOnly */
+					if (ckis[i].cert_keyUsage & SC_X509_ENCIPHER_ONLY) {
 						ckis[i].pub_usage |= SC_PKCS15_PRKEY_USAGE_ENCRYPT|SC_PKCS15_PRKEY_USAGE_WRAP;
 						ckis[i].priv_usage |= SC_PKCS15_PRKEY_USAGE_DECRYPT|SC_PKCS15_PRKEY_USAGE_UNWRAP;
 					}
-					if (ckis[i].cert_keyUsage & 0x100u) { /*decipherOnly */ /* TODO is this correct */
+					if (ckis[i].cert_keyUsage & SC_X509_DECIPHER_ONLY) { /* TODO is this correct */
 						ckis[i].pub_usage |= SC_PKCS15_PRKEY_USAGE_DECRYPT|SC_PKCS15_PRKEY_USAGE_UNWRAP;
 						ckis[i].priv_usage |= SC_PKCS15_PRKEY_USAGE_ENCRYPT|SC_PKCS15_PRKEY_USAGE_WRAP;
 					}
@@ -847,39 +847,39 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 			case SC_ALGORITHM_EC:
 				ckis[i].pubkey_len = cert_out->key->u.ec.params.field_length;
 				if (ckis[i].cert_keyUsage_present) {
-					if(ckis[i].cert_keyUsage & 0x01u) { /*digitalSignature  RFC 5280 */
+					if (ckis[i].cert_keyUsage & SC_X509_DIGITAL_SIGNATURE) {
 						ckis[i].pub_usage |= SC_PKCS15_PRKEY_USAGE_VERIFY;
 						ckis[i].priv_usage |= SC_PKCS15_PRKEY_USAGE_SIGN;
 					}
-					if(ckis[i].cert_keyUsage & 0x02u) { /* nonRepudation */
+					if (ckis[i].cert_keyUsage & SC_X509_NON_REPUDIATION) {
 						ckis[i].pub_usage |= SC_PKCS15_PRKEY_USAGE_NONREPUDIATION;
 						ckis[i].priv_usage |= SC_PKCS15_PRKEY_USAGE_NONREPUDIATION;
 					}
-					if(ckis[i].cert_keyUsage & 0x04u) {/* KeyEncipherment */
+					if (ckis[i].cert_keyUsage & SC_X509_KEY_ENCIPHERMENT) {
 						ckis[i].pub_usage |= 0;
 						ckis[i].priv_usage |= 0;
 					}
-					if(ckis[i].cert_keyUsage & 0x08u) { /* dataEncipherment */
+					if (ckis[i].cert_keyUsage & SC_X509_DATA_ENCIPHERMENT) {
 						ckis[i].pub_usage |= 0;
 						ckis[i].priv_usage |= 0;
 					}
-					if(ckis[i].cert_keyUsage & 0x10u) { /* keyAgreement */
+					if (ckis[i].cert_keyUsage & SC_X509_KEY_AGREEMENT) {
 						ckis[i].pub_usage |= SC_PKCS15_PRKEY_USAGE_DERIVE;
 						ckis[i].priv_usage |= SC_PKCS15_PRKEY_USAGE_DERIVE;
 					}
-					if(ckis[i].cert_keyUsage & 0x20u) { /* keyCertSign */
+					if (ckis[i].cert_keyUsage & SC_X509_KEY_CERT_SIGN) {
 						ckis[i].pub_usage |= SC_PKCS15_PRKEY_USAGE_VERIFY;
 						ckis[i].priv_usage |= SC_PKCS15_PRKEY_USAGE_SIGN;
 					}
-					if(ckis[i].cert_keyUsage & 0x40u) { /* crlSign */
+					if (ckis[i].cert_keyUsage & SC_X509_CRL_SIGN) {
 						ckis[i].pub_usage |= SC_PKCS15_PRKEY_USAGE_VERIFY;
 						ckis[i].priv_usage |=  SC_PKCS15_PRKEY_USAGE_SIGN;
 					}
-					if(ckis[i].cert_keyUsage & 0x80u) { /*encipherOnly */
+					if (ckis[i].cert_keyUsage & SC_X509_ENCIPHER_ONLY) {
 						ckis[i].pub_usage |= 0;
 						ckis[i].priv_usage |= 0;
 					}
-					if (ckis[i].cert_keyUsage & 0x100u) { /*decipherOnly */
+					if (ckis[i].cert_keyUsage & SC_X509_DECIPHER_ONLY) {
 						ckis[i].pub_usage |= 0;
 						ckis[i].priv_usage |= 0;
 					}

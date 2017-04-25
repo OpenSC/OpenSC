@@ -610,6 +610,18 @@ typedef struct sc_pkcs15_card {
 /* flags suitable for struct sc_pkcs15_card */
 #define SC_PKCS15_CARD_FLAG_EMULATED			0x02000000
 
+/* X509 bits for certificate usage extansion */
+#define SC_X509_DIGITAL_SIGNATURE     0x0001UL
+#define SC_X509_NON_REPUDIATION       0x0002UL
+#define SC_X509_KEY_ENCIPHERMENT      0x0004UL
+#define SC_X509_DATA_ENCIPHERMENT     0x0008UL
+#define SC_X509_KEY_AGREEMENT         0x0010UL
+#define SC_X509_KEY_CERT_SIGN         0x0020UL
+#define SC_X509_CRL_SIGN              0x0040UL
+#define SC_X509_ENCIPHER_ONLY         0x0080UL
+#define SC_X509_DECIPHER_ONLY         0x0100UL
+
+
 /* sc_pkcs15_bind:  Binds a card object to a PKCS #15 card object
  * and initializes a new PKCS #15 card object.  Will return
  * SC_ERROR_PKCS15_APP_NOT_FOUND, if the card hasn't got a

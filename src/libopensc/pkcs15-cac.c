@@ -120,16 +120,6 @@ cac_alg_flags_from_algorithm(int algorithm)
 	return 0;
 }
 
-#define SC_X509_DIGITAL_SIGNATURE     0x0001UL
-#define SC_X509_NON_REPUDIATION       0x0002UL
-#define SC_X509_KEY_ENCIPHERMENT      0x0004UL
-#define SC_X509_DATA_ENCIPHERMENT     0x0008UL
-#define SC_X509_KEY_AGREEMENT         0x0010UL
-#define SC_X509_KEY_CERT_SIGN         0x0020UL
-#define SC_X509_CRL_SIGN              0x0040UL
-#define SC_X509_SIGN_ONLY             0x0080UL
-#define SC_X509_DECIPHER_ONLY         0x0100UL
-
 /* These are the cert key usage bits that map to various PKCS #11 (and thus PKCS #15) flags */
 #define CAC_X509_USAGE_SIGNATURE \
 	(SC_X509_DIGITAL_SIGNATURE | \
@@ -143,7 +133,7 @@ cac_alg_flags_from_algorithm(int algorithm)
 	SC_X509_KEY_AGREEMENT)
 #define CAC_X509_USAGE_DECRYPT \
 	(SC_X509_DATA_ENCIPHERMENT | \
-	SC_X509_SIGN_ONLY)
+	SC_X509_ENCIPHER_ONLY)
 #define CAC_X509_USAGE_NONREPUDIATION \
 	SC_X509_NON_REPUDIATION
 
