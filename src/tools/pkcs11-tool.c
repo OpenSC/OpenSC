@@ -309,6 +309,7 @@ static char *		opt_sig_format = NULL;
 static int		opt_is_private = 0;
 static int		opt_test_hotplug = 0;
 static int		opt_login_type = -1;
+static int		opt_login = 0;
 static int		opt_key_usage_sign = 0;
 static int		opt_key_usage_decrypt = 0;
 static int		opt_key_usage_derive = 0;
@@ -454,7 +455,6 @@ int main(int argc, char * argv[])
 	int do_test_fork = 0;
 #endif
 	int need_session = 0;
-	int opt_login = 0;
 	int do_init_token = 0;
 	int do_init_pin = 0;
 	int do_change_pin = 0;
@@ -2944,30 +2944,51 @@ VARATTR_METHOD(GOSTR3410_PARAMS, unsigned char);
 VARATTR_METHOD(EC_POINT, unsigned char);
 VARATTR_METHOD(EC_PARAMS, unsigned char);
 
+
+/* called to check for CKA_ALWAYS_AUTHENTICATE and  CKU_CONTEXT_SPECIFIC login */
 static void  authenticate_if_required(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE privKeyObject){
 	CK_SESSION_INFO sessionInfo;
-	CK_TOKEN_INFO	info;
 	CK_RV rv;
 
 	rv = p11->C_GetSessionInfo(session, &sessionInfo);
 	if (rv != CKR_OK)
-		p11_fatal("C_OpenSession", rv);
+		p11_fatal("C_GetSessionInfo", rv);
+
+//	printf("authenticate_if_required sessionInfo.state=%ld,opt_login=%d\n",
+//			sessionInfo.state, opt_login );
+
 
 	switch(sessionInfo.state){
 		case CKS_RW_USER_FUNCTIONS:
-		   	//logged in, not need to continue.
-			return;
+		case CKS_RO_USER_FUNCTIONS:
+		case CKS_RW_SO_FUNCTIONS:
+			/* already logged in, test if need CKU_CONTEXT_SPECIFIC */
+			if (privKeyObject != CK_INVALID_HANDLE && getALWAYS_AUTHENTICATE(session, privKeyObject)) {
+				login(session,CKU_CONTEXT_SPECIFIC);
+			}
+			break;
 		case CKS_RW_PUBLIC_SESSION:
+		case CKS_RO_PUBLIC_SESSION:
+			/*
+			 * Not logged in. 
+			 * May be called if key does not require login
+			 * in which case it does not require CKU_CONTEXT_SPECIFIC
+			 * May be called if cached pin count has reached limit 
+			 * or some other reason login state was lost, like reset.
+			 */
+			if (opt_login != 0) {
+				login(session,opt_login_type);
+				/* 
+				 * TODO Assuming a normal login will also work in place of
+				 * CKU_CONTEXT_SPECIFIC. May need extra login
+				 */
+			}
 			break;
 		default:
 			util_fatal("unexpected state");
 	}
+	return;
 
-	get_token_info(opt_slot, &info);
-	if (!(info.flags & CKF_PROTECTED_AUTHENTICATION_PATH) && !getALWAYS_AUTHENTICATE(session, privKeyObject))
-		return;
-
-	login(session,CKU_CONTEXT_SPECIFIC);
 }
 
 static void list_objects(CK_SESSION_HANDLE sess, CK_OBJECT_CLASS  object_class)
@@ -4468,7 +4489,7 @@ static int sign_verify(CK_SESSION_HANDLE session,
 		345,
 		456
 	};
-	unsigned char signat[512];
+	unsigned char signat[512] = {0};
 	CK_ULONG signat_len;
 	int j, errors = 0;
 
@@ -4476,6 +4497,8 @@ static int sign_verify(CK_SESSION_HANDLE session,
 
 	for (j = 0, mech_type = mech_types; *mech_type != 0xffffff; mech_type++, j++) {
 		CK_MECHANISM mech = {*mech_type, NULL, 0};
+
+		authenticate_if_required(session, CK_INVALID_HANDLE);
 
 		rv = p11->C_SignInit(session, &mech, priv_key);
 		if (rv == CKR_MECHANISM_INVALID)
@@ -4500,6 +4523,7 @@ static int sign_verify(CK_SESSION_HANDLE session,
 			printf("  ERR: C_VerifyInit() returned %s (0x%0x)\n", CKR2Str(rv), (int) rv);
 			return ++errors;
 		}
+		authenticate_if_required(session, CK_INVALID_HANDLE);
 		rv = p11->C_Verify(session, datas[j], data_lens[j], signat, signat_len);
 		if (rv == CKR_SIGNATURE_INVALID) {
 			printf("  ERR: verification failed");
@@ -4811,6 +4835,7 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 		p11_fatal("C_DecryptInit", rv);
 
 	data_len = encrypted_len;
+	authenticate_if_required(session, privKeyObject);
 	rv = p11->C_Decrypt(session, encrypted, encrypted_len, data, &data_len);
 	if (rv != CKR_OK)
 		p11_fatal("C_Decrypt", rv);

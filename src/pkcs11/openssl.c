@@ -405,7 +405,8 @@ CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, int pubkey_len,
 {
 	int res;
 	CK_RV rv = CKR_GENERAL_ERROR;
-	EVP_PKEY *pkey;
+	EVP_PKEY *pkey = NULL;
+	const unsigned char *pubkey_tmp;
 
 	if (mech == CKM_GOSTR3410)
 	{
@@ -419,7 +420,20 @@ CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, int pubkey_len,
 #endif
 	}
 
-	pkey = d2i_PublicKey(EVP_PKEY_RSA, NULL, &pubkey, pubkey_len);
+	/*
+	 * PKCS#11 does not define CKA_VALUE for public keys, and different cards
+	 * return either the direct or spki versions as defined in PKCS#15
+	 * And we need to support more then just RSA.
+	 * We can use d2i_PUBKEY which works for SPKI and any key type. 
+	 */
+	pubkey_tmp = pubkey; /* pass in so pubkey pointer is not modified */
+	pkey = d2i_PUBKEY(NULL, &pubkey_tmp, pubkey_len);
+
+	/* if failed, try old way that only works for RSA */
+	if  (pkey == NULL) {
+		pubkey_tmp = pubkey;
+		pkey = d2i_PublicKey(EVP_PKEY_RSA, NULL, &pubkey_tmp, pubkey_len);
+	}
 	if (pkey == NULL)
 		return CKR_GENERAL_ERROR;
 
@@ -449,6 +463,7 @@ CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, int pubkey_len,
 		 case CKM_RSA_X_509:
 		 	pad = RSA_NO_PADDING;
 		 	break;
+		/* TODO support more then RSA */
 		 default:
 			EVP_PKEY_free(pkey);
 		 	return CKR_ARGUMENTS_BAD;
