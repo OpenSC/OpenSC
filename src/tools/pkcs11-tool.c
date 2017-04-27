@@ -1804,10 +1804,8 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 			n_pubkey_attr++;
 		}
 		else if (strncmp(type, "GOSTR3410:", strlen("GOSTR3410:")) == 0 || strncmp(type, "gostr3410:", strlen("gostr3410:")) == 0) {
-			const size_t PARAMSET_ENCODED_OID_SIZE = 9;
-			const size_t HASH_PARAMSET_ENCODED_OID_SIZE = 9;
-			CK_BYTE key_paramset_encoded_oid[PARAMSET_ENCODED_OID_SIZE];
-			CK_BYTE hash_paramset_encoded_oid[HASH_PARAMSET_ENCODED_OID_SIZE];
+			CK_BYTE key_paramset_encoded_oid[9];
+			CK_BYTE hash_paramset_encoded_oid[9];
 			const CK_BYTE GOST_PARAMSET_A_OID[] = {0x06, 0x07, 0x2a, 0x85, 0x03, 0x02, 0x02, 0x23, 0x01};
 			const CK_BYTE GOST_PARAMSET_B_OID[] = {0x06, 0x07, 0x2a, 0x85, 0x03, 0x02, 0x02, 0x23, 0x02};
 			const CK_BYTE GOST_PARAMSET_C_OID[] = {0x06, 0x07, 0x2a, 0x85, 0x03, 0x02, 0x02, 0x23, 0x03};
