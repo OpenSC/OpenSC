@@ -1861,12 +1861,16 @@ sc_pkcs15init_store_secret_key(struct sc_pkcs15_card *p15card, struct sc_profile
 			LOG_TEST_RET(ctx, SC_ERROR_INCOMPATIBLE_KEY, "Card does not support this key.");
 	}
 
-	/* Select a intrinsic Key ID if user didn't specify one */
-	r = sc_pkcs15init_select_intrinsic_id(p15card, profile, SC_PKCS15_TYPE_SKEY,
-			&keyargs->id, &keyargs->key);
-	LOG_TEST_RET(ctx, r, "Get intrinsic ID error");
+#ifdef ENABLE_OPENSSL
+	if (!keyargs->id.len) {
+		/* Calculating intrinsic Key ID for secret key does not make
+		 * sense - just generate random one */
+		if (RAND_bytes(keyargs->id.value, 20) == 1)
+			keyargs->id.len = 20;
+	}
+#endif
 
-	/* Make sure that private key's ID is the unique inside the PKCS#15 application */
+	/* Make sure that secret key's ID is the unique inside the PKCS#15 application */
 	r = sc_pkcs15_find_skey_by_id(p15card, &keyargs->id, NULL);
 	if (!r)
 		LOG_TEST_RET(ctx, SC_ERROR_NON_UNIQUE_ID, "Non unique ID of the secret key object");
