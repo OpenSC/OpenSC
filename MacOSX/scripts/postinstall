@@ -1,9 +1,7 @@
 #!/bin/bash
 
-if !([ -e "/usr/local/lib/opensc-pkcs11.so" ])
-then
-	ln -s /Library/OpenSC/lib/opensc-pkcs11.so /usr/local/lib/opensc-pkcs11.so
-fi
+cp /Library/OpenSC/lib/opensc-pkcs11.so /usr/local/lib/opensc-pkcs11.so
+cp /Library/OpenSC/lib/onepin-opensc-pkcs11.so /usr/local/lib/onepin-opensc-pkcs11.so
 if [ -e "/Library/OpenSC/etc/opensc.conf.md5" ]
 then
 	read cs_fromfile file < "/Library/OpenSC/etc/opensc.conf.md5"
