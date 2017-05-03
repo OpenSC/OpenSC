@@ -11,8 +11,9 @@ for file in /Library/OpenSC/bin/*; do
 	test -L "/usr/local/bin/$(basename $file)" && rm -f "/usr/local/bin/$(basename $file)"
 done
 
-# Remove symlink for pkcs11
-test -L /usr/lib/opensc-pkcs11.so && rm -f /usr/lib/opensc-pkcs11.so
+# Remove pkcs11 libraries
+rm -f /usr/local/lib/opensc-pkcs11.so
+rm -f /usr/local/lib/onepin-opensc-pkcs11.so
 
 # Remove installed files
 rm -rf /Library/OpenSC
