@@ -32,10 +32,20 @@
 #include <sys/stat.h>
 
 /* Module only built if OPENSSL is enabled */
+#include <openssl/opensslv.h>
+#include "libopensc/sc-ossl-compat.h"
+#if OPENSSL_VERSION_NUMBER >= 0x10000000L
 #include <openssl/opensslconf.h>
+#include <openssl/crypto.h>
+#endif
+#if OPENSSL_VERSION_NUMBER >= 0x00907000L
+#include <openssl/conf.h>
+#endif
+
 #include <openssl/rsa.h>
-#if OPENSSL_VERSION_NUMBER >= 0x00908000L && !defined(OPENSSL_NO_EC)
+#if OPENSSL_VERSION_NUMBER >= 0x00908000L && !defined(OPENSSL_NO_EC) && !defined(OPENSSL_NO_ECDSA)
 #include <openssl/ec.h>
+#include <openssl/ecdsa.h>
 #endif
 #include <openssl/evp.h>
 #include <openssl/x509.h>
@@ -45,7 +55,6 @@
 #include <openssl/err.h>
 #include <openssl/obj_mac.h>
 
-#include "libopensc/sc-ossl-compat.h"
 #include "libopensc/opensc.h"
 #include "libopensc/cardctl.h"
 #include "libopensc/asn1.h"
@@ -548,10 +557,22 @@ int main(int argc, char * const argv[])
 	if (action_count == 0)
 		util_print_usage_and_die(app_name, options, option_help, NULL);
 
+
+//#if (OPENSSL_VERSION_NUMBER >= 0x00907000L && OPENSSL_VERSION_NUMBER < 0x10100000L) || defined(LIBRESSL_VERSION_NUMBER)
+//	OPENSSL_config(NULL);
+//#endif
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
+	OPENSSL_init_crypto(OPENSSL_INIT_LOAD_CRYPTO_STRINGS
+		| OPENSSL_INIT_ADD_ALL_CIPHERS
+		| OPENSSL_INIT_ADD_ALL_DIGESTS,
+		NULL);
+#else
+	/* OpenSSL magic */
 	OPENSSL_malloc_init();
 	ERR_load_crypto_strings();
 	OpenSSL_add_all_algorithms();
 
+#endif
 
 	if (out_file) {
 		bp = BIO_new(BIO_s_file());
