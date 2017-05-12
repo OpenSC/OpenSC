@@ -45,6 +45,11 @@ matrix:
       env: HOST=x86_64-w64-mingw32
     - os: linux
       env: HOST=i686-w64-mingw32
+  allow_failures:
+    - os: linux
+      env: HOST=x86_64-w64-mingw32
+    - os: linux
+      env: HOST=i686-w64-mingw32
 
 before_install:
   - if [ "$TRAVIS_OS_NAME" == "osx" ]; then
