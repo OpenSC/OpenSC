@@ -502,6 +502,12 @@ sc_get_response(struct sc_card *card, struct sc_apdu *apdu, size_t olen)
 	apdu->sw1 = 0x90;
 	apdu->sw2 = 0x00;
 
+#ifdef ENABLE_SM
+	if (card->sm_ctx.ops.decode_sm_apdu != NULL)
+		rv = card->sm_ctx.ops.decode_sm_apdu(card, apdu);
+	LOG_TEST_RET(ctx, rv, "Error decoding apdu.");
+#endif
+
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 

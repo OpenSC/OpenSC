@@ -289,6 +289,7 @@ struct sm_card_operations {
 	int (*open)(struct sc_card *card);
 	int (*get_sm_apdu)(struct sc_card *card, struct sc_apdu *apdu, struct sc_apdu **sm_apdu);
 	int (*free_sm_apdu)(struct sc_card *card, struct sc_apdu *apdu, struct sc_apdu **sm_apdu);
+	int (*decode_sm_apdu)(struct sc_card *card, struct sc_apdu *apdu);
 	int (*close)(struct sc_card *card);
 
 	int (*read_binary)(struct sc_card *card, unsigned int idx,
