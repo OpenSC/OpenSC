@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "libopensc/log.h"
+#include "libopensc/internal.h"
 #include "libopensc/asn1.h"
 #include "libopensc/cardctl.h"
 #include "common/compat_strnlen.h"
