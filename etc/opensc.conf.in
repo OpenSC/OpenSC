@@ -301,6 +301,61 @@ app default {
 		# md_guid_as_label: Use the GUID generated for the key as label in the PKCS#15 structure (Default: false - no label set)
 		# md_supports_container_key_gen: Card allows generating key pairs on the card (Default: false)
 		# md_supports_container_key_import: Card allows importing private keys (Default: false)
+		#
+		# Window title of the PIN pad dialog
+		# Default: "Windows Security"
+		# md_pinpad_dlg_title = "Title";
+		#
+		# Filename of the icon for the PIN pad dialog; use "" for no icon
+		# Default: Built-in smart card icon
+		# md_pinpad_dlg_icon = "";
+		#
+		# Main instruction of the PIN pad dialog
+		# Default: "OpenSC Smart Card Provider"
+		# md_pinpad_dlg_main = "Main";
+		#
+		# Content of the PIN pad dialog for role "user"
+		# Default: "Please verify your fingerprint or PIN for the digital signature PIN on the card."
+		# md_pinpad_dlg_content_user = "Content User";
+		#
+		# Content of the PIN pad dialog for role "admin"
+		# Default: "Please enter your PIN to unblock the user PIN on the PINPAD."
+		# md_pinpad_dlg_content_admin = "Content Admin";
+		#
+		# Content of the PIN pad dialog after pressing "Cancel", when the reader doesn't respond to SCardCancel
+		# md_pinpad_dlg_content_cancel = "Content Cancel";
+		#
+		# Expanded information of the PIN pad dialog
+		# Default: "This window will be closed automatically after the PIN has been submitted on the PINPAD (timeout typically after 30 seconds)."
+		# md_pinpad_dlg_expanded = "Expanded Information";
+		#
+		# Expanded information of the PIN pad dialog after pressing "Cancel", when the reader doesn't respond to SCardCancel
+		# Default: "Some readers only support canceling the operation on the PIN pad. Press Cancel or remove the card."
+		# md_pinpad_dlg_expanded_cancel = "Expanded Information Cancel";
+		#
+		# Allow the user to cancel the PIN pad dialog
+		# Default: false
+		# md_pinpad_dlg_enable_cancel = true;
+		#
+		# Time in seconds for the progress bar of the PIN pad dialog to tick. "0" removes the progress bar.
+		# Default: 30
+		# md_pinpad_dlg_timeout = 0;
+
+		# Notification title and text when card was inserted
+		# notify_card_inserted "inserted title";
+		# notify_card_inserted_text "inserted text";
+		#
+		# Notification title and text when card was removed
+		# notify_card_removed = "card removed";
+		# notify_card_removed_text = "removed text";
+		#
+		# Notification title and text when PIN was verified
+		# notify_pin_good = "good PIN";
+		# notify_pin_good_text = "good text";
+		#
+		# Notification title and text when PIN was wrong
+		# notify_pin_bad = "bad PIN";
+		# notify_pin_bad_text = "bad text";
 	# }
 
 	# PIV cards need an entry similar to this one:
@@ -425,6 +480,23 @@ app default {
 		md_supports_X509_enrollment = true;
 		md_supports_container_key_gen = true;
 		md_guid_as_label = true;
+	}
+
+	# SmartCard-HSM with fingerprint sensor and PIN pad
+	card_atr 3B:80:80:01:01 {
+		driver = "sc-hsm";
+		force_protocol = "t1";
+		md_read_only = false;
+		md_supports_X509_enrollment = true;
+		md_supports_container_key_gen = true;
+		md_guid_as_label = true;
+		md_pinpad_dlg_main = "Fingerabdruck oder PIN eingeben";
+		md_pinpad_dlg_content_user = "Bitte verifizieren Sie Ihren Fingarabdruck oder Ihre PIN für die digitale Signatur auf der Karte.";
+		md_pinpad_dlg_content_admin = "Bitte geben Sie Ihre PIN zum Entsperren der Nutzer-PIN auf dem PIN-Pad ein.";
+		md_pinpad_dlg_expanded = "Dieses Fenster wird automatisch geschlossen, wenn die PIN oder der Fingerabdruck verifiziert wurde (Timeout nach 30 Sekunden). Nutzen Sie das PIN-Pad, um die Eingabe abzubrechen.";
+		md_pinpad_dlg_expanded_cancel = "Die Karte unterstützt das Abbrechen ausschließlich am PIN-Pad. Nutzen Sie das PIN-Pad, um die Eingabe abzubrechen oder entfernen Sie die Karte.";
+		md_pinpad_dlg_allow_cancel = false;
+		md_pinpad_dlg_timeout = 30;
 	}
 
 	secure_messaging local_authentic  {

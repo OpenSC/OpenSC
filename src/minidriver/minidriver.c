@@ -47,6 +47,7 @@
 #include "libopensc/log.h"
 #include "libopensc/internal.h"
 #include "libopensc/aux-data.h"
+#include "ui/strings.h"
 #include "pkcs15init/pkcs15-init.h"
 
 #ifdef ENABLE_OPENSSL
@@ -212,11 +213,13 @@ typedef struct _VENDOR_SPECIFIC
 #define MD_STATIC_FLAG_CREATE_CONTAINER_KEY_IMPORT	32
 #define MD_STATIC_FLAG_CREATE_CONTAINER_KEY_GEN		64
 #define MD_STATIC_FLAG_IGNORE_PIN_LENGTH		128
+#define MD_STATIC_FLAG_PINPAD_DLG_ENABLE_CANCEL	256
 
 #define MD_STATIC_PROCESS_ATTACHED		0xA11AC4EDL
 struct md_opensc_static_data {
 	unsigned flags, flags_checked;
 	unsigned long attach_check;
+	HICON pinpad_dlg_icon;
 	CRITICAL_SECTION hScard_lock;
 };
 static struct md_opensc_static_data md_static_data;
@@ -433,6 +436,116 @@ md_get_pin_by_role(PCARD_DATA pCardData, PIN_ID role, struct sc_pkcs15_object **
 }
 
 
+static const char *
+md_get_config_str(PCARD_DATA pCardData, enum ui_str id)
+{
+	VENDOR_SPECIFIC *vs;
+	const char *ret = NULL;
+
+	if (!pCardData)
+		return ret;
+
+	vs = (VENDOR_SPECIFIC*) pCardData->pvVendorSpecific;
+	if (vs->ctx && vs->reader) {
+		const char *preferred_language = NULL;
+		struct sc_atr atr;
+		atr.len = pCardData->cbAtr;
+		memcpy(atr.value, pCardData->pbAtr, atr.len);
+		if (vs->p15card && vs->p15card->tokeninfo
+				&& vs->p15card->tokeninfo->preferred_language) {
+			preferred_language = vs->p15card->tokeninfo->preferred_language;
+		}
+		ret = ui_get_str(vs->ctx, &atr, vs->p15card, id);
+	}
+
+	return ret;
+}
+
+
+static HICON
+md_get_config_icon(PCARD_DATA pCardData, char *flag_name, HICON ret_default)
+{
+	VENDOR_SPECIFIC *vs;
+	HICON ret = ret_default;
+
+	if (!pCardData)
+		return ret;
+
+	logprintf(pCardData, 2, "Get '%s' option\n", flag_name);
+
+	vs = (VENDOR_SPECIFIC*) pCardData->pvVendorSpecific;
+	if (vs->ctx && vs->reader)   {
+		struct sc_atr atr;
+		scconf_block *atrblock;
+		atr.len = pCardData->cbAtr;
+		memcpy(atr.value, pCardData->pbAtr, atr.len);
+		atrblock = _sc_match_atr_block(vs->ctx, NULL, &atr);
+		logprintf(pCardData, 2, "Match ATR:\n");
+		loghex(pCardData, 3, atr.value, atr.len);
+
+		if (atrblock) {
+			const char *filename = scconf_get_str(atrblock, flag_name, NULL);
+			if (filename) {
+				ret = (HICON) LoadImage(g_inst, filename, IMAGE_ICON, 0, 0,
+						LR_LOADFROMFILE|LR_DEFAULTSIZE|LR_SHARED);
+			}
+			if (!ret)
+				ret = ret_default;
+		}
+	}
+
+
+	return ret;
+}
+
+
+static HICON
+md_get_pinpad_dlg_icon(PCARD_DATA pCardData)
+{
+	if (!md_static_data.pinpad_dlg_icon) {
+		md_static_data.pinpad_dlg_icon = md_get_config_icon(pCardData, "md_pinpad_dlg_icon", NULL);
+	}
+
+	return md_static_data.pinpad_dlg_icon;
+}
+
+
+static int
+md_get_config_int(PCARD_DATA pCardData, char *flag_name, int ret_default)
+{
+	VENDOR_SPECIFIC *vs;
+	int ret = ret_default;
+
+	if (!pCardData)
+		return ret;
+
+	logprintf(pCardData, 2, "Get '%s' option\n", flag_name);
+
+	vs = (VENDOR_SPECIFIC*) pCardData->pvVendorSpecific;
+	if (vs->ctx && vs->reader)   {
+		struct sc_atr atr;
+		scconf_block *atrblock;
+		atr.len = pCardData->cbAtr;
+		memcpy(atr.value, pCardData->pbAtr, atr.len);
+		atrblock = _sc_match_atr_block(vs->ctx, NULL, &atr);
+		logprintf(pCardData, 2, "Match ATR:\n");
+		loghex(pCardData, 3, atr.value, atr.len);
+
+		if (atrblock)
+			ret = scconf_get_int(atrblock, flag_name, ret_default);
+	}
+
+	return ret;
+}
+
+
+static int
+md_get_pinpad_dlg_timeout(PCARD_DATA pCardData)
+{
+	return md_get_config_int(pCardData, "md_pinpad_dlg_timeout", 30);
+}
+
+
 static BOOL
 md_get_config_bool(PCARD_DATA pCardData, char *flag_name, unsigned flag, BOOL ret_default)
 {
@@ -473,6 +586,15 @@ md_get_config_bool(PCARD_DATA pCardData, char *flag_name, unsigned flag, BOOL re
 			flag_name, ret ? "TRUE" : "FALSE",
 			md_static_data.flags, md_static_data.flags_checked);
 	return ret;
+}
+
+
+/* 'Write' mode can be enabled from the OpenSC configuration file*/
+static BOOL
+md_is_pinpad_dlg_enable_cancel(PCARD_DATA pCardData)
+{
+	logprintf(pCardData, 2, "Is cancelling the PIN pad dialog enableed?\n");
+	return md_get_config_bool(pCardData, "md_pinpad_dlg_enable_cancel", MD_STATIC_FLAG_PINPAD_DLG_ENABLE_CANCEL, FALSE);
 }
 
 
@@ -2342,27 +2464,76 @@ md_dialog_perform_pin_operation_thread(PVOID lpParameter)
 	return (DWORD) rv;
 }
 
+static const char *md_get_ui_str(PCARD_DATA pCardData, enum ui_str id)
+{
+	const char *str = md_get_config_str(pCardData, id);
+
+	if (str && *str == '\0') {
+		/* if the user used an empty string, remove the field by setting it to NULL */
+		str = NULL;
+	}
+
+	return str;
+}
+
+static WCHAR *wchar_from_char_str(const char *in)
+{
+	WCHAR *out;
+	int out_len;
+
+	if (!in)
+		return NULL;
+
+	out_len = MultiByteToWideChar(CP_UTF8, 0, in, -1, NULL, 0);
+	if (0 >= out_len)
+		return NULL;
+
+	out = LocalAlloc(0, (sizeof *out) * out_len);
+	if (!out)
+		return NULL;
+
+	out_len = MultiByteToWideChar(CP_UTF8, 0, in, -1, out, out_len);
+	if (out_len == 0xFFFD || 0 >= out_len) {
+		LocalFree(out);
+		return NULL;
+	}
+
+	return out;
+}
+
 static INT_PTR CALLBACK md_dialog_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam, LONG_PTR dwRefData)
 {
 	LONG_PTR param;
+	int timeout;
 
 	UNREFERENCED_PARAMETER(lParam);
 	switch (message) {
 		case TDN_CREATED:
-			/* remove the icon from the window title */
-			SendMessage(hWnd, WM_SETICON, (LPARAM) ICON_BIG, (LONG_PTR) NULL);
-			SendMessage(hWnd, WM_SETICON, (LPARAM) ICON_SMALL, (LONG_PTR) NULL);
-			/* store parameter like pCardData for further use if needed */
-			SetWindowLongPtr(hWnd, GWLP_USERDATA, dwRefData);
-			/* launch the function in another thread context store the thread handle */
-			((LONG_PTR*)dwRefData)[10] = (LONG_PTR) hWnd;
-			((LONG_PTR*)dwRefData)[9] = (LONG_PTR) CreateThread(NULL, 0, md_dialog_perform_pin_operation_thread, (LPVOID) dwRefData, 0, NULL);
+			{
+				PCARD_DATA pCardData = (PCARD_DATA)((LONG_PTR*)dwRefData)[7];
+				/* remove the icon from the window title */
+				SendMessage(hWnd, WM_SETICON, (LPARAM) ICON_BIG, (LONG_PTR) NULL);
+				SendMessage(hWnd, WM_SETICON, (LPARAM) ICON_SMALL, (LONG_PTR) NULL);
+				if (!md_is_pinpad_dlg_enable_cancel(pCardData)) {
+					/* disable "Close" */
+					SendMessage(hWnd, TDM_ENABLE_BUTTON, IDCLOSE, 0);
+				}
+				timeout = md_get_pinpad_dlg_timeout(pCardData);
+				if (timeout > 0) {
+					/* update the progress bar with the tick counter for the number of specified seconds */
+					SendMessage(hWnd, TDM_SET_PROGRESS_BAR_RANGE, 0, MAKELPARAM(0, timeout*1000));
+				}
+				/* store parameter like pCardData for further use if needed */
+				SetWindowLongPtr(hWnd, GWLP_USERDATA, dwRefData);
+				/* launch the function in another thread context store the thread handle */
+				((LONG_PTR*)dwRefData)[10] = (LONG_PTR) hWnd;
+				((LONG_PTR*)dwRefData)[9] = (LONG_PTR) CreateThread(NULL, 0, md_dialog_perform_pin_operation_thread, (LPVOID) dwRefData, 0, NULL);
+			}
 			return S_OK;
 
 		case TDN_TIMER:
-			// progress bar 30 seconds.
-			SendMessage(hWnd, TDM_SET_PROGRESS_BAR_POS, wParam / 300 , 0L);
-			/* continue the tickcount */
+			/* tick down for 30 seconds */
+			SendMessage(hWnd, TDM_SET_PROGRESS_BAR_POS, 30000 - wParam, 0L);
 			return S_OK;
 
 		case TDN_BUTTON_CLICKED:
@@ -2372,32 +2543,26 @@ static INT_PTR CALLBACK md_dialog_proc(HWND hWnd, UINT message, WPARAM wParam, L
 
 			param = GetWindowLongPtr(hWnd, GWLP_USERDATA);
 			if (param) {
-				LANGID lang = GetUserDefaultUILanguage();
 				PCARD_DATA pCardData = (PCARD_DATA)((LONG_PTR*)param)[7];
 				VENDOR_SPECIFIC* vs = (VENDOR_SPECIFIC*) pCardData->pvVendorSpecific;
+				WCHAR *pszContent = wchar_from_char_str(md_get_ui_str(pCardData,
+							MD_PINPAD_DLG_CONTENT_CANCEL));
+				WCHAR *pszExpandedInformation = wchar_from_char_str(md_get_ui_str(pCardData,
+							MD_PINPAD_DLG_EXPANDED_CANCEL));
+
 				sc_cancel(vs->ctx);
 
-				/* Some readers don't support SCardCancel, though they're
-				 * reporting SCARD_S_SUCCESS. We leave this window open and
-				 * just report to the user. */
-				if (vs->p15card->tokeninfo->preferred_language) {
-					/* choose the token's preferred language over the system's
-					 * language */
-					if (strncmp(vs->p15card->tokeninfo->preferred_language, "de", 2))
-						lang = LANG_GERMAN|SUBLANG_GERMAN;
-				}
-
-				if (lang & LANG_GERMAN) {
-					SendMessage(hWnd, TDM_SET_ELEMENT_TEXT, TDE_CONTENT, (LPARAM)L"Nutzen Sie das PIN-Pad, um den Vorgang abzubrechen.");
-					SendMessage(hWnd, TDM_SET_ELEMENT_TEXT, TDE_EXPANDED_INFORMATION, (LPARAM)L"Einige Kartenleser unterstützen das Abbrechen ausschließlich am PIN-Pad. Drücken Sie Cancel (Abbruch) oder entfernen Sie die Karte.");
-				} else {
-					SendMessage(hWnd, TDM_SET_ELEMENT_TEXT, TDE_CONTENT, (LPARAM)L"Use the PIN pad to cancel the operation.");
-					SendMessage(hWnd, TDM_SET_ELEMENT_TEXT, TDE_EXPANDED_INFORMATION, (LPARAM)L"Some readers only support canceling the operation on the PIN pad. Press Cancel or remove the card.");
-				}
-				SendMessage(hWnd, TDM_UPDATE_ICON, TDIE_ICON_MAIN, (LPARAM)MAKEINTRESOURCE(TD_WARNING_ICON));
+				SendMessage(hWnd, TDM_SET_ELEMENT_TEXT,
+						TDE_CONTENT, (LPARAM) pszContent);
+				SendMessage(hWnd, TDM_SET_ELEMENT_TEXT,
+						TDE_EXPANDED_INFORMATION, (LPARAM) pszExpandedInformation);
+				SendMessage(hWnd, TDM_UPDATE_ICON, TDIE_ICON_MAIN, (LPARAM)MAKEINTRESOURCE(TD_INFORMATION_ICON));
 				/* remove the icon from the window title */
 				SendMessage(hWnd, WM_SETICON, (LPARAM) ICON_BIG, (LONG_PTR) NULL);
 				SendMessage(hWnd, WM_SETICON, (LPARAM) ICON_SMALL, (LONG_PTR) NULL);
+
+				LocalFree(pszContent);
+				LocalFree(pszExpandedInformation);
 			}
 			break;
 
@@ -2429,7 +2594,6 @@ md_dialog_perform_pin_operation(PCARD_DATA pCardData, int operation, struct sc_p
 	TASKDIALOGCONFIG tc = {0};
 	int rv = 0;
 	VENDOR_SPECIFIC* pv = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
-	LANGID lang = GetUserDefaultUILanguage();
 
 	/* stack the parameters */
 	parameter[0] = (LONG_PTR)operation;
@@ -2455,101 +2619,70 @@ md_dialog_perform_pin_operation(PCARD_DATA pCardData, int operation, struct sc_p
 	this is the only way to display a modal dialog attached to a parent (hwndParent != 0) */
 	tc.hwndParent = pv->hwndParent;
 	tc.hInstance = g_inst;
-	tc.dwFlags = TDF_ALLOW_DIALOG_CANCELLATION | TDF_SHOW_PROGRESS_BAR | TDF_CALLBACK_TIMER | TDF_EXPAND_FOOTER_AREA | TDF_POSITION_RELATIVE_TO_WINDOW | TDF_USE_HICON_FOOTER;
-	tc.dwCommonButtons = TDCBF_CANCEL_BUTTON;
 
-	if (p15card->tokeninfo->preferred_language) {
-		/* choose the token's preferred language over the system's language */
-		if (strncmp(p15card->tokeninfo->preferred_language, "de", 2))
-			lang = LANG_GERMAN|SUBLANG_GERMAN;
+	tc.pszWindowTitle = wchar_from_char_str(md_get_ui_str(pCardData,
+			MD_PINPAD_DLG_TITLE));
+	tc.pszMainInstruction = wchar_from_char_str(md_get_ui_str(pCardData,
+			MD_PINPAD_DLG_MAIN));
+	tc.pszExpandedControlText = wchar_from_char_str(md_get_ui_str(pCardData,
+			MD_PINPAD_DLG_CONTROL_EXPANDED));
+	tc.pszCollapsedControlText = wchar_from_char_str(md_get_ui_str(pCardData,
+			MD_PINPAD_DLG_CONTROL_COLLAPSED));
+	tc.pszExpandedInformation = wchar_from_char_str(md_get_ui_str(pCardData,
+			MD_PINPAD_DLG_EXPANDED));
+	switch (role) {
+		case ROLE_ADMIN:
+			tc.pszContent = wchar_from_char_str(md_get_ui_str(pCardData,
+					MD_PINPAD_DLG_CONTENT_ADMIN));
+			break;
+		case ROLE_USER:
+			/* fall through */
+		default:
+			tc.pszContent = wchar_from_char_str(md_get_ui_str(pCardData,
+					MD_PINPAD_DLG_CONTENT_USER));
+			break;
 	}
 
-	if (lang & LANG_GERMAN) {
-		tc.pszWindowTitle = L"Windows-Sicherheit";
-		tc.pszMainInstruction = L"OpenSC Smartcard-Anbieter";
-		tc.pszExpandedControlText = L"Weitere Informationen";
-		tc.pszCollapsedControlText = L"Weitere Informationen";
-	} else {
-		tc.pszWindowTitle = L"Windows Security";
-		tc.pszMainInstruction = L"OpenSC Smart Card Provider";
-		tc.pszExpandedControlText = L"Click here for more information";
-		tc.pszCollapsedControlText = L"Click here for more information";
-	}
 	if (pv->wszPinContext) {
+		/* overwrite the main instruction with the application's information if
+		 * possible */
 		tc.pszMainInstruction = pv->wszPinContext;
 	}
 
-	/* card specific strings */
-	switch (p15card->card->type) {
-		case SC_CARD_TYPE_SC_HSM_SOC:
-			if (lang & LANG_GERMAN) {
-				switch (role) {
-					case ROLE_ADMIN:
-						tc.pszContent = L"Bitte geben Sie Ihre PIN zum Entsperren der Nutzer-PIN auf dem PINPAD ein.";
-						break;
-					case ROLE_USER:
-						/* fall through */
-					default:
-						tc.pszContent = L"Bitte verifizieren Sie Ihren Fingarabdruck oder Ihre PIN für die digitale Signatur auf der Karte.";
-						break;
-				}
-				tc.pszExpandedInformation = L"Dieses Fenster wird automatisch geschlossen, wenn der Fingerabdruck oder die PIN auf der Karte verifiziert wurde (Timeout nach 30 Sekunden).";
-			} else {
-				tc.pszWindowTitle = L"Windows Security";
-				tc.pszMainInstruction = L"OpenSC Smart Card Provider";
-				switch (role) {
-					case ROLE_ADMIN:
-						tc.pszContent = L"Please enter your PIN to unblock the user PIN on the PINPAD.";
-						break;
-					case ROLE_USER:
-						/* fall through */
-					default:
-						tc.pszContent = L"Please verify your fingerprint or PIN for the digital signature PIN on the card.";
-						break;
-				}
-				tc.pszExpandedInformation = L"This window will be closed automatically after the fingerpritn or the PIN has been verified on the card (timeout after 30 seconds).";
-			}
-			break;
-
-		default:
-			if (lang & LANG_GERMAN) {
-				switch (role) {
-					case ROLE_ADMIN:
-						tc.pszContent = L"Bitte geben Sie Ihre PIN zum Entsperren der Nutzer-PIN auf dem PINPAD ein.";
-						break;
-					case ROLE_USER:
-						/* fall through */
-					default:
-						tc.pszContent = L"Bitte geben Sie Ihre PIN für die digitale Signatur auf dem PINPAD ein.";
-						break;
-				}
-				tc.pszExpandedInformation = L"Dieses Fenster wird automatisch geschlossen, wenn die PIN am PINPAD eingegeben wurde (Timeout typischerweise nach 30 Sekunden).";
-			} else {
-				switch (role) {
-					case ROLE_ADMIN:
-						tc.pszContent = L"Please enter your PIN to unblock the user PIN on the PINPAD.";
-						break;
-					case ROLE_USER:
-						/* fall through */
-					default:
-						tc.pszContent = L"Please enter your digital signature PIN on the PINPAD.";
-						break;
-				}
-				tc.pszExpandedInformation = L"This window will be closed automatically after the PIN has been submitted on the PINPAD (timeout typically after 30 seconds).";
-			}
-			break;
+	tc.dwFlags = TDF_POSITION_RELATIVE_TO_WINDOW;
+	if (tc.pszExpandedInformation != NULL) {
+		tc.dwFlags |= TDF_EXPAND_FOOTER_AREA;
+	}
+	if (md_get_pinpad_dlg_timeout(pCardData) > 0) {
+		tc.dwFlags |= TDF_SHOW_PROGRESS_BAR | TDF_CALLBACK_TIMER;
+	}
+	
+	if (md_is_pinpad_dlg_enable_cancel(pCardData)) {
+		tc.dwFlags |= TDF_ALLOW_DIALOG_CANCELLATION;
+		tc.dwCommonButtons = TDCBF_CANCEL_BUTTON;
+	} else {
+		/* can't use TDCBF_CANCEL_BUTTON since this would implicitely set TDF_ALLOW_DIALOG_CANCELLATION */
+		tc.dwCommonButtons = TDCBF_CLOSE_BUTTON;
 	}
 
-	tc.pszMainIcon = MAKEINTRESOURCE(IDI_SMARTCARD);
-	tc.cButtons = 0;
-	tc.pButtons = NULL;
-	tc.cRadioButtons = 0;
-	tc.pRadioButtons = NULL;
+	tc.hMainIcon = md_get_pinpad_dlg_icon(pCardData);
+	if (tc.hMainIcon) {
+		tc.dwFlags |= TDF_USE_HICON_MAIN;
+	} else {
+		tc.pszMainIcon = MAKEINTRESOURCEW(IDI_SMARTCARD);
+	}
 	tc.pfCallback = md_dialog_proc;
 	tc.lpCallbackData = (LONG_PTR)parameter;
 	tc.cbSize = sizeof(tc);
 
 	result = TaskDialogIndirect(&tc, NULL, NULL, NULL);
+
+	LocalFree((WCHAR *) tc.pszWindowTitle);
+	LocalFree((WCHAR *) tc.pszMainInstruction);
+	LocalFree((WCHAR *) tc.pszExpandedControlText);
+	LocalFree((WCHAR *) tc.pszCollapsedControlText);
+	LocalFree((WCHAR *) tc.pszExpandedInformation);
+	LocalFree((WCHAR *) tc.pszContent);
 
 	SecureZeroMemory(parameter, sizeof(parameter));
 
