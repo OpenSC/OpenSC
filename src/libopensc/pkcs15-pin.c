@@ -30,6 +30,7 @@
 #include "internal.h"
 #include "asn1.h"
 #include "pkcs15.h"
+#include "ui/notify.h"
 
 int _sc_pkcs15_verify_pin(struct sc_pkcs15_card *, struct sc_pkcs15_object *,
 		const unsigned char *, size_t);
@@ -358,11 +359,13 @@ int sc_pkcs15_verify_pin_with_session_pin(struct sc_pkcs15_card *p15card,
 	       "PIN(type:%X; method:%X; value(%p:%"SC_FORMAT_LEN_SIZE_T"u)",
 	       auth_info->auth_type, auth_info->auth_method,
 	       pincode, pinlen);
-
-	if (pinlen > SC_MAX_PIN_SIZE)
-		LOG_TEST_RET(ctx, SC_ERROR_INVALID_PIN_LENGTH, "Invalid PIN size");
-
 	card = p15card->card;
+
+	if (pinlen > SC_MAX_PIN_SIZE) {
+		sc_notify_id(card->ctx, &card->reader->atr, p15card,
+				NOTIFY_PIN_BAD);
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_PIN_LENGTH, "Invalid PIN size");
+	}
 
 	/* Initialize arguments */
 	memset(&data, 0, sizeof(data));
@@ -408,10 +411,10 @@ int sc_pkcs15_verify_pin_with_session_pin(struct sc_pkcs15_card *p15card,
 		data.pin_reference = skey_info->key_reference;
 	}
 
-	if((p15card->card->reader->capabilities & SC_READER_CAP_PIN_PAD
-				|| p15card->card->caps & SC_CARD_CAP_PROTECTED_AUTHENTICATION_PATH)
-			&& !pinlen) {
-		data.flags |= SC_PIN_CMD_USE_PINPAD;
+	if ((p15card->card->reader->capabilities & SC_READER_CAP_PIN_PAD
+				|| p15card->card->caps & SC_CARD_CAP_PROTECTED_AUTHENTICATION_PATH)) {
+		if (!pincode && !pinlen)
+			data.flags |= SC_PIN_CMD_USE_PINPAD;
 
 		if (auth_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN)
 			data.pin1.prompt = "Please enter SO PIN";
@@ -450,10 +453,19 @@ int sc_pkcs15_verify_pin_with_session_pin(struct sc_pkcs15_card *p15card,
 			*sessionpinlen = data.pin2.len;
 		}
 	} else {
+		sc_notify_id(card->ctx, &card->reader->atr, p15card,
+				NOTIFY_PIN_BAD);
 		if (data.cmd == SC_PIN_CMD_GET_SESSION_PIN) {
 			*sessionpinlen = 0;
 		}
 	}
+
+	if (auth_info->auth_type == SC_PKCS15_PIN_AUTH_TYPE_PIN
+			&& auth_info->auth_method != SC_AC_SESSION) {
+		sc_notify_id(card->ctx, &card->reader->atr, p15card,
+				r == SC_SUCCESS ? NOTIFY_PIN_GOOD : NOTIFY_PIN_BAD);
+	}
+
 out:
 	sc_unlock(card);
 	LOG_FUNC_RETURN(ctx, r);

@@ -78,6 +78,8 @@ libopensc_la_LIBADD = $(OPENPACE_LIBS) $(OPTIONAL_OPENSSL_LIBS) \
 	$(top_builddir)/src/pkcs15init/libpkcs15init.la \
 	$(top_builddir)/src/scconf/libscconf.la \
 	$(top_builddir)/src/common/libscdl.la \
+	$(top_builddir)/src/ui/libnotify.la \
+	$(top_builddir)/src/ui/libstrings.la \
 	$(top_builddir)/src/sm/libsmeac.la \
 	$(top_builddir)/src/common/libcompat.la
 if WIN32

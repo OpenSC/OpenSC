@@ -6,6 +6,7 @@ default: all
 
 TARGETS = opensc-tool.exe opensc-explorer.exe pkcs15-tool.exe pkcs15-crypt.exe \
 		pkcs11-tool.exe cardos-tool.exe eidenv.exe openpgp-tool.exe iasecc-tool.exe \
+		opensc-notify.exe \
 		$(PROGRAMS_OPENSSL)
 
 OBJECTS = util.obj npa-tool-cmdline.obj fread_to_eof.obj versioninfo-tools.res

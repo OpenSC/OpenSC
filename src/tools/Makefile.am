@@ -19,7 +19,7 @@ EXTRA_DIST = Makefile.mak versioninfo-tools.rc.in npa-tool.ggo.in npa-tool.1
 noinst_HEADERS = util.h fread_to_eof.h
 noinst_PROGRAMS = sceac-example
 bin_PROGRAMS = opensc-tool opensc-explorer pkcs15-tool pkcs15-crypt \
-	pkcs11-tool cardos-tool eidenv openpgp-tool iasecc-tool
+	pkcs11-tool cardos-tool eidenv openpgp-tool iasecc-tool opensc-notify
 if ENABLE_OPENSSL
 bin_PROGRAMS += cryptoflex-tool pkcs15-init netkey-tool piv-tool \
 	westcos-tool sc-hsm-tool dnie-tool gids-tool npa-tool
@@ -46,6 +46,7 @@ piv_tool_SOURCES = piv-tool.c util.c
 piv_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
 opensc_explorer_SOURCES = opensc-explorer.c util.c
 opensc_explorer_LDADD = $(OPTIONAL_READLINE_LIBS)
+opensc_notify_SOURCES = opensc-notify.c
 pkcs15_tool_SOURCES = pkcs15-tool.c util.c
 pkcs15_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
 pkcs11_tool_SOURCES = pkcs11-tool.c util.c

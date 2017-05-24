@@ -246,6 +246,13 @@ AC_ARG_ENABLE(
 )
 
 AC_ARG_ENABLE(
+	[notify],
+	[AS_HELP_STRING([--enable-notify],[enable notifications @<:@detect@:>@])],
+	,
+	[enable_notify="detect"]
+)
+
+AC_ARG_ENABLE(
 	[werror-declaration-after-statement],
 	[AS_HELP_STRING([--disable-werror-declaration-after-statement],[disable -Werror 'declaration-after-statement' @<:@enabled@:>@])],
 	,
@@ -443,12 +450,43 @@ if test "${enable_dnie_ui}" = "yes"; then
 	AC_DEFINE([ENABLE_DNIE_UI], [1], [Enable the use of external user interface program to request DNIe user pin])
 
 	case "${host}" in
-		*-apple-*)
+		*-*-darwin)
 			if test "${enable_dnie_ui}" = "yes"; then
 				LDFLAGS="${LDFLAGS} -framework Carbon"
 			fi
 		;;
 	esac
+fi
+
+case "${host}" in
+	*-*-darwin*)
+			have_notify="yes"
+		;;
+	*)
+		;;
+esac
+
+case "${enable_notify}" in
+	no)
+		have_notify="no"
+	;;
+	detect)
+		if test "${have_notify}" = "yes"; then
+			enable_notify="yes"
+		else
+			enable_notify="no"
+		fi
+	;;
+esac
+
+if test "${enable_notify}" = "yes"; then
+	if test "${have_notify}" = "yes"; then
+		AC_DEFINE([ENABLE_NOTIFY], [1], [Use notification libraries and header files])
+		OPTIONAL_NOTIFY_CFLAGS="${NOTIFY_CFLAGS}"
+		OPTIONAL_NOTIFY_LIBS="${NOTIFY_LIBS}"
+	else
+		AC_MSG_ERROR([notification linkage required, but no notification provider was found])
+	fi
 fi
 
 AC_ARG_VAR([ZLIB_CFLAGS], [C compiler flags for zlib])
@@ -914,6 +952,8 @@ AC_SUBST([DEFAULT_SM_MODULE_PATH])
 AC_SUBST([DEBUG_FILE])
 AC_SUBST([PROFILE_DIR])
 AC_SUBST([PROFILE_DIR_DEFAULT])
+AC_SUBST([OPTIONAL_NOTIFY_CFLAGS])
+AC_SUBST([OPTIONAL_NOTIFY_LIBS])
 
 AM_CONDITIONAL([ENABLE_MAN], [test "${enable_man}" = "yes"])
 AM_CONDITIONAL([ENABLE_THREAD_LOCKING], [test "${enable_thread_locking}" = "yes"])
@@ -956,6 +996,7 @@ AC_CONFIG_FILES([
 	etc/Makefile
 	src/Makefile
 	src/common/Makefile
+	src/ui/Makefile
 	src/libopensc/Makefile
 	src/sm/Makefile
 	src/pkcs11/Makefile
@@ -1021,6 +1062,7 @@ minidriver support:      ${enable_minidriver}
 SM support:              ${enable_sm}
 SM default module:       ${DEFAULT_SM_MODULE}
 DNIe UI support:         ${enable_dnie_ui}
+Notification support:    ${enable_notify}
 Debug file:              ${DEBUG_FILE}
 
 PC/SC default provider:  ${DEFAULT_PCSC_PROVIDER}
@@ -1045,6 +1087,8 @@ OPENCT_CFLAGS:           ${OPENCT_CFLAGS}
 OPENCT_LIBS:             ${OPENCT_LIBS}
 PCSC_CFLAGS:             ${PCSC_CFLAGS}
 CRYPTOTOKENKIT_CFLAGS:   ${CRYPTOTOKENKIT_CFLAGS}
+NOTIFY_CFLAGS:           ${NOTIFY_CFLAGS}
+NOTIFY_LIBS:             ${NOTIFY_LIBS}
 
 EOF
 

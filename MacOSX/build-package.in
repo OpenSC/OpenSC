@@ -91,7 +91,23 @@ fi
 test -L OpenSC.tokend/build/opensc-src || ln -sf ${BUILDPATH}/src OpenSC.tokend/build/opensc-src
 
 # Build and copy OpenSC.tokend
-xcodebuild -target OpenSC -configuration Deployment -project OpenSC.tokend/Tokend.xcodeproj install DSTROOT=${PWD}/target
+xcodebuild -target OpenSC -configuration Deployment -project OpenSC.tokend/Tokend.xcodeproj install DSTROOT=${BUILDPATH}/target
+
+#if ! test -e $BUILDPATH/target/Library/Security/tokend/OpenSC.tokend/Contents/Resources/Applications/terminal-notifier.app; then
+	#if ! test -e terminal-notifier-1.7.1.zip; then
+		#curl -L https://github.com/julienXX/terminal-notifier/releases/download/1.7.1/terminal-notifier-1.7.1.zip > terminal-notifier-1.7.1.zip
+	#fi
+	#if ! test -e terminal-notifier-1.7.1; then
+		#unzip terminal-notifier-1.7.1.zip
+	#fi
+	#mkdir -p $BUILDPATH/target/Library/Security/tokend/OpenSC.tokend/Contents/Resources/Applications
+	#cp -r terminal-notifier-1.7.1/terminal-notifier.app $BUILDPATH/target/Library/Security/tokend/OpenSC.tokend/Contents/Resources/Applications
+#fi
+
+if ! test -e NotificationProxy; then
+	git clone http://github.com/frankmorgner/NotificationProxy.git
+fi
+xcodebuild -target NotificationProxy -configuration Release -project NotificationProxy/NotificationProxy.xcodeproj install DSTROOT=$BUILDPATH/target/Library/Security/tokend/OpenSC.tokend/Contents/Resources/
 
 # Prepare target root
 # The "UnInstaller"

@@ -41,6 +41,8 @@ OBJECTS			= \
 LIBS = $(TOPDIR)\src\scconf\scconf.lib \
 	   $(TOPDIR)\src\common\common.lib \
 	   $(TOPDIR)\src\common\libscdl.lib \
+	   $(TOPDIR)\src\ui\strings.lib \
+	   $(TOPDIR)\src\ui\notify.lib \
 	   $(TOPDIR)\src\sm\libsmiso.lib \
 	   $(TOPDIR)\src\sm\libsmeac.lib \
 	   $(TOPDIR)\src\pkcs15init\pkcs15init.lib
