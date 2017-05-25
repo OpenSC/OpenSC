@@ -2337,6 +2337,15 @@ static int piv_validate_general_authentication(sc_card_t *card,
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
+	/* Make sure that data for ECDSA signature is truncated to the size of the key:
+	 *   If the length of the hash value is larger than the bit length of n, only
+	 *   the leftmost bits of the hash up to the length of n will be used. Any
+	 *   truncation is done by the token.
+	 *     -- PKCS#11 MECHANISMS V2.30: 6.3.1 EC Signatures */
+	if (priv->algorithm == SC_ALGORITHM_EC) {
+		datalen = MIN(datalen, priv->key_size/8);
+	}
+
 	/* should assume large send data */
 	p = sbuf;
 	put_tag_and_len(0x7c, (2 + put_tag_and_len(0, datalen, NULL)) , &p);
