@@ -64,16 +64,66 @@ static struct sc_atr_table sc_hsm_atrs[] = {
 	/* standard version */
 	{"3B:FE:18:00:00:81:31:FE:45:80:31:81:54:48:53:4D:31:73:80:21:40:81:07:FA", NULL, NULL, SC_CARD_TYPE_SC_HSM, 0, NULL},
 	{"3B:8E:80:01:80:31:81:54:48:53:4D:31:73:80:21:40:81:07:18", NULL, NULL, SC_CARD_TYPE_SC_HSM, 0, NULL},
-	{NULL, NULL, NULL, 0, 0, NULL}
-};
-
-/* Known ATRs for JavaCards that qualify for SmartCard-HSMs */
-static struct sc_atr_table sc_hsm_jc_atrs[] = {
-	/* standard version */
-	{"3b:f8:13:00:00:81:31:fe:45:4a:43:4f:50:76:32:34:31:b7", NULL, NULL, SC_CARD_TYPE_SC_HSM, 0, NULL},	// JCOP 2.4.1 Default ATR contact based
-	{"3b:88:80:01:4a:43:4f:50:76:32:34:31:5e", NULL, NULL, SC_CARD_TYPE_SC_HSM, 0, NULL},	// JCOP 2.4.1 Default ATR contactless
-	/* SoC Sample Card */
-	{"3B:80:80:01:01", NULL, NULL, SC_CARD_TYPE_SC_HSM_SOC, 0, NULL},
+	{
+		"3B:84:80:01:47:6f:49:44:00",
+		"FF:FF:FF:FF:FF:FF:FF:FF:00",
+		"GoID", SC_CARD_TYPE_SC_HSM_SOC, 0, NULL
+	},
+	{
+		"3B:85:80:01:47:6f:49:44:00:00",
+		"FF:FF:FF:FF:FF:FF:FF:FF:00:00",
+		"GoID", SC_CARD_TYPE_SC_HSM_SOC, 0, NULL
+	},
+	{
+		"3B:86:80:01:47:6f:49:44:00:00:00",
+		"FF:FF:FF:FF:FF:FF:FF:FF:00:00:00",
+		"GoID", SC_CARD_TYPE_SC_HSM_SOC, 0, NULL
+	},
+	{
+		"3B:87:80:01:47:6f:49:44:00:00:00:00",
+		"FF:FF:FF:FF:FF:FF:FF:FF:00:00:00:00",
+		"GoID", SC_CARD_TYPE_SC_HSM_SOC, 0, NULL
+	},
+	{
+		"3B:88:80:01:47:6f:49:44:00:00:00:00:00",
+		"FF:FF:FF:FF:FF:FF:FF:FF:00:00:00:00:00",
+		"GoID", SC_CARD_TYPE_SC_HSM_SOC, 0, NULL
+	},
+	{
+		"3B:89:80:01:47:6f:49:44:00:00:00:00:00:00",
+		"FF:FF:FF:FF:FF:FF:FF:FF:00:00:00:00:00:00",
+		"GoID", SC_CARD_TYPE_SC_HSM_SOC, 0, NULL
+	},
+	{
+		"3B:8a:80:01:47:6f:49:44:00:00:00:00:00:00:00",
+		"FF:FF:FF:FF:FF:FF:FF:FF:00:00:00:00:00:00:00",
+		"GoID", SC_CARD_TYPE_SC_HSM_SOC, 0, NULL
+	},
+	{
+		"3B:8b:80:01:47:6f:49:44:00:00:00:00:00:00:00:00",
+		"FF:FF:FF:FF:FF:FF:FF:FF:00:00:00:00:00:00:00:00",
+		"GoID", SC_CARD_TYPE_SC_HSM_SOC, 0, NULL
+	},
+	{
+		"3B:8c:80:01:47:6f:49:44:00:00:00:00:00:00:00:00:00",
+		"FF:FF:FF:FF:FF:FF:FF:FF:00:00:00:00:00:00:00:00:00",
+		"GoID", SC_CARD_TYPE_SC_HSM_SOC, 0, NULL
+	},
+	{
+		"3B:8d:80:01:47:6f:49:44:00:00:00:00:00:00:00:00:00:00",
+		"FF:FF:FF:FF:FF:FF:FF:FF:00:00:00:00:00:00:00:00:00:00",
+		"GoID", SC_CARD_TYPE_SC_HSM_SOC, 0, NULL
+	},
+	{
+		"3B:8e:80:01:47:6f:49:44:00:00:00:00:00:00:00:00:00:00:00",
+		"FF:FF:FF:FF:FF:FF:FF:FF:00:00:00:00:00:00:00:00:00:00:00",
+		"GoID", SC_CARD_TYPE_SC_HSM_SOC, 0, NULL
+	},
+	{
+		"3B:8f:80:01:47:6f:49:44:00:00:00:00:00:00:00:00:00:00:00:00",
+		"FF:FF:FF:FF:FF:FF:FF:FF:00:00:00:00:00:00:00:00:00:00:00:00",
+		"GoID", SC_CARD_TYPE_SC_HSM_SOC, 0, NULL
+	},
 	{NULL, NULL, NULL, 0, 0, NULL}
 };
 
@@ -180,10 +230,6 @@ static int sc_hsm_match_card(struct sc_card *card)
 	int i, r;
 
 	i = _sc_match_atr(card, sc_hsm_atrs, &card->type);
-	if (i >= 0)
-		return 1;
-
-	i = _sc_match_atr(card, sc_hsm_jc_atrs, &card->type);
 	if (i >= 0)
 		return 1;
 
