@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "libopensc/log.h"
+#include "libopensc/internal.h"
 #include "libopensc/asn1.h"
 #include "libopensc/cardctl.h"
 #include "common/compat_strnlen.h"
@@ -553,6 +554,28 @@ public_key_created(struct pkcs15_fw_data *fw_data, const struct sc_pkcs15_id *id
 	return SC_ERROR_OBJECT_NOT_FOUND;
 }
 
+static void
+pkcs15_cert_extract_label(struct pkcs15_cert_object *cert)
+{
+	sc_log(context, "pkcs15_cert_extract_label() called. Current label: %s", cert->cert_p15obj->label);
+
+	/* if we didn't get a label, set one based on the CN */
+	if (*cert->cert_p15obj->label == '\0') { /* can't be NULL -- static array */
+		static const struct sc_object_id cn_oid = {{ 2, 5, 4, 3, -1 }};
+		u8 *cn_name = NULL;
+		size_t cn_len = 0;
+		int rv = sc_pkcs15_get_name_from_dn(context,
+			cert->cert_data->subject, cert->cert_data->subject_len,
+			&cn_oid, &cn_name, &cn_len);
+		if (rv == SC_SUCCESS) {
+			sc_log(context, "pkcs15_cert_extract_label(): Name from DN is %s", cn_name);
+			cn_len = MIN(cn_len, SC_PKCS15_MAX_LABEL_SIZE-1);
+			memcpy(cert->cert_p15obj->label, cn_name, cn_len);
+			cert->cert_p15obj->label[cn_len] = '\0';
+		}
+		free(cn_name);
+	}
+}
 
 static int
 __pkcs15_create_cert_object(struct pkcs15_fw_data *fw_data, struct sc_pkcs15_object *cert,
@@ -605,6 +628,9 @@ __pkcs15_create_cert_object(struct pkcs15_fw_data *fw_data, struct sc_pkcs15_obj
 
 	obj2->pub_genfrom = object;
 	object->cert_pubkey = obj2;
+
+	/* Find missing labels for certificate */
+	pkcs15_cert_extract_label(object);
 
 	if (cert_object != NULL)
 		*cert_object = (struct pkcs15_any_object *) object;
@@ -876,6 +902,9 @@ check_cert_data_read(struct pkcs15_fw_data *fw_data, struct pkcs15_cert_object *
 	/* make a copy of public key from the cert data */
 	if (!obj2->pub_data)
 		rv = sc_pkcs15_pubkey_from_cert(context, &cert->cert_data->data, &obj2->pub_data);
+
+	/* Find missing labels for certificate */
+	pkcs15_cert_extract_label(cert);
 
 	/* now that we have the cert and pub key, lets see if we can bind anything else */
 	pkcs15_bind_related_objects(fw_data);
@@ -3167,6 +3196,10 @@ pkcs15_cert_get_attribute(struct sc_pkcs11_session *session, void *object, CK_AT
 		*(CK_BBOOL*)attr->pValue = FALSE;
 		break;
 	case CKA_LABEL:
+		if (check_cert_data_read(fw_data, cert) != 0) {
+			attr->ulValueLen = 0;
+			return CKR_OK;
+		}
 		len = strnlen(cert->cert_p15obj->label, sizeof cert->cert_p15obj->label);
 		check_attribute_buffer(attr, len);
 		memcpy(attr->pValue, cert->cert_p15obj->label, len);
