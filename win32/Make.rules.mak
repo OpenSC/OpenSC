@@ -10,12 +10,24 @@ PROGRAMFILES_PATH = C:\Program Files (x86)
 MINIDRIVER_DEF = /DENABLE_MINIDRIVER
 
 #Build MSI with the Windows Installer XML (WIX) toolkit, requires WIX >= 3.9
-WIX_PATH = $(PROGRAMFILES_PATH)\WiX Toolset v3.10
-WIX_INCL_DIR = "/I$(WIX_PATH)\SDK\VS2010\inc"
+!IF "$(WIX)" == ""
+# at least WiX 3.11 sets the WIX environment variable to its path
+WIX = $(PROGRAMFILES_PATH)\WiX Toolset v3.10
+!ENDIF
+!IF "$(VISUALSTUDIOVERSION)" == "10.0"
+WIXVSVER = VS2010
+!ENDIF
+!IF "$(VISUALSTUDIOVERSION)" == "12.0"
+WIXVSVER = VS2013
+!ENDIF
+!IF "$(VISUALSTUDIOVERSION)" == "14.0"
+WIXVSVER = VS2015
+!ENDIF
+WIX_INCL_DIR = "/I$(WIX)\SDK\$(WIXVSVER)\inc"
 !IF "$(BUILD_FOR)" == "WIN64"
-WIX_LIBS = "$(WIX_PATH)\SDK\VS2010\lib\x64\dutil.lib" "$(WIX_PATH)\SDK\VS2010\lib\x64\wcautil.lib"
+WIX_LIBS = "$(WIX)\SDK\$(WIXVSVER)\lib\x64\dutil.lib" "$(WIX)\SDK\$(WIXVSVER)\lib\x64\wcautil.lib"
 !ELSE
-WIX_LIBS = "$(WIX_PATH)\SDK\VS2010\lib\x86\dutil.lib" "$(WIX_PATH)\SDK\VS2010\lib\x86\wcautil.lib"
+WIX_LIBS = "$(WIX)\SDK\$(WIXVSVER)\lib\x86\dutil.lib" "$(WIX)\SDK\$(WIXVSVER)\lib\x86\wcautil.lib"
 !ENDIF
 
 #Include support for Secure Messaging
@@ -123,6 +135,7 @@ CANDLEFLAGS = -dPlatform=x86 $(CANDLEFLAGS)
 	cl $(CODE_OPTIMIZATION) $(COPTS) /c $<
 
 .cpp.obj::
+	echo bla $(VISUALSTUDIOVERSION)
 	cl $(CODE_OPTIMIZATION) $(COPTS) /c $<
 
 .rc.res::
