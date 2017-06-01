@@ -729,6 +729,13 @@ iso7816_get_response(struct sc_card *card, size_t *count, u8 *buf)
 	struct sc_apdu apdu;
 	int r;
 	size_t rlen;
+#ifdef ENABLE_SM
+	/* The result of GET RESPONSE contains a potentially fragmented response
+	 * that is protected with SM. We disable SM here to let the upper layers
+	 * assemble and verify the complete SM response. */
+	unsigned sm_mode = card->sm_ctx.sm_mode;
+	card->sm_ctx.sm_mode = SM_MODE_NONE;
+#endif
 
 	/* request at most max_recv_size bytes */
 	if (*count > sc_get_max_recv_size(card))
@@ -744,9 +751,11 @@ iso7816_get_response(struct sc_card *card, size_t *count, u8 *buf)
 	apdu.flags  |= SC_APDU_FLAGS_NO_GET_RESP;
 
 	r = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
-	if (apdu.resplen == 0)
-		LOG_FUNC_RETURN(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2));
+	LOG_TEST_GOTO_ERR(card->ctx, r, "APDU transmit failed");
+	if (apdu.resplen == 0) {
+		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+		goto err;
+	}
 
 	*count = apdu.resplen;
 
@@ -758,6 +767,12 @@ iso7816_get_response(struct sc_card *card, size_t *count, u8 *buf)
 		r = 0; /* Le not reached but file/record ended */
 	else
 		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+
+err:
+#ifdef ENABLE_SM
+	/* enable SM again */
+	card->sm_ctx.sm_mode = sm_mode;
+#endif
 
 	return r;
 }
