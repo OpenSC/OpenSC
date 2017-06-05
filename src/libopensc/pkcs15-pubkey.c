@@ -1270,7 +1270,7 @@ sc_pkcs15_read_der_file(sc_context_t *ctx, char * filename,
 	}
 
 	offs = body - tagbuf;
-	if (offs > len || offs < 2)   {
+	if (offs > len || offs < 2 || offs > offs + bodylen)   {
 		r = SC_ERROR_INVALID_ASN1_OBJECT;
 		goto out;
 	}
