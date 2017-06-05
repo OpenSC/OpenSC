@@ -410,6 +410,18 @@ CK_RV attr_find_ptr(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, CK_ULONG type,
 	return CKR_OK;
 }
 
+CK_RV attr_find_ptr2(CK_ATTRIBUTE_PTR pTemp1, CK_ULONG ulCount1,
+		 CK_ATTRIBUTE_PTR pTemp2, CK_ULONG ulCount2, CK_ULONG type, void **ptr, size_t * sizep)
+{
+	CK_RV rv;
+
+	rv = attr_find_ptr(pTemp1, ulCount1, type, ptr, sizep);
+	if (rv != CKR_OK)
+		rv = attr_find_ptr(pTemp2, ulCount2, type, ptr, sizep);
+
+	return rv;
+}
+
 CK_RV attr_find_var(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, CK_ULONG type, void *ptr, size_t * sizep)
 {
 	unsigned int n;
