@@ -1284,13 +1284,13 @@ int iso7816_read_binary_sfid(sc_card_t *card, unsigned char sfid,
 	}
 	*ef_len = 0;
 
-	if (read > 0xff+1)
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_2_EXT,
-				ISO_READ_BINARY, ISO_P1_FLAG_SFID|sfid, 0);
-	else
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT,
-				ISO_READ_BINARY, ISO_P1_FLAG_SFID|sfid, 0);
-
+#if MAX_SM_APDU_RESP_SIZE > (0xff+1)
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_EXT,
+			ISO_READ_BINARY, ISO_P1_FLAG_SFID|sfid, 0);
+#else
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT,
+			ISO_READ_BINARY, ISO_P1_FLAG_SFID|sfid, 0);
+#endif
 	p = realloc(*ef, read);
 	if (!p) {
 		r = SC_ERROR_OUT_OF_MEMORY;
