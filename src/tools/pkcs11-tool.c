@@ -2945,29 +2945,10 @@ VARATTR_METHOD(EC_POINT, unsigned char);
 VARATTR_METHOD(EC_PARAMS, unsigned char);
 
 static void  authenticate_if_required(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE privKeyObject){
-	CK_SESSION_INFO sessionInfo;
 	CK_TOKEN_INFO	info;
-	CK_RV rv;
-
-	rv = p11->C_GetSessionInfo(session, &sessionInfo);
-	if (rv != CKR_OK)
-		p11_fatal("C_OpenSession", rv);
-
-	switch(sessionInfo.state){
-		case CKS_RW_USER_FUNCTIONS:
-		   	//logged in, not need to continue.
-			return;
-		case CKS_RW_PUBLIC_SESSION:
-			break;
-		default:
-			util_fatal("unexpected state");
-	}
-
 	get_token_info(opt_slot, &info);
-	if (!(info.flags & CKF_PROTECTED_AUTHENTICATION_PATH) && !getALWAYS_AUTHENTICATE(session, privKeyObject))
-		return;
-
-	login(session,CKU_CONTEXT_SPECIFIC);
+	if ((info.flags & CKF_PROTECTED_AUTHENTICATION_PATH) || getALWAYS_AUTHENTICATE(session, privKeyObject))
+		login(session,CKU_CONTEXT_SPECIFIC);
 }
 
 static void list_objects(CK_SESSION_HANDLE sess, CK_OBJECT_CLASS  object_class)
@@ -3934,17 +3915,17 @@ static int test_digest(CK_SESSION_HANDLE session)
 		for (j = 0; j < 10; j++)
 			data[10 * i + j] = (unsigned char) (0x30 + j);
 
-
 	for (i = 0; mechTypes[i] != 0xffffff; i++) {
 		ck_mech.mechanism = mechTypes[i];
 
+		printf("  %s: ", p11_mechanism_to_name(mechTypes[i]));
 		rv = p11->C_DigestInit(session, &ck_mech);
-		if (rv == CKR_MECHANISM_INVALID)
+		if (rv == CKR_MECHANISM_INVALID){
+			fprintf(stderr, "Mechanism not supported\n");
 			continue;	/* mechanism not implemented, don't test */
+		}
 		if (rv != CKR_OK)
 			p11_fatal("C_DigestInit", rv);
-
-		printf("  %s: ", p11_mechanism_to_name(mechTypes[i]));
 
 		hashLen1 = sizeof(hash1);
 		rv = p11->C_Digest(session, data, sizeof(data), hash1,
@@ -4081,7 +4062,7 @@ static int sign_verify_openssl(CK_SESSION_HANDLE session,
 		unsigned char *verifyData, CK_ULONG verifyDataLen,
 		CK_ULONG modLenBytes, int evp_md_index)
 {
-	int 		errors = 0;
+	int 		errors = 0, first_login;
 	CK_RV           rv;
 	unsigned char   sig1[1024];
 	CK_ULONG        sigLen1;
@@ -4102,23 +4083,31 @@ static int sign_verify_openssl(CK_SESSION_HANDLE session,
 #endif
 	};
 #endif
+	for(first_login = 1; ; first_login = 0){
+		rv = p11->C_SignInit(session, ck_mech, privKeyObject);
+		/* mechanism not implemented, don't test */
+		if (rv == CKR_MECHANISM_INVALID)
+			return errors;
+		if (rv != CKR_OK)
+			p11_fatal("C_SignInit", rv);
 
-	rv = p11->C_SignInit(session, ck_mech, privKeyObject);
-	/* mechanism not implemented, don't test */
-	if (rv == CKR_MECHANISM_INVALID)
-		return errors;
-	if (rv != CKR_OK)
-		p11_fatal("C_SignInit", rv);
-
-	authenticate_if_required(session, privKeyObject);
-	printf("    %s: ", p11_mechanism_to_name(ck_mech->mechanism));
-
-	sigLen1 = sizeof(sig1);
-	rv = p11->C_Sign(session, data, dataLen, sig1,
-		&sigLen1);
-	if (rv != CKR_OK)
-		p11_fatal("C_Sign", rv);
-
+		if(first_login){
+			printf("    %s: ", p11_mechanism_to_name(ck_mech->mechanism));
+			authenticate_if_required(session, privKeyObject);
+		}
+		
+		sigLen1 = sizeof(sig1);
+		rv = p11->C_Sign(session, data, dataLen, sig1,
+			&sigLen1);
+		if (rv == CKR_USER_NOT_LOGGED_IN){
+			login(session,opt_login_type);
+			continue;
+		}
+		if (rv != CKR_OK)
+			p11_fatal("C_Sign", rv);
+		break;
+	}
+	
 	if (sigLen1 != modLenBytes) {
 		errors++;
 		printf("  ERR: wrong signature length: %u instead of %u\n",
@@ -4308,15 +4297,23 @@ static int test_signature(CK_SESSION_HANDLE sess)
 		if (rv != CKR_OK)
 			p11_fatal("C_SignFinal", rv);
 
-		rv = p11->C_SignInit(sess, &ck_mech, privKeyObject);
-		if (rv != CKR_OK)
-			p11_fatal("C_SignInit", rv);
 		authenticate_if_required(sess, privKeyObject);
 
-		sigLen2 = sizeof(sig2);
-		rv = p11->C_Sign(sess, data, dataLen, sig2, &sigLen2);
-		if (rv != CKR_OK)
-			p11_fatal("C_Sign", rv);
+		for(;;){
+			rv = p11->C_SignInit(sess, &ck_mech, privKeyObject);
+			if (rv != CKR_OK)
+				p11_fatal("C_SignInit", rv);
+
+			sigLen2 = sizeof(sig2);
+			rv = p11->C_Sign(sess, data, dataLen, sig2, &sigLen2);
+			if (rv == CKR_USER_NOT_LOGGED_IN){
+				login(sess,opt_login_type);
+				continue;
+			}
+			if (rv != CKR_OK)
+				p11_fatal("C_Sign", rv);
+			break;
+		}
 
 		if (sigLen1 != sigLen2) {
 			errors++;
@@ -4325,38 +4322,45 @@ static int test_signature(CK_SESSION_HANDLE sess)
 			errors++;
 			printf("  ERR: signatures returned by C_SignFinal() different from C_Sign()\n");
 		} else
-			printf("  all 4 signature functions seem to work\n");
+			printf("    all 4 signature functions seem to work\n");
 	}
 
 	/* 2nd test */
-
-	ck_mech.mechanism = firstMechType;
-	rv = p11->C_SignInit(sess, &ck_mech, privKeyObject);
-	if (rv != CKR_OK)
-		p11_fatal("C_SignInit", rv);
-
-	sigLen2 = 1;		/* too short */
-	rv = p11->C_Sign(sess, data, dataLen, sig2, &sigLen2);
-	if (rv != CKR_BUFFER_TOO_SMALL) {
-		errors++;
-		printf("  ERR: C_Sign() didn't return CKR_BUFFER_TOO_SMALL but %s (0x%0x)\n", CKR2Str(rv), (int) rv);
-	}
-
-	/* output buf = NULL */
-	rv = p11->C_Sign(sess, data, dataLen, NULL, &sigLen2);
-	if (rv != CKR_OK) {
-	   errors++;
-	   printf("  ERR: C_Sign() didn't return CKR_OK for a NULL output buf, but %s (0x%0x)\n",
-	   CKR2Str(rv), (int) rv);
-	}
 	authenticate_if_required(sess, privKeyObject);
 
-	rv = p11->C_Sign(sess, data, dataLen, sig2, &sigLen2);
-	if (rv == CKR_OPERATION_NOT_INITIALIZED) {
-		printf("  ERR: signature operation ended prematurely\n");
+	for(;;){
+		ck_mech.mechanism = firstMechType;
+		rv = p11->C_SignInit(sess, &ck_mech, privKeyObject);
+		if (rv != CKR_OK)
+			p11_fatal("C_SignInit", rv);
+
+		sigLen2 = 1;		/* too short */
+		rv = p11->C_Sign(sess, data, dataLen, sig2, &sigLen2);
+		if (rv != CKR_BUFFER_TOO_SMALL) {
+			errors++;
+			printf("  ERR: C_Sign() didn't return CKR_BUFFER_TOO_SMALL but %s (0x%0x)\n", CKR2Str(rv), (int) rv);
+		}
+
+		/* output buf = NULL */
+		rv = p11->C_Sign(sess, data, dataLen, NULL, &sigLen2);
+		if (rv != CKR_OK) {
 		errors++;
-	} else if (rv != CKR_OK)
-		p11_fatal("C_Sign", rv);
+		printf("  ERR: C_Sign() didn't return CKR_OK for a NULL output buf, but %s (0x%0x)\n",
+		CKR2Str(rv), (int) rv);
+		}
+
+		rv = p11->C_Sign(sess, data, dataLen, sig2, &sigLen2);
+		if (rv == CKR_USER_NOT_LOGGED_IN){
+			login(sess,opt_login_type);
+			continue;
+		}
+		if (rv == CKR_OPERATION_NOT_INITIALIZED) {
+			printf("  ERR: signature operation ended prematurely\n");
+			errors++;
+		} else if (rv != CKR_OK)
+			p11_fatal("C_Sign", rv);
+		break;
+	}
 
 	/* 3rd test */
 
@@ -4375,7 +4379,6 @@ static int test_signature(CK_SESSION_HANDLE sess)
 	datas[0] = data;
 	dataLens[0] = dataLen;
 
-	printf("  testing signature mechanisms:\n");
 	for (i = 0; mechTypes[i] != 0xffffff; i++) {
 		ck_mech.mechanism = mechTypes[i];
 		errors += sign_verify_openssl(sess, &ck_mech, privKeyObject,
@@ -4476,24 +4479,38 @@ static int sign_verify(CK_SESSION_HANDLE session,
 
 	for (j = 0, mech_type = mech_types; *mech_type != 0xffffff; mech_type++, j++) {
 		CK_MECHANISM mech = {*mech_type, NULL, 0};
-
-		rv = p11->C_SignInit(session, &mech, priv_key);
-		if (rv == CKR_MECHANISM_INVALID)
-			continue;
-		if (rv != CKR_OK) {
-			printf("  ERR: C_SignInit() returned %s (0x%0x)\n", CKR2Str(rv), (int) rv);
-			return ++errors;
-		}
+		int first_login, invalid = 0;
 
 		printf("    %s: ", p11_mechanism_to_name(*mech_type));
-		authenticate_if_required(session, priv_key);
+		for(first_login = 1; ; first_login = 0){
+			rv = p11->C_SignInit(session, &mech, priv_key);
+			if (rv == CKR_MECHANISM_INVALID){
+				printf("Mechanism not supported\n");
+				invalid = 1;
+				break;
+			}
+			if (rv != CKR_OK) {
+				printf("  ERR: C_SignInit() returned %s (0x%0x)\n", CKR2Str(rv), (int) rv);
+				return ++errors;
+			}
 
-		signat_len = sizeof(signat);
-		rv = p11->C_Sign(session, datas[j], data_lens[j], signat, &signat_len);
-		if (rv != CKR_OK) {
-			printf("  ERR: C_Sign() returned %s (0x%0x)\n", CKR2Str(rv), (int) rv);
-			return ++errors;
+			if(first_login)				
+				authenticate_if_required(session, priv_key);
+
+			signat_len = sizeof(signat);
+			rv = p11->C_Sign(session, datas[j], data_lens[j], signat, &signat_len);
+			if (rv == CKR_USER_NOT_LOGGED_IN){
+				login(session,opt_login_type);
+				continue;
+			}
+			if (rv != CKR_OK) {
+				printf("  ERR: C_Sign() returned %s (0x%0x)\n", CKR2Str(rv), (int) rv);
+				return ++errors;
+			}
+			break;
 		}
+		if(invalid)
+			continue;
 
 		rv = p11->C_VerifyInit(session, &mech, pub_key);
 		if (rv != CKR_OK) {
