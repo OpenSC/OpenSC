@@ -463,6 +463,37 @@ case "${host}" in
 			have_notify="yes"
 		;;
 	*)
+			AC_PATH_PROG([GDBUS], [gdbus], [not found])
+			if test "${GDBUS}" = "not found"; then
+				have_notify="no"
+				have_gdbus="no"
+			else
+				have_notify="yes"
+				have_gdbus="yes"
+			fi
+
+			if test "${have_notify}" = "no"; then
+				PKG_CHECK_MODULES( [GIO2], [gio-2.0],
+								  [ have_notify="yes"
+									have_gio2="yes" ],
+								  [ have_notify="no"
+									have_gio2="no" ])
+				saved_CFLAGS="${CFLAGS}"
+				CFLAGS="${CFLAGS} ${GIO2_CFLAGS}"
+				AC_CHECK_HEADERS(gio/gio.h, [],
+								 [ AC_MSG_WARN([glib2 headers not found])
+								   have_notify="no"
+								   have_gio2="no" ])
+				CFLAGS="${saved_CFLAGS}"
+				saved_LIBS="$LIBS"
+				LIBS="$LIBS  ${GIO2_LIBS}"
+				AC_MSG_CHECKING([for g_application_send_notification])
+				AC_TRY_LINK_FUNC(g_application_send_notification, [ AC_MSG_RESULT([yes]) ],
+								 [ AC_MSG_WARN([Cannot link against glib2])
+								   have_notify="no"
+								   have_gio2="no"  ])
+				LIBS="$saved_LIBS"
+			fi
 		;;
 esac
 
@@ -482,8 +513,14 @@ esac
 if test "${enable_notify}" = "yes"; then
 	if test "${have_notify}" = "yes"; then
 		AC_DEFINE([ENABLE_NOTIFY], [1], [Use notification libraries and header files])
-		OPTIONAL_NOTIFY_CFLAGS="${NOTIFY_CFLAGS}"
-		OPTIONAL_NOTIFY_LIBS="${NOTIFY_LIBS}"
+		if test "${have_gdbus}" = "yes"; then
+			AC_DEFINE_UNQUOTED([GDBUS], ["${GDBUS}"], [Path to gdbus])
+		fi
+		if test "${have_gio2}" = "yes"; then
+			AC_DEFINE([ENABLE_GIO2], [1], [Use glib2 libraries and header files])
+			OPTIONAL_NOTIFY_CFLAGS="${GIO2_CFLAGS}"
+			OPTIONAL_NOTIFY_LIBS="${GIO2_LIBS}"
+		fi
 	else
 		AC_MSG_ERROR([notification linkage required, but no notification provider was found])
 	fi
@@ -1087,8 +1124,9 @@ OPENCT_CFLAGS:           ${OPENCT_CFLAGS}
 OPENCT_LIBS:             ${OPENCT_LIBS}
 PCSC_CFLAGS:             ${PCSC_CFLAGS}
 CRYPTOTOKENKIT_CFLAGS:   ${CRYPTOTOKENKIT_CFLAGS}
-NOTIFY_CFLAGS:           ${NOTIFY_CFLAGS}
-NOTIFY_LIBS:             ${NOTIFY_LIBS}
+GDBUS:                   ${GDBUS}
+GIO2_CFLAGS:             ${GIO2_CFLAGS}
+GIO2_LIBS:               ${GIO2_LIBS}
 
 EOF
 

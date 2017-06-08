@@ -949,7 +949,7 @@ void sc_remote_data_init(struct sc_remote_data *rdata)
 
 static unsigned long  sc_CRC_tab32[256];
 static int sc_CRC_tab32_initialized = 0;
-unsigned sc_crc32(unsigned char *value, size_t len)
+unsigned sc_crc32(const unsigned char *value, size_t len)
 {
 	size_t ii, jj;
 	unsigned long crc;

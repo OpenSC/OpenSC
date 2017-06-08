@@ -1333,7 +1333,7 @@ scconf_block *sc_match_atr_block(sc_context_t *ctx, struct sc_card_driver *drive
  * @param value pointer to data used for CRC calculation
  * @param len length of data used for CRC calculation
  */
-unsigned sc_crc32(unsigned char *value, size_t len);
+unsigned sc_crc32(const unsigned char *value, size_t len);
 
 /**
  * Used to initialize the @c sc_remote_data structure --

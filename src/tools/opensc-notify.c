@@ -24,6 +24,25 @@
 #include "ui/notify.h"
 #include <stdio.h>
 
+#ifndef _WIN32
+#include <time.h>
+
+void Sleep(unsigned int Milliseconds)
+{
+	struct timespec req, rem;
+
+	if (Milliseconds > 999) {
+		req.tv_sec  = Milliseconds / 1000;                            /* Must be Non-Negative */
+		req.tv_nsec = (Milliseconds - (req.tv_sec * 1000)) * 1000000; /* Must be in range of 0 to 999999999 */
+	} else {
+		req.tv_sec  = 0;                        /* Must be Non-Negative */
+		req.tv_nsec = Milliseconds * 1000000;   /* Must be in range of 0 to 999999999 */
+	}
+
+	nanosleep(&req , &rem);
+}
+#endif
+
 int
 main (int argc, char **argv)
 {
@@ -33,7 +52,7 @@ main (int argc, char **argv)
 			text = argv[2];
 			/* fall through */
 		case 2:
-			text = argv[1];
+			title = argv[1];
 			/* fall through */
 		case 1:
 			break;
@@ -44,6 +63,7 @@ main (int argc, char **argv)
 	}
 	sc_notify_init();
 	sc_notify(title, text);
+	Sleep(250);
 	sc_notify_close();
 
 	return 0;
