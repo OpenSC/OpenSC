@@ -239,7 +239,7 @@ static const char *option_help[] = {
 	"Unlock User PIN (without '--login' unlock in logged in session; otherwise '--login-type' has to be 'context-specific')",
 	"Key pair generation",
 	"Key generation",
-	"Specify the type and length of the key to create, for example rsa:1024 or EC:prime256v1",
+	"Specify the type and length of the key to create, for example rsa:1024 or EC:prime256v1 or GOSTR3410:A",
 	"Specify 'sign' key usage flag (sets SIGN in privkey, sets VERIFY in pubkey)",
 	"Specify 'decrypt' key usage flag (RSA only, set DECRYPT privkey, ENCRYPT in pubkey)",
 	"Specify 'derive' key usage flag (EC only)",
@@ -1825,11 +1825,74 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 			FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_EC_PARAMS, ecparams, ecparams_size);
 			n_pubkey_attr++;
 		}
+		else if (strncmp(type, "GOSTR3410:", strlen("GOSTR3410:")) == 0 || strncmp(type, "gostr3410:", strlen("gostr3410:")) == 0) {
+			CK_BYTE key_paramset_encoded_oid[9];
+			CK_BYTE hash_paramset_encoded_oid[9];
+			const CK_BYTE GOST_PARAMSET_A_OID[] = {0x06, 0x07, 0x2a, 0x85, 0x03, 0x02, 0x02, 0x23, 0x01};
+			const CK_BYTE GOST_PARAMSET_B_OID[] = {0x06, 0x07, 0x2a, 0x85, 0x03, 0x02, 0x02, 0x23, 0x02};
+			const CK_BYTE GOST_PARAMSET_C_OID[] = {0x06, 0x07, 0x2a, 0x85, 0x03, 0x02, 0x02, 0x23, 0x03};
+			const CK_BYTE GOST_HASH_PARAMSET_OID[] = {0x06, 0x07, 0x2a, 0x85, 0x03, 0x02, 0x02, 0x1e, 0x01};
+			unsigned long int  gost_key_type = CKK_GOSTR3410;
+			CK_MECHANISM_TYPE mtypes[] = {CKM_GOSTR3410_KEY_PAIR_GEN};
+			size_t mtypes_num = sizeof(mtypes)/sizeof(mtypes[0]);
+			const char *p_param_set = type + strlen("GOSTR3410:");
+
+			if (!opt_mechanism_used) {
+				if (!find_mechanism(slot, CKF_GENERATE_KEY_PAIR, mtypes, mtypes_num, &opt_mechanism))
+					util_fatal("Generate GOSTR3410 mechanism not supported");
+			}
+
+			if (p_param_set == NULL)
+				util_fatal("Unknown key type %s", type);
+
+			if (!strcmp("A", p_param_set)) {
+				memcpy(key_paramset_encoded_oid, GOST_PARAMSET_A_OID, sizeof(GOST_PARAMSET_A_OID));
+				memcpy(hash_paramset_encoded_oid, GOST_HASH_PARAMSET_OID, sizeof(GOST_HASH_PARAMSET_OID));
+			}
+			else if (!strcmp("B", p_param_set)) {
+				memcpy(key_paramset_encoded_oid, GOST_PARAMSET_B_OID, sizeof(GOST_PARAMSET_B_OID));
+				memcpy(hash_paramset_encoded_oid, GOST_HASH_PARAMSET_OID, sizeof(GOST_HASH_PARAMSET_OID));
+			}
+			else if (!strcmp("C", p_param_set)) {
+				memcpy(key_paramset_encoded_oid, GOST_PARAMSET_C_OID, sizeof(GOST_PARAMSET_C_OID));
+				memcpy(hash_paramset_encoded_oid, GOST_HASH_PARAMSET_OID, sizeof(GOST_HASH_PARAMSET_OID));
+			}
+			else
+				util_fatal("Unknown key type %s, valid key types for mechanism GOSTR3410 are GOSTR3410:A, GOSTR3410:B, GOSTR3410:C", type);
+
+			FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_GOSTR3410_PARAMS, key_paramset_encoded_oid, sizeof(key_paramset_encoded_oid));
+			n_pubkey_attr++;
+			FILL_ATTR(privateKeyTemplate[n_privkey_attr], CKA_GOSTR3410_PARAMS, key_paramset_encoded_oid, sizeof(key_paramset_encoded_oid));
+			n_privkey_attr++;
+
+			FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_GOSTR3411_PARAMS, hash_paramset_encoded_oid, sizeof(hash_paramset_encoded_oid));
+			n_pubkey_attr++;
+			FILL_ATTR(privateKeyTemplate[n_privkey_attr], CKA_GOSTR3411_PARAMS, hash_paramset_encoded_oid, sizeof(hash_paramset_encoded_oid));
+			n_privkey_attr++;
+
+			FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_KEY_TYPE, &gost_key_type, sizeof(gost_key_type));
+			n_pubkey_attr++;
+			FILL_ATTR(privateKeyTemplate[n_privkey_attr], CKA_KEY_TYPE, &gost_key_type, sizeof(gost_key_type));
+			n_privkey_attr++;
+
+			if (opt_key_usage_default || opt_key_usage_sign) {
+				FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_VERIFY, &_true, sizeof(_true));
+				n_pubkey_attr++;
+				FILL_ATTR(privateKeyTemplate[n_privkey_attr], CKA_SIGN, &_true, sizeof(_true));
+				n_privkey_attr++;
+			}
+
+			/* do not set 'derive' attribute unless it is specified directly */
+			if (opt_key_usage_derive) {
+				FILL_ATTR(privateKeyTemplate[n_privkey_attr], CKA_DERIVE, &_true, sizeof(_true));
+				n_privkey_attr++;
+			}
+		}
 		else {
 			util_fatal("Unknown key type %s", type);
 		}
 
-        mechanism.mechanism = opt_mechanism;
+		mechanism.mechanism = opt_mechanism;
 	}
 
 	if (opt_object_label != NULL) {

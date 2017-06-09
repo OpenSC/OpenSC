@@ -140,17 +140,50 @@ extern struct sc_pkcs11_object_ops pkcs15_pubkey_ops;
 extern struct sc_pkcs11_object_ops pkcs15_dobj_ops;
 extern struct sc_pkcs11_object_ops pkcs15_skey_ops;
 
-#define GOST_PARAMS_OID_SIZE 9
+const CK_BYTE gostr3410_paramset_A_encoded_oid[] = { 0x06, 0x07, 0x2a, 0x85, 0x03, 0x02, 0x02, 0x23, 0x01 };
+const unsigned int gostr3410_paramset_A_oid[] = {1, 2, 643, 2, 2, 35, 1, (unsigned int)-1};
+const CK_BYTE gostr3410_paramset_B_encoded_oid[] = { 0x06, 0x07, 0x2a, 0x85, 0x03, 0x02, 0x02, 0x23, 0x02 };
+const unsigned int gostr3410_paramset_B_oid[] = {1, 2, 643, 2, 2, 35, 2, (unsigned int)-1};
+const CK_BYTE gostr3410_paramset_C_encoded_oid[] = { 0x06, 0x07, 0x2a, 0x85, 0x03, 0x02, 0x02, 0x23, 0x03 };
+const unsigned int gostr3410_paramset_C_oid[] = {1, 2, 643, 2, 2, 35, 3, (unsigned int)-1};
+
 static const struct {
-	const CK_BYTE oid[GOST_PARAMS_OID_SIZE];
-	unsigned char param;
+	const CK_BYTE *encoded_oid;
+	const unsigned int encoded_oid_size;
+	const unsigned int *oid;
+	const unsigned int oid_size;
+	unsigned char oid_id;
 } gostr3410_param_oid [] = {
-	{ { 0x06, 0x07, 0x2a, 0x85, 0x03, 0x02, 0x02, 0x23, 0x01 },
+	{ &gostr3410_paramset_A_encoded_oid[0],
+		sizeof(gostr3410_paramset_A_encoded_oid),
+		&gostr3410_paramset_A_oid[0],
+		sizeof(gostr3410_paramset_A_oid),
 		SC_PKCS15_PARAMSET_GOSTR3410_A },
-	{ { 0x06, 0x07, 0x2a, 0x85, 0x03, 0x02, 0x02, 0x23, 0x02 },
+	{ &gostr3410_paramset_B_encoded_oid[0],
+		sizeof(gostr3410_paramset_B_encoded_oid),
+		&gostr3410_paramset_B_oid[0],
+		sizeof(gostr3410_paramset_B_oid),
 		SC_PKCS15_PARAMSET_GOSTR3410_B },
-	{ { 0x06, 0x07, 0x2a, 0x85, 0x03, 0x02, 0x02, 0x23, 0x03 },
+	{ &gostr3410_paramset_C_encoded_oid[0],
+		sizeof(gostr3410_paramset_C_encoded_oid),
+		&gostr3410_paramset_C_oid[0],
+		sizeof(gostr3410_paramset_C_oid),
 		SC_PKCS15_PARAMSET_GOSTR3410_C }
+};
+
+const CK_BYTE gostr3411_94_cryptopro_paramset_encoded_oid[] = { 0x06, 0x07, 0x2a, 0x85, 0x03, 0x02, 0x02, 0x1e, 0x01 };
+const unsigned int gostr3411_94_cryptopro_paramset_oid[] = {1, 2, 643, 2, 2, 30, 1, (unsigned int)-1};
+
+static const struct {
+	const CK_BYTE *encoded_oid;
+	const unsigned int encoded_oid_size;
+	const unsigned int *oid;
+	const unsigned int oid_size;
+} gostr3410_hash_param_oid [] = {
+	{ &gostr3411_94_cryptopro_paramset_encoded_oid[0],
+		sizeof(gostr3411_94_cryptopro_paramset_encoded_oid),
+		&gostr3411_94_cryptopro_paramset_oid[0],
+		sizeof(gostr3411_94_cryptopro_paramset_oid)}
 };
 
 static int	__pkcs15_release_object(struct pkcs15_any_object *);
@@ -170,8 +203,8 @@ static int	unlock_card(struct pkcs15_fw_data *);
 static int	reselect_app_df(sc_pkcs15_card_t *p15card);
 
 #ifdef USE_PKCS15_INIT
-static CK_RV	set_gost_params(struct sc_pkcs15init_keyarg_gost_params *,
-			struct sc_pkcs15init_keyarg_gost_params *,
+static CK_RV	set_gost3410_params(struct sc_pkcs15init_prkeyargs *,
+			struct sc_pkcs15init_pubkeyargs *,
 			CK_ATTRIBUTE_PTR, CK_ULONG, CK_ATTRIBUTE_PTR, CK_ULONG);
 static CK_RV	pkcs15_create_slot(struct sc_pkcs11_card *p11card, struct pkcs15_fw_data *fw_data,
 			struct sc_pkcs15_object *auth, struct sc_app_info *app,
@@ -682,7 +715,10 @@ __pkcs15_create_pubkey_object(struct pkcs15_fw_data *fw_data,
 	} else if (pubkey->emulated && (fw_data->p15_card->flags & SC_PKCS15_CARD_FLAG_EMULATED)) {
 		sc_pkcs15_free_pubkey(p15_key);
 	}
-
+	if (object->pub_data) {
+		if ((object->pub_data->alg_id)&&(object->pub_data->algorithm == SC_ALGORITHM_GOSTR3410))
+			object->pub_data->alg_id->params = &((object->pub_data->u).gostr3410.params);
+	}
 	if (pubkey_object != NULL)
 		*pubkey_object = (struct pkcs15_any_object *) object;
 
@@ -1987,7 +2023,7 @@ pkcs15_create_private_key(struct sc_pkcs11_slot *slot, struct sc_profile *profil
 			rsa = &args.key.u.rsa;
 			break;
 		case CKK_GOSTR3410:
-			set_gost_params(&args.params.gost, NULL, pTemplate, ulCount, NULL, 0);
+			set_gost3410_params(&args, NULL, pTemplate, ulCount, NULL, 0);
 			args.key.algorithm = SC_ALGORITHM_GOSTR3410;
 			gost = &args.key.u.gostr3410;
 			break;
@@ -2684,39 +2720,89 @@ get_X509_usage_pubk(CK_ATTRIBUTE_PTR pTempl, CK_ULONG ulCount, unsigned long *x5
 
 
 static CK_RV
-set_gost_params(struct sc_pkcs15init_keyarg_gost_params *first_params,
-		struct sc_pkcs15init_keyarg_gost_params *second_params,
+set_gost3410_params(struct sc_pkcs15init_prkeyargs *prkey_args,
+		struct sc_pkcs15init_pubkeyargs *pubkey_args,
 		CK_ATTRIBUTE_PTR pPubTpl, CK_ULONG ulPubCnt,
 		CK_ATTRIBUTE_PTR pPrivTpl, CK_ULONG ulPrivCnt)
 {
-	CK_BYTE gost_params_oid[GOST_PARAMS_OID_SIZE];
-	size_t len, i;
+	const CK_BYTE * gost_params_encoded_oid_from_template;
+	const CK_BYTE * gost_hash_params_encoded_oid_from_template;
+	size_t len, param_index, hash_index;
 	CK_RV rv;
 
-	len = GOST_PARAMS_OID_SIZE;
+	/* If template has CKA_GOSTR3410_PARAMS attribute, set param_index to
+	 * corresponding item's index in gostr3410_param_oid[] */
 	if (pPrivTpl && ulPrivCnt)
-		rv = attr_find2(pPubTpl, ulPubCnt, pPrivTpl, ulPrivCnt, CKA_GOSTR3410_PARAMS, &gost_params_oid, &len);
+		rv = attr_find_ptr2(pPubTpl, ulPubCnt, pPrivTpl, ulPrivCnt, CKA_GOSTR3410_PARAMS, (void **)&gost_params_encoded_oid_from_template, &len);
 	else
-		rv = attr_find(pPubTpl, ulPubCnt, CKA_GOSTR3410_PARAMS, &gost_params_oid, &len);
+		rv = attr_find_ptr(pPubTpl, ulPubCnt, CKA_GOSTR3410_PARAMS, (void **)&gost_params_encoded_oid_from_template, &len);
+
 	if (rv == CKR_OK) {
 		size_t nn = sizeof(gostr3410_param_oid)/sizeof(gostr3410_param_oid[0]);
 
-		if (len != GOST_PARAMS_OID_SIZE)
-			return CKR_ATTRIBUTE_VALUE_INVALID;
-
-		for (i = 0; i < nn; ++i) {
-			if (!memcmp(gost_params_oid, gostr3410_param_oid[i].oid, len)) {
-				if (first_params)
-					first_params->gostr3410 = gostr3410_param_oid[i].param;
-				if (second_params)
-					second_params->gostr3410 = gostr3410_param_oid[i].param;
+		for (param_index = 0; param_index < nn; ++param_index) {
+			if (len != gostr3410_param_oid[param_index].encoded_oid_size)
+				continue;
+			if (!memcmp(gost_params_encoded_oid_from_template, gostr3410_param_oid[param_index].encoded_oid, len))
 				break;
-			}
 		}
 
-		if (i == nn)
+		if (param_index == nn)
 			return CKR_ATTRIBUTE_VALUE_INVALID;
 	}
+	else if (rv == CKR_TEMPLATE_INCOMPLETE)
+		/* Default used parameters' index */
+		param_index = 0;
+	else
+		return rv;
+
+	/* If template has CKA_GOSTR3411_PARAMS attribute, set hash_index to
+	 * corresponding item's index in gostr3410_hash_param_oid[] */
+	if (pPrivTpl && ulPrivCnt)
+		rv = attr_find_ptr2(pPubTpl, ulPubCnt, pPrivTpl, ulPrivCnt, CKA_GOSTR3411_PARAMS, (void **)&gost_hash_params_encoded_oid_from_template, &len);
+	else
+		rv = attr_find_ptr(pPubTpl, ulPubCnt, CKA_GOSTR3411_PARAMS, (void **)&gost_hash_params_encoded_oid_from_template, &len);
+
+	if (rv == CKR_OK) {
+		size_t nn = sizeof(gostr3410_hash_param_oid)/sizeof(gostr3410_hash_param_oid[0]);
+
+		for (hash_index = 0; hash_index < nn; ++hash_index) {
+			if (len != gostr3410_hash_param_oid[hash_index].encoded_oid_size)
+				continue;
+			if (!memcmp(gost_hash_params_encoded_oid_from_template, gostr3410_hash_param_oid[hash_index].encoded_oid, len))
+				break;
+		}
+
+		if (hash_index == nn)
+			return CKR_ATTRIBUTE_VALUE_INVALID;
+	}
+	else if (rv == CKR_TEMPLATE_INCOMPLETE)
+		/* Default used hash parameters' index */
+		hash_index = 0;
+	else
+		return rv;
+
+	/* Set params and hash oids in priv and pub keys' gostr3410 params
+	 * and set params oid_id in priv key */
+	if (prkey_args) {
+		(prkey_args->params).gost.gostr3410 = gostr3410_param_oid[param_index].oid_id;
+		memcpy(&(prkey_args->key).u.gostr3410.params.key,
+			gostr3410_param_oid[param_index].oid,
+			gostr3410_param_oid[param_index].oid_size);
+		memcpy(&(prkey_args->key).u.gostr3410.params.hash,
+			gostr3410_hash_param_oid[hash_index].oid,
+			gostr3410_hash_param_oid[hash_index].oid_size);
+	}
+	if (pubkey_args) {
+		(pubkey_args->params).gost.gostr3410 = gostr3410_param_oid[param_index].oid_id;
+		memcpy(&(pubkey_args->key).u.gostr3410.params.key,
+			gostr3410_param_oid[param_index].oid,
+			gostr3410_param_oid[param_index].oid_size);
+		memcpy(&(pubkey_args->key).u.gostr3410.params.hash,
+			gostr3410_hash_param_oid[hash_index].oid,
+			gostr3410_hash_param_oid[hash_index].oid_size);
+	}
+
 	return CKR_OK;
 }
 
@@ -2798,8 +2884,10 @@ pkcs15_gen_keypair(struct sc_pkcs11_slot *slot, CK_MECHANISM_PTR pMechanism,
 	if (keytype == CKK_GOSTR3410)   {
 		keygen_args.prkey_args.key.algorithm = SC_ALGORITHM_GOSTR3410;
 		pub_args.key.algorithm               = SC_ALGORITHM_GOSTR3410;
-		set_gost_params(&keygen_args.prkey_args.params.gost, &pub_args.params.gost,
+		rv = set_gost3410_params(&keygen_args.prkey_args, &pub_args,
 				pPubTpl, ulPubCnt, pPrivTpl, ulPrivCnt);
+		if (rv != CKR_OK)
+			goto kpgen_done;
 		keybits = SC_PKCS15_GOSTR3410_KEYSIZE;
 	}
 	else if (keytype == CKK_RSA)   {
@@ -4529,10 +4617,10 @@ get_gostr3410_params(const u8 *params, size_t params_len, CK_ATTRIBUTE_PTR attr)
 		return CKR_ATTRIBUTE_TYPE_INVALID;
 
 	for (i = 0; i < sizeof(gostr3410_param_oid)/sizeof(gostr3410_param_oid[0]); ++i) {
-		if (gostr3410_param_oid[i].param == ((int*)params)[0]) {
-			check_attribute_buffer(attr, sizeof(gostr3410_param_oid[i].oid));
-			memcpy(attr->pValue, gostr3410_param_oid[i].oid,
-					sizeof(gostr3410_param_oid[i].oid));
+		if (gostr3410_param_oid[i].oid_id == ((int*)params)[0]) {
+			check_attribute_buffer(attr, gostr3410_param_oid[i].encoded_oid_size);
+			memcpy(attr->pValue, gostr3410_param_oid[i].encoded_oid,
+					gostr3410_param_oid[i].encoded_oid_size);
 			return CKR_OK;
 		}
 	}

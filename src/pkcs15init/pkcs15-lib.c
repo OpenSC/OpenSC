@@ -1316,6 +1316,22 @@ _pkcd15init_set_aux_md_data(struct sc_pkcs15_card *p15card, struct sc_auxiliary_
 }
 
 /*
+ * Copy gost3410 parameters (e.g. from prkey to pubkey)
+ */
+static int
+sc_copy_gost_params(struct sc_pkcs15_gost_parameters *dst, struct sc_pkcs15_gost_parameters *src)
+{
+	if (!dst || !src)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	memcpy((dst->key).value, (src->key).value, sizeof((src->key).value));
+	memcpy((dst->hash).value, (src->hash).value, sizeof((src->hash).value));
+	memcpy((dst->cipher).value, (src->cipher).value, sizeof((src->cipher).value));
+
+	return SC_SUCCESS;
+}
+
+/*
  * Generate a new private key
  */
 int
@@ -1375,6 +1391,8 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 
 	if (keygen_args->prkey_args.key.algorithm == SC_ALGORITHM_GOSTR3410)   {
 		pubkey_args.params.gost = keygen_args->prkey_args.params.gost;
+		r = sc_copy_gost_params(&(pubkey_args.key.u.gostr3410.params), &(keygen_args->prkey_args.key.u.gostr3410.params));
+		LOG_TEST_RET(ctx, r, "Cannot allocate GOST parameters");
 	}
 	else if (keygen_args->prkey_args.key.algorithm == SC_ALGORITHM_EC)   {
 		pubkey_args.key.u.ec.params = keygen_args->prkey_args.key.u.ec.params;

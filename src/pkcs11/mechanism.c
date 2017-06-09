@@ -688,7 +688,7 @@ sc_pkcs11_verify_final(sc_pkcs11_operation_t *operation,
 	struct sc_pkcs11_object *key;
 	unsigned char *pubkey_value = NULL;
 	CK_KEY_TYPE key_type;
-	CK_BYTE params[9 /* GOST_PARAMS_OID_SIZE */] = { 0 };
+	CK_BYTE params[9 /* GOST_PARAMS_ENCODED_OID_SIZE */] = { 0 };
 	CK_ATTRIBUTE attr = {CKA_VALUE, NULL, 0};
 	CK_ATTRIBUTE attr_key_type = {CKA_KEY_TYPE, &key_type, sizeof(key_type)};
 	CK_ATTRIBUTE attr_key_params = {CKA_GOSTR3410_PARAMS, &params, sizeof(params)};
