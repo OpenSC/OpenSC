@@ -77,13 +77,13 @@
  * relogin then try again. 
  */
 
-#define C_X_INIT(R, F, S, M, K)  ({ \
+#define C_X_INIT(R, F, S, M, K)  { \
 	R = F(S, M, K); \
 		if (R == CKR_USER_NOT_LOGGED_IN) { \
 			login_if_required(S); \
 			R = F(S, M, K); \
 		} \
-	})
+	}
 
 
 			
