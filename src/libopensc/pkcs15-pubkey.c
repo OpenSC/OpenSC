@@ -903,16 +903,19 @@ int
 sc_pkcs15_read_pubkey(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_object *obj,
 		struct sc_pkcs15_pubkey **out)
 {
-	struct sc_context *ctx = p15card->card->ctx;
+	struct sc_context *ctx;
 	const struct sc_pkcs15_pubkey_info *info = NULL;
 	struct sc_pkcs15_pubkey *pubkey = NULL;
 	unsigned char *data = NULL;
 	size_t	len;
 	int	algorithm, r;
 
-	if (p15card == NULL || obj == NULL || out == NULL) {
+	if (p15card == NULL || p15card->card == NULL || p15card->card->ops == NULL
+			|| obj == NULL || out == NULL) {
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
+	ctx = p15card->card->ctx;
+
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx, "Public key type 0x%X", obj->type);
 

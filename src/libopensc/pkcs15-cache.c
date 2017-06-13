@@ -156,26 +156,29 @@ int sc_pkcs15_read_cached_file(struct sc_pkcs15_card *p15card,
 			goto err;
 		}
 	}
-	else if (count > *bufsize)  {
-		rv =  SC_ERROR_BUFFER_TOO_SMALL;
-		goto err;
+	else {
+		if (count > *bufsize) {
+			rv =  SC_ERROR_BUFFER_TOO_SMALL;
+			goto err;
+		}
+		data = *buf;
 	}
 
-	if (data)
-		*buf = data;
-
-	if (count != fread(*buf, 1, count, f)) {
+	if (count != fread(data, 1, count, f)) {
 		rv = SC_ERROR_BUFFER_TOO_SMALL;
 		goto err;
 	}
+	*buf = data;
 	*bufsize = count;
 
 	rv = SC_SUCCESS;
 
 err:
-	if (rv != SC_SUCCESS)
-		if (data)
+	if (rv != SC_SUCCESS) {
+		if (data != *buf) {
 			free(data);
+		}
+	}
 
 	fclose(f);
 	return rv;

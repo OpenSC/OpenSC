@@ -590,6 +590,9 @@ public_key_created(struct pkcs15_fw_data *fw_data, const struct sc_pkcs15_id *id
 static void
 pkcs15_cert_extract_label(struct pkcs15_cert_object *cert)
 {
+	if (!cert || !cert->cert_p15obj || !cert->cert_data)
+		return;
+
 	sc_log(context, "pkcs15_cert_extract_label() called. Current label: %s", cert->cert_p15obj->label);
 
 	/* if we didn't get a label, set one based on the CN */
