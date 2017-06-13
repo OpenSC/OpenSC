@@ -70,6 +70,23 @@
 #endif
 #endif
 
+
+/*
+ * Macro to call crypto init routines like C_SignInit
+ * if it fails with CK_USER_NOT_LOGGED_IN
+ * relogin then try again. 
+ */
+
+#define C_X_INIT(R, F, S, M, K)  { \
+	R = F(S, M, K); \
+		if (R == CKR_USER_NOT_LOGGED_IN) { \
+			login_if_required(S); \
+			R = F(S, M, K); \
+		} \
+	}
+
+
+			
 extern void *C_LoadModule(const char *name, CK_FUNCTION_LIST_PTR_PTR);
 extern CK_RV C_UnloadModule(void *module);
 
@@ -369,7 +386,8 @@ static void		show_token(CK_SLOT_ID);
 static void		list_mechs(CK_SLOT_ID);
 static void		list_objects(CK_SESSION_HANDLE, CK_OBJECT_CLASS);
 static int		login(CK_SESSION_HANDLE, int);
-static void		authenticate_if_required(CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
+static void		login_if_required(CK_SESSION_HANDLE);
+static void		context_specific_login_if_required(CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static void		init_token(CK_SLOT_ID);
 static void		init_pin(CK_SLOT_ID, CK_SESSION_HANDLE);
 static int		change_pin(CK_SLOT_ID, CK_SESSION_HANDLE);
@@ -1545,16 +1563,17 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 
 	rv = CKR_CANCEL;
 	if (r < (int) sizeof(in_buffer))   {
-		rv = p11->C_SignInit(session, &mech, key);
+		C_X_INIT(rv, p11->C_SignInit, session, &mech, key);
 		if (rv != CKR_OK)
 			p11_fatal("C_SignInit", rv);
 
 		sig_len = sizeof(sig_buffer);
+		context_specific_login_if_required(session, key);
 		rv =  p11->C_Sign(session, in_buffer, r, sig_buffer, &sig_len);
 	}
 
 	if (rv != CKR_OK)   {
-		rv = p11->C_SignInit(session, &mech, key);
+		C_X_INIT(rv, p11->C_SignInit, session, &mech, key);
 		if (rv != CKR_OK)
 			p11_fatal("C_SignInit", rv);
 
@@ -1567,6 +1586,7 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		} while (r > 0);
 
 		sig_len = sizeof(sig_buffer);
+		context_specific_login_if_required(session, key);
 		rv = p11->C_SignFinal(session, sig_buffer, &sig_len);
 		if (rv != CKR_OK)
 			p11_fatal("C_SignFinal", rv);
@@ -1632,11 +1652,12 @@ static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		util_fatal("Cannot read from %s: %m", opt_input);
 	in_len = r;
 
-	rv = p11->C_DecryptInit(session, &mech, key);
+	C_X_INIT(rv, p11->C_DecryptInit, session, &mech, key);
 	if (rv != CKR_OK)
 		p11_fatal("C_DecryptInit", rv);
 
 	out_len = sizeof(out_buffer);
+	context_specific_login_if_required(session, key);
 	rv = p11->C_Decrypt(session, in_buffer, in_len, out_buffer, &out_len);
 	if (rv != CKR_OK)
 		p11_fatal("C_Decrypt", rv);
@@ -3007,9 +3028,9 @@ VARATTR_METHOD(GOSTR3410_PARAMS, unsigned char);
 VARATTR_METHOD(EC_POINT, unsigned char);
 VARATTR_METHOD(EC_PARAMS, unsigned char);
 
-static void  authenticate_if_required(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE privKeyObject){
+/* Use if function returns CKR_USER_NOT_LOGGED_IN */
+static void  login_if_required(CK_SESSION_HANDLE session){
 	CK_SESSION_INFO sessionInfo;
-	CK_TOKEN_INFO	info;
 	CK_RV rv;
 
 	rv = p11->C_GetSessionInfo(session, &sessionInfo);
@@ -3018,17 +3039,41 @@ static void  authenticate_if_required(CK_SESSION_HANDLE session, CK_OBJECT_HANDL
 
 	switch(sessionInfo.state){
 		case CKS_RW_USER_FUNCTIONS:
+		case CKS_RO_USER_FUNCTIONS:
+		case CKS_RW_SO_FUNCTIONS:
 		   	//logged in, not need to continue.
 			return;
 		case CKS_RW_PUBLIC_SESSION:
+		case CKS_RO_PUBLIC_SESSION:
 			break;
 		default:
 			util_fatal("unexpected state");
 	}
 
-	get_token_info(opt_slot, &info);
-	if (!(info.flags & CKF_PROTECTED_AUTHENTICATION_PATH) && !getALWAYS_AUTHENTICATE(session, privKeyObject))
+	login(session, opt_login_type);
+}
+
+/* Use to do context specific login if key has CKA_ALWAYS_AUTHENTICATE */
+static void  context_specific_login_if_required(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE privKeyObject){
+	CK_SESSION_INFO sessionInfo;
+	CK_RV rv;
+
+	rv = p11->C_GetSessionInfo(session, &sessionInfo);
+	if (rv != CKR_OK)
+		p11_fatal("C_GetSessionInfo", rv);
+
+	if (!getALWAYS_AUTHENTICATE(session, privKeyObject))
 		return;
+
+	switch(sessionInfo.state){
+		case CKS_RW_USER_FUNCTIONS:
+		case CKS_RO_USER_FUNCTIONS:
+		case CKS_RW_SO_FUNCTIONS:
+		   	//logged in, continue.
+			break;
+		default:
+			util_fatal("unexpected state");
+	}
 
 	login(session,CKU_CONTEXT_SPECIFIC);
 }
@@ -4166,17 +4211,17 @@ static int sign_verify_openssl(CK_SESSION_HANDLE session,
 	};
 #endif
 
-	rv = p11->C_SignInit(session, ck_mech, privKeyObject);
+	C_X_INIT(rv,  p11->C_SignInit,session, ck_mech, privKeyObject);
 	/* mechanism not implemented, don't test */
 	if (rv == CKR_MECHANISM_INVALID)
 		return errors;
 	if (rv != CKR_OK)
 		p11_fatal("C_SignInit", rv);
 
-	authenticate_if_required(session, privKeyObject);
 	printf("    %s: ", p11_mechanism_to_name(ck_mech->mechanism));
 
 	sigLen1 = sizeof(sig1);
+	context_specific_login_if_required(session, privKeyObject);
 	rv = p11->C_Sign(session, data, dataLen, sig1,
 		&sigLen1);
 	if (rv != CKR_OK)
@@ -4341,7 +4386,7 @@ static int test_signature(CK_SESSION_HANDLE sess)
 	}
 
 	ck_mech.mechanism = firstMechType;
-	rv = p11->C_SignInit(sess, &ck_mech, privKeyObject);
+	C_X_INIT(rv, p11->C_SignInit, sess, &ck_mech, privKeyObject);
 	/* mechanism not implemented, don't test */
 	if (rv == CKR_MECHANISM_INVALID)
 		return errors;
@@ -4367,16 +4412,17 @@ static int test_signature(CK_SESSION_HANDLE sess)
 			p11_fatal("C_SignUpdate", rv);
 
 		sigLen1 = sizeof(sig1);
+		context_specific_login_if_required(sess, privKeyObject);
 		rv = p11->C_SignFinal(sess, sig1, &sigLen1);
 		if (rv != CKR_OK)
 			p11_fatal("C_SignFinal", rv);
 
-		rv = p11->C_SignInit(sess, &ck_mech, privKeyObject);
+		C_X_INIT(rv, p11->C_SignInit, sess, &ck_mech, privKeyObject);
 		if (rv != CKR_OK)
 			p11_fatal("C_SignInit", rv);
-		authenticate_if_required(sess, privKeyObject);
 
 		sigLen2 = sizeof(sig2);
+		context_specific_login_if_required(sess, privKeyObject);
 		rv = p11->C_Sign(sess, data, dataLen, sig2, &sigLen2);
 		if (rv != CKR_OK)
 			p11_fatal("C_Sign", rv);
@@ -4394,11 +4440,12 @@ static int test_signature(CK_SESSION_HANDLE sess)
 	/* 2nd test */
 
 	ck_mech.mechanism = firstMechType;
-	rv = p11->C_SignInit(sess, &ck_mech, privKeyObject);
+	C_X_INIT(rv, p11->C_SignInit, sess, &ck_mech, privKeyObject);
 	if (rv != CKR_OK)
 		p11_fatal("C_SignInit", rv);
 
 	sigLen2 = 1;		/* too short */
+	context_specific_login_if_required(sess, privKeyObject);
 	rv = p11->C_Sign(sess, data, dataLen, sig2, &sigLen2);
 	if (rv != CKR_BUFFER_TOO_SMALL) {
 		errors++;
@@ -4412,8 +4459,8 @@ static int test_signature(CK_SESSION_HANDLE sess)
 	   printf("  ERR: C_Sign() didn't return CKR_OK for a NULL output buf, but %s (0x%0x)\n",
 	   CKR2Str(rv), (int) rv);
 	}
-	authenticate_if_required(sess, privKeyObject);
 
+	context_specific_login_if_required(sess, privKeyObject);
 	rv = p11->C_Sign(sess, data, dataLen, sig2, &sigLen2);
 	if (rv == CKR_OPERATION_NOT_INITIALIZED) {
 		printf("  ERR: signature operation ended prematurely\n");
@@ -4540,7 +4587,7 @@ static int sign_verify(CK_SESSION_HANDLE session,
 	for (j = 0, mech_type = mech_types; *mech_type != 0xffffff; mech_type++, j++) {
 		CK_MECHANISM mech = {*mech_type, NULL, 0};
 
-		rv = p11->C_SignInit(session, &mech, priv_key);
+		C_X_INIT(rv, p11->C_SignInit, session, &mech, priv_key);
 		if (rv == CKR_MECHANISM_INVALID)
 			continue;
 		if (rv != CKR_OK) {
@@ -4549,9 +4596,9 @@ static int sign_verify(CK_SESSION_HANDLE session,
 		}
 
 		printf("    %s: ", p11_mechanism_to_name(*mech_type));
-		authenticate_if_required(session, priv_key);
 
 		signat_len = sizeof(signat);
+		context_specific_login_if_required(session, priv_key);
 		rv = p11->C_Sign(session, datas[j], data_lens[j], signat, &signat_len);
 		if (rv != CKR_OK) {
 			printf("  ERR: C_Sign() returned %s (0x%0x)\n", CKR2Str(rv), (int) rv);
@@ -4865,7 +4912,7 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 	}
 
 	mech.mechanism = mech_type;
-	rv = p11->C_DecryptInit(session, &mech, privKeyObject);
+	C_X_INIT(rv, p11->C_DecryptInit, session, &mech, privKeyObject);
 	if (rv == CKR_MECHANISM_INVALID) {
 		fprintf(stderr, "Mechanism not supported\n");
 		return 0;
@@ -4874,6 +4921,7 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 		p11_fatal("C_DecryptInit", rv);
 
 	data_len = encrypted_len;
+	context_specific_login_if_required(session, privKeyObject);
 	rv = p11->C_Decrypt(session, encrypted, encrypted_len, data, &data_len);
 	if (rv != CKR_OK)
 		p11_fatal("C_Decrypt", rv);
@@ -5169,18 +5217,21 @@ static CK_SESSION_HANDLE test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE
 
 	data = buf;
 	data_len = 20;
-	rv = p11->C_SignInit(session, &mech, priv_key);
+	C_X_INIT(rv, p11->C_SignInit, session, &mech, priv_key);
 	if (rv != CKR_OK)
 		p11_fatal("C_SignInit", rv);
+	context_specific_login_if_required(session, priv_key);
 	rv = p11->C_Sign(session, data, data_len, NULL, &sig_len);
 	if (rv != CKR_OK)
 		p11_fatal("C_Sign", rv);
 	sig_len = 20;
+	context_specific_login_if_required(session, priv_key);
 	rv = p11->C_Sign(session, data, data_len, sig, &sig_len);
 	if (rv != CKR_BUFFER_TOO_SMALL) {
 		fprintf(stderr, "ERR: C_Sign() didn't return CKR_BUFFER_TO_SMALL but %s\n", CKR2Str(rv));
 		return session;
 	}
+	context_specific_login_if_required(session, priv_key);
 	rv = p11->C_Sign(session, data, data_len, sig, &sig_len);
 	if (rv != CKR_OK)
 		p11_fatal("C_Sign", rv);
@@ -5198,7 +5249,8 @@ static CK_SESSION_HANDLE test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE
 
 	data = md5_and_digestinfo;
 	data_len = 20;
-	rv = p11->C_SignInit(session, &mech, priv_key);
+	C_X_INIT(rv, p11->C_SignInit, session, &mech, priv_key);
+	context_specific_login_if_required(session, priv_key);
 	rv = p11->C_Sign(session, data, data_len, sig, &sig_len);
 	if (rv != CKR_OK)
 		p11_fatal("C_SignInit", rv);
@@ -5348,13 +5400,15 @@ static void test_ec(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	printf("*** Doing a signature ***\n");
 	data = data_to_sign;
 	data_len = strlen((char *)data_to_sign);
-	rv = p11->C_SignInit(session, &mech, priv_key);
+	C_X_INIT(rv, p11->C_SignInit, session, &mech, priv_key);
 	if (rv != CKR_OK)
 		p11_fatal("C_SignInit", rv);
+	context_specific_login_if_required(session, priv_key);
 	rv = p11->C_Sign(session, data, data_len, NULL, &sig_len);
 	if (rv != CKR_OK)
 		p11_fatal("C_Sign", rv);
 	sig_len -= 20;
+	context_specific_login_if_required(session, priv_key);
 	rv = p11->C_Sign(session, data, data_len, sig, &sig_len);
 	if (rv != CKR_BUFFER_TOO_SMALL) {
 		printf("warning: C_Sign() didn't return CKR_BUFFER_TO_SMALL but %s\n", CKR2Str(rv));
@@ -5362,13 +5416,15 @@ static void test_ec(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	}
 	sig_len += 20;
 	// re-doing C_SignInit after C_SignFinal to avoid CKR_OPERATION_NOT_INITIALIZED for CardOS
+	context_specific_login_if_required(session, priv_key);
 	rv = p11->C_SignFinal(session, sig, &sig_len);
 	if (rv != CKR_OK) {
 		p11_warn("C_SignFinal", rv);
 	}
-	rv = p11->C_SignInit(session, &mech, priv_key);
+	C_X_INIT(rv, p11->C_SignInit, session, &mech, priv_key);
 	if (rv != CKR_OK)
 		p11_fatal("C_SignInit", rv);
+	context_specific_login_if_required(session, priv_key);
 	rv = p11->C_Sign(session, data, data_len, sig, &sig_len);
 	if (rv != CKR_OK)
 		p11_fatal("C_Sign", rv);
