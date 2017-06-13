@@ -1,5 +1,27 @@
 #include <winresrc.h>
 
+#define IDC_STATIC -1
+/* defined twice: in ressource file and in source code */
+#define IDI_SMARTCARD       102
+#define IDI_UNLOCKED        103
+#define IDI_LOCKED          104
+#define IDI_READER_EMPTY    105
+#define IDI_CARD_INSERTED   106
+
+#ifndef __MINGW32__
+IDI_SMARTCARD          ICON                    "..\\..\\win32\\DDORes.dll_14_2302.ico"
+IDI_UNLOCKED           ICON                    "..\\..\\win32\\certmgr.dll_14_6170.ico"
+IDI_LOCKED             ICON                    "..\\..\\win32\\certmgr.dll_14_452.ico"
+IDI_READER_EMPTY       ICON                    "..\\..\\win32\\SCardDlg.dll_14_142.ico"
+IDI_CARD_INSERTED      ICON                    "..\\..\\win32\\SCardDlg.dll_14_143.ico"
+#else
+IDI_SMARTCARD          ICON                    "../../win32/DDORes.dll_14_2302.ico"
+IDI_UNLOCKED           ICON                    "../../win32/certmgr.dll_14_6170.ico"
+IDI_LOCKED             ICON                    "../../win32/certmgr.dll_14_452.ico"
+IDI_READER_EMPTY       ICON                    "../../win32/SCardDlg.dll_14_142.ico"
+IDI_CARD_INSERTED      ICON                    "../../win32/SCardDlg.dll_14_143.ico"
+#endif
+
 VS_VERSION_INFO VERSIONINFO
 	FILEVERSION @OPENSC_VERSION_MAJOR@,@OPENSC_VERSION_MINOR@,@OPENSC_VERSION_FIX@,@OPENSC_VERSION_REVISION@
 	PRODUCTVERSION @OPENSC_VERSION_MAJOR@,@OPENSC_VERSION_MINOR@,@OPENSC_VERSION_FIX@,@OPENSC_VERSION_REVISION@

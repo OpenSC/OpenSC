@@ -47,7 +47,9 @@
 #include "libopensc/log.h"
 #include "libopensc/internal.h"
 #include "libopensc/aux-data.h"
+#include "ui/notify.h"
 #include "ui/strings.h"
+#include "ui/wchar_from_char_str.h"
 #include "pkcs15init/pkcs15-init.h"
 
 #ifdef ENABLE_OPENSSL
@@ -2474,31 +2476,6 @@ static const char *md_get_ui_str(PCARD_DATA pCardData, enum ui_str id)
 	}
 
 	return str;
-}
-
-static WCHAR *wchar_from_char_str(const char *in)
-{
-	WCHAR *out;
-	int out_len;
-
-	if (!in)
-		return NULL;
-
-	out_len = MultiByteToWideChar(CP_UTF8, 0, in, -1, NULL, 0);
-	if (0 >= out_len)
-		return NULL;
-
-	out = LocalAlloc(0, (sizeof *out) * out_len);
-	if (!out)
-		return NULL;
-
-	out_len = MultiByteToWideChar(CP_UTF8, 0, in, -1, out, out_len);
-	if (out_len == 0xFFFD || 0 >= out_len) {
-		LocalFree(out);
-		return NULL;
-	}
-
-	return out;
 }
 
 static INT_PTR CALLBACK md_dialog_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam, LONG_PTR dwRefData)
@@ -6250,10 +6227,13 @@ BOOL APIENTRY DllMain( HINSTANCE hinstDLL,
 	{
 	case DLL_PROCESS_ATTACH:
 		g_inst = hinstDLL;
+		sc_notify_instance = hinstDLL;
+		sc_notify_init();
 		InitializeCriticalSection(&md_static_data.hScard_lock);
 		md_static_data.attach_check = MD_STATIC_PROCESS_ATTACHED;
 		break;
 	case DLL_PROCESS_DETACH:
+		sc_notify_close();
 		DeleteCriticalSection(&md_static_data.hScard_lock);
 		md_static_data.attach_check = 0;
 		break;
