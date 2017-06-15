@@ -4851,6 +4851,8 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 		p11_fatal("C_DecryptInit", rv);
 
 	data_len = encrypted_len;
+	if (getALWAYS_AUTHENTICATE(session, privKeyObject))
+		login(session,CKU_CONTEXT_SPECIFIC);
 	rv = p11->C_Decrypt(session, encrypted, encrypted_len, data, &data_len);
 	if (rv != CKR_OK)
 		p11_fatal("C_Decrypt", rv);
