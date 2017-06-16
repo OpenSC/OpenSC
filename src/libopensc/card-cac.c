@@ -665,7 +665,6 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 		cert_len = 0;
 		cert_ptr = NULL;
 		cert_type = 0;
-		tl_head_len = 2;
 		for (tl_ptr = tl, val_ptr=val; tl_len >= 2;
 				val_len -= len, val_ptr += len, tl_len -= tl_head_len) {
 			tl_start = tl_ptr;
@@ -943,7 +942,7 @@ static int cac_rsa_op(sc_card_t *card,
 	if (rbuflen != 0) {
 		int n = MIN(rbuflen, outplen);
 		memcpy(outp,rbuf, n);
-		outp += n;
+		/*outp += n;     unused */ 
 		outplen -= n;
 	}
 	free(rbuf);

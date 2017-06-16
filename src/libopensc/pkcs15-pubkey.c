@@ -1098,8 +1098,10 @@ sc_pkcs15_dup_pubkey(struct sc_context *ctx, struct sc_pkcs15_pubkey *key, struc
 		rv = sc_asn1_encode_algorithm_id(ctx, &alg, &alglen,key->alg_id, 0);
 		if (rv == SC_SUCCESS) {
 			pubkey->alg_id = (struct sc_algorithm_id *)calloc(1, sizeof(struct sc_algorithm_id));
-			if (pubkey->alg_id == NULL)
+			if (pubkey->alg_id == NULL) {
+				free(pubkey);
 				LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+			}
 			rv = sc_asn1_decode_algorithm_id(ctx, alg, alglen, pubkey->alg_id, 0);
 			free(alg);
 		}
@@ -1389,8 +1391,10 @@ sc_pkcs15_pubkey_from_spki_fields(struct sc_context *ctx, struct sc_pkcs15_pubke
 		}
 
 		pubkey->u.ec.ecpointQ.value = malloc(pk.len);
-		if (pubkey->u.ec.ecpointQ.value == NULL)
-			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+		if (pubkey->u.ec.ecpointQ.value == NULL) {
+			r = SC_ERROR_OUT_OF_MEMORY;
+			LOG_TEST_GOTO_ERR(ctx, r, "failed to malloc() memory");
+		}
 		memcpy(pubkey->u.ec.ecpointQ.value, pk.value, pk.len);
 		pubkey->u.ec.ecpointQ.len = pk.len;
 	}

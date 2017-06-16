@@ -2193,7 +2193,6 @@ static void	parse_certificate(struct x509cert_info *cert,
 	cert->issuer_len = n;
 
 	/* check length first */
-	n = 0;
 	n = i2d_ASN1_INTEGER(X509_get_serialNumber(x), NULL);
 	if (n < 0)
 		util_fatal("OpenSSL error while encoding serial number");
@@ -3542,6 +3541,9 @@ get_mechanisms(CK_SLOT_ID slot, CK_MECHANISM_TYPE_PTR *pList, CK_FLAGS flags)
 	CK_RV		rv;
 
 	rv = p11->C_GetMechanismList(slot, *pList, &ulCount);
+	if (rv != CKR_OK)
+		p11_fatal("C_GetMechanismList", rv);
+
 	*pList = calloc(ulCount, sizeof(**pList));
 	if (*pList == NULL)
 		util_fatal("calloc failed: %m");
@@ -5193,6 +5195,7 @@ static CK_SESSION_HANDLE test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE
 		p11_fatal("C_SignInit", rv);
 	if (getALWAYS_AUTHENTICATE(session, priv_key))
 		login(session,CKU_CONTEXT_SPECIFIC);
+
 	rv = p11->C_Sign(session, data, data_len, sig, &sig_len);
 	if (rv != CKR_OK)
 		p11_fatal("C_Sign", rv);

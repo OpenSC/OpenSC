@@ -1059,8 +1059,10 @@ sc_pkcs11_register_sign_and_hash_mechanism(struct sc_pkcs11_card *p11card,
 	info->hash_mech = hash_mech;
 
 	new_type = sc_pkcs11_new_fw_mechanism(mech, &mech_info, sign_type->key_type, info, free_info);
-
-	if (!new_type)
+	if (!new_type) {
+		free(info);
 		return CKR_HOST_MEMORY;
+	}
+
 	return sc_pkcs11_register_mechanism(p11card, new_type);
 }

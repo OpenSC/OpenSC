@@ -1489,7 +1489,7 @@ static int sc_hsm_init(struct sc_card *card)
 	size_t expanded_len = PATH_MAX;
 #endif
 	int flags,ext_flags;
-	sc_file_t *file;
+	sc_file_t *file = NULL;
 	sc_path_t path;
 	sc_hsm_private_data_t *priv = card->drv_data;
 
@@ -1530,7 +1530,7 @@ static int sc_hsm_init(struct sc_card *card)
 
 	sc_path_set(&path, SC_PATH_TYPE_DF_NAME, sc_hsm_aid.value, sc_hsm_aid.len, 0, 0);
 	if (sc_hsm_select_file_ex(card, &path, 0, &file) == SC_SUCCESS
-			&& file->prop_attr && file->prop_attr_len >= 5) {
+			&& file && file->prop_attr && file->prop_attr_len >= 5) {
 		static char card_name[SC_MAX_APDU_BUFFER_SIZE];
 		u8 type = file->prop_attr[2];
 		u8 major = file->prop_attr[3];

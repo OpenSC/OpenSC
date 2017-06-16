@@ -257,6 +257,8 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 
 	/* set other objects */
 	r = (card->ops->card_ctl)(card, SC_CARDCTL_CAC_INIT_GET_GENERIC_OBJECTS, &count);
+	LOG_TEST_RET(card->ctx, r, "Can not initiate generic objects.");
+
 	for (i = 0; i < count; i++) {
 		struct sc_pkcs15_data_info obj_info;
 		struct sc_pkcs15_object    obj_obj;
@@ -273,6 +275,7 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 	}
 	r = (card->ops->card_ctl)(card, SC_CARDCTL_CAC_FINAL_GET_GENERIC_OBJECTS, &count);
+	LOG_TEST_RET(card->ctx, r, "Can not finalize generic objects.");
 
 	/*
 	 * certs, pubkeys and priv keys are related and we assume
@@ -282,6 +285,8 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 	 */
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "CAC adding certs, pub and priv keys...");
 	r = (card->ops->card_ctl)(card, SC_CARDCTL_CAC_INIT_GET_CERT_OBJECTS, &count);
+	LOG_TEST_RET(card->ctx, r, "Can not initiate cert objects.");
+
 	for (i = 0; i < count; i++) {
 		struct sc_pkcs15_data_info obj_info;
 		struct sc_pkcs15_cert_info cert_info;
@@ -294,6 +299,7 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 		sc_pkcs15_cert_t *cert_out = NULL;
 
 		r = (card->ops->card_ctl)(card, SC_CARDCTL_CAC_GET_NEXT_CERT_OBJECT, &obj_info);
+		LOG_TEST_RET(card->ctx, r, "Can not get next object");
 
 		memset(&cert_info, 0, sizeof(cert_info));
 		memset(&pubkey_info, 0, sizeof(pubkey_info));
@@ -421,6 +427,7 @@ fail:
 
 	}
 	r = (card->ops->card_ctl)(card, SC_CARDCTL_CAC_FINAL_GET_CERT_OBJECTS, &count);
+	LOG_TEST_RET(card->ctx, r, "Can not finalize cert objects.");
 
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
 }
