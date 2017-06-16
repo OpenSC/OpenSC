@@ -296,9 +296,9 @@ cflex_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_pkcs15_obj
 		goto out;
 	}
 
-	if (prkf->size < size)
+	if (prkf && prkf->size < size)
 		prkf->size = size;
-	if (pukf->size < size + 4)
+	if (pukf && pukf->size < size + 4)
 		pukf->size = size + 4;
 
 	/* Now create the files */
@@ -385,7 +385,7 @@ cflex_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 {
 	sc_pkcs15_prkey_info_t *key_info = (sc_pkcs15_prkey_info_t *) obj->data;
 	sc_card_t *card = p15card->card;
-	sc_file_t	*prkf, *pukf;
+	sc_file_t	*prkf = NULL, *pukf = NULL;
 	unsigned char	keybuf[1024];
 	size_t		size;
 	int		r;

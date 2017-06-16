@@ -2061,8 +2061,6 @@ int main(int argc, char * const argv[])
 
 	assert(sizeof(option_help)/sizeof(char *)==sizeof(options)/sizeof(struct option));
 
-	c = OPT_PUK;
-
 	while (1) {
 		c = getopt_long(argc, argv, "r:cuko:sva:LR:CwDTU", options, &long_optind);
 		if (c == -1)

@@ -539,6 +539,8 @@ static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
 
 	/* set other objects */
 	r = (card->ops->card_ctl)(card, SC_CARDCTL_COOLKEY_INIT_GET_OBJECTS, &count);
+	LOG_TEST_RET(card->ctx, r, "Can not initiate objects.");
+
 	for (i = 0; i < count; i++) {
 		struct sc_cardctl_coolkey_object     coolkey_obj;
 		struct sc_pkcs15_object    obj_obj;
@@ -678,6 +680,7 @@ fail:
 
 	}
 	r = (card->ops->card_ctl)(card, SC_CARDCTL_COOLKEY_FINAL_GET_OBJECTS, &count);
+	LOG_TEST_RET(card->ctx, r, "Can not finalize objects.");
 
 	/* Iterate over all the created objects and fill missing labels */
 	for (obj = p15card->obj_list; obj != NULL; obj = obj->next) {
