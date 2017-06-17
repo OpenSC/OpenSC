@@ -1543,7 +1543,7 @@ static int sc_hsm_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 
 static int sc_hsm_init(struct sc_card *card)
 {
-#ifdef _WIN32
+#if defined(ENABLE_OPENPACE) && defined(_WIN32)
 	char expanded_val[PATH_MAX];
 	size_t expanded_len = PATH_MAX;
 #endif
