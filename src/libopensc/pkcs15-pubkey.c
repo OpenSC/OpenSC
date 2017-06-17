@@ -1263,7 +1263,11 @@ sc_pkcs15_read_der_file(sc_context_t *ctx, char * filename,
 	len = r;
 
 	body = tagbuf;
-	r = sc_asn1_read_tag(&body, len, &cla_out, &tag_out, &bodylen);
+	/*
+	 * We are only getting the tag, without the rest of the data
+	 * don't test that the tag and data is lenn theg the len 
+	 */
+	r = sc_asn1_read_tag(&body, 0xffff, &cla_out, &tag_out, &bodylen);
 	if (r != SC_SUCCESS)
 		goto out;
 
