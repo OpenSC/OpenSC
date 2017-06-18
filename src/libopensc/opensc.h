@@ -519,6 +519,13 @@ typedef struct sc_card {
 	struct sc_version version;
 
 	void *mutex;
+	/* 
+	 * Inform card driver of a context specific login.
+	 * Card driver can take action or ignore.  
+	 * set to 1 by framework_pkcs11
+	 * set to 0 by card driver when a crypto operation is done. 
+	 */
+	int sc_card_context_specific_login;
 #ifdef ENABLE_SM
 	struct sm_context sm_ctx;
 #endif
