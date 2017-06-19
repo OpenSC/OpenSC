@@ -133,6 +133,9 @@ case "${host}" in
 	;;
 esac
 
+AX_CHECK_COMPILE_FLAG(-Wno-error=unused-but-set-variable, [have_unused_but_set_variable="yes"], [have_unused_but_set_variable="no"], [-Werror -Wunknown-warning-option])
+AM_CONDITIONAL([HAVE_UNUSED_BUT_SET_VARIABLE], [test "${have_unused_but_set_variable}" = "yes"])
+
 AC_ARG_ENABLE(
 	[strict],
 	[AS_HELP_STRING([--disable-strict],[disable strict compile mode @<:@disabled@:>@])],
@@ -384,7 +387,7 @@ AC_FUNC_VPRINTF
 AC_CHECK_FUNCS([ \
 	getpass gettimeofday getline memset mkdir \
 	strdup strerror getopt_long getopt_long_only \
-	strlcpy strlcat strnlen
+	strlcpy strlcat strnlen sigaction
 ])
 AC_CHECK_SIZEOF(void *)
 if test "${ac_cv_sizeof_void_p}" = 8; then

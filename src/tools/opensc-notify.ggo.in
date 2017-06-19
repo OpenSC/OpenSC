@@ -1,0 +1,45 @@
+package "opensc-notify"
+purpose "@PACKAGE_SUMMARY@"
+description "If no arguments are given, monitor smart card events and send the appropriate notification."
+
+defmode "daemon"
+    modedesc="Monitor smart card events to send notifications."
+defmode "standard"
+    modedesc="Manually send standard notifications."
+defmode "customized"
+    modedesc="Send customized notifications."
+
+modeoption "title"          t
+    "Title of the notification"
+    string
+    mode="customized"
+    argoptional
+    optional
+modeoption "message"        m
+    "Main text of the notification"
+    string
+    mode="customized"
+    argoptional
+    optional
+
+modeoption "notify-card-inserted"    I
+    "See notify_card_inserted in opensc.conf"
+    flag off
+    mode="standard"
+modeoption "notify-card-removed"  R
+    "See notify_card_inserted in opensc.conf"
+    flag off
+    mode="standard"
+modeoption "notify-pin-good"  G
+    "See notify_pin_good in opensc.conf"
+    flag off
+    mode="standard"
+modeoption "notify-pin-bad"  B
+    "See notify_pin_bad in opensc.conf"
+    flag off
+    mode="standard"
+
+text "
+Report bugs to @PACKAGE_BUGREPORT@
+
+Written by Frank Morgner <frankmorgner@gmail.com>"

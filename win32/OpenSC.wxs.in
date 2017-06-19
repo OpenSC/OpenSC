@@ -138,6 +138,9 @@
               <Component Id="opensc_tool.exe" Guid="*" Win64="$(var.Win64YesNo)">
                 <File Source="$(var.SOURCE_DIR)\src\tools\opensc-tool.exe" Vital="yes"/>
               </Component>
+              <Component Id="opensc_notify.exe" Guid="*" Win64="$(var.Win64YesNo)">
+                <File Source="$(var.SOURCE_DIR)\src\tools\opensc-notify.exe" Vital="yes"/>
+              </Component>
               <Component Id="pkcs11_tool.exe" Guid="*" Win64="$(var.Win64YesNo)">
                 <File Source="$(var.SOURCE_DIR)\src\tools\pkcs11-tool.exe" Vital="yes"/>
               </Component>
@@ -340,6 +343,7 @@
       <Feature Id="OpenSC_tools" Level="1" Title="Tools and profiles" Description="Tools for debugging and personalization. Includes profiles needed for running pkcs15-init.exe">
         <ComponentRef Id="opensc_explorer.exe"/>
         <ComponentRef Id="opensc_tool.exe"/>
+        <ComponentRef Id="opensc_notify.exe"/>
         <ComponentRef Id="pkcs11_tool.exe"/>
         <ComponentRef Id="cardos_tool.exe"/>
         <ComponentRef Id="eidenv.exe"/>

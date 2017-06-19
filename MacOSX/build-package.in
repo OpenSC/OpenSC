@@ -108,6 +108,8 @@ if ! test -e NotificationProxy; then
 	git clone http://github.com/frankmorgner/NotificationProxy.git
 fi
 xcodebuild -target NotificationProxy -configuration Release -project NotificationProxy/NotificationProxy.xcodeproj install DSTROOT=$BUILDPATH/target/Library/Security/tokend/OpenSC.tokend/Contents/Resources/
+mkdir -p "$BUILDPATH/target/Applications"
+osacompile -o "$BUILDPATH/target/Applications/OpenSC Notify.app" "MacOSX/OpenSC_Notify.applescript"
 
 # Prepare target root
 # The "UnInstaller"

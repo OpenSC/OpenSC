@@ -63,7 +63,7 @@ before_script:
     fi
   - ./bootstrap
   - if [ -z "$HOST" ]; then
-      CFLAGS="-Werror" ./configure $ENABLE_DOC --enable-dnie-ui;
+      CFLAGS="-Werror" ./configure $ENABLE_DOC --enable-dnie-ui --disable-notify;
     else
       if [ ! -f "$(winepath 'C:/Program Files (x86)/Inno Setup 5/ISCC.exe')" ]; then
         /sbin/start-stop-daemon --start --quiet --pidfile /tmp/custom_xvfb_99.pid --make-pidfile --background --exec /usr/bin/Xvfb -- :99 -ac -screen 0 1280x1024x16;

@@ -65,6 +65,7 @@ void sc_notify_close(void)
 
 #if defined(ENABLE_NOTIFY) && defined(_WIN32)
 
+#include "invisible_window.h"
 #include "wchar_from_char_str.h"
 #include <shellapi.h>
 
@@ -72,13 +73,14 @@ static const GUID myGUID = {0x23977b55, 0x10e0, 0x4041, {0xb8,
 	0x62, 0xb1, 0x95, 0x41, 0x96, 0x36, 0x69}};
 HINSTANCE sc_notify_instance = NULL;
 HWND hwndNotification = NULL;
+BOOL delete_icon = TRUE;
 #define IDI_SMARTCARD       102
 #define IDI_UNLOCKED        103
 #define IDI_LOCKED          104
 #define IDI_READER_EMPTY    105
 #define IDI_CARD_INSERTED   106
 UINT const WMAPP_NOTIFYCALLBACK = WM_APP + 1;
-BOOL RestoreTooltip(void);
+static BOOL RestoreTooltip();
 
 // we need commctrl v6 for LoadIconMetric()
 #include <commctrl.h>
@@ -100,54 +102,16 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 	return DefWindowProc(hwnd, message, wParam, lParam);
 }
 
-static const char* class_name = "DUMMY_CLASS";
-static const char* window_name = "DUMMY_WINDOW";
-
-static BOOL create_invisible_window(void)
-{
-	if (!hwndNotification) {
-		//Register Window class
-		WNDCLASSEX wx = {0};
-		wx.cbSize = sizeof(WNDCLASSEX);
-		wx.lpfnWndProc = WndProc; // function which will handle messages
-		wx.hInstance = sc_notify_instance;
-		wx.lpszClassName = class_name;
-		if (!RegisterClassEx(&wx)) {
-			return FALSE;
-		}
-		/* create window */
-		hwndNotification = CreateWindowEx(0, class_name, window_name,
-				0, 0, 0, 0, 0, HWND_MESSAGE, NULL, NULL, NULL );
-	}
-
-	if (hwndNotification) {
-		return TRUE;
-	}
-
-	return FALSE;
-}
-
-static BOOL delete_invisible_window(void)
-{
-	BOOL r;
-   	r  = DestroyWindow(hwndNotification);
-	r &= UnregisterClass(class_name, sc_notify_instance);
-
-	hwndNotification = NULL;
-	
-	return r;
-}
+static const char* lpszClassName = "NOTIFY_CLASS";
 
 static BOOL AddNotificationIcon(void)
 {
-	NOTIFYICONDATA nid = {sizeof(nid)};
+	NOTIFYICONDATA nid;
 	TCHAR path[MAX_PATH]={0};
 	BOOL r;
 
-	if (!create_invisible_window()) {
-		return FALSE;
-	}
-
+	memset(&nid, 0, sizeof nid);
+	nid.cbSize = sizeof nid;
 	nid.hWnd = hwndNotification;
 	// add the icon, setting the icon, tooltip, and callback message.
 	// the icon will be identified with the GUID
@@ -156,7 +120,18 @@ static BOOL AddNotificationIcon(void)
 	nid.uCallbackMessage = WMAPP_NOTIFYCALLBACK;
 	LoadIconMetric(sc_notify_instance, MAKEINTRESOURCEW(IDI_SMARTCARD), LIM_SMALL, &nid.hIcon);
 	if (GetModuleFileName(NULL, path, ARRAYSIZE(path))) {
-		strcpy_s(nid.szTip, ARRAYSIZE(nid.szTip), path);
+		const char *basename = strrchr(path, '\\');
+		if (basename) {
+			basename++;
+			if (0 != strcmp(basename, "opensc-notify.exe")) {
+				/* Allow creation of sytem tray icon only for
+				 * "opensc-notify.exe" to avoid creation of the same icon by
+				 * multiple processes. */
+				delete_icon = FALSE;
+				return FALSE;
+			}
+		}
+		strlcpy(nid.szTip, path, ARRAYSIZE(nid.szTip));
 	} else {
 		strcpy(nid.szTip, PACKAGE_NAME);
 	}
@@ -166,19 +141,32 @@ static BOOL AddNotificationIcon(void)
     nid.uVersion = NOTIFYICON_VERSION_4;
     r &= Shell_NotifyIcon(NIM_SETVERSION, &nid);
 
+    hwndNotification = create_invisible_window(lpszClassName, WndProc, sc_notify_instance);
+	if (!hwndNotification) {
+		r = FALSE;
+	}
+
 	return r;
 }
 
 static BOOL DeleteNotificationIcon(void)
 {
 	BOOL r;
-	NOTIFYICONDATA nid = {sizeof(nid)};
+	NOTIFYICONDATA nid;
 
+	if (!delete_icon) {
+		return FALSE;
+	}
+
+	memset(&nid, 0, sizeof nid);
+	nid.cbSize = sizeof nid;
 	nid.uFlags = NIF_GUID;
 	nid.guidItem = myGUID; 
 
 	r  = Shell_NotifyIcon(NIM_DELETE, &nid);
-	r &= delete_invisible_window();
+
+	r &= delete_invisible_window(hwndNotification, lpszClassName,
+			sc_notify_instance);
 
 	return r;
 }
@@ -186,8 +174,10 @@ static BOOL DeleteNotificationIcon(void)
 static BOOL RestoreTooltip()
 {
     // After the balloon is dismissed, restore the tooltip.
-    NOTIFYICONDATA nid = {sizeof(nid)};
+    NOTIFYICONDATA nid;
 
+	memset(&nid, 0, sizeof nid);
+	nid.cbSize = sizeof nid;
     nid.uFlags = NIF_SHOWTIP | NIF_GUID;
 	nid.guidItem = myGUID; 
 
@@ -197,17 +187,19 @@ static BOOL RestoreTooltip()
 static void notify_shell(struct sc_context *ctx,
 		const char *title, const char *text, WORD icon)
 {
-    NOTIFYICONDATA nid = {sizeof(nid)};
+    NOTIFYICONDATA nid;
 
+	memset(&nid, 0, sizeof nid);
+	nid.cbSize = sizeof nid;
     nid.uFlags = NIF_GUID;
     nid.guidItem = myGUID;
 
 	if (title) {
-		strcpy_s(nid.szInfoTitle, ARRAYSIZE(nid.szInfoTitle), title);
+		strlcpy(nid.szInfoTitle, title, ARRAYSIZE(nid.szInfoTitle));
 	}
 	if (text) {
 		nid.uFlags |= NIF_INFO;
-		strcpy_s(nid.szInfo, ARRAYSIZE(nid.szInfo), text);
+		strlcpy(nid.szInfo, text, ARRAYSIZE(nid.szInfo));
 	}
 	if (icon) {
 		nid.dwInfoFlags = NIIF_USER | NIIF_LARGE_ICON;
@@ -240,16 +232,10 @@ void sc_notify(const char *title, const char *text)
 void sc_notify_id(struct sc_context *ctx, struct sc_atr *atr,
 		struct sc_pkcs15_card *p15card, enum ui_str id)
 {
-	const char *title, *text, *group;
+	const char *title, *text;
 	WORD icon;
 	title = ui_get_str(ctx, atr, p15card, id);
 	text = ui_get_str(ctx, atr, p15card, id+1);
-
-	if (p15card && p15card->card && p15card->card->reader) {
-		group = p15card->card->reader->name;
-	} else {
-		group = ctx ? ctx->app_name : NULL;
-	}
 
 	switch (id) {
 		case NOTIFY_CARD_INSERTED:
@@ -533,7 +519,7 @@ void sc_notify_id(struct sc_context *ctx, struct sc_atr *atr,
 
 #endif
 
-#if defined(ENABLE_NOTIFY) && (defined(ENABLE_GIO2) || defined(GDBUS))
+#if defined(ENABLE_NOTIFY) && (defined(ENABLE_GIO2) || defined(GDBUS) && !defined(_WIN32))
 void sc_notify(const char *title, const char *text)
 {
 	notify_gio(NULL, title, text, NULL, NULL);
