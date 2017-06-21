@@ -3274,6 +3274,17 @@ piv_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 		data->pin1.tries_left = priv->tries_left;
 		if (tries_left)
 			*tries_left = priv->tries_left;
+		if (priv->logged_in == SC_PIN_STATE_LOGGED_IN) {
+			/* Avoid status requests when the user is logged in to handle NIST
+			 * 800-73-4 Part 2:
+			 * The PKI cryptographic function (see Table 4b) is protected with
+			 * a “PIN Always” or “OCC Always” access rule. In other words, the
+			 * PIN or OCC data must be submitted and verified every time
+			 * immediately before a digital signature key operation.  This
+			 * ensures cardholder participation every time the private key is
+			 * used for digital signature generation */
+			LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+		}
 	}
 
 	priv->pin_cmd_verify = 1; /* tell piv_check_sw its a verify to save sw1, sw2 */
