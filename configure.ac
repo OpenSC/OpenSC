@@ -776,7 +776,6 @@ if test "${enable_sm}" = "yes"; then
 			DEFAULT_SM_MODULE_PATH="\# module_path = \"\";"
 		;;
 		*)
-			DEFAULT_SM_MODULE="libsmm-local.so"
 			DEFAULT_SM_MODULE_PATH="module_path = \$(libdir);"
 		;;
 	esac
