@@ -89,7 +89,7 @@ struct sc_cvc {
 
 	int modulusSize;					// Size of RSA modulus in bits
 
-	char chr[17];						// Certificate holder reference
+	char chr[21];						// Certificate holder reference
 
 	u8 *signature;						// Certificate signature or request self-signed signature
 	size_t signatureLen;
