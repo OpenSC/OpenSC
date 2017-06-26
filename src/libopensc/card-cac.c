@@ -331,6 +331,7 @@ static int cac_apdu_io(sc_card_t *card, int ins, int p1, int p2,
 	u8 rbufinitbuf[CAC_MAX_SIZE];
 	u8 *rbuf;
 	size_t rbuflen;
+	unsigned int apdu_case = SC_APDU_CASE_1;
 
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
@@ -349,9 +350,16 @@ static int cac_apdu_io(sc_card_t *card, int ins, int p1, int p2,
 		rbuflen = *recvbuflen;
 	}
 
-	sc_format_apdu(card, &apdu,
-			recvbuf ? SC_APDU_CASE_4_SHORT: SC_APDU_CASE_3_SHORT,
-			ins, p1, p2);
+	if (recvbuf) {
+		if (sendbuf)
+			apdu_case = SC_APDU_CASE_4_SHORT;
+		else
+			apdu_case = SC_APDU_CASE_2_SHORT;
+	} else if (sendbuf)
+		apdu_case = SC_APDU_CASE_3_SHORT;
+
+
+	sc_format_apdu(card, &apdu, apdu_case, ins, p1, p2);
 
 	apdu.lc = sendbuflen;
 	apdu.datalen = sendbuflen;
