@@ -175,14 +175,12 @@ static int cardos_init(sc_card_t *card)
 	card->cla = 0x00;
 
 	/* Set up algorithm info. */
-	flags = SC_ALGORITHM_RSA_HASH_NONE
+	flags = SC_ALGORITHM_RSA_RAW
+		| SC_ALGORITHM_RSA_HASH_NONE
 		| SC_ALGORITHM_ONBOARD_KEY_GEN
 		;
 	if (card->type != SC_CARD_TYPE_CARDOS_V5_0)
-		flags |= SC_ALGORITHM_RSA_RAW
-			| SC_ALGORITHM_NEED_USAGE;
-	else
-		flags |= SC_ALGORITHM_RSA_PAD_PKCS1;
+		flags |= SC_ALGORITHM_NEED_USAGE;
 
 	_sc_card_add_rsa_alg(card,  512, flags, 0);
 	_sc_card_add_rsa_alg(card,  768, flags, 0);
@@ -925,8 +923,9 @@ cardos_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 	}
 
 	/* check if any operation was selected */
-	if(do_rsa_sig == 0 && do_rsa_pure_sig == 0)  {
-		/* no operation selected. we just have to try both, for the lack of any better reasoning */
+	if (do_rsa_sig == 0 && do_rsa_pure_sig == 0) {
+		/* no operation selected. we just have to try both,
+		 * for the lack of any better reasoning */
 		sc_log(ctx, "I was unable to determine, whether this key can be used with RSA_SIG or RSA_PURE_SIG. I will just try both.");
 		do_rsa_sig = 1;
 		do_rsa_pure_sig = 1;
