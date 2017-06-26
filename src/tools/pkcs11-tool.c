@@ -4433,7 +4433,7 @@ static int test_signature(CK_SESSION_HANDLE sess)
 			modLenBytes, i);
 	}
 
-	/* 4rd test: the other signature keys */
+	/* 4th test: the other signature keys */
 
 	for (i = 0; mechTypes[i] != 0xffffff; i++)
 		if (mechTypes[i] == firstMechType)
@@ -4446,16 +4446,6 @@ static int test_signature(CK_SESSION_HANDLE sess)
 		label = getLABEL(sess, privKeyObject, NULL);
 		modLenBits = get_private_key_length(sess, privKeyObject);
 		modLenBytes = (modLenBits + 7) / 8;
-
-		/* Fill in data[0] and dataLens[0] */
-		dataLen = modLenBytes;
-		data[0] = 0x00;
-		data[1] = 0x01;
-		memset(data + 2, 0xFF, dataLen - 3 - dataLens[1]);
-		data[dataLen - 36] = 0x00;
-		memcpy(data + (dataLen - dataLens[1]), datas[1], dataLens[1]);
-		datas[0] = data;
-		dataLens[0] = dataLen;
 
 		printf("  testing key %d (%u bits%s%s) with 1 signature mechanism",
 				(int) (j-1),
@@ -4480,6 +4470,16 @@ static int test_signature(CK_SESSION_HANDLE sess)
 		else   {
 			printf("\n");
 		}
+
+		/* Fill in data[0] and dataLens[0] */
+		dataLen = modLenBytes;
+		data[0] = 0x00;
+		data[1] = 0x01;
+		memset(data + 2, 0xFF, dataLen - 3 - dataLens[1]);
+		data[dataLen - 36] = 0x00;
+		memcpy(data + (dataLen - dataLens[1]), datas[1], dataLens[1]);
+		datas[0] = data;
+		dataLens[0] = dataLen;
 
 		errors += sign_verify_openssl(sess, &ck_mech, privKeyObject,
 			datas[i], dataLens[i], verifyData, sizeof(verifyData),
