@@ -68,62 +68,62 @@ static struct sc_atr_table sc_hsm_atrs[] = {
 	{
 		"3B:84:80:01:47:6f:49:44:00",
 		"FF:FF:FF:FF:FF:FF:FF:FF:00",
-		"GoID", SC_CARD_TYPE_SC_HSM_SOC, 0, NULL
+		"GoID", SC_CARD_TYPE_SC_HSM_GOID, 0, NULL
 	},
 	{
 		"3B:85:80:01:47:6f:49:44:00:00",
 		"FF:FF:FF:FF:FF:FF:FF:FF:00:00",
-		"GoID", SC_CARD_TYPE_SC_HSM_SOC, 0, NULL
+		"GoID", SC_CARD_TYPE_SC_HSM_GOID, 0, NULL
 	},
 	{
 		"3B:86:80:01:47:6f:49:44:00:00:00",
 		"FF:FF:FF:FF:FF:FF:FF:FF:00:00:00",
-		"GoID", SC_CARD_TYPE_SC_HSM_SOC, 0, NULL
+		"GoID", SC_CARD_TYPE_SC_HSM_GOID, 0, NULL
 	},
 	{
 		"3B:87:80:01:47:6f:49:44:00:00:00:00",
 		"FF:FF:FF:FF:FF:FF:FF:FF:00:00:00:00",
-		"GoID", SC_CARD_TYPE_SC_HSM_SOC, 0, NULL
+		"GoID", SC_CARD_TYPE_SC_HSM_GOID, 0, NULL
 	},
 	{
 		"3B:88:80:01:47:6f:49:44:00:00:00:00:00",
 		"FF:FF:FF:FF:FF:FF:FF:FF:00:00:00:00:00",
-		"GoID", SC_CARD_TYPE_SC_HSM_SOC, 0, NULL
+		"GoID", SC_CARD_TYPE_SC_HSM_GOID, 0, NULL
 	},
 	{
 		"3B:89:80:01:47:6f:49:44:00:00:00:00:00:00",
 		"FF:FF:FF:FF:FF:FF:FF:FF:00:00:00:00:00:00",
-		"GoID", SC_CARD_TYPE_SC_HSM_SOC, 0, NULL
+		"GoID", SC_CARD_TYPE_SC_HSM_GOID, 0, NULL
 	},
 	{
 		"3B:8a:80:01:47:6f:49:44:00:00:00:00:00:00:00",
 		"FF:FF:FF:FF:FF:FF:FF:FF:00:00:00:00:00:00:00",
-		"GoID", SC_CARD_TYPE_SC_HSM_SOC, 0, NULL
+		"GoID", SC_CARD_TYPE_SC_HSM_GOID, 0, NULL
 	},
 	{
 		"3B:8b:80:01:47:6f:49:44:00:00:00:00:00:00:00:00",
 		"FF:FF:FF:FF:FF:FF:FF:FF:00:00:00:00:00:00:00:00",
-		"GoID", SC_CARD_TYPE_SC_HSM_SOC, 0, NULL
+		"GoID", SC_CARD_TYPE_SC_HSM_GOID, 0, NULL
 	},
 	{
 		"3B:8c:80:01:47:6f:49:44:00:00:00:00:00:00:00:00:00",
 		"FF:FF:FF:FF:FF:FF:FF:FF:00:00:00:00:00:00:00:00:00",
-		"GoID", SC_CARD_TYPE_SC_HSM_SOC, 0, NULL
+		"GoID", SC_CARD_TYPE_SC_HSM_GOID, 0, NULL
 	},
 	{
 		"3B:8d:80:01:47:6f:49:44:00:00:00:00:00:00:00:00:00:00",
 		"FF:FF:FF:FF:FF:FF:FF:FF:00:00:00:00:00:00:00:00:00:00",
-		"GoID", SC_CARD_TYPE_SC_HSM_SOC, 0, NULL
+		"GoID", SC_CARD_TYPE_SC_HSM_GOID, 0, NULL
 	},
 	{
 		"3B:8e:80:01:47:6f:49:44:00:00:00:00:00:00:00:00:00:00:00",
 		"FF:FF:FF:FF:FF:FF:FF:FF:00:00:00:00:00:00:00:00:00:00:00",
-		"GoID", SC_CARD_TYPE_SC_HSM_SOC, 0, NULL
+		"GoID", SC_CARD_TYPE_SC_HSM_GOID, 0, NULL
 	},
 	{
 		"3B:8f:80:01:47:6f:49:44:00:00:00:00:00:00:00:00:00:00:00:00",
 		"FF:FF:FF:FF:FF:FF:FF:FF:00:00:00:00:00:00:00:00:00:00:00:00",
-		"GoID", SC_CARD_TYPE_SC_HSM_SOC, 0, NULL
+		"GoID", SC_CARD_TYPE_SC_HSM_GOID, 0, NULL
 	},
 	{NULL, NULL, NULL, 0, 0, NULL}
 };
@@ -305,30 +305,56 @@ static int sc_hsm_soc_change(sc_card_t *card, struct sc_pin_cmd_data *data,
 	sc_path_t path;
 	int r;
 
-	/* Select MinBioClient */
-	r = sc_hsm_soc_select_minbioclient(card);
-	LOG_TEST_RET(card->ctx, r, "Could not select MinBioClient application");
+	if (card->type == SC_CARD_TYPE_SC_HSM_SOC) {
+		/* Select MinBioClient */
+		r = sc_hsm_soc_select_minbioclient(card);
+		LOG_TEST_RET(card->ctx, r, "Could not select MinBioClient application");
 
-	/* verify PIN */
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x20, 0x00, 0x80);
-	r = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_GOTO_ERR(card->ctx, r, "APDU transmit failed");
-	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	LOG_TEST_GOTO_ERR(card->ctx, r, "Could not verify PIN");
+		/* verify PIN */
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x20, 0x00, 0x80);
+		r = sc_transmit_apdu(card, &apdu);
+		LOG_TEST_GOTO_ERR(card->ctx, r, "APDU transmit failed");
+		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+		LOG_TEST_GOTO_ERR(card->ctx, r, "Could not verify PIN");
 
-	/* change PIN */
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x24, 0x01, 0x80);
-	r = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_GOTO_ERR(card->ctx, r, "APDU transmit failed");
-	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	LOG_TEST_GOTO_ERR(card->ctx, r, "Could not change PIN");
+		/* change PIN */
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x24, 0x01, 0x80);
+		r = sc_transmit_apdu(card, &apdu);
+		LOG_TEST_GOTO_ERR(card->ctx, r, "APDU transmit failed");
+		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+		LOG_TEST_GOTO_ERR(card->ctx, r, "Could not change PIN");
+	} else {
+		unsigned sm_mode = card->sm_ctx.sm_mode;
+
+		/* verify PIN */
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x20, 0x00, 0x85);
+		apdu.cla = 0x80;
+		r = sc_transmit_apdu(card, &apdu);
+		LOG_TEST_GOTO_ERR(card->ctx, r, "APDU transmit failed");
+
+		/* temporary disable SM, change reference data does not reach the applet */
+		card->sm_ctx.sm_mode = SM_MODE_NONE;
+
+		/* change PIN */
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x24, 0x01, 0x85);
+		apdu.cla = 0x80;
+		r = sc_transmit_apdu(card, &apdu);
+		/* restore SM if possible */
+		card->sm_ctx.sm_mode = sm_mode;
+		LOG_TEST_GOTO_ERR(card->ctx, r, "APDU transmit failed");
+		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+		LOG_TEST_GOTO_ERR(card->ctx, r, "Could not change PIN");
+	}
 
 err:
-	/* Select SC-HSM */
-	sc_path_set(&path, SC_PATH_TYPE_DF_NAME, sc_hsm_aid.value, sc_hsm_aid.len, 0, 0);
-	LOG_TEST_RET(card->ctx,
-			sc_hsm_select_file_ex(card, &path, 1, NULL),
-			"Could not select SmartCard-HSM application");
+	if (card->type == SC_CARD_TYPE_SC_HSM_SOC) {
+		/* Select SC-HSM */
+		sc_path_set(&path, SC_PATH_TYPE_DF_NAME,
+			   	sc_hsm_aid.value, sc_hsm_aid.len, 0, 0);
+		LOG_TEST_RET(card->ctx,
+				sc_hsm_select_file_ex(card, &path, 1, NULL),
+				"Could not select SmartCard-HSM application");
+	}
 
 	return r;
 }
@@ -339,6 +365,10 @@ static int sc_hsm_soc_unblock(sc_card_t *card, struct sc_pin_cmd_data *data,
 	sc_apdu_t apdu;
 	sc_path_t path;
 	int r;
+
+	if (card->type == SC_CARD_TYPE_SC_HSM_GOID) {
+		return SC_ERROR_NOT_SUPPORTED;
+	}
 
 	/* Select MinBioClient */
 	r = sc_hsm_soc_select_minbioclient(card);
@@ -375,19 +405,24 @@ static int sc_hsm_soc_biomatch(sc_card_t *card, struct sc_pin_cmd_data *data,
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	int r;
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x20, 0x00, 0x85);
-	apdu.cla = 0x80;
-	apdu.data = (unsigned char*)"\x7F\x24\x00";
-	apdu.datalen = 3;
-	apdu.lc = 3;
-	apdu.resplen = 0;
+	if (card->type == SC_CARD_TYPE_SC_HSM_SOC) {
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x20, 0x00, 0x85);
+		apdu.cla = 0x80;
+		apdu.data = (unsigned char*)"\x7F\x24\x00";
+		apdu.datalen = 3;
+		apdu.lc = 3;
+		apdu.resplen = 0;
 
-	r = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
-	/* ignore the actual status bytes */
+		r = sc_transmit_apdu(card, &apdu);
+		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+		/* ignore the actual status bytes */
+	}
 
 	/* JCOP's SM accelerator is incapable of using case 1 APDU in SM */
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2, 0x20, 0x00, 0x81);
+	if (card->type == SC_CARD_TYPE_SC_HSM_GOID) {
+		apdu.cla = 0x80;
+	}
 	apdu.resp = rbuf;
 	apdu.resplen = sizeof rbuf;
 	r = sc_transmit_apdu(card, &apdu);
@@ -564,8 +599,9 @@ static int sc_hsm_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 
 	/* For contactless cards always establish a secure channel before PIN
 	 * verification. Also, Session PIN generation requires SM. */
-	if ((card->type == SC_CARD_TYPE_SC_HSM_SOC || card->reader->uid.len
-				|| cmd == SC_PIN_CMD_GET_SESSION_PIN)
+	if ((card->type == SC_CARD_TYPE_SC_HSM_SOC
+				|| card->type == SC_CARD_TYPE_SC_HSM_GOID
+				|| card->reader->uid.len || cmd == SC_PIN_CMD_GET_SESSION_PIN)
 			&& (data->cmd != SC_PIN_CMD_GET_INFO)
 #ifdef ENABLE_SM
 			&& card->sm_ctx.sm_mode != SM_MODE_TRANSMIT
@@ -1575,7 +1611,8 @@ static int sc_hsm_init(struct sc_card *card)
 	}
 
 	card->max_send_size = 1431;		// 1439 buffer size - 8 byte TLV because of odd ins in UPDATE BINARY
-	if (card->type == SC_CARD_TYPE_SC_HSM_SOC) {
+	if (card->type == SC_CARD_TYPE_SC_HSM_SOC
+			|| card->type == SC_CARD_TYPE_SC_HSM_GOID) {
 		card->max_recv_size = 0x0630;	// SoC Proxy forces this limit
 	} else {
 		card->max_recv_size = 0;		// Card supports sending with extended length APDU and without limit

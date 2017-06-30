@@ -941,7 +941,8 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 		LOG_FUNC_RETURN(card->ctx, r);
 
 
-	if (card->type == SC_CARD_TYPE_SC_HSM_SOC) {
+	if (card->type == SC_CARD_TYPE_SC_HSM_SOC
+			|| card->type == SC_CARD_TYPE_SC_HSM_GOID) {
 		/* SC-HSM of this type always has a PIN-Pad */
 		r = SC_SUCCESS;
 	} else {
@@ -998,7 +999,8 @@ int sc_pkcs15emu_sc_hsm_init_ex(sc_pkcs15_card_t *p15card,
 		return sc_pkcs15emu_sc_hsm_init(p15card);
 	} else {
 		if (p15card->card->type != SC_CARD_TYPE_SC_HSM
-				&& p15card->card->type != SC_CARD_TYPE_SC_HSM_SOC) {
+				&& p15card->card->type != SC_CARD_TYPE_SC_HSM_SOC
+				&& p15card->card->type != SC_CARD_TYPE_SC_HSM_GOID) {
 			return SC_ERROR_WRONG_CARD;
 		}
 		return sc_pkcs15emu_sc_hsm_init(p15card);
