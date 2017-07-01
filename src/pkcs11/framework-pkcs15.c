@@ -1591,7 +1591,11 @@ pkcs15_login(struct sc_pkcs11_slot *slot, CK_USER_TYPE userType,
 		}
 	}
 
-	rc = sc_pkcs15_verify_pin(p15card, auth_object, pPin, ulPinLen);
+	if (userType  == CKU_CONTEXT_SPECIFIC)
+		rc = sc_pkcs15_verify_pin_context_specific(p15card, auth_object, pPin, ulPinLen);
+	else
+		rc = sc_pkcs15_verify_pin(p15card, auth_object, pPin, ulPinLen);
+
 	sc_log(context, "PKCS15 verify PIN returned %d", rc);
 
 	if (rc != SC_SUCCESS)

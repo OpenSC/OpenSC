@@ -4,7 +4,7 @@
  *
  * Copyright (C) 2001, 2002  Juha Yrjölä <juha.yrjola@iki.fi>
  * Copyright (C) 2005,2006,2007,2008,2009,2010 Douglas E. Engert <deengert@anl.gov>
- * Copyright (C) 2016  Douglas E. Engert <deengert@gmail.com>
+ * Copyright (C) 2016,2017  Douglas E. Engert <deengert@gmail.com>
  * Copyright (C) 2006, Identity Alliance, Thomas Harning <thomas.harning@identityalliance.com>
  * Copyright (C) 2007, EMC, Russell Larner <rlarner@rsa.com>
  *
@@ -2388,6 +2388,12 @@ static int piv_validate_general_authentication(sc_card_t *card,
 	if (rbuf)
 		free(rbuf);
 
+	/* crypto operation complete, done with context_specific_login */
+	if (card->sc_card_context_specific_login) {
+		sc_log(card->ctx,"reset sc_card_context_specific_login");
+		card->sc_card_context_specific_login = 0;
+	}
+		
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
@@ -3274,6 +3280,16 @@ piv_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 		data->pin1.tries_left = priv->tries_left;
 		if (tries_left)
 			*tries_left = priv->tries_left;
+		/* 
+		 * if a context specific login was done, don't try and test
+		 * login state as this will violate PIV "PIN Always" rule
+		 * and cause cryto operation to fail
+		 */
+		if (card->sc_card_context_specific_login) {
+			sc_log(card->ctx,"sc_card_context_specific_login = %d skipping verify Lc=0",
+				card->sc_card_context_specific_login);
+			goto out;
+		}
 	}
 
 	priv->pin_cmd_verify = 1; /* tell piv_check_sw its a verify to save sw1, sw2 */
@@ -3326,6 +3342,7 @@ piv_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 		priv->tries_left = data->pin1.tries_left;
 	}
 
+out:
 	sc_log(card->ctx, "piv_pin_cmd tries_left=%d, logged_in=%d",priv->tries_left, priv->logged_in);
 	LOG_FUNC_RETURN(card->ctx, r);
 }

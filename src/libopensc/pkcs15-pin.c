@@ -459,6 +459,25 @@ out:
 	LOG_FUNC_RETURN(ctx, r);
 }
 
+/*
+ * Verify pin and tell card driver concect_specific_login is being started
+ */
+
+
+int sc_pkcs15_verify_pin_context_specific(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *pin_obj,
+		const unsigned char *pincode, size_t pinlen)
+{
+	struct sc_card * card = p15card->card;
+	struct sc_context *ctx = card->ctx;
+	int r;
+
+	LOG_FUNC_CALLED(ctx);
+	card->sc_card_context_specific_login = 1;
+	r = sc_pkcs15_verify_pin(p15card, pin_obj, pincode, pinlen);
+	if (r != SC_SUCCESS)
+		card->sc_card_context_specific_login =  0;
+	LOG_FUNC_RETURN(ctx, r);
+}
 
 
 /*

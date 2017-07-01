@@ -237,6 +237,7 @@ sc_pkcs15_search_objects
 sc_pkcs15_unbind
 sc_pkcs15_unblock_pin
 sc_pkcs15_verify_pin
+sc_pkcs15_verify_pin_context_specific
 sc_pkcs15_get_pin_info
 sc_pkcs15_verify_pin_with_session_pin
 sc_pkcs15emu_add_data_object
