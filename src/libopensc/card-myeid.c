@@ -1005,7 +1005,7 @@ int myeid_ecdh_derive(struct sc_card *card, const u8* pubkey, size_t pubkey_len,
 	memcpy(&sbuf[4 + ext_len_bytes], pubkey, pubkey_len);
 
 	apdu.lc = pubkey_len + 4 + ext_len_bytes;
-	apdu.le = 0;
+	apdu.le = pubkey_len / 2;
 	apdu.datalen = apdu.lc;
 	apdu.data = sbuf;
 
