@@ -188,6 +188,7 @@ main (int argc, char **argv)
 	struct gengetopt_args_info cmdline;
 #endif
 
+#ifndef _WIN32
 	if (cmdline_parser(argc, argv, &cmdline) != 0)
 		goto err;
 
@@ -224,6 +225,14 @@ main (int argc, char **argv)
 	sc_notify_close();
 
 	cmdline_parser_free (&cmdline);
+#else
+	/* FIXME the command line parser fails with our transformed argv. As quick
+	 * fix, we only use daemon mode */
+	sc_notify_init();
+	run_daemon = 1;
+	notify_daemon();
+	sc_notify_close();
+#endif
 err:
 #ifdef _WIN32
 	if (argv) {

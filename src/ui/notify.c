@@ -65,9 +65,11 @@ void sc_notify_close(void)
 
 #if defined(ENABLE_NOTIFY) && defined(_WIN32)
 
+#include "common/compat_strlcpy.h"
 #include "invisible_window.h"
 #include "wchar_from_char_str.h"
 #include <shellapi.h>
+#include <shlwapi.h>
 
 static const GUID myGUID = {0x23977b55, 0x10e0, 0x4041, {0xb8,
 	0x62, 0xb1, 0x95, 0x41, 0x96, 0x36, 0x69}};
@@ -81,6 +83,12 @@ BOOL delete_icon = TRUE;
 #define IDI_CARD_INSERTED   106
 UINT const WMAPP_NOTIFYCALLBACK = WM_APP + 1;
 static BOOL RestoreTooltip();
+#if 1
+/* FIXME should be V3 */
+#define NOTIFYICONDATA_cbSize NOTIFYICONDATA_V2_SIZE
+#else
+#define NOTIFYICONDATA_cbSize (sizeof(NOTIFYICONDATA))
+#endif
 
 // we need commctrl v6 for LoadIconMetric()
 #include <commctrl.h>
@@ -106,12 +114,16 @@ static const char* lpszClassName = "NOTIFY_CLASS";
 
 static BOOL AddNotificationIcon(void)
 {
-	NOTIFYICONDATA nid;
+	NOTIFYICONDATA nid = {0};
 	TCHAR path[MAX_PATH]={0};
 	BOOL r;
 
-	memset(&nid, 0, sizeof nid);
-	nid.cbSize = sizeof nid;
+	hwndNotification = create_invisible_window(lpszClassName, WndProc, sc_notify_instance);
+	if (!hwndNotification) {
+		return FALSE;
+	}
+
+	nid.cbSize = NOTIFYICONDATA_cbSize;
 	nid.hWnd = hwndNotification;
 	// add the icon, setting the icon, tooltip, and callback message.
 	// the icon will be identified with the GUID
@@ -141,25 +153,19 @@ static BOOL AddNotificationIcon(void)
     nid.uVersion = NOTIFYICON_VERSION_4;
     r &= Shell_NotifyIcon(NIM_SETVERSION, &nid);
 
-    hwndNotification = create_invisible_window(lpszClassName, WndProc, sc_notify_instance);
-	if (!hwndNotification) {
-		r = FALSE;
-	}
-
 	return r;
 }
 
 static BOOL DeleteNotificationIcon(void)
 {
 	BOOL r;
-	NOTIFYICONDATA nid;
+	NOTIFYICONDATA nid = {0};
 
 	if (!delete_icon) {
 		return FALSE;
 	}
 
-	memset(&nid, 0, sizeof nid);
-	nid.cbSize = sizeof nid;
+	nid.cbSize = NOTIFYICONDATA_cbSize;
 	nid.uFlags = NIF_GUID;
 	nid.guidItem = myGUID; 
 
@@ -174,10 +180,9 @@ static BOOL DeleteNotificationIcon(void)
 static BOOL RestoreTooltip()
 {
     // After the balloon is dismissed, restore the tooltip.
-    NOTIFYICONDATA nid;
+	NOTIFYICONDATA nid = {0};
 
-	memset(&nid, 0, sizeof nid);
-	nid.cbSize = sizeof nid;
+	nid.cbSize = NOTIFYICONDATA_cbSize;
     nid.uFlags = NIF_SHOWTIP | NIF_GUID;
 	nid.guidItem = myGUID; 
 
@@ -187,10 +192,9 @@ static BOOL RestoreTooltip()
 static void notify_shell(struct sc_context *ctx,
 		const char *title, const char *text, WORD icon)
 {
-    NOTIFYICONDATA nid;
+	NOTIFYICONDATA nid = {0};
 
-	memset(&nid, 0, sizeof nid);
-	nid.cbSize = sizeof nid;
+	nid.cbSize = NOTIFYICONDATA_cbSize;
     nid.uFlags = NIF_GUID;
     nid.guidItem = myGUID;
 
