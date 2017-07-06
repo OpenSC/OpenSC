@@ -789,7 +789,7 @@ cardos_set_security_env(sc_card_t *card,
 	if (card->type == SC_CARD_TYPE_CARDOS_CIE_V1) {
 		cardos_restore_security_env(card, 0x30);
 		apdu.p1 = 0xF1;
-	} else if (card->type == SC_CARD_TYPE_CARDOS_V5_3) {
+	} else if (card->type == SC_CARD_TYPE_CARDOS_V5_0 || card->type == SC_CARD_TYPE_CARDOS_V5_3) {
 		apdu.p1 = 0x41;
 	} else {
 		apdu.p1 = 0x01;
