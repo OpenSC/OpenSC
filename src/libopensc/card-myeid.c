@@ -881,7 +881,73 @@ myeid_convert_ec_signature(struct sc_context *ctx, size_t s_len, unsigned char *
 	free(buf);
 	return buflen;
 }
+/*
+  MyEID does not support RAW RSA signature for 2048 bit key.
+  (Source:  MyEID reference manual 2.1.4)
 
+  This function uses decipher operation for calculating RAW 2048 bit signature.
+*/
+static int
+myeid_compute_raw_2048_signature(struct sc_card *card, const u8 * data, size_t datalen,
+		u8 * out, size_t outlen)
+{
+	int r;
+	struct sc_context *ctx;
+	struct myeid_private_data *priv;
+	struct sc_apdu apdu;
+	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
+	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
+	sc_security_env_t env;
+
+	ctx = card->ctx;
+	LOG_FUNC_CALLED(ctx);
+
+	priv = (myeid_private_data_t *) card->drv_data;
+
+/* security env change - use DECIPHER operation */
+	memcpy(&env, priv->sec_env, sizeof(sc_security_env_t));
+	env.flags |= SC_SEC_ENV_ALG_REF_PRESENT;
+	env.flags |= SC_SEC_ENV_FILE_REF_PRESENT;
+	env.flags |= SC_SEC_ENV_KEY_REF_PRESENT;
+	env.operation = SC_SEC_OPERATION_DECIPHER;
+	myeid_set_security_env_rsa(card, &env, 0);
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x2A, 0x80, 0x86);
+	apdu.resp = rbuf;
+	apdu.resplen = sizeof(rbuf);
+	apdu.le = 0;	/* there is no response to 1st part of data */
+
+/* prepare 1st part of data */
+	sbuf[0] = 0x81;
+	memcpy(sbuf + 1, data, datalen / 2);
+	apdu.lc = datalen / 2 + 1;
+	apdu.datalen = apdu.lc;
+	apdu.data = sbuf;
+
+	r = sc_transmit_apdu(card, &apdu);
+	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
+/* prepare 2nd part of data */
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x80, 0x86);
+		apdu.resp = rbuf;
+		apdu.resplen = sizeof(rbuf);
+		apdu.le = datalen;
+		sbuf[0] = 0x82;
+		memcpy(sbuf + 1, data + datalen / 2, datalen / 2);
+		apdu.lc = datalen / 2 + 1;
+		apdu.datalen = apdu.lc;
+		apdu.data = sbuf;
+
+		r = sc_transmit_apdu(card, &apdu);
+		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+
+		if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
+			int len = apdu.resplen > outlen ? outlen : apdu.resplen;
+			memcpy(out, apdu.resp, len);
+			LOG_FUNC_RETURN(card->ctx, len);
+		}
+	}
+	LOG_FUNC_RETURN(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2));
+}
 
 static int
 myeid_compute_signature(struct sc_card *card, const u8 * data, size_t datalen,
@@ -919,6 +985,9 @@ myeid_compute_signature(struct sc_card *card, const u8 * data, size_t datalen,
 	if ((datalen + pad_chars) > 256)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
+	if (datalen == 256 && priv->sec_env->algorithm == SC_ALGORITHM_RSA)
+		return myeid_compute_raw_2048_signature(card, data, datalen, out, outlen);
+
 	/* INS: 0x2A  PERFORM SECURITY OPERATION
 		* P1:  0x9E  Resp: Digital Signature
 		* P2:  0x9A  Cmd: Input for Digital Signature */
@@ -926,17 +995,9 @@ myeid_compute_signature(struct sc_card *card, const u8 * data, size_t datalen,
 	apdu.resp = rbuf;
 	apdu.resplen = sizeof(rbuf);
 	apdu.le = 256;
-	if (datalen == 256)   {
-		apdu.p2 = data[0];
-		memcpy(sbuf, data+1, datalen-1);
-		apdu.lc = datalen - 1;
-		apdu.datalen = datalen - 1;
-	}
-	else   {
-		memcpy(sbuf + pad_chars, data, datalen);
-		apdu.lc = datalen + pad_chars;
-		apdu.datalen = datalen + pad_chars;
-	}
+	memcpy(sbuf + pad_chars, data, datalen);
+	apdu.lc = datalen + pad_chars;
+	apdu.datalen = datalen + pad_chars;
 
 	apdu.data = sbuf;
 	r = sc_transmit_apdu(card, &apdu);
