@@ -14,7 +14,7 @@ do_subst = $(SED) \
 NPA_TOOL_BUILT_SOURCES = npa-tool-cmdline.h npa-tool-cmdline.c
 
 MAINTAINERCLEANFILES = $(srcdir)/Makefile.in $(srcdir)/versioninfo-tools.rc
-EXTRA_DIST = Makefile.mak versioninfo-tools.rc.in npa-tool.ggo.in
+EXTRA_DIST = Makefile.mak versioninfo-tools.rc.in npa-tool.ggo.in npa-tool.1
 
 noinst_HEADERS = util.h fread_to_eof.h
 noinst_PROGRAMS = sceac-example
