@@ -71,8 +71,8 @@ void sc_notify_close(void)
 #include <shellapi.h>
 #include <shlwapi.h>
 
-static const GUID myGUID = {0x23977b55, 0x10e0, 0x4041, {0xb8,
-	0x62, 0xb1, 0x95, 0x41, 0x96, 0x36, 0x69}};
+// {83C35893-99C6-4600-BFDB-45925C53BDD9}
+static const GUID myGUID = { 0x83c35893, 0x99c6, 0x4600, { 0xbf, 0xdb, 0x45, 0x92, 0x5c, 0x53, 0xbd, 0xd9 } };
 HINSTANCE sc_notify_instance = NULL;
 HWND hwndNotification = NULL;
 BOOL delete_icon = TRUE;
@@ -83,12 +83,6 @@ BOOL delete_icon = TRUE;
 #define IDI_CARD_INSERTED   106
 UINT const WMAPP_NOTIFYCALLBACK = WM_APP + 1;
 static BOOL RestoreTooltip();
-#if 1
-/* FIXME should be V3 */
-#define NOTIFYICONDATA_cbSize NOTIFYICONDATA_V2_SIZE
-#else
-#define NOTIFYICONDATA_cbSize (sizeof(NOTIFYICONDATA))
-#endif
 
 // we need commctrl v6 for LoadIconMetric()
 #include <commctrl.h>
@@ -123,7 +117,7 @@ static BOOL AddNotificationIcon(void)
 		return FALSE;
 	}
 
-	nid.cbSize = NOTIFYICONDATA_cbSize;
+	nid.cbSize = sizeof(NOTIFYICONDATA);
 	nid.hWnd = hwndNotification;
 	// add the icon, setting the icon, tooltip, and callback message.
 	// the icon will be identified with the GUID
@@ -165,7 +159,7 @@ static BOOL DeleteNotificationIcon(void)
 		return FALSE;
 	}
 
-	nid.cbSize = NOTIFYICONDATA_cbSize;
+	nid.cbSize = sizeof(NOTIFYICONDATA);
 	nid.uFlags = NIF_GUID;
 	nid.guidItem = myGUID; 
 
@@ -182,7 +176,7 @@ static BOOL RestoreTooltip()
     // After the balloon is dismissed, restore the tooltip.
 	NOTIFYICONDATA nid = {0};
 
-	nid.cbSize = NOTIFYICONDATA_cbSize;
+	nid.cbSize = sizeof(NOTIFYICONDATA);
     nid.uFlags = NIF_SHOWTIP | NIF_GUID;
 	nid.guidItem = myGUID; 
 
@@ -194,7 +188,7 @@ static void notify_shell(struct sc_context *ctx,
 {
 	NOTIFYICONDATA nid = {0};
 
-	nid.cbSize = NOTIFYICONDATA_cbSize;
+	nid.cbSize = sizeof(NOTIFYICONDATA);
     nid.uFlags = NIF_GUID;
     nid.guidItem = myGUID;
 
