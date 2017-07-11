@@ -112,12 +112,15 @@ int sc_asn1_read_tag(const u8 ** buf, size_t buflen, unsigned int *cla_out,
 		}
 		len = a;
 	}
-	if (len > left)
-		return SC_ERROR_INVALID_ASN1_OBJECT;
+
 	*cla_out = cla;
 	*tag_out = tag;
 	*taglen = len;
 	*buf = p;
+
+	if (len > left)
+		return SC_ERROR_ASN1_END_OF_CONTENTS;
+
 	return SC_SUCCESS;
 }
 

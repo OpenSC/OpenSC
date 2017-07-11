@@ -1234,7 +1234,7 @@ sc_pkcs15_read_der_file(sc_context_t *ctx, char * filename,
 	int r;
 	int f = -1;
 	size_t len, offs;
-	u8 tagbuf[1024]; /* enough to read in the tag and length */
+	u8 tagbuf[16]; /* enough to read in the tag and length */
 	u8 * rbuf = NULL;
 	size_t rbuflen = 0;
 	const u8 * body = NULL;
@@ -1264,7 +1264,7 @@ sc_pkcs15_read_der_file(sc_context_t *ctx, char * filename,
 
 	body = tagbuf;
 	r = sc_asn1_read_tag(&body, len, &cla_out, &tag_out, &bodylen);
-	if (r != SC_SUCCESS)
+	if (r != SC_SUCCESS && r != SC_ERROR_ASN1_END_OF_CONTENTS)
 		goto out;
 
 	if (tag_out == SC_ASN1_TAG_EOC || body == NULL)   {
