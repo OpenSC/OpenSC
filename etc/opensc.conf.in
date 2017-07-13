@@ -492,6 +492,30 @@ app default {
 
 	# SmartCard-HSM with fingerprint sensor and PIN pad
 	card_atr 3B:80:80:01:01 {
+		force_protocol = "t1";
+		md_read_only = false;
+		md_supports_X509_enrollment = true;
+		md_supports_container_key_gen = true;
+		md_guid_as_label = true;
+		md_pinpad_dlg_main = "Fingerabdruck oder PIN eingeben";
+		md_pinpad_dlg_content_user = "Bitte verifizieren Sie Ihren Fingarabdruck oder Ihre PIN für die digitale Signatur auf der Karte.";
+		md_pinpad_dlg_content_admin = "Bitte geben Sie Ihre PIN zum Entsperren der Nutzer-PIN auf dem PIN-Pad ein.";
+		md_pinpad_dlg_expanded = "Dieses Fenster wird automatisch geschlossen, wenn die PIN oder der Fingerabdruck verifiziert wurde (Timeout nach 30 Sekunden). Nutzen Sie das PIN-Pad, um die Eingabe abzubrechen.";
+		md_pinpad_dlg_expanded_cancel = "Die Karte unterstützt das Abbrechen ausschließlich am PIN-Pad. Nutzen Sie das PIN-Pad, um die Eingabe abzubrechen oder entfernen Sie die Karte.";
+		md_pinpad_dlg_allow_cancel = false;
+		md_pinpad_dlg_timeout = 30;
+		notify_card_inserted = "GoID erkannt";
+		notify_card_inserted_text = "";
+		notify_card_removed = "GoID entfernt";
+		notify_pin_good = "Fingerabdruck bzw. PIN verifiziert";
+		notify_pin_good_text = "GoID ist entsperrt";
+		notify_pin_bad = "Fingerabdruck bzw. PIN nicht verifiziert";
+		notify_pin_bad_text = "GoID ist gesperrt";
+	}
+
+	# GoID with fingerprint sensor and PIN pad
+	card_atr 3B:84:80:01:47:6f:49:44:00 {
+		atrmask = "FF:FF:FF:FF:FF:FF:FF:FF:00";
 		driver = "sc-hsm";
 		force_protocol = "t1";
 		md_read_only = false;
@@ -505,6 +529,280 @@ app default {
 		md_pinpad_dlg_expanded_cancel = "Die Karte unterstützt das Abbrechen ausschließlich am PIN-Pad. Nutzen Sie das PIN-Pad, um die Eingabe abzubrechen oder entfernen Sie die Karte.";
 		md_pinpad_dlg_allow_cancel = false;
 		md_pinpad_dlg_timeout = 30;
+		notify_card_inserted = "GoID erkannt";
+		notify_card_inserted_text = "";
+		notify_card_removed = "GoID entfernt";
+		notify_pin_good = "Fingerabdruck bzw. PIN verifiziert";
+		notify_pin_good_text = "GoID ist entsperrt";
+		notify_pin_bad = "Fingerabdruck bzw. PIN nicht verifiziert";
+		notify_pin_bad_text = "GoID ist gesperrt";
+	}
+	# GoID with fingerprint sensor and PIN pad
+	card_atr 3B:85:80:01:47:6f:49:44:00:00 {
+		atrmask = "FF:FF:FF:FF:FF:FF:FF:FF:00:00";
+		driver = "sc-hsm";
+		force_protocol = "t1";
+		md_read_only = false;
+		md_supports_X509_enrollment = true;
+		md_supports_container_key_gen = true;
+		md_guid_as_label = true;
+		md_pinpad_dlg_main = "Fingerabdruck oder PIN eingeben";
+		md_pinpad_dlg_content_user = "Bitte verifizieren Sie Ihren Fingarabdruck oder Ihre PIN für die digitale Signatur auf der Karte.";
+		md_pinpad_dlg_content_admin = "Bitte geben Sie Ihre PIN zum Entsperren der Nutzer-PIN auf dem PIN-Pad ein.";
+		md_pinpad_dlg_expanded = "Dieses Fenster wird automatisch geschlossen, wenn die PIN oder der Fingerabdruck verifiziert wurde (Timeout nach 30 Sekunden). Nutzen Sie das PIN-Pad, um die Eingabe abzubrechen.";
+		md_pinpad_dlg_expanded_cancel = "Die Karte unterstützt das Abbrechen ausschließlich am PIN-Pad. Nutzen Sie das PIN-Pad, um die Eingabe abzubrechen oder entfernen Sie die Karte.";
+		md_pinpad_dlg_allow_cancel = false;
+		md_pinpad_dlg_timeout = 30;
+		notify_card_inserted = "GoID erkannt";
+		notify_card_inserted_text = "";
+		notify_card_removed = "GoID entfernt";
+		notify_pin_good = "Fingerabdruck bzw. PIN verifiziert";
+		notify_pin_good_text = "GoID ist entsperrt";
+		notify_pin_bad = "Fingerabdruck bzw. PIN nicht verifiziert";
+		notify_pin_bad_text = "GoID ist gesperrt";
+	}
+	# GoID with fingerprint sensor and PIN pad
+	card_atr 3B:86:80:01:47:6f:49:44:00:00:00 {
+		atrmask = "FF:FF:FF:FF:FF:FF:FF:FF:00:00:00";
+		driver = "sc-hsm";
+		force_protocol = "t1";
+		md_read_only = false;
+		md_supports_X509_enrollment = true;
+		md_supports_container_key_gen = true;
+		md_guid_as_label = true;
+		md_pinpad_dlg_main = "Fingerabdruck oder PIN eingeben";
+		md_pinpad_dlg_content_user = "Bitte verifizieren Sie Ihren Fingarabdruck oder Ihre PIN für die digitale Signatur auf der Karte.";
+		md_pinpad_dlg_content_admin = "Bitte geben Sie Ihre PIN zum Entsperren der Nutzer-PIN auf dem PIN-Pad ein.";
+		md_pinpad_dlg_expanded = "Dieses Fenster wird automatisch geschlossen, wenn die PIN oder der Fingerabdruck verifiziert wurde (Timeout nach 30 Sekunden). Nutzen Sie das PIN-Pad, um die Eingabe abzubrechen.";
+		md_pinpad_dlg_expanded_cancel = "Die Karte unterstützt das Abbrechen ausschließlich am PIN-Pad. Nutzen Sie das PIN-Pad, um die Eingabe abzubrechen oder entfernen Sie die Karte.";
+		md_pinpad_dlg_allow_cancel = false;
+		md_pinpad_dlg_timeout = 30;
+		notify_card_inserted = "GoID erkannt";
+		notify_card_inserted_text = "";
+		notify_card_removed = "GoID entfernt";
+		notify_pin_good = "Fingerabdruck bzw. PIN verifiziert";
+		notify_pin_good_text = "GoID ist entsperrt";
+		notify_pin_bad = "Fingerabdruck bzw. PIN nicht verifiziert";
+		notify_pin_bad_text = "GoID ist gesperrt";
+	}
+	# GoID with fingerprint sensor and PIN pad
+	card_atr 3B:87:80:01:47:6f:49:44:00:00:00:00 {
+		atrmask = "FF:FF:FF:FF:FF:FF:FF:FF:00:00:00:00";
+		driver = "sc-hsm";
+		force_protocol = "t1";
+		md_read_only = false;
+		md_supports_X509_enrollment = true;
+		md_supports_container_key_gen = true;
+		md_guid_as_label = true;
+		md_pinpad_dlg_main = "Fingerabdruck oder PIN eingeben";
+		md_pinpad_dlg_content_user = "Bitte verifizieren Sie Ihren Fingarabdruck oder Ihre PIN für die digitale Signatur auf der Karte.";
+		md_pinpad_dlg_content_admin = "Bitte geben Sie Ihre PIN zum Entsperren der Nutzer-PIN auf dem PIN-Pad ein.";
+		md_pinpad_dlg_expanded = "Dieses Fenster wird automatisch geschlossen, wenn die PIN oder der Fingerabdruck verifiziert wurde (Timeout nach 30 Sekunden). Nutzen Sie das PIN-Pad, um die Eingabe abzubrechen.";
+		md_pinpad_dlg_expanded_cancel = "Die Karte unterstützt das Abbrechen ausschließlich am PIN-Pad. Nutzen Sie das PIN-Pad, um die Eingabe abzubrechen oder entfernen Sie die Karte.";
+		md_pinpad_dlg_allow_cancel = false;
+		md_pinpad_dlg_timeout = 30;
+		notify_card_inserted = "GoID erkannt";
+		notify_card_inserted_text = "";
+		notify_card_removed = "GoID entfernt";
+		notify_pin_good = "Fingerabdruck bzw. PIN verifiziert";
+		notify_pin_good_text = "GoID ist entsperrt";
+		notify_pin_bad = "Fingerabdruck bzw. PIN nicht verifiziert";
+		notify_pin_bad_text = "GoID ist gesperrt";
+	}
+	# GoID with fingerprint sensor and PIN pad
+	card_atr 3B:88:80:01:47:6f:49:44:00:00:00:00:00 {
+		atrmask = "FF:FF:FF:FF:FF:FF:FF:FF:00:00:00:00:00";
+		driver = "sc-hsm";
+		force_protocol = "t1";
+		md_read_only = false;
+		md_supports_X509_enrollment = true;
+		md_supports_container_key_gen = true;
+		md_guid_as_label = true;
+		md_pinpad_dlg_main = "Fingerabdruck oder PIN eingeben";
+		md_pinpad_dlg_content_user = "Bitte verifizieren Sie Ihren Fingarabdruck oder Ihre PIN für die digitale Signatur auf der Karte.";
+		md_pinpad_dlg_content_admin = "Bitte geben Sie Ihre PIN zum Entsperren der Nutzer-PIN auf dem PIN-Pad ein.";
+		md_pinpad_dlg_expanded = "Dieses Fenster wird automatisch geschlossen, wenn die PIN oder der Fingerabdruck verifiziert wurde (Timeout nach 30 Sekunden). Nutzen Sie das PIN-Pad, um die Eingabe abzubrechen.";
+		md_pinpad_dlg_expanded_cancel = "Die Karte unterstützt das Abbrechen ausschließlich am PIN-Pad. Nutzen Sie das PIN-Pad, um die Eingabe abzubrechen oder entfernen Sie die Karte.";
+		md_pinpad_dlg_allow_cancel = false;
+		md_pinpad_dlg_timeout = 30;
+		notify_card_inserted = "GoID erkannt";
+		notify_card_inserted_text = "";
+		notify_card_removed = "GoID entfernt";
+		notify_pin_good = "Fingerabdruck bzw. PIN verifiziert";
+		notify_pin_good_text = "GoID ist entsperrt";
+		notify_pin_bad = "Fingerabdruck bzw. PIN nicht verifiziert";
+		notify_pin_bad_text = "GoID ist gesperrt";
+	}
+	# GoID with fingerprint sensor and PIN pad
+	card_atr 3B:89:80:01:47:6f:49:44:00:00:00:00:00:00 {
+		atrmask = "FF:FF:FF:FF:FF:FF:FF:FF:00:00:00:00:00:00";
+		driver = "sc-hsm";
+		force_protocol = "t1";
+		md_read_only = false;
+		md_supports_X509_enrollment = true;
+		md_supports_container_key_gen = true;
+		md_guid_as_label = true;
+		md_pinpad_dlg_main = "Fingerabdruck oder PIN eingeben";
+		md_pinpad_dlg_content_user = "Bitte verifizieren Sie Ihren Fingarabdruck oder Ihre PIN für die digitale Signatur auf der Karte.";
+		md_pinpad_dlg_content_admin = "Bitte geben Sie Ihre PIN zum Entsperren der Nutzer-PIN auf dem PIN-Pad ein.";
+		md_pinpad_dlg_expanded = "Dieses Fenster wird automatisch geschlossen, wenn die PIN oder der Fingerabdruck verifiziert wurde (Timeout nach 30 Sekunden). Nutzen Sie das PIN-Pad, um die Eingabe abzubrechen.";
+		md_pinpad_dlg_expanded_cancel = "Die Karte unterstützt das Abbrechen ausschließlich am PIN-Pad. Nutzen Sie das PIN-Pad, um die Eingabe abzubrechen oder entfernen Sie die Karte.";
+		md_pinpad_dlg_allow_cancel = false;
+		md_pinpad_dlg_timeout = 30;
+		notify_card_inserted = "GoID erkannt";
+		notify_card_inserted_text = "";
+		notify_card_removed = "GoID entfernt";
+		notify_pin_good = "Fingerabdruck bzw. PIN verifiziert";
+		notify_pin_good_text = "GoID ist entsperrt";
+		notify_pin_bad = "Fingerabdruck bzw. PIN nicht verifiziert";
+		notify_pin_bad_text = "GoID ist gesperrt";
+	}
+	# GoID with fingerprint sensor and PIN pad
+	card_atr 3B:8A:80:01:47:6f:49:44:00:00:00:00:00:00:00 {
+		atrmask = "FF:FF:FF:FF:FF:FF:FF:FF:00:00:00:00:00:00:00";
+		driver = "sc-hsm";
+		force_protocol = "t1";
+		md_read_only = false;
+		md_supports_X509_enrollment = true;
+		md_supports_container_key_gen = true;
+		md_guid_as_label = true;
+		md_pinpad_dlg_main = "Fingerabdruck oder PIN eingeben";
+		md_pinpad_dlg_content_user = "Bitte verifizieren Sie Ihren Fingarabdruck oder Ihre PIN für die digitale Signatur auf der Karte.";
+		md_pinpad_dlg_content_admin = "Bitte geben Sie Ihre PIN zum Entsperren der Nutzer-PIN auf dem PIN-Pad ein.";
+		md_pinpad_dlg_expanded = "Dieses Fenster wird automatisch geschlossen, wenn die PIN oder der Fingerabdruck verifiziert wurde (Timeout nach 30 Sekunden). Nutzen Sie das PIN-Pad, um die Eingabe abzubrechen.";
+		md_pinpad_dlg_expanded_cancel = "Die Karte unterstützt das Abbrechen ausschließlich am PIN-Pad. Nutzen Sie das PIN-Pad, um die Eingabe abzubrechen oder entfernen Sie die Karte.";
+		md_pinpad_dlg_allow_cancel = false;
+		md_pinpad_dlg_timeout = 30;
+		notify_card_inserted = "GoID erkannt";
+		notify_card_inserted_text = "";
+		notify_card_removed = "GoID entfernt";
+		notify_pin_good = "Fingerabdruck bzw. PIN verifiziert";
+		notify_pin_good_text = "GoID ist entsperrt";
+		notify_pin_bad = "Fingerabdruck bzw. PIN nicht verifiziert";
+		notify_pin_bad_text = "GoID ist gesperrt";
+	}
+	# GoID with fingerprint sensor and PIN pad
+	card_atr 3B:8B:80:01:47:6f:49:44:00:00:00:00:00:00:00:00 {
+		atrmask = "FF:FF:FF:FF:FF:FF:FF:FF:00:00:00:00:00:00:00:00";
+		driver = "sc-hsm";
+		force_protocol = "t1";
+		md_read_only = false;
+		md_supports_X509_enrollment = true;
+		md_supports_container_key_gen = true;
+		md_guid_as_label = true;
+		md_pinpad_dlg_main = "Fingerabdruck oder PIN eingeben";
+		md_pinpad_dlg_content_user = "Bitte verifizieren Sie Ihren Fingarabdruck oder Ihre PIN für die digitale Signatur auf der Karte.";
+		md_pinpad_dlg_content_admin = "Bitte geben Sie Ihre PIN zum Entsperren der Nutzer-PIN auf dem PIN-Pad ein.";
+		md_pinpad_dlg_expanded = "Dieses Fenster wird automatisch geschlossen, wenn die PIN oder der Fingerabdruck verifiziert wurde (Timeout nach 30 Sekunden). Nutzen Sie das PIN-Pad, um die Eingabe abzubrechen.";
+		md_pinpad_dlg_expanded_cancel = "Die Karte unterstützt das Abbrechen ausschließlich am PIN-Pad. Nutzen Sie das PIN-Pad, um die Eingabe abzubrechen oder entfernen Sie die Karte.";
+		md_pinpad_dlg_allow_cancel = false;
+		md_pinpad_dlg_timeout = 30;
+		notify_card_inserted = "GoID erkannt";
+		notify_card_inserted_text = "";
+		notify_card_removed = "GoID entfernt";
+		notify_pin_good = "Fingerabdruck bzw. PIN verifiziert";
+		notify_pin_good_text = "GoID ist entsperrt";
+		notify_pin_bad = "Fingerabdruck bzw. PIN nicht verifiziert";
+		notify_pin_bad_text = "GoID ist gesperrt";
+	}
+	# GoID with fingerprint sensor and PIN pad
+	card_atr 3B:8C:80:01:47:6f:49:44:00:00:00:00:00:00:00:00:00 {
+		atrmask = "FF:FF:FF:FF:FF:FF:FF:FF:00:00:00:00:00:00:00:00:00";
+		driver = "sc-hsm";
+		force_protocol = "t1";
+		md_read_only = false;
+		md_supports_X509_enrollment = true;
+		md_supports_container_key_gen = true;
+		md_guid_as_label = true;
+		md_pinpad_dlg_main = "Fingerabdruck oder PIN eingeben";
+		md_pinpad_dlg_content_user = "Bitte verifizieren Sie Ihren Fingarabdruck oder Ihre PIN für die digitale Signatur auf der Karte.";
+		md_pinpad_dlg_content_admin = "Bitte geben Sie Ihre PIN zum Entsperren der Nutzer-PIN auf dem PIN-Pad ein.";
+		md_pinpad_dlg_expanded = "Dieses Fenster wird automatisch geschlossen, wenn die PIN oder der Fingerabdruck verifiziert wurde (Timeout nach 30 Sekunden). Nutzen Sie das PIN-Pad, um die Eingabe abzubrechen.";
+		md_pinpad_dlg_expanded_cancel = "Die Karte unterstützt das Abbrechen ausschließlich am PIN-Pad. Nutzen Sie das PIN-Pad, um die Eingabe abzubrechen oder entfernen Sie die Karte.";
+		md_pinpad_dlg_allow_cancel = false;
+		md_pinpad_dlg_timeout = 30;
+		notify_card_inserted = "GoID erkannt";
+		notify_card_inserted_text = "";
+		notify_card_removed = "GoID entfernt";
+		notify_pin_good = "Fingerabdruck bzw. PIN verifiziert";
+		notify_pin_good_text = "GoID ist entsperrt";
+		notify_pin_bad = "Fingerabdruck bzw. PIN nicht verifiziert";
+		notify_pin_bad_text = "GoID ist gesperrt";
+	}
+
+	# GoID with fingerprint sensor and PIN pad
+	card_atr 3B:8D:80:01:47:6f:49:44:00:00:00:00:00:00:00:00:00:00 {
+		atrmask = "FF:FF:FF:FF:FF:FF:FF:FF:00:00:00:00:00:00:00:00:00:00";
+		driver = "sc-hsm";
+		force_protocol = "t1";
+		md_read_only = false;
+		md_supports_X509_enrollment = true;
+		md_supports_container_key_gen = true;
+		md_guid_as_label = true;
+		md_pinpad_dlg_main = "Fingerabdruck oder PIN eingeben";
+		md_pinpad_dlg_content_user = "Bitte verifizieren Sie Ihren Fingarabdruck oder Ihre PIN für die digitale Signatur auf der Karte.";
+		md_pinpad_dlg_content_admin = "Bitte geben Sie Ihre PIN zum Entsperren der Nutzer-PIN auf dem PIN-Pad ein.";
+		md_pinpad_dlg_expanded = "Dieses Fenster wird automatisch geschlossen, wenn die PIN oder der Fingerabdruck verifiziert wurde (Timeout nach 30 Sekunden). Nutzen Sie das PIN-Pad, um die Eingabe abzubrechen.";
+		md_pinpad_dlg_expanded_cancel = "Die Karte unterstützt das Abbrechen ausschließlich am PIN-Pad. Nutzen Sie das PIN-Pad, um die Eingabe abzubrechen oder entfernen Sie die Karte.";
+		md_pinpad_dlg_allow_cancel = false;
+		md_pinpad_dlg_timeout = 30;
+		notify_card_inserted = "GoID erkannt";
+		notify_card_inserted_text = "";
+		notify_card_removed = "GoID entfernt";
+		notify_pin_good = "Fingerabdruck bzw. PIN verifiziert";
+		notify_pin_good_text = "GoID ist entsperrt";
+		notify_pin_bad = "Fingerabdruck bzw. PIN nicht verifiziert";
+		notify_pin_bad_text = "GoID ist gesperrt";
+	}
+
+	# GoID with fingerprint sensor and PIN pad
+	card_atr 3B:8E:80:01:47:6f:49:44:00:00:00:00:00:00:00:00:00:00:00 {
+		atrmask = "FF:FF:FF:FF:FF:FF:FF:FF:00:00:00:00:00:00:00:00:00:00:00";
+		driver = "sc-hsm";
+		force_protocol = "t1";
+		md_read_only = false;
+		md_supports_X509_enrollment = true;
+		md_supports_container_key_gen = true;
+		md_guid_as_label = true;
+		md_pinpad_dlg_main = "Fingerabdruck oder PIN eingeben";
+		md_pinpad_dlg_content_user = "Bitte verifizieren Sie Ihren Fingarabdruck oder Ihre PIN für die digitale Signatur auf der Karte.";
+		md_pinpad_dlg_content_admin = "Bitte geben Sie Ihre PIN zum Entsperren der Nutzer-PIN auf dem PIN-Pad ein.";
+		md_pinpad_dlg_expanded = "Dieses Fenster wird automatisch geschlossen, wenn die PIN oder der Fingerabdruck verifiziert wurde (Timeout nach 30 Sekunden). Nutzen Sie das PIN-Pad, um die Eingabe abzubrechen.";
+		md_pinpad_dlg_expanded_cancel = "Die Karte unterstützt das Abbrechen ausschließlich am PIN-Pad. Nutzen Sie das PIN-Pad, um die Eingabe abzubrechen oder entfernen Sie die Karte.";
+		md_pinpad_dlg_allow_cancel = false;
+		md_pinpad_dlg_timeout = 30;
+		notify_card_inserted = "GoID erkannt";
+		notify_card_inserted_text = "";
+		notify_card_removed = "GoID entfernt";
+		notify_pin_good = "Fingerabdruck bzw. PIN verifiziert";
+		notify_pin_good_text = "GoID ist entsperrt";
+		notify_pin_bad = "Fingerabdruck bzw. PIN nicht verifiziert";
+		notify_pin_bad_text = "GoID ist gesperrt";
+	}
+
+	# GoID with fingerprint sensor and PIN pad
+	card_atr 3B:8F:80:01:47:6f:49:44:00:00:00:00:00:00:00:00:00:00:00:00 {
+		atrmask = "FF:FF:FF:FF:FF:FF:FF:FF:00:00:00:00:00:00:00:00:00:00:00:00";
+		driver = "sc-hsm";
+		force_protocol = "t1";
+		md_read_only = false;
+		md_supports_X509_enrollment = true;
+		md_supports_container_key_gen = true;
+		md_guid_as_label = true;
+		md_pinpad_dlg_main = "Fingerabdruck oder PIN eingeben";
+		md_pinpad_dlg_content_user = "Bitte verifizieren Sie Ihren Fingarabdruck oder Ihre PIN für die digitale Signatur auf der Karte.";
+		md_pinpad_dlg_content_admin = "Bitte geben Sie Ihre PIN zum Entsperren der Nutzer-PIN auf dem PIN-Pad ein.";
+		md_pinpad_dlg_expanded = "Dieses Fenster wird automatisch geschlossen, wenn die PIN oder der Fingerabdruck verifiziert wurde (Timeout nach 30 Sekunden). Nutzen Sie das PIN-Pad, um die Eingabe abzubrechen.";
+		md_pinpad_dlg_expanded_cancel = "Die Karte unterstützt das Abbrechen ausschließlich am PIN-Pad. Nutzen Sie das PIN-Pad, um die Eingabe abzubrechen oder entfernen Sie die Karte.";
+		md_pinpad_dlg_allow_cancel = false;
+		md_pinpad_dlg_timeout = 30;
+		notify_card_inserted = "GoID erkannt";
+		notify_card_inserted_text = "";
+		notify_card_removed = "GoID entfernt";
+		notify_pin_good = "Fingerabdruck bzw. PIN verifiziert";
+		notify_pin_good_text = "GoID ist entsperrt";
+		notify_pin_bad = "Fingerabdruck bzw. PIN nicht verifiziert";
+		notify_pin_bad_text = "GoID ist gesperrt";
 	}
 
 	secure_messaging local_authentic  {
