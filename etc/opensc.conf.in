@@ -342,19 +342,27 @@ app default {
 		# md_pinpad_dlg_timeout = 0;
 
 		# Notification title and text when card was inserted
-		# notify_card_inserted "inserted title";
-		# notify_card_inserted_text "inserted text";
+		# Default: "Smart card detected"
+		# notify_card_inserted = "inserted title";
+		# Default: ATR of the card
+		# notify_card_inserted_text = "inserted text";
 		#
 		# Notification title and text when card was removed
+		# Default: "Smart card removed"
 		# notify_card_removed = "card removed";
+		# Default: Name of smart card reader
 		# notify_card_removed_text = "removed text";
 		#
 		# Notification title and text when PIN was verified
+		# Default: "PIN verified"
 		# notify_pin_good = "good PIN";
+		# Default: "Smart card is unlocked"
 		# notify_pin_good_text = "good text";
 		#
 		# Notification title and text when PIN was wrong
+		# Default: "PIN not verified"
 		# notify_pin_bad = "bad PIN";
+		# Default: "Smart card is locked"
 		# notify_pin_bad_text = "bad text";
 	# }
 
