@@ -39,6 +39,7 @@ struct jpki_private_data {
 	sc_file_t *mf;
 	int selected;
 	int logged_in;
+	int disable_sign_cert;
 };
 
 int jpki_select_ap(struct sc_card *card);

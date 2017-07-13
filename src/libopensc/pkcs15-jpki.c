@@ -81,6 +81,12 @@ sc_pkcs15emu_jpki_init(sc_pkcs15_card_t * p15card)
 		static int jpki_cert_authority[4] = {0, 0, 1, 1};
 		struct sc_pkcs15_cert_info cert_info;
 		struct sc_pkcs15_object cert_obj;
+
+		if (drvdata->disable_sign_cert) {
+			if (i == 1 || i == 3) {
+				continue;
+			}
+		}
 		memset(&cert_info, 0, sizeof(cert_info));
 		memset(&cert_obj, 0, sizeof(cert_obj));
 
@@ -122,6 +128,13 @@ sc_pkcs15emu_jpki_init(sc_pkcs15_card_t * p15card)
 		struct sc_pkcs15_auth_info pin_info;
 		struct sc_pkcs15_object pin_obj;
 		struct sc_pin_cmd_data pin_cmd_data;
+
+		if (drvdata->disable_sign_cert) {
+			if (i == 1) {
+				continue;
+			}
+		}
+
 		memset(&pin_info, 0, sizeof (pin_info));
 		memset(&pin_obj, 0, sizeof (pin_obj));
 		memset(&pin_cmd_data, 0, sizeof(pin_cmd_data));
@@ -167,6 +180,12 @@ sc_pkcs15emu_jpki_init(sc_pkcs15_card_t * p15card)
 
 		struct sc_pkcs15_prkey_info prkey_info;
 		struct sc_pkcs15_object prkey_obj;
+
+		if (drvdata->disable_sign_cert) {
+			if (i == 1) {
+				continue;
+			}
+		}
 
 		memset(&prkey_info, 0, sizeof (prkey_info));
 		memset(&prkey_obj, 0, sizeof (prkey_obj));

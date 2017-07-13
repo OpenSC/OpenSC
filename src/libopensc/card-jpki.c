@@ -97,6 +97,9 @@ jpki_init(struct sc_card *card)
 	sc_file_t *mf;
 	int flags;
 
+	scconf_block **blocks, *blk;
+	int i;
+
 	LOG_FUNC_CALLED(card->ctx);
 
 	drvdata = malloc(sizeof (struct jpki_private_data));
@@ -132,6 +135,23 @@ jpki_init(struct sc_card *card)
 	flags = SC_ALGORITHM_RSA_HASH_NONE | SC_ALGORITHM_RSA_PAD_PKCS1;
 	_sc_card_add_rsa_alg(card, 2048, flags, 0);
 
+	for (i = 0; card->ctx->conf_blocks[i]; i++) {
+		blocks = scconf_find_blocks(card->ctx->conf,
+					    card->ctx->conf_blocks[i],
+					    "card_driver", "jpki");
+		if (!blocks) {
+			continue;
+		}
+		blk = blocks[0];
+		free(blocks);
+		if (blk == NULL) {
+			continue;
+		}
+		drvdata->disable_sign_cert = scconf_get_bool(blk, "disable_sign_cert", 0);
+		if (drvdata->disable_sign_cert) {
+			sc_log(card->ctx, "disabled sign cert");
+		}
+	}
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
