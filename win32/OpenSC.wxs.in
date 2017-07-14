@@ -282,9 +282,6 @@
             <?endif ?>
             <?ifdef OpenPACE ?>
               <Directory Id="INSTALLDIR_CVC" Name="cvc">
-                <Component Id="UTSRCACC100001" Guid="*" Win64="$(var.Win64YesNo)">
-                  <File Source="$(var.SOURCE_DIR)\etc\UTSRCACC100001"/>
-                </Component>
                 <Component Id="DESRCACC100001" Guid="*" Win64="$(var.Win64YesNo)">
                   <File Source="$(var.SOURCE_DIR)\etc\DESRCACC100001"/>
                 </Component>
@@ -315,7 +312,6 @@
           <ComponentRef Id="smm_local.dll"/>
         <?endif ?>
         <?ifdef OpenPACE ?>
-          <ComponentRef Id="UTSRCACC100001"/>
           <ComponentRef Id="DESRCACC100001"/>
         <?endif ?>
       </Feature>
