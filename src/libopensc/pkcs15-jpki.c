@@ -177,7 +177,7 @@ sc_pkcs15emu_jpki_init(sc_pkcs15_card_t * p15card)
 			"User Authentication Key",
 			"Digital Signature Key"
 		};
-
+		static int prkey_user_consent[2] = { 0, 1 };
 		struct sc_pkcs15_prkey_info prkey_info;
 		struct sc_pkcs15_object prkey_obj;
 
@@ -200,7 +200,7 @@ sc_pkcs15emu_jpki_init(sc_pkcs15_card_t * p15card)
 		strlcpy(prkey_obj.label, prkey_name[i], sizeof (prkey_obj.label));
 		prkey_obj.auth_id.len = 1;
 		prkey_obj.auth_id.value[0] = prkey_pin[i];
-		prkey_obj.user_consent = 0;
+		prkey_obj.user_consent = prkey_user_consent[i];
 		prkey_obj.flags = SC_PKCS15_CO_FLAG_PRIVATE;
 
 		rc = sc_pkcs15emu_add_rsa_prkey(p15card, &prkey_obj, &prkey_info);
