@@ -1,4 +1,118 @@
 NEWS for OpenSC -- History of user visible changes
+
+# New in 0.17.0; 2016-07-17
+## Support for new Cards
+* CAC (Common Access Card)
+* GoID (SC-HSM with built-in PIN pad and fingerprint sensor)
+* Coolkey
+* JPKI (Japanese Individual Number Card)
+* nPA (German ID card, eSign Application)
+## General Improvements
+* PKCS#15
+    * Implemented file caching based on card's contact-less UID
+    * Cache EF.ODF and EF.TokenInfo
+    * File caching is done transparently when the user sets the config option.
+* `opensc.conf`
+    * Added `disable_popups` for disabling internal UI
+    * All Windows specific reader configuration is handled by the pcsc driver (cardmod driver was removed)
+* Build Environment
+    * Allow setting `PKG_CONFIG_PATH` for macOS build
+    * Added compatibility with Visual Studio 2015
+    * Allow building against LibreSSL
+    * Allow building against OpenSSL 1.1.0
+    * Allow building against WiX 3.11
+    * Allow building minidriver with MinGW
+    * Include OpenPACE library by default
+    * Removed `BUILD_ON`/`BUILD_FOR` variable
+* Simplified installer on macOS and Windows
+* Added support for PIN commands via PC/SC escape commands
+* Added support for card reader access via CryptoTokenKit
+* Added support for PIN entry on card for verification/unblock/change
+* Recognize T=0 limitation of sending 255 bytes
+* Force T=1 for contactless cards
+* Allow setting driver via `OPENSC_DRIVER` environment variable
+* Fixed many bugs
+* Fixed many compiler warnings
+* Fixed possible issues (memory corruptions, memory leaks, double free, ...)
+* Internal refactoring and cleanup
+## PKCS#11
+* Move PIN type label front of description
+* `C_GetTokenInfo` read the login status from the card if possible
+* Don't use ':' in the token name (#849)
+* Install `opensc-pkcs11.pc` for usage with `pkg-config`
+* Don't shrink the number of slots (#629)
+* Add session handle uniqueness check to PKCS#11 `C_OpenSession()`
+* Activate functionality of `C_WaitForSlot()` for pcsc-lite >= 1.8.22
+## Minidriver
+* Support PIN unblocking in minidriver via PUK as response
+* Added support for Session PIN
+## Tokend
+* Allow usage of readers PIN pad by entering an empty PIN
+## OpenSC Tools
+* Fixed Bash completion (#782)
+* `opensc-tool`
+    * Added `--reset` option
+* `opensc-explorer`
+    * Show tag 0x82 for unknown files
+* `pkcs15-tool`
+    * Fixed `--read-ssh-key` crash (#788)
+    * Added `--clear-cache`
+    * Fixed locking the card on Windows (#868)
+    * Add `--list-info` option
+    * Make `--list-...` messages consistent
+    * Add `--short` option
+    * `--read-data-object`: Do not print data to terminal when output file is given
+    * Reword `--no-prompt` to `--use-pinpad`, old option still available as alias
+    * Added `--test-session-pin` option
+* `pkcs15-init`
+    * Fix using PINPAD to verify PIN (#856)
+    * Fixed locking the card on Windows (#868)
+    * Added `--secret-key-algorithm` option
+    * Print more detailed secret key information
+* `pkcs11-tool`
+    * Added `keygen` for secret key generation
+    * Better handling of PIN (re-) validation
+    * Fixed --id for `C_GenerateKey`, DES and DES3 keygen mechanism (#857)
+    * Added `--derive-pass-der` option
+    * Added `--generate-random` option
+    * Add GOSTR3410 keypair generation
+* `npa-tool` (new)
+    * Allows read/write access to EAC tokens
+    * Allows PIN management for EAC tokens
+* `gids-tool`
+    * Fixed entering SN via command line
+* `sc-hsm-tool`
+    * Added `--print-dkek-share` (hidden from the user)
+    * Fixed locking the card on Windows (#868)
+## CardOS
+* Better support for CardOS 5.3
+## DNIe
+* Fixed interaction with DNIe UI
+* Added support for DNIe 3.0
+## ePass2003
+* Add new ATR for entersafe PKI card
+* Solved Incorrect PIN raise wrong CKR error
+## GemsafeV1
+* PTeid: add objects (SOD, TRACe, CA) and fix flags
+* PTeid: Support PIN max tries and tries left report
+* PTeid: Properly report cards with 2048b keys.
+## MyEID
+* Fix to ECDH implementation (#756)
+* Added support for symmetric keys
+## OpenPGP
+* Improve handling of OpenPGP card PIN change and unblock commands
+## PIV
+* Some workarounds for PIV-alike cards (e.g. Yubikey)
+* Change driver's short name to 'PIV-II'
+* Use certificate's keyUsage to set PKCS#11 key attributes
+## SC-HSM
+* Use PKCS#15 file cache
+* Prevent unnecessary applet selection and state resets
+* Added support for session pin
+* Fixed forcing a card driver via opensc.conf
+## STARCOS
+* Read the maximum transcive sice from the card's ATR (#765)
+
 New in 0.16.0; 2016-05-15
 * build
     link OpenSSL in static
