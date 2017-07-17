@@ -26,10 +26,11 @@
 #include <stdlib.h>
 
 #ifndef _WIN32
-#include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <unistd.h>
 #else
+#include <windows.h>
 #include <io.h>
 #endif
 
@@ -537,6 +538,9 @@ int main(int argc, char * argv[])
 	CK_RV rv;
 
 #ifdef _WIN32
+	char expanded_val[PATH_MAX];
+	DWORD expanded_len;
+
 	if(_setmode(_fileno(stdout), _O_BINARY ) == -1)
 		util_fatal("Cannot set FMODE to O_BINARY");
 	if(_setmode(_fileno(stdin), _O_BINARY ) == -1)
@@ -843,6 +847,13 @@ int main(int argc, char * argv[])
 
 	if (action_count == 0)
 		util_print_usage_and_die(app_name, options, option_help, NULL);
+
+#ifdef _WIN32
+	expanded_len = PATH_MAX;
+	expanded_len = ExpandEnvironmentStringsA(opt_module, expanded_val, expanded_len);
+	if (0 < expanded_len && expanded_len < sizeof expanded_val)
+		opt_module = expanded_val;
+#endif
 
 	module = C_LoadModule(opt_module, &p11);
 	if (module == NULL)

@@ -36,12 +36,6 @@
 extern "C" {
 #endif
 
-#if defined(_WIN32) || defined(USE_CYGWIN)
-#define PKCS11_DEFAULT_MODULE_NAME      "opensc-pkcs11.dll"
-#else
-#define PKCS11_DEFAULT_MODULE_NAME      "opensc-pkcs11.so"
-#endif
-
 #define SC_PKCS11_PIN_UNBLOCK_NOT_ALLOWED	0
 #define SC_PKCS11_PIN_UNBLOCK_UNLOGGED_SETPIN	1
 #define SC_PKCS11_PIN_UNBLOCK_SCONTEXT_SETPIN	2

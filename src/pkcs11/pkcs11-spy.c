@@ -172,7 +172,7 @@ init_spy(void)
 				}
 			}
 
-	                if( (rc == ERROR_SUCCESS) && (temp_len < PATH_MAX) )
+			if( (rc == ERROR_SUCCESS) && (temp_len < PATH_MAX) )
 				output = temp_path;
 			RegCloseKey( hKey );
 		}
