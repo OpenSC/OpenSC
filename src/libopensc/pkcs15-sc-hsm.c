@@ -646,10 +646,12 @@ static int sc_pkcs15emu_sc_hsm_add_prkd(sc_pkcs15_card_t * p15card, u8 keyid) {
 
 	if (efbin[0] == 0x67) {		/* Decode CSR and create public key object */
 		sc_pkcs15emu_sc_hsm_add_pubkey(p15card, efbin, len, key_info, prkd.label);
+		free(key_info);
 		return SC_SUCCESS;		/* Ignore any errors */
 	}
 
 	if (efbin[0] != 0x30) {
+		free(key_info);
 		return SC_SUCCESS;
 	}
 
@@ -670,6 +672,9 @@ static int sc_pkcs15emu_sc_hsm_add_prkd(sc_pkcs15_card_t * p15card, u8 keyid) {
 
 	strlcpy(cert_obj.label, prkd.label, sizeof(cert_obj.label));
 	r = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
+
+	free(key_info);
+
 	LOG_TEST_RET(card->ctx, r, "Could not add certificate");
 
 	return SC_SUCCESS;
