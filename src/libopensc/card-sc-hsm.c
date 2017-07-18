@@ -23,6 +23,7 @@
 #if HAVE_CONFIG_H
 #include "config.h"
 #endif
+#ifdef ENABLE_SM		/* empty file without SM enabled */
 
 #include <string.h>
 #include <stdlib.h>
@@ -402,7 +403,7 @@ static int sc_hsm_soc_biomatch(sc_card_t *card, struct sc_pin_cmd_data *data,
 
 
 
-#ifdef ENABLE_OPENPACE
+#if defined(ENABLE_OPENPACE) && defined(ENABLE_OPENSSL)
 #include "sm/sm-eac.h"
 #include <eac/cv_cert.h>
 #include <eac/eac.h>
@@ -1644,4 +1645,4 @@ struct sc_card_driver * sc_get_sc_hsm_driver(void)
 {
 	return sc_get_driver();
 }
-
+#endif	/* #ifdef ENABLE_SM */

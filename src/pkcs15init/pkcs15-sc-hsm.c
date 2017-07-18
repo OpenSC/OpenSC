@@ -21,6 +21,7 @@
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
+#ifdef ENABLE_SM		/* empty file without SM enabled */
 
 #include <stdlib.h>
 #include <string.h>
@@ -635,4 +636,4 @@ sc_pkcs15init_get_sc_hsm_ops(void)
 {
 	return &sc_pkcs15init_sc_hsm_operations;
 }
-
+#endif	/* #ifdef ENABLE_SM */

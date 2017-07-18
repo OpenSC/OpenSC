@@ -21,6 +21,7 @@
 #if HAVE_CONFIG_H
 #include "config.h"
 #endif
+#ifdef ENABLE_SM		/* empty file without SM enabled */
 
 #include <stdlib.h>
 #include <string.h>
@@ -1004,3 +1005,4 @@ int sc_pkcs15emu_sc_hsm_init_ex(sc_pkcs15_card_t *p15card,
 		return sc_pkcs15emu_sc_hsm_init(p15card);
 	}
 }
+#endif	/* #ifdef ENABLE_SM */

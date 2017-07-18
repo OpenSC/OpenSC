@@ -53,7 +53,9 @@ struct sc_pkcs15_emulator_handler builtin_emulators[] = {
 	{ "entersafe",  sc_pkcs15emu_entersafe_init_ex  },
 	{ "pteid",	sc_pkcs15emu_pteid_init_ex	},
 	{ "oberthur",   sc_pkcs15emu_oberthur_init_ex	},
+#ifdef ENABLE_SM
 	{ "sc-hsm",	sc_pkcs15emu_sc_hsm_init_ex	},
+#endif
 	{ "dnie",       sc_pkcs15emu_dnie_init_ex   },
 	{ "gids",       sc_pkcs15emu_gids_init_ex   },
 	{ "iasecc",	sc_pkcs15emu_iasecc_init_ex   },
