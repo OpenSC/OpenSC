@@ -1,6 +1,6 @@
 NEWS for OpenSC -- History of user visible changes
 
-# New in 0.17.0; 2016-07-17
+# New in 0.17.0; 2016-07-18
 ## Support for new Cards
 * CAC (Common Access Card)
 * GoID (SC-HSM with built-in PIN pad and fingerprint sensor)
