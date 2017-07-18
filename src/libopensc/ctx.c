@@ -100,7 +100,9 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 	{ "rutoken_ecp",(void *(*)(void)) sc_get_rtecp_driver },
 	{ "westcos",	(void *(*)(void)) sc_get_westcos_driver },
 	{ "myeid",      (void *(*)(void)) sc_get_myeid_driver },
-	{ "sc-hsm",		(void *(*)(void)) sc_get_sc_hsm_driver },
+#ifdef ENABLE_SM
+	{ "sc-hsm",	(void *(*)(void)) sc_get_sc_hsm_driver },
+#endif
 #if defined(ENABLE_OPENSSL) && defined(ENABLE_SM)
 	{ "dnie",       (void *(*)(void)) sc_get_dnie_driver },
 #endif
