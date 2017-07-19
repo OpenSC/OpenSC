@@ -614,18 +614,15 @@ iasecc_init_mi(struct sc_card *card)
 
 	resp_len = sizeof(resp);
 	rv = iasecc_select_aid(card, &MIIASECC_AID, resp, &resp_len);
-	LOG_TEST_GOTO_ERR(ctx, rv, "Could not select MI's AID");
 
 	rv = iasecc_mi_match(card);
-	LOG_TEST_GOTO_ERR(ctx, rv, "Could not match MI's AID");
 
-	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+	if(rv) {
+		card->type = SC_CARD_TYPE_IASECC_MI2;
+		rv = iasecc_init_sagem(card);
+	}
 
-err:
-	card->type = SC_CARD_TYPE_IASECC_MI2;
-
-	rv = iasecc_init_sagem(card);
-	LOG_TEST_RET(ctx, rv, "Could not fallback to generic IAS/ECC Sagem/Morpho");
+	LOG_TEST_RET(ctx, rv, "Could not select MI's AID");
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
