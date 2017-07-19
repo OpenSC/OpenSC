@@ -60,10 +60,12 @@ install:
           Rename-Item -path "c:\openpace-${env:OPENPACE_VER}" -newName "openpace"
         }
       }
+      If (!(Test-Path cngsdk.msi )) {
+          appveyor DownloadFile "http://download.microsoft.com/download/2/C/9/2C93059C-0532-42DF-8C24-9AEAFF00768E/cngsdk.msi"
+      }
   - ps: $env:VSCOMNTOOLS=(Get-Content ("env:VS" + "$env:VSVER" + "0COMNTOOLS"))
   - echo "Using Visual Studio %VSVER%.0 at %VSCOMNTOOLS%"
   - call "%VSCOMNTOOLS%\..\..\VC\vcvarsall.bat" %VCVARS_PLATFORM%
-  - appveyor DownloadFile "http://download.microsoft.com/download/2/C/9/2C93059C-0532-42DF-8C24-9AEAFF00768E/cngsdk.msi"
   - cngsdk.msi /quiet
   - uname -a
   - set
@@ -115,6 +117,7 @@ cache:
   - C:\openpace -> appveyor.yml
   - C:\openpace-Win32 -> appveyor.yml
   - C:\openpace-Win64 -> appveyor.yml
+  - cngsdk.msi -> appveyor.yml
 
 deploy:
   - provider: GitHub
