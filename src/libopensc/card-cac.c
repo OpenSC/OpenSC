@@ -390,9 +390,7 @@ static int cac_apdu_io(sc_card_t *card, int ins, int p1, int p2,
 		goto err;
 	}
 
-	if (apdu.sw1 == 0x61) {
-		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	}
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 
 	if (r < 0) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Card returned error ");
