@@ -520,16 +520,42 @@ sc_transmit(sc_card_t *card, sc_apdu_t *apdu)
 
 	LOG_FUNC_CALLED(ctx);
 
-	r = sc_single_transmit(card, apdu);
-	LOG_TEST_RET(ctx, r, "transmit APDU failed");
+	if (card->type == SC_CARD_TYPE_ENTERSAFE_FTCOS_EPASS2003)
+	{
+		struct sc_apdu *sm_apdu = NULL;
+		card->sm_ctx.ops.get_sm_apdu(card, apdu, &sm_apdu); //cache plain apdu and buildSafe Apdu.
+		sm_apdu->flags ^= SC_APDU_FLAGS_NO_SM;
+
+		r = sc_single_transmit(card, sm_apdu);
+		LOG_TEST_RET(ctx, r, "transmit APDU failed");
+		card->sm_ctx.ops.free_sm_apdu(card, apdu, &sm_apdu);
+	}
+	else
+	{
+		r = sc_single_transmit(card, apdu);
+		LOG_TEST_RET(ctx, r, "transmit APDU failed");
+	}
 
 	/* ok, the APDU was successfully transmitted. Now we have two special cases:
 	 * 1. the card returned 0x6Cxx: in this case APDU will be re-trasmitted with Le set to SW2
 	 * (possible only if response buffer size is larger than new Le = SW2)
 	 */
 	if (apdu->sw1 == 0x6C && (apdu->flags & SC_APDU_FLAGS_NO_RETRY_WL) == 0)
-		r = sc_set_le_and_transmit(card, apdu, olen);
-	LOG_TEST_RET(ctx, r, "cannot re-transmit APDU ");
+	{
+		if(card->type == SC_CARD_TYPE_ENTERSAFE_FTCOS_EPASS2003)
+		{
+			struct sc_apdu *sm_apdu = NULL;
+			card->sm_ctx.ops.get_sm_apdu(card, apdu, &sm_apdu);
+			sm_apdu->flags ^= SC_APDU_FLAGS_NO_SM;
+			r = sc_set_le_and_transmit(card, sm_apdu, olen);
+			card->sm_ctx.ops.free_sm_apdu(card, apdu, &sm_apdu);
+		}
+		else
+		{
+			r = sc_set_le_and_transmit(card, apdu, olen);
+			LOG_TEST_RET(ctx, r, "cannot re-transmit APDU ");
+		}
+	}
 
 	/* 2. the card returned 0x61xx: more data can be read from the card
 	 *    using the GET RESPONSE command (mostly used in the T0 protocol).
