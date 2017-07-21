@@ -1,4 +1,4 @@
-version: 0.16.0.{build}
+version: 0.17.0.{build}
 
 platform:
   - x86
@@ -14,13 +14,6 @@ environment:
   matrix:
     - VSVER: 14
     - VSVER: 12
-    - VSVER: 10
-
-matrix:
-  allow_failures:
-    # not included in AppVeyor right now
-    - platform: x64
-      VSVER: 10
 
 install:
   - ps: if ($env:APPVEYOR_PULL_REQUEST_NUMBER -and $env:APPVEYOR_BUILD_NUMBER -ne ((Invoke-RestMethod `
