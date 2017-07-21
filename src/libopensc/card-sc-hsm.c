@@ -500,7 +500,7 @@ static int sc_hsm_perform_chip_authentication(sc_card_t *card)
 		goto err;
 	}
 	EVP_PKEY_free(ctx->ca_ctx->ka_ctx->key);
-	CRYPTO_add(&ctx->ta_ctx->pub_key->references, 1, CRYPTO_LOCK_EVP_PKEY);
+	EVP_PKEY_up_ref(ctx->ta_ctx->pub_key);
 	ctx->ca_ctx->ka_ctx->key = ctx->ta_ctx->pub_key;
 
 	/* generate keys for CA */

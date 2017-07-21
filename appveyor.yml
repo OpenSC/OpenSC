@@ -29,8 +29,7 @@ install:
         throw "There are newer queued builds for this pull request, failing early." }
   - date /T & time /T
   - set PATH=C:\cygwin\bin;%PATH%
-  - set OPENSSL_VER=1_0_2f
-  - set OPENPACE_VER=1.0.1
+  - set OPENPACE_VER=1.0.2
   - set ZLIB_VER_DOT=1.2.8
   - ps: $env:PACKAGE_NAME=(git describe --tags)
   - ps: >-
@@ -49,10 +48,6 @@ install:
       }
   - ps: >-
       If (!($env:Configuration -Like "*Light*")) {
-        If (!(Test-Path -Path "C:\OpenSSL-${env:OPENSSL_PF}" )) {
-          Start-FileDownload https://slproweb.com/download/${env:OPENSSL_PF}OpenSSL-${env:OPENSSL_VER}.exe -FileName C:\WinOpenSSL.exe
-          C:\WinOpenSSL.exe /SILENT /VERYSILENT /SP- /SUPPRESSMSGBOXES /NORESTART
-        }
         $env:NMAKE_EXTRA="OPENSSL_DEF=/DENABLE_OPENSSL ${env:NMAKE_EXTRA}"
         If (!(Test-Path C:\zlib )) {
           appveyor DownloadFile "https://github.com/madler/zlib/archive/v${env:ZLIB_VER_DOT}.zip" -FileName zlib.zip
@@ -92,8 +87,8 @@ build_script:
           # build libeac.lib as a static library
           xcopy C:\openpace C:\openpace-${env:OPENSSL_PF} /e /i /y /s
           cd C:\openpace-${env:OPENSSL_PF}\src
-          cl /IC:\OpenSSL-${env:OPENSSL_PF}\include /I. /DX509DIR=\`"/\`" /DCVCDIR=\`"/\`" /W3 /D_CRT_SECURE_NO_DEPRECATE /DWIN32_LEAN_AND_MEAN /GS /MT /c ca_lib.c cv_cert.c cvc_lookup.c x509_lookup.c eac_asn1.c eac.c eac_ca.c eac_dh.c eac_ecdh.c eac_kdf.c eac_lib.c eac_print.c eac_util.c misc.c pace.c pace_lib.c pace_mappings.c ri.c ri_lib.c ta.c ta_lib.c objects.c
-          lib /out:libeac.lib ca_lib.obj cv_cert.obj cvc_lookup.obj x509_lookup.obj eac_asn1.obj eac.obj eac_ca.obj eac_dh.obj eac_ecdh.obj eac_kdf.obj eac_lib.obj eac_print.obj eac_util.obj misc.obj pace.obj pace_lib.obj pace_mappings.obj ri.obj ri_lib.obj ta.obj ta_lib.obj objects.obj
+          cl /IC:\OpenSSL-${env:OPENSSL_PF}\include /I. /DX509DIR=\`"/\`" /DCVCDIR=\`"/\`" /W3 /D_CRT_SECURE_NO_DEPRECATE /DWIN32_LEAN_AND_MEAN /GS /MT /DHAVE_ASN1_STRING_GET0_DATA=1 /DHAVE_DECL_OPENSSL_ZALLOC=1 /DHAVE_DH_GET0_KEY=1 /DHAVE_DH_GET0_PQG=1 /DHAVE_DH_SET0_KEY=1 /DHAVE_DH_SET0_PQG=1 /DHAVE_ECDSA_SIG_GET0=1 /DHAVE_ECDSA_SIG_SET0=1 /DHAVE_EC_KEY_METHOD=1 /DHAVE_RSA_GET0_KEY=1 /DHAVE_RSA_SET0_KEY=1 /c ca_lib.c cv_cert.c cvc_lookup.c x509_lookup.c eac_asn1.c eac.c eac_ca.c eac_dh.c eac_ecdh.c eac_kdf.c eac_lib.c eac_print.c eac_util.c misc.c pace.c pace_lib.c pace_mappings.c ri.c ri_lib.c ta.c ta_lib.c objects.c ssl_compat.c
+          lib /out:libeac.lib ca_lib.obj cv_cert.obj cvc_lookup.obj x509_lookup.obj eac_asn1.obj eac.obj eac_ca.obj eac_dh.obj eac_ecdh.obj eac_kdf.obj eac_lib.obj eac_print.obj eac_util.obj misc.obj pace.obj pace_lib.obj pace_mappings.obj ri.obj ri_lib.obj ta.obj ta_lib.obj objects.obj ssl_compat.obj
           cd C:\projects\OpenSC
         }
         $env:NMAKE_EXTRA="OPENPACE_DEF=/DENABLE_OPENPACE OPENPACE_DIR=C:\openpace-${env:OPENSSL_PF} ${env:NMAKE_EXTRA}"
@@ -114,8 +109,6 @@ build_script:
       }
 
 cache:
-  - C:\OpenSSL-Win32 -> appveyor.yml
-  - C:\OpenSSL-Win64 -> appveyor.yml
   - C:\zlib -> appveyor.yml
   - C:\zlib-Win32 -> appveyor.yml
   - C:\zlib-Win64 -> appveyor.yml
