@@ -425,7 +425,7 @@ static int format_mse_cdata(struct sc_context *ctx, int protocol,
 	if (key_reference1 && key_reference1_len) {
 		data->key_reference1 = ASN1_OCTET_STRING_new();
 		if (!data->key_reference1
-				|| !M_ASN1_OCTET_STRING_set(
+				|| !ASN1_OCTET_STRING_set(
 					data->key_reference1, key_reference1, key_reference1_len)) {
 			sc_debug(ctx, SC_LOG_DEBUG_VERBOSE, "Error setting key reference 1 of MSE:Set AT data");
 			r = SC_ERROR_INTERNAL;
@@ -436,7 +436,7 @@ static int format_mse_cdata(struct sc_context *ctx, int protocol,
 	if (key_reference2 && key_reference2_len) {
 		data->key_reference2 = ASN1_OCTET_STRING_new();
 		if (!data->key_reference2
-				|| !M_ASN1_OCTET_STRING_set(
+				|| !ASN1_OCTET_STRING_set(
 					data->key_reference2, key_reference2, key_reference2_len)) {
 			sc_debug(ctx, SC_LOG_DEBUG_VERBOSE, "Error setting key reference 2 of MSE:Set AT data");
 			r = SC_ERROR_INTERNAL;
@@ -447,7 +447,7 @@ static int format_mse_cdata(struct sc_context *ctx, int protocol,
 	if (eph_pub_key && eph_pub_key_len) {
 		data->eph_pub_key = ASN1_OCTET_STRING_new();
 		if (!data->eph_pub_key
-				|| !M_ASN1_OCTET_STRING_set(
+				|| !ASN1_OCTET_STRING_set(
 					data->eph_pub_key, eph_pub_key, eph_pub_key_len)) {
 			sc_debug(ctx, SC_LOG_DEBUG_VERBOSE, "Error setting ephemeral Public Key of MSE:Set AT data");
 			r = SC_ERROR_INTERNAL;
@@ -710,7 +710,7 @@ static int npa_gen_auth_2_map_nonce(sc_card_t *card,
 	}
 	c_data->mapping_data = ASN1_OCTET_STRING_new();
 	if (!c_data->mapping_data
-			|| !M_ASN1_OCTET_STRING_set(
+			|| !ASN1_OCTET_STRING_set(
 				c_data->mapping_data, in, in_len)) {
 		ssl_error(card->ctx);
 		r = SC_ERROR_INTERNAL;
@@ -802,7 +802,7 @@ static int npa_gen_auth_3_perform_key_agreement(sc_card_t *card,
 	}
 	c_data->eph_pub_key = ASN1_OCTET_STRING_new();
 	if (!c_data->eph_pub_key
-			|| !M_ASN1_OCTET_STRING_set(
+			|| !ASN1_OCTET_STRING_set(
 				c_data->eph_pub_key, in, in_len)) {
 		ssl_error(card->ctx);
 		r = SC_ERROR_INTERNAL;
@@ -895,7 +895,7 @@ static int npa_gen_auth_4_mutual_authentication(sc_card_t *card,
 	}
 	c_data->auth_token = ASN1_OCTET_STRING_new();
 	if (!c_data->auth_token
-			|| !M_ASN1_OCTET_STRING_set(
+			|| !ASN1_OCTET_STRING_set(
 				c_data->auth_token, in, in_len)) {
 		ssl_error(card->ctx);
 		r = SC_ERROR_INTERNAL;
@@ -1684,7 +1684,7 @@ static int npa_gen_auth_ca(sc_card_t *card, const BUF_MEM *eph_pub_key,
 	}
 	c_data->eph_pub_key = ASN1_OCTET_STRING_new();
 	if (!c_data->eph_pub_key
-			|| !M_ASN1_OCTET_STRING_set( c_data->eph_pub_key,
+			|| !ASN1_OCTET_STRING_set( c_data->eph_pub_key,
 				eph_pub_key->data, eph_pub_key->length)) {
 		ssl_error(card->ctx);
 		r = SC_ERROR_INTERNAL;
