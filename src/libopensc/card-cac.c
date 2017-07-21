@@ -1106,6 +1106,7 @@ static int cac_select_file_by_type(sc_card_t *card, const sc_path_t *in_path, sc
 		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 		if (apdu.sw1 == 0x6A && apdu.sw2 == 0x86)   {
 			apdu.p2 = 0x00;
+			apdu.resplen = sizeof(buf);
 			if (sc_transmit_apdu(card, &apdu) == SC_SUCCESS)
 				r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 		}
