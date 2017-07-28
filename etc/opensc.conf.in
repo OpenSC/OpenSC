@@ -783,6 +783,11 @@ app tokend {
 		#
 		# score = 10;
 	}
+
+	# workaround for PIN protected certificate issue #1097
+	card_driver jpki {
+		disable_sign_cert = true;
+	}
 }
 
 # Used by OpenSC minidriver on Windows only
