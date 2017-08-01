@@ -188,6 +188,37 @@ sc_pkcs15emu_jpki_init(sc_pkcs15_card_t * p15card)
 		if (rc < 0)
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 	}
+
+	/* add public keys */
+	for (i = 0; i < 2; i++) {
+		static int pubkey_id[2] = { 1, 2 };
+		static const char *jpki_pubkey_names[2] = {
+			"User Authentication Public Key",
+			"Digital Signature Public Key"
+		};
+		struct sc_pkcs15_pubkey_info pubkey_info;
+		struct sc_pkcs15_object pubkey_obj;
+		static char const *jpki_pubkey_paths[2] = {
+			"000A",
+			"0001"
+		};
+
+		memset(&pubkey_info, 0, sizeof (pubkey_info));
+		memset(&pubkey_obj, 0, sizeof (pubkey_obj));
+
+		strlcpy(pubkey_obj.label, jpki_pubkey_names[i], sizeof (pubkey_obj.label));
+		pubkey_info.id.len = 1;
+		pubkey_info.id.value[0] = pubkey_id[i];
+		pubkey_info.native = 1;
+		pubkey_info.key_reference = i + 1;
+
+		sc_format_path(jpki_pubkey_paths[i], &pubkey_info.path);
+		pubkey_info.path.type = SC_PATH_TYPE_FILE_ID;
+
+		rc = sc_pkcs15emu_add_rsa_pubkey(p15card, &pubkey_obj, &pubkey_info);
+		if (rc < 0)
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
+	}
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
