@@ -108,10 +108,16 @@ void notify_daemon(void)
 		return;
 	}
 
-	while (run_daemon) {
-		if (0 > sc_wait_for_event(ctx, event_mask, &event_reader,
-					&event, timeout, &reader_states)) {
-			error_count++;
+	while (run_daemon && error_count < 1000) {
+		r = sc_wait_for_event(ctx, event_mask,
+				&event_reader, &event, timeout, &reader_states);
+		if (r < 0) {
+			if (r == SC_ERROR_NO_READERS_FOUND) {
+				/* No readers available, PnP notification not supported */
+				Sleep(200);
+			} else {
+				error_count++;
+			}
 			continue;
 		}
 
@@ -140,6 +146,9 @@ void notify_daemon(void)
 	}
 
 	if (ctx) {
+		if (error_count >= 1000) {
+			sc_log(ctx, "Too many errors; aborting.");
+		}
 		/* free `reader_states` */
 		sc_wait_for_event(ctx, 0, NULL, NULL, 0, &reader_states);
 		reader_states = NULL;
