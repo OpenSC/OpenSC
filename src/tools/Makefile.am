@@ -14,8 +14,8 @@ do_subst = $(SED) \
 NPA_TOOL_BUILT_SOURCES = npa-tool-cmdline.h npa-tool-cmdline.c
 OPENSC_NOTIFY_BUILT_SOURCES = opensc-notify-cmdline.h opensc-notify-cmdline.c
 
-MAINTAINERCLEANFILES = $(srcdir)/Makefile.in $(srcdir)/versioninfo-tools.rc
-EXTRA_DIST = Makefile.mak versioninfo-tools.rc.in npa-tool.ggo.in npa-tool.1 opensc-notify.ggo.in
+MAINTAINERCLEANFILES = $(srcdir)/Makefile.in $(srcdir)/versioninfo-tools.rc $(srcdir)/versioninfo-opensc-notify.rc
+EXTRA_DIST = Makefile.mak versioninfo-tools.rc.in versioninfo-opensc-notify.rc.in npa-tool.ggo.in npa-tool.1 opensc-notify.ggo.in
 
 noinst_HEADERS = util.h fread_to_eof.h
 noinst_PROGRAMS = sceac-example
@@ -143,6 +143,7 @@ openpgp_tool_SOURCES += versioninfo-tools.rc
 iasecc_tool_SOURCES += versioninfo-tools.rc
 sc_hsm_tool_SOURCES += versioninfo-tools.rc
 gids_tool_SOURCES += versioninfo-tools.rc
+opensc_notify_SOURCES += versioninfo-opensc-notify.rc
 endif
 
 clean-local:

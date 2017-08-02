@@ -77,10 +77,6 @@ HINSTANCE sc_notify_instance = NULL;
 HWND hwndNotification = NULL;
 BOOL delete_icon = TRUE;
 #define IDI_SMARTCARD       102
-#define IDI_UNLOCKED        103
-#define IDI_LOCKED          104
-#define IDI_READER_EMPTY    105
-#define IDI_CARD_INSERTED   106
 UINT const WMAPP_NOTIFYCALLBACK = WM_APP + 1;
 static BOOL RestoreTooltip();
 
@@ -184,9 +180,10 @@ static BOOL RestoreTooltip()
 }
 
 static void notify_shell(struct sc_context *ctx,
-		const char *title, const char *text, WORD icon)
+		const char *title, const char *text, LPCTSTR icon_path, int icon_index)
 {
 	NOTIFYICONDATA nid = {0};
+	HICON icon = NULL;
 
 	nid.cbSize = sizeof(NOTIFYICONDATA);
     nid.uFlags = NIF_GUID;
@@ -199,12 +196,19 @@ static void notify_shell(struct sc_context *ctx,
 		nid.uFlags |= NIF_INFO;
 		strlcpy(nid.szInfo, text, ARRAYSIZE(nid.szInfo));
 	}
-	if (icon) {
-		nid.dwInfoFlags = NIIF_USER | NIIF_LARGE_ICON;
-		LoadIconMetric(sc_notify_instance, MAKEINTRESOURCEW(icon), LIM_LARGE, &nid.hBalloonIcon);
+	if (icon_path) {
+		ExtractIconEx(icon_path, icon_index, &icon, NULL, 1);
+		if (icon) {
+			nid.dwInfoFlags = NIIF_USER | NIIF_LARGE_ICON;
+			nid.hBalloonIcon = icon;
+		}
 	}
 
     Shell_NotifyIcon(NIM_MODIFY, &nid);
+
+	if (icon) {
+		DestroyIcon(icon);
+	}
 }
 
 void sc_notify_init(void)
@@ -224,36 +228,40 @@ void sc_notify_close(void)
 
 void sc_notify(const char *title, const char *text)
 {
-	notify_shell(NULL, title, text, 0);
+	notify_shell(NULL, title, text, NULL, 0);
 }
 
 void sc_notify_id(struct sc_context *ctx, struct sc_atr *atr,
 		struct sc_pkcs15_card *p15card, enum ui_str id)
 {
 	const char *title, *text;
-	WORD icon;
+	LPCTSTR icon_path = NULL;
+	int icon_index = 0;
 	title = ui_get_str(ctx, atr, p15card, id);
 	text = ui_get_str(ctx, atr, p15card, id+1);
 
 	switch (id) {
 		case NOTIFY_CARD_INSERTED:
-			icon = IDI_CARD_INSERTED;
+			icon_path = TEXT("%SYSTEMROOT%\\system32\\SCardDlg.dll");
+			icon_index = 3;
 			break;
 		case NOTIFY_CARD_REMOVED:
-			icon = IDI_READER_EMPTY;
+			icon_path = TEXT("%SYSTEMROOT%\\system32\\SCardDlg.dll");
+			icon_index = 2;
 			break;
 		case NOTIFY_PIN_GOOD:
-			icon = IDI_UNLOCKED;
+			icon_path = TEXT("%SYSTEMROOT%\\system32\\certmgr.dll");
+			icon_index = 16;
 			break;
 		case NOTIFY_PIN_BAD:
-			icon = IDI_LOCKED;
+			icon_path = TEXT("%SYSTEMROOT%\\system32\\certmgr.dll");
+			icon_index = 11;
 			break;
 		default:
-			icon = 0;
 			break;
 	}
 
-	notify_shell(ctx, title, text, icon);
+	notify_shell(ctx, title, text, icon_path, icon_index);
 }
 
 #elif defined(ENABLE_NOTIFY) && defined(__APPLE__)

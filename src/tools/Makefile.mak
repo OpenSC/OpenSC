@@ -11,9 +11,6 @@ TARGETS = opensc-tool.exe opensc-explorer.exe pkcs15-tool.exe pkcs15-crypt.exe \
 
 OBJECTS = util.obj npa-tool-cmdline.obj fread_to_eof.obj versioninfo-tools.res
 
-TARGET2 = opensc-notify.exe
-OBJECT2 = opensc-notify-cmdline.obj versioninfo-tools.res
-
 LIBS = $(TOPDIR)\src\common\common.lib \
 	   $(TOPDIR)\src\scconf\scconf.lib \
 	   $(TOPDIR)\src\libopensc\opensc.lib \
@@ -21,11 +18,14 @@ LIBS = $(TOPDIR)\src\common\common.lib \
 	   $(TOPDIR)\src\common\libpkcs11.lib \
 	   $(TOPDIR)\src\common\libscdl.lib
 
-all: $(TARGETS) $(TARGET2)
+all: $(TARGETS)
 
 $(TARGETS): $(OBJECTS) $(LIBS)
 
-$(TARGET2): $(OBJECT2) $(LIBS)
+opensc-notify.exe: opensc-notify-cmdline.obj versioninfo-opensc-notify.res $(LIBS)
+	cl $(COPTS) /c $*.c
+	link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj opensc-notify-cmdline.obj versioninfo-opensc-notify.res $(LIBS) $(OPENPACE_LIB) $(OPENSSL_LIB) gdi32.lib shell32.lib User32.lib ws2_32.lib
+	mt -manifest exe.manifest -outputresource:$@;1
 
 .c.exe:
 	cl $(COPTS) /c $<

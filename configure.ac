@@ -1049,6 +1049,7 @@ AC_CONFIG_FILES([
 	src/tests/regression/Makefile
 	src/tools/Makefile
 	src/tools/versioninfo-tools.rc
+	src/tools/versioninfo-opensc-notify.rc
 	src/smm/Makefile
 	src/minidriver/Makefile
 	src/minidriver/versioninfo-minidriver.rc
