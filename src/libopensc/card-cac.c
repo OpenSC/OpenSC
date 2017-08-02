@@ -607,16 +607,15 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 		if (r == SC_ERROR_INS_NOT_SUPPORTED) {
 			/* The CACv1 instruction is not recognized. Try with CACv2 */
 			card->type = SC_CARD_TYPE_CAC_II;
-			goto cac2;
-		}
-		if (r < 0)
+		} else if (r < 0)
 			goto done;
+	}
 
+	if ((card->type == SC_CARD_TYPE_CAC_I) && (priv->object_type == CAC_OBJECT_TYPE_CERT)) {
 		r = cac_cac1_get_cert_tag(card, val_len, &tl, &tl_len);
 		if (r < 0)
 			goto done;
 	} else {
-cac2:
 		r = cac_read_file(card, CAC_FILE_TAG, &tl, &tl_len);
 		if (r < 0)  {
 			goto done;
