@@ -746,6 +746,24 @@ int sc_check_apdu(struct sc_card *, const struct sc_apdu *);
  */
 int sc_bytes2apdu(sc_context_t *ctx, const u8 *buf, size_t len, sc_apdu_t *apdu);
 
+/** Encodes a APDU as an octet string
+ *  @param  ctx     sc_context_t object (used for logging)
+ *  @param  apdu    APDU to be encoded as an octet string
+ *  @param  proto   protocol version to be used
+ *  @param  out     output buffer of size outlen.
+ *  @param  outlen  size of hte output buffer
+ *  @return SC_SUCCESS on success and an error code otherwise
+ */
+int sc_apdu2bytes(sc_context_t *ctx, const sc_apdu_t *apdu,
+	unsigned int proto, u8 *out, size_t outlen);
+
+/** Calculates the length of the encoded APDU in octets.
+ *  @param  apdu   the APDU
+ *  @param  proto  the desired protocol
+ *  @return length of the encoded APDU
+ */
+size_t sc_apdu_get_length(const sc_apdu_t *apdu, unsigned int proto);
+
 int sc_check_sw(struct sc_card *card, unsigned int sw1, unsigned int sw2);
 
 /********************************************************************/

@@ -39,7 +39,7 @@
  *  @param  proto  the desired protocol
  *  @return length of the encoded APDU
  */
-static size_t sc_apdu_get_length(const sc_apdu_t *apdu, unsigned int proto)
+size_t sc_apdu_get_length(const sc_apdu_t *apdu, unsigned int proto)
 {
 	size_t ret = 4;
 
@@ -80,7 +80,7 @@ static size_t sc_apdu_get_length(const sc_apdu_t *apdu, unsigned int proto)
  *  @param  outlen  size of hte output buffer
  *  @return SC_SUCCESS on success and an error code otherwise
  */
-static int sc_apdu2bytes(sc_context_t *ctx, const sc_apdu_t *apdu,
+int sc_apdu2bytes(sc_context_t *ctx, const sc_apdu_t *apdu,
 	unsigned int proto, u8 *out, size_t outlen)
 {
 	u8     *p = out;
