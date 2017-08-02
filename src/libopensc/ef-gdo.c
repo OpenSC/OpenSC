@@ -21,8 +21,9 @@
 #include "config.h"
 #endif
 
-#include "internal.h"
 #include "asn1.h"
+#include "internal.h"
+#include <stdlib.h>
 
 static int
 sc_parse_ef_gdo_content(const unsigned char *gdo, size_t gdo_len,

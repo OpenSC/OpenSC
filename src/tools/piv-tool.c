@@ -459,7 +459,7 @@ static void print_serial(sc_card_t *in_card)
 		util_hex_dump_asc(stdout, serial.value, serial.len, -1);
 }
 
-int main(int argc, char * const argv[])
+int main(int argc, char *argv[])
 {
 	int err = 0, r, c, long_optind = 0;
 	int do_send_apdu = 0;

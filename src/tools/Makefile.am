@@ -113,7 +113,10 @@ npa-tool.1:
 opensc_notify_SOURCES = opensc-notify.c $(OPENSC_NOTIFY_BUILT_SOURCES)
 opensc_notify_LDADD = $(top_builddir)/src/libopensc/libopensc.la $(OPTIONAL_NOTIFY_LIBS)
 opensc_notify_CFLAGS = -I$(top_srcdir)/src $(OPTIONAL_NOTIFY_CFLAGS)
-opensc_notify_CFLAGS += -Wno-unused-but-set-variable -Wno-unknown-warning-option
+opensc_notify_CFLAGS += -Wno-unused-but-set-variable
+if HAVE_UNKNOWN_WARNING_OPTION
+opensc_notify_CFLAGS += -Wno-unknown-warning-option
+endif
 
 opensc-notify.c: $(abs_builddir)/opensc-notify.ggo $(OPENSC_NOTIFY_BUILT_SOURCES)
 
@@ -137,7 +140,10 @@ opensc-notify.1:
 egk_tool_SOURCES = egk-tool.c $(EGK_TOOL_BUILT_SOURCES)
 egk_tool_LDADD = $(top_builddir)/src/libopensc/libopensc.la $(OPTIONAL_ZLIB_LIBS)
 egk_tool_CFLAGS = -I$(top_srcdir)/src $(OPTIONAL_ZLIB_CFLAGS)
-egk_tool_CFLAGS += -Wno-unused-but-set-variable -Wno-unknown-warning-option
+egk_tool_CFLAGS += -Wno-unused-but-set-variable
+if HAVE_UNKNOWN_WARNING_OPTION
+egk_tool_CFLAGS += -Wno-unknown-warning-option
+endif
 
 egk-tool.c: $(abs_builddir)/egk-tool.ggo $(EGK_TOOL_BUILT_SOURCES)
 

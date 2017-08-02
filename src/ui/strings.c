@@ -20,8 +20,9 @@
 
 #include "libopensc/internal.h"
 #include "ui/strings.h"
-#include <string.h>
 #include <locale.h>
+#include <stdlib.h>
+#include <string.h>
 
 enum ui_langs {
 	EN,

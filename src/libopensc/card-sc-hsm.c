@@ -805,15 +805,15 @@ static int sc_hsm_write_ef(sc_card_t *card,
 	*p++ = idx & 0xFF;
 	*p++ = 0x53;
 	if (count < 128) {
-		*p++ = count;
+		*p++ = (u8) count;
 		len = 6;
 	} else if (count < 256) {
 		*p++ = 0x81;
-		*p++ = count;
+		*p++ = (u8) count;
 		len = 7;
 	} else {
 		*p++ = 0x82;
-		*p++ = count >> 8;
+		*p++ = (count >> 8) & 0xFF;
 		*p++ = count & 0xFF;
 		len = 8;
 	}
@@ -1199,8 +1199,11 @@ static int sc_hsm_initialize(sc_card_t *card, sc_cardctl_sc_hsm_init_param_t *pa
 	memcpy(p, params->options, 2);
 	p += 2;
 
+	if (params->user_pin_len > 0xFF) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
 	*p++ = 0x81;	// User PIN
-	*p++ = params->user_pin_len;
+	*p++ = (u8) params->user_pin_len;
 	memcpy(p, params->user_pin, params->user_pin_len);
 	p += params->user_pin_len;
 

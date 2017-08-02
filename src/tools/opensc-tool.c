@@ -668,7 +668,7 @@ static int card_reset(const char *reset_type)
 	return 0;
 }
 
-int main(int argc, char * const argv[])
+int main(int argc, char *argv[])
 {
 	int err = 0, r, c, long_optind = 0;
 	int do_info = 0;

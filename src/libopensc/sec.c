@@ -244,7 +244,7 @@ int sc_build_pin(u8 *buf, size_t buflen, struct sc_pin_cmd_pin *pin, int pad)
 			if (pin->data[i] < '0' || pin->data[i] > '9')
 				return SC_ERROR_INVALID_ARGUMENTS;
 		}
-		buf[0] = 0x20 | pin_len;
+		buf[0] = 0x20 | (u8) pin_len;
 		buf++;
 		buflen--;
 	}

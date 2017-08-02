@@ -1867,7 +1867,7 @@ static char *read_cmdline(FILE *script, char *prompt)
 	return buf;
 }
 
-int main(int argc, char * const argv[])
+int main(int argc, char *argv[])
 {
 	int r, c, long_optind = 0, err = 0;
 	char *line;
