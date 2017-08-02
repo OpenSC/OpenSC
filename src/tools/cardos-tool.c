@@ -1027,7 +1027,7 @@ static int cardos_change_startkey(const char *change_startkey_apdu)   {
 }
 #endif
 
-int main(int argc, char *const argv[])
+int main(int argc, char *argv[])
 {
 	int err = 0, r, c, long_optind = 0;
 	int do_info = 0;

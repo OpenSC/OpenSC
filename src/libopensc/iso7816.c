@@ -828,8 +828,10 @@ iso7816_set_security_env(struct sc_card *card,
 		*p++ = env->algorithm_ref & 0xFF;
 	}
 	if (env->flags & SC_SEC_ENV_FILE_REF_PRESENT) {
+		if (env->file_ref.len > 0xFF)
+			return SC_ERROR_INVALID_ARGUMENTS;
 		*p++ = 0x81;
-		*p++ = env->file_ref.len;
+		*p++ = (u8) env->file_ref.len;
 		assert(sizeof(sbuf) - (p - sbuf) >= env->file_ref.len);
 		memcpy(p, env->file_ref.value, env->file_ref.len);
 		p += env->file_ref.len;
@@ -839,7 +841,9 @@ iso7816_set_security_env(struct sc_card *card,
 			*p++ = 0x83;
 		else
 			*p++ = 0x84;
-		*p++ = env->key_ref_len;
+		if (env->key_ref_len > 0xFF)
+			return SC_ERROR_INVALID_ARGUMENTS;
+		*p++ = env->key_ref_len & 0xFF;
 		assert(sizeof(sbuf) - (p - sbuf) >= env->key_ref_len);
 		memcpy(p, env->key_ref, env->key_ref_len);
 		p += env->key_ref_len;

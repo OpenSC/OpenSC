@@ -156,15 +156,15 @@ static int format_le(size_t le, struct sc_asn1_entry *le_entry,
 
 	switch (*le_len) {
 		case 1:
-			p[0] = le;
+			p[0] = le & 0xff;
 			break;
 		case 2:
-			p[0] = le >> 8;
+			p[0] = (le >> 8) & 0xff;
 			p[1] = le & 0xff;
 			break;
 		case 3:
 			p[0] = 0x00;
-			p[1] = le >> 8;
+			p[1] = (le >> 8) & 0xff;
 			p[2] = le & 0xff;
 			break;
 		default:
