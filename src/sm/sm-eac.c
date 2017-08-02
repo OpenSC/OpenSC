@@ -1684,8 +1684,9 @@ static int npa_gen_auth_ca(sc_card_t *card, const BUF_MEM *eph_pub_key,
 	}
 	c_data->eph_pub_key = ASN1_OCTET_STRING_new();
 	if (!c_data->eph_pub_key
-			|| !ASN1_OCTET_STRING_set( c_data->eph_pub_key,
-				eph_pub_key->data, eph_pub_key->length)) {
+			|| !ASN1_OCTET_STRING_set(c_data->eph_pub_key,
+				(const unsigned char *) eph_pub_key->data,
+				eph_pub_key->length)) {
 		ssl_error(card->ctx);
 		r = SC_ERROR_INTERNAL;
 		goto err;

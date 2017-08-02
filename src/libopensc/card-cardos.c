@@ -559,8 +559,8 @@ static int cardos_set_file_attributes(sc_card_t *card, sc_file_t *file)
 
 		status[0] = 0x01;
 		if (file->type == SC_FILE_TYPE_DF) {
-			status[1] = file->size >> 8;
-			status[2] = file->size;
+			status[1] = (file->size >> 8) & 0xFF;
+			status[2] = file->size & 0xFF;
 		} else {
 			status[1] = status[2] = 0x00; /* not used */
 		}

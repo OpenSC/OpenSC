@@ -173,7 +173,6 @@ WinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPSTR lpCmdLine, int nShowC
 	LPWSTR *wargv = NULL;
 	char **argv = NULL;
 	int argc = 0, i;
-	struct gengetopt_args_info cmdline;
 
 	wargv = CommandLineToArgvW(GetCommandLineW(), &argc);
 	if (wargv == NULL) {

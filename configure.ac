@@ -133,8 +133,8 @@ case "${host}" in
 	;;
 esac
 
-AX_CHECK_COMPILE_FLAG(-Wno-error=unused-but-set-variable, [have_unused_but_set_variable="yes"], [have_unused_but_set_variable="no"], [-Werror -Wunknown-warning-option])
-AM_CONDITIONAL([HAVE_UNUSED_BUT_SET_VARIABLE], [test "${have_unused_but_set_variable}" = "yes"])
+AX_CHECK_COMPILE_FLAG(-Wunknown-warning-option, [have_unknown_warning_option="yes"], [have_unknown_warning_option="no"], [-Werror])
+AM_CONDITIONAL([HAVE_UNKNOWN_WARNING_OPTION], [test "${have_unknown_warning_option}" = "yes"])
 
 AC_ARG_ENABLE(
 	[strict],

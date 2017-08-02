@@ -175,6 +175,7 @@ static const struct {
 const CK_BYTE gostr3411_94_cryptopro_paramset_encoded_oid[] = { 0x06, 0x07, 0x2a, 0x85, 0x03, 0x02, 0x02, 0x1e, 0x01 };
 const unsigned int gostr3411_94_cryptopro_paramset_oid[] = {1, 2, 643, 2, 2, 30, 1, (unsigned int)-1};
 
+#ifdef USE_PKCS15_INIT
 static const struct {
 	const CK_BYTE *encoded_oid;
 	const unsigned int encoded_oid_size;
@@ -186,6 +187,7 @@ static const struct {
 		&gostr3411_94_cryptopro_paramset_oid[0],
 		sizeof(gostr3411_94_cryptopro_paramset_oid)}
 };
+#endif
 
 static int	__pkcs15_release_object(struct pkcs15_any_object *);
 static CK_RV	register_mechanisms(struct sc_pkcs11_card *p11card);
@@ -978,7 +980,7 @@ pkcs15_add_object(struct sc_pkcs11_slot *slot, struct pkcs15_any_object *obj,
 	unsigned int i;
 	struct pkcs15_fw_data *card_fw_data;
 	CK_OBJECT_HANDLE handle =
-		(CK_OBJECT_HANDLE)obj; /* cast pointer to long, will truncate on Win64 */
+		(CK_OBJECT_HANDLE)(uintptr_t)obj; /* cast pointer to long, will truncate on Win64 */
 
 	if (obj == NULL || slot == NULL)
 		return;

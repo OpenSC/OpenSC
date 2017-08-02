@@ -60,8 +60,8 @@ int uncompress_gzip(void* uncompressed, size_t *uncompressed_len,
 	return SC_SUCCESS;
 }
 #else
-int uncompress_gzip(const void* compressed, size_t compressed_len,
-	   	void* uncompressed, size_t *uncompressed_len)
+int uncompress_gzip(void* uncompressed, size_t *uncompressed_len,
+		const void* compressed, size_t compressed_len)
 {
 	return SC_ERROR_NOT_SUPPORTED;
 }
@@ -196,7 +196,7 @@ main (int argc, char **argv)
 	struct gengetopt_args_info cmdline;
 	struct sc_path path;
 	struct sc_context *ctx;
-	struct sc_reader *reader;
+	struct sc_reader *reader = NULL;
 	struct sc_card *card;
 	unsigned char *data = NULL;
 	size_t data_len = 0;

@@ -2864,7 +2864,7 @@ static const char *md_get_ui_str(PCARD_DATA pCardData, enum ui_str id)
 	return str;
 }
 
-static INT_PTR CALLBACK md_dialog_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam, LONG_PTR dwRefData)
+static HRESULT CALLBACK md_dialog_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam, LONG_PTR dwRefData)
 {
 	LONG_PTR param;
 	int timeout;
