@@ -264,7 +264,6 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs)
 	list_attributes_seeker(&sessions, session_list_seeker);
 
 	/* List of slots */
-	list_init(&virtual_slots);
 	if (0 != list_init(&virtual_slots)) {
 		rv = CKR_HOST_MEMORY;
 		goto out;
