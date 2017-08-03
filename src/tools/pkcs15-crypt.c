@@ -285,7 +285,7 @@ static int decipher(struct sc_pkcs15_object *obj)
 	}
 	r = write_output(out, r);
 
-	return 0;
+	return r;
 }
 
 static int get_key(unsigned int usage, sc_pkcs15_object_t **result)
