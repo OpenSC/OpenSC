@@ -743,6 +743,7 @@ static int gids_set_security_env(sc_card_t *card,
 	assert(card != NULL && env != NULL);
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	memset(sbuf, 0, sizeof(sbuf));
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, INS_MANAGE_SECURITY_ENVIRONMENT, P1_DECIPHERMENT_INTERNAL_AUTHENTICATE_KEY_AGREEMENT, 0);
 	switch (env->operation) {
