@@ -122,6 +122,8 @@ static int epass2003_pkcs15_create_dir(struct sc_profile *profile,
 			    "Get SKey info failed");
 		ret = sc_create_file(card, skey_file);
 		sc_file_free(skey_file);
+		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret,
+			    "Create SKey info failed");
 
 		ret = sc_profile_get_file(profile, "MAXPIN", &ef_file);
 		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret,
@@ -250,6 +252,8 @@ static int epass2003_pkcs15_create_pin(struct sc_profile *profile,
 		data.key_data.es_secret.key_len = pin_len;
 
 		r = sc_card_ctl(card, SC_CARDCTL_ENTERSAFE_WRITE_KEY, &data);
+		if (r < 0)
+			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 		if (pin_obj) {
 			/* Cache new PIN value. */
 			sc_pkcs15_pincache_add(p15card, pin_obj, pin, pin_len);
@@ -444,7 +448,7 @@ static int epass2003_pkcs15_store_key(struct sc_profile *profile,
 		 sc_print_path(&(file->path)));
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "private key_info path: %s",
 		 sc_print_path(&(key_info->path)));
-	r = sc_delete_file(p15card->card, &file->path);
+	sc_delete_file(p15card->card, &file->path);
 	/* create */
 	r = sc_pkcs15init_create_file(profile, p15card, file);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r,
@@ -528,7 +532,7 @@ static int epass2003_pkcs15_generate_key(struct sc_profile *profile,
 	SC_TEST_GOTO_ERR(card->ctx, SC_LOG_DEBUG_NORMAL, r,
 		    "generate key: pkcs15init_authenticate(SC_AC_OP_DELETE) failed");
 
-	r = sc_delete_file(p15card->card, &file->path);
+	sc_delete_file(p15card->card, &file->path);
 	/* create */
 	r = sc_pkcs15init_create_file(profile, p15card, file);
 	SC_TEST_GOTO_ERR(card->ctx, SC_LOG_DEBUG_NORMAL, r,
