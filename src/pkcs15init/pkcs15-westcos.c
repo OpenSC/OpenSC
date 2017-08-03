@@ -60,7 +60,7 @@ static int westcos_pkcs15init_create_dir(sc_profile_t *profile,
 	int r;
 
 	/* Create the application DF */
-	r = sc_pkcs15init_create_file(profile, p15card, df);
+	sc_pkcs15init_create_file(profile, p15card, df);
 
 	r = sc_select_file(p15card->card, &df->path, NULL);
 	if(r) return r;

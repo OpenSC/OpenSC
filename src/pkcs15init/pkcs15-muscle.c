@@ -177,7 +177,8 @@ muscle_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	/* Verification stuff */
 	/* Used for verification AND for obtaining private key acls */
 	r = sc_profile_get_file_by_path(profile, &key_info->path, &prkf);
-	if(!prkf) SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE,SC_ERROR_NOT_SUPPORTED);
+	if (r < 0 || !prkf)
+	   	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE,SC_ERROR_NOT_SUPPORTED);
 	r = sc_pkcs15init_authenticate(profile, p15card, prkf, SC_AC_OP_CRYPTO);
 	if (r < 0) {
 		sc_file_free(prkf);
@@ -241,7 +242,8 @@ muscle_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	/* Verification stuff */
 	/* Used for verification AND for obtaining private key acls */
 	r = sc_profile_get_file_by_path(profile, &key_info->path, &prkf);
-	if(!prkf) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,SC_ERROR_NOT_SUPPORTED);
+	if(r < 0 || !prkf)
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,SC_ERROR_NOT_SUPPORTED);
 	r = sc_pkcs15init_authenticate(profile, p15card, prkf, SC_AC_OP_CRYPTO);
 	if (r < 0) {
 		sc_file_free(prkf);

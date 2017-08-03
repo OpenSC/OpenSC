@@ -292,6 +292,8 @@ static int entersafe_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 		 data.key_data.symmetric.key_len=16;
 
 		 r = sc_card_ctl(card, SC_CARDCTL_ENTERSAFE_WRITE_KEY, &data);
+		 if (r < 0)
+			 SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 
 		 /* Cache new PIN value. */
 		 sc_pkcs15_pincache_add(p15card, pin_obj, pin, pin_len);
@@ -316,7 +318,7 @@ static int entersafe_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 	}
 
 
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,r);
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 }
 
 static int entersafe_key_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,

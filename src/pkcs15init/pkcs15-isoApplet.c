@@ -609,7 +609,7 @@ isoApplet_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 
 	/* Authentication stuff. */
 	r = sc_profile_get_file_by_path(profile, &key_info->path, &privKeyFile);
-	if(!privKeyFile)
+	if(r < 0 || !privKeyFile)
 	{
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_NOT_SUPPORTED);
 	}
@@ -692,7 +692,7 @@ isoApplet_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_pkcs15_
 
 	/* Authentication stuff. */
 	r = sc_profile_get_file_by_path(profile, &key_info->path, &privKeyFile);
-	if(!privKeyFile)
+	if(r < 0 || !privKeyFile)
 	{
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_NOT_SUPPORTED);
 	}

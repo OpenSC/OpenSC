@@ -659,8 +659,6 @@ static int escape_perform_verify(struct sc_reader *reader,
 	}
 	apdu.lc = apdu.datalen;
 
-	r = SC_SUCCESS;
-
 	r = reader->ops->transmit(reader, &apdu);
 	if (r < 0) {
 		sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL,

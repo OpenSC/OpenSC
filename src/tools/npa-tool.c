@@ -390,12 +390,13 @@ main (int argc, char **argv)
 		pin = getenv("PIN");
 		puk = getenv("PUK");
 		newpin = getenv("NEWPIN");
+	} else {
+		can = cmdline.can_arg;
+		mrz = cmdline.mrz_arg;
+		pin = cmdline.pin_arg;
+		puk = cmdline.puk_arg;
+		newpin = cmdline.new_pin_arg;
 	}
-	can = cmdline.can_arg;
-	mrz = cmdline.mrz_arg;
-	pin = cmdline.pin_arg;
-	puk = cmdline.puk_arg;
-	newpin = cmdline.new_pin_arg;
 	if (cmdline.chat_given) {
 		pace_input.chat = chat;
 		pace_input.chat_length = sizeof chat;
