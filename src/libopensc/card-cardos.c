@@ -599,6 +599,8 @@ static int cardos_construct_fcp(sc_card_t *card, const sc_file_t *file,
 	/* we will add the length later  */
 	p++;
 
+	memset(buf, 0, sizeof(buf));
+
 	/* set the length */
 	buf[0] = (file->size >> 8) & 0xff;
 	buf[1] = file->size        & 0xff;
