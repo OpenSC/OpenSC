@@ -831,12 +831,9 @@ done:
 static void
 awp_free_key_info(struct awp_key_info *ki)
 {
-	if (ki->modulus.value)
-		free(ki->modulus.value);
-	if (ki->exponent.value)
-		free(ki->exponent.value);
-	if (ki->id.value)
-		free(ki->id.value);
+	free(ki->modulus.value);
+	free(ki->exponent.value);
+	free(ki->id.value);
 }
 
 
@@ -1072,22 +1069,24 @@ done:
 static void
 awp_free_cert_info(struct awp_cert_info *ci)
 {
-	if (ci->cn.len && ci->cn.value)
-		free(ci->cn.value);
+	if (ci) {
+		if (ci->cn.len && ci->cn.value)
+			free(ci->cn.value);
 
-	if (ci->id.len && ci->id.value)
-		free(ci->id.value);
+		if (ci->id.len && ci->id.value)
+			free(ci->id.value);
 
-	if (ci->subject.len && ci->subject.value)
-		free(ci->subject.value);
+		if (ci->subject.len && ci->subject.value)
+			free(ci->subject.value);
 
-	if (ci->issuer.len && ci->issuer.value)
-		free(ci->issuer.value);
+		if (ci->issuer.len && ci->issuer.value)
+			free(ci->issuer.value);
 
-	if (ci->x509)
-		X509_free(ci->x509);
+		if (ci->x509)
+			X509_free(ci->x509);
 
-	memset(ci,0,sizeof(struct awp_cert_info));
+		memset(ci,0,sizeof(struct awp_cert_info));
+	}
 }
 
 
@@ -1495,8 +1494,8 @@ err:
 	sc_file_free(info_file);
 	if (cert_obj)
 		awp_free_cert_info(&icert);
-
 	awp_free_key_info(&ikey);
+
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, rv);
 }
 
@@ -1521,6 +1520,8 @@ awp_update_df_create_pubkey(struct sc_pkcs15_card *p15card, struct sc_profile *p
 	index = path.value[path.len-1] & 0xFF;
 	obj_id = (path.value[path.len-1] & 0xFF) + (path.value[path.len-2] & 0xFF) * 0x100;
 
+	memset(&ikey, 0, sizeof(ikey));
+
 	rv = awp_new_file(p15card, profile, obj->type, index, &info_file, NULL);
 	SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_NORMAL, rv, "New public key info file error");
 
@@ -1530,7 +1531,6 @@ awp_update_df_create_pubkey(struct sc_pkcs15_card *p15card, struct sc_profile *p
 	rv = sc_pkcs15_decode_pubkey(ctx, &pubkey, der.value, der.len);
 	SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_NORMAL, rv, "AWP 'update public key' DF failed: decode public key error");
 
-	memset(&ikey, 0, sizeof(ikey));
 	rv = awp_encode_key_info(p15card, obj, &pubkey.u.rsa, &ikey);
 	SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_NORMAL, rv, "AWP 'update public key' DF failed: encode info error");
 
@@ -1543,9 +1543,8 @@ awp_update_df_create_pubkey(struct sc_pkcs15_card *p15card, struct sc_profile *p
 	rv = awp_update_container(p15card, profile, obj->type, &ikey.id, obj_id, NULL);
 	SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_NORMAL, rv, "AWP 'update public key' DF failed: update container error");
 
-	awp_free_key_info(&ikey);
-
 err:
+	awp_free_key_info(&ikey);
 	sc_file_free(info_file);
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, rv);
 }

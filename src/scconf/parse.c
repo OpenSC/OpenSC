@@ -166,6 +166,7 @@ scconf_item *scconf_item_add(scconf_context * config, scconf_block * block, scco
 		}
 	} else {
 		/* FIXME is it an error if item is NULL? */
+		free(parser.key);
 	}
 	return parser.current_item;
 }

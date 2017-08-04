@@ -1041,6 +1041,7 @@ sc_pkcs11_register_sign_and_hash_mechanism(struct sc_pkcs11_card *p11card,
 	sc_pkcs11_mechanism_type_t *hash_type, *new_type;
 	struct hash_signature_info *info;
 	CK_MECHANISM_INFO mech_info = sign_type->mech_info;
+	CK_RV rv;
 
 	if (!(hash_type = sc_pkcs11_find_mechanism(p11card, hash_mech, CKF_DIGEST)))
 		return CKR_MECHANISM_INVALID;
@@ -1060,9 +1061,15 @@ sc_pkcs11_register_sign_and_hash_mechanism(struct sc_pkcs11_card *p11card,
 
 	new_type = sc_pkcs11_new_fw_mechanism(mech, &mech_info, sign_type->key_type, info, free_info);
 	if (!new_type) {
-		free(info);
+		free_info(info);
 		return CKR_HOST_MEMORY;
 	}
 
-	return sc_pkcs11_register_mechanism(p11card, new_type);
+	rv = sc_pkcs11_register_mechanism(p11card, new_type);
+	if (CKR_OK != rv) {
+		new_type->free_mech_data(new_type->mech_data);
+		free(new_type);
+	}
+
+	return rv;
 }

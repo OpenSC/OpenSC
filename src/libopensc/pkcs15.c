@@ -2362,7 +2362,8 @@ sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_pat
 
 	if (r) {
 		r = sc_lock(p15card->card);
-		LOG_TEST_RET(ctx, r, "sc_lock() failed");
+		if (r)
+			goto fail;
 		r = sc_select_file(p15card->card, in_path, &file);
 		if (r)
 			goto fail_unlock;
@@ -2442,9 +2443,10 @@ sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_pat
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 
 fail_unlock:
+	sc_unlock(p15card->card);
+fail:
 	free(data);
 	sc_file_free(file);
-	sc_unlock(p15card->card);
 	LOG_FUNC_RETURN(ctx, r);
 }
 
