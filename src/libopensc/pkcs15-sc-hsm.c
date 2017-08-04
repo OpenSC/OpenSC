@@ -191,7 +191,7 @@ static int read_file(sc_pkcs15_card_t * p15card, u8 fid[2],
 	path.aid = sc_hsm_aid;
 	/* we don't have a pre-known size of the file */
 	path.count = -1;
-	if (!p15card->opts.use_file_cache
+	if (!p15card->opts.use_file_cache || !efbin
 			|| SC_SUCCESS != sc_pkcs15_read_cached_file(p15card, &path, &efbin, len)) {
 		/* avoid re-selection of SC-HSM */
 		path.aid.len = 0;
