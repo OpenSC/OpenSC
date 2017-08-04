@@ -903,11 +903,16 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 	r = sc_pkcs15init_add_object(p15card, profile, SC_PKCS15_AODF, pin_obj);
 	if (r >= 0) {
 		r = sc_pkcs15init_update_dir(p15card, profile, app);
-		if (r >= 0)
+		if (r >= 0) {
 			r = sc_pkcs15init_update_tokeninfo(p15card, profile);
-		/* FIXME: what to do if sc_pkcs15init_update_dir failed? */
+		} else {
+			/* FIXME: what to do if sc_pkcs15init_update_dir failed? */
+			free(app->label);
+			free(app); /* unused */
+		}
 	}
 	else {
+		free(app->label);
 		free(app); /* unused */
 	}
 
