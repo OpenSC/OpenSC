@@ -157,7 +157,7 @@ sc_sm_single_transmit(struct sc_card *card, struct sc_apdu *apdu)
 	}
 
 	/* send APDU flagged as NO_SM */
-	sm_apdu->flags |= SC_APDU_FLAGS_NO_SM;
+	sm_apdu->flags |= SC_APDU_FLAGS_NO_SM | SC_APDU_FLAGS_NO_RETRY_WL;
 	rv = sc_transmit_apdu(card, sm_apdu);
 	if (rv < 0) {
 		card->sm_ctx.ops.free_sm_apdu(card, apdu, &sm_apdu);
