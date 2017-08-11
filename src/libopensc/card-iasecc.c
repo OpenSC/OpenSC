@@ -517,8 +517,15 @@ static int
 iasecc_mi_match(struct sc_card *card)
 {
 	struct sc_context *ctx = card->ctx;
+	unsigned char resp[0x100];
+	size_t resp_len;
+	int rv = 0;
 
 	LOG_FUNC_CALLED(ctx);
+
+	resp_len = sizeof(resp);
+	rv = iasecc_select_aid(card, &MIIASECC_AID, resp, &resp_len);
+	LOG_TEST_RET(ctx, rv, "IASECC: failed to select MI IAS/ECC applet");
 
 	if (!card->ef_atr)
 		card->ef_atr = calloc(1, sizeof(struct sc_ef_atr));
@@ -537,8 +544,6 @@ iasecc_init_amos_or_sagem(struct sc_card *card)
 {
 	struct sc_context *ctx = card->ctx;
 	unsigned int flags;
-	unsigned char resp[0x100];
-	size_t resp_len;
 	int rv = 0;
 
 	LOG_FUNC_CALLED(ctx);
@@ -553,9 +558,6 @@ iasecc_init_amos_or_sagem(struct sc_card *card)
 	card->caps |= SC_CARD_CAP_USE_FCI_AC;
 
 	if (card->type == SC_CARD_TYPE_IASECC_MI)   {
-		resp_len = sizeof(resp);
-		rv = iasecc_select_aid(card, &MIIASECC_AID, resp, &resp_len);
-
 		rv = iasecc_mi_match(card);
 		if (rv)
 			card->type = SC_CARD_TYPE_IASECC_MI2;
