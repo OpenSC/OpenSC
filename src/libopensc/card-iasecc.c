@@ -617,7 +617,7 @@ iasecc_init_mi(struct sc_card *card)
 
 	rv = iasecc_mi_match(card);
 
-	if(rv) {
+	if (rv) {
 		card->type = SC_CARD_TYPE_IASECC_MI2;
 		rv = iasecc_init_sagem(card);
 	}
