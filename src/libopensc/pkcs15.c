@@ -1059,15 +1059,17 @@ sc_pkcs15_bind_internal(struct sc_pkcs15_card *p15card, struct sc_aid *aid)
 	}
 	if (err < 0) {
 		err = sc_read_binary(card, 0, buf, len, 0);
-		if (err < 0)   {
-			sc_log(ctx, "read EF(ODF) file error: %s", sc_strerror(err));
+		if (err < 2) {
+			if (err < 0) {
+				sc_log(ctx, "read EF(ODF) file error: %s", sc_strerror(err));
+			} else {
+				err = SC_ERROR_PKCS15_APP_NOT_FOUND;
+				sc_log(ctx, "Invalid content of EF(ODF): %s", sc_strerror(err));
+			}
 			goto end;
 		}
-		else if (err < 2) {
-			err = SC_ERROR_PKCS15_APP_NOT_FOUND;
-			sc_log(ctx, "Invalid content of EF(ODF): %s", sc_strerror(err));
-			goto end;
-		}
+		/* sc_read_binary may return less than requested */
+		len = err;
 
 		if (p15card->opts.use_file_cache) {
 			sc_pkcs15_cache_file(p15card, &tmppath, buf, len);
@@ -1125,20 +1127,21 @@ sc_pkcs15_bind_internal(struct sc_pkcs15_card *p15card, struct sc_aid *aid)
 	}
 	if (err < 0) {
 		err = sc_read_binary(card, 0, buf, len, 0);
-		if (err < 0)   {
-			sc_log(ctx, "read EF(TokenInfo) file error: %s", sc_strerror(err));
-			goto end;
-		}
 		if (err <= 2) {
-			err = SC_ERROR_PKCS15_APP_NOT_FOUND;
-			sc_log(ctx, "Invalid content of EF(TokenInfo): %s", sc_strerror(err));
+			if (err < 0)   {
+				sc_log(ctx, "read EF(TokenInfo) file error: %s", sc_strerror(err));
+			} else {
+				err = SC_ERROR_PKCS15_APP_NOT_FOUND;
+				sc_log(ctx, "Invalid content of EF(TokenInfo): %s", sc_strerror(err));
+			}
 			goto end;
 		}
+		/* sc_read_binary may return less than requested */
+		len = err;
 
 		if (p15card->opts.use_file_cache) {
 			sc_pkcs15_cache_file(p15card, &tmppath, buf, len);
 		}
-		err = len;
 	}
 
 	memset(&tokeninfo, 0, sizeof(tokeninfo));
@@ -2392,7 +2395,7 @@ sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_pat
 
 		sc_file_free(file);
 
-		if (p15card->opts.use_file_cache) {
+		if (len && p15card->opts.use_file_cache) {
 			sc_pkcs15_cache_file(p15card, in_path, data, len);
 		}
 	}
