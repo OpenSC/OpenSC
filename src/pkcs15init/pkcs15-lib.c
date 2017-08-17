@@ -4211,7 +4211,7 @@ sc_pkcs15init_read_info(struct sc_card *card, struct sc_profile *profile)
 	}
 
 	if (r >= 0)
-		r = sc_pkcs15init_parse_info(card, mem, len, profile);
+		r = sc_pkcs15init_parse_info(card, mem, r, profile);
 
 	if (mem)
 		free(mem);
