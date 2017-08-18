@@ -613,7 +613,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 	char buf[SC_MAX_SERIALNR * 2 + 1];
 	common_key_info ckis[PIV_NUM_CERTS_AND_KEYS];
 	int follows_nist_fascn = 0;
-
+	char *token_name = NULL;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -765,6 +765,28 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 				sc_pkcs15_free_certificate(cert_out);
 			continue;
 		}
+
+		/* set the token name to the name of the CN of the first certificate */
+		if (!token_name) {
+			u8 * cn_name = NULL;
+			size_t cn_len = 0;
+			static const struct sc_object_id cn_oid = {{ 2, 5, 4, 3, -1 }};
+			r = sc_pkcs15_get_name_from_dn(card->ctx, cert_out->subject,
+				cert_out->subject_len, &cn_oid, &cn_name, &cn_len);
+			if (r == SC_SUCCESS) {
+				token_name = malloc (cn_len+1);
+				if (!token_name) {
+					SC_FUNC_RETURN(card->ctx,
+						SC_ERROR_OUT_OF_MEMORY, r);
+				}
+				memcpy(token_name, cn_name, cn_len);
+				free(cn_name);
+				token_name[cn_len] = 0;
+				free(p15card->tokeninfo->label);
+				p15card->tokeninfo->label = token_name;
+			}
+		}
+
 		/* 
 		 * get keyUsage if present save in ckis[i]
 		 * Will only use it if this in a non FED issued card
