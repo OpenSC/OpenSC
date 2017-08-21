@@ -264,6 +264,9 @@ iasecc_select_mf(struct sc_card *card, struct sc_file **file_out)
 		apdu.resplen = sizeof(apdu_resp);
 		apdu.resp = apdu_resp;
 
+		if (card->type == SC_CARD_TYPE_IASECC_MI2)
+			apdu.p2 = 0x04;
+
 		rv = sc_transmit_apdu(card, &apdu);
 		LOG_TEST_RET(card->ctx, rv, "APDU transmit failed");
 		rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
