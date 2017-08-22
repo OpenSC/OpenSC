@@ -50,10 +50,16 @@ static const struct sc_asn1_entry c_asn1_twlabel[] = {
 static const struct sc_asn1_entry c_asn1_algorithm_info[7] = {
 	{ "reference",		SC_ASN1_INTEGER,	SC_ASN1_TAG_INTEGER,	0, NULL, NULL },
 	{ "algorithmPKCS#11",	SC_ASN1_INTEGER,	SC_ASN1_TAG_INTEGER,	0, NULL, NULL },
-	{ "parameters",		SC_ASN1_NULL,		SC_ASN1_TAG_NULL,	0, NULL, NULL },
+	{ "parameters",		SC_ASN1_CHOICE,		0,			0, NULL, NULL },
 	{ "supportedOperations",SC_ASN1_BIT_FIELD,	SC_ASN1_TAG_BIT_STRING,	0, NULL, NULL },
 	{ "objId",		SC_ASN1_OBJECT,		SC_ASN1_TAG_OBJECT,	SC_ASN1_OPTIONAL, NULL, NULL },
 	{ "algRef",		SC_ASN1_INTEGER,	SC_ASN1_TAG_INTEGER,	SC_ASN1_OPTIONAL, NULL, NULL },
+	{ NULL, 0, 0, 0, NULL, NULL }
+};
+
+static const struct sc_asn1_entry c_asn1_algorithm_info_parameters[3] = {
+	{ "PKCS15RSAParameters",SC_ASN1_NULL,		SC_ASN1_TAG_NULL,	0, NULL, NULL },
+	{ "PKCS15ECParameters",	SC_ASN1_OBJECT,		SC_ASN1_TAG_OBJECT,	0, NULL, NULL },
 	{ NULL, 0, 0, 0, NULL, NULL }
 };
 
@@ -134,9 +140,11 @@ int sc_pkcs15_parse_tokeninfo(sc_context_t *ctx,
 	u8 preferred_language[3];
 	size_t lang_length = sizeof(preferred_language);
 	struct sc_asn1_entry asn1_supported_algorithms[SC_MAX_SUPPORTED_ALGORITHMS + 1],
-			asn1_algo_infos[SC_MAX_SUPPORTED_ALGORITHMS][7];
+			asn1_algo_infos[SC_MAX_SUPPORTED_ALGORITHMS][7],
+			asn1_algo_infos_parameters[SC_MAX_SUPPORTED_ALGORITHMS][3];
 	size_t reference_len = sizeof(ti->supported_algos[0].reference);
 	size_t mechanism_len = sizeof(ti->supported_algos[0].mechanism);
+	size_t parameter_len = sizeof(ti->supported_algos[0].parameters);
 	size_t operations_len = sizeof(ti->supported_algos[0].operations);
 	size_t algo_ref_len = sizeof(ti->supported_algos[0].algo_ref);
 
@@ -152,14 +160,22 @@ int sc_pkcs15_parse_tokeninfo(sc_context_t *ctx,
 	sc_format_asn1_entry(asn1_twlabel, label, &label_len, 0);
 	sc_copy_asn1_entry(c_asn1_profile_indication, asn1_profile_indication);
 
-	for (ii=0; ii<SC_MAX_SUPPORTED_ALGORITHMS; ii++)
+	for (ii=0; ii<SC_MAX_SUPPORTED_ALGORITHMS; ii++) {
 		sc_copy_asn1_entry(c_asn1_algorithm_info, asn1_algo_infos[ii]);
+		sc_copy_asn1_entry(c_asn1_algorithm_info_parameters,
+			asn1_algo_infos_parameters[ii]);
+	}
 	sc_copy_asn1_entry(c_asn1_supported_algorithms, asn1_supported_algorithms);
 
 	for (ii=0; ii<SC_MAX_SUPPORTED_ALGORITHMS; ii++)   {
 		sc_format_asn1_entry(asn1_algo_infos[ii] + 0, &ti->supported_algos[ii].reference, &reference_len, 0);
 		sc_format_asn1_entry(asn1_algo_infos[ii] + 1, &ti->supported_algos[ii].mechanism, &mechanism_len, 0);
-		sc_format_asn1_entry(asn1_algo_infos[ii] + 2, NULL, NULL, 0);
+		sc_format_asn1_entry(asn1_algo_infos[ii] + 2,
+			asn1_algo_infos_parameters[ii], NULL, 0);
+		sc_format_asn1_entry(asn1_algo_infos_parameters[ii] + 0,
+			NULL, NULL, 0);
+		sc_format_asn1_entry(asn1_algo_infos_parameters[ii] + 1,
+			&ti->supported_algos[ii].parameters, &parameter_len, 0);
 		sc_format_asn1_entry(asn1_algo_infos[ii] + 3, &ti->supported_algos[ii].operations, &operations_len, 0);
 		sc_format_asn1_entry(asn1_algo_infos[ii] + 4, &ti->supported_algos[ii].algo_id, NULL, 1);
 		sc_format_asn1_entry(asn1_algo_infos[ii] + 5, &ti->supported_algos[ii].algo_ref, &algo_ref_len, 0);
@@ -270,9 +286,11 @@ sc_pkcs15_encode_tokeninfo(sc_context_t *ctx, sc_pkcs15_tokeninfo_t *ti,
 	struct sc_asn1_entry asn1_toki_attrs[C_ASN1_TOKI_ATTRS_SIZE];
 	struct sc_asn1_entry asn1_tokeninfo[2];
 	struct sc_asn1_entry asn1_supported_algorithms[SC_MAX_SUPPORTED_ALGORITHMS + 1],
-			asn1_algo_infos[SC_MAX_SUPPORTED_ALGORITHMS][7];
+			asn1_algo_infos[SC_MAX_SUPPORTED_ALGORITHMS][7],
+			asn1_algo_infos_parameters[SC_MAX_SUPPORTED_ALGORITHMS][3];
 	size_t reference_len = sizeof(ti->supported_algos[0].reference);
 	size_t mechanism_len = sizeof(ti->supported_algos[0].mechanism);
+	size_t parameter_len = sizeof(ti->supported_algos[0].parameters);
 	size_t operations_len = sizeof(ti->supported_algos[0].operations);
 	size_t algo_ref_len = sizeof(ti->supported_algos[0].algo_ref);
 	struct sc_asn1_entry asn1_last_update[C_ASN1_LAST_UPDATE_SIZE];
@@ -283,14 +301,22 @@ sc_pkcs15_encode_tokeninfo(sc_context_t *ctx, sc_pkcs15_tokeninfo_t *ti,
 	sc_copy_asn1_entry(c_asn1_last_update, asn1_last_update);
 	sc_copy_asn1_entry(c_asn1_profile_indication, asn1_profile_indication);
 
-	for (ii=0; ii<SC_MAX_SUPPORTED_ALGORITHMS && ti->supported_algos[ii].reference; ii++)
+	for (ii=0; ii<SC_MAX_SUPPORTED_ALGORITHMS && ti->supported_algos[ii].reference; ii++) {
 		sc_copy_asn1_entry(c_asn1_algorithm_info, asn1_algo_infos[ii]);
+		sc_copy_asn1_entry(c_asn1_algorithm_info_parameters,
+			asn1_algo_infos_parameters[ii]);
+	}
 	sc_copy_asn1_entry(c_asn1_supported_algorithms, asn1_supported_algorithms);
 
 	for (ii=0; ii<SC_MAX_SUPPORTED_ALGORITHMS && ti->supported_algos[ii].reference; ii++)   {
 		sc_format_asn1_entry(asn1_algo_infos[ii] + 0, &ti->supported_algos[ii].reference, &reference_len, 1);
 		sc_format_asn1_entry(asn1_algo_infos[ii] + 1, &ti->supported_algos[ii].mechanism, &mechanism_len, 1);
-		sc_format_asn1_entry(asn1_algo_infos[ii] + 2, NULL, NULL, 0);
+		sc_format_asn1_entry(asn1_algo_infos[ii] + 2,
+			asn1_algo_infos_parameters[ii], NULL, 0);
+		sc_format_asn1_entry(asn1_algo_infos_parameters[ii] + 0,
+			NULL, NULL, 0);
+		sc_format_asn1_entry(asn1_algo_infos_parameters[ii] + 1,
+			&ti->supported_algos[ii].parameters, &parameter_len, 0);
 		sc_format_asn1_entry(asn1_algo_infos[ii] + 3, &ti->supported_algos[ii].operations, &operations_len, 1);
 		sc_format_asn1_entry(asn1_algo_infos[ii] + 4, &ti->supported_algos[ii].algo_id, NULL, 1);
 		sc_format_asn1_entry(asn1_algo_infos[ii] + 5, &ti->supported_algos[ii].algo_ref, &algo_ref_len, 1);
