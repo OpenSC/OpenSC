@@ -188,6 +188,9 @@ static int cardos_info(void)
 		printf(" (that's CardOS M4.4)\n");
 	} else if (apdu.resp[0] == 0xc9 && apdu.resp[1] == 0x01) {
 		printf(" (that's CardOS V5.0)\n");
+	} else if (apdu.resp[0] == 0xc9 &&
+			(apdu.resp[1] == 0x02 || apdu.resp[1] == 0x03)) {
+		printf(" (that's CardOS V5.3)\n");
 	} else {
 		printf(" (unknown Version)\n");
 	}
