@@ -171,7 +171,7 @@ static int cardos_init(sc_card_t *card)
 	sc_apdu_t apdu;
 	u8 rbuf[2];
 
-	card->name = "CardOS M4";
+	card->name = "Atos CardOS";
 	card->cla = 0x00;
 
 	/* Set up algorithm info. */
