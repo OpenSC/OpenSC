@@ -172,7 +172,7 @@ static const struct sc_card_error epass2003_errors[] = {
 static int epass2003_transmit_apdu(struct sc_card *card, struct sc_apdu *apdu);
 static int epass2003_select_file(struct sc_card *card, const sc_path_t * in_path, sc_file_t ** file_out);
 int epass2003_refresh(struct sc_card *card);
-static int hash_data(unsigned char *data, size_t datalen, unsigned char *hash, unsigned int mechanismType);
+static int hash_data(const unsigned char *data, size_t datalen, unsigned char *hash, unsigned int mechanismType);
 
 static int
 epass2003_check_sw(struct sc_card *card, unsigned int sw1, unsigned int sw2)
@@ -1204,7 +1204,7 @@ epass2003_init(struct sc_card *card)
 
 	//set EC Alg Flags
 	flags = SC_ALGORITHM_ONBOARD_KEY_GEN|SC_ALGORITHM_ECDSA_HASH_SHA1|SC_ALGORITHM_ECDSA_HASH_SHA256|SC_ALGORITHM_ECDSA_HASH_NONE|SC_ALGORITHM_ECDSA_RAW;
-	//ext_flags = SC_ALGORITHM_EXT_EC_NAMEDCURVE | SC_ALGORITHM_EXT_EC_UNCOMPRESES;
+	ext_flags = 0;
 	_sc_card_add_ec_alg(card, 256, flags, ext_flags, NULL);
 
 	card->caps = SC_CARD_CAP_RNG | SC_CARD_CAP_APDU_EXT;
@@ -2483,7 +2483,7 @@ epass2003_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 {
 	LOG_FUNC_CALLED(card->ctx);
 
-	sc_log(card->ctx, "cmd is %0x", cmd);
+	sc_log(card->ctx, "cmd is %0lx", cmd);
 	switch (cmd) {
 	case SC_CARDCTL_ENTERSAFE_WRITE_KEY:
 		return epass2003_write_key(card, (sc_epass2003_wkey_data *) ptr);
