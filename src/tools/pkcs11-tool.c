@@ -1670,7 +1670,7 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		util_fatal("failed to open %s: %m", opt_output);
 	}
 
-	if (opt_mechanism == CKM_ECDSA || opt_mechanism == CKM_ECDSA_SHA1) {
+	if (opt_mechanism == CKM_ECDSA || opt_mechanism == CKM_ECDSA_SHA1 || opt_mechanism == CKM_ECDSA_SHA256 || opt_mechanism == CKM_ECDSA_SHA384 || opt_mechanism == CKM_ECDSA_SHA512) {
 		if (opt_sig_format &&  (!strcmp(opt_sig_format, "openssl") || !strcmp(opt_sig_format, "sequence"))) {
 			unsigned char *seq;
 			size_t seqlen;
