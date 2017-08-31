@@ -139,7 +139,7 @@ cac_alg_flags_from_algorithm(int algorithm)
 
 /* map a cert usage and algorithm to public and private key usages */
 static int
-cac_map_usage(unsigned long long cert_usage, int algorithm, unsigned int *pub_usage_ptr, unsigned int *pr_usage_ptr, int allow_nonrepudiation)
+cac_map_usage(unsigned int cert_usage, int algorithm, unsigned int *pub_usage_ptr, unsigned int *pr_usage_ptr, int allow_nonrepudiation)
 {
 	unsigned int pub_usage = 0, pr_usage = 0;
 	unsigned int alg_flags = cac_alg_flags_from_algorithm(algorithm);
@@ -184,7 +184,7 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 	};
 	/* oid for key usage */
 	static const struct sc_object_id usage_type = {{ 2, 5, 29, 15, -1 }};
-	unsigned long long usage;
+	unsigned int usage;
 
 
 	/*
@@ -401,7 +401,7 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 			usage = 0xd9ULL; /* basic default usage */
 		}
 		cac_map_usage(usage, cert_out->key->algorithm, &pubkey_info.usage, &prkey_info.usage, 1);
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,  "cert %s: cert_usage=0x%llx, pub_usage=0x%x priv_usage=0x%x\n",
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,  "cert %s: cert_usage=0x%x, pub_usage=0x%x priv_usage=0x%x\n",
 				sc_dump_hex(cert_info.id.value, cert_info.id.len),
 				 usage, pubkey_info.usage, prkey_info.usage);
 		if (cert_out->key->algorithm != SC_ALGORITHM_RSA) {

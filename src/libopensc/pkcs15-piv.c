@@ -104,7 +104,7 @@ typedef struct common_key_info_st {
 	int pubkey_from_file;
 	int key_alg;
 	unsigned int pubkey_len;
-	unsigned long long cert_keyUsage; /* x509 key usage as defined in certificate */
+	unsigned int cert_keyUsage; /* x509 key usage as defined in certificate */
 	int cert_keyUsage_present; /* 1 if keyUsage found in certificate */
 	int pub_usage;
 	int priv_usage;
@@ -795,13 +795,11 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 
 		if (follows_nist_fascn == 0) {
 			struct sc_object_id keyUsage_oid={{2,5,29,15,-1}};
-			unsigned long long *value;
 			int r = 0;
 
-			value = &ckis[i].cert_keyUsage;
 			r = sc_pkcs15_get_bitstring_extension(card->ctx, cert_out,
 				&keyUsage_oid,
-				value, NULL);
+				&ckis[i].cert_keyUsage, NULL);
 			if ( r >= 0)
 				ckis[i].cert_keyUsage_present = 1;
 				/* TODO if no key usage, we could set all uses */
