@@ -323,8 +323,8 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 			prkey_info.path.len += 2;
 		}
 		pubkey_info.native        = 1;
-		pubkey_info.key_reference = ((int)obj_info.id.value[0]) << 8 || obj_info.id.value[1];
-		prkey_info.key_reference = ((int)obj_info.id.value[0]) << 8 || obj_info.id.value[1];
+		pubkey_info.key_reference = ((int)obj_info.id.value[0]) << 8 | obj_info.id.value[1];
+		prkey_info.key_reference = ((int)obj_info.id.value[0]) << 8 | obj_info.id.value[1];
 		prkey_info.native        = 1;
 
 		memcpy(cert_obj.label, obj_info.app_label, sizeof(obj_info.app_label));
