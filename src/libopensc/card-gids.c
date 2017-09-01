@@ -1879,8 +1879,6 @@ static int gids_authenticate_admin(sc_card_t *card, u8* key) {
 	u8 apduSetRandomResponse[256];
 	u8* randomR2 = apduSetRandomResponse+4;
 	u8 apduSendReponse[40 + 4] = {0x7C,0x2A,0x82,0x28};
-	// according to the specification, the z size (z1||z2) should be 14 bytes
-	// but because the buffer must be a multiple of the 3DES block size (8 bytes), 7 isn't working
 	u8 z1[8];
 	u8 buffer[16+16+8];
 	u8* buffer2 = apduSendReponse + 4;
@@ -1923,8 +1921,10 @@ static int gids_authenticate_admin(sc_card_t *card, u8* key) {
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL,  sc_check_sw(card, apdu.sw1, apdu.sw2), "invalid return");
 
 	// compute the half size of the mutual authentication secret
-	r = RAND_bytes(z1, sizeof(z1));
+	r = RAND_bytes(z1, 7);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "unable to set computer random");
+	// set the padding
+	z1[7] = 0x80;
 
 	// Encrypt R2||R1||Z1
 	memcpy(buffer, randomR2, 16);
