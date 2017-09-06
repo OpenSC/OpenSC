@@ -146,6 +146,9 @@ enum {
 	OPT_TEST_FORK,
 	OPT_GENERATE_KEY,
 	OPT_GENERATE_RANDOM,
+	OPT_HASH_ALGORITHM,
+	OPT_MGF,
+	OPT_SALT,
 };
 
 static const struct option options[] = {
@@ -162,6 +165,9 @@ static const struct option options[] = {
 	{ "derive",		0, NULL,		OPT_DERIVE },
 	{ "derive-pass-der",	0, NULL,		OPT_DERIVE_PASS_DER },
 	{ "mechanism",		1, NULL,		'm' },
+	{ "hash-algorithm",	1, NULL,		OPT_HASH_ALGORITHM },
+	{ "mgf",		1, NULL,		OPT_MGF },
+	{ "salt",		1, NULL,		OPT_SALT },
 
 	{ "login",		0, NULL,		'l' },
 	{ "login-type",		1, NULL,		OPT_LOGIN_TYPE },
@@ -227,6 +233,9 @@ static const char *option_help[] = {
 	"Derive a secret key using another key and some data",
 	"Derive ECDHpass DER encoded pubkey for compatibility with some PKCS#11 implementations",
 	"Specify mechanism (use -M for a list of supported mechanisms)",
+	"Specify hash algorithm used with generic RSA-PSS signature",
+	"Specify MGF (Message Generation Function) used for RSA-PSS signatures (possible values are MGF1-SHA1 to MGF1-SHA512)",
+	"Specify how many bytes should be used for salt in RSA-PSS signatures (default 0)",
 
 	"Log into the token first",
 	"Specify login type ('so', 'user', 'context-specific'; default:'user')",
@@ -316,6 +325,9 @@ static int		opt_key_usage_derive = 0;
 static int		opt_key_usage_default = 1; /* uses defaults if no opt_key_usage options */
 static int		opt_derive_pass_der = 0;
 static unsigned long	opt_random_bytes = 0;
+static CK_MECHANISM_TYPE opt_hash_alg = 0;
+static unsigned long	opt_mgf = 0;
+static unsigned long	opt_salt = 0;
 
 static void *module = NULL;
 static CK_FUNCTION_LIST_PTR p11 = NULL;
@@ -406,6 +418,8 @@ static const char *	p11_utf8_to_local(CK_UTF8CHAR *, size_t);
 static const char *	p11_flag_names(struct flag_info *, CK_FLAGS);
 static const char *	p11_mechanism_to_name(CK_MECHANISM_TYPE);
 static CK_MECHANISM_TYPE p11_name_to_mechanism(const char *);
+static const char *	p11_mgf_to_name(CK_RSA_PKCS_MGF_TYPE);
+static CK_MECHANISM_TYPE p11_name_to_mgf(const char *);
 static void		p11_perror(const char *, CK_RV);
 static const char *	CKR2Str(CK_ULONG res);
 static int		p11_test(CK_SESSION_HANDLE session);
@@ -672,6 +686,15 @@ int main(int argc, char * argv[])
 		case 'm':
 			opt_mechanism_used = 1;
 			opt_mechanism = p11_name_to_mechanism(optarg);
+			break;
+		case OPT_HASH_ALGORITHM:
+			opt_hash_alg = p11_name_to_mechanism(optarg);
+			break;
+		case OPT_MGF:
+			opt_mgf = p11_name_to_mgf(optarg);
+			break;
+		case OPT_SALT:
+			opt_salt = (CK_ULONG) strtoul(optarg, NULL, 0);
 			break;
 		case 'o':
 			opt_output = optarg;
@@ -1607,6 +1630,7 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 {
 	unsigned char	in_buffer[1025], sig_buffer[512];
 	CK_MECHANISM	mech;
+	CK_RSA_PKCS_PSS_PARAMS pss_params;
 	CK_RV		rv;
 	CK_ULONG	sig_len;
 	int		fd, r;
@@ -1618,6 +1642,67 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	fprintf(stderr, "Using signature algorithm %s\n", p11_mechanism_to_name(opt_mechanism));
 	memset(&mech, 0, sizeof(mech));
 	mech.mechanism = opt_mechanism;
+	pss_params.hashAlg = 0;
+
+	if (opt_hash_alg != 0 && opt_mechanism != CKM_RSA_PKCS_PSS)
+		util_fatal("The hash-algorithm is applicable only to generic"
+			"RSA-PKCS-PSS mechanism");
+
+	/* set "default" MGF and hash algorithms. We can overwrite MGF later */
+	switch (opt_mechanism) {
+	case CKM_RSA_PKCS_PSS:
+		switch (opt_hash_alg) {
+		case CKM_SHA_1:
+			pss_params.mgf = CKG_MGF1_SHA1;
+			break;
+		case CKM_SHA256:
+			pss_params.mgf = CKG_MGF1_SHA256;
+			break;
+		case CKM_SHA384:
+			pss_params.mgf = CKG_MGF1_SHA384;
+			break;
+		case CKM_SHA512:
+			pss_params.mgf = CKG_MGF1_SHA512;
+			break;
+		default:
+			util_fatal("RSA-PKCS-PSS requires explicit hash mechanism");
+		}
+		pss_params.hashAlg = opt_hash_alg;
+		break;
+
+	case CKM_SHA1_RSA_PKCS_PSS:
+		pss_params.hashAlg = CKM_SHA_1;
+		pss_params.mgf = CKG_MGF1_SHA1;
+		break;
+
+	case CKM_SHA256_RSA_PKCS_PSS:
+		pss_params.hashAlg = CKM_SHA256;
+		pss_params.mgf = CKG_MGF1_SHA256;
+		break;
+
+	case CKM_SHA384_RSA_PKCS_PSS:
+		pss_params.hashAlg = CKM_SHA384;
+		pss_params.mgf = CKG_MGF1_SHA384;
+		break;
+
+	case CKM_SHA512_RSA_PKCS_PSS:
+		pss_params.hashAlg = CKM_SHA512;
+		pss_params.mgf = CKG_MGF1_SHA512;
+		break;
+	}
+
+	/* One of RSA-PSS mechanisms above: They need parameters */
+	if (pss_params.hashAlg) {
+		if (opt_mgf != 0)
+			pss_params.mgf = opt_mgf;
+		pss_params.sLen = opt_salt;
+		mech.pParameter = &pss_params;
+		mech.ulParameterLen = sizeof(pss_params);
+		fprintf(stderr, "PSS parameters: hashAlg=%s, mgf=%s, salt=%lu B\n",
+			p11_mechanism_to_name(opt_mechanism),
+			p11_mgf_to_name(pss_params.mgf),
+			pss_params.sLen);
+	}
 
 	if (opt_input == NULL)
 		fd = 0;
@@ -5812,6 +5897,15 @@ static struct mech_info	p11_mechanisms[] = {
       { 0, NULL, NULL }
 };
 
+static struct mech_info	p11_mgf[] = {
+      { CKG_MGF1_SHA1,		"MGF1-SHA1", NULL },
+      { CKG_MGF1_SHA224,	"MGF1-SHA224", NULL },
+      { CKG_MGF1_SHA256,	"MGF1-SHA256", NULL },
+      { CKG_MGF1_SHA384,	"MGF1-SHA384", NULL },
+      { CKG_MGF1_SHA512,	"MGF1-SHA512", NULL },
+      { 0, NULL, NULL }
+};
+
 static const char *p11_mechanism_to_name(CK_MECHANISM_TYPE mech)
 {
 	static char temp[64];
@@ -5836,6 +5930,30 @@ static CK_MECHANISM_TYPE p11_name_to_mechanism(const char *name)
 	}
 	util_fatal("Unknown PKCS11 mechanism \"%s\"", name);
 	return 0; /* gcc food */
+}
+
+static CK_RSA_PKCS_MGF_TYPE p11_name_to_mgf(const char *name)
+{
+	struct mech_info *mi;
+
+	for (mi = p11_mgf; mi->name; mi++) {
+		if (!strcasecmp(mi->name, name))
+			return mi->mech;
+	}
+	util_fatal("Unknown PKCS11 MGF \"%s\"", name);
+}
+
+static const char *p11_mgf_to_name(CK_RSA_PKCS_MGF_TYPE mgf)
+{
+	static char temp[64];
+	struct mech_info *mi;
+
+	for (mi = p11_mgf; mi->name; mi++) {
+		if (mi->mech == mgf)
+			return mi->name;
+	}
+	snprintf(temp, sizeof(temp), "mgf-0x%lX", (unsigned long) mgf);
+	return temp;
 }
 
 static const char * CKR2Str(CK_ULONG res)

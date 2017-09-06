@@ -73,6 +73,13 @@
 
 				<varlistentry>
 					<term>
+						<option>--hash-algorithm</option> <replaceable>mechanism</replaceable>
+					</term>
+					<listitem><para>Specify hash algorithm used with generic RSA-PSS signature</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
 						<option>--id</option> <replaceable>id</replaceable>,
 						<option>-d</option> <replaceable>id</replaceable>
 					</term>
@@ -214,6 +221,16 @@
 
 				<varlistentry>
 					<term>
+						<option>--mgf</option> <replaceable>function</replaceable>
+					</term>
+					<listitem><para>Use the specified Message Generation
+					Function (MGF) <replaceable>function</replaceable>
+					for RSA-PSS signatures. Supported arguments are MGF1-SHA1
+					to MGF1-SHA512 if supported by the driver.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
 						<option>--module</option> <replaceable>mod</replaceable>
 					</term>
 					<listitem><para>Specify a PKCS#11 module (or library) to
@@ -307,6 +324,14 @@
 						<option>--derive</option>,
 					</term>
 					<listitem><para>Derive a secret key using another key and some data.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--salt</option> <replaceable>bytes</replaceable>
+					</term>
+					<listitem><para>Specify how many bytes should be used in
+					RSA-PSS signatures. Default is 0.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
