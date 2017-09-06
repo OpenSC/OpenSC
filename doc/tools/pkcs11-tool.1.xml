@@ -116,7 +116,7 @@
 
 				<varlistentry>
 					<term>
-						<option>--key-type</option> <replacement>specification</replacement>
+						<option>--key-type</option> <replaceable>specification</replaceable>
 					</term>
 					<listitem><para>Specify the type and length of the key to create, for example rsa:1024 or EC:prime256v1.</para></listitem>
 				</varlistentry>
