@@ -508,6 +508,8 @@ typedef unsigned long ck_mechanism_type_t;
 #define CKM_SHA256_RSA_PKCS_PSS		(0x43UL)
 #define CKM_SHA384_RSA_PKCS_PSS		(0x44UL)
 #define CKM_SHA512_RSA_PKCS_PSS		(0x45UL)
+#define CKM_SHA224_RSA_PKCS		(0x46UL)
+#define CKM_SHA224_RSA_PKCS_PSS		(0x47UL)
 #define CKM_RC2_KEY_GEN			(0x100UL)
 #define CKM_RC2_ECB			(0x101UL)
 #define	CKM_RC2_CBC			(0x102UL)
