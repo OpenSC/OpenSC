@@ -969,6 +969,15 @@ C_SignInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_HA
 	enter("C_SignInit");
 	spy_dump_ulong_in("hSession", hSession);
 	fprintf(spy_output, "pMechanism->type=%s\n", lookup_enum(MEC_T, pMechanism->mechanism));
+	if (pMechanism->pParameter != NULL) { /* XXX assuming PSS parameter */
+		CK_RSA_PKCS_PSS_PARAMS *param =
+			(CK_RSA_PKCS_PSS_PARAMS *) pMechanism->pParameter;
+		fprintf(spy_output, "pMechanism->pParameter->hashAlg=%s\n",
+			lookup_enum(MEC_T, param->hashAlg));
+		fprintf(spy_output, "pMechanism->pParameter->mgf=%s\n",
+			lookup_enum(MGF_T, param->mgf));
+		fprintf(spy_output, "pMechanism->pParameter->sLen=%lu\n", param->sLen);
+	}
 	spy_dump_ulong_in("hKey", hKey);
 	rv = po->C_SignInit(hSession, pMechanism, hKey);
 	return retne(rv);
