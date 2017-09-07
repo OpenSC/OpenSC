@@ -235,7 +235,7 @@ static const char *option_help[] = {
 	"Specify mechanism (use -M for a list of supported mechanisms)",
 	"Specify hash algorithm used with generic RSA-PSS signature",
 	"Specify MGF (Message Generation Function) used for RSA-PSS signatures (possible values are MGF1-SHA1 to MGF1-SHA512)",
-	"Specify how many bytes should be used for salt in RSA-PSS signatures (default 0)",
+	"Specify how many bytes should be used for salt in RSA-PSS signatures (default equals to digest size)",
 
 	"Log into the token first",
 	"Specify login type ('so', 'user', 'context-specific'; default:'user')",
@@ -328,6 +328,7 @@ static unsigned long	opt_random_bytes = 0;
 static CK_MECHANISM_TYPE opt_hash_alg = 0;
 static unsigned long	opt_mgf = 0;
 static unsigned long	opt_salt = 0;
+static int            opt_salt_given = 0; /* 0 - not given, 1 - given with input parameters */
 
 static void *module = NULL;
 static CK_FUNCTION_LIST_PTR p11 = NULL;
@@ -695,6 +696,7 @@ int main(int argc, char * argv[])
 			break;
 		case OPT_SALT:
 			opt_salt = (CK_ULONG) strtoul(optarg, NULL, 0);
+      opt_salt_given = 1;
 			break;
 		case 'o':
 			opt_output = optarg;
@@ -1625,6 +1627,28 @@ static int unlock_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess, int login_type)
 	return 0;
 }
 
+inline unsigned long figure_pss_salt_length(const int hash) {
+  unsigned sLen = 0;
+  switch (hash) {
+  case  CKM_SHA_1:
+    sLen = 20;
+    break;
+  case  CKM_SHA256:
+    sLen = 32;
+    break;
+  case  CKM_SHA384:
+    sLen = 48;
+    break;
+  case  CKM_SHA512:
+    sLen = 64;
+    break;
+  default:
+    sLen = 0;
+    break;
+  }
+  return sLen;
+}
+
 static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		CK_OBJECT_HANDLE key)
 {
@@ -1666,7 +1690,7 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 			break;
 		default:
 			util_fatal("RSA-PKCS-PSS requires explicit hash mechanism");
-		}
+    }
 		pss_params.hashAlg = opt_hash_alg;
 		break;
 
@@ -1695,7 +1719,10 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	if (pss_params.hashAlg) {
 		if (opt_mgf != 0)
 			pss_params.mgf = opt_mgf;
-		pss_params.sLen = opt_salt;
+    if (opt_salt_given == 1)
+      pss_params.sLen = opt_salt;
+    else
+      pss_params.sLen = figure_pss_salt_length(pss_params.hashAlg);
 		mech.pParameter = &pss_params;
 		mech.ulParameterLen = sizeof(pss_params);
 		fprintf(stderr, "PSS parameters: hashAlg=%s, mgf=%s, salt=%lu B\n",
