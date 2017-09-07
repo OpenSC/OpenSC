@@ -1726,9 +1726,9 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		mech.pParameter = &pss_params;
 		mech.ulParameterLen = sizeof(pss_params);
 		fprintf(stderr, "PSS parameters: hashAlg=%s, mgf=%s, salt=%lu B\n",
-			p11_mechanism_to_name(opt_mechanism),
-			p11_mgf_to_name(pss_params.mgf),
-			pss_params.sLen);
+            p11_mechanism_to_name(pss_params.hashAlg),
+            p11_mgf_to_name(pss_params.mgf),
+            pss_params.sLen);
 	}
 
 	if (opt_input == NULL)
