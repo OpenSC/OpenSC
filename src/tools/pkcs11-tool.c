@@ -327,8 +327,8 @@ static int		opt_derive_pass_der = 0;
 static unsigned long	opt_random_bytes = 0;
 static CK_MECHANISM_TYPE opt_hash_alg = 0;
 static unsigned long	opt_mgf = 0;
-static unsigned long	opt_salt = 0;
-static int            opt_salt_given = 0; /* 0 - not given, 1 - given with input parameters */
+static long	        salt_len = 0;
+static int              salt_len_given = 0; /* 0 - not given, 1 - given with input parameters */
 
 static void *module = NULL;
 static CK_FUNCTION_LIST_PTR p11 = NULL;
@@ -695,8 +695,8 @@ int main(int argc, char * argv[])
 			opt_mgf = p11_name_to_mgf(optarg);
 			break;
 		case OPT_SALT:
-			opt_salt = (CK_ULONG) strtoul(optarg, NULL, 0);
-      opt_salt_given = 1;
+			salt_len = (CK_ULONG) strtoul(optarg, NULL, 0);
+      salt_len_given = 1;
 			break;
 		case 'o':
 			opt_output = optarg;
@@ -1719,8 +1719,8 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	if (pss_params.hashAlg) {
 		if (opt_mgf != 0)
 			pss_params.mgf = opt_mgf;
-    if (opt_salt_given == 1)
-      pss_params.sLen = opt_salt;
+    if (salt_len_given == 1)
+      pss_params.sLen = salt_len;
     else
       pss_params.sLen = figure_pss_salt_length(pss_params.hashAlg);
 		mech.pParameter = &pss_params;
