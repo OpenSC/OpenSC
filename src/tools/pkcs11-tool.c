@@ -1627,7 +1627,7 @@ static int unlock_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess, int login_type)
 	return 0;
 }
 
-inline unsigned long figure_pss_salt_length(const int hash) {
+inline long figure_pss_salt_length(const int hash) {
   unsigned sLen = 0;
   switch (hash) {
   case  CKM_SHA_1:
@@ -1719,16 +1719,16 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	if (pss_params.hashAlg) {
 		if (opt_mgf != 0)
 			pss_params.mgf = opt_mgf;
-    if (salt_len_given == 1)
-      pss_params.sLen = salt_len;
-    else
-      pss_params.sLen = figure_pss_salt_length(pss_params.hashAlg);
+                if (salt_len_given == 1)
+                       pss_params.sLen = salt_len;
+                else
+                       pss_params.sLen = figure_pss_salt_length(pss_params.hashAlg);
 		mech.pParameter = &pss_params;
 		mech.ulParameterLen = sizeof(pss_params);
 		fprintf(stderr, "PSS parameters: hashAlg=%s, mgf=%s, salt=%lu B\n",
-            p11_mechanism_to_name(pss_params.hashAlg),
-            p11_mgf_to_name(pss_params.mgf),
-            pss_params.sLen);
+                        p11_mechanism_to_name(pss_params.hashAlg),
+                        p11_mgf_to_name(pss_params.mgf),
+                        pss_params.sLen);
 	}
 
 	if (opt_input == NULL)
