@@ -331,7 +331,7 @@
 						<option>--salt</option> <replaceable>bytes</replaceable>
 					</term>
 					<listitem><para>Specify how many bytes should be used in
-					RSA-PSS signatures. Default is 0.</para></listitem>
+					RSA-PSS signatures. Can be zero (no salt). Accepts two special values: "-1" means salt length equals to digest length, "-2" means use maximum permissible length. Default is digest length.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
