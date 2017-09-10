@@ -1627,8 +1627,9 @@ static int unlock_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess, int login_type)
 	return 0;
 }
 
+/* return digest length in bytes */
 static unsigned long figure_pss_salt_length(const int hash) {
-  unsigned sLen = 0;
+  unsigned long sLen = 0;
   switch (hash) {
   case  CKM_SHA_1:
     sLen = 20;
@@ -1719,17 +1720,31 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	if (pss_params.hashAlg) {
 		if (opt_mgf != 0)
 			pss_params.mgf = opt_mgf;
-                if ((salt_len_given == 1) && (salt_len != -1) && (salt_len != -2)) { 
-          		pss_params.sLen = salt_len; /* use given size in bytes */
-		} else {
-		  if (salt_len == -2) { /* maximum permissible salt len */
-		    unsigned long modlen = (get_private_key_length(session, key) + 7) / 8;
-		    unsigned long saltlen = figure_pss_salt_length(pss_params.hashAlg);
-		    pss_params.sLen = modlen - saltlen -2;
-		  } else { /* size of digest */
-		       pss_params.sLen = figure_pss_salt_length(pss_params.hashAlg);
-		  }
+
+
+		unsigned long hashlen = figure_pss_salt_length(pss_params.hashAlg);
+		if (salt_len_given == 1) { /* salt size explicitly given */
+		  if (salt_len < 0 && salt_len != -1 && salt_len != -2)
+		    util_fatal("Salt length must be greater or equal \
+to zero, or equal to -1 (meaning: use digest size) or to -2 \
+(meaning: use maximum permissible size");
+		  
+		  unsigned long modlen = (get_private_key_length(session, key) + 7) / 8;
+		  switch(salt_len) {
+		  case -1: /* salt size equals to digest size */
+		    pss_params.sLen = hashlen;
+		    break;
+		  case -2: /* maximum permissible salt len */
+		    pss_params.sLen = modlen - hashlen -2;
+		    break;
+		  default: /* use given size but its value must be >= 0 */
+		    pss_params.sLen = salt_len;
+		    break;
+		  } /* end switch (salt_len_given) */
+		} else { /* use default: salt len of digest size */
+		  pss_params.sLen = hashlen;
 		}
+
 		mech.pParameter = &pss_params;
 		mech.ulParameterLen = sizeof(pss_params);
 		fprintf(stderr, "PSS parameters: hashAlg=%s, mgf=%s, salt=%lu B\n",
