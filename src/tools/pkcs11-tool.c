@@ -1634,6 +1634,9 @@ static unsigned long figure_pss_salt_length(const int hash) {
 	case  CKM_SHA_1:
 		sLen = 20;
 		break;
+	case  CKM_SHA224:
+		sLen = 28;
+		break;
 	case  CKM_SHA256:
 		sLen = 32;
 		break;
