@@ -1647,7 +1647,8 @@ static unsigned long figure_pss_salt_length(const int hash) {
 		sLen = 64;
 		break;
 	default:
-		sLen = 0;
+		util_fatal("Unknown hash algorithm '%s' for RSA-PSS signatures",
+			p11_mechanism_to_name(hash));
 		break;
 	}
 	return sLen;
