@@ -1660,6 +1660,8 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	CK_ULONG	sig_len;
 	int		fd, r;
 
+	unsigned long hashlen = 0, modlen = 0;
+
 	if (!opt_mechanism_used)
 		if (!find_mechanism(slot, CKF_SIGN|CKF_HW, NULL, 0, &opt_mechanism))
 			util_fatal("Sign mechanism not supported");
@@ -1721,15 +1723,15 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		if (opt_mgf != 0)
 			pss_params.mgf = opt_mgf;
 
+		hashlen = figure_pss_salt_length(pss_params.hashAlg);
 
-		unsigned long hashlen = figure_pss_salt_length(pss_params.hashAlg);
 		if (salt_len_given == 1) { /* salt size explicitly given */
 		  if (salt_len < 0 && salt_len != -1 && salt_len != -2)
 		    util_fatal("Salt length must be greater or equal \
 to zero, or equal to -1 (meaning: use digest size) or to -2 \
 (meaning: use maximum permissible size");
 		  
-		  unsigned long modlen = (get_private_key_length(session, key) + 7) / 8;
+		  modlen = (get_private_key_length(session, key) + 7) / 8;
 		  switch(salt_len) {
 		  case -1: /* salt size equals to digest size */
 		    pss_params.sLen = hashlen;
