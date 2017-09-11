@@ -328,7 +328,7 @@ static unsigned long	opt_random_bytes = 0;
 static CK_MECHANISM_TYPE opt_hash_alg = 0;
 static unsigned long	opt_mgf = 0;
 static long	        salt_len = 0;
-static int              salt_len_given = 0; /* 0 - not given, 1 - given with input parameters */
+static int		salt_len_given = 0; /* 0 - not given, 1 - given with input parameters */
 
 static void *module = NULL;
 static CK_FUNCTION_LIST_PTR p11 = NULL;
@@ -696,7 +696,7 @@ int main(int argc, char * argv[])
 			break;
 		case OPT_SALT:
 			salt_len = (CK_ULONG) strtoul(optarg, NULL, 0);
-      salt_len_given = 1;
+			salt_len_given = 1;
 			break;
 		case 'o':
 			opt_output = optarg;
@@ -1629,25 +1629,25 @@ static int unlock_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess, int login_type)
 
 /* return digest length in bytes */
 static unsigned long figure_pss_salt_length(const int hash) {
-  unsigned long sLen = 0;
-  switch (hash) {
-  case  CKM_SHA_1:
-    sLen = 20;
-    break;
-  case  CKM_SHA256:
-    sLen = 32;
-    break;
-  case  CKM_SHA384:
-    sLen = 48;
-    break;
-  case  CKM_SHA512:
-    sLen = 64;
-    break;
-  default:
-    sLen = 0;
-    break;
-  }
-  return sLen;
+	unsigned long sLen = 0;
+	switch (hash) {
+	case  CKM_SHA_1:
+		sLen = 20;
+		break;
+	case  CKM_SHA256:
+		sLen = 32;
+		break;
+	case  CKM_SHA384:
+		sLen = 48;
+		break;
+	case  CKM_SHA512:
+		sLen = 64;
+		break;
+	default:
+		sLen = 0;
+		break;
+	}
+	return sLen;
 }
 
 static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
@@ -1693,7 +1693,7 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 			break;
 		default:
 			util_fatal("RSA-PKCS-PSS requires explicit hash mechanism");
-    }
+		}
 		pss_params.hashAlg = opt_hash_alg;
 		break;
 
@@ -1726,33 +1726,33 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		hashlen = figure_pss_salt_length(pss_params.hashAlg);
 
 		if (salt_len_given == 1) { /* salt size explicitly given */
-		  if (salt_len < 0 && salt_len != -1 && salt_len != -2)
-		    util_fatal("Salt length must be greater or equal \
+			if (salt_len < 0 && salt_len != -1 && salt_len != -2)
+				util_fatal("Salt length must be greater or equal \
 to zero, or equal to -1 (meaning: use digest size) or to -2 \
 (meaning: use maximum permissible size");
 		  
-		  modlen = (get_private_key_length(session, key) + 7) / 8;
-		  switch(salt_len) {
-		  case -1: /* salt size equals to digest size */
-		    pss_params.sLen = hashlen;
-		    break;
-		  case -2: /* maximum permissible salt len */
-		    pss_params.sLen = modlen - hashlen -2;
-		    break;
-		  default: /* use given size but its value must be >= 0 */
-		    pss_params.sLen = salt_len;
-		    break;
-		  } /* end switch (salt_len_given) */
+			modlen = (get_private_key_length(session, key) + 7) / 8;
+			switch(salt_len) {
+			case -1: /* salt size equals to digest size */
+				pss_params.sLen = hashlen;
+				break;
+			case -2: /* maximum permissible salt len */
+				pss_params.sLen = modlen - hashlen -2;
+				break;
+			default: /* use given size but its value must be >= 0 */
+				pss_params.sLen = salt_len;
+				break;
+			} /* end switch (salt_len_given) */
 		} else { /* use default: salt len of digest size */
-		  pss_params.sLen = hashlen;
+			pss_params.sLen = hashlen;
 		}
 
 		mech.pParameter = &pss_params;
 		mech.ulParameterLen = sizeof(pss_params);
 		fprintf(stderr, "PSS parameters: hashAlg=%s, mgf=%s, salt=%lu B\n",
-                        p11_mechanism_to_name(pss_params.hashAlg),
-                        p11_mgf_to_name(pss_params.mgf),
-                        pss_params.sLen);
+			p11_mechanism_to_name(pss_params.hashAlg),
+			p11_mgf_to_name(pss_params.mgf),
+			pss_params.sLen);
 	}
 
 	if (opt_input == NULL)
