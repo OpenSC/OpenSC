@@ -1336,7 +1336,7 @@ static int starcos_set_security_env(sc_card_t *card,
 		 * algorithm / cipher from PKCS#1 padding prefix */
 		*p++ = 0x84;
 		*p++ = 0x01;
-		*p++ = 0x84;
+		*p++ = *env->key_ref;
 
 		/* algorithm / cipher selector? */
 		*p++ = 0x89;
@@ -1631,6 +1631,9 @@ static int starcos_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 {
 	int r;
 	u8  rbuf[SC_MAX_APDU_BUFFER_SIZE];
+	const u8 *p;
+	unsigned int ef_gdo_tag, cla;
+	size_t ef_gdo_tag_len;
 	sc_apdu_t apdu;
 
 	if (!serial)
@@ -1640,24 +1643,52 @@ static int starcos_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 		memcpy(serial, &card->serialnr, sizeof(*serial));
 		return SC_SUCCESS;
 	}
-	CHECK_NOT_SUPPORTED_V3_4(card);
-	/* get serial number via GET CARD DATA */
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xf6, 0x00, 0x00);
-	apdu.cla |= 0x80;
-	apdu.resp = rbuf;
-	apdu.resplen = sizeof(rbuf);
-	apdu.le   = 256;
-	apdu.lc   = 0;
-	apdu.datalen = 0;
-        r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
-	if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
-		return SC_ERROR_INTERNAL;
-	/* cache serial number */
-	memcpy(card->serialnr.value, apdu.resp, MIN(apdu.resplen, SC_MAX_SERIALNR));
-	card->serialnr.len = MIN(apdu.resplen, SC_MAX_SERIALNR);
+
+	switch (card->type) {
+		case SC_CARD_TYPE_STARCOS_V3_4:
+			r = sc_select_file(card, sc_get_mf_path(), NULL);
+			SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "SELECT MF failed");
+			/* get serial number via EF.GDO */
+			sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xB0, 0x82, 0x00);
+			apdu.resp = rbuf;
+			apdu.resplen = sizeof(rbuf);
+			apdu.le   = 256;
+			apdu.lc   = 0;
+			apdu.datalen = 0;
+			r = sc_transmit_apdu(card, &apdu);
+			SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+			p = apdu.resp;
+			r = sc_asn1_read_tag(&p, apdu.resplen, &cla, &ef_gdo_tag, &ef_gdo_tag_len);
+			SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Failed to parse EF.GDO");
+			if ((ef_gdo_tag|cla) != 0x5A)
+				return SC_ERROR_INTERNAL;
+			/* cache serial number */
+			memcpy(card->serialnr.value, p, MIN(ef_gdo_tag_len, SC_MAX_SERIALNR));
+			card->serialnr.len = MIN(ef_gdo_tag_len, SC_MAX_SERIALNR);
+			break;
+
+		default:
+			/* get serial number via GET CARD DATA */
+			sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xf6, 0x00, 0x00);
+			apdu.cla |= 0x80;
+			apdu.resp = rbuf;
+			apdu.resplen = sizeof(rbuf);
+			apdu.le   = 256;
+			apdu.lc   = 0;
+			apdu.datalen = 0;
+			r = sc_transmit_apdu(card, &apdu);
+			SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+			if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
+				return SC_ERROR_INTERNAL;
+			/* cache serial number */
+			memcpy(card->serialnr.value, apdu.resp, MIN(apdu.resplen, SC_MAX_SERIALNR));
+			card->serialnr.len = MIN(apdu.resplen, SC_MAX_SERIALNR);
+			break;
+	}
+
 	/* copy and return serial number */
 	memcpy(serial, &card->serialnr, sizeof(*serial));
+
 	return SC_SUCCESS;
 }
 
