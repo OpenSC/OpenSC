@@ -271,7 +271,7 @@ static const char *option_help[] = {
 	"Test Mozilla-like keypair gen and cert req, <arg>=certfile",
 	"Verbose operation. (Set OPENSC_DEBUG to enable OpenSC specific debugging)",
 	"Set the CKA_PRIVATE attribute (object is only viewable after a login)",
-	"Set the CKA_SENSITIVE attribute (object is protected by HSM)",
+	"Set the CKA_SENSITIVE attribute (object cannot be revealed in plaintext)",
 	"Test EC (best used with the --login or --pin option)",
 #ifndef _WIN32
 	"Test forking and calling C_Initialize() in the child",
@@ -2121,14 +2121,14 @@ gen_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE *hSecretKey
 			util_fatal("Unknown key type %s", type);
 		}
 
-        if (opt_is_sensitive != 0) {
-            FILL_ATTR(keyTemplate[n_attr], CKA_SENSITIVE, &_true, sizeof(_true));
-            n_attr++;
-        }
-        else {
-            FILL_ATTR(keyTemplate[n_attr], CKA_SENSITIVE, &_false, sizeof(_false));
-            n_attr++;
-        }
+		if (opt_is_sensitive != 0) {
+			FILL_ATTR(keyTemplate[n_attr], CKA_SENSITIVE, &_true, sizeof(_true));
+			n_attr++;
+		}
+		else {
+			FILL_ATTR(keyTemplate[n_attr], CKA_SENSITIVE, &_false, sizeof(_false));
+			n_attr++;
+		}
 
 		FILL_ATTR(keyTemplate[n_attr], CKA_ENCRYPT, &_true, sizeof(_true));
 		n_attr++;
