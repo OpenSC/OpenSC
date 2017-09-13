@@ -4321,13 +4321,13 @@ static int test_signature(CK_SESSION_HANDLE sess)
 		break;
 	case CKM_RSA_X_509:
 		dataLen = modLenBytes;
+		pseudo_randomize(data, dataLen);
 		break;
 	default:
 		dataLen = sizeof(data);	/* let's hope it's OK */
+		pseudo_randomize(data, dataLen);
 		break;
 	}
-
-	pseudo_randomize(data, dataLen);
 
 	if (firstMechType == CKM_RSA_X_509) {
 		/* make sure our data is smaller than the modulus */
