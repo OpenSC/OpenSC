@@ -4847,7 +4847,7 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 		return 0;
 
 	if (EVP_PKEY_size(pkey) > (int)sizeof(encrypted)) {
-		fprintf(stderr, "Ciphertext buffer too small\n");
+		printf("Ciphertext buffer too small\n");
 		EVP_PKEY_free(pkey);
 		return 0;
 	}
@@ -4858,14 +4858,14 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 #endif
 	EVP_PKEY_free(pkey);
 	if (((int) encrypted_len) <= 0) {
-		fprintf(stderr, "Encryption failed, returning\n");
+		printf("Encryption failed, returning\n");
 		return 0;
 	}
 
 	mech.mechanism = mech_type;
 	rv = p11->C_DecryptInit(session, &mech, privKeyObject);
-	if (rv == CKR_MECHANISM_INVALID) {
-		fprintf(stderr, "Mechanism not supported\n");
+	if (rv == CKR_MECHANISM_INVALID || rv == CKR_MECHANISM_PARAM_INVALID) {
+		printf("Mechanism not supported\n");
 		return 0;
 	}
 	if (rv != CKR_OK)
