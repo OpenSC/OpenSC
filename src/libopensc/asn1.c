@@ -351,10 +351,6 @@ const u8 *sc_asn1_find_tag(sc_context_t *ctx, const u8 * buf,
 		/* read a tag */
 		if (sc_asn1_read_tag(&p, left, &cla, &tag, &taglen) != SC_SUCCESS)
 			return NULL;
-		if (left < (size_t)(p - buf)) {
-			sc_debug(ctx, SC_LOG_DEBUG_ASN1, "invalid TLV object\n");
-			return NULL;
-		}
 		left -= (p - buf);
 		/* we need to shift the class byte to the leftmost
 		 * byte of the tag */
@@ -371,10 +367,6 @@ const u8 *sc_asn1_find_tag(sc_context_t *ctx, const u8 * buf,
 			return p;
 		}
 		/* otherwise continue reading tags */
-		if (left < taglen) {
-			sc_debug(ctx, SC_LOG_DEBUG_ASN1, "invalid TLV object\n");
-			return NULL;
-		}
 		left -= taglen;
 		p += taglen;
 	}
