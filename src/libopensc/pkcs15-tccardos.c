@@ -304,9 +304,9 @@ static int sc_pkcs15_tccardos_init_func(sc_pkcs15_card_t *p15card)
 	int    r;
 	struct sc_path path;
 	struct sc_file *file = NULL;
-	u8     gdo[MAX_INFO1_SIZE];
 	char   hex_buf[256];
-	size_t gdo_len = MAX_INFO1_SIZE;
+	const unsigned char *iccsn;
+	size_t iccsn_len;
 	struct sc_card *card = p15card->card;
 
 	/* check if we have the correct card OS */
@@ -329,10 +329,10 @@ static int sc_pkcs15_tccardos_init_func(sc_pkcs15_card_t *p15card)
 	if (p15card->tokeninfo->manufacturer_id == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 	/* set the serial number */
-	r = read_file(p15card->card, "3F002F02", gdo, &gdo_len);
-	if (r != SC_SUCCESS)
+	r = sc_parse_ef_gdo(card, &iccsn, &iccsn_len, NULL, 0);
+	if (r != SC_SUCCESS || iccsn_len < 5+8)
 		return SC_ERROR_INTERNAL;
-	sc_bin_to_hex(gdo + 7, 8, hex_buf, sizeof(hex_buf), 0);
+	sc_bin_to_hex(iccsn + 5, 8, hex_buf, sizeof(hex_buf), 0);
 	p15card->tokeninfo->serial_number = strdup(hex_buf);
 	if (p15card->tokeninfo->serial_number == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;

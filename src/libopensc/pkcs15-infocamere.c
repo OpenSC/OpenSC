@@ -166,10 +166,7 @@ static int infocamere_1200_init(sc_pkcs15_card_t * p15card)
 
 	sc_card_t *card = p15card->card;
 	sc_path_t path;
-	sc_file_t *file;
 	sc_pkcs15_id_t id, auth_id;
-	unsigned char buffer[256];
-	unsigned char ef_gdo[256];
 	char serial[256];
 	unsigned char certlen[2];
 	int authority, change_sign = 0;
@@ -235,64 +232,31 @@ static int infocamere_1200_init(sc_pkcs15_card_t * p15card)
 		SC_PKCS15_PIN_FLAG_INITIALIZED |
 		SC_PKCS15_PIN_FLAG_NEEDS_PADDING;
 
-	int r, len_iccsn, len_chn;
+	int r;
 
-	sc_format_path("3F002F02", &path);
+	const unsigned char *iccsn, *chn;
+	size_t iccsn_len, chn_len;
 
-	r = sc_select_file(card, &path, &file);
+	r = sc_parse_ef_gdo(card, &iccsn, &iccsn_len, &chn, &chn_len);
+	if (r < 0)
+		return r;
 
-	if (r != SC_SUCCESS || file->size > 255) {
-		/* Not EF.GDO */
-		sc_file_free(file);
+	if (!iccsn_len || chn_len < 2 || chn_len > 8) {
 		return SC_ERROR_WRONG_CARD;
 	}
 
-	sc_read_binary(card, 0, ef_gdo, file->size, 0);
-
-	if (ef_gdo[0] != 0x5A || file->size < 3) {
-		/* Not EF.GDO */
-		sc_file_free(file);
-		return SC_ERROR_WRONG_CARD;
-	}
-
-	len_iccsn = ef_gdo[1];
-
-	memcpy(buffer, ef_gdo + 2, len_iccsn);
-
-	sc_bin_to_hex(buffer, len_iccsn, serial, sizeof(serial), 0);
-
-	if (file->size < (size_t) (len_iccsn + 5)) {
-		/* Not CHN */
-		sc_file_free(file);
-		return SC_ERROR_WRONG_CARD;
-	}
-	sc_file_free(file);
+	sc_bin_to_hex(iccsn, iccsn_len, serial, sizeof(serial), 0);
 
 	if (!
-			(ef_gdo[len_iccsn + 2] == 0x5F
-			 && ef_gdo[len_iccsn + 3] == 0x20)) {
-		/* Not CHN */
-		return SC_ERROR_WRONG_CARD;
-	}
-
-	len_chn = ef_gdo[len_iccsn + 4];
-
-	if (len_chn < 2 || len_chn > 8) {
-		/* Length CHN incorrect */
-		return SC_ERROR_WRONG_CARD;
-	}
-
-	if (!
-			(ef_gdo[len_iccsn + 5] == 0x12
-			 && (ef_gdo[len_iccsn + 6] == 0x02
-				 || ef_gdo[len_iccsn + 6] == 0x03))) {
+			(chn[0] == 0x12
+			 && (chn[1] == 0x02 || chn[1] == 0x03))) {
 		/* Not Infocamere Card */
 		return SC_ERROR_WRONG_CARD;
 	}
 
 	set_string(&p15card->tokeninfo->serial_number, serial);
 
-	if (ef_gdo[len_iccsn + 6] == 0x02)
+	if (chn[1] == 0x02)
 		set_string(&p15card->tokeninfo->label, "Infocamere 1202 Card");
 	else {
 		set_string(&p15card->tokeninfo->label, "Infocamere 1203 Card");
@@ -305,7 +269,7 @@ static int infocamere_1200_init(sc_pkcs15_card_t * p15card)
 
 	/* Get the authentication certificate length */
 
-	sc_format_path(infocamere_auth_certpath[ef_gdo[len_iccsn+6]-2], &path);
+	sc_format_path(infocamere_auth_certpath[chn[1]-2], &path);
 
 	r = sc_select_file(card, &path, NULL);
 
@@ -336,11 +300,11 @@ static int infocamere_1200_init(sc_pkcs15_card_t * p15card)
 		if (!change_sign) {    
 			/* add authentication PIN */
 
-			sc_format_path(infocamere_auth_path[ef_gdo[len_iccsn+6]-2], &path);
+			sc_format_path(infocamere_auth_path[chn[1]-2], &path);
 
 			sc_pkcs15_format_id("01", &id);
 			sc_pkcs15emu_add_pin(p15card, &id,
-					authPIN, &path, infocamere_idpin_auth_obj[ef_gdo[len_iccsn+6]-2],
+					authPIN, &path, infocamere_idpin_auth_obj[chn[1]-2],
 					SC_PKCS15_PIN_TYPE_ASCII_NUMERIC,
 					5, 8, flags, 3, 0, 
 					SC_PKCS15_CO_FLAG_MODIFIABLE | SC_PKCS15_CO_FLAG_PRIVATE);
@@ -354,7 +318,7 @@ static int infocamere_1200_init(sc_pkcs15_card_t * p15card)
 					authPRKEY,
 					SC_PKCS15_TYPE_PRKEY_RSA, 
 					1024, authprkey_usage,
-					&path, infocamere_idprkey_auth_obj[ef_gdo[len_iccsn+6]-2],
+					&path, infocamere_idprkey_auth_obj[chn[1]-2],
 					&auth_id, SC_PKCS15_CO_FLAG_PRIVATE);
 		}
 
@@ -362,7 +326,7 @@ static int infocamere_1200_init(sc_pkcs15_card_t * p15card)
 
 	/* Get the non-repudiation certificate length */
 
-	sc_format_path(infocamere_cert_path[ef_gdo[len_iccsn+6]-2], &path);
+	sc_format_path(infocamere_cert_path[chn[1]-2], &path);
 
 	if (sc_select_file(card, &path, NULL) < 0) {
 		return SC_ERROR_INTERNAL;
@@ -392,7 +356,7 @@ static int infocamere_1200_init(sc_pkcs15_card_t * p15card)
 
 	authority = 1;
 
-	sc_format_path(infocamere_cacert_path[ef_gdo[len_iccsn+6]-2], &path);
+	sc_format_path(infocamere_cacert_path[chn[1]-2], &path);
 
 	r = sc_select_file(card, &path, NULL);
 
@@ -425,11 +389,11 @@ static int infocamere_1200_init(sc_pkcs15_card_t * p15card)
 
 	/* add non repudiation PIN */
 
-	sc_format_path(infocamere_nrepud_path[ef_gdo[len_iccsn+6]-2], &path);
+	sc_format_path(infocamere_nrepud_path[chn[1]-2], &path);
 
 	sc_pkcs15_format_id("02", &id);
 	sc_pkcs15emu_add_pin(p15card, &id,
-			nonrepPIN, &path, infocamere_idpin_nrepud_obj[ef_gdo[len_iccsn+6]-2],
+			nonrepPIN, &path, infocamere_idpin_nrepud_obj[chn[1]-2],
 			SC_PKCS15_PIN_TYPE_ASCII_NUMERIC, 5, 8, flags, 3, 0,
 			SC_PKCS15_CO_FLAG_MODIFIABLE | SC_PKCS15_CO_FLAG_PRIVATE);
 
@@ -442,7 +406,7 @@ static int infocamere_1200_init(sc_pkcs15_card_t * p15card)
 	sc_pkcs15emu_add_prkey(p15card, &id, nonrepPRKEY,
 			SC_PKCS15_TYPE_PRKEY_RSA, 
 			1024, prkey_usage,
-			&path, infocamere_idprkey_nrepud_obj[ef_gdo[len_iccsn+6]-2],
+			&path, infocamere_idprkey_nrepud_obj[chn[1]-2],
 			&auth_id, SC_PKCS15_CO_FLAG_PRIVATE);
 
 

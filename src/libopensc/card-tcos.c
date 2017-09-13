@@ -705,33 +705,28 @@ static int tcos_setperm(sc_card_t *card, int enable_nullpin)
 
 static int tcos_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 {
-	int       r;
-	u8        buf[64];
-	size_t    len;
-	sc_path_t tpath;
-	sc_file_t *tfile = NULL;
+	int r;
+	const unsigned char *iccsn;
+	size_t iccsn_len;
 
-	if (!serial) return SC_ERROR_INVALID_ARGUMENTS;
+	if (!serial)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	/* see if we have cached serial number */
 	if (card->serialnr.len) {
 		memcpy(serial, &card->serialnr, sizeof(*serial));
 		return SC_SUCCESS;
 	}
-	sc_format_path("3F002F02", &tpath);
-	r = sc_select_file(card, &tpath, &tfile);
-	if (r < 0) return r;
 
-	len = tfile->size;
-	sc_file_free(tfile);
-	if (len > sizeof(buf) || len < 12) return SC_ERROR_INTERNAL;
+	r = sc_parse_ef_gdo(card, &iccsn, &iccsn_len, NULL, 0);
+	if (r < 0)
+		return r;
 
-	r = sc_read_binary(card, 0, buf, len, 0);
-	if (r < 0) return r;
-	if (buf[0] != 0x5a || buf[1] > len - 2) return SC_ERROR_INTERNAL;
+	/* cache serial number */
+	memcpy(card->serialnr.value, iccsn, MIN(iccsn_len, SC_MAX_SERIALNR));
+	card->serialnr.len = MIN(iccsn_len, SC_MAX_SERIALNR);
 
-	card->serialnr.len = buf[1];	
-	memcpy(card->serialnr.value, buf+2, buf[1]);
+	/* copy and return serial number */
 	memcpy(serial, &card->serialnr, sizeof(*serial));
 
 	return SC_SUCCESS;
