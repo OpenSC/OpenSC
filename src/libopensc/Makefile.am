@@ -22,8 +22,8 @@ AM_OBJCFLAGS = $(AM_CFLAGS)
 
 libopensc_la_SOURCES_BASE = \
 	sc.c ctx.c log.c errors.c \
-	asn1.c base64.c sec.c card.c iso7816.c dir.c ef-atr.c padding.c apdu.c \
-	simpletlv.c \
+	asn1.c base64.c sec.c card.c iso7816.c dir.c ef-atr.c \
+	ef-gdo.c padding.c apdu.c simpletlv.c \
 	\
 	pkcs15.c pkcs15-cert.c pkcs15-data.c pkcs15-pin.c \
 	pkcs15-prkey.c pkcs15-pubkey.c pkcs15-skey.c \

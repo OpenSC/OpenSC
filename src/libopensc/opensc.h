@@ -1317,6 +1317,9 @@ struct sc_app_info *sc_find_app(struct sc_card *card, struct sc_aid *aid);
 void sc_free_apps(struct sc_card *card);
 int sc_parse_ef_atr(struct sc_card *card);
 void sc_free_ef_atr(struct sc_card *card);
+int sc_parse_ef_gdo(struct sc_card *card,
+	   	const unsigned char **iccsn, size_t *iccsn_len,
+		const unsigned char **chn, size_t *chn_len);
 int sc_update_dir(struct sc_card *card, sc_app_info_t *app);
 
 void sc_print_cache(struct sc_card *card);
