@@ -44,7 +44,8 @@ void always_authenticate(test_cert_t *o, token_info_t *info)
  * Allocate new place for next certificate to store in the list
  * and return pointer to this object
  */
-test_cert_t * add_certificate(test_certs_t *objects)
+test_cert_t *
+add_object(test_certs_t *objects, CK_ATTRIBUTE key_id, CK_ATTRIBUTE label)
 {
 	test_cert_t *o = NULL;
 	objects->count = objects->count+1;
@@ -70,6 +71,16 @@ test_cert_t * add_certificate(test_certs_t *objects)
 	o->derive_pub = 0;
 	o->key_type = -1;
 	o->x509 = NULL; /* The "reuse" capability of d2i_X509() is strongly discouraged */
+
+	/* Store the passed CKA_ID and CKA_LABEL */
+	o->key_id = malloc(key_id.ulValueLen);
+	memcpy(o->key_id, key_id.pValue, key_id.ulValueLen);
+	o->key_id_size = key_id.ulValueLen;
+	o->id_str = convert_byte_string(o->key_id, o->key_id_size);
+	o->label = malloc(label.ulValueLen + 1);
+	strncpy(o->label, label.pValue, label.ulValueLen);
+	o->label[label.ulValueLen] = '\0';
+
 	return o;
 }
 
@@ -90,6 +101,41 @@ test_cert_t * search_certificate(test_certs_t *objects, CK_ATTRIBUTE *id)
 	return &(objects->data[i]);
 }
 
+static void
+add_supported_mechs(test_cert_t *o)
+{
+	size_t i;
+
+	if (o->type == EVP_PK_RSA) {
+		if (token.num_rsa_mechs > 0 ) {
+			/* Get supported mechanisms by token */
+			o->num_mechs = token.num_rsa_mechs;
+			for (i = 0; i <= token.num_rsa_mechs; i++) {
+				o->mechs[i].mech = token.rsa_mechs[i].mech;
+				o->mechs[i].flags = 0;
+			}
+		} else {
+			/* Use the default list */
+			o->num_mechs = 1;
+			o->mechs[0].mech = CKM_RSA_PKCS;
+			o->mechs[0].flags = 0;
+		}
+	} else if (o->type == EVP_PK_EC) {
+		if (token.num_ec_mechs > 0 ) {
+			o->num_mechs = token.num_ec_mechs;
+			for (i = 0; i <= token.num_ec_mechs; i++) {
+				o->mechs[i].mech = token.ec_mechs[i].mech;
+				o->mechs[i].flags = 0;
+			}
+		} else {
+			/* Use the default list */
+			o->num_mechs = 1;
+			o->mechs[0].mech = CKM_ECDSA;
+			o->mechs[0].flags = 0;
+		}
+	}
+}
+
 /**
  * Allocate place in the structure for every certificte found
  * and store related information
@@ -100,22 +146,12 @@ int callback_certificates(test_certs_t *objects,
 	EVP_PKEY *evp = NULL;
 	const u_char *cp;
 	test_cert_t *o = NULL;
-	size_t i;
 
-	if ((o = add_certificate(objects)) == NULL)
+	if ((o = add_object(objects, template[0], template[2])) == NULL)
 		return -1;
 
-	/* get the type and data, store in some structure */
-	o->key_id = malloc(template[0].ulValueLen);
-	memcpy(o->key_id, template[0].pValue, template[0].ulValueLen);
-	o->key_id_size = template[0].ulValueLen;
-	o->id_str = convert_byte_string(o->key_id, o->key_id_size);
-	o->label = malloc(template[2].ulValueLen + 1);
-	strncpy(o->label, template[2].pValue, template[2].ulValueLen);
-	o->label[template[2].ulValueLen] = '\0';
-	cp = template[1].pValue;
-
 	/* Extract public key from the certificate */
+	cp = template[1].pValue;
 	if (d2i_X509(&(o->x509), &cp, template[1].ulValueLen) == NULL) {
 		fail_msg("d2i_X509");
 	} else if ((evp = X509_get_pubkey(o->x509)) == NULL) {
@@ -130,19 +166,6 @@ int callback_certificates(test_certs_t *objects,
 		o->type = EVP_PK_RSA;
 		o->bits = EVP_PKEY_bits(evp);
 
-		if (token.num_rsa_mechs > 0 ) {
-			/* Get supported mechanisms by token */
-			o->num_mechs = token.num_rsa_mechs;
-			for (i = 0; i <= token.num_rsa_mechs; i++) {
-				o->mechs[i].mech = token.rsa_mechs[i].mech;
-				o->mechs[i].flags = 0;
-			}
-		} else {
-			/* Use the default list */
-			o->num_mechs = 1;
-			o->mechs[0].mech = CKM_RSA_PKCS;
-			o->mechs[0].flags = 0;
-		}
 	} else if (EVP_PKEY_base_id(evp) == EVP_PKEY_EC) {
 		/* Extract public EC key */
 		EC_KEY *ec = EVP_PKEY_get0_EC_KEY(evp);
@@ -151,18 +174,6 @@ int callback_certificates(test_certs_t *objects,
 		o->type = EVP_PK_EC;
 		o->bits = EVP_PKEY_bits(evp);
 
-		if (token.num_ec_mechs > 0 ) {
-			o->num_mechs = token.num_ec_mechs;
-			for (i = 0; i <= token.num_ec_mechs; i++) {
-				o->mechs[i].mech = token.ec_mechs[i].mech;
-				o->mechs[i].flags = 0;
-			}
-		} else {
-			/* Use the default list */
-			o->num_mechs = 1;
-			o->mechs[0].mech = CKM_ECDSA;
-			o->mechs[0].flags = 0;
-		}
 	} else {
 		fprintf(stderr, "[WARN %s ]evp->type = 0x%.4X (not RSA, EC)\n",
 			o->id_str, EVP_PKEY_id(evp));
@@ -185,10 +196,14 @@ int callback_private_keys(test_certs_t *objects,
 
 	/* Search for already stored certificate with same ID */
 	if ((o = search_certificate(objects, &(template[3]))) == NULL) {
-		key_id = convert_byte_string(template[3].pValue, template[3].ulValueLen);
+		key_id = convert_byte_string(template[3].pValue,
+			template[3].ulValueLen);
 		fprintf(stderr, "Can't find certificate for private key with ID %s\n", key_id);
 		free(key_id);
-		return -1;
+
+		fprintf(stderr, "Let's create a bogus structure without certificate data\n");
+		if ((o = add_object(objects, template[3], template[7])) == NULL)
+			return -1;
 	}
 
 	if (o->private_handle != CK_INVALID_HANDLE) {
@@ -213,7 +228,7 @@ int callback_private_keys(test_certs_t *objects,
 	o->derive_priv = (template[6].ulValueLen != (CK_ULONG) -1)
 		? *((CK_BBOOL *) template[6].pValue) : CK_FALSE;
 
-	debug_print(" [  OK %s ] Private key to the certificate found successfully S:%d D:%d T:%02lX",
+	debug_print(" [  OK %s ] Private key loaded successfully S:%d D:%d T:%02lX",
 		o->id_str, o->sign, o->decrypt, o->key_type);
 	return 0;
 }
@@ -258,41 +273,54 @@ int callback_public_keys(test_certs_t *objects,
 	/* check if we get the same public key as from the certificate */
 	if (o->key_type == CKK_RSA) {
 		BIGNUM *n = NULL, *e = NULL;
-		const BIGNUM *cert_n = NULL, *cert_e = NULL;
-		RSA_get0_key(o->key.rsa, &cert_n, &cert_e, NULL);
 		n = BN_bin2bn(template[4].pValue, template[4].ulValueLen, NULL);
 		e = BN_bin2bn(template[5].pValue, template[5].ulValueLen, NULL);
-		if (BN_cmp(cert_n, n) != 0 ||
-			BN_cmp(cert_e, e) != 0) {
-			debug_print(" [WARN %s ] Got different public key then the from the certificate ID",
-				o->id_str);
+		if (o->type == EVP_PKEY_RSA && o->key.rsa != NULL) {
+			const BIGNUM *cert_n = NULL, *cert_e = NULL;
+			RSA_get0_key(o->key.rsa, &cert_n, &cert_e, NULL);
+			if (BN_cmp(cert_n, n) != 0 ||
+				BN_cmp(cert_e, e) != 0) {
+				debug_print(" [WARN %s ] Got different public key then the from the certificate ID",
+					o->id_str);
+				BN_free(n);
+				BN_free(e);
+				return -1;
+			}
 			BN_free(n);
 			BN_free(e);
-			return -1;
+			o->verify_public = 1;
+		} else { /* store the public key for future use */
+			o->type = EVP_PK_RSA;
+			o->key.rsa = RSA_new();
+			RSA_set0_key(o->key.rsa, n, e, NULL);
 		}
-		BN_free(n);
-		BN_free(e);
-		o->verify_public = 1;
 	} else if (o->key_type == CKK_EC) {
 		debug_print(" [WARN %s ] EC public key check skipped so far",
 			o->id_str);
 
-		//EC_KEY *ec = EC_KEY_new();
-		//int nid = NID_X9_62_prime256v1; /* 0x11 */
-		//int nid = NID_secp384r1;		/* 0x14 */
-		//EC_GROUP *ecgroup = EC_GROUP_new_by_curve_name(nid);
-		//EC_GROUP_set_asn1_flag(ecgroup, OPENSSL_EC_NAMED_CURVE);
-		//EC_POINT *ecpoint = EC_POINT_new(ecgroup);
+		if (o->type == EVP_PKEY_EC && o->key.ec != NULL) {
+			//EC_KEY *ec = EC_KEY_new();
+			//int nid = NID_X9_62_prime256v1; /* 0x11 */
+			//int nid = NID_secp384r1;		/* 0x14 */
+			//EC_GROUP *ecgroup = EC_GROUP_new_by_curve_name(nid);
+			//EC_GROUP_set_asn1_flag(ecgroup, OPENSSL_EC_NAMED_CURVE);
+			//EC_POINT *ecpoint = EC_POINT_new(ecgroup);
 
-		//EC_KEY_set_public_key(ec, ecpoint);
-		return -1;
+			//EC_KEY_set_public_key(ec, ecpoint);
+		} else { /* store the public key for future use */
+			o->type = EVP_PK_EC;
+			o->key.ec = EC_KEY_new();
+			/* TODO pick up the public key */
+		}
 	} else {
 		debug_print(" [WARN %s ] non-RSA, non-EC key. Key type: %02lX",
 			o->id_str, o->key_type);
 		return -1;
 	}
 
-	debug_print(" [  OK %s ] Public key to the certificate found successfully V:%d E:%d T:%02lX",
+	add_supported_mechs(o);
+
+	debug_print(" [  OK %s ] Public key loaded successfully V:%d E:%d T:%02lX",
 		o->id_str, o->verify, o->encrypt, o->key_type);
 	return 0;
 }
@@ -343,7 +371,7 @@ int search_objects(test_certs_t *objects, token_info_t *info,
  		fail_msg("Could not find certificate.\n");
 	}
 
-	for (i = 0;i < objects_length; i++) {
+	for (i = 0; i < objects_length; i++) {
 		/* Find attributes one after another to handle errors
 		 * https://wiki.oasis-open.org/pkcs11/CommonBugs
 		 */
@@ -406,6 +434,7 @@ void search_for_all_objects(test_certs_t *objects, token_info_t *info)
 			{ CKA_ALWAYS_AUTHENTICATE, NULL, 0}, // CK_BBOOL
 			{ CKA_UNWRAP, NULL, 0}, // CK_BBOOL
 			{ CKA_DERIVE, NULL, 0}, // CK_BBOOL
+			{ CKA_LABEL, NULL_PTR, 0},
 	};
 	CK_ULONG private_attrs_size = sizeof (private_attrs) / sizeof (CK_ATTRIBUTE);
 	CK_ATTRIBUTE public_attrs[] = {
@@ -568,7 +597,7 @@ const char *get_mechanism_flag_name(int mech_id)
 	}
 }
 
-char *convert_byte_string(char *id, unsigned long length)
+char *convert_byte_string(unsigned char *id, unsigned long length)
 {
 	unsigned int i;
 	char *data = malloc(3 * length * sizeof(char) + 1);

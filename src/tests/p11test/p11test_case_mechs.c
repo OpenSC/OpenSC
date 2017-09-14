@@ -62,17 +62,25 @@ void supported_mechanisms_test(void **state) {
 			/* Assume RSA mechanisms provide both SIGN and VERIFY flags
 			 * rather than list all of them
 			 */
-			if ((mechanism_info[i].flags & (CKF_SIGN | CKF_VERIFY)) != 0
-					&& mechanism_list[i] != CKM_ECDSA
-					&& mechanism_list[i] != CKM_ECDSA_SHA1) {
+			if (mechanism_list[i] == CKM_RSA_PKCS
+					|| mechanism_list[i] == CKM_MD5_RSA_PKCS
+					|| mechanism_list[i] == CKM_RIPEMD160_RSA_PKCS
+					|| mechanism_list[i] == CKM_SHA1_RSA_PKCS
+					|| mechanism_list[i] == CKM_SHA224_RSA_PKCS
+					|| mechanism_list[i] == CKM_SHA256_RSA_PKCS
+					|| mechanism_list[i] == CKM_SHA384_RSA_PKCS
+					|| mechanism_list[i] == CKM_SHA512_RSA_PKCS) {
 				if (token.num_rsa_mechs < MAX_MECHS)
 					token.rsa_mechs[token.num_rsa_mechs++].mech = mechanism_list[i];
 				else
 					P11TEST_FAIL(info, "Too many RSA mechanisms (%d)", MAX_MECHS);
 			}
 			/* We list all known EC mechanisms */
-			if (mechanism_list[i] == CKM_ECDSA_SHA1
-					|| mechanism_list[i] == CKM_ECDSA) {
+			if (mechanism_list[i] == CKM_ECDSA
+					|| mechanism_list[i] == CKM_ECDSA_SHA1
+					|| mechanism_list[i] == CKM_ECDSA_SHA256
+					|| mechanism_list[i] == CKM_ECDSA_SHA384
+					|| mechanism_list[i] == CKM_ECDSA_SHA512) {
 				if (token.num_ec_mechs < MAX_MECHS)
 					token.ec_mechs[token.num_ec_mechs++].mech = mechanism_list[i];
 				else

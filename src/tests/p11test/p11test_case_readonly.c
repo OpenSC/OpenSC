@@ -21,7 +21,22 @@
 
 #include "p11test_case_readonly.h"
 
-unsigned char *rsa_x_509_pad_message(unsigned char *message,
+#include <openssl/sha.h>
+#include <openssl/md5.h>
+#include <openssl/ripemd.h>
+
+#define SHORT_MESSAGE_TO_SIGN "Simple message for signing & verifying.\n"
+#define SHORT_MESSAGE_DIGEST	"\x30\x21\x30\x09\x06\x05\x2b\x0e" \
+				"\x03\x02\x1a\x05\x00\x04\x14\xd9" \
+				"\xdd\xa3\x76\x44\x2f\x50\xe1\xec" \
+				"\xd3\x8b\xcd\x6f\xc6\xce\x4e\xfd" \
+				"\xd3\x1a\x3f"
+#define BUFFER_SIZE		4096
+
+const unsigned char *const_message = (unsigned char *) SHORT_MESSAGE_TO_SIGN;
+
+static unsigned char *
+rsa_x_509_pad_message(const unsigned char *message,
 	unsigned long *message_length, test_cert_t *o, int encrypt)
 {
 	int pad_message_length = (o->bits+7)/8;
@@ -32,7 +47,6 @@ unsigned char *rsa_x_509_pad_message(unsigned char *message,
 	else
 		RSA_padding_add_PKCS1_type_2(pad_message, pad_message_length,
 		    message, *message_length);
-	free(message);
 	*message_length = pad_message_length;
 	return pad_message;
 }
@@ -176,9 +190,11 @@ int encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 		return 0;
 	}
 
-	message = (CK_BYTE *) strdup(SHORT_MESSAGE_TO_SIGN);
 	if (mech->mech == CKM_RSA_X_509)
-		message = rsa_x_509_pad_message(message, &message_length, o, 1);
+		message = rsa_x_509_pad_message(const_message,
+			&message_length, o, 1);
+	else
+		message = (CK_BYTE *) strdup(SHORT_MESSAGE_TO_SIGN);
 
 	debug_print(" [ KEY %s ] Encrypt message using CKM_%s",
 		o->id_str, get_mechanism_name(mech->mech));
@@ -515,9 +531,16 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 		return 0;
 	}
 
-	message = (CK_BYTE *) strdup(SHORT_MESSAGE_TO_SIGN);
-	if (mech->mech == CKM_RSA_X_509)
-		message = rsa_x_509_pad_message(message, &message_length, o, 0);
+	if (mech->mech == CKM_RSA_X_509) /* manually add padding */
+		message = rsa_x_509_pad_message(const_message,
+			&message_length, o, 0);
+	else if (mech->mech == CKM_RSA_PKCS) {
+		/* DigestInfo + SHA1(message) */
+		message_length = 35;
+		message = malloc(message_length * sizeof(unsigned char));
+		memcpy(message, SHORT_MESSAGE_DIGEST, message_length);
+	} else
+		message = (CK_BYTE *) strdup(SHORT_MESSAGE_TO_SIGN);
 
 	debug_print(" [ KEY %s ] Signing message of length %lu using CKM_%s",
 		o->id_str, message_length, get_mechanism_name(mech->mech));

@@ -28,10 +28,10 @@
 #include "p11test_common.h"
 
 typedef struct {
-	char	*key_id;
-	CK_ULONG key_id_size;
-	char	*id_str;
-	X509	*x509;
+	unsigned char	*key_id;
+	CK_ULONG	key_id_size;
+	char		*id_str;
+	X509		*x509;
 	int		 type;
 	union {
 		RSA		*rsa;
@@ -71,7 +71,7 @@ void clean_all_objects(test_certs_t *objects);
 
 const char *get_mechanism_name(int mech_id);
 const char *get_mechanism_flag_name(int flag_id);
-char *convert_byte_string(char *id, unsigned long length);
+char *convert_byte_string(unsigned char *id, unsigned long length);
 
 // TODO saniteze inputs
 
