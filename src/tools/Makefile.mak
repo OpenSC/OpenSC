@@ -6,10 +6,10 @@ default: all
 
 TARGETS = opensc-tool.exe opensc-explorer.exe pkcs15-tool.exe pkcs15-crypt.exe \
 		pkcs11-tool.exe cardos-tool.exe eidenv.exe openpgp-tool.exe iasecc-tool.exe \
-		opensc-notify.exe \
+		opensc-notify.exe egk-tool.exe \
 		$(PROGRAMS_OPENSSL)
 
-OBJECTS = util.obj npa-tool-cmdline.obj fread_to_eof.obj versioninfo-tools.res
+OBJECTS = util.obj versioninfo-tools.res
 
 LIBS = $(TOPDIR)\src\common\common.lib \
 	   $(TOPDIR)\src\scconf\scconf.lib \
@@ -24,10 +24,20 @@ $(TARGETS): $(OBJECTS) $(LIBS)
 
 opensc-notify.exe: opensc-notify-cmdline.obj versioninfo-opensc-notify.res $(LIBS)
 	cl $(COPTS) /c $*.c
-	link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj opensc-notify-cmdline.obj versioninfo-opensc-notify.res $(LIBS) $(OPENPACE_LIB) $(OPENSSL_LIB) gdi32.lib shell32.lib User32.lib ws2_32.lib
+	link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj opensc-notify-cmdline.obj versioninfo-opensc-notify.res $(LIBS) gdi32.lib shell32.lib User32.lib ws2_32.lib
+	mt -manifest exe.manifest -outputresource:$@;1
+
+npa-tool.exe: npa-tool-cmdline.obj fread_to_eof.obj $(LIBS)
+	cl $(COPTS) /c $*.c
+	link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj npa-tool-cmdline.obj fread_to_eof.obj $(LIBS) $(OPENPACE_LIB) $(OPENSSL_LIB) gdi32.lib shell32.lib User32.lib ws2_32.lib
+	mt -manifest exe.manifest -outputresource:$@;1
+
+egk-tool.exe: egk-tool-cmdline.obj $(LIBS)
+	cl $(COPTS) /c $*.c
+	link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj egk-tool-cmdline.obj $(LIBS) $(ZLIB_LIB) gdi32.lib shell32.lib User32.lib ws2_32.lib
 	mt -manifest exe.manifest -outputresource:$@;1
 
 .c.exe:
 	cl $(COPTS) /c $<
-	link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj $(OBJECTS) $(LIBS) $(OPENPACE_LIB) $(OPENSSL_LIB) gdi32.lib shell32.lib User32.lib ws2_32.lib
+	link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj $(OBJECTS) $(LIBS) $(OPENSSL_LIB) gdi32.lib shell32.lib User32.lib ws2_32.lib
 	mt -manifest exe.manifest -outputresource:$@;1

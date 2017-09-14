@@ -1,0 +1,31 @@
+package "egk-tool"
+purpose "@PACKAGE_SUMMARY@"
+
+option "reader" r
+    "Number of the PC/SC reader to use (-1 for autodetect)"
+    int
+    default="-1"
+    optional
+option "verbose" v
+    "Use (several times) to be more verbose"
+    multiple
+    optional
+
+section "Health Care Application (HCA)"
+option "pd" -
+    "Show 'Persönliche Versicherungsdaten' (@VDFORMAT@)"
+    flag off
+option "vd" -
+    "Show 'Allgemeine Versicherungsdaten' (@VDFORMAT@)"
+    flag off
+option "gvd" -
+    "Show 'Geschützte Versicherungsdaten' (@VDFORMAT@)"
+    flag off
+option "vsd-status" -
+    "Show 'Versichertenstammdaten-Status'"
+    flag off
+
+text "
+Report bugs to @PACKAGE_BUGREPORT@
+
+Written by Frank Morgner <frankmorgner@gmail.com>"
