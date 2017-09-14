@@ -121,7 +121,7 @@ card_setup "$@"
 
 make p11test
 #export PKCS11SPY="$P11LIB"
-#./p11test -m /usr/lib64/pkcs11/pkcs11-spy.so
-./p11test -m "$P11LIB" -o test.json
+#./p11test -m /usr/lib64/pkcs11/pkcs11-spy.so -p $PIN
+./p11test -m "$P11LIB" -o test.json -p $PIN
 
 card_cleanup "$@"
