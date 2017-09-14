@@ -124,7 +124,8 @@ int callback_certificates(test_certs_t *objects,
 
 	if (EVP_PKEY_base_id(evp) == EVP_PKEY_RSA) {
 		/* Extract public RSA key */
-		if ((o->key.rsa = RSAPublicKey_dup(evp->pkey.rsa)) == NULL)
+		RSA *rsa = EVP_PKEY_get0_RSA(evp);
+		if ((o->key.rsa = RSAPublicKey_dup(rsa)) == NULL)
 			fail_msg("RSAPublicKey_dup failed");
 		o->type = EVP_PK_RSA;
 		o->bits = EVP_PKEY_bits(evp);
@@ -144,7 +145,8 @@ int callback_certificates(test_certs_t *objects,
 		}
 	} else if (EVP_PKEY_base_id(evp) == EVP_PKEY_EC) {
 		/* Extract public EC key */
-		if ((o->key.ec = EC_KEY_dup(evp->pkey.ec)) == NULL)
+		EC_KEY *ec = EVP_PKEY_get0_EC_KEY(evp);
+		if ((o->key.ec = EC_KEY_dup(ec)) == NULL)
 			fail_msg("EC_KEY_dup failed");
 		o->type = EVP_PK_EC;
 		o->bits = EVP_PKEY_bits(evp);
@@ -162,7 +164,8 @@ int callback_certificates(test_certs_t *objects,
 			o->mechs[0].flags = 0;
 		}
 	} else {
-		fprintf(stderr, "[WARN %s ]evp->type = 0x%.4X (not RSA, EC)\n", o->id_str, evp->type);
+		fprintf(stderr, "[WARN %s ]evp->type = 0x%.4X (not RSA, EC)\n",
+			o->id_str, EVP_PKEY_id(evp));
 	}
 	EVP_PKEY_free(evp);
 
@@ -254,17 +257,21 @@ int callback_public_keys(test_certs_t *objects,
 
 	/* check if we get the same public key as from the certificate */
 	if (o->key_type == CKK_RSA) {
-		RSA *rsa = RSA_new();
-		rsa->n = BN_bin2bn(template[4].pValue, template[4].ulValueLen, NULL);
-		rsa->e = BN_bin2bn(template[5].pValue, template[5].ulValueLen, NULL);
-		if (BN_cmp(o->key.rsa->n, rsa->n) != 0 ||
-			BN_cmp(o->key.rsa->e, rsa->e) != 0) {
+		BIGNUM *n = NULL, *e = NULL;
+		const BIGNUM *cert_n = NULL, *cert_e = NULL;
+		RSA_get0_key(o->key.rsa, &cert_n, &cert_e, NULL);
+		n = BN_bin2bn(template[4].pValue, template[4].ulValueLen, NULL);
+		e = BN_bin2bn(template[5].pValue, template[5].ulValueLen, NULL);
+		if (BN_cmp(cert_n, n) != 0 ||
+			BN_cmp(cert_e, e) != 0) {
 			debug_print(" [WARN %s ] Got different public key then the from the certificate ID",
 				o->id_str);
-			RSA_free(rsa);
+			BN_free(n);
+			BN_free(e);
 			return -1;
 		}
-		RSA_free(rsa);
+		BN_free(n);
+		BN_free(e);
 		o->verify_public = 1;
 	} else if (o->key_type == CKK_EC) {
 		debug_print(" [WARN %s ] EC public key check skipped so far",

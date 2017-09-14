@@ -384,13 +384,15 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 	} else if (o->type == EVP_PK_EC) {
 		unsigned int nlen;
 		ECDSA_SIG *sig = ECDSA_SIG_new();
+		BIGNUM *r = NULL, *s = NULL;
 		if (sig == NULL) {
 			fprintf(stderr, "ECDSA_SIG_new: failed");
 			return -1;
 		}
 		nlen = sign_length/2;
-		BN_bin2bn(&sign[0], nlen, sig->r);
-		BN_bin2bn(&sign[nlen], nlen, sig->s);
+		r = BN_bin2bn(&sign[0], nlen, NULL);
+		s = BN_bin2bn(&sign[nlen], nlen, NULL);
+		ECDSA_SIG_set0(sig, r, s);
 		if (mech->mech == CKM_ECDSA_SHA1) {
 			cmp_message = SHA1(message, message_length, NULL);
 			cmp_message_length = SHA_DIGEST_LENGTH;
