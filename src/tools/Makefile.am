@@ -1,5 +1,11 @@
 include $(top_srcdir)/win32/ltrc.inc
 
+if ENABLE_ZLIB
+VDFORMAT=XML
+else
+VDFORMAT=GZIP
+endif
+
 do_subst = $(SED) \
 	   -e 's,[@]CVCDIR[@],$(CVCDIR),g' \
 	   -e 's,[@]PACKAGE[@],$(PACKAGE),g' \
@@ -9,26 +15,28 @@ do_subst = $(SED) \
 	   -e 's,[@]PACKAGE_URL[@],$(PACKAGE_URL),g' \
 	   -e 's,[@]PACKAGE_SUMMARY[@],$(PACKAGE_SUMMARY),g' \
 	   -e 's,[@]PACKAGE_VERSION[@],"$(PACKAGE_VERSION)",g' \
+	   -e 's,[@]VDFORMAT[@],$(VDFORMAT),g' \
 	   -e 's,[@]X509DIR[@],$(X509DIR),g'
 
+EGK_TOOL_BUILT_SOURCES = egk-tool-cmdline.h egk-tool-cmdline.c
 NPA_TOOL_BUILT_SOURCES = npa-tool-cmdline.h npa-tool-cmdline.c
 OPENSC_NOTIFY_BUILT_SOURCES = opensc-notify-cmdline.h opensc-notify-cmdline.c
 
 MAINTAINERCLEANFILES = $(srcdir)/Makefile.in $(srcdir)/versioninfo-tools.rc $(srcdir)/versioninfo-opensc-notify.rc
-EXTRA_DIST = Makefile.mak versioninfo-tools.rc.in versioninfo-opensc-notify.rc.in npa-tool.ggo.in npa-tool.1 opensc-notify.ggo.in
+EXTRA_DIST = Makefile.mak versioninfo-tools.rc.in versioninfo-opensc-notify.rc.in npa-tool.ggo.in npa-tool.1 opensc-notify.ggo.in egk-tool.ggo.in egk-tool.1
 
 noinst_HEADERS = util.h fread_to_eof.h
 noinst_PROGRAMS = sceac-example
 bin_PROGRAMS = opensc-tool opensc-explorer opensc-notify \
 	pkcs15-tool pkcs15-crypt pkcs11-tool \
-	cardos-tool eidenv openpgp-tool iasecc-tool
+	cardos-tool eidenv openpgp-tool iasecc-tool egk-tool
 if ENABLE_OPENSSL
 bin_PROGRAMS += cryptoflex-tool pkcs15-init netkey-tool piv-tool \
 	westcos-tool sc-hsm-tool dnie-tool gids-tool npa-tool
 endif
 
 if ENABLE_MAN
-dist_man1_MANS = npa-tool.1
+dist_man1_MANS = npa-tool.1 opensc-notify.1 egk-tool.1
 endif
 
 # compile with $(PTHREAD_CFLAGS) to allow debugging with gdb
@@ -125,6 +133,30 @@ opensc-notify.1:
 		--no-info \
 		--source='$(PACKAGE_STRING)' \
 		$(builddir)/opensc-notify$(EXEEXT)
+
+egk_tool_SOURCES = egk-tool.c $(EGK_TOOL_BUILT_SOURCES)
+egk_tool_LDADD = $(top_builddir)/src/libopensc/libopensc.la $(OPTIONAL_ZLIB_LIBS)
+egk_tool_CFLAGS = -I$(top_srcdir)/src $(OPTIONAL_ZLIB_CFLAGS)
+egk_tool_CFLAGS += -Wno-unused-but-set-variable -Wno-unknown-warning-option
+
+egk-tool.c: $(abs_builddir)/egk-tool.ggo $(EGK_TOOL_BUILT_SOURCES)
+
+# We only want *cmdline* to be generated when they have explicitly been removed.
+$(EGK_TOOL_BUILT_SOURCES):
+	$(MAKE) $(abs_builddir)/egk-tool.ggo
+	$(GENGETOPT) --include-getopt --file-name=egk-tool-cmdline --output-dir=$(builddir) < $(abs_builddir)/egk-tool.ggo
+
+$(abs_builddir)/egk-tool.ggo: egk-tool.ggo.in 
+	$(do_subst) < $(abs_srcdir)/egk-tool.ggo.in > $@
+
+# We only want egk-tool.1 to be generated when it has explicitly been removed.
+egk-tool.1:
+	$(MAKE) egk-tool$(EXEEXT)
+	$(HELP2MAN) \
+		--output=$@ \
+		--no-info \
+		--source='$(PACKAGE_STRING)' \
+		$(builddir)/egk-tool$(EXEEXT)
 
 if WIN32
 opensc_tool_SOURCES += versioninfo-tools.rc
