@@ -104,6 +104,11 @@ extern "C" {
 #endif
 #endif
 
+/* ASN1_STRING_data is deprecated in OpenSSL 1.1.0 */
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
+#define ASN1_STRING_get0_data(x)	ASN1_STRING_data(x)
+#endif
+
 /*
  * OpenSSL-1.1.0-pre5 has hidden the RSA and DSA structures
  * One can no longer use statements like rsa->n = ...
