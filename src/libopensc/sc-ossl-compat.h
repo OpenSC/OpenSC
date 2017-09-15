@@ -93,6 +93,7 @@ extern "C" {
 #define OPENSSL_malloc_init		CRYPTO_malloc_init
 
 #define EVP_PKEY_get0_RSA(x)		(x->pkey.rsa)
+#define EVP_PKEY_get0_EC_KEY(x)		(x->pkey.ec)
 #define EVP_PKEY_get0_DSA(x)		(x->pkey.dsa)
 #define X509_get_extension_flags(x)	(x->ex_flags)
 #define X509_get_key_usage(x)		(x->ex_kusage)
@@ -218,15 +219,6 @@ static sc_ossl_inline void RSA_get0_crt_params(const RSA *r,
         *iqmp = r->iqmp;
 }
 
-static sc_ossl_inline RSA *EVP_PKEY_get0_RSA(EVP_PKEY *pkey)
-{
-    if (pkey->type != EVP_PKEY_RSA) {
-        EVPerr(EVP_F_EVP_PKEY_GET0_RSA, EVP_R_EXPECTING_AN_RSA_KEY);
-        return NULL;
-    }
-    return pkey->pkey.rsa;
-}
-
 #endif /* OPENSSL_NO_RSA */
 
 #ifndef OPENSSL_NO_DSA
@@ -262,15 +254,6 @@ static sc_ossl_inline int ECDSA_SIG_set0(ECDSA_SIG *sig, BIGNUM *r, BIGNUM *s)
     sig->r = r;
     sig->s = s;
     return 1;
-}
-
-static sc_ossl_inline EC_KEY *EVP_PKEY_get0_EC_KEY(EVP_PKEY *pkey)
-{
-    if (pkey->type != EVP_PKEY_EC) {
-        EVPerr(EVP_F_EVP_PKEY_GET0_EC_KEY, EVP_R_EXPECTING_A_EC_KEY);
-        return NULL;
-    }
-    return pkey->pkey.ec;
 }
 #endif /* OPENSSL_NO_EC */
 
