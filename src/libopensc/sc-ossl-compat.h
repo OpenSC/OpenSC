@@ -142,7 +142,7 @@ extern "C" {
 #include <openssl/dsa.h>
 #endif
 #ifndef OPENSSL_NO_EC
-#include <openssl/ec.h>
+#include <openssl/ecdsa.h>
 #endif
 
 #ifndef OPENSSL_NO_RSA
