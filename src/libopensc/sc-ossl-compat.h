@@ -140,6 +140,9 @@ extern "C" {
 #ifndef OPENSSL_NO_DSA
 #include <openssl/dsa.h>
 #endif
+#ifndef OPENSSL_NO_EC
+#include <openssl/ec.h>
+#endif
 
 #ifndef OPENSSL_NO_RSA
 static sc_ossl_inline int RSA_set0_key(RSA *r, BIGNUM *n, BIGNUM *e, BIGNUM *d)
@@ -215,6 +218,15 @@ static sc_ossl_inline void RSA_get0_crt_params(const RSA *r,
         *iqmp = r->iqmp;
 }
 
+static sc_ossl_inline RSA *EVP_PKEY_get0_RSA(EVP_PKEY *pkey)
+{
+    if (pkey->type != EVP_PKEY_RSA) {
+        EVPerr(EVP_F_EVP_PKEY_GET0_RSA, EVP_R_EXPECTING_AN_RSA_KEY);
+        return NULL;
+    }
+    return pkey->pkey.rsa;
+}
+
 #endif /* OPENSSL_NO_RSA */
 
 #ifndef OPENSSL_NO_DSA
@@ -238,6 +250,30 @@ static sc_ossl_inline void DSA_get0_key(const DSA *d, const BIGNUM **pub_key, co
 
 /* NOTE: DSA_set0_*  functions not defined because they are not currently used in OpenSC */
 #endif /* OPENSSL_NO_DSA */
+
+
+#ifndef OPENSSL_NO_EC
+static sc_ossl_inline int ECDSA_SIG_set0(ECDSA_SIG *sig, BIGNUM *r, BIGNUM *s)
+{
+    if (r == NULL || s == NULL)
+        return 0;
+    BN_clear_free(sig->r);
+    BN_clear_free(sig->s);
+    sig->r = r;
+    sig->s = s;
+    return 1;
+}
+
+static sc_ossl_inline EC_KEY *EVP_PKEY_get0_EC_KEY(EVP_PKEY *pkey)
+{
+    if (pkey->type != EVP_PKEY_EC) {
+        EVPerr(EVP_F_EVP_PKEY_GET0_EC_KEY, EVP_R_EXPECTING_A_EC_KEY);
+        return NULL;
+    }
+    return pkey->pkey.ec;
+}
+#endif /* OPENSSL_NO_EC */
+
 
 #endif /* OPENSSL_VERSION_NUMBER < 0x10100000L */
 

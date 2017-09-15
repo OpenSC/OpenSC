@@ -28,6 +28,7 @@
 #include <setjmp.h>
 #include <cmocka.h>
 #include "pkcs11/pkcs11.h"
+#include "libopensc/sc-ossl-compat.h"
 
 #define MAX_MECHS 30
 
