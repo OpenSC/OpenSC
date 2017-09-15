@@ -32,7 +32,7 @@ OBJECTS			= \
 	pkcs15-openpgp.obj pkcs15-infocamere.obj pkcs15-starcert.obj \
 	pkcs15-tcos.obj pkcs15-esteid.obj pkcs15-postecert.obj pkcs15-gemsafeGPK.obj \
 	pkcs15-actalis.obj pkcs15-atrust-acos.obj pkcs15-tccardos.obj pkcs15-piv.obj \
-	pkcs15-cac.obj pkcs15-esinit.obj pkcs15-westcos.obj pkcs15-pteid.obj \
+	pkcs15-cac.obj pkcs15-esinit.obj pkcs15-westcos.obj pkcs15-pteid.obj pkcs15-din-66291.obj \
 	pkcs15-oberthur.obj pkcs15-itacns.obj pkcs15-gemsafeV1.obj pkcs15-sc-hsm.obj \
 	pkcs15-dnie.obj pkcs15-gids.obj pkcs15-iasecc.obj pkcs15-jpki.obj \
 	compression.obj p15card-helper.obj sm.obj \

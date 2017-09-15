@@ -647,6 +647,8 @@ int sc_pkcs15_find_object_by_id(struct sc_pkcs15_card *, unsigned int,
 struct sc_pkcs15_card * sc_pkcs15_card_new(void);
 void sc_pkcs15_card_free(struct sc_pkcs15_card *p15card);
 void sc_pkcs15_card_clear(struct sc_pkcs15_card *p15card);
+struct sc_pkcs15_tokeninfo * sc_pkcs15_tokeninfo_new(void);
+void sc_pkcs15_free_tokeninfo(struct sc_pkcs15_tokeninfo *tokeninfo);
 
 int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 		       const struct sc_pkcs15_object *prkey_obj,
