@@ -25,7 +25,7 @@
 #include <openssl/md5.h>
 #include <openssl/ripemd.h>
 
-#define SHORT_MESSAGE_TO_SIGN "Simple message for signing & verifying.\n"
+#define SHORT_MESSAGE_TO_SIGN "Simple message for signing & verifying. It needs to be little bit longer to fit also longer keys and allow the truncation.\n"
 #define SHORT_MESSAGE_DIGEST	"\x30\x21\x30\x09\x06\x05\x2b\x0e" \
 				"\x03\x02\x1a\x05\x00\x04\x14\xd9" \
 				"\xdd\xa3\x76\x44\x2f\x50\xe1\xec" \
@@ -348,44 +348,44 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 
 		/* Digest mechanisms */
 		switch (mech->mech) {
-			case CKM_SHA1_RSA_PKCS:
-				cmp_message = SHA1(message, message_length, NULL);
-				cmp_message_length = SHA_DIGEST_LENGTH;
-				type = NID_sha1;
-				break;
-			case CKM_SHA224_RSA_PKCS:
-				cmp_message = SHA224(message, message_length, NULL);
-				cmp_message_length = SHA224_DIGEST_LENGTH;
-				type = NID_sha224;
-				break;
-			case CKM_SHA256_RSA_PKCS:
-				cmp_message = SHA256(message, message_length, NULL);
-				cmp_message_length = SHA256_DIGEST_LENGTH;
-				type = NID_sha256;
-				break;
-			case CKM_SHA384_RSA_PKCS:
-				cmp_message = SHA384(message, message_length, NULL);
-				cmp_message_length = SHA384_DIGEST_LENGTH;
-				type = NID_sha384;
-				break;
-			case CKM_SHA512_RSA_PKCS:
-				cmp_message = SHA512(message, message_length, NULL);
-				cmp_message_length = SHA512_DIGEST_LENGTH;
-				type = NID_sha512;
-				break;
-			case CKM_MD5_RSA_PKCS:
-				cmp_message = MD5(message, message_length, NULL);
-				cmp_message_length = MD5_DIGEST_LENGTH;
-				type = NID_md5;
-				break;
-			case CKM_RIPEMD160_RSA_PKCS:
-				cmp_message = RIPEMD160(message, message_length, NULL);
-				cmp_message_length = RIPEMD160_DIGEST_LENGTH;
-				type = NID_ripemd160;
-				break;
-			default:
-				debug_print(" [SKIP %s ] Skip verify of unknown mechanism", o->id_str);
-				return 0;
+		case CKM_SHA1_RSA_PKCS:
+			cmp_message = SHA1(message, message_length, NULL);
+			cmp_message_length = SHA_DIGEST_LENGTH;
+			type = NID_sha1;
+			break;
+		case CKM_SHA224_RSA_PKCS:
+			cmp_message = SHA224(message, message_length, NULL);
+			cmp_message_length = SHA224_DIGEST_LENGTH;
+			type = NID_sha224;
+			break;
+		case CKM_SHA256_RSA_PKCS:
+			cmp_message = SHA256(message, message_length, NULL);
+			cmp_message_length = SHA256_DIGEST_LENGTH;
+			type = NID_sha256;
+			break;
+		case CKM_SHA384_RSA_PKCS:
+			cmp_message = SHA384(message, message_length, NULL);
+			cmp_message_length = SHA384_DIGEST_LENGTH;
+			type = NID_sha384;
+			break;
+		case CKM_SHA512_RSA_PKCS:
+			cmp_message = SHA512(message, message_length, NULL);
+			cmp_message_length = SHA512_DIGEST_LENGTH;
+			type = NID_sha512;
+			break;
+		case CKM_MD5_RSA_PKCS:
+			cmp_message = MD5(message, message_length, NULL);
+			cmp_message_length = MD5_DIGEST_LENGTH;
+			type = NID_md5;
+			break;
+		case CKM_RIPEMD160_RSA_PKCS:
+			cmp_message = RIPEMD160(message, message_length, NULL);
+			cmp_message_length = RIPEMD160_DIGEST_LENGTH;
+			type = NID_ripemd160;
+			break;
+		default:
+			debug_print(" [SKIP %s ] Skip verify of unknown mechanism", o->id_str);
+			return 0;
 		}
 		rv = RSA_verify(type, cmp_message, cmp_message_length,
 			sign, sign_length, o->key.rsa);
@@ -409,12 +409,30 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 		r = BN_bin2bn(&sign[0], nlen, NULL);
 		s = BN_bin2bn(&sign[nlen], nlen, NULL);
 		ECDSA_SIG_set0(sig, r, s);
-		if (mech->mech == CKM_ECDSA_SHA1) {
+		switch (mech->mech) {
+		case CKM_ECDSA_SHA512:
+			cmp_message = SHA512(message, message_length, NULL);
+			cmp_message_length = SHA512_DIGEST_LENGTH;
+			break;
+		case CKM_ECDSA_SHA384:
+			cmp_message = SHA384(message, message_length, NULL);
+			cmp_message_length = SHA384_DIGEST_LENGTH;
+			break;
+		case CKM_ECDSA_SHA256:
+			cmp_message = SHA256(message, message_length, NULL);
+			cmp_message_length = SHA256_DIGEST_LENGTH;
+			break;
+		case CKM_ECDSA_SHA1:
 			cmp_message = SHA1(message, message_length, NULL);
 			cmp_message_length = SHA_DIGEST_LENGTH;
-		} else {
+			break;
+		case CKM_ECDSA:
 			cmp_message = message;
 			cmp_message_length = message_length;
+			break;
+		default:
+			debug_print(" [SKIP %s ] Skip verify of unknown mechanism", o->id_str);
+			return 0;
 		}
 		rv = ECDSA_do_verify(cmp_message, cmp_message_length, sig, o->key.ec);
 		if (rv == 1) {
