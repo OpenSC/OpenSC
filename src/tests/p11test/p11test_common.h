@@ -22,6 +22,7 @@
 
 #ifndef P11TEST_COMMON_H
 #define P11TEST_COMMON_H
+#include "config.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
