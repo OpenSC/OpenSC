@@ -167,7 +167,7 @@ static const struct option options[] = {
 	{ "mechanism",		1, NULL,		'm' },
 	{ "hash-algorithm",	1, NULL,		OPT_HASH_ALGORITHM },
 	{ "mgf",		1, NULL,		OPT_MGF },
-	{ "salt",		1, NULL,		OPT_SALT },
+	{ "salt-len",		1, NULL,		OPT_SALT },
 
 	{ "login",		0, NULL,		'l' },
 	{ "login-type",		1, NULL,		OPT_LOGIN_TYPE },
@@ -233,9 +233,9 @@ static const char *option_help[] = {
 	"Derive a secret key using another key and some data",
 	"Derive ECDHpass DER encoded pubkey for compatibility with some PKCS#11 implementations",
 	"Specify mechanism (use -M for a list of supported mechanisms)",
-	"Specify hash algorithm used with generic RSA-PSS signature",
+	"Specify hash algorithm used with RSA-PKCS-PSS signature",
 	"Specify MGF (Message Generation Function) used for RSA-PSS signatures (possible values are MGF1-SHA1 to MGF1-SHA512)",
-	"Specify how many bytes should be used for salt in RSA-PSS signatures (default equals to digest size)",
+	"Specify how many bytes should be used for salt in RSA-PSS signatures (default is digest size)",
 
 	"Log into the token first",
 	"Specify login type ('so', 'user', 'context-specific'; default:'user')",
@@ -1676,16 +1676,15 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	pss_params.hashAlg = 0;
 
 	if (opt_hash_alg != 0 && opt_mechanism != CKM_RSA_PKCS_PSS)
-		util_fatal("The hash-algorithm is applicable only to generic"
+		util_fatal("The hash-algorithm is applicable only to "
 			"RSA-PKCS-PSS mechanism");
 
 	/* set "default" MGF and hash algorithms. We can overwrite MGF later */
 	switch (opt_mechanism) {
 	case CKM_RSA_PKCS_PSS:
+		pss_params.hashAlg = opt_hash_alg;
+
 		switch (opt_hash_alg) {
-		case CKM_SHA_1:
-			pss_params.mgf = CKG_MGF1_SHA1;
-			break;
 		case CKM_SHA256:
 			pss_params.mgf = CKG_MGF1_SHA256;
 			break;
@@ -1696,9 +1695,12 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 			pss_params.mgf = CKG_MGF1_SHA512;
 			break;
 		default:
-			util_fatal("RSA-PKCS-PSS requires explicit hash mechanism");
+			/* the PSS should use SHA-1 if not specified */
+			pss_params.hashAlg = CKM_SHA_1;
+			/* fallthrough */
+		case CKM_SHA_1:
+			pss_params.mgf = CKG_MGF1_SHA1;
 		}
-		pss_params.hashAlg = opt_hash_alg;
 		break;
 
 	case CKM_SHA1_RSA_PKCS_PSS:

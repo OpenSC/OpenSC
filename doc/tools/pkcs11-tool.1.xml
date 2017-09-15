@@ -75,7 +75,8 @@
 					<term>
 						<option>--hash-algorithm</option> <replaceable>mechanism</replaceable>
 					</term>
-					<listitem><para>Specify hash algorithm used with generic RSA-PSS signature</para></listitem>
+					<listitem><para>Specify hash algorithm used with
+					RSA-PKCS-PSS signature. Default is SHA-1.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -226,7 +227,8 @@
 					<listitem><para>Use the specified Message Generation
 					Function (MGF) <replaceable>function</replaceable>
 					for RSA-PSS signatures. Supported arguments are MGF1-SHA1
-					to MGF1-SHA512 if supported by the driver.</para></listitem>
+					to MGF1-SHA512 if supported by the driver.
+					The default is based on the hash selection.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -328,10 +330,13 @@
 
 				<varlistentry>
 					<term>
-						<option>--salt</option> <replaceable>bytes</replaceable>
+						<option>--salt-len</option> <replaceable>bytes</replaceable>
 					</term>
-					<listitem><para>Specify how many bytes should be used in
-					RSA-PSS signatures. Can be zero (no salt). Accepts two special values: "-1" means salt length equals to digest length, "-2" means use maximum permissible length. Default is digest length.</para></listitem>
+					<listitem><para>Specify how many bytes of salt should
+					be used in RSA-PSS signatures. Accepts two special values:
+					"-1" means salt length equals to digest length,
+					"-2" means use maximum permissible length.
+					Default is digest length (-1).</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
