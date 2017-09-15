@@ -1884,6 +1884,8 @@ static int gids_authenticate_admin(sc_card_t *card, u8* key) {
 	u8* buffer2 = apduSendReponse + 4;
 	int buffer2size = 40;
 	u8 apduSendResponseResponse[256];
+	u8 buffer3[16+16+8];
+	int buffer3size = 40;
 	sc_apdu_t apdu;
 	const EVP_CIPHER *cipher;
 
@@ -1963,6 +1965,47 @@ static int gids_authenticate_admin(sc_card_t *card, u8* key) {
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL,  sc_check_sw(card, apdu.sw1, apdu.sw2), "invalid return");
+	
+	if (apdu.resplen != 44)
+	{
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Expecting a response len of 44 - found %d",(int) apdu.resplen);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INTERNAL);
+	}
+	// init crypto
+	ctx = EVP_CIPHER_CTX_new();
+	if (ctx == NULL) {
+	    SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INTERNAL);
+	}
+	if (!EVP_DecryptInit(ctx, cipher, key, NULL)) {
+		EVP_CIPHER_CTX_free(ctx);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INTERNAL);
+	}
+	EVP_CIPHER_CTX_set_padding(ctx,0);
+	if (!EVP_DecryptUpdate(ctx, buffer3, &buffer3size, apdu.resp + 4, apdu.resplen - 4)) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "unable to decrypt data");
+		EVP_CIPHER_CTX_free(ctx);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_PIN_CODE_INCORRECT);
+	}
+	if(!EVP_DecryptFinal(ctx, buffer3+buffer3size, &buffer3size)) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "unable to decrypt final data");
+		EVP_CIPHER_CTX_free(ctx);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_PIN_CODE_INCORRECT);
+	}
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "data has been decrypted using the key");
+	if (memcmp(buffer3, randomR1, 16) != 0) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "R1 doesn't match");
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_PIN_CODE_INCORRECT);
+	}
+	if (memcmp(buffer3 + 16, randomR2, 16) != 0) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "R2 doesn't match");
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_PIN_CODE_INCORRECT);
+	}
+	if (buffer[39] != 0x80) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Padding not found");
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_PIN_CODE_INCORRECT);
+	}
+	EVP_CIPHER_CTX_free(ctx);
+	ctx = NULL;
 
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
 #endif
