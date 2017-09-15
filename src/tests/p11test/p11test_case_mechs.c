@@ -62,7 +62,8 @@ void supported_mechanisms_test(void **state) {
 			/* Assume RSA mechanisms provide both SIGN and VERIFY flags
 			 * rather than list all of them
 			 */
-			if (mechanism_list[i] == CKM_RSA_PKCS
+			if (mechanism_list[i] == CKM_RSA_X_509
+					|| mechanism_list[i] == CKM_RSA_PKCS
 					|| mechanism_list[i] == CKM_MD5_RSA_PKCS
 					|| mechanism_list[i] == CKM_RIPEMD160_RSA_PKCS
 					|| mechanism_list[i] == CKM_SHA1_RSA_PKCS
