@@ -52,7 +52,7 @@ libopensc_la_SOURCES_BASE = \
 	pkcs15-actalis.c pkcs15-atrust-acos.c pkcs15-tccardos.c pkcs15-piv.c \
 	pkcs15-cac.c pkcs15-esinit.c pkcs15-westcos.c pkcs15-pteid.c \
 	pkcs15-oberthur.c pkcs15-itacns.c pkcs15-gemsafeV1.c pkcs15-sc-hsm.c \
-	pkcs15-coolkey.c \
+	pkcs15-coolkey.c pkcs15-din-66291.c \
 	pkcs15-dnie.c pkcs15-gids.c pkcs15-iasecc.c pkcs15-jpki.c \
 	compression.c p15card-helper.c sm.c \
 	aux-data.c

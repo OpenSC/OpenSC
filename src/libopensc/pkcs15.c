@@ -738,40 +738,52 @@ sc_pkcs15_card_new(void)
 		return NULL;
 	}
 
-	sc_init_oid(&p15card->tokeninfo->profile_indication.oid);
-
 	p15card->magic = SC_PKCS15_CARD_MAGIC;
 	return p15card;
 }
 
 
-void
-sc_pkcs15_free_tokeninfo(struct sc_pkcs15_card *p15card)
+struct sc_pkcs15_tokeninfo *
+sc_pkcs15_tokeninfo_new(void)
 {
-	if (!p15card || !p15card->tokeninfo)
+	struct sc_pkcs15_tokeninfo *tokeninfo;
+
+	tokeninfo = calloc(1, sizeof(struct sc_pkcs15_tokeninfo));
+	if (tokeninfo == NULL) {
+		return NULL;
+	}
+
+	sc_init_oid(&tokeninfo->profile_indication.oid);
+
+	return tokeninfo;
+}
+
+
+void
+sc_pkcs15_free_tokeninfo(struct sc_pkcs15_tokeninfo *tokeninfo)
+{
+	if (!tokeninfo)
 		return;
 
-	if (p15card->tokeninfo->label != NULL)
-		free(p15card->tokeninfo->label);
-	if (p15card->tokeninfo->serial_number != NULL)
-		free(p15card->tokeninfo->serial_number);
-	if (p15card->tokeninfo->manufacturer_id != NULL)
-		free(p15card->tokeninfo->manufacturer_id);
-	if (p15card->tokeninfo->last_update.gtime != NULL)
-		free(p15card->tokeninfo->last_update.gtime);
-	if (p15card->tokeninfo->preferred_language != NULL)
-		free(p15card->tokeninfo->preferred_language);
-	if (p15card->tokeninfo->profile_indication.name != NULL)
-		free(p15card->tokeninfo->profile_indication.name);
-	if (p15card->tokeninfo->seInfo != NULL) {
+	if (tokeninfo->label != NULL)
+		free(tokeninfo->label);
+	if (tokeninfo->serial_number != NULL)
+		free(tokeninfo->serial_number);
+	if (tokeninfo->manufacturer_id != NULL)
+		free(tokeninfo->manufacturer_id);
+	if (tokeninfo->last_update.gtime != NULL)
+		free(tokeninfo->last_update.gtime);
+	if (tokeninfo->preferred_language != NULL)
+		free(tokeninfo->preferred_language);
+	if (tokeninfo->profile_indication.name != NULL)
+		free(tokeninfo->profile_indication.name);
+	if (tokeninfo->seInfo != NULL) {
 		unsigned i;
-		for (i = 0; i < p15card->tokeninfo->num_seInfo; i++)
-			free(p15card->tokeninfo->seInfo[i]);
-		free(p15card->tokeninfo->seInfo);
+		for (i = 0; i < tokeninfo->num_seInfo; i++)
+			free(tokeninfo->seInfo[i]);
+		free(tokeninfo->seInfo);
 	}
-	free(p15card->tokeninfo);
-
-	p15card->tokeninfo = NULL;
+	free(tokeninfo);
 }
 
 
@@ -815,7 +827,7 @@ sc_pkcs15_card_free(struct sc_pkcs15_card *p15card)
 	sc_file_free(p15card->file_unusedspace);
 
 	p15card->magic = 0;
-	sc_pkcs15_free_tokeninfo(p15card);
+	sc_pkcs15_free_tokeninfo(p15card->tokeninfo);
 	sc_pkcs15_free_app(p15card);
 	free(p15card);
 }
