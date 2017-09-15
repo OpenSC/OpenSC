@@ -71,6 +71,8 @@ add_object(test_certs_t *objects, CK_ATTRIBUTE key_id, CK_ATTRIBUTE label)
 	o->derive_pub = 0;
 	o->key_type = -1;
 	o->x509 = NULL; /* The "reuse" capability of d2i_X509() is strongly discouraged */
+	o->key.rsa = NULL;
+	o->key.ec = NULL;
 
 	/* Store the passed CKA_ID and CKA_LABEL */
 	o->key_id = malloc(key_id.ulValueLen);
@@ -275,12 +277,12 @@ int callback_public_keys(test_certs_t *objects,
 		BIGNUM *n = NULL, *e = NULL;
 		n = BN_bin2bn(template[4].pValue, template[4].ulValueLen, NULL);
 		e = BN_bin2bn(template[5].pValue, template[5].ulValueLen, NULL);
-		if (o->type == EVP_PKEY_RSA && o->key.rsa != NULL) {
+		if (o->key.rsa != NULL) {
 			const BIGNUM *cert_n = NULL, *cert_e = NULL;
 			RSA_get0_key(o->key.rsa, &cert_n, &cert_e, NULL);
 			if (BN_cmp(cert_n, n) != 0 ||
 				BN_cmp(cert_e, e) != 0) {
-				debug_print(" [WARN %s ] Got different public key then the from the certificate ID",
+				debug_print(" [WARN %s ] Got different public key then from the certificate",
 					o->id_str);
 				BN_free(n);
 				BN_free(e);
@@ -293,24 +295,70 @@ int callback_public_keys(test_certs_t *objects,
 			o->type = EVP_PK_RSA;
 			o->key.rsa = RSA_new();
 			RSA_set0_key(o->key.rsa, n, e, NULL);
+			n = NULL;
+			e = NULL;
 		}
 	} else if (o->key_type == CKK_EC) {
-		debug_print(" [WARN %s ] EC public key check skipped so far",
-			o->id_str);
+		ASN1_OBJECT *oid = NULL;
+		ASN1_OCTET_STRING *s = NULL;
+		const unsigned char *pub, *p;
+		BIGNUM *bn = NULL;
+		EC_POINT *ecpoint;
+		EC_GROUP *ecgroup;
+		int nid, pub_len;
 
-		if (o->type == EVP_PKEY_EC && o->key.ec != NULL) {
-			//EC_KEY *ec = EC_KEY_new();
-			//int nid = NID_X9_62_prime256v1; /* 0x11 */
-			//int nid = NID_secp384r1;		/* 0x14 */
-			//EC_GROUP *ecgroup = EC_GROUP_new_by_curve_name(nid);
-			//EC_GROUP_set_asn1_flag(ecgroup, OPENSSL_EC_NAMED_CURVE);
-			//EC_POINT *ecpoint = EC_POINT_new(ecgroup);
+		/* Parse the nid out of the EC_PARAMS */
+		p = template[6].pValue;
+		oid = d2i_ASN1_OBJECT(NULL, &p, template[6].ulValueLen);
+		nid = OBJ_obj2nid(oid);
+		ASN1_OBJECT_free(oid);
+		ecgroup = EC_GROUP_new_by_curve_name(nid);
+		EC_GROUP_set_asn1_flag(ecgroup, OPENSSL_EC_NAMED_CURVE);
 
-			//EC_KEY_set_public_key(ec, ecpoint);
+		p = template[7].pValue;
+		s = d2i_ASN1_OCTET_STRING(NULL, &p, template[7].ulValueLen);
+		pub = ASN1_STRING_get0_data(s);
+		pub_len = ASN1_STRING_length(s);
+		bn = BN_bin2bn(pub, pub_len, NULL);
+		ASN1_STRING_free(s);
+		if (bn == NULL) {
+			debug_print(" [WARN %s ] Can not convert EC_POINT from"
+				"PKCS#11 to BIGNUM", o->id_str);
+			EC_GROUP_free(ecgroup);
+			return -1;
+		}
+
+		ecpoint = EC_POINT_bn2point(ecgroup, bn, NULL, NULL);
+		if (ecpoint == NULL) {
+			debug_print(" [WARN %s ] Can not convert EC_POINT from"
+				"BIGNUM to OpenSSL format", o->id_str);
+			EC_GROUP_free(ecgroup);
+			return -1;
+		}
+
+		if (o->key.ec != NULL) {
+			const EC_GROUP *cert_group = EC_KEY_get0_group(o->key.ec);
+			const EC_POINT *cert_point = EC_KEY_get0_public_key(o->key.ec);
+			int cert_nid = EC_GROUP_get_curve_name(cert_group);
+
+			if (cert_nid != nid ||
+				EC_GROUP_cmp(cert_group, ecgroup, NULL) != 0 ||
+				EC_POINT_cmp(ecgroup, cert_point, ecpoint, NULL) != 0) {
+				debug_print(" [WARN %s ] Got different public"
+					"key then from the certificate",
+					o->id_str);
+				EC_GROUP_free(ecgroup);
+				EC_POINT_free(ecpoint);
+				return -1;
+			}
+			EC_GROUP_free(ecgroup);
+			EC_POINT_free(ecpoint);
+			o->verify_public = 1;
 		} else { /* store the public key for future use */
 			o->type = EVP_PK_EC;
-			o->key.ec = EC_KEY_new();
-			/* TODO pick up the public key */
+			o->key.ec = EC_KEY_new_by_curve_name(nid);
+			EC_KEY_set_public_key(o->key.ec, ecpoint);
+			EC_KEY_set_group(o->key.ec, ecgroup);
 		}
 	} else {
 		debug_print(" [WARN %s ] non-RSA, non-EC key. Key type: %02lX",
