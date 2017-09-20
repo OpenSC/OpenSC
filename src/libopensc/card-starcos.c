@@ -130,6 +130,8 @@ static int starcos_init(sc_card_t *card)
 
 	if (card->type == SC_CARD_TYPE_STARCOS_V3_4) {
 		card->name = "STARCOS SPK 3.4";
+		card->caps |= SC_CARD_CAP_ISO7816_PIN_INFO;
+
 		flags |= SC_CARD_FLAG_RNG
 			| SC_ALGORITHM_RSA_HASH_SHA224
 			| SC_ALGORITHM_RSA_HASH_SHA256
