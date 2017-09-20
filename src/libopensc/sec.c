@@ -25,6 +25,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
+#include <ctype.h>
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif
@@ -223,7 +224,7 @@ int sc_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
  * PIN buffers are allways 16 nibbles (8 bytes) and look like this:
  *   0x2 + len + pin_in_BCD + paddingnibbles
  * in which the paddingnibble = 0xF
- * E.g. if PIN = 12345, then sbuf = {0x24, 0x12, 0x34, 0x5F, 0xFF, 0xFF, 0xFF, 0xFF}
+ * E.g. if PIN = 12345, then sbuf = {0x25, 0x12, 0x34, 0x5F, 0xFF, 0xFF, 0xFF, 0xFF}
  * E.g. if PIN = 123456789012, then sbuf = {0x2C, 0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0xFF}
  * Reference: Global Platform - Card Specification - version 2.0.1' - April 7, 2000
  */
