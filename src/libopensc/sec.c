@@ -258,6 +258,9 @@ int sc_build_pin(u8 *buf, size_t buflen, struct sc_pin_cmd_pin *pin, int pad)
 		if (pin_len > 2 * buflen)
 			return SC_ERROR_BUFFER_TOO_SMALL;
 		for (i = j = 0; j < pin_len; j++) {
+			if (!isdigit(pin->data[j])) {
+				return SC_ERROR_INVALID_DATA;
+			}
 			buf[i] <<= 4;
 			buf[i] |= pin->data[j] & 0xf;
 			if (j & 1)
