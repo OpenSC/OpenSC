@@ -521,6 +521,14 @@ static enum_specs ck_mec_s[] = {
   { CKM_VENDOR_DEFINED           , "CKM_VENDOR_DEFINED           " }
 };
 
+static enum_specs ck_mgf_s[] = {
+  { CKG_MGF1_SHA1  , "CKG_MGF1_SHA1  " },
+  { CKG_MGF1_SHA224, "CKG_MGF1_SHA224" },
+  { CKG_MGF1_SHA256, "CKG_MGF1_SHA256" },
+  { CKG_MGF1_SHA384, "CKG_MGF1_SHA384" },
+  { CKG_MGF1_SHA512, "CKG_MGF1_SHA512" },
+};
+
 static enum_specs ck_err_s[] = {
   { CKR_OK,                               "CKR_OK" },
   { CKR_CANCEL,                           "CKR_CANCEL" },
@@ -630,6 +638,7 @@ enum_spec ck_types[] = {
   { KEY_T, ck_key_s, sizeof(ck_key_s) / SZ_SPECS, "CK_KEY_TYPE"         },
   { CRT_T, ck_crt_s, sizeof(ck_crt_s) / SZ_SPECS, "CK_CERTIFICATE_TYPE" },
   { MEC_T, ck_mec_s, sizeof(ck_mec_s) / SZ_SPECS, "CK_MECHANISM_TYPE"   },
+  { MGF_T, ck_mgf_s, sizeof(ck_mgf_s) / SZ_SPECS, "CK_RSA_PKCS_MGF_TYPE"},
   { USR_T, ck_usr_s, sizeof(ck_usr_s) / SZ_SPECS, "CK_USER_TYPE"        },
   { STA_T, ck_sta_s, sizeof(ck_sta_s) / SZ_SPECS, "CK_STATE"        },
   { RV_T,  ck_err_s, sizeof(ck_err_s) / SZ_SPECS, "CK_RV"               },
