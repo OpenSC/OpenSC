@@ -57,6 +57,8 @@ extern "C" {
 #define SC_SEC_OPERATION_SIGN		0x0002
 #define SC_SEC_OPERATION_AUTHENTICATE	0x0003
 #define SC_SEC_OPERATION_DERIVE         0x0004
+#define SC_SEC_OPERATION_WRAP		0x0005
+#define SC_SEC_OPERATION_UNWRAP		0x0006
 
 /* sc_security_env flags */
 #define SC_SEC_ENV_ALG_REF_PRESENT	0x0001
@@ -525,6 +527,17 @@ struct sc_reader_operations {
 /* Card (or card driver) supports generating a session PIN */
 #define SC_CARD_CAP_SESSION_PIN	0x00000200
 
+/* Card and driver supports handling on card session objects.
+ * If a driver has this capability, the driver handles storage and operations
+ * with objects that CKA_TOKEN set to FALSE. If a driver doesn't support this,
+ * OpenSC handles them as in memory objects.*/
+#define SC_CARD_CAP_ONCARD_SESSION_OBJECTS	0x00000400
+
+/* Card (or card driver) supports key wrapping operations */
+#define SC_CARD_CAP_WRAP_KEY			0x00000800
+/* Card (or card driver) supports key unwrapping operations */
+#define SC_CARD_CAP_UNWRAP_KEY			0x00001000
+
 typedef struct sc_card {
 	struct sc_context *ctx;
 	struct sc_reader *reader;
@@ -689,6 +702,10 @@ struct sc_card_operations {
 			unsigned char **, size_t *);
 
 	int (*card_reader_lock_obtained)(struct sc_card *, int was_reset);
+
+	int (*wrap)(struct sc_card *card, u8 *out, size_t outlen);
+
+	int (*unwrap)(struct sc_card *card, const u8 *crgram, size_t crgram_len);
 };
 
 typedef struct sc_card_driver {
@@ -1191,6 +1208,8 @@ int sc_set_security_env(struct sc_card *card,
 int sc_decipher(struct sc_card *card, const u8 * crgram, size_t crgram_len,
 		u8 * out, size_t outlen);
 int sc_compute_signature(struct sc_card *card, const u8 * data,
+			 size_t data_len, u8 * out, size_t outlen);
+int sc_unwrap(struct sc_card *card, const u8 * data,
 			 size_t data_len, u8 * out, size_t outlen);
 int sc_verify(struct sc_card *card, unsigned int type, int ref, const u8 *buf,
 	      size_t buflen, int *tries_left);

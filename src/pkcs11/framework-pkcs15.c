@@ -2207,7 +2207,7 @@ pkcs15_create_secret_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 	struct sc_pkcs15_skey_info *skey_info;
 	CK_KEY_TYPE key_type;
 	CK_BBOOL _token = FALSE;
-	int rv;
+	int rv, rc;
 	char label[SC_PKCS15_MAX_LABEL_SIZE];
 
 	memset(&args, 0, sizeof(args));
@@ -2228,6 +2228,9 @@ pkcs15_create_secret_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 	switch (key_type) {
 		/* Only support GENERIC_SECRET for now */
 		case CKK_GENERIC_SECRET:
+		case CKK_AES:
+		case CKK_DES3:
+		case CKK_DES:
 			break;
 		default:
 			return CKR_ATTRIBUTE_VALUE_INVALID;
@@ -2283,7 +2286,7 @@ pkcs15_create_secret_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 	}
 
 	/* If creating a PKCS#11 session object, i.e. one that is only in memory */
-	if (_token == FALSE) {
+	if (_token == FALSE && (fw_data->p15_card->card->caps & SC_CARD_CAP_ONCARD_SESSION_OBJECTS) == 0) {
 
 	    /* TODO Have 3 choices as to how to create the object.
 	     * (1)create a sc_pkcs15init_store_secret_key routine like the others
@@ -2303,11 +2306,11 @@ pkcs15_create_secret_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 
 	    key_obj->flags = 2; /* TODO not sure what these mean */
 
-		skey_info = calloc(1, sizeof(sc_pkcs15_skey_info_t));
-		if (skey_info == NULL) {
+	    skey_info = calloc(1, sizeof(sc_pkcs15_skey_info_t));
+	    if (skey_info == NULL) {
 			rv = CKR_HOST_MEMORY;
 			goto out;
-		}
+	    }
 	    key_obj->data = skey_info;
 	    skey_info->usage = args.usage;
 	    skey_info->native = 0; /* card can not use this */
@@ -2319,18 +2322,11 @@ pkcs15_create_secret_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 	    args.key.data = NULL;
 	}
 	else {
-#if 1
-	    rv = CKR_FUNCTION_NOT_SUPPORTED;
-	    goto out;
-#else
-		/* TODO add support for secret key on the card with something like this: */
-
 	    rc = sc_pkcs15init_store_secret_key(fw_data->p15_card, profile, &args, &key_obj);
 	    if (rc < 0) {
 		    rv = sc_to_cryptoki_error(rc, "C_CreateObject");
 		    goto out;
 	    }
-#endif
 	}
 
 	/* Create a new pkcs11 object for it */
@@ -3480,6 +3476,7 @@ struct sc_pkcs11_object_ops pkcs15_cert_ops = {
 	NULL,	/* derive */
 	NULL,	/* can_do */
 	NULL	/* init_params */
+	NULL	/* wrap_key */
 };
 
 /*
@@ -3911,6 +3908,69 @@ pkcs15_prkey_sign(struct sc_pkcs11_session *session, void *obj,
 
 
 static CK_RV
+pkcs15_prkey_unwrap(struct sc_pkcs11_session *session, void *obj,
+			CK_MECHANISM_PTR pMechanism, CK_BYTE_PTR pWrappedKey,
+			CK_ULONG ulWrappedKeyLen,
+			void *targetKey)
+/*			CK_ATTRIBUTE_PTR pAttributes, CK_ULONG ulAttributesLen,
+			void ** pUnwrappedKey)*/
+{
+	struct	sc_pkcs11_card *p11card = session->slot->p11card;
+	struct	pkcs15_fw_data *fw_data = NULL;
+	struct	pkcs15_prkey_object *prkey = (struct pkcs15_prkey_object *) obj;
+	struct	sc_pkcs11_object *targetKeyObj = (struct sc_pkcs11_object *) targetKey;
+	int	rv, flags = 0;	
+
+	sc_log(context, "Initiating unwrapping with private key.");
+
+	fw_data = (struct pkcs15_fw_data *) p11card->fws_data[session->slot->fw_data_idx];
+	if (!fw_data)
+		return sc_to_cryptoki_error(SC_ERROR_INTERNAL, "C_UnwrapKey");
+
+	sc_log(context, "unwrapping %p %p %p %p %lu %p", session, obj,
+	       pMechanism, pWrappedKey, ulWrappedKeyLen, targetKeyObj);
+
+	if (pMechanism == NULL || pWrappedKey == NULL || ulWrappedKeyLen == 0 || targetKeyObj == NULL)
+	    return CKR_ARGUMENTS_BAD;
+
+	/* See which of the alternative keys supports unwrap */
+	while (prkey && !(prkey->prv_info->usage & SC_PKCS15_PRKEY_USAGE_UNWRAP))
+		prkey = prkey->prv_next;
+
+	if (prkey == NULL)
+		return CKR_KEY_FUNCTION_NOT_PERMITTED;
+
+	/* Select the proper padding mechanism */
+	switch (pMechanism->mechanism) {
+	case CKM_RSA_PKCS:
+		flags |= SC_ALGORITHM_RSA_PAD_PKCS1;
+		break;
+	case CKM_RSA_X_509:
+		flags |= SC_ALGORITHM_RSA_RAW;
+		break;
+	default:
+		return CKR_MECHANISM_INVALID;
+	}
+
+	rv = sc_lock(p11card->card);
+
+	if (rv < 0)
+		return sc_to_cryptoki_error(rv, "C_UnwrapKey");
+
+	/* Call the card to do the unwrap operation */
+	rv = sc_pkcs15_unwrap(fw_data->p15_card, prkey->prv_p15obj, (struct sc_pkcs15_object *) targetKeyObj, 0,
+		pWrappedKey, ulWrappedKeyLen);
+
+	sc_unlock(p11card->card);
+
+	if (rv < 0)
+		return sc_to_cryptoki_error(rv, "C_UnwrapKey");
+
+	return CKR_OK;
+}
+
+
+static CK_RV
 pkcs15_prkey_decrypt(struct sc_pkcs11_session *session, void *obj,
 		CK_MECHANISM_PTR pMechanism,
 		CK_BYTE_PTR pEncryptedData, CK_ULONG ulEncryptedDataLen,
@@ -4183,11 +4243,12 @@ struct sc_pkcs11_object_ops pkcs15_prkey_ops = {
 	pkcs15_any_destroy,
 	NULL,	/* get_size */
 	pkcs15_prkey_sign,
-	NULL,	/* unwrap */
+	pkcs15_prkey_unwrap,
 	pkcs15_prkey_decrypt,
 	pkcs15_prkey_derive,
 	pkcs15_prkey_can_do,
 	pkcs15_prkey_init_params,
+	NULL	/* wrap_key */
 };
 
 /*
@@ -4426,6 +4487,7 @@ struct sc_pkcs11_object_ops pkcs15_pubkey_ops = {
 	NULL,	/* derive */
 	NULL,	/* can_do */
 	NULL	/* init_params */
+	NULL	/* wrap_key */
 };
 
 
@@ -4605,6 +4667,7 @@ struct sc_pkcs11_object_ops pkcs15_dobj_ops = {
 	NULL,	/* derive */
 	NULL,	/* can_do */
 	NULL	/* init_params */
+	NULL	/* wrap_key */
 };
 
 
@@ -4735,6 +4798,7 @@ struct sc_pkcs11_object_ops pkcs15_skey_ops = {
 	NULL,	/* derive */
 	NULL,	/* can_do */
 	NULL	/* init_params */
+	pkcs15_skey_wrap /* wrap_key */
 };
 
 /*
@@ -5084,6 +5148,9 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 	/* That practise definitely conflicts with CKF_HW -- andre 2010-11-28 */
 	mech_info.flags |= CKF_VERIFY;
 #endif
+	if ((card->caps & SC_CARD_CAP_UNWRAP_KEY) == SC_CARD_CAP_UNWRAP_KEY)
+	    mech_info.flags |= CKF_UNWRAP;
+
 	mech_info.ulMinKeySize = ~0;
 	mech_info.ulMaxKeySize = 0;
 	ec_min_key_size = ~0;

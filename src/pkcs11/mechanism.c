@@ -830,6 +830,64 @@ sc_pkcs11_decr(struct sc_pkcs11_session *session,
 	return rv;
 }
 
+/*
+ * Unwrap a wrapped key into card. A new key object is created on card.
+ */
+CK_RV
+sc_pkcs11_unwrap(struct sc_pkcs11_session *session,
+	CK_MECHANISM_PTR pMechanism,
+	struct sc_pkcs11_object *unwrappingKey,
+	CK_KEY_TYPE key_type, /* type of the unwrapping key */
+	CK_SESSION_HANDLE hSession,
+	CK_BYTE_PTR pWrappedKey,	/* the wrapped key */
+	CK_ULONG ulWrappedKeyLen,	/* bytes length of wrapped key */
+	struct sc_pkcs11_object *targetKey)
+{
+	struct sc_pkcs11_card *p11card;
+	sc_pkcs11_operation_t *operation;
+	sc_pkcs11_mechanism_type_t *mt;
+
+	CK_RV rv;
+
+	if (!session || !session->slot
+	 || !(p11card = session->slot->p11card))
+		return CKR_ARGUMENTS_BAD;
+
+	/* See if we support this mechanism type */
+	mt = sc_pkcs11_find_mechanism(p11card, pMechanism->mechanism, CKF_UNWRAP);
+	if (mt == NULL)
+		return CKR_MECHANISM_INVALID;
+
+	/* See if compatible with key type */
+	/* TODO: what if there are several mechanisms with different key types? Should we loop through them? */
+	if (mt->key_type != key_type)
+		return CKR_KEY_TYPE_INCONSISTENT;
+
+	rv = session_start_operation(session, SC_PKCS11_OPERATION_UNWRAP, mt, &operation);
+	if (rv != CKR_OK)
+		return rv;
+
+	memcpy(&operation->mechanism, pMechanism, sizeof(CK_MECHANISM));
+
+
+	/*
+	 *  TODO: does it make sense to support unwrapping to a in memory key object?
+	 *  This implementation assumes that the key should be unwrapped into a
+	 *  key object on card, regardless whether CKA_TOKEN = FALSE
+	 *  CKA_TOKEN = FALSE is considered an on card session object.
+	 */
+
+	rv = operation->type->unwrap(operation, unwrappingKey,
+			pWrappedKey, ulWrappedKeyLen,
+			targetKey);
+
+	session_stop_operation(session, SC_PKCS11_OPERATION_UNWRAP);
+
+	return rv;
+}
+
+
+
 /* Derive one key from another, and return results in created object */
 CK_RV
 sc_pkcs11_deri(struct sc_pkcs11_session *session,
@@ -990,6 +1048,29 @@ sc_pkcs11_derive(sc_pkcs11_operation_t *operation,
 		    pData, pulDataLen);
 }
 
+
+static CK_RV
+sc_pkcs11_unwrap_operation(sc_pkcs11_operation_t *operation,
+	    struct sc_pkcs11_object *unwrappingKey,
+	    CK_BYTE_PTR pWrappedKey, CK_ULONG ulWrappedKeyLen,
+	    struct sc_pkcs11_object *targetKey)
+/*	    CK_ATTRIBUTE_PTR pAttributes, CK_ULONG ulAttresLen,
+	    void** phUnwrappedKey)*/
+{
+    return unwrappingKey->ops->unwrap_key(operation->session,
+		    unwrappingKey,
+		    &operation->mechanism,
+		    pWrappedKey, ulWrappedKeyLen,
+		    targetKey);
+
+	/*return unwrappingKey->ops->unwrap_key(operation->session,
+		    unwrappingKey,
+		    &operation->mechanism,
+		    pmechParam, ulmechParamLen,
+		    pAttributes, ulAttresLen,
+		    phUnwrappedKey);*/
+}
+
 /*
  * Create new mechanism type for a mechanism supported by
  * the card
@@ -1027,7 +1108,7 @@ sc_pkcs11_new_fw_mechanism(CK_MECHANISM_TYPE mech,
 #endif
 	}
 	if (pInfo->flags & CKF_UNWRAP) {
-		/* TODO */
+		mt->unwrap = sc_pkcs11_unwrap_operation;
 	}
 	if (pInfo->flags & CKF_DERIVE) {
 		mt->derive = sc_pkcs11_derive;

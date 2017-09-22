@@ -64,6 +64,8 @@ static sc_pkcs11_mechanism_type_t openssl_sha1_mech = {
 	NULL, NULL, NULL,	/* verif_* */
 	NULL, NULL,		/* decrypt_* */
 	NULL,			/* derive */
+	NULL,			/* wrap */
+	NULL,			/* unwrap */
 	NULL,			/* mech_data */
 	NULL,			/* free_mech_data */
 };
@@ -98,6 +100,8 @@ static sc_pkcs11_mechanism_type_t openssl_sha256_mech = {
 	NULL, NULL, NULL,	/* verif_* */
 	NULL, NULL,		/* decrypt_* */
 	NULL,			/* derive */
+	NULL,			/* wrap */
+	NULL,			/* unwrap */
 	NULL,			/* mech_data */
 	NULL,			/* free_mech_data */
 };
@@ -115,6 +119,8 @@ static sc_pkcs11_mechanism_type_t openssl_sha384_mech = {
 	NULL, NULL, NULL,	/* verif_* */
 	NULL, NULL,		/* decrypt_* */
 	NULL,			/* derive */
+	NULL,			/* wrap */
+	NULL,			/* unwrap */
 	NULL,			/* mech_data */
 	NULL,			/* free_mech_data */
 };
@@ -132,6 +138,8 @@ static sc_pkcs11_mechanism_type_t openssl_sha512_mech = {
 	NULL, NULL, NULL,	/* verif_* */
 	NULL, NULL,		/* decrypt_* */
 	NULL,			/* derive */
+	NULL,			/* wrap */
+	NULL,			/* unwrap */
 	NULL,			/* mech_data */
 	NULL,			/* free_mech_data */
 };
@@ -150,6 +158,8 @@ static sc_pkcs11_mechanism_type_t openssl_gostr3411_mech = {
 	NULL, NULL, NULL,	/* verif_* */
 	NULL, NULL,		/* decrypt_* */
 	NULL,			/* derive */
+	NULL,			/* wrap */
+	NULL,			/* unwrap */
 	NULL,			/* mech_data */
 	NULL,			/* free_mech_data */
 };
@@ -168,6 +178,8 @@ static sc_pkcs11_mechanism_type_t openssl_md5_mech = {
 	NULL, NULL, NULL,	/* verif_* */
 	NULL, NULL,		/* decrypt_* */
 	NULL,			/* derive */
+	NULL,			/* wrap */
+	NULL,			/* unwrap */
 	NULL,			/* mech_data */
 	NULL,			/* free_mech_data */
 };
@@ -185,6 +197,8 @@ static sc_pkcs11_mechanism_type_t openssl_ripemd160_mech = {
 	NULL, NULL, NULL,	/* verif_* */
 	NULL, NULL,		/* decrypt_* */
 	NULL,			/* derive */
+	NULL,			/* wrap */
+	NULL,			/* unwrap */
 	NULL,			/* mech_data */
 	NULL,			/* free_mech_data */
 };

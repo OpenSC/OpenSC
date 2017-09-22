@@ -452,6 +452,7 @@ typedef struct sc_pkcs15_skey_info sc_pkcs15_skey_info_t;
 #define SC_PKCS15_TYPE_SKEY_DES			0x302
 #define SC_PKCS15_TYPE_SKEY_2DES		0x303
 #define SC_PKCS15_TYPE_SKEY_3DES		0x304
+#define SC_PKCS15_TYPE_SKEY_AES			0x305
 
 #define SC_PKCS15_TYPE_CERT			0x400
 #define SC_PKCS15_TYPE_CERT_X509		0x401
@@ -659,6 +660,12 @@ int sc_pkcs15_derive(struct sc_pkcs15_card *p15card,
 		       const struct sc_pkcs15_object *prkey_obj,
 		       unsigned long flags,
 		       const u8 *in, size_t inlen, u8 *out, unsigned long *poutlen);
+
+int sc_pkcs15_unwrap(struct sc_pkcs15_card *p15card,
+		const struct sc_pkcs15_object *key,
+		struct sc_pkcs15_object *target_key,
+		unsigned long flags,
+		const u8 * in, size_t inlen);
 
 int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 				const struct sc_pkcs15_object *prkey_obj,

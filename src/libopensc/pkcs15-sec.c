@@ -297,6 +297,53 @@ int sc_pkcs15_derive(struct sc_pkcs15_card *p15card,
 	LOG_FUNC_RETURN(ctx, r);
 }
 
+
+/*
+ * Unwrap a key into a key object on card.
+ * in holds the wrapped key data
+ * the target file that target_key points to must be created before calling this function
+ * Use pkcs15init to peform the complete unwrapping operation and create the pkcs#15 object for the new key.
+ */
+int sc_pkcs15_unwrap(struct sc_pkcs15_card *p15card,
+		const struct sc_pkcs15_object *key,
+		struct sc_pkcs15_object *target_key,
+		unsigned long flags,
+		const u8 * in, size_t inlen)
+{
+	sc_context_t *ctx = p15card->card->ctx;
+	int r;
+	sc_algorithm_info_t *alg_info = NULL;
+	sc_security_env_t senv;
+	const struct sc_pkcs15_prkey_info *prkey = (const struct sc_pkcs15_prkey_info *) key->data;
+	unsigned long pad_flags = 0, sec_flags = 0;
+	u8 *out = 0;
+	size_t poutlen = 0;
+
+	LOG_FUNC_CALLED(ctx);
+
+	if (!(prkey->usage & (SC_PKCS15_PRKEY_USAGE_UNWRAP)))
+		LOG_TEST_RET(ctx, SC_ERROR_NOT_ALLOWED, "This key cannot be used for unwrapping");
+
+	if (!(key->type == SC_PKCS15_TYPE_PRKEY_RSA ||
+	   (key->type & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_SKEY)) {
+		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED,"Key type not supported");
+	}
+
+	r = format_senv(p15card, key, &senv, &alg_info);
+	LOG_TEST_RET(ctx, r, "Could not initialize security environment");
+	senv.operation = SC_SEC_OPERATION_UNWRAP;
+
+	r = sc_get_encoding_flags(ctx, flags, alg_info->flags, &pad_flags, &sec_flags);
+	LOG_TEST_RET(ctx, r, "cannot encode security operation flags");
+	senv.algorithm_flags = sec_flags;
+
+	r = use_key(p15card, key, &senv, sc_unwrap, in, inlen, out,
+			poutlen);
+	LOG_TEST_RET(ctx, r, "use_key() failed");
+
+	LOG_FUNC_RETURN(ctx, r);
+}
+
 /* copied from pkcs15-cardos.c */
 #define USAGE_ANY_SIGN          (SC_PKCS15_PRKEY_USAGE_SIGN|\
                                  SC_PKCS15_PRKEY_USAGE_NONREPUDIATION)

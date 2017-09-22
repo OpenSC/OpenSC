@@ -175,6 +175,7 @@ static struct sc_pkcs15init_callbacks callbacks = {
 	NULL,
 };
 
+
 static void sc_pkcs15init_empty_callback(void *ptr)
 {
 }
@@ -1880,8 +1881,9 @@ sc_pkcs15init_store_secret_key(struct sc_pkcs15_card *p15card, struct sc_profile
 	if (check_key_compatibility(p15card, keyargs->algorithm, NULL, 0, keyargs->key.data_len * 8, 0)) {
 		/* Make sure the caller explicitly tells us to store
 		 * the key as extractable. */
-		if (!(keyargs->access_flags & SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE))
-			LOG_TEST_RET(ctx, SC_ERROR_INCOMPATIBLE_KEY, "Card does not support this key.");
+		/* Commented out. I don't understand why one couldn't store a key as non extractable. -HH */
+/*		if (!(keyargs->access_flags & SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE))
+			LOG_TEST_RET(ctx, SC_ERROR_INCOMPATIBLE_KEY, "Card does not support this key.");*/
 	}
 
 #ifdef ENABLE_OPENSSL
@@ -1908,12 +1910,16 @@ sc_pkcs15init_store_secret_key(struct sc_pkcs15_card *p15card, struct sc_profile
 		r = profile->ops->create_key(profile, p15card, object);
 	LOG_TEST_RET(ctx, r, "Card specific 'create key' failed");
 
-	if (profile->ops->store_key) {
-		struct sc_pkcs15_prkey key;
-		memset(&key, 0, sizeof(key));
-		key.algorithm = keyargs->algorithm;
-		key.u.secret = keyargs->key;
-		r = profile->ops->store_key(profile, p15card, object, &key);
+	/* If no key data, only an empty EF is created. 
+	 * It can be used to receive an unwrapped key later. */
+	if (keyargs->key.data_len > 0) {
+		if (profile->ops->store_key) {
+			struct sc_pkcs15_prkey key;
+			memset(&key, 0, sizeof(key));
+			key.algorithm = keyargs->algorithm;
+			key.u.secret = keyargs->key;
+			r = profile->ops->store_key(profile, p15card, object, &key);
+		}
 	}
 	LOG_TEST_RET(ctx, r, "Card specific 'store key' failed");
 

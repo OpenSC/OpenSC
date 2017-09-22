@@ -227,6 +227,9 @@ static int myeid_init(struct sc_card *card)
 	/* State that we have an RNG */
 	card->caps |= SC_CARD_CAP_RNG | SC_CARD_CAP_ISO7816_PIN_INFO;
 
+	/* if (card->version.fw_major >= 41) */ /* TODO: check the version number that actually supports these ops */
+		card->caps |= SC_CARD_CAP_WRAP_KEY | SC_CARD_CAP_UNWRAP_KEY;
+
 	card->max_recv_size = 255;
 	card->max_send_size = 255;
 
@@ -631,6 +634,10 @@ static int myeid_set_security_env_rsa(sc_card_t *card, const sc_security_env_t *
 	case SC_SEC_OPERATION_SIGN:
 		apdu.p1 = 0x41;
 		apdu.p2 = 0xB6;
+		break;
+	case SC_SEC_OPERATION_UNWRAP:
+		apdu.p1 = 0x41;		/* emulating unwrapping with DECIPHER operation */
+		apdu.p2 = 0xB8;		/* TODO: set correct params when operation is implemented on card */
 		break;
 	default:
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -1185,6 +1192,31 @@ static int myeid_decipher(struct sc_card *card, const u8 * crgram,
 }
 
 
+static int myeid_wrap_key(struct sc_card *card, u8 *out, size_t outlen)
+{
+	int r;
+	LOG_FUNC_CALLED(card->ctx);
+
+	LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+}
+
+static int myeid_unwrap_key(struct sc_card *card, const u8 *crgram, size_t crgram_len)
+{
+	int r;
+	u8 out[512];
+	size_t outlen = 512;
+
+	LOG_FUNC_CALLED(card->ctx);
+
+	/* Emulate unwrapping with decipher */
+	r = myeid_decipher(card, crgram, crgram_len, out, outlen);
+
+	LOG_FUNC_RETURN(card->ctx, r);
+
+	/*LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED); */
+}
+
+
 /* Write internal data, e.g. add default pin-records to pin */
 static int myeid_putdata(struct sc_card *card, struct sc_cardctl_myeid_data_obj* data_obj)
 {
@@ -1601,6 +1633,8 @@ static struct sc_card_driver * sc_get_driver(void)
 	myeid_ops.process_fci		= myeid_process_fci;
 	myeid_ops.card_ctl		= myeid_card_ctl;
 	myeid_ops.pin_cmd		= myeid_pin_cmd;
+	myeid_ops.wrap			= myeid_wrap_key;
+	myeid_ops.unwrap		= myeid_unwrap_key;
 	return &myeid_drv;
 }
 

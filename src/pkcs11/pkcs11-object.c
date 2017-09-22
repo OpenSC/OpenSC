@@ -47,6 +47,8 @@ static sc_pkcs11_mechanism_type_t find_mechanism = {
 	NULL,		/* decrypt_init */
 	NULL,		/* decrypt */
 	NULL,		/* derive */
+	NULL,		/* wrap */
+	NULL,		/* unwrap */
 	NULL,		/* mech_data */
 	NULL,		/* free_mech_data */
 };
@@ -1049,7 +1051,67 @@ CK_RV C_UnwrapKey(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		  CK_ULONG ulAttributeCount,	/* # of attributes in template */
 		  CK_OBJECT_HANDLE_PTR phKey)
 {				/* gets handle of recovered key */
-	return CKR_FUNCTION_NOT_SUPPORTED;
+	CK_RV rv;
+	CK_BBOOL can_unwrap;
+	CK_KEY_TYPE key_type;
+	CK_ATTRIBUTE unwrap_attribute = { CKA_UNWRAP, &can_unwrap, sizeof(can_unwrap) };
+	CK_ATTRIBUTE key_type_attr = { CKA_KEY_TYPE, &key_type, sizeof(key_type) };
+	struct sc_pkcs11_session *session;
+	struct sc_pkcs11_object *object;
+	struct sc_pkcs11_object *key_object;
+
+	if (pMechanism == NULL_PTR)
+		return CKR_ARGUMENTS_BAD;
+
+	rv = sc_pkcs11_lock();
+	if (rv != CKR_OK)
+		return rv;
+
+	rv = get_object_from_session(hSession, hUnwrappingKey, &session, &object);
+	if (rv != CKR_OK) {
+		if (rv == CKR_OBJECT_HANDLE_INVALID)
+			rv = CKR_KEY_HANDLE_INVALID;
+		goto out;
+	}
+	if (object->ops->unwrap_key == NULL_PTR) {
+		rv = CKR_KEY_TYPE_INCONSISTENT;
+		goto out;
+	}
+
+	rv = object->ops->get_attribute(session, object, &unwrap_attribute);
+	if (rv != CKR_OK || !can_unwrap) {
+		rv = CKR_KEY_TYPE_INCONSISTENT;
+		goto out;
+	}
+	rv = object->ops->get_attribute(session, object, &key_type_attr);
+	if (rv != CKR_OK) {
+		rv = CKR_KEY_TYPE_INCONSISTENT;
+		goto out;
+	}
+
+	/* Create the target object in memory */
+	rv = sc_create_object_int(hSession, pTemplate, ulAttributeCount, phKey, 0);
+
+	if (rv != CKR_OK)
+	    goto out;
+
+	rv = get_object_from_session(hSession, *phKey, &session, &key_object);
+	if (rv != CKR_OK) {
+		if (rv == CKR_OBJECT_HANDLE_INVALID)
+			rv = CKR_KEY_HANDLE_INVALID;
+		goto out;
+	}
+
+	rv = restore_login_state(session->slot);
+	if (rv == CKR_OK)
+		rv = sc_pkcs11_unwrap(session, pMechanism, object, key_type,
+				hSession, pWrappedKey, ulWrappedKeyLen, key_object);
+	/* TODO if (rv != CK_OK) need to destroy the object */
+	rv = reset_login_state(session->slot, rv);
+
+out:
+	sc_pkcs11_unlock();
+	return rv;
 }
 
 CK_RV C_DeriveKey(CK_SESSION_HANDLE hSession,	/* the session's handle */
