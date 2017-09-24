@@ -324,7 +324,9 @@ static int sc_hsm_soc_change(sc_card_t *card, struct sc_pin_cmd_data *data,
 		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 		LOG_TEST_GOTO_ERR(card->ctx, r, "Could not change PIN");
 	} else {
+#ifdef ENABLE_SM
 		unsigned sm_mode = card->sm_ctx.sm_mode;
+#endif
 
 		/* verify PIN */
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x20, 0x00, 0x85);
@@ -332,15 +334,19 @@ static int sc_hsm_soc_change(sc_card_t *card, struct sc_pin_cmd_data *data,
 		r = sc_transmit_apdu(card, &apdu);
 		LOG_TEST_GOTO_ERR(card->ctx, r, "APDU transmit failed");
 
+#ifdef ENABLE_SM
 		/* temporary disable SM, change reference data does not reach the applet */
 		card->sm_ctx.sm_mode = SM_MODE_NONE;
+#endif
 
 		/* change PIN */
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x24, 0x01, 0x85);
 		apdu.cla = 0x80;
 		r = sc_transmit_apdu(card, &apdu);
+#ifdef ENABLE_SM
 		/* restore SM if possible */
 		card->sm_ctx.sm_mode = sm_mode;
+#endif
 		LOG_TEST_GOTO_ERR(card->ctx, r, "APDU transmit failed");
 		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 		LOG_TEST_GOTO_ERR(card->ctx, r, "Could not change PIN");
