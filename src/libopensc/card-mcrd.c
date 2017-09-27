@@ -332,9 +332,7 @@ static int mcrd_init(sc_card_t * card)
 
 			flags = SC_ALGORITHM_ECDSA_RAW | SC_ALGORITHM_ECDH_CDH_RAW | SC_ALGORITHM_ECDSA_HASH_NONE;
 			ext_flags = SC_ALGORITHM_EXT_EC_NAMEDCURVE | SC_ALGORITHM_EXT_EC_UNCOMPRESES;
-			_sc_card_add_ec_alg(card, 256, flags, ext_flags, NULL);
 			_sc_card_add_ec_alg(card, 384, flags, ext_flags, NULL);
-			_sc_card_add_ec_alg(card, 521, flags, ext_flags, NULL);
 			sc_reset(card, 0);
 
 			sc_format_apdu(card, &apdu, SC_APDU_CASE_3, 0xA4, 0x04, 0x00);
