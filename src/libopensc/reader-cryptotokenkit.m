@@ -329,6 +329,8 @@ int cryptotokenkit_use_reader(sc_context_t *ctx, void *pcsc_context_handle, void
 	/* attempt to detect protocol in use T0/T1/RAW */
 	ctk_set_proto(reader);
 
+	cryptotokenkit_detect_card_presence(reader);
+
 	r = _sc_add_reader(ctx, reader);
 
 err:
