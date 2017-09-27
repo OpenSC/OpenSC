@@ -65,7 +65,7 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 	sc_card_t *card = p15card->card;
 	unsigned char buff[128];
 	int r, i;
-	size_t field_length = 0;
+	size_t field_length = 0, modulus_length = 0;
 	sc_path_t tmppath;
 
 	set_string (&p15card->tokeninfo->label, "ID-kaart");
@@ -114,6 +114,8 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 			r = sc_pkcs15_read_certificate(p15card, &cert_info, &cert);
 			if (cert->key->algorithm == SC_ALGORITHM_EC)
 				field_length = cert->key->u.ec.params.field_length;
+			else
+				modulus_length = cert->key->u.rsa.modulus.len * 8;
 			if (r == SC_SUCCESS) {
 				static const struct sc_object_id cn_oid = {{ 2, 5, 4, 3, -1 }};
 				u8 *cn_name = NULL;
@@ -196,9 +198,6 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 	/* add private keys */
 	for (i = 0; i < 2; i++) {
 		static int prkey_pin[2] = {1, 2};
-		static int prkey_usage[2] = {
-			SC_PKCS15_PRKEY_USAGE_SIGN,
-			SC_PKCS15_PRKEY_USAGE_NONREPUDIATION};
 
 		static const char *prkey_name[2] = {
 			"Isikutuvastus",
@@ -207,23 +206,21 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 		struct sc_pkcs15_prkey_info prkey_info;
 		struct sc_pkcs15_object prkey_obj;
 
-		if (field_length == 0)
-			prkey_usage[0] |= SC_PKCS15_PRKEY_USAGE_ENCRYPT | SC_PKCS15_PRKEY_USAGE_DECRYPT;
-
 		memset(&prkey_info, 0, sizeof(prkey_info));
 		memset(&prkey_obj, 0, sizeof(prkey_obj));
 
 		prkey_info.id.len = 1;
 		prkey_info.id.value[0] = prkey_pin[i];
-		prkey_info.usage  = prkey_usage[i];
 		prkey_info.native = 1;
 		prkey_info.key_reference = i + 1;
-		if (field_length > 0)
-			prkey_info.field_length = field_length;
-		else if (card->type == SC_CARD_TYPE_MCRD_ESTEID_V30)
-			prkey_info.modulus_length = 2048;
+		prkey_info.field_length = field_length;
+		prkey_info.modulus_length = modulus_length;
+		if (i == 1)
+			prkey_info.usage = SC_PKCS15_PRKEY_USAGE_NONREPUDIATION;
+		else if(field_length > 0) // ECC has only sign usage
+			prkey_info.usage = SC_PKCS15_PRKEY_USAGE_SIGN;
 		else
-			prkey_info.modulus_length = 1024;
+			prkey_info.usage = SC_PKCS15_PRKEY_USAGE_SIGN | SC_PKCS15_PRKEY_USAGE_ENCRYPT | SC_PKCS15_PRKEY_USAGE_DECRYPT;
 
 		strlcpy(prkey_obj.label, prkey_name[i], sizeof(prkey_obj.label));
 		prkey_obj.auth_id.len = 1;
