@@ -1208,6 +1208,7 @@ static int mcrd_set_security_env(sc_card_t * card,
 		select_esteid_df(card);
 		switch (env->operation) {
 		case SC_SEC_OPERATION_DECIPHER:
+		case SC_SEC_OPERATION_DERIVE:
 			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
 				 "Using keyref %d to dechiper\n",
 				 env->key_ref[0]);
@@ -1351,11 +1352,14 @@ static int mcrd_compute_signature(sc_card_t * card,
 				  u8 * out, size_t outlen)
 {
 	struct mcrd_priv_data *priv = DRVDATA(card);
-	sc_security_env_t *env = &priv->sec_env;
+	sc_security_env_t *env = NULL;
 	int r;
 	sc_apdu_t apdu;
 
-	assert(card != NULL && data != NULL && out != NULL);
+	if (card == NULL || data == NULL || out == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	env = &priv->sec_env;
+
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
 	if (env->operation != SC_SEC_OPERATION_SIGN)
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -1387,6 +1391,60 @@ static int mcrd_compute_signature(sc_card_t * card,
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
+
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, apdu.resplen);
+}
+
+static int mcrd_decipher(struct sc_card *card,
+						 const u8 * crgram, size_t crgram_len,
+						 u8 * out, size_t outlen)
+{
+	sc_security_env_t *env = NULL;
+	int r = 0;
+	size_t sbuf_len = crgram_len + 7;
+	sc_apdu_t apdu;
+	u8 *sbuf = NULL;
+
+	if (card == NULL || crgram == NULL || out == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	env = &DRVDATA(card)->sec_env;
+
+	LOG_FUNC_CALLED(card->ctx);
+	if (env->operation != SC_SEC_OPERATION_DERIVE)
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, iso_ops->decipher(card, crgram, crgram_len, out, outlen));
+	if (crgram_len > 255)
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
+
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+		 "Will dervie (%d) for %"SC_FORMAT_LEN_SIZE_T"u (0x%02"SC_FORMAT_LEN_SIZE_T"x) bytes using key %d algorithm %d flags %d\n",
+		 env->operation, crgram_len, crgram_len, env->key_ref[0],
+		 env->algorithm, env->algorithm_flags);
+
+	sbuf = malloc(sbuf_len);
+	sbuf[0] = 0xA6; // Control Reference Template Tag for Key Agreement (ISO 7816-4:2013 Table 54)
+	sbuf[1] = 3 + 2 + crgram_len; // Length of the Control reference Template
+	sbuf[2] = 0x7F; // Ephemeral public key Template Tag (ISO 7816-8:2016 Table 3)
+	sbuf[3] = 0x49;
+	sbuf[4] = 2 + crgram_len; // Length of ephemeral public key Template
+	sbuf[5] = 0x86; // External Public Key
+	sbuf[6] = crgram_len; // External Public Key Len
+	memcpy(&sbuf[7], crgram, crgram_len);
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x80, 0x86);
+	apdu.lc = sbuf_len;
+	apdu.data = sbuf;
+	apdu.datalen = sbuf_len;
+	apdu.le = MIN(0x80u, outlen);
+	apdu.resp = out;
+	apdu.resplen = outlen;
+
+	r = sc_transmit_apdu(card, &apdu);
+	sc_mem_clear(sbuf, sbuf_len);
+	free(sbuf);
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	LOG_TEST_RET(card->ctx, r, "Card returned error");
 
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, apdu.resplen);
 }
@@ -1454,6 +1512,7 @@ static struct sc_card_driver *sc_get_driver(void)
 	mcrd_ops.select_file = mcrd_select_file;
 	mcrd_ops.set_security_env = mcrd_set_security_env;
 	mcrd_ops.compute_signature = mcrd_compute_signature;
+	mcrd_ops.decipher = mcrd_decipher;
 	mcrd_ops.pin_cmd = mcrd_pin_cmd;
 
 	return &mcrd_drv;
