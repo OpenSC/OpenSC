@@ -1944,7 +1944,6 @@ sc_pkcs15init_store_secret_key(struct sc_pkcs15_card *p15card, struct sc_profile
 	LOG_FUNC_RETURN(ctx, r);
 }
 
-
 /*
  * Store a certificate
  */

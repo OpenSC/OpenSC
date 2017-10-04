@@ -315,9 +315,11 @@ int sc_pkcs15_unwrap(struct sc_pkcs15_card *p15card,
 	sc_algorithm_info_t *alg_info = NULL;
 	sc_security_env_t senv;
 	const struct sc_pkcs15_prkey_info *prkey = (const struct sc_pkcs15_prkey_info *) key->data;
+	const struct sc_pkcs15_skey_info *tkey = (const struct sc_pkcs15_skey_info *) target_key->data;
 	unsigned long pad_flags = 0, sec_flags = 0;
 	u8 *out = 0;
 	size_t poutlen = 0;
+	sc_path_t path, target_file_id;
 
 	LOG_FUNC_CALLED(ctx);
 
@@ -332,6 +334,35 @@ int sc_pkcs15_unwrap(struct sc_pkcs15_card *p15card,
 	r = format_senv(p15card, key, &senv, &alg_info);
 	LOG_TEST_RET(ctx, r, "Could not initialize security environment");
 	senv.operation = SC_SEC_OPERATION_UNWRAP;
+
+	memset(&path, 0, sizeof(sc_path_t));
+	memset(&target_file_id, 0, sizeof(sc_path_t));
+
+	if (!tkey->path.len && tkey->path.aid.len) {
+		/* Target key is a SDO allocated in application DF */
+		path = tkey->path;
+	}
+	else if (tkey->path.len == 2 && p15card->file_app != NULL) {
+		/* Path is relative to app. DF */
+		path = p15card->file_app->path;
+		target_file_id = tkey->path;
+		sc_append_path(&path, &target_file_id);
+		senv.target_file_ref = target_file_id;
+		senv.flags |= SC_SEC_ENV_TARGET_FILE_REF_PRESENT;
+	}
+	else if (tkey->path.len > 2) {
+		path = tkey->path;
+		memcpy(target_file_id.value, tkey->path.value + tkey->path.len - 2, 2);
+		target_file_id.len = 2;
+		target_file_id.type = SC_PATH_TYPE_FILE_ID;
+		senv.target_file_ref = target_file_id;
+		senv.flags |= SC_SEC_ENV_TARGET_FILE_REF_PRESENT;
+	}
+	else {
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "invalid unwrapping target key path");
+	}
+
+
 
 	r = sc_get_encoding_flags(ctx, flags, alg_info->flags, &pad_flags, &sec_flags);
 	LOG_TEST_RET(ctx, r, "cannot encode security operation flags");

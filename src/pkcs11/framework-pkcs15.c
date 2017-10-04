@@ -2188,7 +2188,7 @@ out:	return rv;
 
 
 /* TODO Only Session secret key objects are supported for now
- * Sesison objects have CKA_TOKEN=false
+ * Session objects have CKA_TOKEN=false
  * This is used by the C_DeriveKey with ECDH to hold the
  * key, and the calling application can then retrieve tha attributes as needed.
  * TODO If a card can support  secret key objects on the card, this
@@ -2204,11 +2204,13 @@ pkcs15_create_secret_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 	struct sc_pkcs15init_skeyargs args;
 	struct pkcs15_any_object *key_any_obj = NULL;
 	struct sc_pkcs15_object	*key_obj = NULL;
+	struct sc_pkcs15_auth_info *pin = NULL;
 	struct sc_pkcs15_skey_info *skey_info;
 	CK_KEY_TYPE key_type;
 	CK_BBOOL _token = FALSE;
 	int rv, rc;
 	char label[SC_PKCS15_MAX_LABEL_SIZE];
+	CK_BBOOL temp_object = FALSE;
 
 	memset(&args, 0, sizeof(args));
 	fw_data = (struct pkcs15_fw_data *) p11card->fws_data[slot->fw_data_idx];
@@ -2225,13 +2227,22 @@ pkcs15_create_secret_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 	if (rv != CKR_OK)
 		return rv;
 
+	/* See if the "slot" is pin protected. If so, get the PIN id */
+	if ((pin = slot_data_auth_info(slot->fw_data)) != NULL)
+		args.auth_id = pin->auth_id;
+
 	switch (key_type) {
 		/* Only support GENERIC_SECRET for now */
 		case CKK_GENERIC_SECRET:
 		case CKK_AES:
+		    args.algorithm = SC_ALGORITHM_AES;
+		    break;
 		case CKK_DES3:
+		    args.algorithm = SC_ALGORITHM_3DES;
+		    break;
 		case CKK_DES:
-			break;
+		    args.algorithm = SC_ALGORITHM_DES;
+		    break;
 		default:
 			return CKR_ATTRIBUTE_VALUE_INVALID;
 	}
@@ -2299,6 +2310,7 @@ pkcs15_create_secret_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 			rv = CKR_HOST_MEMORY;
 			goto out;
 	    }
+	    temp_object = TRUE;
 	    key_obj->type = SC_PKCS15_TYPE_SKEY;
 
 	    if (args.id.len)
@@ -2337,7 +2349,8 @@ pkcs15_create_secret_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 
 out:
 	free(args.key.data); /* if allocated */
-	free(key_obj);
+	if (temp_object)
+		free(key_obj); /* do not free if the object was created by pkcs15init. It will be freed in C_Finalize */
 	return rv;
 }
 
@@ -3918,7 +3931,7 @@ pkcs15_prkey_unwrap(struct sc_pkcs11_session *session, void *obj,
 	struct	sc_pkcs11_card *p11card = session->slot->p11card;
 	struct	pkcs15_fw_data *fw_data = NULL;
 	struct	pkcs15_prkey_object *prkey = (struct pkcs15_prkey_object *) obj;
-	struct	sc_pkcs11_object *targetKeyObj = (struct sc_pkcs11_object *) targetKey;
+	struct	pkcs15_skey_object *targetKeyObj = (struct pkcs15_skey_object *) targetKey;
 	int	rv, flags = 0;	
 
 	sc_log(context, "Initiating unwrapping with private key.");
@@ -3958,7 +3971,7 @@ pkcs15_prkey_unwrap(struct sc_pkcs11_session *session, void *obj,
 		return sc_to_cryptoki_error(rv, "C_UnwrapKey");
 
 	/* Call the card to do the unwrap operation */
-	rv = sc_pkcs15_unwrap(fw_data->p15_card, prkey->prv_p15obj, (struct sc_pkcs15_object *) targetKeyObj, 0,
+	rv = sc_pkcs15_unwrap(fw_data->p15_card, prkey->prv_p15obj, targetKeyObj->prv_p15obj, 0,
 		pWrappedKey, ulWrappedKeyLen);
 
 	sc_unlock(p11card->card);

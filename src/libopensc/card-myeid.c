@@ -663,6 +663,7 @@ static int myeid_set_security_env_rsa(sc_card_t *card, const sc_security_env_t *
 		*p++ = 1;
 		*p++ = 0;
 	}
+	/* TODO: handle SC_SEC_ENV_TARGET_FILE_REF_PRESENT, if this is an unwrapping operation. */
 	r = p - sbuf;
 	apdu.lc = r;
 	apdu.datalen = r;
