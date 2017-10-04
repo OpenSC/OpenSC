@@ -323,6 +323,7 @@ sc_pkcs15init_verify_secret
 sc_pkcs15init_sanity_check
 sc_pkcs15init_finalize_profile
 sc_card_find_rsa_alg
+sc_card_find_ec_alg
 sc_check_apdu
 sc_print_cache
 sc_find_app
