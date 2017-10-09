@@ -155,8 +155,12 @@ static int cryptotokenkit_connect(sc_reader_t *reader)
 		priv->tksmartcard = [priv->tksmartcardslot makeSmartCard];
 	}
 
-	if (!priv->tksmartcard || ![priv->tksmartcard valid])
+	if (!priv->tksmartcard || !priv->tksmartcard.valid)
 		return SC_ERROR_CARD_NOT_PRESENT;
+
+	/* if tksmartcard.context is set to nil, we know that the card has been
+	 * reset or aquired by a different session */
+	priv->tksmartcard.context = @(YES);
 
 	/* attempt to detect protocol in use T0/T1/RAW */
 	ctk_set_proto(reader);
@@ -184,6 +188,12 @@ static int cryptotokenkit_lock(sc_reader_t *reader)
 
 	if (reader->ctx->flags & SC_CTX_FLAG_TERMINATE)
 		goto err;
+
+	if (priv->tksmartcard.context == nil) {
+		r = SC_ERROR_CARD_RESET;
+		priv->tksmartcard.context = @(YES);
+		goto err;
+	}
 
 	[priv->tksmartcard beginSessionWithReply:^(BOOL success, NSError *error) {
 		if (success != TRUE) {
