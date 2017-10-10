@@ -718,7 +718,7 @@ __pkcs15_create_pubkey_object(struct pkcs15_fw_data *fw_data,
 	} else if (!(pubkey->emulated && (fw_data->p15_card->flags & SC_PKCS15_CARD_FLAG_EMULATED))) {
 		sc_pkcs15_free_pubkey(p15_key);
 	}
-	if (object && object->pub_data) {
+	if (object->pub_data) {
 		if ((object->pub_data->alg_id)&&(object->pub_data->algorithm == SC_ALGORITHM_GOSTR3410))
 			object->pub_data->alg_id->params = &((object->pub_data->u).gostr3410.params);
 	}
@@ -734,7 +734,7 @@ static int
 __pkcs15_create_prkey_object(struct pkcs15_fw_data *fw_data,
 	struct sc_pkcs15_object *prkey, struct pkcs15_any_object **prkey_object)
 {
-	struct pkcs15_prkey_object *object = NULL;
+	struct pkcs15_prkey_object *object;
 	int rv;
 
 	rv = __pkcs15_create_object(fw_data, (struct pkcs15_any_object **) &object,
@@ -1024,7 +1024,6 @@ pkcs15_init_slot(struct sc_pkcs15_card *p15card, struct sc_pkcs11_slot *slot,
 	struct sc_pkcs15_auth_info *pin_info = NULL;
 	char label[64];
 
-	sc_log(context, "Called");
 	pkcs15_init_token_info(p15card, &slot->token_info);
 	slot->token_info.flags |= CKF_TOKEN_INITIALIZED;
 	if (auth != NULL)
@@ -1049,10 +1048,9 @@ pkcs15_init_slot(struct sc_pkcs15_card *p15card, struct sc_pkcs11_slot *slot,
 			pin_info = NULL;
 		}
 		else   {
-			if (auth->label[0] && strncmp(auth->label, "PIN", 4) != 0)
+			if (auth->label[0])
 				snprintf(label, sizeof(label), "%.*s (%s)", (int) sizeof auth->label, auth->label, p15card->tokeninfo->label);
 			else
-				/* The PIN label is empty or says just non-useful "PIN" */
 				snprintf(label, sizeof(label), "%s", p15card->tokeninfo->label);
 			slot->token_info.flags |= CKF_LOGIN_REQUIRED;
 		}
@@ -1823,7 +1821,7 @@ pkcs15_initialize(struct sc_pkcs11_slot *slot, void *ptr,
 
 		if (p15card)   {
 			sc_log(context, "pkcs15init erase card");
-			sc_pkcs15init_erase_card(p15card, profile, NULL);
+			rc = sc_pkcs15init_erase_card(p15card, profile, NULL);
 
 			sc_log(context, "pkcs15init unbind");
 			sc_pkcs15init_unbind(profile);
@@ -2255,11 +2253,11 @@ pkcs15_create_secret_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 
 	    key_obj->flags = 2; /* TODO not sure what these mean */
 
-		skey_info = calloc(1, sizeof(sc_pkcs15_skey_info_t));
+	    skey_info = calloc(1, sizeof(sc_pkcs15_skey_info_t));
 		if (skey_info == NULL) {
 			rv = CKR_HOST_MEMORY;
 			goto out;
-		}
+	    }
 	    key_obj->data = skey_info;
 	    skey_info->usage = args.usage;
 	    skey_info->native = 0; /* card can not use this */
@@ -2268,7 +2266,7 @@ pkcs15_create_secret_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 	    skey_info->data.value = args.key.data;
 	    skey_info->data.len = args.key.data_len;
 	    skey_info->value_len = args.value_len; /* callers prefered length */
-	    args.key.data = NULL;
+
 	}
 	else {
 #if 1
@@ -2292,7 +2290,6 @@ pkcs15_create_secret_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 	rv = CKR_OK;
 
 out:
-	free(args.key.data); /* if allocated */
 	free(key_obj);
 	return rv;
 }
@@ -2338,6 +2335,7 @@ pkcs15_create_public_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 			return CKR_ATTRIBUTE_VALUE_INVALID;
 	}
 
+	rv = CKR_OK;
 	while (ulCount--) {
 		CK_ATTRIBUTE_PTR attr = pTemplate++;
 		sc_pkcs15_bignum_t *bn = NULL;
@@ -2431,6 +2429,7 @@ pkcs15_create_certificate(struct sc_pkcs11_slot *slot,
 	if (cert_type != CKC_X_509)
 		return CKR_ATTRIBUTE_VALUE_INVALID;
 
+	rv = CKR_OK;
 	while (ulCount--) {
 		CK_ATTRIBUTE_PTR attr = pTemplate++;
 
@@ -2439,7 +2438,7 @@ pkcs15_create_certificate(struct sc_pkcs11_slot *slot,
 		case CKA_CLASS:
 			break;
 		case CKA_PRIVATE:
-			attr_extract(attr, &bValue, NULL);
+			rv = attr_extract(attr, &bValue, NULL);
 			if (bValue) {
 				rv = CKR_TEMPLATE_INCONSISTENT;
 				goto out;
@@ -2506,6 +2505,7 @@ pkcs15_create_data(struct sc_pkcs11_slot *slot, struct sc_profile *profile,
 	if (!fw_data)
 		return sc_to_cryptoki_error(SC_ERROR_INTERNAL, "C_CreateObject");
 
+	rv = CKR_OK;
 	while (ulCount--) {
 		CK_ATTRIBUTE_PTR attr = pTemplate++;
 
@@ -2514,7 +2514,7 @@ pkcs15_create_data(struct sc_pkcs11_slot *slot, struct sc_profile *profile,
 		case CKA_CLASS:
 			break;
 		case CKA_PRIVATE:
-			attr_extract(attr, &bValue, NULL);
+			rv = attr_extract(attr, &bValue, NULL);
 			if (bValue) {
 				pin = slot_data_auth_info(slot->fw_data);
 				if (pin == NULL) {

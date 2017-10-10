@@ -56,7 +56,6 @@ enum ck_type{
   KEY_T,
   CRT_T,
   MEC_T,
-  MGF_T,
   USR_T,
   STA_T,
   RV_T

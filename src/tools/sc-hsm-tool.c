@@ -45,7 +45,6 @@
 #include "libopensc/opensc.h"
 #include "libopensc/cardctl.h"
 #include "libopensc/asn1.h"
-#include "libopensc/log.h"
 #include "libopensc/card-sc-hsm.h"
 #include "util.h"
 
@@ -1388,9 +1387,8 @@ static int wrap_key(sc_card_t *card, int keyid, const char *outf, const char *pi
 
 	// Encode key in octet string object
 	key_len = 0;
-	r = wrap_with_tag(0x04, wrapped_key.wrapped_key, wrapped_key.wrapped_key_length,
+	wrap_with_tag(0x04, wrapped_key.wrapped_key, wrapped_key.wrapped_key_length,
 						&key, &key_len);
-	LOG_TEST_RET(ctx, r, "Out of memory");
 
 	memcpy(ptr, key, key_len);
 	ptr += key_len;
@@ -1412,8 +1410,7 @@ static int wrap_key(sc_card_t *card, int keyid, const char *outf, const char *pi
 	}
 
 	// Encode key, key decription and certificate object in sequence
-	r = wrap_with_tag(0x30, keyblob, ptr - keyblob, &key, &key_len);
-	LOG_TEST_RET(ctx, r, "Out of memory");
+	wrap_with_tag(0x30, keyblob, ptr - keyblob, &key, &key_len);
 
 	out = fopen(outf, "wb");
 
@@ -1452,7 +1449,7 @@ static int update_ef(sc_card_t *card, u8 prefix, u8 id, int erase, const u8 *buf
 	r = sc_select_file(card, &path, NULL);
 
 	if ((r == SC_SUCCESS) && erase) {
-		sc_delete_file(card, &path);
+		r = sc_delete_file(card, &path);
 		r = SC_ERROR_FILE_NOT_FOUND;
 	}
 

@@ -232,8 +232,7 @@ void util_hex_dump_asc(FILE *f, const u8 *in, size_t count, int addr)
 	}
 }
 
-NORETURN void
-util_print_usage_and_die(const char *app_name, const struct option options[],
+void util_print_usage_and_die(const char *app_name, const struct option options[],
 	const char *option_help[], const char *args)
 {
 	int i;
@@ -344,7 +343,7 @@ const char * util_acl_to_str(const sc_acl_entry_t *e)
 	return line;
 }
 
-NORETURN void
+void
 util_fatal(const char *fmt, ...)
 {
 	va_list	ap;
