@@ -28,3 +28,20 @@ Windows Registry Editor Version 5.00
 "Crypto Provider"="Microsoft Base Smart Card Crypto Provider"
 "Smart Card Key Storage Provider"="Microsoft Smart Card Key Storage Provider"
 "80000001"="opensc-minidriver.dll"
+
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Cryptography\Calais\SmartCards\EJAVA/PK-01C]
+"ATR"=hex:3b,fc,18,00,00,81,31,80,45,90,67,46,4a,00,64,18,14,00,00,00,00,02
+"ATRMask"=hex:ff,00,00,00,00,00,00,00,00,ff,ff,ff,ff,00,00,00,00,ff,ff,ff,ff,00
+"Crypto Provider"="Microsoft Base Smart Card Crypto Provider"
+"Smart Card Key Storage Provider"="Microsoft Smart Card Key Storage Provider"
+"80000001"="opensc-minidriver.dll"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node\Microsoft\Cryptography\Calais\SmartCards\EJAVA/PK-01C]
+"ATR"=hex:3b,fc,18,00,00,81,31,80,45,90,67,46,4a,00,64,18,14,00,00,00,00,02
+"ATRMask"=hex:ff,00,00,00,00,00,00,00,00,ff,ff,ff,ff,00,00,00,00,ff,ff,ff,ff,00
+"Crypto Provider"="Microsoft Base Smart Card Crypto Provider"
+"Smart Card Key Storage Provider"="Microsoft Smart Card Key Storage Provider"
+"80000001"="opensc-minidriver.dll"
+
+
