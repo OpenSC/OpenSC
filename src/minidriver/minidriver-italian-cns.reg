@@ -1,0 +1,33 @@
+﻿Windows Registry Editor Version 5.00
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node\Microsoft\Cryptography\Calais\SmartCards\CPS]
+"Crypto Provider"="Microsoft Base Smart Card Crypto Provider"
+"Smart Card Key Storage Provider"="Microsoft Smart Card Key Storage Provider"
+"80000001"="opensc-minidriver.dll"
+"ATR"=hex:3b,ff,18,00,ff,c1,0a,31,fe,55,00,6b,05,08,c8,0c,01,11,01,43,4e,53,10,\
+  31,80,05
+"ATRMask"=hex:ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,\
+  ff,ff,ff,ff,ff
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node\Microsoft\Cryptography\Calais\SmartCards\CPS-Athena]
+"Crypto Provider"="Microsoft Base Smart Card Crypto Provider"
+"Smart Card Key Storage Provider"="Microsoft Smart Card Key Storage Provider"
+"80000001"="opensc-minidriver.dll"
+"ATR"=hex:3b,df,18,00,81,31,fe,7d,00,6b,02,0c,01,82,01,11,01,43,4e,53,10,31,80,fc
+"ATRMask"=hex:ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Cryptography\Calais\SmartCards\CPS]
+"Crypto Provider"="Microsoft Base Smart Card Crypto Provider"
+"Smart Card Key Storage Provider"="Microsoft Smart Card Key Storage Provider"
+"80000001"="opensc-minidriver.dll"
+"ATR"=hex:3b,ff,18,00,ff,c1,0a,31,fe,55,00,6b,05,08,c8,0c,01,11,01,43,4e,53,10,\
+  31,80,05
+"ATRMask"=hex:ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,\
+  ff,ff,ff,ff,ff
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Cryptography\Calais\SmartCards\CPS-Athena]
+"Crypto Provider"="Microsoft Base Smart Card Crypto Provider"
+"Smart Card Key Storage Provider"="Microsoft Smart Card Key Storage Provider"
+"80000001"="opensc-minidriver.dll"
+"ATR"=hex:3b,df,18,00,81,31,fe,7d,00,6b,02,0c,01,82,01,11,01,43,4e,53,10,31,80,fc
+"ATRMask"=hex:ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff,ff

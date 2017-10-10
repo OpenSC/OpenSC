@@ -1,0 +1,7 @@
+Windows Registry Editor Version 5.00
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Cryptography\Calais\SmartCards\CEV WESTCOS]
+"80000001"="opensc-minidriver.dll"
+"ATR"=hex:3f,69,00,00,00,64,01,00,00,00,80,90,00
+"ATRMask"=hex:ff,ff,ff,ff,ff,ff,ff,00,00,00,f0,ff,ff
+"Crypto Provider"="Microsoft Base Smart Card Crypto Provider"
