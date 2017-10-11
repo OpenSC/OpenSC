@@ -2020,6 +2020,7 @@ pgp_update_pubkey_blob(sc_card_t *card, u8* modulus, size_t modulus_len,
 	pubkey.u.rsa.exponent.len  = exponent_len >> 3;
 
 	r = sc_pkcs15_encode_pubkey(card->ctx, &pubkey, &data, &len);
+	LOG_TEST_RET(card->ctx, r, "Cannot encode pubkey.");
 
 	sc_log(card->ctx, "Update blob content.");
 	r = pgp_set_blob(pk_blob, data, len);

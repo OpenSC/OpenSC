@@ -59,6 +59,7 @@ static struct sc_atr_table cardos_atrs[] = {
 	/* CardOS v5.0 */
 	{ "3b:d2:18:00:81:31:fe:58:c9:01:14", NULL, NULL, SC_CARD_TYPE_CARDOS_V5_0, 0, NULL},
 	/* CardOS v5.3 */
+	{ "3b:d2:18:00:81:31:fe:58:c9:02:17", NULL, NULL, SC_CARD_TYPE_CARDOS_V5_0, 0, NULL},
 	{ "3b:d2:18:00:81:31:fe:58:c9:03:16", NULL, NULL, SC_CARD_TYPE_CARDOS_V5_0, 0, NULL},
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
@@ -171,7 +172,7 @@ static int cardos_init(sc_card_t *card)
 	sc_apdu_t apdu;
 	u8 rbuf[2];
 
-	card->name = "CardOS M4";
+	card->name = "Atos CardOS";
 	card->cla = 0x00;
 
 	/* Set up algorithm info. */

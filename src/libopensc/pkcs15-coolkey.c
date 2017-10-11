@@ -484,7 +484,7 @@ static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
 	sc_card_t *card = p15card->card;
 	sc_serial_number_t serial;
 	int count;
-
+	struct sc_pkcs15_object *obj;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -539,6 +539,8 @@ static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
 
 	/* set other objects */
 	r = (card->ops->card_ctl)(card, SC_CARDCTL_COOLKEY_INIT_GET_OBJECTS, &count);
+	LOG_TEST_RET(card->ctx, r, "Can not initiate objects.");
+
 	for (i = 0; i < count; i++) {
 		struct sc_cardctl_coolkey_object     coolkey_obj;
 		struct sc_pkcs15_object    obj_obj;
@@ -558,6 +560,8 @@ static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
 
 
 		memset(&obj_obj, 0, sizeof(obj_obj));
+		/* coolkey applets have label only on the certificates,
+		 * but we should copy it also to the keys maching the same ID */
 		coolkey_get_attribute_bytes(card, &coolkey_obj, CKA_LABEL, (u8 *)obj_obj.label, &len, sizeof(obj_obj.label));
 		coolkey_get_flags(card, &coolkey_obj, &obj_obj.flags);
 		if (obj_obj.flags & SC_PKCS15_CO_FLAG_PRIVATE) {
@@ -676,6 +680,36 @@ fail:
 
 	}
 	r = (card->ops->card_ctl)(card, SC_CARDCTL_COOLKEY_FINAL_GET_OBJECTS, &count);
+	LOG_TEST_RET(card->ctx, r, "Can not finalize objects.");
+
+	/* Iterate over all the created objects and fill missing labels */
+	for (obj = p15card->obj_list; obj != NULL; obj = obj->next) {
+		struct sc_pkcs15_id *id = NULL;
+		struct sc_pkcs15_object *cert_object;
+
+		/* label non-empty -- do not overwrite */
+		if (obj->label[0] != '\0')
+			continue;
+
+		switch (obj->type & SC_PKCS15_TYPE_CLASS_MASK) {
+		case SC_PKCS15_TYPE_PUBKEY:
+			id = &((struct sc_pkcs15_pubkey_info *)obj->data)->id;
+			break;
+		case SC_PKCS15_TYPE_PRKEY:
+			id = &((struct sc_pkcs15_prkey_info *)obj->data)->id;
+			break;
+		default:
+			/* We do not care about other objects */
+			continue;
+		}
+		r = sc_pkcs15_find_cert_by_id(p15card, id, &cert_object);
+		if (r != 0)
+			continue;
+
+		sc_log(card->ctx, "Copy label \"%s\" from cert to key object",
+			cert_object->label);
+		memcpy(obj->label, cert_object->label, SC_PKCS15_MAX_LABEL_SIZE);
+	}
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }

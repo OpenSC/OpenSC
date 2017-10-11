@@ -73,6 +73,14 @@
 
 				<varlistentry>
 					<term>
+						<option>--hash-algorithm</option> <replaceable>mechanism</replaceable>
+					</term>
+					<listitem><para>Specify hash algorithm used with
+					RSA-PKCS-PSS signature. Default is SHA-1.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
 						<option>--id</option> <replaceable>id</replaceable>,
 						<option>-d</option> <replaceable>id</replaceable>
 					</term>
@@ -116,7 +124,7 @@
 
 				<varlistentry>
 					<term>
-						<option>--key-type</option> <replacement>specification</replacement>
+						<option>--key-type</option> <replaceable>specification</replaceable>
 					</term>
 					<listitem><para>Specify the type and length of the key to create, for example rsa:1024 or EC:prime256v1.</para></listitem>
 				</varlistentry>
@@ -214,6 +222,17 @@
 
 				<varlistentry>
 					<term>
+						<option>--mgf</option> <replaceable>function</replaceable>
+					</term>
+					<listitem><para>Use the specified Message Generation
+					Function (MGF) <replaceable>function</replaceable>
+					for RSA-PSS signatures. Supported arguments are MGF1-SHA1
+					to MGF1-SHA512 if supported by the driver.
+					The default is based on the hash selection.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
 						<option>--module</option> <replaceable>mod</replaceable>
 					</term>
 					<listitem><para>Specify a PKCS#11 module (or library) to
@@ -307,6 +326,17 @@
 						<option>--derive</option>,
 					</term>
 					<listitem><para>Derive a secret key using another key and some data.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--salt-len</option> <replaceable>bytes</replaceable>
+					</term>
+					<listitem><para>Specify how many bytes of salt should
+					be used in RSA-PSS signatures. Accepts two special values:
+					"-1" means salt length equals to digest length,
+					"-2" means use maximum permissible length.
+					Default is digest length (-1).</para></listitem>
 				</varlistentry>
 
 				<varlistentry>

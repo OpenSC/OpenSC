@@ -31,6 +31,7 @@
 #include "asn1.h"
 #include "sm.h"
 
+#ifdef ENABLE_SM
 static const struct sc_asn1_entry c_asn1_sm_response[4] = {
 	{ "encryptedData",	SC_ASN1_OCTET_STRING,   SC_ASN1_CTX | 7,        SC_ASN1_OPTIONAL,       NULL, NULL },
 	{ "statusWord",		SC_ASN1_OCTET_STRING,   SC_ASN1_CTX | 0x19,     0,                      NULL, NULL },
@@ -38,7 +39,6 @@ static const struct sc_asn1_entry c_asn1_sm_response[4] = {
 	{ NULL, 0, 0, 0, NULL, NULL }
 };
 
-#ifdef ENABLE_SM
 int
 sc_sm_parse_answer(struct sc_card *card, unsigned char *resp_data, size_t resp_len,
 		struct sm_card_response *out)

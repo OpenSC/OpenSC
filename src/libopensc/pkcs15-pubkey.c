@@ -1098,8 +1098,10 @@ sc_pkcs15_dup_pubkey(struct sc_context *ctx, struct sc_pkcs15_pubkey *key, struc
 		rv = sc_asn1_encode_algorithm_id(ctx, &alg, &alglen,key->alg_id, 0);
 		if (rv == SC_SUCCESS) {
 			pubkey->alg_id = (struct sc_algorithm_id *)calloc(1, sizeof(struct sc_algorithm_id));
-			if (pubkey->alg_id == NULL)
+			if (pubkey->alg_id == NULL) {
+				free(pubkey);
 				LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+			}
 			rv = sc_asn1_decode_algorithm_id(ctx, alg, alglen, pubkey->alg_id, 0);
 			free(alg);
 		}
@@ -1234,7 +1236,7 @@ sc_pkcs15_read_der_file(sc_context_t *ctx, char * filename,
 	int r;
 	int f = -1;
 	size_t len, offs;
-	u8 tagbuf[1024]; /* enough to read in the tag and length */
+	u8 tagbuf[16]; /* enough to read in the tag and length */
 	u8 * rbuf = NULL;
 	size_t rbuflen = 0;
 	const u8 * body = NULL;
@@ -1264,7 +1266,7 @@ sc_pkcs15_read_der_file(sc_context_t *ctx, char * filename,
 
 	body = tagbuf;
 	r = sc_asn1_read_tag(&body, len, &cla_out, &tag_out, &bodylen);
-	if (r != SC_SUCCESS)
+	if (r != SC_SUCCESS && r != SC_ERROR_ASN1_END_OF_CONTENTS)
 		goto out;
 
 	if (tag_out == SC_ASN1_TAG_EOC || body == NULL)   {
@@ -1389,8 +1391,10 @@ sc_pkcs15_pubkey_from_spki_fields(struct sc_context *ctx, struct sc_pkcs15_pubke
 		}
 
 		pubkey->u.ec.ecpointQ.value = malloc(pk.len);
-		if (pubkey->u.ec.ecpointQ.value == NULL)
-			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+		if (pubkey->u.ec.ecpointQ.value == NULL) {
+			r = SC_ERROR_OUT_OF_MEMORY;
+			LOG_TEST_GOTO_ERR(ctx, r, "failed to malloc() memory");
+		}
 		memcpy(pubkey->u.ec.ecpointQ.value, pk.value, pk.len);
 		pubkey->u.ec.ecpointQ.len = pk.len;
 	}

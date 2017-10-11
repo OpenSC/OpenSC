@@ -230,8 +230,6 @@ CK_RV card_detect(sc_reader_t *reader)
 	unsigned int i;
 	int j;
 
-	rv = CKR_OK;
-
 	sc_log(context, "%s: Detecting smart card", reader->name);
 	/* Check if someone inserted a card */
 again:

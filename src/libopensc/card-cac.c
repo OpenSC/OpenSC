@@ -390,9 +390,7 @@ static int cac_apdu_io(sc_card_t *card, int ins, int p1, int p2,
 		goto err;
 	}
 
-	if (apdu.sw1 == 0x61) {
-		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	}
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 
 	if (r < 0) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Card returned error ");
@@ -606,9 +604,14 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 		/* SPICE smart card emulator only presents CAC-1 cards with the old CAC-1 interface as
 		 * certs. If we are a cac 1 card, use the old interface */
 		r = cac_cac1_get_certificate(card, &val, &val_len);
-		if (r < 0)
+		if (r == SC_ERROR_INS_NOT_SUPPORTED) {
+			/* The CACv1 instruction is not recognized. Try with CACv2 */
+			card->type = SC_CARD_TYPE_CAC_II;
+		} else if (r < 0)
 			goto done;
+	}
 
+	if ((card->type == SC_CARD_TYPE_CAC_I) && (priv->object_type == CAC_OBJECT_TYPE_CERT)) {
 		r = cac_cac1_get_cert_tag(card, val_len, &tl, &tl_len);
 		if (r < 0)
 			goto done;
@@ -665,7 +668,6 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 		cert_len = 0;
 		cert_ptr = NULL;
 		cert_type = 0;
-		tl_head_len = 2;
 		for (tl_ptr = tl, val_ptr=val; tl_len >= 2;
 				val_len -= len, val_ptr += len, tl_len -= tl_head_len) {
 			tl_start = tl_ptr;
@@ -943,7 +945,7 @@ static int cac_rsa_op(sc_card_t *card,
 	if (rbuflen != 0) {
 		int n = MIN(rbuflen, outplen);
 		memcpy(outp,rbuf, n);
-		outp += n;
+		/*outp += n;     unused */ 
 		outplen -= n;
 	}
 	free(rbuf);
@@ -1107,6 +1109,7 @@ static int cac_select_file_by_type(sc_card_t *card, const sc_path_t *in_path, sc
 		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 		if (apdu.sw1 == 0x6A && apdu.sw2 == 0x86)   {
 			apdu.p2 = 0x00;
+			apdu.resplen = sizeof(buf);
 			if (sc_transmit_apdu(card, &apdu) == SC_SUCCESS)
 				r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 		}

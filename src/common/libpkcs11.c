@@ -75,8 +75,9 @@ C_LoadModule(const char *mspec, CK_FUNCTION_LIST_PTR_PTR funcs)
 		return (void *) mod;
 	else {
 		fprintf(stderr, "C_GetFunctionList failed %lx", rv);
-		C_UnloadModule((void *) mod);
-		return NULL;
+		rv = C_UnloadModule((void *) mod);
+		if (rv == CKR_OK)
+			mod = NULL; /* already freed */
 	}
 failed:
 	free(mod);

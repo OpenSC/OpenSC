@@ -319,7 +319,7 @@ static int add_to_ASN1_AUXILIARY_DATA(
 	if (data && data_len) {
 		template->discretionary_data3 = ASN1_OCTET_STRING_new();
 		if (!template->discretionary_data3
-				|| !M_ASN1_OCTET_STRING_set(
+				|| !ASN1_OCTET_STRING_set(
 					template->discretionary_data3, data, data_len)) {
 			r = SC_ERROR_INTERNAL;
 			goto err;

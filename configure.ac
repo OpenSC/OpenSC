@@ -784,7 +784,11 @@ if test "${enable_sm}" = "yes"; then
 fi
 
 if test "${with_pkcs11_provider}" = "detect"; then
-	DEFAULT_PKCS11_PROVIDER="opensc-pkcs11${DYN_LIB_EXT}"
+	if test "${WIN32}" != "yes"; then
+		DEFAULT_PKCS11_PROVIDER="opensc-pkcs11${DYN_LIB_EXT}"
+	else
+		DEFAULT_PKCS11_PROVIDER="%PROGRAMFILES%\\\OpenSC Project\\\OpenSC\\\pkcs11\\\opensc-pkcs11.dll"
+	fi
 else
 	DEFAULT_PKCS11_PROVIDER="${with_pkcs11_provider}"
 fi
