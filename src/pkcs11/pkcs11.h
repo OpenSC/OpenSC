@@ -764,6 +764,16 @@ typedef struct CK_ECDH1_DERIVE_PARAMS {
 	unsigned char *  pPublicData;
 } CK_ECDH1_DERIVE_PARAMS;
 
+typedef unsigned long CK_RSA_PKCS_OAEP_SOURCE_TYPE;
+
+typedef struct CK_RSA_PKCS_OAEP_PARAMS {
+  CK_MECHANISM_TYPE hashAlg;
+  CK_RSA_PKCS_MGF_TYPE mgf;
+  CK_RSA_PKCS_OAEP_SOURCE_TYPE source;
+  void *pSourceData;
+  unsigned long ulSourceDataLen;
+} CK_RSA_PKCS_OAEP_PARAMS;
+
 typedef struct CK_RSA_PKCS_PSS_PARAMS {
    ck_mechanism_type_t hashAlg;
    unsigned long mgf;
