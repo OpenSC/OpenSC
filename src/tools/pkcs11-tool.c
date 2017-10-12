@@ -235,8 +235,8 @@ static const char *option_help[] = {
 	"Derive a secret key using another key and some data",
 	"Derive ECDHpass DER encoded pubkey for compatibility with some PKCS#11 implementations",
 	"Specify mechanism (use -M for a list of supported mechanisms)",
-	"Specify hash algorithm used with RSA-PKCS-PSS signature",
-	"Specify MGF (Message Generation Function) used for RSA-PSS signatures (possible values are MGF1-SHA1 to MGF1-SHA512)",
+	"Specify hash algorithm used with RSA-PKCS-PSS signature and RSA-PKCS-OAEP decryption",
+	"Specify MGF (Message Generation Function) used for RSA-PSS signature and RSA-OAEP decryption (possible values are MGF1-SHA1 to MGF1-SHA512)",
 	"Specify how many bytes should be used for salt in RSA-PSS signatures (default is digest size)",
 
 	"Log into the token first",
@@ -1692,6 +1692,9 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		pss_params.hashAlg = opt_hash_alg;
 
 		switch (opt_hash_alg) {
+		case CKM_SHA224:
+			pss_params.mgf = CKG_MGF1_SHA224;
+			break;
 		case CKM_SHA256:
 			pss_params.mgf = CKG_MGF1_SHA256;
 			break;
@@ -1713,6 +1716,11 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	case CKM_SHA1_RSA_PKCS_PSS:
 		pss_params.hashAlg = CKM_SHA_1;
 		pss_params.mgf = CKG_MGF1_SHA1;
+		break;
+
+	case CKM_SHA224_RSA_PKCS_PSS:
+		pss_params.hashAlg = CKM_SHA224;
+		pss_params.mgf = CKG_MGF1_SHA224;
 		break;
 
 	case CKM_SHA256_RSA_PKCS_PSS:
@@ -1762,7 +1770,8 @@ to zero, or equal to -1 (meaning: use digest size) or to -2 \
 
 		mech.pParameter = &pss_params;
 		mech.ulParameterLen = sizeof(pss_params);
-		fprintf(stderr, "PSS parameters: hashAlg=%s, mgf=%s, salt=%lu B\n",
+
+		fprintf(stderr, "PSS parameters: hashAlg=%s, mgf=%s, salt_len=%lu B\n",
 			p11_mechanism_to_name(pss_params.hashAlg),
 			p11_mgf_to_name(pss_params.mgf),
 			pss_params.sLen);
@@ -1776,6 +1785,10 @@ to zero, or equal to -1 (meaning: use digest size) or to -2 \
 	r = read(fd, in_buffer, sizeof(in_buffer));
 	if (r < 0)
 		util_fatal("Cannot read from %s: %m", opt_input);
+
+	if (opt_mechanism == CKM_RSA_PKCS_PSS && (unsigned long)r != hashlen)
+		util_fatal("For %s mechanism, message size (got %d bytes) must be equal to specified digest length (%lu)\n",
+			p11_mechanism_to_name(opt_mechanism), r, hashlen);
 
 	rv = CKR_CANCEL;
 	if (r < (int) sizeof(in_buffer))   {
@@ -1819,7 +1832,7 @@ to zero, or equal to -1 (meaning: use digest size) or to -2 \
 		util_fatal("failed to open %s: %m", opt_output);
 	}
 
-	if (opt_mechanism == CKM_ECDSA || opt_mechanism == CKM_ECDSA_SHA1 || opt_mechanism == CKM_ECDSA_SHA256 || opt_mechanism == CKM_ECDSA_SHA384 || opt_mechanism == CKM_ECDSA_SHA512) {
+	if (opt_mechanism == CKM_ECDSA || opt_mechanism == CKM_ECDSA_SHA1 || opt_mechanism == CKM_ECDSA_SHA256 || opt_mechanism == CKM_ECDSA_SHA384 || opt_mechanism == CKM_ECDSA_SHA512 || opt_mechanism == CKM_ECDSA_SHA224) {
 		if (opt_sig_format &&  (!strcmp(opt_sig_format, "openssl") || !strcmp(opt_sig_format, "sequence"))) {
 			unsigned char *seq;
 			size_t seqlen;
@@ -1849,6 +1862,7 @@ static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	unsigned char	in_buffer[1024], out_buffer[1024];
 	CK_MECHANISM	mech;
 	CK_RV		rv;
+	CK_RSA_PKCS_OAEP_PARAMS oaep_params;
 	CK_ULONG	in_len, out_len;
 	int		fd, r;
 
@@ -1859,6 +1873,11 @@ static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	fprintf(stderr, "Using decrypt algorithm %s\n", p11_mechanism_to_name(opt_mechanism));
 	memset(&mech, 0, sizeof(mech));
 	mech.mechanism = opt_mechanism;
+	oaep_params.hashAlg = 0;
+
+	if (opt_hash_alg != 0 && opt_mechanism != CKM_RSA_PKCS_OAEP)
+		util_fatal("The hash-algorithm is applicable only to "
+               "RSA-PKCS-OAEP mechanism"); 
 
 	if (opt_input == NULL)
 		fd = 0;
@@ -1869,6 +1888,89 @@ static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	if (r < 0)
 		util_fatal("Cannot read from %s: %m", opt_input);
 	in_len = r;
+
+	/* set "default" MGF and hash algorithms. We can overwrite MGF later */
+	switch (opt_mechanism) {
+	case CKM_RSA_PKCS_OAEP:
+		oaep_params.hashAlg = opt_hash_alg;
+		switch (opt_hash_alg) {
+		case CKM_SHA224:
+			oaep_params.mgf = CKG_MGF1_SHA224;
+			break;
+		case CKM_SHA256:
+			oaep_params.mgf = CKG_MGF1_SHA256;
+			break;
+		case CKM_SHA384:
+			oaep_params.mgf = CKG_MGF1_SHA384;
+			break;
+		case CKM_SHA512:
+			oaep_params.mgf = CKG_MGF1_SHA512;
+			break;
+		default: 
+			oaep_params.hashAlg = CKM_SHA_1;
+			/* fallthrough to SHA-1 default */
+		case CKM_SHA_1:
+			oaep_params.mgf = CKG_MGF1_SHA1;
+			break;
+		}
+		break;
+
+#if 0 /* we do not have these definitions yet! */
+	case CKM_SHA1_RSA_PKCS_OAEP:
+		oaep_params.hashAlg = CKM_SHA_1;
+		oaep_params.mgf = CKG_MGF1_SHA1;
+		break;
+
+	case CKM_SHA224_RSA_PKCS_OAEP:
+		oaep_params.hashAlg = CKM_SHA224;
+		oaep_params.mgf = CKG_MGF1_SHA224;
+		break;
+
+	case CKM_SHA256_RSA_PKCS_OAEP:
+		oaep_params.hashAlg = CKM_SHA256;
+		oaep_params.mgf = CKG_MGF1_SHA256;
+		break;
+
+	case CKM_SHA384_RSA_PKCS_OAEP:
+		oaep_params.hashAlg = CKM_SHA384;
+		oaep_params.mgf = CKG_MGF1_SHA384;
+		break;
+
+	case CKM_SHA512_RSA_PKCS_OAEP:
+		oaep_params.hashAlg = CKM_SHA512;
+		oaep_params.mgf = CKG_MGF1_SHA512;
+		break;
+#endif
+	case CKM_RSA_PKCS:
+		mech.pParameter = NULL;
+		mech.ulParameterLen = 0;
+		break;
+	default:
+		util_fatal("Illegal mechanism %s for RSA-OAEP\n", p11_mechanism_to_name(opt_mechanism));
+	}
+
+
+	/* One of RSA-OAEP mechanisms above: They need parameters */
+	if (oaep_params.hashAlg) {
+		if (opt_mgf != 0)
+			oaep_params.mgf = opt_mgf;
+
+		/* These settings are compatible with OpenSSL 1.0.2L and 1.1.0+ */
+		oaep_params.source = 0UL;  /* empty encoding parameter (label) */
+		oaep_params.pSourceData = NULL; /* PKCS#11 standard: this must be NULLPTR */
+		oaep_params.ulSourceDataLen = 0; /* PKCS#11 standard: this must be 0 */
+
+		mech.pParameter = &oaep_params;
+		mech.ulParameterLen = sizeof(oaep_params);
+
+		fprintf(stderr, "OAEP parameters: hashAlg=%s, mgf=%s, source_type=%lu, source_ptr=%p, source_len=%lu\n",
+			p11_mechanism_to_name(oaep_params.hashAlg),
+			p11_mgf_to_name(oaep_params.mgf),
+			oaep_params.source,
+			oaep_params.pSourceData,
+			oaep_params.ulSourceDataLen);
+
+	} 
 
 	rv = p11->C_DecryptInit(session, &mech, key);
 	if (rv != CKR_OK)
@@ -5781,6 +5883,7 @@ static struct mech_info	p11_mechanisms[] = {
       { CKM_MD2_RSA_PKCS,	"MD2-RSA-PKCS",	NULL },
       { CKM_MD5_RSA_PKCS,	"MD5-RSA-PKCS",	"rsa-md5" },
       { CKM_SHA1_RSA_PKCS,	"SHA1-RSA-PKCS",	"rsa-sha1" },
+      { CKM_SHA224_RSA_PKCS,	"SHA224-RSA-PKCS",	"rsa-sha224" },
       { CKM_SHA256_RSA_PKCS,	"SHA256-RSA-PKCS",	"rsa-sha256" },
       { CKM_SHA384_RSA_PKCS,	"SHA384-RSA-PKCS",	"rsa-sha384" },
       { CKM_SHA512_RSA_PKCS,	"SHA512-RSA-PKCS",	"rsa-sha512" },
@@ -5792,6 +5895,7 @@ static struct mech_info	p11_mechanisms[] = {
       { CKM_SHA1_RSA_X9_31,	"SHA1-RSA-X9-31",	NULL },
       { CKM_RSA_PKCS_PSS,	"RSA-PKCS-PSS",	NULL },
       { CKM_SHA1_RSA_PKCS_PSS,	"SHA1-RSA-PKCS-PSS",	"rsa-pss-sha1" },
+      { CKM_SHA224_RSA_PKCS_PSS,"SHA224-RSA-PKCS-PSS",	"rsa-pss-sha224" },
       { CKM_SHA256_RSA_PKCS_PSS,"SHA256-RSA-PKCS-PSS",	"rsa-pss-sha256" },
       { CKM_SHA384_RSA_PKCS_PSS,"SHA384-RSA-PKCS-PSS",	"rsa-pss-sha384" },
       { CKM_SHA512_RSA_PKCS_PSS,"SHA512-RSA-PKCS-PSS",	"rsa-pss-sha512" },
@@ -5840,6 +5944,8 @@ static struct mech_info	p11_mechanisms[] = {
       { CKM_SHA_1,		"SHA-1", NULL },
       { CKM_SHA_1_HMAC,		"SHA-1-HMAC", NULL },
       { CKM_SHA_1_HMAC_GENERAL,	"SHA-1-HMAC-GENERAL", NULL },
+      { CKM_SHA224,		"SHA224", NULL },
+      { CKM_SHA224_HMAC,	"SHA224-HMAC", NULL },
       { CKM_SHA256,		"SHA256", NULL },
       { CKM_SHA256_HMAC,	"SHA256-HMAC", NULL },
       { CKM_SHA384,		"SHA384", NULL },
