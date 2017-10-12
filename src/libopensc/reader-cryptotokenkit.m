@@ -43,6 +43,30 @@ static struct sc_reader_driver cryptotokenkit_reader_driver = {
 	NULL
 };
 
+static int convertError(NSError *error)
+{
+	switch (error.code) {
+		case TKErrorCodeNotImplemented:
+			return SC_ERROR_NOT_IMPLEMENTED;
+		case TKErrorCodeCommunicationError:
+			return SC_ERROR_TRANSMIT_FAILED;
+		case TKErrorCodeCorruptedData:
+			return SC_ERROR_CORRUPTED_DATA;
+		case TKErrorCodeCanceledByUser:
+			return SC_ERROR_KEYPAD_CANCELLED;
+		case TKErrorCodeAuthenticationFailed:
+			return SC_ERROR_PIN_CODE_INCORRECT;
+		case TKErrorCodeObjectNotFound:
+			return SC_ERROR_OBJECT_NOT_FOUND;
+		case TKErrorCodeTokenNotFound:
+			return SC_ERROR_CARD_REMOVED;
+		case TKErrorCodeBadParameter:
+			return SC_ERROR_INVALID_ARGUMENTS;
+		default:
+			return SC_ERROR_UNKNOWN;
+	}
+}
+
 static int cryptotokenkit_init(sc_context_t *ctx)
 {
 	return SC_SUCCESS;
@@ -197,8 +221,7 @@ static int cryptotokenkit_lock(sc_reader_t *reader)
 
 	[priv->tksmartcard beginSessionWithReply:^(BOOL success, NSError *error) {
 		if (success != TRUE) {
-			NSLog(@"Error locking card <%@>", error);
-			r = SC_ERROR_UNKNOWN;
+			r = convertError(error);
 		} else {
 			r = SC_SUCCESS;
 		}
@@ -250,18 +273,14 @@ static int cryptotokenkit_transmit(sc_reader_t *reader, sc_apdu_t *apdu)
 		if (response) {
 			rsize = [response length];
 			rbuf = malloc(rsize);
-			if (!rbuf)
+			if (!rbuf) {
 				r = SC_ERROR_OUT_OF_MEMORY;
-			else
-				memcpy(rbuf, (unsigned char*) [response bytes], rsize);
-		}
-		if (r == SC_SUCCESS) {
-			if (error) {
-				NSLog(@"Error transmitting to card <%@>", error);
-				r = SC_ERROR_TRANSMIT_FAILED;
 			} else {
+				memcpy(rbuf, (unsigned char*) [response bytes], rsize);
 				r = SC_SUCCESS;
 			}
+		} else {
+			r = convertError(error);
 		}
 		dispatch_semaphore_signal(sema);
 	}];
@@ -283,6 +302,169 @@ err:
 	}
 
 	LOG_FUNC_RETURN(reader->ctx, r);
+}
+
+TKSmartCardPINFormat *getPINFormat(struct sc_pin_cmd_pin *pin)
+{
+	TKSmartCardPINFormat *format = [[TKSmartCardPINFormat alloc] init];
+	switch (pin->encoding) {
+		case SC_PIN_ENCODING_GLP:
+			/* GLP PIN length is encoded in 4 bits and block size is always 8 bytes */
+			format.PINLengthBitSize = 4;
+			format.PINBlockByteLength = 8;
+			/* fall through */
+		case SC_PIN_ENCODING_BCD:
+			format.encoding = TKSmartCardPINEncodingBCD;
+			break;
+		case SC_PIN_ENCODING_ASCII:
+			format.encoding = TKSmartCardPINEncodingASCII;
+			format.PINBlockByteLength = pin->pad_length;
+			break;
+		default:
+			return nil;
+	}
+	format.minPINLength = pin->min_length;
+	format.maxPINLength = pin->max_length;
+	if (pin->length_offset > 4) {
+		format.PINLengthBitOffset = (pin->length_offset-5)*8;
+	}
+
+	return format;
+}
+
+int cryptotokenkit_perform_verify(struct sc_reader *reader, struct sc_pin_cmd_data *data)
+{
+	u8 template[SC_MAX_APDU_BUFFER_SIZE];
+	__block int r;
+	__block UInt16 sw;
+	size_t ssize = 0;
+	u8 *sbuf = NULL, *rbuf = NULL;
+	struct cryptotokenkit_private_data *priv = reader->drv_data;
+	dispatch_semaphore_t sema = dispatch_semaphore_create(0);
+
+	LOG_FUNC_CALLED(reader->ctx);
+
+	if (reader->ctx->flags & SC_CTX_FLAG_TERMINATE)
+		return SC_ERROR_NOT_ALLOWED;
+
+	/* The APDU must be provided by the card driver */
+	if (!data->apdu) {
+		return SC_ERROR_NOT_SUPPORTED;
+	}
+
+	r = sc_apdu_get_octets(reader->ctx, data->apdu, &sbuf, &ssize, reader->active_protocol);
+	LOG_TEST_GOTO_ERR(reader->ctx, r, "Could not encode APDU template");
+
+	NSData *apdu = [NSData dataWithBytes:sbuf length:ssize];
+	TKSmartCardPINFormat *format;
+	struct sc_pin_cmd_pin *pin_ref = &data->pin1;
+	TKSmartCardUserInteractionForPINOperation *interaction;
+	switch (data->cmd) {
+		case SC_PIN_CMD_VERIFY:
+			format = getPINFormat(pin_ref);
+			NSInteger offset;
+			if (data->pin1.length_offset != 4) {
+				offset = data->pin1.offset - 5;
+			} else {
+				offset = 0;
+			}
+			interaction = [priv->tksmartcard userInteractionForSecurePINVerificationWithPINFormat:format APDU:apdu PINByteOffset:offset];
+			break;
+	case SC_PIN_CMD_CHANGE:
+	case SC_PIN_CMD_UNBLOCK:
+			if (data->flags & SC_PIN_CMD_IMPLICIT_CHANGE) {
+				pin_ref = &data->pin2;
+			}
+			/* TODO: set confirmation and text */
+			format = getPINFormat(pin_ref);
+			NSInteger oldOffset, newOffset;
+			if (data->pin1.length_offset != 4) {
+				oldOffset = data->pin1.offset - 5;
+				newOffset = data->pin2.offset - 5;
+			} else {
+				oldOffset = 0;
+				newOffset = 0;
+			}
+			interaction = [priv->tksmartcard userInteractionForSecurePINChangeWithPINFormat:format APDU:apdu currentPINByteOffset:oldOffset newPINByteOffset:newOffset];
+		break;
+	default:
+		sc_log(reader->ctx, "Unknown PIN command %d", data->cmd);
+		r = SC_ERROR_NOT_SUPPORTED;
+		goto err;
+	}
+	if (nil == interaction) {
+		r = SC_ERROR_NOT_SUPPORTED;
+		goto err;
+	}
+
+	[interaction runWithReply:^(BOOL success, NSError *error) {
+		if (success) {
+			NSData *response = interaction.resultData;
+			if (nil != response) {
+				data->apdu->resplen = response.length;
+				memcpy(data->apdu->resp, (unsigned char *) response.bytes, response.length);
+			} else {
+				data->apdu->resplen = 0;
+			}
+			sw = interaction.resultSW;
+			r = SC_SUCCESS;
+		} else {
+			r = convertError(error);
+		}
+		dispatch_semaphore_signal(sema);
+	}];
+	dispatch_semaphore_wait(sema, DISPATCH_TIME_FOREVER);
+
+	if (r != SC_SUCCESS) {
+		goto err;
+	}
+
+	data->apdu->sw1 = sw >> 8;
+	data->apdu->sw2 = sw & 0xFF;
+
+	switch (sw) {
+		case 0x6400:
+			/* Input timed out */
+			r = SC_ERROR_KEYPAD_TIMEOUT;
+			break;
+		case 0x6401:
+			/* Input cancelled */
+			r = SC_ERROR_KEYPAD_CANCELLED;
+			break;
+		case 0x6402:
+			/* PINs don't match */
+			r = SC_ERROR_KEYPAD_PIN_MISMATCH;
+			break;
+		case 0x6403:
+			/* Entered PIN is not in length limits */
+			r = SC_ERROR_INVALID_PIN_LENGTH; /* XXX: designed to be returned when PIN is in API call */
+			break;
+		case 0x6B80:
+			/* Wrong data in the buffer, rejected by firmware */
+			r = SC_ERROR_READER;
+			break;
+	}
+
+err:
+	if (sbuf != NULL) {
+		sc_mem_clear(sbuf, ssize);
+		free(sbuf);
+	}
+
+	LOG_FUNC_RETURN(reader->ctx, r);
+}
+
+void cryptotokenkit_detect_reader_features(struct sc_reader *reader, TKSmartCard* tksmartcard)
+{
+	if (tksmartcard) {
+		const u8 template[] = {tksmartcard.cla, 0x20, 0x00, 0x80, 0x08, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+		NSData *data = [NSData dataWithBytes:template length:sizeof template];
+		TKSmartCardPINFormat *PINFormat = [[TKSmartCardPINFormat alloc] init];
+		PINFormat.PINBitOffset = 0;
+
+		if (nil != [tksmartcard userInteractionForSecurePINVerificationWithPINFormat:PINFormat APDU:data PINByteOffset:0])
+			reader->capabilities |= SC_READER_CAP_PIN_PAD;
+	}
 }
 
 int cryptotokenkit_use_reader(sc_context_t *ctx, void *pcsc_context_handle, void *pcsc_card_handle)
@@ -340,6 +522,8 @@ int cryptotokenkit_use_reader(sc_context_t *ctx, void *pcsc_context_handle, void
 	ctk_set_proto(reader);
 
 	cryptotokenkit_detect_card_presence(reader);
+
+	cryptotokenkit_detect_reader_features(reader, tksmartcard);
 
 	r = _sc_add_reader(ctx, reader);
 
@@ -426,7 +610,7 @@ struct sc_reader_driver *sc_get_cryptotokenkit_driver(void)
 	cryptotokenkit_ops.lock = cryptotokenkit_lock;
 	cryptotokenkit_ops.unlock = cryptotokenkit_unlock;
 	cryptotokenkit_ops.transmit = cryptotokenkit_transmit;
-	cryptotokenkit_ops.perform_verify = NULL;
+	cryptotokenkit_ops.perform_verify = cryptotokenkit_perform_verify;
 	cryptotokenkit_ops.perform_pace = NULL;
 	cryptotokenkit_ops.use_reader = cryptotokenkit_use_reader;
 	cryptotokenkit_ops.detect_readers = cryptotokenkit_detect_readers;
