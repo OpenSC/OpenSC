@@ -844,6 +844,26 @@ C_DecryptInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT
 	enter("C_DecryptInit");
 	spy_dump_ulong_in("hSession", hSession);
 	fprintf(spy_output, "pMechanism->type=%s\n", lookup_enum(MEC_T, pMechanism->mechanism));
+	switch (pMechanism->mechanism) {
+	case CKM_RSA_PKCS_OAEP:
+		if (pMechanism->pParameter != NULL) { /* XXX assuming RSA-OAEP parameter */
+ 			CK_RSA_PKCS_OAEP_PARAMS *param =
+				(CK_RSA_PKCS_OAEP_PARAMS *) pMechanism->pParameter;
+			fprintf(spy_output, "pMechanism->pParameter->hashAlg=%s\n",
+				lookup_enum(MEC_T, param->hashAlg));
+			fprintf(spy_output, "pMechanism->pParameter->mgf=%s\n",
+				lookup_enum(MGF_T, param->mgf));
+			fprintf(spy_output, "pMechanism->pParameter->source=%lu\n", param->source);
+			spy_dump_string_out("pSourceData[ulSourceDalaLen]", 
+				param->pSourceData, param->ulSourceDataLen);
+		} else {
+			fprintf(spy_output, "Parameters block for %s is empty...\n",
+				lookup_enum(MEC_T, pMechanism->mechanism));
+		}
+		break;
+	default:
+		break;
+	}
 	spy_dump_ulong_in("hKey", hKey);
 	rv = po->C_DecryptInit(hSession, pMechanism, hKey);
 	return retne(rv);
@@ -984,6 +1004,9 @@ C_SignInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_HA
 				lookup_enum(MGF_T, param->mgf));
 			fprintf(spy_output, "pMechanism->pParameter->sLen=%lu\n",
 				param->sLen);
+		} else {
+			fprintf(spy_output, "Parameters block for %s is empty...\n",
+				lookup_enum(MEC_T, pMechanism->mechanism));
 		}
 		break;
 	}
