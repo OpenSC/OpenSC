@@ -75,8 +75,16 @@
 					<term>
 						<option>--hash-algorithm</option> <replaceable>mechanism</replaceable>
 					</term>
-					<listitem><para>Specify hash algorithm used with
-					RSA-PKCS-PSS signature. Default is SHA-1.</para></listitem>
+					<listitem><para>
+	  Specify hash algorithm used with RSA-PKCS-PSS signature or RSA-OAEP decryption.
+          Allowed values are "SHA-1", "SHA256", "SHA384", "SHA512". Default is SHA-1.
+	  Note that the input to RSA-PKCS-PSS has to be of
+          the size equal to the specified hash algorithm. E.g., for SHA256 the signature input must be
+          exactly 32 bytes long (for mechanisms SHA256-RSA-PKCS-PSS there is no such restriction).
+          For RSA-OAEP, the plaintext input size mLen must be at most
+          keyLen - 2 - 2*hashLen. For example, for RSA 3072-bit key and SHA384, the longest plaintext
+          to encrypt with RSA-OAEP is (with all sizes in bytes): 384 - 2*48 -2 = 286, aka 286 bytes.
+          </para></listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -226,9 +234,10 @@
 					</term>
 					<listitem><para>Use the specified Message Generation
 					Function (MGF) <replaceable>function</replaceable>
-					for RSA-PSS signatures. Supported arguments are MGF1-SHA1
+					for RSA-PKCS-PSS signatures or RSA-OAEP decryptions. Supported arguments are MGF1-SHA1
 					to MGF1-SHA512 if supported by the driver.
-					The default is based on the hash selection.</para></listitem>
+					The default is based on the hash selection.
+					</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
