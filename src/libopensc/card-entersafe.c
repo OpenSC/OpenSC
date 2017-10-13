@@ -601,7 +601,7 @@ static int entersafe_select_path(sc_card_t *card,
 		  path = n_pathbuf;
 		  pathlen += 2; 
 	 }
-	
+#if 0	
 	 /* check current working directory */
 	 if (card->cache.valid 
 		 && card->cache.current_path.type == SC_PATH_TYPE_PATH
@@ -665,6 +665,7 @@ static int entersafe_select_path(sc_card_t *card,
 		  }
 	 }
 	 else
+#endif
 	 {
 		  /* no usable cache */
 		  for ( i=0; i<pathlen-2; i+=2 )

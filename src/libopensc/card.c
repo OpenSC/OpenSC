@@ -423,10 +423,8 @@ int sc_lock(sc_card_t *card)
 			if (r == 0)
 				reader_lock_obtained = 1;
 		}
-#if 0
 		if (r == 0)
 			card->cache.valid = 1;
-#endif
 	}
 	if (r == 0)
 		card->lock_count++;
