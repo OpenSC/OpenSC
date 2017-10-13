@@ -6,6 +6,17 @@
 # You need to have  the following from homebrew or macports or fink:
 # autoconf automake libtool pkg-config
 
+# If you want to compile with OpenSCToken/CryptoTokenKit set the following:
+#ENABLE_CRYPTOTOKENKIT="--disable-pcsc  --enable-cryptotokenkit"
+# When using CryptoTokenKit, code signing is required
+#SIGNING_IDENTITY=BA3CE53D402E3C75246557E2890F929F4A778DDE
+
+if test -z "$ENABLE_CRYPTOTOKENKIT"; then
+	MACOS_VERSION_MIN="10.10"
+else
+	MACOS_VERSION_MIN="10.12"
+fi
+
 set -ex
 test -x ./configure || ./bootstrap
 BUILDPATH=${PWD}
@@ -14,7 +25,7 @@ BUILDPATH=${PWD}
 SDK_PATH=$(xcrun --sdk macosx --show-sdk-path)
 
 # Set SDK path
-export CFLAGS="$CFLAGS -isysroot $SDK_PATH -arch x86_64 -mmacosx-version-min=10.10"
+export CFLAGS="$CFLAGS -isysroot $SDK_PATH -arch x86_64 -mmacosx-version-min=$MACOS_VERSION_MIN"
 
 export SED=/usr/bin/sed
 PREFIX=/Library/OpenSC
@@ -28,7 +39,7 @@ if ! pkg-config libcrypto --atleast-version=1.0.1; then
 			git clone --depth=1 https://github.com/openssl/openssl.git -b OpenSSL_1_0_2-stable
 		fi
 		cd openssl
-		KERNEL_BITS=64 ./config --prefix=$PREFIX -mmacosx-version-min=10.10
+		KERNEL_BITS=64 ./config --prefix=$PREFIX -mmacosx-version-min=$MACOS_VERSION_MIN
 		make clean
 		make update
 		make depend
@@ -58,6 +69,7 @@ if ! test -e ${BUILDPATH}/target/$PREFIX/lib/pkgconfig; then
 		--sysconfdir=$PREFIX/etc \
 		--enable-cvcdir=$PREFIX/etc/cvc \
 		--enable-x509dir=$PREFIX/etc/x509 \
+		$ENABLE_CRYPTOTOKENKIT \
 		--disable-dependency-tracking \
 		--enable-shared \
 		--disable-static \
@@ -72,56 +84,69 @@ if ! test -e ${BUILDPATH}/target/$PREFIX/lib/pkgconfig; then
 	make -j 2
 
 	# copy files
-	rm -rf target
+	rm -rf ${BUILDPATH}/target
 	make install DESTDIR=${BUILDPATH}/target
 
 	# remove garbage
-	rm -f target/$PREFIX/lib/*.la
+	rm -f ${BUILDPATH}/target/$PREFIX/lib/*.la
 
 	# generate .bundle (required by Adobe Acrobat)
-	./MacOSX/libtool-bundle target/$PREFIX/lib/opensc-pkcs11.so target/$PREFIX/lib
+	./MacOSX/libtool-bundle ${BUILDPATH}/target/$PREFIX/lib/opensc-pkcs11.so ${BUILDPATH}/target/$PREFIX/lib
 fi
 
-# Check out OpenSC.tokend, if not already fetched.
-if ! test -e OpenSC.tokend; then
-	git clone http://github.com/OpenSC/OpenSC.tokend.git
-fi
+if test -z "$ENABLE_CRYPTOTOKENKIT"; then
+	# Check out OpenSC.tokend, if not already fetched.
+	if ! test -e OpenSC.tokend; then
+		git clone http://github.com/OpenSC/OpenSC.tokend.git
+	fi
 
-# Create the symlink to OpenSC sources
-test -L OpenSC.tokend/build/opensc-src || ln -sf ${BUILDPATH}/src OpenSC.tokend/build/opensc-src
+	# Create the symlink to OpenSC sources
+	test -L OpenSC.tokend/build/opensc-src || ln -sf ${BUILDPATH}/src OpenSC.tokend/build/opensc-src
 
-# Build and copy OpenSC.tokend
-xcodebuild -target OpenSC -configuration Deployment -project OpenSC.tokend/Tokend.xcodeproj install DSTROOT=${BUILDPATH}/target
+	# Build and copy OpenSC.tokend
+	xcodebuild -target OpenSC -configuration Deployment -project OpenSC.tokend/Tokend.xcodeproj install DSTROOT=${BUILDPATH}/target
 
-#if ! test -e $BUILDPATH/target/Library/Security/tokend/OpenSC.tokend/Contents/Resources/Applications/terminal-notifier.app; then
-	#if ! test -e terminal-notifier-1.7.1.zip; then
-		#curl -L https://github.com/julienXX/terminal-notifier/releases/download/1.7.1/terminal-notifier-1.7.1.zip > terminal-notifier-1.7.1.zip
+	#if ! test -e $BUILDPATH/target/Library/Security/tokend/OpenSC.tokend/Contents/Resources/Applications/terminal-notifier.app; then
+		#if ! test -e terminal-notifier-1.7.1.zip; then
+			#curl -L https://github.com/julienXX/terminal-notifier/releases/download/1.7.1/terminal-notifier-1.7.1.zip > terminal-notifier-1.7.1.zip
+		#fi
+		#if ! test -e terminal-notifier-1.7.1; then
+			#unzip terminal-notifier-1.7.1.zip
+		#fi
+		#mkdir -p $BUILDPATH/target/Library/Security/tokend/OpenSC.tokend/Contents/Resources/Applications
+		#cp -r terminal-notifier-1.7.1/terminal-notifier.app $BUILDPATH/target/Library/Security/tokend/OpenSC.tokend/Contents/Resources/Applications
 	#fi
-	#if ! test -e terminal-notifier-1.7.1; then
-		#unzip terminal-notifier-1.7.1.zip
-	#fi
-	#mkdir -p $BUILDPATH/target/Library/Security/tokend/OpenSC.tokend/Contents/Resources/Applications
-	#cp -r terminal-notifier-1.7.1/terminal-notifier.app $BUILDPATH/target/Library/Security/tokend/OpenSC.tokend/Contents/Resources/Applications
-#fi
 
-if ! test -e NotificationProxy; then
-	git clone http://github.com/frankmorgner/NotificationProxy.git
+	if ! test -e NotificationProxy; then
+		git clone http://github.com/frankmorgner/NotificationProxy.git
+	fi
+	xcodebuild -target NotificationProxy -configuration Release -project NotificationProxy/NotificationProxy.xcodeproj install DSTROOT=$BUILDPATH/target/Library/Security/tokend/OpenSC.tokend/Contents/Resources/
+	mkdir -p "$BUILDPATH/target/Applications"
+	osacompile -o "$BUILDPATH/target/Applications/OpenSC Notify.app" "MacOSX/OpenSC_Notify.applescript"
+else
+	# Check out OpenSCToken, if not already fetched.
+	if ! test -e OpenSCToken; then
+		git clone http://github.com/frankmorgner/OpenSCToken.git
+	fi
+
+	# Build and copy OpenSCToken
+	xcodebuild -target OpenSCToken -configuration Deployment -project OpenSCToken/OpenSCTokenApp.xcodeproj install DSTROOT=${BUILDPATH}/target
+
+	#codesign --sign "$SIGNING_IDENTITY" --force --entitlements OpenSCToken/OpenSCToken/opensctoken.entitlements target/Library/OpenSC/bin/*
+	#codesign --sign "$SIGNING_IDENTITY" --force --entitlements OpenSCToken/OpenSCToken/opensctoken.entitlements target/Library/OpenSC/lib/*.dylib
+	#codesign --sign "$SIGNING_IDENTITY" --force --entitlements OpenSCToken/OpenSCToken/opensctoken.entitlements --deep target/Library/OpenSC/lib/opensc-pkcs11.bundle
 fi
-xcodebuild -target NotificationProxy -configuration Release -project NotificationProxy/NotificationProxy.xcodeproj install DSTROOT=$BUILDPATH/target/Library/Security/tokend/OpenSC.tokend/Contents/Resources/
-mkdir -p "$BUILDPATH/target/Applications"
-osacompile -o "$BUILDPATH/target/Applications/OpenSC Notify.app" "MacOSX/OpenSC_Notify.applescript"
 
 # Prepare target root
-# The "UnInstaller"
-mkdir -p target/usr/local/bin
-cp MacOSX/opensc-uninstall target/usr/local/bin
+mkdir -p ${BUILDPATH}/target/usr/local/bin
+cp MacOSX/opensc-uninstall ${BUILDPATH}/target/usr/local/bin
 
 # Build package
-pkgbuild --root target --scripts MacOSX/scripts --identifier org.opensc-project.mac --version @PACKAGE_VERSION@ --install-location / OpenSC.pkg
+pkgbuild --root ${BUILDPATH}/target --scripts MacOSX/scripts --identifier org.opensc-project.mac --version @PACKAGE_VERSION@ --install-location / OpenSC.pkg
 # Build product
 productbuild --distribution MacOSX/Distribution.xml --package-path . --resources MacOSX/resources "OpenSC @PACKAGE_VERSION@.pkg"
 
-# Build "uninstaller"
+# Build "Uninstaller"
 osacompile -o "OpenSC Uninstaller.app" "MacOSX/OpenSC_Uninstaller.applescript"
 
 # Create .dmg
