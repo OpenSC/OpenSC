@@ -20,6 +20,7 @@ rm -rf "/Applications/OpenSC Notify.app"
 rm -rf /Library/OpenSC
 rm -rf /Library/Security/tokend/OpenSC.tokend
 rm -rf /System/Library/Security/tokend/OpenSC.tokend
+rm -rf /System/Library/Frameworks/CryptoTokenKit.framework/PlugIns/OpenSCToken.appex
 
 # delete receipts on 10.6+
 for file in /var/db/receipts/org.opensc-project.mac.bom /var/db/receipts/org.opensc-project.mac.plist; do
