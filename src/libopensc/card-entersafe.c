@@ -580,7 +580,7 @@ static int entersafe_select_path(sc_card_t *card,
 	 u8 n_pathbuf[SC_MAX_PATH_SIZE];
 	 const u8 *path=pathbuf;
 	 size_t pathlen=len;
-	 int bMatch = -1;
+//	 int bMatch = -1;
 	 unsigned int i;
 	 int r;
 
@@ -601,7 +601,7 @@ static int entersafe_select_path(sc_card_t *card,
 		  path = n_pathbuf;
 		  pathlen += 2; 
 	 }
-	
+#if 0	
 	 /* check current working directory */
 	 if (card->cache.valid 
 		 && card->cache.current_path.type == SC_PATH_TYPE_PATH
@@ -665,6 +665,7 @@ static int entersafe_select_path(sc_card_t *card,
 		  }
 	 }
 	 else
+#endif
 	 {
 		  /* no usable cache */
 		  for ( i=0; i<pathlen-2; i+=2 )
