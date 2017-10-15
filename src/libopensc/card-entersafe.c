@@ -601,7 +601,6 @@ static int entersafe_select_path(sc_card_t *card,
 		  path = n_pathbuf;
 		  pathlen += 2; 
 	 }
-	
 	 /* check current working directory */
 	 if (card->cache.valid 
 		 && card->cache.current_path.type == SC_PATH_TYPE_PATH
@@ -639,6 +638,12 @@ static int entersafe_select_path(sc_card_t *card,
 			   /* final step: select file */
 			   return entersafe_select_file(card, &new_path, file_out);
 		  }
+// FIXME: why is the if commented out? it's safer to uncomment it, because the cache_hit code will 
+//		only be executed in more specific cases (maybe when it's really correct??)
+// ANYWAY: I will leave it as it, to test later; it's effect MIGHT be to pollute the cache, but also LOG
+//		NEED TO PAY SPECIAL ATTENTION TO "cache_hit" message in log,
+//			and if there are cases that code considers "cache_hit", but I have problems,
+//			to reenable the commented-out-filter (because it seems quite logical, too);
 		  else /* if (bMatch - pathlen == 0) */
 		  {
 			   /* done: we are already in the
@@ -664,7 +669,12 @@ static int entersafe_select_path(sc_card_t *card,
 			   return SC_SUCCESS;
 		  }
 	 }
+#if 0	
+// rationale: we have two nested if's above; this code will only be executed if the outer if fails;
+//	but if the outer if is ok, and the inner if fails, then we will NOT fallthrough default code
+//	e.g. thei function will NOT do its desiganted task to select a path (regardless of caching)
 	 else
+#endif
 	 {
 		  /* no usable cache */
 		  for ( i=0; i<pathlen-2; i+=2 )
