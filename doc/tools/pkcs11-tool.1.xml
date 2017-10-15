@@ -75,16 +75,22 @@
 					<term>
 						<option>--hash-algorithm</option> <replaceable>mechanism</replaceable>
 					</term>
-					<listitem><para>
-	  Specify hash algorithm used with RSA-PKCS-PSS signature or RSA-OAEP decryption.
-          Allowed values are "SHA-1", "SHA256", "SHA384", "SHA512". Default is SHA-1.
-	  Note that the input to RSA-PKCS-PSS has to be of
-          the size equal to the specified hash algorithm. E.g., for SHA256 the signature input must be
-          exactly 32 bytes long (for mechanisms SHA256-RSA-PKCS-PSS there is no such restriction).
-          For RSA-OAEP, the plaintext input size mLen must be at most
-          keyLen - 2 - 2*hashLen. For example, for RSA 3072-bit key and SHA384, the longest plaintext
-          to encrypt with RSA-OAEP is (with all sizes in bytes): 384 - 2*48 -2 = 286, aka 286 bytes.
-          </para></listitem>
+					<listitem>
+						<para>
+		  					Specify hash algorithm used with RSA-PKCS-PSS signature or RSA-OAEP decryption.
+          					Allowed values are "SHA-1", "SHA256", "SHA384", "SHA512", and some tokens may 
+          					also allow "SHA224". Default is "SHA-1".
+						</para>
+						<para> 
+							Note that the input to RSA-PKCS-PSS has to be of the size equal to
+							the specified hash algorithm. E.g., for SHA256 the signature input must
+							be exactly 32 bytes long (for mechanisms SHA256-RSA-PKCS-PSS there is no
+							such restriction). For RSA-OAEP, the plaintext input size mLen must be
+							at most keyLen - 2 - 2*hashLen. For example, for RSA 3072-bit key and
+							SHA384, the longest plaintext to encrypt with RSA-OAEP is (with all
+							sizes in bytes): 384 - 2 - 2*48 = 286, aka 286 bytes. 
+						</para>
+					</listitem>
 				</varlistentry>
 
 				<varlistentry>
