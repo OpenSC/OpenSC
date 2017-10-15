@@ -1946,11 +1946,11 @@ static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		mech.ulParameterLen = 0;
 		break;
 	default:
-		util_fatal("Illegal mechanism %s for RSA-OAEP\n", p11_mechanism_to_name(opt_mechanism));
+		util_fatal("Mechanism %s illegal or not supported\n", p11_mechanism_to_name(opt_mechanism));
 	}
 
 
-	/* One of RSA-OAEP mechanisms above: They need parameters */
+	/* If an RSA-OAEP mechanism, it needs parameters */
 	if (oaep_params.hashAlg) {
 		if (opt_mgf != 0)
 			oaep_params.mgf = opt_mgf;
