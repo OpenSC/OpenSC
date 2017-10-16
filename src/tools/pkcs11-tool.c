@@ -1914,33 +1914,6 @@ static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 			break;
 		}
 		break;
-
-#if 0 /* we do not have these definitions yet! */
-	case CKM_SHA1_RSA_PKCS_OAEP:
-		oaep_params.hashAlg = CKM_SHA_1;
-		oaep_params.mgf = CKG_MGF1_SHA1;
-		break;
-
-	case CKM_SHA224_RSA_PKCS_OAEP:
-		oaep_params.hashAlg = CKM_SHA224;
-		oaep_params.mgf = CKG_MGF1_SHA224;
-		break;
-
-	case CKM_SHA256_RSA_PKCS_OAEP:
-		oaep_params.hashAlg = CKM_SHA256;
-		oaep_params.mgf = CKG_MGF1_SHA256;
-		break;
-
-	case CKM_SHA384_RSA_PKCS_OAEP:
-		oaep_params.hashAlg = CKM_SHA384;
-		oaep_params.mgf = CKG_MGF1_SHA384;
-		break;
-
-	case CKM_SHA512_RSA_PKCS_OAEP:
-		oaep_params.hashAlg = CKM_SHA512;
-		oaep_params.mgf = CKG_MGF1_SHA512;
-		break;
-#endif
 	case CKM_RSA_PKCS:
 		mech.pParameter = NULL;
 		mech.ulParameterLen = 0;
