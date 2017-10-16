@@ -7,9 +7,9 @@ if ENABLE_MINIDRIVER
 lib_LTLIBRARIES = opensc-minidriver@LIBRARY_BITNESS@.la
 # Do we need this on bin? Why can't we
 # put it in dedicated directory
-dist_sbin_SCRIPTS = opensc-minidriver.inf minidriver-westcos.reg minidriver-sc-hsm.reg minidriver-feitian.reg
+dist_sbin_SCRIPTS = opensc-minidriver.inf
 else
-dist_noinst_DATA = opensc-minidriver.inf minidriver-westcos.reg minidriver-sc-hsm.reg minidriver-feitian.reg
+dist_noinst_DATA = opensc-minidriver.inf
 endif
 
 AM_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS)

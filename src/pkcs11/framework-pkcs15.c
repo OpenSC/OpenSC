@@ -1043,6 +1043,7 @@ pkcs15_init_slot(struct sc_pkcs15_card *p15card, struct sc_pkcs11_slot *slot,
 	struct sc_pkcs15_auth_info *pin_info = NULL;
 	char label[64];
 
+	sc_log(context, "Called");
 	pkcs15_init_token_info(p15card, &slot->token_info);
 	slot->token_info.flags |= CKF_TOKEN_INITIALIZED;
 	if (auth != NULL)
@@ -1067,9 +1068,10 @@ pkcs15_init_slot(struct sc_pkcs15_card *p15card, struct sc_pkcs11_slot *slot,
 			pin_info = NULL;
 		}
 		else   {
-			if (auth->label[0])
+			if (auth->label[0] && strncmp(auth->label, "PIN", 4) != 0)
 				snprintf(label, sizeof(label), "%.*s (%s)", (int) sizeof auth->label, auth->label, p15card->tokeninfo->label);
 			else
+				/* The PIN label is empty or says just non-useful "PIN" */
 				snprintf(label, sizeof(label), "%s", p15card->tokeninfo->label);
 			slot->token_info.flags |= CKF_LOGIN_REQUIRED;
 		}
@@ -1230,6 +1232,7 @@ _get_auth_object_by_name(struct sc_pkcs15_card *p15card, char *name)
 	struct sc_pkcs15_object *out = NULL;
 	int rv = SC_ERROR_OBJECT_NOT_FOUND;
 
+	/* please keep me in sync with md_get_pin_by_role() in minidriver */
 	if (!strcmp(name, "UserPIN"))   {
 		/* Try to get 'global' PIN; if no, get the 'local' one */
 		rv = sc_pkcs15_find_pin_by_flags(p15card, SC_PKCS15_PIN_TYPE_FLAGS_PIN_GLOBAL,

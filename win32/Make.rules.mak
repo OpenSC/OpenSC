@@ -45,15 +45,27 @@ OPENSSL_STATIC_DIR = static
 
 !IF "$(DEBUG_DEF)" == "/DDEBUG"
 !IF "$(PLATFORM)" == "x86"
-OPENSSL_LIB = $(OPENSSL_DIR)\lib\VC\$(OPENSSL_STATIC_DIR)\libcrypto32MTd.lib user32.lib advapi32.lib crypt32.lib ws2_32.lib
+# OpenSSL 1.0.2
+OPENSSL_LIB = $(OPENSSL_DIR)\lib\VC\$(OPENSSL_STATIC_DIR)\libeay32MTd.lib user32.lib advapi32.lib crypt32.lib ws2_32.lib
+# OpenSSL 1.1.0
+#OPENSSL_LIB = $(OPENSSL_DIR)\lib\VC\$(OPENSSL_STATIC_DIR)\libcrypto32MTd.lib user32.lib advapi32.lib crypt32.lib ws2_32.lib
 !ELSE
-OPENSSL_LIB = $(OPENSSL_DIR)\lib\VC\$(OPENSSL_STATIC_DIR)\libcrypto64MTd.lib user32.lib advapi32.lib crypt32.lib ws2_32.lib
+# OpenSSL 1.0.2
+OPENSSL_LIB = $(OPENSSL_DIR)\lib\VC\$(OPENSSL_STATIC_DIR)\libeay32MTd.lib user32.lib advapi32.lib crypt32.lib ws2_32.lib
+# OpenSSL 1.1.0
+#OPENSSL_LIB = $(OPENSSL_DIR)\lib\VC\$(OPENSSL_STATIC_DIR)\libcrypto64MTd.lib user32.lib advapi32.lib crypt32.lib ws2_32.lib
 !ENDIF
 !ELSE
 !IF "$(PLATFORM)" == "x86"
-OPENSSL_LIB = $(OPENSSL_DIR)\lib\VC\$(OPENSSL_STATIC_DIR)\libcrypto32MT.lib user32.lib advapi32.lib crypt32.lib ws2_32.lib
+# OpenSSL 1.0.2
+OPENSSL_LIB = $(OPENSSL_DIR)\lib\VC\$(OPENSSL_STATIC_DIR)\libeay32MT.lib user32.lib advapi32.lib crypt32.lib ws2_32.lib
+# OpenSSL 1.1.0
+#OPENSSL_LIB = $(OPENSSL_DIR)\lib\VC\$(OPENSSL_STATIC_DIR)\libcrypto32MT.lib user32.lib advapi32.lib crypt32.lib ws2_32.lib
 !ELSE
-OPENSSL_LIB = $(OPENSSL_DIR)\lib\VC\$(OPENSSL_STATIC_DIR)\libcrypto64MT.lib user32.lib advapi32.lib crypt32.lib ws2_32.lib
+# OpenSSL 1.0.2
+OPENSSL_LIB = $(OPENSSL_DIR)\lib\VC\$(OPENSSL_STATIC_DIR)\libeay32MT.lib user32.lib advapi32.lib crypt32.lib ws2_32.lib
+# OpenSSL 1.1.0
+#OPENSSL_LIB = $(OPENSSL_DIR)\lib\VC\$(OPENSSL_STATIC_DIR)\libcrypto64MT.lib user32.lib advapi32.lib crypt32.lib ws2_32.lib
 !ENDIF
 !ENDIF
 

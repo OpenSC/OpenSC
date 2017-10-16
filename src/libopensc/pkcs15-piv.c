@@ -104,7 +104,7 @@ typedef struct common_key_info_st {
 	int pubkey_from_file;
 	int key_alg;
 	unsigned int pubkey_len;
-	unsigned long long cert_keyUsage; /* x509 key usage as defined in certificate */
+	unsigned int cert_keyUsage; /* x509 key usage as defined in certificate */
 	int cert_keyUsage_present; /* 1 if keyUsage found in certificate */
 	int pub_usage;
 	int priv_usage;
@@ -359,7 +359,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 	};
 
 	static const pindata pins[] = {
-		{ "01", "PIV Card Holder pin", "", 0x80,
+		{ "01", "PIN", "", 0x80,
 		  /* label, flag  and ref will change if using global pin */
 		  SC_PKCS15_PIN_TYPE_ASCII_NUMERIC,
 		  8, 4, 8, 
@@ -613,7 +613,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 	char buf[SC_MAX_SERIALNR * 2 + 1];
 	common_key_info ckis[PIV_NUM_CERTS_AND_KEYS];
 	int follows_nist_fascn = 0;
-
+	char *token_name = NULL;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -765,6 +765,28 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 				sc_pkcs15_free_certificate(cert_out);
 			continue;
 		}
+
+		/* set the token name to the name of the CN of the first certificate */
+		if (!token_name) {
+			u8 * cn_name = NULL;
+			size_t cn_len = 0;
+			static const struct sc_object_id cn_oid = {{ 2, 5, 4, 3, -1 }};
+			r = sc_pkcs15_get_name_from_dn(card->ctx, cert_out->subject,
+				cert_out->subject_len, &cn_oid, &cn_name, &cn_len);
+			if (r == SC_SUCCESS) {
+				token_name = malloc (cn_len+1);
+				if (!token_name) {
+					SC_FUNC_RETURN(card->ctx,
+						SC_ERROR_OUT_OF_MEMORY, r);
+				}
+				memcpy(token_name, cn_name, cn_len);
+				free(cn_name);
+				token_name[cn_len] = 0;
+				free(p15card->tokeninfo->label);
+				p15card->tokeninfo->label = token_name;
+			}
+		}
+
 		/* 
 		 * get keyUsage if present save in ckis[i]
 		 * Will only use it if this in a non FED issued card
@@ -773,13 +795,11 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 
 		if (follows_nist_fascn == 0) {
 			struct sc_object_id keyUsage_oid={{2,5,29,15,-1}};
-			unsigned long long *value;
 			int r = 0;
 
-			value = &ckis[i].cert_keyUsage;
 			r = sc_pkcs15_get_bitstring_extension(card->ctx, cert_out,
 				&keyUsage_oid,
-				value, NULL);
+				&ckis[i].cert_keyUsage, NULL);
 			if ( r >= 0)
 				ckis[i].cert_keyUsage_present = 1;
 				/* TODO if no key usage, we could set all uses */
@@ -932,7 +952,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 			pin_info.attrs.pin.reference = pin_ref;
 			pin_info.attrs.pin.flags &= ~SC_PKCS15_PIN_FLAG_LOCAL;
 			label = "Global PIN";
-		} 
+		}
 sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "DEE Adding pin %d label=%s",i, label);
 		strncpy(pin_obj.label, label, SC_PKCS15_MAX_LABEL_SIZE - 1);
 		pin_obj.flags = pins[i].obj_flags;

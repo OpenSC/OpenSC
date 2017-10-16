@@ -264,6 +264,9 @@ iasecc_select_mf(struct sc_card *card, struct sc_file **file_out)
 		apdu.resplen = sizeof(apdu_resp);
 		apdu.resp = apdu_resp;
 
+		if (card->type == SC_CARD_TYPE_IASECC_MI2)
+			apdu.p2 = 0x04;
+
 		rv = sc_transmit_apdu(card, &apdu);
 		LOG_TEST_RET(card->ctx, rv, "APDU transmit failed");
 		rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
@@ -514,74 +517,20 @@ iasecc_init_oberthur(struct sc_card *card)
 
 
 static int
-iasecc_init_sagem(struct sc_card *card)
-{
-	struct sc_context *ctx = card->ctx;
-	unsigned int flags;
-	int rv = 0;
-
-	LOG_FUNC_CALLED(ctx);
-
-	flags = IASECC_CARD_DEFAULT_FLAGS;
-
-	_sc_card_add_rsa_alg(card, 1024, flags, 0x10001);
-	_sc_card_add_rsa_alg(card, 2048, flags, 0x10001);
-
-	card->caps = SC_CARD_CAP_RNG;
-	card->caps |= SC_CARD_CAP_APDU_EXT;
-	card->caps |= SC_CARD_CAP_USE_FCI_AC;
-
-	rv = iasecc_parse_ef_atr(card);
-	if (rv == SC_ERROR_FILE_NOT_FOUND)   {
-		rv = iasecc_select_mf(card, NULL);
-		LOG_TEST_RET(ctx, rv, "MF selection error");
-
-		rv = iasecc_parse_ef_atr(card);
-	}
-	LOG_TEST_RET(ctx, rv, "IASECC: ATR parse failed");
-
-	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
-}
-
-
-static int
-iasecc_init_amos(struct sc_card *card)
-{
-	struct sc_context *ctx = card->ctx;
-	unsigned int flags;
-	int rv = 0;
-
-	LOG_FUNC_CALLED(ctx);
-
-	flags = IASECC_CARD_DEFAULT_FLAGS;
-
-	_sc_card_add_rsa_alg(card, 1024, flags, 0x10001);
-	_sc_card_add_rsa_alg(card, 2048, flags, 0x10001);
-
-	card->caps = SC_CARD_CAP_RNG;
-	card->caps |= SC_CARD_CAP_APDU_EXT;
-	card->caps |= SC_CARD_CAP_USE_FCI_AC;
-
-	rv = iasecc_parse_ef_atr(card);
-	if (rv == SC_ERROR_FILE_NOT_FOUND)   {
-		rv = iasecc_select_mf(card, NULL);
-		LOG_TEST_RET(ctx, rv, "MF selection error");
-
-		rv = iasecc_parse_ef_atr(card);
-	}
-
-	LOG_TEST_RET(ctx, rv, "IASECC: ATR parse failed");
-	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
-}
-
-static int
 iasecc_mi_match(struct sc_card *card)
 {
 	struct sc_context *ctx = card->ctx;
+	unsigned char resp[0x100];
+	size_t resp_len;
+	int rv = 0;
 
 	LOG_FUNC_CALLED(ctx);
 
-    if (!card->ef_atr)
+	resp_len = sizeof(resp);
+	rv = iasecc_select_aid(card, &MIIASECC_AID, resp, &resp_len);
+	LOG_TEST_RET(ctx, rv, "IASECC: failed to select MI IAS/ECC applet");
+
+	if (!card->ef_atr)
 		card->ef_atr = calloc(1, sizeof(struct sc_ef_atr));
 	if (!card->ef_atr)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
@@ -592,13 +541,12 @@ iasecc_mi_match(struct sc_card *card)
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
+
 static int
-iasecc_init_mi(struct sc_card *card)
+iasecc_init_amos_or_sagem(struct sc_card *card)
 {
 	struct sc_context *ctx = card->ctx;
 	unsigned int flags;
-	unsigned char resp[0x100];
-	size_t resp_len;
 	int rv = 0;
 
 	LOG_FUNC_CALLED(ctx);
@@ -612,15 +560,26 @@ iasecc_init_mi(struct sc_card *card)
 	card->caps |= SC_CARD_CAP_APDU_EXT;
 	card->caps |= SC_CARD_CAP_USE_FCI_AC;
 
-    resp_len = sizeof(resp);
-    rv = iasecc_select_aid(card, &MIIASECC_AID, resp, &resp_len);
-    LOG_TEST_RET(ctx, rv, "Could not select MI's AID");
+	if (card->type == SC_CARD_TYPE_IASECC_MI)   {
+		rv = iasecc_mi_match(card);
+		if (rv)
+			card->type = SC_CARD_TYPE_IASECC_MI2;
+		else
+			LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+	}
 
-	rv = iasecc_mi_match(card);
-    LOG_TEST_RET(ctx, rv, "Could not match MI's AID");
+	rv = iasecc_parse_ef_atr(card);
+	if (rv == SC_ERROR_FILE_NOT_FOUND)   {
+		rv = iasecc_select_mf(card, NULL);
+		LOG_TEST_RET(ctx, rv, "MF selection error");
+
+		rv = iasecc_parse_ef_atr(card);
+	}
+	LOG_TEST_RET(ctx, rv, "IASECC: ATR parse failed");
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
+
 
 static int
 iasecc_init(struct sc_card *card)
@@ -642,11 +601,11 @@ iasecc_init(struct sc_card *card)
 	else if (card->type == SC_CARD_TYPE_IASECC_OBERTHUR)
 		rv = iasecc_init_oberthur(card);
 	else if (card->type == SC_CARD_TYPE_IASECC_SAGEM)
-		rv = iasecc_init_sagem(card);
+		rv = iasecc_init_amos_or_sagem(card);
 	else if (card->type == SC_CARD_TYPE_IASECC_AMOS)
-		rv = iasecc_init_amos(card);
+		rv = iasecc_init_amos_or_sagem(card);
 	else if (card->type == SC_CARD_TYPE_IASECC_MI)
-		rv = iasecc_init_mi(card);
+		rv = iasecc_init_amos_or_sagem(card);
 	else
 		LOG_FUNC_RETURN(ctx, SC_ERROR_NO_CARD_SUPPORT);
 
@@ -950,7 +909,8 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 				&& card->type != SC_CARD_TYPE_IASECC_OBERTHUR
 				&& card->type != SC_CARD_TYPE_IASECC_SAGEM
 				&& card->type != SC_CARD_TYPE_IASECC_AMOS
-				&& card->type != SC_CARD_TYPE_IASECC_MI)
+				&& card->type != SC_CARD_TYPE_IASECC_MI
+				&& card->type != SC_CARD_TYPE_IASECC_MI2)
 			LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Unsupported card");
 
 		if (lpath.type == SC_PATH_TYPE_FILE_ID)   {
@@ -963,6 +923,8 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 				apdu.p2 = 0x04;
 			if (card->type == SC_CARD_TYPE_IASECC_MI)
 				apdu.p2 = 0x04;
+			if (card->type == SC_CARD_TYPE_IASECC_MI2)
+				apdu.p2 = 0x04;
 		}
 		else if (lpath.type == SC_PATH_TYPE_FROM_CURRENT)  {
 			apdu.p1 = 0x09;
@@ -971,6 +933,8 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 			if (card->type == SC_CARD_TYPE_IASECC_AMOS)
 				apdu.p2 = 0x04;
 			if (card->type == SC_CARD_TYPE_IASECC_MI)
+				apdu.p2 = 0x04;
+			if (card->type == SC_CARD_TYPE_IASECC_MI2)
 				apdu.p2 = 0x04;
 		}
 		else if (lpath.type == SC_PATH_TYPE_PARENT)   {
@@ -981,6 +945,8 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 		else if (lpath.type == SC_PATH_TYPE_DF_NAME)   {
 			apdu.p1 = 0x04;
 			if (card->type == SC_CARD_TYPE_IASECC_AMOS)
+				apdu.p2 = 0x04;
+			if (card->type == SC_CARD_TYPE_IASECC_MI2)
 				apdu.p2 = 0x04;
 		}
 		else   {

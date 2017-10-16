@@ -606,13 +606,13 @@ static int sc_pkcs15emu_sc_hsm_add_prkd(sc_pkcs15_card_t * p15card, u8 keyid) {
 	/* Try to select a related EF containing the PKCS#15 description of the key */
 	len = sizeof efbin;
 	r = read_file(p15card, fid, efbin, &len, 1);
-	LOG_TEST_RET(card->ctx, r, "Could not read EF.PRKD");
+	LOG_TEST_RET(card->ctx, r, "Skipping optional EF.PRKD");
 
 	ptr = efbin;
 
 	memset(&prkd, 0, sizeof(prkd));
 	r = sc_pkcs15_decode_prkdf_entry(p15card, &prkd, (const u8 **)&ptr, &len);
-	LOG_TEST_RET(card->ctx, r, "Could not decode EF.PRKD");
+	LOG_TEST_RET(card->ctx, r, "Skipping optional EF.PRKD");
 
 	/* All keys require user PIN authentication */
 	prkd.auth_id.len = 1;
@@ -640,8 +640,6 @@ static int sc_pkcs15emu_sc_hsm_add_prkd(sc_pkcs15_card_t * p15card, u8 keyid) {
 
 	len = sizeof efbin;
 	r = read_file(p15card, fid, efbin, &len, 0);
-	LOG_TEST_RET(card->ctx, r, "Could not read EF");
-
 	LOG_TEST_RET(card->ctx, r, "Could not read EF");
 
 	if (efbin[0] == 0x67) {		/* Decode CSR and create public key object */
@@ -702,13 +700,13 @@ static int sc_pkcs15emu_sc_hsm_add_dcod(sc_pkcs15_card_t * p15card, u8 id) {
 	/* Try to select a related EF containing the PKCS#15 description of the data */
 	len = sizeof efbin;
 	r = read_file(p15card, fid, efbin, &len, 1);
-	LOG_TEST_RET(card->ctx, r, "Could not read EF.DCOD");
+	LOG_TEST_RET(card->ctx, r, "Skipping optional EF.DCOD");
 
 	ptr = efbin;
 
 	memset(&data_obj, 0, sizeof(data_obj));
 	r = sc_pkcs15_decode_dodf_entry(p15card, &data_obj, &ptr, &len);
-	LOG_TEST_RET(card->ctx, r, "Could not decode EF.DCOD");
+	LOG_TEST_RET(card->ctx, r, "Could not decode optional EF.DCOD");
 
 	data_info = (sc_pkcs15_data_info_t *)data_obj.data;
 
@@ -741,13 +739,13 @@ static int sc_pkcs15emu_sc_hsm_add_cd(sc_pkcs15_card_t * p15card, u8 id) {
 	/* Try to select a related EF containing the PKCS#15 description of the data */
 	len = sizeof efbin;
 	r = read_file(p15card, fid, efbin, &len, 1);
-	LOG_TEST_RET(card->ctx, r, "Could not read EF.DCOD");
+	LOG_TEST_RET(card->ctx, r, "Skipping optional EF.DCOD");
 
 	ptr = efbin;
 
 	memset(&obj, 0, sizeof(obj));
 	r = sc_pkcs15_decode_cdf_entry(p15card, &obj, &ptr, &len);
-	LOG_TEST_RET(card->ctx, r, "Could not decode EF.CD");
+	LOG_TEST_RET(card->ctx, r, "Skipping optional EF.CDOD");
 
 	cert_info = (sc_pkcs15_cert_info_t *)obj.data;
 
@@ -772,10 +770,10 @@ static int sc_pkcs15emu_sc_hsm_read_tokeninfo (sc_pkcs15_card_t * p15card)
 	/* Read token info */
 	len = sizeof efbin;
 	r = read_file(p15card, (u8 *) "\x2F\x03", efbin, &len, 1);
-	LOG_TEST_RET(card->ctx, r, "Could not read EF.TokenInfo");
+	LOG_TEST_RET(card->ctx, r, "Skipping optional EF.TokenInfo");
 
 	r = sc_pkcs15_parse_tokeninfo(card->ctx, p15card->tokeninfo, efbin, len);
-	LOG_TEST_RET(card->ctx, r, "Could not decode EF.TokenInfo");
+	LOG_TEST_RET(card->ctx, r, "Skipping optional EF.TokenInfo");
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
@@ -835,7 +833,7 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 	} else {
 		len = sizeof efbin;
 		r = read_file(p15card, (u8 *) "\x2F\x02", efbin, &len, 1);
-		LOG_TEST_RET(card->ctx, r, "Could not select EF.C_DevAut");
+		LOG_TEST_RET(card->ctx, r, "Skipping optional EF.C_DevAut");
 
 		/* save EF_C_DevAut for further use */
 		ptr = realloc(priv->EF_C_DevAut, len);
@@ -941,7 +939,8 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 		LOG_FUNC_RETURN(card->ctx, r);
 
 
-	if (card->type == SC_CARD_TYPE_SC_HSM_SOC) {
+	if (card->type == SC_CARD_TYPE_SC_HSM_SOC
+			|| card->type == SC_CARD_TYPE_SC_HSM_GOID) {
 		/* SC-HSM of this type always has a PIN-Pad */
 		r = SC_SUCCESS;
 	} else {
@@ -998,7 +997,8 @@ int sc_pkcs15emu_sc_hsm_init_ex(sc_pkcs15_card_t *p15card,
 		return sc_pkcs15emu_sc_hsm_init(p15card);
 	} else {
 		if (p15card->card->type != SC_CARD_TYPE_SC_HSM
-				&& p15card->card->type != SC_CARD_TYPE_SC_HSM_SOC) {
+				&& p15card->card->type != SC_CARD_TYPE_SC_HSM_SOC
+				&& p15card->card->type != SC_CARD_TYPE_SC_HSM_GOID) {
 			return SC_ERROR_WRONG_CARD;
 		}
 		return sc_pkcs15emu_sc_hsm_init(p15card);

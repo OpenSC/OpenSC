@@ -26,10 +26,11 @@
 #include <stdlib.h>
 
 #ifndef _WIN32
-#include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <unistd.h>
 #else
+#include <windows.h>
 #include <io.h>
 #endif
 
@@ -133,6 +134,7 @@ enum {
 	OPT_KEY_USAGE_DECRYPT,
 	OPT_KEY_USAGE_DERIVE,
 	OPT_PRIVATE,
+	OPT_SENSITIVE,
 	OPT_TEST_HOTPLUG,
 	OPT_UNLOCK_PIN,
 	OPT_PUK,
@@ -145,6 +147,9 @@ enum {
 	OPT_TEST_FORK,
 	OPT_GENERATE_KEY,
 	OPT_GENERATE_RANDOM,
+	OPT_HASH_ALGORITHM,
+	OPT_MGF,
+	OPT_SALT,
 };
 
 static const struct option options[] = {
@@ -161,6 +166,9 @@ static const struct option options[] = {
 	{ "derive",		0, NULL,		OPT_DERIVE },
 	{ "derive-pass-der",	0, NULL,		OPT_DERIVE_PASS_DER },
 	{ "mechanism",		1, NULL,		'm' },
+	{ "hash-algorithm",	1, NULL,		OPT_HASH_ALGORITHM },
+	{ "mgf",		1, NULL,		OPT_MGF },
+	{ "salt-len",		1, NULL,		OPT_SALT },
 
 	{ "login",		0, NULL,		'l' },
 	{ "login-type",		1, NULL,		OPT_LOGIN_TYPE },
@@ -203,6 +211,7 @@ static const struct option options[] = {
 	{ "moz-cert",		1, NULL,		'z' },
 	{ "verbose",		0, NULL,		'v' },
 	{ "private",		0, NULL,		OPT_PRIVATE },
+	{ "sensitive",		0, NULL,		OPT_SENSITIVE },
 	{ "test-ec",		0, NULL,		OPT_TEST_EC },
 #ifndef _WIN32
 	{ "test-fork",		0, NULL,		OPT_TEST_FORK },
@@ -226,6 +235,9 @@ static const char *option_help[] = {
 	"Derive a secret key using another key and some data",
 	"Derive ECDHpass DER encoded pubkey for compatibility with some PKCS#11 implementations",
 	"Specify mechanism (use -M for a list of supported mechanisms)",
+	"Specify hash algorithm used with RSA-PKCS-PSS signature",
+	"Specify MGF (Message Generation Function) used for RSA-PSS signatures (possible values are MGF1-SHA1 to MGF1-SHA512)",
+	"Specify how many bytes should be used for salt in RSA-PSS signatures (default is digest size)",
 
 	"Log into the token first",
 	"Specify login type ('so', 'user', 'context-specific'; default:'user')",
@@ -268,6 +280,7 @@ static const char *option_help[] = {
 	"Test Mozilla-like keypair gen and cert req, <arg>=certfile",
 	"Verbose operation. (Set OPENSC_DEBUG to enable OpenSC specific debugging)",
 	"Set the CKA_PRIVATE attribute (object is only viewable after a login)",
+	"Set the CKA_SENSITIVE attribute (object cannot be revealed in plaintext)",
 	"Test EC (best used with the --login or --pin option)",
 #ifndef _WIN32
 	"Test forking and calling C_Initialize() in the child",
@@ -307,6 +320,7 @@ static char *		opt_subject = NULL;
 static char *		opt_key_type = NULL;
 static char *		opt_sig_format = NULL;
 static int		opt_is_private = 0;
+static int		opt_is_sensitive = 0;
 static int		opt_test_hotplug = 0;
 static int		opt_login_type = -1;
 static int		opt_key_usage_sign = 0;
@@ -315,6 +329,10 @@ static int		opt_key_usage_derive = 0;
 static int		opt_key_usage_default = 1; /* uses defaults if no opt_key_usage options */
 static int		opt_derive_pass_der = 0;
 static unsigned long	opt_random_bytes = 0;
+static CK_MECHANISM_TYPE opt_hash_alg = 0;
+static unsigned long	opt_mgf = 0;
+static long	        salt_len = 0;
+static int		salt_len_given = 0; /* 0 - not given, 1 - given with input parameters */
 
 static void *module = NULL;
 static CK_FUNCTION_LIST_PTR p11 = NULL;
@@ -405,6 +423,8 @@ static const char *	p11_utf8_to_local(CK_UTF8CHAR *, size_t);
 static const char *	p11_flag_names(struct flag_info *, CK_FLAGS);
 static const char *	p11_mechanism_to_name(CK_MECHANISM_TYPE);
 static CK_MECHANISM_TYPE p11_name_to_mechanism(const char *);
+static const char *	p11_mgf_to_name(CK_RSA_PKCS_MGF_TYPE);
+static CK_MECHANISM_TYPE p11_name_to_mgf(const char *);
 static void		p11_perror(const char *, CK_RV);
 static const char *	CKR2Str(CK_ULONG res);
 static int		p11_test(CK_SESSION_HANDLE session);
@@ -537,6 +557,9 @@ int main(int argc, char * argv[])
 	CK_RV rv;
 
 #ifdef _WIN32
+	char expanded_val[PATH_MAX];
+	DWORD expanded_len;
+
 	if(_setmode(_fileno(stdout), _O_BINARY ) == -1)
 		util_fatal("Cannot set FMODE to O_BINARY");
 	if(_setmode(_fileno(stdin), _O_BINARY ) == -1)
@@ -668,6 +691,16 @@ int main(int argc, char * argv[])
 		case 'm':
 			opt_mechanism_used = 1;
 			opt_mechanism = p11_name_to_mechanism(optarg);
+			break;
+		case OPT_HASH_ALGORITHM:
+			opt_hash_alg = p11_name_to_mechanism(optarg);
+			break;
+		case OPT_MGF:
+			opt_mgf = p11_name_to_mgf(optarg);
+			break;
+		case OPT_SALT:
+			salt_len = (CK_ULONG) strtoul(optarg, NULL, 0);
+			salt_len_given = 1;
 			break;
 		case 'o':
 			opt_output = optarg;
@@ -804,6 +837,9 @@ int main(int argc, char * argv[])
 		case OPT_PRIVATE:
 			opt_is_private = 1;
 			break;
+		case OPT_SENSITIVE:
+			opt_is_sensitive = 1;
+			break;
 		case OPT_TEST_HOTPLUG:
 			opt_test_hotplug = 1;
 			action_count++;
@@ -843,6 +879,13 @@ int main(int argc, char * argv[])
 
 	if (action_count == 0)
 		util_print_usage_and_die(app_name, options, option_help, NULL);
+
+#ifdef _WIN32
+	expanded_len = PATH_MAX;
+	expanded_len = ExpandEnvironmentStringsA(opt_module, expanded_val, expanded_len);
+	if (0 < expanded_len && expanded_len < sizeof expanded_val)
+		opt_module = expanded_val;
+#endif
 
 	module = C_LoadModule(opt_module, &p11);
 	if (module == NULL)
@@ -1318,7 +1361,7 @@ static int login(CK_SESSION_HANDLE session, int login_type)
 			pin_flags=info.flags & (
 				CKF_SO_PIN_COUNT_LOW |
 				CKF_SO_PIN_FINAL_TRY |
-				CKF_SO_PIN_LOCKED | 
+				CKF_SO_PIN_LOCKED |
 				CKF_SO_PIN_TO_BE_CHANGED);
 			if(pin_flags)
 				printf("WARNING: %s\n",p11_token_info_flags(pin_flags));
@@ -1329,7 +1372,7 @@ static int login(CK_SESSION_HANDLE session, int login_type)
 			pin_flags=info.flags & (
 				CKF_USER_PIN_COUNT_LOW |
 				CKF_USER_PIN_FINAL_TRY |
-				CKF_USER_PIN_LOCKED | 
+				CKF_USER_PIN_LOCKED |
 				CKF_USER_PIN_TO_BE_CHANGED);
 			if(pin_flags)
 				printf("WARNING: %s\n",p11_token_info_flags(pin_flags));
@@ -1591,14 +1634,44 @@ static int unlock_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess, int login_type)
 	return 0;
 }
 
+/* return digest length in bytes */
+static unsigned long figure_pss_salt_length(const int hash) {
+	unsigned long sLen = 0;
+	switch (hash) {
+	case  CKM_SHA_1:
+		sLen = 20;
+		break;
+	case  CKM_SHA224:
+		sLen = 28;
+		break;
+	case  CKM_SHA256:
+		sLen = 32;
+		break;
+	case  CKM_SHA384:
+		sLen = 48;
+		break;
+	case  CKM_SHA512:
+		sLen = 64;
+		break;
+	default:
+		util_fatal("Unknown hash algorithm '%s' for RSA-PSS signatures",
+			p11_mechanism_to_name(hash));
+		break;
+	}
+	return sLen;
+}
+
 static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		CK_OBJECT_HANDLE key)
 {
 	unsigned char	in_buffer[1025], sig_buffer[512];
 	CK_MECHANISM	mech;
+	CK_RSA_PKCS_PSS_PARAMS pss_params;
 	CK_RV		rv;
 	CK_ULONG	sig_len;
 	int		fd, r;
+
+	unsigned long hashlen = 0, modlen = 0;
 
 	if (!opt_mechanism_used)
 		if (!find_mechanism(slot, CKF_SIGN|CKF_HW, NULL, 0, &opt_mechanism))
@@ -1607,6 +1680,93 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	fprintf(stderr, "Using signature algorithm %s\n", p11_mechanism_to_name(opt_mechanism));
 	memset(&mech, 0, sizeof(mech));
 	mech.mechanism = opt_mechanism;
+	pss_params.hashAlg = 0;
+
+	if (opt_hash_alg != 0 && opt_mechanism != CKM_RSA_PKCS_PSS)
+		util_fatal("The hash-algorithm is applicable only to "
+			"RSA-PKCS-PSS mechanism");
+
+	/* set "default" MGF and hash algorithms. We can overwrite MGF later */
+	switch (opt_mechanism) {
+	case CKM_RSA_PKCS_PSS:
+		pss_params.hashAlg = opt_hash_alg;
+
+		switch (opt_hash_alg) {
+		case CKM_SHA256:
+			pss_params.mgf = CKG_MGF1_SHA256;
+			break;
+		case CKM_SHA384:
+			pss_params.mgf = CKG_MGF1_SHA384;
+			break;
+		case CKM_SHA512:
+			pss_params.mgf = CKG_MGF1_SHA512;
+			break;
+		default:
+			/* the PSS should use SHA-1 if not specified */
+			pss_params.hashAlg = CKM_SHA_1;
+			/* fallthrough */
+		case CKM_SHA_1:
+			pss_params.mgf = CKG_MGF1_SHA1;
+		}
+		break;
+
+	case CKM_SHA1_RSA_PKCS_PSS:
+		pss_params.hashAlg = CKM_SHA_1;
+		pss_params.mgf = CKG_MGF1_SHA1;
+		break;
+
+	case CKM_SHA256_RSA_PKCS_PSS:
+		pss_params.hashAlg = CKM_SHA256;
+		pss_params.mgf = CKG_MGF1_SHA256;
+		break;
+
+	case CKM_SHA384_RSA_PKCS_PSS:
+		pss_params.hashAlg = CKM_SHA384;
+		pss_params.mgf = CKG_MGF1_SHA384;
+		break;
+
+	case CKM_SHA512_RSA_PKCS_PSS:
+		pss_params.hashAlg = CKM_SHA512;
+		pss_params.mgf = CKG_MGF1_SHA512;
+		break;
+	}
+
+	/* One of RSA-PSS mechanisms above: They need parameters */
+	if (pss_params.hashAlg) {
+		if (opt_mgf != 0)
+			pss_params.mgf = opt_mgf;
+
+		hashlen = figure_pss_salt_length(pss_params.hashAlg);
+
+		if (salt_len_given == 1) { /* salt size explicitly given */
+			if (salt_len < 0 && salt_len != -1 && salt_len != -2)
+				util_fatal("Salt length must be greater or equal \
+to zero, or equal to -1 (meaning: use digest size) or to -2 \
+(meaning: use maximum permissible size");
+		  
+			modlen = (get_private_key_length(session, key) + 7) / 8;
+			switch(salt_len) {
+			case -1: /* salt size equals to digest size */
+				pss_params.sLen = hashlen;
+				break;
+			case -2: /* maximum permissible salt len */
+				pss_params.sLen = modlen - hashlen -2;
+				break;
+			default: /* use given size but its value must be >= 0 */
+				pss_params.sLen = salt_len;
+				break;
+			} /* end switch (salt_len_given) */
+		} else { /* use default: salt len of digest size */
+			pss_params.sLen = hashlen;
+		}
+
+		mech.pParameter = &pss_params;
+		mech.ulParameterLen = sizeof(pss_params);
+		fprintf(stderr, "PSS parameters: hashAlg=%s, mgf=%s, salt=%lu B\n",
+			p11_mechanism_to_name(pss_params.hashAlg),
+			p11_mgf_to_name(pss_params.mgf),
+			pss_params.sLen);
+	}
 
 	if (opt_input == NULL)
 		fd = 0;
@@ -1659,7 +1819,7 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		util_fatal("failed to open %s: %m", opt_output);
 	}
 
-	if (opt_mechanism == CKM_ECDSA || opt_mechanism == CKM_ECDSA_SHA1) {
+	if (opt_mechanism == CKM_ECDSA || opt_mechanism == CKM_ECDSA_SHA1 || opt_mechanism == CKM_ECDSA_SHA256 || opt_mechanism == CKM_ECDSA_SHA384 || opt_mechanism == CKM_ECDSA_SHA512) {
 		if (opt_sig_format &&  (!strcmp(opt_sig_format, "openssl") || !strcmp(opt_sig_format, "sequence"))) {
 			unsigned char *seq;
 			size_t seqlen;
@@ -2028,6 +2188,7 @@ gen_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE *hSecretKey
 	CK_MECHANISM mechanism = {CKM_AES_KEY_GEN, NULL_PTR, 0};
 	CK_OBJECT_CLASS secret_key_class = CKO_SECRET_KEY;
 	CK_BBOOL _true = TRUE;
+	CK_BBOOL _false = FALSE;
 	CK_KEY_TYPE key_type = CKK_AES;
 	CK_ULONG    key_length;
 	CK_ATTRIBUTE keyTemplate[20] = {
@@ -2100,6 +2261,15 @@ gen_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE *hSecretKey
 		}
 		else {
 			util_fatal("Unknown key type %s", type);
+		}
+
+		if (opt_is_sensitive != 0) {
+			FILL_ATTR(keyTemplate[n_attr], CKA_SENSITIVE, &_true, sizeof(_true));
+			n_attr++;
+		}
+		else {
+			FILL_ATTR(keyTemplate[n_attr], CKA_SENSITIVE, &_false, sizeof(_false));
+			n_attr++;
 		}
 
 		FILL_ATTR(keyTemplate[n_attr], CKA_ENCRYPT, &_true, sizeof(_true));
@@ -4310,13 +4480,13 @@ static int test_signature(CK_SESSION_HANDLE sess)
 		break;
 	case CKM_RSA_X_509:
 		dataLen = modLenBytes;
+		pseudo_randomize(data, dataLen);
 		break;
 	default:
 		dataLen = sizeof(data);	/* let's hope it's OK */
+		pseudo_randomize(data, dataLen);
 		break;
 	}
-
-	pseudo_randomize(data, dataLen);
 
 	if (firstMechType == CKM_RSA_X_509) {
 		/* make sure our data is smaller than the modulus */
@@ -4836,7 +5006,7 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 		return 0;
 
 	if (EVP_PKEY_size(pkey) > (int)sizeof(encrypted)) {
-		fprintf(stderr, "Ciphertext buffer too small\n");
+		printf("Ciphertext buffer too small\n");
 		EVP_PKEY_free(pkey);
 		return 0;
 	}
@@ -4847,14 +5017,14 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 #endif
 	EVP_PKEY_free(pkey);
 	if (((int) encrypted_len) <= 0) {
-		fprintf(stderr, "Encryption failed, returning\n");
+		printf("Encryption failed, returning\n");
 		return 0;
 	}
 
 	mech.mechanism = mech_type;
 	rv = p11->C_DecryptInit(session, &mech, privKeyObject);
-	if (rv == CKR_MECHANISM_INVALID) {
-		fprintf(stderr, "Mechanism not supported\n");
+	if (rv == CKR_MECHANISM_INVALID || rv == CKR_MECHANISM_PARAM_INVALID) {
+		printf("Mechanism not supported\n");
 		return 0;
 	}
 	if (rv != CKR_OK)
@@ -5621,10 +5791,10 @@ static struct mech_info	p11_mechanisms[] = {
       { CKM_RSA_X9_31,		"RSA-X9-31",	NULL },
       { CKM_SHA1_RSA_X9_31,	"SHA1-RSA-X9-31",	NULL },
       { CKM_RSA_PKCS_PSS,	"RSA-PKCS-PSS",	NULL },
-      { CKM_SHA1_RSA_PKCS_PSS,	"SHA1-RSA-PKCS-PSS",	NULL },
-      { CKM_SHA256_RSA_PKCS,	"SHA256-RSA-PKCS-PSS",	NULL },
-      { CKM_SHA384_RSA_PKCS,	"SHA384-RSA-PKCS-PSS",	NULL },
-      { CKM_SHA512_RSA_PKCS,	"SHA512-RSA-PKCS-PSS",	NULL },
+      { CKM_SHA1_RSA_PKCS_PSS,	"SHA1-RSA-PKCS-PSS",	"rsa-pss-sha1" },
+      { CKM_SHA256_RSA_PKCS_PSS,"SHA256-RSA-PKCS-PSS",	"rsa-pss-sha256" },
+      { CKM_SHA384_RSA_PKCS_PSS,"SHA384-RSA-PKCS-PSS",	"rsa-pss-sha384" },
+      { CKM_SHA512_RSA_PKCS_PSS,"SHA512-RSA-PKCS-PSS",	"rsa-pss-sha512" },
       { CKM_DSA_KEY_PAIR_GEN,	"DSA-KEY-PAIR-GEN",	NULL },
       { CKM_DSA,		"DSA",	NULL },
       { CKM_DSA_SHA1,		"DSA-SHA1", NULL },
@@ -5671,8 +5841,11 @@ static struct mech_info	p11_mechanisms[] = {
       { CKM_SHA_1_HMAC,		"SHA-1-HMAC", NULL },
       { CKM_SHA_1_HMAC_GENERAL,	"SHA-1-HMAC-GENERAL", NULL },
       { CKM_SHA256,		"SHA256", NULL },
+      { CKM_SHA256_HMAC,	"SHA256-HMAC", NULL },
       { CKM_SHA384,		"SHA384", NULL },
+      { CKM_SHA384_HMAC,	"SHA384-HMAC", NULL },
       { CKM_SHA512,		"SHA512", NULL },
+      { CKM_SHA512_HMAC,	"SHA512-HMAC", NULL },
       { CKM_RIPEMD128,		"RIPEMD128", NULL },
       { CKM_RIPEMD128_HMAC,	"RIPEMD128-HMAC", NULL },
       { CKM_RIPEMD128_HMAC_GENERAL,"RIPEMD128-HMAC-GENERAL", NULL },
@@ -5770,7 +5943,7 @@ static struct mech_info	p11_mechanisms[] = {
       { CKM_ECDSA_SHA1,		"ECDSA-SHA1", NULL },
       { CKM_ECDSA_SHA224,	"ECDSA-SHA224", NULL },
       { CKM_ECDSA_SHA256,	"ECDSA-SHA256", NULL },
-      { CKM_ECDSA_SHA384,	"ECDSA-SHA348", NULL },
+      { CKM_ECDSA_SHA384,	"ECDSA-SHA384", NULL },
       { CKM_ECDSA_SHA512,	"ECDSA-SHA512", NULL },
       { CKM_ECDH1_DERIVE,	"ECDH1-DERIVE", NULL },
       { CKM_ECDH1_COFACTOR_DERIVE,"ECDH1-COFACTOR-DERIVE", NULL },
@@ -5798,6 +5971,15 @@ static struct mech_info	p11_mechanisms[] = {
       { 0, NULL, NULL }
 };
 
+static struct mech_info	p11_mgf[] = {
+      { CKG_MGF1_SHA1,		"MGF1-SHA1", NULL },
+      { CKG_MGF1_SHA224,	"MGF1-SHA224", NULL },
+      { CKG_MGF1_SHA256,	"MGF1-SHA256", NULL },
+      { CKG_MGF1_SHA384,	"MGF1-SHA384", NULL },
+      { CKG_MGF1_SHA512,	"MGF1-SHA512", NULL },
+      { 0, NULL, NULL }
+};
+
 static const char *p11_mechanism_to_name(CK_MECHANISM_TYPE mech)
 {
 	static char temp[64];
@@ -5822,6 +6004,30 @@ static CK_MECHANISM_TYPE p11_name_to_mechanism(const char *name)
 	}
 	util_fatal("Unknown PKCS11 mechanism \"%s\"", name);
 	return 0; /* gcc food */
+}
+
+static CK_RSA_PKCS_MGF_TYPE p11_name_to_mgf(const char *name)
+{
+	struct mech_info *mi;
+
+	for (mi = p11_mgf; mi->name; mi++) {
+		if (!strcasecmp(mi->name, name))
+			return mi->mech;
+	}
+	util_fatal("Unknown PKCS11 MGF \"%s\"", name);
+}
+
+static const char *p11_mgf_to_name(CK_RSA_PKCS_MGF_TYPE mgf)
+{
+	static char temp[64];
+	struct mech_info *mi;
+
+	for (mi = p11_mgf; mi->name; mi++) {
+		if (mi->mech == mgf)
+			return mi->name;
+	}
+	snprintf(temp, sizeof(temp), "mgf-0x%lX", (unsigned long) mgf);
+	return temp;
 }
 
 static const char * CKR2Str(CK_ULONG res)

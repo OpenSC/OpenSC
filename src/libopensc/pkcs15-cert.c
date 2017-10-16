@@ -310,13 +310,13 @@ sc_pkcs15_get_extension(struct sc_context *ctx, struct sc_pkcs15_cert *cert,
 int
 sc_pkcs15_get_bitstring_extension(struct sc_context *ctx,
 	struct sc_pkcs15_cert *cert, const struct sc_object_id *type,
-	unsigned long long *value, int *is_critical)
+	unsigned int *value, int *is_critical)
 {
 	int r;
 	u8 *bit_string = NULL;
 	size_t bit_string_len=0, val_len = sizeof(*value);
 	struct sc_asn1_entry asn1_bit_string[] = {
-		{ "bitString", SC_ASN1_BIT_STRING, SC_ASN1_TAG_BIT_STRING, 0, value, &val_len },
+		{ "bitString", SC_ASN1_BIT_FIELD, SC_ASN1_TAG_BIT_STRING, 0, value, &val_len },
 		{ NULL, 0, 0, 0, NULL, NULL }
 	};
 

@@ -738,7 +738,7 @@ int sc_pkcs15_get_extension(struct sc_context *ctx,
 int sc_pkcs15_get_bitstring_extension(struct sc_context *ctx,
                                       struct sc_pkcs15_cert *cert,
                                       const struct sc_object_id *type,
-                                      unsigned long long *value,
+                                      unsigned int *value,
                                       int *is_critical);
 /* sc_pkcs15_create_cdf:  Creates a new certificate DF on a card pointed
  * by <card>.  Information about the file, such as the file ID, is read
