@@ -40,37 +40,9 @@ static struct sc_atr_table entersafe_atrs[] = {
 		 "FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:00:FF:FF:FF:FF:FF:FF:00:00:00:00",
 		 "FTCOS/PK-01C", SC_CARD_TYPE_ENTERSAFE_FTCOS_PK_01C, 0, NULL },
 	 { 
-		"3b:fc:18:00:00:81:31:80:45:90:67:46:4a:00:64:18:14:00:00:00:00:02",
-		"ff:00:00:00:00:00:00:00:00:ff:ff:ff:ff:00:00:00:00:ff:ff:ff:ff:00",
-		"EJAVA/PK-01C", SC_CARD_TYPE_ENTERSAFE_EJAVA_PK_01C, 0, NULL },
-	{
-		"3b:7c:18:00:00:90:67:46:4a:20:28:8c:58:00:00:00:00",
-		"ff:00:00:00:00:ff:ff:ff:ff:00:00:00:00:ff:ff:ff:ff",
-		"EJAVA/PK-01C-T0",SC_CARD_TYPE_ENTERSAFE_EJAVA_PK_01C_T0,0,NULL},
-	{
-		"3B:FC:18:00:00:81:31:80:45:90:67:46:4A:21:28:8C:58:00:00:00:00:B7",
-		"ff:00:00:00:00:00:00:00:00:ff:ff:ff:ff:00:00:00:00:ff:ff:ff:ff:00",
-		"EJAVA/H10CR/PK-01C-T1",SC_CARD_TYPE_ENTERSAFE_EJAVA_H10CR_PK_01C_T1,0,NULL},
-	{
-		"3B:FC:18:00:00:81:31:80:45:90:67:46:4A:20:25:c3:30:00:00:00:00",
-		"ff:00:00:00:00:00:00:00:00:ff:ff:ff:ff:00:00:00:00:00:00:00:00",
-		"EJAVA/D11CR/PK-01C-T1",SC_CARD_TYPE_ENTERSAFE_EJAVA_D11CR_PK_01C_T1,0,NULL},
-	{
-		"3B:FC:18:00:00:81:31:80:45:90:67:46:4A:00:6A:04:24:00:00:00:00:20",
-		"ff:00:00:00:00:00:00:00:00:ff:ff:ff:ff:00:00:00:00:ff:ff:ff:ff:00",
-		"EJAVA/C21C/PK-01C-T1",SC_CARD_TYPE_ENTERSAFE_EJAVA_C21C_PK_01C_T1,0,NULL},
-	{
-		"3B:FC:18:00:00:81:31:80:45:90:67:46:4A:00:68:08:04:00:00:00:00:0E",
-		"ff:00:00:00:00:00:00:00:00:ff:ff:ff:ff:00:00:00:00:ff:ff:ff:ff:00",
-		"EJAVA/A22CR/PK-01C-T1",SC_CARD_TYPE_ENTERSAFE_EJAVA_A22CR_PK_01C_T1,0,NULL},
-	{
-		"3B:FC:18:00:00:81:31:80:45:90:67:46:4A:10:27:61:30:00:00:00:00:0C",
-		"ff:00:00:00:00:00:00:00:00:ff:ff:ff:ff:00:00:00:00:ff:ff:ff:ff:00",
-		"EJAVA/A40CR/PK-01C-T1",SC_CARD_TYPE_ENTERSAFE_EJAVA_A40CR_PK_01C_T1,0,NULL},
-	{
 		"3b:fc:18:00:00:81:31:80:45:90:67:46:4a:00:68:08:06:00:00:00:00:0c",
-		"FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:00:FF:FF:FF:FF:FF:FF:00:00:00",
-		"FTCOS/PK-01C", SC_CARD_TYPE_ENTERSAFE_FTCOS_PK_01C, 0, NULL },
+		"FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:00:00:00:00:00:00:00:00:00",
+		"EJAVA/PK-01C", SC_CARD_TYPE_ENTERSAFE_EJAVA_PK_01C, 0, NULL },
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
@@ -573,7 +545,7 @@ static int entersafe_select_aid(sc_card_t *card,
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 }
 
-static int entersafe_select_path(sc_card_t *card,
+static int entersafe_select_path_old(sc_card_t *card,
 								const u8 pathbuf[16], const size_t len,
 								sc_file_t **file_out)
 {
@@ -600,8 +572,9 @@ static int entersafe_select_path(sc_card_t *card,
 			   n_pathbuf[i+2] = pathbuf[i];
 		  path = n_pathbuf;
 		  pathlen += 2; 
+		  sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "entersafe_select_path_old changed call-parameters\n");
 	 }
-	
+// at this point we may have overriden the call-parameters with the normalized values, so next checks may have strange effects	
 	 /* check current working directory */
 	 if (card->cache.valid 
 		 && card->cache.current_path.type == SC_PATH_TYPE_PATH
@@ -676,6 +649,43 @@ static int entersafe_select_path(sc_card_t *card,
 	 }
 }
 
+
+static int entersafe_select_path_new(sc_card_t *card,
+								const u8 pathbuf[16], const size_t len,
+								sc_file_t **file_out)
+{
+	 u8 n_pathbuf[SC_MAX_PATH_SIZE];	// might need to patch call-parameters
+	 const u8 *path=pathbuf;		// default to using call-parameters
+	 size_t pathlen=len;			// well, this is not strictly necessary, but leave it as it is
+
+	 if (pathlen%2 != 0 || pathlen > 6 || pathlen <= 0)
+		  SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
+
+	 /* if pathlen == 6 then the first FID must be MF (== 3F00) */
+	 if (pathlen == 6 && ( path[0] != 0x3f || path[1] != 0x00 ))
+		  SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
+
+	 /* unify path (the first FID should be MF) */
+	 if (path[0] != 0x3f || path[1] != 0x00)
+	 {	  n_pathbuf[0] = 0x3f;	n_pathbuf[1] = 0x00;	// fix first 2 bytes
+		  memcpy (n_pathbuf + 2, pathbuf, pathlen); 	// copy the rest
+		  pathlen += 2; path = n_pathbuf;		// and override call-parameters with the new ones;
+		  sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "entersafe_select_path_new changed call-parameters\n");
+
+	 }
+// sanity checks done; might have overriden call-parameters; now do the work
+	 {	/* no usable cache */
+		int i, r;
+		
+		for ( i=0; i<pathlen; i+=2 )
+		  {
+			   r = entersafe_select_fid(card, path[i], path[i+1], file_out);
+			   SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "SELECT FILE (DF-ID) failed");
+		  }
+		  return r;
+	 }
+}
+
 static int entersafe_select_file(sc_card_t *card,
 								 const sc_path_t *in_path,
 								 sc_file_t **file_out)
@@ -707,7 +717,12 @@ static int entersafe_select_file(sc_card_t *card,
 	 case SC_PATH_TYPE_DF_NAME:
 		  return entersafe_select_aid(card,in_path,file_out);
 	 case SC_PATH_TYPE_PATH:
-		  return entersafe_select_path(card,in_path->value,in_path->len,file_out);
+		switch (card->type)	{
+			case SC_CARD_TYPE_ENTERSAFE_EJAVA_PK_01C:
+				return entersafe_select_path_new(card,in_path->value,in_path->len,file_out);
+			default:
+				return entersafe_select_path_old(card,in_path->value,in_path->len,file_out);
+		}
 	 default:
 		  SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
 	 }
@@ -735,12 +750,6 @@ static int entersafe_create_mf(sc_card_t *card, sc_entersafe_create_data * data)
 	}break;
 	case SC_CARD_TYPE_ENTERSAFE_FTCOS_PK_01C:
 	case SC_CARD_TYPE_ENTERSAFE_EJAVA_PK_01C:
-	case SC_CARD_TYPE_ENTERSAFE_EJAVA_PK_01C_T0:	
-	case SC_CARD_TYPE_ENTERSAFE_EJAVA_H10CR_PK_01C_T1:
-	case SC_CARD_TYPE_ENTERSAFE_EJAVA_D11CR_PK_01C_T1:
-	case SC_CARD_TYPE_ENTERSAFE_EJAVA_C21C_PK_01C_T1:
-	case SC_CARD_TYPE_ENTERSAFE_EJAVA_A22CR_PK_01C_T1:
-	case SC_CARD_TYPE_ENTERSAFE_EJAVA_A40CR_PK_01C_T1:	
 	{
 		 r = entersafe_transmit_apdu(card, &apdu,trans_code_ftcos_pk_01c,sizeof(trans_code_ftcos_pk_01c),0,1);
 	}break;
@@ -1078,12 +1087,6 @@ static int entersafe_erase_card(sc_card_t *card)
 	}break;
 	case SC_CARD_TYPE_ENTERSAFE_FTCOS_PK_01C:
 	case SC_CARD_TYPE_ENTERSAFE_EJAVA_PK_01C:
-	case SC_CARD_TYPE_ENTERSAFE_EJAVA_PK_01C_T0:		
-	case SC_CARD_TYPE_ENTERSAFE_EJAVA_H10CR_PK_01C_T1:
-	case SC_CARD_TYPE_ENTERSAFE_EJAVA_D11CR_PK_01C_T1:
-	case SC_CARD_TYPE_ENTERSAFE_EJAVA_C21C_PK_01C_T1:
-	case SC_CARD_TYPE_ENTERSAFE_EJAVA_A22CR_PK_01C_T1:
-	case SC_CARD_TYPE_ENTERSAFE_EJAVA_A40CR_PK_01C_T1:
 	{
 		 r = entersafe_transmit_apdu(card, &apdu,trans_code_ftcos_pk_01c,sizeof(trans_code_ftcos_pk_01c),0,1);
 	}break;
