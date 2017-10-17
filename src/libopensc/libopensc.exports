@@ -363,3 +363,8 @@ escape_pace_output_to_buf
 escape_buf_to_pace_output
 escape_pace_capabilities_to_buf
 escape_buf_to_pace_capabilities
+ui_get_str
+sc_notify_init
+sc_notify_close
+sc_notify
+sc_notify_id

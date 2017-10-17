@@ -73,7 +73,7 @@ before_script:
       fi;
       unset CC;
       unset CXX;
-      ./configure --host=$HOST --disable-openssl --disable-readline --disable-zlib --prefix=${TRAVIS_BUILD_DIR}/win32/opensc || cat config.log;
+      ./configure --host=$HOST --disable-openssl --disable-readline --disable-zlib --disable-notify --prefix=${TRAVIS_BUILD_DIR}/win32/opensc || cat config.log;
     fi
 
 script:

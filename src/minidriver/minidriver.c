@@ -36,6 +36,8 @@
 #include <time.h>
 
 #include <windows.h>
+#include <Commctrl.h>
+#include "cardmod.h"
 
 #include "common/compat_strlcpy.h"
 #include "libopensc/asn1.h"
@@ -45,6 +47,9 @@
 #include "libopensc/log.h"
 #include "libopensc/internal.h"
 #include "libopensc/aux-data.h"
+#include "ui/notify.h"
+#include "ui/strings.h"
+#include "ui/wchar_from_char_str.h"
 #include "pkcs15init/pkcs15-init.h"
 
 #ifdef ENABLE_OPENSSL
@@ -119,10 +124,7 @@ HINSTANCE g_inst;
 #endif
 
  /* defined twice: in versioninfo-minidriver.rc.in and in minidriver.c */
-#define IDD_PINPAD      101
-#define IDI_LOGO        102
-#define IDC_PINPAD_TEXT 1001
-#define IDC_PINPAD_ICON 1000
+#define IDI_SMARTCARD   102
 
 /* magic to determine previous pinpad authentication */
 #define MAGIC_SESSION_PIN "opensc-minidriver"
@@ -222,11 +224,14 @@ typedef struct _VENDOR_SPECIFIC
 #define MD_STATIC_FLAG_CREATE_CONTAINER_KEY_IMPORT	32
 #define MD_STATIC_FLAG_CREATE_CONTAINER_KEY_GEN		64
 #define MD_STATIC_FLAG_IGNORE_PIN_LENGTH		128
+#define MD_STATIC_FLAG_PINPAD_DLG_ENABLE_CANCEL	256
 
 #define MD_STATIC_PROCESS_ATTACHED		0xA11AC4EDL
 struct md_opensc_static_data {
 	unsigned flags, flags_checked;
 	unsigned long attach_check;
+	HICON pinpad_dlg_icon;
+	CRITICAL_SECTION hScard_lock;
 };
 static struct md_opensc_static_data md_static_data;
 
@@ -536,6 +541,116 @@ md_get_pin_by_role(PCARD_DATA pCardData, PIN_ID role, struct sc_pkcs15_object **
 	return SCARD_S_SUCCESS;
 }
 
+static const char *
+md_get_config_str(PCARD_DATA pCardData, enum ui_str id)
+{
+	VENDOR_SPECIFIC *vs;
+	const char *ret = NULL;
+
+	if (!pCardData)
+		return ret;
+
+	vs = (VENDOR_SPECIFIC*) pCardData->pvVendorSpecific;
+	if (vs->ctx && vs->reader) {
+		const char *preferred_language = NULL;
+		struct sc_atr atr;
+		atr.len = pCardData->cbAtr;
+		memcpy(atr.value, pCardData->pbAtr, atr.len);
+		if (vs->p15card && vs->p15card->tokeninfo
+				&& vs->p15card->tokeninfo->preferred_language) {
+			preferred_language = vs->p15card->tokeninfo->preferred_language;
+		}
+		ret = ui_get_str(vs->ctx, &atr, vs->p15card, id);
+	}
+
+	return ret;
+}
+
+
+static HICON
+md_get_config_icon(PCARD_DATA pCardData, char *flag_name, HICON ret_default)
+{
+	VENDOR_SPECIFIC *vs;
+	HICON ret = ret_default;
+
+	if (!pCardData)
+		return ret;
+
+	logprintf(pCardData, 2, "Get '%s' option\n", flag_name);
+
+	vs = (VENDOR_SPECIFIC*) pCardData->pvVendorSpecific;
+	if (vs->ctx && vs->reader)   {
+		struct sc_atr atr;
+		scconf_block *atrblock;
+		atr.len = pCardData->cbAtr;
+		memcpy(atr.value, pCardData->pbAtr, atr.len);
+		atrblock = _sc_match_atr_block(vs->ctx, NULL, &atr);
+		logprintf(pCardData, 2, "Match ATR:\n");
+		loghex(pCardData, 3, atr.value, atr.len);
+
+		if (atrblock) {
+			const char *filename = scconf_get_str(atrblock, flag_name, NULL);
+			if (filename) {
+				ret = (HICON) LoadImage(g_inst, filename, IMAGE_ICON, 0, 0,
+						LR_LOADFROMFILE|LR_DEFAULTSIZE|LR_SHARED);
+			}
+			if (!ret)
+				ret = ret_default;
+		}
+	}
+
+
+	return ret;
+}
+
+
+static HICON
+md_get_pinpad_dlg_icon(PCARD_DATA pCardData)
+{
+	if (!md_static_data.pinpad_dlg_icon) {
+		md_static_data.pinpad_dlg_icon = md_get_config_icon(pCardData, "md_pinpad_dlg_icon", NULL);
+	}
+
+	return md_static_data.pinpad_dlg_icon;
+}
+
+
+static int
+md_get_config_int(PCARD_DATA pCardData, char *flag_name, int ret_default)
+{
+	VENDOR_SPECIFIC *vs;
+	int ret = ret_default;
+
+	if (!pCardData)
+		return ret;
+
+	logprintf(pCardData, 2, "Get '%s' option\n", flag_name);
+
+	vs = (VENDOR_SPECIFIC*) pCardData->pvVendorSpecific;
+	if (vs->ctx && vs->reader)   {
+		struct sc_atr atr;
+		scconf_block *atrblock;
+		atr.len = pCardData->cbAtr;
+		memcpy(atr.value, pCardData->pbAtr, atr.len);
+		atrblock = _sc_match_atr_block(vs->ctx, NULL, &atr);
+		logprintf(pCardData, 2, "Match ATR:\n");
+		loghex(pCardData, 3, atr.value, atr.len);
+
+		if (atrblock)
+			ret = scconf_get_int(atrblock, flag_name, ret_default);
+	}
+
+	return ret;
+}
+
+
+static int
+md_get_pinpad_dlg_timeout(PCARD_DATA pCardData)
+{
+	return md_get_config_int(pCardData, "md_pinpad_dlg_timeout", 30);
+}
+
+
 static BOOL
 md_get_config_bool(PCARD_DATA pCardData, char *flag_name, unsigned flag, BOOL ret_default)
 {
@@ -579,6 +694,15 @@ md_get_config_bool(PCARD_DATA pCardData, char *flag_name, unsigned flag, BOOL re
 			flag_name, ret ? "TRUE" : "FALSE",
 			md_static_data.flags, md_static_data.flags_checked);
 	return ret;
+}
+
+
+/* 'Write' mode can be enabled from the OpenSC configuration file*/
+static BOOL
+md_is_pinpad_dlg_enable_cancel(PCARD_DATA pCardData)
+{
+	logprintf(pCardData, 2, "Is cancelling the PIN pad dialog enableed?\n");
+	return md_get_config_bool(pCardData, "md_pinpad_dlg_enable_cancel", MD_STATIC_FLAG_PINPAD_DLG_ENABLE_CANCEL, FALSE);
 }
 
 
@@ -2689,39 +2813,6 @@ md_query_key_sizes(PCARD_DATA pCardData, DWORD dwKeySpec, CARD_KEY_SIZES *pKeySi
 	return SCARD_S_SUCCESS;
 }
 
-static VOID CenterWindow(HWND hwndWindow, HWND hwndParent)
-{
-	RECT rectWindow, rectParent;
-	int nWidth,nHeight, nScreenWidth, nScreenHeight;
-	int nX, nY;
-	GetWindowRect(hwndWindow, &rectWindow);
-
-	nWidth = rectWindow.right - rectWindow.left;
-	nHeight = rectWindow.bottom - rectWindow.top;
-
-	nScreenWidth = GetSystemMetrics(SM_CXSCREEN);
-	nScreenHeight = GetSystemMetrics(SM_CYSCREEN);
-
-	// make the window relative to its parent
-	if (hwndParent != NULL) {
-		GetWindowRect(hwndParent, &rectParent);
-		nX = ((rectParent.right - rectParent.left) - nWidth) / 2 + rectParent.left;
-		nY = ((rectParent.bottom - rectParent.top) - nHeight) / 2 + rectParent.top;
-	}
-	else {
-		nX = (nScreenWidth - nWidth) /2;
-		nY = (nScreenHeight - nHeight) /2;
-	}
-	// make sure that the dialog box never moves outside of the screen
-	if (nX < 0) nX = 0;
-	if (nY < 0) nY = 0;
-	if (nX + nWidth > nScreenWidth) nX = nScreenWidth - nWidth;
-	if (nY + nHeight > nScreenHeight) nY = nScreenHeight - nHeight;
-
-	MoveWindow(hwndWindow, nX, nY, nWidth, nHeight, TRUE);
-}
-
-
 static DWORD WINAPI
 md_dialog_perform_pin_operation_thread(PVOID lpParameter)
 {
@@ -2735,6 +2826,7 @@ md_dialog_perform_pin_operation_thread(PVOID lpParameter)
 	const u8 *pin2 = (const u8 *) parameter[5];
 	size_t *pin2len = (size_t *) parameter[6];
 	int rv = 0;
+	EnterCriticalSection(&md_static_data.hScard_lock);
 	switch (operation)
 	{
 	case SC_PIN_CMD_VERIFY:
@@ -2753,56 +2845,102 @@ md_dialog_perform_pin_operation_thread(PVOID lpParameter)
 		rv = (DWORD) ERROR_INVALID_PARAMETER;
 		break;
 	}
-	if (parameter[9] != 0) {
-		EndDialog((HWND) parameter[9], rv);
+	LeaveCriticalSection(&md_static_data.hScard_lock);
+	if (parameter[10] != 0) {
+		EndDialog((HWND) parameter[10], rv);
 	}
 	return (DWORD) rv;
 }
 
-static INT_PTR CALLBACK md_dialog_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+static const char *md_get_ui_str(PCARD_DATA pCardData, enum ui_str id)
 {
-	UNREFERENCED_PARAMETER(wParam);
-	switch (message)
-	{
-	case WM_INITDIALOG:
-		{
-			HICON hIcon = NULL;
-			PCARD_DATA pCardData = (PCARD_DATA) (((LONG_PTR*)lParam)[7]);
-			VENDOR_SPECIFIC* vs = (VENDOR_SPECIFIC*) pCardData->pvVendorSpecific;
-			/* store parameter like pCardData for further use if needed */
-			SetWindowLongPtr(hWnd, GWLP_USERDATA, lParam);
-			/* change the text shown on the screen */
-			if (vs->wszPinContext )   {
-				SetWindowTextW(GetDlgItem(hWnd, IDC_PINPAD_TEXT), vs->wszPinContext );
-			}
-			CenterWindow(hWnd, vs->hwndParent);
-			/* load the information icon */
-			hIcon = (HICON) LoadImage(0, IDI_INFORMATION, IMAGE_ICON, 0, 0, LR_SHARED);
-			SendMessage(GetDlgItem(hWnd, IDC_PINPAD_ICON),STM_SETIMAGE,IMAGE_ICON, (LPARAM) hIcon);
-			/* change the icon */
-			hIcon = LoadIcon(g_inst, MAKEINTRESOURCE(IDI_LOGO));
-			if (hIcon)
+	const char *str = md_get_config_str(pCardData, id);
+
+	if (str && *str == '\0') {
+		/* if the user used an empty string, remove the field by setting it to NULL */
+		str = NULL;
+	}
+
+	return str;
+}
+
+static INT_PTR CALLBACK md_dialog_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam, LONG_PTR dwRefData)
+{
+	LONG_PTR param;
+	int timeout;
+
+	UNREFERENCED_PARAMETER(lParam);
+	switch (message) {
+		case TDN_CREATED:
 			{
-				SendMessage(hWnd, WM_SETICON, ICON_SMALL, (LPARAM) hIcon);
-				SendMessage(hWnd, WM_SETICON, ICON_BIG, (LPARAM) hIcon);
+				PCARD_DATA pCardData = (PCARD_DATA)((LONG_PTR*)dwRefData)[7];
+				/* remove the icon from the window title */
+				SendMessage(hWnd, WM_SETICON, (LPARAM) ICON_BIG, (LONG_PTR) NULL);
+				SendMessage(hWnd, WM_SETICON, (LPARAM) ICON_SMALL, (LONG_PTR) NULL);
+				if (!md_is_pinpad_dlg_enable_cancel(pCardData)) {
+					/* disable "Close" */
+					SendMessage(hWnd, TDM_ENABLE_BUTTON, IDCLOSE, 0);
+				}
+				timeout = md_get_pinpad_dlg_timeout(pCardData);
+				if (timeout > 0) {
+					/* update the progress bar with the tick counter for the number of specified seconds */
+					SendMessage(hWnd, TDM_SET_PROGRESS_BAR_RANGE, 0, MAKELPARAM(0, timeout*1000));
+				}
+				/* store parameter like pCardData for further use if needed */
+				SetWindowLongPtr(hWnd, GWLP_USERDATA, dwRefData);
+				/* launch the function in another thread context store the thread handle */
+				((LONG_PTR*)dwRefData)[10] = (LONG_PTR) hWnd;
+				((LONG_PTR*)dwRefData)[9] = (LONG_PTR) CreateThread(NULL, 0, md_dialog_perform_pin_operation_thread, (LPVOID) dwRefData, 0, NULL);
 			}
-			/* launch the function in another thread context store the thread handle */
-			((LONG_PTR*)lParam)[9] = (LONG_PTR) hWnd;
-			((LONG_PTR*)lParam)[8] = (LONG_PTR) CreateThread(NULL, 0, md_dialog_perform_pin_operation_thread, (PVOID) lParam, 0, NULL);
-		}
-		return TRUE;
-	case WM_DESTROY:
-		{
-			/* clean resources used */
-			LPARAM param = GetWindowLongPtr(hWnd, GWLP_USERDATA);
+			return S_OK;
+
+		case TDN_TIMER:
+			/* tick down for 30 seconds */
+			SendMessage(hWnd, TDM_SET_PROGRESS_BAR_POS, 30000 - wParam, 0L);
+			return S_OK;
+
+		case TDN_BUTTON_CLICKED:
+			/* We ignore anything else than the Cancel button */
+			if (LOWORD(wParam) != IDCANCEL)
+				return S_FALSE;
+
+			param = GetWindowLongPtr(hWnd, GWLP_USERDATA);
 			if (param) {
-				HANDLE hThread = (HANDLE)((LONG_PTR*)param)[8];
+				PCARD_DATA pCardData = (PCARD_DATA)((LONG_PTR*)param)[7];
+				VENDOR_SPECIFIC* vs = (VENDOR_SPECIFIC*) pCardData->pvVendorSpecific;
+				WCHAR *pszContent = wchar_from_char_str(md_get_ui_str(pCardData,
+							MD_PINPAD_DLG_CONTENT_CANCEL));
+				WCHAR *pszExpandedInformation = wchar_from_char_str(md_get_ui_str(pCardData,
+							MD_PINPAD_DLG_EXPANDED_CANCEL));
+
+				sc_cancel(vs->ctx);
+
+				SendMessage(hWnd, TDM_SET_ELEMENT_TEXT,
+						TDE_CONTENT, (LPARAM) pszContent);
+				SendMessage(hWnd, TDM_SET_ELEMENT_TEXT,
+						TDE_EXPANDED_INFORMATION, (LPARAM) pszExpandedInformation);
+				SendMessage(hWnd, TDM_UPDATE_ICON, TDIE_ICON_MAIN, (LPARAM)MAKEINTRESOURCE(TD_INFORMATION_ICON));
+				/* remove the icon from the window title */
+				SendMessage(hWnd, WM_SETICON, (LPARAM) ICON_BIG, (LONG_PTR) NULL);
+				SendMessage(hWnd, WM_SETICON, (LPARAM) ICON_SMALL, (LONG_PTR) NULL);
+
+				LocalFree(pszContent);
+				LocalFree(pszExpandedInformation);
+			}
+			break;
+
+		case TDN_DESTROYED:
+			/* clean resources used */
+			param = GetWindowLongPtr(hWnd, GWLP_USERDATA);
+			if (param) {
+				HANDLE hThread = (HANDLE)((LONG_PTR*)param)[9];
 				CloseHandle(hThread);
 			}
-		}
-		break;
+			break;
 	}
-	return FALSE;
+
+	/* don't close the Task Dialog */
+	return S_FALSE;
 }
 
 
@@ -2811,12 +2949,15 @@ static int
 md_dialog_perform_pin_operation(PCARD_DATA pCardData, int operation, struct sc_pkcs15_card *p15card,
 		struct sc_pkcs15_object *pin_obj,
 		const u8 *pin1, size_t pin1len,
-		const u8 *pin2, size_t *pin2len, BOOL displayUI)
+		const u8 *pin2, size_t *pin2len, BOOL displayUI, DWORD role)
 {
-	LONG_PTR parameter[10];
+	LONG_PTR parameter[11];
 	INT_PTR result = 0;
+	HWND hWndDlg = 0;
+	TASKDIALOGCONFIG tc = {0};
 	int rv = 0;
 	VENDOR_SPECIFIC* pv = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
+
 	/* stack the parameters */
 	parameter[0] = (LONG_PTR)operation;
 	parameter[1] = (LONG_PTR)p15card;
@@ -2826,18 +2967,91 @@ md_dialog_perform_pin_operation(PCARD_DATA pCardData, int operation, struct sc_p
 	parameter[5] = (LONG_PTR)pin2;
 	parameter[6] = (LONG_PTR)pin2len;
 	parameter[7] = (LONG_PTR)pCardData;
-	parameter[8] = 0; /* place holder for thread handle */
-	parameter[9] = 0; /* place holder for window handle */
+	parameter[8] = (LONG_PTR)role;
+	parameter[9] = 0; /* place holder for thread handle */
+	parameter[10] = 0; /* place holder for window handle */
+
 	/* launch the function to perform in the same thread context */
 	if (!displayUI) {
 		rv = md_dialog_perform_pin_operation_thread(parameter);
 		SecureZeroMemory(parameter, sizeof(parameter));
 		return rv;
 	}
+
 	/* launch the UI in the same thread context than the parent and the function to perform in another thread context 
 	this is the only way to display a modal dialog attached to a parent (hwndParent != 0) */
-	result = DialogBoxParam(g_inst, MAKEINTRESOURCE(IDD_PINPAD), pv->hwndParent, md_dialog_proc, (LPARAM) parameter);
+	tc.hwndParent = pv->hwndParent;
+	tc.hInstance = g_inst;
+
+	tc.pszWindowTitle = wchar_from_char_str(md_get_ui_str(pCardData,
+			MD_PINPAD_DLG_TITLE));
+	tc.pszMainInstruction = wchar_from_char_str(md_get_ui_str(pCardData,
+			MD_PINPAD_DLG_MAIN));
+	tc.pszExpandedControlText = wchar_from_char_str(md_get_ui_str(pCardData,
+			MD_PINPAD_DLG_CONTROL_EXPANDED));
+	tc.pszCollapsedControlText = wchar_from_char_str(md_get_ui_str(pCardData,
+			MD_PINPAD_DLG_CONTROL_COLLAPSED));
+	tc.pszExpandedInformation = wchar_from_char_str(md_get_ui_str(pCardData,
+			MD_PINPAD_DLG_EXPANDED));
+	switch (role) {
+		case ROLE_ADMIN:
+			tc.pszContent = wchar_from_char_str(md_get_ui_str(pCardData,
+					MD_PINPAD_DLG_CONTENT_ADMIN));
+			break;
+		case MD_ROLE_USER_SIGN:
+			tc.pszContent = wchar_from_char_str(md_get_ui_str(pCardData,
+					MD_PINPAD_DLG_CONTENT_USER_SIGN));
+			break;
+		case ROLE_USER:
+		default:
+			tc.pszContent = wchar_from_char_str(md_get_ui_str(pCardData,
+					MD_PINPAD_DLG_CONTENT_USER));
+			break;
+	}
+
+	if (pv->wszPinContext) {
+		/* overwrite the main instruction with the application's information if
+		 * possible */
+		tc.pszMainInstruction = pv->wszPinContext;
+	}
+
+	tc.dwFlags = TDF_POSITION_RELATIVE_TO_WINDOW;
+	if (tc.pszExpandedInformation != NULL) {
+		tc.dwFlags |= TDF_EXPAND_FOOTER_AREA;
+	}
+	if (md_get_pinpad_dlg_timeout(pCardData) > 0) {
+		tc.dwFlags |= TDF_SHOW_PROGRESS_BAR | TDF_CALLBACK_TIMER;
+	}
+	
+	if (md_is_pinpad_dlg_enable_cancel(pCardData)) {
+		tc.dwFlags |= TDF_ALLOW_DIALOG_CANCELLATION;
+		tc.dwCommonButtons = TDCBF_CANCEL_BUTTON;
+	} else {
+		/* can't use TDCBF_CANCEL_BUTTON since this would implicitely set TDF_ALLOW_DIALOG_CANCELLATION */
+		tc.dwCommonButtons = TDCBF_CLOSE_BUTTON;
+	}
+
+	tc.hMainIcon = md_get_pinpad_dlg_icon(pCardData);
+	if (tc.hMainIcon) {
+		tc.dwFlags |= TDF_USE_HICON_MAIN;
+	} else {
+		tc.pszMainIcon = MAKEINTRESOURCEW(IDI_SMARTCARD);
+	}
+	tc.pfCallback = md_dialog_proc;
+	tc.lpCallbackData = (LONG_PTR)parameter;
+	tc.cbSize = sizeof(tc);
+
+	result = TaskDialogIndirect(&tc, NULL, NULL, NULL);
+
+	LocalFree((WCHAR *) tc.pszWindowTitle);
+	LocalFree((WCHAR *) tc.pszMainInstruction);
+	LocalFree((WCHAR *) tc.pszExpandedControlText);
+	LocalFree((WCHAR *) tc.pszCollapsedControlText);
+	LocalFree((WCHAR *) tc.pszExpandedInformation);
+	LocalFree((WCHAR *) tc.pszContent);
+
 	SecureZeroMemory(parameter, sizeof(parameter));
+
 	return (int) result;
 }
 
@@ -5342,7 +5556,7 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 						    *ppbSessionPin,
 						    *ppbSessionPin != NULL ?
 						    &session_pin_len : NULL,
-						    DisplayPinpadUI);
+						    DisplayPinpadUI, PinId);
 		if (r) {
 			if (*ppbSessionPin != NULL) {
 				pCardData->pfnCspFree(*ppbSessionPin);
@@ -5370,7 +5584,7 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 		if (pcbSessionPin) *pcbSessionPin = 0;
 		if (ppbSessionPin) *ppbSessionPin = NULL;
 		logprintf(pCardData, 2, "standard pin verification");
-		r = md_dialog_perform_pin_operation(pCardData, SC_PIN_CMD_VERIFY, vs->p15card, pin_obj, (const u8 *) pbPinData, cbPinData, NULL, NULL, DisplayPinpadUI);
+		r = md_dialog_perform_pin_operation(pCardData, SC_PIN_CMD_VERIFY, vs->p15card, pin_obj, (const u8 *) pbPinData, cbPinData, NULL, NULL, DisplayPinpadUI, PinId);
 	}
 
 	/* restore the pin type */
@@ -5503,7 +5717,7 @@ DWORD WINAPI CardChangeAuthenticatorEx(__in PCARD_DATA pCardData,
 					     (const u8 *) pbAuthenticatingPinData,
 					     cbAuthenticatingPinData,
 					     pbTargetData, &target_len,
-					     DisplayPinpadUI);
+					     DisplayPinpadUI, dwTargetPinId);
 
 	if (rv)   {
 		logprintf(pCardData, 2, "Failed to %s %s PIN: '%s' (%i)\n",
@@ -6505,6 +6719,8 @@ static void disassociate_card(PCARD_DATA pCardData)
 	memset(vs->pin_objs, 0, sizeof(vs->pin_objs));
 	memset(vs->p15_containers, 0, sizeof(vs->p15_containers));
 
+	EnterCriticalSection(&md_static_data.hScard_lock);
+
 	if(vs->p15card)   {
 		logprintf(pCardData, 6, "sc_pkcs15_unbind\n");
 		sc_pkcs15_unbind(vs->p15card);
@@ -6522,6 +6738,8 @@ static void disassociate_card(PCARD_DATA pCardData)
 	vs->hSCardCtx = -1;
 	vs->hScard = -1;
 	vs->initialized = FALSE;
+
+	LeaveCriticalSection(&md_static_data.hScard_lock);
 }
 
 
@@ -6559,9 +6777,14 @@ BOOL APIENTRY DllMain( HINSTANCE hinstDLL,
 	{
 	case DLL_PROCESS_ATTACH:
 		g_inst = hinstDLL;
+		sc_notify_instance = hinstDLL;
+		sc_notify_init();
+		InitializeCriticalSection(&md_static_data.hScard_lock);
 		md_static_data.attach_check = MD_STATIC_PROCESS_ATTACHED;
 		break;
 	case DLL_PROCESS_DETACH:
+		sc_notify_close();
+		DeleteCriticalSection(&md_static_data.hScard_lock);
 		md_static_data.attach_check = 0;
 		break;
 	}

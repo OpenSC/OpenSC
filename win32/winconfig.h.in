@@ -82,6 +82,8 @@
 #define DEFAULT_PCSC_PROVIDER "@DEFAULT_PCSC_PROVIDER@"
 #endif
 
+#define ENABLE_NOTIFY
+
 #define SC_PKCS15_PROFILE_DIRECTORY "C:\\Program Files\\OpenSC Project\\OpenSC\\profiles"
 
 #define PATH_MAX FILENAME_MAX

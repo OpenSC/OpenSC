@@ -1,7 +1,7 @@
 include $(top_srcdir)/win32/ltrc.inc
 
 MAINTAINERCLEANFILES = $(srcdir)/Makefile.in $(srcdir)/versioninfo-minidriver.rc
-EXTRA_DIST = Makefile.mak versioninfo-minidriver.rc.in
+EXTRA_DIST = Makefile.mak versioninfo-minidriver.rc.in opensc-minidriver.dll.manifest
 
 if ENABLE_MINIDRIVER
 lib_LTLIBRARIES = opensc-minidriver@LIBRARY_BITNESS@.la

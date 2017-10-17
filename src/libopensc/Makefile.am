@@ -2,7 +2,7 @@ include $(top_srcdir)/win32/ltrc.inc
 
 MAINTAINERCLEANFILES = $(srcdir)/Makefile.in
 
-EXTRA_DIST = Makefile.mak
+EXTRA_DIST = Makefile.mak opensc.dll.manifest
 
 lib_LTLIBRARIES = libopensc.la
 noinst_HEADERS = cards.h ctbcs.h internal.h esteid.h muscle.h muscle-filesystem.h \
@@ -78,6 +78,8 @@ libopensc_la_LIBADD = $(OPENPACE_LIBS) $(OPTIONAL_OPENSSL_LIBS) \
 	$(top_builddir)/src/pkcs15init/libpkcs15init.la \
 	$(top_builddir)/src/scconf/libscconf.la \
 	$(top_builddir)/src/common/libscdl.la \
+	$(top_builddir)/src/ui/libnotify.la \
+	$(top_builddir)/src/ui/libstrings.la \
 	$(top_builddir)/src/sm/libsmeac.la \
 	$(top_builddir)/src/common/libcompat.la
 if WIN32

@@ -41,6 +41,8 @@ OBJECTS			= \
 LIBS = $(TOPDIR)\src\scconf\scconf.lib \
 	   $(TOPDIR)\src\common\common.lib \
 	   $(TOPDIR)\src\common\libscdl.lib \
+	   $(TOPDIR)\src\ui\strings.lib \
+	   $(TOPDIR)\src\ui\notify.lib \
 	   $(TOPDIR)\src\sm\libsmiso.lib \
 	   $(TOPDIR)\src\sm\libsmeac.lib \
 	   $(TOPDIR)\src\pkcs15init\pkcs15init.lib
@@ -53,8 +55,8 @@ opensc.dll: $(OBJECTS) $(LIBS)
 	echo LIBRARY $* > $*.def
 	echo EXPORTS >> $*.def
 	type lib$*.exports >> $*.def
-	link $(LINKFLAGS) /dll /def:$*.def /implib:$*.lib /out:opensc.dll $(OBJECTS) $(LIBS) $(OPENPACE_LIB) $(OPENSSL_LIB) $(ZLIB_LIB) gdi32.lib advapi32.lib ws2_32.lib
+	link $(LINKFLAGS) /dll /def:$*.def /implib:$*.lib /out:opensc.dll $(OBJECTS) $(LIBS) $(OPENPACE_LIB) $(OPENSSL_LIB) $(ZLIB_LIB) gdi32.lib Comctl32.lib Shell32.lib user32.lib advapi32.lib ws2_32.lib
 	if EXIST opensc.dll.manifest mt -manifest opensc.dll.manifest -outputresource:opensc.dll;2
 
 opensc_a.lib: $(OBJECTS) $(LIBS)
-	lib $(LIBFLAGS) /out:opensc_a.lib $(OBJECTS) $(LIBS) $(OPENPACE_LIB) $(OPENSSL_LIB) $(ZLIB_LIB) user32.lib advapi32.lib ws2_32.lib
+	lib $(LIBFLAGS) /out:opensc_a.lib $(OBJECTS) $(LIBS) $(OPENPACE_LIB) $(OPENSSL_LIB) $(ZLIB_LIB) gdi32.lib Comctl32.lib Shell32.lib user32.lib advapi32.lib ws2_32.lib

@@ -20,7 +20,7 @@ VS_VERSION_INFO VERSIONINFO
 	FILEFLAGS 0x20L
 #endif
 	FILEOS 0x40004L
-	FILETYPE 0x2L
+	FILETYPE 0x1L
 	FILESUBTYPE 0x0L
 BEGIN
 	BLOCK "StringFileInfo"
@@ -37,7 +37,7 @@ BEGIN
 			VALUE "ProductName", "@OPENSC_VS_FF_PRODUCT_NAME@"
 			VALUE "ProductVersion", "@OPENSC_VERSION_MAJOR@,@OPENSC_VERSION_MINOR@,@OPENSC_VERSION_FIX@,@OPENSC_VERSION_REVISION@"
 			VALUE "SpecialBuild", ""
-			VALUE "FileDescription", "OpenSC minidriver"
+			VALUE "FileDescription", "OpenSC Notify"
 		END
 	END
 	BLOCK "VarFileInfo"

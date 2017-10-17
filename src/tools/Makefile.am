@@ -12,14 +12,16 @@ do_subst = $(SED) \
 	   -e 's,[@]X509DIR[@],$(X509DIR),g'
 
 NPA_TOOL_BUILT_SOURCES = npa-tool-cmdline.h npa-tool-cmdline.c
+OPENSC_NOTIFY_BUILT_SOURCES = opensc-notify-cmdline.h opensc-notify-cmdline.c
 
-MAINTAINERCLEANFILES = $(srcdir)/Makefile.in $(srcdir)/versioninfo-tools.rc
-EXTRA_DIST = Makefile.mak versioninfo-tools.rc.in npa-tool.ggo.in npa-tool.1
+MAINTAINERCLEANFILES = $(srcdir)/Makefile.in $(srcdir)/versioninfo-tools.rc $(srcdir)/versioninfo-opensc-notify.rc
+EXTRA_DIST = Makefile.mak versioninfo-tools.rc.in versioninfo-opensc-notify.rc.in npa-tool.ggo.in npa-tool.1 opensc-notify.ggo.in
 
 noinst_HEADERS = util.h fread_to_eof.h
 noinst_PROGRAMS = sceac-example
-bin_PROGRAMS = opensc-tool opensc-explorer pkcs15-tool pkcs15-crypt \
-	pkcs11-tool cardos-tool eidenv openpgp-tool iasecc-tool
+bin_PROGRAMS = opensc-tool opensc-explorer opensc-notify \
+	pkcs15-tool pkcs15-crypt pkcs11-tool \
+	cardos-tool eidenv openpgp-tool iasecc-tool
 if ENABLE_OPENSSL
 bin_PROGRAMS += cryptoflex-tool pkcs15-init netkey-tool piv-tool \
 	westcos-tool sc-hsm-tool dnie-tool gids-tool npa-tool
@@ -100,6 +102,30 @@ npa-tool.1:
 		--source='$(PACKAGE_STRING)' \
 		$(builddir)/npa-tool$(EXEEXT)
 
+opensc_notify_SOURCES = opensc-notify.c $(OPENSC_NOTIFY_BUILT_SOURCES)
+opensc_notify_LDADD = $(top_builddir)/src/libopensc/libopensc.la $(OPTIONAL_NOTIFY_LIBS)
+opensc_notify_CFLAGS = -I$(top_srcdir)/src $(OPTIONAL_NOTIFY_CFLAGS)
+opensc_notify_CFLAGS += -Wno-unused-but-set-variable -Wno-unknown-warning-option
+
+opensc-notify.c: $(abs_builddir)/opensc-notify.ggo $(OPENSC_NOTIFY_BUILT_SOURCES)
+
+# We only want *cmdline* to be generated when they have explicitly been removed.
+$(OPENSC_NOTIFY_BUILT_SOURCES):
+	$(MAKE) $(abs_builddir)/opensc-notify.ggo
+	$(GENGETOPT) --include-getopt --file-name=opensc-notify-cmdline --output-dir=$(builddir) < $(abs_builddir)/opensc-notify.ggo
+
+$(abs_builddir)/opensc-notify.ggo: opensc-notify.ggo.in 
+	$(do_subst) < $(abs_srcdir)/opensc-notify.ggo.in > $@
+
+# We only want opensc-notify.1 to be generated when it has explicitly been removed.
+opensc-notify.1:
+	$(MAKE) opensc-notify$(EXEEXT)
+	$(HELP2MAN) \
+		--output=$@ \
+		--no-info \
+		--source='$(PACKAGE_STRING)' \
+		$(builddir)/opensc-notify$(EXEEXT)
+
 if WIN32
 opensc_tool_SOURCES += versioninfo-tools.rc
 piv_tool_SOURCES += versioninfo-tools.rc
@@ -117,7 +143,8 @@ openpgp_tool_SOURCES += versioninfo-tools.rc
 iasecc_tool_SOURCES += versioninfo-tools.rc
 sc_hsm_tool_SOURCES += versioninfo-tools.rc
 gids_tool_SOURCES += versioninfo-tools.rc
+opensc_notify_SOURCES += versioninfo-opensc-notify.rc
 endif
 
 clean-local:
-	rm -f $(abs_builddir)/npa-tool.ggo
+	rm -f $(abs_builddir)/npa-tool.ggo $(abs_builddir)/opensc-notify.ggo

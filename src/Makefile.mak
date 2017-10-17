@@ -1,6 +1,6 @@
 TOPDIR = ..
 
-SUBDIRS = common scconf sm pkcs15init \
+SUBDIRS = common scconf ui sm pkcs15init \
 		  libopensc pkcs11 tools tests
 
 default: all

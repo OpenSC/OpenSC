@@ -16,6 +16,7 @@ rm -f /usr/local/lib/opensc-pkcs11.so
 rm -f /usr/local/lib/onepin-opensc-pkcs11.so
 
 # Remove installed files
+rm -rf "/Applications/OpenSC Notify.app"
 rm -rf /Library/OpenSC
 rm -rf /Library/Security/tokend/OpenSC.tokend
 rm -rf /System/Library/Security/tokend/OpenSC.tokend

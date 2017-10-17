@@ -133,6 +133,9 @@ case "${host}" in
 	;;
 esac
 
+AX_CHECK_COMPILE_FLAG(-Wno-error=unused-but-set-variable, [have_unused_but_set_variable="yes"], [have_unused_but_set_variable="no"], [-Werror -Wunknown-warning-option])
+AM_CONDITIONAL([HAVE_UNUSED_BUT_SET_VARIABLE], [test "${have_unused_but_set_variable}" = "yes"])
+
 AC_ARG_ENABLE(
 	[strict],
 	[AS_HELP_STRING([--disable-strict],[disable strict compile mode @<:@disabled@:>@])],
@@ -243,6 +246,13 @@ AC_ARG_ENABLE(
 	[AS_HELP_STRING([--enable-dnie-ui],[enable use of external user interface program to request DNIe pin@<:@disabled@:>@])],
 	,
 	[enable_dnie_ui="no"]
+)
+
+AC_ARG_ENABLE(
+	[notify],
+	[AS_HELP_STRING([--enable-notify],[enable notifications @<:@detect@:>@])],
+	,
+	[enable_notify="detect"]
 )
 
 AC_ARG_ENABLE(
@@ -377,7 +387,7 @@ AC_FUNC_VPRINTF
 AC_CHECK_FUNCS([ \
 	getpass gettimeofday getline memset mkdir \
 	strdup strerror getopt_long getopt_long_only \
-	strlcpy strlcat strnlen
+	strlcpy strlcat strnlen sigaction
 ])
 AC_CHECK_SIZEOF(void *)
 if test "${ac_cv_sizeof_void_p}" = 8; then
@@ -443,12 +453,80 @@ if test "${enable_dnie_ui}" = "yes"; then
 	AC_DEFINE([ENABLE_DNIE_UI], [1], [Enable the use of external user interface program to request DNIe user pin])
 
 	case "${host}" in
-		*-apple-*)
+		*-*-darwin)
 			if test "${enable_dnie_ui}" = "yes"; then
 				LDFLAGS="${LDFLAGS} -framework Carbon"
 			fi
 		;;
 	esac
+fi
+
+case "${host}" in
+	*-*-darwin*)
+			have_notify="yes"
+		;;
+	*)
+			AC_PATH_PROG([GDBUS], [gdbus], [not found])
+			if test "${GDBUS}" = "not found"; then
+				have_notify="no"
+				have_gdbus="no"
+			else
+				have_notify="yes"
+				have_gdbus="yes"
+			fi
+
+			if test "${have_notify}" = "no"; then
+				PKG_CHECK_MODULES( [GIO2], [gio-2.0],
+								  [ have_notify="yes"
+									have_gio2="yes" ],
+								  [ have_notify="no"
+									have_gio2="no" ])
+				saved_CFLAGS="${CFLAGS}"
+				CFLAGS="${CFLAGS} ${GIO2_CFLAGS}"
+				AC_CHECK_HEADERS(gio/gio.h, [],
+								 [ AC_MSG_WARN([glib2 headers not found])
+								   have_notify="no"
+								   have_gio2="no" ])
+				CFLAGS="${saved_CFLAGS}"
+				saved_LIBS="$LIBS"
+				LIBS="$LIBS  ${GIO2_LIBS}"
+				AC_MSG_CHECKING([for g_application_send_notification])
+				AC_TRY_LINK_FUNC(g_application_send_notification, [ AC_MSG_RESULT([yes]) ],
+								 [ AC_MSG_WARN([Cannot link against glib2])
+								   have_notify="no"
+								   have_gio2="no"  ])
+				LIBS="$saved_LIBS"
+			fi
+		;;
+esac
+
+case "${enable_notify}" in
+	no)
+		have_notify="no"
+	;;
+	detect)
+		if test "${have_notify}" = "yes"; then
+			enable_notify="yes"
+		else
+			enable_notify="no"
+		fi
+	;;
+esac
+
+if test "${enable_notify}" = "yes"; then
+	if test "${have_notify}" = "yes"; then
+		AC_DEFINE([ENABLE_NOTIFY], [1], [Use notification libraries and header files])
+		if test "${have_gdbus}" = "yes"; then
+			AC_DEFINE_UNQUOTED([GDBUS], ["${GDBUS}"], [Path to gdbus])
+		fi
+		if test "${have_gio2}" = "yes"; then
+			AC_DEFINE([ENABLE_GIO2], [1], [Use glib2 libraries and header files])
+			OPTIONAL_NOTIFY_CFLAGS="${GIO2_CFLAGS}"
+			OPTIONAL_NOTIFY_LIBS="${GIO2_LIBS}"
+		fi
+	else
+		AC_MSG_ERROR([notification linkage required, but no notification provider was found])
+	fi
 fi
 
 AC_ARG_VAR([ZLIB_CFLAGS], [C compiler flags for zlib])
@@ -918,6 +996,8 @@ AC_SUBST([DEFAULT_SM_MODULE_PATH])
 AC_SUBST([DEBUG_FILE])
 AC_SUBST([PROFILE_DIR])
 AC_SUBST([PROFILE_DIR_DEFAULT])
+AC_SUBST([OPTIONAL_NOTIFY_CFLAGS])
+AC_SUBST([OPTIONAL_NOTIFY_LIBS])
 
 AM_CONDITIONAL([ENABLE_MAN], [test "${enable_man}" = "yes"])
 AM_CONDITIONAL([ENABLE_THREAD_LOCKING], [test "${enable_thread_locking}" = "yes"])
@@ -960,6 +1040,7 @@ AC_CONFIG_FILES([
 	etc/Makefile
 	src/Makefile
 	src/common/Makefile
+	src/ui/Makefile
 	src/libopensc/Makefile
 	src/sm/Makefile
 	src/pkcs11/Makefile
@@ -972,6 +1053,7 @@ AC_CONFIG_FILES([
 	src/tests/regression/Makefile
 	src/tools/Makefile
 	src/tools/versioninfo-tools.rc
+	src/tools/versioninfo-opensc-notify.rc
 	src/smm/Makefile
 	src/minidriver/Makefile
 	src/minidriver/versioninfo-minidriver.rc
@@ -1025,6 +1107,7 @@ minidriver support:      ${enable_minidriver}
 SM support:              ${enable_sm}
 SM default module:       ${DEFAULT_SM_MODULE}
 DNIe UI support:         ${enable_dnie_ui}
+Notification support:    ${enable_notify}
 Debug file:              ${DEBUG_FILE}
 
 PC/SC default provider:  ${DEFAULT_PCSC_PROVIDER}
@@ -1049,6 +1132,9 @@ OPENCT_CFLAGS:           ${OPENCT_CFLAGS}
 OPENCT_LIBS:             ${OPENCT_LIBS}
 PCSC_CFLAGS:             ${PCSC_CFLAGS}
 CRYPTOTOKENKIT_CFLAGS:   ${CRYPTOTOKENKIT_CFLAGS}
+GDBUS:                   ${GDBUS}
+GIO2_CFLAGS:             ${GIO2_CFLAGS}
+GIO2_LIBS:               ${GIO2_LIBS}
 
 EOF
 
