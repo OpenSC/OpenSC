@@ -846,7 +846,7 @@ C_DecryptInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT
 	fprintf(spy_output, "pMechanism->type=%s\n", lookup_enum(MEC_T, pMechanism->mechanism));
 	switch (pMechanism->mechanism) {
 	case CKM_RSA_PKCS_OAEP:
-		if (pMechanism->pParameter != NULL) { /* XXX assuming RSA-OAEP parameter */
+		if (pMechanism->pParameter != NULL) {
  			CK_RSA_PKCS_OAEP_PARAMS *param =
 				(CK_RSA_PKCS_OAEP_PARAMS *) pMechanism->pParameter;
 			fprintf(spy_output, "pMechanism->pParameter->hashAlg=%s\n",
