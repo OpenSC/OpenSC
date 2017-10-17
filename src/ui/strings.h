@@ -47,6 +47,7 @@ enum ui_str {
     NOTIFY_PIN_GOOD_TEXT,
     NOTIFY_PIN_BAD,
     NOTIFY_PIN_BAD_TEXT,
+	MD_PINPAD_DLG_CONTENT_USER_SIGN,
 };
 
 const char *ui_get_str(struct sc_context *ctx, struct sc_atr *atr,

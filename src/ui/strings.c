@@ -106,6 +106,9 @@ const char *ui_get_str(struct sc_context *ctx, struct sc_atr *atr,
 		case MD_PINPAD_DLG_CONTENT_USER:
 			option = "md_pinpad_dlg_content_user";
 			break;
+		case MD_PINPAD_DLG_CONTENT_USER_SIGN:
+			option = "md_pinpad_dlg_content_user_sign";
+			break;
 		case MD_PINPAD_DLG_CONTENT_ADMIN:
 			option = "md_pinpad_dlg_content_admin";
 			break;
@@ -179,6 +182,9 @@ const char *ui_get_str(struct sc_context *ctx, struct sc_atr *atr,
 					str = "OpenSC Smartcard-Anbieter";
 					break;
 				case MD_PINPAD_DLG_CONTENT_USER:
+					str = "Bitte geben Sie Ihre PIN auf dem PIN-Pad ein.";
+					break;
+				case MD_PINPAD_DLG_CONTENT_USER_SIGN:
 					str = "Bitte geben Sie Ihre PIN für die digitale Signatur auf dem PIN-Pad ein.";
 					break;
 				case MD_PINPAD_DLG_CONTENT_ADMIN:
@@ -246,6 +252,9 @@ const char *ui_get_str(struct sc_context *ctx, struct sc_atr *atr,
 					str = "OpenSC Smart Card Provider";
 					break;
 				case MD_PINPAD_DLG_CONTENT_USER:
+					str = "Please enter your PIN on the PIN pad.";
+					break;
+				case MD_PINPAD_DLG_CONTENT_USER_SIGN:
 					str = "Please enter your digital signature PIN on the PIN pad.";
 					break;
 				case MD_PINPAD_DLG_CONTENT_ADMIN:

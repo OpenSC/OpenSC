@@ -2998,8 +2998,11 @@ md_dialog_perform_pin_operation(PCARD_DATA pCardData, int operation, struct sc_p
 			tc.pszContent = wchar_from_char_str(md_get_ui_str(pCardData,
 					MD_PINPAD_DLG_CONTENT_ADMIN));
 			break;
+		case MD_ROLE_USER_SIGN:
+			tc.pszContent = wchar_from_char_str(md_get_ui_str(pCardData,
+					MD_PINPAD_DLG_CONTENT_USER_SIGN));
+			break;
 		case ROLE_USER:
-			/* fall through */
 		default:
 			tc.pszContent = wchar_from_char_str(md_get_ui_str(pCardData,
 					MD_PINPAD_DLG_CONTENT_USER));
