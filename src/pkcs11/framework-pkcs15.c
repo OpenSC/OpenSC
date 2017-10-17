@@ -1213,6 +1213,7 @@ _get_auth_object_by_name(struct sc_pkcs15_card *p15card, char *name)
 	struct sc_pkcs15_object *out = NULL;
 	int rv = SC_ERROR_OBJECT_NOT_FOUND;
 
+	/* please keep me in sync with md_get_pin_by_role() in minidriver */
 	if (!strcmp(name, "UserPIN"))   {
 		/* Try to get 'global' PIN; if no, get the 'local' one */
 		rv = sc_pkcs15_find_pin_by_flags(p15card, SC_PKCS15_PIN_TYPE_FLAGS_PIN_GLOBAL,
