@@ -76,11 +76,9 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 	{ "gpk",	(void *(*)(void)) sc_get_gpk_driver },
 #endif
 	{ "gemsafeV1",	(void *(*)(void)) sc_get_gemsafeV1_driver },
-	{ "miocos",	(void *(*)(void)) sc_get_miocos_driver },
 	{ "asepcos",	(void *(*)(void)) sc_get_asepcos_driver },
 	{ "starcos",	(void *(*)(void)) sc_get_starcos_driver },
 	{ "tcos",	(void *(*)(void)) sc_get_tcos_driver },
-	{ "jcop",	(void *(*)(void)) sc_get_jcop_driver },
 #ifdef ENABLE_OPENSSL
 	{ "oberthur",	(void *(*)(void)) sc_get_oberthur_driver },
 	{ "authentic",	(void *(*)(void)) sc_get_authentic_driver },
@@ -126,6 +124,12 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 	/* The default driver should be last, as it handles all the
 	 * unrecognized cards. */
 	{ "default",	(void *(*)(void)) sc_get_default_driver },
+	{ NULL, NULL }
+};
+
+static const struct _sc_driver_entry old_card_drivers[] = {
+	{ "miocos",	(void *(*)(void)) sc_get_miocos_driver },
+	{ "jcop",	(void *(*)(void)) sc_get_jcop_driver },
 	{ NULL, NULL }
 };
 
@@ -256,6 +260,19 @@ static void add_internal_drvs(struct _sc_ctx_options *opts)
 	}
 }
 
+static void add_old_drvs(struct _sc_ctx_options *opts)
+{
+	const struct _sc_driver_entry *lst;
+	int i;
+
+	lst = old_card_drivers;
+	i = 0;
+	while (lst[i].name != NULL) {
+		add_drv(opts, lst[i].name);
+		i++;
+	}
+}
+
 static void set_defaults(sc_context_t *ctx, struct _sc_ctx_options *opts)
 {
 	ctx->debug = 0;
@@ -316,7 +333,7 @@ load_parameters(sc_context_t *ctx, scconf_block *block, struct _sc_ctx_options *
 {
 	int err = 0;
 	const scconf_list *list;
-	const char *val, *s_internal = "internal";
+	const char *val, *s_internal = "internal", *s_old = "old";
 	int debug;
 #ifdef _WIN32
 	char expanded_val[PATH_MAX];
@@ -372,6 +389,8 @@ load_parameters(sc_context_t *ctx, scconf_block *block, struct _sc_ctx_options *
 	while (list != NULL) {
 		if (strcmp(list->data, s_internal) == 0)
 			add_internal_drvs(opts);
+		else if (strcmp(list->data, s_old) == 0)
+			add_old_drvs(opts);
 		else
 			add_drv(opts, list->data);
 		list = list->next;
@@ -507,11 +526,20 @@ static int load_card_drivers(sc_context_t *ctx, struct _sc_ctx_options *opts)
 		}
 
 		ent = &opts->cdrv[i];
-		for (j = 0; internal_card_drivers[j].name != NULL; j++)
+		for (j = 0; internal_card_drivers[j].name != NULL; j++) {
 			if (strcmp(ent->name, internal_card_drivers[j].name) == 0) {
 				func = (struct sc_card_driver *(*)(void)) internal_card_drivers[j].func;
 				break;
 			}
+		}
+		if (func == NULL) {
+			for (j = 0; old_card_drivers[j].name != NULL; j++) {
+				if (strcmp(ent->name, old_card_drivers[j].name) == 0) {
+					func = (struct sc_card_driver *(*)(void)) old_card_drivers[j].func;
+					break;
+				}
+			}
+		}
 		/* if not initialized assume external module */
 		if (func == NULL)
 			*(void **)(tfunc) = load_dynamic_driver(ctx, &dll, ent->name);

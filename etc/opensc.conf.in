@@ -143,6 +143,9 @@ app default {
 	# from the output of:
 	# $ opensc-tool --list-drivers
 	#
+	# A special value of 'old' will load all
+	# statically linked drivers that may be removed in the future.
+	#
 	# A special value of 'internal' will load all
 	# statically linked drivers. If an unknown (ie. not
 	# internal) driver is supplied, a separate configuration
@@ -150,7 +153,7 @@ app default {
 	# Default: internal
 	# NOTE: When "internal" keyword is used, must be last entry
 	#
-	card_drivers = npa, internal;
+	#card_drivers = old, internal;
 
 	# Card driver configuration blocks.
 
