@@ -9,7 +9,7 @@ all: common.lib libpkcs11.lib libscdl.lib
 common.lib: $(COMMON_OBJECTS)
 	lib $(LIBFLAGS) /out:common.lib $(COMMON_OBJECTS)
 
-libpkcs11.lib: libpkcs11.obj libscdl.obj
+libpkcs11.lib: libpkcs11.obj
 	lib $(LIBFLAGS) /out:libpkcs11.lib libpkcs11.obj
 
 libscdl.lib: libscdl.obj
