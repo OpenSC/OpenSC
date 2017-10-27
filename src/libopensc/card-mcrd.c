@@ -304,7 +304,7 @@ static int mcrd_match_card(sc_card_t * card)
 
 static int mcrd_init(sc_card_t * card)
 {
-	unsigned long flags;
+	unsigned long flags, ext_flags;
 	struct mcrd_priv_data *priv;
 	int r;
 	sc_path_t tmppath;
@@ -329,6 +329,10 @@ static int mcrd_init(sc_card_t * card)
 			flags = SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_HASH_SHA1 | SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_SHA256;
 			/* EstEID v3.0 has 2048 bit keys */
 			_sc_card_add_rsa_alg(card, 2048, flags, 0);
+
+			flags = SC_ALGORITHM_ECDSA_RAW | SC_ALGORITHM_ECDH_CDH_RAW | SC_ALGORITHM_ECDSA_HASH_NONE;
+			ext_flags = SC_ALGORITHM_EXT_EC_NAMEDCURVE | SC_ALGORITHM_EXT_EC_UNCOMPRESES;
+			_sc_card_add_ec_alg(card, 384, flags, ext_flags, NULL);
 			sc_reset(card, 0);
 
 			sc_format_apdu(card, &apdu, SC_APDU_CASE_3, 0xA4, 0x04, 0x00);
@@ -1188,7 +1192,7 @@ static int mcrd_set_security_env(sc_card_t * card,
 	if (is_esteid_card(card)) {
 		/* some sanity checks */
 		if (env->flags & SC_SEC_ENV_ALG_PRESENT) {
-			if (env->algorithm != SC_ALGORITHM_RSA)
+			if (env->algorithm != SC_ALGORITHM_RSA && env->algorithm != SC_ALGORITHM_EC)
 				return SC_ERROR_INVALID_ARGUMENTS;
 		}
 		if (!(env->flags & SC_SEC_ENV_KEY_REF_PRESENT)
@@ -1375,7 +1379,7 @@ static int mcrd_compute_signature(sc_card_t * card,
 	apdu.lc = datalen;
 	apdu.data = data;
 	apdu.datalen = datalen;
-	apdu.le = 0x80;
+	apdu.le = MIN(0x80u, outlen);
 	apdu.resp = out;
 	apdu.resplen = outlen;
 
