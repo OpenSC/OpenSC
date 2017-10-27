@@ -1053,7 +1053,7 @@ gids_get_container_detail(sc_card_t* card, sc_cardctl_gids_get_container_t* cont
 	memset(container, 0, sizeof(sc_cardctl_gids_get_container_t));
 	container->containernum = num;
 
-	if (!records[num].bFlags & CONTAINER_MAP_VALID_CONTAINER) {
+	if (!(records[num].bFlags & CONTAINER_MAP_VALID_CONTAINER)) {
 		return SC_SUCCESS;
 	}
 	// ignore problematic containers
