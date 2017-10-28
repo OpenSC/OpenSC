@@ -255,13 +255,6 @@ AC_ARG_ENABLE(
 	[enable_notify="detect"]
 )
 
-AC_ARG_ENABLE(
-	[werror-declaration-after-statement],
-	[AS_HELP_STRING([--disable-werror-declaration-after-statement],[disable -Werror 'declaration-after-statement' @<:@enabled@:>@])],
-	,
-	[werror_declaration_after_statement="yes"]
-)
-
 AC_ARG_WITH(
 	[xsl-stylesheetsdir],
 	[AS_HELP_STRING([--with-xsl-stylesheetsdir=PATH],[docbook xsl-stylesheets for svn build @<:@detect@:>@])],
@@ -1019,18 +1012,10 @@ AM_CONDITIONAL([GIT_CHECKOUT], [test "${GIT_CHECKOUT}" = "yes"])
 
 if test "${enable_pedantic}" = "yes"; then
 	enable_strict="yes";
-	CFLAGS="${CFLAGS} -pedantic -Wextra"
+	CFLAGS="${CFLAGS} -pedantic"
 fi
 if test "${enable_strict}" = "yes"; then
 	CFLAGS="${CFLAGS} -Wall -Wextra -Wno-unused-parameter -Werror"
-fi
-if test "$GCC" = "yes"; then
-	# This should be resolved not ignored.
-	CFLAGS="-fno-strict-aliasing ${CFLAGS}"
-fi
-
-if test "${werror_declaration_after_statement}" = "yes"; then
-	CFLAGS="${CFLAGS} -Werror=declaration-after-statement"
 fi
 
 AC_CONFIG_FILES([
