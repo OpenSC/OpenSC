@@ -1219,11 +1219,10 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 			reader->vendor = strdup((char *) rbuf);
 		}
 
-		rcount = sizeof rbuf;
+		rcount = sizeof i;
 		if(gpriv->SCardGetAttrib(card_handle, SCARD_ATTR_VENDOR_IFD_VERSION,
-					rbuf, &rcount) == SCARD_S_SUCCESS
-				&& rcount == 4) {
-			i = *(DWORD *) rbuf;
+					(u8 *) &i, &rcount) == SCARD_S_SUCCESS
+				&& rcount == sizeof i) {
 			reader->version_major = (i >> 24) & 0xFF;
 			reader->version_minor = (i >> 16) & 0xFF;
 		}
