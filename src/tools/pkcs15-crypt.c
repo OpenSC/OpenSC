@@ -285,7 +285,7 @@ static int decipher(struct sc_pkcs15_object *obj)
 	}
 	r = write_output(out, r);
 
-	return 0;
+	return r;
 }
 
 static int get_key(unsigned int usage, sc_pkcs15_object_t **result)
@@ -352,7 +352,7 @@ static int get_key(unsigned int usage, sc_pkcs15_object_t **result)
 	return 0;
 }
 
-int main(int argc, char * const argv[])
+int main(int argc, char *argv[])
 {
 	int err = 0, r, c, long_optind = 0;
 	int do_decipher = 0;

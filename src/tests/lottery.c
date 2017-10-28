@@ -24,7 +24,7 @@ int main(int argc, char *argv[])
 	struct timeval tv1, tv2;
 	u8 buf[14];
 
-	i = sc_test_init(&argc, argv);
+	sc_test_init(&argc, argv);
 	for (i = 0; i < 39; i++)
 		freq[i] = 0;
 	c = 0;

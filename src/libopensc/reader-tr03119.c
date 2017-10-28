@@ -494,7 +494,7 @@ static int escape_pin_cmd_to_buf(sc_context_t *ctx,
 		/* GLP PIN length is encoded in 4 bits and block size is always 8 bytes */
 		bmPINBlockString = 0x40 | 0x08;
 	} else if (pin_ref->encoding == SC_PIN_ENCODING_ASCII && data->flags & SC_PIN_CMD_NEED_PADDING) {
-		bmPINBlockString = pin_ref->pad_length;
+		bmPINBlockString = (uint8_t) pin_ref->pad_length;
 	} else {
 		bmPINBlockString = 0x00;
 	}
@@ -566,11 +566,11 @@ static int escape_pin_cmd_to_buf(sc_context_t *ctx,
 			modify->bmPINLengthFormat = bmPINLengthFormat;
 			if (!(data->flags & SC_PIN_CMD_IMPLICIT_CHANGE)
 					&& data->pin1.offset) {
-				modify->bInsertionOffsetOld = data->pin1.offset - 5;
+				modify->bInsertionOffsetOld = (uint8_t) data->pin1.offset - 5;
 			} else {
 				modify->bInsertionOffsetOld = 0;
 			}
-			modify->bInsertionOffsetNew = data->pin2.offset ? data->pin2.offset - 5 : 0;
+			modify->bInsertionOffsetNew = data->pin2.offset ? (uint8_t) data->pin2.offset - 5 : 0;
 			modify->wPINMaxExtraDigit = wPINMaxExtraDigit;
 			modify->bConfirmPIN = CCID_PIN_CONFIRM_NEW
 				| (data->flags & SC_PIN_CMD_IMPLICIT_CHANGE ? 0 : CCID_PIN_INSERT_OLD);
@@ -658,8 +658,6 @@ static int escape_perform_verify(struct sc_reader *reader,
 		goto err;
 	}
 	apdu.lc = apdu.datalen;
-
-	r = SC_SUCCESS;
 
 	r = reader->ops->transmit(reader, &apdu);
 	if (r < 0) {

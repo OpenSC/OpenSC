@@ -1706,17 +1706,12 @@ static int part10_build_verify_pin_block(struct sc_reader *reader, u8 * buf, siz
 	pin_verify->bTeoPrologue[2] = 0x00;
 
 	/* APDU itself */
-	pin_verify->abData[offset++] = apdu->cla;
-	pin_verify->abData[offset++] = apdu->ins;
-	pin_verify->abData[offset++] = apdu->p1;
-	pin_verify->abData[offset++] = apdu->p2;
-
-	/* Copy data if not Case 1 */
-	if (data->pin1.length_offset != 4) {
-		pin_verify->abData[offset++] = apdu->lc;
-		memcpy(&pin_verify->abData[offset], apdu->data, apdu->datalen);
-		offset += apdu->datalen;
-	}
+	LOG_TEST_RET(reader->ctx,
+			sc_apdu2bytes(reader->ctx, apdu,
+				reader->active_protocol, pin_verify->abData,
+				SC_MAX_APDU_BUFFER_SIZE),
+			"Could not encode PIN APDU");
+	offset += sc_apdu_get_length(apdu, reader->active_protocol);
 
 	pin_verify->ulDataLength = HOST_TO_CCID_32(offset); /* APDU size */
 
@@ -1825,17 +1820,12 @@ static int part10_build_modify_pin_block(struct sc_reader *reader, u8 * buf, siz
 	pin_modify->bTeoPrologue[2] = 0x00;
 
 	/* APDU itself */
-	pin_modify->abData[offset++] = apdu->cla;
-	pin_modify->abData[offset++] = apdu->ins;
-	pin_modify->abData[offset++] = apdu->p1;
-	pin_modify->abData[offset++] = apdu->p2;
-
-	/* Copy data if not Case 1 */
-	if (pin_ref->length_offset != 4) {
-		pin_modify->abData[offset++] = apdu->lc;
-		memcpy(&pin_modify->abData[offset], apdu->data, apdu->datalen);
-		offset += apdu->datalen;
-	}
+	LOG_TEST_RET(reader->ctx,
+			sc_apdu2bytes(reader->ctx, apdu,
+				reader->active_protocol, pin_modify->abData,
+				SC_MAX_APDU_BUFFER_SIZE),
+			"Could not encode PIN APDU");
+	offset += sc_apdu_get_length(apdu, reader->active_protocol);
 
 	pin_modify->ulDataLength = HOST_TO_CCID_32(offset); /* APDU size */
 

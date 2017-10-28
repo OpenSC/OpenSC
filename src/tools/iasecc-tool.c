@@ -197,7 +197,7 @@ static int list_apps(FILE *fout)
 	return 0;
 }
 
-int main(int argc, char * const argv[])
+int main(int argc, char *argv[])
 {
 	int err = 0, r, c, long_optind = 0;
 	int do_list_sdos = 0;

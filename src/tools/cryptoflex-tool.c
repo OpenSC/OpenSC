@@ -978,7 +978,7 @@ static int create_pin(void)
 	return create_pin_file(&path, opt_pin_num, "");
 }
 
-int main(int argc, char * const argv[])
+int main(int argc, char *argv[])
 {
 	int err = 0, r, c, long_optind = 0;
 	int action_count = 0;

@@ -7,6 +7,13 @@
 #include <sys/timeb.h>
 #include <sys/stat.h>
 
+#ifdef _MSC_VER 
+// TODO fix data truncation instead of disabling them
+// VC++ 2015 changes truncation warnings from 4244 to 4267.
+#pragma warning (disable : 4267)
+#pragma warning (disable : 4244)
+#endif
+
 #ifndef strcasecmp
 #define strcasecmp stricmp
 #endif
@@ -69,11 +76,11 @@
 #endif
 
 #ifndef OPENSC_VERSION_MAJOR
-#define OPENSC_VERSION_MAJOR "@OPENSC_VERSION_MAJOR@"
+#define OPENSC_VERSION_MAJOR @OPENSC_VERSION_MAJOR@
 #endif
 
 #ifndef OPENSC_VERSION_MINOR
-#define OPENSC_VERSION_MINOR "@OPENSC_VERSION_MINOR@"
+#define OPENSC_VERSION_MINOR @OPENSC_VERSION_MINOR@
 #endif
 
 #ifndef OPENSC_VS_FF_COMPANY_NAME

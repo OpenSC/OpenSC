@@ -655,7 +655,7 @@ static int jcop_set_security_env(sc_card_t *card,
 	     return SC_ERROR_INVALID_ARGUMENTS;
         }
         apdu.le = 0;
-        if (!env->flags & SC_SEC_ENV_ALG_REF_PRESENT)
+        if (!(env->flags & SC_SEC_ENV_ALG_REF_PRESENT))
 	     return SC_ERROR_INVALID_ARGUMENTS;
         if (!(env->flags & SC_SEC_ENV_FILE_REF_PRESENT))
 	     return SC_ERROR_INVALID_ARGUMENTS;

@@ -1654,7 +1654,7 @@ static int unwrap_key(sc_card_t *card, int keyid, const char *inf, const char *p
 
 
 
-int main(int argc, char * const argv[])
+int main(int argc, char *argv[])
 {
 	int err = 0, r, c, long_optind = 0;
 	int action_count = 0;

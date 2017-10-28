@@ -489,6 +489,12 @@ int list_insert_at(list_t *simclist_restrict l, const void *data, unsigned int p
     /* actually append element */
     prec = list_findpos(l, pos-1);
     if (prec == NULL) {
+        if (l->attrs.copy_data) {
+            free(lent->data);
+        }
+        if (!(l->spareelsnum > 0)) {
+            free(lent);
+        }
         return -1;
     }
     succ = prec->next;

@@ -576,6 +576,8 @@ static int npa_mse_set_at_pace(sc_card_t *card, int protocol,
    
 	r = npa_mse_set_at(card, 0xC1, protocol, &key, sizeof key, NULL,
 			0, NULL, 0, NULL, 0, chat, sw1, sw2);
+	if (0 > r)
+		goto err;
 
 	if (*sw1 == 0x63) {
 		if ((*sw2 & 0xc0) == 0xc0) {
@@ -599,6 +601,7 @@ static int npa_mse_set_at_pace(sc_card_t *card, int protocol,
 		r = sc_check_sw(card, *sw1, *sw2);
 	}
 
+err:
 	return r;
 }
 
@@ -1684,8 +1687,9 @@ static int npa_gen_auth_ca(sc_card_t *card, const BUF_MEM *eph_pub_key,
 	}
 	c_data->eph_pub_key = ASN1_OCTET_STRING_new();
 	if (!c_data->eph_pub_key
-			|| !ASN1_OCTET_STRING_set( c_data->eph_pub_key,
-				eph_pub_key->data, eph_pub_key->length)) {
+			|| !ASN1_OCTET_STRING_set(c_data->eph_pub_key,
+				(const unsigned char *) eph_pub_key->data,
+				eph_pub_key->length)) {
 		ssl_error(card->ctx);
 		r = SC_ERROR_INTERNAL;
 		goto err;
