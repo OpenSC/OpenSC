@@ -449,13 +449,13 @@ int sc_pkcs15_verify_pin_with_session_pin(struct sc_pkcs15_card *p15card,
 	sc_log(ctx, "PIN cmd result %i", r);
 	if (r == SC_SUCCESS) {
 		sc_pkcs15_pincache_add(p15card, pin_obj, pincode, pinlen);
-		if (data.cmd == SC_PIN_CMD_GET_SESSION_PIN) {
+		if (data.cmd == SC_PIN_CMD_GET_SESSION_PIN && sessionpinlen) {
 			*sessionpinlen = data.pin2.len;
 		}
 	} else {
 		sc_notify_id(card->ctx, &card->reader->atr, p15card,
 				NOTIFY_PIN_BAD);
-		if (data.cmd == SC_PIN_CMD_GET_SESSION_PIN) {
+		if (data.cmd == SC_PIN_CMD_GET_SESSION_PIN && sessionpinlen) {
 			*sessionpinlen = 0;
 		}
 	}

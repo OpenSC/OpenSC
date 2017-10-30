@@ -1609,44 +1609,56 @@ static int asn1_encode_entry(sc_context_t *ctx, const struct sc_asn1_entry *entr
 		break;
 	case SC_ASN1_BIT_STRING_NI:
 	case SC_ASN1_BIT_STRING:
-		assert(len != NULL);
-		if (entry->type == SC_ASN1_BIT_STRING)
-			r = encode_bit_string((const u8 *) parm, *len, &buf, &buflen, 1);
-		else
-			r = encode_bit_string((const u8 *) parm, *len, &buf, &buflen, 0);
+		if (len != NULL) {
+			if (entry->type == SC_ASN1_BIT_STRING)
+				r = encode_bit_string((const u8 *) parm, *len, &buf, &buflen, 1);
+			else
+				r = encode_bit_string((const u8 *) parm, *len, &buf, &buflen, 0);
+		} else {
+			r = SC_ERROR_INVALID_ARGUMENTS;
+		}
 		break;
 	case SC_ASN1_BIT_FIELD:
-		assert(len != NULL);
-		r = encode_bit_field((const u8 *) parm, *len, &buf, &buflen);
+		if (len != NULL) {
+			r = encode_bit_field((const u8 *) parm, *len, &buf, &buflen);
+		} else {
+			r = SC_ERROR_INVALID_ARGUMENTS;
+		}
 		break;
 	case SC_ASN1_PRINTABLESTRING:
 	case SC_ASN1_OCTET_STRING:
 	case SC_ASN1_UTF8STRING:
-		assert(len != NULL);
-		buf = malloc(*len + 1);
-		if (buf == NULL) {
-			r = SC_ERROR_OUT_OF_MEMORY;
-			break;
+		if (len != NULL) {
+			buf = malloc(*len + 1);
+			if (buf == NULL) {
+				r = SC_ERROR_OUT_OF_MEMORY;
+				break;
+			}
+			buflen = 0;
+			/* If the integer is supposed to be unsigned, insert
+			 * a padding byte if the MSB is one */
+			if ((entry->flags & SC_ASN1_UNSIGNED)
+					&& (((u8 *) parm)[0] & 0x80)) {
+				buf[buflen++] = 0x00;
+			}
+			memcpy(buf + buflen, parm, *len);
+			buflen += *len;
+		} else {
+			r = SC_ERROR_INVALID_ARGUMENTS;
 		}
-		buflen = 0;
-		/* If the integer is supposed to be unsigned, insert
-		 * a padding byte if the MSB is one */
-		if ((entry->flags & SC_ASN1_UNSIGNED)
-		 && (((u8 *) parm)[0] & 0x80)) {
-			buf[buflen++] = 0x00;
-		}
-		memcpy(buf + buflen, parm, *len);
-		buflen += *len;
 		break;
 	case SC_ASN1_GENERALIZEDTIME:
-		assert(len != NULL);
-		buf = malloc(*len);
-		if (buf == NULL) {
-			r = SC_ERROR_OUT_OF_MEMORY;
-			break;
+		if (len != NULL) {
+			buf = malloc(*len);
+			if (buf == NULL) {
+				r = SC_ERROR_OUT_OF_MEMORY;
+				break;
+			}
+			memcpy(buf, parm, *len);
+			buflen = *len;
+		} else {
+			r = SC_ERROR_INVALID_ARGUMENTS;
 		}
-		memcpy(buf, parm, *len);
-		buflen = *len;
 		break;
 	case SC_ASN1_OBJECT:
 		r = sc_asn1_encode_object_id(&buf, &buflen, (struct sc_object_id *) parm);
