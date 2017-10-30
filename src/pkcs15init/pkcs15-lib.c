@@ -3880,6 +3880,10 @@ sc_pkcs15init_create_file(struct sc_profile *profile, struct sc_pkcs15_card *p15
 	int		r;
 
 	LOG_FUNC_CALLED(ctx);
+	if (!file) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+
 	sc_log(ctx, "create file '%s'", sc_print_path(&file->path));
 	/* Select parent DF and verify PINs/key as necessary */
 	r = do_select_parent(profile, p15card, file, &parent);
