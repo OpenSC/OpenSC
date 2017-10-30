@@ -1433,6 +1433,7 @@ awp_update_df_create_prvkey(struct sc_pkcs15_card *p15card, struct sc_profile *p
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 
 	memset(&ikey, 0, sizeof(ikey));
+	memset(&icert, 0, sizeof(icert));
 
 	key_info = (struct sc_pkcs15_prkey_info *)key_obj->data;
 	der = key_obj->content;
