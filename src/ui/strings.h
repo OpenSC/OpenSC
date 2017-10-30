@@ -18,8 +18,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifndef _STRINGS_H
-#define _STRINGS_H
+#ifndef _SC_STRINGS_H
+#define _SC_STRINGS_H
 
 #include "libopensc/pkcs15.h"
 

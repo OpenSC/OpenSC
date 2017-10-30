@@ -21,7 +21,7 @@
 #ifndef _NOTIFY_H
 #define _NOTIFY_H
 
-#include "strings.h"
+#include "ui/strings.h"
 
 #ifdef __cplusplus
 extern "C" {

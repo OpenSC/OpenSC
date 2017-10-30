@@ -19,7 +19,7 @@
  */
 
 #include "libopensc/internal.h"
-#include "strings.h"
+#include "ui/strings.h"
 #include <string.h>
 #include <locale.h>
 
