@@ -72,7 +72,7 @@ if ! test -e ${BUILDPATH}/target/$PREFIX/lib/pkgconfig; then
 		$ENABLE_CRYPTOTOKENKIT \
 		--disable-dependency-tracking \
 		--enable-shared \
-		--disable-static \
+		--enable-static \
 		--enable-strict \
 		--disable-assert \
 		--enable-sm # TODO: remove this (must be sensible default in master)
@@ -89,6 +89,7 @@ if ! test -e ${BUILDPATH}/target/$PREFIX/lib/pkgconfig; then
 
 	# remove garbage
 	rm -f ${BUILDPATH}/target/$PREFIX/lib/*.la
+	rm -f ${BUILDPATH}/target/$PREFIX/lib/*.a
 
 	# generate .bundle (required by Adobe Acrobat)
 	./MacOSX/libtool-bundle ${BUILDPATH}/target/$PREFIX/lib/opensc-pkcs11.so ${BUILDPATH}/target/$PREFIX/lib
