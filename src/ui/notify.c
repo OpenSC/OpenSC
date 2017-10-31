@@ -26,6 +26,7 @@
 
 #if defined(ENABLE_NOTIFY) && (defined(__APPLE__) || (defined(GDBUS) && !defined(_WIN32)))
 
+#include "libopensc/internal.h"
 #include "libopensc/log.h"
 #include <signal.h>
 #include <stdlib.h>
@@ -452,12 +453,16 @@ static void notify_gio(struct sc_context *ctx,
 			}
 
 			if (pass_to_pipe) {
+				ssize_t r;
 				/* close the write end of the pipe */
 				close(pipefd[1]);
 				memset(message_id_str, '\0', sizeof message_id_str);
-				if (0 < read(pipefd[0], message_id_str, sizeof(message_id_str))) {
-					message_id_str[(sizeof message_id_str) - 1] = '\0';
-					sscanf(message_id_str, "(uint32 %"SCNu32",)", &message_id);
+				r = read(pipefd[0], message_id_str, sizeof(message_id_str));
+				if (0 < r) {
+					message_id_str[MIN((sizeof message_id_str) - 1, (size_t) r)] = '\0';
+					if (0 >= sscanf(message_id_str, "(uint32 %"SCNu32",)", &message_id)) {
+						message_id = 0;
+					}
 				}
 				/* close the read end of the pipe */
 				close(pipefd[0]);
