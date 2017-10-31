@@ -3122,12 +3122,12 @@ static int piv_init(sc_card_t *card)
 	 * We want to process them now as this has information on what
 	 * keys and certs the card has and how the pin might be used.
 	 */
-	r = piv_process_history(card);
+	piv_process_history(card);
 
 	r = piv_process_discovery(card);
-
 	if (r > 0)
 		r = 0;
+
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
@@ -3294,7 +3294,7 @@ piv_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 	/* if access to applet is know to be reset by other driver  we select_aid and try again */
 	if ( priv->card_issues & CI_OTHER_AID_LOSE_STATE && priv->pin_cmd_verify_sw1 == 0x6DU) {
 		sc_log(card->ctx, "AID may be lost doing piv_find_aid and retry pin_cmd");
-		r = piv_find_aid(card, priv->aid_file); /* return not tested */
+		piv_find_aid(card, priv->aid_file); /* return not tested */
 
 		priv->pin_cmd_verify = 1; /* tell piv_check_sw its a verify to save sw1, sw2 */
 		r = iso_drv->ops->pin_cmd(card, data, tries_left);

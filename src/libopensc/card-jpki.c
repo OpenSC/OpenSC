@@ -82,11 +82,10 @@ jpki_finish(sc_card_t * card)
 	struct jpki_private_data *drvdata = JPKI_DRVDATA(card);
 
 	LOG_FUNC_CALLED(card->ctx);
-	if (drvdata->mf) {
-		free(drvdata->mf);
-		drvdata->mf = NULL;
-	}
 	if (drvdata) {
+		if (drvdata->mf) {
+			free(drvdata->mf);
+		}
 		free(drvdata);
 		card->drv_data = NULL;
 	}

@@ -1072,7 +1072,6 @@ cmdline_parser_internal (
   
   int override;
   int initialize;
-  int check_required;
   int check_ambiguity;
 
   char *optarg;
@@ -1084,7 +1083,6 @@ cmdline_parser_internal (
   
   override = params->override;
   initialize = params->initialize;
-  check_required = params->check_required;
   check_ambiguity = params->check_ambiguity;
 
   if (initialize)

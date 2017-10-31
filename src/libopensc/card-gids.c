@@ -1259,7 +1259,6 @@ static int gids_create_keyfile(sc_card_t *card, sc_pkcs15_object_t *object) {
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INTERNAL);
 		}
 		// else can be empty if not record
-		keymaprecordnum = 0;
 		keymapbuffersize = 0;
 	} else {
 		keymaprecordnum = (keymapbuffersize - 1) / sizeof(struct gids_keymap_record);

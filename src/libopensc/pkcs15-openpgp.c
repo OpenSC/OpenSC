@@ -369,12 +369,15 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 	}
 
 	/* PKCS#15 DATA object from OpenPGP private DOs */
-	r = sc_pkcs15emu_openpgp_add_data(p15card);
+	sc_pkcs15emu_openpgp_add_data(p15card);
 
-	return 0;
+failed:
+	if (r < 0) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+				"Failed to initialize OpenPGP emulation: %s\n",
+				sc_strerror(r));
+	}
 
-failed:	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Failed to initialize OpenPGP emulation: %s\n",
-			sc_strerror(r));
 	return r;
 }
 

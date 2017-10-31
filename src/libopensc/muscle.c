@@ -788,10 +788,11 @@ static int msc_compute_crypt_final_object(
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 	if(apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 		r = msc_read_object(card, inputId, 2, outputData, dataLength);
-		*outputDataLength = dataLength;
+		if (r >= 0)
+			*outputDataLength = r;
 		msc_delete_object(card, outputId, 0);
 		msc_delete_object(card, inputId, 0);
-		return 0;
+		return r;
 	}
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	if (r) {
