@@ -188,8 +188,10 @@ static int openpgp_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 	/* The OpenPGP supports only 32-bit exponent. */
 	key_info.exponent_len = 32;
 	key_info.exponent = calloc(key_info.exponent_len>>3, 1); /* 1/8 */
-	if (key_info.exponent == NULL)
+	if (key_info.exponent == NULL) {
+		free(key_info.modulus);
 		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
+	}
 
 	r = sc_card_ctl(card, SC_CARDCTL_OPENPGP_GENERATE_KEY, &key_info);
 	if (r < 0)
