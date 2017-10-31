@@ -60,7 +60,6 @@ _iasecc_md_update_keyinfo(struct sc_pkcs15_card *p15card, struct sc_pkcs15_objec
 	LOG_TEST_RET(ctx, rv, "Failed to read container DATA object data");
 
 	offs = 0;
-	rv = SC_ERROR_INVALID_DATA;
 	if (*(ddata->data + offs++) != 0x01)   {
 		sc_pkcs15_free_data_object(ddata);
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);

@@ -774,7 +774,7 @@ static int infocamere_1600_init(sc_pkcs15_card_t * p15card)
 
 	/* return to MF */
 	sc_format_path("3F00", &path);
-	r = sc_select_file(card, &path, NULL);
+	sc_select_file(card, &path, NULL);
 
 	return SC_SUCCESS;
 }

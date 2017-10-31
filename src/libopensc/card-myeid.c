@@ -925,6 +925,7 @@ myeid_compute_raw_2048_signature(struct sc_card *card, const u8 * data, size_t d
 	apdu.data = sbuf;
 
 	r = sc_transmit_apdu(card, &apdu);
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 /* prepare 2nd part of data */
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x80, 0x86);
@@ -1270,7 +1271,6 @@ static int myeid_loadkey(sc_card_t *card, int mode, u8* value, int value_len)
 
 	if(mode == LOAD_KEY_MODULUS && value_len >= 256)
 	{
-		r=0;
 		if((value_len % 2) > 0 && value[0] == 0x00)
 		{
 			value_len--;

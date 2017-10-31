@@ -449,6 +449,10 @@ int do_genkey(sc_card_t *card, u8 key_id, unsigned int key_len)
 	}
 	sc_format_path("006E007300C5", &path);
 	r = sc_select_file(card, &path, &file);
+	if (r < 0) {
+		printf("Failed to retrieve fingerprints. Error %s.\n", sc_strerror(r));
+		return 1;
+	}
 	r = sc_read_binary(card, 0, fingerprints, 60, 0);
 	if (r < 0) {
 		printf("Failed to retrieve fingerprints. Error %s.\n", sc_strerror(r));
