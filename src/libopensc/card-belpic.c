@@ -917,8 +917,6 @@ static int belpic_init(sc_card_t *card)
 {
 	struct belpic_priv_data *priv = NULL;
 	scconf_block *conf_block;
-	u8 applet_version;
-	u8 carddata[BELPIC_CARDDATA_RESP_LEN];
 	int key_size = 1024;
 	int r;
 
@@ -940,15 +938,17 @@ static int belpic_init(sc_card_t *card)
 	card->drv_data = priv;
 	card->cla = 0x00;
 	if (card->type == SC_CARD_TYPE_BELPIC_EID) {
+		u8 carddata[BELPIC_CARDDATA_RESP_LEN];
+		memset(carddata, 0, sizeof(carddata));
+
 		if((r = get_carddata(card, carddata, sizeof(carddata))) < 0) {
 			return r;
 		}
-		applet_version = carddata[BELPIC_CARDDATA_OFF_APPLETVERS];
-		if(applet_version >= 0x17) {
+		if (carddata[BELPIC_CARDDATA_OFF_APPLETVERS] >= 0x17) {
 			key_size = 2048;
 		}
 		_sc_card_add_rsa_alg(card, key_size,
-				     SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE, 0);
+				SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE, 0);
 	}
 
 	/* State that we have an RNG */

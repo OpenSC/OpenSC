@@ -1014,12 +1014,16 @@ static int asepcos_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *pdata,
 	/* Clear the buffer - it may contain pins */
 	sc_mem_clear(sbuf, sizeof(sbuf));
 	/* check for remaining tries if verification failed */
-	if (apdu.sw1 == 0x63) {
-		if ((apdu.sw2 & 0xF0) == 0xC0 && tries_left != NULL)
-			*tries_left = apdu.sw2 & 0x0F;
-		return SC_ERROR_PIN_CODE_INCORRECT;
+	if (r == SC_SUCCESS) {
+		if (apdu.sw1 == 0x63) {
+			if ((apdu.sw2 & 0xF0) == 0xC0 && tries_left != NULL)
+				*tries_left = apdu.sw2 & 0x0F;
+			r = SC_ERROR_PIN_CODE_INCORRECT;
+		}
+		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	}
-	return sc_check_sw(card, apdu.sw1, apdu.sw2);
+
+	return r;
 }
 
 static struct sc_card_driver * sc_get_driver(void)
