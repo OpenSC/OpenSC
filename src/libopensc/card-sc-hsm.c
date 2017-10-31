@@ -190,7 +190,7 @@ static int sc_hsm_select_file_ex(sc_card_t *card,
 		return rv;
 	}
 
-	if ((in_path->value[0] == 0x3F) && (in_path->value[1] == 0x00)) {
+	if ((in_path->len >= 2) && (in_path->value[0] == 0x3F) && (in_path->value[1] == 0x00)) {
 		// The SmartCard-HSM is an applet that is not default selected. Simulate selection of the MF
 		if (in_path->len == 2) {
 			file = sc_file_new();
