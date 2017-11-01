@@ -6,7 +6,7 @@ default: all
 
 TARGETS = opensc-tool.exe opensc-explorer.exe pkcs15-tool.exe pkcs15-crypt.exe \
 		pkcs11-tool.exe cardos-tool.exe eidenv.exe openpgp-tool.exe iasecc-tool.exe \
-		opensc-notify.exe egk-tool.exe \
+		opensc-notify.exe egk-tool.exe opensc-asn1.exe \
 		$(PROGRAMS_OPENSSL)
 
 OBJECTS = util.obj versioninfo-tools.res
@@ -35,6 +35,11 @@ npa-tool.exe: npa-tool-cmdline.obj fread_to_eof.obj $(LIBS)
 egk-tool.exe: egk-tool-cmdline.obj $(LIBS)
 	cl $(COPTS) /c $*.c
 	link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj egk-tool-cmdline.obj $(LIBS) $(ZLIB_LIB) gdi32.lib shell32.lib User32.lib ws2_32.lib
+	mt -manifest exe.manifest -outputresource:$@;1
+
+opensc-asn1.exe: opensc-asn1-cmdline.obj fread_to_eof.obj $(LIBS)
+	cl $(COPTS) /c $*.c
+	link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj opensc-asn1-cmdline.obj fread_to_eof.obj $(LIBS) gdi32.lib shell32.lib User32.lib ws2_32.lib
 	mt -manifest exe.manifest -outputresource:$@;1
 
 .c.exe:

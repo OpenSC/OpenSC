@@ -1,0 +1,8 @@
+package "opensc-asn1"
+purpose "@PACKAGE_SUMMARY@"
+description "Parse ASN.1 data."
+
+text "
+Report bugs to @PACKAGE_BUGREPORT@
+
+Written by Frank Morgner <frankmorgner@gmail.com>"

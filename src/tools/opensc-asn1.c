@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Frank Morgner
+ * Copyright (C) 2017 Frank Morgner <frankmorgner@gmail.com>
  *
  * This file is part of OpenSC.
  *
@@ -17,11 +17,36 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
-#ifndef _FREAD_TO_EOF_H
-#define _FREAD_TO_EOF_H
-
-#include <stddef.h>
-
-int fread_to_eof(const char *file, unsigned char **buf, size_t *buflen);
-
+#ifdef HAVE_CONFIG_H
+#include "config.h"
 #endif
+
+#include "fread_to_eof.h"
+#include "libopensc/asn1.h"
+#include "opensc-asn1-cmdline.h"
+#include <stdlib.h>
+
+int
+main (int argc, char **argv)
+{
+	struct gengetopt_args_info cmdline;
+	unsigned char *buf = NULL;
+	size_t buflen = 0, i;
+
+	if (cmdline_parser(argc, argv, &cmdline) != 0)
+		return 1;
+
+	for (i = 0; i < cmdline.inputs_num; i++) {
+		if (!fread_to_eof(cmdline.inputs[i], &buf, &buflen))
+			continue;
+
+		printf("Parsing '%s' (%"SC_FORMAT_LEN_SIZE_T"u byte%s)\n",
+				cmdline.inputs[i], buflen, buflen == 1 ? "" : "s");
+		sc_asn1_print_tags(buf, buflen);
+	}
+
+	free(buf);
+	cmdline_parser_free (&cmdline);
+
+	return 0;
+}
