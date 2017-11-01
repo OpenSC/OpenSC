@@ -134,9 +134,9 @@ else
 	# Build and copy OpenSCTokenApp
 	xcodebuild -target OpenSCTokenApp -configuration Release -project OpenSCToken/OpenSCTokenApp.xcodeproj install DSTROOT=${BUILDPATH}/target
 
-	#codesign --sign "$SIGNING_IDENTITY" --force --entitlements OpenSCToken/OpenSCToken/opensctoken.entitlements target/Library/OpenSC/bin/*
-	#codesign --sign "$SIGNING_IDENTITY" --force --entitlements OpenSCToken/OpenSCToken/opensctoken.entitlements target/Library/OpenSC/lib/*.dylib
-	#codesign --sign "$SIGNING_IDENTITY" --force --entitlements OpenSCToken/OpenSCToken/opensctoken.entitlements --deep target/Library/OpenSC/lib/opensc-pkcs11.bundle
+	codesign --sign "$SIGNING_IDENTITY" --force --entitlements MacOSX/opensc.entitlements target/Library/OpenSC/bin/*
+	codesign --sign "$SIGNING_IDENTITY" --force --entitlements MacOSX/opensc.entitlements target/Library/OpenSC/lib/*.dylib
+	codesign --sign "$SIGNING_IDENTITY" --force --entitlements MacOSX/opensc.entitlements --deep target/Library/OpenSC/lib/opensc-pkcs11.bundle
 fi
 
 # Prepare target root
