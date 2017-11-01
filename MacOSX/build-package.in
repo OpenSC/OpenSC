@@ -130,8 +130,8 @@ else
 		git clone http://github.com/frankmorgner/OpenSCToken.git
 	fi
 
-	# Build and copy OpenSCToken
-	xcodebuild -target OpenSCToken -configuration Deployment -project OpenSCToken/OpenSCTokenApp.xcodeproj install DSTROOT=${BUILDPATH}/target
+	# Build and copy OpenSCTokenApp
+	xcodebuild -target OpenSCTokenApp -configuration Release -project OpenSCToken/OpenSCTokenApp.xcodeproj install DSTROOT=${BUILDPATH}/target
 
 	#codesign --sign "$SIGNING_IDENTITY" --force --entitlements OpenSCToken/OpenSCToken/opensctoken.entitlements target/Library/OpenSC/bin/*
 	#codesign --sign "$SIGNING_IDENTITY" --force --entitlements OpenSCToken/OpenSCToken/opensctoken.entitlements target/Library/OpenSC/lib/*.dylib
