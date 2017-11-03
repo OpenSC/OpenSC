@@ -229,6 +229,12 @@ static int cac_add_object_to_list(list_t *list, const cac_object_t *object)
 #define CAC_1_RID "\xA0\x00\x00\x00\x79"
 #define CAC_1_CM_AID "\xA0\x00\x00\x00\x30\x00\00"
 
+static const sc_path_t cac_ACA_Path = {
+	"", 0,
+	0,0,SC_PATH_TYPE_DF_NAME,
+	{ CAC_TO_AID(CAC_1_RID "\x10\x00") }
+};
+
 static const sc_path_t cac_CCC_Path = {
 	"", 0,
 	0,0,SC_PATH_TYPE_DF_NAME,
@@ -283,6 +289,8 @@ static const cac_object_t cac_1_objects[] = {
 
 static const int cac_1_object_count = sizeof(cac_1_objects)/sizeof(cac_1_objects[0]);
 
+
+static int cac_select_ACA(sc_card_t *card);
 
 /*
  * use the object id to find our object info on the object in our CAC-1 list
@@ -815,6 +823,8 @@ static int cac_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 		case SC_CARDCTL_CAC_FINAL_GET_GENERIC_OBJECTS:
 			return cac_final_iterator(&priv->general_list);
 		case SC_CARDCTL_CAC_FINAL_GET_CERT_OBJECTS:
+			/* select ACA to be able to verify PIN */
+			cac_select_ACA(card);
 			return cac_final_iterator(&priv->pki_list);
 	}
 
@@ -1157,6 +1167,12 @@ static int cac_select_CCC(sc_card_t *card)
 	return cac_select_file_by_type(card, &cac_CCC_Path, NULL, SC_CARD_TYPE_CAC_II);
 }
 
+/* Select ACA in non-standard location */
+static int cac_select_ACA(sc_card_t *card)
+{
+	return cac_select_file_by_type(card, &cac_ACA_Path, NULL, SC_CARD_TYPE_CAC_II);
+}
+
 static int cac_path_from_cardurl(sc_card_t *card, sc_path_t *path, cac_card_url_t *val, int len)
 {
 	if (len < 10) {
@@ -1473,6 +1489,23 @@ static int cac_find_and_initialize(sc_card_t *card, int initialize)
 			card->type = SC_CARD_TYPE_CAC_II;
 			card->drv_data = priv;
 			return r;
+		}
+	}
+
+	/* Even some ALT tokens can be missing CCC so we should try with ACA */
+	r = cac_select_ACA(card);
+	if (r == SC_SUCCESS) {
+		r = cac_find_first_pki_applet(card, &index);
+	        if (r == SC_SUCCESS) {
+			priv = cac_new_private_data();
+			if (!priv)
+				return SC_ERROR_OUT_OF_MEMORY;
+			r = cac_populate_cac_1(card, index, priv);
+			if (r == SC_SUCCESS) {
+				card->type = SC_CARD_TYPE_CAC_II;
+				card->drv_data = priv;
+				return r;
+			}
 		}
 	}
 
