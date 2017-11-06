@@ -250,6 +250,12 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 		strncpy(pin_obj.label, label, SC_PKCS15_MAX_LABEL_SIZE - 1);
 		pin_obj.flags = pins[i].obj_flags;
 
+		/* get the ACA path in case it needs to be selected before PIN verify */
+		r = sc_card_ctl(card, SC_CARDCTL_CAC_GET_ACA_PATH, &pin_info.path);
+		if (r < 0) {
+			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+		}
+
 		r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
 		if (r < 0)
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
