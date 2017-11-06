@@ -169,6 +169,7 @@ typedef struct cac_private_data {
 	cac_object_t *pki_current;      /* current pki object _ctl function */
 	list_t general_list;            /* list of general containers */
 	cac_object_t *general_current;  /* current object for _ctl function */
+	sc_path_t *aca_path;		/* ACA path to be selected before pin verification */
 } cac_private_data_t;
 
 #define CAC_DATA(card) ((cac_private_data_t*)card->drv_data)
@@ -207,6 +208,7 @@ static void cac_free_private_data(cac_private_data_t *priv)
 {
 	free(priv->cac_id);
 	free(priv->cache_buf);
+	free(priv->aca_path);
 	list_destroy(&priv->pki_list);
 	list_destroy(&priv->general_list);
 	free(priv);
@@ -288,9 +290,6 @@ static const cac_object_t cac_1_objects[] = {
 };
 
 static const int cac_1_object_count = sizeof(cac_1_objects)/sizeof(cac_1_objects[0]);
-
-
-static int cac_select_ACA(sc_card_t *card);
 
 /*
  * use the object id to find our object info on the object in our CAC-1 list
@@ -793,11 +792,21 @@ static int cac_get_serial_nr_from_CUID(sc_card_t* card, sc_serial_number_t* seri
 	if (priv->cac_id_len) {
 		serial->len = MIN(priv->cac_id_len, SC_MAX_SERIALNR);
 		memcpy(serial->value, priv->cac_id, priv->cac_id_len);
-                SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
 	}
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_FILE_NOT_FOUND);
 }
 
+static int cac_get_ACA_path(sc_card_t *card, sc_path_t *path)
+{
+	cac_private_data_t * priv = CAC_DATA(card);
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	if (priv->aca_path) {
+		*path = *priv->aca_path;
+	}
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
+}
 
 static int cac_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 {
@@ -810,6 +819,8 @@ static int cac_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 	}
 	switch(cmd) {
+		case SC_CARDCTL_CAC_GET_ACA_PATH:
+			return cac_get_ACA_path(card, (sc_path_t *) ptr);
 		case SC_CARDCTL_GET_SERIALNR:
 			return cac_get_serial_nr_from_CUID(card, (sc_serial_number_t *) ptr);
 		case SC_CARDCTL_CAC_INIT_GET_GENERIC_OBJECTS:
@@ -823,8 +834,6 @@ static int cac_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 		case SC_CARDCTL_CAC_FINAL_GET_GENERIC_OBJECTS:
 			return cac_final_iterator(&priv->general_list);
 		case SC_CARDCTL_CAC_FINAL_GET_CERT_OBJECTS:
-			/* select ACA to be able to verify PIN */
-			cac_select_ACA(card);
 			return cac_final_iterator(&priv->pki_list);
 	}
 
@@ -1502,6 +1511,10 @@ static int cac_find_and_initialize(sc_card_t *card, int initialize)
 				return SC_ERROR_OUT_OF_MEMORY;
 			r = cac_populate_cac_1(card, index, priv);
 			if (r == SC_SUCCESS) {
+				priv->aca_path = malloc(sizeof(sc_path_t));
+				if (!priv->aca_path)
+					return SC_ERROR_OUT_OF_MEMORY;
+				memcpy(priv->aca_path, &cac_ACA_Path, sizeof(sc_path_t));
 				card->type = SC_CARD_TYPE_CAC_II;
 				card->drv_data = priv;
 				return r;
