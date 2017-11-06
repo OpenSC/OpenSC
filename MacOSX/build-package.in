@@ -70,6 +70,7 @@ if ! test -e ${BUILDPATH}/target/$PREFIX/lib/pkgconfig; then
 		--enable-cvcdir=$PREFIX/etc/cvc \
 		--enable-x509dir=$PREFIX/etc/x509 \
 		$ENABLE_CRYPTOTOKENKIT \
+		--disable-notify \
 		--disable-dependency-tracking \
 		--enable-shared \
 		--enable-static \
