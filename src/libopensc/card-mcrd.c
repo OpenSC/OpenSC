@@ -1430,7 +1430,7 @@ static int mcrd_decipher(struct sc_card *card,
 	sbuf[6] = crgram_len; // External Public Key Len
 	memcpy(&sbuf[7], crgram, crgram_len);
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x80, 0x86);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_4, 0x2A, 0x80, 0x86);
 	apdu.lc = sbuf_len;
 	apdu.data = sbuf;
 	apdu.datalen = sbuf_len;
