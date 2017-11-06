@@ -1401,9 +1401,9 @@ static int mcrd_decipher(struct sc_card *card,
 {
 	sc_security_env_t *env = NULL;
 	int r = 0;
-	size_t sbuf_len = crgram_len + 7;
+	size_t sbuf_len = 0, tags1_len = 0, tags2_len = 0;
 	sc_apdu_t apdu;
-	u8 *sbuf = NULL;
+	u8 *sbuf = NULL, *p = NULL;
 
 	if (card == NULL || crgram == NULL || out == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -1420,16 +1420,28 @@ static int mcrd_decipher(struct sc_card *card,
 		 env->operation, crgram_len, crgram_len, env->key_ref[0],
 		 env->algorithm, env->algorithm_flags);
 
-	sbuf = malloc(sbuf_len);
-	sbuf[0] = 0xA6; // Control Reference Template Tag for Key Agreement (ISO 7816-4:2013 Table 54)
-	sbuf[1] = 3 + 2 + crgram_len; // Length of the Control reference Template
-	sbuf[2] = 0x7F; // Ephemeral public key Template Tag (ISO 7816-8:2016 Table 3)
-	sbuf[3] = 0x49;
-	sbuf[4] = 2 + crgram_len; // Length of ephemeral public key Template
-	sbuf[5] = 0x86; // External Public Key
-	sbuf[6] = crgram_len; // External Public Key Len
-	memcpy(&sbuf[7], crgram, crgram_len);
+	// Calculate length of buffer
+	tags1_len = sc_asn1_put_tag(0x86, NULL, crgram_len, NULL, 0, NULL);
+	LOG_TEST_RET(card->ctx, tags1_len, "Error handling TLV.");
+	tags2_len = sc_asn1_put_tag(0x7F49, NULL, tags1_len, NULL, 0, NULL);
+	LOG_TEST_RET(card->ctx, tags2_len, "Error handling TLV.");
+	sbuf_len = sc_asn1_put_tag(0xA6, NULL, tags2_len, NULL, 0, NULL);
+	LOG_TEST_RET(card->ctx, sbuf_len, "Error handling TLV.");
 
+	// Create buffer
+	sbuf = malloc(sbuf_len);
+	p = sbuf;
+	// Control Reference Template Tag for Key Agreement (ISO 7816-4:2013 Table 54)
+	r = sc_asn1_put_tag(0xA6, NULL, tags2_len, p, sbuf_len, &p);
+	LOG_TEST_RET(card->ctx, r, "Error handling TLV.");
+	// Ephemeral public key Template Tag (ISO 7816-8:2016 Table 3)
+	r = sc_asn1_put_tag(0x7F49, NULL, tags1_len, p, sbuf_len - (p - sbuf), &p);
+	LOG_TEST_RET(card->ctx, r, "Error handling TLV.");
+	// External Public Key
+	r = sc_asn1_put_tag(0x86, crgram, crgram_len, p, sbuf_len - (p - sbuf), &p);
+	LOG_TEST_RET(card->ctx, r, "Error handling TLV.");
+
+	// Create APDU
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4, 0x2A, 0x80, 0x86);
 	apdu.lc = sbuf_len;
 	apdu.data = sbuf;
