@@ -776,6 +776,8 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 			if (r == SC_SUCCESS) {
 				token_name = malloc (cn_len+1);
 				if (!token_name) {
+					sc_pkcs15_free_certificate(cert_out);
+					free(cn_name);
 					SC_FUNC_RETURN(card->ctx,
 						SC_ERROR_OUT_OF_MEMORY, r);
 				}
