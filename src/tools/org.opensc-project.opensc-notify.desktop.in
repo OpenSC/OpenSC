@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=OpenSC Notify
+Type=Application
+Comment=Monitor smart card events to send notifications.
+Exec=@bindir@/opensc-notify
+Icon=preferences-system-notifications
+Categories=Security;System;
