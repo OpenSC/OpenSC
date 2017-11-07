@@ -24,7 +24,7 @@
 
 #include "notify.h"
 
-#if defined(ENABLE_NOTIFY) && (defined(__APPLE__) || (defined(GDBUS) && !defined(_WIN32)))
+#if defined(ENABLE_NOTIFY) && (defined(__APPLE__))
 
 #include "libopensc/internal.h"
 #include "libopensc/log.h"
@@ -371,116 +371,16 @@ void sc_notify_id(struct sc_context *ctx, struct sc_atr *atr,
 	notify_proxy(ctx, title, NULL, text, icon, NULL, group);
 }
 
-#elif defined(ENABLE_NOTIFY) && defined(GDBUS) && !defined(_WIN32)
-
-#include <inttypes.h>
-/* save the notification's id for replacement with a new one */
-uint32_t message_id = 0;
-
-static void notify_gio(struct sc_context *ctx,
-		const char *title, const char *text, const char *icon,
-		const char *group)
-{
-	char message_id_str[22];
-	int pipefd[2];
-	int pass_to_pipe = 1;
-	snprintf(message_id_str, sizeof message_id_str, "%"PRIu32, message_id);
-
-	if (child > 0) {
-		int status;
-		if (0 == waitpid(child, &status, WNOHANG)) {
-			kill(child, SIGKILL);
-			usleep(100);
-			if (0 == waitpid(child, &status, WNOHANG)) {
-				sc_log(ctx, "Can't kill %ld, skipping current notification", (long) child);
-				return;
-			}
-		}
-	}
-
-	if (0 == pipe(pipefd)) {
-		pass_to_pipe = 1;
-	}
-
-	child = fork();
-	switch (child) {
-		case 0:
-			/* child process */
-			if (pass_to_pipe) {
-				/* close reading end of the pipe */
-				close(pipefd[0]);
-				/* send stdout to the pipe */
-				dup2(pipefd[1], 1);
-				/* this descriptor is no longer needed */
-				close(pipefd[1]);
-			}
-
-			if (0 > execl(GDBUS, GDBUS,
-						"call", "--session",
-						"--dest", "org.freedesktop.Notifications",
-						"--object-path", "/org/freedesktop/Notifications",
-						"--method", "org.freedesktop.Notifications.Notify",
-						"org.opensc-project",
-						message_id_str,
-						icon ? icon : "",
-						title ? title : "",
-						text ? text : "",
-						"[]", "{}", "5000",
-						(char *) NULL)) {
-				perror("exec failed");
-				exit(1);
-			}
-			break;
-		case -1:
-			sc_log(ctx, "failed to fork for notification");
-			break;
-		default:
-			/* parent process */
-
-			if (ctx) {
-				sc_log(ctx, "Created %ld for notification:", (long) child);
-				sc_log(ctx, "%s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s", GDBUS,
-						"call", "--session",
-						"--dest", "org.freedesktop.Notifications",
-						"--object-path", "/org/freedesktop/Notifications",
-						"--method", "org.freedesktop.Notifications.Notify",
-						"org.opensc-project",
-						message_id_str,
-						icon ? icon : "",
-						title ? title : "",
-						text ? text : "",
-						"[]", "{}", "5000");
-			}
-
-			if (pass_to_pipe) {
-				ssize_t r;
-				/* close the write end of the pipe */
-				close(pipefd[1]);
-				memset(message_id_str, '\0', sizeof message_id_str);
-				r = read(pipefd[0], message_id_str, sizeof(message_id_str));
-				if (0 < r) {
-					message_id_str[MIN((sizeof message_id_str) - 1, (size_t) r)] = '\0';
-					if (0 >= sscanf(message_id_str, "(uint32 %"SCNu32",)", &message_id)) {
-						message_id = 0;
-					}
-				}
-				/* close the read end of the pipe */
-				close(pipefd[0]);
-			}
-			break;
-	}
-}
-
 #elif defined(ENABLE_NOTIFY) && defined(ENABLE_GIO2)
 
-static GtkApplication *application = NULL;
-
 #include <gio/gio.h>
+
+static GApplication *application = NULL;
 
 void sc_notify_init(void)
 {
 	sc_notify_close();
-	application = g_application_new("org.opensc-project", G_APPLICATION_FLAGS_NONE);
+	application = g_application_new("org.opensc-project.opensc-notify", G_APPLICATION_FLAGS_NONE);
 	if (application) {
 		g_application_register(application, NULL, NULL);
 	}
@@ -504,7 +404,9 @@ static void notify_gio(struct sc_context *ctx,
 		return;
 	}
 
-	g_notification_set_body (notification, text);
+	if (text) {
+		g_notification_set_body (notification, text);
+	}
 	if (icon) {
 		gicon = g_themed_icon_new (icon);
 		if (gicon) {
@@ -530,7 +432,7 @@ void sc_notify_id(struct sc_context *ctx, struct sc_atr *atr,
 
 #endif
 
-#if defined(ENABLE_NOTIFY) && (defined(ENABLE_GIO2) || defined(GDBUS) && !defined(_WIN32))
+#if defined(ENABLE_NOTIFY) && defined(ENABLE_GIO2)
 void sc_notify(const char *title, const char *text)
 {
 	notify_gio(NULL, title, text, NULL, NULL);
