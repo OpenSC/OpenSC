@@ -398,28 +398,30 @@ static void notify_gio(struct sc_context *ctx,
 		const char *title, const char *text, const char *icon,
 		const char *group)
 {
-	GIcon *gicon = NULL;
-	GNotification *notification = g_notification_new (title);
-	if (!notification) {
-		return;
-	}
-
-	if (text) {
-		g_notification_set_body (notification, text);
-	}
-	if (icon) {
-		gicon = g_themed_icon_new (icon);
-		if (gicon) {
-			g_notification_set_icon (notification, gicon);
+	if (application) {
+		GIcon *gicon = NULL;
+		GNotification *notification = g_notification_new (title);
+		if (!notification) {
+			return;
 		}
-	}
 
-	g_application_send_notification(application, group, notification);
+		if (text) {
+			g_notification_set_body (notification, text);
+		}
+		if (icon) {
+			gicon = g_themed_icon_new (icon);
+			if (gicon) {
+				g_notification_set_icon (notification, gicon);
+			}
+		}
 
-	if (gicon) {
-		g_object_unref(gicon);
+		g_application_send_notification(application, group, notification);
+
+		if (gicon) {
+			g_object_unref(gicon);
+		}
+		g_object_unref(notification);
 	}
-	g_object_unref(notification);
 }
 
 #else

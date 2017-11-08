@@ -30,6 +30,7 @@
 #endif
 #include <ctype.h>
 #include "util.h"
+#include "ui/notify.h"
 
 int
 is_string_valid_atr(const char *atr_str)
@@ -53,6 +54,8 @@ util_connect_card_ex(sc_context_t *ctx, sc_card_t **cardp,
 	struct sc_reader *reader = NULL, *found = NULL;
 	struct sc_card *card = NULL;
 	int r;
+
+	sc_notify_init();
 
 	if (do_wait) {
 		unsigned int event;
@@ -354,6 +357,9 @@ util_fatal(const char *fmt, ...)
 	vfprintf(stderr, fmt, ap);
 	fprintf(stderr, "\nAborting.\n");
 	va_end(ap);
+
+	sc_notify_close();
+
 	exit(1);
 }
 
