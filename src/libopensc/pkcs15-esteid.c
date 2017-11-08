@@ -110,8 +110,10 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 		if (r < 0)
 			return SC_ERROR_INTERNAL;
 		if (i == 0) {
-			sc_pkcs15_cert_t *cert;
+			sc_pkcs15_cert_t *cert = NULL;
 			r = sc_pkcs15_read_certificate(p15card, &cert_info, &cert);
+			if (r < 0)
+				return SC_ERROR_INTERNAL;
 			if (cert->key->algorithm == SC_ALGORITHM_EC)
 				field_length = cert->key->u.ec.params.field_length;
 			else
