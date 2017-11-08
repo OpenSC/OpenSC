@@ -35,6 +35,7 @@
 #endif /* PKCS11_THREAD_LOCKING */
 
 #include "sc-pkcs11.h"
+#include "ui/notify.h"
 
 #ifndef MODULE_APP_NAME
 #define MODULE_APP_NAME "opensc-pkcs11"
@@ -237,6 +238,8 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs)
 		return CKR_CRYPTOKI_ALREADY_INITIALIZED;
 	}
 
+	sc_notify_init();
+
 	rv = sc_pkcs11_init_lock((CK_C_INITIALIZE_ARGS_PTR) pInitArgs);
 	if (rv != CKR_OK)
 		goto out;
@@ -299,6 +302,8 @@ CK_RV C_Finalize(CK_VOID_PTR pReserved)
 
 	if (pReserved != NULL_PTR)
 		return CKR_ARGUMENTS_BAD;
+
+	sc_notify_close();
 
 	if (context == NULL)
 		return CKR_CRYPTOKI_NOT_INITIALIZED;
