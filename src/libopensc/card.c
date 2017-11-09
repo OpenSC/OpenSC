@@ -576,7 +576,7 @@ int sc_read_binary(sc_card_t *card, unsigned int idx,
 	if (card->ops->read_binary == NULL)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 
-	if (count > max_le) {
+	if (count > max_le && !(card->caps & SC_CARD_CAP_READ_BINARY_NO_BREAK)) {
 		int bytes_read = 0;
 		unsigned char *p = buf;
 
