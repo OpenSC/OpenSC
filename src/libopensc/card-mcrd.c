@@ -1433,13 +1433,22 @@ static int mcrd_decipher(struct sc_card *card,
 	p = sbuf;
 	// Control Reference Template Tag for Key Agreement (ISO 7816-4:2013 Table 54)
 	r = sc_asn1_put_tag(0xA6, NULL, tags2_len, p, sbuf_len, &p);
-	LOG_TEST_RET(card->ctx, r, "Error handling TLV.");
+	if (r) {
+		free(sbuf);
+		LOG_TEST_RET(card->ctx, r, "Error handling TLV.");
+	}
 	// Ephemeral public key Template Tag (ISO 7816-8:2016 Table 3)
 	r = sc_asn1_put_tag(0x7F49, NULL, tags1_len, p, sbuf_len - (p - sbuf), &p);
-	LOG_TEST_RET(card->ctx, r, "Error handling TLV.");
+	if (r) {
+		free(sbuf);
+		LOG_TEST_RET(card->ctx, r, "Error handling TLV.");
+	}
 	// External Public Key
 	r = sc_asn1_put_tag(0x86, crgram, crgram_len, p, sbuf_len - (p - sbuf), &p);
-	LOG_TEST_RET(card->ctx, r, "Error handling TLV.");
+	if (r) {
+		free(sbuf);
+		LOG_TEST_RET(card->ctx, r, "Error handling TLV.");
+	}
 
 	// Create APDU
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4, 0x2A, 0x80, 0x86);
