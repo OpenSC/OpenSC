@@ -59,9 +59,9 @@ static struct sc_atr_table mcrd_atrs[] = {
 	{NULL, NULL, NULL, 0, 0, NULL}
 };
 
-static unsigned char EstEID_v3_AID[] = {0xF0, 0x45, 0x73, 0x74, 0x45, 0x49, 0x44, 0x20, 0x76, 0x65, 0x72, 0x20, 0x31, 0x2E, 0x30};
-static unsigned char EstEID_v35_AID[] = {0xD2, 0x33, 0x00, 0x00, 0x00, 0x45, 0x73, 0x74, 0x45, 0x49, 0x44, 0x20, 0x76, 0x33, 0x35};
-static unsigned char AzeDIT_v35_AID[] = {0xD0, 0x31, 0x00, 0x00, 0x00, 0x44, 0x69, 0x67, 0x69, 0x49, 0x44};
+static const unsigned char EstEID_v3_AID[] = {0xF0, 0x45, 0x73, 0x74, 0x45, 0x49, 0x44, 0x20, 0x76, 0x65, 0x72, 0x20, 0x31, 0x2E, 0x30};
+static const unsigned char EstEID_v35_AID[] = {0xD2, 0x33, 0x00, 0x00, 0x00, 0x45, 0x73, 0x74, 0x45, 0x49, 0x44, 0x20, 0x76, 0x33, 0x35};
+static const unsigned char AzeDIT_v35_AID[] = {0xD0, 0x31, 0x00, 0x00, 0x00, 0x44, 0x69, 0x67, 0x69, 0x49, 0x44};
 
 static struct sc_card_operations mcrd_ops;
 static struct sc_card_driver mcrd_drv = {
@@ -1419,9 +1419,9 @@ static int mcrd_decipher(struct sc_card *card,
 {
 	sc_security_env_t *env = NULL;
 	int r = 0;
-	size_t sbuf_len = 0, tags1_len = 0, tags2_len = 0;
+	size_t sbuf_len = 0;
 	sc_apdu_t apdu;
-	u8 *sbuf = NULL, *p = NULL;
+	u8 *sbuf = NULL;
 	struct sc_asn1_entry asn1_control[2], asn1_ephermal[2], asn1_public[2];
 
 	if (card == NULL || crgram == NULL || out == NULL)
@@ -1443,7 +1443,7 @@ static int mcrd_decipher(struct sc_card *card,
 	sc_copy_asn1_entry(c_asn1_control, asn1_control);
 	sc_copy_asn1_entry(c_asn1_ephermal, asn1_ephermal);
 	sc_copy_asn1_entry(c_asn1_public, asn1_public);
-	sc_format_asn1_entry(asn1_public + 0, crgram, &crgram_len, 1);
+	sc_format_asn1_entry(asn1_public + 0, (void*)crgram, &crgram_len, 1);
 	sc_format_asn1_entry(asn1_ephermal + 0, &asn1_public, NULL, 1);
 	sc_format_asn1_entry(asn1_control + 0, &asn1_ephermal, NULL, 1);
 	r = sc_asn1_encode(card->ctx, asn1_control, &sbuf, &sbuf_len);
