@@ -119,6 +119,24 @@ struct mcrd_priv_data {
 
 #define DRVDATA(card)        ((struct mcrd_priv_data *) ((card)->drv_data))
 
+// Control Reference Template Tag for Key Agreement (ISO 7816-4:2013 Table 54)
+static const struct sc_asn1_entry c_asn1_control[] = {
+	{ "control", SC_ASN1_STRUCT, SC_ASN1_CONS | SC_ASN1_CTX | 0xA6, 0, NULL, NULL },
+	{ NULL, 0, 0, 0, NULL, NULL }
+};
+
+// Ephemeral public key Template Tag (ISO 7816-8:2016 Table 3)
+static const struct sc_asn1_entry c_asn1_ephermal[] = {
+	{ "ephemeral", SC_ASN1_STRUCT, SC_ASN1_CONS | SC_ASN1_APP | 0x7F49, 0, NULL, NULL },
+	{ NULL, 0, 0, 0, NULL, NULL }
+};
+
+// External Public Key
+static const struct sc_asn1_entry c_asn1_public[] = {
+	{ "publicKey", SC_ASN1_OCTET_STRING, SC_ASN1_CTX | 0x86, 0, NULL, NULL },
+	{ NULL, 0, 0, 0, NULL, NULL }
+};
+
 static int load_special_files(sc_card_t * card);
 static int select_part(sc_card_t * card, u8 kind, unsigned short int fid,
 		       sc_file_t ** file);
@@ -1404,6 +1422,7 @@ static int mcrd_decipher(struct sc_card *card,
 	size_t sbuf_len = 0, tags1_len = 0, tags2_len = 0;
 	sc_apdu_t apdu;
 	u8 *sbuf = NULL, *p = NULL;
+	struct sc_asn1_entry asn1_control[2], asn1_ephermal[2], asn1_public[2];
 
 	if (card == NULL || crgram == NULL || out == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -1420,35 +1439,15 @@ static int mcrd_decipher(struct sc_card *card,
 		 env->operation, crgram_len, crgram_len, env->key_ref[0],
 		 env->algorithm, env->algorithm_flags);
 
-	// Calculate length of buffer
-	tags1_len = sc_asn1_put_tag(0x86, NULL, crgram_len, NULL, 0, NULL);
-	LOG_TEST_RET(card->ctx, tags1_len, "Error handling TLV.");
-	tags2_len = sc_asn1_put_tag(0x7F49, NULL, tags1_len, NULL, 0, NULL);
-	LOG_TEST_RET(card->ctx, tags2_len, "Error handling TLV.");
-	sbuf_len = sc_asn1_put_tag(0xA6, NULL, tags2_len, NULL, 0, NULL);
-	LOG_TEST_RET(card->ctx, sbuf_len, "Error handling TLV.");
-
-	// Create buffer
-	sbuf = malloc(sbuf_len);
-	p = sbuf;
-	// Control Reference Template Tag for Key Agreement (ISO 7816-4:2013 Table 54)
-	r = sc_asn1_put_tag(0xA6, NULL, tags2_len, p, sbuf_len, &p);
-	if (r) {
-		free(sbuf);
-		LOG_TEST_RET(card->ctx, r, "Error handling TLV.");
-	}
-	// Ephemeral public key Template Tag (ISO 7816-8:2016 Table 3)
-	r = sc_asn1_put_tag(0x7F49, NULL, tags1_len, p, sbuf_len - (p - sbuf), &p);
-	if (r) {
-		free(sbuf);
-		LOG_TEST_RET(card->ctx, r, "Error handling TLV.");
-	}
-	// External Public Key
-	r = sc_asn1_put_tag(0x86, crgram, crgram_len, p, sbuf_len - (p - sbuf), &p);
-	if (r) {
-		free(sbuf);
-		LOG_TEST_RET(card->ctx, r, "Error handling TLV.");
-	}
+	// Encode TLV
+	sc_copy_asn1_entry(c_asn1_control, asn1_control);
+	sc_copy_asn1_entry(c_asn1_ephermal, asn1_ephermal);
+	sc_copy_asn1_entry(c_asn1_public, asn1_public);
+	sc_format_asn1_entry(asn1_public + 0, crgram, &crgram_len, 1);
+	sc_format_asn1_entry(asn1_ephermal + 0, &asn1_public, NULL, 1);
+	sc_format_asn1_entry(asn1_control + 0, &asn1_ephermal, NULL, 1);
+	r = sc_asn1_encode(card->ctx, asn1_control, &sbuf, &sbuf_len);
+	LOG_TEST_RET(card->ctx, r, "Error encoding TLV.");
 
 	// Create APDU
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4, 0x2A, 0x80, 0x86);
