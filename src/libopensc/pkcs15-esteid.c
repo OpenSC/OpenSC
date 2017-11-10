@@ -219,8 +219,8 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 		prkey_info.modulus_length = modulus_length;
 		if (i == 1)
 			prkey_info.usage = SC_PKCS15_PRKEY_USAGE_NONREPUDIATION;
-		else if(field_length > 0) // ECC has only sign usage
-			prkey_info.usage = SC_PKCS15_PRKEY_USAGE_SIGN;
+		else if(field_length > 0) // ECC has sign and derive usage
+			prkey_info.usage = SC_PKCS15_PRKEY_USAGE_SIGN | SC_PKCS15_PRKEY_USAGE_DERIVE;
 		else
 			prkey_info.usage = SC_PKCS15_PRKEY_USAGE_SIGN | SC_PKCS15_PRKEY_USAGE_ENCRYPT | SC_PKCS15_PRKEY_USAGE_DECRYPT;
 
