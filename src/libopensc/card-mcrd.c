@@ -326,9 +326,6 @@ static int mcrd_init(sc_card_t * card)
 		/* Select the EstEID AID to get to a known state.
 		 * For some reason a reset is required as well... */
 		if (card->type == SC_CARD_TYPE_MCRD_ESTEID_V30) {
-			if (card->reader && card->reader->active_protocol == SC_PROTO_T0)
-				card->caps |= SC_CARD_CAP_READ_BINARY_NO_BREAK;
-
 			flags = SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_HASH_SHA1 | SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_SHA256;
 			/* EstEID v3.0 has 2048 bit keys */
 			_sc_card_add_rsa_alg(card, 2048, flags, 0);
@@ -350,15 +347,18 @@ static int mcrd_init(sc_card_t * card)
 			if(apdu.sw1 != 0x90 && apdu.sw2 != 0x00)
 			{
 				sc_format_apdu(card, &apdu, SC_APDU_CASE_3, 0xA4, 0x04, 0x00);
-	                        apdu.lc = sizeof(EstEID_v35_AID);
-        	                apdu.data = EstEID_v35_AID;
-                	        apdu.datalen = sizeof(EstEID_v35_AID);
-                        	apdu.resplen = 0;
-	                        apdu.le = 0;
+							apdu.lc = sizeof(EstEID_v35_AID);
+							apdu.data = EstEID_v35_AID;
+							apdu.datalen = sizeof(EstEID_v35_AID);
+							apdu.resplen = 0;
+							apdu.le = 0;
 				r = sc_transmit_apdu(card, &apdu);
-	                        SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
-        	                sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "SELECT AID: %02X%02X", apdu.sw1, apdu.sw2);
-				if (apdu.sw1 != 0x90 && apdu.sw2 != 0x00) {
+							SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+							sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "SELECT AID: %02X%02X", apdu.sw1, apdu.sw2);
+				if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
+					if (card->reader && card->reader->active_protocol == SC_PROTO_T0)
+						card->caps |= SC_CARD_CAP_READ_BINARY_NO_BREAK;
+				} else {
 					sc_format_apdu(card, &apdu, SC_APDU_CASE_3, 0xA4, 0x04, 0x00);
 					apdu.lc = sizeof(AzeDIT_v35_AID);
 					apdu.data = AzeDIT_v35_AID;
