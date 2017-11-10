@@ -43,13 +43,13 @@ static const char *tag2str(unsigned int tag)
 {
 	static const char *tags[] = {
 		"EOC", "BOOLEAN", "INTEGER", "BIT STRING", "OCTET STRING",	/* 0-4 */
-		"NULL", "OBJECT", "OBJECT DESCRIPTOR", "EXTERNAL", "REAL",	/* 5-9 */
-		"ENUMERATED", "<ASN1 11>", "UTF8STRING", "<ASN1 13>",	/* 10-13 */
-		"<ASN1 14>", "<ASN1 15>", "SEQUENCE", "SET",	/* 15-17 */
-		"NUMERICSTRING", "PRINTABLESTRING", "T61STRING",	/* 18-20 */
-		"VIDEOTEXSTRING", "IA5STRING", "UTCTIME", "GENERALIZEDTIME",	/* 21-24 */
-		"GRAPHICSTRING", "VISIBLESTRING", "GENERALSTRING",	/* 25-27 */
-		"UNIVERSALSTRING", "<ASN1 29>", "BMPSTRING"	/* 28-30 */
+		"NULL", "OBJECT IDENTIFIER", "OBJECT DESCRIPTOR", "EXTERNAL", "REAL",	/* 5-9 */
+		"ENUMERATED", "Universal 11", "UTF8String", "Universal 13",	/* 10-13 */
+		"Universal 14", "Universal 15", "SEQUENCE", "SET",	/* 15-17 */
+		"NumericString", "PrintableString", "T61String",	/* 18-20 */
+		"VideotexString", "IA5String", "UTCTIME", "GENERALIZEDTIME",	/* 21-24 */
+		"GraphicString", "VisibleString", "GeneralString",	/* 25-27 */
+		"UniversalString", "Universal 29", "BMPString"	/* 28-30 */
 	};
 
 	if (tag > 30)
@@ -214,6 +214,26 @@ static void sc_asn1_print_bit_string(const u8 * buf, size_t buflen)
 	}
 }
 
+#ifdef ENABLE_OPENSSL
+#include <openssl/objects.h>
+
+static void openssl_print_object_sn(const char *s)
+{
+	ASN1_OBJECT *obj = OBJ_txt2obj(s, 0);
+	if (obj) {
+		int nid = OBJ_obj2nid(obj);
+		if (nid != NID_undef) {
+			printf("%s ", OBJ_nid2sn(nid));
+		}
+		ASN1_OBJECT_free(obj);
+	}
+}
+#else
+static void openssl_print_object_sn(const char *s)
+{
+}
+#endif
+
 static void sc_asn1_print_object_id(const u8 * buf, size_t buflen)
 {
 	struct sc_object_id oid;
@@ -234,6 +254,8 @@ static void sc_asn1_print_object_id(const u8 * buf, size_t buflen)
 		sprintf(tmp, "%d", oid.value[i]);
 		strcat(sbuf, tmp);
 	}
+
+	openssl_print_object_sn(sbuf);
 	printf("%s", sbuf);
 }
 
@@ -245,12 +267,16 @@ static void sc_asn1_print_generalizedtime(const u8 * buf, size_t buflen)
 }
 
 static void print_tags_recursive(const u8 * buf0, const u8 * buf,
-				 size_t buflen, int depth)
+				 size_t buflen, size_t depth)
 {
-	int i, r;
+	int r;
+	size_t i;
 	size_t bytesleft = buflen;
 	const char *classes[4] = {
-		"Univ", "Appl", "Cntx", "Priv"
+		"Universal",
+		"Application",
+		"Context",
+		"Private"
 	};
 	const u8 *p = buf;
 
@@ -271,25 +297,40 @@ static void print_tags_recursive(const u8 * buf0, const u8 * buf,
 		}
 		for (i = 0; i < depth; i++) {
 			putchar(' ');
-			putchar(' ');
 		}
-		printf("%02X %s: tag 0x%02X, length %3d: ",
-		       cla | tag, classes[cla >> 6], tag & 0x1f, (int) len);
+		/* let i be the length of the tag in bytes */
+		for (i = 1; i < sizeof tag - 1; i++) {
+			if (!(tag >> 8*i))
+				break;
+		}
+		printf("%02X", cla<<(i-1)*8 | tag);
+
+		if ((cla & SC_ASN1_TAG_CLASS) == SC_ASN1_TAG_UNIVERSAL) {
+			printf(" %s", tag2str(tag));
+		} else {
+			printf(" %s %-2u",
+					classes[cla >> 6],
+					i == 1 ? tag & SC_ASN1_TAG_PRIMITIVE : tag & (((unsigned int) ~0) >> (i + 1) * 8));
+		}
+		printf(" (%"SC_FORMAT_LEN_SIZE_T"u byte%s)",
+				len,
+				len != 1 ? "s" : "");
+
 		if (len + hlen > bytesleft) {
 			printf(" Illegal length!\n");
 			return;
 		}
 		p += hlen + len;
 		bytesleft -= hlen + len;
-		if ((cla & SC_ASN1_TAG_CLASS) == SC_ASN1_TAG_UNIVERSAL)
-			printf("%s", tag2str(tag));
 
 		if (cla & SC_ASN1_TAG_CONSTRUCTED) {
 			putchar('\n');
-			print_tags_recursive(buf0, tagp, len, depth + 1);
+			print_tags_recursive(buf0, tagp, len, depth + 2*i + 1);
 			continue;
 		}
-		if ((cla & SC_ASN1_TAG_CLASS) == SC_ASN1_TAG_UNIVERSAL) {
+
+		if ((cla & SC_ASN1_TAG_CLASS) == SC_ASN1_TAG_UNIVERSAL
+				&& tag != SC_ASN1_TAG_NULL) {
 			printf(" [");
 			switch (tag) {
 			case SC_ASN1_TAG_BIT_STRING:
@@ -321,10 +362,10 @@ static void print_tags_recursive(const u8 * buf0, const u8 * buf,
 		}
 
 		if ((cla & SC_ASN1_TAG_CLASS) == SC_ASN1_TAG_APPLICATION)
-			printf(" <raw content> [%s]", sc_dump_hex(tagp, len));
+			printf(" [%s]", sc_dump_hex(tagp, len));
 
 		if ((cla & SC_ASN1_TAG_CLASS) == SC_ASN1_TAG_CONTEXT)
-			printf(" <raw content> [%s]", sc_dump_hex(tagp, len));
+			printf(" [%s]", sc_dump_hex(tagp, len));
 
 		putchar('\n');
 	}
@@ -333,7 +374,6 @@ static void print_tags_recursive(const u8 * buf0, const u8 * buf,
 
 void sc_asn1_print_tags(const u8 * buf, size_t buflen)
 {
-	printf("Printing tags for buffer of length %d\n", (int) buflen);
 	print_tags_recursive(buf, buf, buflen, 0);
 }
 
