@@ -62,12 +62,19 @@
 			l1=l2=0; \
 			switch (n) { \
 			case 8: l2 =((DES_LONG)(*(--(c))))<<24L; \
+				/* FALLTHROUGH */ \
 			case 7: l2|=((DES_LONG)(*(--(c))))<<16L; \
+				/* FALLTHROUGH */ \
 			case 6: l2|=((DES_LONG)(*(--(c))))<< 8L; \
+				/* FALLTHROUGH */ \
 			case 5: l2|=((DES_LONG)(*(--(c))));	 \
+				/* FALLTHROUGH */ \
 			case 4: l1 =((DES_LONG)(*(--(c))))<<24L; \
+				/* FALLTHROUGH */ \
 			case 3: l1|=((DES_LONG)(*(--(c))))<<16L; \
+				/* FALLTHROUGH */ \
 			case 2: l1|=((DES_LONG)(*(--(c))))<< 8L; \
+				/* FALLTHROUGH */ \
 			case 1: l1|=((DES_LONG)(*(--(c))));	 \
 				} \
 			}

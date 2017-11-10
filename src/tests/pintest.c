@@ -13,6 +13,7 @@
 #include <unistd.h>
 #endif
 
+#include "libopensc/internal.h"
 #include "libopensc/opensc.h"
 #include "libopensc/pkcs15.h"
 #include "common/compat_getpass.h"
@@ -64,7 +65,9 @@ static int ask_and_verify_pin(struct sc_pkcs15_object *pin_obj)
 		return 0;
 	}
 
-	sprintf(prompt, "Please enter PIN code [%.*s]: ", (int) sizeof pin_obj->label, pin_obj->label);
+	snprintf(prompt, sizeof(prompt), "Please enter PIN code [%.*s]: ",
+		(int) MIN(sizeof(prompt) - 26, strlen(pin_obj->label)),
+		pin_obj->label);
 	pass = (u8 *) getpass(prompt);
 
 	if (SC_SUCCESS != sc_lock(card))
