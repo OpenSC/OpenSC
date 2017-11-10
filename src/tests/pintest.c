@@ -66,7 +66,7 @@ static int ask_and_verify_pin(struct sc_pkcs15_object *pin_obj)
 	}
 
 	snprintf(prompt, sizeof(prompt), "Please enter PIN code [%.*s]: ",
-		(int) MIN(sizeof(prompt) - 26, strlen(pin_obj->label)),
+		(int) MIN(sizeof(prompt) - 27, strlen(pin_obj->label)),
 		pin_obj->label);
 	pass = (u8 *) getpass(prompt);
 

@@ -145,7 +145,7 @@ static char * get_pin(struct sc_pkcs15_object *obj)
 	}
 
 	snprintf(buf, sizeof(buf), "Enter PIN [%.*s]: ",
-		(int) MIN(strlen(obj->label), sizeof(buf)-14), obj->label);
+		(int) MIN(strlen(obj->label), sizeof(buf) - 15), obj->label);
 	while (1) {
 		pincode = getpass(buf);
 		if (strlen(pincode) == 0)

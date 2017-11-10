@@ -1072,7 +1072,7 @@ pkcs15_init_slot(struct sc_pkcs15_card *p15card, struct sc_pkcs11_slot *slot,
 		else   {
 			if (auth->label[0] && strncmp(auth->label, "PIN", 4) != 0) {
 				int ti_len = MIN(strlen(p15card->tokeninfo->label),
-					sizeof(label) - strlen(auth->label) - 3);
+					sizeof(label) - strlen(auth->label) - 4);
 				snprintf(label, sizeof(label), "%.*s (%.*s)",
 					(int) strlen(auth->label), auth->label,
 					ti_len, p15card->tokeninfo->label);

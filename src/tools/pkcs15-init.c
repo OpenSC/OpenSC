@@ -2794,7 +2794,7 @@ handle_option(const struct option *opt)
 		break;
 	case OPT_USE_PINPAD_DEPRECATED:
 		fprintf(stderr, "'--no-prompt' is deprecated , use '--use-pinpad' instead.\n");
-		/* FALLTHROUGH */
+		/* fall through */
 	case OPT_USE_PINPAD:
 		opt_use_pinpad = 1;
 		break;
@@ -2891,7 +2891,7 @@ parse_commandline(int argc, char **argv)
 		switch (o->has_arg) {
 		case optional_argument:
 			*sp++ = ':';
-			/* FALLTHROUGH */
+			/* fall through */
 		case required_argument:
 			*sp++ = ':';
 		case no_argument:
@@ -3146,7 +3146,7 @@ static int verify_pin(struct sc_pkcs15_card *p15card, char *auth_id_str)
 
 		if (pin_obj->label[0])
 			snprintf(pin_label, sizeof(pin_label), "User PIN [%.*s]",
-				(int) MIN(sizeof(pin_label)-11, strlen(pin_obj->label)),
+				(int) MIN(sizeof(pin_label) - 12, strlen(pin_obj->label)),
 				pin_obj->label);
 		else
 			snprintf(pin_label, sizeof(pin_label), "User PIN");
