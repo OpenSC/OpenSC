@@ -77,28 +77,13 @@ static u8 muscleAppletId[] = { 0xA0, 0x00,0x00,0x00, 0x01, 0x01 };
 
 static int muscle_match_card(sc_card_t *card)
 {
-	sc_apdu_t apdu;
-	u8 response[64];
 	int r;
 
-	/* Since we send an APDU, the card's logout function may be called...
-	 * however it's not always properly nulled out... */
 	card->ops->logout = NULL;
 
-	if (msc_select_applet(card, muscleAppletId, sizeof muscleAppletId) == 1) {
-		/* Muscle applet is present, check the protocol version to be sure */
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_2, 0x3C, 0x00, 0x00);
-		apdu.cla = 0xB0;
-		apdu.le = 64;
-		apdu.resplen = 64;
-		apdu.resp = response;
-		r = sc_transmit_apdu(card, &apdu);
-		if (r == SC_SUCCESS && response[0] == 0x01) {
-				card->type = SC_CARD_TYPE_MUSCLE_V1;
-				return 1;
-		}
-	}
-	return 0;
+	r = msc_select_applet(card, muscleAppletId, 5);
+	card->drv_data = (void*)0xFFFFFFFF;
+	return r;
 }
 
 /* Since Musclecard has a different ACL system then PKCS15
@@ -363,8 +348,64 @@ static void muscle_load_dir_acls(sc_file_t* file, mscfs_file_t *file_data)
 /* Required type = -1 for don't care, 1 for EF, 0 for DF */
 static int select_item(sc_card_t *card, const sc_path_t *path_in, sc_file_t ** file_out, int requiredType)
 {
+//	mscfs_t *fs = MUSCLE_FS(card);
+//	mscfs_file_t *file_data = NULL;
+//	int pathlen = path_in->len;
+//	int r = 0;
+//	int objectIndex;
+//	u8* oid;
+//
+//	mscfs_check_cache(fs);
+//	r = mscfs_loadFileInfo(fs, path_in->value, path_in->len, &file_data, &objectIndex);
+//	if(r < 0) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,r);
+//
+//	/* Check if its the right type */
+//	if(requiredType >= 0 && requiredType != file_data->ef) {
+//		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
+//	}
+//	oid = file_data->objectId.id;
+//	/* Is it a file or directory */
+//	if(file_data->ef) {
+//		fs->currentPath[0] = oid[0];
+//		fs->currentPath[1] = oid[1];
+//		fs->currentFile[0] = oid[2];
+//		fs->currentFile[1] = oid[3];
+//	} else {
+//		fs->currentPath[0] = oid[pathlen - 2];
+//		fs->currentPath[1] = oid[pathlen - 1];
+//		fs->currentFile[0] = 0;
+//		fs->currentFile[1] = 0;
+//	}
+//
+//	fs->currentFileIndex = objectIndex;
+//	if(file_out) {
+//		sc_file_t *file;
+//		file = sc_file_new();
+//		file->path = *path_in;
+//		file->size = file_data->size;
+//		file->id = (oid[2] << 8) | oid[3];
+//		if(!file_data->ef) {
+//			file->type = SC_FILE_TYPE_DF;
+//		} else {
+//			file->type = SC_FILE_TYPE_WORKING_EF;
+//			file->ef_structure = SC_FILE_EF_TRANSPARENT;
+//		}
+//
+//		/* Setup ACLS */
+//		if(file_data->ef) {
+//			muscle_load_file_acls(file, file_data);
+//		} else {
+//			muscle_load_dir_acls(file, file_data);
+//			/* Setup directory acls... */
+//		}
+//
+//		file->magic = SC_FILE_MAGIC;
+//		*file_out = file;
+//	}
+//	return 0;
 	mscfs_t *fs = MUSCLE_FS(card);
 	mscfs_file_t *file_data = NULL;
+	const u8 *path = path_in->value;
 	int pathlen = path_in->len;
 	int r = 0;
 	int objectIndex;
@@ -372,11 +413,11 @@ static int select_item(sc_card_t *card, const sc_path_t *path_in, sc_file_t ** f
 
 	mscfs_check_cache(fs);
 	r = mscfs_loadFileInfo(fs, path_in->value, path_in->len, &file_data, &objectIndex);
-	if(r < 0) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,r);
+	if(r < 0) SC_FUNC_RETURN(card->ctx, 2,r);
 
 	/* Check if its the right type */
 	if(requiredType >= 0 && requiredType != file_data->ef) {
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
+		SC_FUNC_RETURN(card->ctx, 0, SC_ERROR_INVALID_ARGUMENTS);
 	}
 	oid = file_data->objectId.id;
 	/* Is it a file or directory */
@@ -399,6 +440,8 @@ static int select_item(sc_card_t *card, const sc_path_t *path_in, sc_file_t ** f
 		file->path = *path_in;
 		file->size = file_data->size;
 		file->id = (oid[2] << 8) | oid[3];
+		memcpy(file->name, path, pathlen);
+		file->namelen = pathlen;
 		if(!file_data->ef) {
 			file->type = SC_FILE_TYPE_DF;
 		} else {
@@ -476,11 +519,11 @@ static int muscle_init(sc_card_t *card)
 	card->caps |= SC_CARD_CAP_RNG;
 
 	/* Card type detection */
-	if (_sc_match_atr(card, muscle_atrs, &card->type) < 0)   {
-		free(priv->fs);
-		free(card->drv_data);
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED);
-	}
+//	if (_sc_match_atr(card, muscle_atrs, &card->type) < 0)   {
+//		free(priv->fs);
+//		free(card->drv_data);
+//		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED);
+//	}
 
 	if(card->type == SC_CARD_TYPE_MUSCLE_ETOKEN_72K) {
 		card->caps |= SC_CARD_CAP_APDU_EXT;
@@ -845,3 +888,4 @@ struct sc_card_driver * sc_get_muscle_driver(void)
 {
 	return sc_get_driver();
 }
+
