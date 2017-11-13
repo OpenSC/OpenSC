@@ -94,9 +94,11 @@ static int muscle_match_card(sc_card_t *card)
 		apdu.resp = response;
 		r = sc_transmit_apdu(card, &apdu);
 		if (r == SC_SUCCESS && response[0] == 0x01) {
-				card->type = SC_CARD_TYPE_MUSCLE_V1;
-				return 1;
+			card->type = SC_CARD_TYPE_MUSCLE_V1;
+		} else {
+			card->type = SC_CARD_TYPE_MUSCLE_GENERIC;
 		}
+		return 1;
 	}
 	return 0;
 }
@@ -476,17 +478,16 @@ static int muscle_init(sc_card_t *card)
 	card->caps |= SC_CARD_CAP_RNG;
 
 	/* Card type detection */
-	if (_sc_match_atr(card, muscle_atrs, &card->type) < 0)   {
-		free(priv->fs);
-		free(card->drv_data);
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED);
-	}
-
+	_sc_match_atr(card, muscle_atrs, &card->type);
 	if(card->type == SC_CARD_TYPE_MUSCLE_ETOKEN_72K) {
 		card->caps |= SC_CARD_CAP_APDU_EXT;
 	}
 	if(card->type == SC_CARD_TYPE_MUSCLE_JCOP241) {
 		card->caps |= SC_CARD_CAP_APDU_EXT;
+	}
+	if (!(card->caps & SC_CARD_CAP_APDU_EXT)) {
+		card->max_recv_size = 255;
+		card->max_send_size = 255;
 	}
 	if(card->type == SC_CARD_TYPE_MUSCLE_JCOP242R2_NO_EXT_APDU) {
 	        /* Tyfone JCOP v242R2 card that doesn't support extended APDUs */
