@@ -2023,16 +2023,10 @@ write_publickey (struct sc_card *card, unsigned int offset,
 	struct sc_pkcs15_pubkey_rsa key;
 	int ii, rv;
 	size_t len = 0, der_size = 0;
-	char debug_buf[2048];
 
 	LOG_FUNC_CALLED(card->ctx);
 
-	debug_buf[0] = 0;
-	sc_hex_dump(card->ctx, SC_LOG_DEBUG_NORMAL,
-		buf, count, debug_buf, sizeof(debug_buf));
-	sc_log(card->ctx,
-	       "write_publickey in %"SC_FORMAT_LEN_SIZE_T"u bytes :\n%s",
-	       count, debug_buf);
+	sc_log_hex(card->ctx, "write_publickey", buf, count);
 
 	if (1+offset > sizeof(rsa_der))
 		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS, "Invalid offset value");
@@ -2121,7 +2115,6 @@ auth_read_binary(struct sc_card *card, unsigned int offset,
 		unsigned char *buf, size_t count, unsigned long flags)
 {
 	int rv;
-	char debug_buf[2048];
 	struct sc_pkcs15_bignum bn[2];
 	unsigned char *out = NULL;
 	bn[0].data = NULL;
@@ -2183,12 +2176,7 @@ auth_read_binary(struct sc_card *card, unsigned int offset,
 			rv  = out_len - offset > count ? count : out_len - offset;
 			memcpy(buf, out + offset, rv);
 
-			debug_buf[0] = 0;
-			sc_hex_dump(card->ctx, SC_LOG_DEBUG_NORMAL,
-				buf, rv, debug_buf, sizeof(debug_buf));
-			sc_log(card->ctx,
-			       "write_publickey in %"SC_FORMAT_LEN_SIZE_T"u bytes :\n%s",
-			       count, debug_buf);
+			sc_log_hex(card->ctx, "write_publickey", buf, rv);
 		}
 	}
 	else {

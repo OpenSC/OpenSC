@@ -645,8 +645,7 @@ static int dnie_get_serialnr(sc_card_t * card, sc_serial_number_t * serial)
 	/* if serial number is cached, use it */
 	if (card->serialnr.len) {
 		memcpy(serial, &card->serialnr, sizeof(*serial));
-		sc_log(card->ctx, "Serial Number (cached): '%s'",
-		       sc_dump_hex(serial->value, serial->len));
+		sc_log_hex(card->ctx, "Serial Number (cached)", serial->value, serial->len);
 		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 	}
 	/* not cached, retrieve it by mean of an APDU */
@@ -672,8 +671,7 @@ static int dnie_get_serialnr(sc_card_t * card, sc_serial_number_t * serial)
 	 */
 	/* copy and return serial number */
 	memcpy(serial, &card->serialnr, sizeof(*serial));
-	sc_log(card->ctx, "Serial Number (apdu): '%s'",
-	       sc_dump_hex(serial->value, serial->len));
+	sc_log_hex(card->ctx, "Serial Number (apdu)", serial->value, serial->len);
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
@@ -962,13 +960,8 @@ static u8 *dnie_uncompress(sc_card_t * card, u8 * from, size_t *len)
 	}
 	/* Done; update buffer len and return pt to uncompressed data */
 	*len = uncompressed;
-	sc_log(card->ctx, "Compressed data:\n%s\n",
-	       sc_dump_hex(from + 8, compressed));
-	sc_log(card->ctx,
-	       "Uncompress() done. Before:'%"SC_FORMAT_LEN_SIZE_T"u' After: '%"SC_FORMAT_LEN_SIZE_T"u'",
-	       compressed, uncompressed);
-	sc_log(card->ctx, "Uncompressed data:\n%s\n",
-	       sc_dump_hex(upt, uncompressed));
+	sc_log_hex(card->ctx, "Compressed data", from + 8, compressed);
+	sc_log_hex(card->ctx, "Uncompressed data", upt, uncompressed);
  compress_exit:
 
 #endif
@@ -1259,18 +1252,18 @@ static int dnie_select_file(struct sc_card *card,
 		 */
 		if (in_path->len != 2)
 			LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
-		sc_log(ctx, "select_file(ID): %s", sc_dump_hex(in_path->value, in_path->len));
+		sc_log_hex(ctx, "select_file(ID)", in_path->value, in_path->len);
 		res = dnie_compose_and_send_apdu(card, in_path->value, in_path->len, 0, file_out);
 		break;
 	case SC_PATH_TYPE_DF_NAME:
-		sc_log(ctx, "select_file(NAME): %s", sc_dump_hex(in_path->value, in_path->len));
+		sc_log_hex(ctx, "select_file(NAME)", in_path->value, in_path->len);
 		res = dnie_compose_and_send_apdu(card, in_path->value, in_path->len, 4, file_out);
 		break;
 	case SC_PATH_TYPE_PATH:
 		if ((in_path->len == 0) || ((in_path->len & 1) != 0)) /* not divisible by 2 */
 			LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
-		sc_log(ctx, "select_file(PATH): requested:%s ", sc_dump_hex(in_path->value, in_path->len));
+		sc_log_hex(ctx, "select_file(PATH): requested", in_path->value, in_path->len);
 
 		/* convert to SC_PATH_TYPE_FILE_ID */
 		res = sc_lock(card); /* lock to ensure path traversal */
@@ -1278,7 +1271,7 @@ static int dnie_select_file(struct sc_card *card,
 		if (memcmp(in_path->value, "\x3F\x00", 2) == 0) {
 			/* if MF, use the name as path */
 			strcpy((char *)tmp_path, DNIE_MF_NAME);
-			sc_log(ctx, "select_file(NAME): requested:%s ", sc_dump_hex(tmp_path, sizeof(DNIE_MF_NAME) - 1));
+			sc_log_hex(ctx, "select_file(NAME): requested", tmp_path, sizeof(DNIE_MF_NAME) - 1);
 			res = dnie_compose_and_send_apdu(card, tmp_path, sizeof(DNIE_MF_NAME) - 1, 4, file_out);
 			if (res != SC_SUCCESS) {
 				sc_unlock(card);
@@ -1689,9 +1682,9 @@ static int dnie_compute_signature(struct sc_card *card,
 	   So just extract 15+20 DigestInfo+Hash info from ASN.1 provided
 	   data and feed them into sign() command
 	 */
-	sc_log(card->ctx,
-	       "Compute signature len: '%"SC_FORMAT_LEN_SIZE_T"u' bytes:\n%s\n============================================================",
-	       datalen, sc_dump_hex(data, datalen));
+	sc_log_hex(card->ctx,
+	       "Compute signature\n============================================================",
+	       data, datalen);
 
 	/*INS: 0x2A  PERFORM SECURITY OPERATION
 	 * P1:  0x9E  Resp: Digital Signature

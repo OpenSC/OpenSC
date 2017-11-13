@@ -87,6 +87,8 @@ void _sc_log(struct sc_context *ctx, const char *format, ...);
  */
 #define sc_debug_hex(ctx, level, label, data, len) \
     _sc_debug_hex(ctx, level, __FILE__, __LINE__, __FUNCTION__, label, data, len)
+#define sc_log_hex(ctx, label, data, len) \
+    sc_debug_hex(ctx, SC_LOG_DEBUG_NORMAL, label, data, len)
 /** 
  * @brief Log binary data
  *
@@ -102,9 +104,9 @@ void _sc_log(struct sc_context *ctx, const char *format, ...);
 void _sc_debug_hex(struct sc_context *ctx, int level, const char *file, int line,
         const char *func, const char *label, const u8 *data, size_t len);
 
-void sc_hex_dump(struct sc_context *ctx, int level, const u8 * buf, size_t len, char *out, size_t outlen);
-char * sc_dump_hex(const u8 * in, size_t count);
-char * sc_dump_oid(const struct sc_object_id *oid);
+void sc_hex_dump(const u8 *buf, size_t len, char *out, size_t outlen);
+const char * sc_dump_hex(const u8 * in, size_t count);
+const char * sc_dump_oid(const struct sc_object_id *oid);
 #define SC_FUNC_CALLED(ctx, level) do { \
 	 sc_do_log(ctx, level, __FILE__, __LINE__, __FUNCTION__, "called\n"); \
 } while (0)
