@@ -22,11 +22,12 @@
 #include "config.h"
 #endif
 
-#include <stdio.h>
-#include <string.h>
-#include <ctype.h>
 #include <assert.h>
+#include <ctype.h>
+#include <stddef.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "internal.h"
 #include "asn1.h"
@@ -144,40 +145,79 @@ void sc_copy_asn1_entry(const struct sc_asn1_entry *src,
 	dest->name = NULL;
 }
 
-static void sc_asn1_print_octet_string(const u8 * buf, size_t buflen)
+static void print_indent(size_t depth)
 {
-	size_t i;
+	for (; depth > 0; depth--) {
+		putchar(' ');
+	}
+}
 
-	for (i = 0; i < buflen; i++)
-		printf("%02X", buf[i]);
+static void print_hex(const u8 * buf, size_t buflen, size_t depth)
+{
+	size_t lines_len = buflen * 5 + 128;
+	char *lines = malloc(lines_len);
+	char *line = lines;
+
+	if (buf == NULL || buflen == 0 || lines == NULL)
+		return;
+
+	sc_hex_dump(buf, buflen, lines, lines_len);
+
+	while (*line != '\0') {
+		char *line_end = strchr(line, '\n');
+		ptrdiff_t width = line_end - line;
+		if (!line_end || width <= 1) {
+			/* don't print empty lines */
+			break;
+		}
+		if (buflen > 8) {
+			putchar('\n');
+			print_indent(depth);
+		} else {
+			printf(": ");
+		}
+		printf("%.*s", (int) width, line);
+		line = line_end + 1;
+	}
+
+	free(lines);
+}
+
+static void print_ascii(const u8 * buf, size_t buflen)
+{
+	for (; 0 < buflen; buflen--, buf++) {
+		if (isprint(*buf))
+			printf("%c", *buf);
+		else
+			putchar('.');
+	}
+}
+
+static void sc_asn1_print_octet_string(const u8 * buf, size_t buflen, size_t depth)
+{
+	print_hex(buf, buflen, depth);
 }
 
 static void sc_asn1_print_utf8string(const u8 * buf, size_t buflen)
 {
-	size_t i;
-
-	for (i = 0; i < buflen; i++)
-		printf("%c", buf[i]);
+	/* FIXME UTF-8 is not ASCII */
+	print_ascii(buf, buflen);
 }
 
 static void sc_asn1_print_integer(const u8 * buf, size_t buflen)
 {
-#ifndef _WIN32
-	long long a = 0;
-#else
-	__int64 a = 0;
-#endif
-	size_t i;
+	size_t a = 0;
 
 	if (buflen > sizeof(a)) {
-		printf("too long");
-		return;
+		printf("0x%s", sc_dump_hex(buf, buflen));
+	} else {
+		size_t i;
+		for (i = 0; i < buflen; i++) {
+			a <<= 8;
+			a |= buf[i];
+		}
+		printf("%"SC_FORMAT_LEN_SIZE_T"u", a);
 	}
-	for (i = 0; i < buflen; i++) {
-		a <<= 8;
-		a |= buf[i];
-	}
-	printf("%lld", a);
 }
 
 static void sc_asn1_print_boolean(const u8 * buf, size_t buflen)
@@ -191,7 +231,7 @@ static void sc_asn1_print_boolean(const u8 * buf, size_t buflen)
 		printf("false");
 }
 
-static void sc_asn1_print_bit_string(const u8 * buf, size_t buflen)
+static void sc_asn1_print_bit_string(const u8 * buf, size_t buflen, size_t depth)
 {
 #ifndef _WIN32
 	long long a = 0;
@@ -201,16 +241,16 @@ static void sc_asn1_print_bit_string(const u8 * buf, size_t buflen)
 	int r, i;
 
 	if (buflen > sizeof(a) + 1) {
-		printf("too long");
-		return;
-	}
-	r = sc_asn1_decode_bit_string(buf, buflen, &a, sizeof(a));
-	if (r < 0) {
-		printf("decode error");
-		return;
-	}
-	for (i = r - 1; i >= 0; i--) {
-		printf("%c", ((a >> i) & 1) ? '1' : '0');
+		print_hex(buf, buflen, depth);
+	} else {
+		r = sc_asn1_decode_bit_string(buf, buflen, &a, sizeof(a));
+		if (r < 0) {
+			printf("decode error");
+			return;
+		}
+		for (i = r - 1; i >= 0; i--) {
+			printf("%c", ((a >> i) & 1) ? '1' : '0');
+		}
 	}
 }
 
@@ -223,7 +263,7 @@ static void openssl_print_object_sn(const char *s)
 	if (obj) {
 		int nid = OBJ_obj2nid(obj);
 		if (nid != NID_undef) {
-			printf("%s ", OBJ_nid2sn(nid));
+			printf(", %s", OBJ_nid2sn(nid));
 		}
 		ASN1_OBJECT_free(obj);
 	}
@@ -237,33 +277,71 @@ static void openssl_print_object_sn(const char *s)
 static void sc_asn1_print_object_id(const u8 * buf, size_t buflen)
 {
 	struct sc_object_id oid;
-	int i = 0;
-	char tmp[12];
-	char sbuf[(sizeof tmp)*SC_MAX_OBJECT_ID_OCTETS];
+	const char *sbuf;
 
 	if (sc_asn1_decode_object_id(buf, buflen, &oid)) {
 		printf("decode error");
 		return;
 	}
 
-	sbuf[0] = 0;
-	for (i = 0; (i < SC_MAX_OBJECT_ID_OCTETS) && (oid.value[i] != -1); i++)   {
+	sbuf = sc_dump_oid(&oid);
+	printf(" %s", sbuf);
+	openssl_print_object_sn(sbuf);
+}
 
-		if (i)
-			strcat(sbuf, ".");
-		sprintf(tmp, "%d", oid.value[i]);
-		strcat(sbuf, tmp);
+static void sc_asn1_print_utctime(const u8 * buf, size_t buflen)
+{
+	if (buflen < 8) {
+		printf("Error in decoding.\n");
+		return;
 	}
 
-	openssl_print_object_sn(sbuf);
-	printf("%s", sbuf);
+	print_ascii(buf, 2);		/* YY */
+	putchar('-');
+	print_ascii(buf+2, 2);		/* MM */
+	putchar('-');
+	print_ascii(buf+4, 2);		/* DD */
+	putchar(' ');
+	print_ascii(buf+6, 2);		/* hh */
+	buf += 8;
+	buflen -= 8;
+	if (buflen >= 2 && isdigit(buf[0]) && isdigit(buf[1])) {
+		putchar(':');
+		print_ascii(buf, 2);	/* mm */
+		buf += 2;
+		buflen -= 2;
+	}
+	if (buflen >= 2 && isdigit(buf[0]) && isdigit(buf[1])) {
+		putchar(':');
+		print_ascii(buf, 2);	/* ss */
+		buf += 2;
+		buflen -= 2;
+	}
+	if (buflen >= 4 && '.' == buf[0]) {
+		print_ascii(buf, 4);	/* fff */
+		buf += 4;
+		buflen -= 4;
+	}
+
+	if (buflen >= 1 && 'Z' == buf[0]) {
+		printf(" UTC");
+	} else if (buflen >= 5 && ('-' == buf[0] || '+' == buf[0])) {
+		putchar(' ');
+		print_ascii(buf, 3);	/* +/-hh */
+		putchar(':');
+		print_ascii(buf+3, 2);	/* mm */
+	}
 }
 
 static void sc_asn1_print_generalizedtime(const u8 * buf, size_t buflen)
 {
-	size_t ii;
-	for (ii=0; ii<buflen; ii++)
-		printf("%c", *(buf + ii));
+	if (buflen < 8) {
+		printf("Error in decoding.\n");
+		return;
+	}
+
+	print_ascii(buf, 2);
+	sc_asn1_print_utctime(buf + 2, buflen - 2);
 }
 
 static void print_tags_recursive(const u8 * buf0, const u8 * buf,
@@ -295,9 +373,7 @@ static void print_tags_recursive(const u8 * buf0, const u8 * buf,
 			printf("Zero tag, finishing\n");
 			break;
 		}
-		for (i = 0; i < depth; i++) {
-			putchar(' ');
-		}
+		print_indent(depth);
 		/* let i be the length of the tag in bytes */
 		for (i = 1; i < sizeof tag - 1; i++) {
 			if (!(tag >> 8*i))
@@ -312,9 +388,12 @@ static void print_tags_recursive(const u8 * buf0, const u8 * buf,
 					classes[cla >> 6],
 					i == 1 ? tag & SC_ASN1_TAG_PRIMITIVE : tag & (((unsigned int) ~0) >> (i + 1) * 8));
 		}
-		printf(" (%"SC_FORMAT_LEN_SIZE_T"u byte%s)",
-				len,
-				len != 1 ? "s" : "");
+		if (!((cla & SC_ASN1_TAG_CLASS) == SC_ASN1_TAG_UNIVERSAL
+					&& tag == SC_ASN1_TAG_NULL && len == 0)) {
+			printf(" (%"SC_FORMAT_LEN_SIZE_T"u byte%s)",
+					len,
+					len != 1 ? "s" : "");
+		}
 
 		if (len + hlen > bytesleft) {
 			printf(" Illegal length!\n");
@@ -329,47 +408,54 @@ static void print_tags_recursive(const u8 * buf0, const u8 * buf,
 			continue;
 		}
 
-		if ((cla & SC_ASN1_TAG_CLASS) == SC_ASN1_TAG_UNIVERSAL
-				&& tag != SC_ASN1_TAG_NULL) {
-			printf(" [");
-			switch (tag) {
+		switch (tag) {
 			case SC_ASN1_TAG_BIT_STRING:
-				sc_asn1_print_bit_string(tagp, len);
+				printf(": ");
+				sc_asn1_print_bit_string(tagp, len, depth + 2*i + 1);
 				break;
 			case SC_ASN1_TAG_OCTET_STRING:
-				sc_asn1_print_octet_string(tagp, len);
+				sc_asn1_print_octet_string(tagp, len, depth + 2*i + 1);
 				break;
 			case SC_ASN1_TAG_OBJECT:
+				printf(": ");
 				sc_asn1_print_object_id(tagp, len);
 				break;
 			case SC_ASN1_TAG_INTEGER:
 			case SC_ASN1_TAG_ENUMERATED:
+				printf(": ");
 				sc_asn1_print_integer(tagp, len);
 				break;
-			case SC_ASN1_TAG_T61STRING:
+			case SC_ASN1_TAG_IA5STRING:
 			case SC_ASN1_TAG_PRINTABLESTRING:
+			case SC_ASN1_TAG_T61STRING:
 			case SC_ASN1_TAG_UTF8STRING:
+				printf(": ");
 				sc_asn1_print_utf8string(tagp, len);
 				break;
 			case SC_ASN1_TAG_BOOLEAN:
+				printf(": ");
 				sc_asn1_print_boolean(tagp, len);
 				break;
 			case SC_ASN1_GENERALIZEDTIME:
+				printf(": ");
 				sc_asn1_print_generalizedtime(tagp, len);
 				break;
-			}
-			printf("]");
+			case SC_ASN1_UTCTIME:
+				printf(": ");
+				sc_asn1_print_utctime(tagp, len);
+				break;
 		}
 
-		if ((cla & SC_ASN1_TAG_CLASS) == SC_ASN1_TAG_APPLICATION)
-			printf(" [%s]", sc_dump_hex(tagp, len));
+		if ((cla & SC_ASN1_TAG_CLASS) == SC_ASN1_TAG_APPLICATION) {
+			print_hex(tagp, len, depth + 2*i + 1);
+		}
 
-		if ((cla & SC_ASN1_TAG_CLASS) == SC_ASN1_TAG_CONTEXT)
-			printf(" [%s]", sc_dump_hex(tagp, len));
+		if ((cla & SC_ASN1_TAG_CLASS) == SC_ASN1_TAG_CONTEXT) {
+			print_hex(tagp, len, depth + 2*i + 1);
+		}
 
 		putchar('\n');
 	}
-	return;
 }
 
 void sc_asn1_print_tags(const u8 * buf, size_t buflen)
