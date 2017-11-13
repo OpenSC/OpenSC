@@ -172,7 +172,7 @@ static void read_dg(sc_card_t *card, unsigned char sfid, const char *dg_str,
 				sfid, dg_str, sc_strerror(r));
 	else {
 		char buf[0x200];
-		sc_hex_dump(NULL, 0, *dg, *dg_len, buf, sizeof buf);
+		sc_hex_dump(*dg, *dg_len, buf, sizeof buf);
 		fprintf(stdout, "Read %s", buf);
 	}
 }

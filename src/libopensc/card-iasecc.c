@@ -157,7 +157,7 @@ iasecc_chv_cache_verified(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd)
 	else
 		memset(pin_status->sha1, 0, SHA_DIGEST_LENGTH);
 
-	sc_log(ctx, "iasecc_chv_cache_verified() sha1(PIN): %s", sc_dump_hex(pin_status->sha1, SHA_DIGEST_LENGTH));
+	sc_log_hex(ctx, "iasecc_chv_cache_verified() sha1(PIN)", pin_status->sha1, SHA_DIGEST_LENGTH);
 
 	if (!current)   {
 		if (!checked_pins)   {
@@ -219,7 +219,7 @@ iasecc_chv_cache_is_verified(struct sc_card *card, struct sc_pin_cmd_data *pin_c
 		SHA1(pin_cmd->pin1.data, pin_cmd->pin1.len, data_sha1);
 	else
 		memset(data_sha1, 0, SHA_DIGEST_LENGTH);
-	sc_log(ctx, "data_sha1: %s", sc_dump_hex(data_sha1, SHA_DIGEST_LENGTH));
+	sc_log_hex(ctx, "data_sha1: %s", data_sha1, SHA_DIGEST_LENGTH);
 
 	for(current = checked_pins; current; current = current->next)
 		if (current->reference == pin_cmd->pin_reference)
@@ -345,7 +345,6 @@ iasecc_match_card(struct sc_card *card)
 	struct sc_context *ctx = card->ctx;
 	int i;
 
-	sc_log(ctx, "iasecc_match_card(%s) called", sc_dump_hex(card->atr.value, card->atr.len));
 	i = _sc_match_atr(card, iasecc_known_atrs, &card->type);
 	if (i < 0)   {
 		sc_log(ctx, "card not matched");
@@ -457,7 +456,7 @@ iasecc_oberthur_match(struct sc_card *card)
 	if (*hist != 0x80 || ((*(hist+1)&0xF0) != 0xF0))
 		LOG_FUNC_RETURN(ctx, SC_ERROR_OBJECT_NOT_FOUND);
 
-	sc_log(ctx, "AID in historical_bytes '%s'", sc_dump_hex(hist + 2, *(hist+1) & 0x0F));
+	sc_log_hex(ctx, "AID in historical_bytes", hist + 2, *(hist+1) & 0x0F);
 
 	if (memcmp(hist + 2, OberthurIASECC_AID.value, *(hist+1) & 0x0F))
 		LOG_FUNC_RETURN(ctx, SC_ERROR_RECORD_NOT_FOUND);

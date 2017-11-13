@@ -468,7 +468,7 @@ sc_get_response(struct sc_card *card, struct sc_apdu *apdu, size_t olen)
 		if (rv < 0)   {
 #ifdef ENABLE_SM
 			if (resp_len)   {
-				sc_log(ctx, "SM response data %s", sc_dump_hex(resp, resp_len));
+				sc_log_hex(ctx, "SM response data", resp, resp_len);
 				sc_sm_update_apdu_response(card, resp, resp_len, rv, apdu);
 			}
 #endif

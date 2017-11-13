@@ -1527,13 +1527,8 @@ gpk_pkfile_load(sc_card_t *card, struct sc_cardctl_gpk_pkload *args)
 		return SC_ERROR_INTERNAL;
 
 	if (0) {
-		char buf[2048];
-
-		sc_hex_dump(card->ctx, SC_LOG_DEBUG_NORMAL,
-				args->data, args->datalen,
-				buf, sizeof(buf));
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Sending %d bytes (cleartext):\n%s",
-				args->datalen, buf);
+		sc_log_hex(card->ctx, "Sending (cleartext)",
+				args->data, args->datalen);
 	}
 
 	memset(&apdu, 0, sizeof(apdu));

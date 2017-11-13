@@ -361,13 +361,7 @@ static int westcos_process_fci(sc_card_t * card, sc_file_t * file,
 	if (tag != NULL && taglen > 0 && taglen <= 16) {
 		memcpy(file->name, tag, taglen);
 		file->namelen = taglen;
-		{
-			char tbuf[128];
-			sc_hex_dump(ctx, SC_LOG_DEBUG_NORMAL,
-				file->name, file->namelen, tbuf, sizeof(tbuf));
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
-				"  File name: %s\n", tbuf);
-		}
+		sc_log_hex(card->ctx, "  File name", file->name, file->namelen);
 	}
 	if (file->type == SC_FILE_TYPE_DF) {
 		tag = sc_asn1_find_tag(ctx, p, len, 0x85, &taglen);

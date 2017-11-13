@@ -1868,12 +1868,10 @@ epass2003_process_fci(struct sc_card *card, sc_file_t * file, const u8 * buf, si
 
 	tag = sc_asn1_find_tag(ctx, p, len, 0x84, &taglen);
 	if (tag != NULL && taglen > 0 && taglen <= 16) {
-		char tbuf[128];
 		memcpy(file->name, tag, taglen);
 		file->namelen = taglen;
 
-		sc_hex_dump(ctx, SC_LOG_DEBUG_NORMAL, file->name, file->namelen, tbuf, sizeof(tbuf));
-		sc_log(ctx, "File name: %s", tbuf);
+		sc_log_hex(ctx, "File name", file->name, file->namelen);
 		if (!file->type)
 			file->type = SC_FILE_TYPE_DF;
 	}

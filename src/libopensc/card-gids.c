@@ -902,7 +902,7 @@ static int gids_read_public_key (struct sc_card *card , unsigned int algorithm,
 	}
 
 	if (response && responselen)
-		sc_log(card->ctx, "encoded public key: %s", sc_dump_hex(*response, *responselen));
+		sc_log_hex(card->ctx, "encoded public key", *response, *responselen);
 
 	return SC_SUCCESS;
 }

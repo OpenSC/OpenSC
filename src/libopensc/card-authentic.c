@@ -413,7 +413,7 @@ authentic_match_card(struct sc_card *card)
 	struct sc_context *ctx = card->ctx;
 	int i;
 
-	sc_log(ctx, "try to match card with ATR %s", sc_dump_hex(card->atr.value, card->atr.len));
+	sc_log_hex(ctx, "try to match card with ATR", card->atr.value, card->atr.len);
 	i = _sc_match_atr(card, authentic_known_atrs, &card->type);
 	if (i < 0)   {
 		sc_log(ctx, "card not matched");
@@ -1041,9 +1041,7 @@ authentic_process_fci(struct sc_card *card, struct sc_file *file,
 	LOG_TEST_RET(ctx, rv, "ISO parse FCI failed");
 
 	if (!file->sec_attr_len)   {
-		sc_log(ctx,
-		       "ACLs not found in data(%"SC_FORMAT_LEN_SIZE_T"u) %s",
-		       buflen, sc_dump_hex(buf, buflen));
+		sc_log_hex(ctx, "ACLs not found in data", buf, buflen);
 		sc_log(ctx, "Path:%s; Type:%X; PathType:%X", sc_print_path(&file->path), file->type, file->path.type);
 		if (file->path.type == SC_PATH_TYPE_DF_NAME || file->type == SC_FILE_TYPE_DF)   {
 			file->type = SC_FILE_TYPE_DF;
@@ -1053,8 +1051,7 @@ authentic_process_fci(struct sc_card *card, struct sc_file *file,
 		}
 	}
 
-	sc_log(ctx, "ACL data(%"SC_FORMAT_LEN_SIZE_T"u):%s", file->sec_attr_len,
-	       sc_dump_hex(file->sec_attr, file->sec_attr_len));
+	sc_log_hex(ctx, "ACL data", file->sec_attr, file->sec_attr_len);
 	for (ii = 0; ii < file->sec_attr_len / 2; ii++)  {
 		unsigned char op = file->type == SC_FILE_TYPE_DF ? ops_DF[ii] : ops_EF[ii];
 		unsigned char acl = *(file->sec_attr + ii*2);
@@ -1908,7 +1905,7 @@ authentic_manage_sdo_encode(struct sc_card *card, struct sc_authentic_sdo *sdo, 
 
 	free(data);
 
-	sc_log(ctx, "encoded SDO operation data %s", sc_dump_hex(*out, *out_len));
+	sc_log_hex(ctx, "encoded SDO operation data", *out, *out_len);
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
