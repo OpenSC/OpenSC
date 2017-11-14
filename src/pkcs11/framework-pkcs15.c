@@ -1043,7 +1043,7 @@ pkcs15_init_slot(struct sc_pkcs15_card *p15card, struct sc_pkcs11_slot *slot,
 {
 	struct pkcs15_slot_data *fw_data;
 	struct sc_pkcs15_auth_info *pin_info = NULL;
-	char label[64];
+	char label[(sizeof auth->label) + 10];
 
 	sc_log(context, "Called");
 	pkcs15_init_token_info(p15card, &slot->token_info);
@@ -1070,13 +1070,11 @@ pkcs15_init_slot(struct sc_pkcs15_card *p15card, struct sc_pkcs11_slot *slot,
 			pin_info = NULL;
 		}
 		else   {
-			if (auth->label[0] && strncmp(auth->label, "PIN", 4) != 0) {
-				int ti_len = MIN(strlen(p15card->tokeninfo->label),
-					sizeof(label) - strlen(auth->label) - 4);
-				snprintf(label, sizeof(label), "%.*s (%.*s)",
-					(int) strlen(auth->label), auth->label,
-					ti_len, p15card->tokeninfo->label);
-			} else
+			if (auth->label[0] && strncmp(auth->label, "PIN", 4) != 0)
+				snprintf(label, sizeof(label), "%.*s (%s)",
+					(int) sizeof(auth->label), auth->label,
+					p15card->tokeninfo->label);
+			else
 				/* The PIN label is empty or says just non-useful "PIN" */
 				snprintf(label, sizeof(label), "%s", p15card->tokeninfo->label);
 			slot->token_info.flags |= CKF_LOGIN_REQUIRED;
