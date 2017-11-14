@@ -25,7 +25,7 @@ BUILDPATH=${PWD}
 SDK_PATH=$(xcrun --sdk macosx --show-sdk-path)
 
 # Set SDK path
-export CFLAGS="$CFLAGS -isysroot $SDK_PATH -arch x86_64 -mmacosx-version-min=$MACOSX_DEPLOYMENT_TARGET"
+export CFLAGS="$CFLAGS -isysroot $SDK_PATH -arch x86_64"
 
 export SED=/usr/bin/sed
 PREFIX=/Library/OpenSC
@@ -39,7 +39,7 @@ if ! pkg-config libcrypto --atleast-version=1.0.1; then
 			git clone --depth=1 https://github.com/openssl/openssl.git -b OpenSSL_1_0_2-stable
 		fi
 		cd openssl
-		KERNEL_BITS=64 ./config --prefix=$PREFIX -mmacosx-version-min=$MACOSX_DEPLOYMENT_TARGET
+		KERNEL_BITS=64 ./config --prefix=$PREFIX
 		make clean
 		make update
 		make depend
