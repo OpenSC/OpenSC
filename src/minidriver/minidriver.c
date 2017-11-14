@@ -3593,6 +3593,8 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 		}
 	}
 
+	free(pubkey_der.value);
+
 	logprintf(pCardData, 7, "returns container(idx:%u) info",
 		  (unsigned int)bContainerIndex);
 	return SCARD_S_SUCCESS;
