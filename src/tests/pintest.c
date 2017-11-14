@@ -57,7 +57,7 @@ static int ask_and_verify_pin(struct sc_pkcs15_object *pin_obj)
 {
 	struct sc_pkcs15_auth_info *pin_info = (struct sc_pkcs15_auth_info *) pin_obj->data;
 	int i = 0;
-	char prompt[80];
+	char prompt[(sizeof pin_obj->label) + 30];
 	u8 *pass;
 
 	if (pin_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN) {
@@ -66,8 +66,7 @@ static int ask_and_verify_pin(struct sc_pkcs15_object *pin_obj)
 	}
 
 	snprintf(prompt, sizeof(prompt), "Please enter PIN code [%.*s]: ",
-		(int) MIN(sizeof(prompt) - 27, strlen(pin_obj->label)),
-		pin_obj->label);
+		(int) sizeof pin_obj->label, pin_obj->label);
 	pass = (u8 *) getpass(prompt);
 
 	if (SC_SUCCESS != sc_lock(card))

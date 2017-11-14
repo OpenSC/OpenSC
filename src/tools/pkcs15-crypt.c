@@ -130,7 +130,7 @@ static char *readpin_stdin(void)
 
 static char * get_pin(struct sc_pkcs15_object *obj)
 {
-	char buf[80];
+	char buf[(sizeof obj->label) + 20];
 	char *pincode;
 	struct sc_pkcs15_auth_info *pinfo = (struct sc_pkcs15_auth_info *) obj->data;
 
@@ -145,7 +145,7 @@ static char * get_pin(struct sc_pkcs15_object *obj)
 	}
 
 	snprintf(buf, sizeof(buf), "Enter PIN [%.*s]: ",
-		(int) MIN(strlen(obj->label), sizeof(buf) - 15), obj->label);
+		(int) sizeof obj->label, obj->label);
 	while (1) {
 		pincode = getpass(buf);
 		if (strlen(pincode) == 0)

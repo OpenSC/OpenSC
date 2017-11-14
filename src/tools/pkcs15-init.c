@@ -3091,7 +3091,7 @@ int get_pin(sc_ui_hints_t *hints, char **out)
 static int verify_pin(struct sc_pkcs15_card *p15card, char *auth_id_str)
 {
 	struct sc_pkcs15_object	*pin_obj = NULL;
-	char pin_label[64];
+	char pin_label[(sizeof pin_obj->label) + 20];
 	char *pin = NULL;
 	int r;
 
@@ -3146,8 +3146,7 @@ static int verify_pin(struct sc_pkcs15_card *p15card, char *auth_id_str)
 
 		if (pin_obj->label[0])
 			snprintf(pin_label, sizeof(pin_label), "User PIN [%.*s]",
-				(int) MIN(sizeof(pin_label) - 12, strlen(pin_obj->label)),
-				pin_obj->label);
+				(int) sizeof pin_obj->label, pin_obj->label);
 		else
 			snprintf(pin_label, sizeof(pin_label), "User PIN");
                 memset(&hints, 0, sizeof(hints));
