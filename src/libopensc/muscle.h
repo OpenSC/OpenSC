@@ -32,8 +32,8 @@
 #define MSC_MAX_PIN_COMMAND_LENGTH ((1 + MSC_MAX_PIN_LENGTH) * 2)
 
 /* Currently max size handled by muscle driver is 255 ... */
-#define MSC_MAX_READ (card->max_recv_size > 0 ? card->max_recv_size : 255)
-#define MSC_MAX_SEND (card->max_send_size > 0 ? card->max_send_size : 255)
+#define MSC_MAX_READ (MIN(card->max_recv_size,255))
+#define MSC_MAX_SEND (MIN(card->max_send_size,255))
 
 int msc_list_objects(sc_card_t* card, u8 next, mscfs_file_t* file);
 int msc_partial_read_object(sc_card_t *card, msc_id objectId, int offset, u8 *data, size_t dataLength);

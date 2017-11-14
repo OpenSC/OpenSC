@@ -42,18 +42,6 @@ static struct sc_card_driver muscle_drv = {
 	NULL, 0, NULL
 };
 
-static struct sc_atr_table muscle_atrs[] = {
-	/* Tyfone JCOP 242R2 cards */
-	{ "3b:6d:00:00:ff:54:79:66:6f:6e:65:20:32:34:32:52:32", NULL, NULL, SC_CARD_TYPE_MUSCLE_JCOP242R2_NO_EXT_APDU, 0, NULL },
-	/* Aladdin eToken PRO USB 72K Java */
-	{ "3b:d5:18:00:81:31:3a:7d:80:73:c8:21:10:30", NULL, NULL, SC_CARD_TYPE_MUSCLE_ETOKEN_72K, 0, NULL },
-	/* JCOP31 v2.4.1 contact interface */
-	{ "3b:f8:13:00:00:81:31:fe:45:4a:43:4f:50:76:32:34:31:b7", NULL, NULL, SC_CARD_TYPE_MUSCLE_JCOP241, 0, NULL },
-	/* JCOP31 v2.4.1 RF interface */
-	{ "3b:88:80:01:4a:43:4f:50:76:32:34:31:5e", NULL, NULL, SC_CARD_TYPE_MUSCLE_JCOP241, 0, NULL },
-	{ NULL, NULL, NULL, 0, 0, NULL }
-};
-
 #define MUSCLE_DATA(card) ( (muscle_private_t*)card->drv_data )
 #define MUSCLE_FS(card) ( ((muscle_private_t*)card->drv_data)->fs )
 typedef struct muscle_private {
@@ -77,13 +65,27 @@ static u8 muscleAppletId[] = { 0xA0, 0x00,0x00,0x00, 0x01, 0x01 };
 
 static int muscle_match_card(sc_card_t *card)
 {
+	sc_apdu_t apdu;
+	u8 response[64];
 	int r;
 
+	/* Since we send an APDU, the card's logout function may be called...
+	 * however it's not always properly nulled out... */
 	card->ops->logout = NULL;
 
-	r = msc_select_applet(card, muscleAppletId, 5);
-	card->drv_data = (void*)0xFFFFFFFF;
-	return r;
+	if (msc_select_applet(card, muscleAppletId, sizeof muscleAppletId) == 1) {
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_2, 0x3C, 0x00, 0x00);
+				apdu.cla = 0xB0;
+				apdu.le = 64;
+				apdu.resplen = 64;
+				apdu.resp = response;
+				r = sc_transmit_apdu(card, &apdu);
+				if (r == SC_SUCCESS && response[0] == 0x01) {
+						card->type = SC_CARD_TYPE_MUSCLE_V1;
+						return 1;
+				}
+			}
+	return 0;
 }
 
 /* Since Musclecard has a different ACL system then PKCS15
