@@ -6,9 +6,7 @@ platform:
 
 configuration:
   - Release
-  - Debug
   - Light-Release
-  - Light-Debug
 
 environment:
   matrix:
@@ -29,15 +27,11 @@ install:
       If ($env:Platform -Match "x86") {
         $env:VCVARS_PLATFORM="x86"
         $env:OPENSSL_PF="Win32"
-        $env:ARTIFACT="OpenSC-win32_vs${env:VSVER}-${env:CONFIGURATION}.msi"
+        $env:ARTIFACT="OpenSC-win32_vs${env:VSVER}-${env:CONFIGURATION}"
       } Else {
         $env:VCVARS_PLATFORM="amd64"
         $env:OPENSSL_PF="Win64"
-        $env:ARTIFACT="OpenSC-win64_vs${env:VSVER}-${env:CONFIGURATION}.msi"
-      }
-  - ps: >-
-      If ($env:Configuration -Like "*Debug*") {
-        $env:NMAKE_EXTRA="DEBUG_DEF=/DDEBUG ${env:NMAKE_EXTRA}"
+        $env:ARTIFACT="OpenSC-win64_vs${env:VSVER}-${env:CONFIGURATION}"
       }
   - ps: >-
       If (!($env:Configuration -Like "*Light*")) {
@@ -98,13 +92,15 @@ build_script:
   - cp win32/winconfig.h config.h
   - nmake /f Makefile.mak %NMAKE_EXTRA%
   - cd win32 && nmake /f Makefile.mak %NMAKE_EXTRA% VSVER=%VSVER% OpenSC.msi
-  - move OpenSC.msi %ARTIFACT%
-  - appveyor PushArtifact %ARTIFACT%
+  - move OpenSC.msi %ARTIFACT%.msi
+  - appveyor PushArtifact %ARTIFACT%.msi
   # put all pdb files for dump analysis, but this consumes approx 100 MB per build
+  - md %ARTIFACT%-Debug
   - ps: >-
-      If ($env:Configuration -Like "*Debug*") {
-        Get-ChildItem -recurse c:\projects\OpenSC -exclude vc*.pdb *.pdb | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name }
+      Get-ChildItem -recurse C:\projects\OpenSC -exclude vc*.pdb *.pdb | % {
+        7z a -tzip ${env:ARTIFACT}-Debug.zip $_.FullName
       }
+  - appveyor PushArtifact %ARTIFACT%-Debug.zip
 
 cache:
   - C:\zlib -> appveyor.yml
