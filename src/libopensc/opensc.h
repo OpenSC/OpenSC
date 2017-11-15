@@ -484,9 +484,6 @@ struct sc_reader_operations {
 /* Card (or card driver) supports generating a session PIN */
 #define SC_CARD_CAP_SESSION_PIN	0x00000200
 
-/* Card (or card driver) read_binary gets original count of bytes */
-#define SC_CARD_CAP_READ_BINARY_NO_BREAK	0x00000400
-
 typedef struct sc_card {
 	struct sc_context *ctx;
 	struct sc_reader *reader;

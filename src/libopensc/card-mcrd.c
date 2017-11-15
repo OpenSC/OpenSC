@@ -357,7 +357,7 @@ static int mcrd_init(sc_card_t * card)
 							sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "SELECT AID: %02X%02X", apdu.sw1, apdu.sw2);
 				if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 					if (card->reader && card->reader->active_protocol == SC_PROTO_T0)
-						card->caps |= SC_CARD_CAP_READ_BINARY_NO_BREAK;
+						card->max_recv_size = 255;
 				} else {
 					sc_format_apdu(card, &apdu, SC_APDU_CASE_3, 0xA4, 0x04, 0x00);
 					apdu.lc = sizeof(AzeDIT_v35_AID);
@@ -1443,69 +1443,6 @@ static int mcrd_pin_cmd(sc_card_t * card, struct sc_pin_cmd_data *data,
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, iso_ops->pin_cmd(card, data, tries_left));
 }
 
-static int mcrd_read_binary(sc_card_t *card,
-				  unsigned int idx, u8 * buf, size_t count, unsigned long flags)
-{
-	struct sc_context *ctx = card->ctx;
-	struct sc_apdu apdu;
-	int r;
-
-	if(!(card->caps & SC_CARD_CAP_READ_BINARY_NO_BREAK))
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, iso_ops->read_binary(card, idx, buf, count, flags));
-
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_2, 0xB0, (idx >> 8) & 0x7F, idx & 0xFF);
-	apdu.flags |= SC_APDU_FLAGS_NO_GET_RESP;
-	apdu.le = 256;
-	apdu.resplen = 256;
-	apdu.resp = buf;
-
-	r = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(ctx, r, "APDU transmit failed");
-	if (apdu.resplen == 0)
-		LOG_FUNC_RETURN(ctx, sc_check_sw(card, apdu.sw1, apdu.sw2));
-	idx = apdu.resplen;
-
-	/* 2. the card returned 0x61xx: more data can be read from the card
-	 *    using the GET RESPONSE command (mostly used in the T0 protocol).
-	 *    Unless the SC_APDU_FLAGS_NO_GET_RESP is set we try to read as
-	 *    much data as possible using GET RESPONSE.
-	 */
-	if (apdu.sw1 == 0x61)
-	{
-		do {
-			sc_format_apdu(card, &apdu, SC_APDU_CASE_2, 0xC0, 0x00, 0x00);
-			apdu.le      = apdu.sw2 == 0 ? 256 : apdu.sw2;
-			apdu.resplen = apdu.sw2 == 0 ? 256 : apdu.sw2;
-			apdu.resp    = buf + idx;
-			/* don't call GET RESPONSE recursively */
-			apdu.flags  |= SC_APDU_FLAGS_NO_GET_RESP;
-
-			r = sc_transmit_apdu(card, &apdu);
-			LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
-			if (apdu.resplen == 0)
-				LOG_FUNC_RETURN(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2));
-			idx += apdu.resplen;
-
-			if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
-				r = 0;					/* no more data to read */
-			else if (apdu.sw1 == 0x61)
-				r = apdu.sw2 == 0 ? 256 : apdu.sw2;	/* more data to read    */
-			else if (apdu.sw1 == 0x62 && apdu.sw2 == 0x82)
-				r = 0; /* Le not reached but file/record ended */
-			else
-				r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-		} while (r != 0 && idx < count);
-	}
-
-	LOG_TEST_RET(ctx, r, "cannot get all data with 'GET RESPONSE'");
-	r =  sc_check_sw(card, apdu.sw1, apdu.sw2);
-	if (r == SC_ERROR_FILE_END_REACHED)
-		LOG_FUNC_RETURN(ctx, idx);
-	LOG_TEST_RET(ctx, r, "Check SW error");
-
-	LOG_FUNC_RETURN(ctx, idx);
-}
-
 /* Driver binding */
 static struct sc_card_driver *sc_get_driver(void)
 {
@@ -1515,7 +1452,6 @@ static struct sc_card_driver *sc_get_driver(void)
 
 	mcrd_ops = *iso_drv->ops;
 	mcrd_ops.match_card = mcrd_match_card;
-	mcrd_ops.read_binary = mcrd_read_binary;
 	mcrd_ops.init = mcrd_init;
 	mcrd_ops.finish = mcrd_finish;
 	mcrd_ops.select_file = mcrd_select_file;
