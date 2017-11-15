@@ -864,14 +864,18 @@ int main(int argc, char *argv[])
 		b = malloc(file->size);
 		if(b == NULL)
 		{
-				printf("Not enougth memory.\n");
-				goto out;
+			printf("Not enougth memory.\n");
+			goto out;
 		}
 
 		memset(b, 0, file->size);
 
 		fp = fopen(put_filename, "rb");
-		fread(b, 1, file->size, fp);
+		if (fp == NULL || file->size != fread(b, 1, file->size, fp))
+		{
+			printf("could not read %s.\n", put_filename);
+			goto out;
+		}
 		fclose(fp);
 
 		r = sc_update_binary(card, 0, b, file->size, 0);

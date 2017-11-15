@@ -84,7 +84,9 @@ static void sc_do_log_va(sc_context_t *ctx, int level, const char *file, int lin
 #ifdef _WIN32
 	GetLocalTime(&st);
 	r = snprintf(p, left,
-			"%i-%02i-%02i %02i:%02i:%02i.%03i ",
+			"P:%lu; T:%lu %i-%02i-%02i %02i:%02i:%02i.%03i ",
+			(unsigned long)GetCurrentProcessId(),
+			(unsigned long)GetCurrentThreadId(),
 			st.wYear, st.wMonth, st.wDay,
 			st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
 #else
