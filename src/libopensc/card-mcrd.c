@@ -356,6 +356,8 @@ static int mcrd_init(sc_card_t * card)
 							SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 							sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "SELECT AID: %02X%02X", apdu.sw1, apdu.sw2);
 				if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
+					// Force EstEID 3.5 card recv size 255 with T=0 to avoid recursive read binary
+					// sc_read_binary cannot handle recursive 61 00 calls
 					if (card->reader && card->reader->active_protocol == SC_PROTO_T0)
 						card->max_recv_size = 255;
 				} else {
