@@ -480,12 +480,12 @@ int sc_get_encoding_flags(sc_context_t *ctx,
 	/* TODO: Could convert GOSTR3410_HASH_GOSTR3411 -> GOSTR3410_RAW and
 	 *       ECDSA_HASH_ -> ECDSA_RAW using OpenSSL (not much benefit though). */
 
+
 	if ((caps & iflags) == iflags) {
 		/* Card supports the signature operation we want to do, great, let's
 		 * go with it then. */
 		*sflags = iflags;
 		*pflags = 0;
-
 	} else if ((caps & SC_ALGORITHM_RSA_PAD_PSS) &&
 			(iflags & SC_ALGORITHM_RSA_PAD_PSS)) {
 		*sflags |= SC_ALGORITHM_RSA_PAD_PSS;
@@ -504,6 +504,17 @@ int sc_get_encoding_flags(sc_context_t *ctx,
 		 * DigestInfo bit it will do the rest. */
 		*sflags = SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE;
 		*pflags = iflags & SC_ALGORITHM_RSA_HASHES;
+
+ 	} else if ((iflags & SC_ALGORITHM_AES) == SC_ALGORITHM_AES) { /* TODO: seems like this constant does not belong to the same set of flags used form asymmetric algos. Fix this! */
+		*sflags = 0;
+		*pflags = 0;
+
+	} else if ((iflags & SC_ALGORITHM_AES_FLAGS) > 0) {
+		*sflags = iflags & SC_ALGORITHM_AES_FLAGS;
+		if (iflags & SC_ALGORITHM_AES_CBC_PAD)
+			*pflags = SC_ALGORITHM_AES_CBC_PAD;
+		else
+			*pflags = 0;
 
 	} else {
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "unsupported algorithm");
