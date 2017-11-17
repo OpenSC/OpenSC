@@ -274,7 +274,8 @@ struct sc_pkcs15init_skeyargs {
 	unsigned int		access_flags;
 	unsigned long		algorithm; /* User requested algorithm */
 	unsigned long		value_len; /* User requested length */
-
+	int			session_object;	 /* If nonzero. this is a session object, which will
+						be cleared from card when the session is closed.*/
 	struct sc_pkcs15_skey	key;
 };
 

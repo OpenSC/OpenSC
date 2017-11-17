@@ -1345,8 +1345,14 @@ sc_pkcs15init_init_skdf(struct sc_pkcs15_card *p15card, struct sc_profile *profi
 
 	if (keyargs->access_flags & SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE) {
 		key_info->access_flags &= ~SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE;
-		key_info->native = 0;
+		/* The following commented out. I interpret PKCS#15 so that native only means that a key
+		 * can be used in on card crypto. Such key can be extractable (can be wrapped), so IMO this
+		 logic is not correct. */
+		/* key_info->native = 0; */
 	}
+
+	if (keyargs->session_object > 0)
+	    object->session_object = 1;
 
 	/* Select a Key ID if the user didn't specify one,
 	 * otherwise make sure it's compatible with our intended use */
