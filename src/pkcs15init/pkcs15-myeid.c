@@ -41,6 +41,11 @@
 unsigned char MYEID_DEFAULT_PUBKEY[] = {0x01, 0x00, 0x01};
 #define MYEID_DEFAULT_PUBKEY_LEN       sizeof(MYEID_DEFAULT_PUBKEY)
 
+#define MYEID_PROP_INFO_1_EXCTRACTABLE		0x01;
+#define MYEID_PROP_INFO_1_TRUSTED		0x02;
+#define MYEID_PROP_INFO_1_WRAP_WITH_TRUSTED	0x04;
+#define MYEID_PROP_INFO_2_SESSION_OBJECT	0x08;
+
 /* For Myeid, all objects are files that can be deleted in any order */
 static int
 myeid_delete_object(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
@@ -508,6 +513,8 @@ myeid_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	struct sc_pkcs15_auth_info *pkcs15_auth_info = NULL;
 	unsigned char sec_attrs[] = {0xFF, 0xFF, 0xFF};
 	int r, ef_structure = 0, keybits = 0, pin_reference = -1;
+	unsigned char prop_info[] = {0x00, 0x00};
+	int extractable = FALSE;
 
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -524,15 +531,23 @@ myeid_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 		case SC_PKCS15_TYPE_SKEY_3DES:
 			ef_structure = SC_CARDCTL_MYEID_KEY_DES;
 			keybits = skey_info->value_len;
+			if ((skey_info->access_flags & SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE) == SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE)
+				extractable = TRUE;
 			break;
 		case SC_PKCS15_TYPE_SKEY_GENERIC:
 			keybits = skey_info->value_len;
+			if ((skey_info->access_flags & SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE) == SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE)
+				extractable = TRUE;
 			switch (skey_info->key_type) {
 			case CKM_AES_ECB:
 				ef_structure = SC_CARDCTL_MYEID_KEY_AES;
 				break;
 			case CKM_DES_ECB:
 				ef_structure = SC_CARDCTL_MYEID_KEY_DES;
+				break;
+			default:
+				if (object->type == SC_PKCS15_TYPE_SKEY_GENERIC)
+					ef_structure = SC_CARDCTL_MYEID_KEY_GENERIC_SECRET;
 				break;
 			}
 			break;
@@ -604,6 +619,21 @@ myeid_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 		sc_file_free(file);
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Invalid AuthID value for a private key.");
 	}
+
+	/* TODO: fill all proprietary attributes here based on the object */
+
+	if (object->user_consent != 0 && pin_reference >= 1)
+	    prop_info[0] |= (pin_reference << 4);
+
+	if (extractable)
+	    prop_info[0] |= MYEID_PROP_INFO_1_EXCTRACTABLE;
+
+	if (object->session_object != 0) /* Object will be removed during next reset. */
+		prop_info[1] |= MYEID_PROP_INFO_2_SESSION_OBJECT;
+
+	/* TODO: add other flags, like CKA_TRUSTED and CKA_WRAP_WITH_TRUSTED */
+
+	r = sc_file_set_prop_attr(file, prop_info, 2);
 
 	/* Now create the key file */
 	r = sc_pkcs15init_create_file(profile, p15card, file);
