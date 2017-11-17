@@ -131,6 +131,8 @@ struct pkcs15_skey_object {
 	struct sc_pkcs15_skey *valueXXXX;
 };
 
+#define is_secret_key(obj) ((__p15_type(obj) & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_SKEY)
+
 #define skey_flags	base.base.flags
 #define skey_p15obj	base.p15_object
 #define is_skey(obj)	((__p15_type(obj) & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_SKEY_OBJECT)
@@ -1186,6 +1188,11 @@ _pkcs15_create_typed_objects(struct pkcs15_fw_data *fw_data)
 	if (rv < 0)
 		return rv;
 
+	rv = pkcs15_create_pkcs11_objects(fw_data, SC_PKCS15_TYPE_SKEY_GENERIC, "Generic secret key",
+			__pkcs15_create_secret_key_object);
+	if (rv < 0)
+		return rv;
+
 	/* Match up related keys and certificates */
 	pkcs15_bind_related_objects(fw_data);
 	sc_log(context, "found %i FW objects", fw_data->num_objects);
@@ -1339,6 +1346,10 @@ _add_pin_related_objects(struct sc_pkcs11_slot *slot, struct sc_pkcs15_object *p
 		}
 		else if (is_cert(obj)) {
 			sc_log(context, "Slot:%p Adding cert object %d to PIN '%.*s'", slot, i, (int) sizeof pin_obj->label, pin_obj->label);
+			pkcs15_add_object(slot, obj, NULL);
+		}
+		else if (is_secret_key(obj)) {
+			sc_log(context, "Slot:%p Adding secret key object %d to PIN '%.*s'", slot, i, (int) sizeof pin_obj->label, pin_obj->label);
 			pkcs15_add_object(slot, obj, NULL);
 		}
 		else   {
@@ -2232,7 +2243,6 @@ pkcs15_create_secret_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 		args.auth_id = pin->auth_id;
 
 	switch (key_type) {
-		/* Only support GENERIC_SECRET for now */
 		case CKK_GENERIC_SECRET:
 		case CKK_AES:
 		    args.algorithm = SC_ALGORITHM_AES;
@@ -2334,6 +2344,9 @@ pkcs15_create_secret_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 	    args.key.data = NULL;
 	}
 	else {
+	    if(_token == FALSE)
+		args.session_object = 1;	/* store the object on card for duration of the session. */
+
 	    rc = sc_pkcs15init_store_secret_key(fw_data->p15_card, profile, &args, &key_obj);
 	    if (rc < 0) {
 		    rv = sc_to_cryptoki_error(rc, "C_CreateObject");
@@ -3925,13 +3938,11 @@ pkcs15_prkey_unwrap(struct sc_pkcs11_session *session, void *obj,
 			CK_MECHANISM_PTR pMechanism, CK_BYTE_PTR pWrappedKey,
 			CK_ULONG ulWrappedKeyLen,
 			void *targetKey)
-/*			CK_ATTRIBUTE_PTR pAttributes, CK_ULONG ulAttributesLen,
-			void ** pUnwrappedKey)*/
 {
 	struct	sc_pkcs11_card *p11card = session->slot->p11card;
 	struct	pkcs15_fw_data *fw_data = NULL;
 	struct	pkcs15_prkey_object *prkey = (struct pkcs15_prkey_object *) obj;
-	struct	pkcs15_skey_object *targetKeyObj = (struct pkcs15_skey_object *) targetKey;
+	struct	pkcs15_any_object *targetKeyObj = (struct pkcs15_any_object *) targetKey;
 	int	rv, flags = 0;	
 
 	sc_log(context, "Initiating unwrapping with private key.");
@@ -3971,7 +3982,7 @@ pkcs15_prkey_unwrap(struct sc_pkcs11_session *session, void *obj,
 		return sc_to_cryptoki_error(rv, "C_UnwrapKey");
 
 	/* Call the card to do the unwrap operation */
-	rv = sc_pkcs15_unwrap(fw_data->p15_card, prkey->prv_p15obj, targetKeyObj->prv_p15obj, 0,
+	rv = sc_pkcs15_unwrap(fw_data->p15_card, prkey->prv_p15obj, targetKeyObj->p15_object, 0,
 		pWrappedKey, ulWrappedKeyLen);
 
 	sc_unlock(p11card->card);
@@ -3981,7 +3992,6 @@ pkcs15_prkey_unwrap(struct sc_pkcs11_session *session, void *obj,
 
 	return CKR_OK;
 }
-
 
 static CK_RV
 pkcs15_prkey_decrypt(struct sc_pkcs11_session *session, void *obj,
@@ -4779,6 +4789,12 @@ pkcs15_skey_get_attribute(struct sc_pkcs11_session *session,
 		check_attribute_buffer(attr, skey->info->id.len);
 		memcpy(attr->pValue, skey->info->id.value, skey->info->id.len);
 		break;
+	case CKA_EXTRACTABLE:
+		check_attribute_buffer(attr, sizeof(CK_BBOOL));
+		*(CK_BBOOL*)attr->pValue = (((skey->base.p15_object->flags & SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE) == SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE)
+					&& (skey->base.p15_object->flags & SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE) == 0
+					&& (skey->base.p15_object->flags & SC_PKCS15_PRKEY_ACCESS_ALWAYSSENSITIVE) == 0);
+		break;
 	case CKA_VALUE_LEN:
 		check_attribute_buffer(attr, sizeof(CK_ULONG));
 		*(CK_ULONG*)attr->pValue = skey->info->data.len;
@@ -4790,6 +4806,138 @@ pkcs15_skey_get_attribute(struct sc_pkcs11_session *session,
 	default:
 		return CKR_ATTRIBUTE_TYPE_INVALID;
 	}
+
+	return CKR_OK;
+}
+
+static CK_RV
+pkcs15_skey_unwrap(struct sc_pkcs11_session *session, void *obj,
+			CK_MECHANISM_PTR pMechanism, CK_BYTE_PTR pWrappedKey,
+			CK_ULONG ulWrappedKeyLen,
+			void *targetKey)
+{
+	struct	sc_pkcs11_card *p11card = session->slot->p11card;
+	struct	pkcs15_fw_data *fw_data = NULL;
+	struct	pkcs15_skey_object *skey = (struct pkcs15_skey_object *) obj;
+	struct	pkcs15_skey_object *targetKeyObj = (struct pkcs15_skey_object *) targetKey;
+	int	rv, flags = 0;
+
+	sc_log(context, "Initiating unwrapping with a secret key.");
+
+	fw_data = (struct pkcs15_fw_data *) p11card->fws_data[session->slot->fw_data_idx];
+	if (!fw_data)
+		return sc_to_cryptoki_error(SC_ERROR_INTERNAL, "C_UnwrapKey");
+
+	sc_log(context, "unwrapping %p %p %p %p %lu %p", session, obj,
+	       pMechanism, pWrappedKey, ulWrappedKeyLen, targetKeyObj);
+
+	if (pMechanism == NULL || pWrappedKey == NULL || ulWrappedKeyLen == 0 || targetKeyObj == NULL)
+	    return CKR_ARGUMENTS_BAD;
+
+	/* Check whether this key supports unwrap */
+	if (skey && !(skey->info->usage & SC_PKCS15_PRKEY_USAGE_UNWRAP))
+	    skey = NULL;
+
+	/* TODO: should we look for a compatible key automatically? prv_next not implemented yet. */
+	/* skey = skey->prv_next; */
+
+	if (skey == NULL)
+		return CKR_KEY_FUNCTION_NOT_PERMITTED;
+
+	/* Select the proper padding mechanism */
+	switch (pMechanism->mechanism) {
+	case CKM_AES_ECB:
+		flags |= SC_ALGORITHM_AES;	/* TODO: may need to define separate constants for ECB and CBC in opensc.h */
+		break;
+	case CKM_AES_CBC:
+		flags |= SC_ALGORITHM_AES;
+		break;
+	default:
+		return CKR_MECHANISM_INVALID;
+	}
+
+	rv = sc_lock(p11card->card);
+
+	if (rv < 0)
+		return sc_to_cryptoki_error(rv, "C_UnwrapKey");
+
+	/* Call the card to do the unwrap operation */
+	rv = sc_pkcs15_unwrap(fw_data->p15_card, skey->prv_p15obj, targetKeyObj->prv_p15obj, flags,
+		pWrappedKey, ulWrappedKeyLen);
+
+	sc_unlock(p11card->card);
+
+	if (rv < 0)
+		return sc_to_cryptoki_error(rv, "C_UnwrapKey");
+
+	return CKR_OK;
+}
+
+/*
+ * Wrap a key using a secret key. obj = wrapping key, targetKey = key to be wrapped.
+ * Wrapped key data is returned in pData
+ */
+
+static CK_RV
+pkcs15_skey_wrap(struct sc_pkcs11_session *session, void *obj,
+			CK_MECHANISM_PTR pMechanism,
+			void *targetKey,
+			CK_BYTE_PTR pData, CK_ULONG_PTR pulDataLen)
+
+{
+	struct	sc_pkcs11_card *p11card = session->slot->p11card;
+	struct	pkcs15_fw_data *fw_data = NULL;
+	struct	pkcs15_skey_object *skey = (struct pkcs15_skey_object *) obj;
+	struct	pkcs15_skey_object *targetKeyObj = (struct pkcs15_skey_object *) targetKey;
+	int rv, flags = 0;
+
+	sc_log(context, "Initializing wrapping with a secret key.");
+
+	fw_data = (struct pkcs15_fw_data *) p11card->fws_data[session->slot->fw_data_idx];
+
+	if (!fw_data)
+		return sc_to_cryptoki_error(SC_ERROR_INTERNAL, "C_WrapKey");
+
+	sc_log(context, "wrapping %p %p %p %p %p %p, %lu", session, obj,
+	       pMechanism, targetKey, pData, pulDataLen, pulDataLen == NULL ? 0 : *pulDataLen);
+
+	if (session == NULL || pMechanism == NULL || obj == NULL || targetKey == NULL)
+	    return CKR_ARGUMENTS_BAD;
+
+	/* Verify that the key supports wrapping */
+	if (skey && !(skey->info->usage & SC_PKCS15_PRKEY_USAGE_WRAP))
+	    skey = NULL;
+	/* TODO: browse for a key that supports, like other similar funcs */
+
+
+	if (skey == NULL)
+		return CKR_KEY_FUNCTION_NOT_PERMITTED;
+
+	/* Select the proper padding mechanism */
+	switch (pMechanism->mechanism) {
+	case CKM_AES_ECB:
+		flags |= SC_ALGORITHM_AES;	/* TODO: may need to define separate constants for ECB and CBC in opensc.h */
+		break;
+	case CKM_AES_CBC:
+		flags |= SC_ALGORITHM_AES;
+		break;
+	default:
+		return CKR_MECHANISM_INVALID;
+	}
+
+	rv = sc_lock(p11card->card);
+
+	if (rv < 0)
+		return sc_to_cryptoki_error(rv, "C_UnwrapKey");
+
+	/* Call the card to do the wrapping operation */
+	rv = sc_pkcs15_wrap(fw_data->p15_card, skey->prv_p15obj, targetKeyObj->prv_p15obj, flags,
+		pData, pulDataLen);
+
+	sc_unlock(p11card->card);
+
+	if (rv < 0)
+		return sc_to_cryptoki_error(rv, "C_UnwrapKey");
 
 	return CKR_OK;
 }
@@ -4806,7 +4954,7 @@ struct sc_pkcs11_object_ops pkcs15_skey_ops = {
 	pkcs15_skey_destroy,
 	NULL,	/* get_size */
 	NULL,	/* sign */
-	NULL,	/* unwrap_key */
+	pkcs15_skey_unwrap,
 	NULL,	/* decrypt */
 	NULL,	/* derive */
 	NULL,	/* can_do */
@@ -5136,6 +5284,47 @@ static int register_ec_mechanisms(struct sc_pkcs11_card *p11card, int flags,
 	return CKR_OK;
 }
 
+static int sc_pkcs11_register_aes_mechanisms(struct sc_pkcs11_card *p11card, int flags,
+		CK_ULONG min_key_size, CK_ULONG max_key_size)
+{
+	int rc;
+	CK_MECHANISM_INFO mech_info;
+	sc_pkcs11_mechanism_type_t *mt;
+	sc_card_t* card = p11card->card;
+	memset(&mech_info, 0, sizeof(mech_info));
+	mech_info.flags = CKF_ENCRYPT | CKF_DECRYPT;
+	mech_info.ulMinKeySize = min_key_size;
+	mech_info.ulMaxKeySize = max_key_size;
+
+	if ((card->caps & SC_CARD_CAP_UNWRAP_KEY) == SC_CARD_CAP_UNWRAP_KEY)
+	    mech_info.flags |= CKF_UNWRAP;
+	if ((card->caps & SC_CARD_CAP_WRAP_KEY) == SC_CARD_CAP_WRAP_KEY)
+	    mech_info.flags |= CKF_WRAP;
+
+	mt = sc_pkcs11_new_fw_mechanism(CKM_AES_ECB, &mech_info, CKK_AES, NULL, NULL);
+	if (!mt)
+		return CKR_HOST_MEMORY;
+	rc = sc_pkcs11_register_mechanism(p11card, mt);
+	if (rc != CKR_OK)
+			return rc;
+
+	mt = sc_pkcs11_new_fw_mechanism(CKM_AES_CBC, &mech_info, CKK_AES, NULL, NULL);
+	if (!mt)
+		return CKR_HOST_MEMORY;
+	rc = sc_pkcs11_register_mechanism(p11card, mt);
+	if (rc != CKR_OK)
+			return rc;
+
+	mt = sc_pkcs11_new_fw_mechanism(CKM_AES_CBC_PAD, &mech_info, CKK_AES, NULL, NULL);
+	if (!mt)
+		return CKR_HOST_MEMORY;
+	rc = sc_pkcs11_register_mechanism(p11card, mt);
+	if (rc != CKR_OK)
+			return rc;
+
+	return CKR_OK;
+}
+
 /*
  * Mechanism handling
  * FIXME: We should consult the card's algorithm list to
@@ -5147,11 +5336,12 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 	sc_card_t *card = p11card->card;
 	sc_algorithm_info_t *alg_info;
 	CK_MECHANISM_INFO mech_info;
-	CK_ULONG ec_min_key_size, ec_max_key_size;
+	CK_ULONG ec_min_key_size, ec_max_key_size,
+		aes_min_key_size, aes_max_key_size;
 	unsigned long ec_ext_flags;
 	sc_pkcs11_mechanism_type_t *mt;
 	unsigned int num;
-	int rc, rsa_flags = 0, ec_flags = 0, gostr_flags = 0;
+	int rc, rsa_flags = 0, ec_flags = 0, gostr_flags = 0, aes_flags = 0;
 
 	/* Register generic mechanisms */
 	sc_pkcs11_register_generic_mechanisms(p11card);
@@ -5163,11 +5353,16 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 #endif
 	if ((card->caps & SC_CARD_CAP_UNWRAP_KEY) == SC_CARD_CAP_UNWRAP_KEY)
 	    mech_info.flags |= CKF_UNWRAP;
+	if ((card->caps & SC_CARD_CAP_WRAP_KEY) == SC_CARD_CAP_WRAP_KEY)
+	    mech_info.flags |= CKF_WRAP;
 
 	mech_info.ulMinKeySize = ~0;
 	mech_info.ulMaxKeySize = 0;
 	ec_min_key_size = ~0;
 	ec_max_key_size = 0;
+	aes_min_key_size = ~0;
+	aes_max_key_size = 0;
+
 	ec_ext_flags = 0;
 
 	/* For now, we just OR all the algorithm specific
@@ -5194,6 +5389,13 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 				break;
 			case SC_ALGORITHM_GOSTR3410:
 				gostr_flags |= alg_info->flags;
+				break;
+			case SC_ALGORITHM_AES:
+				aes_flags |= alg_info->flags;
+				if (alg_info->key_length < aes_min_key_size)
+					aes_min_key_size = alg_info->key_length;
+				if (alg_info->key_length > aes_max_key_size)
+					aes_max_key_size = alg_info->key_length;
 				break;
 		}
 		alg_info++;
@@ -5342,6 +5544,11 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 		if (rc != CKR_OK)
 			return rc;
 	}
+
+	if (aes_max_key_size > 0) {
+		rc = sc_pkcs11_register_aes_mechanisms(p11card, aes_flags, aes_min_key_size, aes_max_key_size);
+	}
+
 
 	return CKR_OK;
 }

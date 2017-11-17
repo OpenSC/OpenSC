@@ -1211,8 +1211,6 @@ int sc_decipher(struct sc_card *card, const u8 * crgram, size_t crgram_len,
 		u8 * out, size_t outlen);
 int sc_compute_signature(struct sc_card *card, const u8 * data,
 			 size_t data_len, u8 * out, size_t outlen);
-int sc_unwrap(struct sc_card *card, const u8 * data,
-			 size_t data_len, u8 * out, size_t outlen);
 int sc_verify(struct sc_card *card, unsigned int type, int ref, const u8 *buf,
 	      size_t buflen, int *tries_left);
 /**
@@ -1265,6 +1263,13 @@ int sc_file_set_type_attr(sc_file_t *file, const u8 *type_attr,
 int sc_file_set_content(sc_file_t *file, const u8 *content,
 			  size_t content_len);
 
+/********************************************************************/
+/*               Key wrapping and unwrapping                        */
+/********************************************************************/
+int sc_unwrap(struct sc_card *card, const u8 * data,
+			 size_t data_len, u8 * out, size_t outlen);
+int sc_wrap(struct sc_card *card, const u8 * data,
+			 size_t data_len, u8 * out, size_t outlen);
 
 /********************************************************************/
 /*             sc_path_t handling functions                         */
@@ -1413,6 +1418,8 @@ struct sc_algorithm_info * sc_card_find_ec_alg(struct sc_card *card,
 		unsigned int field_length, struct sc_object_id *curve_oid);
 struct sc_algorithm_info * sc_card_find_gostr3410_alg(struct sc_card *card,
 		unsigned int key_length);
+struct sc_algorithm_info * sc_card_find_alg(sc_card_t *card,
+		unsigned int algorithm, unsigned int key_length, void *param);
 
 scconf_block *sc_match_atr_block(sc_context_t *ctx, struct sc_card_driver *driver, struct sc_atr *atr);
 /**

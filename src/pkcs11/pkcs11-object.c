@@ -1039,7 +1039,71 @@ CK_RV C_WrapKey(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		CK_BYTE_PTR pWrappedKey,	/* receives the wrapped key */
 		CK_ULONG_PTR pulWrappedKeyLen)
 {				/* receives byte size of wrapped key */
-	return CKR_FUNCTION_NOT_SUPPORTED;
+	CK_RV rv;
+	CK_BBOOL can_wrap,
+		 can_be_wrapped;
+	CK_KEY_TYPE key_type;
+	CK_ATTRIBUTE wrap_attribute = { CKA_WRAP, &can_wrap, sizeof(can_wrap) };
+	CK_ATTRIBUTE extractable_attribute = { CKA_EXTRACTABLE, &can_be_wrapped, sizeof(can_be_wrapped) };
+	CK_ATTRIBUTE key_type_attr = { CKA_KEY_TYPE, &key_type, sizeof(key_type) };
+	struct sc_pkcs11_session *session;
+	struct sc_pkcs11_object *wrapping_object;
+	struct sc_pkcs11_object *key_object;
+
+	if (pMechanism == NULL_PTR)
+		return CKR_ARGUMENTS_BAD;
+
+	rv = sc_pkcs11_lock();
+	if (rv != CKR_OK)
+		return rv;
+
+	/* Check if the wrapping key is OK to do wrapping */
+	rv = get_object_from_session(hSession, hWrappingKey, &session, &wrapping_object);
+	if (rv != CKR_OK) {
+		if (rv == CKR_OBJECT_HANDLE_INVALID)
+			rv = CKR_KEY_HANDLE_INVALID;
+		goto out;
+	}
+	if (wrapping_object->ops->wrap_key == NULL_PTR) {
+		rv = CKR_KEY_TYPE_INCONSISTENT;
+		goto out;
+	}
+
+	rv = wrapping_object->ops->get_attribute(session, wrapping_object, &wrap_attribute);
+	if (rv != CKR_OK || !can_wrap) {
+		rv = CKR_KEY_TYPE_INCONSISTENT;
+		goto out;
+	}
+	rv = wrapping_object->ops->get_attribute(session, wrapping_object, &key_type_attr);
+	if (rv != CKR_OK) {
+		rv = CKR_KEY_TYPE_INCONSISTENT;
+		goto out;
+	}
+
+	/* Check if the key to be wrapped exists and is extractable*/
+	rv = get_object_from_session(hSession, hKey, &session, &key_object);
+	if (rv != CKR_OK) {
+		if (rv == CKR_OBJECT_HANDLE_INVALID)
+			rv = CKR_KEY_HANDLE_INVALID;
+		goto out;
+	}
+
+	rv = key_object->ops->get_attribute(session, key_object, &extractable_attribute);
+	if (rv != CKR_OK || !can_be_wrapped) {
+		rv = CKR_KEY_TYPE_INCONSISTENT;
+		goto out;
+	}
+
+	rv = restore_login_state(session->slot);
+	if (rv == CKR_OK)
+		rv = sc_pkcs11_wrap(session, pMechanism, wrapping_object, key_type,
+				key_object, pWrappedKey, pulWrappedKeyLen);
+
+	rv = reset_login_state(session->slot, rv);
+
+out:
+	sc_pkcs11_unlock();
+	return rv;
 }
 
 CK_RV C_UnwrapKey(CK_SESSION_HANDLE hSession,	/* the session's handle */
@@ -1105,7 +1169,7 @@ CK_RV C_UnwrapKey(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	rv = restore_login_state(session->slot);
 	if (rv == CKR_OK)
 		rv = sc_pkcs11_unwrap(session, pMechanism, object, key_type,
-				hSession, pWrappedKey, ulWrappedKeyLen, key_object);
+				pWrappedKey, ulWrappedKeyLen, key_object);
 	/* TODO if (rv != CK_OK) need to destroy the object */
 	rv = reset_login_state(session->slot, rv);
 
