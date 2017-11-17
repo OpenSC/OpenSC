@@ -61,6 +61,7 @@
 #endif /* OPENSSL_VERSION_NUMBER >= 0x10000000L */
 
 #include "common/compat_strlcpy.h"
+#include "libopensc/internal.h"
 #include "libopensc/cardctl.h"
 #include "libopensc/pkcs15.h"
 #include "libopensc/log.h"
@@ -2793,6 +2794,7 @@ handle_option(const struct option *opt)
 		break;
 	case OPT_USE_PINPAD_DEPRECATED:
 		fprintf(stderr, "'--no-prompt' is deprecated , use '--use-pinpad' instead.\n");
+		/* fall through */
 	case OPT_USE_PINPAD:
 		opt_use_pinpad = 1;
 		break;
@@ -2889,6 +2891,7 @@ parse_commandline(int argc, char **argv)
 		switch (o->has_arg) {
 		case optional_argument:
 			*sp++ = ':';
+			/* fall through */
 		case required_argument:
 			*sp++ = ':';
 		case no_argument:
@@ -3088,7 +3091,7 @@ int get_pin(sc_ui_hints_t *hints, char **out)
 static int verify_pin(struct sc_pkcs15_card *p15card, char *auth_id_str)
 {
 	struct sc_pkcs15_object	*pin_obj = NULL;
-	char pin_label[64];
+	char pin_label[(sizeof pin_obj->label) + 20];
 	char *pin = NULL;
 	int r;
 
@@ -3142,7 +3145,8 @@ static int verify_pin(struct sc_pkcs15_card *p15card, char *auth_id_str)
 			return SC_ERROR_OBJECT_NOT_FOUND;
 
 		if (pin_obj->label[0])
-			snprintf(pin_label, sizeof(pin_label), "User PIN [%s]", pin_obj->label);
+			snprintf(pin_label, sizeof(pin_label), "User PIN [%.*s]",
+				(int) sizeof pin_obj->label, pin_obj->label);
 		else
 			snprintf(pin_label, sizeof(pin_label), "User PIN");
                 memset(&hints, 0, sizeof(hints));

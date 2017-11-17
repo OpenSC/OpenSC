@@ -1908,7 +1908,7 @@ static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 			break;
 		default: 
 			oaep_params.hashAlg = CKM_SHA_1;
-			/* fallthrough to SHA-1 default */
+			/* fall through */
 		case CKM_SHA_1:
 			oaep_params.mgf = CKG_MGF1_SHA1;
 			break;

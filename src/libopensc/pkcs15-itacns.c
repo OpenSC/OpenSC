@@ -473,8 +473,10 @@ static int get_name_from_EF_DatiPersonali(unsigned char *EFdata,
 	if (fields[f_first_name].len + fields[f_last_name].len + 1 >= name_len)
 		return -1;
 
-	snprintf(name, name_len, "%s %s",
-		fields[f_first_name].value, fields[f_last_name].value);
+	/* the lengths are already checked that they will fit in buffer */
+	snprintf(name, name_len, "%.*s %.*s",
+		fields[f_first_name].len, fields[f_first_name].value,
+		fields[f_last_name].len, fields[f_last_name].value);
 	return 0;
 }
 

@@ -34,6 +34,7 @@
 #endif
 
 #include "common/compat_getpass.h"
+#include "libopensc/internal.h"
 #include "libopensc/opensc.h"
 #include "libopensc/pkcs15.h"
 #include "libopensc/asn1.h"
@@ -129,7 +130,7 @@ static char *readpin_stdin(void)
 
 static char * get_pin(struct sc_pkcs15_object *obj)
 {
-	char buf[80];
+	char buf[(sizeof obj->label) + 20];
 	char *pincode;
 	struct sc_pkcs15_auth_info *pinfo = (struct sc_pkcs15_auth_info *) obj->data;
 
@@ -143,7 +144,8 @@ static char * get_pin(struct sc_pkcs15_object *obj)
 			return strdup(opt_pincode);
 	}
 
-	sprintf(buf, "Enter PIN [%.*s]: ", (int) sizeof obj->label, obj->label);
+	snprintf(buf, sizeof(buf), "Enter PIN [%.*s]: ",
+		(int) sizeof obj->label, obj->label);
 	while (1) {
 		pincode = getpass(buf);
 		if (strlen(pincode) == 0)

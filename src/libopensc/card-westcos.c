@@ -972,7 +972,7 @@ static int westcos_card_ctl(sc_card_t * card, unsigned long cmd, void *ptr)
 		data.pin1.data = priv_data->default_key.key_value;
 		return sc_pin_cmd(card, &data, NULL);
 	case SC_CARDCTL_WESTCOS_CHANGE_KEY:
-		if (1) {
+		{
 			int lrc;
 			u8 temp[7];
 			sc_changekey_t *ck = (sc_changekey_t *) ptr;

@@ -925,7 +925,8 @@ static int rutoken_get_do_info(sc_card_t *card, sc_DO_INFO_t * pInfo)
 			apdu.cse = SC_APDU_CASE_2_SHORT;
 			break;
 		case select_next:
-			apdu.p2  = 0x02;
+			apdu.p2 = 0x02;
+			/* fall through */
 		case select_by_id:
 			data[0] = pInfo->DoId;
 			apdu.data = data;
