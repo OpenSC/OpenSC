@@ -486,10 +486,13 @@ static int encode_file_structure(sc_card_t *card, const sc_file_t *file,
 	/* Proprietary Information */
 	buf[18] = 0x85;
 	buf[19] = 0x02;
-	/* AC right to clear default 0 */
-	/* TODO: Implement this */
-	buf[20] = 0x00; /*(SC_FILE_TYPE_INTERNAL_EF == file->type ? 0x00 : 0x80);*/
-	buf[21] = 0x00;
+	if (file->prop_attr_len == 2 && file->prop_attr != NULL)
+	    memcpy(&buf[20], file->prop_attr, 2);
+	else
+	{
+		buf[20] = 0x00;
+		buf[21] = 0x00;
+	}
 
 	/* Life Cycle Status tag */
 	buf[22] = 0x8A;
@@ -663,7 +666,13 @@ static int myeid_set_security_env_rsa(sc_card_t *card, const sc_security_env_t *
 		*p++ = 1;
 		*p++ = 0;
 	}
-	/* TODO: handle SC_SEC_ENV_TARGET_FILE_REF_PRESENT, if this is an unwrapping operation. */
+	if (env->flags & SC_SEC_ENV_TARGET_FILE_REF_PRESENT)
+	{
+		*p++ = 0x83;
+		*p++ = 2;
+		memcpy(p, env->target_file_ref.value, 2);
+		p+= 2;
+	}
 	r = p - sbuf;
 	apdu.lc = r;
 	apdu.datalen = r;
@@ -799,13 +808,20 @@ static int myeid_set_security_env(struct sc_card *card,
 
 		if (tmp.algorithm == SC_ALGORITHM_RSA)
 		{
-			tmp.algorithm_ref = 0x00;
-			/* potential FIXME: return an error, if an unsupported
-			* pad or hash was requested, although this shouldn't happen */
-			if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1)
-				tmp.algorithm_ref = 0x02;
-			if (tmp.algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA1)
-				tmp.algorithm_ref |= 0x10;
+			if (tmp.operation == SC_SEC_OPERATION_UNWRAP || tmp.operation == SC_SEC_OPERATION_WRAP)
+			{
+			    tmp.algorithm_ref = 0x0A;
+			}
+			else
+			{
+				tmp.algorithm_ref = 0x00;
+				/* potential FIXME: return an error, if an unsupported
+				* pad or hash was requested, although this shouldn't happen */
+				if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1)
+					tmp.algorithm_ref = 0x02;
+				if (tmp.algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA1)
+					tmp.algorithm_ref |= 0x10;
+			}
 
 			return myeid_set_security_env_rsa(card, &tmp, se_num);
 		}
@@ -814,6 +830,19 @@ static int myeid_set_security_env(struct sc_card *card,
 			tmp.algorithm_ref = 0x04;
 			tmp.algorithm_flags = 0;
 			return myeid_set_security_env_ec(card, &tmp, se_num);
+		}
+		else if (tmp.algorithm == SC_ALGORITHM_AES)
+		{
+			if (tmp.operation == SC_SEC_OPERATION_UNWRAP || tmp.operation == SC_SEC_OPERATION_WRAP)
+			{
+				tmp.algorithm_ref = 0x0A;
+			}
+			else
+			{
+				tmp.algorithm_ref = 0x00;
+			}
+			/* from this point, there's no difference to RSA SE */
+			return myeid_set_security_env_rsa(card, env, se_num);
 		}
 		else
 		{
@@ -1195,10 +1224,34 @@ static int myeid_decipher(struct sc_card *card, const u8 * crgram,
 
 static int myeid_wrap_key(struct sc_card *card, u8 *out, size_t outlen)
 {
+	struct sc_context *ctx;
+	struct sc_apdu apdu;
+	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	int r;
-	LOG_FUNC_CALLED(card->ctx);
 
-	LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+	assert(card != NULL && out != NULL);
+	ctx = card->ctx;
+	LOG_FUNC_CALLED(ctx);
+
+	/* INS: 0x2A  PERFORM SECURITY OPERATION
+	   P1:  0x84  Resp: Return a cryptogram
+	 * P2:  0x00  The data field is absent */
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0x2A, 0x84, 0x00);
+	apdu.resp = rbuf;
+	apdu.resplen = sizeof(rbuf);
+	apdu.le = outlen;
+	apdu.lc = 0;
+
+	r = sc_transmit_apdu(card, &apdu);
+	LOG_TEST_RET(ctx, r, "APDU transmit failed");
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	LOG_TEST_RET(ctx, r, "compute_signature failed");
+
+	if (apdu.resplen > outlen)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_BUFFER_TOO_SMALL);
+
+	memcpy(out, apdu.resp, apdu.resplen);
+	LOG_FUNC_RETURN(ctx, apdu.resplen);
 }
 
 static int myeid_unwrap_key(struct sc_card *card, const u8 *crgram, size_t crgram_len)
@@ -1206,15 +1259,84 @@ static int myeid_unwrap_key(struct sc_card *card, const u8 *crgram, size_t crgra
 	int r;
 	u8 out[512];
 	size_t outlen = 512;
+	struct sc_apdu apdu;
+	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
+	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 
 	LOG_FUNC_CALLED(card->ctx);
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
 
-	/* Emulate unwrapping with decipher */
-	r = myeid_decipher(card, crgram, crgram_len, out, outlen);
+	assert(card != NULL && crgram != NULL && out != NULL);
 
-	LOG_FUNC_RETURN(card->ctx, r);
+	if (crgram_len > 256)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
-	/*LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED); */
+	/* INS: 0x2A  PERFORM SECURITY OPERATION
+	    * P1:  0x80  Resp: Plain value
+	    * P2:  0x86  Cmd: Padding indicator byte followed by cryptogram */
+	sc_format_apdu(card, &apdu,
+		(crgram_len < 256) ? SC_APDU_CASE_4_SHORT : SC_APDU_CASE_3_SHORT,
+		0x2A, 0x80, 0x86);
+
+	apdu.resp = rbuf;
+	apdu.resplen = sizeof(rbuf);
+	apdu.le = crgram_len;
+
+	if (crgram_len == 256)
+	{
+		apdu.le = 0;
+		/* padding indicator byte, 0x81 = first half of 2048 bit cryptogram */
+		sbuf[0] = 0x81;
+		memcpy(sbuf + 1, crgram, crgram_len / 2);
+		apdu.lc = crgram_len / 2 + 1;
+	}
+	else
+	{
+		sbuf[0] = 0; /* padding indicator byte, 0x00 = No further indication */
+		memcpy(sbuf + 1, crgram, crgram_len);
+		apdu.lc = crgram_len + 1;
+	}
+
+	apdu.datalen = apdu.lc;
+	apdu.data = sbuf;
+
+	r = sc_transmit_apdu(card, &apdu);
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
+	{
+		if (crgram_len == 256)
+		{
+			sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT,
+				0x2A, 0x80, 0x86);
+			apdu.resp = rbuf;
+			apdu.resplen = sizeof(rbuf);
+			apdu.le = crgram_len;
+			/* padding indicator byte,
+			    * 0x82 = Second half of 2048 bit cryptogram */
+			sbuf[0] = 0x82;
+			memcpy(sbuf + 1, crgram + crgram_len / 2, crgram_len / 2);
+			apdu.lc = crgram_len / 2 + 1;
+			apdu.datalen = apdu.lc;
+			apdu.data = sbuf;
+
+			r = sc_transmit_apdu(card, &apdu);
+
+			LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+
+			if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
+			{
+				LOG_FUNC_RETURN(card->ctx, r);
+			}
+		}
+		else
+		{
+			int len = apdu.resplen > outlen ? outlen : apdu.resplen;
+
+			memcpy(out, apdu.resp, len);
+			LOG_FUNC_RETURN(card->ctx, r);
+		}
+	}
+	LOG_FUNC_RETURN(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
 
 
