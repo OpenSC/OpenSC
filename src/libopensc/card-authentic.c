@@ -852,8 +852,8 @@ authentic_read_binary(struct sc_card *card, unsigned int idx,
 		unsigned char *buf, size_t count, unsigned long flags)
 {
 	struct sc_context *ctx = card->ctx;
-	struct sc_apdu *apdus = NULL, *cur_apdu = NULL;
-	size_t sz, rest;
+	struct sc_apdu *apdu = NULL;
+	size_t sz, rest, ret_count = 0;
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
@@ -861,43 +861,40 @@ authentic_read_binary(struct sc_card *card, unsigned int idx,
 	       "offs:%i,count:%"SC_FORMAT_LEN_SIZE_T"u,max_recv_size:%"SC_FORMAT_LEN_SIZE_T"u",
 	       idx, count, card->max_recv_size);
 
-	/* Data size more then 256 bytes can happen when card reader is
-	 * configurated with max_send/recv_size more then 255/256 bytes
-	 *   (for ex. 'remote-access' reader) .
-	 * In this case create chained 'read-binary' APDUs.
-	 */
-	sc_log(ctx, "reader flags 0x%lX", card->reader->flags);
-	if (count > 256 && !(card->reader->flags & SC_READER_HAS_WAITING_AREA))
-		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Invalid size of the data to read");
+	apdu = calloc(1, sizeof(struct sc_apdu));
+	if(!apdu)
+		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "cannot allocate APDU");
 
 	rest = count;
 	while(rest)   {
-		if (authentic_apdus_allocate(&apdus, &cur_apdu))
-			LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "cannot allocate APDU");
-
 		sz = rest > 256 ? 256 : rest;
-		sc_format_apdu(card, cur_apdu, SC_APDU_CASE_2_SHORT, 0xB0, (idx >> 8) & 0x7F, idx & 0xFF);
-		cur_apdu->le = sz;
-		cur_apdu->resplen = count;
-		cur_apdu->resp = buf;
+		sc_format_apdu(card, apdu, SC_APDU_CASE_2_SHORT, 0xB0, (idx >> 8) & 0x7F, idx & 0xFF);
+		apdu->le = sz;
+		apdu->resplen = sz;
+		apdu->resp = (buf + ret_count);
+
+		rv = sc_transmit_apdu(card, apdu);
+		if(!rv)
+			ret_count += apdu->resplen;
+		else
+			break;
 
 		idx += sz;
 		rest -= sz;
 	}
 
-	if (!apdus)   {
+	if (rv)   {
 		LOG_TEST_RET(ctx, SC_ERROR_INTERNAL, "authentic_read_binary() failed");
 		LOG_FUNC_RETURN(ctx, count);
 	}
 
-	rv = sc_transmit_apdu(card, apdus);
 	if (!rv)
-		rv = sc_check_sw(card, apdus->sw1, apdus->sw2);
+		rv = sc_check_sw(card, apdu->sw1, apdu->sw2);
 	if (!rv)
-		count = apdus->resplen;
+		count = ret_count;
 
-	authentic_apdus_free(apdus);
-
+	free(apdu);
+	
 	LOG_TEST_RET(ctx, rv, "authentic_read_binary() failed");
 	LOG_FUNC_RETURN(ctx, count);
 }
