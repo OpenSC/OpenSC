@@ -359,7 +359,7 @@ main (int argc, char **argv)
 
 	sc_context_t *ctx = NULL;
 	sc_card_t *card = NULL;
-	sc_reader_t *reader;
+	sc_reader_t *reader = NULL;
 
 	int r, tr_version = EAC_TR_VERSION_2_02;
 	struct establish_pace_channel_input pace_input;
