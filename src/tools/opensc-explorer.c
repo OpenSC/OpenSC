@@ -1530,14 +1530,14 @@ static int do_erase(int argc, char **argv)
 
 static int do_random(int argc, char **argv)
 {
-	unsigned char buffer[256];
+	unsigned char buffer[SC_MAX_EXT_APDU_BUFFER_SIZE];
 	int r, count;
 
 	if (argc != 1)
 		return usage(do_random);
 
 	count = atoi(argv[0]);
-	if (count < 0 || count > 256) {
+	if (count < 0 || (size_t) count > sizeof buffer) {
 		printf("Number must be in range 0..256\n");
 		return -1;
 	}
@@ -1625,8 +1625,8 @@ static int do_put_data(int argc, char **argv)
 static int do_apdu(int argc, char **argv)
 {
 	sc_apdu_t apdu;
-	u8 buf[SC_MAX_APDU_BUFFER_SIZE * 2];
-	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE * 2];
+	u8 buf[SC_MAX_EXT_APDU_BUFFER_SIZE * 2];
+	u8 rbuf[SC_MAX_EXT_APDU_BUFFER_SIZE];
 	size_t len, i;
 	int r;
 
