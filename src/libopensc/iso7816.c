@@ -605,28 +605,29 @@ iso7816_get_challenge(struct sc_card *card, u8 *rnd, size_t len)
 {
 	int r;
 	struct sc_apdu apdu;
-	u8 buf[10];
 
-	if (!rnd && len)
+	if (len == 0)
+		return SC_SUCCESS;
+
+	if (!rnd)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0x84, 0x00, 0x00);
-	apdu.le = 8;
-	apdu.resp = buf;
-	apdu.resplen = 8;	/* include SW's */
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_2, 0x84, 0x00, 0x00);
+	apdu.le = len;
+	apdu.resp = rnd;
+	apdu.resplen = len;
 
-	while (len > 0) {
-		size_t n = len > 8 ? 8 : len;
+	r = sc_transmit_apdu(card, &apdu);
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
-		r = sc_transmit_apdu(card, &apdu);
-		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
-		if (apdu.resplen != 8)
-			return sc_check_sw(card, apdu.sw1, apdu.sw2);
-		memcpy(rnd, apdu.resp, n);
-		len -= n;
-		rnd += n;
+	if (apdu.resplen != len) {
+		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+		if (r == SC_SUCCESS) {
+			r = SC_ERROR_WRONG_LENGTH;
+		}
 	}
-	return 0;
+
+	return r;
 }
 
 
