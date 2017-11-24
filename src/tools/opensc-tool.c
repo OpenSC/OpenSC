@@ -498,8 +498,8 @@ static int list_files(void)
 static int send_apdu(void)
 {
 	sc_apdu_t apdu;
-	u8 buf[SC_MAX_APDU_BUFFER_SIZE],
-	  rbuf[SC_MAX_APDU_BUFFER_SIZE];
+	u8 buf[SC_MAX_EXT_APDU_BUFFER_SIZE],
+	  rbuf[SC_MAX_EXT_APDU_BUFFER_SIZE];
 	size_t len0, r;
 	int c;
 
