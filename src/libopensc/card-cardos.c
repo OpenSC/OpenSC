@@ -978,6 +978,32 @@ cardos_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 }
 
 static int
+cardos_decipher(struct sc_card *card,
+		const u8 * crgram, size_t crgram_len,
+		u8 * out, size_t outlen)
+{
+	int r;
+	size_t card_max_send_size = card->max_send_size;
+	size_t reader_max_send_size = card->reader->max_send_size;
+
+	if (sc_get_max_send_size(card) < crgram_len + 1) {
+		/* CardOS doesn't support chaining for PSO:DEC, so we just _hope_
+		 * that both, the reader and the card are able to send enough data.
+		 * (data is prefixed with 1 byte padding content indicator) */
+		card->max_send_size = crgram_len + 1;
+		card->reader->max_send_size = crgram_len + 1;
+	}
+
+	r = iso_ops->decipher(card, crgram, crgram_len, out, outlen);
+
+	/* reset whatever we've modified above */
+	card->max_send_size = card_max_send_size;
+	card->reader->max_send_size = reader_max_send_size;
+
+	return r;
+}
+
+static int
 cardos_lifecycle_get(sc_card_t *card, int *mode)
 {
 	sc_apdu_t	apdu;
@@ -1280,6 +1306,7 @@ static struct sc_card_driver * sc_get_driver(void)
 	cardos_ops.set_security_env = cardos_set_security_env;
 	cardos_ops.restore_security_env = cardos_restore_security_env;
 	cardos_ops.compute_signature = cardos_compute_signature;
+	cardos_ops.decipher = cardos_decipher;
 
 	cardos_ops.list_files = cardos_list_files;
 	cardos_ops.check_sw = cardos_check_sw;
