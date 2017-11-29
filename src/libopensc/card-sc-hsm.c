@@ -228,17 +228,23 @@ static int sc_hsm_select_file(sc_card_t *card,
 static int sc_hsm_match_card(struct sc_card *card)
 {
 	sc_path_t path;
-	int i, r;
+	int i, r, type = 0;
 
-	i = _sc_match_atr(card, sc_hsm_atrs, &card->type);
-	if (i >= 0)
+	i = _sc_match_atr(card, sc_hsm_atrs, &type);
+	if (i >= 0 && type != SC_CARD_TYPE_SC_HSM_SOC) {
+		card->type = type;
 		return 1;
+	}
 
 	sc_path_set(&path, SC_PATH_TYPE_DF_NAME, sc_hsm_aid.value, sc_hsm_aid.len, 0, 0);
 	r = sc_hsm_select_file(card, &path, NULL);
 	LOG_TEST_RET(card->ctx, r, "Could not select SmartCard-HSM application");
 
-	card->type = SC_CARD_TYPE_SC_HSM;
+	if (type == SC_CARD_TYPE_SC_HSM_SOC) {
+		card->type = SC_CARD_TYPE_SC_HSM_SOC;
+	} else {
+		card->type = SC_CARD_TYPE_SC_HSM;
+	}
 
 	return 1;
 }
