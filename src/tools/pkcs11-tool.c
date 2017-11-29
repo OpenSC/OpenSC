@@ -2838,9 +2838,10 @@ static int write_object(CK_SESSION_HANDLE session)
 		if (!(f = fopen(opt_attr_from_file, "rb")))
 			util_fatal("Couldn't open file \"%s\"", opt_attr_from_file);
 		certdata_len = fread(certdata, 1, sizeof(certdata), f);
+		fclose(f);
 		if (certdata_len < 0)
 			util_fatal("Couldn't read from file \"%s\"", opt_attr_from_file);
-		fclose(f);
+		certdata[certdata_len] = '\0';
 		need_to_parse_certdata = 1;
 	}
 	if (opt_object_class == CKO_CERTIFICATE) {
