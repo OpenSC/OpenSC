@@ -1481,7 +1481,7 @@ static int piv_get_key(sc_card_t *card, unsigned int alg_id, u8 **key, size_t *l
 	FILE *f = NULL;
 	char * keyfilename = NULL;
 	size_t expected_keylen;
-	size_t keylen;
+	size_t keylen, readlen;
 	u8 * keybuf = NULL;
 	u8 * tkey = NULL;
 
@@ -1530,11 +1530,12 @@ static int piv_get_key(sc_card_t *card, unsigned int alg_id, u8 **key, size_t *l
 	}
 	keybuf[fsize] = 0x00;    /* in case it is text need null */
 
-	if (fread(keybuf, 1, fsize, f) != fsize) {
+	if ((readlen = fread(keybuf, 1, fsize, f)) != fsize) {
 		sc_log(card->ctx, " Unable to read key\n");
 		r = SC_ERROR_WRONG_LENGTH;
 		goto err;
 	}
+	keybuf[readlen] = '\0';
 
 	tkey = malloc(expected_keylen);
 	if (!tkey) {
