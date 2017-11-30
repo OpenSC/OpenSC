@@ -190,6 +190,10 @@ int encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 		return 0;
 	}
 
+	if (mech->mech == CKM_RSA_PKCS_OAEP) {
+		debug_print(" [SKIP %s ] RSA-OAEP tested separately", o->id_str);
+		return 0;
+	}
 	if (mech->mech == CKM_RSA_X_509)
 		message = rsa_x_509_pad_message(const_message,
 			&message_length, o, 1);
@@ -546,6 +550,16 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 
 	if (o->type != EVP_PK_EC && o->type != EVP_PK_RSA) {
 		debug_print(" [SKIP %s ] Skip non-RSA and non-EC key", o->id_str);
+		return 0;
+	}
+
+	if (mech->mech == CKM_RSA_PKCS_PSS
+			|| mech->mech == CKM_SHA1_RSA_PKCS_PSS
+			|| mech->mech == CKM_SHA256_RSA_PKCS_PSS
+			|| mech->mech == CKM_SHA384_RSA_PKCS_PSS
+			|| mech->mech == CKM_SHA512_RSA_PKCS_PSS
+			|| mech->mech == CKM_SHA224_RSA_PKCS_PSS) {
+		debug_print(" [SKIP %s ] RSA-PSS tested separately", o->id_str);
 		return 0;
 	}
 
