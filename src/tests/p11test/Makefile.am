@@ -25,7 +25,7 @@ p11test_SOURCES = p11test.c p11test_loader.c \
 	p11test_case_usage.c \
 	p11test_case_wait.c \
 	p11test_helpers.c
-#p11test_CFLAGS = -DNDEBUG
+p11test_CFLAGS = -DNDEBUG
 p11test_LDADD = -lssl -lcrypto -lcmocka
 
 if WIN32

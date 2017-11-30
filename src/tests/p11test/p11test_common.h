@@ -33,7 +33,7 @@
 
 #define MAX_MECHS 30
 
-#ifdef NDEBUG
+#ifndef NDEBUG
 	#define debug_print(fmt, ...) \
 		{ fprintf(stderr, fmt "\n", ##__VA_ARGS__); } while (0)
 #else
