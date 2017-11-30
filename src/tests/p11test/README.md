@@ -20,18 +20,12 @@ Build OpenSC from source:
 Plug in the card/reader, change to test directory and run the test:
 
     cd src/tests/p11test
-    ./p11test
+    ./p11test -p 123456
 
 It will run all tests on the first card found in PKCS#11 API
-with default pin `123456` and using just built OpenSC shared library.
+with pin `123456` and using just built OpenSC shared library from master.
 
-## My card has different PIN.
-
-PIN can be specified on command-line:
-
-    ./p11test -p 12345678
-
-## I have more slots with different cards.
+### I have more slots with different cards.
 
 Slot can be selected using `-s` switch on command-line.
 
@@ -40,7 +34,7 @@ Slot can be selected using `-s` switch on command-line.
 Slot numbers can be obtained using from `pkcs11-tool -L` (note that different
 libraries might have different numbers for the slots).
 
-## I want to test different pkcs11 library
+### I want to test different pkcs11 library
 
 You can specify different library or build from different branch
 on command-line:
@@ -59,11 +53,5 @@ TODO:
 
  * Test `CKM_ECDSA_DERIVE` mechanism(s)
  * Read pin from environment variable?
- * Work with cards without certificates (Private + Public keys)
- * Verify EC Public key with Certificate
- * [./] Selection of the card/slot
- * Interface for results reporting?
- * Multipart mechanisms with hashes
  * Keygen write tests (optional)
- * [./] Integrate benchmark script with soft token
  * Reflect cmocka dependency in the configure
