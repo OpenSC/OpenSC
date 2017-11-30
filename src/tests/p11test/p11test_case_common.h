@@ -73,7 +73,7 @@ const char *get_mechanism_name(int mech_id);
 const char *get_mechanism_flag_name(int flag_id);
 char *convert_byte_string(unsigned char *id, unsigned long length);
 
-// TODO saniteze inputs
+// TODO sanitize inputs
 
 #define P11TEST_START(info) if (info->log.fd) { \
 	if (info->log.in_test) \

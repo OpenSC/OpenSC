@@ -518,7 +518,7 @@ openssl_verify:
 		sign, sign_length);
 }
 
-/* Perform signature and verication of a message using private key referenced
+/* Perform signature and verification of a message using private key referenced
  * in the  o  object with mechanism defined by  mech. Message length can be
  * specified using argument  message_length.
  *

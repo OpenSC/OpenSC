@@ -18,7 +18,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-set -x
+#set -x
 SOPIN="12345678"
 PIN="123456"
 export GNUTLS_PIN=$PIN 
