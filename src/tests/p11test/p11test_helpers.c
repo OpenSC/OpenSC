@@ -2,7 +2,7 @@
  * p11test_helpers.c: Test suite for PKCS#11 API: Supporting functions
  *
  * Copyright (C) 2016 Martin Strhársky <strharsky.martin@gmail.com>
- * Copyright (C) 2016 Red Hat, Inc.
+ * Copyright (C) 2016, 2017 Red Hat, Inc.
  *
  * Author: Jakub Jelen <jjelen@redhat.com>
  *

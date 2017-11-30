@@ -1,7 +1,7 @@
 /*
  * p11test_case_wait.c: Test slot events (insert / remove)
  *
- * Copyright (C) 2016 Red Hat, Inc.
+ * Copyright (C) 2016, 2017 Red Hat, Inc.
  *
  * Author: Jakub Jelen <jjelen@redhat.com>
  *

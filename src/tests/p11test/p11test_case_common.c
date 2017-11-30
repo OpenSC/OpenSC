@@ -1,7 +1,7 @@
 /*
- * p11test_case_common.c: Functions shared between test caess.
+ * p11test_case_common.c: Functions shared between test cases.
  *
- * Copyright (C) 2016 Red Hat, Inc.
+ * Copyright (C) 2016, 2017 Red Hat, Inc.
  *
  * Author: Jakub Jelen <jjelen@redhat.com>
  *
@@ -139,7 +139,7 @@ add_supported_mechs(test_cert_t *o)
 }
 
 /**
- * Allocate place in the structure for every certificte found
+ * Allocate place in the structure for every certificate found
  * and store related information
  */
 int callback_certificates(test_certs_t *objects,

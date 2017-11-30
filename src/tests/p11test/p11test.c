@@ -2,7 +2,7 @@
  * p11test.c: Test suite for PKCS#11 API
  *
  * Copyright (C) 2016 Martin Strhársky <strharsky.martin@gmail.com>
- * Copyright (C) 2016 Red Hat, Inc.
+ * Copyright (C) 2016, 2017 Red Hat, Inc.
  *
  * Author: Jakub Jelen <jjelen@redhat.com>
  *
@@ -116,8 +116,6 @@ int main(int argc, char** argv) {
 	if (token.pin == NULL || token.pin_length == 0) {
 		printf("No PIN specified. Please, specify it on command-line using -p switch\n");
 		return -1;
-		/*token.pin = (CK_UTF8CHAR*) strdup(DEFAULT_PIN);
-		token.pin_length = strlen(DEFAULT_PIN);*/
 	}
 
 	debug_print("Card info:\n\tPIN %s\n\tPIN LENGTH %lu\n\t",

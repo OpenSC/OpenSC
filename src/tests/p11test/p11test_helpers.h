@@ -2,7 +2,7 @@
  * p11test_helpers.h: Test suite for PKCS#11 API: Supporting functions
  *
  * Copyright (C) 2016 Martin Strhársky <strharsky.martin@gmail.com>
- * Copyright (C) 2016 Red Hat, Inc.
+ * Copyright (C) 2016, 2017 Red Hat, Inc.
  *
  * Author: Jakub Jelen <jjelen@redhat.com>
  *
@@ -23,8 +23,6 @@
 #ifndef P11TEST_HELPERS_H
 #define P11TEST_HELPERS_H
 #include "p11test_common.h"
-
-#define DEFAULT_PIN		"123456"
 
 int group_setup(void **state);
 int group_teardown(void **state);

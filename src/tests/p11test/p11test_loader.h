@@ -2,7 +2,7 @@
  * p11test_loader.h: Library loader for PKCS#11 test suite
  *
  * Copyright (C) 2016 Martin Strhársky <strharsky.martin@gmail.com>
- * Copyright (C) 2016 Red Hat, Inc.
+ * Copyright (C) 2016, 2017 Red Hat, Inc.
  *
  * Author: Jakub Jelen <jjelen@redhat.com>
  *

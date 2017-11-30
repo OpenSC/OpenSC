@@ -11,10 +11,6 @@ noinst_HEADERS = p11test_loader.h p11test_case_common.h \
 	p11test_helpers.h
 
 AM_CPPFLAGS = -I$(top_srcdir)/src
-#LIBS = \
-#	$(top_builddir)/src/libopensc/libopensc.la \
-#	$(top_builddir)/src/common/libscdl.la \
-#	$(top_builddir)/src/common/libcompat.la
 
 p11test_SOURCES = p11test.c p11test_loader.c \
 	p11test_case_common.c \

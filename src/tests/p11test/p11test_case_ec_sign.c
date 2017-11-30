@@ -1,7 +1,7 @@
 /*
  * p11test_case_ec_sign.c: Test different data lengths for EC signatures
  *
- * Copyright (C) 2016 Red Hat, Inc.
+ * Copyright (C) 2016, 2017 Red Hat, Inc.
  *
  * Author: Jakub Jelen <jjelen@redhat.com>
  *

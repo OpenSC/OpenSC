@@ -1,7 +1,7 @@
 /*
  * p11test_case_readonly.c: Sign & Verify tests
  *
- * Copyright (C) 2016 Red Hat, Inc.
+ * Copyright (C) 2016, 2017 Red Hat, Inc.
  *
  * Author: Jakub Jelen <jjelen@redhat.com>
  *
@@ -160,8 +160,8 @@ int decrypt_message(test_cert_t *o, token_info_t *info, CK_BYTE *enc_message,
  * NONE of the reasonable mechanisms support multipart encryption/decryption
  *
  * Returns
- *  * 1 for successful Encrypt&Decrypt sequnce
- *  * 0 for skipped test (unsupporedted mechanism, key, ...)
+ *  * 1 for successful Encrypt&Decrypt sequence
+ *  * 0 for skipped test (unsupported mechanism, key, ...)
  *  * -1 otherwise.
  *  Serious errors terminate the execution.
  */
@@ -280,7 +280,7 @@ int sign_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 			return -1;
 		}
 
-		/* Call C_SignFinal with allocated buffer to the the actual signature */
+		/* Call C_SignFinal with allocated buffer to the actual signature */
 		rv = fp->C_SignFinal(info->session_handle, *sign, &sign_length);
 		name = "C_SignFinal";
 	} else {
@@ -298,7 +298,7 @@ int sign_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 			return -1;
 		}
 
-		/* Call C_Sign with allocated buffer to the the actual signature */
+		/* Call C_Sign with allocated buffer to the actual signature */
 		rv = fp->C_Sign(info->session_handle,
 			message, message_length, *sign, &sign_length);
 		name = "C_Sign";
@@ -523,8 +523,8 @@ openssl_verify:
  * specified using argument  message_length.
  *
  * Returns
- *  * 1 for successful Encrypt&Decrypt sequnce
- *  * 0 for skipped test (unsupporedted mechanism, key, ...)
+ *  * 1 for successful Encrypt&Decrypt sequence
+ *  * 0 for skipped test (unsupported mechanism, key, ...)
  *  * -1 otherwise.
  *  Serious errors terminate the execution.
  */
@@ -649,7 +649,7 @@ void readonly_tests(void **state) {
 			objects.data[i].derive_pub ? "[./]" : "[  ]",
 			objects.data[i].derive_priv ? "[./]" : "[  ]");
 		if (!o->sign && !o->verify && !o->encrypt && !o->decrypt) {
-			printf("  no usable attributes found ... ignoring\n");
+			printf("  no usable attributes found ... ignored\n");
 			continue;
 		}
 		for (j = 0; j < objects.data[i].num_mechs; j++) {
