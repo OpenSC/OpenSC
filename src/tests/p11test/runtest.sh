@@ -62,6 +62,7 @@ function generate_cert() {
 }
 
 function card_setup() {
+		ECC_KEYS=1
 		case $1 in
 			"softhsm")
 				P11LIB="/usr/lib64/pkcs11/libsofthsm2.so"
@@ -72,12 +73,19 @@ function card_setup() {
 				softhsm2-util --init-token --slot 0 --label "SC test" --so-pin="$SOPIN" --pin="$PIN"
 				;;
 			"opencryptoki")
+				# Supports only RSA mechanisms
+				ECC_KEYS=0
 				P11LIB="/usr/lib64/pkcs11/libopencryptoki.so"
 				SO_PIN=87654321
 				SLOT_ID=3 # swtok slot
-				systemctl is-active pkcsslotd
+				systemctl is-active pkcsslotd > /dev/null
 				if [[ "$?" -ne "0" ]]; then
 					echo "Opencryptoki needs pkcsslotd running"
+					exit 1
+				fi
+				groups | grep pkcs11 > /dev/null
+				if [[ "$?" -ne "0" ]]; then
+					echo "Opencryptoki requires the user to be in pkcs11 group"
 					exit 1
 				fi
 				echo "test_swtok" | /usr/sbin/pkcsconf -I -c $SLOT_ID -S $SO_PIN
@@ -101,10 +109,16 @@ function card_setup() {
 		esac
 
 		if [[ $GENERATE_KEYS -eq 1 ]]; then
-			# Generate RSA Key pair
-			generate_cert "RSA:1024" "02" "RSA_auth"
-			# Generate ECC Key pair
-			generate_cert "EC:prime256v1" "03" "ECC_auth"
+			# Generate 1024b RSA Key pair
+			generate_cert "RSA:1024" "01" "RSA_auth"
+			# Generate 2048b RSA Key pair
+			generate_cert "RSA:2048" "02" "RSA2048"
+			if [[ $ECC_KEYS -eq 1 ]]; then
+				# Generate 256b ECC Key pair
+				generate_cert "EC:secp256r1" "03" "ECC_auth"
+				# Generate 521b ECC Key pair
+				generate_cert "EC:secp521r1" "04" "ECC521"
+			fi
 		fi
 }
 
