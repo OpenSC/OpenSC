@@ -83,6 +83,9 @@ static int muscle_match_card(sc_card_t *card)
 				if (r == SC_SUCCESS && response[0] == 0x01) {
 						card->type = SC_CARD_TYPE_MUSCLE_V1;
 						return 1;
+				} else {
+						card->type = SC_CARD_TYPE_MUSCLE_GENERIC;
+						return 1;
 				}
 			}
 	return 0;
