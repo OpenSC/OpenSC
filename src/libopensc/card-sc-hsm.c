@@ -609,20 +609,32 @@ static int sc_hsm_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 		return sc_hsm_soc_unblock(card, data, tries_left);
 	}
 
+#ifdef ENABLE_SM
 	/* For contactless cards always establish a secure channel before PIN
 	 * verification. Also, Session PIN generation requires SM. */
 	if ((card->type == SC_CARD_TYPE_SC_HSM_SOC
 				|| card->type == SC_CARD_TYPE_SC_HSM_GOID
 				|| card->reader->uid.len || cmd == SC_PIN_CMD_GET_SESSION_PIN)
-			&& (data->cmd != SC_PIN_CMD_GET_INFO)
-#ifdef ENABLE_SM
-			&& card->sm_ctx.sm_mode != SM_MODE_TRANSMIT
-#endif
-			) {
-		LOG_TEST_RET(card->ctx,
-				sc_hsm_perform_chip_authentication(card),
-				"Could not perform chip authentication");
+			&& (data->cmd != SC_PIN_CMD_GET_INFO)) {
+		struct sc_pin_cmd_data check_sm_pin_data;
+		memset(&check_sm_pin_data, 0, sizeof(check_sm_pin_data));
+		check_sm_pin_data.cmd = SC_PIN_CMD_GET_INFO;
+		check_sm_pin_data.pin_type = data->pin_type;
+		check_sm_pin_data.pin_reference = data->pin_reference;
+
+		r = SC_ERROR_NOT_ALLOWED;
+		if (card->sm_ctx.sm_mode == SM_MODE_TRANSMIT) {
+			/* check if the existing SM channel is still valid */
+			r = sc_pin_cmd(card, &check_sm_pin_data, NULL);
+		}
+		if (r == SC_ERROR_ASN1_OBJECT_NOT_FOUND || r == SC_ERROR_NOT_ALLOWED) {
+			/* need to establish a new SM channel */
+			LOG_TEST_RET(card->ctx,
+					sc_hsm_perform_chip_authentication(card),
+					"Could not perform chip authentication");
+		}
 	}
+#endif
 
 	if ((card->caps & SC_CARD_CAP_PROTECTED_AUTHENTICATION_PATH)
 			&& (data->cmd == SC_PIN_CMD_VERIFY)
