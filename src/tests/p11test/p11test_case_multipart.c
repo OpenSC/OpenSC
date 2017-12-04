@@ -80,15 +80,20 @@ void multipart_tests(void **state) {
 			objects.data[i].verify ? " [./] " : " [  ] ",
 			objects.data[i].label);
 		for (j = 0; j < objects.data[i].num_mechs; j++) {
+			test_mech_t *mech = &objects.data[i].mechs[j];
+			if ((mech->usage_flags & CKF_SIGN) == 0) {
+				/* not applicable mechanisms are skipped */
+				continue;
+			}
 			printf("         [ %-20s ] [   %s    ]\n",
-				get_mechanism_name(objects.data[i].mechs[j].mech),
-				objects.data[i].mechs[j].flags & FLAGS_VERIFY_SIGN ? "[./]" : "    ");
-			if ((objects.data[i].mechs[j].flags & FLAGS_VERIFY_SIGN) == 0)
+				get_mechanism_name(mech->mech),
+				mech->result_flags & FLAGS_VERIFY_SIGN ? "[./]" : "    ");
+			if ((mech->result_flags & FLAGS_VERIFY_SIGN) == 0)
 				continue; /* do not export unknown and non-working algorithms */
 			P11TEST_DATA_ROW(info, 3,
 				's', objects.data[i].id_str,
-				's', get_mechanism_name(objects.data[i].mechs[j].mech),
-				's', objects.data[i].mechs[j].flags & FLAGS_VERIFY_SIGN ? "YES" : "");
+				's', get_mechanism_name(mech->mech),
+				's', mech->result_flags & FLAGS_VERIFY_SIGN ? "YES" : "");
 		}
 		printf("\n");
 	}

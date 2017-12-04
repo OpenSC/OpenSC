@@ -54,7 +54,8 @@ typedef struct {
 
 typedef struct {
 	CK_MECHANISM_TYPE mech;
-	int flags;
+	int usage_flags;
+	int result_flags;
 } test_mech_t;
 
 typedef struct {

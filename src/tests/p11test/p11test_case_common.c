@@ -114,26 +114,33 @@ add_supported_mechs(test_cert_t *o)
 			o->num_mechs = token.num_rsa_mechs;
 			for (i = 0; i <= token.num_rsa_mechs; i++) {
 				o->mechs[i].mech = token.rsa_mechs[i].mech;
-				o->mechs[i].flags = 0;
+				o->mechs[i].result_flags = 0;
+				o->mechs[i].usage_flags =
+					token.rsa_mechs[i].usage_flags;
 			}
 		} else {
 			/* Use the default list */
 			o->num_mechs = 1;
 			o->mechs[0].mech = CKM_RSA_PKCS;
-			o->mechs[0].flags = 0;
+			o->mechs[0].result_flags = 0;
+			o->mechs[0].usage_flags = CKF_SIGN | CKF_VERIFY
+				| CKF_ENCRYPT | CKF_DECRYPT;
 		}
 	} else if (o->type == EVP_PK_EC) {
 		if (token.num_ec_mechs > 0 ) {
 			o->num_mechs = token.num_ec_mechs;
 			for (i = 0; i <= token.num_ec_mechs; i++) {
 				o->mechs[i].mech = token.ec_mechs[i].mech;
-				o->mechs[i].flags = 0;
+				o->mechs[i].result_flags = 0;
+				o->mechs[i].usage_flags =
+					token.ec_mechs[i].usage_flags;
 			}
 		} else {
 			/* Use the default list */
 			o->num_mechs = 1;
 			o->mechs[0].mech = CKM_ECDSA;
-			o->mechs[0].flags = 0;
+			o->mechs[0].result_flags = 0;
+			o->mechs[0].usage_flags = CKF_SIGN | CKF_VERIFY;
 		}
 	}
 }

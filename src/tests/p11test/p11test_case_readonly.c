@@ -111,7 +111,7 @@ int encrypt_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 	rv = fp->C_Encrypt(info->session_handle, message, message_length,
 		*enc_message, &enc_message_length);
 	if (rv == CKR_OK) {
-		mech->flags |= FLAGS_VERIFY_SIGN;
+		mech->result_flags |= FLAGS_VERIFY_SIGN;
 		return enc_message_length;
 	}
 	debug_print("   C_Encrypt: rv = 0x%.8lX", rv);
@@ -183,17 +183,19 @@ int encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 		debug_print(" [ KEY %s ] Skip non-RSA key for encryption", o->id_str);
 		return 0;
 	}
-	/* XXX other supported encryption mechanisms */
+
+	if (mech->mech == CKM_RSA_PKCS_OAEP) {
+		mech->usage_flags &= ~CKF_DECRYPT;
+		debug_print(" [SKIP %s ] RSA-OAEP tested separately", o->id_str);
+		return 0;
+	}
+
 	if (mech->mech != CKM_RSA_X_509 && mech->mech != CKM_RSA_PKCS) {
 		debug_print(" [ KEY %s ] Skip encryption for non-supported mechanism %s",
 			o->id_str, get_mechanism_name(mech->mech));
 		return 0;
 	}
 
-	if (mech->mech == CKM_RSA_PKCS_OAEP) {
-		debug_print(" [SKIP %s ] RSA-OAEP tested separately", o->id_str);
-		return 0;
-	}
 	if (mech->mech == CKM_RSA_X_509)
 		message = rsa_x_509_pad_message(const_message,
 			&message_length, o, 1);
@@ -221,7 +223,7 @@ int encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 	if (memcmp(dec_message, message, dec_message_length) == 0
 			&& (unsigned int) dec_message_length == message_length) {
 		debug_print(" [  OK %s ] Text decrypted successfully.", o->id_str);
-		mech->flags |= FLAGS_VERIFY_DECRYPT;
+		mech->result_flags |= FLAGS_VERIFY_DECRYPT;
 		rv = 1;
 	} else {
 		dec_message[dec_message_length] = '\0';
@@ -341,7 +343,7 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 			if (memcmp(dec_message, message, dec_message_length) == 0
 					&& dec_message_length == (int) message_length) {
 				debug_print(" [  OK %s ] Signature is valid.", o->id_str);
-				mech->flags |= FLAGS_VERIFY_SIGN;
+				mech->result_flags |= FLAGS_VERIFY_SIGN;
 				return 1;
 			} else {
 				fprintf(stderr, " [ ERROR %s ] Signature is not valid. Error: %s\n",
@@ -395,7 +397,7 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 			sign, sign_length, o->key.rsa);
 		if (rv == 1) {
 			debug_print(" [  OK %s ] Signature is valid.", o->id_str);
-			mech->flags |= FLAGS_VERIFY_SIGN;
+			mech->result_flags |= FLAGS_VERIFY_SIGN;
 		 } else {
 			fprintf(stderr, " [ ERROR %s ] Signature is not valid. Error: %s\n",
 				o->id_str, ERR_error_string(ERR_peek_last_error(), NULL));
@@ -443,7 +445,7 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 			ECDSA_SIG_free(sig);
 			debug_print(" [  OK %s ] EC Signature of length %lu is valid.",
 				o->id_str, message_length);
-			mech->flags |= FLAGS_VERIFY_SIGN;
+			mech->result_flags |= FLAGS_VERIFY_SIGN;
 			return 1;
 		} else {
 			ECDSA_SIG_free(sig);
@@ -509,7 +511,7 @@ int verify_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 #endif
 	}
 	if (rv == CKR_OK) {
-		mech->flags |= FLAGS_VERIFY_SIGN;
+		mech->result_flags |= FLAGS_VERIFY_SIGN;
 		debug_print(" [  OK %s ] Verification successful", o->id_str);
 		return 1;
 	}
@@ -559,6 +561,7 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 			|| mech->mech == CKM_SHA384_RSA_PKCS_PSS
 			|| mech->mech == CKM_SHA512_RSA_PKCS_PSS
 			|| mech->mech == CKM_SHA224_RSA_PKCS_PSS) {
+		mech->usage_flags &= ~CKF_SIGN;
 		debug_print(" [SKIP %s ] RSA-PSS tested separately", o->id_str);
 		return 0;
 	}
@@ -667,18 +670,23 @@ void readonly_tests(void **state) {
 			continue;
 		}
 		for (j = 0; j < objects.data[i].num_mechs; j++) {
+			test_mech_t *mech = &objects.data[i].mechs[j];
+			if ((mech->usage_flags & CKF_SIGN) == 0) {
+				/* not applicable mechanisms are skipped */
+				continue;
+			}
 			printf("  [ %-20s ] [   %s    ] [   %s    ] [         ] [        ]\n",
-				get_mechanism_name(objects.data[i].mechs[j].mech),
-				objects.data[i].mechs[j].flags & FLAGS_VERIFY_SIGN ? "[./]" : "    ",
-				objects.data[i].mechs[j].flags & FLAGS_VERIFY_DECRYPT ? "[./]" : "    ");
-			if ((objects.data[i].mechs[j].flags & FLAGS_VERIFY_SIGN) == 0 &&
-				(objects.data[i].mechs[j].flags & FLAGS_VERIFY_DECRYPT) == 0)
-				continue; /* skip emty rows for export */
+				get_mechanism_name(mech->mech),
+				mech->result_flags & FLAGS_VERIFY_SIGN ? "[./]" : "    ",
+				mech->result_flags & FLAGS_VERIFY_DECRYPT ? "[./]" : "    ");
+			if ((mech->result_flags & FLAGS_VERIFY_SIGN) == 0 &&
+				(mech->result_flags & FLAGS_VERIFY_DECRYPT) == 0)
+				continue; /* skip empty rows for export */
 			P11TEST_DATA_ROW(info, 4,
 				's', objects.data[i].id_str,
-				's', get_mechanism_name(objects.data[i].mechs[j].mech),
-				's', objects.data[i].mechs[j].flags & FLAGS_VERIFY_SIGN ? "YES" : "",
-				's', objects.data[i].mechs[j].flags & FLAGS_VERIFY_DECRYPT ? "YES" : "");
+				's', get_mechanism_name(mech->mech),
+				's', mech->result_flags & FLAGS_VERIFY_SIGN ? "YES" : "",
+				's', mech->result_flags & FLAGS_VERIFY_DECRYPT ? "YES" : "");
 		}
 	}
 	printf(" Public == Cert -----^       ^  ^  ^       ^  ^  ^       ^----^- Attributes\n");

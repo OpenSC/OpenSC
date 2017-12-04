@@ -30,6 +30,7 @@ void supported_mechanisms_test(void **state) {
 	CK_MECHANISM_TYPE_PTR mechanism_list;
 	CK_MECHANISM_INFO_PTR mechanism_info;
 	CK_FLAGS j;
+	test_mech_t *mech = NULL;
 
 	P11TEST_START(info);
 	rv = function_pointer->C_GetMechanismList(info->slot_id, NULL_PTR,
@@ -75,10 +76,11 @@ void supported_mechanisms_test(void **state) {
 					|| mechanism_list[i] == CKM_SHA384_RSA_PKCS_PSS
 					|| mechanism_list[i] == CKM_SHA512_RSA_PKCS_PSS
 					|| mechanism_list[i] == CKM_RSA_PKCS_OAEP) {
-				if (token.num_rsa_mechs < MAX_MECHS)
-					token.rsa_mechs[token.num_rsa_mechs++].mech =
-						mechanism_list[i];
-				else
+				if (token.num_rsa_mechs < MAX_MECHS) {
+					mech = &token.rsa_mechs[token.num_rsa_mechs++];
+					mech->mech = mechanism_list[i];
+					mech->usage_flags = mechanism_info[i].flags;
+				} else
 					P11TEST_FAIL(info, "Too many RSA mechanisms (%d)", MAX_MECHS);
 			}
 
@@ -88,16 +90,19 @@ void supported_mechanisms_test(void **state) {
 					|| mechanism_list[i] == CKM_ECDSA_SHA256
 					|| mechanism_list[i] == CKM_ECDSA_SHA384
 					|| mechanism_list[i] == CKM_ECDSA_SHA512) {
-				if (token.num_ec_mechs < MAX_MECHS)
-					token.ec_mechs[token.num_ec_mechs++].mech =
-						mechanism_list[i];
-				else
+				if (token.num_ec_mechs < MAX_MECHS) {
+					mech = &token.ec_mechs[token.num_ec_mechs++];
+					mech->mech = mechanism_list[i];
+					mech->usage_flags = mechanism_info[i].flags;
+				} else
 					P11TEST_FAIL(info, "Too many EC mechanisms (%d)", MAX_MECHS);
 			}
 			if ((mechanism_info[i].flags & CKF_GENERATE_KEY_PAIR) != 0) {
-				if (token.num_keygen_mechs < MAX_MECHS)
-					token.keygen_mechs[token.num_keygen_mechs++].mech = mechanism_list[i];
-				else
+				if (token.num_keygen_mechs < MAX_MECHS) {
+					mech = &token.keygen_mechs[token.num_keygen_mechs++];
+					mech->mech = mechanism_list[i];
+					mech->usage_flags = mechanism_info[i].flags;
+				} else
 					P11TEST_FAIL(info, "Too many KEYGEN mechanisms (%d)", MAX_MECHS);
 			}
 		}
