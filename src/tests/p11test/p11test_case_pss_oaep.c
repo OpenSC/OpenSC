@@ -28,7 +28,7 @@
 #define BUFFER_SIZE		4096
 
 const unsigned char *global_message = (unsigned char *) SHORT_MESSAGE_TO_SIGN;
-size_t global_message_length = sizeof(global_message);
+size_t global_message_length = sizeof(SHORT_MESSAGE_TO_SIGN);
 
 const CK_MECHANISM_TYPE *
 get_oaep_mechanism_hashes(CK_MECHANISM_TYPE mech)
@@ -270,7 +270,7 @@ int oaep_encrypt_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 	rv = fp->C_Encrypt(info->session_handle, message, message_length,
 		*enc_message, &enc_message_length);
 	if (rv == CKR_OK) {
-		mech->result_flags |= FLAGS_VERIFY_DECRYPT;
+		mech->result_flags |= FLAGS_DECRYPT_OPENSSL;
 		return enc_message_length;
 	}
 	debug_print("   C_Encrypt: rv = 0x%.8lX", rv);
@@ -375,7 +375,7 @@ int oaep_encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *m
 	if (memcmp(dec_message, message, dec_message_length) == 0
 			&& (unsigned int) dec_message_length == global_message_length) {
 		debug_print(" [  OK %s ] Text decrypted successfully.", o->id_str);
-		mech->result_flags |= FLAGS_VERIFY_DECRYPT;
+		mech->result_flags |= FLAGS_DECRYPT;
 		rv = 1;
 	} else {
 		dec_message[dec_message_length] = '\0';
@@ -401,6 +401,29 @@ size_t get_hash_length(CK_MECHANISM_TYPE mech)
 	default:
 	case CKM_SHA_1:
 		return SHA_DIGEST_LENGTH;
+	}
+}
+
+CK_BYTE *hash_message(const CK_BYTE *message, size_t message_length,
+    CK_MECHANISM_TYPE hash)
+{
+	switch (hash) {
+	case CKM_SHA224:
+		return SHA224(message, message_length, NULL);
+
+	case CKM_SHA256:
+		return SHA256(message, message_length, NULL);
+
+	case CKM_SHA384:
+		return SHA384(message, message_length, NULL);
+
+	case CKM_SHA512:
+		return SHA512(message, message_length, NULL);
+
+	case CKM_SHA_1:
+	default:
+		return SHA1(message, message_length, NULL);
+
 	}
 }
 
@@ -485,14 +508,22 @@ int pss_verify_message_openssl(test_cert_t *o, token_info_t *info,
 {
 	CK_RV rv = -1;
 	EVP_PKEY_CTX *pctx = NULL;
+	const CK_BYTE *my_message;
+	CK_ULONG my_message_length;
 	const EVP_MD *mgf_md = EVP_md_null();
 	const EVP_MD *md = EVP_md_null();
 	EVP_PKEY *key = NULL;
 
-	if (mech->mech == CKM_RSA_PKCS_PSS) {
-		md = md_cryptoki_to_ossl(mech->hash);
-	}
+	md = md_cryptoki_to_ossl(mech->hash);
 	mgf_md = mgf_cryptoki_to_ossl(mech->mgf);
+
+	if (mech->mech != CKM_RSA_PKCS_PSS) {
+		my_message = hash_message(message, message_length, mech->hash);
+		my_message_length = get_hash_length(mech->hash);
+	} else {
+		my_message = message;
+		my_message_length = message_length;
+	}
 
 	if ((key = EVP_PKEY_new()) == NULL
 		|| RSA_up_ref(o->key.rsa) < 1
@@ -513,10 +544,10 @@ int pss_verify_message_openssl(test_cert_t *o, token_info_t *info,
 		goto out;
 	}
 
-	rv = EVP_PKEY_verify(pctx, sign, sign_length, message, message_length);
+	rv = EVP_PKEY_verify(pctx, sign, sign_length, my_message, my_message_length);
 	if (rv == 1) {
 		debug_print(" [  OK %s ] Signature is valid.", o->id_str);
-		mech->result_flags |= FLAGS_VERIFY_SIGN;
+		mech->result_flags |= FLAGS_SIGN_OPENSSL;
 	 } else {
 		fprintf(stderr, " [ ERROR %s ] Signature is not valid. Error: %s\n",
 			o->id_str, ERR_error_string(ERR_peek_last_error(), NULL));
@@ -536,7 +567,7 @@ int pss_verify_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
 	CK_MECHANISM sign_mechanism = { mech->mech, NULL_PTR, 0 };
 	CK_RSA_PKCS_PSS_PARAMS pss_params;
-	static int verify_support = 0;
+	static int verify_support = 1;
 
 	if (!verify_support)
 		goto openssl_verify;
@@ -558,7 +589,7 @@ int pss_verify_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 		message, message_length, sign, sign_length);
 
 	if (rv == CKR_OK) {
-		mech->result_flags |= FLAGS_VERIFY_SIGN;
+		mech->result_flags |= FLAGS_SIGN;
 		debug_print(" [  OK %s ] Verification successful", o->id_str);
 		return 1;
 	}
@@ -606,29 +637,8 @@ int pss_sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 	}
 
 	if (mech->mech == CKM_RSA_PKCS_PSS) {
-		switch (mech->hash) {
-		case CKM_SHA224:
-			message = SHA224(global_message,
-				global_message_length, NULL);
-			break;
-		case CKM_SHA256:
-			message = SHA256(global_message,
-				global_message_length, NULL);
-			break;
-		case CKM_SHA384:
-			message = SHA384(global_message,
-				global_message_length, NULL);
-			break;
-		case CKM_SHA512:
-			message = SHA512(global_message,
-				global_message_length, NULL);
-			break;
-		case CKM_SHA_1:
-		default:
-			message = SHA1(global_message,
-				global_message_length, NULL);
-			break;
-		}
+		message = hash_message(global_message, global_message_length,
+			mech->hash);
 		message_length = get_hash_length(mech->hash);
 	} else {
 		message = (unsigned char *) SHORT_MESSAGE_TO_SIGN;
@@ -787,12 +797,12 @@ void pss_oaep_test(void **state) {
 				get_mechanism_name(mech->hash),
 				get_mgf_name(mech->mgf),
 				mech->salt,
-				mech->result_flags & FLAGS_VERIFY_SIGN
+				mech->result_flags & FLAGS_SIGN_ANY
 				? "[./]" : "    ",
-				mech->result_flags & FLAGS_VERIFY_DECRYPT
+				mech->result_flags & FLAGS_DECRYPT_ANY
 				? "[./]" : "    ");
-			if ((mech->result_flags & FLAGS_VERIFY_SIGN) == 0 &&
-				(mech->result_flags & FLAGS_VERIFY_DECRYPT) == 0)
+			if ((mech->result_flags & FLAGS_SIGN_ANY) == 0 &&
+				(mech->result_flags & FLAGS_DECRYPT_ANY) == 0)
 				continue; /* skip empty rows for export */
 			P11TEST_DATA_ROW(info, 7,
 				's', o->id_str,
@@ -800,9 +810,9 @@ void pss_oaep_test(void **state) {
 				's', get_mechanism_name(mech->hash),
 				's', get_mgf_name(mech->mgf),
 				'd', mech->salt,
-				's', mech->result_flags & FLAGS_VERIFY_SIGN
+				's', mech->result_flags & FLAGS_SIGN_ANY
 				? "YES" : "",
-				's', mech->result_flags & FLAGS_VERIFY_DECRYPT
+				's', mech->result_flags & FLAGS_DECRYPT_ANY
 				? "YES" : "");
 		}
 	}

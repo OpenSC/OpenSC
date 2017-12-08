@@ -111,7 +111,7 @@ int encrypt_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 	rv = fp->C_Encrypt(info->session_handle, message, message_length,
 		*enc_message, &enc_message_length);
 	if (rv == CKR_OK) {
-		mech->result_flags |= FLAGS_VERIFY_SIGN;
+		mech->result_flags |= FLAGS_SIGN;
 		return enc_message_length;
 	}
 	debug_print("   C_Encrypt: rv = 0x%.8lX", rv);
@@ -223,7 +223,7 @@ int encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 	if (memcmp(dec_message, message, dec_message_length) == 0
 			&& (unsigned int) dec_message_length == message_length) {
 		debug_print(" [  OK %s ] Text decrypted successfully.", o->id_str);
-		mech->result_flags |= FLAGS_VERIFY_DECRYPT;
+		mech->result_flags |= FLAGS_DECRYPT;
 		rv = 1;
 	} else {
 		dec_message[dec_message_length] = '\0';
@@ -347,7 +347,7 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 			if (memcmp(dec_message, message, dec_message_length) == 0
 					&& dec_message_length == (int) message_length) {
 				debug_print(" [  OK %s ] Signature is valid.", o->id_str);
-				mech->result_flags |= FLAGS_VERIFY_SIGN;
+				mech->result_flags |= FLAGS_SIGN_OPENSSL;
 				return 1;
 			} else {
 				fprintf(stderr, " [ ERROR %s ] Signature is not valid. Error: %s\n",
@@ -401,7 +401,7 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 			sign, sign_length, o->key.rsa);
 		if (rv == 1) {
 			debug_print(" [  OK %s ] Signature is valid.", o->id_str);
-			mech->result_flags |= FLAGS_VERIFY_SIGN;
+			mech->result_flags |= FLAGS_SIGN_OPENSSL;
 		 } else {
 			fprintf(stderr, " [ ERROR %s ] Signature is not valid. Error: %s\n",
 				o->id_str, ERR_error_string(ERR_peek_last_error(), NULL));
@@ -449,7 +449,7 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 			ECDSA_SIG_free(sig);
 			debug_print(" [  OK %s ] EC Signature of length %lu is valid.",
 				o->id_str, message_length);
-			mech->result_flags |= FLAGS_VERIFY_SIGN;
+			mech->result_flags |= FLAGS_SIGN_OPENSSL;
 			return 1;
 		} else {
 			ECDSA_SIG_free(sig);
@@ -515,7 +515,7 @@ int verify_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 #endif
 	}
 	if (rv == CKR_OK) {
-		mech->result_flags |= FLAGS_VERIFY_SIGN;
+		mech->result_flags |= FLAGS_SIGN;
 		debug_print(" [  OK %s ] Verification successful", o->id_str);
 		return 1;
 	}
@@ -677,16 +677,16 @@ void readonly_tests(void **state) {
 			}
 			printf("  [ %-20s ] [   %s    ] [   %s    ] [         ] [        ]\n",
 				get_mechanism_name(mech->mech),
-				mech->result_flags & FLAGS_VERIFY_SIGN ? "[./]" : "    ",
-				mech->result_flags & FLAGS_VERIFY_DECRYPT ? "[./]" : "    ");
-			if ((mech->result_flags & FLAGS_VERIFY_SIGN) == 0 &&
-				(mech->result_flags & FLAGS_VERIFY_DECRYPT) == 0)
+				mech->result_flags & FLAGS_SIGN_ANY ? "[./]" : "    ",
+				mech->result_flags & FLAGS_DECRYPT_ANY ? "[./]" : "    ");
+			if ((mech->result_flags & FLAGS_SIGN_ANY) == 0 &&
+				(mech->result_flags & FLAGS_DECRYPT_ANY) == 0)
 				continue; /* skip empty rows for export */
 			P11TEST_DATA_ROW(info, 4,
 				's', o->id_str,
 				's', get_mechanism_name(mech->mech),
-				's', mech->result_flags & FLAGS_VERIFY_SIGN ? "YES" : "",
-				's', mech->result_flags & FLAGS_VERIFY_DECRYPT ? "YES" : "");
+				's', mech->result_flags & FLAGS_SIGN_ANY ? "YES" : "",
+				's', mech->result_flags & FLAGS_DECRYPT_ANY ? "YES" : "");
 		}
 	}
 	printf(" Public == Cert -----^       ^  ^  ^       ^  ^  ^       ^----^- Attributes\n");

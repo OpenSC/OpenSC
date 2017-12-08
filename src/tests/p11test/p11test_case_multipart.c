@@ -87,13 +87,13 @@ void multipart_tests(void **state) {
 			}
 			printf("         [ %-20s ] [   %s    ]\n",
 				get_mechanism_name(mech->mech),
-				mech->result_flags & FLAGS_VERIFY_SIGN ? "[./]" : "    ");
-			if ((mech->result_flags & FLAGS_VERIFY_SIGN) == 0)
+				mech->result_flags & FLAGS_SIGN_ANY ? "[./]" : "    ");
+			if ((mech->result_flags & FLAGS_SIGN_ANY) == 0)
 				continue; /* do not export unknown and non-working algorithms */
 			P11TEST_DATA_ROW(info, 3,
 				's', objects.data[i].id_str,
 				's', get_mechanism_name(mech->mech),
-				's', mech->result_flags & FLAGS_VERIFY_SIGN ? "YES" : "");
+				's', mech->result_flags & FLAGS_SIGN_ANY ? "YES" : "");
 		}
 		printf("\n");
 	}

@@ -40,8 +40,12 @@
 	#define debug_print(fmt, ...)
 #endif
 
-#define FLAGS_VERIFY_SIGN		0x02
-#define FLAGS_VERIFY_DECRYPT		0x04
+#define FLAGS_SIGN		0x01
+#define FLAGS_SIGN_OPENSSL	0x02
+#define FLAGS_SIGN_ANY		( FLAGS_SIGN | FLAGS_SIGN_OPENSSL )
+#define FLAGS_DECRYPT		0x04
+#define FLAGS_DECRYPT_OPENSSL	0x08
+#define FLAGS_DECRYPT_ANY	( FLAGS_DECRYPT | FLAGS_DECRYPT_OPENSSL )
 
 typedef struct {
 	char *outfile;
