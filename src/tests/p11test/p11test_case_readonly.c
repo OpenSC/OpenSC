@@ -264,7 +264,11 @@ int sign_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 	if (multipart) {
 		int part = message_length / 3;
 		rv = fp->C_SignUpdate(info->session_handle, message, part);
-		if (rv != CKR_OK) {
+		if (rv == CKR_MECHANISM_INVALID) {
+			fprintf(stderr, "  Multipart Signature not supported with CKM_%s\n",
+				get_mechanism_name(mech->mech));
+			return -1;
+		} else if (rv != CKR_OK) {
 			fprintf(stderr, "  C_SignUpdate: rv = 0x%.8lX\n", rv);
 			return -1;
 		}
@@ -529,7 +533,7 @@ openssl_verify:
  * specified using argument  message_length.
  *
  * Returns
- *  * 1 for successful Encrypt&Decrypt sequence
+ *  * 1 for successful Sign&Verify sequence
  *  * 0 for skipped test (unsupported mechanism, key, ...)
  *  * -1 otherwise.
  *  Serious errors terminate the execution.
@@ -555,12 +559,7 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 		return 0;
 	}
 
-	if (mech->mech == CKM_RSA_PKCS_PSS
-			|| mech->mech == CKM_SHA1_RSA_PKCS_PSS
-			|| mech->mech == CKM_SHA256_RSA_PKCS_PSS
-			|| mech->mech == CKM_SHA384_RSA_PKCS_PSS
-			|| mech->mech == CKM_SHA512_RSA_PKCS_PSS
-			|| mech->mech == CKM_SHA224_RSA_PKCS_PSS) {
+	if (is_pss_mechanism(mech->mech)) {
 		mech->usage_flags &= ~CKF_SIGN;
 		debug_print(" [SKIP %s ] RSA-PSS tested separately", o->id_str);
 		return 0;
@@ -609,28 +608,29 @@ void readonly_tests(void **state) {
 	P11TEST_START(info);
 	debug_print("\nCheck functionality of Sign&Verify and/or Encrypt&Decrypt");
 	for (i = 0; i < objects.count; i++) {
+		test_cert_t *o = &objects.data[i];
 		/* do the Sign&Verify and/or Encrypt&Decrypt */
 		used = 0;
-		if (objects.data[i].private_handle == CK_INVALID_HANDLE) {
+		if (o->private_handle == CK_INVALID_HANDLE) {
 			debug_print(" [SKIP %s ] Missing private key",
-				objects.data[i].id_str);
+				o->id_str);
 			continue;
 		}
 		/* XXX some keys do not have appropriate flags, but we can use them
 		 * or vice versa */
-		//if (objects.data[i].sign && objects.data[i].verify)
-			for (j = 0; j < objects.data[i].num_mechs; j++)
+		//if (o->sign && o->verify)
+			for (j = 0; j < o->num_mechs; j++)
 				used |= sign_verify_test(&(objects.data[i]), info,
-					&(objects.data[i].mechs[j]), 32, 0);
+					&(o->mechs[j]), 32, 0);
 
-		//if (objects.data[i].encrypt && objects.data[i].decrypt)
-			for (j = 0; j < objects.data[i].num_mechs; j++)
+		//if (o->encrypt && o->decrypt)
+			for (j = 0; j < o->num_mechs; j++)
 				used |= encrypt_decrypt_test(&(objects.data[i]), info,
-					&(objects.data[i].mechs[j]), 32, 0);
+					&(o->mechs[j]), 32, 0);
 
 		if (!used) {
 			debug_print(" [ WARN %s ] Private key with unknown purpose T:%02lX",
-			objects.data[i].id_str, objects.data[i].key_type);
+			o->id_str, o->key_type);
 		}
 	}
 
@@ -650,27 +650,27 @@ void readonly_tests(void **state) {
 	for (i = 0; i < objects.count; i++) {
 		test_cert_t *o = &objects.data[i];
 		printf("\n[%-6s] [%s]\n",
-			objects.data[i].id_str,
-			objects.data[i].label);
+			o->id_str,
+			o->label);
 		printf("[ %s ] [%6lu] [ %s ] [%s%s] [%s%s] [%s %s] [%s%s]\n",
-			objects.data[i].key_type == CKK_RSA ? "RSA " :
-				objects.data[i].key_type == CKK_EC ? " EC " : " ?? ",
-			objects.data[i].bits,
-			objects.data[i].verify_public == 1 ? " ./ " : "    ",
-			objects.data[i].sign ? "[./] " : "[  ] ",
-			objects.data[i].verify ? " [./] " : " [  ] ",
-			objects.data[i].encrypt ? "[./] " : "[  ] ",
-			objects.data[i].decrypt ? " [./] " : " [  ] ",
-			objects.data[i].wrap ? "[./]" : "[  ]",
-			objects.data[i].unwrap ? "[./]" : "[  ]",
-			objects.data[i].derive_pub ? "[./]" : "[  ]",
-			objects.data[i].derive_priv ? "[./]" : "[  ]");
+			o->key_type == CKK_RSA ? "RSA " :
+				o->key_type == CKK_EC ? " EC " : " ?? ",
+			o->bits,
+			o->verify_public == 1 ? " ./ " : "    ",
+			o->sign ? "[./] " : "[  ] ",
+			o->verify ? " [./] " : " [  ] ",
+			o->encrypt ? "[./] " : "[  ] ",
+			o->decrypt ? " [./] " : " [  ] ",
+			o->wrap ? "[./]" : "[  ]",
+			o->unwrap ? "[./]" : "[  ]",
+			o->derive_pub ? "[./]" : "[  ]",
+			o->derive_priv ? "[./]" : "[  ]");
 		if (!o->sign && !o->verify && !o->encrypt && !o->decrypt) {
 			printf("  no usable attributes found ... ignored\n");
 			continue;
 		}
-		for (j = 0; j < objects.data[i].num_mechs; j++) {
-			test_mech_t *mech = &objects.data[i].mechs[j];
+		for (j = 0; j < o->num_mechs; j++) {
+			test_mech_t *mech = &o->mechs[j];
 			if ((mech->usage_flags & CKF_SIGN) == 0) {
 				/* not applicable mechanisms are skipped */
 				continue;
@@ -683,7 +683,7 @@ void readonly_tests(void **state) {
 				(mech->result_flags & FLAGS_VERIFY_DECRYPT) == 0)
 				continue; /* skip empty rows for export */
 			P11TEST_DATA_ROW(info, 4,
-				's', objects.data[i].id_str,
+				's', o->id_str,
 				's', get_mechanism_name(mech->mech),
 				's', mech->result_flags & FLAGS_VERIFY_SIGN ? "YES" : "",
 				's', mech->result_flags & FLAGS_VERIFY_DECRYPT ? "YES" : "");

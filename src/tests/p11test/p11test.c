@@ -29,6 +29,7 @@
 #include "p11test_case_usage.h"
 #include "p11test_case_mechs.h"
 #include "p11test_case_wait.h"
+#include "p11test_case_pss_oaep.h"
 
 #define DEFAULT_P11LIB	"../../pkcs11/.libs/opensc-pkcs11.so"
 
@@ -71,6 +72,10 @@ int main(int argc, char** argv) {
 
 		/* Verify that the Usage flags on the objects are sane */
 		cmocka_unit_test_setup_teardown(usage_test,
+			user_login_setup, after_test_cleanup),
+
+		/* Verify that RSA-PSS and RSA-OAEP functions if supported */
+		cmocka_unit_test_setup_teardown(pss_oaep_test,
 			user_login_setup, after_test_cleanup),
 	};
 

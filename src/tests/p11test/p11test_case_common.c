@@ -599,8 +599,37 @@ const char *get_mechanism_name(int mech_id)
 			return "SHA512_HMAC";
 		case CKM_RSA_PKCS_OAEP:
 			return "RSA_PKCS_OAEP";
+		case CKM_SHA_1:
+			return "SHA_1";
+		case CKM_SHA224:
+			return "SHA224";
+		case CKM_SHA256:
+			return "SHA256";
+		case CKM_SHA384:
+			return "SHA384";
+		case CKM_SHA512:
+			return "SHA512";
 		default:
 			sprintf(name_buffer, "0x%.8X", mech_id);
+			return name_buffer;
+	}
+}
+
+const char *get_mgf_name(int mgf_id)
+{
+	switch (mgf_id) {
+		case CKG_MGF1_SHA1:
+			return "MGF1_SHA_1";
+		case CKG_MGF1_SHA224:
+			return "MGF1_SHA224";
+		case CKG_MGF1_SHA256:
+			return "MGF1_SHA256";
+		case CKG_MGF1_SHA384:
+			return "MGF1_SHA384";
+		case CKG_MGF1_SHA512:
+			return "MGF1_SHA512";
+		default:
+			sprintf(name_buffer, "0x%.8X", mgf_id);
 			return name_buffer;
 	}
 }
@@ -671,7 +700,7 @@ void write_data_row(token_info_t *info, int cols, ...)
 	cols = cols*2; /* shut GCC up */
 	va_start(ap, cols);
 	fprintf(info->log.fd, "\n\t[");
-	for (i = 1; i <= cols*2; i+=2) {
+	for (i = 1; i <= cols; i+=2) {
 		if (i > 1)
 			fprintf(info->log.fd, ",");
 		type = va_arg(ap, int);
@@ -685,4 +714,14 @@ void write_data_row(token_info_t *info, int cols, ...)
 	}
 	fprintf(info->log.fd, "\n\t]");
 	va_end(ap);
+}
+
+int is_pss_mechanism(CK_MECHANISM_TYPE mech)
+{
+	return (mech == CKM_RSA_PKCS_PSS
+		|| mech == CKM_SHA1_RSA_PKCS_PSS
+		|| mech == CKM_SHA256_RSA_PKCS_PSS
+		|| mech == CKM_SHA384_RSA_PKCS_PSS
+		|| mech == CKM_SHA512_RSA_PKCS_PSS
+		|| mech == CKM_SHA224_RSA_PKCS_PSS);
 }

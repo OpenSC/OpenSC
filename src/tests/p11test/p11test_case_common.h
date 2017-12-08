@@ -70,8 +70,11 @@ void search_for_all_objects(test_certs_t *objects, token_info_t *info);
 void clean_all_objects(test_certs_t *objects);
 
 const char *get_mechanism_name(int mech_id);
+const char *get_mgf_name(int mech_id);
 const char *get_mechanism_flag_name(int flag_id);
 char *convert_byte_string(unsigned char *id, unsigned long length);
+
+int is_pss_mechanism(CK_MECHANISM_TYPE mech);
 
 // TODO sanitize inputs
 

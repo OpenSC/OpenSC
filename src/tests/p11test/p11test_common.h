@@ -31,7 +31,7 @@
 #include "pkcs11/pkcs11.h"
 #include "libopensc/sc-ossl-compat.h"
 
-#define MAX_MECHS 30
+#define MAX_MECHS 200
 
 #ifndef NDEBUG
 	#define debug_print(fmt, ...) \
@@ -41,7 +41,7 @@
 #endif
 
 #define FLAGS_VERIFY_SIGN		0x02
-#define FLAGS_VERIFY_DECRYPT	0x04
+#define FLAGS_VERIFY_DECRYPT		0x04
 
 typedef struct {
 	char *outfile;
@@ -54,6 +54,9 @@ typedef struct {
 
 typedef struct {
 	CK_MECHANISM_TYPE mech;
+	CK_MECHANISM_TYPE hash;
+	CK_RSA_PKCS_MGF_TYPE mgf;
+	int salt;
 	int usage_flags;
 	int result_flags;
 } test_mech_t;

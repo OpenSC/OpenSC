@@ -133,9 +133,13 @@ function card_cleanup() {
 
 card_setup "$@"
 
-make p11test
-#export PKCS11SPY="$P11LIB"
-#./p11test -m /usr/lib64/pkcs11/pkcs11-spy.so -p $PIN
-./p11test -m "$P11LIB" -o test.json -p $PIN
+make p11test || exit
+if [[ "$PKCS11SPY" -ne "" ]]; then
+	export PKCS11SPY="$P11LIB"
+	$VALGRIND ./p11test -m /usr/lib64/pkcs11/pkcs11-spy.so -p $PIN
+else
+	#bash
+	$VALGRIND ./p11test -m "$P11LIB" -o test.json -p $PIN
+fi
 
 card_cleanup "$@"
