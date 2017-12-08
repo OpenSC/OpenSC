@@ -776,7 +776,7 @@ typedef struct CK_RSA_PKCS_OAEP_PARAMS {
 
 typedef struct CK_RSA_PKCS_PSS_PARAMS {
 	ck_mechanism_type_t hashAlg;
-	unsigned long mgf;
+	CK_RSA_PKCS_MGF_TYPE mgf;
 	unsigned long sLen;
 } CK_RSA_PKCS_PSS_PARAMS;
 
@@ -785,6 +785,8 @@ typedef struct CK_RSA_PKCS_PSS_PARAMS {
 #define CKG_MGF1_SHA256		(0x00000002UL)
 #define CKG_MGF1_SHA384		(0x00000003UL)
 #define CKG_MGF1_SHA512		(0x00000004UL)
+
+#define CKZ_DATA_SPECIFIED	(0x00000001UL)
 
 typedef unsigned long ck_rv_t;
 
