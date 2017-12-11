@@ -20,6 +20,7 @@
  */
 
 #include "p11test_case_pss_oaep.h"
+#include "libopensc/internal.h"
 
 #include <openssl/sha.h>
 #include <openssl/evp.h>
@@ -163,6 +164,46 @@ const EVP_MD *md_cryptoki_to_ossl(CK_MECHANISM_TYPE hash)
 	case CKM_SHA_1:
 	default:
 		return EVP_sha1();
+
+	}
+}
+
+size_t get_hash_length(CK_MECHANISM_TYPE mech)
+{
+	switch (mech) {
+	case CKM_SHA224:
+		return SHA224_DIGEST_LENGTH;
+	case CKM_SHA256:
+		return SHA256_DIGEST_LENGTH;
+	case CKM_SHA384:
+		return SHA384_DIGEST_LENGTH;
+	case CKM_SHA512:
+		return SHA512_DIGEST_LENGTH;
+	default:
+	case CKM_SHA_1:
+		return SHA_DIGEST_LENGTH;
+	}
+}
+
+CK_BYTE *hash_message(const CK_BYTE *message, size_t message_length,
+    CK_MECHANISM_TYPE hash)
+{
+	switch (hash) {
+	case CKM_SHA224:
+		return SHA224(message, message_length, NULL);
+
+	case CKM_SHA256:
+		return SHA256(message, message_length, NULL);
+
+	case CKM_SHA384:
+		return SHA384(message, message_length, NULL);
+
+	case CKM_SHA512:
+		return SHA512(message, message_length, NULL);
+
+	case CKM_SHA_1:
+	default:
+		return SHA1(message, message_length, NULL);
 
 	}
 }
@@ -334,6 +375,7 @@ int oaep_encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *m
 	CK_BYTE *message = (CK_BYTE *) SHORT_MESSAGE_TO_SIGN;
 	CK_BYTE *dec_message = NULL;
 	int dec_message_length = 0;
+	int message_length = 16;
 	unsigned char *enc_message;
 	int enc_message_length, rv;
 
@@ -353,16 +395,28 @@ int oaep_encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *m
 		return 0;
 	}
 
-	debug_print(" [ KEY %s ] Encrypt message using CKM_%s, hash CKM_%s, mgf=CKG_%s",
-		o->id_str, get_mechanism_name(mech->mech), get_mechanism_name(mech->hash),
+	message_length = MIN((int)global_message_length,
+		(int)((o->bits+7)/8 - 2*get_hash_length(mech->hash) - 2));
+
+	/* will not work for 1024b RSA key and SHA512 hash: It has max size -2 */
+	if (message_length < 0) {
+		mech->usage_flags &= ~CKF_DECRYPT;
+		debug_print(" [SKIP %s ] Too small modulus (%ld bits)"
+			" or too large hash %s (%lu B) for OAEP", o->id_str,
+			o->bits, get_mechanism_name(mech->hash),
+			get_hash_length(mech->hash));
+		return 0;
+	}
+
+	debug_print(" [ KEY %s ] Encrypt message of length %d using CKM_%s, "
+		"hash CKM_%s, mgf=CKG_%s", o->id_str, (unsigned) message_length,
+		get_mechanism_name(mech->mech), get_mechanism_name(mech->hash),
 		get_mgf_name(mech->mgf));
-	enc_message_length = oaep_encrypt_message(o, info, message, global_message_length,
-		mech, &enc_message);
+	enc_message_length = oaep_encrypt_message(o, info, message,
+		(unsigned) message_length, mech, &enc_message);
 	if (enc_message_length <= 0) {
 		return -1;
 	}
-	debug_print(" [ KEY %s ] Enc. length = %d, modulus bits = %lu",
-		o->id_str, enc_message_length, o->bits);
 
 	debug_print(" [ KEY %s ] Decrypt message", o->id_str);
 	dec_message_length = oaep_decrypt_message(o, info, enc_message,
@@ -373,7 +427,7 @@ int oaep_encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *m
 	}
 
 	if (memcmp(dec_message, message, dec_message_length) == 0
-			&& (unsigned int) dec_message_length == global_message_length) {
+			&& dec_message_length == message_length) {
 		debug_print(" [  OK %s ] Text decrypted successfully.", o->id_str);
 		mech->result_flags |= FLAGS_DECRYPT;
 		rv = 1;
@@ -387,47 +441,12 @@ int oaep_encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *m
 	return rv;
 }
 
-size_t get_hash_length(CK_MECHANISM_TYPE mech)
+static int get_max_salt_len(unsigned long bits, CK_MECHANISM_TYPE hash)
 {
-	switch (mech) {
-	case CKM_SHA224:
-		return SHA224_DIGEST_LENGTH;
-	case CKM_SHA256:
-		return SHA256_DIGEST_LENGTH;
-	case CKM_SHA384:
-		return SHA384_DIGEST_LENGTH;
-	case CKM_SHA512:
-		return SHA512_DIGEST_LENGTH;
-	default:
-	case CKM_SHA_1:
-		return SHA_DIGEST_LENGTH;
-	}
+	return (bits + 7)/8 - get_hash_length(hash) - 2;
 }
 
-CK_BYTE *hash_message(const CK_BYTE *message, size_t message_length,
-    CK_MECHANISM_TYPE hash)
-{
-	switch (hash) {
-	case CKM_SHA224:
-		return SHA224(message, message_length, NULL);
-
-	case CKM_SHA256:
-		return SHA256(message, message_length, NULL);
-
-	case CKM_SHA384:
-		return SHA384(message, message_length, NULL);
-
-	case CKM_SHA512:
-		return SHA512(message, message_length, NULL);
-
-	case CKM_SHA_1:
-	default:
-		return SHA1(message, message_length, NULL);
-
-	}
-}
-
-void fill_pss_params(CK_RSA_PKCS_PSS_PARAMS *pss_params,
+int fill_pss_params(CK_RSA_PKCS_PSS_PARAMS *pss_params,
     test_mech_t *mech, test_cert_t *o)
 {
 	pss_params->hashAlg = mech->hash;
@@ -435,10 +454,14 @@ void fill_pss_params(CK_RSA_PKCS_PSS_PARAMS *pss_params,
 	switch (mech->salt){
 	case -2:
 		/* max possible ( modlen - hashlen -2 ) */
-		pss_params->sLen = o->bits/8 - get_hash_length(mech->hash) - 2;
+		pss_params->sLen = get_max_salt_len(o->bits,mech->hash);
 		break;
 	case -1:
 		/* digest length */
+		/* will not work with SHA512 and 1024b keys (max is 62b!) */
+		if ((int) get_hash_length(mech->hash) > get_max_salt_len(o->bits, mech->hash)) {
+			return -1;
+		}
 		pss_params->sLen = get_hash_length(mech->hash);
 		break;
 	case 0:
@@ -446,6 +469,7 @@ void fill_pss_params(CK_RSA_PKCS_PSS_PARAMS *pss_params,
 		pss_params->sLen = 0;
 		break;
 	}
+	return 1;
 }
 
 int pss_sign_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
@@ -457,7 +481,10 @@ int pss_sign_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 	CK_ULONG sign_length = 0;
 	CK_RSA_PKCS_PSS_PARAMS pss_params;
 
-	fill_pss_params(&pss_params, mech, o);
+	if (fill_pss_params(&pss_params, mech, o) != 1) {
+		debug_print(" [SKIP %s ] Impossible to use requested salt length", o->id_str);
+		return 0;
+	}
 	sign_mechanism.pParameter = &pss_params;
 	sign_mechanism.ulParameterLen = sizeof(pss_params);
 
@@ -644,9 +671,10 @@ int pss_sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 		message = (unsigned char *) SHORT_MESSAGE_TO_SIGN;
 	}
 
-	debug_print(" [ KEY %s ] Signing message using CKM_%s and hash CKM_%s, MGF=CKG_%s",
-		o->id_str, get_mechanism_name(mech->mech),
-		get_mechanism_name(mech->hash), get_mgf_name(mech->mgf));
+	debug_print(" [ KEY %s ] Signing message using CKM_%s, CKM_%s,"
+		" CKG_%s, salt_len=%d", o->id_str,
+		get_mechanism_name(mech->mech), get_mechanism_name(mech->hash),
+		get_mgf_name(mech->mgf), mech->salt);
 	rv = pss_sign_message(o, info, message, message_length, mech, &sign);
 	if (rv <= 0) {
 		return rv;
