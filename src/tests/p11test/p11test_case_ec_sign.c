@@ -25,11 +25,16 @@ void ec_sign_size_test(void **state) {
 	int min, max, j, l, errors = 0, rv;
 	token_info_t *info = (token_info_t *) *state;
 
+	P11TEST_START(info);
+	if (token.num_ec_mechs == 0 ) {
+		fprintf(stderr, "Token does not support any ECC mechanisms. Skipping.\n");
+		skip();
+	}
+
 	test_certs_t objects;
 	objects.count = 0;
 	objects.data = NULL;
 
-	P11TEST_START(info);
 	search_for_all_objects(&objects, info);
 
 	debug_print("\nCheck functionality of Sign&Verify on different data lengths");

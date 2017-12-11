@@ -738,6 +738,18 @@ void fill_object_pss_mechanisms(token_info_t *info, test_cert_t *o)
 	o->num_mechs = n;
 }
 
+int have_pss_oaep_mechanisms()
+{
+	unsigned have = 0, i;
+	for (i = 0; i <= token.num_rsa_mechs; i++) {
+		if (is_pss_mechanism(token.rsa_mechs[i].mech) ||
+			token.rsa_mechs[i].mech == CKM_RSA_PKCS_OAEP) {
+				have++;
+		}
+	}
+	return have;
+}
+
 void pss_oaep_test(void **state) {
 
 	token_info_t *info = (token_info_t *) *state;
@@ -745,12 +757,17 @@ void pss_oaep_test(void **state) {
 	int used, j;
 	test_certs_t objects;
 
+	P11TEST_START(info);
+
+	if (have_pss_oaep_mechanisms() == 0) {
+		fprintf(stderr, "Token does not support any RSA-PSS or OAEP mechanisms. Skipping.\n");
+		skip();
+	}
+
 	objects.count = 0;
 	objects.data = NULL;
-
 	search_for_all_objects(&objects, info);
 
-	P11TEST_START(info);
 	debug_print("\nCheck functionality of Sign&Verify and/or Encrypt&Decrypt");
 	for (i = 0; i < objects.count; i++) {
 		test_cert_t *o = &objects.data[i];
