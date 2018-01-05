@@ -333,11 +333,15 @@ pgp_match_card(sc_card_t *card)
 	else {
 		sc_path_t	partial_aid;
 		unsigned char aid[16];
+		sc_file_t *file = NULL;
 
 		/* select application "OpenPGP" */
 		sc_format_path("D276:0001:2401", &partial_aid);
 		partial_aid.type = SC_PATH_TYPE_DF_NAME;
-		if (SC_SUCCESS == iso_ops->select_file(card, &partial_aid, NULL)) {
+		/* OpenPGP card only supports selection *with* requested FCI */
+		i = iso_ops->select_file(card, &partial_aid, &file);
+		sc_file_free(file);
+		if (SC_SUCCESS == i) {
 			/* read information from AID */
 			i = sc_get_data(card, 0x004F, aid, sizeof aid);
 			if (i == 16) {
