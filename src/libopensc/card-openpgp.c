@@ -49,6 +49,7 @@ static struct sc_atr_table pgp_atrs[] = {
 	{ "3b:da:18:ff:81:b1:fe:75:1f:03:00:31:c5:73:c0:01:40:00:90:00:0c", NULL, "CryptoStick v1.2 (OpenPGP v2.0)", SC_CARD_TYPE_OPENPGP_V2, 0, NULL },
 	{ "3b:da:11:ff:81:b1:fe:55:1f:03:00:31:84:73:80:01:80:00:90:00:e4", NULL, "Gnuk v1.0.x (OpenPGP v2.0)", SC_CARD_TYPE_OPENPGP_GNUK, 0, NULL },
 	{ "3b:fc:13:00:00:81:31:fe:15:59:75:62:69:6b:65:79:4e:45:4f:72:33:e1", NULL, "Yubikey NEO (OpenPGP v2.0)", SC_CARD_TYPE_OPENPGP_V2, 0, NULL },
+	{ "3b:da:18:ff:81:b1:fe:75:1f:03:00:31:f5:73:c0:01:60:00:90:00:1c", NULL, "OpenPGP card V3", SC_CARD_TYPE_OPENPGP_V3, 0, NULL },
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
@@ -332,7 +333,6 @@ pgp_match_card(sc_card_t *card)
 	}
 	else {
 		sc_path_t	partial_aid;
-		unsigned char aid[16];
 		sc_file_t *file = NULL;
 
 		/* select application "OpenPGP" */
@@ -340,26 +340,28 @@ pgp_match_card(sc_card_t *card)
 		partial_aid.type = SC_PATH_TYPE_DF_NAME;
 		/* OpenPGP card only supports selection *with* requested FCI */
 		i = iso_ops->select_file(card, &partial_aid, &file);
-		sc_file_free(file);
 		if (SC_SUCCESS == i) {
-			/* read information from AID */
-			i = sc_get_data(card, 0x004F, aid, sizeof aid);
-			if (i == 16) {
-				switch ((aid[6] << 8) | aid[7]) {	/* BCD-coded bytes */
-				case 0x0101:
-					card->type = SC_CARD_TYPE_OPENPGP_V1;
-					sc_log(card->ctx, "OpenPGPv1-type card found");
-					return 1;
-				case 0x0200:
-				case 0x0201:
-					card->type = SC_CARD_TYPE_OPENPGP_V2;
-					sc_log(card->ctx, "OpenPGPv2-type card found");
-					return 1;
-				default:
-					sc_log(card->ctx, "unsupported OpenPGP-type card found");
-					/* fall through */
+			static char card_name[SC_MAX_APDU_BUFFER_SIZE] = "OpenPGP card";
+			card->type = SC_CARD_TYPE_OPENPGP_BASE;
+			card->name = card_name;
+			if (file->namelen == 16) {
+				unsigned char major = file->name[6];
+				unsigned char minor = file->name[7];
+				switch (major) {
+					case 1:
+						card->type = SC_CARD_TYPE_OPENPGP_V1;
+						break;
+					case 2:
+						card->type = SC_CARD_TYPE_OPENPGP_V2;
+						break;
+					case 3:
+						card->type = SC_CARD_TYPE_OPENPGP_V3;
+						break;
 				}
+				snprintf(card_name, sizeof card_name, "OpenPGP card V%u.%u", major, minor);
 			}
+			sc_file_free(file);
+			return 1;
 		}
 	}
 	return 0;
@@ -389,14 +391,6 @@ pgp_init(sc_card_t *card)
 	card->drv_data = priv;
 
 	card->cla = 0x00;
-
-	/* set pointer to correct list of card objects */
-	priv->pgp_objects = (card->type == SC_CARD_TYPE_OPENPGP_V2 || card->type == SC_CARD_TYPE_OPENPGP_GNUK)
-				? pgp2_objects : pgp1_objects;
-
-	/* set detailed card version */
-	priv->bcd_version = (card->type == SC_CARD_TYPE_OPENPGP_V2 || card->type == SC_CARD_TYPE_OPENPGP_GNUK)
-				? OPENPGP_CARD_2_0 : OPENPGP_CARD_1_1;
 
 	/* select application "OpenPGP" */
 	sc_format_path("D276:0001:2401", &aid);
@@ -432,6 +426,27 @@ pgp_init(sc_card_t *card)
 		/* kludge: get card's serial number from manufacturer ID + serial number */
 		memcpy(card->serialnr.value, file->name + 8, 6);
 		card->serialnr.len = 6;
+	} else {
+		/* set detailed card version */
+		switch (card->type) {
+			case SC_CARD_TYPE_OPENPGP_V3:
+				priv->bcd_version = OPENPGP_CARD_3_0;
+				break;
+			case SC_CARD_TYPE_OPENPGP_GNUK:
+			case SC_CARD_TYPE_OPENPGP_V2:
+				priv->bcd_version = OPENPGP_CARD_2_0;
+				break;
+			default:
+				priv->bcd_version = OPENPGP_CARD_1_1;
+				break;
+		}
+	}
+
+	/* set pointer to correct list of card objects */
+	if (priv->bcd_version < OPENPGP_CARD_2_0) {
+		priv->pgp_objects = pgp1_objects;
+	} else {
+		priv->pgp_objects = pgp2_objects;
 	}
 
 	/* change file path to MF for re-use in MF */
@@ -527,9 +542,9 @@ pgp_get_card_features(sc_card_t *card)
 		/* get "extended capabilities" DO */
 		if ((pgp_get_blob(card, blob73, 0x00c0, &blob) >= 0) &&
 		    (blob->data != NULL) && (blob->len > 0)) {
-			/* in v2.0 bit 0x04 in first byte means "algorithm attributes changeable */
+			/* in v2.0 bit 0x04 in first byte means "algorithm attributes changeable" */
 			if ((blob->data[0] & 0x04) &&
-				(card->type == SC_CARD_TYPE_OPENPGP_V2 || card->type == SC_CARD_TYPE_OPENPGP_GNUK))
+					(priv->bcd_version >= OPENPGP_CARD_2_0))
 				priv->ext_caps |= EXT_CAP_ALG_ATTR_CHANGEABLE;
 			/* bit 0x08 in first byte means "support for private use DOs" */
 			if (blob->data[0] & 0x08)
@@ -547,7 +562,7 @@ pgp_get_card_features(sc_card_t *card)
 			}
 			/* in v2.0 bit 0x80 in first byte means "support Secure Messaging" */
 			if ((blob->data[0] & 0x80) &&
-				(card->type == SC_CARD_TYPE_OPENPGP_V2 || card->type == SC_CARD_TYPE_OPENPGP_GNUK))
+					(priv->bcd_version >= OPENPGP_CARD_2_0))
 				priv->ext_caps |= EXT_CAP_SM;
 
 			if ((priv->bcd_version >= OPENPGP_CARD_2_0) && (blob->len >= 10)) {
@@ -993,7 +1008,7 @@ pgp_seek_blob(sc_card_t *card, pgp_blob_t *root, unsigned int id,
 	for (child = root->files; child; child = child->next) {
 		/* The DO of SIMPLE type or the DO holding certificate
 		 * does not contain children */
-		if (child->info->type == SIMPLE || child->id == DO_CERT)
+		if ((child->info && child->info->type == SIMPLE) || child->id == DO_CERT)
 			continue;
 		r = pgp_seek_blob(card, child, id, ret);
 		if (r == 0)
