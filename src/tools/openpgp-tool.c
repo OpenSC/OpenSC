@@ -572,14 +572,8 @@ int do_delete_key(sc_card_t *card, u8 key_id)
 
 int do_erase(sc_card_t *card)
 {
-	int r;
-	/* Check card version */
-	if (card->type != SC_CARD_TYPE_OPENPGP_V2) {
-		printf("Do not erase card which is not OpenPGP v2\n");
-	}
 	printf("Erase card\n");
-	r = sc_card_ctl(card, SC_CARDCTL_ERASE_CARD, NULL);
-	return r;
+	return sc_card_ctl(card, SC_CARDCTL_ERASE_CARD, NULL);
 }
 
 int main(int argc, char **argv)
@@ -619,9 +613,11 @@ int main(int argc, char **argv)
 	}
 
 	/* check card type */
-	if ((card->type != SC_CARD_TYPE_OPENPGP_V1) &&
-		(card->type != SC_CARD_TYPE_OPENPGP_V2) &&
-		(card->type != SC_CARD_TYPE_OPENPGP_GNUK)) {
+	if ((card->type != SC_CARD_TYPE_OPENPGP_BASE) &&
+			(card->type != SC_CARD_TYPE_OPENPGP_V1) &&
+			(card->type != SC_CARD_TYPE_OPENPGP_V2) &&
+			(card->type != SC_CARD_TYPE_OPENPGP_V3) &&
+			(card->type != SC_CARD_TYPE_OPENPGP_GNUK)) {
 		util_error("not an OpenPGP card");
 		fprintf(stderr, "Card type %X\n", card->type);
 		exit_status = EXIT_FAILURE;
