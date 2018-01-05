@@ -918,9 +918,9 @@ static void print_ssh_key(FILE *outf, const char * alg, struct sc_pkcs15_object 
 		}
 
 		if (obj->label[0] != '\0')
-			fprintf(outf,"ssh-%s %s %.*s\n", alg, uu, (int) sizeof obj->label, obj->label);
+			fprintf(outf,"%s %s %.*s\n", alg, uu, (int) sizeof obj->label, obj->label);
 		else
-			fprintf(outf,"ssh-%s %s\n", alg, uu);
+			fprintf(outf,"%s %s\n", alg, uu);
 	}
 	free(uu);
 	return;
@@ -982,6 +982,70 @@ static int read_ssh_key(void)
 		return 1;
 	}
 
+	if (pubkey->algorithm == SC_ALGORITHM_EC) {
+		// support only for NIST
+		// 'ssh-keygen -t ecdsa' allow only field lengths 256/384/521
+
+		static struct supported_ec_curves {
+			char *curve_name;
+			struct sc_object_id curve_oid;
+			size_t size;
+		} ec_curves[] = {
+			{"secp256r1", {{1, 2, 840, 10045, 3, 1, 7, -1}},256},
+			{"secp384r1", {{1, 3, 132, 0, 34, -1}},         384},
+			{"secp521r1", {{1, 3, 132, 0, 35, -1}},         521},
+		        {NULL, {{-1}}, 0},
+		};
+		char alg[20];
+		/* Large enough to fit the following:
+		 * 3 x 4B item length headers
+		 * max 20B algorithm name, 9B curve name, max 256B key data */
+		unsigned char buf[300];
+		unsigned int i, len, tmp, n;
+
+		for (n = 0,i = 0; ec_curves[i].curve_name != NULL; i++) {
+			if(sc_compare_oid (&ec_curves[i].curve_oid,&pubkey->u.ec.params.id))
+				n = ec_curves[i].size;
+		}
+		if (!n) {
+			fprintf(stderr, "Unsupported curve\n");
+			goto fail2;
+		}
+		if (n != pubkey->u.ec.params.field_length) {
+			fprintf(stderr, "Wrong field length\n");
+			goto fail2;
+		}
+
+		buf[0] = 0;
+		buf[1] = 0;
+		buf[2] = 0;
+		len = snprintf((char *) buf+4, 20, "ecdsa-sha2-nistp%d", n);
+		strncpy(alg, (char *) buf+4, 20);
+		buf[3] = len;
+
+		len += 4;
+		buf[len++] = 0;
+		buf[len++] = 0;
+		buf[len++] = 0;
+		tmp = snprintf((char *) buf+len+1, 9, "nistp%d", n);
+		buf[len++] = tmp;
+		len += tmp;
+
+		n = pubkey->u.ec.ecpointQ.len;
+		if(n > 255) {
+			fprintf(stderr, "Wrong public key length\n");
+			goto fail2;
+		}
+		buf[len++] = 0;
+		buf[len++] = 0;
+		buf[len++] = 0;
+		buf[len++] = n & 0xff;
+		memcpy(buf+len,pubkey->u.ec.ecpointQ.value,n);
+		len += n;
+
+		print_ssh_key(outf, alg, obj, buf, len);
+	}
+
 	if (pubkey->algorithm == SC_ALGORITHM_RSA) {
 		unsigned char buf[2048];
 		uint32_t len, n;
@@ -1034,7 +1098,7 @@ static int read_ssh_key(void)
 		memcpy(buf+len,pubkey->u.rsa.modulus.data, pubkey->u.rsa.modulus.len);
 		len += pubkey->u.rsa.modulus.len;
 
-		print_ssh_key(outf, "rsa", obj, buf, len);
+		print_ssh_key(outf, "ssh-rsa", obj, buf, len);
 	}
 
 	if (pubkey->algorithm == SC_ALGORITHM_DSA) {
@@ -1125,7 +1189,7 @@ static int read_ssh_key(void)
 		memcpy(buf+len,pubkey->u.dsa.pub.data, pubkey->u.dsa.pub.len);
 		len += pubkey->u.dsa.pub.len;
 
-		print_ssh_key(outf, "dss", obj, buf, len);
+		print_ssh_key(outf, "ssh-dss", obj, buf, len);
 	}
 
 	if (outf != stdout)
