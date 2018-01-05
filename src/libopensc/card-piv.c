@@ -2333,7 +2333,7 @@ static int piv_validate_general_authentication(sc_card_t *card,
 
 	u8 sbuf[4096]; /* needs work. for 3072 keys, needs 384+10 or so */
 	u8 *rbuf = NULL;
-	size_t rbuflen;
+	size_t rbuflen = 0;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
