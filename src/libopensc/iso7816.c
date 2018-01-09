@@ -334,112 +334,126 @@ iso7816_process_fci(struct sc_card *card, struct sc_file *file,
 		const unsigned char *buf, size_t buflen)
 {
 	struct sc_context *ctx = card->ctx;
-	size_t taglen, len = buflen;
-	int i;
-	const unsigned char *tag = NULL, *p = buf;
+	const unsigned char *p, *end;
+	unsigned int cla = 0, tag = 0;
+	size_t length;
+	int size;
 
-	sc_log(ctx, "processing FCI bytes");
-	tag = sc_asn1_find_tag(ctx, p, len, 0x83, &taglen);
-	if (tag != NULL && taglen == 2) {
-		file->id = (tag[0] << 8) | tag[1];
-		sc_log(ctx, "  file identifier: 0x%02X%02X", tag[0], tag[1]);
-	}
+	for (p = buf, length = buflen, end = buf + buflen;
+			p < end;
+			p += length, length = end - p) {
 
-	/* determine the file size */
-	/* try the tag 0x80 then the tag 0x81 */
-	file->size = 0;
-	for (i = 0x80; i <= 0x81; i++) {
-		int size = 0;
-		len = buflen;
-		tag = sc_asn1_find_tag(ctx, p, len, i, &taglen);
-		if (tag == NULL)
-			continue;
-		if (taglen == 0)
-			continue;
-		if (sc_asn1_decode_integer(tag, taglen, &size) < 0)
-			continue;
-		if (size <0)
-			continue;
-
-		file->size = size;
-		sc_log(ctx, "  bytes in file: %"SC_FORMAT_LEN_SIZE_T"u",
-		       file->size);
-		break;
-	}
-
-	tag = sc_asn1_find_tag(ctx, p, len, 0x82, &taglen);
-	if (tag != NULL) {
-		if (taglen > 0) {
-			unsigned char byte = tag[0];
-			const char *type;
-
-			file->shareable = byte & 0x40 ? 1 : 0;
-			sc_log(ctx, "  shareable: %s", (byte & 0x40) ? "yes" : "no");
-			file->ef_structure = byte & 0x07;
-			switch ((byte >> 3) & 7) {
-			case 0:
-				type = "working EF";
-				file->type = SC_FILE_TYPE_WORKING_EF;
+		if (SC_SUCCESS != sc_asn1_read_tag(&p, length, &cla, &tag, &length)) {
+			break;
+		}
+		switch (cla | tag) {
+			case 0x81:
+				if (file->size != 0) {
+					/* don't overwrite existing file size excluding structural information */
+					break;
+				}
+				/* fall through */
+			case 0x80:
+				/* determine the file size */
+				if (sc_asn1_decode_integer(p, length, &size) == 0 && size >= 0) {
+					file->size = size;
+					sc_log(ctx, "  bytes in file: %"SC_FORMAT_LEN_SIZE_T"u",
+							file->size);
+				}
 				break;
-			case 1:
-				type = "internal EF";
-				file->type = SC_FILE_TYPE_INTERNAL_EF;
+
+			case 0x82:
+				if (length > 0) {
+					unsigned char byte = p[0];
+					const char *type;
+
+					file->shareable = byte & 0x40 ? 1 : 0;
+					sc_log(ctx, "  shareable: %s", (byte & 0x40) ? "yes" : "no");
+					file->ef_structure = byte & 0x07;
+					switch ((byte >> 3) & 7) {
+						case 0:
+							type = "working EF";
+							file->type = SC_FILE_TYPE_WORKING_EF;
+							break;
+						case 1:
+							type = "internal EF";
+							file->type = SC_FILE_TYPE_INTERNAL_EF;
+							break;
+						case 7:
+							type = "DF";
+							file->type = SC_FILE_TYPE_DF;
+							break;
+						default:
+							type = "unknown";
+							break;
+					}
+					sc_log(ctx, "  type: %s", type);
+					sc_log(ctx, "  EF structure: %d", byte & 0x07);
+					sc_log(ctx, "  tag 0x82: 0x%02x", byte);
+					if (SC_SUCCESS != sc_file_set_type_attr(file, &byte, 1))
+						sc_log(ctx, "Warning: Could not set file attributes");
+				}
 				break;
-			case 7:
-				type = "DF";
-				file->type = SC_FILE_TYPE_DF;
+
+			case 0x83:
+				if (length == 2) {
+					file->id = (p[0] << 8) | p[1];
+					sc_log(ctx, "  file identifier: 0x%02X%02X", p[0], p[1]);
+				}
 				break;
-			default:
-				type = "unknown";
+
+			case 0x84:
+				if (length > 0 && length <= 16) {
+					memcpy(file->name, p, length);
+					file->namelen = length;
+
+					sc_debug_hex(ctx, SC_LOG_DEBUG_NORMAL, "  File name:", file->name, file->namelen);
+					if (!file->type)
+						file->type = SC_FILE_TYPE_DF;
+				}
 				break;
-			}
-			sc_log(ctx, "  type: %s", type);
-			sc_log(ctx, "  EF structure: %d", byte & 0x07);
-			sc_log(ctx, "  tag 0x82: 0x%02x", byte);
-			if (SC_SUCCESS != sc_file_set_type_attr(file, &byte, 1))
-				sc_log(ctx, "Warning: Could not set file attributes");
+
+			case 0x85:
+			case 0xA5:
+				if (SC_SUCCESS != sc_file_set_prop_attr(file, p, length)) {
+					sc_log(ctx, "Warning: Could not set proprietary file properties");
+				}
+				break;
+
+			case 0x86:
+				if (SC_SUCCESS != sc_file_set_sec_attr(file, p, length)) {
+					sc_log(ctx, "Warning: Could not set file security prperties");
+				}
+				break;
+
+			case 0x88:
+				if (length == 1) {
+					file->sid = *p;
+					sc_log(ctx, "  short file identifier: 0x%02X", *p);
+				}
+				break;
+
+			case 0x8A:
+				if (length == 1) {
+					if (p[0] == 0x01)
+						file->status = SC_FILE_STATUS_CREATION;
+					else if (p[0] == 0x07 || p[0] == 0x05)
+						file->status = SC_FILE_STATUS_ACTIVATED;
+					else if (p[0] == 0x06 || p[0] == 0x04)
+						file->status = SC_FILE_STATUS_INVALIDATED;
+				}
+				break;
+
+			case 0x62:
+			case 0x64:
+			case 0x6F:
+				/* allow nested FCP/FMD/FCI templates */
+				iso7816_process_fci(card, file, p, length);
 		}
 	}
 
-	tag = sc_asn1_find_tag(ctx, p, len, 0x84, &taglen);
-	if (tag != NULL && taglen > 0 && taglen <= 16) {
-		memcpy(file->name, tag, taglen);
-		file->namelen = taglen;
-
-		sc_debug_hex(ctx, SC_LOG_DEBUG_NORMAL, "  File name:", file->name, file->namelen);
-		if (!file->type)
-			file->type = SC_FILE_TYPE_DF;
-	}
-
-	tag = sc_asn1_find_tag(ctx, p, len, 0x85, &taglen);
-	if (tag != NULL && taglen)
-		sc_file_set_prop_attr(file, tag, taglen);
-	else
-		file->prop_attr_len = 0;
-
-	tag = sc_asn1_find_tag(ctx, p, len, 0xA5, &taglen);
-	if (tag != NULL && taglen)
-		sc_file_set_prop_attr(file, tag, taglen);
-
-	tag = sc_asn1_find_tag(ctx, p, len, 0x86, &taglen);
-	if (tag != NULL && taglen)
-		sc_file_set_sec_attr(file, tag, taglen);
-
-	tag = sc_asn1_find_tag(ctx, p, len, 0x88, &taglen);
-	if (tag != NULL && taglen == 1)
-		file->sid = *tag;
-
-	tag = sc_asn1_find_tag(ctx, p, len, 0x8A, &taglen);
-	if (tag != NULL && taglen==1) {
-		if (tag[0] == 0x01)
-			file->status = SC_FILE_STATUS_CREATION;
-		else if (tag[0] == 0x07 || tag[0] == 0x05)
-			file->status = SC_FILE_STATUS_ACTIVATED;
-		else if (tag[0] == 0x06 || tag[0] == 0x04)
-			file->status = SC_FILE_STATUS_INVALIDATED;
-	}
-
 	file->magic = SC_FILE_MAGIC;
+
 	return SC_SUCCESS;
 }
 
