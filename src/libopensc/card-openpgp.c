@@ -2588,7 +2588,7 @@ pgp_erase_card(sc_card_t *card)
 	 * according to https://www.crypto-stick.com/en/faq
 	 * (How to reset a Crypto Stick? question).
 	 * Gnuk is known not to support this feature. */
-	static const char *apdu_hex[] = {
+	const char *apdu_hex[] = {
 		/* block PIN1 */
 		"00:20:00:81:08:40:40:40:40:40:40:40:40",
 		"00:20:00:81:08:40:40:40:40:40:40:40:40",
@@ -2601,47 +2601,57 @@ pgp_erase_card(sc_card_t *card)
 		"00:20:00:83:08:40:40:40:40:40:40:40:40",
 		/* TERMINATE */
 		"00:e6:00:00",
-		/* ACTIVATE */
-		"00:44:00:00",
 		NULL
 	};
+	sc_apdu_t apdu;
 	int i;
 	int r = SC_SUCCESS;
+	struct pgp_priv_data *priv = DRVDATA(card);
 
 	LOG_FUNC_CALLED(card->ctx);
 
-	/* check card version */
-	if (card->type != SC_CARD_TYPE_OPENPGP_V2) {
-		sc_log(card->ctx, "Card is not OpenPGP v2");
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NO_CARD_SUPPORT);
+	if (priv->bcd_version < OPENPGP_CARD_2_0
+			|| priv->state == CARD_STATE_UNKNOWN) {
+		LOG_TEST_RET(card->ctx, SC_ERROR_NO_CARD_SUPPORT,
+				"Card does not offer life cycle management");
 	}
-	sc_log(card->ctx, "Card is OpenPGP v2. Erase card.");
 
-	/* iterate over the commands above */
-	for (i = 0; apdu_hex[i] != NULL; i++) {
-		u8 apdu_bin[25];	/* large enough to convert apdu_hex */
-		size_t apdu_bin_len = sizeof(apdu_bin);
-		sc_apdu_t apdu;
-		u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
+	switch (priv->state) {
+		case CARD_STATE_ACTIVATED:
+			/* iterate over the commands above */
+			for (i = 0; apdu_hex[i] != NULL; i++) {
+				u8 apdu_bin[25];	/* large enough to convert apdu_hex */
+				size_t apdu_bin_len = sizeof(apdu_bin);
+				u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
 
-		/* convert hex array to bin array */
-		r = sc_hex_to_bin(apdu_hex[i], apdu_bin, &apdu_bin_len);
-		LOG_TEST_RET(card->ctx, r, "Failed to convert APDU bytes");
+				/* convert hex array to bin array */
+				r = sc_hex_to_bin(apdu_hex[i], apdu_bin, &apdu_bin_len);
+				LOG_TEST_RET(card->ctx, r, "Failed to convert APDU bytes");
 
-		/* build APDU from binary array */
-		r = sc_bytes2apdu(card->ctx, apdu_bin, apdu_bin_len, &apdu);
-		if (r) {
-			sc_log(card->ctx, "Failed to build APDU");
-			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
-		}
+				/* build APDU from binary array */
+				r = sc_bytes2apdu(card->ctx, apdu_bin, apdu_bin_len, &apdu);
+				if (r) {
+					sc_log(card->ctx, "Failed to build APDU");
+					LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
+				}
 
-		apdu.resp = rbuf;
-		apdu.resplen = sizeof(rbuf);
+				apdu.resp = rbuf;
+				apdu.resplen = sizeof(rbuf);
 
-		/* send APDU to card */
-		sc_log(card->ctx, "Sending APDU%d %s", i, apdu_hex[i]);
-		r = sc_transmit_apdu(card, &apdu);
-		LOG_TEST_RET(card->ctx, r, "Transmitting APDU failed");
+				/* send APDU to card */
+				sc_log(card->ctx, "Sending APDU%d %s", i, apdu_hex[i]);
+				r = sc_transmit_apdu(card, &apdu);
+				LOG_TEST_RET(card->ctx, r, "Transmitting APDU failed");
+			}
+			/* fall through */
+		case CARD_STATE_INITIALIZATION:
+			sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x44, 0, 0);
+			r = sc_transmit_apdu(card, &apdu);
+			LOG_TEST_RET(card->ctx, r, "Transmitting APDU failed");
+			break;
+		default:
+			LOG_TEST_RET(card->ctx, SC_ERROR_NO_CARD_SUPPORT,
+					"Card does not offer life cycle management");
 	}
 
 	LOG_FUNC_RETURN(card->ctx, r);
