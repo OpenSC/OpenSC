@@ -676,6 +676,7 @@ static void process_config_file(sc_context_t *ctx, struct _sc_ctx_options *opts)
 	if (!conf_path)
 		conf_path = OPENSC_CONF_PATH;
 #endif
+	sc_log(ctx, "Using configuration file '%s'", conf_path);
 	ctx->conf = scconf_new(conf_path);
 	if (ctx->conf == NULL)
 		return;
