@@ -445,6 +445,9 @@ static int cac_read_file(sc_card_t *card, int file_type, u8 **out_buf, size_t *o
 	len = sizeof(count);
 	out_ptr = count;
 	r = cac_apdu_io(card, CAC_INS_READ_FILE, 0, 0, &params[0], sizeof(params), &out_ptr, &len);
+	if (len == 0) {
+		r = SC_ERROR_FILE_NOT_FOUND;
+	}
 	if (r < 0)
 		goto fail;
 
@@ -462,6 +465,10 @@ static int cac_read_file(sc_card_t *card, int file_type, u8 **out_buf, size_t *o
 		params[1] = len;
 		r = cac_apdu_io(card, CAC_INS_READ_FILE, HIGH_BYTE_OF_SHORT(offset), LOW_BYTE_OF_SHORT(offset),
 						&params[0], sizeof(params), &out_ptr, &len);
+		/* if there is no data, assume there is no file */
+		if (len == 0) {
+			r = SC_ERROR_FILE_NOT_FOUND;
+		}
 		if (r < 0) {
 			goto fail;
 		}
