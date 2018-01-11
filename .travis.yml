@@ -15,6 +15,7 @@ addons:
     - xsltproc
     - gengetopt
     - help2man
+    - libcmocka-dev
 
 env:
   global:
@@ -52,20 +53,7 @@ before_install:
         brew update;
         brew uninstall libtool;
         brew install libtool;
-        brew install gengetopt help2man;
-    fi
-  # try to download. build and install cmocka
-  - if [ ! -f "/usr/include/cmocka.h" ]; then
-        pushd /tmp;
-        wget https://cmocka.org/files/1.1/cmocka-1.1.0.tar.xz;
-        tar -xvf cmocka-1.1.0.tar.xz;
-        pushd cmocka-1.1.0;
-        mkdir build && pushd build;
-        cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug ..;
-        make;
-        sudo make install;
-        popd && popd && popd;
-        rm -rf /tmp/cmocka-1.1.0;
+        brew install gengetopt help2man cmocka;
     fi
 
 before_script:
