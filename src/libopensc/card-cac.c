@@ -1476,6 +1476,48 @@ static int cac_populate_cac_1(sc_card_t *card, int index, cac_private_data_t *pr
 	return SC_SUCCESS;
 }
 
+static int cac_process_ACA(sc_card_t *card, cac_private_data_t *priv)
+{
+	int r, index;
+	u8 *tl = NULL, *val = NULL;
+	size_t tl_len, val_len;
+
+
+	r = cac_read_file(card, CAC_FILE_TAG, &tl, &tl_len);
+	if (r < 0)
+		goto done;
+
+	r = cac_read_file(card, CAC_FILE_VALUE, &val, &val_len);
+	if (r < 0)
+		goto done;
+
+	/* TODO we should process the ACA file -- so far we are happy we can read it */
+	//r = cac_parse_ACA(card, priv, tl, tl_len, val, val_len);
+	r = cac_find_first_pki_applet(card, &index);
+        if (r == SC_SUCCESS) {
+		priv = cac_new_private_data();
+		if (!priv) {
+			r = SC_ERROR_OUT_OF_MEMORY;
+			goto done;
+		}
+		r = cac_populate_cac_1(card, index, priv);
+		if (r == SC_SUCCESS) {
+			priv->aca_path = malloc(sizeof(sc_path_t));
+			if (!priv->aca_path) {
+				r = SC_ERROR_OUT_OF_MEMORY;
+				goto done;
+			}
+			memcpy(priv->aca_path, &cac_ACA_Path, sizeof(sc_path_t));
+		}
+	}
+done:
+	if (tl)
+		free(tl);
+	if (val)
+		free(val);
+	return r;
+}
+
 /*
  * Look for a CAC card. If it exists, initialize our data structures
  */
@@ -1511,21 +1553,12 @@ static int cac_find_and_initialize(sc_card_t *card, int initialize)
 	/* Even some ALT tokens can be missing CCC so we should try with ACA */
 	r = cac_select_ACA(card);
 	if (r == SC_SUCCESS) {
-		r = cac_find_first_pki_applet(card, &index);
-	        if (r == SC_SUCCESS) {
-			priv = cac_new_private_data();
-			if (!priv)
-				return SC_ERROR_OUT_OF_MEMORY;
-			r = cac_populate_cac_1(card, index, priv);
-			if (r == SC_SUCCESS) {
-				priv->aca_path = malloc(sizeof(sc_path_t));
-				if (!priv->aca_path)
-					return SC_ERROR_OUT_OF_MEMORY;
-				memcpy(priv->aca_path, &cac_ACA_Path, sizeof(sc_path_t));
-				card->type = SC_CARD_TYPE_CAC_II;
-				card->drv_data = priv;
-				return r;
-			}
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "ACA found, is CAC-2 without CCC");
+		r = cac_process_ACA(card, priv);
+		if (r == SC_SUCCESS) {
+			card->type = SC_CARD_TYPE_CAC_II;
+			card->drv_data = priv;
+			return r;
 		}
 	}
 
