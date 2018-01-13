@@ -2815,6 +2815,32 @@ pgp_update_binary(sc_card_t *card, unsigned int idx,
 }
 
 
+static int pgp_card_reader_lock_obtained(sc_card_t *card, int was_reset)
+{
+	int r = 0;
+	sc_path_t       aid;
+	sc_file_t       *file = NULL;
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	/* 
+	 * If OpenPGP driver was keeping track of login state
+	 * we could do something with the was_reset
+	 */
+
+	/* select application "OpenPGP" */
+	sc_format_path("D276:0001:2401", &aid);
+	aid.type = SC_PATH_TYPE_DF_NAME;
+	if ((r = iso_ops->select_file(card, &aid, &file)) < 0) {
+		pgp_finish(card);
+		LOG_FUNC_RETURN(card->ctx, r);
+	}
+	sc_file_free(file);
+
+	LOG_FUNC_RETURN(card->ctx, r);
+}
+
+
 /**
  * ABI: driver binding stuff.
  */
@@ -2842,6 +2868,7 @@ sc_get_driver(void)
 	pgp_ops.card_ctl	= pgp_card_ctl;
 	pgp_ops.delete_file	= pgp_delete_file;
 	pgp_ops.update_binary	= pgp_update_binary;
+	pgp_ops.card_reader_lock_obtained = pgp_card_reader_lock_obtained;
 
 	return &pgp_drv;
 }
