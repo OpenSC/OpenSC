@@ -319,7 +319,7 @@ iasecc_select_aid(struct sc_card *card, struct sc_aid *aid, unsigned char *out, 
 	int rv;
 
 	/* Select application (deselect previously selected application) */
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, 0x04, 0x00);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xA4, 0x04, 0x00);
 	apdu.lc = aid->len;
 	apdu.data = aid->value;
 	apdu.datalen = aid->len;
