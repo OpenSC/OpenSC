@@ -378,7 +378,7 @@ static int
 pgp_init(sc_card_t *card)
 {
 	struct pgp_priv_data *priv;
-	sc_path_t	aid;
+	sc_path_t	path;
 	sc_file_t	*file = NULL;
 	struct do_info	*info;
 	int		r;
@@ -394,9 +394,9 @@ pgp_init(sc_card_t *card)
 	card->cla = 0x00;
 
 	/* select application "OpenPGP" */
-	sc_format_path("D276:0001:2401", &aid);
-	aid.type = SC_PATH_TYPE_DF_NAME;
-	if ((r = iso_ops->select_file(card, &aid, &file)) < 0) {
+	sc_format_path("D276:0001:2401", &path);
+	path.type = SC_PATH_TYPE_DF_NAME;
+	if ((r = iso_ops->select_file(card, &path, &file)) < 0) {
 		pgp_finish(card);
 		LOG_FUNC_RETURN(card->ctx, r);
 	}
@@ -2868,11 +2868,28 @@ pgp_update_binary(sc_card_t *card, unsigned int idx,
 }
 
 
-/**
- * ABI: driver binding stuff.
- */
-static struct sc_card_driver *
-sc_get_driver(void)
+static int pgp_card_reader_lock_obtained(sc_card_t *card, int was_reset)
+{
+	int r = SC_SUCCESS;
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	if (was_reset > 0) {
+		sc_file_t	*file = NULL;
+		sc_path_t	path;
+		/* select application "OpenPGP" */
+		sc_format_path("D276:0001:2401", &path);
+		path.type = SC_PATH_TYPE_DF_NAME;
+		r = iso_ops->select_file(card, &path, &file);
+		sc_file_free(file);
+	}
+
+	LOG_FUNC_RETURN(card->ctx, r);
+}
+
+
+struct sc_card_driver *
+sc_get_openpgp_driver(void)
 {
 	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
 
@@ -2897,16 +2914,7 @@ sc_get_driver(void)
 	pgp_ops.card_ctl	= pgp_card_ctl;
 	pgp_ops.delete_file	= pgp_delete_file;
 	pgp_ops.update_binary	= pgp_update_binary;
+	pgp_ops.card_reader_lock_obtained = pgp_card_reader_lock_obtained;
 
 	return &pgp_drv;
-}
-
-
-/**
- * ABI: driver binding stuff.
- */
-struct sc_card_driver *
-sc_get_openpgp_driver(void)
-{
-	return sc_get_driver();
 }

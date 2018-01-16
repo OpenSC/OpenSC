@@ -1224,6 +1224,21 @@ isoApplet_get_challenge(struct sc_card *card, u8 *rnd, size_t len)
 	LOG_FUNC_RETURN(ctx, r);
 }
 
+static int isoApplet_card_reader_lock_obtained(sc_card_t *card, int was_reset)
+{
+	int r = SC_SUCCESS;
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	if (was_reset > 0) {
+		size_t rlen = SC_MAX_APDU_BUFFER_SIZE;
+		u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
+		r = isoApplet_select_applet(card, isoApplet_aid, ISOAPPLET_AID_LEN, rbuf, &rlen);
+	}
+
+	LOG_FUNC_RETURN(card->ctx, r);
+}
+
 static struct sc_card_driver *sc_get_driver(void)
 {
 	sc_card_driver_t *iso_drv = sc_get_iso7816_driver();
@@ -1246,6 +1261,7 @@ static struct sc_card_driver *sc_get_driver(void)
 	isoApplet_ops.set_security_env = isoApplet_set_security_env;
 	isoApplet_ops.compute_signature = isoApplet_compute_signature;
 	isoApplet_ops.get_challenge = isoApplet_get_challenge;
+	isoApplet_ops.card_reader_lock_obtained = isoApplet_card_reader_lock_obtained;
 
 	/* unsupported functions */
 	isoApplet_ops.write_binary = NULL;

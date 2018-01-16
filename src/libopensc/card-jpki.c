@@ -362,6 +362,19 @@ jpki_compute_signature(sc_card_t * card,
 	LOG_FUNC_RETURN(card->ctx, apdu.resplen);
 }
 
+static int jpki_card_reader_lock_obtained(sc_card_t *card, int was_reset)
+{
+	int r = SC_SUCCESS;
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	if (was_reset > 0) {
+		r = jpki_select_ap(card);
+	}
+
+	LOG_FUNC_RETURN(card->ctx, r);
+}
+
 static struct sc_card_driver *
 sc_get_driver(void)
 {
@@ -376,6 +389,7 @@ sc_get_driver(void)
 	jpki_ops.pin_cmd = jpki_pin_cmd;
 	jpki_ops.set_security_env = jpki_set_security_env;
 	jpki_ops.compute_signature = jpki_compute_signature;
+	jpki_ops.card_reader_lock_obtained = jpki_card_reader_lock_obtained;
 
 	return &jpki_drv;
 }

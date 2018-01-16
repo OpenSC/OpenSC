@@ -2047,12 +2047,26 @@ static int gids_card_ctl(sc_card_t * card, unsigned long cmd, void *ptr)
 	}
 }
 
+static int gids_card_reader_lock_obtained(sc_card_t *card, int was_reset)
+{
+	int r = SC_SUCCESS;
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	if (was_reset > 0) {
+		u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
+		size_t resplen = sizeof(rbuf);
+		r = gids_select_aid(card, gids_aid.value, gids_aid.len, rbuf, &resplen);
+	}
+
+	LOG_FUNC_RETURN(card->ctx, r);
+}
+
 static struct sc_card_driver *sc_get_driver(void)
 {
 
 	if (iso_ops == NULL)
 		iso_ops = sc_get_iso7816_driver()->ops;
-
 
 	gids_ops.match_card = gids_match_card;
 	gids_ops.init = gids_init;
@@ -2088,6 +2102,8 @@ static struct sc_card_driver *sc_get_driver(void)
 	gids_ops.put_data = NULL;
 	gids_ops.delete_record = NULL;
 	gids_ops.read_public_key = gids_read_public_key;
+	gids_ops.card_reader_lock_obtained = gids_card_reader_lock_obtained;
+
 	return &gids_drv;
 }
 

@@ -1026,6 +1026,20 @@ static int asepcos_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *pdata,
 	return r;
 }
 
+static int asepcos_card_reader_lock_obtained(sc_card_t *card, int was_reset)
+{
+	int r = SC_SUCCESS;
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	if (was_reset > 0 && card->type == SC_CARD_TYPE_ASEPCOS_JAVA) {
+		/* in case of a Java card try to select the ASEPCOS applet */
+		r = asepcos_select_asepcos_applet(card);
+	}
+
+	LOG_FUNC_RETURN(card->ctx, r);
+}
+
 static struct sc_card_driver * sc_get_driver(void)
 {
 	if (iso_ops == NULL)
@@ -1042,6 +1056,7 @@ static struct sc_card_driver * sc_get_driver(void)
 	asepcos_ops.list_files        = asepcos_list_files;
 	asepcos_ops.card_ctl          = asepcos_card_ctl;
 	asepcos_ops.pin_cmd           = asepcos_pin_cmd;
+	asepcos_ops.card_reader_lock_obtained = asepcos_card_reader_lock_obtained;
 
 	return &asepcos_drv;
 }

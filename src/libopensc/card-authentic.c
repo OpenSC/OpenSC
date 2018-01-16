@@ -491,7 +491,6 @@ authentic_init(struct sc_card *card)
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
-
 static int
 authentic_erase_binary(struct sc_card *card, unsigned int offs, size_t count, unsigned long flags)
 {
@@ -2115,6 +2114,21 @@ authentic_finish(struct sc_card *card)
 }
 
 
+static int authentic_card_reader_lock_obtained(sc_card_t *card, int was_reset)
+{
+	int r = SC_SUCCESS;
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	if (was_reset > 0
+			&& card->type == SC_CARD_TYPE_OBERTHUR_AUTHENTIC_3_2) {
+		r = authentic_select_aid(card, aid_AuthentIC_3_2, sizeof(aid_AuthentIC_3_2), NULL, NULL);
+	}
+
+	LOG_FUNC_RETURN(card->ctx, r);
+}
+
+
 /* SM related */
 #ifdef ENABLE_SM
 static int
@@ -2367,6 +2381,7 @@ sc_get_driver(void)
 	authentic_ops.card_ctl = authentic_card_ctl;
 	authentic_ops.process_fci = authentic_process_fci;
 	authentic_ops.pin_cmd = authentic_pin_cmd;
+	authentic_ops.card_reader_lock_obtained = authentic_card_reader_lock_obtained;
 
 	return &authentic_drv;
 }
