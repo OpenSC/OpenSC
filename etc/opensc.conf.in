@@ -84,8 +84,8 @@ app default {
 		#
 		# What to do when disconnecting from a card (SCardDisconnect)
 		# Valid values: leave, reset, unpower.
-		# Default: reset
-		# disconnect_action = unpower;
+		# Default: leave
+		# disconnect_action = reset;
 		#
 		# What to do at the end of a transaction (SCardEndTransaction)
 		# Valid values: leave, reset, unpower.

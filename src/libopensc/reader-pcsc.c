@@ -781,7 +781,7 @@ static int pcsc_init(sc_context_t *ctx)
 		gpriv->connect_exclusive =
 			scconf_get_bool(conf_block, "connect_exclusive", gpriv->connect_exclusive);
 		gpriv->disconnect_action =
-			pcsc_reset_action(scconf_get_str(conf_block, "disconnect_action", "reset"));
+			pcsc_reset_action(scconf_get_str(conf_block, "disconnect_action", "leave"));
 		gpriv->transaction_end_action =
 			pcsc_reset_action(scconf_get_str(conf_block, "transaction_end_action", "leave"));
 		gpriv->reconnect_action =
