@@ -566,6 +566,20 @@ static int gemsafe_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 	return r;
 }
 
+static int gemsafe_card_reader_lock_obtained(sc_card_t *card, int was_reset)
+{
+	int r = SC_SUCCESS;
+	gemsafe_exdata *exdata = (gemsafe_exdata *)card->drv_data;
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	if (was_reset > 0 && exdata) {
+		r = gp_select_applet(card, exdata->aid, exdata->aid_len);
+	}
+
+	LOG_FUNC_RETURN(card->ctx, r);
+}
+
 static struct sc_card_driver *sc_get_driver(void)
 {
 	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
@@ -585,6 +599,7 @@ static struct sc_card_driver *sc_get_driver(void)
 	gemsafe_ops.get_challenge 		 = gemsafe_get_challenge;
 	gemsafe_ops.process_fci	= gemsafe_process_fci;
 	gemsafe_ops.pin_cmd		 = iso_ops->pin_cmd;
+	gemsafe_ops.card_reader_lock_obtained = gemsafe_card_reader_lock_obtained;
 
 	return &gemsafe_drv;
 }

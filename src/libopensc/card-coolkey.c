@@ -2287,6 +2287,7 @@ static int coolkey_init(sc_card_t *card)
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
 }
 
+
 static int
 coolkey_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 {
@@ -2342,6 +2343,7 @@ coolkey_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 	return r;
 }
 
+
 static int
 coolkey_logout(sc_card_t *card)
 {
@@ -2356,6 +2358,20 @@ coolkey_logout(sc_card_t *card)
 	memset(priv->nonce, 0, sizeof(priv->nonce));
 	priv->nonce_valid = 0;
 	return SC_SUCCESS;
+}
+
+
+static int coolkey_card_reader_lock_obtained(sc_card_t *card, int was_reset)
+{
+	int r = SC_SUCCESS;
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	if (was_reset > 0) {
+		r = coolkey_select_applet(card);
+	}
+
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 static struct sc_card_operations coolkey_ops;
@@ -2388,6 +2404,7 @@ static struct sc_card_driver * sc_get_driver(void)
 	coolkey_ops.check_sw = coolkey_check_sw;
 	coolkey_ops.pin_cmd = coolkey_pin_cmd;
 	coolkey_ops.logout = coolkey_logout;
+	coolkey_ops.card_reader_lock_obtained = coolkey_card_reader_lock_obtained;
 
 	return &coolkey_drv;
 }
