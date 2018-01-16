@@ -90,8 +90,9 @@ sc_simpletlv_read_tag(u8 **buf, size_t buflen, u8 *tag_out, size_t *taglen)
 			*taglen = 0;
 			return SC_ERROR_INVALID_ARGUMENTS;
 		}
+		/* skip two bytes (the size) */
 		len = lebytes2ushort(p);
-		p++;
+		p+=2;
 	}
 	*taglen = len;
 	*buf = p;
