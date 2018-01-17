@@ -1418,6 +1418,16 @@ int iso7816_read_binary_sfid(sc_card_t *card, unsigned char sfid,
 int iso7816_write_binary_sfid(sc_card_t *card, unsigned char sfid,
 		u8 *ef, size_t ef_len);
 
+/**
+ * @brief Set verification status of a specific PIN to “not verified”
+ *
+ * @param[in] card
+ * @param[in] pin_reference  PIN reference written to P2
+ *
+ * @note The appropriate directory must be selected before calling this function.
+ * */
+int iso7816_logout(sc_card_t *card, unsigned char pin_reference);
+
 #ifdef __cplusplus
 }
 #endif

@@ -1417,3 +1417,19 @@ int iso7816_write_binary_sfid(sc_card_t *card, unsigned char sfid,
 err:
 	return r;
 }
+
+int iso7816_logout(sc_card_t *card, unsigned char pin_reference)
+{
+	int r;
+	sc_apdu_t apdu;
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x20, 0xFF, pin_reference);
+
+	r = sc_transmit_apdu(card, &apdu);
+	if (r < 0)
+		return r;
+
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+
+	return r;
+}
