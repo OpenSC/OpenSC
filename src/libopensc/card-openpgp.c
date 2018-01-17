@@ -84,7 +84,8 @@ enum _version {		/* 2-byte BCD-alike encoded version number */
 	OPENPGP_CARD_1_1 = 0x0101,
 	OPENPGP_CARD_2_0 = 0x0200,
 	OPENPGP_CARD_2_1 = 0x0201,
-	OPENPGP_CARD_3_0 = 0x0300
+	OPENPGP_CARD_3_0 = 0x0300,
+	OPENPGP_CARD_3_1 = 0x0301,
 };
 
 enum _access {		/* access flags for the respective DO/file */
@@ -534,6 +535,10 @@ pgp_get_card_features(sc_card_t *card)
 			if ((blob->data[0] == 0x00) && (blob->len >= 4))
 				priv->state = blob->data[blob->len-3];
 		}
+	}
+
+	if (priv->bcd_version >= OPENPGP_CARD_3_1) {
+		card->caps |= SC_CARD_CAP_ISO7816_PIN_INFO;
 	}
 
 	if ((pgp_get_blob(card, priv->mf, 0x006e, &blob6e) >= 0) &&
@@ -1614,6 +1619,36 @@ pgp_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 					 "key-id should be 1, 2, 3.");
 	}
 	LOG_FUNC_RETURN(card->ctx, iso_ops->pin_cmd(card, data, tries_left));
+}
+
+
+int pgp_logout(struct sc_card *card)
+{
+	int r = SC_SUCCESS;
+	struct pgp_priv_data *priv = DRVDATA(card);
+
+	LOG_FUNC_CALLED(card->ctx);
+
+	if (priv->bcd_version >= OPENPGP_CARD_3_1) {
+		unsigned char pin_reference;
+		for (pin_reference = 0x81; pin_reference <= 0x83; pin_reference++) {
+			int tmp = iso7816_logout(card, pin_reference);
+			if (r == SC_SUCCESS) {
+				r = tmp;
+			}
+		}
+	} else {
+		sc_path_t path;
+		sc_file_t *file = NULL;
+
+		/* select application "OpenPGP" */
+		sc_format_path("D276:0001:2401", &path);
+		path.type = SC_PATH_TYPE_DF_NAME;
+		r = iso_ops->select_file(card, &path, &file);
+		sc_file_free(file);
+	}
+
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 
@@ -2834,6 +2869,7 @@ sc_get_driver(void)
 	pgp_ops.read_binary	= pgp_read_binary;
 	pgp_ops.write_binary	= pgp_write_binary;
 	pgp_ops.pin_cmd		= pgp_pin_cmd;
+	pgp_ops.logout		= pgp_logout;
 	pgp_ops.get_data	= pgp_get_data;
 	pgp_ops.put_data	= pgp_put_data;
 	pgp_ops.set_security_env= pgp_set_security_env;
