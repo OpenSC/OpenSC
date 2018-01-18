@@ -1202,6 +1202,24 @@ pgp_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 	LOG_FUNC_RETURN(card->ctx, k);
 }
 
+static int
+pgp_get_challenge(struct sc_card *card, u8 *rnd, size_t len)
+{
+	struct pgp_priv_data *priv = DRVDATA(card);
+
+	LOG_FUNC_CALLED(card->ctx);
+
+	if (0 == (priv->ext_caps & EXT_CAP_GET_CHALLENGE)) {
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+	}
+
+	if (priv->max_challenge_size > 0 && len > priv->max_challenge_size) {
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_WRONG_LENGTH);
+	}
+
+	LOG_FUNC_RETURN(card->ctx, iso_ops->get_challenge(card, rnd, len));
+}
+
 
 /**
  * ABI: READ BINARY.
@@ -2866,6 +2884,7 @@ sc_get_driver(void)
 	pgp_ops.finish		= pgp_finish;
 	pgp_ops.select_file	= pgp_select_file;
 	pgp_ops.list_files	= pgp_list_files;
+	pgp_ops.get_challenge	= pgp_get_challenge;
 	pgp_ops.read_binary	= pgp_read_binary;
 	pgp_ops.write_binary	= pgp_write_binary;
 	pgp_ops.pin_cmd		= pgp_pin_cmd;
