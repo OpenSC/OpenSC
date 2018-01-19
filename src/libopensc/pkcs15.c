@@ -790,15 +790,12 @@ sc_pkcs15_free_tokeninfo(struct sc_pkcs15_tokeninfo *tokeninfo)
 void
 sc_pkcs15_free_app(struct sc_pkcs15_card *p15card)
 {
-	if (!p15card || !p15card->app)
-		return;
-
-	if (p15card->app->label)
+	if (p15card && p15card->app) {
 		free(p15card->app->label);
-	if (p15card->app->ddo.value)
 		free(p15card->app->ddo.value);
-	free(p15card->app);
-	p15card->app = NULL;
+		free(p15card->app);
+		p15card->app = NULL;
+	}
 }
 
 

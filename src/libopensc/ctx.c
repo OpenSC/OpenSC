@@ -631,6 +631,8 @@ static int load_card_atrs(sc_context_t *ctx)
 
 				if (!strcmp(list->data, "rng"))
 					flags = SC_CARD_FLAG_RNG;
+				else if (!strcmp(list->data, "keep_alive"))
+					flags = SC_CARD_FLAG_KEEP_ALIVE;
 				else if (sscanf(list->data, "%x", &flags) != 1)
 					flags = 0;
 

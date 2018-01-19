@@ -2870,9 +2870,24 @@ pgp_update_binary(sc_card_t *card, unsigned int idx,
 
 static int pgp_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 {
+	struct pgp_priv_data *priv = DRVDATA(card); /* may be null during initialization */
 	int r = SC_SUCCESS;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	if (card->flags & SC_CARD_FLAG_KEEP_ALIVE
+			&& was_reset <= 0
+			&& priv != NULL && priv->mf && priv->mf->file) {
+		/* check whether applet is still selected */
+		unsigned char aid[16];
+
+		r = sc_get_data(card, 0x004F, aid, sizeof aid);
+		if ((size_t) r != priv->mf->file->namelen
+				|| 0 != memcmp(aid, priv->mf->file->name, r)) {
+			/* reselect is required */
+			was_reset = 1;
+		}
+	}
 
 	if (was_reset > 0) {
 		sc_file_t	*file = NULL;

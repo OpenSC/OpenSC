@@ -453,6 +453,7 @@ struct sc_reader_operations {
 
 /* Hint SC_CARD_CAP_RNG */
 #define SC_CARD_FLAG_RNG		0x00000002
+#define SC_CARD_FLAG_KEEP_ALIVE	0x00000004
 
 /*
  * Card capabilities
