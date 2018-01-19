@@ -259,10 +259,8 @@ void sc_free_apps(sc_card_t *card)
 	int	i;
 
 	for (i = 0; i < card->app_count; i++) {
-		if (card->app[i]->label)
-			free(card->app[i]->label);
-		if (card->app[i]->ddo.value)
-			free(card->app[i]->ddo.value);
+		free(card->app[i]->label);
+		free(card->app[i]->ddo.value);
 		free(card->app[i]);
 	}
 	card->app_count = -1;

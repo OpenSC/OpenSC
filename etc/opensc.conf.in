@@ -272,8 +272,9 @@ app default {
 		# can be specified as strings:
 		#
 		# rng - On-board random number source
+		# keep_alive - Request the card driver to send a "keep alive" command before each transaction to make sure that the required applet is still selected.
 		#
-		# flags = "rng", "0x80000000";
+		# flags = "rng", "keep_alive", "0x80000000";
 
 		# Enable pkcs11 initialization.
 		# Default: no
@@ -373,11 +374,30 @@ app default {
 		# notify_pin_bad_text = "bad text";
 	# }
 
-	# PIV cards need an entry similar to this one:
-	# card_atr 3B:7D:96:00:00:80:31:80:65:B0:83:11:00:AC:83:00:90:00 {
-		# name = "PIV-II";
-		# driver = "piv";
-	# }
+	# Yubikey is known to have the PIV applet and the OpenPGP applet. OpenSC
+	# can handle both to access keys and certificates, but only one at a time.
+	card_atr 3b:f8:13:00:00:81:31:fe:15:59:75:62:69:6b:65:79:34:d4 {
+		name = "Yubikey 4";
+		# Select the PKI applet to use ("PIV-II" or "openpgp")
+		driver = "PIV-II";
+		# Recover from other applications accessing a different applet
+		flags = "keep_alive";
+	}
+	card_atr 3b:fc:13:00:00:81:31:fe:15:59:75:62:69:6b:65:79:4e:45:4f:72:33:e1 {
+		name = "Yubikey Neo";
+		# Select the PKI applet to use ("PIV-II" or "openpgp")
+		driver = "PIV-II";
+		# Recover from other applications accessing a different applet
+		flags = "keep_alive";
+	}
+	card_atr 3b:8c:80:01:59:75:62:69:6b:65:79:4e:45:4f:72:33:58 {
+		atrmask = "FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:00:00";
+		name = "Yubikey Neo";
+		# Select the PKI applet to use ("PIV-II" or "openpgp")
+		driver = "PIV-II";
+		# Recover from other applications accessing a different applet
+		flags = "keep_alive";
+	}
 
 	# Micardo driver sometimes only play together with T=0
 	# In theory only the 'cold' ATR should be specified, as T=0 will
