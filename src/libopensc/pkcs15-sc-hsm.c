@@ -821,8 +821,10 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 
 	p15card->card->version.hw_major = 24;	/* JCOP 2.4.1r3 */
 	p15card->card->version.hw_minor = 13;
-	p15card->card->version.fw_major = file->prop_attr[file->prop_attr_len - 2];
-	p15card->card->version.fw_minor = file->prop_attr[file->prop_attr_len - 1];
+	if (file && file->prop_attr && file->prop_attr_len >= 5) {
+		p15card->card->version.fw_major = file->prop_attr[3];
+		p15card->card->version.fw_minor = file->prop_attr[4];
+	}
 
 	sc_file_free(file);
 
