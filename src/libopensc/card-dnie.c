@@ -712,6 +712,7 @@ static void init_flags(struct sc_card *card)
 	/* RSA Support with PKCS1.5 padding */
 	algoflags = SC_ALGORITHM_RSA_HASH_NONE | SC_ALGORITHM_RSA_PAD_PKCS1;
 	_sc_card_add_rsa_alg(card, 1024, algoflags, 0);
+	_sc_card_add_rsa_alg(card, 1920, algoflags, 0);
 	_sc_card_add_rsa_alg(card, 2048, algoflags, 0);
 }
 
