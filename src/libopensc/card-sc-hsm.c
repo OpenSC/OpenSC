@@ -225,6 +225,19 @@ static int sc_hsm_select_file(sc_card_t *card,
 
 
 
+static int sc_hsm_get_challenge(struct sc_card *card, unsigned char *rnd, size_t len)
+{
+	LOG_FUNC_CALLED(card->ctx);
+
+	if (len > 1024) {
+		len = 1024;
+	}
+
+	LOG_FUNC_RETURN(card->ctx, iso_ops->get_challenge(card, rnd, len));
+}
+
+
+
 static int sc_hsm_match_card(struct sc_card *card)
 {
 	sc_path_t path;
@@ -1703,6 +1716,7 @@ static struct sc_card_driver * sc_get_driver(void)
 	sc_hsm_ops                   = *iso_drv->ops;
 	sc_hsm_ops.match_card        = sc_hsm_match_card;
 	sc_hsm_ops.select_file       = sc_hsm_select_file;
+	sc_hsm_ops.get_challenge     = sc_hsm_get_challenge;
 	sc_hsm_ops.read_binary       = sc_hsm_read_binary;
 	sc_hsm_ops.update_binary     = sc_hsm_update_binary;
 	sc_hsm_ops.list_files        = sc_hsm_list_files;
