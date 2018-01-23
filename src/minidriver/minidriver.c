@@ -3665,7 +3665,7 @@ DWORD WINAPI CardGetChallenge(__in PCARD_DATA pCardData,
 	}
 
 	rv = sc_get_challenge(vs->p15card->card, *ppbChallengeData, 8);
-	if (rv)   {
+	if (rv < 0) {
 		logprintf(pCardData, 1, "Get challenge failed: %s\n", sc_strerror(rv));
 		pCardData->pfnCspFree(*ppbChallengeData);
 		*ppbChallengeData = NULL;

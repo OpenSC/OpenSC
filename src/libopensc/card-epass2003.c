@@ -2573,34 +2573,26 @@ get_external_key_retries(struct sc_card *card, unsigned char kid, unsigned char 
 	return r;
 }
 
-	static int 
-epass2003_get_challenge(sc_card_t *card, u8 *rnd, size_t count)
+static int 
+epass2003_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 {
-	sc_apdu_t apdu;
 	u8 rbuf[16];
-	size_t n;
-	int ret = SC_SUCCESS; /* if count == 0 */
+	size_t out_len;
+	int r;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0x84, 0x00, 0x00);
-	apdu.le = sizeof(rbuf);
-	apdu.resp = rbuf;
-	apdu.resplen = sizeof(rbuf);
+	LOG_FUNC_CALLED(card->ctx);
 
-	while (count > 0)
-	{
-		ret = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "APDU transmit failed");
-		ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "Get challenge failed");
-		if (apdu.resplen != sizeof(rbuf))
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_UNKNOWN);
-		n = count < sizeof(rbuf) ? count : sizeof(rbuf);
-		memcpy(rnd, rbuf, n);
-		count -= n;
-		rnd += n;
+	r = iso_ops->get_challenge(card, rnd, sizeof rbuf);
+	LOG_TEST_RET(card->ctx, r, "GET CHALLENGE cmd failed");
+
+	if (len < (size_t) r) {
+		out_len = len;
+	} else {
+		out_len = (size_t) r;
 	}
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, ret);
+	memcpy(rnd, rbuf, out_len);
+
+	LOG_FUNC_RETURN(card->ctx, (int) out_len);
 }
 
 

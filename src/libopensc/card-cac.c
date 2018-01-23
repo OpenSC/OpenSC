@@ -849,42 +849,22 @@ static int cac_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 
 static int cac_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 {
+	/* CAC requires 8 byte response */
 	u8 rbuf[8];
-	u8 *rbufp = NULL;
-	size_t rbuflen = 0;
+	size_t out_len = sizeof rbuf;
 	int r;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+	LOG_FUNC_CALLED(card->ctx);
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
-		 "challenge len=%"SC_FORMAT_LEN_SIZE_T"u", len);
+	r = cac_apdu_io(card, 0x84, 0x00, 0x00, NULL, 0, (u8 **) &rbuf, &out_len);
+	LOG_TEST_RET(card->ctx, r, "Could not get challenge");
 
-	r = sc_lock(card);
-	if (r != SC_SUCCESS)
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
-
-
-	/* CAC requires 8 byte response */
-	while (len > 0) {
-		size_t n;
-
-		rbufp = &rbuf[0];
-		rbuflen = sizeof(rbuf);
-		r = cac_apdu_io(card, 0x84, 0x00, 0x00, NULL, 0, &rbufp, &rbuflen);
-		if (r < 0) {
-			sc_unlock(card);
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
-		}
-		n = len > rbuflen ? rbuflen : len;
-		memcpy(rnd, rbufp, n);
-		len -= n;
-		rnd += n;
+	if (len < out_len) {
+		out_len = len;
 	}
+	memcpy(rnd, rbuf, out_len);
 
-	r = sc_unlock(card);
-
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
-
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, (int) out_len);
 }
 
 static int cac_set_security_env(sc_card_t *card, const sc_security_env_t *env, int se_num)

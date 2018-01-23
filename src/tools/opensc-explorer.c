@@ -1609,7 +1609,8 @@ static int do_random(int argc, char **argv)
 
 	count = atoi(argv[0]);
 	if (count < 0 || (size_t) count > sizeof buffer) {
-		printf("Number must be in range 0..256\n");
+		printf("Number must be in range 0..%"SC_FORMAT_LEN_SIZE_T"u\n",
+			   	sizeof buffer);
 		return -1;
 	}
 

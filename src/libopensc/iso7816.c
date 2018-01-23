@@ -621,12 +621,6 @@ iso7816_get_challenge(struct sc_card *card, u8 *rnd, size_t len)
 	int r;
 	struct sc_apdu apdu;
 
-	if (len == 0)
-		return SC_SUCCESS;
-
-	if (!rnd)
-		return SC_ERROR_INVALID_ARGUMENTS;
-
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2, 0x84, 0x00, 0x00);
 	apdu.le = len;
 	apdu.resp = rnd;
@@ -635,14 +629,14 @@ iso7816_get_challenge(struct sc_card *card, u8 *rnd, size_t len)
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
-	if (apdu.resplen != len) {
-		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-		if (r == SC_SUCCESS) {
-			r = SC_ERROR_WRONG_LENGTH;
-		}
-	}
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	LOG_TEST_RET(card->ctx, r, "GET CHALLENGE failed");
 
-	return r;
+	if (len < apdu.resplen) {
+		return (int) len;
+	}
+   
+	return (int) apdu.resplen;
 }
 
 

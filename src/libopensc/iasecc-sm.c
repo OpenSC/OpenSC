@@ -260,31 +260,6 @@ iasecc_sm_se_mutual_authentication(struct sc_card *card, unsigned se_num)
 
 	LOG_FUNC_RETURN(ctx, rv);
 }
-
-
-static int
-iasecc_sm_get_challenge(struct sc_card *card, unsigned char *out, size_t len)
-{
-	struct sc_context *ctx = card->ctx;
-	struct sc_apdu apdu;
-	unsigned char rbuf[SC_MAX_APDU_BUFFER_SIZE];
-	int rv;
-
-	sc_log(ctx, "SM get challenge: length %"SC_FORMAT_LEN_SIZE_T"u", len);
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0x84, 0, 0);
-	apdu.le = len;
-	apdu.resplen = len;
-	apdu.resp = rbuf;
-
-	rv = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(ctx, rv, "APDU transmit failed");
-	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	LOG_TEST_RET(ctx, rv, "Command failed");
-
-	memcpy(out, rbuf, apdu.resplen);
-
-	LOG_FUNC_RETURN(ctx, apdu.resplen);
-}
 #endif
 
 
@@ -309,7 +284,7 @@ iasecc_sm_initialize(struct sc_card *card, unsigned se_num, unsigned cmd)
 	rv = iasecc_sm_se_mutual_authentication(card, se_num);
 	LOG_TEST_RET(ctx, rv, "iasecc_sm_initialize() MUTUAL AUTHENTICATION failed");
 
-	rv = iasecc_sm_get_challenge(card, cwa_session->card_challenge, SM_SMALL_CHALLENGE_LEN);
+	rv = sc_get_challenge(card, cwa_session->card_challenge, SM_SMALL_CHALLENGE_LEN);
 	LOG_TEST_RET(ctx, rv, "iasecc_sm_initialize() GET CHALLENGE failed");
 
 	sc_remote_data_init(&rdata);
