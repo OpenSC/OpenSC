@@ -805,16 +805,36 @@ int sc_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 {
 	int r;
 
-	if (card == NULL) {
+	if (len == 0)
+		return SC_SUCCESS;
+
+	if (card == NULL || rnd == NULL) {
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
+
 	LOG_FUNC_CALLED(card->ctx);
 
-	if (card->ops->get_challenge == NULL)
+	if (card->ops == NULL || card->ops->get_challenge == NULL)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
-	r = card->ops->get_challenge(card, rnd, len);
 
-	LOG_FUNC_RETURN(card->ctx, r);
+	r = sc_lock(card);
+	if (r != SC_SUCCESS)
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+
+	while (len > 0) {
+		r = card->ops->get_challenge(card, rnd, len);
+		if (r < 0) {
+			sc_unlock(card);
+			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+		}
+
+		rnd += (size_t) r;
+		len -= (size_t) r;
+	}
+
+	sc_unlock(card);
+
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
 int sc_read_record(sc_card_t *card, unsigned int rec_nr, u8 *buf,

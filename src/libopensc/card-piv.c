@@ -2229,54 +2229,41 @@ static int piv_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 
 static int piv_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 {
-	u8 sbuf[16];
+	/* Dynamic Authentication Template (Challenge) */
+	u8 sbuf[] = {0x7c, 0x02, 0x81, 0x00};
 	u8 *rbuf = NULL;
-	size_t rbuflen = 0;
-	u8 *p, *q;
+	const u8 *p;
+	size_t rbuf_len = 0, out_len = 0;
 	int r;
+	unsigned int tag, cla;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+	LOG_FUNC_CALLED(card->ctx);
 
-	sc_log(card->ctx, "challenge len=%"SC_FORMAT_LEN_SIZE_T"u", len);
+	/* NIST 800-73-3 says use 9B, previous verisons used 00 */
+	r = piv_general_io(card, 0x87, 0x00, 0x9B, sbuf, sizeof sbuf, &rbuf, &rbuf_len);
+	LOG_TEST_GOTO_ERR(card->ctx, r, "GENERAL AUTHENTICATE failed");
 
-	r = sc_lock(card);
-	if (r != SC_SUCCESS)
-		LOG_FUNC_RETURN(card->ctx, r);
-
-	p = sbuf;
-	*p++ = 0x7c;
-	*p++ = 0x02;
-	*p++ = 0x81;
-	*p++ = 0x00;
-
-	/* assuming 8 byte response ? */
-	/* should take what the card returns */
-	while (len > 0) {
-		size_t n = len > 8 ? 8 : len;
-
-		/* NIST 800-73-3 says use 9B, previous versions used 00 */
-		r = piv_general_io(card, 0x87, 0x00, 0x9B, sbuf, p - sbuf, &rbuf, &rbuflen);
-		if (r < 0) {
-			sc_unlock(card);
-			LOG_FUNC_RETURN(card->ctx, r);
-		}
-		q = rbuf;
-		if ( (*q++ != 0x7C)
-			|| (*q++ != rbuflen - 2)
-			|| (*q++ != 0x81)
-			|| (*q++ != rbuflen - 4)) {
-			r =  SC_ERROR_INVALID_DATA;
-			sc_unlock(card);
-			LOG_FUNC_RETURN(card->ctx, r);
-		}
-		memcpy(rnd, q, n);
-		len -= n;
-		rnd += n;
-		free(rbuf);
-		rbuf = NULL;
+	p = rbuf;
+	r = sc_asn1_read_tag(&p, rbuf_len, &cla, &tag, &out_len);
+	if (r < 0 || (cla|tag) != 0x7C) {
+		LOG_TEST_GOTO_ERR(card->ctx, SC_ERROR_INVALID_DATA, "Can't find Dynamic Authentication Template");
 	}
 
-	r = sc_unlock(card);
+	rbuf_len = out_len;
+	r = sc_asn1_read_tag(&p, rbuf_len, &cla, &tag, &out_len);
+	if (r < 0 || (cla|tag) != 0x81) {
+		LOG_TEST_GOTO_ERR(card->ctx, SC_ERROR_INVALID_DATA, "Can't find Challenge");
+	}
+
+	if (len < out_len) {
+		out_len = len;
+	}
+	memcpy(rnd, p, out_len);
+
+	r = (int) out_len;
+
+err:
+	free(rbuf);
 
 	LOG_FUNC_RETURN(card->ctx, r);
 

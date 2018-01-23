@@ -1610,40 +1610,17 @@ static int coolkey_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 
 static int coolkey_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 {
-	size_t rbuflen = 0;
-	int r;
+	LOG_FUNC_CALLED(card->ctx);
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+	if (len > COOLKEY_MAX_CHUNK_SIZE)
+		len = COOLKEY_MAX_CHUNK_SIZE;
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
-		 "challenge len=%"SC_FORMAT_LEN_SIZE_T"u", len);
+	LOG_TEST_RET(card->ctx,
+			coolkey_apdu_io(card, COOLKEY_CLASS, COOLKEY_INS_GET_RANDOM, 0, 0,
+				NULL, 0, &rnd, &len,  NULL, 0),
+			"Could not get challenge");
 
-	r = sc_lock(card);
-	if (r != SC_SUCCESS)
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
-
-	for(; len >= COOLKEY_MAX_CHUNK_SIZE; len -= COOLKEY_MAX_CHUNK_SIZE,
-										rnd += COOLKEY_MAX_CHUNK_SIZE) {
-		rbuflen = COOLKEY_MAX_CHUNK_SIZE;
-		r = coolkey_apdu_io(card, COOLKEY_CLASS, COOLKEY_INS_GET_RANDOM,
-			0, 0, NULL, 0, &rnd, &rbuflen,  NULL, 0);
-		if (r != COOLKEY_MAX_CHUNK_SIZE) {
-			len = 0;
-			break;
-		}
-	}
-	if (len) {
-		r = coolkey_apdu_io(card, COOLKEY_CLASS, COOLKEY_INS_GET_RANDOM,
-			0, 0, NULL, 0, &rnd, &len, NULL, 0);
-	}
-	sc_unlock(card);
-
-	if (r > 0) {
-		r= SC_SUCCESS;
-	}
-
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
-
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, (int) len);
 }
 
 static int coolkey_set_security_env(sc_card_t *card, const sc_security_env_t *env, int se_num)

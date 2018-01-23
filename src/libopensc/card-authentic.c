@@ -1664,40 +1664,27 @@ authentic_get_serialnr(struct sc_card *card, struct sc_serial_number *serial)
 }
 
 
-/* 'GET CHALLENGE' returns always 24 bytes */
 static int
 authentic_get_challenge(struct sc_card *card, unsigned char *rnd, size_t len)
 {
-	struct sc_context *ctx = card->ctx;
-	struct sc_apdu apdu;
+	/* 'GET CHALLENGE' returns always 24 bytes */
 	unsigned char rbuf[0x18];
-	int rv, nn;
+	size_t out_len;
+	int r;
 
-	LOG_FUNC_CALLED(ctx);
-	if (!rnd && len)
-		return SC_ERROR_INVALID_ARGUMENTS;
+	LOG_FUNC_CALLED(card->ctx);
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0x84, 0x00, 0x00);
-	apdu.resp = rbuf;
-	apdu.resplen = sizeof(rbuf);
-	apdu.le = sizeof(rbuf);
+	r = iso_ops->get_challenge(card, rnd, sizeof rbuf);
+	LOG_TEST_RET(card->ctx, r, "GET CHALLENGE cmd failed");
 
-	while (len > 0) {
-		rv = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, rv, "APDU transmit failed");
-		rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
-		LOG_TEST_RET(ctx, rv, "PIN cmd failed");
-
-		if (apdu.resplen != sizeof(rbuf))
-			return sc_check_sw(card, apdu.sw1, apdu.sw2);
-
-		nn = len > apdu.resplen ? apdu.resplen : len;
-		memcpy(rnd, apdu.resp, nn);
-		len -= nn;
-		rnd += nn;
+	if (len < (size_t) r) {
+		out_len = len;
+	} else {
+		out_len = (size_t) r;
 	}
+	memcpy(rnd, rbuf, out_len);
 
-	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+	LOG_FUNC_RETURN(card->ctx, out_len);
 }
 
 
