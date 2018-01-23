@@ -8,7 +8,7 @@ cardinfo {
 
     max-pin-length	= 8;
     min-pin-length	= 4;
-	pin-pad-char   = 0x00;
+	pin-encoding	= ascii-numeric;
 	
 }
 option default {

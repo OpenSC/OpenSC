@@ -355,7 +355,6 @@ static int select_item(sc_card_t *card, const sc_path_t *path_in, sc_file_t ** f
 {
 	mscfs_t *fs = MUSCLE_FS(card);
 	mscfs_file_t *file_data = NULL;
-	const u8 *path = path_in->value;
 	int pathlen = path_in->len;
 	int r = 0;
 	int objectIndex;
@@ -363,11 +362,11 @@ static int select_item(sc_card_t *card, const sc_path_t *path_in, sc_file_t ** f
 
 	mscfs_check_cache(fs);
 	r = mscfs_loadFileInfo(fs, path_in->value, path_in->len, &file_data, &objectIndex);
-	if(r < 0) SC_FUNC_RETURN(card->ctx, 2,r);
+	if(r < 0) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,r);
 
 	/* Check if its the right type */
 	if(requiredType >= 0 && requiredType != file_data->ef) {
-		SC_FUNC_RETURN(card->ctx, 0, SC_ERROR_INVALID_ARGUMENTS);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
 	}
 	oid = file_data->objectId.id;
 	/* Is it a file or directory */
@@ -390,8 +389,6 @@ static int select_item(sc_card_t *card, const sc_path_t *path_in, sc_file_t ** f
 		file->path = *path_in;
 		file->size = file_data->size;
 		file->id = (oid[2] << 8) | oid[3];
-		memcpy(file->name, path, pathlen);
-		file->namelen = pathlen;
 		if(!file_data->ef) {
 			file->type = SC_FILE_TYPE_DF;
 		} else {
