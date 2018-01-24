@@ -42,6 +42,7 @@ static struct sc_card_driver muscle_drv = {
 	NULL, 0, NULL
 };
 
+
 #define MUSCLE_DATA(card) ( (muscle_private_t*)card->drv_data )
 #define MUSCLE_FS(card) ( ((muscle_private_t*)card->drv_data)->fs )
 typedef struct muscle_private {
@@ -464,6 +465,8 @@ static int muscle_init(sc_card_t *card)
 
 	card->flags |= SC_CARD_FLAG_RNG;
 	card->caps |= SC_CARD_CAP_RNG;
+	card->max_recv_size = 255;
+	card->max_send_size = 255;
 
 	if(card->type == SC_CARD_TYPE_MUSCLE_ETOKEN_72K) {
 		card->caps |= SC_CARD_CAP_APDU_EXT;

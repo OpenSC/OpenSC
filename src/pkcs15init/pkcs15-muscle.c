@@ -69,7 +69,7 @@ muscle_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *d
 	struct sc_file *file;
 	struct sc_path path;
 	memset(&file, 0, sizeof(file));
-	sc_format_path("3F005015", &path);
+	sc_format_path("3F00", &path);
 	if ((r = sc_select_file(p15card->card, &path, &file)) < 0)
 		return r;
 	if ((r = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_CREATE)) < 0)
