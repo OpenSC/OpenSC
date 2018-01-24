@@ -358,7 +358,6 @@ static int rutoken_select_file(sc_card_t *card,
 	u8 buf[SC_MAX_APDU_BUFFER_SIZE], pathbuf[SC_MAX_PATH_SIZE], *path = pathbuf;
 	sc_file_t *file = NULL;
 	size_t pathlen;
-	u8 t0, t1;
 	int ret;
 
 	assert(card && card->ctx);
@@ -428,15 +427,6 @@ static int rutoken_select_file(sc_card_t *card,
 	if (apdu.resplen > 1  &&  apdu.resplen >= (size_t)apdu.resp[1] + 2)
 	{
 		ret = card->ops->process_fci(card, file, apdu.resp+2, apdu.resp[1]);
-		if (ret == SC_SUCCESS)
-		{
-			t0 = file->id & 0xFF;
-			t1 = (file->id >> 8) & 0xFF;
-			file->id = (t0 << 8) | t1;
-			t0 = file->size & 0xFF;
-			t1 = (file->size >> 8) & 0xFF;
-			file->size = (t0 << 8) | t1;
-		}
 	}
 	if (file->sec_attr && file->sec_attr_len == sizeof(sc_SecAttrV2_t))
 		set_acl_from_sec_attr(card, file);
@@ -450,6 +440,108 @@ static int rutoken_select_file(sc_card_t *card,
 		*file_out = file;
 	}
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, ret);
+}
+
+static int rutoken_process_fci(struct sc_card *card, sc_file_t *file,
+			const unsigned char *buf, size_t buflen)
+{
+	const unsigned char *p, *end;
+	unsigned int cla = 0, tag = 0;
+	size_t length;
+
+	/* Set default file properties. */
+	file->prop_attr_len = 0;
+	file->sec_attr_len = 0;
+	file->shareable = 0;
+	
+	for (p = buf, length = buflen, end = buf + buflen; p < end; p += length, length = end - p)
+	{
+		if (SC_SUCCESS != sc_asn1_read_tag(&p, length, &cla, &tag, &length))
+			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_CORRUPTED_DATA);
+
+		switch (cla | tag)
+		{
+		case 0x80:
+			/* Determine file size. */
+			if (length == 2)
+			{
+				/* Rutoken S always returns 2 bytes. */
+				/* Rutoken S returns buffers in little-endian. */
+				file->size = (p[1] << 8) | p[0];
+				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "bytes in file: 0x%04zX", file->size);
+			}
+			break;
+		case 0x81:
+			break;
+		case 0x82:
+			/* Determine file descriptor. */
+			if (length == 2)
+			{
+				/* Only leading byte is significant. */
+				unsigned char byte = p[0];
+				const char* type;
+
+				file->ef_structure = byte & 0x07;
+				switch (byte)
+				{
+				case 0x01:
+					file->type = SC_FILE_TYPE_WORKING_EF;
+					type = "working EF";
+					break;
+				case 0x38:
+					file->type = SC_FILE_TYPE_DF;
+					type = "DF";
+					break;
+				default:
+					type = "unknown";
+					break;
+				}
+				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "type: %s", type);
+				if (SC_SUCCESS != sc_file_set_type_attr(file, &byte, 1))
+					sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Warning: Could not set file attributes");
+			}
+			break;
+		case 0x83:
+			/* Determine file id. */
+			if (length == 2)
+			{
+				file->id = (p[1] << 8) | p[0];
+				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "file identifier: 0x%04X", file->id);
+			}
+			break;
+		case 0x85:
+			/* Determine RSF information. */
+			if (SC_SUCCESS != sc_file_set_prop_attr(file, p, length))
+				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Warning: Could not set proprietary file properties");
+			break;
+		case 0x86:
+			/* Determine security information. */
+			if (SC_SUCCESS != sc_file_set_sec_attr(file, p, length))
+				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Warning: Could not set file security properties");
+			break;
+		case 0x8A:
+			/* Determine file lifecycle. */
+			if (length == 1)
+			{
+				switch (p[1])
+				{
+				case 0x01:
+					file->status = SC_FILE_STATUS_CREATION;
+					break;
+				case 0x05:
+					file->status = SC_FILE_STATUS_ACTIVATED;
+					break;
+				}
+			}
+			break;
+		default:
+			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_CORRUPTED_DATA);
+			break;
+		}
+	}
+
+	file->magic = SC_FILE_MAGIC;
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
 }
 
 static int rutoken_construct_fci(sc_card_t *card, const sc_file_t *file,
@@ -1286,7 +1378,7 @@ static struct sc_card_driver* get_rutoken_driver(void)
 	rutoken_ops.list_files = rutoken_list_files;
 	rutoken_ops.check_sw = rutoken_check_sw;
 	rutoken_ops.card_ctl = rutoken_card_ctl;
-	/* process_fci */
+	rutoken_ops.process_fci = rutoken_process_fci;
 	rutoken_ops.construct_fci = rutoken_construct_fci;
 	rutoken_ops.pin_cmd = NULL;
 
