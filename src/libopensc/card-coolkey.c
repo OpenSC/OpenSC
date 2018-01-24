@@ -2259,7 +2259,7 @@ static int coolkey_init(sc_card_t *card)
 
 	r = coolkey_initialize(card);
 	if (r < 0) {
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_CARD);
 	}
 
 	card->type = SC_CARD_TYPE_COOLKEY_GENERIC;

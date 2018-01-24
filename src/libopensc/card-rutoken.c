@@ -132,6 +132,10 @@ static int rutoken_init(sc_card_t *card)
 		ret = token_init(card, "uaToken S card");
 	else
 		ret = token_init(card, "Rutoken S card");
+
+	if (ret != SC_SUCCESS) {
+		ret = SC_ERROR_INVALID_CARD;
+	}
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, ret);
 }
 

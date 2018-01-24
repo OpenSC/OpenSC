@@ -360,7 +360,8 @@ static int mcrd_init(sc_card_t * card)
 			apdu.resplen = 0;
 			apdu.le = 0;
 			r = sc_transmit_apdu(card, &apdu);
-			SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+			if (r < 0)
+				SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_CARD, "APDU transmit failed");
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "SELECT AID: %02X%02X", apdu.sw1, apdu.sw2);
 			if(apdu.sw1 != 0x90 && apdu.sw2 != 0x00)
 			{
@@ -371,7 +372,8 @@ static int mcrd_init(sc_card_t * card)
 				apdu.resplen = 0;
 				apdu.le = 0;
 				r = sc_transmit_apdu(card, &apdu);
-				SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+				if (r < 0)
+					SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_CARD, "APDU transmit failed");
 				sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "SELECT AID: %02X%02X", apdu.sw1, apdu.sw2);
 				if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 					// Force EstEID 3.5 card recv size 255 with T=0 to avoid recursive read binary
@@ -386,7 +388,8 @@ static int mcrd_init(sc_card_t * card)
 					apdu.resplen = 0;
 					apdu.le = 0;
 					r = sc_transmit_apdu(card, &apdu);
-					SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+					if (r < 0)
+						SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_CARD, "APDU transmit failed");
 					sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "SELECT AID: %02X%02X", apdu.sw1, apdu.sw2);
 					if (apdu.sw1 != 0x90 && apdu.sw2 != 0x00) {
 						free(card->drv_data);
@@ -412,6 +415,8 @@ static int mcrd_init(sc_card_t * card)
 
 	sc_format_path ("3f00", &tmppath);
 	r = sc_select_file (card, &tmppath, NULL);
+	if (r < 0)
+		r = SC_ERROR_INVALID_CARD;
 
 	/* Not needed for the fixed EstEID profile */
 	if (!is_esteid_card(card))

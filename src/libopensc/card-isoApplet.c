@@ -212,7 +212,7 @@ isoApplet_init(sc_card_t *card)
 
 	/* Obtain applet version and specific features */
 	r = isoApplet_select_applet(card, isoApplet_aid, ISOAPPLET_AID_LEN, rbuf, &rlen);
-	LOG_TEST_RET(card->ctx, r, "Error obtaining applet version.");
+	LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_CARD, "Error obtaining applet version.");
 	if(rlen < 3)
 	{
 		assert(sizeof(rbuf) >= 3);

@@ -149,7 +149,6 @@ static int myeid_init(struct sc_card *card)
 	myeid_private_data_t *priv;
 	u8 appletInfo[20];
 	size_t appletInfoLen;
-	int r;
 	myeid_card_caps_t card_caps;
 
 	LOG_FUNC_CALLED(card->ctx);
@@ -168,9 +167,8 @@ static int myeid_init(struct sc_card *card)
 
 	appletInfoLen = 20;
 
-	r = myeid_get_info(card, appletInfo, appletInfoLen);
-
-	LOG_TEST_RET(card->ctx, r, "Failed to get MyEID applet information.");
+	if (0 > myeid_get_info(card, appletInfo, appletInfoLen))
+		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_CARD, "Failed to get MyEID applet information.");
 
 	priv->change_counter = appletInfo[19] | appletInfo[18] << 8;
 
@@ -190,10 +188,8 @@ static int myeid_init(struct sc_card *card)
 	if (card->version.fw_major >= 40) {
 	    /* Since 4.0, we can query available algorithms and key sizes.
 	     * Since 3.5.0 RSA up to 2048 and ECC up to 256 are always supported, so we check only max ECC key length. */
-	    r = myeid_get_card_caps(card, &card_caps);
-
-	    if (r != SC_SUCCESS) {
-		sc_log(card->ctx, "Failed to get card capabilities. Using default max ECC key length 256.");
+	    if (myeid_get_card_caps(card, &card_caps) != SC_SUCCESS) {
+			sc_log(card->ctx, "Failed to get card capabilities. Using default max ECC key length 256.");
 	    }
 	}
 

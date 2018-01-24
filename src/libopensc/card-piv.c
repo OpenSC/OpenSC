@@ -3023,7 +3023,7 @@ static int piv_init(sc_card_t *card)
 
 	/* can not force the PIV driver to use non-PIV cards as tested in piv_card_match */
 	if (!priv || card->type == -1)
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NO_CARD_SUPPORT);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_CARD);
 
 	sc_log(card->ctx,
 	       "Max send = %"SC_FORMAT_LEN_SIZE_T"u recv = %"SC_FORMAT_LEN_SIZE_T"u card->type = %d",
@@ -3124,11 +3124,9 @@ static int piv_init(sc_card_t *card)
 	 */
 	piv_process_history(card);
 
-	r = piv_process_discovery(card);
-	if (r > 0)
-		r = 0;
+	piv_process_discovery(card);
 
-	LOG_FUNC_RETURN(card->ctx, r);
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
 

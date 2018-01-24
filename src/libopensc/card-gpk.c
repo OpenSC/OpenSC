@@ -206,7 +206,7 @@ gpk_init(sc_card_t *card)
 	/* Make sure max send/receive size is 4 byte aligned and <256. */
 	card->max_recv_size = 252;
 
-	return 0;
+	return SC_SUCCESS;
 }
 
 /*

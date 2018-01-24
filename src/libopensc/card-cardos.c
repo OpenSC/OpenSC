@@ -190,7 +190,7 @@ static int cardos_init(sc_card_t *card)
 	if (card->type == SC_CARD_TYPE_CARDOS_M4_2) {
 		int r = cardos_have_2048bit_package(card);
 		if (r < 0)
-			return r;
+			return SC_ERROR_INVALID_CARD;
 		if (r == 1)
 			rsa_2048 = 1;
 		card->caps |= SC_CARD_CAP_APDU_EXT;
@@ -208,14 +208,18 @@ static int cardos_init(sc_card_t *card)
 	apdu.le = sizeof rbuf;
 	apdu.resp = rbuf;
 	apdu.resplen = sizeof(rbuf);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL,
-			sc_transmit_apdu(card, &apdu),
-			"APDU transmit failed");
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL,
-			sc_check_sw(card, apdu.sw1, apdu.sw2),
-			"GET DATA command returned error");
+	r = sc_transmit_apdu(card, &apdu);
+	if (r < 0)
+		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL,
+				SC_ERROR_INVALID_CARD,
+				"APDU transmit failed");
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	if (r < 0)
+		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL,
+				SC_ERROR_INVALID_CARD,
+				"GET DATA command returned error");
 	if (apdu.resplen != 2)
-		return SC_ERROR_WRONG_LENGTH;
+		return SC_ERROR_INVALID_CARD;
 	data_field_length = ((rbuf[0] << 8) | rbuf[1]);
 
 	/* strip the length of possible Lc and Le bytes */
