@@ -45,8 +45,11 @@ extern "C" {
 #define SM_TYPE_CWA14890	0x400
 #define SM_TYPE_DH_RSA		0x500
 
+/** don't use SM */
 #define SM_MODE_NONE		0x0
+/** let the card driver decide when to use SM, possibly based on the card's ACLs */
 #define SM_MODE_ACL		0x100
+/** use SM for all commands */
 #define SM_MODE_TRANSMIT	0x200
 
 #define SM_CMD_INITIALIZE		0x10
