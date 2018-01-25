@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2012 Frank Morgner <frankmorgner@gmail.com>
+ * Copyright (C) 2010-2018 Frank Morgner <frankmorgner@gmail.com>
  *
  * This file is part of OpenSC.
  *
@@ -30,6 +30,7 @@
 #include <libopensc/log.h>
 #include <libopensc/opensc.h>
 #include <libopensc/sm.h>
+#include <libopensc/card-npa.h>
 #include <sm/sm-eac.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -419,11 +420,11 @@ main (int argc, char **argv)
 	if (cmdline.tr_03110v201_flag)
 		tr_version = EAC_TR_VERSION_2_01;
 	if (cmdline.disable_all_checks_flag)
-		npa_default_flags |= NPA_FLAG_DISABLE_CHECK_ALL;
+		eac_default_flags |= EAC_FLAG_DISABLE_CHECK_ALL;
 	if (cmdline.disable_ta_checks_flag)
-		npa_default_flags |= NPA_FLAG_DISABLE_CHECK_TA;
+		eac_default_flags |= EAC_FLAG_DISABLE_CHECK_TA;
 	if (cmdline.disable_ca_checks_flag)
-		npa_default_flags |= NPA_FLAG_DISABLE_CHECK_CA;
+		eac_default_flags |= EAC_FLAG_DISABLE_CHECK_CA;
 
 
 	r = initialize(cmdline.reader_arg, cmdline.verbose_given, &ctx, &reader);
@@ -457,12 +458,12 @@ main (int argc, char **argv)
 			if (pin) {
 				if (sscanf(pin, "%llu", &secret) != 1) {
 					fprintf(stderr, "%s is not an unsigned long long.\n",
-							npa_secret_name(pace_input.pin_id));
+							eac_secret_name(pace_input.pin_id));
 					exit(2);
 				}
 				if (strlen(pin) > pace_input.pin_length) {
 					fprintf(stderr, "%s too big, only %u digits allowed.\n",
-							npa_secret_name(pace_input.pin_id),
+							eac_secret_name(pace_input.pin_id),
 							(unsigned int) pace_input.pin_length);
 					exit(2);
 				}
@@ -474,12 +475,12 @@ main (int argc, char **argv)
 			if (can) {
 				if (sscanf(can, "%llu", &secret) != 1) {
 					fprintf(stderr, "%s is not an unsigned long long.\n",
-							npa_secret_name(pace_input.pin_id));
+							eac_secret_name(pace_input.pin_id));
 					exit(2);
 				}
 				if (strlen(can) > pace_input.pin_length) {
 					fprintf(stderr, "%s too big, only %u digits allowed.\n",
-							npa_secret_name(pace_input.pin_id),
+							eac_secret_name(pace_input.pin_id),
 							(unsigned int) pace_input.pin_length);
 					exit(2);
 				}
@@ -491,12 +492,12 @@ main (int argc, char **argv)
 			if (puk) {
 				if (sscanf(puk, "%llu", &secret) != 1) {
 					fprintf(stderr, "%s is not an unsigned long long.\n",
-							npa_secret_name(pace_input.pin_id));
+							eac_secret_name(pace_input.pin_id));
 					exit(2);
 				}
 				if (strlen(puk) > pace_input.pin_length) {
 					fprintf(stderr, "%s too big, only %u digits allowed.\n",
-							npa_secret_name(pace_input.pin_id),
+							eac_secret_name(pace_input.pin_id),
 							(unsigned int) pace_input.pin_length);
 					exit(2);
 				}
@@ -515,7 +516,7 @@ main (int argc, char **argv)
 			gettimeofday(&tv, NULL);
 			printf("%u,%06u: Trying %s=%s\n",
 					(unsigned int) tv.tv_sec, (unsigned int) tv.tv_usec,
-					npa_secret_name(pace_input.pin_id), pace_input.pin);
+					eac_secret_name(pace_input.pin_id), pace_input.pin);
 
 			r = perform_pace(card, pace_input, &pace_output, tr_version);
 
@@ -526,12 +527,12 @@ main (int argc, char **argv)
 		if (0 > r) {
 			printf("%u,%06u: Tried breaking %s without success.\n",
 					(unsigned int) tv.tv_sec, (unsigned int) tv.tv_usec,
-					npa_secret_name(pace_input.pin_id));
+					eac_secret_name(pace_input.pin_id));
 			goto err;
 		} else {
 			printf("%u,%06u: Tried breaking %s with success (=%s).\n",
 					(unsigned int) tv.tv_sec, (unsigned int) tv.tv_usec,
-					npa_secret_name(pace_input.pin_id),
+					eac_secret_name(pace_input.pin_id),
 					pace_input.pin);
 		}
 	}
@@ -750,7 +751,7 @@ main (int argc, char **argv)
 		if (r < 0)
 			goto err;
 		printf("Established PACE channel with %s.\n",
-				npa_secret_name(pace_input.pin_id));
+				eac_secret_name(pace_input.pin_id));
 
 nopace:
 		if (cmdline.cv_certificate_given || cmdline.private_key_given) {

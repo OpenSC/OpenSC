@@ -30,6 +30,7 @@
 #include "libopensc/sm.h"
 #include "sm/sm-iso.h"
 #include "sm/sm-eac.h"
+#include "libopensc/card-npa.h"
 #include <string.h>
 
 static const char *newpin = NULL;
