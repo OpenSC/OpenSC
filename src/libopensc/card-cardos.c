@@ -171,6 +171,7 @@ static int cardos_init(sc_card_t *card)
 	size_t data_field_length;
 	sc_apdu_t apdu;
 	u8 rbuf[2];
+	int r;
 
 	card->name = "Atos CardOS";
 	card->cla = 0x00;
@@ -188,7 +189,7 @@ static int cardos_init(sc_card_t *card)
 	_sc_card_add_rsa_alg(card, 1024, flags, 0);
 
 	if (card->type == SC_CARD_TYPE_CARDOS_M4_2) {
-		int r = cardos_have_2048bit_package(card);
+		r = cardos_have_2048bit_package(card);
 		if (r < 0)
 			return SC_ERROR_INVALID_CARD;
 		if (r == 1)
