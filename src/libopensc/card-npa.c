@@ -586,6 +586,10 @@ static int npa_standard_pin_cmd(struct sc_card *card,
 	return r;
 }
 
+#ifdef ENABLE_OPENSSL
+#include <openssl/evp/evp.h>
+#endif
+
 int
 npa_reset_retry_counter(sc_card_t *card, enum s_type pin_id,
 		int ask_for_secret, const char *new, size_t new_len)
