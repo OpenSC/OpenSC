@@ -1703,7 +1703,7 @@ static int dnie_compute_signature(struct sc_card *card,
 
 	/* ok: copy result from buffer */
 	result_resplen = apdu.resplen;
-	if (outlen<result_resplen)
+	if ((int)outlen<result_resplen)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	memcpy(out, apdu.resp, result_resplen);
 	/* and return response length */
