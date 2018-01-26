@@ -38,6 +38,10 @@ extern "C" {
 #include <eac/eac.h>
 #include <eac/pace.h>
 
+/** @brief ASN.1 type for authenticated auxiliary data for terminal authentication */
+typedef STACK_OF(CVC_DISCRETIONARY_DATA_TEMPLATE) ASN1_AUXILIARY_DATA;
+DECLARE_ASN1_FUNCTIONS(ASN1_AUXILIARY_DATA)
+
 #else
 /** @brief Type of the secret */
 enum s_type {
@@ -157,10 +161,6 @@ int perform_terminal_authentication(sc_card_t *card,
 		const unsigned char **certs, const size_t *certs_lens,
 		const unsigned char *privkey, size_t privkey_len,
 		const unsigned char *auxiliary_data, size_t auxiliary_data_len);
-
-/** @brief ASN.1 type for authenticated auxiliary data for terminal authentication */
-typedef STACK_OF(CVC_DISCRETIONARY_DATA_TEMPLATE) ASN1_AUXILIARY_DATA;
-DECLARE_ASN1_FUNCTIONS(ASN1_AUXILIARY_DATA)
 
 /**
  * @brief Establish secure messaging using Chip Authentication version 2
