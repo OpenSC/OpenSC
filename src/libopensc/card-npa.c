@@ -587,7 +587,7 @@ static int npa_standard_pin_cmd(struct sc_card *card,
 }
 
 #ifdef ENABLE_OPENSSL
-#include <openssl/evp/evp.h>
+#include <openssl/evp.h>
 #endif
 
 int
