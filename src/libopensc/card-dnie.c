@@ -712,6 +712,7 @@ static void init_flags(struct sc_card *card)
 	/* RSA Support with PKCS1.5 padding */
 	algoflags = SC_ALGORITHM_RSA_HASH_NONE | SC_ALGORITHM_RSA_PAD_PKCS1;
 	_sc_card_add_rsa_alg(card, 1024, algoflags, 0);
+	_sc_card_add_rsa_alg(card, 1920, algoflags, 0);
 	_sc_card_add_rsa_alg(card, 2048, algoflags, 0);
 }
 
@@ -1664,8 +1665,6 @@ static int dnie_compute_signature(struct sc_card *card,
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	if (datalen > SC_MAX_APDU_BUFFER_SIZE)	/* should be 256 */
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
-	if (outlen<256) /* enought space to store 2048 bit response */
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 #ifdef ENABLE_DNIE_UI
 	/* (Requested by DGP): on signature operation, ask user consent */
@@ -1704,6 +1703,8 @@ static int dnie_compute_signature(struct sc_card *card,
 
 	/* ok: copy result from buffer */
 	result_resplen = apdu.resplen;
+	if ((int)outlen<result_resplen)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	memcpy(out, apdu.resp, result_resplen);
 	/* and return response length */
 	LOG_FUNC_RETURN(card->ctx, result_resplen);
