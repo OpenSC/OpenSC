@@ -141,6 +141,12 @@ typedef struct piv_obj_cache {
 	int flags;
 } piv_obj_cache_t;
 
+enum {
+	PIV_STATE_NORMAL = 0,
+	PIV_STATE_MATCH,
+	PIV_STATE_INIT
+};
+
 typedef struct piv_private_data {
 	sc_file_t *aid_file;
 	int enumtag;
@@ -160,6 +166,7 @@ typedef struct piv_private_data {
 	char * offCardCertURL;
 	int pin_preference; /* set from Discovery object */
 	int logged_in;
+	int pstate;
 	int pin_cmd_verify;
 	int pin_cmd_noparse;
 	unsigned int pin_cmd_verify_sw1;
@@ -180,7 +187,7 @@ struct piv_aid {
 };
 
 /*
- * The Generic entry should be the "A0 00 00 03 08 00 00 01 00 "
+ * The Generic entry should be the "A0 00 00 03 08 00 00 10 00 "
  * NIST published  this on 10/6/2005
  * 800-73-2 Part 1 now refers to version "02 00"
  * i.e. "A0 00 00 03 08 00 00 01 00 02 00".
@@ -2072,8 +2079,6 @@ piv_get_serial_nr_from_CHUI(sc_card_t* card, sc_serial_number_t* serial)
 	const u8 *fascn;
 	const u8 *guid;
 	size_t rbuflen = 0, bodylen, fascnlen, guidlen;
-	u8 temp[2000];
-	size_t templen = sizeof(temp);
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	if (card->serialnr.len)   {
@@ -2081,15 +2086,12 @@ piv_get_serial_nr_from_CHUI(sc_card_t* card, sc_serial_number_t* serial)
 		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 	}
 
-	/* ensure we've got the PIV selected, and nothing else is in process */
-	/* This fixes several problems due to previous incomplete APDUs during card detection */
-	/* Note: We need the temp because (some?) Oberthur cards don't like selecting an applet without response data */
-	/* 800-73-3 part1 draft, and CIO Council docs  imply for PIV Compatible card
-     * The FASC-N Agency code should be 9999 and there should be a GUID
-     * based on RFC 4122. RIf so and the GUID is not all 0's
+	/*
+	 * 800-73-3 Part 1 and CIO Council docs say for PIV Compatible cards
+	 * the FASC-N Agency code should be 9999 and there should be a GUID
+	 * based on RFC 4122. If GUID present and not zero
 	 * we will use the GUID as the serial number.
 	 */
-	piv_select_aid(card, piv_aids[0].value, piv_aids[0].len_short, temp, &templen);
 
 	r = piv_get_cached_data(card, PIV_OBJ_CHUI, &rbuf, &rbuflen);
 	LOG_TEST_RET(card->ctx, r, "Failure retrieving CHUI");
@@ -2577,12 +2579,10 @@ static int piv_select_file(sc_card_t *card, const sc_path_t *in_path,
 
 }
 
-static int piv_process_discovery(sc_card_t *card)
+static int piv_parse_discovery(sc_card_t *card, u8 * rbuf, size_t rbuflen, int aid_only)
 {
 	piv_private_data_t * priv = PIV_DATA(card);
-	int r;
-	u8 * rbuf = NULL;
-	size_t rbuflen = 0;
+	int r = 0;
 	const u8 * body;
 	size_t bodylen;
 	const u8 * aid;
@@ -2592,20 +2592,6 @@ static int piv_process_discovery(sc_card_t *card)
 	unsigned int cla_out, tag_out;
 
 
-	r = piv_get_cached_data(card, PIV_OBJ_DISCOVERY, &rbuf, &rbuflen);
-	if (r <= 0) {
-		priv->obj_cache[PIV_OBJ_DISCOVERY].flags |= PIV_OBJ_CACHE_NOT_PRESENT;
-		/* Discovery object is only object that has 3 byte Lc= 50017E
-		 * and pree 800-73-3 cards may treat this as a strange error.
-		 * So treat any error as not present
-		 */
-		r = 0;
-		goto err;
-	}
-
-	sc_log(card->ctx, "Discovery = %p:%"SC_FORMAT_LEN_SIZE_T"u", rbuf,
-	       rbuflen);
-	/* the object is now cached, see what we have */
 	if (rbuflen != 0) {
 		body = rbuf;
 		if ((r = sc_asn1_read_tag(&body, rbuflen, &cla_out, &tag_out,  &bodylen)) != SC_SUCCESS) {
@@ -2625,19 +2611,21 @@ static int piv_process_discovery(sc_card_t *card)
 			if (aid == NULL || aidlen < piv_aids[0].len_short ||
 				memcmp(aid,piv_aids[0].value,piv_aids[0].len_short) != 0) { /*TODO look at long */
 				sc_log(card->ctx, "Discovery object not PIV");
-				r = SC_SUCCESS; /* not an error could be some other appl */
+				r = SC_ERROR_INVALID_CARD; /* This is an error */
 				goto err;
 			}
-			pinp = sc_asn1_find_tag(card->ctx, body, bodylen, 0x5F2F, &pinplen);
-			sc_log(card->ctx,
-			       "Discovery pinp=%p:%"SC_FORMAT_LEN_SIZE_T"u",
-			       pinp, pinplen);
-			if (pinp && pinplen == 2) {
-				sc_log(card->ctx, "Discovery pinp flags=0x%2.2x 0x%2.2x",*pinp, *(pinp+1));
-				r = SC_SUCCESS;
-				if (*pinp == 0x60 && *(pinp+1) == 0x20) { /* use Global pin */
-					sc_log(card->ctx, "Pin Preference - Global");
-					priv->pin_preference = 0x00;
+			if (aid_only == 0) {
+				pinp = sc_asn1_find_tag(card->ctx, body, bodylen, 0x5F2F, &pinplen);
+				sc_log(card->ctx,
+				       "Discovery pinp=%p:%"SC_FORMAT_LEN_SIZE_T"u",
+				       pinp, pinplen);
+				if (pinp && pinplen == 2) {
+					sc_log(card->ctx, "Discovery pinp flags=0x%2.2x 0x%2.2x",*pinp, *(pinp+1));
+					r = SC_SUCCESS;
+					if (*pinp == 0x60 && *(pinp+1) == 0x20) { /* use Global pin */
+						sc_log(card->ctx, "Pin Preference - Global");
+						priv->pin_preference = 0x00;
+					}
 				}
 			}
 		}
@@ -2646,6 +2634,61 @@ static int piv_process_discovery(sc_card_t *card)
 err:
 	LOG_FUNC_RETURN(card->ctx, r);
 }
+
+
+/* normal way to get the discovery object via cache */
+static int piv_process_discovery(sc_card_t *card)
+{
+	int r;
+	u8 * rbuf = NULL;
+	size_t rbuflen = 0;
+
+	r = piv_get_cached_data(card, PIV_OBJ_DISCOVERY, &rbuf, &rbuflen);
+	/* Note rbuf and rbuflen are now pointers into cache */
+	if (r < 0)
+		goto err;
+
+	sc_log(card->ctx, "Discovery = %p:%"SC_FORMAT_LEN_SIZE_T"u", rbuf,
+	       rbuflen);
+	/* the object is now cached, see what we have */
+	r = piv_parse_discovery(card, rbuf, rbuflen, 0);
+
+err:
+	LOG_FUNC_RETURN(card->ctx, r);
+}
+
+
+/* Do not use the cache value but read every time */
+static int piv_find_discovery(sc_card_t *card)
+{
+	int r = 0;
+	u8  rbuf[256];
+	size_t rbuflen = sizeof(rbuf);
+	u8 * arbuf = rbuf;
+	piv_private_data_t * priv = PIV_DATA(card);
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	/*
+	 * During piv_match or piv_card_reader_lock_obtained,
+	 * we use the discovery object to test if card present, and 
+	 * if PIV AID is active. So we can not use the cache
+	 */
+
+	/* If not valid, read, cache and test */
+	if (!(priv->obj_cache[PIV_OBJ_DISCOVERY].flags & PIV_OBJ_CACHE_VALID)) {
+		r = piv_process_discovery(card);
+	} else {
+		/* if already in cache,force read */
+		r = piv_get_data(card, PIV_OBJ_DISCOVERY, &arbuf, &rbuflen);
+		if (r >= 0)
+			/* make sure it is PIV AID */
+			r = piv_parse_discovery(card, rbuf, rbuflen, 1);
+	}
+
+	LOG_FUNC_RETURN(card->ctx, r);
+}
+
 
 /*
  * The history object lists what retired keys and certs are on the card
@@ -2902,6 +2945,7 @@ piv_finish(sc_card_t *card)
 				free(priv->obj_cache[i].internal_obj_data);
 		}
 		free(priv);
+	card->drv_data = NULL; /* priv */
 	}
 	return 0;
 }
@@ -2914,7 +2958,7 @@ static int piv_match_card(sc_card_t *card)
 	u8 *p, *pe;
 	sc_file_t aidfile;
 	int type  = -1;
-	piv_private_data_t *priv;
+	piv_private_data_t *priv = NULL;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -2978,11 +3022,7 @@ static int piv_match_card(sc_card_t *card)
 			type = SC_CARD_TYPE_PIV_II_GENERIC;
 	}
 
-	/* Detect by selecting applet */
-	i = piv_find_aid(card, &aidfile);
-
-	if (i < 0)
-		return 0; /* don't match. Does not have a PIV applet. */
+	/* allocate and init basic fields */
 
 	priv = calloc(1, sizeof(piv_private_data_t));
 
@@ -2992,19 +3032,47 @@ static int piv_match_card(sc_card_t *card)
 	if (card->type == -1)
 		card->type = type;
 
-	card->drv_data = priv;
+	card->drv_data = priv; /* will frre if no match, or pass on to piv_init */
 	priv->aid_file = sc_file_new();
 	priv->selected_obj = -1;
 	priv->pin_preference = 0x80; /* 800-73-3 part 1, table 3 */
 	priv->logged_in = SC_PIN_STATE_UNKNOWN;
 	priv->tries_left = 10; /* will assume OK at start */
+	priv->pstate = PIV_STATE_MATCH;
 
 	/* Some objects will only be present if Histroy object says so */
 	for (i=0; i < PIV_OBJ_LAST_ENUM -1; i++)
 		if(piv_objects[i].flags & PIV_OBJECT_NOT_PRESENT)
 			priv->obj_cache[i].flags |= PIV_OBJ_CACHE_NOT_PRESENT;
 
+	sc_lock(card);
 
+	/*
+	 * detect if active AID is PIV. NIST 800-73 says Only one PIV application per card
+	 * and PIV must be the default application
+	 * This can avoid doing doing a select_aid and losing the login state on some cards
+	 * We may get interference on some cards by other drivers trying SELECT_AID before
+	 * we get to see if PIV application is still active.
+	 * putting PIV driver first might help. 
+	 * TODO could be cached too
+	 */
+	 i = piv_find_discovery(card);
+
+	if (i < 0) {
+	    /* Detect by selecting applet */
+	    i = piv_find_aid(card, &aidfile);
+	}
+
+	if (i < 0) {
+		piv_finish(card);
+		 /* don't match. Does not have a PIV applet. */
+		 sc_unlock(card);
+		 return 0;
+	}
+
+	/* Matched, and priv is being passed to piv_init */
+	/* hold the lock and pass to piv_init */
+	priv->pstate=PIV_STATE_INIT;
 	return 1; /* match */
 }
 
@@ -3131,6 +3199,8 @@ static int piv_init(sc_card_t *card)
 	if (r > 0)
 		r = 0;
 
+	priv->pstate=PIV_STATE_NORMAL;
+	sc_unlock(card) ; /* obtained in piv_match */
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
@@ -3358,21 +3428,60 @@ static int piv_logout(sc_card_t *card)
 }
 
 
+/*
+ * Called when a sc_lock gets a reader lock and PCSC SCardBeginTransaction
+ * If SCardBeginTransaction may pass back tha a card reset was seen since
+ * the last transaction  completed.
+ * There may have been one or more resets, by other card drivers in different
+ * processes, and they may have taken action already
+ * and changed the AID and or may have sent a  VERIFY with PIN
+ * So test the state of the card.
+ * this is very similiar to what the piv_match routtine does,
+ */
+
 static int piv_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 {
 	int r = 0;
-	u8 temp[2000];
+	u8 temp[256];
 	size_t templen = sizeof(temp);
+	struct sc_pin_cmd_data data;
 	piv_private_data_t * priv = PIV_DATA(card); /* may be null */
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	if (was_reset > 0) {
-		if (priv)
-			priv->logged_in =  SC_PIN_STATE_UNKNOWN;
 
-		r = piv_select_aid(card, piv_aids[0].value, piv_aids[0].len_short, temp, &templen);
+	/* We have a PCSC transaction and sc_lock */
+	if (priv == NULL || priv->pstate == PIV_STATE_MATCH) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
+			    priv ? "PIV_STATE_MATCH" : "priv==NULL");
+		r = 0; /* do nothing, piv_match will take care of it */
+		goto err;
 	}
 
+	/* make sure our application is active */
+
+	/* first see if AID is active AID be reading discovery obkect '7E' */
+	/* If not try selecting AID */
+	r = piv_find_discovery(card);
+	if (r < 0) 
+		r = piv_select_aid(card, piv_aids[0].value, piv_aids[0].len_short, temp, &templen);
+
+	if (r < 0) /* bad error return will show up in sc_lock as error*/
+		goto err;
+	
+	if (was_reset > 0)
+		priv->logged_in =  SC_PIN_STATE_UNKNOWN;
+
+	/* See if VERIFY Lc=empty will tell us the state */
+	memset(&data, 0, sizeof(data));
+	data.cmd = SC_PIN_CMD_GET_INFO;
+	data.pin_type = SC_AC_CHV;
+	data.pin_reference =  priv->pin_preference;
+	/* will try our best to see if logged_in or not */
+	r = piv_pin_cmd(card, &data, NULL);
+
+	r = 0; /* ignore return from piv_pin_cmd */
+
+err:
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
