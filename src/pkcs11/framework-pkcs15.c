@@ -4626,7 +4626,18 @@ get_ec_pubkey_point(struct sc_pkcs15_pubkey *key, CK_ATTRIBUTE_PTR attr)
 		if (rc != SC_SUCCESS)
 			return sc_to_cryptoki_error(rc, NULL);
 
-		check_attribute_buffer(attr, value_len);
+		if (attr->pValue == NULL_PTR) {
+			attr->ulValueLen = value_len;
+			free(value);
+			return CKR_OK;
+		}
+		if (attr->ulValueLen < value_len) {
+			attr->ulValueLen = value_len;
+			free(value);
+			return CKR_BUFFER_TOO_SMALL;
+		}
+		attr->ulValueLen = value_len;
+
 		memcpy(attr->pValue, value, value_len);
 		free(value);
 		return CKR_OK;
