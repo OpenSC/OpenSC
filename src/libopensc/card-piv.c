@@ -3048,7 +3048,7 @@ static int piv_init(sc_card_t *card)
 			apdu.le = apdu.resplen;
 			r = sc_transmit_apdu(card, &apdu);
 			priv->neo_version = (neo_version_buf[0]<<16) | (neo_version_buf[1] <<8) | neo_version_buf[2];
-			sc_log(card->ctx, "NEO card->type=%d, r=0x%08x version=0x%08x", card->type, r, priv->neo_version);
+			sc_log(card->ctx, "Yubico card->type=%d, r=0x%08x version=0x%08x", card->type, r, priv->neo_version);
 			break;
 	}
 
@@ -3066,16 +3066,18 @@ static int piv_init(sc_card_t *card)
 		case SC_CARD_TYPE_PIV_II_NEO:
 			priv->card_issues = CI_NO_EC384
 				| CI_VERIFY_630X
-				| CI_VERIFY_LC0_FAIL
 				| CI_OTHER_AID_LOSE_STATE
 				| CI_LEAKS_FILE_NOT_FOUND
 				| CI_NFC_EXPOSE_TOO_MUCH;
+			if (priv->neo_version  < 0x00040302)
+				priv->card_issues |= CI_VERIFY_LC0_FAIL;
 			break;
 
 		case SC_CARD_TYPE_PIV_II_YUBIKEY4:
-			priv->card_issues = CI_VERIFY_LC0_FAIL
-				| CI_OTHER_AID_LOSE_STATE
+			priv->card_issues =  CI_OTHER_AID_LOSE_STATE
 				| CI_LEAKS_FILE_NOT_FOUND;
+			if (priv->neo_version  < 0x00040302)
+				priv->card_issues |= CI_VERIFY_LC0_FAIL;
 			break;
 
 		case SC_CARD_TYPE_PIV_II_HIST:
@@ -3085,6 +3087,7 @@ static int piv_init(sc_card_t *card)
 		case SC_CARD_TYPE_PIV_II_GENERIC:
 			priv->card_issues = CI_VERIFY_LC0_FAIL
 				| CI_OTHER_AID_LOSE_STATE;
+			/* TODO may need more research */
 			break;
 
 		default:
