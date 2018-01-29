@@ -4626,7 +4626,6 @@ get_ec_pubkey_point(struct sc_pkcs15_pubkey *key, CK_ATTRIBUTE_PTR attr)
 		if (rc != SC_SUCCESS)
 			return sc_to_cryptoki_error(rc, NULL);
 
-		/* check_attribute_buffer(attr, value_len); -> Would cause value to leak */
 		if (attr->pValue == NULL_PTR) {
 			attr->ulValueLen = value_len;
 			free(value);
