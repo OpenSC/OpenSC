@@ -388,7 +388,7 @@ static const struct piv_object piv_objects[] = {
 static struct sc_card_operations piv_ops;
 
 static struct sc_card_driver piv_drv = {
-	"PIV-II  for multiple cards",
+	"Personal Identity Verification Card",
 	"PIV-II",
 	&piv_ops,
 	NULL, 0, NULL
@@ -3030,7 +3030,7 @@ static int piv_init(sc_card_t *card)
 	       card->max_send_size, card->max_recv_size, card->type);
 	card->cla = 0x00;
 	if(card->name == NULL)
-		card->name = "PIV-II card";
+		card->name = card->driver->name;
 
 	/*
 	 * Set card_issues based on card type either set by piv_match_card or by opensc.conf
