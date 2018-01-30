@@ -1101,14 +1101,6 @@ app opensc-pkcs11 {
 		# Default: false
 		# create_puk_slot = true;
 
-		# Report as 'zero' the CKA_ID attribute of CA certificate
-		# For the unknown reason the middleware of the manufacturer of gemalto (axalto, gemplus)
-		# card reports as '0' the CKA_ID of CA cartificates.
-		# Maybe someone else will need it. (Would be nice to know who and what for -- VTA)
-		#
-		# Default: false
-		# zero_ckaid_for_ca_certs = true;
-
 		# Symbolic names of PINs for which slots are created
 		# Card can contain more then one PINs or more then one on-card application with
 		#   its own PINs. Normally, to access all of them with the PKCS#11 API a slot has to be

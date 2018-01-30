@@ -3334,14 +3334,15 @@ pkcs15_cert_get_attribute(struct sc_pkcs11_session *session, void *object, CK_AT
 		*(CK_CERTIFICATE_TYPE*)attr->pValue = CKC_X_509;
 		break;
 	case CKA_ID:
-		if (cert->cert_info->authority && sc_pkcs11_conf.zero_ckaid_for_ca_certs) {
+#ifdef ZERO_CKAID_FOR_CA_CERTS
+		if (cert->cert_info->authority) {
 			check_attribute_buffer(attr, 1);
 			*(unsigned char*)attr->pValue = 0;
+			break;
 		}
-		else {
-			check_attribute_buffer(attr, cert->cert_info->id.len);
-			memcpy(attr->pValue, cert->cert_info->id.value, cert->cert_info->id.len);
-		}
+#endif
+		check_attribute_buffer(attr, cert->cert_info->id.len);
+		memcpy(attr->pValue, cert->cert_info->id.value, cert->cert_info->id.len);
 		break;
 	case CKA_TRUSTED:
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
