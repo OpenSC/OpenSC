@@ -39,9 +39,31 @@
 #include "common/libscdl.h"
 #include "internal.h"
 
+static int ignored_reader(sc_context_t *ctx, sc_reader_t *reader)
+{
+	if (ctx != NULL && reader != NULL && reader->name != NULL) {
+		size_t i;
+		const scconf_list *list;
+
+		for (i = 0; ctx->conf_blocks[i]; i++) {
+			list = scconf_find_list(ctx->conf_blocks[i], "ignored_readers");
+			while (list != NULL) {
+				if (strstr(reader->name, list->data) != NULL) {
+					sc_log(ctx, "Ignoring reader \'%s\' because of \'%s\'\n",
+							reader->name, list->data);
+					return 1;
+				}
+				list = list->next;
+			}
+		}
+	}
+
+	return 0;
+}
+
 int _sc_add_reader(sc_context_t *ctx, sc_reader_t *reader)
 {
-	if (reader == NULL) {
+	if (reader == NULL || ignored_reader(ctx, reader)) {
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	reader->ctx = ctx;

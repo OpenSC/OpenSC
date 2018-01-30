@@ -155,21 +155,6 @@ CK_RV initialize_reader(sc_reader_t *reader)
 	unsigned int i;
 	CK_RV rv;
 
-	scconf_block *conf_block = NULL;
-	const scconf_list *list = NULL;
-
-	conf_block = sc_get_conf_block(context, "pkcs11", NULL, 1);
-	if (conf_block != NULL) {
-		list = scconf_find_list(conf_block, "ignored_readers");
-		while (list != NULL) {
-			if (strstr(reader->name, list->data) != NULL) {
-				sc_log(context, "Ignoring reader \'%s\' because of \'%s\'\n", reader->name, list->data);
-				return CKR_OK;
-			}
-			list = list->next;
-		}
-	}
-
 	for (i = 0; i < sc_pkcs11_conf.slots_per_card; i++) {
 		rv = create_slot(reader);
 		if (rv != CKR_OK)
