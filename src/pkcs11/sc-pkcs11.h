@@ -77,7 +77,6 @@ struct sc_pkcs11_config {
 	unsigned char init_sloppy;
 	unsigned int pin_unblock_style;
 	unsigned int create_puk_slot;
-	unsigned int zero_ckaid_for_ca_certs;
 	unsigned int create_slots_flags;
 	unsigned char ignore_pin_length;
 };
