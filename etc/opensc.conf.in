@@ -21,15 +21,6 @@ app default {
 	#
 	# debug_file = @DEBUG_FILE@
 
-	# Reopen debug file at the every debug message.
-	#
-	# For Windows it's forced to 'true'. The reason is that
-	#   in Windows file handles can not be shared between DLL-s,
-	#   each DLL has a separate file handle table.
-	#
-	# Default: false
-	# reopen_debug_file = true;
-
 	# PKCS#15 initialization / personalization
 	# profiles directory for pkcs15-init.
 	# Default: @PROFILE_DIR_DEFAULT@
