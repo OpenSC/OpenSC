@@ -136,15 +136,6 @@ app default {
 		# atr = 55:66:77:88:99:aa:bb;
 	# }
 
-	# Force using specific card driver
-	#
-	# If this option is present, OpenSC will use the supplied
-	# driver with all inserted cards.
-	#
-	# Default: autodetect
-	#
-	# force_card_driver = miocos;
-
 	# Below are the framework specific configuration blocks.
 
 	# PKCS #15
