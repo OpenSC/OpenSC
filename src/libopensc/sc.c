@@ -826,40 +826,8 @@ int _sc_parse_atr(sc_reader_t *reader)
 	return SC_SUCCESS;
 }
 
-void *sc_mem_alloc_secure(sc_context_t *ctx, size_t len)
-{
-    void *pointer;
-    int locked = 0;
-
-    pointer = calloc(len, sizeof(unsigned char));
-    if (!pointer)
-	return NULL;
-#ifdef HAVE_SYS_MMAN_H
-    /* TODO mprotect */
-    /* Do not swap the memory */
-    if (mlock(pointer, len) >= 0)
-	locked = 1;
-#endif
-#ifdef _WIN32
-	/* Do not swap the memory */
-	if (VirtualLock(pointer, len) != 0)
-		locked = 1;
-#endif
-    if (!locked) {
-	if (ctx->flags & SC_CTX_FLAG_PARANOID_MEMORY) {
-	    sc_do_log (ctx, 0, NULL, 0, NULL, "cannot lock memory, failing allocation because paranoid set");
-	    free (pointer);
-	    pointer = NULL;
-	} else {
-	    sc_do_log (ctx, 0, NULL, 0, NULL, "cannot lock memory, sensitive data may be paged to disk");
-	}
-    }
-    return pointer;
-}
-
 void sc_mem_clear(void *ptr, size_t len)
 {
-	/* FIXME: Bug in 1.0.0-beta series crashes with 0 length */
 	if (len > 0)   {
 #ifdef ENABLE_OPENSSL
 		OPENSSL_cleanse(ptr, len);

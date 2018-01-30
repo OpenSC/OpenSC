@@ -688,6 +688,7 @@ typedef struct {
  * calling sc_disconnect_card.
  */
 #define SC_CTX_FLAG_TERMINATE				0x00000001
+/** removed in 0.18.0 and later */
 #define SC_CTX_FLAG_PARANOID_MEMORY			0x00000002
 #define SC_CTX_FLAG_DEBUG_MEMORY			0x00000004
 #define SC_CTX_FLAG_ENABLE_DEFAULT_DRIVER	0x00000008
@@ -1324,7 +1325,6 @@ int sc_base64_decode(const char *in, u8 *out, size_t outlen);
  * @param  len  length of the memory buffer
  */
 void sc_mem_clear(void *ptr, size_t len);
-void *sc_mem_alloc_secure(sc_context_t *ctx, size_t len);
 int sc_mem_reverse(unsigned char *buf, size_t len);
 
 int sc_get_cache_dir(sc_context_t *ctx, char *buf, size_t bufsize);
