@@ -379,19 +379,6 @@ app default {
 		# driver = "piv";
 	# }
 
-	# Micardo driver sometimes only play together with T=0
-	# In theory only the 'cold' ATR should be specified, as T=0 will
-	# be the preferred protocol once you boot it up with T=0, but be
-	# paranoid.
-	#
-	# D-Trust cards are also based on micardo and need T=0 for some reason
-	card_atr 3b:ff:94:00:ff:80:b1:fe:45:1f:03:00:68:d2:76:00:00:28:ff:05:1e:31:80:00:90:00:23 {
-		force_protocol = t0;
-	}
-	card_atr 3b:ff:11:00:ff:80:b1:fe:45:1f:03:00:68:d2:76:00:00:28:ff:05:1e:31:80:00:90:00:a6 {
-		force_protocol = t0;
-	}
-
 	# Oberthur's AuthentIC v3.2.2
 	card_atr 3B:DD:18:00:81:31:FE:45:80:F9:A0:00:00:00:77:01:00:70:0A:90:00:8B {
 		type = 11100;
