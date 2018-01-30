@@ -38,6 +38,14 @@ app default {
 	# Default: false
 	# enable_default_driver = true;
 
+	# List of readers to ignore
+	# If any of the strings listed below is matched in a reader name (case
+	# sensitive, partial matching possible), the reader is ignored by OpenSC.
+	# Use `opensc-tool --list-readers` to see all currently connected readers.
+	#
+	# Default: empty
+	# ignored_readers = "CardMan 1021", "SPR 532";
+
 	# CT-API module configuration.
 	reader_driver ctapi {
 		# module @LIBDIR@@LIB_PRE@towitoko@DYN_LIB_EXT@ {
@@ -1080,13 +1088,6 @@ app opensc-pkcs11 {
 		#
 		# Default: false
 		# zero_ckaid_for_ca_certs = true;
-
-		# List of readers to ignore
-		# If any of the strings listed below is matched (case sensitive) in a reader name,
-		# the reader is ignored by the PKCS#11 module.
-		#
-		# Default: empty
-		# ignored_readers = "CardMan 1021", "SPR 532";
 
 		# Symbolic names of PINs for which slots are created
 		# Card can contain more then one PINs or more then one on-card application with
