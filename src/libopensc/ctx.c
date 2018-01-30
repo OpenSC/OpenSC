@@ -306,12 +306,10 @@ int sc_ctx_log_to_file(sc_context_t *ctx, const char* filename)
 		ctx->debug_file = NULL;
 	}
 
-	if (ctx->reopen_log_file)   {
-		if (!ctx->debug_filename)   {
-			if (!filename)
-				filename = "stderr";
-			ctx->debug_filename = strdup(filename);
-		}
+	if (!ctx->debug_filename)   {
+		if (!filename)
+			filename = "stderr";
+		ctx->debug_filename = strdup(filename);
 	}
 
 	if (!filename)
@@ -341,12 +339,6 @@ load_parameters(sc_context_t *ctx, scconf_block *block, struct _sc_ctx_options *
 #ifdef _WIN32
 	char expanded_val[PATH_MAX];
 	DWORD expanded_len;
-#endif
-
-#ifdef _WIN32
-	ctx->reopen_log_file = 1;
-#else
-	ctx->reopen_log_file = scconf_get_bool(block, "reopen_debug_file", 0);
 #endif
 
 	debug = scconf_get_int(block, "debug", ctx->debug);
