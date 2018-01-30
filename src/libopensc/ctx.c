@@ -136,7 +136,6 @@ static const struct _sc_driver_entry old_card_drivers[] = {
 struct _sc_ctx_options {
 	struct _sc_driver_entry cdrv[SC_MAX_CARD_DRIVERS];
 	int ccount;
-	char *forced_card_driver;
 };
 
 
@@ -363,13 +362,6 @@ load_parameters(sc_context_t *ctx, scconf_block *block, struct _sc_ctx_options *
 	if (scconf_get_bool (block, "enable_default_driver",
 				ctx->flags & SC_CTX_FLAG_ENABLE_DEFAULT_DRIVER))
 		ctx->flags |= SC_CTX_FLAG_ENABLE_DEFAULT_DRIVER;
-
-	val = scconf_get_str(block, "force_card_driver", NULL);
-	if (val) {
-		if (opts->forced_card_driver)
-			free(opts->forced_card_driver);
-		opts->forced_card_driver = strdup(val);
-	}
 
 	list = scconf_find_list(block, "card_drivers");
 	if (list != NULL)
@@ -827,16 +819,10 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 	load_card_drivers(ctx, &opts);
 	load_card_atrs(ctx);
 
-	if (!opts.forced_card_driver) {
-		char *driver = getenv("OPENSC_DRIVER");
-		if(driver) {
-			opts.forced_card_driver = strdup(driver);
-		}
-	}
-	if (opts.forced_card_driver) {
-		if (SC_SUCCESS != sc_set_card_driver(ctx, opts.forced_card_driver))
-			sc_log(ctx, "Warning: Could not load %s.", opts.forced_card_driver);
-		free(opts.forced_card_driver);
+	char *driver = getenv("OPENSC_DRIVER");
+	if (driver) {
+		if (SC_SUCCESS != sc_set_card_driver(ctx, driver))
+			sc_log(ctx, "Warning: Could not load %s.", driver);
 	}
 	del_drvs(&opts);
 	sc_ctx_detect_readers(ctx);

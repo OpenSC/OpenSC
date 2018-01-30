@@ -27,7 +27,7 @@ app default {
 	#
 	# profile_dir = @PROFILE_DIR@;
 
-	# Dsiable pop-ups of built-in GUI
+	# Disable pop-ups of built-in GUI
 	#
 	# Default: false
 	# disable_popups = true;
@@ -169,15 +169,6 @@ app default {
 		#st_certificate = ZZSTTERM00001.cvcert;
 		#st_key = ZZSTTERM00001.pkcs8;
 	}
-
-	# Force using specific card driver
-	#
-	# If this option is present, OpenSC will use the supplied
-	# driver with all inserted cards.
-	#
-	# Default: autodetect
-	#
-	# force_card_driver = customcos;
 
 	# Configuration block for DNIe
 	#
