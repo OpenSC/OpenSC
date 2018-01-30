@@ -367,10 +367,6 @@ load_parameters(sc_context_t *ctx, scconf_block *block, struct _sc_ctx_options *
 		sc_ctx_log_to_file(ctx, NULL);
 	}
 
-	if (scconf_get_bool (block, "paranoid-memory",
-				ctx->flags & SC_CTX_FLAG_PARANOID_MEMORY))
-		ctx->flags |= SC_CTX_FLAG_PARANOID_MEMORY;
-
 	if (scconf_get_bool (block, "disable_popups",
 				ctx->flags & SC_CTX_FLAG_DISABLE_POPUPS))
 		ctx->flags |= SC_CTX_FLAG_DISABLE_POPUPS;

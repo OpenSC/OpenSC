@@ -36,15 +36,6 @@ app default {
 	#
 	# profile_dir = @PROFILE_DIR@;
 
-	# Paranoid memory allocation.
-	#
-	# If set to 'true', then refuse to continue when locking of non-pageable
-	# memory fails. This can cause subtle failures but is more secure when
-	# you have a swap disk.
-	# Default: false
-	#
-	# paranoid_memory = false;
-
 	# Dsiable pop-ups of built-in GUI
 	#
 	# Default: false

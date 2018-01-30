@@ -187,7 +187,7 @@ CK_RV push_login_state(struct sc_pkcs11_slot *slot,
 	}
 
 	if (pPin && ulPinLen) {
-		login->pPin = sc_mem_alloc_secure(context, (sizeof *pPin)*ulPinLen);
+		login->pPin = calloc((sizeof *pPin), ulPinLen);
 		if (login->pPin == NULL) {
 			goto err;
 		}

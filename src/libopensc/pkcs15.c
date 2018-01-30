@@ -2569,7 +2569,7 @@ sc_pkcs15_allocate_object_content(struct sc_context *ctx, struct sc_pkcs15_objec
 	/* Need to pass by temporary variable,
 	 * because 'value' and 'content.value' pointers can be the sames.
 	 */
-	tmp_buf = (unsigned char *)sc_mem_alloc_secure(ctx, len);
+	tmp_buf = calloc(sizeof *tmp_buf, len);
 	if (!tmp_buf)
 		return SC_ERROR_OUT_OF_MEMORY;
 
