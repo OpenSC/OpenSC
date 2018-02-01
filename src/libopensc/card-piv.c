@@ -168,6 +168,7 @@ typedef struct piv_private_data {
 	int logged_in;
 	int pstate;
 	int pin_cmd_verify;
+	int context_specific;
 	int pin_cmd_noparse;
 	unsigned int pin_cmd_verify_sw1;
 	unsigned int pin_cmd_verify_sw2;
@@ -919,6 +920,8 @@ piv_get_data(sc_card_t * card, int enumtag, u8 **buf, size_t *buf_len)
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	sc_log(card->ctx, "#%d", enumtag);
 
+	sc_lock(card); /* do check len and get data in same transaction */
+
 	/* assert(enumtag >= 0 && enumtag < PIV_OBJ_LAST_ENUM); */
 
 	tag_len = piv_objects[enumtag].tag_len;
@@ -970,6 +973,7 @@ piv_get_data(sc_card_t * card, int enumtag, u8 **buf, size_t *buf_len)
 	r = piv_general_io(card, 0xCB, 0x3F, 0xFF, tagbuf,  p - tagbuf, buf, buf_len);
 
 err:
+	sc_unlock(card);
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
@@ -3032,7 +3036,7 @@ static int piv_match_card(sc_card_t *card)
 	if (card->type == -1)
 		card->type = type;
 
-	card->drv_data = priv; /* will frre if no match, or pass on to piv_init */
+	card->drv_data = priv; /* will free if no match, or pass on to piv_init */
 	priv->aid_file = sc_file_new();
 	priv->selected_obj = -1;
 	priv->pin_preference = 0x80; /* 800-73-3 part 1, table 3 */
@@ -3056,18 +3060,18 @@ static int piv_match_card(sc_card_t *card)
 	 * putting PIV driver first might help. 
 	 * TODO could be cached too
 	 */
-	 i = piv_find_discovery(card);
+	i = piv_find_discovery(card);
 
 	if (i < 0) {
-	    /* Detect by selecting applet */
-	    i = piv_find_aid(card, &aidfile);
+		/* Detect by selecting applet */
+		i = piv_find_aid(card, &aidfile);
 	}
 
 	if (i < 0) {
 		piv_finish(card);
-		 /* don't match. Does not have a PIV applet. */
-		 sc_unlock(card);
-		 return 0;
+		/* don't match. Does not have a PIV applet. */
+		sc_unlock(card);
+		return 0;
 	}
 
 	/* Matched, and priv is being passed to piv_init */
@@ -3218,7 +3222,16 @@ static int piv_check_sw(struct sc_card *card, unsigned int sw1, unsigned int sw2
 		if (priv->pin_cmd_verify) {
 			priv->pin_cmd_verify_sw1 = sw1;
 			priv->pin_cmd_verify_sw2 = sw2;
+		} else {
+			/* a command has completed and it is not verify */
+			/* If we are in a context_specific sequence, unlock */
+			if (priv->context_specific) {
+				sc_log(card->ctx,"Clearing CONTEXT_SPECIFIC lock");
+				priv->context_specific = 0;
+				sc_unlock(card);
+			}
 		}
+
 		if (priv->card_issues & CI_VERIFY_630X) {
 
 		/* Handle the Yubikey NEO or any other PIV card which returns in response to a verify
@@ -3360,9 +3373,29 @@ piv_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 		}
 	}
 
+	/*
+	 * If this was for a CKU_CONTEXT_SPECFIC login, lock the card one more time.
+	 * to avoid any interference from other applications.  
+	 * Sc_unlock will be called at a later time after the next card command 
+	 * that should be a crypto operation. If its not then it is a error by the 
+	 * calling appication. 
+	 */
+	if (data->cmd == SC_PIN_CMD_VERIFY && data->pin_type == SC_AC_CONTEXT_SPECIFIC) {
+		priv->context_specific = 1;
+		sc_log(card->ctx,"Starting CONTEXT_SPECIFIC verify");
+		sc_lock(card);
+	}
+
 	priv->pin_cmd_verify = 1; /* tell piv_check_sw its a verify to save sw1, sw2 */
 	r = iso_drv->ops->pin_cmd(card, data, tries_left);
 	priv->pin_cmd_verify = 0;
+
+	/* if verify failed, release the lock */
+	if (data->cmd == SC_PIN_CMD_VERIFY && r < 0 &&  priv->context_specific) {
+		sc_log(card->ctx,"Clearing CONTEXT_SPECIFIC");
+		priv->context_specific = 0;
+		sc_unlock(card);
+	}
 
 	/* if access to applet is know to be reset by other driver  we select_aid and try again */
 	if ( priv->card_issues & CI_OTHER_AID_LOSE_STATE && priv->pin_cmd_verify_sw1 == 0x6DU) {
@@ -3452,17 +3485,17 @@ static int piv_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 	/* We have a PCSC transaction and sc_lock */
 	if (priv == NULL || priv->pstate == PIV_STATE_MATCH) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
-			    priv ? "PIV_STATE_MATCH" : "priv==NULL");
+				priv ? "PIV_STATE_MATCH" : "priv==NULL");
 		r = 0; /* do nothing, piv_match will take care of it */
 		goto err;
 	}
 
 	/* make sure our application is active */
 
-	/* first see if AID is active AID be reading discovery obkect '7E' */
+	/* first see if AID is active AID by reading discovery object '7E' */
 	/* If not try selecting AID */
 	r = piv_find_discovery(card);
-	if (r < 0) 
+	if (r < 0)
 		r = piv_select_aid(card, piv_aids[0].value, piv_aids[0].len_short, temp, &templen);
 
 	if (r < 0) /* bad error return will show up in sc_lock as error*/
