@@ -327,10 +327,11 @@ pgp_match_card(sc_card_t *card)
 {
 	int i;
 
+	LOG_FUNC_CALLED(card->ctx);
 	i = _sc_match_atr(card, pgp_atrs, &card->type);
 	if (i >= 0) {
 		card->name = pgp_atrs[i].name;
-		return 1;
+		LOG_FUNC_RETURN(card->ctx, 1);
 	}
 	else {
 		sc_path_t	partial_aid;
@@ -358,14 +359,45 @@ pgp_match_card(sc_card_t *card)
 					case 3:
 						card->type = SC_CARD_TYPE_OPENPGP_V3;
 						break;
+					default:
+						break;
 				}
-				snprintf(card_name, sizeof card_name, "OpenPGP card V%u.%u", major, minor);
+				snprintf(card_name, sizeof(card_name), "OpenPGP card V%u.%u", major, minor);
+			} else {
+				if (file->namelen == 0) {
+					int r = 0;
+					unsigned char aid[16];
+					/* YubiKey for one is known to not return the complete AID in this case */
+					/* Send "read 4F file/template: 00 CA 00 4F 00" */
+					/* If the response is "90 00", use bytes 6 and 7 (indexing from 0) of the */
+					/* returned data - it will be the same as in the file->name above */
+					r = sc_get_data(card, 0x004F, aid, sizeof aid);
+					if (r == 16) { /* we got the AID to identify OpenPGP applet version */
+						unsigned char major = aid[6];
+						unsigned char minor = aid[7];
+						switch (major) {
+							case 1:
+								card->type = SC_CARD_TYPE_OPENPGP_V1;
+								break;
+							case 2:
+								card->type = SC_CARD_TYPE_OPENPGP_V2;
+								break;
+							case 3:
+								card->type = SC_CARD_TYPE_OPENPGP_V3;
+								break;
+							default:
+								break;
+						}
+						snprintf(card_name, sizeof(card_name), "OpenPGP card V%u.%u", major, minor);
+						sc_log(card->ctx, "card->name=\"%s\" card_name=\"%s\"", card->name, card_name );
+					}
+				}
 			}
 			sc_file_free(file);
-			return 1;
+			LOG_FUNC_RETURN(card->ctx, 1);
 		}
 	}
-	return 0;
+	LOG_FUNC_RETURN(card->ctx, 0);
 }
 
 
