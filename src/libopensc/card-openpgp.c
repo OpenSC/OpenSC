@@ -323,10 +323,10 @@ get_full_pgp_aid(sc_card_t *card, sc_file_t *file)
 	int r = 0;
 	/* explicitly get the full aid */
 	r = sc_get_data(card, 0x004F, file->name, sizeof file->name);
-	if (r < 0) {
+	if (r < 0)
 		file->namelen = 0;
-	}
-	file->namelen = r;
+	else
+		file->namelen = r;
 
 	return r;
 }
