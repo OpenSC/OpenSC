@@ -37,9 +37,9 @@
 			<variablelist>
 				<varlistentry>
 					<term>
-						<option>--attr-from</option> <replaceable>path</replaceable>
+						<option>--attr-from</option> <replaceable>filename</replaceable>
 					</term>
-					<listitem><para>Extract information from <replaceable>path</replaceable>
+					<listitem><para>Extract information from <replaceable>filename</replaceable>
 					(DER-encoded certificate file) and create the corresponding
 					attributes when writing an object to the token. Example: the
 					certificate subject name is used to create the CKA_SUBJECT
@@ -122,8 +122,8 @@
 
 				<varlistentry>
 					<term>
-						<option>--input-file</option> <replaceable>path</replaceable>,
-						<option>-i</option> <replaceable>path</replaceable>
+						<option>--input-file</option> <replaceable>filename</replaceable>,
+						<option>-i</option> <replaceable>filename</replaceable>
 					</term>
 					<listitem><para>Specify the path to a file for input.</para></listitem>
 				</varlistentry>
@@ -256,18 +256,18 @@
 
 				<varlistentry>
 					<term>
-						<option>--moz-cert</option> <replaceable>path</replaceable>,
-						<option>-z</option> <replaceable>path</replaceable>
+						<option>--moz-cert</option> <replaceable>filename</replaceable>,
+						<option>-z</option> <replaceable>filename</replaceable>
 					</term>
 					<listitem><para>Test a Mozilla-like keypair generation
-					and certificate request. Specify the <replaceable>path</replaceable>
+					and certificate request. Specify the <replaceable>filename</replaceable>
 					to the certificate file.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
 					<term>
-						<option>--output-file</option> <replaceable>path</replaceable>,
-						<option>-o</option> <replaceable>path</replaceable>
+						<option>--output-file</option> <replaceable>filename</replaceable>,
+						<option>-o</option> <replaceable>filename</replaceable>
 					</term>
 					<listitem><para>Specify the path to a file for output.</para></listitem>
 				</varlistentry>
@@ -519,11 +519,11 @@
 
 				<varlistentry>
 					<term>
-						<option>--write-object</option> <replaceable>path</replaceable>,
-						<option>-w</option> <replaceable>path</replaceable>
+						<option>--write-object</option> <replaceable>filename</replaceable>,
+						<option>-w</option> <replaceable>filename</replaceable>
 					</term>
 					<listitem><para>Write a key or certificate object to the token.
-					<replaceable>path</replaceable> points to the DER-encoded certificate or key file.
+					<replaceable>filename</replaceable> points to the DER-encoded certificate or key file.
                                         </para></listitem>
 				</varlistentry>
 
