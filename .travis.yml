@@ -1,7 +1,5 @@
 language: c
 
-sudo: required
-
 addons:
   apt_packages:
     - binutils-mingw-w64-i686
