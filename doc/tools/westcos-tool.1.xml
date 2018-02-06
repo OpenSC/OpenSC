@@ -138,11 +138,11 @@
 
 				<varlistentry>
 					<term>
-						<option>--read-file</option> <replaceable>path</replaceable>,
-						<option>-j</option> <replaceable>path</replaceable>
+						<option>--read-file</option> <replaceable>filename</replaceable>,
+						<option>-j</option> <replaceable>filename</replaceable>
 					</term>
-					<listitem><para>Read the file <replaceable>path</replaceable> from the card.
-					The file is written on disk with name <replaceable>path</replaceable>.
+					<listitem><para>Read the file <replaceable>filename</replaceable> from the card.
+					The file is written on disk with name <replaceable>filename</replaceable>.
 					User authentication is required for this operation.</para></listitem>
 				</varlistentry>
 
@@ -184,12 +184,12 @@
 
 				<varlistentry>
 					<term>
-						<option>--write-file</option> <replaceable>path</replaceable>,
-						<option>-k</option> <replaceable>path</replaceable>
+						<option>--write-file</option> <replaceable>filename</replaceable>,
+						<option>-k</option> <replaceable>filename</replaceable>
 					</term>
-					<listitem><para>Put the file with name <replaceable>path</replaceable>
+					<listitem><para>Put the file with name <replaceable>filename</replaceable>
 					from disk to card.
-					On the card the file is written in <replaceable>path</replaceable>.
+					On the card the file is written in <replaceable>filename</replaceable>.
 					User authentication is required for this operation.</para></listitem>
 				</varlistentry>
 
