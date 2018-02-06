@@ -324,10 +324,7 @@ get_full_pgp_aid(sc_card_t *card, sc_file_t *file)
 	int r = 0;
 	/* explicitly get the full aid */
 	r = sc_get_data(card, 0x004F, file->name, sizeof file->name);
-	if (r < 0)
-		file->namelen = 0;
-	else
-		file->namelen = r;
+	file->namelen = MAX(r, 0);
 
 	return r;
 }
@@ -379,7 +376,7 @@ pgp_match_card(sc_card_t *card)
 						break;
 				}
 				snprintf(card_name, sizeof(card_name), "OpenPGP card V%u.%u", major, minor);
-			} 
+			}
 			sc_file_free(file);
 			LOG_FUNC_RETURN(card->ctx, 1);
 		}
