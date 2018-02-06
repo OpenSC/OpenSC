@@ -519,7 +519,7 @@
 
 				<varlistentry>
 					<term>
-						<option>--write-object</option> <replaceable>id</replaceable>,
+						<option>--write-object</option> <replaceable>path</replaceable>,
 						<option>-w</option> <replaceable>path</replaceable>
 					</term>
 					<listitem><para>Write a key or certificate object to the token.
