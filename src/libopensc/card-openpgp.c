@@ -317,6 +317,19 @@ struct pgp_priv_data {
 	sc_security_env_t	sec_env;
 };
 
+static int
+get_full_pgp_aid(sc_card_t *card, sc_file_t *file)
+{
+	int r = 0;
+	/* explicitly get the full aid */
+	r = sc_get_data(card, 0x004F, file->name, sizeof file->name);
+	if (r < 0) {
+		file->namelen = 0;
+	}
+	file->namelen = r;
+
+	return r;
+}
 
 /**
  * ABI: check if card's ATR matches one of driver's
@@ -346,6 +359,8 @@ pgp_match_card(sc_card_t *card)
 			static char card_name[SC_MAX_APDU_BUFFER_SIZE] = "OpenPGP card";
 			card->type = SC_CARD_TYPE_OPENPGP_BASE;
 			card->name = card_name;
+			if (file->namelen != 16)
+				i = get_full_pgp_aid(card, file);
 			if (file->namelen == 16) {
 				unsigned char major = file->name[6];
 				unsigned char minor = file->name[7];
@@ -363,36 +378,7 @@ pgp_match_card(sc_card_t *card)
 						break;
 				}
 				snprintf(card_name, sizeof(card_name), "OpenPGP card V%u.%u", major, minor);
-			} else {
-				if (file->namelen == 0) {
-					int r = 0;
-					unsigned char aid[16];
-					/* YubiKey for one is known to not return the complete AID in this case */
-					/* Send "read 4F file/template: 00 CA 00 4F 00" */
-					/* If the response is "90 00", use bytes 6 and 7 (indexing from 0) of the */
-					/* returned data - it will be the same as in the file->name above */
-					r = sc_get_data(card, 0x004F, aid, sizeof aid);
-					if (r == 16) { /* we got the AID to identify OpenPGP applet version */
-						unsigned char major = aid[6];
-						unsigned char minor = aid[7];
-						switch (major) {
-							case 1:
-								card->type = SC_CARD_TYPE_OPENPGP_V1;
-								break;
-							case 2:
-								card->type = SC_CARD_TYPE_OPENPGP_V2;
-								break;
-							case 3:
-								card->type = SC_CARD_TYPE_OPENPGP_V3;
-								break;
-							default:
-								break;
-						}
-						snprintf(card_name, sizeof(card_name), "OpenPGP card V%u.%u", major, minor);
-						sc_log(card->ctx, "card->name=\"%s\" card_name=\"%s\"", card->name, card_name );
-					}
-				}
-			}
+			} 
 			sc_file_free(file);
 			LOG_FUNC_RETURN(card->ctx, 1);
 		}
@@ -441,12 +427,11 @@ pgp_init(sc_card_t *card)
 
 	if (file->namelen != 16) {
 		/* explicitly get the full aid */
-		r = sc_get_data(card, 0x004F, file->name, sizeof file->name);
+		r = get_full_pgp_aid(card, file);
 		if (r < 0) {
 			pgp_finish(card);
 			return r;
 		}
-		file->namelen = r;
 	}
 
 	/* read information from AID */
