@@ -2890,6 +2890,7 @@ static int pgp_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 			/* reselect is required */
 			was_reset = 1;
 		}
+		r = SC_SUCCESS;
 	}
 
 	if (was_reset > 0) {
