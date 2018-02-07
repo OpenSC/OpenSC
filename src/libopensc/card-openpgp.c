@@ -575,9 +575,12 @@ pgp_get_card_features(sc_card_t *card)
 				priv->max_challenge_size = bebytes2ushort(blob->data + 2);
 				/* max. cert size it at bytes 5-6 */
 				priv->max_cert_size = bebytes2ushort(blob->data + 4);
-				/* max. send/receive sizes are at bytes 7-8 resp. 9-10 */
-				card->max_send_size = bebytes2ushort(blob->data + 6);
-				card->max_recv_size = bebytes2ushort(blob->data + 8);
+				if (priv->bcd_version < OPENPGP_CARD_3_0) {
+					/* max. send/receive sizes are at bytes 7-8 resp. 9-10 */
+					card->max_send_size = bebytes2ushort(blob->data + 6);
+					card->max_recv_size = bebytes2ushort(blob->data + 8);
+				}
+				/* TODO read Extended length information from DO 7F66 in OpenPGP 3.0 and later */
 			}
 		}
 
