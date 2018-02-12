@@ -135,6 +135,12 @@
 					</term>
 					<listitem><para>Generate a new key pair (public and private pair.)</para></listitem>
 				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--keygen</option>
+					</term>
+					<listitem><para>Generate a new key.</para></listitem>
+				</varlistentry>
 
 				<varlistentry>
 					<term>
@@ -308,6 +314,13 @@
 
 				<varlistentry>
 					<term>
+						<option>--sensitive</option>
+					</term>
+					<listitem><para>Set the CKA_SENSITIVE attribute (object cannot be revealed in plaintext).</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
 						<option>--set-id</option> <replaceable>id</replaceable>,
 						<option>-e</option> <replaceable>id</replaceable>
 					</term>
@@ -342,6 +355,13 @@
 						<option>--derive</option>,
 					</term>
 					<listitem><para>Derive a secret key using another key and some data.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--derive-pass-der</option>,
+					</term>
+					<listitem><para>Derive ECDHpass DER encoded pubkey for compatibility with some PKCS#11 implementations</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
