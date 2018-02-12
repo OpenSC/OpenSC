@@ -678,7 +678,6 @@ static void process_config_file(sc_context_t *ctx, struct _sc_ctx_options *opts)
 	if (!conf_path)
 		conf_path = OPENSC_CONF_PATH;
 #endif
-	sc_log(ctx, "Using configuration file '%s'", conf_path);
 	ctx->conf = scconf_new(conf_path);
 	if (ctx->conf == NULL)
 		return;
@@ -700,6 +699,8 @@ static void process_config_file(sc_context_t *ctx, struct _sc_ctx_options *opts)
 		ctx->conf = NULL;
 		return;
 	}
+	/* needs to be after the log file is known */
+	sc_log(ctx, "Used configuration file '%s'", conf_path);
 	blocks = scconf_find_blocks(ctx->conf, NULL, "app", ctx->app_name);
 	if (blocks && blocks[0])
 		ctx->conf_blocks[count++] = blocks[0];
