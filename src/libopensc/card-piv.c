@@ -175,7 +175,7 @@ typedef struct piv_private_data {
 	int tries_left; /* SC_PIN_CMD_GET_INFO tries_left from last */
 	unsigned int card_issues; /* card_issues flags for this card */
 	int object_test_verify; /* Can test this object to set verification state of card */
-	int neo_version; /* 3 byte version number of NEO or Ybuikey4  as integer */
+	int yubico_version; /* 3 byte version number of NEO or Ybuikey4  as integer */
 } piv_private_data_t;
 
 #define PIV_DATA(card) ((piv_private_data_t*)card->drv_data)
@@ -825,7 +825,7 @@ static int piv_find_aid(sc_card_t * card, sc_file_t *aid_file)
 		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 		if (r)  {
 			if (card->type != 0 && card->type == piv_aids[i].enumtag)
-				LOG_FUNC_RETURN(card->ctx, i);
+				LOG_FUNC_RETURN(card->ctx, (r < 0)? r: i);
 			continue;
 		}
 
@@ -2949,13 +2949,33 @@ piv_finish(sc_card_t *card)
 				free(priv->obj_cache[i].internal_obj_data);
 		}
 		free(priv);
-	card->drv_data = NULL; /* priv */
+		card->drv_data = NULL; /* priv */
 	}
 	return 0;
 }
 
-
 static int piv_match_card(sc_card_t *card)
+{
+        SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	/* piv_match_card may be called with card->type, set by opensc.conf */
+	/* user provide card type must be one we know */
+	switch (card->type) {
+		case -1:
+		case SC_CARD_TYPE_PIV_II_GENERIC:
+		case SC_CARD_TYPE_PIV_II_HIST:
+		case SC_CARD_TYPE_PIV_II_NEO:
+		case SC_CARD_TYPE_PIV_II_YUBIKEY4:
+			break;
+		default:
+			return 0; /* can not handle the card */
+	}
+	/* its one we know, or we can test for it in piv_init */
+	return 1; /* Let piv_init finish matching */
+}
+
+
+static int piv_match_card_continued(sc_card_t *card)
 {
 	int i, i7e, k;
 	size_t j;
@@ -3100,18 +3120,28 @@ static int piv_match_card(sc_card_t *card)
 static int piv_init(sc_card_t *card)
 {
 	int r = 0;
-	piv_private_data_t * priv = PIV_DATA(card);
+	piv_private_data_t * priv = NULL;
 	sc_apdu_t apdu;
 	unsigned long flags;
 	unsigned long ext_flags;
-	u8 neo_version_buf[3];
+	u8 yubico_version_buf[3];
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
+	/* continue the matching get a lock and the priv */
+	r = piv_match_card_continued(card);
+	if (r != 1)  {
+		sc_log(card->ctx,"piv_match_card_continued failed");
+		piv_finish(card);
+		/* tell sc_connect_card to try other drivers */
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_CARD);
+	}
+		
+	priv = PIV_DATA(card);
 
-	/* can not force the PIV driver to use non-PIV cards as tested in piv_card_match */
+	/* can not force the PIV driver to use non-PIV cards as tested in piv_card_match_continued */
 	if (!priv || card->type == -1)
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NO_CARD_SUPPORT);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_CARD);
 
 	sc_log(card->ctx,
 	       "Max send = %"SC_FORMAT_LEN_SIZE_T"u recv = %"SC_FORMAT_LEN_SIZE_T"u card->type = %d",
@@ -3131,23 +3161,28 @@ static int piv_init(sc_card_t *card)
 			apdu.lc = 0;
 			apdu.data = NULL;
 			apdu.datalen = 0;
-			apdu.resp = neo_version_buf;
-			apdu.resplen = sizeof(neo_version_buf);
+			apdu.resp = yubico_version_buf;
+			apdu.resplen = sizeof(yubico_version_buf);
 			apdu.le = apdu.resplen;
 			r = sc_transmit_apdu(card, &apdu);
-			priv->neo_version = (neo_version_buf[0]<<16) | (neo_version_buf[1] <<8) | neo_version_buf[2];
-			sc_log(card->ctx, "Yubico card->type=%d, r=0x%08x version=0x%08x", card->type, r, priv->neo_version);
+			priv->yubico_version = (yubico_version_buf[0]<<16) | (yubico_version_buf[1] <<8) | yubico_version_buf[2];
+			sc_log(card->ctx, "Yubico card->type=%d, r=0x%08x version=0x%08x", card->type, r, priv->yubico_version);
 			break;
 	}
 
 	/*
-	 * set card_issues flags based card->type and new versions
-	 * YubiKey NEO and Ybuikey 4 have PIV applets, with compliance issues
-	 * with the the NIST 800-73-3 specs The OpenSC developers do not have
-	 * access to the different versions the NEO and 4, so it is a best
-	 * if using a protected object can be use to test verify state.
-	 * TODO use NEO version numbers to set the flags. Allows for finer control
-	 * but needs input from Yubico or users.
+	 * Set card_issues flags based card->type and version numbers if available. 
+	 *
+	 * YubiKey NEO, Yubikey 4 and other devices with PIV applets, have compliance
+	 * issues with the NIST 800-73-3 specs. The OpenSC developers do not have
+	 * access to all the different devices or versions of the devices. 
+	 * Vendor and user input is welcome on any compliance issues. 
+	 *
+	 * For the Yubico devices The assumption is also made that if a bug is 
+	 * fixed in a Yubico version that means it is fixed on both NEO and Yubikey 4.
+	 *
+	 * The flags CI_CANT_USE_GETDATA_FOR_STATE and CI_DISCOVERY_USELESS
+	 * may be set earlier or later then in the following code. 
 	 */
 
 	switch(card->type) {
@@ -3157,14 +3192,14 @@ static int piv_init(sc_card_t *card)
 				| CI_OTHER_AID_LOSE_STATE
 				| CI_LEAKS_FILE_NOT_FOUND
 				| CI_NFC_EXPOSE_TOO_MUCH;
-			if (priv->neo_version  < 0x00040302)
+			if (priv->yubico_version  < 0x00040302)
 				priv->card_issues |= CI_VERIFY_LC0_FAIL;
 			break;
 
 		case SC_CARD_TYPE_PIV_II_YUBIKEY4:
 			priv->card_issues |=  CI_OTHER_AID_LOSE_STATE
 				| CI_LEAKS_FILE_NOT_FOUND;
-			if (priv->neo_version  < 0x00040302)
+			if (priv->yubico_version  < 0x00040302)
 				priv->card_issues |= CI_VERIFY_LC0_FAIL;
 			break;
 
@@ -3219,6 +3254,8 @@ static int piv_init(sc_card_t *card)
 	piv_process_history(card);
 
 	piv_process_discovery(card);
+
+	r = 0;
 
 	priv->pstate=PIV_STATE_NORMAL;
 	sc_unlock(card) ; /* obtained in piv_match */
