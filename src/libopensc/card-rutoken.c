@@ -445,103 +445,28 @@ static int rutoken_select_file(sc_card_t *card,
 static int rutoken_process_fci(struct sc_card *card, sc_file_t *file,
 			const unsigned char *buf, size_t buflen)
 {
-	const unsigned char *p, *end;
-	unsigned int cla = 0, tag = 0;
-	size_t length;
+	size_t taglen;
+	int ret;
+	const unsigned char *tag;
 
-	/* Set default file properties. */
-	file->prop_attr_len = 0;
-	file->sec_attr_len = 0;
-	file->shareable = 0;
-	
-	for (p = buf, length = buflen, end = buf + buflen; p < end; p += length, length = end - p)
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+	ret = iso_ops->process_fci(card, file, buf, buflen);
+	if (ret == SC_SUCCESS)
 	{
-		if (SC_SUCCESS != sc_asn1_read_tag(&p, length, &cla, &tag, &length))
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_CORRUPTED_DATA);
-
-		switch (cla | tag)
+		/* Rutoken S returns buffers in little-endian. */
+		/* Set correct file id. */
+		file->id = ((file->id & 0xFF) << 8) | ((file->id >> 8) & 0xFF);
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "  file identifier: 0x%04X", file->id);
+		/* Determine file size. */
+		tag = sc_asn1_find_tag(card->ctx, buf, buflen, 0x80, &taglen);
+		/* Rutoken S always returns 2 bytes. */
+		if (tag != NULL && taglen == 2)
 		{
-		case 0x80:
-			/* Determine file size. */
-			if (length == 2)
-			{
-				/* Rutoken S always returns 2 bytes. */
-				/* Rutoken S returns buffers in little-endian. */
-				file->size = (p[1] << 8) | p[0];
-				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "bytes in file: 0x%04zX", file->size);
-			}
-			break;
-		case 0x81:
-			break;
-		case 0x82:
-			/* Determine file descriptor. */
-			if (length == 2)
-			{
-				/* Only leading byte is significant. */
-				unsigned char byte = p[0];
-				const char* type;
-
-				file->ef_structure = byte & 0x07;
-				switch (byte)
-				{
-				case 0x01:
-					file->type = SC_FILE_TYPE_WORKING_EF;
-					type = "working EF";
-					break;
-				case 0x38:
-					file->type = SC_FILE_TYPE_DF;
-					type = "DF";
-					break;
-				default:
-					type = "unknown";
-					break;
-				}
-				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "type: %s", type);
-				if (SC_SUCCESS != sc_file_set_type_attr(file, &byte, 1))
-					sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Warning: Could not set file attributes");
-			}
-			break;
-		case 0x83:
-			/* Determine file id. */
-			if (length == 2)
-			{
-				file->id = (p[1] << 8) | p[0];
-				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "file identifier: 0x%04X", file->id);
-			}
-			break;
-		case 0x85:
-			/* Determine RSF information. */
-			if (SC_SUCCESS != sc_file_set_prop_attr(file, p, length))
-				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Warning: Could not set proprietary file properties");
-			break;
-		case 0x86:
-			/* Determine security information. */
-			if (SC_SUCCESS != sc_file_set_sec_attr(file, p, length))
-				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Warning: Could not set file security properties");
-			break;
-		case 0x8A:
-			/* Determine file lifecycle. */
-			if (length == 1)
-			{
-				switch (p[1])
-				{
-				case 0x01:
-					file->status = SC_FILE_STATUS_CREATION;
-					break;
-				case 0x05:
-					file->status = SC_FILE_STATUS_ACTIVATED;
-					break;
-				}
-			}
-			break;
-		default:
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_CORRUPTED_DATA);
-			break;
+			file->size = (tag[1] << 8) | tag[0];
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "  bytes in file: %"SC_FORMAT_LEN_SIZE_T"u", file->size);
 		}
 	}
-
-	file->magic = SC_FILE_MAGIC;
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, ret);
 }
 
 static int rutoken_construct_fci(sc_card_t *card, const sc_file_t *file,
