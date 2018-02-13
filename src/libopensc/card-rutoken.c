@@ -358,7 +358,6 @@ static int rutoken_select_file(sc_card_t *card,
 	u8 buf[SC_MAX_APDU_BUFFER_SIZE], pathbuf[SC_MAX_PATH_SIZE], *path = pathbuf;
 	sc_file_t *file = NULL;
 	size_t pathlen;
-	u8 t0, t1;
 	int ret;
 
 	assert(card && card->ctx);
@@ -428,15 +427,6 @@ static int rutoken_select_file(sc_card_t *card,
 	if (apdu.resplen > 1  &&  apdu.resplen >= (size_t)apdu.resp[1] + 2)
 	{
 		ret = card->ops->process_fci(card, file, apdu.resp+2, apdu.resp[1]);
-		if (ret == SC_SUCCESS)
-		{
-			t0 = file->id & 0xFF;
-			t1 = (file->id >> 8) & 0xFF;
-			file->id = (t0 << 8) | t1;
-			t0 = file->size & 0xFF;
-			t1 = (file->size >> 8) & 0xFF;
-			file->size = (t0 << 8) | t1;
-		}
 	}
 	if (file->sec_attr && file->sec_attr_len == sizeof(sc_SecAttrV2_t))
 		set_acl_from_sec_attr(card, file);
@@ -448,6 +438,33 @@ static int rutoken_select_file(sc_card_t *card,
 	{
 		assert(file_out);
 		*file_out = file;
+	}
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, ret);
+}
+
+static int rutoken_process_fci(struct sc_card *card, sc_file_t *file,
+			const unsigned char *buf, size_t buflen)
+{
+	size_t taglen;
+	int ret;
+	const unsigned char *tag;
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+	ret = iso_ops->process_fci(card, file, buf, buflen);
+	if (ret == SC_SUCCESS)
+	{
+		/* Rutoken S returns buffers in little-endian. */
+		/* Set correct file id. */
+		file->id = ((file->id & 0xFF) << 8) | ((file->id >> 8) & 0xFF);
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "  file identifier: 0x%04X", file->id);
+		/* Determine file size. */
+		tag = sc_asn1_find_tag(card->ctx, buf, buflen, 0x80, &taglen);
+		/* Rutoken S always returns 2 bytes. */
+		if (tag != NULL && taglen == 2)
+		{
+			file->size = (tag[1] << 8) | tag[0];
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "  bytes in file: %"SC_FORMAT_LEN_SIZE_T"u", file->size);
+		}
 	}
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, ret);
 }
@@ -1286,7 +1303,7 @@ static struct sc_card_driver* get_rutoken_driver(void)
 	rutoken_ops.list_files = rutoken_list_files;
 	rutoken_ops.check_sw = rutoken_check_sw;
 	rutoken_ops.card_ctl = rutoken_card_ctl;
-	/* process_fci */
+	rutoken_ops.process_fci = rutoken_process_fci;
 	rutoken_ops.construct_fci = rutoken_construct_fci;
 	rutoken_ops.pin_cmd = NULL;
 
