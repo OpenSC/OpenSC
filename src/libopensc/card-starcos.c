@@ -792,6 +792,17 @@ static int starcos_select_file(sc_card_t *card,
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
 }
 
+static int starcos_get_challenge(struct sc_card *card, unsigned char *rnd, size_t len)
+{
+	LOG_FUNC_CALLED(card->ctx);
+
+	if (len > 8) {
+		len = 8;
+	}
+
+	LOG_FUNC_RETURN(card->ctx, iso_ops->get_challenge(card, rnd, len));
+}
+
 #define STARCOS_AC_ALWAYS	0x9f
 #define STARCOS_AC_NEVER	0x5f
 #define STARCOS_PINID2STATE(a)	((((a) & 0x0f) == 0x01) ? ((a) & 0x0f) : (0x0f - ((0x0f & (a)) >> 1)))
@@ -1848,6 +1859,7 @@ static struct sc_card_driver * sc_get_driver(void)
 	starcos_ops.init   = starcos_init;
 	starcos_ops.finish = starcos_finish;
 	starcos_ops.select_file = starcos_select_file;
+	starcos_ops.get_challenge = starcos_get_challenge;
 	starcos_ops.check_sw    = starcos_check_sw;
 	starcos_ops.create_file = starcos_create_file;
 	starcos_ops.delete_file = NULL;
