@@ -213,7 +213,7 @@ endif
 applicationsdir = $(datadir)/applications
 applications_DATA = org.opensc-project.opensc-notify.desktop
 
-org.opensc-project.opensc-notify.desktop: org.opensc-project.opensc-notify.desktop
+org.opensc-project.opensc-notify.desktop: org.opensc-project.opensc-notify.desktop.in
 	$(do_subst) < $(abs_srcdir)/org.opensc-project.opensc-notify.desktop.in > $@
 
 clean-local:
