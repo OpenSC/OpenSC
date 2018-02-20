@@ -1338,7 +1338,11 @@ static int starcos_set_security_env(sc_card_t *card,
 		 * algorithm / cipher from PKCS#1 padding prefix */
 		*p++ = 0x84;
 		*p++ = 0x01;
-		*p++ = *env->key_ref;
+		if (env->flags & SC_SEC_ENV_FILE_REF_PRESENT) {
+			*p++ = *env->key_ref | 0x80;
+		} else {
+			*p++ = *env->key_ref;
+		}
 
 		/* algorithm / cipher selector? */
 		*p++ = 0x89;
