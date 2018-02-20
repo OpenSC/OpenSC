@@ -1321,19 +1321,11 @@ static int starcos_set_security_env(sc_card_t *card,
 	p     = sbuf;
 
 	if (card->type == SC_CARD_TYPE_STARCOS_V3_4) {
-		if (operation != SC_SEC_OPERATION_SIGN) {
-			/* we only support signatures for now */
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
-				"not supported for STARCOS 3.4 cards");
-			return SC_ERROR_NOT_SUPPORTED; \
-		}
-
 		if (!(env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1) ||
 			!(env->flags & SC_SEC_ENV_KEY_REF_PRESENT) || env->key_ref_len != 1) {
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
 		}
 
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0x41, 0xB6);
 		/* don't know what these mean but doesn't matter as card seems to take
 		 * algorithm / cipher from PKCS#1 padding prefix */
 		*p++ = 0x84;
@@ -1344,11 +1336,26 @@ static int starcos_set_security_env(sc_card_t *card,
 			*p++ = *env->key_ref;
 		}
 
-		/* algorithm / cipher selector? */
-		*p++ = 0x89;
-		*p++ = 0x02;
-		*p++ = 0x13;
-		*p++ = 0x23;
+		switch (operation) {
+			case SC_SEC_OPERATION_SIGN:
+				sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0x41, 0xB6);
+
+				/* algorithm / cipher selector? */
+				*p++ = 0x89;
+				*p++ = 0x02;
+				*p++ = 0x13;
+				*p++ = 0x23;
+				break;
+
+			case SC_SEC_OPERATION_DECIPHER:
+				sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0x41, 0xB8);
+				break;
+
+			default:
+				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+						"not supported for STARCOS 3.4 cards");
+				return SC_ERROR_NOT_SUPPORTED;
+		}
 
 		apdu.data    = sbuf;
 		apdu.datalen = p - sbuf;
@@ -1604,6 +1611,62 @@ static int starcos_compute_signature(sc_card_t *card,
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
 
+static int starcos_decipher(struct sc_card *card,
+		const u8 * crgram, size_t crgram_len,
+		u8 * out, size_t outlen)
+{
+	if (card->type == SC_CARD_TYPE_STARCOS_V3_4) {
+		int r;
+		size_t card_max_send_size = card->max_send_size;
+		size_t reader_max_send_size = card->reader->max_send_size;
+		int caps = card->caps;
+		sc_apdu_t apdu;
+
+		u8 *sbuf = malloc(crgram_len + 1);
+		if (sbuf == NULL)
+			return SC_ERROR_OUT_OF_MEMORY;
+
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_4, 0x2A, 0x80, 0x86);
+		apdu.resp    = out;
+		apdu.resplen = outlen;
+		apdu.le      = outlen;
+
+		sbuf[0] = 0x81;
+		memcpy(sbuf + 1, crgram, crgram_len);
+		apdu.data = sbuf;
+		apdu.lc = crgram_len + 1;
+		apdu.datalen = crgram_len + 1;
+
+		if (sc_get_max_send_size(card) < crgram_len + 1) {
+			/* Starcos doesn't support chaining for PSO:DEC, so we just _hope_
+			 * that both, the reader and the card are able to send enough data.
+			 * (data is prefixed with 1 byte padding content indicator) */
+			card->max_send_size = crgram_len + 1;
+			card->reader->max_send_size = crgram_len + 1;
+			card->caps |= SC_CARD_CAP_APDU_EXT;
+		}
+
+		r = sc_transmit_apdu(card, &apdu);
+		sc_mem_clear(sbuf, crgram_len + 1);
+
+		/* reset whatever we've modified above */
+		card->max_send_size = card_max_send_size;
+		card->reader->max_send_size = reader_max_send_size;
+		card->caps = caps;
+
+		free(sbuf);
+
+		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+
+		if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
+			LOG_FUNC_RETURN(card->ctx, apdu.resplen);
+		else
+			LOG_FUNC_RETURN(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2));
+	} else {
+		return iso_ops->decipher(card, crgram, crgram_len, out, outlen);
+	}
+}
+
 static int starcos_check_sw(sc_card_t *card, unsigned int sw1, unsigned int sw2)
 {
 	const int err_count = sizeof(starcos_errors)/sizeof(starcos_errors[0]);
@@ -1771,6 +1834,7 @@ static struct sc_card_driver * sc_get_driver(void)
 	starcos_ops.delete_file = NULL;
 	starcos_ops.set_security_env  = starcos_set_security_env;
 	starcos_ops.compute_signature = starcos_compute_signature;
+	starcos_ops.decipher = starcos_decipher;
 	starcos_ops.card_ctl    = starcos_card_ctl;
 	starcos_ops.logout      = starcos_logout;
 	starcos_ops.pin_cmd     = starcos_pin_cmd;
