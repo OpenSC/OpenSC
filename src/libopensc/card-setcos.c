@@ -574,8 +574,8 @@ static int setcos_set_security_env2(sc_card_t *card,
 	if (card->type == SC_CARD_TYPE_SETCOS_44 ||
 	    card->type == SC_CARD_TYPE_SETCOS_NIDEL ||
 	    SETCOS_IS_EID_APPLET(card)) {
-		if (env->flags & SC_SEC_ENV_KEY_REF_ASYMMETRIC) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "asymmetric keyref not supported.\n");
+		if (env->flags & SC_SEC_ENV_KEY_REF_SYMMETRIC) {
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "symmetric keyref not supported.\n");
 			return SC_ERROR_NOT_SUPPORTED;
 		}
 		if (se_num > 0) {
@@ -619,7 +619,7 @@ static int setcos_set_security_env2(sc_card_t *card,
 	if (env->flags & SC_SEC_ENV_KEY_REF_PRESENT &&
 	    !(card->type == SC_CARD_TYPE_SETCOS_NIDEL ||
 	      card->type == SC_CARD_TYPE_SETCOS_FINEID_V2_2048)) {
-		if (env->flags & SC_SEC_ENV_KEY_REF_ASYMMETRIC)
+		if (env->flags & SC_SEC_ENV_KEY_REF_SYMMETRIC)
 			*p++ = 0x83;
 		else
 			*p++ = 0x84;

@@ -62,8 +62,7 @@ extern "C" {
 #define SC_SEC_ENV_ALG_REF_PRESENT	0x0001
 #define SC_SEC_ENV_FILE_REF_PRESENT	0x0002
 #define SC_SEC_ENV_KEY_REF_PRESENT	0x0004
-/* FIXME: the flag below is misleading */
-#define SC_SEC_ENV_KEY_REF_ASYMMETRIC	0x0008
+#define SC_SEC_ENV_KEY_REF_SYMMETRIC	0x0008
 #define SC_SEC_ENV_ALG_PRESENT		0x0010
 
 /* PK algorithms */
