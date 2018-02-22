@@ -44,7 +44,7 @@ static struct sc_card_operations starcos_ops;
 static struct sc_card_operations *iso_ops = NULL;
 
 static struct sc_card_driver starcos_drv = {
-	"STARCOS SPK 2.3/2.4/3.4",
+	"STARCOS",
 	"starcos",
 	&starcos_ops,
 	NULL, 0, NULL
@@ -113,7 +113,7 @@ static int starcos_init(sc_card_t *card)
 	if (ex_data == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 
-	card->name = "STARCOS SPK 2.3";
+	card->name = "STARCOS";
 	card->cla  = 0x00;
 	card->drv_data = (void *)ex_data;
 
@@ -129,7 +129,7 @@ static int starcos_init(sc_card_t *card)
 	card->caps = SC_CARD_CAP_RNG; 
 
 	if (card->type == SC_CARD_TYPE_STARCOS_V3_4) {
-		card->name = "STARCOS SPK 3.4";
+		card->name = "STARCOS 3.4";
 		card->caps |= SC_CARD_CAP_ISO7816_PIN_INFO;
 
 		flags |= SC_CARD_FLAG_RNG
