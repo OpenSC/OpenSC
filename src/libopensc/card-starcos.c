@@ -1700,8 +1700,6 @@ static int starcos_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 {
 	int r;
 	u8  rbuf[SC_MAX_APDU_BUFFER_SIZE];
-	const unsigned char *iccsn;
-	size_t iccsn_len;
 	sc_apdu_t apdu;
 
 	if (!serial)
@@ -1715,12 +1713,12 @@ static int starcos_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 
 	switch (card->type) {
 		case SC_CARD_TYPE_STARCOS_V3_4:
-			r = sc_parse_ef_gdo(card, &iccsn, &iccsn_len, NULL, 0);
-			if (r < 0)
+			card->serialnr.len = SC_MAX_SERIALNR;
+			r = sc_parse_ef_gdo(card, card->serialnr.value, &card->serialnr.len, NULL, 0);
+			if (r < 0) {
+				card->serialnr.len = 0;
 				return r;
-			/* cache serial number */
-			memcpy(card->serialnr.value, iccsn, MIN(iccsn_len, SC_MAX_SERIALNR));
-			card->serialnr.len = MIN(iccsn_len, SC_MAX_SERIALNR);
+			}
 			break;
 
 		default:
