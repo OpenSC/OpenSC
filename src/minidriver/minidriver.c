@@ -1312,12 +1312,16 @@ md_set_cardid(PCARD_DATA pCardData, struct md_file *file)
 			memcpy(sn_bin, vs->p15card->tokeninfo->serial_number, sn_len);
 		}
 
-		for (offs=0; offs < MD_CARDID_SIZE; )   {
-			wr = MD_CARDID_SIZE - offs;
-			if (wr > sn_len)
-				wr = sn_len;
-			memcpy(cardid_bin + offs, sn_bin, wr);
-			offs += wr;
+		if (sn_len > 0) {
+			for (offs=0; offs < MD_CARDID_SIZE; )   {
+				wr = MD_CARDID_SIZE - offs;
+				if (wr > sn_len)
+					wr = sn_len;
+				memcpy(cardid_bin + offs, sn_bin, wr);
+				offs += wr;
+			}
+		} else {
+			memset(cardid_bin, 0, MD_CARDID_SIZE);
 		}
 
 		dwret = md_fs_set_content(pCardData, file, cardid_bin, MD_CARDID_SIZE);
