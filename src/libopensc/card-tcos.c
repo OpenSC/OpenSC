@@ -707,8 +707,6 @@ static int tcos_setperm(sc_card_t *card, int enable_nullpin)
 static int tcos_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 {
 	int r;
-	const unsigned char *iccsn;
-	size_t iccsn_len;
 
 	if (!serial)
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -719,13 +717,12 @@ static int tcos_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 		return SC_SUCCESS;
 	}
 
-	r = sc_parse_ef_gdo(card, &iccsn, &iccsn_len, NULL, 0);
-	if (r < 0)
+	card->serialnr.len = sizeof card->serialnr.value;
+	r = sc_parse_ef_gdo(card, card->serialnr.value, &card->serialnr.len, NULL, 0);
+	if (r < 0) {
+		card->serialnr.len = 0;
 		return r;
-
-	/* cache serial number */
-	memcpy(card->serialnr.value, iccsn, MIN(iccsn_len, SC_MAX_SERIALNR));
-	card->serialnr.len = MIN(iccsn_len, SC_MAX_SERIALNR);
+	}
 
 	/* copy and return serial number */
 	memcpy(serial, &card->serialnr, sizeof(*serial));
