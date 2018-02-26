@@ -35,8 +35,13 @@ static struct sc_atr_table starcos_atrs[] = {
 	{ "3B:B7:94:00:c0:24:31:fe:65:53:50:4b:32:33:90:00:b4", NULL, NULL, SC_CARD_TYPE_STARCOS_GENERIC, 0, NULL },
 	{ "3B:B7:94:00:81:31:fe:65:53:50:4b:32:33:90:00:d1", NULL, NULL, SC_CARD_TYPE_STARCOS_GENERIC, 0, NULL },
 	{ "3b:b7:18:00:c0:3e:31:fe:65:53:50:4b:32:34:90:00:25", NULL, NULL, SC_CARD_TYPE_STARCOS_GENERIC, 0, NULL },
-	/* STARCOS 3.4 */
 	{ "3b:d8:18:ff:81:b1:fe:45:1f:03:80:64:04:1a:b4:03:81:05:61", NULL, NULL, SC_CARD_TYPE_STARCOS_V3_4, 0, NULL },
+	{ "3B:9B:96:C0:0A:31:FE:45:80:67:04:1E:B5:01:00:89:4C:81:05:45", NULL, NULL, SC_CARD_TYPE_STARCOS_V3_5, 0, NULL },
+	{ "3B:DB:96:FF:81:31:FE:45:80:67:05:34:B5:02:01:C0:A1:81:05:3C", NULL, NULL, SC_CARD_TYPE_STARCOS_V3_5, 0, NULL },
+	{ "3B:D9:96:FF:81:31:FE:45:80:31:B8:73:86:01:C0:81:05:02", NULL, NULL, SC_CARD_TYPE_STARCOS_V3_5, 0, NULL },
+	{ "3B:DF:96:FF:81:31:FE:45:80:5B:44:45:2E:42:4E:4F:54:4B:31:31:31:81:05:A0", NULL, NULL, SC_CARD_TYPE_STARCOS_V3_5, 0, NULL },
+	{ "3B:DF:96:FF:81:31:FE:45:80:5B:44:45:2E:42:4E:4F:54:4B:31:30:30:81:05:A0", NULL, NULL, SC_CARD_TYPE_STARCOS_V3_5, 0, NULL },
+	{ "3B:D9:96:FF:81:31:FE:45:80:31:B8:73:86:01:E0:81:05:22", NULL, NULL, SC_CARD_TYPE_STARCOS_V3_5, 0, NULL },
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
@@ -128,8 +133,12 @@ static int starcos_init(sc_card_t *card)
 
 	card->caps = SC_CARD_CAP_RNG; 
 
-	if (card->type == SC_CARD_TYPE_STARCOS_V3_4) {
-		card->name = "STARCOS 3.4";
+	if (card->type == SC_CARD_TYPE_STARCOS_V3_4
+			|| card->type == SC_CARD_TYPE_STARCOS_V3_5) {
+		if (card->type == SC_CARD_TYPE_STARCOS_V3_4)
+			card->name = "STARCOS 3.4";
+		else
+			card->name = "STARCOS 3.5";
 		card->caps |= SC_CARD_CAP_ISO7816_PIN_INFO;
 
 		flags |= SC_CARD_FLAG_RNG
@@ -512,7 +521,8 @@ static int starcos_select_fid(sc_card_t *card,
 	apdu.data = (u8*)data;
 	apdu.datalen = 2;
 
-	if (card->type == SC_CARD_TYPE_STARCOS_V3_4) {
+	if (card->type == SC_CARD_TYPE_STARCOS_V3_4
+			|| card->type == SC_CARD_TYPE_STARCOS_V3_5) {
 		if (id_hi == 0x3f && id_lo == 0x0) {
 			apdu.p1 = 0x0;
 			apdu.p2 = 0x0;
@@ -540,7 +550,9 @@ static int starcos_select_fid(sc_card_t *card,
 		apdu.le = 0;
 		r = sc_transmit_apdu(card, &apdu);
 		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU re-transmit failed");
-	} else if (card->type == SC_CARD_TYPE_STARCOS_V3_4 && apdu.p2 == 0x4 && apdu.sw1 == 0x6a && apdu.sw2 == 0x82) {
+	} else if ((card->type == SC_CARD_TYPE_STARCOS_V3_4
+				|| card->type == SC_CARD_TYPE_STARCOS_V3_5)
+			&& apdu.p2 == 0x4 && apdu.sw1 == 0x6a && apdu.sw2 == 0x82) {
 		/* not a file, could be a path */
 		bIsDF = 1;
 		apdu.p1 = 0x1;
@@ -604,7 +616,8 @@ static int starcos_select_fid(sc_card_t *card,
 			*file_out = file;
 		} else {
 			/* ok, assume we have a EF */
-			if (card->type == SC_CARD_TYPE_STARCOS_V3_4) {
+			if (card->type == SC_CARD_TYPE_STARCOS_V3_4
+					|| card->type == SC_CARD_TYPE_STARCOS_V3_5) {
 				if (isFCP) {
 					r = process_fcp_v3_4(card->ctx, file, apdu.resp,
 							apdu.resplen);
@@ -691,8 +704,9 @@ static int starcos_select_file(sc_card_t *card,
 		if (pathlen == 6 && ( path[0] != 0x3f || path[1] != 0x00 ))
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
 
-		if (card->type != SC_CARD_TYPE_STARCOS_V3_4 ||
-		    (pathlen == 0 && card->cache.current_path.type != SC_PATH_TYPE_DF_NAME)) {
+		if (card->type != SC_CARD_TYPE_STARCOS_V3_4
+				|| card->type == SC_CARD_TYPE_STARCOS_V3_5
+				|| (pathlen == 0 && card->cache.current_path.type != SC_PATH_TYPE_DF_NAME)) {
 			/* unify path (the first FID should be MF) */
 			if (path[0] != 0x3f || path[1] != 0x00)
 			{
@@ -717,9 +731,9 @@ static int starcos_select_file(sc_card_t *card,
 				    && card->cache.current_path.value[i+1] == path[i+1] )
 					bMatch += 2;
 
-			if (card->type == SC_CARD_TYPE_STARCOS_V3_4 &&
-			    bMatch > 0 &&
-			    (size_t) bMatch < card->cache.current_path.len) {
+			if ((card->type == SC_CARD_TYPE_STARCOS_V3_4
+						|| card->type == SC_CARD_TYPE_STARCOS_V3_5)
+					&& bMatch > 0 && (size_t) bMatch < card->cache.current_path.len) {
 				/* we're in the wrong folder, start traversing from root */
 				bMatch = 0;
 				card->cache.current_path.len = 0;
@@ -1320,7 +1334,8 @@ static int starcos_set_security_env(sc_card_t *card,
 
 	p     = sbuf;
 
-	if (card->type == SC_CARD_TYPE_STARCOS_V3_4) {
+	if (card->type == SC_CARD_TYPE_STARCOS_V3_4
+			|| card->type == SC_CARD_TYPE_STARCOS_V3_5) {
 		if (!(env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1) ||
 			!(env->flags & SC_SEC_ENV_KEY_REF_PRESENT) || env->key_ref_len != 1) {
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
@@ -1349,6 +1364,15 @@ static int starcos_set_security_env(sc_card_t *card,
 
 			case SC_SEC_OPERATION_DECIPHER:
 				sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0x41, 0xB8);
+
+				/* algorithm / cipher selector? */
+				*p++ = 0x89;
+				*p++ = 0x02;
+				*p++ = 0x11;
+				if (card->type == SC_CARD_TYPE_STARCOS_V3_4)
+					*p++ = 0x30;
+				else
+					*p++ = 0x31;
 				break;
 
 			default:
@@ -1503,7 +1527,8 @@ static int starcos_compute_signature(sc_card_t *card,
 	if (ex_data->sec_ops == SC_SEC_OPERATION_SIGN) {
 		/* compute signature with the COMPUTE SIGNATURE command */
 		
-		if (card->type == SC_CARD_TYPE_STARCOS_V3_4) {
+		if (card->type == SC_CARD_TYPE_STARCOS_V3_4
+				|| card->type == SC_CARD_TYPE_STARCOS_V3_5) {
 			size_t tmp_len;
 
 			sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A,
@@ -1615,7 +1640,8 @@ static int starcos_decipher(struct sc_card *card,
 		const u8 * crgram, size_t crgram_len,
 		u8 * out, size_t outlen)
 {
-	if (card->type == SC_CARD_TYPE_STARCOS_V3_4) {
+	if (card->type == SC_CARD_TYPE_STARCOS_V3_4
+			|| card->type == SC_CARD_TYPE_STARCOS_V3_5) {
 		int r;
 		size_t card_max_send_size = card->max_send_size;
 		size_t reader_max_send_size = card->reader->max_send_size;
@@ -1713,6 +1739,7 @@ static int starcos_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 
 	switch (card->type) {
 		case SC_CARD_TYPE_STARCOS_V3_4:
+		case SC_CARD_TYPE_STARCOS_V3_5:
 			card->serialnr.len = SC_MAX_SERIALNR;
 			r = sc_parse_ef_gdo(card, card->serialnr.value, &card->serialnr.len, NULL, 0);
 			if (r < 0) {
