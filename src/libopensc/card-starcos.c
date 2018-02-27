@@ -89,15 +89,6 @@ typedef struct starcos_ex_data_st {
 		} \
 	} while (0);
 
-#define CHECK_ONLY_SUPPORTED_V3_4(card) \
-	do { \
-		if ((card)->type != SC_CARD_TYPE_STARCOS_V3_4) { \
-			sc_debug((card)->ctx, SC_LOG_DEBUG_NORMAL, \
-				"only supported for STARCOS 3.4 cards"); \
-			return SC_ERROR_NOT_SUPPORTED; \
-		} \
-	} while (0);
-
 /* the starcos part */
 static int starcos_match_card(sc_card_t *card)
 {
@@ -1832,15 +1823,19 @@ static int starcos_logout(sc_card_t *card)
 static int starcos_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 			    int *tries_left)
 {
-	int ret;
-
-	CHECK_ONLY_SUPPORTED_V3_4(card);
+	int r;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
-	data->flags |= SC_PIN_CMD_NEED_PADDING;
-	data->pin1.encoding = SC_PIN_ENCODING_GLP;
-	ret = iso_ops->pin_cmd(card, data, tries_left);
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, ret);
+	switch (card->type) {
+		case SC_CARD_TYPE_STARCOS_V3_4:
+		case SC_CARD_TYPE_STARCOS_V3_5:
+			data->flags |= SC_PIN_CMD_NEED_PADDING;
+			data->pin1.encoding = SC_PIN_ENCODING_GLP;
+			/* fall through */
+		default:
+			r = iso_ops->pin_cmd(card, data, tries_left);
+	}
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 }
 
 static struct sc_card_driver * sc_get_driver(void)
