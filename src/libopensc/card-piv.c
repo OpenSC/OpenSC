@@ -403,6 +403,7 @@ static struct sc_card_driver piv_drv = {
 	NULL, 0, NULL
 };
 
+static int piv_match_card_continued(sc_card_t *card);
 
 static int
 piv_find_obj_by_containerid(sc_card_t *card, const u8 * str)
@@ -2956,6 +2957,8 @@ piv_finish(sc_card_t *card)
 
 static int piv_match_card(sc_card_t *card)
 {
+	int r = 0;
+
         SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	/* piv_match_card may be called with card->type, set by opensc.conf */
@@ -2971,7 +2974,20 @@ static int piv_match_card(sc_card_t *card)
 			return 0; /* can not handle the card */
 	}
 	/* its one we know, or we can test for it in piv_init */
-	return 1; /* Let piv_init finish matching */
+	/* 
+	 * We will call piv_match_card_continued here then 
+	 * again in piv_init to avoid any issues with passing
+	 * anything from piv_match_card
+	 * to piv_init as had been done in the past
+	 */
+	r = piv_match_card_continued(card);
+	if (r == 1) {
+		/* clean up what we left in card */
+		sc_unlock(card);
+		piv_finish(card);
+	}
+
+	return r;
 }
 
 
@@ -3104,14 +3120,13 @@ static int piv_match_card_continued(sc_card_t *card)
 
 
 	if (i < 0) {
-		piv_finish(card);
 		/* don't match. Does not have a PIV applet. */
 		sc_unlock(card);
+		piv_finish(card);
 		return 0;
 	}
 
-	/* Matched, and priv is being passed to piv_init */
-	/* hold the lock and pass to piv_init */
+	/* Matched, caller will use or free priv and sc_lock as needed */
 	priv->pstate=PIV_STATE_INIT;
 	return 1; /* match */
 }
