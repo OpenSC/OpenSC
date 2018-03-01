@@ -446,13 +446,18 @@ if test "${enable_dnie_ui}" = "yes"; then
 	AC_DEFINE([ENABLE_DNIE_UI], [1], [Enable the use of external user interface program to request DNIe user pin])
 
 	case "${host}" in
-		*-*-darwin)
-			if test "${enable_dnie_ui}" = "yes"; then
-				LDFLAGS="${LDFLAGS} -framework Carbon"
-			fi
+		*-*-darwin*)
+			LDFLAGS="${LDFLAGS} -framework Carbon"
 		;;
 	esac
 fi
+
+
+case "${host}" in
+	*-apple-*)
+		LDFLAGS="${LDFLAGS} -framework CoreFoundation"
+	;;
+esac
 
 case "${host}" in
 	*-*-darwin*)

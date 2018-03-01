@@ -163,6 +163,7 @@ const char *user_consent_message="Esta a punto de realizar una firma digital\nco
  */
 char *user_consent_msgs[] = { "SETTITLE", "SETDESC", "CONFIRM", "BYE" };
 
+#ifdef linux
 /**
  * Do fgets() without interruptions.
  *
@@ -181,6 +182,7 @@ static char *nointr_fgets(char *s, int size, FILE *stream)
 	}
 	return s;
 }
+#endif
 
 /**
  * Ask for user consent.
