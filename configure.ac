@@ -450,14 +450,12 @@ if test "${enable_dnie_ui}" = "yes"; then
 			LDFLAGS="${LDFLAGS} -framework Carbon"
 		;;
 	esac
+	case "${host}" in
+		*-apple-*)
+			LDFLAGS="${LDFLAGS} -framework CoreFoundation"
+		;;
+	esac
 fi
-
-
-case "${host}" in
-	*-apple-*)
-		LDFLAGS="${LDFLAGS} -framework CoreFoundation"
-	;;
-esac
 
 case "${host}" in
 	*-*-darwin*)
