@@ -660,7 +660,7 @@ static int myeid_set_security_env_rsa(sc_card_t *card, const sc_security_env_t *
 		memcpy(p, env->file_ref.value, 2);
 		p += 2;
 	}
-	if (env->flags & SC_SEC_ENV_KEY_REF_PRESENT)
+	if (env->flags & SC_SEC_ENV_KEY_REF_PRESENT && env->operation != SC_SEC_OPERATION_UNWRAP)
 	{
 		*p++ = 0x84;
 		*p++ = 1;
@@ -1272,11 +1272,11 @@ static int myeid_unwrap_key(struct sc_card *card, const u8 *crgram, size_t crgra
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	/* INS: 0x2A  PERFORM SECURITY OPERATION
-	    * P1:  0x80  Resp: Plain value
+	    * P1:  0x00  Do not expect response - the deciphered data will be placed into the target key EF.
 	    * P2:  0x86  Cmd: Padding indicator byte followed by cryptogram */
 	sc_format_apdu(card, &apdu,
 		(crgram_len < 256) ? SC_APDU_CASE_4_SHORT : SC_APDU_CASE_3_SHORT,
-		0x2A, 0x80, 0x86);
+		0x2A, 0x00, 0x86);
 
 	apdu.resp = rbuf;
 	apdu.resplen = sizeof(rbuf);
@@ -1307,7 +1307,7 @@ static int myeid_unwrap_key(struct sc_card *card, const u8 *crgram, size_t crgra
 		if (crgram_len == 256)
 		{
 			sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT,
-				0x2A, 0x80, 0x86);
+				0x2A, 0x00, 0x86);
 			apdu.resp = rbuf;
 			apdu.resplen = sizeof(rbuf);
 			apdu.le = crgram_len;
