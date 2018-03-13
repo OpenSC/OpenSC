@@ -1695,23 +1695,18 @@ static int epass2003_decipher(struct sc_card *card, const u8 * data, size_t data
 
 	if(exdata->currAlg == SC_ALGORITHM_EC)
 	{
-		unsigned char hash[HASH_LEN] = { 0 };
 		if(exdata->ecAlgFlags | SC_ALGORITHM_ECDSA_HASH_SHA1)
 		{
-			hash_data(data, datalen, hash, SC_ALGORITHM_ECDSA_HASH_SHA1);
+			hash_data(data, datalen, sbuf, SC_ALGORITHM_ECDSA_HASH_SHA1);
 			sc_format_apdu(card, &apdu, SC_APDU_CASE_3,0x2A, 0x9E, 0x9A);
-			memset(sbuf, 0, sizeof(sbuf));
-			memcpy(sbuf, hash, 0x14);
 			apdu.data = sbuf;
 			apdu.lc = 0x14;
 			apdu.datalen = 0x14;
 		}
 		else if (exdata->ecAlgFlags | SC_ALGORITHM_ECDSA_HASH_SHA256)
 		{
-			hash_data(data, datalen, hash, SC_ALGORITHM_ECDSA_HASH_SHA256);
+			hash_data(data, datalen, sbuf, SC_ALGORITHM_ECDSA_HASH_SHA256);
 			sc_format_apdu(card, &apdu, SC_APDU_CASE_3,0x2A, 0x9E, 0x9A);
-			memset(sbuf, 0, sizeof(sbuf));
-			memcpy(sbuf, hash, 0x20);
 			apdu.data = sbuf;
 			apdu.lc = 0x20;
 			apdu.datalen = 0x20;
@@ -2626,7 +2621,7 @@ external_key_auth(struct sc_card *card, unsigned char kid,
 
 static int
 update_secret_key(struct sc_card *card, unsigned char ktype, unsigned char kid,
-		unsigned char *data, unsigned long datalen)
+		const unsigned char *data, unsigned long datalen)
 {
 	int r;
 	struct sc_apdu apdu;
@@ -2707,7 +2702,7 @@ epass2003_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries
 
 	if (data->cmd == SC_PIN_CMD_CHANGE || data->cmd == SC_PIN_CMD_UNBLOCK) {
 		/* change */
-		r = update_secret_key(card, 0x04, kid, (unsigned char *)data->pin2.data,
+		r = update_secret_key(card, 0x04, kid, data->pin2.data,
 				(unsigned long)data->pin2.len);
 		LOG_TEST_RET(card->ctx, r, "verify pin failed");
 	}
