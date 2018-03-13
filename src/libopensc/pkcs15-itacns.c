@@ -653,7 +653,7 @@ static int itacns_check_and_add_keyset(sc_pkcs15_card_t *p15card,
 	sc_path_t path;
 	sc_pkcs15_id_t cert_id;
 	int ext_info_ok;
-	int ku, xku;
+	int ku = 0, xku = 0;
 	int pubkey_usage_flags = 0, prkey_usage_flags = 0;
 
 	cert_id.len = 1;

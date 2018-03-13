@@ -328,7 +328,7 @@ static int cwa_verify_icc_certificates(sc_card_t * card,
 				       cwa_provider_t * provider,
 				       X509 * sub_ca_cert, X509 * icc_cert)
 {
-	char *msg;
+	char *msg = NULL;
 	int res = SC_SUCCESS;
 	EVP_PKEY *root_ca_key = NULL;
 	EVP_PKEY *sub_ca_key = NULL;
@@ -543,7 +543,7 @@ static int cwa_prepare_external_auth(sc_card_t * card,
 	   then, we should encrypt with our private key and then with icc pub key
 	   returning resulting data
 	 */
-	char *msg;		/* to store error messages */
+	char *msg = NULL;		/* to store error messages */
 	int res = SC_SUCCESS;
 	u8 *buf1;		/* where to encrypt with icc pub key */
 	u8 *buf2;		/* where to encrypt with ifd pub key */
