@@ -1152,6 +1152,7 @@ CK_RV C_GenerateRandom(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	}
 
 	sc_pkcs11_unlock();
+	sc_log(context, "C_GenerateRandom() = %s", lookup_enum ( RV_T, rv ));
 	return rv;
 }
 
