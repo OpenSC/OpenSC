@@ -1617,7 +1617,16 @@ pkcs15_login(struct sc_pkcs11_slot *slot, CK_USER_TYPE userType,
 		}
 	}
 
-	rc = sc_pkcs15_verify_pin(p15card, auth_object, pPin, ulPinLen);
+	if (userType  == CKU_CONTEXT_SPECIFIC && pin_info) {
+		int auth_meth_saved = pin_info->auth_method;
+
+		sc_log(context, "Setting SC_AC_CONTEXT_SPECIFIC");
+		pin_info->auth_method = SC_AC_CONTEXT_SPECIFIC;
+		rc = sc_pkcs15_verify_pin(p15card, auth_object, pPin, ulPinLen);
+		pin_info->auth_method = auth_meth_saved;
+	} else
+		rc = sc_pkcs15_verify_pin(p15card, auth_object, pPin, ulPinLen);
+
 	sc_log(context, "PKCS15 verify PIN returned %d", rc);
 
 	if (rc != SC_SUCCESS)
