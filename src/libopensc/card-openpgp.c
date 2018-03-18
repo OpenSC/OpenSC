@@ -44,6 +44,8 @@
 #include <openssl/sha.h>
 #endif /* ENABLE_OPENSSL */
 
+#define digitp(p) (*(p) >= '0' && *(p) <= '9')
+
 static struct sc_atr_table pgp_atrs[] = {
 	{ "3b:fa:13:00:ff:81:31:80:45:00:31:c1:73:c0:01:00:00:90:00:b1", NULL, "OpenPGP card v1.0/1.1", SC_CARD_TYPE_OPENPGP_V1, 0, NULL },
 	{ "3b:da:18:ff:81:b1:fe:75:1f:03:00:31:c5:73:c0:01:40:00:90:00:0c", NULL, "CryptoStick v1.2 (OpenPGP v2.0)", SC_CARD_TYPE_OPENPGP_V2, 0, NULL },
@@ -1569,7 +1571,8 @@ static int
 pgp_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 {
 	struct pgp_priv_data *priv = DRVDATA(card);
-
+	pgp_blob_t *blob;
+	
 	LOG_FUNC_CALLED(card->ctx);
 
 	if (data->pin_type != SC_AC_CHV)
@@ -1601,6 +1604,81 @@ pgp_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 
 	/* convert the PIN Reference if needed */
 	data->pin_reference |= 0x80;
+
+	/* Some pinpad readers do not support variable length PIN requests. OpenPGP cards
+	 * allow us to store the length in the login-data DO. We check if this has been
+	 * set and respect the value if it has been.
+	 * 
+	 * We currently ignore the F flags.
+	 * 
+	 * PINPAD_REQUEST (P) is in the format of: <n> or <n>,<m>.
+     * N for user PIN, M for admin PIN.  If M is missing it means M=N.
+     * 0 means to force not to use pinpad.
+	 */
+
+	if ((pgp_get_blob(card, priv->mf, 0x005e, &blob) >= 0) &&
+		(blob->data != NULL) && (blob->len > 1)) {
+			for (; blob->len; blob->len--, blob->data++)
+				if (*blob->data == '\n')
+					break;
+			if (blob->len > 2 && blob->data[1] == '\x14') {
+				blob->len--;
+				blob->data++;
+				do {
+					blob->len--;
+					blob->data++;
+					if (blob->len > 1 && *blob->data == 'P' && blob->data[1] == '=') {
+						/* Pinpad request control sequence found.  */
+						blob->data += 2;
+						blob->len -= 2;
+
+						if (blob->len) {
+							if (digitp (blob->data)) {
+								char *q;
+								int n, m;
+		
+								n = strtol ((char*)blob->data, &q, 10);
+								if (q >= (char *)blob->data + blob->len
+									|| *q == '\x18' || *q == '\n')
+									m = n;
+								else {
+									if (*q++ != ',' || !digitp (q))
+										goto next;
+									m = strtol (q, &q, 10);
+								}
+
+								if (blob->len < ((unsigned char *)q - blob->data))
+									break;
+
+								blob->len -= ((unsigned char *)q - blob->data);
+								blob->data = (unsigned char*)q;
+
+								if (blob->len && !(*blob->data == '\n' || *blob->data == '\x18'))
+									goto next;
+								card->max_pin_len = n;
+
+								/* We don't currently use the admin PIN length */
+								(void)m;
+								}
+							}
+						}
+					next:
+					/* Skip to FS (0x18) or LF (\n).  */
+					for (; blob->len && *blob->data != '\x18' && *blob->data != '\n'; blob->len--)
+						blob->data++;
+					}
+				while (blob->len && *blob->data != '\n');
+			}
+	}
+
+	/* if the above returns a pin length, we use it */
+	if (card->max_pin_len != 0) {
+		data->pin1.encoding = SC_PIN_ENCODING_ASCII;
+		data->flags += SC_PIN_CMD_NEED_PADDING;
+		data->pin1.min_length = card->max_pin_len;
+		data->pin1.max_length = card->max_pin_len;
+		data->pin1.pad_length = card->max_pin_len;
+	}
 
 	/* check version-dependent constraints */
 	if (data->cmd == SC_PIN_CMD_CHANGE || data->cmd == SC_PIN_CMD_UNBLOCK) {
