@@ -369,7 +369,7 @@ static void print_tags_recursive(const u8 * buf0, const u8 * buf,
 			return;
 		}
 		hlen = tagp - p;
-		if (cla == 0 && tag == 0) {
+		if ((cla == 0 && tag == 0) || tag == SC_ASN1_TAG_EOC) {
 			printf("Zero tag, finishing\n");
 			break;
 		}
@@ -475,7 +475,8 @@ const u8 *sc_asn1_find_tag(sc_context_t *ctx, const u8 * buf,
 
 		buf = p;
 		/* read a tag */
-		if (sc_asn1_read_tag(&p, left, &cla, &tag, &taglen) != SC_SUCCESS)
+		if (sc_asn1_read_tag(&p, left, &cla, &tag, &taglen) != SC_SUCCESS
+				|| tag == SC_ASN1_TAG_EOC)
 			return NULL;
 		left -= (p - buf);
 		/* we need to shift the class byte to the leftmost
@@ -506,7 +507,8 @@ const u8 *sc_asn1_skip_tag(sc_context_t *ctx, const u8 ** buf, size_t *buflen,
 	size_t len = *buflen, taglen;
 	unsigned int cla = 0, tag;
 
-	if (sc_asn1_read_tag((const u8 **) &p, len, &cla, &tag, &taglen) != SC_SUCCESS)
+	if (sc_asn1_read_tag((const u8 **) &p, len, &cla, &tag, &taglen) != SC_SUCCESS
+			|| tag == SC_ASN1_TAG_EOC)
 		return NULL;
 	switch (cla & 0xC0) {
 	case SC_ASN1_TAG_UNIVERSAL:

@@ -1223,7 +1223,8 @@ static size_t determineLength(const u8 *tlv, size_t buflen)
 	unsigned int cla,tag;
 	size_t len;
 
-	if (sc_asn1_read_tag(&ptr, buflen, &cla, &tag, &len) != SC_SUCCESS) {
+	if (sc_asn1_read_tag(&ptr, buflen, &cla, &tag, &len) != SC_SUCCESS
+			|| tag == SC_ASN1_TAG_EOC) {
 		return 0;
 	}
 

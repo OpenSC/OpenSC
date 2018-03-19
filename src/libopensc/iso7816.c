@@ -343,7 +343,8 @@ iso7816_process_fci(struct sc_card *card, struct sc_file *file,
 			p < end;
 			p += length, length = end - p) {
 
-		if (SC_SUCCESS != sc_asn1_read_tag(&p, length, &cla, &tag, &length)) {
+		if (SC_SUCCESS != sc_asn1_read_tag(&p, length, &cla, &tag, &length)
+				|| tag == SC_ASN1_TAG_EOC) {
 			break;
 		}
 		switch (cla | tag) {
