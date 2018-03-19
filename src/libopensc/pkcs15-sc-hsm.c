@@ -287,7 +287,11 @@ int sc_pkcs15emu_sc_hsm_decode_cvc(sc_pkcs15_card_t * p15card,
 
 	tbuf = *buf;
 	r = sc_asn1_read_tag(&tbuf, *buflen, &cla, &tag, &taglen);
-	LOG_TEST_RET(card->ctx, r, "Could not decode card verifiable certificate");
+	if (r < 0 || tag == SC_ASN1_TAG_EOC) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+				"Could not decode card verifiable certificate\n");
+		return SC_ERROR_OBJECT_NOT_VALID;
+	}
 
 	/*  Determine if we deal with an authenticated request, plain request or certificate */
 	if ((cla == (SC_ASN1_TAG_APPLICATION|SC_ASN1_TAG_CONSTRUCTED)) && (tag == 7)) {

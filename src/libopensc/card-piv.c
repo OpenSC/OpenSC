@@ -679,8 +679,9 @@ static int piv_generate_key(sc_card_t *card,
 		in_len = rbuflen;
 
 		r = sc_asn1_read_tag(&cp, rbuflen, &cla_out, &tag_out, &in_len);
-		if (r != SC_SUCCESS) {
+		if (r != SC_SUCCESS || tag_out == SC_ASN1_TAG_EOC) {
 			sc_log(card->ctx, "Tag buffer not found");
+			r = SC_ERROR_DATA_OBJECT_NOT_FOUND;
 			goto err;
 		}
 
@@ -881,7 +882,8 @@ static int piv_read_obj_from_file(sc_card_t * card, char * filename,
 		goto err;
 	}
 	body = tagbuf;
-	if (sc_asn1_read_tag(&body, 0xfffff, &cla_out, &tag_out, &bodylen) != SC_SUCCESS) {
+	if (sc_asn1_read_tag(&body, 0xfffff, &cla_out, &tag_out, &bodylen) != SC_SUCCESS
+			|| tag_out == SC_ASN1_TAG_EOC) {
 		sc_log(card->ctx, "DER problem");
 		r = SC_ERROR_INVALID_ASN1_OBJECT;
 		goto err;
@@ -947,7 +949,8 @@ piv_get_data(sc_card_t * card, int enumtag, u8 **buf, size_t *buf_len)
 		r = piv_general_io(card, 0xCB, 0x3F, 0xFF, tagbuf,  p - tagbuf, &rbuf, &rbuflen);
 		if (r > 0) {
 			body = rbuf;
-			if (sc_asn1_read_tag(&body, 0xffff, &cla_out, &tag_out, &bodylen) !=  SC_SUCCESS) {
+			if (sc_asn1_read_tag(&body, 0xffff, &cla_out, &tag_out, &bodylen) !=  SC_SUCCESS
+					|| tag_out == SC_ASN1_TAG_EOC) {
 				sc_log(card->ctx, "***** received buffer tag MISSING ");
 				r = SC_ERROR_FILE_NOT_FOUND;
 				goto err;
@@ -2600,7 +2603,8 @@ static int piv_parse_discovery(sc_card_t *card, u8 * rbuf, size_t rbuflen, int a
 
 	if (rbuflen != 0) {
 		body = rbuf;
-		if ((r = sc_asn1_read_tag(&body, rbuflen, &cla_out, &tag_out,  &bodylen)) != SC_SUCCESS) {
+		if ((r = sc_asn1_read_tag(&body, rbuflen, &cla_out, &tag_out,  &bodylen)) != SC_SUCCESS
+				|| tag_out == SC_ASN1_TAG_EOC) {
 			sc_log(card->ctx, "DER problem %d",r);
 			r = SC_ERROR_INVALID_ASN1_OBJECT;
 			goto err;
@@ -2746,7 +2750,8 @@ piv_process_history(sc_card_t *card)
 	/* the object is now cached, see what we have */
 	if (rbuflen != 0) {
 		body = rbuf;
-		if ((r = sc_asn1_read_tag(&body, rbuflen, &cla_out, &tag_out,  &bodylen)) != SC_SUCCESS) {
+		if ((r = sc_asn1_read_tag(&body, rbuflen, &cla_out, &tag_out,  &bodylen)) != SC_SUCCESS
+				|| tag_out == SC_ASN1_TAG_EOC) {
 			sc_log(card->ctx, "DER problem %d",r);
 			r = SC_ERROR_INVALID_ASN1_OBJECT;
 			goto err;
@@ -2847,8 +2852,8 @@ piv_process_history(sc_card_t *card)
 
 		body = ocfhfbuf;
 		if (sc_asn1_read_tag(&body, ocfhflen, &cla_out,
-				&tag_out, &bodylen) != SC_SUCCESS ||
-				cla_out+tag_out != 0x30) {
+					&tag_out, &bodylen) != SC_SUCCESS
+				|| cla_out+tag_out != 0x30) {
 			sc_log(card->ctx, "DER problem");
 			r = SC_ERROR_INVALID_ASN1_OBJECT;
 			goto err;
@@ -2857,8 +2862,8 @@ piv_process_history(sc_card_t *card)
 		while (bodylen > 0) {
 			seqtag = seq;
 			if (sc_asn1_read_tag(&seq, bodylen, &cla_out,
-					&tag_out, &seqlen) != SC_SUCCESS ||
-					cla_out+tag_out != 0x30) {
+						&tag_out, &seqlen) != SC_SUCCESS
+					|| cla_out+tag_out != 0x30) {
 				sc_log(card->ctx, "DER problem");
 				r = SC_ERROR_INVALID_ASN1_OBJECT;
 				goto err;
