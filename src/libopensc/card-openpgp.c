@@ -2547,8 +2547,8 @@ pgp_store_key(sc_card_t *card, sc_cardctl_openpgp_keystore_info_t *key_info)
 {
 	sc_context_t *ctx = card->ctx;
 	sc_cardctl_openpgp_keygen_info_t pubkey;
-	u8 *data;
-	size_t len;
+	u8 *data = NULL;
+	size_t len = 0;
 	int r;
 
 	LOG_FUNC_CALLED(ctx);
